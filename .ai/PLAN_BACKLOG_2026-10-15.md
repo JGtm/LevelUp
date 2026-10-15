@@ -246,6 +246,12 @@ diff E5 (lot persist/sync).
 - [ ] E6.2 Revue adversariale du diff complet (skill `adversarial-review`, contexte frais, Opus).
 - [ ] E6.3 `.ai/BACKLOG.md` : items 4, 5, 6 retirés ou réécrits ; `.ai/REGISTRE_REPORTS.md`
   alimenté ; thought_log.
+- [ ] E6.2a Corrections de la ronde 1 (revue adversariale, 5 constats P1) :
+  - [x] E6.2a-F1 `campaign_repo.go` `loadLUSRMatchIDsInWindow` : exclusion de la Campagne manquante (alignee sur `LoadAxisSamples`).
+  - [ ] E6.2a-F2 Demo : `selectDynamicCorpus` exclut la Campagne sur l'ensemble final (voies solo, escouade, media) ; dispenses du garde mises a jour.
+  - [ ] E6.2a-F3 Vue match : annulation de requete = erreur de contexte rendue + WARN (jamais ERROR ni `_unavailable`).
+  - [ ] E6.2a-F4 Fichiers > 500 L grossis par le lot (`domain/match_view.go`, `wire/registry_pages.go`, `port/repository.go`, et autres) : ajouts deplaces dans des voisins.
+  - [ ] E6.2a-F5 `relationExists` : tests de la branche erreur de sonde et d'au moins un appelant.
 - [ ] E6.4 Push de la branche, CI verte (tout rouge se répare).
 - [ ] E6.5 Fusion dans `feat/v75` : demandée au user.
 
@@ -823,3 +829,5 @@ diff E5 (lot persist/sync).
   `append_only_state_guard_test.go`, `no_slug_comparison_test.go` verts et INCHANGÉS (`git diff 4066ad33b` vide sur ces fichiers) ; la migration n'écrit
   `match_registry` que par la table de construction (INSERT) et l'échange DROP/RENAME, sans `UPDATE` ni `ON CONFLICT`. **E5.6 STATUÉ `[x]`.** E5 :
   revue adversariale laissée au superviseur (consigne).
+- 2026-10-16 (E6.2a, ronde 1 de la revue adversariale, exécutant Sonnet) :
+  - **F1** `loadLUSRMatchIDsInWindow` (`platform/duckdb/campaign_repo.go:~364-380`) lisait `match_registry` sans l'exclusion de la Campagne que `LoadAxisSamples` applique : le match de Campagne présent côté player DB (`lusr_component_history_latest`) entrait dans les échantillons d'une composante LUSR. Correction : `FROM match_registry mr` + `excludeCampaignClause(pdbTitleSlug(p.pdb), "mr")` (même source de titre que la fonction voisine). Test `TestCampaignExclusion_LoadAxisSamplesLUSRComponent` (`campaign_exclusion_lusr_test.go`, `halo_5` ET `halo_infinite`). **Rouge** avant : `halo_5 : echantillons LUSR [0.4 0.9], attendu [0.4]` ; **vert** après. Le garde `archlint/campaign_exclusion_guard_test.go` ne voit pas ce lecteur : son critère de lecteur est `match_participants|mv_player_matches|...` ET un filtre `xuid =`/`IN (` ; or cette requête lit `match_registry` seule, sans xuid (le filtre joueur se fait ensuite côté player DB, par `match_id`). Garde non élargi (consigne) ; lecteurs « registre seul + jointure cross-DB » : angle mort noté en section 3.

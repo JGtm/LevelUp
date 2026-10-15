@@ -363,15 +363,17 @@ func (p *CampaignSampleProvider) loadLUSRComponentSamples(
 func (p *CampaignSampleProvider) loadLUSRMatchIDsInWindow(
 	ctx context.Context, component, playlistGroup string, since, until time.Time,
 ) ([]lusrMatchTS, error) {
-	ts := StartTimeCanonicalSQL("")
+	ts := StartTimeCanonicalSQL("mr")
 	sharedQ := `
-		SELECT match_id, ` + ts + `
-		FROM match_registry
-		WHERE ` + ts + ` >= ? AND ` + ts + ` <= ?
+		SELECT mr.match_id, ` + ts + `
+		FROM match_registry mr
+		WHERE ` + ts + ` >= ? AND ` + ts + ` <= ?` +
+		// Campagne exclue (D-5), comme LoadAxisSamples ; titre = celui de la base lue.
+		excludeCampaignClause(pdbTitleSlug(p.pdb), "mr") + `
 	`
 	sharedArgs := []any{since, until}
 	if playlistGroup != "" && playlistGroup != "all" {
-		sharedQ += ` AND playlist_id = ?`
+		sharedQ += ` AND mr.playlist_id = ?`
 		sharedArgs = append(sharedArgs, playlistGroup)
 	}
 	sharedQ += " ORDER BY " + ts + " ASC"
