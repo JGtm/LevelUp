@@ -738,6 +738,42 @@ go run ./cmd/levelup compact-passes                          # optional: drop th
   `--match`, every film stale under the new `killsource` revision) re-merges them, to be announced
   and run as a campaign.
 
+#### Deaths served twice: pairing, bot seats, kill sheets, API death events (`--couples`)
+
+Since `killsource-2026-10-15.3`, four causes of a death served twice are closed:
+
+- **Credit pairing** (`analysis.ComputeKillerVictimPairs`): kills and deaths are paired by increasing
+  gap (the exact instant first), one kill and one death at most once each, never a player with
+  himself. The old greedy pairing in kill order let a kill on a bot (no death in the API's
+  kill-feed) take a human death 1 to 4 ms later; 34 "X kills X" pairs sat on the 2026-10-15 copy.
+  The window is `analysis.KillDeathPairToleranceMS` (5 ms), the only one in the repository
+  (ratchet `archlint/kill_death_tolerance_test.go`).
+- **Bot seat taken over by a human** (decoder): a bot holds its player index only during its
+  `BOT_METADATA` declarations; after the last one, the XUID-pattern reading names its successor.
+- **Kill sheet** (decoder): a kill-event goes to the nearest kill of its killer, and to the kill
+  whose victim's death is next to it in the feed.
+- **Merge** (`persist.MergeCreditAndFilm`): every served human death leans on ONE API `death` event
+  (same XUID, within 5 ms), credit deaths first; a film orphan with a human victim and no free event
+  is refused and counted (`killsource_fusion_orphelins_sans_mort_api`). The official-deaths check
+  compares each player to the larger of his official deaths and his API `death` events: a player who
+  left and rejoined has official deaths on part of the match only.
+
+The pairs already stored in `killer_victim_pairs` and the credit base keep the old pairing until
+this sequence runs (**server stopped**, announce before running on production; the last two steps
+re-decode every stale film, a campaign of several hours):
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup repair-highlight-phantoms --couples --dry-run   # read-only: matches whose pairs differ
+go run ./cmd/levelup repair-highlight-phantoms --couples             # backup, phantoms, then those matches' pairs
+go run ./cmd/levelup backfill-killsource --credit-only               # credit base of every match, new pairing
+go run ./cmd/levelup backfill-killsource                             # film pass over it (every film stale)
+go run ./cmd/levelup compact-passes                                  # optional: drop the superseded passes
+```
+
+`--couples` rewrites only the matches whose stored pairs differ from the current pairing (477 of
+4 010 on the 2026-10-15 copy) and is idempotent.
+
 ### Media paths migration (one-shot, standalone binary)
 
 Converts legacy **absolute** media paths to portable relative `{owner_slug}/{rel}` paths in

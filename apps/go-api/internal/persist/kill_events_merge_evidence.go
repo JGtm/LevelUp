@@ -7,13 +7,14 @@ package persist
 // d independant du film ne la prouve : mesure du 2026-10-15, 11 morts fantomes sur 12 groupes
 // (une victime servie 10 fois pour 7 morts officielles) ajoutees par ce seul raisonnement.
 //
-// Deux preuves independantes du film accompagnent donc la base credit (la seconde ne sert qu a un
-// controle, jamais a retirer une ligne) :
+// Trois preuves independantes du film accompagnent donc la base credit :
 //
 //	APIKills        les kills du kill-feed de l API, par instant. Deux morts distinctes a la meme
 //	                milliseconde laissent deux kills (un par mort) ; un seul kill ne porte qu une mort.
 //	OfficialDeaths  les morts officielles de chaque joueur (`match_participants.deaths`), le
 //	                controle de qualite des morts servies (jamais une troncature).
+//	APIDeaths       les evenements `death` de chaque joueur : toute mort d humain servie s adosse a
+//	                l un d eux, un evenement par ligne (kill_events_merge_adossement.go).
 //
 // Sans preuve (`Known` faux), la fusion ne declare AUCUNE autre mort : refuser coute une ligne de
 // film, en ajouter une a tort invente une mort.
@@ -35,11 +36,15 @@ type MergeEvidence struct {
 	APIKills map[int]int
 	// OfficialDeaths : xuid -> morts officielles du joueur dans le match.
 	OfficialDeaths map[string]int
+	// APIDeaths : xuid -> instants DISTINCTS de ses evenements `death` dans `highlight_events` — ce a
+	// quoi chaque mort d humain servie s adosse (kill_events_merge_adossement.go).
+	APIDeaths map[string][]int
 }
 
 // LoadMergeEvidence lit les preuves d UN match.
 func LoadMergeEvidence(ctx context.Context, q rowQuerier, matchID string) (MergeEvidence, error) {
-	ev := MergeEvidence{Known: true, APIKills: map[int]int{}, OfficialDeaths: map[string]int{}}
+	ev := MergeEvidence{Known: true, APIKills: map[int]int{}, OfficialDeaths: map[string]int{},
+		APIDeaths: map[string][]int{}}
 
 	rows, err := q.QueryContext(ctx, `
 		SELECT time_ms, COUNT(DISTINCT xuid) FROM highlight_events
@@ -82,7 +87,36 @@ func LoadMergeEvidence(ctx context.Context, q rowQuerier, matchID string) (Merge
 	if err := rows.Err(); err != nil {
 		return MergeEvidence{}, fmt.Errorf("persist: preuves de fusion %s (morts officielles, rows): %w", matchID, err)
 	}
+	if err := chargerMortsAPI(ctx, q, matchID, ev.APIDeaths); err != nil {
+		return MergeEvidence{}, err
+	}
 	return ev, nil
+}
+
+// chargerMortsAPI lit dans `out` les instants distincts des evenements `death` de chaque xuid du
+// match (la table porte des groupes en double exact : DISTINCT).
+func chargerMortsAPI(ctx context.Context, q rowQuerier, matchID string, out map[string][]int) error {
+	rows, err := q.QueryContext(ctx, `
+		SELECT DISTINCT xuid, time_ms FROM highlight_events
+		WHERE match_id = ? AND event_type = 'death' AND time_ms IS NOT NULL
+		  AND xuid IS NOT NULL AND xuid <> ''
+		ORDER BY 1, 2`, matchID)
+	if err != nil {
+		return fmt.Errorf("persist: preuves de fusion %s (morts de l API): %w", matchID, err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var x string
+		var t int
+		if err := rows.Scan(&x, &t); err != nil {
+			return fmt.Errorf("persist: preuves de fusion %s (morts de l API, scan): %w", matchID, err)
+		}
+		out[x] = append(out[x], t)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("persist: preuves de fusion %s (morts de l API, rows): %w", matchID, err)
+	}
+	return nil
 }
 
 // autreMortDeclarable : l API compte-t-elle autant de kills que de morts a cet instant, la mort
@@ -101,9 +135,14 @@ type OverOfficialPlayer struct {
 // joueursAuDessusDesMortsOfficielles : CONTROLE DE QUALITE, JAMAIS UN COUPERET. Rien n est retire ici :
 // retirer une ligne pour ramener un joueur a son compte, c est choisir sans preuve laquelle est
 // fausse (on peut garder la fausse et perdre la juste). Les lignes sans preuve sont deja refusees
-// en amont (passe 2, [MergeEvidence.autreMortDeclarable]) ; ce qui depasse encore se compte et se
-// journalise. Ordre : par xuid, pour un rendu reproductible.
-func joueursAuDessusDesMortsOfficielles(deaths []KillEventInsert, official map[string]int) []OverOfficialPlayer {
+// en amont (passe 2, [MergeEvidence.autreMortDeclarable] ; adossement, [adossement.orphelineServie]) ;
+// ce qui depasse encore se compte et se journalise. Ordre : par xuid, pour un rendu reproductible.
+//
+// LE PLAFOND EST LE PLUS GRAND DES DEUX COMPTES DE L API, les morts officielles et les evenements
+// `death` : un joueur parti puis revenu en cours de match n a de morts officielles que sur une
+// partie du match, alors que le kill-feed porte toutes ses morts (ecart legitime, pas une mort de
+// trop).
+func joueursAuDessusDesMortsOfficielles(deaths []KillEventInsert, ev MergeEvidence) []OverOfficialPlayer {
 	servies := map[string]int{}
 	for i := range deaths {
 		if v := deaths[i].VictimXUID; v != "" {
@@ -112,7 +151,7 @@ func joueursAuDessusDesMortsOfficielles(deaths []KillEventInsert, official map[s
 	}
 	var out []OverOfficialPlayer
 	for x, n := range servies {
-		if o, connu := official[x]; connu && n > o {
+		if o, connu := ev.OfficialDeaths[x]; connu && n > max(o, len(ev.APIDeaths[x])) {
 			out = append(out, OverOfficialPlayer{XUID: x, Official: o, Served: n})
 		}
 	}

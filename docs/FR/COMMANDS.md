@@ -771,6 +771,45 @@ go run ./cmd/levelup compact-passes                          # facultatif : reti
   `--match`, tous les films périmés sous la nouvelle révision `killsource`) les re-fusionne, à
   annoncer et jouer comme une campagne.
 
+#### Morts servies deux fois : appariement, sièges de bot, fiches de kill, morts de l'API (`--couples`)
+
+Depuis `killsource-2026-10-15.3`, quatre causes d'une mort servie deux fois sont fermées :
+
+- **Appariement du crédit** (`analysis.ComputeKillerVictimPairs`) : kills et morts s'apparient par
+  écart croissant (l'instant exact d'abord), un kill et une mort au plus une fois chacun, jamais un
+  joueur avec lui-même. L'ancien appariement glouton dans l'ordre des kills laissait un kill sur un
+  bot (aucune mort dans le kill-feed de l'API) prendre une mort humaine tombée 1 à 4 ms plus loin ;
+  34 couples « X tue X » étaient sur la copie du 2026-10-15. La fenêtre est
+  `analysis.KillDeathPairToleranceMS` (5 ms), la seule du dépôt (ratchet
+  `archlint/kill_death_tolerance_test.go`).
+- **Siège de bot repris par un humain** (décodeur) : un bot ne tient son indice de joueur que pendant
+  ses déclarations `BOT_METADATA` ; après la dernière, la lecture du motif de XUID nomme son
+  successeur.
+- **Fiche de kill** (décodeur) : un kill-event va au kill de son tueur le plus proche, et au kill dont
+  la mort de la victime est voisine dans le flux.
+- **Fusion** (`persist.MergeCreditAndFilm`) : toute mort d'humain servie s'adosse à UN événement
+  `death` de l'API (même XUID, à 5 ms près), les morts de crédit d'abord ; une orpheline de film à
+  victime humaine sans événement libre est refusée et comptée
+  (`killsource_fusion_orphelins_sans_mort_api`). Le contrôle des morts officielles compare chaque
+  joueur au plus grand de ses morts officielles et de ses événements `death` : un joueur parti puis
+  revenu n'a de morts officielles que sur une partie du match.
+
+Les couples déjà dans `killer_victim_pairs` et la base crédit gardent l'ancien appariement jusqu'à
+cette séquence (**serveur arrêté**, prévenir avant de la jouer en production ; les deux dernières
+étapes redécodent tous les films périmés, une campagne de plusieurs heures) :
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup repair-highlight-phantoms --couples --dry-run   # lecture seule : matchs dont les couples diffèrent
+go run ./cmd/levelup repair-highlight-phantoms --couples             # sauvegarde, fantômes, puis les couples de ces matchs
+go run ./cmd/levelup backfill-killsource --credit-only               # base crédit de tous les matchs, nouvel appariement
+go run ./cmd/levelup backfill-killsource                             # passe film par-dessus (tous les films périmés)
+go run ./cmd/levelup compact-passes                                  # facultatif : retire les passes supersédées
+```
+
+`--couples` ne réécrit que les matchs dont les couples stockés diffèrent de l'appariement courant
+(477 sur 4 010 sur la copie du 2026-10-15) et est idempotente.
+
 ### Migration des chemins média (one-shot, binaire autonome)
 
 Convertit les chemins média **absolus** (legacy) en chemins relatifs portables

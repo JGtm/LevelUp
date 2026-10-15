@@ -234,7 +234,8 @@ func TestFusionNApparieJamaisDeuxVictimesDifferentes(t *testing.T) {
 
 	// L API prouve DEUX morts a l instant : deux kills (un par mort).
 	base := batchCredit(mortCredit(1000))
-	base.Evidence = MergeEvidence{Known: true, APIKills: map[int]int{1000: 2}}
+	base.Evidence = MergeEvidence{Known: true, APIKills: map[int]int{1000: 2},
+		APIDeaths: map[string][]int{"xuid(999)": {1000}}}
 	out, st, err := MergeCreditAndFilm(base, batchFilm(film))
 	if err != nil {
 		t.Fatalf("MergeCreditAndFilm: %v — deux morts a la meme milliseconde ne sont pas une "+
@@ -338,7 +339,8 @@ func TestFusionRejoueLeTemoin9f9b19e5(t *testing.T) {
 	}
 
 	// Meme instant, mais l API porte DEUX kills : la seconde mort est prouvee et se conserve.
-	base.Evidence = MergeEvidence{Known: true, APIKills: map[int]int{instant: 2, instantSuivant: 1}}
+	base.Evidence = MergeEvidence{Known: true, APIKills: map[int]int{instant: 2, instantSuivant: 1},
+		APIDeaths: map[string][]int{victimeDuFilm: {instant}}}
 	out, st, err = MergeCreditAndFilm(base, passe)
 	if err != nil {
 		t.Fatal(err)
