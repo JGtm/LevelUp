@@ -226,7 +226,7 @@ Décisions fermes :
   vues `mv_player_matches` / `v_match_full`, export Parquet du snapshot (le lecteur de snapshot
   doit TOLÉRER un cut ancien qui porte encore la colonne : test), colonne TSV de
   `cmd/mapfond-inventaire`. Grep final à 0 hors migration de retrait et archives.
-- [ ] E5.4 V-3 : import OpenSpartan pose le bit 512 à l'insertion (`toSyncRegistry`) ; test.
+- [x] E5.4 V-3 : import OpenSpartan pose le bit 512 à l'insertion (`toSyncRegistry`) ; test.
 - [ ] E5.5 V-4 : étape de migration de reconstruction, tests (base aux deux colonnes + index +
   157 lignes sans bit → après : colonnes et index absents, bits posés, autres colonnes et index
   identiques, vues valides ; second passage = no-op). **Répétition sur les COPIES prod** fournies
@@ -759,3 +759,12 @@ diff E5 (lot persist/sync).
   (vues lisibles, `mv_player_matches` sans la colonne). Grep Go restant : ce test (voulu), l'alias de sortie retiré, et le constat daté du gel archlint
   (mesure du 2026-09-16, laissé tel quel). `go vet` (avec et sans tag) + `go test` persist, halo_5, halo_infinite/migrations, migration, openspartan, archlint,
   domain, ops (avec et sans tag), sync/snapshot verts. **E5.3 STATUÉ `[x]`.**
+- 2026-10-15 (E5.4, exécutant) : l'import OpenSpartan pose le bit 512 à l'insertion. `toSyncRegistry(m, hasParticipants)`
+  (`service/openspartan_import_adapters.go`) écrit `backfill_completed` = 512 quand le batch porte le roster, 0 sinon (jamais NULL, comme le moteur de
+  sync) ; l'appelant (`openspartan_import_service.go`) calcule les participants avant le registre. Bit défini UNE fois dans le paquet feuille
+  `sync/matchflags` (`BackfillParticipants`) : `sync.backfillFlagParticipants` en devient l'alias (la constante locale de `sync/writes.go` est retirée),
+  l'import et la migration de E5.5 le lisent. Le `BackfillCompleted: 1` du mapper est nommé `mapper.BackfillBitMedals` et commenté (bit médailles, non
+  recopié au registre partagé). **Rouge puis vert** : `TestOpenSpartanImport_EndToEnd_WritesAllRowFamilies` rendait `backfill_completed` NULL
+  (`{0 false}`) avant le correctif ; nouveau `TestToSyncRegistry_BitParticipantsSelonLeRoster`. `go test ./internal/service/ ./internal/openspartan/...`
+  et les tests `Collect|Phase3` de `internal/sync` verts. Hors périmètre, non traité : `cmd/levelup/cmd_reset_bitmasks.go:202` garde sa propre copie
+  de la valeur 512 (`backfillFlagParticipantsForReset`). **E5.4 STATUÉ `[x]`.**

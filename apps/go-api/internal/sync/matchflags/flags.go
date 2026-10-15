@@ -10,6 +10,13 @@
 // Valeurs numériquement identiques à l'origine (portage src/data/sync/constants.py MatchBits).
 package matchflags
 
+// BackfillParticipants : bit 9 (512) de match_registry.backfill_completed — le roster du match
+// (match_participants) est écrit. Valeur de BackfillFlags["participants"] (sync/backfill_flags.go),
+// lue par la sélection du backfill (garde « participants » de sync/backfill.go). Posé à
+// l'insertion par chaque chemin qui écrit le roster, et par la migration
+// shared_registry_participants_bit_v1 sur les lignes qui l'ont manqué.
+const BackfillParticipants = 1 << 9
+
 const (
 	MBitEvents = 1 << 16 // 65536   — highlight_events chargés
 	// bits 17 (assets) et 18 (aliases) RETIRÉS le 2026-05-08 (PLAN_BITMASKS_AUDIT_FIX).
