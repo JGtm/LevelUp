@@ -83,3 +83,34 @@ func TestComputeAntagonistCounts(t *testing.T) {
 		t.Errorf("expected 2 deaths by enemy1, got %d", killedMe["enemy1"])
 	}
 }
+
+// Le résultat ne dépend pas de l ordre des événements en entrée, même quand plusieurs kills et
+// plusieurs morts tombent au même instant (ordre total sur la clé complète).
+func TestComputeKillerVictimPairs_OrdreDEntreeSansEffet(t *testing.T) {
+	base := []RawEvent{
+		{EventType: "kill", XUID: "1", Gamertag: "A", TimeMS: 1000},
+		{EventType: "kill", XUID: "2", Gamertag: "B", TimeMS: 1000},
+		{EventType: "death", XUID: "3", Gamertag: "C", TimeMS: 1000},
+		{EventType: "death", XUID: "4", Gamertag: "D", TimeMS: 1000},
+	}
+	want := ComputeKillerVictimPairs(base, 5)
+	if len(want) != 2 {
+		t.Fatalf("attendu 2 paires, obtenu %d", len(want))
+	}
+	perms := [][]int{{3, 2, 1, 0}, {1, 0, 3, 2}, {2, 3, 0, 1}, {0, 3, 1, 2}, {1, 2, 3, 0}}
+	for _, p := range perms {
+		in := make([]RawEvent, len(base))
+		for i, k := range p {
+			in[i] = base[k]
+		}
+		got := ComputeKillerVictimPairs(in, 5)
+		if len(got) != len(want) {
+			t.Fatalf("perm %v : %d paires, attendu %d", p, len(got), len(want))
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("perm %v : paire %d = %+v, attendu %+v", p, i, got[i], want[i])
+			}
+		}
+	}
+}

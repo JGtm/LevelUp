@@ -30,6 +30,12 @@ type RawEvent struct {
 	TimeMS    int64  // timestamp en millisecondes depuis le début du match
 }
 
+// timedEvent est un événement daté, pour le tri et la recherche binaire.
+type timedEvent struct {
+	t     int64
+	event RawEvent
+}
+
 // KVPair est une paire killer→victim résolue.
 type KVPair struct {
 	KillerXUID string
@@ -53,11 +59,6 @@ func ComputeKillerVictimPairs(events []RawEvent, toleranceMS int64) []KVPair {
 		toleranceMS = 0
 	}
 
-	type timedEvent struct {
-		t     int64
-		event RawEvent
-	}
-
 	var kills, deaths []timedEvent
 	for _, e := range events {
 		switch e.EventType {
@@ -73,8 +74,8 @@ func ComputeKillerVictimPairs(events []RawEvent, toleranceMS int64) []KVPair {
 	}
 
 	// Trier kills et deaths par temps pour la recherche binaire
-	sort.Slice(kills, func(i, j int) bool { return kills[i].t < kills[j].t })
-	sort.Slice(deaths, func(i, j int) bool { return deaths[i].t < deaths[j].t })
+	sortTimedEvents(kills)
+	sortTimedEvents(deaths)
 
 	deathTimes := make([]int64, len(deaths))
 	for i, d := range deaths {
@@ -166,4 +167,24 @@ func abs64(x int64) int64 {
 		return -x
 	}
 	return x
+}
+
+// timedEventLess est l ordre TOTAL des événements : temps, puis XUID, gamertag et type. Deux
+// événements de même instant se départagent donc par leur contenu et non par l ordre d arrivée
+// ou l instabilité du tri : la paire servie ne dépend plus de l ordre des événements en entrée.
+func timedEventLess(a, b timedEvent) bool {
+	if a.t != b.t {
+		return a.t < b.t
+	}
+	if a.event.XUID != b.event.XUID {
+		return a.event.XUID < b.event.XUID
+	}
+	if a.event.Gamertag != b.event.Gamertag {
+		return a.event.Gamertag < b.event.Gamertag
+	}
+	return a.event.EventType < b.event.EventType
+}
+
+func sortTimedEvents(evs []timedEvent) {
+	sort.SliceStable(evs, func(i, j int) bool { return timedEventLess(evs[i], evs[j]) })
 }
