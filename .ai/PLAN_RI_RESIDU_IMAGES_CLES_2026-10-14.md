@@ -656,15 +656,49 @@ Une étape commence quand la précédente est close : items statués, gate pass�
     `lib/replay` (255 fichiers, 3 624 tests).
   - gate-push : lint Go et web verts ; baseline de tests (suite `-tags=integration -p 1 -json` jouée
     par groupes, JSONL vérifié par `check_test_baseline.sh tests --from-jsonl`) : tous les tests
-    présents, UN rouge hérité de `feat/v75` `ec7313562` (lot du rattrapage CSR, hors périmètre) :
+    présents, UN rouge hérité de `feat/v75` `ec7313562` (lot du rattrapage CSR) :
     `archlint::TestNoNewRawStartTimeLiteral` sur `internal/sync/csr_backfill.go:184`
-    (`ORDER BY r.start_time ASC`, règle CLAUDE.md n°8). Non corrigé ici (règle 5 du contrat), signalé.
-  - G-corpus et G-perf REPORTÉS : la recuisson du parc au schéma 96 (levelup-66, 2 à 3 h, processus
-    `backfill` visibles) tient le parc et la machine ; consigne du superviseur du 2026-10-15 : le gate
-    de corpus passe en dernier, une fois aucun processus « backfill » visible. G-perf exige une
-    machine calme (bruit ≤ 5 %). Racine de parc prête (`$RES/parc`, jonctions de lecture vers
-    `data/titles`, `film_chunks`, `film_manifests`), binaire `$RES/bin/gate-r5.exe`. Registre des
-    reports alimenté.
+    (`ORDER BY r.start_time ASC`, règle CLAUDE.md n°8). Corrigé dans un commit séparé (`644e115b4`,
+    tri par `analysis.SQLStartTimeCanonical("r")`, le modèle de `sync/events_replay.go` ; le schéma du
+    test d'intégration gagne `start_time_utc`, comme la table réelle), sur autorisation du superviseur
+    du 2026-10-15 ; levelup-6c porte la même correction vers `feat/v75` : à la refusion, la version de
+    `feat/v75` prévaut. CI de `644e115b4` (run 38724066987) : tous les jobs verts, Playwright sauté.
+  - G-corpus (après contrôle des processus : la recuisson de levelup-66 finie, aucun `backfill`),
+    19 témoins en trois lots, base `origin/feat/v75` `ec7313562` cuite par le gate, racine de parc
+    `$RES/parc` (jonctions de lecture) : banc de vérité `ok` sur les 19 ; aucun oracle ne bouge.
+    18 témoins : 0 perte, 0 changement. `60ae07c4` (HI_1_8_0) : `[gain] P-1` paquets fermés au bit
+    près 38 434 → 40 031 ; les replis comptés baissent (`repli_pistes_du_monde_apres_la_marche`
+    29 149 → 24 457, `repli_ancrage_bipede_apres_la_marche` 18 775 → 17 017, …) ; 21 pertes de filet,
+    ADJUGÉES sur l'artefact (`$RES/r5g/art/`) :
+    - `stances` : durées de sprint raccourcies sur 9 slots, +10 intervalles. Les états de mouvement lus
+      passent de 6 025 à 6 050 ; un sprint s'arrête là où le film l'arrête au lieu de courir jusqu'à
+      la lecture suivante. Contrôle physique (sprint à vitesse constante, environ 0,28 u/trame) sur les
+      portions retirées : `630` 5432-5490 à 0,17, `626` 5437-5447 à 0,14, `659` 7153-7167 à 0,20,
+      `531` 1081-1102 à 0,18 (marche, pas sprint) ; `647` 6216-6226 et `641` 5974-5999 sont des sauts
+      (z monte puis redescend), où l'état n'est pas le sprint. Adjugé : lecture plus juste.
+    - `abilityImpulses` 2 → 0 : les deux impulsions lues sur des bits étrangers (adjugé en R2).
+    - `deathsPaths.directScan` 14 → 9 : cinq morts passent du balayage à la marche séquentielle
+      (`walk.population` 151 → 156), contenu des morts identique (killsource, R5.3).
+    - `birthLoadouts.noLife` 0 → 2 : sur 171 dotations lues au lieu de 5, deux sans vie à rattacher.
+    - `carriedEquipment.noIdentity` 118 → 126, `withoutRank` 148 → 159 : objets créés lus 485 → 507.
+    - `groundWeapons.accepted` 302 → 299, `powerupAccepted` 351 → 349, `placements.lives` 260 → 257 :
+      compteurs intermédiaires ; les armes au sol publiées (188) et les placements publiés (190)
+      sont identiques à la base.
+    - `stances.dropped` 9 → 11, `refusedNewFalseReads` 15 → 16 : à proportion des lectures en plus.
+    Chaque témoin compte une différence de sens « gain » (même compte sur les 19, y compris les films
+    dont le document ne change pas : la montée de schéma) ; télémétrie : les deux révisions.
+  - `[!]` G-perf, paires alternées base `46bfa5fad` / lot (`replay-equiv` et `porteurs` construits
+    une fois chacun), machine contrôlée avant chaque tour (`$RES/perf/`) :
+    - **Sync** (`BenchmarkPorteursAuSync`, 3 paires) : `084a804d` 1,00, `1c4c63c2` 1,00, `51101d1d`
+      1,00, `9f57c612` 0,96 (médianes lot/base, ns/op) ; pics dans le bruit de la base. Tenu.
+    - **Cuisson** (`replay-equiv`, 3 paires, bruit de la base ≤ 0,6 %) : médianes lot/base
+      `084a804d` 1,069 (44,32 → 47,39 s), `e5adf7b2` 1,110 (15,99 → 17,73 s), `60ae07c4` 1,041
+      (13,99 → 14,52 s), `11de8353` 1,111 (15,74 → 17,52 s) ; pics inchangés (± 0,03 Gio).
+      **SEUIL DÉPASSÉ sur deux films (+11 %)** : ARRÊT du gate selon le §5 du plan clos, mesure
+      publiée, DÉCISION DE L'UTILISATEUR DUE. Le surcoût suit le volume lu en plus (records fermés,
+      tous archétypes, 242 684 → 418 264 sur 28 films ; `ti=38` et `ti=43` sous la portée) ; non
+      attribué plus finement (un profil CPU d'une cuisson isolée de `e5adf7b2` par `replay-build`
+      est au bruit près des deux côtés et ne le montre pas).
 - [x] R5.7 ADR 0037 (IR-4/IR-6 : la table d'entrées, Rslot, la version majeure déclarée) ;
       WALK_PORT_NOTES ; `.ai/REGISTRE_REPORTS.md` ; plan clos (D-18, D-21, D-30 renvoyés ici).
   - ADR 0037 : paragraphe daté sous IR-6 (table d'entrées, fermeture sur l'ancre suivante et sur la fin
@@ -801,3 +835,8 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   corrigé. Gate de corpus et G-perf reportés derrière la recuisson du parc (levelup-66). ADR 0037,
   WALK_PORT_NOTES, registre, plan clos à jour. Suite : push, CI, puis gate de corpus, revue
   adversariale et fusion (superviseur).
+- 2026-10-15 : R5.6 rejouée après la recuisson de levelup-66. Rouge hérité corrigé à part (`644e115b4`,
+  autorisation du superviseur ; levelup-6c porte la même correction vers `feat/v75`, dont la version
+  prévaudra à la refusion), CI verte. Gate de corpus, 19 témoins : banc de vérité ok partout, seul
+  `60ae07c4` bouge (gain P-1, 21 pertes de filet adjugées sur l'artefact). G-perf : sync tenu ; cuisson
+  +11 % sur `e5adf7b2` et `11de8353` (seuil 10 %) : ARRÊT, décision de l'utilisateur due.

@@ -117325,3 +117325,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : contre `feat/v75` `46bfa5fad` (28 films) : bipèdes fermés 5 397 → 8 564 sur 10 710, admissions 6 507 inchangées, équipes identiques, ancres changées sur `64e8adfa` seul (adjugé), baisses `50247b26` acceptées par U-7 ; carte delta, killsource (19 témoins) et `replay-equiv` (20 films) : seules les différences déjà adjugées, `60ae07c4` gagne en plus un objet porté suivi ; S8 20/20 identiques. Le lot de `feat/v75` ne change aucune fermeture. Tests, vet, golangci-lint, intégration, web verts ; baseline : un rouge hérité de `feat/v75` (`TestNoNewRawStartTimeLiteral` sur `csr_backfill.go:184`).
 
 **Conclusion / prochaine étape** : CI de la branche ; le rouge archlint hérité est à corriger par le lot CSR (ou par décision du superviseur) ; gate de corpus et G-perf quand aucun backfill ne tourne ; revue adversariale ; fusion sur accord de l'utilisateur.
+
+## [2026-10-15] Résidu de lecture des images-clés, R5.6 : gate de corpus passé, G-perf au-dessus du seuil — En cours, ARRÊT (`feat/ri-ecart-108`, décision de l'utilisateur due)
+
+**Statut** : En cours — ARRÊT au G-perf ; revue adversariale et fusion après la décision de l'utilisateur.
+
+**Décision technique principale** : le rouge hérité de `feat/v75` (`TestNoNewRawStartTimeLiteral`, `internal/sync/csr_backfill.go:184`) est corrigé dans un commit séparé (`644e115b4`, tri canonique `analysis.SQLStartTimeCanonical("r")`, colonne `start_time_utc` au schéma du test), sur autorisation du superviseur ; levelup-6c porte la même vers `feat/v75`, dont la version prévaudra à la refusion.
+
+**Résultats observés** : CI de `644e115b4` verte. Gate de corpus (19 témoins, base `ec7313562`) : banc de vérité ok sur les 19, aucun oracle ne bouge ; seul `60ae07c4` change (paquets fermés 38 434 → 40 031, 21 pertes de filet adjugées : sprints raccourcis là où le film l'arrête, vérifiés à la vitesse, compteurs intermédiaires, impulsions fausses retirées). G-perf : sync à 1,00 ; cuisson +6,9 %, +11,0 %, +4,1 %, +11,1 % (bruit ≤ 0,6 %), seuil de 10 % dépassé sur `e5adf7b2` et `11de8353`.
+
+**Conclusion / prochaine étape** : décision de l'utilisateur sur le surcoût de cuisson (accepter, ou lot de performance avant la fusion) ; puis revue adversariale et fusion (superviseur).
