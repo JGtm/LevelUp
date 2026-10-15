@@ -7,7 +7,7 @@
  * ellipse DANS sa colonne.
  *   - ligne 1 : mode (tronque), score coloré par l'issue (le mot ne figure que dans l'infobulle) | date · heure à droite ;
  *   - ligne 2 : pastille d'instant, « Tué par <gamertag> » (seul le gamertag tronque) ;
- *   - ligne 3 : icône d'arme du titre (quand elle existe) puis le nom de l'arme (seul à tronquer), distance | badge de placement à droite (jamais coupé : l'arme cède).
+ *   - ligne 3 : icône d'arme du titre, qui REMPLACE le nom quand elle existe (le nom n'est alors qu'en infobulle) ; sans icône, le nom de l'arme (seul à tronquer), distance | badge de placement à droite (jamais coupé : l'arme cède).
  *
  * LES ACTIONS ont une largeur RÉSERVÉE, identique sur toutes les tuiles que le rejeu existe ou non
  * (les chevrons s'alignent d'une tuile à l'autre) : le bouton de rejeu, sans bordure, puis le
@@ -119,7 +119,7 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, acti
             className="flex min-w-0 items-center gap-[5px] whitespace-nowrap text-[11.5px] leading-4 text-muted-foreground"
             data-testid="tactical-rejeu-l3"
           >
-            {c.arme_image_url && (
+            {c.arme_image_url ? (
               <WeaponIcon
                 imageUrl={c.arme_image_url}
                 tinted={c.arme_image_tinted}
@@ -128,8 +128,9 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, acti
                 height={ICONE_H}
                 className="flex-none"
               />
+            ) : (
+              m.arme && <span className="min-w-0 truncate">{m.arme}</span>
             )}
-            {m.arme && <span className="min-w-0 truncate">{m.arme}</span>}
             {m.distance && <span className="flex-none" data-testid="tactical-rejeu-distance">{m.distance}</span>}
             {m.badge && <span className="ml-auto flex-none rounded-full bg-muted px-1.5 text-[10.5px] leading-4">{m.badge}</span>}
           </div>

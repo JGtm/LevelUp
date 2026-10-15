@@ -237,20 +237,16 @@ describe('TacticalRejeuTile — la mini-tuile d’une contribution', () => {
     expect(score(defaite)).toContain('outcome-loss')
   })
 
-  it('l’icône d’arme précède le nom sur la ligne 3, le nom reste seul à tronquer ; sans icône, le nom seul', () => {
+  it('l’icône d’arme remplace le nom sur la ligne 3, qui reste dans l’infobulle ; sans icône, le nom s’écrit', () => {
     const avecIcone = { ...DETAIL, contributions: [contribution({ arme_image_url: '/static/weapons/br75.png', arme_image_tinted: true })] }
     const { unmount } = rendre({ detail: { data: avecIcone, isPending: false, isError: false } })
     const tuile = screen.getAllByTestId('tactical-rejeu-tile')[0]
-    const l3 = within(tuile).getByTestId('tactical-rejeu-l3')
-    const icone = within(l3).getByRole('img', { name: 'Fusil de combat à longue portée' })
-    const nom = within(l3).getByText('Fusil de combat à longue portée')
-    expect(nom.className).toContain('truncate')
-    expect(icone.compareDocumentPosition(nom) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(within(tuile).getByTestId('tactical-rejeu-l2').querySelector('img')).toBeNull()
+    expect(within(within(tuile).getByTestId('tactical-rejeu-l3')).getByRole('img', { name: 'Fusil de combat à longue portée' })).toBeInTheDocument()
+    expect(within(tuile).queryByText('Fusil de combat à longue portée')).toBeNull()
+    expect(tuile.getAttribute('title')).toContain('Fusil de combat à longue portée')
     unmount()
     rendre()
     expect(screen.getAllByText('Fusil de combat à longue portée').length).toBeGreaterThan(0)
-    expect(screen.queryByRole('img', { name: 'Fusil de combat à longue portée' })).toBeNull()
   })
 
   it('le bouton de rejeu : à l’instant, seulement si l’artefact existe', () => {
