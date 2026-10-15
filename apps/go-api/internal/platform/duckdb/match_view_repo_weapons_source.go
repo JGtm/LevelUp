@@ -205,7 +205,7 @@ func (r *MatchViewRepo) attachTopWeapons(ctx context.Context, matchID string, ro
 	}
 	bulk, err := r.GetMatchBulkWeaponKills(ctx, matchID)
 	if err != nil {
-		slog.Log(ctx, observability.LevelOnCancellation(err, slog.LevelError), "match view: arme favorite du scoreboard non calculee",
+		slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError), "match view: arme favorite du scoreboard non calculee",
 			"match_id", matchID, "err", err)
 		return
 	}

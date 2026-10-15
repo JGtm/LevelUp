@@ -64,10 +64,11 @@ func (f *sourceFailures) has(src matchViewSource) bool {
 }
 
 // reportLoadFailure journalise l'échec d'un chargeur AVANT la dégradation. Un chargement
-// coupé parce que la requête a été abandonnée n'est pas une panne de la source : WARN,
+// coupé parce que la requête a été abandonnée n'est pas une panne de la source : WARN (règle
+// observability.LevelUnlessCanceled : seul l'abandon de la requête fait foi, un délai interne expiré reste une panne),
 // pour ne pas polluer les journaux d'erreur à chaque navigation interrompue.
 func reportLoadFailure(gctx context.Context, matchID, source string, err error) {
-	if observability.IsCancellation(err) {
+	if observability.LevelUnlessCanceled(gctx, err, slog.LevelError) != slog.LevelError {
 		slog.WarnContext(gctx, "match_view: chargement interrompu", "source", source, "match_id", matchID, "err", err)
 		return
 	}

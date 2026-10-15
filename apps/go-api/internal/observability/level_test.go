@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLevelUnlessCanceled(t *testing.T) {
@@ -17,6 +18,8 @@ func TestLevelUnlessCanceled(t *testing.T) {
 	vivante := context.Background()
 	annulee, cancel := context.WithCancel(context.Background())
 	cancel()
+	echue, cancelEchue := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancelEchue()
 	cas := []struct {
 		nom  string
 		ctx  context.Context
@@ -27,6 +30,7 @@ func TestLevelUnlessCanceled(t *testing.T) {
 		{"requête terminée", annulee, errors.New("database is locked"), slog.LevelDebug},
 		{"annulation enveloppée, requête vivante", vivante, fmt.Errorf("lecture : %w", context.Canceled), slog.LevelDebug},
 		{"échéance interne, requête vivante", vivante, fmt.Errorf("lecture : %w", context.DeadlineExceeded), slog.LevelError},
+		{"contexte dérivé à l'échéance expirée, requête vivante", echue, fmt.Errorf("lecture : %w", context.DeadlineExceeded), slog.LevelError},
 	}
 	for _, c := range cas {
 		if got := LevelUnlessCanceled(c.ctx, c.err, slog.LevelError); got != c.want {
@@ -37,7 +41,7 @@ func TestLevelUnlessCanceled(t *testing.T) {
 
 // predicatEnLigne : la copie en ligne du prédicat de LevelUnlessCanceled pour choisir un
 // niveau de journal.
-var predicatEnLigne = regexp.MustCompile(`ctx\.Err\(\) != nil \|\| errors\.Is\(err, context\.Canceled\) \{`)
+var predicatEnLigne = regexp.MustCompile(`errors\.Is\(ctx\.Err\(\), context\.Canceled\) \|\| errors\.Is\(err, context\.Canceled\) \{`)
 
 // TestLevelUnlessCanceled_SourceUnique : garde-rail CLAUDE.md n°6 — le prédicat « fin de la
 // requête » d'un niveau de journal ne se recopie pas en ligne sous internal/ (hors ce
@@ -67,23 +71,5 @@ func TestLevelUnlessCanceled_SourceUnique(t *testing.T) {
 	}
 	if len(copies) > 0 {
 		t.Errorf("prédicat de niveau « fin de requête » recopié en ligne : %v — utiliser observability.LevelUnlessCanceled", copies)
-	}
-}
-
-func TestLevelOnCancellation(t *testing.T) {
-	t.Parallel()
-	cas := []struct {
-		nom  string
-		err  error
-		want slog.Level
-	}{
-		{"panne", errors.New("database is locked"), slog.LevelError},
-		{"annulation", fmt.Errorf("lecture : %w", context.Canceled), slog.LevelWarn},
-		{"échéance", fmt.Errorf("lecture : %w", context.DeadlineExceeded), slog.LevelWarn},
-	}
-	for _, c := range cas {
-		if got := LevelOnCancellation(c.err, slog.LevelError); got != c.want {
-			t.Errorf("%s : %v, want %v", c.nom, got, c.want)
-		}
 	}
 }

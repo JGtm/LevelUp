@@ -129,7 +129,7 @@ func computeExpectedAssists(
 	if err != nil {
 		// Panne de lecture du modèle personnel : dite AVANT de retomber sur le populationnel,
 		// dont la valeur reste servie (chaîne de résolution documentée ci-dessus).
-		slog.Log(ctx, observability.LevelOnCancellation(err, slog.LevelError),
+		slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError),
 			"match_view: modèle personnel d'assists attendus illisible, repli populationnel",
 			"mode", gameVariantName, "err", err)
 	} else if m != nil {
