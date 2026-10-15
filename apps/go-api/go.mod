@@ -17,7 +17,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/pelletier/go-toml/v2 v2.4.3
 	golang.org/x/crypto v0.57.0
-	golang.org/x/image v0.24.0
+	golang.org/x/image v0.45.0
 	golang.org/x/sync v0.23.0
 	golang.org/x/sys v0.48.0
 	golang.org/x/time v0.16.0
