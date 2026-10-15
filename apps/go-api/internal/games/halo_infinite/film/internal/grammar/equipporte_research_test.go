@@ -422,7 +422,7 @@ func TestEquipPorteScan(t *testing.T) {
 		t.Fatalf("%s : %v", id, err)
 	}
 	origine, _ := ScanClockOrigin(fc.Film())
-	ls, st, err := ScanEquipementPorte(fc)
+	ls, st, err := ScanEquipementPorte(fc, nil)
 	if err != nil {
 		t.Fatalf("%s : %v", id, err)
 	}

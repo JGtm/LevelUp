@@ -25,7 +25,7 @@
 #
 #   LEVELUP_UPDATE_TYPES_SHAPES=1 go test ./internal/games/halo_infinite/film/types/ \
 #     -run TestFormesDesTypesEgalentLeGolden -update-types-shapes
-revisions	source=source-2026-09-16.2	grammar=grammar-2026-10-15	killsource=killsource-2026-10-14	objectives=objectives-2026-09-27
+revisions	source=source-2026-09-16.2	grammar=grammar-2026-10-15.2	killsource=killsource-2026-10-14	objectives=objectives-2026-09-27
 
 ## ChunkMeta (source)
 Index	int	-
@@ -402,6 +402,7 @@ Signal	uint32	-
 HasHandles	bool	-
 Handles	uint32	-
 Tracked	[]types.LifeKey	-
+Spawned	[]types.SpawnedObject	-
 
 ## CarriedEquipmentStats (grammar)
 Created	int	-
@@ -415,6 +416,17 @@ Signals	int	-
 HandleReads	int	-
 TrackedEntries	int	-
 TrackedEnds	int	-
+SpawnedBirths	int	-
+SpawnedPositioned	int	-
+
+## SpawnedObject (grammar)
+Life	types.LifeKey	-
+TimestampUS	uint64	-
+TypeIndex	uint32	-
+HasPosition	bool	-
+X	float32	-
+Y	float32	-
+Z	float32	-
 
 ## MovementStateRead (grammar)
 Slot	uint32	-

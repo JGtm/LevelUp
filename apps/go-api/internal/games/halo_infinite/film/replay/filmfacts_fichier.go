@@ -212,7 +212,10 @@ const VersionCodecFaits = 2
 // SCHEMA 14 (2026-10-15, meme lot, fin du champ de reparation) : chaque lecture de l equipement porte
 // porte les vies que sa pile i28 designe (`Tracked`), les suppressions de ces vies se lisent
 // (`tracked-end`), et deux denominateurs s ajoutent (`TrackedEntries`, `TrackedEnds`).
-const SchemaDesFaits = 14
+// SCHEMA 15 (2026-10-15, lot « faille a la pose ») : chaque lecture de l equipement porte porte la
+// creation lue des objets que sa pile nomme pour la premiere fois (`Spawned` : instant, archetype,
+// position i0), et deux denominateurs s ajoutent (`SpawnedBirths`, `SpawnedPositioned`).
+const SchemaDesFaits = 15
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.

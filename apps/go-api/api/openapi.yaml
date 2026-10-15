@@ -11000,7 +11000,10 @@ components:
         noIdentity:
           format: int64
           type: integer
-        positioned:
+        positionedByCarrier:
+          format: int64
+          type: integer
+        positionedByObject:
           format: int64
           type: integer
         published:
@@ -11019,6 +11022,9 @@ components:
           format: int64
           type: integer
         unnamed:
+          format: int64
+          type: integer
+        unpositioned:
           format: int64
           type: integer
         uses:
@@ -11045,7 +11051,9 @@ components:
         - energyReads
         - uses
         - riftPoses
-        - positioned
+        - positionedByObject
+        - positionedByCarrier
+        - unpositioned
         - teleportsWithoutPose
         - trackedObjects
         - trackedEnds
@@ -24150,6 +24158,8 @@ components:
           format: int32
           minimum: 0
           type: integer
+        src:
+          type: string
         t:
           format: int64
           type: integer

@@ -286,7 +286,8 @@ var plafondsParFichier = map[string]int{
 	// calques de l equipement porte, leur couverture, les revisions qui montent, la mesure au parc).
 	// Exception ecrite, dans le commit qui monte `SchemaVersion`.
 	// SCHEMA 95 -> 96 (2026-10-15, meme lot), +22 : l entree v96 (les objets engendres et leur fin).
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3331,
+	// SCHEMA 96 -> 98 (2026-10-15, lot « faille a la pose »), +22 : l entree v98 (la faille situee a sa pose).
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3353,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -405,7 +406,8 @@ var plafondsParFichier = map[string]int{
 	// montee (le calque des poussees du repulseur).
 	// SCHEMA 94 -> 95 (2026-10-14, lot « equipement porte ») : 1442 -> 1445, la justification de la montee.
 	// SCHEMA 95 -> 96 (2026-10-15, meme lot) : 1445 -> 1448, la justification de la montee.
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1448,
+	// SCHEMA 96 -> 98 (2026-10-15, lot « faille a la pose ») : 1448 -> 1450, la justification de la montee.
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1450,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

@@ -8,10 +8,10 @@
  * l'exécutable et validé à 0,00-0,26 m sur 18 événements (rapport R6 §1). Une interface qui
  * dessinerait « une faille posée une fois, fixe » serait FAUSSE.
  *
- * LA FAILLE APPARAÎT À SA POSE (schéma 95). Le film date la pose (`riftPoses` : l'énergie du
- * translocateur porté tombe à zéro) ; sa position, aucun canal ne la lit à cet instant, et c'est le
- * PREMIER ÉCHANGE qui la donne — le joueur arrive là où la faille était. Une pose jamais suivie d'un
- * échange est datée sans position : rien ne se dessine pour elle plutôt qu'une faille devinée.
+ * LA FAILLE APPARAÎT À SA POSE, À SA PLACE (schéma 98). Le film date la pose (`riftPoses` : l'énergie
+ * du translocateur porté tombe à zéro) et, dans le même paquet, CRÉE la faille : sa position est celle
+ * de cet objet (`src` « objet » ; repli « porteur » : la piste du porteur à l'image de la pose). Elle
+ * ne dépend d'aucun échange. Une pose sans position (aucune des deux lisible) ne dessine rien.
  *
  * ET RIEN NE RESTE À DEMEURE (point utilisateur du 2026-09-03). La fin de l'équipement a deux
  * modes mesurés — l'épuisement par l'usage final (`spent` quasi simultané) et l'expiration
@@ -156,8 +156,9 @@ export function riftStationsAt(
 
 /**
  * stationsDesPoses — la faille entre sa POSE et le premier échange qui suit : à la position de la
- * pose (l'arrivée de cet échange, publiée par le serveur), jusqu'à l'image qui précède l'échange, ou
- * jusqu'à la fin mesurée de l'équipement si elle tombe avant. Une pose sans position ne dessine rien.
+ * pose (la faille que le film crée à cet instant, publiée par le serveur), jusqu'à l'image qui précède
+ * l'échange, ou jusqu'à la fin mesurée de l'équipement si elle tombe avant — sans échange, jusqu'à
+ * cette fin. Une pose sans position ne dessine rien.
  */
 function stationsDesPoses(
   doc: ReplayDocumentReady,

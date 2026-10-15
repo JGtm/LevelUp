@@ -19,10 +19,14 @@ package replay
 // sa création, écrit une énergie nulle : le jeu consomme son unique charge (coût 1). La règle ne vaut
 // que pour cette famille (une autre famille épuisée ne pose rien). Quand l'activation est lue, elle
 // la précède de ~1,63 s (123 sur 123 au parc) et `a` la publie ; elle n'est pas exigée, parce qu'une
-// trame que la marche ne ferme pas la perd (Live Fire). La pose précède le premier échange
-// (`translocations[]`), et sa position n'est lue que par lui, borné par la fin de l'objet ou, à
-// défaut, par celle de la vie du porteur : la faille est là où le joueur arrive. Une pose jamais
-// suivie d'un échange est publiée sans position.
+// trame que la marche ne ferme pas la perd (Live Fire).
+//
+// LA POSITION DE LA FAILLE EST CELLE DE L'OBJET QUE LA POSE CRÉE. Le paquet de la pose crée la
+// faille (une entité ti=38, que la pile i28 de l'objet porté nomme au paquet suivant) : sa position
+// i0 à la création est l'emplacement de la faille (`src` = « objet », 123 sur 123 au parc). Repli,
+// nommé et compté : la position du porteur lue dans sa piste à l'image même de la pose (`src` =
+// « porteur ») ; sans l'une ni l'autre, la pose est publiée sans position. Aucune position ne vient
+// d'un échange : la faille existe, à sa place, dès la pose.
 
 import (
 	"cmp"
@@ -82,12 +86,19 @@ type RiftPose struct {
 	A *int `json:"a,omitempty"`
 	// Slot désigne la Track du porteur.
 	Slot uint32 `json:"slot"`
-	// X/Y/Z : la position de la faille, celle de l'arrivée du premier échange qui suit la pose ;
-	// SOLIDAIRES, absents quand aucun échange ne suit.
-	X *float32 `json:"x,omitempty"`
-	Y *float32 `json:"y,omitempty"`
-	Z *float32 `json:"z,omitempty"`
+	// X/Y/Z : la position de la faille, SOLIDAIRES ; Src dit d'où elle vient : « objet » (la faille
+	// créée par la pose) ou « porteur » (sa piste à l'image de la pose). Absents ensemble sinon.
+	X   *float32 `json:"x,omitempty"`
+	Y   *float32 `json:"y,omitempty"`
+	Z   *float32 `json:"z,omitempty"`
+	Src string   `json:"src,omitempty"`
 }
+
+// Les deux sources de la position d'une faille.
+const (
+	sourceFailleObjet   = "objet"
+	sourceFaillePorteur = "porteur"
+)
 
 // CarriedEquipmentCoverage dit ce que le calque a lu et ce qu'il a écarté.
 type CarriedEquipmentCoverage struct {
@@ -112,10 +123,13 @@ type CarriedEquipmentCoverage struct {
 	// EnergyReads, Uses : lectures d'énergie et activations publiées.
 	EnergyReads int `json:"energyReads"`
 	Uses        int `json:"uses"`
-	// RiftPoses : poses de faille publiées ; Positioned : celles qui portent une position ;
-	// TeleportsWithoutPose : échanges (i22) d'un translocateur dont aucune pose n'a été lue.
+	// RiftPoses : poses de faille publiées ; PositionedByObject / PositionedByCarrier : situées par la
+	// faille créée, par le repli du porteur ; Unpositioned : sans position ; TeleportsWithoutPose :
+	// échanges (i22) d'un translocateur dont aucune pose n'a été lue.
 	RiftPoses            int `json:"riftPoses"`
-	Positioned           int `json:"positioned"`
+	PositionedByObject   int `json:"positionedByObject"`
+	PositionedByCarrier  int `json:"positionedByCarrier"`
+	Unpositioned         int `json:"unpositioned"`
 	TeleportsWithoutPose int `json:"teleportsWithoutPose"`
 	// TrackedObjects : objets engendrés publiés ; TrackedEnds : ceux dont la suppression est lue.
 	TrackedObjects int `json:"trackedObjects"`
@@ -185,14 +199,13 @@ func choisirLeCout(cands []coutDeFamille, creation types.CarriedEquipmentRead) (
 
 // entreeDEquipementPorte : ce que l'assemblage du calque reçoit.
 type entreeDEquipementPorte struct {
-	reads          []types.CarriedEquipmentRead
-	st             types.CarriedEquipmentStats
-	changes        []types.EquipmentChange
-	palette        *AbilityPalette
-	couts          map[string][]coutDeFamille
-	tracks         []Track
-	translocations []Translocation
-	origin, step   uint64
+	reads        []types.CarriedEquipmentRead
+	st           types.CarriedEquipmentStats
+	changes      []types.EquipmentChange
+	palette      *AbilityPalette
+	couts        map[string][]coutDeFamille
+	tracks       []Track
+	origin, step uint64
 }
 
 // objetLu : un objet porté pendant l'assemblage.
@@ -241,8 +254,13 @@ func buildCarriedEquipment(in entreeDEquipementPorte) ([]CarriedEquipment, []Rif
 	trierLesPoses(poses)
 	cov.RiftPoses = len(poses)
 	for _, p := range poses {
-		if p.X != nil {
-			cov.Positioned++
+		switch p.Src {
+		case sourceFailleObjet:
+			cov.PositionedByObject++
+		case sourceFaillePorteur:
+			cov.PositionedByCarrier++
+		default:
+			cov.Unpositioned++
 		}
 	}
 	return out, poses, cov
@@ -288,6 +306,7 @@ func (in entreeDEquipementPorte) frame(ts uint64) int {
 func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCoverage) []RiftPose {
 	translocateur := o.famille == familleDuTranslocateur
 	var poses []RiftPose
+	var instants []uint64
 	var activation *int
 	poseLue := false
 	for i, l := range o.lectures {
@@ -310,6 +329,7 @@ func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCover
 			o.ajouterEnergie(t, e, false, cov)
 			if translocateur && l.Energy == 0 && i > 0 {
 				poses = append(poses, RiftPose{T: t, A: activation, Slot: o.pub.Slot})
+				instants = append(instants, l.TimestampUS)
 				poseLue = true
 			}
 		}
@@ -317,31 +337,8 @@ func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCover
 			cov.TeleportsWithoutPose++
 		}
 	}
-	o.positionnerLesPoses(poses, in)
+	o.situerLesPoses(poses, instants, in.tracks)
 	return poses
-}
-
-// positionnerLesPoses positionne les poses de l'objet, la recherche bornée par la fin de l'objet ou, à
-// défaut, par celle de la vie du porteur.
-func (o *objetLu) positionnerLesPoses(poses []RiftPose, in entreeDEquipementPorte) {
-	for k := range poses {
-		fin := o.pub.T1
-		if fin == nil {
-			fin = finDeLaVieDuPorteur(in.tracks, poses[k])
-		}
-		positionnerLaPose(&poses[k], fin, in.translocations)
-	}
-}
-
-// finDeLaVieDuPorteur rend la fin de la vie du porteur qui contient la pose, ou nil quand aucune vie
-// publiée ne la contient. C'est la borne de la recherche de position quand la suppression de l'objet
-// n'est pas lue : un échange d'une vie suivante du même slot n'est pas celui de cette faille.
-func finDeLaVieDuPorteur(tracks []Track, p RiftPose) *int {
-	w, ok := windowFor(trackFrameWindows(tracks, nil)[p.Slot], p.T, p.T)
-	if !ok {
-		return nil
-	}
-	return &w.to
 }
 
 // ajouterEnergie publie une lecture d'énergie, avec les usages restants quand le coût est établi.
@@ -355,20 +352,6 @@ func (o *objetLu) ajouterEnergie(t int, e float32, tag bool, cov *CarriedEquipme
 	o.pub.Energy = append(o.pub.Energy, r)
 	if !tag {
 		cov.EnergyReads++
-	}
-}
-
-// positionnerLaPose pose la position de la faille : l'arrivée du premier échange du porteur qui suit
-// la pose, avant la fin de l'objet.
-func positionnerLaPose(p *RiftPose, fin *int, translocations []Translocation) {
-	for _, tr := range translocations {
-		if tr.Slot != p.Slot || tr.T < p.T || (fin != nil && tr.T > *fin) {
-			continue
-		}
-		if tr.TX != nil && tr.TY != nil && tr.TZ != nil {
-			p.X, p.Y, p.Z = tr.TX, tr.TY, tr.TZ
-		}
-		return
 	}
 }
 
@@ -444,7 +427,9 @@ func logCarriedEquipmentCoverage(ctx context.Context, cov CarriedEquipmentCovera
 		"avantOrigine", cov.BeforeOrigin, "sansRang", cov.WithoutRank, "rangAmbigu", cov.AmbiguousRank,
 		"nonNommes", cov.Unnamed, "avecCout", cov.WithCost, "horsCatalogue", cov.NoCatalog,
 		"coutAmbigu", cov.AmbiguousCost, "lecturesEnergie", cov.EnergyReads, "usages", cov.Uses,
-		"posesDeFaille", cov.RiftPoses, "posesSituees", cov.Positioned, "echangesSansPose", cov.TeleportsWithoutPose,
+		"posesDeFaille", cov.RiftPoses, "situeesParLObjet", cov.PositionedByObject,
+		"situeesParLePorteur", cov.PositionedByCarrier, "sansPosition", cov.Unpositioned,
+		"echangesSansPose", cov.TeleportsWithoutPose,
 		"objetsEngendres", cov.TrackedObjects, "finsLues", cov.TrackedEnds)
 }
 
@@ -454,7 +439,7 @@ func (a *assemblage) poserLEquipementPorte() {
 	carried, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{
 		reads: a.opt.CarriedEquipment, st: a.opt.CarriedEquipmentStats, changes: a.opt.EquipmentChanges,
 		palette: a.palette, couts: coutsParFamille(a.opt.EquipmentEnergy, a.opt.Labels.EquipmentFamilies),
-		tracks: a.doc.Tracks, translocations: a.doc.Translocations, origin: a.origin, step: a.step,
+		tracks: a.doc.Tracks, origin: a.origin, step: a.step,
 	})
 	a.doc.CarriedEquipment, a.doc.RiftPoses = carried, poses
 	a.doc.Coverage.CarriedEquipment = &cov

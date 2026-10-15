@@ -24,7 +24,7 @@ MATCH. Ce qui remonte au grain session est une autre affaire — §3.
 | `abilityCharges` | Les CHARGES RESTANTES, lues au changement | Par VIE | **Grappin et propulseur SEULEMENT.** Rien n'est transmis au ramassage, donc le maximum n'est pas établissable. Le répulseur n'arme jamais ce canal (négatif mesuré, rapport R11 ; revérifié le 2026-10-14 sur l'état complet des images-clés : masque d'i56 à 000 pendant tout le port, avant et après les poussées) |
 | `knockbacks` | Les POUSSÉES du répulseur : le joueur poussé, l'auteur (`by`), la vitesse imposée (`vx/vy/vz`) | Par poussée (schéma 94) | C'est l'EFFET, pas le geste : la paire de messages de la vue A `EquipmentObjectKnockedBack` (105 : objet poussé, auteur) puis `EquipmentKnockbackPlayer` (104 : joueur poussé, impulsion), même référence 0, même liste (`grammar/vue_a_poussees.go`, `grammar/poussees.go`). Un souffle qui ne pousse AUCUN joueur n'écrit pas de 104 : il n'est pas publié. Un 104 sans son 105 n'est pas publié (`coverage.knockbacks.unpaired`) |
 | `carriedEquipment` | L'ÉQUIPEMENT PORTÉ, objet par objet : porteur, rang, prise `t0`, fin `t1`, l'ÉNERGIE à chaque lecture avec les USAGES RESTANTS `n`, les ACTIVATIONS `uses`, et les OBJETS ENGENDRÉS `tracked` (apparition, suppression lue) | Par objet porté (schéma 95, `tracked` au 96) | L'objet ti=37 que le jeu crée attaché au porteur DANS LE PAQUET de son annonce i48 (le rang nomme la famille) ; son énergie i24, son activation i21 (porte 1), sa suppression (`grammar/equipement_porte.go`). `n` = trunc((énergie + 1e-4) / coût), la règle du HUD (`FUN_1407e9384`), le coût lu dans les tags du jeu (`data/titles/halo_infinite/reference/equipment_energy.json`, `cmd/equipenergy-build`). Pas de `n` pour le grappin et le propulseur (leur capacité ne compte pas par l'énergie ; `abilityCharges` les compte), ni pour une famille dont les fiches ne s'accordent pas sans l'énergie de la prise (`coverage.carriedEquipment.ambiguousCost`) |
-| `riftPoses` | Les POSES de la faille du translocateur : l'instant, l'activation `a` qui la précède, la position | Par pose (schéma 95) | La pose = l'énergie du translocateur porté tombe à 0 (puis i28 gagne une entrée), toujours 1,62-1,64 s après une activation i21 (123/123 au parc). La position est l'arrivée du PREMIER échange qui suit : une pose sans échange est datée sans position |
+| `riftPoses` | Les POSES de la faille du translocateur : l'instant, l'activation `a` qui la précède, la position | Par pose (schéma 95) | La pose = l'énergie du translocateur porté tombe à 0 (puis i28 gagne une entrée), toujours 1,62-1,64 s après une activation i21 (123/123 au parc). La position est celle de la FAILLE que le paquet de la pose crée (ti=38, position i0 à la création, `src` « objet », 123/123 au parc ; schéma 98) ; repli nommé : la piste du porteur à l'image de la pose (`src` « porteur »). Aucun échange n'est requis |
 | `abilityLabels` | Nomme les RANGS de capacité, palette propre au match | Match | Une capacité non classée ne reçoit aucun nom. **25,21 % des rangs lus par `equipmentChanges` ne sont pas nommés** — dont 8 artefacts sur 64 SANS table du tout (mesure E0, §2) |
 | `padPickups` × `weaponPads` | Les socles d'ARME (famille en 8 hexa) et les socles de BONUS vidés (`powerup_*`) | Match, ramasseur nommé depuis le schéma 30 | Un socle de bonus n'est jamais rattachable à un joueur |
 
@@ -103,6 +103,13 @@ C'est la clé de tout le sujet, et c'est ce que j'avais raté (décision utilisa
 > l'énergie tombe à 0 (puis i28 gagne une entrée) 1,62-1,64 s après l'activation i21 — `riftPoses`
 > (schéma 95). Témoins à la frame : `1b2d9e08` 164,06 s, `6acce632` 53,3 / 158,5 / 304,2 s. Le son
 > de pose (`translocator_deploy`) part 1,045 s avant la pose (`riftPoseSound.ts`).
+>
+> **LA FAILLE EST UN OBJET QUE LA POSE CRÉE (2026-10-15, schéma 98).** Le paquet où l'énergie tombe
+> à 0 crée une entité ti=38 — la faille —, que la pile i28 de l'objet porté nomme au paquet suivant
+> (handle, base 0x200) et dont la suppression est la fin de la faille. Sa position i0 à la création
+> situe la pose : 123/123 au parc ; à 0,02 m (médiane XY) de l'arrivée du premier échange quand il y
+> en a un (l'arrivée est 0,11 à 0,53 m plus haut), à 0,04 m du porteur à l'image de la pose. Les
+> poses sans échange sont situées.
 
 > **SONS D'UTILISATION (2026-10-15, décision utilisateur).** Le capteur, le traqueur, le champ de
 > réparation et l'écran occultant n'ont plus de pose `deployed` depuis la règle du 15/09 (ligne

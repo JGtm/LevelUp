@@ -1441,8 +1441,10 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	// - 96 (2026-10-15, meme lot) : `carriedEquipment[].tracked[]` et deux compteurs de couverture — les
 	//   objets que l equipement porte engendre (pile i28) et leur suppression lue : la fin du champ de
 	//   reparation. `grammar.Rev` monte avec elle. Detail : `document_chronicle.go`.
-	if SchemaVersion != 96 {
-		t.Fatalf("SchemaVersion = %d, attendu 96 : incrémenter exige une raison écrite ci-dessus "+
+	// - 98 (2026-10-15, lot « faille a la pose » ; 97 est reserve par `feat/ri-ecart-108`) : la position
+	//   de la faille vient de l objet que la pose cree (`riftPoses[].src`), plus du premier echange.
+	if SchemaVersion != 98 {
+		t.Fatalf("SchemaVersion = %d, attendu 98 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -27,6 +27,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -34,6 +35,10 @@ import (
 type equipementPorteLu struct {
 	lectures []types.CarriedEquipmentRead
 	st       types.CarriedEquipmentStats
+	// quanta : les quanta i0 lus a la creation des objets engendres, par vie, et les largeurs de la
+	// marche ; [ScanEquipementPorte] les dequantifie aux bornes de la carte.
+	quanta map[types.LifeKey][3]uint64
+	lg     profile.PrecisionDescriptor
 }
 
 // vieDObjetPorte est un objet porte suivi : sa generation et son porteur.
@@ -58,7 +63,10 @@ type canalDeLEquipementPorte struct {
 	vies map[uint32]vieDObjetPorte
 	// suivis : les vies que la pile i28 d un objet porte a designees, par slot : l objet qui les suit.
 	suivis map[uint32]objetSuivi
-	lu     equipementPorteLu
+	// naissances : la derniere creation (record NEW) lue par slot, avec sa position i0 — la naissance
+	// d un objet que la pile i28 nommera.
+	naissances map[uint32]naissanceLue
+	lu         equipementPorteLu
 }
 
 // composantsDeLEquipementPorte rend les composants de ti=37 que le canal interprete.
@@ -74,7 +82,8 @@ func nouveauCanalDeLEquipementPorte(fc *FilmContext) *canalDeLEquipementPorte {
 		reg = nil
 	}
 	return &canalDeLEquipementPorte{fc: fc, reg: reg, vies: map[uint32]vieDObjetPorte{},
-		suivis: map[uint32]objetSuivi{}}
+		suivis: map[uint32]objetSuivi{}, naissances: map[uint32]naissanceLue{},
+		lu: equipementPorteLu{quanta: map[types.LifeKey][3]uint64{}}}
 }
 
 // Interets : les cinq composants de ti=37 que le registre du film declare, dans les trames.
@@ -95,7 +104,11 @@ func (c *canalDeLEquipementPorte) Interets() []Interet {
 	return out
 }
 
-func (c *canalDeLEquipementPorte) Brancher(_ *Observation, m *MarcheDistribuee) { c.m = m }
+// Brancher retient la marche, et les largeurs d objet du monde qu elle lit : celles des quanta i0.
+func (c *canalDeLEquipementPorte) Brancher(_ *Observation, m *MarcheDistribuee) {
+	c.m = m
+	c.lu.lg = c.fc.LargeursObjetDuMonde()
+}
 
 // Clore range ce que le canal a lu dans le contexte.
 func (c *canalDeLEquipementPorte) Clore(BilanDeMarche) { c.fc.recup.equipementPorte = &c.lu }
@@ -105,6 +118,12 @@ func (c *canalDeLEquipementPorte) Trame(p *lecture.Paquet) {
 	recs, lus := c.m.recordsDeLaTrame()
 	if !lus {
 		return
+	}
+	// LES NAISSANCES D ABORD : un objet engendre peut naitre dans le paquet meme ou la pile le nomme.
+	for i := range recs {
+		if recs[i].Type == recNew && recs[i].DesyncAt == -1 {
+			c.naissance(p, &recs[i])
+		}
 	}
 	for i := range recs {
 		r := &recs[i]
@@ -202,9 +221,7 @@ func (c *canalDeLEquipementPorte) lecture(ts uint64, r *FrameRecord, v vieDObjet
 			l.HasHandles, l.Handles, l.Tracked = true, uint32(e.Valeur), e.Suivis //nolint:gosec // R(4)
 			c.lu.st.HandleReads++
 			c.lu.st.TrackedEntries += len(e.Suivis)
-			for _, s := range e.Suivis {
-				c.suivis[s.Slot] = objetSuivi{gen: s.Gen, objet: l.Object, porteur: v.porteur}
-			}
+			c.suivre(&l, v)
 		}
 	}
 	return l
@@ -222,13 +239,74 @@ func parentDuRecord(r *FrameRecord) (ObjectParentState, bool) {
 
 // ScanEquipementPorte rend les lectures de l equipement porte d un film DEJA CHARGE, dans l ordre du
 // flux : celles de la marche de la cuisson quand elle les a deja recueillies ([ScanMarcheDesTramesAvec]),
-// sinon une marche faite pour elles seules.
-func ScanEquipementPorte(fc *FilmContext) ([]types.CarriedEquipmentRead, types.CarriedEquipmentStats, error) {
+// sinon une marche faite pour elles seules. La position a la creation des objets engendres
+// (`Spawned`) est dequantifiee aux bornes `wr` de la carte ; sans bornes, elle reste absente.
+func ScanEquipementPorte(fc *FilmContext, wr *profile.Vec3Range) ([]types.CarriedEquipmentRead,
+	types.CarriedEquipmentStats, error) {
 	if fc.recup.equipementPorte == nil {
 		if err := Distribuer(fc, nouveauCanalDeLEquipementPorte(fc)); err != nil {
 			return nil, types.CarriedEquipmentStats{}, err
 		}
 	}
 	lu := fc.recup.equipementPorte
-	return lu.lectures, lu.st, nil
+	if wr == nil {
+		return lu.lectures, lu.st, nil
+	}
+	ls := make([]types.CarriedEquipmentRead, len(lu.lectures))
+	st := lu.st
+	for i, l := range lu.lectures {
+		ls[i] = l
+		if len(l.Spawned) == 0 {
+			continue
+		}
+		ls[i].Spawned = make([]types.SpawnedObject, len(l.Spawned))
+		for k, n := range l.Spawned {
+			if q, ok := lu.quanta[n.Life]; ok {
+				v := dequantObjetDuMonde(q, wr, lu.lg)
+				n.HasPosition, n.X, n.Y, n.Z = true, v[0], v[1], v[2]
+				st.SpawnedPositioned++
+			}
+			ls[i].Spawned[k] = n
+		}
+	}
+	return ls, st, nil
+}
+
+// naissance retient la creation d une vie et les quanta de sa position i0, lus par le lecteur des
+// pistes du monde ([lireQuantaObjetDuMonde] : chemin dominant, region de la carte, quanta satures
+// rejetes) au bit ou la marche a trouve le composant.
+func (c *canalDeLEquipementPorte) naissance(p *lecture.Paquet, r *FrameRecord) {
+	n := naissanceLue{obj: types.SpawnedObject{Life: types.LifeKey{Slot: r.Slot, Gen: r.ID >> 30},
+		TimestampUS: p.TS, TypeIndex: r.TypeIndex}}
+	if comps := r.Trace.Comps; len(comps) > 0 && comps[0].Name == compObjectPosition && comps[0].Ported {
+		n.q, n.aQ = lireQuantaObjetDuMonde(p.Payload, comps[0].StartBit, c.lu.lg)
+	}
+	c.naissances[r.Slot] = n
+}
+
+// naissanceLue est la derniere creation lue d un slot, et les quanta de sa position i0.
+type naissanceLue struct {
+	obj types.SpawnedObject
+	q   [3]uint64
+	aQ  bool
+}
+
+// suivre retient les vies que la pile i28 d une lecture nomme, et joint a la lecture la creation de
+// celles qu elle nomme pour la premiere fois, quand la marche l a lue.
+func (c *canalDeLEquipementPorte) suivre(l *types.CarriedEquipmentRead, v vieDObjetPorte) {
+	for _, s := range l.Tracked {
+		if deja, ok := c.suivis[s.Slot]; ok && deja.gen == s.Gen {
+			continue
+		}
+		c.suivis[s.Slot] = objetSuivi{gen: s.Gen, objet: l.Object, porteur: v.porteur}
+		n, ok := c.naissances[s.Slot]
+		if !ok || n.obj.Life != s {
+			continue
+		}
+		l.Spawned = append(l.Spawned, n.obj)
+		c.lu.st.SpawnedBirths++
+		if n.aQ {
+			c.lu.quanta[s] = n.q
+		}
+	}
 }

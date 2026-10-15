@@ -88,6 +88,10 @@ var worldObjectPrecisionReaders = map[string]string{
 		"BuildFromFilm / installWorldObjectPrecision. Vivait dans `dispatch_object.go`",
 	"internal/games/halo_infinite/film/internal/grammar/projectiles.go": "longueur du champ (`projPosBits`) et " +
 		"déquantification (`decodeWorldObjectPos`) — le balayage des objets du monde",
+	"internal/games/halo_infinite/film/internal/grammar/position_objet_du_monde.go": "le lecteur de la position " +
+		"(`decodeWorldObjectPos`, `lireQuantaObjetDuMonde`), extrait de `projectiles.go` par déplacement pur " +
+		"(2026-10-15, lot « faille à la pose ») : les largeurs sont un PARAMÈTRE, que ses deux appelants " +
+		"tiennent du contexte où la cuisson a installé celles de la carte (pistes ; canal de l équipement porté)",
 	"internal/games/halo_infinite/film/internal/profile/precision.go": "CITATION en commentaire (2026-09-12, " +
 		"lot B-bis) : le champ `Region` de `PrecisionDescriptor` documente qu'il ne vaut que " +
 		"pour le descripteur world-object et pourquoi il vit DANS la structure (restauration " +

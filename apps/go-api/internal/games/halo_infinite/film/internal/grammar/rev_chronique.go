@@ -279,3 +279,18 @@ package grammar
 // durees : 11 de 11,35 a 12,24 s, 6 de 1,5 a 4,6 s (champ detruit), une de 16,95 s. Capteur 834,
 // ecran 241, traqueur 49 : tous ti=41 nes dans le paquet. Le retrait de la pile precede la
 // suppression de 0,2 a 0,7 s (5676a9ba).
+//
+// ENTREE `grammar-2026-10-15.2` (2026-10-15, lot « faille a la pose », branche `feat/faille-pose`,
+// question du user : « le mecanisme de pose repose sur l evenement de pose, pourquoi dependrait-il de
+// la teleportation ? ») : LA CREATION DES OBJETS ENGENDRES EST LUE, AVEC SA POSITION. Aucun bit n est
+// lu autrement. Le canal de l equipement porte retient chaque creation (record NEW) de la trame et les
+// quanta de sa position i0, lus par le lecteur des pistes du monde (`lireQuantaObjetDuMonde`, extrait
+// de `decodeWorldObjectPos` sans changement : chemin dominant, region de la carte, quanta satures
+// rejetes) ; quand la pile i28 nomme une vie pour la premiere fois, sa creation est jointe a la
+// lecture (`Spawned`), et [ScanEquipementPorte] la dequantifie aux bornes de la carte.
+//
+// MESURE (36 films a translocateur, 123 poses, contexte de la cuisson, `TestFailleObjet`) : le paquet
+// ou l energie du translocateur tombe a 0 cree une entite ti=38 (la faille), nommee par la pile au
+// paquet suivant ; 123/123 positions lues. Contre l arrivee du premier echange (74) : ecart XY
+// mediane 0,02 m, max 0,13 (l arrivee est 0,11 a 0,53 m plus haut) ; contre le porteur a l image de
+// la pose (120) : XY mediane 0,04 m, max 0,17.

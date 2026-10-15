@@ -303,3 +303,8 @@ package killsource
 // aucun bit n est lu autrement, et `CarriedEquipmentRead` gagne `Tracked`, hors de la sortie de
 // killsource. `replay-equiv` (20 films, `027a5bcaf` contre le lot) : etape
 // `killsource` identique sur les 20. Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-15 (lot « faille a la pose », REVISION CONSTANTE) : `grammar.Rev` monte a
+// `grammar-2026-10-15.2` (la creation des objets engendres et sa position i0 sont lues ; le lecteur de
+// position des objets du monde est scinde sans changement). `replay-equiv` (20 films, `df51f37c0`
+// contre le lot) : etape `killsource` identique sur les 20. Golden regenere a revision constante.
