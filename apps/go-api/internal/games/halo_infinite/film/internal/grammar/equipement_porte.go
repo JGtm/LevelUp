@@ -18,6 +18,12 @@ package grammar
 // aucune interpretation (pose, consommation) — elle appartient au rejeu, qui joint la famille par
 // l annonce i48 du meme paquet. Une trame dont la marche n a pas localise la liste ne rend rien : ce
 // qu elle portait n est pas lu.
+//
+// LES OBJETS QUE L EQUIPEMENT ENGENDRE. Les entrees presentes de la pile i28 sont des handles : les
+// vies des objets que l equipement porte suit (la faille du translocateur, le champ de reparation,
+// des entites ti=41 nees dans le paquet ou la pile les nomme). Le canal retient chaque vie nommee,
+// meme apres la fin de l objet porte, et rend sa SUPPRESSION (`tracked-end`), rattachee a l objet
+// qui la suivait : c est la fin, ecrite par le film, de l objet engendre.
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
@@ -35,6 +41,14 @@ type vieDObjetPorte struct {
 	gen, porteur uint32
 }
 
+// objetSuivi est une vie designee par la pile i28 d un objet porte : sa generation, et l objet porte
+// (vie, porteur) qui la suit.
+type objetSuivi struct {
+	gen     uint32
+	objet   types.LifeKey
+	porteur uint32
+}
+
 // canalDeLEquipementPorte lit, dans les trames que la marche rend, les records des objets ti=37
 // crees attaches.
 type canalDeLEquipementPorte struct {
@@ -42,7 +56,9 @@ type canalDeLEquipementPorte struct {
 	reg  *Registry
 	m    *MarcheDistribuee
 	vies map[uint32]vieDObjetPorte
-	lu   equipementPorteLu
+	// suivis : les vies que la pile i28 d un objet porte a designees, par slot : l objet qui les suit.
+	suivis map[uint32]objetSuivi
+	lu     equipementPorteLu
 }
 
 // composantsDeLEquipementPorte rend les composants de ti=37 que le canal interprete.
@@ -57,7 +73,8 @@ func nouveauCanalDeLEquipementPorte(fc *FilmContext) *canalDeLEquipementPorte {
 	if err != nil {
 		reg = nil
 	}
-	return &canalDeLEquipementPorte{fc: fc, reg: reg, vies: map[uint32]vieDObjetPorte{}}
+	return &canalDeLEquipementPorte{fc: fc, reg: reg, vies: map[uint32]vieDObjetPorte{},
+		suivis: map[uint32]objetSuivi{}}
 }
 
 // Interets : les cinq composants de ti=37 que le registre du film declare, dans les trames.
@@ -140,8 +157,15 @@ func (c *canalDeLEquipementPorte) delta(ts uint64, r *FrameRecord) {
 	}
 }
 
-// suppression clot le suivi d un objet porte.
+// suppression clot le suivi d un objet porte, ou date la fin d une vie que sa pile i28 a designee.
 func (c *canalDeLEquipementPorte) suppression(ts uint64, r *FrameRecord) {
+	if s, ok := c.suivis[r.Slot]; ok && s.gen == r.ID>>30 {
+		c.lu.st.TrackedEnds++
+		delete(c.suivis, r.Slot)
+		c.lu.lectures = append(c.lu.lectures, types.CarriedEquipmentRead{TimestampUS: ts, Object: s.objet,
+			Carrier: s.porteur, Kind: types.CarriedTrackedEnd, Tracked: []types.LifeKey{{Slot: r.Slot, Gen: s.gen}}})
+		return
+	}
 	v, ok := c.vies[r.Slot]
 	if !ok || v.gen != r.ID>>30 {
 		return
@@ -175,8 +199,12 @@ func (c *canalDeLEquipementPorte) lecture(ts uint64, r *FrameRecord, v vieDObjet
 			l.HasSignal, l.Signal = true, uint32(e.Valeur) //nolint:gosec // R(4)
 			c.lu.st.Signals++
 		case compEquipmentTrackedStack:
-			l.HasHandles, l.Handles = true, uint32(e.Valeur) //nolint:gosec // R(4)
+			l.HasHandles, l.Handles, l.Tracked = true, uint32(e.Valeur), e.Suivis //nolint:gosec // R(4)
 			c.lu.st.HandleReads++
+			c.lu.st.TrackedEntries += len(e.Suivis)
+			for _, s := range e.Suivis {
+				c.suivis[s.Slot] = objetSuivi{gen: s.Gen, objet: l.Object, porteur: v.porteur}
+			}
 		}
 	}
 	return l

@@ -15,6 +15,12 @@
  *
  * L'INSTANT est l'utilisation lue, sans décalage : aucun de ces quatre sons n'a de montée relevée
  * (contrairement à la pose de la faille, `riftPoseSound.ts`). Catégorie Équipement.
+ *
+ * LA FIN DU CHAMP DE RÉPARATION (décision utilisateur du 2026-10-15 : « si on a l'événement, on
+ * rebranche le son de fin »). Le film l'écrit : la pile i28 de l'objet porté nomme l'objet que
+ * l'équipement engendre, et la SUPPRESSION de cet objet est la fin du champ
+ * (`carriedEquipment[].tracked[].t1`). Le son d'extinction (`play_007_abl_repairfield_deactivate`)
+ * part à cette image ; un champ dont la suppression n'est pas lue ne sonne pas sa fin.
  */
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { frameToMs } from '../../../lib/replay/replayLogic'
@@ -40,6 +46,27 @@ export function carriedUseSoundEvents(doc: ReplayDocumentReady): ReplaySoundEven
     const stem = family ? CARRIED_USE_SOUND_STEMS[family] : undefined
     if (!stem) continue
     for (const u of c.uses) out.push(soundEvent(frameToMs(u, doc), stem))
+  }
+  return out
+}
+
+/**
+ * Le stem de la FIN d'un objet engendré, par famille : seul le champ de réparation a un son
+ * d'extinction propre dans le jeu (décision produit du 2026-08-26, « y compris le champ de
+ * réparation qui disparaît »).
+ */
+export const CARRIED_END_SOUND_STEMS: Readonly<Record<string, string>> = {
+  repair_field: 'repair_field_end',
+}
+
+/** carriedEndSoundEvents — un son par fin lue d'un objet engendré d'une famille de la table. */
+export function carriedEndSoundEvents(doc: ReplayDocumentReady): ReplaySoundEvent[] {
+  const out: ReplaySoundEvent[] = []
+  for (const c of doc.carriedEquipment) {
+    const family = doc.abilityLabels?.[String(c.r)]?.family
+    const stem = family ? CARRIED_END_SOUND_STEMS[family] : undefined
+    if (!stem) continue
+    for (const s of c.tracked) if (s.t1 !== undefined) out.push(soundEvent(frameToMs(s.t1, doc), stem))
   }
   return out
 }

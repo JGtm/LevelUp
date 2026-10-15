@@ -51,6 +51,17 @@ type CarriedEquipment struct {
 	Energy []CarriedEnergy `json:"energy,omitempty"`
 	// Uses : les frames des activations (i21).
 	Uses []int `json:"uses,omitempty"`
+	// Tracked : les objets que l'équipement a engendrés et suivis (pile i28 : la faille, le champ de
+	// réparation), dans l'ordre de leur apparition.
+	Tracked []CarriedTracked `json:"tracked,omitempty"`
+}
+
+// CarriedTracked est un objet engendré par un équipement porté. T0 est la frame de la première pile
+// i28 qui le nomme (il naît dans ce paquet) ; T1 celle de sa SUPPRESSION, écrite par le film,
+// absente quand elle n'est pas lue.
+type CarriedTracked struct {
+	T0 int  `json:"t0"`
+	T1 *int `json:"t1,omitempty"`
 }
 
 // CarriedEnergy est une lecture de l'énergie d'un objet porté.
@@ -106,6 +117,9 @@ type CarriedEquipmentCoverage struct {
 	RiftPoses            int `json:"riftPoses"`
 	Positioned           int `json:"positioned"`
 	TeleportsWithoutPose int `json:"teleportsWithoutPose"`
+	// TrackedObjects : objets engendrés publiés ; TrackedEnds : ceux dont la suppression est lue.
+	TrackedObjects int `json:"trackedObjects"`
+	TrackedEnds    int `json:"trackedEnds"`
 }
 
 // coutDeFamille : le coût par usage d'une fiche du catalogue, l'énergie initiale de son objet porté
@@ -188,6 +202,8 @@ type objetLu struct {
 	cout     coutDeFamille
 	coutOK   bool
 	lectures []types.CarriedEquipmentRead
+	// suivis : l'indice, dans pub.Tracked, de chaque objet engendré nommé par la pile i28.
+	suivis map[types.LifeKey]int
 }
 
 // buildCarriedEquipment assemble le calque de l'équipement porté et les poses de faille.
@@ -282,6 +298,7 @@ func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCover
 		if l.Kind == types.CarriedDel {
 			o.pub.T1 = &t
 		}
+		o.suivre(l, t, cov)
 		if l.HasActivation {
 			o.pub.Uses = append(o.pub.Uses, t)
 			cov.Uses++
@@ -356,21 +373,29 @@ func positionnerLaPose(p *RiftPose, fin *int, translocations []Translocation) {
 }
 
 // regrouperParObjet range les lectures par vie d'objet, chaque vie ouverte par sa création, dans
-// l'ordre de création. Une lecture sans création lue n'est pas publiée.
+// l'ordre de création. Une lecture sans création lue n'est pas publiée. La fin d'un objet engendré
+// (`tracked-end`) revient à la dernière vie de l'objet porté qui le suivait, même supprimée : un
+// champ de réparation survit à son porteur.
 func regrouperParObjet(reads []types.CarriedEquipmentRead) []*objetLu {
 	var out []*objetLu
 	courants := map[types.LifeKey]*objetLu{}
+	derniers := map[types.LifeKey]*objetLu{}
 	for _, l := range reads {
-		if l.Kind == types.CarriedNew {
+		switch l.Kind {
+		case types.CarriedNew:
 			o := &objetLu{lectures: []types.CarriedEquipmentRead{l}}
-			courants[l.Object] = o
+			courants[l.Object], derniers[l.Object] = o, o
 			out = append(out, o)
-			continue
-		}
-		if o, ok := courants[l.Object]; ok {
-			o.lectures = append(o.lectures, l)
-			if l.Kind == types.CarriedDel {
-				delete(courants, l.Object)
+		case types.CarriedTrackedEnd:
+			if o, ok := derniers[l.Object]; ok {
+				o.lectures = append(o.lectures, l)
+			}
+		default:
+			if o, ok := courants[l.Object]; ok {
+				o.lectures = append(o.lectures, l)
+				if l.Kind == types.CarriedDel {
+					delete(courants, l.Object)
+				}
 			}
 		}
 	}
@@ -419,7 +444,8 @@ func logCarriedEquipmentCoverage(ctx context.Context, cov CarriedEquipmentCovera
 		"avantOrigine", cov.BeforeOrigin, "sansRang", cov.WithoutRank, "rangAmbigu", cov.AmbiguousRank,
 		"nonNommes", cov.Unnamed, "avecCout", cov.WithCost, "horsCatalogue", cov.NoCatalog,
 		"coutAmbigu", cov.AmbiguousCost, "lecturesEnergie", cov.EnergyReads, "usages", cov.Uses,
-		"posesDeFaille", cov.RiftPoses, "posesSituees", cov.Positioned, "echangesSansPose", cov.TeleportsWithoutPose)
+		"posesDeFaille", cov.RiftPoses, "posesSituees", cov.Positioned, "echangesSansPose", cov.TeleportsWithoutPose,
+		"objetsEngendres", cov.TrackedObjects, "finsLues", cov.TrackedEnds)
 }
 
 // poserLEquipementPorte publie l'équipement porté et les poses de faille, nommés par la palette classée
@@ -433,4 +459,28 @@ func (a *assemblage) poserLEquipementPorte() {
 	a.doc.CarriedEquipment, a.doc.RiftPoses = carried, poses
 	a.doc.Coverage.CarriedEquipment = &cov
 	logCarriedEquipmentCoverage(a.ctx, cov)
+}
+
+// suivre publie les objets engendrés qu'une lecture nomme (pile i28), et date la fin de celui dont
+// elle lit la suppression.
+func (o *objetLu) suivre(l types.CarriedEquipmentRead, t int, cov *CarriedEquipmentCoverage) {
+	if o.suivis == nil {
+		o.suivis = map[types.LifeKey]int{}
+	}
+	if l.Kind == types.CarriedTrackedEnd {
+		for _, s := range l.Tracked {
+			if k, ok := o.suivis[s]; ok && o.pub.Tracked[k].T1 == nil {
+				o.pub.Tracked[k].T1 = &t
+				cov.TrackedEnds++
+			}
+		}
+		return
+	}
+	for _, s := range l.Tracked {
+		if _, ok := o.suivis[s]; !ok {
+			o.suivis[s] = len(o.pub.Tracked)
+			o.pub.Tracked = append(o.pub.Tracked, CarriedTracked{T0: t})
+			cov.TrackedObjects++
+		}
+	}
 }

@@ -165,7 +165,12 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // `layers[knockbacks]` / `coverage.knockbacks` distinguent les deux.
     knockbacks: raw.knockbacks ?? [],
     // L'ÉQUIPEMENT PORTÉ (schéma 95) : ses deux tableaux imbriqués se comblent aussi.
-    carriedEquipment: (raw.carriedEquipment ?? []).map((c) => ({ ...c, energy: c.energy ?? [], uses: c.uses ?? [] })),
+    carriedEquipment: (raw.carriedEquipment ?? []).map((c) => ({
+      ...c,
+      energy: c.energy ?? [],
+      uses: c.uses ?? [],
+      tracked: c.tracked ?? [],
+    })),
     // LES POSES DE FAILLE (schéma 95) : absent = artefact antérieur, ou film sans translocateur posé.
     riftPoses: raw.riftPoses ?? [],
     // LES IMPULSIONS DE CAPACITÉ (schéma 38) : une entrée plate par geste (t, slot, family),

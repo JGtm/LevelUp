@@ -166,11 +166,15 @@ func toPickup(v replay.Pickup) replaydoc.Pickup {
 
 func toCarriedEquipment(v replay.CarriedEquipment) replaydoc.CarriedEquipment {
 	return replaydoc.CarriedEquipment{Slot: v.Slot, R: v.R, T0: v.T0, T1: v.T1,
-		Energy: sliceOf(v.Energy, toCarriedEnergy), Uses: v.Uses}
+		Energy: sliceOf(v.Energy, toCarriedEnergy), Uses: v.Uses, Tracked: sliceOf(v.Tracked, toCarriedTracked)}
 }
 
 func toCarriedEnergy(v replay.CarriedEnergy) replaydoc.CarriedEnergy {
 	return replaydoc.CarriedEnergy(v)
+}
+
+func toCarriedTracked(v replay.CarriedTracked) replaydoc.CarriedTracked {
+	return replaydoc.CarriedTracked(v)
 }
 
 func toRiftPose(v replay.RiftPose) replaydoc.RiftPose {

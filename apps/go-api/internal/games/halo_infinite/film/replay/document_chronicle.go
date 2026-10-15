@@ -3307,3 +3307,25 @@ package replay
 //	                activation ; témoins 1b2d9e08 (frame 1550 = 164,06 s), 6acce632 (53,3 / 158,5 /
 //	                304,2 s) à la frame près ; répulseur 0d9a9af9 et 72b0a25e : 3 usages à la prise
 //	                (énergie 0,6, coût 0,2), 2, 1, 0 aux activations, comme au Theater.
+//
+// v96 (2026-10-15, lot « équipement porté », `grammar-2026-10-15`, demande du user : « si on a
+// l'événement pour le champ de réparation, on rebranche le son de fin ») : LES OBJETS QUE
+// L'ÉQUIPEMENT PORTÉ ENGENDRE, ET LEUR FIN.
+//
+//	`carriedEquipment[].tracked[]`  neuf : {t0, t1?} — chaque objet que la pile i28 de l'objet porté
+//	                nomme (handle, base 0x200 de `FUN_1406d3140` catégorie 0) : `t0` la première pile
+//	                qui le nomme, `t1` sa SUPPRESSION écrite par le film, même après la fin de l'objet
+//	                porté. Pour le champ de réparation, `t1` est la fin du champ.
+//	`coverage.carriedEquipment`  gagne `trackedObjects` (objets engendrés publiés) et `trackedEnds`
+//	                (ceux dont la suppression est lue).
+//
+//	CE QUI MONTE    `SchemaVersion` 95 -> 96 ; `grammar.Rev` -> `grammar-2026-10-15` (la pile rend ses
+//	AVEC ELLE       handles) ; `SchemaDesFaits` 13 -> 14 (les lectures portent les vies suivies) ;
+//	                `killsource.Rev` et `objectives.Rev` inchangées.
+//
+//	LE PARC         un artefact 95 ou d'avant : verdict `redecoder` (révision de grammaire).
+//
+//	MESURE          238 films du parc : 18 champs de réparation, tous des ti=41 nés dans le paquet
+//	                de la pile, 18 suppressions lues (12 après la fin de l'objet porté) ; durées : 11
+//	                de 11,35 à 12,24 s, 6 de 1,5 à 4,6 s (champ détruit), une de 16,95 s. Capteur 834,
+//	                écran 241, traqueur 49 objets engendrés, tous ti=41 nés dans le paquet.

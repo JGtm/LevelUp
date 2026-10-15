@@ -1438,8 +1438,11 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	// - 95 (2026-10-14, lot « equipement porte » des ajustements) : deux calques neufs `carriedEquipment[]`
 	//   et `riftPoses[]` et leur couverture — l energie de l equipement porte, ses usages restants, la pose de
 	//   la faille. `grammar.Rev` monte avec elle. Detail : `document_chronicle.go`.
-	if SchemaVersion != 95 {
-		t.Fatalf("SchemaVersion = %d, attendu 95 : incrémenter exige une raison écrite ci-dessus "+
+	// - 96 (2026-10-15, meme lot) : `carriedEquipment[].tracked[]` et deux compteurs de couverture — les
+	//   objets que l equipement porte engendre (pile i28) et leur suppression lue : la fin du champ de
+	//   reparation. `grammar.Rev` monte avec elle. Detail : `document_chronicle.go`.
+	if SchemaVersion != 96 {
+		t.Fatalf("SchemaVersion = %d, attendu 96 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

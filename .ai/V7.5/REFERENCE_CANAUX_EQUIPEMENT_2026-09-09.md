@@ -23,7 +23,7 @@ MATCH. Ce qui remonte au grain session est une autre affaire — §3.
 | `grappleLines` | Les TRACTIONS de grappin — la seule activation de capacité mesurée et attribuée | Par VIE | — |
 | `abilityCharges` | Les CHARGES RESTANTES, lues au changement | Par VIE | **Grappin et propulseur SEULEMENT.** Rien n'est transmis au ramassage, donc le maximum n'est pas établissable. Le répulseur n'arme jamais ce canal (négatif mesuré, rapport R11 ; revérifié le 2026-10-14 sur l'état complet des images-clés : masque d'i56 à 000 pendant tout le port, avant et après les poussées) |
 | `knockbacks` | Les POUSSÉES du répulseur : le joueur poussé, l'auteur (`by`), la vitesse imposée (`vx/vy/vz`) | Par poussée (schéma 94) | C'est l'EFFET, pas le geste : la paire de messages de la vue A `EquipmentObjectKnockedBack` (105 : objet poussé, auteur) puis `EquipmentKnockbackPlayer` (104 : joueur poussé, impulsion), même référence 0, même liste (`grammar/vue_a_poussees.go`, `grammar/poussees.go`). Un souffle qui ne pousse AUCUN joueur n'écrit pas de 104 : il n'est pas publié. Un 104 sans son 105 n'est pas publié (`coverage.knockbacks.unpaired`) |
-| `carriedEquipment` | L'ÉQUIPEMENT PORTÉ, objet par objet : porteur, rang, prise `t0`, fin `t1`, l'ÉNERGIE à chaque lecture avec les USAGES RESTANTS `n`, et les ACTIVATIONS `uses` | Par objet porté (schéma 95) | L'objet ti=37 que le jeu crée attaché au porteur DANS LE PAQUET de son annonce i48 (le rang nomme la famille) ; son énergie i24, son activation i21 (porte 1), sa suppression (`grammar/equipement_porte.go`). `n` = trunc((énergie + 1e-4) / coût), la règle du HUD (`FUN_1407e9384`), le coût lu dans les tags du jeu (`data/titles/halo_infinite/reference/equipment_energy.json`, `cmd/equipenergy-build`). Pas de `n` pour le grappin et le propulseur (leur capacité ne compte pas par l'énergie ; `abilityCharges` les compte), ni pour une famille dont les fiches ne s'accordent pas sans l'énergie de la prise (`coverage.carriedEquipment.ambiguousCost`) |
+| `carriedEquipment` | L'ÉQUIPEMENT PORTÉ, objet par objet : porteur, rang, prise `t0`, fin `t1`, l'ÉNERGIE à chaque lecture avec les USAGES RESTANTS `n`, les ACTIVATIONS `uses`, et les OBJETS ENGENDRÉS `tracked` (apparition, suppression lue) | Par objet porté (schéma 95, `tracked` au 96) | L'objet ti=37 que le jeu crée attaché au porteur DANS LE PAQUET de son annonce i48 (le rang nomme la famille) ; son énergie i24, son activation i21 (porte 1), sa suppression (`grammar/equipement_porte.go`). `n` = trunc((énergie + 1e-4) / coût), la règle du HUD (`FUN_1407e9384`), le coût lu dans les tags du jeu (`data/titles/halo_infinite/reference/equipment_energy.json`, `cmd/equipenergy-build`). Pas de `n` pour le grappin et le propulseur (leur capacité ne compte pas par l'énergie ; `abilityCharges` les compte), ni pour une famille dont les fiches ne s'accordent pas sans l'énergie de la prise (`coverage.carriedEquipment.ambiguousCost`) |
 | `riftPoses` | Les POSES de la faille du translocateur : l'instant, l'activation `a` qui la précède, la position | Par pose (schéma 95) | La pose = l'énergie du translocateur porté tombe à 0 (puis i28 gagne une entrée), toujours 1,62-1,64 s après une activation i21 (123/123 au parc). La position est l'arrivée du PREMIER échange qui suit : une pose sans échange est datée sans position |
 | `abilityLabels` | Nomme les RANGS de capacité, palette propre au match | Match | Une capacité non classée ne reçoit aucun nom. **25,21 % des rangs lus par `equipmentChanges` ne sont pas nommés** — dont 8 artefacts sur 64 SANS table du tout (mesure E0, §2) |
 | `padPickups` × `weaponPads` | Les socles d'ARME (famille en 8 hexa) et les socles de BONUS vidés (`powerup_*`) | Match, ramasseur nommé depuis le schéma 30 | Un socle de bonus n'est jamais rattachable à un joueur |
@@ -109,8 +109,17 @@ C'est la clé de tout le sujet, et c'est ce que j'avais raté (décision utilisa
 > `equipmentPlacements` ci-dessus) : ils sonnent à leur utilisation datée, `carriedEquipment[].uses`
 > (`carriedUseSound.ts`), avec leurs stems d'avant. Chaque utilisation est suivie, une ou deux images
 > plus tard, de la baisse d'énergie d'un coût (30 sur 30 sur `5676a9ba` et `1f8e8849`). Le mur garde
-> sa pose `deployed`, deux ou trois images après son utilisation. La FIN du champ de réparation
-> (`repair_field_end`) reste attachée à une pose `deployed` du champ : elle ne part donc jamais.
+> sa pose `deployed`, deux ou trois images après son utilisation.
+>
+> **OBJETS ENGENDRÉS ET FIN DU CHAMP DE RÉPARATION (2026-10-15, schéma 96).** Les entrées présentes de
+> la pile i28 de l'objet porté sont des HANDLES (`FUN_1406d3140` catégorie 0, base 0x200 posée par
+> `FUN_140d10bb0`) : les objets que l'équipement engendre — le champ de réparation, le capteur lancé,
+> l'écran, le traqueur, des entités ti=41 nées dans le paquet où la pile les nomme (238 films : 18
+> champs, 834 capteurs, 241 écrans, 49 traqueurs, tous). Leur SUPPRESSION est écrite par le film, même
+> après la fin de l'objet porté : `carriedEquipment[].tracked[]` {t0, t1?}. Pour le champ, `t1` est sa
+> fin (18 sur 18 lues ; 11 champs de 11,35 à 12,24 s, 6 détruits en 1,5 à 4,6 s, un de 16,95 s) ;
+> `repair_field_end` y sonne. Le retrait de la pile précède la suppression de 0,2 à 0,7 s quand
+> l'objet porté vit encore.
 
 **B — Les équipements DÉPLOYABLES.** On les pose sur le terrain. « Utilisé » = **la charge
 consommée** (`equipmentChanges` `spent`) — SAUF pour le mur, « utilisé » = **posé**.

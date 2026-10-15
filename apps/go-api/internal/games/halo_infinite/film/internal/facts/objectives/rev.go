@@ -173,6 +173,13 @@ package objectives
 // PREUVE : `replay-equiv` sur les 20 films du corpus, binaires de `feat/v75` `d33f21227` contre ceux du
 // lot : etapes `objectives` et `killsource` IDENTIQUES sur les 20, comme toutes les autres etapes hors
 // l etape neuve `knockbacks` et l artefact. Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-15 (lot « equipement porte », REVISION CONSTANTE) : `grammar.Rev` monte a
+// `grammar-2026-10-15` (la pile i28 rend ses handles, le canal date la suppression des objets que
+// l equipement engendre). Les objectifs ne lisent pas l equipement porte. PREUVE : `replay-equiv` sur
+// les 20 films du corpus, binaires de `027a5bcaf` contre ceux du lot : etapes `objectives` et
+// `killsource` IDENTIQUES sur les 20 ; seules `carriedEquipment` (14 films) et l artefact bougent.
+// Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

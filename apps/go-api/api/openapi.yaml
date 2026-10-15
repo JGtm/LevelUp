@@ -10919,6 +10919,12 @@ components:
         t1:
           format: int64
           type: integer
+        tracked:
+          items:
+            $ref: '#/components/schemas/CarriedTracked'
+          type:
+            - array
+            - "null"
         uses:
           items:
             format: int64
@@ -10970,6 +10976,12 @@ components:
         teleportsWithoutPose:
           format: int64
           type: integer
+        trackedEnds:
+          format: int64
+          type: integer
+        trackedObjects:
+          format: int64
+          type: integer
         unnamed:
           format: int64
           type: integer
@@ -10999,6 +11011,20 @@ components:
         - riftPoses
         - positioned
         - teleportsWithoutPose
+        - trackedObjects
+        - trackedEnds
+      type: object
+    CarriedTracked:
+      additionalProperties: false
+      properties:
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+      required:
+        - t0
       type: object
     CascadeFilter:
       additionalProperties: false

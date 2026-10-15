@@ -43,7 +43,7 @@ import {
   EQUIPMENT_PLACEMENT_SOUND_STEMS,
   EQUIPMENT_SOUND_STEMS,
   GRAPPLE_SOUND_STEM,
-  EQUIPMENT_PLACEMENT_SOUND_STEMS_END,
+  CARRIED_END_SOUND_STEMS,
   CARRIED_USE_SOUND_STEMS,
   KILL_SPRITE_SOUND_STEMS,
   OBJECTIVE_SOUND_STEMS,
@@ -136,7 +136,7 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // Les POSES d'équipement (lot du 2026-08-18) : UN stem par famille — le geste de pose.
     ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS),
     // Et la FIN de pose, pour les familles qui ont un son d'extinction propre (2026-08-26).
-    ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS_END),
+    ...Object.values(CARRIED_END_SOUND_STEMS),
     // L'UTILISATION d'un équipement porté (schéma 95, 2026-10-15) : un stem par famille.
     ...Object.values(CARRIED_USE_SOUND_STEMS),
     // Le TIR de grappin (lot G, 2026-08-20) : UN SEUL stem, aucune famille.
@@ -279,7 +279,7 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // Les poses relèvent de la MÊME catégorie que les épisodes (Équipements) : elles gardent
     // la durée de leur source, jamais retronquée à la coupe des armes.
     ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS),
-    ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS_END),
+    ...Object.values(CARRIED_END_SOUND_STEMS),
     // L'UTILISATION d'un équipement porté (schéma 95) : mêmes stems que leurs anciennes poses.
     ...Object.values(CARRIED_USE_SOUND_STEMS),
     // Le grappin : catégorie Équipement, même règle. SA SOURCE A CHANGÉ LE 2026-08-26 — le

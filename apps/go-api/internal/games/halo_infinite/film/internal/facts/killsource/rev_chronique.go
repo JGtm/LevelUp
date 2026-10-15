@@ -297,3 +297,9 @@ package killsource
 // lit l equipement porte) ; aucun bit n est lu autrement, et `film/types` gagne
 // `CarriedEquipmentRead` / `CarriedEquipmentStats`, hors de la sortie de killsource. Golden regenere a
 // revision constante.
+//
+// COMPLEMENT DU 2026-10-15 (meme lot, REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-15`
+// (la pile i28 rend ses handles, le canal date la suppression des objets que l equipement engendre) ;
+// aucun bit n est lu autrement, et `CarriedEquipmentRead` gagne `Tracked`, hors de la sortie de
+// killsource. `replay-equiv` (20 films, `027a5bcaf` contre le lot) : etape
+// `killsource` identique sur les 20. Golden regenere a revision constante.

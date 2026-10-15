@@ -309,10 +309,11 @@ const NULLABLE_ARRAY_PATHS = [
   // optionnelles, que des nombres : un seul chemin, la racine.
   'translocations',
   'knockbacks',
-  // `carriedEquipment` (schéma 95) : deux tableaux IMBRIQUÉS, `energy` et `uses`.
+  // `carriedEquipment` (schéma 95) : trois tableaux IMBRIQUÉS, `energy`, `uses` et `tracked` (schéma 96).
   'carriedEquipment',
   'carriedEquipment[].energy',
   'carriedEquipment[].uses',
+  'carriedEquipment[].tracked',
   'riftPoses',
   // `abilityImpulses` (schéma 38) : impulsion PLATE — (t, slot, family), deux nombres et une
   // chaîne : un seul chemin, la racine.
