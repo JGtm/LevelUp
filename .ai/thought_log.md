@@ -7,6 +7,13 @@
 **Resultats observes** (`TestEcart108`, 28 films, sorties `scratchpad/ri/ecart108/final/`) : 2 838 des 2 841 bipedes a ecart -108k sont suivis de k entrees liberees, k = ecart de slots dans tous les cas ; fermeture ti=35 5 401 -> 8 242 ; admis T1 et T2 6 507 -> 6 507 (les gagnes etaient deja B ou refuses par T1) ; tous archetypes 240 470 -> 267 811, 44 pertes ti=37 (fermetures contredites par l index de slot, temoin 24 -> 0) ; temoin decale bipedes hasard 3 -> 4 ; queue de table : 162 paquets finissent a moins d un octet de la fin du payload apres 0x1ffe-slot entrees liberees.
 
 **Conclusion / prochaine etape** : rapport `.ai/RAPPORT_ECART_108_R_VEH_4_2026-10-09.md`. A instruire en lot : la regle dans `preuveDeLEtatComplet`, puis dans `PreuveDImageCle.prouve` et la marche d ancres (non simulees de bout en bout : effet sur les elections a mesurer).
+## [2026-10-15] Rattrapage CSR par joueur : candidats restreints aux matchs du joueur — Complété (branche `fix/csr-candidats-joueur`)
+
+**Décision technique principale** : `loadRankedMatchesForCSRBackfill` (`sync/csr_backfill.go`) joint désormais `match_participants` sur le xuid du joueur ; le pré-filtre (is_ranked / nom « ranked » / playlist_id de la référence) et la décision (payload skill) sont inchangés. `match_participants` n'est pas append-only (pas de vue `_latest`).
+
+**Résultats observés** : en exploitation, `backfill --all --csr` appelait le skill sur tout le registre pour chaque profil (4 274 appels `skipped_no_recap` pour un joueur à 8 matchs classés). `loadRankedMatchesForSharedCSRBackfill` filtrait déjà par participation : rien à changer (la base partagée stocke le CSR de tous les participants d'un match où le joueur a joué). Test `TestLoadRankedMatchesForCSRBackfill_OnlyPlayerMatches` (mutation : jointure neutralisée, rouge) ; fixtures d'intégration complétées par `match_participants`.
+
+**Conclusion** : à fusionner dans feat/v75 sur décision de l'utilisateur.
 
 ## [2026-09-23] Reprise post-serie 5 du decodeur : lot 5.26 (residu film dense, arret ecrit), docs de release v7.5, archivage `.ai` — Complete (trois lots Opus en parallele, fusionnes dans `feat/recherche-decodeur-film` avancee sur feat/v75, CI puis fast-forward de feat/v75)
 

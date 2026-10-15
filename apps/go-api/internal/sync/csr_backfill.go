@@ -61,7 +61,7 @@ func BackfillCSRFromAPI(
 ) (CSRBackfillResult, error) {
 	var res CSRBackfillResult
 
-	matches, err := loadRankedMatchesForCSRBackfill(ctx, sharedDB)
+	matches, err := loadRankedMatchesForCSRBackfill(ctx, sharedDB, xuid)
 	if err != nil {
 		return res, fmt.Errorf("BackfillCSRFromAPI: load ranked: %w", err)
 	}
@@ -156,6 +156,8 @@ func BackfillCSRFromAPI(
 
 // loadRankedMatchesForCSRBackfill charge match_id + start_time des matchs CANDIDATS au
 // rattrapage CSR depuis le registre partagé, triés chronologiquement ASC.
+// Seuls les matchs auxquels xuid a PARTICIPÉ (match_participants, table non append-only) sont
+// candidats : le CSR par match de la base joueur ne concerne que ses propres matchs.
 //
 // Ce filtre n'est PAS la décision de classement : c'est un pré-filtre pour ne pas re-fetcher
 // toute la base. Un match est candidat si is_ranked est posé OU si son nom de playlist ou de
@@ -165,19 +167,21 @@ func BackfillCSRFromAPI(
 // ajustements 2026-10-14 G5). La DÉCISION appartient au payload skill
 // (SkillShowsRankedMatch, via ExtractCSRRowIfRanked) : un candidat dont le RankRecap n'est pas
 // celui d'un match classé est compté « sans RankRecap » et ne produit aucune ligne.
-func loadRankedMatchesForCSRBackfill(ctx context.Context, sharedDB *sql.DB) ([]MatchRegistryRow, error) {
+func loadRankedMatchesForCSRBackfill(ctx context.Context, sharedDB *sql.DB, xuid string) ([]MatchRegistryRow, error) {
 	ph, args := rankedCandidatePlaylistIDs()
 	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT match_id, start_time
-		FROM match_registry
-		WHERE start_time IS NOT NULL
+		SELECT DISTINCT r.match_id, r.start_time
+		FROM match_registry r
+		JOIN match_participants mp ON mp.match_id = r.match_id
+		WHERE mp.xuid = ?
+		  AND r.start_time IS NOT NULL
 		  AND (
-		    COALESCE(is_ranked, FALSE) = TRUE
-		    OR STRPOS(LOWER(COALESCE(playlist_name, '')), 'ranked') > 0
-		    OR STRPOS(LOWER(COALESCE(pair_name, '')), 'ranked') > 0
-		    OR LOWER(COALESCE(playlist_id, '')) IN (`+ph+`)
+		    COALESCE(r.is_ranked, FALSE) = TRUE
+		    OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
+		    OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+		    OR LOWER(COALESCE(r.playlist_id, '')) IN (`+ph+`)
 		  )
-		ORDER BY start_time ASC`, args...)
+		ORDER BY r.start_time ASC`, append([]any{xuid}, args...)...)
 	if err != nil {
 		return nil, err
 	}
