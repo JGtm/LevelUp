@@ -100,8 +100,7 @@ func (r *ExplorerRepo) GetKillerVictimBetween(ctx context.Context, xuid1, xuid2 
 		return domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerRepo.GetKillerVictimBetween: %w", err)
 	}
 	liste := argListe(matchs)
-	q := resolveCampaignExclusionByMatchID(QKillsBetweenPlayersBorne, pdbTitleSlug(r.pdb), "match_id")
-	row := sharedDB.QueryRowContext(ctx, q, xuid1, xuid2, xuid2, xuid1, liste)
+	row := sharedDB.QueryRowContext(ctx, resolveCampaignExclusionByMatchID(QKillsBetweenPlayersBorne, pdbTitleSlug(r.pdb), "match_id"), xuid1, xuid2, xuid2, xuid1, liste)
 	var agg domain.KillerVictimAggregate
 	if err := row.Scan(&agg.KillsDealt, &agg.DeathsSuffered); err != nil {
 		return domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerRepo.GetKillerVictimBetween: %w", err)

@@ -167,10 +167,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			-- inconditionnellement (p.assassination_kills/ground_pound/shoulder_bash) → requises ici.
 			assassination_kills SMALLINT DEFAULT 0,
 			ground_pound_kills SMALLINT DEFAULT 0,
-			shoulder_bash_kills SMALLINT DEFAULT 0,
-			-- Lue par Q17PlayerMatchStats (GetPlayerMatchStats) : une lecture en échec REMONTE, un seed
-			-- sans cette colonne ferait échouer toute lecture des stats du joueur.
-			backfill_bits INTEGER DEFAULT 0)`,
+			shoulder_bash_kills SMALLINT DEFAULT 0, backfill_bits INTEGER DEFAULT 0)`, // backfill_bits : lue par Q17, une lecture en échec remonte
 		// last_seen + source : colonnes attendues par certaines queries shared
 		// (squad_repo::LookupXUIDByGamertag fait ORDER BY last_seen DESC).
 		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR, last_seen TIMESTAMPTZ, source VARCHAR)`,
@@ -178,8 +175,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			medal_id UBIGINT, medal_name_id UBIGINT, xuid VARCHAR, match_id VARCHAR, count INTEGER)`,
 		`CREATE TABLE shared.highlight_events (
 			match_id VARCHAR, xuid VARCHAR,
-			event_type VARCHAR, tick_count INTEGER, timestamp_utc TIMESTAMPTZ, time_ms BIGINT,
-			raw_json VARCHAR)`,
+			event_type VARCHAR, tick_count INTEGER, timestamp_utc TIMESTAMPTZ, time_ms BIGINT, raw_json VARCHAR)`,
 		// shared.weapon_kills : 1 row par kill (pas de PK, pas de count agrege).
 		// La colonne kills est conservee pour compat ascendante mais COUNT(*)
 		// dans Q16WeaponKills est la sortie attendue (cf. queries_match.go).

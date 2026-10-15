@@ -437,8 +437,7 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 		  -- title-generic : les titres canoniques (Halo 5) renseignent start_time_utc
 		  -- et laissent start_time (legacy) NULL ; filtrer sur le COALESCE comme le SELECT.
 		  AND COALESCE(mr.start_time_utc, mr.start_time) IS NOT NULL
-		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)`+
-		analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
+		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)`+analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
 		ORDER BY ts ASC`, xuid)
 	if err != nil {
 		return nil, err

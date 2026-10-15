@@ -13,7 +13,6 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
@@ -210,23 +209,6 @@ func (r *ServiceRegistry) buildFriendsExtrasResolver(mainPDB *duckdb.PlayerDB) p
 		return r.newMatchViewRepo(pdb), nil
 	}
 	return service.NewFriendsExtrasResolver(friendsByXUID, opener, r.assetURLFor(mainPDB.TitleSlug))
-}
-
-// friendProfilesByXUID indexe par xuid les profils dont une player DB peut être lue pour les extras
-// du scoreboard : tout profil déclaré du titre SAUF le joueur courant et les profils `auth_only`
-// (gestion de tokens, aucune player DB de stats). Un profil en pause de sync reste lisible : le
-// filtre de domain.SyncablePlayers ne s'applique pas aux chemins de lecture. Un xuid absent de
-// cette map est une ABSENCE (le resolver l'ignore) ; seul un profil lisible dont la DB échoue est
-// une panne.
-func friendProfilesByXUID(players []domain.PlayerSummary, mainXUID, titleSlug string) map[string]service.FriendProfile {
-	out := make(map[string]service.FriendProfile, len(players))
-	for _, p := range players {
-		if p.XUID == "" || p.XUID == mainXUID || p.AuthOnly {
-			continue
-		}
-		out[p.XUID] = service.FriendProfile{XUID: p.XUID, Gamertag: p.Gamertag, TitleSlug: titleSlug}
-	}
-	return out
 }
 
 // Engagement retourne un PlayerEngagementService pour le joueur.

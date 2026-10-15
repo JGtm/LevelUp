@@ -343,8 +343,7 @@ const shadowSchemaDDL = `
 			pair_name VARCHAR,
 			is_ranked BOOLEAN DEFAULT FALSE,
 			is_firefight BOOLEAN DEFAULT FALSE,
-			duration_seconds INTEGER,
-			game_variant_id VARCHAR
+			duration_seconds INTEGER, game_variant_id VARCHAR
 		);
 		CREATE TABLE match_participants (
 			match_id VARCHAR,

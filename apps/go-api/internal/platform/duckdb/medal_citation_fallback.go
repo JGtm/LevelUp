@@ -55,3 +55,14 @@ func lookupMedalCitationLabels(ctx context.Context, db *DB, ids []int64) (map[in
 	)
 	return out, err
 }
+
+// citationLabelsOrLog est lookupMedalCitationLabels pour les appelants qui dégradent (libellés
+// repliés) : l'échec est journalisé en ERREUR (surface, err) AVANT la dégradation, les libellés
+// lus sont rendus.
+func citationLabelsOrLog(ctx context.Context, db *DB, ids []int64, surface string) map[int64]string {
+	out, err := lookupMedalCitationLabels(ctx, db, ids)
+	if err != nil {
+		slog.ErrorContext(ctx, surface+": libellés de médailles par citation indisponibles", "err", err)
+	}
+	return out
+}
