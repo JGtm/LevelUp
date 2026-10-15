@@ -272,3 +272,28 @@ package killsource
 // a la fusion de `feat/v75` `54b47a2b8`. `cmd/killsource json` sur les 19 temoins, binaire de
 // `54b47a2b8` contre binaire de la tete fusionnee : sorties identiques a l octet. Golden regenere a
 // revision constante.
+//
+// COMPLEMENT DU 2026-10-14 (lot F du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/aj14-f`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-14` — elle entre PAR VALEUR dans
+// l amont de cette couche — : la lecture de la vue A range ses messages de poussee (genres 104 et
+// 105) et `film/types` gagne `Knockback` et `KnockbackStats`. Aucun bit n est lu autrement et
+// killsource ne lit pas les poussees. PREUVE : `cmd/killsource json` sur les 20 films du corpus
+// d equivalence, binaire de `feat/v75` `d33f21227` contre binaire du lot : sorties identiques a
+// l octet sur les 20. Golden regenere a revision constante.
+//
+// ENTREE `killsource-2026-10-14` (2026-10-14, lot « equipement porte » du plan
+// `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/equip-porte`) : `grammar.Rev` monte a
+// `grammar-2026-10-14.2` — `ti=37 i28 equipment-tracked-object-handles-stack-component` lit n entrees
+// et non n+1 (`FUN_140f72dec`), et les trames qui le portent ferment (0 sur 4 839 -> 4 726 sur 4 841
+// au parc, contexte de la cuisson). PREUVE (`cmd/killsource json`, 20 films du corpus d equivalence,
+// binaire a lecture n+1 contre binaire de la lecture juste) : 18 films identiques a l octet ; sur
+// `084a804d` et `1c4c63c2`, lignes, instants, tueurs, victimes, sources et assistances identiques, et
+// 4 et 19 morts passent du balayage a la marche (`read_path` persiste : `scan` -> `marche`). Les
+// lignes de `match_kill_events` deviennent candidates au redecodage : backlog sur signal de
+// l utilisateur (D6).
+//
+// COMPLEMENT DU 2026-10-14 (meme lot, REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-14.3`
+// (la capture rend la valeur de quatre composants de ti=37 deja traverses, un canal neuf de la marche
+// lit l equipement porte) ; aucun bit n est lu autrement, et `film/types` gagne
+// `CarriedEquipmentRead` / `CarriedEquipmentStats`, hors de la sortie de killsource. Golden regenere a
+// revision constante.

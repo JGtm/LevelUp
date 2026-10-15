@@ -7,7 +7,7 @@
  * base : des données figées.
  *
  * Témoins : bonus 12 / 8, armes spéciales 23 / 29 ; fiches JGtm 3 bonus · 9 armes spéciales ;
- * bonus perdus 2 sur 12 et 2 sur 8 ; Starboard « Victoire 3–0 » + « Domination » ; Detachment
+ * Starboard « Victoire 3–0 » + « Domination » ; Detachment
  * sans film.
  */
 import type {

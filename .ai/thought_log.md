@@ -117279,3 +117279,22 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 28 films — à la première image-clé, 279 records sur 283 à D = 2 ont les mains nues (`00007CA9`) avec leurs deux armes déjà en place ; la valeur disparaît dès la prise d'arme (41 sur 360 à l'image-clé suivante) ; en cours de partie, D = 2 désigne surtout un objet d'objectif (bobine, drapeau, bombe) ; aucun record admis n'a D = 2 (règle T1). vitest, typecheck, lint verts.
 
 **Conclusion / prochaine étape** : R5 — fusion de `origin/feat/v75` (lot « équipement porté », 78 fichiers du film), puis montée des révisions et gates complets.
+## [2026-10-15] Ajustements du 14/10 : lots A à F livrés et intégrés dans feat/v75 — En cours (équipement porté, étiquettes, rattrapage CSR, recuisson à venir)
+
+**Statut** : lots A (CSR), B (rejeu web), C (Vue match), D (Tactique + saisons), E (Escouade + Séries temporelles), F (poussées du répulseur, sons du translocateur) intégrés sur `feat/aj14-integ` (un conflit textuel dans `check_test_baseline.sh`, aucun conflit sémantique) puis avance rapide de `feat/v75` ; lot équipement porté (session levelup-80) livré sur `feat/equip-porte`, en correction de relecture.
+
+**Décision technique principale** : un match est classé ⟺ `RankRecap.PostMatchCsr.InitialMeasurementMatches > 0` (règle d'OpenSpartan, D-10) ; poussée du répulseur = paire 105 → 104 de la vue A (auteur 105 ref1, impulsion 104), schéma 94 ; pose de la faille = énergie de l'objet porté à 0 puis pile i28 +1, ~1,63 s après l'activation (cause commune : i28 lu à n+1 entrées) ; utilisations restantes = règle du HUD sur des constantes lues dans les tags du jeu (voie A).
+
+**Résultats observés** : CI de l'intégration verte (tous jobs) ; local : `go test ./...` 200 paquets, intégration sync/persist/duckdb, golangci 0, vitest 9 486, baseline de la CI 9 401/9 401 ; E2E local 57 passées, 22 échecs identiques sur la base (spécs câblées sur :8000). Relectures adversariales : lot A (1 P1 baseline, 1 P2 séquence, 2 P3) et lot F (1 P1 révision constante non consignée, 1 P2, 4 P3) corrigées. Vérification Chrome du translocateur avec le user (saut net, failles, éclat). Leçon : tout harnais de recherche sur le film doit poser `NewFilmContextForMap` + `PoserLaCarteEtLeDecoupage` (998 faux 104 et une fausse régression i48 sinon). Diagnostic `seasons_catalog` corrigé sur remarque du user (l'appel en direct réussit ; relance absente après rafraîchissement de jeton).
+
+**Conclusion / prochaine étape** : correction de relecture puis fusion de l'équipement porté (schéma 95, rebranchement des sons de pose de 4 familles, décision du user) ; lot G ; rattrapage CSR sur accord (5 étapes documentées) ; recuisson du parc au schéma 95 sur accord ; cuisson unitaire du match VIP.
+
+## [2026-10-15] Équipement porté : pose de faille, utilisations restantes, sons d'utilisation — fusionné dans feat/v75 — Complété (recuisson schéma 95 à demander)
+
+**Statut** : `feat/equip-porte` @ 027a5bcaf (session levelup-80, prompt du superviseur), CI verte, avance rapide de `feat/v75`.
+
+**Décision technique principale** : ti=37 i28 `equipment-tracked-object-handles-stack` se lit à n entrées (`FUN_140f72dec`), et non n+1 : c'était la cause commune des trames d'objet porté perdues. L'objet porté se lit au delta (énergie i24, activation i21, signal i22, pile i28). Pose de faille = énergie du translocateur à 0 puis i28 +1 (~1,63 s après l'activation, 123/123 au parc) ; utilisations restantes = règle du HUD `trunc((e + 1e-4) / coût)` sur des constantes lues dans les tags du jeu (`equipment_energy.json`, `cmd/equipenergy-build`, voie A décidée par le user). Schéma 95 (`carriedEquipment[]`, `riftPoses[]`), faits 13, grammar-2026-10-14.3, killsource-2026-10-14. Sons de pose du capteur, du traqueur, du champ et de l'écran (muets depuis le 15/09) rebranchés sur les utilisations datées (décision du user du 15/10).
+
+**Résultats observés** : trames à i28 fermées 0/4 839 → 4 726/4 841 sur 238 films au contexte de la cuisson ; poses à la frame sur 1b2d9e08, 6acce632, a0c36016 ; répulseur 3 → 2 → 1 → 0 sur 0d9a9af9 ; rendu vérifié en lecture. Relecture adversariale : 0 P1 ; P2-2 (mur rang 19) réfuté par mesure.
+
+**Conclusion / prochaine étape** : recuisson du parc au schéma 95 + backfill killsource sur accord du user ; cuisson unitaire du match VIP ensuite.

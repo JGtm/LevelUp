@@ -72,7 +72,7 @@ describe('SESSION_CARD_TEXT — pleine page', () => {
       'Usage d’équipements',
     ])
     expect(fr.full.cards.mine.info).toBe(
-      'Objets pris par l’équipe sur les matchs filmés de la soirée : part du joueur et du reste de l’équipe, en comptes, par volume décroissant. Bonus perdus : gardés sans être activés, ou lâchés.',
+      'Objets pris par l’équipe sur les matchs filmés de la soirée : part du joueur et du reste de l’équipe, en comptes, par volume décroissant.',
     )
   })
 
@@ -98,7 +98,7 @@ describe('SESSION_CARD_TEXT — comparaison (vue compacte)', () => {
     )
     expect([c.emprise.grid.more, c.emprise.grid.less, c.emprise.grid.nothing]).toEqual(['Plus de 50 %', 'Moins de 50 %', 'Rien à prendre'])
     expect(c.cards.mine.info).toBe(
-      'Prises de l’équipe par ressource sur les matchs filmés de la soirée : part du joueur et du reste de l’équipe, en pourcentage (comptes au survol). Bonus perdus : gardés sans être activés, ou lâchés, en part des bonus pris par chaque équipe.',
+      'Prises de l’équipe par ressource sur les matchs filmés de la soirée : part du joueur et du reste de l’équipe, en pourcentage (comptes au survol).',
     )
     expect(c.objectif.balance.info).toBe(
       'Part de l’équipe face à l’adversaire pour chaque rôle de l’objectif (somme de ses actions ; Tenir en durée), par famille de mode, comptes au survol ; trait orange : 50 %.',

@@ -12,7 +12,7 @@ import { renderWithProviders } from '@/test/render-utils'
 
 import { empriseTabHasContent } from './emprise/empriseContent'
 import { EMPRISE_2209, HISTORY_2209, XUID } from './emprise/emprise.fixtures'
-import { block0709, history0709 } from './objectif/objectif.fixtures'
+import { block0709, history0709, history0709Evenings, history2209Evenings } from './objectif/objectif.fixtures'
 import * as squadContextModule from './SquadContext'
 import { SquadEmprisePage } from './SquadEmprisePage'
 
@@ -124,6 +124,56 @@ describe('Soirées précédentes', () => {
   it('sans habitude publiée : le bloc se retire', () => {
     mount({ pageData: page({ ...EMPRISE_2209, habit: undefined }) })
     expect(screen.queryByTestId('emprise-section-habitude')).toBeNull()
+  })
+})
+
+describe('Soirées précédentes — une rangée, deux cartes', () => {
+  const withEvenings = (block: SquadEmpriseBlock | undefined, history = history0709Evenings()): TeammatesPageResponse =>
+    ({
+      ...page(),
+      squad_emprise: block,
+      formes_retenues: block0709(),
+      match_history: history0709(),
+      squad_objective_history: history,
+    }) as TeammatesPageResponse
+
+  it('« Contrôle des ressources, par soirée » à gauche de « Rapport de force, soirée après soirée », même rangée', async () => {
+    mount({ pageData: withEvenings(EMPRISE_2209) })
+    const habit = screen.getByTestId('emprise-habit')
+    const evenings = screen.getByTestId('objective-evenings')
+    expect(habit.parentElement).toBe(evenings.parentElement)
+    expect(habit.parentElement?.children).toHaveLength(2)
+    expect(habit.parentElement?.className).toContain('lg:grid-cols-2')
+    expect(habit.compareDocumentPosition(evenings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Une seule section « Soirées précédentes » les porte ; la section Objectif n'a plus la carte.
+    const section = screen.getByTestId('emprise-section-habitude')
+    expect(section.contains(evenings)).toBe(true)
+    expect(screen.getByTestId('squad-objective-section').contains(evenings)).toBe(false)
+    // Hauteurs alignées : les deux cartes s'étirent à la rangée (h-full) et leurs graphes ont la même hauteur.
+    expect(habit.className).toContain('h-full')
+    expect(evenings.className).toContain('h-full')
+    expect(await within(evenings).findByTestId('echarts-mock')).toBeInTheDocument()
+  })
+
+  it('le rapport de force par soirée seul (sans film) prend la rangée entière', () => {
+    mount({ pageData: withEvenings(undefined) })
+    expect(screen.queryByTestId('emprise-habit')).toBeNull()
+    const evenings = screen.getByTestId('objective-evenings')
+    expect(evenings.parentElement?.children).toHaveLength(1)
+    expect(evenings.parentElement?.className).toContain('only-child')
+  })
+
+  it('soirée sous le minimum : le bloc placeholder du rapport de force dit pourquoi, dans la rangée', () => {
+    mount({ pageData: withEvenings(EMPRISE_2209, history2209Evenings()) })
+    const note = screen.getByTestId('objective-evenings-note')
+    expect(note.textContent).toContain('24 soirées de la composition sur 49')
+    expect(screen.getByTestId('emprise-habit').parentElement).toBe(screen.getByTestId('objective-evenings').parentElement)
+  })
+
+  it('sans historique de la composition : seule la carte des ressources, pas de carte de rapport de force', () => {
+    mount({ pageData: { ...withEvenings(EMPRISE_2209), squad_objective_history: undefined } as TeammatesPageResponse })
+    expect(screen.queryByTestId('objective-evenings')).toBeNull()
+    expect(screen.getByTestId('emprise-habit')).toBeInTheDocument()
   })
 })
 

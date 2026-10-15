@@ -1,0 +1,50 @@
+{
+  "Value": [
+    {
+      "Id": "xuid(2533274823110022)",
+      "ResultCode": 0,
+      "Result": {
+        "Counterfactuals": {
+          "SelfCounterfactuals": {"Kills": 11.71964474391097, "Deaths": 12.16225062728041},
+          "TierCounterfactuals": {}
+        },
+        "RankRecap": {
+          "PostMatchCsr": {
+            "DemotionProtectionMatchesRemaining": 0,
+            "InitialDemotionProtectionMatches": 0,
+            "InitialMeasurementMatches": 0,
+            "MeasurementMatchesRemaining": 0,
+            "NextSubTier": 0,
+            "NextTier": "",
+            "NextTierStart": 0,
+            "SubTier": 0,
+            "Tier": "",
+            "TierStart": 0,
+            "Value": 0
+          },
+          "PreMatchCsr": {
+            "DemotionProtectionMatchesRemaining": 0,
+            "InitialDemotionProtectionMatches": 0,
+            "InitialMeasurementMatches": 0,
+            "MeasurementMatchesRemaining": 0,
+            "NextSubTier": 0,
+            "NextTier": "",
+            "NextTierStart": 0,
+            "SubTier": 0,
+            "Tier": "",
+            "TierStart": 0,
+            "Value": 0
+          }
+        },
+        "RankedRewards": null,
+        "StatPerformances": {
+          "Kills": {"Count": 8, "Expected": 11.71964474391097, "StdDev": 4.601135600804062},
+          "Deaths": {"Count": 12, "Expected": 12.16225062728041, "StdDev": 4.290354110181133}
+        },
+        "TeamId": 1,
+        "TeamMmr": 1259.8612584265584,
+        "TeamMmrs": {"0": 1259.77913582603, "1": 1259.8612584265584}
+      }
+    }
+  ]
+}

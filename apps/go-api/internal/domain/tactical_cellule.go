@@ -129,9 +129,15 @@ type TacticalContribution struct {
 	ArmeLabel       string `json:"arme_label,omitempty"`
 	ArmeLabelEN     string `json:"arme_label_en,omitempty"`
 	CategorieSource string `json:"categorie_source,omitempty"`
+	// ArmeImageURL / ArmeImageTinted : l'icône de la source de dégât, par l'adapter d'assets du titre
+	// (même source que le fil de frags du rejeu). Tinted = masque à teindre, pas un visuel fini.
+	// Absentes quand le titre n'a pas d'icône pour cette source.
+	ArmeImageURL    string `json:"arme_image_url,omitempty"`
+	ArmeImageTinted bool   `json:"arme_image_tinted,omitempty"`
 	// Placement : seul ou près d'un coéquipier, pour une MORT seulement.
 	Placement *TacticalPlacement `json:"placement,omitempty"`
-	// ModeLabel : le mode du match, dans la langue de la requête (libellé de l'app).
+	// ModeLabel : le mode du match, dans la langue de la requête, normalisé (sans carte ni conteneur :
+	// analysis.NormalizeModeLabel avec le nom de la carte du match).
 	ModeLabel string `json:"mode_label,omitempty"`
 	// ScoreLabel : « X - Y », le camp du joueur de la page d'abord (analysis.TeamScoreLabel) ;
 	// ScoreKind dit si ce sont des points ou des manches (analysis.ScoreKind*).

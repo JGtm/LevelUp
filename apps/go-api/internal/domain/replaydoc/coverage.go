@@ -31,6 +31,8 @@ type Coverage struct {
 	PadDating         *PadDatingStats             `json:"padDating,omitempty"`
 	EquipmentChanges  *EquipmentChangeCoverage    `json:"equipmentChanges,omitempty"`
 	Translocations    *TranslocationCoverage      `json:"translocations,omitempty"`
+	Knockbacks        *KnockbackCoverage          `json:"knockbacks,omitempty"`
+	CarriedEquipment  *CarriedEquipmentCoverage   `json:"carriedEquipment,omitempty"`
 	AbilityImpulses   *AbilityImpulseCoverage     `json:"abilityImpulses,omitempty"`
 	AbilityCharges    *AbilityChargeCoverage      `json:"abilityCharges,omitempty"`
 	GroundWeaponItems *GroundWeaponItemsCoverage  `json:"groundWeaponItems,omitempty"`
@@ -348,6 +350,19 @@ type TranslocationCoverage struct {
 	Positioned   int `json:"positioned"`
 }
 
+// KnockbackCoverage dit ce que le calque des poussées a lu et ce qu'il a écarté (schéma 94).
+type KnockbackCoverage struct {
+	Read104        int `json:"read104"`
+	Read105        int `json:"read105"`
+	Paired         int `json:"paired"`
+	Unpaired       int `json:"unpaired"`
+	Published      int `json:"published"`
+	BeforeOrigin   int `json:"beforeOrigin"`
+	NoIdentity     int `json:"noIdentity"`
+	WithoutImpulse int `json:"withoutImpulse"`
+	WithoutAuthor  int `json:"withoutAuthor"`
+}
+
 // AbilityImpulseCoverage dit ce que le calque a lu et ce qu'il a écarté — l'entonnoir
 // complet, sans lequel « N impulsions » ne se juge pas.
 type AbilityImpulseCoverage struct {
@@ -460,4 +475,24 @@ type DeathsPathTally struct {
 	Population int `json:"population"`
 	Matched    int `json:"matched"`
 	Published  int `json:"published"`
+}
+
+// CarriedEquipmentCoverage dit ce que le calque de l'équipement porté a lu et ce qu'il a écarté (schéma 95).
+type CarriedEquipmentCoverage struct {
+	Created              int `json:"created"`
+	Attached             int `json:"attached"`
+	Published            int `json:"published"`
+	NoIdentity           int `json:"noIdentity"`
+	BeforeOrigin         int `json:"beforeOrigin"`
+	WithoutRank          int `json:"withoutRank"`
+	AmbiguousRank        int `json:"ambiguousRank"`
+	Unnamed              int `json:"unnamed"`
+	WithCost             int `json:"withCost"`
+	NoCatalog            int `json:"noCatalog"`
+	AmbiguousCost        int `json:"ambiguousCost"`
+	EnergyReads          int `json:"energyReads"`
+	Uses                 int `json:"uses"`
+	RiftPoses            int `json:"riftPoses"`
+	Positioned           int `json:"positioned"`
+	TeleportsWithoutPose int `json:"teleportsWithoutPose"`
 }

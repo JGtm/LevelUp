@@ -198,6 +198,9 @@ func ScanMarcheDesTramesAvec(fc *FilmContext, l LecturesDeLaMarche) (MarcheDesTr
 	if fc.recup.objets == nil {
 		canaux = append(canaux, nouveauCanalDesObjetsDuMonde(fc))
 	}
+	if fc.recup.equipementPorte == nil {
+		canaux = append(canaux, nouveauCanalDeLEquipementPorte(fc))
+	}
 	var morts *canalDesMorts
 	if l.Morts || (l.MortsSiVehicules && len(ScanWorldObjectKeyframes(fc, VehicleTypeIndex).Band) > 0) {
 		morts = nouveauCanalDesMorts(reg)

@@ -31,6 +31,7 @@ export function getTimeseriesCoordinationText(locale: Locale) {
     trend: (name: string) => m('timeseries.progression.coord_trend', { name }),
     hollow: m('timeseries.progression.coord_hollow'),
     points: m('timeseries.progression.coord_points'),
+    gap: m('timeseries.progression.coord_gap'),
     tooltipZero: m('timeseries.progression.coord_tt_zero'),
     tooltipTrend: m('timeseries.progression.coord_tt_trend'),
 

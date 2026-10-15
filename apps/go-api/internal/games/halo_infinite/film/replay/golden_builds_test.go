@@ -233,7 +233,7 @@ func assemblerGoldenBuild(t *testing.T, b goldenBuild, g *FilmFacts,
 ) ReplayDocument {
 	t.Helper()
 	opt := g.options()
-	opt.Labels = goldenCatalog(t)
+	opt.Labels, opt.EquipmentEnergy = goldenCatalog(t), goldenEnergyCatalog(t)
 	opt.MapQuant = &entry
 	return BuildFromPositions(context.Background(), b.Short8, "halo_infinite", g.Positions, g.Fire, opt)
 }
@@ -317,5 +317,7 @@ func chargerGoldenBuild(t *testing.T, b goldenBuild) (*FilmFacts, profile.MapQua
 	}
 	// LES ENTITES `ti=9` NE SONT PAS DANS LE BLOB : elles ont leur fichier (golden_entites_test.go).
 	g.PlayerEntities = chargerEntitesDuBuild(t, b.Short8)
+	// LES POUSSEES ET L EQUIPEMENT PORTE non plus : golden_equipement_test.go.
+	chargerEquipementDuBuild(t, b.Short8, g)
 	return g, entry
 }

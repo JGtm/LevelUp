@@ -9,6 +9,8 @@
  *   2. Queries React Query en état `pending` (sans données en cache) → maintien
  *      tant que la page n'a pas encore de données.
  *
+ * Les requêtes marquées « sans barre » (meta, lib/query/sansBarre.ts : clic de zone,
+ * préchargement) ne l'allument pas non plus.
  * Les refetch background (stale revalidations) ne prolongent PAS la barre car on
  * filtre sur `q.state.status === 'pending'` (jamais résolu) et pas sur `fetchStatus`.
  *
@@ -25,6 +27,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useIsFetching } from '@tanstack/react-query'
 import { useRouterState } from '@tanstack/react-router'
+import { compteDansLaBarre } from '@/lib/query/sansBarre'
 
 const FADE_OUT_MS = 250
 const INITIAL_PROGRESS = 30
@@ -48,7 +51,7 @@ export function TopProgressBar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   // Uniquement les queries sans données en cache (premier chargement d'une page).
   // Les refetch background ne maintiennent pas la barre.
-  const pendingCount = useIsFetching({ predicate: (q) => q.state.status === 'pending' })
+  const pendingCount = useIsFetching({ predicate: compteDansLaBarre })
 
   const [progress, setProgress] = useState(0)
   const [visible, setVisible] = useState(false)

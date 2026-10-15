@@ -1,0 +1,344 @@
+{
+  "schema_version": 1,
+  "title_slug": "halo_infinite",
+  "tool": "CGO_ENABLED=1 go run ./cmd/equipenergy-build",
+  "about": "Energie des equipements, lue dans les tags du jeu installe : par fiche `sofa`, l objet ramassable (pickup), l objet porte (carried), leurs energies initiales et la capacite de l objet porte. Usages restants d un objet porte = trunc((energie + 1e-4) / -delta) quand threshold \u003e 0 (FUN_1407e9384). Fabrique par l outil, jamais saisi.",
+  "offsets": {
+    "carried_energy": "eqip+0x8ac (f32), copiee par FUN_140ea3f68",
+    "delta": "eqip+0x904 (bloc) +0x24 (f32), ajoute a l energie par FUN_143181708",
+    "pickup_energy": "eqip+0x8ac (f32), copiee par FUN_140ea3f68",
+    "threshold": "eqip+0x904 (bloc, element de 0x344, FUN_14049a384) +0x1c (f32), lu par FUN_1407e9384"
+  },
+  "entries": [
+    {
+      "sofa": "0xe127ee7b",
+      "pickup": "0x0000d5ff",
+      "carried": "0xc2585202",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.49,
+      "delta": -0.49,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x457923a0",
+      "pickup": "0x03bad9e7",
+      "carried": "0x0dc0d5b4",
+      "pickup_energy": 0.66,
+      "carried_energy": 1,
+      "threshold": 0.33,
+      "delta": -0.33,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x73d35b6d",
+      "pickup": "0x186b28f2",
+      "carried": "0xc12e5469",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.33,
+      "delta": -0.33,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0xcf07da24",
+      "pickup": "0x293c6d11",
+      "carried": "0x169161cd",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.16,
+      "delta": 0,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x6b4bce63",
+      "pickup": "0x2974c233",
+      "carried": "0xc12e5469",
+      "pickup_energy": 0.66,
+      "carried_energy": 1,
+      "threshold": 0.33,
+      "delta": -0.33,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x019ea7fe",
+      "pickup": "0x2a89cca6",
+      "carried": "0xc3b44b2a",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.49,
+      "delta": -0.49,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x9ad0f8b5",
+      "pickup": "0x2b1d75fd",
+      "carried": "0x0108a436",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.49,
+      "delta": -0.49,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x0e1febf8",
+      "pickup": "0x32d97758",
+      "carried": "0x5c8e2316",
+      "pickup_energy": 0.5,
+      "carried_energy": 1,
+      "threshold": 0.1,
+      "delta": -0.5,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x8cf89bf3",
+      "pickup": "0x32f8ef9f",
+      "carried": "0xda692258",
+      "pickup_energy": 0.66,
+      "carried_energy": 1,
+      "threshold": 0.33,
+      "delta": -0.33,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x0d53f2e8",
+      "pickup": "0x38f9c093",
+      "carried": "0xbf8252c5",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.3,
+      "delta": -0.4999,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x7fb4fd78",
+      "pickup": "0x38f9c093",
+      "carried": "0xbf8252c5",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.3,
+      "delta": -0.4999,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x3b54f590",
+      "pickup": "0x4049e345",
+      "carried": "0xa2c50941",
+      "pickup_energy": 0.66,
+      "carried_energy": 1,
+      "threshold": 0.5,
+      "delta": -0.5,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0xeb500815",
+      "pickup": "0x4396db42",
+      "carried": "0x4eebcb18",
+      "pickup_energy": 0.5,
+      "carried_energy": 1,
+      "threshold": 0.25,
+      "delta": -0.25,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x3b0ba8b6",
+      "pickup": "0x4744d742",
+      "carried": "0x2f3f467b",
+      "pickup_energy": 0.5,
+      "carried_energy": 1,
+      "threshold": 0.25,
+      "delta": -0.25,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x683f9563",
+      "pickup": "0x6f729bcf",
+      "carried": "0x06f0fb76",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 1,
+      "delta": -1,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0xa0ed8dfc",
+      "pickup": "0x72199cba",
+      "carried": "0x4d01d90f",
+      "pickup_energy": 0.5,
+      "carried_energy": 1,
+      "threshold": 0.25,
+      "delta": -0.25,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x7f6671b2",
+      "pickup": "0x72b63d69",
+      "carried": "0x5f5f6fef",
+      "pickup_energy": 0.5,
+      "carried_energy": 1,
+      "threshold": 0.25,
+      "delta": -0.25,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x8f1be870",
+      "pickup": "0x730dc70f",
+      "carried": "0xa1344fc2",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 1,
+      "delta": -1,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x077be090",
+      "pickup": "0x79092f17",
+      "carried": "0x0108a436",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.49,
+      "delta": -0.49,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x6845f2b3",
+      "pickup": "0x7ca85adc",
+      "carried": "0x1e79ebda",
+      "pickup_energy": 0.6,
+      "carried_energy": 1,
+      "threshold": 0.2,
+      "delta": -0.2,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0xa8082f65",
+      "pickup": "0x7d1ffc30",
+      "carried": "0xeac9d8ee",
+      "pickup_energy": 0.1,
+      "carried_energy": 1,
+      "threshold": 0.1,
+      "delta": -0.1,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x318756e7",
+      "pickup": "0x874ab754",
+      "carried": "0x4f12e4d8",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.25,
+      "delta": -0.25,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0xfb80ca6f",
+      "pickup": "0x8e2dc574",
+      "carried": "0x37c87a13",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 1,
+      "delta": -1,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x30035934",
+      "pickup": "0xaef6451c",
+      "carried": "0x766dc7b2",
+      "pickup_energy": 0.1,
+      "carried_energy": 1,
+      "threshold": 0.1,
+      "delta": -0.1,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x06e8fb6c",
+      "pickup": "0xb781197a",
+      "carried": "0xfd8a47af",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.99,
+      "delta": -1,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0xf7f8bb42",
+      "pickup": "0xc170c005",
+      "carried": "0x10bea582",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 1,
+      "delta": -1,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0xf22965a0",
+      "pickup": "0xc1c30320",
+      "carried": "0x5db034e1",
+      "pickup_energy": 0.1,
+      "carried_energy": 1,
+      "threshold": 0.1,
+      "delta": -0.1,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x74bd71ee",
+      "pickup": "0xcc52c378",
+      "carried": "0xd5952ce4",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.49,
+      "delta": -1,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x2f9144be",
+      "pickup": "0xdc041111",
+      "carried": "0x0fe153a7",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.33,
+      "delta": -0.33,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x5b864da8",
+      "pickup": "0xe0895097",
+      "carried": "0xb2f072af",
+      "pickup_energy": 0.1,
+      "carried_energy": 1,
+      "threshold": 0.1,
+      "delta": -0.1,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0xda017155",
+      "pickup": "0xe0f24f80",
+      "carried": "0xe7be35f2",
+      "pickup_energy": 0.66,
+      "carried_energy": 1,
+      "threshold": 0.33,
+      "delta": -0.33,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0x2bfccb4a",
+      "pickup": "0xe7be9f5c",
+      "carried": "0xaceaf8f2",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.99,
+      "delta": -1,
+      "module": "any/globals/globals-rtx-new.module"
+    },
+    {
+      "sofa": "0xfb052882",
+      "pickup": "0xef9ed8ef",
+      "carried": "0xc2585202",
+      "pickup_energy": 1,
+      "carried_energy": 1,
+      "threshold": 0.49,
+      "delta": -0.49,
+      "module": "any/globals/globals-rtx-new.module"
+    }
+  ]
+}

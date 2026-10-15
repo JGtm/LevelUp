@@ -46,8 +46,6 @@ export interface UsagesCardsText {
     campWord: string
     meTip: (player: string, name: string, me: number, camp: number) => string
     restTip: (name: string, rest: number, camp: number) => string
-    lossesTitle: string
-    lossesFmt: (lost: number, taken: number) => string
   }
   lives: {
     title: string
@@ -56,7 +54,6 @@ export interface UsagesCardsText {
     near: string
     alone: string
     thinLegend: string
-    rowSub: (lives: number) => string
     tip: (side: string, value: number, total: number, pct: string, what: 'lives' | 'kills') => string
     killsLine: (kills: number, pct: string, perLife: string) => string
     killsLineAlone: (perLife: string, kills: number) => string
@@ -105,14 +102,12 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
     title: 'Contribution aux prises',
     info:
       'Objets pris par l’équipe sur les matchs filmés du périmètre : part du joueur et du reste de l’équipe, en ' +
-      'comptes, par volume décroissant. Bonus perdus : gardés sans être activés, ou lâchés.',
+      'comptes, par volume décroissant.',
     rest: 'Reste de l’équipe',
     foldedFmt: (n) => `(${n}, repliées)`,
     campWord: 'équipe',
     meTip: (player, name, me, camp) => `${player} · ${name}\n${me} des ${camp} prises de l’équipe`,
     restTip: (name, rest, camp) => `Reste de l’équipe · ${name}\n${rest} des ${camp} prises de l’équipe`,
-    lossesTitle: 'Bonus perdus',
-    lossesFmt: (lost, taken) => `${lost} sur ${taken}`,
   },
   lives: {
     title: 'Isolement',
@@ -122,7 +117,6 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
     near: 'À portée d’un coéquipier',
     alone: 'Isolée',
     thinLegend: 'Barre fine : frags du joueur pendant ces vies',
-    rowSub: (lives) => `${frInt(lives)} ${plural(lives, 'vie terminée', 'vies terminées')} par une mort`,
     tip: (side, value, total, pct, what) => `${side}\n${frInt(value)} ${what === 'lives' ? 'vies' : 'frags'} sur ${frInt(total)} (${pct})`,
     killsLine: (kills, pct, perLife) => `frags : ${frInt(kills)} · ${pct} · ${perLife} par vie`,
     killsLineAlone: (perLife, kills) => `${perLife} par vie · ${frInt(kills)}`,
@@ -171,14 +165,12 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
     title: 'Pickup contribution',
     info:
       'Items the team picked up over the filmed matches in scope: the player’s share and the rest of the ' +
-      'team’s, in counts, by decreasing volume. Lost power-ups: held without being activated, or dropped.',
+      'team’s, in counts, by decreasing volume.',
     rest: 'Rest of the team',
     foldedFmt: (n) => `(${n}, folded)`,
     campWord: 'team',
     meTip: (player, name, me, camp) => `${player} · ${name}\n${me} of the team’s ${camp} pickups`,
     restTip: (name, rest, camp) => `Rest of the team · ${name}\n${rest} of the team’s ${camp} pickups`,
-    lossesTitle: 'Lost power-ups',
-    lossesFmt: (lost, taken) => `${lost} of ${taken}`,
   },
   lives: {
     title: 'Isolation',
@@ -188,7 +180,6 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
     near: 'Within range of a teammate',
     alone: 'Isolated',
     thinLegend: 'Thin bar: the player’s kills during those lives',
-    rowSub: (lives) => `${enInt(lives)} ${plural(lives, 'life', 'lives')} ended by a death`,
     tip: (side, value, total, pct, what) => `${side}\n${enInt(value)} ${what === 'lives' ? 'lives' : 'kills'} of ${enInt(total)} (${pct})`,
     killsLine: (kills, pct, perLife) => `kills: ${enInt(kills)} · ${pct} · ${perLife} per life`,
     killsLineAlone: (perLife, kills) => `${perLife} per life · ${enInt(kills)}`,

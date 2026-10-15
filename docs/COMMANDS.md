@@ -122,6 +122,21 @@ go run ./cmd/levelup backfill --all          --weapons        [--force]   # film
 go run ./cmd/levelup backfill --gamertag X --citations-recompute-all
 ```
 
+A match is ranked iff the `RankRecap.PostMatchCsr.InitialMeasurementMatches` of its skill payload is
+> 0 (the OpenSpartan Workshop rule; one decision point, `internal/sync/csr_writes.go`).
+`backfill-is-ranked` repairs `match_registry.is_ranked` from the per-match CSR already written
+(false/NULL to true only, never un-ranks, idempotent). **Server stopped**, `--dry-run` included;
+run it in this order, because LUSR excludes ranked matches and engagement skips matches already
+computed and derives its mode from `is_ranked`:
+```bash
+go run ./cmd/levelup backfill --all --shared-csr
+go run ./cmd/levelup backfill --all --csr
+go run ./cmd/levelup backfill-is-ranked --dry-run
+go run ./cmd/levelup backfill-is-ranked
+go run ./cmd/levelup backfill --all --lusr                       # canonical LUSR v2 recompute
+go run ./cmd/levelup backfill --all --engagement-scores --force  # engagement mode follows is_ranked
+```
+
 Rounds of round-decided modes (ADR 0032) — a column only the API can fill, so a re-sync
 never repairs it. **Server stopped** for `--apply` (single writer, ADR 0013):
 

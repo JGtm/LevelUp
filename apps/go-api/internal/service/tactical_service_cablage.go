@@ -15,6 +15,7 @@ package service
 // qui depend d'une absente rend un 503 ou un compte a part, ET une ligne de journal nominative.
 
 import (
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -84,5 +85,12 @@ func (s *TacticalService) WithWeaponLabels(r port.WeaponLabelResolver) *Tactical
 // WithReplay injecte le service de rejeu 2D, dont seule la présence des artefacts est lue. Chainable.
 func (s *TacticalService) WithReplay(r port.ReplayService) *TacticalService {
 	s.detail.rejeu = r
+	return s
+}
+
+// WithAssetURL injecte l'adapter d'assets du titre, dont seule l'icône de la source de dégât est
+// lue (icône d'arme de la mini-tuile). nil = titre sans adapter : pas d'icône. Chainable.
+func (s *TacticalService) WithAssetURL(a games.TitleAssetURLAdapter) *TacticalService {
+	s.detail.assetURL = a
 	return s
 }

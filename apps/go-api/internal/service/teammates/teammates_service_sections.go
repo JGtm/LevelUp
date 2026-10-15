@@ -94,6 +94,7 @@ func (s *TeammatesService) tableauxDeLaPopulation(
 		out.matchHistory = buildSquadMatchHistory(
 			p.rows, squadStatsToWinTotal(squadStats), s.titleSlug,
 			s.replayAvailability(ctx), s.roundsDecide)
+		attachSquadTotals(out.matchHistory, p.allies, p.playerXUID, p.selectedXUIDs)
 		stop()
 		stop = timing.FromContext(ctx).Section("session_timeline")
 		out.sessionTimeline = buildSquadSessionTimeline(p.rowsTimeline)

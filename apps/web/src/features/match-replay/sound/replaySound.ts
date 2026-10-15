@@ -62,11 +62,13 @@
  *  - un kill À LA MÊLÉE sonne le coup qui a tué, et un kill À LA grenade l'explosion DE SON
  *    TYPE (c'est elle qui a tué, pas le geste du lancer) — les deux passent par la VIGNETTE
  *    de la source de dégât, pas par le weapon_key (cf. ci-dessous) ;
- *  - les POSES D'ÉQUIPEMENT (doc.equipmentPlacements, schéma 10 — mur, capteur) : le GESTE de
+ *  - les POSES D'ÉQUIPEMENT (doc.equipmentPlacements, schéma 10 — le mur seul) : le GESTE de
  *    pose sonne, à `t0`, ET SEULEMENT SI LA POSE EST UN DÉPLOIEMENT MESURÉ
  *    (`placementIsDeployedObject`, la MÊME règle que le calque). Rien ne sonne à la fin : la
  *    disparition d'un mur n'est pas un acte, c'est la fin d'une durée. Une famille sans fichier
- *    (les objets non identifiés, et toutes celles que le nommage ajoutera) reste muette ;
+ *    (les objets non identifiés, et toutes celles que le nommage ajoutera) reste muette. Le
+ *    capteur, le traqueur, le champ de réparation et l'écran occultant sonnent par leur
+ *    UTILISATION datée (`carriedEquipment[].uses`, `carriedUseSound.ts`) ;
  *  - les ÉPISODES D'ÉQUIPEMENT ACTIF (doc.equipmentEpisodes, schéma 7 — camo et
  *    surbouclier, les deux familles MESURÉES) : le début d'épisode sonne l'activation,
  *    la fin sonne la désactivation SEULEMENT quand elle est MESURÉE (`endRead`) — un
@@ -175,6 +177,10 @@ import { padSpawnSoundEvents } from './padSpawnSound'
 import { weaponChangeSoundEvents } from './weaponChangeSound'
 import { equipmentChangeSoundEvents } from './equipmentChangeSound'
 import { abilityImpulseSoundEvents } from './abilityImpulseSound'
+import { KNOCKBACK_SOUND_STEM, knockbackSoundEvents, type RepulsorKillSound } from './knockbackSound'
+import { translocationSoundEvents } from './translocationSound'
+import { riftPoseSoundEvents } from './riftPoseSound'
+import { carriedUseSoundEvents } from './carriedUseSound'
 import { roundOverSoundEvents } from './roundOverSound'
 import { skullSoundEvents } from './skullSound'
 import { zoneSoundEvents } from './zoneSound'
@@ -193,6 +199,10 @@ export { PAD_SPAWN_SOUND_STEM, EQUIPMENT_PAD_SPAWN_SOUND_STEM, padSpawnSoundEven
 export { WEAPON_CHANGE_SOUND_STEMS, weaponChangeSoundEvents } from './weaponChangeSound'
 export { EQUIPMENT_PICKUP_SOUND_STEM, equipmentChangeSoundEvents } from './equipmentChangeSound'
 export { ABILITY_IMPULSE_SOUND_STEMS, abilityImpulseSoundEvents } from './abilityImpulseSound'
+export { KNOCKBACK_SOUND_STEM, knockbackSoundEvents } from './knockbackSound'
+export { TRANSLOCATION_SOUND_STEM, translocationSoundEvents } from './translocationSound'
+export { RIFT_POSE_SOUND_STEM, RIFT_POSE_HIT_OFFSET_MS, riftPoseSoundEvents } from './riftPoseSound'
+export { CARRIED_USE_SOUND_STEMS, carriedUseSoundEvents } from './carriedUseSound'
 export { ROUND_OVER_SOUND_STEMS, roundOverSoundEvents } from './roundOverSound'
 
 /**
@@ -334,6 +344,12 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * Son d'une POSE d'équipement par FAMILLE (`family` du document, schéma 10) -> stem du fichier
  * joué à `t0`, l'instant du geste.
  *
+ * CETTE TABLE NE PORTE PLUS QUE LE MUR (2026-10-15). Le film ne produit plus de pose `deployed` pour
+ * le capteur, le traqueur, le champ de réparation et l'écran occultant depuis la règle du 15/09 : ils
+ * sonnent désormais par leur UTILISATION datée (`carriedEquipment[].uses`, `carriedUseSound.ts`),
+ * avec les stems dont la provenance est écrite ci-dessous. Une famille n'est que dans l'une des deux
+ * tables : le mur, dont la pose suit l'utilisation de deux ou trois images, sonnerait deux fois.
+ *
  * UNE TABLE DISTINCTE DE `EQUIPMENT_SOUND_STEMS`, et ce n'est pas une duplication : les deux
  * parlent d'équipement, mais pas du même OBJET. L'une porte des ÉPISODES D'ÉTAT sur le
  * porteur (camouflage, surbouclier : un début ET une fin mesurés) ; celle-ci porte des OBJETS
@@ -386,18 +402,14 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * ÉGALISATION : crête vraie plafonnée à -1,0 dBTP par gain LINÉAIRE (-0,8 / -1,0 / -2,0 dB),
  * plafond du lot R2-S, même convention que `repair_field_end`.
  *
- * LA BALISE DU TRANSLOCATEUR RESTE MUETTE, ET SON SILENCE A CHANGÉ DE RAISON. Sa banque est
- * TROUVÉE (`dcfaa487`, 70 `.wem`, atteinte par les deux seuls `eqip` `quantum_translocator` du
- * jeu) — mais elle porte ONZE gestes distincts (8 `snd!`, 11 événements, de 0,83 à 4,53 s), et
- * RIEN dans les tags ne dit lequel est la pose de la balise : les noms de champs d'un `eqip`
- * ne sont pas lisibles hors ligne. Choisir serait deviner. La recette des armes tranche ce cas
- * par le VOTE (« les votes priment sur tout critère », `RECETTE_SONS_ARMES` §5) : il faut une
- * écoute, pas une mesure de plus.
+ * LA FAILLE DU TRANSLOCATEUR NE SONNE PAS PAR CETTE TABLE : sa pose n est pas une pose d objet du
+ * monde, c est l énergie du translocateur PORTÉ qui tombe à zéro (`riftPoses`, schéma 95). Elle
+ * sonne par `riftPoseSound.ts`, sa téléportation par `translocationSound.ts`.
  *
- * RESTENT MUETS AUSSI, par décision et non par manque : le répulseur (que `PLACEMENT_RENDER`
- * ne DESSINE pas non plus — c'est une capacité qui agit sur son porteur, pas un objet posé ;
- * son activation n'est dans aucun canal, négatif mesuré sur neuf le 2026-09-03, et son seul
- * son reste celui de son kill), les deux bonus, et l'objet non identifié `other` (il a pourtant
+ * RESTENT HORS DE CETTE TABLE, par décision et non par manque : le répulseur (que `PLACEMENT_RENDER`
+ * ne DESSINE pas non plus — c'est une capacité, pas un objet posé ; il sonne par sa poussée
+ * (`knockbackSound.ts`) et par son kill),
+ * les deux bonus, et l'objet non identifié `other` (il a pourtant
  * SA banque, `92c830f5`, 38 `.wem` — mais un objet qu'on ne sait pas nommer n'a pas à
  * s'annoncer, et son dessin dépend d'une bascule que le son ne partage pas). LE GRAPPIN
  * (lot G, 2026-08-20) ET LE PROPULSEUR (2026-09-03) N'EN SONT PLUS : ils sonnent par LEURS
@@ -425,34 +437,6 @@ export const EQUIPMENT_PLACEMENT_SOUND_STEMS_END: Readonly<Record<string, string
 
 export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> = {
   wall: 'wall_activate',
-  sensor: 'sensor_activate',
-  // Même appareil que le capteur, un mode près : même geste de pose, donc même son.
-  threat_seeker: 'sensor_activate',
-  // Extrait du jeu le 2026-08-18 par la chaîne `eqip -> effe -> snd! -> sbnk` (cf. ci-dessus).
-  repair_field: 'repair_field_activate',
-  // LE TRANSLOCATEUR SONNE DEPUIS LE 2026-08-27, ET SA SOURCE N'EST NI LA CHAÎNE DE TAGS NI LE
-  // HACHAGE : c'est l'UTILISATEUR qui a extrait le son du jeu et l'a désigné. Après deux jours
-  // de recherche dans sa banque (`sb_007_abl_quantum`, 23 événements, 4 noms cassés) et l'échec
-  // mesuré d'une comparaison spectrale contre une capture vidéo, c'est la voie qui a abouti —
-  // et c'est la règle du chantier depuis le début : « les votes priment sur tout critère »
-  // (`RECETTE_SONS_ARMES` §5). Le fichier est son extraction, ré-échantillonnée à 48 kHz et
-  // plafonnée à -1 dBTP comme tous les autres, rien de plus.
-  //
-  // CE QUE LE SON EST, dans ses mots : « la première activation, la dépose de la faille
-  // spatio-temporelle ». Ce n'est donc PAS une balise lancée — l'équipement se porte au poignet
-  // et ouvre une faille sur la position exacte du joueur. Le nom de famille du calque
-  // (`translocator_beacon`) et son libellé (« balise ») portent encore l'ancienne lecture ;
-  // les corriger touche le manifeste ET le dessin, c'est un lot à part.
-  //
-  // L'USAGE (la téléportation elle-même) est livré sous `translocator_teleport` mais N'EST PAS
-  // branché : le film ne publie aucun événement pour le retour, seulement la POSE. Le livrer
-  // sans déclencheur en ferait un asset mort, que le garde-rail refuse à juste titre.
-  translocator_beacon: 'translocator_deploy',
-  // L ECRAN OCCULTANT, nomme le 2026-08-27. Il etait la DERNIERE famille dessinee sans son, et
-  // ce qui le tenait muet n etait pas le son — `play_007_abl_shroud_deploy_player` est casse
-  // depuis le 2026-08-26 — mais la FAMILLE : l objet s appelait `other` au manifeste, faute
-  // d une voie de nommage. Sa banque sonore l a donnee (`sb_007_abl_shroud`).
-  shroud_screen: 'shroud_deploy',
 }
 
 /**
@@ -636,6 +620,8 @@ export function buildSoundTimeline(
   // Les explosions programmées PAR UN KILL, retenues au passage : ce sont elles qui
   // dédoublonnent les fins de vol, et elles doivent donc être connues avant.
   const killExplosions: ReplaySoundEvent[] = []
+  // Les kills au répulseur programmés : la poussée du même instant ne se rejoue pas (knockbackSound.ts).
+  const repulsorKills: RepulsorKillSound[] = []
   if (kills.length > 0 && doc.tracks.length > 0) {
     for (const k of kills) {
       const snd = killSound(k)
@@ -643,6 +629,7 @@ export function buildSoundTimeline(
       const ev = soundEvent(k.replayMs, snd.stem)
       out.push(ev)
       if (snd.category === 'grenade') killExplosions.push(ev)
+      if (snd.stem === KNOCKBACK_SOUND_STEM) repulsorKills.push({ ms: ev.ms, xuid: k.xuid })
     }
   }
   // Le filtre « grenades » couvre les DEUX formes de l'objet, comme depuis le 16/08 : couper
@@ -704,6 +691,15 @@ export function buildSoundTimeline(
     // film et validé 5/5 contre un relevé Theater. Un son par impulsion publiée, à sa frame ;
     // aucune fin sonnée — le geste EST une impulsion. Table par famille : `abilityImpulseSound.ts`.
     out.push(...abilityImpulseSoundEvents(doc))
+    // LA POUSSÉE DU RÉPULSEUR (schéma 94) et LA TÉLÉPORTATION DU TRANSLOCATEUR (schéma 38) : deux
+    // gestes que le film date. Doctrine : `knockbackSound.ts`, `translocationSound.ts`.
+    out.push(...knockbackSoundEvents(doc, repulsorKills))
+    out.push(...translocationSoundEvents(doc))
+    // LA POSE DE LA FAILLE (schéma 95) : son COUP à l'instant de la pose. Doctrine : `riftPoseSound.ts`.
+    out.push(...riftPoseSoundEvents(doc))
+    // L'UTILISATION du capteur, du traqueur, du champ et de l'écran (schéma 95), à l'image où le film
+    // la date. Doctrine : `carriedUseSound.ts`.
+    out.push(...carriedUseSoundEvents(doc))
   }
   // Les ACTIONS D'OBJECTIF : chacune sonne à sa frame, dans le camp de son auteur. Sans
   // résolveur de camp (appelant qui n'a pas l'allégeance du film), les seules actions qui

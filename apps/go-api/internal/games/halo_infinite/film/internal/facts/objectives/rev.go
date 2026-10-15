@@ -165,6 +165,14 @@ package objectives
 // IDENTIQUES sur les 20 films de reference (binaires de `3aa885e37` contre ceux du lot). Golden
 // regenere a revision constante. Les deux rangs (`.2`, `.3`) sont renumerotes a la fusion de `feat/v75`
 // `54b47a2b8` (chronique de `grammar`) ; l etape `objectives` rejouee contre `54b47a2b8` est identique.
+//
+// COMPLEMENT DU 2026-10-14 (lot F du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/aj14-f`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-14` — elle entre PAR VALEUR dans l amont
+// de cette couche — : la lecture de la vue A range ses messages de poussee (genres 104 et 105) et
+// `film/types` gagne `Knockback` et `KnockbackStats`. Les objectifs ne lisent pas les poussees.
+// PREUVE : `replay-equiv` sur les 20 films du corpus, binaires de `feat/v75` `d33f21227` contre ceux du
+// lot : etapes `objectives` et `killsource` IDENTIQUES sur les 20, comme toutes les autres etapes hors
+// l etape neuve `knockbacks` et l artefact. Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

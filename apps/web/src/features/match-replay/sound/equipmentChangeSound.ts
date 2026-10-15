@@ -12,7 +12,8 @@
  *
  * Consommer un équipement, c'est l'UTILISER — et l'utilisation sonne déjà par sa propre
  * famille : le camouflage et le surbouclier par leurs épisodes (`equipmentEpisodes`), le mur
- * et le capteur par leur pose (`equipmentPlacements`), le grappin par sa traction
+ * par sa pose (`equipmentPlacements`), le capteur, le traqueur, le champ de réparation et
+ * l'écran occultant par leur utilisation (`carriedEquipment[].uses`), le grappin par sa traction
  * (`grappleLines`), le répulseur par son kill. Un jingle générique de « consommation »
  * DOUBLERAIT ces sons-là au même instant. Les familles dont l'usage n'est pas encore mesuré
  * restent muettes — même règle que partout : on ne devine pas.

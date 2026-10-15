@@ -5,26 +5,20 @@
  *
  *   1. « Objectif » (aide du rapport de force sur l'intertitre) : les cadres « Rapport de force »
  *      par famille de mode, posés à même la section, légende dessous | « Rapport de force au fil
- *      de la session », côte à côte ; puis « Rapport de force, soirée après soirée », pleine
- *      largeur ;
+ *      de la session », côte à côte (« Rapport de force, soirée après soirée » est dans la section
+ *      « Soirées précédentes », `SquadPreviousSessionsSection`) ;
  *   2. « Répartition de l'objectif dans l'escouade » (aide sur l'intertitre) : une fiche par
  *      joueur de l'escouade, à même la section comme les médailles. Pas de fiche du reste du camp.
  *
- * AUCUNE REQUÊTE NEUVE : le bloc `formes_retenues` (périmètre D2), l'historique de matchs de la
- * page (résultat, score, dominance, L3.2) et `squad_objective_history` arrivent avec la réponse
- * de `useTeammates`. Sans match à objectif dans le périmètre, les deux sections se retirent,
+ * AUCUNE REQUÊTE NEUVE : le bloc `formes_retenues` (périmètre D2) et l'historique de matchs de la
+ * page (résultat, score, dominance, L3.2) arrivent avec la réponse de `useTeammates`. Sans match à objectif dans le périmètre, les deux sections se retirent,
  * intertitres compris (`hasSquadObjective`).
  */
 import { useCallback, useMemo } from 'react'
 
 import { SectionTitle } from '@/components/ui/detail-section'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
-import type {
-  MedalDigestEntry,
-  SquadFormesBlock,
-  SquadMatchHistoryRow,
-  SquadObjectiveHistory,
-} from '@/lib/api/types'
+import type { MedalDigestEntry, SquadFormesBlock, SquadMatchHistoryRow } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import { dominanceLabels } from '@/lib/narrative/dominance'
 
@@ -33,7 +27,6 @@ import { FORMES_TEXT } from '../formes/i18n'
 import { useSquadPlayerPalette } from '../useSquadPlayerPalette'
 import { buildObjectiveBalance, buildObjectiveSheets, buildSessionFil, hasSquadObjective, squadSheetsOnly } from './objectif.logic'
 import { ObjectiveBalanceCard } from './ObjectiveBalanceCard'
-import { ObjectiveEveningsCard } from './ObjectiveEveningsCard'
 import { ObjectiveSessionFilCard } from './ObjectiveSessionFilCard'
 import { ObjectiveSheetsCard, type SheetIdentity } from './ObjectiveSheetsCard'
 import { OBJECTIF_TEXT } from './objectifStrings'
@@ -41,7 +34,6 @@ import { OBJECTIF_TEXT } from './objectifStrings'
 interface Props {
   block: SquadFormesBlock | null | undefined
   matchHistory: SquadMatchHistoryRow[]
-  objectiveHistory: SquadObjectiveHistory | null | undefined
   /** Les emblèmes des joueurs (fiches de médailles), par gamertag. */
   medalDigest: MedalDigestEntry[]
   /** Le nom du joueur de la page (`main_player`), dernier repli de son libellé. */
@@ -54,7 +46,6 @@ const EMPTY_BLOCK: SquadFormesBlock = { available: false, matches_measured: 0, m
 export function SquadObjectiveSection({
   block,
   matchHistory,
-  objectiveHistory,
   medalDigest,
   mainPlayerLabel,
   locale,
@@ -86,20 +77,15 @@ export function SquadObjectiveSection({
           {t.sectionTitle}
           <InfoTooltip content={t.balance.info} />
         </SectionTitle>
-        <div className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <ObjectiveBalanceCard families={balance} familyLabel={familyLabel} columns={columns} t={t} bare />
-            <ObjectiveSessionFilCard
-              matches={fil}
-              familyLabel={familyLabel}
-              dominanceLabels={dominance}
-              locale={locale}
-              t={t}
-            />
-          </div>
-          {objectiveHistory && (
-            <ObjectiveEveningsCard history={objectiveHistory} familyLabel={familyLabel} locale={locale} t={t} />
-          )}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ObjectiveBalanceCard families={balance} familyLabel={familyLabel} columns={columns} t={t} bare />
+          <ObjectiveSessionFilCard
+            matches={fil}
+            familyLabel={familyLabel}
+            dominanceLabels={dominance}
+            locale={locale}
+            t={t}
+          />
         </div>
       </section>
       <section className="space-y-2" data-testid="squad-objective-sheets-section">

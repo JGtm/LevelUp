@@ -1,6 +1,6 @@
 /**
  * ObjectiveEveningsCard — « Rapport de force, soirée après soirée » (Escouade › Emprise,
- * section Objectif ; lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, D6 / D7,
+ * section Soirées précédentes, à droite de « Contrôle des ressources, par soirée » ; lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, D6 / D7,
  * maquette C3EW).
  *
  * Un graphe, trois courbes de rôle, une soirée par point : les soirées précédentes de la
@@ -27,8 +27,11 @@ import { resolveObjectifColors } from './objectifCharts'
 import { ObjectifFrame, ObjectifLegend, ObjectifPlaceholder, type ObjectifLegendItem } from './ObjectifFrame'
 import type { ObjectifNotice, ObjectifText } from './objectifStrings'
 
-/** Hauteur du graphe (maquette : 760 × 290). */
-const EVENINGS_HEIGHT = 290
+/**
+ * Hauteur du graphe (maquette : 760 × 290). Partagée avec « Contrôle des ressources, par soirée »,
+ * posée dans la même rangée : les deux cartes s'étirent à la plus haute et leurs graphes s'alignent.
+ */
+export const EVENINGS_HEIGHT = 290
 
 interface Props {
   history: SquadObjectiveHistory
@@ -95,7 +98,7 @@ export function ObjectiveEveningsCard({ history, familyLabel, locale, t }: Props
   }
 
   return (
-    <div className="min-w-0" data-testid="objective-evenings">
+    <div className="h-full min-w-0" data-testid="objective-evenings">
       <ChartCard
         title={
           <span className="flex items-center gap-1.5">
@@ -105,6 +108,7 @@ export function ObjectiveEveningsCard({ history, familyLabel, locale, t }: Props
         }
         series={series}
         height={EVENINGS_HEIGHT}
+        fluid
         renderer="svg"
         buildOption={buildOption}
         legend={legend}

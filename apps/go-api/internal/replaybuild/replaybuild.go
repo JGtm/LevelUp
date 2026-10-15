@@ -33,6 +33,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/equipenergy"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
@@ -70,8 +71,11 @@ type Builder struct {
 	// pads / padsTried : le catalogue versionne des socles, d'ou sortent les POINTS
 	// D'APPARITION (cf. spawnpoints.go). Meme motif que `objectives` — chargement unique par
 	// Builder, et un booleen qui distingue « pas encore charge » de « tente et echoue ».
-	pads            *replay.MapWeaponPadsCatalog
-	padsTried       bool
+	pads      *replay.MapWeaponPadsCatalog
+	padsTried bool
+	// energie / energieTried : le catalogue versionne de l energie des equipements (cf. energie.go).
+	energie         *equipenergy.Catalog
+	energieTried    bool
 	objectivesTried bool
 	// roles / rolesTried : la table de roles d objectif du titre, d ou sortent les zones du
 	// calque d ETAT DES ZONES (cf. zones.go). Meme cache, meme raison que ci-dessus.

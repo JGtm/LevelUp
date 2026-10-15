@@ -1,6 +1,6 @@
 // Package sync — transforms_helpers_unit_test.go : tests unitaires des helpers purs.
 //
-// Couvre les fonctions stateless qui étaient à 0% : findCoreStats, isRankedPlaylist,
+// Couvre les fonctions stateless qui étaient à 0% : findCoreStats,
 // isFirefightMatch, ExtractTeamScoresByID, asString, strPtrNonEmpty, coalesceStrPtr,
 // intPtrFrom, floatPtrFrom, intFrom, int64From.
 package sync
@@ -217,63 +217,6 @@ func TestFindCoreStats_NoCoreStats(t *testing.T) {
 	}
 	if core := findCoreStats(player); core != nil {
 		t.Error("expected nil when CoreStats missing")
-	}
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// isRankedPlaylist
-// ─────────────────────────────────────────────────────────────────────────────
-
-func TestIsRankedPlaylist_ByName(t *testing.T) {
-	info := map[string]any{
-		"Playlist": map[string]any{
-			"PublicName": "Ranked Arena",
-		},
-	}
-	if !isRankedPlaylist(info) {
-		t.Error("should detect ranked by name")
-	}
-}
-
-func TestIsRankedPlaylist_ByTag(t *testing.T) {
-	info := map[string]any{
-		"Playlist": map[string]any{
-			"PublicName": "Competitive",
-			"Tags":       []any{"Ranked"},
-		},
-	}
-	if !isRankedPlaylist(info) {
-		t.Error("should detect ranked by tag")
-	}
-}
-
-func TestIsRankedPlaylist_NoPlaylist(t *testing.T) {
-	info := map[string]any{}
-	if isRankedPlaylist(info) {
-		t.Error("should not detect ranked without playlist")
-	}
-}
-
-func TestIsRankedPlaylist_CaseInsensitive(t *testing.T) {
-	info := map[string]any{
-		"Playlist": map[string]any{
-			"PublicName": "RANKED arena",
-		},
-	}
-	if !isRankedPlaylist(info) {
-		t.Error("should be case-insensitive")
-	}
-}
-
-func TestIsRankedPlaylist_UnrankedPlaylist(t *testing.T) {
-	info := map[string]any{
-		"Playlist": map[string]any{
-			"PublicName": "Quick Play",
-			"Tags":       []any{"social"},
-		},
-	}
-	if isRankedPlaylist(info) {
-		t.Error("Quick Play should not be ranked")
 	}
 }
 

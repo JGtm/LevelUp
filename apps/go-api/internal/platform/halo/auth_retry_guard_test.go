@@ -21,6 +21,11 @@ var tokenGatedEntryPoints = map[string][]string{
 		"func (p *HaloProvider) GetBattlePassWithRaw(",
 		"func (p *HaloProvider) GetChallengesWithRaw(",
 	},
+	// Le calendrier de saisons est un fichier GameCMS commun au titre, mais l'appel est signé du
+	// jeton du lecteur : même péremption possible, même filet (D5 du lot aj14-d, 2026-10-14).
+	"season_provider.go": {
+		"func (p *HaloProvider) FetchSeasonCalendar(",
+	},
 	"compare_provider.go": {
 		"func (p *HaloProvider) FetchServiceRecord(",
 		"func (p *HaloProvider) FetchSeasonServiceRecord(",

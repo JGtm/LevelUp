@@ -21,7 +21,10 @@ MATCH. Ce qui remonte au grain session est une autre affaire — §3.
 | `equipmentPlacements` `origin: dropped` | Ce qui TOMBE d'un porteur — déployables **et bonus** — quelle qu'en soit la cause | Par pose | **LU, PLUS MESURÉ, DEPUIS LE 2026-09-15 (lot 1.9.1)** : une pose est `dropped` quand le film ÉCRIT une MORT du poseur (tolérance 200 ms, mesurée : max 171,7 ms d'un côté, min 205,3 ms de l'autre, intervalle VIDE de 33,6 ms) OU une PRISE du poseur (`equipmentChanges.taken`, 50 ms — 103 des 108 prises retenues sont à moins d'une ms). **L'étiquette ne distingue pas les deux lâchers** (décision utilisateur) : la CAUSE se lit dans `coverage.placements.byCause`. La fenêtre temporelle de 200 ms qui classait ces poses A ÉTÉ RETIRÉE — elle ne décide plus rien |
 | `equipmentChanges` | Les RAMASSAGES (`taken`) et les CONSOMMATIONS (`spent`), datés à la ms | Par VIE (`Slot`) | Les annonces de RÉAPPARITION en sont écartées. Témoin de complétude : ~16 émissions manquées sur 319 sur trois films ; **71 sur 1 954 = 3,63 % sur les 64 artefacts du parc** (mesure E0 du 2026-09-09, §2) |
 | `grappleLines` | Les TRACTIONS de grappin — la seule activation de capacité mesurée et attribuée | Par VIE | — |
-| `abilityCharges` | Les CHARGES RESTANTES, lues au changement | Par VIE | **Grappin et propulseur SEULEMENT.** Rien n'est transmis au ramassage, donc le maximum n'est pas établissable. Le répulseur n'arme jamais ce canal (négatif mesuré, rapport R11) |
+| `abilityCharges` | Les CHARGES RESTANTES, lues au changement | Par VIE | **Grappin et propulseur SEULEMENT.** Rien n'est transmis au ramassage, donc le maximum n'est pas établissable. Le répulseur n'arme jamais ce canal (négatif mesuré, rapport R11 ; revérifié le 2026-10-14 sur l'état complet des images-clés : masque d'i56 à 000 pendant tout le port, avant et après les poussées) |
+| `knockbacks` | Les POUSSÉES du répulseur : le joueur poussé, l'auteur (`by`), la vitesse imposée (`vx/vy/vz`) | Par poussée (schéma 94) | C'est l'EFFET, pas le geste : la paire de messages de la vue A `EquipmentObjectKnockedBack` (105 : objet poussé, auteur) puis `EquipmentKnockbackPlayer` (104 : joueur poussé, impulsion), même référence 0, même liste (`grammar/vue_a_poussees.go`, `grammar/poussees.go`). Un souffle qui ne pousse AUCUN joueur n'écrit pas de 104 : il n'est pas publié. Un 104 sans son 105 n'est pas publié (`coverage.knockbacks.unpaired`) |
+| `carriedEquipment` | L'ÉQUIPEMENT PORTÉ, objet par objet : porteur, rang, prise `t0`, fin `t1`, l'ÉNERGIE à chaque lecture avec les USAGES RESTANTS `n`, et les ACTIVATIONS `uses` | Par objet porté (schéma 95) | L'objet ti=37 que le jeu crée attaché au porteur DANS LE PAQUET de son annonce i48 (le rang nomme la famille) ; son énergie i24, son activation i21 (porte 1), sa suppression (`grammar/equipement_porte.go`). `n` = trunc((énergie + 1e-4) / coût), la règle du HUD (`FUN_1407e9384`), le coût lu dans les tags du jeu (`data/titles/halo_infinite/reference/equipment_energy.json`, `cmd/equipenergy-build`). Pas de `n` pour le grappin et le propulseur (leur capacité ne compte pas par l'énergie ; `abilityCharges` les compte), ni pour une famille dont les fiches ne s'accordent pas sans l'énergie de la prise (`coverage.carriedEquipment.ambiguousCost`) |
+| `riftPoses` | Les POSES de la faille du translocateur : l'instant, l'activation `a` qui la précède, la position | Par pose (schéma 95) | La pose = l'énergie du translocateur porté tombe à 0 (puis i28 gagne une entrée), toujours 1,62-1,64 s après une activation i21 (123/123 au parc). La position est l'arrivée du PREMIER échange qui suit : une pose sans échange est datée sans position |
 | `abilityLabels` | Nomme les RANGS de capacité, palette propre au match | Match | Une capacité non classée ne reçoit aucun nom. **25,21 % des rangs lus par `equipmentChanges` ne sont pas nommés** — dont 8 artefacts sur 64 SANS table du tout (mesure E0, §2) |
 | `padPickups` × `weaponPads` | Les socles d'ARME (famille en 8 hexa) et les socles de BONUS vidés (`powerup_*`) | Match, ramasseur nommé depuis le schéma 30 | Un socle de bonus n'est jamais rattachable à un joueur |
 
@@ -53,12 +56,30 @@ Détail, méthode, témoins et commandes rejouables :
 
 ### Négatifs MESURÉS — ne pas les rechercher à nouveau
 
-- **Le répulseur n'est dans AUCUN des neuf canaux jugés.** Cas décisif : un joueur le porte
+- **CORRIGÉ LE 2026-10-14 (lot F du plan d'ajustements) — GESTE CONTRE EFFET.** Le GESTE du
+  répulseur (l'activation, avec ou sans cible) n'est dans aucun canal lu ; son EFFET l'est : chaque
+  joueur poussé est écrit dans la vue A par la paire 105 -> 104 (`knockbacks`, schéma 94). Mesure :
+  135 paires sur 235 films (contexte de la cuisson), aucun 104 isolé, normes de l'impulsion 6,00 /
+  5,50 / 5,72 m/s seulement ; les témoins `0d9a9af9`, `215e7022` et `a6ae19fb` portent 15 paires
+  (3, 2, 10), et les 14 rattachées à une piste accélèrent le joueur poussé dans les 300 ms ; auteur
+  porteur du répulseur 130 sur 130. Le paragraphe qui suit reste vrai pour le canal i56.
+- **CORRIGÉ LE 2026-10-14 (lot « équipement porté ») — LE GESTE ET LES CHARGES SONT LUS SUR L'OBJET
+  PORTÉ.** Le négatif « l'entité ti=37 portée n'émet rien » (R11 §7.2) venait d'une lecture fausse :
+  `i28` (pile des poignées suivies) était lu avec une entrée de trop, et toute trame qui le portait
+  sortait par un rejet (0 sur 4 839 fermées au parc, 4 726 sur 4 841 après correction,
+  `FUN_140f72dec`). L'objet porté écrit son ÉNERGIE (i24) et chaque ACTIVATION (i21) : répulseur
+  `0d9a9af9` 0,6 -> 0,4 -> 0,2 -> 0 aux trois activations, suppression = `spent` ; ramassé à 0,6 sur
+  `72b0a25e` = 3 charges au Theater. Coût par usage et énergie initiale : tags du jeu
+  (`equipment_energy.json`). Publication : `carriedEquipment` (schéma 95). Le PROPULSEUR, lui, n'écrit
+  rien sur son objet (1cd3848a, 5 usages, aucun delta) : i56 reste sa voie.
+- **Le répulseur n'arme pas le canal i56** (jugé avec huit autres AVANT la correction d'i28 ; l'objet
+  porté, lui, le date — ci-dessus). Cas décisif : un joueur le porte
   68 s, le film annonce lui-même la consommation de sa dernière charge, et le compteur reste
   muet — pendant qu'il compte le grappin de trois autres joueurs du même match.
 - **Le propulseur EST mesuré** (`abilityImpulses`, schéma 38, validé 5/5 contre un relevé
   Theater). S'il n'a pas de colonne, c'est une DÉCISION, pas une absence de donnée.
-- **On ne compte pas les charges** — décision utilisateur du 2026-09-09.
+- ~~**On ne compte pas les charges** — décision utilisateur du 2026-09-09.~~ Remplacée le 2026-10-14 :
+  le user demande les usages restants, lus sur l objet porté et comptés par la règle du jeu (voie A).
 
 ## 1 bis. DEUX FAMILLES D'ÉQUIPEMENT, DEUX DÉFINITIONS DE « UTILISÉ »
 
@@ -74,7 +95,22 @@ C'est la clé de tout le sujet, et c'est ce que j'avais raté (décision utilisa
 | Grappin | `grappleLines` (tractions, fenêtre datée + point d'accroche) | mesuré |
 | Translocateur | `translocations` (événement du film type 117, jamais déduit d'un seuil) | mesuré |
 | Propulseur | `abilityImpulses` (schéma 38, validé 5/5 contre relevé Theater) | mesuré |
-| **Répulseur** | **AUCUN** | **NÉGATIF MESURÉ** — 9 canaux fouillés (événements, i57/i59, tag 3, poses, i48, i54, i56, masque bipède, entité ti=37). Une colonne dirait « 0 utilisation » là où la vérité est « non mesuré » |
+| **Répulseur** | `carriedEquipment[].uses` (activations i21 de l'objet porté, schéma 95) ; l'effet : `knockbacks` (schéma 94) | **MESURÉ depuis le schéma 95** — avant : 9 canaux fouillés (événements, i57/i59, tag 3, poses, i48, i54, i56, masque bipède, entité ti=37). La poussée (`knockbacks`) en est l'effet ; un usage dans le vide ne pousse personne, mais il s'écrit sur l'objet porté (activation i21, énergie i24) |
+
+> **TRANSLOCATEUR, GESTE CONTRE EFFET (2026-10-14, corrigé le même jour par le lot « équipement
+> porté »).** La TÉLÉPORTATION est un effet écrit (`translocations`, type 117). La POSE de la faille
+> n'est désignée par aucun 103 ni par aucune création ti=37 : elle se lit sur l'objet PORTÉ, dont
+> l'énergie tombe à 0 (puis i28 gagne une entrée) 1,62-1,64 s après l'activation i21 — `riftPoses`
+> (schéma 95). Témoins à la frame : `1b2d9e08` 164,06 s, `6acce632` 53,3 / 158,5 / 304,2 s. Le son
+> de pose (`translocator_deploy`) part 1,045 s avant la pose (`riftPoseSound.ts`).
+
+> **SONS D'UTILISATION (2026-10-15, décision utilisateur).** Le capteur, le traqueur, le champ de
+> réparation et l'écran occultant n'ont plus de pose `deployed` depuis la règle du 15/09 (ligne
+> `equipmentPlacements` ci-dessus) : ils sonnent à leur utilisation datée, `carriedEquipment[].uses`
+> (`carriedUseSound.ts`), avec leurs stems d'avant. Chaque utilisation est suivie, une ou deux images
+> plus tard, de la baisse d'énergie d'un coût (30 sur 30 sur `5676a9ba` et `1f8e8849`). Le mur garde
+> sa pose `deployed`, deux ou trois images après son utilisation. La FIN du champ de réparation
+> (`repair_field_end`) reste attachée à une pose `deployed` du champ : elle ne part donc jamais.
 
 **B — Les équipements DÉPLOYABLES.** On les pose sur le terrain. « Utilisé » = **la charge
 consommée** (`equipmentChanges` `spent`) — SAUF pour le mur, « utilisé » = **posé**.
@@ -372,7 +408,7 @@ Tous passent par `platform/duckdb/session_usage_repo.go`, sur les vues `_latest`
 | D6 (vague C) | La page Sessions ne prend que des graphes normalisés (parts en %, cadences par 10 min) | Ferme |
 | D9 (vague C) | « Déployé » et « lâché » fusionnés en UNE colonne par famille, barre empilée, échelle commune | **CORRIGÉE le 2026-09-09** : les power-ups n'en sortent plus. La règle est « deux définitions de utilisé » (§1 bis), pas « bonus vs déployable » |
 | — (2026-09-09) | Les deux lectures — « est-ce que je fais ma part » et « est-ce que je gaspille » — sont COMBINÉES en une barre : sa longueur est ma part de l'équipe, son remplissage est l'issue, le nombre à droite est mon TAUX D'UTILISATION | Ferme, à dessiner |
-| — (2026-09-09) | On ne compte pas les charges | Ferme |
+| — (2026-09-09) | On ne compte pas les charges | **Remplacée le 2026-10-14** (voie A, user) : usages restants publiés, `carriedEquipment[].energy[].n` |
 | — (2026-09-09) | Un objet gardé jusqu'à la fin du match compte comme NON UTILISÉ | Ferme, **branché** : vue match (E2), résumé de session (E3, `us4`) |
 
 **Amendement proposé à D9.** Son raisonnement — les bonus ne se déploient jamais, donc leur
@@ -410,6 +446,11 @@ Trois affirmations fausses à ne pas répéter :
   poseur, sa PRISE écrite. **La fenêtre de 200 ms a été retirée du décodeur**, et ses deux
   entrées sont sorties du registre des replis le même jour : une pose dont le film ne dit rien
   sort `unknown`. `coverage.placements.byCause` dit, film par film, ce qui a décidé.
+- ~~« Le film ne porte rien du répulseur. »~~ (2026-10-14) → il porte ses POUSSÉES (`knockbacks`,
+  paire 105 -> 104 de la vue A), pas ses activations : distinguer le GESTE et l'EFFET.
+- ~~« L objet d équipement porté n émet rien ; on ne lit pas ses activations. »~~ (2026-10-14, lot
+  « équipement porté ») → c était la lecture d i28 à une entrée de trop qui perdait ces trames : l objet
+  porté écrit son énergie et ses activations (`carriedEquipment`), et la pose de la faille (`riftPoses`).
 - ~~« Un déployable posé à mi-vie est déployé. »~~ (2026-09-15, décision utilisateur) → non : un
   appareil PORTÉ qui tombe est **lâché** (`dropped`), que son porteur meure ou qu'il ramasse
   autre chose. `deployed` ne désigne plus que ce qu'un événement 103 nomme — les panneaux de mur.

@@ -19,10 +19,13 @@
  * sous le plancher (non servie) reste vide, jamais « réchauffée » par ses voisines au-delà de ce
  * débord.
  *
+ * LIEU PARTAGÉ : la Tactique (plan, vignette) et « Occupation du terrain » de la Vue match peignent
+ * la même chaleur ; le lissage et le flou des bords vivent ici, aucune feature n'importe l'autre.
+ *
  * LA GRILLE RESTE LE MODÈLE DE SÉLECTION : le clic s'adresse toujours à une cellule servie
  * (`choixDuClic`), le lissage ne change que la peinture.
  */
-import type { TacticalGrid } from '@/lib/replay/heatPaint'
+import { drawTacticalHeatmap, type TacticalGrid } from './heatPaint'
 
 /** Écart type du noyau, en pas de grille. */
 const SIGMA_PAS = 0.75
@@ -87,4 +90,44 @@ export function lisserLaGrille(grille: TacticalGrid): TacticalGrid | null {
   }
   if (cells.length === 0) return null
   return { ...grille, cell: grille.cell / sous, nx, ny, cells, filled: cells.length }
+}
+
+/**
+ * Le flou des bords de la chaleur, en pas de la grille SERVIE : il lisse le contour en escalier des
+ * sous-cellules sans déplacer les taches. GARDÉ FAIBLE À DESSEIN : un flou plus large éteignait la
+ * tache d'une cellule isolée — souvent la plus chaude — au profit des amas tièdes.
+ */
+const FLOU_PAS = 0.15
+
+/** flouDeLaChaleur — le flou des bords, en pixels, pour une grille servie de pas `pasM` mètres. */
+export function flouDeLaChaleur(pasM: number, pixelsParMetre: number): number {
+  return FLOU_PAS * pasM * pixelsParMetre
+}
+
+/**
+ * peindreLaChaleurLissee — la chaleur (déjà lissée par l'appelant), peinte sur une toile à part puis
+ * posée avec un flou de `flouPx`. Sans filtre de canvas (navigateur ancien, environnement de test) :
+ * peinte directement, bords nets.
+ */
+export function peindreLaChaleurLissee(
+  ctx: CanvasRenderingContext2D,
+  grille: TacticalGrid,
+  vue: { topLeftWorld: { x: number; y: number }; scale: number },
+  ramp: readonly string[],
+  flouPx: number,
+): void {
+  const style = { ramp, k: 1 }
+  const toile = 'filter' in ctx && flouPx > 0 ? document.createElement('canvas') : null
+  const horsEcran = toile?.getContext('2d') ?? null
+  if (!toile || !horsEcran) {
+    drawTacticalHeatmap(ctx, grille, vue, style)
+    return
+  }
+  toile.width = ctx.canvas.width
+  toile.height = ctx.canvas.height
+  drawTacticalHeatmap(horsEcran, grille, vue, style)
+  ctx.save()
+  ctx.filter = `blur(${Math.round(flouPx * 10) / 10}px)`
+  ctx.drawImage(toile, 0, 0)
+  ctx.restore()
 }

@@ -287,24 +287,20 @@ describe('buildSoundTimeline', () => {
     expect(tl).toEqual([])
   })
 
-  it('une POSE sonne SA famille au geste (t0), et rien à la disparition de l objet', () => {
+  it('une POSE du mur sonne au geste (t0), et rien à la disparition de l objet', () => {
     const tl = buildSoundTimeline(
       docWithCouple({
         equipmentPlacements: [
           { t0: 10, t1: 90, x: 0, y: 0, family: 'wall', id: '0x528fce46', owner: 1, origin: 'deployed' },
-          { t0: 40, t1: 95, x: 1, y: 1, family: 'sensor', id: '0x72199cba', owner: 1, origin: 'deployed' },
         ],
       }),
       [],
     )
-    expect(tl).toEqual([
-      { ms: 1_000, stem: 'wall_activate' },
-      { ms: 4_000, stem: 'sensor_activate' },
-    ])
+    expect(tl).toEqual([{ ms: 1_000, stem: 'wall_activate' }])
   })
 
   /**
-   * D5 (2026-08-18) — LE TRAQUEUR PREND LE SON DU CAPTEUR ; LE CHAMP A DÉSORMAIS LE SIEN ;
+   * LA FAILLE SONNE AILLEURS.
    * LA BALISE RESTE MUETTE.
    *
    * L'emprunt du traqueur est adossé à une PARENTÉ (même appareil, un mode près : le capteur
@@ -317,20 +313,27 @@ describe('buildSoundTimeline', () => {
    * une banque que le jeu nomme lui-même (`sb_007_abl_repairfield.pck`). Ce n'est pas un
    * emprunt, c'est sa source.
    *
-   * LE TRANSLOCATEUR SONNE DEPUIS LE 2026-08-27, et il a fallu la voie la moins technique de
-   * toutes. Sa banque était trouvée depuis longtemps (`dcfaa487`, 70 `.wem`, quatre noms cassés
-   * par hachage) mais rien n'y désignait la pose ; une comparaison spectrale contre une capture
-   * vidéo du jeu a échoué trois fois de suite (la musique par-dessus le geste). C'est
-   * l'UTILISATEUR qui a extrait le son du jeu et l'a nommé : « la première activation, la dépose
-   * de la faille spatio-temporelle ». Une ligne à écrire, comme la version précédente de ce
-   * commentaire l'annonçait.
+   * LA FAILLE DU TRANSLOCATEUR N EST PLUS DANS CETTE TABLE (schéma 95). Ce test lui faisait sonner une
+   * pose `deployed` de la balise que le film ne produit pas (0 sur le parc depuis la règle du 15/09),
+   * et masquait ainsi un son mort depuis début septembre. Sa pose est désormais lue dans le film
+   * (`riftPoses`) : le test sur données réelles est `riftPoseSound.test.ts`.
    */
-  it('le TRAQUEUR sonne comme le capteur, le CHAMP a le sien, le TRANSLOCATEUR sa dépose', () => {
+  it('le TRAQUEUR et le CHAMP sonnent par leur UTILISATION, jamais en plus par une pose', () => {
+    // Le capteur, le traqueur, le champ et l'écran sonnent à leur utilisation datée
+    // (`carriedUseSound.ts`, données réelles : `carriedUseSound.test.ts`). Une pose `deployed` de
+    // ces familles, si le film en produisait encore, ne sonnerait pas son geste une seconde fois.
     const tl = buildSoundTimeline(
       docWithCouple({
+        abilityLabels: {
+          '12': { en: 'Threat Seeker', fr: 'traqueur de menaces', family: 'threat_seeker' },
+          '23': { en: 'Repair Field', fr: 'champ de reparation', family: 'repair_field' },
+        },
+        carriedEquipment: [
+          { slot: 1, r: 12, t0: 5, t1: 30, energy: [], uses: [10] },
+          { slot: 1, r: 23, t0: 60, t1: 100, energy: [], uses: [70] },
+        ],
         equipmentPlacements: [
           { t0: 10, t1: 90, x: 0, y: 0, family: 'threat_seeker', id: '0x0001', owner: 1, origin: 'deployed' },
-          { t0: 40, t1: 95, x: 1, y: 1, family: 'translocator_beacon', id: '0x0002', owner: 1, origin: 'deployed' },
           { t0: 70, t1: 95, x: 2, y: 2, family: 'repair_field', id: '0x0003', owner: 1, origin: 'deployed' },
         ],
       }),
@@ -338,14 +341,11 @@ describe('buildSoundTimeline', () => {
     )
     expect(tl).toEqual([
       { ms: 1_000, stem: 'sensor_activate' },
-      // La DÉPOSE de la faille spatio-temporelle, à `t0` de la pose. Un seul fichier : c'est
-      // une extraction de l'utilisateur, pas un `RandomSequence` reconstruit.
-      { ms: 4_000, stem: 'translocator_deploy' },
       // Le champ de réparation TIRE une variante (lot du 2026-08-26) : l'événement porte les
       // trois fichiers, le choix se fait à la lecture.
       { ms: 7_000, stem: 'repair_field_activate', variants: SOUND_VARIANTS.repair_field_activate },
-      // ET IL SONNE SA FIN, à `t1` — décision produit de l'utilisateur du 2026-08-26. C'est la
-      // SEULE famille dans ce cas : le mur et le capteur n'ont pas de son d'extinction propre.
+      // SA FIN reste attachée à la pose `deployed` (décision produit du 2026-08-26) : c'est la
+      // SEULE famille dans ce cas, le mur et le capteur n'ont pas de son d'extinction propre.
       { ms: 9_500, stem: 'repair_field_end', variants: SOUND_VARIANTS.repair_field_end },
     ])
   })

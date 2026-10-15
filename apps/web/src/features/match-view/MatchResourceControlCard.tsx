@@ -10,7 +10,7 @@
 import { useMemo, useState } from 'react'
 
 import { ObjectifFrame, ObjectifLegend } from '@/features/squad/objectif/ObjectifFrame'
-import { RESOURCE_POWERUP, RESOURCE_RACK } from '@/features/squad/emprise/emprise.logic'
+import { RESOURCE_RACK } from '@/features/squad/emprise/emprise.logic'
 import type { EmpriseText } from '@/features/squad/emprise/empriseStrings'
 import { PisteCampsForm, type PisteCampsRow } from '@/features/squad/emprise/PisteCampsForm'
 import { resourceInk } from '@/features/squad/emprise/resourceColors'
@@ -18,16 +18,14 @@ import type { SquadEmpriseObject } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
 
 import type { MatchControl, MatchControlRow } from './matchEmprise.logic'
-import type { MatchOwnText } from './matchEmpriseText'
 
 interface Props {
   control: MatchControl
   objectName: (o: SquadEmpriseObject) => string
   t: EmpriseText
-  own: MatchOwnText
 }
 
-export function MatchResourceControlCard({ control, objectName, t, own }: Props) {
+export function MatchResourceControlCard({ control, objectName, t }: Props) {
   const [racksOpen, setRacksOpen] = useState(false)
   const legend = useMemo(
     () => (
@@ -46,8 +44,8 @@ export function MatchResourceControlCard({ control, objectName, t, own }: Props)
     () =>
       control.rows
         .filter((r) => !(r.object && r.resource === RESOURCE_RACK && !racksOpen))
-        .map((r) => pisteOf(r, { objectName, t, own, racks: control.racks, racksOpen, toggle: () => setRacksOpen((v) => !v) })),
-    [control, objectName, t, own, racksOpen],
+        .map((r) => pisteOf(r, { objectName, t, racks: control.racks, racksOpen, toggle: () => setRacksOpen((v) => !v) })),
+    [control, objectName, t, racksOpen],
   )
   return (
     <ObjectifFrame title={t.control.title} info={t.control.info} legend={legend} testId="match-emprise-control">
@@ -61,7 +59,6 @@ export function MatchResourceControlCard({ control, objectName, t, own }: Props)
 interface PisteContext {
   objectName: (o: SquadEmpriseObject) => string
   t: EmpriseText
-  own: MatchOwnText
   racks: number
   racksOpen: boolean
   toggle: () => void
@@ -70,18 +67,16 @@ interface PisteContext {
 function pisteOf(r: MatchControlRow, x: PisteContext): PisteCampsRow {
   const res = x.t.resources[r.resource]
   const label = r.object ? x.objectName(r.object) : res.gridTitle
-  const sub = !r.object && r.resource === RESOURCE_POWERUP && (r.padsEmptied ?? 0) > 0 ? x.own.powerupSub(r.padsEmptied ?? 0) : undefined
   const n = r.us + r.them
   const share = n > 0 ? (r.us / n) * 100 : 0
   return {
     key: r.key,
     label,
-    sublabel: sub,
     dot: r.object ? undefined : resourceInk(r.resource),
     us: r.us,
     them: r.them,
-    usTip: x.t.control.segmentTip(x.t.ourSide, label, sub, r.us, n, x.t.pctFmt(share)),
-    themTip: x.t.control.segmentTip(x.t.opponent, label, sub, r.them, n, x.t.pctFmt(100 - share)),
+    usTip: x.t.control.segmentTip(x.t.ourSide, label, undefined, r.us, n, x.t.pctFmt(share)),
+    themTip: x.t.control.segmentTip(x.t.opponent, label, undefined, r.them, n, x.t.pctFmt(100 - share)),
     indent: !!r.object,
     labelNode: !r.object && r.resource === RESOURCE_RACK && x.racks > 0 ? <RacksToggle label={label} x={x} /> : undefined,
   }
@@ -101,7 +96,6 @@ function RacksToggle({ label, x }: { label: string; x: PisteContext }) {
       </span>
       <span className="mr-1.5 inline-block h-[9px] w-[9px] shrink-0 rounded-[2px]" style={{ backgroundColor: resourceInk(RESOURCE_RACK) }} aria-hidden />
       {label}
-      <small className="ml-1 text-[11px] text-muted-foreground">{x.racksOpen ? x.own.racksUnfolded(x.racks) : x.own.racksFolded(x.racks)}</small>
     </button>
   )
 }

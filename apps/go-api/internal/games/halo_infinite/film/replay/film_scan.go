@@ -50,6 +50,8 @@ func (s *filmScan) balayerPositions() error {
 	}
 	s.lirePontDIdentite()
 	s.opt.observe(s.ctx, "translocations", s.in.Translocations)
+	s.in.Knockbacks, s.in.KnockbackStats = grammar.ScanKnockbacks(s.fc)
+	s.opt.observe(s.ctx, "knockbacks", s.in.Knockbacks)
 	if s.pont.ErrPositions != nil {
 		return s.pont.ErrPositions
 	}
@@ -258,6 +260,7 @@ func (s *filmScan) balayerCapacites() {
 	s.in.EquipmentChanges, s.in.EquipmentChangeStats = equipChanges, eStats
 	s.opt.observe(s.ctx, "equipmentChanges", s.in.EquipmentChanges)
 	s.opt.observe(s.ctx, "equipmentChanges.stats", s.in.EquipmentChangeStats)
+	s.balayerEquipementPorte()
 	s.balayerEtatsActifs()
 	s.balayerImpulsionsEtCharges()
 }

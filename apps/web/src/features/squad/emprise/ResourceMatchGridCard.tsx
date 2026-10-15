@@ -52,6 +52,11 @@ interface Props {
    * l'initiale du résultat (score et dominance dans l'infobulle), table compacte.
    */
   compact?: boolean
+  /**
+   * Affiche l'heure de début de chaque match (en-tête et infobulle). Vrai par défaut (Sessions) ;
+   * l'Escouade la retire : les matchs d'une soirée se distinguent par la carte et le mode.
+   */
+  showTime?: boolean
 }
 
 export function ResourceMatchGridCard({
@@ -64,6 +69,7 @@ export function ResourceMatchGridCard({
   t,
   compact = false,
   namedOnly = false,
+  showTime = true,
 }: Props) {
   const legend = useMemo(
     () => (
@@ -81,12 +87,12 @@ export function ResourceMatchGridCard({
   const columns: GridColumn[] = grid.columns.map((m) => ({
     key: m.matchId,
     head: compact ? (
-      <CompactMatchHead m={m} outcomeLabels={outcomeLabels} locale={locale} />
+      <CompactMatchHead m={m} outcomeLabels={outcomeLabels} locale={locale} showTime={showTime} />
     ) : (
-      <MatchHead m={m} dominanceLabels={dominanceLabels} outcomeLabels={outcomeLabels} locale={locale} t={t} />
+      <MatchHead m={m} dominanceLabels={dominanceLabels} outcomeLabels={outcomeLabels} locale={locale} t={t} showTime={showTime} />
     ),
     tipHead: t.grid.matchHead(
-      formatMatchTime(m.startTime, locale),
+      showTime ? formatMatchTime(m.startTime, locale) : '',
       m.map,
       m.mode,
       m.outcome ? `${inSentence(outcomeLabels[m.outcome])}${m.score ? ` ${m.score}` : ''}` : null,
@@ -110,11 +116,21 @@ export function ResourceMatchGridCard({
  * L'en-tête compact d'un match : l'heure, la carte (tronquée), l'initiale du résultat dans sa couleur
  * d'issue (l'initiale du libellé du titre : « V », « D » ; « W », « L » en anglais).
  */
-function CompactMatchHead({ m, outcomeLabels, locale }: { m: EmpriseMatchInfo; outcomeLabels: Record<OutcomeValue, string>; locale: Locale }) {
+function CompactMatchHead({
+  m,
+  outcomeLabels,
+  locale,
+  showTime,
+}: {
+  m: EmpriseMatchInfo
+  outcomeLabels: Record<OutcomeValue, string>
+  locale: Locale
+  showTime: boolean
+}) {
   return (
     <div className="min-w-0 pb-[3px] text-center text-[10.5px] leading-tight text-muted-foreground" data-testid={`emprise-grid-head-${m.matchId}`}>
-      <b className="block font-medium text-foreground">{formatMatchTime(m.startTime, locale)}</b>
-      <span className="block truncate">{m.map}</span>
+      {showTime && <b className="block font-medium text-foreground">{formatMatchTime(m.startTime, locale)}</b>}
+      <span className={showTime ? 'block truncate' : 'block truncate font-medium text-foreground'}>{m.map}</span>
       {m.outcome && (
         <b className="block font-bold" style={{ color: tokenCssVar(OUTCOME_TOKENS[m.outcome]) }} data-testid={`emprise-grid-result-${m.matchId}`}>
           {outcomeLabels[m.outcome].charAt(0).toLocaleUpperCase(locale)}
@@ -130,19 +146,21 @@ function MatchHead({
   outcomeLabels,
   locale,
   t,
+  showTime,
 }: {
   m: EmpriseMatchInfo
   dominanceLabels?: Record<DominanceValue, string>
   outcomeLabels: Record<OutcomeValue, string>
   locale: Locale
   t: EmpriseText
+  showTime: boolean
 }) {
   const result = m.outcome ? `${outcomeLabels[m.outcome]}${m.score ? ` ${m.score}` : ''}` : null
   const dom = m.dominance && dominanceLabels ? dominanceLabels[m.dominance] : null
   const domInk = m.dominance ? tokenCssVar(DOMINANCE_COLOR_TOKENS[m.dominance]) : ''
   return (
     <div className="pb-[3px] text-center text-[11px] leading-tight text-muted-foreground" data-testid={`emprise-grid-head-${m.matchId}`}>
-      {formatMatchTime(m.startTime, locale)}
+      {showTime && formatMatchTime(m.startTime, locale)}
       <b className="block text-xs font-medium text-foreground">{m.map}</b>
       {m.mode}
       {result && m.outcome && (

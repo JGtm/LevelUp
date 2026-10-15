@@ -151,6 +151,9 @@ var couchesDesCalques = map[string]string{
 	"abilities":           grammar.Rev, // build_inventaire.go <- FilmInputs.AbilityRanks + Inventory
 	"equipmentChanges":    grammar.Rev, // build_inventaire.go <- FilmInputs.EquipmentChanges
 	"translocations":      grammar.Rev, // build_inventaire.go <- FilmInputs.Translocations
+	"knockbacks":          grammar.Rev, // build_inventaire.go <- FilmInputs.Knockbacks
+	"carriedEquipment":    grammar.Rev, // build_inventaire.go <- FilmInputs.CarriedEquipment
+	"riftPoses":           grammar.Rev, // build_inventaire.go <- FilmInputs.CarriedEquipment
 	"abilityImpulses":     grammar.Rev, // build_inventaire.go <- FilmInputs.AbilityImpulses
 	"abilityCharges":      grammar.Rev, // build_inventaire.go <- FilmInputs.AbilityCharges
 	"weaponLabels":        grammar.Rev, // build_inventaire.go `buildWeaponLabels` <- les identifiants d armes de loadouts / shots / weaponPads

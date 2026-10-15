@@ -20,6 +20,7 @@ import type {
   ReplayObjectiveObjectLife,
   ReplayInventory,
   ReplayLoadout,
+  ReplayPoint,
   ReplayProjectile,
   ReplayRosterEntry,
   ReplaySurface,
@@ -41,7 +42,18 @@ export type ReplayStep = [number, number, number]
 /** Rend NON NULLABLES (et présents) les champs `K` de `T` — les tableaux du contrat. */
 type Filled<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> }
 
-export type ReplayTrackReady = Filled<ReplayTrack, 'points'>
+/**
+ * Un échantillon de piste tel que le RENDU le lit : le point du contrat, plus la COUPURE
+ * (`cut`) que la frontière pose sur le premier échantillon d'ARRIVÉE d'une translocation
+ * (`translocationCuts.ts`). Une coupure dit « rien entre le point précédent et celui-ci » : ni
+ * glissade du pion, ni segment de traînée. Elle diffère de la lacune (`g`) en ce que le joueur
+ * y est PRÉSENT et vu — le pion n'est donc pas pâli.
+ */
+export type ReplayCutPoint = ReplayPoint & { cut?: true }
+
+export type ReplayTrackReady = Omit<Filled<ReplayTrack, 'points'>, 'points'> & {
+  points: ReplayCutPoint[]
+}
 /** La couverture dont la liste des replis déclenchés (schéma 58) est comblée. */
 export type ReplayCoverageReady = Filled<NonNullable<ReplayDocument['coverage']>, 'fallbacks'>
 type ReplayLoadoutReady = Filled<ReplayLoadout, 'w' | 'k'>
@@ -197,6 +209,9 @@ export type ReplayDocumentReady = Omit<
   | 'grenades'
   | 'identity'
   | 'inventory'
+  | 'knockbacks'
+  | 'carriedEquipment'
+  | 'riftPoses'
   | 'loadouts'
   | 'neutralDeaths'
   | 'objectiveObjects'
@@ -395,6 +410,29 @@ export type ReplayDocumentReady = Omit<
    * translocateur — `coverage.translocations` distingue les deux.
    */
   translocations: NonNullable<ReplayDocument['translocations']>
+  /**
+   * LES POUSSÉES DU RÉPULSEUR (schéma 94) : une entrée plate par joueur poussé — (t, slot), l'auteur
+   * `by` et la vitesse imposée (`vx/vy/vz`, solidaires), lus dans la paire de messages du film.
+   * Vide = artefact antérieur au schéma 94, ou film sans poussée — `coverage.knockbacks` distingue
+   * les deux.
+   */
+  knockbacks: NonNullable<ReplayDocument['knockbacks']>
+  /**
+   * L'ÉQUIPEMENT PORTÉ (schéma 95) : par objet porté (porteur, rang, prise, fin), l'énergie lue et les
+   * usages restants (règle du jeu, quand le coût de la famille est établi), et les activations. Vide =
+   * artefact antérieur au schéma 95 — `coverage.carriedEquipment` distingue.
+   */
+  carriedEquipment: Array<
+    Omit<NonNullable<ReplayDocument['carriedEquipment']>[number], 'energy' | 'uses'> & {
+      energy: NonNullable<NonNullable<ReplayDocument['carriedEquipment']>[number]['energy']>
+      uses: NonNullable<NonNullable<ReplayDocument['carriedEquipment']>[number]['uses']>
+    }
+  >
+  /**
+   * LES POSES DE FAILLE (schéma 95) : l'instant où l'énergie du translocateur porté tombe à zéro, son
+   * activation, et la position (arrivée du premier échange qui suit) quand elle est lue.
+   */
+  riftPoses: NonNullable<ReplayDocument['riftPoses']>
   /**
    * LA VIE DE CHAQUE VÉHICULE du match (schéma 39) : où il naît, sa trajectoire, ses épisodes
    * d'occupation, jusqu'à quelle frame l'afficher. `end` vaut toujours `unknown` — jamais une

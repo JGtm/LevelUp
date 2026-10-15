@@ -44,6 +44,7 @@ import {
   EQUIPMENT_SOUND_STEMS,
   GRAPPLE_SOUND_STEM,
   EQUIPMENT_PLACEMENT_SOUND_STEMS_END,
+  CARRIED_USE_SOUND_STEMS,
   KILL_SPRITE_SOUND_STEMS,
   OBJECTIVE_SOUND_STEMS,
   ROUND_OVER_SOUND_STEMS,
@@ -56,6 +57,8 @@ import {
   WEAPON_CHANGE_SOUND_STEMS,
   EQUIPMENT_PICKUP_SOUND_STEM,
   ABILITY_IMPULSE_SOUND_STEMS,
+  TRANSLOCATION_SOUND_STEM,
+  RIFT_POSE_SOUND_STEM,
 } from './replaySound'
 import {
   allVehicleBoomStems,
@@ -134,12 +137,18 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS),
     // Et la FIN de pose, pour les familles qui ont un son d'extinction propre (2026-08-26).
     ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS_END),
+    // L'UTILISATION d'un équipement porté (schéma 95, 2026-10-15) : un stem par famille.
+    ...Object.values(CARRIED_USE_SOUND_STEMS),
     // Le TIR de grappin (lot G, 2026-08-20) : UN SEUL stem, aucune famille.
     GRAPPLE_SOUND_STEM,
     // L'USAGE D'UNE CAPACITÉ QUI POUSSE SON PORTEUR (schéma 38, 2026-09-03) : un stem PAR
     // FAMILLE — le propulseur aujourd'hui, et lui seul. Ses variantes entrent par
     // SOUND_VARIANTS ci-dessous, comme celles du grappin.
     ...Object.values(ABILITY_IMPULSE_SOUND_STEMS),
+    // LA TÉLÉPORTATION DU TRANSLOCATEUR (schéma 38) : un stem, déclenché par `translocations[]`.
+    TRANSLOCATION_SOUND_STEM,
+    // LA POSE DE LA FAILLE (schéma 95) : un stem, déclenché par `riftPoses[]`.
+    RIFT_POSE_SOUND_STEM,
     // Les ACTIONS D'OBJECTIF (lot du 2026-08-26) : un ou deux stems par statistique, selon
     // que le jeu distingue les camps.
     ...Object.values(OBJECTIVE_SOUND_STEMS).flatMap(stemsObjectif),
@@ -271,6 +280,8 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // la durée de leur source, jamais retronquée à la coupe des armes.
     ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS),
     ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS_END),
+    // L'UTILISATION d'un équipement porté (schéma 95) : mêmes stems que leurs anciennes poses.
+    ...Object.values(CARRIED_USE_SOUND_STEMS),
     // Le grappin : catégorie Équipement, même règle. SA SOURCE A CHANGÉ LE 2026-08-26 — le
     // fichier de l'archive utilisateur (1,687 s) est remplacé par le geste du JEU
     // (`play_007_abl_grapplinghook_deploy_player`, 0,745 s). Il passe donc SOUS la coupe des
@@ -281,6 +292,10 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // courte (0,83 à 1,00 s — le dash EST une impulsion), d'où ses trois entrées dans
     // `SOURCES_COURTES` : la coupe des armes ne l'a pas tronqué, le geste fait cette durée-là.
     ...Object.values(ABILITY_IMPULSE_SOUND_STEMS),
+    // La TÉLÉPORTATION : catégorie Équipement, la durée de sa source (4,73 s), jamais retronquée.
+    TRANSLOCATION_SOUND_STEM,
+    // La POSE DE LA FAILLE : catégorie Équipement, la durée de sa source, jamais retronquée.
+    RIFT_POSE_SOUND_STEM,
     // Les ACTIONS D'OBJECTIF (lot du 2026-08-26) : catégorie Objectifs, même règle de durée que
     // les équipements — elles gardent la durée de leur source (1,31 à 3,41 s), jamais
     // retronquée. Un jingle de capture coupé à 1,2 s s'entendrait amputé de sa queue.

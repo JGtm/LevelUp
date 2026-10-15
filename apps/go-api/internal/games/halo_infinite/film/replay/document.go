@@ -35,10 +35,8 @@ package replay
 // inconnu » indéfiniment faute de recuisson déclenchée) — cf.
 // `.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md`.
 //
-// LES NOTES PAR VERSION ONT ETE RETIREES D'ICI LE 2026-09-14 (lot 1.0, revue R1, constat R1-4).
-// Elles RECOPIAIENT, en plus court, les entrees de `document_chronicle.go` — deux resumes de la
-// meme montee, qui derivent l'un de l'autre au premier amendement (v50 y est deja « v50 AMENDE »,
-// ici non). LA CHRONIQUE FAIT FOI, ET ELLE EST LA SEULE : `document_chronicle.go`.
+// LA CHRONIQUE FAIT FOI, ET ELLE EST LA SEULE : `document_chronicle.go` (les notes par version qui
+// la recopiaient ici ont ete retirees le 2026-09-14, lot 1.0, revue R1, constat R1-4).
 //
 // CE QUE LE GARDE-RAIL TIENT, EXACTEMENT (revue R2, constat R2-1) : `document_shape_test.go`
 // exige une entree de chronique pour la version COURANTE, au moment ou la forme se refige. Il ne
@@ -47,7 +45,7 @@ package replay
 // donc aux deux : le retrait de ces notes-ci a fait disparaitre la seule description de la v51,
 // restauree a la chronique le meme jour. Une entree de chronique se pose DANS LE COMMIT qui
 // monte la version, jamais apres.
-const SchemaVersion = 93
+const SchemaVersion = 95
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -227,15 +225,16 @@ type ReplayDocument struct {
 	// ÉCARTÉES : ce ne sont pas des ramassages, et ce que le joueur porte à sa naissance est
 	// déjà dans `abilities`. Absent si le film n'en porte aucun.
 	EquipmentChanges []EquipmentChange `json:"equipmentChanges,omitempty"`
-	// Translocations est la liste des TÉLÉPORTATIONS du translocateur (cf.
-	// document_translocations.go) : qui saute, à quelle frame, et d'où à où — daté ET situé
-	// par l'ÉVÉNEMENT du film (type 117), jamais déduit d'un seuil spatial, ni du `spent`
-	// (qui peut suivre l'usage de 16,5 s), ni d'une discontinuité de piste. Le va-et-vient
-	// (`fx/fy/fz` -> `tx/ty/tz`) vient de la CHARGE de l'événement, déquantifiée aux bornes
-	// de la carte ; il est ABSENT EN BLOC quand elle n'a pas pu être lue, et
-	// `coverage.translocations.positioned` dit combien de sauts le portent. Absent si le
-	// film n'en porte aucune.
+	// Translocations est la liste des TÉLÉPORTATIONS du translocateur (cf. document_translocations.go) :
+	// qui saute, à quelle frame, d'où à où — daté et situé par l'événement du film (type 117), le
+	// va-et-vient absent en bloc quand sa charge n'est pas lue (`coverage.translocations.positioned`).
 	Translocations []Translocation `json:"translocations,omitempty"`
+	// Knockbacks : les POUSSÉES d'équipement lues dans le film (cf. document_knockbacks.go).
+	Knockbacks []Knockback `json:"knockbacks,omitempty"`
+	// CarriedEquipment et RiftPoses : l'ÉQUIPEMENT PORTÉ (énergie, usages restants, activations) et les
+	// POSES de faille du translocateur (cf. document_equipement_porte.go).
+	CarriedEquipment []CarriedEquipment `json:"carriedEquipment,omitempty"`
+	RiftPoses        []RiftPose         `json:"riftPoses,omitempty"`
 	// AbilityImpulses est la liste des IMPULSIONS DE CAPACITÉ (cf.
 	// document_ability_impulses.go) : qui, à quelle frame, et de quel ÉQUIPEMENT — l'usage
 	// MESURÉ du propulseur, daté par le corps `tag == 1` des composants i57/i59 (le même dont

@@ -116,6 +116,10 @@ var formesFigees = []typeDeContrat{
 	{"grammar", types.KeyframeInventory{}},
 	{"grammar", types.KeyframeInventoryStats{}},
 	{"grammar", types.KeyframeLoadout{}},
+	{"grammar", types.Knockback{}},
+	{"grammar", types.KnockbackStats{}},
+	{"grammar", types.CarriedEquipmentRead{}},
+	{"grammar", types.CarriedEquipmentStats{}},
 	{"grammar", types.MovementStateRead{}},
 	{"grammar", types.MovementStateStats{}},
 	{"grammar", types.NavpointRadialRead{}},
@@ -156,6 +160,7 @@ var formesFigees = []typeDeContrat{
 var typesSansForme = map[string]string{
 	"EquipmentChangeKind":  "enumeration de chaines (taken / spent / spawned) — pas de champs",
 	"HeldWeaponChangeKind": "enumeration de chaines (taken / dropped / swapped / restated)",
+	"CarriedReadKind":      "enumeration de chaines (new / delta / del)",
 }
 
 // ligneDesRevisions : la premiere ligne de donnees du golden.
