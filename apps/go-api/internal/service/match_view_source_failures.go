@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/port"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -75,35 +76,70 @@ func reportLoadFailure(gctx context.Context, matchID, source string, err error) 
 // goLoad lance load() dans l'errgroup pour une source qui porte sa propre raison
 // (`<source>_unavailable`) : l'échec est journalisé en ERREUR (source, match_id, err) et
 // retenu, la vue dira `<source>_unavailable` au lieu de laisser croire à une source vide.
-// Jamais fatal.
+// Une *domain.SectionDegradedError (donnée principale servie, section secondaire en panne)
+// ne dit PAS que la source est en panne : elle rejoint le code générique. Jamais fatal.
 func (f *sourceFailures) goLoad(gctx context.Context, g *errgroup.Group, matchID string, src matchViewSource, load func() error) {
-	g.Go(func() error {
-		if err := load(); err != nil {
-			reportLoadFailure(gctx, matchID, src.name, err)
-			f.mark(src)
-		}
-		return nil
-	})
-}
-
-// goLoadSection est le goLoad des chargeurs SANS raison dédiée : un échec est journalisé de
-// la même façon (la source en cause est dans le journal, pas dans le contrat) et rend la vue
-// « en panne partielle » par le code générique `section_unavailable`. Une capability non
-// supportée par le titre n'est pas une panne : absence attendue, la section reste vide.
-func (f *sourceFailures) goLoadSection(gctx context.Context, g *errgroup.Group, matchID, label string, load func() error) {
 	g.Go(func() error {
 		err := load()
 		if err == nil {
 			return nil
 		}
-		if errors.Is(err, games.ErrCapabilityNotSupported) {
-			slog.DebugContext(gctx, "match_view: capability non supportée", "source", label, "match_id", matchID)
+		if domain.IsSectionDegraded(err) {
+			f.failSection(gctx, matchID, src.name, err)
 			return nil
 		}
-		reportLoadFailure(gctx, matchID, label, err)
-		f.mu.Lock()
-		f.section = true
-		f.mu.Unlock()
+		reportLoadFailure(gctx, matchID, src.name, err)
+		f.mark(src)
+		return nil
+	})
+}
+
+// goLoadSection est le goLoad des chargeurs SANS raison dédiée : voir failSection.
+func (f *sourceFailures) goLoadSection(gctx context.Context, g *errgroup.Group, matchID, label string, load func() error) {
+	g.Go(func() error {
+		f.failSection(gctx, matchID, label, load())
+		return nil
+	})
+}
+
+// failSection traite l'échec err d'un chargeur SANS raison dédiée (nil : rien) : journal ERREUR
+// (la source en cause est dans le journal, pas dans le contrat) puis vue « en panne partielle »
+// par le code générique `section_unavailable`. Une capability non supportée par le titre n'est
+// pas une panne : absence attendue, la section reste vide.
+func (f *sourceFailures) failSection(gctx context.Context, matchID, label string, err error) {
+	if err == nil {
+		return
+	}
+	if errors.Is(err, games.ErrCapabilityNotSupported) {
+		slog.DebugContext(gctx, "match_view: capability non supportée", "source", label, "match_id", matchID)
+		return
+	}
+	reportLoadFailure(gctx, matchID, label, err)
+	f.mu.Lock()
+	f.section = true
+	f.mu.Unlock()
+}
+
+// loadCanonicalEvents charge les highlight events canoniques (loader unifié MV4.A) dans
+// l'errgroup. Sans eventsRepo, canonicalEvents reste nil et les builders narrative retombent
+// sur la conversion à la volée des events bruts. Un échec n'est plus tu : il est dit
+// (`section_unavailable`) même si le repli sert la vue.
+func (s *MatchViewService) loadCanonicalEvents(gctx context.Context, g *errgroup.Group, matchID string, d *matchViewData) {
+	if s.eventsRepo == nil {
+		return
+	}
+	g.Go(func() error {
+		filters := port.HighlightEventFilters{MatchIDs: []string{matchID}}
+		if err := filters.Validate(); err != nil {
+			d.failures.failSection(gctx, matchID, "canonical_events", err)
+			return nil
+		}
+		ev, err := s.eventsRepo.Load(gctx, filters)
+		if err != nil {
+			d.failures.failSection(gctx, matchID, "canonical_events", err)
+			return nil
+		}
+		d.canonicalEvents = ev
 		return nil
 	})
 }

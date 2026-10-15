@@ -37,6 +37,8 @@ type mockMatchViewRepo struct {
 	// assistErr : échec de la lecture Q21d (portée des morts, journal des morts publiable).
 	assistErr error
 	kvErr     error
+	// objErr / killSrcErr / killAstErr : échecs des lectures du score d'objectif et du kill feed (E4.8a).
+	objErr, killSrcErr, killAstErr error
 	// notParticipant : si true, IsParticipant renvoie false (gating ADR 0029).
 	// Défaut false → "a participé" → comportement inchangé pour les tests existants.
 	notParticipant bool
@@ -62,7 +64,7 @@ func (m *mockMatchViewRepo) GetMatchScoreboard(_ context.Context, _ string) ([]d
 	return m.board, m.boardErr
 }
 func (m *mockMatchViewRepo) GetMatchObjectiveScore(_ context.Context, _, _ string) (int, error) {
-	return 0, nil
+	return 0, m.objErr
 }
 func (m *mockMatchViewRepo) GetMatchMedals(_ context.Context, _, _ string) ([]domain.MedalRaw, error) {
 	return m.medals, m.medalsErr
@@ -74,10 +76,10 @@ func (m *mockMatchViewRepo) LookupMedalMetaByName(_ context.Context, _ []string)
 	return m.medalMetasByName, nil
 }
 func (m *mockMatchViewRepo) GetMatchKillSources(_ context.Context, _ string) ([]domain.KillSourceRaw, error) {
-	return m.killSources, nil
+	return m.killSources, m.killSrcErr
 }
 func (m *mockMatchViewRepo) GetMatchKillAssists(_ context.Context, _ string) ([]domain.KillAssistRaw, error) {
-	return m.killAssists, nil
+	return m.killAssists, m.killAstErr
 }
 func (m *mockMatchViewRepo) GetMatchAssistPairs(_ context.Context, _ string) ([]domain.MatchAssistPairRaw, domain.MatchAssistScopeRaw, error) {
 	return m.assistPairs, m.assistScope, m.assistErr

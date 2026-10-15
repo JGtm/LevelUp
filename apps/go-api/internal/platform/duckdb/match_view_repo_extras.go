@@ -23,26 +23,22 @@ import (
 // GetMatchKillSources retourne la source de dégât de chaque mort du match (Q21b).
 // Exécutée sur SharedReader (ADR 0016, shared-only).
 //
-// Dégradation gracieuse assumée à DEUX endroits : reader indisponible, ou table absente
-// d'une base non migrée. Dans les deux cas on rend une tranche vide, jamais une erreur —
-// le kill feed s'affiche alors sans arme, ce qui est son état d'avant ce lot. L'échec est
-// loggé pour qu'il ne soit pas SILENCIEUX (règle : jamais d'erreur avalée).
+// Tranche vide = le match n'est pas passé par le décodeur de film (état normal : le kill
+// feed s'affiche sans arme). Un reader indisponible ou une requête en échec (table absente
+// d'une base non migrée comprise) est une PANNE et remonte : le service la dit
+// (`section_unavailable`), il ne la laisse pas passer pour « pas de donnée ».
 func (r *MatchViewRepo) GetMatchKillSources(ctx context.Context, matchID string) ([]domain.KillSourceRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: kill sources indisponibles (shared reader)",
-			"match_id", matchID, "err", err)
-		return nil, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchKillSources: shared reader: %w", err)
 	}
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, Q21bKillSources, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: kill sources indisponibles (Q21b)",
-			"match_id", matchID, "err", err)
-		return nil, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchKillSources: Q21b: %w", err)
 	}
 	defer rows.Close()
 
@@ -80,16 +76,12 @@ func (r *MatchViewRepo) GetMatchKillAssists(ctx context.Context, matchID string)
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: kill assists indisponibles (shared reader)",
-			"match_id", matchID, "err", err)
-		return nil, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchKillAssists: shared reader: %w", err)
 	}
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, Q21cKillAssists, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: kill assists indisponibles (Q21c)",
-			"match_id", matchID, "err", err)
-		return nil, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchKillAssists: Q21c: %w", err)
 	}
 	defer rows.Close()
 
@@ -133,21 +125,15 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		// Dégradation best-effort assumée (duels vides), mais JAMAIS muette : sans cette
-		// trace, un lecteur cassé est indistinguable d'un match sans donnée (régression
-		// du 2026-08-03, restée invisible un mois faute de log).
-		slog.WarnContext(ctx, "match_view: kv_pairs shared reader indisponible",
-			"match_id", matchID, "err", err)
-		return nil, nil
+		// Un lecteur cassé est une PANNE, pas un match sans duels (régression du 2026-08-03,
+		// restée invisible un mois derrière un log) : elle remonte, le service la dit.
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchKVPairs: shared reader: %w", err)
 	}
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, Q20KVPairs, matchID)
 	if err != nil {
-		// La table canonique peut manquer sur une DB non migrée → duels vides, jamais
-		// d'erreur — mais toujours une trace (même raison que ci-dessus).
-		slog.WarnContext(ctx, "match_view: kv_pairs requete Q20 en echec",
-			"match_id", matchID, "err", err)
-		return nil, nil
+		// Table canonique absente d'une DB non migrée comprise : panne, elle remonte.
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchKVPairs: Q20: %w", err)
 	}
 	defer rows.Close()
 

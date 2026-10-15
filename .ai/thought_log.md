@@ -117463,3 +117463,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : tests rouge (mutation) puis vert côté service, handler et web ; `match_view_data_loaders.go` 699 -> 689 lignes ; gate Go (domain, api, archlint) et web (9 616 tests) verts ; échec unique antérieur de `internal/service` non reproduit (x20 + 3 passes).
 
 **Conclusion / prochaine étape** : E4 close. Restent hors contrat les erreurs avalées par certaines méthodes du repo (section 3). Suite : E5.
+
+## [2026-10-15] Backlog E4.8a : erreurs de lecture avalées par le repo de la vue match, lot A — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : `GetMatchEvents`, kill sources, kill assists, paires killer/victim, score d'objectif et stats d'objectif/d'Assaut du tableau des scores remontent leur erreur ; une section secondaire en panne est rendue avec la donnée principale par `domain.SectionDegradedError` (le service dit `section_unavailable`) ; l'absence légitime est constatée par sonde (`relationExists`, catalogue), jamais déduite d'une erreur ; `eventsRepo.Load` entre dans le contrat.
+
+**Résultats observés** : un seul appelant de production par méthode (le chargeur de la vue) ; tests rouge puis vert par méthode (fichiers de repo remis à HEAD le temps du rouge), bout en bout service + HTTP ; deux fixtures qui masquaient leur défaut sous l'ancien `nil, nil` corrigés ; découverte : le snapshot n'exporte pas `match_bomb_stats` (stats d'Assaut absentes des vues servies du snapshot) ; awards = code mort. Gate Go (domain, port, service, platform/duckdb avec et sans tag integration, api, archlint) vert.
+
+**Conclusion / prochaine étape** : E4.8b (lot B, exécutant neuf, instructions complètes au journal du plan) puis E4.8c (garde-rail archlint, allowlist vide).

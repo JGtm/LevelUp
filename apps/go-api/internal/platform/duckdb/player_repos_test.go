@@ -175,7 +175,8 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			medal_id UBIGINT, medal_name_id UBIGINT, xuid VARCHAR, match_id VARCHAR, count INTEGER)`,
 		`CREATE TABLE shared.highlight_events (
 			match_id VARCHAR, xuid VARCHAR,
-			event_type VARCHAR, tick_count INTEGER, timestamp_utc TIMESTAMPTZ, time_ms BIGINT)`,
+			event_type VARCHAR, tick_count INTEGER, timestamp_utc TIMESTAMPTZ, time_ms BIGINT,
+			raw_json VARCHAR)`,
 		// shared.weapon_kills : 1 row par kill (pas de PK, pas de count agrege).
 		// La colonne kills est conservee pour compat ascendante mais COUNT(*)
 		// dans Q16WeaponKills est la sortie attendue (cf. queries_match.go).

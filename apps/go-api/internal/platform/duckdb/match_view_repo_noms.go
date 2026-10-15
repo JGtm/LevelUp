@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -46,13 +45,13 @@ func (r *MatchViewRepo) GetMatchEvents(ctx context.Context, matchID string) ([]d
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchEvents: shared reader: %w", err)
 	}
 	defer release()
 	stop := timing.FromContext(ctx).Section("match_events")
-	results, ok, err := lireEvenementsDuMatch(ctx, sharedDB, matchID)
+	results, err := lireEvenementsDuMatch(ctx, sharedDB, matchID)
 	stop()
-	if err != nil || !ok {
+	if err != nil {
 		return nil, err
 	}
 	// Noms : l'annuaire du match en portée base (lot A, plus de jointure sur la vue des noms) ;
@@ -75,13 +74,12 @@ func (r *MatchViewRepo) GetMatchEvents(ctx context.Context, matchID string) ([]d
 	return results, nil
 }
 
-// lireEvenementsDuMatch lit Q21. ok=false : la requête a échoué (table absente sur une base non
-// migrée) — l'appelant rend vide, comme avant le lot A.
-func lireEvenementsDuMatch(ctx context.Context, db *sql.DB, matchID string) ([]domain.EventRaw, bool, error) {
+// lireEvenementsDuMatch lit Q21. Une requête en échec (lecteur cassé, base non migrée) est une
+// panne et remonte : le service dit `events_unavailable`, il ne rend pas une liste vide.
+func lireEvenementsDuMatch(ctx context.Context, db *sql.DB, matchID string) ([]domain.EventRaw, error) {
 	rows, err := db.QueryContext(ctx, Q21MatchEventsWithXUID, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: events indisponibles (Q21)", "match_id", matchID, "err", err)
-		return nil, false, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchEvents: Q21: %w", err)
 	}
 	defer rows.Close()
 
@@ -90,14 +88,14 @@ func lireEvenementsDuMatch(ctx context.Context, db *sql.DB, matchID string) ([]d
 		var e domain.EventRaw
 		var medalRaw sql.NullString
 		if err := rows.Scan(&e.EventType, &e.TimeMS, &e.XUID, &medalRaw); err != nil {
-			return nil, false, fmt.Errorf("MatchViewRepo.GetMatchEvents scan: %w", err)
+			return nil, fmt.Errorf("MatchViewRepo.GetMatchEvents scan: %w", err)
 		}
 		if medalRaw.Valid {
 			e.MedalName = medalNameFromRawJSON(medalRaw.String)
 		}
 		results = append(results, e)
 	}
-	return results, true, rows.Err()
+	return results, rows.Err()
 }
 
 // GetMatchEncounters retourne l'historique de rencontres avec les participants (Q23).

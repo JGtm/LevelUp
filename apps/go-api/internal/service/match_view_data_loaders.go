@@ -131,29 +131,8 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.events, e = s.repo.GetMatchEvents(gctx, matchID)
 		return e
 	})
-	// MV4.A : chargement parallèle des events via le loader unifié si câblé.
-	// Si l'eventsRepo n'est pas injecté, canonicalEvents reste nil et les
-	// builders narrative retomberont sur la conversion à la volée (chunk MV2).
-	if s.eventsRepo != nil {
-		g.Go(func() error {
-			filters := port.HighlightEventFilters{MatchIDs: []string{matchID}}
-			if e := filters.Validate(); e != nil {
-				slog.WarnContext(gctx, "match_view: HighlightEventFilters invalides",
-					"match_id", matchID, "err", e)
-				return nil
-			}
-			canonicalEv, e := s.eventsRepo.Load(gctx, filters)
-			if e != nil {
-				if !errors.Is(e, games.ErrCapabilityNotSupported) {
-					slog.WarnContext(gctx, "match_view: Load highlight events echec",
-						"match_id", matchID, "err", e)
-				}
-				return nil
-			}
-			d.canonicalEvents = canonicalEv
-			return nil
-		})
-	}
+	// MV4.A : events canoniques via le loader unifié (match_view_source_failures.go).
+	s.loadCanonicalEvents(gctx, g, matchID, &d)
 
 	// MV4.B' : awards chargés après l'errgroup principal car ils dépendent du
 	// scoreboard (xuids). Voir l'appel `s.loadAwardsForScoreboard(...)` plus

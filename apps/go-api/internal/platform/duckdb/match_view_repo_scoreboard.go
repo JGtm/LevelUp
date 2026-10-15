@@ -6,6 +6,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -20,8 +21,9 @@ import (
 // (lot A du plan perf « lectures par périmètre », plus de jointure sur la vue des noms).
 //
 // Les stats d'objectifs sont chargées SÉPARÉMENT (Q12bObjectiveStats) et
-// best-effort : leur absence (vue match_objective_stats_latest non migrée) ne
-// doit JAMAIS faire échouer le scoreboard (G1, incident prod 25/07).
+// best-effort : leur panne (vue match_objective_stats_latest non migrée...) ne doit JAMAIS
+// faire échouer le scoreboard (G1, incident prod 25/07) mais n'est plus TUE : les lignes sont
+// rendues avec une *domain.SectionDegradedError (le service dit `section_unavailable`).
 func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) ([]domain.ScoreboardRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -49,8 +51,13 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard: %w", err)
 	}
 
-	// Objectifs : section DÉGRADABLE indépendamment (map vide si la vue manque).
-	objByXUID := loadMatchObjectiveStats(ctx, sharedDB, matchID)
+	// Objectifs : section DÉGRADABLE indépendamment (le tableau reste servi) — mais sa panne est
+	// DITE : l'erreur de section est renvoyée avec les lignes (domain.SectionDegradedError).
+	var degraded []error
+	objByXUID, objErr := loadMatchObjectiveStats(ctx, sharedDB, matchID)
+	if objErr != nil {
+		degraded = append(degraded, objErr)
+	}
 	for i := range results {
 		if obj, ok := objByXUID[results[i].XUID]; ok {
 			results[i].Obj = obj
@@ -62,7 +69,10 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 	// les deux jeux de colonnes sont disjoints, et un match d'Assaut n'a de toute façon aucun
 	// bloc API à écraser.
 	if r.bombStats {
-		bombByXUID := loadMatchBombStats(ctx, sharedDB, matchID)
+		bombByXUID, bombErr := loadMatchBombStats(ctx, sharedDB, matchID)
+		if bombErr != nil {
+			degraded = append(degraded, bombErr)
+		}
 		for i := range results {
 			if b, ok := bombByXUID[results[i].XUID]; ok {
 				fusionnerStatsBombe(&results[i].Obj, b)
@@ -72,6 +82,9 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 
 	r.attachTopWeapons(ctx, matchID, results)
 	r.attachTopWeaponLabels(ctx, results)
+	if len(degraded) > 0 {
+		return results, &domain.SectionDegradedError{Section: "scoreboard_objectives", Err: errors.Join(degraded...)}
+	}
 	return results, nil
 }
 
@@ -213,36 +226,36 @@ func (r *MatchViewRepo) attachTopWeaponLabels(ctx context.Context, results []dom
 }
 
 // loadMatchObjectiveStats charge les stats d'objectifs d'un match par xuid
-// (Q12bObjectiveStats), en BEST-EFFORT.
-//
-// Dégradation explicite (G1, 2026-07-26) : si la vue match_objective_stats_latest
-// est absente (DB non migrée → Catalog Error) ou si la requête échoue, on logge un
-// WARN structuré et on retourne une map VIDE. Le scoreboard reste servi entier ;
-// seule la section objectifs manque. Jamais d'erreur avalée en silence : le WARN
-// précède toujours la dégradation (CLAUDE.md règle n°3).
-func loadMatchObjectiveStats(ctx context.Context, db *sql.DB, matchID string) map[string]domain.ObjectiveRaw {
+// (Q12bObjectiveStats). La section est DÉGRADABLE (le tableau des scores reste servi) mais sa
+// panne est DITE : la map rendue porte les lignes lues, et l'erreur non nil signale une
+// requête en échec (vue absente d'une DB non migrée comprise), une ligne illisible ou une
+// itération interrompue. Chaque cas est journalisé en ERREUR avant d'être renvoyé.
+func loadMatchObjectiveStats(ctx context.Context, db *sql.DB, matchID string) (map[string]domain.ObjectiveRaw, error) {
 	out := map[string]domain.ObjectiveRaw{}
 	rows, err := db.QueryContext(ctx, Q12bObjectiveStats, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "match scoreboard: stats objectifs indisponibles, section dégradée",
+		slog.ErrorContext(ctx, "match scoreboard: stats objectifs indisponibles, section dégradée",
 			"match_id", matchID, "query", "Q12bObjectiveStats", "err", err)
-		return out
+		return out, fmt.Errorf("stats objectifs Q12b: %w", err)
 	}
 	defer rows.Close()
+	var failures []error
 	for rows.Next() {
 		xuid, obj, scanErr := scanObjectiveRow(rows)
 		if scanErr != nil {
-			slog.WarnContext(ctx, "match scoreboard: scan stats objectifs échoué, ligne ignorée",
+			slog.ErrorContext(ctx, "match scoreboard: scan stats objectifs échoué, ligne ignorée",
 				"match_id", matchID, "err", scanErr)
+			failures = append(failures, fmt.Errorf("scan stats objectifs: %w", scanErr))
 			continue
 		}
 		out[xuid] = obj
 	}
 	if err := rows.Err(); err != nil {
-		slog.WarnContext(ctx, "match scoreboard: itération stats objectifs interrompue, section dégradée",
+		slog.ErrorContext(ctx, "match scoreboard: itération stats objectifs interrompue, section dégradée",
 			"match_id", matchID, "err", err)
+		failures = append(failures, fmt.Errorf("itération stats objectifs: %w", err))
 	}
-	return out
+	return out, errors.Join(failures...)
 }
 
 // scanObjectiveRow scanne une ligne de Q12bObjectiveStats (xuid + 41 compteurs).
@@ -303,7 +316,10 @@ func scanObjectiveRow(rows *sql.Rows) (string, domain.ObjectiveRaw, error) {
 // GetMatchObjectiveScore retourne la somme award_score des awards de
 // catégorie 'objective' pour (xuid, matchID). Mirror du squad
 // LoadObjectiveScores (cf. squad_v2_adapter.go) appliqué à un seul match.
-// Dégradation silencieuse à 0 si la table est absente ou ligne vide.
+//
+// ABSENCE ≠ PANNE : la table `personal_score_awards` du joueur peut ne pas exister (titre ou
+// joueur sans awards) ; l'absence est CONSTATÉE par une sonde du catalogue et vaut 0. Toute
+// défaillance de la sonde ou de la lecture remonte en erreur.
 func (r *MatchViewRepo) GetMatchObjectiveScore(ctx context.Context, xuid, matchID string) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -314,12 +330,15 @@ func (r *MatchViewRepo) GetMatchObjectiveScore(ctx context.Context, xuid, matchI
 		WHERE table_name = 'personal_score_awards'
 	`)
 	if err != nil {
-		return 0, nil
+		return 0, fmt.Errorf("MatchViewRepo.GetMatchObjectiveScore: sonde personal_score_awards: %w", err)
 	}
 	scanErr := tblRows.Scan(&tableCount)
 	_ = tblRows.Close()
-	if scanErr != nil || tableCount == 0 {
-		return 0, nil
+	if scanErr != nil {
+		return 0, fmt.Errorf("MatchViewRepo.GetMatchObjectiveScore: sonde personal_score_awards: %w", scanErr)
+	}
+	if tableCount == 0 {
+		return 0, nil // absence constatée : pas d'awards pour ce joueur / ce titre
 	}
 
 	var total int
@@ -331,16 +350,16 @@ func (r *MatchViewRepo) GetMatchObjectiveScore(ctx context.Context, xuid, matchI
 		  AND match_id = ?
 	`, xuid, matchID)
 	if err != nil {
-		return 0, nil
+		return 0, fmt.Errorf("MatchViewRepo.GetMatchObjectiveScore: %w", err)
 	}
 	defer totalRows.Close()
 	if err := totalRows.Scan(&total); err != nil {
-		return 0, nil
+		return 0, fmt.Errorf("MatchViewRepo.GetMatchObjectiveScore scan: %w", err)
 	}
 	return total, nil
 }
 
-// loadMatchBombStats charge les STATISTIQUES D'ASSAUT d'un match par xuid, en BEST-EFFORT.
+// loadMatchBombStats charge les STATISTIQUES D'ASSAUT d'un match par xuid.
 //
 // SECONDE REQUÊTE, SECONDE TABLE, ET C'EST UNE DÉCISION DE SCHÉMA. Elles ne vivent pas dans
 // `match_objective_stats` mais dans `match_bomb_stats` (décision 1 du plan d'Assaut) : la vue
@@ -348,34 +367,52 @@ func (r *MatchViewRepo) GetMatchObjectiveScore(ctx context.Context, xuid, matchI
 // producteurs — le sync API et le film — s'y écraseraient l'un l'autre. Un re-sync API
 // effacerait les stats de bombe de la vue.
 //
-// MÊME DÉGRADATION QUE `loadMatchObjectiveStats` : vue absente (DB non migrée → Catalog Error)
-// ou requête en échec → WARN structuré et map VIDE. Le scoreboard reste servi entier ; seules
-// les colonnes d'Assaut manquent. Jamais d'erreur avalée en silence.
-func loadMatchBombStats(ctx context.Context, db *sql.DB, matchID string) map[string]domain.ObjectiveRaw {
+// MÊME CONTRAT QUE `loadMatchObjectiveStats` (lignes lues + erreur de section, journalisée en
+// ERREUR), à UNE distinction explicite près : la vue `match_bomb_stats_latest` ABSENTE du
+// lecteur n'est pas une panne de requête. Le lecteur SNAPSHOT ne l'exporte pas (cf.
+// ops/snapshot_export.go : sharedSnapshotTables / sharedSnapshotMatchKeyedRaw) : sans cette
+// sonde, chaque vue d'un match d'un titre à statistiques d'Assaut servie du snapshot passerait
+// pour en panne. L'absence est constatée (relationExists), journalisée en WARN, et rend une
+// map vide sans erreur ; toute autre défaillance remonte.
+func loadMatchBombStats(ctx context.Context, db *sql.DB, matchID string) (map[string]domain.ObjectiveRaw, error) {
 	out := map[string]domain.ObjectiveRaw{}
+	present, err := relationExists(ctx, db, "match_bomb_stats_latest")
+	if err != nil {
+		slog.ErrorContext(ctx, "match scoreboard: sonde des stats d'Assaut en échec, colonnes absentes",
+			"match_id", matchID, "err", err)
+		return out, err
+	}
+	if !present {
+		slog.WarnContext(ctx, "match scoreboard: stats d'Assaut absentes de ce lecteur (snapshot ?), colonnes absentes",
+			"match_id", matchID, "relation", "match_bomb_stats_latest")
+		return out, nil
+	}
 	rows, err := db.QueryContext(ctx, Q12cBombStats, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "match scoreboard: stats d'Assaut indisponibles, colonnes absentes",
+		slog.ErrorContext(ctx, "match scoreboard: stats d'Assaut indisponibles, colonnes absentes",
 			"match_id", matchID, "query", "Q12cBombStats", "err", err)
-		return out
+		return out, fmt.Errorf("stats d'Assaut Q12c: %w", err)
 	}
 	defer rows.Close()
+	var failures []error
 	for rows.Next() {
 		var xuid string
 		var o domain.ObjectiveRaw
 		if err := rows.Scan(&xuid, &o.BombDetonations, &o.BombArms, &o.BombGrabs,
 			&o.TimeAsBombCarrierSeconds, &o.BombCarriersKilled); err != nil {
-			slog.WarnContext(ctx, "match scoreboard: scan stats d'Assaut échoué, ligne ignorée",
+			slog.ErrorContext(ctx, "match scoreboard: scan stats d'Assaut échoué, ligne ignorée",
 				"match_id", matchID, "err", err)
+			failures = append(failures, fmt.Errorf("scan stats d'Assaut: %w", err))
 			continue
 		}
 		out[xuid] = o
 	}
 	if err := rows.Err(); err != nil {
-		slog.WarnContext(ctx, "match scoreboard: itération stats d'Assaut interrompue, colonnes absentes",
+		slog.ErrorContext(ctx, "match scoreboard: itération stats d'Assaut interrompue, colonnes absentes",
 			"match_id", matchID, "err", err)
+		failures = append(failures, fmt.Errorf("itération stats d'Assaut: %w", err))
 	}
-	return out
+	return out, errors.Join(failures...)
 }
 
 // fusionnerStatsBombe recopie les cinq mesures d'Assaut sur la ligne d'objectif du joueur. Elles

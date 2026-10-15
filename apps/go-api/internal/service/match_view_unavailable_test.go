@@ -12,6 +12,8 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/port"
 )
 
 // repoVueComplete : un repo dont toutes les sources du bandeau sont pleines.
@@ -218,5 +220,74 @@ func TestMatchView_CapabilityNonSupporteeNEstPasUnePanne(t *testing.T) {
 	}
 	if resp.IsPartial || len(resp.PartialReasons) != 0 {
 		t.Errorf("aucune raison attendue, obtenu %v", resp.PartialReasons)
+	}
+}
+
+// E4.8a : les lectures qui avalaient leur erreur (kill feed, score d'objectif) la remontent
+// maintenant ; le service les classe `section_unavailable` et la vue reste servie.
+func TestMatchView_LecturesDuKillFeedEtDeLObjectifEnPanne_SectionUnavailable(t *testing.T) {
+	cas := map[string]func(r *mockMatchViewRepo){
+		"sources de degat": func(r *mockMatchViewRepo) { r.killSrcErr = errors.New("Q21b HS") },
+		"assistances":      func(r *mockMatchViewRepo) { r.killAstErr = errors.New("Q21c HS") },
+		"score d'objectif": func(r *mockMatchViewRepo) { r.objErr = errors.New("awards HS") },
+	}
+	for nom, panne := range cas {
+		t.Run(nom, func(t *testing.T) {
+			repo := repoVueComplete()
+			panne(repo)
+			resp, err := NewMatchViewService(repo, "xuid1").GetMatchView(context.Background(), "m1")
+			if err != nil {
+				t.Fatalf("erreur inattendue : %v", err)
+			}
+			if !slices.Equal(resp.PartialReasons, []string{"section_unavailable"}) {
+				t.Errorf("raisons = %v, attendu [section_unavailable]", resp.PartialReasons)
+			}
+			if len(resp.TeamTab.Scoreboard) == 0 {
+				t.Errorf("la vue doit rester servie")
+			}
+		})
+	}
+}
+
+// Une section secondaire du tableau des scores en panne (stats d'objectif) : le repo rend les
+// lignes AVEC une *domain.SectionDegradedError. Le tableau reste servi et la raison est
+// `section_unavailable`, PAS `scoreboard_unavailable` (le tableau n'est pas en panne).
+func TestMatchView_SectionSecondaireDuTableau_ServiEtDite(t *testing.T) {
+	repo := repoVueComplete()
+	repo.boardErr = &domain.SectionDegradedError{Section: "scoreboard_objectives", Err: errors.New("Q12b HS")}
+	resp, err := NewMatchViewService(repo, "xuid1").GetMatchView(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("erreur inattendue : %v", err)
+	}
+	if !slices.Equal(resp.PartialReasons, []string{"section_unavailable"}) {
+		t.Errorf("raisons = %v, attendu [section_unavailable]", resp.PartialReasons)
+	}
+	if len(resp.TeamTab.Scoreboard) == 0 {
+		t.Errorf("le tableau des scores doit rester servi")
+	}
+}
+
+// fakeEvenementsCanoniques : loader des highlight events canoniques, en panne ou non.
+type fakeEvenementsCanoniques struct{ err error }
+
+func (f fakeEvenementsCanoniques) Load(context.Context, port.HighlightEventFilters) ([]canonical.HighlightEvent, error) {
+	return nil, f.err
+}
+
+// L'échec du loader canonique (le repli sur les events bruts sert la vue) est DIT ; une
+// capability non supportée par le titre n'est pas une panne.
+func TestMatchView_EvenementsCanoniques_EchecDit_CapabilityNon(t *testing.T) {
+	enPanne := NewMatchViewService(repoVueComplete(), "xuid1").
+		WithHighlightEventsRepo(fakeEvenementsCanoniques{err: errors.New("canonique HS")})
+	resp, err := enPanne.GetMatchView(context.Background(), "m1")
+	if err != nil || !slices.Equal(resp.PartialReasons, []string{"section_unavailable"}) {
+		t.Errorf("panne : err=%v raisons=%v, attendu [section_unavailable]", err, resp.PartialReasons)
+	}
+
+	absente := NewMatchViewService(repoVueComplete(), "xuid1").
+		WithHighlightEventsRepo(fakeEvenementsCanoniques{err: games.ErrCapabilityNotSupported})
+	resp, err = absente.GetMatchView(context.Background(), "m1")
+	if err != nil || len(resp.PartialReasons) != 0 {
+		t.Errorf("capability non supportée : err=%v raisons=%v, aucune attendue", err, resp.PartialReasons)
 	}
 }
