@@ -175,8 +175,8 @@ export function TacticalPlanCard({
     [selected, lue, raisonVide, contributions, sequenceAffichee],
   )
   const sceneMort = useMemo(
-    () => (selected && lue && raisonVide === null ? sceneDeLaVue(contributions, vue, locale) : SCENE_VIDE),
-    [selected, lue, raisonVide, contributions, vue, locale],
+    () => (selected && lue && raisonVide === null ? sceneDeLaVue(contributions, vue) : SCENE_VIDE),
+    [selected, lue, raisonVide, contributions, vue],
   )
   // Une mort choisie (`vue`) : le nom de la zone (déjà en tête de la colonne de droite) se retire du plan.
   const mortSelectionnee = vue !== null
@@ -235,7 +235,7 @@ export function TacticalPlanCard({
             />
           )}
           {repere && (sceneMort.marques.length > 0 || sceneMort.cercle !== null) && (
-            <CoucheDesCoequipiers t={t} locale={locale} repere={repere} fenetre={fenetre} scene={sceneMort} vue={vue} estompe={estompe} />
+            <CoucheDesCoequipiers repere={repere} fenetre={fenetre} scene={sceneMort} estompe={estompe} />
           )}
           {repere && selected && etiquette && !mortSelectionnee && (
             <EtiquetteDeZone selected={selected} repere={repere} fenetre={fenetre} texte={etiquette} estompe={estompe} />

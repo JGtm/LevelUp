@@ -428,16 +428,16 @@ fr = "dans le rayon"
 en = "within range"
 
 [tactical.mort.status_beyond]
-fr = "au-delà du rayon"
-en = "beyond range"
+fr = "au-delà"
+en = "beyond"
 
 [tactical.mort.status_out_of_sight]
 fr = "hors de vue"
 en = "out of sight"
 
 [tactical.mort.status_none]
-fr = "aucun en jeu"
-en = "none in play"
+fr = "aucun"
+en = "none"
 
 [tactical.mort.rose_title]
 fr = "Direction des tueurs"
@@ -452,8 +452,8 @@ fr = "{n} sur {m} par {dirs}"
 en = "{n} of {m} from {dirs}"
 
 [tactical.mort.rose_median]
-fr = "distance médiane {d} m"
-en = "median distance {d} m"
+fr = "médiane {d} m"
+en = "median {d} m"
 
 [tactical.mort.dir_0]
 fr = "le haut"
@@ -487,18 +487,6 @@ en = "the left"
 fr = "le haut gauche"
 en = "the top left"
 
-[tactical.mort.card_avenged]
-fr = "Tueur abattu en {s} s"
-en = "Killer downed within {s} s"
-
-[tactical.mort.card_returned]
-fr = "Abattu en retour en {s} s"
-en = "Downed in return within {s} s"
-
-[tactical.mort.card_of]
-fr = "sur {m}"
-en = "of {m}"
-
 [tactical.mort.card_nearest]
 fr = "Coéquipier le plus proche"
 en = "Closest teammate"
@@ -512,20 +500,20 @@ fr = "médiane"
 en = "median"
 
 [tactical.mort.detail_title]
-fr = "Instant de la mort · {date} · {instant}"
-en = "Moment of death · {date} · {instant}"
+fr = "Mort · {date} · {instant}"
+en = "Death · {date} · {instant}"
 
 [tactical.mort.detail_title_no_instant]
-fr = "Instant de la mort · {date}"
-en = "Moment of death · {date}"
+fr = "Mort · {date}"
+en = "Death · {date}"
 
 [tactical.mort.detail_title_frag]
-fr = "Instant du frag · {date} · {instant}"
-en = "Moment of the frag · {date} · {instant}"
+fr = "Frag · {date} · {instant}"
+en = "Frag · {date} · {instant}"
 
 [tactical.mort.detail_title_frag_no_instant]
-fr = "Instant du frag · {date}"
-en = "Moment of the frag · {date}"
+fr = "Frag · {date}"
+en = "Frag · {date}"
 
 [tactical.mort.detail_player]
 fr = "Joueur"
@@ -567,18 +555,6 @@ en = "{inside, plural, =0 {No teammate within {r} m} one {# teammate within {r} 
 fr = "{n, plural, one {# coéquipier} other {# coéquipiers}} à la mort."
 en = "{n, plural, one {# teammate} other {# teammates}} at the time of death."
 
-[tactical.mort.avenged]
-fr = "Tueur abattu {s} s après la mort"
-en = "Killer downed {s} s after the death"
-
-[tactical.mort.avenged_by]
-fr = "par {who}"
-en = "by {who}"
-
-[tactical.mort.returned]
-fr = "Abattu en retour {s} s après le frag"
-en = "Downed in return {s} s after the frag"
-
 [tactical.mort.legend_death]
 fr = "Mort"
 en = "Death"
@@ -598,10 +574,6 @@ en = "Teammates in play at each death"
 [tactical.mort.legend_radius]
 fr = "Rayon du radar ({r} m)"
 en = "Radar range ({r} m)"
-
-[tactical.mort.legend_riposte]
-fr = "Frag du coéquipier sur le tueur"
-en = "Teammate's frag on the killer"
 
 [tactical.mort.legend_killer]
 fr = "Tueur"
@@ -643,14 +615,3 @@ en = "Zone reading"
 fr = "< 1 m"
 en = "< 1 m away"
 
-[tactical.mort.tile_riposte_killer]
-fr = "abattu {s} s"
-en = "downed {s} s"
-
-[tactical.mort.tile_riposte_return]
-fr = "abattu en retour"
-en = "downed in return"
-
-[tactical.mort.legend_ghost]
-fr = "Coéquipier au moment du frag"
-en = "Teammate at the moment of the frag"

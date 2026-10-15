@@ -24,9 +24,6 @@ export function getMortText(m: Formateur) {
     mortRoseFrom: (n: number, total: number, dirs: string) => m('tactical.mort.rose_from', { n, m: total, dirs }),
     mortRoseMedian: (d: string) => m('tactical.mort.rose_median', { d }),
     mortDirections: SECTEURS.map((k) => m(`tactical.mort.dir_${k}` as TacticalManifestKey) as string),
-    mortCardAvenged: (s: string) => m('tactical.mort.card_avenged', { s }),
-    mortCardReturned: (s: string) => m('tactical.mort.card_returned', { s }),
-    mortCardOf: (total: number) => m('tactical.mort.card_of', { m: total }),
     mortCardNearest: m('tactical.mort.card_nearest'),
     mortCardMedian: (d: string) => m('tactical.mort.card_median', { d }),
     mortCardMedianLabel: m('tactical.mort.card_median_label'),
@@ -45,16 +42,11 @@ export function getMortText(m: Formateur) {
     mortDetailSummary: (inside: number, beyond: number, out: number, r: string) =>
       m('tactical.mort.detail_summary', { inside, beyond, out, r }),
     mortDetailSummaryNoRadius: (n: number) => m('tactical.mort.detail_summary_no_radius', { n }),
-    mortAvenged: (s: string) => m('tactical.mort.avenged', { s }),
-    mortAvengedBy: (who: string) => m('tactical.mort.avenged_by', { who }),
-    mortReturned: (s: string) => m('tactical.mort.returned', { s }),
     mortLegend: {
       death: m('tactical.mort.legend_death') as string,
       allyIn: m('tactical.mort.legend_ally_in') as string,
       allyOut: m('tactical.mort.legend_ally_out') as string,
       cloud: m('tactical.mort.legend_cloud') as string,
-      riposte: m('tactical.mort.legend_riposte') as string,
-      ghost: m('tactical.mort.legend_ghost') as string,
       killer: m('tactical.mort.legend_killer') as string,
       radius: (r: string) => m('tactical.mort.legend_radius', { r }),
     },
@@ -66,7 +58,5 @@ export function getMortText(m: Formateur) {
     seqDistanceNote: m('tactical.mort.seq_distance_note'),
     seqStage: (offset: string) => m('tactical.mort.seq_stage', { offset }),
     mortZoneSection: m('tactical.mort.zone_section'),
-    tileRiposteKiller: (s: string) => m('tactical.mort.tile_riposte_killer', { s }),
-    tileRiposteReturn: m('tactical.mort.tile_riposte_return') as string,
   }
 }

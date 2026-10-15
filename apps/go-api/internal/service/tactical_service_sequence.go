@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -150,10 +151,8 @@ func (s *TacticalService) acteursDeLaSequence(ctx context.Context, req domain.Ta
 		Victime: tactical.ActeurSequence{Role: domain.TacticalRoleVictime, XUID: req.VictimXUID,
 			Vies: vies.parXUID[req.VictimXUID]},
 	}
-	journal, _ := s.lireLeJournal(ctx, req.MapID, []domain.TacticalContribution{
-		{MatchID: req.MatchID, Face: domain.TacticalFaceMort},
-	})
-	if mort := tactical.KillDeLaMort(journal[req.MatchID], req.VictimXUID, req.TimeMs); mort != nil {
+	journal := s.lireLeJournal(ctx, req.MapID, req.MatchID)
+	if mort := tactical.KillDeLaMort(journal, req.VictimXUID, req.TimeMs); mort != nil {
 		in.Victime.Gamertag = mort.VictimGamertag
 		in.Tueur = tueurDeLaSequence(*mort, vies)
 	}
@@ -199,4 +198,23 @@ func (s *TacticalService) coequipiersDeLaSequence(ctx context.Context, req domai
 			Gamertag: l.Gamertag, Vies: vies.parXUID[l.MateXUID]})
 	}
 	return out
+}
+
+// sourceJournal : le nom de la source du journal, tel que le journal applicatif la cite.
+const sourceJournal = "journal"
+
+// lireLeJournal lit les kills publiables d'UN match (liste blanche d'un match) : la vue de sequence y
+// retrouve le kill de la mort. Source best-effort : en echec, elle est journalisee et la sequence
+// se compose sans tueur.
+func (s *TacticalService) lireLeJournal(ctx context.Context, mapID, matchID string) []domain.KillDuJournal {
+	stop := timing.FromContext(ctx).Section("tactical_sequence_journal")
+	kills, err := s.repo.JournalDesKills(ctx, domain.TacticalQuery{
+		PlayerXUID: s.xuid, MapID: mapID, Matchs: domain.RestreindreAux([]string{matchID}),
+	})
+	stop()
+	if err != nil {
+		s.sourceDegradee(ctx, sourceJournal, mapID, err)
+		return nil
+	}
+	return kills
 }

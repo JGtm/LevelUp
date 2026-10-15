@@ -28,11 +28,10 @@ export interface VueDeMort {
 export function sceneDeLaVue(
   contributions: readonly TacticalContribution[],
   vue: VueDeMort | null,
-  locale: Locale,
 ): SceneDuPlan {
   if (!vue) return sceneDeZone(contributions)
   if (vue.sequence && vue.etape !== null) return sceneDeSequence(vue.sequence, vue.etape)
-  return sceneDeMort(vue.contribution, locale)
+  return sceneDeMort(vue.contribution)
 }
 
 /** Le mode de la légende : le nuage de la zone, l'instantané d'une mort, ou une étape de la séquence. */
@@ -65,12 +64,12 @@ export function contributionDeLaVue(
 }
 
 /** Une entrée de légende : sa forme, par le mot. */
-export type FormeDeLegende = 'mort' | 'tueur' | 'victime' | 'plein' | 'creux' | 'fantome' | 'nuage' | 'cercle' | 'trait'
+export type FormeDeLegende = 'mort' | 'tueur' | 'victime' | 'plein' | 'creux' | 'nuage' | 'cercle'
 
 /**
  * entreesDeLegende — LA légende du plan, une seule : une forme = une entrée, dans l'ordre Mort · Tueurs /
- * Victimes · Coéquipiers (dans le rayon, hors du rayon, ou le nuage de la zone) · Frag du coéquipier sur
- * le tueur · Rayon du radar. `roles` sont les rôles que la couche des tueurs et victimes peint ; pendant
+ * Victimes · Coéquipiers (dans le rayon, hors du rayon, ou le nuage de la zone) · Rayon du radar. `roles` sont les rôles que la
+ * couche des tueurs et victimes peint ; pendant
  * une étape de la séquence cette couche se retire et le tueur est celui de la scène.
  */
 export function entreesDeLegende(
@@ -91,8 +90,6 @@ export function entreesDeLegende(
   if (sceneMort) {
     if (scene.marques.some((m) => m.role === 'coequipier' && m.plein)) sorties.push({ forme: 'plein', texte: L.allyIn })
     if (scene.marques.some((m) => m.role === 'coequipier' && !m.plein)) sorties.push({ forme: 'creux', texte: L.allyOut })
-    if (scene.marques.some((m) => m.role === 'fantome')) sorties.push({ forme: 'fantome', texte: L.ghost })
-    if (scene.traits.length > 0) sorties.push({ forme: 'trait', texte: L.riposte })
     if (scene.cercle) sorties.push({ forme: 'cercle', texte: L.radius(metresEntiers(scene.cercle.rayonM, locale)) })
   }
   return sorties

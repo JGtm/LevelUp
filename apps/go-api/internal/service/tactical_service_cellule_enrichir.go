@@ -110,7 +110,7 @@ func (s *TacticalService) enrichir(ctx context.Context, req domain.TacticalCellu
 	contextes, lus := s.lireLesContextes(ctx, req.MapID, matchsDesMorts(retenues, false))
 	s.poserPlacements(univers, retenues, out, contextes, lus)
 	s.poserRejeu(ctx, req.MapID, out)
-	bilan := s.poserEquipeEtRiposte(ctx, req.MapID, univers, retenues, out, contextes, lus)
+	bilan := s.poserEquipe(ctx, req.MapID, univers, retenues, out, contextes, lus)
 	return out, bilan
 }
 

@@ -71,12 +71,7 @@ var (
 	// sans portee. AUCUN QUOTIENT n'y figure : que des entiers, et la part affichee se calcule a
 	// l'ecran sur ces comptes, numerateur et denominateur visibles sur la meme barre. Le second
 	// retour de la fonction est un `int` (frags ecartes), deja autorise.
-	// `domain.TacticalRiposte` AJOUTE LE 2026-10-14 (plan Tactique coequipiers, lot L2). JUSTIFICATION :
-	// `TueurAbattu` et `AbattuEnRetour` rendent UN EVENEMENT du journal (qui a tire, a quelle position, a
-	// quel delai en ms) — aucun quotient. Le compte « N sur M » de la zone est fait par l appelant, en
-	// deux entiers qui voyagent ensemble (`domain.TacticalNSurM`).
 	typesQualifiesAutorises = map[string]bool{
-		"domain.TacticalRiposte":             true,
 		"domain.TimeseriesLivesNearTeammate": true,
 		"domain.CoordinationBlock":           true,
 		"domain.CoordinationEntree":          true,

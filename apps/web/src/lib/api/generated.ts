@@ -12782,11 +12782,6 @@ export interface components {
             /** Format: int64 */
             rows: number;
         };
-        TacticalBilanFrags: {
-            abattu_en_retour: components["schemas"]["TacticalNSurM"];
-            /** Format: int64 */
-            fenetre_riposte_ms: number;
-        };
         TacticalBilanMorts: {
             /** Format: int64 */
             accompagnees: number;
@@ -12796,8 +12791,6 @@ export interface components {
             equipe_a_terre: number;
             /** Format: int64 */
             examinees: number;
-            /** Format: int64 */
-            fenetre_riposte_ms: number;
             /** Format: double */
             mediane_plus_proche_m?: number;
             /** Format: double */
@@ -12805,12 +12798,10 @@ export interface components {
             rose: number[] | null;
             /** Format: int64 */
             total: number;
-            tueur_abattu: components["schemas"]["TacticalNSurM"];
             /** Format: int64 */
             visibles_hors_rayon: number;
         };
         TacticalBilanZone: {
-            frags?: components["schemas"]["TacticalBilanFrags"];
             morts?: components["schemas"]["TacticalBilanMorts"];
         };
         TacticalCelluleAdresse: {
@@ -12881,7 +12872,6 @@ export interface components {
             point?: components["schemas"]["TacticalPoint"];
             replay_available: boolean;
             resultat?: string;
-            riposte?: components["schemas"]["TacticalRiposte"];
             score_kind?: string;
             score_label?: string;
             xuid: string;
@@ -12930,12 +12920,6 @@ export interface components {
             cartes: components["schemas"]["TacticalMapCard"][] | null;
             /** Format: int64 */
             plancher_matchs: number;
-        };
-        TacticalNSurM: {
-            /** Format: int64 */
-            m: number;
-            /** Format: int64 */
-            n: number;
         };
         TacticalPlacement: {
             /** Format: double */
@@ -12987,14 +12971,6 @@ export interface components {
             qui?: string;
             /** @description Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction. */
             spawn?: string;
-        };
-        TacticalRiposte: {
-            /** Format: int64 */
-            delai_ms: number;
-            par_gamertag?: string;
-            par_xuid?: string;
-            point?: components["schemas"]["TacticalPoint"];
-            type: string;
         };
         TacticalSequence: {
             acteurs: components["schemas"]["TacticalSequenceActeur"][] | null;

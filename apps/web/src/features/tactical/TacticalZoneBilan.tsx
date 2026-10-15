@@ -1,15 +1,14 @@
 /**
- * TacticalZoneBilan — la VUE DE LA ZONE (C) : ce que les morts de la zone disent des coéquipiers, au-dessus
- * de la liste des tuiles. Barre des quatre statuts du coéquipier le plus proche, rose des directions des
- * tueurs, « Tueur abattu en N s : X sur Y » et distance médiane au coéquipier le plus proche. Pour les
- * lectures de frags, le miroir : « Abattu en retour en N s : X sur Y ».
+ * TacticalZoneBilan — la VUE DE LA ZONE (C), dans le bloc du bas de la colonne de droite : ce que les
+ * morts de la zone disent des coéquipiers, sur deux rangées. Rangée 1 : « Coéquipier le plus proche » et
+ * sa distance médiane, la barre fine des quatre statuts, les quatre comptes sur UNE ligne. Rangée 2 : la
+ * rose des directions des tueurs et « N sur M par la droite · médiane D m ».
  *
  * Tous les comptes viennent du serveur (`bilan`), en « N sur M » : aucun taux nu, aucun champ « non
- * mesuré ». Une mesure absente (pas de médiane, pas de tueur rangé) n'est pas écrite. La fenêtre de la
- * riposte est celle que le serveur publie (`fenetre_riposte_ms`), jamais recopiée ici.
+ * mesuré ». Une mesure absente (pas de médiane, pas de tueur rangé) n'est pas écrite.
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
-import type { TacticalBilanFrags, TacticalBilanMorts } from '@/lib/api/types'
+import type { TacticalBilanMorts } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import type { TacticalText } from './i18n'
@@ -18,13 +17,12 @@ import {
   ORDRE_DES_STATUTS,
   partsDeBarre,
   phraseDeLaRose,
-  secondesDeFenetre,
   type PartDeBarre,
   type StatutDeMort,
 } from './mort.logic'
 import { TacticalRose } from './TacticalRose'
 
-/** Le style d'un segment de la barre : le jeton allié plein ou atténué, ou une teinte neutre du thème. */
+/** Le style d'un segment ou d'une pastille : le jeton allié plein ou atténué, ou une teinte neutre du thème. */
 const SEGMENT: Record<StatutDeMort, { className: string; style?: { backgroundColor: string; opacity?: number } }> = {
   accompagnee: { className: '', style: { backgroundColor: tokenCssVar('team-ally') } },
   visible_hors_rayon: { className: '', style: { backgroundColor: tokenCssVar('team-ally'), opacity: 0.45 } },
@@ -35,7 +33,7 @@ const SEGMENT: Record<StatutDeMort, { className: string; style?: { backgroundCol
 function BarreDesStatuts({ t, parts }: { t: TacticalText; parts: readonly PartDeBarre[] }) {
   return (
     <>
-      <div className="flex h-3.5 gap-0.5 overflow-hidden rounded" role="img" aria-label={t.mortBilanTitle} data-testid="tactical-bilan-barre">
+      <div className="flex h-1.5 flex-none gap-0.5 overflow-hidden rounded-full" role="img" aria-label={t.mortBilanTitle} data-testid="tactical-bilan-barre">
         {parts
           .filter((p) => p.n > 0)
           .map((p) => (
@@ -47,17 +45,13 @@ function BarreDesStatuts({ t, parts }: { t: TacticalText; parts: readonly PartDe
             />
           ))}
       </div>
-      <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-muted-foreground" data-testid="tactical-bilan-statuts">
+      <ul className="m-0 flex list-none flex-wrap gap-x-3 gap-y-0.5 p-0 text-[11px] text-muted-foreground" data-testid="tactical-bilan-statuts">
         {ORDRE_DES_STATUTS.map((s) => {
           const p = parts.find((q) => q.statut === s)
           return (
-            <li key={s} className="flex items-center gap-1.5">
-              <span
-                aria-hidden
-                className={`inline-block size-2 rounded-sm ${SEGMENT[s].className}`}
-                style={SEGMENT[s].style}
-              />
-              {t.mortStatusLabels[s]} · <b className="font-medium tabular-nums text-foreground">{p?.n ?? 0}</b>
+            <li key={s} className="flex items-center gap-1 whitespace-nowrap">
+              <span aria-hidden className={`inline-block size-1.5 rounded-full ${SEGMENT[s].className}`} style={SEGMENT[s].style} />
+              <b className="font-medium tabular-nums text-foreground">{p?.n ?? 0}</b> {t.mortStatusLabels[s]}
             </li>
           )
         })}
@@ -66,74 +60,51 @@ function BarreDesStatuts({ t, parts }: { t: TacticalText; parts: readonly PartDe
   )
 }
 
-function Chiffre({ titre, valeur, suite }: { titre: string; valeur: string; suite: string }) {
+function RangeeDuPlusProche({ t, locale, b }: { t: TacticalText; locale: Locale; b: TacticalBilanMorts }) {
   return (
-    <div className="flex flex-col rounded-md bg-muted px-2.5 py-1.5" data-testid="tactical-bilan-chiffre">
-      <span className="text-[11px] text-muted-foreground">{titre}</span>
-      <span className="font-mono text-base font-semibold leading-5 tabular-nums">
-        {valeur} <span className="text-xs font-normal text-muted-foreground">{suite}</span>
-      </span>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[12.5px] font-semibold">{t.mortCardNearest}</span>
+        {b.mediane_plus_proche_m != null && (
+          <span className="text-[11.5px] text-muted-foreground">
+            {t.mortCardMedianLabel} <span className="font-mono tabular-nums text-foreground">{t.mortCardMedian(metresEntiers(b.mediane_plus_proche_m, locale))}</span>
+          </span>
+        )}
+      </div>
+      {b.examinees > 0 && <BarreDesStatuts t={t} parts={partsDeBarre(b)} />}
     </div>
   )
 }
 
-function BilanDesMorts({ t, locale, b }: { t: TacticalText; locale: Locale; b: TacticalBilanMorts }) {
+function RangeeDeLaRose({ t, locale, b }: { t: TacticalText; locale: Locale; b: TacticalBilanMorts }) {
   const phrase = phraseDeLaRose(t, b)
-  const secondes = secondesDeFenetre(b.fenetre_riposte_ms, locale)
+  if (!phrase) return null
   return (
-    <section className="flex flex-col gap-2.5" aria-label={t.mortZoneSection} data-testid="tactical-zone-bilan">
-      <h4 className="text-xs font-semibold">{t.mortBilanTitle}</h4>
-      {b.examinees > 0 && <BarreDesStatuts t={t} parts={partsDeBarre(b)} />}
-      {phrase && (
-        <div className="flex items-center gap-3">
-          <TacticalRose rose={b.rose ?? []} label={t.mortRoseLabel} />
-          <div className="flex min-w-0 flex-col gap-1 text-xs">
-            <b className="font-semibold">{t.mortRoseTitle}</b>
-            <span className="text-muted-foreground">{phrase}</span>
-            {b.mediane_tueur_m != null && (
-              <span className="text-muted-foreground">{t.mortRoseMedian(metresEntiers(b.mediane_tueur_m, locale))}</span>
-            )}
-          </div>
-        </div>
-      )}
-      <div className="grid grid-cols-2 gap-2">
-        {b.tueur_abattu.m > 0 && (
-          <Chiffre titre={t.mortCardAvenged(secondes)} valeur={String(b.tueur_abattu.n)} suite={t.mortCardOf(b.tueur_abattu.m)} />
-        )}
-        {b.mediane_plus_proche_m != null && (
-          <Chiffre
-            titre={t.mortCardNearest}
-            valeur={t.mortCardMedian(metresEntiers(b.mediane_plus_proche_m, locale))}
-            suite={t.mortCardMedianLabel}
-          />
-        )}
+    <div className="flex items-center gap-3 border-t border-border pt-2.5">
+      <TacticalRose rose={b.rose ?? []} label={t.mortRoseLabel} />
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-[12.5px] font-semibold">{t.mortRoseTitle}</span>
+        <span className="text-[11.5px] text-muted-foreground">
+          {phrase}
+          {b.mediane_tueur_m != null && <> · {t.mortRoseMedian(metresEntiers(b.mediane_tueur_m, locale))}</>}
+        </span>
       </div>
-    </section>
+    </div>
   )
 }
 
 interface TacticalZoneBilanProps {
   t: TacticalText
   locale: Locale
-  morts?: TacticalBilanMorts
-  frags?: TacticalBilanFrags
+  morts: TacticalBilanMorts
 }
 
-/** TacticalZoneBilan — le bilan des morts (lectures morts et isole) et/ou le miroir des frags (kills, solde). */
-export function TacticalZoneBilan({ t, locale, morts, frags }: TacticalZoneBilanProps) {
-  if (!morts && !frags) return null
+/** TacticalZoneBilan — le bilan des morts de la zone (lectures morts et isole). */
+export function TacticalZoneBilan({ t, locale, morts }: TacticalZoneBilanProps) {
   return (
-    <div className="flex flex-none flex-col gap-3">
-      {morts && <BilanDesMorts t={t} locale={locale} b={morts} />}
-      {frags && frags.abattu_en_retour.m > 0 && (
-        <div className="grid grid-cols-2 gap-2" data-testid="tactical-bilan-frags">
-          <Chiffre
-            titre={t.mortCardReturned(secondesDeFenetre(frags.fenetre_riposte_ms, locale))}
-            valeur={String(frags.abattu_en_retour.n)}
-            suite={t.mortCardOf(frags.abattu_en_retour.m)}
-          />
-        </div>
-      )}
-    </div>
+    <section className="flex flex-col gap-2.5" aria-label={t.mortZoneSection} data-testid="tactical-zone-bilan">
+      <RangeeDuPlusProche t={t} locale={locale} b={morts} />
+      <RangeeDeLaRose t={t} locale={locale} b={morts} />
+    </section>
   )
 }

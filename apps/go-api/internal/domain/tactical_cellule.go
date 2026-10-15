@@ -146,10 +146,8 @@ type TacticalContribution struct {
 	// Placement : seul ou près d'un coéquipier, pour une MORT seulement.
 	Placement *TacticalPlacement `json:"placement,omitempty"`
 	// Equipe : l'equipe de la victime a l'instant de sa mort (une MORT seulement), absente quand les
-	// coequipiers du match ne sont pas lus. Riposte : le tueur abattu par un coequipier (mort) ou
-	// l'auteur abattu en retour (frag), absente quand rien ne s'est passe dans la fenetre.
-	Equipe  *TacticalEquipeALaMort `json:"equipe,omitempty"`
-	Riposte *TacticalRiposte       `json:"riposte,omitempty"`
+	// coequipiers du match ne sont pas lus.
+	Equipe *TacticalEquipeALaMort `json:"equipe,omitempty"`
 	// ModeLabel : le mode du match, dans la langue de la requête (libellé de l'app).
 	ModeLabel string `json:"mode_label,omitempty"`
 	// ScoreLabel : « X - Y », le camp du joueur de la page d'abord (analysis.TeamScoreLabel) ;
@@ -183,6 +181,6 @@ type TacticalCelluleReponse struct {
 	// Zone : le nom en jeu de la zone de la cellule ; absent quand aucune zone ne la nomme.
 	Zone *TacticalZoneNom `json:"zone,omitempty"`
 
-	// Bilan : le bilan de la zone (equipe a la mort, rose des tueurs, riposte) ; absent sans mesure.
+	// Bilan : le bilan de la zone (equipe a la mort, rose des tueurs) ; absent sans mesure.
 	Bilan *TacticalBilanZone `json:"bilan,omitempty"`
 }

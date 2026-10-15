@@ -18,7 +18,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { renderWithProviders } from '@/test/render-utils'
 
 import { getTacticalText } from './i18n'
-import { BILAN, FRAG_ABATTU_EN_RETOUR, MORT_COMPLETE, SEQUENCE } from './mort.fixtures'
+import { BILAN, FRAG, MORT_COMPLETE, SEQUENCE } from './mort.fixtures'
 import { TacticalAnalysisView } from './TacticalAnalysisView'
 
 vi.mock('@/lib/api/client', async (importOriginal) => {
@@ -62,7 +62,7 @@ const RASTER: TacticalRaster = {
   grappes: [], matchs_filtres: 50, matchs_retenus: 45, matchs_victoire: 20, matchs_defaite: 25, matchs_en_attente: 0, points_ignores: 0,
 }
 const DETAIL: TacticalCelluleReponse = {
-  contributions: [MORT_COMPLETE, FRAG_ABATTU_EN_RETOUR],
+  contributions: [MORT_COMPLETE, FRAG],
   zone: { nom_fr: 'Place centrale', nom_en: 'Central Square' },
   bilan: BILAN,
 }
@@ -114,7 +114,7 @@ describe('le parcours : zone, mort choisie, étapes, retour', () => {
   it('clic sur une tuile : l’encadré de la mort, le bilan se retire, la séquence est demandée pour cette mort', () => {
     rendre()
     fireEvent.click(tuiles()[0])
-    expect(screen.getByTestId('tactical-mort-detail')).toHaveTextContent(/Instant de la mort · .* · 7:20/)
+    expect(screen.getByTestId('tactical-mort-detail')).toHaveTextContent(/Mort · .* · 7:20/)
     expect(screen.queryByTestId('tactical-zone-bilan')).toBeNull()
     expect(derniereDemande()).toEqual({ match_id: 'm1', victim_xuid: '111', time_ms: 462_000 })
   })
@@ -163,10 +163,10 @@ describe('le parcours : zone, mort choisie, étapes, retour', () => {
     expect(screen.getByTestId('tactical-mort-fiche')).toBeInTheDocument()
   })
 
-  it('un frag choisi : « Instant du frag », aucune séquence demandée', () => {
+  it('un frag choisi : « Frag », aucune séquence demandée', () => {
     rendre()
     fireEvent.click(tuiles()[1])
-    expect(screen.getByTestId('tactical-mort-detail')).toHaveTextContent('Instant du frag')
+    expect(screen.getByTestId('tactical-mort-detail')).toHaveTextContent(/Frag · /)
     expect(derniereDemande()).toBeNull()
   })
 })

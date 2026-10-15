@@ -258,9 +258,6 @@ func reelControles(question string, d domain.TacticalCelluleReponse) []string {
 				}
 			}
 		}
-		if r := c.Riposte; r != nil && (r.DelaiMs < 0 || r.DelaiMs > 3000) {
-			add("match %s %d ms : riposte hors fenetre (%d ms)", c.MatchID, c.InstantMs, r.DelaiMs)
-		}
 		if c.Face == domain.TacticalFaceMort && c.Point == nil {
 			add("match %s mort %d ms sans position", c.MatchID, c.InstantMs)
 		}
@@ -276,15 +273,6 @@ func reelControles(question string, d domain.TacticalCelluleReponse) []string {
 		}
 		if rose > m.Total {
 			add("bilan : rose %d > total %d", rose, m.Total)
-		}
-		avenges := 0
-		for _, c := range d.Contributions {
-			if c.Face == domain.TacticalFaceMort && c.Riposte != nil {
-				avenges++
-			}
-		}
-		if avenges != m.TueurAbattu.N {
-			add("bilan : tueur abattu %d sur %d, mais %d morts portent une riposte", m.TueurAbattu.N, m.TueurAbattu.M, avenges)
 		}
 	}
 	return out

@@ -14,7 +14,7 @@ import (
 )
 
 // zoneChargee : `n` matchs, une mort de MOI dans la cellule (4, 4) de chacun, avec `mates` coequipiers
-// visibles (position, distances) et un tueur abattu par un coequipier dans la fenetre.
+// visibles (position, distances).
 func zoneChargee(n, mates int) *mockTacticalRepo {
 	repo := &mockTacticalRepo{ouvrables: map[string]time.Time{}}
 	variantes := map[string]string{}
@@ -37,23 +37,13 @@ func zoneChargee(n, mates int) *mockTacticalRepo {
 				X: m(4.5), Y: m(6.25), DistanceM: m(4 + float64(k)),
 			})
 		}
-		repo.journal = append(repo.journal,
-			domain.KillDuJournal{MatchID: id, TimeMs: 100_000, VictimXUID: tsMoi, VictimGamertag: "Moi", KillerXUID: tsAdv, KillerGamertag: "Rival"},
-			domain.KillDuJournal{MatchID: id, TimeMs: 101_000, VictimXUID: tsAdv, VictimGamertag: "Rival",
-				KillerXUID: fmt.Sprintf("25332740000%05d", 100), KillerGamertag: "Coequipier0", KillerX: m(5), KillerY: m(5)})
 	}
 	repo.pos.Univers = universVariantes(variantes)
-	for _, id := range triees(variantes) {
-		repo.pos.Univers.Equipes[id][fmt.Sprintf("25332740000%05d", 100)] = 0
-		for k := 1; k < mates; k++ {
-			repo.pos.Univers.Equipes[id][fmt.Sprintf("25332740000%05d", 100+k)] = 0
-		}
-	}
 	return repo
 }
 
 // TestCellule_PoidsDeLaReponseDUneZoneChargee : 100 morts dans une zone, en Arene (3 coequipiers) puis
-// en BTB (11) ; on mesure l'octet servi avec et sans l'equipe, la riposte et le bilan, et on tient un
+// en BTB (11) ; on mesure l'octet servi avec et sans l'equipe et le bilan, et on tient un
 // plafond (marge ~30 % sur la mesure) pour qu'un champ ajoute sans y penser fasse rougir ce test.
 func TestCellule_PoidsDeLaReponseDUneZoneChargee(t *testing.T) {
 	cas := []struct {
@@ -70,7 +60,7 @@ func TestCellule_PoidsDeLaReponseDUneZoneChargee(t *testing.T) {
 			got := celluleLue(t, NewTacticalService(repo, capsCompletes(), tsMoi).
 				WithRadarRange(map[string]int{"Slayer:Arena": 18}),
 				celluleDemande(repo, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, 4, 4))
-			if len(got.Contributions) != 100 || got.Bilan == nil || got.Bilan.Morts.TueurAbattu != (domain.TacticalNSurM{N: 100, M: 100}) {
+			if len(got.Contributions) != 100 || got.Bilan == nil {
 				t.Fatalf("contributions = %d, bilan = %+v", len(got.Contributions), got.Bilan)
 			}
 			avec, _ := json.Marshal(got)
@@ -78,10 +68,10 @@ func TestCellule_PoidsDeLaReponseDUneZoneChargee(t *testing.T) {
 			sans.Bilan = nil
 			sans.Contributions = append([]domain.TacticalContribution(nil), got.Contributions...)
 			for i := range sans.Contributions {
-				sans.Contributions[i].Equipe, sans.Contributions[i].Riposte = nil, nil
+				sans.Contributions[i].Equipe = nil
 			}
 			base, _ := json.Marshal(sans)
-			t.Logf("%s : %d octets avec equipe/riposte/bilan, %d sans (+%d, soit %d octets par mort)",
+			t.Logf("%s : %d octets avec equipe/bilan, %d sans (+%d, soit %d octets par mort)",
 				c.nom, len(avec), len(base), len(avec)-len(base), (len(avec)-len(base))/100)
 			if len(avec) > c.plafond {
 				t.Errorf("reponse = %d octets, plafond %d : un champ de l'equipe a grossi la reponse", len(avec), c.plafond)
@@ -91,8 +81,8 @@ func TestCellule_PoidsDeLaReponseDUneZoneChargee(t *testing.T) {
 }
 
 // TestEquipe_TitreSansLesSources_ServiSansErreur : un titre dont le shared n'a pas les tables du film
-// (Halo 5, positions natives) : ErrCapabilityNotSupported des deux sources, aucune equipe, aucune
-// riposte, aucun bilan, aucune erreur.
+// (Halo 5, positions natives) : ErrCapabilityNotSupported des deux sources, aucune equipe, aucun bilan examine,
+// aucune erreur.
 func TestEquipe_TitreSansLesSources_ServiSansErreur(t *testing.T) {
 	repo := corpusEquipe()
 	repo.errMates, repo.errJournal = games.ErrCapabilityNotSupported, games.ErrCapabilityNotSupported
@@ -103,11 +93,11 @@ func TestEquipe_TitreSansLesSources_ServiSansErreur(t *testing.T) {
 		t.Fatalf("contributions = %d, want 4", len(got.Contributions))
 	}
 	for _, c := range got.Contributions {
-		if c.Equipe != nil || c.Riposte != nil {
-			t.Errorf("contribution %+v : ni equipe ni riposte sans les sources", c)
+		if c.Equipe != nil {
+			t.Errorf("contribution %+v : pas d'equipe sans la source", c)
 		}
 	}
-	if got.Bilan == nil || got.Bilan.Frags != nil || got.Bilan.Morts == nil || got.Bilan.Morts.Examinees != 0 {
+	if got.Bilan == nil || got.Bilan.Morts == nil || got.Bilan.Morts.Examinees != 0 {
 		t.Errorf("bilan = %+v : les morts se comptent, rien n'est examine", got.Bilan)
 	}
 }

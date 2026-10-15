@@ -117167,3 +117167,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : lecture des pistes de la séquence 0,12-0,14 s sur le plus gros artefact (< 500 ms) ; poids d'une zone de 100 morts 99 Ko (Arène) / 231 Ko (BTB) contre 30 Ko sans équipe ; preuve sur données réelles (copies du parc, Streets) : 50 matchs relus sur 52, 1 244 morts cohérentes au premier passage ; écart de 0,05-0,28 m entre le contexte de mort et `kill_positions` (tolérance 0,5 m) ; 92 % des participants sans gamertag, noms repris de `xuid_aliases` (corrigé). Revue adversariale : P0-1 (vies concaténées en séquence) corrigé, P2-1 à P2-3 traités (dédoublonnage par `mate_xuid`, compteur `tactique_equipe_lignes_incoherentes`, contrat documenté). Gates : go test des paquets touchés, archlint, `-tags=integration -p 1` sur persist, tsc, vitest tactical/replay/match-nav, eslint, lint couleurs et champs verts.
 
 **Conclusion / prochaine étape** : fusion dans `feat/v75` sur accord, puis backfill du parc entier (`backfill-killsource`, serveur arrêté, environ 1 600 films) sur accord explicite du user ; reports inscrits au registre (bots dans les positions, backfill, écart de positions, champ `total` du bilan).
+
+## [2026-10-15] Tactique : refonte de la colonne de droite et retrait complet de l'échange « tueur abattu » — Complété (branche `feat/tactique-coequipiers`)
+
+**Statut** : Complété (gates Go et web verts, preuve visuelle sur données réelles, sombre et clair) ; pas de push.
+
+**Décision technique principale** : sur décision du user du 2026-10-15, l'échange (tueur abattu / abattu en retour) est retiré de l'écran ET du contrat, par mort comme en agrégat : `coordination/riposte.go`, `domain.TacticalRiposte`, `TacticalNSurM`, `bilan.frags`, `riposte`, `fenetre_riposte_ms`, le garde-rail de fenêtre et l'entrée `no_naked_rate` disparaissent ; le journal des kills reste, pour la seule séquence. La colonne de droite devient en-tête compact, liste qui défile et bloc du bas de hauteur fixe (bilan de zone ou détail de la mort).
+
+**Résultats observés** : bloc du bas 360 x 196 px sans et avec tuile choisie (aucun saut) ; tsc -b --force, vitest tactical/replay/match-nav/lib (1 921 tests), eslint, lint:colors, lint:fields, knip, lint-cross-feature-imports, check-generated-types-fresh verts ; go test service/analysis/duckdb/domain/api/archlint verts, openapi-gen -check vert. Une commande `python` a été tapée par erreur pendant le lot (interdit, arrêtée aussitôt, sans effet sur le dépôt).
+
+**Conclusion / prochaine étape** : revue du superviseur et gate visuel du user ; fusion dans `feat/v75` puis backfill du parc entier sur accord.

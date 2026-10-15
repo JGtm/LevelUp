@@ -55,7 +55,7 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, acti
   useEffect(() => {
     if (actif) ligne.current?.scrollIntoView?.({ block: 'nearest' })
   }, [actif])
-  const aLigne3 = Boolean(m.arme || m.distance || m.badge || m.riposte)
+  const aLigne3 = Boolean(m.arme || m.distance || m.badge)
   return (
     <li
       ref={ligne}
@@ -117,11 +117,6 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, acti
           >
             {m.arme && <span className="min-w-0 truncate">{m.arme}</span>}
             {m.distance && <span className="flex-none" data-testid="tactical-rejeu-distance">{m.distance}</span>}
-            {m.riposte && (
-              <span className={`flex-none rounded-full bg-muted px-1.5 text-[10.5px] leading-4${m.badge ? '' : ' ml-auto'}`} data-testid="tactical-rejeu-riposte">
-                {m.riposte}
-              </span>
-            )}
             {m.badge && <span className="ml-auto flex-none rounded-full bg-muted px-1.5 text-[10.5px] leading-4">{m.badge}</span>}
           </div>
         )}

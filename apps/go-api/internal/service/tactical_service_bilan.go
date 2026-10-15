@@ -1,15 +1,12 @@
 package service
 
-// tactical_service_bilan.go — LE BILAN DE LA ZONE SELECTIONNEE : ce que ses morts et ses frags, pris
-// ensemble, disent des coequipiers. Lu sur les contributions DEJA enrichies (equipe, riposte,
-// positions) : aucune lecture nouvelle.
+// tactical_service_bilan.go — LE BILAN DE LA ZONE SELECTIONNEE : ce que ses morts disent des
+// coequipiers. Lu sur les contributions DEJA enrichies (equipe, positions) : aucune lecture nouvelle.
 //
-// COMPTES « N SUR M » ET MEDIANES, JAMAIS UN TAUX NU. Chaque compte voyage avec son denominateur ;
-// une mediane est absente sans mesure. Les quatre statuts se partagent les morts dont l'equipe a ete
-// lue (`Examinees`) ; l'ecart avec `Total` est le nombre de morts d'un match pas encore relu.
-//
-//	morts   les contributions de face mort (lectures morts, isole, solde) ;
-//	frags   les contributions de face frag (lectures kills, solde), quand le journal a ete lu.
+// COMPTES « N SUR M » ET MEDIANES, JAMAIS UN TAUX NU. Une mediane est absente sans mesure. Les quatre
+// statuts se partagent les morts dont l'equipe a ete lue (`Examinees`) ; l'ecart avec `Total` est le
+// nombre de morts d'un match pas encore relu. AUCUN COMPTE NI FAIT D'ECHANGE (« tueur abattu »,
+// « abattu en retour ») : retire du bilan et de la contribution, decision du user du 2026-10-15.
 
 import (
 	"levelup/go-api/internal/analysis/coordination"
@@ -17,19 +14,18 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// bilanDeZone rend le bilan de la zone, ou nil quand elle ne porte ni mort ni frag.
-func bilanDeZone(out []domain.TacticalContribution, lec lectureDeLEquipe) *domain.TacticalBilanZone {
-	morts := bilanDesMorts(out, lec)
-	frags := bilanDesFrags(out, lec)
-	if morts == nil && frags == nil {
+// bilanDeZone rend le bilan de la zone, ou nil quand elle ne porte aucune mort.
+func bilanDeZone(out []domain.TacticalContribution) *domain.TacticalBilanZone {
+	morts := bilanDesMorts(out)
+	if morts == nil {
 		return nil
 	}
-	return &domain.TacticalBilanZone{Morts: morts, Frags: frags}
+	return &domain.TacticalBilanZone{Morts: morts}
 }
 
 // bilanDesMorts compte les statuts, range les tueurs dans la rose et mesure les distances.
-func bilanDesMorts(out []domain.TacticalContribution, lec lectureDeLEquipe) *domain.TacticalBilanMorts {
-	b := &domain.TacticalBilanMorts{Rose: make([]int, coordination.SecteursDeLaRose), FenetreRiposteMs: coordination.FenetreRiposteMs}
+func bilanDesMorts(out []domain.TacticalContribution) *domain.TacticalBilanMorts {
+	b := &domain.TacticalBilanMorts{Rose: make([]int, coordination.SecteursDeLaRose)}
 	var tueurM, procheM []float64
 	for i := range out {
 		c := &out[i]
@@ -44,12 +40,6 @@ func bilanDesMorts(out []domain.TacticalContribution, lec lectureDeLEquipe) *dom
 		}
 		if d := plusProcheVisible(c.Equipe); d != nil {
 			procheM = append(procheM, *d)
-		}
-		if lec.tueurConnu[i] {
-			b.TueurAbattu.M++
-			if c.Riposte != nil {
-				b.TueurAbattu.N++
-			}
 		}
 	}
 	if b.Total == 0 {
@@ -103,26 +93,4 @@ func plusProcheVisible(eq *domain.TacticalEquipeALaMort) *float64 {
 		}
 	}
 	return mini
-}
-
-// bilanDesFrags compte les frags dont l'auteur a ete abattu dans la foulee ; nil sans frag, ou quand
-// le journal n'a pas ete lu (le denominateur n'existe pas).
-func bilanDesFrags(out []domain.TacticalContribution, lec lectureDeLEquipe) *domain.TacticalBilanFrags {
-	if !lec.journalLu {
-		return nil
-	}
-	b := domain.TacticalBilanFrags{FenetreRiposteMs: coordination.FenetreRiposteMs}
-	for i := range out {
-		if out[i].Face != domain.TacticalFaceFrag {
-			continue
-		}
-		b.AbattuEnRetour.M++
-		if out[i].Riposte != nil {
-			b.AbattuEnRetour.N++
-		}
-	}
-	if b.AbattuEnRetour.M == 0 {
-		return nil
-	}
-	return &b
 }

@@ -139,8 +139,7 @@ type TacticalRepository interface {
 	MatesDesMorts(ctx context.Context, filtre domain.TacticalQuery, morts []domain.CleDeMort) ([]domain.MateDeMort, error)
 
 	// JournalDesKills rend les kills publiables des matchs de la liste blanche `filtre.Matchs`
-	// (obligatoire), avec la position du tueur au coup quand elle est mesuree : la matiere des
-	// ripostes (tueur abattu, abattu en retour).
+	// (obligatoire), avec la position du tueur au coup quand elle est mesuree.
 	JournalDesKills(ctx context.Context, filtre domain.TacticalQuery) ([]domain.KillDuJournal, error)
 
 	// MatchsOuvrables verifie, pour la liste de match_id donnee, lesquels `playerXUID` a

@@ -1,16 +1,13 @@
 package service
 
 // tactical_service_equipe.go — CE QUE LE DETAIL D'UNE ZONE AJOUTE SUR LES COEQUIPIERS : l'equipe de la
-// victime a l'instant de chaque mort, la riposte qui l'a suivie (tueur abattu / abattu en retour), et
-// le bilan de la zone.
+// victime a l'instant de chaque mort, et le bilan de la zone.
 //
-// DEUX SOURCES, BEST-EFFORT COMME LES AUTRES du detail (tactical_service_cellule_enrichir.go) :
-//
-//	coequipiers   `match_death_mates_latest`, une ligne par coequipier et par mort ;
-//	journal       `match_kill_events_latest` x `kill_positions_latest`, les kills publiables des matchs.
-//
-// Absente ou en echec, une source retire les champs qu'elle nourrit et le journal le dit en la
-// nommant ; la liste des contributions est toujours servie. Chacune a sa section de duree (ADR 0036
+// UNE SOURCE, BEST-EFFORT COMME LES AUTRES du detail (tactical_service_cellule_enrichir.go) :
+// `match_death_mates_latest`, une ligne par coequipier et par mort. Absente ou en echec, elle retire
+// les champs qu'elle nourrit et le journal le dit en la nommant ; la liste des contributions est
+// toujours servie. Elle a sa section de duree (ADR 0036 I6) et est lue UNE FOIS par requete, bornee
+// aux matchs des contributions (ADR 0036 I2).
 // I6) et est lue UNE FOIS par requete, bornee aux matchs des contributions (ADR 0036 I2).
 //
 // L'EQUIPE SE LIT SUR LA CLE EXACTE DE LA LIGNE DE CONTEXTE APPARIEE a la mort (a ± 1,5 s,
@@ -21,31 +18,20 @@ package service
 import (
 	"context"
 
-	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/timing"
 )
 
-// Noms des sources, tels que le journal les cite.
+// Nom de la source, tel que le journal la cite.
 const (
 	sourceCoequipiers = "coequipiers"
-	sourceJournal     = "journal"
 )
 
-// lectureDeLEquipe : ce que la pose des equipes et des ripostes a lu, pour le bilan de la zone.
-type lectureDeLEquipe struct {
-	// tueurConnu[i] : la contribution i est une mort dont le journal identifie le tueur (le M de
-	// « tueur abattu N sur M »).
-	tueurConnu []bool
-	// journalLu : le journal a ete lu (le M des frags n'a de sens que dans ce cas).
-	journalLu bool
-}
-
-// poserEquipeEtRiposte pose l'equipe et la riposte de chaque contribution, puis rend le bilan de la
+// poserEquipe pose l'equipe de chaque contribution de face mort, puis rend le bilan de la
 // zone. `contextes` sont ceux des matchs de ses morts (`lus` faux = source absente).
-func (s *TacticalService) poserEquipeEtRiposte(ctx context.Context, mapID string, univers domain.TacticalUnivers,
+func (s *TacticalService) poserEquipe(ctx context.Context, mapID string, univers domain.TacticalUnivers,
 	retenues []contributionLue,
 	out []domain.TacticalContribution, contextes []domain.ContexteDeMort, lus bool) *domain.TacticalBilanZone {
 	if len(matchsDesFaces(out)) == 0 {
@@ -54,25 +40,19 @@ func (s *TacticalService) poserEquipeEtRiposte(ctx context.Context, mapID string
 	rayons, _ := s.rayonsParMatch(univers.Matchs)
 	apparies := apparierLesContextes(retenues, out, contextes, lus)
 	mates := s.lireLesMates(ctx, mapID, apparies)
-	journal, journalLu := s.lireLeJournal(ctx, mapID, out)
-
-	lec := lectureDeLEquipe{tueurConnu: make([]bool, len(out)), journalLu: journalLu}
 	for i := range out {
-		switch out[i].Face {
-		case domain.TacticalFaceMort:
-			rayon, aUnRayon := rayons[out[i].MatchID]
-			if c := apparies[i]; c != nil {
-				if lignes, ok := s.lignesCompletes(ctx, mapID, c, mates); ok {
-					eq := tactical.EquipeDeLaMort(*c, lignes, rayon, aUnRayon, out[i].AutrePoint)
-					out[i].Equipe = &eq
-				}
+		if out[i].Face != domain.TacticalFaceMort {
+			continue
+		}
+		rayon, aUnRayon := rayons[out[i].MatchID]
+		if c := apparies[i]; c != nil {
+			if lignes, ok := s.lignesCompletes(ctx, mapID, c, mates); ok {
+				eq := tactical.EquipeDeLaMort(*c, lignes, rayon, aUnRayon, out[i].AutrePoint)
+				out[i].Equipe = &eq
 			}
-			lec.tueurConnu[i] = poserTueurAbattu(&out[i], journal[out[i].MatchID], univers.Equipes[out[i].MatchID])
-		case domain.TacticalFaceFrag:
-			poserAbattuEnRetour(&out[i], journal[out[i].MatchID])
 		}
 	}
-	return bilanDeZone(out, lec)
+	return bilanDeZone(out)
 }
 
 // matchsDesFaces rend les matchs distincts des contributions de face mort ou frag, tries.
@@ -181,51 +161,4 @@ func (s *TacticalService) lignesCompletes(ctx context.Context, mapID string, c *
 	s.logger.DebugContext(ctx, "tactique: lignes de coequipiers incoherentes avec le contexte, equipe ecartee",
 		"player", s.xuid, "map_id", mapID, "match_id", c.MatchID, "time_ms", c.TimeMs, "lignes", len(lignes), "total", c.Total)
 	return nil, false
-}
-
-// lireLeJournal lit, en une requete bornee aux matchs des contributions, les kills publiables,
-// indexes par match. `lu` est faux quand la source manque ou echoue (journalisee).
-func (s *TacticalService) lireLeJournal(ctx context.Context, mapID string,
-	out []domain.TacticalContribution) (map[string][]domain.KillDuJournal, bool) {
-	ids := matchsDesFaces(out)
-	stop := timing.FromContext(ctx).Section("tactical_cellule_journal")
-	kills, err := s.repo.JournalDesKills(ctx, domain.TacticalQuery{
-		PlayerXUID: s.xuid, MapID: mapID, Matchs: domain.RestreindreAux(ids),
-	})
-	stop()
-	if err != nil {
-		s.sourceDegradee(ctx, sourceJournal, mapID, err)
-		return nil, false
-	}
-	par := make(map[string][]domain.KillDuJournal, len(ids))
-	for _, k := range kills {
-		par[k.MatchID] = append(par[k.MatchID], k)
-	}
-	return par, true
-}
-
-// poserTueurAbattu cherche si un coequipier de la victime a abattu le tueur de la mort ; rend vrai
-// quand le journal identifie ce tueur (la mort entre alors au denominateur du bilan).
-func poserTueurAbattu(c *domain.TacticalContribution, journal []domain.KillDuJournal,
-	equipes map[string]int) bool {
-	mort := tactical.KillDeLaMort(journal, c.XUID, c.InstantMs)
-	if mort == nil || !coordination.TueurConnu(*mort) {
-		return false
-	}
-	equipeVictime, connue := equipes[c.XUID]
-	coequipier := func(xuid string) bool {
-		e, ok := equipes[xuid]
-		return connue && ok && e == equipeVictime && xuid != c.XUID
-	}
-	if r, ok := coordination.TueurAbattu(journal, *mort, coequipier); ok {
-		c.Riposte = &r
-	}
-	return true
-}
-
-// poserAbattuEnRetour cherche si l'auteur d'un frag a ete abattu dans la foulee.
-func poserAbattuEnRetour(c *domain.TacticalContribution, journal []domain.KillDuJournal) {
-	if r, ok := coordination.AbattuEnRetour(journal, c.MatchID, c.XUID, c.InstantMs); ok {
-		c.Riposte = &r
-	}
 }

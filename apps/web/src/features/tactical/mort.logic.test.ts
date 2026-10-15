@@ -1,6 +1,6 @@
 /**
  * mort.logic — la logique pure de la lecture des coéquipiers : barre des statuts, rose, phrases, fiche
- * d'une mort, échange, scènes du plan (nuage, instantané, séquence).
+ * d'une mort, scènes du plan (nuage, instantané, séquence).
  */
 import { describe, expect, it } from 'vitest'
 
@@ -9,7 +9,6 @@ import {
   batonsDeLaRose,
   directionDominante,
   distancesDEtape,
-  echangeDeLaMort,
   libelleDeDecalage,
   lignesDeLaFiche,
   partsDeBarre,
@@ -19,7 +18,7 @@ import {
   sceneDeSequence,
   sceneDeZone,
 } from './mort.logic'
-import { BILAN, FRAG_ABATTU_EN_RETOUR, MORT_COMPLETE, SEQUENCE } from './mort.fixtures'
+import { BILAN, FRAG, MORT_COMPLETE, SEQUENCE } from './mort.fixtures'
 import { sceneDeLaVue, sequenceDemandee } from './vueDeMort'
 
 const t = getTacticalText('fr')
@@ -70,44 +69,27 @@ describe('fiche d’une mort', () => {
     expect(resumeDeLEquipe(t, MORT_COMPLETE, 'fr')).toBe('1 coéquipier dans le rayon de 18 m, 1 au-delà, 1 hors jeu.')
     expect(resumeDeLEquipe(t, { ...MORT_COMPLETE, equipe: undefined }, 'fr')).toBeNull()
   })
-
-  it('échange : tueur abattu (délai, auteur, distance au tueur) et abattu en retour', () => {
-    expect(echangeDeLaMort(t, MORT_COMPLETE, 'fr')).toEqual({
-      titre: 'Tueur abattu 1,8 s après la mort',
-      detail: 'par Kestrel 77',
-    })
-    expect(echangeDeLaMort(t, FRAG_ABATTU_EN_RETOUR, 'fr')).toEqual({
-      titre: 'Abattu en retour 1,5 s après le frag',
-      detail: 'par Bot Elite',
-    })
-    expect(echangeDeLaMort(t, { ...MORT_COMPLETE, riposte: undefined }, 'fr')).toBeNull()
-  })
 })
-
 describe('scènes du plan', () => {
   it('nuage de la zone : les coéquipiers visibles de chaque mort, rien d’autre', () => {
-    const s = sceneDeZone([MORT_COMPLETE, FRAG_ABATTU_EN_RETOUR])
+    const s = sceneDeZone([MORT_COMPLETE, FRAG])
     expect(s.marques).toHaveLength(2)
     expect(s.marques.every((m) => m.role === 'nuage')).toBe(true)
     expect(s.cercle).toBeNull()
   })
 
-  it('instantané : cercle du rayon au lieu de la mort, mort, coéquipiers pleins dans le rayon et creux au-delà, trait du frag', () => {
-    const s = sceneDeMort(MORT_COMPLETE, 'fr')
+  it('instantané : cercle du rayon au lieu de la mort, mort, coéquipiers pleins dans le rayon et creux au-delà', () => {
+    const s = sceneDeMort(MORT_COMPLETE)
     expect(s.cercle).toEqual({ centre: { x: 10, y: 10 }, rayonM: 18 })
     expect(s.marques.map((m) => [m.role, m.plein])).toEqual([
       ['mort', true],
       ['coequipier', true],
       ['coequipier', false],
-      ['fantome', false],
     ])
-    // Le coéquipier hors de vue / en attente n'a pas de point : il n'est pas peint.
-    expect(s.traits).toEqual([{ de: { x: -2, y: 12 }, vers: { x: 25, y: 10 } }])
-    expect(s.marques.find((m) => m.role === 'fantome')).toMatchObject({ pt: { x: -2, y: 12 }, etiquette: '+1,8 s' })
   })
 
   it('un frag n’a pas de scène d’équipe', () => {
-    expect(sceneDeMort(FRAG_ABATTU_EN_RETOUR, 'fr').marques).toEqual([])
+    expect(sceneDeMort(FRAG).marques).toEqual([])
   })
 
   it('séquence : le cercle suit la victime avant la mort puis reste au lieu de la mort', () => {
@@ -137,9 +119,9 @@ describe('scènes du plan', () => {
 
   it('la scène de la vue : étape > instantané > nuage', () => {
     const vue = { index: 0, contribution: MORT_COMPLETE, sequence: SEQUENCE, etape: 4, onEtape: () => {} }
-    expect(sceneDeLaVue([MORT_COMPLETE], vue, 'fr').traines.length).toBeGreaterThan(0)
-    expect(sceneDeLaVue([MORT_COMPLETE], { ...vue, etape: null }, 'fr').traines).toEqual([])
-    expect(sceneDeLaVue([MORT_COMPLETE], null, 'fr').marques.every((m) => m.role === 'nuage')).toBe(true)
+    expect(sceneDeLaVue([MORT_COMPLETE], vue).traines.length).toBeGreaterThan(0)
+    expect(sceneDeLaVue([MORT_COMPLETE], { ...vue, etape: null }).traines).toEqual([])
+    expect(sceneDeLaVue([MORT_COMPLETE], null).marques.every((m) => m.role === 'nuage')).toBe(true)
   })
 
   it('distances d’étape : au centre du cercle, « — » sans position', () => {
@@ -159,7 +141,7 @@ describe('étapes et requête', () => {
   it('la séquence n’est demandée que pour une mort dont le rejeu est servi', () => {
     expect(sequenceDemandee(MORT_COMPLETE)).toEqual({ match_id: 'm1', victim_xuid: '111', time_ms: 462_000 })
     expect(sequenceDemandee({ ...MORT_COMPLETE, replay_available: false })).toBeNull()
-    expect(sequenceDemandee(FRAG_ABATTU_EN_RETOUR)).toBeNull()
+    expect(sequenceDemandee(FRAG)).toBeNull()
     expect(sequenceDemandee(undefined)).toBeNull()
   })
 })

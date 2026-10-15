@@ -1,8 +1,8 @@
 package service
 
-// tactical_service_equipe_test.go — L'EQUIPE A LA MORT, LA RIPOSTE ET LE BILAN du detail d'une zone :
-// equipe posee sur la cle exacte du contexte, statut par le rayon du match, tueur abattu (humain et
-// bot), abattu en retour, bilan en « N sur M », et les sources qui manquent ou echouent.
+// tactical_service_equipe_test.go — L'EQUIPE A LA MORT ET LE BILAN du detail d'une zone : equipe posee
+// sur la cle exacte du contexte, statut par le rayon du match, bilan en « N sur M », et la source qui
+// manque ou echoue.
 
 import (
 	"errors"
@@ -16,9 +16,8 @@ import (
 // corpusEquipe : le corpus du detail (corpusDetail), complete de ses coequipiers et de son journal.
 //
 //	m1 / 1 000   ma mort par Rival : deux coequipiers hors de vue -> aucun visible ;
-//	             Ami abat Rival 800 ms plus tard -> TUEUR ABATTU (humain).
-//	m1 / 2 000   mon frag ; je suis abattu 1 500 ms plus tard par un bot -> ABATTU EN RETOUR (bot).
-//	m2 / 3 000   un coequipier visible a 10 m (rayon 24 m) -> accompagnee ; personne n'abat Rival.
+//	m1 / 2 000   mon frag.
+//	m2 / 3 000   un coequipier visible a 10 m (rayon 24 m) -> accompagnee.
 //	m2 / 4 000   contexte a 4 500 ms, coequipier visible a 30 m -> visible hors rayon.
 func corpusEquipe() *mockTacticalRepo {
 	repo, _ := corpusDetail()
@@ -84,33 +83,14 @@ func TestEquipe_StatutsEtCoequipiers(t *testing.T) {
 	}
 }
 
-func TestEquipe_Ripostes(t *testing.T) {
-	c := detailEquipe(t, corpusEquipe()).Contributions
-	r := c[0].Riposte
-	if r == nil || r.Type != domain.TacticalRiposteTueurAbattu || r.DelaiMs != 800 || r.ParGamertag != "Ami" ||
-		r.ParXUID != tsAmi || r.Point == nil || r.Point.X != 5 {
-		t.Errorf("tueur abattu (m1 / 1000) = %+v", r)
-	}
-	r = c[1].Riposte
-	if r == nil || r.Type != domain.TacticalRiposteAbattuEnRetour || r.DelaiMs != 1500 || r.ParGamertag != "Bot Elite" || r.ParXUID != "" {
-		t.Errorf("abattu en retour par un bot (m1 / 2000) = %+v", r)
-	}
-	if c[2].Riposte != nil || c[3].Riposte != nil {
-		t.Errorf("m2 : personne n'abat le tueur : %+v / %+v", c[2].Riposte, c[3].Riposte)
-	}
-}
-
 func TestEquipe_BilanEnNSurM(t *testing.T) {
 	b := detailEquipe(t, corpusEquipe()).Bilan
-	if b == nil || b.Morts == nil || b.Frags == nil {
+	if b == nil || b.Morts == nil {
 		t.Fatalf("bilan = %+v", b)
 	}
 	m := b.Morts
 	if m.Total != 3 || m.Examinees != 3 || m.AucunVisible != 1 || m.Accompagnees != 1 || m.VisiblesHorsRayon != 1 || m.EquipeATerre != 0 {
 		t.Errorf("statuts = %+v", m)
-	}
-	if m.TueurAbattu != (domain.TacticalNSurM{N: 1, M: 3}) {
-		t.Errorf("tueur abattu = %+v, want 1 sur 3", m.TueurAbattu)
 	}
 	if len(m.Rose) != 8 {
 		t.Fatalf("rose = %v", m.Rose)
@@ -126,12 +106,6 @@ func TestEquipe_BilanEnNSurM(t *testing.T) {
 	if m.MedianeTueurM == nil || m.MedianePlusProcheM == nil || *m.MedianePlusProcheM != 20 {
 		t.Errorf("medianes = %v / %v (plus proche : 10 et 30 -> 20)", m.MedianeTueurM, m.MedianePlusProcheM)
 	}
-	if m.FenetreRiposteMs != 3000 || b.Frags.FenetreRiposteMs != 3000 {
-		t.Errorf("fenetre de riposte = %d / %d, want 3000 (publiee pour le web)", m.FenetreRiposteMs, b.Frags.FenetreRiposteMs)
-	}
-	if b.Frags.AbattuEnRetour != (domain.TacticalNSurM{N: 1, M: 1}) {
-		t.Errorf("abattu en retour = %+v, want 1 sur 1", b.Frags.AbattuEnRetour)
-	}
 }
 
 func TestEquipe_UneLectureParSource(t *testing.T) {
@@ -140,28 +114,17 @@ func TestEquipe_UneLectureParSource(t *testing.T) {
 	if len(repo.vuMates) != 1 || idsTries(repo.vuMates[0].Matchs.IDs()) != "m1,m2" {
 		t.Errorf("coequipiers : %+v, want 1 lecture bornee a [m1 m2]", repo.vuMates)
 	}
-	if len(repo.vuJournal) != 1 || idsTries(repo.vuJournal[0].Matchs.IDs()) != "m1,m2" {
-		t.Errorf("journal : %+v, want 1 lecture bornee a [m1 m2]", repo.vuJournal)
-	}
 }
 
-func TestEquipe_SourcesAbsentesOuEnEchec(t *testing.T) {
-	// coequipiers en echec : plus d'equipe, la riposte reste.
+func TestEquipe_CoequipiersEnEchec_PlusDEquipe(t *testing.T) {
 	repo := corpusEquipe()
 	repo.errMates = errors.New("boum")
 	got := detailEquipe(t, repo)
-	if len(got.Contributions) != 4 || got.Contributions[0].Equipe != nil || got.Contributions[0].Riposte == nil {
+	if len(got.Contributions) != 4 || got.Contributions[0].Equipe != nil {
 		t.Errorf("coequipiers en echec : %+v", got.Contributions[0])
 	}
-	// journal en echec : plus de riposte, ni N sur M des frags ; l'equipe reste.
-	repo = corpusEquipe()
-	repo.errJournal = errors.New("boum")
-	got = detailEquipe(t, repo)
-	if got.Contributions[0].Riposte != nil || got.Contributions[0].Equipe == nil {
-		t.Errorf("journal en echec : %+v", got.Contributions[0])
-	}
-	if got.Bilan == nil || got.Bilan.Frags != nil || got.Bilan.Morts == nil || got.Bilan.Morts.TueurAbattu.M != 0 {
-		t.Errorf("journal en echec : bilan = %+v", got.Bilan)
+	if got.Bilan == nil || got.Bilan.Morts == nil || got.Bilan.Morts.Examinees != 0 {
+		t.Errorf("coequipiers en echec : bilan = %+v, les morts se comptent sans etre examinees", got.Bilan)
 	}
 }
 

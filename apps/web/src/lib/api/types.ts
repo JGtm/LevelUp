@@ -3350,10 +3350,8 @@ export type TacticalContribution = components['schemas']['TacticalContribution']
 // la zone et séquence d'une mort (vue D, route sous les gardes du rejeu).
 export type TacticalBilanZone = components['schemas']['TacticalBilanZone']
 export type TacticalBilanMorts = components['schemas']['TacticalBilanMorts']
-export type TacticalBilanFrags = components['schemas']['TacticalBilanFrags']
 export type TacticalCoequipier = components['schemas']['TacticalCoequipier']
 export type TacticalEquipeALaMort = components['schemas']['TacticalEquipeALaMort']
-export type TacticalRiposte = components['schemas']['TacticalRiposte']
 export type TacticalSequence = components['schemas']['TacticalSequence']
 export type TacticalSequenceBody = components['schemas']['TacticalSequenceBody']
 

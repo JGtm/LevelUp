@@ -1,7 +1,7 @@
 package domain
 
 // tactical_equipe.go — CE QUE LE DETAIL D'UNE ZONE DIT DES COEQUIPIERS D'UNE MORT : qui etait la,
-// ou, a quelle distance du mort et du tueur ; si un coequipier a abattu le tueur dans la foulee ; et
+// ou, a quelle distance du mort et du tueur ; et le bilan de la zone entiere.
 // le bilan de la zone entiere. Plus la SEQUENCE d'une mort (vue D), lue sur les trajectoires du rejeu.
 //
 // AUCUN CHAMP « NON MESURE ». Une donnee que la source ne porte pas est ABSENTE (pointeur nil,
@@ -31,14 +31,6 @@ const (
 	TacticalStatutEquipeATerre = "equipe_a_terre"
 )
 
-// Types d'une riposte.
-const (
-	// TacticalRiposteTueurAbattu : un coequipier de la victime a abattu son tueur.
-	TacticalRiposteTueurAbattu = "tueur_abattu"
-	// TacticalRiposteAbattuEnRetour : l'auteur d'un frag a ete abattu dans la foulee.
-	TacticalRiposteAbattuEnRetour = "abattu_en_retour"
-)
-
 // TacticalCoequipier est un coequipier de la victime a l'instant de sa mort.
 type TacticalCoequipier struct {
 	XUID     string `json:"xuid"`
@@ -66,27 +58,6 @@ type TacticalEquipeALaMort struct {
 	Coequipiers []TacticalCoequipier `json:"coequipiers"`
 }
 
-// TacticalRiposte est la riposte qui a suivi un evenement, dans la fenetre de
-// `coordination.FenetreRiposteMs`.
-type TacticalRiposte struct {
-	// Type : TacticalRiposte*.
-	Type string `json:"type"`
-	// DelaiMs : ecart avec l'evenement, dans [0, fenetre].
-	DelaiMs int64 `json:"delai_ms"`
-	// ParGamertag : qui a tire (le coequipier vengeur, ou le tueur du joueur abattu en retour) ;
-	// ParXUID est vide pour un bot.
-	ParGamertag string `json:"par_gamertag,omitempty"`
-	ParXUID     string `json:"par_xuid,omitempty"`
-	// Point : la position de cet auteur au coup, quand la source la mesure.
-	Point *TacticalPoint `json:"point,omitempty"`
-}
-
-// TacticalNSurM est un compte accompagne de son denominateur.
-type TacticalNSurM struct {
-	N int `json:"n"`
-	M int `json:"m"`
-}
-
 // TacticalBilanMorts est le bilan des MORTS d'une zone.
 type TacticalBilanMorts struct {
 	// Total : les morts de la zone ; Examinees : celles dont l'equipe a ete lue (somme des quatre
@@ -105,27 +76,12 @@ type TacticalBilanMorts struct {
 	// coequipier visible le plus proche. Absentes sans mesure.
 	MedianeTueurM      *float64 `json:"mediane_tueur_m,omitempty"`
 	MedianePlusProcheM *float64 `json:"mediane_plus_proche_m,omitempty"`
-	// TueurAbattu : N morts dont le tueur a ete abattu par un coequipier, sur M morts au tueur
-	// identifie au journal.
-	TueurAbattu TacticalNSurM `json:"tueur_abattu"`
-	// FenetreRiposteMs : la fenetre de la riposte (`coordination.FenetreRiposteMs`), pour que le web
-	// ecrive « en N s » sans la recopier.
-	FenetreRiposteMs int64 `json:"fenetre_riposte_ms"`
-}
-
-// TacticalBilanFrags est le bilan des FRAGS d'une zone.
-type TacticalBilanFrags struct {
-	// AbattuEnRetour : N frags dont l'auteur a ete abattu dans la foulee, sur M frags lus au journal.
-	AbattuEnRetour TacticalNSurM `json:"abattu_en_retour"`
-	// FenetreRiposteMs : meme sens que sur TacticalBilanMorts.
-	FenetreRiposteMs int64 `json:"fenetre_riposte_ms"`
 }
 
 // TacticalBilanZone est le bilan de la zone selectionnee : `Morts` pour les lectures qui comptent
-// des morts (morts, isole, solde), `Frags` pour celles qui comptent des frags (kills, solde).
+// des morts (morts, isole, solde). Aucun bilan pour les lectures de frags (decision du 2026-10-15).
 type TacticalBilanZone struct {
 	Morts *TacticalBilanMorts `json:"morts,omitempty"`
-	Frags *TacticalBilanFrags `json:"frags,omitempty"`
 }
 
 // MateDeMort est une ligne de `match_death_mates_latest` : un coequipier de la victime a l'instant

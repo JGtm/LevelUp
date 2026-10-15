@@ -95,11 +95,7 @@ export function metresEntiers(v: number, locale: Locale): string {
   return new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 0 }).format(Math.round(v))
 }
 
-/** secondesDeFenetre — la fenêtre de riposte en secondes entières, pour « en 3 s ». */
-export function secondesDeFenetre(ms: number, locale: Locale): string {
-  return new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 1 }).format(ms / 1000)
-}
-
+/** secondesDeTraine — la durée de la traîne en secondes, sans décimale inutile (« 4 »). */export function secondesDeTraine(ms: number, locale: Locale): string {  return new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 1 }).format(ms / 1000)}
 /** phraseDeLaRose — « 9 sur 14 par la droite » (le secteur dominant), ou `null` sans tueur rangé. */
 export function phraseDeLaRose(t: TacticalText, b: TacticalBilanMorts): string | null {
   const rose = b.rose ?? []
@@ -172,38 +168,16 @@ export function resumeDeLEquipe(t: TacticalText, c: TacticalContribution, locale
   return t.mortDetailSummary(dedans, audela, liste.length - dedans - audela, metresEntiers(eq.rayon_m, locale))
 }
 
-/** L'échange qui a suivi : le tueur abattu par un coéquipier (mort) ou l'auteur abattu en retour (frag). */
-export interface EchangeDeLaMort {
-  /** Première ligne (« Tueur abattu 1,8 s après la mort »). */
-  titre: string
-  /** Seconde ligne (« par Kestrel 77 »), absente pour un frag sans auteur nommé. */
-  detail: string | null
-}
-
-/** echangeDeLaMort — l'échange d'une contribution, `null` sans riposte. */
-export function echangeDeLaMort(t: TacticalText, c: TacticalContribution, locale: Locale): EchangeDeLaMort | null {
-  const r = c.riposte
-  if (!r) return null
-  const s = decimale(r.delai_ms / 1000, locale)
-  const qui = r.par_gamertag || t.mortDetailUnnamed
-  if (r.type === 'abattu_en_retour') {
-    return { titre: t.mortReturned(s), detail: r.par_gamertag ? t.mortAvengedBy(qui) : null }
-  }
-  return { titre: t.mortAvenged(s), detail: t.mortAvengedBy(qui) }
-}
-
 // ─── Les scènes du plan ───────────────────────────────────────────────────────────────────────
 
 /** Le rôle d'une marque : fixe sa forme et son jeton de couleur. */
-export type RoleDeMarque = 'mort' | 'tueur' | 'coequipier' | 'nuage' | 'fantome'
+export type RoleDeMarque = 'mort' | 'tueur' | 'coequipier' | 'nuage'
 
 export interface MarqueDeScene {
   role: RoleDeMarque
   pt: Pt
   /** Coéquipier plein (dans le rayon) ou creux (au-delà). Sans objet pour les autres rôles. */
   plein: boolean
-  /** Une courte étiquette posée à côté de la marque (le fantôme du frag : « +1,8 s »). */
-  etiquette?: string
 }
 
 /** Une traîne : des segments continus (une lacune du film coupe la traîne), du plus ancien au plus récent. */
@@ -217,12 +191,10 @@ export interface SceneDuPlan {
   /** Le cercle du rayon du radar, en mètres monde. */
   cercle: { centre: Pt; rayonM: number } | null
   traines: TraineDeScene[]
-  /** Les traits (un frag de coéquipier sur le tueur). */
-  traits: { de: Pt; vers: Pt }[]
   marques: MarqueDeScene[]
 }
 
-export const SCENE_VIDE: SceneDuPlan = { cercle: null, traines: [], traits: [], marques: [] }
+export const SCENE_VIDE: SceneDuPlan = { cercle: null, traines: [], marques: [] }
 
 /** sceneDeZone — le nuage : chaque coéquipier VISIBLE à chaque mort de la zone, sans rien d'autre. */
 export function sceneDeZone(contributions: readonly TacticalContribution[]): SceneDuPlan {
@@ -237,29 +209,18 @@ export function sceneDeZone(contributions: readonly TacticalContribution[]): Sce
 }
 
 /**
- * sceneDeMort — l'instantané d'UNE mort (vues A et B) : le cercle du rayon autour du lieu de la mort,
- * le mort, ses coéquipiers visibles (pleins dans le rayon, creux au-delà) et, après un tueur abattu,
- * le trait du coup du coéquipier sur le tueur, parti d'un marqueur fantôme du coéquipier à l'instant de son
- * frag. Le tueur est peint par la couche des tueurs.
+ * sceneDeMort — l'instantané d'UNE mort (vue A) : le cercle du rayon autour du lieu de la mort, le
+ * mort et ses coéquipiers visibles (pleins dans le rayon, creux au-delà). Le tueur est peint par la
+ * couche des tueurs.
  */
-export function sceneDeMort(c: TacticalContribution, locale: Locale): SceneDuPlan {
+export function sceneDeMort(c: TacticalContribution): SceneDuPlan {
   if (c.face !== 'mort' || !c.point) return SCENE_VIDE
   const marques: MarqueDeScene[] = [{ role: 'mort', pt: c.point, plein: true }]
   for (const m of c.equipe?.coequipiers ?? []) {
     if (m.statut === 'visible' && m.point) marques.push({ role: 'coequipier', pt: m.point, plein: m.dans_le_rayon })
   }
-  const r = c.riposte
-  const traits: SceneDuPlan['traits'] = []
-  if (r?.type === 'tueur_abattu' && c.autre_point) {
-    const mate = (c.equipe?.coequipiers ?? []).find((m) => m.xuid === r.par_xuid)
-    const de = r.point ?? mate?.point
-    if (de) traits.push({ de, vers: c.autre_point })
-    // Le trait part de la position du coéquipier AU MOMENT DE SON FRAG, où il n'a aucun marqueur : un
-    // fantôme (plus petit, contour pointillé) l'y pose, avec le délai du frag.
-    if (r.point) marques.push({ role: 'fantome', pt: r.point, plein: false, etiquette: `+${decimale(r.delai_ms / 1000, locale)} s` })
-  }
   const rayon = c.equipe?.rayon_m
-  return { cercle: rayon == null ? null : { centre: c.point, rayonM: rayon }, traines: [], traits, marques }
+  return { cercle: rayon == null ? null : { centre: c.point, rayonM: rayon }, traines: [], marques }
 }
 
 type Acteur = NonNullable<TacticalSequence['acteurs']>[number]
@@ -304,7 +265,7 @@ export function sceneDeSequence(seq: TacticalSequence, etape: number): SceneDuPl
     const segments = traineDe(a, e.offset_ms, seq.traine_ms)
     if (segments.length > 0) traines.push({ role, segments })
   }
-  return { cercle: { centre: e.centre, rayonM: seq.rayon_m }, traines, traits: [], marques }
+  return { cercle: { centre: e.centre, rayonM: seq.rayon_m }, traines, marques }
 }
 
 /** Une ligne de la fiche d'étape : un acteur et sa distance au centre du cercle (« — » sans position). */

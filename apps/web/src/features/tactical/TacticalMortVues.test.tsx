@@ -1,12 +1,13 @@
 /**
- * Les QUATRE VUES de la lecture des coéquipiers à la mort, rendues :
+ * Les VUES de la lecture des coéquipiers à la mort, rendues :
  *
- *   C  la zone         bilan au-dessus de la liste (barre des quatre statuts, rose, « Tueur abattu en 3 s : N sur M »,
- *                      médiane), nuage des coéquipiers sur le plan ;
- *   A  l'instantané    encadré « Instant de la mort · date · instant » en bas de la colonne de droite, cercle du
- *                      rayon, coéquipiers pleins ou creux sur le plan ;
- *   B  l'échange       bulle « Tueur abattu 1,8 s après la mort », trait du frag du coéquipier ;
+ *   C  la zone         bilan dans le bloc du bas de la colonne (barre des quatre statuts, rose, médianes),
+ *                      nuage des coéquipiers sur le plan ;
+ *   A  l'instantané    bloc du bas « Mort · date · instant » (même hauteur que le bilan), cercle du rayon,
+ *                      coéquipiers pleins ou creux sur le plan ;
  *   D  la séquence     barre d'étapes cliquables, scène de l'étape, fiche « À 7:20 ».
+ *
+ * Aucun échange (« tueur abattu », « abattu en retour ») nulle part : décision du user du 2026-10-15.
  *
  * L'horloge affichée est celle du REJEU (coup d'envoi retranché) : l'instant du match de la fixture
  * (462 000 ms, « 7:42 » si on oubliait le décompte) et l'instant affiché (440 000 ms) diffèrent exprès.
@@ -21,7 +22,7 @@ import { renderWithProviders } from '@/test/render-utils'
 
 import { peindreLaScene } from './coequipiersPaint'
 import { getTacticalText } from './i18n'
-import { BILAN, FRAG_ABATTU_EN_RETOUR, MORT_COMPLETE, SEQUENCE } from './mort.fixtures'
+import { BILAN, FRAG, MORT_COMPLETE, SEQUENCE } from './mort.fixtures'
 import { peindreLePlan } from './planPaint'
 import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
 import { TacticalZoneCard } from './TacticalZoneCard'
@@ -82,7 +83,7 @@ const REGLAGES: ReglagesDuPlan = {
 }
 
 const DETAIL: TacticalCelluleReponse = {
-  contributions: [MORT_COMPLETE, FRAG_ABATTU_EN_RETOUR],
+  contributions: [MORT_COMPLETE, FRAG],
   zone: { nom_fr: 'Place centrale', nom_en: 'Central Square' },
   bilan: BILAN,
 }
@@ -108,7 +109,7 @@ function rendreZone(props: { question?: 'morts' | 'isole' | 'kills' | 'solde' | 
   )
 }
 
-function rendrePlan(v: VueDeMort | null, contributions = [MORT_COMPLETE, FRAG_ABATTU_EN_RETOUR]) {
+function rendrePlan(v: VueDeMort | null, contributions = [MORT_COMPLETE, FRAG]) {
   return renderWithProviders(
     <TacticalPlanCard
       t={t}
@@ -160,41 +161,48 @@ afterEach(() => {
   vi.mocked(peindreLaScene).mockClear()
 })
 
-describe('vue C — la zone, au-dessus de la liste', () => {
+describe('vue C — la zone, dans le bloc du bas', () => {
   it('lecture « morts » : barre des quatre statuts, rose, phrase, médianes, « N sur M »', () => {
     const { container } = rendreZone()
     const bilan = screen.getByTestId('tactical-zone-bilan')
     const statuts = within(bilan).getByTestId('tactical-bilan-statuts')
-    expect(statuts).toHaveTextContent('dans le rayon · 4')
-    expect(statuts).toHaveTextContent('au-delà du rayon · 6')
-    expect(statuts).toHaveTextContent('hors de vue · 1')
-    expect(statuts).toHaveTextContent('aucun en jeu · 3')
+    expect(statuts).toHaveTextContent('4 dans le rayon')
+    expect(statuts).toHaveTextContent('6 au-delà')
+    expect(statuts).toHaveTextContent('1 hors de vue')
+    expect(statuts).toHaveTextContent('3 aucun')
     expect(within(bilan).getByTestId('tactical-bilan-barre').children).toHaveLength(4)
     expect(within(bilan).getByTestId('tactical-rose').querySelectorAll('line')).toHaveLength(6)
     expect(bilan).toHaveTextContent('5 sur 14 par la droite')
-    expect(bilan).toHaveTextContent('distance médiane 16 m')
-    const chiffres = within(bilan).getAllByTestId('tactical-bilan-chiffre').map((n) => n.textContent)
-    expect(chiffres[0]).toMatch(/Tueur abattu en 3 s.*5\s*sur 14/)
-    expect(chiffres[1]).toMatch(/Coéquipier le plus proche.*21 m\s*médiane/)
-    // Aucun « non mesuré » à l'écran, et le bilan est AVANT la liste.
+    expect(bilan).toHaveTextContent('médiane 16 m')
+    expect(bilan).toHaveTextContent(/Coéquipier le plus proche.*médiane 21 m/)
+    expect(bilan.textContent).not.toMatch(/abattu/i)
+    // Aucun « non mesuré » à l'écran, et le bilan est dans le bloc du bas, APRÈS la liste.
     expect(container.textContent).not.toMatch(/non mesur/i)
     const liste = screen.getByTestId('tactical-rejeu-list')
-    expect(bilan.compareDocumentPosition(liste) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(liste.compareDocumentPosition(bilan) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('lecture « isole » : la même vue ; lectures de frags : le miroir « abattu en retour » seul', () => {
+  it('lecture « isole » : la même vue ; lectures de frags : aucun bilan', () => {
     const { unmount } = rendreZone({ question: 'isole' })
     expect(screen.getByTestId('tactical-zone-bilan')).toBeInTheDocument()
     unmount()
     rendreZone({ question: 'kills' })
     expect(screen.queryByTestId('tactical-zone-bilan')).toBeNull()
-    expect(screen.getByTestId('tactical-bilan-frags')).toHaveTextContent(/Abattu en retour en 3 s.*2\s*sur 9/)
+  })
+
+  it('le bloc du bas garde la même hauteur avec ou sans tuile choisie (aucun saut de mise en page)', () => {
+    const { unmount } = rendreZone()
+    const sans = screen.getByTestId('tactical-zone-bloc').className
+    unmount()
+    rendreZone({ vue: vue() })
+    const avec = screen.getByTestId('tactical-zone-bloc').className
+    expect(avec).toBe(sans)
+    expect(avec).toContain('h-[196px]')
   })
 
   it('lectures sans mort ni frag (temps) : aucun bilan', () => {
     rendreZone({ question: 'temps' })
     expect(screen.queryByTestId('tactical-zone-bilan')).toBeNull()
-    expect(screen.queryByTestId('tactical-bilan-frags')).toBeNull()
   })
 
   it('sur le plan : le nuage des coéquipiers et sa légende', () => {
@@ -216,10 +224,10 @@ describe('vues A et B — la mort choisie', () => {
     expect(liste.compareDocumentPosition(detail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('titre « Instant de la mort · date · instant » sur l’horloge du REJEU (7:20, jamais 7:42)', () => {
+  it('titre « Mort · date · instant » sur l’horloge du REJEU (7:20, jamais 7:42)', () => {
     rendreZone({ vue: vue() })
     const detail = screen.getByTestId('tactical-mort-detail')
-    expect(detail).toHaveTextContent(/Instant de la mort · 12\/10\/2026 · \d{2}:\d{2} · 7:20/)
+    expect(detail).toHaveTextContent(/Mort · 12\/10\/2026 · \d{2}:\d{2} · 7:20/)
     expect(detail.textContent).not.toContain('7:42')
     // Le bouton de rejeu ouvre au même instant que la tuile : t = instant du match, horloge « match ».
     const lien = within(detail).getByRole('link')
@@ -239,17 +247,16 @@ describe('vues A et B — la mort choisie', () => {
     expect(fiche.querySelector('[data-forme="plein"]')).not.toBeNull()
     expect(fiche.querySelector('[data-forme="creux"]')).not.toBeNull()
     expect(fiche).toHaveTextContent('Brisk Otter · en attente de réapparition')
-    expect(fiche).toHaveTextContent('1 coéquipier dans le rayon de 18 m, 1 au-delà, 1 hors jeu.')
+    expect(screen.getByTestId('tactical-mort-detail')).toHaveTextContent('1 coéquipier dans le rayon de 18 m, 1 au-delà, 1 hors jeu.')
   })
 
-  it('un frag choisi : « Instant du frag », la victime et l’échange', () => {
-    rendreZone({ vue: vue({ index: 1, contribution: FRAG_ABATTU_EN_RETOUR }) })
-    expect(screen.getByTestId('tactical-mort-detail')).toHaveTextContent(/Instant du frag · .* · 7:28/)
+  it('un frag choisi : « Frag · date · instant » et la victime', () => {
+    rendreZone({ vue: vue({ index: 1, contribution: FRAG }) })
+    expect(screen.getByTestId('tactical-mort-detail')).toHaveTextContent(/Frag · .* · 7:28/)
     expect(screen.getByTestId('tactical-mort-fiche')).toHaveTextContent('Victime · Cible')
-    expect(screen.getByTestId('tactical-mort-fiche')).toHaveTextContent('Abattu en retour 1,5 s après le frag')
   })
 
-  it('sur le plan : le cercle du rayon, le mort, les coéquipiers pleins et creux, le trait du frag', () => {
+  it('sur le plan : le cercle du rayon, le mort, les coéquipiers pleins et creux', () => {
     rendrePlan(vue())
     const scene = derniereScene()
     expect(scene?.cercle).toEqual({ centre: { x: 10, y: 10 }, rayonM: 18 })
@@ -257,9 +264,7 @@ describe('vues A et B — la mort choisie', () => {
       ['mort', true],
       ['coequipier', true],
       ['coequipier', false],
-      ['fantome', false],
     ])
-    expect(scene?.traits).toHaveLength(1)
     const legende = screen.getByTestId('tactical-plan-formes')
     expect(legende).toHaveTextContent('Mort')
     expect(legende).toHaveTextContent('Coéquipier dans le rayon')
@@ -269,12 +274,6 @@ describe('vues A et B — la mort choisie', () => {
     expect(legende.querySelector('[data-forme="creux"]')).not.toBeNull()
   })
 
-  it('B — la bulle de l’échange sur le plan', () => {
-    rendrePlan(vue())
-    const bulle = screen.getByTestId('tactical-echange')
-    expect(bulle).toHaveTextContent('Tueur abattu 1,8 s après la mort')
-    expect(bulle).toHaveTextContent('par Kestrel 77')
-  })
 
   it('sans séquence servie (rejeu absent ou 404) : pas de barre d’étapes', () => {
     rendrePlan(vue())
@@ -303,7 +302,6 @@ describe('vue D — la séquence', () => {
     expect(scene?.traines.length).toBeGreaterThan(0)
     expect(scene?.marques.map((m) => m.role).sort()).toEqual(['coequipier', 'mort', 'tueur'])
     expect(screen.queryByTestId('tactical-plan-tueurs')).toBeNull()
-    expect(screen.queryByTestId('tactical-echange')).toBeNull()
     expect(screen.getByTestId('tactical-plan-formes')).toHaveTextContent('traîne : 4 s précédentes')
     expect(screen.getByTestId('tactical-plan-formes')).toHaveTextContent('Tueur')
     const choisie = within(screen.getByTestId('tactical-sequence-etapes')).getAllByTestId('tactical-sequence-etape')[4]
@@ -329,28 +327,19 @@ describe('vue D — la séquence', () => {
   })
 })
 
-describe('la tuile porte le badge de riposte, court, sur la ligne 3', () => {
-  it('« abattu 1,8 s » sur une mort dont le tueur a été abattu, « abattu en retour » sur un frag', () => {
-    rendreZone()
-    const badges = screen.getAllByTestId('tactical-rejeu-riposte')
-    expect(badges.map((b) => b.textContent)).toEqual(['abattu 1,8 s', 'abattu en retour'])
-    for (const b of badges) expect(b.closest('[data-testid="tactical-rejeu-l3"]')).not.toBeNull()
-  })
-})
-
 describe('UNE seule légende sous le plan', () => {
-  it('une forme = une entrée, les deux couches ensemble, dans l’ordre Mort · Tueurs · coéquipiers · frag · rayon', () => {
+  it('une forme = une entrée, les deux couches ensemble, dans l’ordre Mort · Tueurs · coéquipiers · rayon', () => {
     rendrePlan(vue())
     const legendes = screen.getAllByTestId('tactical-plan-formes')
     expect(legendes).toHaveLength(1)
     const formes = [...legendes[0].querySelectorAll('[data-forme]')].map((n) => n.getAttribute('data-forme'))
-    expect(formes).toEqual(['mort', 'losange', 'rond', 'plein', 'creux', 'fantome', 'trait', 'cercle'])
+    expect(formes).toEqual(['mort', 'losange', 'rond', 'plein', 'creux', 'cercle'])
     expect(new Set(formes).size).toBe(formes.length)
     expect(screen.queryByTestId('tactical-tueurs-legend')).toBeNull()
   })
 
   it('les lectures de frags : victimes seules', () => {
-    rendrePlan(null, [FRAG_ABATTU_EN_RETOUR])
+    rendrePlan(null, [FRAG])
     const formes = [...screen.getByTestId('tactical-plan-formes').querySelectorAll('[data-forme]')].map((n) => n.getAttribute('data-forme'))
     expect(formes).toEqual(['rond'])
   })

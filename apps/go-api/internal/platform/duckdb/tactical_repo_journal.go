@@ -1,8 +1,7 @@
 package duckdb
 
-// tactical_repo_ripostes.go — LE JOURNAL PUBLIABLE DES MATCHS D'UNE ZONE, pour savoir si le tueur d'une
-// mort a ete abattu par un coequipier de la victime, et si l'auteur d'un frag a ete abattu dans la
-// foulee (`analysis/coordination.TueurAbattu` / `AbattuEnRetour`).
+// tactical_repo_journal.go — LE JOURNAL PUBLIABLE DES MATCHS D'UNE ZONE : pour la vue de sequence, qui
+// y retrouve le kill de la mort (le tueur, son nom et sa position au coup).
 //
 // Deux vues `_latest` : `match_kill_events_latest` (qui a tue qui, quand — le tueur d'un bot est
 // identifie par son gamertag, `feed_killer_xuid` NULL) et `kill_positions_latest` (ou tirait le
@@ -10,8 +9,8 @@ package duckdb
 // non publiable est juste en agregat et fausse ligne par ligne).
 //
 // LE LEFT JOIN SUR LES POSITIONS EST DELIBERE : un coup sans position mesuree (victime bot, film
-// sans position) reste un coup — le vengeur existe, seul son point manque. L'INNER JOIN de
-// `QTacticalIsolement` ecarterait ce coup et ferait perdre une riposte. La jointure passe par le
+// sans position) reste un coup — seul son point manque. L'INNER JOIN de
+// `QTacticalIsolement` ecarterait ce coup. La jointure passe par le
 // tueur credite (cle de `kill_positions`) et le meme instant ; `GROUP BY` sur l'identite du kill
 // evite qu'une position en double ne duplique la ligne.
 //
@@ -26,8 +25,8 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// QTacticalJournalRipostes : %s = la table de positions, puis la liste des matchs pour chaque vue.
-const QTacticalJournalRipostes = `
+// QTacticalJournal : %s = la table de positions, puis la liste des matchs pour chaque vue.
+const QTacticalJournal = `
 SELECT e.match_id, e.time_ms, COALESCE(e.victim_xuid, '') AS victim_xuid, e.victim_gamertag,
        COALESCE(e.feed_killer_xuid, '') AS killer_xuid, COALESCE(e.feed_killer_gamertag, '') AS killer_gamertag,
        min(p.killer_x) AS killer_x, min(p.killer_y) AS killer_y
@@ -63,7 +62,7 @@ func (r *TacticalRepo) JournalDesKills(ctx context.Context, q domain.TacticalQue
 	// Le nom de la table de positions passe par la constante de kill_measured.go, comme
 	// QTacticalPositions et QTacticalIsolement.
 	rows, err := db.QueryContext(ctx,
-		fmt.Sprintf(QTacticalJournalRipostes, positionsAtKill, Placeholders(len(ids)), Placeholders(len(ids))), args...)
+		fmt.Sprintf(QTacticalJournal, positionsAtKill, Placeholders(len(ids)), Placeholders(len(ids))), args...)
 	if err != nil {
 		return nil, r.degrader(ctx, "JournalDesKills", err)
 	}

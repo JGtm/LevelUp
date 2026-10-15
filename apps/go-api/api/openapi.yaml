@@ -28514,18 +28514,6 @@ components:
         - exists
         - rows
       type: object
-    TacticalBilanFrags:
-      additionalProperties: false
-      properties:
-        abattu_en_retour:
-          $ref: '#/components/schemas/TacticalNSurM'
-        fenetre_riposte_ms:
-          format: int64
-          type: integer
-      required:
-        - abattu_en_retour
-        - fenetre_riposte_ms
-      type: object
     TacticalBilanMorts:
       additionalProperties: false
       properties:
@@ -28539,9 +28527,6 @@ components:
           format: int64
           type: integer
         examinees:
-          format: int64
-          type: integer
-        fenetre_riposte_ms:
           format: int64
           type: integer
         mediane_plus_proche_m:
@@ -28560,8 +28545,6 @@ components:
         total:
           format: int64
           type: integer
-        tueur_abattu:
-          $ref: '#/components/schemas/TacticalNSurM'
         visibles_hors_rayon:
           format: int64
           type: integer
@@ -28573,14 +28556,10 @@ components:
         - aucun_visible
         - equipe_a_terre
         - rose
-        - tueur_abattu
-        - fenetre_riposte_ms
       type: object
     TacticalBilanZone:
       additionalProperties: false
       properties:
-        frags:
-          $ref: '#/components/schemas/TacticalBilanFrags'
         morts:
           $ref: '#/components/schemas/TacticalBilanMorts'
       type: object
@@ -28715,8 +28694,6 @@ components:
           type: boolean
         resultat:
           type: string
-        riposte:
-          $ref: '#/components/schemas/TacticalRiposte'
         score_kind:
           type: string
         score_label:
@@ -28850,19 +28827,6 @@ components:
         - cartes
         - plancher_matchs
       type: object
-    TacticalNSurM:
-      additionalProperties: false
-      properties:
-        m:
-          format: int64
-          type: integer
-        "n":
-          format: int64
-          type: integer
-      required:
-        - "n"
-        - m
-      type: object
     TacticalPlacement:
       additionalProperties: false
       properties:
@@ -28995,24 +28959,6 @@ components:
         spawn:
           description: 'Identifiant d''une grappe de reapparition (champ grappes[].id) : restreint l''univers aux matchs dont MA premiere vie en part. Vide = aucune restriction.'
           type: string
-      type: object
-    TacticalRiposte:
-      additionalProperties: false
-      properties:
-        delai_ms:
-          format: int64
-          type: integer
-        par_gamertag:
-          type: string
-        par_xuid:
-          type: string
-        point:
-          $ref: '#/components/schemas/TacticalPoint'
-        type:
-          type: string
-      required:
-        - type
-        - delai_ms
       type: object
     TacticalSequence:
       additionalProperties: false

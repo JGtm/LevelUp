@@ -1,9 +1,10 @@
 /**
- * TacticalZoneCard — la colonne « Zone sélectionnée » du cockpit : le nom en jeu de la zone (servi
- * par `/tactical/{map}/cellule`) et ses coordonnées, sa valeur et son unité, sa sous-ligne par
- * lecture, puis l'intertitre « Rejeu » et la liste des contributions — une mini-tuile chacune
- * (`TacticalRejeuTile`), du plus récent au plus ancien (ordre du serveur), dans une liste à
- * défilement interne : la carte prend la hauteur de la carte du plan.
+ * TacticalZoneCard — la colonne « Zone sélectionnée » du cockpit, en trois parties : l'en-tête compact (le
+ * nom en jeu de la zone servi par `/tactical/{map}/cellule`, ses coordonnées, « valeur unité · matchs »
+ * sur une ligne), la liste des contributions — une mini-tuile chacune (`TacticalRejeuTile`), du plus
+ * récent au plus ancien (ordre du serveur) — qui prend toute la place restante et défile dans son cadre,
+ * et EN BAS un bloc DISTINCT de hauteur fixe : le bilan de la zone sans tuile choisie, le détail de la
+ * mort avec une tuile choisie (même hauteur, aucun saut ; un contenu long défile dans le bloc).
  *
  * Sans sélection (aucune cellule dans la lecture) : le titre « Zone sélectionnée » et une ligne.
  *
@@ -73,12 +74,14 @@ export function TacticalZoneCard({
   vue = null,
 }: TacticalZoneCardProps) {
   const titre = titreDeZone(t, locale, cellule !== null, detail.data)
+  const morts = bilan?.morts && (question === 'morts' || question === 'isole') ? bilan.morts : undefined
+  const aUnBloc = cellule !== null && (vue !== null || morts !== undefined)
   return (
-    <div className="h-full min-h-0" data-testid="tactical-zone-card">
+    <div className="flex h-full min-h-0 flex-col gap-2.5" data-testid="tactical-zone-card">
       <SectionCard
         title={titre}
         label={t.zoneTitle}
-        className="h-full"
+        className="min-h-0 flex-1"
         titleAdornment={(libelle) => (
           <span className="flex items-baseline gap-2">
             <span className="min-w-0 truncate font-semibold" title={libelle} data-testid="tactical-zone-title">
@@ -92,25 +95,18 @@ export function TacticalZoneCard({
           </span>
         )}
       >
-        <div className="flex min-h-0 flex-1 flex-col gap-1 p-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
           {cellule ? (
             <>
-              <div className="flex flex-wrap items-baseline gap-2">
-                <b className="text-[28px] font-semibold leading-[34px] tabular-nums" data-testid="tactical-zone-value">
+              <div className="flex flex-none items-baseline gap-1.5 border-b border-border pb-2">
+                <b className="text-[22px] font-semibold leading-7 tabular-nums" data-testid="tactical-zone-value">
                   {valeurAffichee(cellule.valeur, signee, locale)}
                 </b>
-                <span className="text-[13px] text-muted-foreground">{unitForQuestion(t, question)}</span>
+                <span className="text-xs text-muted-foreground">
+                  {unitForQuestion(t, question)} · {sousLigneDeZone(t, question, cellule)}
+                </span>
               </div>
-              <div className="text-xs text-muted-foreground">{sousLigneDeZone(t, question, cellule)}</div>
-              {!vue && bilan && (
-                <TacticalZoneBilan
-                  t={t}
-                  locale={locale}
-                  morts={question === 'morts' || question === 'isole' ? bilan.morts : undefined}
-                  frags={question === 'kills' || question === 'solde' ? bilan.frags : undefined}
-                />
-              )}
-              <h4 className="mt-2 flex-none border-t border-border pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h4 className="m-0 flex-none text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t.zoneReplayHeading}
               </h4>
               <ListeDuRejeu t={t} locale={locale} playerSlug={playerSlug} detail={detail} survol={survol}
@@ -118,13 +114,27 @@ export function TacticalZoneCard({
                 choisie={choisie}
                 onChoisir={onChoisir}
               />
-              {vue && <TacticalMortDetail t={t} locale={locale} playerSlug={playerSlug} vue={vue} />}
             </>
           ) : (
             <p className="m-0 text-[13px] text-muted-foreground">{t.zoneNone}</p>
           )}
         </div>
       </SectionCard>
+      {aUnBloc && (
+        // LE BLOC DU BAS : une carte séparée, de HAUTEUR FIXE, réservée à deux usages exclusifs — le bilan
+        // de la zone (aucune tuile choisie) ou le détail de la mort (tuile choisie). Même hauteur dans les
+        // deux états : rien ne saute. Un contenu plus long défile dans le bloc.
+        <div
+          className="h-[196px] flex-none overflow-y-auto rounded-lg border border-border bg-card p-3"
+          data-testid="tactical-zone-bloc"
+        >
+          {vue ? (
+            <TacticalMortDetail t={t} locale={locale} playerSlug={playerSlug} vue={vue} />
+          ) : (
+            morts && <TacticalZoneBilan t={t} locale={locale} morts={morts} />
+          )}
+        </div>
+      )}
     </div>
   )
 }

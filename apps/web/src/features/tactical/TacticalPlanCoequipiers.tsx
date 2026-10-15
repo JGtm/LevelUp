@@ -3,7 +3,7 @@
  * A1 : même fond, même projection, même cadrage et même zoom que la chaleur et la couche des tueurs) :
  *
  *   - `CoucheDesCoequipiers` : la toile de la scène (nuage de la zone, instantané d'une mort, étape de
- *     la séquence) et, sur l'instantané, la bulle de l'échange (« Tueur abattu 1,8 s après la mort ») ;
+ *     la séquence) ;
  *   - `PiedDeLaMort` : la légende par forme et la barre des étapes de la séquence (D), rendue
  *     seulement quand la séquence est servie.
  *
@@ -21,9 +21,8 @@ import type { Locale } from '@/lib/i18n/locale'
 import { peindreLaScene } from './coequipiersPaint'
 import type { TacticalText } from './i18n'
 import {
-  echangeDeLaMort,
   libelleDeDecalage,
-  secondesDeFenetre,
+  secondesDeTraine,
   type SceneDuPlan,
 } from './mort.logic'
 import { projectionDuPlan, type FenetreDuPlan, type RepereTactique } from './tacticalView.logic'
@@ -33,18 +32,14 @@ import { entreesDeLegende, modeDeLaScene, type FormeDeLegende, type VueDeMort } 
 import { decimale } from './zone.logic'
 
 interface CoucheDesCoequipiersProps {
-  t: TacticalText
-  locale: Locale
   repere: RepereTactique
   fenetre: FenetreDuPlan
   scene: SceneDuPlan
-  /** La mort choisie, pour la bulle de l'échange ; `null` = vue de la zone. */
-  vue: VueDeMort | null
   estompe: string
 }
 
-/** CoucheDesCoequipiers — la toile de la scène et la bulle de l'échange. */
-export function CoucheDesCoequipiers({ t, locale, repere, fenetre, scene, vue, estompe }: CoucheDesCoequipiersProps) {
+/** CoucheDesCoequipiers — la toile de la scène. */
+export function CoucheDesCoequipiers({ repere, fenetre, scene, estompe }: CoucheDesCoequipiersProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fondRef = useRef<HTMLSpanElement>(null)
   const taille = useTailleDuCanvas(canvasRef)
@@ -81,7 +76,6 @@ export function CoucheDesCoequipiers({ t, locale, repere, fenetre, scene, vue, e
     )
   }, [scene, repere, fenetre, taille, paletteVersion])
 
-  const echange = vue && modeDeLaScene(scene, vue) === 'instantane' ? echangeDeLaMort(t, vue.contribution, locale) : null
   return (
     <>
       <span ref={fondRef} aria-hidden className="hidden bg-background" />
@@ -91,15 +85,6 @@ export function CoucheDesCoequipiers({ t, locale, repere, fenetre, scene, vue, e
         className={`pointer-events-none absolute inset-0 h-full w-full text-foreground${estompe}`}
         data-testid="tactical-plan-coequipiers"
       />
-      {echange && (
-        <div
-          className="pointer-events-none absolute bottom-3 left-3 z-[3] flex max-w-[70%] flex-col gap-0.5 rounded-lg border border-border bg-card/90 px-3 py-2 text-xs"
-          data-testid="tactical-echange"
-        >
-          <span className="font-semibold text-foreground">{echange.titre}</span>
-          {echange.detail && <span className="text-muted-foreground">{echange.detail}</span>}
-        </div>
-      )}
     </>
   )
 }
@@ -114,8 +99,6 @@ function Glyphe({ forme }: { forme: FormeDeLegende }) {
       return <span aria-hidden className="inline-block size-2 rotate-45" style={{ backgroundColor: tokenCssVar('team-enemy') }} data-forme="losange" />
     case 'victime':
       return <span aria-hidden className="inline-block size-2 rounded-full" style={{ backgroundColor: tokenCssVar('team-enemy') }} data-forme="rond" />
-    case 'fantome':
-      return <span aria-hidden className="inline-block size-2 rounded-full border border-dashed bg-transparent" style={{ borderColor: tokenCssVar('team-ally') }} data-forme="fantome" />
     case 'plein':
       return <span aria-hidden className="inline-block size-2.5 rounded-full" style={allie} data-forme="plein" />
     case 'creux':
@@ -124,8 +107,6 @@ function Glyphe({ forme }: { forme: FormeDeLegende }) {
       return <span aria-hidden className="inline-block size-1.5 rounded-full opacity-60" style={allie} data-forme="nuage" />
     case 'cercle':
       return <span aria-hidden className="inline-block w-4 border-t-[1.5px] border-dashed border-foreground/60" data-forme="cercle" />
-    case 'trait':
-      return <span aria-hidden className="inline-block h-0.5 w-4" style={allie} data-forme="trait" />
   }
 }
 
@@ -154,7 +135,7 @@ export function PiedDuPlan({ t, locale, scene, vue, roles }: PiedDuPlanProps) {
               {e.texte}
             </li>
           ))}
-          {mode === 'sequence' && seq && <li className="ml-auto">{t.seqTrail(secondesDeFenetre(seq.traine_ms, locale))}</li>}
+          {mode === 'sequence' && seq && <li className="ml-auto">{t.seqTrail(secondesDeTraine(seq.traine_ms, locale))}</li>}
         </ul>
       )}
       {vue && seq && <BarreDEtapes t={t} locale={locale} vue={vue} />}

@@ -78,7 +78,11 @@ export function choixDuClic(
   return meilleure
 }
 
-/** decimale — un nombre à une décimale, séparateur de la langue (« 1,8 »). */export function decimale(v: number, locale: Locale): string {  return new Intl.NumberFormat(intlLocale(locale), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(v)}
+/** decimale — un nombre à une décimale, séparateur de la langue (« 1,8 »). */
+export function decimale(v: number, locale: Locale): string {
+  return new Intl.NumberFormat(intlLocale(locale), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(v)
+}
+
 /** Un nombre au plus au dixième, signe moins typographique. */
 function metres(v: number, locale: Locale): string {
   const n = new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 1 }).format(Math.abs(v))
@@ -136,8 +140,6 @@ interface ModeleDeTuile {
   /** L'arme, ou la catégorie de la source traduite ; absente sinon. Seule partie qui se tronque. */
   arme?: string
   badge?: string
-  /** La riposte, courte : « abattu 1,8 s » (mort dont le tueur a été abattu), « abattu en retour » (frag). */
-  riposte?: string
   /** La distance à l'autre joueur (« à 23 m ») ; absente quand un des deux points manque. */
   distance?: string
   /** Le texte complet de la tuile, pour l'infobulle. */
@@ -184,14 +186,6 @@ function distanceDe(t: TacticalText, c: TacticalContribution, locale: Locale): s
   return d === null ? undefined : t.tileDistance(new Intl.NumberFormat(intlLocale(locale)).format(d))
 }
 
-/** riposteDe — le badge court de la riposte : « abattu 1,8 s » sur une mort dont le tueur a été abattu, « abattu en retour » sur un frag. */
-function riposteDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
-  const r = c.riposte
-  if (!r) return undefined
-  if (r.type === 'abattu_en_retour') return t.tileRiposteReturn
-  return t.tileRiposteKiller(decimale(r.delai_ms / 1000, locale))
-}
-
 function badgeDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
   if (c.face !== 'mort' || !c.placement) return undefined
   const d = c.placement.distance_m
@@ -218,10 +212,9 @@ export function modeleDeTuile(
   const fait = faitDe(t, c)
   const arme = armeDe(t, c, locale)
   const badge = badgeDe(t, c, locale)
-  const riposte = riposteDe(t, c, locale)
   const distance = distanceDe(t, c, locale)
   const date = dateEtHeure(c.match_started_at, timezone, locale)
-  const titre = [c.mode_label, c.score_label, issue, date, instant, fait, distance, arme, riposte, badge].filter(Boolean).join(' · ')
+  const titre = [c.mode_label, c.score_label, issue, date, instant, fait, distance, arme, badge].filter(Boolean).join(' · ')
   return {
     mode: c.mode_label || undefined,
     score: c.score_label || undefined,
@@ -231,7 +224,6 @@ export function modeleDeTuile(
     faitDecoupe: faitDecoupeDe(t, c),
     arme,
     badge,
-    riposte,
     distance,
     titre,
     rejeu: {
