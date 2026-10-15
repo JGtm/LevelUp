@@ -195,12 +195,46 @@ Décisions fermes :
   date de la régression (`git log -S`), comptes sur une copie locale ET sur une copie prod
   (le superviseur fournit la copie prod). Rapport au journal, puis STOP pour verdict du
   superviseur (application de D-11 à D-14 colonne par colonne).
-- [ ] E5.2 `participants_loaded` : traitement selon le verdict.
-- [ ] E5.3 `player_count` : traitement selon le verdict.
-- [ ] E5.4 Bit 512 : traitement selon le verdict.
-- [ ] E5.5 Lignes existantes selon D-13.
-- [ ] E5.6 Tests : persist (tag `integration`, OBLIGATOIRE), rouge avant ; ratchets ART verts
-  (`no_art_patterns_test.go`, allowlist inchangée).
+**Verdict du superviseur (2026-10-15, sur l'inventaire E5.1)** :
+- **V-1 `participants_loaded` → D-12, RETIRÉE** : aucun écrivain Go, aucun lecteur. Code ET colonne
+  physique (V-4).
+- **V-2 `player_count` → D-12, RETIRÉE** : aucun lecteur réel (pas d'oracle malgré « fix #10 »),
+  valeurs historiques fausses (13 sur 1 544 égales au roster), écrivain H5 jamais exercé. Pas de
+  remplissage rétroactif (oracle tautologique). Un vrai oracle de roster serait une fonctionnalité
+  neuve, hors de ce plan (proposée au user, non bloquante). Code, vues, export, démo, TSV ET
+  colonne physique + index orphelin `idx_registry_player_count` (V-4).
+- **V-3 Bit 512 → D-14, GARDÉ** : un lecteur de production (backfill admin HI). Écrivain HI à
+  l'insertion correct, inchangé. Import OpenSpartan : pose le bit 512 à l'insertion (et le
+  `BackfillCompleted: 1` du mapper, qui est le bit médailles, est nommé/commenté pour ce qu'il est).
+  H5 : rien (aucun lecteur). La condition « participants » du scope `AllData` reste.
+- **V-4 Lignes et schéma existants → D-13, UNE reconstruction** par la recette éprouvée sur
+  `match_registry` (`migration/table_swap.go` `swapTableTx`, précédent
+  `shared_recompute_mode_category_v1` du 2026-10-09, et/ou `widen_match_registry_team_scores`) :
+  une étape de migration unique qui, sur les bases partagées, retire `participants_loaded`,
+  `player_count` et `idx_registry_player_count`, et pose le bit 512 sur les matchs qui ont des
+  participants, seulement pour les titres dont le manifeste/capability porte ce bit (aucune
+  comparaison de slug). Aucun `UPDATE`. Idempotente, rejouable, empreintes des vues vérifiées.
+  Le bit skill (4) manquant sur les mêmes 157 matchs n'est PAS posé (donnée non vérifiable depuis
+  la base partagée) : découverte.
+
+- [ ] E5.2 V-1 côté code : DDL `sync/schema.go`, fixtures, champ et ligne du mapper OpenSpartan,
+  tests ; grep final à 0 hors migration de retrait et archives.
+- [ ] E5.3 V-2 côté code : champ `domain.MatchRegistryRow.PlayerCount`, écrivain H5
+  (`ingest/collect.go`, `capture.go`), seed démo et `persist/demo_seed_columns.go`, étape de
+  migration d'ajout (retirée de `order.go` seulement si le mécanisme de migration le permet sans
+  casser l'historique ; sinon conservée et neutralisée par l'étape de retrait, justifié), DDL,
+  vues `mv_player_matches` / `v_match_full`, export Parquet du snapshot (le lecteur de snapshot
+  doit TOLÉRER un cut ancien qui porte encore la colonne : test), colonne TSV de
+  `cmd/mapfond-inventaire`. Grep final à 0 hors migration de retrait et archives.
+- [ ] E5.4 V-3 : import OpenSpartan pose le bit 512 à l'insertion (`toSyncRegistry`) ; test.
+- [ ] E5.5 V-4 : étape de migration de reconstruction, tests (base aux deux colonnes + index +
+  157 lignes sans bit → après : colonnes et index absents, bits posés, autres colonnes et index
+  identiques, vues valides ; second passage = no-op). **Répétition sur les COPIES prod** fournies
+  par le superviseur (`scratchpad/e5_prod/{halo_infinite,halo_5}`, sur une copie de la copie) :
+  comptes avant/après, liste des index, durée, mémoire ; résultats au journal.
+- [ ] E5.6 Tests : persist/migration (tag `integration`, OBLIGATOIRE), rouge avant ; ratchets ART
+  verts (`no_art_patterns_test.go`, allowlist inchangée, `criticalMatchTables`/`guardedSharedTables`
+  respectées).
 
 Gate : `go test` + `go test -tags=integration -p 1` sur `./internal/persist/... ./internal/sync/...
 ./internal/games/... ./internal/migration/...` (paquets touchés). Revue adversariale Opus du
