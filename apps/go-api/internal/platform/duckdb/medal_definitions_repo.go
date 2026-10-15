@@ -3,6 +3,7 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -115,7 +116,12 @@ func (r *MedalDefinitionsRepo) LookupByIDs(
 			missing = append(missing, id)
 		}
 	}
-	for id, label := range lookupMedalCitationLabels(ctx, r.pdb.Metadata, missing) {
+	citations, cerr := lookupMedalCitationLabels(ctx, r.pdb.Metadata, missing)
+	if cerr != nil {
+		// Dégradation voulue (libellés repliés), jamais muette.
+		slog.ErrorContext(ctx, "medal_definitions: libellés de médailles par citation indisponibles", "err", cerr)
+	}
+	for id, label := range citations {
 		result[id] = port.MedalDefinitionRow{MedalID: id, Label: label, Difficulty: "Normal"}
 	}
 	return result, nil

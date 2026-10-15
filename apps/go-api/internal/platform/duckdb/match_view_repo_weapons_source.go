@@ -136,10 +136,10 @@ func (r *MatchViewRepo) tallyMatchKillSources(
 			kills     int
 		)
 		if err := rows.Scan(&xuid, &sourceTag, &kills); err != nil {
-			// Une ligne illisible est une anomalie de schema, pas un cas nominal.
-			slog.ErrorContext(ctx, "match view: source de degat illisible, ligne sautee",
-				"match_id", matchID, "err", err)
-			continue
+			// Une ligne illisible est une anomalie de schema, pas un cas nominal. Elle REMONTE
+			// plutot que d'etre sautee : un compte d'armes tronque en silence sous-estimerait des
+			// frags et se lirait comme un tableau d'armes complet.
+			return nil, nil, fmt.Errorf("match kill sources scan: %w", err)
 		}
 		key, ok := r.killSourceClassifier.KillSourceRegistryKey(sourceTag)
 		if !ok {
@@ -204,7 +204,7 @@ func (r *MatchViewRepo) attachTopWeapons(ctx context.Context, matchID string, ro
 	}
 	bulk, err := r.GetMatchBulkWeaponKills(ctx, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "match view: arme favorite du scoreboard non calculee",
+		slog.ErrorContext(ctx, "match view: arme favorite du scoreboard non calculee",
 			"match_id", matchID, "err", err)
 		return
 	}

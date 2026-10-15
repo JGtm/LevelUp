@@ -428,7 +428,7 @@ func (s *MatchViewService) GetMatchNeighbors(ctx context.Context, matchID string
 	slog.Info("match_view: GetMatchNeighbors", "match_id", matchID, "xuid", s.xuid)
 	n, err := s.repo.GetMatchNeighbors(ctx, s.xuid, matchID)
 	if err != nil {
-		slog.Warn("match_view: neighbors indisponibles", "match_id", matchID, "err", err)
+		slog.ErrorContext(ctx, "match_view: neighbors indisponibles", "match_id", matchID, "err", err)
 		return domain.MatchNeighbors{}, nil
 	}
 	if n == nil {

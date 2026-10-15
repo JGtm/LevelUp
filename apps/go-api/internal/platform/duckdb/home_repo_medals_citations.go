@@ -209,7 +209,12 @@ func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64, locale st
 			missing = append(missing, id)
 		}
 	}
-	for id, label := range lookupMedalCitationLabels(ctx, db, missing) {
+	citations, cerr := lookupMedalCitationLabels(ctx, db, missing)
+	if cerr != nil {
+		// Dégradation voulue (libellés repliés), jamais muette.
+		slog.ErrorContext(ctx, "home: libellés de médailles par citation indisponibles", "err", cerr)
+	}
+	for id, label := range citations {
 		result[id] = medalLabel{label: label, difficulty: "Normal"}
 	}
 	return result

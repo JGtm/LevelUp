@@ -46,6 +46,9 @@ type mockMatchViewRepo struct {
 	// medalMetasByName : réponse de LookupMedalMetaByName (résolution des médailles
 	// du feed). Nil = référentiel indisponible → les events medal gardent le nom brut.
 	medalMetasByName map[string]domain.MedalNameMeta
+	// errs : échec d'une lecture par NOM de méthode (E4.8b : rang, CSR partagés, médias, stats
+	// attendues, médailles/armes de tous les joueurs, historique). Absent = la lecture réussit à vide.
+	errs map[string]error
 }
 
 func (m *mockMatchViewRepo) GetMatchMeta(_ context.Context, _ string) (*domain.MatchMetaRaw, error) {
@@ -103,31 +106,31 @@ func (m *mockMatchViewRepo) GetMatchEncounterAssists(_ context.Context, _, _ str
 	return nil, nil
 }
 func (m *mockMatchViewRepo) GetMatchSkillRank(_ context.Context, _ string) (*domain.SkillRankRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchSkillRank"]
 }
 func (m *mockMatchViewRepo) GetMatchMedia(_ context.Context, _ string) ([]domain.MediaAssocRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchMedia"]
 }
 func (m *mockMatchViewRepo) GetMatchExpectedStats(_ context.Context, _, _ string) (*domain.ExpectedStatsRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchExpectedStats"]
 }
 func (m *mockMatchViewRepo) GetMatchBulkMedals(_ context.Context, _ string) ([]domain.BulkMedalRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchBulkMedals"]
 }
 func (m *mockMatchViewRepo) GetMatchBulkWeaponKills(_ context.Context, _ string) ([]domain.BulkWeaponKillRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchBulkWeaponKills"]
 }
 func (m *mockMatchViewRepo) GetHistoryForAvg(_ context.Context, _ string) ([]domain.MatchHistAvgRow, error) {
-	return nil, nil
+	return nil, m.errs["GetHistoryForAvg"]
 }
 func (m *mockMatchViewRepo) GetHistoryForAvgBulk(_ context.Context, _ []string) (map[string][]domain.MatchHistAvgRow, error) {
-	return nil, nil
+	return nil, m.errs["GetHistoryForAvgBulk"]
 }
 func (m *mockMatchViewRepo) GetPlayerAssistsModel(_ context.Context, _ string) (*domain.PlayerAssistsModel, error) {
-	return nil, nil
+	return nil, m.errs["GetPlayerAssistsModel"]
 }
 func (m *mockMatchViewRepo) GetMatchSharedCSRs(_ context.Context, _ string) (map[string]*domain.SkillRankRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchSharedCSRs"]
 }
 
 // --- tests localisation FR ---

@@ -339,13 +339,17 @@ func (r *MatchViewRepo) lookupMapImageURL(ctx context.Context, mapAssetID string
 
 // GetPlayerMatchStats retourne les stats du joueur pour ce match (Q17).
 // Exécutée sur SharedReader (ADR 0016) — Q17 lit match_participants (shared-only).
+//
+// Un joueur sans ligne dans le match (il n'y a pas participé : `sql.ErrNoRows`) est une ABSENCE
+// constatée, rendue en structure vide. Tout autre échec (lecteur, requête, lecture d'une colonne)
+// est une PANNE et remonte.
 func (r *MatchViewRepo) GetPlayerMatchStats(ctx context.Context, xuid, matchID string) (*domain.PlayerMatchStatsRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		return &domain.PlayerMatchStatsRaw{}, nil //nolint:nilerr
+		return nil, fmt.Errorf("MatchViewRepo.GetPlayerMatchStats: shared reader: %w", err)
 	}
 	defer release()
 
@@ -372,9 +376,11 @@ func (r *MatchViewRepo) GetPlayerMatchStats(ctx context.Context, xuid, matchID s
 		&s.MaxKillingSpree,
 		&s.BackfillBits,
 	)
-	if err != nil {
-		// Le joueur peut ne pas avoir participé → retourner une stats vide
+	if errors.Is(err, sql.ErrNoRows) {
 		return &domain.PlayerMatchStatsRaw{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetPlayerMatchStats: %w", err)
 	}
 	return &s, nil
 }
@@ -399,16 +405,20 @@ func (r *MatchViewRepo) IsParticipant(ctx context.Context, xuid, matchID string)
 	return exists, nil
 }
 
-// GetMatchEnrichment retourne l'enrichissement pour ce match (Q18).
+// GetMatchEnrichment retourne l'enrichissement pour ce match (Q18). Un match sans ligne
+// d'enrichissement (`sql.ErrNoRows`) est une ABSENCE constatée, rendue en structure vide ; tout
+// autre échec (vue absente d'une base non migrée comprise) remonte.
 func (r *MatchViewRepo) GetMatchEnrichment(ctx context.Context, matchID string) (*domain.MatchEnrichmentRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	var e domain.MatchEnrichmentRaw
 	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, Q18MatchEnrichment, matchID)
-	if err != nil {
-		// Pas d'enrichissement (ou Reopen concurrent) → retourner vide
+	if errors.Is(err, sql.ErrNoRows) {
 		return &domain.MatchEnrichmentRaw{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchEnrichment: %w", err)
 	}
 	defer rows.Close()
 	if err := rows.Scan(
@@ -417,7 +427,7 @@ func (r *MatchViewRepo) GetMatchEnrichment(ctx context.Context, matchID string) 
 		&e.IsExcluded,
 		&e.DominanceFlag,
 	); err != nil {
-		return &domain.MatchEnrichmentRaw{}, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchEnrichment scan: %w", err)
 	}
 	return &e, nil
 }

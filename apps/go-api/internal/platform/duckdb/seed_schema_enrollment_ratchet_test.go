@@ -159,7 +159,7 @@ func ratchetCollectDecls(file *ast.File, out map[string]string) {
 // que leur requête ne s'exécute pas sur les seeds gardés. Toute entrée porte sa
 // raison et sa date (règle du dépôt : pas d'allowlist sans justification datée).
 //
-// PREUVE COMMUNE aux trois entrées (mesurée le 2026-08-30) : la colonne est
+// PREUVE COMMUNE aux entrées (mesurée le 2026-08-30) : la colonne est
 // absente des TROIS seeds (`grep` sur player_repos_test.go et
 // pool_migration_test.go : aucune occurrence) ALORS QUE la suite d'intégration
 // est verte. Si le chemin qui exécute ces requêtes était couvert par ces seeds,
@@ -168,8 +168,6 @@ func ratchetCollectDecls(file *ast.File, out map[string]string) {
 // danger. Le jour où un test exercera l'un de ces chemins, il tombera — et ce
 // sera le signal d'enrôler la requête ET d'ajouter la colonne au seed.
 var ratchetColonnesHorsPerimetre = map[string]string{
-	"backfill_bits": "2026-08-30 — lue par Q17PlayerMatchStats (vue match, mono-match). " +
-		"Absente des trois seeds, suite verte : ce chemin n'est pas couvert par eux.",
 	"present_at_beginning": "2026-08-30 — lue par qElapsedSecondsByMatchTpl (temps de jeu effectif). " +
 		"Absente des trois seeds, suite verte : ce chemin n'est pas couvert par eux.",
 	"present_at_completion": "2026-08-30 — lue par qElapsedSecondsByMatchTpl (temps de jeu effectif). " +

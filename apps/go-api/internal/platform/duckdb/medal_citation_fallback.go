@@ -25,24 +25,33 @@ const medalCitationFallbackQuery = `SELECT medal_id, citation_name_display
 
 // lookupMedalCitationLabels retourne medal_id → libellé issu de citation_mappings
 // pour les IDs donnés (fallback quand medal_definitions n'a pas de nom
-// exploitable). Map vide si db est nil, ids vide, ou aucune ligne — jamais nil.
+// exploitable). Map vide, sans erreur, si db est nil, ids vide, aucune ligne, ou si la table
+// `citation_mappings` n'existe pas dans cette base (référentiel propre à un titre : absence
+// constatée par sonde). Une sonde ou une lecture en échec rend les libellés lus ET l'erreur : les
+// appelants (vue Match, Explorer, Home) la journalisent ou la disent avant de dégrader.
 //
 // Observabilité : émet un log DEBUG (requested vs resolved) à chaque invocation
-// du fallback. Comme lookupLabelsByID dégrade silencieusement (erreur SQL =
-// map vide, contrat partagé avec les armes), ce compteur est le SEUL moyen de
-// diagnostiquer le symptôme « médailles affichées en ID nu » : sous
-// LEVELUP_LOG_LEVEL=debug, resolved=0 alors que requested>0 trahit une
-// citation_mappings vide/absente. Le PC d'appel étant dans le package duckdb,
+// du fallback : sous LEVELUP_LOG_LEVEL=debug, resolved=0 alors que requested>0 trahit une
+// citation_mappings vide. Le PC d'appel étant dans le package duckdb,
 // le MultiModuleHandler route ce log vers logs/duckdb.log (cf.
 // observability/logging/module.go : detectModuleFromCaller).
-func lookupMedalCitationLabels(ctx context.Context, db *DB, ids []int64) map[int64]string {
+func lookupMedalCitationLabels(ctx context.Context, db *DB, ids []int64) (map[int64]string, error) {
 	if len(ids) == 0 || db == nil {
-		return map[int64]string{}
+		return map[int64]string{}, nil
 	}
-	out := lookupLabelsByID(ctx, db, medalCitationFallbackQuery, ids)
+	present, err := relationExists(ctx, db.SQLDb(), "citation_mappings")
+	if err != nil {
+		return map[int64]string{}, err
+	}
+	if !present {
+		slog.DebugContext(ctx, "medal_citation_fallback: citation_mappings absente de cette base",
+			slog.Int("requested", len(ids)))
+		return map[int64]string{}, nil
+	}
+	out, err := lookupLabelsByID(ctx, db, medalCitationFallbackQuery, ids)
 	slog.DebugContext(ctx, "medal_citation_fallback",
 		slog.Int("requested", len(ids)),
 		slog.Int("resolved", len(out)),
 	)
-	return out
+	return out, err
 }

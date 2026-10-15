@@ -45,7 +45,7 @@ func decorateMedalEvents(
 	}
 	metas, err := repo.LookupMedalMetaByName(ctx, names)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: résolution des médailles du feed en échec",
+		slog.ErrorContext(ctx, "match_view: résolution des médailles du feed en échec",
 			"medal_events", len(names), "err", err)
 		return
 	}

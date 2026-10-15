@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"math"
 
 	"levelup/go-api/internal/analysis"
@@ -123,7 +124,13 @@ func computeExpectedAssists(
 	}
 
 	// 1. Modèle personnel (arithmétique factorisée dans analysis).
-	if m, err := repo.GetPlayerAssistsModel(ctx, gameVariantName); err == nil && m != nil {
+	m, err := repo.GetPlayerAssistsModel(ctx, gameVariantName)
+	if err != nil {
+		// Panne de lecture du modèle personnel : dite AVANT de retomber sur le populationnel,
+		// dont la valeur reste servie (chaîne de résolution documentée ci-dessus).
+		slog.ErrorContext(ctx, "match_view: modèle personnel d'assists attendus illisible, repli populationnel",
+			"mode", gameVariantName, "err", err)
+	} else if m != nil {
 		v := analysis.ApplyPersonalAssistsModel(m, kills, deaths, dd, dt, mmrDelta)
 		return &v
 	}

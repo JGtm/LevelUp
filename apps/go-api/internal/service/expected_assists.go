@@ -65,7 +65,7 @@ func computeExpectedAssistsBatch(
 		if !personalDone[mode] {
 			pm, err := models.GetPlayerAssistsModel(ctx, mode)
 			if err != nil {
-				slog.WarnContext(ctx, "expected_assists_personal_model_failed", "mode", mode, "err", err)
+				slog.ErrorContext(ctx, "expected_assists_personal_model_failed", "mode", mode, "err", err)
 			}
 			personal[mode] = pm // pm peut être nil (mode sans modèle)
 			personalDone[mode] = true
