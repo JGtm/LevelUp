@@ -1,12 +1,10 @@
 module levelup/go-api
 
-// 1.26.1 -> 1.26.5 le 2026-08-05 (lot E, point E6). Ce n'est PAS une montée de confort :
-// `ci.yml` installe le toolchain par `go-version-file: apps/go-api/go.mod`, donc la CI
-// compilait avec 1.26.1 — la version dont govulncheck listait 11 CVE de bibliothèque
-// standard, toutes corrigées en 1.26.2. Le Dockerfile, lui, tire `golang:1.26-bookworm`
-// (dernier correctif de la branche) et n'était pas concerné : c'est la CI qui portait
-// l'écart, et c'est elle qui garde le merge.
-go 1.26.5
+// go 1.26.9 : correctifs de bibliothèque standard relevés par govulncheck (http2,
+// `http.Error`, `csv.Writer.Flush`, net/url, crypto/tls, encoding/xml). `ci.yml` installe
+// le toolchain par `go-version-file: apps/go-api/go.mod` : cette directive fixe la version
+// de la CI, le Dockerfile tire `golang:1.26-bookworm` (dernier correctif de la branche 1.26).
+go 1.26.9
 
 require (
 	github.com/HugoSmits86/nativewebp v1.3.0
@@ -18,13 +16,13 @@ require (
 	github.com/go-chi/httprate v0.16.0
 	github.com/google/uuid v1.6.0
 	github.com/pelletier/go-toml/v2 v2.4.3
-	golang.org/x/crypto v0.55.0
-	golang.org/x/image v0.24.0
-	golang.org/x/sync v0.22.0
-	golang.org/x/sys v0.47.0
-	golang.org/x/time v0.15.0
+	golang.org/x/crypto v0.57.0
+	golang.org/x/image v0.45.0
+	golang.org/x/sync v0.23.0
+	golang.org/x/sys v0.48.0
+	golang.org/x/time v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.57.0
+	modernc.org/sqlite v1.59.0
 )
 
 require (
@@ -53,12 +51,12 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
-	golang.org/x/mod v0.38.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260708182218-49f421fb7959 // indirect
-	golang.org/x/text v0.41.0 // indirect
-	golang.org/x/tools v0.48.0 // indirect
+	golang.org/x/mod v0.41.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5 // indirect
+	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/tools v0.49.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
-	modernc.org/libc v1.74.4 // indirect
+	modernc.org/libc v1.75.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
-	modernc.org/memory v1.11.0 // indirect
+	modernc.org/memory v1.12.1 // indirect
 )
