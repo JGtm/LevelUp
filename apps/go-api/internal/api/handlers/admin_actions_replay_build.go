@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/jobs"
 	"levelup/go-api/internal/replaybuild"
 )
@@ -131,9 +132,9 @@ func (h *AdminReplayBuildActionHandler) handleEnqueue(ctx context.Context, in *r
 		return nil, humacore.NewError(http.StatusServiceUnavailable, "build_queue_unavailable",
 			"File de construction indisponible (store monitoring non ouvert).")
 	}
-	var req replayBuildRequest
-	if err := json.Unmarshal(in.RawBody, &req); err != nil || req.MatchID == "" {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_input", "match_id requis.")
+	req, err := decodeReplayBuildRequest(in.RawBody)
+	if err != nil {
+		return nil, err
 	}
 	titleSlug := titleOrDefaultSlug(in.Title)
 	job, created, err := h.enqueue(ctx, titleSlug, req.MatchID)
@@ -163,6 +164,22 @@ type replayBuildRequest struct {
 	MatchID string `json:"match_id"`
 }
 
+// decodeReplayBuildRequest décode le corps commun à /run et /enqueue : 400 invalid_input
+// si le JSON est malformé ou le match_id absent, 400 invalid_match_id si le match_id n'a
+// pas la forme d'un identifiant de match (title.IsValidMatchID) — il deviendrait un
+// segment de chemin du rejeu et la clé d'un job.
+func decodeReplayBuildRequest(raw []byte) (replayBuildRequest, error) {
+	var req replayBuildRequest
+	if err := json.Unmarshal(raw, &req); err != nil || req.MatchID == "" {
+		return req, humacore.NewError(http.StatusBadRequest, "invalid_input", "match_id requis.")
+	}
+	if !titlePkg.IsValidMatchID(req.MatchID) {
+		return req, humacore.NewError(http.StatusBadRequest, "invalid_match_id",
+			"match_id : hexadécimal et tirets seulement.")
+	}
+	return req, nil
+}
+
 // handleRun démarre la construction du rejeu d'un match.
 // POST /admin/actions/replay-build/run {match_id} → 202 (409 si déjà en vol sur ce match).
 func (h *AdminReplayBuildActionHandler) handleRun(ctx context.Context, in *replayBuildRunInput) (*replayBuildRunOutput, error) {
@@ -170,9 +187,9 @@ func (h *AdminReplayBuildActionHandler) handleRun(ctx context.Context, in *repla
 		return nil, humacore.NewError(http.StatusServiceUnavailable, "replay_build_unavailable",
 			"Construction de rejeu indisponible (runner non câblé).")
 	}
-	var req replayBuildRequest
-	if err := json.Unmarshal(in.RawBody, &req); err != nil || req.MatchID == "" {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_input", "match_id requis.")
+	req, err := decodeReplayBuildRequest(in.RawBody)
+	if err != nil {
+		return nil, err
 	}
 	if err := h.refusedByPlacement(ctx); err != nil {
 		slog.WarnContext(ctx, "admin_actions: construction locale refusée par le réglage",
