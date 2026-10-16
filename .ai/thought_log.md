@@ -1,3 +1,11 @@
+## [2026-10-16] Backlog du 16/10 : vérification sur pièces des 12 entrées et plan — En cours (plan écrit, exécution non lancée)
+
+**Décision technique principale** : un plan unique `.ai/PLAN_BACKLOG_2026-10-16.md` (E1 à E10, branche `feat/backlog-2026-10-16`), CI d'abord (décision du user) : lots Go sur plusieurs machines en `-p 1`, dernier lot = complément calculé, fusion des JSONL et des profils, second passage `internal/sync` supprimé, Vitest en 3 lots. LUSR v1 retirée (décision du user), position à la mort unifiée dans le lot film (décision du user).
+
+**Résultats observés** : CI de référence 49 min (Go couverture 41 + passage sync en double 7 ; Vitest 11,5). Trois prémisses plus graves que l'entrée : le recalcul d'exclusion écrit des lignes v1 qui masquent la v2 et la v2 ignore les matchs exclus ; les composantes LUSR ne sont plus écrites depuis la v2 canonique ; `computeFKFD` lit des colonnes inexistantes (0/0 pour tous les titres). Deux prémisses périmées (`GetMatchKillSources`/`Assists` déjà corrigés ; mémo des bobines déjà en place). Storm : Infinite n'a pas de Storm Rifle, mais la maîtrise Carabine à impulsion n'apparaît pas dans la page Citations (constat du user) : diagnostic en E6.3.
+
+**Conclusion** : attendre le go du user sur le plan, puis E1.
+
 ## [2026-10-16] CI des branches licence et mise en commun : deux rouges réparés — Complété
 
 **Décision technique principale** : `chore/licence-agpl` : `TestCheminsAiCitesDansLeCodeExistent` signalait un commentaire Go (`film/internal/grammar/doc.go`) qui citait `.ai/V7.5/dumps/m1_funcs.c`, retiré avec les sorties de décompilation ; le commentaire renvoie désormais au plan et à NOTICE. `feat/pool-consentement` : golangci-lint (errcheck sur `fmt.Fprintf`, goconst sur « grandfather ») — sortie de la CLI par l'écrivain `sortie` déjà utilisé par `identity`, constante `subcmdGrandfather` ; et `upsertLocked` repassé sous le seuil de complexité (la préservation du consentement l'avait porté à 16, extraite dans `preservePoolSharing`).

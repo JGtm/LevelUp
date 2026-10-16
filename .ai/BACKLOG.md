@@ -201,7 +201,7 @@ Reprises du plan `.ai/V7.5/PLAN_CITATIONS_FILM_2026-10-16.md` (section Découver
   la déclare `not_exposed` alors que le moteur des citations tourne pour ce titre. Vérifier ses lecteurs
   avant de la passer à `supported`. **S.**
 - **Maîtrise du Fusil Storm absente** : `static/commendations/halo_infinite/HI_Commendations_Storm.png`
-  (image native) n'est utilisée par aucune citation ; ajouter la maîtrise au seed (`weapon_stat`, nom EN
+  (image native) n'est utilisée par aucune citation ; ajouter la maîtrise au seed sachant que dans Halo Infinite son équivalent est "Pulse Carbine" mais à voir si on a pas déjà une image pour la carabine à impulsion (`weapon_stat`, nom EN
   canonique de l'arme). **S.**
 
 ---
