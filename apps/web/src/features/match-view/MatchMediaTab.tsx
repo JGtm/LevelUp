@@ -3,6 +3,7 @@ import type { MatchAssociatedMedia, MediaItemRow } from '@/lib/api/types'
 import { MediaThumbnailCard, MediaLightbox } from '@/features/media/MediaViewer'
 import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
+import { usePlayerGamertag } from '@/features/media/usePlayerGamertag'
 import { useToggleMediaLike } from '@/features/media/queries'
 import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { toMediaItemRow } from './_mediaItemRow'
@@ -29,6 +30,9 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
   // Profil d'ami (lecture seule) : pas de réassociation. Le cœur reste actif : le like est
   // l'action du visiteur, attribuée à son propre profil (ADR 0029).
   const canWrite = useCanWritePlayer(playerSlug)
+  // L'onglet montre aussi les clips des coéquipiers : réassocier n'est offert que sur les
+  // siens (propriétaire ou admin, comme le serveur).
+  const currentPlayerGamertag = usePlayerGamertag(playerSlug)
   const likeDisabled = toggleLike.isPending
 
   function handleToggleLike(item: MediaItemRow) {
@@ -62,6 +66,7 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
           playerSlug={playerSlug}
           currentMatchId={matchId}
           onReassociate={canWrite ? picker.openFor : undefined}
+          currentPlayerGamertag={currentPlayerGamertag}
         />
       )}
       {picker.state && (
@@ -83,6 +88,7 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
             playerSlug={playerSlug}
             currentMatchId={matchId}
             onAssociate={canWrite ? picker.openFor : undefined}
+            currentPlayerGamertag={currentPlayerGamertag}
           />
         ))}
       </div>

@@ -8514,6 +8514,7 @@ export interface components {
             file_path: string;
             kind: string;
             liked: boolean;
+            owner_gamertag?: string;
             thumbnail_url?: string;
         };
         MatchCitation: {

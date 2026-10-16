@@ -9,6 +9,7 @@ import { MediaLightbox, MediaThumbnailCard } from '@/features/media/MediaViewer'
 import { buildOwnerColorMap } from '@/features/media/mediaOwnerColors'
 import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
+import { usePlayerGamertag } from '@/features/media/usePlayerGamertag'
 import { formatMessage } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -30,6 +31,9 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
   // Profil d'ami (lecture seule) : pas de réassociation. Le cœur reste actif : le like est
   // l'action du visiteur, attribuée à son propre profil (ADR 0029).
   const canWrite = useCanWritePlayer(playerSlug)
+  // Le rail mêle les médias de plusieurs auteurs : réassocier n'est offert que sur les siens
+  // (propriétaire ou admin, comme le serveur).
+  const currentPlayerGamertag = usePlayerGamertag(playerSlug)
   const likeDisabled = toggleMediaLike.isPending
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [autoChain, setAutoChain] = useState(false)
@@ -54,6 +58,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
           onToggleAutoChain={() => setAutoChain((c) => !c)}
           playerSlug={playerSlug}
           onReassociate={canWrite ? picker.openFor : undefined}
+          currentPlayerGamertag={currentPlayerGamertag}
         />
       )}
 
@@ -124,6 +129,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
                   playerSlug={playerSlug}
                   playerColorMap={playerColorMap}
                   onAssociate={canWrite ? picker.openFor : undefined}
+                  currentPlayerGamertag={currentPlayerGamertag}
                 />
               </CarouselItem>
             ))}

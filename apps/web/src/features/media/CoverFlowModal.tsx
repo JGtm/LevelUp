@@ -493,9 +493,8 @@ export function CoverFlowModal({
   const reassociateTitle = currentHasMatch ? text.coverFlow.reassociateTitle : text.coverFlow.associateTitle
   // Appartenance du média affiché — règle PERMISSIVE partagée par les actions
   // « réassocier » et « supprimer » : on ne masque que si le média appartient de
-  // façon PROUVÉE à un autre joueur. Se rabattre sur playerSlug serait faux
-  // (slug ≠ gamertag → régression 8edd5c784 sur MatchMediaTab/RecentMediaRail,
-  // qui ne passent pas currentPlayerGamertag).
+  // façon PROUVÉE à un autre joueur. Les vues passent le gamertag de référence de la page
+  // (usePlayerGamertag) ; se rabattre ici sur playerSlug serait faux (slug ≠ gamertag).
   const ownsCurrentMedia =
     !currentPlayerGamertag ||
     !currentItem?.owner_gamertag ||
@@ -652,12 +651,11 @@ export function CoverFlowModal({
                 </a>
               )
             )}
-            {/* Bouton réassocier : visible sauf si on PROUVE que le média est à un
-                autre joueur (owner_gamertag connu ET différent du gamertag de
-                référence). On ne se rabat PAS sur playerSlug ici (slug ≠ gamertag
-                ⇒ masquait le bouton à tort dans MatchMediaTab/RecentMediaRail qui
-                ne passent pas currentPlayerGamertag — cf. régression 8edd5c784). */}
-            {onReassociate && ownsCurrentMedia && (
+            {/* Bouton réassocier : même règle que le serveur (domain.CanModifyMedia) :
+                propriétaire du média ou admin. Masqué seulement si le média est PROUVÉ
+                à un autre joueur (owner_gamertag connu ET différent du gamertag de
+                référence) et que la session n'est pas admin. */}
+            {onReassociate && (isAdmin || ownsCurrentMedia) && (
               <button
                 type="button"
                 onClick={(e) => {

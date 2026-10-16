@@ -798,6 +798,10 @@ type MatchAssociatedMedia struct {
 	// Liked : état du cœur DU VIEWER de la requête (comme MediaItem.Liked),
 	// pas un état global du média. Cf. Q24MatchMedia.
 	Liked bool `json:"liked"`
+	// OwnerGamertag : player_slug du propriétaire du média (comme MediaItem.OwnerGamertag),
+	// nil si inconnu. Seul le propriétaire ou un admin peut le réassocier
+	// (CanModifyMedia) : le front masque l'action sur les médias des autres.
+	OwnerGamertag *string `json:"owner_gamertag,omitempty"`
 }
 
 // MatchMediaTab : contenu de l'onglet Médias.

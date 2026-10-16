@@ -17904,6 +17904,8 @@ components:
           type: string
         liked:
           type: boolean
+        owner_gamertag:
+          type: string
         thumbnail_url:
           type: string
       required:
