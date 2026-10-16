@@ -3,7 +3,7 @@
 package replayartifacts
 
 // citations_bouclier_research_test.go — INSTRUMENT DE L'ÉTAPE E1 du plan des citations Halo 5
-// (`.ai/PLAN_CITATIONS_FILM_2026-10-16.md`) : « Presque, ça ne compte pas » = un frag dont le
+// (`.ai/V7.5/PLAN_CITATIONS_FILM_2026-10-16.md`) : « Presque, ça ne compte pas » = un frag dont le
 // tueur a un bouclier à 0 % à l'instant du frag, et qui survit.
 //
 // Mesure, sur les artefacts du parc croisés aux frags de `match_kill_events_latest` (COPIE de la
