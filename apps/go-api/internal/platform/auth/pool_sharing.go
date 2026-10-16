@@ -34,6 +34,15 @@ type PoolSharing struct {
 	Basis     string    `json:"basis"`
 }
 
+// preservePoolSharing applique au consentement la règle du refresh token dans
+// upsertLocked : un Upsert partiel (rafraîchissement XSTS, mirror, liaison) ne l'efface
+// jamais ; seul SetPoolSharing le change, y compris pour le retirer.
+func preservePoolSharing(tokens, existing *UserTokens) {
+	if tokens.PoolSharing == nil && existing.PoolSharing != nil {
+		tokens.PoolSharing = existing.PoolSharing
+	}
+}
+
 // SharesWithPool indique si le jeton peut entrer dans le round-robin public :
 // seulement sur un consentement enregistré et non retiré.
 func (u *UserTokens) SharesWithPool() bool {

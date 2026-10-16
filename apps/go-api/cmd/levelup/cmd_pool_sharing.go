@@ -33,6 +33,9 @@ import (
 	auth_platform "levelup/go-api/internal/platform/auth"
 )
 
+// subcmdGrandfather : sous-commande qui enregistre les accords recueillis hors application.
+const subcmdGrandfather = "grandfather"
+
 // runPoolSharing route `pool-sharing <sous-commande>`.
 func runPoolSharing(cfg *config.AppConfig, args []string) error {
 	return runPoolSharingTo(cfg, args, os.Stdout)
@@ -46,7 +49,7 @@ func runPoolSharingTo(cfg *config.AppConfig, args []string, out io.Writer) error
 	switch args[0] {
 	case "list":
 		return poolSharingList(store, out)
-	case "grandfather":
+	case subcmdGrandfather:
 		return poolSharingGrandfather(store, args[1:], out)
 	default:
 		return fmt.Errorf("sous-commande pool-sharing inconnue: %q (list | grandfather)", args[0])
@@ -72,15 +75,16 @@ func poolSharingList(store *auth_platform.MultiUserTokenStore, out io.Writer) er
 	if err != nil {
 		return err
 	}
+	s := &sortie{w: out}
 	for _, t := range rows {
 		state := store.PoolSharingState(t.XUID)
 		basis := ""
 		if t.PoolSharing != nil {
 			basis = fmt.Sprintf("  base=%s  le=%s", t.PoolSharing.Basis, t.PoolSharing.DecidedAt.Format("2006-01-02"))
 		}
-		fmt.Fprintf(out, "%-24s %-18s %s%s\n", t.Gamertag, t.XUID, state, basis)
+		s.printf("%-24s %-18s %s%s\n", t.Gamertag, t.XUID, state, basis)
 	}
-	return nil
+	return s.err
 }
 
 func poolSharingGrandfather(store *auth_platform.MultiUserTokenStore, args []string, out io.Writer) error {
@@ -105,23 +109,27 @@ func poolSharingGrandfather(store *auth_platform.MultiUserTokenStore, args []str
 		return err
 	}
 
+	s := &sortie{w: out}
 	xuids := make([]string, 0, len(chosen))
 	for _, t := range chosen {
 		state := store.PoolSharingState(t.XUID)
 		if state != domain.PoolSharingUndecided {
-			fmt.Fprintf(out, "ignoré (déjà %s) : %s (%s)\n", state, t.Gamertag, t.XUID)
+			s.printf("ignoré (déjà %s) : %s (%s)\n", state, t.Gamertag, t.XUID)
 			continue
 		}
-		fmt.Fprintf(out, "accord à enregistrer : %s (%s)\n", t.Gamertag, t.XUID)
+		s.printf("accord à enregistrer : %s (%s)\n", t.Gamertag, t.XUID)
 		xuids = append(xuids, t.XUID)
 	}
 	if !*yes {
-		fmt.Fprintf(out, "SIMULATION : %d joueur(s) seraient marqués. Relancer avec --yes pour enregistrer.\n", len(xuids))
-		return nil
+		s.printf("SIMULATION : %d joueur(s) seraient marqués. Relancer avec --yes pour enregistrer.\n", len(xuids))
+		return s.err
 	}
 	n, err := store.GrandfatherPoolSharing(xuids, auth_platform.PoolSharingBasisGrandfathered)
-	fmt.Fprintf(out, "%d accord(s) enregistré(s).\n", n)
-	return err
+	s.printf("%d accord(s) enregistré(s).\n", n)
+	if err != nil {
+		return err
+	}
+	return s.err
 }
 
 // selectGrandfathered résout la désignation de l'opérateur. Un nom inconnu fait échouer la

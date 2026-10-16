@@ -38,7 +38,7 @@ func TestPoolSharingGrandfather_DryRunWritesNothing(t *testing.T) {
 	cfg, store := poolSharingFixture(t)
 	var out bytes.Buffer
 
-	if err := runPoolSharingTo(cfg, []string{"grandfather", "--players", "ami,Refus"}, &out); err != nil {
+	if err := runPoolSharingTo(cfg, []string{subcmdGrandfather, "--players", "ami,Refus"}, &out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -54,7 +54,7 @@ func TestPoolSharingGrandfather_YesRecordsOnlyUndecided(t *testing.T) {
 	cfg, store := poolSharingFixture(t)
 	var out bytes.Buffer
 
-	if err := runPoolSharingTo(cfg, []string{"grandfather", "--players", "Ami,2", "--yes"}, &out); err != nil {
+	if err := runPoolSharingTo(cfg, []string{subcmdGrandfather, "--players", "Ami,2", "--yes"}, &out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -94,7 +94,7 @@ func TestPoolSharing_UnknownSubcommand(t *testing.T) {
 func TestPoolSharingGrandfather_YesLeavesUndesignatedPlayersUndecided(t *testing.T) {
 	cfg, store := poolSharingFixture(t)
 
-	if err := runPoolSharingTo(cfg, []string{"grandfather", "--players", "Ami", "--yes"}, &bytes.Buffer{}); err != nil {
+	if err := runPoolSharingTo(cfg, []string{subcmdGrandfather, "--players", "Ami", "--yes"}, &bytes.Buffer{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -106,8 +106,8 @@ func TestPoolSharingGrandfather_YesLeavesUndesignatedPlayersUndecided(t *testing
 func TestPoolSharingGrandfather_RequiresExplicitDesignation(t *testing.T) {
 	cfg, store := poolSharingFixture(t)
 	for _, args := range [][]string{
-		{"grandfather", "--yes"},
-		{"grandfather", "--players", "Ami", "--all", "--yes"},
+		{subcmdGrandfather, "--yes"},
+		{subcmdGrandfather, "--players", "Ami", "--all", "--yes"},
 	} {
 		if err := runPoolSharingTo(cfg, args, &bytes.Buffer{}); err == nil {
 			t.Fatalf("%v : la désignation des joueurs doit être exigée", args)
@@ -121,7 +121,7 @@ func TestPoolSharingGrandfather_RequiresExplicitDesignation(t *testing.T) {
 func TestPoolSharingGrandfather_UnknownPlayerAbortsBeforeWriting(t *testing.T) {
 	cfg, store := poolSharingFixture(t)
 
-	err := runPoolSharingTo(cfg, []string{"grandfather", "--players", "Ami,Fautedefrappe", "--yes"}, &bytes.Buffer{})
+	err := runPoolSharingTo(cfg, []string{subcmdGrandfather, "--players", "Ami,Fautedefrappe", "--yes"}, &bytes.Buffer{})
 
 	if err == nil || !strings.Contains(err.Error(), "Fautedefrappe") {
 		t.Fatalf("un nom inconnu doit faire échouer la commande en le nommant, got %v", err)
@@ -134,7 +134,7 @@ func TestPoolSharingGrandfather_UnknownPlayerAbortsBeforeWriting(t *testing.T) {
 func TestPoolSharingGrandfather_AllMarksEveryUndecided(t *testing.T) {
 	cfg, store := poolSharingFixture(t)
 
-	if err := runPoolSharingTo(cfg, []string{"grandfather", "--all", "--yes"}, &bytes.Buffer{}); err != nil {
+	if err := runPoolSharingTo(cfg, []string{subcmdGrandfather, "--all", "--yes"}, &bytes.Buffer{}); err != nil {
 		t.Fatal(err)
 	}
 

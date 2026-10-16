@@ -568,11 +568,7 @@ func (s *MultiUserTokenStore) upsertLocked(tokens *UserTokens) error {
 		if tokens.OAuthRefreshToken == "" && existing.OAuthRefreshToken != "" {
 			tokens.OAuthRefreshToken = existing.OAuthRefreshToken
 		}
-		// Même règle pour le consentement : un Upsert partiel ne l'efface jamais
-		// (seul SetPoolSharing le change, y compris pour le retirer).
-		if tokens.PoolSharing == nil && existing.PoolSharing != nil {
-			tokens.PoolSharing = existing.PoolSharing
-		}
+		preservePoolSharing(tokens, existing)
 	} else if tokens.CreatedAt.IsZero() {
 		tokens.CreatedAt = time.Now().UTC()
 	}
