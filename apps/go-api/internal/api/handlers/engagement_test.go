@@ -94,6 +94,7 @@ func newEngagementRouter(factory handlers.ServiceFactory[*service.PlayerEngageme
 	h := handlers.NewEngagementHandler(factory)
 	r.Route("/players/{player_slug}", func(sub chi.Router) {
 		h.Mount(sub)
+		h.MountAdmin(sub)
 	})
 	return r
 }
@@ -472,6 +473,7 @@ func newSquadEngagementRouter(factory handlers.ServiceFactory[*service.PlayerEng
 	h := handlers.NewEngagementHandler(factory)
 	r.Route("/players/{player_slug}", func(sub chi.Router) {
 		h.Mount(sub)
+		h.MountAdmin(sub)
 	})
 	return r
 }

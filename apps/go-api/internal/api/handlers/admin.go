@@ -28,13 +28,22 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/session"
 	"levelup/go-api/internal/platform/userstore"
 )
 
 // AdminHandler gère les endpoints d'administration.
 type AdminHandler struct {
-	users   *userstore.Store
-	invites *userstore.InviteStore
+	users    *userstore.Store
+	invites  *userstore.InviteStore
+	sessions *session.Store
+}
+
+// WithSessions branche le magasin de sessions : réinitialiser le mot de passe d'un compte
+// ferme alors ses sessions ouvertes (revokeTargetSessions). Sans magasin, rien n'est fermé.
+func (h *AdminHandler) WithSessions(store *session.Store) *AdminHandler {
+	h.sessions = store
+	return h
 }
 
 // NewAdminHandler crée un AdminHandler.
@@ -117,6 +126,9 @@ func (h *AdminHandler) handleListUsers(ctx context.Context, _ *struct{}) (*admin
 // DELETE /admin/users/{username}
 func (h *AdminHandler) handleDeleteUser(ctx context.Context, in *adminUsernameInput) (*adminNoContent, error) {
 	if err := h.users.Delete(in.Username); err != nil {
+		if errors.Is(err, userstore.ErrLastAdmin) {
+			return nil, errLastAdmin(ctx, in.Username)
+		}
 		if errors.Is(err, userstore.ErrUserNotFound) {
 			return nil, humacore.NewError(http.StatusNotFound, "not_found", "utilisateur introuvable")
 		}
@@ -140,6 +152,9 @@ func (h *AdminHandler) handleChangeRole(ctx context.Context, in *adminUsernameBo
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_role", "rôle invalide (admin ou user)")
 	}
 	if err := h.users.SetRole(in.Username, body.Role); err != nil {
+		if errors.Is(err, userstore.ErrLastAdmin) {
+			return nil, errLastAdmin(ctx, in.Username)
+		}
 		if errors.Is(err, userstore.ErrUserNotFound) {
 			return nil, humacore.NewError(http.StatusNotFound, "not_found", "utilisateur introuvable")
 		}
@@ -163,12 +178,13 @@ func (h *AdminHandler) handleResetPassword(ctx context.Context, in *adminUsernam
 		if errors.Is(err, userstore.ErrUserNotFound) {
 			return nil, humacore.NewError(http.StatusNotFound, "not_found", "utilisateur introuvable")
 		}
-		if errors.Is(err, userstore.ErrPasswordTooShort) {
-			return nil, humacore.NewError(http.StatusBadRequest, "validation_error", err.Error())
+		if code, ok := credentialPolicyCode(err); ok {
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, code, err)
 		}
 		slog.ErrorContext(ctx, "admin: erreur reset password", "target", in.Username, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "reset_error", "erreur de réinitialisation")
 	}
+	h.revokeTargetSessions(ctx, in.Username)
 	slog.Info("admin: mot de passe réinitialisé", "target", in.Username, "by", adminUsername(ctx))
 	return &adminNoContent{Status: http.StatusNoContent}, nil
 }
@@ -213,7 +229,7 @@ func (h *AdminHandler) handleGenerateInvite(ctx context.Context, in *adminGenera
 		return nil, humacore.NewError(http.StatusInternalServerError, "generate_error", "erreur de génération")
 	}
 	invite.JoinURL = domain.InviteJoinURL(invite.Code)
-	slog.Info("admin: invitation générée", "code", invite.Code, "by", createdBy, "expires_in_days", body.ExpiresInDays)
+	slog.InfoContext(ctx, "admin: invitation générée", "by", createdBy, "expires_in_days", body.ExpiresInDays)
 	return &adminGenerateInviteOutput{Body: invite}, nil
 }
 
@@ -224,10 +240,10 @@ func (h *AdminHandler) handleRevokeInvite(ctx context.Context, in *adminCodeInpu
 		if errors.Is(err, userstore.ErrInviteNotFound) {
 			return nil, humacore.NewError(http.StatusNotFound, "not_found", "invitation introuvable")
 		}
-		slog.ErrorContext(ctx, "admin: erreur revoke invite", "code", in.Code, "err", err)
+		slog.ErrorContext(ctx, "admin: erreur revoke invite", "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "revoke_error", "erreur de révocation")
 	}
-	slog.Info("admin: invitation révoquée", "code", in.Code, "by", adminUsername(ctx))
+	slog.InfoContext(ctx, "admin: invitation révoquée", "by", adminUsername(ctx))
 	return &adminNoContent{Status: http.StatusNoContent}, nil
 }
 
@@ -243,4 +259,10 @@ func adminUsername(ctx context.Context) string {
 		return *sess.Username
 	}
 	return "unknown"
+}
+
+// errLastAdmin : 409 last_admin, l'instance garde toujours un administrateur.
+func errLastAdmin(ctx context.Context, target string) error {
+	slog.WarnContext(ctx, "admin: refus, dernier administrateur", "target", target, "by", adminUsername(ctx))
+	return humacore.NewError(http.StatusConflict, "last_admin", "the last administrator cannot be removed or demoted")
 }

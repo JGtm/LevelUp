@@ -40,6 +40,8 @@ import (
 	"net/url"
 	"path"
 	"strings"
+
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
 // CSRF retourne un middleware qui vérifie l'en-tête Origin (ou Referer) des
@@ -50,7 +52,9 @@ import (
 // dont les requêtes mutatrices traversent le contrôle d'origine — réservé aux
 // routes SANS authentification par cookie (cf. l'en-tête du fichier). Un préfixe
 // ne matche que sur une frontière de segment : "/api/v1/internal" exempte
-// "/api/v1/internal/build-queue/claim" mais PAS "/api/v1/internalise".
+// "/api/v1/internal/build-queue/claim" mais PAS "/api/v1/internalise". Un chemin
+// ambigu (séparateur ou point encodé, segment vide, « . » ou « .. ») n'est jamais
+// exempté : il repasse sous le contrôle d'origine.
 func CSRF(allowedOrigins []string, exemptPrefixes ...string) func(http.Handler) http.Handler {
 	allowed := make(map[string]struct{}, len(allowedOrigins))
 	for _, o := range allowedOrigins {
@@ -65,7 +69,9 @@ func CSRF(allowedOrigins []string, exemptPrefixes ...string) func(http.Handler) 
 				return
 			}
 
-			if isExemptPath(r.URL.Path, exempt) {
+			// Un chemin ambigu (cf. AmbiguousPath) n'est jamais exempté : son chemin nettoyé
+			// peut porter le préfixe exempté alors que chi le route vers une route à cookie.
+			if !AmbiguousPath(r) && isExemptPath(r.URL.Path, exempt) {
 				slog.DebugContext(r.Context(), "middleware.csrf: contrôle d'origine exempté (préfixe sans cookie)",
 					"path", r.URL.Path, "method", r.Method)
 				next.ServeHTTP(w, r)
@@ -79,7 +85,7 @@ func CSRF(allowedOrigins []string, exemptPrefixes ...string) func(http.Handler) 
 
 			if origin == "" || !isAllowedOrigin(origin, allowed) {
 				slog.WarnContext(r.Context(), "middleware.csrf: origin non autorisée",
-					"origin", origin, "path", r.URL.Path, "method", r.Method)
+					"origin", origin, "path", r.URL.Path, "method", r.Method, "ip", chimiddleware.GetClientIP(r.Context()))
 				http.Error(w, `{"code":"csrf_rejected","message":"origin non autorisée"}`, http.StatusForbidden)
 				return
 			}
@@ -111,9 +117,9 @@ func normalizeExemptPrefixes(prefixes []string) []string {
 //
 // path.Clean résout "." et ".." AVANT la comparaison : sans lui,
 // "/api/v1/internal/../session/context" porterait le préfixe exempté tout en
-// désignant une route protégée. Le chemin nettoyé, lui, ne matche plus le
-// préfixe et repasse sous le contrôle d'origine. (r.URL.Path est déjà
-// pourcent-décodé par net/http : un "%2e%2e" est traité comme "..".)
+// désignant une route protégée. Le nettoyage ne suffit pas seul : chi route sur le
+// chemin brut, qu'un chemin nettoyé ne décrit plus dès qu'un séparateur est encodé.
+// Les appelants écartent donc d'abord tout chemin ambigu (AmbiguousPath).
 func isExemptPath(reqPath string, exempt []string) bool {
 	if len(exempt) == 0 {
 		return false

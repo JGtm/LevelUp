@@ -278,6 +278,7 @@ func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID string) ([]do
 			&captureStart,
 			&captureTime,
 			&durationSeconds,
+			&m.OwnerSlug,
 			&m.Liked,
 		); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchMedia scan: %w", err)

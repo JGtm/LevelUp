@@ -72,20 +72,20 @@ type comparePageOutput struct{ Body domain.CompareResponse }
 func (h *CompareHandler) PostComparePage(ctx context.Context, in *compareInput) (*comparePageOutput, error) {
 	svc, enrichedCtx, _, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.CompareRequest
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if err := req.Validate(); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "validation_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "validation_error", err)
 	}
 
 	resp, err := svc.GetPage(enrichedCtx, req)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "compare_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "compare_error", err)
 	}
 
 	return &comparePageOutput{Body: resp}, nil

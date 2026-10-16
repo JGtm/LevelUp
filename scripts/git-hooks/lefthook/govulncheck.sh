@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Scan des vulnérabilités Go (govulncheck). Advisory (non-bloquant) : les
-# vulns stdlib nécessitent un upgrade de toolchain Go (pas un fix de code) et
-# sont déjà suivies. Exit 0 toujours ; le rapport reste affiché pour information.
-# Bloquant uniquement si govulncheck lui-même crashe (erreur de build).
+# Scan des vulnérabilités Go (govulncheck), INDICATIF : le rapport s'affiche mais ce
+# hook ne bloque jamais (exit 0, y compris si govulncheck échoue à charger les paquets).
+# L'autorité est le job `govulncheck` de .github/workflows/ci.yml, bloquant
+# (garde-rail : archlint/ci_workflows_security_test.go). Un rapport rouge ici se corrige
+# en montant la dépendance fautive ou la version `go` de apps/go-api/go.mod.
 set -euo pipefail
 
 if ! command -v govulncheck >/dev/null 2>&1; then
@@ -20,7 +21,6 @@ elif [[ -d "C:/msys64/ucrt64/bin" ]]; then
 fi
 
 cd apps/go-api || exit 0
-# || true : govulncheck exit 3 = "vulns affecting code" — advisory ici car les
-# vulns actuelles sont toutes stdlib (Go 1.26.1 → 1.26.2/1.26.3 requis).
-# Upgrade Go pour corriger : https://go.dev/dl/
+# || true : govulncheck exit 3 = "vulns affecting code". Le hook local reste indicatif
+# (le scan dépend d'une base distante et d'un toolchain CGO) ; c'est la CI qui refuse.
 govulncheck ./... || true

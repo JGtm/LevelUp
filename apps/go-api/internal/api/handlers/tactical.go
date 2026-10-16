@@ -153,7 +153,7 @@ type tacticalRasterOutput struct{ Body domain.TacticalRaster }
 func (h *TacticalHandler) handleGetMaps(ctx context.Context, in *tacticalMapsInput) (*tacticalMapsOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	page, err := svc.MapsPlayed(ctx, scopeDepuis(in.Body.MatchIDs, in.Body.Coequipiers))
 	if err != nil {
@@ -173,12 +173,12 @@ func (h *TacticalHandler) handleGetRaster(ctx context.Context, in *tacticalRaste
 		// MEME 404, MEME CODE, MEME MESSAGE que « cette carte, ce joueur ne l'a pas
 		// jouee » : un code — ou un libelle — distinct pour un refus de VALIDATION dirait
 		// a l'appelant que son entree a franchi le routeur mais pas le filtre.
-		return nil, humacore.NewError(http.StatusNotFound, "tactical_map_unknown",
-			domain.ErrTacticalCarteInconnue.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "tactical_map_unknown",
+			domain.ErrTacticalCarteInconnue)
 	}
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	raster, err := svc.Raster(ctx, domain.TacticalRasterRequest{
 		MapID:    mapID,
@@ -230,12 +230,12 @@ type tacticalCelluleOutput struct{ Body domain.TacticalCelluleReponse }
 func (h *TacticalHandler) handleGetCellule(ctx context.Context, in *tacticalCelluleInput) (*tacticalCelluleOutput, error) {
 	mapID, ok := MapIDValide(in.MapID)
 	if !ok {
-		return nil, humacore.NewError(http.StatusNotFound, "tactical_map_unknown",
-			domain.ErrTacticalCarteInconnue.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "tactical_map_unknown",
+			domain.ErrTacticalCarteInconnue)
 	}
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	reponse, err := svc.Cellule(ctx, domain.TacticalCelluleRequest{
 		MapID:    mapID,
@@ -296,7 +296,7 @@ func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *
 	}
 	svc, err := h.newReplay(ctx, slug)
 	if err != nil {
-		writeError(ctx, w, http.StatusNotFound, "player_not_found", err.Error())
+		writeErrorFrom(ctx, w, http.StatusNotFound, "player_not_found", err)
 		return
 	}
 	blob, contentType, err := svc.MapBackgroundImageForMap(ctx, mapID)
@@ -307,7 +307,7 @@ func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *
 	}
 	if err != nil {
 		slog.ErrorContext(ctx, "tactique: image de fond en echec", "err", err, "map_id", mapID)
-		writeError(ctx, w, http.StatusInternalServerError, "tactical_error", err.Error())
+		writeErrorFrom(ctx, w, http.StatusInternalServerError, "tactical_error", err)
 		return
 	}
 	// ETag fort + 304 centralisés (cache_http.go) : cf. plan étape 1, D7-D9. Format
@@ -330,7 +330,7 @@ func (h *TacticalHandler) replayPourCarte(
 	}
 	svc, err := h.newReplay(ctx, playerSlug)
 	if err != nil {
-		return nil, "", humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, "", humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return svc, mapID, nil
 }
@@ -401,7 +401,7 @@ func mapTacticalError(ctx context.Context, err error, probe string) error {
 		// MEME NATURE QU'UNE CARTE INCONNUE, et donc meme statut : une grappe depend des
 		// matchs retenus, et changer de periode peut la faire passer sous le plancher.
 		// Ce n'est pas une entree invalide, c'est une selection devenue vide.
-		return humacore.NewError(http.StatusNotFound, "tactical_spawn_unknown", err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusNotFound, "tactical_spawn_unknown", err)
 	case errors.Is(err, domain.ErrTacticalCarteInconnue):
 		// LE MESSAGE CANONIQUE, JAMAIS `err.Error()` (revue R2, P1). Ce 404 a DEUX
 		// producteurs — le refus de `MapIDValide` (qui n'a rien a citer) et la carte
@@ -415,27 +415,27 @@ func mapTacticalError(ctx context.Context, err error, probe string) error {
 		// seconde frontiere dont les rendre indiscernables, et nommer la valeur refusee
 		// est ce qui rend le 400 utile.
 		slog.InfoContext(ctx, "tactique: carte refusee", "probe", probe, "err", err)
-		return humacore.NewError(http.StatusNotFound, "tactical_map_unknown",
-			domain.ErrTacticalCarteInconnue.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusNotFound, "tactical_map_unknown",
+			domain.ErrTacticalCarteInconnue)
 	case errors.Is(err, domain.ErrTacticalQuestionInconnue):
-		return humacore.NewError(http.StatusBadRequest, "tactical_question_unknown", err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusBadRequest, "tactical_question_unknown", err)
 	case errors.Is(err, domain.ErrTacticalQuiInconnu):
-		return humacore.NewError(http.StatusBadRequest, "tactical_axis_unknown", err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusBadRequest, "tactical_axis_unknown", err)
 	case errors.Is(err, domain.ErrTacticalCompositionInvalide):
 		// La valeur refusee est NOMMEE (comme les deux 400 ci-dessous) : c'est un
 		// parametre de requete a validation unique, il n'existe aucune seconde
 		// frontiere dont le rendre indiscernable, et le dire est ce qui rend le 400
 		// utile a l'appelant.
-		return humacore.NewError(http.StatusBadRequest, "tactical_composition_invalid", err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusBadRequest, "tactical_composition_invalid", err)
 	case errors.Is(err, domain.ErrTacticalEscouadeSansComposition):
 		// Code PROPRE, distinct de l'axe inconnu : l'axe demande EXISTE, c'est la
 		// composition qui manque. Un `tactical_axis_unknown` enverrait le client
 		// corriger le mauvais parametre.
-		return humacore.NewError(http.StatusBadRequest, "tactical_squad_axis_without_composition", err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusBadRequest, "tactical_squad_axis_without_composition", err)
 	}
 	if mapped, ok := MapCapabilityError(ctx, err, probe); ok {
 		return mapped
 	}
 	slog.ErrorContext(ctx, "tactique: lecture en echec", "probe", probe, "err", err)
-	return humacore.NewError(http.StatusInternalServerError, "tactical_error", err.Error())
+	return humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "tactical_error", err)
 }

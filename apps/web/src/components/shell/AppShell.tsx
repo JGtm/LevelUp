@@ -9,6 +9,7 @@ import { Outlet, useMatches } from '@tanstack/react-router'
 import { Toaster } from 'sonner'
 import { NavL1 } from './NavL1'
 import { ReauthBanner } from './ReauthBanner'
+import { OAuthRefusalBanner } from './OAuthRefusalBanner'
 import { PoolSharingBanner } from './PoolSharingBanner'
 import { TopProgressBar } from './TopProgressBar'
 import { ErrorBoundary } from './ErrorBoundary'
@@ -31,6 +32,8 @@ export function AppShell() {
         <NavL1 />
         {/* Bannière reconnexion Xbox (refresh_token mort) — PR-B */}
         <ReauthBanner />
+        {/* Motif du refus d'une reconnexion Xbox (retour de /login?oauth_error=) */}
+        <OAuthRefusalBanner />
         {/* Question de consentement : mise en commun du jeton (première connexion Xbox) */}
         <PoolSharingBanner />
       </div>

@@ -8,6 +8,7 @@
  */
 import { useState, type ReactNode } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { CreateChallengeForm } from '@/features/prestige/components/CreateChallengeForm'
 import { ChallengeCard } from '@/features/prestige/components/ChallengeCard'
 import { ArcSummary } from '@/features/prestige/components/ArcSummary'
@@ -67,6 +68,8 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   const { data, isLoading, isError } = useChallenges(playerSlug, titleSlug)
   const abandon = useAbandonChallenge(playerSlug, titleSlug)
   const pilot = usePilotMode(playerSlug, titleSlug)
+  // Profil d'un ami (lecture seule) : objectifs affichés, sans création, abandon ni pilote.
+  const readOnly = !useCanWritePlayer(playerSlug)
   const [showForm, setShowForm] = useState(false)
 
   if (isError) {
@@ -92,7 +95,7 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   const handleAbandon = (id: string) => abandon.mutate(id)
 
   const enablePilotCta =
-    !pilotActive && !showForm ? (
+    !readOnly && !pilotActive && !showForm ? (
       <button
         type="button"
         onClick={togglePilot}
@@ -105,12 +108,9 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
 
   return (
     <SectionShell title={t.profileMyActiveObjectives}>
-      <PilotModeToggle
-        locale={locale}
-        active={pilotActive}
-        pending={pilotPending}
-        onToggle={togglePilot}
-      />
+      {!readOnly && (
+        <PilotModeToggle locale={locale} active={pilotActive} pending={pilotPending} onToggle={togglePilot} />
+      )}
       {showForm ? (
         <div className="rounded-lg border border-border bg-card p-4">
           <CreateChallengeForm
@@ -128,8 +128,8 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
             loading={isLoading}
             emptyMessage={t.profileNoFreeObjective}
             emptyCta={enablePilotCta}
-            onAbandon={handleAbandon}
-            onCreate={() => setShowForm(true)}
+            onAbandon={readOnly ? undefined : handleAbandon}
+            onCreate={readOnly ? undefined : () => setShowForm(true)}
             createLabel={t.profileNewObjective}
           />
           {pilotes.length > 0 && (
@@ -138,7 +138,7 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
               challenges={pilotes}
               loading={false}
               emptyMessage=""
-              onAbandon={handleAbandon}
+              onAbandon={readOnly ? undefined : handleAbandon}
             />
           )}
         </>
@@ -154,7 +154,8 @@ interface ChallengeGroupProps {
   emptyMessage: string
   /** CTA optionnel rendu sous le message d'empty state (ex. activer le pilote). */
   emptyCta?: ReactNode
-  onAbandon: (id: string) => void
+  /** Absent : profil en lecture seule, pas d'abandon. */
+  onAbandon?: (id: string) => void
   onCreate?: () => void
   createLabel?: string
 }
@@ -212,7 +213,7 @@ function ObjectiveCard({
   onAbandon,
 }: {
   challenge: Challenge
-  onAbandon: (id: string) => void
+  onAbandon?: (id: string) => void
 }) {
   const locale = useAppShellStore((s) => s.locale)
   const t = getAscensionText(locale)
@@ -221,7 +222,7 @@ function ObjectiveCard({
   return (
     <div className="w-64 max-w-full">
       <ChallengeCard challenge={challenge} />
-      {challenge.status === 'active' && (
+      {challenge.status === 'active' && onAbandon && (
         <div className="flex justify-end px-1 pt-1">
           <button
             type="button"
@@ -241,7 +242,7 @@ function ObjectiveCard({
         cancelLabel={t.profileAbandonCancel}
         destructive
         onConfirm={() => {
-          onAbandon(challenge.id)
+          onAbandon?.(challenge.id)
           setConfirmOpen(false)
         }}
       />
@@ -333,6 +334,7 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   // figurent PAS dans la liste active (F1) — on fusionne les deux sources.
   const { data: historyData } = useChallengeHistory(playerSlug, titleSlug)
   const deleteArc = useDeleteArc(playerSlug, titleSlug)
+  const readOnly = !useCanWritePlayer(playerSlug) // profil d'ami : ni création ni suppression d'arc
   // Onglet Objectifs = actif uniquement (Lot C, C4) : les arcs terminés
   // (completed_at renseigné) migrent vers l'Historique de l'onglet Réalisations.
   const arcs: Arc[] = (arcsData?.arcs ?? []).filter((a) => !a.completed_at)
@@ -371,7 +373,7 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
           <p className="text-sm text-muted-foreground">
             {t.profileNoArc}
           </p>
-          <div className="mt-3 flex justify-center gap-2">
+          <div className={readOnly ? 'hidden' : 'mt-3 flex justify-center gap-2'}>
             <button
               type="button"
               onClick={() => setShowPicker(true)}
@@ -390,7 +392,7 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
         </div>
       ) : (
         <>
-          <div className="flex justify-end gap-2">
+          <div className={readOnly ? 'hidden' : 'flex justify-end gap-2'}>
             <button
               type="button"
               onClick={() => setShowPicker(true)}
@@ -424,7 +426,7 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
                       }}
                       onCancel={() => setConfirmDeleteId(null)}
                     />
-                  ) : (
+                  ) : readOnly ? null : (
                     <div className="flex justify-end">
                       <button
                         type="button"

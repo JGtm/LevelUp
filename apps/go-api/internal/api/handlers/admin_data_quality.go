@@ -380,7 +380,7 @@ func (h *AdminDataQualityHandler) handleResolveAssetTranslation(ctx context.Cont
 	if err != nil {
 		slog.ErrorContext(ctx, "admin_data_quality: asset translation failed",
 			"title", titleSlug, "asset_kind", req.AssetKind, "asset_id", req.AssetID, "err", err)
-		return nil, humacore.NewError(http.StatusBadRequest, "translation_failed", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "translation_failed", err)
 	}
 	return &dqResolveOutput{Body: resp}, nil
 }

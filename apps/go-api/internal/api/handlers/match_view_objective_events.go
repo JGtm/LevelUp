@@ -93,7 +93,7 @@ func (h *MatchViewHandler) handleGetObjectiveEvents(
 		if capErr, ok := MapCapabilityError(ctx, err, "match.detail.objective_events"); ok {
 			return nil, capErr
 		}
-		return nil, humacore.NewError(http.StatusInternalServerError, "objective_events_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "objective_events_error", err)
 	}
 	return &objectiveEventsOutput{Body: toObjectiveEventsDTO(events)}, nil
 }

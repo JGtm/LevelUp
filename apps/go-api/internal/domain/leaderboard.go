@@ -203,3 +203,9 @@ type LeaderboardResponse struct {
 	TitleSlug  string             `json:"title_slug"`
 	TotalLocal int                `json:"total"`
 }
+
+// MaxLeaderboardLimit est le plafond serveur du paramètre `limit` du classement. Le
+// service plafonne la demande à cette valeur, et le repo en dimensionne ses
+// allocations : une limite choisie par le client ne doit jamais fixer une taille
+// d'allocation. Le front demande 100 (profondeur d'enrichissement du cron mondial).
+const MaxLeaderboardLimit = 200

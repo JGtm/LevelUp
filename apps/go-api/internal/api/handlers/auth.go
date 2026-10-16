@@ -20,6 +20,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
@@ -38,6 +39,9 @@ const (
 	deviceFlowReadyTimeout = 15 * time.Second
 	// deviceFlowReadyPollInterval est le pas de scrutation de l'attente ci-dessus.
 	deviceFlowReadyPollInterval = 150 * time.Millisecond
+	// deviceFlowRetryAfterSec : délai conseillé (Retry-After) à un démarrage refusé par le
+	// plafond de tentatives en attente.
+	deviceFlowRetryAfterSec = "60"
 )
 
 // AuthHandler gère les endpoints d'authentification Halo via Device Code Flow.
@@ -111,7 +115,15 @@ func (h *AuthHandler) handleStartDeviceFlow(ctx context.Context, _ *struct{}) (*
 	}
 
 	// Single-flight : si une tentative "pending" existe, la renvoyer.
-	attempt, isNew := h.attempts.GetOrCreate(sess.SessionID)
+	ip := chimiddleware.GetClientIP(ctx)
+	attempt, isNew, err := h.attempts.GetOrCreate(sess.SessionID, ip)
+	if err != nil {
+		slog.WarnContext(ctx, "auth: device-flow refusé, trop de tentatives en attente", "ip", ip, "err", err)
+		return nil, huma.ErrorWithHeaders(
+			humacore.NewError(http.StatusTooManyRequests, "too_many_device_flows",
+				"too many sign-in attempts in progress, try again shortly"),
+			http.Header{headerRetryAfter: []string{deviceFlowRetryAfterSec}})
+	}
 	// CRUCIAL : lier la session à la tentative → IsMeaningful → la session anonyme
 	// est PERSISTÉE et un cookie stable est posé dès le start. Sans ça, le SessionID
 	// n'est jamais sauvé / chaque requête repart sur une session anonyme distincte →
@@ -146,7 +158,6 @@ func (h *AuthHandler) handleStartDeviceFlow(ctx context.Context, _ *struct{}) (*
 		h.attempts.Update(attempt.AttemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "device_flow_init_error"
-			a.ErrorDetail = err.Error()
 		})
 		return nil, humacore.NewError(http.StatusInternalServerError, "device_flow_init_error", "impossible de démarrer le Device Code Flow")
 	}
@@ -218,39 +229,38 @@ func (h *AuthHandler) handleGetDeviceFlowStatus(ctx context.Context, in *deviceF
 		return nil, humacore.NewError(http.StatusNotFound, "attempt_not_found", "tentative introuvable")
 	}
 
-	// Si l'auth a réussi, transférer les données Halo dans la session.
-	if snapshot.Status == auth_platform.AttemptStatusAuthorized || snapshot.Status == auth_platform.AttemptStatusProvisioned {
-		sess.AuthReady = true
-		if snapshot.Gamertag != "" {
-			sess.LinkedHaloIdentity = &domain.HaloIdentity{
-				Gamertag: snapshot.Gamertag,
-				XUID:     snapshot.XUID,
-			}
+	// Autorisée par Microsoft : la tentative est remise UNE fois à la session (statut
+	// provisioned), puis la connexion est complétée ou refusée.
+	if snapshot.Status == auth_platform.AttemptStatusAuthorized {
+		if claimed, ok := h.attempts.ClaimAuthorized(in.AttemptID, sess.SessionID); ok {
+			h.finishDeviceFlowLogin(ctx, claimed, sess)
 		}
-		// Stocker les tokens Halo dans la session (jamais exposés au navigateur).
-		if snapshot.SpartanToken != "" {
-			sess.HaloTokens = &domain.HaloTokens{
-				SpartanToken:     snapshot.SpartanToken,
-				ClearanceToken:   snapshot.ClearanceToken,
-				SpartanExpiresAt: snapshot.SpartanExpiresAt,
-			}
-		}
-		// LinkStrategy gère le post-flow (password : LinkIdentity ; xbox SSO : login direct).
-		if h.linkStrategy != nil && snapshot.Gamertag != "" {
-			if err := h.linkStrategy.OnAuthSuccess(ctx, snapshot, sess); err != nil {
-				slog.ErrorContext(ctx, "auth: LinkStrategy.OnAuthSuccess échec",
-					"attempt_id", in.AttemptID, "err", err)
-			}
-		}
-		if err := h.sessionStore.Save(sess); err != nil {
-			// Échec de persistance après login réussi : la session en cours reste
-			// valide, mais la prochaine requête repartira sans l'identité liée.
-			slog.ErrorContext(ctx, "auth: persistance session post-login échouée",
-				"attempt_id", in.AttemptID, "err", err)
+		if snapshot = h.attempts.Snapshot(in.AttemptID); snapshot == nil {
+			return nil, humacore.NewError(http.StatusNotFound, "attempt_not_found", "tentative introuvable")
 		}
 	}
 
 	return &deviceFlowStatusOutput{Body: deviceFlowStatusResponse(snapshot)}, nil
+}
+
+// finishDeviceFlowLogin complète la connexion d'une tentative remise à la session.
+// Si la stratégie post-flux refuse (instance verrouillée, création de compte
+// impossible), la tentative passe en échec et la session reste non authentifiée.
+func (h *AuthHandler) finishDeviceFlowLogin(ctx context.Context, claimed *auth_platform.Attempt, sess *domain.SessionData) {
+	if err := completeLogin(ctx, h.linkStrategy, claimed, sess); err != nil {
+		code := loginFailureCode(err)
+		slog.WarnContext(ctx, "auth: connexion device-flow refusée par la stratégie post-flux",
+			"attempt_id", claimed.AttemptID, "error_code", code, "err", err)
+		h.attempts.Fail(claimed.AttemptID, code)
+		return
+	}
+	// Nouvel identifiant de session (un cookie planté avant la connexion ne vaut rien),
+	// et la tentative suit : le sondage suivant porte le nouveau cookie.
+	if _, err := h.sessionStore.Rotate(sess); err != nil {
+		slog.ErrorContext(ctx, "auth: rotation de la session post-login échouée",
+			"attempt_id", claimed.AttemptID, "err", err)
+	}
+	h.attempts.Rebind(claimed.AttemptID, sess.SessionID)
 }
 
 // exchangeAfterAcquire complète l'échange en tokens Halo après l'acquisition de
@@ -278,10 +288,12 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 
 	accessToken, err := flow.AcquireToken(ctx)
 	if err != nil {
+		// Le client ne reçoit que le code ; la cause (réponse Microsoft) reste au journal.
+		slog.ErrorContext(ctx, "auth: attente du device-flow échouée",
+			"attempt_id", attemptID, "err", err)
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = errCodeDeviceFlowAcquire
-			a.ErrorDetail = err.Error()
 		})
 		return
 	}
@@ -296,7 +308,6 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "halo_exchange_error"
-			a.ErrorDetail = err.Error()
 		})
 		return
 	}
@@ -336,7 +347,6 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "identity_missing"
-			a.ErrorDetail = "gamertag/xuid absents des réponses XSTS"
 		})
 		return
 	}
@@ -389,9 +399,6 @@ func deviceFlowStatusResponse(a *auth_platform.Attempt) domain.DeviceFlowStatusR
 	}
 	if a.ErrorCode != "" {
 		resp.ErrorCode = &a.ErrorCode
-	}
-	if a.ErrorDetail != "" {
-		resp.ErrorDetail = &a.ErrorDetail
 	}
 	return resp
 }

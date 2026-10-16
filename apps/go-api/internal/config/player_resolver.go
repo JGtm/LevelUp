@@ -55,7 +55,7 @@ func (cfg *AppConfig) sharedReaderForTitle(titleSlug string) duckdb.SharedReader
 	}
 	// Démo : titre par défaut = provider boot (shared démo plat, byte-identique) ;
 	// titre additionnel = provider du shared démo title-scopé.
-	if cfg.DemoMode {
+	if cfg.demoState() {
 		if title.IsDefaultSlug(titleSlug) {
 			return cfg.SharedProvider
 		}
@@ -86,7 +86,7 @@ func (cfg *AppConfig) sharedProviderForPath(titleSlug, path string) duckdb.Share
 // base reste vide. Repli sur le layout prod si DemoFixturesDir n'est pas renseigné.
 func (cfg *AppConfig) PrestigeBundleDBPaths() (sharedSocialPath, metadataPath string) {
 	slug := title.DefaultSlug
-	if cfg.DemoMode && cfg.DemoFixturesDir != "" {
+	if cfg.demoState() && cfg.DemoFixturesDir != "" {
 		return cfg.DemoLayout().SharedSocialDBPath(slug), cfg.DemoLayout().MetadataDBPath(slug)
 	}
 	pr := title.NewPathResolver(cfg.RepoRoot)
@@ -95,12 +95,13 @@ func (cfg *AppConfig) PrestigeBundleDBPaths() (sharedSocialPath, metadataPath st
 
 // ResolvePlayer traduit un slug joueur en PlayerDB prêt à l'emploi.
 // titleSlug est le titre courant (ex: "halo_infinite"). Si vide, DefaultSlug est utilisé.
-// En mode démo, les fixtures de test sont utilisées (slug ignoré).
+// Sur le serveur démo (demoState), les fixtures du roster démo sont utilisées ; un binaire
+// opérateur chargé par Load() résout toujours un vrai profil, même sous LEVELUP_DEMO_MODE=true.
 func ResolvePlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug string) (*duckdb.PlayerDB, error) {
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
-	if cfg.DemoMode {
+	if cfg.demoState() {
 		return resolveDemoPlayer(ctx, cfg, slug, titleSlug)
 	}
 	return resolveRealPlayer(ctx, cfg, slug, titleSlug)
@@ -256,7 +257,7 @@ func SharedDBPath(cfg *AppConfig, titleSlug string) string {
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
-	if cfg.DemoMode {
+	if cfg.demoState() {
 		return cfg.DemoLayout().SharedDBPath(titleSlug)
 	}
 	return title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug)
@@ -268,7 +269,7 @@ func MetadataDBPath(cfg *AppConfig, titleSlug string) string {
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
-	if cfg.DemoMode && cfg.DemoFixturesDir != "" {
+	if cfg.demoState() && cfg.DemoFixturesDir != "" {
 		return cfg.DemoLayout().MetadataDBPath(titleSlug)
 	}
 	return title.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titleSlug)

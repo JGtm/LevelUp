@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
+
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
@@ -69,7 +71,7 @@ func SlogLogger(next http.Handler) http.Handler {
 			"duration_ms", elapsed.Milliseconds(),
 			"response_bytes", ww.bytesWritten,
 			"request_id", w.Header().Get(headerRequestID),
-			"remote_addr", r.RemoteAddr,
+			"ip", chimiddleware.GetClientIP(r.Context()),
 			"title_slug", ctxkeys.TitleSlug(r.Context()),
 			"event", evID,
 		}
@@ -179,4 +181,11 @@ func (sw *statusResponseWriter) Write(b []byte) (int, error) {
 	n, err := sw.ResponseWriter.Write(b)
 	sw.bytesWritten += int64(n)
 	return n, err
+}
+
+// Unwrap rend le ResponseWriter enveloppé : http.ResponseController (échéances de lecture
+// et d'écriture, Flush, Hijack) atteint ainsi la connexion à travers cette enveloppe
+// (garde-rail archlint/response_writer_unwrap_test.go).
+func (sw *statusResponseWriter) Unwrap() http.ResponseWriter {
+	return sw.ResponseWriter
 }

@@ -6,7 +6,8 @@
 // film, comme `/replay` : elle doit suivre EXACTEMENT les memes gardes — `RequireCapability(CapReplay)`
 // (un titre sans rejeu rend 503) et `LocalOnlyReplay` (le rejeu n'est servi qu'en local jusqu'au
 // reexamen de la decision du 2026-07-28, cf. replay_local_gate.go). Activer le rejeu en production
-// active donc la vue D sans autre changement. Les autres routes de l'onglet (`TacticalHandler`) restent
+// active donc la vue D sans autre changement. En demo, `ReplayGate` lit le match dans le CORPS
+// (`match_id`) : la route n'a pas de `{match_id}` dans son chemin. Les autres routes de l'onglet (`TacticalHandler`) restent
 // hors de ce groupe : elles ne lisent que la base et les sidecars.
 //
 // C'EST UNE LECTURE EN POST (le corps porte la cle de la mort), declaree comme telle par le prefixe
@@ -21,13 +22,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"regexp"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
 
@@ -65,23 +66,21 @@ type tacticalSequenceOutput struct{ Body domain.TacticalSequence }
 // messageSansSequence : LE message de tous les refus de la route (cf. l en-tete).
 const messageSansSequence = "aucune sequence disponible pour cette mort"
 
-// motif de forme : un match_id est un uuid (le xuid est valide par domain.XUIDValide). LISTE BLANCHE, comme
-// `MapIDValide` — rien d'autre n'atteint le service ni, derriere lui, le chemin d'un artefact.
-var (
-	motifMatchSequence = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,63}$`)
-)
-
 // handleGetSequence rend la sequence d'une mort du joueur de la page.
+//
+// Formes en LISTE BLANCHE, comme `MapIDValide` : le match_id par title.IsValidMatchID, le
+// xuid par domain.XUIDValide. Rien d'autre n'atteint le service ni, derriere lui, le chemin
+// d'un artefact.
 func (h *TacticalSequenceHandler) handleGetSequence(ctx context.Context, in *tacticalSequenceInput) (*tacticalSequenceOutput, error) {
 	mapID, okMap := MapIDValide(in.MapID)
-	if !okMap || !motifMatchSequence.MatchString(in.Body.MatchID) || !domain.XUIDValide(in.Body.VictimXUID) {
+	if !okMap || !title.IsValidMatchID(in.Body.MatchID) || !domain.XUIDValide(in.Body.VictimXUID) {
 		// UN REFUS DE FORME EST UN 404, jamais un 400 : meme statut, meme code, meme message que
 		// l'absence (cf. MapIDValide) — la frontiere n'est pas un oracle.
 		return nil, humacore.NewError(http.StatusNotFound, "replay_not_available", messageSansSequence)
 	}
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	seq, err := svc.Sequence(ctx, domain.TacticalSequenceRequest{
 		MapID: mapID, MatchID: in.Body.MatchID, VictimXUID: in.Body.VictimXUID, TimeMs: in.Body.TimeMs,

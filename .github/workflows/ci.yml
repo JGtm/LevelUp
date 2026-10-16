@@ -378,6 +378,67 @@ jobs:
       - name: Check lease enforcement (no direct DB writes in service/handlers)
         run: bash scripts/check_lease_enforcement.sh
 
+  # Contrôles de vulnérabilités de dépendances — BLOQUANTS. Le hook local
+  # (scripts/git-hooks/lefthook/govulncheck.sh) reste indicatif ; la CI est l'autorité.
+  # Ni échappatoire (`|| true`, `continue-on-error`) ni condition `if:` sur ces deux jobs :
+  # garde-rail archlint/ci_workflows_security_test.go.
+  #
+  # Le verdict dépend de la base de vulnérabilités publiée au moment du run : une
+  # nouvelle alerte sur une dépendance déjà fusionnée rougit la CI sans changement de code.
+  # C'est voulu (le déploiement attend le verdict de ce workflow, cf. `attente-ci` de
+  # deploy.yml) ; la sortie corrective est la montée de la dépendance ou du toolchain.
+  govulncheck:
+    name: Govulncheck (vulnérabilités Go atteintes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v6.1.0
+
+      # Le toolchain vient de la ligne `go` de go.mod : govulncheck juge la bibliothèque
+      # standard de CETTE version, la même que celle qui compile les binaires de release.
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/go-api/go.mod
+          cache-dependency-path: apps/go-api/go.sum
+
+      # Version exacte : un outil de sécurité flottant changerait de verdict sans commit.
+      # La monter volontairement, avec un run vert pour preuve.
+      - name: Installer govulncheck (version épinglée)
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+
+      # CGO_ENABLED=1 : le module importe DuckDB (binding C) ; ubuntu-latest fournit gcc.
+      # Exit 3 = vulnérabilité atteinte par le code (trace affichée) : le step échoue.
+      - name: govulncheck ./...
+        run: |
+          "$(go env GOPATH)/bin/govulncheck" ./...
+        env:
+          CGO_ENABLED: "1"
+
+  npm-audit:
+    name: npm audit (dépendances de production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Lit package-lock.json (aucune installation nécessaire). `--omit=dev` : seul ce qui
+      # est livré dans le bundle compte ; les alertes d'outillage de build se traitent par
+      # Dependabot.
+      - name: npm audit (production, seuil high)
+        run: npm audit --omit=dev --audit-level=high
+
   # go-baseline-tests SUPPRIMÉ (D3, 2026-07-26) : ce job rejouait `go test ./...`
   # avec les mêmes tags, le même env et le même périmètre que go-coverage ci-dessous
   # (seul le `-timeout` par package différait : 300s contre 600s, cf. le step de test) —

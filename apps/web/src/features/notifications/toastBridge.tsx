@@ -12,6 +12,7 @@ import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useNavigate } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { useTitleSlug } from '@/lib/title-routing'
 import { useNotificationsList, useNotificationPreferences } from './queries'
 import { resolveTitle, resolveBody } from './format'
@@ -28,7 +29,10 @@ import type { Locale } from '@/lib/i18n/locale'
 export function NotificationsToastBridge() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const locale = useAppShellStore((s) => s.locale)
-  const playerSlug = currentPlayer?.player_slug ?? ''
+  // Joueur courant = profil d'un ami (lecture seule) : ses notifications ne sont pas
+  // celles de la session, aucun toast (ni marquage au clic).
+  const currentSlug = currentPlayer?.player_slug ?? ''
+  const playerSlug = useCanWritePlayer(currentSlug) ? currentSlug : ''
   const titleSlug = useTitleSlug()
   const lastMaxIdRef = useRef<number | null>(null)
   const initializedRef = useRef(false)

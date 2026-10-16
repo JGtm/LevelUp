@@ -32,12 +32,14 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/mediaaudio"
 	"levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/platform/slots"
 	"levelup/go-api/internal/port"
 )
 
@@ -116,21 +118,9 @@ type mediaAudioConfigOutput struct {
 	Body *domain.PlayerMediaAudioConfig
 }
 
-// maxUploadSize limite la taille totale d'un upload à 500 Mo.
-const maxUploadSize = 500 << 20
-
-// maxUploadFiles limite le nombre de fichiers par requête.
-const maxUploadFiles = 50
-
 // defaultMediaMatchWindowMinutes : fenêtre ± (minutes) d'association d'un média à un match
 // par proximité temporelle, appliquée quand le client ne fournit pas window_minutes.
 const defaultMediaMatchWindowMinutes = 15
-
-// allowedMediaExts liste les extensions acceptées en upload.
-var allowedMediaExts = map[string]bool{
-	".mp4": true, ".mov": true, ".avi": true, ".mkv": true, ".webm": true,
-	".png": true, ".jpg": true, ".jpeg": true, ".bmp": true, ".gif": true,
-}
 
 // MediaUploadContextFactory retourne service + gamertag + titleSlug + dbPath + sharedSocialDBPath + sharedMatchesDBPath.
 // Utilisée par PostUploadMedia pour résoudre le répertoire captures.
@@ -157,6 +147,11 @@ type MediaHandler struct {
 	recipientResolver MediaRecipientResolver      // optionnel : fan-out aux autres joueurs
 	isProduction      bool                        // défaut de rétention source (env LEVELUP_ENV=production)
 	authEnforced      bool                        // true = multi-user authentifié (like sans session refusé)
+	requester         RequesterSlugResolver       // joueur possédé par l'utilisateur de la session (media_requester.go)
+	users             authz.UserLookup            // relecture du rôle admin (media_requester.go)
+	uploadSlots       *slots.Pool                 // envois en vol (défaut : pool global du process)
+	uploadSlotWait    time.Duration               // attente maximale d'une place d'envoi
+	uploadReadBudget  time.Duration               // délai de lecture du corps une fois la place obtenue
 }
 
 // NewMediaHandler crée un MediaHandler.
@@ -285,13 +280,13 @@ func (h *MediaHandler) emitMediaAdded(
 func (h *MediaHandler) handleGetMediaLibrary(ctx context.Context, in *mediaLibraryInput) (*mediaLibraryOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	req := domain.MediaPageRequest{Page: 1}
 	if len(in.RawBody) > 0 {
 		if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 		}
 	}
 	if req.Page < 1 {
@@ -300,7 +295,7 @@ func (h *MediaHandler) handleGetMediaLibrary(ctx context.Context, in *mediaLibra
 
 	resp, err := svc.GetMediaPage(ctx, req)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "media_page_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "media_page_error", err)
 	}
 
 	// Transformer les chemins absolus en URLs servables (mutation in-place inchangée).
@@ -315,7 +310,7 @@ func (h *MediaHandler) handleGetMediaLibrary(ctx context.Context, in *mediaLibra
 func (h *MediaHandler) handleGetMediaMatchCandidates(ctx context.Context, in *mediaCandidatesInput) (*mediaCandidatesOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	if in.FilePath == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_file_path", "file_path query param requis")
@@ -332,7 +327,7 @@ func (h *MediaHandler) handleGetMediaMatchCandidates(ctx context.Context, in *me
 	}
 	resp, err := svc.GetMatchCandidates(ctx, filePath, window)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "candidates_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "candidates_error", err)
 	}
 	return &mediaCandidatesOutput{Body: resp}, nil
 }
@@ -342,19 +337,22 @@ func (h *MediaHandler) handleGetMediaMatchCandidates(ctx context.Context, in *me
 func (h *MediaHandler) handlePostMediaAssociate(ctx context.Context, in *mediaAssociateInput) (*mediaAssociateOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	var req domain.MediaAssociateRequest
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	// Symétrie avec /media/match-candidates : la galerie envoie l'URL servable
 	// (vidéo → HLS). On recompose le chemin RELATIF stocké pour que l'UPDATE cible
 	// la bonne ligne media_files (sinon 0 row → association silencieusement perdue).
 	req.FilePath = mediaServableURLToStoredPath(in.PlayerSlug, req.FilePath)
+	if err := h.resolveAssociateRequester(ctx, &req); err != nil {
+		return nil, err
+	}
 	resp, err := svc.AssociateMediaToMatch(ctx, req)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "associate_error", err.Error())
+		return nil, mediaAssociateError(ctx, err)
 	}
 	out := &mediaAssociateOutput{Body: resp}
 	BumpMediaFeedVersion()
@@ -374,11 +372,11 @@ func (h *MediaHandler) handlePostMediaAssociate(ctx context.Context, in *mediaAs
 func (h *MediaHandler) handleGetMediaAuthors(ctx context.Context, in *mediaAuthorsInput) (*mediaAuthorsOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	authors, err := svc.ListMediaAuthors(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "authors_query_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "authors_query_error", err)
 	}
 
 	// Enrichissement du gamertag d'affichage (best-effort) depuis db_profiles.json.
@@ -423,14 +421,14 @@ func (h *MediaHandler) handlePutMediaAudioConfig(ctx context.Context, in *mediaA
 	}
 	var cfg domain.PlayerMediaAudioConfig
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&cfg); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if err := cfg.Validate(); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_audio_config", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_audio_config", err)
 	}
 	cfg.UpdatedAt = time.Now().UTC()
 	if err := store.Save(cfg); err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "audio_config_save_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "audio_config_save_error", err)
 	}
 	slog.InfoContext(ctx, "media audio-config: enregistré",
 		"slug", in.PlayerSlug, "mode", cfg.Mode, "tracks", len(cfg.TrackRoles))
@@ -446,7 +444,7 @@ func (h *MediaHandler) audioConfigStore(ctx context.Context, slug string) (*medi
 	}
 	titleSlug, gamertag, err := h.newPlayerCtx(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	path := titlePkg.NewPathResolver(h.repoRoot).PlayerMediaAudioConfigPath(titleSlug, gamertag)
 	return mediaaudio.NewStore(path), nil

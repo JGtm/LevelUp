@@ -20,14 +20,19 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"math"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/loginlimit"
 	"levelup/go-api/internal/platform/session"
 	"levelup/go-api/internal/platform/userstore"
 )
@@ -42,6 +47,9 @@ type UserAuthHandler struct {
 	// instanceLocked résout le verrou « instance fermée » (env OU app_settings).
 	// nil → jamais verrouillé (rétrocompat tests). Cf. WithInstanceLock.
 	instanceLocked func() bool
+	// loginAttempts borne les échecs de mot de passe par identifiant et par IP
+	// cliente, partagé par POST /auth/login et POST /auth/password.
+	loginAttempts *loginlimit.Limiter
 }
 
 // NewUserAuthHandler crée un UserAuthHandler.
@@ -52,10 +60,11 @@ func NewUserAuthHandler(
 	regMode string,
 ) *UserAuthHandler {
 	return &UserAuthHandler{
-		users:        users,
-		invites:      invites,
-		sessionStore: sessionStore,
-		regMode:      regMode,
+		users:         users,
+		invites:       invites,
+		sessionStore:  sessionStore,
+		regMode:       regMode,
+		loginAttempts: loginlimit.New(),
 	}
 }
 
@@ -123,15 +132,24 @@ func (h *UserAuthHandler) handleLogin(ctx context.Context, in *authBodyInput) (*
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 	}
 
+	// Tentative refusée sans vérifier le mot de passe tant que l'identifiant ou l'IP
+	// est bloqué (ni coût bcrypt, ni échec de plus).
+	ip := chimiddleware.GetClientIP(ctx)
+	if err := h.refuseIfLoginBlocked(ctx, req.Username, ip); err != nil {
+		return nil, err
+	}
+
 	user, err := h.users.Authenticate(req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, userstore.ErrInvalidCredentials) {
-			slog.Warn("auth: login échoué", "username", req.Username)
+			h.loginAttempts.RecordFailure(req.Username, ip)
+			slog.WarnContext(ctx, "auth: login échoué", "username", loginlimit.Truncate(req.Username), "ip", ip)
 			return nil, humacore.NewError(http.StatusUnauthorized, "invalid_credentials", "identifiants incorrects")
 		}
-		slog.ErrorContext(ctx, "auth: erreur authenticate", "username", req.Username, "err", err)
+		slog.ErrorContext(ctx, "auth: erreur authenticate", "username", loginlimit.Truncate(req.Username), "ip", ip, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "auth_error", "erreur d'authentification")
 	}
+	h.loginAttempts.RecordSuccess(req.Username, ip)
 
 	// PR-C : en mode xbox, le login password est autorisé pour tout utilisateur
 	// AYANT défini un mot de passe (opt-in en fin d'onboarding via POST /auth/password).
@@ -152,11 +170,12 @@ func (h *UserAuthHandler) handleLogin(ctx context.Context, in *authBodyInput) (*
 	role := string(user.Role)
 	sess.Role = &role
 	h.autoSelectPlayer(sess, user)
-	if err := h.sessionStore.Save(sess); err != nil {
-		slog.ErrorContext(ctx, "auth: échec save session login", "username", user.Username, "err", err)
+	// Nouvel identifiant de session : un cookie planté avant la connexion ne vaut rien.
+	if _, err := h.sessionStore.Rotate(sess); err != nil {
+		slog.ErrorContext(ctx, "auth: rotation de la session à la connexion échouée", "username", user.Username, "err", err)
 	}
 
-	slog.Info("auth: login réussi", "username", user.Username, "role", user.Role)
+	slog.InfoContext(ctx, "auth: login réussi", "username", user.Username, "role", user.Role, "ip", ip)
 
 	return &loginOutput{Body: domain.LoginResponse{
 		Username: user.Username,
@@ -173,63 +192,23 @@ func (h *UserAuthHandler) handleRegister(ctx context.Context, in *authBodyInput)
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 	}
 
-	// Vérifier si c'est le premier utilisateur (auto-admin).
-	empty, err := h.users.IsEmpty()
+	user, invited, err := h.createAccount(ctx, req)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "store_error", "erreur interne")
-	}
-
-	role := domain.RoleUser
-	if empty {
-		// Premier utilisateur = admin automatique, pas besoin de code d'invitation.
-		role = domain.RoleAdmin
-		slog.Info("auth: premier utilisateur, rôle admin automatique", "username", req.Username)
-	} else {
-		// Instance fermée (lockdown) : aucune nouvelle inscription hors bootstrap
-		// du premier admin (déjà exempté par la branche `empty` ci-dessus).
-		if h.isInstanceLocked() {
-			slog.Warn("auth: register refusé — instance verrouillée", "username", req.Username)
-			return nil, humacore.NewError(http.StatusForbidden, "instance_locked",
-				"Cette instance est fermée aux nouvelles inscriptions.")
+		var herr huma.StatusError
+		if errors.As(err, &herr) {
+			return nil, err
 		}
-		// D3 cohabitation : en mode "xbox", register password réservé au bootstrap admin
-		// initial (users.json vide). Hors bootstrap, les comptes sont créés via le flow SSO.
-		if h.authMode == "xbox" {
-			slog.Warn("auth: register password bloqué en mode xbox", "username", req.Username)
-			return nil, humacore.NewError(http.StatusForbidden, "register_xbox_mode",
-				"mode SSO Xbox actif : les nouveaux comptes sont créés via la connexion Xbox")
+		if invited {
+			h.releaseInvite(ctx, req)
 		}
-		// Vérifier le mode d'inscription.
-		if h.regMode == "closed" {
-			return nil, humacore.NewError(http.StatusForbidden, "registration_closed", "les inscriptions sont fermées")
-		}
-		if h.regMode == "invite" {
-			if req.InviteCode == "" {
-				return nil, humacore.NewError(http.StatusBadRequest, "invite_required", "code d'invitation requis")
-			}
-			if err := h.invites.Validate(req.InviteCode); err != nil {
-				return nil, humacore.NewError(http.StatusForbidden, "invalid_invite", "code d'invitation invalide ou expiré")
-			}
-		}
-	}
-
-	user, err := h.users.Create(req.Username, req.Password, role)
-	if err != nil {
 		if errors.Is(err, userstore.ErrUserAlreadyExists) {
-			slog.Warn("auth: register username déjà pris", "username", req.Username)
+			slog.Warn("auth: register username déjà pris", "username", loginlimit.Truncate(req.Username))
 			return nil, humacore.NewError(http.StatusConflict, "user_exists", "nom d'utilisateur déjà pris")
 		}
-		if errors.Is(err, userstore.ErrInvalidUsername) || errors.Is(err, userstore.ErrPasswordTooShort) || errors.Is(err, userstore.ErrPasswordTooLong) {
-			return nil, humacore.NewError(http.StatusBadRequest, "validation_error", err.Error())
+		if code, ok := credentialPolicyCode(err); ok {
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, code, err)
 		}
 		return nil, humacore.NewError(http.StatusInternalServerError, "create_error", "erreur de création")
-	}
-
-	// Consommer le code d'invitation si utilisé.
-	if req.InviteCode != "" && !empty {
-		if err := h.invites.Consume(req.InviteCode, user.Username); err != nil {
-			slog.ErrorContext(ctx, "auth: échec consume invite", "code", req.InviteCode, "username", user.Username, "err", err)
-		}
 	}
 
 	// Auto-login après inscription.
@@ -238,8 +217,8 @@ func (h *UserAuthHandler) handleRegister(ctx context.Context, in *authBodyInput)
 		sess.Username = &user.Username
 		roleStr := string(user.Role)
 		sess.Role = &roleStr
-		if err := h.sessionStore.Save(sess); err != nil {
-			slog.ErrorContext(ctx, "auth: échec save session register", "username", user.Username, "err", err)
+		if _, err := h.sessionStore.Rotate(sess); err != nil {
+			slog.ErrorContext(ctx, "auth: rotation de la session à l'inscription échouée", "username", user.Username, "err", err)
 		}
 	}
 
@@ -251,7 +230,81 @@ func (h *UserAuthHandler) handleRegister(ctx context.Context, in *authBodyInput)
 	}}, nil
 }
 
-// handleLogout déconnecte l'utilisateur.
+// createAccount crée le compte d'une inscription. Instance vide : le premier compte
+// devient administrateur, décision prise sous le verrou du magasin
+// (CreateFirstAdmin) ; une inscription qui perd la course ou arrive sur une instance
+// non vide passe par les gardes ordinaires (admitRegistration). invited dit si un code
+// d'invitation a été réservé. Une erreur HTTP (garde) est rendue telle quelle ; les
+// erreurs du magasin sont traduites par l'appelant.
+func (h *UserAuthHandler) createAccount(ctx context.Context, req domain.RegisterRequest) (*domain.User, bool, error) {
+	empty, err := h.users.IsEmpty()
+	if err != nil {
+		return nil, false, humacore.NewError(http.StatusInternalServerError, "store_error", "erreur interne")
+	}
+	if empty {
+		user, err := h.users.CreateFirstAdmin(req.Username, req.Password)
+		if !errors.Is(err, userstore.ErrNotFirstAccount) {
+			if err == nil {
+				slog.InfoContext(ctx, "auth: premier utilisateur, rôle admin automatique", "username", loginlimit.Truncate(req.Username))
+			}
+			return user, false, err
+		}
+	}
+	invited, err := h.admitRegistration(ctx, req)
+	if err != nil {
+		return nil, false, err
+	}
+	user, err := h.users.Create(req.Username, req.Password, domain.RoleUser)
+	return user, invited, err
+}
+
+// admitRegistration applique les gardes d'une inscription hors premier compte :
+// instance fermée, mode xbox, inscriptions fermées, puis, en mode invitation, la
+// RÉSERVATION du code (Consume, atomique : un code ne crée qu'un compte). invited dit
+// si un code a été réservé (à rendre si la création échoue).
+func (h *UserAuthHandler) admitRegistration(ctx context.Context, req domain.RegisterRequest) (invited bool, err error) {
+	// Instance fermée (lockdown) : aucune nouvelle inscription hors bootstrap
+	// du premier admin.
+	if h.isInstanceLocked() {
+		slog.Warn("auth: register refusé — instance verrouillée", "username", loginlimit.Truncate(req.Username))
+		return false, humacore.NewError(http.StatusForbidden, "instance_locked",
+			"Cette instance est fermée aux nouvelles inscriptions.")
+	}
+	// D3 cohabitation : en mode "xbox", register password réservé au bootstrap admin
+	// initial (users.json vide). Hors bootstrap, les comptes sont créés via le flow SSO.
+	if h.authMode == "xbox" {
+		slog.Warn("auth: register password bloqué en mode xbox", "username", loginlimit.Truncate(req.Username))
+		return false, humacore.NewError(http.StatusForbidden, "register_xbox_mode",
+			"mode SSO Xbox actif : les nouveaux comptes sont créés via la connexion Xbox")
+	}
+	if h.regMode == "closed" {
+		return false, humacore.NewError(http.StatusForbidden, "registration_closed", "les inscriptions sont fermées")
+	}
+	if h.regMode != "invite" {
+		return false, nil
+	}
+	if req.InviteCode == "" {
+		return false, humacore.NewError(http.StatusBadRequest, "invite_required", "code d'invitation requis")
+	}
+	if _, err := h.invites.Consume(req.InviteCode, req.Username); err != nil {
+		slog.WarnContext(ctx, "auth: register refusé, invitation inutilisable", "username", loginlimit.Truncate(req.Username), "err", err)
+		return false, humacore.NewError(http.StatusForbidden, "invalid_invite", "code d'invitation invalide ou expiré")
+	}
+	return true, nil
+}
+
+// releaseInvite rend le code réservé par une inscription dont la création a échoué.
+func (h *UserAuthHandler) releaseInvite(ctx context.Context, req domain.RegisterRequest) {
+	if err := h.invites.Release(req.InviteCode, req.Username); err != nil {
+		slog.ErrorContext(ctx, "auth: invitation réservée non rendue après une inscription échouée",
+			"username", loginlimit.Truncate(req.Username), "err", err)
+	}
+}
+
+// handleLogout déconnecte l'utilisateur : la session est supprimée côté serveur
+// (identité, jetons Halo, état de navigation) et son identifiant révoqué ; le
+// middleware de session répond par un cookie expiré. Le même cookie, rejoué, ne
+// désigne plus aucune session. Quel que soit le mode (mot de passe, SSO Xbox).
 // POST /auth/logout
 func (h *UserAuthHandler) handleLogout(ctx context.Context, _ *struct{}) (*authNoContent, error) {
 	sess := middleware.GetSession(ctx)
@@ -260,12 +313,11 @@ func (h *UserAuthHandler) handleLogout(ctx context.Context, _ *struct{}) (*authN
 		if sess.Username != nil {
 			username = *sess.Username
 		}
-		sess.Username = nil
-		sess.Role = nil
-		if err := h.sessionStore.Save(sess); err != nil {
-			slog.ErrorContext(ctx, "auth: échec save session logout", "err", err)
+		if err := h.sessionStore.Revoke(sess.SessionID); err != nil {
+			slog.ErrorContext(ctx, "auth: suppression de la session à la déconnexion échouée", "err", err)
+			return nil, humacore.NewError(http.StatusInternalServerError, "logout_failed", "sign-out failed, try again")
 		}
-		slog.Info("auth: logout", "username", username)
+		slog.InfoContext(ctx, "auth: logout", "username", username)
 	}
 	return &authNoContent{Status: http.StatusNoContent}, nil
 }
@@ -278,26 +330,54 @@ func (h *UserAuthHandler) handleSetPassword(ctx context.Context, in *authBodyInp
 	if sess == nil || sess.Username == nil {
 		return nil, humacore.NewError(http.StatusUnauthorized, "auth_required", "authentification requise")
 	}
+	// Un identifiant (ou une IP) bloqué par des échecs de mot de passe ne change pas
+	// non plus de mot de passe pendant le blocage.
+	ip := chimiddleware.GetClientIP(ctx)
+	if err := h.refuseIfLoginBlocked(ctx, *sess.Username, ip); err != nil {
+		return nil, err
+	}
 
 	var req domain.SetPasswordRequest
 	if err := json.Unmarshal(in.RawBody, &req); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 	}
+	if err := h.checkCurrentPassword(ctx, *sess.Username, req.CurrentPassword, ip); err != nil {
+		return nil, err
+	}
 
 	if err := h.users.ResetPassword(*sess.Username, req.Password); err != nil {
 		switch {
 		case errors.Is(err, userstore.ErrPasswordTooShort), errors.Is(err, userstore.ErrPasswordTooLong):
-			return nil, humacore.NewError(http.StatusBadRequest, "validation_error", err.Error())
+			code, _ := credentialPolicyCode(err)
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, code, err)
 		case errors.Is(err, userstore.ErrUserNotFound):
 			return nil, humacore.NewError(http.StatusNotFound, "user_not_found", "utilisateur introuvable")
 		default:
 			slog.ErrorContext(ctx, "auth: échec set password", "username", *sess.Username, "err", err)
-			return nil, humacore.NewError(http.StatusInternalServerError, "set_password_error", "erreur lors de la définition du mot de passe")
+			return nil, errSetPassword()
 		}
 	}
 
 	slog.Info("auth: mot de passe défini (opt-in)", "username", *sess.Username)
+	h.closeOtherSessions(ctx, sess)
 	return &authNoContent{Status: http.StatusNoContent}, nil
+}
+
+// refuseIfLoginBlocked rend le refus 429 too_many_login_attempts, avec Retry-After en
+// secondes, quand l'identifiant ou l'IP cliente est bloqué par le limiteur d'échecs ;
+// nil sinon.
+func (h *UserAuthHandler) refuseIfLoginBlocked(ctx context.Context, identifier, ip string) error {
+	wait, blocked := h.loginAttempts.Blocked(identifier, ip)
+	if !blocked {
+		return nil
+	}
+	slog.WarnContext(ctx, "auth: tentative refusée, trop d'échecs de mot de passe récents",
+		"username", loginlimit.Truncate(identifier), "ip", ip, "retry_after", wait.Round(time.Second).String())
+	retryAfter := strconv.Itoa(int(math.Ceil(wait.Seconds())))
+	return huma.ErrorWithHeaders(
+		humacore.NewError(http.StatusTooManyRequests, "too_many_login_attempts",
+			"too many failed sign-in attempts, try again later"),
+		http.Header{headerRetryAfter: []string{retryAfter}})
 }
 
 // autoSelectPlayer sélectionne automatiquement le joueur lié au gamertag de l'utilisateur.

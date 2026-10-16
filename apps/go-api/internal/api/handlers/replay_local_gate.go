@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -9,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/ctxkeys"
 )
 
@@ -80,18 +84,17 @@ var replayPublic = os.Getenv("LEVELUP_REPLAY_PUBLIC") == "1"
 
 // isLocalRequest dit si la requête vient de la machine qui héberge l'API.
 //
-// ON NE FAIT PAS CONFIANCE AUX EN-TÊTES. `X-Forwarded-For` est fourni par le client ; s'en
-// servir ici transformerait le garde en simple suggestion. Seule l'adresse de la connexion
-// TCP compte, et elle n'est pas falsifiable par le demandeur.
+// ON NE FAIT PAS CONFIANCE AUX EN-TÊTES. `X-Real-IP`, `X-Forwarded-For` ou `True-Client-IP`
+// sont écrits par le client ou par le proxy ; s'en servir ici transformerait le garde en
+// simple suggestion. Seule l'adresse de la connexion TCP compte (middleware.PeerAddr, capturée
+// en tête de la pile transverse), et elle n'est pas falsifiable par le demandeur.
+//
+// Fermé par défaut : une adresse vide, sans hôte ou qui n'est pas une IP n'est pas locale.
 func isLocalRequest(r *http.Request) bool {
-	host := r.RemoteAddr
-	if h, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+	peer := middleware.PeerAddr(r)
+	host := peer
+	if h, _, err := net.SplitHostPort(peer); err == nil {
 		host = h
-	}
-	// Un hôte vide arrive sur certains transports de test ; le traiter comme local évite de
-	// rendre les tests dépendants d'une pile réseau.
-	if host == "" {
-		return true
 	}
 	ip := net.ParseIP(strings.Trim(host, "[]"))
 	if ip == nil {
@@ -108,7 +111,7 @@ func allowReplay(r *http.Request) bool {
 // LocalOnlyReplay applique le garde local devant les routes de rejeu.
 //
 // C'EST UN MIDDLEWARE, PAS UNE BRANCHE DE HANDLER, et ce n'est pas un détail de style :
-// le garde repose sur l'adresse de la connexion TCP (`r.RemoteAddr`), la seule donnée
+// le garde repose sur l'adresse de la connexion TCP (`middleware.PeerAddr`), la seule donnée
 // que le demandeur ne peut pas falsifier. La couche Huma ne l'expose pas à ses handlers
 // typés — elle ne voit que le contexte et les paramètres de chemin. Le garde reste donc
 // à l'étage transport, où l'information existe.
@@ -136,13 +139,16 @@ type DemoReplayAllowlist interface {
 //     à tout visiteur, mais SEULEMENT pour les matchs figés de la démo ; tout autre match
 //     reçoit le même 404 que le garde local. Le garde local ne s'applique pas : la démo
 //     publique est derrière un proxy, aucun visiteur n'y est « local ».
+//
+// Le match se lit dans le chemin (`{match_id}`) et, à défaut, dans le CORPS JSON d'un POST
+// (`match_id`, route de la séquence d'une mort) — voir [replayMatchID].
 func ReplayGate(demo DemoReplayAllowlist) func(http.Handler) http.Handler {
 	if demo == nil {
 		return LocalOnlyReplay
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			matchID := chi.URLParam(r, "match_id")
+			matchID := replayMatchID(r)
 			if matchID == "" || !demo.Allows(r.Context(), ctxkeys.TitleSlug(r.Context()), matchID) {
 				writeError(r.Context(), w, http.StatusNotFound, "replay_not_available",
 					"the 2D replay is served in the demo for its frozen matches only")
@@ -151,4 +157,36 @@ func ReplayGate(demo DemoReplayAllowlist) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// replayGateMaxBody borne le corps que la garde accepte de lire pour y trouver le match : un
+// corps de séquence (match_id, victim_xuid, time_ms) tient en quelques dizaines d'octets.
+const replayGateMaxBody = 4 << 10
+
+// replayMatchID rend le match visé par la requête : le paramètre de chemin `match_id`, sinon
+// le champ `match_id` du corps JSON d'un POST. Le corps est RESTITUÉ au handler, octet pour
+// octet (la garde et le handler lisent la même valeur). "" si le match est introuvable : corps
+// absent, illisible, au-delà de [replayGateMaxBody], ou `match_id` qui n'est pas du texte.
+func replayMatchID(r *http.Request) string {
+	if id := chi.URLParam(r, "match_id"); id != "" {
+		return id
+	}
+	if r.Method != http.MethodPost || r.Body == nil || r.Body == http.NoBody {
+		return ""
+	}
+	raw, err := io.ReadAll(io.LimitReader(r.Body, replayGateMaxBody+1))
+	if err != nil {
+		return ""
+	}
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+	if len(raw) > replayGateMaxBody {
+		return ""
+	}
+	var body struct {
+		MatchID string `json:"match_id"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return ""
+	}
+	return body.MatchID
 }

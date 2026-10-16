@@ -14,9 +14,9 @@ package handlers
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
@@ -102,22 +102,26 @@ func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request)
 		middleware.WriteDemoForbidden(w)
 		return
 	}
+	// Navigation plein écran : tout refus renvoie le navigateur à l'écran de connexion avec un
+	// code (refuseCallback), jamais un corps JSON affiché brut.
 	if h.redirectURI == "" {
-		writeError(r.Context(), w, http.StatusInternalServerError, "redirect_uri_not_configured",
-			"LEVELUP_OAUTH_REDIRECT_URI non configuré")
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: LEVELUP_OAUTH_REDIRECT_URI non configuré")
+		h.refuseCallback(w, r, "redirect_uri_not_configured")
 		return
 	}
 
 	sess := middleware.GetSession(r.Context())
 	if sess == nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "no_session", "session non initialisée")
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: connexion sans session")
+		h.refuseCallback(w, r, "no_session")
 		return
 	}
 
 	// Génère un state aléatoire 32 bytes (256 bits) et stocke en session.
 	stateBytes := make([]byte, 32)
 	if _, err := rand.Read(stateBytes); err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "state_gen_failed", "génération state échouée")
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: génération du state échouée", "err", err)
+		h.refuseCallback(w, r, "state_gen_failed")
 		return
 	}
 	state := hex.EncodeToString(stateBytes)
@@ -126,29 +130,29 @@ func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request)
 	// PKCE (RFC 7636) : verifier secret en session, challenge S256 dans l'URL.
 	verifier, challenge, err := auth_platform.GeneratePKCE()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "pkce_gen_failed", "génération PKCE échouée")
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: génération PKCE échouée", "err", err)
+		h.refuseCallback(w, r, "pkce_gen_failed")
 		return
 	}
 	sess.OAuthCodeVerifier = verifier
 
-	// Flow d'invitation : capter le code ?invite= et le porter en session
-	// jusqu'au callback. Un code invalide est ignoré (login normal) plutôt que de
-	// casser la redirection plein écran vers Microsoft.
+	// Flow d'invitation : capter le code ?invite= et le porter en session jusqu'au
+	// callback, même invalide : il ne donne rien par lui-même (la stratégie le réserve au
+	// callback, Consume, et un code invalide n'est pas réservé), mais il permet au refus
+	// du verrou de dire invite_invalid plutôt qu'instance fermée. Un code invalide ne
+	// casse pas la redirection plein écran vers Microsoft (login normal).
 	if code := r.URL.Query().Get("invite"); code != "" {
 		if h.invites != nil {
 			if verr := h.invites.Validate(code); verr != nil {
-				slog.WarnContext(r.Context(), "auth_xbox_oauth: invitation ?invite= invalide, ignorée", "err", verr)
-			} else {
-				sess.PendingInviteCode = code
+				slog.WarnContext(r.Context(), "auth_xbox_oauth: invitation ?invite= invalide, sans effet au callback", "err", verr)
 			}
-		} else {
-			sess.PendingInviteCode = code
 		}
+		sess.PendingInviteCode = code
 	}
 
 	if err := h.sessionStore.Save(sess); err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: save session échec", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "session_save_failed", "sauvegarde session échouée")
+		h.refuseCallback(w, r, "session_save_failed")
 		return
 	}
 
@@ -171,7 +175,8 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 
 	sess := middleware.GetSession(r.Context())
 	if sess == nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "no_session", "session non initialisée")
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: callback sans session")
+		h.refuseCallback(w, r, "no_session")
 		return
 	}
 
@@ -189,7 +194,21 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	xstsRTA := h.tryAcquireXSTSForRTA(r, tokenResult.AccessToken)
+	if !h.completeOAuthCallback(w, r, sess, tokenResult, exchangeResult, xstsRTA) {
+		return
+	}
 
+	// Redirect vers postLoginURL (front prend la suite).
+	http.Redirect(w, r, h.postLoginURL, http.StatusFound)
+}
+
+// completeOAuthCallback termine le callback une fois les échanges avec Microsoft
+// faits : identité complétée, connexion, persistance du refresh token. Rend faux,
+// navigateur renvoyé à l'écran de connexion (refuseCallback), si la connexion est refusée.
+func (h *XboxOAuthHandler) completeOAuthCallback(
+	w http.ResponseWriter, r *http.Request, sess *domain.SessionData,
+	tokenResult *auth_platform.AuthCodeResult, exchangeResult *auth_platform.ExchangeResult, xstsRTA *auth_platform.XSTSResult,
+) bool {
 	// L'audience XSTS Halo ne renvoie que `uhs` dans DisplayClaims (pas xid/gtg) :
 	// suffisant pour les tokens Halo, mais pas pour identifier le joueur au login SSO.
 	// Le XSTS Xbox Live (xstsRTA, relying party http://xboxlive.com) porte lui xid +
@@ -203,28 +222,45 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Persistance ADR 0023 du RT frais APRÈS résolution d'identité : le XUID vient
-	// souvent de xstsRTA (l'exchange Halo ne renvoie que `uhs`). Garantit que le
-	// store reçoit le RT e1cb35ab frais → pas de split-brain au refresh suivant.
-	h.persistRefreshTokenToStore(r, exchangeResult.XUID, exchangeResult.Gamertag, tokenResult.RefreshToken)
-
-	attempt := buildXboxOAuthAttempt(tokenResult, exchangeResult, xstsRTA)
-
-	if !h.linkAttemptToSession(w, r, attempt, sess) {
-		return
+	if !h.finishOAuthLogin(w, r, sess, buildXboxOAuthAttempt(tokenResult, exchangeResult, xstsRTA)) {
+		return false
 	}
 
-	h.persistSessionAfterOAuth(r, sess, exchangeResult)
-
+	// Persistance ADR 0023 du RT frais, APRÈS la décision de connexion : une identité
+	// refusée (instance verrouillée) ne laisse aucun fichier de jetons. Et après la
+	// résolution d'identité : le XUID vient souvent de xstsRTA (l'exchange Halo ne
+	// renvoie que `uhs`). Le store reçoit le RT frais → pas de split-brain au refresh
+	// suivant.
+	h.persistRefreshTokenToStore(r, exchangeResult.XUID, exchangeResult.Gamertag, tokenResult.RefreshToken)
 	slog.InfoContext(r.Context(), "auth_xbox_oauth: login réussi via Authorization Code Flow",
 		"gamertag", exchangeResult.Gamertag, "xuid", exchangeResult.XUID)
-
-	// Redirect vers postLoginURL (front prend la suite).
-	http.Redirect(w, r, h.postLoginURL, http.StatusFound)
+	return true
 }
 
-// validateCallbackParams vérifie error/code/state + CSRF, écrit la réponse d'erreur
-// si nécessaire. Retourne (code, true) si tout est OK, sinon ("", false).
+// finishOAuthLogin applique la stratégie post-flux (completeLogin : rien n'est écrit
+// dans la session si elle refuse), puis renouvelle l'identifiant de session. Rend
+// faux si la stratégie refuse, navigateur renvoyé à l'écran de connexion avec le code
+// de loginFailureCode (instance_locked, invite_invalid, link_failed).
+func (h *XboxOAuthHandler) finishOAuthLogin(
+	w http.ResponseWriter, r *http.Request, sess *domain.SessionData, attempt *auth_platform.Attempt,
+) bool {
+	if err := completeLogin(r.Context(), h.linkStrategy, attempt, sess); err != nil {
+		code := loginFailureCode(err)
+		slog.WarnContext(r.Context(), "auth_xbox_oauth: connexion refusée par la stratégie post-flux",
+			"xuid", attempt.XUID, "error_code", code, "err", err)
+		h.refuseCallback(w, r, code)
+		return false
+	}
+	// Nouvel identifiant de session : un cookie planté avant la connexion ne vaut rien.
+	if _, err := h.sessionStore.Rotate(sess); err != nil {
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: rotation de la session post-login échouée", "err", err)
+	}
+	return true
+}
+
+// validateCallbackParams vérifie error/code/state + CSRF ; un refus renvoie le
+// navigateur à l'écran de connexion (refuseCallback). Retourne (code, true) si tout
+// est OK, sinon ("", false).
 func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http.Request, sess *domain.SessionData) (string, bool) {
 	// Erreur Microsoft (user a refusé ou autre).
 	if errCode := r.URL.Query().Get("error"); errCode != "" {
@@ -235,14 +271,16 @@ func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http
 		if err := h.sessionStore.Save(sess); err != nil {
 			slog.ErrorContext(r.Context(), "auth_xbox_oauth: persistance session (reset état OAuth) échouée", "err", err)
 		}
-		writeError(r.Context(), w, http.StatusBadRequest, "oauth_denied", errDesc)
+		h.refuseCallback(w, r, "oauth_denied")
 		return "", false
 	}
 
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 	if code == "" || state == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "code ou state absent")
+		slog.WarnContext(r.Context(), "auth_xbox_oauth: callback sans code ou sans state",
+			"code_set", code != "", "state_set", state != "")
+		h.refuseCallback(w, r, "missing_params")
 		return "", false
 	}
 
@@ -256,7 +294,7 @@ func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http
 	if expected == "" || state != expected {
 		slog.WarnContext(r.Context(), "auth_xbox_oauth: state mismatch — possible CSRF",
 			"expected_set", expected != "", "received_set", state != "")
-		writeError(r.Context(), w, http.StatusForbidden, "state_mismatch", "state CSRF invalide")
+		h.refuseCallback(w, r, "state_mismatch")
 		return "", false
 	}
 	return code, true
@@ -271,13 +309,13 @@ func (h *XboxOAuthHandler) exchangeCallbackTokens(
 	tokenResult, err := auth_platform.ExchangeAuthorizationCode(r.Context(), code, h.redirectURI, codeVerifier)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: échange code échec", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "code_exchange_failed", err.Error())
+		h.refuseCallback(w, r, "code_exchange_failed")
 		return nil, nil, false
 	}
 	exchangeResult, err := h.provider.Exchange(r.Context(), tokenResult.AccessToken)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: provider.Exchange échec", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "halo_exchange_failed", err.Error())
+		h.refuseCallback(w, r, "halo_exchange_failed")
 		return nil, nil, false
 	}
 
@@ -344,43 +382,21 @@ func buildXboxOAuthAttempt(
 	return attempt
 }
 
-// linkAttemptToSession invoque LinkStrategy.OnAuthSuccess. Retourne true si OK
-// (ou erreur tolérée non-bloquante), false si l'erreur est fatale (réponse écrite).
-func (h *XboxOAuthHandler) linkAttemptToSession(
-	w http.ResponseWriter, r *http.Request, attempt *auth_platform.Attempt, sess *domain.SessionData,
-) bool {
-	if h.linkStrategy == nil {
-		return true
-	}
-	if err := h.linkStrategy.OnAuthSuccess(r.Context(), attempt, sess); err != nil {
-		if errors.Is(err, auth_platform.ErrSessionNotAuthenticated) {
-			slog.WarnContext(r.Context(), "auth_xbox_oauth: LinkStrategy renvoie ErrSessionNotAuthenticated")
-			return true
-		}
-		slog.ErrorContext(r.Context(), "auth_xbox_oauth: LinkStrategy.OnAuthSuccess échec", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "link_failed", err.Error())
-		return false
-	}
-	return true
-}
+// oauthLoginPath : l'écran de connexion du front, où le callback renvoie le navigateur
+// quand il refuse ; oauthErrorParam porte le code du refus (le front le traduit en
+// message FR / EN).
+const (
+	oauthLoginPath  = "/login"
+	oauthErrorParam = "oauth_error"
+)
 
-// persistSessionAfterOAuth renseigne les Halo tokens et l'identité, puis sauvegarde la session.
-func (h *XboxOAuthHandler) persistSessionAfterOAuth(
-	r *http.Request, sess *domain.SessionData, exchangeResult *auth_platform.ExchangeResult,
-) {
-	sess.AuthReady = true
-	sess.HaloTokens = &domain.HaloTokens{
-		SpartanToken:     exchangeResult.Tokens.SpartanToken,
-		ClearanceToken:   exchangeResult.Tokens.ClearanceToken,
-		SpartanExpiresAt: exchangeResult.Tokens.SpartanExpiresAt,
-	}
-	if exchangeResult.Gamertag != "" {
-		sess.LinkedHaloIdentity = &domain.HaloIdentity{
-			Gamertag: exchangeResult.Gamertag,
-			XUID:     exchangeResult.XUID,
-		}
-	}
-	if err := h.sessionStore.Save(sess); err != nil {
-		slog.ErrorContext(r.Context(), "auth_xbox_oauth: save session post-login échec", "err", err)
-	}
+// refuseCallback termine un refus de la connexion Xbox, au départ (LoginRedirect) comme au
+// retour (Callback) : ce sont des navigations plein écran (pas des appels du front), un corps
+// JSON s'afficherait brut. Le navigateur est renvoyé à l'écran de connexion avec le code du
+// refus ; le détail reste dans les journaux.
+func (h *XboxOAuthHandler) refuseCallback(w http.ResponseWriter, r *http.Request, code string) {
+	slog.WarnContext(r.Context(), "auth_xbox_oauth: connexion Xbox refusée, retour à l'écran de connexion",
+		"error_code", code)
+	target := oauthLoginPath + "?" + url.Values{oauthErrorParam: {code}}.Encode()
+	http.Redirect(w, r, target, http.StatusFound)
 }

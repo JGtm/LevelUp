@@ -3,7 +3,9 @@ import type { MatchAssociatedMedia, MediaItemRow } from '@/lib/api/types'
 import { MediaThumbnailCard, MediaLightbox } from '@/features/media/MediaViewer'
 import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
+import { usePlayerGamertag } from '@/features/media/usePlayerGamertag'
 import { useToggleMediaLike } from '@/features/media/queries'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { toMediaItemRow } from './_mediaItemRow'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { MatchViewText } from './i18n'
@@ -25,6 +27,13 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
   const [autoChain, setAutoChain] = useState(false)
   const picker = useMediaPicker()
   const toggleLike = useToggleMediaLike(playerSlug)
+  // Profil d'ami (lecture seule) : pas de réassociation. Le cœur reste actif : le like est
+  // l'action du visiteur, attribuée à son propre profil (ADR 0029).
+  const canWrite = useCanWritePlayer(playerSlug)
+  // L'onglet montre aussi les clips des coéquipiers : réassocier n'est offert que sur les
+  // siens (propriétaire ou admin, comme le serveur).
+  const currentPlayerGamertag = usePlayerGamertag(playerSlug)
+  const likeDisabled = toggleLike.isPending
 
   function handleToggleLike(item: MediaItemRow) {
     const nextLiked = !item.liked
@@ -51,12 +60,13 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
           onToggleLike={handleToggleLike}
           startIndex={lightboxIdx}
           onClose={() => setLightboxIdx(null)}
-          likeDisabled={toggleLike.isPending}
+          likeDisabled={likeDisabled}
           autoChain={autoChain}
           onToggleAutoChain={() => setAutoChain((c) => !c)}
           playerSlug={playerSlug}
           currentMatchId={matchId}
-          onReassociate={picker.openFor}
+          onReassociate={canWrite ? picker.openFor : undefined}
+          currentPlayerGamertag={currentPlayerGamertag}
         />
       )}
       {picker.state && (
@@ -74,10 +84,11 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
             item={item}
             onToggleLike={handleToggleLike}
             onOpen={() => setLightboxIdx(idx)}
-            likeDisabled={toggleLike.isPending}
+            likeDisabled={likeDisabled}
             playerSlug={playerSlug}
             currentMatchId={matchId}
-            onAssociate={picker.openFor}
+            onAssociate={canWrite ? picker.openFor : undefined}
+            currentPlayerGamertag={currentPlayerGamertag}
           />
         ))}
       </div>

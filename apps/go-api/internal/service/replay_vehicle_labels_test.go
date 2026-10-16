@@ -41,10 +41,10 @@ func artefactVehicules(t *testing.T, root, titleSlug, matchID string) {
 // l URL est composee sous le dossier d assets du TITRE.
 func TestVehicleLabels_PoseLUrlDuSprite(t *testing.T) {
 	root := t.TempDir()
-	artefactVehicules(t, root, title.DefaultSlug, "match-vehicules")
+	artefactVehicules(t, root, title.DefaultSlug, "a0000002")
 
 	doc, err := NewReplayService(title.DefaultSlug, root, nil).
-		GetReplay(context.Background(), "match-vehicules")
+		GetReplay(context.Background(), "a0000002")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
@@ -70,10 +70,10 @@ func TestVehicleLabels_PoseLUrlDuSprite(t *testing.T) {
 // AUCUNE entree — ni sous une cle vide, ni sous celle d une voisine.
 func TestVehicleLabels_FamilleVideNAPasDEntree(t *testing.T) {
 	root := t.TempDir()
-	artefactVehicules(t, root, title.DefaultSlug, "match-vehicules")
+	artefactVehicules(t, root, title.DefaultSlug, "a0000002")
 
 	doc, err := NewReplayService(title.DefaultSlug, root, nil).
-		GetReplay(context.Background(), "match-vehicules")
+		GetReplay(context.Background(), "a0000002")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
@@ -94,10 +94,10 @@ func TestVehicleLabels_FamilleVideNAPasDEntree(t *testing.T) {
 // distinguer les deux, et l artefact ne doit pas grossir pour rien.
 func TestVehicleLabels_DocumentSansVehiculeNaPasDeTable(t *testing.T) {
 	root := t.TempDir()
-	artefactArmes(t, root, title.DefaultSlug, "match-armes")
+	artefactArmes(t, root, title.DefaultSlug, "a0000001")
 
 	doc, err := NewReplayService(title.DefaultSlug, root, nil).
-		GetReplay(context.Background(), "match-armes")
+		GetReplay(context.Background(), "a0000001")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
@@ -110,13 +110,13 @@ func TestVehicleLabels_DocumentSansVehiculeNaPasDeTable(t *testing.T) {
 // resout de famille sert le rejeu ENTIER, sans table. C est une degradation, pas une erreur.
 func TestVehicleLabels_ToutesLesFamillesInconnuesNeServentRien(t *testing.T) {
 	root := t.TempDir()
-	doc := `{"schemaVersion":29,"matchId":"m","titleSlug":"` + title.DefaultSlug + `",` +
+	doc := `{"schemaVersion":29,"matchId":"0000a000","titleSlug":"` + title.DefaultSlug + `",` +
 		`"frameCount":1,"bounds":{"minX":0,"minY":0,"maxX":1,"maxY":1},"tracks":[],` +
 		`"vehicles":[{"slot":700,"gen":0,"chassis":"fe32c0f4","t0":0,"t1":1,"t1max":1,` +
 		`"end":"inconnue"}]}`
-	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "m"), doc)
+	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "0000a000"), doc)
 
-	got, err := NewReplayService(title.DefaultSlug, root, nil).GetReplay(context.Background(), "m")
+	got, err := NewReplayService(title.DefaultSlug, root, nil).GetReplay(context.Background(), "0000a000")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}

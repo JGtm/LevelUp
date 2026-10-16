@@ -97,7 +97,7 @@ func monterLeLot(t *testing.T, matchID string) (*sql.DB, Deps, []artefactLu) {
 // TestPersisterNiveauxDArmes_EcritQuandLaCapabiliteEstDeclaree — le cas NOMINAL, et la mutation
 // « porte toujours fermee » le fait rougir.
 func TestPersisterNiveauxDArmes_EcritQuandLaCapabiliteEstDeclaree(t *testing.T) {
-	db, d, lus := monterLeLot(t, "niveaux1")
+	db, d, lus := monterLeLot(t, "0000af01")
 	if len(lus) != 1 {
 		t.Fatalf("%d artefact(s) lu(s), attendu 1", len(lus))
 	}
@@ -124,7 +124,7 @@ func TestPersisterNiveauxDArmes_EcritQuandLaCapabiliteEstDeclaree(t *testing.T) 
 // TestPersisterNiveauxDArmes_NEcritRienSansLaCapabilite — la porte gouverne, et c est la SEULE
 // chose qui change entre les deux tests.
 func TestPersisterNiveauxDArmes_NEcritRienSansLaCapabilite(t *testing.T) {
-	db, d, lus := monterLeLot(t, "niveaux2")
+	db, d, lus := monterLeLot(t, "0000af02")
 	retirerCapabiliteNiveaux(t, d.RepoRoot)
 
 	niveauxDuLot(context.Background(), d, &bilanDerivations{}, lus)
@@ -140,9 +140,9 @@ func TestPersisterNiveauxDArmes_NEcritRienSansLaCapabilite(t *testing.T) {
 // Et il est inscrit au bilan (lot L4.1) : sans cela sa marque se poserait, et le rattrapage ne
 // le reprendrait jamais.
 func TestPersisterNiveauxDArmes_IdentiteIllisibleNEcritRien(t *testing.T) {
-	db, d, lus := monterLeLot(t, "niveaux3")
+	db, d, lus := monterLeLot(t, "0000af03")
 	// Le match disparait du registre : son identite devient illisible.
-	if _, err := db.Exec(`DELETE FROM match_registry WHERE match_id = 'niveaux3'`); err != nil {
+	if _, err := db.Exec(`DELETE FROM match_registry WHERE match_id = '0000af03'`); err != nil {
 		t.Fatalf("suppression au registre: %v", err)
 	}
 	b := &bilanDerivations{}
@@ -152,7 +152,7 @@ func TestPersisterNiveauxDArmes_IdentiteIllisibleNEcritRien(t *testing.T) {
 		t.Errorf("%d ligne(s) ecrite(s) sans identite de match : la projection a suppose un mode "+
 			"regulier, ce qui ecrit un niveau de base sur des equipements tires au sort", n)
 	}
-	if !b.aEchoue("niveaux3") {
+	if !b.aEchoue("0000af03") {
 		t.Error("identite illisible sans echec au bilan : la marque de derivation se poserait sur " +
 			"un match dont les niveaux n'ont jamais ete ecrits (lot L4.1)")
 	}
@@ -167,7 +167,7 @@ func niveauxDuLot(ctx context.Context, d Deps, b *bilanDerivations, lus []artefa
 // TestPersisterNiveauxDArmes_ReferenceAbsenteNePrivePasLesAutres — cette famille s abstient
 // SEULE : elle ne pose aucun echec au bilan, donc les autres gardent leur marque.
 func TestPersisterNiveauxDArmes_ReferenceAbsenteNePrivePasLesAutres(t *testing.T) {
-	_, d, lus := monterLeLot(t, "niveaux4")
+	_, d, lus := monterLeLot(t, "0000af04")
 	ref := filepath.Join(d.RepoRoot, "data", "titles", titlePkg.DefaultSlug, "reference",
 		"map_weapon_pads.json")
 	if err := os.Remove(ref); err != nil && !os.IsNotExist(err) {
@@ -176,7 +176,7 @@ func TestPersisterNiveauxDArmes_ReferenceAbsenteNePrivePasLesAutres(t *testing.T
 	b := &bilanDerivations{}
 	niveauxDuLot(context.Background(), d, b, lus)
 
-	if b.aEchoue("niveaux4") {
+	if b.aEchoue("0000af04") {
 		t.Error("la famille a pose un echec au bilan alors que SA reference manque : les " +
 			"quatre autres familles, deja ecrites, perdraient leur marque de derivation")
 

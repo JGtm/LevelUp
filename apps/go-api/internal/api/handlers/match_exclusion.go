@@ -25,7 +25,6 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
 )
 
@@ -80,14 +79,16 @@ func (h *MatchExclusionHandler) SetExclusion(ctx context.Context, in *matchExclu
 		case errors.Is(err, domain.ErrRankedMatchNotExcludable):
 			return nil, humacore.NewError(http.StatusUnprocessableEntity, "ranked_not_excludable",
 				"Les matchs classés ne peuvent pas être exclus")
-		case errors.Is(err, dblease.ErrDBLocked):
+		case isDBBusy(err):
+			// Verrou d'écriture du joueur ou bascule de la base partagée pendant une
+			// synchronisation : l'exclusion est idempotente, le client réessaie.
 			return nil, errDBBusy()
 		}
 		slog.WarnContext(ctx, "match exclusion: db error",
 			"match_id", in.MatchID,
 			"err", err,
 		)
-		return nil, humacore.NewError(http.StatusInternalServerError, "exclusion_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "exclusion_error", err)
 	}
 
 	slog.InfoContext(ctx, "match exclusion updated",
@@ -103,7 +104,7 @@ func (h *MatchExclusionHandler) SetExclusion(ctx context.Context, in *matchExclu
 func (h *MatchExclusionHandler) resolve(ctx context.Context, slug string) (port.MatchExclusionService, error) {
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return svc, nil
 }

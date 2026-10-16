@@ -36,3 +36,8 @@ package replay
 // panneau et les deux bonus leurs episodes. AUCUNE RECUISSON D'ARTEFACT : `spent` et sa
 // famille sont publies depuis le schema 51 — la seule bascule de revision suffit a faire
 // reprendre les resumes par `levelup backfill-usage-summary` (sans `--force`).
+// us7 (2026-10-16, plan des citations Halo 5, étape E3) — LES FRAGS SANS BOUCLIER entrent dans le
+// résumé (`shieldless_kills`, citation « Presque, ça ne compte pas ») : le document est croisé au
+// fil des morts du match (`match_kill_events_latest`), lu par l'appelant. AUCUNE RECUISSON : le
+// bouclier (`Point.Sh`) est publié par les artefacts du parc ; la seule bascule de révision fait
+// reprendre les résumés par `levelup backfill-usage-summary` (sans `--force`).

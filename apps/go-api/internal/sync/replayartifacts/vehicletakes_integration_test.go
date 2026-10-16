@@ -203,15 +203,15 @@ func vhMatch(t *testing.T, lignes []vhLigne) vhLigne {
 // compte en couverture et ne fait ni prise ni temps.
 func TestVehicules_EcritLesPrisesLeTempsLesFragsEtLaCouverture(t *testing.T) {
 	engin, autre := vhTags(t)
-	db, d, chemin := vhLot(t, "veh1", vhDocument("veh1"))
-	vhMort(t, db, "veh1", vhOrigine+1500, "a1", engin) // dans l'episode de a1 (images 10 a 20)
-	vhMort(t, db, "veh1", vhOrigine+9000, "a1", engin) // hors de tout episode
-	vhMort(t, db, "veh1", vhOrigine+1600, "a1", autre) // dans l'episode, mais pas un engin
-	vhMort(t, db, "veh1", vhOrigine+3500, "b1", engin) // dans l'episode de b1 (30 a 40)
-	vhMort(t, db, "veh1", vhOrigine+1500, "", engin)   // un tueur bot : ni xuid ni episode nomme
-	vhFamille(t, d, &bilanDerivations{}, chemin, "veh1")
+	db, d, chemin := vhLot(t, "0000ce01", vhDocument("0000ce01"))
+	vhMort(t, db, "0000ce01", vhOrigine+1500, "a1", engin) // dans l'episode de a1 (images 10 a 20)
+	vhMort(t, db, "0000ce01", vhOrigine+9000, "a1", engin) // hors de tout episode
+	vhMort(t, db, "0000ce01", vhOrigine+1600, "a1", autre) // dans l'episode, mais pas un engin
+	vhMort(t, db, "0000ce01", vhOrigine+3500, "b1", engin) // dans l'episode de b1 (30 a 40)
+	vhMort(t, db, "0000ce01", vhOrigine+1500, "", engin)   // un tueur bot : ni xuid ni episode nomme
+	vhFamille(t, d, &bilanDerivations{}, chemin, "0000ce01")
 
-	lignes := vhLire(t, db, "veh1")
+	lignes := vhLire(t, db, "0000ce01")
 	m := vhMatch(t, lignes)
 	if !m.measured || m.reason != "" || !m.fragsRead || m.fragsReason != "" {
 		t.Fatalf("couverture du match : %+v", m)
@@ -242,23 +242,23 @@ func TestVehicules_EcritLesPrisesLeTempsLesFragsEtLaCouverture(t *testing.T) {
 // vue retient la derniere ENTIERE, et une passe sans prise RETRACTE les prises de la precedente
 // (c'est la ligne match qui l'y autorise).
 func TestVehicules_LaVueNeRendQueLaDernierePasse(t *testing.T) {
-	db, d, chemin := vhLot(t, "veh2", vhDocument("veh2"))
-	vhFamille(t, d, &bilanDerivations{}, chemin, "veh2")
-	if _, ok := vhPrise(vhLire(t, db, "veh2"), "a1", "warthog"); !ok {
+	db, d, chemin := vhLot(t, "0000ce02", vhDocument("0000ce02"))
+	vhFamille(t, d, &bilanDerivations{}, chemin, "0000ce02")
+	if _, ok := vhPrise(vhLire(t, db, "0000ce02"), "a1", "warthog"); !ok {
 		t.Fatal("premiere passe sans la prise de a1")
 	}
 	// Le calque est relu sans aucun episode : la passe suivante n'a plus de prise.
-	doc := vhDocument("veh2")
+	doc := vhDocument("0000ce02")
 	doc.Vehicles = nil
-	vhPoser(t, d.RepoRoot, "veh2", doc)
-	vhFamille(t, d, &bilanDerivations{}, chemin, "veh2")
+	vhPoser(t, d.RepoRoot, "0000ce02", doc)
+	vhFamille(t, d, &bilanDerivations{}, chemin, "0000ce02")
 
-	lignes := vhLire(t, db, "veh2")
+	lignes := vhLire(t, db, "0000ce02")
 	if len(lignes) != 1 || lignes[0].kind != "match" || !lignes[0].measured {
 		t.Fatalf("la vue doit rendre la seule ligne match de la derniere passe (zero mesure) : %+v", lignes)
 	}
 	var brut int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM match_vehicle_takes WHERE match_id = 'veh2'`).Scan(&brut); err != nil || brut < 4 {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_vehicle_takes WHERE match_id = '0000ce02'`).Scan(&brut); err != nil || brut < 4 {
 		t.Errorf("la table brute doit garder les deux passes (append-only) : %d ligne(s), err=%v", brut, err)
 	}
 }
@@ -266,12 +266,12 @@ func TestVehicules_LaVueNeRendQueLaDernierePasse(t *testing.T) {
 // TestVehicules_ArtefactSansOccupationEstNonMesure — D8 : un artefact de schema < 67 n'est ni
 // zero ni absent : une passe « non mesure », avec sa raison.
 func TestVehicules_ArtefactSansOccupationEstNonMesure(t *testing.T) {
-	doc := vhDocument("veh3")
+	doc := vhDocument("0000ce03")
 	doc.SchemaVersion = 61
-	db, d, chemin := vhLot(t, "veh3", doc)
-	vhFamille(t, d, &bilanDerivations{}, chemin, "veh3")
+	db, d, chemin := vhLot(t, "0000ce03", doc)
+	vhFamille(t, d, &bilanDerivations{}, chemin, "0000ce03")
 
-	lignes := vhLire(t, db, "veh3")
+	lignes := vhLire(t, db, "0000ce03")
 	m := vhMatch(t, lignes)
 	if len(lignes) != 1 || m.measured || m.reason != "schema_before_67" || m.sch != 61 {
 		t.Errorf("passe non mesuree attendue (raison %q, schema 61) : %+v", "schema_before_67", lignes)
@@ -284,10 +284,10 @@ func TestVehicules_ArtefactSansOccupationEstNonMesure(t *testing.T) {
 // TestVehicules_SansEvenementDeMortLesFragsSontNonLusEtLesPrisesEcrites — D9 : pas de frag lu ne
 // veut pas dire zero frag.
 func TestVehicules_SansEvenementDeMortLesFragsSontNonLusEtLesPrisesEcrites(t *testing.T) {
-	db, d, chemin := vhLot(t, "veh4", vhDocument("veh4"))
-	vhFamille(t, d, &bilanDerivations{}, chemin, "veh4")
+	db, d, chemin := vhLot(t, "0000ce04", vhDocument("0000ce04"))
+	vhFamille(t, d, &bilanDerivations{}, chemin, "0000ce04")
 
-	lignes := vhLire(t, db, "veh4")
+	lignes := vhLire(t, db, "0000ce04")
 	m := vhMatch(t, lignes)
 	if m.fragsRead || m.fragsReason != "no_kill_source" || m.fragsTotal != 0 {
 		t.Errorf("frags non lus attendus (raison %q) : %+v", "no_kill_source", m)
@@ -301,15 +301,15 @@ func TestVehicules_SansEvenementDeMortLesFragsSontNonLusEtLesPrisesEcrites(t *te
 // en echec est un DEFAUT : rien n'est ecrit pour le match mesure, et le bilan l'inscrit (sa
 // marque ne se poserait pas, le rattrapage le reprendra).
 func TestVehicules_FragsIllisiblesNEcriventPasLeMatchMesureEtNeLeMarquentPas(t *testing.T) {
-	db, d, chemin := vhLot(t, "veh5", vhDocument("veh5"))
+	db, d, chemin := vhLot(t, "0000ce05", vhDocument("0000ce05"))
 	d.WithRead = nil
 	b := &bilanDerivations{}
-	vhFamille(t, d, b, chemin, "veh5")
+	vhFamille(t, d, b, chemin, "0000ce05")
 
-	if n := len(vhLire(t, db, "veh5")); n != 0 {
+	if n := len(vhLire(t, db, "0000ce05")); n != 0 {
 		t.Errorf("%d ligne(s) ecrite(s) sans lecture des frags", n)
 	}
-	if !b.aEchoue("veh5") {
+	if !b.aEchoue("0000ce05") {
 		t.Error("frags illisibles sans echec au bilan : la marque se poserait sur un match non ecrit")
 	}
 }
@@ -317,7 +317,7 @@ func TestVehicules_FragsIllisiblesNEcriventPasLeMatchMesureEtNeLeMarquentPas(t *
 // TestVehicules_NEcritRienSansLaCapabilite — la porte gouverne, et c'est la SEULE chose qui
 // change entre ce test et le nominal.
 func TestVehicules_NEcritRienSansLaCapabilite(t *testing.T) {
-	db, d, chemin := vhLot(t, "veh6", vhDocument("veh6"))
+	db, d, chemin := vhLot(t, "0000ce06", vhDocument("0000ce06"))
 	p := filepath.Join(d.RepoRoot, "config", "titles", titlePkg.DefaultSlug, "mappings", "capabilities.toml")
 	blob, err := os.ReadFile(p) //nolint:gosec // racine de test
 	if err != nil {
@@ -332,7 +332,7 @@ func TestVehicules_NEcritRienSansLaCapabilite(t *testing.T) {
 	if err := os.WriteFile(p, []byte(strings.Join(out, "\n")), 0o600); err != nil {
 		t.Fatalf("ecriture capabilities: %v", err)
 	}
-	vhFamille(t, d, &bilanDerivations{}, chemin, "veh6")
+	vhFamille(t, d, &bilanDerivations{}, chemin, "0000ce06")
 
 	var n int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM match_vehicle_takes`).Scan(&n); err != nil || n != 0 {
@@ -344,15 +344,15 @@ func TestVehicules_NEcritRienSansLaCapabilite(t *testing.T) {
 // segment unique de la passe, et le match est marque derive (aucune famille n'a echoue).
 func TestDeriver_VehiculesAuFilDeLEauEtMarque(t *testing.T) {
 	engin, _ := vhTags(t)
-	db, d, chemin := vhLot(t, "veh7", vhDocument("veh7"))
-	vhMort(t, db, "veh7", vhOrigine+1500, "a1", engin)
+	db, d, chemin := vhLot(t, "0000ce07", vhDocument("0000ce07"))
+	vhMort(t, db, "0000ce07", vhOrigine+1500, "a1", engin)
 
 	Deriver(context.Background(), DerivationsDeps{
 		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
 		WithRead: d.WithRead, AcquireWriter: d.AcquireWriter,
-	}, []ArtefactRange{{MatchID: "veh7", Path: chemin}})
+	}, []ArtefactRange{{MatchID: "0000ce07", Path: chemin}})
 
-	lignes := vhLire(t, db, "veh7")
+	lignes := vhLire(t, db, "0000ce07")
 	if a, ok := vhPrise(lignes, "a1", "warthog"); !ok || a.frags != 1 {
 		t.Errorf("Deriver n'a pas ecrit la famille vehicules : %+v (ok=%v)", lignes, ok)
 	}

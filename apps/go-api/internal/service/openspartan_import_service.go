@@ -72,9 +72,11 @@ type ImportResult struct {
 	InsertedMedals       int
 	InsertedHighlights   int
 	InsertedCSRs         int // shared.match_csrs écrits depuis RankRecap (par-match CSR)
-	InsertedAliases      int
-	StashedFriends       int
-	Errors               []ImportError
+	InsertedAliases      int // alias de l'importeur mis à jour + alias de tiers proposés
+	// SkippedForeignMatches : matchs du fichier où l'importeur ne joue pas (non écrits).
+	SkippedForeignMatches int
+	StashedFriends        int
+	Errors                []ImportError
 }
 
 // ImportError records a single non-fatal failure during the import.
@@ -170,20 +172,8 @@ func (s *OpenSpartanImportService) Import(
 	s.log.Info("openspartan_import_started",
 		"expected_xuid", expectedOwnerXUID, "db_path", dbPath, "dry_run", opts.DryRun)
 
-	// Sprint B1 commit 15 : acquisition on-demand du writer shared.
-	//   - Mode B-swap (provider != nil) : Provider.AcquireWriter coordonne
-	//     avec auto_sync et les readers HTTP (PreSwap → DETACH pool, OpenRW,
-	//     puis re-OpenRO post-Release). Aucun handle RW persistant.
-	//   - Mode legacy (provider nil, sharedDBPath != "") : sync.AcquireSharedWriterStandalone
-	//     (dblease + OpenSharedDB direct).
-	//   - Mode tests (legacyDB != nil) : utilise le handle injecté tel quel.
-	//   - DryRun : skip toute acquisition (pas d'écriture).
-	sharedDB, releaseShared, err := s.acquireShared(ctx, opts.DryRun)
-	if err != nil {
-		return result, fmt.Errorf("openspartan import acquire shared: %w", err)
-	}
-	defer releaseShared()
-
+	// Le fichier est validé AVANT toute bascule de la base partagée : un fichier qui n'est
+	// pas une base OpenSpartan, ou d'un autre propriétaire, ne coûte aucune écriture.
 	r, err := openspartan.Open(dbPath)
 	if err != nil {
 		s.log.Error("openspartan_import_open_failed", "db_path", dbPath, "err", err)
@@ -208,15 +198,33 @@ func (s *OpenSpartanImportService) Import(
 	if err != nil {
 		return result, fmt.Errorf("load aliases: %w", err)
 	}
-	resolver := func(xuid string) string { return aliases[xuid] }
 
-	if err := s.importMatches(ctx, sharedDB, r, resolver, opts, &result); err != nil {
+	// Acquisition on-demand du writer shared, une fois le fichier validé et lu :
+	//   - Mode B-swap (provider != nil) : Provider.AcquireWriter coordonne
+	//     avec auto_sync et les readers HTTP (PreSwap → DETACH pool, OpenRW,
+	//     puis re-OpenRO post-Release). Aucun handle RW persistant.
+	//   - Mode legacy (provider nil, sharedDBPath != "") : sync.AcquireSharedWriterStandalone
+	//     (dblease + OpenSharedDB direct).
+	//   - Mode tests (legacyDB != nil) : utilise le handle injecté tel quel.
+	//   - DryRun : skip toute acquisition (pas d'écriture).
+	sharedDB, releaseShared, err := s.acquireShared(ctx, opts.DryRun)
+	if err != nil {
+		return result, fmt.Errorf("openspartan import acquire shared: %w", err)
+	}
+	defer releaseShared()
+
+	scope := newImportScope(expectedOwnerXUID, mapper.MapOptions{
+		AliasResolver: func(xuid string) string { return aliases[xuid] },
+		Source:        opts.Source,
+	}, opts.DryRun)
+
+	if err := s.importMatches(ctx, sharedDB, r, scope, opts, &result); err != nil {
 		return result, err
 	}
-	if err := s.importHighlights(ctx, sharedDB, r, opts, &result); err != nil {
+	if err := s.importHighlights(ctx, sharedDB, r, scope, &result); err != nil {
 		return result, err
 	}
-	s.importAliases(ctx, sharedDB, r, opts, &result)
+	s.importOwnerAlias(ctx, sharedDB, r, scope, &result)
 	s.stashFriends(ctx, r, expectedOwnerXUID, opts, &result)
 
 	s.log.Info("openspartan_import_completed",
@@ -226,6 +234,7 @@ func (s *OpenSpartanImportService) Import(
 		"inserted_csrs", result.InsertedCSRs,
 		"inserted_highlights", result.InsertedHighlights,
 		"inserted_aliases", result.InsertedAliases,
+		"skipped_foreign_matches", result.SkippedForeignMatches,
 		"stashed_friends", result.StashedFriends,
 		"errors", len(result.Errors))
 	return result, nil
@@ -265,15 +274,11 @@ func (s *OpenSpartanImportService) importMatches(
 	ctx context.Context,
 	sharedDB *sql.DB,
 	r *openspartan.Reader,
-	resolver func(string) string,
+	scope *importScope,
 	opts ImportOptions,
 	result *ImportResult,
 ) error {
 	parsed := 0
-	mapOpts := mapper.MapOptions{
-		AliasResolver: resolver,
-		Source:        opts.Source,
-	}
 	for pm, err := range r.Matches(ctx) {
 		if err != nil {
 			result.Errors = append(result.Errors, ImportError{Stage: "parse_match", Err: err.Error()})
@@ -283,27 +288,36 @@ func (s *OpenSpartanImportService) importMatches(
 		if opts.OnProgress != nil {
 			opts.OnProgress(parsed, result.TotalMatches)
 		}
-		s.writeOneMatch(ctx, sharedDB, pm, mapOpts, opts.DryRun, result)
+		s.writeOneMatch(ctx, sharedDB, pm, scope, result)
 	}
 	return nil
 }
 
-// writeOneMatch maps + writes one match's contribution to the shared DB.
-// Errors per stage are recorded but never abort the whole import.
+// writeOneMatch maps + writes one match's contribution to the shared DB, if the
+// match is in the import scope (valid id, importer among its participants —
+// openspartan_import_scope.go). Errors per stage are recorded but never abort the
+// whole import.
 func (s *OpenSpartanImportService) writeOneMatch(
 	ctx context.Context,
 	sharedDB *sql.DB,
 	pm *openspartan.ParsedMatch,
-	mapOpts mapper.MapOptions,
-	dryRun bool,
+	scope *importScope,
 	result *ImportResult,
 ) {
-	mm, err := mapper.MapMatch(pm, mapOpts)
+	if rejectMatchID(ctx, pm.MatchID, result) {
+		return
+	}
+	mm, err := mapper.MapMatch(pm, scope.mapOpts)
 	if err != nil {
 		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "map", Err: err.Error()})
 		return
 	}
-	if dryRun {
+	if !scope.admit(ctx, pm, &mm, result) {
+		return
+	}
+	thirdPartyAliases := scope.thirdPartyAliases(mm.Participants)
+	if scope.dryRun {
+		result.InsertedAliases += len(thirdPartyAliases)
 		result.InsertedMatches++
 		result.InsertedParticipants += len(mm.Participants)
 		result.InsertedMedals += len(mm.Medals)
@@ -337,6 +351,9 @@ func (s *OpenSpartanImportService) writeOneMatch(
 		}
 		builder.AddMatchCSRs(mcInserts)
 	}
+	if len(thirdPartyAliases) > 0 {
+		builder.AddXUIDAliases(thirdPartyAliases)
+	}
 	if err := persist.NewSharedPersister(sharedDB).Persist(ctx, builder.Build()); err != nil {
 		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "persist_match", Err: err.Error()})
 		return
@@ -346,6 +363,7 @@ func (s *OpenSpartanImportService) writeOneMatch(
 	result.InsertedParticipants += len(mm.Participants)
 	result.InsertedMedals += len(mm.Medals)
 	result.InsertedCSRs += len(csrs)
+	result.InsertedAliases += len(thirdPartyAliases)
 }
 
 // extractMatchCSRRows parse le payload skill OpenSpartan (table PlayerMatchStats,
@@ -369,7 +387,8 @@ func (s *OpenSpartanImportService) extractMatchCSRRows(
 	return sync.ExtractAllSharedCSRRows(reg, skillMap), sync.AnySkillShowsRankedMatch(skillMap)
 }
 
-// importHighlights walks HighlightEvents and writes one event per row.
+// importHighlights walks HighlightEvents and writes one event per row, for the
+// matches retained by the import scope only (the importer's own matches).
 //
 // aujourd'hui best-effort par-highlight (les erreurs sont accumulées dans result.Errors).
 //
@@ -378,7 +397,7 @@ func (s *OpenSpartanImportService) importHighlights(
 	ctx context.Context,
 	sharedDB *sql.DB,
 	r *openspartan.Reader,
-	opts ImportOptions,
+	scope *importScope,
 	result *ImportResult,
 ) error {
 	for hl, err := range r.Highlights(ctx) {
@@ -386,12 +405,15 @@ func (s *OpenSpartanImportService) importHighlights(
 			result.Errors = append(result.Errors, ImportError{Stage: "parse_highlight", Err: err.Error()})
 			continue
 		}
+		if !scope.matches[hl.MatchID] {
+			continue // match hors périmètre (sans l'importeur, ou identifiant invalide)
+		}
 		row, err := mapper.MapHighlight(hl.MatchID, hl.RawJSON)
 		if err != nil {
 			result.Errors = append(result.Errors, ImportError{MatchID: hl.MatchID, Stage: "map_highlight", Err: err.Error()})
 			continue
 		}
-		if opts.DryRun {
+		if scope.dryRun {
 			result.InsertedHighlights++
 			continue
 		}
@@ -404,32 +426,6 @@ func (s *OpenSpartanImportService) importHighlights(
 		result.InsertedHighlights += n
 	}
 	return nil
-}
-
-// importAliases upserts every XuidAliases row into shared.xuid_aliases.
-func (s *OpenSpartanImportService) importAliases(
-	ctx context.Context,
-	sharedDB *sql.DB,
-	r *openspartan.Reader,
-	opts ImportOptions,
-	result *ImportResult,
-) {
-	rows, err := r.LoadXuidAliases(ctx)
-	if err != nil {
-		result.Errors = append(result.Errors, ImportError{Stage: "load_aliases_for_write", Err: err.Error()})
-		return
-	}
-	if opts.DryRun {
-		result.InsertedAliases = len(rows)
-		return
-	}
-	for _, a := range rows {
-		if err := sync.UpsertXUIDAlias(ctx, sharedDB, a.XUID, a.Gamertag); err != nil {
-			result.Errors = append(result.Errors, ImportError{Stage: "upsert_alias", Err: err.Error()})
-			continue
-		}
-		result.InsertedAliases++
-	}
 }
 
 // stashFriends serialises the OpenSpartan Friends table to a JSON file

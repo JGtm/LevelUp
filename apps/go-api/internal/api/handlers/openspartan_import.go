@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -108,6 +109,7 @@ func NewOpenSpartanImportHandler(cfg OpenSpartanImportConfig) *OpenSpartanImport
 // Responses:
 //   - 202 Accepted + {job_id, status} on success queue
 //   - 401 if no SSO session XUID
+//   - 409 if an import is already active for the account (one at a time)
 //   - 413 if upload exceeds the size limit
 //   - 400 if multipart parsing or the `db` field is malformed
 //
@@ -129,6 +131,13 @@ func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Re
 	expectedXUID := sess.LinkedHaloIdentity.XUID
 	gamertag := sess.LinkedHaloIdentity.Gamertag
 
+	// Un seul import à la fois par compte : refus AVANT de lire le corps (le téléversement
+	// peut peser 1 Gio). Le contrôle est refait atomiquement à la création du job.
+	if h.jobStore.FindActiveJob(domain.JobTypeOpenSpartanImport, expectedXUID) != nil {
+		h.refuseActiveImport(r.Context(), w, expectedXUID)
+		return
+	}
+
 	r.Body = http.MaxBytesReader(w, r.Body, openSpartanMaxUpload)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		writeError(r.Context(), w, http.StatusRequestEntityTooLarge, "upload_too_large",
@@ -138,17 +147,29 @@ func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Re
 
 	tmpPath, err := h.saveUploadedDB(r)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "upload_failed", err.Error())
+		writeErrorFrom(r.Context(), w, http.StatusBadRequest, "upload_failed", err)
 		return
 	}
 
-	jobStatus := h.jobStore.Create(domain.JobTypeOpenSpartanImport, expectedXUID)
+	jobStatus, created := h.jobStore.CreateIfNoActive(domain.JobTypeOpenSpartanImport, expectedXUID)
+	if !created {
+		removeTempUpload(r.Context(), tmpPath)
+		h.refuseActiveImport(r.Context(), w, expectedXUID)
+		return
+	}
 	go h.runImport(jobStatus.JobID, expectedXUID, gamertag, tmpPath)
 
 	writeJSON(w, http.StatusAccepted, map[string]any{
 		"job_id":      jobStatus.JobID,
 		jsonKeyStatus: jobStatus.Status,
 	})
+}
+
+// refuseActiveImport répond 409 : un import est déjà actif pour ce compte.
+func (h *OpenSpartanImportHandler) refuseActiveImport(ctx context.Context, w http.ResponseWriter, xuid string) {
+	slog.WarnContext(ctx, "openspartan_import_refused_already_active", "xuid", xuid)
+	writeError(ctx, w, http.StatusConflict, "import_already_active",
+		"an OpenSpartan import is already running for this account")
 }
 
 // saveUploadedDB extracts the "db" multipart field into a uniquely-named
@@ -171,12 +192,21 @@ func (h *OpenSpartanImportHandler) saveUploadedDB(r *http.Request) (string, erro
 	if err != nil {
 		return "", fmt.Errorf("création fichier tmp: %w", err)
 	}
-	defer f.Close()
-	if _, err := io.Copy(f, file); err != nil {
-		_ = os.Remove(tmpPath)
+	_, copyErr := io.Copy(f, file)
+	// Fermé avant tout retrait : un fichier ouvert ne se supprime pas sous Windows.
+	if err := errors.Join(copyErr, f.Close()); err != nil {
+		removeTempUpload(r.Context(), tmpPath)
 		return "", fmt.Errorf("copie vers tmp: %w", err)
 	}
 	return tmpPath, nil
+}
+
+// removeTempUpload retire la copie temporaire d'un import ; un échec (hors fichier déjà
+// absent) est journalisé : la copie reste alors sur le disque.
+func removeTempUpload(ctx context.Context, path string) {
+	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		slog.WarnContext(ctx, "openspartan_import: retrait de la copie temporaire échoué", "path", path, "err", err)
+	}
 }
 
 // runImport executes the import in a background goroutine and updates the
@@ -185,9 +215,9 @@ func (h *OpenSpartanImportHandler) saveUploadedDB(r *http.Request) (string, erro
 // is run inline before marking the job succeeded — its counts are merged
 // into the final job result.
 func (h *OpenSpartanImportHandler) runImport(jobID, expectedXUID, gamertag, tmpPath string) {
-	defer func() { _ = os.Remove(tmpPath) }()
-
 	ctx := context.Background()
+	defer removeTempUpload(ctx, tmpPath)
+
 	h.jobStore.SetStatus(jobID, domain.JobStatusRunning, pointers.Ptr("opening_database"))
 
 	opts := service.ImportOptions{
@@ -289,11 +319,7 @@ func (h *OpenSpartanImportHandler) recordFailure(jobID string, err error) {
 	h.jobStore.Update(jobID, func(s *domain.AsyncJobStatus) {
 		s.Status = domain.JobStatusFailed
 		s.FinishedAt = &now
-		s.Error = &domain.JobErrorDetail{
-			Code:      classifyImportError(err),
-			Message:   err.Error(),
-			Retryable: false,
-		}
+		s.Error = domain.NewJobError(classifyImportError(err), false)
 	})
 }
 

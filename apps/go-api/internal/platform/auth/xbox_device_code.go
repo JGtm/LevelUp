@@ -19,6 +19,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/platform/netguard"
 )
 
 const (
@@ -84,6 +86,11 @@ func startXboxDeviceCodeWithURL(ctx context.Context, client *http.Client, client
 
 	if client == nil {
 		client = &http.Client{Timeout: 20 * time.Second}
+	}
+	// Mode démo : aucune sortie tierce (le flux est démarrable depuis le web, pas seulement
+	// depuis la CLI). Défense en profondeur : la garde démo en écriture refuse déjà les routes.
+	if gErr := netguard.Check(ctx, "xbox_device_code.start"); gErr != nil {
+		return nil, fmt.Errorf("xbox_device_code: start: %w", gErr)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -171,6 +178,9 @@ func pollXboxDeviceCodeWithURL(
 		}
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
+		if gErr := netguard.Check(ctx, "xbox_device_code.poll"); gErr != nil {
+			return "", "", fmt.Errorf("xbox_device_code: poll: %w", gErr)
+		}
 		resp, err := client.Do(req)
 		if err != nil {
 			return "", "", fmt.Errorf("xbox_device_code: POST poll: %w", err)

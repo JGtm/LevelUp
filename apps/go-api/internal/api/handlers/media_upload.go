@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,8 +19,49 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	mediapkg "levelup/go-api/internal/media"
 	"levelup/go-api/internal/platform/mediaaudio"
+	"levelup/go-api/internal/platform/slots"
 )
+
+// uploadBusyRetryAfterSec : délai conseillé (Retry-After) à un envoi refusé faute de place.
+const uploadBusyRetryAfterSec = "30"
+
+// maxUploadSize limite la taille totale d'un upload à 500 Mo.
+const maxUploadSize = 500 << 20
+
+// maxUploadFiles limite le nombre de fichiers par requête.
+const maxUploadFiles = 50
+
+// maxConcurrentUploads borne les envois de médias en vol pour tout le process : chacun
+// stage jusqu'à maxUploadSize sur disque et peut lancer des miniatures et un transcodage.
+const maxConcurrentUploads = 2
+
+// defaultUploadSlotWait est l'attente maximale d'une place d'envoi avant le 503 upload_busy.
+const defaultUploadSlotWait = 30 * time.Second
+
+// defaultUploadBodyReadBudget est le délai de lecture du corps d'un envoi, compté depuis
+// l'obtention de sa place : le budget de lecture d'une requête du serveur (ReadTimeout de
+// cmd/server, compté depuis son arrivée) serait sinon épuisé par l'attente de la place.
+const defaultUploadBodyReadBudget = 15 * time.Second
+
+// globalUploadSlots est le pool d'envois partagé par toutes les instances de MediaHandler.
+var globalUploadSlots = slots.New(maxConcurrentUploads)
+
+// WithUploadSlots remplace le pool global des envois de médias et l'attente maximale
+// d'une place (tests ; en service, le pool global du process s'applique).
+func (h *MediaHandler) WithUploadSlots(pool *slots.Pool, wait time.Duration) *MediaHandler {
+	h.uploadSlots = pool
+	h.uploadSlotWait = wait
+	return h
+}
+
+// WithUploadBodyReadBudget remplace le délai de lecture du corps d'un envoi, compté depuis
+// l'obtention de sa place (tests ; en service, defaultUploadBodyReadBudget s'applique).
+func (h *MediaHandler) WithUploadBodyReadBudget(budget time.Duration) *MediaHandler {
+	h.uploadReadBudget = budget
+	return h
+}
 
 func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	if h.newUpload == nil {
@@ -28,20 +72,35 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, gamertag, titleSlug, dbPath, sharedSocialDBPath, sharedMatchesDBPath, err := h.newUpload(r.Context(), slug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
+		writeErrorFrom(r.Context(), w, http.StatusNotFound, "player_not_found", err)
 		return
 	}
 
+	// Au plus maxConcurrentUploads envois en vol pour tout le process : un envoi de plus
+	// attend sa place, puis reçoit un 503 upload_busy clair s'il l'attend trop longtemps.
+	release, ok := h.acquireUploadSlot(r.Context(), w)
+	if !ok {
+		return
+	}
+	defer release()
+	h.restartBodyReadDeadline(r.Context(), w)
+
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		writeError(r.Context(), w, http.StatusRequestEntityTooLarge, "upload_too_large",
-			"fichiers trop volumineux (max 500 Mo)")
+		refuseUnreadableUpload(r.Context(), w, err)
 		return
 	}
 
 	files, err := parseUploadedFiles(r)
+	if errors.Is(err, errUploadContentMismatch) {
+		slog.WarnContext(r.Context(), "upload: contenu non concordant avec l'extension, envoi refusé",
+			"player", gamertag, "err", err)
+		writeError(r.Context(), w, http.StatusUnsupportedMediaType, "upload_content_mismatch",
+			"file content does not match its extension")
+		return
+	}
 	if err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "upload_parse_error", err.Error())
+		writeErrorFrom(r.Context(), w, http.StatusBadRequest, "upload_parse_error", err)
 		return
 	}
 	if len(files) == 0 {
@@ -89,7 +148,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	result, err := svc.UploadMedia(r.Context(), req)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "upload: erreur service", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "upload_error", err.Error())
+		writeErrorFrom(r.Context(), w, http.StatusInternalServerError, "upload_error", err)
 		return
 	}
 
@@ -97,6 +156,61 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	BumpMediaFeedVersion()
 	h.emitMediaAdded(r.Context(), slug, gamertag, result.NewIndexed,
 		uploadStart, sharedSocialDBPath, sharedMatchesDBPath)
+}
+
+// acquireUploadSlot prend une place d'envoi, en attendant au plus uploadSlotWait. Sans
+// place, répond 503 upload_busy (Retry-After) et rend ok=false.
+func (h *MediaHandler) acquireUploadSlot(ctx context.Context, w http.ResponseWriter) (release func(), ok bool) {
+	pool, wait := h.uploadSlots, h.uploadSlotWait
+	if pool == nil {
+		pool = globalUploadSlots
+	}
+	if wait <= 0 {
+		wait = defaultUploadSlotWait
+	}
+	waitCtx, cancel := context.WithTimeout(ctx, wait)
+	defer cancel()
+	release, err := pool.Acquire(waitCtx)
+	if err != nil {
+		slog.WarnContext(ctx, "upload: aucune place d'envoi libre, requête refusée",
+			"wait", wait.String(), "in_flight", pool.InUse(), "waiting", pool.Waiting(), "err", err)
+		w.Header().Set(headerRetryAfter, uploadBusyRetryAfterSec)
+		writeError(ctx, w, http.StatusServiceUnavailable, "upload_busy",
+			"server busy with other uploads, retry shortly")
+		return nil, false
+	}
+	return release, true
+}
+
+// restartBodyReadDeadline repart d'un budget de lecture complet pour le corps, une fois la
+// place obtenue : l'attente de la place (jusqu'à uploadSlotWait) ne consomme pas le délai de
+// lecture de la requête. Une connexion qui ne permet pas de reporter l'échéance garde celle
+// du serveur (journalisé).
+func (h *MediaHandler) restartBodyReadDeadline(ctx context.Context, w http.ResponseWriter) {
+	budget := h.uploadReadBudget
+	if budget <= 0 {
+		budget = defaultUploadBodyReadBudget
+	}
+	if err := http.NewResponseController(w).SetReadDeadline(time.Now().Add(budget)); err != nil {
+		slog.WarnContext(ctx, "upload: échéance de lecture du corps non reportée", "err", err)
+	}
+}
+
+// refuseUnreadableUpload répond à un corps d'envoi illisible : 413 au-delà de maxUploadSize ;
+// 503 upload_busy + Retry-After quand le corps n'est pas arrivé dans son délai de lecture
+// (le client peut réessayer) ; 413 sinon.
+func refuseUnreadableUpload(ctx context.Context, w http.ResponseWriter, err error) {
+	var tooLarge *http.MaxBytesError
+	if !errors.As(err, &tooLarge) && errors.Is(err, os.ErrDeadlineExceeded) {
+		slog.WarnContext(ctx, "upload: corps non reçu dans son délai de lecture", "err", err)
+		w.Header().Set(headerRetryAfter, uploadBusyRetryAfterSec)
+		writeError(ctx, w, http.StatusServiceUnavailable, "upload_busy",
+			"upload body not received in time, retry shortly")
+		return
+	}
+	slog.WarnContext(ctx, "upload: corps refusé", "err", err)
+	writeError(ctx, w, http.StatusRequestEntityTooLarge, "upload_too_large",
+		"fichiers trop volumineux (max 500 Mo)")
 }
 
 // parseUploadedFiles extrait et valide les fichiers du formulaire multipart.
@@ -124,22 +238,17 @@ func parseUploadedFiles(r *http.Request) ([]domain.UploadedFile, error) {
 	out := make([]domain.UploadedFile, 0, len(headers))
 	for i, fh := range headers {
 		ext := strings.ToLower(filepath.Ext(fh.Filename))
-		if !allowedMediaExts[ext] {
+		if !mediapkg.IsUploadableExt(ext) {
 			slog.Warn("upload: extension refusée", "file", fh.Filename, "ext", ext)
 			continue
 		}
-		f, err := fh.Open()
-		if err != nil {
-			return nil, fmt.Errorf("lecture %s: %w", fh.Filename, err)
+		if err := checkUploadedContent(fh, ext); err != nil {
+			return nil, err
 		}
-		data, err := io.ReadAll(f)
-		f.Close()
-		if err != nil {
-			return nil, fmt.Errorf("lecture données %s: %w", fh.Filename, err)
-		}
+		// Le contenu n'est PAS lu ici : le service le copie en flux vers le disque.
 		uf := domain.UploadedFile{
 			OriginalName: fh.Filename,
-			Data:         data,
+			Open:         func() (io.ReadCloser, error) { return fh.Open() },
 		}
 		if i < len(clientTimes) && clientTimes[i] > 0 {
 			ts := clientTimes[i]
@@ -152,3 +261,26 @@ func parseUploadedFiles(r *http.Request) ([]domain.UploadedFile, error) {
 
 // GetMediaMatchCandidates retourne les matchs candidats pour réassocier un média.
 // GET /api/v1/players/{player_slug}/media/match-candidates?file_path=...&window_minutes=15
+
+// errUploadContentMismatch : le contenu d'un fichier envoyé ne concorde pas avec son
+// extension (PostUploadMedia répond 415 upload_content_mismatch, rien n'est écrit).
+var errUploadContentMismatch = errors.New("contenu non concordant avec l'extension")
+
+// checkUploadedContent lit la tête du fichier (au plus media.SniffLen octets) et vérifie
+// qu'elle concorde avec la famille de son extension (media.ContentMatchesExtension).
+func checkUploadedContent(fh *multipart.FileHeader, ext string) error {
+	f, err := fh.Open()
+	if err != nil {
+		return fmt.Errorf("ouverture de %q : %w", fh.Filename, err)
+	}
+	defer f.Close()
+	head := make([]byte, mediapkg.SniffLen)
+	n, err := io.ReadFull(f, head)
+	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("lecture de %q : %w", fh.Filename, err)
+	}
+	if !mediapkg.ContentMatchesExtension(ext, head[:n]) {
+		return fmt.Errorf("%w : %q", errUploadContentMismatch, fh.Filename)
+	}
+	return nil
+}

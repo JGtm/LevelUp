@@ -75,6 +75,7 @@ func (d *Directory) Onboard(ctx context.Context, req domain.OnboardRequest) (dom
 		XUID:              req.XUID,
 		TitleSlug:         titleSlug,
 		InitialMaxMatches: req.InitialMaxMatches,
+		AllowXUIDChange:   req.ActorIsAdmin,
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "directory: création de profil échouée", "err", err,

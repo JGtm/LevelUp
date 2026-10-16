@@ -129,6 +129,10 @@ en = "Settings tabs"
 fr = "Ouvrir le menu de navigation"
 en = "Open navigation menu"
 
+[common.shell.dismiss]
+fr = "Fermer"
+en = "Dismiss"
+
 [common.shell.nav_menu_close]
 fr = "Fermer le menu"
 en = "Close menu"
@@ -380,6 +384,83 @@ en = "Invalid credentials."
 [common.auth.connection_error]
 fr = "Erreur de connexion."
 en = "Connection error."
+
+[common.auth.too_many_attempts]
+fr = "Trop de tentatives de connexion. Réessayez dans 15 minutes."
+en = "Too many sign-in attempts. Try again in 15 minutes."
+
+# ─── Mot de passe du compte (SetPasswordCard) ───────────────────────────────
+
+[common.auth.set_password_title]
+fr = "Définir un mot de passe"
+en = "Set a password"
+
+[common.auth.change_password_title]
+fr = "Changer ton mot de passe"
+en = "Change your password"
+
+[common.auth.set_password_desc]
+fr = "Optionnel — permet de te reconnecter rapidement sans repasser par Xbox."
+en = "Optional — lets you sign back in quickly without going through Xbox."
+
+[common.auth.current_password]
+fr = "Mot de passe actuel"
+en = "Current password"
+
+[common.auth.new_password]
+fr = "Nouveau mot de passe"
+en = "New password"
+
+[common.auth.set_password_submit]
+fr = "Enregistrer"
+en = "Save"
+
+[common.auth.set_password_saved]
+fr = "Mot de passe enregistré."
+en = "Password saved."
+
+[common.auth.password_too_short]
+fr = "Le mot de passe doit faire au moins 8 caractères."
+en = "The password must be at least 8 characters long."
+
+[common.auth.password_too_long]
+fr = "Le mot de passe est trop long (72 octets au plus)."
+en = "The password is too long (72 bytes at most)."
+
+[common.auth.current_password_required]
+fr = "Saisis ton mot de passe actuel."
+en = "Enter your current password."
+
+[common.auth.current_password_invalid]
+fr = "Mot de passe actuel incorrect."
+en = "The current password is incorrect."
+
+[common.auth.set_password_failed]
+fr = "Le mot de passe n'a pas pu être enregistré."
+en = "The password could not be saved."
+
+# Refus du callback de connexion Xbox (/login?oauth_error=<code>, loginError.oauthErrorKey).
+# instance_locked reprend common.auth.register_instance_closed.
+
+[common.auth.oauth_invite_invalid]
+fr = "Cette invitation n'est plus valable. Demande un nouveau lien à la personne qui t'a invité."
+en = "This invitation is no longer valid. Ask the person who invited you for a new link."
+
+[common.auth.oauth_denied]
+fr = "Connexion Microsoft annulée."
+en = "Microsoft sign-in was cancelled."
+
+[common.auth.oauth_interrupted]
+fr = "La connexion a expiré ou a été interrompue. Réessaie."
+en = "The sign-in expired or was interrupted. Please try again."
+
+[common.auth.oauth_exchange_failed]
+fr = "Microsoft ou Xbox n'a pas répondu. Réessaie dans un instant."
+en = "Microsoft or Xbox did not respond. Please try again in a moment."
+
+[common.auth.oauth_failed]
+fr = "La connexion n'a pas pu aboutir. Réessaie."
+en = "Sign-in could not be completed. Please try again."
 
 # ─── Help menu ───────────────────────────────────────────────────────────
 
@@ -738,6 +819,14 @@ en = "{saved, plural, one {# file imported} other {# files imported}} · {indexe
 [common.media.upload_error]
 fr = "Échec de l'import"
 en = "Upload failed"
+
+[common.media.upload_busy]
+fr = "Le serveur traite déjà d'autres envois. Réessaie dans quelques instants."
+en = "The server is already processing other uploads. Try again in a moment."
+
+[common.media.upload_content_mismatch]
+fr = "Un des fichiers n'est pas une vidéo ou une image valide : son contenu ne correspond pas à son extension."
+en = "One of the files is not a valid video or image: its content does not match its extension."
 
 [common.media.associate_success]
 fr = "Média associé au match"
@@ -1889,15 +1978,15 @@ en = "The connection to the server was interrupted several times. Please try aga
 fr = "Impossible de redémarrer le flow."
 en = "Unable to restart the flow."
 
+[common.xbox_login.err_busy]
+fr = "Trop de connexions en cours. Réessaie dans une minute."
+en = "Too many sign-ins in progress. Try again in a minute."
+
 [common.xbox_login.valid_for]
 fr = "Valide encore"
 en = "Valid for"
 
 # ─── Setup : device-code + sync initiale (I1, 2026-07-05) ────────────────────
-[common.device_code.err_denied]
-fr = "La demande Microsoft a été refusée ou annulée."
-en = "The Microsoft request was denied or cancelled."
-
 [common.device_code.err_ms]
 fr = "Erreur lors de l'authentification Microsoft."
 en = "Error during Microsoft authentication."
@@ -1942,6 +2031,10 @@ en = "Sync was interrupted. It can be restarted."
 fr = "Erreur inattendue. Veuillez réessayer."
 en = "Unexpected error. Please try again."
 
+[common.initial_sync.err_busy]
+fr = "Une autre synchronisation de ce joueur est déjà en cours. Réessaie dans un instant."
+en = "Another sync of this player is already running. Try again in a moment."
+
 [common.initial_sync.starting]
 fr = "Démarrage…"
 en = "Starting…"
@@ -1966,6 +2059,10 @@ en = "Passwords do not match."
 [common.auth.register_err_user_exists]
 fr = "Ce nom d'utilisateur est déjà pris."
 en = "This username is already taken."
+
+[common.auth.register_err_invalid_username]
+fr = "Nom d'utilisateur invalide (3 à 30 caractères : lettres, chiffres, _ ou -)."
+en = "Invalid username (3 to 30 characters: letters, digits, _ or -)."
 
 [common.auth.register_err_invite_required]
 fr = "Un code d'invitation est requis."
@@ -2003,6 +2100,10 @@ en = "File too large (max {max} GB)."
 [common.onboarding.import_start_failed]
 fr = "Échec du démarrage de l'import"
 en = "Failed to start import"
+
+[common.onboarding.import_err_already_active]
+fr = "Un import est déjà en cours pour ce compte. Attends qu'il se termine."
+en = "An import is already running for this account. Wait for it to finish."
 
 [common.onboarding.cancel]
 fr = "Annuler"

@@ -133,7 +133,7 @@ func TestAdminIdentitiesHandler_Gating_401_403(t *testing.T) {
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(false, "password"))
-		r.Use(middleware.RequireAdmin(false, "password"))
+		r.Use(middleware.RequireAdmin(false, "password", gateAccounts))
 		r.Route("/admin", func(r chi.Router) { h.Mount(r) })
 	})
 
@@ -156,7 +156,8 @@ func TestAdminIdentitiesHandler_Gating_401_403(t *testing.T) {
 		t.Errorf("non-admin : status=%d, want 403", code)
 	}
 	roleAdmin := "admin"
-	if code := serve(&domain.SessionData{Username: &user, Role: &roleAdmin}); code != http.StatusOK {
+	boss := "boss"
+	if code := serve(&domain.SessionData{Username: &boss, Role: &roleAdmin}); code != http.StatusOK {
 		t.Errorf("admin : status=%d, want 200", code)
 	}
 }

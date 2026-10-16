@@ -20,12 +20,12 @@ type DeviceFlowStartResponse struct {
 
 // DeviceFlowStatusResponse est la réponse à GET /auth/device-flow/{id}.
 type DeviceFlowStatusResponse struct {
-	AttemptID   string  `json:"attempt_id"`
-	Status      string  `json:"status" enum:"pending,authorized,provisioned,failed,expired"`
-	Gamertag    *string `json:"gamertag,omitempty"`
-	XUID        *string `json:"xuid,omitempty"`
-	ErrorCode   *string `json:"error_code,omitempty"`
-	ErrorDetail *string `json:"error_detail,omitempty"`
+	AttemptID string  `json:"attempt_id"`
+	Status    string  `json:"status" enum:"pending,authorized,provisioned,failed,expired"`
+	Gamertag  *string `json:"gamertag,omitempty"`
+	XUID      *string `json:"xuid,omitempty"`
+	// ErrorCode : code machine du refus ; le texte de l'erreur reste au journal.
+	ErrorCode *string `json:"error_code,omitempty"`
 }
 
 // HaloTokens regroupe les tokens Halo Infinite obtenus après la chaîne d'échange.

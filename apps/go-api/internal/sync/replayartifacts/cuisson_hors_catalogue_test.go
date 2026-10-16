@@ -43,18 +43,18 @@ func TestBuildAll_CarteHorsCatalogue_UnWarnParCarteEtParCycle(t *testing.T) {
 		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
 		Fetcher: &fetcherFilms{}, Budget: time.Minute, Gamertag: "JGtm",
 		BuildOne: func(_ context.Context, req BuildOneRequest) (BuildOneResult, error) {
-			if req.MatchID == "ordinaire" {
+			if req.MatchID == "0000d0a1" {
 				return BuildOneResult{}, errors.New("echec ordinaire")
 			}
 			return BuildOneResult{}, horsCatalogue(req.MapNames)
 		},
 	}
 	b := buildAll(context.Background(), d, []buildWork{
-		{matchID: "d1", mapNames: []string{"Detachment"}},
-		{matchID: "f1", mapNames: []string{"Forge Arena"}},
-		{matchID: "d2", mapNames: []string{"Detachment"}},
-		{matchID: "ordinaire", mapNames: []string{"Streets"}},
-		{matchID: "d3", mapNames: []string{"Detachment"}},
+		{matchID: "0000d001", mapNames: []string{"Detachment"}},
+		{matchID: "0000f001", mapNames: []string{"Forge Arena"}},
+		{matchID: "0000d002", mapNames: []string{"Detachment"}},
+		{matchID: "0000d0a1", mapNames: []string{"Streets"}},
+		{matchID: "0000d003", mapNames: []string{"Detachment"}},
 	})
 
 	if b.echecs != 5 {
@@ -93,7 +93,7 @@ func TestBuildAll_SansCarteHorsCatalogue_AucunWarnDeCarte(t *testing.T) {
 			return BuildOneResult{}, errors.New("echec ordinaire")
 		},
 	}
-	buildAll(context.Background(), d, []buildWork{{matchID: "m1", mapNames: []string{"Streets"}}})
+	buildAll(context.Background(), d, []buildWork{{matchID: "0000a001", mapNames: []string{"Streets"}}})
 	if aDit(t, buf, "WARN", "carte hors catalogue de bornes") {
 		t.Error("aucune carte hors catalogue : aucun WARN de carte attendu")
 	}

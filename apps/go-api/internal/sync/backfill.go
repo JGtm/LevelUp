@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+
+	"levelup/go-api/internal/domain/title"
 )
 
 // FindMatchesMissingData trouve les matchs avec des données manquantes via shared DB.
@@ -217,14 +219,14 @@ func playerDoneGuard(ctx context.Context, playerDB *sql.DB, table string, column
 	var safePlaceholders []string
 	var rejected []string
 	for _, id := range doneIDs {
-		if isValidMatchID(id) {
+		if title.IsValidMatchID(id) {
 			safePlaceholders = append(safePlaceholders, "'"+id+"'")
 		} else {
 			rejected = append(rejected, id)
 		}
 	}
 	if len(rejected) > 0 {
-		slog.WarnContext(ctx, "playerDoneGuard: malformed match_id(s) rejected by isValidMatchID — guard will treat affected matches as not done",
+		slog.WarnContext(ctx, "playerDoneGuard: malformed match_id(s) rejected by title.IsValidMatchID — guard will treat affected matches as not done",
 			"table", table, "rejected_count", len(rejected),
 			"total_count", len(doneIDs), "sample", rejected[:min(3, len(rejected))])
 	}
@@ -511,18 +513,4 @@ func findMatchesInSharedDB(
 		result = append(result, matchID)
 	}
 	return result, rows.Err()
-}
-
-// isValidMatchID vérifie qu'un match_id est un UUID Halo valide (hex + tirets).
-// Empêche toute injection SQL via des IDs corrompus.
-func isValidMatchID(id string) bool {
-	if len(id) == 0 || len(id) > 64 {
-		return false
-	}
-	for _, c := range id {
-		if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') && c != '-' {
-			return false
-		}
-	}
-	return true
 }

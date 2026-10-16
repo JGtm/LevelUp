@@ -10,6 +10,55 @@
 
 ---
 
+### [perf/tactique] La page Tactique déclenche ~100 requêtes API au chargement
+
+Relevé pendant la recette du chantier sécurité (2026-10-16), noté au backlog à la demande de l'utilisateur :
+l'ouverture de `ascension/tactique` (profil JGtm, données locales) a émis 96 requêtes API d'un coup. Effet
+de bord observé juste après : la vue d'un match a répondu une fois 503 (vérification de participation à court
+de budget, voir l'entrée suivante). Travail : relever les requêtes (probablement une par carte, zone ou
+cellule), regrouper en une ou quelques requêtes par écran (endpoint agrégé ou chargement à la demande), mesurer
+avant/après (nombre de requêtes, temps jusqu'à l'affichage). **Effort : M.**
+
+---
+
+### [sécurité/suites] Deux points relevés par la recette du chantier sécurité (2026-10-16)
+
+Notés au backlog à la demande de l'utilisateur :
+- **Vérification de participation à un match qui répond 503 sous charge.** Le middleware
+  `RequireMatchParticipation` (chantier sécurité, L3-10) refuse (503, fermé par défaut) quand sa requête de
+  vérification dépasse le budget de lecture ; constaté une fois sur la vue d'un match juste après la page
+  Tactique (`participation: vérification impossible err="context deadline exceeded"`, 5,3 s). Piste : mémoriser
+  les vérifications réussies (fait immuable : un joueur a joué un match) et aligner son budget sur celui de la
+  page. **Effort : S.**
+- **Seconde demande de code Xbox après une connexion réussie.** L'écran de connexion relance
+  `POST /auth/device-flow/start` après l'authentification (vu dans le réseau), ce qui consomme une des 3
+  tentatives simultanées autorisées par IP (L5-1). Piste : ne plus démarrer de tentative une fois la session
+  authentifiée. **Effort : S.**
+
+---
+
+### [ops/arrêt] La séquence d'arrêt du serveur peut dépasser le délai de Docker (10 s)
+
+Relevé par le chantier sécurité le 2026-10-16 (D-F1c-1) : arrêt HTTP jusqu'à 15 s + 3 s + 5 s + 5 s avant
+`duckdb.CloseAll`, alors que `docker-compose.yml` ne pose pas de `stop_grace_period` (Docker tue le process au
+bout de 10 s : bases non fermées proprement, WAL à rejouer). Préexistant. Piste : `stop_grace_period: 30s` sur
+les services, et/ou budget d'arrêt global borné dans `cmd/server/main.go` ; corriger le commentaire faux de
+`main.go:1351` (`kill_delay` d'air = 5 s, pas 20 s). **Effort : S.**
+
+---
+
+### [data/LUSR] Le recalcul après exclusion d'un match utilise encore LUSR v1
+
+Relevé par le chantier sécurité le 2026-10-16 (D-L5b-1, `.ai/PLAN_SECURITE_2026-10-15.md`), mis au
+backlog par décision de l'utilisateur du 2026-10-16. `sync/match_recomputer.go` (recalcul déclenché par
+`PATCH …/matches/{id}/exclusion`) appelle `batchComputeLUSR` (v1, mort selon CLAUDE.md), alors que le
+post-sync saute v1 quand `IsLUSRV2Canonical()` est vrai (`sync/engine_postsync_scoring.go:182-185`) et que
+le boot serveur pose `LEVELUP_LUSR_CANONICAL=LUSR_V2` par défaut (`cmd/server/main.go`). À vérifier : ce
+que le v1 écrit réellement en prod après une exclusion (lignes `LUSR` par-dessus le canonique v2 ?).
+Travail : faire passer le recalcul par `RecomputeLUSRCanonicalForPlayer`, test d'intégration. **Effort : S.**
+
+---
+
 ### [sécurité] Durcir le site avant de le partager plus largement — « sûr et solide, pas le Pentagone »
 
 Demandé par l'utilisateur le 2026-10-14 : le site va être partagé plus largement, il faut éviter
@@ -148,6 +197,22 @@ une dette locale ; regrouper en un lot de nettoyage Go. **Effort global : M.**
   exporté dans le snapshot (`ops/snapshot_export.go`) : statistiques d'Assaut absentes d'un match servi du
   snapshot ; un profil suivi dont la player DB n'a jamais été créée devient une panne dite des vues
   (surveiller `friends_extras: open player db failed` au premier déploiement). **M.**
+
+---
+
+### [dette/citations-2026-10-16] Découvertes non traitées du plan des citations Halo 5
+
+Reprises du plan `.ai/V7.5/PLAN_CITATIONS_FILM_2026-10-16.md` (section Découvertes), non traitées.
+- **Premiers frags du profil toujours à 0 sur Infinite** : `computeFKFD`
+  (`internal/progression/profile/queries.go:289-310`) lit un type d'événement `first_kill` qu'Infinite ne
+  stocke pas (seuls `kill`, `death`, `medal`, `mode`). La règle « Premier sang » existe déjà
+  (`analysis.FirstBlood`, sur les frags de `highlight_events`) : la réutiliser. **S.**
+- **Capability `citations.engine` fausse pour Infinite** : `config/titles/halo_infinite/mappings/capabilities.toml`
+  la déclare `not_exposed` alors que le moteur des citations tourne pour ce titre. Vérifier ses lecteurs
+  avant de la passer à `supported`. **S.**
+- **Maîtrise du Fusil Storm absente** : `static/commendations/halo_infinite/HI_Commendations_Storm.png`
+  (image native) n'est utilisée par aucune citation ; ajouter la maîtrise au seed (`weapon_stat`, nom EN
+  canonique de l'arme). **S.**
 
 ---
 

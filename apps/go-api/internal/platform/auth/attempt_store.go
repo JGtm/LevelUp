@@ -11,6 +11,7 @@
 package auth
 
 import (
+	"errors"
 	"sync"
 	"time"
 
@@ -25,6 +26,18 @@ const (
 	AttemptStatusFailed      = "failed"
 	AttemptStatusExpired     = "expired"
 )
+
+// Plafonds de tentatives en attente : chaque tentative lance une boucle de scrutation
+// vers login.live.com (jusqu'à l'expiration du code, ~15 min) ; une session gratuite
+// ne doit pas pouvoir en multiplier le nombre. GetOrCreate refuse (ErrTooManyAttempts)
+// au-delà, toutes IP confondues ou pour une seule IP cliente.
+const (
+	MaxPendingAttempts = 20
+	MaxPendingPerIP    = 3
+)
+
+// ErrTooManyAttempts : un plafond de tentatives en attente est atteint.
+var ErrTooManyAttempts = errors.New("auth: too many pending device-flow attempts")
 
 // defaultAttemptTTL borne la durée de vie d'une tentative dans le store.
 // Au-delà, la tentative est balayée : le device code Microsoft expire de toute
@@ -42,13 +55,13 @@ type Attempt struct {
 	ExpiresInSec    int
 	StartedAt       time.Time
 	SessionID       string
+	ClientIP        string // IP cliente du démarrage (plafond par IP), jamais exposée
 
 	// Champs mis à jour par la goroutine de polling
-	Status      string // pending | authorized | provisioned | failed | expired
-	Gamertag    string
-	XUID        string
-	ErrorCode   string
-	ErrorDetail string
+	Status    string // pending | authorized | provisioned | failed | expired
+	Gamertag  string
+	XUID      string
+	ErrorCode string
 
 	// Référence interne au Device Code Flow (jamais exposé)
 	DevFlow DeviceFlow
@@ -122,10 +135,12 @@ func (s *AttemptStore) purgeExpiredLocked() int {
 	return removed
 }
 
-// GetOrCreate retourne la tentative existante pour une session (si pending),
-// ou crée une nouvelle entrée placeholder. Retourne (attempt, isNew).
-// L'appelant doit remplir DevFlow si isNew est true.
-func (s *AttemptStore) GetOrCreate(sessionID string) (*Attempt, bool) {
+// GetOrCreate retourne la tentative existante pour une session (si pending), ou crée
+// une nouvelle entrée placeholder pour l'IP cliente ip. Retourne (attempt, isNew, err) ;
+// ErrTooManyAttempts si la création dépasserait MaxPendingAttempts (au total) ou
+// MaxPendingPerIP (pour ip). Une tentative déjà en attente pour la session est
+// toujours resservie. L'appelant doit remplir DevFlow si isNew est true.
+func (s *AttemptStore) GetOrCreate(sessionID, ip string) (*Attempt, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -134,19 +149,36 @@ func (s *AttemptStore) GetOrCreate(sessionID string) (*Attempt, bool) {
 
 	if id, ok := s.bySession[sessionID]; ok {
 		if a := s.attempts[id]; a != nil && a.Status == AttemptStatusPending {
-			return a, false
+			return a, false, nil
 		}
+	}
+
+	if s.pendingLocked(nil) >= MaxPendingAttempts || s.pendingLocked(&ip) >= MaxPendingPerIP {
+		return nil, false, ErrTooManyAttempts
 	}
 
 	a := &Attempt{
 		AttemptID: uuid.New().String(),
 		SessionID: sessionID,
+		ClientIP:  ip,
 		StartedAt: time.Now(),
 		Status:    AttemptStatusPending,
 	}
 	s.attempts[a.AttemptID] = a
 	s.bySession[sessionID] = a.AttemptID
-	return a, true
+	return a, true, nil
+}
+
+// pendingLocked compte les tentatives au statut pending : toutes si ip est nil, sinon
+// celles démarrées depuis *ip. L'appelant DOIT tenir s.mu.
+func (s *AttemptStore) pendingLocked(ip *string) int {
+	n := 0
+	for _, a := range s.attempts {
+		if a.Status == AttemptStatusPending && (ip == nil || a.ClientIP == *ip) {
+			n++
+		}
+	}
+	return n
 }
 
 // Get retourne une tentative par ID si elle appartient à la session donnée.

@@ -116,8 +116,9 @@ func TestRecomputeIsWithFriends_EmptyFriendsList_DemotesGracefully(t *testing.T)
 }
 
 // TestRecomputeIsWithFriends_NoXUIDResolved_GracefulNoop couvre le path
-// chaîne complète du wrapper avec DBs réelles (vides) : leases acquises,
-// OpenPlayerDB + OpenSharedDB réussissent (DuckDB crée les fichiers), Core
+// chaîne complète du wrapper avec DBs réelles (vides) : bail joueur acquis,
+// OpenPlayerDB réussit (DuckDB crée le fichier), la base partagée (créée par le test,
+// le wrapper ne la crée plus : lecture seule) est lue, Core
 // est appelé, LookupFriendXUIDs retourne vide (xuid_aliases inexistante /
 // vide) → return gracieux MatchesPromoted=0, FriendXUIDsCount=0.
 //
@@ -129,6 +130,13 @@ func TestRecomputeIsWithFriends_NoXUIDResolved_GracefulNoop(t *testing.T) {
 	tmpDir := t.TempDir()
 	playerPath := filepath.Join(tmpDir, "player.duckdb")
 	sharedPath := filepath.Join(tmpDir, "shared.duckdb")
+	shared, err := OpenSharedDB(sharedPath)
+	if err != nil {
+		t.Fatalf("OpenSharedDB: %v", err)
+	}
+	if err := shared.Close(); err != nil {
+		t.Fatalf("close shared: %v", err)
+	}
 
 	res, err := RecomputeIsWithFriends(
 		context.Background(),

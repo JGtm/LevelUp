@@ -92,7 +92,7 @@ func TestEtatArtefact_UneSeuleLectureParArtefact(t *testing.T) {
 // perime : la seconde question ne se pose meme pas, elle ne doit surtout pas relire.
 func TestEtatArtefact_ArtefactPerime_NeLitQuUneFois(t *testing.T) {
 	repoRoot := t.TempDir()
-	path := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, "vieux")
+	path := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, "0000c001")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestBuildAll_CuissonBloquee_CoupeeEtComptee(t *testing.T) {
 		Budget: time.Minute, DeadlineParFilm: 80 * time.Millisecond,
 		BuildOne: func(ctx context.Context, req BuildOneRequest) (BuildOneResult, error) {
 			appels++
-			if req.MatchID == "bloque" {
+			if req.MatchID == "0000b10c" {
 				<-ctx.Done() // l'enfant ne rend jamais la main : seule la deadline le coupe
 				return BuildOneResult{}, ctx.Err()
 			}
@@ -164,7 +164,7 @@ func TestBuildAll_CuissonBloquee_CoupeeEtComptee(t *testing.T) {
 		},
 	}
 	debut := time.Now()
-	b := buildAll(context.Background(), d, []buildWork{{matchID: "bloque"}, {matchID: "suivant"}})
+	b := buildAll(context.Background(), d, []buildWork{{matchID: "0000b10c"}, {matchID: "0000b10d"}})
 
 	if appels != 2 {
 		t.Fatalf("%d cuisson(s) tentee(s), attendu 2 : le cycle s'est arrete sur le film bloque", appels)
@@ -215,7 +215,7 @@ func TestBuildAll_SoldeSousLePlancher_ReporteSansEchec(t *testing.T) {
 			return BuildOneResult{}, errors.New("aucune cuisson ne doit partir sous le plancher")
 		},
 	}
-	b := buildAll(context.Background(), d, []buildWork{{matchID: "m1"}, {matchID: "m2"}})
+	b := buildAll(context.Background(), d, []buildWork{{matchID: "0000a001"}, {matchID: "0000a002"}})
 
 	if appels != 0 {
 		t.Errorf("%d cuisson(s) lancee(s) sous le plancher, attendu 0", appels)
@@ -249,7 +249,7 @@ func TestBuildAll_SoldeSousLePlancher_SansCuissonCablee_PersisteQuandMeme(t *tes
 		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
 		Fetcher: f, Budget: PlancherCuisson / 2, // sous le plancher, mais positif
 	}
-	b := buildAll(context.Background(), d, []buildWork{{matchID: "m1"}, {matchID: "m2"}})
+	b := buildAll(context.Background(), d, []buildWork{{matchID: "0000a001"}, {matchID: "0000a002"}})
 
 	if b.filmsSauves != 2 {
 		t.Errorf("films persistes = %d, attendu 2 : sans cuisson cablee, le pont disque continue",
@@ -270,14 +270,14 @@ func TestBuildAll_SoldeSousLePlancher_SansCuissonCablee_PersisteQuandMeme(t *tes
 // echouerait donc ici sur son delai de garde au lieu de passer par hasard.
 func TestBuildAll_PrechargeLeFilmSuivantPendantLaCuisson(t *testing.T) {
 	demandeM2 := make(chan struct{})
-	f := &fetcherFilms{signale: map[string]chan struct{}{"m2": demandeM2}}
+	f := &fetcherFilms{signale: map[string]chan struct{}{"0000a002": demandeM2}}
 	avant := runtime.NumGoroutine()
 
 	d := Deps{
 		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
 		Fetcher: f, Budget: time.Minute,
 		BuildOne: func(ctx context.Context, req BuildOneRequest) (BuildOneResult, error) {
-			if req.MatchID == "m1" {
+			if req.MatchID == "0000a001" {
 				select {
 				case <-demandeM2: // le prechargement de m2 est parti PENDANT la cuisson de m1
 				case <-time.After(5 * time.Second):
@@ -288,11 +288,11 @@ func TestBuildAll_PrechargeLeFilmSuivantPendantLaCuisson(t *testing.T) {
 		},
 	}
 	b := buildAll(context.Background(), d,
-		[]buildWork{{matchID: "m1"}, {matchID: "m2"}, {matchID: "m3"}})
+		[]buildWork{{matchID: "0000a001"}, {matchID: "0000a002"}, {matchID: "0000a003"}})
 
 	// L'ORDRE DES ECRITURES EST CELUI DU LOT : precharger ne rebat pas les cartes.
 	ordre := f.ordre()
-	if len(ordre) != 3 || ordre[0] != "m1" || ordre[1] != "m2" || ordre[2] != "m3" {
+	if len(ordre) != 3 || ordre[0] != "0000a001" || ordre[1] != "0000a002" || ordre[2] != "0000a003" {
 		t.Errorf("ordre des films telecharges = %v, attendu [m1 m2 m3]", ordre)
 	}
 	// CHAQUE FILM EST TELECHARGE UNE FOIS : le prechargement est CONSOMME, jamais refait.
@@ -315,7 +315,7 @@ func TestBuildAll_BudgetEpuise_NePrechargePlus(t *testing.T) {
 			return BuildOneResult{}, errors.New("pas de cuisson reelle dans ce cas")
 		},
 	}
-	b := buildAll(context.Background(), d, []buildWork{{matchID: "m1"}, {matchID: "m2"}})
+	b := buildAll(context.Background(), d, []buildWork{{matchID: "0000a001"}, {matchID: "0000a002"}})
 	if !b.budgetEpuise {
 		t.Fatal("le bilan ne signale pas le budget epuise")
 	}
@@ -339,7 +339,7 @@ func TestBuildAll_VerrouTenuAilleurs_CompteEnEchec(t *testing.T) {
 			return BuildOneResult{}, filmproc.ErrDecodeBusy
 		},
 	}
-	b := buildAll(context.Background(), d, []buildWork{{matchID: "m1"}, {matchID: "m2"}})
+	b := buildAll(context.Background(), d, []buildWork{{matchID: "0000a001"}, {matchID: "0000a002"}})
 	if b.echecs != 2 || b.construits != 0 {
 		t.Errorf("bilan = %+v, attendu 2 echecs et 0 construit — un verrou tenu n'est ni un "+
 			"succes ni un arret de cycle", b)

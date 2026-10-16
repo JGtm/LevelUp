@@ -76,20 +76,20 @@ type commendationsPageOutput struct {
 func (h *CitationsHandler) handleGetCitations(ctx context.Context, in *citationsInput) (*citationsPageOutput, error) {
 	svc, _, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.CitationsPageRequest
 	// Body optionnel : décoder uniquement si présent.
 	if len(in.RawBody) > 0 {
 		if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 		}
 	}
 
 	page, err := svc.GetCitationsPage(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "citations_page_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "citations_page_error", err)
 	}
 
 	// Filtrage par catégorie si demandé.
@@ -106,19 +106,19 @@ func (h *CitationsHandler) handleGetCitations(ctx context.Context, in *citations
 func (h *CitationsHandler) handleGetCommendations(ctx context.Context, in *citationsInput) (*commendationsPageOutput, error) {
 	svc, xuid, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.CommendationsPageRequest
 	if len(in.RawBody) > 0 {
 		if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 		}
 	}
 
 	page, err := svc.GetCommendationsPage(ctx, xuid)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "commendations_page_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "commendations_page_error", err)
 	}
 
 	// Filtrage par catégorie si demandé.

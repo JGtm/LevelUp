@@ -23,6 +23,7 @@ import { useTitleCapabilities, hasCapabilityIn } from '@/lib/capabilities/capabi
 import { useSettings } from '@/features/settings/queries'
 import { getSettingsText } from '@/features/settings/i18n'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -256,6 +257,8 @@ export function NavL1() {
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
   const playerSlug = currentPlayer?.player_slug ?? ''
+  // Joueur courant = profil d'un ami : ses notifications ne sont pas celles de la session, pas de cloche.
+  const canWriteCurrent = useCanWritePlayer(playerSlug)
 
   // Gating multi-titre (Phase 5) : on masque les sections / onglets dont la
   // capability n'est pas déclarée par le titre courant. Fail-open (titleCaps null
@@ -420,7 +423,7 @@ export function NavL1() {
       />
 
       {/* ── Cloche notifications (per-player) ────────────────────────────── */}
-      {currentPlayer && <NotificationsBell playerSlug={currentPlayer.player_slug} />}
+      {currentPlayer && canWriteCurrent && <NotificationsBell playerSlug={currentPlayer.player_slug} />}
 
       {/* ── Cluster droit desktop (≥ md) : aide · paramètres (déconnexion dans le menu) ── */}
       <div className="hidden items-center gap-0.5 md:flex">

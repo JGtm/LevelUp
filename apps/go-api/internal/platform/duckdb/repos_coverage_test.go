@@ -5,6 +5,7 @@ package duckdb
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -122,6 +123,42 @@ func TestMatchExclusionRepo_ListExcluded_WithData(t *testing.T) {
 	}
 	if results[0].MatchID != "m1" {
 		t.Fatalf("expected m1, got %s", results[0].MatchID)
+	}
+}
+
+// SetExclusion décide sur le DERNIER état du flag (vue _latest), lu sous le verrou
+// d'écriture de la base joueur : il n'écrit que si l'état change, et le dit.
+func TestMatchExclusionRepo_SetExclusion_DecidesOnLatestState(t *testing.T) {
+	db, err := OpenReadWrite(filepath.Join(t.TempDir(), "stats.duckdb"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	seedPlayerEnrichment(t, db)
+	ctx := context.Background()
+	repo := NewMatchExclusionRepo(&PlayerDB{Player: db, Shared: db})
+
+	for i, step := range []struct{ excluded, wantChanged bool }{
+		{false, false}, // match sans ligne : déjà non exclu
+		{true, true},
+		{true, false},
+		{false, true},
+		{false, false},
+	} {
+		changed, err := repo.SetExclusion(ctx, "m1", step.excluded)
+		if err != nil {
+			t.Fatalf("étape %d : %v", i, err)
+		}
+		if changed != step.wantChanged {
+			t.Fatalf("étape %d (exclu=%v) : changed=%v, attendu %v", i, step.excluded, changed, step.wantChanged)
+		}
+	}
+	var rows int
+	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM player_match_enrichment WHERE stage = 'exclusion'`).Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+	if rows != 2 {
+		t.Fatalf("%d ligne(s) d'exclusion écrites, attendu 2 (un changement d'état par écriture)", rows)
 	}
 }
 

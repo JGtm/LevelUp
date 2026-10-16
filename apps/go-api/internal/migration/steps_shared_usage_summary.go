@@ -59,6 +59,12 @@ func init() {
 		Description: "Colonnes taken_json/spent_json/kept_json/dropped_json sur match_usage_players (les trois issues d'un objet pris, étape E3) + recréation de la vue _latest, qui fige son SELECT * à sa création",
 		ApplySchema: applyMatchUsageOutcomes,
 	})
+	Register(Migration{
+		Name:        "shared_match_usage_players_shieldless_v1",
+		TargetDB:    TargetShared,
+		Description: "Colonne shieldless_kills sur match_usage_players (frags bouclier a 0 suivis de la survie du tueur, citation Presque ca ne compte pas) + recreation de la vue _latest",
+		ApplySchema: applyMatchUsageShieldless,
+	})
 }
 
 // applyMatchUsageOutcomes ajoute les quatre ventilations d'issue au grain (match,
@@ -236,3 +242,13 @@ const ddlMatchUsageFilmsLatest = `
 		PARTITION BY f.match_id ORDER BY f.written_at DESC, f.id DESC
 	);
 `
+
+// applyMatchUsageShieldless ajoute `shieldless_kills`. NULLABLE ET SANS DÉFAUT, à l'inverse des
+// ventilations d'issue : NULL dit « non mesuré » (passes antérieures à `us7`, fil des morts non lu),
+// et c'est une information distincte de zéro.
+func applyMatchUsageShieldless(db *sql.DB) error {
+	if err := addColumnIfMissing(db, "match_usage_players", "shieldless_kills", "INTEGER"); err != nil {
+		return err
+	}
+	return execScript(db, ddlMatchUsagePlayersLatest)
+}

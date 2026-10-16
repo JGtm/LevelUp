@@ -6,7 +6,7 @@
  * En mode auth_mode=none    : redirige vers / (pas de login requis).
  */
 import { useState, type FormEvent } from 'react'
-import { useNavigate, Link } from '@tanstack/react-router'
+import { useNavigate, useSearch, Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,7 +14,9 @@ import { AppFooter } from '@/components/shell/AppFooter'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useLogin } from '@/features/auth/queries'
 import { storePasswordCredential } from '@/features/auth/credentials'
+import { isTooManyLoginAttempts } from '@/features/auth/loginError'
 import { XboxLoginPage } from '@/features/auth/XboxLoginPage'
+import { OAuthErrorNotice } from '@/features/auth/OAuthErrorNotice'
 import { queryKeys } from '@/lib/query/keys'
 import type { ApiError } from '@/lib/api/client'
 import { formatMessage } from '@/lib/i18n/format'
@@ -35,6 +37,8 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   const login = useLogin()
+  // Refus du callback de connexion Xbox : le serveur renvoie ici avec ?oauth_error=<code>.
+  const { oauth_error: oauthError } = useSearch({ strict: false }) as { oauth_error?: unknown }
 
   // Tant que le store n'est pas hydraté depuis /bootstrap, authMode vaut sa
   // valeur par défaut 'none'. Rediriger ici (vers '/') AVANT hydratation faisait
@@ -53,7 +57,7 @@ export function LoginPage() {
 
   // En mode xbox, déléguer au composant SSO (toggle admin password intégré).
   if (authMode === 'xbox') {
-    return <XboxLoginPage />
+    return <XboxLoginPage oauthError={oauthError} />
   }
 
   function handleSubmit(e: FormEvent) {
@@ -70,7 +74,9 @@ export function LoginPage() {
         },
         onError: (err) => {
           const apiErr = err as unknown as ApiError
-          if (apiErr.code === 'invalid_credentials') {
+          if (isTooManyLoginAttempts(apiErr)) {
+            setError(t('common.auth.too_many_attempts'))
+          } else if (apiErr.code === 'invalid_credentials') {
             setError(t('common.auth.invalid_credentials'))
           } else {
             setError(apiErr.message ?? t('common.auth.connection_error'))
@@ -92,6 +98,7 @@ export function LoginPage() {
 
         <Card>
           <CardContent className="pt-6">
+            <OAuthErrorNotice code={oauthError} />
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1">

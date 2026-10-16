@@ -2,7 +2,7 @@
 
 // Package sync — backfill_test.go : tests pour les fonctions pures de backfill.
 //
-// Sprint 47 T16 — couvrir isValidMatchID, doneGuard, et recherche de matchs manquants.
+// Sprint 47 T16 — couvrir la forme de match_id de la garde (title.IsValidMatchID), doneGuard, et recherche de matchs manquants.
 // Note : ce package importe DuckDB transitif → ne compile pas sur Windows (contrainte
 // build constraint windows-amd64). Ces tests sont conçus pour tourner en CI Linux.
 package sync
@@ -12,9 +12,11 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/domain/title"
 )
 
-// ── Tests isValidMatchID ─────────────────────────────────────────────────────
+// ── Tests de la forme de match_id (title.IsValidMatchID, utilisée par la garde) ─────────────────────────────────────────────────────
 
 func TestIsValidMatchID_ValidUUID(t *testing.T) {
 	valid := []string{
@@ -23,15 +25,15 @@ func TestIsValidMatchID_ValidUUID(t *testing.T) {
 		"00000000-0000-0000-0000-000000000000",
 	}
 	for _, id := range valid {
-		if !isValidMatchID(id) {
-			t.Errorf("isValidMatchID(%q) = false, attendu true", id)
+		if !title.IsValidMatchID(id) {
+			t.Errorf("title.IsValidMatchID(%q) = false, attendu true", id)
 		}
 	}
 }
 
 func TestIsValidMatchID_Empty(t *testing.T) {
-	if isValidMatchID("") {
-		t.Error("isValidMatchID('') devrait retourner false")
+	if title.IsValidMatchID("") {
+		t.Error("title.IsValidMatchID('') devrait retourner false")
 	}
 }
 
@@ -40,8 +42,8 @@ func TestIsValidMatchID_TooLong(t *testing.T) {
 	for i := range long {
 		long[i] = 'a'
 	}
-	if isValidMatchID(string(long)) {
-		t.Error("isValidMatchID(65 chars) devrait retourner false")
+	if title.IsValidMatchID(string(long)) {
+		t.Error("title.IsValidMatchID(65 chars) devrait retourner false")
 	}
 }
 
@@ -53,8 +55,8 @@ func TestIsValidMatchID_InvalidChars(t *testing.T) {
 		"' OR '1'='1",
 	}
 	for _, id := range invalid {
-		if isValidMatchID(id) {
-			t.Errorf("isValidMatchID(%q) = true, attendu false", id)
+		if title.IsValidMatchID(id) {
+			t.Errorf("title.IsValidMatchID(%q) = true, attendu false", id)
 		}
 	}
 }

@@ -107,7 +107,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	}
 
 	// --- 1. first_blood : premier kill global, retenu seulement si squad (parité Python identify_first_blood) ---
-	if fb := firstByTime(kills); fb != nil {
+	if fb := FirstBlood(input.Events); fb != nil {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "first_blood",
 			BadgeFR:    "Premier sang",

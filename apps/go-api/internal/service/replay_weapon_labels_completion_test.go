@@ -38,10 +38,10 @@ func artefactSocleMutilator(t *testing.T, root, titleSlug, matchID string) {
 func TestWeaponLabels_CompleteUnArtefactCuitAvantLeRegistre(t *testing.T) {
 	root := t.TempDir()
 	mappingsReels(t, root, title.DefaultSlug)
-	artefactSocleMutilator(t, root, title.DefaultSlug, "match-mutilateur")
+	artefactSocleMutilator(t, root, title.DefaultSlug, "a0000003")
 
 	doc, err := NewReplayService(title.DefaultSlug, root, nil).
-		GetReplay(context.Background(), "match-mutilateur")
+		GetReplay(context.Background(), "a0000003")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
@@ -75,13 +75,13 @@ func TestWeaponLabels_CompleteUnArtefactCuitAvantLeRegistre(t *testing.T) {
 func TestWeaponLabels_CompleteUnArtefactSansAucunLibelle(t *testing.T) {
 	root := t.TempDir()
 	mappingsReels(t, root, title.DefaultSlug)
-	doc := `{"schemaVersion":54,"matchId":"m","titleSlug":"` + title.DefaultSlug + `",` +
+	doc := `{"schemaVersion":54,"matchId":"0000a000","titleSlug":"` + title.DefaultSlug + `",` +
 		`"frameCount":1,"bounds":{"minX":0,"minY":0,"maxX":1,"maxY":1},"tracks":[],` +
 		`"weaponPads":[{"x":0,"y":0,"weapon":"` + familleMutilator + `","spawns":[0]}]}`
-	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "match-nu"), doc)
+	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "a0000004"), doc)
 
 	served, err := NewReplayService(title.DefaultSlug, root, nil).
-		GetReplay(context.Background(), "match-nu")
+		GetReplay(context.Background(), "a0000004")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}

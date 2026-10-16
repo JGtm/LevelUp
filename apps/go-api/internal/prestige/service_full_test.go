@@ -241,7 +241,8 @@ func TestService_SuggestTemplates_AnnotatesCooldown(t *testing.T) {
 // ─── Squad challenges ───
 
 func TestService_CreateSquadChallenge_AutoJoinsCreator(t *testing.T) {
-	svc, _, _, scRepo, _, _ := buildFullService()
+	svc, _, _, scRepo, sqRepo, _ := buildFullService()
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: "x1", UserID: "u1"}} // le créateur est membre
 	sc, err := svc.CreateSquadChallenge(context.Background(), CreateSquadChallengeRequest{
 		SquadID:         "sq1",
 		TitleSlug:       "halo_infinite",
@@ -275,6 +276,26 @@ func TestService_CreateSquadChallenge_CollectiveRequiresTargetPerMember(t *testi
 	})
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Errorf("expected ErrInvalidInput, got %v", err)
+	}
+}
+
+// TestService_CreateSquadChallenge_RejectsNonMember : seul un membre-user de l'escouade
+// y crée un défi (registre sécurité C4-6) ; un ex-membre connaissant l'identifiant
+// n'inscrit rien.
+func TestService_CreateSquadChallenge_RejectsNonMember(t *testing.T) {
+	svc, _, _, scRepo, sqRepo, _ := buildFullService()
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: "x1", UserID: "alice"}}
+	_, err := svc.CreateSquadChallenge(context.Background(), CreateSquadChallengeRequest{
+		SquadID: "sq1", TitleSlug: "halo_infinite",
+		Mode: SquadCollective, EvalType: EvalThreshold, WindowType: WindowSession,
+		TargetPerMember: 5, CreatedBy: "outsider",
+	})
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("non-membre : err = %v, attendu ErrInvalidInput", err)
+	}
+	if len(scRepo.createdChallenges) != 0 || len(scRepo.addedParticipants) != 0 {
+		t.Fatalf("défi écrit pour un non-membre : %d défi(s), %d participant(s)",
+			len(scRepo.createdChallenges), len(scRepo.addedParticipants))
 	}
 }
 
@@ -527,7 +548,8 @@ func TestService_AbandonSquadChallenge_RejectsNonMember(t *testing.T) {
 // TestService_CreateSquadChallenge_ComputesExpiryFromCadence : expires_at dérivé
 // de la cadence du template (weekly → +7 j) quand non fourni explicitement.
 func TestService_CreateSquadChallenge_ComputesExpiryFromCadence(t *testing.T) {
-	svc, _, _, _, _, tplRepo := buildFullService()
+	svc, _, _, _, sqRepo, tplRepo := buildFullService()
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: "x1", UserID: "alice"}} // le créateur est membre
 	fixedNow := time.Date(2026, 7, 23, 12, 0, 0, 0, time.UTC)
 	svc.deps.Now = func() time.Time { return fixedNow }
 	tplRepo.templates = []Template{{ID: "tpl_w", Cadence: CadenceWeekly}}

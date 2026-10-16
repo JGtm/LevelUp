@@ -5,7 +5,10 @@
 //	POST /api/v1/players/{slug}/pages/media  → MediaPageResponse
 package domain
 
-import "time"
+import (
+	"io"
+	"time"
+)
 
 // ---------------------------------------------------------------------------
 // Types de requête — Médias (POST body)
@@ -201,10 +204,11 @@ type MediaLikeResponse struct {
 // Upload
 // ---------------------------------------------------------------------------
 
-// UploadedFile est un fichier reçu via multipart/form-data.
+// UploadedFile est un fichier reçu via multipart/form-data. Son contenu n'est jamais
+// porté en mémoire : Open rend un lecteur que le service copie en flux vers le disque.
 type UploadedFile struct {
 	OriginalName    string
-	Data            []byte
+	Open            func() (io.ReadCloser, error)
 	CaptureTimeUnix *int64 // mtime du fichier côté client (secondes Unix), optionnel
 }
 
@@ -277,9 +281,19 @@ type MediaMatchCandidatesResponse struct {
 }
 
 // MediaAssociateRequest force l'association d'un média à un match précis.
+//
+// Les champs Requester* et AuthEnforced ne viennent jamais du corps : le handler les
+// pose depuis la session (même règle que la suppression, CanModifyMedia).
 type MediaAssociateRequest struct {
 	FilePath string `json:"file_path"`
 	MatchID  string `json:"match_id"`
+
+	// RequesterSlug : profil possédé par l'utilisateur de la session (vide sinon).
+	RequesterSlug string `json:"-"`
+	// RequesterIsAdmin reflète le rôle de session ("admin").
+	RequesterIsAdmin bool `json:"-"`
+	// AuthEnforced vaut true en multi-utilisateur authentifié.
+	AuthEnforced bool `json:"-"`
 }
 
 // MediaAssociateResponse confirme la nouvelle association.

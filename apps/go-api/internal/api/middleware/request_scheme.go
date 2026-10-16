@@ -22,7 +22,7 @@ import (
 // trustProxy DOIT être vrai uniquement si le serveur tourne derrière un proxy qui
 // assainit cet en-tête (LEVELUP_TRUST_PROXY_HEADERS=true) : sinon un client
 // externe peut usurper « X-Forwarded-Proto: https ». Même modèle de confiance que
-// chi RealIP / LoopbackOnly (cf. server.go + loopback.go).
+// la lecture de X-Real-IP pour l'IP cliente (cf. applyTransverseMiddlewares, server.go).
 func RequestIsHTTPS(r *http.Request, trustProxy bool) bool {
 	if r.TLS != nil {
 		return true

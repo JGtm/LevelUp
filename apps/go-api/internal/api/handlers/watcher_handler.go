@@ -190,10 +190,12 @@ func (h *WatcherHandler) handleStartAuth(ctx context.Context, _ *struct{}) (*wat
 
 	flow, err := h.tokenProvider.InitDeviceFlow(ctx)
 	if err != nil {
+		// La tentative ne garde que le code ; la cause va au journal.
+		slog.ErrorContext(ctx, "watcher_handler: démarrage du Device Code Flow watcher échoué",
+			"attempt_id", attempt.AttemptID, "err", err)
 		h.attempts.Update(attempt.AttemptID, func(a *auth_platform.WatcherAttempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "device_flow_init_error"
-			a.ErrorDetail = err.Error()
 		})
 		return nil, humacore.NewError(http.StatusInternalServerError, "device_flow_init_error", "impossible de démarrer le Device Code Flow")
 	}
@@ -292,7 +294,6 @@ func (h *WatcherHandler) pollWatcherAuth(attemptID string, flow auth_platform.De
 		h.attempts.Update(attemptID, func(a *auth_platform.WatcherAttempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = errCodeDeviceFlowAcquire
-			a.ErrorDetail = err.Error()
 		})
 		slog.Warn("watcher_handler: Device Code Flow échoué", "attempt_id", attemptID, "err", err)
 		return
@@ -306,7 +307,6 @@ func (h *WatcherHandler) pollWatcherAuth(attemptID string, flow auth_platform.De
 		h.attempts.Update(attemptID, func(a *auth_platform.WatcherAttempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "xsts_error"
-			a.ErrorDetail = err.Error()
 		})
 		slog.Warn("watcher_handler: XSTS acquisition échouée", "attempt_id", attemptID, "err", err)
 		return

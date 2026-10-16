@@ -37,6 +37,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"levelup/go-api/internal/authz"
 )
@@ -64,6 +65,15 @@ var readOnlyPostExact = map[string]bool{
 	"/engagement/timeseries": true, // série temporelle d'engagement (filtres en corps)
 }
 
+// readOnlyPostPatterns : POST de lecture désignés par un préfixe, UN segment d'identifiant, un
+// suffixe. Un motif par suffixe est plus étroit qu'un préfixe de famille : seule la forme
+// `<préfixe><id><suffixe>` est une lecture, jamais un sous-chemin plus profond.
+var readOnlyPostPatterns = []struct{ prefix, suffix string }{
+	// Suggestion du défi Prestige suivant : lit le défi terminé et le catalogue de gabarits,
+	// n'écrit rien (prestige.service.SuggestNext).
+	{"/prestige/challenges/", "/suggest-next"},
+}
+
 // RequireAuthForMutations retourne un middleware qui exige une session
 // AUTHENTIFIÉE pour toute requête qui écrit, et laisse passer les lectures.
 //
@@ -80,7 +90,7 @@ func RequireAuthForMutations(demoMode bool, authMode string) func(http.Handler) 
 				return
 			}
 			slog.WarnContext(r.Context(), "authz: écriture refusée — aucune session authentifiée",
-				"method", r.Method, "path", r.URL.Path, "ip", r.RemoteAddr)
+				"method", r.Method, "path", r.URL.Path, "ip", chimiddleware.GetClientIP(r.Context()))
 			writeAuthRequired(w)
 		})
 	}
@@ -118,33 +128,22 @@ func isReadOnlyPost(sub string) bool {
 			return true
 		}
 	}
+	for _, p := range readOnlyPostPatterns {
+		if matchesIDPattern(sub, p.prefix, p.suffix) {
+			return true
+		}
+	}
 	return false
 }
 
-// AmbiguousPath dit si le chemin que lisent les gardes peut désigner une AUTRE route que
-// celle que chi résout. chi route sur le chemin BRUT (`URL.RawPath`) ; les gardes lisent le
-// chemin décodé (`URL.Path`). Les deux divergent dès qu'un séparateur ou un point est ENCODÉ
-// (%2F, %5C, %2E) — « coach/proposals/..%2F..%2Fpages/dismiss » se lit « …/pages/dismiss »
-// mais se route vers dismiss — ou qu'un segment « . », « .. » ou vide apparaît. Une telle
-// requête n'est JAMAIS classée en lecture, et aucun nettoyage (path.Clean) ne la rend
-// lisible : la classification ne peut pas s'écarter du routage.
-func AmbiguousPath(r *http.Request) bool {
-	raw := strings.ToLower(r.URL.EscapedPath())
-	for _, enc := range []string{"%2f", "%5c", "%2e"} {
-		if strings.Contains(raw, enc) {
-			return true
-		}
+// matchesIDPattern dit si sub vaut exactement `<prefix><id><suffix>`, id étant un SEUL segment
+// non vide.
+func matchesIDPattern(sub, prefix, suffix string) bool {
+	if !strings.HasPrefix(sub, prefix) || !strings.HasSuffix(sub, suffix) || len(sub) <= len(prefix)+len(suffix) {
+		return false
 	}
-	p := r.URL.Path
-	if strings.ContainsRune(p, '\\') || strings.Contains(p, "//") {
-		return true
-	}
-	for _, seg := range strings.Split(p, "/") {
-		if seg == "." || seg == ".." {
-			return true
-		}
-	}
-	return false
+	id := sub[len(prefix) : len(sub)-len(suffix)]
+	return id != "" && !strings.Contains(id, "/")
 }
 
 // playerScopedSubPath retourne le chemin RELATIF au groupe joueur
@@ -153,13 +152,17 @@ func AmbiguousPath(r *http.Request) bool {
 // Il est recalculé depuis l'URL plutôt que lu dans le RouteContext de chi :
 // au moment où les middlewares du groupe s'exécutent, le motif de la route
 // FINALE n'est pas encore résolu. Le chemin est lu TEL QUEL : un chemin qui ne
-// se lit pas comme il se route est écarté en amont (AmbiguousPath).
+// se lit pas comme il se route (AmbiguousPath) rend "".
 //
 // Dans le groupe, le slug vient du paramètre chi. Hors du groupe (garde démo
 // montée à la racine, où aucun paramètre n'est encore résolu), il est lu dans
 // le chemin sous [playersPathMarker]. Retourne "" hors d'un chemin player-scoped —
-// auquel cas aucun POST n'est réputé en lecture (fail-closed).
+// auquel cas aucun POST n'est réputé en lecture et aucune action de visiteur
+// n'est reconnue (fail-closed).
 func playerScopedSubPath(r *http.Request) string {
+	if AmbiguousPath(r) {
+		return ""
+	}
 	cleaned := r.URL.Path
 	slug := chi.URLParam(r, "player_slug")
 	if slug == "" {

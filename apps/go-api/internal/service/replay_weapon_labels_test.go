@@ -65,10 +65,10 @@ func artefactArmes(t *testing.T, root, titleSlug, matchID string) {
 func TestWeaponLabels_PoseLaTeinteDeLaDecharge(t *testing.T) {
 	root := t.TempDir()
 	mappingsReels(t, root, title.DefaultSlug)
-	artefactArmes(t, root, title.DefaultSlug, "match-armes")
+	artefactArmes(t, root, title.DefaultSlug, "a0000001")
 
 	doc, err := NewReplayService(title.DefaultSlug, root, nil).
-		GetReplay(context.Background(), "match-armes")
+		GetReplay(context.Background(), "a0000001")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
@@ -87,10 +87,10 @@ func TestWeaponLabels_PoseLaTeinteDeLaDecharge(t *testing.T) {
 func TestWeaponKeys_PoseLaCleDuRegistre(t *testing.T) {
 	root := t.TempDir()
 	mappingsReels(t, root, title.DefaultSlug)
-	artefactArmes(t, root, title.DefaultSlug, "match-armes")
+	artefactArmes(t, root, title.DefaultSlug, "a0000001")
 
 	doc, err := NewReplayService(title.DefaultSlug, root, nil).
-		GetReplay(context.Background(), "match-armes")
+		GetReplay(context.Background(), "a0000001")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
@@ -107,10 +107,10 @@ func TestWeaponKeys_PoseLaCleDuRegistre(t *testing.T) {
 func TestWeaponKeys_ArmeHorsRegistreResteMuette(t *testing.T) {
 	root := t.TempDir()
 	mappingsReels(t, root, title.DefaultSlug)
-	artefactArmes(t, root, title.DefaultSlug, "match-armes")
+	artefactArmes(t, root, title.DefaultSlug, "a0000001")
 
 	doc, err := NewReplayService(title.DefaultSlug, root, nil).
-		GetReplay(context.Background(), "match-armes")
+		GetReplay(context.Background(), "a0000001")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
@@ -128,10 +128,10 @@ func TestWeaponKeys_ArmeHorsRegistreResteMuette(t *testing.T) {
 func TestWeaponRoles_PoseLeRoleDuRegistre(t *testing.T) {
 	root := t.TempDir()
 	mappingsReels(t, root, title.DefaultSlug)
-	artefactArmes(t, root, title.DefaultSlug, "match-armes")
+	artefactArmes(t, root, title.DefaultSlug, "a0000001")
 
 	doc, err := NewReplayService(title.DefaultSlug, root, nil).
-		GetReplay(context.Background(), "match-armes")
+		GetReplay(context.Background(), "a0000001")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
@@ -150,10 +150,10 @@ func TestWeaponRoles_PoseLeRoleDuRegistre(t *testing.T) {
 // clés. L'absence de catalogue n'est pas une erreur de lecture du document.
 func TestWeaponKeys_TitreSansCatalogue(t *testing.T) {
 	root := t.TempDir()
-	artefactArmes(t, root, title.DefaultSlug, "match-armes")
+	artefactArmes(t, root, title.DefaultSlug, "a0000001")
 
 	doc, err := NewReplayService(title.DefaultSlug, root, nil).
-		GetReplay(context.Background(), "match-armes")
+		GetReplay(context.Background(), "a0000001")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}

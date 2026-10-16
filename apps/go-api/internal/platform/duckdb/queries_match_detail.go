@@ -182,7 +182,9 @@ ORDER BY tm.xuid`
 // rejeu 2D : capture_end_utc est la FIN de la capture, poser un clip dessus le
 // décalerait de sa propre durée. Le client repositionne à partir du début
 // (start si connu, sinon end − durée). duration_seconds est un DOUBLE en base
-// (ops/media_store.go) et le DTO l'expose en secondes entières.
+// (ops/media_store.go) et le DTO l'expose en secondes entières. owner_slug est le
+// propriétaire du média (media_files.player_slug, règle d'écriture domain.CanModifyMedia) :
+// le front n'offre la réassociation que sur ses propres médias.
 var Q24MatchMedia = `
 SELECT
     mf.id               AS file_id,
@@ -193,6 +195,7 @@ SELECT
     mf.capture_start_utc,
     mf.capture_end_utc,
     mf.duration_seconds,
+    COALESCE(mf.player_slug, '') AS owner_slug,
     COALESCE(mll.is_liked, FALSE) AS liked
 FROM media_files mf
 JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id

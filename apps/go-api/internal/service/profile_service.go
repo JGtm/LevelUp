@@ -79,6 +79,11 @@ func (s *ProfileService) CreatePlayer(req domain.CreatePlayerProfileRequest) (st
 		entry.DBPath = relPlayerDBPath(pr, s.repoRoot, titleSlug, key)
 		entry.WaypointPlayer = req.Gamertag
 		if req.XUID != "" {
+			// La propriété d'un profil suit son xuid (ADR 0029) : un profil existant ne
+			// change de xuid que sur demande d'un admin.
+			if entry.XUID != "" && entry.XUID != req.XUID && !req.AllowXUIDChange {
+				return domain.ErrProfileXUIDConflict
+			}
 			entry.XUID = req.XUID
 		}
 		if req.InitialMaxMatches > 0 {

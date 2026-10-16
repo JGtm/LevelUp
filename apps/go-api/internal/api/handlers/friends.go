@@ -8,9 +8,12 @@
 //
 // Deux portes distinctes, et elles ne disent pas la même chose :
 //   - le middleware d'ownership répond « ce profil t'est-il accessible ? » (403
-//     player_forbidden sinon) — un co-membre de groupe passe ;
+//     player_forbidden sinon) — un co-membre de groupe passe en lecture ; en
+//     écriture il est refusé là, avant ce handler (ADR 0029, accès famille en
+//     lecture seule) ;
 //   - `can_edit` ci-dessous répond « peux-tu l'écrire ? » (D4 : propriétaire
-//     direct ou admin). Un co-membre LIT, il n'écrit pas → 403 friends_forbidden.
+//     direct ou admin) pour l'affichage, et le PUT le revérifie (403
+//     friends_forbidden) quand le handler est monté sans la garde.
 //
 // `can_edit` est porté par la RÉPONSE du GET : c'est la seule source du mode
 // lecture seule côté front, qui n'a jamais à interpréter un 403 pour décider de

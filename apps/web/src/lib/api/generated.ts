@@ -409,6 +409,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Service detail: versions, counters, media tooling (admin auth required) */
+        get: operations["getAdminHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/identities": {
         parameters: {
             query?: never;
@@ -1364,8 +1381,8 @@ export interface paths {
         };
         /**
          * Health check
-         * @description Vérifie l'état du service et de ses dépendances critiques
-         *     (metadata.duckdb, shared_matches_v2.duckdb, db_profiles.json).
+         * @description Sonde publique : 200 `{status}` quand la base partagée s'ouvre et se lit,
+         *     503 sinon. Aucune version ni aucun compteur (détail : `GET /admin/health`).
          */
         get: operations["getHealth"];
         put?: never;
@@ -5047,6 +5064,8 @@ export interface components {
             setup_required: boolean;
             /** @enum {string} */
             setup_state: "no_halo_link" | "halo_linked_no_profile" | "profile_ready_no_sync" | "ready";
+            /** @description Profils de available_players sur lesquels la session peut écrire. */
+            writable_player_slugs: string[] | null;
         };
         BornesMonde: {
             /** Format: double */
@@ -6352,7 +6371,6 @@ export interface components {
         DeviceFlowStatusResponse: {
             attempt_id: string;
             error_code?: string;
-            error_detail?: string;
             gamertag?: string;
             /** @enum {string} */
             status: "pending" | "authorized" | "provisioned" | "failed" | "expired";
@@ -8523,6 +8541,7 @@ export interface components {
             file_path: string;
             kind: string;
             liked: boolean;
+            owner_gamertag?: string;
             thumbnail_url?: string;
         };
         MatchCitation: {
@@ -10726,6 +10745,9 @@ export interface components {
         };
         ProposalsListResponse: {
             items: components["schemas"]["ProposalDTO"][] | null;
+        };
+        PublicHealthResponse: {
+            status: string;
         };
         RadarAxisInsight: {
             axis: string;
@@ -15459,6 +15481,35 @@ export interface operations {
             };
         };
     };
+    getAdminHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     getAdminIdentities: {
         parameters: {
             query?: never;
@@ -17329,13 +17380,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Service opérationnel ou dégradé */
+            /** @description Service opérationnel */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HealthResponse"];
+                    "application/json": components["schemas"]["PublicHealthResponse"];
                 };
             };
             /** @description Error */

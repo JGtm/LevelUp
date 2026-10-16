@@ -57,67 +57,96 @@ var guardMarkers = []string{
 	"RequireWorkerToken",
 }
 
-// publicRoutesAllowlist — routes légitimement accessibles sans garde d'auth.
+// costClass range une route publique selon ce qu'un anonyme peut lui faire faire.
+type costClass string
+
+const (
+	// costCheap : lecture locale bornée, aucun appel sortant, aucune écriture non bornée.
+	costCheap costClass = "cheap"
+	// costOutbound : peut déclencher un appel vers un service tiers (Microsoft, API Halo...).
+	costOutbound costClass = "outbound"
+	// costDisk : peut écrire sur le disque ou en base à la demande d'un anonyme.
+	costDisk costClass = "disk"
+)
+
+// publicRoute : une entrée de l'allowlist. Une route outbound ou disk NOMME le test qui
+// prouve qu'un anonyme n'en tire ni appel sortant ni écriture non bornée ; ce test doit
+// exister (publicRouteProblems).
+type publicRoute struct {
+	class  costClass
+	reason string
+	proof  string // nom d'un Test... existant ; vide pour cheap
+}
+
+func cheap(reason string) publicRoute { return publicRoute{costCheap, reason, ""} }
+func outbound(reason, proof string) publicRoute {
+	return publicRoute{costOutbound, reason, proof}
+}
+func disk(reason, proof string) publicRoute { return publicRoute{costDisk, reason, proof} }
+
+// publicRoutesAllowlist — routes légitimement accessibles sans garde d'auth, chacune
+// avec sa CLASSE DE COÛT (costClass) : le ratchet de présence d'un garde ne voit pas les
+// effets de bord d'une route publique (appel sortant, écriture disque).
 // Établie 2026-07-07 (relevé comportemental croisé + marquage). Clé = « METHOD /route »
 // exact (chi.Walk rend les paramètres {name}). DÉCROISSANTE : n'ajouter qu'avec raison.
-var publicRoutesAllowlist = map[string]string{
+var publicRoutesAllowlist = map[string]publicRoute{
 	// Liveness / readiness (sondes infra, aucune donnée).
-	"GET /health":  "sonde liveness",
-	"GET /healthz": "sonde liveness",
-	"GET /readyz":  "sonde readiness",
+	"GET /health":  cheap("sonde liveness"),
+	"GET /healthz": cheap("sonde liveness"),
+	"GET /readyz":  cheap("sonde readiness"),
 	// Auth-bootstrap (nécessaire AVANT login).
-	"GET /api/v1/auth/device-flow/{attempt_id}": "polling device-flow (onboarding, pas de session)",
-	"POST /api/v1/auth/device-flow/start":       "démarrage device-flow (onboarding) — POST protégé CSRF",
-	"POST /api/v1/auth/login":                   "login local — POST protégé CSRF",
-	"POST /api/v1/auth/logout":                  "logout — POST protégé CSRF",
-	"POST /api/v1/auth/register":                "register (invite) — POST protégé CSRF",
-	"POST /api/v1/auth/password":                "changement mot de passe (session) — POST protégé CSRF",
-	"POST /api/v1/session/context":              "établit le contexte de session (avant login) — POST protégé CSRF",
+	"GET /api/v1/auth/device-flow/{attempt_id}": cheap("polling device-flow (onboarding, pas de session)"),
+	"POST /api/v1/auth/device-flow/start":       outbound("démarrage device-flow (onboarding) — POST protégé CSRF", "TestStartDeviceFlow_PerIPCap"),
+	"POST /api/v1/auth/login":                   cheap("login local — POST protégé CSRF"),
+	"POST /api/v1/auth/logout":                  cheap("logout — POST protégé CSRF"),
+	"POST /api/v1/auth/register":                disk("register (invite) — POST protégé CSRF", "TestRegister_InviteIsSingleUseUnderConcurrency"),
+	"POST /api/v1/auth/password":                cheap("changement mot de passe (session) — POST protégé CSRF"),
+	"POST /api/v1/session/context":              disk("établit le contexte de session (avant login) — POST protégé CSRF", "TestSave_RefusesSessionOverSizeLimit"),
 	// Shell applicatif + annuaire (filtrés par ownership IN-SERVICE, pas au routeur).
-	"GET /api/v1/bootstrap":                  "shell React ; available_players filtré par session dans BootstrapService",
-	"GET /api/v1/players":                    "liste joueurs filtrée par ownership in-service (S4, BuildPlayersList)",
-	"GET /api/v1/directory/gamertags/search": "annuaire gamertags (503 si shared DB absente) — référentiel",
+	"GET /api/v1/bootstrap":                  cheap("shell React ; available_players filtré par session dans BootstrapService"),
+	"GET /api/v1/players":                    cheap("liste joueurs filtrée par ownership in-service (S4, BuildPlayersList)"),
+	"GET /api/v1/directory/gamertags/search": outbound("annuaire gamertags (503 si shared DB absente) — référentiel", "TestGamertagSearch_LiveIgnoredWithoutAuthenticatedSession"),
 	// Contenu public (markdown / version).
-	"GET /api/v1/changelog":          "notes de version (markdown public)",
-	"GET /api/v1/help/release-notes": "contenu public (README)",
-	"GET /api/v1/media/feed-version": "numéro de version de flux (polling public)",
+	"GET /api/v1/changelog":          cheap("notes de version (markdown public)"),
+	"GET /api/v1/help/release-notes": cheap("contenu public (README)"),
+	"GET /api/v1/media/feed-version": cheap("numéro de version de flux (polling public)"),
 	// Référentiels d'images (assets — aucune identité).
-	"GET /api/v1/assets/battlepass/{subdir}/*":                 "référentiel images battlepass",
-	"GET /api/v1/assets/challenge-badge/{title_id}/{badge_id}": "référentiel images badges",
-	"GET /api/v1/assets/maps/{title_id}/{map_id}/image":        "référentiel images maps",
-	"GET /api/v1/assets/medals/{title_id}/{medal_id}/image":    "référentiel images médailles",
-	"GET /api/v1/assets/spartan/{image_type}/{title_id}/*":     "référentiel images spartan",
-	"GET /api/v1/assets/{title_id}/maps":                       "référentiel catalogue maps",
-	"GET /api/v1/assets/{title_id}/medals":                     "référentiel catalogue médailles",
-	"GET /api/v1/assets/{title_id}/weapons":                    "référentiel catalogue armes",
+	"GET /api/v1/assets/battlepass/{subdir}/*":                 outbound("référentiel images battlepass", "TestAssetRoutes_UnverifiableKindNeedsTrust"),
+	"GET /api/v1/assets/challenge-badge/{title_id}/{badge_id}": outbound("référentiel images badges", "TestAssetRoutes_UnverifiableKindNeedsTrust"),
+	"GET /api/v1/assets/maps/{title_id}/{map_id}/image":        outbound("référentiel images maps", "TestAssetRoutes_MapImage_NewVariantCallsOutOnlyForTrustedCallers"),
+	"GET /api/v1/assets/medals/{title_id}/{medal_id}/image":    outbound("référentiel images médailles", "TestAssetRoutes_UnknownIDDoesNotCallOut"),
+	"GET /api/v1/assets/spartan/{image_type}/{title_id}/*":     outbound("référentiel images spartan", "TestAssetRoutes_UnverifiableKindNeedsTrust"),
+	"GET /api/v1/assets/{title_id}/maps":                       cheap("référentiel catalogue maps"),
+	"GET /api/v1/assets/{title_id}/medals":                     cheap("référentiel catalogue médailles"),
+	"GET /api/v1/assets/{title_id}/weapons":                    cheap("référentiel catalogue armes"),
 	// Référentiels de titre (labels / capacités, montés sans condition). NOTE :
 	// les catalog/{playlists,pairs,maps} sont dep-gated (câblés seulement si le
 	// catalog seasons est branché) → absents du routeur de test démo, donc non
 	// couverts ici ; référentiels GET public par conception (LOT_S table §1).
-	"GET /api/v1/titles/{slug}/capabilities":   "référentiel capacités titre",
-	"GET /api/v1/titles/{slug}/feature-matrix": "référentiel matrice de features",
-	"GET /api/v1/titles/{slug}/field-mappings": "référentiel labels de champs",
+	"GET /api/v1/titles/{slug}/capabilities":   cheap("référentiel capacités titre"),
+	"GET /api/v1/titles/{slug}/feature-matrix": cheap("référentiel matrice de features"),
+	"GET /api/v1/titles/{slug}/field-mappings": cheap("référentiel labels de champs"),
 	// Assets statiques servis par le backend (file-server chi → TOUTES les méthodes).
-	"GET /static/*":                   "assets statiques",
-	"HEAD /static/*":                  "assets statiques (HEAD)",
-	"OPTIONS /static/*":               "assets statiques (preflight)",
-	"POST /static/*":                  "assets statiques (file-server chi, toutes méthodes)",
-	"PUT /static/*":                   "assets statiques (file-server chi, toutes méthodes)",
-	"PATCH /static/*":                 "assets statiques (file-server chi, toutes méthodes)",
-	"DELETE /static/*":                "assets statiques (file-server chi, toutes méthodes)",
-	"CONNECT /static/*":               "assets statiques (file-server chi, toutes méthodes)",
-	"TRACE /static/*":                 "assets statiques (file-server chi, toutes méthodes)",
-	"QUERY /static/*":                 "assets statiques (file-server chi, toutes méthodes) — méthode QUERY ajoutée par go-chi 5.3.1 (bump 2026-08-02)",
-	"GET /static/commendations/*":     "assets statiques commendations",
-	"HEAD /static/commendations/*":    "assets statiques commendations (HEAD)",
-	"OPTIONS /static/commendations/*": "assets statiques commendations (preflight)",
-	"POST /static/commendations/*":    "assets statiques commendations (file-server chi, toutes méthodes)",
-	"PUT /static/commendations/*":     "assets statiques commendations (file-server chi, toutes méthodes)",
-	"PATCH /static/commendations/*":   "assets statiques commendations (file-server chi, toutes méthodes)",
-	"DELETE /static/commendations/*":  "assets statiques commendations (file-server chi, toutes méthodes)",
-	"CONNECT /static/commendations/*": "assets statiques commendations (file-server chi, toutes méthodes)",
-	"TRACE /static/commendations/*":   "assets statiques commendations (file-server chi, toutes méthodes)",
-	"QUERY /static/commendations/*":   "assets statiques commendations (file-server chi, toutes méthodes) — méthode QUERY ajoutée par go-chi 5.3.1 (bump 2026-08-02)",
+	"GET /static/*":                   cheap("assets statiques"),
+	"HEAD /static/*":                  cheap("assets statiques (HEAD)"),
+	"OPTIONS /static/*":               cheap("assets statiques (preflight)"),
+	"POST /static/*":                  cheap("assets statiques (file-server chi, toutes méthodes)"),
+	"PUT /static/*":                   cheap("assets statiques (file-server chi, toutes méthodes)"),
+	"PATCH /static/*":                 cheap("assets statiques (file-server chi, toutes méthodes)"),
+	"DELETE /static/*":                cheap("assets statiques (file-server chi, toutes méthodes)"),
+	"CONNECT /static/*":               cheap("assets statiques (file-server chi, toutes méthodes)"),
+	"TRACE /static/*":                 cheap("assets statiques (file-server chi, toutes méthodes)"),
+	"QUERY /static/*":                 cheap("assets statiques (file-server chi, toutes méthodes) — méthode QUERY ajoutée par go-chi 5.3.1 (bump 2026-08-02)"),
+	"GET /static/commendations/*":     cheap("assets statiques commendations"),
+	"HEAD /static/commendations/*":    cheap("assets statiques commendations (HEAD)"),
+	"OPTIONS /static/commendations/*": cheap("assets statiques commendations (preflight)"),
+	"POST /static/commendations/*":    cheap("assets statiques commendations (file-server chi, toutes méthodes)"),
+	"PUT /static/commendations/*":     cheap("assets statiques commendations (file-server chi, toutes méthodes)"),
+	"PATCH /static/commendations/*":   cheap("assets statiques commendations (file-server chi, toutes méthodes)"),
+	"DELETE /static/commendations/*":  cheap("assets statiques commendations (file-server chi, toutes méthodes)"),
+	"CONNECT /static/commendations/*": cheap("assets statiques commendations (file-server chi, toutes méthodes)"),
+	"TRACE /static/commendations/*":   cheap("assets statiques commendations (file-server chi, toutes méthodes)"),
+	"QUERY /static/commendations/*":   cheap("assets statiques commendations (file-server chi, toutes méthodes) — méthode QUERY ajoutée par go-chi 5.3.1 (bump 2026-08-02)"),
 }
 
 // routeIsGuarded — vrai si la chaîne de middlewares de la route contient au moins

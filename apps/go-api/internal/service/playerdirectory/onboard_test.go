@@ -258,3 +258,20 @@ func TestOnboard_GamertagVide(t *testing.T) {
 		t.Errorf("aucune ecriture ne doit avoir lieu, %d appels", creator.calls)
 	}
 }
+
+// TestOnboard_XUIDChangeOnlyForAdmin : seul un admin peut changer le xuid d'un profil
+// existant ; le droit est transmis au créateur, jamais présumé.
+func TestOnboard_XUIDChangeOnlyForAdmin(t *testing.T) {
+	for _, admin := range []bool{false, true} {
+		creator := newFakeCreator("Spartan")
+		d := newTestDirectory(t, Deps{Profiles: &fakeProfiles{}, Creator: creator})
+		req := onboardRequest()
+		req.ActorIsAdmin = admin
+		if _, err := d.Onboard(context.Background(), req); err != nil {
+			t.Fatalf("Onboard: %v", err)
+		}
+		if creator.lastReq.AllowXUIDChange != admin {
+			t.Fatalf("admin=%v : AllowXUIDChange=%v", admin, creator.lastReq.AllowXUIDChange)
+		}
+	}
+}
