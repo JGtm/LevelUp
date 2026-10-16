@@ -10,9 +10,14 @@ import (
 	"time"
 )
 
-// MaxRunDuration borne chaque recalcul (et chaque rattrapage) lancé par une Runs, et l'attente
-// des recalculs en vol à l'arrêt du process (Drain, cmd/server).
+// MaxRunDuration borne chaque recalcul (et chaque rattrapage) lancé par une Runs.
 const MaxRunDuration = 10 * time.Minute
+
+// DrainWait borne l'attente, à l'arrêt du process, des recalculs en vol que Drain vient
+// d'annuler (cmd/server). Elle reste bien sous le délai d'arrêt accordé par l'hôte (Docker :
+// 10 s puis SIGKILL ; air : kill_delay de 5 s) pour que la suite de la séquence d'arrêt
+// (files de persistance, fermeture des bases) ait lieu.
+const DrainWait = 2 * time.Second
 
 // ErrDraining est rendue à toute demande déposée après le début de l'arrêt (Drain) : aucun
 // recalcul n'est lancé ni absorbé.
@@ -38,8 +43,9 @@ var ErrDraining = errors.New("coalesce: arrêt en cours, recalcul refusé")
 // qu'il reçoit alors en erreur.
 //
 // Les recalculs en vol de toutes les Runs du process sont suivis : Drain, appelé à l'arrêt
-// avant la fermeture des bases, refuse toute nouvelle demande (ErrDraining) et attend leur
-// fin.
+// avant la fermeture des bases, refuse toute nouvelle demande (ErrDraining), annule les
+// recalculs en vol (cause ErrDraining : aucun rattrapage n'est plus lancé) et attend leur
+// fin, au plus jusqu'à l'échéance qu'on lui donne.
 //
 // Les demandeurs reçoivent l'erreur du dernier recalcul. Une clé dont le dernier recalcul a
 // échoué est retenue (FailedLast) jusqu'au prochain succès : l'appelant sait alors qu'une
@@ -88,7 +94,7 @@ func (c *Runs) Do(ctx context.Context, key string, fn func(context.Context) erro
 
 	go func() {
 		defer tracker.end()
-		c.loop(context.WithoutCancel(ctx), key, run, fn)
+		c.loop(context.WithoutCancel(ctx), tracker, key, run, fn)
 	}()
 	return run.wait(ctx)
 }
@@ -104,11 +110,15 @@ func (run *coalescedRun) wait(ctx context.Context) error {
 }
 
 // loop enchaîne le recalcul et ses rattrapages tant que des demandes ont été absorbées,
-// puis publie le résultat aux demandeurs.
-func (c *Runs) loop(ctx context.Context, key string, run *coalescedRun, fn func(context.Context) error) {
+// puis publie le résultat aux demandeurs. Une fois l'arrêt commencé, aucun rattrapage n'est
+// lancé : les demandes absorbées reçoivent ErrDraining.
+func (c *Runs) loop(ctx context.Context, tracker *inflightRuns, key string, run *coalescedRun, fn func(context.Context) error) {
 	for {
-		err := c.runBounded(ctx, key, fn)
+		err := c.runBounded(ctx, tracker, key, fn)
 		c.mu.Lock()
+		if run.dirty && err == nil && tracker.draining() {
+			err = ErrDraining
+		}
 		if run.dirty && err == nil {
 			run.dirty = false
 			c.mu.Unlock()
@@ -130,17 +140,27 @@ func (c *Runs) loop(ctx context.Context, key string, run *coalescedRun, fn func(
 	}
 }
 
-// runBounded exécute un recalcul sous son échéance ; un recalcul interrompu par elle rend
-// une erreur qui la nomme, journalisée.
-func (c *Runs) runBounded(ctx context.Context, key string, fn func(context.Context) error) error {
+// runBounded exécute un recalcul sous son échéance et sous l'arrêt du process (Drain annule
+// son contexte, cause ErrDraining). Un recalcul interrompu par l'une ou l'autre rend une
+// erreur qui la nomme, journalisée ; celle de l'arrêt enveloppe ErrDraining.
+func (c *Runs) runBounded(ctx context.Context, tracker *inflightRuns, key string, fn func(context.Context) error) error {
 	bound := c.maxDuration
 	if bound <= 0 {
 		bound = MaxRunDuration
 	}
-	runCtx, cancel := context.WithTimeout(ctx, bound)
+	stopCtx, stop := context.WithCancelCause(ctx)
+	defer stop(nil)
+	unwatch := context.AfterFunc(tracker.shutdownContext(), func() { stop(ErrDraining) })
+	defer unwatch()
+	runCtx, cancel := context.WithTimeout(stopCtx, bound)
 	defer cancel()
 	err := runGuarded(runCtx, key, fn)
-	if err != nil && errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+	switch {
+	case err == nil:
+	case errors.Is(context.Cause(runCtx), ErrDraining):
+		err = fmt.Errorf("coalesce: recalcul de %q interrompu par l'arrêt : %w (%w)", key, ErrDraining, err)
+		slog.WarnContext(ctx, "coalesce: recalcul interrompu par l'arrêt", "key", key, "err", err)
+	case errors.Is(runCtx.Err(), context.DeadlineExceeded):
 		err = fmt.Errorf("coalesce: recalcul de %q interrompu à son échéance (%s) : %w", key, bound, err)
 		slog.ErrorContext(ctx, "coalesce: recalcul interrompu à son échéance",
 			"key", key, "max_duration", bound.String(), "err", err)
@@ -168,9 +188,10 @@ func (c *Runs) FailedLast(key string) bool {
 	return failed
 }
 
-// Drain refuse toute nouvelle demande de toutes les Runs du process (ErrDraining) puis
-// attend la fin des recalculs en vol, rattrapages compris, au plus jusqu'à l'annulation de
-// ctx (erreur qui l'enveloppe). À appeler une fois, à l'arrêt, avant la fermeture des bases.
+// Drain refuse toute nouvelle demande de toutes les Runs du process (ErrDraining), annule les
+// recalculs en vol (leur contexte, cause ErrDraining ; aucun rattrapage n'est plus lancé) puis
+// attend leur fin, au plus jusqu'à l'annulation de ctx (erreur qui l'enveloppe). À appeler une
+// fois, à l'arrêt, avant la fermeture des bases, sous une échéance courte (DrainWait).
 func Drain(ctx context.Context) error {
 	return inflight.drain(ctx)
 }
@@ -178,12 +199,30 @@ func Drain(ctx context.Context) error {
 // inflight suit les recalculs en vol de toutes les Runs du process.
 var inflight = &inflightRuns{}
 
-// inflightRuns compte les boucles de recalcul en vol et ferme l'admission à l'arrêt.
+// inflightRuns compte les boucles de recalcul en vol, ferme l'admission à l'arrêt et annule
+// alors les recalculs en vol. Sa valeur zéro est prête.
 type inflightRuns struct {
 	mu     sync.Mutex
 	n      int
 	closed bool
 	idle   chan struct{} // fermé quand n retombe à zéro pendant un drain ; nil sinon
+	// shutdown est annulé (cause ErrDraining) au début de l'arrêt ; créé à la première demande.
+	shutdown       context.Context
+	cancelShutdown context.CancelCauseFunc
+}
+
+// shutdownContext rend le contexte annulé au début de l'arrêt.
+func (t *inflightRuns) shutdownContext() context.Context {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.initShutdownLocked()
+	return t.shutdown
+}
+
+func (t *inflightRuns) initShutdownLocked() {
+	if t.shutdown == nil {
+		t.shutdown, t.cancelShutdown = context.WithCancelCause(context.Background())
+	}
 }
 
 // begin admet une boucle de recalcul ; false une fois l'arrêt commencé.
@@ -218,6 +257,8 @@ func (t *inflightRuns) draining() bool {
 func (t *inflightRuns) drain(ctx context.Context) error {
 	t.mu.Lock()
 	t.closed = true
+	t.initShutdownLocked()
+	t.cancelShutdown(ErrDraining)
 	if t.n == 0 {
 		t.mu.Unlock()
 		return nil
@@ -225,12 +266,15 @@ func (t *inflightRuns) drain(ctx context.Context) error {
 	if t.idle == nil {
 		t.idle = make(chan struct{})
 	}
-	idle, pending := t.idle, t.n
+	idle := t.idle
 	t.mu.Unlock()
 	select {
 	case <-idle:
 		return nil
 	case <-ctx.Done():
+		t.mu.Lock()
+		pending := t.n
+		t.mu.Unlock()
 		return fmt.Errorf("coalesce: %d recalcul(s) encore en vol à l'échéance de l'arrêt : %w", pending, ctx.Err())
 	}
 }

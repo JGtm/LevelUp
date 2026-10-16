@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"testing"
+	"time"
+
+	"levelup/go-api/internal/platform/coalesce"
 )
 
 // callPositions rend les positions des appels pkg.name (pkg vide : appel nu) dans le corps
@@ -64,5 +69,56 @@ func TestShutdown_DrainsRecomputesBeforeCloseAll(t *testing.T) {
 	}
 	if drains[0] > closes[0] {
 		t.Error("drainCoalescedRecomputes doit précéder duckdb.CloseAll : un recalcul en vol écrirait sur une base fermée")
+	}
+}
+
+// À l'arrêt, un recalcul coalescé en vol est annulé et l'attente est bornée par
+// coalesce.DrainWait, même si un recalcul ignore son contexte : la suite de la séquence
+// d'arrêt (files de persistance, fermeture des bases) n'est jamais retardée au-delà.
+// Ferme définitivement l'admission des recalculs du process de test (Drain est global).
+func TestDrainCoalescedRecomputes_CancelsInFlightAndWaitsBriefly(t *testing.T) {
+	var runs coalesce.Runs
+	cooperative := make(chan error, 1)
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	started := make(chan struct{}, 2)
+	go func() {
+		cooperative <- runs.Do(context.Background(), "cooperatif", func(ctx context.Context) error {
+			started <- struct{}{}
+			<-ctx.Done()
+			return ctx.Err()
+		})
+	}()
+	go func() {
+		_ = runs.Do(context.Background(), "sourd", func(context.Context) error {
+			started <- struct{}{}
+			<-release
+			return nil
+		})
+	}()
+	<-started
+	<-started
+
+	begin := time.Now()
+	returned := make(chan struct{})
+	go func() {
+		drainCoalescedRecomputes()
+		close(returned)
+	}()
+	select {
+	case <-returned:
+	case <-time.After(coalesce.DrainWait + 3*time.Second):
+		t.Fatalf("drainCoalescedRecomputes n'est pas revenu après %s (borne %s)", time.Since(begin), coalesce.DrainWait)
+	}
+	if elapsed := time.Since(begin); elapsed > coalesce.DrainWait+time.Second {
+		t.Errorf("attente de l'arrêt : %s, attendu au plus environ %s", elapsed, coalesce.DrainWait)
+	}
+	select {
+	case err := <-cooperative:
+		if !errors.Is(err, coalesce.ErrDraining) {
+			t.Errorf("recalcul en vol : %v, attendu une annulation par l'arrêt (ErrDraining)", err)
+		}
+	case <-time.After(time.Second):
+		t.Error("le recalcul en vol n'a pas été annulé par l'arrêt")
 	}
 }

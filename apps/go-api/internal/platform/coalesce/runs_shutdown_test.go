@@ -228,3 +228,82 @@ func TestDrain_DoesNotAbsorbIntoARunningRecompute(t *testing.T) {
 		t.Fatalf("%d recalcul(s), attendu 1 (aucun rattrapage pendant l'arrêt)", calls.Load())
 	}
 }
+
+// L'arrêt annule le recalcul en vol : son contexte est annulé avec la cause ErrDraining, Drain
+// revient dès sa fin, et les demandeurs reçoivent une erreur qui nomme l'arrêt (journalisée).
+func TestDrain_CancelsTheInFlightRecompute(t *testing.T) {
+	isolateInflight(t)
+	logs := captureLogs(t)
+	var c Runs
+	started := make(chan struct{})
+	causes := make(chan error, 1)
+	done := make(chan error, 1)
+	go func() {
+		done <- c.Do(context.Background(), "k", func(ctx context.Context) error {
+			close(started)
+			<-ctx.Done()
+			causes <- context.Cause(ctx)
+			return ctx.Err()
+		})
+	}()
+	<-started
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := Drain(ctx); err != nil {
+		t.Fatalf("Drain : %v, attendu nil (recalcul annulé puis terminé)", err)
+	}
+	if cause := <-causes; !errors.Is(cause, ErrDraining) {
+		t.Errorf("cause de l'annulation du recalcul : %v, attendu ErrDraining", cause)
+	}
+	if err := <-done; !errors.Is(err, ErrDraining) {
+		t.Errorf("Do : %v, attendu une erreur enveloppant ErrDraining", err)
+	}
+	if got := logs.String(); !strings.Contains(got, "interrompu par l'arrêt") {
+		t.Errorf("interruption par l'arrêt non journalisée : %q", got)
+	}
+}
+
+// Une demande absorbée avant l'arrêt ne relance aucun rattrapage une fois l'arrêt commencé :
+// le recalcul en cours finit, le demandeur absorbé reçoit ErrDraining.
+func TestDrain_NoCatchUpOnceShutdownStarted(t *testing.T) {
+	tr := isolateInflight(t)
+	var c Runs
+	started, proceed := make(chan struct{}), make(chan struct{})
+	var calls atomic.Int32
+	fn := func(context.Context) error {
+		if calls.Add(1) == 1 {
+			close(started)
+			<-proceed
+		}
+		return nil
+	}
+	go func() { _ = c.Do(context.Background(), "k", fn) }()
+	<-started
+	absorbed := make(chan error, 1)
+	go func() { absorbed <- c.Do(context.Background(), "k", fn) }()
+	waitDirty(t, &c, "k")
+
+	drained := make(chan error, 1)
+	go func() { drained <- Drain(context.Background()) }()
+	waitDraining(t, tr)
+	close(proceed)
+	if err := <-drained; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-absorbed; !errors.Is(err, ErrDraining) {
+		t.Errorf("demande absorbée : %v, attendu ErrDraining", err)
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("%d recalcul(s), attendu 1 (aucun rattrapage après le début de l'arrêt)", calls.Load())
+	}
+}
+
+// L'attente de l'arrêt reste courte : bien sous le délai d'arrêt accordé par l'hôte
+// (Docker : 10 s par défaut ; air : kill_delay de 5 s), le reste de la séquence d'arrêt
+// devant encore tenir.
+func TestDrainWait_IsShort(t *testing.T) {
+	if DrainWait <= 0 || DrainWait > 3*time.Second {
+		t.Fatalf("DrainWait = %s, attendu dans ]0, 3 s]", DrainWait)
+	}
+}
