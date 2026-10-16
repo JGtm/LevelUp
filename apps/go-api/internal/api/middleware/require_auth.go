@@ -9,6 +9,7 @@
 package middleware
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -53,10 +54,16 @@ func RequireAuth(demoMode bool, authMode ...string) func(http.Handler) http.Hand
 // ou publique), sinon vrai pour une session authentifiée. Même prédicat que RequireAuth,
 // pour les routes publiques qui n'offrent qu'une partie de leurs effets aux comptes.
 func IsAuthenticated(r *http.Request, demoMode bool, authMode string) bool {
+	return IsAuthenticatedCtx(r.Context(), demoMode, authMode)
+}
+
+// IsAuthenticatedCtx est IsAuthenticated pour un handler qui ne voit que son contexte
+// (opérations Huma).
+func IsAuthenticatedCtx(ctx context.Context, demoMode bool, authMode string) bool {
 	if demoMode || authMode == "" || authMode == "none" {
 		return true
 	}
-	return sessionAuthenticated(GetSession(r.Context()), authMode)
+	return sessionAuthenticated(GetSession(ctx), authMode)
 }
 
 // sessionAuthenticated décide si une session porte une identité authentifiée.

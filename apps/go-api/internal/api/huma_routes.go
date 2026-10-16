@@ -86,9 +86,12 @@ type gamertagSearchHumaOutput struct {
 // query-param — Phase 3b). Contrat préservé : 200 {query, items} ; 503
 // {code:shared_db_unavailable} si service absent ; 500 {code:gamertag_search_error}
 // (message générique « internal error » sur 5xx, comme writeError).
-func registerGamertagHuma(api huma.API, h *handlers.GamertagHandler) {
+func registerGamertagHuma(api huma.API, h *handlers.GamertagHandler, liveAllowed func(ctx context.Context) bool) {
 	huma.Get(api, "/directory/gamertags/search", func(ctx context.Context, in *gamertagSearchHumaInput) (*gamertagSearchHumaOutput, error) {
-		resp, err := h.Query(ctx, in.Q, in.Live)
+		// Le repli live appelle Xbox avec le jeton d'un vrai joueur : réservé aux appelants
+		// autorisés (liveAllowed) ; sinon ignoré, la recherche reste locale.
+		live := in.Live && liveAllowed != nil && liveAllowed(ctx)
+		resp, err := h.Query(ctx, in.Q, live)
 		if err != nil {
 			if errors.Is(err, handlers.ErrGamertagSearchUnavailable) {
 				return nil, newHumaError(http.StatusServiceUnavailable, "shared_db_unavailable", "gamertag search requires shared database")

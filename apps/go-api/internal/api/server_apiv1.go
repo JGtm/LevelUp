@@ -842,6 +842,11 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapEngagement))
 			eng.Mount(r.With(participated), playerOpt)
+			// Recalcul forcé : administration seulement.
+			eng.MountAdmin(r.With(
+				middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode),
+				middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users),
+			), playerOpt)
 		})
 
 		explorer := handlers.NewExplorerHandler(reg.ExplorerCtxWithAuth, reg.MatchHistoryCtx)
@@ -1089,7 +1094,9 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// Endpoints P1 : répertoire gamertags
 	// Sprint 49 : route inconditionnelle — retourne 503 si shared DB absente.
 	// Migré vers Huma (Phase 3b, shape query-param ?q=).
-	registerGamertagHuma(humaAPI, handlers.NewGamertagHandler(gamertagSvc))
+	registerGamertagHuma(humaAPI, handlers.NewGamertagHandler(gamertagSvc), func(ctx context.Context) bool {
+		return middleware.IsAuthenticatedCtx(ctx, cfg.DemoMode, cfg.AuthMode)
+	})
 
 	// Watcher présence Xbox RTA — RequireAuth + RequireAdmin.
 	watcherAttempts := auth_platform.NewWatcherAttemptStore()

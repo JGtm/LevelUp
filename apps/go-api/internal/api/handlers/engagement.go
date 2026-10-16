@@ -62,6 +62,13 @@ func (h *EngagementHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	// required" (régression vs l'ancien Body pointeur tolérant).
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/engagement/timeseries")
 	huma.Get(api, "/pages/squad/v2/engagement", h.handleSquadEngagementSession, humacore.Op("getSquadEngagementSession", "Engagement squad pour la session courante", "squad"))
+}
+
+// MountAdmin enregistre l'opération d'administration (recalcul forcé des coefficients). Le
+// montage la place derrière RequireAuth et RequireAdmin (garde-rail : le test chi.Walk
+// recompute_coefficients_admin_test.go).
+func (h *EngagementHandler) MountAdmin(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/engagement/recompute_coefficients", h.handleRecomputeCoefficients, humacore.Op("postRecomputeEngagementCoefficients", "Force le recalcul des coefficients d'engagement (admin)", "career"))
 }
 
