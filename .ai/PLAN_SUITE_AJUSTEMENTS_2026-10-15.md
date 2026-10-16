@@ -16,7 +16,7 @@ Superviseur : session levelup-66.
 
 - [x] Armes au sol (`feat/armes-sol-depart`, fusionné ; 31/90 sur 0d9a9af9, 87/221 sur 1b2d9e08).
 - [x] Firefight exclu de la cuisson et du service (`fix/rejeu-sans-firefight`, fusionné 424fa1393).
-- [ ] Nettoyage du cache Firefight : `levelup backfill-replay --purge-non-geres` (serveur arrêté).
+- [x] Nettoyage du cache Firefight (16/10 : edc5daf6 et son raster supprimés ; 775 matchs Firefight au registre).
 - [x] Faille située à sa pose (`feat/faille-pose`, session levelup-80) : objet ti=38 né à la pose
   (123/123), repli porteur compté, position par échange retirée, schéma 98 ; fin de la faille
   bornée par la suppression lue de l'objet (en cours).
@@ -33,7 +33,7 @@ Superviseur : session levelup-66.
   grammar-2026-10-15.3, killsource-2026-10-15.2, faits 16) ; RÉGÉNÉRER `bots_*.json`, références
   d'assemblage et fixtures web (bcb6d393 figé avec l'équipe fausse) ; garde-rail « chaque
   `bots_*.json` porte `killsource.Rev` ».
-- [ ] Rattrapage et recuisson (ACCORD DU USER le 16/10) : `repair-highlight-phantoms` (86 matchs) et
+- [x] Rattrapage et recuisson (16/10, 07:12-09:17, serveur arrêté, sauvegarde `data/backups/avant_recuisson_98_2026-10-16/`) : 2 696 lignes fantômes retirées sur 86 matchs, couples recalculés sur 537 matchs, index hérités retirés, 237 artefacts au schéma 98, projections, killsource crédit + films 0 erreur (34db6b33 passe), rasters ; air relancé. ACCORD DU USER le 16/10 : : `repair-highlight-phantoms` (86 matchs) et
   `--couples` (477 matchs), recuisson complète au dernier schéma, `backfill-killsource --credit-only`
   puis `backfill-killsource`, purge Firefight.
 
