@@ -199,6 +199,8 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
           const apiErr = err as unknown as ApiError
           if (isDemoRefusal(apiErr)) {
             setStartError(t('common.xbox_login.err_demo'))
+          } else if (isTooManyLoginAttempts(apiErr)) {
+            setStartError(t('common.xbox_login.err_busy'))
           } else {
             setStartError(apiErr.message ?? t('common.xbox_login.err_start'))
           }
@@ -251,7 +253,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       },
       onError: (err) => {
         const apiErr = err as unknown as ApiError
-        setStartError(apiErr.message ?? t('common.xbox_login.err_restart'))
+        setStartError(isTooManyLoginAttempts(apiErr) ? t('common.xbox_login.err_busy') : apiErr.message ?? t('common.xbox_login.err_restart'))
       },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -274,7 +276,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       },
       onError: (err) => {
         const apiErr = err as unknown as ApiError
-        setStartError(apiErr.message ?? t('common.xbox_login.err_restart'))
+        setStartError(isTooManyLoginAttempts(apiErr) ? t('common.xbox_login.err_busy') : apiErr.message ?? t('common.xbox_login.err_restart'))
       },
     })
   }

@@ -20,6 +20,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
@@ -38,6 +39,9 @@ const (
 	deviceFlowReadyTimeout = 15 * time.Second
 	// deviceFlowReadyPollInterval est le pas de scrutation de l'attente ci-dessus.
 	deviceFlowReadyPollInterval = 150 * time.Millisecond
+	// deviceFlowRetryAfterSec : délai conseillé (Retry-After) à un démarrage refusé par le
+	// plafond de tentatives en attente.
+	deviceFlowRetryAfterSec = "60"
 )
 
 // AuthHandler gère les endpoints d'authentification Halo via Device Code Flow.
@@ -111,7 +115,15 @@ func (h *AuthHandler) handleStartDeviceFlow(ctx context.Context, _ *struct{}) (*
 	}
 
 	// Single-flight : si une tentative "pending" existe, la renvoyer.
-	attempt, isNew := h.attempts.GetOrCreate(sess.SessionID)
+	ip := chimiddleware.GetClientIP(ctx)
+	attempt, isNew, err := h.attempts.GetOrCreate(sess.SessionID, ip)
+	if err != nil {
+		slog.WarnContext(ctx, "auth: device-flow refusé, trop de tentatives en attente", "ip", ip, "err", err)
+		return nil, huma.ErrorWithHeaders(
+			humacore.NewError(http.StatusTooManyRequests, "too_many_device_flows",
+				"too many sign-in attempts in progress, try again shortly"),
+			http.Header{headerRetryAfter: []string{deviceFlowRetryAfterSec}})
+	}
 	// CRUCIAL : lier la session à la tentative → IsMeaningful → la session anonyme
 	// est PERSISTÉE et un cookie stable est posé dès le start. Sans ça, le SessionID
 	// n'est jamais sauvé / chaque requête repart sur une session anonyme distincte →

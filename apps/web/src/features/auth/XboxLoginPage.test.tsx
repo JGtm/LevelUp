@@ -152,6 +152,43 @@ describe('XboxLoginPage', () => {
     expect(screen.queryByText(/ABCD-1234/i)).not.toBeInTheDocument()
   })
 
+  it('démarrage refusé en 429 (plafond de connexions en cours) : message clair FR, pas le texte du serveur', async () => {
+    server.use(
+      http.post('/api/v1/auth/device-flow/start', () =>
+        HttpResponse.json(
+          { code: 'too_many_device_flows', message: 'too many sign-in attempts in progress, try again shortly' },
+          { status: 429, headers: { 'Retry-After': '60' } },
+        ),
+      ),
+    )
+    renderWithProviders(<XboxLoginPage />)
+    expect(
+      await screen.findByText('Trop de connexions en cours. Réessaie dans une minute.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/too many sign-in attempts/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Réessayer/i })).toBeInTheDocument()
+  })
+
+  it('démarrage refusé en 429 : message en anglais quand la langue est EN', async () => {
+    useAppShellStore.setState({ locale: 'en' })
+    try {
+      server.use(
+        http.post('/api/v1/auth/device-flow/start', () =>
+          HttpResponse.json(
+            { code: 'too_many_device_flows', message: 'too many sign-in attempts in progress, try again shortly' },
+            { status: 429 },
+          ),
+        ),
+      )
+      renderWithProviders(<XboxLoginPage />)
+      expect(
+        await screen.findByText('Too many sign-ins in progress. Try again in a minute.'),
+      ).toBeInTheDocument()
+    } finally {
+      useAppShellStore.setState({ locale: 'fr' })
+    }
+  })
+
   it('un seul démarrage du flow au montage, même en StrictMode', async () => {
     // En StrictMode à la racine (comme main.tsx, dev) l'effet de montage s'exécute
     // deux fois : sans garde, deux tentatives étaient ouvertes côté serveur pour une

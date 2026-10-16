@@ -107,7 +107,7 @@ func TestRotation_DeviceFlow(t *testing.T) {
 	h.MountDeviceFlow(r)
 
 	planted, cookie := plantedSession(t, sessStore)
-	attempt, _ := attempts.GetOrCreate(planted.SessionID)
+	attempt, _, _ := attempts.GetOrCreate(planted.SessionID, "")
 	attempts.Update(attempt.AttemptID, func(a *auth_platform.Attempt) {
 		a.Status = auth_platform.AttemptStatusAuthorized
 		a.Gamertag, a.XUID = "Rotator", "2535400000000077"

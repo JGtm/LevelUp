@@ -55,7 +55,7 @@ func newLockedDeviceFlowRig(t *testing.T) *lockedDeviceFlowRig {
 	if err := sessStore.Save(sess); err != nil {
 		t.Fatalf("save session: %v", err)
 	}
-	attempt, _ := attempts.GetOrCreate(sess.SessionID)
+	attempt, _, _ := attempts.GetOrCreate(sess.SessionID, "")
 	attempts.Update(attempt.AttemptID, func(a *auth_platform.Attempt) {
 		a.Status = auth_platform.AttemptStatusAuthorized
 		a.Gamertag = "Intruder"

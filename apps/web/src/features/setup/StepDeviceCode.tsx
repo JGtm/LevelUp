@@ -17,6 +17,9 @@ import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { isDemoRefusal } from '@/lib/api/demoReadOnly'
 
+/** Statut d'un démarrage refusé par le plafond de connexions en cours (serveur ou nginx). */
+const HTTP_TOO_MANY_REQUESTS = 429
+
 // Nombre max de relances AUTOMATIQUES sur attempt_not_found (tentative balayée /
 // backend redémarré). Au-delà, on bascule sur un retry manuel pour éviter une
 // boucle de relances si la tentative disparaît systématiquement.
@@ -70,7 +73,9 @@ export function StepDeviceCode() {
         setStartError(
           isDemoRefusal(apiErr)
             ? t('common.xbox_login.err_demo')
-            : t('common.setup.device_start_failed'),
+            : apiErr.status === HTTP_TOO_MANY_REQUESTS
+              ? t('common.xbox_login.err_busy')
+              : t('common.setup.device_start_failed'),
         )
       },
     })

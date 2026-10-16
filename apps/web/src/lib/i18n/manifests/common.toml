@@ -1962,6 +1962,10 @@ en = "The connection to the server was interrupted several times. Please try aga
 fr = "Impossible de redémarrer le flow."
 en = "Unable to restart the flow."
 
+[common.xbox_login.err_busy]
+fr = "Trop de connexions en cours. Réessaie dans une minute."
+en = "Too many sign-ins in progress. Try again in a minute."
+
 [common.xbox_login.valid_for]
 fr = "Valide encore"
 en = "Valid for"

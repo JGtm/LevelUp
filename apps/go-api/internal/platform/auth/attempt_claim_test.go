@@ -8,7 +8,7 @@ import (
 
 func authorizedAttempt(t *testing.T, s *AttemptStore, sessionID string) string {
 	t.Helper()
-	a, _ := s.GetOrCreate(sessionID)
+	a, _, _ := s.GetOrCreate(sessionID, "")
 	s.Update(a.AttemptID, func(a *Attempt) {
 		a.Status = AttemptStatusAuthorized
 		a.SpartanToken = "spartan"
@@ -54,7 +54,7 @@ func TestClaimAuthorized_RefusesOtherSessionAndPending(t *testing.T) {
 	if _, ok := s.ClaimAuthorized(id, "sess-2"); ok {
 		t.Error("une autre session a reçu la tentative")
 	}
-	pending, _ := s.GetOrCreate("sess-3")
+	pending, _, _ := s.GetOrCreate("sess-3", "")
 	if _, ok := s.ClaimAuthorized(pending.AttemptID, "sess-3"); ok {
 		t.Error("une tentative en attente a été remise")
 	}

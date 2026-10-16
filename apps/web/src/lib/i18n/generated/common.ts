@@ -592,6 +592,7 @@ export const commonManifest = {
   "common.title_gate.unknown_body": { fr: "Ce titre n'existe pas ou n'est plus disponible.", en: "This title does not exist or is no longer available." },
   "common.title_gate.unknown_heading": { fr: "Titre introuvable", en: "Title not found" },
   "common.tooltip.more_info_aria": { fr: "Plus d'informations", en: "More information" },
+  "common.xbox_login.err_busy": { fr: "Trop de connexions en cours. Réessaie dans une minute.", en: "Too many sign-ins in progress. Try again in a minute." },
   "common.xbox_login.err_demo": { fr: "Authentification indisponible en mode démo.", en: "Authentication unavailable in demo mode." },
   "common.xbox_login.err_interrupted": { fr: "La connexion au serveur a été interrompue plusieurs fois. Veuillez réessayer.", en: "The connection to the server was interrupted several times. Please try again." },
   "common.xbox_login.err_restart": { fr: "Impossible de redémarrer le flow.", en: "Unable to restart the flow." },
