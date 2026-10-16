@@ -444,6 +444,37 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 - [ ] F-1 Revue adversariale du diff complet (`git diff a9a9ac78a...HEAD`) : 2 relecteurs aveugles
       (lentille « contrôle d'accès et identité » ; lentille « entrées, ressources, chemins ») +
       1 relecteur L6 (couverture des tests) ; 2 rondes maximum.
+- [ ] F-1a Corrections de la ronde 1 de la revue adversariale (2026-10-16 ; 3 relecteurs : accès 0 P0/P1,
+      entrées 2 P1 + 6 P2, couverture 1 P1 + 7 P2 ; le P1 « images de carte » trouvé par deux relecteurs) :
+  - [ ] R1-1 (P1) `GET /api/v1/assets/maps/…/image?v=` : la variante n'est pas jugée par le catalogue et chaque
+        valeur neuve rate stock local et cache négatif → appels Halo signés illimités pour un anonyme. Forme
+        stricte de `v`, et aucune récupération distante par variante neuve pour un anonyme ; test sur la VRAIE
+        route des cartes ; preuve de classe de coût corrigée (`bare_routes_ratchet_test.go`).
+  - [ ] R1-2 (P1, préexistant, en prod ; atténué sur le VPS le 2026-10-16 par nginx) `assets/store_localfs.go`
+        `Path` : `v` (et tout composant issu de la requête) entre dans `filepath.Join` → lecture de `*.png`
+        arbitraires par un anonyme. Validation des composants + confinement sous la racine (fail-closed) ;
+        test chemin piégé ; snippet nginx versionné (`packaging/nginx/`) et garde-rail nginx étendu.
+  - [ ] R1-3 (P1, régression du chantier) Miniature générée dans la requête d'envoi : elle attend l'unique
+        place des transcodages (jusqu'à 45 min) en tenant le verrou d'index et une place d'envoi. Elle ne
+        doit plus attendre un transcodage (pool propre ou génération hors requête) ; test.
+  - [ ] R1-4 (P2) Attente d'une place d'envoi (30 s) au-delà du `ReadTimeout` (15 s) → 413 trompeur :
+        attente compatible avec l'échéance de lecture (ou échéance prolongée), 503 + `Retry-After` garanti.
+  - [ ] R1-5 (P2) Exclusion pendant une bascule de la base partagée : `ErrSwapTimeout` → 503 (pas 500).
+  - [ ] R1-6 (P2) `platform/coalesce` : le recalcul ne dépend plus du contexte du premier demandeur
+        (contexte détaché), commentaire conforme ; test d'annulation du premier demandeur.
+  - [ ] R1-7 (P2) Exclusion : lecture de l'état et no-op décidés sous le verrou de la base joueur (course
+        exclure/réinclure) ; test.
+  - [ ] R1-8 (P2) Porte des assets : une erreur de lecture du catalogue n'est pas mémorisée comme « inconnu »
+        (pas de cache négatif sur erreur) ; test.
+  - [ ] R1-9 (P2) Front : « Réassocier » masqué sur le clip d'autrui (onglet Médias d'un match, rail de
+        l'accueil), aligné sur la règle serveur ; test du composant.
+  - [ ] R1-10 (P2, règle 3) `os.Remove` avalés (`openspartan_import.go`, `media_service_upload.go`) : échec
+        journalisé.
+  - [ ] R1-11 (P2) Garde-rails renforcés : `no_readall_on_upload` voit le service (`UploadedFile.Open`) et les
+        imports aliasés ; `client_ip` interdit la lecture directe de `True-Client-IP`/`X-Forwarded-For`/
+        `X-Real-IP` hors middleware d'IP ; `session_player_slug` voit aussi `CurrentPlayerSlug` (exception
+        datée pour un affichage) ; test d'envoi concurrent rendu déterministe (sans `time.Sleep`) ; chacun vu
+        rouge.
 - [ ] F-2 `make gate-push` vert.
 - [ ] F-3 Push de `feat/securite-2026-10-15`, CI verte au niveau job (`gh run list --branch`).
 - [ ] F-4 Registre et backlog mis à jour (items fermés, `[sécurité]` et `[demo]` du backlog).
