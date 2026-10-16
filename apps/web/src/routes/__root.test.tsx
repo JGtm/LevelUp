@@ -120,6 +120,73 @@ describe('RootLayout — garde anti-éjection transitoire', () => {
 })
 
 /**
+ * L9-9 : un utilisateur DÉJÀ connecté dont la reconnexion Xbox est refusée arrive sur
+ * /login?oauth_error=<code>. La racine le renvoie à l'accueil (connecté sur une page
+ * d'authentification) mais garde le motif du refus pour l'afficher dans le shell.
+ */
+describe("RootLayout — refus de reconnexion Xbox d'un utilisateur connecté", () => {
+  let originalLocation: Location
+
+  const connectedBootstrap = (): BootstrapResponse =>
+    ({ ...anonBootstrap(), current_username: 'alice', auth_state: 'ready' }) as BootstrapResponse
+
+  const visit = (pathname: string, search: string) => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { pathname, search, href: `http://localhost${pathname}${search}`, hash: '' },
+    })
+  }
+
+  beforeEach(() => {
+    navigateMock.mockReset()
+    log._resetForTests()
+    originalLocation = window.location
+    useAppShellStore.setState({
+      currentUsername: null,
+      isBootstrapped: false,
+      authMode: 'none',
+      firstLaunch: false,
+      setupRequired: false,
+      oauthRefusal: null,
+    })
+  })
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+    queryData = undefined
+  })
+
+  it("connecté sur /login?oauth_error=… → retour à l'accueil, motif conservé", () => {
+    visit('/login', '?oauth_error=instance_locked')
+    queryData = connectedBootstrap()
+
+    render(<RootLayout />)
+
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/' })
+    expect(useAppShellStore.getState().oauthRefusal).toBe('instance_locked')
+  })
+
+  it("connecté sur /login sans refus → retour à l'accueil, aucun motif", () => {
+    visit('/login', '')
+    queryData = connectedBootstrap()
+
+    render(<RootLayout />)
+
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/' })
+    expect(useAppShellStore.getState().oauthRefusal).toBeNull()
+  })
+
+  it("code de refus inconnu → motif conservé (message générique à l'écran)", () => {
+    visit('/login', '?oauth_error=code_inconnu')
+    queryData = connectedBootstrap()
+
+    render(<RootLayout />)
+
+    expect(useAppShellStore.getState().oauthRefusal).toBe('code_inconnu')
+  })
+})
+
+/**
  * Fix A — listener `levelup:auth-required` : sortir du shell mort sur une vraie
  * expiration de session. Le client HTTP dispatche l'événement sur un 401
  * `auth_required` hors /bootstrap ; RootLayout recharge la page en plein SI le

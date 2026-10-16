@@ -66,6 +66,12 @@ interface AppShellState {
   /** Instance démo : settings figés (read-only sauf langue/accessibilité), switch
    * de langue client-side (le PATCH /settings est refusé en démo). */
   demoMode: boolean
+  /**
+   * Code de refus (`?oauth_error=`) d'une reconnexion Xbox d'un utilisateur déjà connecté,
+   * gardé par la racine quand elle le renvoie à l'accueil : le shell l'affiche
+   * (OAuthRefusalBanner) jusqu'à fermeture. `null` sans refus.
+   */
+  oauthRefusal: string | null
 
   // Actions
   hydrateFromBootstrap: (data: BootstrapResponse) => void
@@ -74,6 +80,7 @@ interface AppShellState {
   setHintsVisible: (visible: boolean) => void
   /** Met à jour l'ID du job de sync actif (null = aucun sync en cours). */
   setActiveSyncJobId: (id: string | null) => void
+  setOauthRefusal: (code: string | null) => void
 }
 
 const DEFAULT_CAPABILITIES: CapabilityMap = {
@@ -115,6 +122,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   firstLaunch: false,
   oauthCodeFlowEnabled: false,
   demoMode: false,
+  oauthRefusal: null,
 
   hydrateFromBootstrap: (data: BootstrapResponse) => {
     const titleSlug = data.current_title_slug ?? 'halo_infinite'
@@ -170,6 +178,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   },
   setHintsVisible: (visible) => set({ hintsVisible: visible }),
   setActiveSyncJobId: (id) => set({ activeSyncJobId: id }),
+  setOauthRefusal: (code) => set({ oauthRefusal: code }),
 }))
 
 /**

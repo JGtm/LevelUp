@@ -142,6 +142,9 @@ const OAUTH_ERROR_KEYS: Readonly<Record<string, OAuthErrorKey>> = {
   session_save_failed: 'common.auth.oauth_failed',
 }
 
+/** Paramètre de requête qui porte le code de refus (`/login?oauth_error=<code>`). */
+export const OAUTH_ERROR_PARAM = 'oauth_error'
+
 /**
  * Message localisé d'un refus du callback de connexion Xbox, `null` sans refus. Un code
  * inconnu reçoit le message générique, jamais le code brut.

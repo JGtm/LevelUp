@@ -129,6 +129,10 @@ en = "Settings tabs"
 fr = "Ouvrir le menu de navigation"
 en = "Open navigation menu"
 
+[common.shell.dismiss]
+fr = "Fermer"
+en = "Dismiss"
+
 [common.shell.nav_menu_close]
 fr = "Fermer le menu"
 en = "Close menu"
