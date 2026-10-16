@@ -142,7 +142,7 @@ Gate 2bis : 2b.1-2b.3 cochés, tableau avant/après dans le journal.
 - [x] 3.2 `make go-api-lint` ; `make gate-push`.
 - [x] 3.3 Relecture adversariale (skill `adversarial-review`, Opus, contexte frais) du diff
   complet ; chaque constat P1/P2 corrigé ou statué par écrit.
-- [ ] 3.4 Push de la branche, CI verte (tous jobs).
+- [x] 3.4 Push de la branche, CI verte (tous jobs).
 
 Gate 3 : 3.1-3.4 cochés, sorties consignées dans le journal.
 
@@ -209,6 +209,10 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   sont suivis) et aucun test hors `halotest` ne l'utilise (`engine_e2e_test.go` ne l'exerce pas, contrairement
   au texte du plan). La simulation de 2bis utilise donc `mockHaloClient` + le chunk de film v41 versionné
   (275 événements, 101 morts) : elle tourne en CI. Non traité : brancher le vrai client HTTP sur le faux serveur.
+- (16/10, exécutant, CI) `film/internal/grammar` : `TestLaStructureDesBobinesTientSesInvariants` a dépassé le délai de
+  15 min dans le job « Go Coverage + Baseline » du run 38938482739 (commit 81014e0c1) puis tenu sur le run suivant
+  (38951473683) : paquet proche de son plafond sur le runner de couverture, flaky selon la charge. Mesure locale
+  68 s (intégration) à 160 s (suite complète en parallèle). Non traité, hors lot.
 - (16/10, exécutant, relecture finale 3.3) `HomeMatchesCache` ne sert plus aucun hit (`service/home_service.go:247-275`,
   bypass P4.3 « TODO P4.4 ») : son vidage, ancien (`invalidateHomeCacheAfterSync`) comme nouveau
   (`WithHomeCacheFlush`, `ServiceRegistry.InvalidateHomeMatches`), est sans effet visible. À retirer avec le cache
@@ -358,3 +362,11 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   cohérent avec `invalidateHomeCacheAfterSync` si un hit y est de nouveau servi ; les commentaires disent
   maintenant la vérité (ce qui rafraîchit la page est `InvalidatePlayerReadCaches`). Décision de retrait du rappel
   (3 sites, un point de registre, 4 tests) laissée au coordinateur : Découvertes.
+- 16/10 Étape 3.4 CLOSE : `feat/postsync-ordre` poussée (`a13340e06`, fusion de `origin/feat/v75` incluse). CI verte, tous les
+  jobs : https://github.com/JGtm/LevelUp/actions/runs/38951473683 (lint Go, build+test ubuntu et windows, couverture +
+  baseline, contrat OpenAPI, lease ADR 0013, film race, front, govulncheck, npm audit ; E2E Playwright ignoré :
+  réservé aux PR vers main) ; Deploy Pre-Check, gitleaks et ADR 0021 Gate verts. Le run précédent (81014e0c1,
+  avant la fusion) n'avait qu'un job rouge, la couverture, par « panic: test timed out after 15m0s » du paquet
+  `film/internal/grammar` (hors lot) ; le paquet a tenu sur ce run et en local (68 à 160 s). Découverte : ce paquet
+  est proche de son délai de 15 min sur le runner de couverture, flaky selon la charge (non traité).
+  Gate 3 PASSÉ (3.1 à 3.4 cochés). Arrêt avant l'étape 4 (4.1 partielle : bases joueurs à copier par le superviseur).

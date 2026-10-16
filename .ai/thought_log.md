@@ -1,3 +1,13 @@
+## [2026-10-16] Post-sync : étape 3 close, CI verte sur la fusion de feat/v75 (branche `feat/postsync-ordre`)
+
+**Statut** : Complété pour les étapes 0 à 3 ; l'étape 4 (validation sur données réelles) reste au superviseur.
+
+**Décision technique principale** : branche poussée sur `a13340e06` après fusion de `origin/feat/v75` ; CI verte sur tous les jobs (run 38951473683). Le run précédent n'avait qu'un job rouge, un délai dépassé du paquet `film/internal/grammar` (hors lot, consigné aux Découvertes).
+
+**Résultats observés** : gates de la fusion verts (205 paquets unitaires, 206 d'intégration, lint 0 issue, gate-push exit 0). Relecture adversariale : 3 rondes de relecteurs Opus, 9 constats recevables au total (1 P1, 8 P2), tous corrigés ou statués par écrit dans le plan.
+
+**Conclusion** : prochaine étape, 4.2 à 4.5 par le superviseur (serveur local relancé sur le code de la branche, vrai match d'escouade) ; décision à prendre sur le rappel de vidage du cache Home, sans effet visible depuis que HomeService ignore les hits.
+
 ## [2026-10-16] Post-sync : fusion de feat/v75, gates rejoués, relecture finale — Complété jusqu'au push (branche `feat/postsync-ordre`)
 
 **Décision technique principale** : `origin/feat/v75` (c6a72cf02, sécurité + citations Halo 5) fusionné par `git merge` sans rebase ; un seul conflit textuel (imports de `sync/friends_recompute.go`, les deux évolutions gardées). L'étape des citations reste après le rejeu 1.58. Relecture finale contre feat/v75 : 1 constat P2 (le cache Home n'est plus servi, le rappel de vidage est sans effet visible), statué et consigné, commentaires corrigés.
