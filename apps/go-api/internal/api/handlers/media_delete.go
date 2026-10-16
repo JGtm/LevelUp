@@ -16,13 +16,11 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/http"
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/dblease"
 )
 
 // mediaDeleteInput : {player_slug} + query file_path (requis).
@@ -104,20 +102,5 @@ func (h *MediaHandler) resolveDeleteRequester(ctx context.Context, req *domain.M
 // sans session, un refus 403 laisserait croire à un problème de droits alors que
 // le client n'a qu'à se reconnecter.
 func mediaDeleteError(ctx context.Context, err error) error {
-	if errors.Is(err, dblease.ErrDBLocked) {
-		return errDBBusy()
-	}
-	var apiErr *domain.APIError
-	if errors.As(err, &apiErr) {
-		switch apiErr.Code {
-		case "bad_request":
-			return humacore.NewError(http.StatusBadRequest, apiErr.Code, apiErr.Message)
-		case "not_found":
-			return humacore.NewError(http.StatusNotFound, apiErr.Code, apiErr.Message)
-		case "forbidden":
-			return humacore.NewError(http.StatusForbidden, "media_delete_forbidden", apiErr.Message)
-		}
-	}
-	slog.ErrorContext(ctx, "media_delete: erreur non typée", "err", err)
-	return humacore.NewError(http.StatusInternalServerError, "media_delete_error", err.Error())
+	return mediaWriteError(ctx, err, "media_delete_forbidden", "media_delete_error")
 }

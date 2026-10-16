@@ -64,6 +64,13 @@ func (h *MediaHandler) resolveAssociateRequester(ctx context.Context, req *domai
 
 // mediaAssociateError traduit une erreur du service d'association en erreur HTTP.
 func mediaAssociateError(ctx context.Context, err error) error {
+	return mediaWriteError(ctx, err, "media_associate_forbidden", "associate_error")
+}
+
+// mediaWriteError traduit l'erreur d'une écriture sur un média existant (suppression,
+// association) : 503 sur base occupée, 400 / 404 / 403 (forbiddenCode) sur erreur
+// métier typée, 500 (fallbackCode) sinon, journalisé.
+func mediaWriteError(ctx context.Context, err error, forbiddenCode, fallbackCode string) error {
 	if errors.Is(err, dblease.ErrDBLocked) {
 		return errDBBusy()
 	}
@@ -75,9 +82,9 @@ func mediaAssociateError(ctx context.Context, err error) error {
 		case "not_found":
 			return humacore.NewError(http.StatusNotFound, apiErr.Code, apiErr.Message)
 		case "forbidden":
-			return humacore.NewError(http.StatusForbidden, "media_associate_forbidden", apiErr.Message)
+			return humacore.NewError(http.StatusForbidden, forbiddenCode, apiErr.Message)
 		}
 	}
-	slog.ErrorContext(ctx, "media_associate: erreur non typée", "err", err)
-	return humacore.NewError(http.StatusInternalServerError, "associate_error", err.Error())
+	slog.ErrorContext(ctx, "media: erreur d'écriture non typée", "err", err, "code", fallbackCode)
+	return humacore.NewError(http.StatusInternalServerError, fallbackCode, err.Error())
 }
