@@ -46,8 +46,8 @@ const (
 // LEVELUP_TRUST_PROXY_HEADERS=true, le pair TCP est le proxy pour tous les clients :
 // tout le trafic partage un seul seau et le site sature en 429 sous charge publique.
 //
-// Exemptions (cf. rateLimitExempt) : fichiers statiques servis localement. Une
-// page home ou Season Pass peut émettre 100+ URLs uniques d'images, ce qui
+// Exemptions (cf. rateLimitExempt), jamais accordées à un chemin ambigu
+// (AmbiguousPath) : fichiers statiques servis localement. Une page home ou Season Pass peut émettre 100+ URLs uniques d'images, ce qui
 // saturait la fenêtre et finissait par claquer y compris les endpoints
 // applicatifs (bugs images home page 2026-05-06 et Season Pass / Héritage
 // 2026-05-06). Le rate limit reste actif sur tout le reste — endpoints
@@ -72,7 +72,9 @@ func RateLimit(demoMode bool, rpm int) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		throttled := limiter(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if rateLimitExempt(r.URL.Path) {
+			// Un chemin ambigu (cf. AmbiguousPath) n'est jamais exempté : il peut porter le
+			// préfixe d'une exemption tout en se routant ailleurs.
+			if !AmbiguousPath(r) && rateLimitExempt(r.URL.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}
