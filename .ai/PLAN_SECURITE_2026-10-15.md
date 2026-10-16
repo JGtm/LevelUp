@@ -48,7 +48,7 @@ d'observation, report valide).
 
 ## 1. Règles d'exécution
 
-1. **Ordre strict** L0 → L4 → L4b → L5 → … → L10. Un lot est **clos** quand : gate exact passé, tous les items statués,
+1. **Ordre strict** L0 → L4 → L4b → L5 → L5b → L6 → … → L10. Un lot est **clos** quand : gate exact passé, tous les items statués,
    plan mis à jour (cases + journal), commit `fix(securite-Lx): …`, entrée `.ai/thought_log.md`,
    point d'étape à l'utilisateur.
 2. **Statuts** : `[x]` fait et vérifié · `[~]` couvert par (référence) · `[!]` non traité
@@ -276,6 +276,26 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
       `/players` hors allowlist datée ; grep interdisant `io.ReadAll` sur un `multipart.File`.
 - Gate : `go test ./internal/api/... ./internal/assets/... ./internal/service/... ./internal/platform/auth/... ./internal/archlint/`
   ; `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/platform/duckdb/...`.
+
+### L5b — Compléments issus de L5 — Sonnet — effort S
+
+- [ ] L5b-1 (D-L5-3, régression du chantier : `writable_player_slugs` introduit en L3-4)
+      `TestBootstrapBuild_WritablePlayerSlugs` instable (11 échecs sur 20 relevés par le
+      superviseur le 2026-10-16) : ordre de sortie rendu déterministe dans le code (tri), pas dans
+      le test seul ; preuve : `-count=50` vert.
+- [ ] L5b-2 (D-L5-1, même classe que C3-3) `PUT /players/{slug}/friends` : `RecomputeIsWithFriends`
+      ne prend plus le writer partagé si ses écritures vont en base joueur (sinon : justification
+      écrite et coalescence par joueur comme L5-3) ; entrée correspondante retirée de l'allowlist du
+      garde-rail `no_shared_writer_on_request_path_test.go` ; tests rouge puis vert.
+- [ ] L5b-3 (D-L5-2) Autres usages de ffmpeg (miniatures, remux WebM, migration audio) : même place
+      unique (`platform/slots`) et délai maximal que L5-5 ; garde-rail : tout `exec.CommandContext`
+      de ffmpeg passe par la place (test grep/AST).
+- [ ] L5b-4 (D-L5-4, vérifié par le superviseur) `batchComputeLUSR` est aussi le chemin du
+      post-sync normal (`engine_postsync_scoring.go:196`) : le recalcul d'exclusion suit le même
+      chemin que la synchronisation ; rien à faire. Cocher `[x]` en recopiant cette vérification.
+- Gate : `go test ./internal/service/ -run TestBootstrapBuild_WritablePlayerSlugs -count=50` ;
+  `go test ./internal/api/... ./internal/service/... ./internal/media/... ./internal/archlint/` ;
+  `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` si L5b-2 touche le sync.
 
 ### L6 — Fichiers et chemins (C6-1, C6-2, C6-3) — Opus — effort M
 
