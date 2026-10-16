@@ -10,9 +10,9 @@ retire ce qui a déjà été publié.
 
 | Catégorie | Emplacement | Volume | Nature |
 |---|---|---|---|
-| Sortie de décompilation du jeu | `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/{ln,va,r_veh,r_loc}_ghidra`, `ghidra_13`, `mesures_bis3_tsv/ghidra`, `.ai/V7.5/dumps/*.c` | 273 fichiers `.c` | Dérivé direct du binaire Microsoft : le plus exposé |
+| Sortie de décompilation du jeu (RETIRÉE le 2026-10-16) | copie hors dépôt : `Downloads/LevelUp_decompilation_Ghidra`, motif ignoré par `.gitignore` | 273 fichiers `.c` | Dérivé direct du binaire Microsoft : retiré de l'arbre courant, reste dans l'historique |
 | Captures mémoire du jeu | `.ai/V7.5/dumps/` (`ce_run2_cliffhanger.bin.gz` 8 Mo, `ce_capture_delta.csv` 19 Mo, trajectoires, rosetta), `tools/ce/*.bin` | ~60 Mo | Contenu mémoire du jeu en cours d'exécution |
-| Audio du jeu | `static/sounds/halo_infinite` | 182 wav, 83 Mo | Servi par l'application |
+| Audio du jeu | `static/sounds/halo_infinite` | 182 wav, 83 Mo | Servi par l'application ; GARDÉ (décision du 2026-10-16 : le rejeu en a besoin) |
 | Images du jeu | `static/{medals,maps,ranks,commendations,weapons-assets,vehicles-assets,abilities-assets,prestige-assets}`, `apps/web/public/titles/halo_5/spartan/{emblems,nameplates}*`, `data/titles/*/reference/map_backgrounds`, `data/cache/career-rank-image` | plus de 2 000 png/webp | Servies par l'application ; certaines viennent de l'API de contenu officielle |
 | Référentiel prébuilt | `data/titles/halo_infinite/warehouse/metadata-prebuilt.zip` | 5 Mo | Données de l'API |
 | Films de matchs réels (fixtures) | `**/testdata/**` (film, replay, killsource, objectifs), `apps/web/src/features/match-replay/test/fixtures/go`, `.ai/V7.5/replay2d/registre_film/lotBP` | ~100 fichiers `.bin(.gz)` | Contenu Microsoft + gamertags de joueurs réels |

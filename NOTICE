@@ -69,9 +69,9 @@ lets them reuse:
     ranks, commendations, weapons, vehicles, abilities, prestige, sounds),
     apps/web/public/titles/ (Halo 5 emblems and nameplates), and the reference
     images under data/titles/.
-  - Output of disassembly or decompilation of the game, and captures of its
-    memory, kept as research evidence: the C files and dumps under
-    .ai/V7.5/ (film_re/, dumps/), and tools/ce/.
+  - Captures of the game's memory, kept as research evidence: the dumps under
+    .ai/V7.5/dumps/ and tools/ce/. (Decompiler output is no longer kept in the
+    repository: it is ignored by .gitignore and lives outside it.)
   - Recordings and film fragments of real matches used as test fixtures
     (testdata/ and fixtures/ directories under apps/): the match content belongs
     to Microsoft, and the players named in them keep their rights over their own

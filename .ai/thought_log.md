@@ -1,3 +1,11 @@
+## [2026-10-16] Sorties de décompilation Ghidra retirées de l'arbre — Complété (branche `chore/licence-agpl`)
+
+**Décision technique principale** : décision de l'utilisateur du 2026-10-16. Les 273 fichiers `.c` de `.ai/V7.5/` sont copiés (octet pour octet, vérifié par `cmp`) vers `Downloads/LevelUp_decompilation_Ghidra/` puis retirés de l'arbre ; `.gitignore` ignore `.ai/**/*.c`. Les relevés écrits (Markdown) restent ; deux commentaires Go y renvoient seulement par chemin, aucun code ne lit ces fichiers. L'audio du jeu est conservé (le rejeu l'utilise). `NOTICE` et l'audit sont mis à jour.
+
+**Résultats observés** : aucun test ni build ne dépendait de ces fichiers.
+
+**Conclusion** : les fichiers restent dans l'historique git tant qu'il n'est pas réécrit. Restent à trancher : captures mémoire (`.ai/V7.5/dumps/`, `tools/ce/`) et gamertags des fixtures de films.
+
 ## [2026-10-16] Licence : MIT vers AGPL-3.0-only (code) + CC BY 4.0 (docs) + audit du contenu tiers — Complété (branche `chore/licence-agpl`, non commitée)
 
 **Décision technique principale** : `LICENSE` = texte AGPL-3.0 officiel ; `NOTICE` porte les termes additionnels du §7 (conservation de la ligne « © JGtm — LevelUp » + lien dépôt, marquage des versions modifiées, pas de droit sur le nom), la licence CC BY 4.0 des docs (`LICENSE-DOCS`) et la liste de ce que la licence ne couvre PAS (contenu Microsoft, sorties de décompilation, captures mémoire, films de matchs). `-only` et non `-or-later` pour garder la main sur les versions futures. README EN/FR, `CITATION.cff`, `CONTRIBUTING` EN/FR (clause de licence + interdiction de soumettre du contenu du jeu), pied de page (`common.footer.license`, TOML + généré à la main à l'identique faute de node_modules dans le worktree) et page confidentialité (intro FR/EN, date de révision) alignés. Le lien « Code source » du pied de page remplit déjà l'obligation AGPL §13.
