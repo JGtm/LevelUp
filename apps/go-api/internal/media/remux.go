@@ -60,8 +60,8 @@ func PlanRemuxWebM(ctx context.Context, absPath string) (RemuxPlan, error) {
 
 // StreamRemuxWebMPlan lance ffmpeg (remux -c copy vers WebM) selon un RemuxPlan
 // DÉJÀ validé par PlanRemuxWebM et streame le résultat dans w. Ne re-probe PAS :
-// l'appelant a déjà tranché codecs et status. Le remux tient l'unique place ffmpeg
-// (RunFFmpeg) et n'attend que remuxSlotWait : sans place, l'erreur enveloppe ErrFFmpegBusy
+// l'appelant a déjà tranché codecs et status. Le remux tient une place du pool des remux
+// (PoolRemux de RunFFmpeg) et n'attend que remuxSlotWait : sans place, l'erreur enveloppe ErrFFmpegBusy
 // et RIEN n'a été écrit (l'appelant peut encore répondre 503). Tout autre échec survient en
 // cours de flux (status HTTP déjà envoyé) → l'appelant ne peut plus que logger. Le caller
 // est responsable du Content-Type (video/webm) ; les Range requests ne sont pas
@@ -76,7 +76,7 @@ func StreamRemuxWebMPlan(ctx context.Context, absPath string, plan RemuxPlan, w 
 		"pipe:1",
 	)
 	stderr := &bytes.Buffer{}
-	job := FFmpegJob{Args: args, Stdout: w, Stderr: stderr, MaxWait: remuxSlotWait}
+	job := FFmpegJob{Args: args, Stdout: w, Stderr: stderr, Pool: PoolRemux, MaxWait: remuxSlotWait}
 	if err := RunFFmpeg(ctx, job); err != nil {
 		if errors.Is(err, ErrFFmpegBusy) {
 			return err

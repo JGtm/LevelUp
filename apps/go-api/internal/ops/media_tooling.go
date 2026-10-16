@@ -190,7 +190,7 @@ func writeCapLine(sb *strings.Builder, label string, required, missing []string)
 
 // runFFmpeg exécute `ffmpeg <args>` et retourne sa sortie standard. Les listings
 // (-version, -encoders, -muxers) sont écrits sur stdout par ffmpeg ; RunFFmpeg les
-// relaie dans un tampon et tient l'unique place ffmpeg du process. Le ctx borne la durée
+// relaie dans un tampon et tient la place des transcodages (PoolTranscode). Le ctx borne la durée
 // (le boot passe un timeout).
 func runFFmpeg(ctx context.Context, args ...string) (string, error) {
 	var out bytes.Buffer

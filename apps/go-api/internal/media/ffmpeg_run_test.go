@@ -162,14 +162,16 @@ func TestStreamRemuxWebMPlan_BusyWritesNothing(t *testing.T) {
 	remuxSlotWait = 30 * time.Millisecond
 	t.Cleanup(func() { remuxSlotWait = prev })
 
-	release, err := ffmpegSlots.Acquire(context.Background())
-	if err != nil {
-		t.Fatal(err)
+	for range remuxPlaces {
+		release, err := remuxSlots.Acquire(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer release()
 	}
-	defer release()
 
 	var out bytes.Buffer
-	err = StreamRemuxWebMPlan(context.Background(), "clip.mkv", RemuxPlan{AudioMap: "0:a"}, &out)
+	err := StreamRemuxWebMPlan(context.Background(), "clip.mkv", RemuxPlan{AudioMap: "0:a"}, &out)
 	if !errors.Is(err, ErrFFmpegBusy) {
 		t.Fatalf("err = %v, attendu ErrFFmpegBusy", err)
 	}
