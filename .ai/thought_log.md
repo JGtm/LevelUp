@@ -1,3 +1,13 @@
+## [2026-10-16] Post-sync : un match d'escouade n'est plus « Solo » sans LUSR pendant des minutes — Complété (branche `feat/postsync-ordre`)
+
+**Statut** : Complété (clôture demandée par l'utilisateur le 16/10) ; fusion dans `feat/v75` sur accord de l'utilisateur.
+
+**Décision technique principale** : `runPostSyncPipeline` suit l'ordre D1 (escouade, LUSR, CSR et agrégats avant les étapes film lentes 1.57 et 1.58 ; citations après). `is_with_friends` est posé dès le premier écrit avec le même prédicat que le recalcul, en V1 et en V2 (emprunt de la base partagée par le `SharedBorrower`). Le vidage du cache Home ajouté par le lot a été retiré (le `HomeMatchesCache` est mort depuis P4.3) ; le vidage des lectures joueur à mi-pipeline reste, avec un garde d'ordre archlint. D5 : le LUSR lit la passe crédit avant 1.57 (1 match sur 2 394 change, un bot), accepté par l'utilisateur.
+
+**Résultats observés** : comparaison avant/après sur un match d'escouade simulé : valeurs finales identiques, seuls `is_with_friends` après le premier écrit (FALSE puis TRUE) et l'ordre des étapes changent. Trois rondes de relecture Opus : 9 constats recevables, tous corrigés ou statués. Gates locaux verts sur le dernier arbre (paquets touchés en unitaire et en intégration, `make gate-push`) ; `go test ./...` et l'intégration complète verts sur la fusion de feat/v75 avant le retrait du rappel. CI verte sur `a13340e06` (run 38951473683).
+
+**Conclusion** : étape 4 non exécutée sur demande de l'utilisateur (preuve fonctionnelle = étape 2bis et CI). Découvertes non traitées dans `.ai/REGISTRE_REPORTS.md`. Prochaine étape : fusion dans `feat/v75` sur accord de l'utilisateur, puis confirmation sur un vrai match en prod après le déploiement de la 7.5.
+
 ## [2026-10-16] Post-sync : étape 3 close, CI verte sur la fusion de feat/v75 (branche `feat/postsync-ordre`)
 
 **Statut** : Complété pour les étapes 0 à 3 ; l'étape 4 (validation sur données réelles) reste au superviseur.

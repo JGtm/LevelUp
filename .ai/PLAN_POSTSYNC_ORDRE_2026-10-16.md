@@ -73,9 +73,14 @@ Gate 0 : tests de base exécutés, inventaire rempli.
 - [x] 1.2 Vidage du cache de lecture joueur après les agrégats
   (`duckdbpkg.InvalidatePlayerReadCaches`), le `defer` final reste (ratchet
   `archlint/player_read_cache_invalidation_test.go`).
-- [x] 1.3 Vidage de `HomeMatchesCache` au même point, pour V1 ET V2, via un rappel du moteur
+- [!] 1.3 Vidage de `HomeMatchesCache` au même point, pour V1 ET V2, via un rappel du moteur
   (modèle `mediaHook` / `prestigeHook` ; `sync` n'importe pas `service`). Brancher le rappel dans
   le câblage du serveur pour les deux chemins.
+  NON TRAITÉ, retiré sur décision du superviseur (16/10) : `HomeService` contourne tout hit du `HomeMatchesCache`
+  (`service/home_service.go:243-253`, bypass P4.3), le rappel n'avait donc aucun effet visible et la règle « 0 code
+  mort » s'appliquait au code ajouté par le lot. Branchements, rappel du moteur et 4 tests supprimés ; le vidage
+  de `InvalidatePlayerReadCaches` à mi-pipeline (1.2) et son point de ratchet restent, avec un garde d'ordre
+  `archlint.TestFlushReadCachesPrecedesKillSource`.
 - [~] 1.4 Second rafraîchissement des agrégats après 1.6 — seulement si l'inventaire 0.3 le
   justifie.
 - [x] 1.5 `sync/postsync_clock.go` : la liste des étapes affichées suit l'ordre D1 et contient
@@ -146,28 +151,31 @@ Gate 2bis : 2b.1-2b.3 cochés, tableau avant/après dans le journal.
 
 Gate 3 : 3.1-3.4 cochés, sorties consignées dans le journal.
 
-## Étape 4 — Validation sur données réelles (moyen, nécessite un vrai match)
+## Étape 4 — Validation sur le serveur local (moyen)
 
-- [ ] 4.1 Mesure AVANT sur l'historique local : pour les matchs déjà présents, délai entre
-  `match_registry.first_sync_at` et le `written_at` de la ligne d'enrichissement « friends » et de
-  la ligne LUSR (requête sur une COPIE de la base, `cmd/diag_q`).
-- [ ] 4.2 Serveur local relancé sur le code de la branche (après accord des sessions pairs,
-  `ListAgents`), un cycle de synchro avec au moins un nouveau match d'escouade. S'il n'y en a
-  aucun, demander au user d'en jouer un (blocage légitime).
-- [ ] 4.3 Sur ce match : tuile « Escouade » à la première lecture (navigateur, capture), LUSR
-  présent avant la fin de 1.57, ordre des étapes lu au tableau de bord admin, citations et
-  domination présentes, préparation atteinte, source du kill traitée au cycle normal.
-- [ ] 4.4 Mesure APRÈS (même requête qu'en 4.1) et comparaison écrite dans le journal.
-- [ ] 4.5 Recalcul de l'escouade relancé à blanc sur les 4 joueurs : 0 promotion, 0 démotion.
+> Exécutée par le superviseur (arrêt du serveur coordonné avec les autres sessions). La confirmation sur un vrai
+> match d'escouade viendra en prod, après le déploiement de la 7.5 ; ce n'est pas un gate.
 
-Gate 4 : 4.1-4.5 cochés, capture et chiffres dans le journal.
+- [!] 4.1 Mesure du délai avant/après impossible sans nouveau match (message de l'utilisateur, 16/10 : pas de
+  vrai match pour l'essai). La preuve fonctionnelle reste l'étape 2bis.
+- [!] 4.2 Captures « avant » : accueil, liste des matchs et une vue match, sur le serveur actuel (feat/v75).
+- [!] 4.3 Un cycle de synchro complet du serveur local sur le code de la branche. Contrôles : aucune erreur dans
+  `logs/sync.log` ni `logs/general.log` pendant le cycle, ordre des étapes conforme à D1, captures identiques à 4.2.
+- [!] 4.4 Recalcul de l'escouade à blanc sur les 4 joueurs : 0 promotion, 0 démotion.
+- [!] 4.5 Serveur rendu sur feat/v75.
+  4.2 à 4.5 : clôture demandée par l'utilisateur le 16/10, preuve fonctionnelle = étape 2bis et CI.
+
+Gate 4 : NON EXÉCUTÉ. Clôture demandée par l'utilisateur le 16/10 ; preuve fonctionnelle = étape 2bis et CI. Les items 4.1 à 4.5 sont statués `[!]` avec cette justification.
 
 ## Étape 5 — Clôture (rapide)
 
-- [ ] 5.1 Documents : ordre du post-sync dans `docs/SYNC_GUIDE.md` ET `docs/FR/` (bilingue) s'il
+- [~] 5.1 Documents : ordre du post-sync dans `docs/SYNC_GUIDE.md` ET `docs/FR/` (bilingue) s'il
   y est décrit ; commentaires d'en-tête de `engine_postsync.go` alignés.
-- [ ] 5.2 `.ai/thought_log.md`, `.ai/REGISTRE_REPORTS.md` (découvertes non traitées).
-- [ ] 5.3 Skill `delivery-checklist`.
+  `[~]` : `docs/SYNC_GUIDE.md` et `docs/FR/SYNC_GUIDE.md` ne décrivent pas l'ordre du post-sync (ligne 77 : « PostSync — parallèle par
+  joueur : heals, films, citations, etc. », liste de familles, pas un ordre) ; rien à corriger. L'en-tête de `engine_postsync.go`
+  est aligné sur D1 (étape 1).
+- [x] 5.2 `.ai/thought_log.md`, `.ai/REGISTRE_REPORTS.md` (découvertes non traitées).
+- [x] 5.3 Skill `delivery-checklist`.
 - [ ] 5.4 Fusion dans `feat/v75` : SUR ACCORD du user.
 
 ## Constat CSR (16/10, sur pièces, aucune action)
@@ -213,11 +221,11 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   15 min dans le job « Go Coverage + Baseline » du run 38938482739 (commit 81014e0c1) puis tenu sur le run suivant
   (38951473683) : paquet proche de son plafond sur le runner de couverture, flaky selon la charge. Mesure locale
   68 s (intégration) à 160 s (suite complète en parallèle). Non traité, hors lot.
-- (16/10, exécutant, relecture finale 3.3) `HomeMatchesCache` ne sert plus aucun hit (`service/home_service.go:247-275`,
-  bypass P4.3 « TODO P4.4 ») : son vidage, ancien (`invalidateHomeCacheAfterSync`) comme nouveau
-  (`WithHomeCacheFlush`, `ServiceRegistry.InvalidateHomeMatches`), est sans effet visible. À retirer avec le cache
-  lui-même (ou à rebrancher quand il redevient canonical-aware) ; retirer seulement le rappel du lot supprimerait
-  3 branchements et 4 tests.
+- (16/10, exécutant, relecture finale 3.3, tranché par le superviseur) `HomeMatchesCache` est lui-même mort depuis
+  P4.3 : `service/home_service.go:243-253` ignore tout hit et ne fait que `Set(xuid, titre, nil, nil)`. Son ancien
+  vidage (`invalidateHomeCacheAfterSync`, `api/wire/post_sync_deltas.go`, appelé par le hook de fin de synchro HTTP)
+  est donc aussi sans effet visible. Le rappel de vidage ajouté puis retiré par le lot (item 1.3, `[!]`) est supprimé ;
+  le cache et son ancien vidage restent, hors périmètre, consignés dans `.ai/REGISTRE_REPORTS.md`.
 - (16/10, exécutant, relecture 3.3 ronde 2) `LookupFriendXUIDs` (`sync/session_recalc.go`) avale l'erreur de chaque
   requête par gamertag : une base fermée en cours de boucle rend une liste partielle sans WARN, pour le recalcul
   comme pour le premier écrit. Un emprunt RW du `SharedBorrower` n'étant pas compté, `ResolveFriendXUIDs` ne
@@ -370,3 +378,9 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   `film/internal/grammar` (hors lot) ; le paquet a tenu sur ce run et en local (68 à 160 s). Découverte : ce paquet
   est proche de son délai de 15 min sur le runner de couverture, flaky selon la charge (non traité).
   Gate 3 PASSÉ (3.1 à 3.4 cochés). Arrêt avant l'étape 4 (4.1 partielle : bases joueurs à copier par le superviseur).
+- 16/10 Décisions du superviseur appliquées : (1) item 1.3 retiré (`[!]`) : 3 branchements (`scheduler`, `SyncHandler`,
+  câblage V2 + `main.go`/`server_apiv1.go`), `SyncEngine.WithHomeCacheFlush`/`HasHomeCacheFlush`,
+  `ServiceRegistry.InvalidateHomeMatches` et 4 tests supprimés ; `flushReadCaches` ne vide plus que
+  `InvalidatePlayerReadCaches`, son point de ratchet est gardé et un garde d'ordre
+  (`archlint.TestFlushReadCachesPrecedesKillSource`, mutation vérifiée) remplace le test qui passait par le rappel.
+  (2) étape 4 réécrite (4.1 `[!]`, 4.2 à 4.5 au superviseur). (3) gates rejoués (entrée suivante).

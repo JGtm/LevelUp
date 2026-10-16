@@ -456,16 +456,3 @@ func newCitationsServiceForPDB(pdb *duckdb.PlayerDB) port.CitationsService {
 
 // sortedPlaylistKeys retourne les clés de m triées — garantit un ordre d'émission
 // stable (utile pour les tests + journaux deterministes).
-
-// InvalidateHomeMatches vide l'entrée du cache Home du couple (xuid, TITRE). Rappel injecté
-// dans les moteurs de sync (WithHomeCacheFlush) : le pipeline post-sync le déclenche dès
-// que les lignes lues par la page sont à jour, sur les chemins V1 et V2 — le hook
-// PostSyncDeltaHook ne couvrait que la synchro HTTP. Même clé que
-// invalidateHomeCacheAfterSync : (xuid, titre), jamais le slug joueur.
-func (r *ServiceRegistry) InvalidateHomeMatches(ctx context.Context, xuid, titleSlug string) {
-	if r == nil || r.homeMatchesCache == nil || xuid == "" {
-		return
-	}
-	r.homeMatchesCache.Invalidate(xuid, titleSlug)
-	slog.DebugContext(ctx, "post_sync: cache Home vidé par le moteur", "title_slug", titleSlug, "xuid", xuid)
-}

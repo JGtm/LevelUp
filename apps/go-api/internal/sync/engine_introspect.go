@@ -79,10 +79,3 @@ func (e *SyncEngine) TitleSlugForTest() string {
 func (e *SyncEngine) PlayerDBPathForTest() string {
 	return e.playerDBPath
 }
-
-// HasHomeCacheFlush retourne true si .WithHomeCacheFlush a été appelé avec une closure
-// non-nil. Test-only — garde anti-régression : le cycle automatique ne vidait jamais le
-// cache Home, et un site de construction qui oublie le câblage le rend à nouveau périmé.
-func (e *SyncEngine) HasHomeCacheFlush() bool {
-	return e.homeCacheHook != nil
-}

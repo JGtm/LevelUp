@@ -98,7 +98,6 @@ func TestBuildEngine_AllOptionsWired_GoldenAntiRegression(t *testing.T) {
 	s.WithPostSyncRunner(&stubPostSyncRunner{})
 	prestigeFired := false
 	s.WithPrestigeHook(func(_ context.Context, _, _ string) { prestigeFired = true })
-	s.WithHomeCacheFlush(func(_ context.Context, _, _ string) {})
 	cfg.SharedProvider = memProvider
 	cfg.CurrentCSRSeasonID = "CsrSeason42"
 
@@ -123,9 +122,6 @@ func TestBuildEngine_AllOptionsWired_GoldenAntiRegression(t *testing.T) {
 	}
 	if !engine.HasPrestigeHook() {
 		t.Error("REGRESSION: PrestigeHook non câblé — prestige.RunPostSyncHook ne tournera sur AUCUN chemin V1 (VF-1, feature morte tests verts)")
-	}
-	if !engine.HasHomeCacheFlush() {
-		t.Error("REGRESSION: rappel de vidage du cache Home non câblé — le cycle automatique ne le vide plus avant la lecture des films")
 	}
 	if engine.CSRSeasonIDForTest() != "CsrSeason42" {
 		t.Errorf("REGRESSION: CSRSeasonID = %q, want CsrSeason42", engine.CSRSeasonIDForTest())

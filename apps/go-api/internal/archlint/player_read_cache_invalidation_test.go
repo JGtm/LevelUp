@@ -8,8 +8,9 @@
 // données périmées jusqu'au TTL. Ce test verrouille leur présence :
 //
 //   - sync.runPostSyncPipeline : fin du post-sync du joueur (chemins V1 et V2) ;
-//   - sync.flushReadCaches : vidage à mi-pipeline, une fois les agrégats rafraîchis et avant les
-//     étapes film lentes (appelée par runPostSyncPipeline, tenu par TestRunPostSyncPipeline_FlushesHomeCacheBeforeFilmSteps) ;
+//   - sync.flushReadCaches : vidage à mi-pipeline, une fois les agrégats rafraîchis ;
+//     runPostSyncPipeline l'appelle AVANT la source du kill (étape film lente), ce que
+//     TestFlushReadCachesPrecedesKillSource tient ;
 //   - sync.RecomputeIsWithFriends : recalcul « avec amis » hors sync (liste d'amis) ;
 //   - duckdb.MatchExclusionRepo.SetExclusion : exclusion d'un match.
 //
@@ -90,4 +91,56 @@ func callsFunc(body *ast.BlockStmt, name string) bool {
 		return !found
 	})
 	return found
+}
+
+// TestFlushReadCachesPrecedesKillSource : runPostSyncPipeline vide les caches de lecture du
+// joueur (flushReadCaches) AVANT la source du kill (runKillSource), la première étape qui
+// télécharge des films pendant des minutes. Sans cet ordre, une page lue pendant les films
+// sert un « Solo » ou un match sans LUSR jusqu'au TTL, ce que le réordonnancement du post-sync
+// doit éviter.
+func TestFlushReadCachesPrecedesKillSource(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a échoué")
+	}
+	path := filepath.Join(filepath.Dir(filepath.Dir(thisFile)), "sync", "engine_postsync.go")
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+	if err != nil {
+		t.Fatalf("engine_postsync.go : %v", err)
+	}
+	body := funcBody(file, "runPostSyncPipeline")
+	if body == nil {
+		t.Fatal("runPostSyncPipeline introuvable (renommée ? mettre ce ratchet à jour)")
+	}
+	flush, kill := firstCallPos(body, "flushReadCaches"), firstCallPos(body, "runKillSource")
+	if flush == token.NoPos || kill == token.NoPos {
+		t.Fatalf("appels introuvables dans runPostSyncPipeline : flushReadCaches=%v runKillSource=%v", flush != token.NoPos, kill != token.NoPos)
+	}
+	if flush > kill {
+		t.Error("runPostSyncPipeline appelle runKillSource AVANT flushReadCaches : les pages lues pendant " +
+			"la lecture des films serviraient des lignes périmées")
+	}
+}
+
+// firstCallPos rend la position du premier appel (direct ou qualifié) à `name`, NoPos sinon.
+func firstCallPos(body *ast.BlockStmt, name string) token.Pos {
+	pos := token.NoPos
+	ast.Inspect(body, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok || pos != token.NoPos {
+			return pos == token.NoPos
+		}
+		switch fun := call.Fun.(type) {
+		case *ast.Ident:
+			if fun.Name == name {
+				pos = call.Pos()
+			}
+		case *ast.SelectorExpr:
+			if fun.Sel.Name == name {
+				pos = call.Pos()
+			}
+		}
+		return pos == token.NoPos
+	})
+	return pos
 }

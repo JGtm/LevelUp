@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/sync/killcollector"
 )
 
 // ordrePostSyncAttendu : l'ordre d'exécution du pipeline post-sync. Il est écrit ICI, en
@@ -56,38 +54,5 @@ func TestRunPostSyncPipeline_StepOrder(t *testing.T) {
 	if pub := PostSyncStepNames(); !slices.Equal(pub, ordrePostSyncAttendu) {
 		t.Fatalf("PostSyncStepNames (étapes publiées au tableau de bord) ne suit pas l'ordre d'exécution\n got  %v\n want %v",
 			pub, ordrePostSyncAttendu)
-	}
-}
-
-// TestRunPostSyncPipeline_FlushesHomeCacheBeforeFilmSteps : le cache Home est vidé une fois
-// les agrégats faits, AVANT la source du kill, puis à la sortie. La source du kill, armée
-// sans client capable de lire un film, incrémente un compteur : il vaut encore 0 au premier
-// vidage et 1 au second.
-func TestRunPostSyncPipeline_FlushesHomeCacheBeforeFilmSteps(t *testing.T) {
-	playerDB, sharedDB := newInMemoryDBs(t)
-	e := &SyncEngine{
-		gamertag:   "TestPlayer",
-		xuid:       "1234567890123456",
-		titleSlug:  "halo_infinite",
-		killSource: killcollector.NewPostSyncHook(t.TempDir(), 0),
-	}
-	base := observability.LoadCounter(killcollector.CompteurPostSyncClientSansFilm)
-	var vues []int64
-	var cles []string
-	e.WithHomeCacheFlush(func(_ context.Context, xuid, titleSlug string) {
-		vues = append(vues, observability.LoadCounter(killcollector.CompteurPostSyncClientSansFilm)-base)
-		cles = append(cles, xuid+"/"+titleSlug)
-	})
-
-	_ = e.runPostSyncPipeline(context.Background(), playerDB, NewPinnedSharedAccess(sharedDB), &mockHaloClient{}, nil)
-
-	if !slices.Equal(vues, []int64{0, 1}) {
-		t.Fatalf("vidages du cache Home: compteur de la source du kill vu à chaque vidage = %v, want [0 1] "+
-			"(un vidage avant les films, un à la sortie)", vues)
-	}
-	for _, c := range cles {
-		if c != "1234567890123456/halo_infinite" {
-			t.Errorf("clé de vidage = %q, want xuid/titre du joueur", c)
-		}
 	}
 }

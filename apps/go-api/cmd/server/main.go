@@ -1121,10 +1121,6 @@ func main() {
 		autoScheduler.WithPostSyncRunner(postSyncRunner)
 	}
 
-	// Vidage du cache Home par le post-sync du moteur (V1 via BuildEngine ; V2 via les deps
-	// ci-dessous) : sans lui, le cycle automatique ne le vidait jamais.
-	autoScheduler.WithHomeCacheFlush(reg.InvalidateHomeMatches)
-
 	// Fil de l'eau des rejeux, chemin « ouvrier » (piste F) : la mise en file vit
 	// dans le registre (elle seule a les tokens pour résoudre le manifeste et y
 	// déposer les URL pré-signées). Injectée ici, comme le runner post-sync, parce
@@ -1177,7 +1173,6 @@ func main() {
 			PostSyncRunner: v2PostSyncRunner,
 			PrestigeHook:   prestigePostSyncHook,
 			ReplayEnqueue:  reg.EnqueueReplayBuildJob,
-			HomeCacheFlush: reg.InvalidateHomeMatches,
 		})
 		if v2Orch != nil {
 			autoScheduler.WithCycleOrchestrator(v2Orch)

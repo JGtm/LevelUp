@@ -177,16 +177,6 @@ func (e *SyncEngine) WithMediaScanHook(hook func(ctx context.Context)) *SyncEngi
 	return e
 }
 
-// WithHomeCacheFlush attache le rappel qui vide le cache Home du joueur (best-effort).
-// Appelé par runPostSyncPipeline une fois les agrégats rafraîchis (avant les étapes film)
-// puis à sa sortie, pour les chemins V1 et V2. Nil → rien à vider. À construire depuis
-// le ServiceRegistry (InvalidateHomeMatches), injecté par le scheduler, le SyncHandler et
-// le câblage V2.
-func (e *SyncEngine) WithHomeCacheFlush(hook func(ctx context.Context, xuid, titleSlug string)) *SyncEngine {
-	e.homeCacheHook = hook
-	return e
-}
-
 // WithReplayArtifacts installe le fil de l'eau des artefacts de rejeu 2D (étape 1.58,
 // implémentée par internal/sync/replayartifacts). À N'APPELER QU'EN LOCAL
 // (cfg.IsProduction() == false) : le VPS web ne décode jamais.

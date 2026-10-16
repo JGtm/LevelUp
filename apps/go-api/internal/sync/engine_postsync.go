@@ -167,7 +167,6 @@ func (e *SyncEngine) runPostSyncPipeline(
 	insertedIDs []string,
 ) (r domain.PostSyncResult) {
 	defer duckdbpkg.InvalidatePlayerReadCaches(ctx, e.xuid, e.titleSlug) // perf L5b : fin du post-sync = lectures joueur cachées périmées (posé en premier, exécuté en dernier)
-	defer e.flushHomeCache(ctx)                                          // idem pour le cache Home (rappel du serveur, nil hors serveur)
 	// Capture des panics du pipeline post-sync — avant ce defer un panic dans
 	// n'importe quelle étape (perf scores, LUSR, citations, etc.) tuait
 	// silencieusement tout le process server sans laisser de stack trace dans

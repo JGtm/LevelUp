@@ -72,9 +72,6 @@ type SyncHandler struct {
 	// invariant deadlock-free). Le chemin delta/auto-sync passe par BuildEngine, câblé
 	// séparément côté scheduler (parité runtime).
 	prestigeHook PrestigeHook
-	// homeCacheFlush (optionnel) : vidage du cache Home par le post-sync du moteur construit
-	// ici (newEngineFor). Injecté par server_apiv1.go = ServiceRegistry.InvalidateHomeMatches.
-	homeCacheFlush func(ctx context.Context, xuid, titleSlug string)
 	// syncGate déduplique les syncs cross-source (cf. go_sync.SyncGate). Un sync
 	// HTTP cède si le joueur est déjà en vol (watcher ou auto-sync) : pré-check
 	// IsInFlight → 409 à la requête, et TryClaim dans la goroutine pour la garantie
@@ -249,8 +246,6 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 			h.prestigeHook(hookCtx, playerSlug, ts)
 		})
 	}
-	// Vidage du cache Home par le pipeline post-sync (parité scheduler.BuildEngine).
-	engine = engine.WithHomeCacheFlush(h.homeCacheFlush)
 	return engine
 }
 
@@ -278,13 +273,6 @@ func (h *SyncHandler) runnerFor(ctx context.Context, titleSlug, gamertag, xuid s
 // le hook est nil (bundle absent ou flag Prestige off côté RunPostSync).
 func (h *SyncHandler) WithPrestigeHook(hook PrestigeHook) *SyncHandler {
 	h.prestigeHook = hook
-	return h
-}
-
-// WithHomeCacheFlush stocke le rappel de vidage du cache Home, câblé sur chaque SyncEngine
-// que le handler construit via newEngineFor. Nil → rien à vider.
-func (h *SyncHandler) WithHomeCacheFlush(hook func(ctx context.Context, xuid, titleSlug string)) *SyncHandler {
-	h.homeCacheFlush = hook
 	return h
 }
 

@@ -371,20 +371,12 @@ func (e *SyncEngine) runCitations(ctx context.Context, playerDB *sql.DB, shared 
 	})
 }
 
-// flushReadCaches vide les caches de lecture du joueur (lectures joueur cachées L5b et
-// cache Home) : appelée dès que les lignes lues par les pages sont à jour (après les
+// flushReadCaches vide les caches de lecture du joueur (lignes de filtres et historique
+// canonique, L5b) : appelée dès que les lignes lues par les pages sont à jour (après les
 // agrégats), AVANT les étapes film lentes — sans quoi une page lue pendant la lecture des
 // films sert une version périmée jusqu'au TTL. Le vidage final du `defer` de
-// runPostSyncPipeline reste en place pour ce que les étapes film écrivent ensuite.
+// runPostSyncPipeline reste en place pour ce que les étapes film écrivent ensuite. Sa
+// position avant la source du kill est tenue par archlint/player_read_cache_invalidation_test.go.
 func (e *SyncEngine) flushReadCaches(ctx context.Context) {
 	duckdbpkg.InvalidatePlayerReadCaches(ctx, e.xuid, e.titleSlug)
-	e.flushHomeCache(ctx)
-}
-
-// flushHomeCache appelle le rappel de vidage du cache Home posé par le serveur
-// (WithHomeCacheFlush) ; sans rappel (CLI, tests), rien à vider.
-func (e *SyncEngine) flushHomeCache(ctx context.Context) {
-	if e.homeCacheHook != nil {
-		e.homeCacheHook(ctx, e.xuid, e.titleSlug)
-	}
 }

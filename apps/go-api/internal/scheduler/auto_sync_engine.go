@@ -134,8 +134,6 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 			hook(hookCtx, playerSlug, ts)
 		})
 	}
-	// Vidage du cache Home par le pipeline post-sync (après les agrégats, avant les films).
-	engine.WithHomeCacheFlush(s.homeCacheFlush)
 	return engine
 }
 
