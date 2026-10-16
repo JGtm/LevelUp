@@ -435,7 +435,7 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 
 ## 3. Clôture du plan
 
-- [ ] F-0 Recette locale par profil, application lancée sur les données locales (`make dev`,
+- [x] F-0 (2026-10-16, superviseur ; admin, anonyme et démo ; « compte ordinaire » et « ami » non testés en navigateur faute de second compte Xbox, couverts par les tests de routes et de composants ; constats au backlog « [sécurité/suites] » et « [perf/tactique] » sur décision de l'utilisateur) Recette locale par profil, application lancée sur les données locales (`make dev`,
       navigateur piloté sur accord de l'utilisateur) : admin, compte ordinaire sur son profil,
       compte ordinaire sur le profil d'un ami, visiteur anonyme, démo ; pages Accueil, Matchs,
       Vue match, Rejeu, Médias (envoi, like, association), Classement, Escouades, Réglages,
@@ -2521,3 +2521,12 @@ autres titres. Une panne de la base partagée produit une ligne de journal par m
 **Découvertes** : D-F1c-1, D-F1c-2 (§6), non traitées. D-F1b-1 corrigée (§6).
 
 Commits : `996086b54` (R3-1), `baa134009` (R3-2, R3-3), `4ed67c273` (R3-4), puis le commit de clôture (plan, thought_log).
+
+### [2026-10-16] F-0 — Recette locale (superviseur)
+
+Binaire de la branche (`b11c95a8d` moins F-1c pour le binaire de recette : build de `577024ac9`) lancé sur les données locales (`LEVELUP_REPO_ROOT` = dépôt principal, serveur air de l'utilisateur arrêté avec son accord, session `levelup-8b` coordonnée), Vite du worktree, Chrome isolé ; connexion Xbox faite par l'utilisateur (admin JGtm).
+- **Admin** : 26 pages parcourues (Accueil, Solo ×4, Escouade ×3, Carrière ×4, Ascension ×5 dont Tactique, Communauté ×3, Médias, Explorer, vue de match, rejeu, notifications, réglages) : aucune réponse ≥ 400 hors un cas ci-dessous, aucune erreur JS ; vue de match complète (image de carte `?v=<uuid>` servie) ; 24 miniatures de la galerie servies ; HLS servi (206).
+- **Anonyme** (curl sur :8000) : profil/notifications 403, admin/`/debug/vars`/`/healthz/home` 401, `/health` = `{status}`, `/static/` 404, login 1,5 Mo → 413, CSRF chemin encodé → 403 `csrf_rejected`, `?v=` traversant → 400, CSP/nosniff/XFO présents.
+- **Démo** (serveur de la branche en `LEVELUP_DEMO_MODE`, port 8001, fixture locale) : bootstrap, accueil, `/settings`, `/presence` 200 ; `/debug/vars`, `/admin/*`, journaux, `/watcher/status`, `/groups` 403 `demo_mode_forbidden` ; écritures (envoi, like, sync, device-flow) 403 ; `/session/context` 200 ; `suggest-next` passe la garde.
+- **Constats** (au backlog, décision de l'utilisateur) : vue de match 503 une fois sous charge (participation à court de budget, juste après les 96 requêtes de la page Tactique) ; seconde demande de code Xbox après connexion réussie ; page Tactique à ~100 requêtes.
+- Serveurs arrêtés ensuite, session `levelup-8b` prévenue.
