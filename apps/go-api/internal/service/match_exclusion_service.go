@@ -14,8 +14,9 @@ import (
 //
 // Workflow SetExclusion :
 //  1. Lecture match_registry → garde "match classé" + métadonnées
-//  2. Sans changement d'état (flag déjà dans l'état demandé) : retour, rien n'est écrit
-//  3. INSERT de l'état is_excluded en player_match_enrichment (append-only)
+//  2. Lecture de l'état et décision sous le verrou d'écriture de la base joueur
+//     (repo.SetExclusion) : sans changement d'état, rien n'est écrit
+//  3. INSERT de is_excluded en player_match_enrichment (append-only), sous le même verrou
 //  4. Recompute synchrone perf_score + LUSR (filtrage is_excluded déjà appliqué)
 //
 // Le recomputer est optionnel (peut être nil pour des tests bas niveau) ; si
@@ -55,21 +56,19 @@ func (s *MatchExclusionService) SetExclusion(ctx context.Context, matchID string
 		return domain.ErrRankedMatchNotExcludable
 	}
 	// Sans changement d'état : ni écriture (la table est append-only, chaque appel y
-	// ajouterait une ligne) ni recalcul de tout l'historique du joueur.
-	current, err := s.repo.IsExcluded(ctx, matchID)
-	if err != nil {
-		return fmt.Errorf("MatchExclusionService.SetExclusion état courant: %w", err)
-	}
+	// ajouterait une ligne) ni recalcul de tout l'historique du joueur. L'état est lu et
+	// la décision prise par le dépôt, sous le verrou d'écriture de la base joueur.
 	retry := s.recomputePending()
-	if current == excluded && !retry {
+	changed, err := s.repo.SetExclusion(ctx, matchID, excluded)
+	if err != nil {
+		return fmt.Errorf("MatchExclusionService.SetExclusion upsert: %w", err)
+	}
+	if !changed && !retry {
 		slog.DebugContext(ctx, "MatchExclusionService: état inchangé, rien à faire",
 			"match_id", matchID, "excluded", excluded)
 		return nil
 	}
-	if current != excluded {
-		if err := s.repo.SetExclusion(ctx, matchID, excluded); err != nil {
-			return fmt.Errorf("MatchExclusionService.SetExclusion upsert: %w", err)
-		}
+	if changed {
 		slog.InfoContext(ctx, "MatchExclusionService: flag is_excluded mis à jour",
 			"match_id", matchID, "excluded", excluded, "pair_name", info.PairName,
 			"is_firefight", info.IsFirefight)

@@ -190,12 +190,10 @@ type KillDistanceRepository interface {
 // MatchExclusionRepository gère le flag is_excluded dans player_match_enrichment.
 // Implémenté par platform/duckdb.MatchExclusionRepo.
 type MatchExclusionRepository interface {
-	// SetExclusion positionne is_excluded pour un match (UPSERT).
-	SetExclusion(ctx context.Context, matchID string, excluded bool) error
-
-	// IsExcluded dit si le match est actuellement exclu (dernier état connu du flag ;
-	// faux si aucun état n'a jamais été posé).
-	IsExcluded(ctx context.Context, matchID string) (bool, error)
+	// SetExclusion positionne is_excluded pour un match s'il diffère de l'état courant et
+	// dit s'il l'a écrit. Lecture de l'état, décision et écriture se font sous le verrou
+	// d'écriture de la base joueur : deux demandes qui se chevauchent se sérialisent.
+	SetExclusion(ctx context.Context, matchID string, excluded bool) (changed bool, err error)
 
 	// ListExcluded retourne les matchs marqués is_excluded = TRUE.
 	ListExcluded(ctx context.Context) ([]domain.ExcludedMatch, error)

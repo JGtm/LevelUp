@@ -15,14 +15,13 @@ type mockExclusionRepo struct {
 	sets     int // nombre d'écritures du flag
 }
 
-func (m *mockExclusionRepo) SetExclusion(_ context.Context, matchID string, excl bool) error {
+func (m *mockExclusionRepo) SetExclusion(_ context.Context, matchID string, excl bool) (bool, error) {
+	if m.excluded[matchID] == excl {
+		return false, nil
+	}
 	m.sets++
 	m.excluded[matchID] = excl
-	return nil
-}
-
-func (m *mockExclusionRepo) IsExcluded(_ context.Context, matchID string) (bool, error) {
-	return m.excluded[matchID], nil
+	return true, nil
 }
 
 func (m *mockExclusionRepo) ListExcluded(_ context.Context) ([]domain.ExcludedMatch, error) {
