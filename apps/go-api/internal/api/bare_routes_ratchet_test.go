@@ -113,7 +113,7 @@ var publicRoutesAllowlist = map[string]publicRoute{
 	// Référentiels d'images (assets — aucune identité).
 	"GET /api/v1/assets/battlepass/{subdir}/*":                 outbound("référentiel images battlepass", "TestAssetRoutes_UnverifiableKindNeedsTrust"),
 	"GET /api/v1/assets/challenge-badge/{title_id}/{badge_id}": outbound("référentiel images badges", "TestAssetRoutes_UnverifiableKindNeedsTrust"),
-	"GET /api/v1/assets/maps/{title_id}/{map_id}/image":        outbound("référentiel images maps", "TestAssetRoutes_UnknownIDDoesNotCallOut"),
+	"GET /api/v1/assets/maps/{title_id}/{map_id}/image":        outbound("référentiel images maps", "TestAssetRoutes_MapImage_NewVariantCallsOutOnlyForTrustedCallers"),
 	"GET /api/v1/assets/medals/{title_id}/{medal_id}/image":    outbound("référentiel images médailles", "TestAssetRoutes_UnknownIDDoesNotCallOut"),
 	"GET /api/v1/assets/spartan/{image_type}/{title_id}/*":     outbound("référentiel images spartan", "TestAssetRoutes_UnverifiableKindNeedsTrust"),
 	"GET /api/v1/assets/{title_id}/maps":                       cheap("référentiel catalogue maps"),

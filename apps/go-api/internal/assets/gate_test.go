@@ -163,3 +163,17 @@ func TestNegativeCache_IsBounded(t *testing.T) {
 		t.Fatalf("taille = %d, plafond 8", n)
 	}
 }
+
+// Une référence mal formée est refusée avant le stock local, le catalogue et la source
+// distante, et n'entre pas dans le cache négatif.
+func TestGate_InvalidRefIsRefusedBeforeAnyWork(t *testing.T) {
+	g, spy, cat := newTestGate(nil)
+	ref := Ref{Kind: KindMapImage, TitleID: "halo_infinite", ID: "abc", Variant: "/../../secret"}
+	if _, err := g.Get(context.Background(), ref, true); !errors.Is(err, ErrInvalidRef) {
+		t.Fatalf("err = %v, attendu ErrInvalidRef", err)
+	}
+	if spy.gets.Load() != 0 || cat.calls.Load() != 0 || g.refused.len() != 0 {
+		t.Fatalf("travail engagé : appels sortants=%d, catalogue=%d, refus mémorisés=%d",
+			spy.gets.Load(), cat.calls.Load(), g.refused.len())
+	}
+}

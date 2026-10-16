@@ -45,6 +45,7 @@ func NewGate(resolver gateResolver, catalog Catalog) *Gate {
 
 // Get sert ref.
 //
+//   - ref mal formée (Ref.Validate) : ErrInvalidRef, sans lecture ni appel sortant ;
 //   - stock local : servi ;
 //   - refus mémorisé : ErrNotFound, sans autre travail ;
 //   - identifiant inconnu du catalogue : ErrNotFound, sans appel sortant ;
@@ -52,6 +53,10 @@ func NewGate(resolver gateResolver, catalog Catalog) *Gate {
 //     (trusted : session authentifiée, ou instance sans authentification) seulement ;
 //   - identifiant connu : résolution complète. Un 404 amont est mémorisé.
 func (g *Gate) Get(ctx context.Context, ref Ref, trusted bool) (Resolved, error) {
+	if err := ref.Validate(); err != nil {
+		slog.WarnContext(ctx, "assets: référence refusée", append(ref.LogAttrs(), "err", err)...)
+		return Resolved{}, err
+	}
 	if res, ok := g.resolver.LookupLocal(ctx, ref); ok {
 		return res, nil
 	}

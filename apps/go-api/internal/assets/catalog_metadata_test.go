@@ -75,3 +75,43 @@ func TestMetadataCatalog_MissingTableIsUnknown(t *testing.T) {
 		t.Fatalf("Classify = %v, attendu VerdictUnknown", got)
 	}
 }
+
+// La version d'une carte (Variant) est jugée par le catalogue : la version courante est
+// connue ; une autre version d'une carte connue est invérifiable (récupérée pour un
+// appelant de confiance seulement) ; une carte inconnue reste inconnue quelle que soit sa
+// version.
+func TestMetadataCatalog_ClassifyMapVersion(t *testing.T) {
+	store := NewDuckDBIndexStore(filepath.Join(t.TempDir(), "metadata.duckdb"))
+	t.Cleanup(store.Close)
+	db, err := store.openDB()
+	if err != nil {
+		t.Fatalf("openDB: %v", err)
+	}
+	for _, stmt := range []string{
+		`CREATE TABLE maps_catalog (title_slug VARCHAR, map_asset_id VARCHAR, current_version_id VARCHAR)`,
+		`INSERT INTO maps_catalog VALUES ('halo_infinite', 'map-known', 'v-current')`,
+	} {
+		if _, err := db.Exec(context.Background(), stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	cat := NewMetadataCatalog(store, func(id string) bool { return id == "halo_infinite" })
+	cases := []struct {
+		name    string
+		id, ver string
+		want    Verdict
+	}{
+		{"sans version", "map-known", "", VerdictKnown},
+		{"version courante", "map-known", "v-current", VerdictKnown},
+		{"version absente du catalogue", "map-known", "v-other", VerdictUnverifiable},
+		{"carte inconnue, version quelconque", "map-invented", "v-current", VerdictUnknown},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ref := Ref{Kind: KindMapImage, TitleID: "halo_infinite", ID: tc.id, Variant: tc.ver}
+			if got := cat.Classify(context.Background(), ref); got != tc.want {
+				t.Fatalf("Classify(%s) = %v, attendu %v", ref, got, tc.want)
+			}
+		})
+	}
+}

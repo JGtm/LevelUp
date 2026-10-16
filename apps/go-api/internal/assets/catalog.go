@@ -48,6 +48,7 @@ const (
 	qMapCatalog       = `SELECT 1 FROM maps_catalog WHERE title_slug = ? AND map_asset_id = ? LIMIT 1`
 	qAssetTranslation = `SELECT 1 FROM asset_translations WHERE asset_type = ? AND asset_id = ? LIMIT 1`
 	qMapImage         = `SELECT 1 FROM map_images_registry WHERE title_id = ? AND map_id = ? LIMIT 1`
+	qMapVersion       = `SELECT 1 FROM maps_catalog WHERE title_slug = ? AND map_asset_id = ? AND current_version_id = ? LIMIT 1`
 )
 
 // Classify implémente Catalog.
@@ -78,14 +79,21 @@ func (c *MetadataCatalog) classifyMedal(ctx context.Context, ref Ref) Verdict {
 	return VerdictUnknown
 }
 
+// classifyMap juge la carte, puis sa version (Variant). La version entre dans l'appel
+// distant (DiscoveryUGC) : une version absente du catalogue (current_version_id) est
+// VerdictUnverifiable, récupérée pour un appelant de confiance seulement ; sans quoi
+// chaque version inventée coûterait un appel signé aux API Halo.
 func (c *MetadataCatalog) classifyMap(ctx context.Context, ref Ref) Verdict {
-	if c.any(ctx, ref,
+	if !c.any(ctx, ref,
 		probe{qMapCatalog, []any{ref.TitleID, ref.ID}},
 		probe{qAssetTranslation, []any{"map", ref.ID}},
 		probe{qMapImage, []any{ref.TitleID, ref.ID}}) {
+		return VerdictUnknown
+	}
+	if ref.Variant == "" || c.any(ctx, ref, probe{qMapVersion, []any{ref.TitleID, ref.ID, ref.Variant}}) {
 		return VerdictKnown
 	}
-	return VerdictUnknown
+	return VerdictUnverifiable
 }
 
 // probe est une requête de présence et ses arguments.

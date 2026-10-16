@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/ctxkeys"
 )
@@ -88,13 +89,20 @@ func (h *AssetHandler) GetMapImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// version_id (optionnel) : porté par ?v=. Requis pour le fallback DiscoveryUGC
-	// (404 sans), et inclus dans la clé de cache (Variant) → cache par (map, version).
+	// version_id (optionnel) : porté par ?v=, requis par le repli DiscoveryUGC (404 sans)
+	// et inclus dans la clé de cache (Variant) → cache par (map, version). Sa seule forme
+	// est un UUID : toute autre valeur est refusée avant le stock local et la source
+	// distante (elle entre dans un chemin disque et dans un appel signé).
+	version := strings.TrimSpace(r.URL.Query().Get("v"))
+	if version != "" && !analysis.IsRawAssetUUID(version) {
+		httpError(r.Context(), w, "v invalide", http.StatusBadRequest)
+		return
+	}
 	ref := assets.Ref{
 		Kind:    assets.KindMapImage,
 		TitleID: titleID,
 		ID:      mapID,
-		Variant: strings.TrimSpace(r.URL.Query().Get("v")),
+		Variant: version,
 	}
 
 	resolved, err := h.resolve(r, ref)
@@ -247,7 +255,7 @@ func serveResolved(w http.ResponseWriter, r *http.Request, res assets.Resolved) 
 // handleResolverError traduit les erreurs du resolver en réponses HTTP.
 func handleResolverError(ctx context.Context, w http.ResponseWriter, err error, op string, ref assets.Ref) {
 	switch {
-	case errors.Is(err, assets.ErrNotFound):
+	case errors.Is(err, assets.ErrNotFound), errors.Is(err, assets.ErrInvalidRef):
 		slog.Debug(op+": asset not found", ref.LogAttrs()...)
 		httpError(ctx, w, "asset non trouvé", http.StatusNotFound)
 	case errors.Is(err, assets.ErrUpstreamUnavailable):

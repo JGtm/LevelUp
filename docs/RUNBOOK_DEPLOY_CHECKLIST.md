@@ -128,7 +128,9 @@ Each item cites its source so it can be re-verified against the code. Structure:
       `internal/ops/media_tooling.go`; the server also logs this non-blocking at boot —
       grep `media tooling` in the console/boot logs). NOTE: the live VPS nginx config must
       mirror `packaging/nginx/levelup.conf` (and `packaging/nginx/rate_limit.conf` in
-      `/etc/nginx/conf.d/`) — in particular the body-size locations: `/api/` is capped at
+      `/etc/nginx/conf.d/`, `packaging/nginx/snippets/levelup-assets-v.conf` in
+      `/etc/nginx/snippets/`, included by the `/api/v1/assets/` location of both sites) — in
+      particular the body-size locations: `/api/` is capped at
       `1m`, and only the media upload (`600m`), OpenSpartan import (`1100m`) and worker
       (`20m`) locations accept more; a missing upload location makes video uploads fail
       with HTTP 413.

@@ -50,9 +50,9 @@ func (s *stubBinaryStore) PersistBinary(_ context.Context, _ Ref, p BinaryPayloa
 	return nil
 }
 
-func (s *stubBinaryStore) Path(_ Ref) string {
+func (s *stubBinaryStore) Path(_ Ref) (string, error) {
 	s.pathCalled++
-	return "/fake/path.png"
+	return "/fake/path.png", nil
 }
 
 // ---------------------------------------------------------------------------
@@ -137,7 +137,10 @@ func TestDefaultResolver_Get_FetchBinaryPayload(t *testing.T) {
 	}
 
 	// Vérifier que le fichier est bien persisté sur FS.
-	path := store.Path(ref)
+	path, err := store.Path(ref)
+	if err != nil {
+		t.Fatalf("Path(%s) : %v", ref, err)
+	}
 	if _, err := os.Stat(path); err != nil {
 		t.Errorf("fichier non persisté sur FS: %v", err)
 	}
