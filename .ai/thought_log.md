@@ -21,6 +21,73 @@
 **Résultats observés** : Go `vet` + `go test ./...` verts (archlint compris), intégration `-p 1` verte sur sync/auth/scheduler ; web : vitest complet 9 655 verts, tsc/eslint/lints maison propres. Deux garde-rails ont réagi : `no_pool_hasplayer_gate` (résolu par `IsWithheld`, sans exemption) et `TestNoNewFrenchLabelLiteral` (messages du handler en anglais). Allocation `service/seasons_catalog.go` resserrée de 4 à 3 à la demande du ratchet (journal « baisse à figer »). CORRIGÉ le 16/10 : ce n'était pas un échec, la première version de cette entrée le présentait à tort comme un rouge antérieur.
 
 **Conclusion** : AVANT la mise en production, lancer sur le VPS `levelup pool-sharing list` puis `grandfather --yes` (simulation d'abord) pour les amis qui ont donné leur accord, sinon leurs jetons sortent du pool au déploiement. Limites assumées : poller de présence live et CLI sans propriétaire restent sur le pool. Droit applicable des conditions non précisé (décision de l'auteur).
+## [2026-10-16] Post-sync : un match d'escouade n'est plus « Solo » sans LUSR pendant des minutes — Complété (branche `feat/postsync-ordre`)
+
+**Statut** : Complété (clôture demandée par l'utilisateur le 16/10) ; fusion dans `feat/v75` sur accord de l'utilisateur.
+
+**Décision technique principale** : `runPostSyncPipeline` suit l'ordre D1 (escouade, LUSR, CSR et agrégats avant les étapes film lentes 1.57 et 1.58 ; citations après). `is_with_friends` est posé dès le premier écrit avec le même prédicat que le recalcul, en V1 et en V2 (emprunt de la base partagée par le `SharedBorrower`). Le vidage du cache Home ajouté par le lot a été retiré (le `HomeMatchesCache` est mort depuis P4.3) ; le vidage des lectures joueur à mi-pipeline reste, avec un garde d'ordre archlint. D5 : le LUSR lit la passe crédit avant 1.57 (1 match sur 2 394 change, un bot), accepté par l'utilisateur.
+
+**Résultats observés** : comparaison avant/après sur un match d'escouade simulé : valeurs finales identiques, seuls `is_with_friends` après le premier écrit (FALSE puis TRUE) et l'ordre des étapes changent. Trois rondes de relecture Opus : 9 constats recevables, tous corrigés ou statués. Gates locaux verts sur le dernier arbre (paquets touchés en unitaire et en intégration, `make gate-push`) ; `go test ./...` et l'intégration complète verts sur la fusion de feat/v75 avant le retrait du rappel. CI verte sur `a13340e06` (run 38951473683).
+
+**Conclusion** : étape 4 non exécutée sur demande de l'utilisateur (preuve fonctionnelle = étape 2bis et CI). Découvertes non traitées dans `.ai/REGISTRE_REPORTS.md`. Prochaine étape : fusion dans `feat/v75` sur accord de l'utilisateur, puis confirmation sur un vrai match en prod après le déploiement de la 7.5.
+
+## [2026-10-16] Post-sync : étape 3 close, CI verte sur la fusion de feat/v75 (branche `feat/postsync-ordre`)
+
+**Statut** : Complété pour les étapes 0 à 3 ; l'étape 4 (validation sur données réelles) reste au superviseur.
+
+**Décision technique principale** : branche poussée sur `a13340e06` après fusion de `origin/feat/v75` ; CI verte sur tous les jobs (run 38951473683). Le run précédent n'avait qu'un job rouge, un délai dépassé du paquet `film/internal/grammar` (hors lot, consigné aux Découvertes).
+
+**Résultats observés** : gates de la fusion verts (205 paquets unitaires, 206 d'intégration, lint 0 issue, gate-push exit 0). Relecture adversariale : 3 rondes de relecteurs Opus, 9 constats recevables au total (1 P1, 8 P2), tous corrigés ou statués par écrit dans le plan.
+
+**Conclusion** : prochaine étape, 4.2 à 4.5 par le superviseur (serveur local relancé sur le code de la branche, vrai match d'escouade) ; décision à prendre sur le rappel de vidage du cache Home, sans effet visible depuis que HomeService ignore les hits.
+
+## [2026-10-16] Post-sync : fusion de feat/v75, gates rejoués, relecture finale — Complété jusqu'au push (branche `feat/postsync-ordre`)
+
+**Décision technique principale** : `origin/feat/v75` (c6a72cf02, sécurité + citations Halo 5) fusionné par `git merge` sans rebase ; un seul conflit textuel (imports de `sync/friends_recompute.go`, les deux évolutions gardées). L'étape des citations reste après le rejeu 1.58. Relecture finale contre feat/v75 : 1 constat P2 (le cache Home n'est plus servi, le rappel de vidage est sans effet visible), statué et consigné, commentaires corrigés.
+
+**Résultats observés** : sur la fusion, `go test ./...` 205 paquets verts, intégration 206 verts, `make go-api-lint` 0 issue, `make gate-push` exit 0 (baseline 9 398 présents sur 21 034). CI de 81014e0c1 : seul le job de couverture rouge, par dépassement de délai du paquet grammar (hors lot, vert en local : 68 à 160 s).
+
+**Conclusion** : push de la fusion et suivi de la CI.
+
+## [2026-10-16] Post-sync : relecture adversariale (ronde 1), corrections et tests — En cours (branche `feat/postsync-ordre`)
+
+**Décision technique principale** : deux relecteurs Opus en contexte frais (anti-ART/exactitude de l'ordre ; anti-patterns/tests) sur le diff du lot. 7 constats recevables au total (1 P1, 6 P2), 44 conditions vérifiées qui tiennent. Le P1 (premier écrit V2 sans test) et 5 P2 sont corrigés ; le P2 de taille de fichiers est statué (consigné). Le premier écrit V2 emprunte désormais la base partagée par `SharedBorrower` (suit les bascules RO/RW) au lieu de lire la connexion en cache.
+
+**Résultats observés** : `go test ./...` vert avant corrections (201 paquets) ; nouveaux tests : premier écrit V2 (mutation vérifiée), câblage V2 de la source d'amis, garde du branchement V1, point de ratchet `flushReadCaches`. Aucune allowlist de garde-rail touchée.
+
+**Conclusion** : ronde 2 faite (0 P0/P1, 2 P2 : 1 corrigé, 1 statué et consigné), voir le plan ; gates complets, push et CI ensuite.
+
+## [2026-10-16] Simulation de bout en bout du post-sync (escouade, LUSR, ordre) et contrôle du LUSR sur la passe crédit — En cours, arrêt demandé par la consigne (branche `feat/postsync-ordre`)
+
+**Décision technique principale** : tests `postsync_e2e_test.go` (match d'escouade joué par le chemin de production puis post-sync complet), comparaison avant/après sur le commit de base, test ciblé `TestLoadQuitTimeline_CreditOnlyPass` (la pénalité de départ lit la passe crédit-seul seule). Le faux serveur HTTP du plan n'a pas ses fichiers dans le dépôt : client de test + chunk de film v41 versionné.
+
+**Résultats observés** : valeurs finales identiques avant/après (LUSR 1503.1 Or IV, domination 0, citation 2, préparation posée) ; seuls changent is_with_friends au premier écrit (FALSE -> TRUE) et l'ordre des étapes. Mesure sur la copie de la base partagée : passe crédit et passe fusionnée donnent la même timeline de frags sur 2 383 matchs sur 2 394 ; 1 match (0,04 %) change le contexte de départ d'un partant (un bot).
+
+**Conclusion** : arrêt avant l'étape 3 selon la consigne 3 du coordinateur ; chiffres au compte rendu.
+
+## [2026-10-16] « Escouade » dès le premier écrit : is_with_friends posé avec le même prédicat que le recalcul — Complété pour l'étape 2 (branche `feat/postsync-ordre`)
+
+**Décision technique principale** : le premier écrit d'un match calcule `is_with_friends` par `withFriends` (même équipe, xuid ami, xuid différent du joueur) quand la liste d'amis est connue, via le champ pointeur existant `EnrichmentRow.IsWithFriends` (INSERT-only, aucun schéma changé). Amis résolus une fois par passe (V1) ou par joueur de cycle (V2). Le recalcul du post-sync reste l'autorité convergente. Liste inconnue ou vide : champ non posé.
+
+**Résultats observés** : le prédicat pur et la requête SQL du recalcul donnent le même verdict sur 11 cas ; après un premier écrit d'escouade, le recalcul promeut 0 et démote 0 ; ART : aucun garde-rail touché.
+
+**Conclusion** : étape 2bis (simulation de bout en bout) ensuite.
+
+## [2026-10-16] Post-sync : ordre D1 (escouade, LUSR, CSR, agrégats avant les films) et vidage des caches — Complété pour l'étape 1 (branche `feat/postsync-ordre`)
+
+**Décision technique principale** : `runPostSyncPipeline` suit D1 (enrichissement, scoring, événements 1.54, PSA 1.56, escouade, domination, LUSR, CSR, agrégats, vidage des caches, puis source du kill 1.57, rejeu 1.58, citations, médias, succès, préparation). Blocs PSA/catalogue/escouade/domination/citations extraits en méthodes (fonction 318 -> 232 lignes). Vidage du cache Home par un rappel du moteur (`WithHomeCacheFlush` / `ServiceRegistry.InvalidateHomeMatches`) branché sur les trois sites de construction du moteur (V1 auto-sync, HTTP, V2). Tableau de bord : étapes publiées dans l'ordre d'exécution, `kill_source` et `replay_artifacts` ajoutées.
+
+**Résultats observés** : tests sync/persist/archlint/scheduler/wire/handlers/cmd-server verts, intégration sync+persist verte, lint 0 issue nouvelle. Mutations vérifiées (ancien ordre : test d'ordre rouge ; domination avant 1.54 : domination figée à 0, test rouge). L'arrêt initial sur le LUSR v2 était sans objet : la passe crédit-seul de `match_kill_events` est écrite au premier écrit.
+
+**Conclusion** : étape 2 (« Escouade » dès le premier écrit) ensuite.
+
+## [2026-10-16] Post-sync : ordre des étapes et « Escouade » dès le premier écrit, étape 0 et arrêt avant l'étape 1 — En cours (branche `feat/postsync-ordre`)
+
+**Décision technique principale** : plan `.ai/PLAN_POSTSYNC_ORDRE_2026-10-16.md`, étape 0 close (base `27947da10`, tests unitaires et d'intégration de `internal/sync` et `internal/persist` verts, inventaire de `mv_player_matches` : aucune colonne ne dépend de la source du kill, du rejeu ni des citations, second rafraîchissement des agrégats inutile).
+
+**Résultats observés** : le LUSR v2 (pénalité de départ, `sync/skill/skill_v2_quit_penalty.go`) lit `match_kill_events_latest`, que seule l'étape 1.57 alimente au fil de l'eau ; le placer avant 1.57 (décision D1) ferait retomber les matchs avec un joueur parti sur l'issue finale, sans recalcul (filigrane avancé). Contredit le critère « aucun résultat final ne change ».
+
+**Conclusion** : exécution arrêtée avant l'étape 1, aucun code modifié ; options (a)/(b)/(c) dans le plan, décision au superviseur.
 ## [2026-10-16] Fusion du chantier sécurité (`feat/securite-2026-10-15`) dans feat/v75 — Complété (branche `merge/securite-v75`, partie de `origin/feat/v75` @ `0cf62379b`)
 
 **Décision technique principale** : quatre conflits résolus. `go.mod` : en-tête du chantier (l'image du `Dockerfile` est épinglée sur `golang:1.26.9-bookworm`, l'en-tête de feat/v75 la disait flottante), `go 1.26.9` des deux côtés, bloc `require` de feat/v75 (versions toutes supérieures ou égales : `x/crypto` 0.57.0, `x/image` 0.45.0, `x/sync` 0.23.0, `x/sys` 0.48.0, `x/time` 0.16.0) ; `go.sum` de feat/v75, `go mod tidy` sans changement. `sync/match_recomputer.go` : structure du chantier (coalescence par base joueur `coalesce.Runs`, `RecomputePending`, lecture de la base partagée par `acquireSharedReaderStandalone`, aucune prise du writer partagé) + titre des bases de feat/v75 (`WithTitle`/`titledCtx`, appliqué en tête de `recompute`, import `ctxkeys` rétabli). `scripts/check_test_baseline.sh` : les deux blocs de retrait du 2026-10-16 conservés, E4.8b (02:13) puis L8-1 (17:59).

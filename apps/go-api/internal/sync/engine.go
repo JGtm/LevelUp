@@ -46,7 +46,7 @@ const (
 	// postsyncEventsBurstChunk / postsyncWeaponsBurstChunk : taille des lots des
 	// étapes film du post-sync (events / weapon kills).
 	//
-	// Depuis le split COLLECT/FLUSH (v7.3, engine_postsync_films.go) le fetch film
+	// Depuis le split COLLECT/FLUSH (v7.3, convergence.go) le fetch film
 	// n'est PLUS dans le burst : le writer n'est acquis que pour le flush SQL du
 	// lot. Ces constantes ne bornent donc plus la durée du lease (elle ne dépend
 	// que du coût des INSERT) mais la MÉMOIRE : nombre de films téléchargés/parsés
@@ -212,6 +212,9 @@ type historyPaginationInputs struct {
 	isDelta  bool
 	// orphans : orphelins à récupérer par match_id ce cycle (knownset.Set.Recover).
 	orphans []string
+	// friendXUIDs : xuids des amis du joueur, résolus UNE fois par passe (ResolveFriendXUIDs) et
+	// posés sur chaque match fetché pour que le premier écrit porte is_with_friends. Nil = inconnue.
+	friendXUIDs []string
 }
 
 // paginateAndPersistHistory parcourt l'historique paginé (GetMatchHistory) et, page par
@@ -494,7 +497,8 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	e.syncHistory(ctx, historyPaginationInputs{
 		client: client, opts: opts, known: knownSet.Known,
 		sharedDB: sharedDB, playerDB: playerDB, isDelta: isDelta,
-		orphans: knownSet.Recover,
+		orphans:     knownSet.Recover,
+		friendXUIDs: ResolveFriendXUIDs(ctx, sharedDB, e.friendsLoader, e.xuid),
 	}, &result)
 
 	slog.InfoContext(ctx, "sync: boucle pagination terminée",

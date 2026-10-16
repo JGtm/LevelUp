@@ -18,20 +18,22 @@ import (
 	"levelup/go-api/internal/observability"
 )
 
-// postSyncStepNames : étapes publiées (ordre du pipeline). Réexporté pour le
-// registry (lecture des agrégats expvar par nom).
+// postSyncStepNames : étapes publiées, dans l'ordre d'exécution de runPostSyncPipeline
+// (le test d'ordre du pipeline le garde). Réexporté pour le registry (lecture des
+// agrégats expvar par nom).
 var postSyncStepNames = []string{
 	"enrichment_rows",
 	"scoring",
 	"convergence_events",
-	"weapon_kills",
 	"convergence_psa",
-	"citations",
+	"friends",
 	"dominance",
 	"skill_rating",
 	"csr_snapshots",
-	"friends",
 	"aggregates",
+	"kill_source",
+	"replay_artifacts",
+	"citations",
 	"media_scan",
 	"achievements",
 	"snapshot_readiness",

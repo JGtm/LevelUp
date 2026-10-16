@@ -69,6 +69,12 @@ type fetchedMatch struct {
 	// par ExtractObjectiveStats sous opts.WithObjectiveStats. Vide pour Slayer.
 	// Utilisé par batch.Shared.ObjectiveStats.
 	ObjectiveStats []persist.ObjectiveStatsInsert
+
+	// FriendXUIDs : xuids des amis du joueur sync, résolus UNE fois par passe
+	// (ResolveFriendXUIDs). Nil = liste inconnue ou vide : `is_with_friends` n'est alors pas
+	// posé au premier écrit. Sinon buildBatchFromFetchedMatchCtx le calcule dès le premier
+	// écrit (applyIsWithFriends), au lieu de laisser le défaut FALSE jusqu'au post-sync.
+	FriendXUIDs []string
 }
 
 // fetchMatchData exécute le fetch et l'extraction pour un match (pur, sans DB).
@@ -241,6 +247,11 @@ func (e *SyncEngine) fetchAndPersistMatches(ctx context.Context, in historyPagin
 	}
 
 	e.resolveCycleAssets(ctx, fetchedMatches)
+	for _, fm := range fetchedMatches {
+		if fm != nil {
+			fm.FriendXUIDs = in.friendXUIDs
+		}
+	}
 
 	persisted := 0
 	for _, fm := range fetchedMatches {
