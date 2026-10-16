@@ -218,3 +218,43 @@ describe('MatchViewPage — bandeaux « match partiel » et « données indispon
     expect(screen.queryByText(INDISPONIBLE)).not.toBeInTheDocument()
   })
 })
+
+describe("MatchViewPage — bandeau INFO « Analyse du film en cours »", () => {
+  const vue = (analysisPending: boolean | undefined) => {
+    hoisted.matchView.isError = false
+    hoisted.matchView.error = null
+    hoisted.matchView.data = {
+      header: { map_ui: 'Forest', mode_ui: 'Slayer', start_time_label: null, analysis_pending: analysisPending },
+      rank: null,
+      summary_tab: { kpis: {}, expected_stats: null, medals: [], citations: [] },
+      combat_tab: {},
+      team_tab: {},
+      media_tab: { media_items: [] },
+      citations_tab: { native_commendations: [] },
+      radar: null,
+    }
+  }
+
+  it("analyse en cours : bandeau role=status sous l'en-tête, avant les onglets", () => {
+    vue(true)
+    renderWithProviders(<MatchViewPage />)
+
+    const bandeau = screen.getByTestId('match-analysis-pending-banner')
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByText('Analyse du film en cours')).toBeInTheDocument()
+    expect(screen.getByText('Mise à jour automatique')).toBeInTheDocument()
+    // Sous l'en-tête : le bandeau suit la carte d'en-tête dans le document.
+    const header = screen.getByTestId('header-card')
+    expect(header.compareDocumentPosition(bandeau) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('analyse finie ou signal absent : aucun bandeau', () => {
+    for (const flag of [false, undefined]) {
+      vue(flag)
+      const { unmount } = renderWithProviders(<MatchViewPage />)
+      expect(screen.queryByTestId('match-analysis-pending-banner')).not.toBeInTheDocument()
+      expect(screen.queryByText('Analyse du film en cours')).not.toBeInTheDocument()
+      unmount()
+    }
+  })
+})

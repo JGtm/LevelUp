@@ -13,7 +13,8 @@
  *
  * L'emplacement est RÉSERVÉ : sans `assisted_frags` (film absent ou sans assistance lue)
  * le composant occupe la même hauteur, vide — sur la grille de l'accueil, les tuiles
- * voisines gardent leurs stats alignées. Aucun « — » ni « 0 » fabriqué.
+ * voisines gardent leurs stats alignées. Aucun « — » ni « 0 » fabriqué. Quand l'analyse du
+ * film est en cours (`analysisPending`), le même emplacement annonce « analyse en cours ».
  */
 import { AssistTierBar, ASSIST_RECEIVED_TOKEN } from '@/features/_shared/assists/AssistTierBar'
 import { assistTierTone } from '@/features/_shared/assists/assistTierTone'
@@ -24,6 +25,7 @@ import type { MatchAssistedFrags } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest } from '@/lib/i18n/generated/common'
 import type { Locale } from '@/lib/i18n/locale'
+import { MatchCardAssistedFragsPending } from './match-card-analysis-pending'
 
 // Barre (h-2, comme la barre frags / assistances / décès) + interligne 6 px + légende text-2xs
 // (10 px, leading-none) : la hauteur réservée est celle du bloc mesuré. `mt-3` le détache
@@ -34,10 +36,14 @@ const LEGEND_CLASS = 'text-center font-mono text-2xs tabular-nums leading-none w
 export function MatchCardAssistedFrags({
   assisted,
   locale,
+  analysisPending = false,
 }: {
   assisted: MatchAssistedFrags | null | undefined
   locale: Locale
+  /** L'analyse du film du match est en cours : l'emplacement vide annonce l'attente. */
+  analysisPending?: boolean
 }) {
+  if (!assisted && analysisPending) return <MatchCardAssistedFragsPending locale={locale} />
   if (!assisted) {
     return <div data-testid="match-card-assisted-frags-slot" className={SLOT_CLASS} aria-hidden="true" />
   }

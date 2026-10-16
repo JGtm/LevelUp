@@ -17,6 +17,8 @@ import { CitationProgressRing } from './citation-progress-ring'
 import { citationMastery } from '@/lib/citations/mastery'
 import { CombatYieldDisplay } from './combat-yield-display'
 import { MatchCardAssistedFrags } from './match-card-assisted-frags'
+import { AnalysisPendingBadge } from './analysis-pending-badge'
+import { MatchCardCitationsPending, MatchCardReplayPending } from './match-card-analysis-pending'
 import { MedalIcon } from './MedalIcon'
 import { skillDeltaScale, kdaDivergentScale, mmrDeltaScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -75,6 +77,9 @@ function buildMatchHeading(match: RecentMatchItem, locale: Locale): string {
 
 export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlug, onClick, onToggleFavorite, favoriteDisabled }: MatchCardProps) {
   const heading = buildMatchHeading(m, locale)
+  // Analyse du film en cours (serveur : analysis_pending) : pastille + emplacements en attente
+  // à la place des trous. Jamais sur une tuile dont l'analyse est finie.
+  const analysisPending = m.analysis_pending === true
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   // KDA NET ((k+a/3)−d) pour les 2 titres (API Infinite / FDA Halo 5), possiblement
   // negatif -> echelle divergente autour de 0 (jamais kdScale).
@@ -151,6 +156,9 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
         >
           {m.map_ui ?? t('common.match_card.map_unknown')}
         </div>
+
+        {/* Pastille « Analyse en cours » en overlay coin supérieur droit (+ infobulle) */}
+        {analysisPending && <AnalysisPendingBadge locale={locale} />}
 
         {/* Bouton favori en overlay coin supérieur gauche */}
         {onToggleFavorite && (
@@ -278,6 +286,8 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
               variant="button"
             />
           )}
+          {/* Rejeu pas encore là mais en route : puce en pointillés à la place du bouton absent. */}
+          {playerSlug && analysisPending && m.has_replay !== true && <MatchCardReplayPending locale={locale} />}
         </div>
 
         {/* Bloc perf + skill rating + barre KDA */}
@@ -385,7 +395,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
                 {/* Part des frags assistés par un coéquipier (film analysé). L'emplacement est
                     RÉSERVÉ (même hauteur sans mesure) : sur la grille de l'accueil, les tuiles
                     voisines gardent leurs stats alignées, qu'elles aient une mesure ou non. */}
-                <MatchCardAssistedFrags assisted={m.assisted_frags} locale={locale} />
+                <MatchCardAssistedFrags assisted={m.assisted_frags} locale={locale} analysisPending={analysisPending} />
               </div>
             )}
 
@@ -528,6 +538,11 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
                   </div>
                 ))}
               </div>
+            )}
+
+            {/* Citations pas encore calculées : trois cercles en pointillés à la place du vide */}
+            {analysisPending && !(m.top_citations && m.top_citations.length > 0) && (
+              <MatchCardCitationsPending locale={locale} />
             )}
 
             {/* Citations — max 3, filtrées et triées par delta DESC */}

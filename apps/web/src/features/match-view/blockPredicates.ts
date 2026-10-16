@@ -62,3 +62,23 @@ export function hasPositions(positions: MatchPlayerPosition[] | null | undefined
 export function useHasKillDistanceSection(): boolean {
   return useDataCapability('film.kill_positions')
 }
+
+/**
+ * arsenalPendingSlots — quelles sections de l'onglet « Armes et terrain » montrent un
+ * emplacement d'ATTENTE (analyse du film en cours, `header.analysis_pending`) à la place de
+ * leur état vide. Même règle de rendu pour le bloc et pour la pose du titre de section.
+ *
+ *  - `killsWeapons` : l'arme de chaque frag (distance par arme) n'est pas encore lue ;
+ *  - `terrain` : ni l'Emprise, ni l'usage d'équipements, ni les positions du film (le rejeu
+ *    2D) n'existent encore.
+ *
+ * Hors analyse en cours : aucun emplacement, les sections gardent leur état normal.
+ */
+export function arsenalPendingSlots(p: {
+  analysisPending: boolean
+  hasKillDistance: boolean
+  hasTerrain: boolean
+}): { killsWeapons: boolean; terrain: boolean } {
+  if (!p.analysisPending) return { killsWeapons: false, terrain: false }
+  return { killsWeapons: !p.hasKillDistance, terrain: !p.hasTerrain }
+}

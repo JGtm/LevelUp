@@ -120,7 +120,10 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		// Rejeu 2D : MÊME service que l'endpoint /replay (une seule résolution de
 		// chemin dans le dépôt). Seule IsAvailable est appelée par la Match View,
 		// pour publier `replay_available` sans lire l'artefact.
-		WithReplay(r.replayServiceFor(pdb))
+		WithReplay(r.replayServiceFor(pdb)).
+		// Indicateur « analyse du film en cours » de l'en-tête (porte de titre :
+		// registry_analysis_pending.go).
+		WithAnalysisPending(r.analysisPendingFor(pdb))
 	// Timeline objectif v3 + positions joueurs keyframe v3 : les DEUX PROJECTIONS DE
 	// L'ARTEFACT DE REJEU servies à la Match View. Câblées SOUS CONDITION : un titre qui
 	// ne déclare pas `film.replay_artifact` n'obtient AUCUN des deux loaders, et ses deux

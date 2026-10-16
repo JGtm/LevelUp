@@ -315,6 +315,11 @@ type RecentMatchItem struct {
 	// relation_assists.go. Nil quand le film du match ne porte pas l'assistance (film non
 	// décodé, titre sans décodeur) : la tuile n'affiche alors rien.
 	AssistedFrags *MatchAssistedFrags `json:"assisted_frags,omitempty"`
+	// AnalysisPending : le match est synchronisé mais l'analyse de son film n'est pas finie
+	// (frags assistés, citations ou rejeu 2D encore à venir) ; la tuile le dit au lieu d'afficher
+	// des trous. Règle : analysis.IsAnalysisPending. Faux/absent hors du titre qui analyse des
+	// films, et au-delà de analysis.AnalysisPendingWindow après la synchro.
+	AnalysisPending bool `json:"analysis_pending,omitempty"`
 }
 
 // RecentMatchMedal est une médaille compacte pour l'affichage dans MatchCard.

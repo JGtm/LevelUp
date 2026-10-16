@@ -58,6 +58,9 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		// décrit le commentaire de WithRoundsDecide ci-dessus, refaite. Parité des deux
 		// factories désormais tenue par home_factories_parity_test.go.
 		WithReplay(r.replayServiceFor(pdb)).
+		// Indicateur « analyse du film en cours » des tuiles : porte de titre dans
+		// registry_analysis_pending.go. Parité des deux factories tenue par le garde du paquet.
+		WithAnalysisPending(r.analysisPendingFor(pdb)).
 		WithDemoMode(r.cfg.DemoMode)
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(svc))
 	enriched := forcePageIdentityXUID(r.enrichWithHaloTokens(ctx, pdb), pdb.XUID)

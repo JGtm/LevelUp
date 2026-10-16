@@ -486,3 +486,27 @@ func TestMatchViewHandler_CacheControl_VueEnEchec(t *testing.T) {
 		})
 	}
 }
+
+// Une vue dont l'analyse du film est en cours change d'ici quelques instants : no-store,
+// comme une vue en panne partielle. Une vue complète n'en porte pas.
+func TestMatchViewHandler_CacheControl_AnalyseEnCours(t *testing.T) {
+	for _, pending := range []bool{true, false} {
+		resp := domain.MatchViewResponse{Header: domain.MatchViewHeader{MatchID: "abc123", AnalysisPending: pending}}
+		factory := func(_ context.Context, _ string) (port.MatchViewService, error) {
+			return &mockMatchViewService{resp: resp}, nil
+		}
+		req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/abc123", nil)
+		w := httptest.NewRecorder()
+		newMatchViewRouter(factory).ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("200 attendu, obtenu %d : %s", w.Code, w.Body.String())
+		}
+		got := w.Header().Get("Cache-Control")
+		if pending && got != "no-store" {
+			t.Errorf("analysis_pending=true : Cache-Control = %q, no-store attendu", got)
+		}
+		if !pending && got != "" {
+			t.Errorf("analysis_pending=false : Cache-Control = %q, aucun en-tête attendu", got)
+		}
+	}
+}

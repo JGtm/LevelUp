@@ -25,6 +25,7 @@ import { MatchEquipmentUsageSection } from '@/features/match-replay/MatchEquipme
 import { buildEquipmentUsage, hasEquipmentUsage } from '@/features/match-replay/model/equipmentUsageLogic'
 import { DetailSection } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { AnalysisPendingSlot } from '@/components/ui/analysis-pending-slot'
 import type {
   FragDistribution,
   MatchEmpriseBlock,
@@ -40,7 +41,7 @@ import { useMatchReplay } from '@/lib/replay/queries'
 import { MatchFragCard } from './MatchFragCard'
 import { MatchKillDistanceSection } from './MatchKillDistanceSection'
 import { MatchPositionsHeatmap } from './MatchPositionsHeatmap'
-import { hasMatchFragData, hasPositions, useHasKillDistanceSection } from './blockPredicates'
+import { arsenalPendingSlots, hasMatchFragData, hasPositions, useHasKillDistanceSection } from './blockPredicates'
 import type { MatchViewText } from './i18n'
 import { hasEquipmentEmpriseCard } from './matchEmprise.logic'
 import { useMatchEmprise } from './useMatchEmprise'
@@ -61,6 +62,9 @@ interface Props {
   emprise: MatchEmpriseBlock | null | undefined
   /** « Isolement » de chaque joueur de l'équipe — absent sans positions de film. */
   livesNearTeammate: MatchLivesNearTeammate | null | undefined
+  /** `header.analysis_pending` : l'analyse du film est en cours, les sections qui en dépendent
+   *  montrent un emplacement d'attente au lieu de leur état vide. */
+  analysisPending?: boolean
   meXUID: string | null
   friendGamertags: readonly string[]
   matchPositions: MatchPlayerPosition[] | undefined
@@ -88,6 +92,7 @@ export function MatchViewTabArsenal({
   killDistance,
   emprise,
   livesNearTeammate,
+  analysisPending = false,
   meXUID,
   friendGamertags,
   matchPositions,
@@ -103,21 +108,36 @@ export function MatchViewTabArsenal({
   const showKillsWeapons = hasMatchFragData(fragDistribution, weaponTools) || showKillDistance
   const showEquipmentTerrain = hasEquipmentEmpriseCard(e.present) || equipment || hasPositions(matchPositions)
 
-  if (!showKillsWeapons && !showEquipmentTerrain) {
+  // Analyse du film en cours : l'arme de chaque frag et le rejeu 2D (Emprise, équipements,
+  // positions) s'annoncent par un emplacement d'attente au lieu de l'état vide.
+  const pending = arsenalPendingSlots({
+    analysisPending,
+    hasKillDistance: (killDistance?.length ?? 0) > 0,
+    hasTerrain: showEquipmentTerrain,
+  })
+  const showKillsWeaponsSection = showKillsWeapons || pending.killsWeapons
+  const showTerrainSection = showEquipmentTerrain || pending.terrain
+
+  if (!showKillsWeaponsSection && !showTerrainSection) {
     return <EmptyStateNotice title={t.arsenalEmptyTitle} description={t.arsenalEmptyDescription} />
   }
 
   return (
     <div className="space-y-6">
-      {showKillsWeapons && (
+      {showKillsWeaponsSection && (
         <DetailSection title={t.sectionKillsWeapons}>
           <MatchFragCard distribution={fragDistribution} tools={weaponTools} locale={locale} />
-          <MatchKillDistanceSection players={killDistance} scoreboard={scoreboard} roster={roster} meXUID={meXUID} friendGamertags={friendGamertags} t={t} />
+          {pending.killsWeapons ? (
+            <AnalysisPendingSlot label={t.analysisPendingSlotInProgress} />
+          ) : (
+            <MatchKillDistanceSection players={killDistance} scoreboard={scoreboard} roster={roster} meXUID={meXUID} friendGamertags={friendGamertags} t={t} />
+          )}
         </DetailSection>
       )}
 
-      {showEquipmentTerrain && (
+      {showTerrainSection && (
         <DetailSection title={t.sectionEquipmentTerrain}>
+          {pending.terrain && <AnalysisPendingSlot label={t.analysisPendingSlotPreparing} />}
           {e.control}
           {e.sheets}
           <MatchEquipmentUsageSection playerSlug={playerSlug} matchId={matchId} replayAvailable={replayAvailable} scoreboard={scoreboard} locale={locale} />

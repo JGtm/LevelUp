@@ -83,6 +83,9 @@ type HomeService struct {
 	// jamais un accès disque par tuile. Nil → HasReplay reste faux partout (titre sans
 	// rejeu construit — dégradation gracieuse, aucun lien mort sur les tuiles).
 	replaySvc port.ReplayService
+	// analysisPending (optionnel) : résolveur du signal `analysis_pending` des tuiles. Nil (titre
+	// sans la capability du film, tests) → le champ reste faux partout.
+	analysisPending *AnalysisPendingResolver
 }
 
 // NewHomeService crée un HomeService avec le repository et le provider Halo.
@@ -454,7 +457,8 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	applyPerfPlacementsToRecentItems(ctx, d.canonicalRows, recentMatches, favoriteMatches)
 	// Lien « Rejeu 2D » des tuiles : présence d'artefact résolue en UN listing de
 	// dossier pour les deux listes (jamais un accès disque par tuile).
-	applyReplayAvailabilityToRecentItems(s.replayAvailability(ctx), recentMatches, favoriteMatches)
+	replays := s.replayAvailability(ctx)
+	applyReplayAvailabilityToRecentItems(replays, recentMatches, favoriteMatches)
 	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false, locale, hp)
 	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true, locale, hp)
 	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20, locale, hp)
@@ -492,6 +496,10 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		return nil
 	})
 	_ = enrichG.Wait()
+	// Indicateur « analyse du film en cours » : UNE lecture pour les deux listes, après
+	// l'enrichissement (aucune dépendance) ; sans résolveur câblé (titre sans la capability du
+	// film), le champ reste faux.
+	s.applyAnalysisPendingToRecentItems(ctx, replays, recentMatches, favoriteMatches)
 
 	var rankCatalog *mappings.RankCatalog
 	if s.semantic != nil {
