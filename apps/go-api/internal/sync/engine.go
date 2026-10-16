@@ -156,9 +156,12 @@ type SyncEngine struct {
 	mediaHook func(ctx context.Context)
 
 	// homeCacheHook vide le cache Home du joueur (xuid, titre) : appelé par le pipeline
-	// post-sync après les agrégats (avant les étapes film lentes) et à sa sortie, pour que la
-	// page ne serve pas un match « Solo » ou sans LUSR jusqu'au TTL. sync n'importe pas
-	// service : le serveur injecte le rappel (WithHomeCacheFlush). Nil → rien à vider.
+	// post-sync après les agrégats (avant les étapes film lentes) et à sa sortie, en parité avec
+	// le vidage de fin de synchro HTTP (invalidateHomeCacheAfterSync). HomeService n'honore plus
+	// un hit de ce cache (bypass P4.3, service/home_service.go) : ce que la page relit vraiment
+	// est vidé par InvalidatePlayerReadCaches ; ce rappel garde le cache Home cohérent si un hit
+	// y est de nouveau servi. sync n'importe pas service : le serveur injecte le rappel
+	// (WithHomeCacheFlush). Nil → rien à vider.
 	homeCacheHook func(ctx context.Context, xuid, titleSlug string)
 
 	// batchQueue (Phase 3 refactor Collect→Persist) — si non-nil,

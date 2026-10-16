@@ -209,6 +209,11 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   sont suivis) et aucun test hors `halotest` ne l'utilise (`engine_e2e_test.go` ne l'exerce pas, contrairement
   au texte du plan). La simulation de 2bis utilise donc `mockHaloClient` + le chunk de film v41 versionné
   (275 événements, 101 morts) : elle tourne en CI. Non traité : brancher le vrai client HTTP sur le faux serveur.
+- (16/10, exécutant, relecture finale 3.3) `HomeMatchesCache` ne sert plus aucun hit (`service/home_service.go:247-275`,
+  bypass P4.3 « TODO P4.4 ») : son vidage, ancien (`invalidateHomeCacheAfterSync`) comme nouveau
+  (`WithHomeCacheFlush`, `ServiceRegistry.InvalidateHomeMatches`), est sans effet visible. À retirer avec le cache
+  lui-même (ou à rebrancher quand il redevient canonical-aware) ; retirer seulement le rappel du lot supprimerait
+  3 branchements et 4 tests.
 - (16/10, exécutant, relecture 3.3 ronde 2) `LookupFriendXUIDs` (`sync/session_recalc.go`) avale l'erreur de chaque
   requête par gamertag : une base fermée en cours de boucle rend une liste partielle sans WARN, pour le recalcul
   comme pour le premier écrit. Un emprunt RW du `SharedBorrower` n'étant pas compté, `ResolveFriendXUIDs` ne
@@ -339,3 +344,17 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   `api/server_apiv1.go`. Vérification après fusion : l'ordre de `runPostSyncPipeline` est inchangé (citations après
   le rejeu 1.58, `TestRunPostSyncPipeline_StepOrder` à rejouer). Les gates 3.1 et 3.2 et la relecture contre
   feat/v75 sont rejoués sur le résultat de la fusion (entrées suivantes).
+- 16/10 Gates 3.1 et 3.2 sur la fusion (HEAD `0c22aafda`, caches dédiés) : `go test ./...` vert (205 paquets ok, 0 échec),
+  `go test -tags=integration -p 1 ./...` vert (206 paquets ok, 0 échec), `make go-api-lint` : 0 issues,
+  `make gate-push` : exit 0 (lint Go 0 issue, typecheck et lint web sans erreur, baseline : 9 398 tests attendus,
+  tous présents, sur 21 034 ; aucun test ni paquet en échec). Paquet `film/internal/grammar` en local : 160 s
+  (suite unitaire complète en parallèle d'autres processus) et 68 s (run d'intégration), loin de ses 15 min.
+  Citations : étape toujours APRÈS le rejeu 1.58 (`TestRunPostSyncPipeline_StepOrder` et e2e verts après la fusion).
+- 16/10 Relecture adversariale finale (3.3, 1 relecteur Opus, contexte frais) sur `git diff origin/feat/v75...HEAD` :
+  1 constat recevable (P2), 24 conditions vérifiées. P2 : `HomeMatchesCache` n'est plus servi
+  (`service/home_service.go` : un hit est ignoré, bypass P4.3, `Set(xuid, titre, nil, nil)` seulement) ; le rappel de
+  vidage du cache Home (1.3) est donc sans effet visible, et la prémisse C3 du plan (« HomeMatchesCache 45 s jamais
+  vidé ») ne produisait pas le symptôme. STATUÉ, non retiré : l'item 1.3 est dans le plan et le vidage reste
+  cohérent avec `invalidateHomeCacheAfterSync` si un hit y est de nouveau servi ; les commentaires disent
+  maintenant la vérité (ce qui rafraîchit la page est `InvalidatePlayerReadCaches`). Décision de retrait du rappel
+  (3 sites, un point de registre, 4 tests) laissée au coordinateur : Découvertes.

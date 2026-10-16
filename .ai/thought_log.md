@@ -1,3 +1,11 @@
+## [2026-10-16] Post-sync : fusion de feat/v75, gates rejoués, relecture finale — Complété jusqu'au push (branche `feat/postsync-ordre`)
+
+**Décision technique principale** : `origin/feat/v75` (c6a72cf02, sécurité + citations Halo 5) fusionné par `git merge` sans rebase ; un seul conflit textuel (imports de `sync/friends_recompute.go`, les deux évolutions gardées). L'étape des citations reste après le rejeu 1.58. Relecture finale contre feat/v75 : 1 constat P2 (le cache Home n'est plus servi, le rappel de vidage est sans effet visible), statué et consigné, commentaires corrigés.
+
+**Résultats observés** : sur la fusion, `go test ./...` 205 paquets verts, intégration 206 verts, `make go-api-lint` 0 issue, `make gate-push` exit 0 (baseline 9 398 présents sur 21 034). CI de 81014e0c1 : seul le job de couverture rouge, par dépassement de délai du paquet grammar (hors lot, vert en local : 68 à 160 s).
+
+**Conclusion** : push de la fusion et suivi de la CI.
+
 ## [2026-10-16] Post-sync : relecture adversariale (ronde 1), corrections et tests — En cours (branche `feat/postsync-ordre`)
 
 **Décision technique principale** : deux relecteurs Opus en contexte frais (anti-ART/exactitude de l'ordre ; anti-patterns/tests) sur le diff du lot. 7 constats recevables au total (1 P1, 6 P2), 44 conditions vérifiées qui tiennent. Le P1 (premier écrit V2 sans test) et 5 P2 sont corrigés ; le P2 de taille de fichiers est statué (consigné). Le premier écrit V2 emprunte désormais la base partagée par `SharedBorrower` (suit les bascules RO/RW) au lieu de lire la connexion en cache.
