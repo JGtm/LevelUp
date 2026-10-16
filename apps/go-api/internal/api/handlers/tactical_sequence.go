@@ -21,13 +21,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"regexp"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
 
@@ -65,16 +65,14 @@ type tacticalSequenceOutput struct{ Body domain.TacticalSequence }
 // messageSansSequence : LE message de tous les refus de la route (cf. l en-tete).
 const messageSansSequence = "aucune sequence disponible pour cette mort"
 
-// motif de forme : un match_id est un uuid (le xuid est valide par domain.XUIDValide). LISTE BLANCHE, comme
-// `MapIDValide` — rien d'autre n'atteint le service ni, derriere lui, le chemin d'un artefact.
-var (
-	motifMatchSequence = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,63}$`)
-)
-
 // handleGetSequence rend la sequence d'une mort du joueur de la page.
+//
+// Formes en LISTE BLANCHE, comme `MapIDValide` : le match_id par title.IsValidMatchID, le
+// xuid par domain.XUIDValide. Rien d'autre n'atteint le service ni, derriere lui, le chemin
+// d'un artefact.
 func (h *TacticalSequenceHandler) handleGetSequence(ctx context.Context, in *tacticalSequenceInput) (*tacticalSequenceOutput, error) {
 	mapID, okMap := MapIDValide(in.MapID)
-	if !okMap || !motifMatchSequence.MatchString(in.Body.MatchID) || !domain.XUIDValide(in.Body.VictimXUID) {
+	if !okMap || !title.IsValidMatchID(in.Body.MatchID) || !domain.XUIDValide(in.Body.VictimXUID) {
 		// UN REFUS DE FORME EST UN 404, jamais un 400 : meme statut, meme code, meme message que
 		// l'absence (cf. MapIDValide) — la frontiere n'est pas un oracle.
 		return nil, humacore.NewError(http.StatusNotFound, "replay_not_available", messageSansSequence)

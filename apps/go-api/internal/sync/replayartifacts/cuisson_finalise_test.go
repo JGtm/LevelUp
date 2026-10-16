@@ -70,14 +70,14 @@ func TestPersistFilmToCache_NonFinalise_ReporteEtCompte(t *testing.T) {
 				Fetcher: fetcherNonFinalise{liste: liste}}
 			avant := compteur(CompteurFilmsNonFinalises)
 
-			r := persistFilmToCache(ctx, d, "m1")
+			r := persistFilmToCache(ctx, d, "0000a001")
 			if r != (resultatFilm{reporte: true}) {
 				t.Fatalf("film non finalise : %+v, attendu {reporte: true} seul", r)
 			}
 			if n := compteur(CompteurFilmsNonFinalises) - avant; n != 1 {
 				t.Errorf("%s : +%d, attendu +1 — le report est invisible", CompteurFilmsNonFinalises, n)
 			}
-			if _, found, err := filmcache.Open(racine, titlePkg.FilmShortMatchID("m1")); found || err != nil {
+			if _, found, err := filmcache.Open(racine, titlePkg.FilmShortMatchID("0000a001")); found || err != nil {
 				t.Errorf("un manifeste a ete valide pour un film non finalise (found=%v, err=%v)", found, err)
 			}
 		})
@@ -103,7 +103,7 @@ func TestBuildAll_NonFinalise_ReporteSansCuisson(t *testing.T) {
 		},
 	}
 	avant := compteur(CompteurFilmsNonFinalises)
-	b := buildAll(context.Background(), d, []buildWork{{matchID: "m1"}, {matchID: "m2"}})
+	b := buildAll(context.Background(), d, []buildWork{{matchID: "0000a001"}, {matchID: "0000a002"}})
 	if appels != 0 || b.echecs != 0 || b.construits != 0 || b.filmsSauves != 0 || b.sansFilm != 0 {
 		t.Errorf("bilan = %+v (%d cuisson(s)), attendu aucune cuisson, aucun echec, aucun « sans film »", b, appels)
 	}
@@ -127,31 +127,31 @@ func TestReporterNonFinalise_HorsDelai_SignaleUneFoisParFilm(t *testing.T) {
 	horsDelai := func() int64 { return compteur(CompteurFilmsNonFinalisesHorsDelai) }
 	depart := horsDelai()
 
-	if !reporterNonFinalise(ctx, d, "m1", err) {
+	if !reporterNonFinalise(ctx, d, "0000a001", err) {
 		t.Fatal("un refus de finalisation n'est pas reporte")
 	}
 	*instant = instant.Add(DelaiDeFinalisation)
-	reporterNonFinalise(ctx, d, "m1", err)
+	reporterNonFinalise(ctx, d, "0000a001", err)
 	if n := horsDelai() - depart; n != 0 {
 		t.Fatalf("compte hors delai a l'echeance exacte : +%d, attendu 0 (un film frais)", n)
 	}
 	*instant = instant.Add(time.Second)
-	reporterNonFinalise(ctx, d, "m1", err)
+	reporterNonFinalise(ctx, d, "0000a001", err)
 	if n := horsDelai() - depart; n != 1 {
 		t.Fatalf("compte hors delai au-dela du delai : +%d, attendu +1", n)
 	}
-	reporterNonFinalise(ctx, d, "m1", err)
+	reporterNonFinalise(ctx, d, "0000a001", err)
 	if n := horsDelai() - depart; n != 1 {
 		t.Fatalf("le meme film recompte : +%d, attendu +1 (une fois par film)", n)
 	}
 	// Un AUTRE film, refuse pour la premiere fois maintenant, est frais.
-	reporterNonFinalise(ctx, d, "m2", err)
+	reporterNonFinalise(ctx, d, "0000a002", err)
 	if n := horsDelai() - depart; n != 1 {
 		t.Fatalf("un film frais compte hors delai : +%d, attendu +1", n)
 	}
 	// Archive : l'attente de m1 est close.
-	attentes.oublier(cleDAttente(ctx, "m1"))
-	reporterNonFinalise(ctx, d, "m1", err)
+	attentes.oublier(cleDAttente(ctx, "0000a001"))
+	reporterNonFinalise(ctx, d, "0000a001", err)
 	if n := horsDelai() - depart; n != 1 {
 		t.Fatalf("un film archive puis refuse garde son ancienne attente : +%d, attendu +1", n)
 	}
@@ -163,13 +163,13 @@ func TestReporterNonFinalise_HorsDelai_SignaleUneFoisParFilm(t *testing.T) {
 func TestPersistFilmToCache_FilmArchive_CloreLAttente(t *testing.T) {
 	ctx := context.Background()
 	instant := horlogeDeTest(t)
-	cle := cleDAttente(ctx, "m1")
-	reporterNonFinalise(ctx, Deps{}, "m1", finalise.ErrFilmNonFinalise)
+	cle := cleDAttente(ctx, "0000a001")
+	reporterNonFinalise(ctx, Deps{}, "0000a001", finalise.ErrFilmNonFinalise)
 	*instant = instant.Add(time.Minute)
 
 	d := Deps{Gamertag: "g", TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
 		Fetcher: fetcherFinalise{}}
-	if r := persistFilmToCache(ctx, d, "m1"); r != (resultatFilm{sauve: true, dispo: true}) {
+	if r := persistFilmToCache(ctx, d, "0000a001"); r != (resultatFilm{sauve: true, dispo: true}) {
 		t.Fatalf("film finalise : %+v, attendu {sauve, dispo}", r)
 	}
 	attentes.mu.Lock()
@@ -213,7 +213,7 @@ func TestReplayArtifacts_FilmNonFinaliseReporteSansEchec(t *testing.T) {
 			},
 		}
 		var b bilanCuisson
-		cuireUnMatch(context.Background(), d, buildWork{matchID: "m1"}, &b, time.Minute)
+		cuireUnMatch(context.Background(), d, buildWork{matchID: "0000a001"}, &b, time.Minute)
 		if b.ecartes != 1 || b.echecs != 0 {
 			t.Errorf("%v : bilan = %+v, attendu 1 ecarte et 0 echec", cible, b)
 		}

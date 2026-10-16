@@ -4,7 +4,7 @@
 // L'import est ouvert à tout compte lié, mais il n'écrit que les matchs auxquels le
 // joueur qui importe (xuid de sa session) a participé, et aucune donnée propre à un
 // autre joueur :
-//   - un match dont l'identifiant n'a pas la forme Halo (domain.IsValidMatchID) est
+//   - un match dont l'identifiant n'a pas la forme Halo (title.IsValidMatchID) est
 //     écarté : il servirait plus tard de composant de chemin ;
 //   - un match sans l'importeur parmi ses participants est écarté, avec ses
 //     événements marquants ;
@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/openspartan"
 	"levelup/go-api/internal/openspartan/mapper"
 	"levelup/go-api/internal/persist"
@@ -83,7 +83,7 @@ func (sc *importScope) thirdPartyAliases(parts []mapper.MatchParticipantRow) []p
 
 // rejectMatchID écarte un match à l'identifiant malformé (compté en erreur d'étape).
 func rejectMatchID(ctx context.Context, matchID string, result *ImportResult) bool {
-	if domain.IsValidMatchID(matchID) {
+	if title.IsValidMatchID(matchID) {
 		return false
 	}
 	result.Errors = append(result.Errors, ImportError{MatchID: matchID, Stage: "invalid_match_id",

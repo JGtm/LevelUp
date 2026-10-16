@@ -24,9 +24,9 @@ func TestRequireMatchParticipation(t *testing.T) {
 		path  string
 		want  int
 	}{
-		{"match joué", func(context.Context, string, string) (bool, error) { return true, nil }, "/players/alice/matches/m1/replay", http.StatusOK},
-		{"match non joué", func(context.Context, string, string) (bool, error) { return false, nil }, "/players/alice/matches/m1/replay", http.StatusNotFound},
-		{"vérification en échec : fermé", func(context.Context, string, string) (bool, error) { return false, errors.New("db") }, "/players/alice/matches/m1/replay", http.StatusServiceUnavailable},
+		{"match joué", func(context.Context, string, string) (bool, error) { return true, nil }, "/players/alice/matches/000d5950-1234-4abc-9def-0123456789ab/replay", http.StatusOK},
+		{"match non joué", func(context.Context, string, string) (bool, error) { return false, nil }, "/players/alice/matches/000d5950-1234-4abc-9def-0123456789ab/replay", http.StatusNotFound},
+		{"vérification en échec : fermé", func(context.Context, string, string) (bool, error) { return false, errors.New("db") }, "/players/alice/matches/000d5950-1234-4abc-9def-0123456789ab/replay", http.StatusServiceUnavailable},
 		{"route sans match", func(context.Context, string, string) (bool, error) { return false, nil }, "/players/alice/tactical/maps", http.StatusOK},
 	}
 	for _, tc := range cases {
@@ -41,8 +41,8 @@ func TestRequireMatchParticipation(t *testing.T) {
 			if rr.Code != tc.want {
 				t.Fatalf("statut %d, attendu %d (%s)", rr.Code, tc.want, rr.Body.String())
 			}
-			if tc.want != http.StatusOK && (gotSlug != "alice" || gotMatch != "m1") {
-				t.Fatalf("vérification sur (%q, %q), attendu (alice, m1)", gotSlug, gotMatch)
+			if tc.want != http.StatusOK && (gotSlug != "alice" || gotMatch != "000d5950-1234-4abc-9def-0123456789ab") {
+				t.Fatalf("vérification sur (%q, %q), attendu (alice, 000d5950-1234-4abc-9def-0123456789ab)", gotSlug, gotMatch)
 			}
 		})
 	}

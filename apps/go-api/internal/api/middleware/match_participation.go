@@ -16,6 +16,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/domain/title"
 )
 
 // MatchParticipationCheck dit si le joueur du profil `playerSlug` a participé au
@@ -24,16 +26,29 @@ type MatchParticipationCheck func(ctx context.Context, playerSlug, matchID strin
 
 // RequireMatchParticipation répond 404 match_not_participant quand le joueur du
 // chemin n'a pas participé au match du chemin, 503 participation_unavailable quand la
-// vérification échoue (jamais d'ouverture par défaut). check nil : transparent.
+// vérification échoue (jamais d'ouverture par défaut).
+//
+// Avant toute vérification, et même sans vérification (check nil : démo, auth
+// inactive), un {match_id} hors de la forme d'un identifiant de match
+// (title.IsValidMatchID) reçoit le même 404 : il deviendrait la clé d'un chemin
+// d'artefact (rejeu, faits de film, raster tactique). Même réponse que l'absence, la
+// frontière n'est pas un oracle.
 func RequireMatchParticipation(check MatchParticipationCheck) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		if check == nil {
-			return next
-		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			matchID := chi.URLParam(r, "match_id")
 			slug := chi.URLParam(r, "player_slug")
 			if matchID == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if !title.IsValidMatchID(matchID) {
+				slog.InfoContext(r.Context(), "participation: match_id mal formé refusé",
+					"match_id", matchID, "player", slug, "path", r.URL.Path)
+				writeMatchError(w, http.StatusNotFound, "match_not_participant", false)
+				return
+			}
+			if check == nil {
 				next.ServeHTTP(w, r)
 				return
 			}

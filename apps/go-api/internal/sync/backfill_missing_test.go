@@ -283,7 +283,7 @@ func TestFindMatchesMissingData_ForceEvents(t *testing.T) {
 // doivent éliminer les matchs. Avec force, ils sont tous retournés.
 //
 // Note : on utilise des UUIDs hex car playerDoneGuard valide les match_id via
-// isValidMatchID (a-f, 0-9, -) avant de construire la clause NOT IN.
+// title.IsValidMatchID (a-f, 0-9, -) avant de construire la clause NOT IN.
 func TestFindMatchesMissingData_ForcePersonalScores(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
