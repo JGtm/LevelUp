@@ -344,31 +344,31 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 
 ### L8 — Démo publique (C8-1, C8-2) — Sonnet — effort M
 
-- [ ] L8-1 En démo, `RequireAdmin` et `RequireAuth` répondent 403 sauf allowlist nommée
+- [x] L8-1 En démo, `RequireAdmin` et `RequireAuth` répondent 403 sauf allowlist nommée
       (`GET /settings`, et ce que l'interface de démo lit réellement, à vérifier) ; `/debug/vars`
       403 en démo ; ratchet qui parcourt le routeur de démo et exige 403 sur toute route portant
       `RequireAdmin` hors allowlist datée.
-- [ ] L8-2 Identités : témoin disque adossé à `DemoLayout`/`DemoRoster`.
-- [ ] L8-3 CLI : six lectures `cfg.DemoMode` → `cfg.demoState()` ; garde-rail grep interdisant
+- [x] L8-2 Identités : témoin disque adossé à `DemoLayout`/`DemoRoster`.
+- [x] L8-3 CLI : six lectures `cfg.DemoMode` → `cfg.demoState()` ; garde-rail grep interdisant
       `.DemoMode` dans `internal/config/` hors `config_demo.go`.
-- [ ] L8-4 `suggest-next` classé lecture (`readOnlyPostPrefixes`, motif par suffixe) ; ratchet démo
+- [x] L8-4 `suggest-next` classé lecture (`readOnlyPostPrefixes`, motif par suffixe) ; ratchet démo
       mis à jour.
-- [ ] L8-5 E2E `media-like-bug.spec.ts` : cas « like » marqué hors démo (ou retiré s'il n'a pas
+- [x] L8-5 E2E `media-like-bug.spec.ts` : cas « like » marqué hors démo (ou retiré s'il n'a pas
       d'autre cible).
-- [ ] L8-6 `weapon_kills` conditionnée par titre dans la liste d'extraction ; `seed_demo.go:988`
+- [x] L8-6 `weapon_kills` conditionnée par titre dans la liste d'extraction ; `seed_demo.go:988`
       n'avale plus l'erreur (journalisée).
-- [ ] L8-7 ERROR au boot sur la metadata Halo 5 : requête fautive identifiée
+- [x] L8-7 ERROR au boot sur la metadata Halo 5 : requête fautive identifiée
       (`title_asset_drawer_loader.go`) et corrigée (absence attendue → pas d'ERROR, ou table créée
       par la fixture).
-- [ ] L8-8 Séquence Tactique : `ReplayGate` lit `match_id` dans le corps pour cette route ; test
+- [x] L8-8 Séquence Tactique : `ReplayGate` lit `match_id` dans le corps pour cette route ; test
       garde démo + route.
 - [~] L8-9 (couvert par L10-2, `levelup-demo` porte la variable) `docker-compose.yml` : `LEVELUP_TRUST_PROXY_HEADERS=true` sur le service démo ;
       garde-rail lisant le compose.
-- [ ] L8-10 `netguard.Check` dans `platform/auth/xbox_device_code.go` ; raison fausse de
+- [x] L8-10 `netguard.Check` dans `platform/auth/xbox_device_code.go` ; raison fausse de
       `netguard_coverage_test.go:43` retirée.
-- [ ] L8-11 `data/demo_films/` : statut `[!]` attendu — provisionnement sur le VPS au déploiement
+- [!] L8-11 (provisionnement au déploiement, V-3 ; runbook vérifié à jour) `data/demo_films/` : statut `[!]` attendu — provisionnement sur le VPS au déploiement
       de la v7.5 (geste annoncé, commande au runbook) ; vérifier que le runbook est à jour.
-- [ ] L8-12 (D-L1-4) `packaging/nginx/demo.conf` : `limit_req_status 429;` (la limite répond 503, lu comme une panne) ; appliqué sur le VPS par le superviseur (opération annoncée) ; garde-rail nginx étendu à la démo.
+- [x] L8-12 (D-L1-4) `packaging/nginx/demo.conf` : `limit_req_status 429;` (la limite répond 503, lu comme une panne) ; appliqué sur le VPS par le superviseur (opération annoncée) ; garde-rail nginx étendu à la démo.
 - Gate : `go test ./internal/api/... ./internal/config/... ./internal/ops/... ./internal/platform/...` ;
   `cd apps/web && npx playwright test e2e/media-like-bug.spec.ts --list`.
 
@@ -1858,3 +1858,11 @@ assoupli. `TestFilmShortMatchID` : attente du cas `""` passée de `""` à la cl�
 
 Commits : `013bb2378` (L6-1), `d966cbea9` (L6-2), `30596fc09` (L6-3), `4b6167f86` (L6-4), `29b2692bf` (L6-5), `0ce7f2d3e` (lint),
 `32850669f` (extensions d'envoi), puis le commit de clôture (plan, thought_log).
+
+### [2026-10-16] Lot L8 — exécuté en parallèle (branche `feat/securite-l8`), fusionné après L6
+
+**Statuts** : L8-1 à L8-8, L8-10, L8-12 `[x]` ; L8-9 `[~]` (L10-2) ; L8-11 `[!]` (provisionnement de `data/demo_films/` au déploiement, V-3 ; runbook, `CONFIGURATION.md` EN/FR et `deploy.yml` vérifiés à jour). L8-12 : dépôt fait par l'exécutant, VPS appliqué par le superviseur le 2026-10-16 (`limit_req_status 429;` dans le `server` démo, sauvegarde `demo-levelup.avant-429`, démo et prod 200).
+**Décisions d'exécution** : L8-1 appliqué à `RequireAdmin` ET `RequireAuth` en démo (403 `demo_mode_forbidden` sauf liste nommée : `GET /api/v1/settings`, `GET /api/v1/healthz/home`, `GET /api/v1/presence`, relevées dans le front, les E2E et le harnais) ; effet de bord voulu : `GET /groups`, `/jobs/{id}`, `_diag/*` par joueur et `/titles/{slug}/catalog/*` répondent 403 en démo (aucune lecture par le front de démo). L8-5 : spec E2E entière marquée hors démo (un seul cas, le like). L8-6 : critère `CapReplay`, pas de slug.
+**Preuves** : ratchet `demo_guarded_routes_ratchet_test.go` (walk du routeur de démo, plancher de 80 routes gardées, 6 témoins C8-1 dont `/debug/vars` en pile complète) rouge puis vert, mutation `GET /admin/users` détectée ; `config/demo_state_guard_test.go` rouge (4 tests) puis vert ; L8-7 : 5 ERROR reproduites puis 0 ; L8-8 : 404 → 200 ; L8-10 : `TestOutboundCallsAreNetguarded` rouge au retrait de l'allowlist fausse.
+**Gates** : `go test ./internal/api/... ./internal/config/... ./internal/ops/... ./internal/platform/...` exit 0 (34 paquets) ; intégration `ops` exit 0 ; build, vet, golangci-lint 0 issue ; `playwright --list` 1 test ; `tsc -b` 0. **Après fusion (superviseur)** : `go build`, `go vet`, `go test` api/config/ops/platform/service/media/domain/archlint exit 0 ; `-tags=integration -p 1` ops et playerdirectory exit 0.
+**Découvertes** : CHANGELOG à compléter à la release ; commentaire « Streamlit » obsolète dans `demo.conf` ; `OpenReadWriteShared(metaPath)` peut créer un fichier DuckDB vide (chargeurs H5 en démo sans H5, non vérifié) ; `CONFIGURATION.md` ne décrit pas la liste nommée de la démo.
