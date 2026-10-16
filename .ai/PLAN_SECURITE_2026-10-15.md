@@ -231,21 +231,23 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 
 Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découvertes de L4 relevant de la doctrine D5.
 
-- [ ] L3-12 (D-L3-8 adjacent, décision du 2026-10-16) Like d'un média depuis le profil d'un ami
+- [x] L3-12 (D-L3-8 adjacent, décision du 2026-10-16) Like d'un média depuis le profil d'un ami
       **autorisé** : action du visiteur, attribuée à son profil possédé (résolveur de L3-2) ; la route
       de like est l'exception nommée et testée à la garde « famille en lecture seule » ; front :
       cœur actif sur le profil d'un ami. Test : co-membre like → 200, like attribué au co-membre.
-- [ ] L3-13 (D-L3-8, décision du 2026-10-16) Notifications **réservées à leur propriétaire**, lecture
+- [x] L3-13 (D-L3-8, décision du 2026-10-16) Notifications **réservées à leur propriétaire**, lecture
       comprise : la garde famille ne donne pas accès aux routes de notifications (GET inclus) ;
       front : aucune cloche, page ni toast de notifications sur le profil d'un ami. Test :
       co-membre × routes de notifications → 403.
-- [ ] L4-13 (D-L4-4, doctrine D5) Changer son mot de passe révoque les autres sessions du compte
+- [x] L4-13 (D-L4-4, doctrine D5) Changer son mot de passe révoque les autres sessions du compte
       (la session courante est conservée, après rotation) ; test « deux sessions, changement depuis
       l'une → l'autre refusée ».
-- [ ] L4-14 (D-L4-3) Refus du callback OAuth : redirection vers l'écran de connexion avec un code
+- [x] L4-14 (D-L4-3) Refus du callback OAuth : redirection vers l'écran de connexion avec un code
       d'erreur, message FR + EN, au lieu d'un JSON brut ; test du callback et du composant.
-- [ ] (D-L4-2, vérifié par le superviseur le 2026-10-16) `LEVELUP_REGISTRATION` absent du
-      `.env.local` du VPS : valeur par défaut, démarrage non bloqué. Rien à faire.
+- [x] (D-L4-2, vérifié par le superviseur le 2026-10-16) `LEVELUP_REGISTRATION` absent du
+      `.env.local` du VPS : valeur par défaut, démarrage non bloqué. Rien à faire. Recopié et confronté au code
+      le 2026-10-16 : `config.go:244` lit la variable avec un défaut vide, `normalizeMode` (`config_auth.go:32-37`)
+      ramène le vide au défaut (`invite`), que `validateModes` accepte.
 - Gate : `go test ./internal/api/... ./internal/authz/... ./internal/platform/session/... ./internal/platform/userstore/...`
   ; web (`typecheck`, `lint`, `test:run`).
 
@@ -498,7 +500,7 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
   par Xbox) reçoit 409 `profile_xuid_conflict` à l'onboarding ; le front n'a pas de message dédié (FR + EN).
 - **D-L3-8** (L3) Sur le profil d'un ami, ses notifications restent LISIBLES (D-A : lecture) par la page dédiée ;
   la cloche et les toasts sont coupés. Question produit ouverte : une notification est-elle une donnée
-  « consultable par un ami » ?
+  « consultable par un ami » ? **Tranché par l'utilisateur le 2026-10-16 (non) ; traité en L3-13.**
 - **D-L3-9** (L3) En-tête de `service/openspartan_import_service.go` périmé (« writes via the existing sync.Insert*
   helpers » : l'écriture passe par `persist.SharedPersister`).
 
@@ -508,15 +510,26 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
   reconnexion, chaque action répond 403.
 - **D-L4-2** (L4) Valeur de `LEVELUP_REGISTRATION` dans le `.env.local` du VPS non vérifiée (accès VPS interdit au
   lot) : toute valeur hors `invite`/`open`/`closed` (casse ignorée) empêche désormais le démarrage (L4-7). La prod a
-  `LEVELUP_AUTH_MODE=xbox` (accepté). À vérifier par le superviseur avant le déploiement de la v7.5.
+  `LEVELUP_AUTH_MODE=xbox` (accepté). À vérifier par le superviseur avant le déploiement de la v7.5. **Vérifié par le
+  superviseur le 2026-10-16 (variable absente : défaut) ; statué en L4b.**
 - **D-L4-3** (L4) Les refus du callback OAuth (`403 instance_locked`, `500 link_failed`, `code_exchange_failed`…) sont
   des corps JSON rendus tels quels par le navigateur (navigation plein écran, pas un `fetch`) : aucune page d'erreur
-  côté front (préexistant pour `link_failed`).
+  côté front (préexistant pour `link_failed`). **Traité en L4-14.**
 - **D-L4-4** (L4) Changer son mot de passe ne ferme pas les autres sessions du même compte (le magasin de sessions
-  n'a pas d'index par utilisateur).
+  n'a pas d'index par utilisateur). **Traité en L4-13.**
 - **D-L4-5** (L4) `features/auth/XboxLoginPage.tsx` (branche d'échec du device-flow) garde deux libellés français en
   dur (« Le code a expiré. », « Échec de l'authentification. ») et affiche `error_detail` brut : relève de L9-3
   (retrait de `error_detail`, front adapté FR + EN).
+
+- **D-L4b-1** (L4b) La réinitialisation d'un mot de passe par l'admin (`handlers/admin.go:161`,
+  `handleResetPassword`) ne révoque pas les sessions du compte visé (L4-13 ne couvre que le changement de son
+  propre mot de passe) ; `session.Store.RevokeAccount` existe désormais pour le faire.
+- **D-L4b-2** (L4b) `GET /auth/xbox/login` (`LoginRedirect`, navigation plein écran comme le callback) répond encore
+  ses refus en JSON brut (`redirect_uri_not_configured`, `no_session`, `state_gen_failed`, `pkce_gen_failed`,
+  `session_save_failed`) ; le refus démo du login et du callback reste en JSON (contrat de la garde démo).
+- **D-L4b-3** (L4b) Un utilisateur DÉJÀ connecté dont la reconnexion Xbox (bannière `ReauthBanner`, flux OAuth) est
+  refusée arrive sur `/login?oauth_error=…`, que `__root.tsx:184` renvoie vers `/` (connecté sur une page
+  d'auth) : le message est perdu (la bannière reste affichée). Avant L4b il voyait un JSON brut.
 
 ## 7. Journal
 
@@ -1217,3 +1230,123 @@ effacés après remise ou échec (L4-2).
 **Découvertes** : D-L4-1 à D-L4-5 (§6), non traitées.
 
 Commits : `61eb8ff9c` (code, tests, docs, ADR), puis le commit de clôture (plan, thought_log).
+
+### L4b - Compléments décidés en cours d'exécution - 2026-10-16 - clos
+
+Base : `git log --oneline -1` = `fc8e6cfb3` avant le lot ; branche `feat/securite-2026-10-15`. Références rouvertes
+avant d'agir : `middleware/player_access.go` (`Allows`), `middleware/require_player_ownership.go` (classement
+`IsMutatingRequest`), `middleware/require_auth_mutations.go` (`playerScopedSubPath`, `AmbiguousPath`),
+`api/requester_resolver.go`, `handlers/media_likes.go` (`resolveLikerIdentity`), montage des notifications
+(`server_apiv1.go:951`), `platform/session/{store,revoke}.go` (`Rotate`, `Revoke`), `handlers/user_auth.go`
+(`handleSetPassword`), `handlers/auth_xbox_oauth.go` (callback : 8 réponses JSON), `handlers/auth_login_complete.go`
+(`completeLogin`, `loginFailureCode`), `service/xbox_auth_{service,invite}.go`, front `NavL1.tsx:426`, `toastBridge.tsx`,
+`NotificationsPage.tsx`, `NotificationsSettingsTab.tsx`, `MediaPage`/`RecentMediaRail`/`MatchMediaTab` (`likeDisabled`).
+
+**Statuts** : L3-12, L3-13, L4-13, L4-14 `[x]` ; D-L4-2 `[x]` (vérification du superviseur recopiée, confrontée au
+code). Aucun `[!]`, aucun `[~]`. D-L3-8, D-L4-3, D-L4-4 traités (annotés en §6).
+
+- **L3-12** `middleware/player_visitor_actions.go` : une action du visiteur (méthode et sous-chemin EXACTS, jamais sur
+  un chemin ambigu) se décide comme une LECTURE du profil consulté ; seule entrée : `PATCH /media/likes`. Elle reste une
+  écriture pour `RequireAuthForMutations` (session authentifiée exigée) et pour la classification posée dans le
+  contexte. Le like est attribué au profil possédé du visiteur par le résolveur de L3-2 (inchangé). Walk chi :
+  `familyVisitorWrites` nomme l'exception (liste exacte, une entrée périmée échoue). Front : cœur actif sur le profil
+  d'un ami (`likeDisabled = isPending` dans les trois galeries). Tests : `require_player_ownership_like_test.go` (ami
+  200, inconnu 403, autres écritures médias 403, autre verbe, segment en plus et chemin `%2F` refusés),
+  `api/family_media_like_test.go` (garde réelle + handler + résolveur réel : 200, liker `Mallory`, ni le profil
+  consulté ni le corps), `MatchMediaTab.test.tsx`.
+- **L3-13** `middleware.RequirePlayerOwner` (garde de ROUTE, `r.With`, après routage) : chaque route
+  `/players/{player_slug}/notifications...` se décide avec la règle d'écriture (propriétaire ou admin), GET compris.
+  Garde-rails : `TestOwnerOnlyRoutesCarryOwnerGuard` (les 9 routes walkées portent la garde) et le rejeu co-membre de
+  `TestFamilyMemberCannotWriteAnyPlayerRoute` (403 sur les 9, lectures comprises). Front : page dédiée → message « Les
+  notifications d'un profil ne sont visibles que par son propriétaire. » / « A profile's notifications are visible to
+  its owner only. », aucune requête ; Réglages › Notifications : catégories remplacées par le message, abonnements et
+  bouton de test masqués, préférences jamais lues (les réglages locaux du navigateur restent) ; cloche et toasts déjà
+  coupés par L3-4 (tests ajoutés). La prop `readOnly` de `NotificationItem`, morte, est retirée (fichier revenu à son
+  état d'avant L3). Tests : `require_player_owner_test.go`, `friendProfile.test.tsx` (page FR + EN, réglages, toasts :
+  zéro requête ; son profil : la liste se lit), `NavL1.test.tsx` (cloche absente / présente).
+- **ADR 0029** (EN) : sous-section « Clarifications (user decisions of 2026-10-16) » (like du visiteur, notifications
+  privées, gardes et garde-rails nommés).
+- **L4-13** `session.Store.RevokeAccount(username, keepID)` (`platform/session/revoke_account.go`) : parcours du
+  répertoire, compte comparé sans casse, révocation par `revoke` (fichier supprimé, identifiant retenu, réécriture
+  concurrente refusée) ; fichier illisible laissé en place et journalisé. `handleSetPassword` → `closeOtherSessions`
+  (`handlers/user_auth_password_sessions.go`) : `Rotate` de la session courante puis révocation des autres ; un échec
+  est journalisé en ERROR (le mot de passe est déjà changé, le client reçoit 204). Tests :
+  `user_auth_password_revokes_test.go` (deux sessions : la courante change d'identifiant et lit encore, l'autre 401 et
+  absente du disque ; sessions d'un autre compte intactes), `revoke_account_test.go` (copie en vol refusée, anonymes et
+  autres comptes intacts, nom vide sans effet).
+- **L4-14** `XboxOAuthHandler.refuseCallback` : tout refus du callback → 302 `/login?oauth_error=<code>`
+  (`oauth_denied`, `missing_params`, `state_mismatch`, `no_session`, `code_exchange_failed`, `halo_exchange_failed`,
+  `instance_locked`, `invite_invalid`, `link_failed`), détail aux journaux ; `error_description` de Microsoft et
+  `err.Error()` ne sortent plus. `invite_invalid` : `auth.ErrInviteInvalid` (forme de `ErrInstanceLocked`, `errors.Is`
+  vrai pour les deux) rendu par `refusalCause` quand le verrou refuse une identité dont la session présentait une
+  invitation non réservée ; `LoginRedirect` garde désormais le code présenté même invalide (il n'accorde rien tant que
+  `Consume` ne l'a pas réservé). Front : `OAuthErrorNotice` (`role="alert"`, `text-destructive`) sur l'écran de
+  connexion, modes xbox et mot de passe ; `oauthErrorKey` (code inconnu : message générique, jamais le code brut) ;
+  messages FR + EN au manifeste `common` (`oauth_invite_invalid`, `oauth_denied`, `oauth_interrupted`,
+  `oauth_exchange_failed`, `oauth_failed` ; `instance_locked` reprend `register_instance_closed`) ; le device-flow
+  traduit aussi `invite_invalid`. Tests existants du callback alignés sur le nouveau contrat en GARDANT leurs noms
+  (baseline de présence `tests_pre_migration.jsonl`) : `TestXboxOAuth_Callback_{MissingCode,MissingState,StateMismatch,
+  ErrorParam,StateMatches_AttemptsExchange}`, `TestE2E_AuthCodeFlow_CSRFGuard` (rejeu : `state_mismatch`),
+  `TestOAuthFinish_LockedLeavesSessionUntouched`, `TestOAuthCallback_LockedPersistsNoRefreshToken`,
+  `TestXboxOAuth_LoginRedirect_InvalidInviteIgnored` (le code est gardé, sans effet) ; neufs :
+  `TestOAuthFinish_InvalidInviteOnLockedInstance`, `loginError.test.ts`, `LoginPage.test.tsx` (12 cas FR / EN, sans
+  refus, mode mot de passe), `XboxLoginPage.test.tsx` (device-flow `invite_invalid`).
+
+Écarts au texte, justifiés : L4-14 couvre aussi `invite_invalid` (demandé par la consigne du lot ; sans trace de
+l'invitation, le refus d'une invitation périmée disait « instance fermée ») ; deux tests de contrat (walk famille,
+callback) modifiés parce que le contrat change par décision de l'utilisateur, jamais assouplis : l'exception du like
+est nommée et exacte, les notifications sont plus strictes, chaque refus du callback reste vérifié par son code.
+
+**Preuves du rouge** (sorties gardées dans `%LOCALAPPDATA%\Temp\l4b\`) :
+- L3-12 `go test ./internal/api/middleware/ -run 'FamilyMayLikeMedia|LikeOnStranger'` : FAIL exit 1, « PATCH
+  /media/likes : statut 403, attendu 200 » ; `go test ./internal/api/ -run TestFamilyMemberLikesFriendMedia` : FAIL,
+  403 `player_forbidden` ; front `MatchMediaTab.test.tsx` : bouton « Aimer » `disabled`.
+- L3-13 `go test ./internal/api/ -run TestOwnerOnlyRoutesCarryOwnerGuard` : FAIL, 9 routes « donnée privée du profil
+  sans RequirePlayerOwner » (GET liste, compteur, préférences compris) ; front `friendProfile.test.tsx` : 4 FAIL
+  (message absent, liste lue) ; cloche : test rouge en retirant la garde de `NavL1.tsx` le temps du run (fichier
+  restauré, `git diff` vide).
+- L4-13 `go test ./internal/api/handlers/ -run TestSetPassword_RevokesOtherSessions` : FAIL, identifiant courant
+  inchangé, autre session 200 au lieu de 401, encore sur disque.
+- L4-14 callback : 4 FAIL (400 / 400 / 400 / 403 JSON au lieu de 302) ; internes : verrou 403 au lieu de 302,
+  invitation périmée → `instance_locked` en JSON ; `InvalidInviteIgnored` : code non gardé ; front : 27 FAIL
+  (`oauthErrorKey` absent, aucun `role="alert"`) puis device-flow `invite_invalid` FAIL (texte attendu absent).
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9) :
+- Gate du lot : `go test ./internal/api/... ./internal/authz/... ./internal/platform/session/...
+  ./internal/platform/userstore/... -count=1` : exit 0, 8 paquets ok, 0 `--- FAIL:`. Premier passage rouge :
+  `TestE2E_AuthCodeFlow_CSRFGuard` (attendait 403 sur le rejeu) : aligné sur la redirection (`state_mismatch`).
+- Autres paquets touchés : `go test ./internal/service/... ./internal/platform/auth/... ./internal/domain/...
+  ./internal/archlint/ ./cmd/server/ -count=1` : exit 0, 16 paquets ok, 0 `--- FAIL:`. Aucun diff de persist, sync ou
+  migration : pas d'intégration requise.
+- Gate commun : `go build ./cmd/server/` exit 0 ; `go vet` (api/..., session, platform/auth, service, domain, archlint)
+  exit 0 ; `golangci-lint run --new-from-rev=fc8e6cfb3` : premier passage 2 issues (goconst `/media/likes`, gofmt d'un
+  test), corrigées (constante `mediaLikesSubPath`), puis 0 ; forme CI `--new-from-merge-base=origin/main` : 0 issues ;
+  `go run ./cmd/openapi-gen` puis `npm run generate-types` : aucune différence (aucune route Huma changée, le callback
+  est hors document) ; `OpenAPI` / `Contract` dans la suite `./internal/api/` : ok.
+- Web : purge de `node_modules/.tmp`, `npm run typecheck` exit 0, `npm run lint` exit 0 (0 erreur, 26 avertissements
+  préexistants), `npm run test:run` exit 0 : 923 fichiers passés / 5 ignorés, 9661 tests passés / 23 ignorés ;
+  `lint:fields`, `lint:colors`, `lint-cross-feature-imports`, `knip-ratchet`, `lint-contract-ratchet` : exit 0.
+- Hooks pre-commit (gofmt, check-merge-conflict, docs-fr-sync, gitleaks, go-vet) verts sur les trois commits.
+
+**Non-régression (règle 9)** :
+- L3-12 : le front like par `PATCH /players/{slug}/media/likes` avec le slug du profil consulté
+  (`features/media/queries.ts:182`), seul appelant (aucun e2e ni script) ; le viewer des galeries est le même
+  résolveur que le liker : le cœur allumé après un like est celui du visiteur. Sur son propre profil : inchangé.
+- L3-13 : points d'entrée relevés : cloche (`NavL1.tsx:426`, déjà conditionnée), toasts (`toastBridge.tsx`, slug vide
+  sur un ami), page (`routes/.../notifications.tsx`, atteinte par le lien « Voir tout » de la cloche et par le
+  changement de joueur qui garde la route courante : elle affiche le message), Réglages › Notifications (onglet de
+  `NavL1.tsx:309`, réglages locaux conservés). Admin : `writable_player_slugs` liste tous les profils, rien ne change.
+  E2E : `compare-bars.spec.ts` simule le compteur sur le profil du joueur (inchangé).
+- L4-13 : `SetPasswordCard` (Réglages ; onboarding OpenSpartan pour un premier mot de passe) appelle l'API en `fetch` :
+  le `Set-Cookie` du nouvel identifiant s'applique, le bootstrap rechargé lit la session courante. Les autres appareils
+  du compte reçoivent 401 à leur requête suivante (`levelup:auth-required`, retour à la connexion). Le premier mot de
+  passe d'un compte Xbox ferme aussi ses autres sessions (même règle).
+- L4-14 : le callback n'est atteint que par la redirection de Microsoft après `/auth/xbox/login` (`JoinPage`,
+  `RedirectFlowPanel`, `ReauthBanner`, `AppearanceComponentCard`) : un refus arrivait en JSON brut, il arrive sur
+  l'écran de connexion avec un message ; succès inchangé (302 vers `/`). Un utilisateur déjà connecté (bannière de
+  reconnexion) est renvoyé de `/login` vers `/` par `__root` : message perdu (D-L4b-3). Démo : refus JSON inchangé.
+
+**Découvertes** : D-L4b-1 à D-L4b-3 (§6), non traitées.
+
+Commits : `a654e8981` (L3-12, L3-13, ADR 0029), `88e0b28ce` (L4-13), `c44e07aec` (L4-14), puis le commit de clôture
+(plan, thought_log).
