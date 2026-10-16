@@ -121,15 +121,25 @@ du post-sync voit ses citations film recalculées sans intervention.
       routage converti en table (`customFunctions`) ; aucun autre constat nouveau.
 
 ### E4 — Déclencheur après les dérivations du film
-- [ ] Jeton `_film` dans la génération écrite quand le film du match est dérivé au moment du calcul.
-- [ ] Sélection `selectMatchesForFilmCitations` : matchs du joueur ayant une ligne
-      `match_usage_players_latest` et dont la génération courante ne porte pas `_film`.
-- [ ] Si D1 livrée : rattrapage du résumé d usage depuis les artefacts existants (commande
-      `usage-summary`, pas de recuisson du film) — lancement en lot DEMANDÉ à l utilisateur avant.
-- [ ] Appel après `Deriver` (local et dépôt de l'ouvrier) ET au cycle post-sync suivant (rattrapage
-      d'un dépôt manqué), recalcul COMPLET du match (fait 1).
-- [ ] Gate : test d'intégration (tag `integration`) — match calculé sans film, film dérivé ensuite,
-      citations film > 0 et citations API inchangées après le déclencheur.
+- [~] Jeton `_film` : remplacé par une comparaison d'horodatages (item suivant). Un jeton aurait été
+      une ligne de plus dans `match_citations_latest`, lue par les contrôles V1-V4 (`value <= 0` hors
+      `_processed`) et par les sommes par citation ; l'horodatage `written_at` existe déjà des deux
+      côtés.
+- [x] Sélection `selectMatchesFilmPlusRecent` (`internal/sync/citations_film_selection.go`) : matchs
+      du joueur dont la génération de citations courante est plus ancienne que la dernière dérivation
+      de leur film (`match_usage_films_latest.written_at`). Titre sans film : vue absente, rien rendu.
+      Coût mesuré sur une copie de la base partagée : 5 ms (1 352 matchs filmés).
+- [x] Rattrapage du résumé d'usage depuis les artefacts existants : `levelup backfill-usage-summary`
+      (révision `us7`, sans recuisson) — lancement en lot à DEMANDER à l'utilisateur (E5).
+- [~] Appel après `Deriver` : couvert par l'appel au cycle post-sync suivant. Le dépôt d'ouvrier
+      dérive hors de tout contexte joueur (aucune base joueur ouverte) ; la sélection, appelée dans
+      `runPostSyncCitations` de chaque joueur, recalcule au cycle suivant tout match dont le film a
+      été dérivé après ses citations (cuisson locale, dépôt d'ouvrier, rattrapage, backfill).
+      Recalcul COMPLET du match (fait 1).
+- [x] Gate : `TestCitationsFilm_RecalculApresDerivation` (tag `integration`) — match calculé sans
+      film, film dérivé ensuite, sélection = ce match, citation du film posée, `bulltrue` inchangée,
+      sélection vide ensuite ; `TestCitationsFilm_TitreSansFilm`. `go test -tags=integration
+      ./internal/sync/` vert ; lint sans constat nouveau.
 
 ### E5 — Rattrapage et vérification sur la base locale
 - [ ] Serveur arrêté : `levelup seed citation-mappings`, puis

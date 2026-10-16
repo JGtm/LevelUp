@@ -438,6 +438,17 @@ func (e *SyncEngine) runPostSyncCitations(ctx context.Context, playerDB, sharedD
 	if err != nil {
 		return 0, fmt.Errorf("select: %w", err)
 	}
+	// Les matchs dont le film a été dérivé APRÈS leurs citations : recalcul complet.
+	filmPlusRecent, err := selectMatchesFilmPlusRecent(ctx, playerDB, sharedDB)
+	if err != nil {
+		slog.WarnContext(ctx, "citations post-sync: dérivations du film illisibles, citations du film non recalculées",
+			"player", e.gamertag, "err", err)
+	}
+	if len(filmPlusRecent) > 0 {
+		slog.InfoContext(ctx, "citations post-sync: film dérivé après les citations, recalcul",
+			"player", e.gamertag, "count", len(filmPlusRecent))
+	}
+	matchIDs = unionMatchIDs(matchIDs, filmPlusRecent)
 	if len(matchIDs) == 0 {
 		slog.DebugContext(ctx, "citations post-sync: aucun nouveau match", "player", e.gamertag)
 		return 0, nil

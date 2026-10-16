@@ -1,3 +1,11 @@
+## [2026-10-16] Plan citations Halo 5, E4 : recalcul des citations d'un match dont le film est dérivé après elles — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : pas de jeton `_film` ; le post-sync de chaque joueur ajoute aux nouveaux matchs ceux dont la génération de citations est plus ancienne que la dernière dérivation du film (`written_at` des deux côtés), recalcul complet. Couvre cuisson locale, dépôt d'ouvrier, rattrapage et `backfill-usage-summary`, avec un cycle de latence.
+
+**Résultats observés** : test d'intégration vert (citation du film posée, citations API inchangées, sélection vide ensuite) ; 5 ms sur la base partagée du parc.
+
+**Conclusion** : suite E5 (seed, rattrapages, vérification locale) — lancement en lot à demander à l'utilisateur.
+
 ## [2026-10-16] Plan citations Halo 5, E3 : Jouets éducatifs et Presque, ça ne compte pas — Complété (branche `feat/citations-film`)
 
 **Décision technique principale** : « Jouets éducatifs » lit la colonne existante `pad_pickups` (>= 3 en Assassin) ; « Presque, ça ne compte pas » lit une colonne neuve `shieldless_kills` du résumé d'usage, calculée à la dérivation en croisant le document au fil des morts (lu avant tout segment d'écriture), révision `us7`, migration nullable (NULL = non mesuré). Routage des customs converti en table.
