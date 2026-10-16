@@ -423,14 +423,14 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 
 ### L11 — Reliquats de chemins et de cohérence (découvertes L6, L7, L9) — Opus — effort S
 
-- [ ] L11-1 (D-L7-1) Aperçu OG (`wire/og_inject.go`) : slug du chemin validé (`domain.IsValidPlayerSlug`) avant toute lecture ; vérifier sur pièces s'il atteint le disque ; test chemin piégé.
-- [ ] L11-2 (D-L7-2) `/profiles/{player_slug}/titles/{slug}` : slug de titre validé contre le registre des titres (404 sinon), sans branchement sur un slug particulier ; test.
-- [ ] L11-3 (D-L7-3) `AmbiguousPath` dans son propre fichier du middleware ; garde-rail : tout middleware qui décide sur `r.URL.Path` (préfixe, exemption) appelle `AmbiguousPath` (allowlist datée pour les journaux seulement) ; vu rouge sur une garde témoin.
-- [ ] L11-4 (D-L6-1) Action admin de cuisson (`/admin/actions/replay-build/*`) : `match_id` hors forme → 400 (`title.IsValidMatchID`) ; test.
-- [ ] L11-5 (D-L6-3) Routes admin portant un slug de joueur dans le chemin : forme validée (`domain.IsValidPlayerSlug`) ; liste relevée sur pièces ; test table-driven.
-- [ ] L11-6 (découverte L9 n°3) `StepDeviceCode` : clés d'erreur alignées sur les codes réellement émis (`device_flow_acquire_error`, `identity_missing`, …), FR + EN ; test.
-- [ ] L11-7 (découverte L9 n°6, règle 7 de CLAUDE.md) `WatcherAttempt.ErrorDetail` écrit mais jamais sérialisé : supprimé avec ses écritures.
-- [ ] L11-8 (D-L6-2, règle 6 de CLAUDE.md) Listes de formats média (`ops` et `media`) : source unique + garde-rail interdisant une copie.
+- [x] L11-1 (D-L7-1 ; sur pièces le slug n'atteignait pas le disque, voir journal) Aperçu OG (`wire/og_inject.go`) : slug du chemin validé (`domain.IsValidPlayerSlug`) avant toute lecture ; vérifier sur pièces s'il atteint le disque ; test chemin piégé.
+- [x] L11-2 (D-L7-2) `/profiles/{player_slug}/titles/{slug}` : slug de titre validé contre le registre des titres (404 sinon), sans branchement sur un slug particulier ; test.
+- [x] L11-3 (D-L7-3) `AmbiguousPath` dans son propre fichier du middleware ; garde-rail : tout middleware qui décide sur `r.URL.Path` (préfixe, exemption) appelle `AmbiguousPath` (allowlist datée pour les journaux seulement) ; vu rouge sur une garde témoin.
+- [x] L11-4 (D-L6-1) Action admin de cuisson (`/admin/actions/replay-build/*`) : `match_id` hors forme → 400 (`title.IsValidMatchID`) ; test.
+- [x] L11-5 (D-L6-3 ; trois routes relevées, voir journal) Routes admin portant un slug de joueur dans le chemin : forme validée (`domain.IsValidPlayerSlug`) ; liste relevée sur pièces ; test table-driven.
+- [x] L11-6 (découverte L9 n°3) `StepDeviceCode` : clés d'erreur alignées sur les codes réellement émis (`device_flow_acquire_error`, `identity_missing`, …), FR + EN ; test.
+- [x] L11-7 (découverte L9 n°6, règle 7 de CLAUDE.md) `WatcherAttempt.ErrorDetail` écrit mais jamais sérialisé : supprimé avec ses écritures.
+- [x] L11-8 (D-L6-2, règle 6 de CLAUDE.md) Listes de formats média (`ops` et `media`) : source unique + garde-rail interdisant une copie.
 - Gate : `go test ./internal/api/... ./internal/archlint/ ./internal/media/... ./internal/ops/... ./internal/platform/auth/...` ; web si L11-6 (typecheck, lint, test:run).
 
 ## 3. Clôture du plan
@@ -672,6 +672,19 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
   (CSRF, limiteur, démo en lecture seule, lectures gardées de la démo, garde d'écriture, action du visiteur) : son contrat
   gagnerait un fichier propre. Aucun garde-rail n'exige qu'une nouvelle garde qui décide sur `r.URL.Path` l'appelle (le test
   `ambiguous_path_guards_test.go` couvre les gardes existantes, pas une garde ajoutée demain).
+
+- **D-L11-1** (L11) Le `?title=` des actions d'administration (`titleOrDefaultSlug`, `handlers/admin_monitoring.go:260` : cuisson
+  `replay-build/{run,enqueue}`, convergence, synchronisation initiale, rapports de monitoring) est pris tel quel, sans contrôle
+  d'appartenance au registre des titres ; il devient le titre du job et entre dans les constructeurs de chemin du `PathResolver`.
+  Admin seulement ; effet d'un titre `..` non vérifié.
+- **D-L11-2** (L11) `POST /admin/actions/convergence/run` et `/admin/actions/initial-sync/run` reçoivent le `player_slug` dans le
+  CORPS sans contrôle de forme (`domain.IsValidPlayerSlug`) ; L11-5 ne couvre que les slugs du chemin. Admin seulement ; la
+  résolution du joueur passe-t-elle par la liste des profils avant tout chemin disque ? Non vérifié.
+- **D-L11-3** (L11) `archlint/no_french_label_literal_test.go` journalise une baisse à figer : `api/handlers/auth_xbox_oauth.go`
+  compte 0 littéral français pour 5 alloués depuis L9-8 (`2769c00ce`) ; l'allowlist n'est pas resserrée (un `t.Logf`, non bloquant).
+- **D-L11-4** (L11) Le crochet pre-commit `go-vet` affiche, pour tous les paquets qui dépendent de DuckDB, « build constraints
+  exclude all Go files » (lancé sans CGO) et passe vert : ces paquets ne sont pas vérifiés par le crochet local. Le gate du lot
+  lance `go vet` avec `CGO_ENABLED=1`.
 
 ## 7. Journal
 
@@ -1980,3 +1993,101 @@ Commits : `389ba5497` (L7-1, L7-2), `94966d419` (L7-3), `8d1a4dc21` (L7-4), puis
 **Statuts** : L9-1 à L9-9 `[x]`. **Décompte** : 210 `err.Error()` (ou équivalents) renvoyés au client sur la base (127 en 4xx, 2 en 503, 81 en 500 ; le registre en comptait 121 par un motif plus étroit) → 0 ; garde-rail `err_error_response_test.go` à zéro, allowlist vide, suit aussi les variables affectées depuis `x.Error()`. Helpers `humacore.NewErrorFrom`/`FixedMessage`/`LogErrorResponse`, `handlers.writeErrorFrom`. `/health` public → `{status}`, détail sous `GET /api/v1/admin/health` (admin) ; `scripts/deploy.sh` lisait `app_version` dans le corps de `/health` (contrôle silencieusement inopérant) : remplacé par `LEVELUP_APP_VERSION` via `docker inspect` (non bloquant, testé avec un `docker` factice, à observer au prochain déploiement). CSP minimale (`object-src 'none'; base-uri 'self'; frame-ancestors 'none'`). Jobs : message fixe par code (`domain.NewJobError`), garde-rail `job_error_fixed_message_test.go`. Réinitialisation par l'admin : sessions révoquées, garde-rail de câblage. `GET /auth/xbox/login` : refus redirigés. Reconnexion refusée : bannière `OAuthRefusalBanner`.
 **Gates** : build, vet, `go test` 28 paquets exit 0, golangci-lint 0 issue ; web : typecheck, lint, 9 723 tests, ratchets JS verts ; OpenAPI et types régénérés. **Après fusion (superviseur)** : `go build`, `go test` api/archlint/domain/service/platform/notifications/media/ops/config/tests/cmd exit 0.
 **Découvertes** : texte d'erreur dans des diagnostics admin (voulu) ; `mediaLikeError` relaie un message libre ; codes de `StepDeviceCode` incohérents (→ L11-6) ; reset admin : 400 `password_too_long` au lieu de 500 ; erreurs de fabrique de service rendues en 404 `player_not_found` (préexistant) ; champ mort `WatcherAttempt.ErrorDetail` (→ L11-7) ; contrôle de version de `deploy.sh` à observer.
+
+### L11 - Reliquats de chemins et de cohérence - 2026-10-16 - clos
+
+Base : `git log --oneline -1` = `16fcd294a` avant le lot ; branche `feat/securite-2026-10-15`. Références rouvertes avant d'agir :
+`wire/og_inject.go` (`playerSlugFromPath`), `wire/registry_pages_home.go` (`HomeCtx`), `config/player_resolver.go` (`ResolvePlayer`,
+`demoDefForSlug`, `resolveRealPlayer`), `service/home_service.go` (usage social du slug), `middleware/title_from_path.go`,
+`middleware/title.go`, `handlers/title_sync.go`, `service/profile_service.go` (`PurgeTitleData`), `middleware/require_auth_mutations.go`
+(`AmbiguousPath`, `playerScopedSubPath`), toutes les lectures de `URL.Path` du paquet middleware, `handlers/admin_actions_replay_build.go`,
+`domain/title/film_id.go`, routes du routeur réel (`chi.Walk`), `handlers/admin_appearance_diag.go`, `handlers/admin_lusr_gaps.go`,
+`handlers/progression_backfill.go`, `features/setup/StepDeviceCode.tsx`, `features/auth/loginError.ts`, `handlers/auth.go` et
+`handlers/watcher_handler.go` (codes posés), `platform/auth/watcher_attempt_store.go`, `ops/media*.go`, `media/extensions.go`.
+
+**Statuts** : L11-1 à L11-8 `[x]`. Aucun `[!]`, aucun `[~]`.
+
+- **L11-1** Sur pièces, le slug d'une page du SPA n'atteignait pas le disque : en démo `demoDefForSlug` retombe sur le joueur principal
+  du roster, hors démo `resolveRealPlayer` compare aux profils chargés, `WithSocial` ne s'en sert que comme paramètre SQL. La garde est
+  posée quand même (fermée par défaut) : `playerSlugFromPath` exige `domain.IsValidPlayerSlug`, sinon carte générique sans résolution
+  du joueur. Tests `wire/og_inject_slug_test.go` (9 chemins piégés : `..%2F..`, `%2E%2E`, `%5C`, `:`, espace de tête, 65 octets ;
+  gamertags accentués et à espace toujours résolus) et cas ajoutés à `TestPlayerSlugFromPath`.
+- **L11-2** `TitleSlugFromPath(registry, param)` : un titre absent du registre reçoit 404 `title_not_found` avant la garde de propriété ;
+  tout titre enregistré passe, statut compris (coming_soon, archivé). Sur pièces, `RemoveEntry`/`SetSyncEnabled` exigeaient déjà une
+  entrée de `db_profiles.json` avant `os.RemoveAll` : le titre piégé n'atteignait pas le disque. Test : titres itérés depuis le registre
+  plus un titre synthétique (aucun slug particulier) ; 8 titres hors registre refusés. Le test garde le nom
+  `TestTitleSlugFromPath_SetsCtxFromPathParam` (présent dans la baseline `.ai/baselines/tests_pre_migration.jsonl`).
+- **L11-3** `AmbiguousPath` dans `middleware/ambiguous_path.go`. Garde-rail `archlint/ambiguous_path_middleware_test.go` : dans
+  `internal/api/middleware`, toute fonction (déclaration ou fermeture, chacune pour elle-même) qui lit `URL.Path`, `URL.RawPath` ou
+  `URL.EscapedPath()` hors des arguments d'un appel de journal appelle `AmbiguousPath` ; allowlist datée réduite à `SlogLogger`
+  (journal HTTP) ; auto-preuve sur 4 gardes témoins. Rouge sur le code réel : `playerScopedSubPath` lisait le chemin sans
+  `AmbiguousPath` (ses deux appelants le faisaient) ; il rend désormais `""` sur un chemin ambigu (comportement des appelants inchangé).
+- **L11-4** `decodeReplayBuildRequest` (commun à `/run` et `/enqueue`) : `match_id` hors de `title.IsValidMatchID` -> 400
+  `invalid_match_id` (message fixe du code) avant toute création de job ou mise en file. Aucun appelant front.
+- **L11-5** Relevé sur pièces (parcours du routeur réel + grep des motifs) : trois routes hors du groupe joueur portent un slug ou un
+  gamertag sans contrôle de forme : `GET /admin/diag/appearance/{player_slug}`, `POST /admin/monitoring/lusr-gaps/{player}/recompute`,
+  `POST /_admin/progression/backfill/{player_slug}` ; les trois `/_diag/*/{player_slug}` portent déjà `RequirePlayerOwnership`.
+  Middleware `RequirePlayerSlugParam(param)` monté après la garde d'accès : 400 `invalid_player_slug` (un paramètre porté mais vide est
+  refusé, une route du même handler sans le paramètre passe). Tests : `middleware/require_player_slug_param_test.go` (mêmes tables que
+  L6-2, deux noms de paramètre) ; garde-rail `api/player_slug_param_routes_test.go` : toute route à `{player_slug}`, `{player}` ou
+  `{gamertag}` porte `RequirePlayerOwnership` ou `RequirePlayerSlugParam`.
+- **L11-6** `StepDeviceCode` lit son message par `deviceFlowFailureKey` (`features/auth/loginError.ts`, table unique des deux écrans du
+  device-flow) ; sa table locale attendait `device_flow_denied`, `device_flow_error`, `identity_resolution_failed`, jamais émis.
+  Codes réellement posés relevés : `device_flow_acquire_error`, `halo_exchange_error`, `identity_missing`, `instance_locked`,
+  `invite_invalid`, `link_failed` (`device_flow_init_error` fait échouer le démarrage, déjà traité par l'écran). Exception d'import
+  `setup=>auth/loginError` (module nommé, datée, justifiée) dans `tools/lint-cross-feature-imports.mjs` : plafond inchangé (7).
+  Clé `common.device_code.err_denied` retirée (plus aucun usage), manifeste régénéré. Test `StepDeviceCode.test.tsx` (6 cas FR,
+  3 cas EN).
+- **L11-7** `WatcherAttempt.ErrorDetail` supprimé avec ses trois écritures. Deux sites journalisaient déjà la cause ; l'échec
+  d'`InitDeviceFlow` ne la gardait que dans le champ mort : `slog.ErrorContext` ajouté avant la dégradation. Test
+  `TestWatcherHandler_StartAuth_InitErrorCauseLogged` (cause au journal, jamais dans la réponse).
+- **L11-8** `ops.supportedExtensions` et les constantes `extMOV`/`extAVI`/`extMKV`/`extWEBM` supprimés ; l'indexation lit la nature
+  d'un fichier par `mediaKindOf` (`media.IsVideoExt` / `IsImageExt`) : mêmes ensembles qu'avant, casse ignorée. Garde-rail
+  `archlint/media_ext_list_single_source_test.go` : hors de `internal/media/extensions.go`, aucun littéral composite ni bloc de
+  constantes ne porte 3 extensions média distinctes ou plus (catalogue statique du front écarté, tenu par
+  `no_duplicate_static_ext_list_test.go`) ; auto-preuve (map, slice, constantes vues ; aiguillage et extension isolée ignorés).
+  Commentaire de paquet de `internal/media` corrigé (il affirmait que seul `ServeMediaFile` en dépendait).
+
+**Preuves du rouge** (sorties dans `%LOCALAPPDATA%\Temp\l11\`) :
+- L11-1 `go test ./internal/api/wire/ -run 'TestServeIndexWithOG_(Trapped|Valid)'` : exit 1, 9 sous-tests FAIL (slug piégé passé à la
+  résolution du joueur).
+- L11-2 signature avec registre sans contrôle (état d'avant) : `-run TestTitleSlugFromPath` exit 1, 8 sous-tests FAIL (handler atteint
+  avec le contexte `..`, `a\b`, `\x00`...).
+- L11-3 `go test ./internal/archlint/ -run 'TestMiddlewarePathGuardsCallAmbiguousPath'` : exit 1 sur `playerScopedSubPath` (code réel).
+  Mutations (source restaurée, `git status` vérifié) : `!AmbiguousPath(r) &&` retiré du limiteur -> rouge sur `RateLimit` ; garde
+  témoin ajoutée au paquet -> rouge sur `temoinL11`.
+- L11-4 `-run TestAdminReplayBuild_MatchIDOutsideForm` : exit 1, 18 sous-tests FAIL (202, job créé ou mis en file pour `..`,
+  `../../etc/passwd`, `a\b`, `zz`, octet nul, 65 caractères).
+- L11-5 `go test ./internal/api/ -run TestPlayerSlugParamRoutes` : exit 1, les trois routes ci-dessus. Mutation du contrôle du
+  middleware (seul le slug vide refusé) : 34 lignes d'échec.
+- L11-6 `npx vitest run src/features/setup/StepDeviceCode.test.tsx` : 5 FAIL sur 9 (message générique au lieu du message du code).
+- L11-7 `-run TestWatcherHandler_StartAuth_InitErrorCauseLogged` : exit 1 (cause absente du journal).
+- L11-8 `-run TestMediaExtensionList` : exit 1 sur `internal/ops/media.go` (bloc de constantes vidéo, map des images). Premier essai
+  du garde-rail par fichier : faux positif sur le catalogue statique du front ; analyse passée par déclaration avec l'exception
+  des catalogues qui contiennent une extension propre au web.
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9) :
+- Gate du lot : `go test ./internal/api/... ./internal/archlint/ ./internal/media/... ./internal/ops/... ./internal/platform/auth/...
+  -count=1` : premier passage exit 1 (`TestNoNewFrenchLabelLiteral` : le message français de L11-4 portait
+  `admin_actions_replay_build.go` à 9 littéraux pour 8 ; corrigé par `humacore.FixedMessage`, `b2dd59395`), rejoué : exit 0,
+  12 paquets ok, 0 `--- FAIL:`.
+- Gate commun : `go build ./cmd/server/` exit 0 ; `go vet` (api, wire, middleware, handlers, archlint, platform/auth, ops, media)
+  exit 0 ; `golangci-lint run --new-from-rev=16fcd294a` et `--new-from-merge-base=origin/main` (v2.12.2) sur ces paquets : 0 issue.
+  `go run ./cmd/openapi-gen` : aucun diff ; `go test ./internal/api/ -run 'OpenAPI|Contract'` ok. Intégration
+  `go test -tags=integration -p 1 ./internal/ops/...` : exit 0.
+- Web : purge de `node_modules/.tmp`, `npm run typecheck` exit 0, `npm run lint` exit 0 (0 erreur, 26 avertissements préexistants),
+  `npm run test:run` exit 0 (928 fichiers passés / 5 ignorés, 9732 tests passés / 23 ignorés) ; `lint:fields`, `lint:colors`,
+  `lint-cross-feature-imports` (7 / plafond 7), `knip-ratchet` (0/0/0), `lint-contract-ratchet` : exit 0.
+- Crochets pre-commit (gofmt, check-merge-conflict, docs-fr-sync, gitleaks, go-vet) verts sur les dix commits de code.
+
+**Non-régression (règle 9)** : L11-1 : slugs réels (gamertags à espaces, accentués) toujours résolus (test). L11-2 : le front n'appelle
+`/profiles/{player_slug}/titles/{slug}` qu'avec des titres de la liste du serveur (`features/settings/queries.ts`, `TitlesTab`).
+L11-4 : aucun appelant front ; identifiants réels = UUID Halo. L11-5 : le front encode des slugs et gamertags issus des listes du
+serveur (`features/admin/appearance/mutations.ts`, `features/admin/monitoring/mutations.ts`) ; aucun script ne sonde ces routes.
+L11-6 : messages des codes réels désormais traduits ; code inconnu -> message générique comme avant. L11-8 : ensembles de formats
+identiques (indexation, réconciliation, miniatures).
+
+**Découvertes** : D-L11-1 à D-L11-4 (§6), non traitées.
+
+Commits : `7abe61b48` (L11-1), `d2a36e632` (L11-2), `5bcb0fab8` (L11-3), `97cdb588e` (L11-4), `544e3ef83` (L11-5), `73d90b2eb` (L11-6),
+`5489ce1db` (L11-7), `c6e9959ad` (L11-8), `b2dd59395` (message fixe de L11-4), puis le commit de clôture (plan, thought_log).
