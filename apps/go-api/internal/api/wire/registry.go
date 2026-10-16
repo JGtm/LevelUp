@@ -108,6 +108,7 @@ type ServiceRegistry struct {
 	// enregistre son builder au boot, sans toucher aux factories. Remplace les
 	// 2 cutoffs `pdb.TitleSlug != DefaultSlug` (allowlist archlint vidée).
 	playerDataBuilders   map[string]func(*duckdb.PlayerDB) games.TitleDataAdapter
+	participations       participationCache                   // participations confirmées à un match (registry_participation.go) ; valeur zéro utilisable
 	homeMatchesCache     *service.HomeMatchesCache            // cache TTL process-level matches+sessions
 	careerLiveCache      *service.CareerLiveCache             // cache TTL process-level XP (5 min) + customisation (6 h)
 	remoteStats          *service.CachedStatsProvider         // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare

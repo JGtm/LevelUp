@@ -14,6 +14,11 @@ import (
 // du match (EXISTS sur match_participants de la base partagée, même requête que la
 // vue du match). Un profil sans xuid n'a aucun match à lui : la vérification est
 // sans objet et laisse passer, comme la vue du match.
+//
+// Une participation confirmée est mémorisée (participationCache) : la vérification
+// court à chaque requête d'une page de match, et la relire dans la base partagée coûte
+// l'attente d'un éventuel basculement de lecteur. Un refus ou une erreur ne sont jamais
+// mémorisés.
 func (r *ServiceRegistry) MatchParticipation(ctx context.Context, slug, matchID string) (bool, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if errors.Is(err, config.ErrPlayerNotFound) {
@@ -28,5 +33,8 @@ func (r *ServiceRegistry) MatchParticipation(ctx context.Context, slug, matchID 
 		slog.DebugContext(ctx, "participation: profil sans xuid, vérification sans objet", "player", slug)
 		return true, nil
 	}
-	return r.newMatchViewRepo(pdb).IsParticipant(ctx, pdb.XUID, matchID)
+	key := participationKey{title: pdb.TitleSlug, xuid: pdb.XUID, matchID: matchID}
+	return r.participations.check(ctx, key, func(ctx context.Context) (bool, error) {
+		return r.newMatchViewRepo(pdb).IsParticipant(ctx, pdb.XUID, matchID)
+	})
 }

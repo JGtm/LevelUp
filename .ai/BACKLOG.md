@@ -2,7 +2,7 @@
 
 ---
 
-## 🔄 En cours : plan `.ai/PLAN_BACKLOG_2026-10-16.md` (les entrées ci-dessous, traitées étape par étape ; E1 CI close)
+## 🔄 En cours : plan `.ai/PLAN_BACKLOG_2026-10-16.md` (les entrées ci-dessous, traitées étape par étape ; E1 CI et E2 connexion Xbox/participation closes)
 
 ---
 
@@ -18,22 +18,6 @@ de bord observé juste après : la vue d'un match a répondu une fois 503 (véri
 de budget, voir l'entrée suivante). Travail : relever les requêtes (probablement une par carte, zone ou
 cellule), regrouper en une ou quelques requêtes par écran (endpoint agrégé ou chargement à la demande), mesurer
 avant/après (nombre de requêtes, temps jusqu'à l'affichage). **Effort : M.**
-
----
-
-### [sécurité/suites] Deux points relevés par la recette du chantier sécurité (2026-10-16)
-
-Notés au backlog à la demande de l'utilisateur :
-- **Vérification de participation à un match qui répond 503 sous charge.** Le middleware
-  `RequireMatchParticipation` (chantier sécurité, L3-10) refuse (503, fermé par défaut) quand sa requête de
-  vérification dépasse le budget de lecture ; constaté une fois sur la vue d'un match juste après la page
-  Tactique (`participation: vérification impossible err="context deadline exceeded"`, 5,3 s). Piste : mémoriser
-  les vérifications réussies (fait immuable : un joueur a joué un match) et aligner son budget sur celui de la
-  page. **Effort : S.**
-- **Seconde demande de code Xbox après une connexion réussie.** L'écran de connexion relance
-  `POST /auth/device-flow/start` après l'authentification (vu dans le réseau), ce qui consomme une des 3
-  tentatives simultanées autorisées par IP (L5-1). Piste : ne plus démarrer de tentative une fois la session
-  authentifiée. **Effort : S.**
 
 ---
 
@@ -330,6 +314,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-10-17 | **[sécurité/suites] Code Xbox redemandé après une connexion réussie, et vérification de participation en 503** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E2, branche `feat/backlog-2026-10-16`) : (1) `XboxLoginPage` ne relance plus `start` sur `attempt_not_found` une fois la tentative autorisée (la rotation de session au succès rend l'ancienne tentative introuvable) et le sondage `useDeviceFlowStatus` s'arrête dès `authorized`/`provisioned` (prédicat `isDeviceFlowSucceeded`, `setup/queries.ts`) ; test Vitest rouge avant le correctif (5 sondages au lieu de 1). (2) `RequireMatchParticipation` : cache borné (4 096 entrées, le plus ancien sort) des participations CONFIRMÉES seulement, clé titre + xuid + match, ni `false` ni erreur mémorisés, 503 fermé conservé sur échec non caché (`api/wire/participation_cache.go`, câblé dans `MatchParticipation`) ; tests : 2 appels = 1 requête, clé, borne, bout en bout avec le middleware. La première vérification d'un couple reste soumise au budget de lecture. |
 | 2026-10-17 | **[ci/durée] CI raccourcie de 49 à ~16 min, mêmes tests** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E1, branche `feat/backlog-2026-10-16`) : suite Go de couverture en 6 lots sur 6 machines, chacun en `-p 1` (définition unique `.github/ci/go-shards.txt`, dernier lot = complément calculé, `grammar` coupé en deux par une liste nommée de tests lourds `-run`/`-skip`), job de fusion (contrôle 356 paquets sur 356, gate baseline, profils additionnés, ratchet de couverture : 81,0 % identique) ; second passage `internal/sync` supprimé ; Vitest en 3 lots fusionnés ; `concurrency` (runs périmés annulés sur les branches de travail, groupe propre au run sur `main`/`feat/v75`) ; filtre de chemins sur les branches de travail (base `feat/v75`) ; `-timeout` revenu à 600 s ; `make gate-push` à deux voies (film sans DuckDB en parallèle). Garde-rails archlint : lots et partition, contournement du filtre, concurrency, voie film sans DuckDB. Run de preuve 38979844734 : 15 min 39 s. |
 | 2026-10-16 | **[sécurité] Durcissement de la surface exposée + restes de la démo** — audit adversarial (9 axes, 12 P0 / 17 P1 / 36 P2, `.ai/AUDIT_SECURITE_SURFACE_EXPOSEE_2026-10-15.md`) puis plan `.ai/PLAN_SECURITE_2026-10-15.md` (lots L0-L11, deux rondes de revue adversariale, recette, E2E) ; fusionné dans `feat/v75` (c6a72cf02). nginx de prod durci le 2026-10-15/16. Reste au déploiement de la v7.5 : V-3 (`data/demo_films/`), V-5 (unité de l'ouvrier), V-6 (limites mémoire après mesure). |
 | 2026-10-16 | **[lot backlog du 2026-10-15] Campagne dans les lecteurs, vue match « lecture en échec », intégrité du registre** (branche `feat/backlog-2026-10-15`, plan `.ai/PLAN_BACKLOG_2026-10-15.md`, E1 à E6) : lecteurs de la Campagne de `sync`/`ops`/`cmd` statués et garde étendu (E2), dettes Go (temps canonique, `GET /squads`) (E3), raisons `<source>_unavailable` distinctes de `<source>_empty` (E4), colonnes d'intégrité de `match_registry` (E5), deux rondes de revue adversariale corrigées (E6.2a, E6.2b). Reste : fusion dans `feat/v75` (geste du user) et les entrées ci-dessus. |

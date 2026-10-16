@@ -142,17 +142,23 @@ dont le déploiement attend le verdict), garde-rail archlint étendu (cas « gro
 
 ### E2 — Connexion Xbox et vérification de participation (entrée 3) — S
 
-- [ ] E2.1 Test Vitest rouge (`XboxLoginPage.test.tsx`) : statut `authorized` puis sondage en 404
+- [x] E2.1 Test Vitest rouge (`XboxLoginPage.test.tsx`) : statut `authorized` puis sondage en 404
   `attempt_not_found` → aucun nouveau `start` ; puis garde dans l'effet de récupération
   (`XboxLoginPage.tsx:236`) et arrêt du sondage une fois autorisé. Test de non-régression : la relance
   automatique avant autorisation fonctionne toujours.
-- [ ] E2.2 Cache borné des participations positives (D-11) dans
+- [x] E2.2 Cache borné des participations positives (D-11) dans
   `wire/registry_participation.go:17-32` ; tests : 2 appels = 1 requête, `false` et erreur non cachés,
   borne de taille respectée, 503 conservé sur échec non caché. Logs `slog` au niveau Debug pour
   l'éviction, rien sur le chemin chaud.
 
 Gate : `npx vitest run src/features/setup` (fichier concerné) ; `go test ./internal/api/...`
 (contrat golden compris) ; `make check-types`.
+
+Statut du gate (exécutant, 2026-10-17) : VERT. `npx vitest run src/features/auth src/features/setup` : 8 fichiers,
+129 tests passés (dont le nouveau test, rouge avant le correctif : `pollCount` 5 au lieu de 1) ;
+`go test ./internal/api/...` : api 42 s, handlers 24 s, humacore, middleware, wire tous `ok` ; `make check-types`
+(tsc -b) sans erreur ; eslint sur les 3 fichiers web sans remarque ; `golangci-lint run --new-from-merge-base=origin/main`
+sur `internal/api/wire` : 0 issue.
 
 ### E3 — Séquence d'arrêt du serveur (entrée 4) — S
 
@@ -340,6 +346,14 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
 - E1 : `go list -tags=integration ./...` compte 356 paquets, le run de référence `38938482739` en avait
   352 : l'arbre a gagné 4 paquets depuis. Le complément (`reste`) les absorbe, sans intervention.
 
+- E2 (exécutant, 2026-10-17) : `StepDeviceCode.tsx` (onboarding) porte le même effet de récupération sur
+  `attempt_not_found` sans test du statut `authorized`/`provisioned`. Le sondage s'arrête désormais au succès
+  (hook partagé `useDeviceFlowStatus`), donc le 404 ne lui arrive plus après autorisation ; la garde explicite
+  n'y est pas posée (hors périmètre E2, qui nomme `XboxLoginPage`). Non traité.
+- E2 : la première vérification d'un couple (joueur, match) reste soumise au budget de lecture (3 s d'attente
+  de basculement + 5 s dans `IsParticipant`) : le cache ne sert que les vérifications suivantes. La piste « aligner
+  son budget sur celui de la page » de l'entrée de backlog n'est pas dans D-11 ; non traitée.
+
 ## 4. Journal
 
 - 2026-10-16 : plan écrit après vérification sur pièces (section 0). Décisions user D-1, D-6, D-7 et
@@ -422,3 +436,24 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
     de `main`, profondeur) ; (5) `upload-artifact` / `download-artifact` `merge-multiple` sur le dossier
     caché et les noms de profil ; (6) l'ordre de compilation parallèle de 6 machines contre le cache
     setup-go (premier run à froid).
+- 2026-10-17 E2 (exécutant, worktree `LevelUp-wt-backlog-1016`) : E2.1 et E2.2 faits, gate vert.
+  - E2.1 : cause confirmée sur pièces (`XboxLoginPage.tsx`, effet de récupération sans test du statut ; le serveur
+    fait `Rotate` puis `Rebind` au succès, l'ancien sondage reçoit 404 `attempt_not_found`). Test écrit AVANT le
+    correctif (`une fois autorisé : ni nouveau start ni nouveau sondage...` : 1er sondage `authorized`, suivants
+    404, attente d'un intervalle de 5,6 s) : ROUGE, `expected 5 to be 1` (cinq sondages, relances de `start`
+    enchaînées). Correctif : (1) `useDeviceFlowStatus` : `refetchInterval` fonction, `false` dès que le dernier
+    statut lu est `authorized`/`provisioned` (prédicat exporté `isDeviceFlowSucceeded`, `setup/queries.ts`) ;
+    (2) garde `if (isDeviceFlowSucceeded(status?.status)) return` en tête de l'effet de récupération. Le test de
+    non-régression existant `relance automatiquement le flow sur attempt_not_found` reste vert (la relance avant
+    autorisation fonctionne). Les deux occurrences du test `authorized || provisioned` du composant utilisent
+    désormais le prédicat (règle des deux copies). Après le correctif : vert (`pollCount` 1, `startCount` 1).
+  - E2.2 : cache `participationCache` (`wire/participation_cache.go`) : valeur zéro utilisable, clé titre + xuid +
+    match (le titre en défense en profondeur : une base partagée par titre), bornée à 4 096 entrées (anneau
+    d'insertion, le plus ancien sort ; Debug à l'éviction, rien sur le chemin chaud), `true` seulement : ni `false`
+    ni erreur ne sont mémorisés, le 503 fermé du middleware est inchangé sur un échec non caché. Câblé dans
+    `ServiceRegistry.MatchParticipation` (champ `participations`). Le profil sans xuid et le profil inconnu
+    court-circuitent avant le cache. Tests (`participation_cache_test.go`) : 2 appels = 1 requête, clé titre/joueur/
+    match, `false` non mémorisé (puis `true` mémorisé après synchronisation), erreur non mémorisée (y compris un
+    `true` rendu avec erreur), borne et éviction du plus ancien, bout en bout avec `RequireMatchParticipation`
+    (503, 503, 200, puis 200 servi par le cache base tombée). Pas de test rouge préalable : la brique est neuve,
+    l'absence de la brique est une erreur de compilation.

@@ -1,3 +1,11 @@
+## [2026-10-17] Backlog du 16/10, E2 : connexion Xbox sans seconde demande de code, cache des participations — Complété (branche `feat/backlog-2026-10-16`)
+
+**Décision technique principale** : (1) l'effet de récupération de `XboxLoginPage` ne relance plus `start` quand la tentative est déjà autorisée, et le sondage du hook partagé `useDeviceFlowStatus` s'arrête au succès (`isDeviceFlowSucceeded`) : la rotation de session du serveur au succès rend l'ancienne tentative introuvable (404), ce que le front prenait pour une tentative perdue. (2) `RequireMatchParticipation` s'appuie sur un cache borné (4 096 entrées, éviction du plus ancien) des participations CONFIRMÉES (D-11) : clé titre + xuid + match, ni `false` ni erreur mémorisés, le 503 fermé reste sur un échec non caché.
+
+**Résultats observés** : test Vitest écrit avant le correctif, rouge (`expected 5 to be 1` : cinq sondages et des `start` enchaînés après l'autorisation), vert ensuite ; la relance automatique avant autorisation est toujours couverte (test existant vert). Vitest `features/auth` + `features/setup` 129/129, `go test ./internal/api/...` vert, `make check-types` vert, golangci-lint (ratchet) 0 issue sur `internal/api/wire`. La première vérification d'un couple (joueur, match) reste soumise au budget de lecture ; `StepDeviceCode` (onboarding) garde le même effet de récupération sans test du statut (sondage désormais arrêté au succès, pas de garde explicite) : notés en découvertes du plan.
+
+**Conclusion** : E2 close ; suite E3 (séquence d'arrêt du serveur).
+
 ## [2026-10-17] Backlog du 16/10, E1 : CI en lots parallèles, 49 → 16 min — Complété (branche `feat/backlog-2026-10-16`)
 
 **Décision technique principale** : suite Go de couverture en 6 lots (une machine chacun, `-p 1`), dernier lot = complément calculé, fusion des JSONL et des profils dans un job unique (contrôle d'ensemble des paquets, gate baseline, ratchet) ; second passage `internal/sync` supprimé ; Vitest en 3 lots ; `concurrency` avec groupe propre au run sur `main`/`feat/v75` (correction du pilote : GitHub ne garde qu'un run en attente par groupe) ; filtre de chemins de base `feat/v75` ; `gate-push` à deux voies.

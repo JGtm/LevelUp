@@ -15,7 +15,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { AppFooter } from '@/components/shell/AppFooter'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import { useStartDeviceFlow, useDeviceFlowStatus } from '@/features/setup/queries'
+import { useStartDeviceFlow, useDeviceFlowStatus, isDeviceFlowSucceeded } from '@/features/setup/queries'
 import { useLogin } from '@/features/auth/queries'
 import { storePasswordCredential } from '@/features/auth/credentials'
 import { deviceFlowFailureKey, isTooManyLoginAttempts } from '@/features/auth/loginError'
@@ -225,15 +225,18 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
 
   // Redirect quand authorized.
   useEffect(() => {
-    if (status?.status === 'authorized' || status?.status === 'provisioned') {
+    if (isDeviceFlowSucceeded(status?.status)) {
       void onAuthorized()
     }
   }, [status?.status, onAuthorized])
 
   // Récupération : attempt_not_found (tentative balayée / backend redémarré) →
-  // relancer un nouveau flow plutôt que de rester bloqué.
+  // relancer un nouveau flow plutôt que de rester bloqué. Jamais une fois la tentative
+  // aboutie : la rotation de session au succès rend l'ancienne tentative introuvable, et
+  // chaque relance consommerait une des tentatives simultanées autorisées par IP.
   useEffect(() => {
     if (!attemptId || apiErrorCode(error) !== 'attempt_not_found') return
+    if (isDeviceFlowSucceeded(status?.status)) return
     if (recoveryCountRef.current >= MAX_AUTO_RECOVERY) {
       setStartError(t('common.xbox_login.err_interrupted'))
       return
@@ -307,7 +310,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
     )
   }
 
-  if (status?.status === 'authorized' || status?.status === 'provisioned') {
+  if (status && isDeviceFlowSucceeded(status.status)) {
     return (
       <div className="space-y-3 text-center">
         <p className="text-success font-semibold">{t('common.auth.xbox_auth_success')}</p>

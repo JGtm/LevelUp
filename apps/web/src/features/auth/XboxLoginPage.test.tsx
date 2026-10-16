@@ -244,6 +244,39 @@ describe('XboxLoginPage', () => {
     expect(startCount).toBeGreaterThanOrEqual(2)
   })
 
+  it('une fois autorisé : ni nouveau start ni nouveau sondage quand l\'ancienne tentative répond 404', async () => {
+    // Le serveur fait tourner la session au succès : l'ancien sondage (cookie périmé) reçoit
+    // alors 404 attempt_not_found. Sans garde, l'effet de récupération relançait `start`
+    // (jusqu'à 3 fois), ce qui consommait le plafond de tentatives simultanées par IP.
+    let startCount = 0
+    let pollCount = 0
+    server.use(
+      http.post('/api/v1/auth/device-flow/start', () => {
+        startCount += 1
+        return HttpResponse.json({ attempt_id: `attempt-${startCount}`, user_code: 'ABCD-1234', verification_uri: 'https://microsoft.com/link', expires_in: 900, poll_interval_sec: 5 })
+      }),
+      http.get('/api/v1/auth/device-flow/:attemptId', () => {
+        pollCount += 1
+        if (pollCount === 1) {
+          return HttpResponse.json({ attempt_id: 'attempt-1', status: 'authorized', gamertag: 'TestPlayer', xuid: '0000000000000001', error: null })
+        }
+        return HttpResponse.json({ code: 'attempt_not_found', message: 'tentative introuvable', retryable: false }, { status: 404 })
+      }),
+    )
+
+    renderWithProviders(<XboxLoginPage />)
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/' })
+    })
+
+    // Laisse passer un intervalle de sondage complet (5 s) : un second sondage, s'il
+    // existait, aurait reçu le 404 et relancé le flow.
+    await new Promise((resolve) => setTimeout(resolve, 5_600))
+
+    expect(pollCount).toBe(1)
+    expect(startCount).toBe(1)
+  }, 15_000)
+
   it('compte inconnu refusé par le verrou d\'instance : message clair, aucune redirection', async () => {
     server.use(
       http.get('/api/v1/auth/device-flow/:attemptId', () =>
