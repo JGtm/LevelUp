@@ -1,4 +1,4 @@
-# PLAN — Quatre citations Halo 5 portées sur Halo Infinite, dont trois lues du film (2026-10-16)
+# PLAN — Quatre citations Halo 5 portées sur Halo Infinite, dont trois lues du film (2026-10-16) — CLOS
 
 > Contrat d'exécution : skill `plan-execution` (ordre strict, une étape à la fois, statut de
 > chaque item `[x]` / `[~]` réf / `[!]` justifié, aucune case vide à la clôture, zéro fix hors
@@ -163,7 +163,7 @@ du post-sync voit ses citations film recalculées sans intervention.
 ### E6 — Docs et clôture
 - [x] `docs/COMMENDATIONS_REFERENCE.md` (110 citations, tables Mode de jeu et Multijoueur, section « Film-derived sources ») + `docs/FR/CITATIONS_REFERENCE.md` (renvoi, compte mis à jour).
 - [x] Notes de version FR/EN (v7.5, bloc « Quatre nouvelles citations ») ; thought_log ; `.ai/REGISTRE_REPORTS.md` (D7 et les trois découvertes).
-- [ ] Skill `delivery-checklist` ; commit, push de la branche, CI verte.
+- [x] Skill `delivery-checklist` ; branche poussée, CI verte (run 38930430641 et les trois gates) ; intégration Go complète `-p 1` verte en local ; fusionnée dans `feat/v75` (`9f377373e`, accord utilisateur du 2026-10-16).
 
 ## Découvertes (hors périmètre, non traitées)
 

@@ -1,3 +1,11 @@
+## [2026-10-16] Plan citations Halo 5 clos : fusion de `feat/citations-film` dans `feat/v75` — Complété (branche `feat/v75`)
+
+**Décision technique principale** : fusion `--no-ff` (`9f377373e`) après CI verte de la branche et intégration Go complète verte en local ; plan rangé sous `.ai/V7.5/`.
+
+**Résultats observés** : quatre citations actives, calculées au post-sync et rattrapées en local ; citations existantes inchangées.
+
+**Conclusion** : restent au registre des reports : la mesure de « Presque » sur les matchs sans artefact (D7) et trois découvertes hors périmètre. Images de « Prise du crâne » et « Rapatriement agressif » à choisir par l'utilisateur.
+
 ## [2026-10-16] Plan citations Halo 5, E6 : paliers relevés, docs et clôture — Complété (branche `feat/citations-film`)
 
 **Décision technique principale** : paliers de « Presque, ça ne compte pas » relevés à 50-500 (utilisateur, au vu de E5), appliqués en local par re-seed et recalcul complet ; pas de recuisson pour les matchs sans artefact (D7, au registre des reports). Docs : référence des citations (110, sources du film), notes de version FR/EN.
