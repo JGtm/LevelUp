@@ -131,6 +131,11 @@ const maxConcurrentUploads = 2
 // defaultUploadSlotWait est l'attente maximale d'une place d'envoi avant le 503 upload_busy.
 const defaultUploadSlotWait = 30 * time.Second
 
+// defaultUploadBodyReadBudget est le délai de lecture du corps d'un envoi, compté depuis
+// l'obtention de sa place : le budget de lecture d'une requête du serveur (ReadTimeout de
+// cmd/server, compté depuis son arrivée) serait sinon épuisé par l'attente de la place.
+const defaultUploadBodyReadBudget = 15 * time.Second
+
 // globalUploadSlots est le pool d'envois partagé par toutes les instances de MediaHandler.
 var globalUploadSlots = slots.New(maxConcurrentUploads)
 
@@ -167,6 +172,7 @@ type MediaHandler struct {
 	users             authz.UserLookup            // relecture du rôle admin (media_requester.go)
 	uploadSlots       *slots.Pool                 // envois en vol (défaut : pool global du process)
 	uploadSlotWait    time.Duration               // attente maximale d'une place d'envoi
+	uploadReadBudget  time.Duration               // délai de lecture du corps une fois la place obtenue
 }
 
 // NewMediaHandler crée un MediaHandler.
@@ -184,6 +190,13 @@ func NewMediaHandler(
 func (h *MediaHandler) WithUploadSlots(pool *slots.Pool, wait time.Duration) *MediaHandler {
 	h.uploadSlots = pool
 	h.uploadSlotWait = wait
+	return h
+}
+
+// WithUploadBodyReadBudget remplace le délai de lecture du corps d'un envoi, compté depuis
+// l'obtention de sa place (tests ; en service, defaultUploadBodyReadBudget s'applique).
+func (h *MediaHandler) WithUploadBodyReadBudget(budget time.Duration) *MediaHandler {
+	h.uploadReadBudget = budget
 	return h
 }
 

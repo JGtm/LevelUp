@@ -46,11 +46,11 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer release()
+	h.restartBodyReadDeadline(r.Context(), w)
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		writeError(r.Context(), w, http.StatusRequestEntityTooLarge, "upload_too_large",
-			"fichiers trop volumineux (max 500 Mo)")
+		refuseUnreadableUpload(r.Context(), w, err)
 		return
 	}
 
@@ -143,6 +143,37 @@ func (h *MediaHandler) acquireUploadSlot(ctx context.Context, w http.ResponseWri
 		return nil, false
 	}
 	return release, true
+}
+
+// restartBodyReadDeadline repart d'un budget de lecture complet pour le corps, une fois la
+// place obtenue : l'attente de la place (jusqu'à uploadSlotWait) ne consomme pas le délai de
+// lecture de la requête. Une connexion qui ne permet pas de reporter l'échéance garde celle
+// du serveur (journalisé).
+func (h *MediaHandler) restartBodyReadDeadline(ctx context.Context, w http.ResponseWriter) {
+	budget := h.uploadReadBudget
+	if budget <= 0 {
+		budget = defaultUploadBodyReadBudget
+	}
+	if err := http.NewResponseController(w).SetReadDeadline(time.Now().Add(budget)); err != nil {
+		slog.WarnContext(ctx, "upload: échéance de lecture du corps non reportée", "err", err)
+	}
+}
+
+// refuseUnreadableUpload répond à un corps d'envoi illisible : 413 au-delà de maxUploadSize ;
+// 503 upload_busy + Retry-After quand le corps n'est pas arrivé dans son délai de lecture
+// (le client peut réessayer) ; 413 sinon.
+func refuseUnreadableUpload(ctx context.Context, w http.ResponseWriter, err error) {
+	var tooLarge *http.MaxBytesError
+	if !errors.As(err, &tooLarge) && errors.Is(err, os.ErrDeadlineExceeded) {
+		slog.WarnContext(ctx, "upload: corps non reçu dans son délai de lecture", "err", err)
+		w.Header().Set(headerRetryAfter, uploadBusyRetryAfterSec)
+		writeError(ctx, w, http.StatusServiceUnavailable, "upload_busy",
+			"upload body not received in time, retry shortly")
+		return
+	}
+	slog.WarnContext(ctx, "upload: corps refusé", "err", err)
+	writeError(ctx, w, http.StatusRequestEntityTooLarge, "upload_too_large",
+		"fichiers trop volumineux (max 500 Mo)")
 }
 
 // parseUploadedFiles extrait et valide les fichiers du formulaire multipart.
