@@ -117442,3 +117442,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Conclusion / prochaine étape** : gate visuel du user (rejeu VIP, pages Vue match / Tactique / Escouade / Séries temporelles) ; découvertes de la section 4 du plan à trier avec le user.
 
 **[2026-10-15] Étape dédiée au résidu des images-clés — Complété** : entrées de slot libéré lues comme le jeu (bipèdes fermés 5 397 -> 8 564 / 10 710), bit du bloc malléable d'i53 pour les films déclarant la version 0x25 (U-6), world-object i0 et rigid-body i18 sous la portée (U-7), sens de la valeur 2 de l'emplacement désiré établi (mains nues avant le départ), surcoût de cuisson de 11 % accepté (U-8). Fusion `a9a9ac78a`, schéma 97, `grammar-2026-10-15.2`, recuisson et killsource faits. Suite possible : trois records ti=37 récents (R-3), grammaire des versions 0x1f-0x22, optimisation de la cuisson.
+
+## [2026-10-16] Lots film du 15/10 intégrés (schéma 98) : faille à sa pose, poussées inchangées, doublons d'identité, morts servies deux fois, équipe des bots par build, vies nommées au sync — Complété (recuisson accordée par le user)
+
+**Décision technique principale** : intégration groupée sur `feat/integ-film` (révisions renumérotées : grammar-2026-10-16, profile-2026-10-16, killsource-2026-10-16, faits 16, schéma 98, placement-2026-10-16, highlight-credit-2026-10-16) ; fixtures `bots_*.json` régénérées après la correction de l'équipe des bots, garde-rail de révision ; faille vivante jusqu'à la suppression lue de son objet ; `killer_victim_pairs` réécrite par échange sans DELETE et index ART hérités retirés (décision du user) ; le bot tient son indice jusqu'à la fin de sa dernière déclaration (décision du user).
+
+**Résultats observés** : CI verte ; parc de 2 676 films : 0 panique, 1 719/1 722 poses situées par leur objet, 1 675 fins lues, poussées identiques, vies sans identité 2 379 → 2 376 (préexistantes, à instruire). Relectures adversariales K-A/K-D (1 P1 ART corrigé) et K-B/K-C (1 P1 de fixtures corrigé à l'intégration).
+
+**Conclusion / prochaine étape** : rattrapage et recuisson au schéma 98 (accord du user du 16/10) ; enquête sur les vies sans identité restantes et 3f048bf3.
