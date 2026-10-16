@@ -1359,6 +1359,7 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("shutdown", "err", err)
 	}
+	drainCoalescedRecomputes()
 
 	// Attendre la goroutine du scheduler avec un timeout dur pour que les
 	// connexions DuckDB qu'elle pourrait tenir soient libérées avant CloseAll.
