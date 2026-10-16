@@ -213,13 +213,13 @@ func buildBatchFromFetchedMatchCtx(
 		builder.AddObjectiveStats(fm.ObjectiveStats)
 	}
 
-	// Enrichment placeholder — les enrichments post-sync compute
-	// (performance_score, session_id, is_with_friends, dominance_flag,
-	// engagement_*) sont UPDATEd post-Submit par les fonctions
-	// engine_postsync.go. Le placeholder ici porte juste le PK.
-	builder.SetEnrichment(&persist.EnrichmentRow{
-		MatchID: fm.MatchID,
-	})
+	// Enrichment — les enrichments post-sync compute (performance_score, session_id,
+	// dominance_flag, engagement_*) sont écrits après le Submit par les étapes du post-sync.
+	// La ligne porte le PK et, si la liste d'amis est connue, is_with_friends : sans lui la
+	// colonne prend son défaut FALSE et le match s'affiche « Solo » jusqu'au recalcul.
+	enrichment := &persist.EnrichmentRow{MatchID: fm.MatchID}
+	applyIsWithFriends(enrichment, fm.Participants, xuid, fm.FriendXUIDs)
+	builder.SetEnrichment(enrichment)
 
 	batch := builder.Build()
 	slog.DebugContext(ctx, "collect: batch built",

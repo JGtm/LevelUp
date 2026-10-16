@@ -44,6 +44,10 @@ type cycleBatchPersisterV1Bridge struct {
 	// sharedDB : accès lazy au handle shared courant (post-swap), pour le refresh
 	// catalogue in-sync (résorbe « playlists hors catalogue »). nil → off.
 	sharedDB func() *sql.DB
+	// friendsOf (optionnel) rend les gamertags d'amis du joueur de xuid donné
+	// (= friendstore.FriendStore.Get). Avec sharedDB, il permet de poser is_with_friends dès le
+	// premier écrit (syncpkg.ApplyFriendsToBatch). nil → champ non posé, recalculé au post-sync.
+	friendsOf func(xuid string) ([]string, error)
 }
 
 // NewCycleBatchPersister construit un CycleBatchPersister V2.
@@ -80,6 +84,42 @@ func NewCycleBatchPersister(
 	}
 }
 
+// WithFriendsSource branche la source des amis (par xuid de joueur) sur un persister de
+// cycle construit par NewCycleBatchPersister : chaque match du cycle reçoit alors
+// is_with_friends au premier écrit. Rend le même persister ; sans effet sur un autre type.
+func WithFriendsSource(p CycleBatchPersister, friendsOf func(xuid string) ([]string, error)) CycleBatchPersister {
+	if b, ok := p.(*cycleBatchPersisterV1Bridge); ok {
+		b.friendsOf = friendsOf
+	}
+	return p
+}
+
+// resolveCycleFriends résout UNE fois par joueur du cycle les xuids d'amis, avant le premier
+// Submit (aucune écriture de la file ne court encore sur shared). Joueur sans amis connus ou
+// source absente : absent de la map, is_with_friends reste non posé.
+func (p *cycleBatchPersisterV1Bridge) resolveCycleFriends(ctx context.Context, batch CycleBatch) map[string][]string {
+	if p.friendsOf == nil || p.sharedDB == nil {
+		return nil
+	}
+	shared := p.sharedDB()
+	if shared == nil {
+		return nil
+	}
+	out := map[string][]string{}
+	for _, sd := range batch.Matches {
+		prof, ok := batch.PlayerBySlug[sd.Fetcher]
+		if !ok || prof.XUID == "" {
+			continue
+		}
+		if _, done := out[prof.XUID]; done {
+			continue
+		}
+		xuid := prof.XUID
+		out[xuid] = syncpkg.ResolveFriendXUIDs(ctx, shared, func() ([]string, error) { return p.friendsOf(xuid) }, xuid)
+	}
+	return out
+}
+
 // PersistCycle parse chaque SharedMatchData via V1.BuildBatchFromRawForV2,
 // soumet chaque batch à la queue, puis attend le drain.
 //
@@ -106,6 +146,7 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 		syncpkg.ResolveAssetsFromStats(ctx, p.assetPool, p.metaDB, p.titleSlug, statsList)
 	}
 
+	friendsByXUID := p.resolveCycleFriends(ctx, batch)
 	submitted := 0
 	parseErrors := 0
 	for mID, sd := range batch.Matches {
@@ -152,6 +193,7 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 		if matchBatch == nil {
 			continue
 		}
+		syncpkg.ApplyFriendsToBatch(matchBatch, fetcherProfile.XUID, friendsByXUID[fetcherProfile.XUID])
 
 		if submitErr := p.queue.Submit(matchBatch); submitErr != nil {
 			slog.WarnContext(ctx, "PersistCycle: queue.Submit failed",

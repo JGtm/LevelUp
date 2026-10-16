@@ -89,21 +89,21 @@ Gate 1 : `go test ./internal/sync/...`, `go test -tags=integration -p 1 ./intern
 
 ## Étape 2 — « Escouade » dès le premier écrit (moyen)
 
-- [ ] 2.1 Prédicat pur unique (dans un fichier existant de `internal/sync`) :
+- [x] 2.1 Prédicat pur unique (dans un fichier existant de `internal/sync`) :
   `withFriends(participants, playerXUID, friendXUIDs) bool` = même équipe, xuid ami, xuid ≠
   joueur, bots exclus comme dans le SQL.
-- [ ] 2.2 `fetchedMatch` porte les xuids amis résolus ; `buildBatchFromFetchedMatchCtx` pose
+- [x] 2.2 `fetchedMatch` porte les xuids amis résolus ; `buildBatchFromFetchedMatchCtx` pose
   `EnrichmentRow.IsWithFriends` quand la liste est connue (signature ≤ 5 paramètres).
-- [ ] 2.3 Résolution des amis UNE fois par passe : V1 (`engine_batch_path.go`, via
+- [x] 2.3 Résolution des amis UNE fois par passe : V1 (`engine_batch_path.go`, via
   `friendsLoader` + `LookupFriendXUIDs`) et V2 (`engine_v2bridge.go`, même chose côté cycle).
   Échec de résolution → log WARN, champ non posé, pas d'échec du sync.
-- [ ] 2.4 Test d'équivalence : sur un même jeu de participants (même équipe, équipe adverse, joueur
+- [x] 2.4 Test d'équivalence : sur un même jeu de participants (même équipe, équipe adverse, joueur
   présent dans sa propre liste d'amis, bot, liste vide), le prédicat pur et
   `loadMatchesWithFriends` (SQL) rendent le même verdict.
-- [ ] 2.5 Test d'intégration persist : lot d'un match d'escouade → `player_match_enrichment_latest`
+- [x] 2.5 Test d'intégration persist : lot d'un match d'escouade → `player_match_enrichment_latest`
   porte `is_with_friends = TRUE` AVANT tout post-sync ; le recalcul 3.5 qui suit promeut 0 et
   démote 0.
-- [ ] 2.6 Garde-rail ART : `go test ./internal/sync/ -run NoArt` vert sans allowlist ajoutée.
+- [x] 2.6 Garde-rail ART : `go test ./internal/sync/ -run NoArt` vert sans allowlist ajoutée.
 
 Gate 2 : mêmes commandes que le gate 1 + `go test ./internal/persist/...`.
 
@@ -239,3 +239,14 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   exigent la base metadata) ; la contrainte « 1.54 avant les citations » est tenue par le test d'ordre 1.6.
   Gate 1 : `go test` sync/persist/archlint/scheduler/wire/handlers/cmd/server verts ; `go test -tags=integration -p 1`
   sync + persist vert (sync 241 s) ; `golangci-lint --new-from-rev=27947da10` sur les paquets touchés : 0 issue.
+- 16/10 Étape 2 CLOSE. 2.1 `withFriends` (friends_recompute.go, jumeau du SQL de `loadMatchesWithFriends`).
+  2.2 `fetchedMatch.FriendXUIDs` + `applyIsWithFriends` dans `buildBatchFromFetchedMatchCtx` (signature inchangée, 5 paramètres).
+  2.3 résolution UNE fois par passe : V1 `run()` -> `historyPaginationInputs.friendXUIDs` -> chaque match (`engine.go`,
+  `engine_fetch.go`) ; V2 `cycleBatchPersisterV1Bridge.resolveCycleFriends` (un appel par joueur du cycle, avant le
+  premier Submit) + `ApplyFriendsToBatch`, source branchée par `syncv2.WithFriendsSource(persister, deps.Friends.Get)`
+  (constructeur inchangé). Échec/liste vide : WARN, champ non posé. 2.4 `TestWithFriends_Cases` +
+  `TestWithFriends_MatchesSQLVerdict` (11 cas, même verdict que la requête du recalcul). 2.5
+  `TestFirstWrite_PosesIsWithFriends_RecomputeConfirms` (dans `internal/sync`, qui seul peut appeler le recalcul) :
+  TRUE avant tout post-sync, recalcul 0 promotion / 0 démotion. 2.6 `TestNoARTPatternsOnProtectedTables` etc. verts,
+  aucune allowlist touchée. Gate 2 : tests sync/persist/archlint/cmd-server verts, intégration sync+persist verte,
+  lint (`--new-from-rev` du commit E1) 0 issue.

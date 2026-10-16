@@ -1,3 +1,11 @@
+## [2026-10-16] « Escouade » dès le premier écrit : is_with_friends posé avec le même prédicat que le recalcul — Complété pour l'étape 2 (branche `feat/postsync-ordre`)
+
+**Décision technique principale** : le premier écrit d'un match calcule `is_with_friends` par `withFriends` (même équipe, xuid ami, xuid différent du joueur) quand la liste d'amis est connue, via le champ pointeur existant `EnrichmentRow.IsWithFriends` (INSERT-only, aucun schéma changé). Amis résolus une fois par passe (V1) ou par joueur de cycle (V2). Le recalcul du post-sync reste l'autorité convergente. Liste inconnue ou vide : champ non posé.
+
+**Résultats observés** : le prédicat pur et la requête SQL du recalcul donnent le même verdict sur 11 cas ; après un premier écrit d'escouade, le recalcul promeut 0 et démote 0 ; ART : aucun garde-rail touché.
+
+**Conclusion** : étape 2bis (simulation de bout en bout) ensuite.
+
 ## [2026-10-16] Post-sync : ordre D1 (escouade, LUSR, CSR, agrégats avant les films) et vidage des caches — Complété pour l'étape 1 (branche `feat/postsync-ordre`)
 
 **Décision technique principale** : `runPostSyncPipeline` suit D1 (enrichissement, scoring, événements 1.54, PSA 1.56, escouade, domination, LUSR, CSR, agrégats, vidage des caches, puis source du kill 1.57, rejeu 1.58, citations, médias, succès, préparation). Blocs PSA/catalogue/escouade/domination/citations extraits en méthodes (fonction 318 -> 232 lignes). Vidage du cache Home par un rappel du moteur (`WithHomeCacheFlush` / `ServiceRegistry.InvalidateHomeMatches`) branché sur les trois sites de construction du moteur (V1 auto-sync, HTTP, V2). Tableau de bord : étapes publiées dans l'ordre d'exécution, `kill_source` et `replay_artifacts` ajoutées.

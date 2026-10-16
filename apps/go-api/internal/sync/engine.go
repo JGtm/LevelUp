@@ -218,6 +218,9 @@ type historyPaginationInputs struct {
 	isDelta  bool
 	// orphans : orphelins à récupérer par match_id ce cycle (knownset.Set.Recover).
 	orphans []string
+	// friendXUIDs : xuids des amis du joueur, résolus UNE fois par passe (ResolveFriendXUIDs) et
+	// posés sur chaque match fetché pour que le premier écrit porte is_with_friends. Nil = inconnue.
+	friendXUIDs []string
 }
 
 // paginateAndPersistHistory parcourt l'historique paginé (GetMatchHistory) et, page par
@@ -500,7 +503,8 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	e.syncHistory(ctx, historyPaginationInputs{
 		client: client, opts: opts, known: knownSet.Known,
 		sharedDB: sharedDB, playerDB: playerDB, isDelta: isDelta,
-		orphans: knownSet.Recover,
+		orphans:     knownSet.Recover,
+		friendXUIDs: ResolveFriendXUIDs(ctx, sharedDB, e.friendsLoader, e.xuid),
 	}, &result)
 
 	slog.InfoContext(ctx, "sync: boucle pagination terminée",

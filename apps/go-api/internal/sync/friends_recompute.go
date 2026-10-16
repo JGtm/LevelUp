@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -280,4 +281,83 @@ func demoteStaleIsWithFriends(ctx context.Context, playerDB *sql.DB, targetIDs [
 func demoteIsWithFriendsBatch(ctx context.Context, playerDB *sql.DB, matchIDs []string) (int64, error) {
 	n, err := insertEnrichmentBoolFlagDelta(ctx, playerDB, matchIDs, "is_with_friends", "friends", false)
 	return int64(n), err
+}
+
+// withFriends dit si le joueur a joué ce match avec un ami : au moins un participant de SA
+// équipe dont le xuid figure dans friendXUIDs, hors le joueur lui-même.
+//
+// Prédicat pur, jumeau exact de loadMatchesWithFriends (la requête du recalcul) : même équipe
+// (`team_id` égaux ; un `team_id` inconnu n'égale rien, comme `NULL = NULL` en SQL), xuid ami,
+// xuid différent du joueur (le joueur est souvent dans sa propre liste d'amis). Un bot n'a pas
+// de xuid de compte : il n'est jamais dans la liste, donc jamais compté. Le joueur absent des
+// participants, ou sans équipe connue, ne joue avec personne. L'équivalence avec la requête est
+// tenue par TestWithFriends_MatchesSQLVerdict.
+func withFriends(participants []ParticipantRow, playerXUID string, friendXUIDs []string) bool {
+	if playerXUID == "" || len(friendXUIDs) == 0 {
+		return false
+	}
+	friends := make(map[string]struct{}, len(friendXUIDs))
+	for _, x := range friendXUIDs {
+		friends[x] = struct{}{}
+	}
+	for _, me := range participants {
+		if me.XUID != playerXUID || me.TeamID == nil {
+			continue
+		}
+		for _, p := range participants {
+			if p.XUID == playerXUID || p.TeamID == nil || *p.TeamID != *me.TeamID {
+				continue
+			}
+			if _, ok := friends[p.XUID]; ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// applyIsWithFriends pose `is_with_friends` sur la ligne d'enrichissement du PREMIER écrit
+// d'un match. Sans quoi la colonne prend son défaut FALSE et la tuile s'affiche « Solo »
+// jusqu'au recalcul du post-sync (étape escouade), qui reste l'autorité convergente (ami
+// ajouté ou retiré). Liste d'amis inconnue ou vide : champ non posé, comportement inchangé.
+func applyIsWithFriends(row *persist.EnrichmentRow, participants []ParticipantRow, playerXUID string, friendXUIDs []string) {
+	if row == nil || len(friendXUIDs) == 0 {
+		return
+	}
+	v := withFriends(participants, playerXUID, friendXUIDs)
+	row.IsWithFriends = &v
+}
+
+// ApplyFriendsToBatch pose `is_with_friends` sur le lot d'un match déjà construit (chemin
+// V2, dont le lot est bâti hors du moteur). Même prédicat que le chemin V1.
+func ApplyFriendsToBatch(batch *persist.MatchBatch, playerXUID string, friendXUIDs []string) {
+	if batch == nil {
+		return
+	}
+	applyIsWithFriends(batch.PlayerData.Enrichment, batch.Shared.Participants, playerXUID, friendXUIDs)
+}
+
+// ResolveFriendXUIDs résout les gamertags d'amis en xuids (xuid_aliases de shared), UNE fois
+// par passe de sync. Rend nil quand la liste est inconnue (loader absent ou en échec) ou
+// vide : l'appelant ne pose alors pas `is_with_friends` au premier écrit. Un échec ou des
+// amis non résolus se journalisent en WARN ; ils n'arrêtent jamais le sync.
+func ResolveFriendXUIDs(ctx context.Context, sharedDB *sql.DB, load FriendsLoader, playerXUID string) []string {
+	if load == nil || sharedDB == nil {
+		return nil
+	}
+	gamertags, err := load()
+	if err != nil {
+		slog.WarnContext(ctx, "sync: amis indisponibles — is_with_friends non posé au premier écrit (recalculé au post-sync)",
+			"player_xuid", playerXUID, "err", err)
+		return nil
+	}
+	if len(gamertags) == 0 {
+		return nil
+	}
+	xuids := LookupFriendXUIDs(ctx, sharedDB, gamertags)
+	if len(xuids) < len(gamertags) {
+		slog.WarnContext(ctx, "sync: amis non résolus pour le premier écrit",
+			"player_xuid", playerXUID, "gamertags", len(gamertags), "xuids_resolved", len(xuids))
+	}
+	return xuids
 }

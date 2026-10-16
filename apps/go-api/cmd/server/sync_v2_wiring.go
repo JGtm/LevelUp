@@ -156,6 +156,11 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		// asset_translations via le handle metadata RW partagé (deps.MetaDB).
 		persister = syncv2.NewCycleBatchPersister(deps.TitleSlug, deps.BatchQueue, 0,
 			deps.MetaDB, deps.TokenPool, getSharedDB)
+		// Amis par joueur : is_with_friends est posé dès le premier écrit (sans quoi le match
+		// s'affiche « Solo » jusqu'au post-sync). Même source que le FriendsLoader du moteur.
+		if deps.Friends != nil {
+			persister = syncv2.WithFriendsSource(persister, deps.Friends.Get)
+		}
 	}
 
 	// RC-A fix (2026-06-01) : le PostSyncRunner doit acquérir le shared en
