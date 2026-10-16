@@ -25,7 +25,6 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
 )
 
@@ -80,7 +79,9 @@ func (h *MatchExclusionHandler) SetExclusion(ctx context.Context, in *matchExclu
 		case errors.Is(err, domain.ErrRankedMatchNotExcludable):
 			return nil, humacore.NewError(http.StatusUnprocessableEntity, "ranked_not_excludable",
 				"Les matchs classés ne peuvent pas être exclus")
-		case errors.Is(err, dblease.ErrDBLocked):
+		case isDBBusy(err):
+			// Verrou d'écriture du joueur ou bascule de la base partagée pendant une
+			// synchronisation : l'exclusion est idempotente, le client réessaie.
 			return nil, errDBBusy()
 		}
 		slog.WarnContext(ctx, "match exclusion: db error",
