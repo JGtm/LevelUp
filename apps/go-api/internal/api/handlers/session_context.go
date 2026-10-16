@@ -102,7 +102,7 @@ func (h *SessionHandler) handlePostContext(ctx context.Context, in *sessionConte
 		slog.WarnContext(ctx, "session_context: joueur courant refusé — profil non accessible",
 			"slug", *req.PlayerSlug)
 		return nil, humacore.NewError(http.StatusForbidden, "player_forbidden",
-			"Accès non autorisé à ce joueur.")
+			"Access to this player is not allowed.")
 	}
 
 	if req.PlayerSlug != nil {

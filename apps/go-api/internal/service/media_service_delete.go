@@ -150,7 +150,7 @@ func (s *MediaService) authorizeMediaAssociation(ctx context.Context, req domain
 	}
 	deleter, ok := s.repo.(port.MediaDeleter)
 	if !ok {
-		return domain.ErrInternal("association de média non supportée par ce dépôt")
+		return domain.ErrInternal("media association not supported by this repository")
 	}
 	target, err := deleter.LoadMediaForDeletion(ctx, req.FilePath)
 	if err != nil {
@@ -160,7 +160,7 @@ func (s *MediaService) authorizeMediaAssociation(ctx context.Context, req domain
 		slog.WarnContext(ctx, "media_associate refusé: ni propriétaire ni admin",
 			"file_path", req.FilePath, "owner", target.OwnerSlug,
 			"requester", req.RequesterSlug, "is_admin", req.RequesterIsAdmin)
-		return domain.ErrForbidden("Seul le propriétaire de ce média ou un administrateur peut l'associer à un match.")
+		return domain.ErrForbidden("Only the owner of this media or an administrator can associate it with a match.")
 	}
 	return nil
 }
