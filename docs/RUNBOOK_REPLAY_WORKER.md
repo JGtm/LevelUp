@@ -75,11 +75,14 @@ filled by something nobody will drain.
 - `/etc/levelup-worker.env`, root-owned, mode 0600, carrying `LEVELUP_BUILD_WORKER_TOKEN`.
   systemd reads it as root before dropping to `deploy` — the service account never needs
   read access to the secret itself.
-- `levelup-worker.service` **linked and disabled**:
-  `systemctl link /opt/levelup/packaging/systemd/levelup-worker.service`.
-  Linking (not copying) is what lets CI refresh the unit: `deploy` has a sudoers rule
-  limited to `systemctl daemon-reload` and `systemctl restart levelup-worker`, so it cannot
-  copy a file into `/etc/systemd/system/`.
+- `levelup-worker.service` installed **as a copy owned by root, disabled** (see
+  section 7 for the command). It must never be a symlink into `/opt/levelup`: that clone is
+  owned by `deploy`, so a link would let anything that can write to the repository change
+  what systemd runs. `deploy` has a sudoers rule limited to
+  `systemctl restart levelup-worker`; it cannot, and must not, write to
+  `/etc/systemd/system/`. Installing or refreshing the unit is a root gesture (section 7).
+  Until 2026-10-16 the unit was installed by link (`systemctl link`); a host still in that
+  state must be converted before the next deployment, see section 7.
 - GitHub secrets `VPS2_HOST` / `VPS2_SSH_KEY`, distinct from the production ones.
 
 **lvelup — production web VPS**: unchanged. A worker token is staged, inert, at
@@ -89,7 +92,10 @@ therefore still answers `503` on the worker routes.
 **What CI does today.** On every push to `main`, after the web deployment, the
 `deploy-worker` job runs `scripts/deploy-worker.sh` on csstat. Because the unit is disabled,
 the script updates the binary, prints "service desactive : binaire mis a jour, pas de
-restart", and exits 0. That is the nominal pre-activation path, not a failure.
+restart", and exits 0. That is the nominal pre-activation path, not a failure. The script
+also **checks** the installed unit (it never installs it): a symlink, or a copy that is not
+`root:root` or is writable by group or others, makes it exit 1 before any restart; a copy
+that differs from the repository is reported as a warning with the reinstall command.
 
 ---
 
@@ -150,6 +156,25 @@ fix is deployed, `403 csrf_rejected` must never appear on these routes again.
 
 Never put the token in the URL. It travels as `Authorization: Bearer <token>`.
 
+**Restricting the route to the compute VPS (to apply at activation).** The bearer token is
+the only barrier on `/api/v1/internal/`, and the location is open to the whole internet.
+Once the compute VPS has a fixed address, restrict the location on the production nginx:
+
+```nginx
+location /api/v1/internal/ {
+    allow <public IPv4 of csstat>;
+    deny  all;
+    # ... unchanged: client_max_body_size 20m; proxy_read_timeout/send_timeout 3600s; proxy_pass
+}
+```
+
+Then `nginx -t && systemctl reload nginx`, and check from another machine that the pre-flight
+`curl` above now answers `403` (nginx, HTML body) while the worker still claims jobs. The
+address is not written in the repository, so the versioned `packaging/nginx/levelup.conf`
+is left as it is until the supervisor records it at activation; a restriction in the repository
+copy must be applied together with the same change on the VPS (the file is installed by hand).
+A `403` from nginx on this route after the restriction means the worker's address changed.
+
 ---
 
 ## 4. Activation sequence (v7.5 release)
@@ -204,6 +229,9 @@ Witness run of 2026-08-25 (dry-run, read-only, 951 cached films): 2 repairable a
 916 without artifact. 74 chunks to decode in total — a few minutes.
 
 ### Step 3 — Enable the worker on csstat
+
+The unit must already be installed as a root-owned copy (section 7, "Installing and
+verifying the unit") and `systemd-analyze verify` must have passed.
 
 ```bash
 sudo systemctl enable --now levelup-worker
@@ -295,11 +323,56 @@ queue with nobody to drain them. Prefer removing the token if the pause is going
   (server unreachable, token refused), `2` missing configuration (token or repository root),
   `3` memory ceiling hit. `2` and `1` retry every 30 seconds by design — once the cause is
   fixed, the worker resumes on its own without manual intervention.
-- **The unit must stay linked, not copied.** If someone copies the file into
-  `/etc/systemd/system/`, `scripts/deploy-worker.sh` detects the divergence and prints the
-  fix, but can no longer refresh it (restricted sudoers).
-- **`systemd-analyze verify` has not been run on this unit** from the authoring workstation
-  (Windows). Run it once on csstat:
-  `systemd-analyze verify /opt/levelup/packaging/systemd/levelup-worker.service`.
-  Additional hardening (`ProtectSystem=strict`, `ProtectHome`) was deliberately left out for
-  the same reason and can be instructed there.
+- **The unit must stay a root-owned copy, never a link.** `scripts/deploy-worker.sh` refuses
+  a symlink and a copy that is not `root:root` or is writable by group or others (exit 1,
+  before any restart), and warns about a copy that differs from the repository. It cannot
+  refresh the unit itself; section 7 gives the root gesture.
+- **Hardening.** The unit sets `NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=full`,
+  `ProtectHome=read-only` and declares `ReadWritePaths` for what the worker writes:
+  `/var/lib/levelup-worker` (film chunks in transit, `--work`) and `/opt/levelup/data/cache`
+  (the shared decode lock `film_decode.lock`, and the film facts written after a decode).
+  `ProtectSystem=full` makes `/usr`, `/boot` and `/etc` read-only and leaves `/opt` writable
+  by ordinary permissions, so the list is a contract that becomes binding only under
+  `ProtectSystem=strict`. Moving to `strict` is a one-word change, to be made and tested on
+  csstat. If the worker ever writes somewhere new, add the path to the unit; the guard
+  `internal/archlint/worker_unit_hardening_test.go` only checks that the directives exist and
+  that `--work` is covered.
+
+---
+
+## 7. Installing and verifying the unit
+
+Run as root (or with `sudo`) on csstat, from a checkout whose unit file you have read.
+
+```bash
+# First installation, or after any change to packaging/systemd/levelup-worker.service:
+sudo install -o root -g root -m 0644 \
+    /opt/levelup/packaging/systemd/levelup-worker.service \
+    /etc/systemd/system/levelup-worker.service
+sudo systemctl daemon-reload
+systemd-analyze verify /etc/systemd/system/levelup-worker.service
+```
+
+Converting a host still installed by link (the pre-2026-10-16 state; until it is converted,
+every `deploy-worker` run exits 1 at the unit check):
+
+```bash
+ls -l /etc/systemd/system/levelup-worker.service     # shows "-> /opt/levelup/..." if linked
+sudo systemctl disable --now levelup-worker          # only if it was enabled
+sudo rm /etc/systemd/system/levelup-worker.service
+sudo install -o root -g root -m 0644 \
+    /opt/levelup/packaging/systemd/levelup-worker.service \
+    /etc/systemd/system/levelup-worker.service
+sudo systemctl daemon-reload
+systemd-analyze verify /etc/systemd/system/levelup-worker.service
+```
+
+`systemd-analyze verify` has not been run on this unit from the authoring workstation
+(Windows has no systemd); this step is its first real validation, and the hardening
+directives (`ProtectSystem=full`, `ProtectHome=read-only`, `ReadWritePaths`) are only proven
+by starting the worker once: after step 3 of the activation sequence, a first job must reach
+`job reussi` with `morceaux de film supprimes` in the journal. A start that fails with status
+`226/NAMESPACE` points at a `ReadWritePaths` entry.
+
+The sudoers rule of `deploy` no longer needs `systemctl daemon-reload` (the script does not
+call it); only `systemctl restart levelup-worker` is required and may be narrowed to that.
