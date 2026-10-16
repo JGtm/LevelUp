@@ -44164,10 +44164,6 @@
 {"Time":"2026-06-26T23:51:31.8725809+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_SkipsUnknownXUIDs","Output":"=== RUN   TestNewFriendsExtrasResolver_SkipsUnknownXUIDs\n"}
 {"Time":"2026-06-26T23:51:31.8725809+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_SkipsUnknownXUIDs","Output":"=== PAUSE TestNewFriendsExtrasResolver_SkipsUnknownXUIDs\n"}
 {"Time":"2026-06-26T23:51:31.8725809+02:00","Action":"pause","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_SkipsUnknownXUIDs"}
-{"Time":"2026-06-26T23:51:31.8725809+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_OpenerErrorIsSilenced"}
-{"Time":"2026-06-26T23:51:31.8725809+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_OpenerErrorIsSilenced","Output":"=== RUN   TestNewFriendsExtrasResolver_OpenerErrorIsSilenced\n"}
-{"Time":"2026-06-26T23:51:31.8725809+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_OpenerErrorIsSilenced","Output":"=== PAUSE TestNewFriendsExtrasResolver_OpenerErrorIsSilenced\n"}
-{"Time":"2026-06-26T23:51:31.8725809+02:00","Action":"pause","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_OpenerErrorIsSilenced"}
 {"Time":"2026-06-26T23:51:31.8725809+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_PartialResults"}
 {"Time":"2026-06-26T23:51:31.8725809+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_PartialResults","Output":"=== RUN   TestNewFriendsExtrasResolver_PartialResults\n"}
 {"Time":"2026-06-26T23:51:31.8725809+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_PartialResults","Output":"=== PAUSE TestNewFriendsExtrasResolver_PartialResults\n"}
@@ -47505,8 +47501,6 @@
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildMapBreakdownLollipop_Empty","Elapsed":0}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestConvertEncounters_BadgesEmptyForFreshEncounter","Output":"--- PASS: TestConvertEncounters_BadgesEmptyForFreshEncounter (0.00s)\n"}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestConvertEncounters_BadgesEmptyForFreshEncounter","Elapsed":0}
-{"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"cont","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_OpenerErrorIsSilenced"}
-{"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_OpenerErrorIsSilenced","Output":"=== CONT  TestNewFriendsExtrasResolver_OpenerErrorIsSilenced\n"}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildRankBlock_IconURL/adapter_nil_→_IconURL_vide_(dégradation)","Output":"=== PAUSE TestBuildRankBlock_IconURL/adapter_nil_→_IconURL_vide_(dégradation)\n"}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"pause","Package":"levelup/go-api/internal/service","Test":"TestBuildRankBlock_IconURL/adapter_nil_→_IconURL_vide_(dégradation)"}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"cont","Package":"levelup/go-api/internal/service","Test":"TestBuildMedalsGallery_RemapsXUIDToGamertag"}
@@ -47943,8 +47937,6 @@
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestLogBestEffortErr_LevelByErrorType/wrapped_sql.ErrNoRows_→_DEBUG","Output":"=== RUN   TestLogBestEffortErr_LevelByErrorType/wrapped_sql.ErrNoRows_→_DEBUG\n"}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_PartialResults","Output":"--- PASS: TestNewFriendsExtrasResolver_PartialResults (0.00s)\n"}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_PartialResults","Elapsed":0}
-{"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_OpenerErrorIsSilenced","Output":"--- PASS: TestNewFriendsExtrasResolver_OpenerErrorIsSilenced (0.00s)\n"}
-{"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_OpenerErrorIsSilenced","Elapsed":0}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildMedalsGallery_GroupsByMatchAndPlayer","Output":"--- PASS: TestBuildMedalsGallery_GroupsByMatchAndPlayer (0.00s)\n"}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildMedalsGallery_GroupsByMatchAndPlayer","Elapsed":0}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildMedalsGallery_RemapsXUIDToGamertag","Output":"--- PASS: TestBuildMedalsGallery_RemapsXUIDToGamertag (0.00s)\n"}
