@@ -13,6 +13,13 @@ import (
 // internalErrorMessage : message de toute réponse 5xx.
 const internalErrorMessage = "internal error"
 
+// Clés slog d'une réponse d'erreur journalisée.
+const (
+	logKeyStatus  = "status"
+	logKeyCode    = "code"
+	logKeyMessage = "message"
+)
+
 // FixedMessage rend le message envoyé au client pour (statut, code) : « internal error » en
 // 5xx, sinon le message fixe du code (domain.ErrorMessageForCode). Le texte d'une erreur
 // interne ne part jamais au client.
@@ -30,7 +37,7 @@ func FixedMessage(status int, code string) string {
 //
 // Le ctx fait remonter event_id / request_id injectés par le ContextHandler.
 func LogErrorResponse(ctx context.Context, status int, code, message string, err error) {
-	attrs := []any{"status", status, "code", code, "message", message}
+	attrs := []any{logKeyStatus, status, logKeyCode, code, logKeyMessage, message}
 	if err != nil {
 		attrs = append(attrs, "err", err)
 	}
