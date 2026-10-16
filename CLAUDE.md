@@ -152,6 +152,9 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
   `msal_token_cache`, ni `SPNKR_OAUTH_REFRESH_TOKEN_*`, ni le store mono-user
   `data/auth/watcher_tokens.json` (celui-ci ne porte plus que l'état du watcher RTA :
   access_token + XSTS). Un joueur absent du store n'a pas de token.
+- **Mise en commun (ADR 0038)** : un jeton n'entre dans le round-robin public (`PolicyAnyPublic`)
+  que si `UserTokens.PoolSharing` porte un accord ; aucune décision = refus. Ne jamais ajouter de
+  chemin qui sert le jeton d'un joueur à un autre sans passer par `Pool` (`IsWithheld`).
 - **JAMAIS de re-capture de token** pour « réparer » une auth : un refresh token valide se
   rafraîchit ; s'il est mort, diagnostiquer la cause (rotation perdue, mauvais xuid) avant
   tout. `AADSTS70000` = vieille app / RT étranger, pas une raison de re-capturer.
@@ -354,7 +357,9 @@ git commit -m "refactor(phase2): ..."
   `0037` **représentation intermédiaire du film** (la marche de production devient la lecture unique de
   la grammaire : structure typée à étendues en bits, deux phases images-clés puis trames, une seule table
   d'entités, fermeture refusée distincte de la queue opaque, récupération marquée ; types dans
-  `grammar/lecture`, que ni `replay` ni `decfilm` n'importent ; amende 0034 D-1, D-2, D-6, D-7, D-10).
+  `grammar/lecture`, que ni `replay` ni `decfilm` n'importent ; amende 0034 D-1, D-2, D-6, D-7, D-10) ·
+  `0038` **mise en commun des jetons = opt-in par joueur** (un jeton n'entre dans le round-robin public que sur un
+  consentement enregistré dans son fichier de jetons ; sans décision il ne sert que son propriétaire ; `levelup pool-sharing`).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

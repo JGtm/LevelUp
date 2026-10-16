@@ -65,6 +65,9 @@ export function AppFooter({ variant = 'full' }: AppFooterProps) {
           <Link to="/privacy" className={LINK_CLASS}>
             {t('common.footer.privacy')}
           </Link>
+          <Link to="/terms" className={LINK_CLASS}>
+            {t('common.footer.terms')}
+          </Link>
           <ExternalLink href={GITHUB_URL}>{t('common.footer.source_code')}</ExternalLink>
           <ExternalLink href={csinsightUrl(locale)}>{t('common.footer.csinsight')}</ExternalLink>
         </p>
@@ -90,6 +93,9 @@ export function AppFooter({ variant = 'full' }: AppFooterProps) {
           <ExternalLink href={GITHUB_LICENSE_URL}>{t('common.footer.license')}</ExternalLink>
           <Link to="/privacy" className={LINK_CLASS}>
             {t('common.footer.privacy')}
+          </Link>
+          <Link to="/terms" className={LINK_CLASS}>
+            {t('common.footer.terms')}
           </Link>
         </nav>
 

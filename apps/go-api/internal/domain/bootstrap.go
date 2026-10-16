@@ -157,6 +157,10 @@ type BootstrapResponse struct {
 	// (refresh silencieux définitivement KO). Le front affiche une bannière
 	// « reconnecte ton compte Xbox ». Remis à false après une ré-auth réussie.
 	ReauthRequired bool `json:"reauth_required"`
+	// PoolSharing : où en est le user connecté sur la mise en commun de son jeton avec le
+	// pool qui sert la synchro des autres joueurs. « undecided » déclenche la question au
+	// front ; « unavailable » = pas de jeton (compte password sans Xbox) ou pas de résolveur.
+	PoolSharing string `json:"pool_sharing" enum:"granted,declined,undecided,unavailable"`
 	// HasPassword : l'utilisateur connecté a défini un mot de passe (opt-in PR-C).
 	// Le front l'utilise pour proposer « définir » vs « changer » et masquer la
 	// proposition en onboarding une fois faite.
@@ -178,3 +182,11 @@ type PlayersListResponse struct {
 	Items             []PlayerSummary `json:"items"`
 	DefaultPlayerSlug *string         `json:"default_player_slug"`
 }
+
+// États de la mise en commun du jeton d'un joueur (BootstrapResponse.PoolSharing).
+const (
+	PoolSharingGranted     = "granted"
+	PoolSharingDeclined    = "declined"
+	PoolSharingUndecided   = "undecided"
+	PoolSharingUnavailable = "unavailable" // pas de jeton : rien à mettre en commun
+)

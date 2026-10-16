@@ -19,6 +19,7 @@ type acqPool struct {
 	pinnedErr error
 	publicErr error
 	acquired  []pool.AcquirePolicy
+	unshared  bool // le propriétaire n'a pas consenti à la mise en commun
 }
 
 func (p *acqPool) Acquire(_ context.Context, policy pool.AcquirePolicy, _ string) (*pool.Lease, error) {
@@ -100,5 +101,24 @@ func TestAcquireRunner_BothFail_Errors(t *testing.T) {
 	p := &acqPool{pinnedErr: errors.New("no token"), publicErr: errors.New("pool vide")}
 	if _, _, _, err := AcquireRunner(context.Background(), p, cfg, halo5.TitleSlug, "X", "xX"); err == nil {
 		t.Error("want erreur quand pinned ET pool échouent")
+	}
+}
+
+func (p *acqPool) IsWithheld(string) bool      { return p.unshared }
+func (p *acqPool) SetShared(string, bool) bool { return true }
+
+// TestAcquireRunner_PinnedDead_UnsharedOwner_NoFallback : un joueur qui n'a pas consenti à
+// la mise en commun n'emprunte pas le pool quand son jeton est indisponible.
+func TestAcquireRunner_PinnedDead_UnsharedOwner_NoFallback(t *testing.T) {
+	cfg := &config.AppConfig{RepoRoot: t.TempDir()}
+	p := &acqPool{pinnedErr: errors.New("token indisponible"), unshared: true}
+
+	_, _, _, err := AcquireRunner(context.Background(), p, cfg, halo5.TitleSlug, "Refuse", "xuid-r")
+
+	if err == nil {
+		t.Fatal("want erreur: pas de repli sur le pool pour un joueur sans consentement")
+	}
+	if len(p.acquired) != 1 || p.acquired[0] != pool.PolicyPinnedPlayer {
+		t.Errorf("policies tentées = %v, want [pinned] seul", p.acquired)
 	}
 }

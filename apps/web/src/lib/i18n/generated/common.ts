@@ -219,6 +219,7 @@ export const commonManifest = {
   "common.footer.source_code": { fr: "Code source", en: "Source code" },
   "common.footer.sponsors": { fr: "GitHub Sponsors", en: "GitHub Sponsors" },
   "common.footer.support_heading": { fr: "Soutenir", en: "Support" },
+  "common.footer.terms": { fr: "Conditions d'utilisation", en: "Terms of use" },
   "common.friends.add": { fr: "Ajouter", en: "Add" },
   "common.friends.add_placeholder": { fr: "Gamertag à ajouter", en: "Gamertag to add" },
   "common.friends.empty": { fr: "Aucun ami pour l'instant.", en: "No friends yet." },

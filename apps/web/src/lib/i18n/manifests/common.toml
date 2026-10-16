@@ -2478,6 +2478,10 @@ en = "CSinsight — CS2 stats"
 fr = "Confidentialité"
 en = "Privacy"
 
+[common.footer.terms]
+fr = "Conditions d'utilisation"
+en = "Terms of use"
+
 # ── Amis d'un joueur (liste par profil, remplace l'ancien réglage d'instance) ──
 [common.friends.page_title]
 fr = "Amis et groupes"

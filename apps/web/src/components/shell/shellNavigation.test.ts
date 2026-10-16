@@ -39,6 +39,12 @@ describe('isAnonymousPath', () => {
     expect(isAnonymousPath('/privacy/details')).toBe(true)
   })
 
+  it('les conditions d’utilisation sont consultables sans compte', () => {
+    expect(isAnonymousPath('/terms')).toBe(true)
+    expect(isAnonymousPath('/terms/details')).toBe(true)
+    expect(isAnonymousPath('/terms-interne')).toBe(false)
+  })
+
   it('les pages applicatives ne le sont pas', () => {
     expect(isAnonymousPath('/')).toBe(false)
     expect(isAnonymousPath('/settings')).toBe(false)

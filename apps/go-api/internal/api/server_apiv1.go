@@ -418,9 +418,17 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// (consommé via le login Xbox SSO, cf. XboxSSOLinkStrategy). RequireAuth seul
 	// (pas RequireAdmin) : c'est de la fonction utilisateur, pas de l'ops.
 	groupsHandler := handlers.NewGroupsHandler(groupStore, invites, users)
+	// Mise en commun du jeton du user connecté (pool de synchro) : décision personnelle,
+	// RequireAuth seul. nil-safe : sans scheduler, la décision est seulement persistée.
+	var poolApplier handlers.PoolSharingApplier
+	if autoSyncScheduler != nil {
+		poolApplier = autoSyncScheduler
+	}
+	poolSharingHandler := handlers.NewPoolSharingHandler(authStore, poolApplier, users)
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		groupsHandler.Mount(r, apiOpt) // 7 routes /groups migrées vers Huma (V72-01 / H5)
+		poolSharingHandler.Mount(r, apiOpt)
 	})
 
 	// ProfileService PARTAGÉ : writer UNIQUE de db_profiles.json. Le store

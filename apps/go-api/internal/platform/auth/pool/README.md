@@ -65,7 +65,7 @@ syncResult, err := engine.RunDelta(ctx, opts)
 
 ### Acquisition Policies
 
-**PolicyAnyPublic** — Round-robin distribution for public endpoints:
+**PolicyAnyPublic** — Round-robin distribution for public endpoints, over the slots whose owner consented to pooling (ADR 0038; a withheld slot stays reachable through `PolicyPinnedPlayer` only):
 - `GetMatchHistory(gamertag, ...)` — accepts any gamertag in URL
 - `GetMatchStats(matchID)` — public stats
 - `GetMatchFilm(matchID)` — public film

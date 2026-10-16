@@ -523,3 +523,6 @@ func TestRunOnce_RunnerFactoryNil_Failed(t *testing.T) {
 // (compile-time check qui assure que le scheduler peut être lié au reste).
 var _ = domain.PlayerSummary{}
 var _ = domain.SyncResult{}
+
+func (p *fakePool) IsWithheld(string) bool      { return false }
+func (p *fakePool) SetShared(string, bool) bool { return true }
