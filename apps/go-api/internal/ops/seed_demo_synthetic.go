@@ -66,8 +66,22 @@ type SyntheticDemoResult struct {
 type synthMap struct{ en, fr string }
 type synthMode struct{ en, fr string }
 
-// synthPlaylist décrit une playlist synthétique. group = groupe canonique de
-// skill_rating (arena / big_team_battle / ...) ; ranked → matchs classés (CSR).
+// Valeurs de match_skill_rank.playlist_group du corpus. DUPLIQUÉES de sync/skill
+// (PerfChainRanked, LUSRChain*) : ops ne peut pas importer le moteur de sync — tout
+// binaire qui importe ops devrait alors câbler les seams title-owned (archlint
+// TestBinairesSyncCablentLesSeams). Le test seed_demo_synthetic_forms_test.go verrouille
+// l'égalité avec les constantes de sync/skill.
+const (
+	synthGroupRanked      = "ranked"
+	synthGroupArenaSlayer = "arena_slayer"
+	synthGroupBTB         = "btb"
+	synthGroupChaos       = "chaos"
+)
+
+// synthPlaylist décrit une playlist synthétique. group = valeur écrite dans
+// match_skill_rank.playlist_group : synthGroupRanked pour une playlist classée
+// (CSR, chaîne unique) sinon la chaîne LUSR du mode (synthGroup*), comme le sync
+// réel ; ranked → matchs classés (CSR).
 type synthPlaylist struct {
 	id, en, fr, group string
 	ranked            bool
@@ -87,10 +101,10 @@ var synthModes = []synthMode{
 }
 
 var synthPlaylists = []synthPlaylist{
-	{"demo-ranked-arena", "Arène classée", "Arène classée", "arena", true},
-	{"demo-quick-play", "Partie rapide", "Partie rapide", "arena", false},
-	{"demo-btb", "Grand combat", "Grand combat", "big_team_battle", false},
-	{"demo-fiesta", "Fiesta : Super", "Fiesta : Super", "arena", false},
+	{"demo-ranked-arena", "Arène classée", "Arène classée", synthGroupRanked, true},
+	{"demo-quick-play", "Partie rapide", "Partie rapide", synthGroupArenaSlayer, false},
+	{"demo-btb", "Grand combat", "Grand combat", synthGroupBTB, false},
+	{"demo-fiesta", "Fiesta : Super", "Fiesta : Super", synthGroupChaos, false},
 }
 
 // synthSession décrit une session de jeu (bloc de matchs rapprochés).
@@ -221,6 +235,14 @@ func buildSynthPlan() []synthMatch {
 	return plan
 }
 
+// synthMatchID : identifiant de match de forme UUID (hexadécimal et tirets seuls). Les
+// routes /matches/{id}/... refusent en 404 tout identifiant hors de cette forme
+// (title.IsValidMatchID) : un « demo-match-0001 » rendrait toutes les vues de match
+// injoignables sur la démo. Préfixe fixe, indice en suffixe → déterministe.
+func synthMatchID(idx int) string {
+	return fmt.Sprintf("de0c0000-0000-4000-8000-%012x", idx)
+}
+
 // buildSynthMatch génère un match déterministe. csr est muté (progression continue).
 func buildSynthMatch(rng *rand.Rand, idx int, s synthSession, pl synthPlaylist, start time.Time, csr *float64) synthMatch {
 	mp := synthMaps[idx%len(synthMaps)]
@@ -259,7 +281,7 @@ func buildSynthMatch(rng *rand.Rand, idx int, s synthSession, pl synthPlaylist, 
 	}
 	return synthMatch{
 		idx:          idx,
-		matchID:      fmt.Sprintf("demo-match-%04d", idx),
+		matchID:      synthMatchID(idx),
 		start:        start,
 		end:          start.Add(time.Duration(dur) * time.Second),
 		sessionID:    fmt.Sprintf("demo-session-%d", s.order),

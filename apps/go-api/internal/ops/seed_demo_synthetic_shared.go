@@ -147,7 +147,7 @@ func buildMatchParticipants(m synthMatch) []synthParticipant {
 	}
 	// Adversaires (2 en arène, 3 en grand combat).
 	nOpp := 2
-	if m.pl.group == "big_team_battle" {
+	if m.pl.group == synthGroupBTB {
 		nOpp = 3
 	}
 	for i := 0; i < nOpp; i++ {
