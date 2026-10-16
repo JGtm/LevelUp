@@ -54,7 +54,7 @@ func MountAdminMonitoringRoutes(
 	// Trous d'intérieur LUSR (garde-fou notes LUSR) + action replay par joueur.
 	// GET /monitoring/lusr-gaps?title= ; POST /monitoring/lusr-gaps/{player}/recompute.
 	lusrH := handlers.NewAdminLUSRGapsHandler(reg.LUSRGapsReport, reg.RecomputeLUSRGapsForPlayer)
-	lusrH.Mount(r.With(middleware.NoStore), apiOpt)
+	lusrH.Mount(r.With(middleware.NoStore, middleware.RequirePlayerSlugParam("player")), apiOpt)
 
 	actionsH := handlers.NewAdminActionsHandler(
 		reg.RunDataHealthNow, reg.ActionJournalReport, sched, jobStore, serverCtx)

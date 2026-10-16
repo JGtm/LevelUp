@@ -242,7 +242,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// des données → RequireAuth + RequireAdmin (admin = accès à tous les joueurs).
 	handlers.NewProgressionBackfillHandler(reg.ProgressionBackfillProvider).Mount(
 		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode),
-			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users)), apiOpt)
+			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users),
+			middleware.RequirePlayerSlugParam("player_slug")), apiOpt)
 
 	// Phase A multi-titres : exposition des field mappings TOML.
 	//
@@ -491,7 +492,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// verdict par composant (bannière/emblème/backdrop/service tag) d'un joueur
 		// suivi, à la demande. Read-only, AUCUNE écriture DB, NoStore (état courant).
 		appearanceDiagHandler := handlers.NewAdminAppearanceDiagHandler(reg.DiagnoseAppearance)
-		appearanceDiagHandler.Mount(r.With(middleware.NoStore), adminOpt)
+		appearanceDiagHandler.Mount(r.With(middleware.NoStore, middleware.RequirePlayerSlugParam("player_slug")), adminOpt)
 	})
 
 	// Protocole ouvrier de la file de construction (piste F). HORS du groupe
