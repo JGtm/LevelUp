@@ -166,8 +166,8 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 
 	var currentPlayer *domain.PlayerSummary
 	if len(ownedPlayers) > 0 {
-		// Respecter le choix de joueur stocké en session, sinon fallback ownedPlayers[0].
-		idx := 0
+		// Respecter le choix de joueur stocké en session, sinon le profil par défaut.
+		idx := s.defaultPlayerIndex(sess, ownedPlayers)
 		if sess != nil && sess.CurrentPlayerSlug != nil {
 			for i, p := range ownedPlayers {
 				if p.PlayerSlug == *sess.CurrentPlayerSlug {
@@ -345,7 +345,7 @@ func (s *BootstrapService) BuildPlayersList(ctx context.Context, sess *domain.Se
 	// defaultSlug est calculé APRÈS filtrage → ne pointe jamais sur un profil non possédé.
 	var defaultSlug *string
 	if len(players) > 0 {
-		slug := players[0].PlayerSlug
+		slug := players[s.defaultPlayerIndex(sess, players)].PlayerSlug
 		defaultSlug = &slug
 	}
 	return &domain.PlayersListResponse{
