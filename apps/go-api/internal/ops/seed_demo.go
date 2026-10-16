@@ -186,7 +186,6 @@ var sharedTablesWhere = []extractTable{
 	// raw_json porte AUSSI le xuid et le gamertag du joueur ({"xuid": …, "gamertag": …}).
 	{name: "highlight_events", where: matchIDInClause, identity: [][2]string{{colXUID, ""}},
 		jsonIdentity: []string{"raw_json"}},
-	{name: "weapon_kills", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
 	{name: "killer_victim_pairs", where: matchIDInClause, identity: [][2]string{
 		{"killer_xuid", "killer_gamertag"}, {"victim_xuid", "victim_gamertag"}}},
 	// match_kill_events : le kill-feed canonique, écrit en parallèle de la table ci-dessus
@@ -482,7 +481,8 @@ func buildDemoWarehouse(ctx context.Context, opts SeedDemoOptions, layout titleP
 	outShared := layout.SharedDBPath(opts.TitleSlug)
 	// 3. Extraction shared, ANONYMISÉE À LA COPIE (xuid+gamertag → identités démo du roster :
 	// Escouade, kill-feed, Face-à-face — aucune fuite ; cf. seed_demo_anonymize.go).
-	sharedRows, err = extractSharedTables(ctx, opts.SourceSharedDB, outShared, matchIDs, roster)
+	sharedRows, err = extractSharedTables(ctx,
+		sharedExtraction{srcPath: opts.SourceSharedDB, dstPath: outShared, titleSlug: opts.TitleSlug}, matchIDs, roster)
 	if err != nil {
 		return true, nil, fmt.Errorf("seed-demo: extract shared: %w", err)
 	}
@@ -882,14 +882,15 @@ func formatIDsLiteral(ids []string) string {
 }
 
 // extractSharedTables crée out_shared en ATTACHant src_shared et en copiant les tables de
-// sharedTablesWhere filtrées sur match_ids, ANONYMISÉES À LA COPIE par le roster démo
+// sharedTablesFor(titre) filtrées sur match_ids, ANONYMISÉES À LA COPIE par le roster démo
 // (copyAnonymizedTables). Recrée les vues V6 à la fin.
 func extractSharedTables(
 	ctx context.Context,
-	srcPath, dstPath string,
+	ex sharedExtraction,
 	matchIDs []string,
 	roster []demoRosterEntry,
 ) (map[string]int, error) {
+	srcPath, dstPath := ex.srcPath, ex.dstPath
 	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 		return nil, fmt.Errorf("mkdir: %w", err)
 	}
@@ -913,7 +914,7 @@ func extractSharedTables(
 
 	// Tables append-only absentes de la source : (re)créées vides avec leur vue _latest par
 	// les migrations canoniques (applyMigrationsOnPath), le seed n'avorte pas pour ça.
-	counts, err := copyAnonymizedTables(ctx, dst, sharedTablesWhere, formatIDsLiteral(matchIDs),
+	counts, err := copyAnonymizedTables(ctx, dst, sharedTablesFor(ex.titleSlug), formatIDsLiteral(matchIDs),
 		rosterRemaps(roster), false)
 	if err != nil {
 		return counts, err
@@ -982,16 +983,28 @@ func recreateSharedViews(ctx context.Context, db *sql.DB) error {
 		CREATE OR REPLACE VIEW v_match_full AS SELECT mr.* FROM match_registry mr`); err != nil {
 		return fmt.Errorf("v_match_full: %w", err)
 	}
-	// v_weapon_kills : tolère table absente. Append-only #23645 (Phase 2) : la vue
-	// ne retourne que la dernière génération par (match_id,xuid) — comme la migration
-	// shared_append_only_weapon_kills_v1 (le demo copie prod qui porte generation_id).
-	_, _ = db.ExecContext(ctx, `
+	// v_weapon_kills : seulement quand la table existe (titre sans décodeur de film, cf.
+	// seed_demo_shared_tables.go) ; son échec de création est RENVOYÉ, jamais avalé.
+	// Append-only #23645 (Phase 2) : la vue ne retourne que la dernière génération par
+	// (match_id,xuid) — comme la migration shared_append_only_weapon_kills_v1 (le demo copie
+	// prod qui porte generation_id).
+	has, err := tableExistsInDB(ctx, db, tableWeaponKills)
+	if err != nil {
+		return fmt.Errorf("v_weapon_kills: %w", err)
+	}
+	if !has {
+		slog.DebugContext(ctx, "seed-demo: v_weapon_kills non créée, table weapon_kills absente (titre à décodeur de film)")
+		return nil
+	}
+	if _, err := db.ExecContext(ctx, `
 		CREATE OR REPLACE VIEW v_weapon_kills AS
 		SELECT * EXCLUDE (rk) FROM (
 			SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id,
 			       DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
 			FROM weapon_kills)
-		WHERE rk = 1`)
+		WHERE rk = 1`); err != nil {
+		return fmt.Errorf("v_weapon_kills: %w", err)
+	}
 	return nil
 }
 
