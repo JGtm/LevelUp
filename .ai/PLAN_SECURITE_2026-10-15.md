@@ -48,7 +48,7 @@ d'observation, report valide).
 
 ## 1. Règles d'exécution
 
-1. **Ordre strict** L0 → L4 → L4b → L5 → L5b → L6 → … → L10. Un lot est **clos** quand : gate exact passé, tous les items statués,
+1. **Ordre strict** L0 → L4 → L4b → L5 → L5b → L5c → L6 → … → L10. Un lot est **clos** quand : gate exact passé, tous les items statués,
    plan mis à jour (cases + journal), commit `fix(securite-Lx): …`, entrée `.ai/thought_log.md`,
    point d'étape à l'utilisateur.
 2. **Statuts** : `[x]` fait et vérifié · `[~]` couvert par (référence) · `[!]` non traité
@@ -298,6 +298,23 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 - Gate : `go test ./internal/service/ -run TestBootstrapBuild_WritablePlayerSlugs -count=50` ;
   `go test ./internal/api/... ./internal/service/... ./internal/media/... ./internal/archlint/` ;
   `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` si L5b-2 touche le sync.
+
+### L5c — Corrections issues de L5b — Sonnet — effort S
+
+- [ ] L5c-1 (D-L5b-3, régression du chantier) La lecture remuxée d'un clip ne tient plus l'unique
+      place ffmpeg pendant tout le flux : pool dédié aux remux (2 places, délai 45 min, 503 +
+      `Retry-After` au-delà de 30 s d'attente), distinct de la place des transcodages et miniatures ;
+      tests : deux lectures remuxées simultanées servies, un transcodage n'attend pas un remux ;
+      garde-rail L5b-3 adapté sans assouplissement (tout lancement passe par un des deux pools).
+- [ ] L5c-2 (D-L5b-4) `PUT /players/{slug}/friends` : recalcul coalescé par joueur
+      (`platform/coalesce`, comme L5-3) ; test « N PUT rapprochés → au plus 1 recalcul en cours + 1
+      rattrapage ».
+- [ ] L5c-3 (D-L5b-2) ffprobe : délai maximal (même lanceur ou contexte borné), sans place.
+- [ ] L5c-4 (D-L5b-5) Joueur par défaut du bootstrap : vérifier que l'ordre déterministe ne change
+      pas le joueur par défaut d'un utilisateur connecté (son profil possédé d'abord) ; sinon le
+      rétablir explicitement ; test.
+- Gate : `go test ./internal/api/... ./internal/media/... ./internal/service/... ./internal/sync/... ./internal/archlint/`
+  ; `go test -tags=integration -p 1 ./internal/sync/...` si L5c-2 touche le sync.
 
 ### L6 — Fichiers et chemins (C6-1, C6-2, C6-3) — Opus — effort M
 
