@@ -48,7 +48,7 @@ d'observation, report valide).
 
 ## 1. Règles d'exécution
 
-1. **Ordre strict** L0 → L10. Un lot est **clos** quand : gate exact passé, tous les items statués,
+1. **Ordre strict** L0 → L4 → L4b → L5 → … → L10. Un lot est **clos** quand : gate exact passé, tous les items statués,
    plan mis à jour (cases + journal), commit `fix(securite-Lx): …`, entrée `.ai/thought_log.md`,
    point d'étape à l'utilisateur.
 2. **Statuts** : `[x]` fait et vérifié · `[~]` couvert par (référence) · `[!]` non traité
@@ -226,6 +226,28 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
       verrouille (au lieu d'ouvrir) ; erreur journalisée ; test `authz_test.go` inversé ;
       amendement de l'ADR 0035 (EN) consignant le basculement et sa raison.
 - Gate : `go test ./internal/api/... ./internal/authz/... ./internal/platform/session/... ./internal/platform/userstore/... ./internal/service/... ./internal/config/...`.
+
+### L4b — Compléments décidés en cours d'exécution — Opus — effort S
+
+Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découvertes de L4 relevant de la doctrine D5.
+
+- [ ] L3-12 (D-L3-8 adjacent, décision du 2026-10-16) Like d'un média depuis le profil d'un ami
+      **autorisé** : action du visiteur, attribuée à son profil possédé (résolveur de L3-2) ; la route
+      de like est l'exception nommée et testée à la garde « famille en lecture seule » ; front :
+      cœur actif sur le profil d'un ami. Test : co-membre like → 200, like attribué au co-membre.
+- [ ] L3-13 (D-L3-8, décision du 2026-10-16) Notifications **réservées à leur propriétaire**, lecture
+      comprise : la garde famille ne donne pas accès aux routes de notifications (GET inclus) ;
+      front : aucune cloche, page ni toast de notifications sur le profil d'un ami. Test :
+      co-membre × routes de notifications → 403.
+- [ ] L4-13 (D-L4-4, doctrine D5) Changer son mot de passe révoque les autres sessions du compte
+      (la session courante est conservée, après rotation) ; test « deux sessions, changement depuis
+      l'une → l'autre refusée ».
+- [ ] L4-14 (D-L4-3) Refus du callback OAuth : redirection vers l'écran de connexion avec un code
+      d'erreur, message FR + EN, au lieu d'un JSON brut ; test du callback et du composant.
+- [ ] (D-L4-2, vérifié par le superviseur le 2026-10-16) `LEVELUP_REGISTRATION` absent du
+      `.env.local` du VPS : valeur par défaut, démarrage non bloqué. Rien à faire.
+- Gate : `go test ./internal/api/... ./internal/authz/... ./internal/platform/session/... ./internal/platform/userstore/...`
+  ; web (`typecheck`, `lint`, `test:run`).
 
 ### L5 — Travaux coûteux (C3-1 à C3-6) — Sonnet — effort L
 
