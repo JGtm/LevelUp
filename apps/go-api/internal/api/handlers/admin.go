@@ -28,13 +28,22 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/session"
 	"levelup/go-api/internal/platform/userstore"
 )
 
 // AdminHandler gère les endpoints d'administration.
 type AdminHandler struct {
-	users   *userstore.Store
-	invites *userstore.InviteStore
+	users    *userstore.Store
+	invites  *userstore.InviteStore
+	sessions *session.Store
+}
+
+// WithSessions branche le magasin de sessions : réinitialiser le mot de passe d'un compte
+// ferme alors ses sessions ouvertes (revokeTargetSessions). Sans magasin, rien n'est fermé.
+func (h *AdminHandler) WithSessions(store *session.Store) *AdminHandler {
+	h.sessions = store
+	return h
 }
 
 // NewAdminHandler crée un AdminHandler.
@@ -175,6 +184,7 @@ func (h *AdminHandler) handleResetPassword(ctx context.Context, in *adminUsernam
 		slog.ErrorContext(ctx, "admin: erreur reset password", "target", in.Username, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "reset_error", "erreur de réinitialisation")
 	}
+	h.revokeTargetSessions(ctx, in.Username)
 	slog.Info("admin: mot de passe réinitialisé", "target", in.Username, "by", adminUsername(ctx))
 	return &adminNoContent{Status: http.StatusNoContent}, nil
 }

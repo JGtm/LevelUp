@@ -438,7 +438,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	})
 
 	// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
-	adminHandler := handlers.NewAdminHandler(users, invites)
+	adminHandler := handlers.NewAdminHandler(users, invites).WithSessions(sessionStore)
 	r.Route("/admin", func(r chi.Router) {
 		adminOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/admin")
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
