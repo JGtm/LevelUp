@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -12,11 +13,11 @@ import (
 type countingLoader struct {
 	pairs map[string][][2]string
 	err   error
-	loads int
+	loads atomic.Int32
 }
 
 func (l *countingLoader) load(_ context.Context, titleID string, visit func(string, string)) error {
-	l.loads++
+	l.loads.Add(1)
 	if l.err != nil {
 		return l.err
 	}
@@ -43,8 +44,8 @@ func TestPlayedMapVersions_InventedVersionsDoNotReloadEachTime(t *testing.T) {
 	if ok, _ := p.Played(ctx, "halo_infinite", "map-b", "v-1"); ok {
 		t.Fatal("version jouée sur une autre carte reconnue")
 	}
-	if l.loads != 1 {
-		t.Fatalf("%d lecture(s) de la base, attendu 1", l.loads)
+	if l.loads.Load() != 1 {
+		t.Fatalf("%d lecture(s) de la base, attendu 1", l.loads.Load())
 	}
 }
 
@@ -83,8 +84,8 @@ func TestPlayedMapVersions_ReadErrorIsReturned(t *testing.T) {
 			t.Fatalf("Played = %v, %v ; attendu false, %v", ok, err, boom)
 		}
 	}
-	if l.loads != 1 {
-		t.Fatalf("%d lecture(s), attendu 1", l.loads)
+	if l.loads.Load() != 1 {
+		t.Fatalf("%d lecture(s), attendu 1", l.loads.Load())
 	}
 }
 
