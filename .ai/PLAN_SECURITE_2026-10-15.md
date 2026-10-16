@@ -348,6 +348,13 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 - [ ] L9-6 En-tête CSP minimal sans risque pour le SPA : `object-src 'none'; base-uri 'self';
       frame-ancestors 'none'` (scripts non restreints, décision de l'ADR à venir) ; test sur `/`,
       404, 429, `/static`.
+- [ ] L9-7 (D-L4b-1, doctrine D5) Réinitialisation du mot de passe d'un compte par l'admin
+      (`handlers/admin.go`) : révoque toutes les sessions de ce compte (`Store.RevokeAccount`) ;
+      test « session du compte réinitialisé → 401 ».
+- [ ] L9-8 (D-L4b-2) `GET /auth/xbox/login` : refus redirigés vers `/login?oauth_error=<code>`
+      comme le callback (L4-14), plus de JSON brut ; test.
+- [ ] L9-9 (D-L4b-3) Refus d'une reconnexion Xbox depuis une session déjà connectée : le message
+      n'est plus perdu (`__root.tsx`) ; test du composant.
 - Gate : `go test ./internal/api/... ./internal/archlint/ -run 'Health|Ready|ErrError|CSP|SecurityHeaders|DeviceFlow'` ;
   front si L9-3.
 
