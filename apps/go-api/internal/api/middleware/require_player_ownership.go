@@ -18,6 +18,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+
+	"levelup/go-api/internal/domain"
 )
 
 // PlayerXUIDResolver mappe un slug joueur vers le xuid du profil pour le titre
@@ -46,37 +48,68 @@ type FamilyXUIDResolver func(ctx context.Context) map[string]bool
 //
 // La classification de la requête est posée dans le contexte (RequestWrites) pour
 // les gardes en aval qui décident sur un autre slug que celui du chemin.
+//
+// Avant toute décision, et que la propriété soit appliquée ou non (démo, auth
+// inactive), un slug qui n'a pas la forme d'un gamertag (domain.IsValidPlayerSlug)
+// reçoit 400 invalid_player_slug : le slug devient un segment de chemin disque.
 func RequirePlayerOwnership(access *PlayerAccess) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		if !access.Enforced() {
-			return next
+		guarded := next
+		if access.Enforced() {
+			guarded = requireOwnership(access, next)
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			sess := GetSession(r.Context())
-			if sess == nil {
-				next.ServeHTTP(w, r)
-				return
-			}
 			slug := chi.URLParam(r, "player_slug")
-			write := IsMutatingRequest(r)
-			// Une action du visiteur (like) s'écrit au nom du visiteur : elle se
-			// décide comme une lecture du profil consulté (player_visitor_actions.go).
-			granted, known := access.Allows(r.Context(), sess, slug, write && !isVisitorAction(r))
-			if granted {
-				next.ServeHTTP(w, r.WithContext(withWriteIntent(r.Context(), write)))
+			if !domain.IsValidPlayerSlug(slug) {
+				slog.WarnContext(r.Context(), "authz: slug joueur mal formé refusé",
+					"slug", slug, "path", r.URL.Path, "ip", chimiddleware.GetClientIP(r.Context()))
+				writeInvalidPlayerSlug(w)
 				return
 			}
-			// S7 / audit A1-m1 : un slug inconnu reçoit le même 403 qu'un profil
-			// étranger, sans révéler si le profil existe ; seul l'admin le traverse.
-			msg := "authz: accès joueur refusé"
-			if !known {
-				msg = "authz: slug joueur inconnu refusé"
-			}
-			slog.WarnContext(r.Context(), msg, "slug", slug, "path", r.URL.Path,
-				"write", write, "ip", chimiddleware.GetClientIP(r.Context()))
-			writePlayerForbidden(w)
+			guarded.ServeHTTP(w, r)
 		})
 	}
+}
+
+// requireOwnership applique la décision de PlayerAccess (propriété appliquée).
+func requireOwnership(access *PlayerAccess, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sess := GetSession(r.Context())
+		if sess == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		slug := chi.URLParam(r, "player_slug")
+		write := IsMutatingRequest(r)
+		// Une action du visiteur (like) s'écrit au nom du visiteur : elle se
+		// décide comme une lecture du profil consulté (player_visitor_actions.go).
+		granted, known := access.Allows(r.Context(), sess, slug, write && !isVisitorAction(r))
+		if granted {
+			next.ServeHTTP(w, r.WithContext(withWriteIntent(r.Context(), write)))
+			return
+		}
+		// S7 / audit A1-m1 : un slug inconnu reçoit le même 403 qu'un profil
+		// étranger, sans révéler si le profil existe ; seul l'admin le traverse.
+		msg := "authz: accès joueur refusé"
+		if !known {
+			msg = "authz: slug joueur inconnu refusé"
+		}
+		slog.WarnContext(r.Context(), msg, "slug", slug, "path", r.URL.Path,
+			"write", write, "ip", chimiddleware.GetClientIP(r.Context()))
+		writePlayerForbidden(w)
+	})
+}
+
+// writeInvalidPlayerSlug répond 400 invalid_player_slug (slug hors de la forme d'un
+// gamertag).
+func writeInvalidPlayerSlug(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		errKeyCode:      "invalid_player_slug",
+		errKeyMessage:   "invalid player slug",
+		errKeyRetryable: false,
+	})
 }
 
 func writePlayerForbidden(w http.ResponseWriter) {
