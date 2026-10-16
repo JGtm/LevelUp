@@ -226,6 +226,14 @@ export interface MatchViewText {
   // titre sans positions de film, sur un match sans frag) : un onglet ne reste jamais vide.
   arsenalEmptyTitle: string
   arsenalEmptyDescription: string
+  // Analyse du film en cours (header.analysis_pending) : bandeau INFO sous l'en-tête et
+  // emplacements d'attente des sections qui dépendent du film. « D'ici quelques instants »,
+  // jamais « en général » ni « quelques minutes » (texte validé par l'utilisateur, 2026-10-16).
+  analysisPendingTitle: string
+  analysisPendingBody: string
+  analysisPendingAutoUpdate: string
+  analysisPendingSlotInProgress: string
+  analysisPendingSlotPreparing: string
   // Scoreboard team header (Eagle / Cobra avec couleur team-ally/enemy)
   scoreboardTitle: string
   scoreboardNoData: string
@@ -496,6 +504,12 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     arsenalEmptyTitle: "Aucune donnée d'armes ni de film pour ce match",
     arsenalEmptyDescription:
       "Ni la répartition des frags ni les calques décodés du film ne sont disponibles ici.",
+    analysisPendingTitle: 'Analyse du film en cours',
+    analysisPendingBody:
+      "Les frags assistés, l'arme de chaque frag, les citations et le rejeu 2D apparaîtront ici d'eux-mêmes d'ici quelques instants.",
+    analysisPendingAutoUpdate: 'Mise à jour automatique',
+    analysisPendingSlotInProgress: "En cours d'analyse",
+    analysisPendingSlotPreparing: 'En préparation',
     scoreboardTitle: 'Tableau des scores',
     scoreboardNoData: 'Aucune donnée de tableau des scores disponible pour ce match.',
     teamLabelFmt: (name) => `Équipe ${name}`,
@@ -815,6 +829,12 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     arsenalEmptyTitle: 'No weapon or film data for this match',
     arsenalEmptyDescription:
       'Neither the kill breakdown nor the decoded film layers are available here.',
+    analysisPendingTitle: 'Film analysis in progress',
+    analysisPendingBody:
+      'Assisted kills, the weapon of each kill, citations and the 2D replay will appear here on their own within moments.',
+    analysisPendingAutoUpdate: 'Automatic update',
+    analysisPendingSlotInProgress: 'Analysis in progress',
+    analysisPendingSlotPreparing: 'Being prepared',
     scoreboardTitle: 'Scoreboard',
     scoreboardNoData: 'No scoreboard data available for this match.',
     teamLabelFmt: (name) => `Team ${name}`,

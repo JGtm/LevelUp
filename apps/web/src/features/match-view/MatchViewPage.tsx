@@ -7,6 +7,7 @@ import { useFriendGamertags } from '@/features/friends/queries'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useMatchView, useMatchObjectiveEvents, useMatchPositions } from './queries'
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
+import { MatchAnalysisPendingBanner } from './MatchAnalysisPendingBanner'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
 import { MatchMediaTab } from './MatchMediaTab'
@@ -302,6 +303,9 @@ export function MatchViewPage() {
         locale={locale}
       />
 
+      {/* Analyse du film en cours : bandeau INFO (pas un avertissement), la vue se recharge seule. */}
+      {header.analysis_pending === true && <MatchAnalysisPendingBanner t={t} />}
+
       {/* Onglets — mx-6 aligne la bordure sur le header card (même inset px-6) */}
       <div className="mx-6 mt-4 border-b border-border">
         <div className="flex gap-0">
@@ -427,6 +431,7 @@ export function MatchViewPage() {
             killDistance={combat_tab.kill_distance_by_weapon}
             emprise={data.emprise}
             livesNearTeammate={data.lives_near_teammate}
+            analysisPending={header.analysis_pending === true}
             meXUID={meXUID}
             friendGamertags={friendGamertags}
             matchPositions={matchPositions}

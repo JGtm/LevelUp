@@ -120,14 +120,14 @@ gcc ucrt64. Jamais `go build ./...`. Un seul `go` à la fois. Intégration : `-t
 
 ### E3 — Web — L
 
-- [ ] E3.1 `lib/` logique de rafraîchissement (`analysisPending.logic.ts`) + tests.
-- [ ] E3.2 Tuile : pastille + infobulle, emplacements en attente (frags assistés, citations,
+- [x] E3.1 `lib/` logique de rafraîchissement (`analysisPending.logic.ts`) + tests.
+- [x] E3.2 Tuile : pastille + infobulle, emplacements en attente (frags assistés, citations,
   rejeu) ; i18n manifeste ; tests des deux états.
-- [ ] E3.3 Vue match : bandeau INFO `role="status"`, emplacements de section (arme par frag,
+- [x] E3.3 Vue match : bandeau INFO `role="status"`, emplacements de section (arme par frag,
   rejeu 2D), `i18n.ts` FR/EN ; tests des deux états.
-- [ ] E3.4 `refetchInterval` accueil + vue match, `matchViewStaleTime` ; query keys inchangées
+- [x] E3.4 `refetchInterval` accueil + vue match, `matchViewStaleTime` ; query keys inchangées
   (déjà dans `lib/query/keys.ts`) ; tests.
-- [ ] E3.5 Animations CSS avec `prefers-reduced-motion`.
+- [x] E3.5 Animations CSS avec `prefers-reduced-motion`.
 - Gate : vitest ciblé, tsc, eslint, lints maison (i18n, couleurs).
 
 ### E4 — Gates finaux — M
@@ -164,3 +164,17 @@ gcc ucrt64. Jamais `go build ./...`. Un seul `go` à la fois. Intégration : `-t
   JSON marshalé à la main, cf. note de `types.ts`) : le champ est ajouté au miroir manuel
   `lib/api/types.ts`, au même endroit que `has_replay`. Gate : `tsc -b` vert, `openapi-gen -check`
   et `check-generated-types-fresh.mjs` verts, `TestOpenAPIYAMLIsUpToDate` vert.
+- 2026-10-16 E3 : web livré. Tuile : `analysis-pending-badge.tsx` (pastille + infobulle en portail,
+  `aria-describedby`, ouverte au survol/focus, fermée à Échap), `match-card-analysis-pending.tsx`
+  (frags assistés, citations, rejeu), intégrés dans `match-card.tsx` et `match-card-assisted-frags.tsx`
+  (props, pas de gros ajout). Vue match : `MatchAnalysisPendingBanner` (role=status, teinte info),
+  `analysis-pending-slot.tsx`, `arsenalPendingSlots` (blockPredicates) dans l'onglet Armes et terrain :
+  « En cours d'analyse » (distance par arme) et « En préparation » (rejeu 2D, Emprise, positions).
+  Rafraîchissement : `lib/analysis-pending/analysisPending.logic.ts` (60 s ; poll de première synchro
+  30 s conservé), `useHomePage` / `useMatchView`, `matchViewStaleTime` = 0 en cours. Aucune nouvelle
+  query key (`home` et `matchView` existent). Animations sous `motion-safe:` (prefers-reduced-motion).
+  Gate : vitest ciblé 93 fichiers / 799 tests verts, `tsc -b` vert, eslint 0 erreur (2 warnings
+  préexistants), lint:colors et lint:fields propres.
+  Limite assumée : la puce « Rejeu à venir » s'affiche si le match est en cours d'analyse ET sans
+  rejeu ; si le film est déclaré absent et que seules les citations manquent, elle peut annoncer un
+  rejeu qui ne viendra pas, le temps que les citations soient posées (le signal serveur ne distingue pas).

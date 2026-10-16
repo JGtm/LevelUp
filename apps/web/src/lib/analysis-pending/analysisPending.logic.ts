@@ -1,0 +1,55 @@
+/**
+ * Rafraîchissement tant qu'une analyse de film est en cours.
+ *
+ * Le serveur pose `analysis_pending` sur un match synchronisé dont le film n'est pas encore
+ * analysé (règle `analysis.IsAnalysisPending`, bornée à 24 h après la synchro). Tant qu'au
+ * moins un match AFFICHÉ porte ce signal, les requêtes qui le portent se rechargent toutes
+ * les 60 s ; elles s'arrêtent d'elles-mêmes quand plus rien n'est en cours.
+ */
+import type { HomePageResponse, MatchViewResponse } from '@/lib/api/types'
+
+/** Période de rechargement tant qu'une analyse est en cours. */
+export const ANALYSIS_PENDING_REFETCH_MS = 60_000
+
+/** Période du poll de première synchro de l'accueil (joueur sans aucun match). */
+export const FIRST_SYNC_REFETCH_MS = 30_000
+
+type PendingFlag = { analysis_pending?: boolean | null }
+
+/** Au moins un des éléments porte le signal. */
+export function anyAnalysisPending(items: ReadonlyArray<PendingFlag | null | undefined> | null | undefined): boolean {
+  return (items ?? []).some((item) => item?.analysis_pending === true)
+}
+
+type HomeData = Pick<HomePageResponse, 'recent_matches' | 'favorite_matches'> & {
+  hero?: { kpis?: { total_matches?: number | null } | null } | null
+}
+
+/** Une tuile affichée de l'accueil (récents ou favoris) a son analyse en cours. */
+export function homeHasAnalysisPending(data: Pick<HomePageResponse, 'recent_matches' | 'favorite_matches'> | undefined): boolean {
+  return anyAnalysisPending(data?.recent_matches) || anyAnalysisPending(data?.favorite_matches)
+}
+
+/**
+ * `refetchInterval` de l'accueil. La première synchro (aucun match encore) garde son poll de
+ * 30 s ; sinon 60 s tant qu'une tuile est en cours d'analyse ; sinon plus de poll.
+ */
+export function homeRefetchInterval(data: HomeData | undefined): number | false {
+  if ((data?.hero?.kpis?.total_matches ?? 0) <= 0) return FIRST_SYNC_REFETCH_MS
+  return homeHasAnalysisPending(data) ? ANALYSIS_PENDING_REFETCH_MS : false
+}
+
+/** Fraîcheur de l'accueil : courte tant qu'une analyse est en cours (retour sur la page). */
+export function homeStaleTime(data: Pick<HomePageResponse, 'recent_matches' | 'favorite_matches'> | undefined, normalMs: number): number {
+  return homeHasAnalysisPending(data) ? ANALYSIS_PENDING_REFETCH_MS : normalMs
+}
+
+/** La vue match affichée a son analyse en cours. */
+export function matchViewHasAnalysisPending(data: Partial<Pick<MatchViewResponse, 'header'>> | undefined): boolean {
+  return data?.header?.analysis_pending === true
+}
+
+/** `refetchInterval` de la vue match : 60 s tant que l'analyse est en cours. */
+export function matchViewRefetchInterval(data: Partial<Pick<MatchViewResponse, 'header'>> | undefined): number | false {
+  return matchViewHasAnalysisPending(data) ? ANALYSIS_PENDING_REFETCH_MS : false
+}

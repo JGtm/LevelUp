@@ -53,6 +53,12 @@ describe('matchViewStaleTime', () => {
     expect(matchViewStaleTime({ is_partial: true, partial_reasons: ['section_unavailable'] })).toBe(0)
   })
 
+  it("analyse du film en cours : la vue ne reste pas figée par la fraîcheur de 10 min", () => {
+    expect(matchViewStaleTime({ is_partial: false, header: { analysis_pending: true } } as never)).toBe(0)
+    expect(matchViewStaleTime({ is_partial: false, header: { analysis_pending: false } } as never)).toBe(DIX_MINUTES)
+    expect(matchViewStaleTime({ is_partial: false, header: {} } as never)).toBe(DIX_MINUTES)
+  })
+
   it('vue complète, partielle (source vide) ou absente : fraîcheur normale', () => {
     expect(matchViewStaleTime({ is_partial: false })).toBe(DIX_MINUTES)
     expect(matchViewStaleTime({ is_partial: true, partial_reasons: ['events_empty'] })).toBe(DIX_MINUTES)
