@@ -37,11 +37,8 @@ lot platform            - ./internal/platform/duckdb/... ./internal/migration ./
 lot sync                - ./internal/sync/... ./internal/api/wire ./internal/archlint
 lot reste               - @reste
 
-# Budget `-timeout` PAR PROCESSUS DE TEST (un paquet = un processus), pas par lot. Défaut 600 s :
-# le plus long processus hors `grammar` est platform/duckdb (348 s sous couverture, run
-# 38938482739). Les deux moitiés de `grammar` pèsent ~575 et ~595 s estimées sous couverture :
-# sous 600 s sans marge, un délai à 600 s fabriquerait des échecs qui ne sont pas des régressions
-# (le run 36162837061 est tombé ainsi). Elles gardent 900 s ; retour à 600 s quand une moitié
-# mesurée dans le résumé de la CI passe sous 450 s.
+# Budget `-timeout` PAR PROCESSUS DE TEST (un paquet = un processus), pas par lot : 600 s partout.
+# Mesures sous couverture (run 38979844734) : moitiés de `grammar` 245 et 248 s, platform/duckdb
+# 301 s, internal/sync 261 s. Le critère de retour à 600 s (une moitié de `grammar` sous 450 s) est
+# tenu ; un lot qui s'approche de 450 s se rééquilibre ici plutôt que d'allonger son délai.
 timeout-defaut 600s
-timeout 900s film-grammar-lourd film-grammar-reste

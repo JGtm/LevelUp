@@ -2,46 +2,11 @@
 
 ---
 
-## 🔄 Aucune tâche en cours
+## 🔄 En cours : plan `.ai/PLAN_BACKLOG_2026-10-16.md` (les entrées ci-dessous, traitées étape par étape ; E1 CI close)
 
 ---
 
 ## 📋 Backlog
-
----
-
-### [ci/durée] Raccourcir la CI : ~50 min aujourd'hui, ~15 min visés sans retirer de test
-
-Noté au backlog à la demande de l'utilisateur (2026-10-16). Mesure sur le run 38951473683 (feat/postsync-ordre) :
-le job « Go Coverage + Baseline » prend **46 min** et fixe à lui seul la durée de la CI ; « Frontend » 14 min, dont
-**11 min de Vitest avec couverture** ; tous les autres jobs ≤ 5 min. La CI conditionne aussi le déploiement
-(`deploy.yml`, job `attente-ci`) : la raccourcir raccourcit chaque mise en prod. Par ordre de gain / risque :
-
-1. **Découper « Go Coverage + Baseline » en 4 jobs parallèles** (matrice : `film/` ; `internal/sync/...` ;
-   `platform/duckdb` + `persist` + `migration` ; le reste), chacun en `-p 1` sur SA machine (la contrainte DuckDB
-   mono-process est par machine, pas globale). Un job final fusionne les JSONL (gate de non-régression) et les profils
-   de couverture (ratchet). 46 → ~15 min, mêmes tests. Garde-rail : un test archlint qui vérifie que l'union des
-   motifs de la matrice couvre `./...` (sinon un paquet nouveau sortirait de la CI sans bruit).
-2. **Supprimer le second passage de `internal/sync`** (step « go test couverture internal/sync ») : il rejoue toute la
-   suite sync en intégration pour une couverture que le profil `-coverpkg=./...` contient déjà ; la filtrer par
-   `go tool cover` sur ce profil.
-3. **Partager Vitest en 3 à 4 morceaux** (`vitest --shard=i/n` en matrice, fusion des couvertures par
-   `vitest --merge-reports`) : 11 → ~4 min. Typecheck, lint et build restent dans un job unique (≤ 2 min à eux tous).
-4. **`concurrency` + `cancel-in-progress` par branche** (sauf `main` et `feat/v75`) : un nouveau push annule le run
-   en cours devenu inutile.
-5. **Filtre de chemins sur les branches de travail** (job `changes` avec `dorny/paths-filter`) : modification web seule
-   → pas de jobs Go ; Go seul → pas de jobs web ; `openapi.yaml` touché → les deux. CI complète inchangée sur
-   `feat/v75`, `main` et les PR vers `main`. Le garde-rail `TestCIPathsIgnoreSubsetOfDeployPathsIgnore` reste à
-   respecter.
-6. **Tests lents du décodeur (`film/internal/grammar`)** : cinq tests rebalayent chacun les sept bobines versionnées
-   (70 à 81 s chacun) ; une marche mémorisée par bobine, partagée entre tests (`sync.Once` par bobine), ramènerait le
-   paquet sous 60 s et permettrait de revenir au délai de 600 s (critère déjà écrit dans `ci.yml`). Ce paquet a
-   dépassé 15 min sous couverture le 2026-10-16 (run 38938482739), faux rouge.
-7. **Local (`make gate-push`, ~25 min)** : appliquer le même découpage (paquets Go en parallèle par processus
-   séparés, Vitest partagé) et ne rejouer la baseline que sur l'union des paquets compilés ; à mesurer avant/après.
-
-À ne PAS faire : ne tester que les paquets modifiés (en Go, sync et base touchent presque tout par dépendances ;
-risque de CI verte qui casse la prod). **Effort : M (1 à 3 seuls : S).**
 
 ---
 
@@ -365,6 +330,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-10-17 | **[ci/durée] CI raccourcie de 49 à ~16 min, mêmes tests** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E1, branche `feat/backlog-2026-10-16`) : suite Go de couverture en 6 lots sur 6 machines, chacun en `-p 1` (définition unique `.github/ci/go-shards.txt`, dernier lot = complément calculé, `grammar` coupé en deux par une liste nommée de tests lourds `-run`/`-skip`), job de fusion (contrôle 356 paquets sur 356, gate baseline, profils additionnés, ratchet de couverture : 81,0 % identique) ; second passage `internal/sync` supprimé ; Vitest en 3 lots fusionnés ; `concurrency` (runs périmés annulés sur les branches de travail, groupe propre au run sur `main`/`feat/v75`) ; filtre de chemins sur les branches de travail (base `feat/v75`) ; `-timeout` revenu à 600 s ; `make gate-push` à deux voies (film sans DuckDB en parallèle). Garde-rails archlint : lots et partition, contournement du filtre, concurrency, voie film sans DuckDB. Run de preuve 38979844734 : 15 min 39 s. |
 | 2026-10-16 | **[sécurité] Durcissement de la surface exposée + restes de la démo** — audit adversarial (9 axes, 12 P0 / 17 P1 / 36 P2, `.ai/AUDIT_SECURITE_SURFACE_EXPOSEE_2026-10-15.md`) puis plan `.ai/PLAN_SECURITE_2026-10-15.md` (lots L0-L11, deux rondes de revue adversariale, recette, E2E) ; fusionné dans `feat/v75` (c6a72cf02). nginx de prod durci le 2026-10-15/16. Reste au déploiement de la v7.5 : V-3 (`data/demo_films/`), V-5 (unité de l'ouvrier), V-6 (limites mémoire après mesure). |
 | 2026-10-16 | **[lot backlog du 2026-10-15] Campagne dans les lecteurs, vue match « lecture en échec », intégrité du registre** (branche `feat/backlog-2026-10-15`, plan `.ai/PLAN_BACKLOG_2026-10-15.md`, E1 à E6) : lecteurs de la Campagne de `sync`/`ops`/`cmd` statués et garde étendu (E2), dettes Go (temps canonique, `GET /squads`) (E3), raisons `<source>_unavailable` distinctes de `<source>_empty` (E4), colonnes d'intégrité de `match_registry` (E5), deux rondes de revue adversariale corrigées (E6.2a, E6.2b). Reste : fusion dans `feat/v75` (geste du user) et les entrées ci-dessus. |
 | 2026-09-27 | **[lot backlog du 2026-09-26, fusion 3] Dérogations mortes du lint inter-features, musique d'intro du rejeu, niveau des fanfares de fin** (branche `feat/backlog-2026-09-26`, plan `.ai/PLAN_BACKLOG_2026-09-26.md`, lots A3 et A4). **Lint (5)** : 16 dérogations mortes retirées ; le script échoue désormais sur toute dérogation qui ne sert plus ; README des graphes corrigé (12 wrappers, `FirstBloodLanes` dans `components/charts/`) ; lint ajouté au job web de la CI (`1ea900034`). **Musique d'intro (7)** : les 3 dernières secondes de la montée de la piste `402178411`, résolution R = 3,19 s calée sur le coup d'envoi, −18 LUFS, jouée au clic sur « Lecture » ou « Recommencer » depuis le préambule, jamais à la reprise, au saut ni dans l'export. Au premier « Lecture » après un rechargement, l'intro attend son décodage et part avec un décalage borné par la durée du préambule (`6bac387b8`, `eb57ec3c2`). **Niveau des fanfares (suite de l'item 11)** : les trois fanfares de fin mesuraient −25 LUFS au lieu des −18 prévus (réduction stéréo du 28/08 faite après la normalisation). Remises à −18 LUFS par un gain linéaire, avec un garde-rail de niveau sur les échantillons PCM (`e93c19ed9`). Fins multi-équipes (6) : `[!]`, faute de donnée (entrée ci-dessus). Écoutes de l'utilisateur après la fusion. |

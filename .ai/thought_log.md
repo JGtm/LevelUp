@@ -1,3 +1,11 @@
+## [2026-10-17] Backlog du 16/10, E1 : CI en lots parallèles, 49 → 16 min — Complété (branche `feat/backlog-2026-10-16`)
+
+**Décision technique principale** : suite Go de couverture en 6 lots (une machine chacun, `-p 1`), dernier lot = complément calculé, fusion des JSONL et des profils dans un job unique (contrôle d'ensemble des paquets, gate baseline, ratchet) ; second passage `internal/sync` supprimé ; Vitest en 3 lots ; `concurrency` avec groupe propre au run sur `main`/`feat/v75` (correction du pilote : GitHub ne garde qu'un run en attente par groupe) ; filtre de chemins de base `feat/v75` ; `gate-push` à deux voies.
+
+**Résultats observés** : run 38979844734 vert en 15 min 39 s, couverture 81,0 % (identique), 356/356 paquets. Moitiés de `grammar` 245 et 248 s sous couverture (≥ 900 s dans un seul processus auparavant) : délai remis à 600 s. Le filtre de chemins coûtait 1 min 48 s en comparant à `main` (écart d'intégration entier) : base passée à `feat/v75`, effet à mesurer au prochain run.
+
+**Conclusion** : E1 close ; suite E2 (connexion Xbox, cache des participations).
+
 ## [2026-10-16] Backlog du 16/10 : vérification sur pièces des 12 entrées et plan — En cours (plan écrit, exécution non lancée)
 
 **Décision technique principale** : un plan unique `.ai/PLAN_BACKLOG_2026-10-16.md` (E1 à E10, branche `feat/backlog-2026-10-16`), CI d'abord (décision du user) : lots Go sur plusieurs machines en `-p 1`, dernier lot = complément calculé, fusion des JSONL et des profils, second passage `internal/sync` supprimé, Vitest en 3 lots. LUSR v1 retirée (décision du user), position à la mort unifiée dans le lot film (décision du user).

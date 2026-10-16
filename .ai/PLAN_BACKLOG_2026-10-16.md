@@ -126,9 +126,19 @@ Gate : `go test ./internal/archlint/` ; `make gate-push` local vert ; push de la
 vert, durée totale ≤ 20 min, couverture fusionnée 81,0 % ± 0,1, gate baseline vert, contrôle
 d'ensemble des paquets vert ; durées par job au journal.
 
-Statut du gate (exécutant, 2026-10-17) : `go test ./internal/archlint/` VERT ; `make gate-push` VERT
-(1612 s) ; items E1.1 à E1.8 `[x]`. RESTE OUVERT, geste du pilote : push de la branche -> run CI (durée
-totale, couverture fusionnée, gate baseline, contrôle d'ensemble des paquets, durées par job).
+Statut du gate (pilote, 2026-10-17) : VERT. `go test ./internal/archlint/` vert ; `make gate-push` vert
+(1612 s, exécutant) ; run CI 38979844734 sur `46f727553` : succès en 15 min 39 s (49 min avant), couverture
+fusionnée 81,0 % (identique), 356 paquets exécutés sur 356, gate baseline vert. Durées sous couverture
+mesurées (s, paquet le plus long du lot) : grammar-lourd 245, grammar-reste 248, film 130 (replay),
+platform 301 (platform/duckdb), sync 261 (internal/sync), reste 44. Fin des jobs : grammar 5 min, film
+8 min, platform et reste 10 min, sync 12,5 min (lot le plus long), fusion 1 min 16 s. Le job `changes`
+coûte 1 min 48 s avant tout autre job, dont 83 s de recherche du point de divergence avec `main`.
+Corrections du pilote après le run (commit E1 suivant) : délai remis à 600 s partout (critère du
+fichier de lots tenu : moitiés de grammar sous 450 s) ; base du filtre de chemins = `feat/v75` (comparer
+à `main` comptait tout l'écart d'intégration, les deux piles toujours touchées). Correction du pilote
+avant le run (`46f727553`) : groupe `concurrency` propre au run sur `main` et `feat/v75` (GitHub ne
+garde qu'un run EN ATTENTE par groupe, même sans annulation : un push rapproché aurait annulé le run
+dont le déploiement attend le verdict), garde-rail archlint étendu (cas « groupe partagé sur main »).
 
 ### E2 — Connexion Xbox et vérification de participation (entrée 3) — S
 

@@ -126,12 +126,15 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}
 
       # Épinglé par SHA de commit : le tag v4.0.3 désigne directement un commit (objet non annoté).
-      - name: Fichiers modifiés par rapport à main
+      # Base = feat/v75, branche d'intégration dont partent les branches de travail : comparer à
+      # `main` compterait tout l'écart d'intégration non publié (les deux piles toujours touchées)
+      # et allonge la recherche du point de divergence (83 s mesurées, run 38979844734).
+      - name: Fichiers modifiés par rapport à feat/v75
         id: fichiers
         if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
-          base: main
+          base: feat/v75
           predicate-quantifier: some-with-excludes
           filters: |
             tous:
@@ -665,7 +668,7 @@ jobs:
   # `-covermode=atomic -coverpkg=./...` : les tests externes (golden, contracttest) remontent la
   # couverture des paquets qu'ils exercent (S45 T1-2) ; le profil de chaque lot couvre tout le
   # module, le job de fusion les additionne. `-timeout` par processus de test : valeur du fichier
-  # de définition (600 s, 900 s pour les moitiés de `grammar` qui n'ont pas de marge sous 600 s).
+  # de définition (600 s par processus de test).
   go-coverage:
     name: Go Coverage (lot ${{ matrix.lot }})
     needs: changes
