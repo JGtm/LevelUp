@@ -1,11 +1,13 @@
 package config
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"os"
+	"slices"
 	"sync"
 	"time"
 )
@@ -208,7 +210,20 @@ func (c *AppConfig) loadPlayersV2(data []byte, titleFilter ...string) ([]domain.
 			AuthOnly:       p.AuthOnly,
 		})
 	}
+	sortPlayers(players)
 	return players, nil
+}
+
+// sortPlayers fixe l'ordre de LoadPlayers : titre, puis slug. Le parcours d'une
+// map Go est aléatoire ; sans ce tri, available_players, writable_player_slugs et
+// le joueur par défaut (premier de la liste) changeraient d'un appel à l'autre.
+func sortPlayers(players []domain.PlayerSummary) {
+	slices.SortFunc(players, func(a, b domain.PlayerSummary) int {
+		if c := cmp.Compare(a.TitleSlug, b.TitleSlug); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.PlayerSlug, b.PlayerSlug)
+	})
 }
 
 // loadPlayersV3 parse le format v3.0 (title_slug → gamertag → entry).
@@ -248,6 +263,7 @@ func (c *AppConfig) loadPlayersV3(data []byte, titleFilter ...string) ([]domain.
 			})
 		}
 	}
+	sortPlayers(players)
 	return players, nil
 }
 
