@@ -73,6 +73,21 @@ func TestReplayLocalGate_AllowsLoopbackPeer(t *testing.T) {
 	}
 }
 
+// TestReplayLocalGate_RejectsUnreadablePeer : une adresse de pair vide ou illisible n'est
+// pas locale (garde fermée par défaut), même accompagnée d'en-têtes qui se disent locaux.
+func TestReplayLocalGate_RejectsUnreadablePeer(t *testing.T) {
+	for _, trust := range []bool{false, true} {
+		h := newReplayGateRouter(t, trust)
+		for _, peer := range []string{"", ":5555", "[]:5555", "localhost:5555", "pas-une-adresse"} {
+			rec := replayRequest(h, peer, forgedLoopbackHeaders)
+			if rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), "replay_not_available") {
+				t.Errorf("trust=%v pair %q : status %d body %s, want 404 replay_not_available",
+					trust, peer, rec.Code, rec.Body.String())
+			}
+		}
+	}
+}
+
 // TestReplayLocalGate_RejectsRemotePeerWithForgedHeaders : un pair distant reste
 // distant, quels que soient les en-têtes d'IP qu'il envoie.
 func TestReplayLocalGate_RejectsRemotePeerWithForgedHeaders(t *testing.T) {

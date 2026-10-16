@@ -88,16 +88,13 @@ var replayPublic = os.Getenv("LEVELUP_REPLAY_PUBLIC") == "1"
 // sont écrits par le client ou par le proxy ; s'en servir ici transformerait le garde en
 // simple suggestion. Seule l'adresse de la connexion TCP compte (middleware.PeerAddr, capturée
 // en tête de la pile transverse), et elle n'est pas falsifiable par le demandeur.
+//
+// Fermé par défaut : une adresse vide, sans hôte ou qui n'est pas une IP n'est pas locale.
 func isLocalRequest(r *http.Request) bool {
 	peer := middleware.PeerAddr(r)
 	host := peer
 	if h, _, err := net.SplitHostPort(peer); err == nil {
 		host = h
-	}
-	// Un hôte vide arrive sur certains transports de test ; le traiter comme local évite de
-	// rendre les tests dépendants d'une pile réseau.
-	if host == "" {
-		return true
 	}
 	ip := net.ParseIP(strings.Trim(host, "[]"))
 	if ip == nil {
