@@ -46,6 +46,11 @@ under .ai/V7.5/ (Markdown) - is licensed under Creative Commons Attribution 4.0
 International (CC BY 4.0). The full text is in LICENSE-DOCS. Reuse requires crediting
 "LevelUp by JGtm (Guillaume Sitbon)" with a link to the repository.
 
+This covers the text, tables and measurements the author wrote. It does not cover
+excerpts of the game's code or data quoted inside those write-ups (disassembly or
+decompiler listings, byte dumps, strings taken from the game files): they remain
+Microsoft's and fall under section 4.
+
 The facts documented there (file formats, protocol behaviour, structures) are not
 owned by anyone and stay free to reimplement. What the licence protects is the text,
 the code and the measurements as written.
