@@ -6,10 +6,10 @@
 // contenu d'un envoi se copie par io.Copy vers un fichier (domain.UploadedFile.Open +
 // service.storeUploadedFile).
 //
-// INTERDIT dans le code du module (hors _test.go) : un fichier qui manipule un formulaire
-// multipart (import mime/multipart, ou FormFile / MultipartForm / MultipartReader) et appelle
-// io.ReadAll, ioutil.ReadAll ou bytes.Buffer.ReadFrom. Aucune exception : lire un champ de
-// formulaire de texte passe par FormValue.
+// INTERDIT dans le code du module (hors _test.go) : un fichier qui manipule un fichier envoyé
+// (import mime/multipart, FormFile / MultipartForm / MultipartReader, ou domain.UploadedFile)
+// et appelle io.ReadAll, ioutil.ReadAll (sous tout nom d'import) ou bytes.Buffer.ReadFrom.
+// Aucune exception : lire un champ de formulaire de texte passe par FormValue.
 package archlint
 
 import (
@@ -20,8 +20,14 @@ import (
 	"testing"
 )
 
-// multipartMarkers — identifiants qui désignent la manipulation d'un formulaire multipart.
-var multipartMarkers = map[string]bool{"FormFile": true, "MultipartForm": true, "MultipartReader": true}
+// multipartMarkers — identifiants qui désignent la manipulation d'un fichier envoyé : formulaire
+// multipart (handlers) ou domain.UploadedFile, le fichier envoyé tel que le service le reçoit.
+var multipartMarkers = map[string]bool{
+	"FormFile": true, "MultipartForm": true, "MultipartReader": true, "UploadedFile": true,
+}
+
+// readAllPackages — chemins d'import dont ReadAll lit tout un lecteur en mémoire.
+var readAllPackages = map[string]bool{"io": true, "io/ioutil": true}
 
 // readAllInMultipartFile rend les sites ReadAll d'un fichier qui manipule du multipart.
 func readAllInMultipartFile(src goSource) []string {
@@ -31,6 +37,7 @@ func readAllInMultipartFile(src goSource) []string {
 			usesMultipart = true
 		}
 	}
+	aliases := importAliases(src.File)
 	var readAlls []string
 	ast.Inspect(src.File, func(n ast.Node) bool {
 		switch x := n.(type) {
@@ -43,7 +50,7 @@ func readAllInMultipartFile(src goSource) []string {
 			if !ok {
 				return true
 			}
-			if pkg, ok := sel.X.(*ast.Ident); ok && sel.Sel.Name == "ReadAll" && (pkg.Name == "io" || pkg.Name == "ioutil") {
+			if pkg, ok := sel.X.(*ast.Ident); ok && sel.Sel.Name == "ReadAll" && readAllPackages[aliases[pkg.Name]] {
 				readAlls = append(readAlls, src.Rel+":"+strconv.Itoa(src.Fset.Position(x.Pos()).Line))
 			}
 			if sel.Sel.Name == "ReadFrom" {
@@ -82,6 +89,24 @@ import ("io"; "mime/multipart")
 func f(f multipart.File) { _, _ = io.ReadAll(f) }`)
 	if got := readAllInMultipartFile(viaImport); len(got) != 1 {
 		t.Fatalf("ReadAll avec import multipart non signalé : %v", got)
+	}
+	service := parseGoSnippet(t, "internal/service/media_service_upload.go", `package service
+import ("io"; "levelup/go-api/internal/domain")
+func store(f domain.UploadedFile) { src, _ := f.Open(); data, _ := io.ReadAll(src); _ = data }`)
+	if got := readAllInMultipartFile(service); len(got) != 1 {
+		t.Errorf("ReadAll sur un domain.UploadedFile (service) non signalé : %v", got)
+	}
+	aliased := parseGoSnippet(t, "internal/api/handlers/w.go", `package w
+import (stdio "io"; "mime/multipart")
+func f(f multipart.File) { _, _ = stdio.ReadAll(f) }`)
+	if got := readAllInMultipartFile(aliased); len(got) != 1 {
+		t.Errorf("ReadAll par un import aliasé non signalé : %v", got)
+	}
+	aliasedUtil := parseGoSnippet(t, "internal/api/handlers/v.go", `package v
+import (iu "io/ioutil"; "net/http")
+func f(r *http.Request) { fh := r.MultipartForm.File["files"][0]; f, _ := fh.Open(); _, _ = iu.ReadAll(f) }`)
+	if got := readAllInMultipartFile(aliasedUtil); len(got) != 1 {
+		t.Errorf("ioutil.ReadAll aliasé non signalé : %v", got)
 	}
 	clean := parseGoSnippet(t, "internal/api/handlers/z.go", `package z
 import ("io"; "os")
