@@ -2027,6 +2027,10 @@ en = "Sync was interrupted. It can be restarted."
 fr = "Erreur inattendue. Veuillez réessayer."
 en = "Unexpected error. Please try again."
 
+[common.initial_sync.err_busy]
+fr = "Une autre synchronisation de ce joueur est déjà en cours. Réessaie dans un instant."
+en = "Another sync of this player is already running. Try again in a moment."
+
 [common.initial_sync.starting]
 fr = "Démarrage…"
 en = "Starting…"

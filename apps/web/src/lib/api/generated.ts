@@ -416,7 +416,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Détail du service : versions, compteurs, outillage média (auth admin requis) */
+        /** Service detail: versions, counters, media tooling (admin auth required) */
         get: operations["getAdminHealth"];
         put?: never;
         post?: never;

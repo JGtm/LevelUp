@@ -186,7 +186,7 @@ func (s *MediaService) runTranscodeJob(p ops.HLSTranscodeParams, jobID string) {
 			j.Status = domain.JobStatusFailed
 			now := time.Now().UTC()
 			j.FinishedAt = &now
-			j.Error = &domain.JobErrorDetail{Code: "transcode_failed", Message: err.Error()}
+			j.Error = domain.NewJobError("transcode_failed", false)
 		})
 		return
 	}

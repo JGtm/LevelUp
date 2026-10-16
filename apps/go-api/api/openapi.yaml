@@ -746,7 +746,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
           description: Error
-      summary: 'Détail du service : versions, compteurs, outillage média (auth admin requis)'
+      summary: 'Service detail: versions, counters, media tooling (admin auth required)'
       tags:
         - admin
   /admin/identities:

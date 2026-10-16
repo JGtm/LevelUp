@@ -44,6 +44,7 @@ export function SyncTab({ merged, handleChange, t, frozen }: TabProps) {
     succeeded: t.syncToastSucceeded,
     succeededWithWarnings: t.syncToastSucceededWithWarnings,
     failed: t.syncToastFailed,
+    errorByCode: { db_busy: t.syncToastBusy },
     cancelled: t.syncToastCancelled,
   })
 

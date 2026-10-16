@@ -73,7 +73,7 @@ func (h *HealthHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 // RequireAdmin sont hérités du sous-routeur).
 func (h *HealthHandler) MountAdmin(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/health", h.handleAdminHealth, humacore.Op("getAdminHealth", "Détail du service : versions, compteurs, outillage média (auth admin requis)", "admin"))
+	huma.Get(api, "/health", h.handleAdminHealth, humacore.Op("getAdminHealth", "Service detail: versions, counters, media tooling (admin auth required)", "admin"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

@@ -216,7 +216,7 @@ func (h *AdminReplayBuildActionHandler) runBuild(ctx context.Context, jobID, tit
 		slog.ErrorContext(ctx, "admin_actions: construction rejeu 2D échouée",
 			"module", "monitoring", "job_id", jobID, "match_id", matchID, "err", err)
 		h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
-			j.Error = &domain.JobErrorDetail{Code: "replay_build_failed", Message: err.Error(), Retryable: false}
+			j.Error = domain.NewJobError("replay_build_failed", false)
 		})
 		h.jobs.SetStatus(jobID, domain.JobStatusFailed, nil)
 		return

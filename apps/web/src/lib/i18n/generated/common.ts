@@ -272,6 +272,7 @@ export const commonManifest = {
   "common.index.no_player_configured": { fr: "Aucun joueur configuré.", en: "No player configured." },
   "common.initial_sync.err_aborted": { fr: "La synchronisation a été interrompue. Il est possible de relancer.", en: "Sync was interrupted. It can be restarted." },
   "common.initial_sync.err_auth_expired": { fr: "La session Halo a expiré. Relance pour renouveler l'authentification.", en: "The Halo session expired. Restart to renew authentication." },
+  "common.initial_sync.err_busy": { fr: "Une autre synchronisation de ce joueur est déjà en cours. Réessaie dans un instant.", en: "Another sync of this player is already running. Try again in a moment." },
   "common.initial_sync.err_db": { fr: "Erreur interne lors de l'enregistrement des données. Contactez le support.", en: "Internal error while saving data. Contact support." },
   "common.initial_sync.err_halo_api": { fr: "L'API Halo est temporairement indisponible. Veuillez réessayer.", en: "The Halo API is temporarily unavailable. Please try again." },
   "common.initial_sync.err_halo_tokens_missing": { fr: "Aucun compte Xbox relié à cette session : synchronisation impossible.", en: "No Xbox account linked to this session: sync unavailable." },

@@ -1,7 +1,10 @@
 // Package domain — types communs d'erreur et de pagination.
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // APIError représente une erreur structurée retournée par les endpoints.
 type APIError struct {
@@ -12,6 +15,16 @@ type APIError struct {
 }
 
 func (e *APIError) Error() string { return e.Code + ": " + e.Message }
+
+// ErrorMessageForCode rend le message FIXE d'un code d'erreur (snake_case) : le code lu
+// avec des espaces ("player_not_found" -> "player not found"). Le texte d'une erreur
+// interne ne part jamais au client ; le détail va au journal.
+func ErrorMessageForCode(code string) string {
+	if code == "" {
+		return "error"
+	}
+	return strings.ReplaceAll(code, "_", " ")
+}
 
 // ErrNotFound crée une erreur 404 standard.
 func ErrNotFound(resource, id string) *APIError {

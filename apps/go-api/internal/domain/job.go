@@ -51,11 +51,18 @@ const (
 	JobTypeOther       JobType = "other"
 )
 
-// JobErrorDetail encapsule les détails d'erreur d'un job.
+// JobErrorDetail encapsule les détails d'erreur d'un job. Le message est FIXE par code
+// (NewJobError) : la cause d'un échec va au journal, jamais dans le job que lit un client.
 type JobErrorDetail struct {
 	Code      string `json:"code"`
 	Message   string `json:"message"`
 	Retryable bool   `json:"retryable"`
+}
+
+// NewJobError construit l'erreur d'un job à partir de son code machine stable ; le
+// message est celui du code (ErrorMessageForCode).
+func NewJobError(code string, retryable bool) *JobErrorDetail {
+	return &JobErrorDetail{Code: code, Message: ErrorMessageForCode(code), Retryable: retryable}
 }
 
 // AsyncJobStatus représente le statut complet d'un job asynchrone.

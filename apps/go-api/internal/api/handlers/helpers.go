@@ -45,6 +45,10 @@ const (
 	headerRetryAfter = "Retry-After"
 )
 
+// codeDBBusy : code machine d'une base occupée (errDBBusy ; échec de sync par contention de
+// bail). Seul littéral "db_busy" du paquet (garde-rail ci-dessous).
+const codeDBBusy = "db_busy"
+
 // errDBBusy construit la réponse canonique « base occupée » : 503 `db_busy` +
 // en-tête `Retry-After: 5`, via huma.ErrorWithHeaders.
 //
@@ -60,7 +64,7 @@ const (
 // sémantique de dégradation de page, pas un refus d'écriture.
 func errDBBusy() error {
 	return huma.ErrorWithHeaders(
-		humacore.NewError(http.StatusServiceUnavailable, "db_busy",
+		humacore.NewError(http.StatusServiceUnavailable, codeDBBusy,
 			"database is currently busy, please retry"),
 		http.Header{headerRetryAfter: []string{"5"}},
 	)

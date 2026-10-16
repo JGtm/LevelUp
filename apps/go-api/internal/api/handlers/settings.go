@@ -400,13 +400,10 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 			job.JobID,
 		)
 		if err != nil {
-			errMsg := err.Error()
+			slog.ErrorContext(ctx, "settings: réinitialisation de l'index médias échouée", "job_id", job.JobID, "err", err)
 			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
 				j.Status = domain.JobStatusFailed
-				j.Error = &domain.JobErrorDetail{
-					Code:    "media_reset_error",
-					Message: errMsg,
-				}
+				j.Error = domain.NewJobError("media_reset_error", false)
 			})
 			return
 		}
@@ -464,13 +461,10 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 			job.JobID,
 		)
 		if err != nil {
-			errMsg := err.Error()
+			slog.ErrorContext(ctx, "settings: scan des médias échoué", "job_id", job.JobID, "err", err)
 			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
 				j.Status = domain.JobStatusFailed
-				j.Error = &domain.JobErrorDetail{
-					Code:    "media_scan_error",
-					Message: errMsg,
-				}
+				j.Error = domain.NewJobError("media_scan_error", false)
 			})
 			return
 		}
