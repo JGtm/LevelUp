@@ -58,11 +58,10 @@ type Attempt struct {
 	ClientIP        string // IP cliente du démarrage (plafond par IP), jamais exposée
 
 	// Champs mis à jour par la goroutine de polling
-	Status      string // pending | authorized | provisioned | failed | expired
-	Gamertag    string
-	XUID        string
-	ErrorCode   string
-	ErrorDetail string
+	Status    string // pending | authorized | provisioned | failed | expired
+	Gamertag  string
+	XUID      string
+	ErrorCode string
 
 	// Référence interne au Device Code Flow (jamais exposé)
 	DevFlow DeviceFlow

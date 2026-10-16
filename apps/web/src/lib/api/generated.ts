@@ -6344,7 +6344,6 @@ export interface components {
         DeviceFlowStatusResponse: {
             attempt_id: string;
             error_code?: string;
-            error_detail?: string;
             gamertag?: string;
             /** @enum {string} */
             status: "pending" | "authorized" | "provisioned" | "failed" | "expired";

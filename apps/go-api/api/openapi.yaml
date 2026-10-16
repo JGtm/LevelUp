@@ -12906,8 +12906,6 @@ components:
           type: string
         error_code:
           type: string
-        error_detail:
-          type: string
         gamertag:
           type: string
         status:

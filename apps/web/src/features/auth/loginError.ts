@@ -46,6 +46,36 @@ export function setPasswordErrorKey(err: unknown): SetPasswordErrorKey {
   return 'common.auth.set_password_failed'
 }
 
+/** Clés i18n des échecs du device-flow (statuts `failed` / `expired` de la tentative). */
+export type DeviceFlowFailureKey =
+  | 'common.device_code.err_expired'
+  | 'common.device_code.err_halo'
+  | 'common.device_code.err_ms'
+  | 'common.device_code.err_identity'
+  | 'common.device_code.err_generic'
+  | OAuthErrorKey
+
+/** Code d'échec posé par le serveur (`error_code`) → message de l'écran. */
+const DEVICE_FLOW_FAILURE_KEYS: Readonly<Record<string, DeviceFlowFailureKey>> = {
+  halo_exchange_error: 'common.device_code.err_halo',
+  device_flow_acquire_error: 'common.device_code.err_ms',
+  identity_missing: 'common.device_code.err_identity',
+}
+
+/**
+ * Message localisé d'un échec du device-flow. Le serveur ne renvoie que le statut et un code
+ * machine : le texte de l'écran vient toujours du manifeste, jamais d'un champ du serveur.
+ * Un code inconnu reçoit le message générique.
+ */
+export function deviceFlowFailureKey(status: string, errorCode: string | null | undefined): DeviceFlowFailureKey {
+  if (status === 'expired') return 'common.device_code.err_expired'
+  if (errorCode === 'instance_locked' || errorCode === 'invite_invalid') {
+    return oauthErrorKey(errorCode) ?? 'common.auth.oauth_failed'
+  }
+  if (errorCode && Object.hasOwn(DEVICE_FLOW_FAILURE_KEYS, errorCode)) return DEVICE_FLOW_FAILURE_KEYS[errorCode]
+  return 'common.device_code.err_generic'
+}
+
 /** Clés i18n des refus du callback de connexion Xbox. */
 export type OAuthErrorKey =
   | 'common.auth.register_instance_closed'

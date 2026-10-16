@@ -121,7 +121,7 @@ describe('SetupPage', () => {
     })
     server.use(
       http.get('/api/v1/auth/device-flow/:attemptId', () =>
-        HttpResponse.json({ attempt_id: 'attempt-1', status: 'failed', error_code: 'halo_exchange_error', error_detail: 'détail serveur' }),
+        HttpResponse.json({ attempt_id: 'attempt-1', status: 'failed', error_code: 'halo_exchange_error' }),
       ),
     )
 

@@ -158,7 +158,6 @@ func (h *AuthHandler) handleStartDeviceFlow(ctx context.Context, _ *struct{}) (*
 		h.attempts.Update(attempt.AttemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "device_flow_init_error"
-			a.ErrorDetail = err.Error()
 		})
 		return nil, humacore.NewError(http.StatusInternalServerError, "device_flow_init_error", "impossible de démarrer le Device Code Flow")
 	}
@@ -289,10 +288,12 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 
 	accessToken, err := flow.AcquireToken(ctx)
 	if err != nil {
+		// Le client ne reçoit que le code ; la cause (réponse Microsoft) reste au journal.
+		slog.ErrorContext(ctx, "auth: attente du device-flow échouée",
+			"attempt_id", attemptID, "err", err)
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = errCodeDeviceFlowAcquire
-			a.ErrorDetail = err.Error()
 		})
 		return
 	}
@@ -307,7 +308,6 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "halo_exchange_error"
-			a.ErrorDetail = err.Error()
 		})
 		return
 	}
@@ -347,7 +347,6 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "identity_missing"
-			a.ErrorDetail = "gamertag/xuid absents des réponses XSTS"
 		})
 		return
 	}
@@ -400,9 +399,6 @@ func deviceFlowStatusResponse(a *auth_platform.Attempt) domain.DeviceFlowStatusR
 	}
 	if a.ErrorCode != "" {
 		resp.ErrorCode = &a.ErrorCode
-	}
-	if a.ErrorDetail != "" {
-		resp.ErrorDetail = &a.ErrorDetail
 	}
 	return resp
 }

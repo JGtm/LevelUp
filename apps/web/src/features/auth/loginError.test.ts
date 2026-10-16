@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isTooManyLoginAttempts, oauthErrorKey, setPasswordErrorKey } from './loginError'
+import { deviceFlowFailureKey, isTooManyLoginAttempts, oauthErrorKey, setPasswordErrorKey } from './loginError'
 
 describe('isTooManyLoginAttempts', () => {
   it('reconnaît le refus du limiteur de l’API', () => {
@@ -55,5 +55,21 @@ describe('oauthErrorKey', () => {
 
   it.each([undefined, '', 42, null])('aucun refus pour %s', (code) => {
     expect(oauthErrorKey(code)).toBeNull()
+  })
+})
+
+describe('deviceFlowFailureKey', () => {
+  it.each([
+    ['expiré', 'expired', null, 'common.device_code.err_expired'],
+    ["code expiré malgré un code d'erreur", 'expired', 'halo_exchange_error', 'common.device_code.err_expired'],
+    ['échange Halo', 'failed', 'halo_exchange_error', 'common.device_code.err_halo'],
+    ['attente Microsoft', 'failed', 'device_flow_acquire_error', 'common.device_code.err_ms'],
+    ['identité absente', 'failed', 'identity_missing', 'common.device_code.err_identity'],
+    ['instance verrouillée', 'failed', 'instance_locked', 'common.auth.register_instance_closed'],
+    ['invitation périmée', 'failed', 'invite_invalid', 'common.auth.oauth_invite_invalid'],
+    ['code inconnu', 'failed', 'code_inconnu', 'common.device_code.err_generic'],
+    ['aucun code', 'failed', null, 'common.device_code.err_generic'],
+  ])('%s', (_label, status, code, expected) => {
+    expect(deviceFlowFailureKey(status, code)).toBe(expected)
   })
 })

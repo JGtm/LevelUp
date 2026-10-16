@@ -274,6 +274,54 @@ describe('XboxLoginPage', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
+  // L9-3 : le serveur ne renvoie plus `error_detail` ; l'écran traduit le code (FR + EN) et
+  // n'affiche jamais un texte venu du serveur.
+  describe('échec du device-flow : message traduit par le code', () => {
+    const failWith = (body: Record<string, unknown>) =>
+      server.use(
+        http.get('/api/v1/auth/device-flow/:attemptId', () =>
+          HttpResponse.json({ attempt_id: 'att-1', ...body }),
+        ),
+      )
+
+    it('halo_exchange_error : message FR, error_detail ignoré', async () => {
+      failWith({ status: 'failed', error_code: 'halo_exchange_error', error_detail: 'jeton=abc123' })
+      renderWithProviders(<XboxLoginPage />)
+      expect(
+        await screen.findByText("Impossible d'obtenir un accès Halo. Veuillez réessayer.", {}, { timeout: 8000 }),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/abc123/)).not.toBeInTheDocument()
+    })
+
+    it('code inconnu : message générique FR', async () => {
+      failWith({ status: 'failed', error_code: 'code_inconnu', error_detail: 'jeton=abc123' })
+      renderWithProviders(<XboxLoginPage />)
+      expect(await screen.findByText("Échec de l'authentification.", {}, { timeout: 8000 })).toBeInTheDocument()
+      expect(screen.queryByText(/abc123/)).not.toBeInTheDocument()
+    })
+
+    it('code expiré : message FR', async () => {
+      failWith({ status: 'expired' })
+      renderWithProviders(<XboxLoginPage />)
+      expect(await screen.findByText('Le code a expiré.', {}, { timeout: 8000 })).toBeInTheDocument()
+    })
+
+    it('messages en anglais quand la langue est EN', async () => {
+      useAppShellStore.setState({ locale: 'en' })
+      try {
+        failWith({ status: 'failed', error_code: 'code_inconnu' })
+        const { unmount } = renderWithProviders(<XboxLoginPage />)
+        expect(await screen.findByText('Authentication failed.', {}, { timeout: 8000 })).toBeInTheDocument()
+        unmount()
+        failWith({ status: 'expired' })
+        renderWithProviders(<XboxLoginPage />)
+        expect(await screen.findByText('The code expired.', {}, { timeout: 8000 })).toBeInTheDocument()
+      } finally {
+        useAppShellStore.setState({ locale: 'fr' })
+      }
+    })
+  })
+
   it('toggle "Retour à la connexion Xbox" depuis le panel admin', async () => {
     renderWithProviders(<XboxLoginPage />)
     await waitFor(() => {
