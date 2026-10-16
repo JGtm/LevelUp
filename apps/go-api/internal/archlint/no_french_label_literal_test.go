@@ -257,7 +257,7 @@ var frenchLabelAllowlist = map[string]int{
 	"service/profile_service.go":                        1,
 	"service/release_notes_service.go":                  2,
 	"service/season_pass_service.go":                    1,
-	"service/seasons_catalog.go":                        4,
+	"service/seasons_catalog.go":                        3,
 	"service/session_compare_service.go":                2,
 	"service/session_compare_table_helpers.go":          1,
 	"service/session_page_service.go":                   7,

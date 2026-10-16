@@ -26,6 +26,8 @@ type mockPool struct {
 	// lastPolicies : politiques observées par Acquire, dans l'ordre. Sert à prouver
 	// qu'un endpoint est acquis en PolicyAnyPublic (D4, plan robustesse 2026-09-16).
 	lastPolicies []pool.AcquirePolicy
+	// unshared : gamertags dont le propriétaire n'a pas consenti à la mise en commun.
+	unshared map[string]bool
 }
 
 func (m *mockPool) Acquire(ctx context.Context, policy pool.AcquirePolicy, pinnedGamertag string) (*pool.Lease, error) {
@@ -507,5 +509,64 @@ func TestPooledHaloClientNotifyError_BlobHTTPError_NePoisonnePasLePool(t *testin
 		if isAuthError(err) {
 			t.Errorf("code %d : isAuthError doit rester faux sur une erreur de blob", code)
 		}
+	}
+}
+
+func (m *mockPool) IsWithheld(gamertag string) bool { return m.unshared[gamertag] }
+func (m *mockPool) SetShared(string, bool) bool     { return true }
+
+// canceledCtx : les appels HTTP échouent aussitôt, sans réseau, après l'Acquire.
+func canceledCtx() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	return ctx
+}
+
+// Un propriétaire qui garde son jeton hors du pool n'emprunte que ce jeton.
+func TestPooledHaloClient_UnsharedOwnerUsesOnlyOwnToken(t *testing.T) {
+	mp := &mockPool{
+		tokens:   map[string]*domain.HaloTokens{"Alice": testTokens("Alice"), "Bob": testTokens("Bob")},
+		unshared: map[string]bool{"Alice": true},
+	}
+	client := NewPooledHaloClient(mp, 0).WithOwner("Alice")
+
+	_, _ = client.GetMatchHistory(canceledCtx(), "Alice", "all", 0, 25)
+	_, _ = client.GetPlayerCSRs(canceledCtx(), "xuid", "season")
+	_, _ = client.GetPlaylistCsr(canceledCtx(), "pl", "xuid", "season")
+
+	if len(mp.lastPolicies) != 3 {
+		t.Fatalf("3 acquisitions attendues, got %d", len(mp.lastPolicies))
+	}
+	for i, pol := range mp.lastPolicies {
+		if pol != pool.PolicyPinnedPlayer {
+			t.Fatalf("acquisition #%d en politique %v, want PolicyPinnedPlayer", i, pol)
+		}
+	}
+}
+
+// Propriétaire qui partage, propriétaire inconnu, propriétaire sans slot : round-robin.
+func TestPooledHaloClient_SharingOrUnknownOwnerUsesPool(t *testing.T) {
+	cases := []struct {
+		name  string
+		owner string
+	}{
+		{"propriétaire qui partage", "Bob"},
+		{"aucun propriétaire déclaré", ""},
+		{"propriétaire sans slot dans le pool", "Zed"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mp := &mockPool{
+				tokens:   map[string]*domain.HaloTokens{"Alice": testTokens("Alice"), "Bob": testTokens("Bob")},
+				unshared: map[string]bool{"Alice": true},
+			}
+			client := NewPooledHaloClient(mp, 0).WithOwner(tc.owner)
+
+			_, _ = client.GetMatchHistory(canceledCtx(), "X", "all", 0, 25)
+
+			if len(mp.lastPolicies) == 0 || mp.lastPolicies[0] != pool.PolicyAnyPublic {
+				t.Fatalf("politiques observées %v, want PolicyAnyPublic", mp.lastPolicies)
+			}
+		})
 	}
 }

@@ -9,6 +9,7 @@ import { Outlet, useMatches } from '@tanstack/react-router'
 import { Toaster } from 'sonner'
 import { NavL1 } from './NavL1'
 import { ReauthBanner } from './ReauthBanner'
+import { PoolSharingBanner } from './PoolSharingBanner'
 import { TopProgressBar } from './TopProgressBar'
 import { ErrorBoundary } from './ErrorBoundary'
 import { AppFooter } from './AppFooter'
@@ -30,6 +31,8 @@ export function AppShell() {
         <NavL1 />
         {/* Bannière reconnexion Xbox (refresh_token mort) — PR-B */}
         <ReauthBanner />
+        {/* Question de consentement : mise en commun du jeton (première connexion Xbox) */}
+        <PoolSharingBanner />
       </div>
 
       {/* Barre de progression — flottante, hors du flux, collée sous NavL1 */}

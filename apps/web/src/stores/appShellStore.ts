@@ -49,6 +49,8 @@ interface AppShellState {
   instanceLocked: boolean
   /** Joueur courant : refresh_token Microsoft mort → reconnexion Xbox requise. */
   reauthRequired: boolean
+  /** Mise en commun du jeton du user connecté avec le pool de synchro (undecided = question à poser). */
+  poolSharing: BootstrapResponse['pool_sharing']
   /** Utilisateur connecté : a défini un mot de passe (opt-in re-login rapide). */
   hasPassword: boolean
   isAdmin: boolean
@@ -67,6 +69,8 @@ interface AppShellState {
   setHintsVisible: (visible: boolean) => void
   /** Met à jour l'ID du job de sync actif (null = aucun sync en cours). */
   setActiveSyncJobId: (id: string | null) => void
+  /** Reflète une décision de mise en commun enregistrée côté serveur. */
+  setPoolSharing: (state: BootstrapResponse['pool_sharing']) => void
 }
 
 const DEFAULT_CAPABILITIES: CapabilityMap = {
@@ -101,6 +105,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   registrationMode: 'invite',
   instanceLocked: false,
   reauthRequired: false,
+  poolSharing: 'unavailable',
   hasPassword: false,
   isAdmin: false,
   currentUsername: null,
@@ -132,6 +137,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
       registrationMode: data.registration_mode ?? 'invite',
       instanceLocked: data.instance_locked ?? false,
       reauthRequired: data.reauth_required ?? false,
+      poolSharing: data.pool_sharing ?? 'unavailable',
       hasPassword: data.has_password ?? false,
       isAdmin: data.is_admin ?? false,
       currentUsername: data.current_username ?? null,
@@ -161,6 +167,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   },
   setHintsVisible: (visible) => set({ hintsVisible: visible }),
   setActiveSyncJobId: (id) => set({ activeSyncJobId: id }),
+  setPoolSharing: (state) => set({ poolSharing: state }),
 }))
 
 /**

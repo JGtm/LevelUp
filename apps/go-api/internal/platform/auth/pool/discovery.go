@@ -111,5 +111,8 @@ func (d *discoveryImpl) scanPlayer(ctx context.Context, player domain.PlayerSumm
 
 		// Provenance mesurée au dernier échange XBL (vide tant qu'aucun n'a eu lieu).
 		TokenClientFamily: ut.TokenClientFamily,
+
+		// Sans consentement enregistré, le jeton sert son seul propriétaire.
+		PoolExcluded: !ut.SharesWithPool(),
 	}
 }

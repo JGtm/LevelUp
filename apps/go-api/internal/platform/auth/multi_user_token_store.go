@@ -72,6 +72,12 @@ type UserTokens struct {
 	LastAuthErrorClass string    `json:"last_auth_error_class,omitempty"`
 	LastAuthError      string    `json:"last_auth_error,omitempty"`
 	LastAuthErrorAt    time.Time `json:"last_auth_error_at,omitempty"`
+
+	// PoolSharing : décision du joueur de mettre (ou non) son jeton à disposition du
+	// pool partagé qui sert la synchro des autres joueurs (cf. pool_sharing.go).
+	// nil = jamais décidé = NON partagé : un jeton n'entre dans le round-robin public
+	// que sur un consentement enregistré. Préservé par upsertLocked comme le RT.
+	PoolSharing *PoolSharing `json:"pool_sharing,omitempty"`
 }
 
 // Familles de client OAuth (provenance du token, AU4/F12). Déterminent le préfixe
@@ -561,6 +567,11 @@ func (s *MultiUserTokenStore) upsertLocked(tokens *UserTokens) error {
 		// link → migration boot refill un RT mort (39829f7a) → AADSTS70000 en boucle.
 		if tokens.OAuthRefreshToken == "" && existing.OAuthRefreshToken != "" {
 			tokens.OAuthRefreshToken = existing.OAuthRefreshToken
+		}
+		// Même règle pour le consentement : un Upsert partiel ne l'efface jamais
+		// (seul SetPoolSharing le change, y compris pour le retirer).
+		if tokens.PoolSharing == nil && existing.PoolSharing != nil {
+			tokens.PoolSharing = existing.PoolSharing
 		}
 	} else if tokens.CreatedAt.IsZero() {
 		tokens.CreatedAt = time.Now().UTC()

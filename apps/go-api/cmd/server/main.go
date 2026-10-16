@@ -691,7 +691,8 @@ func main() {
 	// PR-B : expose reauth_required (refresh_token mort) du joueur courant au front.
 	// Lecture par-xuid dans le MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json).
 	reauthStore := auth.NewMultiUserTokenStore(cfg.WatcherTokensDir())
-	bootSvc = bootSvc.WithReauthChecker(reauthStore.IsReauthRequired)
+	bootSvc = bootSvc.WithReauthChecker(reauthStore.IsReauthRequired).
+		WithPoolSharingResolver(reauthStore.PoolSharingState)
 
 	// --- 5. Sprint 0 : validation des types critiques ---
 	ctx := context.Background()

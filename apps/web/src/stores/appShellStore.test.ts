@@ -59,6 +59,7 @@ const BOOTSTRAP_READY = {
   first_launch: false,
   instance_locked: false,
   reauth_required: false,
+  pool_sharing: 'unavailable' as const,
   has_password: false,
   current_username: null,
   oauth_code_flow_enabled: false,

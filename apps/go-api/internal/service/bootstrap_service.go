@@ -34,6 +34,7 @@ type BootstrapService struct {
 	userStoreEmpty   func() (bool, error)              // optionnel — nil = first_launch toujours false
 	userLookup       authz.UserLookup                  // optionnel — nil = pas de filtrage ownership (ADR 0029)
 	reauthCheck      func(xuid string) bool            // optionnel — nil = reauth_required toujours false (PR-B)
+	poolSharing      func(xuid string) string          // optionnel — nil = pool_sharing « unavailable »
 	coMembers        func(xuid string) map[string]bool // optionnel — co-membres de groupe du user (nil = strict owner-only)
 	// matchCountForTitle compte les matchs du shared du TITRE COURANT (title-aware).
 	// nil = fallback sur bootRepo.GetMatchCount (shared figé Infinite au boot). Injecté
@@ -244,6 +245,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		RegistrationMode:     s.cfg.RegistrationMode,
 		InstanceLocked:       s.instanceLocked != nil && s.instanceLocked(),
 		ReauthRequired:       s.resolveReauthRequired(ctx, sess),
+		PoolSharing:          s.resolvePoolSharing(sess),
 		HasPassword:          s.currentUserHasPassword(sess),
 		IsAdmin:              sess != nil && sess.Role != nil && *sess.Role == "admin",
 		CurrentUsername:      resolveUsername(sess),

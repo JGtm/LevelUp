@@ -2538,6 +2538,31 @@ paths:
       summary: Statut d'un job long
       tags:
         - jobs
+  /me/pool-sharing:
+    put:
+      operationId: putMyPoolSharing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPoolSharingInputBody'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetPoolSharingOutputBody'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Grants or withdraws token pooling for the connected user
+      tags:
+        - auth
   /media/feed-version:
     get:
       operationId: getMediaFeedVersion
@@ -9668,6 +9693,13 @@ components:
           type: string
         oauth_code_flow_enabled:
           type: boolean
+        pool_sharing:
+          enum:
+            - granted
+            - declined
+            - undecided
+            - unavailable
+          type: string
         privacy:
           anyOf:
             - $ref: '#/components/schemas/MatchPrivacyInfo'
@@ -9709,6 +9741,7 @@ components:
         - registration_mode
         - instance_locked
         - reauth_required
+        - pool_sharing
         - has_password
         - is_admin
         - current_username
@@ -25576,6 +25609,27 @@ components:
           type: boolean
       required:
         - excluded
+      type: object
+    SetPoolSharingInputBody:
+      additionalProperties: false
+      properties:
+        granted:
+          description: true = make my token available to the shared pool; false = keep it for myself.
+          type: boolean
+      required:
+        - granted
+      type: object
+    SetPoolSharingOutputBody:
+      additionalProperties: false
+      properties:
+        pool_sharing:
+          description: Recorded decision.
+          enum:
+            - granted
+            - declined
+          type: string
+      required:
+        - pool_sharing
       type: object
     SettingsExcerpt:
       additionalProperties: false

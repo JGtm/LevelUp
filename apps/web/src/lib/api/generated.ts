@@ -1520,6 +1520,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/pool-sharing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Grants or withdraws token pooling for the connected user */
+        put: operations["putMyPoolSharing"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/media/feed-version": {
         parameters: {
             query?: never;
@@ -5019,6 +5036,8 @@ export interface components {
             /** @default fr */
             locale: string;
             oauth_code_flow_enabled: boolean;
+            /** @enum {string} */
+            pool_sharing: "granted" | "declined" | "undecided" | "unavailable";
             /** @description Sprint 54-B : informations de confidentialité des matchs du joueur actif. */
             privacy?: components["schemas"]["MatchPrivacyInfo"] | null;
             reauth_required: boolean;
@@ -11646,6 +11665,17 @@ export interface components {
         SetMatchExclusionRequest: {
             excluded: boolean;
         };
+        SetPoolSharingInputBody: {
+            /** @description true = make my token available to the shared pool; false = keep it for myself. */
+            granted: boolean;
+        };
+        SetPoolSharingOutputBody: {
+            /**
+             * @description Recorded decision.
+             * @enum {string}
+             */
+            pool_sharing: "granted" | "declined";
+        };
         SettingsExcerpt: {
             lang: string;
             normalize_mode_labels: boolean;
@@ -17593,6 +17623,39 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    putMyPoolSharing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPoolSharingInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetPoolSharingOutputBody"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {

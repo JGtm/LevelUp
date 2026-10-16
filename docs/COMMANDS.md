@@ -362,6 +362,24 @@ go run ./cmd/levelup identity purge <xuid> --yes            # executes
   process* only: if the server holds the file, the deletion fails (Windows lock) and the step
   is reported as failed. Stop the server, or purge a player who is not being tracked.
 
+### Token pooling (consent — ADR 0038)
+
+A player's token joins the shared pool that serves everyone's sync only if that player decided
+so (Settings, Sync tab; asked at first Xbox sign-in). No recorded decision means no pooling.
+`pool-sharing list` shows where each player stands; `pool-sharing grandfather` records the
+agreement of players who gave it outside the application, before the setting existed.
+
+```bash
+go run ./cmd/levelup pool-sharing list                      # state per player: granted / declined / undecided
+go run ./cmd/levelup pool-sharing grandfather               # DRY RUN: lists who would be marked
+go run ./cmd/levelup pool-sharing grandfather --yes         # records the agreement (basis grandfathered_explicit)
+```
+
+- **Only run `grandfather` for agreements actually collected**: it writes a consent on the
+  players' behalf. It never overwrites an existing decision, including a refusal.
+- The running server applies a decision made in the app at once; a decision written by the CLI
+  is picked up at the next pool scan (or at restart).
+
 ### Metadata / seed / migration
 
 ```bash

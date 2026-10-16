@@ -313,3 +313,6 @@ func TestSpartanCron_WithRefresher_NilSafe(t *testing.T) {
 	cron.WithRefresher("halo_5", nil)
 	cron.RunOnce(context.Background()) // cfg nil → no-op, no panic
 }
+
+func (p *fakeCronPool) IsWithheld(string) bool      { return false }
+func (p *fakeCronPool) SetShared(string, bool) bool { return true }
