@@ -10,18 +10,20 @@ import (
 
 // drainCoalescedRecomputes, à l'arrêt, refuse toute nouvelle demande de recalcul coalescé
 // (exclusion de match, liste d'amis : coalesce.Runs), annule les recalculs en vol et attend
-// leur fin au plus coalesce.DrainWait : la suite de la séquence d'arrêt n'est jamais retardée
-// au-delà. Un recalcul annulé est relancé par la prochaine demande, après le redémarrage. À
-// appeler après l'arrêt du serveur HTTP et avant duckdb.CloseAll : un recalcul lit la base
-// partagée et écrit en base joueur (ordre tenu par TestShutdown_DrainsRecomputesBeforeCloseAll).
-func drainCoalescedRecomputes() {
-	ctx, cancel := context.WithTimeout(context.Background(), coalesce.DrainWait)
+// leur fin au plus coalesce.DrainWait, ou moins si ctx échoit avant : la suite de la séquence
+// d'arrêt n'est jamais retardée au-delà. Rend vrai quand plus aucun recalcul n'est en vol.
+// Un recalcul annulé est relancé par la prochaine demande, après le redémarrage. À appeler
+// après l'arrêt du serveur HTTP et avant duckdb.CloseAll : un recalcul lit la base partagée
+// et écrit en base joueur (ordre tenu par TestShutdown_DrainsRecomputesBeforeCloseAll).
+func drainCoalescedRecomputes(ctx context.Context) bool {
+	ctx, cancel := context.WithTimeout(ctx, coalesce.DrainWait)
 	defer cancel()
 	start := time.Now()
 	if err := coalesce.Drain(ctx); err != nil {
 		slog.ErrorContext(ctx, "shutdown: recalculs coalescés encore en vol à l'échéance, bases fermées quand même",
 			"err", err, "max_wait", coalesce.DrainWait.String())
-		return
+		return false
 	}
 	slog.InfoContext(ctx, "shutdown: recalculs coalescés terminés", "duration", time.Since(start).String())
+	return true
 }

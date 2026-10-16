@@ -53,6 +53,10 @@ services:
       - ./app_settings.json:/app/app_settings.json
 
     restart: unless-stopped
+    # Delai accorde a l'arret avant SIGKILL (defaut Docker : 10 s). La sequence d'arret du serveur
+    # (cmd/server/shutdown.go) a un budget global de 40 s, dont le dernier tiers ferme les bases
+    # DuckDB : 45 s lui laissent 5 s de marge. Garde-rail : cmd/server/shutdown_budget_test.go.
+    stop_grace_period: 45s
     # Privileges reduits (audit securite 2026-10-15, C9-4). L'entree (docker-entrypoint.sh)
     # demarre en root, corrige les droits des volumes puis passe a appuser par gosu : ces
     # quatre capacites sont donc le strict necessaire, tout le reste est retire. Apres gosu
@@ -147,6 +151,8 @@ services:
       - ./data/cache/spartan-banner:/app/data/cache/spartan-banner:ro
       - ./data/cache/spartan-backdrop:/app/data/cache/spartan-backdrop:ro
     restart: unless-stopped
+    # Meme delai d'arret que le service levelup (justification et garde-rail ci-dessus).
+    stop_grace_period: 45s
     # Memes privileges reduits que le service levelup (justification et garde-rail ci-dessus).
     security_opt:
       - no-new-privileges:true

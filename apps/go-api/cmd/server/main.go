@@ -1340,147 +1340,20 @@ func main() {
 	boot.logCut(ctx)
 
 	<-bootSrv.stopRequested()
-	fmt.Fprint(os.Stderr, "\n  [..] Arret en cours...")
-
-	cancelScheduler()
-
-	if watcherDaemon != nil {
-		watcherDaemon.Stop()
-	}
-
-	// Phase 2 plan stabilisation 2026-05-22 : mesurer la durée totale du
-	// shutdown pour valider que Air SIGKILL (stop_timeout=20s) n'est jamais
-	// atteint en pratique. Si shutdown_total_duration_ms > 15000, augmenter
-	// le timeout Air OU identifier l'étape qui traîne.
-	shutdownStart := time.Now()
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		slog.Error("shutdown", "err", err)
-	}
-	drainCoalescedRecomputes()
-
-	// Attendre la goroutine du scheduler avec un timeout dur pour que les
-	// connexions DuckDB qu'elle pourrait tenir soient libérées avant CloseAll.
-	schedulerDone := make(chan struct{})
-	go func() {
-		schedulerWG.Wait()
-		close(schedulerDone)
-	}()
-	select {
-	case <-schedulerDone:
-		slog.Debug("scheduler terminé")
-	case <-time.After(3 * time.Second):
-		slog.Warn("scheduler: timeout sur Wait — RunOnce probablement en cours")
-	}
-
-	// Dédup cross-source (unification 2026-06-02) : attendre que les syncs HTTP
-	// gate-claimés finissent avant duckdb.CloseAll(). cancelScheduler() ci-dessus
-	// a annulé schedulerCtx, dont les bgCtx HTTP dérivent → les RunDelta en cours
-	// abandonnent, libèrent le lease + le claim, puis gateWG se vide. Sans cette
-	// attente, un sync HTTP détaché pourrait écrire une player DB après CloseAll
-	// (handle orphelin / WAL #7659). Les claims watcher ont déjà été drainés par
-	// watcherDaemon.Stop(), les claims auto par schedulerWG.Wait() ci-dessus.
-	//
-	// BeginShutdown() AVANT WaitInFlight() : fige le gate pour qu'aucun TryClaim
-	// (donc gateWG.Add) ne puisse survenir concurremment au drain — sinon data race
-	// WaitGroup + retour prématuré de Wait. Un sync HTTP arrivé après ce point est
-	// refusé (409) sans poser de claim.
-	if watcherDaemon != nil {
-		gate := autoScheduler.Gate()
-		gate.BeginShutdown()
-		gateDone := make(chan struct{})
-		go func() {
-			gate.WaitInFlight()
-			close(gateDone)
-		}()
-		select {
-		case <-gateDone:
-			slog.Debug("gate: tous les claims cross-source libérés")
-		case <-time.After(5 * time.Second):
-			slog.Warn("gate: timeout WaitInFlight — un sync HTTP est peut-être encore en vol")
-		}
-	}
-
-	// Phase 4.7 closure : drain + close BatchQueue avant CloseAll DuckDB.
-	// Drain attend les persists en cours ; Close stoppe les workers.
-	// Ordre critique : BatchQueue avant duckdb.CloseAll sinon les workers
-	// tentent d'écrire sur des DBs fermées.
-	if autoBatchQueue != nil {
-		drainCtx, drainCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		if err := autoBatchQueue.Drain(drainCtx); err != nil {
-			slog.WarnContext(drainCtx, "persist: BatchQueue.Drain timeout (non-bloquant)",
-				"err", err)
-		}
-		drainCancel()
-		if err := autoBatchQueue.Close(); err != nil {
-			slog.Warn("persist: BatchQueue.Close échoué (non-bloquant)", "err", err)
-		}
-	}
-	workerWG.Wait() // attend la terminaison du Worker après channel close
-
-	// CHECKPOINT synchrone final sur shared_social.duckdb — vide le WAL avant
-	// que duckdb.CloseAll ferme les connexions. Essentiel pour le hot-reload Air
-	// (bug DuckDB #7659 : replay WAL au reopen peut échouer si le WAL contient
-	// des ops non-checkpointées). Sans risque ici : tous les workers sont arrêtés
-	// (workerWG.Wait()), aucune écriture concurrente possible.
-	if socialDBForCheckpoint, ok := duckdb.LookupCachedDB(sharedSocialPath); ok {
-		ckptCtx, ckptCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		if _, ckptErr := socialDBForCheckpoint.SQLDb().ExecContext(ckptCtx, "CHECKPOINT"); ckptErr != nil {
-			slog.Warn("shared_social: CHECKPOINT final au shutdown échoué (non-fatal — WAL sera rejoué au prochain boot)",
-				"err", ckptErr)
-		} else {
-			slog.Info("shared_social: CHECKPOINT final au shutdown terminé")
-		}
-		ckptCancel()
-	}
-
-	duckdb.CloseAll()
-
-	// Phase 2 plan stabilisation 2026-05-22 : fermer le ServiceRegistry AVANT
-	// metaDB.Close() pour décrémenter proprement le refCount sur metadata
-	// porté par PrestigeBundle (cf. INCIDENT_2026-05-21_metadata_duckdb_lock
-	// _air_hot_reload.md §3.2 leak refCount). Sans ça, refCount=2 au moment
-	// du metaDB.Close() → décrément à 1 → handle Windows tenu jusqu'à exit
-	// process → verrou metadata au prochain hot-reload Air.
-	if reg != nil {
-		reg.Close()
-	}
-
-	if err := closeShared(); err != nil {
-		slog.Warn("fermeture shared DB", "err", err)
-	}
-	if err := metaDB.Close(); err != nil {
-		slog.Warn("fermeture metadata DB", "err", err)
-	}
-
-	// Phase 2 plan stabilisation 2026-05-22 : détecter les fuites de refCount
-	// sur le cache openDBs. Une fuite ici = HANDLE Windows tenu jusqu'à exit
-	// process → verrou metadata.duckdb au prochain hot-reload Air.
-	// cf. docs/INCIDENT_2026-05-21_metadata_duckdb_lock_air_hot_reload.md
-	if leaks := duckdb.DumpCachedLeaks(); len(leaks) > 0 {
-		for k, refs := range leaks {
-			slog.Warn("shutdown_db_leak",
-				"cache_key", k,
-				"refCount", refs)
-		}
-		slog.Warn("shutdown_db_leak aggregate",
-			"leaks_count", len(leaks))
-	}
-
-	slog.Info("shutdown_total_duration_ms",
-		"ms", time.Since(shutdownStart).Milliseconds())
-
-	// Sprint B1 commit 16 : fermer proprement les fichiers logs/{module}.log
-	// (flush + close des handles). Idempotent.
-	if multiHandler != nil {
-		if err := multiHandler.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "fermeture logging multi-module: %v\n", err)
-		}
-	}
-	fmt.Fprintln(os.Stderr, " terminé.")
+	runShutdown(shutdownDeps{
+		srv:              srv,
+		cancelScheduler:  cancelScheduler,
+		watcherDaemon:    watcherDaemon,
+		autoScheduler:    autoScheduler,
+		schedulerWG:      &schedulerWG,
+		autoBatchQueue:   autoBatchQueue,
+		workerWG:         &workerWG,
+		sharedSocialPath: sharedSocialPath,
+		reg:              reg,
+		closeShared:      closeShared,
+		metaDB:           metaDB,
+		multiHandler:     multiHandler,
+	})
 }
 
 // ensureWarehouseDir crée le répertoire warehouse du titre s'il n'existe pas.

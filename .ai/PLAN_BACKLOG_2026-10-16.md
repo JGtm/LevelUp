@@ -162,16 +162,21 @@ sur `internal/api/wire` : 0 issue.
 
 ### E3 — Séquence d'arrêt du serveur (entrée 4) — S
 
-- [ ] E3.1 `stop_grace_period: 45s` sur `levelup` et `levelup-demo` (`docker-compose.yml`).
-- [ ] E3.2 Budget global de 40 s (D-12) : contexte d'arrêt unique dont chaque phase prend sa part ;
+- [x] E3.1 `stop_grace_period: 45s` sur `levelup` et `levelup-demo` (`docker-compose.yml`).
+- [x] E3.2 Budget global de 40 s (D-12) : contexte d'arrêt unique dont chaque phase prend sa part ;
   `workerWG.Wait`, `autoBatchQueue.Close`, `watcherDaemon.Stop` bornés ; `duckdb.CloseAll` toujours
   atteint ; log `slog.WarnContext` nommant la phase qui dépasse.
-- [ ] E3.3 Commentaire `main.go:1351` réécrit (35 s au pire avant, budget après ; air : `kill_delay`
+- [x] E3.3 Commentaire `main.go:1351` réécrit (35 s au pire avant, budget après ; air : `kill_delay`
   5 s, ignoré sous Windows).
-- [ ] E3.4 Test : la somme des bornes d'arrêt reste sous la grâce du compose (lecture du compose par
+- [x] E3.4 Test : la somme des bornes d'arrêt reste sous la grâce du compose (lecture du compose par
   le test, échec si la clé disparaît).
 
 Gate : `go test ./cmd/server/ ./internal/archlint/` ; `go vet ./cmd/server/`.
+
+Statut du gate (exécutant, 2026-10-17) : VERT. `go vet ./cmd/server/` sans sortie ; `go test ./cmd/server/
+./internal/archlint/ -count=1` : `ok` (cmd/server 8 s, archlint 68 s, `compose_hardening` compris avec la nouvelle
+clé) ; `go test ./internal/platform/coalesce/` `ok` ; `golangci-lint run --new-from-merge-base=origin/main` sur
+`cmd/server` et `platform/coalesce` : 0 issue.
 
 ### E4 — LUSR : retrait de la v1 (entrée 5, D-6) — M
 
@@ -353,6 +358,13 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
 - E2 : la première vérification d'un couple (joueur, match) reste soumise au budget de lecture (3 s d'attente
   de basculement + 5 s dans `IsParticipant`) : le cache ne sert que les vérifications suivantes. La piste « aligner
   son budget sur celui de la page » de l'entrée de backlog n'est pas dans D-11 ; non traitée.
+- E3 (exécutant, 2026-10-17) : le plan (section 0, ligne 4) et D-12 comptaient `watcherDaemon.Stop` parmi les étapes
+  non bornées. Il est borné en interne à 8 s (`watcher.stopWaitTimeout`), mais il s'exécutait AVANT le chronomètre
+  de la séquence : le pire cas réel était 8 + 35 = 43 s plus les attentes non bornées, déjà au-delà de 40 s. Le
+  budget de 40 s compte désormais depuis la demande d'arrêt, watcher compris. Non traité au-delà (constat).
+- E3 : `docker-compose.yml` ne porte aucun autre service qui lance le serveur ; les unités systemd ou scripts de
+  déploiement hors compose (`packaging/`, `scripts/deploy.sh`) n'ont pas été relus pour un délai d'arrêt propre.
+  Non traité.
 
 ## 4. Journal
 
@@ -457,3 +469,31 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
     `true` rendu avec erreur), borne et éviction du plus ancien, bout en bout avec `RequireMatchParticipation`
     (503, 503, 200, puis 200 servi par le cache base tombée). Pas de test rouge préalable : la brique est neuve,
     l'absence de la brique est une erreur de compilation.
+- 2026-10-17 E3 (exécutant, worktree `LevelUp-wt-backlog-1016`) : E3.1 à E3.4 faits, gate vert.
+  - Pièces rouvertes avant de coder : séquence `main.go:1342-1484`, `shutdown_recomputes.go`, `watcher/daemon.go:229`
+    (Stop borné à 8 s), `persist/queue.go` (`Drain` rend à l'échéance du contexte, `Close` attend `sendWG` sans
+    borne), `.air.toml:35-46`. La séquence dépassant 80 lignes, elle est extraite hors de `main()` (fichiers
+    `cmd/server/shutdown.go` et `shutdown_budget.go`) ; `main()` ne fait plus que `runShutdown(shutdownDeps{...})`.
+  - Mécanisme : `shutdownClock` (départ à la demande d'arrêt, `shutdownBudget` 40 s, `shutdownCloseReserve` 5 s
+    gardés pour `closeStores`). Chaque phase (`shutdownPhase{nom, borne, run(ctx)}`) reçoit `min(borne, budget
+    restant - réserve)` ; les attentes sans contexte (`watcherDaemon.Stop`, `WaitGroup.Wait`, `Close`,
+    `gate.WaitInFlight`) passent par `blocking`. Une phase qui dépasse produit un `slog.WarnContext` « phase hors
+    budget » avec `phase`, `allotted`, `limit`, `waited`, `budget_exhausted`, puis la séquence continue. Phases, dans
+    l'ordre et bornes : watcher 10 s (borne interne 8 s), http 15 s, recomputes 2 s (`coalesce.DrainWait`),
+    scheduler 3 s, gate 5 s, persist.drain 5 s, persist.close 5 s, persist.worker 5 s, checkpoint 5 s ; puis
+    `closeStores` (CloseAll, `reg.Close`, `closeShared`, `metaDB.Close`, relevé des fuites), toujours atteint.
+    `drainCoalescedRecomputes` prend le contexte de la phase et rend un booléen (son test passe `context.Background()`).
+    `shutdown_total_duration_ms` compte maintenant depuis la demande d'arrêt, watcher compris.
+  - E3.1 : `stop_grace_period: 45s` sur `levelup` et `levelup-demo`. E3.3 : le commentaire périmé de `main.go`
+    (`stop_timeout=20s`) disparaît avec l'extraction ; le contrat est dans le commentaire de `runShutdown` (budget,
+    réserve, air : `kill_delay` 5 s ignoré sous Windows où l'arbre est tué) ; les commentaires de
+    `coalesce.DrainWait` et de son test (« Docker : 10 s ») sont corrigés.
+  - E3.4 : `shutdown_budget_test.go` lit `docker-compose.yml` (yaml.v3) : chaque service exige un
+    `stop_grace_period` ≥ `shutdownBudget` + 5 s. ROUGE prouvé en remettant le compose de HEAD : les deux services
+    échouent (« sans stop_grace_period : Docker tue le process à 10 s... ») ; vert avec les clés. Autres tests :
+    durée accordée jamais au-delà du budget restant ni dans la réserve (horloge simulée) ; phase bloquée nommée en
+    Warn et suivante exécutée ; trois phases bloquées : séquence rendue dans total - réserve ; phase à l'heure
+    silencieuse ; bornes de phase dans ]0, total - réserve]. `TestShutdown_DrainsRecomputesBeforeCloseAll`
+    (analyse de l'arbre) lit désormais `shutdown.go` : HTTP avant recalculs avant scheduler, `shutdownPhases` avant
+    `closeStores`, un seul `CloseAll`, un seul `Shutdown` ; mutation prouvée (phases permutées : échec). Aucun test
+    renommé ni supprimé : pas de ligne de baseline à retirer.

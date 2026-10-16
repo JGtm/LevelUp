@@ -14,9 +14,9 @@ import (
 const MaxRunDuration = 10 * time.Minute
 
 // DrainWait borne l'attente, à l'arrêt du process, des recalculs en vol que Drain vient
-// d'annuler (cmd/server). Elle reste bien sous le délai d'arrêt accordé par l'hôte (Docker :
-// 10 s puis SIGKILL ; air : kill_delay de 5 s) pour que la suite de la séquence d'arrêt
-// (files de persistance, fermeture des bases) ait lieu.
+// d'annuler (cmd/server). Elle reste bien sous le budget de la séquence d'arrêt
+// (cmd/server/shutdown.go, borné sous le stop_grace_period de docker-compose.yml ; air :
+// kill_delay de 5 s) pour que la suite (files de persistance, fermeture des bases) ait lieu.
 const DrainWait = 2 * time.Second
 
 // ErrDraining est rendue à toute demande déposée après le début de l'arrêt (Drain) : aucun

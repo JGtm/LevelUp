@@ -12,26 +12,26 @@ import (
 	"levelup/go-api/internal/platform/coalesce"
 )
 
-// callPositions rend les positions des appels pkg.name (pkg vide : appel nu) dans le corps
-// de main().
-func callPositions(t *testing.T, pkg, name string) []token.Pos {
+// callPositions rend les positions des appels pkg.name (pkg vide : appel nu ; "*" : méthode de ce nom sur n'importe quelle expression) dans le corps
+// de la fonction fn du fichier file.
+func callPositions(t *testing.T, file, fn, pkg, name string) []token.Pos {
 	t.Helper()
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "main.go", nil, 0)
+	parsed, err := parser.ParseFile(fset, file, nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var mainFn *ast.FuncDecl
-	for _, decl := range file.Decls {
-		if fn, ok := decl.(*ast.FuncDecl); ok && fn.Recv == nil && fn.Name.Name == "main" {
-			mainFn = fn
+	var target *ast.FuncDecl
+	for _, decl := range parsed.Decls {
+		if f, ok := decl.(*ast.FuncDecl); ok && f.Recv == nil && f.Name.Name == fn {
+			target = f
 		}
 	}
-	if mainFn == nil {
-		t.Fatal("func main introuvable dans main.go")
+	if target == nil {
+		t.Fatalf("func %s introuvable dans %s", fn, file)
 	}
 	var out []token.Pos
-	ast.Inspect(mainFn.Body, func(n ast.Node) bool {
+	ast.Inspect(target.Body, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
 		if !ok {
 			return true
@@ -42,7 +42,9 @@ func callPositions(t *testing.T, pkg, name string) []token.Pos {
 				out = append(out, call.Pos())
 			}
 		case *ast.SelectorExpr:
-			if x, ok := fun.X.(*ast.Ident); ok && x.Name == pkg && fun.Sel.Name == name {
+			if pkg == "*" && fun.Sel.Name == name {
+				out = append(out, call.Pos())
+			} else if x, ok := fun.X.(*ast.Ident); ok && x.Name == pkg && fun.Sel.Name == name {
 				out = append(out, call.Pos())
 			}
 		}
@@ -51,25 +53,37 @@ func callPositions(t *testing.T, pkg, name string) []token.Pos {
 	return out
 }
 
+// onlyCall rend la position de l'unique appel pkg.name dans fn de file, ou échoue.
+func onlyCall(t *testing.T, file, fn, pkg, name string) token.Pos {
+	t.Helper()
+	pos := callPositions(t, file, fn, pkg, name)
+	if len(pos) != 1 {
+		t.Fatalf("%s : %d appel(s) à %s.%s dans %s, attendu 1", file, len(pos), pkg, name, fn)
+	}
+	return pos[0]
+}
+
 // L'arrêt du serveur attend les recalculs coalescés en vol après l'arrêt du serveur HTTP
-// (plus aucune requête n'en lance) et avant la fermeture des bases DuckDB.
+// (plus aucune requête n'en lance) et avant la fermeture des bases DuckDB : les phases
+// s'exécutent dans cet ordre, puis closeStores ferme les bases.
 func TestShutdown_DrainsRecomputesBeforeCloseAll(t *testing.T) {
-	drains := callPositions(t, "", "drainCoalescedRecomputes")
-	if len(drains) != 1 {
-		t.Fatalf("%d appel(s) à drainCoalescedRecomputes dans main, attendu 1", len(drains))
+	const file = "shutdown.go"
+	http := onlyCall(t, file, "shutdownPhases", "", "phaseHTTP")
+	recomputes := onlyCall(t, file, "shutdownPhases", "", "phaseRecomputes")
+	scheduler := onlyCall(t, file, "shutdownPhases", "", "phaseScheduler")
+	if http > recomputes {
+		t.Error("phaseRecomputes doit suivre phaseHTTP : une requête pourrait encore lancer un recalcul")
 	}
-	httpStops := callPositions(t, "srv", "Shutdown")
-	closes := callPositions(t, "duckdb", "CloseAll")
-	if len(httpStops) != 1 || len(closes) != 1 {
-		t.Fatalf("srv.Shutdown : %d appel(s), duckdb.CloseAll : %d appel(s), attendu 1 et 1",
-			len(httpStops), len(closes))
+	if recomputes > scheduler {
+		t.Error("phaseRecomputes doit précéder la fin du scheduler et des écrivains")
 	}
-	if drains[0] < httpStops[0] {
-		t.Error("drainCoalescedRecomputes doit suivre srv.Shutdown : une requête pourrait encore lancer un recalcul")
+	phases := onlyCall(t, file, "runShutdown", "", "shutdownPhases")
+	closes := onlyCall(t, file, "runShutdown", "", "closeStores")
+	if phases > closes {
+		t.Error("closeStores doit suivre toutes les phases : un recalcul en vol écrirait sur une base fermée")
 	}
-	if drains[0] > closes[0] {
-		t.Error("drainCoalescedRecomputes doit précéder duckdb.CloseAll : un recalcul en vol écrirait sur une base fermée")
-	}
+	onlyCall(t, file, "closeStores", "duckdb", "CloseAll")
+	onlyCall(t, file, "phaseHTTP", "*", "Shutdown")
 }
 
 // À l'arrêt, un recalcul coalescé en vol est annulé et l'attente est bornée par
@@ -102,7 +116,7 @@ func TestDrainCoalescedRecomputes_CancelsInFlightAndWaitsBriefly(t *testing.T) {
 	begin := time.Now()
 	returned := make(chan struct{})
 	go func() {
-		drainCoalescedRecomputes()
+		drainCoalescedRecomputes(context.Background())
 		close(returned)
 	}()
 	select {

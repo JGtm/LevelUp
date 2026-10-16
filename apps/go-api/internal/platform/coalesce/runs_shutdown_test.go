@@ -299,9 +299,9 @@ func TestDrain_NoCatchUpOnceShutdownStarted(t *testing.T) {
 	}
 }
 
-// L'attente de l'arrêt reste courte : bien sous le délai d'arrêt accordé par l'hôte
-// (Docker : 10 s par défaut ; air : kill_delay de 5 s), le reste de la séquence d'arrêt
-// devant encore tenir.
+// L'attente de l'arrêt reste courte : bien sous le budget de la séquence d'arrêt
+// (cmd/server/shutdown.go ; air : kill_delay de 5 s), le reste de la séquence devant encore
+// tenir.
 func TestDrainWait_IsShort(t *testing.T) {
 	if DrainWait <= 0 || DrainWait > 3*time.Second {
 		t.Fatalf("DrainWait = %s, attendu dans ]0, 3 s]", DrainWait)

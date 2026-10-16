@@ -1,3 +1,11 @@
+## [2026-10-17] Backlog du 16/10, E3 : séquence d'arrêt du serveur bornée sous le délai de Docker — Complété (branche `feat/backlog-2026-10-16`)
+
+**Décision technique principale** : budget d'arrêt global de 40 s (D-12) compté depuis la demande d'arrêt, dont 5 s réservés à la fermeture des bases ; chaque phase d'attente (watcher, HTTP, recalculs, scheduler, gate, drain/close de la file de persistance, attente du worker, CHECKPOINT) reçoit la plus petite de sa borne et du budget restant, et une phase en dépassement est nommée dans un `slog.WarnContext` avant que la suivante ne commence ; `duckdb.CloseAll` et les fermetures sont toujours atteints. `docker-compose.yml` : `stop_grace_period: 45s` sur les deux services. La séquence (plus de 80 lignes) quitte `main()` pour `cmd/server/shutdown.go` et `shutdown_budget.go`.
+
+**Résultats observés** : le pire cas réel était plus large que les 35 s du plan : `watcherDaemon.Stop` (borné à 8 s en interne) s'exécutait avant le chronomètre, soit 43 s plus les attentes non bornées. Tests : budget lu dans le compose (rouge prouvé sans la clé), durée accordée jamais au-delà du budget ni dans la réserve (horloge simulée), phases bloquées (la séquence rend dans total - réserve, la phase fautive est nommée), ordre HTTP, recalculs, écrivains, fermeture tenu par l'analyse de l'arbre (mutation prouvée). `go vet`, `go test ./cmd/server/ ./internal/archlint/`, golangci-lint (ratchet) verts.
+
+**Conclusion** : E3 close ; suite E4 (LUSR, retrait de la v1), hors de cette session.
+
 ## [2026-10-17] Backlog du 16/10, E2 : connexion Xbox sans seconde demande de code, cache des participations — Complété (branche `feat/backlog-2026-10-16`)
 
 **Décision technique principale** : (1) l'effet de récupération de `XboxLoginPage` ne relance plus `start` quand la tentative est déjà autorisée, et le sondage du hook partagé `useDeviceFlowStatus` s'arrête au succès (`isDeviceFlowSucceeded`) : la rotation de session du serveur au succès rend l'ancienne tentative introuvable (404), ce que le front prenait pour une tentative perdue. (2) `RequireMatchParticipation` s'appuie sur un cache borné (4 096 entrées, éviction du plus ancien) des participations CONFIRMÉES (D-11) : clé titre + xuid + match, ni `false` ni erreur mémorisés, le 503 fermé reste sur un échec non caché.
