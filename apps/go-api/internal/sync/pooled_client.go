@@ -24,7 +24,9 @@ const defaultPooledRPS = 5
 // TOUS ses endpoints sont acquis en PolicyAnyPublic (round-robin) : depuis la mesure du
 // 2026-09-16 (D4, plan robustesse), le rang de carrière lui aussi est public. Ce client
 // n'épingle plus aucun joueur ; l'épinglage vit là où un endpoint l'exige réellement
-// (cron de personnalisation Spartan, live-sync Halo 5).
+// (cron de personnalisation Spartan, live-sync Halo 5). Une seule exception, voulue : le
+// propriétaire déclaré par WithOwner qui n'a pas consenti à la mise en commun de son jeton
+// n'emprunte que son propre jeton (cf. acquire).
 //
 // Rate-limiting (Option 2 de l'audit 2026-05-21) : chaque slot du pool a son
 // propre *rate.Limiter (PerTokenRPS) — throughput global = PerTokenRPS × Size().
@@ -39,6 +41,10 @@ type PooledHaloClient struct {
 
 	// localFilmCache (optionnel) — propage au HaloAPIClient construit par Acquire.
 	localFilmCache *LocalFilmCache
+
+	// owner (optionnel) : gamertag du joueur pour qui ce client synchronise. Sert à la
+	// réciprocité de la mise en commun, cf. acquire.
+	owner string
 }
 
 // NewPooledHaloClient crée un client pooled.
@@ -59,6 +65,33 @@ func NewPooledHaloClient(p pool.Pool, requestsPerSecond int) *PooledHaloClient {
 func (pc *PooledHaloClient) WithLocalFilmCache(cache *LocalFilmCache) *PooledHaloClient {
 	pc.localFilmCache = cache
 	return pc
+}
+
+// WithOwner déclare le joueur pour qui ce client synchronise (gamertag du slot du pool).
+func (pc *PooledHaloClient) WithOwner(gamertag string) *PooledHaloClient {
+	pc.owner = gamertag
+	return pc
+}
+
+// acquire choisit le jeton d'un appel public. Un propriétaire qui a gardé son jeton hors
+// du pool (consentement absent ou retiré) n'emprunte pas ceux des autres : ses appels
+// passent par son seul jeton, au débit de ce jeton — la synchro est plus lente, c'est le
+// prix annoncé du refus. Tout autre appel (propriétaire inconnu, sans slot, ou qui partage)
+// passe par le round-robin public.
+//
+// Quand ce seul jeton est momentanément indisponible (cooldown après un 429, refresh en
+// cours), l'échec porte pool.ErrNoHealthySlot : pour ce propriétaire, son jeton EST tout
+// le parc. Les appelants qui savent attendre (historyretry) attendent alors puis rejouent,
+// au lieu d'abandonner la passe au premier 429.
+func (pc *PooledHaloClient) acquire(ctx context.Context) (*pool.Lease, error) {
+	if pc.owner != "" && pc.p.IsWithheld(pc.owner) {
+		lease, err := pc.p.Acquire(ctx, pool.PolicyPinnedPlayer, pc.owner)
+		if err != nil {
+			return nil, fmt.Errorf("%w: withheld token of %s unavailable: %v", pool.ErrNoHealthySlot, pc.owner, err)
+		}
+		return lease, nil
+	}
+	return pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
 }
 
 // newAPIClient construit un HaloAPIClient éphémère qui utilise le rate-limiter
@@ -142,7 +175,7 @@ func (pc *PooledHaloClient) notifyPoolOnError(lease *pool.Lease, err error) {
 func (pc *PooledHaloClient) doPublic(ctx context.Context, call func(c *HaloAPIClient) error) error {
 	var lastErr error
 	for attempt := 0; attempt < 2; attempt++ {
-		lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
+		lease, err := pc.acquire(ctx)
 		if err != nil {
 			return fmt.Errorf("pooled: Acquire failed: %w", err)
 		}
@@ -307,7 +340,7 @@ func (pc *PooledHaloClient) GetCareerRank(ctx context.Context, xuid string) (*Ca
 // GetPlayerCSRs implémente HaloClient.GetPlayerCSRs() avec PolicyAnyPublic.
 // Endpoint public (service token) — pas besoin du token pinned joueur.
 func (pc *PooledHaloClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID string) ([]PlayerPlaylistCSR, error) {
-	lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
+	lease, err := pc.acquire(ctx)
 	if err != nil {
 		slog.DebugContext(ctx, "pooled: GetPlayerCSRs skipped (token unavailable)", "xuid", xuid, "err", err)
 		return nil, nil
@@ -325,7 +358,7 @@ func (pc *PooledHaloClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID st
 // GetPlaylistCsr implémente HaloClient.GetPlaylistCsr() avec PolicyAnyPublic.
 // Endpoint public (service token) — pas besoin du token pinned joueur.
 func (pc *PooledHaloClient) GetPlaylistCsr(ctx context.Context, playlistID, xuid, seasonID string) (*PlayerPlaylistCSR, error) {
-	lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
+	lease, err := pc.acquire(ctx)
 	if err != nil {
 		slog.DebugContext(ctx, "pooled: GetPlaylistCsr skipped (token unavailable)", "xuid", xuid, "err", err)
 		return nil, nil

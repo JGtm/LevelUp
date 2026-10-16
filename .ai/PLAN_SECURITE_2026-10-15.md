@@ -440,8 +440,8 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
       compte ordinaire sur le profil d'un ami, visiteur anonyme, démo ; pages Accueil, Matchs,
       Vue match, Rejeu, Médias (envoi, like, association), Classement, Escouades, Réglages,
       connexion/déconnexion. Aucune régression ; captures au journal.
-- [ ] F-0b `npx playwright test` local (E2E complets) vert, en plus de la CI.
-- [ ] F-1 Revue adversariale du diff complet (`git diff a9a9ac78a...HEAD`) : 2 relecteurs aveugles
+- [x] F-0b (sur le code FUSIONNÉ, serveur démo comme la CI : 84 réussis, 17 échecs = 10 identiques sur la base feat/v75 + 7 captures visuelles Windows absentes écrites au 1er passage puis identiques sur la base ; aucune régression) `npx playwright test` local (E2E complets) vert, en plus de la CI.
+- [x] F-1 (ronde 1 : 3 relecteurs ; ronde 2 et relecture de contrôle : F-1a à F-1c) Revue adversariale du diff complet (`git diff a9a9ac78a...HEAD`) : 2 relecteurs aveugles
       (lentille « contrôle d'accès et identité » ; lentille « entrées, ressources, chemins ») +
       1 relecteur L6 (couverture des tests) ; 2 rondes maximum.
 - [x] F-1a Corrections de la ronde 1 de la revue adversariale (2026-10-16 ; 3 relecteurs : accès 0 P0/P1,
@@ -502,11 +502,11 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
         contexte de la requête. Lecture hors verrou par titre (singleflight), attente interruptible par le contexte ; test.
   - [x] R3-4 (P2) `assets/catalog.go` (`classifyPlayedVersion`, branche `err != nil`) : un `slog.Warn` par requête pendant une
         panne de lecture. Journal limité (une fois par fenêtre et par titre) ; test.
-- [ ] F-2 `make gate-push` vert.
-- [ ] F-3 Push de `feat/securite-2026-10-15`, CI verte au niveau job (`gh run list --branch`).
-- [ ] F-4 Registre et backlog mis à jour (items fermés, `[sécurité]` et `[demo]` du backlog).
-- [ ] F-5 Demande d'accord à l'utilisateur pour la fusion dans `feat/v75`.
-- [ ] F-6 Après le déploiement de la v7.5 (délai d'observation prescrit, report valide) :
+- [x] F-2 (2 rouges corrigés : baseline des 2 tests démo renommés, identifiants factices d'un test d'intégration ; 561b31a2e) `make gate-push` vert.
+- [x] F-3 (CI de la branche verte, tous jobs, run 38928738529) Push de `feat/securite-2026-10-15`, CI verte au niveau job (`gh run list --branch`).
+- [x] F-4 Registre et backlog mis à jour (items fermés, `[sécurité]` et `[demo]` du backlog).
+- [x] F-5 (go de l'utilisateur du 2026-10-16 « dès que tout est vert » ; fusion poussée c6a72cf02) Demande d'accord à l'utilisateur pour la fusion dans `feat/v75`.
+- [!] F-6 (délai d'observation prescrit : après le déploiement de la v7.5) Après le déploiement de la v7.5 (délai d'observation prescrit, report valide) :
       surveillance 48 h des 401/403/413/429 dans les journaux nginx et Go, par route et par IP ;
       tout refus d'un usage légitime = correctif immédiat.
 
@@ -2530,3 +2530,11 @@ Binaire de la branche (`b11c95a8d` moins F-1c pour le binaire de recette : build
 - **Démo** (serveur de la branche en `LEVELUP_DEMO_MODE`, port 8001, fixture locale) : bootstrap, accueil, `/settings`, `/presence` 200 ; `/debug/vars`, `/admin/*`, journaux, `/watcher/status`, `/groups` 403 `demo_mode_forbidden` ; écritures (envoi, like, sync, device-flow) 403 ; `/session/context` 200 ; `suggest-next` passe la garde.
 - **Constats** (au backlog, décision de l'utilisateur) : vue de match 503 une fois sous charge (participation à court de budget, juste après les 96 requêtes de la page Tactique) ; seconde demande de code Xbox après connexion réussie ; page Tactique à ~100 requêtes.
 - Serveurs arrêtés ensuite, session `levelup-8b` prévenue.
+
+### [2026-10-16] Clôture — fusion dans feat/v75
+
+- Fusion préparée dans `LevelUp-wt-securite-merge` (`merge/securite-v75`) : 4 conflits résolus (go.mod/go.sum : versions les plus hautes ; `match_recomputer.go` : coalescence et lecture partagée du chantier + titre du contexte de feat/v75 ; blocs datés de la baseline conservés) → `1aa78e2a9` ; puis feat/v75 a avancé (citations Halo 5) : fusion sans conflit `18eb08b5b` ; rouge archlint préexistant de feat/v75 réparé (`TestCheminsAiCitesDansLeCodeExistent`, plan des citations archivé sous `.ai/V7.5/`) `c6a72cf02`.
+- Gates sur la fusion : `go test ./...` 204 paquets, `-tags=integration -p 1 ./...` 205 paquets, baseline 9 398 présents, web typecheck/lint/9 772 tests ; après la seconde fusion : archlint, api, sync, service, cmd, intégration sync/persist, typecheck.
+- E2E Playwright sur le code fusionné en mode démo (comme la CI) : 84 réussis ; les 17 échecs sont identiques sur la base ou des captures Windows absentes au premier passage.
+- Poussé : `origin/feat/v75` b3756ab31 → c6a72cf02 (go de l'utilisateur). CI de feat/v75 en cours au moment de l'écriture.
+- Restent hors chantier : F-6 (surveillance de 48 h après le déploiement), V-3, V-5, V-6 (§5) ; backlog : « [sécurité/suites] », « [perf/tactique] », « [ops/arrêt] », « [data/LUSR] ».

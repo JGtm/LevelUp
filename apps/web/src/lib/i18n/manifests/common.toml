@@ -2439,8 +2439,8 @@ fr = "Nouveautés"
 en = "What's new"
 
 [common.footer.license]
-fr = "Licence MIT"
-en = "MIT licence"
+fr = "Licence AGPL-3.0"
+en = "AGPL-3.0 licence"
 
 [common.footer.support_heading]
 fr = "Soutenir"
@@ -2477,6 +2477,10 @@ en = "CSinsight — CS2 stats"
 [common.footer.privacy]
 fr = "Confidentialité"
 en = "Privacy"
+
+[common.footer.terms]
+fr = "Conditions d'utilisation"
+en = "Terms of use"
 
 # ── Amis d'un joueur (liste par profil, remplace l'ancien réglage d'instance) ──
 [common.friends.page_title]

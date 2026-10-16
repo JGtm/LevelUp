@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software or the research documented with it, please cite it as below."
+title: "LevelUp"
+type: software
+authors:
+  - family-names: "Sitbon"
+    given-names: "Guillaume"
+    alias: "JGtm"
+repository-code: "https://github.com/JGtm/LevelUp"
+license: AGPL-3.0-only
+abstract: "Multi-title Halo statistics dashboard with an independent decoder of the Halo Infinite Theater film format."
+keywords:
+  - halo
+  - halo-infinite
+  - statistics
+  - reverse-engineering

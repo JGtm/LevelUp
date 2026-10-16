@@ -46,22 +46,22 @@ export interface PrivacyText {
 
 /** Date de dernière révision de fond, affichée en tête de page. */
 export const PRIVACY_UPDATED_AT: Record<Locale, string> = {
-  fr: '31 août 2026',
-  en: '31 August 2026',
+  fr: '16 octobre 2026',
+  en: '16 October 2026',
 }
 
 const FR_TEXT: PrivacyText = {
   title: 'Confidentialité',
   updatedLabel: 'Dernière mise à jour',
   intro: [
-    "LevelUp est un projet personnel et non commercial, publié en source ouverte sous licence MIT. Cette page décrit l'instance publique opérée par l'auteur du projet. Une instance que vous hébergez vous-même est sous votre propre responsabilité : le code est le même, l'exploitation ne l'est pas.",
+    "LevelUp est un projet personnel et non commercial, publié en source ouverte sous licence AGPL-3.0. Cette page décrit l'instance publique opérée par l'auteur du projet. Une instance que vous hébergez vous-même est sous votre propre responsabilité : le code est le même, l'exploitation ne l'est pas.",
     "Le principe : LevelUp ne collecte que ce dont il a besoin pour afficher vos statistiques de jeu. Il n'y a ni publicité, ni service d'analyse d'audience, ni revente de données.",
   ],
   sections: [
     {
       heading: 'Ce qui est conservé',
       paragraphs: [
-        "Lorsque vous connectez votre compte Microsoft, LevelUp enregistre votre identifiant Xbox (XUID), votre gamertag et un jeton de rafraîchissement délivré par Microsoft. Ce jeton sert uniquement à interroger l'API Halo officielle en votre nom. Votre mot de passe Microsoft ne transite jamais par LevelUp : l'authentification se fait chez Microsoft.",
+        "Lorsque vous connectez votre compte Microsoft, LevelUp enregistre votre identifiant Xbox (XUID), votre gamertag et un jeton de rafraîchissement délivré par Microsoft. Ce jeton sert à interroger l'API Halo officielle en votre nom et, si vous y consentez, à synchroniser les parties des autres joueurs (voir « Mise en commun des jetons »). Votre mot de passe Microsoft ne transite jamais par LevelUp : l'authentification se fait chez Microsoft.",
         "À partir de cette autorisation, l'application récupère et conserve vos données de jeu telles que l'API officielle les expose :",
       ],
       bullets: [
@@ -69,6 +69,15 @@ const FR_TEXT: PrivacyText = {
         "médailles, citations, rang de carrière et classement compétitif (CSR)",
         "données sociales Xbox (abonnements, activité) lorsque la fonctionnalité est utilisée",
         "indicateurs dérivés calculés localement à partir de ce qui précède, dont la note interne de niveau",
+      ],
+    },
+    {
+      heading: 'Mise en commun des jetons',
+      paragraphs: [
+        "Microsoft limite le débit de requêtes de chaque compte. Pour accélérer la synchronisation de tous, les jetons des joueurs qui y consentent forment un pool partagé : une requête de synchronisation, y compris pour un autre joueur, peut passer par le jeton de n'importe lequel d'entre eux.",
+        "Le pool ne sert qu'à lire des données publiques de parties (historique, statistiques, classement), jamais vos données privées. Le jeton n'est affiché à personne, n'est transmis à aucun autre joueur et ne part que vers Microsoft. Ces requêtes sont faites au nom de votre compte.",
+        "Cette utilisation repose sur votre consentement, demandé à la première connexion sans option présélectionnée. Sans décision, ou si vous refusez, votre jeton ne sert que votre propre synchronisation, qui reste possible mais plus lente. Vous pouvez changer d'avis à tout moment dans Réglages, onglet Synchronisation : un retrait prend effet à la requête suivante.",
+        "Votre décision est conservée avec sa date et sa nature (choix dans l'application, ou accord donné directement à l'auteur avant l'existence de ce réglage). Elle est supprimée avec votre jeton.",
       ],
     },
     {
@@ -128,14 +137,14 @@ const EN_TEXT: PrivacyText = {
   title: 'Privacy',
   updatedLabel: 'Last updated',
   intro: [
-    'LevelUp is a personal, non-commercial project released as open source under the MIT licence. This page covers the public instance operated by the project author. An instance you host yourself is your own responsibility: the code is the same, the operation is not.',
+    'LevelUp is a personal, non-commercial project released as open source under the AGPL-3.0 licence. This page covers the public instance operated by the project author. An instance you host yourself is your own responsibility: the code is the same, the operation is not.',
     'The principle: LevelUp collects only what it needs to show your game statistics. There is no advertising, no audience measurement service, and no sale of data.',
   ],
   sections: [
     {
       heading: 'What is stored',
       paragraphs: [
-        'When you connect your Microsoft account, LevelUp records your Xbox identifier (XUID), your gamertag, and a refresh token issued by Microsoft. That token is used solely to query the official Halo API on your behalf. Your Microsoft password never passes through LevelUp: authentication happens at Microsoft.',
+        'When you connect your Microsoft account, LevelUp records your Xbox identifier (XUID), your gamertag, and a refresh token issued by Microsoft. That token is used to query the official Halo API on your behalf and, if you consent, to sync other players’ matches (see “Token pooling”). Your Microsoft password never passes through LevelUp: authentication happens at Microsoft.',
         'From that authorisation, the application retrieves and stores your game data as the official API exposes it:',
       ],
       bullets: [
@@ -143,6 +152,15 @@ const EN_TEXT: PrivacyText = {
         'medals, commendations, career rank and competitive rank (CSR)',
         'Xbox social data (follows, activity) when that feature is used',
         'derived indicators computed locally from the above, including the internal skill rating',
+      ],
+    },
+    {
+      heading: 'Token pooling',
+      paragraphs: [
+        "Microsoft limits the request rate of each account. To speed up everyone's sync, the tokens of players who consent form a shared pool: a sync request, including one for another player, may go through the token of any of them.",
+        'The pool is only used to read public match data (history, statistics, ranking), never your private data. The token is shown to nobody, is not passed on to any other player and only goes to Microsoft. These requests are made in the name of your account.',
+        'This use rests on your consent, asked at first sign-in with no option preselected. With no decision, or if you decline, your token only serves your own sync, which still works but is slower. You can change your mind at any time in Settings, Sync tab: a withdrawal takes effect from the next request.',
+        'Your decision is kept with its date and nature (a choice made in the application, or an agreement given directly to the author before this setting existed). It is deleted along with your token.',
       ],
     },
     {

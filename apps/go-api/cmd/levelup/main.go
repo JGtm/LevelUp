@@ -22,6 +22,7 @@
 //	levelup backfill-registry-names [--dry-run] [--title slug]
 //	levelup backfill-is-ranked [--dry-run] [--title slug]
 //	levelup identity       list | purge <xuid> [--yes]
+//	levelup pool-sharing   list | grandfather --players GT1,GT2 | --all [--yes]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-detecte si absent).
 //
@@ -177,6 +178,8 @@ func main() {
 		exitErr = runPopulateAssets(cfg, args)
 	case "identity":
 		exitErr = runIdentity(cfg, args)
+	case "pool-sharing":
+		exitErr = runPoolSharing(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -293,6 +296,9 @@ Commandes:
                   c est une simulation qui imprime le rapport). La base partagee des matchs n est JAMAIS touchee.
                   Le serveur ne doit pas tenir la player DB du joueur : la purge n evince que les handles du
                   processus courant, un fichier tenu ailleurs fait echouer l etape (et le rapport le dit)
+  pool-sharing    Mise en commun des jetons : pool-sharing list (etat par joueur) et pool-sharing grandfather
+                  --players GT1,GT2 | --all [--yes] (enregistre l accord des joueurs designes qui l ont donne
+                  hors de l application ; SANS --yes c est une simulation ; n ecrase jamais une decision)
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-detecte si absent)

@@ -73,6 +73,9 @@ type slot struct {
 	// lastAttempt : dernière tentative de refresh (réactive ou proactive), pour
 	// throttler le refresh proactif near-expiry.
 	lastAttempt time.Time
+	// excluded : le propriétaire n'a pas consenti à la mise en commun (cf. pool_sharing.go).
+	// Le slot n'est alors jamais servi par PolicyAnyPublic.
+	excluded bool
 }
 
 // leaseData retourne, sous UN SEUL RLock, si le slot est acquérable MAINTENANT
@@ -181,6 +184,7 @@ func NewPool(
 			limiter:     ratebudget.ForXUID(rs.src.XUID, float64(opts.PerTokenRPS)),
 			healthy:     true,
 			lastRefresh: time.Now(),
+			excluded:    rs.src.PoolExcluded,
 		})
 	}
 	poolSize := len(slots)
@@ -258,8 +262,11 @@ func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 			// Sain ET hors cooldown 429 ? Sinon remettre dans le canal et tenter
 			// le suivant. Un slot rate-limité (429 sur SON token) est skippé sans
 			// pénaliser les autres — fini le scorched-earth d'un 429 isolé. La
-			// capture des tokens/limiter est cohérente (sous un seul RLock).
-			resolved, gamertag, limiter, ok := slot.leaseData(time.Now())
+			// capture des tokens/limiter est cohérente (sous un seul RLock). Un slot dont
+			// le propriétaire n'a pas consenti à la mise en commun n'est jamais servi ici :
+			// le test partage le verrou des autres conditions, donc un retrait prend effet
+			// à la requête suivante.
+			resolved, gamertag, limiter, ok := slot.sharedLeaseData(time.Now())
 			if !ok {
 				p.anyPublicChan <- slotIdx
 				continue
@@ -373,6 +380,7 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 		s.xuid = src.XUID
 		s.healthy = true
 		s.lastRefresh = time.Now()
+		s.excluded = src.PoolExcluded
 		s.mu.Unlock()
 		slog.InfoContext(ctx, "pool: slot updated",
 			"gamertag", src.Gamertag, "source", src.Source)
@@ -392,6 +400,7 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 		limiter:     ratebudget.ForXUID(src.XUID, float64(p.perTokenRPS)),
 		healthy:     true,
 		lastRefresh: time.Now(),
+		excluded:    src.PoolExcluded,
 	}
 	newIdx := len(p.slots)
 	p.slots = append(p.slots, newSlot)
