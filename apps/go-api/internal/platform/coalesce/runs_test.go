@@ -1,4 +1,4 @@
-package sync
+package coalesce
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 // et sont absorbées : N demandes déposées pendant un recalcul en cours produisent UN seul
 // recalcul de rattrapage, lancé après leur dépôt.
 func TestRecomputeCoalescer_CoalescesConcurrentRequests(t *testing.T) {
-	var c recomputeCoalescer
+	var c Runs
 	var running, maxRunning, runs atomic.Int32
 	firstStarted := make(chan struct{})
 	releaseFirst := make(chan struct{})
@@ -38,7 +38,7 @@ func TestRecomputeCoalescer_CoalescesConcurrentRequests(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := c.do(context.Background(), "player-1", fn); err != nil {
+		if err := c.Do(context.Background(), "player-1", fn); err != nil {
 			t.Errorf("premier appel: %v", err)
 		}
 	}()
@@ -49,7 +49,7 @@ func TestRecomputeCoalescer_CoalescesConcurrentRequests(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := c.do(context.Background(), "player-1", fn); err != nil {
+			if err := c.Do(context.Background(), "player-1", fn); err != nil {
 				t.Errorf("appel tardif: %v", err)
 			}
 		}()
@@ -69,19 +69,19 @@ func TestRecomputeCoalescer_CoalescesConcurrentRequests(t *testing.T) {
 
 // Des clés distinctes ne s'attendent pas.
 func TestRecomputeCoalescer_DistinctKeysRunIndependently(t *testing.T) {
-	var c recomputeCoalescer
+	var c Runs
 	started := make(chan struct{})
 	release := make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		done <- c.do(context.Background(), "a", func(context.Context) error {
+		done <- c.Do(context.Background(), "a", func(context.Context) error {
 			close(started)
 			<-release
 			return nil
 		})
 	}()
 	<-started
-	if err := c.do(context.Background(), "b", func(context.Context) error { return nil }); err != nil {
+	if err := c.Do(context.Background(), "b", func(context.Context) error { return nil }); err != nil {
 		t.Fatalf("la clé b a été bloquée par la clé a: %v", err)
 	}
 	close(release)
@@ -93,13 +93,13 @@ func TestRecomputeCoalescer_DistinctKeysRunIndependently(t *testing.T) {
 // L'erreur du recalcul est rendue à tous les demandeurs absorbés, et l'état est purgé :
 // la demande suivante relance un recalcul.
 func TestRecomputeCoalescer_SharesErrorAndResets(t *testing.T) {
-	var c recomputeCoalescer
+	var c Runs
 	boom := errors.New("boom")
-	if err := c.do(context.Background(), "k", func(context.Context) error { return boom }); !errors.Is(err, boom) {
+	if err := c.Do(context.Background(), "k", func(context.Context) error { return boom }); !errors.Is(err, boom) {
 		t.Fatalf("err = %v, attendu boom", err)
 	}
 	var runs atomic.Int32
-	if err := c.do(context.Background(), "k", func(context.Context) error { runs.Add(1); return nil }); err != nil {
+	if err := c.Do(context.Background(), "k", func(context.Context) error { runs.Add(1); return nil }); err != nil {
 		t.Fatal(err)
 	}
 	if runs.Load() != 1 {
@@ -115,13 +115,13 @@ func TestRecomputeCoalescer_SharesErrorAndResets(t *testing.T) {
 
 // Un demandeur absorbé dont le contexte est annulé cesse d'attendre sans interrompre le recalcul.
 func TestRecomputeCoalescer_WaiterCancellation(t *testing.T) {
-	var c recomputeCoalescer
+	var c Runs
 	started := make(chan struct{})
 	release := make(chan struct{})
 	done := make(chan error, 1)
 	var once sync.Once
 	go func() {
-		done <- c.do(context.Background(), "k", func(context.Context) error {
+		done <- c.Do(context.Background(), "k", func(context.Context) error {
 			// La demande annulée a tout de même été notée : un rattrapage suit, inoffensif.
 			once.Do(func() { close(started) })
 			<-release
@@ -131,7 +131,7 @@ func TestRecomputeCoalescer_WaiterCancellation(t *testing.T) {
 	<-started
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
-	if err := c.do(ctx, "k", func(context.Context) error { return nil }); !errors.Is(err, context.DeadlineExceeded) {
+	if err := c.Do(ctx, "k", func(context.Context) error { return nil }); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("err = %v, attendu DeadlineExceeded", err)
 	}
 	close(release)
@@ -142,19 +142,19 @@ func TestRecomputeCoalescer_WaiterCancellation(t *testing.T) {
 
 // Un recalcul en échec est retenu jusqu'au prochain succès.
 func TestRecomputeCoalescer_RemembersFailedLastRun(t *testing.T) {
-	var c recomputeCoalescer
-	if c.failedLast("k") {
+	var c Runs
+	if c.FailedLast("k") {
 		t.Fatal("clé vierge déclarée en échec")
 	}
-	_ = c.do(context.Background(), "k", func(context.Context) error { return errors.New("boom") })
-	if !c.failedLast("k") {
+	_ = c.Do(context.Background(), "k", func(context.Context) error { return errors.New("boom") })
+	if !c.FailedLast("k") {
 		t.Fatal("échec non retenu")
 	}
-	if c.failedLast("autre") {
+	if c.FailedLast("autre") {
 		t.Fatal("l'échec d'une clé déborde sur une autre")
 	}
-	_ = c.do(context.Background(), "k", func(context.Context) error { return nil })
-	if c.failedLast("k") {
+	_ = c.Do(context.Background(), "k", func(context.Context) error { return nil })
+	if c.FailedLast("k") {
 		t.Fatal("échec toujours retenu après un succès")
 	}
 }

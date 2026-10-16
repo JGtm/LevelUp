@@ -1,25 +1,26 @@
-package sync
+// Package coalesce — recalculs coûteux sérialisés et absorbés par clé.
+package coalesce
 
 import (
 	"context"
 	"sync"
 )
 
-// recomputeCoalescer sérialise et absorbe les recalculs demandés pour une même clé
+// Runs sérialise et absorbe les recalculs demandés pour une même clé
 // (une base joueur). Une exclusion de match déclenche un recalcul de tout l'historique du
 // joueur : des demandes répétées ne doivent ni s'empiler ni tourner en parallèle.
 //
-// Contrat de do : à son retour, un recalcul DÉMARRÉ APRÈS le dépôt de la demande s'est
+// Contrat de Do : à son retour, un recalcul DÉMARRÉ APRÈS le dépôt de la demande s'est
 // terminé. Le drapeau d'exclusion étant persisté avant l'appel, ce recalcul le voit.
 //   - aucun recalcul en cours pour la clé : fn tourne dans l'appelant ;
 //   - un recalcul est en cours : la demande est notée (dirty) et attend ; à la fin du
 //     recalcul en cours, UN seul recalcul de rattrapage sert toutes les demandes notées.
 //
 // Les demandeurs absorbés reçoivent l'erreur du dernier recalcul. Une clé dont le dernier
-// recalcul a échoué est retenue (failedLast) jusqu'au prochain succès : l'appelant sait
+// recalcul a échoué est retenue (FailedLast) jusqu'au prochain succès : l'appelant sait
 // alors qu'une demande identique à l'état déjà persisté doit tout de même recalculer.
 // Sa valeur zéro est prête.
-type recomputeCoalescer struct {
+type Runs struct {
 	mu     sync.Mutex
 	runs   map[string]*coalescedRun
 	failed map[string]struct{}
@@ -32,9 +33,9 @@ type coalescedRun struct {
 	err   error         // erreur du dernier recalcul, lisible après done
 }
 
-// do exécute fn pour key en respectant le contrat ci-dessus. ctx borne l'attente d'un
+// Do exécute fn pour key en respectant le contrat ci-dessus. ctx borne l'attente d'un
 // demandeur absorbé ; il n'interrompt pas le recalcul en cours.
-func (c *recomputeCoalescer) do(ctx context.Context, key string, fn func(context.Context) error) error {
+func (c *Runs) Do(ctx context.Context, key string, fn func(context.Context) error) error {
 	c.mu.Lock()
 	if run, busy := c.runs[key]; busy {
 		run.dirty = true
@@ -77,8 +78,8 @@ func (c *recomputeCoalescer) do(ctx context.Context, key string, fn func(context
 	}
 }
 
-// failedLast dit si le dernier recalcul de key a échoué (et qu'aucun n'a réussi depuis).
-func (c *recomputeCoalescer) failedLast(key string) bool {
+// FailedLast dit si le dernier recalcul de key a échoué (et qu'aucun n'a réussi depuis).
+func (c *Runs) FailedLast(key string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	_, failed := c.failed[key]

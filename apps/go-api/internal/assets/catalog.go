@@ -43,11 +43,11 @@ func NewMetadataCatalog(store *DuckDBIndexStore, titleKnown func(titleID string)
 // Requêtes de présence. Une table absente ou une base indisponible laisse
 // l'identifiant inconnu (fermé par défaut), avec un journal.
 const (
-	qMedalDefinition = `SELECT 1 FROM medal_definitions WHERE medal_name_id = ? LIMIT 1`
-	qMedalWaypoint   = `SELECT 1 FROM waypoint_medals_raw WHERE title_id = ? AND medal_id = ? LIMIT 1`
-	qMapCatalog      = `SELECT 1 FROM maps_catalog WHERE title_slug = ? AND map_asset_id = ? LIMIT 1`
-	qMapTranslation  = `SELECT 1 FROM asset_translations WHERE asset_type = 'map' AND asset_id = ? LIMIT 1`
-	qMapImage        = `SELECT 1 FROM map_images_registry WHERE title_id = ? AND map_id = ? LIMIT 1`
+	qMedalDefinition  = `SELECT 1 FROM medal_definitions WHERE medal_name_id = ? LIMIT 1`
+	qMedalWaypoint    = `SELECT 1 FROM waypoint_medals_raw WHERE title_id = ? AND medal_id = ? LIMIT 1`
+	qMapCatalog       = `SELECT 1 FROM maps_catalog WHERE title_slug = ? AND map_asset_id = ? LIMIT 1`
+	qAssetTranslation = `SELECT 1 FROM asset_translations WHERE asset_type = ? AND asset_id = ? LIMIT 1`
+	qMapImage         = `SELECT 1 FROM map_images_registry WHERE title_id = ? AND map_id = ? LIMIT 1`
 )
 
 // Classify implémente Catalog.
@@ -81,7 +81,7 @@ func (c *MetadataCatalog) classifyMedal(ctx context.Context, ref Ref) Verdict {
 func (c *MetadataCatalog) classifyMap(ctx context.Context, ref Ref) Verdict {
 	if c.any(ctx, ref,
 		probe{qMapCatalog, []any{ref.TitleID, ref.ID}},
-		probe{qMapTranslation, []any{ref.ID}},
+		probe{qAssetTranslation, []any{"map", ref.ID}},
 		probe{qMapImage, []any{ref.TitleID, ref.ID}}) {
 		return VerdictKnown
 	}

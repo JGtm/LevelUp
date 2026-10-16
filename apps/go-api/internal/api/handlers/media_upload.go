@@ -129,7 +129,7 @@ func (h *MediaHandler) acquireUploadSlot(ctx context.Context, w http.ResponseWri
 			"wait", wait.String(), "in_flight", pool.InUse(), "err", err)
 		w.Header().Set(headerRetryAfter, uploadBusyRetryAfterSec)
 		writeError(ctx, w, http.StatusServiceUnavailable, "upload_busy",
-			"serveur occupé par d'autres envois, réessayez dans un instant")
+			"server busy with other uploads, retry shortly")
 		return nil, false
 	}
 	return release, true

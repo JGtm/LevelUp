@@ -26,7 +26,7 @@
 // Base partagée : LUE SEULEMENT. Les notes et le LUSR s'écrivent en base joueur
 // (persisters INSERT-only) ; le recalcul n'acquiert donc jamais le writer partagé (une
 // bascule en écriture ferait répondre 503 aux lecteurs de tout le site pendant 2 à 10 s).
-// Des demandes répétées pour un même joueur sont absorbées (recomputeCoalescer).
+// Des demandes répétées pour un même joueur sont absorbées (coalesce.Runs).
 package sync
 
 import (
@@ -35,6 +35,7 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/platform/coalesce"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
@@ -76,7 +77,7 @@ func NewMatchRecomputer(
 // uniquement (le filtrage se fait via le flag `is_excluded` déjà persisté). Les demandes
 // simultanées pour le même joueur sont absorbées : jamais deux recalculs en parallèle.
 func (r *MatchRecomputer) RecomputeAfterExclusion(ctx context.Context, matchID string) error {
-	return exclusionRecomputes.do(ctx, r.playerDBPath, func(ctx context.Context) error {
+	return exclusionRecomputes.Do(ctx, r.playerDBPath, func(ctx context.Context) error {
 		return r.recompute(ctx, matchID)
 	})
 }
@@ -84,11 +85,11 @@ func (r *MatchRecomputer) RecomputeAfterExclusion(ctx context.Context, matchID s
 // RecomputePending dit si le dernier recalcul de ce joueur a échoué : une demande
 // d'exclusion identique à l'état déjà persisté doit alors recalculer quand même.
 func (r *MatchRecomputer) RecomputePending() bool {
-	return exclusionRecomputes.failedLast(r.playerDBPath)
+	return exclusionRecomputes.FailedLast(r.playerDBPath)
 }
 
 // exclusionRecomputes absorbe les recalculs d'exclusion par base joueur, pour tout le process.
-var exclusionRecomputes recomputeCoalescer
+var exclusionRecomputes coalesce.Runs
 
 func (r *MatchRecomputer) recompute(ctx context.Context, matchID string) error {
 	start := time.Now()

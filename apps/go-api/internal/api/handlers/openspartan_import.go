@@ -168,7 +168,7 @@ func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Re
 func (h *OpenSpartanImportHandler) refuseActiveImport(ctx context.Context, w http.ResponseWriter, xuid string) {
 	slog.WarnContext(ctx, "openspartan_import_refused_already_active", "xuid", xuid)
 	writeError(ctx, w, http.StatusConflict, "import_already_active",
-		"un import OpenSpartan est déjà en cours pour ce compte")
+		"an OpenSpartan import is already running for this account")
 }
 
 // saveUploadedDB extracts the "db" multipart field into a uniquely-named
