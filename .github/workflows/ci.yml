@@ -9,6 +9,24 @@ name: CI
 permissions:
   contents: read
 
+# FORME DU WORKFLOW (chantier b1016, étape E1) — durée visée : 15 à 20 minutes, bornée par le
+# plus long lot Go (les deux moitiés du paquet `grammar`) plus la fusion ; le résumé du job
+# `go-coverage-merge` donne la durée de chaque lot, c'est la mesure qui sert à rééquilibrer.
+#   - la suite Go tourne en LOTS parallèles (job `go-coverage`, matrice), chacun sur sa machine
+#     en `-p 1` (contrainte DuckDB mono-process, M2 2026-07-05) ; la définition des lots vit
+#     dans .github/ci/go-shards.txt, le job `go-coverage-merge` rassemble verdicts et profils ;
+#   - Vitest tourne en 3 lots (job `web-tests`) fusionnés par `web-coverage-merge` ;
+#   - sur une branche de travail, le job `changes` saute les jobs de l'autre pile quand le
+#     push ne touche qu'une pile (cf. le job) ; `main`, `feat/v75` et les PR rejouent TOUT.
+
+# Un seul run par branche à la fois : un push qui en suit un autre annule le run périmé, sauf sur
+# `main` et `feat/v75` où chaque commit doit rendre son verdict (le déploiement attend celui du
+# run de `main`, cf. `attente-ci` de deploy.yml). Le groupe porte la ref : les runs de PR
+# (refs/pull/N/merge) et de push ne s'annulent pas entre eux.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}
+
 on:
   # Push : couvre les conventions de branches réellement utilisées dans le repo
   # (git branch -r au 2026-07-12). Historiquement seuls feature/* / refactor/* /
@@ -35,7 +53,7 @@ on:
     # PRUDENCE (2026-07-26) : on ignore UNIQUEMENT le Markdown sous .ai/ —
     # `.ai/baselines/**` (tests_pre_migration.jsonl, coverage_pre_migration.*) est
     # une ENTRÉE du gate de non-régression (step « Vérifier suite baseline de tests
-    # pré-migration » du job go-coverage) : l'ignorer laisserait passer une
+    # pré-migration » du job go-coverage-merge) : l'ignorer laisserait passer une
     # modification de baseline sans la rejouer. Ne PAS remplacer par `.ai/**`.
     # Le motif `**.md` (et non `**/*.md`) est celui documenté par GitHub pour
     # « tous les .md à toute profondeur » ; s'il ne matchait pas, la CI tournerait
@@ -57,8 +75,82 @@ jobs:
   # serveur dev qui ne rend jamais la main) squattait un runner des heures avant
   # d'être tué, et le verdict de la CI arrivait trop tard pour servir. Chaque
   # valeur = ~2x la durée observée sur main, arrondie.
+
+  # Filtre de chemins (E1.6) : dit quelle pile (Go, web) un push de branche de travail touche.
+  #
+  # CONTRAT, tenu par archlint/ci_paths_filter_test.go : tout job qui dépend de `changes`
+  # (`needs: changes`) porte dans son `if:` le contournement
+  #     github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+  #     || github.ref == 'refs/heads/feat/v75'
+  # AVANT la lecture de la sortie `go` / `web`. Sur `main`, `feat/v75` et les PR, TOUT tourne,
+  # inconditionnellement : le filtre n'existe que pour les branches de travail, et un
+  # défaut du filtre ne peut donc jamais laisser passer du code non testé jusqu'à la production
+  # (le déploiement attend le run de `main`). Les jobs govulncheck et npm-audit n'en dépendent
+  # pas (ci_workflows_security_test.go leur interdit toute condition).
+  #
+  # Un job SAUTÉ qui figure dans `needs` d'un autre le fait sauter : les jobs de fusion
+  # (`go-coverage-merge`, `web-coverage-merge`) lisent le résultat de leur matrice et se
+  # sautent eux-mêmes quand elle l'est. Un run dont des jobs sont sautés conclut `success`, ce
+  # que `attente-ci` (deploy.yml) accepte ; sur `main` rien n'est sauté.
+  #
+  # Comparaison à `main` (base par défaut de l'action), PAS au push précédent : un run annulé
+  # par `concurrency` ou rouge ne doit pas laisser un changement Go non testé derrière un push
+  # web ultérieur.
+  #
+  # Classement des fichiers modifiés (prédicat `some-with-excludes` : au moins un motif retenu et
+  # aucun motif exclu). Conservateur : dans le doute, les deux piles tournent.
+  #   web      apps/web/**
+  #   go       apps/go-api/** hors openapi.yaml
+  #   croisee  le contrat OpenAPI (relie les deux piles) et les miroirs TypeScript que des tests
+  #            Go relisent (parité des capacités, variations sonores, familles d'objectifs,
+  #            fixtures de contrat du rejeu) : touchent les deux piles
+  #   autre    tout le reste (.github/, scripts/, Makefile, docs/, config/, tools/, ...) : les
+  #            tests Go et les lints web lisent des fichiers hors de leur dossier
+  #   tous     au moins un fichier modifié (sinon, rien à classer : tout tourne)
+  # Les sorties sont des booléens, jamais la liste des fichiers : sur une branche loin de `main`
+  # elle dépasserait la taille d'une variable d'environnement.
+  changes:
+    name: Filtre de chemins (piles touchées)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Hors branche de travail le job ne filtre rien : ses étapes sont sautées, leurs sorties sont
+    # vides et les deux expressions ci-dessous valent `true` (`tous != 'true'`).
+    outputs:
+      go: ${{ steps.fichiers.outputs.tous != 'true' || steps.fichiers.outputs.go == 'true' || steps.fichiers.outputs.croisee == 'true' || steps.fichiers.outputs.autre == 'true' }}
+      web: ${{ steps.fichiers.outputs.tous != 'true' || steps.fichiers.outputs.web == 'true' || steps.fichiers.outputs.croisee == 'true' || steps.fichiers.outputs.autre == 'true' }}
+    steps:
+      - uses: actions/checkout@v6.1.0
+        if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}
+
+      # Épinglé par SHA de commit : le tag v4.0.3 désigne directement un commit (objet non annoté).
+      - name: Fichiers modifiés par rapport à main
+        id: fichiers
+        if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          base: main
+          predicate-quantifier: some-with-excludes
+          filters: |
+            tous:
+              - '**'
+            web:
+              - 'apps/web/**'
+            go:
+              - 'apps/go-api/**'
+              - '!**/openapi.yaml'
+            croisee:
+              - '**/openapi.yaml'
+              - 'apps/web/src/lib/capabilities/**'
+              - 'apps/web/src/features/match-replay/**'
+            autre:
+              - '**'
+              - '!apps/web/**'
+              - '!apps/go-api/**'
+
   frontend:
     name: Frontend (TypeScript + Vite build)
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.web == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -135,11 +227,9 @@ jobs:
       - name: Build (Vite)
         run: npm run build
 
-      - name: Run tests (Vitest) + coverage
-        # P3.8 (revue 2026-04-29) : activation Vitest coverage en CI.
-        # Pas de ratchet pour l'instant (baseline a etablir une fois par main).
-        # Le rapport HTML est uploade en artefact pour debug.
-        run: npm run test:coverage --if-present
+      # Les tests Vitest et leur couverture tournent dans les jobs `web-tests` (3 lots) et
+      # `web-coverage-merge`, plus bas : ce job garde le typage, les lints, knip, le build et
+      # la rasterisation.
 
       # LES DEUX SEULES PREUVES DE RENDU DU REJEU — ICI, ET PAS DANS LE JOB e2e-react
       # (M1, registre d'audit du 2026-09-05). Le job `e2e-react` est gaté
@@ -174,8 +264,115 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Vitest en lots (E1.5). Chaque lot exécute 1/N des fichiers de test et écrit un rapport
+  # « blob » (résultats ET couverture brute v8) ; `web-coverage-merge` les rassemble. Le nombre
+  # de lots est celui de la matrice (`strategy.job-total`) : ajouter une valeur à `shard` suffit.
+  # `--coverage.reporter=json-summary` : un lot ne produit pas de rapport lisible (il serait
+  # partiel), seul le blob compte.
+  web-tests:
+    name: Vitest (lot ${{ matrix.shard }})
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.web == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline
+
+      # P3.8 (revue 2026-04-29) : couverture Vitest en CI, sans ratchet (baseline à établir).
+      - name: Vitest (lot ${{ matrix.shard }}/${{ strategy.job-total }})
+        run: >
+          npx vitest run
+          --coverage --coverage.reporter=json-summary
+          --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+          --reporter=blob
+
+      - name: Upload rapport blob (Vitest)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-blob-${{ matrix.shard }}
+          path: apps/web/.vitest-reports/
+          # Le dossier commence par un point : upload-artifact@v4 exclut les fichiers cachés par
+          # défaut et ne trouverait rien à envoyer.
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 2
+
+  # Fusion des lots Vitest : verdict des tests de tous les lots + rapport de couverture HTML.
+  # Se saute quand les lots le sont (filtre de chemins), sans quoi `needs` le ferait échouer.
+  web-coverage-merge:
+    name: Vitest (fusion des lots + couverture)
+    needs: web-tests
+    if: ${{ !cancelled() && needs.web-tests.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v6.1.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline
+
+      - name: Télécharger les rapports blob
+        uses: actions/download-artifact@v4
+        with:
+          pattern: vitest-blob-*
+          merge-multiple: true
+          path: apps/web/.vitest-reports
+
+      # Un lot absent (job tué avant l'upload) fausserait la couverture et le verdict. Vitest nomme
+      # chaque blob `blob-<lot>-<total>.json` : le total écrit par les lots dit combien de blobs
+      # sont attendus, sans le répéter ici.
+      - name: Contrôler que tous les lots sont présents
+        run: |
+          shopt -s nullglob
+          ls -la .vitest-reports
+          blobs=(.vitest-reports/blob-*-*.json)
+          if [ "${#blobs[@]}" -eq 0 ]; then
+            echo "::error::aucun rapport blob Vitest"
+            exit 1
+          fi
+          totaux=$(for b in "${blobs[@]}"; do t=${b##*-}; echo "${t%.json}"; done | sort -u)
+          if [ "$(printf '%s\n' "$totaux" | grep -c .)" -ne 1 ]; then
+            echo "::error::rapports blob de totaux différents (totaux lus : $totaux)"
+            exit 1
+          fi
+          if [ "${#blobs[@]}" -ne "$totaux" ]; then
+            echo "::error::${#blobs[@]} rapport(s) blob sur $totaux attendus : un lot Vitest n'a pas rendu son rapport"
+            exit 1
+          fi
+
+      - name: Fusion des rapports + couverture
+        run: npx vitest --merge-reports --coverage
+
       - name: Upload coverage report (Vitest)
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: web-coverage-html
@@ -185,6 +382,8 @@ jobs:
 
   go-build:
     name: Go Build + Test
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -281,6 +480,8 @@ jobs:
   # seul paquet grammar, mini-bobines du depot, aucune base. CGO obligatoire pour `-race`.
   film-race:
     name: Film race (grammar, -race cible)
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -302,6 +503,8 @@ jobs:
 
   go-lint:
     name: Go Lint (golangci-lint)
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -367,6 +570,8 @@ jobs:
 
   go-lease-enforcement:
     name: Go Lease Enforcement (ADR 0013)
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     defaults:
@@ -439,25 +644,39 @@ jobs:
       - name: npm audit (production, seuil high)
         run: npm audit --omit=dev --audit-level=high
 
-  # go-baseline-tests SUPPRIMÉ (D3, 2026-07-26) : ce job rejouait `go test ./...`
-  # avec les mêmes tags, le même env et le même périmètre que go-coverage ci-dessous
-  # (seul le `-timeout` par package différait : 300s contre 600s, cf. le step de test) —
-  # deux exécutions complètes de la MÊME suite (~22 min chacune) à chaque push. La suite
-  # ne tourne plus qu'UNE fois : go-coverage produit `-json` (JSONL) EN PLUS du
-  # profil de couverture, et le gate de non-régression consomme ce JSONL via
-  # `check_test_baseline.sh tests --from-jsonl` (mode consommateur, aucune
-  # ré-exécution). Le mode autonome du script reste celui de `make gate-push`.
+  # La suite Go complète, en LOTS parallèles (E1), pour deux gates : le verdict de non-régression
+  # (JSONL `-json`, consommé par `check_test_baseline.sh --from-jsonl`) et le ratchet de couverture
+  # (profil `-coverprofile`). Une seule exécution de la suite sert les deux (D3, 2026-07-26 : le
+  # job go-baseline-tests qui la rejouait est supprimé).
+  #
+  # DÉCOUPAGE : .github/ci/go-shards.txt (lots, durées, listes de tests lourds de `grammar`), lu
+  # par scripts/ci_go_shard.sh. Le dernier lot est le COMPLÉMENT de `go list -tags=integration
+  # ./...` : l'union des lots couvre le module par construction, et le job de fusion le revérifie
+  # contre le JSONL. La liste des lots ci-dessous est celle du fichier (archlint/ci_go_shards_test.go).
+  #
+  # `-p 1` PAR MACHINE, NON NÉGOCIABLE (M2, 2026-07-05) : le driver DuckDB est mono-process ; en
+  # parallèle dans une même machine, platform/duckdb + sync se contendent, avortent avec des durées
+  # FANTÔMES (~28000s) et MASQUENT les vraies défaillances → faux-vert (incident 2026-07-03). Le
+  # parallélisme se prend entre machines : chaque lot est un job.
+  #
+  # `-covermode=atomic -coverpkg=./...` : les tests externes (golden, contracttest) remontent la
+  # couverture des paquets qu'ils exercent (S45 T1-2) ; le profil de chaque lot couvre tout le
+  # module, le job de fusion les additionne. `-timeout` par processus de test : valeur du fichier
+  # de définition (600 s, 900 s pour les moitiés de `grammar` qui n'ont pas de marge sous 600 s).
   go-coverage:
-    name: Go Coverage + Baseline non-régression (CGO_ENABLED=1 — ./... complet)
+    name: Go Coverage (lot ${{ matrix.lot }})
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
     # ubuntu-latest dispose de GCC — CGO_ENABLED=1 fonctionne sans config supplémentaire
     runs-on: ubuntu-latest
-    # 45 min : le job enchaîne 2 suites `-p 1` (sérialisées, contrainte DuckDB
-    # mono-process) dont chaque package plafonne à 600 s. Inchangé par la fusion du
-    # gate baseline (D3) : le gate ajouté est une analyse de JSONL (quelques
-    # secondes), c'est l'ANCIEN job dédié de 40 min qui disparaît.
-    # 45 -> 60 (2026-09-22) : 35 a 41 min quand il passe, ANNULE a 45 min deux fois de suite sur
-    # feat/v75 959877c36 (serie 5 du decodeur + sections transverses). Retour a 45 : 3 runs < 35 min.
-    timeout-minutes: 60
+    # ~2x le plus long lot estimé (~12 min, marge pour une machine lente ou un cache froid).
+    timeout-minutes: 30
+    strategy:
+      # Un lot rouge n'annule pas les autres : le job de fusion juge l'ensemble, et un second
+      # lot rouge est une information de plus, pas du bruit.
+      fail-fast: false
+      matrix:
+        lot: [film-grammar-lourd, film-grammar-reste, film, platform, sync, reste]
     defaults:
       run:
         working-directory: apps/go-api
@@ -474,83 +693,162 @@ jobs:
       - name: Vérifier GCC (CGO requis pour DuckDB)
         run: gcc --version
 
-      # S45 T1-2 : -coverpkg=./... garantit que les tests externes (golden, contracttest)
-      # remontent la couverture des packages qu'ils exercent.
-      # S45 T3 : exclusions gen/ et msal-poc/ via coverage_filter.sh
-      # M2 (2026-07-05) : `-p 1` NON NÉGOCIABLE — le driver DuckDB est mono-process ;
-      # en parallèle (défaut), platform/duckdb + sync se contendent, avortent avec des
-      # durées FANTÔMES (~28000s) et MASQUENT les vraies défaillances → faux-vert
-      # (incident 2026-07-03). timeout 600s = marge par package une fois sérialisé.
-      #
-      # D3 (2026-07-26) — UNE seule exécution de la suite pour DEUX gates :
-      # `-json` produit le JSONL consommé par le gate de non-régression (step
-      # suivant), `-coverprofile` produit le profil consommé par le ratchet de
-      # couverture. Les flags/env sont l'UNION des deux anciennes invocations
-      # (job go-baseline-tests supprimé + ce job) : tags=integration, CGO_ENABLED=1,
-      # -p 1, -count=1, ./..., LEVELUP_DEMO_MODE / PRESTIGE_ENABLED (le troisieme,
-      # MULTI_TITLE_API_ENABLED, a ete retire le 2026-08-02 avec le flag lui-meme).
-      # SEULE divergence, tranchée volontairement : `-timeout 600s`
-      # (celui de ce job) et non `300s` (celui du script). 300 s était calibré pour
-      # un run NON instrumenté ; l'exécution fusionnée porte l'instrumentation de
-      # couverture (plus lente), un budget plus court fabriquerait des timeouts qui
-      # ne sont pas des régressions. Le mode autonome du script garde 300 s.
-      #
-      # 600 -> 900 s (2026-09-25, campagne « retours rejeu », intégration de la vague D) :
-      # run 36162837061 sur 8487a4f91, `panic: test timed out after 10m0s` dans le paquet
-      # `film/internal/grammar` (aucun test en échec, somme des tests terminés 577 s). La
-      # marche d'image-clé prouvée de la vague D (M3, D-fix) fait passer ce paquet de 57 s
-      # à 82 s NON instrumenté (jobs « Go Build + Test » ubuntu, runs 35990146841 ->
-      # 36162837061) ; sous `-covermode=atomic -coverpkg=./...` il dépasse 600 s. Cinq tests
-      # rebalayent chacun les sept bobines versionnées (70 à 81 s chacun ici). Critère de
-      # retour à 600 s : ces balayages partagent une marche mémorisée par bobine, ou le
-      # paquet repasse sous 60 s non instrumenté.
-      #
-      # `-json` retire toute sortie humaine du log : c'est le step suivant
-      # (analyse du JSONL) qui réimprime les lignes utiles en cas d'échec.
-      - name: go test avec couverture complète + JSONL (CGO + intégration)
+      # `-json` retire toute sortie humaine du log : c'est le job de fusion (analyse du JSONL)
+      # qui réimprime les lignes utiles en cas d'échec. `set +e` : le JSONL et le profil doivent
+      # être uploadés même quand la suite est rouge.
+      - name: go test du lot avec couverture + JSONL (CGO + intégration)
+        env:
+          LOT: ${{ matrix.lot }}
+          CGO_ENABLED: "1"
+          LEVELUP_DEMO_MODE: "true"
+          # P3.4 (revue 2026-04-29) : flag actif en CI pour couvrir les chemins Prestige.
+          PRESTIGE_ENABLED: "true"
         run: |
+          set -uo pipefail
+          out=$(bash ../../scripts/ci_go_shard.sh "$LOT") || {
+            echo "::error::ci_go_shard.sh refuse le lot $LOT (voir .github/ci/go-shards.txt)"
+            exit 1
+          }
+          mapfile -t args <<< "$out"
+          echo "lot $LOT : go test ${args[*]}"
           set +e
           go test \
             -json \
-            -coverprofile=coverage.raw \
+            -coverprofile="coverage.$LOT.raw" \
             -covermode=atomic \
             -coverpkg=./... \
             -tags=integration \
-            -timeout 900s \
             -count=1 \
             -p 1 \
-            ./... > baseline_current.jsonl 2>&1
+            "${args[@]}" > "baseline_$LOT.jsonl" 2>&1
           rc=$?
           set -e
-          echo "go test: exit=$rc, $(wc -l < baseline_current.jsonl) lignes JSONL"
+          echo "go test: exit=$rc, $(wc -l < "baseline_$LOT.jsonl") lignes JSONL, ${SECONDS}s"
+          echo "- lot \`$LOT\` : exit $rc, ${SECONDS} s" >> "$GITHUB_STEP_SUMMARY"
           if [ "$rc" -ne 0 ]; then
-            echo "::warning::Suite rouge (exit $rc). Le détail lisible (tests fautifs + leur sortie) est imprimé par le step « Vérifier suite baseline de tests pré-migration » ci-dessous, qui tourne malgré cet échec."
+            echo "::warning::Lot $LOT rouge (exit $rc). Le détail lisible est imprimé par le job « Go Coverage + Baseline » (fusion), qui juge l'ensemble des lots."
           fi
           exit $rc
+
+      # Pièces du job de fusion. `if: !cancelled()` : un lot rouge doit livrer son JSONL.
+      - name: Upload JSONL + profil du lot
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-lot-${{ matrix.lot }}
+          path: |
+            apps/go-api/baseline_${{ matrix.lot }}.jsonl
+            apps/go-api/coverage.${{ matrix.lot }}.raw
+          if-no-files-found: warn
+          retention-days: 3
+
+  # Fusion des lots Go : ex-job unique `go-coverage` (verdict de non-régression + ratchet de
+  # couverture + rapport HTML), désormais alimenté par les artefacts des lots. Se saute quand les
+  # lots le sont (filtre de chemins). `!cancelled()` et non `always()` : un run annulé n'a plus
+  # d'artefacts à fusionner ; un lot rouge, lui, doit être jugé ici.
+  go-coverage-merge:
+    name: Go Coverage + Baseline non-régression (fusion des lots)
+    needs: go-coverage
+    if: ${{ !cancelled() && needs.go-coverage.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v6.1.0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/go-api/go.mod
+          cache-dependency-path: apps/go-api/go.sum
+
+      - name: Télécharger les artefacts des lots
+        uses: actions/download-artifact@v4
+        with:
+          pattern: go-lot-*
+          merge-multiple: true
+          path: apps/go-api/lots
+
+      # Contrôle d'ensemble (D-3) : un lot sans artefact, un paquet que personne n'a exécuté ou un
+      # paquet exécuté qui n'existe plus dans le module = échec nommé, jamais une suite plus petite
+      # qui passe au vert. L'ensemble de référence est `go list -tags=integration ./...`, la même
+      # énumération que `go test ... ./...`. Tout paquet du module apparaît dans le JSONL (même
+      # sans test : événement `skip` « no test files »), dont ceux qui ne compilent pas
+      # (`build-fail`, `fail`), d'où la lecture du champ `Package` de tous les événements.
+      - name: Concaténer les JSONL et contrôler l'ensemble des paquets
         env:
           CGO_ENABLED: "1"
-          LEVELUP_DEMO_MODE: "true"
-          # P3.4 (revue 2026-04-29) : flag active en CI pour couvrir les chemins
-          # Prestige. MULTI_TITLE_API_ENABLED retire le 2026-08-02 (v7.3 lot 2) :
-          # les routes multi-titres sont desormais montees sans condition.
-          PRESTIGE_ENABLED: "true"
+        run: |
+          set -euo pipefail
+          ls -la lots
+          echo "## Lots Go" >> "$GITHUB_STEP_SUMMARY"
+          manquants_lots=0
+          for lot in $(bash ../../scripts/ci_go_shard.sh --lots); do
+            if [ ! -s "lots/baseline_$lot.jsonl" ] || [ ! -f "lots/coverage.$lot.raw" ]; then
+              echo "::error::lot $lot : JSONL ou profil absent (job tué avant l'upload, ou lot non exécuté)"
+              manquants_lots=$((manquants_lots + 1))
+            fi
+          done
+          cat lots/baseline_*.jsonl > baseline_current.jsonl
+          grep -a -o '"Package":"[^"]*"' baseline_current.jsonl | sed 's/^"Package":"//; s/"$//' | sort -u > paquets_executes.txt
+          go list -tags=integration ./... | tr -d '\r' | sort -u > paquets_module.txt
+          comm -23 paquets_module.txt paquets_executes.txt > paquets_non_executes.txt
+          comm -13 paquets_module.txt paquets_executes.txt > paquets_en_trop.txt
+          echo "paquets du module : $(wc -l < paquets_module.txt), exécutés : $(wc -l < paquets_executes.txt)"
+          echo "- paquets du module : $(wc -l < paquets_module.txt), exécutés : $(wc -l < paquets_executes.txt)" >> "$GITHUB_STEP_SUMMARY"
+          if [ -s paquets_non_executes.txt ]; then
+            echo "::error::paquets du module que AUCUN lot n'a exécutés :"
+            sed 's/^/    /' paquets_non_executes.txt
+          fi
+          if [ -s paquets_en_trop.txt ]; then
+            echo "::error::paquets exécutés qui ne sont plus dans le module :"
+            sed 's/^/    /' paquets_en_trop.txt
+          fi
+          if [ "$manquants_lots" -ne 0 ] || [ -s paquets_non_executes.txt ] || [ -s paquets_en_trop.txt ]; then
+            exit 1
+          fi
+
+      # Durée par lot (somme des durées de paquet) : la mesure qui sert à rééquilibrer
+      # .github/ci/go-shards.txt. Affichage seul.
+      - name: Durées par lot et paquets les plus longs
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo ""
+            echo "| lot | paquets | secondes de test |"
+            echo "|---|---|---|"
+            for f in lots/baseline_*.jsonl; do
+              lot=$(basename "$f" .jsonl); lot=${lot#baseline_}
+              grep -a '"Action":"\(pass\|fail\)"' "$f" | grep -av '"Test":' \
+                | sed -n 's/.*"Package":"\([^"]*\)","Elapsed":\([0-9.]*\).*/\2 \1/p' \
+                | awk -v lot="$lot" '{s+=$1} END{printf "| %s | %d | %.0f |\n", lot, NR, s}'
+            done
+            echo ""
+            echo "Paquets les plus longs :"
+            echo ""
+            grep -a -h '"Action":"\(pass\|fail\)"' lots/baseline_*.jsonl | grep -av '"Test":' \
+              | sed -n 's/.*"Package":"\([^"]*\)","Elapsed":\([0-9.]*\).*/\2 \1/p' \
+              | sort -rn | head -8 | sed 's/^/- /'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Gate de NON-RÉGRESSION — ex-job `go-baseline-tests`, fusionné ici (D3).
       # Contrôles : présence de TOUS les tests de .ai/baselines/tests_pre_migration.jsonl,
       # aucun test en échec, aucun package en échec hors test. Mode CONSOMMATEUR
-      # (`--from-jsonl`) : analyse le JSONL du step précédent, ne relance RIEN.
+      # (`--from-jsonl`) : analyse le JSONL concaténé des lots, ne relance RIEN.
       #
-      # `if: always()` NON NÉGOCIABLE : ce gate doit rendre son verdict même quand
-      # le `go test` est sorti non-zéro — c'est précisément là qu'il diagnostique
-      # (test disparu, package qui ne compile plus) et qu'il réimprime la sortie
-      # humaine que `-json` a retirée du log.
+      # `!cancelled()` NON NÉGOCIABLE : ce gate doit rendre son verdict même quand un lot est
+      # rouge — c'est précisément là qu'il diagnostique (test disparu, package qui ne compile
+      # plus) et qu'il réimprime la sortie humaine que `-json` a retirée du log.
       - name: Vérifier suite baseline de tests pré-migration
-        if: always()
-        run: bash ../../scripts/check_test_baseline.sh tests --from-jsonl baseline_current.jsonl
+        if: ${{ !cancelled() }}
+        run: |
+          [ -s baseline_current.jsonl ] || cat lots/baseline_*.jsonl > baseline_current.jsonl
+          bash ../../scripts/check_test_baseline.sh tests --from-jsonl baseline_current.jsonl
 
-      # Sans cet artefact, un gate rouge n'était pas diagnosticable : le JSONL du
-      # run vivait dans un mktemp détruit à la sortie du script. Uniquement en
-      # échec (le fichier pèse plusieurs Mo et n'a aucun intérêt quand c'est vert).
+      # Sans cet artefact, un gate rouge n'était pas diagnosticable. Uniquement en échec (le
+      # fichier pèse plusieurs Mo et n'a aucun intérêt quand c'est vert).
       - name: Upload JSONL du run courant (diagnostic)
         if: failure()
         uses: actions/upload-artifact@v4
@@ -560,12 +858,34 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      # Fusion des profils (D-4) : UNE ligne `mode: atomic`, puis tous les blocs de tous les lots.
+      # `go tool cover` additionne les blocs identiques (chaque lot instrumente tout le module ;
+      # un bloc couvert dans un lot et pas dans l'autre compte comme couvert). Un profil d'un autre
+      # mode ferait un total faux : refusé.
+      - name: Fusionner les profils de couverture
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          profils=(lots/coverage.*.raw)
+          if [ "${#profils[@]}" -eq 0 ]; then
+            echo "aucun profil de lot (les go test ont échoué avant de l'écrire) — fusion sautée"
+            exit 0
+          fi
+          for f in "${profils[@]}"; do
+            [ "$(head -1 "$f")" = "mode: atomic" ] || { echo "::error::$f : en-tête inattendu « $(head -1 "$f") » (mode: atomic attendu)"; exit 1; }
+          done
+          { echo "mode: atomic"; for f in "${profils[@]}"; do tail -n +2 "$f"; done; } > coverage.raw
+          echo "profil fusionné : $(wc -l < coverage.raw) lignes pour ${#profils[@]} lot(s)"
+
       # S45 T3 : filtrer internal/api/gen/ et cmd/msal-poc/ du profil
       - name: Filtrer exclusions (gen/ + msal-poc/)
-        run: bash scripts/coverage_filter.sh coverage.raw > coverage.out
+        run: |
+          [ -f coverage.raw ] || { echo "coverage.raw absent — étape sautée"; exit 0; }
+          bash scripts/coverage_filter.sh coverage.raw > coverage.out
 
       # Ratchet via coverage_check.sh — le SEUIL FAIT FOI dans
-      # apps/go-api/coverage_baseline.txt (source unique) : valeur actuelle 69.0.
+      # apps/go-api/coverage_baseline.txt (source unique).
       # Historique : montée progressive S45→15%, S46→35%, S47→55%, S48→70%,
       # S49→76%, puis 84.5% ; ABAISSÉE à 69.0 le 2026-05-22 (commit d1631dbaa).
       # Cause : coverage_filter.sh a étendu ses exclusions à cmd/* (56 outils CLI,
@@ -578,25 +898,36 @@ jobs:
       # rien ne commite ce fichier, l'écriture reste locale au runner ; la valeur
       # qui fait foi est donc celle versionnée.
       - name: Vérifier ratchet couverture (vs coverage_baseline.txt)
-        run: bash scripts/coverage_check.sh coverage.out coverage_baseline.txt
+        run: |
+          [ -f coverage.out ] || { echo "::error::coverage.out absent : aucun profil de lot à vérifier"; exit 1; }
+          bash scripts/coverage_check.sh coverage.out coverage_baseline.txt
         env:
           CI: "true"
           GITHUB_REF: ${{ github.ref }}
 
+      # S51 : internal/sync est exclu du profil filtré (coverage_filter.sh) — sa couverture réelle
+      # se lit sur le profil fusionné NON filtré. Affichage seul, ce n'est pas un gate.
+      - name: Afficher couverture internal/sync
+        if: ${{ !cancelled() }}
+        run: |
+          [ -f coverage.raw ] || { echo "coverage.raw absent — étape sautée"; exit 0; }
+          { head -1 coverage.raw; grep -a '/internal/sync/' coverage.raw; } > cov_sync.out
+          go tool cover -func=cov_sync.out | tail -5
+
       # S45 gate : rapport HTML accessible en artifact CI
-      # `if: always()` volontaire (on veut le rapport même quand le ratchet échoue),
-      # MAIS coverage.out n'existe pas quand le `go test` a échoué avant de l'écrire :
+      # `!cancelled()` volontaire (on veut le rapport même quand le ratchet échoue),
+      # MAIS coverage.out n'existe pas quand les `go test` ont échoué avant de l'écrire :
       # `go tool cover` sortait alors en erreur et ajoutait un « exit code 2 »
       # PARASITE après le vrai échec, brouillant le diagnostic. D'où la garde.
       - name: Générer rapport HTML
         run: |
           [ -f coverage.out ] || { echo "coverage.out absent (go test a échoué) — étape sautée"; exit 0; }
           go tool cover -html=coverage.out -o coverage.html
-        if: always()
+        if: ${{ !cancelled() }}
 
       - name: Upload rapport HTML (artifact 30j)
         uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: go-coverage-html
           path: apps/go-api/coverage.html
@@ -604,49 +935,16 @@ jobs:
 
       - name: Upload profil coverage.out
         uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: go-coverage-profile
           path: apps/go-api/coverage.out
           retention-days: 7
 
-      # S51 : internal/sync absent du profil ./... (angle mort identifié audit Phase 11).
-      # Ce step isole le package sync pour mesurer sa couverture réelle.
-      - name: go test couverture internal/sync (CGO + intégration)
-        run: |
-          go test \
-            -coverprofile=cov_sync.out \
-            -covermode=atomic \
-            -coverpkg=./internal/sync/... \
-            -tags=integration \
-            -timeout 600s \
-            -count=1 \
-            -p 1 \
-            ./internal/sync/...
-        env:
-          CGO_ENABLED: "1"
-          LEVELUP_DEMO_MODE: "true"
-
-      - name: Afficher couverture internal/sync
-        # Meme garde que « Generer rapport HTML » (D23) : en if: always(), si le step de
-        # test a echoue, cov_sync.out n'existe pas et ce step ajoutait une seconde erreur
-        # parasite qui brouillait le diagnostic. Une etape d'affichage ne doit jamais
-        # fabriquer son propre echec.
-        run: |
-          [ -f cov_sync.out ] || { echo "cov_sync.out absent (go test a echoue) — etape sautee"; exit 0; }
-          go tool cover -func=cov_sync.out | tail -5
-        if: always()
-
-      - name: Upload profil cov_sync.out
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: go-coverage-sync
-          path: apps/go-api/cov_sync.out
-          retention-days: 7
-
   go-openapi-lint:
     name: OpenAPI Lint
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -658,6 +956,8 @@ jobs:
 
   go-contract-test:
     name: Go Contract Test (OpenAPI YAML)
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:

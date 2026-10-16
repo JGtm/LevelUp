@@ -1292,8 +1292,14 @@ npm run lint
 ### Gate local avant merge (`gate-push`)
 
 ```bash
-make gate-push               # ratchet lint Go + typecheck/lint web + baseline de tests (~25 min)
+make gate-push               # ratchet lint Go + typecheck/lint web + baseline de tests, voies film et DuckDB en parallèle (~25 min)
 ```
+
+La baseline de tests joue deux voies en parallèle : la voie film
+(`./internal/games/halo_infinite/film/...`, sans dépendance à DuckDB — garde-rail
+`internal/archlint/film_lane_duckdb_free_test.go`) et la voie DuckDB (tous les autres paquets,
+`-p 1`). La voie DuckDB fixe la durée ; `scripts/gate-push.ps1` ci-dessous exécute toujours une
+seule suite en série.
 
 Sur certains postes Windows, l'environnement git-bash casse le lien des
 binaires de test Go embarquant `libduckdb_static` (`undefined reference

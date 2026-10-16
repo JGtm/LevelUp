@@ -1236,8 +1236,14 @@ npm run lint
 ### Local merge gate (`gate-push`)
 
 ```bash
-make gate-push               # golangci-lint ratchet + web typecheck/lint + test baseline (~25 min)
+make gate-push               # golangci-lint ratchet + web typecheck/lint + test baseline, film and DuckDB lanes in parallel (~25 min)
 ```
+
+The test baseline plays two lanes in parallel: the film lane
+(`./internal/games/halo_infinite/film/...`, no DuckDB dependency — guarded by
+`internal/archlint/film_lane_duckdb_free_test.go`) and the DuckDB lane (every other package,
+`-p 1`). The DuckDB lane sets the duration; `scripts/gate-push.ps1` below still runs a single
+serial suite.
 
 On some Windows dev machines, git-bash's linker fails to resolve DuckDB's
 `libduckdb_static` when building CGO test binaries (`undefined reference

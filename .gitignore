@@ -54,6 +54,7 @@ Thumbs.db
 .coverage
 coverage.json
 apps/web/coverage/
+apps/web/.vitest-reports/
 apps/go-api/coverage.out
 apps/go-api/coverage*.out
 apps/go-api/coverage*.raw

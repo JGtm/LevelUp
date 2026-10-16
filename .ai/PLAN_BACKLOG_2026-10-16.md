@@ -96,35 +96,39 @@ Pièces : `.github/workflows/ci.yml:450-646` (job `go-coverage`), `:60-185` (`fr
 (`gate-push`). Mesures de référence : JSONL du run `38938482739` (artefact
 `go-baseline-current-jsonl`) ; durées par paquet au journal (section 4).
 
-- [ ] E1.1 `concurrency` (D-5) en tête de `ci.yml`.
-- [ ] E1.2 Lots Go : fichier de définition unique (motifs par lot ; dernier lot = complément, D-3),
+- [x] E1.1 `concurrency` (D-5) en tête de `ci.yml`.
+- [x] E1.2 Lots Go : fichier de définition unique (motifs par lot ; dernier lot = complément, D-3),
   script bash qui rend la liste de paquets d'un lot, équilibré sur les durées du JSONL de référence :
   aucun lot au-delà de 600 s de temps de test. `grammar` coupé en deux par une liste nommée de tests
   lourds (D-2). Chaque lot : `-json -coverprofile -covermode=atomic -coverpkg=./... -tags=integration
   -count=1 -p 1`, même env que l'actuel, artefacts JSONL + profil.
-- [ ] E1.3 Job de fusion (`needs` : tous les lots, `if: always()`) : contrôle d'ensemble des paquets
+- [x] E1.3 Job de fusion (`needs` : tous les lots, `if: always()`) : contrôle d'ensemble des paquets
   (D-3), `check_test_baseline.sh tests --from-jsonl` sur le JSONL concaténé, fusion des profils (D-4),
   `coverage_filter.sh`, `coverage_check.sh`, rapport HTML, affichage `internal/sync` filtré. Le step
   « go test couverture internal/sync » est supprimé.
-- [ ] E1.4 `-timeout` : 600 s par paquet partout si chaque processus `grammar` passe sous 600 s
+- [x] E1.4 `-timeout` : 600 s par paquet partout si chaque processus `grammar` passe sous 600 s
   instrumenté ; commentaire du critère mis à jour (le mémo existe, le découpage le complète).
-- [ ] E1.5 Vitest en 3 lots (`--shard=i/3 --reporter=blob`), fusion `--merge-reports --coverage`
+- [x] E1.5 Vitest en 3 lots (`--shard=i/3 --reporter=blob`), fusion `--merge-reports --coverage`
   (artefact HTML conservé) ; typecheck, lint, knip, build, rasterisation restent dans le job
   `frontend`.
-- [ ] E1.6 Filtre de chemins sur les branches de travail : job `changes` (action épinglée par SHA),
+- [x] E1.6 Filtre de chemins sur les branches de travail : job `changes` (action épinglée par SHA),
   web seul → pas de jobs Go, Go seul → pas de jobs web, `openapi.yaml`/`ci.yml`/`scripts/` → tout ;
   CI complète inconditionnelle sur `main`, `feat/v75`, `pull_request`. Garde-rail archlint : tout job
   conditionné par `changes` porte le contournement `main`/`feat/v75`/PR (test rouge prouvé sur un
   texte synthétique). `TestCIPathsIgnoreSubsetOfDeployPathsIgnore` vert.
-- [ ] E1.7 `make gate-push` : deux voies, film (`./internal/games/halo_infinite/film/...`) en
+- [x] E1.7 `make gate-push` : deux voies, film (`./internal/games/halo_infinite/film/...`) en
   processus parallèle à la voie DuckDB `-p 1` ; garde-rail : test archlint qui échoue si un paquet de
   `film/...` (tests compris) dépend du pilote DuckDB. Durée avant/après au journal.
-- [ ] E1.8 Commentaires du `ci.yml` et de `deploy.yml` (`attente-ci` : « ~25-30 min ») remis aux
+- [x] E1.8 Commentaires du `ci.yml` et de `deploy.yml` (`attente-ci` : « ~25-30 min ») remis aux
   nouvelles durées ; `docs/COMMANDS.md` (EN + FR) si `gate-push` change de forme.
 
 Gate : `go test ./internal/archlint/` ; `make gate-push` local vert ; push de la branche → run CI
 vert, durée totale ≤ 20 min, couverture fusionnée 81,0 % ± 0,1, gate baseline vert, contrôle
 d'ensemble des paquets vert ; durées par job au journal.
+
+Statut du gate (exécutant, 2026-10-17) : `go test ./internal/archlint/` VERT ; `make gate-push` VERT
+(1612 s) ; items E1.1 à E1.8 `[x]`. RESTE OUVERT, geste du pilote : push de la branche -> run CI (durée
+totale, couverture fusionnée, gate baseline, contrôle d'ensemble des paquets, durées par job).
 
 ### E2 — Connexion Xbox et vérification de participation (entrée 3) — S
 
@@ -307,6 +311,24 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
 
 - E0 (superviseur) : l'indicateur « Analyse en cours » (maquette validée le 2026-10-16) n'est inscrit
   ni au backlog ni à ce plan. Non traité ici ; à confirmer par le user avant la release.
+- E1 (exécutant, 2026-10-17) : des tests Go lisent `apps/web/src` (parité des capacités
+  `domain/title/capabilities_parity_test.go` et `capabilities_ts_mirror_test.go`,
+  `games/capabilities_front_parity_test.go`, golden TS de `cmd/weapon-sounds`,
+  `film/.../objectives/families_parite_ts_test.go`, fixtures de contrat de `film/replay`,
+  `archlint/no_hardcoded_base_weapons_test.go`). La règle « web seul -> jobs Go sautés » (E1.6) ne les
+  rejoue donc pas sur une branche de travail. Atténué : les chemins `apps/web/src/lib/capabilities/**` et
+  `apps/web/src/features/match-replay/**` comptent pour les deux piles. Trou résiduel connu : le balayage
+  des littéraux de capacités (`frontCapabilityLiterals`) lit TOUT `apps/web/src`. Rattrapé par la CI
+  inconditionnelle sur `feat/v75`, `main` et les PR ; non traité.
+- E1 : `scripts/gate-push.ps1` (maillon 2/4) joue encore UNE suite `go test ./...` en série, sans les
+  deux voies de `check_test_baseline.sh`. Hors périmètre E1.7 (le plan nomme `make gate-push`) ; docs
+  COMMANDS (EN + FR) le disent. Non traité.
+- E1 : sur `main`, `concurrency` sans annulation met un run en attente et REMPLACE le run en attente
+  précédent (comportement GitHub) : trois pushs rapprochés sur `main` annulent le run du deuxième, dont le
+  déploiement (`attente-ci`) se refuserait alors sur une CI « cancelled ». Rare (squash merges espacés de
+  plus d'une CI) ; non traité.
+- E1 : `go list -tags=integration ./...` compte 356 paquets, le run de référence `38938482739` en avait
+  352 : l'arbre a gagné 4 paquets depuis. Le complément (`reste`) les absorbe, sans intervention.
 
 ## 4. Journal
 
@@ -316,3 +338,77 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
   api/wire 85, sync/killcollector 63, mapdecoupe 56, archlint 53, killsource 50, cmd/levelup 49,
   halo_infinite/migrations 49, sync/replayartifacts 45, scheduler 36, le reste ≤ 33. Somme ~2 800 s
   pour 346 paquets ; compilation sérialisée ~390 s.
+- 2026-10-17 E1 (exécutant, worktree `LevelUp-wt-backlog-1016`) : E1.1 à E1.8 faits, gates locaux
+  verts, CI non encore jouée (geste du pilote).
+  - Fichiers : `.github/workflows/ci.yml` (concurrency, job `changes`, matrice `go-coverage` + fusion
+    `go-coverage-merge`, matrice `web-tests` + fusion `web-coverage-merge`), `.github/ci/go-shards.txt`
+    (définition unique des lots), `scripts/ci_go_shard.sh`, `scripts/check_test_baseline.sh` (deux voies),
+    garde-rails `archlint/ci_go_shards_test.go`, `ci_paths_filter_test.go`, `film_lane_duckdb_free_test.go`,
+    commentaires `deploy.yml` / `Makefile` / runbook, `docs/COMMANDS.md` (EN + FR), `CLAUDE.md`.
+  - Lots Go (6, partition exacte de `go list -tags=integration ./...` : 356 paquets ; seul `grammar` est
+    dans deux lots) et estimation en secondes de TEST sous couverture (run `38938482739`) :
+    `film-grammar-lourd` 1 paquet, `-run` de 6 tests, ~573 s ; `film-grammar-reste` 1 paquet, `-skip` des
+    mêmes 6, ~595 s ; `film` 23 paquets (film/... hors grammar : replay 253, killsource 50, ... ; plus
+    persist 101 et ops 101) 519 s ; `platform` 8 paquets (platform/duckdb 348, prestige 32, sharedprovider 9,
+    halo5, migration 14, halo_infinite/migrations 49, mapdecoupe 56, cmd/levelup 49) 557 s ; `sync` 19
+    paquets (sync 266, api/wire 85, killcollector 63, archlint 53, replayartifacts 45, v2 17, skill 12, ...)
+    553 s ; `reste` = complément, 305 paquets, 270 s de test mais ~335 s d'édition de liens (1,1 s/paquet,
+    estimation) soit ~600 s. Liste lourde : TestSuivanteEgaleLaBoucleDAvantSurTamponsSynthetiques 233 s,
+    TestLaStructureDesBobinesTientSesInvariants ~139 s (extrapolé), TestFrameClosureDetailleeRendLaCarte
+    DeFrameClosure 78 s, TestGoldenMiniBobineFamilles 44 s, TestLaFermetureDeLaStructureNeDescendPas 40 s,
+    TestChaqueLectureCiteUneEtendueDeLaStructure 39 s. Sortie de `ci_go_shard.sh` par lot : voir
+    `bash scripts/ci_go_shard.sh --verifier` (6 lots, 356 paquets, complément de 305).
+  - Estimation de `grammar` : le run de référence a coupé le paquet à 900 s avec 583 tests terminés
+    (869 s). Rapport CI/local sur ces 583 tests : 16,7 (52,1 s locales). Le paquet entier compte 926 tests
+    de premier niveau, 70,0 s locales : extrapolation ~1 170 s (le plan disait ~950). Chaque moitié pèse donc
+    ~575-595 s, sans marge sous un délai de 600 s : E1.4 -> `-timeout 900s` pour les DEUX lots grammar
+    seulement, 600 s ailleurs (plus long processus hors grammar : platform/duckdb, 348 s). Retour à 600 s
+    quand une moitié mesurée passe sous 450 s (commentaire de `go-shards.txt`). Les mesures locales de
+    Go sont bruitées (machine à 100 % de CPU par d'autres sessions) : seuls les rapports servent.
+    Aucun des 6 tests lourds ne partage de mémo de bobine avec le reste du paquet (les mémos sont dans
+    `bobines_memo_test.go`, utilisés par les tests de clôture d'image-clé et d'équipes) : le découpage ne
+    duplique pas de travail. Union des deux moitiés = 926 tests, sans doublon (vérifié en local).
+  - Preuves du script : 9 définitions défectueuses refusées avec le bon message (chevauchement, motif
+    périmé, complément non dernier, filtre sans paire, paire de listes différentes, exclusion inutile,
+    liste non déclarée, timeout d'un lot inconnu, complément vide) et la paire `run:/skip:` valide acceptée ;
+    le Go le rejoue (`TestCIGoShardScriptRefusesBrokenDefinitions`). Contrôle d'ensemble de la fusion
+    rejoué sur des JSONL synthétiques issus des vrais lots : nominal vert (356/356) ; un paquet retiré ->
+    échec nommé (`internal/watcher`) ; paquet fantôme + lot sans artefact -> échecs nommés.
+  - Fusion des profils (D-4), preuve locale (CGO=0, `-covermode=atomic`, `-coverpkg=./internal/domain/title,
+    ./internal/games/...`) : A = `domain/title` 87,2 %, B = `games` 25,3 %, exécution unique A+B 35,1 %,
+    profils A et B concaténés (une ligne `mode:`) 35,1 % ; A+A concaténé 87,2 % ; blocs couverts : A 234,
+    B 500, union 709 = exécution unique 709. `go tool cover` additionne donc bien les blocs dupliqués.
+  - Vitest (E1.5) : `--shard=1/3`, `2/3`, `3/3` puis `--merge-reports --coverage` en local : 942 fichiers,
+    9 797 tests passés, couverture 32 064/38 726 = 82,79 % statements, identique à un run complet non
+    découpé (2 min 36 s ; un lot ~1 min, la fusion 7 s). Le blob contient la couverture brute : la
+    fusion produit le rapport HTML. Dossier `.vitest-reports` caché : `include-hidden-files: true` sur
+    l'upload (sinon `upload-artifact@v4` ne l'envoie pas), `.gitignore` complété.
+  - Filtre de chemins (E1.6) : `dorny/paths-filter` v4.0.3, SHA `ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d`
+    (tag non annoté, désigne un commit). Décision : sorties BOOLÉENNES par filtre (pas de `list-files`) —
+    la liste complète d'une branche éloignée de `main` dépasserait la taille d'une variable d'environnement
+    (128 Ko) et ferait échouer `changes`, donc toute la CI. Classement `some-with-excludes` : web, go (hors
+    openapi), croisee (openapi + miroirs TS lus par des tests Go), autre (tout le reste), tous. Simulé avec
+    le vrai `picomatch` (`dot: true`) sur les filtres lus dans `ci.yml` : web seul -> go=false ; go seul ->
+    web=false ; openapi, `.github`, `scripts`, `Makefile`, docs, config, `.ai/baselines`, miroirs -> les deux ;
+    aucun fichier -> les deux. Base `main` (défaut de l'action), PAS le push précédent : un run annulé par
+    `concurrency` ne doit pas laisser un changement Go non testé derrière un push web. Mutation prouvée :
+    retirer `feat/v75` de l'`if` de `go-lint` fait échouer `TestCIJobsDependingOnChangesCarryBypass`.
+    `govulncheck` et `npm-audit` restent sans condition (`ci_workflows_security_test.go`). Les jobs de
+    fusion se sautent quand leur matrice est sautée (`needs.<matrice>.result != 'skipped'`) et jugent
+    sinon avec `!cancelled()`.
+  - Outillage : `actionlint` v1.7.7 (avec shellcheck) : 0 remarque sur `ci.yml` (2 remarques SC2012/SC2010
+    sur mes scripts corrigées). Parse YAML par `js-yaml` : OK.
+  - Gates locaux : `go test ./internal/archlint/` VERT (79 s) ; `golangci-lint` (ratchet) sur archlint : 0
+    issue ; `make gate-push` VERT, `rc=0`, 1 612 s au total (lint + web ~2,5 min, suite 1 463 s) ; voies :
+    film 22 paquets en 124 s, DuckDB 334 paquets en 1 463 s ; 21 094 tests courants contre 9 398 en
+    baseline, aucun manquant, aucun échec. Durée « avant » NON mesurée (un second run de 25 min sur une
+    machine chargée par d'autres sessions n'aurait pas été comparable) : le gain attendu est la durée de la
+    voie film (~124 s sur 1 587 s en série), ce que le gate ne permet pas de distinguer du bruit. Le gain de
+    CI vient des lots, pas du gate local.
+  - Incertitudes que seul un vrai run tranchera : (1) durées réelles des lots et de la compilation
+    (estimation 1,1 s de lien par paquet ; la mesure sort dans le résumé de `go-coverage-merge`) ; (2) le
+    `-timeout 900s` des moitiés de grammar tient-il (estimation extrapolée, 573/595 s) ; (3) couverture
+    fusionnée attendue 81,0 % ± 0,1 ; (4) comportement de `dorny/paths-filter` sur un push de branche (fetch
+    de `main`, profondeur) ; (5) `upload-artifact` / `download-artifact` `merge-multiple` sur le dossier
+    caché et les noms de profil ; (6) l'ordre de compilation parallèle de 6 machines contre le cache
+    setup-go (premier run à froid).

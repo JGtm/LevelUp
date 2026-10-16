@@ -190,7 +190,7 @@ cd apps/go-api && go test ./...                      # suite complète
 cd apps/go-api && go test -tags=integration ./...    # inclut les tests persist anti-ART (OBLIGATOIRE avant livraison sync/persist)
 make go-api-test-gamefiles  # corpus cartes internal/himap (tag `gamefiles`, EXIGE Halo installe, ~6 min)
 make go-api-lint            # golangci-lint
-make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests ; la CI reste le gate d'autorité
+make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests (voies film et DuckDB en parallèle) ; la CI reste le gate d'autorité
 powershell -File scripts/disk-hygiene.ps1                  # disque : simulation (caches Go dédiés, dossiers de session, C:\t) ; -Apply supprime
 powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply # clôture de lot : supprime go-build-<lot> / golangci-<lot> (convention : skill plan-execution §5)
 

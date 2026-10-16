@@ -44,7 +44,7 @@ on:
 
   # Soupape d'urgence (D29, 2026-07-26) — déclenchement MANUEL du déploiement.
   # Sans elle, la mise en attente du verdict CI (job `attente-ci`) rendrait tout
-  # hotfix dépendant d'une CI complète (~25-30 min) même quand la prod est à terre.
+  # hotfix dépendant d'une CI complète (~15-20 min) même quand la prod est à terre.
   workflow_dispatch:
     inputs:
       ignorer_attente_ci:
@@ -78,7 +78,8 @@ jobs:
   attente-ci:
     name: Attente du verdict CI
     runs-on: ubuntu-latest
-    # 60 min : la CI complète dure ~25-30 min (job go-coverage ~22 min). La boucle
+    # 60 min : la CI complète dure ~15-20 min (bornée par le plus long lot Go de la matrice
+    # go-coverage, puis la fusion go-coverage-merge — cf. ci.yml). La boucle
     # s'arrête d'elle-même à 55 min pour rendre un message explicite AVANT que
     # GitHub ne tue le job (un job tué ne dit rien de la cause).
     timeout-minutes: 60

@@ -330,8 +330,10 @@ go-api-test-shared-social-gate:
 ##   1. ratchet golangci-lint — MÊME commande que le job CI go-lint
 ##      (--new-from-merge-base=origin/main : la dette gelée reste invisible) ;
 ##   2. typecheck + lint web — mêmes scripts npm que le job CI Frontend ;
-##   3. baseline de tests Go — scripts/check_test_baseline.sh tests (le plus long,
-##      ~20 min : suite complète avec -tags=integration -p 1).
+##   3. baseline de tests Go — scripts/check_test_baseline.sh tests (le plus long) :
+##      suite complète avec -tags=integration, en DEUX voies parallèles — la voie film
+##      (./internal/games/halo_infinite/film/..., sans DuckDB) et la voie DuckDB (tout le
+##      reste, en -p 1). La durée est celle de la voie DuckDB ; voir le script.
 ## NON reproduit : le ratchet de COUVERTURE (il rejouerait toute la suite une 2e
 ## fois avec -coverprofile, doublant la durée) — il reste au job CI go-coverage.
 ##

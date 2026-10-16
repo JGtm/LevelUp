@@ -49,8 +49,8 @@ Each item cites its source so it can be re-verified against the code. Structure:
       verdict, and a red CI had no consequence (40 % of `main` runs red over 14 days, no visible
       effect). Now the first deploy job polls the Actions API every 30 s for the CI run of the
       **same `head_sha`** and releases the deploy only on `success`. Plan for:
-      - **Latency**: production is updated ~25-35 min after the push (CI wall time, bounded by
-        the `go-coverage` job) plus the usual deploy time. It is no longer immediate.
+      - **Latency**: production is updated ~15-25 min after the push (CI wall time, bounded by
+        the longest `go-coverage` lot, then the `go-coverage-merge` job) plus the usual deploy time. It is no longer immediate.
       - **CI red = nothing deployed.** The job fails with an explicit message; fix and re-push,
         or use the emergency valve below. Do not re-run the deploy on a red CI — by design it
         will keep refusing.

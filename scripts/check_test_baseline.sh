@@ -235,8 +235,9 @@
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.
 #   - CONSOMMATEUR (`--from-jsonl <fichier>`) : la suite a DÉJÀ tourné en amont,
-#     le script ne fait que vérifier son JSONL. C'est le mode de la CI : le job
-#     `go-coverage` produit `-json` + `-coverprofile` en UNE exécution, au lieu
+#     le script ne fait que vérifier son JSONL. C'est le mode de la CI : les lots du job
+#     `go-coverage` produisent `-json` + `-coverprofile` en UNE exécution (JSONL concaténés
+#     par `go-coverage-merge`, qui lance ce script), au lieu
 #     des deux runs complets (~22 min chacun) de l'ancien couple de jobs
 #     go-baseline-tests / go-coverage (dédup 2026-07-26).
 #
@@ -248,7 +249,7 @@
 #
 # Diagnostic : en mode autonome le JSONL du run courant est conservé (NON supprimé
 # à la sortie) dans apps/go-api/baseline_current.jsonl — ignoré par git, uploadé en
-# artefact par la CI (job go-coverage, step « Upload JSONL du run courant »,
+# artefact par la CI (job go-coverage-merge, step « Upload JSONL du run courant »,
 # if: failure()). En cas d'échec, les lignes de sortie humaine des tests fautifs
 # sont extraites du JSONL et affichées : sous `-json` le log de la CI ne contient
 # plus aucune sortie lisible, il ne faut pas avoir à télécharger l'artefact pour
@@ -459,12 +460,25 @@ print_failure_output() {
   ' "$file" "$file"
 }
 
+# VOIES du mode AUTONOME (b1016, E1.7) : la suite se joue en DEUX processus `go test`
+# parallèles, dont les JSONL sont concaténés avant l'analyse (verify_tests_jsonl lit des
+# événements par paquet, l'ordre d'un fichier concaténé n'a aucune importance) :
+#   - la voie film (FILM_LANE_PATTERN) : aucun paquet ne dépend du driver DuckDB, tests
+#     compris — garde-rail archlint/film_lane_duckdb_free_test.go, qui juge CE motif ;
+#   - la voie DuckDB : tout le reste (`go list` moins la voie film), en `-p 1`
+#     (driver mono-process, ADR 0013).
+# Le parallélisme ne partage donc aucune base. Il partage le cache de build Go : sur ce poste,
+# deux commandes `go` concurrentes ont déjà corrompu le cache Windows ; un échec de compilation
+# inexplicable en gate-push se rejoue avec un GOCACHE neuf avant de conclure.
+FILM_LANE_PATTERN='./internal/games/halo_infinite/film/...'
+
 # run_current_suite — mode AUTONOME : exécute la suite complète et écrit le JSONL.
 # `-timeout=300s` : budget par package d'un run NON instrumenté. La CI, elle,
 # instrumente la couverture dans la même exécution et utilise 600s (cf. ci.yml).
 run_current_suite() {
   local out="$1"
-  echo "  Lancement de la suite courante (peut prendre plusieurs minutes)..."
+  local out_film="${out}.film" out_duckdb="${out}.duckdb"
+  echo "  Lancement de la suite courante : voie film et voie DuckDB en parallèle (plusieurs minutes)..."
   (
     cd "$REPO_ROOT/apps/go-api"
     # Sur Windows local, utiliser le gcc fourni par msys64 via le PATH. Sur
@@ -478,8 +492,35 @@ run_current_suite() {
       export PATH="/c/msys64/ucrt64/bin:$PATH"
       export CC=gcc
     fi
-    CGO_ENABLED=1 \
-      go test -tags=integration -count=1 -timeout=300s -p 1 -json ./... > "$out" 2>&1
+    export CGO_ENABLED=1
+
+    local all film duckdb
+    mapfile -t all < <(go list -tags=integration ./... | tr -d '\r' | sort)
+    mapfile -t film < <(go list -tags=integration "$FILM_LANE_PATTERN" | tr -d '\r' | sort)
+    mapfile -t duckdb < <(comm -23 <(printf '%s\n' "${all[@]}") <(printf '%s\n' "${film[@]}"))
+    if [[ ${#film[@]} -eq 0 || ${#duckdb[@]} -eq 0 ]]; then
+      echo "[ECHEC] énumération des voies impossible (film=${#film[@]}, DuckDB=${#duckdb[@]} paquet(s))" > "$out"
+      exit 1
+    fi
+    echo "  voie film : ${#film[@]} paquet(s), voie DuckDB : ${#duckdb[@]} paquet(s)"
+
+    (
+      start=$SECONDS
+      go test -tags=integration -count=1 -timeout=300s -p 1 -json "${film[@]}" > "$out_film" 2>&1
+      echo "  [voie film] terminée en $((SECONDS - start)) s"
+    ) &
+    pid_film=$!
+    (
+      start=$SECONDS
+      go test -tags=integration -count=1 -timeout=300s -p 1 -json "${duckdb[@]}" > "$out_duckdb" 2>&1
+      echo "  [voie DuckDB] terminée en $((SECONDS - start)) s"
+    ) &
+    pid_duckdb=$!
+    # Les codes retour ne comptent pas : le verdict vient de l'analyse du JSONL.
+    wait "$pid_film" || true
+    wait "$pid_duckdb" || true
+    cat "$out_film" "$out_duckdb" > "$out"
+    rm -f "$out_film" "$out_duckdb"
   ) || true # verdict rendu par l'ANALYSE du JSONL (présence + échecs), pas par ce code retour
 }
 
@@ -630,7 +671,7 @@ check_tests() {
 }
 
 # check_tests_from_jsonl — mode CONSOMMATEUR : aucune exécution, on vérifie le
-# JSONL produit en amont (job CI go-coverage).
+# JSONL produit en amont (lots du job CI go-coverage, concaténés par go-coverage-merge).
 check_tests_from_jsonl() {
   local current_jsonl="$1"
   require_baseline_tests || return $?
@@ -638,7 +679,7 @@ check_tests_from_jsonl() {
   if [[ ! -f "$current_jsonl" ]]; then
     echo "[ECHEC] JSONL du run courant introuvable : $current_jsonl"
     echo "   Mode consommateur : le fichier doit avoir été produit en amont par un"
-    echo "   « go test -json » (CI : job go-coverage, step « go test avec couverture »)."
+    echo "   « go test -json » (CI : job go-coverage, step « go test du lot avec couverture »)."
     return 2
   fi
   if [[ ! -s "$current_jsonl" ]]; then
