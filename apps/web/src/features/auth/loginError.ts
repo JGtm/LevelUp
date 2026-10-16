@@ -30,6 +30,8 @@ export type SetPasswordErrorKey =
   | 'common.auth.too_many_attempts'
   | 'common.auth.current_password_invalid'
   | 'common.auth.current_password_required'
+  | 'common.auth.password_too_short'
+  | 'common.auth.password_too_long'
   | 'common.auth.set_password_failed'
 
 /**
@@ -43,7 +45,45 @@ export function setPasswordErrorKey(err: unknown): SetPasswordErrorKey {
     typeof err === 'object' && err !== null && 'code' in err ? (err as { code?: unknown }).code : undefined
   if (code === 'invalid_current_password') return 'common.auth.current_password_invalid'
   if (code === 'current_password_required') return 'common.auth.current_password_required'
+  if (code === 'password_too_short') return 'common.auth.password_too_short'
+  if (code === 'password_too_long') return 'common.auth.password_too_long'
   return 'common.auth.set_password_failed'
+}
+
+/** Clés i18n des refus de POST /auth/register. */
+export type RegisterErrorKey =
+  | 'common.auth.register_err_user_exists'
+  | 'common.auth.register_err_invite_required'
+  | 'common.auth.register_err_invalid_invite'
+  | 'common.auth.register_err_closed'
+  | 'common.auth.register_instance_closed'
+  | 'common.auth.register_err_invalid_username'
+  | 'common.auth.password_too_short'
+  | 'common.auth.password_too_long'
+  | 'common.auth.register_err_generic'
+
+/** Code de refus du serveur → message de l'écran d'inscription. */
+const REGISTER_ERROR_KEYS: Readonly<Record<string, RegisterErrorKey>> = {
+  user_exists: 'common.auth.register_err_user_exists',
+  invite_required: 'common.auth.register_err_invite_required',
+  invalid_invite: 'common.auth.register_err_invalid_invite',
+  registration_closed: 'common.auth.register_err_closed',
+  instance_locked: 'common.auth.register_instance_closed',
+  invalid_username: 'common.auth.register_err_invalid_username',
+  password_too_short: 'common.auth.password_too_short',
+  password_too_long: 'common.auth.password_too_long',
+}
+
+/**
+ * Message localisé d'un refus d'inscription. Le serveur ne renvoie qu'un code machine et un
+ * message fixe en anglais : l'écran ne montre jamais ce texte, un code inconnu reçoit le
+ * message générique.
+ */
+export function registerErrorKey(err: unknown): RegisterErrorKey {
+  const code =
+    typeof err === 'object' && err !== null && 'code' in err ? (err as { code?: unknown }).code : undefined
+  if (typeof code === 'string' && Object.hasOwn(REGISTER_ERROR_KEYS, code)) return REGISTER_ERROR_KEYS[code]
+  return 'common.auth.register_err_generic'
 }
 
 /** Clés i18n des échecs du device-flow (statuts `failed` / `expired` de la tentative). */

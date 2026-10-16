@@ -86,11 +86,11 @@ func decodeFilterBody(ctx context.Context, slug string, rawBody []byte) (domain.
 	}
 	if err := json.NewDecoder(bytes.NewReader(rawBody)).Decode(&input); err != nil {
 		slog.WarnContext(ctx, "relations.invalid_body", "player", slug, "err", err)
-		return input, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return input, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if err := input.Validate(); err != nil {
 		slog.WarnContext(ctx, "relations.invalid_filter", "player", slug, "err", err)
-		return input, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return input, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	return input, nil
 }

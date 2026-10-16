@@ -90,16 +90,16 @@ type squadV2PageOutput struct{ Body *domain.SquadPageV2Response }
 func (h *SquadV2Handler) GetSquadPage(ctx context.Context, in *squadV2PageInput) (*squadV2PageOutput, error) {
 	svc, _, gamertag, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	teammates, err := parseSquadV2Teammates(in.Teammates)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_teammates", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_teammates", err)
 	}
 	period, err := parseSquadV2Period(in.Period)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_period", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_period", err)
 	}
 
 	experienceTypes := parseCSVFilter(in.ExperienceTypes)
@@ -127,7 +127,7 @@ func (h *SquadV2Handler) GetSquadPage(ctx context.Context, in *squadV2PageInput)
 		}
 		slog.ErrorContext(ctx, "squad_v2: erreur service",
 			"player", gamertag, "title_slug", titleSlug, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "squad_v2_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "squad_v2_error", err)
 	}
 
 	return &squadV2PageOutput{Body: resp}, nil

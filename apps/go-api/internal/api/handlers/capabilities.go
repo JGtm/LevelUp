@@ -102,7 +102,7 @@ func (h *CapabilitiesHandler) handleGet(ctx context.Context, in *capabilitiesInp
 
 	body, err := json.Marshal(resp)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "marshal_failed", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "marshal_failed", err)
 	}
 
 	sum := sha256.Sum256(body)

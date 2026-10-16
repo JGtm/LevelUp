@@ -419,6 +419,10 @@ en = "Password saved."
 fr = "Le mot de passe doit faire au moins 8 caractères."
 en = "The password must be at least 8 characters long."
 
+[common.auth.password_too_long]
+fr = "Le mot de passe est trop long (72 octets au plus)."
+en = "The password is too long (72 bytes at most)."
+
 [common.auth.current_password_required]
 fr = "Saisis ton mot de passe actuel."
 en = "Enter your current password."
@@ -2055,6 +2059,10 @@ en = "Passwords do not match."
 [common.auth.register_err_user_exists]
 fr = "Ce nom d'utilisateur est déjà pris."
 en = "This username is already taken."
+
+[common.auth.register_err_invalid_username]
+fr = "Nom d'utilisateur invalide (3 à 30 caractères : lettres, chiffres, _ ou -)."
+en = "Invalid username (3 to 30 characters: letters, digits, _ or -)."
 
 [common.auth.register_err_invite_required]
 fr = "Un code d'invitation est requis."

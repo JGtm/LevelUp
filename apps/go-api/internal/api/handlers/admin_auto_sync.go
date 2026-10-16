@@ -172,7 +172,7 @@ func (h *AdminAutoSyncHandler) handleProbeTokens(ctx context.Context, in *autoSy
 	discovery := pool.NewDiscoveryWithStore(h.cfg, pr, titlePkg.DefaultSlug, authStoreForProbe)
 	sources, err := discovery.Scan(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "discovery_scan_failed", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "discovery_scan_failed", err)
 	}
 
 	// Chercher la source correspondant à ce gamertag.

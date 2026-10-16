@@ -96,7 +96,7 @@ func registerGamertagHuma(api huma.API, h *handlers.GamertagHandler, liveAllowed
 			if errors.Is(err, handlers.ErrGamertagSearchUnavailable) {
 				return nil, newHumaError(http.StatusServiceUnavailable, "shared_db_unavailable", "gamertag search requires shared database")
 			}
-			return nil, newHumaError(http.StatusInternalServerError, "gamertag_search_error", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "gamertag_search_error", err)
 		}
 		return &gamertagSearchHumaOutput{Body: resp}, nil
 	}, humacore.Op("searchGamertags", "Recherche floue de gamertags", "explorer"))

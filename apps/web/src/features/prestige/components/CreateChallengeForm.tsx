@@ -23,6 +23,7 @@ import {
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { useMetricLabel, PRESTIGE_METRIC_OPTIONS } from '@/lib/i18n/metricLabel'
 import { getPrestigeText } from '../i18n'
+import { createErrorMessage } from '../createError'
 import { useCreateChallenge, useSuggestedTemplates } from '../hooks'
 
 type FormMode = 'hybride' | 'libre' | 'automatique'
@@ -379,8 +380,8 @@ function AutoForm({ userId, titleSlug, onSuccess }: TabFormProps) {
           )
         })}
       </ul>
-      {resolveCreateError(create.error as Error | null, t) != null && (
-        <p className="text-xs text-destructive">{resolveCreateError(create.error as Error | null, t)}</p>
+      {createErrorMessage(create.error, t) != null && (
+        <p className="text-xs text-destructive">{createErrorMessage(create.error, t)}</p>
       )}
     </div>
   )
@@ -420,13 +421,6 @@ function formatCooldown(end: Date, t: ReturnType<typeof getPrestigeText>): strin
   return t.cooldownBadge.replace('{time}', time)
 }
 
-/** Mappe un refus cooldown (429) sur un message lisible, sinon le message brut. */
-function resolveCreateError(error: Error | null, t: ReturnType<typeof getPrestigeText>): string | null {
-  if (!error) return null
-  if ((error as { code?: string }).code === 'cooldown_active') return t.cooldownErrorMessage
-  return error.message
-}
-
 function CooldownBadge({ end, t }: { end: Date; t: ReturnType<typeof getPrestigeText> }) {
   return (
     <span className="ml-2 rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -448,7 +442,7 @@ function SubmitRow({
 }) {
   const locale = useAppShellStore((s) => s.locale)
   const t = getPrestigeText(locale)
-  const errorMessage = resolveCreateError(error, t)
+  const errorMessage = createErrorMessage(error, t)
   return (
     <div className="space-y-2">
       {errorMessage && <p className="text-xs text-destructive">{errorMessage}</p>}

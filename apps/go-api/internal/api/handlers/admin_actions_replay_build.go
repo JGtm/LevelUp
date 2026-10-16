@@ -140,7 +140,7 @@ func (h *AdminReplayBuildActionHandler) handleEnqueue(ctx context.Context, in *r
 	if err != nil {
 		slog.ErrorContext(ctx, "admin_actions: mise en file du rejeu échouée",
 			"module", "monitoring", "match_id", req.MatchID, "title", titleSlug, "err", err)
-		return nil, humacore.NewError(http.StatusBadRequest, "replay_enqueue_failed", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "replay_enqueue_failed", err)
 	}
 	slog.InfoContext(ctx, "admin_actions: rejeu 2D mis en file",
 		"job_id", job.JobID, "match_id", req.MatchID, "title", titleSlug, "created", created)

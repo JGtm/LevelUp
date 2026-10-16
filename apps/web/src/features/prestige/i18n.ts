@@ -58,6 +58,12 @@ export interface PrestigeText {
   cooldownUnitDay: string
   /** Message affiché si la création est refusée (429 cooldown_active). */
   cooldownErrorMessage: string
+  /** Refus 400 challenge_too_easy : la cible est trop proche du niveau du joueur. */
+  tooEasyErrorMessage: string
+  /** Refus 400 invalid_input. */
+  invalidInputErrorMessage: string
+  /** Tout autre refus de création : jamais le texte du serveur. */
+  createErrorGeneric: string
   // ── Suppression d'arc (MyArcsSection) ──
   arcDeleteButton: string
   /** Titre du dialogue. Interpolé : `{title}`. */
@@ -122,6 +128,9 @@ const FR: PrestigeText = {
   cooldownUnitHour: 'h',
   cooldownUnitDay: 'j',
   cooldownErrorMessage: 'Métrique en repos (cooldown) — réessaie plus tard.',
+  tooEasyErrorMessage: 'Objectif trop facile pour ton niveau : vise plus haut.',
+  invalidInputErrorMessage: 'Vérifie les valeurs saisies.',
+  createErrorGeneric: 'Création impossible. Réessaie dans un instant.',
   arcDeleteButton: 'Supprimer',
   arcDeleteTitle: 'Supprimer l\'arc « {title} » ?',
   arcDeleteWithObjectives: 'Supprimer aussi les {n} objectifs',
@@ -181,6 +190,9 @@ const EN: PrestigeText = {
   cooldownUnitHour: 'h',
   cooldownUnitDay: 'd',
   cooldownErrorMessage: 'Metric on cooldown — try again later.',
+  tooEasyErrorMessage: 'Target too easy for your level: aim higher.',
+  invalidInputErrorMessage: 'Check the values entered.',
+  createErrorGeneric: 'Could not create. Try again in a moment.',
   arcDeleteButton: 'Delete',
   arcDeleteTitle: 'Delete the arc “{title}”?',
   arcDeleteWithObjectives: 'Also delete the {n} objectives',

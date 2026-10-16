@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { deviceFlowFailureKey, isTooManyLoginAttempts, oauthErrorKey, setPasswordErrorKey } from './loginError'
+import {
+  deviceFlowFailureKey,
+  isTooManyLoginAttempts,
+  oauthErrorKey,
+  registerErrorKey,
+  setPasswordErrorKey,
+} from './loginError'
 
 describe('isTooManyLoginAttempts', () => {
   it('reconnaît le refus du limiteur de l’API', () => {
@@ -34,6 +40,36 @@ describe('setPasswordErrorKey', () => {
       'common.auth.set_password_failed',
     )
     expect(setPasswordErrorKey(new Error('réseau'))).toBe('common.auth.set_password_failed')
+  })
+
+  it('rend la clé de la règle de longueur refusée', () => {
+    expect(setPasswordErrorKey({ status: 400, code: 'password_too_short' })).toBe('common.auth.password_too_short')
+    expect(setPasswordErrorKey({ status: 400, code: 'password_too_long' })).toBe('common.auth.password_too_long')
+  })
+})
+
+describe('registerErrorKey', () => {
+  it.each([
+    ['user_exists', 'common.auth.register_err_user_exists'],
+    ['invite_required', 'common.auth.register_err_invite_required'],
+    ['invalid_invite', 'common.auth.register_err_invalid_invite'],
+    ['registration_closed', 'common.auth.register_err_closed'],
+    ['instance_locked', 'common.auth.register_instance_closed'],
+    ['invalid_username', 'common.auth.register_err_invalid_username'],
+    ['password_too_short', 'common.auth.password_too_short'],
+    ['password_too_long', 'common.auth.password_too_long'],
+  ])('%s → %s', (code, key) => {
+    expect(registerErrorKey({ status: 400, code, message: 'texte du serveur' })).toBe(key)
+  })
+
+  it('code inconnu, erreur serveur ou réseau : message générique, jamais le texte du serveur', () => {
+    expect(registerErrorKey({ status: 400, code: 'code_inconnu', message: 'SELECT secret' })).toBe(
+      'common.auth.register_err_generic',
+    )
+    expect(registerErrorKey({ status: 500, code: 'create_error', message: 'internal error' })).toBe(
+      'common.auth.register_err_generic',
+    )
+    expect(registerErrorKey(new Error('réseau'))).toBe('common.auth.register_err_generic')
   })
 })
 

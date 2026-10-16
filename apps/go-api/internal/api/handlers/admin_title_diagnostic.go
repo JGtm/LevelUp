@@ -64,7 +64,7 @@ func (h *AdminTitleDiagnosticHandler) handleGet(ctx context.Context, in *adminTi
 	}
 	report, err := h.svc.Diagnose(ctx, in.Slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "diagnostic_failed", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "diagnostic_failed", err)
 	}
 	return &adminTitleDiagnosticOutput{Body: report}, nil
 }

@@ -146,7 +146,7 @@ func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Re
 
 	tmpPath, err := h.saveUploadedDB(r)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "upload_failed", err.Error())
+		writeErrorFrom(r.Context(), w, http.StatusBadRequest, "upload_failed", err)
 		return
 	}
 

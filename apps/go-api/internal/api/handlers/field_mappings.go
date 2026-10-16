@@ -216,7 +216,7 @@ func (h *FieldMappingsHandler) handleGet(ctx context.Context, in *fieldMappingsI
 		built, err := h.buildDTO(sets, locale, catalog, version)
 		if err != nil {
 			h.logger.ErrorContext(ctx, "field_mappings: marshal du DTO", "title_slug", slug, "err", err)
-			return nil, humacore.NewError(http.StatusInternalServerError, "marshal_failed", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "marshal_failed", err)
 		}
 		entry = built
 		if cacheable {

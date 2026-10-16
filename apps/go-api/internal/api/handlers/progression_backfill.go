@@ -84,11 +84,11 @@ func (h *ProgressionBackfillHandler) handleRunBackfill(ctx context.Context, in *
 	}
 	runner, err := h.newRunner(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	diag, err := runner.BackfillProgression(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "backfill_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "backfill_error", err)
 	}
 	return &progressionBackfillOutput{Body: diag}, nil
 }

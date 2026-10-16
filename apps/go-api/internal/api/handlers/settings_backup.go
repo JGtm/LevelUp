@@ -31,7 +31,7 @@ func (h *SettingsHandler) handlePostBackupRun(ctx context.Context, _ *struct{}) 
 
 	result, err := h.backupSched.RunOnce(runCtx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "backup_run_failed", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "backup_run_failed", err)
 	}
 	return &settingsJSONOutput{Body: result}, nil
 }

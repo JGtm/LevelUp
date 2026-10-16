@@ -41,7 +41,7 @@ func (h *MediaHandler) handleDeleteMedia(ctx context.Context, in *mediaDeleteInp
 	}
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	// Le client rejoue le file_path qu'il a reçu, c'est-à-dire une URL servable :

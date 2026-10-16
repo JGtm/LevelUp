@@ -169,8 +169,8 @@ func (h *AdminHandler) handleResetPassword(ctx context.Context, in *adminUsernam
 		if errors.Is(err, userstore.ErrUserNotFound) {
 			return nil, humacore.NewError(http.StatusNotFound, "not_found", "utilisateur introuvable")
 		}
-		if errors.Is(err, userstore.ErrPasswordTooShort) {
-			return nil, humacore.NewError(http.StatusBadRequest, "validation_error", err.Error())
+		if code, ok := credentialPolicyCode(err); ok {
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, code, err)
 		}
 		slog.ErrorContext(ctx, "admin: erreur reset password", "target", in.Username, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "reset_error", "erreur de réinitialisation")

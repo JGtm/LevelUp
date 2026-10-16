@@ -231,5 +231,5 @@ func mapTitleSyncError(ctx context.Context, err error, op, playerSlug, slug stri
 	}
 	slog.ErrorContext(ctx, "title sync op failed",
 		"op", op, "player_slug", playerSlug, "titleSlug", slug, "err", err)
-	return humacore.NewError(http.StatusInternalServerError, op+"_error", err.Error())
+	return humacore.NewErrorFrom(ctx, http.StatusInternalServerError, op+"_error", err)
 }

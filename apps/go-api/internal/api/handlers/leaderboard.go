@@ -75,7 +75,7 @@ type leaderboardCatalogOutput struct{ Body domain.LeaderboardCatalog }
 func (h *LeaderboardHandler) handleGetPage(ctx context.Context, in *leaderboardPageInput) (*leaderboardPageOutput, error) {
 	svc, _, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	limit := 0
@@ -94,7 +94,7 @@ func (h *LeaderboardHandler) handleGetPage(ctx context.Context, in *leaderboardP
 
 	resp, err := svc.GetPage(ctx, req)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "leaderboard_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "leaderboard_error", err)
 	}
 
 	return &leaderboardPageOutput{Body: resp}, nil
@@ -105,11 +105,11 @@ func (h *LeaderboardHandler) handleGetPage(ctx context.Context, in *leaderboardP
 func (h *LeaderboardHandler) handleGetCatalog(ctx context.Context, in *leaderboardCatalogInput) (*leaderboardCatalogOutput, error) {
 	svc, _, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	catalog, err := svc.GetCatalog(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "leaderboard_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "leaderboard_error", err)
 	}
 	return &leaderboardCatalogOutput{Body: catalog}, nil
 }

@@ -86,7 +86,7 @@ type replayOutput struct {
 func (h *ReplayHandler) handleGetReplay(ctx context.Context, in *replayInput) (*replayOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	if in.MatchID == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_match_id", "match_id est requis")
@@ -98,7 +98,7 @@ func (h *ReplayHandler) handleGetReplay(ctx context.Context, in *replayInput) (*
 			"aucun rejeu 2D pour ce match")
 	}
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "replay_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "replay_error", err)
 	}
 	return &replayOutput{Body: doc, LatestSchemaVersion: replay.SchemaVersion}, nil
 }
@@ -112,7 +112,7 @@ type backgroundOutput struct{ Body replaydoc.MapBackground }
 func (h *ReplayHandler) handleGetBackground(ctx context.Context, in *replayInput) (*backgroundOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	if in.MatchID == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_match_id", "match_id est requis")
@@ -123,7 +123,7 @@ func (h *ReplayHandler) handleGetBackground(ctx context.Context, in *replayInput
 			"aucun fond de carte pour ce match")
 	}
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "replay_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "replay_error", err)
 	}
 	return &backgroundOutput{Body: *bg}, nil
 }
@@ -137,7 +137,7 @@ type calloutsOutput struct{ Body replaydoc.MapCalloutsEntry }
 func (h *ReplayHandler) handleGetCallouts(ctx context.Context, in *replayInput) (*calloutsOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	if in.MatchID == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_match_id", "match_id est requis")
@@ -148,7 +148,7 @@ func (h *ReplayHandler) handleGetCallouts(ctx context.Context, in *replayInput) 
 			"aucune zone nommée pour ce match")
 	}
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "replay_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "replay_error", err)
 	}
 	return &calloutsOutput{Body: *entry}, nil
 }
@@ -163,7 +163,7 @@ func (h *ReplayHandler) handleGetBackgroundImage(w http.ResponseWriter, r *http.
 	matchID := chi.URLParam(r, "match_id")
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		writeError(ctx, w, http.StatusNotFound, "player_not_found", err.Error())
+		writeErrorFrom(ctx, w, http.StatusNotFound, "player_not_found", err)
 		return
 	}
 	if matchID == "" {
@@ -177,7 +177,7 @@ func (h *ReplayHandler) handleGetBackgroundImage(w http.ResponseWriter, r *http.
 		return
 	}
 	if err != nil {
-		writeError(ctx, w, http.StatusInternalServerError, "replay_error", err.Error())
+		writeErrorFrom(ctx, w, http.StatusInternalServerError, "replay_error", err)
 		return
 	}
 	// Donnée de RÉFÉRENCE versionnée : elle ne change qu'à une re-cuisson, jamais en

@@ -95,7 +95,7 @@ func (h *BuildWorkerHandler) handleArtifact(ctx context.Context, in *buildQueueA
 		slog.WarnContext(ctx, "build_queue: artefact invalide refusé",
 			"module", "monitoring", "job_id", jobID, "worker_id", workerID,
 			"bytes", len(in.RawBody), "err", err)
-		return nil, humacore.NewError(http.StatusBadRequest, "build_artifact_invalid", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "build_artifact_invalid", err)
 	case err != nil:
 		slog.ErrorContext(ctx, "build_queue: dépôt d'artefact échoué",
 			"module", "monitoring", "job_id", jobID, "worker_id", workerID, "err", err)

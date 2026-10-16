@@ -205,8 +205,8 @@ func (h *UserAuthHandler) handleRegister(ctx context.Context, in *authBodyInput)
 			slog.Warn("auth: register username déjà pris", "username", loginlimit.Truncate(req.Username))
 			return nil, humacore.NewError(http.StatusConflict, "user_exists", "nom d'utilisateur déjà pris")
 		}
-		if errors.Is(err, userstore.ErrInvalidUsername) || errors.Is(err, userstore.ErrPasswordTooShort) || errors.Is(err, userstore.ErrPasswordTooLong) {
-			return nil, humacore.NewError(http.StatusBadRequest, "validation_error", err.Error())
+		if code, ok := credentialPolicyCode(err); ok {
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, code, err)
 		}
 		return nil, humacore.NewError(http.StatusInternalServerError, "create_error", "erreur de création")
 	}
@@ -348,7 +348,8 @@ func (h *UserAuthHandler) handleSetPassword(ctx context.Context, in *authBodyInp
 	if err := h.users.ResetPassword(*sess.Username, req.Password); err != nil {
 		switch {
 		case errors.Is(err, userstore.ErrPasswordTooShort), errors.Is(err, userstore.ErrPasswordTooLong):
-			return nil, humacore.NewError(http.StatusBadRequest, "validation_error", err.Error())
+			code, _ := credentialPolicyCode(err)
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, code, err)
 		case errors.Is(err, userstore.ErrUserNotFound):
 			return nil, humacore.NewError(http.StatusNotFound, "user_not_found", "utilisateur introuvable")
 		default:

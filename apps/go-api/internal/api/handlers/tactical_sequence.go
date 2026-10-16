@@ -80,7 +80,7 @@ func (h *TacticalSequenceHandler) handleGetSequence(ctx context.Context, in *tac
 	}
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	seq, err := svc.Sequence(ctx, domain.TacticalSequenceRequest{
 		MapID: mapID, MatchID: in.Body.MatchID, VictimXUID: in.Body.VictimXUID, TimeMs: in.Body.TimeMs,

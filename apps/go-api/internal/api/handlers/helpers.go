@@ -102,7 +102,7 @@ func mapServiceError(ctx context.Context, err error, code string) error {
 		return errDBBusy()
 	default:
 		slog.ErrorContext(ctx, "page: erreur service", jsonKeyCode, code, "err", err)
-		return humacore.NewError(http.StatusInternalServerError, code, err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusInternalServerError, code, err)
 	}
 }
 
@@ -171,20 +171,14 @@ func writeJSONCached(w http.ResponseWriter, r *http.Request, status int, v inter
 	servirBlobAvecETag(w, r, body, "application/json", "")
 }
 
-// writeError écrit une réponse d'erreur JSON standardisée et **logge l'erreur
-// côté serveur** selon le statut HTTP :
-//   - 5xx → slog.ErrorContext (erreur serveur, anormal — toujours visible)
-//   - 401/403/422 → slog.WarnContext (auth/validation refusée — tracé pour audit)
-//   - autres 4xx → slog.DebugContext (404 / bad request — volume, log à la demande)
+// writeError écrit une réponse d'erreur JSON standardisée avec un message écrit à la main et
+// **logge la réponse côté serveur** (niveau selon le statut : humacore.LogErrorResponse).
 //
-// L'objectif est qu'aucune erreur renvoyée au client n'échappe à un trace serveur.
-// Le ctx fait remonter event_id / request_id auto-injectés par ContextHandler.
+// Sur une 5xx le message part masqué : message générique stable, le `code` (non sensible)
+// porte la sémantique (revue 2026-06-02 — fuite d'info interne sur les réponses 500). Quand
+// le refus vient d'une erreur, writeErrorFrom : le texte d'une erreur ne part jamais au client.
 func writeError(ctx context.Context, w http.ResponseWriter, status int, code, message string) {
-	// Le détail (souvent err.Error()) est toujours logué côté serveur, corrélable
-	// via event_id/request_id. Mais sur une 5xx on ne l'expose JAMAIS au client :
-	// message générique stable, le `code` (non sensible) porte la sémantique
-	// (revue 2026-06-02 — fuite d'info interne sur les réponses 500).
-	logErrorResponse(ctx, status, code, message, nil)
+	humacore.LogErrorResponse(ctx, status, code, message, nil)
 	clientMessage := message
 	if status >= 500 {
 		clientMessage = "internal error"
@@ -196,6 +190,18 @@ func writeError(ctx context.Context, w http.ResponseWriter, status int, code, me
 	})
 }
 
+// writeErrorFrom écrit la réponse d'erreur d'un refus dont la cause est err : la cause est
+// journalisée, le client reçoit le message fixe du code (humacore.FixedMessage).
+func writeErrorFrom(ctx context.Context, w http.ResponseWriter, status int, code string, err error) {
+	msg := humacore.FixedMessage(status, code)
+	humacore.LogErrorResponse(ctx, status, code, msg, err)
+	writeJSON(w, status, map[string]interface{}{
+		"code":      code,
+		"message":   msg,
+		"retryable": status >= 500,
+	})
+}
+
 // httpError est un wrapper de net/http.Error qui logge l'erreur côté serveur
 // (mêmes règles de niveau que writeError) avant de répondre en text/plain.
 //
@@ -203,29 +209,11 @@ func writeError(ctx context.Context, w http.ResponseWriter, status int, code, me
 // statiques, redirects) — sinon préférer writeError qui renvoie un body JSON
 // standardisé.
 func httpError(ctx context.Context, w http.ResponseWriter, message string, status int) {
-	logErrorResponse(ctx, status, "", message, nil)
+	humacore.LogErrorResponse(ctx, status, "", message, nil)
 	clientMessage := message
 	if status >= 500 {
 		// Idem writeError : pas de détail interne au client sur une 5xx.
 		clientMessage = "internal error"
 	}
 	http.Error(w, clientMessage, status)
-}
-
-// logErrorResponse centralise la décision de niveau de log selon le statut HTTP.
-// Séparé de writeError pour permettre la réutilisation (writeServerError, et
-// futurs helpers d'erreur).
-func logErrorResponse(ctx context.Context, status int, code, message string, err error) {
-	attrs := []any{jsonKeyStatus, status, jsonKeyCode, code, jsonKeyMessage, message}
-	if err != nil {
-		attrs = append(attrs, "err", err)
-	}
-	switch {
-	case status >= 500:
-		slog.ErrorContext(ctx, "http: erreur réponse", attrs...)
-	case status == http.StatusUnauthorized, status == http.StatusForbidden, status == http.StatusUnprocessableEntity:
-		slog.WarnContext(ctx, "http: refus", attrs...)
-	case status >= 400:
-		slog.DebugContext(ctx, "http: client error", attrs...)
-	}
 }
