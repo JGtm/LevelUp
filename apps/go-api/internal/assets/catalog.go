@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"strconv"
+
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // Verdict est la position d'une référence d'asset face au catalogue local.
@@ -18,6 +20,10 @@ const (
 	// VerdictUnverifiable : aucun catalogue local ne couvre ce kind (l'identifiant est
 	// dérivé d'une charge utile amont : image d'un joueur, de défi, de passe de combat).
 	VerdictUnverifiable
+	// VerdictUnavailable : le catalogue local n'a pas pu être lu (base indisponible,
+	// erreur de lecture). Aucune source distante n'est sollicitée, et le refus n'est pas
+	// mémorisé : la requête suivante interroge de nouveau le catalogue.
+	VerdictUnavailable
 )
 
 // Catalog classe une référence d'asset contre les données locales.
@@ -40,8 +46,8 @@ func NewMetadataCatalog(store *DuckDBIndexStore, titleKnown func(titleID string)
 	return &MetadataCatalog{store: store, titleKnown: titleKnown}
 }
 
-// Requêtes de présence. Une table absente ou une base indisponible laisse
-// l'identifiant inconnu (fermé par défaut), avec un journal.
+// Requêtes de présence (presence) : une table absente laisse l'identifiant inconnu, une
+// base illisible le rend indisponible ; les deux sont fermés par défaut.
 const (
 	qMedalDefinition  = `SELECT 1 FROM medal_definitions WHERE medal_name_id = ? LIMIT 1`
 	qMedalWaypoint    = `SELECT 1 FROM waypoint_medals_raw WHERE title_id = ? AND medal_id = ? LIMIT 1`
@@ -71,12 +77,9 @@ func (c *MetadataCatalog) classifyMedal(ctx context.Context, ref Ref) Verdict {
 	if err != nil {
 		return VerdictUnknown
 	}
-	if c.any(ctx, ref,
+	return c.presence(ctx, ref,
 		probe{qMedalDefinition, []any{medalID}},
-		probe{qMedalWaypoint, []any{ref.TitleID, medalID}}) {
-		return VerdictKnown
-	}
-	return VerdictUnknown
+		probe{qMedalWaypoint, []any{ref.TitleID, medalID}})
 }
 
 // classifyMap juge la carte, puis sa version (Variant). La version entre dans l'appel
@@ -84,16 +87,21 @@ func (c *MetadataCatalog) classifyMedal(ctx context.Context, ref Ref) Verdict {
 // VerdictUnverifiable, récupérée pour un appelant de confiance seulement ; sans quoi
 // chaque version inventée coûterait un appel signé aux API Halo.
 func (c *MetadataCatalog) classifyMap(ctx context.Context, ref Ref) Verdict {
-	if !c.any(ctx, ref,
+	mapVerdict := c.presence(ctx, ref,
 		probe{qMapCatalog, []any{ref.TitleID, ref.ID}},
 		probe{qAssetTranslation, []any{"map", ref.ID}},
-		probe{qMapImage, []any{ref.TitleID, ref.ID}}) {
-		return VerdictUnknown
+		probe{qMapImage, []any{ref.TitleID, ref.ID}})
+	if mapVerdict != VerdictKnown || ref.Variant == "" {
+		return mapVerdict
 	}
-	if ref.Variant == "" || c.any(ctx, ref, probe{qMapVersion, []any{ref.TitleID, ref.ID, ref.Variant}}) {
+	switch c.presence(ctx, ref, probe{qMapVersion, []any{ref.TitleID, ref.ID, ref.Variant}}) {
+	case VerdictKnown:
 		return VerdictKnown
+	case VerdictUnavailable:
+		return VerdictUnavailable
+	default:
+		return VerdictUnverifiable
 	}
-	return VerdictUnverifiable
 }
 
 // probe est une requête de présence et ses arguments.
@@ -102,19 +110,29 @@ type probe struct {
 	args  []any
 }
 
-// any dit si l'une des requêtes trouve une ligne. Une requête en erreur est journalisée
-// et comptée comme sans résultat.
-func (c *MetadataCatalog) any(ctx context.Context, ref Ref, probes ...probe) bool {
+// presence rend VerdictKnown si l'une des requêtes trouve une ligne ; sinon
+// VerdictUnavailable si l'une d'elles a échoué (base indisponible, erreur de lecture :
+// journalisé), VerdictUnknown si toutes ont répondu sans ligne. Une table absente
+// (duckdb.IsCatalogError : métadonnées d'un titre sans ce référentiel) vaut une réponse sans
+// ligne.
+func (c *MetadataCatalog) presence(ctx context.Context, ref Ref, probes ...probe) Verdict {
+	failed := false
 	for _, p := range probes {
 		found, err := c.store.Exists(ctx, p.query, p.args...)
-		if err != nil {
-			slog.WarnContext(ctx, "assets: catalogue local illisible, identifiant traité comme inconnu",
+		switch {
+		case err == nil && found:
+			return VerdictKnown
+		case err == nil:
+		case duckdb.IsCatalogError(err):
+			slog.DebugContext(ctx, "assets: référentiel absent du catalogue local",
 				append(ref.LogAttrs(), "err", err)...)
-			continue
-		}
-		if found {
-			return true
+		default:
+			failed = true
+			slog.WarnContext(ctx, "assets: catalogue local illisible", append(ref.LogAttrs(), "err", err)...)
 		}
 	}
-	return false
+	if failed {
+		return VerdictUnavailable
+	}
+	return VerdictUnknown
 }

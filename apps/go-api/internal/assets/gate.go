@@ -48,8 +48,10 @@ func NewGate(resolver gateResolver, catalog Catalog) *Gate {
 //   - ref mal formée (Ref.Validate) : ErrInvalidRef, sans lecture ni appel sortant ;
 //   - stock local : servi ;
 //   - refus mémorisé : ErrNotFound, sans autre travail ;
-//   - identifiant inconnu du catalogue : ErrNotFound, sans appel sortant ;
-//   - kind sans catalogue local : appel sortant pour un appelant de confiance
+//   - identifiant inconnu du catalogue : ErrNotFound, sans appel sortant (mémorisé) ;
+//   - catalogue illisible : ErrNotFound, sans appel sortant, non mémorisé ;
+//   - kind sans catalogue local, ou version de carte absente du catalogue : appel
+//     sortant pour un appelant de confiance
 //     (trusted : session authentifiée, ou instance sans authentification) seulement ;
 //   - identifiant connu : résolution complète. Un 404 amont est mémorisé.
 func (g *Gate) Get(ctx context.Context, ref Ref, trusted bool) (Resolved, error) {
@@ -68,6 +70,10 @@ func (g *Gate) Get(ctx context.Context, ref Ref, trusted bool) (Resolved, error)
 	case VerdictUnknown:
 		g.refused.add(key)
 		slog.DebugContext(ctx, "assets: identifiant absent du catalogue local, aucun appel sortant", ref.LogAttrs()...)
+		return Resolved{}, ErrNotFound
+	case VerdictUnavailable:
+		// Catalogue illisible : refus sans appel sortant, NON mémorisé (une panne passagère
+		// ne doit pas rendre un asset connu introuvable pendant negativeCacheTTL).
 		return Resolved{}, ErrNotFound
 	case VerdictUnverifiable:
 		if !trusted {

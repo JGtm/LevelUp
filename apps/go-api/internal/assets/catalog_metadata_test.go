@@ -115,3 +115,20 @@ func TestMetadataCatalog_ClassifyMapVersion(t *testing.T) {
 		})
 	}
 }
+
+// Une base illisible rend le catalogue indisponible (et non « inconnu ») pour chaque kind
+// jugé par le catalogue.
+func TestMetadataCatalog_UnreadableStoreIsUnavailable(t *testing.T) {
+	store := NewDuckDBIndexStore(t.TempDir()) // un dossier : la base ne s'ouvre pas
+	t.Cleanup(store.Close)
+	cat := NewMetadataCatalog(store, func(string) bool { return true })
+	for _, ref := range []Ref{
+		{Kind: KindMedalImage, TitleID: "halo_infinite", ID: "42"},
+		{Kind: KindMapImage, TitleID: "halo_infinite", ID: "map-known"},
+		{Kind: KindMapImage, TitleID: "halo_infinite", ID: "map-known", Variant: "v-current"},
+	} {
+		if got := cat.Classify(context.Background(), ref); got != VerdictUnavailable {
+			t.Errorf("Classify(%s) = %v, attendu VerdictUnavailable", ref, got)
+		}
+	}
+}

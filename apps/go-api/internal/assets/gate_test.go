@@ -177,3 +177,26 @@ func TestGate_InvalidRefIsRefusedBeforeAnyWork(t *testing.T) {
 			spy.gets.Load(), cat.calls.Load(), g.refused.len())
 	}
 }
+
+// Un catalogue illisible (base indisponible, table absente) ne vaut pas « inconnu » : la
+// référence est refusée sans appel sortant, mais n'entre pas dans le cache négatif — la
+// requête suivante interroge de nouveau le catalogue.
+func TestGate_CatalogReadErrorIsNotNegativelyCached(t *testing.T) {
+	unreadable := NewDuckDBIndexStore(t.TempDir()) // un dossier : la base ne s'ouvre pas
+	t.Cleanup(unreadable.Close)
+	cat := NewMetadataCatalog(unreadable, func(string) bool { return true })
+	spy := &spyResolver{}
+	g := NewGate(spy, cat)
+
+	for range 2 {
+		if _, err := g.Get(context.Background(), medalKnown, true); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("err = %v, attendu ErrNotFound", err)
+		}
+	}
+	if n := g.refused.len(); n != 0 {
+		t.Fatalf("%d refus mémorisé(s) sur une erreur de lecture du catalogue, attendu 0", n)
+	}
+	if spy.gets.Load() != 0 {
+		t.Fatalf("appels sortants = %d, attendu 0", spy.gets.Load())
+	}
+}
