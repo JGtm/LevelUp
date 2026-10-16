@@ -64,6 +64,31 @@ func (r *MatchExclusionRepo) SetExclusion(ctx context.Context, matchID string, e
 	return nil
 }
 
+// IsExcluded rend l'état courant du flag is_excluded d'un match, lu sur la vue
+// player_match_enrichment_latest (append-only) ; faux si aucune ligne n'existe.
+func (r *MatchExclusionRepo) IsExcluded(ctx context.Context, matchID string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.Player.QueryRecovered(ctx, `
+		SELECT COALESCE(is_excluded, FALSE)
+		FROM player_match_enrichment_latest
+		WHERE match_id = ?
+		LIMIT 1`, matchID)
+	if err != nil {
+		return false, fmt.Errorf("MatchExclusionRepo.IsExcluded: %w", err)
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		return false, rows.Err()
+	}
+	var excluded bool
+	if err := rows.Scan(&excluded); err != nil {
+		return false, fmt.Errorf("MatchExclusionRepo.IsExcluded scan: %w", err)
+	}
+	return excluded, nil
+}
+
 // GetMatchRegistryInfo lit shared.match_registry pour un match donné.
 // Renvoie domain.ErrMatchNotFound si le match n'existe pas.
 func (r *MatchExclusionRepo) GetMatchRegistryInfo(ctx context.Context, matchID string) (domain.MatchRegistryInfo, error) {

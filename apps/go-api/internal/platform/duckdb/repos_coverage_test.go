@@ -125,6 +125,32 @@ func TestMatchExclusionRepo_ListExcluded_WithData(t *testing.T) {
 	}
 }
 
+// IsExcluded lit le DERNIER état du flag (vue _latest) : exclu, puis ré-inclus, redevient faux ;
+// un match sans ligne est non exclu.
+func TestMatchExclusionRepo_IsExcluded_LatestState(t *testing.T) {
+	db := openMemDB(t)
+	seedSharedForExclusion(t, db)
+	seedPlayerEnrichment(t, db)
+	ctx := context.Background()
+	repo := NewMatchExclusionRepo(&PlayerDB{Player: db, Shared: db})
+
+	if got, err := repo.IsExcluded(ctx, "m1"); err != nil || got {
+		t.Fatalf("match sans ligne : (%v, %v), attendu (false, nil)", got, err)
+	}
+	if _, err := db.Exec(ctx, `INSERT INTO player_match_enrichment (match_id, is_excluded, stage) VALUES ('m1', TRUE, 'exclusion')`); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := repo.IsExcluded(ctx, "m1"); err != nil || !got {
+		t.Fatalf("match exclu : (%v, %v), attendu (true, nil)", got, err)
+	}
+	if _, err := db.Exec(ctx, `INSERT INTO player_match_enrichment (match_id, is_excluded, stage) VALUES ('m1', FALSE, 'exclusion')`); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := repo.IsExcluded(ctx, "m1"); err != nil || got {
+		t.Fatalf("match ré-inclus : (%v, %v), attendu (false, nil)", got, err)
+	}
+}
+
 func TestMatchExclusionRepo_GetMatchRegistryInfo_Social(t *testing.T) {
 	db := openMemDB(t)
 	seedSharedForExclusion(t, db)

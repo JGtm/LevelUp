@@ -193,6 +193,10 @@ type MatchExclusionRepository interface {
 	// SetExclusion positionne is_excluded pour un match (UPSERT).
 	SetExclusion(ctx context.Context, matchID string, excluded bool) error
 
+	// IsExcluded dit si le match est actuellement exclu (dernier état connu du flag ;
+	// faux si aucun état n'a jamais été posé).
+	IsExcluded(ctx context.Context, matchID string) (bool, error)
+
 	// ListExcluded retourne les matchs marqués is_excluded = TRUE.
 	ListExcluded(ctx context.Context) ([]domain.ExcludedMatch, error)
 
