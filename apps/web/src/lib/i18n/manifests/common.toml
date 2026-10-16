@@ -431,6 +431,29 @@ en = "The current password is incorrect."
 fr = "Le mot de passe n'a pas pu être enregistré."
 en = "The password could not be saved."
 
+# Refus du callback de connexion Xbox (/login?oauth_error=<code>, loginError.oauthErrorKey).
+# instance_locked reprend common.auth.register_instance_closed.
+
+[common.auth.oauth_invite_invalid]
+fr = "Cette invitation n'est plus valable. Demande un nouveau lien à la personne qui t'a invité."
+en = "This invitation is no longer valid. Ask the person who invited you for a new link."
+
+[common.auth.oauth_denied]
+fr = "Connexion Microsoft annulée."
+en = "Microsoft sign-in was cancelled."
+
+[common.auth.oauth_interrupted]
+fr = "La connexion a expiré ou a été interrompue. Réessaie."
+en = "The sign-in expired or was interrupted. Please try again."
+
+[common.auth.oauth_exchange_failed]
+fr = "Microsoft ou Xbox n'a pas répondu. Réessaie dans un instant."
+en = "Microsoft or Xbox did not respond. Please try again in a moment."
+
+[common.auth.oauth_failed]
+fr = "La connexion n'a pas pu aboutir. Réessaie."
+en = "Sign-in could not be completed. Please try again."
+
 # ─── Help menu ───────────────────────────────────────────────────────────
 
 [common.help.glossary]

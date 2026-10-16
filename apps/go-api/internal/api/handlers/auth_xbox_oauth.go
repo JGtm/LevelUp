@@ -14,9 +14,9 @@ package handlers
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
@@ -131,19 +131,18 @@ func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request)
 	}
 	sess.OAuthCodeVerifier = verifier
 
-	// Flow d'invitation : capter le code ?invite= et le porter en session
-	// jusqu'au callback. Un code invalide est ignoré (login normal) plutôt que de
-	// casser la redirection plein écran vers Microsoft.
+	// Flow d'invitation : capter le code ?invite= et le porter en session jusqu'au
+	// callback, même invalide : il ne donne rien par lui-même (la stratégie le réserve au
+	// callback, Consume, et un code invalide n'est pas réservé), mais il permet au refus
+	// du verrou de dire invite_invalid plutôt qu'instance fermée. Un code invalide ne
+	// casse pas la redirection plein écran vers Microsoft (login normal).
 	if code := r.URL.Query().Get("invite"); code != "" {
 		if h.invites != nil {
 			if verr := h.invites.Validate(code); verr != nil {
-				slog.WarnContext(r.Context(), "auth_xbox_oauth: invitation ?invite= invalide, ignorée", "err", verr)
-			} else {
-				sess.PendingInviteCode = code
+				slog.WarnContext(r.Context(), "auth_xbox_oauth: invitation ?invite= invalide, sans effet au callback", "err", verr)
 			}
-		} else {
-			sess.PendingInviteCode = code
 		}
+		sess.PendingInviteCode = code
 	}
 
 	if err := h.sessionStore.Save(sess); err != nil {
@@ -171,7 +170,8 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 
 	sess := middleware.GetSession(r.Context())
 	if sess == nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "no_session", "session non initialisée")
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: callback sans session")
+		h.refuseCallback(w, r, "no_session")
 		return
 	}
 
@@ -199,7 +199,7 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 
 // completeOAuthCallback termine le callback une fois les échanges avec Microsoft
 // faits : identité complétée, connexion, persistance du refresh token. Rend faux,
-// réponse d'erreur écrite, si la connexion est refusée.
+// navigateur renvoyé à l'écran de connexion (refuseCallback), si la connexion est refusée.
 func (h *XboxOAuthHandler) completeOAuthCallback(
 	w http.ResponseWriter, r *http.Request, sess *domain.SessionData,
 	tokenResult *auth_platform.AuthCodeResult, exchangeResult *auth_platform.ExchangeResult, xstsRTA *auth_platform.XSTSResult,
@@ -234,8 +234,8 @@ func (h *XboxOAuthHandler) completeOAuthCallback(
 
 // finishOAuthLogin applique la stratégie post-flux (completeLogin : rien n'est écrit
 // dans la session si elle refuse), puis renouvelle l'identifiant de session. Rend
-// faux, réponse d'erreur écrite, si la stratégie refuse : 403 instance_locked pour
-// une identité inconnue sur instance verrouillée, 500 link_failed sinon.
+// faux si la stratégie refuse, navigateur renvoyé à l'écran de connexion avec le code
+// de loginFailureCode (instance_locked, invite_invalid, link_failed).
 func (h *XboxOAuthHandler) finishOAuthLogin(
 	w http.ResponseWriter, r *http.Request, sess *domain.SessionData, attempt *auth_platform.Attempt,
 ) bool {
@@ -243,11 +243,7 @@ func (h *XboxOAuthHandler) finishOAuthLogin(
 		code := loginFailureCode(err)
 		slog.WarnContext(r.Context(), "auth_xbox_oauth: connexion refusée par la stratégie post-flux",
 			"xuid", attempt.XUID, "error_code", code, "err", err)
-		if errors.Is(err, auth_platform.ErrInstanceLocked) {
-			writeError(r.Context(), w, http.StatusForbidden, code, "this instance does not accept new accounts")
-		} else {
-			writeError(r.Context(), w, http.StatusInternalServerError, code, "sign-in could not be completed")
-		}
+		h.refuseCallback(w, r, code)
 		return false
 	}
 	// Nouvel identifiant de session : un cookie planté avant la connexion ne vaut rien.
@@ -257,8 +253,9 @@ func (h *XboxOAuthHandler) finishOAuthLogin(
 	return true
 }
 
-// validateCallbackParams vérifie error/code/state + CSRF, écrit la réponse d'erreur
-// si nécessaire. Retourne (code, true) si tout est OK, sinon ("", false).
+// validateCallbackParams vérifie error/code/state + CSRF ; un refus renvoie le
+// navigateur à l'écran de connexion (refuseCallback). Retourne (code, true) si tout
+// est OK, sinon ("", false).
 func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http.Request, sess *domain.SessionData) (string, bool) {
 	// Erreur Microsoft (user a refusé ou autre).
 	if errCode := r.URL.Query().Get("error"); errCode != "" {
@@ -269,14 +266,16 @@ func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http
 		if err := h.sessionStore.Save(sess); err != nil {
 			slog.ErrorContext(r.Context(), "auth_xbox_oauth: persistance session (reset état OAuth) échouée", "err", err)
 		}
-		writeError(r.Context(), w, http.StatusBadRequest, "oauth_denied", errDesc)
+		h.refuseCallback(w, r, "oauth_denied")
 		return "", false
 	}
 
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 	if code == "" || state == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "code ou state absent")
+		slog.WarnContext(r.Context(), "auth_xbox_oauth: callback sans code ou sans state",
+			"code_set", code != "", "state_set", state != "")
+		h.refuseCallback(w, r, "missing_params")
 		return "", false
 	}
 
@@ -290,7 +289,7 @@ func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http
 	if expected == "" || state != expected {
 		slog.WarnContext(r.Context(), "auth_xbox_oauth: state mismatch — possible CSRF",
 			"expected_set", expected != "", "received_set", state != "")
-		writeError(r.Context(), w, http.StatusForbidden, "state_mismatch", "state CSRF invalide")
+		h.refuseCallback(w, r, "state_mismatch")
 		return "", false
 	}
 	return code, true
@@ -305,13 +304,13 @@ func (h *XboxOAuthHandler) exchangeCallbackTokens(
 	tokenResult, err := auth_platform.ExchangeAuthorizationCode(r.Context(), code, h.redirectURI, codeVerifier)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: échange code échec", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "code_exchange_failed", err.Error())
+		h.refuseCallback(w, r, "code_exchange_failed")
 		return nil, nil, false
 	}
 	exchangeResult, err := h.provider.Exchange(r.Context(), tokenResult.AccessToken)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: provider.Exchange échec", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "halo_exchange_failed", err.Error())
+		h.refuseCallback(w, r, "halo_exchange_failed")
 		return nil, nil, false
 	}
 
@@ -376,4 +375,22 @@ func buildXboxOAuthAttempt(
 		attempt.XSTSRTAExpiresAt = xstsRTA.NotAfter
 	}
 	return attempt
+}
+
+// oauthLoginPath : l'écran de connexion du front, où le callback renvoie le navigateur
+// quand il refuse ; oauthErrorParam porte le code du refus (le front le traduit en
+// message FR / EN).
+const (
+	oauthLoginPath  = "/login"
+	oauthErrorParam = "oauth_error"
+)
+
+// refuseCallback termine un callback refusé : le callback est une navigation plein écran
+// (pas un appel du front), un corps JSON s'afficherait brut. Le navigateur est renvoyé
+// à l'écran de connexion avec le code du refus ; le détail reste dans les journaux.
+func (h *XboxOAuthHandler) refuseCallback(w http.ResponseWriter, r *http.Request, code string) {
+	slog.WarnContext(r.Context(), "auth_xbox_oauth: callback refusé, retour à l'écran de connexion",
+		"error_code", code)
+	target := oauthLoginPath + "?" + url.Values{oauthErrorParam: {code}}.Encode()
+	http.Redirect(w, r, target, http.StatusFound)
 }

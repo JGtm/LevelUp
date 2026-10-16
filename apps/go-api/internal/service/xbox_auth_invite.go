@@ -8,6 +8,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
@@ -29,6 +30,17 @@ func (s *XboxSSOLinkStrategy) claimPendingInvite(ctx context.Context, sess *doma
 		return nil
 	}
 	return inv
+}
+
+// refusalCause précise un refus du verrou d'instance : quand la session présentait une
+// invitation que claimPendingInvite n'a pas pu réserver, le refus devient
+// auth.ErrInviteInvalid (toujours un auth.ErrInstanceLocked pour errors.Is). Toute autre
+// erreur est rendue telle quelle.
+func refusalCause(err error, sess *domain.SessionData, claimed *domain.InviteCode) error {
+	if errors.Is(err, auth.ErrInstanceLocked) && claimed == nil && sess != nil && sess.PendingInviteCode != "" {
+		return auth.ErrInviteInvalid
+	}
+	return err
 }
 
 // releaseInvite rend une invitation réservée quand le login échoue après coup.

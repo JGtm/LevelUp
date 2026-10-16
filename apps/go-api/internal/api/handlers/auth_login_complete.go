@@ -44,8 +44,13 @@ func completeLogin(
 	return nil
 }
 
-// loginFailureCode rend le code exposé au client pour une stratégie post-flux en échec.
+// loginFailureCode rend le code exposé au client pour une stratégie post-flux en échec :
+// invite_invalid (refus du verrou dû à une invitation qui ne vaut plus rien),
+// instance_locked (identité inconnue sur instance fermée), link_failed sinon.
 func loginFailureCode(err error) string {
+	if errors.Is(err, auth_platform.ErrInviteInvalid) {
+		return "invite_invalid"
+	}
 	if errors.Is(err, auth_platform.ErrInstanceLocked) {
 		return "instance_locked"
 	}

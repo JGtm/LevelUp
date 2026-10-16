@@ -18,7 +18,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useStartDeviceFlow, useDeviceFlowStatus } from '@/features/setup/queries'
 import { useLogin } from '@/features/auth/queries'
 import { storePasswordCredential } from '@/features/auth/credentials'
-import { isTooManyLoginAttempts } from '@/features/auth/loginError'
+import { isTooManyLoginAttempts, oauthErrorKey } from '@/features/auth/loginError'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
 import { api, API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client'
@@ -29,11 +29,17 @@ import { CopyCodeButton } from '@/features/auth/CopyCodeButton'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { isDemoRefusal } from '@/lib/api/demoReadOnly'
+import { OAuthErrorNotice } from '@/features/auth/OAuthErrorNotice'
 
 // Relances AUTO max sur attempt_not_found avant bascule sur retry manuel.
 const MAX_AUTO_RECOVERY = 3
 
-export function XboxLoginPage() {
+interface XboxLoginPageProps {
+  /** Code de refus du callback de connexion Xbox (?oauth_error=), affiché en message localisé. */
+  oauthError?: unknown
+}
+
+export function XboxLoginPage({ oauthError }: XboxLoginPageProps = {}) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const oauthCodeFlowEnabled = useAppShellStore((s) => s.oauthCodeFlowEnabled)
@@ -59,6 +65,7 @@ export function XboxLoginPage() {
 
         <Card>
           <CardContent className="pt-6">
+            <OAuthErrorNotice code={oauthError} />
             {useRedirectFlow ? (
               <RedirectFlowPanel onUseDeviceCode={() => setForceDeviceCode(true)} />
             ) : (
@@ -293,8 +300,8 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
         <p className="text-destructive font-medium">
           {expired
             ? 'Le code a expiré.'
-            : status?.error_code === 'instance_locked'
-              ? t('common.auth.register_instance_closed')
+            : status?.error_code === 'instance_locked' || status?.error_code === 'invite_invalid'
+              ? t(oauthErrorKey(status.error_code) ?? 'common.auth.oauth_failed')
               : status?.error_detail ?? 'Échec de l\'authentification.'}
         </p>
         <Button onClick={handleRetry}>{t('common.xbox_login.retry')}</Button>

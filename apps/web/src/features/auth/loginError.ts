@@ -1,6 +1,7 @@
 /**
  * loginError — lecture des refus des routes d'authentification par mot de passe
- * (POST /auth/login, POST /auth/password).
+ * (POST /auth/login, POST /auth/password) et des refus du callback de connexion Xbox
+ * (/login?oauth_error=<code>).
  */
 
 /**
@@ -43,4 +44,34 @@ export function setPasswordErrorKey(err: unknown): SetPasswordErrorKey {
   if (code === 'invalid_current_password') return 'common.auth.current_password_invalid'
   if (code === 'current_password_required') return 'common.auth.current_password_required'
   return 'common.auth.set_password_failed'
+}
+
+/** Clés i18n des refus du callback de connexion Xbox. */
+export type OAuthErrorKey =
+  | 'common.auth.register_instance_closed'
+  | 'common.auth.oauth_invite_invalid'
+  | 'common.auth.oauth_denied'
+  | 'common.auth.oauth_interrupted'
+  | 'common.auth.oauth_exchange_failed'
+  | 'common.auth.oauth_failed'
+
+/** Code de refus posé par le serveur dans `?oauth_error=` → message affiché. */
+const OAUTH_ERROR_KEYS: Readonly<Record<string, OAuthErrorKey>> = {
+  instance_locked: 'common.auth.register_instance_closed',
+  invite_invalid: 'common.auth.oauth_invite_invalid',
+  oauth_denied: 'common.auth.oauth_denied',
+  state_mismatch: 'common.auth.oauth_interrupted',
+  missing_params: 'common.auth.oauth_interrupted',
+  no_session: 'common.auth.oauth_interrupted',
+  code_exchange_failed: 'common.auth.oauth_exchange_failed',
+  halo_exchange_failed: 'common.auth.oauth_exchange_failed',
+}
+
+/**
+ * Message localisé d'un refus du callback de connexion Xbox, `null` sans refus. Un code
+ * inconnu reçoit le message générique, jamais le code brut.
+ */
+export function oauthErrorKey(code: unknown): OAuthErrorKey | null {
+  if (typeof code !== 'string' || code === '') return null
+  return Object.hasOwn(OAUTH_ERROR_KEYS, code) ? OAUTH_ERROR_KEYS[code] : 'common.auth.oauth_failed'
 }

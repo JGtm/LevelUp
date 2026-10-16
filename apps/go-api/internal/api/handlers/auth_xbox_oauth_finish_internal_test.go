@@ -77,7 +77,8 @@ func TestOAuthFinish_RotatesSessionID(t *testing.T) {
 }
 
 // TestOAuthFinish_LockedLeavesSessionUntouched : identité inconnue, instance
-// verrouillée : 403 instance_locked, session inchangée, aucune rotation.
+// verrouillée : retour à l'écran de connexion avec le code instance_locked, session
+// inchangée, aucune rotation.
 func TestOAuthFinish_LockedLeavesSessionUntouched(t *testing.T) {
 	handler, sessStore, users := oauthFinishRig(t, true)
 	oldID, cookie := plantedOAuthSession(t, sessStore)
@@ -86,8 +87,9 @@ func TestOAuthFinish_LockedLeavesSessionUntouched(t *testing.T) {
 	req.AddCookie(cookie)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("statut %d, attendu 403 (%s)", w.Code, w.Body.String())
+	if w.Code != http.StatusFound || w.Header().Get("Location") != "/login?oauth_error=instance_locked" {
+		t.Fatalf("statut %d vers %q, attendu 302 vers /login?oauth_error=instance_locked (%s)",
+			w.Code, w.Header().Get("Location"), w.Body.String())
 	}
 	sess := sessStore.Load(t.Context(), oldID)
 	if sess == nil || sess.AuthReady || sess.LinkedHaloIdentity != nil || sess.HaloTokens != nil {
@@ -95,5 +97,44 @@ func TestOAuthFinish_LockedLeavesSessionUntouched(t *testing.T) {
 	}
 	if _, err := users.GetByXUID("2535400000000099"); err == nil {
 		t.Error("compte créé malgré le verrou")
+	}
+}
+
+// TestOAuthFinish_InvalidInviteOnLockedInstance : identité inconnue, instance verrouillée,
+// la session porte une invitation qui ne vaut plus rien : le refus le dit
+// (invite_invalid) au lieu d'annoncer une instance fermée ; aucun compte créé.
+func TestOAuthFinish_InvalidInviteOnLockedInstance(t *testing.T) {
+	dir := t.TempDir()
+	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	users := userstore.NewStore(filepath.Join(dir, "users.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), users)
+	h := NewXboxOAuthHandler(sessStore, nil, false, "http://localhost/cb").
+		WithLinkStrategy(service.NewXboxSSOLinkStrategy(users).
+			WithInstanceLock(func() bool { return true }).
+			WithInviteStore(invites))
+	attempt := &auth_platform.Attempt{
+		Status: auth_platform.AttemptStatusAuthorized, Gamertag: "Invite", XUID: "2535400000000077",
+	}
+	handler := middleware.WithSession(sessStore, middleware.SecureCookiePolicy{})(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if h.finishOAuthLogin(w, r, middleware.GetSession(r.Context()), attempt) {
+				http.Redirect(w, r, "/", http.StatusFound)
+			}
+		}))
+	sess := sessStore.New()
+	sess.PendingInviteCode = "EXPIRE00"
+	if err := sessStore.Save(sess); err != nil {
+		t.Fatalf("save : %v", err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/auth/xbox/callback", nil)
+	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: sessStore.SignCookie(sess.SessionID)})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusFound || w.Header().Get("Location") != "/login?oauth_error=invite_invalid" {
+		t.Fatalf("statut %d vers %q, attendu 302 vers /login?oauth_error=invite_invalid (%s)",
+			w.Code, w.Header().Get("Location"), w.Body.String())
+	}
+	if _, err := users.GetByXUID("2535400000000077"); err == nil {
+		t.Error("compte créé malgré le verrou et une invitation invalide")
 	}
 }

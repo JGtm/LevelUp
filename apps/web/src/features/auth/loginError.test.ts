@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isTooManyLoginAttempts, setPasswordErrorKey } from './loginError'
+import { isTooManyLoginAttempts, oauthErrorKey, setPasswordErrorKey } from './loginError'
 
 describe('isTooManyLoginAttempts', () => {
   it('reconnaît le refus du limiteur de l’API', () => {
@@ -34,5 +34,26 @@ describe('setPasswordErrorKey', () => {
       'common.auth.set_password_failed',
     )
     expect(setPasswordErrorKey(new Error('réseau'))).toBe('common.auth.set_password_failed')
+  })
+})
+
+describe('oauthErrorKey', () => {
+  it.each([
+    ['instance_locked', 'common.auth.register_instance_closed'],
+    ['invite_invalid', 'common.auth.oauth_invite_invalid'],
+    ['oauth_denied', 'common.auth.oauth_denied'],
+    ['state_mismatch', 'common.auth.oauth_interrupted'],
+    ['missing_params', 'common.auth.oauth_interrupted'],
+    ['no_session', 'common.auth.oauth_interrupted'],
+    ['code_exchange_failed', 'common.auth.oauth_exchange_failed'],
+    ['halo_exchange_failed', 'common.auth.oauth_exchange_failed'],
+    ['link_failed', 'common.auth.oauth_failed'],
+    ['code-inconnu', 'common.auth.oauth_failed'],
+  ])('%s → %s', (code, key) => {
+    expect(oauthErrorKey(code)).toBe(key)
+  })
+
+  it.each([undefined, '', 42, null])('aucun refus pour %s', (code) => {
+    expect(oauthErrorKey(code)).toBeNull()
   })
 })

@@ -160,7 +160,7 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 	user, created, err := s.resolveAccount(ctx, attempt, invite != nil)
 	if err != nil {
 		s.releaseInvite(ctx, invite, attempt)
-		return err
+		return refusalCause(err, sess, invite)
 	}
 
 	// Wire la session — login automatique.

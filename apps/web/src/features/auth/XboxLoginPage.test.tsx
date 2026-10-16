@@ -220,6 +220,23 @@ describe('XboxLoginPage', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
+  it("invitation périmée refusée par le verrou d'instance : message de l'invitation", async () => {
+    server.use(
+      http.get('/api/v1/auth/device-flow/:attemptId', () =>
+        HttpResponse.json({ attempt_id: 'att-1', status: 'failed', error_code: 'invite_invalid' }),
+      ),
+    )
+    renderWithProviders(<XboxLoginPage />)
+    expect(
+      await screen.findByText(
+        "Cette invitation n'est plus valable. Demande un nouveau lien à la personne qui t'a invité.",
+        {},
+        { timeout: 8000 },
+      ),
+    ).toBeInTheDocument()
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
   it('toggle "Retour à la connexion Xbox" depuis le panel admin', async () => {
     renderWithProviders(<XboxLoginPage />)
     await waitFor(() => {

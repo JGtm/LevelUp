@@ -60,8 +60,8 @@ func runOAuthCompletion(t *testing.T, locked bool) (*httptest.ResponseRecorder, 
 // verrou : aucun fichier de jetons n'est écrit pour elle (ADR 0023, registre C5-6).
 func TestOAuthCallback_LockedPersistsNoRefreshToken(t *testing.T) {
 	w, tokens := runOAuthCompletion(t, true)
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("statut %d, attendu 403", w.Code)
+	if w.Code != http.StatusFound || w.Header().Get("Location") != "/login?oauth_error=instance_locked" {
+		t.Fatalf("statut %d vers %q, attendu 302 vers /login?oauth_error=instance_locked", w.Code, w.Header().Get("Location"))
 	}
 	if len(tokens.written) != 0 {
 		t.Errorf("refresh token persisté pour une identité refusée : %v", tokens.written)

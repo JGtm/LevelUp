@@ -11,6 +11,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
@@ -52,6 +53,12 @@ var ErrSessionNotAuthenticated = errors.New("link_strategy: session sans usernam
 // sur une instance fermée (lockdown). La session ne doit alors porter aucune trace
 // d'authentification.
 var ErrInstanceLocked = errors.New("link_strategy: instance locked, new identity refused")
+
+// ErrInviteInvalid est la forme de ErrInstanceLocked (errors.Is vaut vrai pour les deux)
+// quand la session présentait une invitation qui ne vaut plus rien (inconnue, expirée,
+// consommée, révoquée, émetteur supprimé) : le refus tient au verrou, sa cause à
+// l'invitation, et l'écran de connexion le dit.
+var ErrInviteInvalid = fmt.Errorf("%w: the presented invitation is no longer valid", ErrInstanceLocked)
 
 // OnAuthSuccess lie le gamertag/XUID au user déjà connecté.
 // No-op si le gamertag est vide (failsafe) ou si la session n'a pas d'username.
