@@ -75,3 +75,29 @@ func TestBotIdentities_LEquipeLueVoyage(t *testing.T) {
 		t.Fatalf("equipe de %s = %d, attendu aucune (non lue)", ids[1].Name, *ids[1].Team)
 	}
 }
+
+// TestBotIdentities_LeBidZeroEstUnIdentifiant : le `bid` 0 que BOT_METADATA ecrit designe un bot
+// (`bid(0.0)` existe en base, `343 Ritzy` sur `ca684191` et `4db2574e`) ; la copie decalee de son nom
+// (`43 Ritzy`, slot 0, `bid` lu 0), non epinglee, ne retire qu'elle-meme.
+//
+// MUTATIONS QUI DOIVENT LE FAIRE ROUGIR : cle du retrait par `bid` seul (le vrai bot disparait) ;
+// projection sans `BotIDLu` (son `bid` redevient vide, ses vies sans nom).
+func TestBotIdentities_LeBidZeroEstUnIdentifiant(t *testing.T) {
+	res := &decfilm.Result{}
+	bots, copie := ajouter(res.Roster.Bots)
+	copie.Slot, copie.BotID, copie.Name = 0, 0, "43 Ritzy"
+	bots, vrai := ajouter(bots)
+	vrai.Slot, vrai.BotID, vrai.Name = 24, 0, "343 Ritzy"
+	res.Roster.Bots = bots
+	nonEpingles, nonEpingle := ajouter(res.Roster.UnpinnedBots)
+	*nonEpingle = res.Roster.Bots[0]
+	res.Roster.UnpinnedBots = nonEpingles
+
+	ids := BotIdentities(res)
+	if len(ids) != 1 || ids[0].FilmIndex != 24 {
+		t.Fatalf("identites projetees = %+v, attendu le seul bot epingle de l index 24", ids)
+	}
+	if bid := ids[0].Bid(); bid != "bid(0.0)" {
+		t.Fatalf("bid de %s = %q, attendu bid(0.0) : le zero que le film ecrit est un identifiant", ids[0].Name, bid)
+	}
+}

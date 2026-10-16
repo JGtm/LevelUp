@@ -126,9 +126,9 @@ func buildGolden(t *testing.T) ReplayDocument {
 	t.Helper()
 	g := loadGoldenInputs(t)
 	opt := g.options()
-	// Le catalogue vient des VRAIS mappings du titre (cf. golden_catalog_test.go) : le
-	// golden fige donc aussi les libellés servis, dans les deux langues.
-	opt.Labels, opt.EquipmentEnergy = goldenCatalog(t), goldenEnergyCatalog(t)
+	// Le catalogue vient des VRAIS mappings du titre (golden_catalog_test.go), les libellés servis dans
+	// les deux langues ; les BOTS, du kill-feed comme a la cuisson (vies_nommees_fixtures_test.go).
+	opt.Labels, opt.EquipmentEnergy, opt.Bots = goldenCatalog(t), goldenEnergyCatalog(t), botsDuFixture(t, goldenFilm)
 	// L entree de catalogue de la carte (schema 8) : les tractions de grappin deQuantifient
 	// leur ancre avec elle — meme source versionnee que la regeneration des entrees
 	// (goldenMapQuant), donc le golden fige aussi ce calque.

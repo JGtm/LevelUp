@@ -151,13 +151,13 @@ package objectives
 // `grammar/signaux` ne change pas et les objectifs ne lisent pas le fil : sortie inchangee par
 // construction. Golden regenere a revision constante.
 //
-// COMPLEMENT DU 2026-10-09 (jalon LK du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// COMPLEMENT DU 2026-10-09 (jalon LK du plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
 // REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.2` (records d image-cle lus sous la
 // portee de l etat complet). `grammar/signaux` ne change pas ; l etape `objectives` de `replay-equiv`
 // est IDENTIQUE sur les 20 films de reference (binaires de `d429dc517` contre ceux du lot). Golden
 // regenere a revision constante.
 //
-// COMPLEMENT DU 2026-10-09 (lot 2.7.d1 du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// COMPLEMENT DU 2026-10-09 (lot 2.7.d1 du plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
 // REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.3` (etat complet du bipede aux
 // images-cles lu par la grammaire, fenetres de bits derriere la lecture ; la marque de portage, lue
 // par la grammaire sur les records admis, reste la configuration de la fenetre, U-2 (b)).
@@ -166,7 +166,7 @@ package objectives
 // regenere a revision constante. Les deux rangs (`.2`, `.3`) sont renumerotes a la fusion de `feat/v75`
 // `54b47a2b8` (chronique de `grammar`) ; l etape `objectives` rejouee contre `54b47a2b8` est identique.
 //
-// COMPLEMENT DU 2026-10-14 (lot F du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/aj14-f`,
+// COMPLEMENT DU 2026-10-14 (lot F du plan `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/aj14-f`,
 // REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-14` — elle entre PAR VALEUR dans l amont
 // de cette couche — : la lecture de la vue A range ses messages de poussee (genres 104 et 105) et
 // `film/types` gagne `Knockback` et `KnockbackStats`. Les objectifs ne lisent pas les poussees.
@@ -181,12 +181,23 @@ package objectives
 // `killsource` IDENTIQUES sur les 20 ; seules `carriedEquipment` (14 films) et l artefact bougent.
 // Golden regenere a revision constante.
 //
-// COMPLEMENT DU 2026-10-15 (plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
+// COMPLEMENT DU 2026-10-15 (plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
 // `feat/ri-ecart-108`, REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-15.2` (table
 // d entrees d image-cle, bloc malleable d i53 sans drapeau final pour la majeure 0x25, world-object i0
 // et rigid-body i18 sous la garde) et `killsource.Rev` a `killsource-2026-10-15`. PREUVE :
 // `replay-equiv` sur les 20 films du corpus, binaires de `feat/v75` `46bfa5fad` contre ceux de la
 // branche fusionnee : etape `objectives` IDENTIQUE sur les 20. Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-16 (integration groupee des lots film du 15/10, branche `feat/integ-film`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-16` (lecteur des temps forts deduplique
+// par marqueur de fin, equipe des bots lue a la position du build, creation des objets engendres lue
+// avec sa position) et `killsource.Rev` a `killsource-2026-10-16`. Les objectifs ne lisent ni les temps
+// forts, ni BOT_METADATA, ni l equipement porte. Sur leurs branches, K-B et « faille a la pose » avaient
+// chacun ecrit ce complement pour `grammar-2026-10-15.3` (preuve `replay-equiv`, 20 films, etape
+// `objectives` identique sur les 20 pour chacun). PREUVE de l integration : `replay-equiv` sur les 20
+// films du corpus, binaires de `feat/v75` `15e2e2a04` contre ceux de `feat/integ-film` `3881e58ad`, un
+// film par processus : etape `objectives` IDENTIQUE sur les 20 ; seules `killsource`, `carriedEquipment`
+// et l artefact bougent. Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

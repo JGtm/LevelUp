@@ -255,6 +255,20 @@ type ReplayMapNameRepo interface {
 	MapKeysForMap(ctx context.Context, mapID string) (MatchMapKeys, error)
 }
 
+// ReplayModeGate est la capacite OPTIONNELLE d'un [ReplayMapNameRepo] qui sait quels matchs le
+// rejeu 2D ne gere pas (PvE Firefight, decision du 2026-10-15). Le service de rejeu la detecte
+// par assertion : sans elle, aucun mode n'est ecarte (tests, outils sans base).
+//
+// LE VERDICT VIENT DU REGISTRE (`analysis.SQLModeNonGere`), jamais d'un nom de mode ni d'un slug.
+type ReplayModeGate interface {
+	// ModeNonGere dit si ce match (identifiant complet) est d'un mode non gere. Un match absent
+	// du registre n'est pas non gere.
+	ModeNonGere(ctx context.Context, matchID string) (bool, error)
+	// ModesNonGeresShortIDs rend les matchs non geres en forme COURTE, en UNE lecture, pour
+	// filtrer une liste d'artefacts.
+	ModesNonGeresShortIDs(ctx context.Context) (map[string]struct{}, error)
+}
+
 // MatchPlayerFact et MatchFacts sont des ALIAS de leurs types de domaine
 // (`internal/domain/match_facts.go`), où ils ont été déplacés le 2026-08-24.
 //

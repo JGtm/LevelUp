@@ -1,7 +1,7 @@
 package grammar
 
 // malleable_du_film_test.go — LE DRAPEAU FINAL DU BLOC MALLEABLE DU BIPEDE SUIT LA VERSION MAJEURE QUE
-// LE FILM DECLARE (plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R2).
+// LE FILM DECLARE (plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R2).
 
 import "testing"
 

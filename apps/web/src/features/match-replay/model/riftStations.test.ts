@@ -14,6 +14,7 @@ import { testReplayDoc } from '../test/testDoc'
 
 type Translocation = ReplayDocumentReady['translocations'][number]
 type Change = ReplayDocumentReady['equipmentChanges'][number]
+type Pose = ReplayDocumentReady['riftPoses'][number]
 
 /** Une téléportation SITUÉE : le joueur quitte `from` et atteint `to`. */
 function saut(slot: number, t: number, from: [number, number], to: [number, number]): Translocation {
@@ -35,12 +36,14 @@ function doc(over: {
   translocations?: Translocation[]
   equipmentChanges?: Change[]
   tracks?: ReturnType<typeof vie>[]
+  riftPoses?: Pose[]
 }) {
   return testReplayDoc({
     abilityLabels: LIBELLES,
     tracks: over.tracks ?? [vie(3, 0, 400)],
     translocations: over.translocations ?? [],
     equipmentChanges: over.equipmentChanges ?? [],
+    riftPoses: over.riftPoses ?? [],
   })
 }
 
@@ -221,5 +224,58 @@ describe('riftStations — P2.4 : un `from` sous saut de compteur ne ferme pas l
       }),
     )
     expect(s[0].t1).toBe(300)
+  })
+})
+
+describe('riftStations — la faille finit à la SUPPRESSION LUE de son objet (schéma 98)', () => {
+  /** Une pose SITUÉE par l'objet qu'elle crée, avec la fin lue de cet objet quand `t1` est donné. */
+  function pose(slot: number, t: number, at: [number, number], t1?: number): Pose {
+    return { slot, t, x: at[0], y: at[1], z: 0, src: 'objet', ...(t1 === undefined ? {} : { t1 }) }
+  }
+
+  it('la fin lue fait foi : ni la consommation ni la mort du porteur ne la ferment', () => {
+    const s = riftStations(
+      doc({
+        riftPoses: [pose(3, 100, [12, 5], 260)],
+        equipmentChanges: [spent(3, 101, 11)],
+        tracks: [vie(3, 0, 180)],
+      }),
+    )
+    expect(s).toHaveLength(1)
+    expect([s[0].t0, s[0].t1]).toEqual([100, 260])
+    expect(riftStationsAt(s, 261)).toEqual([])
+  })
+
+  it('un échange après la pose garde la fin lue de son objet', () => {
+    const s = riftStations(
+      doc({
+        riftPoses: [pose(3, 100, [12, 5], 260)],
+        translocations: [saut(3, 150, [40, 5], [12, 5])],
+        tracks: [vie(3, 0, 180)],
+      }),
+    )
+    expect(s.map((x) => [x.t0, x.t1])).toEqual([
+      [100, 149],
+      [150, 260],
+    ])
+  })
+
+  it('sans fin lue, le REPLI : la mort du porteur clôt', () => {
+    const s = riftStations(doc({ riftPoses: [pose(3, 100, [12, 5])], tracks: [vie(3, 0, 180)] }))
+    expect(s[0].t1).toBe(180)
+  })
+
+  it('un échange après la fin lue relève d un autre équipement : le repli le borne', () => {
+    const s = riftStations(
+      doc({
+        riftPoses: [pose(3, 100, [12, 5], 120)],
+        translocations: [saut(3, 150, [40, 5], [12, 5])],
+        tracks: [vie(3, 0, 300)],
+      }),
+    )
+    expect(s.map((x) => [x.t0, x.t1])).toEqual([
+      [100, 120],
+      [150, 300],
+    ])
   })
 })

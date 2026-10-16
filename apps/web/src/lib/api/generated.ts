@@ -5527,9 +5527,15 @@ export interface components {
             /** Format: int64 */
             noIdentity: number;
             /** Format: int64 */
-            positioned: number;
+            positionedByCarrier: number;
+            /** Format: int64 */
+            positionedByObject: number;
             /** Format: int64 */
             published: number;
+            /** Format: int64 */
+            riftEndsRead: number;
+            /** Format: int64 */
+            riftEndsUnread: number;
             /** Format: int64 */
             riftPoses: number;
             /** Format: int64 */
@@ -5540,6 +5546,8 @@ export interface components {
             trackedObjects: number;
             /** Format: int64 */
             unnamed: number;
+            /** Format: int64 */
+            unpositioned: number;
             /** Format: int64 */
             uses: number;
             /** Format: int64 */
@@ -11056,8 +11064,11 @@ export interface components {
             a?: number;
             /** Format: int32 */
             slot: number;
+            src?: string;
             /** Format: int64 */
             t: number;
+            /** Format: int64 */
+            t1?: number;
             /** Format: float */
             x?: number;
             /** Format: float */

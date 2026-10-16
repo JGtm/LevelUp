@@ -140,6 +140,9 @@ func scanHighlightEvents(data []byte, version int) []highlightevent.HighlightEve
 	var events []highlightevent.HighlightEvent
 	// Indices déjà traités (en bits) pour éviter les doublons.
 	seenPositions := make(map[int]bool)
+	// UN marqueur de fin = UN événement : pour chaque marqueur déjà consommé, l index dans
+	// `events` et la position du XUID retenu. Voir [retenirLePlusProche].
+	parMarqueur := make(map[int]candidatMarqueur)
 
 	// Scan bit par bit : chercher l'octet 0xc0 (8 bits = 11000000), puis valider :
 	//   bits[markerStart-8 : markerStart] = 0x2d ou 0x25
@@ -166,14 +169,14 @@ func scanHighlightEvents(data []byte, version int) []highlightevent.HighlightEve
 			continue
 		}
 
-		ev, err := parseEventAtBit(data, xuidStart, xuid, version)
+		ev, endPos, err := parseEventAtBit(data, xuidStart, xuid, version)
 		if err != nil {
 			// Event non reconnu (type_hint inconnu, end-marker absent dans la
 			// fenêtre, etc.) → skip silencieusement.
 			continue
 		}
-		events = append(events, ev)
 		seenPositions[xuidStart] = true
+		events = retenirLePlusProche(events, parMarqueur, ev, endPos, xuidStart)
 	}
 	return events
 }
@@ -188,7 +191,7 @@ func scanHighlightEvents(data []byte, version int) []highlightevent.HighlightEve
 // (type_hint reconnu). Le Python upstream prend le premier match aveuglément
 // — équivalent en pratique sur de la vraie data, mais cette version est plus
 // robuste sur des flux synthétiques ou bruités.
-func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (highlightevent.HighlightEvent, error) {
+func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (highlightevent.HighlightEvent, int, error) {
 	totalBits := len(data) * 8
 	windowEndBit := min(xuidStartBit+eventWindowBits, totalBits)
 
@@ -198,9 +201,9 @@ func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (h
 		endPosBit := findBitMarker(data, searchFrom, windowEndBit, endMarker)
 		if endPosBit < 0 {
 			if lastErr != nil {
-				return highlightevent.HighlightEvent{}, lastErr
+				return highlightevent.HighlightEvent{}, -1, lastErr
 			}
-			return highlightevent.HighlightEvent{}, fmt.Errorf("end-marker absent dans la fenêtre")
+			return highlightevent.HighlightEvent{}, -1, fmt.Errorf("end-marker absent dans la fenêtre")
 		}
 
 		eventBitsStart := endPosBit - eventDataBytes*8
@@ -219,7 +222,7 @@ func parseEventAtBit(data []byte, xuidStartBit int, xuid uint64, version int) (h
 		}
 		ev, err := decodeEventBytes(eventBytes, xuid, version)
 		if err == nil {
-			return ev, nil
+			return ev, endPosBit, nil
 		}
 		// type_hint inconnu / event corrompu : c'était un faux positif du
 		// scanner d'end-marker. Continuer après cette position.
@@ -367,4 +370,30 @@ func findBitMarker(data []byte, startBit, endBit int, pattern []byte) int {
 		}
 	}
 	return -1
+}
+
+// candidatMarqueur est le XUID retenu pour un marqueur de fin : l index de son événement dans
+// la liste en cours et la position (en bits) du XUID.
+type candidatMarqueur struct {
+	index    int
+	xuidBits int
+}
+
+// retenirLePlusProche applique « un marqueur de fin = un événement ». Deux motifs de XUID
+// valides peuvent précéder le même marqueur dans la fenêtre (un faux motif dans les octets du
+// bloc d une fiche, plusieurs milliers de bits avant le vrai) ; les deux décodent alors le même
+// bloc de 60 octets et l événement sortirait deux fois, sous deux XUID. Le vrai XUID est celui
+// qui précède le bloc : on garde le candidat le plus proche du marqueur (position de XUID la
+// plus grande) et on écarte l autre.
+func retenirLePlusProche(events []highlightevent.HighlightEvent, parMarqueur map[int]candidatMarqueur,
+	ev highlightevent.HighlightEvent, endPos, xuidBits int) []highlightevent.HighlightEvent {
+	if prev, vu := parMarqueur[endPos]; vu {
+		if xuidBits > prev.xuidBits {
+			events[prev.index] = ev
+			parMarqueur[endPos] = candidatMarqueur{index: prev.index, xuidBits: xuidBits}
+		}
+		return events
+	}
+	parMarqueur[endPos] = candidatMarqueur{index: len(events), xuidBits: xuidBits}
+	return append(events, ev)
 }

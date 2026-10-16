@@ -275,9 +275,10 @@ func equipeGolden(eq *int) string {
 func equipesDesBotsGolden(e EquipesDesBots) string {
 	return fmt.Sprintf("equipes des bots (BOT_METADATA) : lues %d · illisibles %d · contradictoires %d · "+
 		"hors grammaire %d · entrees hors balayage %d · jumeaux discordants %d · hors domaine %d · "+
-		"paquets non fermes %d · personnalisation inconnue %s\n", e.Lues, e.Illisibles, e.Contradictoires,
+		"paquets non fermes %d · personnalisation inconnue %s · fragments ecartes %d · "+
+		"position de l equipe inconnue %s\n", e.Lues, e.Illisibles, e.Contradictoires,
 		e.HorsGrammaire, e.EntreesHorsBalayage, e.JumeauxDiscordants, e.HorsDomaine, e.PaquetsNonFermes,
-		ouiNonGolden(e.PersoInconnue))
+		ouiNonGolden(e.PersoInconnue), e.FragmentsEcartes, ouiNonGolden(e.PositionInconnue))
 }
 
 func ouiNonGolden(b bool) string {

@@ -17,19 +17,23 @@ package killsource
 //	                    16 octets, R(32), R(64), six champs courts (10, 14, 6, 8, 7, 1), le bloc de
 //	                    personnalisation (largeur PAR BUILD, [profile.PersonnalisationOctets]) et
 //	                    44 octets bruts (`fiche + 0x1400`)
-//	l equipe            `FUN_1424d512c` recopie ces 44 octets en `configuration + 0xCC0` ; leur
-//	                    octet 0x25 (`+ 0xCE5`) est pose sur le joueur par `FUN_140ad37f8` ->
-//	                    `FUN_140ad389c`, dont le changement notifie le moteur (`FUN_140adedd8`,
-//	                    masque `1 << equipe`) ; `FUN_140a20620` l initialise a -1 (aucune)
+//	l equipe            sur HI_1_13_0, `FUN_1424d512c` recopie ces 44 octets en
+//	                    `configuration + 0xCC0` ; leur octet 0x25 (`+ 0xCE5`) est pose sur le
+//	                    joueur par `FUN_140ad37f8` -> `FUN_140ad389c`, dont le changement notifie le
+//	                    moteur (`FUN_140adedd8`, masque `1 << equipe`) ; `FUN_140a20620`
+//	                    l initialise a -1 (aucune)
 //	le jumeau           l octet 0x26 (`+ 0xCE6`), -1 par defaut, n est lu que par des charges
 //	                    d evenement (`FUN_1430e17bc`, `FUN_1430e1de0`) : il se lit et se COMPARE,
 //	                    il ne decide rien
 //
-// L ORACLE : l equipe que l entite `ti=9` du bot lui donne, liee par ses declarations, sur 56 bots
-// de 36 films du parc (55 HI_1_13_0, 1 HI_1_12_0) : 56/56 (`botmeta_equipe_research_test.go`) ; le
-// jumeau egal a l equipe sur les 78 bots dont l equipe se lit (79 bots du lecteur historique sur 48
-// films, dont un fantome, cf. [EquipesDesBots.HorsGrammaire] ;
-// `.ai/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G2.c, F.2 et G3.0).
+// LA POSITION DES DEUX OCTETS DANS LE BLOC CHANGE AVEC LE BUILD : 0x25 et 0x26 sur HI_1_13_0, 4 et 6
+// sur HI_1_10_0 a HI_1_12_0, ou l octet 0x25 tombe dans la copie du nom et se lit 0. Elle est une
+// donnee du profil ([profile.PositionEquipeBotPour]), RELUE sur l executable de HI_1_13_0, MESUREE
+// ailleurs ; un build sans position etablie ne donne aucune equipe ([EquipesDesBots.PositionInconnue]).
+//
+// L ORACLE : l equipe de la feuille de match et celle que l entite `ti=9` du bot lui donne, liee par
+// ses declarations (`botmeta_equipe_research_test.go`, `.ai/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`).
+// Elles CONTROLENT la mesure ; aucune ne remplace la lecture.
 //
 // # LA LECTURE VIT DANS LA GRAMMAIRE
 //
@@ -47,17 +51,19 @@ package killsource
 // `bid` et le MEME nom.
 //
 // LES DEUX LECTEURS PEUVENT DIFFERER, ET C EST COMPTE, PAS ARBITRE : le lecteur historique trouve
-// les noms par balayage, et il lit sur `8076f97f` (HI_1_12_0) un `43 KaleDucky` slot 0 `bid` 0 que
-// la marche du paquet ne lit pas (un fragment de la seconde copie du nom) ; un tel bot n a pas
-// d equipe ([EquipesDesBots.HorsGrammaire]). Une entree que la marche lit sans que le lecteur
-// historique la trouve se compte aussi ([EquipesDesBots.EntreesHorsBalayage]).
+// les noms par balayage, et il lit dans la seconde copie d un nom un fragment (`43 KaleDucky`,
+// slot 0, `bid` 0) que la marche du paquet ne lit pas. La grammaire l ecarte d un paquet qui ferme
+// ([grammar.PaquetBotMetadata.FragmentsEcartes], compte en [EquipesDesBots.FragmentsEcartes]) ; un
+// nom balaye qu aucune entree de paquet ferme ne lit et qui n est pas un tel fragment n est pas un
+// bot que l ecrivain ecrit : il SORT DU ROSTER et se compte ([EquipesDesBots.HorsGrammaire]) — jamais
+// une entree sans equipe. Une entree que la marche lit sans que le lecteur historique la trouve se
+// compte aussi ([EquipesDesBots.EntreesHorsBalayage]).
 //
-// Un bot sans equipe lue se compte et l orchestrateur le journalise. AUCUN REPLI : ni le siege, ni
-// la feuille de match.
+// Un VRAI bot sans equipe lue se compte et l orchestrateur le journalise en erreur. AUCUN REPLI : ni
+// le siege, ni la feuille de match.
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 // botEquipeMax : le domaine d une equipe va de [grammar.TeamNone] (aucune) a 8, celui du designateur
@@ -71,14 +77,18 @@ type EquipesDesBots struct {
 	Lues int
 	// Illisibles : les bots sans equipe lue qu un paquet non ferme declare, ou dont une entree porte
 	// une equipe hors domaine (ou tous les bots d un film dont le build n a pas de largeur de
-	// personnalisation au profil).
+	// personnalisation, ou pas de position de l equipe, au profil).
 	Illisibles int
 	// Contradictoires : les bots auxquels deux paquets fermes donnent deux equipes.
 	Contradictoires int
 	// HorsGrammaire : les bots du lecteur historique qu aucune entree de paquet ferme ne lit, alors
-	// que tous les paquets ou il les trouve ferment et qu aucune entree ne les refuse (cf. l en-tete :
-	// un fragment de nom).
+	// que tous les paquets ou il les trouve ferment et qu aucune entree ne les refuse — sans etre un
+	// fragment ecarte. La grammaire de l ecrivain ne l ecrit pas : il est RETIRE DU ROSTER, et compte
+	// ici (avertissement `killsource.entrees_de_bots`) ; il n est jamais publie sans equipe.
 	HorsGrammaire int
+	// FragmentsEcartes : les noms que la grammaire ecarte du balayage des paquets fermes, fragments de
+	// la seconde copie d un nom ecrit (cf. l en-tete), sommes sur les paquets du film.
+	FragmentsEcartes int
 	// EntreesHorsBalayage : les entrees (slot, `bid`) que la marche lit et que le lecteur historique
 	// ne trouve pas sous le meme nom — un bot que le roster ne porte pas.
 	EntreesHorsBalayage int
@@ -90,11 +100,14 @@ type EquipesDesBots struct {
 	PaquetsNonFermes int
 	// PersoInconnue : le build du film n a pas de largeur de personnalisation au profil.
 	PersoInconnue bool
+	// PositionInconnue : le build du film n a pas de position de l equipe au profil
+	// ([profile.PositionEquipeBotPour]) ; les entrees se lisent, sans leur equipe.
+	PositionInconnue bool
 }
 
-// aLire dit si le bilan porte un bot sans equipe lue.
+// aLire dit si le bilan porte un VRAI bot sans equipe lue.
 func (e EquipesDesBots) aLire() bool {
-	return e.Illisibles > 0 || e.Contradictoires > 0 || e.HorsGrammaire > 0
+	return e.Illisibles > 0 || e.Contradictoires > 0
 }
 
 // releveDesEquipes : les equipes que les paquets FERMES donnent a chaque bot, et ce qui s est refuse.
@@ -127,6 +140,10 @@ func (r *releveDesEquipes) noter(p grammar.PaquetBotMetadata) {
 			r.horsBalayage[k] = true
 			continue
 		}
+		if !e.EquipeLue { // aucune position de l equipe pour ce build : refusee, jamais 0
+			r.refuses[k] = true
+			continue
+		}
 		if e.Equipe < grammar.TeamNone || e.Equipe > botEquipeMax {
 			r.bilan.HorsDomaine++
 			r.refuses[k] = true
@@ -142,11 +159,11 @@ func (r *releveDesEquipes) noter(p grammar.PaquetBotMetadata) {
 	}
 }
 
-// poser donne a chaque bot l equipe de ses paquets fermes quand ils s accordent, et compte les
-// autres.
+// poser donne a chaque bot l equipe de ses paquets fermes quand ils s accordent, compte les autres,
+// et retire du roster les noms hors grammaire (cf. l en-tete).
 func (r *releveDesEquipes) poser(m *botMeta) {
-	for i := range m.Bots {
-		b := &m.Bots[i]
+	gardes := m.Bots[:0]
+	for _, b := range m.Bots {
 		k := [2]int{b.Slot, b.BotID}
 		eqs := r.parBot[k]
 		switch {
@@ -161,18 +178,28 @@ func (r *releveDesEquipes) poser(m *botMeta) {
 			r.bilan.Illisibles++
 		default:
 			r.bilan.HorsGrammaire++
+			continue
 		}
+		gardes = append(gardes, b)
 	}
+	m.Bots = gardes
 	r.bilan.EntreesHorsBalayage = len(r.horsBalayage)
 	m.Equipes = r.bilan
 }
 
 // poserLesEquipesDesBots donne a chaque bot l equipe que les paquets BOT_METADATA du film lui donnent,
-// lus sous la largeur de personnalisation du build ; `persoConnue` faux (build absent du profil, ou
-// non lu) : aucune entree ne se lit, chaque bot se compte illisible.
-func poserLesEquipesDesBots(paquets []grammar.PaquetBotMetadata, m *botMeta, persoConnue bool) {
-	if !persoConnue {
-		m.Equipes = EquipesDesBots{Illisibles: len(m.Bots), PersoInconnue: len(m.Bots) > 0}
+// lus sous la `lecture` du build. Build sans largeur de personnalisation au profil : aucune entree
+// ne se lit ; sans position de l equipe : les entrees se lisent sans equipe. Dans les deux cas,
+// chaque bot se compte illisible — jamais une equipe par defaut.
+func poserLesEquipesDesBots(paquets []grammar.PaquetBotMetadata, m *botMeta, lecture grammar.LectureDesBots) {
+	fragments := 0
+	for _, p := range paquets {
+		fragments += p.FragmentsEcartes
+	}
+	if !lecture.PersoConnue || !lecture.EquipeConnue {
+		m.Equipes = EquipesDesBots{Illisibles: len(m.Bots), FragmentsEcartes: fragments,
+			PersoInconnue:    !lecture.PersoConnue && len(m.Bots) > 0,
+			PositionInconnue: lecture.PersoConnue && len(m.Bots) > 0}
 		return
 	}
 	r := &releveDesEquipes{parBot: map[[2]int]map[int]bool{}, refuses: map[[2]int]bool{},
@@ -180,17 +207,19 @@ func poserLesEquipesDesBots(paquets []grammar.PaquetBotMetadata, m *botMeta, per
 	for _, p := range paquets {
 		r.noter(p)
 	}
+	r.bilan.FragmentsEcartes = fragments
 	r.poser(m)
 }
 
-// botsDuFilm agrege les bots de BOT_METADATA et y lit l equipe de chacun : la largeur du bloc de
-// personnalisation, qui la place, est celle du build que la table du film a lu. Les bots sans
-// equipe lue se disent a l orchestrateur ([decodeCtx.signalerLesEquipesDesBots]).
+// botsDuFilm agrege les bots de BOT_METADATA et y lit l equipe de chacun, sous la lecture que le
+// profil donne au build que la table du film a lu (largeur du bloc de personnalisation, position de
+// l equipe). Les bots sans equipe lue se disent a l orchestrateur
+// ([decodeCtx.signalerLesEquipesDesBots]).
 func (c *decodeCtx) botsDuFilm(build string) botMeta {
-	perso, persoConnue := profile.PersonnalisationOctets(build)
-	paquets := grammar.PaquetsBotMetadata(c.film.src, perso*8, persoConnue)
+	lecture := grammar.LectureDesBotsPour(build)
+	paquets := grammar.PaquetsBotMetadata(c.film.src, lecture)
 	bots := loadBotMeta(paquets)
-	poserLesEquipesDesBots(paquets, &bots, persoConnue)
+	poserLesEquipesDesBots(paquets, &bots, lecture)
 	c.signalerLesEquipesDesBots(bots.Equipes, build)
 	return bots
 }

@@ -423,12 +423,12 @@ func (s *filmScan) balayerPont() {
 	s.poserLeFilDesMorts(s.pont.Morts, s.pont.ErrMorts)
 	deaths := s.in.Deaths
 	s.opt.observe(s.ctx, "deaths", s.in.Deaths)
-	// LA TABLE DES JOUEURS QUE LE FILM ÉCRIT (lot 1.6) : `chunk_00` porte les 32 sièges du match
-	// avec leur XUID et leur gamertag. C'est le lien DIRECT, et il se lit AVANT la table des
-	// chunks de réplication parce que c'est lui qui la précède dans le registre d'identité —
-	// jamais l'inverse (cf. film_player_table.go). Un refus est NOMMÉ, journalisé et publié.
-	table, err := grammar.ScanFilmPlayerTable(s.film)
-	s.in.FilmTable = consignerLaTableDuFilm(s.ctx, table, err, s.matchID)
+	// LA TABLE DES JOUEURS QUE LE FILM ÉCRIT (lot 1.6) : `chunk_00` porte les 32 sièges du match avec
+	// leur XUID et leur gamertag, le lien DIRECT que le registre emploie AVANT la table des chunks de
+	// réplication (cf. film_player_table.go). Un refus est NOMMÉ, journalisé et publié. Elle se lit
+	// avec les occupants par la lecture que le document interne du sync appelle aussi.
+	so := lireSiegesEtOccupants(s.ctx, s.film, s.fc, s.matchID)
+	s.in.FilmTable = so.table
 	s.opt.observe(s.ctx, "filmTable", s.in.FilmTable)
 	// L'EQUIPE DE CHAQUE JOUEUR (lot 1.7) : le composant i0 de ti=9 de la trame d'etat, a une
 	// position DERIVEE de la grammaire. C'est la SEULE source d'equipe du document (V4) ; la
@@ -436,7 +436,7 @@ func (s *filmScan) balayerPont() {
 	// LES ENTITES SORTENT DE LA MEME PASSE (lot M2.1) : un occupant par entite, sa presence au pas
 	// des images-cles et son equipe. L'etape observee reste la TABLE par index, a l'octet : elle
 	// est le controle, et son empreinte inchangee prouve que la passe unique ne l'a pas touchee.
-	s.in.PlayerTeams, s.in.TeamScan, s.in.PlayerEntities = grammar.ScanPlayerTeams(s.fc)
+	s.in.PlayerTeams, s.in.TeamScan, s.in.PlayerEntities = so.equipes, so.rapport, so.entites
 	s.opt.observe(s.ctx, "playerTeams", s.in.PlayerTeams)
 	// L'index de joueur SE LIT dans le film (cf. player_index.go) : le roster vient du fil des
 	// morts, et les 5 bits qui précèdent chaque xuid donnent son index. Sans cette table, un tir

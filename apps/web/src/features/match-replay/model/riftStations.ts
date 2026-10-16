@@ -8,15 +8,21 @@
  * l'exécutable et validé à 0,00-0,26 m sur 18 événements (rapport R6 §1). Une interface qui
  * dessinerait « une faille posée une fois, fixe » serait FAUSSE.
  *
- * LA FAILLE APPARAÎT À SA POSE (schéma 95). Le film date la pose (`riftPoses` : l'énergie du
- * translocateur porté tombe à zéro) ; sa position, aucun canal ne la lit à cet instant, et c'est le
- * PREMIER ÉCHANGE qui la donne — le joueur arrive là où la faille était. Une pose jamais suivie d'un
- * échange est datée sans position : rien ne se dessine pour elle plutôt qu'une faille devinée.
+ * LA FAILLE APPARAÎT À SA POSE, À SA PLACE (schéma 98). Le film date la pose (`riftPoses` : l'énergie
+ * du translocateur porté tombe à zéro) et, dans le même paquet, CRÉE la faille : sa position est celle
+ * de cet objet (`src` « objet » ; repli « porteur » : la piste du porteur à l'image de la pose). Elle
+ * ne dépend d'aucun échange. Une pose sans position (aucune des deux lisible) ne dessine rien.
  *
- * ET RIEN NE RESTE À DEMEURE (point utilisateur du 2026-09-03). La fin de l'équipement a deux
- * modes mesurés — l'épuisement par l'usage final (`spent` quasi simultané) et l'expiration
- * 9 à 16,5 s après le dernier échange — et la mort du porteur clôt aussi, sans `spent`. La
- * dernière station s'arrête donc au premier de ces trois faits, jamais à la fin du rejeu.
+ * LA FAILLE FINIT À LA SUPPRESSION LUE DE SON OBJET (schéma 98). Le film écrit la suppression de
+ * l'objet que la pose a créé, et le serveur la publie sur la pose (`riftPoses[].t1`) : la faille vit
+ * de sa pose jusque-là, échanges compris, sans regarder ni la consommation ni la mort du porteur.
+ *
+ * REPLI, quand cette fin n'est pas lue (pose sans `t1`, compté au serveur dans
+ * `coverage.carriedEquipment.riftEndsUnread`, ou échange qu'aucune pose lue ne gouverne) : RIEN NE
+ * RESTE À DEMEURE (point utilisateur du 2026-09-03). La fin de l'équipement a deux modes mesurés —
+ * l'épuisement par l'usage final (`spent` quasi simultané) et l'expiration 9 à 16,5 s après le
+ * dernier échange — et la mort du porteur clôt aussi, sans `spent`. La dernière station s'arrête
+ * alors au premier de ces faits, jamais à la fin du rejeu.
  *
  * Pas de React, pas de couleur, pas de canevas : de la géométrie datée, testable seule.
  */
@@ -78,7 +84,7 @@ export function riftStations(doc: ReplayDocumentReady): RiftStation[] {
       // jusque dans la vie du joueur suivant sur le même slot. Le premier des trois faits
       // ferme : l'échange suivant, la consommation, la mort.
       const suivant = i + 1 < echanges.length ? echanges[i + 1].frame - 1 : Number.MAX_SAFE_INTEGER
-      const t1 = Math.min(suivant, stationEnd(doc, slot, e.frame, ranks))
+      const t1 = Math.min(suivant, finDeLaFaille(doc, slot, e.frame, ranks))
       if (t1 < e.frame) continue
       out.push({ slot, t0: e.frame, t1, x: e.x, y: e.y })
     }
@@ -89,7 +95,30 @@ export function riftStations(doc: ReplayDocumentReady): RiftStation[] {
 }
 
 /**
- * stationEnd — QUAND LA FAILLE POSÉE PAR CET ÉCHANGE S'ÉTEINT, l'échange suivant mis à part.
+ * finDeLaFaille — QUAND LA FAILLE PRÉSENTE À CETTE IMAGE S'ÉTEINT, l'échange suivant mis à part.
+ *
+ * La pose qui la gouverne est la dernière pose du slot à cette image ou avant, dont l'objet vit
+ * encore (fin lue postérieure, ou non lue) : sa fin LUE (`t1`) fait foi. Sans pose gouvernante, ou
+ * sans fin lue, le repli [stationEnd] (consommation, mort du porteur).
+ */
+function finDeLaFaille(
+  doc: ReplayDocumentReady,
+  slot: number,
+  frame: number,
+  ranks: ReadonlySet<number>,
+): number {
+  let pose: ReplayDocumentReady['riftPoses'][number] | undefined
+  for (const p of doc.riftPoses) {
+    if (p.slot !== slot || p.t > frame) continue
+    if (p.t1 !== undefined && p.t1 !== null && p.t1 < frame) continue
+    if (pose === undefined || p.t > pose.t) pose = p
+  }
+  if (pose?.t1 !== undefined && pose.t1 !== null) return pose.t1
+  return stationEnd(doc, slot, frame, ranks)
+}
+
+/**
+ * stationEnd — LE REPLI : quand la faille s'éteint faute de fin lue de son objet.
  *
  * DEUX FAITS MESURÉS, ET LE PREMIER DES DEUX GAGNE :
  *  - la CONSOMMATION de l'équipement (`spent` du calque d'équipement, au rang du
@@ -156,8 +185,9 @@ export function riftStationsAt(
 
 /**
  * stationsDesPoses — la faille entre sa POSE et le premier échange qui suit : à la position de la
- * pose (l'arrivée de cet échange, publiée par le serveur), jusqu'à l'image qui précède l'échange, ou
- * jusqu'à la fin mesurée de l'équipement si elle tombe avant. Une pose sans position ne dessine rien.
+ * pose (la faille que le film crée à cet instant, publiée par le serveur), jusqu'à l'image qui précède
+ * l'échange, ou jusqu'à la fin de la faille si elle tombe avant ([finDeLaFaille] : la suppression lue de
+ * son objet, sinon le repli) — sans échange, jusqu'à cette fin. Une pose sans position ne dessine rien.
  */
 function stationsDesPoses(
   doc: ReplayDocumentReady,
@@ -169,7 +199,7 @@ function stationsDesPoses(
     if (p.x === undefined || p.y === undefined) continue
     const suivant = (echanges.get(p.slot) ?? []).find((e) => e.frame >= p.t)
     const avantEchange = suivant ? suivant.frame - 1 : Number.MAX_SAFE_INTEGER
-    const t1 = Math.min(avantEchange, stationEnd(doc, p.slot, p.t, ranks))
+    const t1 = Math.min(avantEchange, finDeLaFaille(doc, p.slot, p.t, ranks))
     if (t1 < p.t) continue
     out.push({ slot: p.slot, t0: p.t, t1, x: p.x, y: p.y })
   }

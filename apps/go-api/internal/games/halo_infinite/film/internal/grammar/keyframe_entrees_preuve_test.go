@@ -1,7 +1,7 @@
 package grammar
 
 // keyframe_entrees_preuve_test.go — LA PREUVE D IMAGE-CLE LIT LES SLOTS LIBERES QUI SUIVENT UN RECORD
-// (plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R1.3), sur les octets reels des bobines par build.
+// (plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R1.3), sur les octets reels des bobines par build.
 
 import "testing"
 

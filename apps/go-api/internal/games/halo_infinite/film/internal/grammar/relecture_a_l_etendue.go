@@ -1,7 +1,7 @@
 package grammar
 
 // relecture_a_l_etendue.go — L ASSISTANT UNIQUE DE RELECTURE D UNE OCCURRENCE DE COMPOSANT A SON
-// ETENDUE (plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, D1.1.1).
+// ETENDUE (plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, D1.1.1).
 //
 // La phase des images-cles range chaque occurrence d un record d etat complet avec son etendue
 // ([lecture.Composant] : premier bit et longueur). Un canal qui veut la VALEUR d une occurrence la

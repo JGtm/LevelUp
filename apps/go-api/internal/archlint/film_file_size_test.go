@@ -289,7 +289,10 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 96 -> 97 (2026-10-15, plan du residu des images-cles), +22 : l entree v97 (la table
 	// d entrees d image-cle, le bloc malleable des films 0x25, i0 et i18 sous la garde, la mesure).
 	// Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3353,
+	// SCHEMA 97 -> 98 (2026-10-16, integration groupee `feat/integ-film` des lots « faille a la pose »,
+	// « ks-a », « ks-d », K-B et K-C), +49 : l entree v98 (la faille situee a sa pose et sa fin lue, une sous-entree par
+	// lot, les rangs abandonnes des branches). Exception ecrite, dans le commit qui fixe la montee.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3402,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -410,7 +413,8 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 95 -> 96 (2026-10-15, meme lot) : 1445 -> 1448, la justification de la montee.
 	// SCHEMA 96 -> 97 (2026-10-15, plan du residu des images-cles) : 1448 -> 1452, la justification de
 	// la montee.
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1452,
+	// SCHEMA 97 -> 98 (2026-10-15, lot « faille a la pose ») : 1452 -> 1454, la justification de la montee.
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1454,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

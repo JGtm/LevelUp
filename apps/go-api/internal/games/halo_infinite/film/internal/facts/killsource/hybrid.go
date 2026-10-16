@@ -307,7 +307,7 @@ func (p *pass) runUnclaimed() {
 // qui prend le plus proche EN TEMPS. Rend le candidat, si le repli a servi, et s il y en a un.
 func (p *pass) choisirNonRevendiquee(e feedEvent) (sourcedCandidate, bool, bool) {
 	couple := func(cd sourcedCandidate) bool {
-		return cd.victim == cd.killer && p.ctx.roster.nameOf(cd.victim) == e.victim
+		return cd.victim == cd.killer && p.ctx.roster.nameOfA(cd.victim, cd.ms) == e.victim
 	}
 	for _, cd := range p.all {
 		if e.paquet.memeQue(cd.chunk, cd.pidx) && couple(cd) {

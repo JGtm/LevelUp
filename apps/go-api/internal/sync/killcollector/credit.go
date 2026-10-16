@@ -66,7 +66,12 @@ import (
 // Elle est du meme espace que `killsource.Rev` (`decfilm.Rev` ; la colonne `decoder_rev` est commune) mais
 // designe un AUTRE producteur : c est elle qui permettra de rejouer les matchs credit-seul sans
 // toucher aux matchs decodes depuis un film.
-const CreditDecoderRev = "highlight-credit-2026-08-01"
+// Elle monte quand les couples du credit changent (`analysis.ComputeKillerVictimPairs`) ou leur fusion
+// avec le film (`persist.MergeCreditAndFilm`). `highlight-credit-2026-10-16` (integration groupee
+// `feat/integ-film`) : lots « ks-a » (fusion : pas d autre mort sans preuve de l API) et « ks-d »
+// (appariement par ecart croissant, mort d humain adossee a un evenement death) ; « ks-d » avait pris
+// `highlight-credit-2026-10-15` sur sa branche.
+const CreditDecoderRev = "highlight-credit-2026-10-16"
 
 // Portee des lignes credit-seul : `killscope.ReadPathCreditBackfill` / `killscope.OriginCreditOnly`.
 //
@@ -74,14 +79,6 @@ const CreditDecoderRev = "highlight-credit-2026-08-01"
 // une feuille sans import (`domain/killscope`) — une copie locale qui deriverait d un caractere
 // rendrait la preseance aveugle sans rien casser d autre. Garde-rail :
 // `internal/archlint/no_raw_kill_scope_literal_test.go`.
-
-// creditToleranceMS : la fenetre d appariement kill <-> death.
-//
-// 5 ms, et ce n est pas un reglage : c est EXACTEMENT la valeur qu emploie la completion qui
-// produit `killer_victim_pairs` aujourd hui (`persistCombatCompletion`). Une autre valeur
-// produirait un jeu de couples different de celui que la table servait — le remplacement ne
-// serait plus comparable a ce qu il remplace.
-const creditToleranceMS = int64(5)
 
 // Compteurs de sante du producteur credit-seul (ADR 0009).
 const (
@@ -211,6 +208,9 @@ func (c *CreditCollector) recomposer(
 	if err != nil {
 		return persist.KillSourceBatch{}, false, err
 	}
+	if base.Evidence, err = persist.LoadMergeEvidence(ctx, c.read, base.MatchID); err != nil {
+		return persist.KillSourceBatch{}, false, err
+	}
 	batch, st, err := persist.MergeCreditAndFilm(base, film)
 	if err != nil {
 		return persist.KillSourceBatch{}, false, err
@@ -321,7 +321,7 @@ func (c *CreditCollector) evenementsDuMatch(ctx context.Context, matchID string)
 // donnerait un jeu de couples different de celui qu on remplace, et la comparaison avant/apres
 // ne voudrait plus rien dire.
 func BuildCreditBatch(matchID string, events []analysis.RawEvent) persist.KillSourceBatch {
-	pairs := analysis.ComputeKillerVictimPairs(events, creditToleranceMS)
+	pairs := analysis.ComputeKillerVictimPairs(events, analysis.KillDeathPairToleranceMS)
 	batch := persist.KillSourceBatch{
 		MatchID:    matchID,
 		DecoderRev: CreditDecoderRev,

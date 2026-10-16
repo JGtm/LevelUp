@@ -3,7 +3,7 @@ package replay
 // journal_de_publication_test.go — LES AVERTISSEMENTS PROPRES AU DOCUMENT PUBLIE SE TAISENT SUR LE
 // DOCUMENT INTERNE ([niveauDePublication], [Options.documentInterne]).
 //
-//	JDP-INTERNE  le document que `PortagesAuSync` assemble pour un Oddball (ni table du film, ni horloge
+//	JDP-INTERNE  le document que `PortagesAuSync` assemble pour un Oddball (table du film refusee, ni horloge
 //	             du film, ni equipes, ni capacites balayees) n'ecrit aucun des six avertissements ;
 //	JDP-PUBLIE   les memes entrees republiees depuis les faits les ecrivent tous les six en WARN ;
 //	JDP-NIVEAU   les deux avertissements qu'aucun de ces deux documents n'atteint (la base contredit

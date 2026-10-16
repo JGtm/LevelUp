@@ -1,3 +1,13 @@
+## [2026-10-16] Backlog 2026-10-15 : mise à jour de la branche sur feat/v75 (6b45cdc5b) — Complété (branche `feat/backlog-2026-10-15`)
+
+**Statut** : Complété ; fusion dans `feat/v75` toujours au user.
+
+**Décision technique principale** : merge (pas rebase, branche poussée) de `origin/feat/v75`. Un seul conflit textuel, `.ai/REGISTRE_REPORTS.md` : le contenu de feat/v75 est gardé en entier, notre section « Reports du plan backlog du 2026-10-15 » est ajoutée à la suite.
+
+**Résultats observés** : aucun conflit sémantique. Nos deux étapes (`shared_registry_participants_bit_v1`, `shared_registry_drop_integrity_columns_v1`) restent bien ordonnées après les étapes de feat/v75 ; aucune étape de feat/v75 ne touche `participants_loaded` ni `player_count`. Gardes de la Campagne et des erreurs avalées : aucun nouvel entrant. Baseline : retraits des deux côtés conservés. openapi et generated.ts à jour sans régénération. Gate complet vert (vet, tests ciblés, integration -p 1, lint, typecheck, vitest).
+
+**Conclusion / prochaine étape** : CI de la branche, puis fusion dans `feat/v75` (geste du user).
+
 ## [2026-10-16] Backlog 2026-10-15 : clôture E6 (rondes 1 et 2 de la revue, backlog, registre) — Complété (branche `feat/backlog-2026-10-15`)
 
 **Statut** : Complété côté code et documents ; fusion dans `feat/v75` demandée au user (E6.5).
@@ -18,6 +28,23 @@
 
 **Conclusion / prochaine étape** : ronde 2 de relecture sur la liste de fichiers du rapport, puis E6.3 à E6.5.
 
+## [2026-10-15] Le rejeu ne gere pas le Firefight : ni cuisson, ni service — Complete (branche `fix/rejeu-sans-firefight`)
+
+**Statut** : Complete (code, tests, docs) ; CI a verifier apres push ; a fusionner dans feat/v75 sur decision de l utilisateur.
+
+**Decision technique principale** : decision de l utilisateur du 15/10 (le PvE n est pas gere, « ca n aurait jamais du etre le cas »). Un seul predicat, `analysis.SQLModeNonGere(alias)` = `COALESCE(is_firefight, FALSE)` du registre (aucun nom de mode, aucun slug), employe par la file post-sync (`SQLEligibleALaCuisson` + `selectBuildWork`), `backfill-replay` (selection, comptee « mode non gere » sous --force / --only-existing / --repair-impoverished ; `--one` refuse avec `replaybuild.ErrModeNonGere`), `replayMatchIdentity` (action admin run + enqueue), `ReplayMapRepo` (`port.ReplayModeGate`, capacite optionnelle detectee par le service), le choix des rejeux de la demo et `zones_cartes.go`. Garde-rail `archlint/no_replay_firefight_literal_test.go` : litteral interdit hors du fragment.
+
+**Resultats observes** : le service de rejeu rend « indisponible » (IsAvailable faux, AvailableSet filtre, GetReplay = `ErrReplayNotAvailable` donc 404 `replay_not_available`) pour un Firefight meme si l artefact traine ; la disponibilite affichee par le web vient toujours de ce service, aucun changement web. Fail-open journalise si le registre est illisible. Demo : `edc5daf6` (Cole Protocol, mode `firefight`) etait bien dans `config/demo/JGtm/halo_infinite.json` : retire, famille `firefight` supprimee des familles de rejeux, candidats filtres par le registre. Nouvelle option `backfill-replay --purge-non-geres [--dry-run]` (`replaybuild.PurgeMatchFiles` : artefact, marque `.derived.json`, raster ; jamais le film ni `film_facts`).
+
+**Conclusion / prochaine etape** : lancer `--purge-non-geres --dry-run` puis sans dry-run sur la machine qui tient `data/` (serveur arrete ou non : lecture RO du registre, aucune ecriture base). Hors perimetre, non traite : derivations deja ecrites EN BASE pour les matchs Firefight (usage, positions...) et `tactical-rasters --backfill` (listing sans registre).
+
+## [2026-10-15] Image de la citation « Is that my ball? » remplacée par le logo du crâne — Complété (branche `feat/v75`)
+
+**Décision technique principale** : `H5G_citation_Is_that_my_ball%3F.png` (100x100) remplacée par le logo crâne et anneau extrait de l'image Blue_team_has_the_oddball : recadrage, seuil sur le blanc, fond transparent, masque circulaire contre une traînée parasite. Chemin inchangé, donc `seed_citation_data.go` intact.
+
+**Résultats observés** : contour net sur fond sombre, aucun résidu d'image de fond.
+
+**Conclusion** : rien à faire ; visible au prochain déploiement.
 ## [2026-10-09] Ecarts de fin multiples de -108 bits (R-VEH-4) : slots liberes de la table d image-cle — Complete (recherche, branche `feat/ri-ecart-108`, non commitee)
 
 **Statut** : Complete (recherche ; aucun code de production ; deux instruments `research` ajoutes, non commites).
@@ -27,6 +54,14 @@
 **Resultats observes** (`TestEcart108`, 28 films, sorties `scratchpad/ri/ecart108/final/`) : 2 838 des 2 841 bipedes a ecart -108k sont suivis de k entrees liberees, k = ecart de slots dans tous les cas ; fermeture ti=35 5 401 -> 8 242 ; admis T1 et T2 6 507 -> 6 507 (les gagnes etaient deja B ou refuses par T1) ; tous archetypes 240 470 -> 267 811, 44 pertes ti=37 (fermetures contredites par l index de slot, temoin 24 -> 0) ; temoin decale bipedes hasard 3 -> 4 ; queue de table : 162 paquets finissent a moins d un octet de la fin du payload apres 0x1ffe-slot entrees liberees.
 
 **Conclusion / prochaine etape** : rapport `.ai/RAPPORT_ECART_108_R_VEH_4_2026-10-09.md`. A instruire en lot : la regle dans `preuveDeLEtatComplet`, puis dans `PreuveDImageCle.prouve` et la marche d ancres (non simulees de bout en bout : effet sur les elections a mesurer).
+## [2026-10-15] Rejeu : armes de départ lâchées masquées au sol par défaut, option pour les réafficher — Complété (branche `feat/armes-sol-depart`)
+
+**Décision technique principale** : `model/startingWeaponsOnGround.ts` (logique pure) : une arme `spawned` est toujours affichée ; une arme `dropped` est masquée si son modèle figure dans une dotation `loadouts[]` de `src = "birth"` du document (clés normalisées par `weaponLabelKeyOf`). Option persistée `replay-show-ground-weapons-starting` (défaut éteint) dans le tiroir, fille du calque des armes au sol.
+
+**Résultats observés** : règle exacte appliquée aux artefacts 0d9a9af9 et 1b2d9e08 : 31 armes sur 90 et 87 sur 221, et non 20/90 et 62/221 attendus. Ces derniers chiffres sont ceux du « posées par la carte seulement » : ils s'obtiennent en prenant comme départ les armes de TOUTES les dotations (toute arme lâchée a été portée), ce qui masquerait aussi les armes de puissance lâchées (contraire à la règle).
+
+**Conclusion** : à valider par l'utilisateur sur ces chiffres ; fusion dans feat/v75 sur sa décision.
+
 ## [2026-10-15] Rattrapage CSR par joueur : candidats restreints aux matchs du joueur — Complété (branche `fix/csr-candidats-joueur`)
 
 **Décision technique principale** : `loadRankedMatchesForCSRBackfill` (`sync/csr_backfill.go`) joint désormais `match_participants` sur le xuid du joueur ; le pré-filtre (is_ranked / nom « ranked » / playlist_id de la référence) et la décision (payload skill) sont inchangés. `match_participants` n'est pas append-only (pas de vue `_latest`).
@@ -117515,3 +117550,12 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : rouge puis vert par item (cut neuf refusé par l'ancienne vue, `backfill_completed` NULL à l'import, migration neutralisée). Répétition sur copies par le runner complet : prod HI 2 014 matchs, bit 1 857 -> 2 014, 7 -> 5 index, 461 ms pour 23 steps en attente, pic 164 Mo ; prod H5 3 032 matchs, `player_count` retirée, bit inchangé, step title-owned ni appliqué ni inscrit ; local HI 9 230 matchs, bit 9 073 -> 9 230 ; local H5 idem prod. Second passage sans écriture partout. Gates Go (vet, test, test integration -p 1, api, lint new-from-rev) verts ; garde-rails ART inchangés.
 
 **Conclusion / prochaine étape** : E5.2 à E5.6 `[x]`. Revue adversariale du diff E5 par le superviseur, puis E6. Découvertes consignées au plan (copie de 512 dans `reset-bitmasks`, bit skill des 157 matchs, DDL `v_match_full` en trois exemplaires dont un qui avale son erreur, catalogue `shared` ambigu sur une copie mal nommée, `EventsLoaded`/`MedalsLoaded` du mapper).
+**[2026-10-15] Étape dédiée au résidu des images-clés — Complété** : entrées de slot libéré lues comme le jeu (bipèdes fermés 5 397 -> 8 564 / 10 710), bit du bloc malléable d'i53 pour les films déclarant la version 0x25 (U-6), world-object i0 et rigid-body i18 sous la portée (U-7), sens de la valeur 2 de l'emplacement désiré établi (mains nues avant le départ), surcoût de cuisson de 11 % accepté (U-8). Fusion `a9a9ac78a`, schéma 97, `grammar-2026-10-15.2`, recuisson et killsource faits. Suite possible : trois records ti=37 récents (R-3), grammaire des versions 0x1f-0x22, optimisation de la cuisson.
+
+## [2026-10-16] Lots film du 15/10 intégrés (schéma 98) : faille à sa pose, poussées inchangées, doublons d'identité, morts servies deux fois, équipe des bots par build, vies nommées au sync — Complété (recuisson accordée par le user)
+
+**Décision technique principale** : intégration groupée sur `feat/integ-film` (révisions renumérotées : grammar-2026-10-16, profile-2026-10-16, killsource-2026-10-16, faits 16, schéma 98, placement-2026-10-16, highlight-credit-2026-10-16) ; fixtures `bots_*.json` régénérées après la correction de l'équipe des bots, garde-rail de révision ; faille vivante jusqu'à la suppression lue de son objet ; `killer_victim_pairs` réécrite par échange sans DELETE et index ART hérités retirés (décision du user) ; le bot tient son indice jusqu'à la fin de sa dernière déclaration (décision du user).
+
+**Résultats observés** : CI verte ; parc de 2 676 films : 0 panique, 1 719/1 722 poses situées par leur objet, 1 675 fins lues, poussées identiques, vies sans identité 2 379 → 2 376 (préexistantes, à instruire). Relectures adversariales K-A/K-D (1 P1 ART corrigé) et K-B/K-C (1 P1 de fixtures corrigé à l'intégration).
+
+**Conclusion / prochaine étape** : rattrapage et recuisson au schéma 98 (accord du user du 16/10) ; enquête sur les vies sans identité restantes et 3f048bf3.

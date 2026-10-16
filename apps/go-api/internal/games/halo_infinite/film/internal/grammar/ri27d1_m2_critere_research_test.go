@@ -2,7 +2,7 @@
 
 package grammar
 
-// ri27d1_m2_critere_research_test.go — 2.7.d1 (`.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// ri27d1_m2_critere_research_test.go — 2.7.d1 (`.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
 // commande I-critere ; decision U-0 de l utilisateur du 2026-10-08).
 //
 // LE CRITERE ECRIT DE LA BASCULE (« atterrissage bit-exact des 591 records ti=35 bornes au-dessus de

@@ -230,9 +230,13 @@ type BotIdentity struct {
 	// IL ÉTAIT LU ET NON PUBLIÉ (inventaire P1, E9). `replaybuild` s'en sert déjà comme clé
 	// EXACTE pour les relais (`byID[b.BotID]` puis `fmt.Sscanf(p.XUID, "bid(%d.0)", &id)`),
 	// mais il ne traversait pas jusqu'à l'artefact : la jointure web des bots se faisait donc
-	// sur le NOM NU, et deux bots homonymes fusionnaient. Zéro quand la déclaration ne le
-	// porte pas ; [BotIdentity.Bid] rend alors une chaîne vide plutôt qu'un `bid(0.0)` faux.
+	// sur le NOM NU, et deux bots homonymes fusionnaient. ZÉRO EST UN IDENTIFIANT : l'écrivain du jeu
+	// écrit le `bid` de chaque entrée BOT_METADATA (W(32), `grammar/bot_metadata.go`), et la base
+	// connaît `bid(0.0)`. Seul [BotIdentity.BotIDLu] distingue ce zéro lu d'un identifiant absent.
 	BotID int
+	// BotIDLu dit que `BotID` vient d'une entrée BOT_METADATA du film — zéro compris. Faux : la valeur
+	// n'a pas été lue, et un `BotID` nul ne désigne alors personne ([BotIdentity.Bid]).
+	BotIDLu bool
 	// Declarations sont les intervalles pendant lesquels BOT_METADATA DÉCLARE ce bot, en
 	// microsecondes de film (lot M2.1, 2026-09-23) : `[0]` = le premier paquet qui le déclare
 	// (inclus), `[1]` = le premier paquet complet qui ne le déclare plus (exclu), ZÉRO quand il
@@ -254,10 +258,11 @@ type BotIdentity struct {
 	Team *int
 }
 
-// Bid rend l'identifiant stable du bot dans la forme de la base, `bid(N.0)`. Chaîne vide quand
-// le film n'a pas déclaré d'identifiant : un `bid(0.0)` inventé joindrait deux bots distincts.
+// Bid rend l'identifiant stable du bot dans la forme de la base, `bid(N.0)`, zéro compris quand le
+// film l'a écrit ([BotIdentity.BotIDLu]). Chaîne vide quand l'identifiant n'a pas été lu : un
+// `bid(0.0)` inventé joindrait deux bots distincts.
 func (b BotIdentity) Bid() string {
-	if b.BotID <= 0 {
+	if b.BotID < 0 || (b.BotID == 0 && !b.BotIDLu) {
 		return ""
 	}
 	return "bid(" + strconv.Itoa(b.BotID) + ".0)"

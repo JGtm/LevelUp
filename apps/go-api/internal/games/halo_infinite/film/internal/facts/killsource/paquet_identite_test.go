@@ -143,6 +143,7 @@ func TestLaMortDeBotSuitAussiLIdentite(t *testing.T) {
 		perm:    []int{-1, 0, 5},
 		pin:     map[int]int{1: 0, 5: 1},
 		seatPin: map[int]bool{1: true},
+		bots:    botsDuFilmEntier(5),
 		nPlay:   6,
 	}}
 	c.scanCands = []candidate{

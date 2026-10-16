@@ -307,6 +307,22 @@ go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [
 go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
 ```
 
+`backfill-replay` ne cuit jamais un match d'un mode que le rejeu ne gère pas (Firefight PvE —
+décision du 2026-10-15 ; le verdict est le drapeau du registre `match_registry.is_firefight`,
+lu via `analysis.SQLModeNonGere`, jamais un nom de mode ni un slug). Ces matchs sont comptés
+« mode non gere » dans le résumé, sous toutes les formes de la passe (`--force`,
+`--only-existing`, `--repair-impoverished`) ; `--one <id>` sur l'un d'eux est refusé avec une
+erreur explicite. L'étape post-sync, les actions admin de construction / mise en file et le
+choix des rejeux de la démo appliquent la même exclusion, et le service de rejeu répond « pas de
+rejeu » (404 `replay_not_available`) pour ces matchs même si un artefact traîne encore dans le
+cache. Pour retirer les artefacts cuits avant cette décision (artefact, marque de dérivation et
+sidecar de raster ; le cache de films n'est jamais touché) :
+
+```bash
+go run ./cmd/levelup backfill-replay --purge-non-geres --dry-run   # liste, ne supprime rien
+go run ./cmd/levelup backfill-replay --purge-non-geres             # supprime
+```
+
 La passe (5) est idempotente : un sidecar n'est réécrit que s'il manque, si son propre
 `schema_version` n'est plus le courant, ou si son `artifact_schema_version` ne correspond
 plus à celui de l'artefact dont il a été projeté (donc après une re-cuisson). Une seconde
@@ -730,6 +746,89 @@ go run ./cmd/levelup compact-passes --backup-dir D:\sauvegardes  # dossier des s
   existant n'est jamais écrasé ni retiré. Sur toute erreur, le
   fichier temporaire et la sauvegarde sont retirés. Mesuré sur une copie : 1 264 Mio -> 351 Mio.
 - Supprimer les sauvegardes à la main une fois l'application vérifiée.
+
+#### Réparation des temps forts en double (`repair-highlight-phantoms`)
+
+Avant `grammar-2026-10-16`, le lecteur des temps forts pouvait décoder un même bloc de 60 octets
+DEUX FOIS sous deux XUID (un faux motif de XUID dans la fiche d'un joueur, plusieurs milliers de
+bits avant le vrai). Les deux lignes sont dans `highlight_events` (86 matchs sur la copie locale du
+2026-10-15, un seul joueur touché), s'apparient à tort dans `killer_victim_pairs` (« X tue X ») et
+arrivent dans les morts servies. Depuis la correction, aucune nouvelle ligne n'est doublée ; les
+existantes se réparent par cette séquence exacte (**serveur arrêté**, prévenir avant de la jouer
+en production) :
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup repair-highlight-phantoms --dry-run     # lecture seule : lignes fantômes et matchs touchés
+go run ./cmd/levelup repair-highlight-phantoms               # sauvegarde, purge, recalcul des couples qui diffèrent
+go run ./cmd/levelup backfill-killsource --credit-only      # reconstruit la base crédit (noms de l'annuaire)
+go run ./cmd/levelup backfill-killsource                    # puis la passe film par-dessus
+go run ./cmd/levelup compact-passes                          # facultatif : retire les passes supersédées
+```
+
+- Une ligne fantôme est une ligne de `highlight_events` dont le XUID n'est PAS un participant du
+  match et dont le jumeau (même match, type, instant, type_hint, raw_json) est porté par un
+  participant. Un match sans participants chargés n'en produit aucune : dans le doute, rien n'est retiré.
+- `highlight_events` porte des index ART (ADR 0019) : pas de `DELETE`. La table est reconstruite à
+  côté sans les lignes fantômes et échangée en une transaction (même cœur que `compact-passes`,
+  ADR 0026) ; les `id` et la séquence ne bougent pas. Les couples de tous les matchs dont les
+  couples stockés diffèrent de l'appariement courant (fenêtre de 5 ms, ordre total des événements)
+  sont recalculés et écrits par échange de `killer_victim_pairs` en une transaction, sans `DELETE`.
+  Les noms viennent de l'annuaire de lecture (`v_gamertag_lookup`), puis des couples existants du
+  match, jamais du XUID. Une exécution interrompue se reprend d'elle-même : les matchs purgés gardent
+  des couples qui diffèrent. La migration partagée `shared_killer_victim_pairs_drop_legacy_indexes_v1`
+  retire les trois index ART que les bases anciennes portent sur `killer_victim_pairs`
+  (`idx_kv_match`, `idx_kv_killer`, `idx_kv_victim`).
+- **Sauvegarde (obligatoire)** : copie octet pour octet avant toute écriture
+  (`<nom>.<slug>.avant-fantomes-<UTC>.duckdb`), restauration = la remettre en place, serveur arrêté.
+- **Idempotente** : sans ligne fantôme, une seconde exécution n'écrit rien.
+- La fusion refuse aussi, depuis `killsource-2026-10-16`, d'ajouter une seconde mort à un instant que
+  le kill-feed de l'API ne compte qu'une fois, et contrôle les morts servies de chaque joueur contre
+  `match_participants.deaths` (compteur `killsource_fusion_joueurs_au_dela_officiel_residuel`, journal
+  WARN avec `match_id`, joueur, officielles, servies). Le contrôle ne retire jamais une ligne : en
+  retirer une pour tomber juste reviendrait à choisir, sans preuve, quelle mort est fausse. Les morts fantômes des autres cas (p. ex. un joueur servi 10 fois pour 7 morts
+  officielles) sont hors des 86 matchs : elles disparaissent quand `backfill-killsource` (sans
+  `--match`, tous les films périmés sous la nouvelle révision `killsource`) les re-fusionne, à
+  annoncer et jouer comme une campagne.
+
+#### Morts servies deux fois : appariement, sièges de bot, fiches de kill, morts de l'API
+
+Depuis `killsource-2026-10-16`, quatre causes d'une mort servie deux fois sont fermées :
+
+- **Appariement du crédit** (`analysis.ComputeKillerVictimPairs`) : kills et morts s'apparient par
+  écart croissant (l'instant exact d'abord), un kill et une mort au plus une fois chacun, jamais un
+  joueur avec lui-même. L'ancien appariement glouton dans l'ordre des kills laissait un kill sur un
+  bot (aucune mort dans le kill-feed de l'API) prendre une mort humaine tombée 1 à 4 ms plus loin ;
+  34 couples « X tue X » étaient sur la copie du 2026-10-15. La fenêtre est
+  `analysis.KillDeathPairToleranceMS` (5 ms), la seule du dépôt (ratchet
+  `archlint/kill_death_tolerance_test.go`).
+- **Siège de bot repris par un humain** (décodeur) : un bot ne tient son indice de joueur que pendant
+  ses déclarations `BOT_METADATA` ; après la dernière, la lecture du motif de XUID nomme son
+  successeur.
+- **Fiche de kill** (décodeur) : un kill-event va au kill de son tueur le plus proche, et au kill dont
+  la mort de la victime est voisine dans le flux.
+- **Fusion** (`persist.MergeCreditAndFilm`) : toute mort d'humain servie s'adosse à UN événement
+  `death` de l'API (même XUID, à 5 ms près), les morts de crédit d'abord ; une orpheline de film à
+  victime humaine sans événement libre est refusée et comptée
+  (`killsource_fusion_orphelins_sans_mort_api`). Le contrôle des morts officielles compare chaque
+  joueur au plus grand de ses morts officielles et de ses événements `death` : un joueur parti puis
+  revenu n'a de morts officielles que sur une partie du match.
+
+Les couples déjà dans `killer_victim_pairs` et la base crédit gardent l'ancien appariement jusqu'à
+cette séquence (**serveur arrêté**, prévenir avant de la jouer en production ; les deux dernières
+étapes redécodent tous les films périmés, une campagne de plusieurs heures) :
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup repair-highlight-phantoms --dry-run   # lecture seule : fantômes, matchs dont les couples diffèrent
+go run ./cmd/levelup repair-highlight-phantoms             # sauvegarde, fantômes, puis les couples de ces matchs
+go run ./cmd/levelup backfill-killsource --credit-only               # base crédit de tous les matchs, nouvel appariement
+go run ./cmd/levelup backfill-killsource                             # passe film par-dessus (tous les films périmés)
+go run ./cmd/levelup compact-passes                                  # facultatif : retire les passes supersédées
+```
+
+La réparation ne réécrit que les matchs dont les couples stockés diffèrent de l'appariement courant
+(477 sur 4 010 sur la copie du 2026-10-15) et est idempotente.
 
 ### Migration des chemins média (one-shot, binaire autonome)
 

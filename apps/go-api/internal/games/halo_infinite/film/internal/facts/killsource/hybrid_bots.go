@@ -156,7 +156,7 @@ func (p *pass) nomPubliableA(i, ms int) (string, bool) {
 	if nom, ok := p.ctx.nomDuBotA(i, ms); ok {
 		return nom, true
 	}
-	return p.nomPubliable(i)
+	return p.nomPubliable(i, ms)
 }
 
 // nomDuBotA : le nom du bot que BOT_METADATA declare sur l indice `i` a l instant `ms` (millisecondes
@@ -164,7 +164,7 @@ func (p *pass) nomPubliableA(i, ms int) (string, bool) {
 // n en porte qu un, ou qu aucune declaration ne couvre l instant : le nom du roster s applique alors,
 // tel quel. Les bots d un indice epingle le sont tous ([roster.pinBots] decide par indice).
 func (c *decodeCtx) nomDuBotA(i, ms int) (string, bool) {
-	if ms < 0 || !c.roster.isBotIndex(i) {
+	if ms < 0 || !c.roster.isBotIndexA(i, ms) {
 		return "", false
 	}
 	var declares []bot
@@ -176,7 +176,7 @@ func (c *decodeCtx) nomDuBotA(i, ms int) (string, bool) {
 	if len(declares) < 2 {
 		return "", false
 	}
-	t := c.film.tsBase + uint64(ms)*1000 // l horloge du film, celle des declarations
+	t := c.roster.instantUS(ms) // l horloge du film, celle des declarations
 	for _, b := range declares {
 		for _, d := range b.declarations {
 			if d.FromUS <= t && (d.ToUS == 0 || t < d.ToUS) {

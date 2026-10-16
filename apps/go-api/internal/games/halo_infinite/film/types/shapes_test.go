@@ -120,6 +120,7 @@ var formesFigees = []typeDeContrat{
 	{"grammar", types.KnockbackStats{}},
 	{"grammar", types.CarriedEquipmentRead{}},
 	{"grammar", types.CarriedEquipmentStats{}},
+	{"grammar", types.SpawnedObject{}},
 	{"grammar", types.MovementStateRead{}},
 	{"grammar", types.MovementStateStats{}},
 	{"grammar", types.NavpointRadialRead{}},

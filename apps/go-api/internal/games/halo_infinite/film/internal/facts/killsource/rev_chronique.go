@@ -263,7 +263,7 @@ package killsource
 // l utilisateur (D6).
 //
 // COMPLEMENT DU 2026-10-09 (jalon LK et lot 2.7.d1 du plan
-// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, fusionnes apres le lot `assist-film`,
+// `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, fusionnes apres le lot `assist-film`,
 // REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.2` (records d image-cle lus sous la
 // portee de l etat complet) puis a `grammar-2026-10-09.3` (etat complet du bipede aux images-cles lu
 // par la grammaire, fenetres de bits derriere la lecture). Sur la branche, ces deux montees etaient
@@ -273,7 +273,7 @@ package killsource
 // `54b47a2b8` contre binaire de la tete fusionnee : sorties identiques a l octet. Golden regenere a
 // revision constante.
 //
-// COMPLEMENT DU 2026-10-14 (lot F du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/aj14-f`,
+// COMPLEMENT DU 2026-10-14 (lot F du plan `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/aj14-f`,
 // REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-14` — elle entre PAR VALEUR dans
 // l amont de cette couche — : la lecture de la vue A range ses messages de poussee (genres 104 et
 // 105) et `film/types` gagne `Knockback` et `KnockbackStats`. Aucun bit n est lu autrement et
@@ -282,7 +282,7 @@ package killsource
 // l octet sur les 20. Golden regenere a revision constante.
 //
 // ENTREE `killsource-2026-10-14` (2026-10-14, lot « equipement porte » du plan
-// `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/equip-porte`) : `grammar.Rev` monte a
+// `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/equip-porte`) : `grammar.Rev` monte a
 // `grammar-2026-10-14.2` — `ti=37 i28 equipment-tracked-object-handles-stack-component` lit n entrees
 // et non n+1 (`FUN_140f72dec`), et les trames qui le portent ferment (0 sur 4 839 -> 4 726 sur 4 841
 // au parc, contexte de la cuisson). PREUVE (`cmd/killsource json`, 20 films du corpus d equivalence,
@@ -304,7 +304,7 @@ package killsource
 // killsource. `replay-equiv` (20 films, `027a5bcaf` contre le lot) : etape
 // `killsource` identique sur les 20. Golden regenere a revision constante.
 //
-// ENTREE `killsource-2026-10-15` (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
+// ENTREE `killsource-2026-10-15` (2026-10-15, plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
 // `feat/ri-ecart-108`) : `grammar.Rev` monte a `grammar-2026-10-15.2` (table d entrees d image-cle,
 // bloc malleable d i53 sans drapeau final pour la version majeure declaree 0x25, world-object i0 et
 // rigid-body i18 sous la garde) ; [GrammaireSousFilm] pose le nouveau champ du film. PREUVE
@@ -313,3 +313,52 @@ package killsource
 // victimes, sources et assistances identiques, la sante et la calibration changent (5 morts passent du
 // balayage a la marche sequentielle, enregistrements lus par les deux voies 154 -> 159). Les lignes de
 // `match_kill_events` deviennent candidates au redecodage : backlog sur signal de l utilisateur (D6).
+//
+// ENTREE `killsource-2026-10-16` (2026-10-16, integration groupee des lots film du 15/10, branche
+// `feat/integ-film`) : QUATRE LOTS, UN RANG. LA SORTIE CHANGE. Sur leurs branches, « ks-a » avait pris
+// `killsource-2026-10-15.2`, « ks-d » `killsource-2026-10-15.3` et K-B de nouveau
+// `killsource-2026-10-15.2` ; « faille a la pose » restait a revision constante. Aucun de ces rangs n a
+// ete fusionne seul : l integration les reunit au premier rang libre apres `killsource-2026-10-15`, et
+// abandonne `.2` et `.3` (des contenus differents les ont portes). Valeurs amont : `grammar.Rev` ->
+// `grammar-2026-10-16`, `profile.Rev` -> `profile-2026-10-16`. Les lignes de `match_kill_events`
+// deviennent candidates au redecodage : backlog sur signal de l utilisateur (D6), precede du recalcul
+// des couples (`repair-highlight-phantoms --couples`) et de la base credit. Une sous-entree par lot.
+//
+// LOT « ks-a » (doublons de morts). (1) Le lecteur des temps forts n emet plus un evenement deux fois
+// sous deux xuid (fil des kills de killsource, `FilDesKills`) ; la fusion « tueur divergent » de
+// 34db6b33@40500 en venait. (2) La fusion credit/film (`persist`, `MergeCreditAndFilm`) ne declare plus
+// « autre mort » une ligne de film qu une mort de credit du meme instant contredit que si l API compte
+// autant de kills que de morts a l instant (11 morts fantomes sur 12 groupes avant : un joueur servi
+// 10 fois pour 7 morts officielles) ; sinon l instant est refuse et compte. (3) Controle : les morts
+// servies de chaque joueur sont comparees a `match_participants.deaths` ; l exces se compte et se
+// journalise (WARN), sans rien retirer.
+//
+// LOT « ks-d » (morts servies deux fois). (1) Un indice epingle par BOT_METADATA n est plus un bot
+// apres la fin de sa derniere declaration ; la lecture du motif de xuid nomme alors son successeur
+// (`roster_releve.go`, compteur `MotifReleve`) : les kills du successeur ne sortent plus « tueur-bot »
+// au nom du bot parti (0762ae7c), et aucune ligne de bot ne se publie apres le depart du dernier bot.
+// Parc local (2 676 films) : 49 films changent, 105 lignes de bot remplacees a 5 ms pres par celles du
+// successeur, 703 lignes gagnees. (2) Une fiche de kill va au kill de son tueur dont la mort de la
+// victime est voisine, puis au plus proche en temps (`feed_couples_fiches.go`, 23aff586). (3) Hors de
+// la couche : l appariement credit (`analysis.ComputeKillerVictimPairs`) decide par ecart croissant sans
+// paire tueur = victime, et la fusion (`persist`) adosse toute mort d humain servie a un evenement
+// death de l API.
+//
+// LOT K-B (`fix/ks-b-equipe-bots`), pour les films a bots de HI_1_8_0 a HI_1_12_0. (1) `BotEntry.Team`
+// se lit a la position du build (octet 4 sur HI_1_10_0 a HI_1_12_0, au lieu d un 0 lu dans la copie du
+// nom) ; HI_1_8_0 n a pas de position etablie, ses bots sont sans equipe et comptes
+// (`EquipesDesBots.PositionInconnue`). (2) Le fragment `43 X` (slot 0, `bid` 0) sort du roster et les
+// paquets BOT_METADATA redeviennent complets ; un nom du balayage qu aucune entree d un paquet ferme
+// n ecrit et qui n est pas un fragment sort aussi du roster (`EquipesDesBots.HorsGrammaire`), et une
+// entree lue sans position de l equipe est refusee par le releve. (3) `EquipesDesBots` gagne
+// `FragmentsEcartes` et `PositionInconnue` (`replay.SchemaDesFaits` 15 -> 16), et `HorsGrammaire` passe
+// de l erreur `killsource.equipes_de_bots` a l avertissement `killsource.entrees_de_bots`. PREUVE (617
+// films a bots, binaire de `feat/v75` `df51f37c0` contre celui du lot, un film par processus) : nombre
+// de kills identique sur chaque film, bots de HI_1_13_0 identiques ; 64 films HI_1_10_0 a HI_1_12_0 :
+// 64 fragments retires, 59 equipes corrigees (accord avec la feuille 66/123 -> 123/123), une
+// declaration de bot de plus fermee (`3abf0258`) ; aucun nom hors grammaire sur 614 films a bots.
+//
+// LOT « faille a la pose » (aucun changement de sortie propre) : la grammaire lit la creation des
+// objets engendres et sa position i0 ; le lecteur de position des objets du monde est scinde sans
+// changement. `replay-equiv` (20 films, `a9a9ac78a` contre le lot) : etape `killsource` identique sur
+// les 20.

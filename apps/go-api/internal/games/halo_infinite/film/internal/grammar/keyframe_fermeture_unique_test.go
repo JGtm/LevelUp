@@ -1,7 +1,7 @@
 package grammar
 
 // keyframe_fermeture_unique_test.go — UNE SEULE DEFINITION DE LA FERMETURE D UN RECORD D IMAGE-CLE
-// (regle 6 du depot ; plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R1.2).
+// (regle 6 du depot ; plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R1.2).
 //
 // La fermeture s ecrivait `tr.EndBit == b.Want` en trois endroits (preuve d etat complet de la phase des
 // images-cles, compteurs `KeyClosed` des balayages de la bombe et des objectifs). Depuis Rslot, elle

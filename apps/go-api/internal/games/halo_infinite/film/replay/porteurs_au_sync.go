@@ -20,7 +20,8 @@ package replay
 //
 // # CE QUI SE LIT, SELON LA GARDE
 //
-//	drapeau  statborg + bursts de capture, pont par manche, équipes du film, objets du monde
+//	toutes   la table des sièges du film et les occupants par entité (le registre de la cuisson) ;
+//	drapeau  statborg + bursts de capture, pont par manche, objets du monde
 //	         (poses, puis socles à leurs largeurs calibrées : d'où les vies libres qui ferment un
 //	         lâcher volontaire — sans elles la fidélité tombe à 55 %, mesure V0) ;
 //	crâne    statborg, pont par manche ;
@@ -101,6 +102,10 @@ type BilanPortages struct {
 	XUIDIllisibles int
 	// DrapeauOuverts : portages `carried_open` (borne haute) écartés.
 	DrapeauOuverts int
+	// ViesSansIdentite : les vies du document interne qu'aucune voie n'a nommées
+	// (`coverage.bridge.unnamedLives`). Un défaut de nommage, jamais une donnée : non nul, il dit
+	// qu'un portage de ces vies n'a pas de porteur.
+	ViesSansIdentite int
 	// Replis : le compteur des replis que la lecture et l'assemblage ont déclenchés (pose des
 	// largeurs, calques, consultations des séries nommées et du pont par manche), ou nil quand
 	// rien n'a été lu. Ce chemin n'écrit aucun document : sans ce champ, ces comptes mouraient ici
@@ -111,21 +116,40 @@ type BilanPortages struct {
 }
 
 // LecturesDesPorteurs dit quelles lectures du film ont été faites en plus de la passe de positions.
+// `Identite` (la table des sièges et les occupants par entité, [lireSiegesEtOccupants]) se lit sous
+// toute garde : c'est ce qui donne au document interne le registre d'identité de la cuisson.
 type LecturesDesPorteurs struct {
-	Statborg, Equipes, ObjetsDuMonde, ArmesTenues bool
+	Identite, Statborg, ObjetsDuMonde, ArmesTenues bool
 }
 
 // PortagesAuSync rend les intervalles de port d'objectif par xuid, sur l'horloge du MATCH.
 func PortagesAuSync(ctx context.Context, e EntreePorteursAuSync) (map[uint64][]IntervalleDePort, BilanPortages) {
-	b := BilanPortages{Gardes: GardesDeLaVariante(e.Variante)}
+	doc, b := e.DocumentInterne(ctx)
 	if b.Gardes.Aucune() {
 		return nil, b
+	}
+	portages := portagesDuDocument(doc, premierPaquetUS(e.Identite.Positions), &b)
+	return portages, b
+}
+
+// DocumentInterne assemble le document que [PortagesAuSync] relit : celui de la cuisson, par
+// [BuildFromPositions], sur les lectures du collecteur, la table des sièges du film et les occupants
+// par entité ([lireSiegesEtOccupants], la lecture de la cuisson), puis les calques de la garde. Il
+// n'est pas publié. Hors des quatre familles à porteur, rien n'est lu ni assemblé : document vide.
+//
+// Le bilan compte ses vies restées sans identité (`ViesSansIdentite`) : la même règle qu'à la
+// cuisson, une vie est un humain ou un bot.
+func (e EntreePorteursAuSync) DocumentInterne(ctx context.Context) (ReplayDocument, BilanPortages) {
+	b := BilanPortages{Gardes: GardesDeLaVariante(e.Variante)}
+	if b.Gardes.Aucune() {
+		return ReplayDocument{}, b
 	}
 	fb := fallback.NouveauCompteur()
 	b.Replis = fb
 	poserProfilPuisCarte(ctx, e.Contexte, e.MatchID, Options{ProfilDeBalayage: e.ProfilDeBalayage, Fallbacks: fb})
-	opt := e.optionsDuRegistre(fb)
+	opt := e.optionsDuRegistre(fb, lireSiegesEtOccupants(ctx, e.Film, e.Contexte, e.MatchID))
 	b.Lectures = e.lireLesPorteurs(ctx, b.Gardes, &opt)
+	b.Lectures.Identite = true
 	// Le document n'est pas publié : le titre n'y sert à rien, il reste vide, et le journal des places,
 	// qui dit un défaut du roster publié, se tait (cf. Options.documentInterne).
 	opt.documentInterne = true
@@ -133,18 +157,22 @@ func PortagesAuSync(ctx context.Context, e EntreePorteursAuSync) (map[uint64][]I
 	// CE QUE LES LECTURES DU CONTEXTE ONT CONSTATE (grammar, lot J12.3 — ADR 0034 D-4) se journalise
 	// ICI, sous le contexte de l appelant : le collecteur a deja releve celles du pont.
 	JournaliserDiagnostics(ctx, e.Contexte.Diagnostics().Relever())
-	portages := portagesDuDocument(doc, premierPaquetUS(e.Identite.Positions), &b)
-	return portages, b
+	if doc.Coverage != nil {
+		b.ViesSansIdentite = doc.Coverage.Bridge.UnnamedLives
+	}
+	return doc, b
 }
 
-// optionsDuRegistre pose les entrées qui refont le registre du collecteur.
-func (e EntreePorteursAuSync) optionsDuRegistre(fb *fallback.Compteur) Options {
+// optionsDuRegistre pose les entrées qui refont le registre de la cuisson : les lectures du
+// collecteur, puis la table des sièges et les occupants que [lireSiegesEtOccupants] a lus.
+func (e EntreePorteursAuSync) optionsDuRegistre(fb *fallback.Compteur, so siegesEtOccupants) Options {
 	carte := e.Carte
 	return Options{
 		MapQuant: &carte, Labels: e.Libelles, Fallbacks: fb,
 		RosterXUIDs: e.Identite.RosterXUIDs, Participants: e.Identite.Participants,
 		Bots: e.Identite.Bots, Deaths: e.Identite.Deaths, PlayerIndices: e.Identite.PlayerIndices,
 		BipedCreations: e.Identite.BipedCreations, ScoreboardTeams: e.Equipes,
+		FilmTable: so.table, PlayerTeams: so.equipes, TeamScan: so.rapport, PlayerEntities: so.entites,
 	}
 }
 
@@ -175,11 +203,10 @@ func (e EntreePorteursAuSync) lireLesPorteurs(ctx context.Context, g GardesDesPo
 	if g.Drapeau {
 		opt.Flag = EntreeDuDrapeau(recs, bursts, pont)
 		opt.Flag.Spawns = e.Socles
-		opt.PlayerTeams, opt.TeamScan, opt.PlayerEntities = grammar.ScanPlayerTeams(e.Contexte)
 		monde := e.Carte.Range()
 		_, poses := decodeFilmPlacements(ctx, e.Contexte, e.MatchID, &monde)
 		opt.Pads = decodeFilmPadScans(ctx, e.Contexte, e.MatchID, &monde, poses.Calibration.Widths)
-		lu.Equipes, lu.ObjetsDuMonde = true, true
+		lu.ObjetsDuMonde = true
 	}
 	opt.Skull = EntreeDuCrane(recs, g.Crane, pont)
 	opt.Vip = EntreeDeLaCouronne(recs, g.VIP)

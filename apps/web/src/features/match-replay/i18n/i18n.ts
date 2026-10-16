@@ -202,6 +202,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerGroundWeaponsSpecialOnly: 'Armes spéciales seulement',
     layerGroundWeaponsSpecialOnlyHint:
       "N'affiche que les armes de puissance, de précision longue et hors gabarit (fusil de précision, épée, marteau, roquettes, empaleur, crémateur, aiguiseur, faisceau sentinelle...) : ce qu'un socle distribue et qu'un adversaire a intérêt à ramasser. Une arme dont le rôle n'est pas connu reste visible bascule éteinte, et disparaît bascule allumée — un rôle manquant ne s'affirme jamais spécial.",
+    layerGroundWeaponsStarting: 'Afficher aussi les armes de départ au sol',
+    layerGroundWeaponsStartingHint:
+      "Par défaut, une arme lâchée qui est une arme de départ du match (celle que tout le monde porte à l'apparition) n'est pas dessinée. Les armes posées par la carte restent toujours visibles.",
     groundWeaponSpawned: 'apparue',
     groundWeaponDroppedByFmt: (name) => `lâchée par ${name}`,
     groundWeaponDropperUnknown: 'lâchée par un joueur non nommé',
@@ -615,6 +618,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerGroundWeaponsSpecialOnly: 'Special weapons only',
     layerGroundWeaponsSpecialOnlyHint:
       "Only shows power weapons, long-range precision weapons and out-of-class weapons (sniper rifle, energy sword, gravity hammer, rocket launcher, skewer, cindershot, mangler, sentinel beam...): what a spot distributes and an opponent has a reason to pick up. A weapon whose role is unknown stays visible while the toggle is off, and disappears once it's on — a missing role never asserts itself as special.",
+    layerGroundWeaponsStarting: 'Also show starting weapons on the ground',
+    layerGroundWeaponsStartingHint:
+      'By default, a dropped weapon that is one of the match starting weapons (the ones everyone spawns with) is not drawn. Weapons placed by the map are always shown.',
     groundWeaponSpawned: 'appeared',
     groundWeaponDroppedByFmt: (name) => `dropped by ${name}`,
     groundWeaponDropperUnknown: 'dropped by an unnamed player',

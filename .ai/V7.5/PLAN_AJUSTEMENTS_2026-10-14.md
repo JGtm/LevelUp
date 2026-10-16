@@ -299,5 +299,15 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
 - Démo (`feat/recos-d`, non fusionné) choisit déjà le VIP recommandé.
 - Harnais R12 : palette « non classée » sur 0d9a9af9 (build non reconnu par la recherche).
 
-## 5. Reprise de session
+## 5. Suite du 15/10 (après clôture)
+- [ ] Position des poses de faille depuis l objet ti=38 né à la pose (levelup-80 ; 123/123 positions au parc, écart au porteur 4 cm) — repli porteur compté, échange retiré.
+- [ ] K-A (fix/ks-a-doublons, Sonnet) : temps forts dédoublonnés par marqueur de fin (34db6b33, Partycz : 86 matchs), tri stable killer_victim, passe 2 sans mort fantôme, contrôle des morts officielles (sans troncature arbitraire, en reprise), `repair-highlight-phantoms` documentée.
+- [ ] K-B (fix/ks-b-equipe-bots, Opus) : équipe des bots par build (octet 4 en 1.10-1.12), fragments « 43 X » écartés.
+- [ ] K-C (fix/ks-c-vies-nommees, Opus) : registre d identité partagé sync/cuisson, vies sans nom des artefacts publiés (Firefight hors périmètre, décision user).
+- [x] Armes au sol (feat/armes-sol-depart, fusionné le 15/10 ; 31/90 sur 0d9a9af9, 87/221 sur 1b2d9e08) : armes de départ lâchées masquées par défaut, option dans les réglages (décision user 15/10).
+- [ ] Firefight exclu de la cuisson et du service (fix/rejeu-sans-firefight, décision user 15/10) + nettoyage du cache.
+- [ ] Enquête : 59 groupes joueur-match au-delà des morts officielles (66 morts) hors doublons — lecture seule.
+- [ ] Recuisson groupée des lots film (après celle de levelup-a9 au schéma 97) + rattrapage des 86 matchs — accord user à demander.
+
+## 6. Reprise de session
 Lire ce fichier (cases), `git log --oneline -10` de chaque `feat/aj14-*`, `ListAgents`.

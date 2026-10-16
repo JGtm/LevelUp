@@ -196,7 +196,7 @@ const VersionCodecFaits = 2
 // `HorsBandeBipede` (repli retire avec la bande bipede, 2.7.c2) et gagnent `KillsRattrapes`
 // (rattrapage des kills hors de la vue A lue, 2.7.c4). Le rang 8, reserve a ce lot, reste sans
 // emploi : la serie suit les fusions.
-// SCHEMA 11 (2026-10-09, jalon LK du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`) : la
+// SCHEMA 11 (2026-10-09, jalon LK du plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`) : la
 // section 5 change de contenu. Le profil calibre qu elle porte (`killsource.Result.ProfilCalibre`,
 // `grammar.GrammaireBalayage`) perd les bascules `PorteeBaseline` et `GrammaireEcrivainI0`, retirees
 // quand la portee de l etat complet est devenue un champ du lecteur, et gagne `MoteurUnPossible`
@@ -212,12 +212,20 @@ const VersionCodecFaits = 2
 // SCHEMA 14 (2026-10-15, meme lot, fin du champ de reparation) : chaque lecture de l equipement porte
 // porte les vies que sa pile i28 designe (`Tracked`), les suppressions de ces vies se lisent
 // (`tracked-end`), et deux denominateurs s ajoutent (`TrackedEntries`, `TrackedEnds`).
-// SCHEMA 15 (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`) : la section 5 change de
+// SCHEMA 15 (2026-10-15, plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`) : la section 5 change de
 // contenu. Le profil calibre qu elle porte (`grammar.GrammaireBalayage`) gagne
 // `MalleableSansDrapeauFinal` (le bloc malleable d i53 sans drapeau final des films de version majeure
 // declaree 0x25). Mesure : `replay-equiv` sur les 20 films, binaires de `feat/v75` contre ceux de la
 // branche, etape `killsource` differente sur les 20 films.
-const SchemaDesFaits = 15
+// SCHEMA 16 (2026-10-16, integration groupee `feat/integ-film` de deux lots qui avaient chacun pris 16
+// sur leur branche ; UNE montee) : (1) lot K-B (`fix/ks-b-equipe-bots`) — la section 5 change de
+// contenu, le bilan de la lecture de l equipe des bots (`killsource.EquipesDesBots`) gagne
+// `FragmentsEcartes` et `PositionInconnue` ; (2) lot « faille a la pose » — chaque lecture de
+// l equipement porte porte la creation lue des objets que sa pile nomme pour la premiere fois
+// (`Spawned` : instant, archetype, position i0), et deux denominateurs s ajoutent (`SpawnedBirths`,
+// `SpawnedPositioned`). Un fichier cuit sur l une des deux branches porte d autres revisions de couche
+// (`grammar-2026-10-15.3`) et se refuse sur elles.
+const SchemaDesFaits = 16
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.

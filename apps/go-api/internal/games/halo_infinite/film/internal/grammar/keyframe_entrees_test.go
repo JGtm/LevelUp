@@ -1,7 +1,7 @@
 package grammar
 
 // keyframe_entrees_test.go — LA TABLE D ENTREES D IMAGE-CLE ET LA FERMETURE SOUS RSLOT, sur des payloads
-// synthetiques (plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R1.2).
+// synthetiques (plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R1.2).
 
 import "testing"
 

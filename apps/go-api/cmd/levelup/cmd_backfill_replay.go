@@ -36,6 +36,13 @@ package main
 // le fil de l'eau post-sync et l'action admin. Cette commande est un outil d'OPERATEUR —
 // celui qui la tape a deja decide ou il construit, sur SA machine, avec SES films en cache.
 //
+// # ELLE NE CUIT PAS LES MODES QUE LE REJEU NE GERE PAS
+//
+// Le Firefight (PvE) n'a pas de rejeu (decision du 2026-10-15) : le registre le dit
+// (`analysis.SQLModeNonGere`), la passe ecarte ces matchs et les compte « mode non gere »,
+// `--force` et `--only-existing` compris, et `--one` sur l'un d'eux refuse. Les artefacts
+// deja cuits se retirent par `--purge-non-geres` (`--dry-run` : liste sans supprimer).
+//
 // # ELLE EST 100 % HORS LIGNE — NI RESEAU, NI TOKENS, NI CDN
 //
 // La source est le cache film sur disque (filmcache) ; la seule base touchee est le registre
@@ -68,6 +75,8 @@ package main
 //	levelup backfill-replay --only-existing        # re-cuit UNIQUEMENT les artefacts deja la
 //	levelup backfill-replay --repair-impoverished  # re-cuit les artefacts appauvris reparables
 //	levelup backfill-replay --mem-limit-gib 6      # remonte le plafond memoire des enfants
+//	levelup backfill-replay --purge-non-geres --dry-run   # liste les artefacts Firefight a retirer
+//	levelup backfill-replay --purge-non-geres             # les retire (artefact, marque, raster)
 //
 // `--one <matchID>` est la forme INTERNE : c'est ainsi que le parent appelle l'enfant. La
 // taper a la main est licite (cuire un film precis), mais elle ne planifie rien et ne saute
@@ -104,6 +113,7 @@ import (
 	"os"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmproc"
@@ -138,6 +148,9 @@ type replayBackfillOptions struct {
 	// repairImpoverished re-cuit les artefacts a jour MAIS sans compteurs de joueur alors que la
 	// base a des lignes (remediation du cache appauvri, cf. cmd_backfill_replay_repair.go).
 	repairImpoverished bool
+	// purgeNonGeres retire les artefacts deja cuits des matchs de mode non gere (Firefight) au
+	// lieu de cuire quoi que ce soit ; `dryRun` liste sans supprimer.
+	purgeNonGeres bool
 	// one : forme INTERNE. Non vide = ce processus est un ENFANT et cuit ce seul film.
 	one string
 	// mapNames : les identites de carte candidates, passees par le parent a l'enfant.
@@ -159,29 +172,37 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 	ctx := context.Background()
 	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
 
+	// LE MENAGE NE CUIT RIEN : il s'arrete ici, sans toucher au film ni au registre.
+	if o.purgeNonGeres {
+		return purgerNonGeresSeul(ctx, titlePkg.NewPathResolver(cfg.RepoRoot), o)
+	}
+
 	// FORME ENFANT : un film, puis ce processus meurt. Le code de sortie EST le canal de
 	// retour vers le parent (cf. backfill_child.go) — d'ou l'`os.Exit` plutot qu'un `return`.
 	if strings.TrimSpace(o.one) != "" {
+		if err := refuserUnMatchNonGere(ctx, titlePkg.NewPathResolver(cfg.RepoRoot), o.titleSlug, o.one); err != nil {
+			return err
+		}
 		os.Exit(runBackfillReplayUn(cfg, o, cacheRoot))
 	}
 
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
-	candidats, horsRegistre, err := replaysACuire(ctx, pr, cacheRoot, o)
+	report := replayBackfillReport{}
+	candidats, err := replaysACuire(ctx, pr, cacheRoot, o, &report)
 	if err != nil {
 		return err
 	}
-	report := replayBackfillReport{horsRegistre: horsRegistre}
 	var aFaire []replayCandidat
 	if o.repairImpoverished {
 		if aFaire, err = passeReparation(ctx, cfg, candidats, o, &report); err != nil {
 			return err
 		}
-		fmt.Printf("artefacts appauvris a reparer : %d (cache %s, %d deja complets, %d vacuites legitimes, %d hors schema courant, %d hors registre, %d sans artefact)\n",
-			len(aFaire), cacheRoot, report.dejaComplets, report.vacuitesLegitimes, report.horsSchemaCourant, report.horsRegistre, report.sansArtefact)
+		fmt.Printf("artefacts appauvris a reparer : %d (cache %s, %d deja complets, %d vacuites legitimes, %d hors schema courant, %d hors registre, %d mode non gere, %d sans artefact)\n",
+			len(aFaire), cacheRoot, report.dejaComplets, report.vacuitesLegitimes, report.horsSchemaCourant, report.horsRegistre, report.nonGeres, report.sansArtefact)
 	} else {
 		aFaire = filtrerEtTrierReplay(candidats, pr, o, &report)
-		fmt.Printf("films a construire : %d (cache %s, %d deja a jour, %d hors registre, %d sans artefact)\n",
-			len(aFaire), cacheRoot, report.dejaAJour, report.horsRegistre, report.sansArtefact)
+		fmt.Printf("films a construire : %d (cache %s, %d deja a jour, %d hors registre, %d mode non gere, %d sans artefact)\n",
+			len(aFaire), cacheRoot, report.dejaAJour, report.horsRegistre, report.nonGeres, report.sansArtefact)
 	}
 	if o.dryRun {
 		afficherPlanReplay(aFaire)
@@ -208,6 +229,8 @@ func parserOptionsReplay(args []string) (replayBackfillOptions, error) {
 	fs.BoolVar(&o.repairImpoverished, "repair-impoverished", false,
 		"re-cuire les artefacts a jour MAIS sans compteurs de joueur alors que la base a des lignes "+
 			"(remediation du cache appauvri — passe A LANCER AVANT activation ouvrier)")
+	fs.BoolVar(&o.purgeNonGeres, "purge-non-geres", false,
+		"retirer les artefacts deja cuits des matchs de mode non gere (Firefight) ; combine avec --dry-run : liste seulement")
 	fs.StringVar(&o.one, "one", "", "INTERNE : cuire CE seul match dans ce processus (forme appelee par le parent)")
 	fs.Var(&o.mapNames, "map-name", "INTERNE : identite de carte candidate (repetable, du plus fiable au moins fiable)")
 	fs.IntVar(&o.memLimitGiB, "mem-limit-gib", filmproc.DefaultLimitGiB,
@@ -255,28 +278,36 @@ func filtrerEtTrierReplay(
 // replaysACuire joint le cache film au registre : pour chaque film du cache, le match et ses
 // identites de carte candidates. LA LECTURE DE BASE EST COURTE : les deux handles (shared RO,
 // metadata RO) sont relaches au retour, AVANT tout lancement d'enfant.
+//
+// LES MATCHS DE MODE NON GERE (Firefight) SORTENT ICI, avant tout autre filtre : `report.nonGeres`
+// les compte, `--force` et `--only-existing` n'y changent rien. `report.horsRegistre` est rempli
+// de la meme facon.
 func replaysACuire(
 	ctx context.Context, pr *titlePkg.PathResolver, cacheRoot string, o replayBackfillOptions,
-) ([]replayCandidat, int, error) {
+	report *replayBackfillReport,
+) ([]replayCandidat, error) {
 	shorts, err := filmcache.ListShortIDs(cacheRoot)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	if len(shorts) == 0 {
-		return nil, 0, fmt.Errorf("aucun film dans le cache %s — cette passe est HORS LIGNE, elle n'a pas d'autre source", cacheRoot)
+		return nil, fmt.Errorf("aucun film dans le cache %s — cette passe est HORS LIGNE, elle n'a pas d'autre source", cacheRoot)
 	}
 
 	registre, err := registreParShort(ctx, pr, o.titleSlug)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	horsRegistre := 0
 	out := make([]replayCandidat, 0, len(shorts))
 	for _, short := range shorts {
 		entry, ok := registre[short]
 		if !ok {
-			horsRegistre++
+			report.horsRegistre++
+			continue
+		}
+		if entry.nonGere {
+			report.nonGeres++
 			continue
 		}
 		n, ok := compterChunks(cacheRoot, short)
@@ -285,13 +316,15 @@ func replaysACuire(
 		}
 		out = append(out, replayCandidat{matchID: entry.matchID, mapNames: entry.mapNames, chunks: n})
 	}
-	return out, horsRegistre, nil
+	return out, nil
 }
 
 // registreEntry : un match du registre, avec ses identites de carte candidates.
 type registreEntry struct {
 	matchID  string
 	mapNames []string
+	// nonGere : le registre classe ce match dans un mode que le rejeu ne gere pas (Firefight).
+	nonGere bool
 }
 
 // registreParShort lit match_registry (RO) et metadata.asset_translations (RO, best-effort)
@@ -310,7 +343,8 @@ func registreParShort(ctx context.Context, pr *titlePkg.PathResolver, titleSlug 
 
 	enParMapID := nomsAssetsEN(ctx, pr, titleSlug)
 
-	rows, err := db.QueryContext(ctx, `SELECT match_id, map_name, map_id FROM match_registry ORDER BY match_id`)
+	rows, err := db.QueryContext(ctx, `SELECT match_id, map_name, map_id, `+analysis.SQLModeNonGere("")+
+		` FROM match_registry ORDER BY match_id`)
 	if err != nil {
 		return nil, fmt.Errorf("registre des matchs: %w", err)
 	}
@@ -319,11 +353,12 @@ func registreParShort(ctx context.Context, pr *titlePkg.PathResolver, titleSlug 
 	for rows.Next() {
 		var id string
 		var rawName, mapID sql.NullString
-		if err := rows.Scan(&id, &rawName, &mapID); err != nil {
+		var nonGere bool
+		if err := rows.Scan(&id, &rawName, &mapID, &nonGere); err != nil {
 			return nil, fmt.Errorf("registre des matchs (scan): %w", err)
 		}
 		names := candidatsCarte(enParMapID[strings.TrimSpace(mapID.String)], rawName.String)
-		out[titlePkg.FilmShortMatchID(id)] = registreEntry{matchID: id, mapNames: names}
+		out[titlePkg.FilmShortMatchID(id)] = registreEntry{matchID: id, mapNames: names, nonGere: nonGere}
 	}
 	return out, rows.Err()
 }

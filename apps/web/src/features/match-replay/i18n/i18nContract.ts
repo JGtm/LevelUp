@@ -449,6 +449,8 @@ export interface ReplayText {
    */
   layerGroundWeaponsSpecialOnly: string
   layerGroundWeaponsSpecialOnlyHint: string
+  layerGroundWeaponsStarting: string
+  layerGroundWeaponsStartingHint: string
   /**
    * L'INFOBULLE D'UNE ARME AU SOL (lot 6.5, 2026-09-10) : UNE LIGNE, jamais deux — même
    * mécanique que les trois calques survolables voisins (poses, socles, drapeaux). Le geste se

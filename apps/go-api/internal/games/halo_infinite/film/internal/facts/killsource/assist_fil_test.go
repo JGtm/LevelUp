@@ -32,6 +32,7 @@ func rosterAuFil() *roster {
 		perm:    []int{0, 1, 2, 3, 4, 5},
 		pin:     map[int]int{0: 0, 1: 1, 2: 2, 3: 3, 4: 4},
 		seatPin: map[int]bool{0: true, 1: true, 2: true},
+		bots:    botsDuFilmEntier(3, 4),
 		nPlay:   6,
 	}
 }

@@ -4,7 +4,7 @@ package grammar
 
 // bit18_registre_research_test.go — LE BIT DE TROP DES BUILDS <= HI_1_8_0 : QUELLE DONNEE DECLAREE
 // PAR LE FILM SEPARE LES DEUX FAMILLES (branche feat/ri-ecart-108, rapport
-// `.ai/RAPPORT_BIT_BUILDS_18_2026-10-09.md`). Aucun fichier de production n est touche.
+// `.ai/V7.5/RAPPORT_BIT_BUILDS_18_2026-10-09.md`). Aucun fichier de production n est touche.
 //
 // Deux tests :
 //

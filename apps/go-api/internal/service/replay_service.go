@@ -61,6 +61,26 @@ func NewDemoReplayService(titleSlug, repoRoot string, layout title.DemoLayout, m
 		artifactsDir: layout.ReplayArtifactsDir(titleSlug), demoIndexPath: layout.ReplayIndexPath(titleSlug), maps: maps}
 }
 
+// modeNonGere dit si le registre classe ce match dans un mode que le rejeu ne gere pas
+// (Firefight) : son artefact, s'il traine dans le cache, n'est ni annonce ni servi.
+//
+// FAIL-OPEN ET JOURNALISE : sans capacite (`maps` nil ou sans [port.ReplayModeGate]) ou sur
+// registre illisible, on ne retire rien — une panne de lecture ne doit pas effacer les rejeux
+// des modes geres.
+func (s *replayService) modeNonGere(ctx context.Context, matchID string) bool {
+	gate, ok := s.maps.(port.ReplayModeGate)
+	if !ok {
+		return false
+	}
+	nonGere, err := gate.ModeNonGere(ctx, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "rejeu 2D : mode du match illisible — non filtre",
+			"err", err, "match_id", matchID, "titleSlug", s.titleSlug)
+		return false
+	}
+	return nonGere
+}
+
 // artifactPath rend le chemin de l'artefact d'un match dans le dossier servi.
 func (s *replayService) artifactPath(matchID string) string {
 	return filepath.Join(s.artifactsDir, title.ReplayArtifactFileName(matchID))
@@ -84,7 +104,7 @@ func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
 		}
 		return false
 	}
-	return !info.IsDir()
+	return !info.IsDir() && !s.modeNonGere(ctx, matchID)
 }
 
 // AvailableSet liste les matchs du titre qui ont un artefact, par UN SEUL listing du
@@ -114,7 +134,30 @@ func (s *replayService) AvailableSet(ctx context.Context) (port.ReplayAvailabili
 		}
 		set[strings.TrimSuffix(name, replayArtifactExt)] = struct{}{}
 	}
+	s.retirerModesNonGeres(ctx, set)
 	return set, nil
+}
+
+// retirerModesNonGeres retire de l'ensemble les matchs d'un mode non gere (cf. modeNonGere :
+// meme fail-open journalise). Une seule lecture du registre, et seulement s'il y a des
+// artefacts a filtrer.
+func (s *replayService) retirerModesNonGeres(ctx context.Context, set port.ReplayAvailability) {
+	if len(set) == 0 {
+		return
+	}
+	gate, ok := s.maps.(port.ReplayModeGate)
+	if !ok {
+		return
+	}
+	nonGeres, err := gate.ModesNonGeresShortIDs(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "rejeu 2D : modes non geres illisibles — liste non filtree",
+			"err", err, "titleSlug", s.titleSlug)
+		return
+	}
+	for short := range nonGeres {
+		delete(set, short)
+	}
 }
 
 // replayArtifactExt est l'extension des artefacts de rejeu ({short8}.json) — la même
@@ -147,6 +190,11 @@ const replayArtifactExt = ".json"
 // sur la forme de FIL (`domain/replaydoc`) — c'est la seule frontière où les deux se croisent
 // (cf. internal/service/replayview).
 func (s *replayService) GetReplay(ctx context.Context, matchID string) (replaydoc.ReplayDocument, error) {
+	// UN MODE NON GERE N'A PAS DE REJEU, MEME SI UN ARTEFACT TRAINE dans le cache : meme reponse
+	// que l'absence d'artefact (404 replay_not_available), jamais un 500.
+	if s.modeNonGere(ctx, matchID) {
+		return replaydoc.ReplayDocument{}, port.ErrReplayNotAvailable
+	}
 	raw, err := os.ReadFile(s.artifactPath(matchID))
 	if errors.Is(err, os.ErrNotExist) {
 		return replaydoc.ReplayDocument{}, port.ErrReplayNotAvailable

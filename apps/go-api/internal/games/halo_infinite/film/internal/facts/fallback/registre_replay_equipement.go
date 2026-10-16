@@ -8,6 +8,9 @@ const pkgReplay = "internal/games/halo_infinite/film/replay/"
 // dateLotNeedler : le jour du lot qui pose la regle de la premiere prise de socle du cycle.
 const dateLotNeedler = "2026-10-09"
 
+// dateLotFinDeFaille : le jour de l integration qui clot la faille a la suppression lue de son objet.
+const dateLotFinDeFaille = "2026-10-16"
+
 var registreReplayEquipement = []Repli{
 	{
 		Nom:       "repli_piece_engendree_sans_evenement",
@@ -314,6 +317,27 @@ var registreReplayEquipement = []Repli{
 		DatePose:        dateLotNeedler,
 		CibleRetrait:    "conversion le jour ou le film designe l objet ramasse (instance dans l evenement natif, ou suppression d entite isolable a l instant de la prise)",
 		CritereRetrait:  "chaque occupation datee par une lecture de l objet ramasse, ET coverage.padDating.firstOfCycle a 0 sur le corpus du gate de rejeu",
+		CompteurBranche: true,
+	},
+	{
+		// LA FIN DE LA FAILLE EST LA SUPPRESSION LUE DE SON OBJET (schema 98) : la pile i28 de l objet porte
+		// ecrit la suppression de la faille que la pose a creee, et la pose la publie (`riftPoses[].t1`).
+		Nom:  "repli_fin_de_faille_consommation_ou_mort_du_porteur",
+		Fait: "quand la faille du translocateur disparait de la carte",
+		Mecanisme: "la pose ne porte pas la fin lue de son objet (objet cree non lu, suppression non lue) : le client " +
+			"(`riftStations.ts`, `stationEnd`) la clot a la consommation de l equipement ou a la mort du porteur ; " +
+			"compte = poses sans fin lue (coverage.carriedEquipment.riftEndsUnread)",
+		// LE NEGATIF QUI L OUVRE n est pas encore mesure sur le parc : 4 fins lues sur 4 poses sur
+		// `1b2d9e08`, 3 sur 3 sur la fixture `60ae07c4` (2026-10-16).
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "document_equipement_porte.go",
+			Ancre:   "a.opt.Fallbacks.DeclencheN(fallback.NomFinDeFailleConsommationOuMortDuPorteur, cov.RiftEndsUnread)",
+		}},
+		DatePose:        dateLotFinDeFaille,
+		CibleRetrait:    "retrait sec quand chaque pose du parc porte la fin lue de son objet ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "coverage.carriedEquipment.riftEndsUnread a 0 sur les artefacts du parc (corpus du gate de rejeu)",
 		CompteurBranche: true,
 	},
 }

@@ -39,6 +39,7 @@ type replayBackfillReport struct {
 	redecodes     int
 	horsCatalogue int // echec VOULU (cartes Forge sans bornes), compte A PART
 	horsRegistre  int // film en cache sans ligne match_registry
+	nonGeres      int // mode non gere par le rejeu (Firefight) : ecarte, jamais cuit
 	sansArtefact  int // ecarte par --only-existing : aucun artefact sur disque
 	erreurs       int // decodage en echec, film present
 	preparation   int // l'enfant n'a pas pu commencer (builder, catalogue, ...)
@@ -227,6 +228,7 @@ func afficherRapportReplay(r replayBackfillReport) {
 	fmt.Printf("  deja a jour          %d\n", r.dejaAJour)
 	fmt.Printf("  carte hors catalogue %d (echec voulu : cartes sans bornes, Forge en tete)\n", r.horsCatalogue)
 	fmt.Printf("  hors registre        %d (film en cache sans match en base)\n", r.horsRegistre)
+	fmt.Printf("  mode non gere        %d (Firefight : le rejeu ne le gere pas, jamais cuit)\n", r.nonGeres)
 	fmt.Printf("  sans artefact        %d (ecartes par --only-existing)\n", r.sansArtefact)
 	fmt.Printf("  erreurs de decodage  %d\n", r.erreurs)
 	fmt.Printf("  echecs de preparation %d (l enfant n a pas pu demarrer)\n", r.preparation)

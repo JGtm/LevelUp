@@ -352,7 +352,7 @@ func e193Mesurer(dir string) e193Ligne {
 		return l
 	}
 	table := readFilmTable(f)
-	r := buildRoster(kf, loadBotMeta(grammar.PaquetsBotMetadata(f.src, 0, false)), true, table, indexParMotif{})
+	r := buildRoster(kf, loadBotMeta(grammar.PaquetsBotMetadata(f.src, grammar.LectureDesBots{})), true, table, indexParMotif{})
 	nom, bot := e193Epinglage(r)
 	marche, err := grammar.LireLaMarcheDeKillsource(grammar.NewFilmContext(f.src))
 	if err != nil {

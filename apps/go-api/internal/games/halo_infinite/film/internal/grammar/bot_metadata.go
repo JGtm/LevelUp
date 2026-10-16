@@ -16,9 +16,20 @@ package grammar
 // `FUN_14299bda0` ecrit W(32) le nombre d entrees, puis par bot W(32) son index absolu, W(32) son
 // slot, W(32) son `bid` et le corps de sa fiche (`FUN_1407edea8`) — le corps des fiches de joueur que
 // la table de `chunk_00` et le paquet de type 8 portent aussi ([decodeSlotListes], [decodeSlotCorps]),
-// sous la largeur de personnalisation du build. Elle seule donne l equipe, dans le bloc de 44 octets.
-// Une equipe n en est retenue que si la marche FERME : la derniere entree finit a moins d un octet
-// de la fin du paquet (l ecrivain arrondit a l octet).
+// sous la largeur de personnalisation du build. Elle seule donne l equipe, dans le bloc de 44 octets,
+// a la position que le profil du build etablit ([profile.PositionEquipeBotPour] : elle change entre
+// HI_1_12_0 et HI_1_13_0). Une equipe n en est retenue que si la marche FERME : la derniere entree
+// finit a moins d un octet de la fin du paquet (l ecrivain arrondit a l octet).
+//
+// # LES FRAGMENTS DU BALAYAGE
+//
+// Le bloc de 44 octets porte une seconde copie du nom, en UTF-16 PETIT-boutiste. Lue un octet plus
+// loin comme du gros-boutiste, elle donne le nom ampute de son premier caractere (`43 Hollis` pour
+// `343 Hollis`), et aux offsets negatifs de cette lecture slot et `bid` valent 0 : le balayage y voit
+// un bot de plus. Sur les builds ou le nom suit un octet non nul du bloc (HI_1_10_0 a HI_1_12_0,
+// chaque entree), le fragment est systematique. Dans un paquet qui FERME, un nom balaye que la marche
+// ne lit pas et qui est le suffixe strict d un nom qu elle lit est un tel fragment : il est ecarte et
+// compte ([PaquetBotMetadata.FragmentsEcartes]), et il n entre pas au roster.
 //
 // # L INSTANT D UN PAQUET
 //
@@ -30,8 +41,10 @@ package grammar
 import (
 	"cmp"
 	"slices"
+	"strings"
 	"unicode/utf16"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -49,13 +62,25 @@ const (
 	botBIDMax         = 4096
 )
 
-// Position, dans le bloc de 44 octets d une fiche (`fiche + 0x1400`, recopie par `FUN_1424d512c` en
-// `configuration + 0xCC0`), de l equipe (`+ 0xCE5`, posee sur le joueur par `FUN_140ad37f8`) et de
-// son jumeau (`+ 0xCE6`) : deux octets signes, -1 pour aucune.
-const (
-	slotEquipeDansBloc44 = 0x25 * 8
-	slotJumeauDansBloc44 = 0x26 * 8
-)
+// LectureDesBots : ce que le profil du build dit de la lecture d une entree BOT_METADATA — la largeur
+// du bloc de personnalisation, qui place tout ce qui suit, et la position de l equipe dans le bloc de
+// 44 octets (`fiche + 0x1400`). PersoConnue faux : la grammaire de l ecrivain ne lit rien ;
+// EquipeConnue faux : elle lit les entrees, sans leur equipe.
+type LectureDesBots struct {
+	PersoBits    int
+	PersoConnue  bool
+	Equipe       profile.PositionEquipeBot
+	EquipeConnue bool
+}
+
+// LectureDesBotsPour rend la lecture des entrees BOT_METADATA d un build, telle que le profil la
+// donne.
+func LectureDesBotsPour(build string) LectureDesBots {
+	octets, persoConnue := profile.PersonnalisationOctets(build)
+	pos, equipeConnue := profile.PositionEquipeBotPour(build)
+	return LectureDesBots{PersoBits: octets * 8, PersoConnue: persoConnue, Equipe: pos,
+		EquipeConnue: equipeConnue}
+}
 
 // EntreeDeBotBalayee est une entree que le balayage des noms trouve dans un paquet BOT_METADATA :
 // son slot, son `bid`, son nom et le bit ou le nom commence.
@@ -66,11 +91,15 @@ type EntreeDeBotBalayee struct {
 }
 
 // EntreeDeBotEcrite est une entree que la grammaire de l ecrivain lit : son slot, son `bid`, son nom
-// et les deux octets signes du bloc de 44 octets — l equipe et son jumeau.
+// et, quand le profil du build en etablit la position (EquipeLue), les deux octets signes du bloc de
+// 44 octets — l equipe et son jumeau, -1 pour aucune.
 type EntreeDeBotEcrite struct {
 	Slot, BotID    int
 	Nom            string
 	Equipe, Jumeau int
+	// EquipeLue faux : Equipe et Jumeau valent 0 sans avoir ete lus ; tout consommateur doit refuser
+	// l entree plutot que d en publier l equipe.
+	EquipeLue bool
 }
 
 // PaquetBotMetadata est un paquet BOT_METADATA lisible (au moins le mot du nombre de bots), dans
@@ -81,19 +110,22 @@ type PaquetBotMetadata struct {
 	Instant uint64
 	// NBots est le nombre de bots que le paquet annonce (premier u32, gros-boutiste).
 	NBots int
-	// Balayees sont les entrees que le balayage des noms trouve.
+	// Balayees sont les entrees que le balayage des noms trouve, fragments ecartes.
 	Balayees []EntreeDeBotBalayee
 	// Ecrites sont les entrees que la grammaire de l ecrivain lit quand la largeur de
 	// personnalisation est connue, et Ferme dit que sa marche ferme le paquet ; nil et faux sinon.
 	Ecrites []EntreeDeBotEcrite
 	Ferme   bool
+	// FragmentsEcartes : les noms du balayage ecartes de ce paquet ferme comme fragments de la copie
+	// petit-boutiste d un nom que la marche lit (cf. l en-tete).
+	FragmentsEcartes int
 }
 
 // PaquetsBotMetadata rend les paquets BOT_METADATA lisibles du film, dans l ORDRE DU FILM — chunk par
 // chunk, paquet par paquet : c est l ordre dans lequel `killsource` decouvre ses bots, et deux bots
-// d un meme slot y gardent leur rang relatif. `persoBits` est la largeur du bloc de personnalisation
-// du build ; `persoConnue` faux (build absent du profil) : la grammaire de l ecrivain ne lit rien.
-func PaquetsBotMetadata(f *source.Film, persoBits int, persoConnue bool) []PaquetBotMetadata {
+// d un meme slot y gardent leur rang relatif. `lecture` est celle du build du film
+// ([LectureDesBotsPour]).
+func PaquetsBotMetadata(f *source.Film, lecture LectureDesBots) []PaquetBotMetadata {
 	var out []PaquetBotMetadata
 	chunk, imageCle, enTete := -1, uint64(0), false
 	for _, p := range f.AllPackets() {
@@ -110,25 +142,58 @@ func PaquetsBotMetadata(f *source.Film, persoBits int, persoConnue bool) []Paque
 			if enTete && imageCle != 0 {
 				instant = imageCle
 			}
-			out = append(out, lirePaquetBotMetadata(p.Payload, instant, persoBits, persoConnue))
+			out = append(out, lirePaquetBotMetadata(p.Payload, instant, lecture))
 		}
 	}
 	return out
 }
 
-// lirePaquetBotMetadata lit un payload BOT_METADATA d au moins quatre octets par ses deux lecteurs.
-func lirePaquetBotMetadata(pl []byte, instant uint64, persoBits int, persoConnue bool) PaquetBotMetadata {
+// lirePaquetBotMetadata lit un payload BOT_METADATA d au moins quatre octets par ses deux lecteurs,
+// puis ecarte du balayage les fragments d un paquet qui ferme.
+func lirePaquetBotMetadata(pl []byte, instant uint64, lecture LectureDesBots) PaquetBotMetadata {
 	n, _ := lireU32GrosBoutiste(pl, 0)
 	out := PaquetBotMetadata{Instant: instant, NBots: int(n), Balayees: balayerLesEntreesDeBots(pl)}
-	if persoConnue {
-		out.Ecrites, out.Ferme = lireLesEntreesDeBots(pl, persoBits)
+	if lecture.PersoConnue {
+		out.Ecrites, out.Ferme = lireLesEntreesDeBots(pl, lecture)
+	}
+	if out.Ferme {
+		out.Balayees, out.FragmentsEcartes = ecarterLesFragments(out.Balayees, out.Ecrites)
 	}
 	return out
 }
 
+// ecarterLesFragments retire du balayage d un paquet FERME chaque nom que la marche ne lit pas et qui
+// est le suffixe strict d un nom qu elle lit (cf. l en-tete), et rend combien il en retire.
+func ecarterLesFragments(balayees []EntreeDeBotBalayee, ecrites []EntreeDeBotEcrite) ([]EntreeDeBotBalayee, int) {
+	out := make([]EntreeDeBotBalayee, 0, len(balayees))
+	for _, b := range balayees {
+		if fragmentDUnNomEcrit(b.Nom, ecrites) {
+			continue
+		}
+		out = append(out, b)
+	}
+	return out, len(balayees) - len(out)
+}
+
+// fragmentDUnNomEcrit dit qu un nom balaye n est ecrit par aucune entree et qu il termine un nom ecrit
+// plus long.
+func fragmentDUnNomEcrit(nom string, ecrites []EntreeDeBotEcrite) bool {
+	suffixe := false
+	for _, e := range ecrites {
+		if e.Nom == nom {
+			return false
+		}
+		if len(e.Nom) > len(nom) && strings.HasSuffix(e.Nom, nom) {
+			suffixe = true
+		}
+	}
+	return suffixe
+}
+
 // lireLesEntreesDeBots lit un payload BOT_METADATA par la grammaire de l ecrivain (cf. l en-tete),
-// sous la largeur de personnalisation `persoBits`. Faux quand la marche ne ferme pas le paquet.
-func lireLesEntreesDeBots(pl []byte, persoBits int) ([]EntreeDeBotEcrite, bool) {
+// sous la largeur de personnalisation du build ; l equipe se lit a la position du build quand elle
+// est etablie. Faux quand la marche ne ferme pas le paquet.
+func lireLesEntreesDeBots(pl []byte, lecture LectureDesBots) ([]EntreeDeBotEcrite, bool) {
 	r := &slotReader{br: LecteurSur(pl), fin: len(pl) * 8, ok: true}
 	n := int(r.bits(32))
 	if !r.ok || n > botSlotMax {
@@ -139,21 +204,26 @@ func lireLesEntreesDeBots(pl []byte, persoBits int) ([]EntreeDeBotEcrite, bool) 
 		r.saute(32) // index absolu du bot
 		slot, bid := int(r.bits(32)), int(r.bits(32))
 		var e slotEnr
-		if !decodeSlotListes(r, &e) || !decodeSlotCorps(r, &e, persoBits) {
+		if !decodeSlotListes(r, &e) || !decodeSlotCorps(r, &e, lecture.PersoBits) {
 			return nil, false
 		}
-		out = append(out, EntreeDeBotEcrite{Slot: slot, BotID: bid, Nom: e.slot.Gamertag,
-			Equipe: e.equipe, Jumeau: e.jumeau})
+		entree := EntreeDeBotEcrite{Slot: slot, BotID: bid, Nom: e.slot.Gamertag}
+		if lecture.EquipeConnue {
+			entree.Equipe = int(int8(e.bloc44[lecture.Equipe.Equipe])) //nolint:gosec // octet signe, -1 = aucune
+			entree.Jumeau = int(int8(e.bloc44[lecture.Equipe.Jumeau])) //nolint:gosec // idem
+			entree.EquipeLue = true
+		}
+		out = append(out, entree)
 	}
 	return out, len(pl)*8-r.br.BitPos() < 8
 }
 
-// lireLeBloc44 lit le bloc de 44 octets d une fiche : l equipe et son jumeau, le reste saute.
+// lireLeBloc44 lit le bloc de 44 octets bruts d une fiche ; sa disposition depend du build
+// ([profile.PositionEquipeBotPour]).
 func lireLeBloc44(r *slotReader, e *slotEnr) {
-	r.saute(slotEquipeDansBloc44)
-	e.equipe = int(int8(r.bits(8))) //nolint:gosec // octet signe de l ecrivain, -1 = aucune
-	e.jumeau = int(int8(r.bits(8))) //nolint:gosec // idem
-	r.saute(slotBloc44Bits - slotJumeauDansBloc44 - 8)
+	for i := range e.bloc44 {
+		e.bloc44[i] = byte(r.bits(8))
+	}
 }
 
 // balayerLesEntreesDeBots enumere les entrees d un payload BOT_METADATA SANS hypothese de stride : un

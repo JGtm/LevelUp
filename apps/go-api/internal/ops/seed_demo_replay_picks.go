@@ -4,6 +4,8 @@
 // LA RÈGLE, déterministe pour un même état du dépôt :
 //   - candidats : les matchs du registre dont le cache de films porte le film, et où le
 //     joueur SOURCE de la démo a joué (le rejeu s'ouvre depuis sa vue match) ;
+//   - exclus d'office : les matchs de mode non géré par le rejeu (Firefight, décision du
+//     2026-10-15) — le drapeau du registre (`analysis.SQLModeNonGere`), pas le nom de variante ;
 //   - famille : demoReplayFamilyOf(game_variant_name) ; un nom qu'aucune famille ne
 //     reconnaît est journalisé et écarté ;
 //   - par famille : d'abord un match dont l'artefact du dépôt est déjà au dernier schéma
@@ -41,7 +43,6 @@ type demoReplayFamily struct {
 // Clés des familles de mode (identifiants du manifeste, jamais des libellés). Chacune sert
 // aussi de jeton quand le nom de variante la porte telle quelle.
 const (
-	demoModeFirefight    = "firefight"
 	demoModeFiesta       = "fiesta"
 	demoModeEscalation   = "escalation"
 	demoModeExtraction   = "extraction"
@@ -57,7 +58,6 @@ const (
 
 // demoReplayFamilies : les familles de mode servies par la démo, dans l'ordre de priorité.
 var demoReplayFamilies = []demoReplayFamily{
-	{key: demoModeFirefight, tokens: []string{demoModeFirefight}},
 	{key: demoModeFiesta, tokens: []string{demoModeFiesta}},
 	{key: demoModeEscalation, tokens: []string{demoModeEscalation}},
 	{key: demoModeExtraction, tokens: []string{demoModeExtraction}},
@@ -150,7 +150,8 @@ func loadDemoReplayCandidates(ctx context.Context, opts SeedDemoOptions) ([]demo
 	rows, err := shared.SQLDb().QueryContext(ctx, `SELECT r.match_id, COALESCE(r.game_variant_name, ''),
 		COALESCE(r.map_name, ''), `+analysis.SQLStartTimeCanonical("r")+`
 		FROM match_registry r
-		WHERE EXISTS (SELECT 1 FROM match_participants p WHERE p.match_id = r.match_id AND p.xuid = ?)`,
+		WHERE NOT `+analysis.SQLModeNonGere("r")+`
+		  AND EXISTS (SELECT 1 FROM match_participants p WHERE p.match_id = r.match_id AND p.xuid = ?)`,
 		opts.SourceXUID)
 	if err != nil {
 		return nil, fmt.Errorf("candidats aux rejeux démo: %w", err)

@@ -35,6 +35,22 @@ type CarriedEquipmentRead struct {
 	HasHandles bool
 	Handles    uint32
 	Tracked    []LifeKey
+	// Spawned : parmi les vies de Tracked, celles que cette pile nomme pour la PREMIERE fois et dont la
+	// marche a lu la creation (record NEW) : l instant, l archetype et la position i0 a la creation.
+	Spawned []SpawnedObject
+}
+
+// SpawnedObject est la creation lue d un objet engendre par un equipement porte.
+type SpawnedObject struct {
+	Life LifeKey
+	// TimestampUS : l horodatage du paquet de la creation.
+	TimestampUS uint64
+	// TypeIndex : l archetype de la vie (38 pour la faille du translocateur, 41 pour le champ).
+	TypeIndex uint32
+	// X, Y, Z : la position i0 a la creation, en coordonnees monde ; valides si HasPosition (chemin
+	// dominant, region de la carte, quanta non satures).
+	HasPosition bool
+	X, Y, Z     float32
 }
 
 // CarriedReadKind qualifie une lecture d objet porte.
@@ -66,4 +82,7 @@ type CarriedEquipmentStats struct {
 	// TrackedEntries : entrees presentes lues dans les piles i28 ; TrackedEnds : suppressions lues des
 	// vies qu elles designent.
 	TrackedEntries, TrackedEnds int
+	// SpawnedBirths : vies nommees dont la creation est lue ; SpawnedPositioned : celles dont la position
+	// i0 a la creation est lue.
+	SpawnedBirths, SpawnedPositioned int
 }

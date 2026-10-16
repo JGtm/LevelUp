@@ -1,7 +1,7 @@
 package archlint
 
 // aides_uniques_film_test.go — DEUX AIDES CANONIQUES ET LEURS GARDE-RAILS (regle 6 du depot ; revue
-// D1.4.6 du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, constat 7, 2026-10-09).
+// D1.4.6 du plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, constat 7, 2026-10-09).
 //
 //  1. L ENSEMBLE DES FAMILLES D ARME CONNUES se construit par `weaponv3.FamillesConnues` et nulle part
 //     ailleurs : il en existait cinq copies (`range weaponv3.KnownWeaponHigh32Copie()` puis

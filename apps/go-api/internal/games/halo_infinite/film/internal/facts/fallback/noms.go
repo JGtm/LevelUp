@@ -135,6 +135,10 @@ const (
 	// NomPriseDeSoclePremiereDuCycle : `replay/pad_pickup_dating_cycle.go`, `premieresPrisesDuCycle` ;
 	// compte par `replay/build_calques.go` (lot needler des ajustements, 2026-10-09).
 	NomPriseDeSoclePremiereDuCycle Nom = "repli_prise_de_socle_premiere_du_cycle"
+	// NomFinDeFailleConsommationOuMortDuPorteur : `replay/document_equipement_porte.go`,
+	// `poserLEquipementPorte` (poses sans fin lue de leur objet, que le client clot par la consommation ou
+	// la mort du porteur ; integration des lots film, 2026-10-16).
+	NomFinDeFailleConsommationOuMortDuPorteur Nom = "repli_fin_de_faille_consommation_ou_mort_du_porteur"
 	// NomIdentiteDeSlotParResiduDeManche : `objectives/slotidentity_residue.go`,
 	// `CompletedByRoundResidue` ; compte par `replay/identity_registry_section.go`,
 	// `compterLesSlotsParResidu` (lot J8.4, constats FO-1 / RA2-4).

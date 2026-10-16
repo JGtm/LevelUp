@@ -80,11 +80,6 @@
     "media_match_ids": [],
     "replay_matches": [
       {
-        "match_id": "edc5daf6-0df8-4eb0-b578-b8eb892ce184",
-        "mode": "firefight",
-        "map": "Cole Protocol"
-      },
-      {
         "match_id": "39910eb1-8c01-4e26-bc60-965cb2dcc789",
         "mode": "fiesta",
         "map": "Recharge"

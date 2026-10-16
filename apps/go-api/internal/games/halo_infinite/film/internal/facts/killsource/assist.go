@@ -279,10 +279,10 @@ func (c *decodeCtx) killEventsOu(k *Kill, s *assistScan, used []bool, ou func(in
 			continue
 		}
 		r := &s.recs[j]
-		if c.roster.nameOf(r.fields.victim) != k.Victim {
+		if c.roster.nameOfA(r.fields.victim, r.ms) != k.Victim {
 			continue
 		}
-		if k.Feed.Present && c.roster.nameOf(r.fields.killer) != k.Feed.Killer {
+		if k.Feed.Present && c.roster.nameOfA(r.fields.killer, r.ms) != k.Feed.Killer {
 			continue
 		}
 		hits = append(hits, j)
@@ -333,11 +333,11 @@ func (c *decodeCtx) fillAssist(k *Kill, f killEventFields, st *AssistStats) {
 	case f.assist == f.victim:
 		k.Assist.Rejected = AssistRejectVictim
 		st.RejectedVictim++
-	case estNomDeRemplissage(c.roster.nameOf(f.assist)):
+	case estNomDeRemplissage(c.roster.nameOfA(f.assist, k.TimeMS)):
 		k.Assist.Rejected = AssistRejectRoster
 		st.RejectedRoster++
 	default:
-		k.Assist.Name = c.roster.nameOf(f.assist)
+		k.Assist.Name = c.roster.nameOfA(f.assist, k.TimeMS)
 		st.Named++
 	}
 	if f.flag != 0 {
