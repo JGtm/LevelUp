@@ -1,4 +1,4 @@
-package sync
+package citationsfilm
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// selectMatchesFilmPlusRecent rend les matchs du joueur dont les citations ont été calculées AVANT
+// SelectMatchesFilmPlusRecent rend les matchs du joueur dont les citations ont été calculées AVANT
 // la dernière dérivation de leur film (résumé d'usage). Les citations du film (« Jouets éducatifs »,
 // « Presque, ça ne compte pas ») lisent ce résumé ; il arrive souvent APRÈS l'étape citations — film
 // cuit par un ouvrier, rattrapage des dérivés, `levelup backfill-usage-summary` — et le post-sync ne
@@ -18,7 +18,7 @@ import (
 //
 // Comparaison d'horodatages UTC écrits par les deux tables (`written_at`). Un titre sans film (vue
 // absente sur la base partagée) ne rend rien.
-func selectMatchesFilmPlusRecent(ctx context.Context, playerDB, sharedDB *sql.DB) ([]string, error) {
+func SelectMatchesFilmPlusRecent(ctx context.Context, playerDB, sharedDB *sql.DB) ([]string, error) {
 	calculees, err := citationsWrittenAt(ctx, playerDB)
 	if err != nil || len(calculees) == 0 {
 		return nil, err
@@ -65,8 +65,8 @@ func citationsWrittenAt(ctx context.Context, playerDB *sql.DB) (map[string]time.
 	return out, rows.Err()
 }
 
-// unionMatchIDs concatène deux listes sans doublon, dans l'ordre d'arrivée.
-func unionMatchIDs(a, b []string) []string {
+// UnionMatchIDs concatène deux listes sans doublon, dans l'ordre d'arrivée.
+func UnionMatchIDs(a, b []string) []string {
 	vus := make(map[string]bool, len(a)+len(b))
 	out := make([]string, 0, len(a)+len(b))
 	for _, l := range [][]string{a, b} {

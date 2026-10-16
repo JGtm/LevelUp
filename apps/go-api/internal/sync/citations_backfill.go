@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/citationsfilm"
 )
 
 // OpenPveReadForCitations ouvre shared_pve.duckdb en LECTURE pour le pipeline
@@ -439,7 +440,7 @@ func (e *SyncEngine) runPostSyncCitations(ctx context.Context, playerDB, sharedD
 		return 0, fmt.Errorf("select: %w", err)
 	}
 	// Les matchs dont le film a été dérivé APRÈS leurs citations : recalcul complet.
-	filmPlusRecent, err := selectMatchesFilmPlusRecent(ctx, playerDB, sharedDB)
+	filmPlusRecent, err := citationsfilm.SelectMatchesFilmPlusRecent(ctx, playerDB, sharedDB)
 	if err != nil {
 		slog.WarnContext(ctx, "citations post-sync: dérivations du film illisibles, citations du film non recalculées",
 			"player", e.gamertag, "err", err)
@@ -448,7 +449,7 @@ func (e *SyncEngine) runPostSyncCitations(ctx context.Context, playerDB, sharedD
 		slog.InfoContext(ctx, "citations post-sync: film dérivé après les citations, recalcul",
 			"player", e.gamertag, "count", len(filmPlusRecent))
 	}
-	matchIDs = unionMatchIDs(matchIDs, filmPlusRecent)
+	matchIDs = citationsfilm.UnionMatchIDs(matchIDs, filmPlusRecent)
 	if len(matchIDs) == 0 {
 		slog.DebugContext(ctx, "citations post-sync: aucun nouveau match", "player", e.gamertag)
 		return 0, nil

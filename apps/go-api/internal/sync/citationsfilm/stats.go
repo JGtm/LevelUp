@@ -1,4 +1,7 @@
-package sync
+// Package citationsfilm — les citations qui lisent le film : les grandeurs du résumé d'usage du
+// film injectées dans le contexte des citations (stats.go) et la sélection des matchs dont le film
+// a été dérivé après leurs citations (selection.go). Lectures seules, best-effort.
+package citationsfilm
 
 import (
 	"context"
@@ -17,11 +20,11 @@ const (
 	filmStatShieldlessKills = "shieldless_kills"
 )
 
-// loadFilmStats charge les grandeurs du résumé d'usage du film pour (match, joueur). Best-effort,
-// comme loadObjectiveStats : nil sans ligne (match sans film dérivé, ou joueur sans usage) ; une
+// LoadFilmStats charge les grandeurs du résumé d'usage du film pour (match, joueur). Best-effort,
+// comme `loadObjectiveStats` (paquet sync) : nil sans ligne (match sans film dérivé, ou joueur sans usage) ; une
 // colonne NULL (frags sans bouclier non mesurés) n'ouvre aucune clé. Un titre sans film (vue
 // absente) se dit en DEBUG ; toute autre erreur SQL en WARN — les citations restent alors à 0.
-func loadFilmStats(ctx context.Context, sharedDB *sql.DB, matchID, xuid string) map[string]float64 {
+func LoadFilmStats(ctx context.Context, sharedDB *sql.DB, matchID, xuid string) map[string]float64 {
 	if sharedDB == nil {
 		return nil
 	}

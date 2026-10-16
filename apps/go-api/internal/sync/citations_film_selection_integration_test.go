@@ -11,6 +11,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/sync/citationsfilm"
 )
 
 // ajouterResumeUsage crée les deux vues du résumé d'usage (forme réduite à ce que les citations
@@ -49,7 +51,7 @@ func TestCitationsFilm_RecalculApresDerivation(t *testing.T) {
 	// Le recalcul se produit APRÈS la dérivation, comme en production.
 	time.Sleep(20 * time.Millisecond)
 
-	ids, err := selectMatchesFilmPlusRecent(ctx, f.player, f.shared)
+	ids, err := citationsfilm.SelectMatchesFilmPlusRecent(ctx, f.player, f.shared)
 	if err != nil || len(ids) != 1 || ids[0] != fixM1 {
 		t.Fatalf("film dérivé après les citations : sélection %v (err %v), attendu [%s]", ids, err, fixM1)
 	}
@@ -62,7 +64,7 @@ func TestCitationsFilm_RecalculApresDerivation(t *testing.T) {
 	if got := realCitationValue(t, f.player, fixM1, "bulltrue"); got != avant {
 		t.Fatalf("après recalcul : bulltrue=%d, attendu %d (citations hors film inchangées)", got, avant)
 	}
-	if ids, err := selectMatchesFilmPlusRecent(ctx, f.player, f.shared); err != nil || len(ids) != 0 {
+	if ids, err := citationsfilm.SelectMatchesFilmPlusRecent(ctx, f.player, f.shared); err != nil || len(ids) != 0 {
 		t.Fatalf("citations à jour : sélection %v (err %v), attendu vide", ids, err)
 	}
 }
@@ -70,7 +72,7 @@ func TestCitationsFilm_RecalculApresDerivation(t *testing.T) {
 func TestCitationsFilm_TitreSansFilm(t *testing.T) {
 	f := buildPipelineFixture(t)
 	runCitationsFor(t, f, fixM1)
-	if ids, err := selectMatchesFilmPlusRecent(context.Background(), f.player, f.shared); err != nil || len(ids) != 0 {
+	if ids, err := citationsfilm.SelectMatchesFilmPlusRecent(context.Background(), f.player, f.shared); err != nil || len(ids) != 0 {
 		t.Fatalf("sans résumé d'usage : sélection %v (err %v), attendu vide et sans erreur", ids, err)
 	}
 }
