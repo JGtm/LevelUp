@@ -68,7 +68,7 @@ import (
 // une règle d'attribution ici DOIT incrémenter cette révision, sinon le backfill
 // sautera des matchs à re-résumer. CE QUE CHAQUE RÉVISION A CHANGÉ, ET CE QU'ELLE
 // EXIGE COMME RECUISSON : usage_summary_chronicle.go, sa seule et unique chronique.
-const UsageSummaryRev = "us6"
+const UsageSummaryRev = "us7"
 
 // UsagePlayerSummary — les usages d'UN joueur sur UN match, prêt à persister.
 type UsagePlayerSummary struct {
@@ -120,6 +120,9 @@ type UsagePlayerSummary struct {
 	// conventions, et des clés verbatim couperaient une famille en deux à l'agrégat.
 	PadPickups         int
 	PadPickupsByWeapon map[string]int
+	// ShieldlessKills : frags bouclier à 0 suivis de la survie du tueur (usage_summary_shieldless.go).
+	// Nil = non mesuré (fil des morts non lu pour ce match) — jamais confondu avec zéro.
+	ShieldlessKills *int
 }
 
 // UsageWeaponPad — un socle d'ARME présent sur la carte, avec ses occupations

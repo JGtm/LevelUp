@@ -5,6 +5,69 @@
 **Résultats observés** : baseline JSONL sans les 3 tests retirés par l'un ou l'autre côté ; `go test ./...` exit 0 (204 paquets) ; `go test -tags=integration -p 1 -timeout 900s ./...` exit 0 (205 paquets, 0 `--- FAIL:`), baseline vérifiée sur ce JSONL : tous présents, aucun échec ; `go vet` exit 0 ; `golangci-lint` 0 issue ; OpenAPI et `generated.ts` sans dérive ; web : typecheck, lint (0 erreur), vitest (934 fichiers) exit 0.
 
 **Conclusion** : fusion prête à pousser (geste du superviseur). Découverte non traitée : l'admin qui met en file le rejeu d'un match Firefight reçoit désormais `replay_enqueue_failed` au message fixe (le motif « mode non géré » de feat/v75 ne part plus qu'au journal, effet de L9-5).
+## [2026-10-16] Plan citations Halo 5 clos : fusion de `feat/citations-film` dans `feat/v75` — Complété (branche `feat/v75`)
+
+**Décision technique principale** : fusion `--no-ff` (`9f377373e`) après CI verte de la branche et intégration Go complète verte en local ; plan rangé sous `.ai/V7.5/`.
+
+**Résultats observés** : quatre citations actives, calculées au post-sync et rattrapées en local ; citations existantes inchangées.
+
+**Conclusion** : restent au registre des reports : la mesure de « Presque » sur les matchs sans artefact (D7) et trois découvertes hors périmètre. Images de « Prise du crâne » et « Rapatriement agressif » à choisir par l'utilisateur.
+
+## [2026-10-16] Plan citations Halo 5, E6 : paliers relevés, docs et clôture — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : paliers de « Presque, ça ne compte pas » relevés à 50-500 (utilisateur, au vu de E5), appliqués en local par re-seed et recalcul complet ; pas de recuisson pour les matchs sans artefact (D7, au registre des reports). Docs : référence des citations (110, sources du film), notes de version FR/EN.
+
+**Résultats observés** : valeurs non plafonnées (124 à 233 pour les quatre joueurs actifs), V1-V4 verts ; `go vet` vert.
+
+**Conclusion** : push de la branche, CI, puis fusion dans `feat/v75` (accord utilisateur du 2026-10-16).
+
+## [2026-10-16] Plan citations Halo 5, E5 : rattrapage local et vérification — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : seed, `backfill-usage-summary` (us7) et recalcul complet des citations lancés avec le binaire de la branche contre les données du repo principal, serveur arrêté après accord des autres sessions, bases sauvegardées avant.
+
+**Résultats observés** : 4 citations insérées, 237 résumés re-projetés, 9 joueurs recalculés, V1-V4 verts ; citations existantes identiques à un recalcul par `feat/v75` sur copie (0 écart) ; « Presque, ça ne compte pas » au plafond pour 4 joueurs sur 5 ; frags sans bouclier mesurés seulement sur les 237 matchs dont l'artefact est sur disque. Tests, intégration et lint verts.
+
+**Conclusion** : paliers de « Presque » et mesure des matchs sans artefact à trancher par l'utilisateur ; suite E6 (docs).
+
+## [2026-10-16] Plan citations Halo 5, E4 : recalcul des citations d'un match dont le film est dérivé après elles — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : pas de jeton `_film` ; le post-sync de chaque joueur ajoute aux nouveaux matchs ceux dont la génération de citations est plus ancienne que la dernière dérivation du film (`written_at` des deux côtés), recalcul complet. Couvre cuisson locale, dépôt d'ouvrier, rattrapage et `backfill-usage-summary`, avec un cycle de latence.
+
+**Résultats observés** : test d'intégration vert (citation du film posée, citations API inchangées, sélection vide ensuite) ; 5 ms sur la base partagée du parc.
+
+**Conclusion** : suite E5 (seed, rattrapages, vérification locale) — lancement en lot à demander à l'utilisateur.
+
+## [2026-10-16] Plan citations Halo 5, E3 : Jouets éducatifs et Presque, ça ne compte pas — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : « Jouets éducatifs » lit la colonne existante `pad_pickups` (>= 3 en Assassin) ; « Presque, ça ne compte pas » lit une colonne neuve `shieldless_kills` du résumé d'usage, calculée à la dérivation en croisant le document au fil des morts (lu avant tout segment d'écriture), révision `us7`, migration nullable (NULL = non mesuré). Routage des customs converti en table.
+
+**Résultats observés** : tests unitaires et d'intégration verts sur les paquets touchés ; aucun constat lint nouveau.
+
+**Conclusion** : suite E4 (recalcul des citations d'un match après la dérivation de son film).
+
+## [2026-10-16] Plan citations Halo 5, E2 : Tick Tick Boom et Premier coup — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : deux customs (`compute_wins_assault` sur la variante seule, `compute_first_strike` sur la règle « Premier sang » extraite en `analysis.FirstBlood`), prédicats de mode uniques pour les victoires de mode et Bulldozer, garde-rail `TestCitationsCustom_ModesParPredicat`.
+
+**Résultats observés** : `go test` vert sur `analysis`, `games/halo_infinite`, `ops` ; aucun constat lint nouveau.
+
+**Conclusion** : suite E3 (Jouets éducatifs, Presque ça ne compte pas).
+
+## [2026-10-16] Plan citations Halo 5, E1 : le bouclier du tueur se lit à l'instant du frag — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : « Presque, ça ne compte pas » est livrable (D1). Une vie sans mesure de bouclier est une vie au bouclier jamais touché (le film ne réplique qu'au changement), donc l'état est connu pour 96,2 % des frags ; zéro retenu si la dernière mesure date de moins de 5 s ; survie = tueur non mort dans la seconde.
+
+**Résultats observés** : 233 artefacts, 22 725 frags ; 72,7 % mesurés, 23,5 % sans changement de bouclier, 3,8 % vie du tueur introuvable ; 94,5 % des vies de victimes portent une mesure ; 4 396 frags à 0 % frais, dont 3 480 survivants ; 0,35 ms par artefact. Détail : journal du plan.
+
+**Conclusion** : les frags ne sont pas dans le document de rejeu ; la colonne se calcule à la dérivation en croisant le document aux frags de `match_kill_events_latest`. Suite : E2.
+
+## [2026-10-16] Images des citations : natives remises en place, audit, visuels blancs des citations à venir, plan des quatre citations Halo 5 — Complété (branche `feat/v75`)
+
+**Décision technique principale** : « Sécurisation du drapeau » sert désormais l'image native Halo 5 « Défenseur du drapeau » (demande initiale de l'utilisateur, mal lue à l'entrée précédente) ; `H5G_citation_Protecteur.png` est restaurée dans sa version native. Le crâne de « Chasse au porteur », validé par l'utilisateur, quitte le fichier natif « Somebody call for an exterminator? » (restauré) pour `halo_infinite/HI_citation_Chasse_au_porteur.png` : une image native ne s'écrase plus, une image remaniée vit sous `halo_infinite/`. Trois visuels blancs à ombre légère (style « Défenseur du drapeau ») pour les citations à venir, validés : `HI_citation_Premier_coup.png`, `HI_citation_Presque_ca_ne_compte_pas.png`, `HI_citation_Tick_Tick_Boom.png` (non référencés tant que le plan n'est pas exécuté).
+
+**Résultats observés** : audit des citations actives contre les définitions Halo 5 (Halopedia) — « Prise du crâne » (« Is that my ball? », médailles défensives Assaut/Grifball) et « Rapatriement agressif » (« Body Guard », protéger un coéquipier) restent à trancher ; « Porteur imparable » et « Vengeur » jugées intentionnelles par l'utilisateur ; les maîtrises SPNKr, Needler, Épée et Marteau GARDENT les images Halo 5 (jugées plus jolies que les médaillons Infinite). `go test ./internal/ops/` vert. En cas de conflit de fusion sur une image de citation, les versions remaniées de cette session prévalent (utilisateur).
+
+**Conclusion** : plan `.ai/PLAN_CITATIONS_FILM_2026-10-16.md` (Tick Tick Boom, Premier coup, Jouets éducatifs, Presque ça ne compte pas ; calcul post-sync après dérivation du film + rattrapage), décisions D1-D6 tranchées, à exécuter sur `feat/citations-film`. Local : relancer `levelup seed citation-mappings` serveur arrêté.
 
 ## [2026-10-16] Image de la citation « Sécurisation du drapeau » : losange et croix sans ailes ni auréole — Complété (branche `feat/v75`)
 

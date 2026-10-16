@@ -115,6 +115,14 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **The page opens again** — it answered with an error instead of showing your milestones
 - **Section title always present** — the Achievements grid keeps its title whether it is loading, empty or in error
 
+**Four new commendations, three of them read from the film**
+- **"Tick Tick Boom"** — win Assault matches
+- **"First Strike"** — earn the first kill of a match
+- **"Wonderful Toys"** — pick up three or more weapons from weapon pads in a single Slayer match
+- **"Almost Doesn't Count"** — kill an enemy Spartan with no shield left, and survive; the film tells the shield state at the instant of the kill. It progresses on matches whose film has been read
+- **Recomputed when the film arrives** — a match whose film is read later gets its commendations updated at the next sync
+- **Visuals in their place** — "Flag Secures" now uses Halo 5's "Defender of the Flag" emblem, and the new commendations have their white version
+
 **Reading in your language**
 - **Commendations follow the language switch** — their labels came from the server in the language of the moment and stayed there until you reloaded the page
 - **"Headshots" is translated** — the metric showed up under its raw field name in several places
