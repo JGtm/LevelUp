@@ -11,7 +11,10 @@
 // CE QUI EST INTERDIT dans le code du module (hors _test.go) :
 //   - chi middleware RealIP (réécrit r.RemoteAddr depuis des en-têtes du client) ;
 //   - httprate.KeyByIP et httprate.KeyByRealIP (clé sur r.RemoteAddr ou sur ces en-têtes) ;
-//   - toute lecture ou écriture du champ RemoteAddr hors de clientIPRemoteAddrAllowlist.
+//   - toute lecture ou écriture du champ RemoteAddr hors de clientIPRemoteAddrAllowlist ;
+//   - tout littéral True-Client-IP, X-Forwarded-For ou X-Real-IP (toute casse) hors de
+//     clientIPHeaderAllowlist : lire ces en-têtes ailleurs que dans le middleware d'IP
+//     redonnerait au client le choix de son IP (ajouté le 2026-10-16, F-1a R1-11).
 //
 // L'appel de méthode `conn.RemoteAddr()` (net.Conn) n'est pas visé : c'est le champ de
 // http.Request qui l'est.
@@ -38,6 +41,18 @@ var clientIPRemoteAddrAllowlist = map[string]string{
 	// rend aux gardes « requête locale » (LoopbackOnly, rejeu).
 	"internal/api/middleware/loopback.go": "pair TCP",
 }
+
+// clientIPHeaderAllowlist — fichiers autorisés à nommer un en-tête d'IP du client (littéral
+// True-Client-IP, X-Forwarded-For ou X-Real-IP, toute casse). Toute entrée porte sa date et
+// sa justification.
+var clientIPHeaderAllowlist = map[string]string{
+	// 2026-10-16 : applyTransverseMiddlewares pose l'IP cliente depuis X-Real-IP derrière le
+	// proxy de confiance (chimiddleware.ClientIPFromHeader) ; c'est le middleware d'IP.
+	"internal/api/server.go": "middleware d'IP (X-Real-IP du proxy de confiance)",
+}
+
+// clientIPHeaders — en-têtes d'IP que le client peut forger, en minuscules.
+var clientIPHeaders = map[string]bool{"true-client-ip": true, "x-forwarded-for": true, "x-real-ip": true}
 
 const (
 	chiMiddlewareImport = "github.com/go-chi/chi/v5/middleware"
@@ -114,12 +129,15 @@ func TestClientIPNoSpoofableSources(t *testing.T) {
 // laisse passer ce qui n'en est pas.
 func TestClientIPGuardDetectsDefects(t *testing.T) {
 	defects := map[string]string{
-		"RealIP":                `import chimw "github.com/go-chi/chi/v5/middleware"; var _ = chimw.RealIP`,
-		"RealIP nom par défaut": `import "github.com/go-chi/chi/v5/middleware"; var _ = middleware.RealIP`,
-		"KeyByIP":               `import "github.com/go-chi/httprate"; var _ = httprate.KeyByIP`,
-		"KeyByRealIP":           `import rl "github.com/go-chi/httprate"; var _ = rl.KeyByRealIP`,
-		"lecture RemoteAddr":    `import "net/http"; func f(r *http.Request) string { return r.RemoteAddr }`,
-		"écriture RemoteAddr":   `import "net/http"; func f(r *http.Request) { r.RemoteAddr = "127.0.0.1:1" }`,
+		"RealIP":                  `import chimw "github.com/go-chi/chi/v5/middleware"; var _ = chimw.RealIP`,
+		"RealIP nom par défaut":   `import "github.com/go-chi/chi/v5/middleware"; var _ = middleware.RealIP`,
+		"KeyByIP":                 `import "github.com/go-chi/httprate"; var _ = httprate.KeyByIP`,
+		"KeyByRealIP":             `import rl "github.com/go-chi/httprate"; var _ = rl.KeyByRealIP`,
+		"lecture RemoteAddr":      `import "net/http"; func f(r *http.Request) string { return r.RemoteAddr }`,
+		"écriture RemoteAddr":     `import "net/http"; func f(r *http.Request) { r.RemoteAddr = "127.0.0.1:1" }`,
+		"lecture True-Client-IP":  `import "net/http"; func f(r *http.Request) string { return r.Header.Get("True-Client-IP") }`,
+		"lecture X-Forwarded-For": `import "net/http"; func f(r *http.Request) string { return r.Header.Get("x-forwarded-for") }`,
+		"lecture X-Real-IP":       `import "net/http"; func f(r *http.Request) []string { return r.Header.Values("X-Real-IP") }`,
 	}
 	for name, body := range defects {
 		got, err := clientIPViolations("internal/x/x.go", []byte("package x\n"+body+"\n"))
@@ -151,6 +169,13 @@ func f(r *http.Request) string { return r.RemoteAddr }
 	if got, _ := clientIPViolations("internal/api/middleware/loopback.go", []byte(allowed)); len(got) != 0 {
 		t.Errorf("fichier de l'allowlist signalé : %v", got)
 	}
+	ipMiddleware := `package api
+import chimw "github.com/go-chi/chi/v5/middleware"
+var _ = chimw.ClientIPFromHeader("X-Real-IP")
+`
+	if got, _ := clientIPViolations("internal/api/server.go", []byte(ipMiddleware)); len(got) != 0 {
+		t.Errorf("middleware d'IP (allowlist des en-têtes) signalé : %v", got)
+	}
 }
 
 // clientIPViolations analyse un fichier Go (chemin relatif à la racine du module).
@@ -171,8 +196,16 @@ func clientIPViolations(rel string, src []byte) ([]string, error) {
 		return true
 	})
 	_, remoteAddrAllowed := clientIPRemoteAddrAllowlist[rel]
+	_, headerAllowed := clientIPHeaderAllowlist[rel]
 	var out []string
 	ast.Inspect(file, func(n ast.Node) bool {
+		if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.STRING && !headerAllowed {
+			if v, err := strconv.Unquote(lit.Value); err == nil && clientIPHeaders[strings.ToLower(v)] {
+				out = append(out, fmt.Sprintf("%s:%d : en-tête %q lu hors du middleware d'IP (IP cliente : "+
+					"chimiddleware.GetClientIP)", rel, fset.Position(lit.Pos()).Line, v))
+			}
+			return true
+		}
 		sel, ok := n.(*ast.SelectorExpr)
 		if !ok {
 			return true
