@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 )
 
@@ -67,4 +68,53 @@ func TestPlayerDirectory_HorsDemo_ListeLesOrphelins(t *testing.T) {
 		}
 	}
 	t.Fatalf("hors démo : le dossier orphelin du dépôt devait apparaître (comportement inchangé), identités = %v", gts)
+}
+
+// fixtureDemoAvecJoueurs ajoute à la fixture démo d'un dépôt leurre le dossier de DemoPlayer (DEMO,
+// avec sa base) et un dossier que le roster démo ne nomme pas (Stray).
+func fixtureDemoAvecJoueurs(t *testing.T, cfg *config.AppConfig) {
+	t.Helper()
+	layout := cfg.DemoLayout()
+	for _, d := range []string{"DEMO", "Stray"} {
+		if err := os.MkdirAll(layout.PlayerDir(title.DefaultSlug, d), 0o755); err != nil {
+			t.Fatalf("dossier démo %s : %v", d, err)
+		}
+	}
+	if err := os.WriteFile(layout.PlayerDBPath(title.DefaultSlug, "DEMO"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("base démo : %v", err)
+	}
+}
+
+// En démo, l'annuaire a un témoin disque adossé à la fixture (DemoLayout/DemoRoster) : les
+// profils démo sont constatés présents, un dossier hors roster est orphelin, et le dépôt n'est
+// toujours pas balayé.
+func TestPlayerDirectory_Demo_TemoinDisqueAdosseALaFixture(t *testing.T) {
+	cfg := depotLeurre(t, true)
+	fixtureDemoAvecJoueurs(t, cfg)
+	resp, err := buildPlayerDirectory(playerDirectoryDeps{cfg: cfg}).List(context.Background())
+	if err != nil {
+		t.Fatalf("List : %v", err)
+	}
+	var demo *domain.IdentityRecord
+	var orphans []string
+	for i, rec := range resp.Identities {
+		if rec.Gamertag == config.DemoRoster[0].Gamertag {
+			demo = &resp.Identities[i]
+		}
+		for _, o := range rec.OrphanDirs {
+			orphans = append(orphans, o.Name)
+		}
+		if rec.Gamertag == "VraiJoueur" {
+			t.Errorf("le dépôt est balayé en démo : %q listé", rec.Gamertag)
+		}
+	}
+	if demo == nil || len(demo.Profiles) != 1 {
+		t.Fatalf("profil DemoPlayer introuvable dans %+v", resp.Identities)
+	}
+	if p := demo.Profiles[0]; !p.DirExists || !p.DBExists {
+		t.Errorf("DemoPlayer : dir=%v db=%v, attendu true/true (fixture présente)", p.DirExists, p.DBExists)
+	}
+	if len(orphans) != 1 || orphans[0] != "Stray" {
+		t.Errorf("orphelins = %v, attendu [Stray] (DEMO est le dossier de DemoPlayer, pas un orphelin)", orphans)
+	}
 }

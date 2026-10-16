@@ -3,7 +3,8 @@
 // Vérifie que la session appartient à un compte administrateur, rôle relu dans le
 // magasin d'utilisateurs à chaque requête (authz.IsAdmin) : le rôle copié dans la
 // session à la connexion ne suffit jamais.
-// Transparent quand demoMode=true ou authMode="none" (setup single-user).
+// Transparent quand authMode="none" (setup single-user). En démo, REFUSE (403
+// demo_mode_forbidden) sauf les lectures nommées de demoAdminReads (demo_guarded_reads.go).
 // Retourne 403 Forbidden sinon.
 package middleware
 
@@ -19,10 +20,13 @@ import (
 
 // RequireAdmin retourne un middleware qui bloque les requêtes non-admin. users est le
 // magasin d'utilisateurs où le rôle est relu (nil : tout est refusé).
-// Transparent en mode démo ou quand auth_mode="none".
+// En mode démo, refuse tout sauf demoAdminReads ; transparent quand auth_mode="none".
 func RequireAdmin(demoMode bool, authMode string, users authz.UserLookup) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		if demoMode || authMode == "none" {
+		if demoMode {
+			return demoGuard(next, demoAdminReads)
+		}
+		if authMode == authz.AuthModeNone {
 			return next
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

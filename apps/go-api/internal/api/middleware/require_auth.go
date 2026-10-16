@@ -1,7 +1,8 @@
 // Package middleware — require_auth.go : guard d'authentification pour les routes protégées.
 //
 // RequireAuth vérifie que la session courante est authentifiée.
-// - auth_mode=none ou mode démo → no-op (pas de vérification)
+// - auth_mode=none → no-op (pas de vérification)
+// - mode démo → refus (403 demo_mode_forbidden) sauf les lectures nommées (demo_guarded_reads.go)
 // - auth_mode=password → vérifie que sess.Username est défini (login local)
 // - auth_mode=xbox → login local (sess.Username) OU auth Halo (sess.AuthReady)
 //
@@ -16,6 +17,7 @@ import (
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
+	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/domain"
 )
 
@@ -27,14 +29,21 @@ const (
 )
 
 // RequireAuth retourne un middleware qui bloque les requêtes non authentifiées.
-// Si demoMode est true ou authMode est "none", le middleware est transparent.
+// Si authMode est "none", le middleware est transparent. Si demoMode est true, il refuse tout
+// sauf les lectures de demoAdminReads et demoAuthOnlyReads : la démo n'a pas de session
+// authentifiée, une route gardée est hors de la surface d'un visiteur.
 func RequireAuth(demoMode bool, authMode ...string) func(http.Handler) http.Handler {
-	mode := "none"
+	mode := authz.AuthModeNone
 	if len(authMode) > 0 && authMode[0] != "" {
 		mode = authMode[0]
 	}
 	return func(next http.Handler) http.Handler {
-		if demoMode || mode == "none" {
+		if demoMode {
+			// RequireAuth précède RequireAdmin dans les chaînes : il laisse donc passer aussi
+			// les lectures d'administration nommées, que RequireAdmin tranche ensuite.
+			return demoGuard(next, demoAdminReads, demoAuthOnlyReads)
+		}
+		if mode == authz.AuthModeNone {
 			return next
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +69,7 @@ func IsAuthenticated(r *http.Request, demoMode bool, authMode string) bool {
 // IsAuthenticatedCtx est IsAuthenticated pour un handler qui ne voit que son contexte
 // (opérations Huma).
 func IsAuthenticatedCtx(ctx context.Context, demoMode bool, authMode string) bool {
-	if demoMode || authMode == "" || authMode == "none" {
+	if demoMode || authMode == "" || authMode == authz.AuthModeNone {
 		return true
 	}
 	return sessionAuthenticated(GetSession(ctx), authMode)

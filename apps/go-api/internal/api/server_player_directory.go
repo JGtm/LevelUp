@@ -62,14 +62,7 @@ func buildPlayerDirectory(d playerDirectoryDeps) port.PlayerDirectory {
 	}
 	if d.cfg != nil {
 		deps.Profiles = d.cfg
-		// PAS de témoin disque en démo (lot B-C2 du backlog 2026-09-26) : il balaierait les
-		// dossiers de joueurs du DÉPÔT, que la démo publique listait alors comme orphelins
-		// sur un poste de dev. Pas de repli sur la racine démo non plus : la fixture nomme
-		// ses dossiers autrement que ses clés de profil (DemoPlayer -> DEMO), un balayage y
-		// inventerait des orphelins. Sans FS, l'annuaire tolère l'absence (cf. Deps).
-		if !d.cfg.DemoMode {
-			deps.FS = playerdirectory.NewPathFS(d.cfg.RepoRoot)
-		}
+		deps.FS = playerDirectoryFS(d.cfg)
 	}
 	if d.users != nil {
 		deps.Accounts = d.users
@@ -101,4 +94,24 @@ func buildPlayerDirectory(d playerDirectoryDeps) port.PlayerDirectory {
 		deps.Watcher = d.daemon
 	}
 	return playerdirectory.New(deps)
+}
+
+// playerDirectoryFS choisit le témoin disque de l'annuaire. Hors démo : le dépôt. En démo : la
+// fixture, adossée à sa disposition (DemoLayout) et à son roster (DemoRoster) — jamais le dépôt,
+// que la démo publique listait alors comme orphelins sur un poste de dev (lot B-C2 du backlog
+// 2026-09-26). La fixture nomme ses dossiers autrement que les clés de profil (demo-player -> DEMO) :
+// le roster fait la correspondance, un balayage nu y inventerait des orphelins. Sans racine démo
+// (fixture non posée) : pas de témoin, l'annuaire tolère l'absence.
+func playerDirectoryFS(cfg *config.AppConfig) playerdirectory.FS {
+	if !cfg.DemoMode {
+		return playerdirectory.NewPathFS(cfg.RepoRoot)
+	}
+	if cfg.DemoFixturesDir == "" {
+		return nil
+	}
+	roster := make([]playerdirectory.DemoPlayerDir, 0, len(config.DemoRoster))
+	for _, r := range config.DemoRoster {
+		roster = append(roster, playerdirectory.DemoPlayerDir{Key: r.Slug, Dir: r.Dir})
+	}
+	return playerdirectory.NewDemoFS(cfg.DemoLayout(), roster)
 }

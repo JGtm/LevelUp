@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -139,13 +142,16 @@ type DemoReplayAllowlist interface {
 //     à tout visiteur, mais SEULEMENT pour les matchs figés de la démo ; tout autre match
 //     reçoit le même 404 que le garde local. Le garde local ne s'applique pas : la démo
 //     publique est derrière un proxy, aucun visiteur n'y est « local ».
+//
+// Le match se lit dans le chemin (`{match_id}`) et, à défaut, dans le CORPS JSON d'un POST
+// (`match_id`, route de la séquence d'une mort) — voir [replayMatchID].
 func ReplayGate(demo DemoReplayAllowlist) func(http.Handler) http.Handler {
 	if demo == nil {
 		return LocalOnlyReplay
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			matchID := chi.URLParam(r, "match_id")
+			matchID := replayMatchID(r)
 			if matchID == "" || !demo.Allows(r.Context(), ctxkeys.TitleSlug(r.Context()), matchID) {
 				writeError(r.Context(), w, http.StatusNotFound, "replay_not_available",
 					"the 2D replay is served in the demo for its frozen matches only")
@@ -154,4 +160,36 @@ func ReplayGate(demo DemoReplayAllowlist) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// replayGateMaxBody borne le corps que la garde accepte de lire pour y trouver le match : un
+// corps de séquence (match_id, victim_xuid, time_ms) tient en quelques dizaines d'octets.
+const replayGateMaxBody = 4 << 10
+
+// replayMatchID rend le match visé par la requête : le paramètre de chemin `match_id`, sinon
+// le champ `match_id` du corps JSON d'un POST. Le corps est RESTITUÉ au handler, octet pour
+// octet (la garde et le handler lisent la même valeur). "" si le match est introuvable : corps
+// absent, illisible, au-delà de [replayGateMaxBody], ou `match_id` qui n'est pas du texte.
+func replayMatchID(r *http.Request) string {
+	if id := chi.URLParam(r, "match_id"); id != "" {
+		return id
+	}
+	if r.Method != http.MethodPost || r.Body == nil || r.Body == http.NoBody {
+		return ""
+	}
+	raw, err := io.ReadAll(io.LimitReader(r.Body, replayGateMaxBody+1))
+	if err != nil {
+		return ""
+	}
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+	if len(raw) > replayGateMaxBody {
+		return ""
+	}
+	var body struct {
+		MatchID string `json:"match_id"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return ""
+	}
+	return body.MatchID
 }

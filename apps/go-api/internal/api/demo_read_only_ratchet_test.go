@@ -64,6 +64,9 @@ var demoLetThroughRoutes = []string{
 	"POST /api/v1/players/{player_slug}/pages/teammates",
 	"POST /api/v1/players/{player_slug}/pages/timeseries",
 	"POST /api/v1/players/{player_slug}/pages/trends",
+	// Suggestion du défi Prestige suivant : lit le défi et le catalogue de gabarits, n'écrit rien
+	// (middleware.readOnlyPostPatterns, 2026-10-16).
+	"POST /api/v1/players/{player_slug}/prestige/challenges/{id}/suggest-next",
 	"POST /api/v1/players/{player_slug}/tactical/maps",
 	"POST /api/v1/players/{player_slug}/tactical/{map_id}/cellule",
 	"POST /api/v1/players/{player_slug}/tactical/{map_id}/raster",

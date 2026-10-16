@@ -15,8 +15,9 @@
 //   - `server_tokens off` au niveau server, jamais rallumé dans une location ;
 //   - aucune `client_max_body_size` effective au-delà de 1m, sauf dans les locations
 //     d'envoi listées dans nginxLargeBodyLocations, chacune sous son plafond ;
-//   - pour la production : une `limit_req` effective et `limit_req_status 429` sur les
-//     routes de l'API (le front lit le 429 ; le 503 par défaut se lirait panne) ;
+//   - pour chaque site : une `limit_req` effective et `limit_req_status 429` sur les chemins
+//     listés dans nginxLimitedPaths (le front lit le 429 ; le 503 par défaut se lirait
+//     panne). La démo publique est concernée comme la production (plan sécurité, L8-12) ;
 //   - toute zone citée par `limit_req` est déclarée dans packaging/nginx/rate_limit.conf.
 package archlint
 
@@ -32,9 +33,9 @@ import (
 
 // nginxConfFiles classe chaque configuration de site versionnée. Un nouveau fichier
 // .conf dans packaging/nginx/ doit être classé ici (le test échoue sinon).
-var nginxConfFiles = map[string]bool{ // nom → site de production
-	"levelup.conf": true,
-	"demo.conf":    false,
+var nginxConfFiles = map[string]struct{}{
+	"levelup.conf": {},
+	"demo.conf":    {},
 }
 
 // nginxRateLimitConf déclare les zones de limite de débit (bloc http, conf.d).
@@ -56,17 +57,26 @@ var nginxLargeBodyLocations = map[string]int64{
 	"/api/v1/internal/": 20 << 20,
 }
 
-// nginxProdAPIPaths — chemins de l'API du site de production qui doivent passer par une
-// limite de débit nginx. Les images (/api/v1/assets/) et le protocole ouvrier
+// nginxLimitedPaths — par site, les chemins qui doivent passer par une limite de débit
+// nginx répondant 429. Les images (/api/v1/assets/) et le protocole ouvrier
 // (/api/v1/internal/) en sont exclus : une page tire des dizaines d'images, et l'ouvrier
 // est authentifié par jeton.
-var nginxProdAPIPaths = []string{
-	"/api/v1/session/context",
-	"/api/v1/players/p/matches",
-	"/api/v1/auth/login",
-	"/api/v1/auth/password",
-	"/api/v1/players/p/media/upload",
-	"/api/v1/import/openspartan",
+var nginxLimitedPaths = map[string][]string{
+	"levelup.conf": {
+		"/api/v1/session/context",
+		"/api/v1/players/p/matches",
+		"/api/v1/auth/login",
+		"/api/v1/auth/password",
+		"/api/v1/players/p/media/upload",
+		"/api/v1/import/openspartan",
+	},
+	// 2026-10-16 : la démo limite l'application et l'API sous une seule zone (demo_limit) ;
+	// sans `limit_req_status 429`, l'excès répondait 503, que le front lit comme une panne.
+	"demo.conf": {
+		"/",
+		"/api/v1/session/context",
+		"/api/v1/players/p/matches",
+	},
 }
 
 func TestNginxConfsAreClassified(t *testing.T) {
@@ -104,13 +114,12 @@ func TestNginxConfsHardenTLSServers(t *testing.T) {
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		prod := nginxConfFiles[name]
 		data, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
 			t.Errorf("lecture de %s : %v", name, err)
 			continue
 		}
-		for _, v := range nginxConfViolations(string(data), prod, zones) {
+		for _, v := range nginxConfViolations(string(data), nginxLimitedPaths[name], zones) {
 			t.Errorf("%s : %s", name, v)
 		}
 	}
@@ -130,7 +139,7 @@ func TestNginxConfAnalysisDetectsDefects(t *testing.T) {
     location /api/ { client_max_body_size 1m; limit_req zone=lvl_api burst=1; proxy_pass http://b; }
     location / { proxy_pass http://b; }
 }`
-	if got := nginxConfViolations(healthy, true, zones); len(got) != 0 {
+	if got := nginxConfViolations(healthy, nginxLimitedPaths["levelup.conf"], zones); len(got) != 0 {
 		t.Fatalf("configuration saine signalée : %v", got)
 	}
 	defects := map[string]string{
@@ -154,16 +163,41 @@ func TestNginxConfAnalysisDetectsDefects(t *testing.T) {
 		if conf == healthy {
 			t.Fatalf("%s : la mutation n'a rien changé (harnais)", name)
 		}
-		if got := nginxConfViolations(conf, true, zones); len(got) == 0 {
+		if got := nginxConfViolations(conf, nginxLimitedPaths["levelup.conf"], zones); len(got) == 0 {
 			t.Errorf("%s : défaut non signalé", name)
 		}
+	}
+}
+
+// TestNginxDemoConfRequires429 — la démo est tenue comme la production : sans
+// `limit_req_status 429`, la limite répond 503 et le front lit une panne.
+func TestNginxDemoConfRequires429(t *testing.T) {
+	dir := nginxPackagingDir(t)
+	zones, err := nginxDeclaredZones(dir)
+	if err != nil {
+		t.Fatalf("%s : %v", nginxRateLimitConf, err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "demo.conf"))
+	if err != nil {
+		t.Fatalf("lecture de demo.conf : %v", err)
+	}
+	src := string(data)
+	if got := nginxConfViolations(src, nginxLimitedPaths["demo.conf"], zones); len(got) != 0 {
+		t.Fatalf("demo.conf versionnée signalée : %v", got)
+	}
+	without := strings.Replace(src, "limit_req_status 429;", "", 1)
+	if without == src {
+		t.Fatal("demo.conf sans `limit_req_status 429;` à retirer : harnais périmé")
+	}
+	if got := nginxConfViolations(without, nginxLimitedPaths["demo.conf"], zones); len(got) == 0 {
+		t.Error("demo.conf sans limit_req_status 429 : défaut non signalé")
 	}
 }
 
 // ─── Analyse ─────────────────────────────────────────────────────────────────────
 
 // nginxConfViolations rend les manquements d'une configuration de site.
-func nginxConfViolations(src string, prod bool, zones map[string]bool) []string {
+func nginxConfViolations(src string, limited []string, zones map[string]bool) []string {
 	root, err := parseNginxConf(src)
 	if err != nil {
 		return []string{err.Error()}
@@ -175,7 +209,7 @@ func nginxConfViolations(src string, prod bool, zones map[string]bool) []string 
 			continue
 		}
 		tls++
-		out = append(out, nginxServerViolations(srv, prod, zones)...)
+		out = append(out, nginxServerViolations(srv, limited, zones)...)
 	}
 	if tls == 0 {
 		out = append(out, "aucun bloc server n'écoute en 443")
@@ -183,7 +217,7 @@ func nginxConfViolations(src string, prod bool, zones map[string]bool) []string 
 	return out
 }
 
-func nginxServerViolations(srv *ngxNode, prod bool, zones map[string]bool) []string {
+func nginxServerViolations(srv *ngxNode, limited []string, zones map[string]bool) []string {
 	var out []string
 	if d := srv.last("server_tokens"); d == nil || d.arg(0) != "off" {
 		out = append(out, fmt.Sprintf("server (ligne %d) : `server_tokens off` absent", srv.line))
@@ -194,19 +228,17 @@ func nginxServerViolations(srv *ngxNode, prod bool, zones map[string]bool) []str
 	srv.walkLocations(func(loc *ngxNode) {
 		out = append(out, nginxLocationViolations(loc, zones)...)
 	})
-	if prod {
-		for _, uri := range nginxProdAPIPaths {
-			loc := srv.selectLocation(uri)
-			if loc == nil {
-				out = append(out, fmt.Sprintf("%s : aucune location ne sert ce chemin", uri))
-				continue
-			}
-			if loc.effective("limit_req") == nil {
-				out = append(out, fmt.Sprintf("%s (location %q) : aucune limit_req effective", uri, loc.matcher()))
-			}
-			if d := loc.effective("limit_req_status"); d == nil || d.arg(0) != "429" {
-				out = append(out, fmt.Sprintf("%s (location %q) : `limit_req_status 429` absent (503 par défaut)", uri, loc.matcher()))
-			}
+	for _, uri := range limited {
+		loc := srv.selectLocation(uri)
+		if loc == nil {
+			out = append(out, fmt.Sprintf("%s : aucune location ne sert ce chemin", uri))
+			continue
+		}
+		if loc.effective("limit_req") == nil {
+			out = append(out, fmt.Sprintf("%s (location %q) : aucune limit_req effective", uri, loc.matcher()))
+		}
+		if d := loc.effective("limit_req_status"); d == nil || d.arg(0) != "429" {
+			out = append(out, fmt.Sprintf("%s (location %q) : `limit_req_status 429` absent (503 par défaut)", uri, loc.matcher()))
 		}
 	}
 	return out
