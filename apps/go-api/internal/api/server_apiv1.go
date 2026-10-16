@@ -1515,12 +1515,8 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// officiel ET de la référence wiki communautaire.
 	service.RegisterGhostMedalIDs(halo5.TitleSlug, halo5.GhostMedalIDs)
 
-	// Fichiers statiques (images maps, médailles, armes…)
-	staticDir := filepath.Join(cfg.RepoRoot, "static")
-	// Handler spécial pour /static/commendations/* : fallback vers noms URL-encodés
-	// pour les fichiers dont le nom décodé contient des caractères interdits Windows (ex: ?).
-	r.Handle("/static/commendations/*", newCommendationHandler(staticDir))
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
+	// Fichiers statiques (images maps, médailles, armes…), sans listing de dossier.
+	registerStaticRoutes(r, filepath.Join(cfg.RepoRoot, "static"))
 
 	// Health check (pas de préfixe /api/v1 — sondage infrastructurel).
 	//
