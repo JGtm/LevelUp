@@ -109,6 +109,13 @@ func defaultCitationMappings() []CitationMapping {
 			Description: "Remportez n'importe quelle partie matchmaking Bases.",
 			TierTargets: tierTargets5_10_15_25_50},
 
+		{Norm: "tick_tick_boom", Display: "Tick Tick Boom", MappingType: mappingTypeCustom,
+			CustomFunction: "compute_wins_assault", Enabled: true,
+			ImagePath:   wpHI + "HI_citation_Tick_Tick_Boom.png",
+			Category:    citationCatModeJeu,
+			Description: "Remportez des parties d'Assaut.",
+			TierTargets: tierTargets5_10_15_25_50},
+
 		// ── PVP — Mode de jeu · objectifs CTF/Zones/Oddball (10, v7.2.1) ──────
 		// DÉCISION UTILISATEUR (2026-07-25) : sur les 19 colonnes de
 		// match_objective_stats restées libres après la bascule v7.2, 10 sont retenues
@@ -324,6 +331,12 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatMultijoueur,
 			Description: "Assassinez des Spartans adverses.",
 			TierTargets: tierTargets5_10_15_25_50},
+		{Norm: "first_strike", Display: "Premier coup", MappingType: mappingTypeCustom,
+			CustomFunction: "compute_first_strike", Enabled: true,
+			ImagePath:   wpHI + "HI_citation_Premier_coup.png",
+			Category:    citationCatMultijoueur,
+			Description: "Réalisez le premier frag d'une partie.",
+			TierTargets: tierTargets10_25_50_100_250},
 		{Norm: "spartan_carnage", Display: "Carnage de Spartans", MappingType: mappingTypeMedal,
 			MedalIDs:    "2780740615,4261842076,418532952,1486797009,710323196,1720896992,2567026752,2875941471",
 			Enabled:     true,
@@ -853,6 +866,8 @@ var citationDisplayEN = map[string]string{
 	"scorpion_destroyer":  "Scorpion Destroyer",
 	"scorpion_gunner":     "Scorpion Gunner",
 	"slayer_victory":      "Slayer Victory",
+	"tick_tick_boom":      "Tick Tick Boom",
+	"first_strike":        "First Strike",
 	"spartan_carnage":     "Spartan Spree",
 	"spartan_killer":      "Spartan Slayer",
 	"splatter":            "Splatter",
@@ -963,6 +978,8 @@ var citationDescriptionEN = map[string]string{
 	"flag_victory":        "Win a match in any Capture the Flag gametype in matchmaking.",
 	"slayer_victory":      "Be on the winning team of a Slayer match.",
 	"strongholds_victory": "Win a match in any Stronghold gametype in matchmaking.",
+	"tick_tick_boom":      "Win matches in Assault.",
+	"first_strike":        "Earn the first kill of a match.",
 	// ── Mode de jeu · objectifs v7.2.1 (idiome officiel H5 « … in any <mode>
 	// gametype in matchmaking. », traduction fidèle du FR) ──────────────────────
 	citationNormFlagCaptures:         "Capture the enemy flag in any Capture the Flag gametype in matchmaking.",

@@ -88,15 +88,15 @@ du post-sync voit ses citations film recalculées sans intervention.
       décidée, ou `[!]` avec la mesure) et validée par l'utilisateur avant E3.
 
 ### E2 — Victoires d'Assaut, Premier coup, helper de mode
-- [ ] Helper unique `variantMatches(ctx, motifs...)` dans `citations_custom.go`, les quatre
-      `compute_wins_*` migrées dessus, garde-rail grep (test) interdisant `strings.Contains(gv,` hors
+- [x] Prédicats de mode uniques (`containsAny`, `isSlayerMode`, `isCTFMode`, ...) dans `citations_custom_modes.go`, les quatre
+      `compute_wins_*` et Bulldozer migrées dessus, garde-rail `TestCitationsCustom_ModesParPredicat` interdisant `ctx.Playlist` / `ctx.GameVariant` hors
       du helper (règle des 3 copies).
-- [ ] `compute_wins_assault` : outcome gagné et variante `assault` ou `bomb` (variante, jamais la
+- [x] `compute_wins_assault` : outcome gagné et variante `assault` ou `bomb` (variante, jamais la
       playlist — « Assault » est aussi un conteneur de playlist, skill `halo-modes`).
-- [ ] `compute_first_strike` : 1 si le « Premier sang » du match (helper exporté depuis
-      `analysis/match_impact.go`, sans changer le calcul ni ses tests) est le joueur.
-- [ ] Seed `tick_tick_boom` et `first_strike` (libellés et descriptions EN, images D5, catégories D6).
-- [ ] Gate : `go test ./internal/analysis/ ./internal/games/halo_infinite/ ./internal/ops/`.
+- [x] `compute_first_strike` : 1 si le « Premier sang » du match (`analysis.FirstBlood`, nouveau fichier `first_blood.go`, appelé aussi par
+      `ComputeMatchImpactFull` : même règle, tests d impact inchangés et verts) est le joueur.
+- [x] Seed `tick_tick_boom` et `first_strike` (libellés et descriptions EN, images D5, catégories D6).
+- [x] Gate : `go test ./internal/analysis/ ./internal/games/halo_infinite/ ./internal/ops/` vert ; golangci-lint sur ces paquets : aucun constat nouveau.
 
 ### E3 — Citations du film
 - [ ] `loadFilmStats(sharedDB, matchID, xuid)` sur le patron de `loadObjectiveStats`
@@ -169,3 +169,12 @@ Instrument : `internal/sync/replayartifacts/citations_bouclier_research_test.go`
 - Conséquence pour E3 : les frags ne sont PAS dans le document de rejeu ; la colonne se calcule à la
   dérivation, en croisant le document en mémoire aux frags de `match_kill_events_latest` du match
   (même base, même passe que le résumé d'usage).
+
+### E2 — Tick Tick Boom et Premier coup (2026-10-16)
+
+`compute_wins_assault` (variante `assault`/`bomb`, jamais la playlist) et `compute_first_strike`
+(règle « Premier sang » de l'impact du match, extraite en `analysis.FirstBlood` dans un fichier
+neuf : `match_impact.go` est déjà au-dessus du seuil de 500 lignes, il ne grossit pas). Les quatre
+victoires de mode et Bulldozer passent par des prédicats uniques ; le garde-rail interdit de relire
+la playlist ou la variante hors de `citations_custom_modes.go`. Premier coup ne dépend pas du film :
+il se calcule au post-sync normal, avec les événements highlight déjà chargés.

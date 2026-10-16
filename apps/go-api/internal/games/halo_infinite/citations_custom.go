@@ -1,4 +1,4 @@
-// Package halo_infinite — citations_custom.go : 12 fonctions custom du moteur citations.
+// Package halo_infinite — citations_custom.go : les fonctions custom du moteur citations.
 //
 // Port Go de src/analysis/citations/custom_rules.py.
 // 0 accès DB — toutes les données arrivent via domain.CitationContext.
@@ -33,6 +33,10 @@ func DispatchCustom(fnName string, ctx domain.CitationContext) int {
 		return computeWinsSlayer(ctx)
 	case "compute_wins_strongholds":
 		return computeWinsStrongholds(ctx)
+	case "compute_wins_assault":
+		return computeWinsAssault(ctx)
+	case "compute_first_strike":
+		return computeFirstStrike(ctx)
 	case "compute_annexion_forcee":
 		return computeAnnexionForcee(ctx)
 	case "compute_flag_em_down":
@@ -56,79 +60,33 @@ func computeBulldozer(ctx domain.CitationContext) int {
 	if ctx.IsFirefight {
 		return 0
 	}
-	kda := ctx.Stats["kda"]
-	if kda <= 8 {
+	if ctx.Stats["kda"] <= 8 {
 		return 0
 	}
-	pl := ctx.Playlist
-	gv := ctx.GameVariant
-	if strings.Contains(pl, "btb") || strings.Contains(pl, "big team") {
+	if isBigTeam(ctx) || !isSlayerMode(ctx) {
 		return 0
 	}
-	if strings.Contains(pl, "slayer") || strings.Contains(pl, "assassin") ||
-		strings.Contains(gv, "slayer") || strings.Contains(gv, "assassin") {
-		return 1
-	}
-	return 0
+	return 1
 }
 
 // computeWinsCTF : victoire en CTF.
 func computeWinsCTF(ctx domain.CitationContext) int {
-	if ctx.Outcome != domain.OutcomeWin {
-		return 0
-	}
-	pl := ctx.Playlist
-	gv := ctx.GameVariant
-	if strings.Contains(pl, "ctf") || strings.Contains(pl, "capture") ||
-		strings.Contains(pl, "drapeau") || strings.Contains(pl, "neutral flag") ||
-		strings.Contains(gv, "ctf") || strings.Contains(gv, "capture") ||
-		strings.Contains(gv, "flag") {
-		return 1
-	}
-	return 0
+	return winIn(ctx, isCTFMode)
 }
 
 // computeWinsFirefight : victoire en Firefight.
 func computeWinsFirefight(ctx domain.CitationContext) int {
-	if ctx.Outcome != domain.OutcomeWin {
-		return 0
-	}
-	pl := ctx.Playlist
-	gv := ctx.GameVariant
-	if ctx.IsFirefight ||
-		strings.Contains(pl, "firefight") || strings.Contains(pl, "baptême") ||
-		strings.Contains(pl, "bapteme") || strings.Contains(gv, "firefight") {
-		return 1
-	}
-	return 0
+	return winIn(ctx, isFirefightMode)
 }
 
 // computeWinsSlayer : victoire en Slayer/Assassin.
 func computeWinsSlayer(ctx domain.CitationContext) int {
-	if ctx.Outcome != domain.OutcomeWin {
-		return 0
-	}
-	pl := ctx.Playlist
-	gv := ctx.GameVariant
-	if strings.Contains(pl, "slayer") || strings.Contains(pl, "assassin") ||
-		strings.Contains(gv, "slayer") || strings.Contains(gv, "assassin") {
-		return 1
-	}
-	return 0
+	return winIn(ctx, isSlayerMode)
 }
 
 // computeWinsStrongholds : victoire en Strongholds/Bases.
 func computeWinsStrongholds(ctx domain.CitationContext) int {
-	if ctx.Outcome != domain.OutcomeWin {
-		return 0
-	}
-	pl := ctx.Playlist
-	gv := ctx.GameVariant
-	if strings.Contains(pl, "stronghold") || strings.Contains(pl, "bases") ||
-		strings.Contains(gv, "stronghold") || strings.Contains(gv, "bases") {
-		return 1
-	}
-	return 0
+	return winIn(ctx, isStrongholdsMode)
 }
 
 // computeAnnexionForcee : séries de 3 captures de zone sans mort entre elles.

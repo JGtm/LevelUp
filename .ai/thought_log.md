@@ -1,3 +1,11 @@
+## [2026-10-16] Plan citations Halo 5, E2 : Tick Tick Boom et Premier coup — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : deux customs (`compute_wins_assault` sur la variante seule, `compute_first_strike` sur la règle « Premier sang » extraite en `analysis.FirstBlood`), prédicats de mode uniques pour les victoires de mode et Bulldozer, garde-rail `TestCitationsCustom_ModesParPredicat`.
+
+**Résultats observés** : `go test` vert sur `analysis`, `games/halo_infinite`, `ops` ; aucun constat lint nouveau.
+
+**Conclusion** : suite E3 (Jouets éducatifs, Presque ça ne compte pas).
+
 ## [2026-10-16] Plan citations Halo 5, E1 : le bouclier du tueur se lit à l'instant du frag — Complété (branche `feat/citations-film`)
 
 **Décision technique principale** : « Presque, ça ne compte pas » est livrable (D1). Une vie sans mesure de bouclier est une vie au bouclier jamais touché (le film ne réplique qu'au changement), donc l'état est connu pour 96,2 % des frags ; zéro retenu si la dernière mesure date de moins de 5 s ; survie = tueur non mort dans la seconde.
