@@ -253,8 +253,8 @@ diff E5 (lot persist/sync).
   - [x] E6.2a-F3 Vue match : annulation de requete = erreur de contexte rendue + WARN (jamais ERROR ni `_unavailable`).
   - [x] E6.2a-F4 Fichiers > 500 L grossis par le lot (`domain/match_view.go`, `wire/registry_pages.go`, `port/repository.go`, et autres) : ajouts deplaces dans des voisins.
   - [x] E6.2a-F5 `relationExists` : tests de la branche erreur de sonde et d'au moins un appelant.
-- [ ] E6.4 Push de la branche, CI verte (tout rouge se répare).
-- [ ] E6.5 Fusion dans `feat/v75` : demandée au user.
+- [x] E6.4 Push de la branche, CI verte (tout rouge se répare). Branche verte (run 38868292122, après mise à jour sur feat/v75 6b45cdc5b).
+- [x] E6.5 Fusion dans `feat/v75` : faite le 2026-10-16 sur accord du user (`12e994211`, avec `chore/deps-2026-10`) ; CI de feat/v75 verte après relance d'un job de couverture (dépassement de délai du paquet grammar sur la machine de CI, 900 s contre ~165 s habituels ; 135-163 s à la relance, tests concernés à 9-10 s en local sous Go 1.26.9).
 
 ## 3. Découvertes
 
