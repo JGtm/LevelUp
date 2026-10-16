@@ -4,7 +4,7 @@
 
 **Résultats observés** : `go test ./...` vert avant corrections (201 paquets) ; nouveaux tests : premier écrit V2 (mutation vérifiée), câblage V2 de la source d'amis, garde du branchement V1, point de ratchet `flushReadCaches`. Aucune allowlist de garde-rail touchée.
 
-**Conclusion** : ronde 2 (relecture des seules corrections), puis gates complets, push et CI.
+**Conclusion** : ronde 2 faite (0 P0/P1, 2 P2 : 1 corrigé, 1 statué et consigné), voir le plan ; gates complets, push et CI ensuite.
 
 ## [2026-10-16] Simulation de bout en bout du post-sync (escouade, LUSR, ordre) et contrôle du LUSR sur la passe crédit — En cours, arrêt demandé par la consigne (branche `feat/postsync-ordre`)
 

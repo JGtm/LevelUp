@@ -89,8 +89,11 @@ func NewCycleBatchPersister(
 // WithFriendsSource branche la source des amis (par xuid de joueur) et l'emprunt de la base
 // partagée sur un persister de cycle construit par NewCycleBatchPersister : chaque match du
 // cycle reçoit alors is_with_friends au premier écrit. `shared` est l'emprunt de la découverte
-// (SharedBorrower) : il suit les bascules RO/RW du provider, là où le getter `sharedDB` rend la
-// connexion en cache sans emprunt. Rend le même persister ; sans effet sur un autre type.
+// (SharedBorrower), là où le getter `sharedDB` rend la connexion en cache sans emprunt. En état
+// RO l'emprunt est compté et retient une bascule jusqu'au release ; en état RW il rend la
+// connexion de l'écrivain sans la compter (cf. SharedBorrower) : si l'écrivain la libère
+// pendant la résolution, la liste d'amis ressort partielle et le recalcul du post-sync corrige.
+// Rend le même persister ; sans effet sur un autre type.
 func WithFriendsSource(p CycleBatchPersister, friendsOf func(xuid string) ([]string, error), shared SharedDBAcquirer) CycleBatchPersister {
 	if b, ok := p.(*cycleBatchPersisterV1Bridge); ok {
 		b.friendsOf = friendsOf

@@ -209,6 +209,10 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   sont suivis) et aucun test hors `halotest` ne l'utilise (`engine_e2e_test.go` ne l'exerce pas, contrairement
   au texte du plan). La simulation de 2bis utilise donc `mockHaloClient` + le chunk de film v41 versionné
   (275 événements, 101 morts) : elle tourne en CI. Non traité : brancher le vrai client HTTP sur le faux serveur.
+- (16/10, exécutant, relecture 3.3 ronde 2) `LookupFriendXUIDs` (`sync/session_recalc.go`) avale l'erreur de chaque
+  requête par gamertag : une base fermée en cours de boucle rend une liste partielle sans WARN, pour le recalcul
+  comme pour le premier écrit. Un emprunt RW du `SharedBorrower` n'étant pas compté, `ResolveFriendXUIDs` ne
+  relit pas comme le fait `KnownLoader`. Non traité (fonction partagée, fenêtre étroite, le recalcul converge).
 - (16/10, exécutant, relecture 3.3) `engine.go` (767 L), `api/handlers/sync_handler.go` (702 L) et
   `scheduler/auto_sync.go` (531 L) dépassent 500 L et ont grossi de 10 à 12 lignes avec le rappel de vidage du
   cache Home ; aucun gate ne mesure la taille de fichier (`funlen` seulement). Découpage non traité.
@@ -310,3 +314,14 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
     500 L qui grossissent) : STATUÉ, non corrigé : +10 à +12 lignes de champ, d'option et de commentaire par
     site, inévitables pour brancher un rappel sur trois constructeurs de moteur ; `engine_postsync.go`, le fichier
     visé par le lot, passe de 527 à 442 lignes. Dette de découpage de ces trois fichiers : Découvertes.
+- 16/10 Étape 3.3, ronde 2 (1 relecteur Opus, contexte frais, sur les seules corrections `3f3f9b67d..b9350bc68`) :
+  0 P0, 0 P1 (1 en ronde 1 : décroissance respectée), 2 constats P2, 14 conditions vérifiées. Triage :
+  - C1 P2 (le test V2 ne distinguait pas l'emprunt du getter en cache ni ne vérifiait le release) : CORRIGÉ. Le getter
+    rend une base vide, l'emprunt est compté ; le test exige 2 emprunts et 2 libérations. Mutations vérifiées :
+    revenir à `p.sharedDB()` -> rouge ; retirer `defer release()` -> rouge.
+  - C2 P2 (état RW du provider : l'emprunt rend la connexion de l'écrivain sans la compter ; libérée pendant la
+    boucle, la liste d'amis ressort partielle, sans WARN car `LookupFriendXUIDs` avale l'erreur par gamertag) :
+    STATUÉ. Fenêtre étroite, aucune corruption, le recalcul du post-sync converge ; le commentaire de
+    `WithFriendsSource` dit désormais exactement ce que le code tient. Relire/réessayer la résolution (contrat de
+    `SharedBorrower`) et remonter l'erreur de `LookupFriendXUIDs` : Découvertes (hors lot, `LookupFriendXUIDs` est
+    partagé avec le recalcul).

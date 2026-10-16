@@ -56,7 +56,18 @@ func TestPersistCycle_PosesIsWithFriendsOnFirstWrite(t *testing.T) {
 		INSERT INTO xuid_aliases VALUES ('` + mate + `', 'Mate'), ('` + foe + `', 'Foe')`); err != nil {
 		t.Fatalf("seed aliases: %v", err)
 	}
-	borrow := func(context.Context) (*sql.DB, func(), error) { return shared, func() {}, nil }
+	// Le getter en cache rend une base VIDE : lire par lui ne résoudrait aucun ami. Seul l'emprunt
+	// (compté, avec son release) sert la résolution.
+	enCache, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("open cache: %v", err)
+	}
+	t.Cleanup(func() { _ = enCache.Close() })
+	var emprunts, liberes int
+	borrow := func(context.Context) (*sql.DB, func(), error) {
+		emprunts++
+		return shared, func() { liberes++ }, nil
+	}
 
 	run := func(t *testing.T, amis []string) *bool {
 		t.Helper()
@@ -73,7 +84,7 @@ func TestPersistCycle_PosesIsWithFriendsOnFirstWrite(t *testing.T) {
 				q.RecordPersistResult(true)
 			}
 		}()
-		p := NewCycleBatchPersister("halo_infinite", q, 5*time.Second, nil, nil, func() *sql.DB { return shared })
+		p := NewCycleBatchPersister("halo_infinite", q, 5*time.Second, nil, nil, func() *sql.DB { return enCache })
 		if amis != nil {
 			p = WithFriendsSource(p, func(x string) ([]string, error) {
 				if x != owner {
@@ -109,5 +120,8 @@ func TestPersistCycle_PosesIsWithFriendsOnFirstWrite(t *testing.T) {
 	}
 	if v := run(t, nil); v != nil {
 		t.Errorf("sans source d'amis: IsWithFriends = %v, want non posé", *v)
+	}
+	if emprunts != 2 || liberes != emprunts {
+		t.Errorf("emprunts de la base partagée = %d, libérés = %d, want 2 et 2 (un emprunt par cycle avec source d'amis, toujours relâché)", emprunts, liberes)
 	}
 }
