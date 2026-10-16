@@ -51,7 +51,8 @@ RUN node scripts/verify-public-in-dist.mjs
 # Image épinglée sur le correctif exact (pas la branche flottante `1.26`) :
 # `scripts/deploy.sh` construit sans `--pull`, donc un tag flottant resterait sur la
 # version déjà présente sur l'hôte. Même version que la ligne `go` de
-# apps/go-api/go.mod ; les monter ensemble.
+# apps/go-api/go.mod ; les monter ensemble (garde-rail :
+# internal/archlint/dockerfile_go_version_test.go).
 FROM golang:1.26.9-bookworm AS go-builder
 
 WORKDIR /build/go
