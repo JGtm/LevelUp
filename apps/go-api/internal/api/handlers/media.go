@@ -138,12 +138,6 @@ var globalUploadSlots = slots.New(maxConcurrentUploads)
 // par proximité temporelle, appliquée quand le client ne fournit pas window_minutes.
 const defaultMediaMatchWindowMinutes = 15
 
-// allowedMediaExts liste les extensions acceptées en upload.
-var allowedMediaExts = map[string]bool{
-	".mp4": true, ".mov": true, ".avi": true, ".mkv": true, ".webm": true,
-	".png": true, ".jpg": true, ".jpeg": true, ".bmp": true, ".gif": true,
-}
-
 // MediaUploadContextFactory retourne service + gamertag + titleSlug + dbPath + sharedSocialDBPath + sharedMatchesDBPath.
 // Utilisée par PostUploadMedia pour résoudre le répertoire captures.
 type MediaUploadContextFactory func(ctx context.Context, slug string) (

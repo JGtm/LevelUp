@@ -99,3 +99,10 @@ func StemAndExt(p string) (stem, ext string) {
 	stem = strings.TrimSuffix(base, filepath.Ext(base))
 	return stem, ext
 }
+
+// IsUploadableExt retourne true si un fichier de cette extension est accepté à l'envoi :
+// une vidéo (VideoExtensions) ou une image (ImageExtensions). La comparaison est
+// case-insensitive.
+func IsUploadableExt(ext string) bool {
+	return IsVideoExt(ext) || IsImageExt(ext)
+}

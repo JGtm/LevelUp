@@ -170,7 +170,7 @@ func parseUploadedFiles(r *http.Request) ([]domain.UploadedFile, error) {
 	out := make([]domain.UploadedFile, 0, len(headers))
 	for i, fh := range headers {
 		ext := strings.ToLower(filepath.Ext(fh.Filename))
-		if !allowedMediaExts[ext] {
+		if !mediapkg.IsUploadableExt(ext) {
 			slog.Warn("upload: extension refusée", "file", fh.Filename, "ext", ext)
 			continue
 		}
