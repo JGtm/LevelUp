@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os/exec"
 	"time"
 )
 
@@ -98,12 +97,12 @@ type avStreamsInfo struct {
 }
 
 func probeAVStreams(ctx context.Context, absPath string) (avStreamsInfo, error) {
-	out, err := exec.CommandContext(ctx, "ffprobe",
+	out, err := RunFFprobe(ctx,
 		"-v", "error",
 		"-print_format", "json",
 		"-show_streams",
 		absPath,
-	).Output()
+	)
 	if err != nil {
 		return avStreamsInfo{}, err
 	}

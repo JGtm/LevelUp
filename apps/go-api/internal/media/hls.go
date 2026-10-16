@@ -31,7 +31,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -431,12 +430,12 @@ func escapeAttr(s string) string {
 // ffprobe, avec codec, canaux et tags language/title. Utilisé par le service
 // pour décider NeedsHLS puis par BuildHLS pour planifier.
 func ProbeStreamsDetailed(ctx context.Context, absPath string) ([]AVStreamDetail, error) {
-	out, err := exec.CommandContext(ctx, "ffprobe",
+	out, err := RunFFprobe(ctx,
 		"-v", "error",
 		"-print_format", "json",
 		"-show_streams",
 		absPath,
-	).Output()
+	)
 	if err != nil {
 		return nil, fmt.Errorf("ffprobe: %w", err)
 	}

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -99,13 +98,12 @@ func computeMediaEnd(kind string, captureAt *time.Time, duration float64, durati
 // (juste utilisée pour capture_end_utc = capture_start_utc + duration), donc
 // échec silencieux côté insert.
 func probeVideoDuration(ctx context.Context, videoPath string) (float64, error) {
-	cmd := exec.CommandContext(ctx, "ffprobe",
+	out, err := mediapkg.RunFFprobe(ctx,
 		"-v", "error",
 		"-show_entries", "format=duration",
 		"-of", "default=noprint_wrappers=1:nokey=1",
 		videoPath,
 	)
-	out, err := cmd.Output()
 	if err != nil {
 		return 0, fmt.Errorf("ffprobe: %w", err)
 	}

@@ -8,7 +8,7 @@
 // INTERDIT dans le code du module (hors _test.go) : un appel exec.Command / exec.CommandContext
 // dont un argument désigne ffmpeg (littéral "ffmpeg", "ffmpeg.exe", ou identifiant dont le nom
 // contient « ffmpeg »), hors de internal/media/ffmpeg_slot.go, le lanceur unique. ffprobe n'est
-// pas visé : une sonde lit un en-tête et ne transcode rien.
+// pas visé ici : une sonde ne transcode rien, son garde-rail est ffprobe_single_launcher_test.go.
 //
 // POOLS (plan sécurité, lot L5c). Le lanceur unique tient une place de l'un des DEUX pools nommés
 // de media/ffmpeg_slot.go (PoolTranscode : 1 place ; PoolRemux : 2 places). Interdit dans
@@ -48,7 +48,10 @@ func isFFmpegArg(arg ast.Expr) bool {
 }
 
 // ffmpegLaunchSites rend « fichier:ligne » de chaque exec.Command* qui désigne ffmpeg.
-func ffmpegLaunchSites(src goSource) []string {
+func ffmpegLaunchSites(src goSource) []string { return execLaunchSites(src, isFFmpegArg) }
+
+// execLaunchSites rend « fichier:ligne » de chaque exec.Command* dont un argument vérifie match.
+func execLaunchSites(src goSource, match func(ast.Expr) bool) []string {
 	var sites []string
 	ast.Inspect(src.File, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -63,7 +66,7 @@ func ffmpegLaunchSites(src goSource) []string {
 			return true
 		}
 		for _, arg := range call.Args {
-			if isFFmpegArg(arg) {
+			if match(arg) {
 				sites = append(sites, src.Rel+":"+strconv.Itoa(src.Fset.Position(call.Pos()).Line))
 				break
 			}
