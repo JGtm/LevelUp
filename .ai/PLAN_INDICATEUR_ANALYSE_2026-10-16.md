@@ -132,19 +132,19 @@ gcc ucrt64. Jamais `go build ./...`. Un seul `go` à la fois. Intégration : `-t
 
 ### E4 — Gates finaux — M
 
-- [ ] E4.1 `go test` des paquets touchés + `go test ./...`.
-- [ ] E4.2 `go test -tags=integration -p 1` des paquets touchés.
-- [ ] E4.3 `make go-api-lint`.
-- [ ] E4.4 `make check-types`.
-- [ ] E4.5 `make test-web`.
-- [ ] E4.6 `make gate-push`.
+- [x] E4.1 `go test` des paquets touchés + `go test ./...`.
+- [x] E4.2 `go test -tags=integration -p 1` des paquets touchés.
+- [x] E4.3 `make go-api-lint`.
+- [x] E4.4 `make check-types`.
+- [x] E4.5 `make test-web`.
+- [x] E4.6 `make gate-push`.
 - Sorties consignées en section 4.
 
 ### E5 — Clôture — S
 
-- [ ] E5.1 Entrée en tête de `.ai/thought_log.md`.
-- [ ] E5.2 Plan à jour (toutes cases statuées), `disk-hygiene.ps1 -Lot indicateur -Apply`.
-- [ ] E5.3 Push de `feat/indicateur-analyse` UNIQUEMENT, puis arrêt.
+- [x] E5.1 Entrée en tête de `.ai/thought_log.md`.
+- [x] E5.2 Plan à jour (toutes cases statuées), `disk-hygiene.ps1 -Lot indicateur -Apply`.
+- [x] E5.3 Push de `feat/indicateur-analyse` UNIQUEMENT, puis arrêt.
 
 ## 3. Découvertes (non traitées)
 
@@ -178,3 +178,13 @@ gcc ucrt64. Jamais `go build ./...`. Un seul `go` à la fois. Intégration : `-t
   Limite assumée : la puce « Rejeu à venir » s'affiche si le match est en cours d'analyse ET sans
   rejeu ; si le film est déclaré absent et que seules les citations manquent, elle peut annoncer un
   rejeu qui ne viendra pas, le temps que les citations soient posées (le signal serveur ne distingue pas).
+- 2026-10-16 E4 : gates verts sur l'arbre final. `go test ./...` 205 paquets ok ; `go test
+  -tags=integration -p 1 ./internal/{analysis,domain,port,service,platform/duckdb,api/wire,api/handlers}`
+  ok ; `make go-api-lint` 0 issue ; `make check-types` ok ; `make test-web` 942 fichiers, 9 834 tests
+  ok (23 skipped préexistants) ; `make gate-push` exit 0 (baseline 21 102 tests vs 9 398 requis).
+- 2026-10-16 E5 : entrée thought_log posée, cache dédié nettoyé, push de `feat/indicateur-analyse`.
+
+## 5. Statut final
+
+Tous les items `[x]`. Rien en `[!]`. Limites assumées : cf. E3 (puce « Rejeu à venir »), D-5
+(Unknown/CarteNonResolue), D-3 (joueur fraîchement onboardé).
