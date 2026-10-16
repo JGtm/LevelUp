@@ -332,13 +332,13 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 
 ### L7 — Gardes de chemin et CSRF (C10-1) — Opus — effort S
 
-- [ ] L7-1 Test rouge : `POST …/coach/proposals/..%2F..%2F..%2F..%2Finternal%2Fx/dismiss` avec
+- [x] L7-1 Test rouge : `POST …/coach/proposals/..%2F..%2F..%2F..%2Finternal%2Fx/dismiss` avec
       Origin étrangère → 403 `csrf_rejected` (pile réelle).
-- [ ] L7-2 `middleware/csrf.go` : `!AmbiguousPath(r) &&` devant `isExemptPath`.
-- [ ] L7-3 Garde-rail : test table-driven qui passe les mêmes chemins ambigus (`%2F`, `%5C`,
+- [x] L7-2 `middleware/csrf.go` : `!AmbiguousPath(r) &&` devant `isExemptPath`.
+- [x] L7-3 (+ limiteur corrigé, voir journal) Garde-rail : test table-driven qui passe les mêmes chemins ambigus (`%2F`, `%5C`,
       `%2e%2e`, `//`, `/./`) à toutes les gardes qui décident sur un chemin (CSRF, démo,
       écritures, limiteur, rejeu, ouvrier).
-- [ ] L7-4 (D-L1-2) `handlers/replay_local_gate.go` : `isLocalRequest` refuse un hôte vide (garde
+- [x] L7-4 (D-L1-2) `handlers/replay_local_gate.go` : `isLocalRequest` refuse un hôte vide (garde
       fermée par défaut) ; tests adaptés à un transport qui fournit une adresse.
 - Gate : `go test ./internal/api/... -run 'CSRF|Ambiguous|Transverse'` puis `go test ./internal/api/...`.
 
@@ -527,7 +527,7 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
 
 - **D-L1-2** (L1) `handlers/replay_local_gate.go` : `isLocalRequest` traite un hôte vide comme local (choix
   justifié par des transports de test). En service `RemoteAddr` n'est jamais vide, mais le défaut d'une garde
-  de sécurité est ouvert.
+  de sécurité est ouvert. **Traité en L7-4** (2026-10-16).
 - **D-L1-3** (L1) `features/auth/SetPasswordCard.tsx` : libellés français en dur (`LABELS`), sans version
   anglaise (l'écran en anglais affiche du français). L4-11 retouche ce composant. **Rattaché à L4-11** (libellés FR + EN du composant). **Traité en L4-11** (2026-10-16).
 
@@ -649,6 +649,17 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
   gamertag dans le chemin (`/admin/diag/appearance/{player_slug}`, `/admin/monitoring/lusr-gaps/{player}`) : non vérifiées.
 - **D-L6-4** (L6) La racine legacy interne de `ServeMediaFile` est figée au titre par défaut (`PlayerCapturesDir(DefaultSlug, …)`) :
   un média legacy d'un autre titre rangé sous `players/{slug}/captures/` n'est pas servi par cette racine. Préexistant.
+
+- **D-L7-1** (L7) `wire/og_inject.go` (`playerSlugFromPath`) lit le slug sur le chemin DÉCODÉ d'une page du SPA, sans
+  `domain.IsValidPlayerSlug`, et le passe à `HomeCtx` (démo seulement, User-Agent de robot, que le client choisit). Un slug `..`
+  ou à barre oblique inverse y arrive ; la résolution du profil le refuse-t-elle avant tout chemin disque ? Non vérifié.
+- **D-L7-2** (L7) `/profiles/{player_slug}/titles/{slug}` : `TitleSlugFromPath` pose le `{slug}` de titre du chemin dans le
+  contexte sans contrôle de forme ni d'appartenance au registre ; seul un admin traverse la garde de propriété pour un titre
+  inconnu. Effet d'un titre `..` ou encodé dans le handler (`TitleSyncHandler`, `ProfileService`) non vérifié.
+- **D-L7-3** (L7) `AmbiguousPath` vit dans `middleware/require_auth_mutations.go` alors que six gardes l'appellent désormais
+  (CSRF, limiteur, démo en lecture seule, lectures gardées de la démo, garde d'écriture, action du visiteur) : son contrat
+  gagnerait un fichier propre. Aucun garde-rail n'exige qu'une nouvelle garde qui décide sur `r.URL.Path` l'appelle (le test
+  `ambiguous_path_guards_test.go` couvre les gardes existantes, pas une garde ajoutée demain).
 
 ## 7. Journal
 
@@ -1866,3 +1877,88 @@ Commits : `013bb2378` (L6-1), `d966cbea9` (L6-2), `30596fc09` (L6-3), `4b6167f86
 **Preuves** : ratchet `demo_guarded_routes_ratchet_test.go` (walk du routeur de démo, plancher de 80 routes gardées, 6 témoins C8-1 dont `/debug/vars` en pile complète) rouge puis vert, mutation `GET /admin/users` détectée ; `config/demo_state_guard_test.go` rouge (4 tests) puis vert ; L8-7 : 5 ERROR reproduites puis 0 ; L8-8 : 404 → 200 ; L8-10 : `TestOutboundCallsAreNetguarded` rouge au retrait de l'allowlist fausse.
 **Gates** : `go test ./internal/api/... ./internal/config/... ./internal/ops/... ./internal/platform/...` exit 0 (34 paquets) ; intégration `ops` exit 0 ; build, vet, golangci-lint 0 issue ; `playwright --list` 1 test ; `tsc -b` 0. **Après fusion (superviseur)** : `go build`, `go vet`, `go test` api/config/ops/platform/service/media/domain/archlint exit 0 ; `-tags=integration -p 1` ops et playerdirectory exit 0.
 **Découvertes** : CHANGELOG à compléter à la release ; commentaire « Streamlit » obsolète dans `demo.conf` ; `OpenReadWriteShared(metaPath)` peut créer un fichier DuckDB vide (chargeurs H5 en démo sans H5, non vérifié) ; `CONFIGURATION.md` ne décrit pas la liste nommée de la démo.
+
+### L7 - Gardes de chemin et CSRF - 2026-10-16 - clos
+
+Base : `git log --oneline -1` = `6a2bbb4c7` avant le lot ; branche `feat/securite-2026-10-15` ; L9 exécuté en parallèle dans
+`LevelUp-wt-securite-l9` (non touché). Références rouvertes avant d'agir : `middleware/csrf.go:68` (`isExemptPath(r.URL.Path)` après
+`path.Clean`, sans `AmbiguousPath`), `middleware/require_auth_mutations.go` (`AmbiguousPath`, `IsMutatingRequest`),
+`middleware/demo_read_only.go` (`DemoAllows`, exemption ouvrier déjà sous `!AmbiguousPath`), `middleware/demo_guarded_reads.go`
+(L8), `middleware/rate_limit.go` (`rateLimitExempt(r.URL.Path)`), `middleware/player_visitor_actions.go`,
+`middleware/require_player_ownership.go` (slug L6-2), `middleware/match_participation.go` (L6-3), `handlers/replay_local_gate.go`
+(`isLocalRequest`, `replayMatchID` de L8), `middleware/loopback.go` (`PeerAddr` de L1), `server.go` (`applyTransverseMiddlewares`),
+`server_apiv1.go` (montage du groupe joueur et du rejeu), `handlers/build_worker.go` (`RequireWorkerToken`).
+
+**Statuts** : L7-1 à L7-4 `[x]`. Aucun `[!]`, aucun `[~]`.
+
+**Gardes qui décident sur un chemin (relevé sur pièces)** et verdict sur la table des formes ambiguës :
+
+| Garde | Lit | Avant L7 | Après L7 |
+|---|---|---|---|
+| CSRF, exemption ouvrier (`csrf.go`) | `URL.Path` nettoyé | exempte (handler atteint hors démo) | `!AmbiguousPath` : 403 `csrf_rejected` |
+| Limiteur, exemptions `/static/`, `/api/v1/assets/`, extension statique (`rate_limit.go`) | `URL.Path` | exempte | `!AmbiguousPath` : compté |
+| Démo, exemption ouvrier (`DemoReadOnly`) | `URL.Path` nettoyé | refuse (`!AmbiguousPath`) | inchangé |
+| Démo, `POST /session/context` et POST de lecture (`DemoAllows`, `IsMutatingRequest`) | `URL.Path` exact, sous-chemin | refuse | inchangé |
+| Démo, lectures nommées derrière `RequireAdmin`/`RequireAuth` (`demoServesGuarded`) | méthode + `URL.Path` exact | refuse (`RawPath`, `AmbiguousPath`) | inchangé |
+| Garde d'écriture du groupe joueur (`RequireAuthForMutations`) | sous-chemin | écriture (401) | inchangé |
+| Action du visiteur (`isVisitorAction`, garde de propriété) | sous-chemin exact | refuse (403) | inchangé |
+| Forme du slug (L6-2) | paramètre chi (brut) | 400 | inchangé |
+| Forme du match (`RequireMatchParticipation`, L6-3) | paramètre chi (brut) | 404 | inchangé |
+| Rejeu (`ReplayGate`) | démo : `match_id` du chemin ou du corps ; hors démo : pair TCP | 404 | inchangé ; adresse vide fermée (L7-4) |
+| Protocole ouvrier (`RequireWorkerToken`) | en-tête `Authorization` | ne décide pas sur le chemin | sans objet |
+
+- **L7-1** `internal/api/csrf_ambiguous_path_cgo_test.go` : `TestTransverseStack_CSRF_AmbiguousPathNeverTakesWorkerExemption`, routeur
+  complet (`openapigen.BuildDemoRouter`), Origin `https://evil.example` : la requête du constat, puis la table entière, doivent recevoir
+  403 `csrf_rejected`. Sur ce routeur de démo la garde démo refusait derrière (403 `demo_mode_forbidden`) ; hors démo, le test de pile
+  transverse de L7-3 montre le handler `dismiss` ATTEINT (200), l'exploitation réelle en production.
+- **L7-2** `middleware/csrf.go` : `!AmbiguousPath(r) && isExemptPath(...)` ; contrat de `CSRF` et d'`isExemptPath` réécrit (le nettoyage
+  seul ne suffit pas : chi route sur le chemin brut). Commentaire de `csrf_test.go` (`TestCSRF_POST_ExemptPrefix_TraversalNotExempt`)
+  corrigé (il attribuait le refus de `%2e%2e` à `path.Clean`).
+- **L7-3** Table unique `AmbiguousForms` (`internal/api/ambiguous_path_table_test.go`, exportée vers `api_test`) : `%2F`, `%2f`, `%5C`,
+  `%5c`, `%2e%2e`, `%2E%2e` + `%2f` (casses mêlées), `%2E%2E` en segment clair, `//`, `/./`, `/../` en clair. `ambiguous_path_guards_test.go`
+  la passe, derrière `applyTransverseMiddlewares` et les gardes de route montées comme dans `server_apiv1.go`, à chaque garde du tableau
+  (10 tests, dont l'auto-contrôle `TestAmbiguousForms_TableIsAmbiguous`) ; chaque test vérifie aussi que le chemin propre reste servi
+  (ouvrier sans Origin, `POST /session/context`, POST de lecture, `GET /settings` et `/healthz/home` en démo, fichiers statiques et
+  assets exemptés du limiteur, like d'un ami, rejeu local et rejeu figé). Le rejeu en démo passe par la vraie
+  `service.DemoReplayAllowlist` (index temporaire). **Correction exigée par le garde-rail** : le limiteur exemptait les chemins ambigus
+  (30 cas rouges) ; `rate_limit.go` refuse désormais l'exemption à un chemin ambigu (`!AmbiguousPath(r) && rateLimitExempt(...)`).
+- **L7-4** `handlers/replay_local_gate.go` : la branche « hôte vide = local » est retirée ; une adresse vide, sans hôte (`:5555`,
+  `[]:5555`) ou qui n'est pas une IP n'est pas locale. `TestReplayLocalGate_RejectsUnreadablePeer` (pile transverse réelle, confiance
+  proxy active et inactive, en-têtes forgés « 127.0.0.1 »). Tests à adapter : aucun. Relevé : `grep RemoteAddr` dans les tests du
+  module ; les seuls tests qui traversent `LocalOnlyReplay` (`handlers/replay_test.go`, `api/replay_local_gate_test.go`) fournissent
+  déjà une adresse (`127.0.0.1:54321`, `[::1]:5555`, `203.0.113.7:5555`) ; suites `internal/api/...` vertes après le correctif.
+
+**Preuves du rouge** (sorties dans `%LOCALAPPDATA%\Temp\l7\`) :
+- L7-1 `go test ./internal/api/ -run TestTransverseStack_CSRF_AmbiguousPath -count=1` : exit 1, 9 lignes d'échec (la requête du constat
+  + 8 formes ; les deux formes `%5C` ne remontent pas au nettoyage et étaient déjà refusées), toutes `403 demo_mode_forbidden` au lieu
+  de `csrf_rejected`.
+- L7-3 `go test ./internal/api/ -run TestAmbiguous -count=1` : exit 1, 48 lignes : CSRF 18 cas (route `dismiss`, `player` ou `worker`
+  atteinte en 200 avec une Origin étrangère), limiteur 30 cas (exempté). Les autres gardes étaient déjà vertes.
+- L7-4 `go test ./internal/api/ -run TestReplayLocalGate -count=1` : exit 1, 6 lignes (`""`, `:5555`, `[]:5555` servis en 200, confiance
+  active et inactive).
+- Sensibilité du garde-rail (mutation d'une clause à la fois, source restaurée, `git status` vérifié) : retrait de `!AmbiguousPath` du
+  CSRF -> 18 échecs ; du limiteur -> 30 ; de l'exemption ouvrier de la démo -> 18 ; de `DemoAllows` -> 4 ; d'`IsMutatingRequest` -> 34
+  (deux tests) ; de `demoServesGuarded` -> 4 ; d'`isVisitorAction` -> 4 ; contrôle de forme du slug neutralisé -> 20 ; de la forme du
+  match -> 20 (participation et rejeu). Aucune clause ne peut tomber sans rougir.
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9, rejouées sur `8d1a4dc21`) :
+- `go test ./internal/api/... -run 'CSRF|Ambiguous|Transverse' -count=1` : exit 0, 0 `--- FAIL:`.
+- `go test ./internal/api/... -count=1` : exit 0, 0 `--- FAIL:` (`api`, `handlers`, `humacore`, `middleware`, `wire` ok ; tests
+  OpenAPI et contrat compris).
+- `go test ./internal/archlint/ -count=1` : exit 0.
+- Gate commun : `go build ./cmd/server/` exit 0 ; `go vet ./internal/api/ ./internal/api/middleware/ ./internal/api/handlers/` exit 0 ;
+  `golangci-lint run --new-from-rev=6a2bbb4c7` (v2.12.2) sur ces paquets : 0 issue ; forme CI (`--new-from-merge-base=origin/main`) :
+  0 issue. API inchangée (aucune route Huma) : pas de `generate-types`. Web non touché.
+- Hooks pre-commit (gofmt, check-merge-conflict, docs-fr-sync, gitleaks, go-vet) verts sur les trois commits de code.
+
+**Non-régression (règle 9)** : chemins réellement émis relevés. Ouvrier (`cmd/replay-worker/protocol.go`) : `/build-queue/claim`,
+`/heartbeat`, `/complete`, `/artifact?job_id=…` sous `/api/v1/internal`, jamais ambigus : exemption intacte (testée sans Origin).
+Front : les segments variables passent par `encodeURIComponent` (slug, gamertag, titre, carte) ; un gamertag n'a ni `/`, ni `\`, ni
+segment `.` ou `..` (forme L6-2), `encodeURIComponent` ne produit jamais `%2E` : aucune requête du front n'est ambiguë, et le front
+envoie de toute façon l'Origin autorisée. Fichiers statiques : les noms de citations portent `%27`/`%3F` (jamais `%2F`, `%5C`, `%2E`) :
+ils restent exemptés du limiteur ; un chemin ambigu n'y est que compté, jamais refusé. Rejeu local : le pair TCP n'est jamais vide en
+service (nginx joint le conteneur par le pont Docker, D-L1-1) ; en local, `127.0.0.1` et `::1` restent servis.
+
+**Découvertes** : D-L7-1 à D-L7-3 (§6), non traitées.
+
+Commits : `389ba5497` (L7-1, L7-2), `94966d419` (L7-3), `8d1a4dc21` (L7-4), puis le commit de clôture (plan, thought_log).
