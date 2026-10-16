@@ -6,11 +6,15 @@
 // son contexte finit : l'appelant décide de l'attente maximale.
 package slots
 
-import "context"
+import (
+	"context"
+	"sync/atomic"
+)
 
 // Pool est un sémaphore de capacité fixe.
 type Pool struct {
-	places chan struct{}
+	places  chan struct{}
+	waiting atomic.Int32 // demandes bloquées faute de place
 }
 
 // New crée un Pool de n places (n < 1 est ramené à 1).
@@ -27,8 +31,10 @@ func New(n int) *Pool {
 func (p *Pool) Acquire(ctx context.Context) (release func(), err error) {
 	select {
 	case p.places <- struct{}{}:
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	default:
+		if err := p.wait(ctx); err != nil {
+			return nil, err
+		}
 	}
 	released := make(chan struct{})
 	return func() {
@@ -41,5 +47,20 @@ func (p *Pool) Acquire(ctx context.Context) (release func(), err error) {
 	}, nil
 }
 
+// wait attend une place, compté parmi les demandes en attente le temps de l'attente.
+func (p *Pool) wait(ctx context.Context) error {
+	p.waiting.Add(1)
+	defer p.waiting.Add(-1)
+	select {
+	case p.places <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // InUse rend le nombre de places tenues à cet instant.
 func (p *Pool) InUse() int { return len(p.places) }
+
+// Waiting rend le nombre de demandes bloquées en attente d'une place à cet instant.
+func (p *Pool) Waiting() int { return int(p.waiting.Load()) }

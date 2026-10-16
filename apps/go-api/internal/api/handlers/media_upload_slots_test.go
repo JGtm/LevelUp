@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -67,7 +68,8 @@ func postClip(t *testing.T, r http.Handler) *httptest.ResponseRecorder {
 // Au plus deux envois en vol ; les suivants attendent leur tour puis aboutissent.
 func TestUploadHandler_AtMostTwoUploadsInFlight(t *testing.T) {
 	svc := &gatedUploadService{release: make(chan struct{}), entered: make(chan struct{}, 8)}
-	r := newSlotRouter(svc, slots.New(2), 5*time.Second)
+	pool := slots.New(2)
+	r := newSlotRouter(svc, pool, 5*time.Second)
 
 	var wg sync.WaitGroup
 	codes := make(chan int, 5)
@@ -78,10 +80,11 @@ func TestUploadHandler_AtMostTwoUploadsInFlight(t *testing.T) {
 			codes <- postClip(t, r).Code
 		}()
 	}
-	// Deux entrent ; les trois autres restent en attente.
+	// Deux entrent ; les trois autres attendent leur place au pool (aucune attente minutée :
+	// le test attend l'état, pas une durée).
 	<-svc.entered
 	<-svc.entered
-	time.Sleep(150 * time.Millisecond)
+	waitForWaiters(t, pool, 3)
 	if got := svc.peak.Load(); got != 2 {
 		t.Fatalf("envois en vol = %d, attendu 2", got)
 	}
@@ -130,5 +133,17 @@ func TestUploadHandler_BusyAnswers503WithRetryAfter(t *testing.T) {
 	<-done
 	if pool.InUse() != 0 {
 		t.Errorf("places encore tenues après la fin: %d", pool.InUse())
+	}
+}
+
+// waitForWaiters attend que n demandes soient bloquées en attente d'une place du pool.
+func waitForWaiters(t *testing.T, pool *slots.Pool, n int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for pool.Waiting() != n {
+		if time.Now().After(deadline) {
+			t.Fatalf("demandes en attente d'une place = %d, attendu %d", pool.Waiting(), n)
+		}
+		runtime.Gosched()
 	}
 }

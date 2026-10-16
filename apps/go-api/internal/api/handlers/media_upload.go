@@ -173,7 +173,7 @@ func (h *MediaHandler) acquireUploadSlot(ctx context.Context, w http.ResponseWri
 	release, err := pool.Acquire(waitCtx)
 	if err != nil {
 		slog.WarnContext(ctx, "upload: aucune place d'envoi libre, requête refusée",
-			"wait", wait.String(), "in_flight", pool.InUse(), "err", err)
+			"wait", wait.String(), "in_flight", pool.InUse(), "waiting", pool.Waiting(), "err", err)
 		w.Header().Set(headerRetryAfter, uploadBusyRetryAfterSec)
 		writeError(ctx, w, http.StatusServiceUnavailable, "upload_busy",
 			"server busy with other uploads, retry shortly")

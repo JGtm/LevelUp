@@ -2,6 +2,7 @@ package slots
 
 import (
 	"context"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -76,4 +77,37 @@ func TestPool_ReleaseIsIdempotent(t *testing.T) {
 	if _, err := p.Acquire(ctx); err == nil {
 		t.Fatal("une double libération a créé une place fantôme")
 	}
+}
+
+// Waiting compte les demandes bloquées faute de place, et elles seules.
+func TestPool_WaitingCountsBlockedAcquirers(t *testing.T) {
+	p := New(1)
+	release, err := p.Acquire(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Waiting() != 0 {
+		t.Fatalf("Waiting = %d sans demande bloquée, attendu 0", p.Waiting())
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, err := p.Acquire(ctx)
+		done <- err
+	}()
+	deadline := time.Now().Add(5 * time.Second)
+	for p.Waiting() != 1 {
+		if time.Now().After(deadline) {
+			t.Fatalf("Waiting = %d, attendu 1", p.Waiting())
+		}
+		runtime.Gosched()
+	}
+	cancel()
+	if err := <-done; err == nil {
+		t.Fatal("la demande annulée devait échouer")
+	}
+	if p.Waiting() != 0 {
+		t.Fatalf("Waiting = %d après l'abandon, attendu 0", p.Waiting())
+	}
+	release()
 }
