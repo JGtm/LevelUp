@@ -33,7 +33,7 @@ func GenerateThumbnails(ctx context.Context, videosDir, thumbsDir string) (int, 
 			continue
 		}
 		ext := strings.ToLower(filepath.Ext(e.Name()))
-		if supportedExtensions[ext] != mediaKindVideo {
+		if mediaKindOf(ext) != mediaKindVideo {
 			continue
 		}
 		base := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))

@@ -3,8 +3,8 @@
 // streaming remux à la volée via ffmpeg pour les containers non lisibles
 // nativement par les navigateurs (MKV, AVI).
 //
-// La logique d'indexation des médias reste dans internal/ops/media.go.
-// Ce package est volontairement étroit : seul ServeMediaFile en dépend.
+// La logique d'indexation des médias reste dans internal/ops/media.go, qui lit
+// ici la liste des formats.
 package media
 
 import (
@@ -12,10 +12,10 @@ import (
 	"strings"
 )
 
-// VideoExtensions liste toutes les extensions vidéo reconnues côté serving.
-// Doit rester alignée avec internal/ops/media.go::supportedExtensions (subset
-// kind=video). Si une nouvelle extension est ajoutée à l'indexation, l'ajouter
-// ici aussi pour que le fallback resolution la trouve.
+// VideoExtensions liste les extensions vidéo acceptées à l'envoi, servies et indexées.
+// Avec ImageExtensions, c'est la seule liste des formats média du module (l'indexation de
+// internal/ops la lit par IsVideoExt / IsImageExt) : garde-rail
+// archlint/media_ext_list_single_source_test.go.
 var VideoExtensions = []string{".mp4", ".webm", ".mov", ".avi", ".mkv"}
 
 // extPNG : extension PNG, nommée pour la liste des images et ses tests.

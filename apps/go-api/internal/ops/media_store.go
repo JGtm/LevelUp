@@ -218,7 +218,7 @@ func walkMediaDir(dir string) ([]string, error) {
 			return nil
 		}
 		ext := strings.ToLower(filepath.Ext(path))
-		if _, ok := supportedExtensions[ext]; ok {
+		if mediaKindOf(ext) != "" {
 			files = append(files, path)
 		}
 		return nil

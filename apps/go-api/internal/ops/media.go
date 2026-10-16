@@ -25,26 +25,19 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	mediapkg "levelup/go-api/internal/media"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/verrous"
 )
 
-// Kinds de média indexés dans media_files.kind. Aussi utilisés dans la
-// classification des extensions (supportedExtensions) — centralisés ici.
+// Kinds de média indexés dans media_files.kind (mediaKindOf).
 const (
 	mediaKindVideo = "video"
 	mediaKindImage = "image"
 )
 
-// Extensions video reconnues. Centralisées pour réduire la duplication entre
-// supportedExtensions (indexation prod) et classifyMediaKind (seed_demo).
-const (
-	extMP4  = ".mp4"
-	extMOV  = ".mov"
-	extAVI  = ".avi"
-	extMKV  = ".mkv"
-	extWEBM = ".webm"
-)
+// extMP4 : extension par défaut d'un clip de démo sans extension.
+const extMP4 = ".mp4"
 
 // Types de colonne DuckDB récurrents dans les ALTER TABLE ADD COLUMN
 // de cette indexation. Centralisés pour réduire le bruit goconst.
@@ -95,12 +88,18 @@ type MediaIndexResult struct {
 	Errors     []string
 }
 
-// supportedExtensions sont les formats vidéo/image reconnus.
-var supportedExtensions = map[string]string{
-	extMP4: mediaKindVideo, extMOV: mediaKindVideo, extAVI: mediaKindVideo,
-	extMKV: mediaKindVideo, extWEBM: mediaKindVideo,
-	".png": mediaKindImage, ".jpg": mediaKindImage, ".jpeg": mediaKindImage,
-	".bmp": mediaKindImage, ".gif": mediaKindImage,
+// mediaKindOf rend la nature d'un fichier d'après son extension, sans tenir compte de la
+// casse : mediaKindVideo, mediaKindImage, ou "" pour un format non indexé. Les formats
+// sont ceux de internal/media, source unique de l'envoi, du service et de l'indexation
+// (garde-rail archlint/media_ext_list_single_source_test.go).
+func mediaKindOf(ext string) string {
+	switch {
+	case mediapkg.IsVideoExt(ext):
+		return mediaKindVideo
+	case mediapkg.IsImageExt(ext):
+		return mediaKindImage
+	}
+	return ""
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -412,7 +411,7 @@ func AssociateMediaWithMatches(ctx context.Context, db *sql.DB, sharedMatchesPat
 // Nécessite ffmpeg compilé avec libwebp dans le PATH.
 func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug string, captureTimeUnix *int64, loc *time.Location, store MediaPathStore) error {
 	ext := strings.ToLower(filepath.Ext(path))
-	kind := supportedExtensions[ext]
+	kind := mediaKindOf(ext)
 	baseName := filepath.Base(path)
 	stem := strings.TrimSuffix(baseName, ext)
 
