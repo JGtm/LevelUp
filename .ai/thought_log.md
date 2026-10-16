@@ -1,3 +1,11 @@
+## [2026-10-16] Simulation de bout en bout du post-sync (escouade, LUSR, ordre) et contrôle du LUSR sur la passe crédit — En cours, arrêt demandé par la consigne (branche `feat/postsync-ordre`)
+
+**Décision technique principale** : tests `postsync_e2e_test.go` (match d'escouade joué par le chemin de production puis post-sync complet), comparaison avant/après sur le commit de base, test ciblé `TestLoadQuitTimeline_CreditOnlyPass` (la pénalité de départ lit la passe crédit-seul seule). Le faux serveur HTTP du plan n'a pas ses fichiers dans le dépôt : client de test + chunk de film v41 versionné.
+
+**Résultats observés** : valeurs finales identiques avant/après (LUSR 1503.1 Or IV, domination 0, citation 2, préparation posée) ; seuls changent is_with_friends au premier écrit (FALSE -> TRUE) et l'ordre des étapes. Mesure sur la copie de la base partagée : passe crédit et passe fusionnée donnent la même timeline de frags sur 2 383 matchs sur 2 394 ; 1 match (0,04 %) change le contexte de départ d'un partant (un bot).
+
+**Conclusion** : arrêt avant l'étape 3 selon la consigne 3 du coordinateur ; chiffres au compte rendu.
+
 ## [2026-10-16] « Escouade » dès le premier écrit : is_with_friends posé avec le même prédicat que le recalcul — Complété pour l'étape 2 (branche `feat/postsync-ordre`)
 
 **Décision technique principale** : le premier écrit d'un match calcule `is_with_friends` par `withFriends` (même équipe, xuid ami, xuid différent du joueur) quand la liste d'amis est connue, via le champ pointeur existant `EnrichmentRow.IsWithFriends` (INSERT-only, aucun schéma changé). Amis résolus une fois par passe (V1) ou par joueur de cycle (V2). Le recalcul du post-sync reste l'autorité convergente. Liste inconnue ou vide : champ non posé.

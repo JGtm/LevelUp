@@ -113,14 +113,14 @@ Harnais existant (plan de stratégie des tests de sync, 24/05) : `internal/sync/
 sert le match réel figé `internal/sync/testdata/jgtm_full_match/` (stats, skill, film, historique) ;
 `internal/sync/engine_e2e_test.go` l exerce déjà.
 
-- [ ] 2b.1 Test de bout en bout (dans un fichier de test existant ou un nouveau `*_test.go` sous
+- [x] 2b.1 Test de bout en bout (dans un fichier de test existant ou un nouveau `*_test.go` sous
   `internal/sync/`) : faux serveur + base vierge + liste d amis contenant un coéquipier réel du
   match figé → après le PREMIER écrit (avant le post-sync), la ligne d enrichissement lue par
   `player_match_enrichment_latest` vaut `is_with_friends = TRUE` ; après le post-sync complet :
   LUSR présent, domination non NULL, citations présentes, ordre des `StepTimings` conforme à D1.
-- [ ] 2b.2 Même test sans liste d amis → `is_with_friends = FALSE`, post-sync identique par
+- [x] 2b.2 Même test sans liste d amis → `is_with_friends = FALSE`, post-sync identique par
   ailleurs.
-- [ ] 2b.3 Comparaison avant/après : le même test exécuté sur le commit de base (ancien ordre) et
+- [!] 2b.3 Comparaison avant/après : le même test exécuté sur le commit de base (ancien ordre) et
   sur la branche donne les MÊMES valeurs finales (citations, domination, LUSR, préparation,
   escouade) ; seule la chronologie change. Écart = arrêt et analyse.
   Contrôle ajouté (coordinateur, 16/10) : la pénalité de départ du LUSR v2 donne la MÊME valeur avant et
@@ -199,6 +199,11 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   d'exécution ») la porte déjà ; D1 reste valide. Le constat est conservé comme contrôle de 2b.3.
 - (16/10, exécutant) Le bloc engagement du scoring (`loadSyntheticKillEventsForMatch`, `engagement.go`)
   lit `match_kill_events_latest` avant 1.54 dans l'ordre actuel comme dans D1 ; non traité.
+- (16/10, exécutant, étape 2bis) Le faux serveur HTTP (`halotest`) ne tourne pas dans ce dépôt : les fichiers
+  du match figé (`chunks/`, `api_*.json`) sont exclus par `.gitignore` (seuls `README.md` et `manifest_raw.json`
+  sont suivis) et aucun test hors `halotest` ne l'utilise (`engine_e2e_test.go` ne l'exerce pas, contrairement
+  au texte du plan). La simulation de 2bis utilise donc `mockHaloClient` + le chunk de film v41 versionné
+  (275 événements, 101 morts) : elle tourne en CI. Non traité : brancher le vrai client HTTP sur le faux serveur.
 - (16/10, exécutant, étape 1) `apps/web/src/features/admin/convergence/timeline.ts` (`STEP_ORDER`, mapping
   couleur du tableau de bord) ne connaît pas `kill_source`, `replay_artifacts`, `snapshot_readiness` et
   garde l'ancien ordre ; ces étapes retombent sur la couleur de repli. Cosmétique, hors lot Go : non traité.
@@ -250,3 +255,23 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   TRUE avant tout post-sync, recalcul 0 promotion / 0 démotion. 2.6 `TestNoARTPatternsOnProtectedTables` etc. verts,
   aucune allowlist touchée. Gate 2 : tests sync/persist/archlint/cmd-server verts, intégration sync+persist verte,
   lint (`--new-from-rev` du commit E1) 0 issue.
+- 16/10 Étape 2bis (tests) : `postsync_e2e_test.go` (+ `postsync_e2e_firstwrite_test.go`) : match d'escouade
+  (Player0 + ami Player2, 8 joueurs, film v41, médaille mappée) joué par le chemin de production
+  (`fetchAndPersistMatches` puis `runPostSyncPipeline`). 2b.1 : après le premier écrit `is_with_friends` = TRUE
+  AVANT le post-sync ; après : LUSR présent (`LUSR=1503.1/Or IV`), domination calculée (0), citation `e2e_medal`=2,
+  événements chargés, ordre D1. 2b.2 : sans liste d'amis FALSE/FALSE, le reste identique au cas escouade.
+  2b.3 : même épreuve sur le commit de base `27947da10` (`git archive` en dossier temporaire, aucun worktree touché) :
+  valeurs finales IDENTIQUES (voir tableau au journal), seuls changent `is_with_friends` après le premier écrit
+  (FALSE -> TRUE) et l'ordre des étapes. Test ciblé du contrôle coordinateur :
+  `sync/skill/skill_v2_quit_credit_pass_test.go` (passe crédit-seule seule en base -> `available=true`, delta
+  suit la timeline et diffère du repli) : vert.
+  ARRÊT (consigne 3 du coordinateur) : mesure sur la COPIE de la base partagée (`diag_q`, lecture seule) de la
+  passe crédit-seul contre la passe fusionnée (`match_kill_events_latest`) : sur 2 394 matchs comparables, 2 383
+  identiques, 11 différents (9 avec plus de frags côté fusionné, 2 avec moins ; 295 659 frags crédit contre
+  295 704 fusionnés, +0,015 %), tous avec des partants. Sur les 43 partants de ces 11 matchs, le contexte du
+  départ (en retard / pas en retard) change pour UN seul : match `760fb768-55c9-48c9-9b2d-353a6846c696`
+  (CTF Empyrean, joueurs suivis : Madina97294, JGtm, Chocoboflor, tous côté 0, victoire), partant = un bot
+  (`bid(56...`), égalité 28-28 (crédit) contre 28-29 (fusionné) à 372 541 ms : delta « sans lien » contre « lié ».
+  Les bots sont dans les rosters du LUSR v2 (`buildTwoTeamRosters` ne filtre que xuid vide). Soit 1 match sur
+  2 394 (0,04 %) où la pénalité de départ d'un partant, donc le LUSR, peut différer selon que la passe lue est
+  la passe crédit ou la passe fusionnée. Gate 2bis NON passé : décision du coordinateur attendue.
