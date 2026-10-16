@@ -475,17 +475,17 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
         `X-Real-IP` hors middleware d'IP ; `session_player_slug` voit aussi `CurrentPlayerSlug` (exception
         datée pour un affichage) ; test d'envoi concurrent rendu déterministe (sans `time.Sleep`) ; chacun vu
         rouge.
-- [ ] F-1b Ronde 2 de la revue (2026-10-16 ; 1 P1 + 3 P2, dont 1 réfuté par le superviseur : la démo coupe toute
+- [x] F-1b Ronde 2 de la revue (2026-10-16 ; 1 P1 + 3 P2, dont 1 réfuté par le superviseur : la démo coupe toute
       sortie réseau par `netguard`, `discovery_client.go:250`). Bornes de boucle atteintes : décision de
       l'utilisateur du 2026-10-16 « corrige tout, versions réelles » :
-  - [ ] R2-1 (P1) `http.NewResponseController(w).SetReadDeadline` rend `ErrNotSupported` en production : les
+  - [x] R2-1 (P1) `http.NewResponseController(w).SetReadDeadline` rend `ErrNotSupported` en production : les
         enveloppes `sessionResponseWriter` (`middleware/session.go`) et `statusResponseWriter`
         (`middleware/slog_logger.go`) n'exposent pas `Unwrap() http.ResponseWriter`. Les rendre transparentes ;
         test de l'attente d'envoi à travers la VRAIE pile (WithSession + SlogLogger) ; garde-rail : toute
         enveloppe de `ResponseWriter` du paquet middleware implémente `Unwrap`.
-  - [ ] R2-2 (P2) Recalcul coalescé (`platform/coalesce`) : contexte détaché AVEC échéance (10 min) ; l'arrêt du
+  - [x] R2-2 (P2) Recalcul coalescé (`platform/coalesce`) : contexte détaché AVEC échéance (10 min) ; l'arrêt du
         serveur attend la fin des recalculs en vol avant `duckdb.CloseAll` ; commentaire conforme ; tests.
-  - [ ] R2-3 (P2, décision de l'utilisateur) Images de carte : une version `v` présente dans de vrais matchs
+  - [x] R2-3 (P2, décision de l'utilisateur) Images de carte : une version `v` présente dans de vrais matchs
         de la base partagée est récupérable par tous (anonyme compris) ; une version inventée reste refusée
         sans appel sortant ; test sur la vraie route.
 - [ ] F-2 `make gate-push` vert.
@@ -746,7 +746,19 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
 - **D-F1a-6** (F-1a) Le recalcul d'exclusion tourne sous un contexte détaché sans échéance (R1-6) : son attente du verrou
   d'écriture du joueur (`dblease.AcquireWriterCtx`) n'est plus bornée par la requête. Un verrou jamais rendu retiendrait le
   recalcul de ce joueur jusqu'au redémarrage (les demandes suivantes attendent au plus leur propre échéance). Aucune borne
-  propre au recalcul.
+  propre au recalcul. **Traitée en F-1b R2-2** (échéance de 10 min par recalcul, `dblease.AcquireWriterCtx` reçoit ce contexte).
+- **D-F1b-1** (F-1b) L'attente de l'arrêt (`drainCoalescedRecomputes`, jusqu'à 10 min, après un `srv.Shutdown` de 15 s) est
+  plafonnée en pratique par le délai d'arrêt de l'hôte : `docker-compose.yml` ne pose pas de `stop_grace_period` (défaut Docker :
+  10 s puis SIGKILL), et air tue le process en 5 s (`kill_delay`, `.air.toml`). Un recalcul plus long que ce délai est interrompu
+  comme avant F-1b. Non modifié (hors périmètre, conteneurs).
+- **D-F1b-2** (F-1b) `config.SharedReaderForTitle` retombe sur la base partagée du titre par défaut quand celle d'un autre titre ne
+  s'ouvre pas (avertissement journalisé). Les versions jouées d'un titre additionnel seraient alors lues dans la base de Halo
+  Infinite ; le couple (carte, version) devant correspondre exactement, aucune version inventée n'est acceptée, mais la lecture
+  croise les titres. Préexistant (repli de `config`).
+- **D-F1b-3** (F-1b) Une version jamais jouée d'une carte connue reste récupérée à distance pour un appelant de confiance
+  (`VerdictUnverifiable`, comportement de R1-1 conservé). Toute URL produite par le serveur porte désormais une version jouée
+  (`match_view_repo.go` lit `match_registry.map_version_id`) : ce repli ne sert plus aucune page ; son retrait est une décision
+  de l'utilisateur.
 
 ## 7. Journal
 
@@ -2316,3 +2328,96 @@ et `service/media_service_upload.go` (1 site), les quatre garde-rails visés par
 Commits : `7f82b61ba` (R1-1, R1-2), `64177f8d5` (R1-3), `f608cbbe4` et `578e82fbe` (R1-4), `ddaca4a55` (R1-5), `bcbb7331b` (R1-6),
 `214868201` (R1-7), `ac7c1c126` (R1-8), `640d84077` (R1-9), `ca1257cf3` (R1-10), `86ae27bb3`, `c65d98db6`, `5813b745b`, `2e40c5d5e`
 (R1-11), puis le commit de clôture (plan, thought_log).
+
+### F-1b - Corrections de la ronde 2 de la revue adversariale - 2026-10-16 - clos
+
+Base : `git log --oneline -1` = `2b81c527b` avant l'item ; branche `feat/securite-2026-10-15`. Références rouvertes avant d'agir :
+`handlers/media_upload.go:194` (`http.NewResponseController(w).SetReadDeadline`), `middleware/session.go` (`sessionResponseWriter`),
+`middleware/slog_logger.go` (`statusResponseWriter`), toutes les enveloppes du paquet (`grep -rn "http.ResponseWriter$"
+internal/api/middleware` : ces deux seules ; `chimiddleware.Compress` expose déjà `Unwrap`), `server.go` (`applyTransverseMiddlewares`),
+`platform/coalesce/runs.go` et ses deux utilisateurs (`sync/match_recomputer.go`, `service/friends_orchestrator_service.go`),
+`cmd/server/main.go` (séquence d'arrêt), `platform/duckdb/match_view_repo.go:142` et `queries_match.go` (Q13MatchMeta : le `?v=` émis
+est `match_registry.map_version_id`, base partagée du titre), `assets/catalog.go`, `assets/gate.go`, `assets/wire.go`,
+`server_apiv1.go` (construction de `assets.AssetConfig`), `config/player_resolver.go` (`SharedReaderForTitle`).
+
+**Statuts** : R2-1 à R2-3 `[x]`. Aucun `[!]`, aucun `[~]`.
+
+- **R2-1** `sessionResponseWriter` et `statusResponseWriter` déclarent `Unwrap() http.ResponseWriter` (`session.go:184`,
+  `slog_logger.go:189`) : `http.ResponseController` remonte la pile jusqu'à la connexion. Tests à travers la pile transverse réelle
+  (`applyTransverseMiddlewares` : session, journal, compression, CSRF, limiteur...) et un vrai `http.Server` :
+  `TestTransverseStack_ReadDeadlineReachesTheConnection` (sonde : 204) et `TestTransverseStack_UploadWaitingBeyondReadTimeoutIsServed`
+  (`ReadTimeout` 200 ms, place libérée à 600 ms, clip de 1 Mio : 200), `api/media_upload_transverse_test.go`. Garde-rail AST
+  `archlint/response_writer_unwrap_test.go` : tout type struct de `internal/api` portant un champ `http.ResponseWriter` (incorporé ou
+  nommé, quel que soit l'alias de `net/http`) déclare `Unwrap() http.ResponseWriter` dans son paquet ; aucune allowlist ; détection
+  éprouvée (incorporée, nommée, mauvaise signature, autre type rendu, récepteur valeur ou pointeur, méthode dans un autre fichier du
+  paquet, méthode d'un autre paquet).
+- **R2-2** `coalesce.MaxRunDuration` (10 min) : chaque recalcul et chaque rattrapage tournent sous `context.WithTimeout` du contexte
+  détaché (`runBounded`) ; à l'échéance l'erreur nomme l'échéance, est journalisée en ERROR et rendue aux demandeurs (clé marquée en
+  échec). `coalesce.Drain(ctx)` : suivi des boucles en vol de toutes les `Runs` du process ; dès son début, refuse toute demande neuve
+  ou à absorber (`ErrDraining`), puis attend la fin des recalculs en vol, rattrapage compris, au plus jusqu'à `ctx`. `cmd/server` :
+  `drainCoalescedRecomputes` (`shutdown_recomputes.go`, même borne, échec journalisé) appelé juste après `srv.Shutdown` et avant
+  `duckdb.CloseAll` (`main.go:1362`, une ligne) ; ordre tenu par `TestShutdown_DrainsRecomputesBeforeCloseAll` (AST de `main`). Tests :
+  `runs_shutdown_test.go` (échéance atteinte -> erreur journalisée ; échéance par défaut = `MaxRunDuration` ; arrêt qui attend ; arrêt
+  borné ; refus après l'arrêt ; demande non absorbée pendant l'arrêt). Commentaire du contrat de `Runs` réécrit. D-F1a-6 traitée.
+- **R2-3** Source relevée sur pièces : le `?v=` des images de carte (`match_view_repo.go:143`) vient de `match_registry.map_version_id`
+  (Q13MatchMeta), base partagée du titre (table non append-only, une ligne par match). `platform/duckdb/played_map_versions_repo.go` :
+  `ForEachPlayedMapVersion` (`SELECT DISTINCT map_id, map_version_id FROM match_registry`, lecteur du provider, jamais un writer).
+  `assets/played_map_versions.go` : couples tenus en mémoire par titre, relus sur une absence au plus une fois par minute (une version
+  inventée ne coûte aucune lecture de base). `assets/catalog.go` (`classifyMap`, `classifyPlayedVersion`) : version courante du
+  catalogue OU couple joué -> `VerdictKnown` (récupérable par tous), y compris pour une carte encore absente des métadonnées ; version
+  jamais jouée : `VerdictUnverifiable` (carte connue : appelant de confiance seulement, inchangé) ou `VerdictUnknown` (carte
+  inconnue) ; base partagée illisible : jugement du catalogue seul, `VerdictUnavailable` pour une carte inconnue (aucun refus mémorisé
+  sur une lecture en échec). Branchement : `AssetConfig.PlayedMapVersions` (`wire.go`), renseigné dans `server_apiv1.go:1420` par
+  `cfg.SharedReaderForTitle(titleID)` (title-agnostic, aucun slug en dur). Tests : `TestAssetRoutes_MapImage_PlayedVersionIsServedToAnonymous`
+  (vraie route, vrai `MetadataCatalog` sur DuckDB, base partagée au schéma de production `sync.EnsureSharedSchema` : version jouée ->
+  302 pour un anonyme, carte hors métadonnées jouée -> 302, 100 versions inventées et une version jouée sur une autre carte -> 404,
+  2 appels sortants au total) ; `played_map_versions_test.go` (une lecture pour N absences, relecture après l'intervalle, titres
+  séparés, erreur rendue, 8 cas de classement, câblage de `New`) ; `TestAssetConfig_WiresPlayedMapVersions` (AST de `server_apiv1.go`).
+  La preuve de classe de coût de la route (`bare_routes_ratchet_test.go`) reste `TestAssetRoutes_MapImage_NewVariantCallsOutOnlyForTrustedCallers`,
+  toujours vraie.
+
+**Écarts au texte, justifiés** :
+- R2-1 : garde-rail sur `internal/api` entier au lieu du seul paquet `middleware` (plus strict, même règle ; aucune autre enveloppe).
+- R2-2 : `ErrDraining` ajouté : sans refus des demandes neuves, un recalcul lancé après la fin de l'attente écrirait sur des bases fermées.
+- R2-3 : une carte absente des trois tables de métadonnées mais jouée devient connue (risque résiduel de L5-2 levé) : c'est une
+  « version présente dans de vrais matchs » au sens de la décision de l'utilisateur.
+
+**Preuves du rouge** (sorties dans `%LOCALAPPDATA%\Temp\f1b\`) :
+- R2-1 `go test ./internal/api/ -run TestTransverseStack_` : exit 1, 2 FAIL — sonde : `statut 500 ... feature not supported` ; envoi :
+  `upload: échéance de lecture du corps non reportée err="feature not supported"` puis `statut 503, attendu 200`. Garde-rail
+  `go test ./internal/archlint/ -run TestResponseWriter` : exit 1, `session.go:132 sessionResponseWriter`, `slog_logger.go:165 statusResponseWriter`.
+- R2-2 tests de `coalesce` : échec de compilation avant le correctif (`inflightRuns`, `maxDuration`, `MaxRunDuration` indéfinis) ;
+  mutations après correctif, source restaurée (`cmp`) : échéance retirée -> `TestRuns_RecomputeStopsAtItsDeadline` et
+  `TestRuns_DefaultDeadlineIsMaxRunDuration` FAIL ; attente de `drain` court-circuitée -> 3 tests `TestDrain_` FAIL. Câblage :
+  `TestShutdown_DrainsRecomputesBeforeCloseAll` FAIL `0 appel(s) à drainCoalescedRecomputes dans main` avant l'ajout dans `main.go`.
+- R2-3 `go test ./internal/api/handlers/ -run TestAssetRoutes_MapImage` (source des versions jouées branchée, jugement inchangé) :
+  exit 1, `anonyme, version jouée : statut 404, attendu 302` ; `go test ./internal/assets/ -run Played` : exit 1, 3 cas FAIL (version
+  jouée = Unverifiable, carte hors catalogue jouée = Unknown, carte inconnue sur base illisible = Unknown au lieu d'Unavailable).
+  Mutations de câblage, sources restaurées : ligne `PlayedMapVersions` retirée de `server_apiv1.go` -> `TestAssetConfig_WiresPlayedMapVersions`
+  FAIL ; branchement retiré de `wire.go` -> `TestNew_WiresPlayedMapVersions` FAIL.
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9) :
+- Suites complètes des paquets touchés : `go test ./cmd/server/ ./internal/api/... ./internal/assets/... ./internal/archlint/
+  ./internal/platform/coalesce/ ./internal/platform/duckdb/... ./internal/service/... ./internal/sync/ -count=1` : exit 0, 20 paquets ok,
+  0 `--- FAIL:` (archlint complet, `OpenAPI`/`Contract` de `./internal/api` et ratchet des routes nues compris). `coalesce` `-count=20` : exit 0.
+- Intégration : `go test -tags=integration -p 1 ./internal/platform/duckdb/... ./internal/platform/coalesce/ ./internal/assets/...
+  ./internal/service/... ./internal/sync/... ./internal/persist/... -count=1` : exit 0, 27 paquets ok, 0 `--- FAIL:` ;
+  `no_art_patterns_test.go` non modifié.
+- Gate commun : `go build ./cmd/server/` exit 0 ; `go vet` (cmd/server, api, assets, archlint, coalesce, duckdb) exit 0, et
+  `go vet -tags=integration` (duckdb, coalesce) exit 0 ; `golangci-lint run --new-from-rev=2b81c527b` (v2.12.2) sur ces paquets :
+  0 issue ; forme CI `--new-from-merge-base=origin/main` : 0 issue. Aucune route Huma ni type d'API changé : pas de régénération.
+  Web non touché.
+- Crochets pre-commit (gofmt, check-merge-conflict, docs-fr-sync, gitleaks, go-vet) verts sur les trois commits de code.
+
+**Non-régression (règle 9)** :
+- R2-1 : l'envoi derrière nginx (corps en tampon) est inchangé ; un envoi qui attend sa place au-delà de 15 s aboutit désormais en
+  production au lieu de recevoir 503. `ResponseController` n'a pas d'autre appelant (`grep NewResponseController`) ; les `Flush`
+  par assertion de type (`w.(http.Flusher)`) ne changent pas.
+- R2-2 : réponses de l'exclusion et de la liste d'amis inchangées ; un recalcul de plus de 10 min échoue (journalisé) au lieu de tourner
+  sans fin ; à l'arrêt, les recalculs en vol finissent avant la fermeture des bases (dans la limite de D-F1b-1).
+- R2-3 : l'image de carte de la vue match (version du match) est servie à un visiteur anonyme comme à un compte connecté ; une carte
+  toute neuve jouée n'attend plus le rafraîchissement du catalogue. Un appelant de confiance garde son repli (D-F1b-3).
+
+**Découvertes** : D-F1b-1 à D-F1b-3 (§6), non traitées. D-F1a-6 traitée par R2-2.
+
+Commits : `51e603f13` (R2-1), `976494e67` (R2-2), `70b171092` (R2-3), puis le commit de clôture (plan, thought_log).
