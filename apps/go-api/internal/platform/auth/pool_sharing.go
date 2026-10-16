@@ -62,16 +62,13 @@ func (s *MultiUserTokenStore) SetPoolSharing(xuid string, granted bool, basis st
 	return s.upsertLocked(existing)
 }
 
-// GrandfatherPoolSharing enregistre l'accord de tous les joueurs qui ont un jeton et
-// aucune décision. Une décision existante (accord comme refus) n'est jamais écrasée.
-// Idempotent. Retourne le nombre de joueurs marqués.
-func (s *MultiUserTokenStore) GrandfatherPoolSharing(basis string) (int, error) {
-	all, err := s.LoadAll()
-	if err != nil {
-		return 0, err
-	}
+// GrandfatherPoolSharing enregistre l'accord des joueurs DÉSIGNÉS (xuids) qui ont un jeton
+// et aucune décision. La liste est explicite : c'est l'opérateur qui sait de qui il a
+// recueilli l'accord, le store ne le devine pas. Une décision existante (accord comme
+// refus) n'est jamais écrasée. Idempotent. Retourne le nombre de joueurs marqués.
+func (s *MultiUserTokenStore) GrandfatherPoolSharing(xuids []string, basis string) (int, error) {
 	marked := 0
-	for xuid := range all {
+	for _, xuid := range xuids {
 		done, err := s.grandfatherOne(xuid, basis)
 		if err != nil {
 			return marked, fmt.Errorf("multi_user_token_store: grandfather xuid=%s: %w", xuid, err)

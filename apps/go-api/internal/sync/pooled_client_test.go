@@ -570,3 +570,25 @@ func TestPooledHaloClient_SharingOrUnknownOwnerUsesPool(t *testing.T) {
 		})
 	}
 }
+
+// Le jeton retenu est tout le parc de son propriétaire : quand il est indisponible (429,
+// refresh), l'échec doit porter pool.ErrNoHealthySlot pour que historyretry attende puis
+// rejoue la page, au lieu d'abandonner la passe au premier 429.
+func TestPooledHaloClient_UnsharedOwnerTokenUnavailableIsNoHealthySlot(t *testing.T) {
+	mp := &mockPool{
+		tokens:   map[string]*domain.HaloTokens{"Bob": testTokens("Bob")}, // Alice : slot indisponible
+		unshared: map[string]bool{"Alice": true},
+	}
+	client := NewPooledHaloClient(mp, 0).WithOwner("Alice")
+
+	_, err := client.GetMatchHistory(canceledCtx(), "Alice", "all", 0, 25)
+
+	if !errors.Is(err, pool.ErrNoHealthySlot) {
+		t.Fatalf("want pool.ErrNoHealthySlot, got %v", err)
+	}
+	for _, pol := range mp.lastPolicies {
+		if pol != pool.PolicyPinnedPlayer {
+			t.Fatalf("aucun repli sur le pool attendu, politiques observées %v", mp.lastPolicies)
+		}
+	}
+}

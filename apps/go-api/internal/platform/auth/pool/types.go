@@ -167,10 +167,11 @@ type Pool interface {
 	// gamertag sans slot, qui n'a rien retenu.
 	IsWithheld(gamertag string) bool
 
-	// SetShared applique tout de suite un changement de consentement au slot, sans attendre
-	// le prochain scan : un retrait cesse de servir les autres joueurs à l'instant.
-	// Retourne false si le gamertag n'a pas de slot.
-	SetShared(gamertag string, shared bool) bool
+	// SetShared applique tout de suite un changement de consentement au slot du xuid, sans
+	// attendre le prochain scan : un retrait cesse de servir les autres joueurs à l'instant.
+	// Clé = xuid (ADR 0035 : seule clé d'identité ; le gamertag du compte peut différer de
+	// celui du profil). Retourne false si aucun slot ne porte ce xuid.
+	SetShared(xuid string, shared bool) bool
 
 	// MarkUnhealthy invalide un token (sur 401/403) et déclenche un Resolver.Refresh asynchrone.
 	// Logs informatif (pas d'erreur — les appels concurrents tolèrent l'exclusion temporaire).

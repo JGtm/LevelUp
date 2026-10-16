@@ -383,14 +383,18 @@ avant l'existence du réglage.
 
 ```bash
 go run ./cmd/levelup pool-sharing list                      # état par joueur : granted / declined / undecided
-go run ./cmd/levelup pool-sharing grandfather               # SIMULATION : liste ceux qui seraient marqués
-go run ./cmd/levelup pool-sharing grandfather --yes         # enregistre l'accord (base grandfathered_explicit)
+go run ./cmd/levelup pool-sharing grandfather --players GT1,GT2        # SIMULATION : liste ceux qui seraient marqués
+go run ./cmd/levelup pool-sharing grandfather --players GT1,GT2 --yes  # enregistre l'accord (base grandfathered_explicit)
+go run ./cmd/levelup pool-sharing grandfather --all [--yes]            # tous les joueurs sans décision : seulement si TOUS ont accepté
 ```
 
 - **Ne lancer `grandfather` que pour des accords réellement recueillis** : la commande écrit un
   consentement au nom des joueurs. Elle n'écrase jamais une décision existante, refus compris.
 - Le serveur en marche applique tout de suite une décision prise dans l'application ; une
   décision écrite par la CLI est reprise au prochain scan du pool (ou au redémarrage).
+- **En production**, la CLI est dans l'image : la lancer dans le conteneur du serveur, par ex.
+  `docker compose exec -T levelup levelup pool-sharing list` (depuis `/opt/levelup`). Elle ne lit
+  et n'écrit que `data/auth/watcher_tokens/`, jamais une base DuckDB : le serveur peut rester démarré.
 
 ### Référentiels / seed / migration
 

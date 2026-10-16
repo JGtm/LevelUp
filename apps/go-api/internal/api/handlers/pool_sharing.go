@@ -30,7 +30,7 @@ type PoolSharingStore interface {
 
 // PoolSharingApplier applique la décision au pool en mémoire (AutoSyncScheduler).
 type PoolSharingApplier interface {
-	SetPoolShared(gamertag string, shared bool) bool
+	SetPoolShared(xuid string, shared bool) bool
 }
 
 // PoolSharingHandler enregistre la décision d'un joueur sur son propre jeton.
@@ -80,8 +80,8 @@ func (h *PoolSharingHandler) handleSet(ctx context.Context, in *setPoolSharingIn
 			"xuid", user.XUID, "granted", in.Body.Granted, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "pool_sharing_error", "decision not saved")
 	}
-	if h.applier != nil && user.Gamertag != "" {
-		h.applier.SetPoolShared(user.Gamertag, in.Body.Granted)
+	if h.applier != nil {
+		h.applier.SetPoolShared(user.XUID, in.Body.Granted)
 	}
 	slog.InfoContext(ctx, "pool_sharing: decision saved", "xuid", user.XUID, "granted", in.Body.Granted)
 

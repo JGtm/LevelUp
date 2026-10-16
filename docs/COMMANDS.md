@@ -371,14 +371,18 @@ agreement of players who gave it outside the application, before the setting exi
 
 ```bash
 go run ./cmd/levelup pool-sharing list                      # state per player: granted / declined / undecided
-go run ./cmd/levelup pool-sharing grandfather               # DRY RUN: lists who would be marked
-go run ./cmd/levelup pool-sharing grandfather --yes         # records the agreement (basis grandfathered_explicit)
+go run ./cmd/levelup pool-sharing grandfather --players GT1,GT2        # DRY RUN: lists who would be marked
+go run ./cmd/levelup pool-sharing grandfather --players GT1,GT2 --yes  # records the agreement (basis grandfathered_explicit)
+go run ./cmd/levelup pool-sharing grandfather --all [--yes]            # every player with no decision: only if ALL agreed
 ```
 
 - **Only run `grandfather` for agreements actually collected**: it writes a consent on the
   players' behalf. It never overwrites an existing decision, including a refusal.
 - The running server applies a decision made in the app at once; a decision written by the CLI
   is picked up at the next pool scan (or at restart).
+- **In production** the CLI ships in the image: run it inside the server container, e.g.
+  `docker compose exec -T levelup levelup pool-sharing list` (from `/opt/levelup`). It only reads
+  and writes `data/auth/watcher_tokens/`, never a DuckDB file, so the server can stay up.
 
 ### Metadata / seed / migration
 

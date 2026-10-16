@@ -26,16 +26,16 @@ func (f fakeUserLookup) GetByXUID(x string) (*domain.User, error) {
 
 type recordingApplier struct {
 	calls []struct {
-		gamertag string
-		shared   bool
+		xuid   string
+		shared bool
 	}
 }
 
-func (a *recordingApplier) SetPoolShared(gamertag string, shared bool) bool {
+func (a *recordingApplier) SetPoolShared(xuid string, shared bool) bool {
 	a.calls = append(a.calls, struct {
-		gamertag string
-		shared   bool
-	}{gamertag, shared})
+		xuid   string
+		shared bool
+	}{xuid, shared})
 	return true
 }
 
@@ -86,7 +86,7 @@ func TestPoolSharingHandler_GrantThenWithdraw(t *testing.T) {
 		t.Fatalf("état après retrait = %q", got)
 	}
 
-	if len(applier.calls) != 2 || !applier.calls[0].shared || applier.calls[1].shared || applier.calls[1].gamertag != "Alice" {
+	if len(applier.calls) != 2 || !applier.calls[0].shared || applier.calls[1].shared || applier.calls[1].xuid != "111" {
 		t.Fatalf("le pool doit recevoir chaque décision immédiatement: %+v", applier.calls)
 	}
 }

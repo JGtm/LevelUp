@@ -50,7 +50,7 @@ const FR_TEXT: PrivacyText = {
     {
       heading: 'Mise en commun des jetons',
       paragraphs: [
-        "La synchronisation des parties est limitée par un débit que Microsoft impose à chaque compte. Pour la rendre plus rapide, LevelUp peut répartir ses requêtes sur les jetons des joueurs qui y ont consenti. C'est un choix, jamais une condition d'accès au service.",
+        "La synchronisation des parties est limitée par un débit que Microsoft impose à chaque compte. Pour la rendre plus rapide, LevelUp peut répartir ses requêtes sur les jetons des joueurs qui y ont consenti. C'est un choix, jamais une condition d'accès au service. Les profils suivis sans compte connecté, eux, ne se synchronisent que grâce aux jetons mis en commun : si personne ne partage le sien, ils ne sont plus synchronisés.",
         "Ces requêtes sont faites au nom de votre compte Microsoft. Si Microsoft restreint un jour ce compte ou l'accès à son API, cela peut vous concerner : l'auteur ne peut pas l'empêcher et ne le garantit pas.",
         "L'auteur peut retirer un jeton du pool s'il est révoqué, défaillant ou s'il provoque des erreurs répétées.",
         "Les joueurs qui participaient au projet avant l'existence de ce réglage ont donné leur accord directement à l'auteur ; il est enregistré comme tel, et ils peuvent le retirer comme n'importe qui.",
@@ -123,7 +123,7 @@ const EN_TEXT: PrivacyText = {
     {
       heading: 'Token pooling',
       paragraphs: [
-        'Match syncing is limited by a rate that Microsoft imposes on each account. To make it faster, LevelUp can spread its requests across the tokens of players who consented. It is a choice, never a condition for using the service.',
+        'Match syncing is limited by a rate that Microsoft imposes on each account. To make it faster, LevelUp can spread its requests across the tokens of players who consented. It is a choice, never a condition for using the service. Profiles followed without a connected account, however, are synced only through pooled tokens: if nobody shares theirs, they are no longer synced.',
         "These requests are made in the name of your Microsoft account. If Microsoft ever restricts that account or access to its API, you may be affected: the author cannot prevent it and does not guarantee against it.",
         'The author may remove a token from the pool if it is revoked, failing, or causing repeated errors.',
         'Players who took part in the project before this setting existed gave their agreement to the author directly; it is recorded as such, and they can withdraw it like anyone else.',

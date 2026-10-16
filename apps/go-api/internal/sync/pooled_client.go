@@ -78,9 +78,18 @@ func (pc *PooledHaloClient) WithOwner(gamertag string) *PooledHaloClient {
 // passent par son seul jeton, au débit de ce jeton — la synchro est plus lente, c'est le
 // prix annoncé du refus. Tout autre appel (propriétaire inconnu, sans slot, ou qui partage)
 // passe par le round-robin public.
+//
+// Quand ce seul jeton est momentanément indisponible (cooldown après un 429, refresh en
+// cours), l'échec porte pool.ErrNoHealthySlot : pour ce propriétaire, son jeton EST tout
+// le parc. Les appelants qui savent attendre (historyretry) attendent alors puis rejouent,
+// au lieu d'abandonner la passe au premier 429.
 func (pc *PooledHaloClient) acquire(ctx context.Context) (*pool.Lease, error) {
 	if pc.owner != "" && pc.p.IsWithheld(pc.owner) {
-		return pc.p.Acquire(ctx, pool.PolicyPinnedPlayer, pc.owner)
+		lease, err := pc.p.Acquire(ctx, pool.PolicyPinnedPlayer, pc.owner)
+		if err != nil {
+			return nil, fmt.Errorf("%w: withheld token of %s unavailable: %v", pool.ErrNoHealthySlot, pc.owner, err)
+		}
+		return lease, nil
 	}
 	return pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
 }

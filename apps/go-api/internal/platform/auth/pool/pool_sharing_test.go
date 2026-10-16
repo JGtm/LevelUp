@@ -99,27 +99,31 @@ func TestIsWithheld(t *testing.T) {
 
 func TestSetShared_AppliesImmediately(t *testing.T) {
 	p := sharingPool(t)
+	xuidB := testSlotEnv(3)[1].XUID // clé du consentement = xuid, pas gamertag
 
 	if !servedBy(t, p, 12)["B"] {
 		t.Fatal("précondition: B sert avant le retrait")
 	}
 
-	if !p.SetShared("B", false) {
+	if !p.SetShared(xuidB, false) {
 		t.Fatal("SetShared sur un slot existant doit retourner true")
 	}
 	if servedBy(t, p, 12)["B"] {
 		t.Fatal("après un retrait, B ne doit plus servir personne")
 	}
 
-	if !p.SetShared("B", true) {
+	if !p.SetShared(xuidB, true) {
 		t.Fatal("SetShared sur un slot existant doit retourner true")
 	}
 	if !servedBy(t, p, 12)["B"] {
 		t.Fatal("après un nouvel accord, B sert de nouveau")
 	}
 
-	if p.SetShared("inconnu", true) {
-		t.Fatal("SetShared sur un gamertag sans slot doit retourner false")
+	if p.SetShared("999999", true) {
+		t.Fatal("SetShared sur un xuid sans slot doit retourner false")
+	}
+	if p.SetShared("B", false) {
+		t.Fatal("SetShared ne doit pas accepter un gamertag : la clé est le xuid")
 	}
 }
 

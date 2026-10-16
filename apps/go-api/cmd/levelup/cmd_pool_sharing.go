@@ -8,14 +8,16 @@ package main
 // l'application. C'est un geste d'opérateur, à ne faire que pour des accords réellement
 // recueillis : il écrit un consentement au nom des joueurs.
 //
-// `grandfather` est une SIMULATION tant qu'on n'a pas dit `--yes`. Il n'écrase jamais une
-// décision existante (accord ou refus) et ne marque que les joueurs qui ont un jeton.
+// `grandfather` exige la désignation des joueurs (`--players`, ou `--all`) et reste une
+// SIMULATION tant qu'on n'a pas dit `--yes`. Il n'écrase jamais une décision existante
+// (accord ou refus) et ne marque que les joueurs qui ont un jeton.
 //
 // Usage :
 //
 //	levelup pool-sharing list
-//	levelup pool-sharing grandfather          # simulation
-//	levelup pool-sharing grandfather --yes    # enregistre
+//	levelup pool-sharing grandfather --players GT1,GT2        # simulation
+//	levelup pool-sharing grandfather --players GT1,GT2 --yes  # enregistre
+//	levelup pool-sharing grandfather --all [--yes]            # tous les joueurs sans décision
 
 import (
 	"errors"
@@ -24,6 +26,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
@@ -37,7 +40,7 @@ func runPoolSharing(cfg *config.AppConfig, args []string) error {
 
 func runPoolSharingTo(cfg *config.AppConfig, args []string, out io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("usage: levelup pool-sharing list | levelup pool-sharing grandfather [--yes]")
+		return errors.New("usage: levelup pool-sharing list | levelup pool-sharing grandfather --players GT1,GT2 | --all [--yes]")
 	}
 	store := auth_platform.NewMultiUserTokenStore(cfg.WatcherTokensDir())
 	switch args[0] {
@@ -84,26 +87,70 @@ func poolSharingGrandfather(store *auth_platform.MultiUserTokenStore, args []str
 	fs := flag.NewFlagSet("pool-sharing grandfather", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	yes := fs.Bool("yes", false, "enregistre l'accord (sinon simulation)")
+	players := fs.String("players", "", "joueurs dont l'accord a été recueilli : gamertags ou xuids, séparés par des virgules")
+	all := fs.Bool("all", false, "tous les joueurs sans décision (à n'utiliser que si TOUS ont donné leur accord)")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if (*players == "") == !*all {
+		return errors.New("grandfather : désigner les joueurs avec --players GT1,GT2 (ou xuids), ou --all ; jamais les deux")
 	}
 
 	rows, err := poolSharingRows(store)
 	if err != nil {
 		return err
 	}
-	pending := 0
-	for _, t := range rows {
-		if store.PoolSharingState(t.XUID) == domain.PoolSharingUndecided {
-			fmt.Fprintf(out, "accord à enregistrer : %s (%s)\n", t.Gamertag, t.XUID)
-			pending++
+	chosen, err := selectGrandfathered(rows, *players, *all)
+	if err != nil {
+		return err
+	}
+
+	xuids := make([]string, 0, len(chosen))
+	for _, t := range chosen {
+		state := store.PoolSharingState(t.XUID)
+		if state != domain.PoolSharingUndecided {
+			fmt.Fprintf(out, "ignoré (déjà %s) : %s (%s)\n", state, t.Gamertag, t.XUID)
+			continue
 		}
+		fmt.Fprintf(out, "accord à enregistrer : %s (%s)\n", t.Gamertag, t.XUID)
+		xuids = append(xuids, t.XUID)
 	}
 	if !*yes {
-		fmt.Fprintf(out, "SIMULATION : %d joueur(s) seraient marqués. Relancer avec --yes pour enregistrer.\n", pending)
+		fmt.Fprintf(out, "SIMULATION : %d joueur(s) seraient marqués. Relancer avec --yes pour enregistrer.\n", len(xuids))
 		return nil
 	}
-	n, err := store.GrandfatherPoolSharing(auth_platform.PoolSharingBasisGrandfathered)
+	n, err := store.GrandfatherPoolSharing(xuids, auth_platform.PoolSharingBasisGrandfathered)
 	fmt.Fprintf(out, "%d accord(s) enregistré(s).\n", n)
 	return err
+}
+
+// selectGrandfathered résout la désignation de l'opérateur. Un nom inconnu fait échouer la
+// commande AVANT toute écriture : une faute de frappe ne doit pas laisser un ami hors du
+// pool sans que personne ne le voie.
+func selectGrandfathered(rows []*auth_platform.UserTokens, players string, all bool) ([]*auth_platform.UserTokens, error) {
+	if all {
+		return rows, nil
+	}
+	byKey := make(map[string]*auth_platform.UserTokens, 2*len(rows))
+	for _, t := range rows {
+		byKey[strings.ToLower(t.Gamertag)] = t
+		byKey[t.XUID] = t
+	}
+	var chosen []*auth_platform.UserTokens
+	var unknown []string
+	for _, name := range strings.Split(players, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if t, ok := byKey[strings.ToLower(name)]; ok {
+			chosen = append(chosen, t)
+			continue
+		}
+		unknown = append(unknown, name)
+	}
+	if len(unknown) > 0 {
+		return nil, fmt.Errorf("grandfather : joueur(s) sans jeton enregistré : %s (voir pool-sharing list)", strings.Join(unknown, ", "))
+	}
+	return chosen, nil
 }

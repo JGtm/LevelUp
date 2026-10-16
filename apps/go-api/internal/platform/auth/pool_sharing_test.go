@@ -109,6 +109,7 @@ func TestGrandfatherPoolSharing(t *testing.T) {
 		&UserTokens{XUID: "2", Gamertag: "Refused", OAuthRefreshToken: "rt2"},
 		&UserTokens{XUID: "3", Gamertag: "NoToken"},
 		&UserTokens{XUID: "4", Gamertag: "Granted", OAuthRefreshToken: "rt4"},
+		&UserTokens{XUID: "5", Gamertag: "NotChosen", OAuthRefreshToken: "rt5"},
 	)
 	if err := s.SetPoolSharing("2", false, PoolSharingBasisUserChoice); err != nil {
 		t.Fatal(err)
@@ -117,7 +118,8 @@ func TestGrandfatherPoolSharing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	n, err := s.GrandfatherPoolSharing(PoolSharingBasisGrandfathered)
+	all := []string{"1", "2", "3", "4", "999"} // 5 non désigné, 999 inconnu
+	n, err := s.GrandfatherPoolSharing(all, PoolSharingBasisGrandfathered)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,8 +143,12 @@ func TestGrandfatherPoolSharing(t *testing.T) {
 	if u4.PoolSharing.Basis != PoolSharingBasisUserChoice {
 		t.Fatal("une décision existante garde sa base")
 	}
+	u5, _ := s.Load("5")
+	if u5.PoolSharing != nil {
+		t.Fatal("un joueur non désigné par l'opérateur ne doit jamais être marqué")
+	}
 
-	again, err := s.GrandfatherPoolSharing(PoolSharingBasisGrandfathered)
+	again, err := s.GrandfatherPoolSharing(all, PoolSharingBasisGrandfathered)
 	if err != nil || again != 0 {
 		t.Fatalf("idempotent: want 0 got %d err=%v", again, err)
 	}
