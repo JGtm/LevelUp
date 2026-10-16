@@ -10,6 +10,41 @@
 
 ---
 
+### [ci/durée] Raccourcir la CI : ~50 min aujourd'hui, ~15 min visés sans retirer de test
+
+Noté au backlog à la demande de l'utilisateur (2026-10-16). Mesure sur le run 38951473683 (feat/postsync-ordre) :
+le job « Go Coverage + Baseline » prend **46 min** et fixe à lui seul la durée de la CI ; « Frontend » 14 min, dont
+**11 min de Vitest avec couverture** ; tous les autres jobs ≤ 5 min. La CI conditionne aussi le déploiement
+(`deploy.yml`, job `attente-ci`) : la raccourcir raccourcit chaque mise en prod. Par ordre de gain / risque :
+
+1. **Découper « Go Coverage + Baseline » en 4 jobs parallèles** (matrice : `film/` ; `internal/sync/...` ;
+   `platform/duckdb` + `persist` + `migration` ; le reste), chacun en `-p 1` sur SA machine (la contrainte DuckDB
+   mono-process est par machine, pas globale). Un job final fusionne les JSONL (gate de non-régression) et les profils
+   de couverture (ratchet). 46 → ~15 min, mêmes tests. Garde-rail : un test archlint qui vérifie que l'union des
+   motifs de la matrice couvre `./...` (sinon un paquet nouveau sortirait de la CI sans bruit).
+2. **Supprimer le second passage de `internal/sync`** (step « go test couverture internal/sync ») : il rejoue toute la
+   suite sync en intégration pour une couverture que le profil `-coverpkg=./...` contient déjà ; la filtrer par
+   `go tool cover` sur ce profil.
+3. **Partager Vitest en 3 à 4 morceaux** (`vitest --shard=i/n` en matrice, fusion des couvertures par
+   `vitest --merge-reports`) : 11 → ~4 min. Typecheck, lint et build restent dans un job unique (≤ 2 min à eux tous).
+4. **`concurrency` + `cancel-in-progress` par branche** (sauf `main` et `feat/v75`) : un nouveau push annule le run
+   en cours devenu inutile.
+5. **Filtre de chemins sur les branches de travail** (job `changes` avec `dorny/paths-filter`) : modification web seule
+   → pas de jobs Go ; Go seul → pas de jobs web ; `openapi.yaml` touché → les deux. CI complète inchangée sur
+   `feat/v75`, `main` et les PR vers `main`. Le garde-rail `TestCIPathsIgnoreSubsetOfDeployPathsIgnore` reste à
+   respecter.
+6. **Tests lents du décodeur (`film/internal/grammar`)** : cinq tests rebalayent chacun les sept bobines versionnées
+   (70 à 81 s chacun) ; une marche mémorisée par bobine, partagée entre tests (`sync.Once` par bobine), ramènerait le
+   paquet sous 60 s et permettrait de revenir au délai de 600 s (critère déjà écrit dans `ci.yml`). Ce paquet a
+   dépassé 15 min sous couverture le 2026-10-16 (run 38938482739), faux rouge.
+7. **Local (`make gate-push`, ~25 min)** : appliquer le même découpage (paquets Go en parallèle par processus
+   séparés, Vitest partagé) et ne rejouer la baseline que sur l'union des paquets compilés ; à mesurer avant/après.
+
+À ne PAS faire : ne tester que les paquets modifiés (en Go, sync et base touchent presque tout par dépendances ;
+risque de CI verte qui casse la prod). **Effort : M (1 à 3 seuls : S).**
+
+---
+
 ### [perf/tactique] La page Tactique déclenche ~100 requêtes API au chargement
 
 Relevé pendant la recette du chantier sécurité (2026-10-16), noté au backlog à la demande de l'utilisateur :
