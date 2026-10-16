@@ -1,7 +1,7 @@
 // Package sync — friends_recompute.go : recompute is_with_friends pour un joueur.
 //
 // §4 du plan Squad/Sessions overhaul. Suit le pattern session_recalc.go :
-// acquisition de leases sur les deux DBs, ouverture séparée, résolution des
+// bail d'écriture sur la base joueur seule, lecture de la base partagée, résolution des
 // XUIDs amis depuis xuid_aliases, UPDATE atomique, refresh aggregates.
 //
 // Sémantique CONVERGENTE (2026-06-19, project_convergent_sync_direction) :
@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -46,11 +45,11 @@ type FriendsRecomputeResult struct {
 // ami : tous les matchs TRUE repassent FALSE) — ce n est PAS un no-op, cf. en-tête.
 // Les gamertags non résolus dans xuid_aliases sont logués Warn et ignorés.
 //
-// provider : si non-nil, passe par Provider.AcquireWriter pour coordonner avec
-// le pool joueur et les readers HTTP. Si nil, fallback legacy (dblease +
-// OpenSharedDB direct, risque "different configuration"). Sprint B1 commit 13b.
+// provider : si non-nil, la base partagée se lit par Provider.Get (lecteur en vol,
+// coordonné avec les swaps du sync) ; si nil, par OpenReadForQuery. Dans les deux cas
+// elle n'est jamais ouverte en écriture : seul le bail de la base joueur est pris.
 //
-// Cette variante acquiert ses propres leases + ouvre les DBs. Pour appel
+// Cette variante acquiert son bail joueur + ouvre les DBs. Pour appel
 // inline depuis le sync engine (qui détient déjà les leases), utiliser
 // RecomputeIsWithFriendsCore.
 func RecomputeIsWithFriends(
@@ -75,13 +74,18 @@ func RecomputeIsWithFriends(
 	}
 	defer playerHandle.Close()
 
-	// Sprint B1 commit 13b : helper standalone (Provider en B-swap, dblease +
-	// OpenSharedDB en legacy).
-	sharedDB, releaseShared, err := AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "friends_recompute"), provider, sharedDBPath)
-	if err != nil {
-		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends: %w", err)
+	// La base partagée est LUE seulement (alias des amis, participants) ; les flags
+	// s'écrivent en base joueur. Aucune bascule en écriture de la base partagée, et
+	// aucune lecture quand la liste est vide (la démotion ne regarde que la base joueur).
+	var sharedDB *sql.DB
+	if len(friendGamertags) > 0 {
+		db, releaseShared, err := acquireSharedReaderStandalone(ctx, provider, sharedDBPath)
+		if err != nil {
+			return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends: %w", err)
+		}
+		defer releaseShared()
+		sharedDB = db
 	}
-	defer releaseShared()
 
 	return RecomputeIsWithFriendsCore(ctx, playerHandle.SQLDb(), sharedDB, playerXUID, friendGamertags, true)
 }

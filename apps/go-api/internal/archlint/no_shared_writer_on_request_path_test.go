@@ -10,9 +10,10 @@
 // CE QUI EST INTERDIT dans les paquets du chemin de requête (internal/api, internal/service)
 // et dans les fichiers nommés de internal/sync qu'ils appellent : un appel direct à
 // AcquireWriter, AcquireSharedWriterStandalone, AcquireMetadataWriterStandalone, ou aux
-// aides qui les prennent pour le compte de l'appelant (RecomputeIsWithFriends,
-// RecalculatePlayerSessions), HORS de l'allowlist ci-dessous. L'analyse suit les appels
-// directs ; un appel indirect par un autre paquet n'est pas vu.
+// aides qui les prennent pour le compte de l'appelant (RecalculatePlayerSessions), HORS de
+// l'allowlist ci-dessous. L'analyse suit les appels directs ; un appel indirect par un autre
+// paquet n'est pas vu : le recalcul « avec amis » (friends_recompute.go) est donc analysé
+// lui-même.
 package archlint
 
 import (
@@ -28,7 +29,6 @@ var writerAcquiringCalls = map[string]bool{
 	"AcquireWriter":                   true,
 	"AcquireSharedWriterStandalone":   true,
 	"AcquireMetadataWriterStandalone": true,
-	"RecomputeIsWithFriends":          true,
 	"RecalculatePlayerSessions":       true,
 }
 
@@ -36,7 +36,10 @@ var writerAcquiringCalls = map[string]bool{
 var requestPathRoots = []string{"internal/api", "internal/service"}
 
 // requestPathExtraFiles — fichiers de internal/sync appelés directement par une requête.
-var requestPathExtraFiles = []string{"internal/sync/match_recomputer.go"}
+var requestPathExtraFiles = []string{
+	"internal/sync/match_recomputer.go",
+	"internal/sync/friends_recompute.go",
+}
 
 // requestPathWriterAllowlist — fichier → nombre d'appels autorisés, avec la raison et la
 // date. DÉCROISSANTE : une entrée dont le compte baisse doit être abaissée dans le même
@@ -55,10 +58,6 @@ var requestPathWriterAllowlist = map[string]struct {
 	// validé avant la prise du writer (L5-4).
 	"internal/service/openspartan_import_service.go":      {1, "import OpenSpartan : writer pris après validation du fichier"},
 	"internal/service/openspartan_post_import_service.go": {6, "suite de l'import OpenSpartan : un import à la fois par compte"},
-	// 2026-10-16 : DÉCOUVERTE D-L5-1, NON TRAITÉE ici (hors périmètre L5) : la liste d'amis
-	// d'un profil déclenche le recalcul « avec amis » sous le writer partagé, route
-	// /players/{slug}/friends réservée au propriétaire.
-	"internal/service/friends_orchestrator_service.go": {2, "D-L5-1 : /players/{slug}/friends -> RecomputeIsWithFriends sous writer partagé (à traiter comme L5-3)"},
 }
 
 // writerCallSites rend, par fichier analysé, le nombre d'appels à une fonction de prise de writer.
