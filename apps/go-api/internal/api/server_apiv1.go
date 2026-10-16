@@ -690,7 +690,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// non sur le header (anti-bypass).
 	r.Route("/profiles/{player_slug}/titles/{slug}", func(r chi.Router) {
 		titleOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/profiles/{player_slug}/titles/{slug}")
-		r.Use(middleware.TitleSlugFromPath("slug"))
+		r.Use(middleware.TitleSlugFromPath(titleRegistry, "slug"))
 		r.Use(ownershipMW)
 		// Le suivi live suit le profil : pause/purge retirent le couple du watcher,
 		// réactivation le remet (revue adversariale du 2026-09-16, P1).
