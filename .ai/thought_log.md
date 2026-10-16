@@ -1,3 +1,11 @@
+## [2026-10-16] Post-sync : ordre des étapes et « Escouade » dès le premier écrit, étape 0 et arrêt avant l'étape 1 — En cours (branche `feat/postsync-ordre`)
+
+**Décision technique principale** : plan `.ai/PLAN_POSTSYNC_ORDRE_2026-10-16.md`, étape 0 close (base `27947da10`, tests unitaires et d'intégration de `internal/sync` et `internal/persist` verts, inventaire de `mv_player_matches` : aucune colonne ne dépend de la source du kill, du rejeu ni des citations, second rafraîchissement des agrégats inutile).
+
+**Résultats observés** : le LUSR v2 (pénalité de départ, `sync/skill/skill_v2_quit_penalty.go`) lit `match_kill_events_latest`, que seule l'étape 1.57 alimente au fil de l'eau ; le placer avant 1.57 (décision D1) ferait retomber les matchs avec un joueur parti sur l'issue finale, sans recalcul (filigrane avancé). Contredit le critère « aucun résultat final ne change ».
+
+**Conclusion** : exécution arrêtée avant l'étape 1, aucun code modifié ; options (a)/(b)/(c) dans le plan, décision au superviseur.
+
 ## [2026-10-16] Images des citations : natives remises en place, audit, visuels blancs des citations à venir, plan des quatre citations Halo 5 — Complété (branche `feat/v75`)
 
 **Décision technique principale** : « Sécurisation du drapeau » sert désormais l'image native Halo 5 « Défenseur du drapeau » (demande initiale de l'utilisateur, mal lue à l'entrée précédente) ; `H5G_citation_Protecteur.png` est restaurée dans sa version native. Le crâne de « Chasse au porteur », validé par l'utilisateur, quitte le fichier natif « Somebody call for an exterminator? » (restauré) pour `halo_infinite/HI_citation_Chasse_au_porteur.png` : une image native ne s'écrase plus, une image remaniée vit sous `halo_infinite/`. Trois visuels blancs à ombre légère (style « Défenseur du drapeau ») pour les citations à venir, validés : `HI_citation_Premier_coup.png`, `HI_citation_Presque_ca_ne_compte_pas.png`, `HI_citation_Tick_Tick_Boom.png` (non référencés tant que le plan n'est pas exécuté).
