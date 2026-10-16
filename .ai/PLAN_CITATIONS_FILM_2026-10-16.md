@@ -61,7 +61,10 @@ du post-sync voit ses citations film recalculées sans intervention.
   (`analysis/match_impact.go:109`, `firstByTime` sur les frags de `highlight_events`), exposée par
   un helper exporté et réutilisée telle quelle — aucun calcul nouveau. N'a pas besoin du film.
 - **D4 — Paliers** (utilisateur, 2026-10-16) : Tick Tick Boom `5,10,15,25,50` ; Premier coup
-  `10,25,50,100,250` ; Jouets éducatifs `5,10,20,35,60` ; Presque `10,20,30,50,100`.
+  `10,25,50,100,250` ; Jouets éducatifs `5,10,20,35,60` ; Presque `10,20,30,50,100`, puis
+  `50,100,150,250,500` (utilisateur, 2026-10-16, au vu de E5 : quatre joueurs sur cinq au plafond).
+- **D7 — Matchs sans artefact sur disque** (utilisateur, 2026-10-16) : pas de recuisson ; « Presque,
+  ça ne compte pas » progresse avec les matchs dont le film est (ou sera) dérivé en `us7`.
 - **D5 — Visuels** (utilisateur, 2026-10-16) : blanc avec ombre légère, le style de « Défenseur
   du drapeau », pour Premier coup, Presque et Tick Tick Boom (versions `*_BLANC` soumises à
   l'utilisateur), sous `static/commendations/halo_infinite/HI_citation_<Nom>.png`, les natives
@@ -158,8 +161,8 @@ du post-sync voit ses citations film recalculées sans intervention.
       vert ; `golangci-lint --new-from-merge-base=origin/main` (cible `make go-api-lint`) : 0 constat.
 
 ### E6 — Docs et clôture
-- [ ] `docs/COMMENDATIONS_REFERENCE.md` + `docs/FR/CITATIONS_REFERENCE.md` (inventaire, sources film).
-- [ ] Notes de version FR/EN si le format l'exige ; thought_log ; `.ai/REGISTRE_REPORTS.md`.
+- [x] `docs/COMMENDATIONS_REFERENCE.md` (110 citations, tables Mode de jeu et Multijoueur, section « Film-derived sources ») + `docs/FR/CITATIONS_REFERENCE.md` (renvoi, compte mis à jour).
+- [x] Notes de version FR/EN (v7.5, bloc « Quatre nouvelles citations ») ; thought_log ; `.ai/REGISTRE_REPORTS.md` (D7 et les trois découvertes).
 - [ ] Skill `delivery-checklist` ; commit, push de la branche, CI verte.
 
 ## Découvertes (hors périmètre, non traitées)
@@ -234,3 +237,10 @@ Deux constats signalés à l'utilisateur :
    disque** : le rattrapage a re-projeté 237 artefacts ; 8 993 matchs du registre n'en ont pas. JGtm a
    un résumé d'usage sur 926 matchs mais un compte mesuré sur 127 seulement (les autres résumés datent
    de `us6` et gardent la colonne NULL). Les mesurer exigerait de recuire leurs films.
+
+### Paliers de « Presque, ça ne compte pas » relevés (2026-10-16)
+
+D4 révisé par l'utilisateur au vu de E5 : `50,100,150,250,500`. Second arrêt court du serveur local
+(accord des sessions), re-seed (110 mises à jour) et recalcul complet (9 joueurs, V1-V4 verts). Les
+valeurs ne sont plus plafonnées : Chocoboflor 124, JGtm 175, Madina97294 202, Nuzzles 233,
+XxDaemonGamerxX 3 (égales aux comptes bruts du résumé d'usage).

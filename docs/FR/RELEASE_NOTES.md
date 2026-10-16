@@ -115,6 +115,14 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **La page s'ouvre de nouveau** — elle répondait par une erreur au lieu d'afficher vos jalons
 - **Titre de section toujours présent** — la grille des Réalisations garde son titre, qu'elle charge, qu'elle soit vide ou en erreur
 
+**Quatre nouvelles citations, dont trois lues dans le film**
+- **« Tick Tick Boom »** — gagner des parties d'Assaut
+- **« Premier coup »** — réaliser le premier frag d'une partie
+- **« Jouets éducatifs »** — prendre au moins trois armes sur socle au cours d'une même partie d'Assassin
+- **« Presque, ça ne compte pas »** — tuer un Spartan adverse sans plus aucun bouclier, et survivre ; le film dit l'état du bouclier à l'instant du frag. Elle progresse sur les matchs dont le film a été lu
+- **Recalculées quand le film arrive** — un match dont le film est lu après coup voit ses citations remises à jour au sync suivant
+- **Des visuels à leur place** — « Sécurisation du drapeau » reprend l'emblème de « Défenseur du drapeau » de Halo 5, et les nouvelles citations ont leur version blanche
+
 **Lecture dans votre langue**
 - **Les citations suivent la bascule de langue** — leurs libellés venaient du serveur dans la langue du moment et y restaient jusqu'au rechargement de la page
 - **« Tirs à la tête » est traduit** — la statistique s'affichait sous son nom de champ brut à plusieurs endroits

@@ -1,3 +1,11 @@
+## [2026-10-16] Plan citations Halo 5, E6 : paliers relevés, docs et clôture — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : paliers de « Presque, ça ne compte pas » relevés à 50-500 (utilisateur, au vu de E5), appliqués en local par re-seed et recalcul complet ; pas de recuisson pour les matchs sans artefact (D7, au registre des reports). Docs : référence des citations (110, sources du film), notes de version FR/EN.
+
+**Résultats observés** : valeurs non plafonnées (124 à 233 pour les quatre joueurs actifs), V1-V4 verts ; `go vet` vert.
+
+**Conclusion** : push de la branche, CI, puis fusion dans `feat/v75` (accord utilisateur du 2026-10-16).
+
 ## [2026-10-16] Plan citations Halo 5, E5 : rattrapage local et vérification — Complété (branche `feat/citations-film`)
 
 **Décision technique principale** : seed, `backfill-usage-summary` (us7) et recalcul complet des citations lancés avec le binaire de la branche contre les données du repo principal, serveur arrêté après accord des autres sessions, bases sauvegardées avant.

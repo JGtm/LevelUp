@@ -3,9 +3,9 @@ package ops
 // seed_citation_data.go — table de donnees: mapping medaille -> citation.
 // Littéral de données (exempt de la regle 80L/fonction : data table).
 
-// defaultCitationMappings — 106 règles citations (88 portées de l'ancien
+// defaultCitationMappings — 110 règles citations (88 portées de l'ancien
 // scripts/populate_citation_mappings.py, + 10 citations d'objectif v7.2.1,
-// + 8 « Artilleur de » véhicule le 2026-09-10).
+// + 8 « Artilleur de » véhicule le 2026-09-10, + 4 citations Halo 5 le 2026-10-16).
 //
 // Catégories : Mode de jeu, Multijoueur, Spartan Companies, Véhicule, Arme,
 // Ennemi (PVE) + composites.
@@ -348,7 +348,7 @@ func defaultCitationMappings() []CitationMapping {
 			ImagePath:   wpHI + "HI_citation_Presque_ca_ne_compte_pas.png",
 			Category:    citationCatMultijoueur,
 			Description: "Tuez un Spartan adverse sans bouclier et survivez.",
-			TierTargets: tierTargets10_20_30_50_100},
+			TierTargets: tierTargets50_100_150_250_500},
 		{Norm: "spartan_carnage", Display: "Carnage de Spartans", MappingType: mappingTypeMedal,
 			MedalIDs:    "2780740615,4261842076,418532952,1486797009,710323196,1720896992,2567026752,2875941471",
 			Enabled:     true,
