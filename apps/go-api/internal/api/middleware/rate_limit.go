@@ -91,7 +91,9 @@ func clientIPKey(r *http.Request) (string, error) {
 // rateLimitExempt indique qu'un chemin ne consomme PAS le bucket httprate.
 //
 // Sont exemptés : les fichiers servis localement par le serveur — /static/*
-// (FileServer), /api/v1/assets/* (resolver local-first) et tout chemin à
+// (FileServer), /api/v1/assets/* (resolver local-first : une page en charge des
+// dizaines, et assets.Gate ne laisse un appel sortant qu'aux références du catalogue
+// local, ce qui supprime l'amplification qu'une limite de débit visait) et tout chemin à
 // extension statique servi par le catch-all SPA depuis le dist Vite (icônes,
 // /logo.png, /titles/**, polices... issus de apps/web/public/). Ces derniers
 // consommaient le bucket jusqu'au 2026-07-26 : même classe de bug que les

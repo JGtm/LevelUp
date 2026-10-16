@@ -26,6 +26,8 @@ type DefaultResolver struct {
 	queue   *WriteQueue
 	metrics Metrics
 	sf      singleflight.Group
+	// catalog juge les références des requêtes HTTP (cf. Gate) ; posé par New.
+	catalog Catalog
 }
 
 // NewDefaultResolver crée un resolver avec les composants injectés.
@@ -42,8 +44,50 @@ func NewDefaultResolver(binary BinaryStore, index IndexStore, fetcher Fetcher, q
 	}
 }
 
+// Gate rend la porte des requêtes HTTP devant ce resolver. Sans catalogue (resolver
+// construit hors New), la porte refuse toute référence absente du stock local.
+func (r *DefaultResolver) Gate() *Gate {
+	catalog := r.catalog
+	if catalog == nil {
+		catalog = refuseAll{}
+	}
+	return NewGate(r, catalog)
+}
+
+// refuseAll est le catalogue qui ne reconnaît rien.
+type refuseAll struct{}
+
+func (refuseAll) Classify(context.Context, Ref) Verdict { return VerdictUnknown }
+
 // Get retourne l'asset identifié par ref (séquence 6 étapes).
 func (r *DefaultResolver) Get(ctx context.Context, ref Ref) (Resolved, error) {
+	start := time.Now()
+	if res, ok := r.LookupLocal(ctx, ref); ok {
+		return res, nil
+	}
+
+	// Étape 3 : cache miss → fetch distant via singleflight.
+	r.metrics.IncMiss(ref.Kind)
+	slog.Info("assets: cache_miss", ref.LogAttrs()...)
+
+	result, err, _ := r.sf.Do(ref.String(), func() (any, error) {
+		return r.fetchAndPersist(ctx, ref)
+	})
+	if err != nil {
+		r.metrics.IncFetchError(ref.Kind)
+		slog.Warn("assets: fetch_error", append(ref.LogAttrs(), "err", err)...)
+		return Resolved{}, err
+	}
+
+	resolved := result.(Resolved)
+	r.metrics.ObserveLatency(ref.Kind, SourceRemote, time.Since(start))
+	return resolved, nil
+}
+
+// LookupLocal sert ref depuis le seul stock local (étapes 1 et 2 : binaire FS puis
+// index DuckDB), sans jamais appeler la source distante. Faux si rien n'est servable
+// localement.
+func (r *DefaultResolver) LookupLocal(ctx context.Context, ref Ref) (Resolved, bool) {
 	start := time.Now()
 	slog.Debug("assets: lookup", ref.LogAttrs()...)
 
@@ -56,7 +100,7 @@ func (r *DefaultResolver) Get(ctx context.Context, ref Ref) (Resolved, error) {
 			r.metrics.IncHit(ref.Kind, SourceLocalFile)
 			r.metrics.ObserveLatency(ref.Kind, SourceLocalFile, time.Since(start))
 			slog.Debug("assets: cache_hit_fs", append(ref.LogAttrs(), "latency_ms", time.Since(start).Milliseconds())...)
-			return Resolved{Payload: *bin, Source: SourceLocalFile, FetchedAt: time.Now(), ETag: bin.ETag}, nil
+			return Resolved{Payload: *bin, Source: SourceLocalFile, FetchedAt: time.Now(), ETag: bin.ETag}, true
 		}
 	}
 
@@ -81,28 +125,13 @@ func (r *DefaultResolver) Get(ctx context.Context, ref Ref) (Resolved, error) {
 					r.metrics.IncHit(ref.Kind, SourceLocalDB)
 					r.metrics.ObserveLatency(ref.Kind, SourceLocalDB, time.Since(start))
 					slog.Debug("assets: cache_hit_index", append(ref.LogAttrs(), "latency_ms", time.Since(start).Milliseconds())...)
-					return Resolved{Payload: payload, Source: SourceLocalDB, FetchedAt: entry.FetchedAt, ETag: entry.ContentHash}, nil
+					return Resolved{Payload: payload, Source: SourceLocalDB, FetchedAt: entry.FetchedAt, ETag: entry.ContentHash}, true
 				}
 			}
 		}
 	}
 
-	// Étape 3 : cache miss → fetch distant via singleflight.
-	r.metrics.IncMiss(ref.Kind)
-	slog.Info("assets: cache_miss", ref.LogAttrs()...)
-
-	result, err, _ := r.sf.Do(ref.String(), func() (any, error) {
-		return r.fetchAndPersist(ctx, ref)
-	})
-	if err != nil {
-		r.metrics.IncFetchError(ref.Kind)
-		slog.Warn("assets: fetch_error", append(ref.LogAttrs(), "err", err)...)
-		return Resolved{}, err
-	}
-
-	resolved := result.(Resolved)
-	r.metrics.ObserveLatency(ref.Kind, SourceRemote, time.Since(start))
-	return resolved, nil
+	return Resolved{}, false
 }
 
 // Refresh force un re-fetch depuis la source distante.

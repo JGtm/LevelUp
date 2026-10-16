@@ -26,6 +26,10 @@ type AssetConfig struct {
 	HTTPClient *http.Client
 	// ReconcileInterval est la périodicité du ReconcileWorker (0 → désactivé).
 	ReconcileInterval time.Duration
+	// TitleKnown dit si un identifiant de titre est enregistré (registre des titres).
+	// Il alimente le catalogue de la porte HTTP (Gate) ; nil → la porte refuse tout
+	// identifiant. Inutile aux outils en ligne de commande, qui n'utilisent pas la porte.
+	TitleKnown func(titleID string) bool
 }
 
 // New crée et démarre un DefaultResolver avec la configuration fournie.
@@ -73,6 +77,7 @@ func New(cfg AssetConfig) (*DefaultResolver, error) {
 	queue := NewWriteQueue(idx, metrics)
 
 	resolver := NewDefaultResolver(fs, idx, fetcher, queue, metrics)
+	resolver.catalog = NewMetadataCatalog(idx, cfg.TitleKnown)
 	return resolver, nil
 }
 

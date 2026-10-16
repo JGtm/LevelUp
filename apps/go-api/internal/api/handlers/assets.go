@@ -20,14 +20,35 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 )
 
-// AssetHandler gère le cache-aside unifié des assets visuels Halo.
-type AssetHandler struct {
-	resolver assets.Resolver
+// AssetSource sert les assets d'une requête HTTP. trusted dit si l'appelant peut
+// déclencher la récupération d'un asset que le catalogue local ne couvre pas (cf.
+// assets.Gate).
+type AssetSource interface {
+	Get(ctx context.Context, ref assets.Ref, trusted bool) (assets.Resolved, error)
 }
 
-// NewAssetHandler crée un AssetHandler depuis un Resolver.
-func NewAssetHandler(resolver assets.Resolver) *AssetHandler {
-	return &AssetHandler{resolver: resolver}
+// AssetHandler gère le cache-aside unifié des assets visuels Halo.
+type AssetHandler struct {
+	source  AssetSource
+	trusted func(*http.Request) bool
+}
+
+// NewAssetHandler crée un AssetHandler. Sans WithTrust, aucun appelant n'est de
+// confiance.
+func NewAssetHandler(source AssetSource) *AssetHandler {
+	return &AssetHandler{source: source}
+}
+
+// WithTrust pose le prédicat qui désigne les appelants de confiance (session
+// authentifiée, ou instance sans authentification).
+func (h *AssetHandler) WithTrust(trusted func(*http.Request) bool) *AssetHandler {
+	h.trusted = trusted
+	return h
+}
+
+// resolve sert ref pour la requête r.
+func (h *AssetHandler) resolve(r *http.Request, ref assets.Ref) (assets.Resolved, error) {
+	return h.source.Get(r.Context(), ref, h.trusted != nil && h.trusted(r))
 }
 
 // GetMedalImage sert l'image d'une médaille depuis le resolver.
@@ -48,7 +69,7 @@ func (h *AssetHandler) GetMedalImage(w http.ResponseWriter, r *http.Request) {
 		ID:      strconv.FormatInt(medalID, 10),
 	}
 
-	resolved, err := h.resolver.Get(r.Context(), ref)
+	resolved, err := h.resolve(r, ref)
 	if err != nil {
 		handleResolverError(r.Context(), w, err, "GetMedalImage", ref)
 		return
@@ -76,7 +97,7 @@ func (h *AssetHandler) GetMapImage(w http.ResponseWriter, r *http.Request) {
 		Variant: strings.TrimSpace(r.URL.Query().Get("v")),
 	}
 
-	resolved, err := h.resolver.Get(r.Context(), ref)
+	resolved, err := h.resolve(r, ref)
 	if err != nil {
 		handleResolverError(r.Context(), w, err, "GetMapImage", ref)
 		return
@@ -101,7 +122,7 @@ func (h *AssetHandler) GetChallengeBadge(w http.ResponseWriter, r *http.Request)
 		ID:      badgeID,
 	}
 
-	resolved, err := h.resolver.Get(r.Context(), ref)
+	resolved, err := h.resolve(r, ref)
 	if err != nil {
 		handleResolverError(r.Context(), w, err, "GetChallengeBadge", ref)
 		return
@@ -141,7 +162,7 @@ func (h *AssetHandler) GetBattlePassImage(w http.ResponseWriter, r *http.Request
 		Variant: subDir,
 	}
 
-	resolved, err := h.resolver.Get(r.Context(), ref)
+	resolved, err := h.resolve(r, ref)
 	if err != nil {
 		handleResolverError(r.Context(), w, err, "GetBattlePassImage", ref)
 		return
@@ -182,7 +203,7 @@ func (h *AssetHandler) GetSpartanImage(w http.ResponseWriter, r *http.Request) {
 		ID:      cleaned,
 	}
 
-	resolved, err := h.resolver.Get(r.Context(), ref)
+	resolved, err := h.resolve(r, ref)
 	if err != nil {
 		handleResolverError(r.Context(), w, err, "GetSpartanImage", ref)
 		return

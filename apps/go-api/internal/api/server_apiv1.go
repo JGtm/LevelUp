@@ -1393,10 +1393,14 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// Le resolver est créé ici pour accéder à reg.AnyPlayerTokens.
 	// Il est aussi passé au wire.ServiceRegistry pour que les HaloProviders délèguent
 	// le cache/fetch des définitions BP/challenges au resolver (P4/P5).
+	// Fournisseur des images de carte : UNE instance pour la vie du process. Son limiteur
+	// sortant est partagé par tous les clones (WithTokens), jamais recréé par requête.
+	mapImageProvider := halo.NewHaloProvider()
 	assetCfg := assets.AssetConfig{
 		CacheRootDir:  titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir(),
 		MetaDBPath:    metadataDBPathFor(cfg),
 		TokenProvider: reg.AnyPlayerTokens,
+		TitleKnown:    titleRegistry.Exists,
 		// Résolution d'image de carte inconnue (KindMapImage) via DiscoveryUGC.
 		// Injectée ici (et non dans internal/assets) pour éviter le cycle
 		// assets→halo : réutilise halo.FetchAsset (→ DiscoveryAsset.ImageURL).
@@ -1407,7 +1411,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 			if terr != nil {
 				return "", terr
 			}
-			a, ferr := halo.NewHaloProvider().WithTokens(tokens).FetchAsset(
+			a, ferr := mapImageProvider.WithTokens(tokens).FetchAsset(
 				ctx, halo.AssetTypeMap, titleID, mapID, versionID, "en-US")
 			if ferr != nil {
 				return "", ferr
@@ -1423,7 +1427,10 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		slog.ErrorContext(serverCtx, "assets resolver non disponible — arrêt du serveur", "err", err)
 		os.Exit(1)
 	}
-	assetHandler := handlers.NewAssetHandler(assetResolver)
+	// Porte HTTP : seule une référence reconnue par le catalogue local peut déclencher un
+	// appel sortant ; un kind sans catalogue n'est récupéré que pour un appelant connecté.
+	assetHandler := handlers.NewAssetHandler(assetResolver.Gate()).
+		WithTrust(func(r *http.Request) bool { return middleware.IsAuthenticated(r, cfg.DemoMode, cfg.AuthMode) })
 	reg.WithAssetResolver(assetResolver)
 
 	// V2 saisons — résolveur unifié (TOML + DB live + lazy fetch via Waypoint).
