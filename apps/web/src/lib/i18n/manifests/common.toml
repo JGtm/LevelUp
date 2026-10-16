@@ -1987,10 +1987,6 @@ fr = "Valide encore"
 en = "Valid for"
 
 # ─── Setup : device-code + sync initiale (I1, 2026-07-05) ────────────────────
-[common.device_code.err_denied]
-fr = "La demande Microsoft a été refusée ou annulée."
-en = "The Microsoft request was denied or cancelled."
-
 [common.device_code.err_ms]
 fr = "Erreur lors de l'authentification Microsoft."
 en = "Error during Microsoft authentication."

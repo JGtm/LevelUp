@@ -173,6 +173,12 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // partagent les primitives setup (déclaration joueur, jobs de sync initial).
   'auth=>setup',
   'onboarding=>setup',
+  // Le device-flow a deux écrans (connexion `XboxLoginPage`, assistant `StepDeviceCode`) et
+  // UNE table « code d'échec posé par le serveur → message » (`deviceFlowFailureKey`). La
+  // seconde copie, locale à l'assistant, avait dérivé : trois de ses clés n'étaient jamais
+  // émises et les codes réels tombaient sur le message générique (2026-10-16, plan sécurité
+  // L11-6). Module nommé seulement, dépendance durable.
+  'setup=>auth/loginError',
   // Home dashboard agrège aussi le widget Ascension (HomeAscensionWidget).
   'home=>ascension',
   // Explorer réutilise la bannière d'identité joueur de Home
