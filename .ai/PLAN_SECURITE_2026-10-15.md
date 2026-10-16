@@ -488,6 +488,20 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
   - [x] R2-3 (P2, décision de l'utilisateur) Images de carte : une version `v` présente dans de vrais matchs
         de la base partagée est récupérable par tous (anonyme compris) ; une version inventée reste refusée
         sans appel sortant ; test sur la vraie route.
+- [x] F-1c Relecture de contrôle de F-1b (2026-10-16 ; décision de l'utilisateur du 2026-10-16 : « corrige tout ») :
+  - [x] R3-1 (P1, régression de F-1b) `cmd/server/main.go:1362` + `shutdown_recomputes.go` : `drainCoalescedRecomputes` peut
+        bloquer jusqu'à 10 min avant le reste de la séquence d'arrêt (scheduler, gate, `autoBatchQueue.Drain/Close`,
+        `duckdb.CloseAll`), alors que Docker n'accorde que 10 s puis SIGKILL. À l'arrêt, les recalculs coalescés en vol sont
+        annulés (contexte racine de `platform/coalesce` annulé par l'arrêt) et l'attente est bornée court (constante nommée, bien
+        sous les délais de Docker et d'air) ; la séquence d'arrêt n'est jamais retardée au-delà ; commentaire et note D-F1b-1
+        corrigés ; tests (recalcul en vol annulé à l'arrêt, attente bornée, ordre préservé).
+  - [x] R3-2 (P2) `assets/played_map_versions.go:55-69` : une première lecture faite avec un contexte annulé (client parti) arme
+        l'intervalle de 60 s avec l'erreur. Chargement sous un contexte détaché borné ; une erreur d'annulation n'est jamais
+        mémorisée ; test.
+  - [x] R3-3 (P2) même fichier :49-60 : un seul verrou tenu pendant la lecture de la base (tous titres), attente sourde au
+        contexte de la requête. Lecture hors verrou par titre (singleflight), attente interruptible par le contexte ; test.
+  - [x] R3-4 (P2) `assets/catalog.go` (`classifyPlayedVersion`, branche `err != nil`) : un `slog.Warn` par requête pendant une
+        panne de lecture. Journal limité (une fois par fenêtre et par titre) ; test.
 - [ ] F-2 `make gate-push` vert.
 - [ ] F-3 Push de `feat/securite-2026-10-15`, CI verte au niveau job (`gh run list --branch`).
 - [ ] F-4 Registre et backlog mis à jour (items fermés, `[sécurité]` et `[demo]` du backlog).
@@ -750,7 +764,10 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
 - **D-F1b-1** (F-1b) L'attente de l'arrêt (`drainCoalescedRecomputes`, jusqu'à 10 min, après un `srv.Shutdown` de 15 s) est
   plafonnée en pratique par le délai d'arrêt de l'hôte : `docker-compose.yml` ne pose pas de `stop_grace_period` (défaut Docker :
   10 s puis SIGKILL), et air tue le process en 5 s (`kill_delay`, `.air.toml`). Un recalcul plus long que ce délai est interrompu
-  comme avant F-1b. Non modifié (hors périmètre, conteneurs).
+  comme avant F-1b. **Constat erroné sur la conséquence, corrigé en F-1c R3-1** : l'attente de 10 min retardait aussi toute la
+  suite de la séquence d'arrêt (scheduler, gate, `autoBatchQueue.Drain/Close`, `duckdb.CloseAll`), que le SIGKILL de l'hôte
+  faisait sauter. Désormais l'arrêt annule les recalculs en vol (`coalesce.Drain`, cause `ErrDraining`) et ne les attend
+  qu'au plus `coalesce.DrainWait` (2 s). `stop_grace_period` reste non posé (hors périmètre, conteneurs).
 - **D-F1b-2** (F-1b) `config.SharedReaderForTitle` retombe sur la base partagée du titre par défaut quand celle d'un autre titre ne
   s'ouvre pas (avertissement journalisé). Les versions jouées d'un titre additionnel seraient alors lues dans la base de Halo
   Infinite ; le couple (carte, version) devant correspondre exactement, aucune version inventée n'est acceptée, mais la lecture
@@ -759,6 +776,12 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
   (`VerdictUnverifiable`, comportement de R1-1 conservé). Toute URL produite par le serveur porte désormais une version jouée
   (`match_view_repo.go` lit `match_registry.map_version_id`) : ce repli ne sert plus aucune page ; son retrait est une décision
   de l'utilisateur.
+- **D-F1c-1** (F-1c) Hors recalculs coalescés, les attentes déjà présentes de la séquence d'arrêt (`cmd/server/main.go` :
+  `srv.Shutdown` jusqu'à 15 s, scheduler 3 s, gate 5 s, `autoBatchQueue.Drain` 5 s) dépassent à elles seules les 10 s que Docker
+  accorde avant SIGKILL (`docker-compose.yml` sans `stop_grace_period`). Préexistant à F-1b ; non traité (conteneurs et séquence
+  d'arrêt hors périmètre de R3-1, qui garantit seulement que les recalculs n'y ajoutent pas plus de `coalesce.DrainWait`).
+- **D-F1c-2** (F-1c) `cmd/server/main.go:1351` cite « Air SIGKILL (stop_timeout=20s) » ; `.air.toml` pose `kill_delay = "5s"`
+  (et précise qu'il est ignoré sous Windows). Commentaire faux, hors des lignes touchées ; non corrigé.
 
 ## 7. Journal
 
@@ -2421,3 +2444,80 @@ est `match_registry.map_version_id`, base partagée du titre), `assets/catalog.g
 **Découvertes** : D-F1b-1 à D-F1b-3 (§6), non traitées. D-F1a-6 traitée par R2-2.
 
 Commits : `51e603f13` (R2-1), `976494e67` (R2-2), `70b171092` (R2-3), puis le commit de clôture (plan, thought_log).
+
+### F-1c - Relecture de contrôle de F-1b - 2026-10-16 - clos
+
+Base : `git log --oneline -1` = `577024ac9` avant l'item ; branche `feat/securite-2026-10-15`. Références rouvertes avant d'agir :
+`cmd/server/main.go` (séquence d'arrêt : `srv.Shutdown` 15 s, `drainCoalescedRecomputes`, scheduler 3 s, gate 5 s,
+`autoBatchQueue.Drain` 5 s puis `Close`, `duckdb.CloseAll`), `cmd/server/shutdown_recomputes.go` (attente de `coalesce.MaxRunDuration`),
+`platform/coalesce/runs.go` (`Drain` : refus puis attente, aucune annulation), `.air.toml` (`kill_delay = "5s"`), `docker-compose.yml`
+(aucun `stop_grace_period`), `assets/played_map_versions.go` (un verrou unique tenu pendant `p.load(ctx, …)` du demandeur, erreur
+retenue quelle qu'elle soit), `assets/catalog.go` (`classifyPlayedVersion` : `slog.WarnContext` à chaque erreur),
+`observability/logthrottle.go` (`AllowThrottledLog`, helper canonique d'anti-flood).
+
+**Statuts** : R3-1 à R3-4 `[x]`. Aucun `[!]`, aucun `[~]`.
+
+- **R3-1** `coalesce.Drain` annule désormais les recalculs en vol : le suivi du process porte un contexte d'arrêt
+  (`inflightRuns.shutdownContext`, annulé avec la cause `ErrDraining` au début de `drain`, `runs.go:257`) ; chaque recalcul tourne
+  sous ce contexte en plus de son échéance (`runBounded`, `runs.go:146`, `context.AfterFunc`) ; un recalcul interrompu par l'arrêt
+  rend une erreur qui enveloppe `ErrDraining`, journalisée en WARN ; aucun rattrapage n'est lancé après le début de l'arrêt
+  (`loop`, `runs.go:119`). `coalesce.DrainWait` (2 s, `runs.go:20`) borne l'attente de `drainCoalescedRecomputes`
+  (`shutdown_recomputes.go:17`) : la suite de la séquence d'arrêt n'est jamais retardée au-delà ; l'erreur d'échéance donne le
+  nombre de recalculs encore en vol à l'échéance. Ordre inchangé (`TestShutdown_DrainsRecomputesBeforeCloseAll`, vert).
+  Commentaires de `MaxRunDuration`, `Runs`, `Drain`, `drainCoalescedRecomputes` conformes ; note D-F1b-1 corrigée (§6).
+  Tests : `TestDrain_CancelsTheInFlightRecompute`, `TestDrain_NoCatchUpOnceShutdownStarted`, `TestDrainWait_IsShort`
+  (`runs_shutdown_test.go`) ; `TestDrainCoalescedRecomputes_CancelsInFlightAndWaitsBriefly` (`cmd/server`, vraie fonction : un recalcul
+  coopératif annulé avec `ErrDraining`, un recalcul sourd à son contexte n'allonge pas l'attente au-delà de `DrainWait`).
+- **R3-2** La lecture des versions jouées tourne sous `context.WithoutCancel` du demandeur, bornée par `playedVersionsLoadTimeout`
+  (30 s) (`played_map_versions.go:69`, `reload` `:110`) ; une erreur `context.Canceled` n'est jamais retenue (la demande suivante
+  relit). Une échéance de la lecture elle-même (base lente) reste retenue pour l'intervalle. Tests :
+  `TestPlayedMapVersions_CanceledFirstCallerDoesNotBlockServing`, `TestPlayedMapVersions_CancellationErrorIsNotMemorized`,
+  `TestPlayedMapVersions_LoadIsBounded` (`played_map_versions_load_test.go`).
+- **R3-3** Lecture hors verrou, une à la fois par titre (`singleflight.Group.DoChan`, clé = titre) ; le verrou ne protège que l'état
+  en mémoire (`lookup` `:91`, fin de `reload`) ; `reload` revérifie l'intervalle (demande arrivée entre le constat d'absence et la
+  fin d'une lecture précédente : pas de seconde lecture) ; l'attente du demandeur est un `select` sur son contexte. Tests :
+  `TestPlayedMapVersions_LoadOfOneTitleDoesNotBlockAnother`, `TestPlayedMapVersions_WaitHonoursTheRequestContext`,
+  `TestPlayedMapVersions_ConcurrentAbsencesShareOneLoad` (8 demandeurs simultanés, 1 lecture ; sans `time.Sleep`). `countingLoader`
+  compte en atomique.
+- **R3-4** `logPlayedVersionsUnreadable` (`catalog.go:157`) : `observability.AllowThrottledLog` (helper canonique, pas de nouvelle
+  copie), clé `log_throttle_assets_played_versions_<titre>` (titre du registre : `Classify` écarte un titre inconnu, nombre fini),
+  fenêtre `playedVersionsMinReload` ; occurrences étouffées comptées (`<clé>_total`, `throttled_since_last`) ; un demandeur parti
+  journalisé en Debug. Test : `TestMetadataCatalog_PlayedVersionsFailureIsLoggedOncePerTitle` (`catalog_played_log_test.go` :
+  40 requêtes sur 2 titres -> 2 avertissements ; un demandeur parti -> aucun).
+
+**Preuves du rouge** (sorties dans `%LOCALAPPDATA%\Temp\f1c\`) :
+- R3-1 `go test ./internal/platform/coalesce/` (constante `DrainWait` seule ajoutée) : exit 1 — `TestDrain_CancelsTheInFlightRecompute`
+  `Drain : coalesce: 1 recalcul(s) encore en vol à l'échéance de l'arrêt : context deadline exceeded` ;
+  `TestDrain_NoCatchUpOnceShutdownStarted` `demande absorbée : <nil>, attendu ErrDraining` et `2 recalcul(s), attendu 1`.
+  `go test ./cmd/server/ -run 'TestDrainCoalesced|TestShutdown_'` (ancien `shutdown_recomputes.go`) : exit 1 —
+  `drainCoalescedRecomputes n'est pas revenu après 5.000616s (borne 2s)`.
+- R3-2 / R3-3 `go test ./internal/assets/ -run PlayedMapVersions` (constante `playedVersionsLoadTimeout` seule ajoutée) : exit 1,
+  5 FAIL — `Played = false, context canceled ; attendu true, nil` (premier demandeur parti), idem après une annulation rendue par la
+  lecture, `échéance de la lecture : présente=false`, `la demande d'un autre titre attend la lecture en cours`,
+  `l'attente de la lecture ignore le contexte du demandeur`. Mutations après correctif, source restaurée (`cmp`) : retenue de
+  l'annulation rétablie -> `CancellationErrorIsNotMemorized` FAIL ; lecture sous le contexte du demandeur ->
+  `CanceledFirstCallerDoesNotBlockServing` FAIL (le second demandeur rejoint la lecture annulée).
+- R3-4 `go test ./internal/assets/ -run PlayedVersionsFailureIsLogged` : exit 1 — `41 avertissement(s) pour 40 requêtes sur 2 titres,
+  attendu 2`.
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9) :
+- `go build ./cmd/server/` (sortie dans le dossier temporaire) exit 0 ; `go vet ./cmd/server/ ./internal/platform/coalesce/
+  ./internal/assets/...` exit 0 ; `go vet -tags=integration ./internal/platform/coalesce/ ./internal/assets/...` exit 0 ;
+  `golangci-lint run --new-from-rev=577024ac9` (v2.12.2) sur ces paquets : 0 issue.
+- Suites complètes : `go test ./cmd/server/ ./internal/platform/coalesce/ ./internal/assets/... ./internal/service/... ./internal/archlint/
+  -count=1` : exit 0, 11 paquets ok, 0 `--- FAIL:` (archlint complet). `coalesce` `-count=30` et tests `Played|Classify` `-count=30` :
+  exit 0.
+- Intégration : `go test -tags=integration -p 1 ./internal/platform/coalesce/ ./internal/assets/... -count=1` : exit 0, 3 paquets ok.
+- Utilisateurs (non-régression) : `go test ./internal/api/handlers/ -run 'TestAssetRoutes|Exclu|Friend'`, `./internal/api/ -run
+  'TestAssetRoutes|Bare|PublicRoutes'`, `./internal/sync/ -run 'Exclu|Recomput|Coalesc'` : exit 0.
+- Crochets pre-commit (gofmt, check-merge-conflict, docs-fr-sync, gitleaks, go-vet) verts sur les trois commits de code.
+
+**Non-régression (règle 9)** : réponses de l'exclusion, de la liste d'amis et des images de carte inchangées en marche normale. À
+l'arrêt, un recalcul en vol est interrompu (il sera refait à la prochaine demande) au lieu de retenir l'arrêt jusqu'à 10 min ;
+la persistance en file et la fermeture des bases ont de nouveau lieu dans le délai de l'hôte (sous réserve de D-F1c-1). Un client
+qui abandonne une image de carte ne prive plus les suivants des versions jouées ; une lecture lente d'un titre ne retient plus les
+autres titres. Une panne de la base partagée produit une ligne de journal par minute et par titre au lieu d'une par requête.
+
+**Découvertes** : D-F1c-1, D-F1c-2 (§6), non traitées. D-F1b-1 corrigée (§6).
+
+Commits : `996086b54` (R3-1), `baa134009` (R3-2, R3-3), `4ed67c273` (R3-4), puis le commit de clôture (plan, thought_log).
