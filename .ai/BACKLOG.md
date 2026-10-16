@@ -151,6 +151,22 @@ une dette locale ; regrouper en un lot de nettoyage Go. **Effort global : M.**
 
 ---
 
+### [dette/citations-2026-10-16] Découvertes non traitées du plan des citations Halo 5
+
+Reprises du plan `.ai/V7.5/PLAN_CITATIONS_FILM_2026-10-16.md` (section Découvertes), non traitées.
+- **Premiers frags du profil toujours à 0 sur Infinite** : `computeFKFD`
+  (`internal/progression/profile/queries.go:289-310`) lit un type d'événement `first_kill` qu'Infinite ne
+  stocke pas (seuls `kill`, `death`, `medal`, `mode`). La règle « Premier sang » existe déjà
+  (`analysis.FirstBlood`, sur les frags de `highlight_events`) : la réutiliser. **S.**
+- **Capability `citations.engine` fausse pour Infinite** : `config/titles/halo_infinite/mappings/capabilities.toml`
+  la déclare `not_exposed` alors que le moteur des citations tourne pour ce titre. Vérifier ses lecteurs
+  avant de la passer à `supported`. **S.**
+- **Maîtrise du Fusil Storm absente** : `static/commendations/halo_infinite/HI_Commendations_Storm.png`
+  (image native) n'est utilisée par aucune citation ; ajouter la maîtrise au seed (`weapon_stat`, nom EN
+  canonique de l'arme). **S.**
+
+---
+
 ### [déploiement] Recalcul des dérivés Halo 5 (Campagne comprise) + re-seed de la démo — à décider au déploiement
 
 Les valeurs DÉJÀ calculées pour les joueurs Halo 5 (sessions, score de performance, LUSR, modèle des
