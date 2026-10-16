@@ -194,7 +194,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// Réservé à l'admin (décision D-C du 2026-10-15) : la sonde construit la home du
 	// joueur désigné par `?player=` (un joueur quelconque, pas celui de la session),
 	// ce qui lit ses données et rafraîchit sa carrière avec son jeton. RequireAuth +
-	// RequireAdmin, inertes en démo et sans auth (e2e, harnais démo, CI).
+	// RequireAdmin : inertes sans auth ; en démo, cette lecture est nommée dans
+	// middleware.demoAdminReads (e2e, harnais démo), le reste des routes gardées est refusé.
 	handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Mount(
 		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode),
 			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users)), apiOpt)
@@ -536,8 +537,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// le même scheduler (manifest duckdbbackup) — nil toléré (section absente).
 	reg.WithBackupScheduler(backupScheduler)
 	// S1 (sécurité, lot S) : /settings mute la config (PATCH + POST media/sessions/backup)
-	// → RequireAuth + RequireAdmin. No-op en démo/single-user (cfg.DemoMode court-circuite
-	// le middleware), donc le mode public/démo reste inchangé.
+	// → RequireAuth + RequireAdmin. No-op en single-user ; en démo, seul GET /settings est
+	// servi (middleware.demoAdminReads), PATCH et POST sont refusés.
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
@@ -557,7 +558,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		WithProvisionGrant(users, users)
 	// S8 (sécurité, lot S) : /setup/players (écrit db_profiles.json) et
 	// /setup/smoke-test → RequireAuth par cohérence (gardes internes conservées).
-	// No-op en démo / auth non activée.
+	// No-op sans auth ; refusé en démo (demo_guarded_reads.go).
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		setupHandler.Mount(r, apiOpt) // /setup/players, /setup/smoke-test
@@ -567,8 +568,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// GET /jobs/{job_id} migré vers Huma (Phase 3b, shape path-param).
 	// V3 (sécurité) : le statut de job expose PlayerSlug + type + messages d'erreur
 	// (révélateur d'identité) → RequireAuth. Tous les jobs sont créés depuis des flux
-	// déjà authentifiés → no-op en démo/single-user (cfg.DemoMode court-circuite le
-	// middleware). L'API Huma est adossée à un sous-routeur gardé (humachi hérite du
+	// déjà authentifiés → no-op en single-user ; refusé en démo (aucun flux authentifié n'y
+	// crée de job). L'API Huma est adossée à un sous-routeur gardé (humachi hérite du
 	// middleware du sous-groupe, cf. registerGamertagHuma/Mount des handlers gardés).
 	registerJobsHuma(
 		newHumaAPI(r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)), apiOpt),
@@ -617,7 +618,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types).
 		// Audit ownership 2026-06-08 (PR-A) : backfill lit player_slug dans le BODY
 		// (hors chokepoint /players/{slug}) → opération lourde sur un joueur arbitraire.
-		// Aligné sur /sync/* : admin-gated (no-op en demo/single-user).
+		// Aligné sur /sync/* : admin-gated (no-op en single-user ; refusé en démo).
 		handlers.NewBackfillHandler(cfg, jobStore).Mount(r, apiOpt) // POST /backfill/start
 	})
 

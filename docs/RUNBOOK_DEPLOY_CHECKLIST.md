@@ -134,7 +134,9 @@ Each item cites its source so it can be re-verified against the code. Structure:
       `RequireAdmin`, exposes the `levelup` expvar namespace (source:
       `internal/api/server_apiv1.go` `r.Mount("/debug/vars", http.DefaultServeMux)` inside
       the admin group). Confirm an anonymous request is rejected and an admin request
-      returns JSON.
+      returns JSON. On the public demo (no accounts) it is rejected for everyone with
+      `403 demo_mode_forbidden`: in demo mode `RequireAuth`/`RequireAdmin` refuse every route
+      except the named reads of `middleware/demo_guarded_reads.go`.
 - [ ] **No legacy auth reader runs at boot** (ADR 0023 Phase 5, closed 2026-09-13).
       The legacy auth fallbacks were removed on 2026-08-25, and the one-shot boot
       migration, their last consumer, on 2026-09-13 (`7fd6d0fcb`), once its criterion
