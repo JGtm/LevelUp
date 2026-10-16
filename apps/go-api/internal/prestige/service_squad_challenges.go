@@ -35,6 +35,12 @@ func (s *service) CreateSquadChallenge(ctx context.Context, req CreateSquadChall
 	if req.TargetPerMember <= 0 && req.Mode == SquadCollective {
 		return SquadChallenge{}, fmt.Errorf("%w: target_per_member requis en mode collectif", ErrInvalidInput)
 	}
+	// Garde d'appartenance objet-level : seul un membre-user de l'escouade y crée un
+	// défi (les défis d'escouade vivent dans la base sociale partagée, l'isolation par
+	// base joueur ne les couvre pas).
+	if err := s.assertMemberUser(ctx, req.SquadID, req.CreatedBy); err != nil {
+		return SquadChallenge{}, err
+	}
 
 	now := s.deps.Now()
 	// expires_at : explicite (req) sinon dérivé de la cadence du template

@@ -53,6 +53,25 @@ services:
       - ./app_settings.json:/app/app_settings.json
 
     restart: unless-stopped
+    # Privileges reduits (audit securite 2026-10-15, C9-4). L'entree (docker-entrypoint.sh)
+    # demarre en root, corrige les droits des volumes puis passe a appuser par gosu : ces
+    # quatre capacites sont donc le strict necessaire, tout le reste est retire. Apres gosu
+    # le serveur n'a plus aucune capacite. no-new-privileges interdit d'en reacquerir par un
+    # binaire setuid. Garde-rail : internal/archlint/compose_hardening_test.go.
+    #   CHOWN           chown -R appuser /app/data et des fichiers de config
+    #   DAC_READ_SEARCH le chown recursif parcourt des dossiers d'appuser en mode 0700/0750
+    #   SETUID, SETGID  gosu (setgroups, setgid, setuid)
+    # Si `chown` echoue en silence (l'entree masque sa sortie), la cause se lit avec
+    #   docker compose run --rm --entrypoint sh <service> -c 'chown -R appuser:appuser /app/data; echo $?'
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_READ_SEARCH
+      - SETUID
+      - SETGID
     # Healthcheck Go natif — utilise le flag -health-check du binaire (pas Python)
     healthcheck:
       test: ["CMD", "/app/levelup-server", "-health-check"]
@@ -75,6 +94,11 @@ services:
       - LEVELUP_DATA=/app/data
       - LEVELUP_WEB_DIST=/app/apps/web/dist
       - LEVELUP_DEMO_MODE=true
+      # Derriere nginx (demo.conf ecrase X-Real-IP a chaque requete) : sans cette variable,
+      # le limiteur de debit et les journaux voient l'IP du proxy (127.0.0.1) pour TOUS les
+      # visiteurs, qui partagent un seul seau (429 en masse). Le service levelup la recoit
+      # de .env.local. Garde-rail : internal/archlint/compose_hardening_test.go.
+      - LEVELUP_TRUST_PROXY_HEADERS=true
       # Version affichée par la démo. Auparavant elle venait du binaire baké et
       # valait "dev" (aucun build-arg n'ayant jamais été passé à ce service en
       # pratique) ; la démo tourne pourtant exactement le même code que la prod.
@@ -123,6 +147,16 @@ services:
       - ./data/cache/spartan-banner:/app/data/cache/spartan-banner:ro
       - ./data/cache/spartan-backdrop:/app/data/cache/spartan-backdrop:ro
     restart: unless-stopped
+    # Memes privileges reduits que le service levelup (justification et garde-rail ci-dessus).
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_READ_SEARCH
+      - SETUID
+      - SETGID
     healthcheck:
       test: ["CMD", "/app/levelup-server", "-health-check"]
       interval: 30s

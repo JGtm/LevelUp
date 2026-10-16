@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/citationsfilm"
 )
 
 // BackfillMatchCitations calcule et persiste les citations pour une liste de matchs.
@@ -235,6 +236,10 @@ func buildCitationContext(
 	// via Stats (dispatchFull, cas objective_stat). Best-effort intégral : match
 	// non-objectif (Slayer) / vue absente → aucune stat, aucune erreur (cf. loadObjectiveStats).
 	for k, v := range loadObjectiveStats(ctx, sharedDB, matchID, xuid) {
+		stats[k] = v
+	}
+	// Résumé d'usage du film (armes prises sur socle, frags sans bouclier) : même patron.
+	for k, v := range citationsfilm.LoadFilmStats(ctx, sharedDB, matchID, xuid) {
 		stats[k] = v
 	}
 

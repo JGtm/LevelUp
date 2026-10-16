@@ -106,13 +106,15 @@ Each item cites its source so it can be re-verified against the code. Structure:
 ## Post-deploy
 
 - [ ] **`GET /health` returns 200** on `127.0.0.1:8000` — the healthcheck opens metadata +
-      shared read-only and returns match count + DuckDB version, so 200 confirms both the
+      shared read-only and answers `{"status":"ok"}` only, so 200 confirms both the
       binary is up and the DBs open (source: `scripts/deploy.sh` step 4; deploy fails if it
       does not respond within 90 s). While it boots, the server already listens: `/health`
       and `/api/*` answer **503 `server_starting`** (step in `details.step`) and the web page
       is served and waits. `deploy.sh` (`curl -sf`) and the Docker healthcheck
       (`-health-check`, `start_period` 20 s) only accept 200, so both keep waiting for the
-      real "ready" — a 503 during the first seconds is expected, not a failure.
+      real "ready" — a 503 during the first seconds is expected, not a failure. Versions,
+      counts and media tooling are not public: an admin reads them at `GET /api/v1/admin/health`.
+      `deploy.sh` reads the served version from the container environment, not from `/health`.
 - [ ] **Boot logs show migrations OK, no FATAL.** Logs are per-category files under
       `/opt/levelup/data/logs/*.log` — grep ALL of them, not just one:
       `grep -riE 'FATAL|panic' /opt/levelup/data/logs/*.log`. Check `migration.log`,
@@ -125,13 +127,20 @@ Each item cites its source so it can be re-verified against the code. Structure:
       transcode or live remux at the first media upload (source:
       `internal/ops/media_tooling.go`; the server also logs this non-blocking at boot —
       grep `media tooling` in the console/boot logs). NOTE: the live VPS nginx config must
-      mirror `packaging/nginx/levelup.conf` — in particular `client_max_body_size 2g;` on
-      `location /api/`, or video uploads fail with HTTP 413.
+      mirror `packaging/nginx/levelup.conf` (and `packaging/nginx/rate_limit.conf` in
+      `/etc/nginx/conf.d/`, `packaging/nginx/snippets/levelup-assets-v.conf` in
+      `/etc/nginx/snippets/`, included by the `/api/v1/assets/` location of both sites) — in
+      particular the body-size locations: `/api/` is capped at
+      `1m`, and only the media upload (`600m`), OpenSpartan import (`1100m`) and worker
+      (`20m`) locations accept more; a missing upload location makes video uploads fail
+      with HTTP 413.
 - [ ] **`/debug/vars` reachable admin-only.** Mounted behind `RequireAuth` +
       `RequireAdmin`, exposes the `levelup` expvar namespace (source:
       `internal/api/server_apiv1.go` `r.Mount("/debug/vars", http.DefaultServeMux)` inside
       the admin group). Confirm an anonymous request is rejected and an admin request
-      returns JSON.
+      returns JSON. On the public demo (no accounts) it is rejected for everyone with
+      `403 demo_mode_forbidden`: in demo mode `RequireAuth`/`RequireAdmin` refuse every route
+      except the named reads of `middleware/demo_guarded_reads.go`.
 - [ ] **No legacy auth reader runs at boot** (ADR 0023 Phase 5, closed 2026-09-13).
       The legacy auth fallbacks were removed on 2026-08-25, and the one-shot boot
       migration, their last consumer, on 2026-09-13 (`7fd6d0fcb`), once its criterion

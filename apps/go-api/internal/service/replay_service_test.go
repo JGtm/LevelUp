@@ -48,14 +48,14 @@ func TestIsAvailable_PresenceEtAbsence(t *testing.T) {
 // un JSON INVALIDE et gigantesque devant ce qu'un test manipule : si l'implémentation
 // lisait ou désérialisait, elle ne pourrait pas répondre « oui ».
 func TestIsAvailable_NeLitPasLArtefact(t *testing.T) {
-	root := artefactAt(t, title.DefaultSlug, "gros", "ceci n'est pas du JSON")
+	root := artefactAt(t, title.DefaultSlug, "0000b001", "ceci n'est pas du JSON")
 	svc := NewReplayService(title.DefaultSlug, root, nil)
 
-	if !svc.IsAvailable(context.Background(), "gros") {
+	if !svc.IsAvailable(context.Background(), "0000b001") {
 		t.Fatal("IsAvailable doit répondre sur la PRÉSENCE, pas sur le contenu")
 	}
 	// Contre-épreuve : la lecture, elle, échoue bien sur ce même fichier.
-	if _, err := svc.GetReplay(context.Background(), "gros"); err == nil {
+	if _, err := svc.GetReplay(context.Background(), "0000b001"); err == nil {
 		t.Error("GetReplay devrait échouer sur un artefact non désérialisable")
 	}
 }
@@ -64,11 +64,11 @@ func TestIsAvailable_NeLitPasLArtefact(t *testing.T) {
 // n'est pas un rejeu : le lien mènerait à un 404.
 func TestIsAvailable_RepertoireNEstPasUnArtefact(t *testing.T) {
 	root := t.TempDir()
-	path := title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "rep")
+	path := title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "0000be01")
 	if err := os.MkdirAll(path, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if NewReplayService(title.DefaultSlug, root, nil).IsAvailable(context.Background(), "rep") {
+	if NewReplayService(title.DefaultSlug, root, nil).IsAvailable(context.Background(), "0000be01") {
 		t.Error("un répertoire ne doit pas passer pour un artefact")
 	}
 }
@@ -76,8 +76,8 @@ func TestIsAvailable_RepertoireNEstPasUnArtefact(t *testing.T) {
 // TestIsAvailable_IsoleParTitre — deux titres, deux chemins : l'artefact d'un titre ne
 // rend jamais l'autre disponible (isolation par chemin FS, ADR 0008).
 func TestIsAvailable_IsoleParTitre(t *testing.T) {
-	root := artefactAt(t, title.DefaultSlug, "m1", `{}`)
-	if NewReplayService("halo_5", root, nil).IsAvailable(context.Background(), "m1") {
+	root := artefactAt(t, title.DefaultSlug, "0000a001", `{}`)
+	if NewReplayService("halo_5", root, nil).IsAvailable(context.Background(), "0000a001") {
 		t.Error("l'artefact d'un titre ne doit pas être vu par un autre titre")
 	}
 }
@@ -113,17 +113,17 @@ func TestIsAvailable_FormeCourteEtFormeComplete(t *testing.T) {
 
 // TestApplyMatchHeaderReplay — le header publie la présence, et rien d'autre.
 func TestApplyMatchHeaderReplay(t *testing.T) {
-	root := artefactAt(t, title.DefaultSlug, "avec", `{}`)
+	root := artefactAt(t, title.DefaultSlug, "0000b002", `{}`)
 	svc := NewReplayService(title.DefaultSlug, root, nil)
 
 	h := domain.MatchViewHeader{}
-	applyMatchHeaderReplay(context.Background(), &h, "avec", svc)
+	applyMatchHeaderReplay(context.Background(), &h, "0000b002", svc)
 	if !h.ReplayAvailable {
 		t.Error("match avec artefact : replay_available devrait être vrai")
 	}
 
 	h = domain.MatchViewHeader{}
-	applyMatchHeaderReplay(context.Background(), &h, "sans", svc)
+	applyMatchHeaderReplay(context.Background(), &h, "0000b003", svc)
 	if h.ReplayAvailable {
 		t.Error("match sans artefact : replay_available devrait être faux")
 	}
@@ -133,17 +133,17 @@ func TestApplyMatchHeaderReplay(t *testing.T) {
 // doit ni paniquer ni allumer le lien : c'est la dégradation gracieuse du dépôt.
 func TestApplyMatchHeaderReplay_SansService(t *testing.T) {
 	h := domain.MatchViewHeader{ReplayAvailable: true}
-	applyMatchHeaderReplay(context.Background(), &h, "m1", nil)
+	applyMatchHeaderReplay(context.Background(), &h, "0000a001", nil)
 	if !h.ReplayAvailable {
 		t.Error("service nil : le champ ne doit pas être touché, pas remis à faux par erreur")
 	}
 	h2 := domain.MatchViewHeader{}
-	applyMatchHeaderReplay(context.Background(), &h2, "m1", nil)
+	applyMatchHeaderReplay(context.Background(), &h2, "0000a001", nil)
 	if h2.ReplayAvailable {
 		t.Error("service nil : aucun lien ne doit s'allumer")
 	}
 	// Un header nil ne doit pas paniquer (le builder peut être appelé sur un match vide).
-	applyMatchHeaderReplay(context.Background(), nil, "m1", nil)
+	applyMatchHeaderReplay(context.Background(), nil, "0000a001", nil)
 }
 
 // TestAvailableSet_UnSeulListing — le contrat du set bulk : les matchs présents sur
@@ -199,7 +199,7 @@ func TestAvailableSet_DossierAbsent(t *testing.T) {
 	}
 	// Le zéro-valeur du type répond faux sans paniquer (appelant non câblé).
 	var nilSet port.ReplayAvailability
-	if nilSet.Has("m1") {
+	if nilSet.Has("0000a001") {
 		t.Error("un ensemble nil ne doit annoncer aucun rejeu")
 	}
 }
@@ -207,12 +207,12 @@ func TestAvailableSet_DossierAbsent(t *testing.T) {
 // TestAvailableSet_IsoleParTitre — même invariant qu'IsAvailable : l'artefact d'un titre
 // n'est jamais vu par un autre (isolation par chemin FS, ADR 0008).
 func TestAvailableSet_IsoleParTitre(t *testing.T) {
-	root := artefactAt(t, title.DefaultSlug, "m1", `{}`)
+	root := artefactAt(t, title.DefaultSlug, "0000a001", `{}`)
 	set, err := NewReplayService("halo_5", root, nil).AvailableSet(context.Background())
 	if err != nil {
 		t.Fatalf("AvailableSet: %v", err)
 	}
-	if set.Has("m1") {
+	if set.Has("0000a001") {
 		t.Error("l'artefact d'un titre ne doit pas être vu par un autre titre")
 	}
 }

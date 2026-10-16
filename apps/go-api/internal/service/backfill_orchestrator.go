@@ -11,6 +11,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
@@ -76,10 +77,10 @@ func (o *BackfillOrchestrator) Run(jobID string) {
 	// ── Phase 1 : détection ──────────────────────────────────────────
 	missing, err := o.engine.RunBackfill(context.Background(), o.scope)
 	if err != nil {
-		errMsg := err.Error()
+		slog.Error("backfill: détection échouée", "job_id", jobID, "err", err)
 		o.jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
 			j.Status = domain.JobStatusFailed
-			j.Error = &domain.JobErrorDetail{Code: "detection_error", Message: errMsg}
+			j.Error = domain.NewJobError("detection_error", false)
 		})
 		return
 	}

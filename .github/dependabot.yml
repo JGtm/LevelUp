@@ -10,6 +10,10 @@
 #   - groupe : 1 PR groupee par ecosysteme pour les bumps minor/patch
 #   - github-actions : on ignore les majors (sauts v4->v7 risquant de casser
 #     la CI / le deploy) ; ils restent traitables a la main si besoin.
+#   - docker : meme politique (majors ignorees : node 22->24, debian bookworm->trixie
+#     sont des migrations a instruire). La PR qui monte `golang:X.Y.Z-bookworm` reste
+#     rouge tant que la ligne `go` de apps/go-api/go.mod ne suit pas : c'est voulu
+#     (garde-rail internal/archlint/dockerfile_go_version_test.go).
 
 version: 2
 updates:
@@ -67,6 +71,24 @@ updates:
     open-pull-requests-limit: 3
     groups:
       actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  # Images de base du Dockerfile (golang, node, debian) — racine du depot
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      docker-minor-patch:
         patterns:
           - "*"
         update-types:

@@ -1,9 +1,10 @@
 module levelup/go-api
 
-// go 1.26.9 : correctifs de bibliothèque standard relevés par govulncheck (http2,
-// `http.Error`, `csv.Writer.Flush`, net/url, crypto/tls, encoding/xml). `ci.yml` installe
-// le toolchain par `go-version-file: apps/go-api/go.mod` : cette directive fixe la version
-// de la CI, le Dockerfile tire `golang:1.26-bookworm` (dernier correctif de la branche 1.26).
+// Version minimale du toolchain : la CI et le build des binaires de release l'installent
+// depuis cette ligne (`go-version-file: apps/go-api/go.mod`). Elle doit rester une version
+// dont la bibliothèque standard n'a aucune vulnérabilité atteinte, sinon le job `govulncheck`
+// de `ci.yml` rougit. L'image de build du `Dockerfile` est épinglée sur la même version : une
+// image plus ancienne que cette ligne ne compile pas (GOTOOLCHAIN=local dans l'image).
 go 1.26.9
 
 require (

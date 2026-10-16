@@ -255,7 +255,7 @@ const mediaFixture = {
 export const handlers = [
   // Bootstrap & Health
   http.get(p('/bootstrap'), () => HttpResponse.json(bootstrapFixture)),
-  http.get(p('/health'), () => HttpResponse.json({ status: 'ok', version: '0.0.0-test', uptime_seconds: 0, checks: {} })),
+  http.get(p('/health'), () => HttpResponse.json({ status: 'ok' })),
 
   // Players list
   http.get(p('/players'), () => HttpResponse.json({ items: [playerFixture], default_player_slug: 'test-player' })),

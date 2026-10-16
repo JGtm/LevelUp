@@ -9,11 +9,12 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	mediapkg "levelup/go-api/internal/media"
 )
 
 func GenerateThumbnails(ctx context.Context, videosDir, thumbsDir string) (int, []string) {
@@ -32,7 +33,7 @@ func GenerateThumbnails(ctx context.Context, videosDir, thumbsDir string) (int, 
 			continue
 		}
 		ext := strings.ToLower(filepath.Ext(e.Name()))
-		if supportedExtensions[ext] != mediaKindVideo {
+		if mediaKindOf(ext) != mediaKindVideo {
 			continue
 		}
 		base := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
@@ -97,13 +98,12 @@ func computeMediaEnd(kind string, captureAt *time.Time, duration float64, durati
 // (juste utilisée pour capture_end_utc = capture_start_utc + duration), donc
 // échec silencieux côté insert.
 func probeVideoDuration(ctx context.Context, videoPath string) (float64, error) {
-	cmd := exec.CommandContext(ctx, "ffprobe",
+	out, err := mediapkg.RunFFprobe(ctx,
 		"-v", "error",
 		"-show_entries", "format=duration",
 		"-of", "default=noprint_wrappers=1:nokey=1",
 		videoPath,
 	)
-	out, err := cmd.Output()
 	if err != nil {
 		return 0, fmt.Errorf("ffprobe: %w", err)
 	}
@@ -155,32 +155,17 @@ func thumbnailWindow(totalDur float64) (skip, extract float64) {
 // generateAnimatedThumbnail génère un WebP animé via ffmpeg/libwebp.
 // La fenêtre d'extraction (skip + durée) est calculée proportionnellement à la
 // durée du clip via thumbnailWindow — fallback sur 5s/3s si ffprobe échoue.
-// Résolution 480px largeur, fps=12, qualité 75, compression max.
+// Résolution 480px largeur, fps=12, qualité 75, compression max (media.RunWebPThumbnail).
 func generateAnimatedThumbnail(ctx context.Context, videoPath, webpPath string) error {
 	skip, extract := 5.0, 3.0
 	if dur, err := probeVideoDuration(ctx, videoPath); err == nil {
 		skip, extract = thumbnailWindow(dur)
 	}
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-y",
-		"-ss", strconv.FormatFloat(skip, 'f', 2, 64),
-		"-t", strconv.FormatFloat(extract, 'f', 2, 64),
-		"-i", videoPath,
-		"-an",
-		"-vf", "fps=12,scale=480:-1:flags=lanczos",
-		"-c:v", "libwebp",
-		"-loop", "0",
-		"-q:v", "75",
-		"-compression_level", "6",
-		"-preset", "picture",
-		webpPath,
-	)
 	// On capture stderr pour remonter la cause réelle de l'échec (codec, fichier
 	// tronqué, ffmpeg absent) au lieu de l'avaler — diagnostic des miniatures
 	// manquantes côté prod.
 	stderr := &bytes.Buffer{}
-	cmd.Stdout = nil
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
+	if err := mediapkg.RunWebPThumbnail(ctx, videoPath, webpPath, skip, extract, stderr); err != nil {
 		return fmt.Errorf("ffmpeg thumbnail: %w (stderr: %s)", err, strings.TrimSpace(stderr.String()))
 	}
 	return nil

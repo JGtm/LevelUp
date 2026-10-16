@@ -25,8 +25,7 @@ type WatcherAttempt struct {
 	XUID         string
 	XSTSToken    string
 	XSTSUserHash string
-	ErrorCode    string
-	ErrorDetail  string
+	ErrorCode    string // code seul : la cause d'un échec va au journal
 
 	// Référence interne au Device Code Flow (jamais exposé)
 	DevFlow DeviceFlow

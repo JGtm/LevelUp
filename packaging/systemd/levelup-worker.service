@@ -10,13 +10,16 @@
 # .github/workflows/deploy.yml. Sequence d'activation et rollback :
 # docs/RUNBOOK_REPLAY_WORKER.md.
 #
-# INSTALLATION — PAR LIEN, PAS PAR COPIE :
-#   sudo systemctl link /opt/levelup/packaging/systemd/levelup-worker.service
+# INSTALLATION - PAR COPIE APPARTENANT A ROOT, JAMAIS PAR LIEN :
+#   sudo install -o root -g root -m 0644 /opt/levelup/packaging/systemd/levelup-worker.service /etc/systemd/system/levelup-worker.service
 #   sudo systemctl daemon-reload
-# Le compte `deploy` a un sudoers restreint a `daemon-reload` et `restart levelup-worker` :
-# il ne peut donc PAS recopier ce fichier. Le lien fait suivre le contenu au `git reset` du
-# script de deploiement, et le daemon-reload suffit a le prendre en compte. Une copie
-# figee divergerait silencieusement du depot ; le script la signale s'il en trouve une.
+# Une unite decide du compte, des droits et de la commande d'un service lance par systemd.
+# Liee vers /opt/levelup (clone appartenant a `deploy`), elle serait modifiable par ce compte :
+# toute ecriture de `deploy` dans le depot deviendrait un changement d'unite pris en compte au
+# prochain daemon-reload. scripts/deploy-worker.sh REFUSE un lien (et une copie qui n'est pas
+# root:root ou qui est inscriptible par le groupe ou les autres) et SIGNALE une copie qui
+# diverge du depot : la recopier (la commande ci-dessus) et recharger systemd est un geste de
+# root a chaque modification de ce fichier.
 #
 # A NE PAS CONFONDRE avec les unites de scripts/systemd/ (prune docker, sauvegarde restic) :
 # celles-la vivent sur l'HOTE de production et se recopient a la main (cf. leur README).
@@ -79,13 +82,29 @@ StateDirectory=levelup-worker
 Restart=on-failure
 RestartSec=30s
 
-# Durcissement minimal et sans effet de bord connu pour un binaire Go sans setuid.
-# Volontairement PAS de ProtectSystem=strict ni de ProtectHome ici : ils n'ont pas pu etre
-# verifies dans ce lot (`systemd-analyze verify` n'existe pas sous Windows) et une unite
-# qui refuse de demarrer pour un durcissement non teste couterait plus qu'elle ne protege.
-# A instruire sur csstat, ou l'unite tourne pour de vrai.
+# Durcissement. NoNewPrivileges et PrivateTmp : binaire Go sans setuid, /tmp prive.
+# ProtectSystem=full : /usr, /boot et /etc en lecture seule pour ce service ; l'ouvrier n'y
+# ecrit rien. ProtectHome=read-only : /home en lecture seule (le binaire et le depot vivent
+# sous /opt, rien ne s'ecrit sous le home de `deploy`).
+# ReadWritePaths : ce que l'ouvrier ECRIT reellement, releve dans cmd/replay-worker et les
+# paquets qu'il appelle (a tenir a jour si l'ouvrier ecrit ailleurs) :
+#   - /var/lib/levelup-worker : morceaux de film en transit (--work), efface apres chaque job ;
+#     cree et donne a `deploy` par StateDirectory ci-dessus (l'inscrire est explicite, pas
+#     necessaire) ;
+#   - /opt/levelup/data/cache : le verrou de decodage commun aux outils de la machine
+#     (internal/filmproc, film_decode.lock et son fichier detenteur) et les faits de film
+#     ranges apres un decodage (replaybuild, film_facts/). Le prefixe « - » tolere un dossier
+#     absent au demarrage : l'ouvrier le cree au premier job.
+# ProtectSystem=full laisse /opt inscriptible par les droits Unix ordinaires ; la liste vaut
+# donc documentation et contrat, et devient contraignante si l'unite passe un jour a
+# ProtectSystem=strict (alors, le dossier de cache devra exister avant le demarrage).
+# Valide sur csstat par `systemd-analyze verify` (cf. docs/RUNBOOK_REPLAY_WORKER.md, section
+# « Installing and verifying the unit »), jamais sur le poste de redaction.
 NoNewPrivileges=true
 PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/var/lib/levelup-worker -/opt/levelup/data/cache
 
 [Install]
 WantedBy=multi-user.target

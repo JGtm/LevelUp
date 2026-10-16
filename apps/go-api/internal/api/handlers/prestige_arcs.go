@@ -33,7 +33,7 @@ type arcCreatedOutput struct {
 func (h *PrestigeHandler) CreateArc(ctx context.Context, in *rawBodyInput) (*arcCreatedOutput, error) {
 	var body createArcBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if err := h.authorizeActor(ctx, body.UserID); err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func (h *PrestigeHandler) AdoptPresetArc(ctx context.Context, in *idBodyInput) (
 	}
 	var body adoptPresetArcBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if body.UserID == "" || body.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")

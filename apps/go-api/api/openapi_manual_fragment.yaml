@@ -118,11 +118,11 @@ paths:
   /health:
     get:
       description: |
-        Vérifie l'état du service et de ses dépendances critiques
-        (metadata.duckdb, shared_matches_v2.duckdb, db_profiles.json).
+        Sonde publique : 200 `{status}` quand la base partagée s'ouvre et se lit,
+        503 sinon. Aucune version ni aucun compteur (détail : `GET /admin/health`).
       responses:
         '200':
-          description: Service opérationnel ou dégradé
+          description: Service opérationnel
   /bootstrap:
     get:
       description: |

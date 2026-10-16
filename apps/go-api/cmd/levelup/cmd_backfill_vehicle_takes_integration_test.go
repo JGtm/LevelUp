@@ -82,17 +82,17 @@ func vtPasses(t *testing.T, db *sql.DB, matchID string) int {
 func TestBackfillVehicleTakes_EcritReprendForceEtDryRun(t *testing.T) {
 	db, racine, ctx := vtBase(t), t.TempDir(), context.Background()
 	pr := titlePkg.NewPathResolver(racine)
-	vtArtefact(t, racine, "vb1", replay.SchemaVersion)
-	vtArtefact(t, racine, "vb2", 61) // sans occupation lue : « non mesure »
+	vtArtefact(t, racine, "b1b1b1b1-0000-4000-8000-000000000001", replay.SchemaVersion)
+	vtArtefact(t, racine, "b2b2b2b2-0000-4000-8000-000000000002", 61) // sans occupation lue : « non mesure »
 	if _, err := db.Exec(`INSERT INTO match_kill_events
 		(match_id, decode_pass, decoder_rev, publishable, time_ms, victim_gamertag, feed_killer_xuid,
 		 feed_present, assist_known, source_tag, read_path, read_origin)
-		VALUES ('vb1', 'p', 'r', TRUE, 6500, 'v', 'a1', TRUE, FALSE, ?, ?, ?)`,
+		VALUES ('b1b1b1b1-0000-4000-8000-000000000001', 'p', 'r', TRUE, 6500, 'v', 'a1', TRUE, FALSE, ?, ?, ?)`,
 		vtTagEngin(t), killscope.ReadPathFilmWalk, killscope.OriginCreditOnly); err != nil {
 		t.Fatalf("insert mort: %v", err)
 	}
 	cl := halo.NewKillSourceRegistry()
-	cands := []string{"vb1", "vb2", "vb3"} // vb3 : aucun artefact
+	cands := []string{"b1b1b1b1-0000-4000-8000-000000000001", "b2b2b2b2-0000-4000-8000-000000000002", "b3b3b3b3-0000-4000-8000-000000000003"} // b3b3b3b3-0000-4000-8000-000000000003 : aucun artefact
 	o := vehicleTakesOptions{titleSlug: titlePkg.DefaultSlug}
 
 	// --dry-run : rien n'est ecrit.
@@ -101,7 +101,7 @@ func TestBackfillVehicleTakes_EcritReprendForceEtDryRun(t *testing.T) {
 	if b := projeterCorpusVehicules(ctx, db, pr, od, cl, cands, map[string]bool{}); b.ecrits != 0 || b.sansArtefact != 1 {
 		t.Fatalf("dry-run : %+v", b)
 	}
-	if vtPasses(t, db, "vb1")+vtPasses(t, db, "vb2") != 0 {
+	if vtPasses(t, db, "b1b1b1b1-0000-4000-8000-000000000001")+vtPasses(t, db, "b2b2b2b2-0000-4000-8000-000000000002") != 0 {
 		t.Fatal("--dry-run a ecrit en base")
 	}
 
@@ -111,25 +111,25 @@ func TestBackfillVehicleTakes_EcritReprendForceEtDryRun(t *testing.T) {
 		t.Fatalf("premiere passe : %+v", b)
 	}
 	var frags int
-	if err := db.QueryRow(`SELECT frags FROM match_vehicle_takes_latest WHERE match_id='vb1' AND row_kind='take'`).Scan(&frags); err != nil || frags != 1 {
+	if err := db.QueryRow(`SELECT frags FROM match_vehicle_takes_latest WHERE match_id='b1b1b1b1-0000-4000-8000-000000000001' AND row_kind='take'`).Scan(&frags); err != nil || frags != 1 {
 		t.Errorf("frag apparie en base : %d (err=%v)", frags, err)
 	}
 
 	// Reprise : les matchs deja en base sont sautes, aucune passe de plus.
 	deja, err := matchsDejaProjetesVehicules(ctx, db)
-	if err != nil || !deja["vb1"] || !deja["vb2"] {
+	if err != nil || !deja["b1b1b1b1-0000-4000-8000-000000000001"] || !deja["b2b2b2b2-0000-4000-8000-000000000002"] {
 		t.Fatalf("cle de reprise : %v (err=%v)", deja, err)
 	}
 	b = projeterCorpusVehicules(ctx, db, pr, o, cl, cands, deja)
-	if b.ecrits != 0 || b.dejaEnBase != 2 || vtPasses(t, db, "vb1") != 1 {
-		t.Fatalf("reprise : %+v, passes vb1=%d", b, vtPasses(t, db, "vb1"))
+	if b.ecrits != 0 || b.dejaEnBase != 2 || vtPasses(t, db, "b1b1b1b1-0000-4000-8000-000000000001") != 1 {
+		t.Fatalf("reprise : %+v, passes b1b1b1b1-0000-4000-8000-000000000001=%d", b, vtPasses(t, db, "b1b1b1b1-0000-4000-8000-000000000001"))
 	}
 
 	// --force : re-ecrit MEME ce qui est deja en base (la cle de reprise est fournie, et ignoree).
 	of := o
 	of.force = true
 	b = projeterCorpusVehicules(ctx, db, pr, of, cl, cands, deja)
-	if b.ecrits != 2 || vtPasses(t, db, "vb1") != 2 {
-		t.Fatalf("force : %+v, passes vb1=%d", b, vtPasses(t, db, "vb1"))
+	if b.ecrits != 2 || vtPasses(t, db, "b1b1b1b1-0000-4000-8000-000000000001") != 2 {
+		t.Fatalf("force : %+v, passes b1b1b1b1-0000-4000-8000-000000000001=%d", b, vtPasses(t, db, "b1b1b1b1-0000-4000-8000-000000000001"))
 	}
 }

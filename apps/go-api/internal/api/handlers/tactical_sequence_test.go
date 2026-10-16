@@ -76,3 +76,20 @@ func TestSequence_CapabilityAbsente_503(t *testing.T) {
 		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
 	}
 }
+
+// TestSequence_MatchIDHorsFormeHalo : la forme d'un match_id est celle de
+// title.IsValidMatchID (hexadecimal et tirets) ; un identifiant alphanumerique hors de
+// cette forme n'atteint pas le service, et recoit le refus de l'absence.
+func TestSequence_MatchIDHorsFormeHalo(t *testing.T) {
+	for _, id := range []string{"zzzzzzzz-zzzz", "match1", "000d5950.json"} {
+		svc := &fakeTacticalSvc{}
+		w := postSequence(newSequenceRouter(tacticalFactory(svc, nil)), "carte-a",
+			`{"match_id":"`+id+`","victim_xuid":"2533274812345","time_ms":1}`)
+		if w.Code != http.StatusNotFound || !strings.Contains(w.Body.String(), "replay_not_available") {
+			t.Errorf("%s : %d %s", id, w.Code, w.Body.String())
+		}
+		if svc.vuAppele {
+			t.Errorf("%s : le service a ete appele avec un match_id hors forme", id)
+		}
+	}
+}

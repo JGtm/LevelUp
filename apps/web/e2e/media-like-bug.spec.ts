@@ -10,7 +10,7 @@
  * Capture screenshot + DOM avant/après pour debug visuel.
  */
 import { test, expect, type Page } from '@playwright/test'
-import { skipIfNoDemoData } from './_helpers/demoData'
+import { skipIfNoDemoData, skipIfServerReadOnlyDemo } from './_helpers/demoData'
 import { playerPath } from './_helpers/routes'
 
 /** Instantané sérialisable d'une entrée du cache média TanStack Query. */
@@ -46,9 +46,12 @@ async function captureMediaCache(page: Page): Promise<MediaCacheSnapshot[] | nul
   })
 }
 
-// Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
+// Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante. Le test
+// clique « j'aime » (PATCH /media/likes) et relit le like enregistré : la démo est en lecture
+// seule (403 demo_mode_forbidden), la spec entière exige une instance non démo.
 test.beforeEach(async () => {
   await skipIfNoDemoData()
+  await skipIfServerReadOnlyDemo("le test clique « j'aime » et vérifie son enregistrement.")
 })
 
 test.describe('Bug : like change la vidéo', () => {

@@ -12,11 +12,16 @@ import (
 type mockExclusionRepo struct {
 	excluded map[string]bool
 	registry map[string]domain.MatchRegistryInfo
+	sets     int // nombre d'écritures du flag
 }
 
-func (m *mockExclusionRepo) SetExclusion(_ context.Context, matchID string, excl bool) error {
+func (m *mockExclusionRepo) SetExclusion(_ context.Context, matchID string, excl bool) (bool, error) {
+	if m.excluded[matchID] == excl {
+		return false, nil
+	}
+	m.sets++
 	m.excluded[matchID] = excl
-	return nil
+	return true, nil
 }
 
 func (m *mockExclusionRepo) ListExcluded(_ context.Context) ([]domain.ExcludedMatch, error) {
@@ -70,6 +75,9 @@ func TestMatchExclusionService_SetAndList(t *testing.T) {
 	if err := svc.SetExclusion(context.Background(), "m1", true); err != nil {
 		t.Fatal(err)
 	}
+	if err := svc.SetExclusion(context.Background(), "m2", true); err != nil {
+		t.Fatal(err)
+	}
 	if err := svc.SetExclusion(context.Background(), "m2", false); err != nil {
 		t.Fatal(err)
 	}
@@ -83,8 +91,8 @@ func TestMatchExclusionService_SetAndList(t *testing.T) {
 	if list[0].MatchID != "m1" {
 		t.Fatalf("expected m1, got %s", list[0].MatchID)
 	}
-	if rec.calls != 2 {
-		t.Fatalf("expected 2 recompute calls (set + unset), got %d", rec.calls)
+	if rec.calls != 3 {
+		t.Fatalf("expected 3 recompute calls (m1 set, m2 set, m2 unset), got %d", rec.calls)
 	}
 }
 
@@ -173,5 +181,97 @@ func TestMatchExclusionService_RecomputerNil(t *testing.T) {
 	}
 	if !repo.excluded["m1"] {
 		t.Fatal("flag should still be set with nil recomputer")
+	}
+}
+
+// Une exclusion identique à l'état courant ne change rien : aucune écriture du flag (la
+// table est append-only), aucun recalcul de l'historique.
+func TestMatchExclusionService_UnchangedStateIsANoOp(t *testing.T) {
+	svc, repo, rec := newSvc(t)
+	ctx := context.Background()
+
+	// Démarquer un match jamais exclu : sans effet.
+	if err := svc.SetExclusion(ctx, "m1", false); err != nil {
+		t.Fatal(err)
+	}
+	if repo.sets != 0 || rec.calls != 0 {
+		t.Fatalf("m1 jamais exclu puis démarqué : écritures=%d recalculs=%d, attendu 0/0", repo.sets, rec.calls)
+	}
+
+	// Exclure puis ré-exclure le même match : une seule écriture, un seul recalcul.
+	for range 5 {
+		if err := svc.SetExclusion(ctx, "m1", true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if repo.sets != 1 || rec.calls != 1 {
+		t.Fatalf("5 exclusions identiques : écritures=%d recalculs=%d, attendu 1/1", repo.sets, rec.calls)
+	}
+
+	// Un vrai changement d'état recalcule.
+	if err := svc.SetExclusion(ctx, "m1", false); err != nil {
+		t.Fatal(err)
+	}
+	if repo.sets != 2 || rec.calls != 2 {
+		t.Fatalf("démarquage effectif : écritures=%d recalculs=%d, attendu 2/2", repo.sets, rec.calls)
+	}
+}
+
+// Un match classé déjà non exclu reste refusé à l'exclusion (la garde passe avant le no-op).
+func TestMatchExclusionService_RankedStillRefusedBeforeNoOpCheck(t *testing.T) {
+	svc, repo, _ := newSvc(t)
+	repo.excluded["m_ranked"] = true // état hérité incohérent
+	if err := svc.SetExclusion(context.Background(), "m_ranked", true); !errors.Is(err, domain.ErrRankedMatchNotExcludable) {
+		t.Fatalf("err = %v, attendu ErrRankedMatchNotExcludable", err)
+	}
+}
+
+// pendingRecomputer échoue puis réussit, et déclare un recalcul en attente après un échec.
+type pendingRecomputer struct {
+	mockRecomputer
+	failNext bool
+	pending  bool
+}
+
+func (p *pendingRecomputer) RecomputeAfterExclusion(ctx context.Context, matchID string) error {
+	p.calls++
+	if p.failNext {
+		p.failNext = false
+		p.pending = true
+		return errors.New("db locked")
+	}
+	p.pending = false
+	return nil
+}
+
+func (p *pendingRecomputer) RecomputePending() bool { return p.pending }
+
+// Après un recalcul en échec, la même demande répétée recalcule (le flag est déjà posé :
+// aucune seconde écriture) au lieu d'être tenue pour un no-op qui laisserait l'historique
+// périmé.
+func TestMatchExclusionService_RetryAfterFailedRecomputeRecomputes(t *testing.T) {
+	repo := &mockExclusionRepo{
+		excluded: make(map[string]bool),
+		registry: map[string]domain.MatchRegistryInfo{"m1": {MatchID: "m1"}},
+	}
+	rec := &pendingRecomputer{failNext: true}
+	svc := NewMatchExclusionService(repo, rec)
+	ctx := context.Background()
+
+	if err := svc.SetExclusion(ctx, "m1", true); err == nil {
+		t.Fatal("le premier appel devait échouer (recalcul en échec)")
+	}
+	if err := svc.SetExclusion(ctx, "m1", true); err != nil {
+		t.Fatalf("la reprise doit réussir: %v", err)
+	}
+	if rec.calls != 2 || repo.sets != 1 {
+		t.Fatalf("recalculs=%d écritures=%d, attendu 2/1", rec.calls, repo.sets)
+	}
+	// Recalcul réussi : la demande suivante identique est de nouveau un no-op.
+	if err := svc.SetExclusion(ctx, "m1", true); err != nil {
+		t.Fatal(err)
+	}
+	if rec.calls != 2 || repo.sets != 1 {
+		t.Fatalf("après succès: recalculs=%d écritures=%d, attendu 2/1", rec.calls, repo.sets)
 	}
 }

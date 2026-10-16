@@ -105,17 +105,17 @@ func TestCandidatsARattraper_SelectionOrdreEtJauge(t *testing.T) {
 	repoRoot := t.TempDir()
 	t0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	inscrireAuRegistre(t, db, "vieux-sans-film", t0, int64(matchflags.MBitFilmAbsent)) // (1)
-	inscrireAuRegistre(t, db, "deja-cuit", t0.AddDate(0, 1, 0), 0)                     // (2)
-	poserArtefact(t, repoRoot, "deja-cuit")
-	inscrireAuRegistre(t, db, "pris-par-les-inseres", t0.AddDate(0, 2, 0), 0) // (3)
-	inscrireAuRegistre(t, db, "en-retard-ancien", t0.AddDate(0, 3, 0), 0)
-	inscrireAuRegistre(t, db, "en-retard-recent", t0.AddDate(0, 4, 0), 0)
+	inscrireAuRegistre(t, db, "0000ad0c", t0, int64(matchflags.MBitFilmAbsent)) // (1)
+	inscrireAuRegistre(t, db, "0000ad08", t0.AddDate(0, 1, 0), 0)               // (2)
+	poserArtefact(t, repoRoot, "0000ad08")
+	inscrireAuRegistre(t, db, "0000ad05", t0.AddDate(0, 2, 0), 0) // (3)
+	inscrireAuRegistre(t, db, "0000ad07", t0.AddDate(0, 3, 0), 0)
+	inscrireAuRegistre(t, db, "0000ad06", t0.AddDate(0, 4, 0), 0)
 
-	deja := map[string]bool{"pris-par-les-inseres": true}
+	deja := map[string]bool{"0000ad05": true}
 	work, restant := candidatsARattraper(context.Background(), db, nil, depsRattrapage(repoRoot, 0), deja, 5)
 
-	attendu := []string{"en-retard-recent", "en-retard-ancien"}
+	attendu := []string{"0000ad06", "0000ad07"}
 	got := ids(work)
 	if len(got) != len(attendu) {
 		t.Fatalf("travail = %v, attendu %v", got, attendu)
@@ -154,7 +154,7 @@ func TestCandidatsARattraper_PlafondLaisseDuRetard(t *testing.T) {
 func TestCandidatsARattraper_PlafondNulMesureQuandMeme(t *testing.T) {
 	db := baseRegistre(t)
 	t0 := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
-	inscrireAuRegistre(t, db, "en-retard", t0, 0)
+	inscrireAuRegistre(t, db, "0000ad0f", t0, 0)
 
 	work, restant := candidatsARattraper(context.Background(), db, nil, depsRattrapage(t.TempDir(), 0), nil, 0)
 	if len(work) != 0 {
@@ -169,11 +169,11 @@ func TestCandidatsARattraper_PlafondNulMesureQuandMeme(t *testing.T) {
 func TestCandidatsARattraper_FenetreDeRetention(t *testing.T) {
 	db := baseRegistre(t)
 	maintenant := time.Now().UTC()
-	inscrireAuRegistre(t, db, "dans-la-fenetre", maintenant.AddDate(0, 0, -10), 0)
-	inscrireAuRegistre(t, db, "hors-fenetre", maintenant.AddDate(0, -8, 0), 0)
+	inscrireAuRegistre(t, db, "0000ad09", maintenant.AddDate(0, 0, -10), 0)
+	inscrireAuRegistre(t, db, "0000ad0e", maintenant.AddDate(0, -8, 0), 0)
 
 	work, _ := candidatsARattraper(context.Background(), db, nil, depsRattrapage(t.TempDir(), 3), nil, 10)
-	if got := ids(work); len(got) != 1 || got[0] != "dans-la-fenetre" {
+	if got := ids(work); len(got) != 1 || got[0] != "0000ad09" {
 		t.Fatalf("travail = %v, attendu [dans-la-fenetre] : la fenetre de retention doit s appliquer AVANT le lot", got)
 	}
 }
@@ -298,24 +298,24 @@ func TestCandidatsDerivations_SelectionneLesRangesSansDerives(t *testing.T) {
 	maintenant := time.Now().UTC()
 
 	// m-sans-artefact : rien sur disque -> AFFAIRE DE LA CUISSON, pas de la dérivation.
-	inscrireAuRegistre(t, db, "sansarte", maintenant.Add(-1*time.Hour), 0)
+	inscrireAuRegistre(t, db, "0000ad0d", maintenant.Add(-1*time.Hour), 0)
 	// m-a-deriver : artefact rangé, aucune marque -> candidat.
-	inscrireAuRegistre(t, db, "aderiver", maintenant.Add(-2*time.Hour), 0)
-	poserArtefact(t, repoRoot, "aderiver")
+	inscrireAuRegistre(t, db, "0000ad01", maintenant.Add(-2*time.Hour), 0)
+	poserArtefact(t, repoRoot, "0000ad01")
 	// m-deja-derive : artefact rangé ET marqué à la révision courante -> écarté.
-	inscrireAuRegistre(t, db, "dejaderi", maintenant.Add(-3*time.Hour), 0)
-	poserArtefact(t, repoRoot, "dejaderi")
-	marquerArtefactCommeDerive(t, repoRoot, "dejaderi")
+	inscrireAuRegistre(t, db, "0000ad03", maintenant.Add(-3*time.Hour), 0)
+	poserArtefact(t, repoRoot, "0000ad03")
+	marquerArtefactCommeDerive(t, repoRoot, "0000ad03")
 
 	work, restant, _ := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
 
 	if restant != 0 {
 		t.Errorf("restant = %d, attendu 0 (trois matchs, un seul candidat)", restant)
 	}
-	if len(work) != 1 || work[0].MatchID != "aderiver" {
+	if len(work) != 1 || work[0].MatchID != "0000ad01" {
 		t.Fatalf("candidats = %+v, attendu le seul artefact rangé sans marque", work)
 	}
-	attendu := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, "aderiver")
+	attendu := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, "0000ad01")
 	if work[0].Path != attendu {
 		t.Errorf("chemin = %q, attendu la place canonique %q", work[0].Path, attendu)
 	}
@@ -326,8 +326,8 @@ func TestCandidatsDerivations_SelectionneLesRangesSansDerives(t *testing.T) {
 func TestCandidatsDerivations_ConvergeApresDerivation(t *testing.T) {
 	db := baseRegistre(t)
 	repoRoot := t.TempDir()
-	inscrireAuRegistre(t, db, "unmatch1", time.Now().UTC().Add(-time.Hour), 0)
-	poserArtefact(t, repoRoot, "unmatch1")
+	inscrireAuRegistre(t, db, "0000ad04", time.Now().UTC().Add(-time.Hour), 0)
+	poserArtefact(t, repoRoot, "0000ad04")
 	d := depsRattrapage(repoRoot, 0)
 
 	work, _, _ := candidatsDerivations(context.Background(), db, d)
@@ -354,7 +354,7 @@ func TestCandidatsDerivations_PlafondEtRestant(t *testing.T) {
 	repoRoot := t.TempDir()
 	const total = maxPerCycle + 3
 	for i := 0; i < total; i++ {
-		id := fmt.Sprintf("mderiv%02d", i)
+		id := fmt.Sprintf("0000de%02d", i)
 		inscrireAuRegistre(t, db, id, time.Now().UTC().Add(-time.Duration(i)*time.Hour), 0)
 		poserArtefact(t, repoRoot, id)
 	}
@@ -375,11 +375,11 @@ func TestCandidatsDerivations_PlafondEtRestant(t *testing.T) {
 func TestCandidatsDerivations_ArtefactPerimeEstDeriveTelQuel(t *testing.T) {
 	db := baseRegistre(t)
 	repoRoot := t.TempDir()
-	inscrireAuRegistre(t, db, "perimeee", time.Now().UTC().Add(-time.Hour), 0)
-	poserArtefactPerime(t, repoRoot, "perimeee")
+	inscrireAuRegistre(t, db, "0000ad02", time.Now().UTC().Add(-time.Hour), 0)
+	poserArtefactPerime(t, repoRoot, "0000ad02")
 
 	work, _, _ := candidatsDerivations(context.Background(), db, depsRattrapage(repoRoot, 0))
-	if len(work) != 1 || work[0].MatchID != "perimeee" {
+	if len(work) != 1 || work[0].MatchID != "0000ad02" {
 		t.Fatalf("candidats = %+v, attendu l'artefact périmé (dérivé tel quel, JAMAIS re-cuit ici)", work)
 	}
 }
@@ -438,7 +438,7 @@ func TestRun_SelectionDeCuissonVide_RattrapeQuandMeme(t *testing.T) {
 	t0 := time.Now().UTC().Add(-2 * time.Hour)
 
 	// Deux matchs au registre, artefact pose pour chacun, AUCUNE marque de derivation.
-	for _, id := range []string{"cuittout1", "cuittout2"} {
+	for _, id := range []string{"0000ad0b", "0000ad0a"} {
 		inscrireAuRegistre(t, db, id, t0, 0)
 		poserArtefact(t, repoRoot, id)
 	}
@@ -460,7 +460,7 @@ func TestRun_SelectionDeCuissonVide_RattrapeQuandMeme(t *testing.T) {
 		t.Fatalf("%d match(s) mis en file alors que tout est deja cuit — le rattrapage des "+
 			"derives ne doit RIEN cuire", enfiles)
 	}
-	for _, id := range []string{"cuittout1", "cuittout2"} {
+	for _, id := range []string{"0000ad0b", "0000ad0a"} {
 		p := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, id)
 		if !replaybuild.DerivationsUpToDate(p) {
 			t.Errorf("%s : aucune marque posee par Run — le rattrapage des derives est "+

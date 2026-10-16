@@ -228,7 +228,9 @@ func journaliserReplisUsage(ctx context.Context, d Deps, prets []resumeUsagePret
 func projeterResumesUsage(lus []artefactLu) []resumeUsagePret {
 	prets := make([]resumeUsagePret, 0, len(lus))
 	for _, a := range lus {
-		prets = append(prets, resumeUsagePret{matchID: a.matchID, summary: replay.BuildUsageSummary(a.doc)})
+		s := replay.BuildUsageSummary(a.doc)
+		replay.AttachShieldlessKills(&s, a.doc, a.frags)
+		prets = append(prets, resumeUsagePret{matchID: a.matchID, summary: s})
 	}
 	return prets
 }

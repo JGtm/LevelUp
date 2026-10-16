@@ -27,6 +27,7 @@ import { useMyGroups } from '@/features/groups/queries'
 import type { TeammateRow } from '@/lib/api/types'
 import { normalizeModeLabel } from '@/lib/halo/modeLabel'
 import { findSquadByRoster, squadTeammates } from './squadRoster'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { SQUAD_PRESETS_STRINGS, type SquadPresetsStrings } from './squadPresets.i18n'
 
 /**
@@ -173,6 +174,8 @@ export function useSquadPresets({
   const createSquad = useCreateSquad(playerSlug)
   const renameSquad = useRenameSquad(playerSlug)
   const deleteSquad = useDeleteSquad(playerSlug)
+  // Profil d'un ami (lecture seule) : escouades chargeables, ni enregistrement ni gestion.
+  const readOnly = !useCanWritePlayer(playerSlug)
 
   const slugLower = playerSlug.toLowerCase()
 
@@ -269,7 +272,7 @@ export function useSquadPresets({
       name: sm.squad.name,
       subtitle: buildUsualSubtitle(sm.usual_playlists, sm.usual_modes, t),
       gamertags,
-      trailing: manageMode ? manageControls(sm.squad.id, sm.squad.name) : undefined,
+      trailing: manageMode && !readOnly ? manageControls(sm.squad.id, sm.squad.name) : undefined,
     }
   })
 
@@ -313,7 +316,7 @@ export function useSquadPresets({
   }
   const saveLabel = createSquad.isPending ? t.saving : alreadySaved ? t.saved : t.save
 
-  const footer = (
+  const footer = readOnly ? null : (
     <div className="flex items-center justify-between gap-2 px-3 py-2">
       <button
         type="button"

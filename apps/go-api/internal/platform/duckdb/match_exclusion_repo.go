@@ -23,29 +23,34 @@ func NewMatchExclusionRepo(pdb *PlayerDB) *MatchExclusionRepo {
 	return &MatchExclusionRepo{pdb: pdb}
 }
 
-// SetExclusion positionne is_excluded pour un match donné (UPSERT).
-// Ouvre la DB en lecture-écriture le temps de l'opération.
-func (r *MatchExclusionRepo) SetExclusion(ctx context.Context, matchID string, excluded bool) error {
+// SetExclusion positionne is_excluded pour un match s'il diffère de l'état courant, et dit
+// s'il l'a écrit. La lecture de l'état, la décision et l'écriture se font sous le verrou
+// d'écriture de la base joueur (lease KindPlayer) et sur la même connexion : deux demandes
+// qui se chevauchent (exclure puis réinclure) se sérialisent, la seconde décide sur l'état
+// que laisse la première. ErrDBLocked remonte et est mappé en 503 par le handler.
+func (r *MatchExclusionRepo) SetExclusion(ctx context.Context, matchID string, excluded bool) (changed bool, err error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	// P2 (revue 2026-06-01) : sérialise avec le post-sync / CLI / autres handlers
-	// qui écrivent la MÊME player DB. Sans ce lease, l'UPSERT ON CONFLICT (match_id)
-	// DO UPDATE n'était sûr que par l'effet de bord MaxOpenConns(1) du cache de
-	// connexion — fragile. Le lease KindPlayer (mutex par-path) rend la sérialisation
-	// explicite ; ErrDBLocked remonte et est mappé en 503 par le handler.
 	w, err := r.pdb.AcquirePlayerWriterTimeout(dblease.PlayerLeaseTimeout)
 	if err != nil {
-		return fmt.Errorf("MatchExclusionRepo.SetExclusion: lease: %w", err)
+		return false, fmt.Errorf("MatchExclusionRepo.SetExclusion: lease: %w", err)
 	}
 	defer w.Release()
 
 	rwDB, err := OpenReadWrite(r.pdb.Player.Path())
 	if err != nil {
-		return fmt.Errorf("MatchExclusionRepo.SetExclusion: open rw: %w", err)
+		return false, fmt.Errorf("MatchExclusionRepo.SetExclusion: open rw: %w", err)
 	}
 	defer rwDB.Close()
 
+	current, err := excludedState(ctx, rwDB, matchID)
+	if err != nil {
+		return false, err
+	}
+	if current == excluded {
+		return false, nil
+	}
 	// Append-only #23645 : INSERT pur stage='exclusion', valeur booléenne EXPLICITE
 	// (is_excluded bidirectionnel, jamais NULL). Le merge-on-read prend la dernière
 	// row du stage 'exclusion' ; loadExcludedPMERows lit player_match_enrichment_latest.
@@ -54,14 +59,30 @@ func (r *MatchExclusionRepo) SetExclusion(ctx context.Context, matchID string, e
 		VALUES (?, ?, 'exclusion')
 	`, matchID, excluded)
 	if err != nil {
-		return fmt.Errorf("MatchExclusionRepo.SetExclusion exec: %w", err)
+		return false, fmt.Errorf("MatchExclusionRepo.SetExclusion exec: %w", err)
 	}
-	// Écriture locale sur player_match_enrichment (plan perf 2026-09-23, L5b) : les
-	// lectures joueur mises en cache ne portent pas is_excluded aujourd'hui, mais
-	// toute écriture de la table les invalide — un champ ajouté demain resterait
-	// sinon périmé jusqu'au TTL.
+	// Toute écriture de player_match_enrichment invalide les lectures joueur mises en
+	// cache : un champ de la table qu'elles porteraient resterait sinon périmé jusqu'au TTL.
 	InvalidatePlayerReadCaches(ctx, r.pdb.XUID, r.pdb.TitleSlug)
-	return nil
+	return true, nil
+}
+
+// excludedState rend l'état courant du flag is_excluded d'un match, lu sur la vue
+// player_match_enrichment_latest (append-only) ; faux si aucune ligne n'existe.
+func excludedState(ctx context.Context, db *DB, matchID string) (bool, error) {
+	var excluded bool
+	err := db.QueryRow(ctx, `
+		SELECT COALESCE(is_excluded, FALSE)
+		FROM player_match_enrichment_latest
+		WHERE match_id = ?
+		LIMIT 1`, matchID).Scan(&excluded)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("MatchExclusionRepo.SetExclusion état courant: %w", err)
+	}
+	return excluded, nil
 }
 
 // GetMatchRegistryInfo lit shared.match_registry pour un match donné.

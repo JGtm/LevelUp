@@ -94,4 +94,36 @@ describe('CreateChallengeForm — cooldown UI', () => {
 
     expect(screen.getByText(/Métrique en repos \(cooldown\)/i)).toBeInTheDocument()
   })
+
+  // L9-5 : le serveur ne renvoie qu'un code et un message fixe en anglais ; l'écran écrit le texte.
+  it('refus « objectif trop facile » : message traduit, texte du serveur jamais affiché', () => {
+    mockSuggested.data = { templates: [makeTemplate({ id: 'ok' })] }
+    mockCreate.error = { code: 'challenge_too_easy', message: 'challenge too easy' }
+    render(<CreateChallengeForm userId="u1" titleSlug="halo_infinite" />)
+
+    expect(screen.getByText(/trop facile/i)).toBeInTheDocument()
+    expect(screen.queryByText('challenge too easy')).not.toBeInTheDocument()
+  })
+
+  it('code inconnu : message générique traduit, jamais le texte du serveur', () => {
+    mockSuggested.data = { templates: [makeTemplate({ id: 'ok' })] }
+    mockCreate.error = { code: 'code_inconnu', message: 'SELECT secret FROM x' }
+    render(<CreateChallengeForm userId="u1" titleSlug="halo_infinite" />)
+
+    expect(screen.getByText(/création impossible/i)).toBeInTheDocument()
+    expect(screen.queryByText(/SELECT/)).not.toBeInTheDocument()
+  })
+
+  it('messages en anglais quand la langue est EN', () => {
+    mockShellState.locale = 'en'
+    try {
+      mockSuggested.data = { templates: [makeTemplate({ id: 'ok' })] }
+      mockCreate.error = { code: 'invalid_input', message: 'invalid input' }
+      render(<CreateChallengeForm userId="u1" titleSlug="halo_infinite" />)
+
+      expect(screen.getByText(/check the values/i)).toBeInTheDocument()
+    } finally {
+      mockShellState.locale = 'fr'
+    }
+  })
 })

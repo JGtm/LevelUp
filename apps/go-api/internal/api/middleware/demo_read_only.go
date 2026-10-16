@@ -14,9 +14,11 @@
 //     (docker-compose : aucun env_file sur le service démo), donc il y répond 503
 //     `build_queue_disabled`.
 //
-// POURQUOI UN MIDDLEWARE ET PAS UN REFUS PAR ROUTE. `RequireAdmin` et `RequireAuth` sont
+// POURQUOI UN MIDDLEWARE ET PAS UN REFUS PAR ROUTE. `RequireAdmin` et `RequireAuth` étaient
 // transparents en démo : toute route d'écriture était atteignable par un visiteur anonyme
-// tant qu'un handler n'avait pas pensé à la refuser. La garde générale inverse le défaut :
+// tant qu'un handler n'avait pas pensé à la refuser (ils refusent désormais, cf.
+// demo_guarded_reads.go ; cette garde reste la défense de toutes les écritures). La garde
+// générale inverse le défaut :
 // une route d'écriture ajoutée demain est refusée en démo sans que personne n'ait à y
 // penser. Le ratchet `internal/api/demo_read_only_ratchet_test.go` tient le câblage et la
 // liste des écritures que la garde laisse passer.

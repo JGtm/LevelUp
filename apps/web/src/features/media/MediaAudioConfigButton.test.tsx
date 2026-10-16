@@ -54,3 +54,16 @@ describe('MediaAudioConfigButton', () => {
     expect(mutate.mock.calls[0][0]).toMatchObject({ mode: 'auto' })
   })
 })
+
+describe('MediaAudioConfigButton — profil d’un ami', () => {
+  it('absent sur un profil en lecture seule', async () => {
+    const { useAppShellStore } = await import('@/stores/appShellStore')
+    useAppShellStore.setState({ writablePlayerSlugs: ['mon-profil'] })
+    try {
+      renderWithProviders(<MediaAudioConfigButton playerSlug="p1" />)
+      expect(screen.queryByLabelText('Réglage des pistes audio')).toBeNull()
+    } finally {
+      useAppShellStore.setState({ writablePlayerSlugs: null })
+    }
+  })
+})

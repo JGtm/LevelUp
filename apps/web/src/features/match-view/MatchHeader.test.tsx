@@ -382,6 +382,27 @@ describe('MatchHeaderCard', () => {
     )
     expect(screen.getByRole('button', { name: 'Retirer des favoris' })).toBeInTheDocument()
   })
+
+  it("profil d'un ami (lecture seule) : ni favori ni exclusion", () => {
+    useAppShellStore.setState({ writablePlayerSlugs: ['MonCompte'] })
+    try {
+      renderWithQueryClient(
+        <MatchHeaderCard
+          header={{ ...baseHeader, is_favorite: true }}
+          rank={baseRank}
+          matchId="m1"
+          playerSlug="MonGT"
+          matchTitle="Slayer sur Aquarius"
+          locale="fr"
+        />,
+      )
+      expect(screen.queryByRole('button', { name: 'Retirer des favoris' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Exclure' })).toBeNull()
+      expect(screen.getByRole('button', { name: 'Copier ID' })).toBeInTheDocument()
+    } finally {
+      useAppShellStore.setState({ writablePlayerSlugs: null })
+    }
+  })
 })
 
 describe('MatchHeaderCard — lien Halo Waypoint', () => {

@@ -73,7 +73,7 @@ var (
 
 func runOwnership(demoMode bool, authMode, slug string, sess *domain.SessionData) *httptest.ResponseRecorder {
 	// resolveFamily nil → comportement strict d'origine (propriétaire only).
-	mw := RequirePlayerOwnership(demoMode, authMode, ownershipProfiles, ownershipUsers, nil)
+	mw := RequirePlayerOwnership(NewPlayerAccess(demoMode, authMode, ownershipProfiles, ownershipUsers, nil))
 	rr := httptest.NewRecorder()
 	mw(okHandler).ServeHTTP(rr, ownershipRequest(slug, sess))
 	return rr
@@ -150,7 +150,7 @@ func TestRequirePlayerOwnership_FamilyMember_200(t *testing.T) {
 	coMembers := func(context.Context) map[string]bool {
 		return map[string]bool{"222": true, "999": true}
 	}
-	mw := RequirePlayerOwnership(false, "password", ownershipProfiles, ownershipUsers, coMembers)
+	mw := RequirePlayerOwnership(NewPlayerAccess(false, "password", ownershipProfiles, ownershipUsers, coMembers))
 	rr := httptest.NewRecorder()
 	mw(okHandler).ServeHTTP(rr, ownershipRequest("bob", userSession("alice")))
 	if rr.Code != http.StatusOK {
@@ -164,7 +164,7 @@ func TestRequirePlayerOwnership_FamilyStranger_403(t *testing.T) {
 	coMembers := func(context.Context) map[string]bool {
 		return map[string]bool{"222": true}
 	}
-	mw := RequirePlayerOwnership(false, "password", ownershipProfiles, ownershipUsers, coMembers)
+	mw := RequirePlayerOwnership(NewPlayerAccess(false, "password", ownershipProfiles, ownershipUsers, coMembers))
 	rr := httptest.NewRecorder()
 	mw(okHandler).ServeHTTP(rr, ownershipRequest("bob", userSession("alice")))
 	if rr.Code != http.StatusForbidden {
@@ -185,7 +185,7 @@ func TestRequirePlayerOwnership_UnlinkedUser_403(t *testing.T) {
 func TestRequirePlayerOwnership_RealChiRouter(t *testing.T) {
 	r := chi.NewRouter()
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Use(RequirePlayerOwnership(false, "password", ownershipProfiles, ownershipUsers, nil))
+		r.Use(RequirePlayerOwnership(NewPlayerAccess(false, "password", ownershipProfiles, ownershipUsers, nil)))
 		r.Get("/home", okHandler)
 	})
 

@@ -331,3 +331,11 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   3.2 `make go-api-lint` : 0 issues (ratchet `--new-from-merge-base=origin/main`) ; `make gate-push` : exit 0
   (lint Go 0 issue, typecheck web, lint web 0 erreur / 26 avertissements préexistants, baseline de tests : 9 400
   attendus tous présents sur 20 192, aucun test ni paquet en échec). 3.3 relecture : voir les rondes 1 et 2 ci-dessus.
+- 16/10 Fusion de `origin/feat/v75` (c6a72cf02, sécurité + citations Halo 5) dans `feat/postsync-ordre`, par
+  `git merge` sans rebase (le `feat/v75` local du dépôt, b3756ab31, était en retard sur origin : c'est
+  `origin/feat/v75` qui a été fusionné). Un seul conflit textuel, `sync/friends_recompute.go` (bloc d'imports) :
+  résolu en gardant les deux évolutions orthogonales (feat/v75 retire `ctxkeys`, le lot ajoute `persist`).
+  Fusions automatiques sans conflit : `.ai/thought_log.md`, `cmd/server/main.go`, `api/handlers/sync_handler.go`,
+  `api/server_apiv1.go`. Vérification après fusion : l'ordre de `runPostSyncPipeline` est inchangé (citations après
+  le rejeu 1.58, `TestRunPostSyncPipeline_StepOrder` à rejouer). Les gates 3.1 et 3.2 et la relecture contre
+  feat/v75 sont rejoués sur le résultat de la fusion (entrées suivantes).

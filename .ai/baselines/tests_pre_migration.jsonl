@@ -11813,10 +11813,6 @@
 {"Time":"2026-06-26T23:45:57.6411025+02:00","Action":"output","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAuth_NoneMode_PassThrough","Output":"=== RUN   TestRequireAuth_NoneMode_PassThrough\n"}
 {"Time":"2026-06-26T23:45:57.6411025+02:00","Action":"output","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAuth_NoneMode_PassThrough","Output":"--- PASS: TestRequireAuth_NoneMode_PassThrough (0.00s)\n"}
 {"Time":"2026-06-26T23:45:57.6411025+02:00","Action":"pass","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAuth_NoneMode_PassThrough","Elapsed":0}
-{"Time":"2026-06-26T23:45:57.6411025+02:00","Action":"run","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAuth_DemoMode_PassThrough"}
-{"Time":"2026-06-26T23:45:57.6411025+02:00","Action":"output","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAuth_DemoMode_PassThrough","Output":"=== RUN   TestRequireAuth_DemoMode_PassThrough\n"}
-{"Time":"2026-06-26T23:45:57.6411025+02:00","Action":"output","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAuth_DemoMode_PassThrough","Output":"--- PASS: TestRequireAuth_DemoMode_PassThrough (0.00s)\n"}
-{"Time":"2026-06-26T23:45:57.6411025+02:00","Action":"pass","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAuth_DemoMode_PassThrough","Elapsed":0}
 {"Time":"2026-06-26T23:45:57.6411025+02:00","Action":"run","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAuth_PasswordMode_NoSession_401"}
 {"Time":"2026-06-26T23:45:57.6416253+02:00","Action":"output","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAuth_PasswordMode_NoSession_401","Output":"=== RUN   TestRequireAuth_PasswordMode_NoSession_401\n"}
 {"Time":"2026-06-26T23:45:57.6416253+02:00","Action":"output","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAuth_PasswordMode_NoSession_401","Output":"--- PASS: TestRequireAuth_PasswordMode_NoSession_401 (0.00s)\n"}
@@ -11847,10 +11843,6 @@
 {"Time":"2026-06-26T23:45:57.6629511+02:00","Action":"output","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAdmin_AuthModeNone_200","Output":"=== RUN   TestRequireAdmin_AuthModeNone_200\n"}
 {"Time":"2026-06-26T23:45:57.6629511+02:00","Action":"output","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAdmin_AuthModeNone_200","Output":"--- PASS: TestRequireAdmin_AuthModeNone_200 (0.00s)\n"}
 {"Time":"2026-06-26T23:45:57.6629511+02:00","Action":"pass","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAdmin_AuthModeNone_200","Elapsed":0}
-{"Time":"2026-06-26T23:45:57.6629511+02:00","Action":"run","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAdmin_DemoMode_200"}
-{"Time":"2026-06-26T23:45:57.6629511+02:00","Action":"output","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAdmin_DemoMode_200","Output":"=== RUN   TestRequireAdmin_DemoMode_200\n"}
-{"Time":"2026-06-26T23:45:57.6629511+02:00","Action":"output","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAdmin_DemoMode_200","Output":"--- PASS: TestRequireAdmin_DemoMode_200 (0.00s)\n"}
-{"Time":"2026-06-26T23:45:57.6629511+02:00","Action":"pass","Package":"levelup/go-api/internal/api/middleware","Test":"TestRequireAdmin_DemoMode_200","Elapsed":0}
 {"Time":"2026-06-26T23:45:57.6629511+02:00","Action":"run","Package":"levelup/go-api/internal/api/middleware","Test":"TestLoopbackOnly_PreserveRemoteAddr_DefeatsHeaderSpoofing"}
 {"Time":"2026-06-26T23:45:57.6629511+02:00","Action":"output","Package":"levelup/go-api/internal/api/middleware","Test":"TestLoopbackOnly_PreserveRemoteAddr_DefeatsHeaderSpoofing","Output":"=== RUN   TestLoopbackOnly_PreserveRemoteAddr_DefeatsHeaderSpoofing\n"}
 {"Time":"2026-06-26T23:45:57.6629511+02:00","Action":"output","Package":"levelup/go-api/internal/api/middleware","Test":"TestLoopbackOnly_PreserveRemoteAddr_DefeatsHeaderSpoofing","Output":"2026/06/26 23:45:57 WARN middleware.loopback: refus accès non-loopback remote_addr=203.0.113.7:55000 path=/_diag/x\n"}

@@ -333,26 +333,26 @@ func main() {
 		slog.Info("demo_mode: appels réseau tiers coupés (données seedées, aucune synchronisation)")
 	}
 
-	// Garde-fou de démarrage (revue P0 2026-06-02) : en production
-	// (LEVELUP_ENV=production), refuser de booter avec une configuration non sûre
-	// — secret de session par défaut (cookies forgeables), AuthMode=none
+	// Garde-fou de démarrage (config.Validate) : partout, un mode d'authentification ou
+	// d'inscription inconnu ; en production (LEVELUP_ENV=production), une configuration
+	// non sûre — secret de session par défaut (cookies forgeables), AuthMode=none
 	// (ownership multi-user désactivé), ou origines CORS limitées à localhost.
-	// Hors production, on ne bloque pas mais on émet un avertissement visible.
+	// Hors production, les réglages non sûrs ne bloquent pas mais sont signalés.
 	if err := cfg.Validate(); err != nil {
-		slog.Error("démarrage refusé : configuration non sûre pour la production", "err", err,
-			"hint", "définir LEVELUP_SESSION_SECRET (>=32 octets), LEVELUP_AUTH_MODE=xbox|password et LEVELUP_CORS_ORIGINS, ou retirer LEVELUP_ENV=production")
+		slog.Error("démarrage refusé : configuration invalide ou non sûre", "err", err,
+			"hint", "LEVELUP_AUTH_MODE=none|password|xbox, LEVELUP_REGISTRATION=invite|open|closed ; en production : LEVELUP_SESSION_SECRET (>=32 octets), LEVELUP_AUTH_MODE=xbox|password et LEVELUP_CORS_ORIGINS")
 		os.Exit(1)
 	}
 	logSecurityWarnings(cfg)
 
 	// Foot-gun rate-limit (incident "Too Many Requests" prod) : le limiter applicatif
-	// (httprate) clé sur RemoteAddr. En production derrière un reverse proxy SANS
-	// LEVELUP_TRUST_PROXY_HEADERS=true, chi RealIP n'est pas câblé → RemoteAddr reste
-	// l'IP du proxy (127.0.0.1) pour TOUS les clients → un unique bucket partagé →
-	// 429 en masse sous trafic public. Non-fatal (une expo prod directe sans proxy est
-	// un setup légitime où TrustProxyHeaders=false est correct), mais on alerte.
+	// (httprate) clé sur l'IP cliente. En production derrière un reverse proxy SANS
+	// LEVELUP_TRUST_PROXY_HEADERS=true, X-Real-IP n'est pas lu → l'IP cliente est le
+	// pair TCP, c'est-à-dire le proxy, pour TOUS les clients → un unique bucket
+	// partagé → 429 en masse sous trafic public. Non-fatal (une expo prod directe sans
+	// proxy est un setup légitime où TrustProxyHeaders=false est correct), mais on alerte.
 	if cfg.IsProduction() && !cfg.TrustProxyHeaders {
-		slog.Warn("rate-limit keyé sur RemoteAddr et LEVELUP_TRUST_PROXY_HEADERS non activé : derrière un reverse proxy, tous les clients partagent un seul bucket (429 en masse)",
+		slog.Warn("rate-limit keyé sur le pair TCP et LEVELUP_TRUST_PROXY_HEADERS non activé : derrière un reverse proxy, tous les clients partagent un seul bucket (429 en masse)",
 			"rate_limit_rpm", cfg.RateLimitRPM,
 			"recommendation", "si le serveur est derrière nginx/Caddy/Traefik, définir LEVELUP_TRUST_PROXY_HEADERS=true")
 	}
@@ -1364,6 +1364,7 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("shutdown", "err", err)
 	}
+	drainCoalescedRecomputes()
 
 	// Attendre la goroutine du scheduler avec un timeout dur pour que les
 	// connexions DuckDB qu'elle pourrait tenir soient libérées avant CloseAll.

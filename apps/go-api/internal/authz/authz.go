@@ -4,7 +4,8 @@
 // fournie par le caller (userstore).
 //
 // Règle de propriété : un utilisateur possède le profil joueur dont le `xuid`
-// est égal à son xuid lié. Les admins accèdent à tout. En mode demo ou
+// est égal à son xuid lié. Les admins accèdent à tout. Un co-membre de groupe
+// LIT le profil (CanAccessPlayer) sans y écrire (CanWritePlayer). En mode demo ou
 // auth_mode ∉ {password, xbox}, l'enforcement est désactivé (accès ouvert).
 package authz
 
@@ -72,12 +73,43 @@ func CanAccessPlayer(enforced bool, user *domain.User, profileXUID string, acces
 	return accessibleXUIDs[profileXUID]
 }
 
+// CanWritePlayer décide si `user` peut ÉCRIRE sur le profil identifié par
+// `profileXUID` : admin ou propriétaire direct (xuid lié), et eux seuls.
+// L'appartenance à un groupe n'ouvre que la LECTURE (ADR 0029, section
+// « Group/family access is read-only ») : un co-membre consulte le profil d'un
+// ami, il ne le modifie ni ne le supprime. Quand `enforced` est faux, l'écriture
+// est accordée (instance mono-utilisateur ou démo, sans identité à opposer).
+func CanWritePlayer(enforced bool, user *domain.User, profileXUID string) bool {
+	return CanAccessPlayer(enforced, user, profileXUID, nil)
+}
+
 // CurrentUser résout l'utilisateur authentifié derrière une session, ou nil si
 // aucun. Priorité au login local (sess.Username → lookup.Get), puis à l'identité
 // Halo liée (sess.LinkedHaloIdentity.XUID → lookup.GetByXUID). Si l'identité Halo
 // est liée en session mais sans compte persisté, un utilisateur minimal est
 // synthétisé (rôle standard, propriétaire de son propre xuid).
 func CurrentUser(sess *domain.SessionData, lookup UserLookup) *domain.User {
+	if u := CurrentAccount(sess, lookup); u != nil {
+		return u
+	}
+	if sess == nil || lookup == nil {
+		return nil
+	}
+	if sess.LinkedHaloIdentity != nil && sess.LinkedHaloIdentity.XUID != "" {
+		return &domain.User{
+			XUID:     sess.LinkedHaloIdentity.XUID,
+			Gamertag: sess.LinkedHaloIdentity.Gamertag,
+			Role:     domain.RoleUser,
+		}
+	}
+	return nil
+}
+
+// CurrentAccount résout le COMPTE persisté derrière une session (même priorité que
+// CurrentUser), sans jamais synthétiser d'utilisateur : nil si aucun compte du
+// magasin ne correspond. Sert aux actions qui engagent un compte réel (créer un
+// groupe, émettre une invitation) et à la relecture du rôle.
+func CurrentAccount(sess *domain.SessionData, lookup UserLookup) *domain.User {
 	if sess == nil || lookup == nil {
 		return nil
 	}
@@ -90,13 +122,18 @@ func CurrentUser(sess *domain.SessionData, lookup UserLookup) *domain.User {
 		if u, err := lookup.GetByXUID(sess.LinkedHaloIdentity.XUID); err == nil && u != nil {
 			return u
 		}
-		return &domain.User{
-			XUID:     sess.LinkedHaloIdentity.XUID,
-			Gamertag: sess.LinkedHaloIdentity.Gamertag,
-			Role:     domain.RoleUser,
-		}
 	}
 	return nil
+}
+
+// IsAdmin dit si la session appartient à un compte ADMINISTRATEUR, rôle relu dans le
+// magasin d'utilisateurs à chaque appel : le rôle copié dans la session à la
+// connexion n'est jamais une preuve (un admin rétrogradé ou supprimé perd la main dès
+// sa requête suivante). lookup nil : faux. Seul point de lecture du rôle admin pour
+// une décision (garde-rail archlint/session_role_read_test.go).
+func IsAdmin(sess *domain.SessionData, lookup UserLookup) bool {
+	u := CurrentAccount(sess, lookup)
+	return u != nil && u.Role == domain.RoleAdmin
 }
 
 // InstanceLocked résout le verrou « instance fermée » (lockdown) en un SEUL
@@ -109,15 +146,17 @@ func CurrentUser(sess *domain.SessionData, lookup UserLookup) *domain.User {
 // pas importer platform/settings ni config sans créer un cycle et perdre sa
 // testabilité). `load` nil ⇒ seule la source env compte.
 //
-// Repli sur erreur : settings illisibles ⇒ WARN puis `false` (non verrouillé).
-// C'est le comportement historique de server_apiv1.go, conservé tel quel — un
-// app_settings.json corrompu ne doit pas fermer l'instance à son administrateur.
-// LOGUE AVANT DE DÉGRADER (CLAUDE.md règle 3).
+// Réglages illisibles (`load` en erreur), erreur journalisée avant de décider
+// (CLAUDE.md règle 3) :
+//   - propriété appliquée (`enforced`, cf. Enforced) : VERROUILLÉ. Le défaut sûr
+//     l'emporte (ADR 0035 D5, amendée le 2026-10-16) : un fichier corrompu ou mal
+//     typé n'ouvre pas l'instance aux inconnus. Les comptes existants et l'admin se
+//     connectent toujours ; le verrou ne ferme que l'entrée de nouvelles identités ;
+//   - sinon (mono-utilisateur, démo) : non verrouillé, aucune identité à opposer.
 //
-// Trois copies de ce calcul existaient le 2026-09-15 (handlers/setup.go,
-// api/server_apiv1.go, service/bootstrap_service.go) : garde-rail
+// Le calcul existait en trois copies le 2026-09-15 : garde-rail
 // internal/archlint/no_bare_instance_lock_read_test.go.
-func InstanceLocked(envLocked bool, load func() (bool, error)) bool {
+func InstanceLocked(envLocked, enforced bool, load func() (bool, error)) bool {
 	if envLocked {
 		return true
 	}
@@ -126,7 +165,11 @@ func InstanceLocked(envLocked bool, load func() (bool, error)) bool {
 	}
 	locked, err := load()
 	if err != nil {
-		slog.Warn("instance_locked: settings illisibles, repli sur non verrouillé", "err", err)
+		if enforced {
+			slog.Error("instance_locked: réglages illisibles, instance verrouillée (défaut sûr)", "err", err)
+			return true
+		}
+		slog.Warn("instance_locked: réglages illisibles, non verrouillé (propriété non appliquée)", "err", err)
 		return false
 	}
 	return locked

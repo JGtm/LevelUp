@@ -49,14 +49,14 @@ reason = "non identifie"
 // du registre SANS son, un tag inconnu et une arme de joueur.
 func artefactTirsVehicule(t *testing.T, root string) {
 	t.Helper()
-	doc := `{"schemaVersion":69,"matchId":"m","titleSlug":"` + title.DefaultSlug + `",` +
+	doc := `{"schemaVersion":69,"matchId":"0000a000","titleSlug":"` + title.DefaultSlug + `",` +
 		`"frameCount":1,"bounds":{"minX":0,"minY":0,"maxX":1,"maxY":1},"tracks":[],"shots":[` +
 		`{"t":1,"slot":10,"x":0,"y":0,"w":"0xC7D5091200000000","v":700},` +
 		`{"t":2,"slot":10,"x":0,"y":0,"w":"0xC7D5091200000000","v":700},` +
 		`{"t":3,"slot":11,"x":0,"y":0,"w":"0x0BB6976B00000000","v":701},` +
 		`{"t":4,"slot":12,"x":0,"y":0,"w":"0x850902EF00000000","v":702},` +
 		`{"t":5,"slot":13,"x":0,"y":0,"w":"0x84BD29ED42C9679F"}]}`
-	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "m"), doc)
+	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "0000a000"), doc)
 }
 
 // TestVehicleWeapons_PoseLesArmesEmployees — une entree par arme DU REGISTRE qu un tir emploie,
@@ -67,7 +67,7 @@ func TestVehicleWeapons_PoseLesArmesEmployees(t *testing.T) {
 	ecrire(t, filepath.Join(title.NewPathResolver(root).TitleMappingsDir(title.DefaultSlug),
 		vehicleWeaponsFile), registreArmesMinimal)
 
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).GetReplay(context.Background(), "m")
+	doc, err := NewReplayService(title.DefaultSlug, root, nil).GetReplay(context.Background(), "0000a000")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
@@ -90,7 +90,7 @@ func TestVehicleWeapons_PoseLesArmesEmployees(t *testing.T) {
 func TestVehicleWeapons_TitreSansRegistre(t *testing.T) {
 	root := t.TempDir()
 	artefactTirsVehicule(t, root)
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).GetReplay(context.Background(), "m")
+	doc, err := NewReplayService(title.DefaultSlug, root, nil).GetReplay(context.Background(), "0000a000")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}

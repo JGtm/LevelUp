@@ -270,10 +270,9 @@ func TestDeviceFlowStatusResponse_Authorized(t *testing.T) {
 
 func TestDeviceFlowStatusResponse_Failed(t *testing.T) {
 	a := &auth_platform.Attempt{
-		AttemptID:   "att-3",
-		Status:      "failed",
-		ErrorCode:   "device_flow_acquire_error",
-		ErrorDetail: "timeout",
+		AttemptID: "att-3",
+		Status:    "failed",
+		ErrorCode: "device_flow_acquire_error",
 	}
 	resp := deviceFlowStatusResponse(a)
 	if resp.Status != "failed" {
@@ -281,9 +280,6 @@ func TestDeviceFlowStatusResponse_Failed(t *testing.T) {
 	}
 	if resp.ErrorCode == nil || *resp.ErrorCode != "device_flow_acquire_error" {
 		t.Errorf("ErrorCode = %v", resp.ErrorCode)
-	}
-	if resp.ErrorDetail == nil || *resp.ErrorDetail != "timeout" {
-		t.Errorf("ErrorDetail = %v", resp.ErrorDetail)
 	}
 }
 

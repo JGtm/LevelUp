@@ -100,7 +100,7 @@ func (h *FeatureMatrixHandler) handleGet(ctx context.Context, in *featureMatrixI
 	if err != nil {
 		// TOML déclare une capability hors vocabulaire produit — erreur de config.
 		h.logger.ErrorContext(ctx, "feature_matrix_caps_invalid", "title_slug", slug, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "capabilities_invalid", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "capabilities_invalid", err)
 	}
 
 	matrix := games.ComputeFeatureMatrix(caps)
@@ -112,7 +112,7 @@ func (h *FeatureMatrixHandler) handleGet(ctx context.Context, in *featureMatrixI
 	resp := featureMatrixResponse{TitleSlug: set.TitleSlug(), SchemaVersion: set.SchemaVersion(), Features: features}
 	body, err := json.Marshal(resp)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "marshal_failed", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "marshal_failed", err)
 	}
 
 	sum := sha256.Sum256(body)

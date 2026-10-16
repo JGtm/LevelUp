@@ -10,7 +10,10 @@ import (
 func TestLocalFSStore_Path_NoVariant(t *testing.T) {
 	s := NewLocalFSStore("/cache")
 	ref := Ref{Kind: KindMedalImage, TitleID: "hi", ID: "42"}
-	got := s.Path(ref)
+	got, err := s.Path(ref)
+	if err != nil {
+		t.Fatalf("Path(%s) : %v", ref, err)
+	}
 	want := filepath.Join("/cache", "medal-image", "hi", "42.png")
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
@@ -20,7 +23,10 @@ func TestLocalFSStore_Path_NoVariant(t *testing.T) {
 func TestLocalFSStore_Path_WithVariant(t *testing.T) {
 	s := NewLocalFSStore("/cache")
 	ref := Ref{Kind: KindMedalImage, TitleID: "hi", ID: "42", Variant: "thumb"}
-	got := s.Path(ref)
+	got, err := s.Path(ref)
+	if err != nil {
+		t.Fatalf("Path(%s) : %v", ref, err)
+	}
 	want := filepath.Join("/cache", "medal-image", "hi", "42.thumb.png")
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
@@ -30,7 +36,10 @@ func TestLocalFSStore_Path_WithVariant(t *testing.T) {
 func TestLocalFSStore_Path_AlreadyHasExtension(t *testing.T) {
 	s := NewLocalFSStore("/cache")
 	ref := Ref{Kind: KindMedalImage, TitleID: "hi", ID: "42.png"}
-	got := s.Path(ref)
+	got, err := s.Path(ref)
+	if err != nil {
+		t.Fatalf("Path(%s) : %v", ref, err)
+	}
 	want := filepath.Join("/cache", "medal-image", "hi", "42.png")
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
@@ -40,7 +49,10 @@ func TestLocalFSStore_Path_AlreadyHasExtension(t *testing.T) {
 func TestLocalFSStore_Path_JSONKind(t *testing.T) {
 	s := NewLocalFSStore("/cache")
 	ref := Ref{Kind: KindMedalMetadata, TitleID: "hi", ID: "metadata"}
-	got := s.Path(ref)
+	got, err := s.Path(ref)
+	if err != nil {
+		t.Fatalf("Path(%s) : %v", ref, err)
+	}
 	want := filepath.Join("/cache", "medal-meta", "hi", "metadata.json")
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
@@ -50,7 +62,10 @@ func TestLocalFSStore_Path_JSONKind(t *testing.T) {
 func TestLocalFSStore_Path_WithOverride(t *testing.T) {
 	s := NewLocalFSStore("/cache").WithRootOverride(KindMapImage, "/static/maps")
 	ref := Ref{Kind: KindMapImage, TitleID: "hi", ID: "LiveFire"}
-	got := s.Path(ref)
+	got, err := s.Path(ref)
+	if err != nil {
+		t.Fatalf("Path(%s) : %v", ref, err)
+	}
 	want := filepath.Join("/static/maps", "map-image", "hi", "LiveFire.png")
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
@@ -111,7 +126,10 @@ func TestLocalFSStore_PersistBinary_AtomicWrite(t *testing.T) {
 		t.Fatalf("PersistBinary: %v", err)
 	}
 
-	expected := s.Path(ref)
+	expected, err := s.Path(ref)
+	if err != nil {
+		t.Fatalf("Path(%s) : %v", ref, err)
+	}
 	if _, err := os.Stat(expected); err != nil {
 		t.Errorf("fichier final absent: %v", err)
 	}

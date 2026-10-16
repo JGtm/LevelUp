@@ -81,6 +81,32 @@ func AcquireSharedWriterStandalone(
 	}, nil
 }
 
+// acquireSharedReaderStandalone retourne un *sql.DB en LECTURE sur shared + sa fonction
+// release (à appeler via defer). C'est le chemin des calculs qui lisent la base partagée
+// et n'écrivent qu'en base joueur : aucune bascule en écriture, aucun lease writer.
+//
+//   - provider != nil : Provider.Get (lecteur en vol, coordonné avec les swaps du sync) ;
+//   - provider == nil : OpenReadForQuery, qui réutilise le handle déjà tenu par le process
+//     ou ouvre en lecture seule (jamais un OpenReadOnly forcé sur un fichier tenu en RW).
+func acquireSharedReaderStandalone(
+	ctx context.Context,
+	provider sharedprovider.Provider,
+	sharedDBPath string,
+) (*sql.DB, func(), error) {
+	if provider != nil {
+		db, release, err := provider.Get(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("acquireSharedReaderStandalone via Provider: %w", err)
+		}
+		return db, release, nil
+	}
+	db, release, err := duckdbpkg.OpenReadForQuery(sharedDBPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("acquireSharedReaderStandalone legacy open: %w", err)
+	}
+	return db, release, nil
+}
+
 // AcquireMetadataWriterStandalone est la variante package-level pour metadata.duckdb.
 // Prend le lease applicatif (Kind=Metadata) + ouvre via le pool process-level
 // (OpenReadWriteShared). Utilisée par les services qui n'ont pas accès à un

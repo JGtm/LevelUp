@@ -91,6 +91,22 @@ func (s *DuckDBIndexStore) LookupIndex(ctx context.Context, ref Ref) (*IndexEntr
 	return entry, nil
 }
 
+// Exists dit si la requête de présence (SELECT 1 ... LIMIT 1) trouve une ligne.
+func (s *DuckDBIndexStore) Exists(ctx context.Context, query string, args ...any) (bool, error) {
+	db, err := s.openDB()
+	if err != nil {
+		return false, fmt.Errorf("duckdb index: open: %w", err)
+	}
+	var one int
+	switch err := db.QueryRow(ctx, query, args...).Scan(&one); {
+	case errors.Is(err, sql.ErrNoRows):
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("duckdb index: exists: %w", err)
+	}
+	return true, nil
+}
+
 // PersistIndex insère ou met à jour une entrée dans asset_index.
 // Appelé exclusivement par le WriteQueue (1 goroutine writer).
 func (s *DuckDBIndexStore) PersistIndex(ctx context.Context, ref Ref, e IndexEntry) error {

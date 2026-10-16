@@ -543,7 +543,9 @@ type MediaAssocRaw struct {
 	// DurationSeconds : durée du média arrondie à la seconde (la base la stocke
 	// en DOUBLE). Nil pour une image ou quand ffprobe n'a rien pu dériver.
 	DurationSeconds *int
-	Liked           bool
+	// OwnerSlug : propriétaire du média (media_files.player_slug), vide si inconnu.
+	OwnerSlug string
+	Liked     bool
 }
 
 // PlayerAssistsModel contient les coefs OLS per-mode d'un joueur pour expected_assists.

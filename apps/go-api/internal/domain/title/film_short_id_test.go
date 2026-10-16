@@ -14,8 +14,9 @@ func TestFilmShortMatchID(t *testing.T) {
 		{"000d5950", "000d5950"},
 		{"abcdef0123456789", "abcdef01"}, // sans tiret, plus long que 8 : on tronque
 		{"abc", "abc"},                   // plus court que 8 : rendu tel quel, rien n'est fabriqué
-		{"", ""},
-		{"-abcdef", "-abcdef"}, // tiret en tête : rien à tronquer avant lui
+		{"", "\x00"},                     // hors forme : clé invalide (cf. invalidMatchKey)
+		{"../x", "\x00" + "2e2e2f78"},    // hors forme : NUL puis l'identifiant en hexadécimal
+		{"-abcdef", "-abcdef"},           // tiret en tête : rien à tronquer avant lui
 	}
 	for _, c := range cas {
 		if got := FilmShortMatchID(c.in); got != c.want {

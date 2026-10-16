@@ -248,4 +248,24 @@ describe('NavL1', () => {
     expect(screen.queryByRole('menuitem', { name: 'Tactique' })).not.toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Profil' })).toBeInTheDocument()
   })
+
+  it("profil d'un ami : aucune cloche de notifications (réservées au propriétaire)", () => {
+    useAppShellStore.setState({ writablePlayerSlugs: ['mon-compte'] })
+    try {
+      renderWithProviders(<NavL1 />)
+      expect(screen.queryByRole('button', { name: /notification/i })).not.toBeInTheDocument()
+    } finally {
+      useAppShellStore.setState({ writablePlayerSlugs: null })
+    }
+  })
+
+  it('son propre profil : la cloche de notifications est présente', () => {
+    useAppShellStore.setState({ writablePlayerSlugs: ['test-player'] })
+    try {
+      renderWithProviders(<NavL1 />)
+      expect(screen.getByRole('button', { name: /notification/i })).toBeInTheDocument()
+    } finally {
+      useAppShellStore.setState({ writablePlayerSlugs: null })
+    }
+  })
 })

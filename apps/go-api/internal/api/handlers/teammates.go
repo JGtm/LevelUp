@@ -91,7 +91,7 @@ type teammatesSessionsOutput struct{ Body compositionSessionsResponse }
 func (h *TeammatesHandler) handleGetPage(ctx context.Context, in *teammatesQueryInput) (*teammatesPageOutput, error) {
 	svc, xuid, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.TeammatesQueryRequest
@@ -118,7 +118,7 @@ func (h *TeammatesHandler) handleGetPage(ctx context.Context, in *teammatesQuery
 func (h *TeammatesHandler) handleGetSessions(ctx context.Context, in *teammatesSessionsInput) (*teammatesSessionsOutput, error) {
 	svc, xuid, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	sessions, latest, svcErr := svc.CompositionSessions(ctx, xuid, compositionDemandee(in.Teammates), in.Exact)

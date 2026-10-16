@@ -28,6 +28,7 @@ import {
   type AuthRequiredVerdict,
 } from '@/components/shell/authRequiredGuard'
 import { needsOwnProfile, SETUP_PATH, setupRedirectPath } from '@/features/setup/setupRouting'
+import { OAUTH_ERROR_PARAM } from '@/features/auth/loginError'
 import type { BootstrapResponse } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -182,6 +183,10 @@ export function RootLayout() {
       // arrière…) → renvoyer vers le dashboard plutôt que d'afficher le formulaire
       // de login « quoi qu'il arrive ».
       if (data.current_username && (path === '/login' || path === '/register')) {
+        // Une reconnexion Xbox refusée revient sur /login?oauth_error=<code> : le motif est
+        // gardé pour le shell (OAuthRefusalBanner), sinon le renvoi à l'accueil l'effacerait.
+        const refusal = new URLSearchParams(window.location.search).get(OAUTH_ERROR_PARAM)
+        if (path === '/login' && refusal) useAppShellStore.getState().setOauthRefusal(refusal)
         navigate({ to: '/' })
         return
       }

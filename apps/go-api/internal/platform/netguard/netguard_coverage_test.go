@@ -39,8 +39,7 @@ var allowlist = map[string]string{
 	// (cf. docker-compose service levelup-demo). La porte d'entrée réellement
 	// atteignable depuis un boot démo — le rafraîchissement OAuth — EST gardée
 	// (oauth_refresh.go) : sans token frais, ces échanges ne partent pas.
-	"platform/auth/auth_code.go":        "login interactif — non monté en démo",
-	"platform/auth/xbox_device_code.go": "device code flow — CLI uniquement",
+	"platform/auth/auth_code.go": "login interactif — non monté en démo",
 	// halo_exchange.go porte aussi le helper `postJSON` par lequel passent
 	// xsts.go et sisu_provider.go : ces deux-là n'émettent rien en propre et
 	// n'ont donc pas à figurer ici.

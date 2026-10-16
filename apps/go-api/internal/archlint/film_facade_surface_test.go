@@ -385,7 +385,12 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           le calque des poussees et sa couverture, que le jumeau
 //	                                           servi (`service/replayview`) convertit comme chaque
 //	                                           calque (ADR 0034 D-7). Aucun retrait.
-const plafondSurfaceReplay = 306 // 2026-10-15 — base 027a5bcaf re-mesuree, meme lot : 305 + 1 (CarriedTracked, les objets engendres) ; cf. l historique ci-dessus
+//	309  citations Halo 5 E3 (2026-10-16)       base `27947da10` re-mesuree a 306. +3 :
+//	                                           `replay.AttachShieldlessKills`, `replay.ShieldlessKillsInput`,
+//	                                           `replay.ShieldlessKillRef` : les frags sans bouclier du
+//	                                           resume d usage, que `replayartifacts` et le backfill
+//	                                           alimentent depuis le fil des morts en base. Aucun retrait.
+const plafondSurfaceReplay = 309 // 2026-10-16 — base 27947da10 re-mesuree a 306 + 3 (frags sans bouclier) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

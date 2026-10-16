@@ -104,6 +104,9 @@ type artefactLu struct {
 	// octets : la taille du fichier lu. Le rattrapage des derives s'en sert pour dire si la
 	// marque de derivation colle encore au CONTENU (cf. derivations_backlog.go).
 	octets int
+	// frags : le fil des morts du match, lu AVANT tout segment d'ecriture (usage_frags.go) pour
+	// les frags sans bouclier du resume d'usage. Read faux = non lu.
+	frags replay.ShieldlessKillsInput
 }
 
 // Deriver applique TOUTES les derivations post-rangement a un lot d'artefacts.
@@ -127,6 +130,8 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	niveaux := preparerNiveauxDArmes(ctx, d, b, lus)
 	// LA RESSOURCE VEHICULES lit aussi la base (frags de mort) : meme regle, meme place.
 	vehicules := preparerPrisesDeVehicules(ctx, d, b, lus)
+	// LE FIL DES MORTS DU RESUME D USAGE (frags sans bouclier) : meme regle, meme place.
+	preparerFragsDuResume(ctx, d, lus)
 	// UN SEUL SEGMENT D'ECRITURE POUR LES QUATRE FAMILLES (constat C7 de la revue A-R1) : la
 	// source d'acquisition est memoisee ici, et relachee ici. Le nil reste nil — un chemin sans
 	// writer cable doit continuer de degrader famille par famille, avec ses journaux.

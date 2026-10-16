@@ -19,6 +19,13 @@ interface AppShellState {
   // Joueur courant
   currentPlayer: PlayerSummary | null
   availablePlayers: PlayerSummary[]
+  /**
+   * Profils sur lesquels la session peut ÉCRIRE (bootstrap `writable_player_slugs`).
+   * Un profil d'ami, lisible par appartenance à un groupe, n'y figure pas : ses
+   * actions d'écriture sont masquées (le serveur les refuse en 403). `null` = liste
+   * inconnue (bootstrap pas encore lu) : rien n'est masqué, le serveur reste l'arbitre.
+   */
+  writablePlayerSlugs: string[] | null
 
   // Sprint 44 : Titre courant
   currentTitleSlug: string
@@ -59,6 +66,12 @@ interface AppShellState {
   /** Instance démo : settings figés (read-only sauf langue/accessibilité), switch
    * de langue client-side (le PATCH /settings est refusé en démo). */
   demoMode: boolean
+  /**
+   * Code de refus (`?oauth_error=`) d'une reconnexion Xbox d'un utilisateur déjà connecté,
+   * gardé par la racine quand elle le renvoie à l'accueil : le shell l'affiche
+   * (OAuthRefusalBanner) jusqu'à fermeture. `null` sans refus.
+   */
+  oauthRefusal: string | null
 
   // Actions
   hydrateFromBootstrap: (data: BootstrapResponse) => void
@@ -67,6 +80,7 @@ interface AppShellState {
   setHintsVisible: (visible: boolean) => void
   /** Met à jour l'ID du job de sync actif (null = aucun sync en cours). */
   setActiveSyncJobId: (id: string | null) => void
+  setOauthRefusal: (code: string | null) => void
 }
 
 const DEFAULT_CAPABILITIES: CapabilityMap = {
@@ -84,6 +98,7 @@ const DEFAULT_CAPABILITIES: CapabilityMap = {
 export const useAppShellStore = create<AppShellState>((set) => ({
   currentPlayer: null,
   availablePlayers: [],
+  writablePlayerSlugs: null,
   currentTitleSlug: 'halo_infinite',
   availableTitles: [],
   isTitleSwitching: false,
@@ -107,6 +122,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   firstLaunch: false,
   oauthCodeFlowEnabled: false,
   demoMode: false,
+  oauthRefusal: null,
 
   hydrateFromBootstrap: (data: BootstrapResponse) => {
     const titleSlug = data.current_title_slug ?? 'halo_infinite'
@@ -116,6 +132,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
     set({
       currentPlayer: data.current_player,
       availablePlayers: data.available_players ?? [],
+      writablePlayerSlugs: data.writable_player_slugs ?? null,
       currentTitleSlug: titleSlug,
       availableTitles: data.available_titles ?? [],
       locale,
@@ -161,6 +178,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   },
   setHintsVisible: (visible) => set({ hintsVisible: visible }),
   setActiveSyncJobId: (id) => set({ activeSyncJobId: id }),
+  setOauthRefusal: (code) => set({ oauthRefusal: code }),
 }))
 
 /**

@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { getNotificationsText } from './i18n'
 import { useNotificationPreferences } from './queries'
 import { useSendTestNotification, useUpdatePreferences } from './mutations'
@@ -31,6 +32,10 @@ export function NotificationsSettingsTab() {
   const t = getNotificationsText(locale)
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const playerSlug = currentPlayer?.player_slug ?? ''
+  // Préférences par catégorie : données du propriétaire du profil, lecture comprise
+  // (ADR 0029). Sur le profil d'un ami, ni lues ni modifiables ; les réglages locaux
+  // (activation, pop-ups, rétention) restent ceux du navigateur.
+  const ownsProfile = useCanWritePlayer(playerSlug)
 
   const [masterEnabled, setMasterEnabled] = useState(() => readBool(LS_KEY_MASTER, true))
   const [toastsEnabled, setToastsEnabled] = useState(() => readBool(LS_KEY_TOASTS, true))
@@ -40,7 +45,7 @@ export function NotificationsSettingsTab() {
   useEffect(() => writeBool(LS_KEY_TOASTS, toastsEnabled), [toastsEnabled])
   useEffect(() => writeInt(LS_KEY_RETENTION, retention), [retention])
 
-  const { data, isLoading } = useNotificationPreferences(playerSlug, !!playerSlug)
+  const { data, isLoading } = useNotificationPreferences(playerSlug, !!playerSlug && ownsProfile)
   const updatePrefs = useUpdatePreferences({ playerSlug })
   const sendTest = useSendTestNotification({ playerSlug })
 
@@ -119,6 +124,10 @@ export function NotificationsSettingsTab() {
           <div className="rounded-md border border-border bg-popover p-4 text-sm text-muted-foreground">
             …
           </div>
+        ) : !ownsProfile ? (
+          <p className="rounded-md border border-border bg-popover p-4 text-sm text-muted-foreground">
+            {t.privateToOwner}
+          </p>
         ) : isLoading ? (
           <div className="rounded-md border border-border bg-popover p-4 text-sm text-muted-foreground">
             …
@@ -164,7 +173,7 @@ export function NotificationsSettingsTab() {
       </section>
 
       {/* Abonnements per-player */}
-      {playerSlug && (
+      {playerSlug && ownsProfile && (
         <section className="space-y-3 rounded-md border border-border bg-popover p-4">
           <header>
             <h3 className="text-sm font-semibold">{t.settingsSubscriptionsTitle}</h3>
@@ -213,16 +222,18 @@ export function NotificationsSettingsTab() {
       </section>
 
       {/* Bouton de test */}
-      <section className="rounded-md border border-border bg-popover p-4">
-        <button
-          type="button"
-          onClick={handleSendTest}
-          disabled={!playerSlug || sendTest.isPending || !masterEnabled}
-          className="rounded-md border border-border bg-accent px-3 py-1.5 text-sm text-accent-foreground hover:bg-accent/80 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {t.settingsTestButton}
-        </button>
-      </section>
+      {ownsProfile && (
+        <section className="rounded-md border border-border bg-popover p-4">
+          <button
+            type="button"
+            onClick={handleSendTest}
+            disabled={!playerSlug || sendTest.isPending || !masterEnabled}
+            className="rounded-md border border-border bg-accent px-3 py-1.5 text-sm text-accent-foreground hover:bg-accent/80 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t.settingsTestButton}
+          </button>
+        </section>
+      )}
     </div>
   )
 }

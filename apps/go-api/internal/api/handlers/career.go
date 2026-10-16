@@ -162,7 +162,7 @@ func (h *CareerHandler) handleGetHighlightMatches(ctx context.Context, in *caree
 	}
 	mhSvc, _, _, err := h.newMHSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	input := parseHighlightFilterInput(in.highlightQuery())
@@ -295,7 +295,7 @@ func (h *CareerHandler) handleGetCareerCSRs(ctx context.Context, in *careerCSRsI
 func (h *CareerHandler) resolve(ctx context.Context, slug string) (port.CareerService, error) {
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return svc, nil
 }

@@ -189,13 +189,11 @@ func (s *service) RefreshSquadPool(ctx context.Context, squadID, titleSlug, requ
 	if requestedBy == "" {
 		return nil, fmt.Errorf("%w: requested_by requis", ErrInvalidInput)
 	}
-	// Vérifier que requestedBy est membre de l'escouade (sinon rejeter).
-	members, err := s.deps.Squads.ListMembers(ctx, squadID)
+	// Vérifier que requestedBy est membre de l'escouade (sinon rejeter) ; le roster
+	// sert ensuite à orienter le pool.
+	members, err := s.membersIfMember(ctx, squadID, requestedBy)
 	if err != nil {
-		return nil, fmt.Errorf("list members: %w", err)
-	}
-	if !isMember(members, requestedBy) {
-		return nil, fmt.Errorf("%w: not a member of squad", ErrInvalidInput)
+		return nil, err
 	}
 
 	all, err := s.deps.Templates.ListByTitle(ctx, titleSlug)

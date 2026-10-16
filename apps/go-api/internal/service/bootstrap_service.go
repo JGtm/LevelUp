@@ -156,8 +156,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 	// Le setup_state ci-dessus reste calculé sur la liste complète (côté instance).
 	visiblePlayers := excludeAuthOnly(players)
 
-	// Couche A (ADR 0029) : available_players et le joueur courant sont restreints
-	// aux profils accessibles par l'utilisateur (les siens + ses co-membres de groupe).
+	// Couche A (ADR 0029) : profils lisibles (siens + co-membres) ; inscriptibles : les siens.
 	familyXUIDs := s.resolveCoMembers(sess)
 	ownedPlayers := s.filterOwnedPlayers(sess, visiblePlayers, familyXUIDs)
 	if len(ownedPlayers) != len(visiblePlayers) {
@@ -167,8 +166,8 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 
 	var currentPlayer *domain.PlayerSummary
 	if len(ownedPlayers) > 0 {
-		// Respecter le choix de joueur stocké en session, sinon fallback ownedPlayers[0].
-		idx := 0
+		// Respecter le choix de joueur stocké en session, sinon le profil par défaut.
+		idx := s.defaultPlayerIndex(sess, ownedPlayers)
 		if sess != nil && sess.CurrentPlayerSlug != nil {
 			for i, p := range ownedPlayers {
 				if p.PlayerSlug == *sess.CurrentPlayerSlug {
@@ -231,6 +230,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		LinkedHaloIdentity:   ResolveLinkedIdentity(sess),
 		CurrentPlayer:        currentPlayer,
 		AvailablePlayers:     ownedPlayers,
+		WritablePlayerSlugs:  s.writablePlayerSlugs(sess, ownedPlayers),
 		CurrentTitleSlug:     currentTitleSlug,
 		AvailableTitles:      BuildAvailableTitles(),
 		Locale:               locale,
@@ -345,7 +345,7 @@ func (s *BootstrapService) BuildPlayersList(ctx context.Context, sess *domain.Se
 	// defaultSlug est calculé APRÈS filtrage → ne pointe jamais sur un profil non possédé.
 	var defaultSlug *string
 	if len(players) > 0 {
-		slug := players[0].PlayerSlug
+		slug := players[s.defaultPlayerIndex(sess, players)].PlayerSlug
 		defaultSlug = &slug
 	}
 	return &domain.PlayersListResponse{

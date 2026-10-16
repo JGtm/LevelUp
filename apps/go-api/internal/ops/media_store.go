@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"hash"
 	"io"
 	"os"
 	"path/filepath"
@@ -217,7 +218,7 @@ func walkMediaDir(dir string) ([]string, error) {
 			return nil
 		}
 		ext := strings.ToLower(filepath.Ext(path))
-		if _, ok := supportedExtensions[ext]; ok {
+		if mediaKindOf(ext) != "" {
 			files = append(files, path)
 		}
 		return nil
@@ -226,28 +227,34 @@ func walkMediaDir(dir string) ([]string, error) {
 }
 
 // HashFile calcule le hash de contenu d'un fichier sur disque (sha256 tronqué à
-// 16 hex, lu en streaming). Doit produire la même valeur que HashBytes pour un
-// contenu identique — c'est la clé de dédup utilisée par l'indexation.
+// 16 hex, lu en streaming). C'est la clé de dédup utilisée par l'indexation ; un
+// ContentHasher alimenté du même contenu produit la même valeur.
 func HashFile(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
 	defer f.Close()
-	h := sha256.New()
+	h := NewContentHasher()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%x", h.Sum(nil))[:16], nil
+	return h.Sum(), nil
 }
 
-// HashBytes calcule le même hash de contenu que HashFile, mais depuis un buffer
-// en mémoire (cas upload : les octets sont déjà chargés). Permet de détecter un
-// ré-upload avant l'écriture disque.
-func HashBytes(data []byte) string {
-	sum := sha256.Sum256(data)
-	return fmt.Sprintf("%x", sum[:])[:16]
-}
+// ContentHasher accumule le hash de contenu d'un flux (écriture au fil de l'eau, sans
+// tampon complet) : un io.Writer dont Sum rend la même valeur que HashFile pour un
+// contenu identique. Permet de reconnaître un ré-upload pendant la copie vers le disque.
+type ContentHasher struct{ h hash.Hash }
+
+// NewContentHasher crée un ContentHasher vide.
+func NewContentHasher() *ContentHasher { return &ContentHasher{h: sha256.New()} }
+
+// Write implémente io.Writer.
+func (c *ContentHasher) Write(p []byte) (int, error) { return c.h.Write(p) }
+
+// Sum rend le hash de contenu (sha256 tronqué à 16 hex) des octets écrits.
+func (c *ContentHasher) Sum() string { return fmt.Sprintf("%x", c.h.Sum(nil))[:16] }
 
 // insertMediaFile insère ou met à jour une ligne media_files.
 //

@@ -11,7 +11,7 @@ func tempInviteStorePath(t *testing.T) string {
 }
 
 func TestGenerate_And_Validate(t *testing.T) {
-	s := NewInviteStore(tempInviteStorePath(t))
+	s := NewInviteStore(tempInviteStorePath(t), issuersOf("admin", "alice"))
 
 	invite, err := s.Generate("admin", 7, "")
 	if err != nil {
@@ -37,7 +37,7 @@ func TestGenerate_And_Validate(t *testing.T) {
 }
 
 func TestGenerate_WithGroupID(t *testing.T) {
-	s := NewInviteStore(tempInviteStorePath(t))
+	s := NewInviteStore(tempInviteStorePath(t), issuersOf("admin", "alice"))
 
 	invite, err := s.Generate("alice", 7, "grp_abc")
 	if err != nil {
@@ -47,22 +47,18 @@ func TestGenerate_WithGroupID(t *testing.T) {
 		t.Errorf("GroupID = %q, want grp_abc", invite.GroupID)
 	}
 
-	// Get relit le GroupID persisté.
-	got, err := s.Get(invite.Code)
+	// Consume rend l'invitation persistée, GroupID compris.
+	got, err := s.Consume(invite.Code, "bob")
 	if err != nil {
-		t.Fatalf("Get: %v", err)
+		t.Fatalf("Consume: %v", err)
 	}
 	if got.GroupID != "grp_abc" {
-		t.Errorf("Get().GroupID = %q, want grp_abc", got.GroupID)
-	}
-
-	if _, err := s.Get("NOTEXIST"); err != ErrInviteNotFound {
-		t.Errorf("Get(absent) = %v, want ErrInviteNotFound", err)
+		t.Errorf("Consume().GroupID = %q, want grp_abc", got.GroupID)
 	}
 }
 
 func TestValidate_NotFound(t *testing.T) {
-	s := NewInviteStore(tempInviteStorePath(t))
+	s := NewInviteStore(tempInviteStorePath(t), issuersOf("admin", "alice"))
 	err := s.Validate("NOTEXIST")
 	if err != ErrInviteNotFound {
 		t.Errorf("err = %v, want ErrInviteNotFound", err)
@@ -70,10 +66,10 @@ func TestValidate_NotFound(t *testing.T) {
 }
 
 func TestConsume_And_DoubleUse(t *testing.T) {
-	s := NewInviteStore(tempInviteStorePath(t))
+	s := NewInviteStore(tempInviteStorePath(t), issuersOf("admin", "alice"))
 	invite, _ := s.Generate("admin", 7, "")
 
-	if err := s.Consume(invite.Code, "bob"); err != nil {
+	if _, err := s.Consume(invite.Code, "bob"); err != nil {
 		t.Fatalf("Consume: %v", err)
 	}
 
@@ -84,22 +80,22 @@ func TestConsume_And_DoubleUse(t *testing.T) {
 	}
 
 	// Double consommation — doit échouer.
-	err = s.Consume(invite.Code, "charlie")
+	_, err = s.Consume(invite.Code, "charlie")
 	if err != ErrInviteUsed {
 		t.Errorf("double consume: err = %v, want ErrInviteUsed", err)
 	}
 }
 
 func TestConsume_NotFound(t *testing.T) {
-	s := NewInviteStore(tempInviteStorePath(t))
-	err := s.Consume("NOTEXIST", "user")
+	s := NewInviteStore(tempInviteStorePath(t), issuersOf("admin", "alice"))
+	_, err := s.Consume("NOTEXIST", "user")
 	if err != ErrInviteNotFound {
 		t.Errorf("err = %v, want ErrInviteNotFound", err)
 	}
 }
 
 func TestRevoke(t *testing.T) {
-	s := NewInviteStore(tempInviteStorePath(t))
+	s := NewInviteStore(tempInviteStorePath(t), issuersOf("admin", "alice"))
 	invite, _ := s.Generate("admin", 7, "")
 
 	if err := s.Revoke(invite.Code); err != nil {
@@ -120,7 +116,7 @@ func TestRevoke(t *testing.T) {
 }
 
 func TestList_Invites(t *testing.T) {
-	s := NewInviteStore(tempInviteStorePath(t))
+	s := NewInviteStore(tempInviteStorePath(t), issuersOf("admin", "alice"))
 	_, _ = s.Generate("admin", 7, "")
 	_, _ = s.Generate("admin", 14, "")
 
@@ -134,7 +130,7 @@ func TestList_Invites(t *testing.T) {
 }
 
 func TestGenerate_DefaultExpiry(t *testing.T) {
-	s := NewInviteStore(tempInviteStorePath(t))
+	s := NewInviteStore(tempInviteStorePath(t), issuersOf("admin", "alice"))
 	// expiresInDays <= 0 → défaut 7 jours.
 	invite, err := s.Generate("admin", 0, "")
 	if err != nil {
@@ -182,11 +178,11 @@ func TestGenerateCode_AlphabetOnly(t *testing.T) {
 
 func TestPersistence_Invites(t *testing.T) {
 	path := tempInviteStorePath(t)
-	s1 := NewInviteStore(path)
+	s1 := NewInviteStore(path, issuersOf("admin"))
 	invite, _ := s1.Generate("admin", 7, "")
 
 	// Nouvel objet sur le même fichier.
-	s2 := NewInviteStore(path)
+	s2 := NewInviteStore(path, issuersOf("admin"))
 	if err := s2.Validate(invite.Code); err != nil {
 		t.Fatalf("persistence validate: %v", err)
 	}

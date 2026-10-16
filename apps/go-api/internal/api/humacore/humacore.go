@@ -421,7 +421,8 @@ func NewAPI(r chi.Router, opts ...MountOption) huma.API {
 		return NewSubrouterAPI(r, mc.config, mc.prefix)
 	}
 	installErrorOverride()
-	api := humachi.New(r, newConfig())
+	base := humachi.New(r, newConfig())
+	api := &apiWithAdapter{API: base, adapter: base.Adapter()}
 	notifyCreated(r, api)
 	return api
 }

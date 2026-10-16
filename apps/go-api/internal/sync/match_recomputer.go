@@ -22,6 +22,11 @@
 //
 // Volumétrie typique : 5000-10000 matchs total → ~2-10s en synchrone.
 // Si la latence pose problème, ré-introduire un mode ciblé via paramètre.
+//
+// Base partagée : LUE SEULEMENT. Les notes et le LUSR s'écrivent en base joueur
+// (persisters INSERT-only) ; le recalcul n'acquiert donc jamais le writer partagé (une
+// bascule en écriture ferait répondre 503 aux lecteurs de tout le site pendant 2 à 10 s).
+// Des demandes répétées pour un même joueur sont absorbées (coalesce.Runs).
 package sync
 
 import (
@@ -31,6 +36,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/platform/coalesce"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
@@ -39,9 +45,8 @@ import (
 // (dé)exclusion de match. Détient les paths nécessaires à l'acquisition des
 // leases d'écriture sur les deux DBs.
 //
-// sharedProvider (sprint B1 commit 13b) : si non-nil, route les écritures
-// shared via Provider.AcquireWriter (coordonne avec le pool joueur et les
-// readers HTTP). Si nil, fallback legacy (dblease + OpenSharedDB).
+// sharedProvider : si non-nil, la base partagée se lit via Provider.Get (coordonné
+// avec le pool joueur et les swaps du sync). Si nil, OpenReadForQuery.
 type MatchRecomputer struct {
 	playerDBPath   string
 	sharedDBPath   string
@@ -56,7 +61,7 @@ type MatchRecomputer struct {
 
 // NewMatchRecomputer construit un MatchRecomputer pour un joueur donné.
 // metadataDBPath peut être vide → recompute fonctionne sans bonus médailles.
-// provider peut être nil → mode legacy (cf. AcquireSharedWriterStandalone).
+// provider peut être nil → lecture par OpenReadForQuery.
 func NewMatchRecomputer(
 	playerDBPath, sharedDBPath, metadataDBPath, xuid, gamertag string,
 	provider sharedprovider.Provider,
@@ -87,9 +92,25 @@ func (r *MatchRecomputer) titledCtx(ctx context.Context) context.Context {
 
 // RecomputeAfterExclusion relance les batches perf_score + LUSR en force=true
 // pour propager l'effet d'une (dé)exclusion. matchID est utilisé pour les logs
-// uniquement (le filtrage se fait via le flag `is_excluded` déjà persisté). Le titre des
-// lectures est celui du profil (titledCtx), pas celui de la requête.
+// uniquement (le filtrage se fait via le flag `is_excluded` déjà persisté). Les demandes
+// simultanées pour le même joueur sont absorbées : jamais deux recalculs en parallèle. Le titre
+// des lectures est celui du profil (titledCtx), pas celui de la requête.
 func (r *MatchRecomputer) RecomputeAfterExclusion(ctx context.Context, matchID string) error {
+	return exclusionRecomputes.Do(ctx, r.playerDBPath, func(ctx context.Context) error {
+		return r.recompute(ctx, matchID)
+	})
+}
+
+// RecomputePending dit si le dernier recalcul de ce joueur a échoué : une demande
+// d'exclusion identique à l'état déjà persisté doit alors recalculer quand même.
+func (r *MatchRecomputer) RecomputePending() bool {
+	return exclusionRecomputes.FailedLast(r.playerDBPath)
+}
+
+// exclusionRecomputes absorbe les recalculs d'exclusion par base joueur, pour tout le process.
+var exclusionRecomputes coalesce.Runs
+
+func (r *MatchRecomputer) recompute(ctx context.Context, matchID string) error {
 	ctx = r.titledCtx(ctx)
 	start := time.Now()
 	slog.InfoContext(ctx, "MatchRecomputer: démarrage",
@@ -107,8 +128,7 @@ func (r *MatchRecomputer) RecomputeAfterExclusion(ctx context.Context, matchID s
 	}
 	defer playerHandle.Close()
 
-	// Sprint B1 commit 13b : helper standalone (Provider en B-swap, legacy sinon).
-	sharedSQL, releaseShared, err := AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "match_exclusion_recompute"), r.sharedProvider, r.sharedDBPath)
+	sharedSQL, releaseShared, err := acquireSharedReaderStandalone(ctx, r.sharedProvider, r.sharedDBPath)
 	if err != nil {
 		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion: %w", err)
 	}

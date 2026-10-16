@@ -299,8 +299,8 @@ func TestMediaService_UploadMedia_SavesToDisk(t *testing.T) {
 	svc := NewMediaService(&mockMediaRepo{}, "")
 	req := domain.UploadRequest{
 		Files: []domain.UploadedFile{
-			{OriginalName: "clip.mp4", Data: []byte("fake video bytes")},
-			{OriginalName: "shot.png", Data: []byte("fake image bytes")},
+			{OriginalName: "clip.mp4", Open: bytesOpener("fake video bytes")},
+			{OriginalName: "shot.png", Open: bytesOpener("fake image bytes")},
 		},
 		CapturesDir: dir,
 		DBPath:      filepath.Join(dir, "stats.duckdb"),
@@ -326,7 +326,7 @@ func TestMediaService_UploadMedia_DuplicateContent_Skipped(t *testing.T) {
 	svc := NewMediaService(&mockMediaRepo{}, "")
 	buildReq := func() domain.UploadRequest {
 		return domain.UploadRequest{
-			Files:       []domain.UploadedFile{{OriginalName: "clip.mp4", Data: []byte("same video bytes")}},
+			Files:       []domain.UploadedFile{{OriginalName: "clip.mp4", Open: bytesOpener("same video bytes")}},
 			CapturesDir: dir,
 			DBPath:      filepath.Join(dir, "stats.duckdb"),
 		}
@@ -371,7 +371,7 @@ func TestMediaService_UploadMedia_SameNameDifferentContent_Kept(t *testing.T) {
 	svc := NewMediaService(&mockMediaRepo{}, "")
 	mk := func(data string) domain.UploadRequest {
 		return domain.UploadRequest{
-			Files:       []domain.UploadedFile{{OriginalName: "clip.mp4", Data: []byte(data)}},
+			Files:       []domain.UploadedFile{{OriginalName: "clip.mp4", Open: bytesOpener(data)}},
 			CapturesDir: dir,
 			DBPath:      filepath.Join(dir, "stats.duckdb"),
 		}
@@ -410,7 +410,7 @@ func TestMediaService_UploadMedia_CreatesCapturesDir(t *testing.T) {
 	captures := filepath.Join(base, "new", "captures")
 	svc := NewMediaService(&mockMediaRepo{}, "")
 	req := domain.UploadRequest{
-		Files:       []domain.UploadedFile{{OriginalName: "a.mp4", Data: []byte("x")}},
+		Files:       []domain.UploadedFile{{OriginalName: "a.mp4", Open: bytesOpener("x")}},
 		CapturesDir: captures,
 		DBPath:      filepath.Join(base, "stats.duckdb"),
 	}
@@ -427,7 +427,7 @@ func TestMediaService_UploadMedia_ToleranceDefault(t *testing.T) {
 	svc := NewMediaService(&mockMediaRepo{}, "")
 	// Tolerance=0 → doit utiliser 2 par défaut (pas de panique)
 	req := domain.UploadRequest{
-		Files:       []domain.UploadedFile{{OriginalName: "a.mp4", Data: []byte("x")}},
+		Files:       []domain.UploadedFile{{OriginalName: "a.mp4", Open: bytesOpener("x")}},
 		CapturesDir: dir,
 		DBPath:      filepath.Join(dir, "stats.duckdb"),
 		Tolerance:   0,
@@ -448,7 +448,7 @@ func TestMediaService_UploadMedia_PathTraversalBlocked(t *testing.T) {
 	// Un nom de fichier avec path traversal doit être nettoyé par filepath.Base
 	req := domain.UploadRequest{
 		Files: []domain.UploadedFile{
-			{OriginalName: "../../evil.sh", Data: []byte("x")},
+			{OriginalName: "../../evil.sh", Open: bytesOpener("x")},
 		},
 		CapturesDir: dir,
 		DBPath:      filepath.Join(dir, "stats.duckdb"),
@@ -760,7 +760,7 @@ func TestMediaService_UploadMedia_ConcurrentSameDir_NamingConflict(t *testing.T)
 	buildReq := func() domain.UploadRequest {
 		return domain.UploadRequest{
 			Files: []domain.UploadedFile{
-				{OriginalName: "capture.mp4", Data: []byte("fake-video-data")},
+				{OriginalName: "capture.mp4", Open: bytesOpener("fake-video-data")},
 			},
 			CapturesDir: dir,
 			DBPath:      filepath.Join(dir, "stats.duckdb"),

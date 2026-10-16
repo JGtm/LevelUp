@@ -3,9 +3,9 @@ package ops
 // seed_citation_data.go — table de donnees: mapping medaille -> citation.
 // Littéral de données (exempt de la regle 80L/fonction : data table).
 
-// defaultCitationMappings — 106 règles citations (88 portées de l'ancien
+// defaultCitationMappings — 110 règles citations (88 portées de l'ancien
 // scripts/populate_citation_mappings.py, + 10 citations d'objectif v7.2.1,
-// + 8 « Artilleur de » véhicule le 2026-09-10).
+// + 8 « Artilleur de » véhicule le 2026-09-10, + 4 citations Halo 5 le 2026-10-16).
 //
 // Catégories : Mode de jeu, Multijoueur, Spartan Companies, Véhicule, Arme,
 // Ennemi (PVE) + composites.
@@ -108,6 +108,19 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatModeJeu,
 			Description: "Remportez n'importe quelle partie matchmaking Bases.",
 			TierTargets: tierTargets5_10_15_25_50},
+
+		{Norm: "tick_tick_boom", Display: "Tick Tick Boom", MappingType: mappingTypeCustom,
+			CustomFunction: "compute_wins_assault", Enabled: true,
+			ImagePath:   wpHI + "HI_citation_Tick_Tick_Boom.png",
+			Category:    citationCatModeJeu,
+			Description: "Remportez des parties d'Assaut.",
+			TierTargets: tierTargets5_10_15_25_50},
+		{Norm: "wonderful_toys", Display: "Jouets éducatifs", MappingType: mappingTypeCustom,
+			CustomFunction: "compute_wonderful_toys", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Jouets_éducatifs.png",
+			Category:    citationCatModeJeu,
+			Description: "Prenez au moins trois armes sur socle au cours d'une même partie d'Assassin.",
+			TierTargets: tierTargets5_10_20_35_60},
 
 		// ── PVP — Mode de jeu · objectifs CTF/Zones/Oddball (10, v7.2.1) ──────
 		// DÉCISION UTILISATEUR (2026-07-25) : sur les 19 colonnes de
@@ -324,6 +337,18 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatMultijoueur,
 			Description: "Assassinez des Spartans adverses.",
 			TierTargets: tierTargets5_10_15_25_50},
+		{Norm: "first_strike", Display: "Premier coup", MappingType: mappingTypeCustom,
+			CustomFunction: "compute_first_strike", Enabled: true,
+			ImagePath:   wpHI + "HI_citation_Premier_coup.png",
+			Category:    citationCatMultijoueur,
+			Description: "Réalisez le premier frag d'une partie.",
+			TierTargets: tierTargets10_25_50_100_250},
+		{Norm: "almost_doesnt_count", Display: "Presque, ça ne compte pas", MappingType: mappingTypeStat,
+			StatName: "shieldless_kills", Enabled: true,
+			ImagePath:   wpHI + "HI_citation_Presque_ca_ne_compte_pas.png",
+			Category:    citationCatMultijoueur,
+			Description: "Tuez un Spartan adverse sans bouclier et survivez.",
+			TierTargets: tierTargets50_100_150_250_500},
 		{Norm: "spartan_carnage", Display: "Carnage de Spartans", MappingType: mappingTypeMedal,
 			MedalIDs:    "2780740615,4261842076,418532952,1486797009,710323196,1720896992,2567026752,2875941471",
 			Enabled:     true,
@@ -853,6 +878,10 @@ var citationDisplayEN = map[string]string{
 	"scorpion_destroyer":  "Scorpion Destroyer",
 	"scorpion_gunner":     "Scorpion Gunner",
 	"slayer_victory":      "Slayer Victory",
+	"tick_tick_boom":      "Tick Tick Boom",
+	"first_strike":        "First Strike",
+	"wonderful_toys":      "Wonderful Toys",
+	"almost_doesnt_count": "Almost Doesn't Count",
 	"spartan_carnage":     "Spartan Spree",
 	"spartan_killer":      "Spartan Slayer",
 	"splatter":            "Splatter",
@@ -963,6 +992,10 @@ var citationDescriptionEN = map[string]string{
 	"flag_victory":        "Win a match in any Capture the Flag gametype in matchmaking.",
 	"slayer_victory":      "Be on the winning team of a Slayer match.",
 	"strongholds_victory": "Win a match in any Stronghold gametype in matchmaking.",
+	"tick_tick_boom":      "Win matches in Assault.",
+	"first_strike":        "Earn the first kill of a match.",
+	"wonderful_toys":      "Pick up three or more weapons from weapon pads during a single Slayer match.",
+	"almost_doesnt_count": "Kill an enemy Spartan with no shield left and survive.",
 	// ── Mode de jeu · objectifs v7.2.1 (idiome officiel H5 « … in any <mode>
 	// gametype in matchmaking. », traduction fidèle du FR) ──────────────────────
 	citationNormFlagCaptures:         "Capture the enemy flag in any Capture the Flag gametype in matchmaking.",

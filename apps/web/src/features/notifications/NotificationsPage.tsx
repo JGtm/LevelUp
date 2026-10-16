@@ -11,6 +11,7 @@ import { getNotificationsText } from './i18n'
 import { useNotificationsList } from './queries'
 import { useDismiss, useMarkAllRead, useMarkRead, useMarkUnread } from './mutations'
 import { NotificationItem } from './NotificationItem'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import type { Notification, NotificationCategory } from './types'
 import { ALL_CATEGORIES } from './types'
 import { formatMessage } from '@/lib/i18n/format'
@@ -30,17 +31,29 @@ export function NotificationsPage() {
   const [pages, setPages] = useState<Notification[]>([])
   const [cursor, setCursor] = useState<number | undefined>(undefined)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set())
+  // Notifications réservées au propriétaire du profil, lecture comprise (ADR 0029) : sur le
+  // profil d'un ami, la page ne lit rien et l'annonce.
+  const ownsProfile = useCanWritePlayer(playerSlug)
 
   const { data, isLoading, isError, refetch } = useNotificationsList(
     playerSlug,
     { unread_only: unreadOnly, category, limit: PAGE_LIMIT, before_id: cursor },
-    { enabled: !!playerSlug, refetchInterval: 60_000 },
+    { enabled: !!playerSlug && ownsProfile, refetchInterval: 60_000 },
   )
 
   const markRead = useMarkRead({ playerSlug })
   const markUnread = useMarkUnread({ playerSlug })
   const dismiss = useDismiss({ playerSlug })
   const markAllRead = useMarkAllRead({ playerSlug })
+
+  if (!ownsProfile) {
+    return (
+      <div className="px-4 py-6">
+        <h1 className="mb-6 text-2xl font-semibold">{t.pageTitle}</h1>
+        <p className="py-12 text-center text-sm text-muted-foreground">{t.privateToOwner}</p>
+      </div>
+    )
+  }
 
   // Concat pour pagination cursor (basique, sans duplication-check)
   const items = cursor === undefined ? data?.items ?? [] : pages.concat(data?.items ?? [])
