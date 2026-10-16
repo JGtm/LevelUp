@@ -10,10 +10,12 @@
 // contient « ffmpeg »), hors de internal/media/ffmpeg_slot.go, le lanceur unique. ffprobe n'est
 // pas visé ici : une sonde ne transcode rien, son garde-rail est ffprobe_single_launcher_test.go.
 //
-// POOLS (plan sécurité, lot L5c). Le lanceur unique tient une place de l'un des DEUX pools nommés
-// de media/ffmpeg_slot.go (PoolTranscode : 1 place ; PoolRemux : 2 places). Interdit dans
-// internal/media : tout autre appel à slots.New, qui ouvrirait un troisième pool hors du lanceur ;
-// et un nombre de slots.New dans ffmpeg_slot.go différent de 2.
+// POOLS (plan sécurité, lots L5c et F-1a). Le lanceur unique tient une place de l'un des TROIS pools
+// nommés de media/ffmpeg_slot.go (PoolTranscode : 1 place ; PoolRemux : 2 places ;
+// PoolThumbnail : 1 place, ajouté le 2026-10-16 pour qu'une miniature n'attende plus un
+// transcodage, F-1a R1-3). Interdit dans
+// internal/media : tout autre appel à slots.New, qui ouvrirait un pool hors du lanceur ;
+// et un nombre de slots.New dans ffmpeg_slot.go différent de ffmpegPoolCount.
 package archlint
 
 import (
@@ -135,8 +137,9 @@ func f() { _ = exec.CommandContext(nil, "git", "status") }`, 0},
 	}
 }
 
-// ffmpegPoolCount : nombre de pools nommés que ffmpeg_slot.go ouvre (PoolTranscode, PoolRemux).
-const ffmpegPoolCount = 2
+// ffmpegPoolCount : nombre de pools nommés que ffmpeg_slot.go ouvre (PoolTranscode, PoolRemux,
+// PoolThumbnail depuis le 2026-10-16).
+const ffmpegPoolCount = 3
 
 const ffmpegMediaDir = "internal/media/"
 
@@ -160,7 +163,7 @@ func slotsNewSites(src goSource) []string {
 	return sites
 }
 
-// ffmpegPoolProblems : les places de ffmpeg sont les deux pools nommés du lanceur, et rien
+// ffmpegPoolProblems : les places de ffmpeg sont les pools nommés du lanceur, et rien
 // d'autre dans internal/media.
 func ffmpegPoolProblems(sources []goSource) []string {
 	var out []string
@@ -175,7 +178,7 @@ func ffmpegPoolProblems(sources []goSource) []string {
 			continue
 		}
 		for _, s := range sites {
-			out = append(out, s+" : pool de places ouvert hors du lanceur ffmpeg (seuls PoolTranscode et PoolRemux existent)")
+			out = append(out, s+" : pool de places ouvert hors du lanceur ffmpeg (seuls PoolTranscode, PoolRemux et PoolThumbnail existent)")
 		}
 	}
 	if launcherPools != ffmpegPoolCount {
@@ -186,7 +189,7 @@ func ffmpegPoolProblems(sources []goSource) []string {
 	return out
 }
 
-func TestFFmpegPoolsAreTheTwoNamedOnes(t *testing.T) {
+func TestFFmpegPoolsAreTheNamedOnes(t *testing.T) {
 	problems := ffmpegPoolProblems(goSourcesUnder(t, ffmpegLauncherRoots...))
 	if len(problems) > 0 {
 		t.Errorf("pools de places ffmpeg :\n  %s", strings.Join(problems, "\n  "))
@@ -197,10 +200,15 @@ func TestFFmpegPoolGuardDetectsDefects(t *testing.T) {
 	const launcher = `package media
 import "levelup/go-api/internal/platform/slots"
 var a = slots.New(1)
-var b = slots.New(2)`
-	const third = `package media
+var b = slots.New(2)
+var t = slots.New(1)`
+	const extra = `package media
 import "levelup/go-api/internal/platform/slots"
 var c = slots.New(3)`
+	const twoOnly = `package media
+import "levelup/go-api/internal/platform/slots"
+var a = slots.New(1)
+var b = slots.New(2)`
 	const elsewhere = `package ops
 import "levelup/go-api/internal/platform/slots"
 var uploads = slots.New(2)`
@@ -209,9 +217,10 @@ var uploads = slots.New(2)`
 		sources map[string]string // chemin relatif -> source
 		want    int
 	}{
-		{"les deux pools nommés", map[string]string{ffmpegLauncherFile: launcher}, 0},
-		{"troisième pool dans media", map[string]string{ffmpegLauncherFile: launcher, "internal/media/other.go": third}, 1},
-		{"un seul pool dans le lanceur", map[string]string{ffmpegLauncherFile: third}, 1},
+		{"les trois pools nommés", map[string]string{ffmpegLauncherFile: launcher}, 0},
+		{"pool de plus dans media", map[string]string{ffmpegLauncherFile: launcher, "internal/media/other.go": extra}, 1},
+		{"un seul pool dans le lanceur", map[string]string{ffmpegLauncherFile: extra}, 1},
+		{"deux pools dans le lanceur", map[string]string{ffmpegLauncherFile: twoOnly}, 1},
 		{"pool de travail hors media", map[string]string{ffmpegLauncherFile: launcher, "internal/ops/up.go": elsewhere}, 0},
 	}
 	for _, tc := range cases {

@@ -155,30 +155,17 @@ func thumbnailWindow(totalDur float64) (skip, extract float64) {
 // generateAnimatedThumbnail génère un WebP animé via ffmpeg/libwebp.
 // La fenêtre d'extraction (skip + durée) est calculée proportionnellement à la
 // durée du clip via thumbnailWindow — fallback sur 5s/3s si ffprobe échoue.
-// Résolution 480px largeur, fps=12, qualité 75, compression max.
+// Résolution 480px largeur, fps=12, qualité 75, compression max (media.RunWebPThumbnail).
 func generateAnimatedThumbnail(ctx context.Context, videoPath, webpPath string) error {
 	skip, extract := 5.0, 3.0
 	if dur, err := probeVideoDuration(ctx, videoPath); err == nil {
 		skip, extract = thumbnailWindow(dur)
 	}
-	args := []string{"-y",
-		"-ss", strconv.FormatFloat(skip, 'f', 2, 64),
-		"-t", strconv.FormatFloat(extract, 'f', 2, 64),
-		"-i", videoPath,
-		"-an",
-		"-vf", "fps=12,scale=480:-1:flags=lanczos",
-		"-c:v", "libwebp",
-		"-loop", "0",
-		"-q:v", "75",
-		"-compression_level", "6",
-		"-preset", "picture",
-		webpPath,
-	}
 	// On capture stderr pour remonter la cause réelle de l'échec (codec, fichier
 	// tronqué, ffmpeg absent) au lieu de l'avaler — diagnostic des miniatures
 	// manquantes côté prod.
 	stderr := &bytes.Buffer{}
-	if err := mediapkg.RunFFmpeg(ctx, mediapkg.FFmpegJob{Args: args, Stderr: stderr}); err != nil {
+	if err := mediapkg.RunWebPThumbnail(ctx, videoPath, webpPath, skip, extract, stderr); err != nil {
 		return fmt.Errorf("ffmpeg thumbnail: %w (stderr: %s)", err, strings.TrimSpace(stderr.String()))
 	}
 	return nil

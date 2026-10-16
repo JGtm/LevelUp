@@ -11,9 +11,13 @@ import (
 	"levelup/go-api/internal/platform/slots"
 )
 
-// ffmpegMaxDuration borne un travail ffmpeg, à partir de l'obtention de la place : un ffmpeg
-// bloqué ne retient pas la file indéfiniment.
+// ffmpegMaxDuration borne un transcodage ou un remux, à partir de l'obtention de la place :
+// un ffmpeg bloqué ne retient pas la file indéfiniment.
 const ffmpegMaxDuration = 45 * time.Minute
+
+// thumbnailMaxDuration borne une miniature (quelques secondes de vidéo réduites à 480 px) : elle
+// tient le verrou d'index et une place d'envoi de la requête qui la génère.
+const thumbnailMaxDuration = 5 * time.Minute
 
 // remuxPlaces : nombre de lectures remuxées simultanées. Un remux copie les flux sans
 // transcoder (peu de processeur) mais dure autant que la lecture du clip : il ne partage pas la
@@ -25,22 +29,26 @@ const remuxPlaces = 2
 // sans rien avoir écrit.
 var ErrFFmpegBusy = errors.New("ffmpeg: aucune place libre dans le délai d'attente")
 
-// FFmpegPool nomme l'un des deux pools de places de ffmpeg. Tout lancement en tient une place :
+// FFmpegPool nomme l'un des trois pools de places de ffmpeg. Tout lancement en tient une place :
 // archlint/ffmpeg_single_launcher_test.go interdit tout autre lanceur et tout autre pool.
 type FFmpegPool int
 
 const (
-	// PoolTranscode (valeur zéro) : transcodages HLS, analyses audio, miniatures, sondes de
+	// PoolTranscode (valeur zéro) : transcodages HLS, analyses audio, sondes de
 	// version. Une place pour tout le process (chacun est gourmand en processeur et en mémoire ;
 	// une salve d'envois ne doit pas en lancer des dizaines).
 	PoolTranscode FFmpegPool = iota
 	// PoolRemux : flux remuxés vers un client, remuxPlaces à la fois.
 	PoolRemux
+	// PoolThumbnail : miniatures, une à la fois. Une miniature est générée pendant la requête
+	// d'envoi : elle n'attend pas un transcodage, qui tient sa place jusqu'à 45 min.
+	PoolThumbnail
 )
 
 var (
-	ffmpegSlots = slots.New(1)
-	remuxSlots  = slots.New(remuxPlaces)
+	ffmpegSlots    = slots.New(1)
+	remuxSlots     = slots.New(remuxPlaces)
+	thumbnailSlots = slots.New(1)
 )
 
 // slotsFor rend le sémaphore d'un pool nommé ; un pool inconnu n'a pas de place.
@@ -50,6 +58,8 @@ func slotsFor(pool FFmpegPool) (*slots.Pool, error) {
 		return ffmpegSlots, nil
 	case PoolRemux:
 		return remuxSlots, nil
+	case PoolThumbnail:
+		return thumbnailSlots, nil
 	}
 	return nil, fmt.Errorf("ffmpeg: pool inconnu (%d)", int(pool))
 }
@@ -91,7 +101,7 @@ func withFFmpegSlotWithin(ctx context.Context, pool FFmpegPool, maxWait time.Dur
 		return fmt.Errorf("attente de la place ffmpeg: %w", err)
 	}
 	defer release()
-	runCtx, cancel := context.WithTimeout(context.WithValue(ctx, slotHeldKey{pool}, true), ffmpegMaxDuration)
+	runCtx, cancel := context.WithTimeout(context.WithValue(ctx, slotHeldKey{pool}, true), maxDurationFor(pool))
 	defer cancel()
 	return fn(runCtx)
 }
@@ -116,7 +126,7 @@ var ffmpegCommand = func(ctx context.Context, args []string) *exec.Cmd {
 }
 
 // RunFFmpeg lance ffmpeg et attend sa fin en tenant une place du pool demandé, avec le délai
-// maximal ffmpegMaxDuration : tout lancement de ffmpeg du module passe par ici. Le processus est
+// maximal du pool (maxDurationFor) : tout lancement de ffmpeg du module passe par ici. Le processus est
 // tué à l'échéance ou à l'annulation du contexte. Un pool inconnu est refusé sans lancement.
 func RunFFmpeg(ctx context.Context, job FFmpegJob) error {
 	return withFFmpegSlotWithin(ctx, job.Pool, job.MaxWait, func(ctx context.Context) error {
@@ -125,4 +135,13 @@ func RunFFmpeg(ctx context.Context, job FFmpegJob) error {
 		cmd.Stderr = job.Stderr
 		return cmd.Run()
 	})
+}
+
+// maxDurationFor rend le délai maximal d'un lancement du pool, compté depuis l'obtention de
+// la place.
+func maxDurationFor(pool FFmpegPool) time.Duration {
+	if pool == PoolThumbnail {
+		return thumbnailMaxDuration
+	}
+	return ffmpegMaxDuration
 }
