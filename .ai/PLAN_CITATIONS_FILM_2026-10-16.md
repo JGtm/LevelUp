@@ -99,19 +99,26 @@ du post-sync voit ses citations film recalculées sans intervention.
 - [x] Gate : `go test ./internal/analysis/ ./internal/games/halo_infinite/ ./internal/ops/` vert ; golangci-lint sur ces paquets : aucun constat nouveau.
 
 ### E3 — Citations du film
-- [ ] `loadFilmStats(sharedDB, matchID, xuid)` sur le patron de `loadObjectiveStats`
-      (`citations.go:520`) : lit `pad_pickups` (et la colonne D1 si livrée) de
-      `match_usage_players_latest`. Vue absente = log DEBUG et clés absentes ; erreur SQL = log
-      WARN, jamais avalée.
-- [ ] Porte capability : la lecture est gatée par `film.usage_summary` (existante) ; Halo 5 ne la
-      déclare pas, donc clés absentes et citations à 0, sans erreur.
-- [ ] `compute_wonderful_toys` : 1 si match Assassin et `pad_pickups >= 3`.
-- [ ] Si D1 livrée : colonne `shieldless_kills` ajoutée au résumé d'usage (`replay.BuildUsageSummary`,
-      migration ALTER de `match_usage_players`, persister INSERT-only, vue `_latest` recréée, ADR 0026),
-      `compute_almost_doesnt_count` = sa valeur.
-- [ ] Seed `wonderful_toys` (+ `almost_doesnt_count` si D1 livrée).
-- [ ] Gate : tests purs des customs (Assassin / non-Assassin, seuil 2 / 3, colonne absente) +
-      `go test ./internal/sync/ ./internal/ops/ ./internal/games/... ./internal/persist/`.
+- [x] `loadFilmStats(sharedDB, matchID, xuid)` (`internal/sync/citations_film_stats.go`) sur le patron
+      de `loadObjectiveStats` : lit `pad_pickups` et `shieldless_kills` de `match_usage_players_latest`.
+      Vue absente = DEBUG et clés absentes ; autre erreur SQL = WARN ; colonne NULL = clé absente.
+- [~] Porte capability : la PRODUCTION de la colonne est gatée par `film.usage_summary` (fil de l'eau
+      `persisterResumesUsage` et `levelup backfill-usage-summary`, inchangés) ; la LECTURE côté
+      citations est best-effort comme `loadObjectiveStats` (Halo 5 n'a pas la vue : DEBUG, clés
+      absentes, citations à 0). Pas de nouvelle clé de capability.
+- [x] `compute_wonderful_toys` : 1 si match Assassin et `pad_pickups >= 3` (constante nommée).
+- [x] D1 livrée : `replay.AttachShieldlessKills` (`usage_summary_shieldless.go`, pur) posé après
+      `BuildUsageSummary` ; frags lus en base avant tout segment d'écriture (`usage_frags.go`,
+      `preparerFragsDuResume` dans `Deriver`, et `fragsDuFilDesMorts` dans le backfill) ; migration
+      `shared_match_usage_players_shieldless_v1` (colonne nullable, vue `_latest` recréée) ;
+      persister INSERT-only ; `UsageSummaryRev` us6 -> us7 (chronique). Citation en `stat` sur
+      `shieldless_kills`.
+- [x] Seed `wonderful_toys` et `almost_doesnt_count` (libellés et descriptions EN, images D5).
+- [x] Gate : tests purs (customs, `AttachShieldlessKills`, `loadFilmStats`), intégration
+      `TestResumeUsage_FragsSansBouclier` ; `go test` vert sur `sync`, `ops`, `games/...`, `persist`,
+      `migration`, `sync/replayartifacts`, `cmd/levelup` ; `-tags=integration` vert sur `persist`,
+      `sync/replayartifacts`, `cmd/levelup`. Lint : `DispatchCustom` passait à 16 de complexité,
+      routage converti en table (`customFunctions`) ; aucun autre constat nouveau.
 
 ### E4 — Déclencheur après les dérivations du film
 - [ ] Jeton `_film` dans la génération écrite quand le film du match est dérivé au moment du calcul.
@@ -178,3 +185,12 @@ neuf : `match_impact.go` est déjà au-dessus du seuil de 500 lignes, il ne gros
 victoires de mode et Bulldozer passent par des prédicats uniques ; le garde-rail interdit de relire
 la playlist ou la variante hors de `citations_custom_modes.go`. Premier coup ne dépend pas du film :
 il se calcule au post-sync normal, avec les événements highlight déjà chargés.
+
+### E3 — Jouets éducatifs et Presque, ça ne compte pas (2026-10-16)
+
+Les frags ne sont pas dans le document de rejeu : la colonne `shieldless_kills` se calcule à la
+dérivation du résumé d'usage en croisant le document au fil des morts du match, lu par un segment de
+LECTURE avant tout segment d'écriture (même règle que les niveaux d'armes et les véhicules). Une
+lecture en échec n'arrête pas le résumé (ses autres grandeurs ne lisent pas la base) : les frags
+restent NULL et c'est journalisé en ERROR. La révision `us7` fait reprendre le parc par
+`levelup backfill-usage-summary` sans recuisson.

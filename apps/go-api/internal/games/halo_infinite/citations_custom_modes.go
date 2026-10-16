@@ -82,3 +82,16 @@ func computeFirstStrike(ctx domain.CitationContext) int {
 	}
 	return 0
 }
+
+// wonderfulToysMinPickups : armes prises sur socle dans un même match pour « Jouets éducatifs ».
+const wonderfulToysMinPickups = 3
+
+// computeWonderfulToys : 1 pour un match Assassin où le joueur a pris au moins trois armes sur
+// socle (« Jouets éducatifs »). La grandeur est la colonne `pad_pickups` du résumé d'usage du film,
+// celle des stats d'usage ; sans film dérivé, la clé est absente et la citation vaut 0.
+func computeWonderfulToys(ctx domain.CitationContext) int {
+	if isSlayerMode(ctx) && ctx.Stats["pad_pickups"] >= wonderfulToysMinPickups {
+		return 1
+	}
+	return 0
+}

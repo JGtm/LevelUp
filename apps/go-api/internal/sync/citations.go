@@ -237,6 +237,10 @@ func buildCitationContext(
 	for k, v := range loadObjectiveStats(ctx, sharedDB, matchID, xuid) {
 		stats[k] = v
 	}
+	// Résumé d'usage du film (armes prises sur socle, frags sans bouclier) : même patron.
+	for k, v := range loadFilmStats(ctx, sharedDB, matchID, xuid) {
+		stats[k] = v
+	}
 
 	awards, err := loadAwards(ctx, playerDB, matchID, xuid)
 	if err != nil {

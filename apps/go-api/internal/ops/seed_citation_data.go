@@ -115,6 +115,12 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatModeJeu,
 			Description: "Remportez des parties d'Assaut.",
 			TierTargets: tierTargets5_10_15_25_50},
+		{Norm: "wonderful_toys", Display: "Jouets éducatifs", MappingType: mappingTypeCustom,
+			CustomFunction: "compute_wonderful_toys", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Jouets_éducatifs.png",
+			Category:    citationCatModeJeu,
+			Description: "Prenez au moins trois armes sur socle au cours d'une même partie d'Assassin.",
+			TierTargets: tierTargets5_10_20_35_60},
 
 		// ── PVP — Mode de jeu · objectifs CTF/Zones/Oddball (10, v7.2.1) ──────
 		// DÉCISION UTILISATEUR (2026-07-25) : sur les 19 colonnes de
@@ -337,6 +343,12 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatMultijoueur,
 			Description: "Réalisez le premier frag d'une partie.",
 			TierTargets: tierTargets10_25_50_100_250},
+		{Norm: "almost_doesnt_count", Display: "Presque, ça ne compte pas", MappingType: mappingTypeStat,
+			StatName: "shieldless_kills", Enabled: true,
+			ImagePath:   wpHI + "HI_citation_Presque_ca_ne_compte_pas.png",
+			Category:    citationCatMultijoueur,
+			Description: "Tuez un Spartan adverse sans bouclier et survivez.",
+			TierTargets: tierTargets10_20_30_50_100},
 		{Norm: "spartan_carnage", Display: "Carnage de Spartans", MappingType: mappingTypeMedal,
 			MedalIDs:    "2780740615,4261842076,418532952,1486797009,710323196,1720896992,2567026752,2875941471",
 			Enabled:     true,
@@ -868,6 +880,8 @@ var citationDisplayEN = map[string]string{
 	"slayer_victory":      "Slayer Victory",
 	"tick_tick_boom":      "Tick Tick Boom",
 	"first_strike":        "First Strike",
+	"wonderful_toys":      "Wonderful Toys",
+	"almost_doesnt_count": "Almost Doesn't Count",
 	"spartan_carnage":     "Spartan Spree",
 	"spartan_killer":      "Spartan Slayer",
 	"splatter":            "Splatter",
@@ -980,6 +994,8 @@ var citationDescriptionEN = map[string]string{
 	"strongholds_victory": "Win a match in any Stronghold gametype in matchmaking.",
 	"tick_tick_boom":      "Win matches in Assault.",
 	"first_strike":        "Earn the first kill of a match.",
+	"wonderful_toys":      "Pick up three or more weapons from weapon pads during a single Slayer match.",
+	"almost_doesnt_count": "Kill an enemy Spartan with no shield left and survive.",
 	// ── Mode de jeu · objectifs v7.2.1 (idiome officiel H5 « … in any <mode>
 	// gametype in matchmaking. », traduction fidèle du FR) ──────────────────────
 	citationNormFlagCaptures:         "Capture the enemy flag in any Capture the Flag gametype in matchmaking.",

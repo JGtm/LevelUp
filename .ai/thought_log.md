@@ -1,3 +1,11 @@
+## [2026-10-16] Plan citations Halo 5, E3 : Jouets éducatifs et Presque, ça ne compte pas — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : « Jouets éducatifs » lit la colonne existante `pad_pickups` (>= 3 en Assassin) ; « Presque, ça ne compte pas » lit une colonne neuve `shieldless_kills` du résumé d'usage, calculée à la dérivation en croisant le document au fil des morts (lu avant tout segment d'écriture), révision `us7`, migration nullable (NULL = non mesuré). Routage des customs converti en table.
+
+**Résultats observés** : tests unitaires et d'intégration verts sur les paquets touchés ; aucun constat lint nouveau.
+
+**Conclusion** : suite E4 (recalcul des citations d'un match après la dérivation de son film).
+
 ## [2026-10-16] Plan citations Halo 5, E2 : Tick Tick Boom et Premier coup — Complété (branche `feat/citations-film`)
 
 **Décision technique principale** : deux customs (`compute_wins_assault` sur la variante seule, `compute_first_strike` sur la règle « Premier sang » extraite en `analysis.FirstBlood`), prédicats de mode uniques pour les victoires de mode et Bulldozer, garde-rail `TestCitationsCustom_ModesParPredicat`.

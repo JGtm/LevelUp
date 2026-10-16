@@ -90,3 +90,24 @@ func TestCitationsCustom_ModesParPredicat(t *testing.T) {
 		}
 	}
 }
+
+func TestComputeWonderfulToys(t *testing.T) {
+	cas := []struct {
+		nom     string
+		ctx     domain.CitationContext
+		attendu int
+	}{
+		{"assassin, 3 prises", domain.CitationContext{GameVariant: "slayer", Stats: map[string]float64{"pad_pickups": 3}}, 1},
+		{"assassin, 2 prises", domain.CitationContext{GameVariant: "slayer", Stats: map[string]float64{"pad_pickups": 2}}, 0},
+		{"drapeau, 5 prises", domain.CitationContext{GameVariant: "ctf", Stats: map[string]float64{"pad_pickups": 5}}, 0},
+		{"assassin, sans film", domain.CitationContext{GameVariant: "slayer", Stats: map[string]float64{}}, 0},
+	}
+	for _, c := range cas {
+		if got := computeWonderfulToys(c.ctx); got != c.attendu {
+			t.Errorf("%s : attendu %d, obtenu %d", c.nom, c.attendu, got)
+		}
+		if got := DispatchCustom("compute_wonderful_toys", c.ctx); got != c.attendu {
+			t.Errorf("%s : non route (obtenu %d)", c.nom, got)
+		}
+	}
+}

@@ -18,39 +18,32 @@ func init() {
 	analysis.RegisterCustomDispatcher(DispatchCustom)
 }
 
-// DispatchCustom route vers la bonne fonction par nom de custom_function.
+// customFunctions : le registre nom de custom_function -> règle. Une table plutôt qu'un switch :
+// chaque citation custom ajoute une entrée, sans faire croître la complexité du routage.
+var customFunctions = map[string]func(domain.CitationContext) int{
+	"compute_bulldozer":          computeBulldozer,
+	"compute_wins_ctf":           computeWinsCTF,
+	"compute_wins_firefight":     computeWinsFirefight,
+	"compute_wins_slayer":        computeWinsSlayer,
+	"compute_wins_strongholds":   computeWinsStrongholds,
+	"compute_wins_assault":       computeWinsAssault,
+	"compute_first_strike":       computeFirstStrike,
+	"compute_wonderful_toys":     computeWonderfulToys,
+	"compute_annexion_forcee":    computeAnnexionForcee,
+	"compute_flag_em_down":       computeFlagEmDown,
+	"compute_hijack":             computeHijack,
+	"compute_vandalism":          computeVandalism,
+	"compute_wraith_destroyer":   computeWraithDestroyer,
+	"compute_mongoose_destroyer": computeMongooseDestroyer,
+	"compute_warthog_destroyer":  computeWarthogDestroyer,
+}
+
+// DispatchCustom route vers la bonne fonction par nom de custom_function ; un nom inconnu vaut 0.
 // P5.4 (ADR 0012) : public car appelé depuis `analysis/citations_engine.go`
 // (pont vers les règles citations Halo-only).
 func DispatchCustom(fnName string, ctx domain.CitationContext) int {
-	switch fnName {
-	case "compute_bulldozer":
-		return computeBulldozer(ctx)
-	case "compute_wins_ctf":
-		return computeWinsCTF(ctx)
-	case "compute_wins_firefight":
-		return computeWinsFirefight(ctx)
-	case "compute_wins_slayer":
-		return computeWinsSlayer(ctx)
-	case "compute_wins_strongholds":
-		return computeWinsStrongholds(ctx)
-	case "compute_wins_assault":
-		return computeWinsAssault(ctx)
-	case "compute_first_strike":
-		return computeFirstStrike(ctx)
-	case "compute_annexion_forcee":
-		return computeAnnexionForcee(ctx)
-	case "compute_flag_em_down":
-		return computeFlagEmDown(ctx)
-	case "compute_hijack":
-		return computeHijack(ctx)
-	case "compute_vandalism":
-		return computeVandalism(ctx)
-	case "compute_wraith_destroyer":
-		return computeWraithDestroyer(ctx)
-	case "compute_mongoose_destroyer":
-		return computeMongooseDestroyer(ctx)
-	case "compute_warthog_destroyer":
-		return computeWarthogDestroyer(ctx)
+	if fn, ok := customFunctions[fnName]; ok {
+		return fn(ctx)
 	}
 	return 0
 }
