@@ -218,6 +218,12 @@
 # TestExtractRegistry_PlaylistNameDoesNotDecideRanked (le nom de playlist ne pose plus is_ranked).
 # 24 lignes JSONL, exactement 6 paires (Package, Test), vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-16 (lot backlog-2026-10-15, E4.8b : les lectures de la vue match remontent leurs
+# erreurs) : 1 test retiré de `internal/service`. TestNewFriendsExtrasResolver_OpenerErrorIsSilenced est
+# RENOMMÉ TestNewFriendsExtrasResolver_OpenerErrorRemonte (assertion inversée : l'erreur d'ouverture
+# d'une player DB d'ami remonte au lieu d'être tue). 8 lignes JSONL, exactement 1 paire (Package, Test),
+# vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

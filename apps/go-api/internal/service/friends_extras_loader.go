@@ -7,17 +7,21 @@
 // section "Local". Le port Go reproduit ce comportement en s'appuyant sur le
 // pool DuckDB (cfg.ResolvePlayer met en cache les PlayerDB par slug).
 //
-// Best-effort : un xuid sans player DB configurée → simplement absent du
-// résultat. Erreurs per-friend loggées en Debug et silenciées (le scoreboard
-// reste utilisable même si la DB d'un ami est verrouillée / corrompue).
+// Un xuid sans profil suivi (pas de player DB configurée) ou sans donnée sur ce match est une
+// ABSENCE : simplement absent du résultat. Une player DB d'ami qui ne s'ouvre pas ou dont la
+// lecture échoue est une PANNE : journalisée en ERREUR et REMONTÉE (le résultat reste servi pour
+// les autres amis, le scoreboard reste utilisable).
 package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 )
 
@@ -51,13 +55,17 @@ type FriendProfile struct {
 // registry (évite de re-parser db_profiles.json à chaque request).
 //
 // `opener` : ouvre la player DB d'un ami via le pool DuckDB (cached).
+//
+// Contrat de retour : la map porte les extras des amis lus ; l'erreur (errors.Join) porte les
+// pannes de lecture ou d'ouverture, une par ami en cause. Les deux sont valides ensemble.
 func NewFriendsExtrasResolver(
 	friendsByXUID map[string]FriendProfile,
 	opener FriendDBOpener,
 	assetURL games.TitleAssetURLAdapter,
 ) port.FriendsExtrasResolver {
-	return func(ctx context.Context, matchID string, gameVariantName string, xuids []string) map[string]port.FriendMatchExtras {
+	return func(ctx context.Context, matchID string, gameVariantName string, xuids []string) (map[string]port.FriendMatchExtras, error) {
 		out := make(map[string]port.FriendMatchExtras, len(xuids))
+		var failures []error
 		for _, xuid := range xuids {
 			profile, ok := friendsByXUID[xuid]
 			if !ok {
@@ -65,48 +73,55 @@ func NewFriendsExtrasResolver(
 			}
 			repo, err := opener(ctx, profile.TitleSlug, profile.Gamertag)
 			if err != nil {
-				slog.DebugContext(ctx, "friends_extras: open player db failed",
-					"xuid", xuid, "gamertag", profile.Gamertag, "err", err)
+				slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError), "friends_extras: open player db failed",
+					"match_id", matchID, "xuid", xuid, "gamertag", profile.Gamertag, "err", err)
+				failures = append(failures, fmt.Errorf("ami %s: ouverture de la player DB: %w", xuid, err))
 				continue
 			}
-			extras := loadOneFriendExtras(ctx, repo, matchID, gameVariantName, xuid, assetURL)
+			extras, err := loadOneFriendExtras(ctx, repo, matchID, gameVariantName, xuid, assetURL)
+			if err != nil {
+				failures = append(failures, err)
+			}
 			if extras != nil {
 				out[xuid] = *extras
 			}
 		}
-		return out
+		return out, errors.Join(failures...)
 	}
 }
 
-// loadOneFriendExtras charge enrichissement + skill rank pour un ami. Retourne
-// nil si AUCUNE des deux sources n'a remonté de données (rien à afficher).
+// loadOneFriendExtras charge enrichissement + skill rank + modèle d'assists pour un ami. Retourne
+// nil si AUCUNE source n'a remonté de données (rien à afficher).
 //
-// Stratégie de logging : toute erreur de lecture remontée par le repo est
-// loggée en Warn (pas Error — la dégradation est visuelle et non bloquante)
-// avec match_id + xuid. Une absence de données (err nil + result nil/empty)
-// est loggée en Debug pour distinguer "DB inaccessible" de "match non joué
-// par cet ami".
+// Stratégie d'erreur : une lecture en échec est journalisée en ERREUR (match_id + xuid) et
+// REMONTÉE (errors.Join, une entrée par source) ; les autres sources sont tout de même lues et
+// leurs données retournées avec l'erreur. Une absence de données (err nil + result nil/empty) est
+// loggée en Debug pour distinguer "DB inaccessible" de "match non joué par cet ami".
 func loadOneFriendExtras(
 	ctx context.Context,
 	repo FriendMatchExtrasRepo,
 	matchID, gameVariantName, xuid string,
 	assetURL games.TitleAssetURLAdapter,
-) *port.FriendMatchExtras {
+) (*port.FriendMatchExtras, error) {
 	var (
-		extras  port.FriendMatchExtras
-		hasData bool
+		extras   port.FriendMatchExtras
+		hasData  bool
+		failures []error
 	)
-	if enrich, err := repo.GetMatchEnrichment(ctx, matchID); err != nil {
-		slog.WarnContext(ctx, "friends_extras: load enrichment failed",
+	fail := func(source string, err error) {
+		slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError), "friends_extras: load "+source+" failed",
 			"match_id", matchID, "xuid", xuid, "err", err)
+		failures = append(failures, fmt.Errorf("ami %s: %s: %w", xuid, source, err))
+	}
+	if enrich, err := repo.GetMatchEnrichment(ctx, matchID); err != nil {
+		fail("enrichment", err)
 	} else if enrich != nil && enrich.PerformanceScore != nil {
 		v := *enrich.PerformanceScore
 		extras.PerformanceScore = &v
 		hasData = true
 	}
 	if rank, err := repo.GetMatchSkillRank(ctx, matchID); err != nil {
-		slog.WarnContext(ctx, "friends_extras: load skill rank failed",
-			"match_id", matchID, "xuid", xuid, "err", err)
+		fail("skill rank", err)
 	} else if rank != nil {
 		iconURL := resolveSkillIconURL(rank.Tier, rank.SubTier, rank.TierLabel, assetURL)
 		var iconURLPtr *string
@@ -123,15 +138,18 @@ func loadOneFriendExtras(
 		hasData = true
 	}
 	if gameVariantName != "" {
-		if m, err := repo.GetPlayerAssistsModel(ctx, gameVariantName); err == nil && m != nil {
+		if m, err := repo.GetPlayerAssistsModel(ctx, gameVariantName); err != nil {
+			fail("assists model", err)
+		} else if m != nil {
 			extras.AssistsModel = m
 			hasData = true
 		}
 	}
+	err := errors.Join(failures...)
 	if !hasData {
 		slog.DebugContext(ctx, "friends_extras: no data for friend on match",
 			"match_id", matchID, "xuid", xuid)
-		return nil
+		return nil, err
 	}
-	return &extras
+	return &extras, err
 }

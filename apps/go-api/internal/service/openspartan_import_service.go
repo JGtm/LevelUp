@@ -309,7 +309,8 @@ func (s *OpenSpartanImportService) writeOneMatch(
 		result.InsertedMedals += len(mm.Medals)
 		return
 	}
-	syncReg := toSyncRegistry(mm.Registry)
+	parts := toSyncParticipants(mm.Participants)
+	syncReg := toSyncRegistry(mm.Registry, len(parts) > 0)
 	// is_ranked : la règle unique du sync (D-10, sync.AnySkillShowsRankedMatch) appliquée au
 	// RankRecap du payload skill. Posé AVANT l'insert registry — crucial pour que le recompute
 	// LUSR EXCLUE bien ces matchs (LUSR = non classé) et pour les filtres.
@@ -323,7 +324,7 @@ func (s *OpenSpartanImportService) writeOneMatch(
 	// si le match existe déjà, Persist no-op. Modèle identique au livesync H5.
 	builder := persist.NewBatchBuilder(title.DefaultSlug, "", "", "openspartan_import")
 	builder.SetMatch(&syncReg)
-	if parts := toSyncParticipants(mm.Participants); len(parts) > 0 {
+	if len(parts) > 0 {
 		builder.AddParticipants(parts)
 	}
 	if medals := toSyncMedals(mm.Medals); len(medals) > 0 {

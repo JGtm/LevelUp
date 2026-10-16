@@ -120,9 +120,6 @@ func TestMapMatch_FullCycle(t *testing.T) {
 	if mm.Registry.DurationSeconds != 719 { // PT11M59.25S
 		t.Errorf("DurationSeconds: want 719, got %d", mm.Registry.DurationSeconds)
 	}
-	if mm.Registry.PlayerCount != 2 {
-		t.Errorf("PlayerCount: want 2 humans, got %d", mm.Registry.PlayerCount)
-	}
 	if mm.Registry.FirstSyncBy != "test" {
 		t.Errorf("FirstSyncBy: want 'test', got %q", mm.Registry.FirstSyncBy)
 	}
@@ -138,8 +135,8 @@ func TestMapMatch_FullCycle(t *testing.T) {
 	if mm.Registry.PlaylistID == nil || *mm.Registry.PlaylistID != "playlist-1" {
 		t.Errorf("PlaylistID: want 'playlist-1', got %v", mm.Registry.PlaylistID)
 	}
-	if !mm.Registry.ParticipantsLoaded || !mm.Registry.EventsLoaded || !mm.Registry.MedalsLoaded {
-		t.Error("ParticipantsLoaded / EventsLoaded / MedalsLoaded should all be true")
+	if !mm.Registry.EventsLoaded || !mm.Registry.MedalsLoaded {
+		t.Error("EventsLoaded / MedalsLoaded should both be true")
 	}
 
 	if len(mm.Participants) != 2 {

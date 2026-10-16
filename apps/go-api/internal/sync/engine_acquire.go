@@ -5,6 +5,10 @@
 // proxy e.acquireSharedWriter, qui centralisent la prise du dblease applicatif
 // et l'ouverture RW des DBs shared et metadata.
 //
+// Contient aussi deux petits gardes de contexte du moteur : pinTitle (titre du moteur posé sur le
+// ctx des lecteurs de sync) et requireTokensUnlessCustomClient (client Halo exigé par les passes
+// qui appellent l'API).
+//
 // Voir engine.go (struct SyncEngine) pour le contexte.
 package sync
 
@@ -13,6 +17,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -100,4 +105,29 @@ func AcquireMetadataWriterStandalone(ctx context.Context, metadataPath string) (
 		_ = handle.Close()
 		lease.Release()
 	}, nil
+}
+
+// requireTokensUnlessCustomClient : les passes qui appellent l API Halo ont besoin SOIT du
+// client personnalisé posé par SetCustomClient (client poolé : les tokens vivent dans le
+// pool), SOIT des tokens Halo du joueur. Exiger les tokens du joueur alors qu un client
+// poolé est posé cassait `backfill --csr` / `--shared-csr` pour TOUS les joueurs depuis que
+// la CLI construit ses moteurs par le pool (revue adversariale du 2026-09-16, P0). Le
+// message ne parle plus de « re-login » : un token absent ne se répare pas par une
+// re-capture (ADR 0023).
+func (e *SyncEngine) requireTokensUnlessCustomClient(op string) error {
+	if e.customClient != nil {
+		return nil
+	}
+	if e.tokens == nil || e.tokens.SpartanToken == "" {
+		return fmt.Errorf("%s: aucun client Halo — ni client poolé (SetCustomClient), ni tokens du joueur", op)
+	}
+	return nil
+}
+
+// pinTitle pose sur le ctx le titre du MOTEUR (celui de ses bases ouvertes), jamais celui d'un ctx
+// entrant : les lecteurs de sync qui excluent la Campagne le lisent (analysis.SQLExcludeCampaign
+// ByMatchIDCtx), et un ctx sans titre, ou portant un autre titre (onglet admin, header
+// X-LevelUp-Title), ne doit pas décider de ce qui s'exclut d'une base d'un autre titre.
+func (e *SyncEngine) pinTitle(ctx context.Context) context.Context {
+	return ctxkeys.WithTitleSlug(ctx, e.titleSlug)
 }

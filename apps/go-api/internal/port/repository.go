@@ -210,11 +210,6 @@ type FriendMatchExtras struct {
 	AssistsModel     *domain.PlayerAssistsModel
 }
 
-// FriendsExtrasResolver charge les FriendMatchExtras pour la liste de xuids
-// fournie. Best-effort : un xuid sans player DB configurée ou sans données
-// ne figure simplement pas dans la map de retour.
-type FriendsExtrasResolver func(ctx context.Context, matchID string, gameVariantName string, xuids []string) map[string]FriendMatchExtras
-
 // MatchViewRepository fournit toutes les données d'un match pour la vue détail.
 // Implémenté par platform/duckdb.MatchViewRepo.
 type MatchViewRepository interface {
@@ -227,13 +222,15 @@ type MatchViewRepository interface {
 	// GetMatchEnrichment retourne l'enrichissement joueur pour ce match (Q18).
 	GetMatchEnrichment(ctx context.Context, matchID string) (*domain.MatchEnrichmentRaw, error)
 
-	// GetMatchScoreboard retourne les stats de tous les joueurs (Q12).
+	// GetMatchScoreboard retourne les stats de tous les joueurs (Q12). Si une section secondaire
+	// (stats d'objectifs, d'Assaut) a échoué, les lignes sont rendues AVEC une
+	// *domain.SectionDegradedError : la donnée est valide, la panne doit être dite.
 	GetMatchScoreboard(ctx context.Context, matchID string) ([]domain.ScoreboardRaw, error)
 
 	// GetMatchObjectiveScore retourne la somme des award_score (catégorie
 	// 'objective') pour un joueur dans un match. Source : personal_score_awards.
-	// Utilisé pour l'axe Objective du radar synergie (MatchView). Dégradation
-	// silencieuse à 0 si la table est absente ou pas de données pour ce match.
+	// Utilisé pour l'axe Objective du radar synergie (MatchView). 0 si la table est absente
+	// (absence constatée) ou sans données pour ce match ; toute défaillance remonte en erreur.
 	GetMatchObjectiveScore(ctx context.Context, xuid, matchID string) (int, error)
 
 	// GetMatchMedals retourne les médailles du joueur dans ce match (Q14).
@@ -250,12 +247,12 @@ type MatchViewRepository interface {
 
 	// GetMatchKillSources retourne la source de dégât de chaque mort du match (Q21b),
 	// pour l'arme affichée au kill feed. Tranche vide si le titre n'a pas de décodeur de
-	// film ou si le match n'y est pas passé — jamais une erreur (dégradation gracieuse).
+	// film ou si le match n'y est pas passé ; un lecteur ou une requête en échec remonte en erreur.
 	GetMatchKillSources(ctx context.Context, matchID string) ([]domain.KillSourceRaw, error)
 
 	// GetMatchKillAssists retourne l'assistance de chaque mort du match (Q21c) : assistant
 	// nommé ou « pas d'assistant » mesuré, avec les parts de dégâts. Une mort ABSENTE de la
-	// tranche est un « on ne sait pas » — même dégradation gracieuse que Q21b.
+	// tranche est un « on ne sait pas » — même contrat d'erreur que Q21b.
 	GetMatchKillAssists(ctx context.Context, matchID string) ([]domain.KillAssistRaw, error)
 
 	// GetMatchAssistPairs retourne les paires (assistant → tueur assisté) AGRÉGÉES sur le

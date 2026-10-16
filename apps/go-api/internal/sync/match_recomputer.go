@@ -49,6 +49,9 @@ type MatchRecomputer struct {
 	xuid           string
 	gamertag       string
 	sharedProvider sharedprovider.Provider
+	// titleSlug : titre des bases du joueur (profil), posé sur le ctx des lectures de sync
+	// qui excluent la Campagne. Vide : le ctx entrant décide (repli title-agnostique si absent).
+	titleSlug string
 }
 
 // NewMatchRecomputer construit un MatchRecomputer pour un joueur donné.
@@ -68,10 +71,26 @@ func NewMatchRecomputer(
 	}
 }
 
+// WithTitle fixe le titre des bases du joueur (celui de son profil, jamais celui de la requête).
+func (r *MatchRecomputer) WithTitle(slug string) *MatchRecomputer {
+	r.titleSlug = slug
+	return r
+}
+
+// titledCtx pose sur le ctx le titre des bases du joueur quand il est connu.
+func (r *MatchRecomputer) titledCtx(ctx context.Context) context.Context {
+	if r.titleSlug == "" {
+		return ctx
+	}
+	return ctxkeys.WithTitleSlug(ctx, r.titleSlug)
+}
+
 // RecomputeAfterExclusion relance les batches perf_score + LUSR en force=true
 // pour propager l'effet d'une (dé)exclusion. matchID est utilisé pour les logs
-// uniquement (le filtrage se fait via le flag `is_excluded` déjà persisté).
+// uniquement (le filtrage se fait via le flag `is_excluded` déjà persisté). Le titre des
+// lectures est celui du profil (titledCtx), pas celui de la requête.
 func (r *MatchRecomputer) RecomputeAfterExclusion(ctx context.Context, matchID string) error {
+	ctx = r.titledCtx(ctx)
 	start := time.Now()
 	slog.InfoContext(ctx, "MatchRecomputer: démarrage",
 		"match_id", matchID, "gamertag", r.gamertag, "xuid", r.xuid)

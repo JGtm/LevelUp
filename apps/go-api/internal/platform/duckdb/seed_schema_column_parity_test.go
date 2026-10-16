@@ -200,6 +200,9 @@ type seedParitySeed struct {
 // elle lit mp.gamertag, qu'aucune requête enrôlée ne lisait ; elle tourne sur ce seed
 // (career_repo_friends_test.go, newTestPlayerDB). Requête courte : son seuil d'extraction
 // est déclaré dans seedParityMinRefs.
+//
+// Q17PlayerMatchStats enrôlée le 2026-10-15 (E4.8b) : GetPlayerMatchStats ne rend plus une structure
+// vide sur une lecture en échec, le seed DOIT porter les colonnes de Q17 (dont backfill_bits).
 var seedParityCarte = []seedParitySeed{
 	{"seedPlayerSchema", "player_repos_test.go", []seedParityQuery{
 		{"Q5SharedHistory", Q5SharedHistory, "r", "match_registry"},
@@ -209,6 +212,7 @@ var seedParityCarte = []seedParitySeed{
 		{"playerMatchesSharedBaseSelect", playerMatchesSharedBaseSelect, "p", "match_participants"},
 		{"Q12MatchScoreboard", Q12MatchScoreboard, "p", "match_participants"},
 		{"QAmisParGamertagTpl", QAmisParGamertagTpl, "mp", "match_participants"},
+		{"Q17PlayerMatchStats", Q17PlayerMatchStats, "p", "match_participants"},
 	}},
 	{"seedSharedDBSchema", "player_repos_test.go", []seedParityQuery{
 		{"playerMatchesSharedBaseSelect", playerMatchesSharedBaseSelect, "r", "match_registry"},

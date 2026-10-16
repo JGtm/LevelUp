@@ -27,7 +27,8 @@ func openPerfDB(t *testing.T) *sql.DB {
 			start_time TIMESTAMPTZ,
 			pair_name VARCHAR,
 			is_ranked BOOLEAN DEFAULT FALSE,
-			is_firefight BOOLEAN DEFAULT FALSE
+			is_firefight BOOLEAN DEFAULT FALSE,
+			game_variant_id VARCHAR
 		);
 		CREATE TABLE match_participants (
 			match_id VARCHAR,

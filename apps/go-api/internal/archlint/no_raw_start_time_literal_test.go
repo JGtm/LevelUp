@@ -122,8 +122,6 @@ var manualStartTimeUTCAllowlist = map[string]bool{
 var rawOrderByStartTimeAllowlist = map[string]bool{
 	"internal/ops/seed_demo.go":                                       true,
 	"internal/ops/seed_demo_corpus.go":                                true,
-	"internal/platform/duckdb/campaign_repo.go":                       true,
-	"internal/platform/duckdb/engagement_score_repo_queries.go":       true,
 	"internal/platform/duckdb/prestige/prestige_baseline_provider.go": true,
 	"internal/sync/backfill.go":                                       true,
 	"internal/sync/csr_shared_backfill.go":                            true,
@@ -145,7 +143,6 @@ var rawOrderByStartTimeAllowlist = map[string]bool{
 	"cmd/diag_perfsim/load.go":        true,
 	"cmd/diag_orphan_session/main.go": true,
 	"cmd/levelup/cmd_backfill.go":     true,
-	"cmd/lusr_v2_phase0/replay.go":    true,
 	"cmd/seed-medal/main.go":          true,
 }
 

@@ -20,6 +20,7 @@ import { MatchViewTabArsenal } from './MatchViewTabArsenal'
 import { MatchViewTabPlayers } from './MatchViewTabPlayers'
 import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT } from './i18n'
+import { selectMatchPartialBanner } from './matchPartial.logic'
 import type { MatchViewTab } from './tabs'
 import type { MatchViewRadarSeries } from '@/lib/api/types'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
@@ -50,22 +51,6 @@ function translatePartialReason(code: string, locale: string): string {
       return isEN
         ? 'Medals and commendations are unavailable'
         : "Les médailles et citations ne sont pas disponibles"
-    case 'combat_narrative_unavailable':
-      return isEN
-        ? 'Combat charts (Cadence, Dominance, Frag diff) are not available for this match'
-        : "Les graphes de combat (Cadence, Dominance, Frags différentiel) ne sont pas disponibles pour ce match"
-    case 'citations_unavailable':
-      return isEN
-        ? 'Citations are not available for this match'
-        : "Les citations ne sont pas disponibles pour ce match"
-    case 'media_unavailable':
-      return isEN
-        ? 'Media (captures, clips) are not available for this match'
-        : "Les médias (captures, clips) ne sont pas disponibles pour ce match"
-    case 'accuracy_damage_taken_native_unavailable':
-      return isEN
-        ? 'Accuracy and damage taken are not provided for this match'
-        : "La précision et les dégâts subis ne sont pas fournis pour ce match"
     default:
       return code
   }
@@ -227,6 +212,7 @@ export function MatchViewPage() {
   const impactBadges = combat_tab.impact_badges ?? []
   const tugOfWar = combat_tab.tug_of_war ?? []
 
+  const partialBanner = selectMatchPartialBanner(data)
   const meRow = scoreboard.find((r) => r.is_me)
   const meXUID = meRow?.xuid ?? null
   // `radar` est typé `unknown[]` dans le contrat (le générateur OpenAPI a perdu
@@ -248,7 +234,29 @@ export function MatchViewPage() {
       {/* RC6 — bandeau "sync incomplet" : le match existe mais des sections
           critiques sont vides (parser highlight expirée, sync partiel, etc.).
           Le match reste rendu normalement, on signale juste la dégradation. */}
-      {data.is_partial && data.partial_reasons && data.partial_reasons.length > 0 && (
+      {partialBanner?.kind === 'unavailable' && (
+        // E4 : une source est EN PANNE (≠ vide) — bandeau distinct, qui prime sur le
+        // bandeau « match partiel ». Choix dans matchPartial.logic.ts.
+        <div className="px-6 pt-4">
+          <div role="status" className="flex gap-3 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <p className="text-sm font-semibold text-foreground">{t.pageUnavailableBanner}</p>
+          </div>
+        </div>
+      )}
+      {partialBanner?.kind === 'partial' && (
         <div className="px-6 pt-4">
           <div className="flex gap-3 rounded-md border border-warning/50 bg-warning/10 px-4 py-3">
             <svg
@@ -269,7 +277,7 @@ export function MatchViewPage() {
                 {t.pagePartialLoad}
               </p>
               <ul className="mt-1.5 space-y-1">
-                {data.partial_reasons.map((r) => (
+                {partialBanner.reasons.map((r) => (
                   <li key={r} className="flex gap-2 text-xs text-muted-foreground">
                     <span className="mt-px shrink-0 text-warning" aria-hidden="true">▸</span>
                     <span>{translatePartialReason(r, locale)}</span>

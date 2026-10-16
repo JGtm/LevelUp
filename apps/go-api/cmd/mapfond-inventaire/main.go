@@ -200,7 +200,7 @@ func trie(v []verdict) {
 }
 
 // enteteTSV nomme les colonnes de la sortie.
-const enteteTSV = "carte\tmap_id\tfond\tvoie\tmatchs\tfirefight\tjoueurs_max\tdernier\tplaylists"
+const enteteTSV = "carte\tmap_id\tfond\tvoie\tmatchs\tfirefight\tdernier\tplaylists"
 
 // imprime rend le TSV sur la sortie standard et le bilan sur la sortie d'erreur.
 func imprime(ctx context.Context, verdicts []verdict, tous bool, minMatchs int) {
@@ -241,7 +241,6 @@ func ligneTSV(v verdict) string {
 		string(v.Voie),
 		fmt.Sprint(v.Carte.Matchs),
 		fmt.Sprint(v.Carte.Firefight),
-		fmt.Sprint(v.Carte.JoueursMax),
 		dernier,
 		strings.Join(playlists, " · "),
 	}, "\t")

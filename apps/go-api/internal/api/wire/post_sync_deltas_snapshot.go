@@ -298,7 +298,7 @@ func SnapshotPlayerState(
 			// EarnedMedalIDs : set des médailles déjà obtenues (V72-20). nil =
 			// INVALIDE (cf. loadEarnedMedalIDs) → détection « médaille inédite »
 			// en seed silencieux.
-			s.EarnedMedalIDs = loadEarnedMedalIDs(ctx, sharedDB, pdb.XUID)
+			s.EarnedMedalIDs = loadEarnedMedalIDs(ctx, sharedDB, pdb.XUID, pdb.TitleSlug)
 			release()
 		}
 	}
@@ -308,7 +308,8 @@ func SnapshotPlayerState(
 
 // loadEarnedMedalIDs retourne l'ensemble des medal_name_id déjà décrochés par le
 // joueur : lecture BRUTE de medals_earned (table per-match INSERT-only, agrégat
-// SUM(count) > 0 ; pas de vue _latest à consommer — parité Q36a).
+// SUM(count) > 0 ; pas de vue _latest à consommer — parité Q36a), hors matchs de Campagne du
+// titre (une médaille obtenue seulement en Campagne n'est pas « déjà obtenue »).
 //
 // CONTRAT D'INVALIDITÉ (contre-revue V7.2, 2026-07-25) : retourne nil dès que le
 // set ne peut pas être garanti COMPLET — table absente (titre sans capability
@@ -319,11 +320,11 @@ func SnapshotPlayerState(
 // emitMedalFirstEarned sème silencieusement et le diff se tait pour ce cycle
 // (même pattern que snapshotLooksCold). Un set VIDE non-nil (0 ligne, requête
 // saine) reste un état valide et légitime : joueur sans médaille.
-func loadEarnedMedalIDs(ctx context.Context, sharedDB *sql.DB, xuid string) map[int64]struct{} {
+func loadEarnedMedalIDs(ctx context.Context, sharedDB *sql.DB, xuid, titleSlug string) map[int64]struct{} {
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT medal_name_id
 		FROM medals_earned
-		WHERE xuid = ?
+		WHERE xuid = ?`+analysis.SQLExcludeCampaignByMatchID(titleSlug, "match_id")+`
 		GROUP BY medal_name_id
 		HAVING SUM(count) > 0`, xuid)
 	if err != nil {

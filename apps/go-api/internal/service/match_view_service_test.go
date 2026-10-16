@@ -37,6 +37,8 @@ type mockMatchViewRepo struct {
 	// assistErr : échec de la lecture Q21d (portée des morts, journal des morts publiable).
 	assistErr error
 	kvErr     error
+	// objErr / killSrcErr / killAstErr : échecs des lectures du score d'objectif et du kill feed (E4.8a).
+	objErr, killSrcErr, killAstErr error
 	// notParticipant : si true, IsParticipant renvoie false (gating ADR 0029).
 	// Défaut false → "a participé" → comportement inchangé pour les tests existants.
 	notParticipant bool
@@ -44,6 +46,9 @@ type mockMatchViewRepo struct {
 	// medalMetasByName : réponse de LookupMedalMetaByName (résolution des médailles
 	// du feed). Nil = référentiel indisponible → les events medal gardent le nom brut.
 	medalMetasByName map[string]domain.MedalNameMeta
+	// errs : échec d'une lecture par NOM de méthode (E4.8b : rang, CSR partagés, médias, stats
+	// attendues, médailles/armes de tous les joueurs, historique). Absent = la lecture réussit à vide.
+	errs map[string]error
 }
 
 func (m *mockMatchViewRepo) GetMatchMeta(_ context.Context, _ string) (*domain.MatchMetaRaw, error) {
@@ -62,7 +67,7 @@ func (m *mockMatchViewRepo) GetMatchScoreboard(_ context.Context, _ string) ([]d
 	return m.board, m.boardErr
 }
 func (m *mockMatchViewRepo) GetMatchObjectiveScore(_ context.Context, _, _ string) (int, error) {
-	return 0, nil
+	return 0, m.objErr
 }
 func (m *mockMatchViewRepo) GetMatchMedals(_ context.Context, _, _ string) ([]domain.MedalRaw, error) {
 	return m.medals, m.medalsErr
@@ -74,10 +79,10 @@ func (m *mockMatchViewRepo) LookupMedalMetaByName(_ context.Context, _ []string)
 	return m.medalMetasByName, nil
 }
 func (m *mockMatchViewRepo) GetMatchKillSources(_ context.Context, _ string) ([]domain.KillSourceRaw, error) {
-	return m.killSources, nil
+	return m.killSources, m.killSrcErr
 }
 func (m *mockMatchViewRepo) GetMatchKillAssists(_ context.Context, _ string) ([]domain.KillAssistRaw, error) {
-	return m.killAssists, nil
+	return m.killAssists, m.killAstErr
 }
 func (m *mockMatchViewRepo) GetMatchAssistPairs(_ context.Context, _ string) ([]domain.MatchAssistPairRaw, domain.MatchAssistScopeRaw, error) {
 	return m.assistPairs, m.assistScope, m.assistErr
@@ -101,31 +106,31 @@ func (m *mockMatchViewRepo) GetMatchEncounterAssists(_ context.Context, _, _ str
 	return nil, nil
 }
 func (m *mockMatchViewRepo) GetMatchSkillRank(_ context.Context, _ string) (*domain.SkillRankRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchSkillRank"]
 }
 func (m *mockMatchViewRepo) GetMatchMedia(_ context.Context, _ string) ([]domain.MediaAssocRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchMedia"]
 }
 func (m *mockMatchViewRepo) GetMatchExpectedStats(_ context.Context, _, _ string) (*domain.ExpectedStatsRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchExpectedStats"]
 }
 func (m *mockMatchViewRepo) GetMatchBulkMedals(_ context.Context, _ string) ([]domain.BulkMedalRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchBulkMedals"]
 }
 func (m *mockMatchViewRepo) GetMatchBulkWeaponKills(_ context.Context, _ string) ([]domain.BulkWeaponKillRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchBulkWeaponKills"]
 }
 func (m *mockMatchViewRepo) GetHistoryForAvg(_ context.Context, _ string) ([]domain.MatchHistAvgRow, error) {
-	return nil, nil
+	return nil, m.errs["GetHistoryForAvg"]
 }
 func (m *mockMatchViewRepo) GetHistoryForAvgBulk(_ context.Context, _ []string) (map[string][]domain.MatchHistAvgRow, error) {
-	return nil, nil
+	return nil, m.errs["GetHistoryForAvgBulk"]
 }
 func (m *mockMatchViewRepo) GetPlayerAssistsModel(_ context.Context, _ string) (*domain.PlayerAssistsModel, error) {
-	return nil, nil
+	return nil, m.errs["GetPlayerAssistsModel"]
 }
 func (m *mockMatchViewRepo) GetMatchSharedCSRs(_ context.Context, _ string) (map[string]*domain.SkillRankRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchSharedCSRs"]
 }
 
 // --- tests localisation FR ---

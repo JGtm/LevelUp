@@ -6,7 +6,6 @@ package duckdb
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +16,9 @@ import (
 
 // GetMatchMedals retourne les médailles du joueur dans ce match (Q14).
 // Exécutée sur SharedReader (ADR 0016) — Q14 lit medals_earned (shared-only).
+//
+// Les médailles sont servies même si la résolution de leurs libellés échoue ; elle est alors dite par
+// une *domain.SectionDegradedError (libellés repliés sur l'identifiant).
 func (r *MatchViewRepo) GetMatchMedals(ctx context.Context, xuid, matchID string) ([]domain.MedalRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -47,7 +49,7 @@ func (r *MatchViewRepo) GetMatchMedals(ctx context.Context, xuid, matchID string
 		return nil, err
 	}
 
-	meta := r.lookupMedalMeta(ctx, medalIDs)
+	meta, metaErr := r.lookupMedalMeta(ctx, medalIDs)
 	for index := range results {
 		if m, ok := meta[results[index].MedalID]; ok {
 			results[index].Label = m.label
@@ -57,7 +59,17 @@ func (r *MatchViewRepo) GetMatchMedals(ctx context.Context, xuid, matchID string
 			results[index].Label = strconv.FormatInt(results[index].MedalID, 10)
 		}
 	}
-	return results, nil
+	return results, medalLabelsDegraded(metaErr)
+}
+
+// medalLabelsDegraded : une résolution de libellés en échec laisse les médailles servies (comptes
+// exacts, libellés repliés sur l'identifiant) mais DIT la panne, au lieu de la faire passer pour un
+// référentiel sans nom. nil quand la résolution a réussi.
+func medalLabelsDegraded(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &domain.SectionDegradedError{Section: "medal_labels", Err: err}
 }
 
 type medalMeta struct {
@@ -72,10 +84,14 @@ type medalMeta struct {
 // les colonnes FR (name_fr/description_fr) — le drawer/résumé affichaient des noms FR
 // sous UI EN (GH-5b). Source unique de la chaîne : medalLabelDescCoalesceSQL.
 // Fallback citation_mappings.citation_name_display si la médaille n'est pas dans medal_definitions.
-func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) map[int64]medalMeta {
+//
+// Rend les libellés résolus ET, si une lecture du référentiel a échoué, l'erreur : l'appelant
+// garde ce qui est résolu mais doit dire la panne. Un référentiel non configuré (`Metadata` nil)
+// ou sans identifiant à résoudre rend une map vide sans erreur.
+func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) (map[int64]medalMeta, error) {
 	result := make(map[int64]medalMeta, len(medalIDs))
 	if len(medalIDs) == 0 || r.pdb.Metadata == nil {
-		return result
+		return result, nil
 	}
 	locale := ctxkeys.Locale(ctx)
 	labelExpr, descExpr := medalLabelDescCoalesceSQL(locale)
@@ -90,19 +106,25 @@ func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) m
 		medalIDs,
 	)
 	if !ok {
-		return result
+		return result, nil
 	}
 	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
 	if err != nil {
-		return result
+		return result, fmt.Errorf("lookupMedalMeta: medal_definitions: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id int64
 		var label, desc, diff string
-		if err := rows.Scan(&id, &label, &desc, &diff); err == nil && label != "" {
+		if err := rows.Scan(&id, &label, &desc, &diff); err != nil {
+			return result, fmt.Errorf("lookupMedalMeta: medal_definitions scan: %w", err)
+		}
+		if label != "" {
 			result[id] = medalMeta{label: label, description: desc, difficulty: diff}
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return result, fmt.Errorf("lookupMedalMeta: medal_definitions rows: %w", err)
 	}
 	// Fallback citation_mappings pour les IDs absents de medal_definitions
 	// (source unique partagée, cf. medal_citation_fallback.go).
@@ -112,18 +134,23 @@ func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) m
 			missing = append(missing, id)
 		}
 	}
-	for id, label := range lookupMedalCitationLabels(ctx, r.pdb.Metadata, missing) {
+	citations, err := lookupMedalCitationLabels(ctx, r.pdb.Metadata, missing)
+	for id, label := range citations {
 		result[id] = medalMeta{label: label, difficulty: "Normal"}
 	}
-	return result
+	if err != nil {
+		return result, fmt.Errorf("lookupMedalMeta: %w", err)
+	}
+	return result, nil
 }
 
 // LookupMedalMetaByName résout l'identité de médailles depuis leur nom ANGLAIS
 // (medal_definitions.name_en, metadata.duckdb) — le pont entre les events `medal`
 // du film (raw_json.medal_name, ex. « Odin's Raven ») et le référentiel du jeu.
 // Locale-aware par la même chaîne que lookupMedalMeta (medalLabelDescCoalesceSQL).
-// Best-effort : metadata absente ou requête en échec → map vide, jamais d'erreur
-// (le kill feed affiche alors le nom brut plutôt que rien). La comparaison est
+// Metadata non configurée → map vide sans erreur (absence constatée) ; une requête ou une lecture
+// en échec REMONTE : l'appelant (décoration du kill feed) la journalise avant de laisser le feed
+// sur le nom brut. La comparaison est
 // stricte au caractère près : le nom du film EST la clé du référentiel (mesuré
 // 21 noms/21 résolus sur 000d5950, apostrophe et esperluette comprises).
 func (r *MatchViewRepo) LookupMedalMetaByName(
@@ -165,19 +192,19 @@ func (r *MatchViewRepo) LookupMedalMetaByName(
 	      WHERE md.name_en IN (` + strings.Join(placeholders, ",") + `)`
 	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: lookup médailles par nom en échec",
-			"noms", len(unique), "err", err)
-		return result, nil
+		return nil, fmt.Errorf("MatchViewRepo.LookupMedalMetaByName: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var nameEN, label, desc string
 		var id int64
 		if err := rows.Scan(&nameEN, &id, &label, &desc); err != nil {
-			slog.WarnContext(ctx, "match_view: scan médaille par nom en échec", "err", err)
-			continue
+			return nil, fmt.Errorf("MatchViewRepo.LookupMedalMetaByName scan: %w", err)
 		}
 		result[nameEN] = domain.MedalNameMeta{MedalNameID: id, Label: label, Description: desc}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.LookupMedalMetaByName rows: %w", err)
 	}
 	return result, nil
 }
@@ -190,13 +217,13 @@ func (r *MatchViewRepo) GetMatchBulkMedals(ctx context.Context, matchID string) 
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchBulkMedals: shared reader: %w", err)
 	}
 	defer release()
 
 	rows, err := sharedDB.QueryContext(ctx, Q27BulkMedals, matchID)
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchBulkMedals: Q27: %w", err)
 	}
 	defer rows.Close()
 
@@ -214,7 +241,7 @@ func (r *MatchViewRepo) GetMatchBulkMedals(ctx context.Context, matchID string) 
 		return nil, err
 	}
 
-	metas := r.lookupMedalMeta(ctx, medalIDs)
+	metas, metaErr := r.lookupMedalMeta(ctx, medalIDs)
 	for i := range results {
 		if m, ok := metas[results[i].MedalID]; ok {
 			results[i].Label = m.label
@@ -223,5 +250,5 @@ func (r *MatchViewRepo) GetMatchBulkMedals(ctx context.Context, matchID string) 
 			results[i].Label = strconv.FormatInt(results[i].MedalID, 10)
 		}
 	}
-	return results, nil
+	return results, medalLabelsDegraded(metaErr)
 }

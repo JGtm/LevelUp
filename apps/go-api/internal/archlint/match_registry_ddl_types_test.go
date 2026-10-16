@@ -299,7 +299,6 @@ var deriveFixturesGelees = map[string]map[string]string{
 	},
 	"internal/migration/steps_shared_rebuild_match_participants_test.go": {
 		"end_time_utc":   "TIMESTAMP",
-		"player_count":   "INTEGER",
 		"start_time_utc": "TIMESTAMP",
 	},
 	"internal/ops/archive_restore_cgo_test.go": {
@@ -312,9 +311,8 @@ var deriveFixturesGelees = map[string]map[string]string{
 		"start_time": "TIMESTAMPTZ",
 	},
 	"internal/ops/snapshot_read_shared_integration_test.go": {
-		"end_time":     "TIMESTAMPTZ",
-		"player_count": "INTEGER",
-		"start_time":   "TIMESTAMPTZ",
+		"end_time":   "TIMESTAMPTZ",
+		"start_time": "TIMESTAMPTZ",
 	},
 	"internal/persist/events_completion_persister_test.go": {
 		"backfill_completed": "BIGINT",
@@ -331,7 +329,6 @@ var deriveFixturesGelees = map[string]map[string]string{
 	},
 	"internal/sync/art_rebuild_regression_test.go": {
 		"end_time_utc":   "TIMESTAMP",
-		"player_count":   "INTEGER",
 		"start_time_utc": "TIMESTAMP",
 	},
 	"internal/sync/backfill_integration_test.go": {
@@ -385,8 +382,7 @@ var deriveFixturesGelees = map[string]map[string]string{
 		"start_time":         "TIMESTAMPTZ",
 	},
 	"internal/sync/snapshot/snapshot_shared_reader_test.go": {
-		"end_time":     "TIMESTAMPTZ",
-		"player_count": "INTEGER",
-		"start_time":   "TIMESTAMPTZ",
+		"end_time":   "TIMESTAMPTZ",
+		"start_time": "TIMESTAMPTZ",
 	},
 }

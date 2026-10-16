@@ -113,56 +113,52 @@ seulement une démo contrôlée et sert dix rejeux figés masqués. Restent :
 - `POST …/prestige/challenges/{id}/suggest-next` est une lecture classée écriture (refusée en démo) ;
 - le test E2E `media-like-bug.spec.ts` suppose un like possible en démo ;
 - `weapon_kills` encore déclarée dans la liste d'extraction de la démo (table disparue) ;
+- l'ERROR au boot de la démo sur `titles/halo_5/warehouse/metadata.duckdb` (requête sur une table ou colonne absente ; reprise du lot DA-5, E1.6 du plan backlog 2026-10-15) ;
 - déploiement : provisionner une fois `data/demo_films/` sur le VPS (commande au runbook).
 **Effort : S.**
 
 ---
 
-### [data/campagne] Lecteurs encore sans exclusion de la campagne, hors du garde-rail
+### [dette/backlog-2026-10-15] Découvertes non traitées du plan du 2026-10-15
 
-Noté le 2026-09-27 (plan backlog, lot B4 et revue, DB-25/26/27). Le garde-rail
-`archlint/campaign_exclusion_guard_test.go` couvre désormais toutes les déclarations de
-`platform/duckdb/**`, `progression/**`, `api/wire`, `service/**` et `analysis/**`. Restent hors de
-son critère :
-- **56 lecteurs** de `internal/sync` (17), `internal/ops` (10) et `cmd/` (29), dont la liste est au
-  journal du lot B4 dans `.ai/PLAN_BACKLOG_2026-09-26.md` ;
-- **`QKillsBetweenPlayers`**, qui lit `killer_victim_pairs` sans exclusion : des frags de Campagne
-  Halo 5 peuvent compter dans un duel, alors que le nombre de rencontres les exclut ;
-- **les lecteurs agrégés de `medals_earned`** (`Q36aMedalTotals`, `queries_citations.go:38`) et
-  `loadEarnedMedalIDs` (`SnapshotPlayerState`).
-
-**Travail** : étendre le critère (tables `killer_victim_pairs`, `medals_earned`) et les racines,
-puis trier chaque entrant, comme pour B4. **Effort : M.**
+Reprises du plan `.ai/PLAN_BACKLOG_2026-10-15.md` (section 3), non traitées, à trier. Chacune est
+une dette locale ; regrouper en un lot de nettoyage Go. **Effort global : M.**
+- **Code mort (règle n°7)** : `sync.FindMatchesMissingParticipantBits` (`internal/sync/backfill.go:86`),
+  `sync.RecomputeAfterARTRebuild` (`recompute_after_art_rebuild.go:46`), `loadAwardsForScoreboard` +
+  `MatchViewService.WithAwardsRepo` (`service/match_view_data_loaders.go:~496`), `CachedHighlightEventsRepo`
+  (`platform/duckdb/highlight_events_cache.go`), paramètre `titleSlug` ignoré de `SquadUsualContexts`
+  (`api/wire/prestige_lazy_service_squad.go:173-178`), 15 constantes de calibrage de `sync/skill_reexport.go`
+  (seul `cmd/diag_lusr_player/replay.go`). **S.**
+- **Erreurs avalées (anti-pattern n°10)** : `resolveWeaponLabelsOnly` (`weapon_resolver.go`) sans journal ;
+  `migration.ApplyResolutionViews` avale l'erreur de `v_match_full` (`steps_shared.go`), dont le DDL existe
+  en trois exemplaires (`vMatchFullViewSQL`, `sync/schema.go`, `ops/seed_demo.go`, règle n°6) ; sources de
+  la vue match qui rendent `nil, nil` + WARN (`GetMatchKillSources`, `GetMatchKillAssists`, ...),
+  `lookupMapImageURL`, `ResolveAssetNamesBulk`, `lookupWeaponMeta`, `loadKnownModesEN`, `computeExpectedAssists`
+  (liste complète au plan, E4.8b). **M.**
+- **Annulation de requête sur la vue match (P2)** : pendant `GetMatchMeta` (`service/match_view_service.go:373`,
+  `platform/duckdb/match_view_repo.go:121-123` : 2 ERROR et `match_view_snapshot_stale_schema_live_fallback_total`
+  incrémenté à tort) et pendant `decorateMedalEvents` (`service/match_view_killfeed_medals.go:48`). **S.**
+- **Garde de la Campagne** : angle mort des lecteurs du registre SEUL (`match_registry` sans `xuid =`, ex.
+  `loadLUSRMatchIDsInWindow`) ; `selectRecentMatchIDs` garde un doublon d'exclusion pour rester visible du
+  garde. **S.**
+- **Duplications et valeurs figées** : `cmd/levelup/cmd_reset_bitmasks.go:202` recopie 512 au lieu de
+  `matchflags.BackfillParticipants` ; `EventsLoaded` / `MedalsLoaded` du mapper OpenSpartan posés à vrai et
+  jamais recopiés ; `RunForDB` des CLI force `halo_infinite` sur la base d'un autre titre. **S.**
+- **Données** : 157 matchs Halo Infinite du 25 au 30 mai sans le bit skill (4) ; `match_bomb_stats` non
+  exporté dans le snapshot (`ops/snapshot_export.go`) : statistiques d'Assaut absentes d'un match servi du
+  snapshot ; un profil suivi dont la player DB n'a jamais été créée devient une panne dite des vues
+  (surveiller `friends_extras: open player db failed` au premier déploiement). **M.**
 
 ---
 
-### [rejeu/données] Vues match sans tableau des scores : ni écran ni son de fin
+### [déploiement] Recalcul des dérivés Halo 5 (Campagne comprise) + re-seed de la démo — à décider au déploiement
 
-Noté le 2026-09-27 (plan backlog, lot A1.5, DA-5). Sur ce poste, plusieurs matchs du cache
-(`000d5950`, `28c9b538`, `4f77afc1`, `94a28b8b`) ont une vue match partielle
-(`scoreboard_empty`). Sans tableau des scores, `endMatchSoundSpec` et l'écran de fin ne peuvent
-rien conclure, et le rejeu se termine muet. **À instruire** : pourquoi ces matchs n'ont pas de
-participants dans la base partagée locale (synchronisation partielle, rattrapage manquant), et si
-la production est touchée. Même lot : la fixture démo lève une ERROR au boot sur
-`titles/halo_5/warehouse/metadata.duckdb` (requête sur une table ou colonne absente).
-**Effort : S** (diagnostic).
-
----
-
-### [go/hygiène] Petites dettes relevées par le lot backlog du 2026-09-26
-
-Noté le 2026-09-27 (DB-1/2/8/9/18/22/23/24, limite B2, revue ronde 2) ; réduit le 2026-10-14 (lots C et E
-des recommandations du registre : restore-csr, `outcome = 2`, `diag_exec`, `FanoutService`, fichier prestige
-de 525 L et test LUSR au temps réel traités). Reste, à la prochaine retouche du fichier :
-- `LoadAxisSamples` et `ListRecentPvPMatchIDs` lisent `start_time` brut (règle n°8) et avalent des
-  erreurs de `Scan` ;
-- aucune CLI ne migre une player DB désignée ;
-- `migration.SplitSQL` ignore les chaînes `'…'` et les commentaires `/* */` (limite écrite dans
-  son godoc) ;
-- le paramètre `title_slug` de `GET /squads` n'a plus d'effet (le titre vient du `PlayerDB`) : le
-  retirer change le contrat OpenAPI ;
-
-**Effort : XS à S chacun.**
+Les valeurs DÉJÀ calculées pour les joueurs Halo 5 (sessions, score de performance, LUSR, modèle des
+assistances, engagement, dates de paliers) l'ont été Campagne comprise ; les chargeurs corrigés par le plan
+du 2026-10-15 ne les recalculent pas d'eux-mêmes. La démo (locale et prod) porte encore des matchs de
+Campagne (3 sur 136 en local, via le manifeste figé `config/demo/JGtm/halo_5.json`, désormais filtré au
+chargement) : elle doit être re-seedée. Rien n'est lancé. Décision du user du 2026-10-16 : **pas de contrôle de
+roster pour Halo 5**. **Effort : S (commandes) + temps de calcul.**
 
 ---
 
@@ -314,6 +310,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-10-16 | **[lot backlog du 2026-10-15] Campagne dans les lecteurs, vue match « lecture en échec », intégrité du registre** (branche `feat/backlog-2026-10-15`, plan `.ai/PLAN_BACKLOG_2026-10-15.md`, E1 à E6) : lecteurs de la Campagne de `sync`/`ops`/`cmd` statués et garde étendu (E2), dettes Go (temps canonique, `GET /squads`) (E3), raisons `<source>_unavailable` distinctes de `<source>_empty` (E4), colonnes d'intégrité de `match_registry` (E5), deux rondes de revue adversariale corrigées (E6.2a, E6.2b). Reste : fusion dans `feat/v75` (geste du user) et les entrées ci-dessus. |
 | 2026-09-27 | **[lot backlog du 2026-09-26, fusion 3] Dérogations mortes du lint inter-features, musique d'intro du rejeu, niveau des fanfares de fin** (branche `feat/backlog-2026-09-26`, plan `.ai/PLAN_BACKLOG_2026-09-26.md`, lots A3 et A4). **Lint (5)** : 16 dérogations mortes retirées ; le script échoue désormais sur toute dérogation qui ne sert plus ; README des graphes corrigé (12 wrappers, `FirstBloodLanes` dans `components/charts/`) ; lint ajouté au job web de la CI (`1ea900034`). **Musique d'intro (7)** : les 3 dernières secondes de la montée de la piste `402178411`, résolution R = 3,19 s calée sur le coup d'envoi, −18 LUFS, jouée au clic sur « Lecture » ou « Recommencer » depuis le préambule, jamais à la reprise, au saut ni dans l'export. Au premier « Lecture » après un rechargement, l'intro attend son décodage et part avec un décalage borné par la durée du préambule (`6bac387b8`, `eb57ec3c2`). **Niveau des fanfares (suite de l'item 11)** : les trois fanfares de fin mesuraient −25 LUFS au lieu des −18 prévus (réduction stéréo du 28/08 faite après la normalisation). Remises à −18 LUFS par un gain linéaire, avec un garde-rail de niveau sur les échantillons PCM (`e93c19ed9`). Fins multi-équipes (6) : `[!]`, faute de donnée (entrée ci-dessus). Écoutes de l'utilisateur après la fusion. |
 | 2026-09-27 | **[lot backlog du 2026-09-26] Musique de fin et son du rejeu, classement mondial, découpeur SQL, index ART de `match_skill_rank`, garde-rail d'exclusion de la campagne, mode démo hermétique** (branche `feat/backlog-2026-09-26`, plan `.ai/PLAN_BACKLOG_2026-09-26.md`, un exécutant Opus à la fois, deux relectures adversariales puis une ronde 2 sur les corrections : 8 constats en ronde 1, dont 2 P1, et 0 P1 en ronde 2). **Musique de fin (11)** : la conclusion échappe au plafond de 8 voix dans la page, comme dans l'export (`soundOccupiesVoice`, `a373539d9`). **Son au rechargement (12)** : le lecteur s'ouvre au premier clic ou à la première touche, ou dès l'affichage si le document a déjà reçu un geste (`useAudioUnlock`, `89f311191`) ; la cause était la lecture automatique. **Classement mondial (1)** : `ErrDrainTimeout`, 3 essais espacés de 30 s sans nouveau scrape, premier tir à +2 min (`cd47936fc`). **Découpeur SQL (3)** : cœur unique `migration.ExecScriptContext`, 3 copies supprimées, garde-rail AST (`edd0054d5`). **Index de `match_skill_rank` (2)** : les trois `idx_msr_*` sont retirés par une migration et par un soin convergent rejoué à chaque ouverture (MSR et PSA) ; ratchet étendu à `sync/schema.go` ; sonde, `repair_msr_index` et `indexcheck` supprimés ; critère D-4 amendé (relatif, `EXPLAIN ANALYZE`) ; copies réelles vérifiées (`7e9ef7c15`, `0b6c11f73`). **Exclusion de la campagne (4)** : garde AST multi-racines (83 lecteurs, 21 dispenses datées), 12 lecteurs corrigés ; les chiffres Halo 5 qui comptaient la campagne changent (`a9e2192ac`, `c61c60761`). **Mode démo (8)** : tâches de fond coupées et chemins d'état redirigés par le SEUL serveur démo (`config.LoadServer`), 4 mutations en 403 `demo_mode_forbidden`. La preuve de bout en bout sur le vrai checkout donne 0 écriture (`3de419efe`, corrections B-C1 à B-C10). Écoutes de l'utilisateur (11, 12) faites après la fusion. Découvertes versées en 6 entrées ci-dessus. |
 | 2026-09-19 | **[hygiène] Lot compare / armes / frontières** (branche `feat/hygiene-compare-armes`, 4 commits `e4238dea6`→`aa1a8dc2c`, exécuté par Opus sous pilotage) — **A** champ `filters` de `CompareRequest` retiré (Go + `types.ts` ; le fragment OpenAPI manuel ne le déclarait déjà pas, `FilterContextInput` conservé : 7 autres consommateurs). **B** repli « échantillon croisé » SUPPRIMÉ — mais la prémisse du backlog était fausse : la branche n'était pas morte, elle était FAUTIVE. `GetCrossMatchSample` n'excluait pas la campagne alors que `GetLocalStats` le fait ; mesuré sur copie du shared Halo 5 : pour un B présent uniquement en coop campagne, `GetLocalStats` rend 0 ligne et l'échantillon croisé rend 1 match (stats de campagne servies sous un service record matchmade). Exclusion alignée ⇒ branche morte par construction ⇒ retrait complet (service, repo, port + noop, `domain.CrossMatchSample`, `IsLocalSample`/`is_local_sample` régénéré par Huma, 2 tests, 8 lignes de baseline). **C** `buildTopWeapons` des séries temporelles délègue à `topWeaponKillRows` (départage sur le libellé) ; garde-rail étendu au motif `WeaponID <` sans propriétaire ; changement assumé : une arme sans libellé résolu n'est plus publiée (barre anonyme avant). **D** `SynthesisCards` → `components/ui/section-primitives.tsx`, `SynthesisWeaponAccuracyChart` → `components/charts/WeaponAccuracyChart.tsx` ; DEUX dérogations retirées (`timeseries=>synthesis` et `session-detail=>synthesis`) ; le ratchet du script compte les violations non déclarées (7/7, inchangé), pas les dérogations. Gates : Go build/vet/test 22 paquets, openapi-gen -check, types frais, tsc -b (cache purgé), eslint 0 erreur, lint inter-features, vitest 7984 tests — tous verts, rejoués par le pilote. Découvertes → 2 items backlog ci-dessus. |

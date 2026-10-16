@@ -3,7 +3,7 @@ package main
 // lecture.go — LES DEUX SEULES SOURCES DE L'INVENTAIRE, et pourquoi ce sont celles-la.
 //
 // `match_registry` dit ce qui a ete JOUE : la carte (map_id + libelle), la playlist, le drapeau
-// Firefight, le nombre de joueurs. C'est la seule table qui relie une carte a un MODE, et c'est
+// Firefight. C'est la seule table qui relie une carte a un MODE, et c'est
 // exactement ce qui manquait pour trancher « cette carte sans fond est-elle du BTB ou du
 // Firefight ? » — l'inventaire UGC ne porte que `forge`/`native`, et les vignettes de
 // `static/maps` existent pour toutes les cartes quel que soit le mode.
@@ -32,14 +32,13 @@ import (
 
 // carteJouee agrege tout ce que le registre sait d'une identite de carte jouee.
 type carteJouee struct {
-	MapID      string
-	NomBrut    string // `match_registry.map_name`, tel quel
-	NomAsset   string // `asset_translations`, preference EN — le premier candidat de la prod
-	Matchs     int
-	Firefight  int
-	JoueursMax int
-	Dernier    time.Time
-	Playlists  map[string]int
+	MapID     string
+	NomBrut   string // `match_registry.map_name`, tel quel
+	NomAsset  string // `asset_translations`, preference EN — le premier candidat de la prod
+	Matchs    int
+	Firefight int
+	Dernier   time.Time
+	Playlists map[string]int
 }
 
 // Cle identifie la carte dans l'inventaire : le map_id quand il existe, sinon le libelle.
@@ -111,7 +110,6 @@ var requeteCartes = `
 		COALESCE(NULLIF(TRIM(playlist_name), ''), '(sans playlist)')  AS playlist,
 		COUNT(*)                                                      AS matchs,
 		SUM(CASE WHEN is_firefight THEN 1 ELSE 0 END)                 AS firefight,
-		MAX(COALESCE(player_count, 0))                                AS joueurs_max,
 		MAX(` + analysis.SQLStartTimeCanonical("") + `)               AS dernier
 	FROM match_registry
 	GROUP BY 1, 2, 3
@@ -135,10 +133,10 @@ func litCartes(ctx context.Context, cheminShared string) (map[string]*carteJouee
 	for rows.Next() {
 		var (
 			mapID, mapName, playlist string
-			matchs, firefight, jmax  int
+			matchs, firefight        int
 			dernier                  sql.NullTime
 		)
-		if err := rows.Scan(&mapID, &mapName, &playlist, &matchs, &firefight, &jmax, &dernier); err != nil {
+		if err := rows.Scan(&mapID, &mapName, &playlist, &matchs, &firefight, &dernier); err != nil {
 			return nil, fmt.Errorf("lecture d'une ligne de match_registry : %w", err)
 		}
 		c := carteJouee{MapID: strings.TrimSpace(mapID), NomBrut: strings.TrimSpace(mapName)}
@@ -151,9 +149,6 @@ func litCartes(ctx context.Context, cheminShared string) (map[string]*carteJouee
 		agg.Matchs += matchs
 		agg.Firefight += firefight
 		agg.Playlists[playlist] += matchs
-		if jmax > agg.JoueursMax {
-			agg.JoueursMax = jmax
-		}
 		if dernier.Valid && dernier.Time.After(agg.Dernier) {
 			agg.Dernier = dernier.Time
 		}

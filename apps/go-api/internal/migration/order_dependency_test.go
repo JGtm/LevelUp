@@ -68,6 +68,13 @@ var stepDependencies = map[string]string{
 	// purge_sync_meta_legacy_auth_keys_v1 (2026-10-09, lot C7) reconstruit sync_meta sans la
 	// créer : la baseline joueur, qui la crée, DOIT précéder.
 	"purge_sync_meta_legacy_auth_keys_v1": "create_baseline_player_v1",
+	// shared_registry_drop_integrity_columns_v1 (2026-10-15, backlog E5.5) retire les colonnes
+	// SANS poser le bit participants : sur un titre qui écrit ce bit, le step title-owned qui le
+	// pose dans la MÊME reconstruction DOIT passer avant, sinon les colonnes partiraient seules et
+	// le bit exigerait une seconde reconstruction.
+	"shared_registry_drop_integrity_columns_v1": "shared_registry_participants_bit_v1",
+	// Les deux reconstruisent match_registry sans la créer : son créateur DOIT précéder.
+	"shared_registry_participants_bit_v1": "create_base_shared_schema",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la

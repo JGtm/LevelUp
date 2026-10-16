@@ -71,6 +71,7 @@ func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]strin
 // information_schema). Aucun appel API requis (calcul purement local depuis
 // highlight_events deja synces).
 func (e *SyncEngine) RunBackfillEngagementScores(ctx context.Context, force bool) (int, error) {
+	ctx = e.pinTitle(ctx)
 	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillEngagementScores lease player: %w", err)
@@ -143,6 +144,7 @@ func (e *SyncEngine) RunBackfillEngagementCoefficients(ctx context.Context) (int
 // le caller doit s'assurer qu'aucun sync ne tourne en parallèle pour avoir
 // un snapshot cohérent.
 func (e *SyncEngine) RunBackfillLUSRDryRun(ctx context.Context) (*LUSRDryRunReport, error) {
+	ctx = e.pinTitle(ctx)
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("RunBackfillLUSRDryRun OpenPlayerDB: %w", err)
@@ -163,6 +165,7 @@ func (e *SyncEngine) RunBackfillLUSRDryRun(ctx context.Context) (*LUSRDryRunRepo
 // RunFormulaSim simule les 5 variantes de formule LUSR sur les lastN derniers matchs.
 // Lecture seule — aucune écriture DB. lastN=0 → tous les matchs.
 func (e *SyncEngine) RunFormulaSim(ctx context.Context, lastN int) (*FormulaSimReport, error) {
+	ctx = e.pinTitle(ctx)
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("RunFormulaSim OpenPlayerDB: %w", err)
@@ -339,6 +342,7 @@ func (e *SyncEngine) RunBackfillSharedCSR(ctx context.Context, opts SharedCSRBac
 // RunBackfillPerf recalcule le performance score relatif pour tous les matchs du joueur.
 // force=true : recalcule même si les matchs ont déjà un score (utile après changement de formule).
 func (e *SyncEngine) RunBackfillPerf(ctx context.Context, force bool) (int, error) {
+	ctx = e.pinTitle(ctx)
 	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillPerf lease player: %w", err)
@@ -521,21 +525,4 @@ func loadFlaggedMatchIDs(ctx context.Context, playerDB *sql.DB) ([]string, error
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
-}
-
-// requireTokensUnlessCustomClient : les passes qui appellent l API Halo ont besoin SOIT du
-// client personnalisé posé par SetCustomClient (client poolé : les tokens vivent dans le
-// pool), SOIT des tokens Halo du joueur. Exiger les tokens du joueur alors qu un client
-// poolé est posé cassait `backfill --csr` / `--shared-csr` pour TOUS les joueurs depuis que
-// la CLI construit ses moteurs par le pool (revue adversariale du 2026-09-16, P0). Le
-// message ne parle plus de « re-login » : un token absent ne se répare pas par une
-// re-capture (ADR 0023).
-func (e *SyncEngine) requireTokensUnlessCustomClient(op string) error {
-	if e.customClient != nil {
-		return nil
-	}
-	if e.tokens == nil || e.tokens.SpartanToken == "" {
-		return fmt.Errorf("%s: aucun client Halo — ni client poolé (SetCustomClient), ni tokens du joueur", op)
-	}
-	return nil
 }

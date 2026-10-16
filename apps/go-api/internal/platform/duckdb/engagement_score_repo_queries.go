@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -94,7 +95,11 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 		FROM match_participants WHERE match_id = ?
 	`
 	var nTeam, nLobby sql.NullInt64
-	_ = sharedDB.QueryRowContext(ctx, sizeQ, mctx.TargetTeamID, matchID).Scan(&nTeam, &nLobby)
+	if err := sharedDB.QueryRowContext(ctx, sizeQ, mctx.TargetTeamID, matchID).Scan(&nTeam, &nLobby); err != nil {
+		// Best-effort : effectifs à 0 (mode non collectif), mais la panne est visible.
+		slog.WarnContext(ctx, "engagement: effectifs d'équipe illisibles, repli sur 0",
+			"match_id", matchID, "err", err)
+	}
 	mctx.NTeam = int(nTeam.Int64)
 	mctx.NHumansLobby = int(nLobby.Int64)
 	mctx.IsTeamMode = mctx.NTeam > 1
@@ -136,7 +141,7 @@ func (r *EngagementScoreRepo) LoadEventsForMatch(
 	for rows.Next() {
 		var ev canonical.HighlightEvent
 		if err := rows.Scan(&ev.MatchID, &ev.EventType, &ev.TimeMS, &ev.XUID); err != nil {
-			continue
+			return nil, fmt.Errorf("LoadEventsForMatch: lecture d'une ligne de highlight_events (match %s): %w", matchID, err)
 		}
 		out = append(out, ev)
 	}
@@ -152,6 +157,11 @@ func (r *EngagementScoreRepo) LoadEventsForMatch(
 	// (kills dans highlight_events) ce chemin n'est jamais pris.
 	if !analysis.HasCanonicalKillOrDeath(out) {
 		synth, serr := r.loadSyntheticKillEvents(ctx, sharedDB, matchID)
+		if serr != nil {
+			// Best-effort : la courbe retombe sur les médailles seules, mais la panne est visible.
+			slog.WarnContext(ctx, "engagement: kills synthétiques indisponibles, courbe sur médailles seules",
+				"match_id", matchID, "err", serr)
+		}
 		if serr == nil && len(synth) > 0 {
 			out = analysis.MergeAndSortCanonicalEvents(out, synth)
 		}
@@ -188,7 +198,7 @@ func (r *EngagementScoreRepo) loadSyntheticKillEvents(
 	for rows.Next() {
 		var in analysis.KVSyntheticInput
 		if err := rows.Scan(&in.KillerXUID, &in.VictimXUID, &in.TimeMS); err != nil {
-			continue
+			return nil, fmt.Errorf("loadSyntheticKillEvents: lecture d'une ligne de %s: %w", KillEventsCanonicalTable, err)
 		}
 		inputs = append(inputs, in)
 	}
@@ -230,9 +240,10 @@ func (r *EngagementScoreRepo) LoadTeamXUIDs(
 	out := make(map[string]bool)
 	for rows.Next() {
 		var x string
-		if err := rows.Scan(&x); err == nil {
-			out[x] = true
+		if err := rows.Scan(&x); err != nil {
+			return nil, fmt.Errorf("LoadTeamXUIDs: lecture d'une ligne: %w", err)
 		}
+		out[x] = true
 	}
 	return out, rows.Err()
 }
@@ -274,7 +285,7 @@ func (r *EngagementScoreRepo) LoadAllCoefficients(
 			&c.XUID, &c.ModeCategory, &c.CoefLobbyShare,
 			&c.NMatches, &c.LastUpdated,
 		); err != nil {
-			continue
+			return nil, fmt.Errorf("LoadAllCoefficients: lecture d'une ligne: %w", err)
 		}
 		out = append(out, c)
 	}
@@ -301,15 +312,16 @@ func (r *EngagementScoreRepo) ListRecentPvPMatchIDs(
 	}
 	defer release()
 
+	ts := StartTimeCanonicalSQL("mr")
 	q := `
 		SELECT mr.match_id
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
-		  AND mr.start_time IS NOT NULL
+		  AND ` + ts + ` IS NOT NULL
 		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
 		` + excludeCampaignClause(pdbTitleSlug(r.pdb), "mr") + `
-		ORDER BY mr.start_time DESC
+		ORDER BY ` + ts + ` DESC
 		LIMIT ?
 	`
 	rows, err := sharedDB.QueryContext(ctx, q, xuid, limit)
@@ -321,9 +333,10 @@ func (r *EngagementScoreRepo) ListRecentPvPMatchIDs(
 	out := make([]string, 0, limit)
 	for rows.Next() {
 		var id string
-		if err := rows.Scan(&id); err == nil {
-			out = append(out, id)
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("ListRecentPvPMatchIDs: lecture d'une ligne: %w", err)
 		}
+		out = append(out, id)
 	}
 	// Inverser pour ordre chronologique croissant (oldest first).
 	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {

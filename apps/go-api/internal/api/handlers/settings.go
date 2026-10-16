@@ -554,7 +554,7 @@ func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *
 			}
 			playerDBPath := config.PlayerDBPath(h.cfg, "", p.Gamertag)
 			n, err := go_sync.RecalculatePlayerSessions(
-				context.Background(), h.cfg.SharedProvider, playerDBPath, sharedDBPath, p.XUID,
+				ctxkeys.WithTitleSlug(context.Background(), p.TitleSlug), h.cfg.SharedProvider, playerDBPath, sharedDBPath, p.XUID,
 				opts, friendGamertags,
 			)
 			if err != nil {

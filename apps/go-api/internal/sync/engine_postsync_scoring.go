@@ -48,6 +48,7 @@ func (e *SyncEngine) runScoringSteps(ctx context.Context, playerDB *sql.DB, shar
 // runScoringStepsWithDB : corps historique du bloc scoring, inchangé — reçoit un
 // handle shared de LECTURE et le collecteur d'intensités (write différé).
 func (e *SyncEngine) runScoringStepsWithDB(ctx context.Context, playerDB, sharedDB *sql.DB, r *domain.PostSyncResult, intensities *[]matchIntensityUpdate) {
+	ctx = e.pinTitle(ctx)
 	// -0.3 had_bot_teammate — dérivé des participants (cheap SQL, pas d'API).
 	// Idempotent : skip les rows déjà à TRUE.
 	if n, err := computeAndPersistHadBotTeammate(ctx, playerDB, sharedDB, e.xuid); err != nil {
@@ -139,6 +140,7 @@ func (e *SyncEngine) runScoringStepsWithDB(ctx context.Context, playerDB, shared
 // de lecture) et fait ses PROPRES bursts Write. Le Read v1 est relâché AVANT →
 // aucun Read en vol quand le shadow demande son burst (garde anti-deadlock).
 func (e *SyncEngine) runSkillRatingSteps(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
+	ctx = e.pinTitle(ctx)
 	if !slugHasLUSR(e.titleSlug) {
 		slog.DebugContext(ctx, "post-sync: LUSR skippé — capability absente",
 			"gamertag", e.gamertag, "title_slug", e.titleSlug)
@@ -179,6 +181,7 @@ func (e *SyncEngine) runSkillRatingSteps(ctx context.Context, playerDB *sql.DB, 
 // Le Read est relâché en sortie (defer) — AUCUN Read ne doit rester en vol quand
 // le shadow v2 demande son burst Write (garde anti-deadlock).
 func (e *SyncEngine) runLUSRV1UnderRead(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
+	ctx = e.pinTitle(ctx)
 	if IsLUSRV2Canonical() {
 		slog.DebugContext(ctx, "post-sync: LUSR v1 skippé (canonical=LUSR_V2)", "gamertag", e.gamertag)
 		return

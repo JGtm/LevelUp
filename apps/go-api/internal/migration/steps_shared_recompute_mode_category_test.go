@@ -25,8 +25,7 @@ CREATE TABLE match_registry (
 	pair_id VARCHAR,
 	pair_name VARCHAR,
 	map_id VARCHAR,
-	mode_category VARCHAR,
-	player_count SMALLINT DEFAULT 0
+	mode_category VARCHAR
 );
 CREATE INDEX idx_registry_mode_category ON match_registry(mode_category);
 CREATE INDEX idx_registry_map ON match_registry(map_id);
@@ -222,7 +221,7 @@ func indexesCouvrantModeCategory(t *testing.T, db *sql.DB) int64 {
 func TestRecomputeModeCategory_AlterationHorsCategorieAnnuleLEchange(t *testing.T) {
 	db := openFixtureModeCategory(t)
 	buildSupplementaire = func() []string {
-		return []string{`UPDATE match_registry__modecat SET player_count = 99 WHERE match_id = 'm5'`}
+		return []string{`UPDATE match_registry__modecat SET map_id = 'altere' WHERE match_id = 'm5'`}
 	}
 	t.Cleanup(func() { buildSupplementaire = func() []string { return nil } })
 	oid := tableOID(t, db, registryTable)
@@ -240,8 +239,8 @@ func TestRecomputeModeCategory_AlterationHorsCategorieAnnuleLEchange(t *testing.
 			t.Errorf("%s: %q -> %q, la transaction devait être annulée", id, avant[id], c)
 		}
 	}
-	if n := scanInt(t, db, `SELECT player_count FROM match_registry WHERE match_id = 'm5'`); n != 0 {
-		t.Errorf("player_count = %d, ligne altérée malgré l'annulation", n)
+	if n := scanInt(t, db, `SELECT COUNT(*) FROM match_registry WHERE map_id = 'altere'`); n != 0 {
+		t.Errorf("%d ligne(s) à map_id altéré malgré l'annulation", n)
 	}
 	if n := indexesCouvrantModeCategory(t, db); n != 1 {
 		t.Errorf("index de mode_category = %d, l'index d'origine doit rester", n)

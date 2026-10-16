@@ -181,17 +181,7 @@ func (r *ServiceRegistry) buildFriendsExtrasResolver(mainPDB *duckdb.PlayerDB) p
 	if len(players) == 0 {
 		return nil
 	}
-	friendsByXUID := make(map[string]service.FriendProfile, len(players))
-	for _, p := range players {
-		if p.XUID == "" || p.XUID == mainPDB.XUID {
-			continue
-		}
-		friendsByXUID[p.XUID] = service.FriendProfile{
-			XUID:      p.XUID,
-			Gamertag:  p.Gamertag,
-			TitleSlug: mainPDB.TitleSlug,
-		}
-	}
+	friendsByXUID := friendProfilesByXUID(players, mainPDB.XUID, mainPDB.TitleSlug)
 	if len(friendsByXUID) == 0 {
 		return nil
 	}

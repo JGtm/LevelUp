@@ -6,6 +6,7 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -69,27 +70,37 @@ func (r *MatchViewRepo) lookupWeaponLabels(ctx context.Context, weaponIDs []int6
 	return labels
 }
 
-func lookupLabelsByID(ctx context.Context, db *DB, queryTemplate string, ids []int64) map[int64]string {
+// lookupLabelsByID résout id → libellé par la requête paramétrée queryTemplate. Rend les libellés
+// lus ET l'erreur d'une requête ou d'une lecture en échec : une erreur n'est JAMAIS une map vide.
+// Un libellé vide est une absence de nom (ignorée), pas une panne. Sans identifiant ni base, map
+// vide sans erreur.
+func lookupLabelsByID(ctx context.Context, db *DB, queryTemplate string, ids []int64) (map[int64]string, error) {
 	labels := map[int64]string{}
 	query, args, ok := buildLookupQuery(queryTemplate, ids)
 	if !ok || db == nil {
-		return labels
+		return labels, nil
 	}
 
 	rows, err := db.Query(ctx, query, args...)
 	if err != nil {
-		return labels
+		return labels, fmt.Errorf("lookupLabelsByID: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var id int64
 		var label string
-		if err := rows.Scan(&id, &label); err == nil && label != "" {
+		if err := rows.Scan(&id, &label); err != nil {
+			return labels, fmt.Errorf("lookupLabelsByID scan: %w", err)
+		}
+		if label != "" {
 			labels[id] = label
 		}
 	}
-	return labels
+	if err := rows.Err(); err != nil {
+		return labels, fmt.Errorf("lookupLabelsByID rows: %w", err)
+	}
+	return labels, nil
 }
 
 func buildLookupQuery(queryTemplate string, ids []int64) (string, []interface{}, bool) {
@@ -124,6 +135,11 @@ func uniqueInt64s(ids []int64) []int64 {
 // Applique la fusion variante→canonique par xuid (regroupe Duelist Energy Sword
 // + Elite Bloodblade + Energy Sword sous le même canonique pour chaque joueur).
 // Exécutée sur SharedReader (ADR 0016) — Q28 lit weapon_kills (shared-only).
+//
+// `v_weapon_kills` est une relation PROPRE AU TITRE (le fichier d'un titre à décodeur de film ne la
+// porte pas, cf. `sharedSnapshotTitleOwnedRaw`) : son absence du lecteur est une absence constatée
+// par sonde (nil), pas une erreur. Un lecteur indisponible, une sonde ou une requête en échec, ou une
+// ligne illisible remontent.
 func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID string) ([]domain.BulkWeaponKillRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -137,13 +153,23 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchBulkWeaponKills: shared reader: %w", err)
 	}
 	defer release()
 
+	present, err := relationExists(ctx, sharedDB, "v_weapon_kills")
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchBulkWeaponKills: %w", err)
+	}
+	if !present {
+		slog.DebugContext(ctx, "match_view: v_weapon_kills absente de ce lecteur, aucune arme par joueur",
+			"match_id", matchID)
+		return nil, nil
+	}
+
 	rows, err := sharedDB.QueryContext(ctx, Q28BulkWeaponKills, matchID)
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchBulkWeaponKills: Q28: %w", err)
 	}
 	defer rows.Close()
 
@@ -188,7 +214,14 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 		weaponIDs = append(weaponIDs, k.wid)
 	}
 
-	weapMeta := r.lookupWeaponMeta(ctx, weaponIDs)
+	labelBulkWeaponKills(results, r.lookupWeaponMeta(ctx, weaponIDs))
+	return results, nil
+}
+
+// labelBulkWeaponKills pose le libellé et les dimensions du registre sur chaque ligne. Une arme
+// absente de metadata.weapon_labels (variante) garde son weapon_id en chaîne : le frontend n'a
+// jamais à gérer un weapon_label vide (`??` ne retombe pas sur "").
+func labelBulkWeaponKills(results []domain.BulkWeaponKillRaw, weapMeta map[int64]weaponMetaEntry) {
 	for i := range results {
 		if m, ok := weapMeta[results[i].WeaponID]; ok {
 			results[i].WeaponLabel = m.label
@@ -198,11 +231,6 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 			results[i].WeaponKey = m.weaponKey
 			continue
 		}
-		// Fallback : weapon_id en string pour les variantes absentes de
-		// metadata.weapon_labels (cohérent avec GetMatchWeaponKills L428).
-		// Évite que le frontend ait à gérer un weapon_label vide (`??` ne
-		// fallback pas sur "").
 		results[i].WeaponLabel = strconv.FormatInt(results[i].WeaponID, 10)
 	}
-	return results, nil
 }

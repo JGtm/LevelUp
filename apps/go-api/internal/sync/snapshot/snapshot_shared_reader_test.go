@@ -62,8 +62,7 @@ func seedReaderSnapshot(t *testing.T) *title.PathResolver {
 		game_variant_id VARCHAR, game_variant_name VARCHAR, mode_category VARCHAR,
 		is_ranked BOOLEAN, is_firefight BOOLEAN,
 		duration_seconds INTEGER, playable_duration_seconds INTEGER,
-		team_0_score INTEGER, team_1_score INTEGER, team_0_ps_score INTEGER, team_1_ps_score INTEGER,
-		player_count INTEGER)`)
+		team_0_score INTEGER, team_1_score INTEGER, team_0_ps_score INTEGER, team_1_ps_score INTEGER)`)
 	snapExec(t, shared, `CREATE TABLE match_participants (
 		match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR, team_id INTEGER, outcome INTEGER,
 		rank INTEGER, score INTEGER, kills INTEGER, deaths INTEGER, assists INTEGER,

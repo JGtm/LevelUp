@@ -285,7 +285,3 @@ const skillBitsCombined = PBitTeamMMR | PBitEnemyMMR | PBitKillsExp | PBitDeaths
 // Stocké dans match_registry.backfill_completed (et non dans
 // match_participants.backfill_bits comme les PBit*).
 const backfillFlagSkill = 4
-
-// backfillFlagParticipants est la valeur legacy de BackfillFlags["participants"]
-// = 1<<9. Stocké dans match_registry.backfill_completed.
-const backfillFlagParticipants = 512

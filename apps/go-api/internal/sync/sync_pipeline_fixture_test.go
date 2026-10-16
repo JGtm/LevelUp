@@ -110,7 +110,7 @@ CREATE TABLE match_registry (
     is_ranked           BOOLEAN DEFAULT FALSE,
     is_firefight        BOOLEAN DEFAULT FALSE,
     duration_seconds    INTEGER,
-    backfill_completed  INTEGER DEFAULT 0
+    backfill_completed  INTEGER DEFAULT 0, game_variant_id VARCHAR
 );
 
 CREATE TABLE match_participants (

@@ -15,7 +15,7 @@ func TestToSyncRegistry_DefaultsModeCategoryWhenNil(t *testing.T) {
 		PlayableDurationSeconds: 59,
 		FirstSyncBy:             "test",
 	}
-	got := toSyncRegistry(m)
+	got := toSyncRegistry(m, false)
 	if got.ModeCategory != "Other" {
 		t.Errorf("ModeCategory: want 'Other' default, got %q", got.ModeCategory)
 	}
@@ -37,12 +37,27 @@ func TestToSyncRegistry_PromotesTeamScoresFromInt16Ptr(t *testing.T) {
 		Team0Score:  &team0,
 		Team1Score:  &team1,
 	}
-	got := toSyncRegistry(m)
+	got := toSyncRegistry(m, false)
 	if got.Team0Score == nil || *got.Team0Score != 50 {
 		t.Errorf("Team0Score: want *50, got %v", got.Team0Score)
 	}
 	if got.Team1Score == nil || *got.Team1Score != 47 {
 		t.Errorf("Team1Score: want *47, got %v", got.Team1Score)
+	}
+}
+
+// TestToSyncRegistry_BitParticipantsSelonLeRoster : le bit participants (512) n'est posé que si
+// le batch porte le roster ; sans roster, la valeur écrite est 0 (aucun bit), jamais NULL.
+func TestToSyncRegistry_BitParticipantsSelonLeRoster(t *testing.T) {
+	m := mapper.MatchRegistryRow{MatchID: "m4", StartTime: time.Now(), FirstSyncBy: "test", BackfillCompleted: 1}
+	avec := toSyncRegistry(m, true)
+	if avec.BackfillCompleted == nil || *avec.BackfillCompleted != 512 {
+		t.Errorf("avec roster : BackfillCompleted = %v, attendu 512 (le bit médailles du mapper n'est pas recopié)",
+			avec.BackfillCompleted)
+	}
+	sans := toSyncRegistry(m, false)
+	if sans.BackfillCompleted == nil || *sans.BackfillCompleted != 0 {
+		t.Errorf("sans roster : BackfillCompleted = %v, attendu 0", sans.BackfillCompleted)
 	}
 }
 
@@ -52,7 +67,7 @@ func TestToSyncRegistry_HonoursExplicitModeCategory(t *testing.T) {
 		MatchID: "m3", StartTime: time.Now(), FirstSyncBy: "test",
 		ModeCategory: &mc,
 	}
-	if got := toSyncRegistry(m); got.ModeCategory != "BTB" {
+	if got := toSyncRegistry(m, false); got.ModeCategory != "BTB" {
 		t.Errorf("ModeCategory: want 'BTB', got %q", got.ModeCategory)
 	}
 }
@@ -150,7 +165,7 @@ func TestToAnalysisEvent_NilFieldsBecomeZero(t *testing.T) {
 
 func TestToSyncRegistry_CategoryFollowsKnownPairName(t *testing.T) {
 	pair := "Ranked:Strongholds on Live Fire"
-	got := toSyncRegistry(mapper.MatchRegistryRow{PairName: &pair})
+	got := toSyncRegistry(mapper.MatchRegistryRow{PairName: &pair}, false)
 	if got.ModeCategory != "Ranked" {
 		t.Errorf("ModeCategory: want 'Ranked' from the pair name, got %q", got.ModeCategory)
 	}

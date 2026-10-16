@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/persist"
 )
@@ -228,7 +229,8 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 		JOIN match_participants mp ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
 		  AND mr.start_time IS NOT NULL
-		  AND COALESCE(mp.outcome, 0) != 4
+		  AND COALESCE(mp.outcome, 0) != 4`+
+		analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
 		ORDER BY mr.start_time ASC`, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("loadHistoryForPerf: %w", err)

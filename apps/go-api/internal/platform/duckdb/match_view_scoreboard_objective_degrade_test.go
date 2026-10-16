@@ -8,9 +8,9 @@
 // échouait → TOUTE la vue Match affichait « le match n'a pas pu être chargé »,
 // alors que seule la section objectifs était concernée.
 //
-// Contrat vérifié ici : vue absente ⇒ scoreboard SERVI, section objectifs VIDE,
-// WARN structuré émis AVANT la dégradation (CLAUDE.md règle n°3 — jamais
-// d'erreur avalée en silence).
+// Contrat vérifié ici : vue absente ⇒ scoreboard SERVI, section objectifs VIDE, ERREUR
+// structurée journalisée AVANT la dégradation (CLAUDE.md règle n°3) ET panne DITE : les lignes
+// sont rendues avec une *domain.SectionDegradedError (E4.8a, le service dit `section_unavailable`).
 package duckdb
 
 import (
@@ -20,6 +20,8 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/domain"
 )
 
 // captureSlog redirige le logger par défaut vers un buffer JSON pour la durée du
@@ -35,6 +37,12 @@ func captureSlog(t *testing.T) *bytes.Buffer {
 // contient chaque fragment attendu.
 func hasWarnContaining(t *testing.T, buf *bytes.Buffer, fragments ...string) bool {
 	t.Helper()
+	return hasLogLevelContaining(t, buf, "WARN", fragments...)
+}
+
+// hasLogLevelContaining : même chose pour un niveau donné.
+func hasLogLevelContaining(t *testing.T, buf *bytes.Buffer, level string, fragments ...string) bool {
+	t.Helper()
 	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
 		if line == "" {
 			continue
@@ -43,7 +51,7 @@ func hasWarnContaining(t *testing.T, buf *bytes.Buffer, fragments ...string) boo
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
 			continue
 		}
-		if lvl, _ := entry["level"].(string); lvl != "WARN" {
+		if lvl, _ := entry["level"].(string); lvl != level {
 			continue
 		}
 		msg, _ := entry["msg"].(string)
@@ -80,8 +88,8 @@ func TestGetMatchScoreboard_MissingObjectiveView_ServesScoreboardAndWarns(t *tes
 	buf := captureSlog(t)
 	repo := NewMatchViewRepo(pdb, pTestXUID)
 	rows, err := repo.GetMatchScoreboard(ctx, "m1")
-	if err != nil {
-		t.Fatalf("GetMatchScoreboard doit RESTER servi sans la vue objectifs, erreur reçue: %v", err)
+	if !domain.IsSectionDegraded(err) {
+		t.Fatalf("la panne de la section objectifs doit être DITE (*domain.SectionDegradedError), obtenu: %v", err)
 	}
 	if len(rows) != 1 {
 		t.Fatalf("scoreboard attendu 1 joueur, obtenu %d — la dégradation a vidé le scoreboard", len(rows))
@@ -89,8 +97,8 @@ func TestGetMatchScoreboard_MissingObjectiveView_ServesScoreboardAndWarns(t *tes
 	if rows[0].Obj.HasObjective() {
 		t.Errorf("section objectifs attendue VIDE sans la vue, obtenu %+v", rows[0].Obj)
 	}
-	if !hasWarnContaining(t, buf, "objectifs") {
-		t.Errorf("aucun WARN sur la dégradation de la section objectifs ; logs=%s", buf.String())
+	if !hasLogLevelContaining(t, buf, "ERROR", "objectifs") {
+		t.Errorf("aucune ERREUR journalisée sur la dégradation de la section objectifs ; logs=%s", buf.String())
 	}
 }
 

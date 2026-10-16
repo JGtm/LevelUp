@@ -1,3 +1,33 @@
+## [2026-10-16] Backlog 2026-10-15 : mise à jour de la branche sur feat/v75 (6b45cdc5b) — Complété (branche `feat/backlog-2026-10-15`)
+
+**Statut** : Complété ; fusion dans `feat/v75` toujours au user.
+
+**Décision technique principale** : merge (pas rebase, branche poussée) de `origin/feat/v75`. Un seul conflit textuel, `.ai/REGISTRE_REPORTS.md` : le contenu de feat/v75 est gardé en entier, notre section « Reports du plan backlog du 2026-10-15 » est ajoutée à la suite.
+
+**Résultats observés** : aucun conflit sémantique. Nos deux étapes (`shared_registry_participants_bit_v1`, `shared_registry_drop_integrity_columns_v1`) restent bien ordonnées après les étapes de feat/v75 ; aucune étape de feat/v75 ne touche `participants_loaded` ni `player_count`. Gardes de la Campagne et des erreurs avalées : aucun nouvel entrant. Baseline : retraits des deux côtés conservés. openapi et generated.ts à jour sans régénération. Gate complet vert (vet, tests ciblés, integration -p 1, lint, typecheck, vitest).
+
+**Conclusion / prochaine étape** : CI de la branche, puis fusion dans `feat/v75` (geste du user).
+
+## [2026-10-16] Backlog 2026-10-15 : clôture E6 (rondes 1 et 2 de la revue, backlog, registre) — Complété (branche `feat/backlog-2026-10-15`)
+
+**Statut** : Complété côté code et documents ; fusion dans `feat/v75` demandée au user (E6.5).
+
+**Décision technique principale** : seul l'ABANDON de la requête dégrade le niveau de journal (`LevelUnlessCanceled` fondé sur `errors.Is(ctx.Err(), context.Canceled)`), un délai interne expiré reste une panne ; les fonctions `IsCancellation` / `LevelOnCancellation` de la ronde 1 sont supprimées. La Campagne du corpus démo est exclue en UN point (`resolveDemoCorpus`), manifeste figé compris.
+
+**Résultats observés** : ronde 2 = 2 P1 corrigés (C1 régression de F3, C2 manifeste figé de la démo), 1 P2 noté (C3). `make go-api-lint` complet a relevé 4 issues du lot (goconst, lll) invisibles en `--new-from-rev` : corrigées, contrat OpenAPI et types régénérés. Backlog : entrée Campagne retirée, deux entrées ajoutées ; registre alimenté.
+
+**Conclusion / prochaine étape** : CI de la branche, puis fusion dans `feat/v75` (geste du user) ; au déploiement : recalcul des dérivés Halo 5 et re-seed de la démo (décision du user).
+
+## [2026-10-16] Backlog 2026-10-15, E6.2a : corrections de la ronde 1 de la revue adversariale — Complété (branche `feat/backlog-2026-10-15`, 5 commits `backlog-1015(E6.2a-Fn)`)
+
+**Statut** : Complété ; pas de push (E6.4 et E6.5 restent au superviseur / à l'utilisateur).
+
+**Décision technique principale** : F1 la chronologie LUSR par composante (`loadLUSRMatchIDsInWindow`) exclut la Campagne comme `LoadAxisSamples` ; F2 la démo exclut la Campagne à la source, sur l'ensemble final de `selectDynamicCorpus` (toutes voies), ce qui rend vraies les deux dispenses du garde ; F3 une requête abandonnée pendant le chargement de la vue match rend l'erreur de contexte (499 côté handler, qui NE le faisait PAS) et toute lecture coupée est un WARN via un helper unique `observability.LevelOnCancellation` ; F4 sept fichiers > 500 L et sept autres revenus à leur longueur d'avant le lot (ajouts déplacés en fichiers voisins) ; F5 tests de la branche « erreur de sonde » de `relationExists` et de quatre appelants.
+
+**Résultats observés** : chaque constat a un test rouge avant (sortie au journal du plan) puis vert ; mutations vérifiées (branche `ctx.Err()` du service, garde `isClientClosed` du handler, `return false, err` de la sonde). Le garde de la Campagne ne voit pas les lecteurs du registre seul (angle mort noté, non élargi). Découvertes des relecteurs consignées en section 3 du plan, non traitées (`loadAwardsForScoreboard` mort, `resolveWeaponLabelsOnly` muet, `RunForDB` des CLI figé sur `halo_infinite`).
+
+**Conclusion / prochaine étape** : ronde 2 de relecture sur la liste de fichiers du rapport, puis E6.3 à E6.5.
+
 ## [2026-10-15] Le rejeu ne gere pas le Firefight : ni cuisson, ni service — Complete (branche `fix/rejeu-sans-firefight`)
 
 **Statut** : Complete (code, tests, docs) ; CI a verifier apres push ; a fusionner dans feat/v75 sur decision de l utilisateur.
@@ -117451,6 +117481,85 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Conclusion / prochaine étape** : gate visuel du user (rejeu VIP, pages Vue match / Tactique / Escouade / Séries temporelles) ; découvertes de la section 4 du plan à trier avec le user.
 
+## [2026-10-15] Backlog 2026-10-15, E1 : matchs sans tableau des scores (DA-5) — Complété côté poste (E1.4, compte prod, au superviseur)
+
+**Décision technique principale** : diagnostic seul (D-4). Copies des bases partagées des deux titres interrogées par `cmd/diag_q` ; aucun code modifié.
+
+**Résultats observés** : les quatre témoins (`000d5950`, `28c9b538`, `4f77afc1`, `94a28b8b`) ont 8, 8, 36 et 10 participants et 230, 240, 844 et 193 événements, y compris dans le cut Parquet servi (v180) ; 0 match du registre sans participant (Halo Infinite 9 230, Halo 5 3 032). Écriture atomique registre + participants + événements (`persist/shared_persister.go:66-141`). La vue partielle du 27/09 n'est pas reproductible ; elle annonçait aussi `events_empty`, donc un lecteur partagé indisponible au moment de la sonde plutôt qu'une donnée absente (`goLoad` avale les erreurs en warn, `service/match_view_data_loaders.go:262-269`). Cause non établie faute de journaux du 27/09. Découvertes en section 3 du plan (`partial_reasons` sans distinction vide/erreur ; `participants_loaded` et `player_count` non posés).
+
+**Conclusion / prochaine étape** : constat clos côté poste. Le superviseur joue la requête de E1.4 (journal du plan) sur le VPS, retire l'entrée du backlog si le compte est 0, puis E2. La sous-partie « ERROR au boot de la démo » est passée dans l'entrée `[demo]` du backlog.
+
+## [2026-10-15] Backlog 2026-10-15, E1.4 : compte prod des matchs sans participant — Complété
+
+**Décision technique principale** : lecture seule sur des copies téléchargées des bases partagées de prod (aucune requête sur le VPS, 781 Mo de mémoire disponible).
+
+**Résultats observés** : 0 match sans participant en prod (Halo Infinite 2 014, Halo 5 3 032) ; les quatre témoins sont au registre prod avec leurs participants.
+
+**Conclusion / prochaine étape** : E1 close, entrée du backlog retirée ; E2 (lecteurs sans exclusion de la Campagne).
+
+## [2026-10-15] Backlog E2 : lecteurs sans exclusion de la Campagne (DB-25/26/27) — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : garde `campaign_exclusion_guard_test.go` étendu (tables kill-feed et médailles, racines sync/ops/cmd) ; tout lecteur qui agrège plusieurs matchs vers une donnée servie est corrigé (jeton ou `analysis.SQLExcludeCampaign*`), le reste est dispensé par catégorie prouvée (`fichier:ligne`). « Outil opérateur » réservé à `cmd/`.
+
+**Résultats observés** : 11 corrections (3 duckdb/wire, 6 sync, 2 ops), chacune avec test rouge puis vert sur halo_5 et halo_infinite (duel, totaux de médailles, médailles déjà obtenues, assistances, performance, sessions, engagement, LUSR v1 et ombre, dates de paliers, corpus démo). 66 dispenses datées. Mutation du garde vérifiée. `cmd/lusr_v2_phase0` supprimé. Gates sans tag et `integration -p 1` verts.
+
+**Conclusion / prochaine étape** : les dérivés Halo 5 déjà calculés Campagne comprise ne sont pas recalculés (à décider avec le user au déploiement). Suite : E3.
+
+## [2026-10-15] Backlog E3 : petites dettes Go (temps canonique, erreurs avalées, `title_slug` de `GET /squads`) — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : temps canonique par le fragment partagé (`StartTimeCanonicalSQL`) pour filtre et tri de `CampaignSampleProvider` et `ListRecentPvPMatchIDs` ; erreurs de `Scan` remontées quand l'appelant sait les traiter, `slog.WarnContext` avant dégradation sur les deux replis best-effort documentés ; `title_slug` retiré de `GET /squads` (sans effet : le titre vient du `PlayerDB`).
+
+**Résultats observés** : 6 tests rouges puis verts (temps divergents, import à `start_time` NULL, lignes illisibles, journal du repli) ; deux fichiers sortis de l'allowlist `rawOrderByStartTimeAllowlist` ; OpenAPI et `generated.ts` régénérés (un paramètre en moins) ; gate Go (sans tag et `integration`), `check-types` et `test-web` verts ; entrée du backlog supprimée.
+
+**Conclusion / prochaine étape** : E3 close ; E4 (vue match : lecture en échec distincte de pas de données).
+
+## [2026-10-15] Backlog E4 : vue match, lecture en échec distincte de « pas de données » — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : quatre raisons `<source>_unavailable` (tableau des scores, événements, stats du joueur, médailles) à côté des `_empty`, jamais émises avec l'`_empty` de la même source ; erreur journalisée en ERROR avant la dégradation. Réponse toujours 200 ; `Cache-Control: no-store` sur une vue avec source en panne ; côté web, `staleTime` de `useMatchView` à 0 pour une telle vue et bandeau « Données momentanément indisponibles » qui prime sur le bandeau partiel.
+
+**Résultats observés** : le cache de la vue n'est pas côté serveur (aucun cache de réponse, aucun en-tête HTTP) : le seul réutilisateur était TanStack Query (10 min), traité. Tests rouges puis verts (service, en-tête HTTP, cache web), contrat OpenAPI et types régénérés, gate Go (domain, service, api, archlint) et web (check-types, 9 614 tests) verts. Recette navigateur non faite : le serveur local n'est pas un build de la branche.
+
+**Conclusion / prochaine étape** : E4 close. Les 16 autres chargeurs de la vue restent best-effort sans raison (section 3 du plan). Suite : E5.
+
+## [2026-10-15] Backlog E4.7 : toute panne de chargeur de la vue match est dite — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : les chargeurs sans raison dédiée disent `section_unavailable` (code unique, source dans le journal ERROR) ; même règle no-store / refetch / bandeau que les quatre raisons dédiées ; capability non supportée = absence, pas panne. Les quatre codes web que Go n'émet plus sont supprimés.
+
+**Résultats observés** : tests rouge (mutation) puis vert côté service, handler et web ; `match_view_data_loaders.go` 699 -> 689 lignes ; gate Go (domain, api, archlint) et web (9 616 tests) verts ; échec unique antérieur de `internal/service` non reproduit (x20 + 3 passes).
+
+**Conclusion / prochaine étape** : E4 close. Restent hors contrat les erreurs avalées par certaines méthodes du repo (section 3). Suite : E5.
+
+## [2026-10-15] Backlog E4.8a : erreurs de lecture avalées par le repo de la vue match, lot A — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : `GetMatchEvents`, kill sources, kill assists, paires killer/victim, score d'objectif et stats d'objectif/d'Assaut du tableau des scores remontent leur erreur ; une section secondaire en panne est rendue avec la donnée principale par `domain.SectionDegradedError` (le service dit `section_unavailable`) ; l'absence légitime est constatée par sonde (`relationExists`, catalogue), jamais déduite d'une erreur ; `eventsRepo.Load` entre dans le contrat.
+
+**Résultats observés** : un seul appelant de production par méthode (le chargeur de la vue) ; tests rouge puis vert par méthode (fichiers de repo remis à HEAD le temps du rouge), bout en bout service + HTTP ; deux fixtures qui masquaient leur défaut sous l'ancien `nil, nil` corrigés ; découverte : le snapshot n'exporte pas `match_bomb_stats` (stats d'Assaut absentes des vues servies du snapshot) ; awards = code mort. Gate Go (domain, port, service, platform/duckdb avec et sans tag integration, api, archlint) vert.
+
+**Conclusion / prochaine étape** : E4.8b (lot B, exécutant neuf, instructions complètes au journal du plan) puis E4.8c (garde-rail archlint, allowlist vide).
+
+## [2026-10-15] Backlog E4.8b + E4.8c : fin des erreurs de lecture avalées par le repo de la vue match, garde-rail archlint — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : rang, CSR partagés, médias, stats attendues, historique (unitaire et groupé), médailles et armes de tous les joueurs, stats du joueur, enrichissement, modèle d'assists, voisins de navigation et libellés de médailles remontent leur erreur ; l'absence légitime se constate (`sql.ErrNoRows` testé avant `err != nil`, sonde `relationExists` pour `match_csrs_latest`, `v_weapon_kills`, `citation_mappings`, base sociale non configurée) ; libellés de médailles illisibles = `domain.SectionDegradedError` ; le port `FriendsExtrasResolver` rend `(map, error)` et sa panne est dite `section_unavailable`. Garde AST `archlint/match_view_repo_erreurs_remontees_test.go` (allowlist vide) : plus de `return ..., nil` ni de `continue` muet dans une branche `if err != nil` de `match_view_repo*.go`.
+
+**Résultats observés** : le garde a relevé 13 sites, dont 3 hors inventaire (voisins, `LookupMedalMetaByName`) ; rouge puis vert par méthode (fichiers de repo remis à HEAD ou mutation ciblée), mutation du garde vérifiée puis retirée ; bout en bout service + HTTP sur 8 sources ; un seed qui masquait une colonne manquante (`backfill_bits`) corrigé selon la recette des cliquets de seed ; `friendsByXUID` incluait les profils `auth_only` (sans player DB) : écartés, sinon la panne remontée aurait marqué toute vue les contenant ; `match_view_data_loaders.go` 668 -> 601 lignes. Gate Go (domain, port, service, platform/duckdb avec et sans tag integration, api, archlint, wire) vert, lint 0 issue.
+
+**Conclusion / prochaine étape** : E4 close (recette navigateur `[!]` reportée au gate visuel). À surveiller au déploiement : le journal ERROR `friends_extras: ...` pour un ami suivi dont la player DB n'a jamais été créée ou migrée. Suite : E5.
+
+## [2026-10-15] Backlog E5.1 : inventaire des colonnes d'intégrité du registre des matchs (`participants_loaded`, `player_count`, bit 512) — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : inventaire en lecture seule, sur copies locales et prod, de trois données de `match_registry`, par titre. `participants_loaded` : aucun lecteur, aucun écrivain Go (le mapper OpenSpartan la pose sur son propre type, perdue à la recopie). `player_count` : écrit seulement par H5 (`ingest/collect.go:47`, aucune ligne ne l'exerce), aucun lecteur d'intégrité n'existe malgré le « fix #10 » ; la colonne est INDEXÉE (`idx_registry_player_count`, legacy). Bit 512 (dans `match_registry.backfill_completed`, base partagée) : posé à l'insertion par le chemin HI (`sync/collect.go:329`), lu par la sélection du backfill admin par défaut (`backfill.go:348`).
+
+**Résultats observés** : prod HI 2 014 matchs / local 9 230 / H5 3 032. `participants_loaded` vrai et `player_count` > 0 : 1 382 lignes, toutes synchronisées avant le 2026-04-07 (ère Python), aucune depuis ; même posé, `player_count` ne vaut le roster réel que 13 fois sur 1 544. H5 : `player_count` et `backfill_completed` NULL sur les 3 032 (parc ingéré le 2026-06-23, avant l'écrivain du 2026-06-26). Bit 512 : 157 matchs HI sans bit, tous synchronisés du 25 au 30 mai 2026 (fenêtre ouverte par `82d0aa1a2`, fermée par `ddfd9e124`), jamais re-posé ; le bouton admin « backfill » sans scope les re-sélectionne à chaque lancement (film re-téléchargé, `events_loaded` remis à faux, `GetMatchStats`). Recette sans UPDATE éprouvée sur `match_registry` : `swapTableTx` (`shared_recompute_mode_category_v1`).
+
+**Conclusion / prochaine étape** : E5.1 `[x]`. STOP : verdict du superviseur (D-11 à D-14) avant E5.2. Inventaire complet au journal du plan.
+
+## [2026-10-16] Backlog E5.2 à E5.6 : retrait de `participants_loaded` et `player_count`, bit 512 réparé par reconstruction de `match_registry` — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : application du verdict V-1 à V-4. Les deux colonnes sans lecteur sont retirées du code (DDL de base et de secours, persister, contrat démo, seeder, écrivain H5, mapper OpenSpartan, vue `mv_player_matches`, outils `cmd/`), l'étape d'ajout `add_player_count_to_match_registry` est supprimée (précédent `shared_objective_score_v1`). L'import OpenSpartan pose le bit participants à l'insertion ; le bit est défini une fois dans `sync/matchflags`. Les bases existantes passent par UNE reconstruction `swapTableTx` (sans UPDATE) qui retire colonnes et index et pose le bit sur les matchs à roster : step title-owned Halo Infinite borné par `OnlyTitles` (seul mécanisme de portée par titre du registre de migrations), puis step global qui retire les colonnes ailleurs (no-op là où le premier est passé). Gardes avant COMMIT : colonnes, contraintes, index, empreinte de la table contre la projection attendue, empreinte de chaque vue.
+
+**Résultats observés** : rouge puis vert par item (cut neuf refusé par l'ancienne vue, `backfill_completed` NULL à l'import, migration neutralisée). Répétition sur copies par le runner complet : prod HI 2 014 matchs, bit 1 857 -> 2 014, 7 -> 5 index, 461 ms pour 23 steps en attente, pic 164 Mo ; prod H5 3 032 matchs, `player_count` retirée, bit inchangé, step title-owned ni appliqué ni inscrit ; local HI 9 230 matchs, bit 9 073 -> 9 230 ; local H5 idem prod. Second passage sans écriture partout. Gates Go (vet, test, test integration -p 1, api, lint new-from-rev) verts ; garde-rails ART inchangés.
+
+**Conclusion / prochaine étape** : E5.2 à E5.6 `[x]`. Revue adversariale du diff E5 par le superviseur, puis E6. Découvertes consignées au plan (copie de 512 dans `reset-bitmasks`, bit skill des 157 matchs, DDL `v_match_full` en trois exemplaires dont un qui avale son erreur, catalogue `shared` ambigu sur une copie mal nommée, `EventsLoaded`/`MedalsLoaded` du mapper).
 **[2026-10-15] Étape dédiée au résidu des images-clés — Complété** : entrées de slot libéré lues comme le jeu (bipèdes fermés 5 397 -> 8 564 / 10 710), bit du bloc malléable d'i53 pour les films déclarant la version 0x25 (U-6), world-object i0 et rigid-body i18 sous la portée (U-7), sens de la valeur 2 de l'emplacement désiré établi (mains nues avant le départ), surcoût de cuisson de 11 % accepté (U-8). Fusion `a9a9ac78a`, schéma 97, `grammar-2026-10-15.2`, recuisson et killsource faits. Suite possible : trois records ti=37 récents (R-3), grammaire des versions 0x1f-0x22, optimisation de la cuisson.
 
 ## [2026-10-16] Lots film du 15/10 intégrés (schéma 98) : faille à sa pose, poussées inchangées, doublons d'identité, morts servies deux fois, équipe des bots par build, vies nommées au sync — Complété (recuisson accordée par le user)

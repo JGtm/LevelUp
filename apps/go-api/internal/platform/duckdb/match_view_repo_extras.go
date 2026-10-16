@@ -8,8 +8,8 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
-	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -23,26 +23,22 @@ import (
 // GetMatchKillSources retourne la source de dégât de chaque mort du match (Q21b).
 // Exécutée sur SharedReader (ADR 0016, shared-only).
 //
-// Dégradation gracieuse assumée à DEUX endroits : reader indisponible, ou table absente
-// d'une base non migrée. Dans les deux cas on rend une tranche vide, jamais une erreur —
-// le kill feed s'affiche alors sans arme, ce qui est son état d'avant ce lot. L'échec est
-// loggé pour qu'il ne soit pas SILENCIEUX (règle : jamais d'erreur avalée).
+// Tranche vide = le match n'est pas passé par le décodeur de film (état normal : le kill
+// feed s'affiche sans arme). Un reader indisponible ou une requête en échec (table absente
+// d'une base non migrée comprise) est une PANNE et remonte : le service la dit
+// (`section_unavailable`), il ne la laisse pas passer pour « pas de donnée ».
 func (r *MatchViewRepo) GetMatchKillSources(ctx context.Context, matchID string) ([]domain.KillSourceRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: kill sources indisponibles (shared reader)",
-			"match_id", matchID, "err", err)
-		return nil, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchKillSources: shared reader: %w", err)
 	}
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, Q21bKillSources, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: kill sources indisponibles (Q21b)",
-			"match_id", matchID, "err", err)
-		return nil, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchKillSources: Q21b: %w", err)
 	}
 	defer rows.Close()
 
@@ -80,16 +76,12 @@ func (r *MatchViewRepo) GetMatchKillAssists(ctx context.Context, matchID string)
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: kill assists indisponibles (shared reader)",
-			"match_id", matchID, "err", err)
-		return nil, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchKillAssists: shared reader: %w", err)
 	}
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, Q21cKillAssists, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: kill assists indisponibles (Q21c)",
-			"match_id", matchID, "err", err)
-		return nil, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchKillAssists: Q21c: %w", err)
 	}
 	defer rows.Close()
 
@@ -133,21 +125,15 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		// Dégradation best-effort assumée (duels vides), mais JAMAIS muette : sans cette
-		// trace, un lecteur cassé est indistinguable d'un match sans donnée (régression
-		// du 2026-08-03, restée invisible un mois faute de log).
-		slog.WarnContext(ctx, "match_view: kv_pairs shared reader indisponible",
-			"match_id", matchID, "err", err)
-		return nil, nil
+		// Un lecteur cassé est une PANNE, pas un match sans duels (régression du 2026-08-03,
+		// restée invisible un mois derrière un log) : elle remonte, le service la dit.
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchKVPairs: shared reader: %w", err)
 	}
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, Q20KVPairs, matchID)
 	if err != nil {
-		// La table canonique peut manquer sur une DB non migrée → duels vides, jamais
-		// d'erreur — mais toujours une trace (même raison que ci-dessus).
-		slog.WarnContext(ctx, "match_view: kv_pairs requete Q20 en echec",
-			"match_id", matchID, "err", err)
-		return nil, nil
+		// Table canonique absente d'une DB non migrée comprise : panne, elle remonte.
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchKVPairs: Q20: %w", err)
 	}
 	defer rows.Close()
 
@@ -260,6 +246,10 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 // GetMatchMedia retourne les médias associés au match (Q24).
 // Utilise shared_social DB. Cross-joueur : tous les auteurs sont retournés.
 // Le champ Liked est celui DU VIEWER (r.viewerSlug), pas un état global.
+//
+// Une base sociale NON CONFIGURÉE (`SharedSocial` nil) est une absence constatée : pas de média.
+// Une requête en échec (table absente d'une base non migrée comprise) est une PANNE et remonte
+// (incident 2026-05-07 : un bug d'index sur Q24 serait resté invisible derrière un vide).
 func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID string) ([]domain.MediaAssocRaw, error) {
 	if r.pdb.SharedSocial == nil {
 		return nil, nil
@@ -270,12 +260,7 @@ func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID string) ([]do
 
 	rows, err := r.pdb.SharedSocial.Query(ctx, Q24MatchMedia, r.viewer(), matchID)
 	if err != nil {
-		// Absence de la table ou DB non configurée → résultat vide sans erreur
-		// bloquante. On loggue tout de même : un échec récurrent ici masquerait
-		// silencieusement un bug d'index (cf. incident 2026-05-07 Q24).
-		slog.WarnContext(ctx, "match_view: Q24 query échouée — médias indisponibles",
-			"match_id", matchID, "err", err)
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchMedia: Q24: %w", err)
 	}
 	defer rows.Close()
 
@@ -323,13 +308,17 @@ func rfc3339OrNil(t *time.Time) *string {
 
 // GetMatchExpectedStats retourne les stats attendues pour ce match (Q26).
 // Exécutée sur SharedReader (ADR 0016) — Q26 lit match_participants (shared-only).
+//
+// Un joueur sans ligne dans le match (`sql.ErrNoRows`) est une ABSENCE constatée : nil. Un lecteur
+// indisponible, une colonne absente d'une base non migrée ou une lecture illisible sont des PANNES
+// et remontent.
 func (r *MatchViewRepo) GetMatchExpectedStats(ctx context.Context, matchID, xuid string) (*domain.ExpectedStatsRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchExpectedStats: shared reader: %w", err)
 	}
 	defer release()
 
@@ -340,9 +329,11 @@ func (r *MatchViewRepo) GetMatchExpectedStats(ctx context.Context, matchID, xuid
 		&row.KillsStddev,
 		&row.DeathsStddev,
 	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
-		// Colonnes absentes ou match introuvable → nil sans erreur
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchExpectedStats: Q26: %w", err)
 	}
 	return &row, nil
 }
@@ -350,15 +341,15 @@ func (r *MatchViewRepo) GetMatchExpectedStats(ctx context.Context, matchID, xuid
 // GetHistoryForAvg retourne les 50 derniers matchs du joueur (Q29) pour le
 // calcul des moyennes historiques K/D/A + spree/headshots/perfect.
 // Exécutée sur SharedReader (ADR 0016) — Q29 lit match_participants +
-// match_registry + medals_earned (shared-only).
+// match_registry + medals_earned (shared-only). Un lecteur indisponible ou une requête en
+// échec est une PANNE et remonte : un historique vide se lirait « pas de moyenne locale ».
 func (r *MatchViewRepo) GetHistoryForAvg(ctx context.Context, xuid string) ([]domain.MatchHistAvgRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		slog.WarnContext(ctx, "GetHistoryForAvg shared reader failed", "err", err)
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("GetHistoryForAvg: shared reader: %w", err)
 	}
 	defer release()
 
@@ -367,8 +358,7 @@ func (r *MatchViewRepo) GetHistoryForAvg(ctx context.Context, xuid string) ([]do
 	q = resolveCampaignExclusion(q, pdbTitleSlug(r.pdb), "r")
 	rows, err := sharedDB.QueryContext(ctx, q, xuid, xuid)
 	if err != nil {
-		slog.WarnContext(ctx, "GetHistoryForAvg query failed", "err", err)
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("GetHistoryForAvg: query: %w", err)
 	}
 	defer rows.Close()
 
@@ -397,8 +387,8 @@ func (r *MatchViewRepo) GetHistoryForAvg(ctx context.Context, xuid string) ([]do
 // GetHistoryForAvgBulk retourne l'historique Q29 (50 derniers matchs) pour PLUSIEURS
 // xuids en une seule requête (J3). Remplace la boucle ~8× GetHistoryForAvg du builder
 // Match View (moyennes K/D locales des amis du scoreboard). Résultat groupé par xuid ;
-// sémantique par joueur identique à GetHistoryForAvg. Best-effort : reader/requête en
-// échec → map nil (le builder dégrade sans expected K/D, comme la voie unitaire).
+// sémantique par joueur identique à GetHistoryForAvg, y compris la panne : reader/requête en
+// échec remonte (l'appelant la dit avant de dégrader sans expected K/D).
 func (r *MatchViewRepo) GetHistoryForAvgBulk(ctx context.Context, xuids []string) (map[string][]domain.MatchHistAvgRow, error) {
 	if len(xuids) == 0 {
 		return map[string][]domain.MatchHistAvgRow{}, nil
@@ -408,8 +398,7 @@ func (r *MatchViewRepo) GetHistoryForAvgBulk(ctx context.Context, xuids []string
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		slog.WarnContext(ctx, "GetHistoryForAvgBulk shared reader failed", "err", err)
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("GetHistoryForAvgBulk: shared reader: %w", err)
 	}
 	defer release()
 
@@ -427,8 +416,7 @@ func (r *MatchViewRepo) GetHistoryForAvgBulk(ctx context.Context, xuids []string
 	}
 	rows, err := sharedDB.QueryContext(ctx, q, args...)
 	if err != nil {
-		slog.WarnContext(ctx, "GetHistoryForAvgBulk query failed", "err", err)
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("GetHistoryForAvgBulk: query: %w", err)
 	}
 	defer rows.Close()
 
@@ -457,7 +445,10 @@ func (r *MatchViewRepo) GetHistoryForAvgBulk(ctx context.Context, xuids []string
 }
 
 // GetPlayerAssistsModel retourne les coefs OLS expected_assists pour un mode.
-// Retourne nil si la table est absente ou si le mode n'a pas assez de données.
+// Retourne nil, SANS erreur, quand le mode n'a pas de modèle (`sql.ErrNoRows` : pas assez de
+// données pour l'ajuster) : c'est une absence constatée, l'appelant bascule sur le fallback
+// populationnel. La table `player_assists_model` est posée par la migration de tout player DB (les
+// deux titres) : son absence, un Reopen impossible ou une ligne illisible sont des PANNES et remontent.
 func (r *MatchViewRepo) GetPlayerAssistsModel(ctx context.Context, gameVariantName string) (*domain.PlayerAssistsModel, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
@@ -473,8 +464,11 @@ func (r *MatchViewRepo) GetPlayerAssistsModel(ctx context.Context, gameVariantNa
 	`
 	var m domain.PlayerAssistsModel
 	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, q, gameVariantName)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
-		return nil, nil //nolint:nilerr — table absente, mode inconnu ou Reopen concurrent : dégradation gracieuse
+		return nil, fmt.Errorf("MatchViewRepo.GetPlayerAssistsModel: %w", err)
 	}
 	defer rows.Close()
 	if err := rows.Scan(
@@ -483,7 +477,7 @@ func (r *MatchViewRepo) GetPlayerAssistsModel(ctx context.Context, gameVariantNa
 		&m.CoefDamageDealt, &m.CoefDamageTaken, &m.CoefMMRDelta,
 		&m.R2, &m.N,
 	); err != nil {
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("MatchViewRepo.GetPlayerAssistsModel scan: %w", err)
 	}
 	return &m, nil
 }

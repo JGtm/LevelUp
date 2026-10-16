@@ -269,8 +269,8 @@ func capturePage(
 			continue
 		}
 		timeline := captureMatchTimeline(ctx, src, s.MatchID, stats)
-		participants, commendations, team0, team1, playerCount := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, stats)
-		batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, participants, commendations, team0, team1, playerCount, resolveXUID))
+		participants, commendations, team0, team1 := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, stats)
+		batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, participants, commendations, team0, team1, resolveXUID))
 		stats.MatchesCollected++
 		if maxMatches > 0 && stats.MatchesCollected >= maxMatches {
 			return batches, false, nil // cap MaxMatches (live)
@@ -331,20 +331,16 @@ func FetchCanonicalEvents(ctx context.Context, src CaptureSource, matchID string
 // le match est TOUT DE MÊME collecté (sans participants ni commendations) — squad/
 // rencontres dégradent pour ce match seul, et un futur passage le re-tentera
 // (match_registry idempotent).
-func captureParticipants(ctx context.Context, src CaptureSource, matchID, mode string, resolveXUID func(string) string, stats *CaptureStats) ([]domain.MatchParticipantRow, []persist.CommendationInsert, *int, *int, int) {
+func captureParticipants(ctx context.Context, src CaptureSource, matchID, mode string, resolveXUID func(string) string, stats *CaptureStats) ([]domain.MatchParticipantRow, []persist.CommendationInsert, *int, *int) {
 	carnage, err := src.GetMatchCarnage(ctx, matchID, mode)
 	if err != nil {
 		stats.CarnageFailed++
 		slog.WarnContext(ctx, "h5 capture: carnage indisponible (sans participants)", "match_id", matchID, "err", err)
-		return nil, nil, nil, nil, 0
+		return nil, nil, nil, nil
 	}
 	team0, team1 := carnageTeamScores(carnage)
-	// playerCount = TAILLE du roster reporté par l'API (carnage.PlayerStats), AVANT
-	// le resolve-or-skip → oracle d'intégrité (roster attendu vs persisté). Renseigné
-	// sur le registry par CollectMatchBatch (le batch porte les participants mappés).
-	playerCount := len(carnage.PlayerStats)
 	participants := mapCarnageParticipants(ctx, matchID, carnage, resolveXUID, &stats.RosterDropped)
-	return participants, mapCarnageCommendations(matchID, carnage, resolveXUID), team0, team1, playerCount
+	return participants, mapCarnageCommendations(matchID, carnage, resolveXUID), team0, team1
 }
 
 // carnageTeamScores extrait les scores objectif d'équipe (TeamStats[].Score = score

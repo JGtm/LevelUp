@@ -2085,8 +2085,8 @@ export interface MatchViewResponse {
   /**
    * Codes stables des raisons de la partialité. Utilisés pour traduire en
    * messages i18n côté front (« sync incomplet », « film expiré », etc.).
-   * Codes possibles : "scoreboard_empty", "events_empty",
-   * "player_stats_empty", "medals_empty".
+   * Codes : "<source>_empty" (scoreboard, events, player_stats, medals : lecture réussie, rien à afficher),
+   * "<source>_unavailable" et "section_unavailable" (lecture EN ÉCHEC : vue transitoire, jamais conservée).
    */
   partial_reasons?: string[]
   /** L'Emprise du match, fiches = les joueurs de l'équipe du joueur de la page (absente sans lui). */

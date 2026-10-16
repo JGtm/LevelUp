@@ -3428,6 +3428,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/MatchViewResponse'
           description: Détail du match
+          headers:
+            Cache-Control:
+              schema:
+                type: string
         "404":
           $ref: '#/components/responses/NotFound'
         "500":
@@ -6099,11 +6103,6 @@ paths:
         - explode: false
           in: query
           name: user_id
-          schema:
-            type: string
-        - explode: false
-          in: query
-          name: title_slug
           schema:
             type: string
       responses:
@@ -20058,6 +20057,7 @@ components:
         media_tab:
           $ref: '#/components/schemas/MatchMediaTab'
         partial_reasons:
+          description: '<source>_empty : lecture réussie sans donnée ; *_unavailable : lecture en échec (vue transitoire, jamais conservée).'
           items:
             type: string
           type:

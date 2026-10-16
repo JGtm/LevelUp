@@ -9424,6 +9424,7 @@ export interface components {
             is_partial?: boolean;
             lives_near_teammate?: components["schemas"]["MatchLivesNearTeammate"];
             media_tab: components["schemas"]["MatchMediaTab"];
+            /** @description <source>_empty : lecture réussie sans donnée ; *_unavailable : lecture en échec (vue transitoire, jamais conservée). */
             partial_reasons?: string[] | null;
             privacy_warning?: components["schemas"]["MatchPrivacyWarning"];
             radar?: unknown[] | null;
@@ -18696,6 +18697,7 @@ export interface operations {
             /** @description Détail du match */
             200: {
                 headers: {
+                    "Cache-Control"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -21449,7 +21451,6 @@ export interface operations {
         parameters: {
             query?: {
                 user_id?: string;
-                title_slug?: string;
             };
             header?: never;
             path?: never;

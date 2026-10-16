@@ -81,6 +81,10 @@ const (
 	MBitObjectiveStats = matchflags.MBitObjectiveStats
 )
 
+// backfillFlagParticipants : bit « participants » (512) de match_registry.backfill_completed,
+// défini dans matchflags (le lisent aussi l'import OpenSpartan et la migration de réparation).
+const backfillFlagParticipants = matchflags.BackfillParticipants
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PveBits — pve_match_stats.pve_bits (shared_pve.duckdb)
 // ─────────────────────────────────────────────────────────────────────────────

@@ -209,7 +209,7 @@ func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64, locale st
 			missing = append(missing, id)
 		}
 	}
-	for id, label := range lookupMedalCitationLabels(ctx, db, missing) {
+	for id, label := range citationLabelsOrLog(ctx, db, missing, "home") {
 		result[id] = medalLabel{label: label, difficulty: "Normal"}
 	}
 	return result

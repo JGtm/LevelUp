@@ -33,7 +33,6 @@ var MatchRegistryColumns = []string{
 	"team_0_rounds_won", "team_1_rounds_won", "rounds_total",
 	"match_intensity", "backfill_completed", "events_loaded",
 	"first_sync_by", "first_sync_at", "last_updated_at",
-	"player_count",
 	"created_at", "updated_at",
 }
 

@@ -7,6 +7,7 @@ import (
 	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/openspartan/mapper"
 	"levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/matchflags"
 )
 
 // toSyncRegistry converts a mapper.MatchRegistryRow (PR 2 pivot type) into
@@ -14,7 +15,12 @@ import (
 // (persist.BatchBuilder.SetMatch in openspartan_import_service.go). Required
 // because the sync types predate the mapper and use slightly different
 // nullability conventions.
-func toSyncRegistry(m mapper.MatchRegistryRow) sync.MatchRegistryRow {
+//
+// hasParticipants : the batch carries the match roster. backfill_completed then gets the
+// participants bit (matchflags.BackfillParticipants) at insertion, as the sync engine does
+// (sync.applyCompletionBitsToBatch) : the shared row is INSERT-only, nothing sets it later,
+// and a missing bit makes the admin backfill re-select the match on every run.
+func toSyncRegistry(m mapper.MatchRegistryRow, hasParticipants bool) sync.MatchRegistryRow {
 	durSec := m.DurationSeconds
 	playableSec := m.PlayableDurationSeconds
 
@@ -36,6 +42,11 @@ func toSyncRegistry(m mapper.MatchRegistryRow) sync.MatchRegistryRow {
 		modeCategory = *m.ModeCategory
 	case m.PairName != nil:
 		modeCategory = modelabel.InferCategory(*m.PairName)
+	}
+
+	var completed int64
+	if hasParticipants {
+		completed |= matchflags.BackfillParticipants
 	}
 
 	return sync.MatchRegistryRow{
@@ -66,6 +77,7 @@ func toSyncRegistry(m mapper.MatchRegistryRow) sync.MatchRegistryRow {
 		Team1PSScore:            m.Team1PsScore,
 		FirstSyncBy:             m.FirstSyncBy,
 		SeasonID:                m.SeasonID, // Phase 9.5 — propage le SeasonID OpenSpartan vers le sync writer
+		BackfillCompleted:       &completed,
 	}
 }
 

@@ -38,7 +38,6 @@ func MapMatch(pm *openspartan.ParsedMatch, opts MapOptions) (MappedMatch, error)
 	if err != nil {
 		return MappedMatch{}, fmt.Errorf("map medals %s: %w", pm.MatchID, err)
 	}
-	reg.PlayerCount = int16(len(parts))
 	return MappedMatch{Registry: reg, Participants: parts, Medals: medals}, nil
 }
 
@@ -65,8 +64,7 @@ func MapRegistry(ms openspartan.MatchStats, opts MapOptions) (MatchRegistryRow, 
 		StartTimeUTC:            ms.MatchInfo.StartTime.UTC(),
 		DurationSeconds:         durSec,
 		PlayableDurationSeconds: playableSec,
-		BackfillCompleted:       1,
-		ParticipantsLoaded:      true,
+		BackfillCompleted:       BackfillBitMedals,
 		EventsLoaded:            true,
 		MedalsLoaded:            true,
 		FirstSyncBy:             opts.source(),

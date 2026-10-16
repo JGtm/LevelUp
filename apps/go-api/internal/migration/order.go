@@ -232,6 +232,13 @@ var canonicalOrder = []string{
 	"shared_pve_append_only_v1",                        // shared_pve
 	"rebuild_match_participants_defeat_art_corruption", // shared
 	"shared_recompute_mode_category_v1",                // shared (2026-10-09, lot F : catégorie de mode recalculée depuis pair_name, swap sans UPDATE, index retiré)
+	// Colonnes d'intégrité de match_registry (participants_loaded, player_count, index
+	// idx_registry_player_count) retirées et bit participants réparé, UNE reconstruction par
+	// base : le step title-owned (titres qui écrivent le bit, OnlyTitles) d'abord, le step
+	// global ensuite (no-op là où le premier a déjà retiré les colonnes). Après la dernière
+	// reconstruction de la table ci-dessus. Cf. steps_shared_registry_integrity_columns.go.
+	"shared_registry_participants_bit_v1",       // shared — title-owned Halo Infinite
+	"shared_registry_drop_integrity_columns_v1", // shared
 	// Phase 1.5 b27 (reorder escaladé) : skill_v2 (créateur de lusr_hyperparams_v2)
 	// AVANT le seed tier_boundaries (qui INSERT dedans). Corrige l'inversion 148/149
 	// historique. Sûr : les 2 sont title-owned → n'affecte pas l'ordre du registre global
@@ -291,7 +298,6 @@ var canonicalOrder = []string{
 	"shared_create_kill_openings",             // shared
 	"shared_create_match_commendations",       // shared (commendations natives par match, ref inter-titres, AXE B)
 	"shared_match_commendations_add_progress", // shared (total à vie absolu au match — totaux commendations)
-	"add_player_count_to_match_registry",      // shared (roster API attendu — oracle d'intégrité, fix #10)
 	// Répare une DÉRIVE DE SCHÉMA, pas une évolution : la DDL disait INTEGER, les bases
 	// réelles portaient SMALLINT, et tout match à plus de 32 767 points d'équipe (Baptême
 	// du feu) était rejeté à l'INSERT — perdu pour TOUS les joueurs. Position : après tout

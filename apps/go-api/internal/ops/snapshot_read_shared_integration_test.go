@@ -19,6 +19,13 @@ import (
 // sans cycle d'import sync. OpenSnapshotShared recrée ensuite TOUTES les vues shared.
 func seedFidelityShared(t *testing.T) *sql.DB {
 	t.Helper()
+	return seedFidelitySharedAvecColonnes(t, "")
+}
+
+// seedFidelitySharedAvecColonnes : seedFidelityShared dont match_registry porte en plus
+// `colonnes` (fragment `, nom TYPE ...`), pour reproduire la forme d'une base plus ancienne.
+func seedFidelitySharedAvecColonnes(t *testing.T, colonnes string) *sql.DB {
+	t.Helper()
 	db := snapOpenMem(t)
 	// match_registry : toutes les colonnes lues par mv_player_matches.
 	snapExecT(t, db, `CREATE TABLE match_registry (
@@ -30,8 +37,8 @@ func seedFidelityShared(t *testing.T) *sql.DB {
 		game_variant_id VARCHAR, game_variant_name VARCHAR, mode_category VARCHAR,
 		is_ranked BOOLEAN, is_firefight BOOLEAN,
 		duration_seconds INTEGER, playable_duration_seconds INTEGER,
-		team_0_score INTEGER, team_1_score INTEGER, team_0_ps_score INTEGER, team_1_ps_score INTEGER,
-		player_count INTEGER)`)
+		team_0_score INTEGER, team_1_score INTEGER, team_0_ps_score INTEGER, team_1_ps_score INTEGER`+
+		colonnes+`)`)
 	// match_participants : toutes les colonnes lues par mv_player_matches + v_gamertag_lookup.
 	snapExecT(t, db, `CREATE TABLE match_participants (
 		match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR, team_id INTEGER, outcome INTEGER,
@@ -179,6 +186,59 @@ func TestOpenSnapshotShared_Fidelity_integration(t *testing.T) {
 	}
 	if n := scanInt(q.DB, `SELECT COUNT(*) FROM mv_player_matches WHERE match_id='m2'`); n != 0 {
 		t.Errorf("mv_player_matches m2 (not-ready) = %d, attendu 0", n)
+	}
+}
+
+// TestOpenSnapshotShared_CutAncienAvecColonnesRetirees_integration : un cut produit AVANT le
+// retrait de match_registry.player_count et participants_loaded porte encore ces colonnes. Le
+// lecteur doit le servir tel quel : les vues reconstruites ne les citent plus, une colonne en
+// trop dans la table matérialisée ne gêne aucune lecture.
+func TestOpenSnapshotShared_CutAncienAvecColonnesRetirees_integration(t *testing.T) {
+	ctx := context.Background()
+	paths := title.NewPathResolver(t.TempDir(), nil)
+	slug := title.DefaultSlug
+
+	shared := seedFidelitySharedAvecColonnes(t, ", player_count INTEGER, participants_loaded BOOLEAN")
+	player := seedPlayerDB(t, []string{"m1"}, []string{"m2"})
+	res, err := ProduceSnapshot(ctx, SnapshotOptions{
+		TitleSlug:    slug,
+		Paths:        paths,
+		Shared:       fakeSharedOpener{db: shared},
+		PlayerOpener: fakePlayerOpener{byGT: map[string]*sql.DB{"Solo": player}},
+		Players:      []string{"Solo"},
+		Now:          time.Date(2026, 6, 25, 9, 0, 0, 0, time.UTC),
+	})
+	if err != nil || !res.Produced {
+		t.Fatalf("produce: res=%+v err=%v", res, err)
+	}
+
+	q, err := OpenSnapshotShared(ctx, paths, slug)
+	if err != nil {
+		t.Fatalf("OpenSnapshotShared sur un cut ancien : %v", err)
+	}
+	defer q.Close()
+
+	compte := func(query string) int {
+		t.Helper()
+		var n int
+		if err := q.DB.QueryRowContext(ctx, query).Scan(&n); err != nil {
+			t.Fatalf("query %q: %v", query, err)
+		}
+		return n
+	}
+	if n := compte(`SELECT COUNT(*) FROM duckdb_columns() WHERE table_name = 'match_registry'
+		AND column_name IN ('player_count', 'participants_loaded')`); n != 2 {
+		t.Fatalf("le cut doit porter les deux colonnes retirées (cut ancien), trouvé %d", n)
+	}
+	if n := compte(`SELECT COUNT(*) FROM mv_player_matches WHERE match_id = 'm1'`); n != 2 {
+		t.Errorf("mv_player_matches m1 = %d, attendu 2", n)
+	}
+	if n := compte(`SELECT COUNT(*) FROM v_match_full WHERE match_id = 'm1'`); n != 1 {
+		t.Errorf("v_match_full m1 = %d, attendu 1", n)
+	}
+	if n := compte(`SELECT COUNT(*) FROM duckdb_columns() WHERE table_name = 'mv_player_matches'
+		AND column_name = 'player_count'`); n != 0 {
+		t.Errorf("mv_player_matches expose encore player_count")
 	}
 }
 

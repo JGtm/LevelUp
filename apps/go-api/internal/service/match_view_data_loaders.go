@@ -10,6 +10,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -82,6 +83,7 @@ type matchViewData struct {
 	// câblé, ou si aucun kill n'a de position mesurée.
 	killDistances  []domain.MatchKillDistancePlayer
 	objectiveScore int
+	failures       *sourceFailures // sources dont la lecture a échoué : « en panne » ≠ « vide » (E4)
 }
 
 // loadMatchViewDataParallel lance en parallèle (errgroup) tous les chargements
@@ -92,26 +94,26 @@ type matchViewData struct {
 //
 //nolint:funlen,cyclop // routage errgroup linéaire ~20 chargements concurrents — découper davantage ne réduit pas la complexité réelle.
 func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchID string) (matchViewData, error) {
-	var d matchViewData
+	d := matchViewData{failures: newSourceFailures()}
 
 	g, gctx := errgroup.WithContext(ctx)
 
-	goLoad(gctx, g, matchID, "stats", func() error {
+	d.failures.goLoad(gctx, g, matchID, srcPlayerStats, func() error {
 		var e error
 		d.stats, e = s.repo.GetPlayerMatchStats(gctx, s.xuid, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "enrichment", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "enrichment", func() error {
 		var e error
 		d.enrich, e = s.repo.GetMatchEnrichment(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "scoreboard", func() error {
+	d.failures.goLoad(gctx, g, matchID, srcScoreboard, func() error {
 		var e error
 		d.scoreboard, e = s.repo.GetMatchScoreboard(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "objective score", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "objective score", func() error {
 		var e error
 		// Score PSA catégorie 'objective' pour le joueur courant — consommé
 		// UNIQUEMENT par le résiduel de l'axe Score du radar (décision 1, plan
@@ -120,109 +122,88 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.objectiveScore, e = s.repo.GetMatchObjectiveScore(gctx, s.xuid, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "medals", func() error {
+	d.failures.goLoad(gctx, g, matchID, srcMedals, func() error {
 		var e error
 		d.medals, e = s.repo.GetMatchMedals(gctx, s.xuid, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "events", func() error {
+	d.failures.goLoad(gctx, g, matchID, srcEvents, func() error {
 		var e error
 		d.events, e = s.repo.GetMatchEvents(gctx, matchID)
 		return e
 	})
-	// MV4.A : chargement parallèle des events via le loader unifié si câblé.
-	// Si l'eventsRepo n'est pas injecté, canonicalEvents reste nil et les
-	// builders narrative retomberont sur la conversion à la volée (chunk MV2).
-	if s.eventsRepo != nil {
-		g.Go(func() error {
-			filters := port.HighlightEventFilters{MatchIDs: []string{matchID}}
-			if e := filters.Validate(); e != nil {
-				slog.WarnContext(gctx, "match_view: HighlightEventFilters invalides",
-					"match_id", matchID, "err", e)
-				return nil
-			}
-			canonicalEv, e := s.eventsRepo.Load(gctx, filters)
-			if e != nil {
-				if !errors.Is(e, games.ErrCapabilityNotSupported) {
-					slog.WarnContext(gctx, "match_view: Load highlight events echec",
-						"match_id", matchID, "err", e)
-				}
-				return nil
-			}
-			d.canonicalEvents = canonicalEv
-			return nil
-		})
-	}
+	// MV4.A : events canoniques via le loader unifié (match_view_source_failures.go).
+	s.loadCanonicalEvents(gctx, g, matchID, &d)
 
 	// MV4.B' : awards chargés après l'errgroup principal car ils dépendent du
 	// scoreboard (xuids). Voir l'appel `s.loadAwardsForScoreboard(...)` plus
 	// bas, après `g.Wait()`.
-	goLoad(gctx, g, matchID, "kill_sources", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "kill_sources", func() error {
 		var e error
 		d.killSources, e = s.repo.GetMatchKillSources(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "kill_assists", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "kill_assists", func() error {
 		var e error
 		d.killAssists, e = s.repo.GetMatchKillAssists(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "assist_pairs", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "assist_pairs", func() error {
 		var e error
 		d.assistPairs, d.assistScope, e = s.repo.GetMatchAssistPairs(gctx, matchID)
 		d.assistScopeFailed = e != nil
 		return e
 	})
-	goLoad(gctx, g, matchID, "kv_pairs", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "kv_pairs", func() error {
 		var e error
 		d.kvPairs, e = s.repo.GetMatchKVPairs(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "skill_rank", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "skill_rank", func() error {
 		var e error
 		d.skillRank, e = s.repo.GetMatchSkillRank(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "shared_csrs", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "shared_csrs", func() error {
 		var e error
 		d.sharedCSRs, e = s.repo.GetMatchSharedCSRs(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "encounters", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "encounters", func() error {
 		var e error
 		d.encounters, e = s.repo.GetMatchEncounters(gctx, matchID, s.xuid)
 		return e
 	})
 	// MV4.C' : chargement parallele des stats encounter riches (Q23b).
-	goLoad(gctx, g, matchID, "encounter_stats", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "encounter_stats", func() error {
 		var e error
 		d.encounterStats, e = s.repo.GetMatchEncounterStats(gctx, matchID, s.xuid)
 		return e
 	})
 	s.loadEncounterAssists(gctx, g, matchID, &d)
-	goLoad(gctx, g, matchID, "media", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "media", func() error {
 		var e error
 		// Q24 retourne tous les auteurs (cross-joueur) : un coéquipier peut
 		// avoir uploadé un media pour ce match.
 		d.media, e = s.repo.GetMatchMedia(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "expected_stats", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "expected_stats", func() error {
 		var e error
 		d.expected, e = s.repo.GetMatchExpectedStats(gctx, matchID, s.xuid)
 		return e
 	})
-	goLoad(gctx, g, matchID, "bulk_medals", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "bulk_medals", func() error {
 		var e error
 		d.bulkMedals, e = s.repo.GetMatchBulkMedals(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "bulk_weapons", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "bulk_weapons", func() error {
 		var e error
 		d.bulkWeapons, e = s.repo.GetMatchBulkWeaponKills(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "hist_avg", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "hist_avg", func() error {
 		var e error
 		d.histRows, e = s.repo.GetHistoryForAvg(gctx, s.xuid)
 		return e
@@ -231,19 +212,19 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	// posé au câblage (wire.killDistanceRepoFor) — un repo non nil veut dire que
 	// le titre a film.kill_source. Zéro comparaison de slug.
 	if s.killDistanceRepo != nil {
-		goLoad(gctx, g, matchID, "kill_distances", func() error {
+		d.failures.goLoadSection(gctx, g, matchID, "kill_distances", func() error {
 			var e error
 			d.killDistances, e = s.killDistanceRepo.LoadMatch(gctx, matchID)
 			return e
 		})
 	}
 	if s.citationsRepo != nil {
-		goLoad(gctx, g, matchID, "citations", func() error {
+		d.failures.goLoadSection(gctx, g, matchID, "citations", func() error {
 			var e error
 			d.matchCitations, e = s.citationsRepo.LoadMatchCitationsForView(gctx, matchID)
 			return e
 		})
-		goLoad(gctx, g, matchID, "rich citations", func() error {
+		d.failures.goLoadSection(gctx, g, matchID, "rich citations", func() error {
 			var e error
 			d.richCitations, e = s.citationsRepo.LoadMatchCitationsRich(gctx, matchID)
 			return e
@@ -253,19 +234,13 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	if err := g.Wait(); err != nil {
 		return matchViewData{}, err
 	}
+	// Requête abandonnée pendant le chargement : les lectures coupées ne sont pas des pannes
+	// (WARN, cf. reportLoadFailure). Construire la vue sur ce contexte mort la parsèmerait de
+	// raisons `_unavailable` fausses et rouvrirait des lectures ; on rend l'erreur de contexte.
+	if cerr := ctx.Err(); cerr != nil {
+		return matchViewData{}, fmt.Errorf("match_view: requête interrompue pour %s: %w", matchID, cerr)
+	}
 	return d, nil
-}
-
-// goLoad lance un chargement best-effort dans l'errgroup g : exécute load(), logge
-// un WARN "match_view: <label> indisponible" sur erreur (jamais fatal) puis retourne
-// nil. Centralise ~18 blocs g.Go copiés (K2e, CR §5) et passe à slog.WarnContext.
-func goLoad(gctx context.Context, g *errgroup.Group, matchID, label string, load func() error) {
-	g.Go(func() error {
-		if err := load(); err != nil {
-			slog.WarnContext(gctx, "match_view: "+label+" indisponible", "match_id", matchID, "err", err)
-		}
-		return nil
-	})
 }
 
 // tugDurationMS retourne la durée (ms) servant à binner la Dominance (tug-of-war).
@@ -424,77 +399,10 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// le tueur. Posées ici pour la même raison que FragDistribution — hors de
 	// buildCombatTabFull, dont la signature est déjà à la limite de paramètres.
 	combat.AssistPairs = buildAssistPairs(ctx, d.assistPairs, d.assistScope, d.scoreboard)
-	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
-	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
-	// → map vide (section "Local" inactive sauf pour `is_me`).
-	var friendsExtras map[string]port.FriendMatchExtras
-	if s.friendsExtras != nil {
-		xuids := make([]string, 0, len(d.scoreboard))
-		for _, sb := range d.scoreboard {
-			if sb.XUID != "" && sb.XUID != s.xuid {
-				xuids = append(xuids, sb.XUID)
-			}
-		}
-		if len(xuids) > 0 {
-			gvn := ""
-			if meta != nil && meta.GameVariantName != nil {
-				gvn = *meta.GameVariantName
-			}
-			friendsExtras = s.friendsExtras(ctx, matchID, gvn, xuids)
-		}
-	}
-	// Même modèle local (count∝durée) pour les AMIS TRACKÉS : leur historique
-	// complet est dans shared (joueur synchronisé), chargeable par xuid. On le
-	// charge et on pose l'expected K/D sur leur ligne → le drawer affiche attendu
-	// vs réel pour eux aussi (cohérent avec is_me). Limité aux xuids présents dans
-	// friendsExtras (synchronisés ; l'historique d'un non-tracké ne contiendrait
-	// que les matchs communs avec l'escouade → échantillon biaisé). Skip si l'API
-	// a déjà fourni les K/D (Infinite).
-	if curDurSec > 60 && len(friendsExtras) > 0 {
-		// J3 : collecter les xuids amis éligibles, charger tout leur historique en
-		// UN seul appel (GetHistoryForAvgBulk) au lieu de ~8 GetHistoryForAvg
-		// séquentiels, puis réappliquer le même filtre d'éligibilité pour écrire
-		// l'expected K/D. Best-effort : bulk en échec → map vide → aucun expected
-		// (dégradation identique à la voie unitaire).
-		var needXUIDs []string
-		seen := make(map[string]bool)
-		eligible := func(i int) bool {
-			xuid := d.scoreboard[i].XUID
-			if xuid == s.xuid || d.scoreboard[i].KillsExpected != nil {
-				return false
-			}
-			_, tracked := friendsExtras[xuid]
-			return tracked
-		}
-		for i := range d.scoreboard {
-			if !eligible(i) {
-				continue
-			}
-			if xuid := d.scoreboard[i].XUID; !seen[xuid] {
-				seen[xuid] = true
-				needXUIDs = append(needXUIDs, xuid)
-			}
-		}
-		if len(needXUIDs) > 0 {
-			histByXUID, err := s.repo.GetHistoryForAvgBulk(ctx, needXUIDs)
-			if err == nil {
-				for i := range d.scoreboard {
-					if !eligible(i) {
-						continue
-					}
-					fh := histByXUID[d.scoreboard[i].XUID]
-					if len(fh) == 0 {
-						continue
-					}
-					if ek, ed, ok := localExpectedKD(fh, meta, curDurSec); ok {
-						d.scoreboard[i].KillsExpected = ek
-						d.scoreboard[i].DeathsExpected = ed
-						d.scoreboard[i].LocallyEstimated = true
-					}
-				}
-			}
-		}
-	}
+	// Extras per-friend (panneau d'expander scoreboard) et expected K/D local des amis
+	// trackés : voir match_view_friends_extras.go. Une panne de lecture y est dite, pas tue.
+	friendsExtras := s.loadFriendsExtras(ctx, matchID, meta, d)
+	s.applyFriendsLocalExpected(ctx, matchID, meta, d, friendsExtras, curDurSec)
 	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL, outcomes)
 	attachEncounterAssists(team.Encounters, d.encounterAssists)
 	// Halo 5 persisté : libellés d'équipe « Rouge/Bleu » depuis team_colors (no-op HINF
@@ -534,7 +442,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// court-circuité plus haut), mais une ou plusieurs sources secondaires sont
 	// vides. Le front peut afficher un bandeau dégradé au lieu de l'écran
 	// "Match introuvable ou erreur de chargement" full-page.
-	partialReasons := detectPartialMatchData(d.stats, d.scoreboard, d.events, d.medals)
+	partialReasons := matchPartialReasons(d)
 
 	return domain.MatchViewResponse{
 		Header:                 header,
@@ -663,6 +571,8 @@ const pBitMedals = 1 << 9
 //   - "medals_empty"         → Q14 a renvoyé 0 médailles ET le bit PBitMedals
 //     n'est pas positionné (médailles jamais fetchées). Si le bit est positionné,
 //     0 médaille est un résultat légitime (certains modes n'en attribuent pas).
+//
+// Une lecture EN ÉCHEC n'est pas un vide : matchPartialReasons la dit `<source>_unavailable`.
 func detectPartialMatchData(
 	stats *domain.PlayerMatchStatsRaw,
 	scoreboard []domain.ScoreboardRaw,
@@ -671,18 +581,18 @@ func detectPartialMatchData(
 ) []string {
 	var reasons []string
 	if len(scoreboard) == 0 {
-		reasons = append(reasons, "scoreboard_empty")
+		reasons = append(reasons, domain.PartialReasonScoreboardEmpty)
 	}
 	if len(events) == 0 {
-		reasons = append(reasons, "events_empty")
+		reasons = append(reasons, domain.PartialReasonEventsEmpty)
 	}
 	if stats == nil || stats.OutcomeCode == 0 {
-		reasons = append(reasons, "player_stats_empty")
+		reasons = append(reasons, domain.PartialReasonPlayerStatsEmpty)
 	}
 	if len(medals) == 0 {
 		medalsFetched := stats != nil && stats.BackfillBits != nil && (*stats.BackfillBits&pBitMedals) != 0
 		if !medalsFetched {
-			reasons = append(reasons, "medals_empty")
+			reasons = append(reasons, domain.PartialReasonMedalsEmpty)
 		}
 	}
 	return reasons

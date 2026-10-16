@@ -30,7 +30,7 @@ type MatchViewResponse struct {
 	// "Sync incomplet — certaines sections sont indisponibles" au lieu d'un
 	// crash full-page. Strict 404 reste pour les match_id totalement absents.
 	IsPartial              bool     `json:"is_partial,omitempty"`
-	PartialReasons         []string `json:"partial_reasons,omitempty"`
+	PartialReasons         []string `json:"partial_reasons,omitempty" doc:"<source>_empty : lecture réussie sans donnée ; *_unavailable : lecture en échec (vue transitoire, jamais conservée)."`
 	MatchViewEmpriseFields          // emprise, lives_near_teammate (domain/match_emprise.go)
 }
 
