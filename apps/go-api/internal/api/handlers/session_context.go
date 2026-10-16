@@ -125,7 +125,7 @@ func (h *SessionHandler) handlePostContext(ctx context.Context, in *sessionConte
 	}
 
 	if err := h.store.Save(sess); err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "session_save_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "session_save_error", err)
 	}
 
 	return &sessionContextOutput{Body: domain.SessionContextResponse{

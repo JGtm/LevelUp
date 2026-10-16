@@ -129,6 +129,10 @@ en = "Settings tabs"
 fr = "Ouvrir le menu de navigation"
 en = "Open navigation menu"
 
+[common.shell.dismiss]
+fr = "Fermer"
+en = "Dismiss"
+
 [common.shell.nav_menu_close]
 fr = "Fermer le menu"
 en = "Close menu"
@@ -418,6 +422,10 @@ en = "Password saved."
 [common.auth.password_too_short]
 fr = "Le mot de passe doit faire au moins 8 caractères."
 en = "The password must be at least 8 characters long."
+
+[common.auth.password_too_long]
+fr = "Le mot de passe est trop long (72 octets au plus)."
+en = "The password is too long (72 bytes at most)."
 
 [common.auth.current_password_required]
 fr = "Saisis ton mot de passe actuel."
@@ -2027,6 +2035,10 @@ en = "Sync was interrupted. It can be restarted."
 fr = "Erreur inattendue. Veuillez réessayer."
 en = "Unexpected error. Please try again."
 
+[common.initial_sync.err_busy]
+fr = "Une autre synchronisation de ce joueur est déjà en cours. Réessaie dans un instant."
+en = "Another sync of this player is already running. Try again in a moment."
+
 [common.initial_sync.starting]
 fr = "Démarrage…"
 en = "Starting…"
@@ -2051,6 +2063,10 @@ en = "Passwords do not match."
 [common.auth.register_err_user_exists]
 fr = "Ce nom d'utilisateur est déjà pris."
 en = "This username is already taken."
+
+[common.auth.register_err_invalid_username]
+fr = "Nom d'utilisateur invalide (3 à 30 caractères : lettres, chiffres, _ ou -)."
+en = "Invalid username (3 to 30 characters: letters, digits, _ or -)."
 
 [common.auth.register_err_invite_required]
 fr = "Un code d'invitation est requis."

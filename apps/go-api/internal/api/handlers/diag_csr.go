@@ -71,11 +71,11 @@ func (h *DiagCSRHandler) GetCoverage(ctx context.Context, in *diagCSRInput) (*di
 	}
 	provider, xuid, err := h.newProvider(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	cov, err := provider.GetCoverage(ctx, slug, xuid)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "coverage_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "coverage_error", err)
 	}
 	return &diagCSROutput{Body: cov}, nil
 }

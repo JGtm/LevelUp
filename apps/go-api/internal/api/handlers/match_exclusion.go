@@ -87,7 +87,7 @@ func (h *MatchExclusionHandler) SetExclusion(ctx context.Context, in *matchExclu
 			"match_id", in.MatchID,
 			"err", err,
 		)
-		return nil, humacore.NewError(http.StatusInternalServerError, "exclusion_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "exclusion_error", err)
 	}
 
 	slog.InfoContext(ctx, "match exclusion updated",
@@ -103,7 +103,7 @@ func (h *MatchExclusionHandler) SetExclusion(ctx context.Context, in *matchExclu
 func (h *MatchExclusionHandler) resolve(ctx context.Context, slug string) (port.MatchExclusionService, error) {
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return svc, nil
 }

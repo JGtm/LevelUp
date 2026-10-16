@@ -360,7 +360,8 @@ function startFailureMessage(err: unknown, t: (key: CommonManifestKey) => string
 /**
  * failureMessageFromCode maps the typed Error.Code returned by the backend
  * service to a localised, user-facing sentence via the injected translator.
- * Falls back to the raw message when the code is unknown.
+ * An unknown code gets the generic message: the server text is a fixed English phrase per
+ * code, never shown on screen.
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function failureMessageFromCode(
@@ -384,6 +385,6 @@ export function failureMessageFromCode(
     case 'import_already_active':
       return t('common.onboarding.import_err_already_active')
     default:
-      return err.message || t('common.onboarding.import_err_unknown')
+      return t('common.onboarding.import_err_unknown')
   }
 }

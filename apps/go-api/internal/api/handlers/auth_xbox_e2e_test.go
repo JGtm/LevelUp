@@ -154,8 +154,8 @@ func waitForStatus(t *testing.T, attempts *auth_platform.AttemptStore, attemptID
 	}
 	snap := attempts.Snapshot(attemptID)
 	if snap != nil {
-		t.Fatalf("waitForStatus(%s) timeout après %v, status final = %q (errorCode=%q errorDetail=%q)",
-			status, timeout, snap.Status, snap.ErrorCode, snap.ErrorDetail)
+		t.Fatalf("waitForStatus(%s) timeout après %v, status final = %q (errorCode=%q)",
+			status, timeout, snap.Status, snap.ErrorCode)
 	}
 	t.Fatalf("waitForStatus(%s) timeout, attempt introuvable", status)
 	return nil

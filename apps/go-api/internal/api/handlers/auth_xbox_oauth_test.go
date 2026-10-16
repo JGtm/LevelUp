@@ -70,11 +70,36 @@ func TestXboxOAuth_LoginRedirect_NoRedirectURI(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusInternalServerError {
-		t.Errorf("status = %d, want 500 (redirect_uri_not_configured)", w.Code)
-	}
-	if !strings.Contains(w.Body.String(), "redirect_uri_not_configured") {
-		t.Errorf("body devrait contenir redirect_uri_not_configured, got: %s", w.Body.String())
+	// Navigation plein écran : le refus renvoie à l'écran de connexion, jamais un JSON brut.
+	assertLoginRedirect(t, w, "redirect_uri_not_configured")
+}
+
+// L9-8 : une session absente, une sauvegarde de session impossible sont rendues comme les
+// autres refus de la connexion Xbox — redirection vers /login?oauth_error=<code>.
+func TestXboxOAuth_LoginRedirect_NoSession(t *testing.T) {
+	dir := t.TempDir()
+	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	h := handlers.NewXboxOAuthHandler(sessStore, &stubTokenProvider{}, false, "http://localhost:8000/cb")
+	r := chi.NewRouter() // pas de middleware de session : aucune session dans le contexte
+	r.Get("/auth/xbox/login", h.LoginRedirect)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/auth/xbox/login", nil))
+
+	assertLoginRedirect(t, w, "no_session")
+}
+
+func TestXboxOAuth_LoginRedirect_SessionSaveFailed(t *testing.T) {
+	r, _ := newXboxOAuthRouter(t, false, "http://localhost:8000/cb")
+
+	// Un code d'invitation démesuré fait dépasser le plafond d'une session sérialisée.
+	req := httptest.NewRequest(http.MethodGet, "/auth/xbox/login?invite="+strings.Repeat("A", 20000), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assertLoginRedirect(t, w, "session_save_failed")
+	if strings.Contains(w.Body.String(), "sauvegarde") || strings.Contains(w.Body.String(), "{") {
+		t.Errorf("aucun corps JSON attendu sur un refus de navigation : %s", w.Body.String())
 	}
 }
 

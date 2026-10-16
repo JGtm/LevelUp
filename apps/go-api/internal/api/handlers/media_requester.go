@@ -87,7 +87,7 @@ func mediaWriteError(ctx context.Context, err error, forbiddenCode, fallbackCode
 		}
 	}
 	slog.ErrorContext(ctx, "media: erreur d'écriture non typée", "err", err, "code", fallbackCode)
-	return humacore.NewError(http.StatusInternalServerError, fallbackCode, err.Error())
+	return humacore.NewErrorFrom(ctx, http.StatusInternalServerError, fallbackCode, err)
 }
 
 // WithUserLookup câble le magasin d'utilisateurs : le rôle admin du demandeur se lit

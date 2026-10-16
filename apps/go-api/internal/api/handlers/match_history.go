@@ -72,21 +72,21 @@ type matchHistoryQueryOutput struct {
 func (h *MatchHistoryHandler) handleQuery(ctx context.Context, in *matchHistoryQueryInput) (*matchHistoryQueryOutput, error) {
 	svc, _, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.MatchHistoryQueryRequest
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 
 	if err := req.Validate(); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_request", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_request", err)
 	}
 
 	resp, err := svc.GetPage(ctx, req)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "match_history_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "match_history_error", err)
 	}
 
 	// Générer le token d'export si demandé.
@@ -107,7 +107,7 @@ func (h *MatchHistoryHandler) Export(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
+		writeErrorFrom(r.Context(), w, http.StatusNotFound, "player_not_found", err)
 		return
 	}
 
@@ -125,7 +125,7 @@ func (h *MatchHistoryHandler) Export(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := svc.ExportCSV(r.Context(), req)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "export_error", err.Error())
+		writeErrorFrom(r.Context(), w, http.StatusInternalServerError, "export_error", err)
 		return
 	}
 

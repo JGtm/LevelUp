@@ -189,6 +189,7 @@ export interface SettingsText {
   syncToastSucceeded: string
   syncToastSucceededWithWarnings: string
   syncToastFailed: string
+  syncToastBusy: string
   syncToastCancelled: string
 
   // Onglet Analyse — Sessions
@@ -474,6 +475,7 @@ const FR_TEXT: SettingsText = {
   syncToastSucceeded: 'Synchronisation terminée',
   syncToastSucceededWithWarnings: 'Synchronisation terminée avec avertissements',
   syncToastFailed: 'Synchronisation échouée',
+  syncToastBusy: 'Une autre synchronisation de ce joueur est déjà en cours. Réessaie dans un instant.',
   syncToastCancelled: 'Synchronisation annulée',
 
   // Onglet Analyse — Sessions
@@ -805,6 +807,7 @@ const EN_TEXT: SettingsText = {
   syncToastSucceeded: 'Sync completed',
   syncToastSucceededWithWarnings: 'Sync completed with warnings',
   syncToastFailed: 'Sync failed',
+  syncToastBusy: 'Another sync of this player is already running. Try again in a moment.',
   syncToastCancelled: 'Sync cancelled',
 
   // Analyse tab — Sessions

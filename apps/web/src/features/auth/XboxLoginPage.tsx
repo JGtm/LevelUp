@@ -18,7 +18,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useStartDeviceFlow, useDeviceFlowStatus } from '@/features/setup/queries'
 import { useLogin } from '@/features/auth/queries'
 import { storePasswordCredential } from '@/features/auth/credentials'
-import { isTooManyLoginAttempts, oauthErrorKey } from '@/features/auth/loginError'
+import { deviceFlowFailureKey, isTooManyLoginAttempts } from '@/features/auth/loginError'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
 import { api, API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client'
@@ -300,11 +300,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
     return (
       <div className="space-y-3 text-center">
         <p className="text-destructive font-medium">
-          {expired
-            ? 'Le code a expiré.'
-            : status?.error_code === 'instance_locked' || status?.error_code === 'invite_invalid'
-              ? t(oauthErrorKey(status.error_code) ?? 'common.auth.oauth_failed')
-              : status?.error_detail ?? 'Échec de l\'authentification.'}
+          {t(deviceFlowFailureKey(expired ? 'expired' : 'failed', status?.error_code))}
         </p>
         <Button onClick={handleRetry}>{t('common.xbox_login.retry')}</Button>
       </div>

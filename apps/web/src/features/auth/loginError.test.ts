@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { isTooManyLoginAttempts, oauthErrorKey, setPasswordErrorKey } from './loginError'
+import {
+  deviceFlowFailureKey,
+  isTooManyLoginAttempts,
+  oauthErrorKey,
+  registerErrorKey,
+  setPasswordErrorKey,
+} from './loginError'
 
 describe('isTooManyLoginAttempts', () => {
   it('reconnaît le refus du limiteur de l’API', () => {
@@ -35,6 +41,36 @@ describe('setPasswordErrorKey', () => {
     )
     expect(setPasswordErrorKey(new Error('réseau'))).toBe('common.auth.set_password_failed')
   })
+
+  it('rend la clé de la règle de longueur refusée', () => {
+    expect(setPasswordErrorKey({ status: 400, code: 'password_too_short' })).toBe('common.auth.password_too_short')
+    expect(setPasswordErrorKey({ status: 400, code: 'password_too_long' })).toBe('common.auth.password_too_long')
+  })
+})
+
+describe('registerErrorKey', () => {
+  it.each([
+    ['user_exists', 'common.auth.register_err_user_exists'],
+    ['invite_required', 'common.auth.register_err_invite_required'],
+    ['invalid_invite', 'common.auth.register_err_invalid_invite'],
+    ['registration_closed', 'common.auth.register_err_closed'],
+    ['instance_locked', 'common.auth.register_instance_closed'],
+    ['invalid_username', 'common.auth.register_err_invalid_username'],
+    ['password_too_short', 'common.auth.password_too_short'],
+    ['password_too_long', 'common.auth.password_too_long'],
+  ])('%s → %s', (code, key) => {
+    expect(registerErrorKey({ status: 400, code, message: 'texte du serveur' })).toBe(key)
+  })
+
+  it('code inconnu, erreur serveur ou réseau : message générique, jamais le texte du serveur', () => {
+    expect(registerErrorKey({ status: 400, code: 'code_inconnu', message: 'SELECT secret' })).toBe(
+      'common.auth.register_err_generic',
+    )
+    expect(registerErrorKey({ status: 500, code: 'create_error', message: 'internal error' })).toBe(
+      'common.auth.register_err_generic',
+    )
+    expect(registerErrorKey(new Error('réseau'))).toBe('common.auth.register_err_generic')
+  })
 })
 
 describe('oauthErrorKey', () => {
@@ -48,6 +84,10 @@ describe('oauthErrorKey', () => {
     ['code_exchange_failed', 'common.auth.oauth_exchange_failed'],
     ['halo_exchange_failed', 'common.auth.oauth_exchange_failed'],
     ['link_failed', 'common.auth.oauth_failed'],
+    ['redirect_uri_not_configured', 'common.auth.oauth_failed'],
+    ['state_gen_failed', 'common.auth.oauth_failed'],
+    ['pkce_gen_failed', 'common.auth.oauth_failed'],
+    ['session_save_failed', 'common.auth.oauth_failed'],
     ['code-inconnu', 'common.auth.oauth_failed'],
   ])('%s → %s', (code, key) => {
     expect(oauthErrorKey(code)).toBe(key)
@@ -55,5 +95,21 @@ describe('oauthErrorKey', () => {
 
   it.each([undefined, '', 42, null])('aucun refus pour %s', (code) => {
     expect(oauthErrorKey(code)).toBeNull()
+  })
+})
+
+describe('deviceFlowFailureKey', () => {
+  it.each([
+    ['expiré', 'expired', null, 'common.device_code.err_expired'],
+    ["code expiré malgré un code d'erreur", 'expired', 'halo_exchange_error', 'common.device_code.err_expired'],
+    ['échange Halo', 'failed', 'halo_exchange_error', 'common.device_code.err_halo'],
+    ['attente Microsoft', 'failed', 'device_flow_acquire_error', 'common.device_code.err_ms'],
+    ['identité absente', 'failed', 'identity_missing', 'common.device_code.err_identity'],
+    ['instance verrouillée', 'failed', 'instance_locked', 'common.auth.register_instance_closed'],
+    ['invitation périmée', 'failed', 'invite_invalid', 'common.auth.oauth_invite_invalid'],
+    ['code inconnu', 'failed', 'code_inconnu', 'common.device_code.err_generic'],
+    ['aucun code', 'failed', null, 'common.device_code.err_generic'],
+  ])('%s', (_label, status, code, expected) => {
+    expect(deviceFlowFailureKey(status, code)).toBe(expected)
   })
 })

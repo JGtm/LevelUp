@@ -31,12 +31,12 @@ import (
 func (h *MediaHandler) handlePatchMediaLike(ctx context.Context, in *mediaLikeInput) (*mediaLikeOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.MediaLikeRequest
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 
 	// Le frontend reçoit les file_path déjà transformés en URL HTTP
@@ -63,7 +63,7 @@ func (h *MediaHandler) handlePatchMediaLike(ctx context.Context, in *mediaLikeIn
 
 	resp, err := svc.SetMediaLike(ctx, req)
 	if err != nil {
-		return nil, mediaLikeError(err)
+		return nil, mediaLikeError(ctx, err)
 	}
 
 	// La réponse écho le file_path REÇU (URL servable) : le cache client indexe
@@ -122,7 +122,7 @@ func (h *MediaHandler) resolveLikerIdentity(ctx context.Context, playerSlug stri
 
 // mediaLikeError traduit une erreur de service en erreur HTTP : 503 + Retry-After
 // sur base occupée (dblease), 400/404 sur erreur métier typée, 500 sinon.
-func mediaLikeError(err error) error {
+func mediaLikeError(ctx context.Context, err error) error {
 	if errors.Is(err, dblease.ErrDBLocked) {
 		return errDBBusy()
 	}
@@ -135,7 +135,7 @@ func mediaLikeError(err error) error {
 			return humacore.NewError(http.StatusNotFound, apiErr.Code, apiErr.Message)
 		}
 	}
-	return humacore.NewError(http.StatusInternalServerError, "media_like_error", err.Error())
+	return humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "media_like_error", err)
 }
 
 // emitMediaLiked notifie le owner d'un média quand quelqu'un d'autre le like.

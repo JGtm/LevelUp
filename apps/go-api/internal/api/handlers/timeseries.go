@@ -60,7 +60,7 @@ type timeseriesPageOutput struct{ Body domain.TimeseriesPageResponse }
 func (h *TimeseriesHandler) GetPage(ctx context.Context, in *timeseriesQueryInput) (*timeseriesPageOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.TimeseriesQueryRequest

@@ -65,7 +65,7 @@ func (h *SquadHandler) handleGetSquadPage(ctx context.Context, in *squadPageInpu
 
 	page, err := svc.GetSquadPage(ctx, xuid, gamertag, in.Teammate)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "squad_page_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "squad_page_error", err)
 	}
 
 	return &squadPageOutput{Body: page}, nil
@@ -76,7 +76,7 @@ func (h *SquadHandler) handleGetSquadPage(ctx context.Context, in *squadPageInpu
 func (h *SquadHandler) resolve(ctx context.Context, slug string) (port.SquadService, string, string, error) {
 	svc, xuid, gamertag, err := h.newSvc(ctx, slug)
 	if err != nil {
-		return nil, "", "", humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, "", "", humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return svc, xuid, gamertag, nil
 }

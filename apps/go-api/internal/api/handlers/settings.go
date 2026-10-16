@@ -16,6 +16,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -336,7 +337,13 @@ func (h *SettingsHandler) validateReplayBuildLocation(ctx context.Context, loc *
 	}); err != nil {
 		slog.WarnContext(ctx, "settings: lieu de construction des rejeux refusé",
 			"valeur", value, "raison", err.Error())
-		return humacore.NewError(http.StatusBadRequest, "invalid_replay_build_location", err.Error())
+		// Le motif d'un refus de politique tient dans son code : l'admin lit le code, le
+		// texte de l'erreur reste au journal.
+		code := "invalid_replay_build_location"
+		if errors.Is(err, replaybuild.ErrLocalBuildInProduction) {
+			code = "replay_build_local_in_production"
+		}
+		return humacore.NewErrorFrom(ctx, http.StatusBadRequest, code, err)
 	}
 	return nil
 }
@@ -400,13 +407,10 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 			job.JobID,
 		)
 		if err != nil {
-			errMsg := err.Error()
+			slog.ErrorContext(ctx, "settings: réinitialisation de l'index médias échouée", "job_id", job.JobID, "err", err)
 			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
 				j.Status = domain.JobStatusFailed
-				j.Error = &domain.JobErrorDetail{
-					Code:    "media_reset_error",
-					Message: errMsg,
-				}
+				j.Error = domain.NewJobError("media_reset_error", false)
 			})
 			return
 		}
@@ -464,13 +468,10 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 			job.JobID,
 		)
 		if err != nil {
-			errMsg := err.Error()
+			slog.ErrorContext(ctx, "settings: scan des médias échoué", "job_id", job.JobID, "err", err)
 			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
 				j.Status = domain.JobStatusFailed
-				j.Error = &domain.JobErrorDetail{
-					Code:    "media_scan_error",
-					Message: errMsg,
-				}
+				j.Error = domain.NewJobError("media_scan_error", false)
 			})
 			return
 		}

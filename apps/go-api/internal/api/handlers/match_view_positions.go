@@ -76,7 +76,7 @@ func (h *MatchViewHandler) handleGetMatchPositions(
 		if capErr, ok := MapCapabilityError(ctx, err, "match.detail.positions"); ok {
 			return nil, capErr
 		}
-		return nil, humacore.NewError(http.StatusInternalServerError, "positions_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "positions_error", err)
 	}
 	return &matchPositionsOutput{Body: toMatchPositionsDTO(pos)}, nil
 }

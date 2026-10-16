@@ -50,3 +50,38 @@ describe('StepInitialSync — refus du lancement', () => {
     expect(ejections).toBe(0)
   })
 })
+
+describe('StepInitialSync — échec du job', () => {
+  beforeEach(() => {
+    useSetupFlowStore.getState().reset()
+    useAppShellStore.setState({ activeSyncJobId: null, locale: 'fr' })
+  })
+
+  const failJob = (error: { code: string; message: string; retryable: boolean }) =>
+    server.use(
+      http.post('*/sync/initial', () =>
+        HttpResponse.json({ job_id: 'j-fail', job_type: 'initial_sync', status: 'running' }, { status: 202 }),
+      ),
+      http.get('*/jobs/:jobId', () =>
+        HttpResponse.json({ job_id: 'j-fail', job_type: 'initial_sync', status: 'failed', warnings: [], error }),
+      ),
+    )
+
+  it('code db_busy : message traduit, texte du serveur jamais affiché', async () => {
+    failJob({ code: 'db_busy', message: 'db busy', retryable: true })
+    renderWithProviders(<StepInitialSync playerSlug="test-player" />)
+    await userEvent.click(screen.getByRole('button'))
+    expect(
+      await screen.findByText(/Une autre synchronisation de ce joueur est déjà en cours/, {}, { timeout: 8000 }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('db busy')).not.toBeInTheDocument()
+  }, 15_000)
+
+  it('code inconnu : message générique traduit, jamais le texte du serveur', async () => {
+    failJob({ code: 'code_inconnu', message: 'SELECT * FROM secret', retryable: true })
+    renderWithProviders(<StepInitialSync playerSlug="test-player" />)
+    await userEvent.click(screen.getByRole('button'))
+    expect(await screen.findByText('Erreur inattendue. Veuillez réessayer.', {}, { timeout: 8000 })).toBeInTheDocument()
+    expect(screen.queryByText(/SELECT/)).not.toBeInTheDocument()
+  }, 15_000)
+})

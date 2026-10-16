@@ -117,7 +117,7 @@ func (h *PlayerProfileHandler) handleGetProfile(ctx context.Context, in *profile
 	prof, err := svc.BuildProfile(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug), window, time.Now().UTC())
 	if err != nil {
 		slog.WarnContext(ctx, "profile: build", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "build_profile_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "build_profile_error", err)
 	}
 	return &profileOutput{Body: prof}, nil
 }
@@ -143,7 +143,7 @@ func (h *PlayerProfileHandler) handleGetActivityCalendar(ctx context.Context, in
 	cal, err := profile.NewServiceFromPlayerDB(pdb).LoadActivityCalendar(ctx, pdb.XUID, now.AddDate(0, 0, -days), now)
 	if err != nil {
 		slog.WarnContext(ctx, "profile: activity calendar", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "activity_calendar_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "activity_calendar_error", err)
 	}
 	return &activityCalendarOutput{Body: &cal}, nil
 }
@@ -153,7 +153,7 @@ func (h *PlayerProfileHandler) handleGetActivityCalendar(ctx context.Context, in
 func (h *PlayerProfileHandler) resolvePlayer(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
 	pdb, err := h.resolve(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return pdb, nil
 }

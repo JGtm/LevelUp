@@ -53,14 +53,14 @@ type achievementsOutput struct {
 func (h *AchievementsHandler) GetAchievementsPage(ctx context.Context, in *achievementsInput) (*achievementsOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	resp, err := svc.GetAchievementsPage(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "achievements handler failed",
 			"err", err, "player", in.PlayerSlug, "endpoint", "GET /pages/achievements")
-		return nil, humacore.NewError(http.StatusInternalServerError, "achievements_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "achievements_error", err)
 	}
 	return &achievementsOutput{Body: resp}, nil
 }

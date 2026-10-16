@@ -35,7 +35,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, gamertag, titleSlug, dbPath, sharedSocialDBPath, sharedMatchesDBPath, err := h.newUpload(r.Context(), slug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
+		writeErrorFrom(r.Context(), w, http.StatusNotFound, "player_not_found", err)
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "upload_parse_error", err.Error())
+		writeErrorFrom(r.Context(), w, http.StatusBadRequest, "upload_parse_error", err)
 		return
 	}
 	if len(files) == 0 {
@@ -111,7 +111,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	result, err := svc.UploadMedia(r.Context(), req)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "upload: erreur service", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "upload_error", err.Error())
+		writeErrorFrom(r.Context(), w, http.StatusInternalServerError, "upload_error", err)
 		return
 	}
 

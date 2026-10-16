@@ -216,7 +216,7 @@ type squadIDBodyInput struct {
 func (h *PrestigeHandler) CreateChallenge(ctx context.Context, in *rawBodyInput) (*challengeCreatedOutput, error) {
 	var body createChallengeBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if err := h.authorizeActor(ctx, body.UserID); err != nil {
 		return nil, err
@@ -319,7 +319,7 @@ func (h *PrestigeHandler) UpdateChallenge(ctx context.Context, in *idBodyInput) 
 	}
 	var body updateChallengeBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	c, err := h.svc.UpdateChallenge(ctx, in.ID, prestige.UpdateChallengePatch{
 		Target: body.Target,

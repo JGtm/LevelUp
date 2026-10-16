@@ -258,9 +258,10 @@ describe('failureMessageFromCode — unit', () => {
     }
   })
 
-  it('falls back to the raw message for unknown codes', () => {
+  it('falls back to the generic message for unknown codes, never the server text', () => {
     const msg = failureMessageFromCode({ code: 'unknown_code', message: 'oops', retryable: false }, tFr)
-    expect(msg).toBe('oops')
+    expect(msg).toMatch(/inconnue/i)
+    expect(msg).not.toContain('oops')
   })
 
   it('falls back to a default message when error is null', () => {

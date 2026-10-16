@@ -102,22 +102,26 @@ func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request)
 		middleware.WriteDemoForbidden(w)
 		return
 	}
+	// Navigation plein écran : tout refus renvoie le navigateur à l'écran de connexion avec un
+	// code (refuseCallback), jamais un corps JSON affiché brut.
 	if h.redirectURI == "" {
-		writeError(r.Context(), w, http.StatusInternalServerError, "redirect_uri_not_configured",
-			"LEVELUP_OAUTH_REDIRECT_URI non configuré")
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: LEVELUP_OAUTH_REDIRECT_URI non configuré")
+		h.refuseCallback(w, r, "redirect_uri_not_configured")
 		return
 	}
 
 	sess := middleware.GetSession(r.Context())
 	if sess == nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "no_session", "session non initialisée")
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: connexion sans session")
+		h.refuseCallback(w, r, "no_session")
 		return
 	}
 
 	// Génère un state aléatoire 32 bytes (256 bits) et stocke en session.
 	stateBytes := make([]byte, 32)
 	if _, err := rand.Read(stateBytes); err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "state_gen_failed", "génération state échouée")
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: génération du state échouée", "err", err)
+		h.refuseCallback(w, r, "state_gen_failed")
 		return
 	}
 	state := hex.EncodeToString(stateBytes)
@@ -126,7 +130,8 @@ func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request)
 	// PKCE (RFC 7636) : verifier secret en session, challenge S256 dans l'URL.
 	verifier, challenge, err := auth_platform.GeneratePKCE()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "pkce_gen_failed", "génération PKCE échouée")
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: génération PKCE échouée", "err", err)
+		h.refuseCallback(w, r, "pkce_gen_failed")
 		return
 	}
 	sess.OAuthCodeVerifier = verifier
@@ -147,7 +152,7 @@ func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request)
 
 	if err := h.sessionStore.Save(sess); err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: save session échec", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "session_save_failed", "sauvegarde session échouée")
+		h.refuseCallback(w, r, "session_save_failed")
 		return
 	}
 
@@ -385,11 +390,12 @@ const (
 	oauthErrorParam = "oauth_error"
 )
 
-// refuseCallback termine un callback refusé : le callback est une navigation plein écran
-// (pas un appel du front), un corps JSON s'afficherait brut. Le navigateur est renvoyé
-// à l'écran de connexion avec le code du refus ; le détail reste dans les journaux.
+// refuseCallback termine un refus de la connexion Xbox, au départ (LoginRedirect) comme au
+// retour (Callback) : ce sont des navigations plein écran (pas des appels du front), un corps
+// JSON s'afficherait brut. Le navigateur est renvoyé à l'écran de connexion avec le code du
+// refus ; le détail reste dans les journaux.
 func (h *XboxOAuthHandler) refuseCallback(w http.ResponseWriter, r *http.Request, code string) {
-	slog.WarnContext(r.Context(), "auth_xbox_oauth: callback refusé, retour à l'écran de connexion",
+	slog.WarnContext(r.Context(), "auth_xbox_oauth: connexion Xbox refusée, retour à l'écran de connexion",
 		"error_code", code)
 	target := oauthLoginPath + "?" + url.Values{oauthErrorParam: {code}}.Encode()
 	http.Redirect(w, r, target, http.StatusFound)

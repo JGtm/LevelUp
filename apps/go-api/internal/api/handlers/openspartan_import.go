@@ -146,7 +146,7 @@ func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Re
 
 	tmpPath, err := h.saveUploadedDB(r)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "upload_failed", err.Error())
+		writeErrorFrom(r.Context(), w, http.StatusBadRequest, "upload_failed", err)
 		return
 	}
 
@@ -309,11 +309,7 @@ func (h *OpenSpartanImportHandler) recordFailure(jobID string, err error) {
 	h.jobStore.Update(jobID, func(s *domain.AsyncJobStatus) {
 		s.Status = domain.JobStatusFailed
 		s.FinishedAt = &now
-		s.Error = &domain.JobErrorDetail{
-			Code:      classifyImportError(err),
-			Message:   err.Error(),
-			Retryable: false,
-		}
+		s.Error = domain.NewJobError(classifyImportError(err), false)
 	})
 }
 

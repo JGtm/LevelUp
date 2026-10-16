@@ -224,7 +224,7 @@ func (h *MatchViewHandler) handleGetMatchView(ctx context.Context, in *matchView
 		// est désormais TYPÉE par le service (domain.ErrNotFound, branche ci-dessus).
 		// Cette branche textuelle était la dernière échappatoire par laquelle une panne
 		// technique dont le message contenait « no rows » se déguisait en 404.
-		return nil, humacore.NewError(http.StatusInternalServerError, "match_view_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "match_view_error", err)
 	}
 	// Onglet médias : réécrire les chemins bruts en URLs servables (même
 	// transformation que la galerie /pages/media). Sans ça les vignettes webp
@@ -272,7 +272,7 @@ func (h *MatchViewHandler) handleGetMatchNeighbors(ctx context.Context, in *matc
 		resp, err = svc.GetMatchNeighbors(ctx, matchID)
 	}
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "neighbors_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "neighbors_error", err)
 	}
 	return &matchNeighborsOutput{Body: resp}, nil
 }
@@ -282,7 +282,7 @@ func (h *MatchViewHandler) handleGetMatchNeighbors(ctx context.Context, in *matc
 func (h *MatchViewHandler) resolve(ctx context.Context, slug string) (port.MatchViewService, error) {
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return svc, nil
 }

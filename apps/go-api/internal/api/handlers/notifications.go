@@ -32,7 +32,7 @@ func notifWriteErr(ctx context.Context, op string, err error) error {
 		return humacore.NewError(http.StatusNotFound, "not_found", "notification introuvable")
 	default:
 		slog.WarnContext(ctx, "notifications: "+op, "err", err)
-		return humacore.NewError(http.StatusInternalServerError, op+"_error", err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusInternalServerError, op+"_error", err)
 	}
 }
 
@@ -81,10 +81,10 @@ type notifIDInput struct {
 
 // parseNotifID reproduit l'ancien parseIDParam : 400 invalid_id si non numérique
 // ou <= 0.
-func parseNotifID(raw string) (int64, error) {
+func parseNotifID(ctx context.Context, raw string) (int64, error) {
 	id, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
-		return 0, humacore.NewError(http.StatusBadRequest, "invalid_id", err.Error())
+		return 0, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_id", err)
 	}
 	if id <= 0 {
 		return 0, humacore.NewError(http.StatusBadRequest, "invalid_id", "id must be positive")
@@ -153,7 +153,7 @@ func (h *NotificationsHandler) handleList(ctx context.Context, in *notifListInpu
 	res, err := svc.List(ctx, f)
 	if err != nil {
 		slog.WarnContext(ctx, "notifications: list", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "list_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_error", err)
 	}
 	if res.Items == nil {
 		res.Items = []notifications.Notification{}
@@ -170,7 +170,7 @@ func (h *NotificationsHandler) handleUnreadCount(ctx context.Context, in *notifP
 	c, err := svc.UnreadCount(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "notifications: unread-count", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "unread_count_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "unread_count_error", err)
 	}
 	if c.ByCategory == nil {
 		c.ByCategory = map[string]int{}
@@ -214,7 +214,7 @@ func (h *NotificationsHandler) handleMarkUnread(ctx context.Context, in *notifID
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseNotifID(in.ID)
+	id, err := parseNotifID(ctx, in.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func (h *NotificationsHandler) handleDelete(ctx context.Context, in *notifIDInpu
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseNotifID(in.ID)
+	id, err := parseNotifID(ctx, in.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +249,7 @@ func (h *NotificationsHandler) handleGetPreferences(ctx context.Context, in *not
 	prefs, err := svc.GetPreferences(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "notifications: get-preferences", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "prefs_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "prefs_error", err)
 	}
 	if prefs == nil {
 		prefs = []notifications.Preference{}
@@ -295,7 +295,7 @@ func (h *NotificationsHandler) handlePostTest(ctx context.Context, in *notifPlay
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "notifications: test-emit", "slug", in.PlayerSlug, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "test_emit_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "test_emit_error", err)
 	}
 	slog.InfoContext(ctx, "notifications: test sent", "slug", in.PlayerSlug)
 	return &notifNoContent{Status: http.StatusNoContent}, nil
@@ -305,7 +305,7 @@ func (h *NotificationsHandler) handlePostTest(ctx context.Context, in *notifPlay
 func (h *NotificationsHandler) resolve(ctx context.Context, slug string) (*notifications.Service, error) {
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return svc, nil
 }

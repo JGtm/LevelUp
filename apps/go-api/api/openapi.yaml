@@ -730,6 +730,25 @@ paths:
       summary: Diagnostic apparence Spartan ID — verdict par composant (bannière/emblème/backdrop/service tag) d'un joueur suivi, à la demande (auth admin requis)
       tags:
         - admin
+  /admin/health:
+    get:
+      operationId: getAdminHealth
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: 'Service detail: versions, counters, media tooling (admin auth required)'
+      tags:
+        - admin
   /admin/identities:
     get:
       operationId: getAdminIdentities
@@ -2296,16 +2315,16 @@ paths:
   /health:
     get:
       description: |
-        Vérifie l'état du service et de ses dépendances critiques
-        (metadata.duckdb, shared_matches_v2.duckdb, db_profiles.json).
+        Sonde publique : 200 `{status}` quand la base partagée s'ouvre et se lit,
+        503 sinon. Aucune version ni aucun compteur (détail : `GET /admin/health`).
       operationId: getHealth
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
-          description: Service opérationnel ou dégradé
+                $ref: '#/components/schemas/PublicHealthResponse'
+          description: Service opérationnel
         default:
           content:
             application/json:
@@ -12887,8 +12906,6 @@ components:
           type: string
         error_code:
           type: string
-        error_detail:
-          type: string
         gamertag:
           type: string
         status:
@@ -23111,6 +23128,14 @@ components:
             - "null"
       required:
         - items
+      type: object
+    PublicHealthResponse:
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+      required:
+        - status
       type: object
     RadarAxisInsight:
       additionalProperties: false
