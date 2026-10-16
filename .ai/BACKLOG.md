@@ -59,35 +59,6 @@ Travail : faire passer le recalcul par `RecomputeLUSRCanonicalForPlayer`, test d
 
 ---
 
-### [sécurité] Durcir le site avant de le partager plus largement — « sûr et solide, pas le Pentagone »
-
-Demandé par l'utilisateur le 2026-10-14 : le site va être partagé plus largement, il faut éviter
-que des visiteurs malintentionnés « cassent tout ». Niveau visé : **sûr et solide**, sans viser un
-niveau militaire (pas de chantier disproportionné, pas de dépendance lourde ; on ferme les portes
-réellement ouvertes et on pose les garde-fous qui empêchent leur retour).
-
-Constats déjà établis (2026-10-09 → 2026-10-14) :
-- **Contournement du contrôle d'Origin (CSRF) par chemin encodé** : `internal/api/middleware/csrf.go:121`,
-  `isExemptPath` compare le préfixe exempté du protocole ouvrier (`/api/v1/internal/...`) sur le
-  chemin NETTOYÉ (`path.Clean`) alors que chi route sur le chemin brut. Une écriture comme
-  `POST …/coach/proposals/..%2F..%2F..%2F..%2Finternal%2Fx/dismiss` passe sans contrôle d'Origin.
-  Présent sur feat/v75 (pas sur main au 2026-10-14). Portée limitée aujourd'hui par la session
-  SameSite=Lax. Remède : refuser l'exemption à toute requête ambiguë (`AmbiguousPath`, déjà utilisé
-  par la garde démo du lot recos-d) + test avec chemins encodés.
-- **Faille de lecture de fichiers arbitraires** sous `/static/commendations/` (depuis le 2026-04-23) :
-  CORRIGÉE et déployée le 2026-10-09 (PR #89). Exposition possible avant le 2026-09-25 (début des
-  journaux nginx conservés) : **décision du user du 2026-10-14 : pas de rotation des secrets**.
-- **Vulnérabilités de la bibliothèque standard Go** atteintes (govulncheck au pre-push : http2,
-  `http.Error`, `csv.Writer.Flush`) : monter la version de Go.
-
-Travail proposé : un **audit adversarial** (skill `adversarial-audit`) de la surface exposée —
-routes publiques et démo, service de fichiers, classification lecture/écriture, CSRF, contrôle
-d'accès par joueur (ownership), limites de débit, tailles de requêtes et d'envois, en-têtes de
-sécurité, messages d'erreur qui divulguent — puis correction des constats recevables, avec un
-garde-rail par classe de défaut (comme le ratchet de la garde démo). **Effort : M.**
-
----
-
 ### [rejeu/identité] Vies sans identité restantes dans les rejeux cuits (règle « aucune vie anonyme »)
 
 Relevé le 2026-10-16 à l'intégration des lots film du 15/10 (`feat/integ-film`, mesure sur les
@@ -149,22 +120,6 @@ matchs sur Harvest ne se rejouent pas (cuisson refusée : « carte hors catalogu
 dans `map_quant_bounds.json`. Témoin : `e449a696` (Squad:King of the Hill, 18/09). Vacancy - Ranked
 est entrée au catalogue avec le lot recos-a. Travail : ajouter Harvest au catalogue de bornes et
 d'objectifs (même recette que recos-a), puis cuire le témoin. **Effort : S.**
-
----
-
-### [demo] Restes de la démo publique après le lot recos-d
-
-Le lot recos-d (fusionné le 2026-10-14) rend la démo strictement en lecture seule (garde générale,
-un seul refus 403 `demo_mode_forbidden`), anonymise à la copie avec contrôle à chaque seed, publie
-seulement une démo contrôlée et sert dix rejeux figés masqués. Restent :
-- DB-39 : section Identités avec `dir_exists`/`db_exists` à false en démo ;
-- DB-41 : une CLI lancée avec `LEVELUP_DEMO_MODE=true` écrit dans les bases de la fixture ;
-- `POST …/prestige/challenges/{id}/suggest-next` est une lecture classée écriture (refusée en démo) ;
-- le test E2E `media-like-bug.spec.ts` suppose un like possible en démo ;
-- `weapon_kills` encore déclarée dans la liste d'extraction de la démo (table disparue) ;
-- l'ERROR au boot de la démo sur `titles/halo_5/warehouse/metadata.duckdb` (requête sur une table ou colonne absente ; reprise du lot DA-5, E1.6 du plan backlog 2026-10-15) ;
-- déploiement : provisionner une fois `data/demo_films/` sur le VPS (commande au runbook).
-**Effort : S.**
 
 ---
 
@@ -375,6 +330,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-10-16 | **[sécurité] Durcissement de la surface exposée + restes de la démo** — audit adversarial (9 axes, 12 P0 / 17 P1 / 36 P2, `.ai/AUDIT_SECURITE_SURFACE_EXPOSEE_2026-10-15.md`) puis plan `.ai/PLAN_SECURITE_2026-10-15.md` (lots L0-L11, deux rondes de revue adversariale, recette, E2E) ; fusionné dans `feat/v75` (c6a72cf02). nginx de prod durci le 2026-10-15/16. Reste au déploiement de la v7.5 : V-3 (`data/demo_films/`), V-5 (unité de l'ouvrier), V-6 (limites mémoire après mesure). |
 | 2026-10-16 | **[lot backlog du 2026-10-15] Campagne dans les lecteurs, vue match « lecture en échec », intégrité du registre** (branche `feat/backlog-2026-10-15`, plan `.ai/PLAN_BACKLOG_2026-10-15.md`, E1 à E6) : lecteurs de la Campagne de `sync`/`ops`/`cmd` statués et garde étendu (E2), dettes Go (temps canonique, `GET /squads`) (E3), raisons `<source>_unavailable` distinctes de `<source>_empty` (E4), colonnes d'intégrité de `match_registry` (E5), deux rondes de revue adversariale corrigées (E6.2a, E6.2b). Reste : fusion dans `feat/v75` (geste du user) et les entrées ci-dessus. |
 | 2026-09-27 | **[lot backlog du 2026-09-26, fusion 3] Dérogations mortes du lint inter-features, musique d'intro du rejeu, niveau des fanfares de fin** (branche `feat/backlog-2026-09-26`, plan `.ai/PLAN_BACKLOG_2026-09-26.md`, lots A3 et A4). **Lint (5)** : 16 dérogations mortes retirées ; le script échoue désormais sur toute dérogation qui ne sert plus ; README des graphes corrigé (12 wrappers, `FirstBloodLanes` dans `components/charts/`) ; lint ajouté au job web de la CI (`1ea900034`). **Musique d'intro (7)** : les 3 dernières secondes de la montée de la piste `402178411`, résolution R = 3,19 s calée sur le coup d'envoi, −18 LUFS, jouée au clic sur « Lecture » ou « Recommencer » depuis le préambule, jamais à la reprise, au saut ni dans l'export. Au premier « Lecture » après un rechargement, l'intro attend son décodage et part avec un décalage borné par la durée du préambule (`6bac387b8`, `eb57ec3c2`). **Niveau des fanfares (suite de l'item 11)** : les trois fanfares de fin mesuraient −25 LUFS au lieu des −18 prévus (réduction stéréo du 28/08 faite après la normalisation). Remises à −18 LUFS par un gain linéaire, avec un garde-rail de niveau sur les échantillons PCM (`e93c19ed9`). Fins multi-équipes (6) : `[!]`, faute de donnée (entrée ci-dessus). Écoutes de l'utilisateur après la fusion. |
 | 2026-09-27 | **[lot backlog du 2026-09-26] Musique de fin et son du rejeu, classement mondial, découpeur SQL, index ART de `match_skill_rank`, garde-rail d'exclusion de la campagne, mode démo hermétique** (branche `feat/backlog-2026-09-26`, plan `.ai/PLAN_BACKLOG_2026-09-26.md`, un exécutant Opus à la fois, deux relectures adversariales puis une ronde 2 sur les corrections : 8 constats en ronde 1, dont 2 P1, et 0 P1 en ronde 2). **Musique de fin (11)** : la conclusion échappe au plafond de 8 voix dans la page, comme dans l'export (`soundOccupiesVoice`, `a373539d9`). **Son au rechargement (12)** : le lecteur s'ouvre au premier clic ou à la première touche, ou dès l'affichage si le document a déjà reçu un geste (`useAudioUnlock`, `89f311191`) ; la cause était la lecture automatique. **Classement mondial (1)** : `ErrDrainTimeout`, 3 essais espacés de 30 s sans nouveau scrape, premier tir à +2 min (`cd47936fc`). **Découpeur SQL (3)** : cœur unique `migration.ExecScriptContext`, 3 copies supprimées, garde-rail AST (`edd0054d5`). **Index de `match_skill_rank` (2)** : les trois `idx_msr_*` sont retirés par une migration et par un soin convergent rejoué à chaque ouverture (MSR et PSA) ; ratchet étendu à `sync/schema.go` ; sonde, `repair_msr_index` et `indexcheck` supprimés ; critère D-4 amendé (relatif, `EXPLAIN ANALYZE`) ; copies réelles vérifiées (`7e9ef7c15`, `0b6c11f73`). **Exclusion de la campagne (4)** : garde AST multi-racines (83 lecteurs, 21 dispenses datées), 12 lecteurs corrigés ; les chiffres Halo 5 qui comptaient la campagne changent (`a9e2192ac`, `c61c60761`). **Mode démo (8)** : tâches de fond coupées et chemins d'état redirigés par le SEUL serveur démo (`config.LoadServer`), 4 mutations en 403 `demo_mode_forbidden`. La preuve de bout en bout sur le vrai checkout donne 0 écriture (`3de419efe`, corrections B-C1 à B-C10). Écoutes de l'utilisateur (11, 12) faites après la fusion. Découvertes versées en 6 entrées ci-dessus. |
