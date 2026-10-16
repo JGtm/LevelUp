@@ -142,12 +142,20 @@ du post-sync voit ses citations film recalculées sans intervention.
       ./internal/sync/` vert ; lint sans constat nouveau.
 
 ### E5 — Rattrapage et vérification sur la base locale
-- [ ] Serveur arrêté : `levelup seed citation-mappings`, puis
-      `levelup backfill --citations-recompute-all --all` ; checks V1-V4 verts.
-- [ ] Contrôle DuckDB : progression non nulle par citation livrée ; aucun écart des citations
-      existantes avant/après (somme par citation).
-- [ ] Gate : `go test ./...` + `go test -tags=integration ./internal/sync/... ./internal/persist/...`
-      + `make go-api-lint`.
+- [x] Serveur arrêté (coordination avec les cinq autres sessions ; levelup-66 tenait le port pour une
+      recette, attendue) : sauvegarde des bases dans le scratchpad, puis, binaire de la branche contre
+      le repo principal : `levelup seed citation-mappings` (4 insérées, 106 mises à jour),
+      `levelup backfill-usage-summary` (237 écrits, 0 échec, 11 s), `levelup backfill
+      --citations-recompute-all --all` (9 joueurs, 0 échec, checks V1-V4 verts, 6 min). Air et Vite
+      relancés.
+- [x] Contrôle DuckDB : progression non nulle pour les quatre citations (tableau du journal) ; les
+      citations EXISTANTES sont identiques, joueur par joueur et citation par citation, à un recalcul
+      complet par le binaire de `feat/v75` sur une copie des mêmes données (0 écart). Les écarts
+      constatés contre la sauvegarde d'avant viennent du recalcul complet lui-même (frags par arme
+      venus depuis de la source de dégât, citation « Chasse au rapatrieur » désactivée remise à 0) :
+      le binaire de `feat/v75` produit les mêmes.
+- [x] Gate : `go test ./...` vert ; `go test -tags=integration ./internal/sync/... ./internal/persist/...`
+      vert ; `golangci-lint --new-from-merge-base=origin/main` (cible `make go-api-lint`) : 0 constat.
 
 ### E6 — Docs et clôture
 - [ ] `docs/COMMENDATIONS_REFERENCE.md` + `docs/FR/CITATIONS_REFERENCE.md` (inventaire, sources film).
@@ -204,3 +212,25 @@ LECTURE avant tout segment d'écriture (même règle que les niveaux d'armes et 
 lecture en échec n'arrête pas le résumé (ses autres grandeurs ne lisent pas la base) : les frags
 restent NULL et c'est journalisé en ERROR. La révision `us7` fait reprendre le parc par
 `levelup backfill-usage-summary` sans recuisson.
+
+### E5 — rattrapage local (2026-10-16)
+
+Totaux après recalcul complet (somme des valeurs, plafonnée au dernier palier) :
+
+| Joueur | Tick Tick Boom | Premier coup | Jouets éducatifs | Presque, ça ne compte pas |
+|---|---|---|---|---|
+| Chocoboflor | 0 | 55 | 37 | 100 (plafond) |
+| JGtm | 2 | 101 | 36 | 100 (plafond) |
+| Madina97294 | 0 | 126 | 60 | 100 (plafond) |
+| Nuzzles | 42 | 250 | 17 | 100 (plafond) |
+| XxDaemonGamerxX | 0 | 2 | 6 | 3 |
+
+Deux constats signalés à l'utilisateur :
+
+1. **Les paliers de « Presque, ça ne compte pas » (D4 : 10-100) sont atteints par quatre joueurs sur
+   cinq.** Comptes bruts du résumé d'usage : 124 à 233 frags sans bouclier sur 87 à 127 matchs
+   mesurés, soit environ deux par match mesuré.
+2. **Les frags sans bouclier ne sont mesurés que sur les matchs dont l'artefact est encore sur
+   disque** : le rattrapage a re-projeté 237 artefacts ; 8 993 matchs du registre n'en ont pas. JGtm a
+   un résumé d'usage sur 926 matchs mais un compte mesuré sur 127 seulement (les autres résumés datent
+   de `us6` et gardent la colonne NULL). Les mesurer exigerait de recuire leurs films.

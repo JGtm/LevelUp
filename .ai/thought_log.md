@@ -1,3 +1,11 @@
+## [2026-10-16] Plan citations Halo 5, E5 : rattrapage local et vérification — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : seed, `backfill-usage-summary` (us7) et recalcul complet des citations lancés avec le binaire de la branche contre les données du repo principal, serveur arrêté après accord des autres sessions, bases sauvegardées avant.
+
+**Résultats observés** : 4 citations insérées, 237 résumés re-projetés, 9 joueurs recalculés, V1-V4 verts ; citations existantes identiques à un recalcul par `feat/v75` sur copie (0 écart) ; « Presque, ça ne compte pas » au plafond pour 4 joueurs sur 5 ; frags sans bouclier mesurés seulement sur les 237 matchs dont l'artefact est sur disque. Tests, intégration et lint verts.
+
+**Conclusion** : paliers de « Presque » et mesure des matchs sans artefact à trancher par l'utilisateur ; suite E6 (docs).
+
 ## [2026-10-16] Plan citations Halo 5, E4 : recalcul des citations d'un match dont le film est dérivé après elles — Complété (branche `feat/citations-film`)
 
 **Décision technique principale** : pas de jeton `_film` ; le post-sync de chaque joueur ajoute aux nouveaux matchs ceux dont la génération de citations est plus ancienne que la dernière dérivation du film (`written_at` des deux côtés), recalcul complet. Couvre cuisson locale, dépôt d'ouvrier, rattrapage et `backfill-usage-summary`, avec un cycle de latence.
