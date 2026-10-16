@@ -444,33 +444,33 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 - [ ] F-1 Revue adversariale du diff complet (`git diff a9a9ac78a...HEAD`) : 2 relecteurs aveugles
       (lentille « contrôle d'accès et identité » ; lentille « entrées, ressources, chemins ») +
       1 relecteur L6 (couverture des tests) ; 2 rondes maximum.
-- [ ] F-1a Corrections de la ronde 1 de la revue adversariale (2026-10-16 ; 3 relecteurs : accès 0 P0/P1,
+- [x] F-1a Corrections de la ronde 1 de la revue adversariale (2026-10-16 ; 3 relecteurs : accès 0 P0/P1,
       entrées 2 P1 + 6 P2, couverture 1 P1 + 7 P2 ; le P1 « images de carte » trouvé par deux relecteurs) :
-  - [ ] R1-1 (P1) `GET /api/v1/assets/maps/…/image?v=` : la variante n'est pas jugée par le catalogue et chaque
+  - [x] R1-1 (P1) `GET /api/v1/assets/maps/…/image?v=` : la variante n'est pas jugée par le catalogue et chaque
         valeur neuve rate stock local et cache négatif → appels Halo signés illimités pour un anonyme. Forme
         stricte de `v`, et aucune récupération distante par variante neuve pour un anonyme ; test sur la VRAIE
         route des cartes ; preuve de classe de coût corrigée (`bare_routes_ratchet_test.go`).
-  - [ ] R1-2 (P1, préexistant, en prod ; atténué sur le VPS le 2026-10-16 par nginx) `assets/store_localfs.go`
+  - [x] R1-2 (P1, préexistant, en prod ; atténué sur le VPS le 2026-10-16 par nginx) `assets/store_localfs.go`
         `Path` : `v` (et tout composant issu de la requête) entre dans `filepath.Join` → lecture de `*.png`
         arbitraires par un anonyme. Validation des composants + confinement sous la racine (fail-closed) ;
         test chemin piégé ; snippet nginx versionné (`packaging/nginx/`) et garde-rail nginx étendu.
-  - [ ] R1-3 (P1, régression du chantier) Miniature générée dans la requête d'envoi : elle attend l'unique
+  - [x] R1-3 (P1, régression du chantier) Miniature générée dans la requête d'envoi : elle attend l'unique
         place des transcodages (jusqu'à 45 min) en tenant le verrou d'index et une place d'envoi. Elle ne
         doit plus attendre un transcodage (pool propre ou génération hors requête) ; test.
-  - [ ] R1-4 (P2) Attente d'une place d'envoi (30 s) au-delà du `ReadTimeout` (15 s) → 413 trompeur :
+  - [x] R1-4 (P2) Attente d'une place d'envoi (30 s) au-delà du `ReadTimeout` (15 s) → 413 trompeur :
         attente compatible avec l'échéance de lecture (ou échéance prolongée), 503 + `Retry-After` garanti.
-  - [ ] R1-5 (P2) Exclusion pendant une bascule de la base partagée : `ErrSwapTimeout` → 503 (pas 500).
-  - [ ] R1-6 (P2) `platform/coalesce` : le recalcul ne dépend plus du contexte du premier demandeur
+  - [x] R1-5 (P2) Exclusion pendant une bascule de la base partagée : `ErrSwapTimeout` → 503 (pas 500).
+  - [x] R1-6 (P2) `platform/coalesce` : le recalcul ne dépend plus du contexte du premier demandeur
         (contexte détaché), commentaire conforme ; test d'annulation du premier demandeur.
-  - [ ] R1-7 (P2) Exclusion : lecture de l'état et no-op décidés sous le verrou de la base joueur (course
+  - [x] R1-7 (P2) Exclusion : lecture de l'état et no-op décidés sous le verrou de la base joueur (course
         exclure/réinclure) ; test.
-  - [ ] R1-8 (P2) Porte des assets : une erreur de lecture du catalogue n'est pas mémorisée comme « inconnu »
+  - [x] R1-8 (P2) Porte des assets : une erreur de lecture du catalogue n'est pas mémorisée comme « inconnu »
         (pas de cache négatif sur erreur) ; test.
-  - [ ] R1-9 (P2) Front : « Réassocier » masqué sur le clip d'autrui (onglet Médias d'un match, rail de
+  - [x] R1-9 (P2) Front : « Réassocier » masqué sur le clip d'autrui (onglet Médias d'un match, rail de
         l'accueil), aligné sur la règle serveur ; test du composant.
-  - [ ] R1-10 (P2, règle 3) `os.Remove` avalés (`openspartan_import.go`, `media_service_upload.go`) : échec
+  - [x] R1-10 (P2, règle 3) `os.Remove` avalés (`openspartan_import.go`, `media_service_upload.go`) : échec
         journalisé.
-  - [ ] R1-11 (P2) Garde-rails renforcés : `no_readall_on_upload` voit le service (`UploadedFile.Open`) et les
+  - [x] R1-11 (P2) Garde-rails renforcés : `no_readall_on_upload` voit le service (`UploadedFile.Open`) et les
         imports aliasés ; `client_ip` interdit la lecture directe de `True-Client-IP`/`X-Forwarded-For`/
         `X-Real-IP` hors middleware d'IP ; `session_player_slug` voit aussi `CurrentPlayerSlug` (exception
         datée pour un affichage) ; test d'envoi concurrent rendu déterministe (sans `time.Sleep`) ; chacun vu
@@ -527,7 +527,8 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
       `nginx.conf` (`ssl_protocols TLSv1.2 TLSv1.3;`, sauvegarde dans le même dossier). Vérifié :
       TLS 1.1 refusé, 1.2 et 1.3 acceptés, prod et démo 200.
 - [ ] V-3 Au déploiement de la v7.5 : provisionnement de `data/demo_films/` (L8-11) et contrôle
-      que la conf nginx versionnée (L1-7) correspond à la conf en place.
+      que la conf nginx versionnée (L1-7) correspond à la conf en place (filtre
+      `snippets/levelup-assets-v.conf` compris, versionné par F-1a R1-2 depuis la conf du VPS).
 
 - [x] V-4 (L10-1, fait le 2026-10-16 par le superviseur : conteneur jetable de l'image de prod sur un dossier de test avec `auth` 0700, `film_facts` 0750 et un fichier root ; avec CHOWN, DAC_READ_SEARCH, SETUID, SETGID + `no-new-privileges` + `cap-drop ALL` : `chown` code 0, `gosu` OK, écriture OK, ffmpeg OK ; sans DAC_READ_SEARCH : « cannot read directory /app/data/auth », capacité nécessaire confirmée ; démarrage complet du serveur à observer au déploiement, démo d'abord) Avant que le lot n'atteigne la prod : valider sur le VPS, sur une copie de répertoire
       (jamais les données en service), l'entrée du conteneur avec `--cap-drop ALL` + les quatre
@@ -716,6 +717,23 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
 - **D-L11-4** (L11) Le crochet pre-commit `go-vet` affiche, pour tous les paquets qui dépendent de DuckDB, « build constraints
   exclude all Go files » (lancé sans CGO) et passe vert : ces paquets ne sont pas vérifiés par le crochet local. Le gate du lot
   lance `go vet` avec `CGO_ENABLED=1`.
+
+- **D-F1a-1** (F-1a) `api/handlers/help.go:174,178` : deux `_ = os.Remove(tmpName)` (brouillon d'aide) avalent l'échec
+  d'un retrait ; tolérés, datés, par l'allowlist de `archlint/no_discarded_remove_test.go` (hors du périmètre de R1-10).
+- **D-F1a-2** (F-1a) `assets/store_localfs.go` (`PersistBinary`) : `_ = os.Remove(tmp)` après un renommage échoué, hors des
+  racines du garde-rail de R1-10 (`internal/api`, `internal/service`).
+- **D-F1a-3** (F-1a) Trois prédicats « UUID » coexistent : `analysis.IsRawAssetUUID` (expression stricte, réutilisée par
+  R1-1), `sync.isUUIDLike` et `cmd/seed-ranked-playlists.isUUID` (longueur et nombre de tirets). Règle 6 dépassée, sans
+  garde-rail.
+- **D-F1a-4** (F-1a) Des dépôts reconnaissent une table absente au texte du message (`"does not exist"`,
+  `"Table with name"` : `platform/duckdb/home_repo.go:164`, `ops/seed_demo.go:858`, `migration/helpers.go:216`, …) ;
+  `duckdb.IsCatalogError` (type d'erreur du pilote, ajouté par R1-8) existe désormais.
+- **D-F1a-5** (F-1a) Le lien « Associer » des vignettes (`MediaViewer.tsx`, `isOwnMedia`) reste masqué pour un admin sur le
+  média non associé d'un autre joueur, que le serveur lui permet d'associer : plus strict que la règle serveur, sans risque.
+- **D-F1a-6** (F-1a) Le recalcul d'exclusion tourne sous un contexte détaché sans échéance (R1-6) : son attente du verrou
+  d'écriture du joueur (`dblease.AcquireWriterCtx`) n'est plus bornée par la requête. Un verrou jamais rendu retiendrait le
+  recalcul de ce joueur jusqu'au redémarrage (les demandes suivantes attendent au plus leur propre échéance). Aucune borne
+  propre au recalcul.
 
 ## 7. Journal
 
@@ -2122,3 +2140,166 @@ identiques (indexation, réconciliation, miniatures).
 
 Commits : `7abe61b48` (L11-1), `d2a36e632` (L11-2), `5bcb0fab8` (L11-3), `97cdb588e` (L11-4), `544e3ef83` (L11-5), `73d90b2eb` (L11-6),
 `5489ce1db` (L11-7), `c6e9959ad` (L11-8), `b2dd59395` (message fixe de L11-4), puis le commit de clôture (plan, thought_log).
+
+### F-1a - Corrections de la ronde 1 de la revue adversariale - 2026-10-16 - clos
+
+Base : `git log --oneline -1` = `247926cbd` avant l'item ; branche `feat/securite-2026-10-15`. Références rouvertes avant d'agir :
+`assets/store_localfs.go` (`Path` : `ref.ID + "." + ref.Variant` puis `filepath.Join`), `handlers/assets.go` (`v` décodé, `TrimSpace`
+seul), `assets/gate.go`, `assets/catalog.go` (`any` : erreur comptée comme « sans ligne »), `assets/resolver_default.go`,
+`server_apiv1.go` (prédicat de confiance `IsAuthenticated`, vrai en démo ; la démo est hors ligne : `discovery_client.go` passe par
+`netguard`), `ops/media_thumbnails.go` et `media/ffmpeg_slot.go` (miniature sur `PoolTranscode`), `handlers/media_upload.go`
+(`acquireUploadSlot` 30 s puis `ParseMultipartForm` -> 413), `cmd/server/main.go` (`ReadTimeout` 15 s), `handlers/match_exclusion.go`
+(seul `ErrDBLocked` -> 503), `platform/coalesce/runs.go` (`fn(ctx)` du premier demandeur), `service/match_exclusion_service.go` et
+`platform/duckdb/match_exclusion_repo.go` (lecture `IsExcluded` hors du lease, écriture sous lease), `features/match-view/MatchMediaTab.tsx`,
+`features/home/RecentMediaRail.tsx`, `features/media/CoverFlowModal.tsx` (`ownsCurrentMedia` permissif faute de gamertag de
+référence), `service/media_requester.go` + `domain.CanModifyMedia` (propriétaire ou admin), `handlers/openspartan_import.go` (3 sites)
+et `service/media_service_upload.go` (1 site), les quatre garde-rails visés par R1-11.
+
+**Statuts** : R1-1 à R1-11 `[x]`. Aucun `[!]`, aucun `[~]`.
+
+- **R1-1** `handlers/assets.go:96-100` : `v` non vide hors forme UUID (`analysis.IsRawAssetUUID`) -> 400 `v invalide` avant le stock et
+  toute source distante. `assets/catalog.go` (`classifyMap`) : la version est jugée par le catalogue — version courante de
+  `maps_catalog.current_version_id` -> `VerdictKnown` ; autre version d'une carte connue -> `VerdictUnverifiable`, récupérée pour un
+  appelant de confiance seulement (`Gate`). Preuve de classe de coût de la route des cartes dans `bare_routes_ratchet_test.go` :
+  `TestAssetRoutes_MapImage_NewVariantCallsOutOnlyForTrustedCallers` (vraie route, vrai `MetadataCatalog` sur DuckDB : 50 versions
+  inventées -> 404 et 0 appel sortant pour un anonyme ; version du catalogue -> 1 appel ; appelant de confiance -> appel).
+  Tests : `handlers/assets_map_route_test.go` (3 tests), `TestMetadataCatalog_ClassifyMapVersion`.
+- **R1-2** `assets/ref_validate.go` (`Ref.Validate`) : caractère de contrôle, `\`, `:` refusés dans tout composant ; `/`, `.`, `..`
+  refusés dans kind, titre, variante ; élément `.`/`..` refusé dans l'identifiant (chemin GameCMS, éléments vides tolérés).
+  `LocalFSStore.Path` rend `(string, error)` : `Validate` puis confinement (`filepath.Rel` + `filepath.IsLocal` sous la racine du
+  kind) ; `LookupBinary`/`PersistBinary` refusent (`ErrInvalidRef`). `DefaultResolver.Get/LookupLocal/Refresh` et `Gate.Get` refusent
+  une ref invalide avant tout travail ; le handler la sert comme une absence (404). nginx : `packaging/nginx/snippets/levelup-assets-v.conf`
+  (contenu exact du VPS), `include /etc/nginx/snippets/levelup-assets-v.conf;` dans la location `/api/v1/assets/` de `levelup.conf` et
+  `demo.conf`, pré-requis en tête des deux sites et dans `RUNBOOK_DEPLOY_CHECKLIST.md` ; garde-rail `archlint/nginx_assets_v_test.go`
+  (forme `if ($arg_v ~* "…") { return 400; }`, l'expression refuse `..`, `/`, `\`, `%2f`, `%5c`, `%2e` en toute casse et laisse
+  passer un UUID ; chaque server 443 inclut le filtre ; auto-preuve 12 mutations). Tests : `store_localfs_confinement_test.go`
+  (13 refs piégées : rien lu ni écrit hors de la racine ; 5 refs légitimes servies), `TestGate_InvalidRefIsRefusedBeforeAnyWork`,
+  `TestAssetRoutes_MapImage_TraversalReadsNothing` (vraie route, `secret.png` hors du stock).
+- **R1-3** `media/thumbnail.go` : `RunWebPThumbnail` (arguments déplacés d'`ops`) tient `PoolThumbnail` (1 place, délai maximal
+  `thumbnailMaxDuration` 5 min, `maxDurationFor`) au lieu de l'unique place des transcodages. Garde-rail `ffmpeg_single_launcher_test.go` :
+  trois pools nommés exigés (ajout daté ; aucun pool hors du lanceur ; cas « deux pools seulement » ajouté). Tests :
+  `TestRunWebPThumbnail_DoesNotWaitForATranscode`, `TestRunFFmpeg_TranscodeDoesNotWaitForAThumbnail`,
+  `TestRunWebPThumbnail_IsBoundedByItsOwnMaxDuration`, `TestThumbnailArgs`.
+- **R1-4** `handlers/media_upload.go` : une fois la place obtenue, `restartBodyReadDeadline` (`http.ResponseController.SetReadDeadline`,
+  `defaultUploadBodyReadBudget` 15 s) ; `refuseUnreadableUpload` : `MaxBytesError` -> 413, échéance de lecture dépassée -> 503
+  `upload_busy` + `Retry-After` (plus de 413 trompeur). Constantes et options d'envoi rangées dans `media_upload.go` (`media.go` repassait
+  à 513 lignes). Tests (vrai `http.Server`) : `TestUploadHandler_SlotWaitBeyondReadTimeoutIsServed` (ReadTimeout 200 ms, place libérée à
+  600 ms, corps de 1 Mio -> 200), `TestUploadHandler_BodyReadDeadlineAnswers503` (corps à moitié envoyé -> 503 + Retry-After).
+- **R1-5** `handlers/match_exclusion.go` : `isDBBusy` (verrou d'écriture du joueur, `ErrSwapTimeout`, `ErrSwapFailed`,
+  `ErrProviderClosed`) -> 503 `db_busy` + `Retry-After`. Chaîne vérifiée : recalcul -> `acquireSharedReaderStandalone` (`%w`) ->
+  `coalesce` (erreur rendue telle quelle) -> service (`%w`). Tests : `TestMatchExclusionHandler_Set_BusyDatabaseAnswers503` (4 causes),
+  `TestMatchExclusionService_SharedSwapTimeoutIsWrapped`.
+- **R1-6** `platform/coalesce/runs.go` : le recalcul et ses rattrapages tournent dans leur goroutine sous `context.WithoutCancel` ;
+  chaque demandeur attend au plus jusqu'à l'annulation de son propre contexte ; une panique du recalcul devient une erreur journalisée
+  (les demandeurs reçoivent un résultat) ; commentaire du contrat réécrit. Tests : `TestRuns_FirstRequesterCancellationDoesNotStopTheRecompute`
+  (premier demandeur annulé : `context.Canceled` aussitôt, le recalcul ne voit pas l'annulation, rattrapage servi au demandeur absorbé),
+  `TestRuns_PanicBecomesAnError`.
+- **R1-7** Port `MatchExclusionRepository.SetExclusion` rend `(changed, err)` ; `IsExcluded` retiré (lecture hors verrou, plus aucun
+  appelant). `MatchExclusionRepo.SetExclusion` lit la vue `_latest`, décide et insère sous le lease `KindPlayer`, sur la même connexion.
+  Service : no-op si rien n'est écrit et aucun recalcul en attente. Tests : `TestMatchExclusionService_OverlappingExcludeIncludeEndsOnTheLastDemand`
+  (exclusion retenue entre lecture et écriture, réinclusion arrivée pendant ce temps : état final = réinclus),
+  `TestMatchExclusionRepo_SetExclusion_DecidesOnLatestState` (intégration, base sur fichier : 2 écritures pour 5 demandes).
+- **R1-8** `assets/catalog.go` : `presence` rend `VerdictUnavailable` quand une requête échoue (base illisible) ; une table absente
+  (`duckdb.IsCatalogError`, type d'erreur du pilote, `platform/duckdb/catalog_error.go`) reste « sans ligne » (cache négatif conservé
+  pour un référentiel absent). `Gate` : `VerdictUnavailable` -> `ErrNotFound`, sans appel sortant ni entrée au cache négatif. Tests :
+  `TestGate_CatalogReadErrorIsNotNegativelyCached`, `TestMetadataCatalog_UnreadableStoreIsUnavailable`, `TestIsCatalogError`.
+- **R1-9** API : `MatchAssociatedMedia.owner_gamertag` (`media_files.player_slug`, même sémantique que la galerie), lu par Q24 ;
+  `openapi.yaml` et `generated.ts` régénérés. Front : `features/media/usePlayerGamertag.ts` (source unique ; garde-rail
+  `usePlayerGamertag.guard.test.ts`, `MediaPage` migrée) ; `MatchMediaTab` et `RecentMediaRail` passent le gamertag de référence à la
+  visionneuse et aux vignettes ; `_mediaItemRow` projette le propriétaire ; `CoverFlowModal` : « Réassocier » = propriétaire ou admin
+  (`domain.CanModifyMedia`). Tests : `MatchMediaTab.reassociate.test.tsx`, `RecentMediaRail.reassociate.test.tsx` (clip d'autrui masqué,
+  le sien montré, admin montré), `TestBuildMediaTab_CarriesTheOwner`.
+- **R1-10** `handlers/openspartan_import.go` : `removeTempUpload` (échec journalisé, fichier absent ignoré) aux trois sites ; la copie est
+  fermée avant tout retrait (un fichier ouvert ne se supprime pas sous Windows) et son erreur de fermeture n'est plus ignorée.
+  `service/media_service_upload.go` : `storeUploadedFile(ctx, …)` journalise un retrait échoué de la copie `.part`. Garde-rail
+  `archlint/no_discarded_remove_test.go` (`os.Remove`/`RemoveAll` dont l'erreur est écartée, dans `internal/api` et `internal/service` ;
+  allowlist datée : `help.go`, 2 sites, D-F1a-1). Test : `TestRemoveTempUpload_LogsFailure`.
+- **R1-11** (a) `no_readall_on_upload_test.go` : `UploadedFile` marque un fichier d'envoi ; `ReadAll` reconnu par chemin d'import
+  (`io`, `io/ioutil`), quel que soit le nom local. (b) `client_ip_test.go` : littéral `True-Client-IP`/`X-Forwarded-For`/`X-Real-IP`
+  (toute casse) interdit hors de `clientIPHeaderAllowlist` (`internal/api/server.go`, middleware d'IP, entrée datée). (c)
+  `session_player_slug_test.go` : `currentPlayerSlugReads` voit toute lecture du champ de session `CurrentPlayerSlug` dans handlers,
+  service, domain (écriture et méthode homonyme ignorées) ; allowlist datée `currentPlayerSlugAllowlist`. (d) `slots.Pool.Waiting`
+  (journalisé avec le 503 `upload_busy`) ; `TestUploadHandler_AtMostTwoUploadsInFlight` attend trois demandes en attente au pool au
+  lieu de dormir 150 ms ; `TestPool_WaitingCountsBlockedAcquirers`.
+
+**Écarts au texte, justifiés** :
+- R1-11 (c) : l'allowlist porte trois fichiers et non une seule exception d'affichage : `bootstrap_service.go` (profil affiché par
+  défaut) et `session_context.go` (réponse de `/session/context`) sont des affichages ; `domain/session.go` lit le champ pour
+  `Session.IsEmpty` (persistance du cookie), ni affichage ni décision d'accès. Toutes datées et motivées.
+- R1-3 : le garde-rail des pools passe de 2 à 3 pools exigés (contrat changé par l'item, même rigueur : tout pool hors du lanceur reste
+  rouge ; un lanceur à 2 pools devient rouge).
+- R1-8 : une table absente n'est pas une « erreur de lecture » au sens de l'item (absence durable, ex. métadonnées d'un titre sans
+  référentiel de médailles) : elle reste « inconnue » et mémorisée, reconnue par le type d'erreur du pilote, jamais par le message.
+- R1-10 : `saveUploadedDB` traite désormais l'erreur de fermeture de la copie comme un échec de l'envoi (400 `upload_failed`) — un
+  fichier mal fermé ne doit pas être importé.
+- R1-4 : `Pool.Acquire` (R1-11 d) prend une place libre sans passer par l'attente ; seul un appel sur un pool plein compte dans
+  `Waiting`.
+
+**Preuves du rouge** (sorties dans `%LOCALAPPDATA%\Temp\f1a\`) :
+- R1-2 `go test ./internal/assets/ -run 'TestLocalFSStore_(Trapped|Legitimate)'` : exit 1, 12 sous-tests sur 13 FAIL (lecture de
+  `secret.png` hors de la racine ou écriture hors racine ; l'octet nul échouait déjà à l'appel système) ; les refs légitimes passaient.
+- R1-1/R1-2 `go test ./internal/api/handlers/ -run TestAssetRoutes_MapImage` : exit 1, 3 FAIL — version inventée servie en 302 (appel
+  sortant) pour un anonyme ; 9 `v` mal formés (`x`, `..`, `%2F..%2Fsecret`, `/../../../../secret`, antislash, UUID à 37 caractères…)
+  servis en 302 avec 9 appels sortants ; `?v=/../../../../secret` sur la vraie route : 200 avec les octets de `secret.png`.
+- nginx `go test ./internal/archlint/ -run NginxAssets` : exit 1, filtre absent, `include` absent de `demo.conf:92` et `levelup.conf:137`.
+- R1-3 `go test ./internal/media/ -run TestRunWebPThumbnail` (après le seul déplacement des arguments) : exit 1, « la miniature a
+  attendu le transcodage : attente de la place ffmpeg: context deadline exceeded » ; garde-rail des pools rouge avec le 3e pool tant que
+  le compte exigé valait 2.
+- R1-4 : exit 1, 2 FAIL — 413 `upload_too_large` pour un clip de 1 Mio dont la place s'est libérée après `ReadTimeout` ; corps
+  interrompu : aucune réponse en 10 s (le serveur attendait indéfiniment).
+- R1-5 : exit 1, 3 sous-tests FAIL (500 `exclusion_error` pour `ErrSwapTimeout`, `ErrSwapFailed`, `ErrProviderClosed`).
+- R1-6 : exit 1, « le premier demandeur annulé attend toujours la fin du recalcul ».
+- R1-7 : exit 1, « état final : exclu, alors que la réinclusion est arrivée après l'exclusion ».
+- R1-8 : exit 1, « 1 refus mémorisé(s) sur une erreur de lecture du catalogue, attendu 0 ».
+- R1-9 `npx vitest run …reassociate.test.tsx` : 2 FAIL (« Réassocier » affiché sur le clip d'un coéquipier et sur celui d'un autre
+  joueur du rail) ; garde-rail `usePlayerGamertag` rouge sur `MediaPage.tsx` avant migration.
+- R1-10 `-run DiscardedRemove` : exit 1, 4 sites (`openspartan_import.go:155,196,208`, `media_service_upload.go:228`).
+- R1-11 (a) 3 cas FAIL « non signalé » (service, `stdio`, `iu`) ; (b) 3 cas FAIL « défaut non signalé » ; (c) détecteur absent
+  (compilation), puis code réel rouge : 4 lectures dans 3 fichiers avant l'allowlist ; (d) `Waiting` absent (compilation), puis
+  mutation (place d'envoi retirée du handler, source restaurée, `git diff` vérifié) : FAIL « demandes en attente d'une place = 0,
+  attendu 3 » en 5 s.
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9) :
+- Suites complètes des paquets touchés : `go test ./internal/assets/... ./internal/api/... ./internal/archlint/ ./internal/media/...
+  ./internal/ops/... ./internal/platform/coalesce/ ./internal/platform/duckdb/... ./internal/platform/slots/ ./internal/port/...
+  ./internal/service/... ./internal/domain/... ./internal/sync/... ./cmd/server/ -count=1` : exit 0, 42 paquets ok, 0 `--- FAIL:`
+  (archlint complet, `OpenAPI`/`Contract` de `./internal/api` compris). `internal/sync` inclus : `coalesce` y sert le recalcul
+  d'exclusion.
+- Intégration : `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/platform/duckdb/...
+  ./internal/service/... ./internal/platform/coalesce/ -count=1` : exit 0, 25 paquets ok, 0 `--- FAIL:` ; `no_art_patterns_test.go`
+  non modifié.
+- Gate commun : `go build ./cmd/server/` exit 0 ; `go vet` des paquets touchés exit 0, et `go vet -tags=integration` (duckdb, service,
+  sync) exit 0 ; `golangci-lint run --new-from-rev=247926cbd` (v2.12.2) sur ces paquets : 0 issue ; forme CI
+  `--new-from-merge-base=origin/main` : 0 issue. API changée (R1-9) : `go run ./cmd/openapi-gen` puis `npm run generate-types` (un
+  champ), régénération rejouée sans diff.
+- Web : purge de `node_modules/.tmp`, `npm run typecheck` exit 0, `npm run lint` exit 0 (0 erreur, 26 avertissements préexistants),
+  `npm run test:run` exit 0 (931 fichiers passés / 5 ignorés, 9740 tests passés / 23 ignorés) ; `lint:fields`, `lint:colors`,
+  `lint-cross-feature-imports` (7 / plafond 7), `knip-ratchet` (0/0/0), `lint-contract-ratchet` : exit 0.
+- Crochets pre-commit (gofmt, check-merge-conflict, docs-fr-sync, gitleaks, go-vet) verts sur les quatorze commits de code. Rien poussé,
+  aucune opération VPS.
+- Premiers passages rouges corrigés en cours d'item : `TestNoAdHocRepoRootLadderInTests` (échelles `../../../..` littérales dans les
+  pièges de traversée, construites par `strings.Repeat`) ; `media.go` à 513 lignes (constantes d'envoi rangées dans
+  `media_upload.go`, `578e82fbe`).
+
+**Non-régression (règle 9)** :
+- R1-1/R1-2 : URL produites par le serveur : `match_view_repo.go` (`?v=` = `MapVersionID` UUID Halo), `asset_service.go` (sans `v`) ;
+  identifiants de carte = UUID ; aucun appelant front n'écrit `v` lui-même. Une carte vue depuis la vue match par un compte connecté
+  reste récupérée quelle que soit sa version ; un anonyme (prod) n'obtient à distance que la version courante du catalogue, le stock
+  local servant le reste. Démo : appelant de confiance, mais hors ligne (`netguard`). Chemins GameCMS des images de passe et de
+  joueur (barres obliques, barre de tête) toujours servis (test).
+- R1-3 : miniatures générées pendant l'envoi comme avant le chantier ; une miniature à la fois.
+- R1-4 : envoi derrière nginx (corps en tampon) inchangé ; seul un corps qui n'arrive pas reçoit 503 `upload_busy`, message FR + EN
+  déjà existant (`common.media.upload_busy`).
+- R1-5 : l'en-tête de la vue match (`MatchHeader.card.tsx`) affiche le même message générique qu'avant pour toute erreur autre que
+  « match classé » ; seul le statut change (503 `db_busy` + `Retry-After`, comptés en indisponibilité passagère, au lieu de 500).
+- R1-7 : réponses inchangées (204) ; un état demandé identique n'écrit toujours rien.
+- R1-9 : changement visible : sur l'onglet Médias d'un match et le rail de l'accueil, les clips des coéquipiers n'offrent plus
+  « Réassocier » (le serveur les refusait en 403) et leurs vignettes portent la pastille du propriétaire, comme dans la galerie ; un
+  admin voit « Réassocier » partout (le serveur l'y autorise). Aucune chaîne i18n ajoutée.
+- R1-10 : comportement inchangé, sauf une copie OpenSpartan mal fermée qui refuse désormais l'envoi.
+
+**Découvertes** : D-F1a-1 à D-F1a-6 (§6), non traitées.
+
+Commits : `7f82b61ba` (R1-1, R1-2), `64177f8d5` (R1-3), `f608cbbe4` et `578e82fbe` (R1-4), `ddaca4a55` (R1-5), `bcbb7331b` (R1-6),
+`214868201` (R1-7), `ac7c1c126` (R1-8), `640d84077` (R1-9), `ca1257cf3` (R1-10), `86ae27bb3`, `c65d98db6`, `5813b745b`, `2e40c5d5e`
+(R1-11), puis le commit de clôture (plan, thought_log).
