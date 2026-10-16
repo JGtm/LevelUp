@@ -46,6 +46,11 @@ change (citations, domination, préparation du match, source du kill, rejeu).
   `persist/player_persister.go:218`).
 - D4. Hors périmètre : indicateur « analyse en cours » côté web (film, rejeu), CSR (aucun défaut
   constaté, voir « Constat CSR »), Halo 5 (`livesync` n'a pas d'étape film).
+- D5. (utilisateur, message du 16/10, relayé par le coordinateur) Écart accepté : la pénalité de départ du
+  LUSR v2 est lue sur la passe crédit-seul avant 1.57. Mesuré sur la copie de la base partagée : 1 match sur
+  2 394 (0,04 %) change de contexte de départ (un bot, égalité 28-28 contre 28-29). Justification : l'ancien
+  ordre lisait déjà la passe crédit chaque fois que 1.57 n'atteignait pas un match dans son cycle (8 films
+  par cycle, file globale) ; la source du LUSR dépendait donc du cycle. D1 la rend constante.
 
 ## Étape 0 — Préparation (rapide)
 
@@ -120,7 +125,7 @@ sert le match réel figé `internal/sync/testdata/jgtm_full_match/` (stats, skil
   LUSR présent, domination non NULL, citations présentes, ordre des `StepTimings` conforme à D1.
 - [x] 2b.2 Même test sans liste d amis → `is_with_friends = FALSE`, post-sync identique par
   ailleurs.
-- [!] 2b.3 Comparaison avant/après : le même test exécuté sur le commit de base (ancien ordre) et
+- [x] 2b.3 Comparaison avant/après : le même test exécuté sur le commit de base (ancien ordre) et
   sur la branche donne les MÊMES valeurs finales (citations, domination, LUSR, préparation,
   escouade) ; seule la chronologie change. Écart = arrêt et analyse.
   Contrôle ajouté (coordinateur, 16/10) : la pénalité de départ du LUSR v2 donne la MÊME valeur avant et
@@ -275,3 +280,5 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   Les bots sont dans les rosters du LUSR v2 (`buildTwoTeamRosters` ne filtre que xuid vide). Soit 1 match sur
   2 394 (0,04 %) où la pénalité de départ d'un partant, donc le LUSR, peut différer selon que la passe lue est
   la passe crédit ou la passe fusionnée. Gate 2bis NON passé : décision du coordinateur attendue.
+- 16/10 Arrêt levé par le coordinateur (D5 : écart accepté par l'utilisateur, voir « Décisions »). 2b.3 statué
+  `[x]` en citant D5 ; gate 2bis PASSÉ : 2b.1, 2b.2, 2b.3 cochés, tableau avant/après au journal (thought_log).
