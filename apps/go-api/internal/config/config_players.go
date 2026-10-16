@@ -105,7 +105,7 @@ func readDBProfiles(path string) (data []byte, exists bool, err error) {
 // Le fichier n'est relu que s'il a changé (readDBProfiles) ; chaque appel rend une
 // liste neuve.
 func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, error) {
-	if c.DemoMode {
+	if c.demoState() {
 		titleSlug := title.DefaultSlug
 		if len(titleFilter) > 0 && titleFilter[0] != "" {
 			titleSlug = titleFilter[0]
