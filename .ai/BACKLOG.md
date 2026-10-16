@@ -39,6 +39,22 @@ garde-rail par classe de défaut (comme le ratchet de la garde démo). **Effort 
 
 ---
 
+### [rejeu/identité] Vies sans identité restantes dans les rejeux cuits (règle « aucune vie anonyme »)
+
+Relevé le 2026-10-16 à l'intégration des lots film du 15/10 (`feat/integ-film`, mesure sur les
+2 676 films, contexte de cuisson) : **2 376 vies sans identité sur 43 films** dans les rejeux
+cuits (2 379 avant les lots : préexistant). 5 films de build inconnu (supposés d'avant 1.8,
+abandonnés par décision du user du 2026-10-15, ex. 47d20b5d : pont d'identité vide) ; **38 films de
+HI_1_9_0 à HI_1_13_0**, qui relèvent de la règle du user (`feedback_no_anonymous_lives_every_life_is_named`).
+Également : **3f048bf3 (HI_1_13_0)**, deux bots successifs sur l'indice 8 : depuis la règle « le bot
+tient l'indice jusqu'à la fin de sa dernière déclaration » (lot K-D), une vie de 6 images du slot 540
+perd son nom (« 343 Lacuna » avant) et la vie du slot 527 passe de Lacuna (équipe 0) à « 343 Ritzy »
+(équipe 1) — à trancher : laquelle des deux lectures est juste. Décision du user du 2026-10-16 :
+noter ici, pas d'enquête lancée pour l'instant. Pistes : mesure des 38 films par build et par
+cause (sièges, bots relayés, pistes parasites hors plage des bipèdes comme 7aa132d1). **Effort : M.**
+
+---
+
 ### [tactique] Écart de position entre le contexte de mort et `kill_positions`
 
 Noté à la demande de l'utilisateur le 2026-10-15 (chantier Tactique coéquipiers,
