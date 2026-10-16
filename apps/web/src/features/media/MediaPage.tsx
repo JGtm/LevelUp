@@ -201,9 +201,10 @@ export function MediaPage() {
   const authors = authorsData?.authors ?? []
   const toggleMediaLike = useToggleMediaLike(playerSlug)
   const deleteMedia = useDeleteMedia(playerSlug)
-  // Profil d'ami (lecture seule) : ni envoi, ni suppression, ni association ; cœur inactif.
+  // Profil d'ami (lecture seule) : ni envoi, ni suppression, ni association. Le cœur reste
+  // actif : le like est l'action du visiteur, attribuée à son propre profil (ADR 0029).
   const canWrite = useCanWritePlayer(playerSlug)
-  const likeDisabled = !canWrite || toggleMediaLike.isPending
+  const likeDisabled = toggleMediaLike.isPending
   // Mémoïsé pour stabiliser les useMemo/useCallback consommateurs (indexByPath,
   // groups, handleOpenMatch) — sinon `[] ?? data` change de référence à chaque render.
   const mediaItems = useMemo<MediaItemRow[]>(() => data?.items?.items ?? [], [data])

@@ -43,6 +43,8 @@ export interface NotificationsText {
   pageBulkDismiss: string
   pageLoadMore: string
   pageEmpty: string
+  /** Profil d'un ami : ses notifications ne sont ni lues ni affichées. */
+  privateToOwner: string
 
   // Settings tab
   settingsTitle: string
@@ -117,6 +119,7 @@ const FR: NotificationsText = {
   pageBulkDismiss: 'Ignorer ({count})',
   pageLoadMore: 'Charger plus',
   pageEmpty: 'Aucune notification pour le moment',
+  privateToOwner: "Les notifications d'un profil ne sont visibles que par son propriétaire.",
 
   settingsTitle: 'Notifications',
   settingsDescription:
@@ -332,6 +335,7 @@ const EN: NotificationsText = {
   pageBulkDismiss: 'Dismiss ({count})',
   pageLoadMore: 'Load more',
   pageEmpty: 'No notifications yet',
+  privateToOwner: "A profile's notifications are visible to its owner only.",
 
   settingsTitle: 'Notifications',
   settingsDescription:

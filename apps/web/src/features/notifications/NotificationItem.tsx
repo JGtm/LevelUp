@@ -22,12 +22,10 @@ export interface NotificationItemProps {
   onMarkUnread: (id: number) => void
   onDismiss: (id: number) => void
   onAfterClick?: () => void // pour fermer le dropdown
-  /** Profil d'un ami (lecture seule) : ni marquage au clic, ni actions. */
-  readOnly?: boolean
 }
 
 export function NotificationItem(props: NotificationItemProps) {
-  const { notif, playerSlug, onMarkRead, onMarkUnread, onDismiss, onAfterClick, readOnly = false } = props
+  const { notif, playerSlug, onMarkRead, onMarkUnread, onDismiss, onAfterClick } = props
   const locale = useAppShellStore((s) => s.locale)
   const t = getNotificationsText(locale)
   const navigate = useNavigate()
@@ -42,7 +40,7 @@ export function NotificationItem(props: NotificationItemProps) {
     if (e.button !== 0) return // ignore middle/right click
     if (e.metaKey || e.ctrlKey) return // open in new tab
     e.preventDefault()
-    if (isUnread && !readOnly) onMarkRead(notif.id)
+    if (isUnread) onMarkRead(notif.id)
     onAfterClick?.()
     const target = resolveTarget(notif, playerSlug, titleSlug)
     if (target) {
@@ -87,37 +85,35 @@ export function NotificationItem(props: NotificationItemProps) {
         <p className="mt-0.5 text-3xs text-muted-foreground">{rel}</p>
       </div>
 
-      {!readOnly && (
-        <div className="invisible absolute right-2 top-2 flex gap-1 group-hover:visible">
-          {isUnread ? (
-            <ItemActionButton
-              label={t.actionMarkAsRead}
-              onClick={(e) => {
-                e.stopPropagation()
-                onMarkRead(notif.id)
-              }}
-              iconPath="M16.7 4.2a.75.75 0 01.1 1l-8 10.5a.75.75 0 01-1.1.1L3.2 11.3a.75.75 0 011-1L8 14l7.5-9.8a.75.75 0 011.1-.1z"
-            />
-          ) : (
-            <ItemActionButton
-              label={t.actionMarkAsUnread}
-              onClick={(e) => {
-                e.stopPropagation()
-                onMarkUnread(notif.id)
-              }}
-              iconPath="M3 9a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-            />
-          )}
+      <div className="invisible absolute right-2 top-2 flex gap-1 group-hover:visible">
+        {isUnread ? (
           <ItemActionButton
-            label={t.actionDismiss}
+            label={t.actionMarkAsRead}
             onClick={(e) => {
               e.stopPropagation()
-              onDismiss(notif.id)
+              onMarkRead(notif.id)
             }}
-            iconPath="M5.3 5.3a1 1 0 011.4 0L10 8.6l3.3-3.3a1 1 0 111.4 1.4L11.4 10l3.3 3.3a1 1 0 01-1.4 1.4L10 11.4l-3.3 3.3a1 1 0 01-1.4-1.4L8.6 10 5.3 6.7a1 1 0 010-1.4z"
+            iconPath="M16.7 4.2a.75.75 0 01.1 1l-8 10.5a.75.75 0 01-1.1.1L3.2 11.3a.75.75 0 011-1L8 14l7.5-9.8a.75.75 0 011.1-.1z"
           />
-        </div>
-      )}
+        ) : (
+          <ItemActionButton
+            label={t.actionMarkAsUnread}
+            onClick={(e) => {
+              e.stopPropagation()
+              onMarkUnread(notif.id)
+            }}
+            iconPath="M3 9a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+          />
+        )}
+        <ItemActionButton
+          label={t.actionDismiss}
+          onClick={(e) => {
+            e.stopPropagation()
+            onDismiss(notif.id)
+          }}
+          iconPath="M5.3 5.3a1 1 0 011.4 0L10 8.6l3.3-3.3a1 1 0 111.4 1.4L11.4 10l3.3 3.3a1 1 0 01-1.4 1.4L10 11.4l-3.3 3.3a1 1 0 01-1.4-1.4L8.6 10 5.3 6.7a1 1 0 010-1.4z"
+        />
+      </div>
     </div>
   )
 }

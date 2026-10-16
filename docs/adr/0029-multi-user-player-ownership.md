@@ -158,6 +158,26 @@ The rule is now split by intent, decided in one place (`middleware.PlayerAccess`
 Consequence: a member who wants to act on a friend's data asks the owner or an admin. The
 friends-list write rule above is now enforced twice (group guard, then handler).
 
+#### Clarifications (user decisions of 2026-10-16)
+
+- **Liking a media item from a friend's profile is allowed.** A like is the VISITOR's
+  action, recorded under the visitor's own profile (the owned profile resolved by
+  `requesterPlayerSlugResolver`, never the profile being viewed nor the request body).
+  `PATCH /players/{player_slug}/media/likes` is the one named exception to the write rule:
+  the group guard decides it as a read of the viewed profile
+  (`middleware.isVisitorAction`, exact method and sub-path, never on an ambiguous path).
+  It stays a write for the authentication guard (`RequireAuthForMutations`). The walk test
+  lists it in `familyVisitorWrites`; any other write remains 403 for a co-member.
+- **Notifications are private to their owner, reads included.** A co-member does not
+  read a friend's notifications, unread count or notification preferences. Every route
+  under `/players/{player_slug}/notifications` carries the route guard
+  `middleware.RequirePlayerOwner`, mounted after routing (`r.With`), which decides every
+  method with the write rule (direct owner or admin): 403 `player_forbidden` otherwise.
+  Guardrail: `TestOwnerOnlyRoutesCarryOwnerGuard` (every walked notification route carries
+  the guard) and the co-member replay of `TestFamilyMemberCannotWriteAnyPlayerRoute`
+  (403 on all of them, GET included). The web app shows no bell, no toast and no
+  notification list on a friend's profile, and sends none of these requests.
+
 ## Extensions différées
 
 - **Alts multiples par utilisateur** : `User.XUID` est singulier (1 user ↔ 1 xuid). Le support

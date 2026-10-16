@@ -26,9 +26,10 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
   const [autoChain, setAutoChain] = useState(false)
   const picker = useMediaPicker()
   const toggleLike = useToggleMediaLike(playerSlug)
-  // Profil d'ami (lecture seule) : cœur affiché sans être actif, pas de réassociation.
+  // Profil d'ami (lecture seule) : pas de réassociation. Le cœur reste actif : le like est
+  // l'action du visiteur, attribuée à son propre profil (ADR 0029).
   const canWrite = useCanWritePlayer(playerSlug)
-  const likeDisabled = !canWrite || toggleLike.isPending
+  const likeDisabled = toggleLike.isPending
 
   function handleToggleLike(item: MediaItemRow) {
     const nextLiked = !item.liked

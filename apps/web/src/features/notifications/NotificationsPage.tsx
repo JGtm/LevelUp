@@ -31,19 +31,29 @@ export function NotificationsPage() {
   const [pages, setPages] = useState<Notification[]>([])
   const [cursor, setCursor] = useState<number | undefined>(undefined)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set())
+  // Notifications réservées au propriétaire du profil, lecture comprise (ADR 0029) : sur le
+  // profil d'un ami, la page ne lit rien et l'annonce.
+  const ownsProfile = useCanWritePlayer(playerSlug)
 
   const { data, isLoading, isError, refetch } = useNotificationsList(
     playerSlug,
     { unread_only: unreadOnly, category, limit: PAGE_LIMIT, before_id: cursor },
-    { enabled: !!playerSlug, refetchInterval: 60_000 },
+    { enabled: !!playerSlug && ownsProfile, refetchInterval: 60_000 },
   )
 
   const markRead = useMarkRead({ playerSlug })
   const markUnread = useMarkUnread({ playerSlug })
   const dismiss = useDismiss({ playerSlug })
   const markAllRead = useMarkAllRead({ playerSlug })
-  // Profil d'un ami (lecture seule) : la liste se lit, sans marquage ni suppression.
-  const readOnly = !useCanWritePlayer(playerSlug)
+
+  if (!ownsProfile) {
+    return (
+      <div className="px-4 py-6">
+        <h1 className="mb-6 text-2xl font-semibold">{t.pageTitle}</h1>
+        <p className="py-12 text-center text-sm text-muted-foreground">{t.privateToOwner}</p>
+      </div>
+    )
+  }
 
   // Concat pour pagination cursor (basique, sans duplication-check)
   const items = cursor === undefined ? data?.items ?? [] : pages.concat(data?.items ?? [])
@@ -71,14 +81,14 @@ export function NotificationsPage() {
     <div className="px-4 py-6">
       <header className="mb-6 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">{t.pageTitle}</h1>
-        {!readOnly && <button
+        <button
           type="button"
           onClick={() => markAllRead.mutate(undefined)}
           disabled={markAllRead.isPending}
           className="rounded-md border border-border bg-popover px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
         >
           {t.dropdownMarkAllRead}
-        </button>}
+        </button>
       </header>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -143,12 +153,11 @@ export function NotificationsPage() {
           onMarkRead={(id) => markRead.mutate([id])}
           onMarkUnread={(id) => markUnread.mutate(id)}
           onDismiss={(id) => dismiss.mutate(id)}
-          readOnly={readOnly}
         />
       )}
 
       {/* Bulk action bar — affichée seulement si au moins 1 sélection */}
-      {!readOnly && selectedIds.size > 0 && (
+      {selectedIds.size > 0 && (
         <div
           role="region"
           aria-label={tc('common.notifications.bulk_actions_aria')}
@@ -212,7 +221,6 @@ function Timeline(props: {
   onMarkRead: (id: number) => void
   onMarkUnread: (id: number) => void
   onDismiss: (id: number) => void
-  readOnly: boolean
 }) {
   const groups = useMemo(() => groupByDay(props.items, props.t), [props.items, props.t])
   return (
@@ -225,7 +233,7 @@ function Timeline(props: {
           <div className="divide-y divide-border rounded-md border border-border bg-popover">
             {g.items.map((n) => (
               <div key={n.id} className="flex items-stretch">
-                {!props.readOnly && <label
+                <label
                   className="flex shrink-0 items-center justify-center px-3 hover:bg-accent/30"
                   aria-label={`Sélectionner ${n.id}`}
                 >
@@ -234,7 +242,7 @@ function Timeline(props: {
                     checked={props.selectedIds.has(n.id)}
                     onChange={() => props.onToggleSelect(n.id)}
                   />
-                </label>}
+                </label>
                 <div className="min-w-0 flex-1">
                   <NotificationItem
                     notif={n}
@@ -242,7 +250,6 @@ function Timeline(props: {
                     onMarkRead={props.onMarkRead}
                     onMarkUnread={props.onMarkUnread}
                     onDismiss={props.onDismiss}
-                    readOnly={props.readOnly}
                   />
                 </div>
               </div>

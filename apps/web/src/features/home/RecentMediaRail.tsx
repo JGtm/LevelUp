@@ -27,9 +27,10 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
   const likedQuery = useRecentMediaRail(playerSlug, HOME_MEDIA_LIMIT, true)
   const { data, isLoading, isError } = mediaTab === 'liked' ? likedQuery : recentQuery
   const toggleMediaLike = useToggleMediaLike(playerSlug)
-  // Profil d'ami (lecture seule) : cœur affiché sans être actif, pas de réassociation.
+  // Profil d'ami (lecture seule) : pas de réassociation. Le cœur reste actif : le like est
+  // l'action du visiteur, attribuée à son propre profil (ADR 0029).
   const canWrite = useCanWritePlayer(playerSlug)
-  const likeDisabled = !canWrite || toggleMediaLike.isPending
+  const likeDisabled = toggleMediaLike.isPending
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [autoChain, setAutoChain] = useState(false)
   const picker = useMediaPicker()

@@ -39,7 +39,9 @@ type FamilyXUIDResolver func(ctx context.Context) map[string]bool
 //   - slug inconnu → fail-closed (S7 / audit A1-m1, pas d'énumération de slugs) :
 //     admin → passe (le handler répondra 404) ; tout autre → 403 player_forbidden ;
 //   - lecture : profil possédé OU d'un co-membre de groupe → passe ;
-//   - écriture : profil possédé (ou admin) → passe ; un co-membre est refusé ;
+//   - écriture : profil possédé (ou admin) → passe ; un co-membre est refusé, sauf
+//     pour une action du visiteur (isVisitorAction : le like d'un média), décidée
+//     comme une lecture ;
 //   - sinon → 403 player_forbidden.
 //
 // La classification de la requête est posée dans le contexte (RequestWrites) pour
@@ -57,7 +59,9 @@ func RequirePlayerOwnership(access *PlayerAccess) func(http.Handler) http.Handle
 			}
 			slug := chi.URLParam(r, "player_slug")
 			write := IsMutatingRequest(r)
-			granted, known := access.Allows(r.Context(), sess, slug, write)
+			// Une action du visiteur (like) s'écrit au nom du visiteur : elle se
+			// décide comme une lecture du profil consulté (player_visitor_actions.go).
+			granted, known := access.Allows(r.Context(), sess, slug, write && !isVisitorAction(r))
 			if granted {
 				next.ServeHTTP(w, r.WithContext(withWriteIntent(r.Context(), write)))
 				return

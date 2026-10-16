@@ -948,9 +948,11 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		excl := handlers.NewMatchExclusionHandler(reg.MatchExclusion)
 		excl.Mount(r.With(participated), playerOpt)
 
-		// Système de notifications in-app (per-player).
+		// Système de notifications in-app (per-player). Données privées du profil : la
+		// garde de route RequirePlayerOwner les réserve au propriétaire (ou à l'admin),
+		// lecture comprise ; un co-membre de groupe n'y accède pas (ADR 0029).
 		notifH := handlers.NewNotificationsHandler(reg.Notifications)
-		notifH.Mount(r, playerOpt)
+		notifH.Mount(r.With(middleware.RequirePlayerOwner(playerAccess)), playerOpt)
 
 		// Couche progression V2 (Ascension) — streaks / records / milestones.
 		// Cf. .ai/archive/V7/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
