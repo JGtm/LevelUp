@@ -84,6 +84,10 @@ describe('oauthErrorKey', () => {
     ['code_exchange_failed', 'common.auth.oauth_exchange_failed'],
     ['halo_exchange_failed', 'common.auth.oauth_exchange_failed'],
     ['link_failed', 'common.auth.oauth_failed'],
+    ['redirect_uri_not_configured', 'common.auth.oauth_failed'],
+    ['state_gen_failed', 'common.auth.oauth_failed'],
+    ['pkce_gen_failed', 'common.auth.oauth_failed'],
+    ['session_save_failed', 'common.auth.oauth_failed'],
     ['code-inconnu', 'common.auth.oauth_failed'],
   ])('%s → %s', (code, key) => {
     expect(oauthErrorKey(code)).toBe(key)

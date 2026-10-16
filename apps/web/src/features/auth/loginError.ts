@@ -135,6 +135,11 @@ const OAUTH_ERROR_KEYS: Readonly<Record<string, OAuthErrorKey>> = {
   no_session: 'common.auth.oauth_interrupted',
   code_exchange_failed: 'common.auth.oauth_exchange_failed',
   halo_exchange_failed: 'common.auth.oauth_exchange_failed',
+  // Refus au départ de la connexion (GET /auth/xbox/login) : panne côté serveur, message générique.
+  redirect_uri_not_configured: 'common.auth.oauth_failed',
+  state_gen_failed: 'common.auth.oauth_failed',
+  pkce_gen_failed: 'common.auth.oauth_failed',
+  session_save_failed: 'common.auth.oauth_failed',
 }
 
 /**
