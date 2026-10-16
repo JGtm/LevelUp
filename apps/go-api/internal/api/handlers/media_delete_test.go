@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
 )
 
@@ -39,6 +40,7 @@ func sessionFor(playerSlug, role string) *domain.SessionData {
 	}
 	if role != "" {
 		sess.Role = &role
+		sess.Username = &playerSlug // compte de même nom que le joueur (mediaAccounts)
 	}
 	return sess
 }
@@ -53,7 +55,7 @@ func newDeleteRouter(mock *mockMediaService, authEnforced bool) *chi.Mux {
 	}
 	r := chi.NewRouter()
 	h := handlers.NewMediaHandler(factory, nil, "").WithAuthEnforced(authEnforced).
-		WithRequester(sessionPlayerAsOwnedProfile)
+		WithRequester(sessionPlayerAsOwnedProfile).WithUserLookup(mediaAccounts{"Chocoboflor": domain.RoleAdmin})
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		h.Mount(r)
 	})
@@ -215,3 +217,16 @@ func TestMediaHandler_DeleteMedia_NoAuthEnforced_NoSession_Passes(t *testing.T) 
 		t.Errorf("AuthEnforced doit être false en mono-utilisateur : %+v", mock.delReq)
 	}
 }
+
+// mediaAccounts : comptes des tests de suppression, rôle par nom d'utilisateur (le
+// rôle admin se relit dans le magasin, jamais dans la session).
+type mediaAccounts map[string]domain.UserRole
+
+func (a mediaAccounts) Get(username string) (*domain.User, error) {
+	if role, ok := a[username]; ok {
+		return &domain.User{Username: username, Role: role}, nil
+	}
+	return nil, userstore.ErrUserNotFound
+}
+
+func (a mediaAccounts) GetByXUID(string) (*domain.User, error) { return nil, userstore.ErrUserNotFound }

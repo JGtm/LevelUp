@@ -15,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 )
@@ -39,10 +40,10 @@ func (h *MediaHandler) requesterSlug(ctx context.Context) string {
 	return h.requester(ctx)
 }
 
-// sessionIsAdmin dit si la session porte le rôle admin.
-func sessionIsAdmin(ctx context.Context) bool {
-	sess := middleware.GetSession(ctx)
-	return sess != nil && sess.Role != nil && *sess.Role == string(domain.RoleAdmin)
+// requesterIsAdmin dit si le demandeur est un compte administrateur, rôle relu dans
+// le magasin d'utilisateurs (authz.IsAdmin) ; faux sans magasin câblé.
+func (h *MediaHandler) requesterIsAdmin(ctx context.Context) bool {
+	return authz.IsAdmin(middleware.GetSession(ctx), h.users)
 }
 
 // resolveAssociateRequester pose l'identité du demandeur d'une association média ->
@@ -52,7 +53,7 @@ func sessionIsAdmin(ctx context.Context) bool {
 func (h *MediaHandler) resolveAssociateRequester(ctx context.Context, req *domain.MediaAssociateRequest) error {
 	req.AuthEnforced = h.authEnforced
 	req.RequesterSlug = h.requesterSlug(ctx)
-	req.RequesterIsAdmin = sessionIsAdmin(ctx)
+	req.RequesterIsAdmin = h.requesterIsAdmin(ctx)
 	if !req.AuthEnforced || req.RequesterIsAdmin || req.RequesterSlug != "" {
 		return nil
 	}
@@ -87,4 +88,11 @@ func mediaWriteError(ctx context.Context, err error, forbiddenCode, fallbackCode
 	}
 	slog.ErrorContext(ctx, "media: erreur d'écriture non typée", "err", err, "code", fallbackCode)
 	return humacore.NewError(http.StatusInternalServerError, fallbackCode, err.Error())
+}
+
+// WithUserLookup câble le magasin d'utilisateurs : le rôle admin du demandeur se lit
+// dans son compte, jamais dans la session.
+func (h *MediaHandler) WithUserLookup(users authz.UserLookup) *MediaHandler {
+	h.users = users
+	return h
 }

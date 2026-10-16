@@ -222,7 +222,7 @@ var frenchLabelAllowlist = map[string]int{
 	"api/handlers/teammates.go":                   1,
 	"api/handlers/timeseries.go":                  1,
 	"api/handlers/title_sync.go":                  1,
-	"api/handlers/user_auth.go":                   13,
+	"api/handlers/user_auth.go":                   12,
 	"api/handlers/watcher_handler.go":             3,
 
 	// Non triés — code Halo 5 / mappings / services divers, messages d'erreur internes
@@ -269,7 +269,6 @@ var frenchLabelAllowlist = map[string]int{
 	// (Q4) : leur seul littéral accentué était le repli FR de l'issue de match, supprimé
 	// par la clé canonique (D5).
 	"service/title_diagnostic_service.go": 2,
-	"service/xbox_auth_service.go":        1,
 }
 
 func TestNoNewFrenchLabelLiteral(t *testing.T) {

@@ -328,22 +328,11 @@ func actorUsername(ctx context.Context) string {
 	return *sess.Username
 }
 
-// actorIsAdmin dit si l'appelant est administrateur de l'instance. Priorité au
-// store (authz.CurrentUser : un rôle rétrogradé après l'ouverture de session y
-// est visible) ; sans lookup câblé, repli sur le rôle porté par la session, même
-// source que middleware.RequireAdmin.
+// actorIsAdmin dit si l'appelant est administrateur de l'instance, rôle relu dans le
+// magasin d'utilisateurs (authz.IsAdmin, même règle que middleware.RequireAdmin) :
+// un rôle rétrogradé après l'ouverture de session y est visible. Faux sans lookup.
 func (h *SetupHandler) actorIsAdmin(ctx context.Context) bool {
-	sess := middleware.GetSession(ctx)
-	if sess == nil {
-		return false
-	}
-	if h.userLookup != nil {
-		if u := authz.CurrentUser(sess, h.userLookup); u != nil {
-			return u.Role == domain.RoleAdmin
-		}
-		return false
-	}
-	return sess.Role != nil && *sess.Role == string(domain.RoleAdmin)
+	return authz.IsAdmin(middleware.GetSession(ctx), h.userLookup)
 }
 
 // guardProvisioning applique les deux gardes d'ouverture de l'instance :

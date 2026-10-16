@@ -185,7 +185,7 @@ func TestCurrentUser(t *testing.T) {
 func TestInstanceLocked(t *testing.T) {
 	t.Run("env verrouillé court-circuite le load", func(t *testing.T) {
 		called := false
-		got := InstanceLocked(true, func() (bool, error) {
+		got := InstanceLocked(true, true, func() (bool, error) {
 			called = true
 			return false, nil
 		})
@@ -198,28 +198,34 @@ func TestInstanceLocked(t *testing.T) {
 	})
 
 	t.Run("settings verrouillés", func(t *testing.T) {
-		if !InstanceLocked(false, func() (bool, error) { return true, nil }) {
+		if !InstanceLocked(false, true, func() (bool, error) { return true, nil }) {
 			t.Fatal("settings verrouillés devraient verrouiller")
 		}
 	})
 
 	t.Run("settings non verrouillés", func(t *testing.T) {
-		if InstanceLocked(false, func() (bool, error) { return false, nil }) {
+		if InstanceLocked(false, true, func() (bool, error) { return false, nil }) {
 			t.Fatal("aucune source verrouillée ⇒ non verrouillé")
 		}
 	})
 
-	t.Run("erreur de lecture ⇒ repli non verrouillé", func(t *testing.T) {
-		if InstanceLocked(false, func() (bool, error) { return true, errors.New("illisible") }) {
-			t.Fatal("erreur de lecture ⇒ repli sur non verrouillé (comportement historique)")
+	t.Run("propriété appliquée, erreur de lecture ⇒ verrouillé", func(t *testing.T) {
+		if !InstanceLocked(false, true, func() (bool, error) { return false, errors.New("illisible") }) {
+			t.Fatal("réglages illisibles en mode appliqué ⇒ verrouillé (défaut sûr, ADR 0035 D5 amendée)")
+		}
+	})
+
+	t.Run("propriété non appliquée, erreur de lecture ⇒ non verrouillé", func(t *testing.T) {
+		if InstanceLocked(false, false, func() (bool, error) { return true, errors.New("illisible") }) {
+			t.Fatal("hors propriété appliquée (mono-utilisateur, démo) : aucune identité à opposer, non verrouillé")
 		}
 	})
 
 	t.Run("load nil ⇒ seule la source env compte", func(t *testing.T) {
-		if InstanceLocked(false, nil) {
+		if InstanceLocked(false, true, nil) {
 			t.Fatal("load nil + env libre ⇒ non verrouillé")
 		}
-		if !InstanceLocked(true, nil) {
+		if !InstanceLocked(true, true, nil) {
 			t.Fatal("load nil + env verrouillé ⇒ verrouillé")
 		}
 	})

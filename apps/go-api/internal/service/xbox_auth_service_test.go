@@ -71,7 +71,7 @@ func TestXboxSSOLinkStrategy_InstanceLocked_UnknownXUIDRefused(t *testing.T) {
 	attempt := &auth.Attempt{Gamertag: "Newcomer", XUID: "xuid-unknown-999"}
 
 	err := s.OnAuthSuccess(context.Background(), attempt, sess)
-	if !errors.Is(err, service.ErrInstanceLocked) {
+	if !errors.Is(err, auth.ErrInstanceLocked) {
 		t.Fatalf("OnAuthSuccess sous lockdown (xuid inconnu) : err = %v, want ErrInstanceLocked", err)
 	}
 	if _, gErr := users.GetByXUID("xuid-unknown-999"); gErr == nil {
@@ -473,8 +473,15 @@ func newGroupInviteRig(t *testing.T, locked bool) (*service.XboxSSOLinkStrategy,
 	t.Helper()
 	dir := t.TempDir()
 	users := userstore.NewStore(filepath.Join(dir, "users.json"))
-	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), users)
 	groups := groupstore.NewGroupStore(filepath.Join(dir, "groups.json"))
+	// Émetteurs des invitations de ces tests : une invitation ne vaut que tant que
+	// le compte qui l'a émise existe.
+	for _, issuer := range []string{"Owner", "admin"} {
+		if _, err := users.Create(issuer, "issuer-pass-123", domain.RoleUser); err != nil {
+			t.Fatalf("Create %s : %v", issuer, err)
+		}
+	}
 	s := service.NewXboxSSOLinkStrategy(users).
 		WithInstanceLock(func() bool { return locked }).
 		WithInviteStore(invites).
@@ -501,7 +508,7 @@ func TestXboxSSOLinkStrategy_InviteJoinsGroup_NewUser_BypassLock(t *testing.T) {
 	if got, _ := groups.Get(g.ID); !got.HasMember("newcomer-x") {
 		t.Fatalf("newcomer devrait être membre du groupe : %+v", got.Members)
 	}
-	if gotInv, _ := invites.Get(inv.Code); !gotInv.IsUsed() {
+	if err := invites.Validate(inv.Code); !errors.Is(err, userstore.ErrInviteUsed) {
 		t.Fatal("l'invitation devrait être consommée")
 	}
 	if sess.PendingInviteCode != "" {
@@ -515,7 +522,7 @@ func TestXboxSSOLinkStrategy_InvalidInvite_Locked_Rejected(t *testing.T) {
 	sess := &domain.SessionData{PendingInviteCode: "NOPE"}
 	attempt := &auth.Attempt{XUID: "x", Gamertag: "GT"}
 
-	if err := s.OnAuthSuccess(context.Background(), attempt, sess); !errors.Is(err, service.ErrInstanceLocked) {
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); !errors.Is(err, auth.ErrInstanceLocked) {
 		t.Fatalf("attendu ErrInstanceLocked (invite invalide ignorée), got %v", err)
 	}
 }
@@ -538,7 +545,7 @@ func TestXboxSSOLinkStrategy_ExistingUser_InviteAddsToGroup(t *testing.T) {
 	if got, _ := groups.Get(g.ID); !got.HasMember("exist-x") {
 		t.Fatalf("user existant devrait être ajouté au groupe : %+v", got.Members)
 	}
-	if gotInv, _ := invites.Get(inv.Code); !gotInv.IsUsed() {
+	if err := invites.Validate(inv.Code); !errors.Is(err, userstore.ErrInviteUsed) {
 		t.Fatal("l'invitation devrait être consommée")
 	}
 }
@@ -566,7 +573,7 @@ func TestXboxSSOLinkStrategy_InviteWithoutGroup_Locked_CreatesUserAndGrant(t *te
 	if user.ProvisionGrant != inv.Code {
 		t.Errorf("provision_grant = %q, want %q (droit de créer son profil)", user.ProvisionGrant, inv.Code)
 	}
-	if gotInv, _ := invites.Get(inv.Code); !gotInv.IsUsed() {
+	if err := invites.Validate(inv.Code); !errors.Is(err, userstore.ErrInviteUsed) {
 		t.Error("l'invitation devrait être consommée")
 	}
 	if sess.PendingInviteCode != "" {
@@ -623,7 +630,7 @@ func TestXboxSSOLinkStrategy_ExistingUser_InviteGrantsNothing(t *testing.T) {
 	if user.ProvisionGrant != "" {
 		t.Errorf("provision_grant = %q, want vide (compte préexistant)", user.ProvisionGrant)
 	}
-	if gotInv, _ := invites.Get(inv.Code); !gotInv.IsUsed() {
+	if err := invites.Validate(inv.Code); !errors.Is(err, userstore.ErrInviteUsed) {
 		t.Error("l'invitation devrait tout de même être consommée")
 	}
 }

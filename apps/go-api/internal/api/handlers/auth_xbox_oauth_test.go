@@ -222,7 +222,11 @@ func loadSessionFromResponse(t *testing.T, sessStore *session.Store, w *httptest
 func TestXboxOAuth_LoginRedirect_ValidInviteStored(t *testing.T) {
 	dir := t.TempDir()
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
-	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	users := userstore.NewStore(filepath.Join(dir, "users.json"))
+	if _, err := users.Create("Owner", "owner-pass-123", domain.RoleUser); err != nil {
+		t.Fatalf("Create Owner : %v", err)
+	}
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), users)
 	inv, _ := invites.Generate("Owner", 7, "grp_test")
 
 	h := handlers.NewXboxOAuthHandler(sessStore, &stubTokenProvider{}, false, "http://localhost:8000/cb").
@@ -247,7 +251,7 @@ func TestXboxOAuth_LoginRedirect_ValidInviteStored(t *testing.T) {
 func TestXboxOAuth_LoginRedirect_InvalidInviteIgnored(t *testing.T) {
 	dir := t.TempDir()
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
-	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), userstore.NewStore(filepath.Join(dir, "users.json")))
 
 	h := handlers.NewXboxOAuthHandler(sessStore, &stubTokenProvider{}, false, "http://localhost:8000/cb").
 		WithInviteStore(invites)

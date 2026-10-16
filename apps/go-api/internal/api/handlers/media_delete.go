@@ -83,7 +83,7 @@ func (h *MediaHandler) handleDeleteMedia(ctx context.Context, in *mediaDeleteInp
 func (h *MediaHandler) resolveDeleteRequester(ctx context.Context, req *domain.MediaDeleteRequest) error {
 	req.AuthEnforced = h.authEnforced
 	req.RequesterSlug = h.requesterSlug(ctx)
-	req.RequesterIsAdmin = sessionIsAdmin(ctx)
+	req.RequesterIsAdmin = h.requesterIsAdmin(ctx)
 	if !req.AuthEnforced || req.RequesterIsAdmin || req.RequesterSlug != "" {
 		return nil
 	}

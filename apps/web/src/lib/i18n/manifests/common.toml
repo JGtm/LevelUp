@@ -385,6 +385,52 @@ en = "Connection error."
 fr = "Trop de tentatives de connexion. Réessayez dans 15 minutes."
 en = "Too many sign-in attempts. Try again in 15 minutes."
 
+# ─── Mot de passe du compte (SetPasswordCard) ───────────────────────────────
+
+[common.auth.set_password_title]
+fr = "Définir un mot de passe"
+en = "Set a password"
+
+[common.auth.change_password_title]
+fr = "Changer ton mot de passe"
+en = "Change your password"
+
+[common.auth.set_password_desc]
+fr = "Optionnel — permet de te reconnecter rapidement sans repasser par Xbox."
+en = "Optional — lets you sign back in quickly without going through Xbox."
+
+[common.auth.current_password]
+fr = "Mot de passe actuel"
+en = "Current password"
+
+[common.auth.new_password]
+fr = "Nouveau mot de passe"
+en = "New password"
+
+[common.auth.set_password_submit]
+fr = "Enregistrer"
+en = "Save"
+
+[common.auth.set_password_saved]
+fr = "Mot de passe enregistré."
+en = "Password saved."
+
+[common.auth.password_too_short]
+fr = "Le mot de passe doit faire au moins 8 caractères."
+en = "The password must be at least 8 characters long."
+
+[common.auth.current_password_required]
+fr = "Saisis ton mot de passe actuel."
+en = "Enter your current password."
+
+[common.auth.current_password_invalid]
+fr = "Mot de passe actuel incorrect."
+en = "The current password is incorrect."
+
+[common.auth.set_password_failed]
+fr = "Le mot de passe n'a pas pu être enregistré."
+en = "The password could not be saved."
+
 # ─── Help menu ───────────────────────────────────────────────────────────
 
 [common.help.glossary]

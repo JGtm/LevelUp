@@ -56,8 +56,11 @@ type LoginResponse struct {
 
 // SetPasswordRequest est le body de POST /auth/password (self-service, PR-C).
 // L'utilisateur connecté définit/change son propre mot de passe (opt-in).
+// CurrentPassword est exigé quand le compte a déjà un mot de passe ; un compte
+// créé par la connexion Xbox définit le premier sans lui.
 type SetPasswordRequest struct {
-	Password string `json:"password"`
+	Password        string `json:"password"`
+	CurrentPassword string `json:"current_password,omitempty"`
 }
 
 // RegisterResponse est la réponse de POST /auth/register.

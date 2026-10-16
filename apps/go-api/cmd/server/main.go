@@ -333,14 +333,14 @@ func main() {
 		slog.Info("demo_mode: appels réseau tiers coupés (données seedées, aucune synchronisation)")
 	}
 
-	// Garde-fou de démarrage (revue P0 2026-06-02) : en production
-	// (LEVELUP_ENV=production), refuser de booter avec une configuration non sûre
-	// — secret de session par défaut (cookies forgeables), AuthMode=none
+	// Garde-fou de démarrage (config.Validate) : partout, un mode d'authentification ou
+	// d'inscription inconnu ; en production (LEVELUP_ENV=production), une configuration
+	// non sûre — secret de session par défaut (cookies forgeables), AuthMode=none
 	// (ownership multi-user désactivé), ou origines CORS limitées à localhost.
-	// Hors production, on ne bloque pas mais on émet un avertissement visible.
+	// Hors production, les réglages non sûrs ne bloquent pas mais sont signalés.
 	if err := cfg.Validate(); err != nil {
-		slog.Error("démarrage refusé : configuration non sûre pour la production", "err", err,
-			"hint", "définir LEVELUP_SESSION_SECRET (>=32 octets), LEVELUP_AUTH_MODE=xbox|password et LEVELUP_CORS_ORIGINS, ou retirer LEVELUP_ENV=production")
+		slog.Error("démarrage refusé : configuration invalide ou non sûre", "err", err,
+			"hint", "LEVELUP_AUTH_MODE=none|password|xbox, LEVELUP_REGISTRATION=invite|open|closed ; en production : LEVELUP_SESSION_SECRET (>=32 octets), LEVELUP_AUTH_MODE=xbox|password et LEVELUP_CORS_ORIGINS")
 		os.Exit(1)
 	}
 	logSecurityWarnings(cfg)

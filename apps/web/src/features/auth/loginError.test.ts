@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isTooManyLoginAttempts } from './loginError'
+import { isTooManyLoginAttempts, setPasswordErrorKey } from './loginError'
 
 describe('isTooManyLoginAttempts', () => {
   it('reconnaît le refus du limiteur de l’API', () => {
@@ -22,5 +22,17 @@ describe('isTooManyLoginAttempts', () => {
     ['statut en chaîne', { status: '429' }],
   ])('ignore %s', (_label, err) => {
     expect(isTooManyLoginAttempts(err)).toBe(false)
+  })
+})
+
+describe('setPasswordErrorKey', () => {
+  it('rend la clé du refus, jamais le texte du serveur', () => {
+    expect(setPasswordErrorKey({ status: 429 })).toBe('common.auth.too_many_attempts')
+    expect(setPasswordErrorKey({ status: 403, code: 'invalid_current_password' })).toBe('common.auth.current_password_invalid')
+    expect(setPasswordErrorKey({ status: 400, code: 'current_password_required' })).toBe('common.auth.current_password_required')
+    expect(setPasswordErrorKey({ status: 500, code: 'set_password_error', message: 'internal error' })).toBe(
+      'common.auth.set_password_failed',
+    )
+    expect(setPasswordErrorKey(new Error('réseau'))).toBe('common.auth.set_password_failed')
   })
 })

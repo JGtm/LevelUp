@@ -66,7 +66,7 @@ func TestClientIPLogs_RejectionsCarryClientIP(t *testing.T) {
 		{"csrf", http.MethodPost, "/api/v1/x", "middleware.csrf: origin non autorisée",
 			func(*testing.T) http.Handler { return middleware.CSRF(nil)(ok()) }},
 		{"admin", http.MethodGet, "/api/v1/admin/x", "admin: rejet 403",
-			func(*testing.T) http.Handler { return middleware.RequireAdmin(false, "password")(ok()) }},
+			func(*testing.T) http.Handler { return middleware.RequireAdmin(false, "password", nil)(ok()) }},
 		{"auth", http.MethodGet, "/api/v1/x", "auth: rejet 401 — session non authentifiée",
 			func(*testing.T) http.Handler { return middleware.RequireAuth(false, "password")(ok()) }},
 		{"auth-mutations", http.MethodPost, "/api/v1/players/p/sync", "authz: écriture refusée — aucune session authentifiée",
@@ -74,7 +74,7 @@ func TestClientIPLogs_RejectionsCarryClientIP(t *testing.T) {
 		{"ownership", http.MethodGet, "/players/inconnu/x", "authz: slug joueur inconnu refusé", newOwnershipRouter},
 		{"http", http.MethodGet, "/api/v1/x", "http",
 			func(*testing.T) http.Handler {
-				return middleware.SlogLogger(middleware.RequireAdmin(false, "password")(ok()))
+				return middleware.SlogLogger(middleware.RequireAdmin(false, "password", nil)(ok()))
 			}},
 	}
 	for _, tc := range cases {

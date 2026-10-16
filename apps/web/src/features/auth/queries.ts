@@ -44,11 +44,17 @@ export function useLogout() {
   })
 }
 
+/** Corps de POST /auth/password : `current_password` est exigé quand le compte a déjà un mot de passe. */
+export interface SetPasswordInput {
+  password: string
+  current_password?: string
+}
+
 /** PR-C : définition/changement opt-in du mot de passe de l'utilisateur connecté. */
 export function useSetPassword() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (password: string) => api.post<void>('/auth/password', { password }),
+    mutationFn: (input: SetPasswordInput) => api.post<void>('/auth/password', input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap }),
   })
 }

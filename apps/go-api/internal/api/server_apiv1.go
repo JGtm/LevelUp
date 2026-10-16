@@ -166,10 +166,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// OU app_settings.instance_locked (mutable à chaud via PATCH /settings admin).
 	// Résolu live à chaque appel pour refléter une bascule runtime. Construit ICI et
 	// injecté partout — aucun consommateur ne relit la clé (garde-rail
-	// internal/archlint/no_bare_instance_lock_read_test.go). Le repli sur erreur de
-	// lecture (WARN + non verrouillé) vit dans authz.InstanceLocked.
+	// internal/archlint/no_bare_instance_lock_read_test.go). La décision sur erreur de
+	// lecture (verrouillé en propriété appliquée) vit dans authz.InstanceLocked.
 	instanceLockedFn := func() bool {
-		return authz.InstanceLocked(cfg.InstanceLocked, func() (bool, error) {
+		return authz.InstanceLocked(cfg.InstanceLocked, authz.Enforced(cfg.DemoMode, cfg.AuthMode), func() (bool, error) {
 			s, err := settingsStore.Load()
 			if err != nil {
 				return false, err
@@ -197,7 +197,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// RequireAdmin, inertes en démo et sans auth (e2e, harnais démo, CI).
 	handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Mount(
 		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode),
-			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode)), apiOpt)
+			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users)), apiOpt)
 
 	// Présence en jeu (point Notion 4) : qui joue en ce moment parmi les joueurs
 	// de l'utilisateur, et combien d'AMIS — les joueurs inscrits que l'utilisateur
@@ -239,7 +239,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// des données → RequireAuth + RequireAdmin (admin = accès à tous les joueurs).
 	handlers.NewProgressionBackfillHandler(reg.ProgressionBackfillProvider).Mount(
 		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode),
-			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode)), apiOpt)
+			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users)), apiOpt)
 
 	// Phase A multi-titres : exposition des field mappings TOML.
 	//
@@ -439,7 +439,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	r.Route("/admin", func(r chi.Router) {
 		adminOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/admin")
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 		adminHandler.Mount(r, adminOpt) // users/invites (Huma, sous RequireAuth+RequireAdmin)
 		// Intégrité des données : invariants du pipeline sync par joueur
 		// (Phase 4 du plan .ai/archive/V7/PLAN_SYNC_INVARIANTS_GATE.md). NoStore : le
@@ -518,7 +518,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			autoSyncOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/_diag/auto-sync")
 			r.Use(middleware.LoopbackOnly)
 			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 			autoSyncH.Mount(r, autoSyncOpt) // /snapshot, /run, /probe (loopback + admin)
 		})
 	}
@@ -530,7 +530,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		WithNotifier(reg.NotificationsEmitter)
 	settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore).
 		WithFriendStore(friendStore).
-		WithBackupScheduler(backupScheduler)
+		WithBackupScheduler(backupScheduler).
+		WithUserLookup(users)
 	// Fraîcheur A4.2 : le runner monitoring lit l'âge du dernier backup depuis
 	// le même scheduler (manifest duckdbbackup) — nil toléré (section absente).
 	reg.WithBackupScheduler(backupScheduler)
@@ -539,7 +540,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// le middleware), donc le mode public/démo reste inchangé.
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 		settingsHandler.Mount(r, apiOpt) // /settings + /settings/{media,sessions,backup}/...
 	})
 
@@ -611,7 +612,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// préservé) ; en multi-user, seul un admin peut déclencher.
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 		syncH.MountInitialAndAll(r, apiOpt) // POST /sync/initial, /sync/all (Huma)
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types).
 		// Audit ownership 2026-06-08 (PR-A) : backfill lit player_slug dans le BODY
@@ -907,6 +908,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			// Demandeur des écritures (suppression, like, association) : le profil possédé
 			// par l'utilisateur de la session, jamais son joueur courant (C4-1).
 			WithRequester(requesterPlayerSlugResolver(cfg, users)).
+			WithUserLookup(users).
 			WithAuthorsContext(reg.MediaPlayerCtx, func(_ context.Context, titleSlug string) ([]domain.PlayerSummary, error) {
 				return cfg.LoadPlayers(titleSlug)
 			}).
@@ -1093,7 +1095,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	r.Route("/watcher", func(r chi.Router) {
 		watcherOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/watcher")
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 		// status/auth-status/subscriptions/auth-start migrés vers Huma (watcherHandler.Mount).
 		watcherHandler.Mount(r, watcherOpt)
 	})
@@ -1541,7 +1543,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	observability.PublishDuckDBBudgets(func() any { return platform_duckdb.BudgetsSnapshot() })
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 		r.Mount("/debug/vars", http.DefaultServeMux)
 	})
 

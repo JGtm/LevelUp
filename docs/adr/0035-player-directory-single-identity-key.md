@@ -2,6 +2,7 @@
 
 **Status**: Accepted (2026-09-15). Amended at closure (2026-09-16) after two adversarial
 review rounds — see the *Amended at closure* notes under D2, D3, D5, D6 and the Outcome section.
+Amended again on 2026-10-16 (D5: unreadable settings lock the instance when ownership is enforced).
 
 **Branch**: `wt/player-directory` (worktree `LevelUp-wt-player-directory`, base `feat/v75`)
 
@@ -141,6 +142,21 @@ production instance had to be locked by editing the file). When the lock is forc
 environment (`LEVELUP_INSTANCE_LOCKED`), a request to lift it from the settings is refused with
 `409 instance_lock_forced` and nothing is written: the file cannot open what the environment
 closes, and the switch says so instead of silently snapping back.
+
+*Amended (2026-10-16, security plan of 2026-10-15, lot L4-12, user decision of
+2026-10-15):* **unreadable settings now lock the instance when ownership is enforced.** Until
+then `authz.InstanceLocked` fell back to *unlocked* when `app_settings.json` could not be read
+or decoded, on the grounds that a corrupt file should not shut the administrator out. That
+reasoning did not hold: the lock never shuts anyone out — existing accounts (the administrator
+included) keep signing in, and an administrator is exempt from the lock on `POST /setup/players`;
+the lock only refuses *new* identities (unknown xuid at SSO, registration, self-provisioning).
+Failing open, on the other hand, turned a corrupt or mistyped file into an open door on an
+instance its administrator had closed. The fallback is now inverted: `InstanceLocked(envLocked,
+enforced, load)` returns *locked* on a read error when `authz.Enforced` holds, and logs the error
+at ERROR; without enforcement (single-user, demo) it stays unlocked (there is no identity to
+oppose). The settings toggle (`PATCH /settings {instance_locked}`) now re-reads the caller's
+role from the user store (`authz.IsAdmin`, same lot, L4-5), which closes the "settings toggle
+still trusts `sess.Role`" item left open in the Outcome below.
 
 ### D6 — Purge never touches the shared warehouse
 

@@ -23,3 +23,24 @@ export function isTooManyLoginAttempts(err: unknown): boolean {
     (err as { status?: unknown }).status === TOO_MANY_REQUESTS
   )
 }
+
+/** Clés i18n des messages de refus de POST /auth/password. */
+export type SetPasswordErrorKey =
+  | 'common.auth.too_many_attempts'
+  | 'common.auth.current_password_invalid'
+  | 'common.auth.current_password_required'
+  | 'common.auth.set_password_failed'
+
+/**
+ * Message localisé d'un refus de changement de mot de passe : excès de tentatives,
+ * mot de passe actuel faux ou manquant, sinon un échec générique (jamais le texte
+ * brut du serveur).
+ */
+export function setPasswordErrorKey(err: unknown): SetPasswordErrorKey {
+  if (isTooManyLoginAttempts(err)) return 'common.auth.too_many_attempts'
+  const code =
+    typeof err === 'object' && err !== null && 'code' in err ? (err as { code?: unknown }).code : undefined
+  if (code === 'invalid_current_password') return 'common.auth.current_password_invalid'
+  if (code === 'current_password_required') return 'common.auth.current_password_required'
+  return 'common.auth.set_password_failed'
+}

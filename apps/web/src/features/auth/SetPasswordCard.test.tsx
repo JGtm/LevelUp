@@ -10,7 +10,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { SetPasswordCard } from './SetPasswordCard'
 
 describe('SetPasswordCard', () => {
-  afterEach(() => useAppShellStore.setState({ hasPassword: false }))
+  afterEach(() => useAppShellStore.setState({ hasPassword: false, locale: 'fr' }))
 
   it('refuse si les mots de passe ne correspondent pas', () => {
     const { container } = renderWithProviders(<SetPasswordCard />)
@@ -53,5 +53,73 @@ describe('SetPasswordCard', () => {
     useAppShellStore.setState({ hasPassword: true })
     renderWithProviders(<SetPasswordCard />)
     expect(screen.getByText(/Changer ton mot de passe/i)).toBeInTheDocument()
+  })
+
+  it('compte avec mot de passe : le mot de passe actuel est demandé et envoyé', async () => {
+    let body: unknown = null
+    server.use(
+      http.post('/api/v1/auth/password', async ({ request }) => {
+        body = await request.json()
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    useAppShellStore.setState({ hasPassword: true })
+    const { container } = renderWithProviders(<SetPasswordCard />)
+    expect(screen.getByLabelText('Mot de passe actuel')).toBeInTheDocument()
+    expect(screen.getByLabelText('Nouveau mot de passe')).toBeInTheDocument()
+    fireEvent.change(container.querySelector('#set-pwd-current')!, { target: { value: 'Ancien123' } })
+    fireEvent.change(container.querySelector('#set-pwd')!, { target: { value: 'Abcd1234' } })
+    fireEvent.change(container.querySelector('#set-pwd-confirm')!, { target: { value: 'Abcd1234' } })
+    fireEvent.click(screen.getByRole('button', { name: /Enregistrer/i }))
+    await waitFor(() => {
+      expect(screen.getByText('Mot de passe enregistré.')).toBeInTheDocument()
+    })
+    expect(body).toEqual({ password: 'Abcd1234', current_password: 'Ancien123' })
+  })
+
+  it('compte Xbox sans mot de passe : pas de champ « actuel », premier mot de passe seul', async () => {
+    let body: unknown = null
+    server.use(
+      http.post('/api/v1/auth/password', async ({ request }) => {
+        body = await request.json()
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const { container } = renderWithProviders(<SetPasswordCard />)
+    expect(container.querySelector('#set-pwd-current')).toBeNull()
+    fireEvent.change(container.querySelector('#set-pwd')!, { target: { value: 'Abcd1234' } })
+    fireEvent.change(container.querySelector('#set-pwd-confirm')!, { target: { value: 'Abcd1234' } })
+    fireEvent.click(screen.getByRole('button', { name: /Enregistrer/i }))
+    await waitFor(() => {
+      expect(screen.getByText('Mot de passe enregistré.')).toBeInTheDocument()
+    })
+    expect(body).toEqual({ password: 'Abcd1234' })
+  })
+
+  it('mot de passe actuel faux : message clair', async () => {
+    server.use(
+      http.post('/api/v1/auth/password', () =>
+        HttpResponse.json(
+          { code: 'invalid_current_password', message: 'current password is incorrect', retryable: false },
+          { status: 403 },
+        ),
+      ),
+    )
+    useAppShellStore.setState({ hasPassword: true })
+    const { container } = renderWithProviders(<SetPasswordCard />)
+    fireEvent.change(container.querySelector('#set-pwd-current')!, { target: { value: 'Faux12345' } })
+    fireEvent.change(container.querySelector('#set-pwd')!, { target: { value: 'Abcd1234' } })
+    fireEvent.change(container.querySelector('#set-pwd-confirm')!, { target: { value: 'Abcd1234' } })
+    fireEvent.click(screen.getByRole('button', { name: /Enregistrer/i }))
+    expect(await screen.findByText('Mot de passe actuel incorrect.')).toBeInTheDocument()
+  })
+
+  it('libellés en anglais quand la langue est l\'anglais', () => {
+    useAppShellStore.setState({ hasPassword: true, locale: 'en' })
+    renderWithProviders(<SetPasswordCard />)
+    expect(screen.getByText('Change your password')).toBeInTheDocument()
+    expect(screen.getByLabelText('Current password')).toBeInTheDocument()
+    expect(screen.getByLabelText('New password')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
   })
 })

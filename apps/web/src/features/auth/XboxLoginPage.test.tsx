@@ -207,6 +207,19 @@ describe('XboxLoginPage', () => {
     expect(startCount).toBeGreaterThanOrEqual(2)
   })
 
+  it('compte inconnu refusé par le verrou d\'instance : message clair, aucune redirection', async () => {
+    server.use(
+      http.get('/api/v1/auth/device-flow/:attemptId', () =>
+        HttpResponse.json({ attempt_id: 'att-1', status: 'failed', error_code: 'instance_locked' }),
+      ),
+    )
+    renderWithProviders(<XboxLoginPage />)
+    expect(
+      await screen.findByText('Cette instance est fermée aux nouvelles inscriptions.', {}, { timeout: 8000 }),
+    ).toBeInTheDocument()
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
   it('toggle "Retour à la connexion Xbox" depuis le panel admin', async () => {
     renderWithProviders(<XboxLoginPage />)
     await waitFor(() => {

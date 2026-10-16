@@ -32,6 +32,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -158,6 +159,7 @@ type MediaHandler struct {
 	isProduction      bool                        // défaut de rétention source (env LEVELUP_ENV=production)
 	authEnforced      bool                        // true = multi-user authentifié (like sans session refusé)
 	requester         RequesterSlugResolver       // joueur possédé par l'utilisateur de la session (media_requester.go)
+	users             authz.UserLookup            // relecture du rôle admin (media_requester.go)
 }
 
 // NewMediaHandler crée un MediaHandler.

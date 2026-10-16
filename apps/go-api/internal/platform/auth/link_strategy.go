@@ -48,6 +48,11 @@ var _ LinkStrategy = (*PasswordLinkStrategy)(nil)
 // (cas "mode password sans login préalable" — ne devrait pas arriver mais safe).
 var ErrSessionNotAuthenticated = errors.New("link_strategy: session sans username (auth requise)")
 
+// ErrInstanceLocked est retournée par une stratégie qui refuse une identité inconnue
+// sur une instance fermée (lockdown). La session ne doit alors porter aucune trace
+// d'authentification.
+var ErrInstanceLocked = errors.New("link_strategy: instance locked, new identity refused")
+
 // OnAuthSuccess lie le gamertag/XUID au user déjà connecté.
 // No-op si le gamertag est vide (failsafe) ou si la session n'a pas d'username.
 func (s *PasswordLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *Attempt, sess *domain.SessionData) error {

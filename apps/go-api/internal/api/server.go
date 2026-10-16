@@ -698,7 +698,7 @@ func NewRouter(
 	usersPath := cfg.UsersFilePath()
 	invitesPath := filepath.Join(cfg.AuthDir, "invites.json")
 	users := userstore.NewStore(usersPath)
-	invites := userstore.NewInviteStore(invitesPath)
+	invites := userstore.NewInviteStore(invitesPath, users)
 
 	r := chi.NewRouter()
 

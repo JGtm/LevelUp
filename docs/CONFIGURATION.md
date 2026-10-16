@@ -206,8 +206,8 @@ auto-detection) before any `os.Getenv` read.
 | `LEVELUP_SESSION_SECRET` | Session signing secret. Must be overridden in production. | `CHANGE_ME_IN_PRODUCTION` |
 | `LEVELUP_ENV` | `production` enables prod hardening (HTTPS-only cookies, etc.). | dev |
 | `LEVELUP_CORS_ORIGINS` | Comma-separated allowed CORS origins. | (none) |
-| `LEVELUP_AUTH_MODE` | Auth mode. | `none` |
-| `LEVELUP_REGISTRATION` | Registration mode. | `invite` |
+| `LEVELUP_AUTH_MODE` | Auth mode: `none`, `password` or `xbox` (case and surrounding spaces ignored). Any other value refuses to start. | `none` |
+| `LEVELUP_REGISTRATION` | Registration mode: `invite`, `open` or `closed` (case and surrounding spaces ignored). Any other value refuses to start. | `invite` |
 | `LEVELUP_COOKIE_SECURE` | Force/disable the `Secure` cookie flag. | auto |
 | `LEVELUP_TRUST_PROXY_HEADERS` | Behind a reverse proxy that overwrites them on every request: read the client IP from `X-Real-IP` and the scheme from `X-Forwarded-Proto`. No other client-IP header is read. | `false` |
 | `LEVELUP_INSTANCE_LOCKED` | Lock the instance to existing users. | `false` |

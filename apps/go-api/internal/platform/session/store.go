@@ -89,13 +89,14 @@ type Store struct {
 	mu sync.RWMutex
 	// now : horloge du store (time.Now ; WithClock la remplace dans les tests).
 	now func() time.Time
-	// marksMu protège marks. Verrou DISTINCT de mu : Delete, qui oublie une marque, est
+	// marksMu protège marks et revoked. Verrou DISTINCT de mu : Delete, qui oublie une marque, est
 	// appelé par Load sous mu.RLock. Quand les deux sont tenus : mu d'abord, marksMu ensuite.
 	marksMu sync.Mutex
 	// marks : pour chaque session, ce que porte son fichier d'après la DERNIÈRE écriture de
 	// ce process — en mémoire seulement, jamais dans le JSON. Marque absente (session jamais
 	// écrite par ce process, redémarrage) : Touch écrit.
-	marks map[string]persistMark
+	marks   map[string]persistMark
+	revoked map[string]revocation // identifiants révoqués récemment (revoke.go)
 }
 
 // persistMark : ce que porte le fichier d'une session d'après la dernière écriture de ce
@@ -127,11 +128,12 @@ func NewStore(dir string, ttl time.Duration, secret string, opts ...StoreOption)
 		slog.Error("session: création du répertoire de sessions échouée", "dir", dir, "err", err)
 	}
 	s := &Store{
-		dir:    dir,
-		ttl:    ttl,
-		secret: []byte(secret),
-		now:    time.Now,
-		marks:  make(map[string]persistMark),
+		dir:     dir,
+		ttl:     ttl,
+		secret:  []byte(secret),
+		now:     time.Now,
+		marks:   make(map[string]persistMark),
+		revoked: make(map[string]revocation),
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -212,7 +214,9 @@ func (s *Store) save(sess *domain.SessionData, content [sha256.Size]byte) error 
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
+	if s.isRevoked(sess.SessionID) {
+		return ErrSessionRevoked
+	}
 	target := s.path(sess.SessionID)
 	tmp, err := os.CreateTemp(s.dir, sanitizeID(sess.SessionID)+"-*"+tmpSuffix)
 	if err != nil {
@@ -479,6 +483,7 @@ func (s *Store) pruneMarks() {
 			delete(s.marks, id)
 		}
 	}
+	s.pruneRevokedLocked()
 }
 
 // sanitizeID conserve uniquement les caractères alphanumériques et tirets.

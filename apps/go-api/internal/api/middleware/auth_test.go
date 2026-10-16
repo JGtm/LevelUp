@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -95,7 +96,7 @@ func TestRequireAuth_PasswordMode_WithUsername_200(t *testing.T) {
 // --- RequireAdmin tests ---
 
 func TestRequireAdmin_NoSession_403(t *testing.T) {
-	mw := RequireAdmin(false, "password")
+	mw := RequireAdmin(false, "password", adminAccounts{"boss": domain.RoleAdmin})
 	handler := mw(okHandler)
 
 	rr := httptest.NewRecorder()
@@ -108,13 +109,14 @@ func TestRequireAdmin_NoSession_403(t *testing.T) {
 }
 
 func TestRequireAdmin_UserRole_403(t *testing.T) {
-	mw := RequireAdmin(false, "password")
+	mw := RequireAdmin(false, "password", adminAccounts{"boss": domain.RoleAdmin})
 	handler := mw(okHandler)
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/admin/test", nil)
 	role := "user"
-	sess := &domain.SessionData{SessionID: "test-sess", Role: &role}
+	boss := "bob" // compte au rôle utilisateur (absent des admins)
+	sess := &domain.SessionData{SessionID: "test-sess", Username: &boss, Role: &role}
 	req = withSession(req, sess)
 	handler.ServeHTTP(rr, req)
 
@@ -124,13 +126,14 @@ func TestRequireAdmin_UserRole_403(t *testing.T) {
 }
 
 func TestRequireAdmin_AdminRole_200(t *testing.T) {
-	mw := RequireAdmin(false, "password")
+	mw := RequireAdmin(false, "password", adminAccounts{"boss": domain.RoleAdmin})
 	handler := mw(okHandler)
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/admin/test", nil)
 	role := "admin"
-	sess := &domain.SessionData{SessionID: "test-sess", Role: &role}
+	boss := "boss"
+	sess := &domain.SessionData{SessionID: "test-sess", Username: &boss, Role: &role}
 	req = withSession(req, sess)
 	handler.ServeHTTP(rr, req)
 
@@ -141,7 +144,7 @@ func TestRequireAdmin_AdminRole_200(t *testing.T) {
 
 func TestRequireAdmin_AuthModeNone_200(t *testing.T) {
 	// En auth_mode=none (usage local sans auth), RequireAdmin doit être transparent.
-	mw := RequireAdmin(false, "none")
+	mw := RequireAdmin(false, "none", nil)
 	handler := mw(okHandler)
 
 	rr := httptest.NewRecorder()
@@ -156,7 +159,7 @@ func TestRequireAdmin_AuthModeNone_200(t *testing.T) {
 
 func TestRequireAdmin_DemoMode_200(t *testing.T) {
 	// En mode démo, RequireAdmin doit être transparent même sans session.
-	mw := RequireAdmin(true, "password")
+	mw := RequireAdmin(true, "password", nil)
 	handler := mw(okHandler)
 
 	rr := httptest.NewRecorder()
@@ -166,4 +169,18 @@ func TestRequireAdmin_DemoMode_200(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("demo mode sans session: status = %d, want 200", rr.Code)
 	}
+}
+
+// adminAccounts : comptes des tests de RequireAdmin, rôle par nom d'utilisateur.
+type adminAccounts map[string]domain.UserRole
+
+func (a adminAccounts) Get(username string) (*domain.User, error) {
+	if role, ok := a[username]; ok {
+		return &domain.User{Username: username, Role: role}, nil
+	}
+	return nil, errors.New("utilisateur introuvable")
+}
+
+func (a adminAccounts) GetByXUID(string) (*domain.User, error) {
+	return nil, errors.New("utilisateur introuvable")
 }

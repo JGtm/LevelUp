@@ -239,9 +239,9 @@ func load(fromRepo bool) (*AppConfig, error) {
 		AppVersion:        getEnvOrDefault("LEVELUP_APP_VERSION", "dev"),
 		DiscordWebhookURL: loadDiscordWebhookURL(appSettingsPath),
 		AuthDir:           st.path("LEVELUP_AUTH_DIR", filepath.Join(repoRoot, "data", "auth"), titlePkg.DemoLayout.AuthDir),
-		AuthMode:          getEnvOrDefault("LEVELUP_AUTH_MODE", "none"),
+		AuthMode:          normalizeMode(getEnvOrDefault("LEVELUP_AUTH_MODE", ""), defaultAuthMode),
 		OAuthRedirectURI:  getEnvOrDefault("LEVELUP_OAUTH_REDIRECT_URI", ""),
-		RegistrationMode:  getEnvOrDefault("LEVELUP_REGISTRATION", "invite"),
+		RegistrationMode:  normalizeMode(getEnvOrDefault("LEVELUP_REGISTRATION", ""), defaultRegistrationMode),
 		Environment:       getEnvOrDefault("LEVELUP_ENV", ""),
 		TrustProxyHeaders: parseBoolEnv(getEnvOrDefault("LEVELUP_TRUST_PROXY_HEADERS", "")),
 		InstanceLocked:    parseBoolEnv(getEnvOrDefault("LEVELUP_INSTANCE_LOCKED", "")),
@@ -345,13 +345,13 @@ func (c *AppConfig) corsAllLocalhost() bool {
 	return true
 }
 
-// Validate applique le garde-fou de démarrage. En production (LEVELUP_ENV=production)
-// et hors DemoMode, refuse de démarrer si la configuration est non sûre. Hors
-// production, ne renvoie jamais d'erreur — les avertissements restent consultables
-// via SecurityWarnings() pour un log au boot. À appeler explicitement depuis
-// cmd/server ; LoadServer et Load ne valident pas (Load sert les CLI et les tests, avec des
-// défauts de dev).
+// Validate applique le garde-fou de démarrage (cmd/server ; Load et LoadServer ne valident
+// pas). Partout : refus d'un mode d'auth ou d'inscription inconnu (config_auth.go). En
+// production hors DemoMode : refus d'une configuration non sûre (SecurityWarnings).
 func (c *AppConfig) Validate() error {
+	if err := c.validateModes(); err != nil {
+		return err
+	}
 	if c.DemoMode || !c.IsProduction() {
 		return nil
 	}

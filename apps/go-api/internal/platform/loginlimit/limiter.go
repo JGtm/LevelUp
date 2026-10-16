@@ -99,11 +99,17 @@ func (l *Limiter) RecordSuccess(identifier, ip string) {
 // normalizeIdentifier ramène un identifiant à sa clé : sans espaces de bord, en
 // minuscules (même règle que la clé du magasin d'utilisateurs), tronqué.
 func normalizeIdentifier(identifier string) string {
-	key := strings.ToLower(strings.TrimSpace(identifier))
-	if r := []rune(key); len(r) > maxIdentifierRunes {
-		key = string(r[:maxIdentifierRunes])
+	return Truncate(strings.ToLower(strings.TrimSpace(identifier)))
+}
+
+// Truncate borne un identifiant de connexion fourni par le client à 64 caractères :
+// forme sous laquelle il est journalisé (un identifiant de plusieurs mégaoctets ne
+// remplit pas les journaux) et, normalisé, sa clé de comptage.
+func Truncate(identifier string) string {
+	if r := []rune(identifier); len(r) > maxIdentifierRunes {
+		return string(r[:maxIdentifierRunes])
 	}
-	return key
+	return identifier
 }
 
 // remaining rend le temps de blocage restant de la clé (0 si elle n'est pas

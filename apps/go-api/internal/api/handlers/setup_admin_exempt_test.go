@@ -8,9 +8,11 @@ package handlers_test
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -63,7 +65,8 @@ func newGuardRouter(t *testing.T, locked, canSelfProvision bool, svc *mockDirect
 
 	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore).
 		WithDirectory(svc).
-		WithInstanceLock(func() bool { return locked })
+		WithInstanceLock(func() bool { return locked }).
+		WithUserLookup(guardMatrixAccounts{})
 
 	r := chi.NewRouter()
 	h.Mount(r)
@@ -183,4 +186,20 @@ func (demotedLookup) Get(username string) (*domain.User, error) {
 
 func (demotedLookup) GetByXUID(xuid string) (*domain.User, error) {
 	return &domain.User{XUID: xuid, Role: domain.RoleUser}, nil
+}
+
+// guardMatrixAccounts : les comptes de la matrice, dont le rôle est celui que porte
+// leur nom (« compte-admin », « compte-user ») : le rôle se relit dans le magasin.
+type guardMatrixAccounts struct{}
+
+func (guardMatrixAccounts) Get(username string) (*domain.User, error) {
+	role, ok := strings.CutPrefix(username, "compte-")
+	if !ok {
+		return nil, errors.New("compte inconnu")
+	}
+	return &domain.User{Username: username, Role: domain.UserRole(role)}, nil
+}
+
+func (guardMatrixAccounts) GetByXUID(string) (*domain.User, error) {
+	return nil, errors.New("compte inconnu")
 }

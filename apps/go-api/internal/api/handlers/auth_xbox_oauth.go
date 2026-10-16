@@ -189,7 +189,21 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	xstsRTA := h.tryAcquireXSTSForRTA(r, tokenResult.AccessToken)
+	if !h.completeOAuthCallback(w, r, sess, tokenResult, exchangeResult, xstsRTA) {
+		return
+	}
 
+	// Redirect vers postLoginURL (front prend la suite).
+	http.Redirect(w, r, h.postLoginURL, http.StatusFound)
+}
+
+// completeOAuthCallback termine le callback une fois les échanges avec Microsoft
+// faits : identité complétée, connexion, persistance du refresh token. Rend faux,
+// réponse d'erreur écrite, si la connexion est refusée.
+func (h *XboxOAuthHandler) completeOAuthCallback(
+	w http.ResponseWriter, r *http.Request, sess *domain.SessionData,
+	tokenResult *auth_platform.AuthCodeResult, exchangeResult *auth_platform.ExchangeResult, xstsRTA *auth_platform.XSTSResult,
+) bool {
 	// L'audience XSTS Halo ne renvoie que `uhs` dans DisplayClaims (pas xid/gtg) :
 	// suffisant pour les tokens Halo, mais pas pour identifier le joueur au login SSO.
 	// Le XSTS Xbox Live (xstsRTA, relying party http://xboxlive.com) porte lui xid +
@@ -203,24 +217,44 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Persistance ADR 0023 du RT frais APRÈS résolution d'identité : le XUID vient
-	// souvent de xstsRTA (l'exchange Halo ne renvoie que `uhs`). Garantit que le
-	// store reçoit le RT e1cb35ab frais → pas de split-brain au refresh suivant.
-	h.persistRefreshTokenToStore(r, exchangeResult.XUID, exchangeResult.Gamertag, tokenResult.RefreshToken)
-
-	attempt := buildXboxOAuthAttempt(tokenResult, exchangeResult, xstsRTA)
-
-	if !h.linkAttemptToSession(w, r, attempt, sess) {
-		return
+	if !h.finishOAuthLogin(w, r, sess, buildXboxOAuthAttempt(tokenResult, exchangeResult, xstsRTA)) {
+		return false
 	}
 
-	h.persistSessionAfterOAuth(r, sess, exchangeResult)
-
+	// Persistance ADR 0023 du RT frais, APRÈS la décision de connexion : une identité
+	// refusée (instance verrouillée) ne laisse aucun fichier de jetons. Et après la
+	// résolution d'identité : le XUID vient souvent de xstsRTA (l'exchange Halo ne
+	// renvoie que `uhs`). Le store reçoit le RT frais → pas de split-brain au refresh
+	// suivant.
+	h.persistRefreshTokenToStore(r, exchangeResult.XUID, exchangeResult.Gamertag, tokenResult.RefreshToken)
 	slog.InfoContext(r.Context(), "auth_xbox_oauth: login réussi via Authorization Code Flow",
 		"gamertag", exchangeResult.Gamertag, "xuid", exchangeResult.XUID)
+	return true
+}
 
-	// Redirect vers postLoginURL (front prend la suite).
-	http.Redirect(w, r, h.postLoginURL, http.StatusFound)
+// finishOAuthLogin applique la stratégie post-flux (completeLogin : rien n'est écrit
+// dans la session si elle refuse), puis renouvelle l'identifiant de session. Rend
+// faux, réponse d'erreur écrite, si la stratégie refuse : 403 instance_locked pour
+// une identité inconnue sur instance verrouillée, 500 link_failed sinon.
+func (h *XboxOAuthHandler) finishOAuthLogin(
+	w http.ResponseWriter, r *http.Request, sess *domain.SessionData, attempt *auth_platform.Attempt,
+) bool {
+	if err := completeLogin(r.Context(), h.linkStrategy, attempt, sess); err != nil {
+		code := loginFailureCode(err)
+		slog.WarnContext(r.Context(), "auth_xbox_oauth: connexion refusée par la stratégie post-flux",
+			"xuid", attempt.XUID, "error_code", code, "err", err)
+		if errors.Is(err, auth_platform.ErrInstanceLocked) {
+			writeError(r.Context(), w, http.StatusForbidden, code, "this instance does not accept new accounts")
+		} else {
+			writeError(r.Context(), w, http.StatusInternalServerError, code, "sign-in could not be completed")
+		}
+		return false
+	}
+	// Nouvel identifiant de session : un cookie planté avant la connexion ne vaut rien.
+	if _, err := h.sessionStore.Rotate(sess); err != nil {
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: rotation de la session post-login échouée", "err", err)
+	}
+	return true
 }
 
 // validateCallbackParams vérifie error/code/state + CSRF, écrit la réponse d'erreur
@@ -342,45 +376,4 @@ func buildXboxOAuthAttempt(
 		attempt.XSTSRTAExpiresAt = xstsRTA.NotAfter
 	}
 	return attempt
-}
-
-// linkAttemptToSession invoque LinkStrategy.OnAuthSuccess. Retourne true si OK
-// (ou erreur tolérée non-bloquante), false si l'erreur est fatale (réponse écrite).
-func (h *XboxOAuthHandler) linkAttemptToSession(
-	w http.ResponseWriter, r *http.Request, attempt *auth_platform.Attempt, sess *domain.SessionData,
-) bool {
-	if h.linkStrategy == nil {
-		return true
-	}
-	if err := h.linkStrategy.OnAuthSuccess(r.Context(), attempt, sess); err != nil {
-		if errors.Is(err, auth_platform.ErrSessionNotAuthenticated) {
-			slog.WarnContext(r.Context(), "auth_xbox_oauth: LinkStrategy renvoie ErrSessionNotAuthenticated")
-			return true
-		}
-		slog.ErrorContext(r.Context(), "auth_xbox_oauth: LinkStrategy.OnAuthSuccess échec", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "link_failed", err.Error())
-		return false
-	}
-	return true
-}
-
-// persistSessionAfterOAuth renseigne les Halo tokens et l'identité, puis sauvegarde la session.
-func (h *XboxOAuthHandler) persistSessionAfterOAuth(
-	r *http.Request, sess *domain.SessionData, exchangeResult *auth_platform.ExchangeResult,
-) {
-	sess.AuthReady = true
-	sess.HaloTokens = &domain.HaloTokens{
-		SpartanToken:     exchangeResult.Tokens.SpartanToken,
-		ClearanceToken:   exchangeResult.Tokens.ClearanceToken,
-		SpartanExpiresAt: exchangeResult.Tokens.SpartanExpiresAt,
-	}
-	if exchangeResult.Gamertag != "" {
-		sess.LinkedHaloIdentity = &domain.HaloIdentity{
-			Gamertag: exchangeResult.Gamertag,
-			XUID:     exchangeResult.XUID,
-		}
-	}
-	if err := h.sessionStore.Save(sess); err != nil {
-		slog.ErrorContext(r.Context(), "auth_xbox_oauth: save session post-login échec", "err", err)
-	}
 }

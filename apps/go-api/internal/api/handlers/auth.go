@@ -218,39 +218,38 @@ func (h *AuthHandler) handleGetDeviceFlowStatus(ctx context.Context, in *deviceF
 		return nil, humacore.NewError(http.StatusNotFound, "attempt_not_found", "tentative introuvable")
 	}
 
-	// Si l'auth a réussi, transférer les données Halo dans la session.
-	if snapshot.Status == auth_platform.AttemptStatusAuthorized || snapshot.Status == auth_platform.AttemptStatusProvisioned {
-		sess.AuthReady = true
-		if snapshot.Gamertag != "" {
-			sess.LinkedHaloIdentity = &domain.HaloIdentity{
-				Gamertag: snapshot.Gamertag,
-				XUID:     snapshot.XUID,
-			}
+	// Autorisée par Microsoft : la tentative est remise UNE fois à la session (statut
+	// provisioned), puis la connexion est complétée ou refusée.
+	if snapshot.Status == auth_platform.AttemptStatusAuthorized {
+		if claimed, ok := h.attempts.ClaimAuthorized(in.AttemptID, sess.SessionID); ok {
+			h.finishDeviceFlowLogin(ctx, claimed, sess)
 		}
-		// Stocker les tokens Halo dans la session (jamais exposés au navigateur).
-		if snapshot.SpartanToken != "" {
-			sess.HaloTokens = &domain.HaloTokens{
-				SpartanToken:     snapshot.SpartanToken,
-				ClearanceToken:   snapshot.ClearanceToken,
-				SpartanExpiresAt: snapshot.SpartanExpiresAt,
-			}
-		}
-		// LinkStrategy gère le post-flow (password : LinkIdentity ; xbox SSO : login direct).
-		if h.linkStrategy != nil && snapshot.Gamertag != "" {
-			if err := h.linkStrategy.OnAuthSuccess(ctx, snapshot, sess); err != nil {
-				slog.ErrorContext(ctx, "auth: LinkStrategy.OnAuthSuccess échec",
-					"attempt_id", in.AttemptID, "err", err)
-			}
-		}
-		if err := h.sessionStore.Save(sess); err != nil {
-			// Échec de persistance après login réussi : la session en cours reste
-			// valide, mais la prochaine requête repartira sans l'identité liée.
-			slog.ErrorContext(ctx, "auth: persistance session post-login échouée",
-				"attempt_id", in.AttemptID, "err", err)
+		if snapshot = h.attempts.Snapshot(in.AttemptID); snapshot == nil {
+			return nil, humacore.NewError(http.StatusNotFound, "attempt_not_found", "tentative introuvable")
 		}
 	}
 
 	return &deviceFlowStatusOutput{Body: deviceFlowStatusResponse(snapshot)}, nil
+}
+
+// finishDeviceFlowLogin complète la connexion d'une tentative remise à la session.
+// Si la stratégie post-flux refuse (instance verrouillée, création de compte
+// impossible), la tentative passe en échec et la session reste non authentifiée.
+func (h *AuthHandler) finishDeviceFlowLogin(ctx context.Context, claimed *auth_platform.Attempt, sess *domain.SessionData) {
+	if err := completeLogin(ctx, h.linkStrategy, claimed, sess); err != nil {
+		code := loginFailureCode(err)
+		slog.WarnContext(ctx, "auth: connexion device-flow refusée par la stratégie post-flux",
+			"attempt_id", claimed.AttemptID, "error_code", code, "err", err)
+		h.attempts.Fail(claimed.AttemptID, code)
+		return
+	}
+	// Nouvel identifiant de session (un cookie planté avant la connexion ne vaut rien),
+	// et la tentative suit : le sondage suivant porte le nouveau cookie.
+	if _, err := h.sessionStore.Rotate(sess); err != nil {
+		slog.ErrorContext(ctx, "auth: rotation de la session post-login échouée",
+			"attempt_id", claimed.AttemptID, "err", err)
+	}
+	h.attempts.Rebind(claimed.AttemptID, sess.SessionID)
 }
 
 // exchangeAfterAcquire complète l'échange en tokens Halo après l'acquisition de

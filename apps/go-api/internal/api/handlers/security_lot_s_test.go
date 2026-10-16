@@ -30,7 +30,7 @@ func lotSRouter(mount func(chi.Router), admin, demoMode bool) http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireAuth(demoMode, "password"))
 			if admin {
-				r.Use(middleware.RequireAdmin(demoMode, "password"))
+				r.Use(middleware.RequireAdmin(demoMode, "password", gateAccounts))
 			}
 			mount(r)
 		})

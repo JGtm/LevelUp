@@ -44,7 +44,7 @@ func newLoginLimitRouter(t *testing.T, opts ...func(*handlers.UserAuthHandler)) 
 	if _, err := users.Create(loginLimitUser, loginLimitPassword, domain.RoleUser); err != nil {
 		t.Fatalf("création du compte de test : %v", err)
 	}
-	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), users)
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
 	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open").WithAuthMode("password")
 	for _, opt := range opts {

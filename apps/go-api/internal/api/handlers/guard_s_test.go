@@ -30,7 +30,7 @@ func TestLotS_GuardedRoutes_AnonymousUnauthorized(t *testing.T) {
 	const demo = false
 	const mode = "password"
 	auth := middleware.RequireAuth(demo, mode)
-	admin := middleware.RequireAdmin(demo, mode)
+	admin := middleware.RequireAdmin(demo, mode, nil)
 
 	newSettings := func(r chi.Router) { NewSettingsHandler(&config.AppConfig{}, nil, nil).Mount(r) }
 

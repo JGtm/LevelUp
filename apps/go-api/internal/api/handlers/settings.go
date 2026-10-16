@@ -50,6 +50,7 @@ type SettingsHandler struct {
 	jobStore      *jobs.Store
 	mediaIndexer  service.MediaIndexer
 	backupSched   *duckdbbackup.Scheduler // nil = backup désactivé
+	users         authz.UserLookup        // relecture du rôle admin (settings_admin.go)
 }
 
 // NewSettingsHandler crée un SettingsHandler avec le DirMediaIndexer par défaut.
@@ -212,8 +213,7 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 	// No-op quand l'auth n'est pas appliquée (mode none/demo, single-user dev) :
 	// l'opérateur passe alors par env / app_settings.json directement.
 	if req.InstanceLocked != nil && authz.Enforced(h.cfg.DemoMode, h.cfg.AuthMode) {
-		sess := middleware.GetSession(ctx)
-		if sess == nil || sess.Role == nil || *sess.Role != "admin" {
+		if !authz.IsAdmin(middleware.GetSession(ctx), h.users) {
 			slog.WarnContext(ctx, "settings: toggle instance_locked refusé (admin requis)")
 			return nil, humacore.NewError(http.StatusForbidden, "admin_required",
 				"Seul un administrateur peut modifier le verrou d'instance.")
