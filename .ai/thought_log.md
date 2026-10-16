@@ -1,3 +1,11 @@
+## [2026-10-16] Image de la citation « Chasse au porteur » : crâne blanc dans un anneau blanc — Complété (branche `feat/v75`)
+
+**Décision technique principale** : `H5G_citation_Somebody_call_for_an_extermination%3F.png` (100x100) remplacée par un crâne blanc (extrait du logo Oddball) dans un anneau blanc en quatre arcs, contour sombre, fond transparent. Chemin inchangé, `seed_citation_data.go` intact. Variante retenue par l'utilisateur parmi plusieurs (réticule, cadre, losange, anneau gris écartés).
+
+**Résultats observés** : contour net sur fond sombre et clair.
+
+**Conclusion** : « Rapatriement agressif » reste à trancher (proposition d'anneau blanc avec drapeau disponible).
+
 ## [2026-10-16] Backlog 2026-10-15 : mise à jour de la branche sur feat/v75 (6b45cdc5b) — Complété (branche `feat/backlog-2026-10-15`)
 
 **Statut** : Complété ; fusion dans `feat/v75` toujours au user.
