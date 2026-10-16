@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"strconv"
 
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -117,7 +118,8 @@ func (c *MetadataCatalog) classifyMap(ctx context.Context, ref Ref) Verdict {
 }
 
 // classifyPlayedVersion juge une version hors catalogue par les matchs joués du titre. Sans
-// source, ou si la base partagée est illisible (journalisé), le jugement du catalogue seul
+// source, ou si la base partagée est illisible (journalisé au plus une fois par fenêtre et par
+// titre : logPlayedVersionsUnreadable), le jugement du catalogue seul
 // s'applique, sauf qu'une carte inconnue devient VerdictUnavailable : un refus n'est pas
 // mémorisé sur une lecture en échec.
 func (c *MetadataCatalog) classifyPlayedVersion(ctx context.Context, ref Ref, mapVerdict Verdict) Verdict {
@@ -131,7 +133,7 @@ func (c *MetadataCatalog) classifyPlayedVersion(ctx context.Context, ref Ref, ma
 	played, err := c.played.Played(ctx, ref.TitleID, ref.ID, ref.Variant)
 	switch {
 	case err != nil:
-		slog.WarnContext(ctx, "assets: versions de carte jouées illisibles", append(ref.LogAttrs(), "err", err)...)
+		logPlayedVersionsUnreadable(ctx, ref, err)
 		if fallback == VerdictUnknown {
 			return VerdictUnavailable
 		}
@@ -141,6 +143,29 @@ func (c *MetadataCatalog) classifyPlayedVersion(ctx context.Context, ref Ref, ma
 	default:
 		return fallback
 	}
+}
+
+// playedVersionsLogKey préfixe la clé d'anti-flood (observability.AllowThrottledLog) d'une
+// panne de lecture des versions jouées ; elle est complétée par le titre, pris du registre
+// des titres (Classify écarte tout titre inconnu), donc en nombre fini.
+const playedVersionsLogKey = "log_throttle_assets_played_versions_"
+
+// logPlayedVersionsUnreadable journalise une panne de lecture des versions jouées au plus une
+// fois par playedVersionsMinReload et par titre ; les occurrences étouffées sont comptées
+// (compteur expvar "<clé>_total", champ throttled_since_last). Un demandeur parti (ctx
+// annulé) n'est pas une panne : niveau Debug.
+func logPlayedVersionsUnreadable(ctx context.Context, ref Ref, err error) {
+	if ctx.Err() != nil {
+		slog.DebugContext(ctx, "assets: lecture des versions jouées abandonnée par le demandeur",
+			append(ref.LogAttrs(), "err", err)...)
+		return
+	}
+	allow, since := observability.AllowThrottledLog(playedVersionsLogKey+ref.TitleID, playedVersionsMinReload)
+	if !allow {
+		return
+	}
+	slog.WarnContext(ctx, "assets: versions de carte jouées illisibles",
+		append(ref.LogAttrs(), "err", err, "throttled_since_last", since)...)
 }
 
 // probe est une requête de présence et ses arguments.
