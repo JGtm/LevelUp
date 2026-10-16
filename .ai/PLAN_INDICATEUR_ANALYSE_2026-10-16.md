@@ -114,8 +114,8 @@ gcc ucrt64. Jamais `go build ./...`. Un seul `go` à la fois. Intégration : `-t
 
 ### E2 — Contrat et types — S
 
-- [ ] E2.1 `openapi.yaml` mis à jour (RecentMatchItem, MatchViewHeader).
-- [ ] E2.2 `make generate-types` (jamais `generated.ts` à la main).
+- [x] E2.1 `openapi.yaml` mis à jour (RecentMatchItem, MatchViewHeader).
+- [x] E2.2 `make generate-types` (jamais `generated.ts` à la main).
 - Gate : `make check-types`.
 
 ### E3 — Web — L
@@ -159,3 +159,8 @@ gcc ucrt64. Jamais `go build ./...`. Un seul `go` à la fois. Intégration : `-t
   attendu, le contrat est le livrable d'E2) ; intégration `AnalysisProbeRepo` verte ; golangci-lint
   (nouveau code vs origin/main) 0 issue. Piège rencontré : un identifiant local `replay.X` hors de
   `film/` fait monter le plafond de `film_facade_surface_test` (variable renommée `lookup`).
+- 2026-10-16 E2 : `openapi.yaml` regénéré (`MatchViewHeader.analysis_pending`), `generated.ts` par
+  `npm run generate-types`. `RecentMatchItem` n'a PAS de schéma OpenAPI (`/pages/home` sert un corps
+  JSON marshalé à la main, cf. note de `types.ts`) : le champ est ajouté au miroir manuel
+  `lib/api/types.ts`, au même endroit que `has_replay`. Gate : `tsc -b` vert, `openapi-gen -check`
+  et `check-generated-types-fresh.mjs` verts, `TestOpenAPIYAMLIsUpToDate` vert.

@@ -19966,6 +19966,8 @@ components:
     MatchViewHeader:
       additionalProperties: false
       properties:
+        analysis_pending:
+          type: boolean
         dominance_badge:
           $ref: '#/components/schemas/MatchViewDominanceBadge'
         dominance_flag:

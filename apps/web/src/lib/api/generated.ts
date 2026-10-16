@@ -9393,6 +9393,7 @@ export interface components {
             label_key: string;
         };
         MatchViewHeader: {
+            analysis_pending?: boolean;
             dominance_badge?: components["schemas"]["MatchViewDominanceBadge"];
             dominance_flag: boolean;
             had_bot_teammate: boolean;
