@@ -279,20 +279,22 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 
 ### L5b — Compléments issus de L5 — Sonnet — effort S
 
-- [ ] L5b-1 (D-L5-3, régression du chantier : `writable_player_slugs` introduit en L3-4)
+- [x] L5b-1 (D-L5-3, régression du chantier : `writable_player_slugs` introduit en L3-4)
       `TestBootstrapBuild_WritablePlayerSlugs` instable (11 échecs sur 20 relevés par le
       superviseur le 2026-10-16) : ordre de sortie rendu déterministe dans le code (tri), pas dans
       le test seul ; preuve : `-count=50` vert.
-- [ ] L5b-2 (D-L5-1, même classe que C3-3) `PUT /players/{slug}/friends` : `RecomputeIsWithFriends`
+- [x] L5b-2 (D-L5-1, même classe que C3-3) `PUT /players/{slug}/friends` : `RecomputeIsWithFriends`
       ne prend plus le writer partagé si ses écritures vont en base joueur (sinon : justification
       écrite et coalescence par joueur comme L5-3) ; entrée correspondante retirée de l'allowlist du
       garde-rail `no_shared_writer_on_request_path_test.go` ; tests rouge puis vert.
-- [ ] L5b-3 (D-L5-2) Autres usages de ffmpeg (miniatures, remux WebM, migration audio) : même place
+- [x] L5b-3 (D-L5-2) Autres usages de ffmpeg (miniatures, remux WebM, migration audio) : même place
       unique (`platform/slots`) et délai maximal que L5-5 ; garde-rail : tout `exec.CommandContext`
       de ffmpeg passe par la place (test grep/AST).
-- [ ] L5b-4 (D-L5-4, vérifié par le superviseur) `batchComputeLUSR` est aussi le chemin du
+- [!] L5b-4 (D-L5-4, vérifié par le superviseur) `batchComputeLUSR` est aussi le chemin du
       post-sync normal (`engine_postsync_scoring.go:196`) : le recalcul d'exclusion suit le même
       chemin que la synchronisation ; rien à faire. Cocher `[x]` en recopiant cette vérification.
+      **Non coché** : la vérification n'est pas reproductible sur le défaut de production (voir
+      journal L5b et D-L5b-1).
 - Gate : `go test ./internal/service/ -run TestBootstrapBuild_WritablePlayerSlugs -count=50` ;
   `go test ./internal/api/... ./internal/service/... ./internal/media/... ./internal/archlint/` ;
   `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` si L5b-2 touche le sync.
@@ -574,6 +576,28 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
 - **D-L5-5** (L5) L'import OpenSpartan tient le writer partagé pendant toute son écriture (`Import` après validation) :
   un compte connecté peut occuper le writer le temps d'un import valide (un seul à la fois par compte, mais un par compte).
 - **D-L5-6** (L5) `handlers/media_upload.go` renvoie encore `err.Error()` du service en 500 (`upload_error`) : relève de L9-5.
+
+- **D-L5b-1** (L5b) Le recalcul d'exclusion n'est PAS le chemin du post-sync en production. `runLUSRV1UnderRead`
+  (`engine_postsync_scoring.go:181`) saute `batchComputeLUSR` quand `IsLUSRV2Canonical()` ; or `DefaultLUSRModeIfUnset`
+  (`sync/skill/skill_v2_canonical.go:58`, appelée par `cmd/server/main.go:1186`) pose `LEVELUP_LUSR_CANONICAL=LUSR_V2` au boot serveur quand la variable est absente.
+  Le post-sync normal écrit alors le LUSR par le chemin v2, tandis que `MatchRecomputer.recompute` (`match_recomputer.go:126`)
+  appelle toujours `batchComputeLUSR` (v1, `force=true`, `rating_type='LUSR'`). Même constat que D-L5-4, jamais tranché :
+  à confirmer par lecture de la prod (une exclusion réécrit-elle des lignes `LUSR` v1 par-dessus le canonique v2 ?). Hors périmètre
+  sécurité ; décision à prendre avec l'utilisateur.
+- **D-L5b-2** (L5b) `ffprobe` n'a ni place ni délai maximal : `PlanRemuxWebM`/`probeAVStreams` (`media/remux.go`), `ProbeStreamsDetailed`
+  (`media/hls.go`, appelé aussi sous la place de `BuildHLS`) et `probeVideoDuration` (`ops/media_thumbnails.go`). Non visé par le
+  garde-rail `ffmpeg_single_launcher_test.go` (une sonde lit un en-tête) ; un fichier qui bloque la sonde bloque la requête jusqu'à
+  l'annulation de son contexte.
+- **D-L5b-3** (L5b) Une lecture remuxée (`serveRemuxedWebM`) tient désormais l'unique place ffmpeg pendant TOUT le flux vers le
+  client (jusqu'à 45 min), et attend au plus 30 s derrière un transcodage ou une autre lecture (503 `Retry-After: 30` sinon) :
+  conséquence du texte de L5b-3 (« même place unique »). Deux lecteurs remuxés simultanés se sérialisent. Les miniatures d'un envoi
+  (`GenerateThumbnails`) attendent aussi la place sans borne autre que leur contexte. Si l'usage réel le montre pénible, une place
+  dédiée aux flux remuxés est un choix produit, non pris ici.
+- **D-L5b-4** (L5b) `RecomputeForPlayer`/`RecomputeAll` (`friends_orchestrator_service.go`) restent rejouables en boucle par le
+  propriétaire sans coalescence par joueur : plus de writer partagé (les lecteurs ne sont plus bloqués), mais chaque PUT relance un
+  recalcul complet sous le bail de la base joueur. Même défaut CPU que celui que `coalesce.Runs` absorbe pour l'exclusion.
+- **D-L5b-5** (L5b) `LoadPlayers` rend maintenant ses profils triés (titre, slug) : le « joueur par défaut » du bootstrap
+  (`ownedPlayers[0]`, quand la session n'en choisit pas) est le premier par ordre alphabétique au lieu d'un profil aléatoire.
 
 ## 7. Journal
 
@@ -1518,3 +1542,78 @@ détails ci-dessous.
 
 Commits : `d17fff56f` (L5-1), `2e12e8dfd` (L5-2), `bac4319a9` (L5-3), `ac39b1150` (L5-4), `8b9a6c2f0` (L5-5),
 `6b4637537` (L5-6), `bff0e94c0` (L5-7), `89d64d0b2` (gate archlint), puis le commit de clôture (plan, thought_log).
+
+### L5b - Compléments issus de L5 - 2026-10-16 - clos (un item non coché)
+
+Base : `git log --oneline -1` = `af72aa583` avant le lot ; branche `feat/securite-2026-10-15`. Références rouvertes avant d'agir :
+`config/config_players.go` (`loadPlayersV2`/`loadPlayersV3`, parcours de maps), `service/bootstrap_ownership.go`
+(`writablePlayerSlugs`), `sync/friends_recompute.go` (`RecomputeIsWithFriends`/`Core`), `service/friends_orchestrator_service.go`,
+`archlint/no_shared_writer_on_request_path_test.go`, tous les `exec.Command*` du module, `media/ffmpeg_slot.go`.
+
+**Statuts** : L5b-1, L5b-2, L5b-3 `[x]` ; L5b-4 `[!]` (justification ci-dessous). Aucun `[~]`.
+
+- **L5b-1** Cause : `LoadPlayers` construisait sa liste en parcourant des maps Go (ordre aléatoire) ; `writable_player_slugs` (et
+  `available_players`) suivaient. Correctif dans le code : `sortPlayers` (titre, puis slug) appelé par les deux lecteurs
+  (`config_players.go`). Le test du service n'a pas été touché. Tests : `config_players_order_test.go` (v2, v3 tous titres, v3 un
+  titre, 50 appels chacun).
+- **L5b-2** Vérifié sur pièces : `RecomputeIsWithFriendsCore` lit la base partagée (`LookupFriendXUIDs` sur `xuid_aliases`,
+  `loadMatchesWithFriends` sur `match_participants`) et n'écrit que dans la base joueur (`insertEnrichmentBoolFlagDelta` sur
+  `player_match_enrichment`, `RefreshAggregates(playerDB)`) : aucune écriture partagée n'est nécessaire, la prise du writer est
+  retirée (pas de coalescence ajoutée, voir D-L5b-4). `RecomputeIsWithFriends` lit la base partagée par `acquireSharedReaderStandalone`
+  (`Provider.Get` ou `OpenReadForQuery`) et ne l'ouvre plus du tout quand la liste d'amis est vide (la démotion ne regarde que la base
+  joueur). Allowlist : l'entrée `friends_orchestrator_service.go` est retirée ; `RecomputeIsWithFriends` sort de la liste des noms
+  « qui prennent un writer » (il n'en prend plus), et `sync/friends_recompute.go` entre dans les fichiers analysés (une reprise du
+  writer y est vue rouge). Aucune entrée d'allowlist restante n'est injustifiée (6 entrées, toutes datées du 2026-10-16 avec raison).
+- **L5b-3** Un seul lanceur, `media.RunFFmpeg(ctx, FFmpegJob{Args, Stdout, Stderr, MaxWait})` (`media/ffmpeg_slot.go`) : place unique
+  de L5-5 (`slots`, 1 place) et délai maximal de L5-5 (45 min depuis l'obtention de la place). Réentrant par marqueur de contexte :
+  `BuildHLS` garde sa place pour sonde + analyse + transcodage, les lancements internes ne la redemandent pas (sans cela, interblocage).
+  Sites migrés : `hls.go` (transcodage), `hls_audio_analyze.go` (enveloppes audio, aussi `AnalyzeAudioLayoutReport` et
+  `CollapseRedundantHLSAudio` en CLI), `hls_audio_migrate.go` (ré-encodage AAC), `remux.go` (flux vers le client), `ops/media_thumbnails.go`
+  (miniatures), `ops/media_tooling.go` (sonde `-version/-encoders/-muxers` du boot). Remux : attente de la place bornée à 30 s
+  (`remuxSlotWait`), `ErrFFmpegBusy` avant tout octet, `respondRemuxBusy` répond 503 + `Retry-After: 30` (`media_serve.go`).
+  `ffprobe` volontairement hors du lanceur (D-L5b-2). Garde-rail : `archlint/ffmpeg_single_launcher_test.go` (AST sur `cmd`, `internal`,
+  `pkg` : aucun `exec.Command*` désignant ffmpeg hors de `media/ffmpeg_slot.go`, exactement un lancement dans ce fichier ; détection
+  testée sur littéral, identifiant, `ffprobe` toléré, autre binaire). Tests : `ffmpeg_run_test.go` (place tenue pendant la vie du
+  processus, second lancement `ErrFFmpegBusy` sans processus, délai maximal, réentrance, sorties et code de sortie, remux occupé sans
+  octet écrit), `media_remux_busy_test.go`.
+- **L5b-4** `[!]` Vérification reprise sur pièces : `engine_postsync_scoring.go:196` appelle bien `batchComputeLUSR(..., false)`, mais
+  depuis `runLUSRV1UnderRead`, qui retourne tôt quand `IsLUSRV2Canonical()` (`:182-185`), et le boot serveur pose
+  `LEVELUP_LUSR_CANONICAL=LUSR_V2` par défaut (`cmd/server/main.go:1186` -> `skill_v2_canonical.go:58`, `DefaultLUSRModeIfUnset`). L'affirmation « chemin du
+  post-sync normal » n'est donc vraie que pour `canonical=LUSR` (opt-out, tests, CLI), pas pour le défaut de production. Rien n'est
+  modifié (D-L5b-1, hors sécurité) ; à trancher avec l'utilisateur.
+
+**Preuves du rouge** (sorties gardées dans `%TEMP%\l5b\`) :
+- L5b-1 `go test ./internal/service/ -run TestBootstrapBuild_WritablePlayerSlugs -count=50` : exit 1, 10 sous-tests FAIL
+  (`writable_player_slugs [bob alice], attendu [alice bob]`) ; `go test ./internal/config/ -run TestLoadPlayers_OrderIsDeterministic` :
+  3 FAIL (ordre `[halo_infinite/zed halo_infinite/alice ...]`). Vert : `-count=50` exit 0 (`ok levelup/go-api/internal/service 0.695s`).
+- L5b-2 `go test ./internal/sync/ -run TestRecomputeIsWithFriends_` : FAIL `writer partagé acquis 1 fois, attendu 0`. Garde-rail :
+  entrée d'allowlist retirée seule : FAIL `friends_orchestrator_service.go : 2 prise(s) de writer, allowlist 0` ; reprise de
+  `AcquireSharedWriterStandalone` dans `friends_recompute.go` : FAIL `friends_recompute.go : 1 prise(s) de writer, allowlist 0`, source
+  restaurée ensuite.
+- L5b-3 `go test ./internal/archlint/ -run FFmpeg` : FAIL, 6 sites (`hls.go:550`, `hls_audio_analyze.go:167`, `hls_audio_migrate.go:150`,
+  `remux.go:70`, `ops/media_thumbnails.go:164`, `ops/media_tooling.go:194`) et « 0 lancement(s) dans ffmpeg_slot.go » ; tests du lanceur et du
+  handler : échec de compilation (`RunFFmpeg`, `ErrFFmpegBusy`, `respondRemuxBusy` indéfinis).
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9) :
+- Gate du lot : `go test ./internal/api/... ./internal/service/... ./internal/media/... ./internal/archlint/ ./internal/config/...
+  ./internal/ops/... ./internal/sync/... -count=1` : exit 0, 29 paquets ok, 0 `--- FAIL:`. `-count=50` sur le test du bootstrap : exit 0.
+- Intégration (L5b-2 touche le sync) : `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... -count=1` : exit 0,
+  14 paquets ok, 0 `--- FAIL:` ; `no_art_patterns_test.go` non modifié.
+- Gate commun : `go build ./cmd/server/` exit 0 ; `go vet` (config, sync, archlint, media, ops, api/handlers) exit 0 ;
+  `golangci-lint run --new-from-rev=af72aa583` et `--new-from-merge-base=origin/main` : 0 issues. Aucune route Huma ajoutée ni modifiée
+  (le 503 du remux est une réponse de handler chi hors OpenAPI) : pas de régénération des types ; `OpenAPI`/`Contract` passent dans la
+  suite `./internal/api/...`. Web non touché.
+- Hooks pre-commit (gofmt, check-merge-conflict, docs-fr-sync, gitleaks, go-vet) verts sur les trois commits de code.
+
+**Écarts au texte, justifiés** : deux tests existants de `friends_recompute_test.go` supposaient que le wrapper CRÉAIT la base partagée
+absente. Un lecteur ne crée rien : le test à liste vide n'ouvre plus la base partagée (inchangé, vert), le test « aucun xuid résolu » crée
+la base avant l'appel. `ops.runFFmpeg` perd le champ `Stderr` de l'`ExitError` de `.Output()` (jamais lu).
+
+**Non-régression (règle 9)** : `PUT /players/{slug}/friends` répond comme avant (même recalcul, mêmes notifications) mais ne bascule plus la
+base partagée en écriture ; la lecture de la liste n'est pas concernée. Médias : miniatures et transcodages se mettent en file derrière la
+place unique ; les lectures remuxées attendent jusqu'à 30 s puis répondent 503 (le lecteur vidéo réessaie) ; le chemin HLS (lecture
+normale d'un média transcodé) ne lance pas ffmpeg. Profils : l'ordre de `available_players` est désormais stable (D-L5b-5).
+
+**Découvertes** : D-L5b-1 à D-L5b-5 (§6), non traitées.
+
+Commits : `755a6543b` (L5b-1), `a071a8cdd` (L5b-2), `5002566fc` (L5b-3), puis le commit de clôture (plan, thought_log).
