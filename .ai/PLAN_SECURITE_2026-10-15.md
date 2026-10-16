@@ -48,7 +48,7 @@ d'observation, report valide).
 
 ## 1. Règles d'exécution
 
-1. **Ordre strict** L0 → L4 → L4b → L5 → L5b → L5c → L6 → … → L10. Un lot est **clos** quand : gate exact passé, tous les items statués,
+1. **Ordre strict** L0 → L4 → L4b → L5 → L5b → L5c → L6 → L7 → L8 → L9 → L10 → L11. Un lot est **clos** quand : gate exact passé, tous les items statués,
    plan mis à jour (cases + journal), commit `fix(securite-Lx): …`, entrée `.ai/thought_log.md`,
    point d'étape à l'utilisateur.
 2. **Statuts** : `[x]` fait et vérifié · `[~]` couvert par (référence) · `[!]` non traité
@@ -374,25 +374,25 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 
 ### L9 — Fuites d'information (C7) — Sonnet — effort M
 
-- [ ] L9-1 `/health` public réduit à `{status}` (sondes Docker et `deploy.sh` vérifiées) ; détail
+- [x] L9-1 `/health` public réduit à `{status}` (sondes Docker et `deploy.sh` vérifiées) ; détail
       réservé à l'admin.
-- [ ] L9-2 `/readyz` et le 503 de `/health` : plus d'`err.Error()` dans le corps.
-- [ ] L9-3 Device-flow : `error_detail` retiré de la réponse (code seul) ; front adapté (FR + EN).
-- [ ] L9-4 Jobs et notifications de sync : message fixe + code, détail au journal.
-- [ ] L9-5 Les 121 `err.Error()` renvoyés au client en 4xx (`NewError`/`writeError`) remplacés
+- [x] L9-2 `/readyz` et le 503 de `/health` : plus d'`err.Error()` dans le corps.
+- [x] L9-3 Device-flow : `error_detail` retiré de la réponse (code seul) ; front adapté (FR + EN).
+- [x] L9-4 Jobs et notifications de sync : message fixe + code, détail au journal.
+- [x] L9-5 Les 121 `err.Error()` renvoyés au client en 4xx (`NewError`/`writeError`) remplacés
       par un message fixe par code d'erreur (helper unique), le détail partant au journal ;
       relevé préalable des messages que le front affiche (`apps/web/src`, `ApiError.message`) pour
       garder un texte utile ; garde-rail `internal/archlint/err_error_response_test.go` à **zéro**
       (allowlist datée seulement pour un cas justifié par écrit).
-- [ ] L9-6 En-tête CSP minimal sans risque pour le SPA : `object-src 'none'; base-uri 'self';
+- [x] L9-6 En-tête CSP minimal sans risque pour le SPA : `object-src 'none'; base-uri 'self';
       frame-ancestors 'none'` (scripts non restreints, décision de l'ADR à venir) ; test sur `/`,
       404, 429, `/static`.
-- [ ] L9-7 (D-L4b-1, doctrine D5) Réinitialisation du mot de passe d'un compte par l'admin
+- [x] L9-7 (D-L4b-1, doctrine D5) Réinitialisation du mot de passe d'un compte par l'admin
       (`handlers/admin.go`) : révoque toutes les sessions de ce compte (`Store.RevokeAccount`) ;
       test « session du compte réinitialisé → 401 ».
-- [ ] L9-8 (D-L4b-2) `GET /auth/xbox/login` : refus redirigés vers `/login?oauth_error=<code>`
+- [x] L9-8 (D-L4b-2) `GET /auth/xbox/login` : refus redirigés vers `/login?oauth_error=<code>`
       comme le callback (L4-14), plus de JSON brut ; test.
-- [ ] L9-9 (D-L4b-3) Refus d'une reconnexion Xbox depuis une session déjà connectée : le message
+- [x] L9-9 (D-L4b-3) Refus d'une reconnexion Xbox depuis une session déjà connectée : le message
       n'est plus perdu (`__root.tsx`) ; test du composant.
 - Gate : `go test ./internal/api/... ./internal/archlint/ -run 'Health|Ready|ErrError|CSP|SecurityHeaders|DeviceFlow'` ;
   front si L9-3.
@@ -420,6 +420,18 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 - [x] L10-6 (D-L0-3, décision de l'utilisateur du 2026-10-15) Garde-rail archlint : la version de l'image `golang:X.Y.Z-…` du `Dockerfile` est égale à la ligne `go` de `apps/go-api/go.mod` ; vu rouge sur une divergence simulée.
 - Gate : `go test ./internal/archlint/ -run 'Compose|Nginx|Dockerfile'` ; `bash -n scripts/deploy-worker.sh`
   ; `shellcheck scripts/deploy-worker.sh` si disponible ; `systemd-analyze verify` si disponible.
+
+### L11 — Reliquats de chemins et de cohérence (découvertes L6, L7, L9) — Opus — effort S
+
+- [ ] L11-1 (D-L7-1) Aperçu OG (`wire/og_inject.go`) : slug du chemin validé (`domain.IsValidPlayerSlug`) avant toute lecture ; vérifier sur pièces s'il atteint le disque ; test chemin piégé.
+- [ ] L11-2 (D-L7-2) `/profiles/{player_slug}/titles/{slug}` : slug de titre validé contre le registre des titres (404 sinon), sans branchement sur un slug particulier ; test.
+- [ ] L11-3 (D-L7-3) `AmbiguousPath` dans son propre fichier du middleware ; garde-rail : tout middleware qui décide sur `r.URL.Path` (préfixe, exemption) appelle `AmbiguousPath` (allowlist datée pour les journaux seulement) ; vu rouge sur une garde témoin.
+- [ ] L11-4 (D-L6-1) Action admin de cuisson (`/admin/actions/replay-build/*`) : `match_id` hors forme → 400 (`title.IsValidMatchID`) ; test.
+- [ ] L11-5 (D-L6-3) Routes admin portant un slug de joueur dans le chemin : forme validée (`domain.IsValidPlayerSlug`) ; liste relevée sur pièces ; test table-driven.
+- [ ] L11-6 (découverte L9 n°3) `StepDeviceCode` : clés d'erreur alignées sur les codes réellement émis (`device_flow_acquire_error`, `identity_missing`, …), FR + EN ; test.
+- [ ] L11-7 (découverte L9 n°6, règle 7 de CLAUDE.md) `WatcherAttempt.ErrorDetail` écrit mais jamais sérialisé : supprimé avec ses écritures.
+- [ ] L11-8 (D-L6-2, règle 6 de CLAUDE.md) Listes de formats média (`ops` et `media`) : source unique + garde-rail interdisant une copie.
+- Gate : `go test ./internal/api/... ./internal/archlint/ ./internal/media/... ./internal/ops/... ./internal/platform/auth/...` ; web si L11-6 (typecheck, lint, test:run).
 
 ## 3. Clôture du plan
 
@@ -1962,3 +1974,9 @@ service (nginx joint le conteneur par le pont Docker, D-L1-1) ; en local, `127.0
 **Découvertes** : D-L7-1 à D-L7-3 (§6), non traitées.
 
 Commits : `389ba5497` (L7-1, L7-2), `94966d419` (L7-3), `8d1a4dc21` (L7-4), puis le commit de clôture (plan, thought_log).
+
+### [2026-10-16] Lot L9 — exécuté en parallèle (branche `feat/securite-l9`), fusionné après L7
+
+**Statuts** : L9-1 à L9-9 `[x]`. **Décompte** : 210 `err.Error()` (ou équivalents) renvoyés au client sur la base (127 en 4xx, 2 en 503, 81 en 500 ; le registre en comptait 121 par un motif plus étroit) → 0 ; garde-rail `err_error_response_test.go` à zéro, allowlist vide, suit aussi les variables affectées depuis `x.Error()`. Helpers `humacore.NewErrorFrom`/`FixedMessage`/`LogErrorResponse`, `handlers.writeErrorFrom`. `/health` public → `{status}`, détail sous `GET /api/v1/admin/health` (admin) ; `scripts/deploy.sh` lisait `app_version` dans le corps de `/health` (contrôle silencieusement inopérant) : remplacé par `LEVELUP_APP_VERSION` via `docker inspect` (non bloquant, testé avec un `docker` factice, à observer au prochain déploiement). CSP minimale (`object-src 'none'; base-uri 'self'; frame-ancestors 'none'`). Jobs : message fixe par code (`domain.NewJobError`), garde-rail `job_error_fixed_message_test.go`. Réinitialisation par l'admin : sessions révoquées, garde-rail de câblage. `GET /auth/xbox/login` : refus redirigés. Reconnexion refusée : bannière `OAuthRefusalBanner`.
+**Gates** : build, vet, `go test` 28 paquets exit 0, golangci-lint 0 issue ; web : typecheck, lint, 9 723 tests, ratchets JS verts ; OpenAPI et types régénérés. **Après fusion (superviseur)** : `go build`, `go test` api/archlint/domain/service/platform/notifications/media/ops/config/tests/cmd exit 0.
+**Découvertes** : texte d'erreur dans des diagnostics admin (voulu) ; `mediaLikeError` relaie un message libre ; codes de `StepDeviceCode` incohérents (→ L11-6) ; reset admin : 400 `password_too_long` au lieu de 500 ; erreurs de fabrique de service rendues en 404 `player_not_found` (préexistant) ; champ mort `WatcherAttempt.ErrorDetail` (→ L11-7) ; contrôle de version de `deploy.sh` à observer.
