@@ -1,3 +1,11 @@
+## [2026-10-16] Plan citations Halo 5, E1 : le bouclier du tueur se lit à l'instant du frag — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : « Presque, ça ne compte pas » est livrable (D1). Une vie sans mesure de bouclier est une vie au bouclier jamais touché (le film ne réplique qu'au changement), donc l'état est connu pour 96,2 % des frags ; zéro retenu si la dernière mesure date de moins de 5 s ; survie = tueur non mort dans la seconde.
+
+**Résultats observés** : 233 artefacts, 22 725 frags ; 72,7 % mesurés, 23,5 % sans changement de bouclier, 3,8 % vie du tueur introuvable ; 94,5 % des vies de victimes portent une mesure ; 4 396 frags à 0 % frais, dont 3 480 survivants ; 0,35 ms par artefact. Détail : journal du plan.
+
+**Conclusion** : les frags ne sont pas dans le document de rejeu ; la colonne se calcule à la dérivation en croisant le document aux frags de `match_kill_events_latest`. Suite : E2.
+
 ## [2026-10-16] Images des citations : natives remises en place, audit, visuels blancs des citations à venir, plan des quatre citations Halo 5 — Complété (branche `feat/v75`)
 
 **Décision technique principale** : « Sécurisation du drapeau » sert désormais l'image native Halo 5 « Défenseur du drapeau » (demande initiale de l'utilisateur, mal lue à l'entrée précédente) ; `H5G_citation_Protecteur.png` est restaurée dans sa version native. Le crâne de « Chasse au porteur », validé par l'utilisateur, quitte le fichier natif « Somebody call for an exterminator? » (restauré) pour `halo_infinite/HI_citation_Chasse_au_porteur.png` : une image native ne s'écrase plus, une image remaniée vit sous `halo_infinite/`. Trois visuels blancs à ombre légère (style « Défenseur du drapeau ») pour les citations à venir, validés : `HI_citation_Premier_coup.png`, `HI_citation_Presque_ca_ne_compte_pas.png`, `HI_citation_Tick_Tick_Boom.png` (non référencés tant que le plan n'est pas exécuté).

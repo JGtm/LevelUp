@@ -75,16 +75,16 @@ du post-sync voit ses citations film recalculées sans intervention.
 ## Étapes
 
 ### E0 — Mise en place
-- [ ] Worktree `feat/citations-film` depuis `feat/v75` ; caches Go dédiés (skill `plan-execution` §5).
-- [ ] Gate : `git branch --show-current` = `feat/citations-film`.
+- [x] Worktree `feat/citations-film` depuis `feat/v75` (`../LevelUp-wt-citations`) ; cache Go dédié `go-build-citations`.
+- [x] Gate : `git branch --show-current` = `feat/citations-film`.
 
 ### E1 — Mesure (recherche, aucun code de production)
-- [ ] Sur les artefacts du parc : part des frags dont la piste du tueur porte une mesure `Sh`
+- [x] Sur les artefacts du parc : part des frags dont la piste du tueur porte une mesure `Sh`
       avant le frag ; distribution de l'âge de cette dernière mesure ; part des frags à 0 %.
-- [ ] Même mesure, au plafond de fraîcheur proposé, pour statuer D1 (fraîcheur et « survivre »).
-- [ ] Coût : temps ajouté à la dérivation d'un artefact par la recherche des frags (cible :
+- [x] Même mesure, au plafond de fraîcheur proposé, pour statuer D1 (fraîcheur et « survivre »).
+- [x] Coût : temps ajouté à la dérivation d un artefact par la recherche des frags (cible :
       négligeable devant la dérivation actuelle).
-- [ ] Gate : compte rendu chiffré dans le thought_log ; D1 statuée (`[x]` livrée telle que
+- [x] Gate : compte rendu chiffré dans le thought_log ; D1 statuée (`[x]` livrée telle que
       décidée, ou `[!]` avec la mesure) et validée par l'utilisateur avant E3.
 
 ### E2 — Victoires d'Assaut, Premier coup, helper de mode
@@ -144,3 +144,28 @@ du post-sync voit ses citations film recalculées sans intervention.
 - `citations.engine = "not_exposed"` dans le `capabilities.toml` Infinite alors que les citations y
   tournent.
 - Image native Infinite du Fusil Storm présente, aucune citation de maîtrise ne l'utilise.
+
+## Journal
+
+### E1 — mesure du bouclier (2026-10-16)
+
+Instrument : `internal/sync/replayartifacts/citations_bouclier_research_test.go` (tag `research`),
+233 artefacts du parc croisés aux frags de `match_kill_events_latest` (copie de la base partagée).
+
+- 22 725 frags à tueur nommé. Mesure de bouclier dans la vie du tueur avant le frag : 16 513
+  (72,7 %). Vie trouvée SANS aucune mesure avant le frag : 5 340 (23,5 %). Vie du tueur
+  introuvable : 872 (3,8 %).
+- Une vie sans mesure est une vie dont le bouclier N'A JAMAIS CHANGÉ (le film ne le réplique qu'au
+  changement) : bouclier plein, donc pas un frag à 0 %. Témoin : 94,5 % des vies de VICTIMES
+  (21 345 / 22 577), qui ont par définition pris des dégâts, portent une mesure. L'état du
+  bouclier est donc connu pour 96,2 % des frags (>= 90 % : D1 LIVRÉE).
+- Âge de la dernière mesure : médiane 0 ms, p75 0 ms, p90 9 200 ms. Bouclier à 0 % : 4 402 frags,
+  dont 4 396 sur une mesure de moins d'une seconde. Plafond de fraîcheur retenu : 5 s (constante
+  nommée ; écarte les 6 zéros anciens, que la recharge a pu effacer sans réplication).
+- Survie (« le tueur n'est pas mort dans la seconde qui suit », accord utilisateur du 2026-10-16) :
+  3 480 des 4 396 frags (79 %). Environ 15 par match sur le parc.
+- Contrôle d'horloge : fin de vie de la victime moins instant du frag, médiane 0 ms (p10 -100, p90 0).
+- Coût : 81 ms pour 233 artefacts, 0,35 ms par artefact (négligeable).
+- Conséquence pour E3 : les frags ne sont PAS dans le document de rejeu ; la colonne se calcule à la
+  dérivation, en croisant le document en mémoire aux frags de `match_kill_events_latest` du match
+  (même base, même passe que le résumé d'usage).
