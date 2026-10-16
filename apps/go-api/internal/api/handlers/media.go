@@ -118,27 +118,6 @@ type mediaAudioConfigOutput struct {
 	Body *domain.PlayerMediaAudioConfig
 }
 
-// maxUploadSize limite la taille totale d'un upload à 500 Mo.
-const maxUploadSize = 500 << 20
-
-// maxUploadFiles limite le nombre de fichiers par requête.
-const maxUploadFiles = 50
-
-// maxConcurrentUploads borne les envois de médias en vol pour tout le process : chacun
-// stage jusqu'à maxUploadSize sur disque et peut lancer des miniatures et un transcodage.
-const maxConcurrentUploads = 2
-
-// defaultUploadSlotWait est l'attente maximale d'une place d'envoi avant le 503 upload_busy.
-const defaultUploadSlotWait = 30 * time.Second
-
-// defaultUploadBodyReadBudget est le délai de lecture du corps d'un envoi, compté depuis
-// l'obtention de sa place : le budget de lecture d'une requête du serveur (ReadTimeout de
-// cmd/server, compté depuis son arrivée) serait sinon épuisé par l'attente de la place.
-const defaultUploadBodyReadBudget = 15 * time.Second
-
-// globalUploadSlots est le pool d'envois partagé par toutes les instances de MediaHandler.
-var globalUploadSlots = slots.New(maxConcurrentUploads)
-
 // defaultMediaMatchWindowMinutes : fenêtre ± (minutes) d'association d'un média à un match
 // par proximité temporelle, appliquée quand le client ne fournit pas window_minutes.
 const defaultMediaMatchWindowMinutes = 15
@@ -183,21 +162,6 @@ func NewMediaHandler(
 	repoRoot string,
 ) *MediaHandler {
 	return &MediaHandler{newSvc: newSvc, newUpload: newUpload, repoRoot: repoRoot}
-}
-
-// WithUploadSlots remplace le pool global des envois de médias et l'attente maximale
-// d'une place (tests ; en service, le pool global du process s'applique).
-func (h *MediaHandler) WithUploadSlots(pool *slots.Pool, wait time.Duration) *MediaHandler {
-	h.uploadSlots = pool
-	h.uploadSlotWait = wait
-	return h
-}
-
-// WithUploadBodyReadBudget remplace le délai de lecture du corps d'un envoi, compté depuis
-// l'obtention de sa place (tests ; en service, defaultUploadBodyReadBudget s'applique).
-func (h *MediaHandler) WithUploadBodyReadBudget(budget time.Duration) *MediaHandler {
-	h.uploadReadBudget = budget
-	return h
 }
 
 // WithSettingsStore injecte le settings store pour lire media_captures_base_dir.
