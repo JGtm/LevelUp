@@ -150,17 +150,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	if dryRun {
 		persister = newDryRunPersister()
 	} else {
-		// Résolution autonome des noms d'assets au sync V2 (primary write) : on passe
-		// le POOL UNIFIÉ (deps.TokenPool, la même source que tous les syncs) — GameCMS
-		// exige un token. Gate LEVELUP_SYNC_RESOLVE_ASSETS appliqué côté sync. Écriture
-		// asset_translations via le handle metadata RW partagé (deps.MetaDB).
-		persister = syncv2.NewCycleBatchPersister(deps.TitleSlug, deps.BatchQueue, 0,
-			deps.MetaDB, deps.TokenPool, getSharedDB)
-		// Amis par joueur : is_with_friends est posé dès le premier écrit (sans quoi le match
-		// s'affiche « Solo » jusqu'au post-sync). Même source que le FriendsLoader du moteur.
-		if deps.Friends != nil {
-			persister = syncv2.WithFriendsSource(persister, deps.Friends.Get)
-		}
+		persister = buildCyclePersister(deps, getSharedDB)
 	}
 
 	// RC-A fix (2026-06-01) : le PostSyncRunner doit acquérir le shared en
@@ -413,4 +403,19 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 
 		return engine, nil
 	}
+}
+
+// buildCyclePersister construit le persister du cycle V2. Résolution autonome des noms
+// d'assets au sync V2 (primary write) : le POOL UNIFIÉ (deps.TokenPool, la même source que
+// tous les syncs) — GameCMS exige un token ; écriture asset_translations via le handle
+// metadata RW partagé (deps.MetaDB). Amis par joueur : is_with_friends est posé dès le premier
+// écrit (sans quoi le match s'affiche « Solo » jusqu'au post-sync), avec la même source que le
+// FriendsLoader du moteur et l'emprunt de la base partagée de la découverte.
+func buildCyclePersister(deps SyncV2WiringDeps, getSharedDB func() *sql.DB) syncv2.CycleBatchPersister {
+	persister := syncv2.NewCycleBatchPersister(deps.TitleSlug, deps.BatchQueue, 0,
+		deps.MetaDB, deps.TokenPool, getSharedDB)
+	if deps.Friends != nil {
+		persister = syncv2.WithFriendsSource(persister, deps.Friends.Get, knownSetSharedBorrower(deps, getSharedDB))
+	}
+	return persister
 }

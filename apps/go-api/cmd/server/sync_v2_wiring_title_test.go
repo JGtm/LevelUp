@@ -16,12 +16,15 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/friendstore"
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
 
@@ -120,5 +123,23 @@ func TestBuildSyncEngineFactory_WiresHomeCacheFlush(t *testing.T) {
 	})
 	if engine.HasHomeCacheFlush() {
 		t.Error("rappel de vidage câblé sans dépendance — fuite")
+	}
+}
+
+// TestBuildCyclePersister_WiresFriendsSource : le persister du cycle V2 porte la source des amis
+// quand le serveur en a une, sans quoi le premier écrit ne pose plus is_with_friends et le match
+// d'escouade s'affiche « Solo » jusqu'au post-sync.
+func TestBuildCyclePersister_WiresFriendsSource(t *testing.T) {
+	deps := SyncV2WiringDeps{
+		Cfg:       &config.AppConfig{RepoRoot: t.TempDir()},
+		TitleSlug: titlePkg.DefaultSlug,
+	}
+	none := func() *sql.DB { return nil }
+	if syncv2.CycleBatchPersisterHasFriendsSource(buildCyclePersister(deps, none)) {
+		t.Error("source d'amis câblée sans store d'amis — fuite")
+	}
+	deps.Friends = friendstore.NewFriendStore(filepath.Join(t.TempDir(), "player_friends.json"))
+	if !syncv2.CycleBatchPersisterHasFriendsSource(buildCyclePersister(deps, none)) {
+		t.Fatal("REGRESSION: le persister du cycle V2 ne porte pas la source des amis (is_with_friends non posé au premier écrit)")
 	}
 }

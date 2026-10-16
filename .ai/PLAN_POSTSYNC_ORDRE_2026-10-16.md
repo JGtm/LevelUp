@@ -209,6 +209,9 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   sont suivis) et aucun test hors `halotest` ne l'utilise (`engine_e2e_test.go` ne l'exerce pas, contrairement
   au texte du plan). La simulation de 2bis utilise donc `mockHaloClient` + le chunk de film v41 versionné
   (275 événements, 101 morts) : elle tourne en CI. Non traité : brancher le vrai client HTTP sur le faux serveur.
+- (16/10, exécutant, relecture 3.3) `engine.go` (767 L), `api/handlers/sync_handler.go` (702 L) et
+  `scheduler/auto_sync.go` (531 L) dépassent 500 L et ont grossi de 10 à 12 lignes avec le rappel de vidage du
+  cache Home ; aucun gate ne mesure la taille de fichier (`funlen` seulement). Découpage non traité.
 - (16/10, exécutant, étape 1) `apps/web/src/features/admin/convergence/timeline.ts` (`STEP_ORDER`, mapping
   couleur du tableau de bord) ne connaît pas `kill_source`, `replay_artifacts`, `snapshot_readiness` et
   garde l'ancien ordre ; ces étapes retombent sur la couleur de repli. Cosmétique, hors lot Go : non traité.
@@ -282,3 +285,28 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   la passe crédit ou la passe fusionnée. Gate 2bis NON passé : décision du coordinateur attendue.
 - 16/10 Arrêt levé par le coordinateur (D5 : écart accepté par l'utilisateur, voir « Décisions »). 2b.3 statué
   `[x]` en citant D5 ; gate 2bis PASSÉ : 2b.1, 2b.2, 2b.3 cochés, tableau avant/après au journal (thought_log).
+- 16/10 Étape 3.1 : `go test ./...` vert (201 paquets ok, 7 min 41 s, avant les corrections de la relecture).
+- 16/10 Étape 3.3, ronde 1 de la relecture adversariale (2 relecteurs Opus, contexte frais, lentilles
+  L1 anti-ART/concurrence/exactitude de l'ordre et L3+L6 anti-patterns/tests ; rien n'a été dit de l'auteur).
+  Relecteur A : 1 constat recevable (P2), 22 conditions vérifiées qui tiennent. Relecteur B : 6 constats,
+  22 conditions vérifiées. Triage :
+  - B1 P1 (premier écrit V2 sans test, `persist_v1bridge.go`, câblage `sync_v2_wiring.go`) : CORRIGÉ.
+    `TestPersistCycle_PosesIsWithFriendsOnFirstWrite` (ami coéquipier -> TRUE, adverse -> FALSE, sans source ->
+    non posé ; mutation : retirer `ApplyFriendsToBatch` -> rouge) et `TestBuildCyclePersister_WiresFriendsSource`
+    (extraction de `buildCyclePersister` + `CycleBatchPersisterHasFriendsSource`).
+  - A1 P2 (`resolveCycleFriends` lisait `LookupCachedDB` sans emprunt : connexion fermable sous la lecture par
+    une bascule RO/RW) : CORRIGÉ. `WithFriendsSource` prend l'emprunt `SharedBorrower` de la découverte
+    (`knownSetSharedBorrower`), un seul emprunt par cycle ; base illisible -> WARN, champ non posé.
+  - B2 P2 (branchement V1 `engine.go` sans test) : CORRIGÉ par un garde textuel `TestRunHistoryInputsCarryFriends`
+    (`run()` n'est pas exécutable sans moteur complet) ; la boucle `engine_fetch.go` est couverte par les tests e2e.
+  - B3 P2 (vidage `InvalidatePlayerReadCaches` à mi-pipeline sans test) : CORRIGÉ en ajoutant `flushReadCaches` aux
+    points du ratchet `archlint/player_read_cache_invalidation_test.go` (renforcement, pas une allowlist) ; son
+    appel avant 1.57 est tenu par `..._FlushesHomeCacheBeforeFilmSteps`.
+  - B4 P2 (commentaires faux : doc de `runPostSyncPipeline`, trois renvois à `engine_postsync_films.go`
+    inexistant, « le premier écrit l'a déjà posé ») : CORRIGÉS dans le même diff (règle 17).
+  - B5 P2 (histoire dans les en-têtes de tests ; `TestPostSyncE2E_Dump` = harnais de mesure ponctuelle) : CORRIGÉ.
+    Dump supprimé (la comparaison est consignée dans ce plan et le journal), en-têtes réécrits.
+  - B6 P2 (engine.go 757 -> 767, sync_handler.go 690 -> 702, auto_sync.go 520 -> 531 : fichiers déjà au-delà de
+    500 L qui grossissent) : STATUÉ, non corrigé : +10 à +12 lignes de champ, d'option et de commentaire par
+    site, inévitables pour brancher un rappel sur trois constructeurs de moteur ; `engine_postsync.go`, le fichier
+    visé par le lot, passe de 527 à 442 lignes. Dette de découpage de ces trois fichiers : Découvertes.

@@ -3,6 +3,8 @@ package sync
 import (
 	"context"
 	"errors"
+	"os"
+	"regexp"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -130,4 +132,20 @@ func TestResolveFriendXUIDs_UnknownListLeavesFieldUnset(t *testing.T) {
 
 func minimalFetchedMatch(id string) *fetchedMatch {
 	return &fetchedMatch{MatchID: id, Registry: sampleRegistry(id)}
+}
+
+// TestRunHistoryInputsCarryFriends : run() résout les amis une fois par passe et les remet à
+// l'historique (`friendXUIDs: ResolveFriendXUIDs(...)` dans le littéral historyPaginationInputs).
+// run() n'est pas exécutable sans moteur complet ; ce garde textuel casse si le branchement
+// disparaît, auquel cas le premier écrit V1 ne poserait plus is_with_friends.
+func TestRunHistoryInputsCarryFriends(t *testing.T) {
+	src, err := os.ReadFile("engine.go")
+	if err != nil {
+		t.Fatalf("lecture engine.go: %v", err)
+	}
+	re := regexp.MustCompile(`(?s)historyPaginationInputs\{.*?friendXUIDs:\s*ResolveFriendXUIDs\(ctx, sharedDB, e\.friendsLoader, e\.xuid\)`)
+	if !re.Match(src) {
+		t.Fatal("engine.go ne remet plus ResolveFriendXUIDs(...) à historyPaginationInputs : " +
+			"le premier écrit V1 ne pose plus is_with_friends")
+	}
 }

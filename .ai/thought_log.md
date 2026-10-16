@@ -1,3 +1,11 @@
+## [2026-10-16] Post-sync : relecture adversariale (ronde 1), corrections et tests — En cours (branche `feat/postsync-ordre`)
+
+**Décision technique principale** : deux relecteurs Opus en contexte frais (anti-ART/exactitude de l'ordre ; anti-patterns/tests) sur le diff du lot. 7 constats recevables au total (1 P1, 6 P2), 44 conditions vérifiées qui tiennent. Le P1 (premier écrit V2 sans test) et 5 P2 sont corrigés ; le P2 de taille de fichiers est statué (consigné). Le premier écrit V2 emprunte désormais la base partagée par `SharedBorrower` (suit les bascules RO/RW) au lieu de lire la connexion en cache.
+
+**Résultats observés** : `go test ./...` vert avant corrections (201 paquets) ; nouveaux tests : premier écrit V2 (mutation vérifiée), câblage V2 de la source d'amis, garde du branchement V1, point de ratchet `flushReadCaches`. Aucune allowlist de garde-rail touchée.
+
+**Conclusion** : ronde 2 (relecture des seules corrections), puis gates complets, push et CI.
+
 ## [2026-10-16] Simulation de bout en bout du post-sync (escouade, LUSR, ordre) et contrôle du LUSR sur la passe crédit — En cours, arrêt demandé par la consigne (branche `feat/postsync-ordre`)
 
 **Décision technique principale** : tests `postsync_e2e_test.go` (match d'escouade joué par le chemin de production puis post-sync complet), comparaison avant/après sur le commit de base, test ciblé `TestLoadQuitTimeline_CreditOnlyPass` (la pénalité de départ lit la passe crédit-seul seule). Le faux serveur HTTP du plan n'a pas ses fichiers dans le dépôt : client de test + chunk de film v41 versionné.

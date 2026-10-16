@@ -59,7 +59,7 @@ func trackFatalErr(r *domain.PostSyncResult, stepName string, err error) {
 // n'échoue jamais).
 //
 // Helper CANONIQUE : toute étape qui a besoin de lire shared passe par ici — y
-// compris les étapes extraites (engine_postsync_films.go). Ne pas ré-écrire ce
+// compris les étapes extraites (convergence.go). Ne pas ré-écrire ce
 // bloc ailleurs : le release DOIT précéder tout burst Write (garde anti-deadlock
 // de SharedAccess.Write).
 func (e *SyncEngine) withSharedRead(
@@ -153,11 +153,12 @@ func hasMatchesNeedingScoreRefresh(ctx context.Context, playerDB, sharedDB *sql.
 	return n > 0, nil
 }
 
-// runPostSyncPipeline exécute le pipeline post-sync :
-// 1. Performance scores
-// 2. LUSR (TrueSkill 2)
-// 3. Career rank
-// 4. Aggregates (materialized views)
+// runPostSyncPipeline exécute le pipeline post-sync d'un joueur, dans l'ordre : lignes
+// d'enrichissement, scoring, événements (1.54), PSA (1.56), catalogue, escouade (recalcul
+// is_with_friends), domination (1.7), LUSR, CSR (3.1), agrégats (4), vidage des caches de
+// lecture, puis les étapes film lentes (source du kill 1.57, rejeu 1.58), citations (1.6),
+// médias, succès et préparation du match. Les dépendances qui fixent cet ordre sont dans le
+// commentaire « ORDRE DES ÉTAPES » du corps ; TestRunPostSyncPipeline_StepOrder le tient.
 func (e *SyncEngine) runPostSyncPipeline(
 	ctx context.Context,
 	playerDB *sql.DB,
@@ -217,7 +218,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	}
 	// withSharedRead : segment de LECTURE court par étape (délègue au helper
 	// canonique e.withSharedRead — même sémantique, un seul point de vérité
-	// partagé avec les étapes extraites, cf. engine_postsync_films.go).
+	// partagé avec les étapes extraites, cf. convergence.go).
 	withSharedRead := func(step string, fn func(sharedDB *sql.DB)) {
 		e.withSharedRead(ctx, shared, &r, step, fn)
 	}
@@ -301,7 +302,8 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// (serveur) ou par `levelup backfill-registry-names` (CLI).
 	e.runCatalogRefresh(ctx, shared, &r, insertedIDs)
 
-	// 3.5 Friends — recalcul convergent de is_with_friends (le premier écrit l'a déjà posé).
+	// 3.5 Friends — recalcul convergent de is_with_friends. Autorité sur la valeur : le premier
+	// écrit ne la pose que pour le joueur qui a récupéré le match, avec la liste d'amis connue à cet instant.
 	e.runFriendsRecompute(ctx, playerDB, shared, &r)
 	clock.lap("friends", int(r.MatchesPromotedFriends))
 

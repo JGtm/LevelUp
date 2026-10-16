@@ -3,22 +3,18 @@
 package sync
 
 // postsync_e2e_test.go — simulation de bout en bout d'un match d'escouade fraîchement
-// synchronisé : premier écrit par le chemin de production, puis post-sync complet.
+// synchronisé : premier écrit par le chemin de production (fetchAndPersistMatches), puis
+// post-sync complet (runPostSyncPipeline), sur des bases migrées.
 //
-// Le faux serveur HTTP (halotest) sert un match figé dont les fichiers (chunks, JSON d'API) sont
-// exclus du dépôt par .gitignore : il ne s'exécute pas en CI. Cette simulation utilise donc le
-// client de test (mockHaloClient) et le chunk de film v41 versionné ; elle tourne partout.
-//
-// Elle sert aussi à la comparaison avant/après réordonnancement (TestPostSyncE2E_Dump) : les
-// valeurs finales du match sont écrites en JSON dans $POSTSYNC_E2E_DUMP, et la même épreuve est
-// rejouée sur le commit de base.
+// Client de test (mockHaloClient) et chunk de film v41 versionné : la simulation tourne en CI.
+// Le faux serveur HTTP (halotest) ne convient pas ici, ses fichiers (chunks, JSON d'API) étant
+// exclus du dépôt par .gitignore.
 
 import (
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
 	"testing"
 
@@ -206,20 +202,4 @@ func mustJSON(t *testing.T, v any) string {
 		t.Fatalf("json: %v", err)
 	}
 	return string(b)
-}
-
-// TestPostSyncE2E_Dump (2b.3) : écrit les valeurs du match (après le premier écrit, puis finales)
-// dans $POSTSYNC_E2E_DUMP pour la comparaison avant/après réordonnancement. Sans la variable,
-// ne fait rien.
-func TestPostSyncE2E_Dump(t *testing.T) {
-	path := os.Getenv("POSTSYNC_E2E_DUMP")
-	if path == "" {
-		t.Skip("POSTSYNC_E2E_DUMP non défini")
-	}
-	env := newPSEnv(t, []string{"Player2"})
-	avant, ordre := env.jouer(t)
-	out := map[string]any{"apres_premier_ecrit": avant, "final": env.lireFinal(t), "ordre_des_etapes": ordre}
-	if err := os.WriteFile(path, []byte(mustJSON(t, out)), 0o644); err != nil {
-		t.Fatalf("écriture du dump: %v", err)
-	}
 }

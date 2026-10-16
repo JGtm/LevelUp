@@ -9,13 +9,10 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// passePremierEcrit joue le PREMIER écrit d'une passe de sync, par le chemin réel de
-// production (fetchAndPersistMatches : fetch, résolution des noms, persistance INSERT-only),
-// avec la résolution des amis une fois par passe comme run(). Rend le résultat de la passe.
-//
-// Ce fichier existe en deux versions : celle-ci (branche) résout et pose les amis ; la
-// version du commit de base, utilisée par la comparaison avant/après (TestPostSyncE2E_Dump),
-// n'en a pas la notion.
+// passePremierEcrit joue le PREMIER écrit d'une passe de sync par le chemin de production
+// (fetchAndPersistMatches : fetch, résolution des noms, persistance INSERT-only), avec la
+// résolution des amis une fois par passe comme run() (le branchement de run() lui-même est tenu
+// par TestRunHistoryInputsCarryFriends). Rend le résultat de la passe et le nombre de matchs persistés.
 func passePremierEcrit(ctx context.Context, e *SyncEngine, client HaloClient, shared, player *sql.DB, ids []string) (*domain.SyncResult, int) {
 	in := historyPaginationInputs{
 		client: client,

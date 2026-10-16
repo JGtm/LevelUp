@@ -46,7 +46,7 @@ const (
 	// postsyncEventsBurstChunk / postsyncWeaponsBurstChunk : taille des lots des
 	// étapes film du post-sync (events / weapon kills).
 	//
-	// Depuis le split COLLECT/FLUSH (v7.3, engine_postsync_films.go) le fetch film
+	// Depuis le split COLLECT/FLUSH (v7.3, convergence.go) le fetch film
 	// n'est PLUS dans le burst : le writer n'est acquis que pour le flush SQL du
 	// lot. Ces constantes ne bornent donc plus la durée du lease (elle ne dépend
 	// que du coût des INSERT) mais la MÉMOIRE : nombre de films téléchargés/parsés

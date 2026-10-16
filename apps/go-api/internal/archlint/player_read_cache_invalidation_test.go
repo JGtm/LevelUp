@@ -8,6 +8,8 @@
 // données périmées jusqu'au TTL. Ce test verrouille leur présence :
 //
 //   - sync.runPostSyncPipeline : fin du post-sync du joueur (chemins V1 et V2) ;
+//   - sync.flushReadCaches : vidage à mi-pipeline, une fois les agrégats rafraîchis et avant les
+//     étapes film lentes (appelée par runPostSyncPipeline, tenu par TestRunPostSyncPipeline_FlushesHomeCacheBeforeFilmSteps) ;
 //   - sync.RecomputeIsWithFriends : recalcul « avec amis » hors sync (liste d'amis) ;
 //   - duckdb.MatchExclusionRepo.SetExclusion : exclusion d'un match.
 //
@@ -31,6 +33,7 @@ var playerReadCacheInvalidationPoints = []struct {
 	fn   string
 }{
 	{"sync/engine_postsync.go", "runPostSyncPipeline"},
+	{"sync/engine_postsync_scoring.go", "flushReadCaches"},
 	{"sync/friends_recompute.go", "RecomputeIsWithFriends"},
 	{"platform/duckdb/match_exclusion_repo.go", "SetExclusion"},
 }
