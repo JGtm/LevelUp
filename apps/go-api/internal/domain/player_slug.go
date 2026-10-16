@@ -29,12 +29,11 @@ func IsValidPlayerSlug(slug string) bool {
 }
 
 func isPlayerSlugRune(r rune) bool {
-	switch {
-	case r == ' ' || r == '_' || r == '-':
+	switch r {
+	case ' ', '_', '-':
 		return true
-	case r == unicode.ReplacementChar:
+	case unicode.ReplacementChar:
 		return false
-	default:
-		return unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsMark(r)
 	}
+	return unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsMark(r)
 }

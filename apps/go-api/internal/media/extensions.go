@@ -18,8 +18,11 @@ import (
 // ici aussi pour que le fallback resolution la trouve.
 var VideoExtensions = []string{".mp4", ".webm", ".mov", ".avi", ".mkv"}
 
+// extPNG : extension PNG, nommée pour la liste des images et ses tests.
+const extPNG = ".png"
+
 // ImageExtensions liste les formats d'image acceptés à l'envoi et indexés.
-var ImageExtensions = []string{".png", ".jpg", ".jpeg", ".bmp", ".gif"}
+var ImageExtensions = []string{extPNG, ".jpg", ".jpeg", ".bmp", ".gif"}
 
 // derivedExtensions liste les fichiers que le serveur produit à partir d'un média :
 // miniatures (.webp ; .gif est déjà une image) et arbre HLS (playlists .m3u8, segments

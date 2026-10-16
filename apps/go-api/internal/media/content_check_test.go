@@ -21,7 +21,7 @@ var (
 
 func TestContentMatchesExtension_LegitimateUploads(t *testing.T) {
 	cases := map[string][]byte{
-		".png": headPNG, ".PNG": headPNG, ".jpg": headJPEG, ".jpeg": headJPEG, ".gif": headGIF,
+		extPNG: headPNG, ".PNG": headPNG, ".jpg": headJPEG, ".jpeg": headJPEG, ".gif": headGIF,
 		".bmp": headBMP, ".mp4": headMP4, ".mov": headMOV, ".webm": headWebM, ".mkv": headWebM,
 		".avi": headAVI,
 	}
@@ -47,11 +47,11 @@ func TestContentMatchesExtension_RefusesMismatches(t *testing.T) {
 		ext  string
 		head []byte
 	}{
-		{".png", html}, {".jpg", svg}, {".gif", []byte("hello")}, {".bmp", []byte("%PDF-1.7")},
+		{extPNG, html}, {".jpg", svg}, {".gif", []byte("hello")}, {".bmp", []byte("%PDF-1.7")},
 		{".mp4", html}, {".mov", []byte("just text")}, {".webm", []byte("PK\x03\x04zip")},
 		{".mkv", []byte("%PDF-1.4")}, {".avi", headPNG}, {".mp4", headJPEG},
-		{".png", headMP4}, {".exe", headPNG}, {".html", html}, {".mp4", nil},
-		{".png", []byte(strings.Repeat(" ", 10) + "<html>")},
+		{extPNG, headMP4}, {".exe", headPNG}, {".html", html}, {".mp4", nil},
+		{extPNG, []byte(strings.Repeat(" ", 10) + "<html>")},
 	}
 	for _, c := range cases {
 		if ContentMatchesExtension(c.ext, c.head) {
