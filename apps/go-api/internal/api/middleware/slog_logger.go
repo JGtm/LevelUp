@@ -182,3 +182,10 @@ func (sw *statusResponseWriter) Write(b []byte) (int, error) {
 	sw.bytesWritten += int64(n)
 	return n, err
 }
+
+// Unwrap rend le ResponseWriter enveloppé : http.ResponseController (échéances de lecture
+// et d'écriture, Flush, Hijack) atteint ainsi la connexion à travers cette enveloppe
+// (garde-rail archlint/response_writer_unwrap_test.go).
+func (sw *statusResponseWriter) Unwrap() http.ResponseWriter {
+	return sw.ResponseWriter
+}

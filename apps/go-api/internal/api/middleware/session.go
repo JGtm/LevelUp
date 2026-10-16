@@ -178,6 +178,13 @@ func (w *sessionResponseWriter) Flush() {
 	}
 }
 
+// Unwrap rend le ResponseWriter enveloppé : http.ResponseController (échéances de lecture
+// et d'écriture, Flush, Hijack) atteint ainsi la connexion à travers cette enveloppe
+// (garde-rail archlint/response_writer_unwrap_test.go).
+func (w *sessionResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
 // expireCookie pose un cookie de session vide et expiré : le navigateur l'efface.
 func expireCookie(w http.ResponseWriter, secure bool) {
 	http.SetCookie(w, &http.Cookie{
