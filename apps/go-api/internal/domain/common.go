@@ -40,7 +40,7 @@ func ErrInternal(msg string) *APIError {
 }
 
 // MediaToolingStatus reflète la disponibilité de l'outillage média (ffmpeg/ffprobe)
-// telle que sondée UNE FOIS au boot. Exposée dans /health pour rendre l'info
+// telle que sondée UNE FOIS au boot. Exposée dans /admin/health pour rendre l'info
 // observable en prod même quand LEVELUP_LOG_LEVEL=warn masque la ligne INFO
 // « media tooling: ffmpeg/ffprobe disponibles » émise au démarrage.
 type MediaToolingStatus struct {
@@ -49,7 +49,13 @@ type MediaToolingStatus struct {
 	FFmpegVersion string `json:"ffmpeg_version,omitempty"`
 }
 
-// HealthResponse est la réponse de GET /health.
+// PublicHealthResponse est la réponse de GET /health, sonde publique : l'état et rien
+// d'autre (aucune version, aucun compteur).
+type PublicHealthResponse struct {
+	Status string `json:"status"`
+}
+
+// HealthResponse est la réponse de GET /admin/health : le détail du service.
 type HealthResponse struct {
 	Status     string `json:"status"`
 	MatchCount int    `json:"match_count"`

@@ -107,6 +107,8 @@ type apiV1Deps struct {
 	jobStore              *jobs_platform.Store
 	titleRegistry         *titlePkg.Registry
 	backupScheduler       *duckdbbackup.Scheduler
+	// healthHandler : sonde publique (racine) ET détail admin (/admin/health).
+	healthHandler *handlers.HealthHandler
 	// humaSharedConfig : LE document OpenAPI PARTAGÉ (V72-01 / H1). Toutes les routes
 	// Huma s'y enregistrent via WithSharedDoc, sous leur préfixe de montage absolu.
 	humaSharedConfig huma.Config
@@ -456,6 +458,9 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// seule du MultiUserTokenStore (ADR 0023), sans refresh réseau.
 		tokenHealthHandler := handlers.NewAdminTokenHealthHandler(reg.TokenHealth)
 		tokenHealthHandler.Mount(r.With(middleware.NoStore), adminOpt)
+		// Détail de santé du service (versions, compteurs, outillage) : /health
+		// public ne rend que {status}.
+		d.healthHandler.MountAdmin(r.With(middleware.NoStore), adminOpt)
 		// Annuaire des joueurs (ADR 0035 D7) : les quatre registres d'identité
 		// (compte, profil, credentials, suivi live) lus ENSEMBLE par xuid, plus le
 		// témoin disque. NoStore : l'anomalie qu'on vient de corriger doit
@@ -1586,6 +1591,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		jobStore:              jobStore,
 		titleRegistry:         titleRegistry,
 		backupScheduler:       backupScheduler,
+		healthHandler:         healthH,
 		humaSharedConfig:      in.humaSharedConfig,
 	}
 }

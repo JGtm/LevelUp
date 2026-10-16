@@ -5,11 +5,13 @@
 // huma.Get. Logique métier inchangée (BootstrapRepository), seul le wrapping
 // HTTP change.
 //
-//   - /health  → ServeHTTP  : 200 {HealthResponse} ou 503 {db_unavailable}.
+//   - /health  → sonde publique : 200 {status} ou 503 {db_unavailable}. Aucune empreinte
+//     (versions, compteurs, outillage) : le détail est servi par GET /admin/health.
 //   - /healthz → Liveness   : 200 {status:alive} (aucun I/O DB).
 //   - /readyz  → Readiness  : 200 {status:ready} ou 503 {status:not_ready,checks}
 //     — le 503 PORTE un corps de checks (diagnostic), donc Output{Status, Body}
-//     et non une erreur Huma.
+//     et non une erreur Huma. Les checks valent "ok" ou "err" : le texte de
+//     l'erreur reste au journal.
 package handlers
 
 import (
@@ -26,6 +28,9 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
+
+// checkErr : valeur d'un check de /readyz en échec (sans détail).
+const checkErr = "err"
 
 // HealthHandler gère GET /health.
 type HealthHandler struct {
@@ -63,10 +68,23 @@ func (h *HealthHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	huma.Get(api, "/readyz", h.handleReadiness, humacore.Op("getReadyz", "Readiness probe (DuckDB + filesystem + capability registry)", "health"))
 }
 
+// MountAdmin enregistre GET /health (détail) sur le sous-routeur /admin : versions,
+// compteurs et outillage média, hors de portée d'un anonyme (RequireAuth et
+// RequireAdmin sont hérités du sous-routeur).
+func (h *HealthHandler) MountAdmin(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
+	huma.Get(api, "/health", h.handleAdminHealth, humacore.Op("getAdminHealth", "Détail du service : versions, compteurs, outillage média (auth admin requis)", "admin"))
+}
+
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
 
-// healthOutput : 200 {HealthResponse} (le 503 db_unavailable est une erreur Huma).
+// healthOutput : 200 {status} (le 503 db_unavailable est une erreur Huma).
 type healthOutput struct {
+	Body domain.PublicHealthResponse
+}
+
+// adminHealthOutput : 200 {HealthResponse} (détail réservé à l'admin).
+type adminHealthOutput struct {
 	Body domain.HealthResponse
 }
 
@@ -84,20 +102,33 @@ type readinessOutput struct {
 
 // ─── Endpoints ───────────────────────────────────────────────────────────────
 
-// handleHealth retourne le healthcheck enrichi (Sprint 41 T3).
+// handleHealth gère GET /health, la sonde publique (Docker, déploiement, CI).
+//
+// Un 200 atteste que la base partagée s'ouvre et se lit ; le corps ne porte que
+// {status} : versions, compteurs et outillage médiatique ne s'offrent pas à un
+// anonyme (GET /admin/health les sert à l'admin).
 //
 // Deprecated: utiliser /healthz pour la liveness ou /readyz pour la readiness.
 // /health garde la sémantique mixte (200 si DB OK) pour rétrocompat.
 func (h *HealthHandler) handleHealth(ctx context.Context, _ *struct{}) (*healthOutput, error) {
+	if _, err := h.repo.GetMatchCount(ctx); err != nil {
+		slog.ErrorContext(ctx, "health: base partagée illisible", "err", err)
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "db_unavailable", "database unavailable")
+	}
+	return &healthOutput{Body: domain.PublicHealthResponse{Status: "ok"}}, nil
+}
+
+// handleAdminHealth gère GET /admin/health : le détail de santé du service.
+func (h *HealthHandler) handleAdminHealth(ctx context.Context, _ *struct{}) (*adminHealthOutput, error) {
 	count, err := h.repo.GetMatchCount(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusServiceUnavailable, "db_unavailable",
-			"Impossible de lire shared_matches_v2: "+err.Error())
+		slog.ErrorContext(ctx, "health: base partagée illisible", "err", err)
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "db_unavailable", "database unavailable")
 	}
 
 	// Enrichissements best-effort : leur échec ne dégrade pas le 200 (la santé
 	// DB est déjà attestée par GetMatchCount ci-dessus), mais on trace au lieu
-	// d'avaler l'erreur (Debug : /health est sondé fréquemment).
+	// d'avaler l'erreur (Debug : sondé fréquemment).
 	dbVersion, err := h.repo.GetDBVersion(ctx)
 	if err != nil {
 		slog.DebugContext(ctx, "health: db version enrichment unavailable", "err", err)
@@ -111,7 +142,7 @@ func (h *HealthHandler) handleHealth(ctx context.Context, _ *struct{}) (*healthO
 		slog.DebugContext(ctx, "health: last sync enrichment unavailable", "err", err)
 	}
 
-	return &healthOutput{Body: domain.HealthResponse{
+	return &adminHealthOutput{Body: domain.HealthResponse{
 		Status:       "ok",
 		MatchCount:   count,
 		DBVersion:    dbVersion,
@@ -148,9 +179,11 @@ func (h *HealthHandler) handleReadiness(ctx context.Context, _ *struct{}) (*read
 	checks := map[string]string{}
 	allOK := true
 
-	// Check DB : tentative de lecture du compte de matchs (fail-fast).
+	// Check DB : tentative de lecture du compte de matchs (fail-fast). Le texte de
+	// l'erreur reste au journal : la sonde est publique.
 	if _, err := h.repo.GetMatchCount(ctx); err != nil {
-		checks["duckdb"] = "err: " + err.Error()
+		slog.ErrorContext(ctx, "readyz: base partagée illisible", "check", "duckdb", "err", err)
+		checks["duckdb"] = checkErr
 		allOK = false
 	} else {
 		checks["duckdb"] = "ok"
@@ -158,7 +191,8 @@ func (h *HealthHandler) handleReadiness(ctx context.Context, _ *struct{}) (*read
 
 	// Check version DB : déjà couvert par GetMatchCount mais marqueur explicite.
 	if _, err := h.repo.GetDBVersion(ctx); err != nil {
-		checks["duckdb_version"] = "err: " + err.Error()
+		slog.ErrorContext(ctx, "readyz: version de la base illisible", "check", "duckdb_version", "err", err)
+		checks["duckdb_version"] = checkErr
 		allOK = false
 	} else {
 		checks["duckdb_version"] = "ok"
