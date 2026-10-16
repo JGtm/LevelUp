@@ -39,6 +39,7 @@ import (
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/mediaaudio"
 	"levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/platform/slots"
 	"levelup/go-api/internal/port"
 )
 
@@ -123,6 +124,16 @@ const maxUploadSize = 500 << 20
 // maxUploadFiles limite le nombre de fichiers par requête.
 const maxUploadFiles = 50
 
+// maxConcurrentUploads borne les envois de médias en vol pour tout le process : chacun
+// stage jusqu'à maxUploadSize sur disque et peut lancer des miniatures et un transcodage.
+const maxConcurrentUploads = 2
+
+// defaultUploadSlotWait est l'attente maximale d'une place d'envoi avant le 503 upload_busy.
+const defaultUploadSlotWait = 30 * time.Second
+
+// globalUploadSlots est le pool d'envois partagé par toutes les instances de MediaHandler.
+var globalUploadSlots = slots.New(maxConcurrentUploads)
+
 // defaultMediaMatchWindowMinutes : fenêtre ± (minutes) d'association d'un média à un match
 // par proximité temporelle, appliquée quand le client ne fournit pas window_minutes.
 const defaultMediaMatchWindowMinutes = 15
@@ -160,6 +171,8 @@ type MediaHandler struct {
 	authEnforced      bool                        // true = multi-user authentifié (like sans session refusé)
 	requester         RequesterSlugResolver       // joueur possédé par l'utilisateur de la session (media_requester.go)
 	users             authz.UserLookup            // relecture du rôle admin (media_requester.go)
+	uploadSlots       *slots.Pool                 // envois en vol (défaut : pool global du process)
+	uploadSlotWait    time.Duration               // attente maximale d'une place d'envoi
 }
 
 // NewMediaHandler crée un MediaHandler.
@@ -170,6 +183,14 @@ func NewMediaHandler(
 	repoRoot string,
 ) *MediaHandler {
 	return &MediaHandler{newSvc: newSvc, newUpload: newUpload, repoRoot: repoRoot}
+}
+
+// WithUploadSlots remplace le pool global des envois de médias et l'attente maximale
+// d'une place (tests ; en service, le pool global du process s'applique).
+func (h *MediaHandler) WithUploadSlots(pool *slots.Pool, wait time.Duration) *MediaHandler {
+	h.uploadSlots = pool
+	h.uploadSlotWait = wait
+	return h
 }
 
 // WithSettingsStore injecte le settings store pour lire media_captures_base_dir.

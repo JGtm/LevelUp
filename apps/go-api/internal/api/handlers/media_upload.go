@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,6 +20,9 @@ import (
 	"levelup/go-api/internal/platform/mediaaudio"
 )
 
+// uploadBusyRetryAfterSec : délai conseillé (Retry-After) à un envoi refusé faute de place.
+const uploadBusyRetryAfterSec = "30"
+
 func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	if h.newUpload == nil {
 		writeError(r.Context(), w, http.StatusNotImplemented, "upload_not_configured", "upload factory non configurée")
@@ -31,6 +35,14 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
+
+	// Au plus maxConcurrentUploads envois en vol pour tout le process : un envoi de plus
+	// attend sa place, puis reçoit un 503 upload_busy clair s'il l'attend trop longtemps.
+	release, ok := h.acquireUploadSlot(r.Context(), w)
+	if !ok {
+		return
+	}
+	defer release()
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
@@ -99,6 +111,30 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 		uploadStart, sharedSocialDBPath, sharedMatchesDBPath)
 }
 
+// acquireUploadSlot prend une place d'envoi, en attendant au plus uploadSlotWait. Sans
+// place, répond 503 upload_busy (Retry-After) et rend ok=false.
+func (h *MediaHandler) acquireUploadSlot(ctx context.Context, w http.ResponseWriter) (release func(), ok bool) {
+	pool, wait := h.uploadSlots, h.uploadSlotWait
+	if pool == nil {
+		pool = globalUploadSlots
+	}
+	if wait <= 0 {
+		wait = defaultUploadSlotWait
+	}
+	waitCtx, cancel := context.WithTimeout(ctx, wait)
+	defer cancel()
+	release, err := pool.Acquire(waitCtx)
+	if err != nil {
+		slog.WarnContext(ctx, "upload: aucune place d'envoi libre, requête refusée",
+			"wait", wait.String(), "in_flight", pool.InUse(), "err", err)
+		w.Header().Set(headerRetryAfter, uploadBusyRetryAfterSec)
+		writeError(ctx, w, http.StatusServiceUnavailable, "upload_busy",
+			"serveur occupé par d'autres envois, réessayez dans un instant")
+		return nil, false
+	}
+	return release, true
+}
+
 // parseUploadedFiles extrait et valide les fichiers du formulaire multipart.
 // Le champ attendu est "files". Un champ JSON optionnel "capture_times" peut
 // fournir un tableau d'entiers Unix (secondes) aligné sur l'ordre des fichiers.
@@ -128,18 +164,10 @@ func parseUploadedFiles(r *http.Request) ([]domain.UploadedFile, error) {
 			slog.Warn("upload: extension refusée", "file", fh.Filename, "ext", ext)
 			continue
 		}
-		f, err := fh.Open()
-		if err != nil {
-			return nil, fmt.Errorf("lecture %s: %w", fh.Filename, err)
-		}
-		data, err := io.ReadAll(f)
-		f.Close()
-		if err != nil {
-			return nil, fmt.Errorf("lecture données %s: %w", fh.Filename, err)
-		}
+		// Le contenu n'est PAS lu ici : le service le copie en flux vers le disque.
 		uf := domain.UploadedFile{
 			OriginalName: fh.Filename,
-			Data:         data,
+			Open:         func() (io.ReadCloser, error) { return fh.Open() },
 		}
 		if i < len(clientTimes) && clientTimes[i] > 0 {
 			ts := clientTimes[i]

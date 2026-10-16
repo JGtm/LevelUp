@@ -5,7 +5,10 @@
 //	POST /api/v1/players/{slug}/pages/media  → MediaPageResponse
 package domain
 
-import "time"
+import (
+	"io"
+	"time"
+)
 
 // ---------------------------------------------------------------------------
 // Types de requête — Médias (POST body)
@@ -201,10 +204,11 @@ type MediaLikeResponse struct {
 // Upload
 // ---------------------------------------------------------------------------
 
-// UploadedFile est un fichier reçu via multipart/form-data.
+// UploadedFile est un fichier reçu via multipart/form-data. Son contenu n'est jamais
+// porté en mémoire : Open rend un lecteur que le service copie en flux vers le disque.
 type UploadedFile struct {
 	OriginalName    string
-	Data            []byte
+	Open            func() (io.ReadCloser, error)
 	CaptureTimeUnix *int64 // mtime du fichier côté client (secondes Unix), optionnel
 }
 

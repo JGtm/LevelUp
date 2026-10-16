@@ -812,6 +812,10 @@ en = "{saved, plural, one {# file imported} other {# files imported}} · {indexe
 fr = "Échec de l'import"
 en = "Upload failed"
 
+[common.media.upload_busy]
+fr = "Le serveur traite déjà d'autres envois. Réessaie dans quelques instants."
+en = "The server is already processing other uploads. Try again in a moment."
+
 [common.media.associate_success]
 fr = "Média associé au match"
 en = "Media linked to match"

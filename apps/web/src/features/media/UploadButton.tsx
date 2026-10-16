@@ -4,7 +4,7 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useUploadMedia } from './queries'
-import { apiErrorMessage } from '@/lib/api/client'
+import { apiErrorCode, apiErrorMessage } from '@/lib/api/client'
 import { Spinner } from '@/components/ui/spinner'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
@@ -88,7 +88,8 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
         ),
       onError: (err) =>
         toast.error(t('common.media.upload_error'), {
-          description: apiErrorMessage(err),
+          description:
+            apiErrorCode(err) === 'upload_busy' ? t('common.media.upload_busy') : apiErrorMessage(err),
         }),
     })
     if (inputRef.current) inputRef.current.value = ''

@@ -512,8 +512,19 @@ func VerifyHLSPlayable(ctx context.Context, masterPath string, expectedAudioTrac
 // sous-playlists + segments). Copy par défaut, réencode ciblé selon planHLS.
 // Réécrit les NAME du master avec les titres de piste, puis valide la sortie.
 //
-// ffmpeg/ffprobe doivent être dans le PATH. outDir est créé si absent.
+// ffmpeg/ffprobe doivent être dans le PATH. outDir est créé si absent. Un seul transcodage
+// à la fois pour tout le process (withFFmpegSlot), borné par ffmpegMaxDuration.
 func BuildHLS(ctx context.Context, srcPath, outDir string, opts HLSOptions) (HLSResult, error) {
+	var res HLSResult
+	err := withFFmpegSlot(ctx, func(ctx context.Context) error {
+		var buildErr error
+		res, buildErr = buildHLS(ctx, srcPath, outDir, opts)
+		return buildErr
+	})
+	return res, err
+}
+
+func buildHLS(ctx context.Context, srcPath, outDir string, opts HLSOptions) (HLSResult, error) {
 	streams, err := ProbeStreamsDetailed(ctx, srcPath)
 	if err != nil {
 		return HLSResult{}, err
