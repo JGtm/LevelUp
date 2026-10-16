@@ -9,6 +9,9 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/ops"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 func (e *SyncEngine) runScoringSteps(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
@@ -239,3 +242,149 @@ func (e *SyncEngine) runDualRowSentinelBestEffort(ctx context.Context, playerDB 
 // runCSRSnapshotSync récupère + persiste les CSR snapshots du joueur.
 // Retourne la slice CSR pour que le caller puisse alimenter playlists_catalog
 // en parallèle (cf. errgroup step 4 dans runPostSyncPipeline).
+
+// runPSAConvergence — étape 1.56 : convergence des personal_score_awards. Cas nominal :
+// matchs delta-skippés (insérés en shared par un coéquipier) dont seul le traitement
+// per-match écrivait les PSA (gate invariants psa_missing, 2026-06-10). Marqueur terminal
+// psa_checked_at : chaque match n'est fetché qu'une fois, borné par convergenceHorizon.
+func (e *SyncEngine) runPSAConvergence(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, client HaloClient, r *domain.PostSyncResult) {
+	psaWork := selectMatchesMissingPSA(ctx, playerDB)
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_psa_pending_total", int64(len(psaWork)))
+	if len(psaWork) == 0 {
+		return
+	}
+	// Split 4b : fetch réseau + écritures PLAYER hors de tout lease shared ;
+	// seul le flush des alias (shared.xuid_aliases) passe en burst court.
+	n, pairs := convergePSACollect(ctx, playerDB, client, e.xuid, psaWork)
+	if len(pairs) > 0 {
+		if wdb, releaseW, werr := shared.Write(ctx, "psa_aliases"); werr != nil {
+			slog.WarnContext(ctx, "post-sync: burst psa_aliases indisponible — alias non flushés (retentés au prochain cycle)",
+				"gamertag", e.gamertag, "count", len(pairs), "err", werr)
+		} else {
+			// Corps du burst sous closure : releaseW en defer, donc la fenêtre RW est
+			// rendue même si flushAliasPairs panique.
+			func() {
+				defer releaseW()
+				flushAliasPairs(ctx, wdb, e.xuid, pairs)
+			}()
+		}
+	}
+	r.ConvergedPSA = n
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_psa_processed_total", int64(n))
+	slog.InfoContext(ctx, "post-sync: convergence PSA",
+		"gamertag", e.gamertag, "selected", len(psaWork), "processed", n)
+}
+
+// runCatalogRefresh inscrit les nouvelles playlists/maps/paires/variantes dans les tables
+// catalogue (zéro réseau) — chemin V1/CLI ; V2 gère le catalogue dans son persister (son
+// engine post-sync n'a pas de metaDB : skip propre). CatalogRefreshFromRegistry est
+// ART-safe (SELECT-then-write). Best-effort.
+func (e *SyncEngine) runCatalogRefresh(ctx context.Context, shared *SharedAccess, r *domain.PostSyncResult, insertedIDs []string) {
+	if e.assetPool == nil || e.metaDB == nil || len(insertedIDs) == 0 {
+		return
+	}
+	e.withSharedRead(ctx, shared, r, "catalog_refresh", func(sharedDB *sql.DB) {
+		if sharedDB == nil {
+			return
+		}
+		if _, cerr := ops.CatalogRefreshFromRegistry(ctx, e.metaDB, sharedDB, e.titleSlug); cerr != nil {
+			slog.WarnContext(ctx, "post-sync: refresh catalogue non-bloquant",
+				"gamertag", e.gamertag, "err", cerr)
+		}
+	})
+}
+
+// runFriendsRecompute — étape 3.5 : recalcule is_with_friends (best-effort), autorité
+// convergente (ami ajouté/retiré) même quand le premier écrit a déjà posé la valeur. Placée
+// AVANT les agrégats : refreshAggregates=false, le refresh natif de l'engine couvre les
+// écritures. Skip silencieux sans loader (legacy) ou avec liste vide.
+func (e *SyncEngine) runFriendsRecompute(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
+	if e.friendsLoader == nil {
+		return
+	}
+	friends, ferr := e.friendsLoader()
+	if ferr != nil {
+		slog.WarnContext(ctx, "post-sync: friends loader échoué", "gamertag", e.gamertag, "err", ferr)
+		trackFatalErr(r, "friends loader", ferr)
+		return
+	}
+	if len(friends) == 0 {
+		return
+	}
+	slog.DebugContext(ctx, "post-sync: friends recompute", "gamertag", e.gamertag, "friends_count", len(friends))
+	e.withSharedRead(ctx, shared, r, "friends", func(sharedDB *sql.DB) {
+		fres, err := RecomputeIsWithFriendsCore(ctx, playerDB, sharedDB, e.xuid, friends, false)
+		if err != nil {
+			slog.WarnContext(ctx, "post-sync: friends recompute échoué", "gamertag", e.gamertag, "err", err)
+			trackFatalErr(r, "friends recompute", err)
+		} else if fres.MatchesPromoted > 0 {
+			r.MatchesPromotedFriends = fres.MatchesPromoted
+			slog.InfoContext(ctx, "post-sync: matchs reclasses comme escouade-amis",
+				"gamertag", e.gamertag,
+				"promoted", fres.MatchesPromoted,
+			)
+		}
+	})
+}
+
+// runDominanceFlags — étape 1.7 : matchs nouvellement insérés + backlog
+// (dominance_flag IS NULL). Reconstruit la courbe score depuis highlight_events (donc APRÈS
+// la convergence events 1.54). Valeur 0 = calculé/sans dominance, NULL = jamais calculé.
+func (e *SyncEngine) runDominanceFlags(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult, insertedIDs []string) {
+	missingIDs, merr := selectMatchesMissingDominanceFlags(ctx, playerDB)
+	if merr != nil {
+		slog.WarnContext(ctx, "post-sync: dominance detect échoué", "gamertag", e.gamertag, "err", merr)
+		trackFatalErr(r, "dominance detect", merr)
+	}
+	allDominanceIDs := mergeUniqMatchIDs(insertedIDs, missingIDs)
+	if len(allDominanceIDs) == 0 {
+		return
+	}
+	// Lecture shared (courbe score depuis highlight_events) ; écriture via
+	// PostSyncEnrichmentPersister(playerDB) — segment Read suffit.
+	e.withSharedRead(ctx, shared, r, "dominance", func(sharedDB *sql.DB) {
+		if err := BackfillDominanceFlags(ctx, sharedDB, playerDB, e.xuid, allDominanceIDs); err != nil {
+			slog.WarnContext(ctx, "post-sync: dominance flags échoué",
+				"gamertag", e.gamertag, "err", err, "count", len(allDominanceIDs))
+			trackFatalErr(r, "dominance flags", err)
+		} else {
+			r.DominanceFlagsComputed = len(allDominanceIDs)
+			slog.InfoContext(ctx, "post-sync: dominance flags calculés",
+				"gamertag", e.gamertag, "count", r.DominanceFlagsComputed)
+		}
+	})
+}
+
+// runCitations — étape 1.6 : pipeline primaire, pas un heal. Traite tous les matchs absents
+// de match_citations (LEFT JOIN IS NULL). Le sentinel "_processed" empêche les matchs à
+// 0 delta d'être re-traités. APRÈS la source du kill (1.57) : les citations par arme lisent
+// ses lignes et leur calcul est unique.
+func (e *SyncEngine) runCitations(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
+	e.withSharedRead(ctx, shared, r, "citations", func(sharedDB *sql.DB) {
+		if n, err := e.runPostSyncCitations(ctx, playerDB, sharedDB); err != nil {
+			slog.WarnContext(ctx, "post-sync: citations échoué", "gamertag", e.gamertag, "err", err)
+			trackFatalErr(r, "citations", err)
+		} else if n > 0 {
+			r.CitationsComputed = n
+			slog.InfoContext(ctx, "post-sync: citations calculées", "gamertag", e.gamertag, "count", n)
+		}
+	})
+}
+
+// flushReadCaches vide les caches de lecture du joueur (lectures joueur cachées L5b et
+// cache Home) : appelée dès que les lignes lues par les pages sont à jour (après les
+// agrégats), AVANT les étapes film lentes — sans quoi une page lue pendant la lecture des
+// films sert une version périmée jusqu'au TTL. Le vidage final du `defer` de
+// runPostSyncPipeline reste en place pour ce que les étapes film écrivent ensuite.
+func (e *SyncEngine) flushReadCaches(ctx context.Context) {
+	duckdbpkg.InvalidatePlayerReadCaches(ctx, e.xuid, e.titleSlug)
+	e.flushHomeCache(ctx)
+}
+
+// flushHomeCache appelle le rappel de vidage du cache Home posé par le serveur
+// (WithHomeCacheFlush) ; sans rappel (CLI, tests), rien à vider.
+func (e *SyncEngine) flushHomeCache(ctx context.Context) {
+	if e.homeCacheHook != nil {
+		e.homeCacheHook(ctx, e.xuid, e.titleSlug)
+	}
+}

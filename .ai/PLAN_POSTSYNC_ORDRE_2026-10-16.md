@@ -63,25 +63,25 @@ Gate 0 : tests de base exécutés, inventaire rempli.
 
 ## Étape 1 — Ordre du post-sync (moyen)
 
-- [ ] 1.1 Réordonner `runPostSyncPipeline` selon D1 (déplacement de blocs, aucun changement de
+- [x] 1.1 Réordonner `runPostSyncPipeline` selon D1 (déplacement de blocs, aucun changement de
   logique d'étape). Construire `postSyncFilmSteps` une seule fois et le réutiliser.
-- [ ] 1.2 Vidage du cache de lecture joueur après les agrégats
+- [x] 1.2 Vidage du cache de lecture joueur après les agrégats
   (`duckdbpkg.InvalidatePlayerReadCaches`), le `defer` final reste (ratchet
   `archlint/player_read_cache_invalidation_test.go`).
-- [ ] 1.3 Vidage de `HomeMatchesCache` au même point, pour V1 ET V2, via un rappel du moteur
+- [x] 1.3 Vidage de `HomeMatchesCache` au même point, pour V1 ET V2, via un rappel du moteur
   (modèle `mediaHook` / `prestigeHook` ; `sync` n'importe pas `service`). Brancher le rappel dans
   le câblage du serveur pour les deux chemins.
 - [~] 1.4 Second rafraîchissement des agrégats après 1.6 — seulement si l'inventaire 0.3 le
   justifie.
-- [ ] 1.5 `sync/postsync_clock.go` : la liste des étapes affichées suit l'ordre D1 et contient
+- [x] 1.5 `sync/postsync_clock.go` : la liste des étapes affichées suit l'ordre D1 et contient
   `kill_source` et `replay_artifacts` (aujourd'hui absentes, `weapon_kills` périmé) — nécessaire
   pour lire l'ordre réel au tableau de bord en étape 4.
-- [ ] 1.6 Test qui épingle l'ordre : `StepTimings` d'un post-sync contient `friends`,
+- [x] 1.6 Test qui épingle l'ordre : `StepTimings` d'un post-sync contient `friends`,
   `skill_rating`, `aggregates` AVANT `kill_source`, et `citations` APRÈS `replay_artifacts`,
   `snapshot_readiness` en dernier. Mutation : remettre l'ancien ordre → rouge.
-- [ ] 1.7 Test d'intégration : match inséré par un coéquipier (`events_loaded=false`) → après un
+- [x] 1.7 Test d'intégration : match inséré par un coéquipier (`events_loaded=false`) → après un
   post-sync, domination NON figée à 0 et citations avec événements (preuve que 1.54 reste avant).
-- [ ] 1.8 Seuils : `runPostSyncPipeline` ≤ 80 L ou exemption existante inchangée ; aucun nouveau
+- [x] 1.8 Seuils : `runPostSyncPipeline` ≤ 80 L ou exemption existante inchangée ; aucun nouveau
   fichier à la racine de `internal/sync` (ratchet `sync_root_freeze_test.go`).
 
 Gate 1 : `go test ./internal/sync/...`, `go test -tags=integration -p 1 ./internal/sync/...
@@ -123,6 +123,11 @@ sert le match réel figé `internal/sync/testdata/jgtm_full_match/` (stats, skil
 - [ ] 2b.3 Comparaison avant/après : le même test exécuté sur le commit de base (ancien ordre) et
   sur la branche donne les MÊMES valeurs finales (citations, domination, LUSR, préparation,
   escouade) ; seule la chronologie change. Écart = arrêt et analyse.
+  Contrôle ajouté (coordinateur, 16/10) : la pénalité de départ du LUSR v2 donne la MÊME valeur avant et
+  après réordonnancement ; si le match figé n'a pas de joueur parti, test d'intégration ciblé : match
+  avec un partant, passe crédit-seul seule présente (aucune passe film) -> `loadQuitTimeline` rend
+  `available=true` et le delta suit la timeline, pas le repli. Si le LUSR diffère entre passe crédit et
+  passe film (couverture différente) : arrêt et compte rendu chiffré.
 
 Gate 2bis : 2b.1-2b.3 cochés, tableau avant/après dans le journal.
 
@@ -189,22 +194,14 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
 
 ## Découvertes
 
-- (16/10, exécutant, étape 0 -> 1) CONTREDIT D1 : le LUSR v2 lit la source du kill. La pénalité de
-  départ du LUSR v2 (`sync/skill/skill_v2_quit_penalty.go`, `loadQuitTimeline`, appelée par
-  `skill_v2_shadow.go:270` quand le match compte un joueur parti) lit `match_kill_events_latest`,
-  table dont 1.57 est le producteur au fil de l'eau. Sans ces lignes : `available=false`, repli sur
-  l'issue finale (`quitDeltaForTeam`), donc un delta de départ différent (« lié » / « sans lien »
-  décidé par la situation au moment du départ, vs par l'issue). Le filigrane du groupe avance
-  (`lusrWatermarkCovers`) : le match n'est pas recalculé au cycle suivant. Ordre actuel (1.57 avant
-  LUSR) : la chronologie est lue ; D1 (LUSR avant 1.57) la perdrait pour tout nouveau match avec
-  un parti, ce qui contredit « aucun résultat final ne change ». Le plan disait les dépendances
-  « vérifiées le 16/10 » : celle-ci a été manquée. Arrêt de l'exécutant à l'entrée de l'étape 1
-  (consigne : décision tranchée contredite par un fait sur pièces).
-- (16/10, superviseur) Le worktree `feat/citations-film` (plan `.ai/PLAN_CITATIONS_FILM_2026-10-16.md`,
-  non implémenté à ce jour) touche aussi l étape des citations. Ce plan place les citations APRÈS
-  les films, ce qui va dans son sens (son étape E4 suppose déjà les citations après le Deriver).
-  À signaler à la fusion, pas à traiter ici.
-
+- (16/10, exécutant) Arrêt initial retiré : la pénalité de départ du LUSR v2 (`loadQuitTimeline`)
+  lit `match_kill_events_latest`, mais la passe crédit-seul écrite au premier écrit (voir « Journal
+  d'exécution ») la porte déjà ; D1 reste valide. Le constat est conservé comme contrôle de 2b.3.
+- (16/10, exécutant) Le bloc engagement du scoring (`loadSyntheticKillEventsForMatch`, `engagement.go`)
+  lit `match_kill_events_latest` avant 1.54 dans l'ordre actuel comme dans D1 ; non traité.
+- (16/10, exécutant, étape 1) `apps/web/src/features/admin/convergence/timeline.ts` (`STEP_ORDER`, mapping
+  couleur du tableau de bord) ne connaît pas `kill_source`, `replay_artifacts`, `snapshot_readiness` et
+  garde l'ancien ordre ; ces étapes retombent sur la couleur de repli. Cosmétique, hors lot Go : non traité.
 - (16/10, superviseur) Le worktree `feat/citations-film` (plan `.ai/PLAN_CITATIONS_FILM_2026-10-16.md`,
   non implémenté à ce jour) touche aussi l étape des citations. Ce plan place les citations APRÈS
   les films, ce qui va dans son sens (son étape E4 suppose déjà les citations après le Deriver).
@@ -217,10 +214,28 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
   `go test -tags=integration -p 1` des mêmes paquets vert (sync 223 s, persist 59 s) ; aucun rouge
   préexistant. 0.3 : inventaire rempli, 1.4 statué `[~]` (aucune colonne de `mv_player_matches` ne dépend
   de 1.57/1.58/citations).
-- 16/10 ARRÊT avant l'étape 1 : D1 contredit par un fait sur pièces (voir « Découvertes », premier
-  point : le LUSR v2 lit `match_kill_events_latest`, produit par 1.57). Rien du code n'a été modifié.
-  Options à trancher par le superviseur : (a) LUSR APRÈS 1.57 mais avant 1.58 (perd une partie du
-  gain : 1.57 = 8 films / 5 min avant le LUSR) ; (b) LUSR avant 1.57, et le shadow saute les matchs
-  avec un joueur parti tant qu'aucune ligne `match_kill_events_latest` n'existe, avec une 2e passe LUSR
-  après 1.57 (le filigrane ne doit pas avancer sur le match sauté) ; (c) accepter le repli sur l'issue
-  finale pour ces matchs (change des résultats : exclu par le critère de succès).
+- 16/10 Arrêt levé par le coordinateur : D1 maintenue, prémisse de l'arrêt fausse (vérifié sur pièces :
+  `persist/shared_persister.go:380-388`, `persistKillerVictim` écrit AUSSI une passe crédit-seul via
+  `persistCreditKillEvents(CreditKillEventsFromPairs(...))` dans la transaction du premier écrit ;
+  `persist/kill_events_credit.go:143` pose `FeedKillerXUID` ; `time_ms` repris des couples ; préséance
+  inversée le 2026-08-03 : le crédit est la base, le film enrichit ; le chunk highlight est récupéré au
+  premier écrit en V1 et en V2 Phase 3, `v2/fetchers.go:198`, sinon par 1.54 qui reste avant le LUSR).
+  Options a/b/c : SANS OBJET. Contrôle ajouté à 2b.3 : la pénalité de départ du LUSR v2 doit donner la
+  même valeur avant/après ; test ciblé crédit-seul (match avec partant, aucune passe film) :
+  `loadQuitTimeline` rend `available=true`. Si le LUSR diffère entre passe crédit et passe film : arrêt.
+- 16/10 Étape 1 CLOSE. Ordre D1 en place (`runPostSyncPipeline` 318 -> 232 lignes : PSA, catalogue,
+  escouade, domination et citations extraites en méthodes dans `engine_postsync_scoring.go`, aucun
+  nouveau fichier racine ; `runPostSyncPipeline` garde l'exemption funlen existante, le lint ne voit
+  aucune issue nouvelle). 1.2 : `flushReadCaches` après les agrégats + `defer` final conservé
+  (ratchet archlint vert). 1.3 : `SyncEngine.WithHomeCacheFlush` + `ServiceRegistry.InvalidateHomeMatches`,
+  branché aux trois sites de construction du moteur (`scheduler.BuildEngine`, `SyncHandler.newEngineFor`,
+  `buildSyncEngineFactoryParityComplete` -> V2), chacun gardé par un test de câblage (`HasHomeCacheFlush`).
+  1.5 : `postSyncStepNames` = ordre d'exécution, `weapon_kills` retiré, `kill_source` et `replay_artifacts` ajoutés.
+  1.6 : `TestRunPostSyncPipeline_StepOrder` (ordre littéral) et `..._FlushesHomeCacheBeforeFilmSteps`
+  (vidage vu avant la source du kill, compteur 0 puis 1) ; mutation vérifiée : l'ancien ordre rend le test
+  rouge. 1.7 : `TestRunPostSyncPipeline_EventsBeforeDominance` (intégration) : événements arrivant à 1.54,
+  `dominance_flag` = valeur attendue (non nulle) ; mutation (domination avant 1.54) : rouge (`flag = 0`).
+  Réserve 1.7 : le volet « citations avec événements » n'est pas exécutable dans ce harnais (les citations
+  exigent la base metadata) ; la contrainte « 1.54 avant les citations » est tenue par le test d'ordre 1.6.
+  Gate 1 : `go test` sync/persist/archlint/scheduler/wire/handlers/cmd/server verts ; `go test -tags=integration -p 1`
+  sync + persist vert (sync 241 s) ; `golangci-lint --new-from-rev=27947da10` sur les paquets touchés : 0 issue.

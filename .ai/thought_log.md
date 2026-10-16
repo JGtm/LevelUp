@@ -1,3 +1,11 @@
+## [2026-10-16] Post-sync : ordre D1 (escouade, LUSR, CSR, agrégats avant les films) et vidage des caches — Complété pour l'étape 1 (branche `feat/postsync-ordre`)
+
+**Décision technique principale** : `runPostSyncPipeline` suit D1 (enrichissement, scoring, événements 1.54, PSA 1.56, escouade, domination, LUSR, CSR, agrégats, vidage des caches, puis source du kill 1.57, rejeu 1.58, citations, médias, succès, préparation). Blocs PSA/catalogue/escouade/domination/citations extraits en méthodes (fonction 318 -> 232 lignes). Vidage du cache Home par un rappel du moteur (`WithHomeCacheFlush` / `ServiceRegistry.InvalidateHomeMatches`) branché sur les trois sites de construction du moteur (V1 auto-sync, HTTP, V2). Tableau de bord : étapes publiées dans l'ordre d'exécution, `kill_source` et `replay_artifacts` ajoutées.
+
+**Résultats observés** : tests sync/persist/archlint/scheduler/wire/handlers/cmd-server verts, intégration sync+persist verte, lint 0 issue nouvelle. Mutations vérifiées (ancien ordre : test d'ordre rouge ; domination avant 1.54 : domination figée à 0, test rouge). L'arrêt initial sur le LUSR v2 était sans objet : la passe crédit-seul de `match_kill_events` est écrite au premier écrit.
+
+**Conclusion** : étape 2 (« Escouade » dès le premier écrit) ensuite.
+
 ## [2026-10-16] Post-sync : ordre des étapes et « Escouade » dès le premier écrit, étape 0 et arrêt avant l'étape 1 — En cours (branche `feat/postsync-ordre`)
 
 **Décision technique principale** : plan `.ai/PLAN_POSTSYNC_ORDRE_2026-10-16.md`, étape 0 close (base `27947da10`, tests unitaires et d'intégration de `internal/sync` et `internal/persist` verts, inventaire de `mv_player_matches` : aucune colonne ne dépend de la source du kill, du rejeu ni des citations, second rafraîchissement des agrégats inutile).

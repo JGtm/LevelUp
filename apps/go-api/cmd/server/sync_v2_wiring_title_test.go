@@ -96,3 +96,29 @@ func TestSyncV2WiringHasSingleTitleSource(t *testing.T) {
 		}
 	}
 }
+
+// TestBuildSyncEngineFactory_WiresHomeCacheFlush : le moteur du cycle V2 porte le rappel de
+// vidage du cache Home (le cycle automatique ne le vidait jamais), parité scheduler.BuildEngine.
+func TestBuildSyncEngineFactory_WiresHomeCacheFlush(t *testing.T) {
+	deps := SyncV2WiringDeps{
+		Cfg:            &config.AppConfig{RepoRoot: t.TempDir()},
+		TitleSlug:      titlePkg.DefaultSlug,
+		HomeCacheFlush: func(_ context.Context, _, _ string) {},
+	}
+	engine, err := buildSyncEngineFactoryParityComplete(deps)(context.Background(), syncv2.PlayerProfile{
+		PlayerSlug: "JGtm", Gamertag: "JGtm", XUID: "2533274858283686",
+	})
+	if err != nil || engine == nil {
+		t.Fatalf("engine=%v err=%v", engine, err)
+	}
+	if !engine.HasHomeCacheFlush() {
+		t.Error("REGRESSION: le moteur V2 ne porte pas le rappel de vidage du cache Home")
+	}
+	deps.HomeCacheFlush = nil
+	engine, _ = buildSyncEngineFactoryParityComplete(deps)(context.Background(), syncv2.PlayerProfile{
+		PlayerSlug: "JGtm", Gamertag: "JGtm", XUID: "2533274858283686",
+	})
+	if engine.HasHomeCacheFlush() {
+		t.Error("rappel de vidage câblé sans dépendance — fuite")
+	}
+}

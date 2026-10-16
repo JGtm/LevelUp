@@ -220,6 +220,9 @@ type AutoSyncScheduler struct {
 	// (no-op). L'identifiant passé est le gamertag (== PlayerSlug pour les joueurs
 	// réels, cf. WithPostSyncRunner ci-dessus).
 	prestigeHook func(ctx context.Context, playerSlug, titleSlug string)
+	// homeCacheFlush (optionnel) vide le cache Home du joueur pendant le post-sync :
+	// = ServiceRegistry.InvalidateHomeMatches. Nil → rien à vider (tests, CLI).
+	homeCacheFlush func(ctx context.Context, xuid, titleSlug string)
 
 	// cycleOrchestrator (ADR 0027) — pipeline V2 cycle-level, UNIQUE moteur de sync
 	// des joueurs moteur depuis la suppression du pipeline V1 (lot D1c). Câblé via
@@ -324,6 +327,14 @@ func (s *AutoSyncScheduler) WithPostSyncRunner(runner port.PostSyncRunner) *Auto
 // est câblé séparément (le hook y est appelé après RunPostSync par PlayerSlug).
 func (s *AutoSyncScheduler) WithPrestigeHook(hook func(ctx context.Context, playerSlug, titleSlug string)) *AutoSyncScheduler {
 	s.prestigeHook = hook
+	return s
+}
+
+// WithHomeCacheFlush branche le rappel de vidage du cache Home sur chaque SyncEngine
+// construit par BuildEngine (auto-sync, HTTP delta via engineBuilder, watcher). À appeler
+// depuis cmd/server/main.go = ServiceRegistry.InvalidateHomeMatches. Nil → no-op.
+func (s *AutoSyncScheduler) WithHomeCacheFlush(hook func(ctx context.Context, xuid, titleSlug string)) *AutoSyncScheduler {
+	s.homeCacheFlush = hook
 	return s
 }
 

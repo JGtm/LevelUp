@@ -107,3 +107,16 @@ func TestNewEngineFor_NoPrestigeHookWhenNotWired(t *testing.T) {
 		t.Error("PrestigeHook câblé alors que WithPrestigeHook pas appelé — fuite")
 	}
 }
+
+// TestNewEngineFor_WiresHomeCacheFlush : le moteur du sync HTTP initial porte le rappel de
+// vidage du cache Home (parité scheduler.BuildEngine et câblage V2), et seulement s'il est branché.
+func TestNewEngineFor_WiresHomeCacheFlush(t *testing.T) {
+	h := NewSyncHandler(&config.AppConfig{RepoRoot: t.TempDir()}, nil, nil, nil)
+	if h.newEngineFor("halo_infinite", "DemoPlayer", "xuid-1", nil).HasHomeCacheFlush() {
+		t.Error("rappel de vidage câblé alors que WithHomeCacheFlush pas appelé — fuite")
+	}
+	h = h.WithHomeCacheFlush(func(_ context.Context, _, _ string) {})
+	if !h.newEngineFor("halo_infinite", "DemoPlayer", "xuid-1", nil).HasHomeCacheFlush() {
+		t.Fatal("REGRESSION: le SyncEngine de newEngineFor ne porte pas le rappel de vidage du cache Home")
+	}
+}

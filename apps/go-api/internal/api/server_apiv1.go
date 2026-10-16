@@ -572,6 +572,9 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	syncH = syncH.WithNotificationsEmitterFactory(reg.NotificationsEmitter)
 	// Branche le hook delta-detection post-sync (season_pass_level / objective_completed / challenge_completed).
 	syncH = syncH.WithPostSyncDeltaHook(wire.BuildPostSyncDeltaHook(reg))
+	// Vidage du cache Home par le post-sync du moteur (avant la lecture des films), en plus du
+	// vidage de fin de synchro du hook delta ci-dessus.
+	syncH = syncH.WithHomeCacheFlush(reg.InvalidateHomeMatches)
 	// Branche la mise en file des rejeux (placement « worker ») sur le moteur legacy
 	// du handler : sans elle, un sync HTTP tombant sur ce chemin n'enfilerait rien
 	// alors que l'auto-sync le fait — un trou que rien ne signalerait.

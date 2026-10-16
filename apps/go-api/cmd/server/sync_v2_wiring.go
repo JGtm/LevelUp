@@ -63,6 +63,9 @@ type SyncV2WiringDeps struct {
 	// (= ServiceRegistry.EnqueueReplayBuild). Nil → le placement « worker » dégrade
 	// en « aucune construction », journalisé.
 	ReplayEnqueue replayartifacts.EnqueueFunc
+	// HomeCacheFlush (optionnel) vide le cache Home du joueur pendant le post-sync du moteur
+	// (= ServiceRegistry.InvalidateHomeMatches). Nil → rien à vider.
+	HomeCacheFlush func(ctx context.Context, xuid, titleSlug string)
 }
 
 // buildSyncV2Orchestrator construit l'orchestrator V2 avec ses 6
@@ -394,6 +397,9 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 		if deps.BatchQueue != nil && deps.Cfg.PersistBatchAsync {
 			engine.WithBatchQueue(deps.BatchQueue)
 		}
+
+		// 6b. Vidage du cache Home par le post-sync (parité scheduler.BuildEngine).
+		engine.WithHomeCacheFlush(deps.HomeCacheFlush)
 
 		// 7. CSRSeasonID (CSR snapshot post-sync)
 		if deps.Cfg.CurrentCSRSeasonID != "" {

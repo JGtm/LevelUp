@@ -155,6 +155,12 @@ type SyncEngine struct {
 	// Injecté via WithMediaScanHook depuis scheduler + SyncHandler.
 	mediaHook func(ctx context.Context)
 
+	// homeCacheHook vide le cache Home du joueur (xuid, titre) : appelé par le pipeline
+	// post-sync après les agrégats (avant les étapes film lentes) et à sa sortie, pour que la
+	// page ne serve pas un match « Solo » ou sans LUSR jusqu'au TTL. sync n'importe pas
+	// service : le serveur injecte le rappel (WithHomeCacheFlush). Nil → rien à vider.
+	homeCacheHook func(ctx context.Context, xuid, titleSlug string)
+
 	// batchQueue (Phase 3 refactor Collect→Persist) — si non-nil,
 	// submitMatchAsBatch passe par queue.Submit (WAL + worker async) au lieu
 	// d'appeler les Persisters directement. À la fin du cycle, run() appelle

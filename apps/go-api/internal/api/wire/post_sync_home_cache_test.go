@@ -126,3 +126,26 @@ func TestPostSyncHomeCache_NoPlayerSlugInvalidate(t *testing.T) {
 		}
 	}
 }
+
+// TestInvalidateHomeMatches_ClearsTitleKeyOnly : le rappel injecté dans les moteurs de sync
+// (WithHomeCacheFlush) vide l'entrée du couple (xuid, TITRE) posée par HomeService, et
+// seulement elle ; nil-safe (registre ou cache absent, xuid vide).
+func TestInvalidateHomeMatches_ClearsTitleKeyOnly(t *testing.T) {
+	const xuid = "2533274800000003"
+	reg := &ServiceRegistry{homeMatchesCache: service.NewHomeMatchesCache()}
+	seedHomeCacheAsHomeService(reg.homeMatchesCache, xuid, "halo_infinite")
+	seedHomeCacheAsHomeService(reg.homeMatchesCache, xuid, "halo_5")
+
+	reg.InvalidateHomeMatches(context.Background(), xuid, "halo_infinite")
+
+	if _, _, hit := reg.homeMatchesCache.Get(xuid, "halo_infinite"); hit {
+		t.Error("l'entrée (xuid, halo_infinite) survit au rappel de vidage du moteur")
+	}
+	if _, _, hit := reg.homeMatchesCache.Get(xuid, "halo_5"); !hit {
+		t.Error("l'entrée de l'autre titre a été vidée : isolation par titre perdue")
+	}
+	var nilReg *ServiceRegistry
+	nilReg.InvalidateHomeMatches(context.Background(), xuid, "halo_infinite")
+	(&ServiceRegistry{}).InvalidateHomeMatches(context.Background(), xuid, "halo_infinite")
+	reg.InvalidateHomeMatches(context.Background(), "", "halo_infinite")
+}
