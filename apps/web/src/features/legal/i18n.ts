@@ -46,15 +46,15 @@ export interface PrivacyText {
 
 /** Date de dernière révision de fond, affichée en tête de page. */
 export const PRIVACY_UPDATED_AT: Record<Locale, string> = {
-  fr: '31 août 2026',
-  en: '31 August 2026',
+  fr: '16 octobre 2026',
+  en: '16 October 2026',
 }
 
 const FR_TEXT: PrivacyText = {
   title: 'Confidentialité',
   updatedLabel: 'Dernière mise à jour',
   intro: [
-    "LevelUp est un projet personnel et non commercial, publié en source ouverte sous licence MIT. Cette page décrit l'instance publique opérée par l'auteur du projet. Une instance que vous hébergez vous-même est sous votre propre responsabilité : le code est le même, l'exploitation ne l'est pas.",
+    "LevelUp est un projet personnel et non commercial, publié en source ouverte sous licence AGPL-3.0. Cette page décrit l'instance publique opérée par l'auteur du projet. Une instance que vous hébergez vous-même est sous votre propre responsabilité : le code est le même, l'exploitation ne l'est pas.",
     "Le principe : LevelUp ne collecte que ce dont il a besoin pour afficher vos statistiques de jeu. Il n'y a ni publicité, ni service d'analyse d'audience, ni revente de données.",
   ],
   sections: [
@@ -128,7 +128,7 @@ const EN_TEXT: PrivacyText = {
   title: 'Privacy',
   updatedLabel: 'Last updated',
   intro: [
-    'LevelUp is a personal, non-commercial project released as open source under the MIT licence. This page covers the public instance operated by the project author. An instance you host yourself is your own responsibility: the code is the same, the operation is not.',
+    'LevelUp is a personal, non-commercial project released as open source under the AGPL-3.0 licence. This page covers the public instance operated by the project author. An instance you host yourself is your own responsibility: the code is the same, the operation is not.',
     'The principle: LevelUp collects only what it needs to show your game statistics. There is no advertising, no audience measurement service, and no sale of data.',
   ],
   sections: [

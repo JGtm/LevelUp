@@ -362,3 +362,7 @@ tools/ce/*.csv
 # PNG versionne de ce dossier est `coupe.png`, qui est une reference, pas une sortie.
 apps/go-api/internal/himap/gate.png
 data/global/player_friends.json
+
+# Sorties de decompilation du jeu (Ghidra) : propriete de Microsoft, jamais versionnees
+# (NOTICE par. 4). Elles vivent hors du depot ; les releves ecrits (Markdown) restent.
+.ai/**/*.c

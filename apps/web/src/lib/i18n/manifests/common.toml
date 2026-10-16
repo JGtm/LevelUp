@@ -2439,8 +2439,8 @@ fr = "Nouveautés"
 en = "What's new"
 
 [common.footer.license]
-fr = "Licence MIT"
-en = "MIT licence"
+fr = "Licence AGPL-3.0"
+en = "AGPL-3.0 licence"
 
 [common.footer.support_heading]
 fr = "Soutenir"

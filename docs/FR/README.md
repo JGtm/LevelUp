@@ -7,7 +7,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.5%2B-FEE14E.svg)](https://duckdb.org/)
 [![ECharts](https://img.shields.io/badge/ECharts-5-AA344D.svg)](https://echarts.apache.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](../../LICENSE)
 [![Feedback issues](https://img.shields.io/github/issues-search/JGtm/LevelUp?query=label%3Afeedback%20is%3Aopen&label=feedback&color=0e8a16)](https://github.com/JGtm/LevelUp/issues?q=is%3Aissue+is%3Aopen+label%3Afeedback)
 
 ---
@@ -353,7 +353,15 @@ Les contributions sont les bienvenues ! Voir [CONTRIBUTING.md](../CONTRIBUTING.m
 
 ## Licence
 
-Ce projet est sous licence MIT. Voir [LICENSE](../../LICENSE) pour plus de détails.
+Le code est sous licence **GNU AGPL-3.0** ([LICENSE](../../LICENSE)), avec des conditions
+d'attribution et la liste de ce que la licence ne couvre pas dans [NOTICE](../../NOTICE). La
+documentation et les comptes rendus de rétro-ingénierie sont sous **CC BY 4.0**
+([LICENSE-DOCS](../../LICENSE-DOCS)) : réutilisables en citant la source. Pour citer le projet,
+voir [CITATION.cff](../../CITATION.cff).
+
+Halo et tout ce qui est extrait du jeu appartiennent à Microsoft et ne sont pas couverts. Les
+versions publiées avant le 2026-10-16 l'ont été sous MIT et le restent pour ceux qui les ont
+reçues.
 
 ---
 
