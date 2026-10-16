@@ -231,7 +231,16 @@ func concurrencyProblems(lines []string) []string {
 	if !strings.Contains(group, "github.ref") {
 		problems = append(problems, "`concurrency.group` ne porte pas github.ref : tous les runs se disputeraient le même groupe")
 	}
+	// GitHub ne garde qu'un run EN ATTENTE par groupe, même sans annulation du run en cours : sur
+	// une branche protégée, le groupe doit être propre au run, sinon un push rapproché annule le run
+	// en attente d'un commit dont le déploiement attend le verdict.
+	if !strings.Contains(group, "github.run_id") {
+		problems = append(problems, "`concurrency.group` ne porte pas github.run_id : sur main et feat/v75, un run en attente serait annulé par le push suivant")
+	}
 	for _, protected := range []string{"refs/heads/main", "refs/heads/feat/v75"} {
+		if !regexp.MustCompile(`github\.ref\s*==\s*'` + regexp.QuoteMeta(protected) + `'`).MatchString(group) {
+			problems = append(problems, fmt.Sprintf("`concurrency.group` n'isole pas les runs de %s par github.run_id", protected))
+		}
 		if !regexp.MustCompile(`github\.ref\s*!=\s*'` + regexp.QuoteMeta(protected) + `'`).MatchString(cancel) {
 			problems = append(problems, fmt.Sprintf("`cancel-in-progress` n'exclut pas %s : un run en cours y serait annulé par le push suivant", protected))
 		}
@@ -296,16 +305,18 @@ func TestCIPathsFilterAnalysisDetectsDefects(t *testing.T) {
 	})
 
 	t.Run("concurrency", func(t *testing.T) {
-		good := splitWorkflow("concurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}\njobs:\n  a:\n    steps: []\n")
+		const groupOK = "${{ github.workflow }}-${{ github.ref }}-${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75') && github.run_id || 'travail' }}"
+		good := splitWorkflow("concurrency:\n  group: " + groupOK + "\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}\njobs:\n  a:\n    steps: []\n")
 		if p := concurrencyProblems(good); len(p) != 0 {
 			t.Fatalf("bloc conforme refusé : %v", p)
 		}
 		for name, text := range map[string]string{
-			"absent":         "jobs:\n  a:\n    steps: []\n",
-			"sans ref":       "concurrency:\n  group: ci\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}\n",
-			"annule main":    "concurrency:\n  group: ${{ github.ref }}\n  cancel-in-progress: ${{ github.ref != 'refs/heads/feat/v75' }}\n",
-			"annule v75":     "concurrency:\n  group: ${{ github.ref }}\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}\n",
-			"annule partout": "concurrency:\n  group: ${{ github.ref }}\n  cancel-in-progress: true\n",
+			"absent":                  "jobs:\n  a:\n    steps: []\n",
+			"sans ref":                "concurrency:\n  group: ci\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}\n",
+			"annule main":             "concurrency:\n  group: ${{ github.ref }}\n  cancel-in-progress: ${{ github.ref != 'refs/heads/feat/v75' }}\n",
+			"annule v75":              "concurrency:\n  group: ${{ github.ref }}\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}\n",
+			"annule partout":          "concurrency:\n  group: ${{ github.ref }}\n  cancel-in-progress: true\n",
+			"groupe partagé sur main": "concurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}\n",
 		} {
 			if p := concurrencyProblems(splitWorkflow(text)); len(p) == 0 {
 				t.Errorf("bloc défectueux (%s) non détecté", name)

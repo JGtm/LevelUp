@@ -19,12 +19,15 @@ permissions:
 #   - sur une branche de travail, le job `changes` saute les jobs de l'autre pile quand le
 #     push ne touche qu'une pile (cf. le job) ; `main`, `feat/v75` et les PR rejouent TOUT.
 
-# Un seul run par branche à la fois : un push qui en suit un autre annule le run périmé, sauf sur
-# `main` et `feat/v75` où chaque commit doit rendre son verdict (le déploiement attend celui du
-# run de `main`, cf. `attente-ci` de deploy.yml). Le groupe porte la ref : les runs de PR
+# Un seul run par branche de travail à la fois : un push qui en suit un autre annule le run
+# périmé. Sur `main` et `feat/v75`, chaque commit doit rendre son verdict (le déploiement attend
+# celui du run de `main`, cf. `attente-ci` de deploy.yml) : le groupe y porte `github.run_id`,
+# donc chaque run a son propre groupe. Sans cela, GitHub ne garde qu'UN run EN ATTENTE par groupe
+# même avec `cancel-in-progress: false` : trois pushs rapprochés annuleraient le deuxième, et le
+# déploiement de ce commit se refuserait. Le groupe porte aussi la ref : les runs de PR
 # (refs/pull/N/merge) et de push ne s'annulent pas entre eux.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75') && github.run_id || 'travail' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}
 
 on:
