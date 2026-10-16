@@ -20,7 +20,7 @@ func (dc *dynamicCorpus) excludeCampaign(ctx context.Context, sharedDBPath, titl
 	for _, lane := range []struct {
 		name string
 		ids  *[]string
-	}{{"solo", &dc.solo}, {"squad", &dc.squad}, {"ranked", &dc.ranked}, {"media", &dc.media}} {
+	}{{"solo", &dc.solo}, {"squad", &dc.squad}, {"ranked", &dc.ranked}, {"media", &dc.media}} { //nolint:goconst // nom de voie du corpus démo, distinct de playlist_group (synthGroupRanked)
 		kept, err := dropCampaignMatchIDs(ctx, sharedDBPath, titleSlug, *lane.ids)
 		if err != nil {
 			slog.WarnContext(ctx, "seed-demo: exclusion de la Campagne impossible, voie videe",
