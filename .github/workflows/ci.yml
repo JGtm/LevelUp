@@ -785,11 +785,6 @@ jobs:
         env:
           CI: "true"
           PLAYWRIGHT_BASE_URL: "http://localhost:5173"
-          # Démo SYNTHÉTIQUE : certaines specs exigent des données d'un joueur RÉEL
-          # (gamertags nommés, synergies, backfill engagement) et skippent alors avec
-          # un motif (skipRequiresRealPlayer / engagement E2E_DEMO_MODE). Voir e2e/README.md.
-          E2E_DEMO_MODE: "1"
-          E2E_SYNTHETIC_DEMO: "1"
 
       - name: Upload Playwright report (on failure)
         if: failure()

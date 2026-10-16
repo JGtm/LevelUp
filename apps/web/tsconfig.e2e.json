@@ -6,7 +6,7 @@
     // navigateur (document, window, localStorage, fetch, getComputedStyle, Node...).
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "esnext",
-    // node pour process.env (E2E_API_URL, CI, E2E_SYNTHETIC_DEMO...). Playwright
+    // node pour process.env (E2E_API_URL, CI...). Playwright
     // (@playwright/test) est importe explicitement -> pas de types globals a ajouter.
     // skipLibCheck neutralise les conflits d'identifiants globals node<->DOM (fetch...).
     "types": ["node"],

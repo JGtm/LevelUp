@@ -3,7 +3,7 @@
  * suivent réellement le thème (re-render canvas avec couleurs adaptées).
  *
  * Stratégie :
- *   1. On rend la page Escouade > Synergies avec le radar pilote.
+ *   1. On rend la page Escouade > Contributions avec le radar pilote.
  *   2. On lit la valeur computée des CSS vars `--muted-foreground`,
  *      `--foreground`, `--border` dans le thème courant.
  *   3. On toggle le thème via le ThemeToggle (header).
@@ -21,11 +21,11 @@
  * Prérequis : `make dev` (Vite :5173 + Go :8000).
  */
 import { test, expect } from '@playwright/test'
-import { skipIfNoDemoData, skipRequiresRealPlayer } from './_helpers/demoData'
+import { skipIfNoDemoData, E2E_PLAYER_SLUG, E2E_TEAMMATES } from './_helpers/demoData'
 import { playerPath } from './_helpers/routes'
 
-const PLAYER_SLUG = 'JGtm'
-const TEAMMATES = ['Madina97294', 'Chocoboflor']
+const PLAYER_SLUG = E2E_PLAYER_SLUG
+const TEAMMATES = E2E_TEAMMATES
 
 test.describe('Theme switch — charts ECharts suivent le thème (pilote)', () => {
   test('CSS vars sémantiques diffèrent entre dark et light', async ({ page }) => {
@@ -71,9 +71,6 @@ test.describe('Theme switch — charts ECharts suivent le thème (pilote)', () =
   test('le radar synergy reste rendu après toggle de thème (pas de crash)', async ({
     page,
   }) => {
-    // Radar de synergie escouade (JGtm + coéquipiers nommés) — non reproductible par
-    // une fixture synthétique. Contre une démo réelle, la spec s'exécute.
-    skipRequiresRealPlayer('radar de synergie escouade (JGtm + coéquipiers nommés)')
     await skipIfNoDemoData()
     // Pré-set sélection coéquipiers (cf. squad-charts-render.spec.ts)
     await page.addInitScript(
@@ -86,7 +83,7 @@ test.describe('Theme switch — charts ECharts suivent le thème (pilote)', () =
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
-    await page.goto(playerPath(PLAYER_SLUG, 'squad/synergies'))
+    await page.goto(playerPath(PLAYER_SLUG, 'squad/contributions'))
     await page.waitForLoadState('networkidle')
 
     // Le wrapper porte data-testid="squad-synergy-radar" depuis Phase 5c.

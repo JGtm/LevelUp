@@ -120,15 +120,20 @@ export function skipObsoleteSpec(reason: string): void {
 }
 
 /**
- * Skip une spec qui exige les données d'un JOUEUR RÉEL spécifique (gamertags réels
- * codés en dur, coéquipiers nommés + synergies, backfill engagement, médias réels)
- * — non reproductibles par une fixture SYNTHÉTIQUE. Skip UNIQUEMENT quand la démo est
- * synthétique (E2E_SYNTHETIC_DEMO=1, posé par la CI) ; contre une démo réelle
- * (`seed-demo` sur l'hôte de prod), la spec s'exécute normalement.
+ * Identités ciblées par les specs « joueur riche » (carrière, engagement, escouade) : le
+ * joueur démo de la fixture synthétique (`levelup seed-demo --synthetic`) et ses deux
+ * coéquipiers, qui partagent 36 matchs avec lui. Contre un jeu de données réel, surcharger
+ * `E2E_PLAYER_SLUG` et `E2E_TEAMMATES` (gamertags séparés par des virgules).
  */
-export function skipRequiresRealPlayer(reason: string): void {
-  test.skip(
-    process.env.E2E_SYNTHETIC_DEMO === '1',
-    `Nécessite un joueur réel (non synthétisable) : ${reason}`,
-  )
-}
+export const E2E_PLAYER_SLUG = process.env.E2E_PLAYER_SLUG ?? 'demo-player'
+export const E2E_TEAMMATES = (process.env.E2E_TEAMMATES ?? 'DemoPlayer2,DemoPlayer3')
+  .split(',')
+  .map((g) => g.trim())
+  .filter((g) => g !== '')
+
+/**
+ * Racine des URLs d'API (sans `/api/v1`) : `E2E_API_URL` quand il est posé (même variable
+ * que la sonde ci-dessus), sinon le serveur de dev local. Les specs qui appellent l'API
+ * directement s'en servent plutôt que de recopier le port.
+ */
+export const E2E_API_BASE = API_BASE

@@ -253,7 +253,6 @@ run_visual() {
 		E2E_VISUAL_PLAYER=demo-player \
 			E2E_BASE_URL="http://localhost:$WEB_PORT" \
 			E2E_API_URL="http://127.0.0.1:$API_PORT" \
-			E2E_SYNTHETIC_DEMO=1 \
 			E2E_VISUAL_REQUIRE_ALL=1 \
 			npx playwright test --project=visual "${scope[@]+"${scope[@]}"}" "$@"
 	)
