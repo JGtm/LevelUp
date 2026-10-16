@@ -164,6 +164,9 @@ type replayBuildRequest struct {
 	MatchID string `json:"match_id"`
 }
 
+// codeInvalidMatchID : refus d'un match_id hors de la forme title.IsValidMatchID.
+const codeInvalidMatchID = "invalid_match_id"
+
 // decodeReplayBuildRequest décode le corps commun à /run et /enqueue : 400 invalid_input
 // si le JSON est malformé ou le match_id absent, 400 invalid_match_id si le match_id n'a
 // pas la forme d'un identifiant de match (title.IsValidMatchID) — il deviendrait un
@@ -174,8 +177,8 @@ func decodeReplayBuildRequest(raw []byte) (replayBuildRequest, error) {
 		return req, humacore.NewError(http.StatusBadRequest, "invalid_input", "match_id requis.")
 	}
 	if !titlePkg.IsValidMatchID(req.MatchID) {
-		return req, humacore.NewError(http.StatusBadRequest, "invalid_match_id",
-			"match_id : hexadécimal et tirets seulement.")
+		return req, humacore.NewError(http.StatusBadRequest, codeInvalidMatchID,
+			humacore.FixedMessage(http.StatusBadRequest, codeInvalidMatchID))
 	}
 	return req, nil
 }
