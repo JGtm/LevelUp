@@ -65,6 +65,15 @@ var readOnlyPostExact = map[string]bool{
 	"/engagement/timeseries": true, // série temporelle d'engagement (filtres en corps)
 }
 
+// readOnlyPostPatterns : POST de lecture désignés par un préfixe, UN segment d'identifiant, un
+// suffixe. Un motif par suffixe est plus étroit qu'un préfixe de famille : seule la forme
+// `<préfixe><id><suffixe>` est une lecture, jamais un sous-chemin plus profond.
+var readOnlyPostPatterns = []struct{ prefix, suffix string }{
+	// Suggestion du défi Prestige suivant : lit le défi terminé et le catalogue de gabarits,
+	// n'écrit rien (prestige.service.SuggestNext).
+	{"/prestige/challenges/", "/suggest-next"},
+}
+
 // RequireAuthForMutations retourne un middleware qui exige une session
 // AUTHENTIFIÉE pour toute requête qui écrit, et laisse passer les lectures.
 //
@@ -119,7 +128,22 @@ func isReadOnlyPost(sub string) bool {
 			return true
 		}
 	}
+	for _, p := range readOnlyPostPatterns {
+		if matchesIDPattern(sub, p.prefix, p.suffix) {
+			return true
+		}
+	}
 	return false
+}
+
+// matchesIDPattern dit si sub vaut exactement `<prefix><id><suffix>`, id étant un SEUL segment
+// non vide.
+func matchesIDPattern(sub, prefix, suffix string) bool {
+	if !strings.HasPrefix(sub, prefix) || !strings.HasSuffix(sub, suffix) || len(sub) <= len(prefix)+len(suffix) {
+		return false
+	}
+	id := sub[len(prefix) : len(sub)-len(suffix)]
+	return id != "" && !strings.Contains(id, "/")
 }
 
 // AmbiguousPath dit si le chemin que lisent les gardes peut désigner une AUTRE route que
