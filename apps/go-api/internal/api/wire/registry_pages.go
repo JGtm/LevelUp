@@ -85,7 +85,7 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	if err != nil {
 		return nil, err
 	}
-	// WithViewer : l'onglet Médias sert le cœur DU VIEWER (session), pas du joueur
+	// WithViewer : l'onglet Médias sert le cœur DU VIEWER (le demandeur), pas du joueur
 	// dont on consulte la page — les deux diffèrent dès qu'on ouvre le match d'un
 	// coéquipier. Résolu ici, au point de composition, parce que platform/duckdb
 	// n'a pas (et ne doit pas avoir) accès à la session HTTP.

@@ -745,6 +745,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// DOIT rester montée sous ce groupe pour être protégée.
 		r.Use(ownershipMW)
 
+		// Couche B (ADR 0029) sur les routes d'un match : 404 match_not_participant
+		// quand le joueur du chemin n'a pas joué le match (middleware de ROUTE, r.With).
+		participated := middleware.RequireMatchParticipation(reg.MatchParticipation)
+
 		filters := handlers.NewFiltersHandler(reg.Filters)
 		filters.Mount(r, playerOpt)
 
@@ -782,7 +786,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// URLs servables, comme la galerie (settingsStore + repoRoot déjà en portée).
 		mv := handlers.NewMatchViewHandler(reg.MatchView).
 			WithMediaURLs(settingsStore, cfg.RepoRoot)
-		mv.Mount(r, playerOpt)
+		mv.Mount(r.With(participated), playerOpt)
 
 		// Rejeu 2D (vue du dessus) — artefact pré-construit servi tel quel ; 404 si
 		// absent POUR CE MATCH. DEUX PORTES, et elles disent deux choses différentes
@@ -799,7 +803,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapReplay))
 			r.Use(handlers.ReplayGate(demoReplayGate(reg)))
-			handlers.NewReplayHandler(reg.Replay).Mount(r, playerOpt)
+			handlers.NewReplayHandler(reg.Replay).Mount(r.With(participated), playerOpt)
 			// La SEQUENCE D UNE MORT (onglet Tactique, vue D) lit les memes trajectoires : elle vit sous
 			// les MEMES gardes que le rejeu, pour qu activer le rejeu en production l active aussi.
 			handlers.NewTacticalSequenceHandler(reg.Tactical).Mount(r, playerOpt)
@@ -807,7 +811,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 		// Canonical MatchEvents (Phase 3) : GET .../matches/{match_id}/events —
 		// timeline d'events on-demand (kill-feed/timeline), capability-gated.
-		handlers.NewMatchEventsHandler(reg.MatchEvents).Mount(r, playerOpt)
+		handlers.NewMatchEventsHandler(reg.MatchEvents).Mount(r.With(participated), playerOpt)
 
 		// Onglet Tactique : POST .../tactical/maps + POST .../tactical/{map_id}/raster
 		// (les deux LECTURES, en POST depuis le 2026-09-06 : leur périmètre est une
@@ -836,7 +840,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		eng := handlers.NewEngagementHandler(reg.Engagement)
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapEngagement))
-			eng.Mount(r, playerOpt)
+			eng.Mount(r.With(participated), playerOpt)
 		})
 
 		explorer := handlers.NewExplorerHandler(reg.ExplorerCtxWithAuth, reg.MatchHistoryCtx)
@@ -940,7 +944,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// NOTE : GET /match-exclusions supprimé en revue 2026-04-29 P0.2 Q6
 		// (orphelin côté front, vue admin jamais implémentée).
 		excl := handlers.NewMatchExclusionHandler(reg.MatchExclusion)
-		excl.Mount(r, playerOpt)
+		excl.Mount(r.With(participated), playerOpt)
 
 		// Système de notifications in-app (per-player).
 		notifH := handlers.NewNotificationsHandler(reg.Notifications)
@@ -1015,7 +1019,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 		// Match favoris (shared_social.duckdb)
 		fav := handlers.NewMatchFavoriteHandler(reg.Social)
-		fav.Mount(r, playerOpt) // PATCH /matches/{match_id}/favorite
+		fav.Mount(r.With(participated), playerOpt) // PATCH /matches/{match_id}/favorite
 
 		// Module Prestige — routes derrière feature flag PRESTIGE_ENABLED.
 		// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
