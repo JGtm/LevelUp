@@ -117513,3 +117513,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : rouge avant correctif sur chaque item (`processus démarrés = 1, attendu 2` ; `recalculs = 8, attendu 2` ; 3 sites ffprobe hors lanceur ; `current_player = "alice", attendu "zed"`), mutation du délai ffprobe rouge. Vert : gate du lot 29 paquets ok (exit 0), répétitions `-count=15/30/50` ok, build serveur, vet et golangci-lint (0 issue) verts, hooks verts. Intégration non lancée : `internal/sync` n'est pas touché. Régression vérifiée sur pièces pour L5c-4 : l'ordre aléatoire d'avant L5b-1 masquait le problème, le tri l'a rendu déterministe.
 
 **Conclusion / prochaine étape** : lot L5c clos localement (commits `4df5f2c98`, `2c7e791b0`, `1b67f8c79`, `6b2d37c66`, puis clôture), rien poussé, aucune opération VPS. Quatre découvertes (D-L5c-1 à D-L5c-4) dont l'attente sans borne des miniatures derrière les transcodages. Reste ouvert d'avant : L5b-4 (D-L5b-1, recalcul d'exclusion en v1), à trancher avec l'utilisateur. Suite : L6 (fichiers et chemins).
+
+## [2026-10-16] Sécurité : lot L10 exécuté en parallèle et fusionné, report au plan, LUSR au backlog — En cours (branche `feat/securite-2026-10-15`)
+
+**Décision technique principale** : sur demande de l'utilisateur, L10 exécuté en parallèle dans `LevelUp-wt-securite-l10` (cache Go distinct, aucune édition du plan par l'exécutant), fusionné par `merge --no-ff` après la clôture de L5c ; cases, journal et opérations VPS V-4 à V-6 reportés par le superviseur. D-L5b-1 (recalcul d'exclusion en LUSR v1) mis au backlog par décision de l'utilisateur du 2026-10-16.
+
+**Résultats observés** : archlint complet vert après fusion. L10-1 et L10-3 en `[!]` (Docker absent du poste, mesure mémoire), partie nginx de L10-4 en `[!]` (IP du serveur de calcul).
+
+**Conclusion / prochaine étape** : L6 (fichiers et chemins) puis L7 ; L8 en parallèle dans un worktree dédié.

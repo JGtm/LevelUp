@@ -10,6 +10,18 @@
 
 ---
 
+### [data/LUSR] Le recalcul après exclusion d'un match utilise encore LUSR v1
+
+Relevé par le chantier sécurité le 2026-10-16 (D-L5b-1, `.ai/PLAN_SECURITE_2026-10-15.md`), mis au
+backlog par décision de l'utilisateur du 2026-10-16. `sync/match_recomputer.go` (recalcul déclenché par
+`PATCH …/matches/{id}/exclusion`) appelle `batchComputeLUSR` (v1, mort selon CLAUDE.md), alors que le
+post-sync saute v1 quand `IsLUSRV2Canonical()` est vrai (`sync/engine_postsync_scoring.go:182-185`) et que
+le boot serveur pose `LEVELUP_LUSR_CANONICAL=LUSR_V2` par défaut (`cmd/server/main.go`). À vérifier : ce
+que le v1 écrit réellement en prod après une exclusion (lignes `LUSR` par-dessus le canonique v2 ?).
+Travail : faire passer le recalcul par `RecomputeLUSRCanonicalForPlayer`, test d'intégration. **Effort : S.**
+
+---
+
 ### [sécurité] Durcir le site avant de le partager plus largement — « sûr et solide, pas le Pentagone »
 
 Demandé par l'utilisateur le 2026-10-14 : le site va être partagé plus largement, il faut éviter

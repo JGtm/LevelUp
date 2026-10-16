@@ -290,7 +290,7 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 - [x] L5b-3 (D-L5-2) Autres usages de ffmpeg (miniatures, remux WebM, migration audio) : même place
       unique (`platform/slots`) et délai maximal que L5-5 ; garde-rail : tout `exec.CommandContext`
       de ffmpeg passe par la place (test grep/AST).
-- [!] L5b-4 (D-L5-4, vérifié par le superviseur) `batchComputeLUSR` est aussi le chemin du
+- [!] L5b-4 (D-L5-4 ; **décision de l'utilisateur du 2026-10-16 : au backlog**, `.ai/BACKLOG.md` « [data/LUSR] ») `batchComputeLUSR` est aussi le chemin du
       post-sync normal (`engine_postsync_scoring.go:196`) : le recalcul d'exclusion suit le même
       chemin que la synchronisation ; rien à faire. Cocher `[x]` en recopiant cette vérification.
       **Non coché** : la vérification n'est pas reproductible sur le défaut de production (voir
@@ -362,7 +362,7 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
       par la fixture).
 - [ ] L8-8 Séquence Tactique : `ReplayGate` lit `match_id` dans le corps pour cette route ; test
       garde démo + route.
-- [ ] L8-9 `docker-compose.yml` : `LEVELUP_TRUST_PROXY_HEADERS=true` sur le service démo ;
+- [~] L8-9 (couvert par L10-2, `levelup-demo` porte la variable) `docker-compose.yml` : `LEVELUP_TRUST_PROXY_HEADERS=true` sur le service démo ;
       garde-rail lisant le compose.
 - [ ] L8-10 `netguard.Check` dans `platform/auth/xbox_device_code.go` ; raison fausse de
       `netguard_coverage_test.go:43` retirée.
@@ -399,25 +399,25 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 
 ### L10 — Conteneurs et ouvrier de rejeu (C9-4) — Sonnet — effort S
 
-- [ ] L10-1 `docker-compose.yml` : `security_opt: [no-new-privileges:true]`, `cap_drop: [ALL]`,
+- [!] L10-1 (modification faite, `cap_add: [CHOWN, DAC_READ_SEARCH, SETUID, SETGID]` ; validation du démarrage à faire sur la démo du VPS, V-4) `docker-compose.yml` : `security_opt: [no-new-privileges:true]`, `cap_drop: [ALL]`,
       `cap_add` limité au strict nécessaire de l'entrée (`gosu` : `CHOWN`, `SETUID`, `SETGID`,
       plus ce que la mesure montre) sur les deux services ; image construite et démarrée en local
       si Docker est disponible (démarrage, `/health`, écriture sous `data/`), sinon `[!]` et
       validation à faire sur le conteneur de démo du VPS par le superviseur (opération annoncée)
       avant la prod.
-- [ ] L10-2 Garde-rail : test lisant `docker-compose.yml` qui exige `no-new-privileges` et
+- [x] L10-2 Garde-rail : test lisant `docker-compose.yml` qui exige `no-new-privileges` et
       `cap_drop: [ALL]` sur chaque service, et `LEVELUP_TRUST_PROXY_HEADERS` sur chaque service
       publié derrière nginx (couvre L8-9).
-- [ ] L10-3 Limites mémoire : relevé des pics réels (`memory.peak` des cgroups des deux conteneurs
+- [!] L10-3 (délai d'observation : mesure des pics par le superviseur, V-6) Limites mémoire : relevé des pics réels (`memory.peak` des cgroups des deux conteneurs
       sur le VPS, lu par le superviseur à la clôture puis après une semaine) ; `mem_limit` fixé à
       partir de la mesure. Statut attendu `[!]` (délai d'observation) jusqu'à la mesure.
-- [ ] L10-4 Ouvrier de rejeu : `scripts/deploy-worker.sh` installe l'unité par copie appartenant à
+- [x] L10-4 (script, unité, runbook ; partie nginx `[!]` : IP du serveur de calcul à poser à l'activation, V-5) Ouvrier de rejeu : `scripts/deploy-worker.sh` installe l'unité par copie appartenant à
       root (fin du lien vers un fichier modifiable par `deploy`) et refuse un lien ; unité
       durcie (`ProtectSystem=full`, `ProtectHome=read-only`, chemins d'écriture déclarés) ;
       `packaging/nginx/levelup.conf` : `location /api/v1/internal/` restreint à l'IP du serveur
       de calcul (`allow …; deny all;`), appliqué sur le VPS à l'activation de l'ouvrier.
-- [ ] L10-5 (D-L0-3, décision de l'utilisateur du 2026-10-15) `.github/dependabot.yml` : écosystème `docker` (répertoire racine, images du `Dockerfile`), même cadence que les autres.
-- [ ] L10-6 (D-L0-3, décision de l'utilisateur du 2026-10-15) Garde-rail archlint : la version de l'image `golang:X.Y.Z-…` du `Dockerfile` est égale à la ligne `go` de `apps/go-api/go.mod` ; vu rouge sur une divergence simulée.
+- [x] L10-5 (D-L0-3, décision de l'utilisateur du 2026-10-15) `.github/dependabot.yml` : écosystème `docker` (répertoire racine, images du `Dockerfile`), même cadence que les autres.
+- [x] L10-6 (D-L0-3, décision de l'utilisateur du 2026-10-15) Garde-rail archlint : la version de l'image `golang:X.Y.Z-…` du `Dockerfile` est égale à la ligne `go` de `apps/go-api/go.mod` ; vu rouge sur une divergence simulée.
 - Gate : `go test ./internal/archlint/ -run 'Compose|Nginx|Dockerfile'` ; `bash -n scripts/deploy-worker.sh`
   ; `shellcheck scripts/deploy-worker.sh` si disponible ; `systemd-analyze verify` si disponible.
 
@@ -485,6 +485,17 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
       TLS 1.1 refusé, 1.2 et 1.3 acceptés, prod et démo 200.
 - [ ] V-3 Au déploiement de la v7.5 : provisionnement de `data/demo_films/` (L8-11) et contrôle
       que la conf nginx versionnée (L1-7) correspond à la conf en place.
+
+- [ ] V-4 (L10-1) Avant que le lot n'atteigne la prod : valider sur le VPS, sur une copie de répertoire
+      (jamais les données en service), l'entrée du conteneur avec `--cap-drop ALL` + les quatre
+      capacités et `no-new-privileges` (`chown -R` → code 0, `gosu` OK) ; remplacer `DAC_READ_SEARCH`
+      par `DAC_OVERRIDE` si le `chown` échoue sur un dossier 0700. Opération annoncée.
+- [ ] V-5 (L10-4) Avant que le lot n'atteigne `main` : sur le serveur de calcul, convertir l'unité de
+      l'ouvrier de lien en copie root (runbook §7), `systemd-analyze verify` ; sinon le job
+      `deploy-worker` passe au rouge. À l'activation : `allow <IP>; deny all;` sur
+      `/api/v1/internal/`. Opération annoncée.
+- [ ] V-6 (L10-3) Relevé `memory.peak` des deux conteneurs à la clôture puis une semaine après ;
+      `mem_limit` proposé à l'utilisateur à partir de la mesure.
 
 ## 6. Découvertes
 
@@ -1721,3 +1732,10 @@ profil visible reste le défaut ; le choix mémorisé en session est inchangé.
 (miniatures : D-L5c-1).
 
 Commits : `4df5f2c98` (L5c-1), `2c7e791b0` (L5c-2), `1b67f8c79` (L5c-3), `6b2d37c66` (L5c-4), puis le commit de clôture (plan, thought_log).
+
+### [2026-10-16] Lot L10 — exécuté en parallèle (accord de l'utilisateur), branche `feat/securite-l10`, fusionné (79f9da999)
+
+**Statuts** : L10-2, L10-5, L10-6 `[x]` ; L10-4 `[x]` sauf la partie nginx `[!]` (IP du serveur de calcul absente du dépôt, posée à l'activation, V-5) ; L10-1 `[!]` (Docker absent du poste : validation sur le VPS, V-4) ; L10-3 `[!]` (mesure, V-6). L8-9 `[~]` (couvert par L10-2).
+**Preuves** : `compose_hardening_test.go` rouge sur le compose d'avant (4 violations + variable de proxy absente de la démo), vert après ; 12 mutations synthétiques signalées ; exception datée `composeProxyHeadersFromEnvFile` (le service `levelup` reçoit la variable par `.env.local`). `TestDockerfileImagesAreWatchedByDependabot` rouge sur l'ancien `dependabot.yml`. `dockerfile_go_version_test.go` : 11 fixtures, neutralisation de la comparaison → 6 cas en échec, restaurée. `worker_unit_hardening_test.go` rouge sur l'unité et le script d'avant. Capacités : `CHOWN` (chown de l'entrée), `DAC_READ_SEARCH` (parcours de dossiers 0700/0750 possédés par appuser), `SETUID`/`SETGID` (`gosu`) — `DAC_READ_SEARCH` déduite, non mesurée. Unité : `ProtectSystem=full`, `ProtectHome=read-only`, `ReadWritePaths=/var/lib/levelup-worker -/opt/levelup/data/cache`. Script : refus d'un lien ou d'une copie non root (6 cas testés hors systemd), installation de la copie = geste root (runbook §7).
+**Gates** : `go test ./internal/archlint/ -run 'Compose|Nginx|Dockerfile'` exit 0 ; archlint complet exit 0 (rejoué par le superviseur après fusion : ok) ; `go vet`, `golangci-lint` 0 issue ; `bash -n` et `shellcheck` de `deploy-worker.sh` exit 0 ; `docker` et `systemd-analyze` indisponibles.
+**Découvertes** : `.ai/V7.5/PLAN_OUVRIER_VPS_DEPLOY.md` (lignes 84, 175) et le journal décrivent encore l'installation par lien ; `scripts/systemd/levelup-docker-prune.service:15` cite `golang:1.26-bookworm` en commentaire.
