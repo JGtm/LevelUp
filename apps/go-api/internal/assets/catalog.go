@@ -38,12 +38,20 @@ type Catalog interface {
 type MetadataCatalog struct {
 	store      *DuckDBIndexStore
 	titleKnown func(titleID string) bool
+	played     *PlayedMapVersions
 }
 
 // NewMetadataCatalog construit le catalogue sur store ; titleKnown dit si un
 // identifiant de titre est enregistré (registre des titres : aucun titre en dur).
 func NewMetadataCatalog(store *DuckDBIndexStore, titleKnown func(titleID string) bool) *MetadataCatalog {
 	return &MetadataCatalog{store: store, titleKnown: titleKnown}
+}
+
+// WithPlayedMapVersions fait juger les versions de carte aussi par les matchs réellement
+// joués du titre (base partagée). Sans elle, seule la version courante du catalogue est connue.
+func (c *MetadataCatalog) WithPlayedMapVersions(played *PlayedMapVersions) *MetadataCatalog {
+	c.played = played
+	return c
 }
 
 // Requêtes de présence (presence) : une table absente laisse l'identifiant inconnu, une
@@ -82,25 +90,56 @@ func (c *MetadataCatalog) classifyMedal(ctx context.Context, ref Ref) Verdict {
 		probe{qMedalWaypoint, []any{ref.TitleID, medalID}})
 }
 
-// classifyMap juge la carte, puis sa version (Variant). La version entre dans l'appel
-// distant (DiscoveryUGC) : une version absente du catalogue (current_version_id) est
-// VerdictUnverifiable, récupérée pour un appelant de confiance seulement ; sans quoi
-// chaque version inventée coûterait un appel signé aux API Halo.
+// classifyMap juge la carte, puis sa version (Variant), qui entre dans l'appel distant
+// (DiscoveryUGC). Une version est connue si c'est la version courante du catalogue
+// (current_version_id) ou si le couple (carte, version) figure dans un match réellement joué
+// du titre (WithPlayedMapVersions), même pour une carte encore absente des métadonnées. Une
+// version jamais jouée d'une carte connue est VerdictUnverifiable (récupérée pour un appelant
+// de confiance seulement) ; d'une carte inconnue, VerdictUnknown. Sans cela, chaque version
+// inventée coûterait un appel signé aux API Halo.
 func (c *MetadataCatalog) classifyMap(ctx context.Context, ref Ref) Verdict {
 	mapVerdict := c.presence(ctx, ref,
 		probe{qMapCatalog, []any{ref.TitleID, ref.ID}},
 		probe{qAssetTranslation, []any{"map", ref.ID}},
 		probe{qMapImage, []any{ref.TitleID, ref.ID}})
-	if mapVerdict != VerdictKnown || ref.Variant == "" {
+	if mapVerdict == VerdictUnavailable || ref.Variant == "" {
 		return mapVerdict
 	}
-	switch c.presence(ctx, ref, probe{qMapVersion, []any{ref.TitleID, ref.ID, ref.Variant}}) {
-	case VerdictKnown:
+	if mapVerdict == VerdictKnown {
+		switch c.presence(ctx, ref, probe{qMapVersion, []any{ref.TitleID, ref.ID, ref.Variant}}) {
+		case VerdictKnown:
+			return VerdictKnown
+		case VerdictUnavailable:
+			return VerdictUnavailable
+		}
+	}
+	return c.classifyPlayedVersion(ctx, ref, mapVerdict)
+}
+
+// classifyPlayedVersion juge une version hors catalogue par les matchs joués du titre. Sans
+// source, ou si la base partagée est illisible (journalisé), le jugement du catalogue seul
+// s'applique, sauf qu'une carte inconnue devient VerdictUnavailable : un refus n'est pas
+// mémorisé sur une lecture en échec.
+func (c *MetadataCatalog) classifyPlayedVersion(ctx context.Context, ref Ref, mapVerdict Verdict) Verdict {
+	fallback := VerdictUnverifiable
+	if mapVerdict != VerdictKnown {
+		fallback = VerdictUnknown
+	}
+	if c.played == nil {
+		return fallback
+	}
+	played, err := c.played.Played(ctx, ref.TitleID, ref.ID, ref.Variant)
+	switch {
+	case err != nil:
+		slog.WarnContext(ctx, "assets: versions de carte jouées illisibles", append(ref.LogAttrs(), "err", err)...)
+		if fallback == VerdictUnknown {
+			return VerdictUnavailable
+		}
+		return fallback
+	case played:
 		return VerdictKnown
-	case VerdictUnavailable:
-		return VerdictUnavailable
 	default:
-		return VerdictUnverifiable
+		return fallback
 	}
 }
 

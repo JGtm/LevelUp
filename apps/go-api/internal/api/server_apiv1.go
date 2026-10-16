@@ -1415,6 +1415,11 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		MetaDBPath:    metadataDBPathFor(cfg),
 		TokenProvider: reg.AnyPlayerTokens,
 		TitleKnown:    titleRegistry.Exists,
+		// Versions de carte jouées : lues dans la base partagée du titre demandé (lecteur
+		// du provider), elles rendent l'image de carte d'un vrai match récupérable par tous.
+		PlayedMapVersions: func(ctx context.Context, titleID string, visit func(mapID, versionID string)) error {
+			return platform_duckdb.ForEachPlayedMapVersion(ctx, cfg.SharedReaderForTitle(titleID), visit)
+		},
 		// Résolution d'image de carte inconnue (KindMapImage) via DiscoveryUGC.
 		// Injectée ici (et non dans internal/assets) pour éviter le cycle
 		// assets→halo : réutilise halo.FetchAsset (→ DiscoveryAsset.ImageURL).

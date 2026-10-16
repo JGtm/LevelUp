@@ -30,6 +30,10 @@ type AssetConfig struct {
 	// Il alimente le catalogue de la porte HTTP (Gate) ; nil → la porte refuse tout
 	// identifiant. Inutile aux outils en ligne de commande, qui n'utilisent pas la porte.
 	TitleKnown func(titleID string) bool
+	// PlayedMapVersions parcourt les couples (carte, version) des matchs enregistrés d'un
+	// titre : une version de carte jouée est alors connue de la porte HTTP (récupérable par
+	// tout appelant). Nil → seule la version courante du catalogue de métadonnées est connue.
+	PlayedMapVersions PlayedMapVersionLoader
 }
 
 // New crée et démarre un DefaultResolver avec la configuration fournie.
@@ -77,7 +81,11 @@ func New(cfg AssetConfig) (*DefaultResolver, error) {
 	queue := NewWriteQueue(idx, metrics)
 
 	resolver := NewDefaultResolver(fs, idx, fetcher, queue, metrics)
-	resolver.catalog = NewMetadataCatalog(idx, cfg.TitleKnown)
+	catalog := NewMetadataCatalog(idx, cfg.TitleKnown)
+	if cfg.PlayedMapVersions != nil {
+		catalog.WithPlayedMapVersions(NewPlayedMapVersions(cfg.PlayedMapVersions))
+	}
+	resolver.catalog = catalog
 	return resolver, nil
 }
 
