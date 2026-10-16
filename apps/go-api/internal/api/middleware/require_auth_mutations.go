@@ -146,45 +146,23 @@ func matchesIDPattern(sub, prefix, suffix string) bool {
 	return id != "" && !strings.Contains(id, "/")
 }
 
-// AmbiguousPath dit si le chemin que lisent les gardes peut désigner une AUTRE route que
-// celle que chi résout. chi route sur le chemin BRUT (`URL.RawPath`) ; les gardes lisent le
-// chemin décodé (`URL.Path`). Les deux divergent dès qu'un séparateur ou un point est ENCODÉ
-// (%2F, %5C, %2E) — « coach/proposals/..%2F..%2Fpages/dismiss » se lit « …/pages/dismiss »
-// mais se route vers dismiss — ou qu'un segment « . », « .. » ou vide apparaît. Une telle
-// requête n'est JAMAIS classée en lecture, et aucun nettoyage (path.Clean) ne la rend
-// lisible : la classification ne peut pas s'écarter du routage.
-func AmbiguousPath(r *http.Request) bool {
-	raw := strings.ToLower(r.URL.EscapedPath())
-	for _, enc := range []string{"%2f", "%5c", "%2e"} {
-		if strings.Contains(raw, enc) {
-			return true
-		}
-	}
-	p := r.URL.Path
-	if strings.ContainsRune(p, '\\') || strings.Contains(p, "//") {
-		return true
-	}
-	for _, seg := range strings.Split(p, "/") {
-		if seg == "." || seg == ".." {
-			return true
-		}
-	}
-	return false
-}
-
 // playerScopedSubPath retourne le chemin RELATIF au groupe joueur
 // (ex. "/pages/media" pour "/api/v1/players/JGtm/pages/media").
 //
 // Il est recalculé depuis l'URL plutôt que lu dans le RouteContext de chi :
 // au moment où les middlewares du groupe s'exécutent, le motif de la route
 // FINALE n'est pas encore résolu. Le chemin est lu TEL QUEL : un chemin qui ne
-// se lit pas comme il se route est écarté en amont (AmbiguousPath).
+// se lit pas comme il se route (AmbiguousPath) rend "".
 //
 // Dans le groupe, le slug vient du paramètre chi. Hors du groupe (garde démo
 // montée à la racine, où aucun paramètre n'est encore résolu), il est lu dans
 // le chemin sous [playersPathMarker]. Retourne "" hors d'un chemin player-scoped —
-// auquel cas aucun POST n'est réputé en lecture (fail-closed).
+// auquel cas aucun POST n'est réputé en lecture et aucune action de visiteur
+// n'est reconnue (fail-closed).
 func playerScopedSubPath(r *http.Request) string {
+	if AmbiguousPath(r) {
+		return ""
+	}
 	cleaned := r.URL.Path
 	slug := chi.URLParam(r, "player_slug")
 	if slug == "" {
