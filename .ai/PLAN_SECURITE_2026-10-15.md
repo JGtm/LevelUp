@@ -498,7 +498,7 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 - [ ] V-3 Au déploiement de la v7.5 : provisionnement de `data/demo_films/` (L8-11) et contrôle
       que la conf nginx versionnée (L1-7) correspond à la conf en place.
 
-- [ ] V-4 (L10-1) Avant que le lot n'atteigne la prod : valider sur le VPS, sur une copie de répertoire
+- [x] V-4 (L10-1, fait le 2026-10-16 par le superviseur : conteneur jetable de l'image de prod sur un dossier de test avec `auth` 0700, `film_facts` 0750 et un fichier root ; avec CHOWN, DAC_READ_SEARCH, SETUID, SETGID + `no-new-privileges` + `cap-drop ALL` : `chown` code 0, `gosu` OK, écriture OK, ffmpeg OK ; sans DAC_READ_SEARCH : « cannot read directory /app/data/auth », capacité nécessaire confirmée ; démarrage complet du serveur à observer au déploiement, démo d'abord) Avant que le lot n'atteigne la prod : valider sur le VPS, sur une copie de répertoire
       (jamais les données en service), l'entrée du conteneur avec `--cap-drop ALL` + les quatre
       capacités et `no-new-privileges` (`chown -R` → code 0, `gosu` OK) ; remplacer `DAC_READ_SEARCH`
       par `DAC_OVERRIDE` si le `chown` échoue sur un dossier 0700. Opération annoncée.
@@ -506,7 +506,7 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
       l'ouvrier de lien en copie root (runbook §7), `systemd-analyze verify` ; sinon le job
       `deploy-worker` passe au rouge. À l'activation : `allow <IP>; deny all;` sur
       `/api/v1/internal/`. Opération annoncée.
-- [ ] V-6 (L10-3) Relevé `memory.peak` des deux conteneurs à la clôture puis une semaine après ;
+- [!] V-6 (L10-3 ; premier relevé du 2026-10-16 : prod 1 134 Mio de pic depuis le redémarrage de 04:00 UTC, démo 334 Mio depuis le 09/10, hôte 1 867 Mio ; second relevé dans une semaine) Relevé `memory.peak` des deux conteneurs à la clôture puis une semaine après ;
       `mem_limit` proposé à l'utilisateur à partir de la mesure.
 
 ## 6. Découvertes
