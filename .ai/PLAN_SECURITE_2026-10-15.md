@@ -318,16 +318,16 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 
 ### L6 — Fichiers et chemins (C6-1, C6-2, C6-3) — Opus — effort M
 
-- [ ] L6-1 Route des médias : racine legacy restreinte à `players/{slug}/captures/` ; liste
+- [x] L6-1 Route des médias : racine legacy restreinte à `players/{slug}/captures/` ; liste
       blanche des extensions média ; test table-driven `.duckdb`, `.wal`, `.json` → 404 sur chaque
       racine.
-- [ ] L6-2 Slug : la garde du groupe `/players/{player_slug}` refuse `.`, `..`, `/`, `\` et tout
+- [x] L6-2 Slug : la garde du groupe `/players/{player_slug}` refuse `.`, `..`, `/`, `\` et tout
       slug hors alphabet, en démo comprise.
-- [ ] L6-3 `match_id` : validation fail-closed (hexadécimal et tirets) à la frontière HTTP du rejeu
+- [x] L6-3 (+ D-L3-3 : forme unique `title.IsValidMatchID`, garde-rail) `match_id` : validation fail-closed (hexadécimal et tirets) à la frontière HTTP du rejeu
       et dans les constructeurs de chemin du `PathResolver` qui l'utilisent (rejeu, faits de film,
       raster tactique) ; test « le chemin reste sous sa racine » avec `/`, `\`, `..`, valeur longue.
-- [ ] L6-4 `/static/` : plus de listing de répertoire (404).
-- [ ] L6-5 Envoi : `http.DetectContentType` doit concorder avec l'extension, sinon 415.
+- [x] L6-4 `/static/` : plus de listing de répertoire (404).
+- [x] L6-5 (concordance par famille, voir journal) Envoi : `http.DetectContentType` doit concorder avec l'extension, sinon 415.
 - Gate : `go test ./internal/api/... ./internal/domain/title/... ./internal/service/...`.
 
 ### L7 — Gardes de chemin et CSRF (C10-1) — Opus — effort S
@@ -544,7 +544,8 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
   (inerte aujourd'hui, L3-8).
 - **D-L3-3** (L3) Deux copies de la forme d'un identifiant de match : `domain.IsValidMatchID` (L3-9) et
   `sync.isValidMatchID` (`sync/backfill.go:518`). L6-3 étend la validation : centraliser sur la version `domain`
-  et poser le garde-rail (règle 6).
+  et poser le garde-rail (règle 6). **Traitée en L6-3** (forme unique `title.IsValidMatchID` : `domain` importe
+  `domain/title`, l'inverse ferait un cycle).
 - **D-L3-4** (L3) `MatchViewService.assertParticipation` (vue du match) reste ouvert sur erreur de base ; la route
   est désormais précédée de `RequireMatchParticipation`, fermé sur erreur : la vérification du service est
   redondante sur ce chemin (gardée pour les appelants hors HTTP).
@@ -637,6 +638,17 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
 - **D-L5c-4** (L5c) `RecomputeForPlayer` : un demandeur absorbé par la coalescence rend 0 promu ; le journal du handler
   (`friends: recompute is_with_friends ... added`) affiche alors 0 pour lui, alors que la passe exécutée par un autre a promu et notifié.
   Cosmétique.
+
+- **D-L6-1** (L6) `POST /admin/actions/replay-build/{run,enqueue}` (`handlers/admin_actions_replay_build.go`) accepte tout `match_id`
+  non vide (admin seul) : aucune validation de forme à la frontière. Les constructeurs de chemin refusent désormais un identifiant
+  mal formé (fermé par défaut), mais le job est créé et n'échoue qu'à l'écriture.
+- **D-L6-2** (L6) `ops.supportedExtensions` (indexation) et `internal/media` (`VideoExtensions`, `ImageExtensions`) portent deux
+  copies de la liste des formats (règle 6 tenue) sans garde-rail : une troisième copie ne serait pas détectée.
+- **D-L6-3** (L6) La forme du slug n'est contrôlée que sur les routes qui portent `RequirePlayerOwnership` (groupes
+  `/players/{player_slug}` et `/profiles/{player_slug}/titles/{slug}`). Des routes d'administration prennent aussi un slug ou un
+  gamertag dans le chemin (`/admin/diag/appearance/{player_slug}`, `/admin/monitoring/lusr-gaps/{player}`) : non vérifiées.
+- **D-L6-4** (L6) La racine legacy interne de `ServeMediaFile` est figée au titre par défaut (`PlayerCapturesDir(DefaultSlug, …)`) :
+  un média legacy d'un autre titre rangé sous `players/{slug}/captures/` n'est pas servi par cette racine. Préexistant.
 
 ## 7. Journal
 
@@ -1739,3 +1751,110 @@ Commits : `4df5f2c98` (L5c-1), `2c7e791b0` (L5c-2), `1b67f8c79` (L5c-3), `6b2d37
 **Preuves** : `compose_hardening_test.go` rouge sur le compose d'avant (4 violations + variable de proxy absente de la démo), vert après ; 12 mutations synthétiques signalées ; exception datée `composeProxyHeadersFromEnvFile` (le service `levelup` reçoit la variable par `.env.local`). `TestDockerfileImagesAreWatchedByDependabot` rouge sur l'ancien `dependabot.yml`. `dockerfile_go_version_test.go` : 11 fixtures, neutralisation de la comparaison → 6 cas en échec, restaurée. `worker_unit_hardening_test.go` rouge sur l'unité et le script d'avant. Capacités : `CHOWN` (chown de l'entrée), `DAC_READ_SEARCH` (parcours de dossiers 0700/0750 possédés par appuser), `SETUID`/`SETGID` (`gosu`) — `DAC_READ_SEARCH` déduite, non mesurée. Unité : `ProtectSystem=full`, `ProtectHome=read-only`, `ReadWritePaths=/var/lib/levelup-worker -/opt/levelup/data/cache`. Script : refus d'un lien ou d'une copie non root (6 cas testés hors systemd), installation de la copie = geste root (runbook §7).
 **Gates** : `go test ./internal/archlint/ -run 'Compose|Nginx|Dockerfile'` exit 0 ; archlint complet exit 0 (rejoué par le superviseur après fusion : ok) ; `go vet`, `golangci-lint` 0 issue ; `bash -n` et `shellcheck` de `deploy-worker.sh` exit 0 ; `docker` et `systemd-analyze` indisponibles.
 **Découvertes** : `.ai/V7.5/PLAN_OUVRIER_VPS_DEPLOY.md` (lignes 84, 175) et le journal décrivent encore l'installation par lien ; `scripts/systemd/levelup-docker-prune.service:15` cite `golang:1.26-bookworm` en commentaire.
+
+### L6 - Fichiers et chemins - 2026-10-16 - clos
+
+Base : `git log --oneline -1` = `10bc447a1` avant le lot ; branche `feat/securite-2026-10-15` ; L8 exécuté en parallèle dans un autre
+worktree (non touché). Références rouvertes avant d'agir : `handlers/media_serve.go` (quatre racines, `http.ServeFile`),
+`handlers/media_paths.go` (`mediaStoredPathToURL`, racine legacy `captures/{rel}`), `ops/media_paths.go`, `domain/title/registry.go`
+(`PlayerDir`, `PlayerCapturesDir`, `MediaDataDir`, `ReplayArtifactPath`), `domain/title/film_id.go` (`FilmShortMatchID` : troncature
+sans contrôle), `registry_film_facts.go:76`, `registry_tactical.go:52`, `service/replay_service.go:65`, `middleware/match_participation.go`,
+`middleware/require_player_ownership.go` (transparente hors propriété appliquée), `handlers/tactical_sequence.go` (troisième copie de
+la forme, motif alphanumérique), `server_apiv1.go` (`http.FileServer` sur `static/`), `handlers/media_upload.go` (extension seule),
+`domain/match_id.go`, `sync/backfill.go:518`.
+
+**Statuts** : L6-1 à L6-5 `[x]`, D-L3-3 traitée dans L6-3. Aucun `[!]`, aucun `[~]`.
+
+- **L6-1** `media.IsServableExt` (vidéos, images, miniatures `.webp`, HLS `.m3u8`/`.m4s`/`.ts`) appliquée à la requête avant toute
+  lecture disque, sur les quatre racines ; la racine legacy interne (`players/{slug}/`) est confinée à `captures/` (`mediaRoot{base,
+  confine}`) ; un dossier n'est jamais servi (`isRegularFile`). Test `handlers/media_serve_confinement_test.go`.
+- **L6-2** `domain.IsValidPlayerSlug` (lettres et chiffres Unicode, marques, espaces internes, `_`, `-`, 64 octets au plus) vérifié par
+  `RequirePlayerOwnership` AVANT la décision de propriété et quel que soit le mode (démo, auth inactive) : 400 `invalid_player_slug`.
+  Test `middleware/require_player_slug_test.go` (17 slugs x 3 modes ; gamertags à espaces, accentués, japonais acceptés).
+- **L6-3** `title.IsValidMatchID` (`film_id.go`) : forme unique ; `domain.IsValidMatchID` (et son test) supprimé ;
+  `sync.isValidMatchID` supprimé (ses tests, présents dans la baseline, gardent leur nom et visent la forme canonique) ; motif de
+  `tactical_sequence.go` remplacé. `FilmShortMatchID` rend pour un identifiant mal formé une clé NUL + hexadécimal : un seul élément
+  de chemin, refusé par tout appel système, distinct pour chaque identifiant (une clé commune faisait passer `Has("m2")` pour vrai dans
+  un stub). Couvre `ReplayArtifactPath`, `FilmFactsPath`, `TacticalRasterPath`, `DemoLayout.ReplayArtifactPath`,
+  `replayService.artifactPath` et le cache de films. `RequireMatchParticipation` (12 routes `/matches/{match_id}`, rejeu compris) :
+  forme invalide -> 404 `match_not_participant` avant toute vérification, même sans vérification (démo). Garde-rail
+  `archlint/match_id_form_single_source_test.go` (fonction de validation ou motif regexp de match hors de `film_id.go` ; auto-preuve
+  sur 5 cas). Tests : `domain/title/match_id_path_test.go` (4 constructeurs x 15 identifiants piégés : chemin dans son dossier,
+  écriture refusée), `match_id_form_test.go`, `middleware/match_participation_form_test.go`, `handlers/tactical_sequence_test.go`
+  (`TestSequence_MatchIDHorsFormeHalo`).
+- **L6-4** `registerStaticRoutes` (`api/static_files.go`) : `http.FileServer` sur `noDirListingFS` (un dossier s'ouvre comme absent) ;
+  `/static/commendations/*` inchangé. Test `api/static_files_test.go`.
+- **L6-5** `media.ContentMatchesExtension` : `http.DetectContentType` des 512 premiers octets comparé à la FAMILLE de l'extension.
+  Image -> `image/*`. Vidéo -> `video/*` ou `application/octet-stream` : Go ne reconnaît ni le QuickTime (`.mov`, marque `qt  `) ni
+  un MP4 sans marque compatible `mp4x` ; `ffprobe` les valide en aval (transcodage HLS) ; refuser l'octet-stream refuserait des `.mov`
+  légitimes. Tout le reste (texte, HTML, SVG, XML, PDF, archive, image sous extension vidéo, vidéo sous extension image) est refusé.
+  Un fichier non concordant refuse l'envoi entier : 415 `upload_content_mismatch` avant toute écriture ; message FR + EN
+  `common.media.upload_content_mismatch` (`UploadButton`, table code -> message). Les extensions d'envoi se lisent dans
+  `internal/media` (`IsUploadableExt`) : la map `allowedMediaExts` du handler est retirée (sinon troisième copie de la liste des
+  images). Tests : `media/content_check_test.go`, `handlers/media_upload_content_test.go`, `UploadButton.test.tsx` (FR, EN).
+
+**Écarts au texte, justifiés** : L6-2 répond 400 (forme) et non 403 : un slug mal formé ne peut désigner aucun profil, et le refus vaut
+aussi en démo où la garde de propriété est inerte. L6-3 : la forme canonique vit dans `domain/title` et non dans `domain` (cycle
+d'import) ; le refus de forme à la frontière est un 404 identique à l'absence, comme la séquence tactique (pas d'oracle). Fixtures de
+test : identifiants factices (`m1`, `veh2`, `deja-cuit`, `demo0001`...) remplacés par des identifiants de forme Halo dans 21 fichiers
+de test (`service`, `api/wire`, `replaybuild`, `sync/replayartifacts`), y compris deux littéraux SQL ; aucun test désactivé ni
+assoupli. `TestFilmShortMatchID` : attente du cas `""` passée de `""` à la clé invalide (contrat changé par le plan).
+
+**Preuves du rouge** (sorties dans `%TEMP%\l6\`) :
+- L6-1 `go test ./internal/api/handlers/ -run 'TestServeMediaFile_(NonMedia|MediaFiles|PlayerDir)'` : exit 1, 19 sous-tests FAIL
+  (`.duckdb`, `.wal`, `.json` servis en 200 sur les 4 racines ; `clip.mp4`, `archive/clip.mp4` hors `captures/` servis) ; les médias
+  légitimes passaient déjà.
+- L6-2 `-run 'TestRequirePlayerOwnership_(Refuses|Accepts)'` : 51 cas sur 51 servis en 200 (dont `..`, `a/b`, `a\b`, `..%2F..%2Fx`).
+- L6-3 `go test ./internal/domain/title/ -run TestMatchPaths` : 60 violations, dont `ReplayArtifactPath("../../etc/passwd")` =
+  `data/cache/et.json` hors du dossier des artefacts, et des écritures acceptées pour `""`, `..`, `/` ; participation : FAIL (forme
+  invalide servie en 200) ; séquence : FAIL (`zzzzzzzz-zzzz` atteint le service) ; garde-rail : FAIL avant centralisation, puis
+  mutation (copie `isValidMatchID` dans `sync`, motif `motifMatchSequence` dans `handlers`, fichiers retirés ensuite) : 2 copies
+  signalées.
+- L6-4 `go test ./internal/api/ -run TestStatic_` : 5 FAIL, listings HTML de `/static/`, `/static/medals/`, `/static/sounds/` en 200.
+- L6-5 contrôle neutralisé le temps du test (source restaurée, vérifiée) : 5 sous-tests FAIL (HTML, SVG, texte acceptés en 200) ;
+  front : 2 FAIL (message du serveur affiché au lieu du message traduit).
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9) :
+- Gate du lot : `go test ./internal/api/... ./internal/domain/title/... ./internal/service/... ./internal/media/... ./internal/archlint/
+  -count=1` : exit 0, 14 paquets ok, 0 `--- FAIL:` (rejoué après le dernier commit de code).
+- Paquets touchés par les fixtures et la clé de film : `go test ./internal/domain/... ./internal/media/... ./internal/archlint/
+  ./internal/port/... ./internal/sync/... ./internal/replaybuild/... ./internal/ops/... ./internal/scheduler/... ./internal/notify/...
+  ./cmd/levelup/ ./cmd/replay-corpus-gate/ ./cmd/zone-attribution/ -count=1` : exit 0, 29 paquets ok.
+- Intégration (L6-3 touche `sync`) : `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/replaybuild/...
+  ./internal/service/... ./internal/ops/... ./internal/scheduler/... ./internal/platform/duckdb/ -count=1` : 25 paquets, 24 ok, rouge
+  sur `sync/replayartifacts` (fixtures d'intégration à identifiants factices) ; fixtures corrigées, paquet rejoué
+  `-tags=integration -p 1` : exit 0. `no_art_patterns_test.go` non modifié.
+- Gate commun : `go build ./cmd/server/` exit 0 ; `go vet` (api, domain, media, service, sync, replayartifacts, replaybuild, archlint ;
+  `-tags=integration` sync et replayartifacts) exit 0 ; `golangci-lint run --new-from-rev=10bc447a1` et
+  `--new-from-merge-base=origin/main` (v2.12.2) : 2 issues au premier passage (staticcheck QF1002, goconst `.png`), corrigées
+  (`0ce7f2d3e`), puis 0 issue. `go run ./cmd/openapi-gen` : aucun diff (aucune route Huma modifiée ; 415 et 400 sont des réponses de
+  handler chi ou de middleware) ; `go test ./internal/api/ -run 'OpenAPI|Contract'` ok.
+- Web : purge de `node_modules/.tmp`, `npm run typecheck` exit 0, `npm run lint` exit 0 (0 erreur, 26 avertissements préexistants),
+  `npm run test:run` exit 0 (924 fichiers passés / 5 ignorés, 9670 tests passés / 23 ignorés), `lint:fields`, `lint:colors`,
+  `knip-ratchet`, `lint-contract-ratchet`, `lint-cross-feature-imports` : exit 0. Manifeste i18n régénéré
+  (`scripts/build_i18n_manifests.mjs`).
+- Hooks pre-commit (gofmt, check-merge-conflict, docs-fr-sync, gitleaks, go-vet) verts sur les sept commits (un premier essai du
+  commit L6-3 refusé par gofmt, formaté puis recommité).
+- `scripts/disk-hygiene.ps1 -Lot securite -Apply` non lancé : le cache `go-build-securite` sert à tout le plan (lots suivants).
+
+**Non-régression (règle 9)** :
+- L6-1 : extensions produites relevées dans le code (envoi : `mp4 mov avi mkv webm png jpg jpeg bmp gif` ; miniatures `.webp`/`.gif` ;
+  HLS `master.m3u8`, `stream_*.m3u8`, `init_*.mp4`, `seg_*.m4s`, `.ts`) et sur disque (`data/media/JGtm` : `.mp4`, `thumbs/*.webp`) :
+  toutes servies (test sur chaque racine). URL legacy interne générée par `mediaStoredPathToURL` = `captures/{rel}` (dossier interne de
+  `ResolveCapturesDir`), toujours servie ; démo : `MediaCapturesBaseDir` = dossier média plat, racine canonique inchangée.
+- L6-2 : slugs réels = clés de `db_profiles.json` = gamertags (local : alphanumériques ; démo `DEMO` ; e2e `demo-player`,
+  `test-player` ; tests Go avec espaces) : tous acceptés. Le front interpole le slug brut dans l'URL ; un espace arrive décodé dans le
+  paramètre chi. Aucun message front ajouté : un slug légitime ne reçoit jamais `invalid_player_slug`.
+- L6-3 : les identifiants réels sont des UUID Halo (hexadécimal et tirets) ; les liens du front vers `/matches/{match_id}` portent le
+  `match_id` du serveur ; e2e : `00000000-dead-beef-...` et `E2E_README_MATCH_ID` (UUID). Appelants internes (sync, cuisson, purge,
+  rattrapage, démo) : suites complètes et intégration vertes.
+- L6-4 : le front ne lit que des fichiers sous `/static/` (`ranks`, `weapons`, `medals`, `sounds`, `maps`...) ; aucun `index.html` sous
+  `static/` ; le SPA ne liste pas (un dossier y reçoit `index.html`).
+- L6-5 : vraies captures locales (`data/media/JGtm/*.mp4`, 7 fichiers) : boîte `ftyp` de marque `mp42` -> `video/mp4`, acceptées ; un
+  `.mov` QuickTime ou un MP4 `isom` sortent en octet-stream, acceptés ; aucun envoi en e2e. Le front envoie déjà tous les fichiers en
+  une requête : un fichier non concordant refuse l'envoi entier avec un message clair.
+
+**Découvertes** : D-L6-1 à D-L6-4 (§6), non traitées.
+
+Commits : `013bb2378` (L6-1), `d966cbea9` (L6-2), `30596fc09` (L6-3), `4b6167f86` (L6-4), `29b2692bf` (L6-5), `0ce7f2d3e` (lint),
+`32850669f` (extensions d'envoi), puis le commit de clôture (plan, thought_log).
