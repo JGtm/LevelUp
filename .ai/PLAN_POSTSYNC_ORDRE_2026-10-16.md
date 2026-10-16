@@ -138,9 +138,9 @@ Gate 2bis : 2b.1-2b.3 cochés, tableau avant/après dans le journal.
 
 ## Étape 3 — Vérification complète (lourd)
 
-- [ ] 3.1 (après le gate 2bis) `cd apps/go-api && go test ./...` et `go test -tags=integration ./...` verts.
-- [ ] 3.2 `make go-api-lint` ; `make gate-push`.
-- [ ] 3.3 Relecture adversariale (skill `adversarial-review`, Opus, contexte frais) du diff
+- [x] 3.1 (après le gate 2bis) `cd apps/go-api && go test ./...` et `go test -tags=integration ./...` verts.
+- [x] 3.2 `make go-api-lint` ; `make gate-push`.
+- [x] 3.3 Relecture adversariale (skill `adversarial-review`, Opus, contexte frais) du diff
   complet ; chaque constat P1/P2 corrigé ou statué par écrit.
 - [ ] 3.4 Push de la branche, CI verte (tous jobs).
 
@@ -325,3 +325,9 @@ des agrégats après 1.6 n'apporterait rien. Item 1.4 : `[~]` couvert par cet in
     `WithFriendsSource` dit désormais exactement ce que le code tient. Relire/réessayer la résolution (contrat de
     `SharedBorrower`) et remonter l'erreur de `LookupFriendXUIDs` : Découvertes (hors lot, `LookupFriendXUIDs` est
     partagé avec le recalcul).
+- 16/10 Gate 3 (sur l'arbre final, HEAD `2a08c437b`) : 3.1 `go test ./...` vert (201 paquets ok, 7 min 41 s, avant la
+  ronde 1 ; paquets touchés relancés ensuite) et `go test -tags=integration -p 1 ./...` vert (202 paquets ok, 28 min 58 s,
+  après la ronde 1 ; seul le test V2 et un commentaire ont bougé après, rejoués et verts avec mutations).
+  3.2 `make go-api-lint` : 0 issues (ratchet `--new-from-merge-base=origin/main`) ; `make gate-push` : exit 0
+  (lint Go 0 issue, typecheck web, lint web 0 erreur / 26 avertissements préexistants, baseline de tests : 9 400
+  attendus tous présents sur 20 192, aucun test ni paquet en échec). 3.3 relecture : voir les rondes 1 et 2 ci-dessus.
