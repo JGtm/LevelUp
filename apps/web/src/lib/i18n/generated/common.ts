@@ -193,7 +193,7 @@ export const commonManifest = {
   "common.footer.developer": { fr: "Développeur", en: "Developer" },
   "common.footer.disclaimer": { fr: "Projet indépendant, sans lien avec Microsoft ni Halo Studios.", en: "Independent project, not affiliated with Microsoft or Halo Studios." },
   "common.footer.elsewhere_heading": { fr: "Ailleurs", en: "Elsewhere" },
-  "common.footer.license": { fr: "Licence MIT", en: "MIT licence" },
+  "common.footer.license": { fr: "Licence AGPL-3.0", en: "AGPL-3.0 licence" },
   "common.footer.paypal": { fr: "PayPal", en: "PayPal" },
   "common.footer.privacy": { fr: "Confidentialité", en: "Privacy" },
   "common.footer.project_heading": { fr: "Le projet", en: "The project" },

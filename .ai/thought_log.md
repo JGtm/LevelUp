@@ -1,3 +1,11 @@
+## [2026-10-16] Licence : MIT vers AGPL-3.0-only (code) + CC BY 4.0 (docs) + audit du contenu tiers — Complété (branche `chore/licence-agpl`, non commitée)
+
+**Décision technique principale** : `LICENSE` = texte AGPL-3.0 officiel ; `NOTICE` porte les termes additionnels du §7 (conservation de la ligne « © JGtm — LevelUp » + lien dépôt, marquage des versions modifiées, pas de droit sur le nom), la licence CC BY 4.0 des docs (`LICENSE-DOCS`) et la liste de ce que la licence ne couvre PAS (contenu Microsoft, sorties de décompilation, captures mémoire, films de matchs). `-only` et non `-or-later` pour garder la main sur les versions futures. README EN/FR, `CITATION.cff`, `CONTRIBUTING` EN/FR (clause de licence + interdiction de soumettre du contenu du jeu), pied de page (`common.footer.license`, TOML + généré à la main à l'identique faute de node_modules dans le worktree) et page confidentialité (intro FR/EN, date de révision) alignés. Le lien « Code source » du pied de page remplit déjà l'obligation AGPL §13.
+
+**Résultats observés** : aucune dépendance GPL/AGPL/SSPL (161 modules Go, 121 paquets npm de production) ; deux MPL-2.0 compatibles. Audit `.ai/AUDIT_CONTENU_TIERS_2026-10-16.md` : 273 fichiers `.c` Ghidra et ~55 Mo de captures mémoire suivis dans `.ai/V7.5/` et `tools/ce/`, 83 Mo d'audio du jeu, ~2 000 images du jeu, ~100 films de matchs réels en fixtures (gamertags de tiers). Rien supprimé.
+
+**Conclusion** : décisions de l'utilisateur en attente — retrait des `.c`/captures de l'arbre (recommandé), anonymisation des fixtures, purge d'historique (non recommandée sans sauvegarde). Typecheck/vitest non rejoués (worktree sans node_modules, aucune logique touchée : chaînes seulement).
+
 ## [2026-10-16] Image de la citation « Sécurisation du drapeau » : losange et croix sans ailes ni auréole — Complété (branche `feat/v75`)
 
 **Décision technique principale** : `H5G_citation_Protecteur.png` (100x100) remplacée par le losange et sa croix de l'original, sans ailes d'ange ni auréole. Ces éléments recouvrant le losange, il a été redessiné d'après la géométrie mesurée sur les pixels de l'original (liseré fin fermé, quatre petits losanges, croix en X intérieure ; superposition vérifiée), agrandi d'environ 1,5, contour sombre, fond transparent. Chemin inchangé, `seed_citation_data.go` intact.

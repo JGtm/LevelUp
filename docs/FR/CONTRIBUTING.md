@@ -109,6 +109,10 @@ Ne jamais utiliser `.env.local` ou `sync_meta` comme source de credentials (fall
 5. Ajouter une entrée `.ai/thought_log.md` (voir [Workflow Agent](#workflow-agent-thought_log--skills)).
 6. Ouvrir une Pull Request en suivant Conventional Commits.
 
+En ouvrant une Pull Request, vous acceptez que votre contribution soit publiée sous la licence
+du projet (AGPL-3.0, documentation sous CC BY 4.0 — voir [NOTICE](../../NOTICE)). Ne soumettez
+ni fichiers du jeu, ni assets extraits, ni code du jeu décompilé : ils ne sont pas à vous.
+
 ---
 
 ## Stratégie de Branches
