@@ -18,6 +18,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useStartDeviceFlow, useDeviceFlowStatus } from '@/features/setup/queries'
 import { useLogin } from '@/features/auth/queries'
 import { storePasswordCredential } from '@/features/auth/credentials'
+import { deviceFlowFailureKey, isTooManyLoginAttempts } from '@/features/auth/loginError'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
 import { api, API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client'
@@ -28,11 +29,17 @@ import { CopyCodeButton } from '@/features/auth/CopyCodeButton'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { isDemoRefusal } from '@/lib/api/demoReadOnly'
+import { OAuthErrorNotice } from '@/features/auth/OAuthErrorNotice'
 
 // Relances AUTO max sur attempt_not_found avant bascule sur retry manuel.
 const MAX_AUTO_RECOVERY = 3
 
-export function XboxLoginPage() {
+interface XboxLoginPageProps {
+  /** Code de refus du callback de connexion Xbox (?oauth_error=), affiché en message localisé. */
+  oauthError?: unknown
+}
+
+export function XboxLoginPage({ oauthError }: XboxLoginPageProps = {}) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const oauthCodeFlowEnabled = useAppShellStore((s) => s.oauthCodeFlowEnabled)
@@ -58,6 +65,7 @@ export function XboxLoginPage() {
 
         <Card>
           <CardContent className="pt-6">
+            <OAuthErrorNotice code={oauthError} />
             {useRedirectFlow ? (
               <RedirectFlowPanel onUseDeviceCode={() => setForceDeviceCode(true)} />
             ) : (
@@ -191,6 +199,8 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
           const apiErr = err as unknown as ApiError
           if (isDemoRefusal(apiErr)) {
             setStartError(t('common.xbox_login.err_demo'))
+          } else if (isTooManyLoginAttempts(apiErr)) {
+            setStartError(t('common.xbox_login.err_busy'))
           } else {
             setStartError(apiErr.message ?? t('common.xbox_login.err_start'))
           }
@@ -243,7 +253,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       },
       onError: (err) => {
         const apiErr = err as unknown as ApiError
-        setStartError(apiErr.message ?? t('common.xbox_login.err_restart'))
+        setStartError(isTooManyLoginAttempts(apiErr) ? t('common.xbox_login.err_busy') : apiErr.message ?? t('common.xbox_login.err_restart'))
       },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -266,7 +276,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       },
       onError: (err) => {
         const apiErr = err as unknown as ApiError
-        setStartError(apiErr.message ?? t('common.xbox_login.err_restart'))
+        setStartError(isTooManyLoginAttempts(apiErr) ? t('common.xbox_login.err_busy') : apiErr.message ?? t('common.xbox_login.err_restart'))
       },
     })
   }
@@ -290,7 +300,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
     return (
       <div className="space-y-3 text-center">
         <p className="text-destructive font-medium">
-          {expired ? 'Le code a expiré.' : status?.error_detail ?? 'Échec de l\'authentification.'}
+          {t(deviceFlowFailureKey(expired ? 'expired' : 'failed', status?.error_code))}
         </p>
         <Button onClick={handleRetry}>{t('common.xbox_login.retry')}</Button>
       </div>
@@ -395,7 +405,9 @@ function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
         },
         onError: (err) => {
           const apiErr = err as unknown as ApiError
-          if (apiErr.code === 'invalid_credentials') {
+          if (isTooManyLoginAttempts(apiErr)) {
+            setError(t('common.auth.too_many_attempts'))
+          } else if (apiErr.code === 'invalid_credentials') {
             setError(t('common.auth.xbox_error_invalid_credentials'))
           } else if (apiErr.code === 'password_login_admin_only') {
             // D3 : utilisateur valide mais pas admin en mode xbox.

@@ -158,12 +158,12 @@ func (h *CampaignHandler) handleStart(ctx context.Context, in *startCampaignInpu
 	if err != nil {
 		switch {
 		case errors.Is(err, campaign.ErrAlreadyActive):
-			return nil, humacore.NewError(http.StatusConflict, "campaign_already_active", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusConflict, "campaign_already_active", err)
 		case errors.Is(err, campaign.ErrInvalidAxis):
-			return nil, humacore.NewError(http.StatusBadRequest, "invalid_axis", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_axis", err)
 		default:
 			slog.WarnContext(ctx, "campaign: start", "err", err)
-			return nil, humacore.NewError(http.StatusInternalServerError, "start_campaign_error", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "start_campaign_error", err)
 		}
 	}
 	return &campaignCreatedOutput{Body: c}, nil
@@ -182,7 +182,7 @@ func (h *CampaignHandler) handleGetActive(ctx context.Context, in *campaignPlaye
 			return &campaignActiveOutput{Body: nil}, nil
 		}
 		slog.WarnContext(ctx, "campaign: get active", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "get_active_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "get_active_error", err)
 	}
 	return &campaignActiveOutput{Body: &c}, nil
 }
@@ -198,7 +198,7 @@ func (h *CampaignHandler) handleListEnded(ctx context.Context, in *campaignPlaye
 	list, err := svc.ListEnded(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug))
 	if err != nil {
 		slog.WarnContext(ctx, "campaign: list ended", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "list_campaigns_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_campaigns_error", err)
 	}
 	items := make([]campaignHistoryItem, 0, len(list))
 	for i := range list {
@@ -233,10 +233,10 @@ func (h *CampaignHandler) handleGetByID(ctx context.Context, in *campaignIDInput
 	c, err := svc.GetByID(ctx, in.ID)
 	if err != nil {
 		if errors.Is(err, campaign.ErrNotFound) {
-			return nil, humacore.NewError(http.StatusNotFound, "campaign_not_found", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "campaign_not_found", err)
 		}
 		slog.WarnContext(ctx, "campaign: get by id", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "get_campaign_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "get_campaign_error", err)
 	}
 	return &campaignOutput{Body: c}, nil
 }
@@ -278,7 +278,7 @@ func (h *CampaignHandler) handleAbandon(ctx context.Context, in *campaignIDInput
 func (h *CampaignHandler) resolvePlayer(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
 	pdb, err := h.resolve(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return pdb, nil
 }
@@ -301,12 +301,12 @@ func (h *CampaignHandler) runTransition(ctx context.Context, in *campaignIDInput
 	if err := fn(svc, in.ID); err != nil {
 		switch {
 		case errors.Is(err, campaign.ErrNotFound):
-			return nil, humacore.NewError(http.StatusNotFound, "campaign_not_found", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "campaign_not_found", err)
 		case errors.Is(err, campaign.ErrInvalidStatus):
-			return nil, humacore.NewError(http.StatusConflict, "invalid_status_transition", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusConflict, "invalid_status_transition", err)
 		default:
 			slog.WarnContext(ctx, "campaign: transition", "err", err)
-			return nil, humacore.NewError(http.StatusInternalServerError, "campaign_transition_error", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "campaign_transition_error", err)
 		}
 	}
 	return &campaignNoContent{Status: http.StatusNoContent}, nil

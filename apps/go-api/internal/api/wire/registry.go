@@ -94,6 +94,8 @@ type ServiceRegistry struct {
 	// qui se comptent a part : jamais un rayon de repli, qui rendrait une mesure d'apparence
 	// normale sur une regle de jeu qu'on n'a pas etablie.
 	radarRange map[string]map[string]int
+	// viewer : le demandeur des écritures de médias, viewer des galeries (registry_media.go).
+	viewer func(context.Context) string
 	// scoreTimelineKind : PAR TITRE (slug → règle « libellé de mode normalisé →
 	// lecture du bloc Score dans le temps »), chargée depuis regulation.toml
 	// [score_timeline] au boot. Une FONCTION par titre et non une table : l'appariement

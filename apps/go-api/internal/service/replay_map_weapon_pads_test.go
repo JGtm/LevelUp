@@ -18,14 +18,14 @@ import (
 )
 
 // artefactAvecSocles écrit un artefact minimal portant deux socles.
-const artefactAvecSocles = `{"schemaVersion":17,"matchId":"m1","titleSlug":"halo_infinite",` +
+const artefactAvecSocles = `{"schemaVersion":17,"matchId":"0000a001","titleSlug":"halo_infinite",` +
 	`"frameCount":10,"bounds":{"minX":0,"minY":0,"maxX":10,"maxY":10},"tracks":[],` +
 	`"weaponPads":[` +
 	`{"x":-9.74,"y":0,"z":22.4,"weapon":"0x0A1992BC","spawns":[0],"presence":[{"t0":0,"tLow":5,"tHigh":9}]},` +
 	`{"x":5.16,"y":0,"z":26.51,"weapon":"0x2B1824D5","spawns":[0],"presence":[{"t0":0,"tLow":5,"tHigh":9}]}]}`
 
 // artefactSansSocle est le Super Fiesta : le film n'a publié aucun socle.
-const artefactSansSocle = `{"schemaVersion":17,"matchId":"m2","titleSlug":"halo_infinite",` +
+const artefactSansSocle = `{"schemaVersion":17,"matchId":"0000a002","titleSlug":"halo_infinite",` +
 	`"frameCount":10,"bounds":{"minX":0,"minY":0,"maxX":10,"maxY":10},"tracks":[]}`
 
 // catalogueSocles — trois emplacements au fichier pour la carte `map-pads`.
@@ -40,8 +40,8 @@ func soclesFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	res := title.NewPathResolver(root)
-	ecrire(t, res.ReplayArtifactPath(title.DefaultSlug, "m1"), artefactAvecSocles)
-	ecrire(t, res.ReplayArtifactPath(title.DefaultSlug, "m2"), artefactSansSocle)
+	ecrire(t, res.ReplayArtifactPath(title.DefaultSlug, "0000a001"), artefactAvecSocles)
+	ecrire(t, res.ReplayArtifactPath(title.DefaultSlug, "0000a002"), artefactSansSocle)
 	ecrire(t, res.MapWeaponPadsPath(title.DefaultSlug), catalogueSocles)
 	return root
 }
@@ -50,7 +50,7 @@ func TestMapWeaponPads_AllumesSeulement(t *testing.T) {
 	root := soclesFixture(t)
 	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-pads"})
 
-	doc, err := svc.GetReplay(context.Background(), "m1")
+	doc, err := svc.GetReplay(context.Background(), "0000a001")
 	if err != nil {
 		t.Fatalf("GetReplay: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestMapWeaponPads_SansSocleAuFilm(t *testing.T) {
 	root := soclesFixture(t)
 	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-pads"})
 
-	doc, err := svc.GetReplay(context.Background(), "m2")
+	doc, err := svc.GetReplay(context.Background(), "0000a002")
 	if err != nil {
 		t.Fatalf("GetReplay: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestMapWeaponPads_AbsencesPropres(t *testing.T) {
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			svc := NewReplayService(title.DefaultSlug, root, c.repo)
-			doc, err := svc.GetReplay(context.Background(), "m1")
+			doc, err := svc.GetReplay(context.Background(), "0000a001")
 			if err != nil {
 				t.Fatalf("GetReplay: %v", err)
 			}
@@ -120,10 +120,10 @@ func TestMapWeaponPads_AbsencesPropres(t *testing.T) {
 // le client retombe sur son comportement d'avant.
 func TestMapWeaponPads_SansCatalogue(t *testing.T) {
 	root := t.TempDir()
-	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "m1"), artefactAvecSocles)
+	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "0000a001"), artefactAvecSocles)
 	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-pads"})
 
-	doc, err := svc.GetReplay(context.Background(), "m1")
+	doc, err := svc.GetReplay(context.Background(), "0000a001")
 	if err != nil {
 		t.Fatalf("GetReplay: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestMapWeaponPads_UneSeuleLectureDesCles(t *testing.T) {
 	repo := &mapNamesStub{mapID: "map-pads", pairName: "Arena:Slayer"}
 	svc := NewReplayService(title.DefaultSlug, root, repo)
 
-	if _, err := svc.GetReplay(context.Background(), "m1"); err != nil {
+	if _, err := svc.GetReplay(context.Background(), "0000a001"); err != nil {
 		t.Fatalf("GetReplay: %v", err)
 	}
 	if len(repo.vu) != 1 {

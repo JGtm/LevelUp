@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 
 	"levelup/go-api/internal/observability"
@@ -39,13 +40,14 @@ const (
 // RateLimitRequests si rpm <= 0). En mode démo/test, la limite est 10× plus haute
 // pour éviter de bloquer les benchmarks.
 //
-// IMPORTANT : httprate clé sur r.RemoteAddr. Derrière un reverse proxy, RemoteAddr
-// vaut l'IP du proxy (127.0.0.1) pour tous les clients tant que chi RealIP n'a pas
-// réécrit l'IP réelle (LEVELUP_TRUST_PROXY_HEADERS=true). Sans ça, tout le trafic
-// partage un seul bucket et le site sature en 429 sous charge publique.
+// Clé du seau : l'IP cliente posée en amont par la pile transverse
+// (chimiddleware.GetClientIP, cf. applyTransverseMiddlewares) — X-Real-IP derrière
+// le proxy de confiance, le pair TCP sinon. Derrière un reverse proxy sans
+// LEVELUP_TRUST_PROXY_HEADERS=true, le pair TCP est le proxy pour tous les clients :
+// tout le trafic partage un seul seau et le site sature en 429 sous charge publique.
 //
-// Exemptions (cf. rateLimitExempt) : fichiers statiques servis localement. Une
-// page home ou Season Pass peut émettre 100+ URLs uniques d'images, ce qui
+// Exemptions (cf. rateLimitExempt), jamais accordées à un chemin ambigu
+// (AmbiguousPath) : fichiers statiques servis localement. Une page home ou Season Pass peut émettre 100+ URLs uniques d'images, ce qui
 // saturait la fenêtre et finissait par claquer y compris les endpoints
 // applicatifs (bugs images home page 2026-05-06 et Season Pass / Héritage
 // 2026-05-06). Le rate limit reste actif sur tout le reste — endpoints
@@ -64,13 +66,15 @@ func RateLimit(demoMode bool, rpm int) func(http.Handler) http.Handler {
 		limit *= 10
 	}
 	limiter := httprate.Limit(limit, RateLimitWindow,
-		httprate.WithKeyFuncs(httprate.KeyByIP),
+		httprate.WithKeyFuncs(clientIPKey),
 		httprate.WithLimitHandler(newRateLimitedHandler(limit)),
 	)
 	return func(next http.Handler) http.Handler {
 		throttled := limiter(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if rateLimitExempt(r.URL.Path) {
+			// Un chemin ambigu (cf. AmbiguousPath) n'est jamais exempté : il peut porter le
+			// préfixe d'une exemption tout en se routant ailleurs.
+			if !AmbiguousPath(r) && rateLimitExempt(r.URL.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -79,10 +83,19 @@ func RateLimit(demoMode bool, rpm int) func(http.Handler) http.Handler {
 	}
 }
 
+// clientIPKey rend la clé du seau : l'IP cliente du contexte. Elle est vide quand
+// aucun résolveur d'IP n'est monté en amont (routeur de test nu) : ces requêtes
+// partagent alors un seul seau, ce qui limite davantage, jamais moins.
+func clientIPKey(r *http.Request) (string, error) {
+	return chimiddleware.GetClientIP(r.Context()), nil
+}
+
 // rateLimitExempt indique qu'un chemin ne consomme PAS le bucket httprate.
 //
 // Sont exemptés : les fichiers servis localement par le serveur — /static/*
-// (FileServer), /api/v1/assets/* (resolver local-first) et tout chemin à
+// (FileServer), /api/v1/assets/* (resolver local-first : une page en charge des
+// dizaines, et assets.Gate ne laisse un appel sortant qu'aux références du catalogue
+// local, ce qui supprime l'amplification qu'une limite de débit visait) et tout chemin à
 // extension statique servi par le catch-all SPA depuis le dist Vite (icônes,
 // /logo.png, /titles/**, polices... issus de apps/web/public/). Ces derniers
 // consommaient le bucket jusqu'au 2026-07-26 : même classe de bug que les
@@ -109,7 +122,7 @@ func newRateLimitedHandler(limit int) http.HandlerFunc {
 			slog.WarnContext(r.Context(), "rate limit atteint: 429",
 				"path", r.URL.Path,
 				"method", r.Method,
-				"remote_addr", r.RemoteAddr,
+				"ip", chimiddleware.GetClientIP(r.Context()),
 				"limit_per_window", limit,
 				"window", RateLimitWindow.String(),
 				"throttled_since_last", since)

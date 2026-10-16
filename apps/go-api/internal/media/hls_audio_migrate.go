@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -147,10 +146,8 @@ func reencodeRenditionToAAC(ctx context.Context, dir string, ref audioRenditionR
 		"-hls_segment_filename", tmpSlash+"/seg_"+ref.Slug+"_%03d.m4s",
 		tmpSlash+"/"+out,
 	)
-	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
 	stderr := &bytes.Buffer{}
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
+	if err := RunFFmpeg(ctx, FFmpegJob{Args: args, Stderr: stderr}); err != nil {
 		return fmt.Errorf("ffmpeg ré-encode %s: %w (stderr: %s)", ref.Slug, err, stderr.String())
 	}
 	if ok, err := renditionIsAAC(ctx, filepath.Join(tmp, "init_"+ref.Slug+".mp4")); err != nil || !ok {

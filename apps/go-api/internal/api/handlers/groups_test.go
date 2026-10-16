@@ -29,8 +29,15 @@ func newGroupsRouter(t *testing.T) (*chi.Mux, *session.Store, *groupstore.GroupS
 	dir := t.TempDir()
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
 	groups := groupstore.NewGroupStore(filepath.Join(dir, "groups.json"))
-	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
 	users := userstore.NewStore(filepath.Join(dir, "users.json"))
+	// Les acteurs des scénarios (Alice, Bob) ont un compte : créer un groupe ou
+	// inviter l'exige. « Ghost » n'en a pas (invite_issuer_test.go).
+	for xuid, gt := range map[string]string{"alice-x": "Alice", "bob-x": "Bob"} {
+		if _, err := users.CreateFromXbox(gt, xuid); err != nil {
+			t.Fatalf("CreateFromXbox %s : %v", gt, err)
+		}
+	}
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), users)
 	h := handlers.NewGroupsHandler(groups, invites, users)
 
 	r := chi.NewRouter()

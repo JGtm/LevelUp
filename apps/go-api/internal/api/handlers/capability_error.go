@@ -27,7 +27,7 @@ func MapCapabilityError(ctx context.Context, err error, probe string) (error, bo
 		slog.WarnContext(ctx, "capability non supportée par le titre",
 			"probe", probe, "titleSlug", ctxkeys.TitleSlug(ctx), "err", err)
 		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "http_capability_not_supported_total")
-		return humacore.NewError(http.StatusServiceUnavailable, "capability_not_supported", err.Error()), true
+		return humacore.NewErrorFrom(ctx, http.StatusServiceUnavailable, "capability_not_supported", err), true
 	}
 	return nil, false
 }

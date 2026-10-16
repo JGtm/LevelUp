@@ -14,6 +14,7 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 
 import type { CoachStrings } from './i18n'
 import {
@@ -34,6 +35,8 @@ export function CoachProposalsCard({ playerSlug, proactiveEnabled, t }: CoachPro
   const accept = useAcceptCoachProposal(playerSlug)
   const dismiss = useDismissCoachProposal(playerSlug)
   const [feedback, setFeedback] = useState<string | null>(null)
+  // Profil d'un ami (lecture seule) : les propositions se lisent, sans Accepter / Ignorer.
+  const canWrite = useCanWritePlayer(playerSlug)
 
   // Si le mode n'est pas activé, on affiche un hint d'opt-in plutôt que la liste.
   if (!proactiveEnabled) {
@@ -82,6 +85,7 @@ export function CoachProposalsCard({ playerSlug, proactiveEnabled, t }: CoachPro
                 setFeedback(t.dismissError)
               }
             }}
+            readOnly={!canWrite}
             accepting={accept.isPending && accept.variables === p.id}
             dismissing={dismiss.isPending && dismiss.variables === p.id}
           />
@@ -98,9 +102,10 @@ interface ProposalRowProps {
   onDismiss: () => void
   accepting: boolean
   dismissing: boolean
+  readOnly: boolean
 }
 
-function ProposalRow({ proposal, t, onAccept, onDismiss, accepting, dismissing }: ProposalRowProps) {
+function ProposalRow({ proposal, t, onAccept, onDismiss, accepting, dismissing, readOnly }: ProposalRowProps) {
   const kindLabel = proposal.kind === 'arc' ? t.kindArc : t.kindChallenge
   const originLabel = proposal.origin === 'synthesized' ? t.originSynthesized : t.originCatalog
   const reasonLabel = readableReason(proposal, t)
@@ -119,23 +124,25 @@ function ProposalRow({ proposal, t, onAccept, onDismiss, accepting, dismissing }
             {proposal.suggested_tier && <> · {t.suggestedTier}: {proposal.suggested_tier}</>}
           </p>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <Button
-            size="sm"
-            onClick={onAccept}
-            disabled={accepting || dismissing}
-          >
-            {accepting ? t.accepting : t.accept}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onDismiss}
-            disabled={accepting || dismissing}
-          >
-            {dismissing ? t.dismissing : t.dismiss}
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="flex shrink-0 gap-2">
+            <Button
+              size="sm"
+              onClick={onAccept}
+              disabled={accepting || dismissing}
+            >
+              {accepting ? t.accepting : t.accept}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDismiss}
+              disabled={accepting || dismissing}
+            >
+              {dismissing ? t.dismissing : t.dismiss}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )

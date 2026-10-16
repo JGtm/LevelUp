@@ -4,6 +4,8 @@
 //	POST /setup/players, POST /setup/smoke-test.
 package domain
 
+import "errors"
+
 // SettingsResponse est le payload retourné par GET /settings.
 // discord_webhook_url n'est JAMAIS inclus — seulement discord_webhook_url_present.
 type SettingsResponse struct {
@@ -183,7 +185,15 @@ type CreatePlayerProfileRequest struct {
 	// InitialMaxMatches : nombre de matchs à synchroniser à l'onboarding pour ce
 	// (joueur, titre). 0 = défaut. Persisté dans db_profiles.json (Pass B).
 	InitialMaxMatches int `json:"initial_max_matches,omitempty"`
+	// AllowXUIDChange autorise la réécriture du xuid d'un profil EXISTANT. Posé par
+	// le serveur pour un admin seulement, jamais lu du corps (ErrProfileXUIDConflict).
+	AllowXUIDChange bool `json:"-"`
 }
+
+// ErrProfileXUIDConflict : la création vise un profil existant qui porte un autre
+// xuid, sans droit de le changer. La propriété d'un profil suit son xuid (ADR
+// 0029) : réécrire le xuid transférerait le profil à un autre compte.
+var ErrProfileXUIDConflict = errors.New("profile: existing profile carries another xuid")
 
 // CreatePlayerProfileResponse est la réponse de POST /setup/players (201).
 type CreatePlayerProfileResponse struct {

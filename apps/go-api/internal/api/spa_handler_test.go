@@ -68,6 +68,9 @@ func TestNewBootPageHandler_ServeLaPageEtRenvoieLeResteAuDemarrage(t *testing.T)
 			t.Errorf("GET %s : X-Frame-Options=%q X-Content-Type-Options=%q, attendu les en-têtes de sécurité du routeur",
 				path, xfo, nosniff)
 		}
+		if csp := w.Header().Get("Content-Security-Policy"); csp != "object-src 'none'; base-uri 'self'; frame-ancestors 'none'" {
+			t.Errorf("GET %s : Content-Security-Policy = %q, attendu la politique minimale du routeur", path, csp)
+		}
 	}
 
 	w := bootGet(h, http.MethodGet, "/assets/index-DiwrgTda.js")

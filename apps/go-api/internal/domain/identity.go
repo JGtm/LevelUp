@@ -184,6 +184,9 @@ type OnboardRequest struct {
 	XUID              string
 	InitialMaxMatches int
 	ActorUsername     string
+	// ActorIsAdmin : la demande vient d'un admin, seul autorisé à changer le xuid
+	// d'un profil existant (domain.ErrProfileXUIDConflict sinon).
+	ActorIsAdmin bool
 }
 
 // OnboardResult dit ce que la mise en place a produit.

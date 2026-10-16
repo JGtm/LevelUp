@@ -9,7 +9,9 @@
 //   - Cookie httpOnly, Secure en production, SameSite=Lax.
 //   - Le session_id est un UUID v4 opaque — jamais devinable.
 //   - Signature HMAC empêche toute falsification côté navigateur.
-//   - TTL configurable (défaut : 7 jours, basé sur last_seen_at).
+//   - TTL configurable (défaut : 7 jours, basé sur last_seen_at), plafonné à
+//     AnonymousTTL pour une session sans identité authentifiée.
+//   - Une session sérialisée de plus de MaxSessionBytes n'est jamais écrite.
 package session
 
 import (
@@ -87,13 +89,14 @@ type Store struct {
 	mu sync.RWMutex
 	// now : horloge du store (time.Now ; WithClock la remplace dans les tests).
 	now func() time.Time
-	// marksMu protège marks. Verrou DISTINCT de mu : Delete, qui oublie une marque, est
+	// marksMu protège marks et revoked. Verrou DISTINCT de mu : Delete, qui oublie une marque, est
 	// appelé par Load sous mu.RLock. Quand les deux sont tenus : mu d'abord, marksMu ensuite.
 	marksMu sync.Mutex
 	// marks : pour chaque session, ce que porte son fichier d'après la DERNIÈRE écriture de
 	// ce process — en mémoire seulement, jamais dans le JSON. Marque absente (session jamais
 	// écrite par ce process, redémarrage) : Touch écrit.
-	marks map[string]persistMark
+	marks   map[string]persistMark
+	revoked map[string]revocation // identifiants révoqués récemment (revoke.go)
 }
 
 // persistMark : ce que porte le fichier d'une session d'après la dernière écriture de ce
@@ -125,11 +128,12 @@ func NewStore(dir string, ttl time.Duration, secret string, opts ...StoreOption)
 		slog.Error("session: création du répertoire de sessions échouée", "dir", dir, "err", err)
 	}
 	s := &Store{
-		dir:    dir,
-		ttl:    ttl,
-		secret: []byte(secret),
-		now:    time.Now,
-		marks:  make(map[string]persistMark),
+		dir:     dir,
+		ttl:     ttl,
+		secret:  []byte(secret),
+		now:     time.Now,
+		marks:   make(map[string]persistMark),
+		revoked: make(map[string]revocation),
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -203,9 +207,16 @@ func (s *Store) save(sess *domain.SessionData, content [sha256.Size]byte) error 
 	if err != nil {
 		return fmt.Errorf("session marshal: %w", err)
 	}
+	if len(data) > MaxSessionBytes {
+		slog.Error("session: écriture refusée, session sérialisée trop volumineuse",
+			"bytes", len(data), "max", MaxSessionBytes, "authenticated", carriesIdentity(sess))
+		return fmt.Errorf("%w: %d bytes > %d", ErrSessionTooLarge, len(data), MaxSessionBytes)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
+	if s.isRevoked(sess.SessionID) {
+		return ErrSessionRevoked
+	}
 	target := s.path(sess.SessionID)
 	tmp, err := os.CreateTemp(s.dir, sanitizeID(sess.SessionID)+"-*"+tmpSuffix)
 	if err != nil {
@@ -404,10 +415,20 @@ func (s *Store) path(sessionID string) string {
 	return filepath.Join(s.dir, safe+".json")
 }
 
-// isExpired retourne true si la session a dépassé le TTL (basé sur last_seen_at).
+// isExpired retourne true si la session a dépassé son TTL (basé sur last_seen_at) :
+// celui du Store, plafonné à AnonymousTTL tant qu'elle ne porte aucune identité
+// authentifiée.
 func (s *Store) isExpired(sess *domain.SessionData) bool {
 	lastSeen := time.Unix(sess.LastSeenAt, 0)
-	return s.now().Sub(lastSeen) > s.ttl
+	return s.now().Sub(lastSeen) > s.ttlFor(sess)
+}
+
+// ttlFor retourne le TTL applicable à la session.
+func (s *Store) ttlFor(sess *domain.SessionData) time.Duration {
+	if !carriesIdentity(sess) {
+		return min(s.ttl, AnonymousTTL)
+	}
+	return s.ttl
 }
 
 // contentDigest : empreinte SHA-256 du JSON de la session, last_seen_at exclu — seul champ
@@ -462,6 +483,7 @@ func (s *Store) pruneMarks() {
 			delete(s.marks, id)
 		}
 	}
+	s.pruneRevokedLocked()
 }
 
 // sanitizeID conserve uniquement les caractères alphanumériques et tirets.

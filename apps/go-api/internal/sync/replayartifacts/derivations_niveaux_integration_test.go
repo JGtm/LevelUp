@@ -29,13 +29,13 @@ func cheminDuLot(d Deps, matchID string) string {
 // n'est ecrit (on ne devine pas le mode d'un match) ; avant le correctif la marque se posait
 // quand meme, et le rattrapage ne reprenait jamais le match.
 func TestDeriver_NiveauxSansSegmentDeLecture_NeMarquePas(t *testing.T) {
-	db, d, _ := monterLeLot(t, "panne1")
-	chemin := cheminDuLot(d, "panne1")
+	db, d, _ := monterLeLot(t, "0000ae02")
+	chemin := cheminDuLot(d, "0000ae02")
 
 	Deriver(context.Background(), DerivationsDeps{
 		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
 		AcquireWriter: d.AcquireWriter,
-	}, []ArtefactRange{{MatchID: "panne1", Path: chemin}})
+	}, []ArtefactRange{{MatchID: "0000ae02", Path: chemin}})
 
 	if n := lignesDeNiveauxEnBase(t, db); n != 0 {
 		t.Errorf("%d ligne(s) de niveaux ecrite(s) sans identite de match", n)
@@ -50,8 +50,8 @@ func TestDeriver_NiveauxSansSegmentDeLecture_NeMarquePas(t *testing.T) {
 // sont ecrits, la passe est marquee, et l'identite est lue AVANT que le segment d'ecriture de la
 // passe soit tenu (en B-swap, une lecture sous ce segment attend un swap qu'il empeche).
 func TestDeriver_NiveauxProjetesAuFilDeLEau(t *testing.T) {
-	db, d, _ := monterLeLot(t, "nominal1")
-	chemin := cheminDuLot(d, "nominal1")
+	db, d, _ := monterLeLot(t, "0000ae03")
+	chemin := cheminDuLot(d, "0000ae03")
 
 	tenu, lectures, lecturesSousWriter := false, 0, 0
 	withRead := func(_ context.Context, _ string, fn func(*sql.DB)) {
@@ -68,7 +68,7 @@ func TestDeriver_NiveauxProjetesAuFilDeLEau(t *testing.T) {
 	Deriver(context.Background(), DerivationsDeps{
 		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
 		WithRead: withRead, AcquireWriter: acquire,
-	}, []ArtefactRange{{MatchID: "nominal1", Path: chemin}})
+	}, []ArtefactRange{{MatchID: "0000ae03", Path: chemin}})
 
 	if n := lignesDeNiveauxEnBase(t, db); n == 0 {
 		t.Fatal("aucune ligne de niveaux ecrite par Deriver alors que le segment de lecture est cable")
@@ -89,8 +89,8 @@ func TestDeriver_NiveauxProjetesAuFilDeLEau(t *testing.T) {
 // transmettre son segment de lecture : sans lui, ses cinq matchs les plus récents restaient non
 // marqués et re-dérivés à chaque cycle, sans niveaux (revue du lot L4, constat C-2).
 func TestRattrapage_TransmetLeSegmentDeLecture(t *testing.T) {
-	db, d, _ := monterLeLot(t, "rattrape1")
-	chemin := cheminDuLot(d, "rattrape1")
+	db, d, _ := monterLeLot(t, "0000ae04")
+	chemin := cheminDuLot(d, "0000ae04")
 
 	rattraperDerivations(context.Background(), d)
 
@@ -112,14 +112,14 @@ func TestRattrapage_TransmetLeSegmentDeLecture(t *testing.T) {
 func TestDeriver_ArtefactNonProjetable_SansIdentite_EstMarque(t *testing.T) {
 	db := baseRegistre(t)
 	repoRoot := racineAvecConfigDuTitre(t, titlePkg.DefaultSlug)
-	inscrireAuRegistre(t, db, "sansprise1", temoinT0(), 0)
-	poserArtefact(t, repoRoot, "sansprise1") // roster vide : aucune prise nommable
-	chemin := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, "sansprise1")
+	inscrireAuRegistre(t, db, "0000ae01", temoinT0(), 0)
+	poserArtefact(t, repoRoot, "0000ae01") // roster vide : aucune prise nommable
+	chemin := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, "0000ae01")
 
 	Deriver(context.Background(), DerivationsDeps{
 		RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug, Gamertag: "testeur",
 		AcquireWriter: func(context.Context) (*sql.DB, func(), error) { return db, func() {}, nil },
-	}, []ArtefactRange{{MatchID: "sansprise1", Path: chemin}})
+	}, []ArtefactRange{{MatchID: "0000ae01", Path: chemin}})
 
 	if n := lignesDeNiveauxEnBase(t, db); n != 0 {
 		t.Errorf("%d ligne(s) de niveaux écrite(s) pour un artefact sans prise nommable", n)

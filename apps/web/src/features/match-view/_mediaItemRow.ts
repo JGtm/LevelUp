@@ -30,7 +30,7 @@ export function toMediaItemRow(item: MatchAssociatedMedia, matchId: string): Med
     capture_end_utc: item.capture_time ?? null,
     match_start_time: null,
     section: 'mine',
-    owner_gamertag: null,
+    owner_gamertag: item.owner_gamertag ?? null,
     map_name: null,
     mode_name: null,
     liked: item.liked,

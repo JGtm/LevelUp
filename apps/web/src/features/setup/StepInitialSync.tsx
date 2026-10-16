@@ -87,6 +87,8 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
     sync_db_error: t('common.initial_sync.err_db'),
     sync_aborted: t('common.initial_sync.err_aborted'),
     internal_error: t('common.initial_sync.err_internal'),
+    db_busy: t('common.initial_sync.err_busy'),
+    sync_failed: t('common.initial_sync.err_internal'),
   }
 
   return (
@@ -202,7 +204,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
               <p className="text-destructive font-medium">{t('common.setup.sync_failed')}</p>
               {job.error?.code && (
                 <p className="text-sm text-muted-foreground">
-                  {errorMessages[job.error.code] ?? job.error.message}
+                  {errorMessages[job.error.code] ?? t('common.initial_sync.err_internal')}
                 </p>
               )}
               {job.error?.retryable !== false && (

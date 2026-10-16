@@ -87,8 +87,8 @@ func newFriendsFixture(t *testing.T, authMode string, opts ...friendsOption) *fr
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Use(middleware.RequirePlayerOwnership(false, authMode,
-			middleware.PlayerXUIDResolver(resolveXUID), users, family))
+		r.Use(middleware.RequirePlayerOwnership(middleware.NewPlayerAccess(false, authMode,
+			middleware.PlayerXUIDResolver(resolveXUID), users, family)))
 		h.Mount(r)
 	})
 	return &friendsFixture{router: r, session: sessStore, users: users, friends: friends}
@@ -262,8 +262,9 @@ func TestFriends_GroupCoMember_ReadsButCannotWrite(t *testing.T) {
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("PUT co-membre = %d, want 403 (corps = %s)", w.Code, w.Body.String())
 	}
-	if code := errorCode(t, w); code != "friends_forbidden" {
-		t.Errorf("PUT co-membre : code = %q, want friends_forbidden", code)
+	// Refusé par la garde de propriété du groupe (accès famille en lecture seule).
+	if code := errorCode(t, w); code != "player_forbidden" {
+		t.Errorf("PUT co-membre : code = %q, want player_forbidden", code)
 	}
 	// L'écriture refusée n'a rien changé.
 	stored, _ := f.friends.Get(ownerXUID)

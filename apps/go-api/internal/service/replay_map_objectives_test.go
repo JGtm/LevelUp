@@ -12,7 +12,7 @@ import (
 )
 
 // objectifsFixture pose, sous une racine neuve, tout ce que le calque d'objectifs
-// exige : un artefact de rejeu minimal pour le match "m1", la table de rôles du titre et
+// exige : un artefact de rejeu minimal pour le match "0000a001", la table de rôles du titre et
 // un catalogue d'objectifs v2 à une carte ("map-ctf") portant les trois natures d'objet
 // mesurées sur Catalyst : des points drapeau, une livraison EN CYLINDRE (le rôle est
 // MIXTE : 2 points + 2 cylindres sur la vraie carte) et une zone de Bastion en boîte.
@@ -20,8 +20,8 @@ func objectifsFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	res := title.NewPathResolver(root)
-	ecrire(t, res.ReplayArtifactPath(title.DefaultSlug, "m1"),
-		`{"schemaVersion":3,"matchId":"m1","titleSlug":"halo_infinite","frameCount":10,`+
+	ecrire(t, res.ReplayArtifactPath(title.DefaultSlug, "0000a001"),
+		`{"schemaVersion":3,"matchId":"0000a001","titleSlug":"halo_infinite","frameCount":10,`+
 			`"bounds":{"minX":0,"minY":0,"maxX":10,"maxY":10},"tracks":[]}`)
 	ecrire(t, res.TitleMappingsDir(title.DefaultSlug)+"/objective_roles.toml", `
 [meta]
@@ -59,7 +59,7 @@ func TestMapObjectives_CTF(t *testing.T) {
 	repo := &mapNamesStub{mapID: "map-ctf", pairName: "Arena:CTF on Testmap"}
 	svc := NewReplayService(title.DefaultSlug, root, repo)
 
-	doc, err := svc.GetReplay(context.Background(), "m1")
+	doc, err := svc.GetReplay(context.Background(), "0000a001")
 	if err != nil {
 		t.Fatalf("GetReplay: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestMapObjectives_StrongholdsNeutre(t *testing.T) {
 	repo := &mapNamesStub{mapID: "map-ctf", pairName: "Arena:Strongholds on Testmap"}
 	svc := NewReplayService(title.DefaultSlug, root, repo)
 
-	doc, err := svc.GetReplay(context.Background(), "m1")
+	doc, err := svc.GetReplay(context.Background(), "0000a001")
 	if err != nil {
 		t.Fatalf("GetReplay: %v", err)
 	}
@@ -132,14 +132,14 @@ func TestMapObjectives_Absences(t *testing.T) {
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			svc := NewReplayService(title.DefaultSlug, objectifsFixture(t), c.stub)
-			doc, err := svc.GetReplay(context.Background(), "m1")
+			doc, err := svc.GetReplay(context.Background(), "0000a001")
 			if err != nil {
 				t.Fatalf("GetReplay doit servir le document: %v", err)
 			}
 			if doc.MapObjectives != nil {
 				t.Errorf("MapObjectives = %+v, attendu absent", doc.MapObjectives)
 			}
-			if doc.MatchID != "m1" {
+			if doc.MatchID != "0000a001" {
 				t.Errorf("le document lui-même doit rester entier: %+v", doc.MatchID)
 			}
 		})
@@ -156,13 +156,13 @@ func TestMapObjectives_TitreSansTable(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-ctf", pairName: "Arena:CTF on Testmap"})
-	doc, err := svc.GetReplay(context.Background(), "m1")
+	doc, err := svc.GetReplay(context.Background(), "0000a001")
 	if err != nil || doc.MapObjectives != nil {
 		t.Errorf("attendu document entier sans calque, reçu err=%v mo=%+v", err, doc.MapObjectives)
 	}
 
 	sansRepo := NewReplayService(title.DefaultSlug, root, nil)
-	doc, err = sansRepo.GetReplay(context.Background(), "m1")
+	doc, err = sansRepo.GetReplay(context.Background(), "0000a001")
 	if err != nil || doc.MapObjectives != nil {
 		t.Errorf("maps nil : attendu document entier sans calque, reçu err=%v mo=%+v", err, doc.MapObjectives)
 	}

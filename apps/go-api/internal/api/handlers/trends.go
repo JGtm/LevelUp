@@ -63,7 +63,7 @@ func (h *TrendsHandler) GetPage(ctx context.Context, in *trendsQueryInput) (*tre
 		}
 	}
 	if err := req.Validate(); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_request", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_request", err)
 	}
 
 	var resp domain.TrendsPageResponse
@@ -71,13 +71,13 @@ func (h *TrendsHandler) GetPage(ctx context.Context, in *trendsQueryInput) (*tre
 	if req.View == domain.TrendsViewSquad {
 		svc, xuid, _, err := h.newSquadSvc(ctx, in.PlayerSlug)
 		if err != nil {
-			return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 		}
 		resp, svcErr = svc.GetSquadTrends(ctx, xuid, req)
 	} else {
 		svc, err := h.newSvc(ctx, in.PlayerSlug)
 		if err != nil {
-			return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 		}
 		resp, svcErr = svc.GetPage(ctx, req)
 	}

@@ -10,7 +10,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -29,7 +28,6 @@ import (
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/observability/logging"
 	auth_platform "levelup/go-api/internal/platform/auth"
-	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -43,16 +41,6 @@ import (
 // indéfiniment si un autre writer (auto-sync, watcher) le tenait. 30 min couvre
 // largement un sync initial volumineux + post-sync.
 const syncJobTimeout = 30 * time.Minute
-
-// syncErrorMessage (D3-05) produit un message de job lisible — distingue la
-// contention de lease (un autre sync du même joueur est en cours, réessayable)
-// d'un échec réel.
-func syncErrorMessage(err error) string {
-	if errors.Is(err, dblease.ErrDBLocked) {
-		return "db_busy: un autre sync de ce joueur est en cours (réessayer) — " + err.Error()
-	}
-	return err.Error()
-}
 
 // NotificationsEmitterFactory construit un emitter de notifications pour un slug
 // joueur donné. Optionnel : si le SyncHandler n'a pas reçu de factory, aucun
@@ -313,7 +301,7 @@ func (h *SyncHandler) emitMatchSynced(ctx context.Context, slug string, inserted
 }
 
 // emitSyncError émet une notification sync_error sur échec d'une sync.
-func (h *SyncHandler) emitSyncError(ctx context.Context, slug, jobID, message string) {
+func (h *SyncHandler) emitSyncError(ctx context.Context, slug, jobID string, fail *domain.JobErrorDetail) {
 	if h.notifierFor == nil {
 		return
 	}
@@ -335,7 +323,7 @@ func (h *SyncHandler) emitSyncError(ctx context.Context, slug, jobID, message st
 		Severity: notifications.SeverityError,
 		TitleKey: "notif.sync_error.title",
 		BodyKey:  "notif.sync_error.body",
-		Params:   map[string]any{"message": truncate(message, 200), "job_id": jobID},
+		Params:   map[string]any{jsonKeyCode: fail.Code, "job_id": jobID},
 		Source:   "sync_handler",
 	}, syncErrorCoalesceWindow); err != nil {
 		slog.WarnContext(ctx, "notifications: sync_error emit", "err", err)
@@ -344,13 +332,6 @@ func (h *SyncHandler) emitSyncError(ctx context.Context, slug, jobID, message st
 
 // syncErrorCoalesceWindow : fenêtre de coalescence des notifs sync_error (DP15).
 const syncErrorCoalesceWindow = 6 * time.Hour
-
-func truncate(s string, max int) string {
-	if len(s) <= max {
-		return s
-	}
-	return s[:max] + "…"
-}
 
 // ─── Montage Huma + types Input/Output ───────────────────────────────────────
 
@@ -505,9 +486,7 @@ func (h *SyncHandler) StartInitialSync(ctx context.Context, in *syncInitialInput
 		runner, runCtx := h.runnerFor(bgCtx, titleSlug, gamertag, xuid, tokens)
 		result, err := runner.RunDelta(runCtx, opts)
 		if err != nil {
-			errMsg := syncErrorMessage(err)
-			h.jobStore.SetStatus(job.JobID, domain.JobStatusFailed, &errMsg)
-			h.emitSyncError(bgCtx, req.PlayerSlug, job.JobID, errMsg)
+			h.failSyncJob(bgCtx, req.PlayerSlug, job.JobID, err)
 			return
 		}
 		summary := fmt.Sprintf("inserted=%d skipped=%d medals=%d duration=%.1fs status=%s",
@@ -588,9 +567,7 @@ func (h *SyncHandler) StartDeltaSync(ctx context.Context, in *syncDeltaInput) (*
 
 		result, err := engine.RunDelta(bgCtx, opts)
 		if err != nil {
-			errMsg := syncErrorMessage(err)
-			h.jobStore.SetStatus(job.JobID, domain.JobStatusFailed, &errMsg)
-			h.emitSyncError(bgCtx, playerSlug, job.JobID, errMsg)
+			h.failSyncJob(bgCtx, playerSlug, job.JobID, err)
 			return
 		}
 		summary := fmt.Sprintf("inserted=%d skipped=%d medals=%d duration=%.1fs status=%s",

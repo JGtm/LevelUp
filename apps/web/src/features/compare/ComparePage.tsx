@@ -24,6 +24,7 @@ import { CompareWeaponsSection } from './CompareWeaponsSection'
 import { getCompareText, normalizeCompareLocale, resolveMetricLabel, type CompareText } from './i18n'
 import { useCompare } from './queries'
 import type { Locale } from '@/lib/i18n/locale'
+import { isCompareNotFound } from './errors'
 
 const CATEGORY_KEYS = {
   combat: ['win_rate', 'kda', 'kdr', 'kills_per_game', 'deaths_per_game', 'assists_per_game', 'damage_per_game', 'rendement'],
@@ -378,12 +379,8 @@ export function ComparePage() {
       )}
       {!isPending && leftCompare.isError && (
         <EmptyStateCard
-          title={leftCompare.error?.message?.includes('404') ? text.notFoundTitle : text.errorTitle}
-          description={
-            leftCompare.error?.message?.includes('404')
-              ? text.notFoundDescription
-              : (leftCompare.error?.message ?? text.errorDescription)
-          }
+          title={isCompareNotFound(leftCompare.error) ? text.notFoundTitle : text.errorTitle}
+          description={isCompareNotFound(leftCompare.error) ? text.notFoundDescription : text.errorDescription}
         />
       )}
       {!isPending && !leftData && !target && (

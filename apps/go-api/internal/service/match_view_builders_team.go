@@ -292,7 +292,12 @@ func buildMediaTab(media []domain.MediaAssocRaw) domain.MatchMediaTab {
 	}
 	items := make([]domain.MatchAssociatedMedia, 0, len(media))
 	for _, m := range media {
+		var owner *string
+		if m.OwnerSlug != "" {
+			owner = &m.OwnerSlug
+		}
 		items = append(items, domain.MatchAssociatedMedia{
+			OwnerGamertag:    owner,
 			FileID:           m.FileID,
 			FileName:         m.FileName,
 			FilePath:         m.FilePath,

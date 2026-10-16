@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/jobs"
 	"levelup/go-api/internal/replaybuild"
 )
@@ -131,16 +132,16 @@ func (h *AdminReplayBuildActionHandler) handleEnqueue(ctx context.Context, in *r
 		return nil, humacore.NewError(http.StatusServiceUnavailable, "build_queue_unavailable",
 			"File de construction indisponible (store monitoring non ouvert).")
 	}
-	var req replayBuildRequest
-	if err := json.Unmarshal(in.RawBody, &req); err != nil || req.MatchID == "" {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_input", "match_id requis.")
+	req, err := decodeReplayBuildRequest(in.RawBody)
+	if err != nil {
+		return nil, err
 	}
 	titleSlug := titleOrDefaultSlug(in.Title)
 	job, created, err := h.enqueue(ctx, titleSlug, req.MatchID)
 	if err != nil {
 		slog.ErrorContext(ctx, "admin_actions: mise en file du rejeu échouée",
 			"module", "monitoring", "match_id", req.MatchID, "title", titleSlug, "err", err)
-		return nil, humacore.NewError(http.StatusBadRequest, "replay_enqueue_failed", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "replay_enqueue_failed", err)
 	}
 	slog.InfoContext(ctx, "admin_actions: rejeu 2D mis en file",
 		"job_id", job.JobID, "match_id", req.MatchID, "title", titleSlug, "created", created)
@@ -163,6 +164,25 @@ type replayBuildRequest struct {
 	MatchID string `json:"match_id"`
 }
 
+// codeInvalidMatchID : refus d'un match_id hors de la forme title.IsValidMatchID.
+const codeInvalidMatchID = "invalid_match_id"
+
+// decodeReplayBuildRequest décode le corps commun à /run et /enqueue : 400 invalid_input
+// si le JSON est malformé ou le match_id absent, 400 invalid_match_id si le match_id n'a
+// pas la forme d'un identifiant de match (title.IsValidMatchID) — il deviendrait un
+// segment de chemin du rejeu et la clé d'un job.
+func decodeReplayBuildRequest(raw []byte) (replayBuildRequest, error) {
+	var req replayBuildRequest
+	if err := json.Unmarshal(raw, &req); err != nil || req.MatchID == "" {
+		return req, humacore.NewError(http.StatusBadRequest, "invalid_input", "match_id requis.")
+	}
+	if !titlePkg.IsValidMatchID(req.MatchID) {
+		return req, humacore.NewError(http.StatusBadRequest, codeInvalidMatchID,
+			humacore.FixedMessage(http.StatusBadRequest, codeInvalidMatchID))
+	}
+	return req, nil
+}
+
 // handleRun démarre la construction du rejeu d'un match.
 // POST /admin/actions/replay-build/run {match_id} → 202 (409 si déjà en vol sur ce match).
 func (h *AdminReplayBuildActionHandler) handleRun(ctx context.Context, in *replayBuildRunInput) (*replayBuildRunOutput, error) {
@@ -170,9 +190,9 @@ func (h *AdminReplayBuildActionHandler) handleRun(ctx context.Context, in *repla
 		return nil, humacore.NewError(http.StatusServiceUnavailable, "replay_build_unavailable",
 			"Construction de rejeu indisponible (runner non câblé).")
 	}
-	var req replayBuildRequest
-	if err := json.Unmarshal(in.RawBody, &req); err != nil || req.MatchID == "" {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_input", "match_id requis.")
+	req, err := decodeReplayBuildRequest(in.RawBody)
+	if err != nil {
+		return nil, err
 	}
 	if err := h.refusedByPlacement(ctx); err != nil {
 		slog.WarnContext(ctx, "admin_actions: construction locale refusée par le réglage",
@@ -216,7 +236,7 @@ func (h *AdminReplayBuildActionHandler) runBuild(ctx context.Context, jobID, tit
 		slog.ErrorContext(ctx, "admin_actions: construction rejeu 2D échouée",
 			"module", "monitoring", "job_id", jobID, "match_id", matchID, "err", err)
 		h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
-			j.Error = &domain.JobErrorDetail{Code: "replay_build_failed", Message: err.Error(), Retryable: false}
+			j.Error = domain.NewJobError("replay_build_failed", false)
 		})
 		h.jobs.SetStatus(jobID, domain.JobStatusFailed, nil)
 		return

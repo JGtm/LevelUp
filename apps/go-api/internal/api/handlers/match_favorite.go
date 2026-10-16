@@ -75,7 +75,7 @@ func (h *MatchFavoriteHandler) handlePatchFavorite(ctx context.Context, in *matc
 
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.MatchFavoriteRequest
@@ -91,7 +91,7 @@ func (h *MatchFavoriteHandler) handlePatchFavorite(ctx context.Context, in *matc
 		}
 		slog.ErrorContext(ctx, "match_favorite: erreur bascule",
 			"err", err, "match_id", matchID, "player", slug)
-		return nil, humacore.NewError(http.StatusInternalServerError, "favorite_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "favorite_error", err)
 	}
 
 	slog.DebugContext(ctx, "match_favorite: bascule ok",

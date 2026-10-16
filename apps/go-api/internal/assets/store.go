@@ -32,8 +32,9 @@ type BinaryStore interface {
 	// Retourne ErrPersistFailed si l'écriture échoue.
 	PersistBinary(ctx context.Context, ref Ref, p BinaryPayload) error
 
-	// Path retourne le chemin FS attendu pour une Ref (sans vérifier l'existence).
-	Path(ref Ref) string
+	// Path retourne le chemin FS attendu pour une Ref (sans vérifier l'existence), ou
+	// ErrInvalidRef pour une Ref qui ne peut pas désigner un fichier sous la racine.
+	Path(ref Ref) (string, error)
 }
 
 // IndexStore gère l'index DuckDB des assets (URLs, paths, hashes, timestamps).

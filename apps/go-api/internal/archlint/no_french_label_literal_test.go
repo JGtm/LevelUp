@@ -166,8 +166,8 @@ var frenchLabelAllowlist = map[string]int{
 	"api/handlers/admin_weapon_coverage.go":       2,
 	"api/handlers/assets.go":                      2,
 	"api/handlers/assets_metadata.go":             5,
-	"api/handlers/auth.go":                        6,
-	"api/handlers/auth_xbox_oauth.go":             6,
+	"api/handlers/auth.go":                        5,
+	"api/handlers/auth_xbox_oauth.go":             5,
 	"api/handlers/backfill.go":                    2,
 	"api/handlers/build_worker.go":                8,
 	"api/handlers/build_worker_artifact.go":       4,
@@ -216,13 +216,13 @@ var frenchLabelAllowlist = map[string]int{
 	"api/handlers/setup.go":                       12,
 	"api/handlers/squad_v2.go":                    1,
 	"api/handlers/stats.go":                       1,
-	"api/handlers/sync_handler.go":                7,
+	"api/handlers/sync_handler.go":                6,
 	"api/handlers/sync_handler_align.go":          1,
 	"api/handlers/synthesis.go":                   1,
 	"api/handlers/teammates.go":                   1,
 	"api/handlers/timeseries.go":                  1,
 	"api/handlers/title_sync.go":                  1,
-	"api/handlers/user_auth.go":                   13,
+	"api/handlers/user_auth.go":                   12,
 	"api/handlers/watcher_handler.go":             3,
 
 	// Non triés — code Halo 5 / mappings / services divers, messages d'erreur internes
@@ -257,7 +257,7 @@ var frenchLabelAllowlist = map[string]int{
 	"service/profile_service.go":                        1,
 	"service/release_notes_service.go":                  2,
 	"service/season_pass_service.go":                    1,
-	"service/seasons_catalog.go":                        4,
+	"service/seasons_catalog.go":                        3,
 	"service/session_compare_service.go":                2,
 	"service/session_compare_table_helpers.go":          1,
 	"service/session_page_service.go":                   7,
@@ -269,7 +269,6 @@ var frenchLabelAllowlist = map[string]int{
 	// (Q4) : leur seul littéral accentué était le repli FR de l'issue de match, supprimé
 	// par la clé canonique (D5).
 	"service/title_diagnostic_service.go": 2,
-	"service/xbox_auth_service.go":        1,
 }
 
 func TestNoNewFrenchLabelLiteral(t *testing.T) {

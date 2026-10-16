@@ -8,8 +8,13 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os/exec"
+	"time"
 )
+
+// remuxSlotWait borne l'attente de la place ffmpeg d'une lecture remuxée : au-delà, la requête
+// répond « occupé » (ErrFFmpegBusy) avant d'avoir écrit le moindre octet. Variable pour que
+// les tests la raccourcissent.
+var remuxSlotWait = 30 * time.Second
 
 // ErrRemuxProbeFailed et ErrRemuxIncompatibleCodec distinguent les deux modes
 // d'échec du pré-flight (PlanRemuxWebM) pour que l'appelant HTTP choisisse son
@@ -54,8 +59,10 @@ func PlanRemuxWebM(ctx context.Context, absPath string) (RemuxPlan, error) {
 
 // StreamRemuxWebMPlan lance ffmpeg (remux -c copy vers WebM) selon un RemuxPlan
 // DÉJÀ validé par PlanRemuxWebM et streame le résultat dans w. Ne re-probe PAS :
-// l'appelant a déjà tranché codecs et status. Un échec ici survient en cours de
-// flux (status HTTP déjà envoyé) → l'appelant ne peut plus que logger. Le caller
+// l'appelant a déjà tranché codecs et status. Le remux tient une place du pool des remux
+// (PoolRemux de RunFFmpeg) et n'attend que remuxSlotWait : sans place, l'erreur enveloppe ErrFFmpegBusy
+// et RIEN n'a été écrit (l'appelant peut encore répondre 503). Tout autre échec survient en
+// cours de flux (status HTTP déjà envoyé) → l'appelant ne peut plus que logger. Le caller
 // est responsable du Content-Type (video/webm) ; les Range requests ne sont pas
 // supportés sur le flux remuxé.
 func StreamRemuxWebMPlan(ctx context.Context, absPath string, plan RemuxPlan, w io.Writer) error {
@@ -67,11 +74,12 @@ func StreamRemuxWebMPlan(ctx context.Context, absPath string, plan RemuxPlan, w 
 		"-f", "webm",
 		"pipe:1",
 	)
-	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
-	cmd.Stdout = w
 	stderr := &bytes.Buffer{}
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
+	job := FFmpegJob{Args: args, Stdout: w, Stderr: stderr, Pool: PoolRemux, MaxWait: remuxSlotWait}
+	if err := RunFFmpeg(ctx, job); err != nil {
+		if errors.Is(err, ErrFFmpegBusy) {
+			return err
+		}
 		slog.ErrorContext(ctx, "remux ffmpeg failed",
 			"path", absPath,
 			"audio_map", plan.AudioMap,
@@ -89,12 +97,12 @@ type avStreamsInfo struct {
 }
 
 func probeAVStreams(ctx context.Context, absPath string) (avStreamsInfo, error) {
-	out, err := exec.CommandContext(ctx, "ffprobe",
+	out, err := RunFFprobe(ctx,
 		"-v", "error",
 		"-print_format", "json",
 		"-show_streams",
 		absPath,
-	).Output()
+	)
 	if err != nil {
 		return avStreamsInfo{}, err
 	}

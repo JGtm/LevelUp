@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useRegister } from '@/features/auth/queries'
 import { queryKeys } from '@/lib/query/keys'
-import type { ApiError } from '@/lib/api/client'
+import { registerErrorKey } from '@/features/auth/loginError'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -66,18 +66,7 @@ export function RegisterPage() {
           queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
           navigate({ to: '/' })
         },
-        onError: (err) => {
-          const apiErr = err as unknown as ApiError
-          const messages: Record<string, string> = {
-            user_exists: t('common.auth.register_err_user_exists'),
-            invite_required: t('common.auth.register_err_invite_required'),
-            invalid_invite: t('common.auth.register_err_invalid_invite'),
-            registration_closed: t('common.auth.register_err_closed'),
-            instance_locked: t('common.auth.register_instance_closed'),
-            validation_error: apiErr.message,
-          }
-          setError(messages[apiErr.code] ?? apiErr.message ?? t('common.auth.register_err_generic'))
-        },
+        onError: (err) => setError(t(registerErrorKey(err))),
       },
     )
   }

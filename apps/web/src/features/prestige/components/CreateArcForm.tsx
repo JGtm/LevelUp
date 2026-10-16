@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { CreateArcBody } from '@/lib/prestige'
 import { getPrestigeText } from '../i18n'
+import { createErrorMessage } from '../createError'
 import { useCreateArc } from '../hooks'
 
 interface CreateArcFormProps {
@@ -81,7 +82,7 @@ export function CreateArcForm({ userId, titleSlug, onSuccess, onCancel }: Create
 
       <div className="space-y-2">
         {create.error != null && (
-          <p className="text-xs text-destructive">{(create.error as Error).message}</p>
+          <p className="text-xs text-destructive">{createErrorMessage(create.error, t)}</p>
         )}
         <button
           type="submit"

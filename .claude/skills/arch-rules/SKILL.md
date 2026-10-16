@@ -98,6 +98,15 @@ log.Printf("...")          // ancien package log
 
 Clés standard du projet : `"err"`, `"match_id"`, `"player"`, `"titleSlug"`, `"duration"`.
 
+## Erreurs HTTP — le texte d'une erreur ne part pas au client
+
+Un refus qui vient d'une erreur (`err`) se construit par `humacore.NewErrorFrom(ctx, status, code, err)`
+(Huma) ou `writeErrorFrom(ctx, w, status, code, err)` (handlers chi) : la cause va au journal, le client
+reçoit le message FIXE du code (`humacore.FixedMessage` : « internal error » en 5xx, sinon le code lu avec
+des espaces). `NewError` / `writeError` restent pour un message écrit à la main. Le front écrit lui-même le
+texte (FR + EN) à partir du `code`, jamais d'`ApiError.message`. Un job porte `domain.NewJobError(code, retryable)`.
+Garde-rails : `archlint/err_error_response_test.go` et `archlint/job_error_fixed_message_test.go` (allowlist vide).
+
 ## Modularité
 
 | Unité | Seuil | Action |

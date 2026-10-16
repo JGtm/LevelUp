@@ -1,7 +1,8 @@
 // Package handlers_test — auth_xbox_oauth_test.go : tests XboxOAuthHandler.
 //
 // Couvre les cas non-exchange : refus en démo (demo_mode_forbidden), redirect_uri absent, state CSRF
-// (manquant, mismatch), error param Microsoft. Le success path complet
+// (manquant, mismatch), error param Microsoft. Un refus du callback renvoie le navigateur à
+// l'écran de connexion (/login?oauth_error=<code>, assertLoginRedirect). Le success path complet
 // nécessiterait un mock de l'endpoint Microsoft /oauth2/v2.0/token (non testé
 // ici — exercé via les tests d'intégration manuels avec Azure).
 package handlers_test
@@ -69,11 +70,36 @@ func TestXboxOAuth_LoginRedirect_NoRedirectURI(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusInternalServerError {
-		t.Errorf("status = %d, want 500 (redirect_uri_not_configured)", w.Code)
-	}
-	if !strings.Contains(w.Body.String(), "redirect_uri_not_configured") {
-		t.Errorf("body devrait contenir redirect_uri_not_configured, got: %s", w.Body.String())
+	// Navigation plein écran : le refus renvoie à l'écran de connexion, jamais un JSON brut.
+	assertLoginRedirect(t, w, "redirect_uri_not_configured")
+}
+
+// L9-8 : une session absente, une sauvegarde de session impossible sont rendues comme les
+// autres refus de la connexion Xbox — redirection vers /login?oauth_error=<code>.
+func TestXboxOAuth_LoginRedirect_NoSession(t *testing.T) {
+	dir := t.TempDir()
+	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	h := handlers.NewXboxOAuthHandler(sessStore, &stubTokenProvider{}, false, "http://localhost:8000/cb")
+	r := chi.NewRouter() // pas de middleware de session : aucune session dans le contexte
+	r.Get("/auth/xbox/login", h.LoginRedirect)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/auth/xbox/login", nil))
+
+	assertLoginRedirect(t, w, "no_session")
+}
+
+func TestXboxOAuth_LoginRedirect_SessionSaveFailed(t *testing.T) {
+	r, _ := newXboxOAuthRouter(t, false, "http://localhost:8000/cb")
+
+	// Un code d'invitation démesuré fait dépasser le plafond d'une session sérialisée.
+	req := httptest.NewRequest(http.MethodGet, "/auth/xbox/login?invite="+strings.Repeat("A", 20000), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assertLoginRedirect(t, w, "session_save_failed")
+	if strings.Contains(w.Body.String(), "sauvegarde") || strings.Contains(w.Body.String(), "{") {
+		t.Errorf("aucun corps JSON attendu sur un refus de navigation : %s", w.Body.String())
 	}
 }
 
@@ -106,9 +132,7 @@ func TestXboxOAuth_Callback_MissingCode(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400 (missing code)", w.Code)
-	}
+	assertLoginRedirect(t, w, "missing_params")
 }
 
 func TestXboxOAuth_Callback_MissingState(t *testing.T) {
@@ -118,9 +142,7 @@ func TestXboxOAuth_Callback_MissingState(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400 (missing state)", w.Code)
-	}
+	assertLoginRedirect(t, w, "missing_params")
 }
 
 func TestXboxOAuth_Callback_StateMismatch(t *testing.T) {
@@ -131,12 +153,7 @@ func TestXboxOAuth_Callback_StateMismatch(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusForbidden {
-		t.Errorf("status = %d, want 403 (state mismatch)", w.Code)
-	}
-	if !strings.Contains(w.Body.String(), "state_mismatch") {
-		t.Errorf("body devrait contenir state_mismatch, got: %s", w.Body.String())
-	}
+	assertLoginRedirect(t, w, "state_mismatch")
 }
 
 func TestXboxOAuth_Callback_ErrorParam(t *testing.T) {
@@ -147,8 +164,9 @@ func TestXboxOAuth_Callback_ErrorParam(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400 (oauth_denied)", w.Code)
+	assertLoginRedirect(t, w, "oauth_denied")
+	if strings.Contains(w.Header().Get("Location"), "refused") {
+		t.Errorf("le texte de Microsoft (error_description) ne doit pas être renvoyé : %s", w.Header().Get("Location"))
 	}
 }
 
@@ -190,16 +208,9 @@ func TestXboxOAuth_Callback_StateMatches_AttemptsExchange(t *testing.T) {
 	cbW := httptest.NewRecorder()
 	r.ServeHTTP(cbW, cbReq)
 
-	// L'échange code → tokens va échouer (pas de vrai Microsoft), donc 500 attendu.
-	// Le test valide que le CSRF a passé (sinon on aurait eu 403 state_mismatch).
-	if cbW.Code == http.StatusForbidden {
-		t.Errorf("state ne devrait pas mismatch : %s", cbW.Body.String())
-	}
-	// Si on a 500 (code_exchange_failed) → CSRF OK, exchange a tenté → succès du test.
-	if cbW.Code != http.StatusInternalServerError {
-		// Tolérant : si Microsoft retournait un 400 par exemple, c'est aussi OK.
-		t.Logf("Callback status = %d (attendu 500 code_exchange_failed) : %s", cbW.Code, cbW.Body.String())
-	}
+	// L'échange code → tokens échoue toujours (code factice : réseau absent ou refus de
+	// Microsoft) : le CSRF est passé (sinon state_mismatch) et l'échange a été tenté.
+	assertLoginRedirect(t, cbW, "code_exchange_failed")
 }
 
 // loadSessionFromResponse charge la session pointée par le cookie de la réponse.
@@ -222,7 +233,11 @@ func loadSessionFromResponse(t *testing.T, sessStore *session.Store, w *httptest
 func TestXboxOAuth_LoginRedirect_ValidInviteStored(t *testing.T) {
 	dir := t.TempDir()
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
-	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	users := userstore.NewStore(filepath.Join(dir, "users.json"))
+	if _, err := users.Create("Owner", "owner-pass-123", domain.RoleUser); err != nil {
+		t.Fatalf("Create Owner : %v", err)
+	}
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), users)
 	inv, _ := invites.Generate("Owner", 7, "grp_test")
 
 	h := handlers.NewXboxOAuthHandler(sessStore, &stubTokenProvider{}, false, "http://localhost:8000/cb").
@@ -243,11 +258,13 @@ func TestXboxOAuth_LoginRedirect_ValidInviteStored(t *testing.T) {
 	}
 }
 
-// ?invite=CODE invalide → ignoré (redirection normale, pas de PendingInviteCode).
+// ?invite=CODE invalide → ignoré pour l'accès (redirection normale vers Microsoft, aucun
+// droit) mais gardé en session : la stratégie le revalide au callback (claim) et, si le
+// verrou refuse l'identité, le refus dit invite_invalid au lieu d'instance fermée.
 func TestXboxOAuth_LoginRedirect_InvalidInviteIgnored(t *testing.T) {
 	dir := t.TempDir()
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
-	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), userstore.NewStore(filepath.Join(dir, "users.json")))
 
 	h := handlers.NewXboxOAuthHandler(sessStore, &stubTokenProvider{}, false, "http://localhost:8000/cb").
 		WithInviteStore(invites)
@@ -262,8 +279,8 @@ func TestXboxOAuth_LoginRedirect_InvalidInviteIgnored(t *testing.T) {
 		t.Fatalf("status = %d, want 302 (invite invalide ignorée)", w.Code)
 	}
 	sess := loadSessionFromResponse(t, sessStore, w)
-	if sess != nil && sess.PendingInviteCode != "" {
-		t.Fatalf("PendingInviteCode = %q, want vide", sess.PendingInviteCode)
+	if sess == nil || sess.PendingInviteCode != "NOPE" {
+		t.Fatalf("PendingInviteCode = %q, attendu NOPE (gardé pour expliquer un refus au callback)", sessPendingCode(sess))
 	}
 }
 

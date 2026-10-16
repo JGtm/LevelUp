@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { Select } from '@/components/ui/select'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { apiErrorMessage } from '@/lib/api/client'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { getMediaAudioConfigText, type MediaAudioConfigText } from './i18n-audio-config'
 import {
   useMediaAudioConfig,
@@ -32,6 +33,9 @@ export function MediaAudioConfigButton({ playerSlug }: MediaAudioConfigButtonPro
   const [open, setOpen] = useState(false)
   const locale = useAppShellStore((s) => s.locale)
   const text = getMediaAudioConfigText(locale)
+  // Réglage du profil : absent sur le profil d'un ami (lecture seule).
+  const canWrite = useCanWritePlayer(playerSlug)
+  if (!canWrite) return null
 
   return (
     <>

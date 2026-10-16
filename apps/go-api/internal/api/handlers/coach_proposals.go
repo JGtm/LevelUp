@@ -138,7 +138,7 @@ func (h *CoachProposalsHandler) handleListProposals(ctx context.Context, in *coa
 	props, err := svc.ListProposals(ctx, userID, requestTitleSlug(ctx, h.titleSlug), status)
 	if err != nil {
 		slog.WarnContext(ctx, "coach_proposals: list", "err", err, "player", in.PlayerSlug)
-		return nil, humacore.NewError(http.StatusInternalServerError, "list_proposals_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_proposals_error", err)
 	}
 	items := make([]proposalDTO, 0, len(props))
 	for _, p := range props {
@@ -163,12 +163,12 @@ func (h *CoachProposalsHandler) handleAcceptProposal(ctx context.Context, in *co
 	result, err := svc.AcceptProposal(ctx, in.ID)
 	switch {
 	case errors.Is(err, coach_advisor.ErrProposalNotFound):
-		return nil, humacore.NewError(http.StatusNotFound, "proposal_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "proposal_not_found", err)
 	case errors.Is(err, coach_advisor.ErrProposalNotAcceptable):
-		return nil, humacore.NewError(http.StatusConflict, "proposal_not_acceptable", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusConflict, "proposal_not_acceptable", err)
 	case err != nil:
 		slog.WarnContext(ctx, "coach_proposals: accept", "err", err, "id", in.ID)
-		return nil, humacore.NewError(http.StatusInternalServerError, "accept_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "accept_error", err)
 	}
 	return &acceptOutput{Body: acceptResponse{
 		Status:       "accepted",
@@ -191,7 +191,7 @@ func (h *CoachProposalsHandler) handleDismissProposal(ctx context.Context, in *c
 	}
 	if err := svc.DismissProposal(ctx, in.ID); err != nil {
 		slog.WarnContext(ctx, "coach_proposals: dismiss", "err", err, "id", in.ID)
-		return nil, humacore.NewError(http.StatusInternalServerError, "dismiss_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "dismiss_error", err)
 	}
 	return &dismissOutput{Body: dismissResponse{Status: "dismissed"}}, nil
 }
@@ -208,7 +208,7 @@ func (h *CoachProposalsHandler) resolveOr404(ctx context.Context, playerSlug str
 	}
 	svc, userID, err := h.resolve(ctx, playerSlug)
 	if err != nil {
-		return nil, "", humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, "", humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	if svc == nil {
 		return nil, "", humacore.NewError(http.StatusServiceUnavailable, "coach_advisor_unavailable",

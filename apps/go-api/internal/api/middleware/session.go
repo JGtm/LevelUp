@@ -60,7 +60,9 @@ func WithSession(store *session.Store, policy SecureCookiePolicy) func(http.Hand
 			// jamais écrite → plus de spam dans data/sessions/. Touch lui-même s'abstient
 			// pour une session inchangée écrite il y a moins de 5 min (TTL glissant
 			// préservé à 5 min près, plan perf 2026-09-23 D3.5).
-			if loaded || sess.IsMeaningful() {
+			// Une session révoquée pendant la requête (déconnexion, identifiant
+			// renouvelé) n'est plus jamais réécrite.
+			if _, revoked := store.Revoked(sess.SessionID); !revoked && (loaded || sess.IsMeaningful()) {
 				if err := store.Touch(sess); err != nil {
 					slog.ErrorContext(r.Context(), "session touch failed", "err", err)
 				}
@@ -137,14 +139,24 @@ type sessionResponseWriter struct {
 }
 
 // commitCookie pose le cookie (une seule fois, avant l'écriture du statut) si la
-// session est significative ou déjà persistée. Idempotent.
+// session est significative ou déjà persistée. Session révoquée : cookie de son
+// successeur (identifiant renouvelé à la connexion), sinon cookie expiré
+// (déconnexion). Idempotent.
 func (w *sessionResponseWriter) commitCookie() {
 	if w.wroteHeader {
 		return
 	}
 	w.wroteHeader = true
+	if successor, revoked := w.store.Revoked(w.sess.SessionID); revoked {
+		if successor == "" {
+			expireCookie(w.ResponseWriter, w.secure)
+			return
+		}
+		setCookie(w.ResponseWriter, w.store, successor, w.secure)
+		return
+	}
 	if w.loaded || w.sess.IsMeaningful() {
-		setCookie(w.ResponseWriter, w.store, w.sess, w.secure)
+		setCookie(w.ResponseWriter, w.store, w.sess.SessionID, w.secure)
 	}
 }
 
@@ -166,9 +178,29 @@ func (w *sessionResponseWriter) Flush() {
 	}
 }
 
-// setCookie pose le cookie de session signé sur la réponse.
-func setCookie(w http.ResponseWriter, store *session.Store, sess *domain.SessionData, secure bool) {
-	signed := store.SignCookie(sess.SessionID)
+// Unwrap rend le ResponseWriter enveloppé : http.ResponseController (échéances de lecture
+// et d'écriture, Flush, Hijack) atteint ainsi la connexion à travers cette enveloppe
+// (garde-rail archlint/response_writer_unwrap_test.go).
+func (w *sessionResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
+// expireCookie pose un cookie de session vide et expiré : le navigateur l'efface.
+func expireCookie(w http.ResponseWriter, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     session.CookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   secure,
+		MaxAge:   -1,
+	})
+}
+
+// setCookie pose le cookie de session signé de sessionID sur la réponse.
+func setCookie(w http.ResponseWriter, store *session.Store, sessionID string, secure bool) {
+	signed := store.SignCookie(sessionID)
 	http.SetCookie(w, &http.Cookie{
 		Name:     session.CookieName,
 		Value:    signed,

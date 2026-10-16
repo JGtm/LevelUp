@@ -124,6 +124,60 @@ per-profile list keyed by XUID (`data/global/player_friends.json`). Read access 
 Layer A (owner, group co-member or admin); write access is narrower — **direct owner or
 admin only**: a group co-member reads a friends list but does not change it.
 
+### Group/family access is read-only (2026-10-15)
+
+User decision of 2026-10-15: "a user can view their friends' data but cannot delete or
+modify it". Until then Layer A decided every request the same way: a group co-member passed
+`RequirePlayerOwnership` for reads AND writes, so a member could sync, purge a title
+(`DELETE /profiles/{slug}/titles/{slug}/data`), exclude matches, mark notifications,
+drive Prestige or delete media on another member's profile. Only the friends list and media
+deletion carried their own owner-or-admin rule.
+
+The rule is now split by intent, decided in one place (`middleware.PlayerAccess`):
+
+| Request | Granted to |
+|---|---|
+| Read (`!IsMutatingRequest`: GET, HEAD, OPTIONS, read-only POSTs under `/pages/`, `/filters/`, `/tactical/`, `/engagement/timeseries`) | admin, direct owner, group co-member |
+| Write (every other request, including any POST whose path is ambiguous) | admin, direct owner |
+
+- `authz.CanWritePlayer(enforced, user, profileXUID)` is the write rule (owner or admin);
+  `authz.CanAccessPlayer` stays the read rule. The family set is only resolved for a read.
+- `RequirePlayerOwnership(access)` classifies the request with `IsMutatingRequest` (the same
+  classification as the write-authentication guard) and stamps it in the request context;
+  the Prestige actor guard, which checks a slug read from the body or the query rather than
+  from the path, reuses that classification (`middleware.RequestWrites`, unknown = write).
+- `POST /session/context` accepts a `player_slug` only if the session can READ that profile
+  (403 `player_forbidden` otherwise): the current player never names a stranger's profile.
+- `/bootstrap` publishes `writable_player_slugs` (the profiles of `available_players` the
+  session may write). The web app hides the write controls of a friend's profile from it;
+  the server stays the authority.
+- Guardrail: `internal/api/family_write_routes_test.go` walks every route of the
+  `/players/{player_slug}` and `/profiles/{player_slug}/...` groups, requires the ownership
+  guard on each, and replays each one as a co-member: 403 on every write, 200 on every read.
+
+Consequence: a member who wants to act on a friend's data asks the owner or an admin. The
+friends-list write rule above is now enforced twice (group guard, then handler).
+
+#### Clarifications (user decisions of 2026-10-16)
+
+- **Liking a media item from a friend's profile is allowed.** A like is the VISITOR's
+  action, recorded under the visitor's own profile (the owned profile resolved by
+  `requesterPlayerSlugResolver`, never the profile being viewed nor the request body).
+  `PATCH /players/{player_slug}/media/likes` is the one named exception to the write rule:
+  the group guard decides it as a read of the viewed profile
+  (`middleware.isVisitorAction`, exact method and sub-path, never on an ambiguous path).
+  It stays a write for the authentication guard (`RequireAuthForMutations`). The walk test
+  lists it in `familyVisitorWrites`; any other write remains 403 for a co-member.
+- **Notifications are private to their owner, reads included.** A co-member does not
+  read a friend's notifications, unread count or notification preferences. Every route
+  under `/players/{player_slug}/notifications` carries the route guard
+  `middleware.RequirePlayerOwner`, mounted after routing (`r.With`), which decides every
+  method with the write rule (direct owner or admin): 403 `player_forbidden` otherwise.
+  Guardrail: `TestOwnerOnlyRoutesCarryOwnerGuard` (every walked notification route carries
+  the guard) and the co-member replay of `TestFamilyMemberCannotWriteAnyPlayerRoute`
+  (403 on all of them, GET included). The web app shows no bell, no toast and no
+  notification list on a friend's profile, and sends none of these requests.
+
 ## Extensions différées
 
 - **Alts multiples par utilisateur** : `User.XUID` est singulier (1 user ↔ 1 xuid). Le support

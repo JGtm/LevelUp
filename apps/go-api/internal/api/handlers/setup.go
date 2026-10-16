@@ -22,6 +22,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -166,8 +167,10 @@ type setupSmokeTestOutput struct {
 // Guards (les deux premières sont levées pour un ADMIN, cf. guardProvisioning) :
 //   - 403 si can_self_provision=false dans app_settings.json
 //   - 403 si instance verrouillée (env LEVELUP_INSTANCE_LOCKED ou app_settings)
-//   - 409 si profile_mode="xbox" mais aucune identité Halo liée en session
+//   - 409 si l'identité est épinglée (mode "xbox", ou tout mode pour un non-admin en
+//     propriété appliquée) mais aucune identité Halo liée en session
 //   - 409 si gamertag/XUID ne correspond pas à l'identité Halo liée
+//   - 409 profile_xuid_conflict si le profil existe avec un autre xuid (hors admin)
 //
 // Refusée en démo par la garde générale (middleware/demo_read_only.go).
 func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePlayerInput) (*setupCreatePlayerOutput, error) {
@@ -232,7 +235,7 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 	}
 	req.TitleSlug = titleSlug
 
-	if err := guardLinkedXboxIdentity(ctx, req); err != nil {
+	if err := guardLinkedXboxIdentity(ctx, req, h.mustPinIdentity(req, actorIsAdmin)); err != nil {
 		return nil, err
 	}
 
@@ -250,11 +253,10 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 		XUID:              req.XUID,
 		InitialMaxMatches: req.InitialMaxMatches,
 		ActorUsername:     actorUsername(ctx),
+		ActorIsAdmin:      actorIsAdmin,
 	})
 	if err != nil {
-		slog.ErrorContext(ctx, "setup.Onboard: failed", "gamertag", req.Gamertag, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "profile_create_error",
-			"Impossible de créer le profil joueur.")
+		return nil, onboardFailure(ctx, req.Gamertag, err)
 	}
 
 	// Le droit de provisioning a servi : l'effacer pour qu'il ne soit pas
@@ -292,12 +294,12 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 	}, nil
 }
 
-// guardLinkedXboxIdentity vérifie qu'un profil en mode "xbox" porte bien
-// l'identité Halo liée à la session : on ne déclare pas le profil d'un AUTRE
-// joueur sous couvert de son propre compte Xbox. Sans effet dans les autres
-// modes (profil manuel). Rend nil quand la création peut continuer.
-func guardLinkedXboxIdentity(ctx context.Context, req domain.CreatePlayerProfileRequest) error {
-	if req.ProfileMode != "xbox" {
+// guardLinkedXboxIdentity vérifie que le profil demandé porte bien l'identité Halo
+// liée à la session : on ne déclare pas le profil d'un AUTRE joueur sous couvert de
+// son propre compte Xbox. `pin` faux (admin, ou propriété non appliquée hors mode
+// "xbox") : aucune vérification. Rend nil quand la création peut continuer.
+func guardLinkedXboxIdentity(ctx context.Context, req domain.CreatePlayerProfileRequest, pin bool) error {
+	if !pin {
 		return nil
 	}
 	sess := middleware.GetSession(ctx)
@@ -326,22 +328,11 @@ func actorUsername(ctx context.Context) string {
 	return *sess.Username
 }
 
-// actorIsAdmin dit si l'appelant est administrateur de l'instance. Priorité au
-// store (authz.CurrentUser : un rôle rétrogradé après l'ouverture de session y
-// est visible) ; sans lookup câblé, repli sur le rôle porté par la session, même
-// source que middleware.RequireAdmin.
+// actorIsAdmin dit si l'appelant est administrateur de l'instance, rôle relu dans le
+// magasin d'utilisateurs (authz.IsAdmin, même règle que middleware.RequireAdmin) :
+// un rôle rétrogradé après l'ouverture de session y est visible. Faux sans lookup.
 func (h *SetupHandler) actorIsAdmin(ctx context.Context) bool {
-	sess := middleware.GetSession(ctx)
-	if sess == nil {
-		return false
-	}
-	if h.userLookup != nil {
-		if u := authz.CurrentUser(sess, h.userLookup); u != nil {
-			return u.Role == domain.RoleAdmin
-		}
-		return false
-	}
-	return sess.Role != nil && *sess.Role == string(domain.RoleAdmin)
+	return authz.IsAdmin(middleware.GetSession(ctx), h.userLookup)
 }
 
 // guardProvisioning applique les deux gardes d'ouverture de l'instance :
@@ -451,4 +442,26 @@ func (h *SetupHandler) handleSmokeTest(_ context.Context, _ *struct{}) (*setupSm
 	}()
 
 	return &setupSmokeTestOutput{Body: jobSnapshot}, nil
+}
+
+// mustPinIdentity dit si la création est épinglée à l'identité Halo liée de la
+// session : toujours en mode "xbox", et pour tout non-admin quand la propriété est
+// appliquée, quel que soit profile_mode — sinon un mode « manuel » déclarait le
+// gamertag d'autrui sous son propre xuid et s'en appropriait le profil.
+func (h *SetupHandler) mustPinIdentity(req domain.CreatePlayerProfileRequest, actorIsAdmin bool) bool {
+	return req.ProfileMode == authModeXbox ||
+		(!actorIsAdmin && authz.Enforced(h.cfg.DemoMode, h.cfg.AuthMode))
+}
+
+// onboardFailure traduit un échec de l'annuaire en erreur HTTP : 409 quand le profil
+// existe avec un autre xuid (réservé à l'admin), 500 sinon.
+func onboardFailure(ctx context.Context, gamertag string, err error) error {
+	if errors.Is(err, domain.ErrProfileXUIDConflict) {
+		slog.WarnContext(ctx, "setup.Onboard: profil existant avec un autre xuid", "gamertag", gamertag)
+		return humacore.NewError(http.StatusConflict, "profile_xuid_conflict",
+			"This player profile already exists with another Xbox identity.")
+	}
+	slog.ErrorContext(ctx, "setup.Onboard: failed", "gamertag", gamertag, "err", err)
+	return humacore.NewError(http.StatusInternalServerError, "profile_create_error",
+		"Impossible de créer le profil joueur.")
 }

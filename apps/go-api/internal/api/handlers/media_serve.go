@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -30,37 +31,21 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 		httpError(r.Context(), w, "not found", http.StatusNotFound)
 		return
 	}
-
-	capturesBase := ""
-	if h.settingsStore != nil {
-		if cfg, err := h.settingsStore.Load(); err == nil {
-			capturesBase = cfg.MediaCapturesBaseDir
-		}
+	// Liste blanche avant toute lecture disque : seul un fichier média (vidéo, image,
+	// miniature, HLS) est servi. Le repli par stem de resolveMediaFilePath ne substitue
+	// que des extensions vidéo, servables elles aussi.
+	if !mediapkg.IsServableExt(filepath.Ext(cleanURL)) {
+		httpError(r.Context(), w, "not found", http.StatusNotFound)
+		return
 	}
 
-	// Bases candidates pour résoudre rpath. La première (capturesBase brut)
-	// gère le format canonique {owner_slug}/{rel}. Les suivantes sont des
-	// fallbacks legacy.
-	var bases []string
-	if capturesBase != "" {
-		bases = append(bases, filepath.Clean(capturesBase))      // canonique : {base}/{owner}/{rel}
-		bases = append(bases, filepath.Join(capturesBase, slug)) // legacy : rpath sans préfixe owner
-	}
-	if h.repoRoot != "" {
-		pr := titlePkg.NewPathResolver(h.repoRoot)
-		// Base média canonique {root}/data/media (rpath = {owner}/{rel}). Rattrape un
-		// media_captures_base_dir absent/invalide — ex: chemin Windows déployé sur le
-		// VPS Linux, qui rendait TOUS les médias en 404 (incident prod 2026-06-13).
-		bases = append(bases, pr.MediaDataDir())
-		internalCapturesDir := pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug)
-		bases = append(bases, filepath.Dir(internalCapturesDir)) // legacy interne data/
-	}
-	if len(bases) == 0 {
+	roots := h.mediaRoots(slug)
+	if len(roots) == 0 {
 		httpError(r.Context(), w, "file serving not configured", http.StatusServiceUnavailable)
 		return
 	}
 
-	resolved := resolveMediaFilePath(bases, cleanURL)
+	resolved := resolveMediaFilePath(roots, cleanURL)
 	if resolved == "" {
 		httpError(r.Context(), w, "not found", http.StatusNotFound)
 		return
@@ -77,27 +62,65 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, resolved)
 }
 
-// resolveMediaFilePath cherche le fichier sur disque parmi les bases candidates.
-// Pour chaque base :
+// mediaRoot est une racine de service : un chemin d'URL se résout sous base, et le
+// fichier retenu doit rester sous confine (base elle-même, ou un de ses sous-dossiers).
+type mediaRoot struct {
+	base    string
+	confine string
+}
+
+// mediaRoots rend les racines candidates, dans l'ordre de résolution. La première
+// (capturesBase brut) gère le format canonique {owner_slug}/{rel} ; les suivantes sont
+// des replis.
+func (h *MediaHandler) mediaRoots(slug string) []mediaRoot {
+	capturesBase := ""
+	if h.settingsStore != nil {
+		if cfg, err := h.settingsStore.Load(); err == nil {
+			capturesBase = cfg.MediaCapturesBaseDir
+		}
+	}
+	var roots []mediaRoot
+	if capturesBase != "" {
+		canonical := filepath.Clean(capturesBase)   // {base}/{owner}/{rel}
+		legacy := filepath.Join(capturesBase, slug) // rpath sans préfixe owner
+		roots = append(roots, mediaRoot{canonical, canonical}, mediaRoot{legacy, legacy})
+	}
+	if h.repoRoot != "" {
+		pr := titlePkg.NewPathResolver(h.repoRoot)
+		// Base média canonique {root}/data/media (rpath = {owner}/{rel}). Rattrape un
+		// media_captures_base_dir absent ou invalide (chemin d'un autre OS).
+		dataMedia := pr.MediaDataDir()
+		roots = append(roots, mediaRoot{dataMedia, dataMedia})
+		// Legacy interne : rpath = captures/{rel}, relatif au dossier du joueur. Le dossier
+		// du joueur porte aussi sa base DuckDB et ses réglages : seul captures/ est servi.
+		captures := pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug)
+		roots = append(roots, mediaRoot{filepath.Dir(captures), captures})
+	}
+	return roots
+}
+
+// resolveMediaFilePath cherche le fichier sur disque parmi les racines candidates.
+// Pour chaque racine :
 //  1. tente le chemin exact (cleanURL stocké en DB) ;
 //  2. si absent, tente une résolution par stem : pour chaque extension vidéo
 //     reconnue, teste {dir}/{stem}{ext}. Couvre le cas où le fichier a été
 //     converti localement (ex: .mp4 → .mkv) sans que la DB ait été resync.
 //
-// Retourne le chemin absolu trouvé (passe l'anti-traversal), ou "" si rien
-// ne match.
-func resolveMediaFilePath(bases []string, cleanURL string) string {
+// Retourne le chemin absolu trouvé (resté sous le confine de sa racine), ou "" si
+// rien ne match.
+func resolveMediaFilePath(roots []mediaRoot, cleanURL string) string {
 	relFS := filepath.FromSlash(cleanURL)
 	stem, _ := mediapkg.StemAndExt(relFS)
 	relDir := filepath.Dir(relFS)
 
-	for _, base := range bases {
-		cleanBase := filepath.Clean(base)
+	for _, root := range roots {
+		base := root.base
+		cleanBase := filepath.Clean(root.confine)
 
 		// (1) Tentative exacte sur le chemin stocké.
 		exact := filepath.Clean(filepath.Join(base, relFS))
 		if isUnderBase(exact, cleanBase) {
-			if _, err := os.Stat(exact); err == nil {
+			if isRegularFile(exact) {
 				return exact
 			}
 		}
@@ -114,7 +137,7 @@ func resolveMediaFilePath(bases []string, cleanURL string) string {
 			if !isUnderBase(cand, cleanBase) {
 				continue
 			}
-			if _, err := os.Stat(cand); err == nil {
+			if isRegularFile(cand) {
 				return cand
 			}
 		}
@@ -156,6 +179,24 @@ func setMediaContentType(w http.ResponseWriter, ext string) {
 	}
 }
 
+// remuxBusyRetryAfterSec : délai conseillé (Retry-After) à une lecture remuxée refusée faute
+// de place ffmpeg.
+const remuxBusyRetryAfterSec = "30"
+
+// respondRemuxBusy répond 503 + Retry-After quand le remux n'a pas obtenu la place ffmpeg à
+// temps (media.ErrFFmpegBusy : aucun processus démarré, aucun octet écrit) et rend true. Toute
+// autre erreur rend false : le flux a commencé, l'appelant ne peut plus que la journaliser.
+func respondRemuxBusy(ctx context.Context, w http.ResponseWriter, absPath string, err error) bool {
+	if !errors.Is(err, mediapkg.ErrFFmpegBusy) {
+		return false
+	}
+	slog.WarnContext(ctx, "media remux: aucune place ffmpeg libre, lecture refusée", "path", absPath, "err", err)
+	w.Header().Del("Content-Type")
+	w.Header().Set(headerRetryAfter, remuxBusyRetryAfterSec)
+	httpError(ctx, w, "ffmpeg busy", http.StatusServiceUnavailable)
+	return true
+}
+
 // serveRemuxedWebM streame le fichier source remuxé en WebM via ffmpeg. Le
 // pré-flight (probe + validation codecs) est fait AVANT tout header : un source
 // aux codecs incompatibles WebM répond 415, un probe cassé répond 502 — plus de
@@ -183,7 +224,17 @@ func serveRemuxedWebM(w http.ResponseWriter, r *http.Request, absPath string) {
 	}
 	w.Header().Set("Content-Type", "video/webm")
 	if err := mediapkg.StreamRemuxWebMPlan(r.Context(), absPath, plan, w); err != nil {
+		if respondRemuxBusy(r.Context(), w, absPath, err) {
+			return
+		}
 		slog.ErrorContext(r.Context(), "media remux: échec en cours de flux (status déjà envoyé)",
 			"path", absPath, "err", err)
 	}
+}
+
+// isRegularFile rend true si p désigne un fichier ordinaire : un dossier n'est jamais
+// servi (http.ServeFile en rendrait le listing).
+func isRegularFile(p string) bool {
+	info, err := os.Stat(p)
+	return err == nil && info.Mode().IsRegular()
 }

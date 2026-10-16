@@ -65,11 +65,11 @@ func (h *DiagPrestigeTelemetryHandler) handleGetDiag(ctx context.Context, in *di
 	}
 	provider, err := h.newProvider(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	diag, err := provider.GetPrestigeTelemetryDiag(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "diag_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "diag_error", err)
 	}
 	return &diagPrestigeTelemetryOutput{Body: diag}, nil
 }

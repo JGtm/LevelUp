@@ -20,8 +20,10 @@
 #   - toolchain Go dans /usr/local/go (le build est CGO : DuckDB est une dependance
 #     transitive du module go-api) et gcc ;
 #   - /etc/levelup-worker.env (root 600) portant LEVELUP_BUILD_WORKER_TOKEN ;
-#   - unite systemd installee PAR LIEN (cf. bloc « unite » plus bas) ;
-#   - sudoers restreint a `systemctl daemon-reload` et `systemctl restart levelup-worker`.
+#   - unite systemd installee PAR COPIE appartenant a root (cf. bloc « unite » plus bas),
+#     jamais par lien ni par un geste de `deploy` ;
+#   - sudoers restreint a `systemctl restart levelup-worker` (ce script n'appelle plus
+#     `daemon-reload` : la copie de l'unite et son rechargement sont des gestes de root).
 #
 # PHASE PRE-ACTIVATION : tant que l'unite n'est pas activee, ce script met le binaire a
 # jour et SORT EN 0 sans rien redemarrer. C'est le chemin NOMINAL, pas une erreur.
@@ -107,31 +109,47 @@ mv -f "$BIN_TMP" "$BIN_PATH"
 chmod 0755 "$BIN_PATH"
 echo "[deploy-worker] Binaire installe : $BIN_PATH ($(stat -c %s "$BIN_PATH") octets)"
 
-# 3. Unite systemd. LE COMPTE `deploy` NE PEUT PAS RECOPIER L'UNITE (sudoers restreint a
-# daemon-reload et restart) : l'installation nominale est donc un LIEN de
-# /etc/systemd/system/levelup-worker.service vers le fichier VERSIONNE. Le git reset
-# ci-dessus met alors a jour le contenu pointe, et un daemon-reload suffit a le prendre
-# en compte. Les trois etats reels sont traites, aucun ne fait echouer le deploiement :
-# le binaire est deja a jour a ce stade, et une unite mal installee est un probleme
-# d'operateur a signaler, pas une raison de rendre le job rouge.
-if [[ ! -e "$UNIT_DST" ]]; then
+# 3. Unite systemd. L'unite installee est une COPIE appartenant a root, posee par le
+# superviseur (jamais par ce script, jamais par un lien). Pourquoi : l'unite decide du
+# compte, des droits et de la commande d'un service lance par systemd ; un lien vers
+# /opt/levelup (clone appartenant a `deploy`) ferait de n'importe quelle ecriture de
+# `deploy` dans le depot un changement d'unite pris en compte au prochain daemon-reload.
+# Le compte `deploy` n'a d'ailleurs aucun droit sur /etc/systemd/system : ce script se
+# borne donc a CONTROLER l'etat et a le dire. Le binaire est deja a jour a ce stade ; une
+# unite absente ou divergente est un geste d'operateur a signaler, pas une raison de
+# rendre le job rouge — SAUF un lien ou une copie modifiable par un autre que root, que
+# ce script refuse (arret avant tout redemarrage).
+INSTALL_CMD="sudo install -o root -g root -m 0644 $UNIT_SRC $UNIT_DST && sudo systemctl daemon-reload"
+if [[ -L "$UNIT_DST" ]]; then
+    echo "[deploy-worker] ERREUR: $UNIT_DST est un LIEN — refuse (une unite modifiable par deploy)."
+    echo "[deploy-worker]    Remplacer par une copie appartenant a root, en root :"
+    echo "[deploy-worker]      sudo systemctl disable --now $UNIT_NAME   # si active"
+    echo "[deploy-worker]      sudo rm $UNIT_DST"
+    echo "[deploy-worker]      $INSTALL_CMD"
+    exit 1
+elif [[ ! -e "$UNIT_DST" ]]; then
     echo "[deploy-worker] Unite systemd non installee ($UNIT_DST) — phase pre-activation."
     echo "[deploy-worker]    Installation (une seule fois, par le superviseur) :"
-    echo "[deploy-worker]      sudo systemctl link $UNIT_SRC"
-elif [[ -L "$UNIT_DST" ]]; then
-    if [[ "$unite_changee" -eq 1 ]]; then
-        echo "[deploy-worker] Unite versionnee modifiee — systemctl daemon-reload..."
-        sudo systemctl daemon-reload
-    else
-        echo "[deploy-worker] Unite inchangee dans ce lot — pas de daemon-reload"
-    fi
-elif cmp -s "$UNIT_SRC" "$UNIT_DST"; then
-    echo "[deploy-worker] Unite installee en COPIE, conforme au depot (lien recommande)"
+    echo "[deploy-worker]      $INSTALL_CMD"
 else
-    echo "[deploy-worker] AVERTISSEMENT: $UNIT_DST est une COPIE qui DIVERGE du depot."
-    echo "[deploy-worker]    Ce script ne peut pas la recopier (sudoers restreint)."
-    echo "[deploy-worker]    Corriger a la main, en root :"
-    echo "[deploy-worker]      rm $UNIT_DST && systemctl link $UNIT_SRC && systemctl daemon-reload"
+    unit_owner="$(stat -c '%U:%G' "$UNIT_DST")"
+    unit_mode="$(stat -c '%a' "$UNIT_DST")"
+    if [[ "$unit_owner" != "root:root" ]] || (( 8#$unit_mode & 8#022 )); then
+        echo "[deploy-worker] ERREUR: $UNIT_DST appartient a $unit_owner, mode $unit_mode — refuse"
+        echo "[deploy-worker]    (attendu : root:root, sans droit d'ecriture pour le groupe ni les autres)."
+        echo "[deploy-worker]    Reinstaller, en root :"
+        echo "[deploy-worker]      $INSTALL_CMD"
+        exit 1
+    elif cmp -s "$UNIT_SRC" "$UNIT_DST"; then
+        echo "[deploy-worker] Unite installee, appartenant a root, conforme au depot"
+    else
+        echo "[deploy-worker] AVERTISSEMENT: l'unite installee DIVERGE de celle du depot"
+        if [[ "$unite_changee" -eq 1 ]]; then
+            echo "[deploy-worker]    (le depot vient de la modifier dans ce lot de commits)"
+        fi
+        echo "[deploy-worker]    Ce script ne peut pas la recopier. Reinstaller, en root :"
+        echo "[deploy-worker]      $INSTALL_CMD"
+    fi
 fi
 
 # 4. Redemarrage — CONDITIONNEL, et l'etat « pas encore active » est NOMINAL.

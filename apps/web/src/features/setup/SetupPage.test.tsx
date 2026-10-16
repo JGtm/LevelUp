@@ -121,7 +121,7 @@ describe('SetupPage', () => {
     })
     server.use(
       http.get('/api/v1/auth/device-flow/:attemptId', () =>
-        HttpResponse.json({ attempt_id: 'attempt-1', status: 'failed', error_code: 'halo_exchange_error', error_detail: 'détail serveur' }),
+        HttpResponse.json({ attempt_id: 'attempt-1', status: 'failed', error_code: 'halo_exchange_error' }),
       ),
     )
 
@@ -159,5 +159,26 @@ describe('SetupPage', () => {
     expect(screen.getByRole('button', { name: /Réessayer/i })).toBeInTheDocument()
     // Le spinner de démarrage ne doit plus être présent.
     expect(screen.queryByText(/Démarrage du Device Code Flow/i)).not.toBeInTheDocument()
+  })
+
+  it('affiche un message dédié quand le start est refusé en 429 (plafond de connexions en cours)', async () => {
+    useAppShellStore.setState({
+      isBootstrapped: true,
+      setupRequired: true,
+      setupState: 'no_halo_link',
+    })
+    server.use(
+      http.post('/api/v1/auth/device-flow/start', () =>
+        HttpResponse.json(
+          { code: 'too_many_device_flows', message: 'too many sign-in attempts in progress, try again shortly' },
+          { status: 429 },
+        ),
+      ),
+    )
+
+    renderWithProviders(<SetupPage />)
+
+    expect(await screen.findByText('Trop de connexions en cours. Réessaie dans une minute.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Réessayer/i })).toBeInTheDocument()
   })
 })

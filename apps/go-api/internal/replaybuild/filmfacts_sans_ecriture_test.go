@@ -17,7 +17,7 @@ import (
 func artefactValidePourFaits(t *testing.T) []byte {
 	t.Helper()
 	raw, err := json.Marshal(replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion, MatchID: "m1", TitleSlug: title.DefaultSlug,
+		SchemaVersion: replay.SchemaVersion, MatchID: "0000a001", TitleSlug: title.DefaultSlug,
 		Tracks: []replay.Track{{Slot: 1}},
 	})
 	if err != nil {
@@ -38,8 +38,8 @@ func TestSansEcritureDesFaits_RienSousLaRacine(t *testing.T) {
 			if tc.sansFaits {
 				b = b.SansEcritureDesFaits()
 			}
-			b.rangerLesFaits(context.Background(), "m1", artefactValidePourFaits(t), &replay.FilmFactsFile{})
-			_, err := os.Stat(title.NewPathResolver(root).FilmFactsPath(title.DefaultSlug, "m1"))
+			b.rangerLesFaits(context.Background(), "0000a001", artefactValidePourFaits(t), &replay.FilmFactsFile{})
+			_, err := os.Stat(title.NewPathResolver(root).FilmFactsPath(title.DefaultSlug, "0000a001"))
 			if ecrit := err == nil; ecrit != tc.attenduEcr {
 				t.Errorf("faits écrits = %v, attendu %v (err %v)", ecrit, tc.attenduEcr, err)
 			}

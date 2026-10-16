@@ -50,7 +50,7 @@ func TestWalkMediaDir_SupportedAndUnsupported(t *testing.T) {
 	}
 	for _, f := range files {
 		ext := strings.ToLower(filepath.Ext(f))
-		if _, ok := supportedExtensions[ext]; !ok {
+		if mediaKindOf(ext) == "" {
 			t.Errorf("unexpected extension: %s", ext)
 		}
 	}

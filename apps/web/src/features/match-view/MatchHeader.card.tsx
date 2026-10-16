@@ -13,6 +13,7 @@ import { AlertDialog } from '@/components/ui/alert-dialog'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility'
 import { useCopyToClipboard } from '@/lib/clipboard/useCopyToClipboard'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { asDominance } from '@/components/charts/outcomeSequence'
 import { DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
 import {
@@ -56,6 +57,8 @@ export function MatchHeaderCard({
   const t = MATCH_VIEW_TEXT[locale]
   const excludeMutation = useSetMatchExclusion(playerSlug)
   const favoriteMutation = useToggleMatchFavorite(playerSlug, matchId)
+  // Profil d'un ami (lecture seule) : ni favori ni exclusion (le serveur les refuse).
+  const canWrite = useCanWritePlayer(playerSlug)
   // Mécanique « copier + coche transitoire » partagée (lib/clipboard).
   const { copy, copied } = useCopyToClipboard()
   const [exclusionDialogOpen, setExclusionDialogOpen] = useState(false)
@@ -72,9 +75,7 @@ export function MatchHeaderCard({
     ? tokenCssVar(header.performance_color_token as SemanticToken)
     : (header.performance_color ?? 'inherit')
 
-  function handleCopyId() {
-    void copy(matchId)
-  }
+  const handleCopyId = () => void copy(matchId)
 
   function errorCode(err: unknown): string | null {
     if (err && typeof err === 'object' && 'code' in err) {
@@ -108,9 +109,7 @@ export function MatchHeaderCard({
     )
   }
 
-  function handleToggleFavorite() {
-    favoriteMutation.mutate(!header.is_favorite)
-  }
+  const handleToggleFavorite = () => favoriteMutation.mutate(!header.is_favorite)
 
   return (
     <div className="px-6 pt-4">
@@ -122,7 +121,7 @@ export function MatchHeaderCard({
             mapUnknownLabel={t.mapUnknown}
             addFavoriteLabel={t.addFavorite}
             removeFavoriteLabel={t.removeFavorite}
-            onToggleFavorite={handleToggleFavorite}
+            onToggleFavorite={canWrite ? handleToggleFavorite : undefined}
           />
 
           {/* Colonne droite : titre + outcome + actions + perf/rang */}
@@ -137,7 +136,7 @@ export function MatchHeaderCard({
               excludeBlockedByRanked={excludeBlockedByRanked}
               locale={locale}
               onCopyId={handleCopyId}
-              onOpenExclusionDialog={openExclusionDialog}
+              onOpenExclusionDialog={canWrite ? openExclusionDialog : undefined}
             />
 
             <OutcomeRow header={header} outcomeColor={outcomeColor} locale={locale} />
@@ -174,7 +173,7 @@ interface MapImageSectionProps {
   mapUnknownLabel: string
   addFavoriteLabel: string
   removeFavoriteLabel: string
-  onToggleFavorite: () => void
+  onToggleFavorite?: () => void
 }
 
 function MapImageSection({
@@ -199,8 +198,8 @@ function MapImageSection({
           {header.map_ui || mapUnknownLabel}
         </div>
       )}
-      {/* Étoile favori en overlay */}
-      <button
+      {/* Étoile favori en overlay ; absente sur un profil en lecture seule */}
+      {onToggleFavorite && (<button
         type="button"
         onClick={onToggleFavorite}
         disabled={favoriteIsPending}
@@ -217,7 +216,7 @@ function MapImageSection({
             <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
           </svg>
         )}
-      </button>
+      </button>)}
     </div>
   )
 }
@@ -234,7 +233,7 @@ interface TitleAndActionsRowProps {
   excludeBlockedByRanked: boolean
   locale: MatchViewLocale
   onCopyId: () => void
-  onOpenExclusionDialog: () => void
+  onOpenExclusionDialog?: () => void
 }
 
 function TitleAndActionsRow({
@@ -313,7 +312,7 @@ function TitleAndActionsRow({
 
         <WaypointLink matchId={matchId} playerSlug={playerSlug} locale={locale} />
 
-        <Button
+        {onOpenExclusionDialog && (<Button
           variant="outline"
           size="icon"
           onClick={onOpenExclusionDialog}
@@ -341,7 +340,7 @@ function TitleAndActionsRow({
               <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
             </svg>
           )}
-        </Button>
+        </Button>)}
       </div>
     </div>
   )

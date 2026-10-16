@@ -68,3 +68,37 @@ func (s *BootstrapService) DirectOwnerFor(sess *domain.SessionData) DirectOwnerF
 // ownsNothing : le prédicat de l'utilisateur qui ne possède aucun profil en
 // propre. Nommé plutôt que dupliqué en fermeture anonyme à chaque sortie.
 func ownsNothing(string) bool { return false }
+
+// defaultPlayerIndex rend l'indice, dans players (visibles et ordonnés par LoadPlayers), du
+// joueur par défaut de la session : son profil en propre (DirectOwnerFor) s'il est dans la
+// liste, sinon le premier. Sans cela l'ordre alphabétique mettrait en tête le profil d'un
+// co-membre de groupe ou, pour un admin, n'importe quel profil du parc.
+func (s *BootstrapService) defaultPlayerIndex(sess *domain.SessionData, players []domain.PlayerSummary) int {
+	owns := s.DirectOwnerFor(sess)
+	for i, p := range players {
+		if owns(p.XUID) {
+			return i
+		}
+	}
+	return 0
+}
+
+// writablePlayerSlugs rend les slugs des profils de `players` sur lesquels la
+// session peut ÉCRIRE (authz.CanWritePlayer : propriétaire direct ou admin). Sans
+// propriété appliquée (démo, auth non activée, pas de user store), tous les profils
+// sont inscriptibles, comme le sont alors toutes les routes. Liste jamais nil : le
+// front la lit comme un ensemble.
+func (s *BootstrapService) writablePlayerSlugs(sess *domain.SessionData, players []domain.PlayerSummary) []string {
+	enforced := authz.Enforced(s.cfg.DemoMode, s.cfg.AuthMode) && s.userLookup != nil
+	var user *domain.User
+	if enforced {
+		user = authz.CurrentUser(sess, s.userLookup)
+	}
+	out := make([]string, 0, len(players))
+	for _, p := range players {
+		if authz.CanWritePlayer(enforced, user, p.XUID) {
+			out = append(out, p.PlayerSlug)
+		}
+	}
+	return out
+}

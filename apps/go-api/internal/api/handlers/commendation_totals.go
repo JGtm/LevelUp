@@ -51,11 +51,11 @@ type commendationTotalsOutput struct {
 func (h *CommendationTotalsHandler) handleGetTotals(ctx context.Context, in *commendationTotalsInput) (*commendationTotalsOutput, error) {
 	svc, _, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	resp, err := svc.GetTotals(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "commendation_totals_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "commendation_totals_error", err)
 	}
 	return &commendationTotalsOutput{Body: resp}, nil
 }

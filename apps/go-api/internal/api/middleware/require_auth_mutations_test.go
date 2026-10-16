@@ -57,9 +57,12 @@ var mutatingPlayerRoutes = []routeCase{
 	{http.MethodPost, "/pilot-mode/disable"},
 	{http.MethodPost, "/pilot-mode/enable"},
 	{http.MethodPost, "/prestige/challenges"},
+	// Le motif de lecture `suggest-next` ne couvre qu'UN segment d'identifiant : ni un sous-chemin
+	// plus profond, ni l'absence d'identifiant.
+	{http.MethodPost, "/prestige/challenges/ch1/autre/suggest-next"},
+	{http.MethodPost, "/prestige/challenges/suggest-next"},
 	{http.MethodDelete, "/prestige/challenges/ch1"},
 	{http.MethodPatch, "/prestige/challenges/ch1"},
-	{http.MethodPost, "/prestige/challenges/ch1/suggest-next"},
 	{http.MethodDelete, "/squad-challenges/sc1"},
 	{http.MethodPost, "/squad-challenges/sc1/evaluate"},
 	{http.MethodPost, "/squad-challenges/sc1/join"},
@@ -96,6 +99,8 @@ var readPlayerRoutes = []routeCase{
 	{http.MethodPost, "/tactical/maps"},
 	{http.MethodPost, "/tactical/streets/raster"},
 	{http.MethodPost, "/tactical/streets/sequence"},
+	// Suggestion du défi suivant (2026-10-16) : lit le défi et le catalogue de gabarits, n'écrit rien.
+	{http.MethodPost, "/prestige/challenges/ch1/suggest-next"},
 }
 
 const testPlayerSlug = "JGtm"

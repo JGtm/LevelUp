@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/ogmeta"
 	"levelup/go-api/internal/port"
 )
@@ -84,10 +85,13 @@ func firstToken(s string) string {
 }
 
 // playerSlugFromPath extrait le slug de "/players/{slug}[/...]". false si le
-// chemin n'est pas une route joueur.
+// chemin n'est pas une route joueur ou si le slug n'a pas la forme d'un gamertag
+// (domain.IsValidPlayerSlug) : p est le chemin DÉCODÉ d'une page du SPA (un `%2F`
+// ou un `%5C` y est déjà un séparateur) et aucune garde de route ne le contrôle
+// avant la résolution du joueur.
 func playerSlugFromPath(p string) (string, bool) {
 	segs := strings.Split(strings.TrimPrefix(p, "/"), "/")
-	if len(segs) < 2 || segs[0] != "players" || segs[1] == "" {
+	if len(segs) < 2 || segs[0] != "players" || !domain.IsValidPlayerSlug(segs[1]) {
 		return "", false
 	}
 	return segs[1], true

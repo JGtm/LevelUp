@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"levelup/go-api/internal/domain"
 	mediapkg "levelup/go-api/internal/media"
 	"levelup/go-api/internal/observability"
@@ -26,23 +29,17 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 
 	var savedVideos []string // chemins abs des vidéos sauvées (candidats transcoding HLS)
 	for _, f := range req.Files {
-		// Dédup à la source : si un fichier du même nom ET du même contenu existe
-		// déjà sur disque, c'est un ré-upload du même média. On skippe l'écriture
-		// pour ne pas créer une copie disque redondante — l'indexation l'ignorerait
-		// ensuite par hash, en laissant un fichier orphelin.
-		sameName := filepath.Join(req.CapturesDir, filepath.Base(f.OriginalName))
-		if existingHash, err := ops.HashFile(sameName); err == nil && ops.HashBytes(f.Data) == existingHash {
-			result.Skipped++
-			slog.DebugContext(ctx, "upload: doublon ignoré (même nom + même contenu)",
-				"file", f.OriginalName)
-			continue
-		}
-
-		dest := safeDestPath(req.CapturesDir, f.OriginalName)
-		if err := os.WriteFile(dest, f.Data, 0o644); err != nil {
+		dest, duplicate, err := storeUploadedFile(ctx, req.CapturesDir, f)
+		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", f.OriginalName, err))
 			slog.WarnContext(ctx, "upload: écriture fichier échouée",
 				"file", f.OriginalName, "err", err)
+			continue
+		}
+		if duplicate {
+			result.Skipped++
+			slog.DebugContext(ctx, "upload: doublon ignoré (même nom + même contenu)",
+				"file", f.OriginalName)
 			continue
 		}
 		result.Saved++
@@ -191,7 +188,7 @@ func (s *MediaService) runTranscodeJob(p ops.HLSTranscodeParams, jobID string) {
 			j.Status = domain.JobStatusFailed
 			now := time.Now().UTC()
 			j.FinishedAt = &now
-			j.Error = &domain.JobErrorDetail{Code: "transcode_failed", Message: err.Error()}
+			j.Error = domain.NewJobError("transcode_failed", false)
 		})
 		return
 	}
@@ -201,4 +198,63 @@ func (s *MediaService) runTranscodeJob(p ops.HLSTranscodeParams, jobID string) {
 	if s.feedBump != nil {
 		s.feedBump()
 	}
+}
+
+// stagedUploadPattern nomme les copies en cours d'écriture : cachées et d'extension non
+// média, donc ignorées par l'indexation tant qu'elles ne sont pas renommées.
+const stagedUploadPattern = ".upload-*.part"
+
+// storeUploadedFile écrit un fichier téléversé dans dir, en flux : le contenu passe du
+// lecteur du formulaire à un fichier temporaire du dossier (tampon fixe, hash calculé au
+// fil de l'eau), puis est renommé à sa place. Jamais le fichier entier en mémoire.
+//
+// Dédup à la source : si un fichier du même nom ET du même contenu existe déjà, c'est un
+// ré-upload du même média ; la copie temporaire est jetée (duplicate=true) pour ne pas
+// laisser une copie disque redondante que l'indexation ignorerait ensuite par hash.
+// Un échec (lecture coupée, disque plein) ne laisse aucun fichier derrière lui.
+func storeUploadedFile(ctx context.Context, dir string, f domain.UploadedFile) (dest string, duplicate bool, err error) {
+	src, err := f.Open()
+	if err != nil {
+		return "", false, fmt.Errorf("ouverture: %w", err)
+	}
+	defer src.Close()
+
+	tmp, err := os.CreateTemp(dir, stagedUploadPattern)
+	if err != nil {
+		return "", false, fmt.Errorf("fichier temporaire: %w", err)
+	}
+	tmpPath := tmp.Name()
+	committed := false
+	defer func() {
+		if committed {
+			return
+		}
+		if err := os.Remove(tmpPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			slog.WarnContext(ctx, "upload: retrait de la copie temporaire échoué", "path", tmpPath, "err", err)
+		}
+	}()
+
+	hasher := ops.NewContentHasher()
+	if _, err := io.Copy(io.MultiWriter(tmp, hasher), src); err != nil {
+		_ = tmp.Close()
+		return "", false, fmt.Errorf("copie: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return "", false, fmt.Errorf("fermeture: %w", err)
+	}
+
+	sameName := filepath.Join(dir, filepath.Base(f.OriginalName))
+	if existingHash, herr := ops.HashFile(sameName); herr == nil && hasher.Sum() == existingHash {
+		return sameName, true, nil
+	}
+
+	dest = safeDestPath(dir, f.OriginalName)
+	if err := os.Rename(tmpPath, dest); err != nil {
+		return "", false, fmt.Errorf("renommage: %w", err)
+	}
+	committed = true
+	if err := os.Chmod(dest, 0o644); err != nil {
+		slog.WarnContext(ctx, "upload: chmod du fichier échoué", "dest", dest, "err", err)
+	}
+	return dest, false, nil
 }

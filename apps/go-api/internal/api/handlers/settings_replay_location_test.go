@@ -81,8 +81,12 @@ func TestPatchReplayBuildLocation_LocalEnProduction_400(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d (attendu 400) body=%s", w.Code, w.Body.String())
 	}
-	if !bytes.Contains(w.Body.Bytes(), []byte("ne d")) {
-		t.Errorf("le motif du refus doit être servi à l'admin, body=%s", w.Body.String())
+	// Le motif est porté par le code (message fixe) ; le texte de l'erreur reste au journal.
+	if !bytes.Contains(w.Body.Bytes(), []byte(`"code":"replay_build_local_in_production"`)) {
+		t.Errorf("le motif du refus doit être servi à l'admin par son code, body=%s", w.Body.String())
+	}
+	if bytes.Contains(w.Body.Bytes(), []byte("VPS")) {
+		t.Errorf("le texte de l'erreur ne doit pas être servi, body=%s", w.Body.String())
 	}
 	// Et les deux autres valeurs restent ouvertes en production.
 	for _, v := range []string{"worker", "off"} {

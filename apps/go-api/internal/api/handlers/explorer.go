@@ -82,12 +82,12 @@ type explorerMatchesQueryOutput struct {
 func (h *ExplorerHandler) handleQueryPlayer(ctx context.Context, in *explorerQueryInput) (*explorerPlayerQueryOutput, error) {
 	svc, enrichedCtx, _, _, err := h.newExplorerSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.ExplorerPlayerQueryRequest
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if req.TargetGamertag == "" && req.TargetXUID == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_target", "target_gamertag ou target_xuid est requis")
@@ -106,12 +106,12 @@ func (h *ExplorerHandler) handleQueryPlayer(ctx context.Context, in *explorerQue
 func (h *ExplorerHandler) handleQueryMatches(ctx context.Context, in *explorerQueryInput) (*explorerMatchesQueryOutput, error) {
 	mhSvc, _, _, err := h.newMatchHistSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.ExplorerMatchesQueryRequest
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 
 	// Délégation au service match-history avec les mêmes filtres/tri/pagination.

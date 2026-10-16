@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { OpenSpartanImportCard, failureMessageFromCode } from './OpenSpartanImportCard'
 import { server } from '@/test/setup'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -203,6 +204,43 @@ describe('OpenSpartanImportCard — failure path', () => {
   })
 })
 
+describe('OpenSpartanImportCard — import déjà en cours (409)', () => {
+  function submitWithConflict() {
+    server.use(
+      http.post(`${API}/import/openspartan`, () =>
+        HttpResponse.json(
+          { code: 'import_already_active', message: 'an import is already running', retryable: false },
+          { status: 409 },
+        ),
+      ),
+    )
+    renderCard()
+    fireEvent.change(screen.getByTestId('openspartan-file-input') as HTMLInputElement, {
+      target: { files: [makeDBFile()] },
+    })
+    const submit = screen.getByTestId('openspartan-submit') as HTMLButtonElement
+    return waitFor(() => expect(submit.disabled).toBe(false)).then(() => fireEvent.click(submit))
+  }
+
+  it('affiche un message clair en français, pas le texte du serveur', async () => {
+    await submitWithConflict()
+    expect(
+      await screen.findByText("Un import est déjà en cours pour ce compte. Attends qu'il se termine."),
+    ).toBeTruthy()
+    expect(screen.queryByText(/an import is already running/)).toBeNull()
+  })
+
+  it('affiche le message en anglais quand la langue est EN', async () => {
+    useAppShellStore.setState({ locale: 'en' })
+    try {
+      await submitWithConflict()
+      expect(await screen.findByText('An import is already running for this account. Wait for it to finish.')).toBeTruthy()
+    } finally {
+      useAppShellStore.setState({ locale: 'fr' })
+    }
+  })
+})
+
 describe('failureMessageFromCode — unit', () => {
   it('maps every documented Error.Code to a localised sentence', () => {
     const cases: Array<{ code: string; expected: RegExp }> = [
@@ -212,6 +250,7 @@ describe('failureMessageFromCode — unit', () => {
       { code: 'upload_too_large', expected: /max 1 Go/i },
       { code: 'demo_mode_forbidden', expected: /mode démo/i },
       { code: 'halo_auth_required', expected: /Xbox\/Halo/i },
+      { code: 'import_already_active', expected: /déjà en cours/i },
     ]
     for (const c of cases) {
       const msg = failureMessageFromCode({ code: c.code, message: '', retryable: false }, tFr)
@@ -219,9 +258,10 @@ describe('failureMessageFromCode — unit', () => {
     }
   })
 
-  it('falls back to the raw message for unknown codes', () => {
+  it('falls back to the generic message for unknown codes, never the server text', () => {
     const msg = failureMessageFromCode({ code: 'unknown_code', message: 'oops', retryable: false }, tFr)
-    expect(msg).toBe('oops')
+    expect(msg).toMatch(/inconnue/i)
+    expect(msg).not.toContain('oops')
   })
 
   it('falls back to a default message when error is null', () => {

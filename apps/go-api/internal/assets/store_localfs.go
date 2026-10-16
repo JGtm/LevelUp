@@ -48,8 +48,14 @@ func (s *LocalFSStore) WithRootOverride(kind Kind, dir string) *LocalFSStore {
 	return s
 }
 
-// Path retourne le chemin FS attendu pour une Ref.
-func (s *LocalFSStore) Path(ref Ref) string {
+// Path retourne le chemin FS attendu pour une Ref, ou ErrInvalidRef si la Ref est mal
+// formée (Ref.Validate) ou si le chemin construit sortirait de la racine du stock : la
+// lecture comme l'écriture d'une Ref restent sous cette racine, qu'un proxy filtre ou non
+// les requêtes devant le serveur.
+func (s *LocalFSStore) Path(ref Ref) (string, error) {
+	if err := ref.Validate(); err != nil {
+		return "", err
+	}
 	root := s.RootDir
 	if override, ok := s.RootOverrides[ref.Kind]; ok {
 		root = override
@@ -62,13 +68,20 @@ func (s *LocalFSStore) Path(ref Ref) string {
 	if !strings.HasSuffix(base, ext) {
 		base += ext
 	}
-	return filepath.Join(root, string(ref.Kind), ref.TitleID, base)
+	path := filepath.Join(root, string(ref.Kind), ref.TitleID, base)
+	if rel, err := filepath.Rel(filepath.Clean(root), path); err != nil || !filepath.IsLocal(rel) {
+		return "", fmt.Errorf("%w: %s sort de la racine du stock", ErrInvalidRef, ref)
+	}
+	return path, nil
 }
 
 // LookupBinary retourne le payload binaire pour la ref donnée.
-// Retourne (nil, nil) si le fichier n'existe pas.
+// Retourne (nil, nil) si le fichier n'existe pas, ErrInvalidRef si la ref est refusée.
 func (s *LocalFSStore) LookupBinary(_ context.Context, ref Ref) (*BinaryPayload, error) {
-	path := s.Path(ref)
+	path, err := s.Path(ref)
+	if err != nil {
+		return nil, err
+	}
 	data, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -85,7 +98,10 @@ func (s *LocalFSStore) LookupBinary(_ context.Context, ref Ref) (*BinaryPayload,
 
 // PersistBinary écrit le payload de façon atomique (tmp + rename).
 func (s *LocalFSStore) PersistBinary(_ context.Context, ref Ref, p BinaryPayload) error {
-	path := s.Path(ref)
+	path, err := s.Path(ref)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrPersistFailed, err)
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("%w: mkdir %s: %v", ErrPersistFailed, filepath.Dir(path), err)
 	}

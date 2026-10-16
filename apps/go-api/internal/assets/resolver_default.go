@@ -26,6 +26,8 @@ type DefaultResolver struct {
 	queue   *WriteQueue
 	metrics Metrics
 	sf      singleflight.Group
+	// catalog juge les références des requêtes HTTP (cf. Gate) ; posé par New.
+	catalog Catalog
 }
 
 // NewDefaultResolver crée un resolver avec les composants injectés.
@@ -42,8 +44,58 @@ func NewDefaultResolver(binary BinaryStore, index IndexStore, fetcher Fetcher, q
 	}
 }
 
-// Get retourne l'asset identifié par ref (séquence 6 étapes).
+// Gate rend la porte des requêtes HTTP devant ce resolver. Sans catalogue (resolver
+// construit hors New), la porte refuse toute référence absente du stock local.
+func (r *DefaultResolver) Gate() *Gate {
+	catalog := r.catalog
+	if catalog == nil {
+		catalog = refuseAll{}
+	}
+	return NewGate(r, catalog)
+}
+
+// refuseAll est le catalogue qui ne reconnaît rien.
+type refuseAll struct{}
+
+func (refuseAll) Classify(context.Context, Ref) Verdict { return VerdictUnknown }
+
+// Get retourne l'asset identifié par ref (séquence 6 étapes). Une ref mal formée
+// (Ref.Validate) rend ErrInvalidRef sans lecture ni appel sortant.
 func (r *DefaultResolver) Get(ctx context.Context, ref Ref) (Resolved, error) {
+	if err := ref.Validate(); err != nil {
+		return Resolved{}, err
+	}
+	start := time.Now()
+	if res, ok := r.LookupLocal(ctx, ref); ok {
+		return res, nil
+	}
+
+	// Étape 3 : cache miss → fetch distant via singleflight.
+	r.metrics.IncMiss(ref.Kind)
+	slog.Info("assets: cache_miss", ref.LogAttrs()...)
+
+	result, err, _ := r.sf.Do(ref.String(), func() (any, error) {
+		return r.fetchAndPersist(ctx, ref)
+	})
+	if err != nil {
+		r.metrics.IncFetchError(ref.Kind)
+		slog.Warn("assets: fetch_error", append(ref.LogAttrs(), "err", err)...)
+		return Resolved{}, err
+	}
+
+	resolved := result.(Resolved)
+	r.metrics.ObserveLatency(ref.Kind, SourceRemote, time.Since(start))
+	return resolved, nil
+}
+
+// LookupLocal sert ref depuis le seul stock local (étapes 1 et 2 : binaire FS puis
+// index DuckDB), sans jamais appeler la source distante. Faux si rien n'est servable
+// localement, ou si la ref est mal formée (Ref.Validate).
+func (r *DefaultResolver) LookupLocal(ctx context.Context, ref Ref) (Resolved, bool) {
+	if err := ref.Validate(); err != nil {
+		slog.DebugContext(ctx, "assets: référence refusée", append(ref.LogAttrs(), "err", err)...)
+		return Resolved{}, false
+	}
 	start := time.Now()
 	slog.Debug("assets: lookup", ref.LogAttrs()...)
 
@@ -56,7 +108,7 @@ func (r *DefaultResolver) Get(ctx context.Context, ref Ref) (Resolved, error) {
 			r.metrics.IncHit(ref.Kind, SourceLocalFile)
 			r.metrics.ObserveLatency(ref.Kind, SourceLocalFile, time.Since(start))
 			slog.Debug("assets: cache_hit_fs", append(ref.LogAttrs(), "latency_ms", time.Since(start).Milliseconds())...)
-			return Resolved{Payload: *bin, Source: SourceLocalFile, FetchedAt: time.Now(), ETag: bin.ETag}, nil
+			return Resolved{Payload: *bin, Source: SourceLocalFile, FetchedAt: time.Now(), ETag: bin.ETag}, true
 		}
 	}
 
@@ -81,32 +133,21 @@ func (r *DefaultResolver) Get(ctx context.Context, ref Ref) (Resolved, error) {
 					r.metrics.IncHit(ref.Kind, SourceLocalDB)
 					r.metrics.ObserveLatency(ref.Kind, SourceLocalDB, time.Since(start))
 					slog.Debug("assets: cache_hit_index", append(ref.LogAttrs(), "latency_ms", time.Since(start).Milliseconds())...)
-					return Resolved{Payload: payload, Source: SourceLocalDB, FetchedAt: entry.FetchedAt, ETag: entry.ContentHash}, nil
+					return Resolved{Payload: payload, Source: SourceLocalDB, FetchedAt: entry.FetchedAt, ETag: entry.ContentHash}, true
 				}
 			}
 		}
 	}
 
-	// Étape 3 : cache miss → fetch distant via singleflight.
-	r.metrics.IncMiss(ref.Kind)
-	slog.Info("assets: cache_miss", ref.LogAttrs()...)
-
-	result, err, _ := r.sf.Do(ref.String(), func() (any, error) {
-		return r.fetchAndPersist(ctx, ref)
-	})
-	if err != nil {
-		r.metrics.IncFetchError(ref.Kind)
-		slog.Warn("assets: fetch_error", append(ref.LogAttrs(), "err", err)...)
-		return Resolved{}, err
-	}
-
-	resolved := result.(Resolved)
-	r.metrics.ObserveLatency(ref.Kind, SourceRemote, time.Since(start))
-	return resolved, nil
+	return Resolved{}, false
 }
 
-// Refresh force un re-fetch depuis la source distante.
+// Refresh force un re-fetch depuis la source distante (ErrInvalidRef pour une ref mal
+// formée).
 func (r *DefaultResolver) Refresh(ctx context.Context, ref Ref) (Resolved, error) {
+	if err := ref.Validate(); err != nil {
+		return Resolved{}, err
+	}
 	result, err, _ := r.sf.Do("refresh:"+ref.String(), func() (any, error) {
 		return r.fetchAndPersist(ctx, ref)
 	})
@@ -189,7 +230,7 @@ func (r *DefaultResolver) fetchAndPersist(ctx context.Context, ref Ref) (Resolve
 		byteLen = len(bin.Bytes)
 		if persistErr := r.binary.PersistBinary(ctx, ref, bin); persistErr != nil {
 			slog.Error("assets: persist_fs_failed",
-				append(ref.LogAttrs(), "path", r.binary.Path(ref), "err", persistErr)...)
+				append(ref.LogAttrs(), "err", persistErr)...)
 			return Resolved{}, persistErr
 		}
 	}
@@ -215,8 +256,11 @@ func (r *DefaultResolver) fetchAndPersist(ctx context.Context, ref Ref) (Resolve
 		case URLPayload:
 			entry.URL = p.URL
 		case BinaryPayload:
+			// Get et Refresh refusent une ref mal formée avant le fetch : Path réussit ici.
 			if r.binary != nil {
-				entry.LocalPath = r.binary.Path(ref)
+				if path, err := r.binary.Path(ref); err == nil {
+					entry.LocalPath = path
+				}
 			}
 		case JSONPayload:
 			entry.RawJSON = p.RawJSON

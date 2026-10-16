@@ -32,7 +32,7 @@ import (
 
 const (
 	cleFondVersionne = "fond-versionne"
-	matchRejeuDemo   = "demo0001"
+	matchRejeuDemo   = "dead0001"
 )
 
 // identitesCarte : la carte du match est désignée par son map_id, clé du fond versionné.
@@ -119,9 +119,9 @@ func TestReplayService_Demo_DonneesVersionneesEtRejeuxFigesMasques(t *testing.T)
 		t.Errorf("démo : identité démo absente de la réponse : %s", corps)
 	}
 	// Leurres : un artefact du DÉPÔT, ou de la racine d'exécution de la démo, n'est jamais servi.
-	ecrireFichier(t, title.NewPathResolver(repo).ReplayArtifactPath(title.DefaultSlug, "depot002"), artefactDemo)
-	ecrireFichier(t, layout.RuntimePaths().ReplayArtifactPath(title.DefaultSlug, "runtime3"), artefactDemo)
-	for _, id := range []string{"depot002", "runtime3"} {
+	ecrireFichier(t, title.NewPathResolver(repo).ReplayArtifactPath(title.DefaultSlug, "de000002"), artefactDemo)
+	ecrireFichier(t, layout.RuntimePaths().ReplayArtifactPath(title.DefaultSlug, "0e000003"), artefactDemo)
+	for _, id := range []string{"de000002", "0e000003"} {
 		if w := get(r, "/players/p/matches/"+id+"/replay"); w.Code != http.StatusNotFound {
 			t.Errorf("démo : artefact %s hors rejeux figés servi, statut %d, attendu 404", id, w.Code)
 		}

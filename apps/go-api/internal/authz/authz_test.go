@@ -72,6 +72,41 @@ func TestCanAccessPlayer(t *testing.T) {
 	}
 }
 
+// TestCanWritePlayer : l'écriture est réservée au propriétaire direct et à l'admin ;
+// un co-membre de groupe, qui LIT le profil, n'y écrit pas (ADR 0029, accès famille
+// en lecture seule).
+func TestCanWritePlayer(t *testing.T) {
+	admin := &domain.User{Username: "boss", Role: domain.RoleAdmin, XUID: "111"}
+	owner := &domain.User{Username: "alice", Role: domain.RoleUser, XUID: "222"}
+	unlinked := &domain.User{Username: "bob", Role: domain.RoleUser}
+	cases := []struct {
+		name        string
+		enforced    bool
+		user        *domain.User
+		profileXUID string
+		want        bool
+	}{
+		{"non enforced : écriture ouverte", false, nil, "333", true},
+		{"admin écrit partout", true, admin, "333", true},
+		{"propriétaire écrit son profil", true, owner, "222", true},
+		{"co-membre n'écrit pas le profil d'un ami", true, owner, "333", false},
+		{"non lié n'écrit rien", true, unlinked, "", false},
+		{"anonyme n'écrit rien", true, nil, "222", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := CanWritePlayer(tc.enforced, tc.user, tc.profileXUID); got != tc.want {
+				t.Fatalf("CanWritePlayer(%v, %+v, %q) = %v, want %v",
+					tc.enforced, tc.user, tc.profileXUID, got, tc.want)
+			}
+			// Toute écriture permise est aussi une lecture permise, même avec un groupe.
+			if tc.want && !CanAccessPlayer(tc.enforced, tc.user, tc.profileXUID, map[string]bool{"333": true}) {
+				t.Fatalf("écriture permise sans lecture permise : %s", tc.name)
+			}
+		})
+	}
+}
+
 // fakeLookup implémente UserLookup pour les tests de CurrentUser.
 type fakeLookup struct {
 	byName map[string]*domain.User
@@ -150,7 +185,7 @@ func TestCurrentUser(t *testing.T) {
 func TestInstanceLocked(t *testing.T) {
 	t.Run("env verrouillé court-circuite le load", func(t *testing.T) {
 		called := false
-		got := InstanceLocked(true, func() (bool, error) {
+		got := InstanceLocked(true, true, func() (bool, error) {
 			called = true
 			return false, nil
 		})
@@ -163,28 +198,34 @@ func TestInstanceLocked(t *testing.T) {
 	})
 
 	t.Run("settings verrouillés", func(t *testing.T) {
-		if !InstanceLocked(false, func() (bool, error) { return true, nil }) {
+		if !InstanceLocked(false, true, func() (bool, error) { return true, nil }) {
 			t.Fatal("settings verrouillés devraient verrouiller")
 		}
 	})
 
 	t.Run("settings non verrouillés", func(t *testing.T) {
-		if InstanceLocked(false, func() (bool, error) { return false, nil }) {
+		if InstanceLocked(false, true, func() (bool, error) { return false, nil }) {
 			t.Fatal("aucune source verrouillée ⇒ non verrouillé")
 		}
 	})
 
-	t.Run("erreur de lecture ⇒ repli non verrouillé", func(t *testing.T) {
-		if InstanceLocked(false, func() (bool, error) { return true, errors.New("illisible") }) {
-			t.Fatal("erreur de lecture ⇒ repli sur non verrouillé (comportement historique)")
+	t.Run("propriété appliquée, erreur de lecture ⇒ verrouillé", func(t *testing.T) {
+		if !InstanceLocked(false, true, func() (bool, error) { return false, errors.New("illisible") }) {
+			t.Fatal("réglages illisibles en mode appliqué ⇒ verrouillé (défaut sûr, ADR 0035 D5 amendée)")
+		}
+	})
+
+	t.Run("propriété non appliquée, erreur de lecture ⇒ non verrouillé", func(t *testing.T) {
+		if InstanceLocked(false, false, func() (bool, error) { return true, errors.New("illisible") }) {
+			t.Fatal("hors propriété appliquée (mono-utilisateur, démo) : aucune identité à opposer, non verrouillé")
 		}
 	})
 
 	t.Run("load nil ⇒ seule la source env compte", func(t *testing.T) {
-		if InstanceLocked(false, nil) {
+		if InstanceLocked(false, true, nil) {
 			t.Fatal("load nil + env libre ⇒ non verrouillé")
 		}
-		if !InstanceLocked(true, nil) {
+		if !InstanceLocked(true, true, nil) {
 			t.Fatal("load nil + env verrouillé ⇒ verrouillé")
 		}
 	})

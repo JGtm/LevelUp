@@ -154,8 +154,8 @@ func waitForStatus(t *testing.T, attempts *auth_platform.AttemptStore, attemptID
 	}
 	snap := attempts.Snapshot(attemptID)
 	if snap != nil {
-		t.Fatalf("waitForStatus(%s) timeout après %v, status final = %q (errorCode=%q errorDetail=%q)",
-			status, timeout, snap.Status, snap.ErrorCode, snap.ErrorDetail)
+		t.Fatalf("waitForStatus(%s) timeout après %v, status final = %q (errorCode=%q)",
+			status, timeout, snap.Status, snap.ErrorCode)
 	}
 	t.Fatalf("waitForStatus(%s) timeout, attempt introuvable", status)
 	return nil
@@ -360,9 +360,8 @@ func TestE2E_AuthCodeFlow_CSRFGuard(t *testing.T) {
 	// Conserver le cookie de session pour le callback.
 	cookies := loginW.Result().Cookies()
 
-	// Étape 2a : Callback avec state CORRECT mais code bidon → exchange tentera
-	// (et échouera côté Microsoft, 500 attendu). Mais le CSRF a passé — c'est ce
-	// que ce test valide.
+	// Étape 2a : Callback avec state CORRECT mais code bidon → exchange tenté (et
+	// échoué côté Microsoft). Le CSRF a passé — c'est ce que ce test valide.
 	goodReq := httptest.NewRequest(http.MethodGet, "/auth/xbox/callback?code=mock-code&state="+stateValue, nil)
 	for _, c := range cookies {
 		goodReq.AddCookie(c)
@@ -370,14 +369,12 @@ func TestE2E_AuthCodeFlow_CSRFGuard(t *testing.T) {
 	goodW := httptest.NewRecorder()
 	r.ServeHTTP(goodW, goodReq)
 
-	// Si CSRF avait failed, on aurait 403 state_mismatch. Si CSRF a passé, on
-	// a soit 500 (code_exchange_failed) soit 302 (success rare en test).
-	if goodW.Code == http.StatusForbidden {
-		t.Errorf("CSRF rejeté à tort : %s", goodW.Body.String())
-	}
+	// CSRF passé : l'échange est tenté et échoue (code factice), le navigateur revient à
+	// l'écran de connexion avec code_exchange_failed, jamais state_mismatch.
+	assertLoginRedirect(t, goodW, "code_exchange_failed")
 
 	// Étape 2b : Replay attack — retenter le callback avec le même state
-	// (qui a été consommé/effacé) doit échouer en 403.
+	// (qui a été consommé/effacé) doit être refusé : state_mismatch.
 	replayReq := httptest.NewRequest(http.MethodGet, "/auth/xbox/callback?code=mock-code&state="+stateValue, nil)
 	for _, c := range cookies {
 		replayReq.AddCookie(c)
@@ -385,9 +382,7 @@ func TestE2E_AuthCodeFlow_CSRFGuard(t *testing.T) {
 	replayW := httptest.NewRecorder()
 	r.ServeHTTP(replayW, replayReq)
 
-	if replayW.Code != http.StatusForbidden {
-		t.Errorf("Replay attack non bloquée : status = %d (state aurait dû être consommé)", replayW.Code)
-	}
+	assertLoginRedirect(t, replayW, "state_mismatch")
 }
 
 // extractQueryParam extrait la valeur d'un paramètre depuis une URL ou query

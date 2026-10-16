@@ -193,6 +193,27 @@ func TestWatcherHandler_StartAuth_MSALError_500(t *testing.T) {
 	}
 }
 
+// La cause d'un échec de démarrage du device-flow du watcher part au journal (la tentative
+// ne garde que le code) et jamais dans la réponse.
+func TestWatcherHandler_StartAuth_InitErrorCauseLogged(t *testing.T) {
+	logs := captureLogs(t)
+	provider := &stubTokenProvider{initFlowErr: errors.New("cause-interne-msal-404")}
+	r := newWatcherRouter(t, nil, provider)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/watcher/auth/start", nil))
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d: %s", w.Code, w.Body.String())
+	}
+	if bytes.Contains(w.Body.Bytes(), []byte("cause-interne-msal-404")) {
+		t.Fatalf("la cause interne part au client : %s", w.Body.String())
+	}
+	if !bytes.Contains(logs.Bytes(), []byte("cause-interne-msal-404")) {
+		t.Fatalf("cause de l'échec absente du journal :\n%s", logs.String())
+	}
+}
+
 func TestWatcherHandler_StartAuth_ReusesExisting(t *testing.T) {
 	provider := &stubTokenProvider{
 		initFlowFlow: auth_platform.NewStubDeviceFlow("CODE99", "https://microsoft.com/devicelogin", "msg", 300, "msal"),

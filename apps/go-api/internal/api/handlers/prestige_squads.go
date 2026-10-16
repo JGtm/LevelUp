@@ -113,7 +113,7 @@ func buildSquadMembers(body createSquadBody, creatorXUID string, slugByXUID, gam
 func (h *PrestigeHandler) CreateSquad(ctx context.Context, in *rawBodyInput) (*squadCreatedOutput, error) {
 	var body createSquadBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if body.Name == "" || body.CreatedBy == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_fields", "name et created_by requis")
@@ -123,7 +123,7 @@ func (h *PrestigeHandler) CreateSquad(ctx context.Context, in *rawBodyInput) (*s
 	}
 	slugByXUID, xuidBySlug, gamertagByXUID, err := h.playerDirectory(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "directory_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "directory_error", err)
 	}
 	creatorXUID := xuidBySlug[strings.ToLower(body.CreatedBy)]
 	if creatorXUID == "" {
@@ -208,7 +208,7 @@ func (h *PrestigeHandler) AddSquadMember(ctx context.Context, in *squadIDBodyInp
 	}
 	var body addSquadMemberBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if body.XUID == "" || body.RequestedBy == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_fields", "xuid et requested_by requis")
@@ -218,7 +218,7 @@ func (h *PrestigeHandler) AddSquadMember(ctx context.Context, in *squadIDBodyInp
 	}
 	slugByXUID, _, gamertagByXUID, err := h.playerDirectory(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "directory_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "directory_error", err)
 	}
 	// Gamertag explicite du body, sinon backfill via l'annuaire (delta main porté en Huma).
 	gamertag := body.Gamertag
@@ -268,7 +268,7 @@ func (h *PrestigeHandler) RenameSquad(ctx context.Context, in *squadIDBodyInput)
 	}
 	var body renameSquadBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if body.Name == "" || body.RequestedBy == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_fields", "name et requested_by requis")
@@ -317,7 +317,7 @@ func (h *PrestigeHandler) EvaluateSquadChallenge(ctx context.Context, in *idBody
 	}
 	var body evaluateSquadChallengeBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if body.RequestedBy == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_requested_by", "requested_by requis")
@@ -374,7 +374,7 @@ type pilotModeOutput struct{ Body prestige.PilotModeAttribution }
 func (h *PrestigeHandler) EnablePilotMode(ctx context.Context, in *rawBodyInput) (*pilotModeOutput, error) {
 	var body pilotModeBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if body.UserID == "" || body.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
@@ -396,7 +396,7 @@ func (h *PrestigeHandler) EnablePilotMode(ctx context.Context, in *rawBodyInput)
 func (h *PrestigeHandler) DisablePilotMode(ctx context.Context, in *rawBodyInput) (*noContentOutput, error) {
 	var body pilotModeBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if body.UserID == "" || body.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
@@ -428,7 +428,7 @@ func (h *PrestigeHandler) RefreshSquadPool(ctx context.Context, in *squadIDBodyI
 	}
 	var body refreshSquadPoolBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if body.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_title_slug", "title_slug requis")
@@ -457,29 +457,29 @@ func (h *PrestigeHandler) serviceError(ctx context.Context, err error) error {
 	case errors.Is(err, prestige.ErrChallengeNotFound),
 		errors.Is(err, prestige.ErrArcNotFound),
 		errors.Is(err, prestige.ErrUserNotFound):
-		return humacore.NewError(http.StatusNotFound, "not_found", err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusNotFound, "not_found", err)
 	case errors.Is(err, prestige.ErrInvalidInput):
-		return humacore.NewError(http.StatusBadRequest, "invalid_input", err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_input", err)
 	case errors.Is(err, prestige.ErrForbidden):
-		return humacore.NewError(http.StatusForbidden, "forbidden", err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusForbidden, "forbidden", err)
 	case errors.Is(err, prestige.ErrNotEditable):
-		return humacore.NewError(http.StatusForbidden, "not_editable", err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusForbidden, "not_editable", err)
 	case errors.Is(err, prestige.ErrAlreadyTerminal):
-		return humacore.NewError(http.StatusConflict, "already_terminal", err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusConflict, "already_terminal", err)
 	case errors.Is(err, prestige.ErrCooldownActive):
-		return humacore.NewError(http.StatusTooManyRequests, "cooldown_active", err.Error())
+		return humacore.NewErrorFrom(ctx, http.StatusTooManyRequests, "cooldown_active", err)
 	default:
 		// Erreur masquée à l'extérieur — ne pas exposer les internals
 		// si la cause n'est pas explicitement une de nos sentinelles.
-		msg := err.Error()
-		if strings.Contains(msg, "stretch") {
-			// Cas particulier RejectTooEasy formaté avec stretch dans le message
-			return humacore.NewError(http.StatusBadRequest, "challenge_too_easy", msg)
+		if strings.Contains(err.Error(), "stretch") {
+			// Cas particulier RejectTooEasy formaté avec stretch dans le message : le client
+			// reçoit le code, l'écran écrit lui-même le texte.
+			return humacore.NewErrorFrom(ctx, http.StatusBadRequest, "challenge_too_easy", err)
 		}
 		// Erreur non sentinelle masquée en 500 : logger la cause AVANT de la
 		// masquer (CLAUDE.md règle 3 — jamais d'erreur avalée). Sans ce log,
 		// un 500 prestige (ex. RefreshSquadPool) n'expose sa cause qu'au client.
 		slog.ErrorContext(ctx, "prestige: unmapped service error masked as 500", "err", err)
-		return humacore.NewError(http.StatusInternalServerError, "internal_error", msg)
+		return humacore.NewError(http.StatusInternalServerError, "internal_error", humacore.FixedMessage(http.StatusInternalServerError, "internal_error"))
 	}
 }

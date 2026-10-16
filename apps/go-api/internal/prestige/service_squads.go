@@ -212,17 +212,25 @@ func (s *service) SquadUsualContexts(ctx context.Context, rosterXUIDs []string, 
 // assertMemberUser vérifie que userID (player_slug) est membre-user de
 // l'escouade (squad_member.user_id renseigné = utilisateur de l'app).
 func (s *service) assertMemberUser(ctx context.Context, squadID, userID string) error {
+	_, err := s.membersIfMember(ctx, squadID, userID)
+	return err
+}
+
+// membersIfMember rend le roster de l'escouade si userID en est membre-user, sinon
+// ErrInvalidInput (« not a member of squad ») : la garde de assertMemberUser pour un
+// appelant qui a aussi besoin du roster.
+func (s *service) membersIfMember(ctx context.Context, squadID, userID string) ([]SquadMember, error) {
 	if userID == "" {
-		return fmt.Errorf("%w: requested_by requis", ErrInvalidInput)
+		return nil, fmt.Errorf("%w: requested_by requis", ErrInvalidInput)
 	}
 	members, err := s.deps.Squads.ListMembers(ctx, squadID)
 	if err != nil {
-		return fmt.Errorf("list members: %w", err)
+		return nil, fmt.Errorf("list members: %w", err)
 	}
 	if !isMember(members, userID) {
-		return fmt.Errorf("%w: not a member of squad", ErrInvalidInput)
+		return nil, fmt.Errorf("%w: not a member of squad", ErrInvalidInput)
 	}
-	return nil
+	return members, nil
 }
 
 // EvaluateSquadChallenge recalcule la progression d'un défi d'escouade : résout

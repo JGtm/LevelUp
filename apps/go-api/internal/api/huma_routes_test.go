@@ -140,7 +140,7 @@ func TestRegisterJobsHuma_ContractPreserved(t *testing.T) {
 func TestRegisterGamertagHuma_ContractPreserved(t *testing.T) {
 	newRouter := func(svc *stubGamertagSearch) *chi.Mux {
 		r := chi.NewRouter()
-		registerGamertagHuma(newHumaAPI(r), handlers.NewGamertagHandler(svc))
+		registerGamertagHuma(newHumaAPI(r), handlers.NewGamertagHandler(svc), nil)
 		return r
 	}
 	do := func(r *chi.Mux, url string) *httptest.ResponseRecorder {
@@ -182,7 +182,7 @@ func TestRegisterGamertagHuma_ContractPreserved(t *testing.T) {
 
 	// 503 — service absent.
 	r503 := chi.NewRouter()
-	registerGamertagHuma(newHumaAPI(r503), handlers.NewGamertagHandler(nil))
+	registerGamertagHuma(newHumaAPI(r503), handlers.NewGamertagHandler(nil), nil)
 	rec503 := do(r503, "/directory/gamertags/search?q=abc")
 	if rec503.Code != http.StatusServiceUnavailable {
 		t.Fatalf("503 attendu, got %d", rec503.Code)
