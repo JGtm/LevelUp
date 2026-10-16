@@ -401,6 +401,7 @@ export const commonManifest = {
   "common.onboarding.import_card_desc": { fr: "Si tu as déjà utilisé OpenSpartan, importe ton fichier", en: "If you have already used OpenSpartan, import your" },
   "common.onboarding.import_card_desc_suffix": { fr: "pour récupérer des matchs plus anciens que ce que l'API Halo expose.", en: "file to retrieve matches older than what the Halo API exposes." },
   "common.onboarding.import_card_title": { fr: "Importer depuis OpenSpartan", en: "Import from OpenSpartan" },
+  "common.onboarding.import_err_already_active": { fr: "Un import est déjà en cours pour ce compte. Attends qu'il se termine.", en: "An import is already running for this account. Wait for it to finish." },
   "common.onboarding.import_err_auth_required": { fr: "Connexion Xbox/Halo requise pour lancer un import.", en: "Xbox/Halo connection required to start an import." },
   "common.onboarding.import_err_demo": { fr: "L'import OpenSpartan est désactivé en mode démo.", en: "OpenSpartan import is disabled in demo mode." },
   "common.onboarding.import_err_low_confidence": { fr: "Impossible de vérifier que cette base est bien la tienne. Renomme le fichier en <ton-xuid>.db et réessaye.", en: "Unable to verify this database is yours. Rename the file to <your-xuid>.db and try again." },

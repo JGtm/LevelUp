@@ -108,6 +108,7 @@ func NewOpenSpartanImportHandler(cfg OpenSpartanImportConfig) *OpenSpartanImport
 // Responses:
 //   - 202 Accepted + {job_id, status} on success queue
 //   - 401 if no SSO session XUID
+//   - 409 if an import is already active for the account (one at a time)
 //   - 413 if upload exceeds the size limit
 //   - 400 if multipart parsing or the `db` field is malformed
 //
@@ -129,6 +130,13 @@ func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Re
 	expectedXUID := sess.LinkedHaloIdentity.XUID
 	gamertag := sess.LinkedHaloIdentity.Gamertag
 
+	// Un seul import à la fois par compte : refus AVANT de lire le corps (le téléversement
+	// peut peser 1 Gio). Le contrôle est refait atomiquement à la création du job.
+	if h.jobStore.FindActiveJob(domain.JobTypeOpenSpartanImport, expectedXUID) != nil {
+		h.refuseActiveImport(r.Context(), w, expectedXUID)
+		return
+	}
+
 	r.Body = http.MaxBytesReader(w, r.Body, openSpartanMaxUpload)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		writeError(r.Context(), w, http.StatusRequestEntityTooLarge, "upload_too_large",
@@ -142,13 +150,25 @@ func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	jobStatus := h.jobStore.Create(domain.JobTypeOpenSpartanImport, expectedXUID)
+	jobStatus, created := h.jobStore.CreateIfNoActive(domain.JobTypeOpenSpartanImport, expectedXUID)
+	if !created {
+		_ = os.Remove(tmpPath)
+		h.refuseActiveImport(r.Context(), w, expectedXUID)
+		return
+	}
 	go h.runImport(jobStatus.JobID, expectedXUID, gamertag, tmpPath)
 
 	writeJSON(w, http.StatusAccepted, map[string]any{
 		"job_id":      jobStatus.JobID,
 		jsonKeyStatus: jobStatus.Status,
 	})
+}
+
+// refuseActiveImport répond 409 : un import est déjà actif pour ce compte.
+func (h *OpenSpartanImportHandler) refuseActiveImport(ctx context.Context, w http.ResponseWriter, xuid string) {
+	slog.WarnContext(ctx, "openspartan_import_refused_already_active", "xuid", xuid)
+	writeError(ctx, w, http.StatusConflict, "import_already_active",
+		"un import OpenSpartan est déjà en cours pour ce compte")
 }
 
 // saveUploadedDB extracts the "db" multipart field into a uniquely-named

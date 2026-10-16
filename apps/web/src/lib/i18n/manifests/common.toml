@@ -2081,6 +2081,10 @@ en = "File too large (max {max} GB)."
 fr = "Échec du démarrage de l'import"
 en = "Failed to start import"
 
+[common.onboarding.import_err_already_active]
+fr = "Un import est déjà en cours pour ce compte. Attends qu'il se termine."
+en = "An import is already running for this account. Wait for it to finish."
+
 [common.onboarding.cancel]
 fr = "Annuler"
 en = "Cancel"

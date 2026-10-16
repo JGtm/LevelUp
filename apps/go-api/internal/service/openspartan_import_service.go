@@ -172,20 +172,8 @@ func (s *OpenSpartanImportService) Import(
 	s.log.Info("openspartan_import_started",
 		"expected_xuid", expectedOwnerXUID, "db_path", dbPath, "dry_run", opts.DryRun)
 
-	// Sprint B1 commit 15 : acquisition on-demand du writer shared.
-	//   - Mode B-swap (provider != nil) : Provider.AcquireWriter coordonne
-	//     avec auto_sync et les readers HTTP (PreSwap → DETACH pool, OpenRW,
-	//     puis re-OpenRO post-Release). Aucun handle RW persistant.
-	//   - Mode legacy (provider nil, sharedDBPath != "") : sync.AcquireSharedWriterStandalone
-	//     (dblease + OpenSharedDB direct).
-	//   - Mode tests (legacyDB != nil) : utilise le handle injecté tel quel.
-	//   - DryRun : skip toute acquisition (pas d'écriture).
-	sharedDB, releaseShared, err := s.acquireShared(ctx, opts.DryRun)
-	if err != nil {
-		return result, fmt.Errorf("openspartan import acquire shared: %w", err)
-	}
-	defer releaseShared()
-
+	// Le fichier est validé AVANT toute bascule de la base partagée : un fichier qui n'est
+	// pas une base OpenSpartan, ou d'un autre propriétaire, ne coûte aucune écriture.
 	r, err := openspartan.Open(dbPath)
 	if err != nil {
 		s.log.Error("openspartan_import_open_failed", "db_path", dbPath, "err", err)
@@ -210,6 +198,21 @@ func (s *OpenSpartanImportService) Import(
 	if err != nil {
 		return result, fmt.Errorf("load aliases: %w", err)
 	}
+
+	// Acquisition on-demand du writer shared, une fois le fichier validé et lu :
+	//   - Mode B-swap (provider != nil) : Provider.AcquireWriter coordonne
+	//     avec auto_sync et les readers HTTP (PreSwap → DETACH pool, OpenRW,
+	//     puis re-OpenRO post-Release). Aucun handle RW persistant.
+	//   - Mode legacy (provider nil, sharedDBPath != "") : sync.AcquireSharedWriterStandalone
+	//     (dblease + OpenSharedDB direct).
+	//   - Mode tests (legacyDB != nil) : utilise le handle injecté tel quel.
+	//   - DryRun : skip toute acquisition (pas d'écriture).
+	sharedDB, releaseShared, err := s.acquireShared(ctx, opts.DryRun)
+	if err != nil {
+		return result, fmt.Errorf("openspartan import acquire shared: %w", err)
+	}
+	defer releaseShared()
+
 	scope := newImportScope(expectedOwnerXUID, mapper.MapOptions{
 		AliasResolver: func(xuid string) string { return aliases[xuid] },
 		Source:        opts.Source,
