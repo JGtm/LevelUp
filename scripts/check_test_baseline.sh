@@ -218,6 +218,13 @@
 # TestExtractRegistry_PlaylistNameDoesNotDecideRanked (le nom de playlist ne pose plus is_ranked).
 # 24 lignes JSONL, exactement 6 paires (Package, Test), vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-16 (chantier sécurité, lot L8-1, démo : lectures d'administration fermées) : 2 tests
+# de `internal/api/middleware` dont le contrat est volontairement INVERSÉ (RequireAuth et RequireAdmin ne
+# sont plus transparents en démo) : TestRequireAuth_DemoMode_PassThrough devient
+# TestRequireAuth_DemoMode_RefusesExceptNamedReads, TestRequireAdmin_DemoMode_200 devient
+# TestRequireAdmin_DemoMode_RefusesExceptNamedReads. 8 lignes JSONL, exactement 2 paires (Package, Test),
+# vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.
