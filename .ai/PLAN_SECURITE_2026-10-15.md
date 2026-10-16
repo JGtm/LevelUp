@@ -192,37 +192,37 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 
 ### L4 — Session et authentification (C5-1 à C5-5, C5-6 partiel) — Opus — effort M
 
-- [ ] L4-1 Test rouge : device-flow terminé avec `ErrInstanceLocked` → session non authentifiée,
+- [x] L4-1 Test rouge : device-flow terminé avec `ErrInstanceLocked` → session non authentifiée,
       tentative `failed`.
-- [ ] L4-2 `handlers/auth.go` : `AuthReady`, identité et jetons écrits seulement après le succès
+- [x] L4-2 `handlers/auth.go` : `AuthReady`, identité et jetons écrits seulement après le succès
       de `OnAuthSuccess`.
-- [ ] L4-3 Invitations : émission (`POST /groups/{id}/invites`) et création de groupe exigent un
+- [x] L4-3 Invitations : émission (`POST /groups/{id}/invites`) et création de groupe exigent un
       compte existant du magasin d'utilisateurs ; une invitation n'est valable que si son émetteur
       existe encore ; `Consume` avant `Create` (usage unique atomique).
-- [ ] L4-4 Logout : suppression de la session côté serveur + cookie expiré ; test « SSO →
+- [x] L4-4 Logout : suppression de la session côté serveur + cookie expiré ; test « SSO →
       déconnexion → lecture refusée ».
-- [ ] L4-5 `RequireAdmin` relit le rôle via `authz.CurrentUser` (magasin injecté) ; test
+- [x] L4-5 `RequireAdmin` relit le rôle via `authz.CurrentUser` (magasin injecté) ; test
       « rétrograder puis rejouer la session → 403 » ; idem `settings.go:216`, `media_delete.go:88`.
-- [ ] L4-6 Rotation de l'identifiant de session aux trois connexions (mot de passe, OAuth,
+- [x] L4-6 Rotation de l'identifiant de session aux trois connexions (mot de passe, OAuth,
       device-flow) : nouvel identifiant, ancienne session supprimée ; test « la valeur du cookie
       change ».
-- [ ] L4-7 Configuration : `LEVELUP_AUTH_MODE` et `LEVELUP_REGISTRATION` normalisés
+- [x] L4-7 Configuration : `LEVELUP_AUTH_MODE` et `LEVELUP_REGISTRATION` normalisés
       (minuscules, espaces) ; valeur inconnue → refus au démarrage ; test table-driven.
-- [ ] L4-8 Callback OAuth : jeton de rafraîchissement persisté seulement après le contrôle du
+- [x] L4-8 Callback OAuth : jeton de rafraîchissement persisté seulement après le contrôle du
       verrou (`auth_xbox_oauth.go:209` après la décision).
-- [ ] L4-9 Premier compte : rôle décidé dans `Create` sous verrou ; garde « dernier admin » sur
+- [x] L4-9 Premier compte : rôle décidé dans `Create` sous verrou ; garde « dernier admin » sur
       `Delete`/`SetRole` ; test concurrent.
-- [ ] L4-10 Journaux : identifiant de connexion tronqué (64 caractères), codes d'invitation
+- [x] L4-10 Journaux : identifiant de connexion tronqué (64 caractères), codes d'invitation
       retirés des journaux ; garde-rail grep interdisant `"code"` dans les attributs slog de
       `handlers/{admin,groups,user_auth}.go`.
-- [ ] L4-11 `POST /auth/password` exige le mot de passe actuel quand le compte en a déjà un
+- [x] L4-11 `POST /auth/password` exige le mot de passe actuel quand le compte en a déjà un
       (compte Xbox sans mot de passe : premier mot de passe sans l'ancien) ; front : champ
       « Mot de passe actuel » / « Current password » (i18n FR + EN), test du hook ou du composant ;
       tests serveur des deux cas ; libellés de `SetPasswordCard` passés en i18n FR + EN (D-L1-3). Dépendance posée par L1-5 : `handleSetPassword` consulte déjà
       le limiteur d'échecs (`loginAttempts`) ; un mot de passe actuel incorrect y appelle
       `RecordFailure(*sess.Username, ip)`, un correct `RecordSuccess` (test « 6e mot de passe
       actuel faux → 429 »).
-- [ ] L4-12 `authz.InstanceLocked` : en mode appliqué, une erreur de lecture des réglages
+- [x] L4-12 `authz.InstanceLocked` : en mode appliqué, une erreur de lecture des réglages
       verrouille (au lieu d'ouvrir) ; erreur journalisée ; test `authz_test.go` inversé ;
       amendement de l'ADR 0035 (EN) consignant le basculement et sa raison.
 - Gate : `go test ./internal/api/... ./internal/authz/... ./internal/platform/session/... ./internal/platform/userstore/... ./internal/service/... ./internal/config/...`.
@@ -448,7 +448,7 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
   justifié par des transports de test). En service `RemoteAddr` n'est jamais vide, mais le défaut d'une garde
   de sécurité est ouvert.
 - **D-L1-3** (L1) `features/auth/SetPasswordCard.tsx` : libellés français en dur (`LABELS`), sans version
-  anglaise (l'écran en anglais affiche du français). L4-11 retouche ce composant. **Rattaché à L4-11** (libellés FR + EN du composant).
+  anglaise (l'écran en anglais affiche du français). L4-11 retouche ce composant. **Rattaché à L4-11** (libellés FR + EN du composant). **Traité en L4-11** (2026-10-16).
 
 - **D-L1-4** (L1) `packaging/nginx/demo.conf` (comme la démo en place) n'a pas `limit_req_status 429` : la
   limite `demo_limit` répond 503, que le front lit comme une panne et non comme un excès de tentatives.
@@ -479,6 +479,22 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
   « consultable par un ami » ?
 - **D-L3-9** (L3) En-tête de `service/openspartan_import_service.go` périmé (« writes via the existing sync.Insert*
   helpers » : l'écriture passe par `persist.SharedPersister`).
+
+- **D-L4-1** (L4) `service/bootstrap_service.go` : `is_admin` du bootstrap lit encore le rôle copié dans la session
+  (affichage du menu d'administration seulement ; toute route d'admin décide par `RequireAdmin`, rôle relu). Seule
+  entrée, datée, de l'allowlist de `archlint/session_role_read_test.go`. Un admin rétrogradé voit le menu jusqu'à sa
+  reconnexion, chaque action répond 403.
+- **D-L4-2** (L4) Valeur de `LEVELUP_REGISTRATION` dans le `.env.local` du VPS non vérifiée (accès VPS interdit au
+  lot) : toute valeur hors `invite`/`open`/`closed` (casse ignorée) empêche désormais le démarrage (L4-7). La prod a
+  `LEVELUP_AUTH_MODE=xbox` (accepté). À vérifier par le superviseur avant le déploiement de la v7.5.
+- **D-L4-3** (L4) Les refus du callback OAuth (`403 instance_locked`, `500 link_failed`, `code_exchange_failed`…) sont
+  des corps JSON rendus tels quels par le navigateur (navigation plein écran, pas un `fetch`) : aucune page d'erreur
+  côté front (préexistant pour `link_failed`).
+- **D-L4-4** (L4) Changer son mot de passe ne ferme pas les autres sessions du même compte (le magasin de sessions
+  n'a pas d'index par utilisateur).
+- **D-L4-5** (L4) `features/auth/XboxLoginPage.tsx` (branche d'échec du device-flow) garde deux libellés français en
+  dur (« Le code a expiré. », « Échec de l'authentification. ») et affiche `error_detail` brut : relève de L9-3
+  (retrait de `error_detail`, front adapté FR + EN).
 
 ## 7. Journal
 
@@ -1003,3 +1019,179 @@ rejeu absent, choix documenté du service) ; laissée telle quelle, vérifiée p
 
 Commits : `bde785689`, `adcd9f2db`, `e1525f55b`, `ad1a9484d`, `40b649b6a`, `73ba6fb8e`, `7ad75f884`,
 `e0591928c`, puis le commit de clôture (plan, thought_log).
+
+### L4 - Session et authentification - 2026-10-16 - clos
+
+Base : `git log --oneline -1` = `3e65359f0` avant le lot ; branche `feat/securite-2026-10-15`. Références du
+registre rouvertes avant d'agir et conformes : `handlers/auth.go:221-251` (`AuthReady`, identité et jetons posés
+AVANT `OnAuthSuccess`, erreur seulement journalisée), `middleware/require_auth.go` (`AuthReady` suffit hors mode
+password), `authz/authz.go:91-111` (utilisateur synthétisé), `handlers/groups.go:153,223,286`,
+`service/xbox_auth_service.go:157-216` (`resolvePendingInvite` puis `Consume` APRÈS `CreateFromXbox`),
+`handlers/user_auth.go:228-251` (`Validate` puis `Create` puis `Consume`) et `:272-289` (logout : `Username`/`Role`
+seuls effacés), `middleware/require_admin.go:25`, `handlers/settings.go:216`, `handlers/media_requester.go:45`
+(D-L3-5), `handlers/setup.go:346` (repli sur `sess.Role`), `platform/session/store.go` (seul `New` crée un
+identifiant), `handlers/auth_xbox_oauth.go:209` (RT persisté avant `linkAttemptToSession`), `config.go:242-244`
+(aucune normalisation), `userstore/store.go:125-166` (`IsEmpty` puis `Create` hors verrou) et `:314,362`,
+`authz.InstanceLocked` (repli ouvert).
+
+**Statuts** : L4-1 à L4-12 `[x]`. Aucun `[!]`, aucun `[~]`. D-L1-3 traité par L4-11.
+
+- **L4-1** `handlers/auth_device_flow_lock_test.go` : tentative autorisée par Microsoft pour un xuid inconnu,
+  instance verrouillée → statut `failed`, `error_code` `instance_locked`, jetons effacés de la tentative, session
+  sans `AuthReady`/identité/jetons/username, aucun compte, route `RequireAuth(xbox)` en 401.
+- **L4-2** `handlers/auth_login_complete.go` (`completeLogin`, partagé avec l'OAuth) : la stratégie post-flux
+  s'applique à une COPIE de la session ; seul un succès recopie le résultat avec `AuthReady`, l'identité et les
+  jetons ; `ErrSessionNotAuthenticated` (aucun compte local à lier, modes password et none) reste non bloquante
+  comme avant. `platform/auth/attempt_claim.go` : `ClaimAuthorized` remet la tentative UNE fois (statut
+  `provisioned`, secrets effacés du registre), `Fail`, `Rebind`. `ErrInstanceLocked` déplacée de `service` vers
+  `platform/auth` (lue par le handler sans importer le service). Front : `instance_locked` affiche « Cette
+  instance est fermée aux nouvelles inscriptions. » / « This instance is closed to new registrations. »
+  (`XboxLoginPage`, `StepDeviceCode`, clé existante). Tests : `attempt_claim_test.go` (remise unique sous 8
+  sondages concurrents), `XboxLoginPage.test.tsx` (« compte inconnu refusé par le verrou »).
+- **L4-3** `authz.CurrentAccount` (compte persisté, jamais synthétisé ; `CurrentUser` s'appuie dessus) ;
+  `GroupsHandler.currentAccount` : créer un groupe ou émettre une invitation sans compte → 403 `account_required` ;
+  l'émetteur d'une invitation de groupe est désormais le NOM DU COMPTE (`created_by`). `InviteStore` reçoit un
+  `IssuerLookup` au constructeur (nil : aucune invitation valable) : `Validate`, `Consume` et `List.valid` exigent un
+  émetteur existant (`ErrInviteIssuerGone`). `Consume` vérifie et marque sous le même verrou et rend l'invitation ;
+  `Release` la rend (compensation). Inscription (mode invitation) et SSO réservent le code AVANT toute création de
+  compte et le rendent si la création échoue (`UserAuthHandler.admitRegistration`/`releaseInvite`,
+  `service/xbox_auth_invite.go`). `InviteStore.Get`, sans appelant de production après ce lot, est supprimé (tests
+  passés sur `Validate`/`Consume`). Tests : `invite_issuer_test.go` (handlers, userstore),
+  `xbox_invite_issuer_test.go` (service).
+- **L4-4** `session.Store.Revoke` (`platform/session/revoke.go`) : fichier supprimé et identifiant retenu révoqué
+  (1 h, 10 000 entrées au plus) ; `Save`/`Touch` refusent un identifiant révoqué (`ErrSessionRevoked`) : une requête
+  concurrente chargée avant la déconnexion ne ressuscite pas la session. `WithSession` répond à un identifiant révoqué
+  par un cookie expiré et ne le réécrit pas en fin de requête. `handleLogout` révoque (500 `logout_failed` si la
+  suppression échoue). Tests : `user_auth_logout_test.go` (SSO → déconnexion → 401), `revoke_test.go`,
+  `session_revoke_test.go`.
+- **L4-5** `authz.IsAdmin(sess, lookup)` (rôle relu dans le compte, lookup nil : faux) : `RequireAdmin(demo, mode,
+  users)` (8 montages de `server_apiv1.go`), verrou d'instance de `PATCH /settings` (`SettingsHandler.WithUserLookup`),
+  suppression et association de médias (`MediaHandler.WithUserLookup`, D-L3-5), exemption admin du setup (repli sur
+  la session supprimé). Garde-rail `archlint/session_role_read_test.go` : aucun déréférencement de `*x.Role` dans le
+  code non-test du module, allowlist datée d'une entrée (affichage `is_admin` du bootstrap, D-L4-1). Tests :
+  `require_admin_reread_test.go` (admin → 200, rétrogradé → 403, supprimé → 403), `admin_role_reread_test.go`
+  (verrou d'instance, suppression de média). Tests existants adaptés : les sessions « admin » des fixtures ont un
+  compte admin dans un magasin de test (le rôle de session seul ne suffit plus, c'est le contrat).
+- **L4-6** `session.Store.Rotate` : nouvel identifiant, même état, ancien révoqué avec ce successeur, écriture sous
+  le nouveau. Appelée à la connexion par mot de passe, à l'inscription (auto-connexion, même classe), au device-flow
+  (la tentative suit : `Rebind`) et au callback OAuth (`finishOAuthLogin`). Une requête concurrente qui porte encore
+  l'ancien cookie reçoit celui du successeur. Tests : `session_rotation_test.go` (mot de passe, device-flow avec
+  second sondage au nouveau cookie), `auth_xbox_oauth_finish_internal_test.go` (OAuth, et refus du verrou sans
+  rotation), `revoke_test.go`, `session_revoke_test.go`.
+- **L4-7** `config/config_auth.go` : `normalizeMode` (minuscules, espaces de bord, vide = défaut) à la lecture ;
+  `validateModes` appelée par `Validate` dans TOUS les environnements (démo et développement compris) : valeur
+  hors {none, password, xbox} / {invite, open, closed} → démarrage refusé. Message de `cmd/server` mis à jour ;
+  `docs/CONFIGURATION.md` + `docs/FR/CONFIGURATION.md`. `config.go` reste à 628 lignes (gel 629). Test table-driven
+  `config_auth_modes_test.go`.
+- **L4-8** `completeOAuthCallback` (extrait du `Callback`, réseau exclu) : le refresh token est persisté APRÈS la
+  décision de connexion. Tests `auth_xbox_oauth_rt_internal_test.go` (refusé : aucune persistance ; accepté : une
+  persistance, compte déjà existant).
+- **L4-9** `userstore/store_roles.go` : `CreateFirstAdmin` (instance vide vérifiée sous le verrou d'écriture,
+  sinon `ErrNotFirstAccount` et l'inscription reprend les gardes ordinaires, `UserAuthHandler.createAccount`) ;
+  `ErrLastAdmin` sur `Delete`/`SetRole` (409 `last_admin` côté admin). `SetRole` et `Delete` déplacés dans ce
+  fichier : `store.go` passe de 503 à 471 lignes. Tests : `user_auth_first_admin_test.go` (6 inscriptions
+  simultanées sur instance vide ; dernier admin 409), `store_admin_guard_test.go`.
+- **L4-10** `loginlimit.Truncate` (64 caractères, source de la clé normalisée du limiteur) sur les identifiants
+  fournis par le client dans les journaux de `user_auth.go` ; codes d'invitation retirés des journaux (`admin.go`,
+  `groups.go`, `user_auth.go`, SSO). Garde-rail `archlint/invite_code_log_test.go` (aucun attribut slog `"code"` dans
+  les six fichiers qui manipulent une invitation ; preuve sur une source défectueuse). Test
+  `auth_log_hygiene_test.go` (identifiant de 100 000 caractères, D-L2-1 ; code d'invitation généré puis révoqué).
+- **L4-11** `SetPasswordRequest.CurrentPassword` ; `checkCurrentPassword` : compte avec mot de passe → 400
+  `current_password_required` sans lui, 403 `invalid_current_password` s'il est faux (échec compté par le limiteur
+  pour l'identifiant et l'IP), succès remet les compteurs à zéro ; compte sans mot de passe (Xbox) : premier mot de
+  passe sans l'ancien. Le front sait si le compte a un mot de passe par `has_password` du bootstrap
+  (`BootstrapService.currentUserHasPassword`, existant) : aucun ajout d'API. `SetPasswordCard` : champ « Mot de
+  passe actuel » / « Current password » et libellé « Nouveau mot de passe » / « New password » quand le compte a un
+  mot de passe ; tous les libellés passent au manifeste `common` (FR + EN, D-L1-3) ; messages de refus par
+  `setPasswordErrorKey` (`loginError.ts`). Tests : `user_auth_set_password_current_test.go` (deux cas, 6e mot de
+  passe actuel faux → 429), `TestUserAuth_SetPassword_OptIn` (compte Xbox), `SetPasswordCard.test.tsx` (4 cas neufs
+  dont l'anglais), `loginError.test.ts`.
+- **L4-12** `authz.InstanceLocked(envLocked, enforced, load)` : réglages illisibles en propriété appliquée →
+  verrouillé, journalisé en ERROR ; sans propriété appliquée → non verrouillé (WARN). `server_apiv1.go` passe
+  `authz.Enforced(cfg.DemoMode, cfg.AuthMode)`. Test `authz_test.go` inversé. ADR 0035 amendée (EN, D5, 2026-10-16,
+  raison : le verrou ne ferme jamais l'accès des comptes existants ni de l'admin, seulement l'entrée d'identités
+  nouvelles ; l'ouverture sur fichier corrompu était la vraie faille).
+
+Écarts au texte, additifs et dans la classe de défaut : rotation aussi à l'inscription (L4-6) ; garde-rail du rôle
+de session (L4-5) ; garde-rail des codes d'invitation étendu au SSO et à l'OAuth (L4-10) ; secrets d'une tentative
+effacés après remise ou échec (L4-2).
+
+**Preuves du rouge** (tests écrits avant les correctifs ; sorties gardées dans `%TEMP%\l4\`) :
+- L4-1 `go test ./internal/api/handlers/ -run TestDeviceFlow_InstanceLocked` : FAIL exit 1, statut `authorized`
+  (attendu `failed`), `error_code` nil, `AuthReady=true`, identité et jetons en session, route gardée 200.
+- L4-3 : FAIL sur l'état d'avant (`NewInviteStore` à un argument le temps du run) : groupe créé (201) et invitation
+  émise (201) sans compte ; inscription acceptée (201) avec l'invitation d'un émetteur supprimé ; 6 comptes créés
+  par un seul code (handlers et SSO) ; SSO : `err = <nil>` au lieu de `ErrInstanceLocked` pour un émetteur supprimé.
+- L4-4 `TestLogout_SSOSessionNoLongerReads` : cookie non expiré, session encore sur disque, lecture 200 au lieu de 401.
+- L4-5 (signature `RequireAdmin` posée sans changer le comportement) : rétrogradé 200 et supprimé 200 au lieu de 403 ;
+  verrou ouvert (200) par un admin rétrogradé ; `RequesterIsAdmin` vrai. Sur `3e65359f0`, le garde-rail aurait
+  relevé `media_requester.go:45`, `settings.go:216`, `setup.go:346`, `require_admin.go:25` et
+  `bootstrap_service.go:248` (allowlisté, D-L4-1).
+- L4-6 `TestRotation_PasswordLogin`, `TestRotation_DeviceFlow` : même identifiant avant et après ; OAuth : rouge en
+  remplaçant `Rotate` par `Save` le temps du run (fichier restauré, vérifié), vert avec `Rotate`.
+- L4-7 : 7 sous-tests FAIL (`Xbox`, `  PASSWORD `, ` Open`, `CLOSED` non normalisés ; blanc seul non ramené au
+  défaut ; `sso`, `xbx`, `public` acceptés par `Validate`).
+- L4-8 : refresh token persisté pour l'identité refusée ; accepté : persisté AVANT la création du compte.
+- L4-9 : 6 admins créés par 6 inscriptions simultanées ; suppression du dernier admin 204, rétrogradation acceptée.
+- L4-10 : 100 089 octets de journal (identifiant entier) ; `code=K97G54W3` journalisé ; sur `3e65359f0`, 9 attributs
+  `"code"` (admin x3, groups, user_auth, SSO x4).
+- L4-11 : sans mot de passe actuel 204 (attendu 400), faux 204 (attendu 403), 1er échec 204 ; front sur le composant
+  d'avant : 4 tests FAIL (champ absent, libellés anglais absents, message absent).
+- L4-12 `TestInstanceLocked/propriété_appliquée,_erreur_de_lecture_⇒_verrouillé` : FAIL (repli non verrouillé).
+- Front L4-2 : sur le `XboxLoginPage.tsx` d'avant (restauré ensuite, `git diff` vérifié), le test « compte inconnu
+  refusé par le verrou » FAIL.
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9) :
+- Gate du lot : `go test ./internal/api/... ./internal/authz/... ./internal/platform/session/...
+  ./internal/platform/userstore/... ./internal/service/... ./internal/config/... -count=1` : exit 0, 15 paquets ok.
+- Autres paquets touchés : `go test ./internal/archlint/ ./internal/platform/auth/... ./internal/platform/loginlimit/
+  ./internal/domain/... ./cmd/server/ -count=1` : exit 0. Premier passage rouge : `TestNoNewFrenchLabelLiteral`
+  (deux messages neufs en français dans `user_auth_current_password.go`) : messages techniques anglais, et
+  allowlist RESSERRÉE (baisses dues au lot : `user_auth.go` 13 → 12, `xbox_auth_service.go` 1 → 0, entrée retirée).
+  Un test neuf rouge au passage complet (`TestRequireAdmin_RereadsRoleFromStore`, dernier admin protégé par L4-9) :
+  fixture complétée d'un second admin.
+- Gate commun : `go build ./cmd/server/` exit 0 ; `go vet` (api/..., authz, config, session, userstore, platform/auth,
+  loginlimit, service, domain, archlint, cmd/server) exit 0 ; `golangci-lint run --new-from-rev=3e65359f0` et forme
+  CI `--new-from-merge-base=origin/main` sur ces paquets : 0 issues (premier passage : goconst sur les modes de
+  `config_auth.go`, corrigés par des constantes) ; `go run ./cmd/openapi-gen` puis `npm run generate-types` : aucune
+  différence (`/auth/password` sans schéma de corps documenté, nouveaux refus couverts par `default`) ;
+  `go test ./internal/api/ -run 'OpenAPI|Contract'` ok.
+- Web : purge de `node_modules/.tmp`, `npm run typecheck` exit 0, `npm run lint` 0 erreur (26 avertissements
+  préexistants), `npm run test:run` : 922 fichiers passés / 5 ignorés, 9624 tests passés / 23 ignorés, exit 0 ;
+  `lint:fields`, `lint:colors`, `lint-cross-feature-imports`, `knip-ratchet`, `lint-contract-ratchet` : propres.
+- Hook pre-commit : un premier commit refusé par gitleaks (mot de passe littéral dans un test neuf, faux positif) :
+  constante de test, aucune exception ajoutée à `.gitleaks.toml` ; second passage vert.
+
+**Non-régression (règle 9)** :
+- L4-1/L4-2 : changement visible pour un compte Microsoft inconnu sur instance verrouillée par code d'appareil : il
+  voyait « Authentification réussie » puis l'onboarding ; il voit désormais le message de refus (FR + EN) et
+  « Réessayer ». Comptes existants : inchangé (`TestE2E_DeviceCodeFlow_HappyPath`, statut `provisioned` déjà géré par
+  `XboxLoginPage` et `StepDeviceCode`).
+- L4-4 : `LogoutButton` et `NavL1MobileActions` appellent `POST /auth/logout` puis `window.location.assign('/')` :
+  le rechargement lit un bootstrap anonyme (`current_username` nul) et `__root` redirige vers `/login` en modes
+  password et xbox (lecture du code ; aucun e2e de connexion).
+- L4-6 : device-flow : le front sonde toutes les 5 s avec le cookie du navigateur ; le sondage qui conclut pose le
+  nouveau cookie et la tentative suit (`Rebind`) : le suivant la retrouve (statut `provisioned`, aucune seconde
+  rotation) ; `StepDeviceCode`, qui continue de sonder, n'est donc jamais renvoyé sur `attempt_not_found`. SSO : le
+  callback est une navigation plein écran, la redirection 302 porte le nouveau cookie. Requêtes concurrentes au
+  moment d'une connexion : cookie du successeur, jamais un cookie expiré.
+- L4-7 : valeurs réelles relevées : `.env.local.example` (`xbox`, `password`, `none` en commentaire), `.env.local`
+  local (`xbox`), prod (`LEVELUP_AUTH_MODE=xbox`), `docker-compose.yml` et workflows (aucune), e2e
+  (`readme-shots` cite `xbox`/`none`). Toutes acceptées. `LEVELUP_REGISTRATION` du VPS non vérifiée : D-L4-2.
+- L4-3 : un compte SSO a toujours un compte (créé par la connexion) ; seule une identité Halo sans compte (modes
+  password/none, device-flow sans connexion locale) perd la création de groupe et l'émission d'invitation. Les
+  invitations de groupe émises avant le lot portent un gamertag dans `created_by` : valables si ce gamertag, en
+  minuscules, est le nom du compte (cas des gamertags sans espace ni symbole), sinon à réémettre.
+- L4-9 : `UsersSection` masque suppression et changement de rôle pour le compte courant, qui est admin : le dernier
+  admin n'est jamais atteignable depuis l'interface (409 réservé à l'API).
+- L4-11 : `SetPasswordCard` est affichée dans les Réglages (toujours) et l'onboarding OpenSpartan (seulement sans
+  mot de passe : premier mot de passe, sans champ « actuel ») ; après succès, le bootstrap rechargé passe
+  `has_password` à vrai.
+- L4-12 : le verrou ne touche ni la connexion des comptes existants ni l'admin (exempté sur `POST /setup/players`) :
+  seules les identités nouvelles sont refusées tant que les réglages restent illisibles.
+- L4-5 : aucun changement pour un admin en place ; un admin rétrogradé reçoit 403 sur chaque route d'administration
+  (le menu reste affiché jusqu'à sa reconnexion, D-L4-1).
+
+**Découvertes** : D-L4-1 à D-L4-5 (§6), non traitées.
+
+Commits : `61eb8ff9c` (code, tests, docs, ADR), puis le commit de clôture (plan, thought_log).
