@@ -253,23 +253,23 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 
 ### L5 — Travaux coûteux (C3-1 à C3-6) — Sonnet — effort L
 
-- [ ] L5-1 Device-flow : plafonds (§0) dans `attempt_store` → 429 ; test « 21e tentative → 429 ».
-- [ ] L5-2 `/api/v1/assets/*` : identifiant validé contre le catalogue local (titre, médaille,
+- [x] L5-1 Device-flow : plafonds (§0) dans `attempt_store` → 429 ; test « 21e tentative → 429 ».
+- [x] L5-2 `/api/v1/assets/*` : identifiant validé contre le catalogue local (titre, médaille,
       carte…) avant tout fetch, sinon 404 sans appel ; cache négatif borné (TTL, taille) ;
       limiteur sortant du provider Halo partagé (plus recréé par requête) ; test « id inconnu →
       404, fetcher espion jamais appelé ».
-- [ ] L5-3 Exclusion de match : le recalcul n'acquiert plus le writer partagé (lecture seule de la
+- [x] L5-3 Exclusion de match : le recalcul n'acquiert plus le writer partagé (lecture seule de la
       base partagée, écritures en base joueur via le persister existant) ; no-op si l'état ne
       change pas ; single-flight par joueur ; test « exclusion identique → aucun recalcul »,
       « recalcul → writer partagé jamais pris ».
-- [ ] L5-4 Import OpenSpartan : validation du fichier avant toute bascule ; un import à la fois par
+- [x] L5-4 Import OpenSpartan : validation du fichier avant toute bascule ; un import à la fois par
       compte (`FindActiveJob`, comme `backfill.go:111`) → 409 ; test « fichier invalide → writer
       non pris », « 2e import simultané → 409 ».
-- [ ] L5-5 Envoi de médias : écriture en flux vers le disque (fin de `io.ReadAll`) ; sémaphores
+- [x] L5-5 Envoi de médias : écriture en flux vers le disque (fin de `io.ReadAll`) ; sémaphores
       globaux (§0) ; tâche ffmpeg avec délai maximal.
-- [ ] L5-6 Recherche de gamertags : `live` ignoré sans session authentifiée ;
+- [x] L5-6 Recherche de gamertags : `live` ignoré sans session authentifiée ;
       `POST …/engagement/recompute_coefficients` sous `RequireAdmin`.
-- [ ] L5-7 Garde-rails : chaque entrée de `publicRoutesAllowlist` (`bare_routes_ratchet_test.go`)
+- [x] L5-7 Garde-rails : chaque entrée de `publicRoutesAllowlist` (`bare_routes_ratchet_test.go`)
       porte une classe `cheap` / `outbound` / `disk`, et `outbound`/`disk` exigent un test
       « anonyme → aucun appel sortant ni écriture non bornée » ; archlint interdisant
       `AcquireWriter`/`AcquireSharedWriterStandalone` dans un chemin déclenché par une route
@@ -537,6 +537,23 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
 - **D-L4b-3** (L4b) Un utilisateur DÉJÀ connecté dont la reconnexion Xbox (bannière `ReauthBanner`, flux OAuth) est
   refusée arrive sur `/login?oauth_error=…`, que `__root.tsx:184` renvoie vers `/` (connecté sur une page
   d'auth) : le message est perdu (la bannière reste affichée). Avant L4b il voyait un JSON brut.
+
+- **D-L5-1** (L5) `service/friends_orchestrator_service.go` : la liste d'amis d'un profil (`/players/{slug}/friends`,
+  propriétaire) déclenche `sync.RecomputeIsWithFriends`, qui prend le writer partagé (2 appels) : même classe de défaut que
+  C3-3, rejouable en boucle par un propriétaire. Consignée dans l'allowlist de
+  `archlint/no_shared_writer_on_request_path_test.go` ; à traiter comme L5-3.
+- **D-L5-2** (L5) Les autres usages de ffmpeg n'ont ni place ni délai maximal : miniatures de l'indexation d'un envoi
+  (`ops/media_thumbnails.go`), remux WebM en lecture (`media/remux.go`, flux vers le client), migration audio
+  (`media/hls_audio_migrate.go`). Aucun garde-rail n'exige la place avant un `exec ffmpeg` (proposé par le registre, hors
+  des items L5-1 à L5-7).
+- **D-L5-3** (L5) `TestBootstrapBuild_WritablePlayerSlugs/admin` (`service/bootstrap_ownership_test.go:256`) est instable :
+  l'ordre de `writable_player_slugs` pour un admin n'est pas déterministe (4 échecs sur 10).
+- **D-L5-4** (L5) Le recalcul d'une exclusion relance `batchComputeLUSR` (`skill.BatchComputeLUSRWithMedals`), pas le chemin
+  canonique v2 (`RecomputeLUSRCanonicalForPlayer`, qui écrit `player_skill_state_v2` dans la base partagée). Non vérifié :
+  si le LUSR v2 lu par l'écran tient compte d'une exclusion, c'est par ailleurs.
+- **D-L5-5** (L5) L'import OpenSpartan tient le writer partagé pendant toute son écriture (`Import` après validation) :
+  un compte connecté peut occuper le writer le temps d'un import valide (un seul à la fois par compte, mais un par compte).
+- **D-L5-6** (L5) `handlers/media_upload.go` renvoie encore `err.Error()` du service en 500 (`upload_error`) : relève de L9-5.
 
 ## 7. Journal
 
@@ -1357,3 +1374,127 @@ est nommée et exacte, les notifications sont plus strictes, chaque refus du cal
 
 Commits : `a654e8981` (L3-12, L3-13, ADR 0029), `88e0b28ce` (L4-13), `c44e07aec` (L4-14), puis le commit de clôture
 (plan, thought_log).
+
+### L5 - Travaux coûteux - 2026-10-16 - clos
+
+Base : `git log --oneline -1` = `6e8df99c7` avant le lot ; branche `feat/securite-2026-10-15`. Références du registre
+rouvertes avant d'agir : `handlers/auth.go` (`handleStartDeviceFlow`, `GetOrCreate` sans plafond),
+`platform/auth/attempt_store.go`, `server_apiv1.go` (routes `/assets/*` nues, `halo.NewHaloProvider()` dans la closure
+`MapImageURLFetcher`), `assets/resolver_default.go` (`Get` : local puis fetch, aucun cache négatif), `handlers/assets.go`,
+`sync/match_recomputer.go` (`AcquireSharedWriterStandalone` + `batchComputePerformanceScores`/`batchComputeLUSR` qui ne
+LISENT que `sharedDB` et écrivent en base joueur : vérifié par le test à base partagée en lecture seule),
+`service/match_exclusion_service.go`, `service/openspartan_import_service.go` (`acquireShared` avant `openspartan.Open`),
+`handlers/openspartan_import.go`, `handlers/media_upload.go` (`io.ReadAll` par fichier), `media/hls.go` (`BuildHLS`, seul
+point d'entrée du transcodage), `server_apiv1.go` (recherche de gamertags et `recompute_coefficients`).
+
+**Statuts** : L5-1 à L5-7 `[x]`. Aucun `[!]`, aucun `[~]`.
+
+- **L5-1** `platform/auth/attempt_store.go` : `GetOrCreate(sessionID, ip)` refuse (`ErrTooManyAttempts`) au-delà de
+  `MaxPendingAttempts` (20) tentatives en attente et `MaxPendingPerIP` (3) ; une tentative déjà en attente pour la session
+  est resservie hors plafond (rafraîchissement de la page de connexion), une tentative terminée libère sa place.
+  `handlers/auth.go` : 429 `too_many_device_flows` + `Retry-After: 60`, `InitDeviceFlow` jamais appelé. Front : message
+  FR + EN `common.xbox_login.err_busy` sur `XboxLoginPage` (3 chemins) et `StepDeviceCode`. Tests :
+  `attempt_limits_test.go`, `auth_device_flow_limits_test.go`, `XboxLoginPage.test.tsx` (FR, EN), `SetupPage.test.tsx`.
+- **L5-2** `assets.Gate` (nouveau) devant le resolver pour les cinq routes HTTP : stock local d'abord (inchangé pour les
+  images d'une page), cache négatif borné (4096 entrées, 10 min), puis `Catalog.Classify`. `MetadataCatalog` : médailles
+  (`medal_definitions`, `waypoint_medals_raw`) et cartes (`maps_catalog`, `asset_translations`, `map_images_registry`) ;
+  titre vérifié par le registre des titres (`TitleKnown`, aucun slug en dur). Identifiant inconnu : 404 sans appel sortant.
+  Kinds sans référentiel local (badge de défi, images de passe de combat, images de joueur : identifiants dérivés d'une
+  charge amont) : récupérés à distance pour un appelant connecté seulement (`middleware.IsAuthenticated`), un anonyme est
+  servi en local. Fournisseur Halo des cartes construit une fois (son limiteur était recréé par requête) ; garde-rail
+  `archlint/no_request_scoped_halo_provider_test.go`. Pas de limite de débit réintroduite sur les images. Tests :
+  `gate_test.go`, `catalog_metadata_test.go`, `assets_gate_test.go`, `provider_limiter_shared_test.go`.
+- **L5-3** `MatchRecomputer` lit la base partagée (`Provider.Get` ou `OpenReadForQuery`), ne prend plus de writer partagé ;
+  `MatchExclusionService` : no-op si l'état demandé est l'état courant (`MatchExclusionRepository.IsExcluded`, vue
+  `_latest`), recalcul quand même après un recalcul en échec (`RecomputePending`, contrat de reprise conservé) ;
+  `coalesce.Runs` : un recalcul à la fois par joueur, les demandes déposées pendant l'exécution donnent UN rattrapage.
+  Aucune écriture sur la base partagée : le test fournit une base ouverte en lecture seule (toute écriture échouerait).
+  Tests : `match_recomputer_shared_readonly_test.go`, `match_exclusion_service_test.go`, `runs_test.go`,
+  `TestMatchExclusionRepo_IsExcluded_LatestState`.
+- **L5-4** `OpenSpartanImportService.Import` valide le fichier (ouverture, propriétaire, nombre de matchs, alias) AVANT
+  `acquireShared`. `StartImport` : 409 `import_already_active` si un import est actif pour le compte, refusé avant de
+  lire le corps puis recontrôlé atomiquement (`jobs.Store.CreateIfNoActive`). Front : message FR + EN
+  `common.onboarding.import_err_already_active`. Tests : `openspartan_import_writer_order_test.go`,
+  `openspartan_import_single_test.go`, `create_if_no_active_test.go`, `OpenSpartanImportCard.test.tsx`.
+- **L5-5** `domain.UploadedFile` porte `Open()` au lieu de `[]byte` ; `storeUploadedFile` copie en flux vers un fichier
+  temporaire du dossier des captures (hash au fil de l'eau, `ops.ContentHasher`), déduplique puis renomme ; `ops.HashBytes`
+  (devenu mort) retiré. `platform/slots` : sémaphore ; `PostUploadMedia` attend une place parmi 2 envois en vol (30 s) puis
+  répond 503 `upload_busy` (`Retry-After`) ; `media.BuildHLS` tient l'unique place ffmpeg et un délai maximal de 45 min.
+  Le front envoie tous les fichiers dans UNE requête (`useUploadMedia`) et désactive le bouton pendant l'envoi : aucun
+  envoi parallèle d'un même onglet ; message FR + EN `common.media.upload_busy`. Tests : `media_service_upload_stream_test.go`,
+  `media_upload_slots_test.go`, `ffmpeg_slot_test.go`, `slots_test.go`, `UploadButton.test.tsx`.
+- **L5-6** `?live=1` ignoré sans session authentifiée (`middleware.IsAuthenticatedCtx`, prédicat passé à
+  `registerGamertagHuma`) ; `recompute_coefficients` déplacée dans `EngagementHandler.MountAdmin` sous `RequireAuth` +
+  `RequireAdmin`. Aucun écran web ne l'appelle (seul l'instantané `contract-surface.snapshot.json` la cite). Seul appelant
+  web de `live=1` : `useGamertagSuggestions` (pages connectées). Tests : `gamertag_live_auth_test.go`,
+  `recompute_coefficients_admin_test.go` (chi.Walk sur le routeur réel).
+- **L5-7** (a) `bare_routes_ratchet_test.go` : `publicRoutesAllowlist` passe à `publicRoute{class, reason, proof}` (47
+  entrées : 38 `cheap`, 9 `outbound`/`disk`) ; `public_routes_cost_class_test.go` exige un test de preuve nommé et existant
+  pour `outbound`/`disk`. (b) `archlint/no_shared_writer_on_request_path_test.go` : prise de writer partagé interdite dans
+  `internal/api`, `internal/service`, `sync/match_recomputer.go` hors allowlist datée à compte décroissant. (c)
+  `archlint/no_readall_on_upload_test.go` : `io.ReadAll`/`ReadFrom` interdit dans un fichier qui manipule du multipart.
+
+Écarts au texte, justifiés : L5-1 plafonne aussi le device-flow dans `StepDeviceCode` (même appel) ; L5-3 ajoute
+`RecomputePending` (sans lui, la reprise après un recalcul en échec devenait un no-op silencieux) ; L5-5 déplace le cache
+de coalescence vers `platform/coalesce` (gel de la racine `internal/sync` à 79 fichiers) ; le test existant
+`TestMatchExclusionService_SetAndList` est ajusté (démarquer un match jamais exclu est désormais un no-op : `m2` est exclu
+avant d'être démarqué, attendu 3 recalculs au lieu de 2), contrat changé par le plan lui-même. L'allowlist des littéraux
+français est RESSERRÉE (`auth_xbox_oauth.go` 6 -> 5, issu de L4b, et `seasons_catalog.go` 4 -> 3, D-L1-5) pour faire passer
+le gate : baisses, jamais d'élargissement.
+
+**Preuves du rouge** (sorties gardées dans `%TEMP%\l5\`) :
+- L5-1 `go test ./internal/platform/auth/ -run AttemptStore` : FAIL, 21e tentative sans erreur, 4e tentative de la même IP
+  sans erreur ; handler : panique (tentative nulle) au premier refus avant gestion de l'erreur ; front
+  `XboxLoginPage.test.tsx -t "429 "` : 2 FAIL (texte du serveur affiché).
+- L5-2 `go test ./internal/assets/ -run 'TestGate|TestNegativeCache'` : 5 FAIL (identifiant inconnu servi, anonyme servi,
+  hit local qui consulte le fetcher, 404 amont non mémorisé) ; `TestMetadataCatalog_Classify` : 9 sous-tests FAIL ;
+  archlint fournisseur : FAIL avec `halo.NewHaloProvider()` remis dans la closure (`server_apiv1.go:1414`).
+- L5-3 `TestMatchRecomputer_NeverAcquiresTheSharedWriter` : FAIL « writer partagé acquis 1 fois, attendu 0 » ;
+  `TestMatchExclusionService_UnchangedStateIsANoOp` : FAIL « écritures=1 recalculs=1, attendu 0/0 ».
+- L5-4 `TestOpenSpartanImport_SharedWriterOnlyAfterFileValidation` : 2 FAIL (writer pris pour un fichier invalide et pour un
+  fichier d'un autre propriétaire) ; `TestStartImport_SecondImportWhileActiveReturns409` : 202 au lieu de 409 ; front : 2 FAIL.
+- L5-5 `UploadButton.test.tsx` : 2 FAIL ; sans la prise de place, `TestUploadHandler_(AtMostTwo|Busy)` ne termine pas
+  (aucun 503, le second envoi attend le service bloqué : arrêté au délai). Les tests du service
+  (`Open` au lieu de `Data`) échouaient à la compilation avant l'écriture du correctif.
+- L5-6 `TestRecomputeCoefficients_RequiresAdmin` : FAIL (route sans `RequireAdmin` ni `RequireAuth`) ;
+  `TestGamertagSearch_LiveIgnoredWithoutAuthenticatedSession` : 2 FAIL (repli live armé pour un anonyme).
+- L5-7 : classe de coût (nom de preuve inexistant), writer partagé (prise remise dans `match_recomputer.go`), `ReadAll`
+  (ajouté à `media_upload.go`) : chacun FAIL, source restaurée ensuite (`git diff` vide).
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9) : voir « Gates » du compte rendu ;
+détails ci-dessous.
+- Gate du lot : `go test ./internal/api/... ./internal/assets/... ./internal/service/... ./internal/platform/auth/...
+  ./internal/archlint/ -count=1` : exit 0, 17 paquets ok, 0 `--- FAIL:`. Premier passage rouge : trois tests d'archlint
+  (gel de la racine `internal/sync` à 79 fichiers, empreinte de libellé de carte reconnaissant la requête de présence du
+  catalogue, littéraux français neufs), corrigés dans le commit `89d64d0b2`.
+- Intégration : `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/platform/duckdb/...
+  -count=1` : exit 0, 18 paquets ok, 0 `--- FAIL:` ; `no_art_patterns_test.go` non modifié.
+- Gate commun : `go build ./cmd/server/` exit 0 ; `go vet` (paquets touchés) exit 0 ;
+  `golangci-lint run --new-from-rev=6e8df99c7` et forme CI `--new-from-merge-base=origin/main` : 0 issues ;
+  `go run ./cmd/openapi-gen` : aucun diff (aucune route Huma ajoutée, `recompute_coefficients` garde son opération) ;
+  `OpenAPI`/`Contract` dans la suite `./internal/api/` : ok.
+- Web : purge de `node_modules/.tmp`, `npm run typecheck` exit 0, `npm run lint` exit 0 (0 erreur, 26 avertissements
+  préexistants), `npm run test:run` exit 0 : 924 fichiers passés / 5 ignorés, 9668 tests passés / 23 ignorés ;
+  `lint:fields`, `lint:colors`, `lint-cross-feature-imports`, `knip-ratchet`, `lint-contract-ratchet` : exit 0.
+- Flake préexistant (D-L5-3) : `TestBootstrapBuild_WritablePlayerSlugs` échoue 4 fois sur 10 (ordre des slugs de l'admin),
+  fichier non touché par le lot ; vert au passage du gate.
+- Hooks pre-commit (gofmt, check-merge-conflict, docs-fr-sync, gitleaks, go-vet) verts sur les huit commits.
+
+**Non-régression (règle 9)** :
+- L5-1 : un rafraîchissement de la page de connexion garde son cookie : la tentative en attente est resservie hors plafond
+  (test `reprise avec le cookie`). Trois démarrages simultanés par IP : trois onglets sans cookie commun ou trois
+  appareils derrière une même IP ; au-delà, message « Réessaie dans une minute ».
+- L5-2 : images de médailles servies par `/static/medals` (le front n'appelle pas la route `/assets/medals`) ; cartes :
+  URL générée par le serveur à partir de la carte du match, présente dans `maps_catalog`/`asset_translations` (sur les
+  métadonnées préconstruites : 4 cartes déjà récupérées sur 4 reconnues). Risque résiduel : une carte toute neuve absente
+  des trois tables répond 404 (placeholder) jusqu'au prochain rafraîchissement du catalogue.
+- L5-3 : l'écran d'exclusion n'attend rien de plus ; un clic répété sur le même état répond 204 sans recalcul.
+- L5-4 : seul l'écran d'onboarding appelle la route ; un second envoi pendant un import montre le message dédié.
+- L5-5 : tous les fichiers dans une seule requête ; 2 envois simultanés par instance au maximum (un troisième attend jusqu'à
+  30 s) ; les transcodages se mettent en file (un ffmpeg à la fois), le job reste « running » pendant l'attente.
+- L5-6 : `live=1` n'est émis que par la saisie de gamertag des pages connectées ; un anonyme reçoit les résultats locaux.
+
+**Découvertes** : D-L5-1 à D-L5-6 (§6), non traitées.
+
+Commits : `d17fff56f` (L5-1), `2e12e8dfd` (L5-2), `bac4319a9` (L5-3), `ac39b1150` (L5-4), `8b9a6c2f0` (L5-5),
+`6b4637537` (L5-6), `bff0e94c0` (L5-7), `89d64d0b2` (gate archlint), puis le commit de clôture (plan, thought_log).
