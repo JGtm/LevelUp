@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"levelup/go-api/internal/domain"
 	mediapkg "levelup/go-api/internal/media"
 	"levelup/go-api/internal/observability"
@@ -27,7 +29,7 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 
 	var savedVideos []string // chemins abs des vidéos sauvées (candidats transcoding HLS)
 	for _, f := range req.Files {
-		dest, duplicate, err := storeUploadedFile(req.CapturesDir, f)
+		dest, duplicate, err := storeUploadedFile(ctx, req.CapturesDir, f)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", f.OriginalName, err))
 			slog.WarnContext(ctx, "upload: écriture fichier échouée",
@@ -210,7 +212,7 @@ const stagedUploadPattern = ".upload-*.part"
 // ré-upload du même média ; la copie temporaire est jetée (duplicate=true) pour ne pas
 // laisser une copie disque redondante que l'indexation ignorerait ensuite par hash.
 // Un échec (lecture coupée, disque plein) ne laisse aucun fichier derrière lui.
-func storeUploadedFile(dir string, f domain.UploadedFile) (dest string, duplicate bool, err error) {
+func storeUploadedFile(ctx context.Context, dir string, f domain.UploadedFile) (dest string, duplicate bool, err error) {
 	src, err := f.Open()
 	if err != nil {
 		return "", false, fmt.Errorf("ouverture: %w", err)
@@ -224,8 +226,11 @@ func storeUploadedFile(dir string, f domain.UploadedFile) (dest string, duplicat
 	tmpPath := tmp.Name()
 	committed := false
 	defer func() {
-		if !committed {
-			_ = os.Remove(tmpPath)
+		if committed {
+			return
+		}
+		if err := os.Remove(tmpPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			slog.WarnContext(ctx, "upload: retrait de la copie temporaire échoué", "path", tmpPath, "err", err)
 		}
 	}()
 
@@ -249,7 +254,7 @@ func storeUploadedFile(dir string, f domain.UploadedFile) (dest string, duplicat
 	}
 	committed = true
 	if err := os.Chmod(dest, 0o644); err != nil {
-		slog.Warn("upload: chmod du fichier échoué", "dest", dest, "err", err)
+		slog.WarnContext(ctx, "upload: chmod du fichier échoué", "dest", dest, "err", err)
 	}
 	return dest, false, nil
 }

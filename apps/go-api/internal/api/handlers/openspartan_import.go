@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -152,7 +153,7 @@ func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Re
 
 	jobStatus, created := h.jobStore.CreateIfNoActive(domain.JobTypeOpenSpartanImport, expectedXUID)
 	if !created {
-		_ = os.Remove(tmpPath)
+		removeTempUpload(r.Context(), tmpPath)
 		h.refuseActiveImport(r.Context(), w, expectedXUID)
 		return
 	}
@@ -191,12 +192,21 @@ func (h *OpenSpartanImportHandler) saveUploadedDB(r *http.Request) (string, erro
 	if err != nil {
 		return "", fmt.Errorf("création fichier tmp: %w", err)
 	}
-	defer f.Close()
-	if _, err := io.Copy(f, file); err != nil {
-		_ = os.Remove(tmpPath)
+	_, copyErr := io.Copy(f, file)
+	// Fermé avant tout retrait : un fichier ouvert ne se supprime pas sous Windows.
+	if err := errors.Join(copyErr, f.Close()); err != nil {
+		removeTempUpload(r.Context(), tmpPath)
 		return "", fmt.Errorf("copie vers tmp: %w", err)
 	}
 	return tmpPath, nil
+}
+
+// removeTempUpload retire la copie temporaire d'un import ; un échec (hors fichier déjà
+// absent) est journalisé : la copie reste alors sur le disque.
+func removeTempUpload(ctx context.Context, path string) {
+	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		slog.WarnContext(ctx, "openspartan_import: retrait de la copie temporaire échoué", "path", path, "err", err)
+	}
 }
 
 // runImport executes the import in a background goroutine and updates the
@@ -205,9 +215,9 @@ func (h *OpenSpartanImportHandler) saveUploadedDB(r *http.Request) (string, erro
 // is run inline before marking the job succeeded — its counts are merged
 // into the final job result.
 func (h *OpenSpartanImportHandler) runImport(jobID, expectedXUID, gamertag, tmpPath string) {
-	defer func() { _ = os.Remove(tmpPath) }()
-
 	ctx := context.Background()
+	defer removeTempUpload(ctx, tmpPath)
+
 	h.jobStore.SetStatus(jobID, domain.JobStatusRunning, pointers.Ptr("opening_database"))
 
 	opts := service.ImportOptions{
