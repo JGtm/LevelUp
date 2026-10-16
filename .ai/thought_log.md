@@ -1,3 +1,51 @@
+## [2026-10-16] Plan citations Halo 5, E6 : paliers relevés, docs et clôture — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : paliers de « Presque, ça ne compte pas » relevés à 50-500 (utilisateur, au vu de E5), appliqués en local par re-seed et recalcul complet ; pas de recuisson pour les matchs sans artefact (D7, au registre des reports). Docs : référence des citations (110, sources du film), notes de version FR/EN.
+
+**Résultats observés** : valeurs non plafonnées (124 à 233 pour les quatre joueurs actifs), V1-V4 verts ; `go vet` vert.
+
+**Conclusion** : push de la branche, CI, puis fusion dans `feat/v75` (accord utilisateur du 2026-10-16).
+
+## [2026-10-16] Plan citations Halo 5, E5 : rattrapage local et vérification — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : seed, `backfill-usage-summary` (us7) et recalcul complet des citations lancés avec le binaire de la branche contre les données du repo principal, serveur arrêté après accord des autres sessions, bases sauvegardées avant.
+
+**Résultats observés** : 4 citations insérées, 237 résumés re-projetés, 9 joueurs recalculés, V1-V4 verts ; citations existantes identiques à un recalcul par `feat/v75` sur copie (0 écart) ; « Presque, ça ne compte pas » au plafond pour 4 joueurs sur 5 ; frags sans bouclier mesurés seulement sur les 237 matchs dont l'artefact est sur disque. Tests, intégration et lint verts.
+
+**Conclusion** : paliers de « Presque » et mesure des matchs sans artefact à trancher par l'utilisateur ; suite E6 (docs).
+
+## [2026-10-16] Plan citations Halo 5, E4 : recalcul des citations d'un match dont le film est dérivé après elles — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : pas de jeton `_film` ; le post-sync de chaque joueur ajoute aux nouveaux matchs ceux dont la génération de citations est plus ancienne que la dernière dérivation du film (`written_at` des deux côtés), recalcul complet. Couvre cuisson locale, dépôt d'ouvrier, rattrapage et `backfill-usage-summary`, avec un cycle de latence.
+
+**Résultats observés** : test d'intégration vert (citation du film posée, citations API inchangées, sélection vide ensuite) ; 5 ms sur la base partagée du parc.
+
+**Conclusion** : suite E5 (seed, rattrapages, vérification locale) — lancement en lot à demander à l'utilisateur.
+
+## [2026-10-16] Plan citations Halo 5, E3 : Jouets éducatifs et Presque, ça ne compte pas — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : « Jouets éducatifs » lit la colonne existante `pad_pickups` (>= 3 en Assassin) ; « Presque, ça ne compte pas » lit une colonne neuve `shieldless_kills` du résumé d'usage, calculée à la dérivation en croisant le document au fil des morts (lu avant tout segment d'écriture), révision `us7`, migration nullable (NULL = non mesuré). Routage des customs converti en table.
+
+**Résultats observés** : tests unitaires et d'intégration verts sur les paquets touchés ; aucun constat lint nouveau.
+
+**Conclusion** : suite E4 (recalcul des citations d'un match après la dérivation de son film).
+
+## [2026-10-16] Plan citations Halo 5, E2 : Tick Tick Boom et Premier coup — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : deux customs (`compute_wins_assault` sur la variante seule, `compute_first_strike` sur la règle « Premier sang » extraite en `analysis.FirstBlood`), prédicats de mode uniques pour les victoires de mode et Bulldozer, garde-rail `TestCitationsCustom_ModesParPredicat`.
+
+**Résultats observés** : `go test` vert sur `analysis`, `games/halo_infinite`, `ops` ; aucun constat lint nouveau.
+
+**Conclusion** : suite E3 (Jouets éducatifs, Presque ça ne compte pas).
+
+## [2026-10-16] Plan citations Halo 5, E1 : le bouclier du tueur se lit à l'instant du frag — Complété (branche `feat/citations-film`)
+
+**Décision technique principale** : « Presque, ça ne compte pas » est livrable (D1). Une vie sans mesure de bouclier est une vie au bouclier jamais touché (le film ne réplique qu'au changement), donc l'état est connu pour 96,2 % des frags ; zéro retenu si la dernière mesure date de moins de 5 s ; survie = tueur non mort dans la seconde.
+
+**Résultats observés** : 233 artefacts, 22 725 frags ; 72,7 % mesurés, 23,5 % sans changement de bouclier, 3,8 % vie du tueur introuvable ; 94,5 % des vies de victimes portent une mesure ; 4 396 frags à 0 % frais, dont 3 480 survivants ; 0,35 ms par artefact. Détail : journal du plan.
+
+**Conclusion** : les frags ne sont pas dans le document de rejeu ; la colonne se calcule à la dérivation en croisant le document aux frags de `match_kill_events_latest`. Suite : E2.
+
 ## [2026-10-16] Images des citations : natives remises en place, audit, visuels blancs des citations à venir, plan des quatre citations Halo 5 — Complété (branche `feat/v75`)
 
 **Décision technique principale** : « Sécurisation du drapeau » sert désormais l'image native Halo 5 « Défenseur du drapeau » (demande initiale de l'utilisateur, mal lue à l'entrée précédente) ; `H5G_citation_Protecteur.png` est restaurée dans sa version native. Le crâne de « Chasse au porteur », validé par l'utilisateur, quitte le fichier natif « Somebody call for an exterminator? » (restauré) pour `halo_infinite/HI_citation_Chasse_au_porteur.png` : une image native ne s'écrase plus, une image remaniée vit sous `halo_infinite/`. Trois visuels blancs à ombre légère (style « Défenseur du drapeau ») pour les citations à venir, validés : `HI_citation_Premier_coup.png`, `HI_citation_Presque_ca_ne_compte_pas.png`, `HI_citation_Tick_Tick_Boom.png` (non référencés tant que le plan n'est pas exécuté).

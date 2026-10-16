@@ -69,6 +69,9 @@ type usageSummaryOptions struct {
 	force     bool
 	dryRun    bool
 	match     string
+	// fragsDe : le fil des morts d'un match, pour les frags sans bouclier (meme lecture que le fil
+	// de l'eau, `replayartifacts.LireFragsDuFilDesMorts`). Nil = non mesures.
+	fragsDe func(ctx context.Context, matchID string) replay.ShieldlessKillsInput
 }
 
 // passeCouranteUsage : ce que la vue `_latest` dit d un match deja resume.
@@ -143,6 +146,7 @@ func runBackfillUsageSummary(cfg *config.AppConfig, args []string) error {
 	if err != nil {
 		return err
 	}
+	o.fragsDe = fragsDuFilDesMorts(db)
 	dejaResumes := map[string]passeCouranteUsage{}
 	if !o.force {
 		if dejaResumes, err = passesCourantesUsage(ctx, db); err != nil {
@@ -351,6 +355,9 @@ func projeterUnArtefact(
 		}
 	}
 	s := replay.BuildUsageSummary(doc)
+	if o.fragsDe != nil {
+		replay.AttachShieldlessKills(&s, doc, o.fragsDe(ctx, matchID))
+	}
 	return &s, usageAProjeter
 }
 
@@ -370,4 +377,18 @@ func usagePowerupsTexte(m map[string]int) string {
 		parts = append(parts, fmt.Sprintf("%s:%d", fam, m[fam]))
 	}
 	return "{" + strings.Join(parts, " ") + "}"
+}
+
+// fragsDuFilDesMorts lit le fil des morts d'un match sur la base partagee ouverte par la passe.
+// Une lecture en echec laisse les frags non mesures (colonne NULL) et se dit.
+func fragsDuFilDesMorts(db *sql.DB) func(ctx context.Context, matchID string) replay.ShieldlessKillsInput {
+	return func(ctx context.Context, matchID string) replay.ShieldlessKillsInput {
+		frags, err := replayartifacts.LireFragsDuFilDesMorts(ctx, db, []string{matchID})
+		if err != nil {
+			slog.ErrorContext(ctx, "backfill usage : fil des morts illisible, frags sans bouclier non mesures",
+				"match_id", matchID, "err", err)
+			return replay.ShieldlessKillsInput{}
+		}
+		return frags[matchID]
+	}
 }

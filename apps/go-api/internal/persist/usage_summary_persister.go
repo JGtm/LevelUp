@@ -180,7 +180,7 @@ func insertUsagePlayerRows(
 			r.OvershieldEpisodes, r.OvershieldMS, r.OvershieldKills,
 			deployed, r.DroppedObjects, r.GrenadesThrown,
 			r.PadPickups, padPickups,
-			issues.taken, issues.spent, issues.kept, issues.dropped); err != nil {
+			issues.taken, issues.spent, issues.kept, issues.dropped, r.ShieldlessKills); err != nil {
 			return fmt.Errorf("persist: INSERT match_usage_players %s/%s: %w", matchID, r.XUID, err)
 		}
 	}
@@ -256,5 +256,5 @@ const insertMatchUsagePlayerSQL = `
 		 overshield_episodes, overshield_ms, overshield_kills,
 		 deployed_json, dropped_objects, grenades_thrown,
 		 pad_pickups, pad_pickups_json,
-		 taken_json, spent_json, kept_json, dropped_json)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		 taken_json, spent_json, kept_json, dropped_json, shieldless_kills)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
