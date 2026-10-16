@@ -153,36 +153,36 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 
 ### L3 — Identité du demandeur et accès aux données d'autrui (C4-1 à C4-8, D-A, D-B, D-C) — Opus — effort L
 
-- [ ] L3-1 Test rouge puis correctif : `POST /session/context` refuse (403) un `player_slug` que
+- [x] L3-1 Test rouge puis correctif : `POST /session/context` refuse (403) un `player_slug` que
       `authz.CanAccessPlayer` n'autorise pas pour l'utilisateur courant.
-- [ ] L3-2 Suppression et likes de médias : le demandeur et le liker sont dérivés du profil
+- [x] L3-2 Suppression et likes de médias : le demandeur et le liker sont dérivés du profil
       possédé par `authz.CurrentUser` (xuid), plus jamais de `SessionPlayerSlug` ; test « média
       d'autrui » × {supprimer, liker} → 403.
-- [ ] L3-3 Association média → match : contrôle de propriétaire (règle de `CanDeleteMedia`) ;
+- [x] L3-3 Association média → match : contrôle de propriétaire (règle de `CanDeleteMedia`) ;
       recherche par chemin complet ; le repli `file_name` n'est conservé que s'il est restreint au
       joueur (vérifier les appelants) ; test « média d'autrui » × associer → 403.
-- [ ] L3-4 D-A : `RequirePlayerOwnership` ne transmet l'ensemble famille que si
+- [x] L3-4 D-A : `RequirePlayerOwnership` ne transmet l'ensemble famille que si
       `!IsMutatingRequest(r)` ; vérifier `squadActorGuard` (Prestige) sur la même règle ; test
       « co-membre × toutes les routes mutantes du routeur » (walk chi) → 403.
-- [ ] L3-5 Amendement de l'ADR 0029 (EN) : section « Group/family access is read-only (2026-10-15) ».
-- [ ] L3-6 Provisionnement : `guardLinkedXboxIdentity` pour tout non-admin quel que soit
+- [x] L3-5 Amendement de l'ADR 0029 (EN) : section « Group/family access is read-only (2026-10-15) ».
+- [x] L3-6 Provisionnement : `guardLinkedXboxIdentity` pour tout non-admin quel que soit
       `profile_mode` ; `ProfileService.CreatePlayer` refuse (409) de changer le xuid d'un profil
       existant hors admin ; test table-driven modes × non-admin ; vérifier la précondition avec
       `instance_locked=true` (état prod) et consigner.
-- [ ] L3-7 Défi d'escouade : `assertMemberUser` dans `CreateSquadChallenge` ; commentaire faux de
+- [x] L3-7 Défi d'escouade : `assertMemberUser` dans `CreateSquadChallenge` ; commentaire faux de
       `api/prestige_player_slug_mw.go:26-29` corrigé ; garde-rail AST « toute méthode du service
       Prestige qui reçoit un `squadID` appelle `assertMemberUser` ».
-- [ ] L3-8 D-C : `/healthz/home` sous `RequireAuth` + `RequireAdmin` ; commentaire faux corrigé ;
+- [x] L3-8 D-C : `/healthz/home` sous `RequireAuth` + `RequireAdmin` ; commentaire faux corrigé ;
       e2e/harnais démo vérifiés (auth inactive → toujours joignable).
-- [ ] L3-9 D-B import OpenSpartan : n'écrire que les matchs où le xuid de la session participe ;
+- [x] L3-9 D-B import OpenSpartan : n'écrire que les matchs où le xuid de la session participe ;
       aucun `UpsertXUIDAlias` pour un xuid ≠ propriétaire (alias tiers : `INSERT OR IGNORE`
       seulement, jamais d'`UPDATE`) ; `match_id` validé (hexadécimal et tirets) ; test fixture
       « xuid tiers seul » → 0 ligne écrite, « alias tiers existant » → inchangé. Risque résiduel
       (falsification d'un match auquel l'importeur a participé) consigné au journal.
-- [ ] L3-10 Couche B : contrôle de participation (404 `match_not_participant`) sur `/replay`,
+- [x] L3-10 Couche B : contrôle de participation (404 `match_not_participant`) sur `/replay`,
       `/positions`, `/objective-events`, `/events` et la séquence tactique (rejeu public en prod) ;
       test table-driven sur toutes les routes `/matches/{match_id}/*`.
-- [ ] L3-11 Garde-rails : `internal/archlint/session_player_slug_test.go` interdit
+- [x] L3-11 Garde-rails : `internal/archlint/session_player_slug_test.go` interdit
       `SessionPlayerSlug(` dans `handlers/`, `service/`, `domain/` hors affichage (allowlist
       vide au départ) ; ratchet « tout paramètre `player`/`player_slug`/`xuid`/`gamertag` d'une
       route hors `/players/{player_slug}` exige propriété ou admin ».
@@ -454,6 +454,31 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
   limite `demo_limit` répond 503, que le front lit comme une panne et non comme un excès de tentatives.
 - **D-L1-5** (L1) `archlint/no_french_label_literal_test.go` signale une baisse non figée :
   `service/seasons_catalog.go` compte 3 littéraux pour 4 alloués (allowlist à resserrer).
+
+- **D-L3-1** (L3) `features/home/HomePage.tsx` et `components/ui/match-card.tsx` portent une exemption
+  `max-lines` datée « le découpage revient au lot qui touchera ce fichier ». L3-4 a touché `HomePage.tsx`
+  (2 lignes : étoile favori masquée sur un profil d'ami) sans le découper (hors périmètre).
+- **D-L3-2** (L3) L8-1 (démo : `RequireAdmin` répond 403 hors allowlist) doit allowlister `GET /healthz/home` :
+  l'e2e `slice-5-home.spec.ts`, `e2e/_helpers/demoData.ts` et `scripts/demo-visual-harness.sh` le sondent en démo
+  (inerte aujourd'hui, L3-8).
+- **D-L3-3** (L3) Deux copies de la forme d'un identifiant de match : `domain.IsValidMatchID` (L3-9) et
+  `sync.isValidMatchID` (`sync/backfill.go:518`). L6-3 étend la validation : centraliser sur la version `domain`
+  et poser le garde-rail (règle 6).
+- **D-L3-4** (L3) `MatchViewService.assertParticipation` (vue du match) reste ouvert sur erreur de base ; la route
+  est désormais précédée de `RequireMatchParticipation`, fermé sur erreur : la vérification du service est
+  redondante sur ce chemin (gardée pour les appelants hors HTTP).
+- **D-L3-5** (L3) Le rôle admin du demandeur d'une suppression ou d'une association de média vient encore de
+  `sess.Role` (`handlers/media_requester.go`, `sessionIsAdmin`) : couvert par L4-5.
+- **D-L3-6** (L3) La règle d'écriture propre de la liste d'amis (`friends_forbidden`, `handlers/friends.go`) n'est
+  plus atteinte par le routeur (la garde de groupe refuse avant, `player_forbidden`) ; le front mappe encore
+  `friends_forbidden` (`features/friends/errors.ts`).
+- **D-L3-7** (L3) Un non-admin dont le gamertag est déjà porté par un profil d'un autre xuid (gamertag réattribué
+  par Xbox) reçoit 409 `profile_xuid_conflict` à l'onboarding ; le front n'a pas de message dédié (FR + EN).
+- **D-L3-8** (L3) Sur le profil d'un ami, ses notifications restent LISIBLES (D-A : lecture) par la page dédiée ;
+  la cloche et les toasts sont coupés. Question produit ouverte : une notification est-elle une donnée
+  « consultable par un ami » ?
+- **D-L3-9** (L3) En-tête de `service/openspartan_import_service.go` périmé (« writes via the existing sync.Insert*
+  helpers » : l'écriture passe par `persist.SharedPersister`).
 
 ## 7. Journal
 
@@ -818,3 +843,163 @@ du document OpenAPI Huma (liste `isKnownChiBrut`) : aucune exception de plafond 
 - **D-L2-4** `pruneMarks` du store de session garde les marques d'écriture d'une session anonyme jusqu'au TTL
   complet (7 jours) alors que la session expire à 24 h : table en mémoire un peu plus longue que nécessaire,
   bornée par la purge de 6 h.
+
+### L3 - Identité du demandeur et accès aux données d'autrui - 2026-10-15/16 - clos
+
+Base : `git log --oneline -1` = `edefdd427` avant le lot ; branche `feat/securite-2026-10-15`. Session coupée
+une fois par la limite de session de l'API (L3-9 en cours, non commité) ; reprise sur `git status`/`git diff`,
+L3-9 re-vérifié (tests rejoués) avant commit. Références du registre rouvertes et conformes :
+`session_context.go:79-81`, `middleware/session.go:94`, `media_delete.go:86`, `media_likes.go:104`,
+`media.go:342-362`, `media_repo_writes.go:28-31` (repli `file_name`), `server_apiv1.go:146-147` et le
+`squadActorGuard`, `setup.go:193-200,300`, `profile_service.go:82`, `service_squad_challenges.go:28-66`,
+`prestige_player_slug_mw.go:26-29`, `server_apiv1.go:191-196` (`/healthz/home`), `openspartan_import_service.go`
+(`importAliases` : `UpsertXUIDAlias` pour tout xuid), `match_view_service.go:478-494`.
+
+**Statuts** : L3-1 à L3-11 `[x]`. Aucun `[!]`, aucun `[~]`. Écarts au texte, justifiés : L3-2 « liker -> 403 » :
+liker le média d'un autre reste légitime (galerie agrégée) ; l'attaque (joueur courant forgé) est fermée en
+attribuant le like au demandeur réel, et un like sur le chemin du profil d'un ami est refusé (403) par L3-4.
+L3-10, séquence tactique : déjà fermée par `MatchsOuvrables` (404 `replay_not_available`, indiscernable d'un
+rejeu absent, choix documenté du service) ; laissée telle quelle, vérifiée par `TestSequence_Indisponible`
+(cas « match d'un autre joueur »).
+
+- **L3-1** `SessionHandler.WithPlayerAccess` : un `player_slug` que la session ne peut pas LIRE -> 403
+  `player_forbidden`, avant toute mutation (aucun fichier de session écrit). Câblé sur `PlayerAccess` (lecture).
+  Test `handlers/session_context_access_test.go`.
+- **L3-2** `api/requester_resolver.go` : demandeur = profil de `db_profiles.json` (titre courant, hors
+  `auth_only`) dont le xuid est celui de `authz.CurrentUser` ; hors propriété appliquée, le joueur choisi.
+  `MediaHandler.WithRequester` (suppression, like ; propriété appliquée sans profil possédé -> 401, plus de
+  repli sur la session ni sur le corps). Viewer des galeries aligné (`ServiceRegistry.WithViewerResolver`).
+  Tests `handlers/media_requester_test.go`, `api/requester_resolver_test.go` ; tests existants adaptés par un
+  résolveur de fixture explicite.
+- **L3-3** `domain.CanModifyMedia` (règle de `CanDeleteMedia`, extraite) appliquée par
+  `MediaService.authorizeMediaAssociation` au propriétaire réel chargé par le chemin COMPLET ; repli `file_name`
+  retiré de `SetMediaMatchAssociation` (seul appelant : le handler ; le front envoie l'URL servable, reconvertie
+  en chemin stocké). 403 `media_associate_forbidden`, 401 `associate_requires_session`. Tests
+  `TestMediaService_AssociateMedia_OwnerOnly` (vraie shared_social), `TestMediaAssociate_ForeignMediaIs403`.
+- **L3-4** `authz.CanWritePlayer` ; `middleware.PlayerAccess` (décision unique : slug -> xuid, utilisateur,
+  famille résolue pour une LECTURE seulement) ; `RequirePlayerOwnership(access)` classe la requête
+  (`IsMutatingRequest`) et la pose dans le contexte (`RequestWrites`, absente = écriture) ; `squadActorGuard`
+  décide avec cette classification. `/bootstrap` publie `writable_player_slugs`. Tests :
+  `require_player_ownership_family_write_test.go`, `api/family_write_routes_test.go` (walk chi : 44 routes
+  d'écriture des groupes `/players/{player_slug}` et `/profiles/{player_slug}/...`, toutes 403 au co-membre,
+  toutes les lectures 200, garde présente sur chaque route), `bootstrap_ownership_test.go`, front
+  `MatchHeader.test.tsx`, `MediaAudioConfigButton.test.tsx`, `appShellStore.test.ts`,
+  `playerWriteAccess.test.ts`. `friends_test` : le PUT d'un co-membre répond `player_forbidden` (garde de
+  groupe) au lieu de `friends_forbidden` (assertion mise à jour, refus inchangé ; D-L3-6).
+- **L3-5** ADR 0029 (EN) : section « Group/family access is read-only (2026-10-15) ».
+- **L3-6** `mustPinIdentity` : épinglage à l'identité liée pour tout non-admin en propriété appliquée, quel que
+  soit `profile_mode` (hors propriété appliquée : mode `xbox` seulement, comme avant) ; `CreatePlayer` refuse de
+  réécrire le xuid d'un profil existant hors admin (`domain.ErrProfileXUIDConflict`,
+  `OnboardRequest.ActorIsAdmin` -> `AllowXUIDChange`) -> 409 `profile_xuid_conflict`. Précondition prod
+  (`instance_locked=true`) vérifiée : sans droit de provisioning, 403 `instance_locked` avant toute
+  vérification d'identité (`TestSetupHandler_LockedInstanceRefusesForeignProfileBeforeIdentity`) ; avec droit,
+  l'épinglage existant tient (`TestSetupHandler_LockedWithGrant_*`). `handleCreatePlayer` : 120 lignes (121
+  avant).
+- **L3-7** `CreateSquadChallenge` vérifie l'appartenance ; `membersIfMember` (garde + roster) remplace la copie
+  inline de `RefreshSquadPool` ; commentaire de `prestige_player_slug_mw.go` réécrit ; garde-rail AST
+  `prestige/squad_member_guard_test.go` (exception datée : `ListSquadMembers`, sans acteur, nourri par
+  `ListSquadsForUser`) et sa preuve sur une source défectueuse.
+- **L3-8** `GET /healthz/home` sous `RequireAuth` + `RequireAdmin` ; commentaire « propriété implicite
+  (session) » remplacé. Usages : `e2e/slice-5-home.spec.ts`, `e2e/_helpers/demoData.ts`,
+  `scripts/demo-visual-harness.sh`, tous en démo où les deux gardes sont inertes : toujours joignable (D-L3-2
+  pour L8-1). OpenAPI inchangé (golden vert). Test `api/healthz_home_admin_test.go`.
+- **L3-9** `service/openspartan_import_scope.go` : match à identifiant hors forme Halo écarté
+  (`domain.IsValidMatchID`) ; match sans l'importeur écarté (`SkippedForeignMatches`, journalisé) avec ses
+  événements marquants ; alias de l'importeur mis à jour (`UpsertXUIDAlias`) ; alias des autres participants
+  d'un match retenu seulement proposés par le batch du match (`persist.BatchBuilder.AddXUIDAliases`, INSERT OR
+  IGNORE, même transaction) ; plus aucun UPDATE de `xuid_aliases` pour un tiers. Ratchet anti-ART inchangé.
+  **Risque résiduel accepté par D-B** : l'importeur peut falsifier un match auquel il a participé, y compris
+  les lignes des autres participants, et devancer la version réelle, que l'écriture INSERT-only ne remplacera
+  pas. Test `service/openspartan_import_scope_test.go` (vrai fichier SQLite forgé).
+- **L3-10** `middleware.RequireMatchParticipation` (middleware de route, `r.With`) : 404
+  `match_not_participant`, 503 `participation_unavailable` si la vérification échoue (fermé) ;
+  `ServiceRegistry.MatchParticipation` (EXISTS `match_participants` ; profil inconnu laissé au 404 du
+  handler). Monté sur les 12 routes `/matches/{match_id}/...` (vue, voisins, positions, objectifs, rejeu x4,
+  événements, engagement, exclusion, favori). Tests `api/match_participation_routes_test.go` (walk chi),
+  `middleware/match_participation_test.go`.
+- **L3-11** `archlint/session_player_slug_test.go` (aucune référence à `SessionPlayerSlug` dans `api/handlers`,
+  `service`, `domain` ; allowlist vide) ; `api/identity_param_guard_test.go` (paramètre
+  `player`/`player_slug`/`xuid`/`gamertag` hors `/players/{player_slug}` -> `RequirePlayerOwnership` ou
+  `RequireAdmin` ; exceptions datées : `DELETE /groups/{id}/members/{xuid}` (propriétaire du groupe, décidé
+  par le handler) et `?xuid=` du catalogue (filtre inactif, `NewCatalogRepo(..., nil)`)).
+
+**Preuves du rouge** (sorties gardées dans le scratchpad de session) :
+- L3-1 `go test ./internal/api/handlers/ -run TestSessionContext_ForeignPlayerSlugIs403` : FAIL, 200 au lieu
+  de 403 (`"current_player_slug":"mallory"`).
+- L3-2 `-run 'TestMediaDelete_|TestMediaLike_'` : 4 FAIL, demandeur `JGtm` (joueur courant forgé) au lieu de
+  `Mallory` ; 200 au lieu de 401 sans profil possédé (suppression et like).
+- L3-3 `TestMediaService_AssociateMedia_OwnerOnly` : `err = <nil>, attendu forbidden` (le média d'autrui était
+  associé) ; `TestMediaAssociate_ForeignMediaIs403` : 500 `associate_error` au lieu de 403.
+- L3-4 middleware : 4 FAIL (POST sync, PATCH exclusion, DELETE media, PUT audio-config : 200 au co-membre) ;
+  walk chi avec la règle d'écriture neutralisée le temps du test (fichier restauré, diff vérifié) : 44 routes
+  en 200 au lieu de 403 ; bootstrap : `writable_player_slugs []` sur les 3 cas ; front sur les composants
+  d'avant (restaurés) : 2 FAIL (étoile « Retirer des favoris » et engrenage audio présents sur le profil d'un
+  ami).
+- L3-6 `TestSetupHandler_NonAdminPinnedToOwnIdentityInEveryMode` : modes `azure_manual` et `manual` -> 201
+  (profil « Victim » créé avec le xuid de l'attaquant) ;
+  `TestProfileService_CreatePlayer_RefusesXUIDChangeOfExistingProfile` : `err = <nil>`.
+- L3-7 `TestService_CreateSquadChallenge_RejectsNonMember` : `err = <nil>` ; garde-rail AST sur le
+  `service_squad_challenges.go` d'avant (restauré) : « méthode CreateSquadChallenge : reçoit un identifiant
+  d'escouade sans appeler assertMemberUser/membersIfMember ».
+- L3-8 `TestHealthzHome_RequiresAdmin` : « sans RequireAdmin » ; ratchet L3-11 sur le montage d'avant
+  (restauré) : « GET /api/v1/healthz/home : désigne un joueur sans RequirePlayerOwnership ni RequireAdmin ».
+- L3-9 `TestOpenSpartanImport_WritesOnlyOwnerMatches` : 7 manquements (match de tiers, ses 2 participants, son
+  événement marquant, identifiant piégé `../../../tmp/x` écrit, alias d'un tiers inconnu écrit, « NomReel »
+  réécrit en « OtherPlayer », InsertedMatches = 4 au lieu de 2).
+- L3-10 `TestMatchRoutesRequireParticipation` : 12 routes « sans RequireMatchParticipation ».
+- L3-11 `TestNoSessionPlayerSlugInDecisionLayers` sur les handlers médias d'`edefdd427` (restaurés) :
+  `media_delete.go:86`, `media_likes.go:104`.
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9) :
+- Gate du lot : `go test ./internal/api/... ./internal/authz/... ./internal/service/... ./internal/prestige/...
+  ./internal/openspartan/... ./internal/archlint/ -count=1` : exit 0 (16 paquets ok). Premier passage rouge :
+  `TestNoNewFrenchLabelLiteral` (messages neufs en français dans `session_context.go` et
+  `media_service_delete.go`), corrigé en messages techniques anglais (`7ad75f884`), garde-rail intact.
+- `go test -tags=integration -p 1 ./internal/persist/... ./internal/sync/... ./internal/platform/duckdb/ -count=1` :
+  exit 0 (persist 58,6 s, sync 293,1 s, duckdb 235,3 s, 15 paquets ok).
+- Gate commun : `go build ./cmd/server/` ok ; `go vet` (api, handlers, middleware, wire, authz, domain, service,
+  playerdirectory, prestige, duckdb, archlint) exit 0, `-tags=integration` duckdb + service exit 0 ;
+  `golangci-lint run --new-from-rev=edefdd427` (v2.12.2) : 1 goconst (copie de traduction d'erreur), corrigé
+  par `mediaWriteError` (`e0591928c`), puis 0 issues ; forme CI `--new-from-merge-base=origin/main` : 0 issues ;
+  `go run ./cmd/openapi-gen` + `npm run generate-types` (champ `writable_player_slugs`) ;
+  `go test ./internal/api/ -run 'OpenAPI|Contract'` ok ; archlint complet rejoué après le dernier commit : ok.
+- Web : purge de `node_modules/.tmp`, `npm run typecheck` exit 0, `npm run lint` 0 erreur (26 avertissements
+  préexistants), `npm run test:run` : 922 fichiers passés / 5 ignorés, 9618 tests passés / 23 ignorés, exit 0 ;
+  `tools/lint-no-hardcoded-{fields,colors}`, `lint-cross-feature-imports`, `knip-ratchet`,
+  `lint-contract-ratchet` : propres.
+
+**Non-régression (règle 9)** :
+- Routes mutantes des groupes joueur (walk chi) -> élément d'interface -> comportement sur le profil d'un ami :
+  arcs (créer, adopter un preset, supprimer) -> `AscensionObjectivesTab` (`CreateArcForm`, `ArcPresetPicker`,
+  bouton de suppression) : masqués ; défis Prestige (créer, abandonner) -> `CreateChallengeForm`,
+  `ObjectiveCard` : masqués ; `PATCH prestige/challenges/{id}`, `suggest-next`, `squads/{id}/members` (ajout,
+  retrait), `POST /sync`, `engagement/recompute_coefficients` : aucun appelant dans l'interface ; mode pilote ->
+  `PilotModeToggle` et son CTA : masqués ; campagnes (lancer, pause, reprise, clôture, abandon) ->
+  `ProgressionLeadsSection` / `StartCampaignModal`, `CampaignTracker` : non proposées / masquées ; coach
+  (accepter, ignorer) -> `CoachProposalsCard` : masqués ; amis -> `PlayerFriendsSection` : déjà en lecture par
+  `can_edit` ; exclusion, favori -> `MatchHeaderCard` (bouton, étoile) et tuiles d'accueil (`HomePage` ->
+  `MatchCard`) : masqués ; médias -> `UploadButton` masqué, suppression et association/réassociation
+  masquées, cœur affiché désactivé (`MediaPage`, `RecentMediaRail`, `MatchMediaTab`), engrenage audio masqué ;
+  notifications (lue, non lue, tout lire, supprimer) -> cloche masquée (`NavL1`), toasts coupés
+  (`toastBridge`), page dédiée en lecture seule (`NotificationsPage`, `NotificationItem readOnly`) ;
+  préférences et test -> `NotificationsSettingsTab` : figés ; escouades et défis d'escouade ->
+  `SquadFocusStrip` (enregistrer, renommer, supprimer), `useSquadPresets` (pied, gestion),
+  `SquadObjectivesPanel` (évaluer, rejoindre, supprimer, proposer, créer) : masqués ; titres (pause, purge) ->
+  Réglages > Titres (`TitlesTab`) : figés. Source : `writable_player_slugs` du bootstrap ; liste absente = rien
+  n'est masqué (le serveur reste l'arbitre). Aucun libellé ajouté (masquage ou désactivation seuls), aucune
+  couleur.
+- L3-1 : le front ne poste `player_slug` qu'au changement de joueur, parmi `available_players` (lisibles) ; un
+  refus est avalé (`.catch`), rien ne casse.
+- L3-10 : liens vers le rejeu seulement sur des matchs du joueur du profil : vue du match (participé, gardée),
+  tuiles d'accueil (matchs récents du joueur), Explorer (matchs du joueur), Tactique (morts du joueur),
+  Escouade (`SquadMatchHistoryRow` : matchs partagés par le joueur et la composition), règle des records
+  d'armes (frags du joueur). Positions, objectifs et événements ne sont lus que depuis la vue d'un match joué.
+  Les e2e démo (rejeu figé de `demo-player`) n'ont pas été lancés (serveur requis) : couverts par F-0b.
+- L3-8 : sondes e2e et harnais démo en démo, gardes inertes.
+- L3-6 : le front n'envoie jamais `profile_mode` (défaut `xbox`) : l'onboarding de son propre profil est
+  inchangé.
+
+**Découvertes** : D-L3-1 à D-L3-9 (§6), non traitées.
+
+Commits : `bde785689`, `adcd9f2db`, `e1525f55b`, `ad1a9484d`, `40b649b6a`, `73ba6fb8e`, `7ad75f884`,
+`e0591928c`, puis le commit de clôture (plan, thought_log).
