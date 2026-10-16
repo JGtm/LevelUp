@@ -475,6 +475,19 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
         `X-Real-IP` hors middleware d'IP ; `session_player_slug` voit aussi `CurrentPlayerSlug` (exception
         datée pour un affichage) ; test d'envoi concurrent rendu déterministe (sans `time.Sleep`) ; chacun vu
         rouge.
+- [ ] F-1b Ronde 2 de la revue (2026-10-16 ; 1 P1 + 3 P2, dont 1 réfuté par le superviseur : la démo coupe toute
+      sortie réseau par `netguard`, `discovery_client.go:250`). Bornes de boucle atteintes : décision de
+      l'utilisateur du 2026-10-16 « corrige tout, versions réelles » :
+  - [ ] R2-1 (P1) `http.NewResponseController(w).SetReadDeadline` rend `ErrNotSupported` en production : les
+        enveloppes `sessionResponseWriter` (`middleware/session.go`) et `statusResponseWriter`
+        (`middleware/slog_logger.go`) n'exposent pas `Unwrap() http.ResponseWriter`. Les rendre transparentes ;
+        test de l'attente d'envoi à travers la VRAIE pile (WithSession + SlogLogger) ; garde-rail : toute
+        enveloppe de `ResponseWriter` du paquet middleware implémente `Unwrap`.
+  - [ ] R2-2 (P2) Recalcul coalescé (`platform/coalesce`) : contexte détaché AVEC échéance (10 min) ; l'arrêt du
+        serveur attend la fin des recalculs en vol avant `duckdb.CloseAll` ; commentaire conforme ; tests.
+  - [ ] R2-3 (P2, décision de l'utilisateur) Images de carte : une version `v` présente dans de vrais matchs
+        de la base partagée est récupérable par tous (anonyme compris) ; une version inventée reste refusée
+        sans appel sortant ; test sur la vraie route.
 - [ ] F-2 `make gate-push` vert.
 - [ ] F-3 Push de `feat/securite-2026-10-15`, CI verte au niveau job (`gh run list --branch`).
 - [ ] F-4 Registre et backlog mis à jour (items fermés, `[sécurité]` et `[demo]` du backlog).
