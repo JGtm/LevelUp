@@ -1,3 +1,11 @@
+## [2026-10-16] Image de la citation « Sécurisation du drapeau » : losange et croix sans ailes ni auréole — Complété (branche `feat/v75`)
+
+**Décision technique principale** : `H5G_citation_Protecteur.png` (100x100) remplacée par le losange et sa croix de l'original, sans ailes d'ange ni auréole. Ces éléments recouvrant le losange, il a été redessiné d'après la géométrie mesurée sur les pixels de l'original (liseré fin fermé, quatre petits losanges, croix en X intérieure ; superposition vérifiée), agrandi d'environ 1,5, contour sombre, fond transparent. Chemin inchangé, `seed_citation_data.go` intact.
+
+**Résultats observés** : contour net sur fond sombre et clair.
+
+**Conclusion** : « Rapatriement agressif » reste à trancher (proposition d'anneau blanc avec drapeau disponible).
+
 ## [2026-10-16] Image de la citation « Chasse au porteur » : crâne blanc dans un anneau blanc — Complété (branche `feat/v75`)
 
 **Décision technique principale** : `H5G_citation_Somebody_call_for_an_extermination%3F.png` (100x100) remplacée par un crâne blanc (extrait du logo Oddball) dans un anneau blanc en quatre arcs, contour sombre, fond transparent. Chemin inchangé, `seed_citation_data.go` intact. Variante retenue par l'utilisateur parmi plusieurs (réticule, cadre, losange, anneau gris écartés).
