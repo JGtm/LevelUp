@@ -547,10 +547,8 @@ func buildHLS(ctx context.Context, srcPath, outDir string, opts HLSOptions) (HLS
 	}
 
 	args := buildHLSArgs(plan, srcPath, outDir, segDur)
-	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
 	stderr := &bytes.Buffer{}
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
+	if err := RunFFmpeg(ctx, FFmpegJob{Args: args, Stderr: stderr}); err != nil {
 		slog.ErrorContext(ctx, "BuildHLS ffmpeg failed",
 			"src", srcPath, "out_dir", outDir, "stderr", stderr.String(), "err", err)
 		return HLSResult{}, fmt.Errorf("ffmpeg hls: %w (stderr: %s)", err, stderr.String())

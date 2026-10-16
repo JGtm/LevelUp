@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -156,6 +157,24 @@ func setMediaContentType(w http.ResponseWriter, ext string) {
 	}
 }
 
+// remuxBusyRetryAfterSec : délai conseillé (Retry-After) à une lecture remuxée refusée faute
+// de place ffmpeg.
+const remuxBusyRetryAfterSec = "30"
+
+// respondRemuxBusy répond 503 + Retry-After quand le remux n'a pas obtenu la place ffmpeg à
+// temps (media.ErrFFmpegBusy : aucun processus démarré, aucun octet écrit) et rend true. Toute
+// autre erreur rend false : le flux a commencé, l'appelant ne peut plus que la journaliser.
+func respondRemuxBusy(ctx context.Context, w http.ResponseWriter, absPath string, err error) bool {
+	if !errors.Is(err, mediapkg.ErrFFmpegBusy) {
+		return false
+	}
+	slog.WarnContext(ctx, "media remux: aucune place ffmpeg libre, lecture refusée", "path", absPath, "err", err)
+	w.Header().Del("Content-Type")
+	w.Header().Set(headerRetryAfter, remuxBusyRetryAfterSec)
+	httpError(ctx, w, "ffmpeg busy", http.StatusServiceUnavailable)
+	return true
+}
+
 // serveRemuxedWebM streame le fichier source remuxé en WebM via ffmpeg. Le
 // pré-flight (probe + validation codecs) est fait AVANT tout header : un source
 // aux codecs incompatibles WebM répond 415, un probe cassé répond 502 — plus de
@@ -183,6 +202,9 @@ func serveRemuxedWebM(w http.ResponseWriter, r *http.Request, absPath string) {
 	}
 	w.Header().Set("Content-Type", "video/webm")
 	if err := mediapkg.StreamRemuxWebMPlan(r.Context(), absPath, plan, w); err != nil {
+		if respondRemuxBusy(r.Context(), w, absPath, err) {
+			return
+		}
 		slog.ErrorContext(r.Context(), "media remux: échec en cours de flux (status déjà envoyé)",
 			"path", absPath, "err", err)
 	}

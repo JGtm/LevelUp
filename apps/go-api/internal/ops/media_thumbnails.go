@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	mediapkg "levelup/go-api/internal/media"
 )
 
 func GenerateThumbnails(ctx context.Context, videosDir, thumbsDir string) (int, []string) {
@@ -161,7 +163,7 @@ func generateAnimatedThumbnail(ctx context.Context, videoPath, webpPath string) 
 	if dur, err := probeVideoDuration(ctx, videoPath); err == nil {
 		skip, extract = thumbnailWindow(dur)
 	}
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-y",
+	args := []string{"-y",
 		"-ss", strconv.FormatFloat(skip, 'f', 2, 64),
 		"-t", strconv.FormatFloat(extract, 'f', 2, 64),
 		"-i", videoPath,
@@ -173,14 +175,12 @@ func generateAnimatedThumbnail(ctx context.Context, videoPath, webpPath string) 
 		"-compression_level", "6",
 		"-preset", "picture",
 		webpPath,
-	)
+	}
 	// On capture stderr pour remonter la cause réelle de l'échec (codec, fichier
 	// tronqué, ffmpeg absent) au lieu de l'avaler — diagnostic des miniatures
 	// manquantes côté prod.
 	stderr := &bytes.Buffer{}
-	cmd.Stdout = nil
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
+	if err := mediapkg.RunFFmpeg(ctx, mediapkg.FFmpegJob{Args: args, Stderr: stderr}); err != nil {
 		return fmt.Errorf("ffmpeg thumbnail: %w (stderr: %s)", err, strings.TrimSpace(stderr.String()))
 	}
 	return nil

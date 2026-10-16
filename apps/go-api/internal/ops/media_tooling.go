@@ -18,13 +18,14 @@
 package ops
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
-	"os/exec"
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	mediapkg "levelup/go-api/internal/media"
 )
 
 // requiredEncoders liste les encodeurs ffmpeg dont dépend LevelUp :
@@ -188,14 +189,15 @@ func writeCapLine(sb *strings.Builder, label string, required, missing []string)
 }
 
 // runFFmpeg exécute `ffmpeg <args>` et retourne sa sortie standard. Les listings
-// (-version, -encoders, -muxers) sont écrits sur stdout par ffmpeg ; .Output()
-// les capture. Le ctx borne la durée (le boot passe un timeout).
+// (-version, -encoders, -muxers) sont écrits sur stdout par ffmpeg ; RunFFmpeg les
+// relaie dans un tampon et tient l'unique place ffmpeg du process. Le ctx borne la durée
+// (le boot passe un timeout).
 func runFFmpeg(ctx context.Context, args ...string) (string, error) {
-	out, err := exec.CommandContext(ctx, "ffmpeg", args...).Output()
-	if err != nil {
+	var out bytes.Buffer
+	if err := mediapkg.RunFFmpeg(ctx, mediapkg.FFmpegJob{Args: args, Stdout: &out}); err != nil {
 		return "", err
 	}
-	return string(out), nil
+	return out.String(), nil
 }
 
 // parseFFmpegComponents extrait l'ensemble des noms de composants d'une sortie
