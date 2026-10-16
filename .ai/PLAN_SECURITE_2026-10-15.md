@@ -301,16 +301,16 @@ Décisions de l'utilisateur du 2026-10-16 (questions nées de L3) et découverte
 
 ### L5c — Corrections issues de L5b — Sonnet — effort S
 
-- [ ] L5c-1 (D-L5b-3, régression du chantier) La lecture remuxée d'un clip ne tient plus l'unique
+- [x] L5c-1 (D-L5b-3, régression du chantier) La lecture remuxée d'un clip ne tient plus l'unique
       place ffmpeg pendant tout le flux : pool dédié aux remux (2 places, délai 45 min, 503 +
       `Retry-After` au-delà de 30 s d'attente), distinct de la place des transcodages et miniatures ;
       tests : deux lectures remuxées simultanées servies, un transcodage n'attend pas un remux ;
       garde-rail L5b-3 adapté sans assouplissement (tout lancement passe par un des deux pools).
-- [ ] L5c-2 (D-L5b-4) `PUT /players/{slug}/friends` : recalcul coalescé par joueur
+- [x] L5c-2 (D-L5b-4) `PUT /players/{slug}/friends` : recalcul coalescé par joueur
       (`platform/coalesce`, comme L5-3) ; test « N PUT rapprochés → au plus 1 recalcul en cours + 1
       rattrapage ».
-- [ ] L5c-3 (D-L5b-2) ffprobe : délai maximal (même lanceur ou contexte borné), sans place.
-- [ ] L5c-4 (D-L5b-5) Joueur par défaut du bootstrap : vérifier que l'ordre déterministe ne change
+- [x] L5c-3 (D-L5b-2) ffprobe : délai maximal (même lanceur ou contexte borné), sans place.
+- [x] L5c-4 (D-L5b-5) Joueur par défaut du bootstrap : vérifier que l'ordre déterministe ne change
       pas le joueur par défaut d'un utilisateur connecté (son profil possédé d'abord) ; sinon le
       rétablir explicitement ; test.
 - Gate : `go test ./internal/api/... ./internal/media/... ./internal/service/... ./internal/sync/... ./internal/archlint/`
@@ -601,20 +601,31 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
   appelle toujours `batchComputeLUSR` (v1, `force=true`, `rating_type='LUSR'`). Même constat que D-L5-4, jamais tranché :
   à confirmer par lecture de la prod (une exclusion réécrit-elle des lignes `LUSR` v1 par-dessus le canonique v2 ?). Hors périmètre
   sécurité ; décision à prendre avec l'utilisateur.
-- **D-L5b-2** (L5b) `ffprobe` n'a ni place ni délai maximal : `PlanRemuxWebM`/`probeAVStreams` (`media/remux.go`), `ProbeStreamsDetailed`
+- **D-L5b-2** (L5b) **Traitée en L5c-3.** `ffprobe` n'a ni place ni délai maximal : `PlanRemuxWebM`/`probeAVStreams` (`media/remux.go`), `ProbeStreamsDetailed`
   (`media/hls.go`, appelé aussi sous la place de `BuildHLS`) et `probeVideoDuration` (`ops/media_thumbnails.go`). Non visé par le
   garde-rail `ffmpeg_single_launcher_test.go` (une sonde lit un en-tête) ; un fichier qui bloque la sonde bloque la requête jusqu'à
   l'annulation de son contexte.
-- **D-L5b-3** (L5b) Une lecture remuxée (`serveRemuxedWebM`) tient désormais l'unique place ffmpeg pendant TOUT le flux vers le
+- **D-L5b-3** (L5b) **Remux traité en L5c-1** (pool dédié) ; reste ouvert : l'attente des miniatures, voir D-L5c-1. Une lecture remuxée (`serveRemuxedWebM`) tient désormais l'unique place ffmpeg pendant TOUT le flux vers le
   client (jusqu'à 45 min), et attend au plus 30 s derrière un transcodage ou une autre lecture (503 `Retry-After: 30` sinon) :
   conséquence du texte de L5b-3 (« même place unique »). Deux lecteurs remuxés simultanés se sérialisent. Les miniatures d'un envoi
   (`GenerateThumbnails`) attendent aussi la place sans borne autre que leur contexte. Si l'usage réel le montre pénible, une place
   dédiée aux flux remuxés est un choix produit, non pris ici.
-- **D-L5b-4** (L5b) `RecomputeForPlayer`/`RecomputeAll` (`friends_orchestrator_service.go`) restent rejouables en boucle par le
+- **D-L5b-4** (L5b) **Traitée en L5c-2.** `RecomputeForPlayer`/`RecomputeAll` (`friends_orchestrator_service.go`) restent rejouables en boucle par le
   propriétaire sans coalescence par joueur : plus de writer partagé (les lecteurs ne sont plus bloqués), mais chaque PUT relance un
   recalcul complet sous le bail de la base joueur. Même défaut CPU que celui que `coalesce.Runs` absorbe pour l'exclusion.
-- **D-L5b-5** (L5b) `LoadPlayers` rend maintenant ses profils triés (titre, slug) : le « joueur par défaut » du bootstrap
+- **D-L5b-5** (L5b) **Traitée en L5c-4.** `LoadPlayers` rend maintenant ses profils triés (titre, slug) : le « joueur par défaut » du bootstrap
   (`ownedPlayers[0]`, quand la session n'en choisit pas) est le premier par ordre alphabétique au lieu d'un profil aléatoire.
+
+- **D-L5c-1** (L5c) Les miniatures d'un envoi (`generateAnimatedThumbnail` -> `RunFFmpeg`, pool des transcodages, sans `MaxWait`) attendent
+  toujours la place des transcodages sans autre borne que leur contexte : une file de transcodages de 45 min chacun les retient.
+  Seconde moitié de D-L5b-3, hors des items L5c-1 à L5c-4.
+- **D-L5c-2** (L5c) `RunFFprobe` ne prend pas de place (décision de L5c-3) : le nombre de sondes simultanées n'est borné que par le
+  nombre de requêtes (chacune au plus 30 s). Une salve de lectures remuxées lance autant de `ffprobe` de pré-vol que de requêtes.
+- **D-L5c-3** (L5c) `GET /players` : `default_player_slug` ignore le joueur mémorisé en session (`CurrentPlayerSlug`), contrairement à
+  `current_player` du bootstrap ; les deux peuvent différer quand la session a choisi un autre profil. Préexistant.
+- **D-L5c-4** (L5c) `RecomputeForPlayer` : un demandeur absorbé par la coalescence rend 0 promu ; le journal du handler
+  (`friends: recompute is_with_friends ... added`) affiche alors 0 pour lui, alors que la passe exécutée par un autre a promu et notifié.
+  Cosmétique.
 
 ## 7. Journal
 
@@ -1634,3 +1645,79 @@ normale d'un média transcodé) ne lance pas ffmpeg. Profils : l'ordre de `avail
 **Découvertes** : D-L5b-1 à D-L5b-5 (§6), non traitées.
 
 Commits : `755a6543b` (L5b-1), `a071a8cdd` (L5b-2), `5002566fc` (L5b-3), puis le commit de clôture (plan, thought_log).
+
+### L5c - Corrections issues de L5b - 2026-10-16 - clos
+
+Base : `git log --oneline -1` = `3aab936a6` avant le lot ; branche `feat/securite-2026-10-15`. Références rouvertes avant d'agir :
+`media/ffmpeg_slot.go`, `media/remux.go` (`StreamRemuxWebMPlan`, `probeAVStreams`), `media/hls.go` (`ProbeStreamsDetailed`),
+`ops/media_thumbnails.go` (`probeVideoDuration`), `api/handlers/media_serve.go` (`respondRemuxBusy`),
+`archlint/ffmpeg_single_launcher_test.go`, `service/friends_orchestrator_service.go`, `api/handlers/friends.go`
+(`recomputeInBackground` : une goroutine par PUT), `platform/coalesce/runs.go`, `service/bootstrap_service.go` (`Build`,
+`BuildPlayersList`), `service/bootstrap_ownership.go` (`DirectOwnerFor`).
+
+**Statuts** : L5c-1 à L5c-4 `[x]`. Aucun `[!]`, aucun `[~]`.
+
+- **L5c-1** `media.FFmpegJob` porte un `Pool` nommé : `PoolTranscode` (valeur zéro, 1 place : transcodages HLS, analyses audio,
+  miniatures, sondes de version) et `PoolRemux` (`remuxPlaces` = 2). `StreamRemuxWebMPlan` demande `PoolRemux` (attente toujours bornée
+  à `remuxSlotWait` = 30 s, 503 + `Retry-After: 30` par `respondRemuxBusy`, inchangés) ; même délai maximal de 45 min pour les deux.
+  Le marqueur de réentrance est par pool (`slotHeldKey{pool}`) : `BuildHLS` garde sa place de transcodage pour ses lancements internes.
+  Un pool inconnu est refusé avant tout lancement. Garde-rail : le lanceur reste unique (`TestFFmpegLaunchedOnlyThroughTheSlot`
+  inchangé) et `TestFFmpegPoolsAreTheTwoNamedOnes` interdit tout `slots.New` dans `internal/media` hors de `ffmpeg_slot.go` et exige
+  exactement 2 pools dans ce fichier (détection testée sur 4 cas). Aucun garde-rail assoupli. Tests : `ffmpeg_pools_test.go`
+  (deux spectateurs remuxés servis ensemble, remux n'attend pas un transcodage, transcodage n'attend pas deux remux, 3e remux
+  `ErrFFmpegBusy` sans processus, pool inconnu, délai de 45 min côté remux) ; `TestStreamRemuxWebMPlan_BusyWritesNothing` adapté
+  (il tenait l'ancienne place unique : il occupe maintenant les deux places de remux).
+- **L5c-2** `RecomputeForPlayer` passe par `coalesce.Runs` (clé : xuid), champ `playerRuns` du service. La passe (`recomputePlayerOnce`)
+  relit la liste d'amis à chaque exécution, donc le rattrapage voit la dernière liste persistée par le PUT. Un demandeur absorbé rend
+  l'erreur du dernier recalcul et 0 promu (D-L5c-4). Couture de test : `recomputeDB` (défaut : `sync.RecomputeIsWithFriends`).
+  `RecomputeAll` (CLI, boot) n'est pas touchée. Aucun fichier de `internal/sync` modifié. Tests : `friends_orchestrator_coalesce_test.go`
+  (8 demandes rapprochées : 2 recalculs, jamais 2 en même temps, dernière liste d'amis reçue ; deux joueurs indépendants ; erreur propagée).
+- **L5c-3** `media.RunFFprobe(ctx, args...)` (`media/ffprobe.go`) : contexte borné à `ffprobeMaxDuration` (30 s), `WaitDelay` de 2 s
+  après l'arrêt, aucune place prise (une sonde sous la place de `BuildHLS` ne s'interbloque pas). Les trois sondes y passent
+  (`probeAVStreams`, `ProbeStreamsDetailed`, `ops.probeVideoDuration`). Garde-rail `archlint/ffprobe_single_launcher_test.go` : tout
+  `exec.Command*` de ffprobe hors de `media/ffprobe.go` est rouge, exactement un lancement dans ce fichier (détection testée sur 5 cas) ;
+  le détecteur de `ffmpeg_single_launcher_test.go` est factorisé (`execLaunchSites`) sans changer son comportement. Tests : `ffprobe_test.go`.
+- **L5c-4** Vérifié sur pièces : `Build` retombait sur `ownedPlayers[0]` et `BuildPlayersList` sur `players[0]` ; `filterOwnedPlayers`
+  rend les profils de l'utilisateur ET ceux de ses co-membres de groupe. Avec le tri de L5b-1, un utilisateur dont le profil suit
+  alphabétiquement celui d'un ami arrivait sur le profil de l'ami (avant L5b-1 : un profil au hasard). Correctif :
+  `defaultPlayerIndex` (`bootstrap_ownership.go`) retient le premier profil dont la session est propriétaire directe
+  (`DirectOwnerFor`), sinon le premier ; utilisé par `Build` (`current_player`) et `BuildPlayersList` (`default_player_slug`). Le choix
+  mémorisé en session reste prioritaire dans `Build`. Tests : `bootstrap_default_player_test.go` (utilisateur, admin lié, aucun profil
+  en propre, admin sans xuid, compte sans xuid, choix de session, sans propriété appliquée).
+
+**Preuves du rouge** (sorties gardées dans `%TEMP%\l5c\`) :
+- L5c-1 `go test ./internal/media/ -run 'TestStreamRemuxWebMPlan_(TwoViewers|DoesNotWait)'` : 2 FAIL (`processus démarrés = 1, attendu 2` ;
+  `la lecture remuxée a attendu le transcodage : ... aucune place libre dans le délai d'attente`), avant tout changement du lanceur. Les
+  tests de pool (`PoolRemux`, `remuxSlots`) ne compilaient pas avant le correctif. Garde-rail : un `slots.New(3)` ajouté dans
+  `internal/media/zz_tmp.go` rend `TestFFmpegPoolsAreTheTwoNamedOnes` rouge (`pool de places ouvert hors du lanceur ffmpeg`), fichier retiré ensuite.
+- L5c-2 `go test ./internal/service/ -run TestRecomputeForPlayer_` : FAIL `recalculs = 8, attendu 2 (un en cours + un rattrapage)`.
+- L5c-3 `go test ./internal/archlint/ -run FFprobe` : FAIL, 3 sites (`hls.go:434`, `remux.go:101`, `ops/media_thumbnails.go:102`) et
+  `0 lancement(s) de ffprobe` dans `ffprobe.go` ; tests de `media` : échec de compilation (`RunFFprobe`, `ffprobeCommand` indéfinis).
+  Mutation après correctif (délai retiré de `RunFFprobe`) : `TestRunFFprobe_StopsAtTheMaxDuration` FAIL après 20 s et
+  `TestRunFFprobe_BoundsTheContextAndTakesNoSlot` FAIL (`pas de délai maximal`) ; source restaurée.
+- L5c-4 `go test ./internal/service/ -run TestBootstrap_DefaultPlayer` : 3 sous-tests FAIL (`current_player = "alice", attendu "zed"` pour
+  l'utilisateur et l'admin lié). Le cas « compte sans xuid » attendait à tort un profil : un non-admin sans xuid ne voit rien
+  (`CanAccessPlayer`), attente corrigée dans le test avant le correctif.
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9) :
+- Gate du lot : `go test ./internal/api/... ./internal/media/... ./internal/service/... ./internal/sync/... ./internal/archlint/
+  ./internal/ops/... ./internal/config/... -count=1` : exit 0, 29 paquets ok, 0 `--- FAIL:`. Répétitions : pools/ffprobe/remux de `media`
+  `-count=15` exit 0 ; `TestRecomputeForPlayer_` `-count=30` exit 0 ; `TestBootstrapBuild_WritablePlayerSlugs` `-count=50` exit 0.
+- Intégration `-tags=integration -p 1 ./internal/sync/...` : non lancée, `internal/sync` n'est pas modifié par le lot (la condition
+  du gate, « si L5c-2 touche le sync », n'est pas remplie : le recalcul coalescé vit dans `internal/service`).
+- Gate commun : `go build ./cmd/server/` exit 0 ; `go vet` (media, ops, service, archlint, api/handlers, platform) exit 0 ;
+  `golangci-lint run --new-from-rev=3aab936a6` et `--new-from-merge-base=origin/main` (media, ops, service, archlint) : 0 issue.
+  Aucune route Huma touchée : pas de régénération des types ; `OpenAPI`/`Contract` passent dans `./internal/api/...`. Web non touché.
+- Hooks pre-commit (gofmt, check-merge-conflict, docs-fr-sync, gitleaks, go-vet) verts sur les quatre commits de code.
+
+**Non-régression (règle 9)** : lecture d'un clip remuxé : deux spectateurs simultanés sont servis, un troisième attend jusqu'à 30 s puis
+reçoit 503 + `Retry-After: 30` (le lecteur vidéo réessaie, comportement de L5b) ; un transcodage ou une miniature en cours ne retarde plus
+une lecture remuxée, et inversement. Liste d'amis : le PUT répond comme avant, le recalcul de fond est absorbé s'il en existe déjà un pour
+le joueur (une passe de rattrapage suit). Sondes ffprobe : mêmes arguments, mêmes erreurs, avec une échéance de 30 s. Page d'accueil : un
+utilisateur connecté arrive sur son propre profil ; pour un compte sans profil en propre (famille seule, admin sans xuid) le premier
+profil visible reste le défaut ; le choix mémorisé en session est inchangé.
+
+**Découvertes** : D-L5c-1 à D-L5c-4 (§6), non traitées. D-L5b-2, D-L5b-4, D-L5b-5 traitées ; D-L5b-3 traitée pour les remux
+(miniatures : D-L5c-1).
+
+Commits : `4df5f2c98` (L5c-1), `2c7e791b0` (L5c-2), `1b67f8c79` (L5c-3), `6b2d37c66` (L5c-4), puis le commit de clôture (plan, thought_log).
