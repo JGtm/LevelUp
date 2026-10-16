@@ -139,9 +139,9 @@ func TestCSRF_POST_ExemptPrefix_SegmentBoundary(t *testing.T) {
 }
 
 // Traversée : un chemin qui PORTE le préfixe exempté mais DÉSIGNE une route
-// protégée ne doit pas hériter de l'exemption. path.Clean normalise avant de
-// comparer (r.URL.Path est déjà pourcent-décodé, donc "%2e%2e" est couvert par
-// le même chemin de code).
+// protégée ne doit pas hériter de l'exemption : un chemin ambigu (AmbiguousPath)
+// n'est jamais exempté. Le sens inverse (chemin qui se nettoie SOUS le préfixe) est
+// éprouvé sur la pile par internal/api/ambiguous_path_guards_test.go.
 func TestCSRF_POST_ExemptPrefix_TraversalNotExempt(t *testing.T) {
 	for _, p := range []string{
 		exemptPrefix + "/../session/context",
