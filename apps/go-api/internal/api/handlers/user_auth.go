@@ -358,6 +358,7 @@ func (h *UserAuthHandler) handleSetPassword(ctx context.Context, in *authBodyInp
 	}
 
 	slog.Info("auth: mot de passe défini (opt-in)", "username", *sess.Username)
+	h.closeOtherSessions(ctx, sess)
 	return &authNoContent{Status: http.StatusNoContent}, nil
 }
 
