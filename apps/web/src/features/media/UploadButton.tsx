@@ -56,6 +56,17 @@ const ACCEPTED_MIME = new Set([
   'image/png', 'image/jpeg', 'image/bmp', 'image/gif',
 ])
 
+/** Message traduit des refus d'envoi connus par code ; sinon le message du serveur. */
+const UPLOAD_ERROR_MESSAGES: Record<string, CommonManifestKey> = {
+  upload_busy: 'common.media.upload_busy',
+  upload_content_mismatch: 'common.media.upload_content_mismatch',
+}
+
+function uploadErrorDescription(err: unknown, t: (key: CommonManifestKey) => string): string | undefined {
+  const key = UPLOAD_ERROR_MESSAGES[apiErrorCode(err) ?? '']
+  return key ? t(key) : apiErrorMessage(err)
+}
+
 interface Props {
   playerSlug: string
   /** Afficher la zone de drop pleine largeur (mode galerie) */
@@ -88,8 +99,7 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
         ),
       onError: (err) =>
         toast.error(t('common.media.upload_error'), {
-          description:
-            apiErrorCode(err) === 'upload_busy' ? t('common.media.upload_busy') : apiErrorMessage(err),
+          description: uploadErrorDescription(err, t),
         }),
     })
     if (inputRef.current) inputRef.current.value = ''

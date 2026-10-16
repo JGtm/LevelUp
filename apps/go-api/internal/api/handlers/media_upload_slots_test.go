@@ -60,7 +60,7 @@ func newSlotRouter(svc port.MediaService, pool *slots.Pool, wait time.Duration) 
 func postClip(t *testing.T, r http.Handler) *httptest.ResponseRecorder {
 	t.Helper()
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, buildMultipartRequest(t, "/players/test-player/media/upload", map[string][]byte{"clip.mp4": []byte("v")}))
+	r.ServeHTTP(w, buildMultipartRequest(t, "/players/test-player/media/upload", map[string][]byte{"clip.mp4": uploadHeadMP4}))
 	return w
 }
 

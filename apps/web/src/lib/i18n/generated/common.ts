@@ -356,6 +356,7 @@ export const commonManifest = {
   "common.media.import_in_progress": { fr: "Import en cours…", en: "Import in progress…" },
   "common.media.supported_formats": { fr: "MP4, MOV, AVI, MKV, PNG, JPG…", en: "MP4, MOV, AVI, MKV, PNG, JPG…" },
   "common.media.upload_busy": { fr: "Le serveur traite déjà d'autres envois. Réessaie dans quelques instants.", en: "The server is already processing other uploads. Try again in a moment." },
+  "common.media.upload_content_mismatch": { fr: "Un des fichiers n'est pas une vidéo ou une image valide : son contenu ne correspond pas à son extension.", en: "One of the files is not a valid video or image: its content does not match its extension." },
   "common.media.upload_error": { fr: "Échec de l'import", en: "Upload failed" },
   "common.media.upload_success": { fr: "{saved, plural, one {# fichier importé} other {# fichiers importés}} · {indexed} nouv. · {associated} assoc.{thumbnails, plural, =0 {} one { · # miniature} other { · # miniatures}}", en: "{saved, plural, one {# file imported} other {# files imported}} · {indexed} new · {associated} assoc.{thumbnails, plural, =0 {} one { · # thumbnail} other { · # thumbnails}}" },
   "common.nav.section_ascension": { fr: "Ascension", en: "Ascension" },

@@ -53,3 +53,38 @@ describe('UploadButton — serveur occupé', () => {
     })
   })
 })
+
+describe('UploadButton — contenu non concordant avec l’extension (415)', () => {
+  beforeEach(() => {
+    toastError.mockClear()
+    useAppShellStore.setState({ demoMode: false, locale: 'fr' })
+    server.use(
+      http.post('/api/v1/players/:slug/media/upload', () =>
+        HttpResponse.json(
+          { code: 'upload_content_mismatch', message: 'file content does not match its extension', retryable: false },
+          { status: 415 },
+        ),
+      ),
+    )
+  })
+  afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
+
+  it('explique en français que le fichier n’est pas un média reconnu', async () => {
+    const { container } = renderWithProviders(<UploadButton playerSlug="p1" />)
+    pickFile(container)
+    await waitFor(() => expect(toastError).toHaveBeenCalled())
+    expect(toastError.mock.calls[0][1]).toEqual({
+      description: "Un des fichiers n'est pas une vidéo ou une image valide : son contenu ne correspond pas à son extension.",
+    })
+  })
+
+  it('explique en anglais quand la langue est EN', async () => {
+    useAppShellStore.setState({ locale: 'en' })
+    const { container } = renderWithProviders(<UploadButton playerSlug="p1" />)
+    pickFile(container)
+    await waitFor(() => expect(toastError).toHaveBeenCalled())
+    expect(toastError.mock.calls[0][1]).toEqual({
+      description: 'One of the files is not a valid video or image: its content does not match its extension.',
+    })
+  })
+})

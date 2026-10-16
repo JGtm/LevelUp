@@ -392,7 +392,7 @@ func TestUploadHandler_OK(t *testing.T) {
 		makeUploadFactory(mock),
 	)
 	req := buildMultipartRequest(t, "/players/test-player/media/upload", map[string][]byte{
-		"clip.mp4": []byte("fake video"),
+		"clip.mp4": uploadHeadMP4,
 	})
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -416,7 +416,7 @@ func TestUploadHandler_ServiceError(t *testing.T) {
 		makeUploadFactory(mock),
 	)
 	req := buildMultipartRequest(t, "/players/test-player/media/upload", map[string][]byte{
-		"clip.mp4": []byte("fake"),
+		"clip.mp4": uploadHeadMP4,
 	})
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -646,7 +646,7 @@ func TestUploadHandler_WithCaptureTimes_OK(t *testing.T) {
 	)
 	// Envoyer capture_times JSON valide aligné sur files
 	req := buildMultipartRequestWithCaptureTimes(t, "/players/test-player/media/upload",
-		map[string][]byte{"clip.mp4": []byte("fake")},
+		map[string][]byte{"clip.mp4": uploadHeadMP4},
 		`[1700000000]`,
 	)
 	w := httptest.NewRecorder()
@@ -665,7 +665,7 @@ func TestUploadHandler_WithCaptureTimes_InvalidJSON_Ignored(t *testing.T) {
 		makeUploadFactory(mock),
 	)
 	req := buildMultipartRequestWithCaptureTimes(t, "/players/test-player/media/upload",
-		map[string][]byte{"clip.mp4": []byte("fake")},
+		map[string][]byte{"clip.mp4": uploadHeadMP4},
 		`not-json`,
 	)
 	w := httptest.NewRecorder()

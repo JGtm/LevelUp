@@ -3,9 +3,11 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,6 +19,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	mediapkg "levelup/go-api/internal/media"
 	"levelup/go-api/internal/platform/mediaaudio"
 )
 
@@ -52,6 +55,13 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	files, err := parseUploadedFiles(r)
+	if errors.Is(err, errUploadContentMismatch) {
+		slog.WarnContext(r.Context(), "upload: contenu non concordant avec l'extension, envoi refusé",
+			"player", gamertag, "err", err)
+		writeError(r.Context(), w, http.StatusUnsupportedMediaType, "upload_content_mismatch",
+			"file content does not match its extension")
+		return
+	}
 	if err != nil {
 		writeError(r.Context(), w, http.StatusBadRequest, "upload_parse_error", err.Error())
 		return
@@ -164,6 +174,9 @@ func parseUploadedFiles(r *http.Request) ([]domain.UploadedFile, error) {
 			slog.Warn("upload: extension refusée", "file", fh.Filename, "ext", ext)
 			continue
 		}
+		if err := checkUploadedContent(fh, ext); err != nil {
+			return nil, err
+		}
 		// Le contenu n'est PAS lu ici : le service le copie en flux vers le disque.
 		uf := domain.UploadedFile{
 			OriginalName: fh.Filename,
@@ -180,3 +193,26 @@ func parseUploadedFiles(r *http.Request) ([]domain.UploadedFile, error) {
 
 // GetMediaMatchCandidates retourne les matchs candidats pour réassocier un média.
 // GET /api/v1/players/{player_slug}/media/match-candidates?file_path=...&window_minutes=15
+
+// errUploadContentMismatch : le contenu d'un fichier envoyé ne concorde pas avec son
+// extension (PostUploadMedia répond 415 upload_content_mismatch, rien n'est écrit).
+var errUploadContentMismatch = errors.New("contenu non concordant avec l'extension")
+
+// checkUploadedContent lit la tête du fichier (au plus media.SniffLen octets) et vérifie
+// qu'elle concorde avec la famille de son extension (media.ContentMatchesExtension).
+func checkUploadedContent(fh *multipart.FileHeader, ext string) error {
+	f, err := fh.Open()
+	if err != nil {
+		return fmt.Errorf("ouverture de %q : %w", fh.Filename, err)
+	}
+	defer f.Close()
+	head := make([]byte, mediapkg.SniffLen)
+	n, err := io.ReadFull(f, head)
+	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("lecture de %q : %w", fh.Filename, err)
+	}
+	if !mediapkg.ContentMatchesExtension(ext, head[:n]) {
+		return fmt.Errorf("%w : %q", errUploadContentMismatch, fh.Filename)
+	}
+	return nil
+}

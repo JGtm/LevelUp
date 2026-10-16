@@ -816,6 +816,10 @@ en = "Upload failed"
 fr = "Le serveur traite déjà d'autres envois. Réessaie dans quelques instants."
 en = "The server is already processing other uploads. Try again in a moment."
 
+[common.media.upload_content_mismatch]
+fr = "Un des fichiers n'est pas une vidéo ou une image valide : son contenu ne correspond pas à son extension."
+en = "One of the files is not a valid video or image: its content does not match its extension."
+
 [common.media.associate_success]
 fr = "Média associé au match"
 en = "Media linked to match"
