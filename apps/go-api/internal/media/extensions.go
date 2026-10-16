@@ -18,6 +18,38 @@ import (
 // ici aussi pour que le fallback resolution la trouve.
 var VideoExtensions = []string{".mp4", ".webm", ".mov", ".avi", ".mkv"}
 
+// ImageExtensions liste les formats d'image acceptés à l'envoi et indexés.
+var ImageExtensions = []string{".png", ".jpg", ".jpeg", ".bmp", ".gif"}
+
+// derivedExtensions liste les fichiers que le serveur produit à partir d'un média :
+// miniatures (.webp ; .gif est déjà une image) et arbre HLS (playlists .m3u8, segments
+// fMP4 .m4s, segments MPEG-TS .ts ; les init_*.mp4 sont des vidéos).
+var derivedExtensions = []string{".webp", ".m3u8", ".m4s", ".ts"}
+
+// IsImageExt retourne true si l'extension est un format d'image de ImageExtensions.
+// La comparaison est case-insensitive.
+func IsImageExt(ext string) bool {
+	return containsExt(ImageExtensions, ext)
+}
+
+// IsServableExt retourne true si la route des médias peut servir un fichier de cette
+// extension : vidéo, image, miniature ou fichier HLS. Toute autre extension (base
+// DuckDB, WAL, JSON de réglage...) n'est jamais servie, quelle que soit la racine.
+// La comparaison est case-insensitive.
+func IsServableExt(ext string) bool {
+	return IsVideoExt(ext) || IsImageExt(ext) || containsExt(derivedExtensions, ext)
+}
+
+func containsExt(list []string, ext string) bool {
+	ext = strings.ToLower(ext)
+	for _, v := range list {
+		if v == ext {
+			return true
+		}
+	}
+	return false
+}
+
 // webNativeVideoExts : containers vidéo lisibles directement par les
 // navigateurs modernes (Chrome/Firefox/Edge/Safari). Servis via http.ServeFile
 // (supporte Range requests, donc le seek vidéo fonctionne).
@@ -51,13 +83,7 @@ func RequiresRemux(ext string) bool {
 // (subset vidéo de VideoExtensions). Sert à pré-filtrer les candidats au
 // transcoding HLS sans probe ffprobe (les images retournent false).
 func IsVideoExt(ext string) bool {
-	ext = strings.ToLower(ext)
-	for _, v := range VideoExtensions {
-		if v == ext {
-			return true
-		}
-	}
-	return false
+	return containsExt(VideoExtensions, ext)
 }
 
 // StemAndExt sépare un chemin en (stem, ext). `ext` inclut le point et est
