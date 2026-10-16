@@ -133,6 +133,11 @@ type MatchViewHeader struct {
 	// front ne pose le lien « Rejeu 2D » que quand ce booléen est vrai, sans quoi
 	// il mènerait à un 404. Faux aussi quand le titre ne produit pas de rejeu.
 	ReplayAvailable bool `json:"replay_available"`
+	// AnalysisPending : le match est synchronisé mais l'analyse de son film n'est pas finie
+	// (arme par frag, citations, rejeu 2D encore à venir). Règle : analysis.IsAnalysisPending.
+	// Faux/absent hors du titre qui analyse des films, et au-delà de analysis.AnalysisPendingWindow
+	// après la synchro.
+	AnalysisPending bool `json:"analysis_pending,omitempty"`
 	// ScoreTimelineKind : COMMENT le bloc « Score dans le temps » de la vue match doit se
 	// montrer sur ce mode. Deux valeurs servies, et une troisième qui se dit en se taisant :
 	//

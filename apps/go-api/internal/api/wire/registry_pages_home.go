@@ -40,6 +40,7 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 		// l'endpoint /replay et l'Explorer — une seule résolution de chemin dans le
 		// dépôt. Seul AvailableSet est appelé : un listing de dossier par requête.
 		WithReplay(r.replayServiceFor(pdb)).
+		WithAnalysisPending(r.analysisPendingFor(pdb)).
 		WithDemoMode(r.cfg.DemoMode)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }

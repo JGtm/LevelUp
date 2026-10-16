@@ -94,21 +94,21 @@ gcc ucrt64. Jamais `go build ./...`. Un seul `go` à la fois. Intégration : `-t
 
 ### E1 — Signal Go et tests — M
 
-- [ ] E1.1 `domain/analysis_pending.go` : `AnalysisProbe` (FirstSyncAt, RegistryBits,
+- [x] E1.1 `domain/analysis_pending.go` : `AnalysisProbe` (FirstSyncAt, RegistryBits,
   KillSourceReadNoFeed, CitationsRows).
-- [ ] E1.2 `analysis/analysis_pending.go` : `AnalysisPendingWindow`, `AnalysisPendingInput`,
+- [x] E1.2 `analysis/analysis_pending.go` : `AnalysisPendingWindow`, `AnalysisPendingInput`,
   `IsAnalysisPending` (pure).
-- [ ] E1.3 `port` : `AnalysisProbeRepository`.
-- [ ] E1.4 `platform/duckdb/analysis_probe_repo.go` : `LoadAnalysisProbes` (2 requêtes).
-- [ ] E1.5 `service/analysis_pending.go` : `AnalysisPendingResolver` (horloge injectable,
+- [x] E1.3 `port` : `AnalysisProbeRepository`.
+- [x] E1.4 `platform/duckdb/analysis_probe_repo.go` : `LoadAnalysisProbes` (2 requêtes).
+- [x] E1.5 `service/analysis_pending.go` : `AnalysisPendingResolver` (horloge injectable,
   `Resolve`), branché sur `HomeService` (`recent_matches` + `favorite_matches`) et
   `MatchViewService` (en-tête).
-- [ ] E1.6 Wire : porte `film.kill_source` / `film.replay_artifact` (patron `withFilmArtifactRepos`).
-- [ ] E1.7 Handler vue match : `no-store` tant que pending.
-- [ ] E1.8 Tests : règle (3 cas de c, borne 24 h juste avant / pile / après, absence de
+- [x] E1.6 Wire : porte `film.kill_source` / `film.replay_artifact` (patron `withFilmArtifactRepos`).
+- [x] E1.7 Handler vue match : `no-store` tant que pending.
+- [x] E1.8 Tests : règle (3 cas de c, borne 24 h juste avant / pile / après, absence de
   capability, rejeu non résolu, FilmAbsent), repo sur DuckDB en mémoire, service (home +
   vue match), wire sur les `capabilities.toml` LIVRÉS (Infinite vrai, Halo 5 toujours faux).
-  Intégration de bout en bout de l'accueil si un harnais existe (sinon `[~]` justifié).
+  Bout en bout de l'accueil : `TestGetHomePage_AnalysisPending_DeBoutEnBout` (GetHomePage, repo simulé, c'est le harnais existant ; pas de harnais HTTP+DuckDB de la page).
 - Gate : `go test` des paquets touchés ; `go test -tags=integration -p 1` des paquets touchés ;
   vet ; golangci-lint des paquets touchés.
 
@@ -154,3 +154,8 @@ gcc ucrt64. Jamais `go build ./...`. Un seul `go` à la fois. Intégration : `-t
 
 - 2026-10-16 E0 : plan écrit après lecture des pièces. Écarts à la demande documentés en D-4
   (sentinelle) et D-5 (film lu sans kill-feed).
+- 2026-10-16 E1 : signal Go livré. Gate : `go test` vert sur domain/analysis/port/service/platform-duckdb/
+  api/wire/api/handlers/archlint ; `go test ./internal/api` vert HORS `TestOpenAPIYAMLIsUpToDate` (rouge
+  attendu, le contrat est le livrable d'E2) ; intégration `AnalysisProbeRepo` verte ; golangci-lint
+  (nouveau code vs origin/main) 0 issue. Piège rencontré : un identifiant local `replay.X` hors de
+  `film/` fait monter le plafond de `film_facade_surface_test` (variable renommée `lookup`).
