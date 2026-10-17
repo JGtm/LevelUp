@@ -18,62 +18,6 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 )
 
-func TestIsLUSRV2Enabled(t *testing.T) {
-	original := os.Getenv(lusrV2EnvFlag)
-	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, original) })
-
-	cases := []struct {
-		envVal string
-		want   bool
-	}{
-		{"", false},
-		{"0", false},
-		{"false", false},
-		{"no", false},
-		{"random_junk", false},
-		{"1", true},
-		{"true", true},
-		{"TRUE", true},
-		{"yes", true},
-		{"YES", true},
-		{"  1  ", true}, // trim
-	}
-	for _, c := range cases {
-		t.Run(c.envVal, func(t *testing.T) {
-			_ = os.Setenv(lusrV2EnvFlag, c.envVal)
-			if got := IsLUSRV2Enabled(); got != c.want {
-				t.Errorf("IsLUSRV2Enabled() with env=%q = %v, want %v", c.envVal, got, c.want)
-			}
-		})
-	}
-}
-
-func TestIsLUSRV2Canonical(t *testing.T) {
-	original := os.Getenv(lusrCanonicalEnvFlag)
-	t.Cleanup(func() { _ = os.Setenv(lusrCanonicalEnvFlag, original) })
-
-	cases := []struct {
-		envVal string
-		want   bool
-	}{
-		{"", false},     // défaut = v1 canonical
-		{"LUSR", false}, // explicite v1
-		{"LUSR_V2", true},
-		{"lusr_v2", true}, // case insensitive (UPPER trim)
-		{"  LUSR_V2  ", true},
-		{"random", false},
-		{"V2", false}, // doit être exactement "LUSR_V2"
-	}
-	for _, c := range cases {
-		t.Run(c.envVal, func(t *testing.T) {
-			_ = os.Setenv(lusrCanonicalEnvFlag, c.envVal)
-			if got := IsLUSRV2Canonical(); got != c.want {
-				t.Errorf("IsLUSRV2Canonical() with env=%q = %v, want %v", c.envVal, got, c.want)
-			}
-		})
-	}
-}
-
 // TestDefaultOnFlags vérifie que squad offset et cross-mode coupling sont ON par
 // défaut (décision produit 2026-05-28) : actifs sauf si explicitement "0"/"false"/"no".
 func TestDefaultOnFlags(t *testing.T) {
@@ -489,25 +433,7 @@ func TestBuildTwoTeamRosters_NoMatch(t *testing.T) {
 	}
 }
 
-func TestRunLUSRV2Shadow_FlagOff_NoOp(t *testing.T) {
-	original := os.Getenv(lusrV2EnvFlag)
-	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, original) })
-	_ = os.Setenv(lusrV2EnvFlag, "0")
-
-	db := openShadowTestDB(t)
-	n, err := RunLUSRV2Shadow(context.Background(), nil, newPinnedSharedAccessor(db), "anyxuid")
-	if err != nil {
-		t.Fatalf("RunLUSRV2Shadow: %v", err)
-	}
-	if n != 0 {
-		t.Errorf("flag off should be no-op, got n=%d", n)
-	}
-}
-
 func TestRunLUSRV2Shadow_FullFlow_2v2Match(t *testing.T) {
-	original := os.Getenv(lusrV2EnvFlag)
-	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, original) })
-	_ = os.Setenv(lusrV2EnvFlag, "1")
 
 	db := openShadowTestDB(t)
 	// 1 match social, 4 joueurs (2v2), pair_name "Slayer" → arena_slayer.
@@ -587,9 +513,6 @@ func TestRunLUSRV2Shadow_FullFlow_2v2Match(t *testing.T) {
 // couverture seul. (Avec l'ancien persist 2-équipes, le owner aurait été skippé
 // car le run du coéquipier aurait avancé son watermark.)
 func TestRunLUSRV2ShadowOwnerOnly_TeammateDoesNotBlockOwner(t *testing.T) {
-	original := os.Getenv(lusrV2EnvFlag)
-	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, original) })
-	_ = os.Setenv(lusrV2EnvFlag, "1")
 
 	db := openShadowTestDB(t)
 	startTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -645,18 +568,10 @@ func TestRunLUSRV2ShadowOwnerOnly_TeammateDoesNotBlockOwner(t *testing.T) {
 }
 
 // TestRunLUSRV2Shadow_Canonical_WritesLegacyLUSRRow vérifie la Stratégie C :
-// quand LEVELUP_LUSR_CANONICAL=LUSR_V2, le shadow runner écrit dans le
+// avec une base joueur, le shadow runner écrit dans le
 // playerDB match_skill_rank (slot rating_type='LUSR') en plus de
 // player_skill_state_v2.
 func TestRunLUSRV2Shadow_Canonical_WritesLegacyLUSRRow(t *testing.T) {
-	origEnabled := os.Getenv(lusrV2EnvFlag)
-	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
-	t.Cleanup(func() {
-		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
-		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
-	})
-	_ = os.Setenv(lusrV2EnvFlag, "1")
-	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
 
 	sharedDB := openShadowTestDB(t)
 	playerDB := openCanonicalPlayerTestDB(t)
@@ -837,9 +752,6 @@ func TestRunDualRowSentinel_DetectsInconsistencies(t *testing.T) {
 }
 
 func TestRunLUSRV2Shadow_RankedSkipped(t *testing.T) {
-	original := os.Getenv(lusrV2EnvFlag)
-	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, original) })
-	_ = os.Setenv(lusrV2EnvFlag, "1")
 
 	db := openShadowTestDB(t)
 	startTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -869,13 +781,10 @@ func TestRunLUSRV2Shadow_RankedSkipped(t *testing.T) {
 // activé, un match dans le mode "arena_slayer" leak son delta vers les autres
 // modes (e.g., "btb") du même joueur, capé à w_d · delta.
 func TestRunLUSRV2Shadow_Phase4_CrossModeLeak(t *testing.T) {
-	origEnabled := os.Getenv(lusrV2EnvFlag)
 	origCoupling := os.Getenv(lusrModeCouplingEnvFlag)
 	t.Cleanup(func() {
-		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
 		_ = os.Setenv(lusrModeCouplingEnvFlag, origCoupling)
 	})
-	_ = os.Setenv(lusrV2EnvFlag, "1")
 	_ = os.Setenv(lusrModeCouplingEnvFlag, "1")
 
 	db := openShadowTestDB(t)
@@ -952,13 +861,10 @@ func TestRunLUSRV2Shadow_Phase4_CrossModeLeak(t *testing.T) {
 // désactivé ("0"), les autres modes ne sont PAS modifiés. (Le cross-mode leak est
 // désormais ON par défaut — décision produit 2026-05-28.)
 func TestRunLUSRV2Shadow_Phase4_ExplicitlyOff(t *testing.T) {
-	origEnabled := os.Getenv(lusrV2EnvFlag)
 	origCoupling := os.Getenv(lusrModeCouplingEnvFlag)
 	t.Cleanup(func() {
-		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
 		_ = os.Setenv(lusrModeCouplingEnvFlag, origCoupling)
 	})
-	_ = os.Setenv(lusrV2EnvFlag, "1")
 	_ = os.Setenv(lusrModeCouplingEnvFlag, "0") // explicitement désactivé
 
 	db := openShadowTestDB(t)
@@ -1043,9 +949,6 @@ func seedH5Match(t *testing.T, sharedDB *sql.DB, matchID string, start time.Time
 // chaîne du classifier TITLE-AWARE (h5_arena), PAS le bucket Infinite arena_slayer.
 // Prouve que la v2 (k/d/a/outcome, sans MMR) tourne pour h5.
 func TestRunLUSRV2Shadow_Halo5_TitleAwareChain(t *testing.T) {
-	origEnabled := os.Getenv(lusrV2EnvFlag)
-	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, origEnabled) })
-	_ = os.Setenv(lusrV2EnvFlag, "1")
 
 	// Classifier h5 dédié (chaîne unique). Nettoyé après le test (test interne →
 	// accès direct à la map du seam).
@@ -1116,14 +1019,6 @@ func seedCanonical2v2(t *testing.T, sharedDB *sql.DB, matchID string, start time
 // TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb (Sprint 1.A) : la row
 // canonical LUSR doit porter un expected_win_prob dans [0,1].
 func TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb(t *testing.T) {
-	origEnabled := os.Getenv(lusrV2EnvFlag)
-	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
-	t.Cleanup(func() {
-		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
-		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
-	})
-	_ = os.Setenv(lusrV2EnvFlag, "1")
-	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
 
 	sharedDB := openShadowTestDB(t)
 	playerDB := openCanonicalPlayerTestDB(t)
@@ -1150,14 +1045,6 @@ func TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb(t *testing.T) {
 // joueur n'a d'historique, tous sont seedés au prior (μ=25) → équipes
 // équilibrées → proba ≈ 0.5, et aucune panic (fallback priors testé).
 func TestRunLUSRV2Shadow_Canonical_FirstMatchFallback(t *testing.T) {
-	origEnabled := os.Getenv(lusrV2EnvFlag)
-	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
-	t.Cleanup(func() {
-		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
-		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
-	})
-	_ = os.Setenv(lusrV2EnvFlag, "1")
-	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
 
 	sharedDB := openShadowTestDB(t)
 	playerDB := openCanonicalPlayerTestDB(t)
@@ -1188,9 +1075,6 @@ func TestRunLUSRV2Shadow_Canonical_FirstMatchFallback(t *testing.T) {
 // donc de DrawProbability. Un draw "moins surprenant" (proba haute) réduit moins
 // σ → σ plus grand. On compare deux runs identiques : seul l'hyperparam diffère.
 func TestRunLUSRV2Shadow_UsesEmpiricalDrawProb(t *testing.T) {
-	original := os.Getenv(lusrV2EnvFlag)
-	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, original) })
-	_ = os.Setenv(lusrV2EnvFlag, "1")
 
 	runDrawMatch := func(seedHighDrawProb bool) (mu, sigma float64) {
 		db := openShadowTestDB(t)
@@ -1243,13 +1127,10 @@ func TestRunLUSRV2Shadow_UsesEmpiricalDrawProb(t *testing.T) {
 // est en partie attribuée à la synergie, pas au skill individuel → anti-inflation).
 // Gated : flag LEVELUP_LUSR_V2_SQUAD_OFFSET=1.
 func TestRunLUSRV2Shadow_AppliesSquadOffset(t *testing.T) {
-	origEnabled := os.Getenv(lusrV2EnvFlag)
 	origSquad := os.Getenv(lusrSquadOffsetEnvFlag)
 	t.Cleanup(func() {
-		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
 		_ = os.Setenv(lusrSquadOffsetEnvFlag, origSquad)
 	})
-	_ = os.Setenv(lusrV2EnvFlag, "1")
 	_ = os.Setenv(lusrSquadOffsetEnvFlag, "1")
 
 	// runWin joue un match 2v2 où owner+teammate GAGNENT (sans counts) et
@@ -1310,14 +1191,6 @@ func TestRunLUSRV2Shadow_AppliesSquadOffset(t *testing.T) {
 // successifs du même groupe, la 1re row LUSR a rating_delta NULL (pas de
 // précédent) et la 2e a un rating_delta non-nul (= rating - rating précédent).
 func TestRunLUSRV2Shadow_Canonical_RatingDelta(t *testing.T) {
-	origEnabled := os.Getenv(lusrV2EnvFlag)
-	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
-	t.Cleanup(func() {
-		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
-		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
-	})
-	_ = os.Setenv(lusrV2EnvFlag, "1")
-	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
 
 	sharedDB := openShadowTestDB(t)
 	playerDB := openCanonicalPlayerTestDB(t)
@@ -1350,9 +1223,6 @@ func TestRunLUSRV2Shadow_Canonical_RatingDelta(t *testing.T) {
 // FORTE (unrelated) — pas la pénalité modérée du fallback outcome-final (perte).
 // On compare avec timeline de frags (menait au quit) vs sans timeline (fallback).
 func TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit(t *testing.T) {
-	orig := os.Getenv(lusrV2EnvFlag)
-	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, orig) })
-	_ = os.Setenv(lusrV2EnvFlag, "1")
 
 	start := time.Date(2025, 7, 1, 12, 0, 0, 0, time.UTC)
 	quitTime := start.Add(60 * time.Second) // owner part à 60s
@@ -1424,14 +1294,6 @@ func TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit(t *testing.T) {
 // scénario "database is closed" du 03/06 (player DB momentanément fermée) qui
 // avait créé un trou LUSR permanent.
 func TestRunLUSRV2Shadow_Canonical_WriteFailHoldsWatermark(t *testing.T) {
-	origEnabled := os.Getenv(lusrV2EnvFlag)
-	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
-	t.Cleanup(func() {
-		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
-		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
-	})
-	_ = os.Setenv(lusrV2EnvFlag, "1")
-	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
 
 	sharedDB := openShadowTestDB(t)
 	seedCanonical2v2(t, sharedDB, "m_gate", time.Date(2025, 8, 1, 14, 0, 0, 0, time.UTC))
@@ -1439,12 +1301,9 @@ func TestRunLUSRV2Shadow_Canonical_WriteFailHoldsWatermark(t *testing.T) {
 	ctx := context.Background()
 	repo := duckdb.NewSkillV2Repo(sharedDB)
 
-	// 1) Player DB FERMÉE → writeCanonicalLUSRRow échoue ("database is closed").
-	brokenPlayerDB, err := sql.Open("duckdb", "")
-	if err != nil {
-		t.Fatalf("open broken playerDB: %v", err)
-	}
-	_ = brokenPlayerDB.Close() // fermeture volontaire = reproduit l'incident 03/06
+	// 1) Player DB qui REFUSE toute écriture de note (CHECK impossible) → writeCanonicalLUSRRow
+	// échoue comme à l'incident du 03/06, sans empêcher la lecture des exclusions.
+	brokenPlayerDB := openCanonicalPlayerTestDBWithCheck(t, "FALSE")
 
 	processed, err := RunLUSRV2Shadow(ctx, brokenPlayerDB, newPinnedSharedAccessor(sharedDB), "owner")
 	if err != nil {
@@ -1487,14 +1346,6 @@ func TestRunLUSRV2Shadow_Canonical_WriteFailHoldsWatermark(t *testing.T) {
 // leur persist avancerait le watermark de groupe par-dessus le match non écrit,
 // le rendant skippedAlready à jamais (gap LUSR permanent, la classe de bug d'origine).
 func TestRunLUSRV2Shadow_Canonical_HeldGroupSkipsLaterMatches(t *testing.T) {
-	origEnabled := os.Getenv(lusrV2EnvFlag)
-	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
-	t.Cleanup(func() {
-		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
-		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
-	})
-	_ = os.Setenv(lusrV2EnvFlag, "1")
-	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
 
 	sharedDB := openShadowTestDB(t)
 	// 2 matchs du MÊME groupe (pair_name 'Slayer' → arena_slayer), m_old < m_new.
@@ -1504,13 +1355,9 @@ func TestRunLUSRV2Shadow_Canonical_HeldGroupSkipsLaterMatches(t *testing.T) {
 	ctx := context.Background()
 	repo := duckdb.NewSkillV2Repo(sharedDB)
 
-	// 1) Player DB fermée → toute écriture canonical échoue.
+	// 1) Player DB qui refuse toute écriture de note → toute écriture canonical échoue.
 	canonicalWriteHeldWatermark.Set(0)
-	brokenPlayerDB, err := sql.Open("duckdb", "")
-	if err != nil {
-		t.Fatalf("open broken playerDB: %v", err)
-	}
-	_ = brokenPlayerDB.Close()
+	brokenPlayerDB := openCanonicalPlayerTestDBWithCheck(t, "FALSE")
 
 	processed, err := RunLUSRV2Shadow(ctx, brokenPlayerDB, newPinnedSharedAccessor(sharedDB), "owner")
 	if err != nil {
@@ -1621,14 +1468,6 @@ func TestLoadPreviousDisplayedOrdinal_ChronologicalOrder(t *testing.T) {
 // joueur owner obtient bien sa ligne canonique + son état. C'est ce qui permet au
 // backfill par-joueur de donner une couverture complète à TOUS sans contamination.
 func TestRunLUSRV2ShadowOwnerOnly_DoesNotOverwriteTeammateState(t *testing.T) {
-	origEnabled := os.Getenv(lusrV2EnvFlag)
-	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
-	t.Cleanup(func() {
-		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
-		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
-	})
-	_ = os.Setenv(lusrV2EnvFlag, "1")
-	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
 
 	sharedDB := openShadowTestDB(t)
 	playerDB := openCanonicalPlayerTestDB(t)

@@ -248,8 +248,12 @@ Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/R
 9. **KDA/KDR (ADR 0006)** : KDA n'est JAMAIS le quotient. Per-match = valeur API native ;
    agrégat = `((frags + assists/3) − morts) / nb_matchs`. KDR = frags/morts, distinct.
    Réutiliser les KPI dérivés existants, ne pas recalculer ad hoc.
-10. **Ratings** : lecteurs → vues `_latest` uniquement (règle ART n°2). LUSR : chemin v2
-    canonique (`RecomputeLUSRCanonicalForPlayer`) — v1 est mort.
+10. **Ratings** : lecteurs → vues `_latest` uniquement (règle ART n°2). LUSR : v2 seul
+    (ADR 0024) ; la v1 est SUPPRIMÉE (code, tests, interrupteurs `LEVELUP_LUSR_*`, aperçu
+    `--lusr --dry-run`). Rejeu complet : `RecomputeLUSRCanonicalWithAccess` (rafales courtes
+    de l'écrivain partagé, jamais en continu) ou `…ForPlayer` (handle déjà tenu) ; les 8
+    composantes (`lusr_component_history`) sont écrites par la v2, les matchs `is_excluded`
+    n'entrent pas dans la note.
 11. **Feature flags** : pas de flag qui laisse une feature OFF « pour plus tard » —
     corriger la cause et livrer actif. Tout kill-switch porte en commentaire : date du
     basculement de défaut + date cible de retrait + critère mesurable (modèle :

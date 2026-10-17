@@ -28,8 +28,14 @@ import (
 // write-held/retry (cf. canonicalWriteHeldWatermark), où un match est recompute
 // à chaque cycle tant que son écriture canonical échoue.
 var (
-	canonicalWritesTotal   = expvar.NewInt("levelup.lusr_v2.canonical_writes_total")
-	canonicalWriteErrors   = expvar.NewInt("levelup.lusr_v2.canonical_write_errors_total")
+	canonicalWritesTotal = expvar.NewInt("levelup.lusr_v2.canonical_writes_total")
+	canonicalWriteErrors = expvar.NewInt("levelup.lusr_v2.canonical_write_errors_total")
+	// componentWritesTotal / componentWriteErrors : matchs dont les composantes de
+	// performance (lusr_component_history) ont été écrites / n'ont pas pu l'être. Une
+	// croissance des erreurs = Prestige, profil et escouade lisent des composantes en retard
+	// (rattrapage : rejeu complet RecomputeLUSRCanonical).
+	componentWritesTotal   = expvar.NewInt("levelup.lusr_v2.component_writes_total")
+	componentWriteErrors   = expvar.NewInt("levelup.lusr_v2.component_write_errors_total")
 	dualRowInconsistencies = expvar.NewInt("levelup.lusr_v2.dual_row_inconsistencies_total")
 	sentinelScansTotal     = expvar.NewInt("levelup.lusr_v2.sentinel_scans_total")
 	predictionsTotal       = expvar.NewInt("levelup.lusr_v2.predictions_total")

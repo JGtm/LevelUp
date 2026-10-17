@@ -184,32 +184,78 @@ Pièces : `sync/match_recomputer.go:7-8,26,146`, `sync/lusr_full_recompute.go:26
 `sync/skill/skill_v2_canonical.go:41-75`, `sync/engine_postsync_scoring.go:182-202`,
 `sync/skill/skill_rating*.go`, `migrations/steps_player_match_skill_rank.go:190-192`.
 
-- [ ] E4.1 Test d'intégration ROUGE : après exclusion d'un match, `match_skill_rank_latest` sert la
+- [x] E4.1 Test d'intégration ROUGE : après exclusion d'un match, `match_skill_rank_latest` sert la
   valeur v2, et le match exclu ne compte pas dans la note v2.
-- [ ] E4.2 La v2 lit `LoadExcludedMatchIDs` (ou son équivalent partagé) et saute les matchs exclus.
-- [ ] E4.3 `MatchRecomputer` appelle `RecomputeLUSRCanonicalForPlayer` sous l'accès en rafales ;
-  test du contrat d'écrivain réécrit (D-6).
-- [ ] E4.4 Les 8 composantes sont écrites par le chemin v2 (calcul de composantes extrait de la v1
-  avant suppression, écriture par `BatchBuilder.AddLUSRComponents` → persister existant, INSERT-only) ;
-  test : après un post-sync v2, `lusr_component_history_latest` contient le match.
-- [ ] E4.5 Suppression de la v1 : `runLUSRV1UnderRead` et l'étape 2 de `runSkillRatingSteps`, alias
-  `BatchComputeLUSR`/`batchComputeLUSR`, `BatchComputeLUSRWithMedals`, `upsertLUSRRatings(Batch)`,
-  `writeLUSRComponentHistory` (si remplacé), `loadExistingLUSRStates`, `computeSkillRatingsBatch` et
-  le preview v1 (`RunBackfillLUSRDryRun`, `cmd_backfill.go:464`) s'ils n'ont plus d'usage, l'opt-out
-  `LUSR` d'`IsLUSRV2Canonical` et de `DefaultLUSRModeIfUnset`, les tests v1 (lignes de baseline
-  retirées au même commit). Grep final : aucun appelant restant.
-- [ ] E4.6 Mesure avant/après sur une COPIE d'une player DB (serveur arrêté ou copie à froid) : date
-  de la dernière ligne de `lusr_component_history` avant, présence du match recalculé après.
-- [ ] E4.7 CLAUDE.md, skill `db-schema` et ADR 0024 (amendement court) : v1 supprimée, opt-out retiré.
+  `TestMatchRecomputer_ExclusionServeLaNoteV2SansLeMatchExclu` (tag `integration`), rouge avant tout
+  correctif : 11 matchs sur 12 servis à 1501-1505 (valeur v1) au lieu de 2200 (valeur v2) dans
+  `match_skill_rank_latest_by_type`, expérience v2 12 au lieu de 11, mu 30,174 au lieu de 30,087 (référence
+  rejouée sans le match exclu). Vert après E4.2 + E4.3. Prémisse corrigée : `match_skill_rank_latest` (vue lue
+  par l'interface) ordonne `start_time DESC NULLS LAST` AVANT `written_at` et les lignes v1 n'ont pas de
+  `start_time` : la v1 ne la masquait pas ; le masquage était dans `match_skill_rank_latest_by_type` (graphe
+  d'évolution, arbitré sur `written_at`). Le test affirme sur les deux vues.
+- [x] E4.2 La v2 lit `LoadExcludedMatchIDs` (chargeur existant, sans copie) et saute les matchs exclus :
+  retirés dans la sélection sous lecteur (`selectShadowWorkUnderRead`, avant `scorable`), compteur
+  `skipped_excluded` dans les deux lignes INFO. Test `TestRunLUSRV2Shadow_Canonical_SkipsExcludedMatches`,
+  rouge avant (processed 3, 2 lignes de note pour le match exclu, expérience 3), vert après. Deux tests
+  d'échec d'écriture (`WriteFailHoldsWatermark`, `HeldGroupSkipsLaterMatches`) simulaient l'échec par une base
+  joueur FERMÉE, que la lecture des exclusions refuse désormais en amont : ils utilisent une base joueur qui
+  refuse toute écriture de note (`CHECK (FALSE)`), même intention.
+- [x] E4.3 `MatchRecomputer` -> `RecomputeLUSRCanonicalWithAccess` (nouvelle, accès en rafales ; la version à
+  handle tenu `RecomputeLUSRCanonicalForPlayer` l'enveloppe en mode épinglé). Contrat d'écrivain retenu : une
+  rafale pour la sentinelle de reset (un INSERT), puis les rafales du rejeu v2 (au plus 50 matchs ou 2 s, sélection
+  et filigrane sous lecteur) ; jamais en continu ; la note de performance se lit sous un segment de lecture relâché
+  avant la première rafale. `TestMatchRecomputer_NeverAcquiresTheSharedWriter` ->
+  `TestMatchRecomputer_TakesTheSharedWriterInShortBurstsOnly` (2 prises d'écrivain pour 12 matchs, aucune lecture
+  pendant que l'écrivain est tenu, base revenue en lecture seule) ; `..._NoProviderReadsSharedReadOnly` ->
+  `..._NoProviderReleasesTheSharedWriterLease`. Lignes de baseline : ces deux tests n'y figuraient pas (0 ligne à
+  retirer). Garde archlint `TestNoSharedWriterOnRequestPath` : entrée datée pour `match_recomputer.go` (décision
+  D-6) ; `syncRootFileBaseline` 79 -> 78.
+- [x] E4.4 Les 8 composantes sont écrites par le chemin v2. Vérification sur pièces : leur calcul
+  (`computeCompositeScoreWithBreakdown`) dépend des statistiques du match et de moyennes glissantes du joueur,
+  pas de mu/sigma v1 : pas d'arrêt. Nouveau `skill_v2_components.go` (orchestration par match, fenêtres
+  glissantes par groupe vides à chaque cycle comme la v1 incrémentale, score d'exploit médailles chargé une fois
+  sous lecteur par `skill.WithMedalExploit`), écriture INSERT-only par `AppendOnlyLUSRPersister.PersistComponents`
+  (même corps d'INSERT `persistLUSRComponents` que le flux d'ingestion), lecture par
+  `lusr_component_history_latest`. Écart au libellé : `BatchBuilder.AddLUSRComponents` -> `PlayerPersister` n'est
+  pas utilisable ici (le persister ne fait rien sans ligne d'enrichissement « live » et saute un match déjà
+  ingéré) ; `AddLUSRComponents` garde donc zéro appelant de production (candidat E5.1, non traité). Best-effort
+  avec compteur `levelup.lusr_v2.component_write_errors_total` et Warn. Test
+  `TestPostSyncLUSRV2_WritesTheEightComponents` (par `runSkillRatingSteps`), rouge avant
+  (`LUSRUpdated = 0`, aucune composante). Parité prouvée avant la suppression de la v1, test jetable : 40 matchs,
+  v1 force contre v2, 275 valeurs `match_id/composante` identiques à 1e-12.
+- [x] E4.5 Suppression de la v1 : `BatchComputeLUSR`/`batchComputeLUSR`/`BatchComputeLUSRWithMedals`,
+  `computeSkillRatingsBatch`, `upsertLUSRRatings(Batch)`, `writeLUSRComponentHistory`, `loadExistingLUSRStates`,
+  `lusrResult`, `applyInactivityDecay`, le preview (`BatchComputeLUSRPreview`, `RunBackfillLUSRDryRun`,
+  `levelup backfill --lusr --dry-run` : pas d'équivalent v2 trivial, l'aperçu comparait des mu/sigma v1),
+  `runLUSRV1UnderRead` et l'étape 2 de `runSkillRatingSteps`, `IsLUSRV2Enabled`/`IsLUSRV2Canonical` et leurs
+  variables d'environnement `LEVELUP_LUSR_V2_ENABLED` / `LEVELUP_LUSR_CANONICAL` (+ `=LUSR`),
+  `DefaultLUSRModeIfUnset`, `LogLUSRModeAtBoot` (et l'appel de `cmd/server`), les `Setenv` des CLI, la sentinelle
+  dual-row sans condition, et `RecomputeAfterARTRebuild` (+ test : sans appelant de production, il appelait la v1)
+  `[~]` E5.1. Docs : `docs/SYNC_GUIDE.md` EN + FR. Tests v1 retirés (28 tests, dont 7 dans la baseline : 40 lignes
+  JSONL retirées au même commit, en-tête de `check_test_baseline.sh`). Conservé : `RunFormulaSim` (simulateur
+  de formules `--compare-formulas`, TrueSkill v1, n'écrit rien, hors liste du plan) et ce qu'il tient
+  (`trueskillUpdate`, `PlayerState`, constantes de calibrage : E5.2). Grep final au journal.
+- [x] E4.6 Mesure avant/après sur une COPIE d'une player DB. `cmd/diag_q` impossible : les bases du serveur local
+  sont verrouillées de façon exclusive (lecture refusée, y compris par copie). Copie à froid de JGtm prise dans
+  la sauvegarde `data/backups/avant_recuisson_98_2026-10-16` (joueur + base partagée du même instant),
+  `cmd/recompute_perfnote` (`-mode sql`, puis `-mode lusr` = `RecomputeLUSRCanonicalForPlayer`). Avant :
+  `lusr_component_history_latest` 7 137 lignes / 1 028 matchs, dernière ligne 2026-07-18 20:51, 1 153 matchs
+  notés LUSR dont 125 sans composantes. Après le rejeu (1 108 matchs traités en 47 s, 24 rafales de ~2 s, 36 matchs
+  non deux équipes, 3 déséquilibrés) : 8 011 lignes / 1 153 matchs, dernière ligne du jour du rejeu, 0 match noté
+  sans composantes.
+- [x] E4.7 CLAUDE.md (règle 10), skill `db-schema` (`lusr_component_history`, les deux vues de
+  `match_skill_rank`), ADR 0024 (amendement EN du 2026-10-17), docs/SYNC_GUIDE EN + FR.
 
-Gate : `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` ;
-`go test ./internal/archlint/ ./internal/service/...` ; `bash scripts/check_test_baseline.sh tests`
-limité aux paquets touchés (ou le gate E10 si la baseline bouge).
+Gate : `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` ; `go test ./internal/archlint/
+./internal/service/...` ; `go test ./cmd/levelup/ ./cmd/server/` ; `go vet` des paquets touchés ;
+`bash scripts/check_test_baseline.sh tests`.
+
+Statut du gate (exécutant, 2026-10-17) : VERT (sorties au journal).
 
 ### E5 — Dettes Go du 2026-10-15 (entrée 10) — M
 
 - [ ] E5.1 Code mort supprimé avec tests, dispenses et lignes de baseline :
-  `FindMatchesMissingParticipantBits`, `RecomputeAfterARTRebuild` (s'il reste après E4),
+  `FindMatchesMissingParticipantBits`, `RecomputeAfterARTRebuild` (`[~]` supprimé par E4.5, sans appelant de production),
   `loadAwardsForScoreboard` + `WithAwardsRepo` + champ `awardsRepo`, `CachedHighlightEventsRepo`
   (+ commentaire de `player_matches_cache.go:119`), paramètre `titleSlug` de `SquadUsualContexts`
   (interface, handler, mocks).
@@ -365,6 +411,32 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
 - E3 : `docker-compose.yml` ne porte aucun autre service qui lance le serveur ; les unités systemd ou scripts de
   déploiement hors compose (`packaging/`, `scripts/deploy.sh`) n'ont pas été relus pour un délai d'arrêt propre.
   Non traité.
+- E4 (exécutant, 2026-10-17) : la prémisse « une ligne v1 postérieure masque la v2 » était fausse pour la vue lue par
+  l'interface (`match_skill_rank_latest` : `start_time DESC NULLS LAST` avant `written_at`, les lignes v1 n'ont pas de
+  `start_time`) et vraie pour `match_skill_rank_latest_by_type` (graphe d'évolution). Le correctif et le test portent
+  sur les deux vues. Les lignes v1 déjà écrites en prod par d'anciennes exclusions restent dans la table (append-only) :
+  invisibles de la vue match, mais servies par le graphe d'évolution tant qu'un rejeu v2 n'a pas écrit une ligne plus
+  récente pour ce match. Non traité (un rejeu `levelup backfill --lusr` par joueur les recouvre).
+- E4 : `TestNoSharedWriterOnRequestPath` (plan sécurité du 2026-10-16, L5) interdisait au recalcul d'exclusion de
+  prendre l'écrivain partagé (DoS par une route que tout compte peut rejouer). La décision D-6 le remplace par des
+  rafales courtes : allowlist datée. Risque résiduel à connaître : un compte qui bascule l'exclusion en boucle
+  déclenche des rejeux enchaînés (la coalescence n'absorbe que les demandes simultanées) ; chaque rejeu complet de
+  JGtm (1 108 matchs) prend 47 s et 24 rafales de ~2 s sur la copie mesurée. Non traité (hors D-6).
+- E4 : les matchs que la v2 ne note pas (36 non deux équipes, 3 déséquilibrés sur JGtm) n'ont plus de composantes
+  recalculées (la v1 en calculait pour tous les matchs d'une chaîne) ; leurs anciennes composantes restent. Les
+  composantes des matchs notés sont complètes. Non traité.
+- E4 : `BatchBuilder.AddLUSRComponents` n'a toujours aucun appelant de production (voir E4.4) ; le type
+  `shadowParticipant` de `skill_v2_shadow.go` est mort (relevé par `unused`, antérieur à E4) ; le simulateur de
+  formules (`RunFormulaSim`) retient du code TrueSkill v1 ; les constantes de calibrage de la v1 (`LUSRMaxDelta`,
+  `Inactivity*`, `Tau`, `KElo`...) et leurs réexportations restent (E5.2). Non traités.
+- E4 : régression de E3 corrigée parce qu'elle bloquait le gate de baseline de E4 : `cmd/server/shutdown.go` (créé
+  par E3) cite `shared_social` et n'était pas dans la liste blanche de
+  `TestNoUnauthorizedSharedSocialMention` (`platform/duckdb`) ; le gate d'E3 (`cmd/server`, `archlint`) ne couvrait pas ce
+  test. Entrée datée ajoutée à `no_attach_on_social_test.go`.
+- E4 : `golangci-lint run --new-from-merge-base=origin/main` sur les paquets touchés remonte 9 remarques toutes dans
+  des fichiers non touchés par E4 (`cmd/levelup/cmd_backfill_replay_passe.go`, `migration/steps_*`,
+  `sync/invariants`, `sync/killcollector` ; héritées de `feat/v75` par rapport à `main`) ; `--new-from-rev=HEAD`
+  (le diff d'E4 seul) : 0 remarque.
 
 ## 4. Journal
 
@@ -497,3 +569,38 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
     (analyse de l'arbre) lit désormais `shutdown.go` : HTTP avant recalculs avant scheduler, `shutdownPhases` avant
     `closeStores`, un seul `CloseAll`, un seul `Shutdown` ; mutation prouvée (phases permutées : échec). Aucun test
     renommé ni supprimé : pas de ligne de baseline à retirer.
+- 2026-10-17 E4 (exécutant, worktree `LevelUp-wt-backlog-1016`) : E4.1 à E4.7 faits, gates verts.
+  - Pièces rouvertes avant de coder : `match_recomputer.go`, `lusr_full_recompute.go`, `skill_v2_*`, `engine_postsync_scoring.go`,
+    `skill_rating*.go`, les migrations de `match_skill_rank`. Constat qui corrige le plan (section 0, ligne 5) : la vue servie
+    à l'interface ordonne `start_time DESC NULLS LAST` avant `written_at`, donc les lignes v1 (sans `start_time`) ne masquaient
+    pas la v2 ; elles dominaient `match_skill_rank_latest_by_type` (graphe d'évolution).
+  - Rouge -> vert. E4.1 `TestMatchRecomputer_ExclusionServeLaNoteV2SansLeMatchExclu` : rouge avant correctif, 11 matchs sur 12
+    à 1501-1505 (v1) au lieu de 2200 dans `_latest_by_type`, `expérience v2 = 12, attendu 11`, `mu v2 = 30.174013105`
+    contre 30.086840769 pour la référence rejouée sans le match exclu ; vert après E4.2 + E4.3. E4.2
+    `TestRunLUSRV2Shadow_Canonical_SkipsExcludedMatches` : rouge (`processed = 3, attendu 2`, 2 lignes de note pour le match
+    exclu, expérience 3), vert. E4.4 `TestPostSyncLUSRV2_WritesTheEightComponents` : rouge (`LUSRUpdated = 0`), vert.
+  - Contrat d'écrivain du recalculateur : rafales courtes uniquement (reset du filigrane = 1 INSERT, puis rafales du rejeu de
+    50 matchs ou 2 s), lecture des notes de performance sous un segment de lecture relâché avant la première rafale ;
+    `TestMatchRecomputer_TakesTheSharedWriterInShortBurstsOnly` (2 prises pour 12 matchs, 0 lecture sous écrivain, base revenue
+    en lecture seule) et `TestMatchRecomputer_NoProviderReleasesTheSharedWriterLease`. API : `RecomputeLUSRCanonicalWithAccess`
+    (accès en rafales) ; `RecomputeLUSRCanonicalForPlayer` (handle tenu) l'enveloppe ; options variadiques `skill.ShadowOption`
+    (`WithMedalExploit`) sur `RunLUSRV2Shadow*`.
+  - Composantes : parité v1/v2 (test jetable retiré) sur 40 matchs, 275 valeurs identiques à 1e-12 avant de supprimer la v1.
+    Mesure E4.6 : voir l'item.
+  - Grep final (symboles v1, interrupteurs, `RecomputeAfterARTRebuild`) sur `apps docs scripts CLAUDE.md .claude Makefile
+    .github docker-compose.yml .env.local.example` : 0 occurrence hors `docs/adr/0024-*.md` (historique + amendement) et
+    l'en-tête RETRAIT de `scripts/check_test_baseline.sh`. Motif : `BatchComputeLUSR|batchComputeLUSR|computeSkillRatingsBatch|
+    upsertLUSRRatings|writeLUSRComponentHistory|loadExistingLUSRStates|lusrResult|runLUSRV1UnderRead|RunBackfillLUSRDryRun|
+    LUSRDryRunReport|LUSRPlaylistPreview|IsLUSRV2Canonical|IsLUSRV2Enabled|DefaultLUSRModeIfUnset|LogLUSRModeAtBoot|
+    lusrCanonicalEnvFlag|lusrV2EnvFlag|RecomputeAfterARTRebuild|LEVELUP_LUSR_CANONICAL|LEVELUP_LUSR_V2_ENABLED`.
+  - Gate (sorties réelles, un seul `go` à la fois, `GOCACHE=%LOCALAPPDATA%\go-build-backlog1016`) :
+    `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` : `ok` (sync 185-196 s, sync/skill 7 s,
+    sync/v2 17 s, replayartifacts 41 s, persist `ok`) ; `go test ./internal/archlint/ ./internal/service/...` : `ok`
+    (archlint 68,5 s ; deux ratchets relevés puis traités : `TestNoSharedWriterOnRequestPath` -> entrée d'allowlist datée,
+    `TestSyncRootPackageFrozen` 79 -> 78) ; `go test ./cmd/levelup/ ./cmd/server/` : `ok` (22,8 s et 8 s) ;
+    `go vet` des paquets touchés (tags par défaut, `integration`, `psarepro`) et des 42 paquets qui importent `sync`/`sync/skill` :
+    sans sortie ; `golangci-lint run --new-from-rev=HEAD` (diff d'E4) avec `--build-tags=integration` : 0 issue ;
+    `--new-from-merge-base=origin/main` : 9 remarques, toutes dans des fichiers que E4 ne touche pas (voir Découvertes) ;
+    `bash scripts/check_test_baseline.sh tests` : `Baseline : 9391 tests`, `Courant : 21061 tests`, tous les tests de la
+    baseline présents, aucun échec de test ni de paquet, `EXIT=0` (voie film 119 s, voie DuckDB 1 396 s). Un premier passage
+    de ce script avait échoué sur `TestNoUnauthorizedSharedSocialMention` (régression d'E3, réparée : voir Découvertes).

@@ -72,8 +72,6 @@ func logLinesWith(out, msg string) []string {
 // temps réel d'une machine chargée. La borne de détention a son propre test, à horloge pilotée
 // elle aussi (TestLUSRV2Shadow_RafaleRendueApresMaxHold).
 func TestLUSRV2Shadow_RafalesBornees_300Candidats(t *testing.T) {
-	t.Setenv(lusrV2EnvFlag, "1")
-	t.Setenv(lusrCanonicalEnvFlag, "")
 	horloge := time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC)
 	withBurstLimits(t, lusrBurstLimits{maxMatches: 50, maxHold: 2 * time.Second, now: func() time.Time {
 		horloge = horloge.Add(time.Millisecond)
@@ -130,8 +128,6 @@ func TestLUSRV2Shadow_RafalesBornees_300Candidats(t *testing.T) {
 // pilotée : 500 ms par lecture (une au début de la rafale, une après chaque match) → 2 s
 // atteintes au 4e match ; 10 candidats = rafales de 4, 4 et 2.
 func TestLUSRV2Shadow_RafaleRendueApresMaxHold(t *testing.T) {
-	t.Setenv(lusrV2EnvFlag, "1")
-	t.Setenv(lusrCanonicalEnvFlag, "")
 	clock := time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC)
 	withBurstLimits(t, lusrBurstLimits{maxMatches: 50, maxHold: 2 * time.Second, now: func() time.Time {
 		clock = clock.Add(500 * time.Millisecond)
@@ -169,8 +165,6 @@ func TestLUSRV2Shadow_RafaleRendueApresMaxHold(t *testing.T) {
 // tombent dans deux rafales différentes : le groupe doit rester tenu d'une rafale à l'autre
 // (anti-trou, fix 2026-06-07), comme dans l'orchestration d'avant.
 func TestLUSRV2Shadow_ParityWithLegacyOrchestration_RafalesMultiples(t *testing.T) {
-	t.Setenv(lusrV2EnvFlag, "1")
-	t.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
 	t.Setenv(lusrModeCouplingEnvFlag, "1")
 	t.Setenv(lusrSquadOffsetEnvFlag, "1")
 	withBurstLimits(t, lusrBurstLimits{maxMatches: 2, maxHold: time.Hour, now: time.Now})

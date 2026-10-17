@@ -3,8 +3,10 @@
 package sync
 
 // sync_pipeline_fixture_test.go — fixture complète simulant un pipeline de sync
-// du début à la fin : highlights → weapon_kills → perf_score → LUSR →
-// sessions → citations → engagement_score.
+// du début à la fin : highlights → weapon_kills → perf_score →
+// sessions → citations → engagement_score. L'étape LUSR n'y figure plus : la v1 est
+// supprimée, le LUSR v2 est couvert par match_recomputer_lusr_v2_integration_test.go
+// et lusr_components_v2_test.go (bases migrées, état v2 côté shared).
 //
 // Ce fichier est la source de vérité pour la non-régression de l'ensemble
 // des calculs locaux. Si une formule change, les assertions ici doivent être
@@ -707,51 +709,6 @@ func TestPipelineFixture_PerformanceScore_Idempotent(t *testing.T) {
 	}
 }
 
-// TestPipelineFixture_LUSRRatings vérifie que batchComputeLUSR produit des
-// ratings pour les matchs sociaux (is_ranked=false).
-// m1 est ranked donc exclu. m2, m3 et les seed-matches sont sociaux.
-func TestPipelineFixture_LUSRRatings(t *testing.T) {
-	f := buildPipelineFixture(t)
-
-	n, err := batchComputeLUSR(t.Context(), f.player, f.shared, fixXUID, nil, false)
-	if err != nil {
-		t.Fatalf("batchComputeLUSR: %v", err)
-	}
-	if n == 0 {
-		t.Fatal("expected >0 LUSR ratings calculés (matchs sociaux présents)")
-	}
-
-	var rated int
-	f.player.QueryRow(`
-		SELECT COUNT(*) FROM match_skill_rank
-		WHERE rating_type = 'LUSR'
-		  AND match_id IN (?, ?)`, fixM2, fixM3,
-	).Scan(&rated)
-	if rated == 0 {
-		t.Fatal("aucun LUSR pour m2/m3")
-	}
-}
-
-// TestPipelineFixture_LUSRRatings_RankedExcluded vérifie que m1 (ranked) n'a
-// pas de rating LUSR (LUSR est réservé aux matchs non-ranked).
-func TestPipelineFixture_LUSRRatings_RankedExcluded(t *testing.T) {
-	f := buildPipelineFixture(t)
-
-	_, err := batchComputeLUSR(t.Context(), f.player, f.shared, fixXUID, nil, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var hasM1 bool
-	f.player.QueryRow(`
-		SELECT COUNT(*) > 0 FROM match_skill_rank
-		WHERE match_id = ? AND rating_type = 'LUSR'`, fixM1,
-	).Scan(&hasM1)
-	if hasM1 {
-		t.Fatal("m1 (ranked) ne devrait pas avoir de rating LUSR")
-	}
-}
-
 // TestPipelineFixture_SessionGrouping vérifie que l'algorithme de sessions
 // regroupe m1+m2 dans la même session (écart 40 min < seuil 120 min) et
 // place m3 dans une session séparée (écart 7 jours).
@@ -1069,11 +1026,6 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 		t.Fatalf("[étape 2] performance_score: %v", err)
 	}
 
-	// Étape 3 — LUSR ratings
-	if _, err := batchComputeLUSR(t.Context(), f.player, f.shared, fixXUID, nil, false); err != nil {
-		t.Fatalf("[étape 3] LUSR: %v", err)
-	}
-
 	// Étape 4 — sessions
 	opts := domain.SessionComputeOptions{
 		GapMinutes:     120,
@@ -1110,13 +1062,6 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 	f.player.QueryRow("SELECT COUNT(*) FROM match_citations_latest WHERE match_id=?", fixM1).Scan(&nCit)
 	if nCit == 0 {
 		t.Error("[full] aucune citation pour m1")
-	}
-
-	// LUSR : au moins un rating calculé
-	var nLUSR int
-	f.player.QueryRow("SELECT COUNT(*) FROM match_skill_rank WHERE rating_type='LUSR'").Scan(&nLUSR)
-	if nLUSR == 0 {
-		t.Error("[full] aucun rating LUSR")
 	}
 
 	// engagement_score_brut : toujours posé (score percentile dépend de l'historique)

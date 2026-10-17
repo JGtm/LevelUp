@@ -215,29 +215,13 @@ func runPerf(ctx context.Context, env runEnv) error {
 
 // runLUSR rejoue le LUSR v2 canonique complet de chaque joueur.
 //
-// Les deux flags d'environnement sont OBLIGATOIRES ici : DefaultLUSRModeIfUnset
-// n'est appelée qu'au boot serveur, et les CLI restent volontairement sur le
-// défaut v1 + opt-in explicite (skill_v2_canonical.go:46-57). Sans eux le replay
-// serait shadow-only : aucune ligne canonique `LUSR` écrite. Même pose que
-// cmd/lusr_v2_canonical_backfill.
-//
 // La shared est ouverte en RW : RecomputeLUSRCanonicalForPlayer y insère la
 // sentinelle de reset du watermark puis les états player_skill_state_v2.
 func runLUSR(ctx context.Context, env runEnv) error {
-	if err := os.Setenv("LEVELUP_LUSR_V2_ENABLED", "1"); err != nil {
-		return fmt.Errorf("setenv LEVELUP_LUSR_V2_ENABLED: %w", err)
-	}
-	if err := os.Setenv("LEVELUP_LUSR_CANONICAL", "LUSR_V2"); err != nil {
-		return fmt.Errorf("setenv LEVELUP_LUSR_CANONICAL: %w", err)
-	}
-	// Anti no-op SILENCIEUX : les trois gates du replay (capability du titre, v2
-	// activé, v2 canonique) dégradent tous en « 0 match traité » sans erreur. On
-	// les vérifie ICI, avant d'ouvrir la moindre DB en écriture.
+	// Anti no-op SILENCIEUX : la capability du titre dégrade en « 0 match traité »
+	// sans erreur. On la vérifie ICI, avant d'ouvrir la moindre DB en écriture.
 	if !skill.SlugHasLUSR(titleSlug) {
 		return fmt.Errorf("titre %s sans capability LUSR : le replay serait un no-op", titleSlug)
-	}
-	if !lusync.IsLUSRV2Enabled() || !lusync.IsLUSRV2Canonical() {
-		return fmt.Errorf("LUSR v2 non activé/non canonique : le replay n'écrirait aucune ligne canonique")
 	}
 
 	shared, closeShared, err := openWrite(ctx, env.paths.SharedDBPath(titleSlug))

@@ -3,8 +3,8 @@
 // lusr_v2_replay — Phase 1d : replay du LUSR v2 sur l'historique complet
 // des joueurs trackés et comparaison aux cibles validées.
 //
-// Le cmd configure l'env LEVELUP_LUSR_V2_ENABLED=1 puis appelle le shadow
-// runner (sync.RunLUSRV2Shadow) sur chaque joueur. Le shadow est idempotent
+// Le cmd appelle le shadow runner (sync.RunLUSRV2Shadow, sans base joueur :
+// shadow-only) sur chaque joueur. Le shadow est idempotent
 // (watermark via last_match_at), donc pour avoir une trace propre on offre
 // l'option --reset qui truncate player_skill_state_v2 avant le run.
 //
@@ -65,12 +65,6 @@ func main() {
 	}
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
-
-	// Active le flag shadow programatiquement — le cmd EST le caller.
-	if err := os.Setenv("LEVELUP_LUSR_V2_ENABLED", "1"); err != nil {
-		slog.Error("setenv LEVELUP_LUSR_V2_ENABLED", "err", err)
-		os.Exit(1)
-	}
 
 	db := openShared(*dbPath)
 	defer db.Close()

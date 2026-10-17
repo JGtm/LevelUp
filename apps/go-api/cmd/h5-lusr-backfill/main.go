@@ -80,14 +80,6 @@ func main() {
 	// Classifier LUSR title-aware (défaut Infinite + h5).
 	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif).
 
-	// Mode canonical (écrit match_skill_rank).
-	if err := os.Setenv("LEVELUP_LUSR_V2_ENABLED", "1"); err != nil {
-		fatal("setenv ENABLED: %v", err)
-	}
-	if err := os.Setenv("LEVELUP_LUSR_CANONICAL", "LUSR_V2"); err != nil {
-		fatal("setenv CANONICAL: %v", err)
-	}
-
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
 	sharedPath := pr.SharedDBPath(halo5.TitleSlug)
 	playerPath := pr.PlayerDBPath(halo5.TitleSlug, gt)

@@ -195,8 +195,7 @@ func (e *SyncEngine) RunFull(ctx context.Context, opts domain.SyncOptions) (doma
 }
 
 // RunBackfill, RunBackfillEngagementScores, RunBackfillEngagementCoefficients,
-// RunBackfillLUSRDryRun (LUSR v2 : le v1 RunBackfillLUSR est mort — cf.
-// RecomputeLUSRCanonicalForPlayer), RunBackfillCSR, RunBackfillPerf,
+// RunBackfillCSR, RunBackfillPerf,
 // RunBackfillComebackBadges, loadMedalExploitMap, loadMedalExploitMapBestEffort,
 // selectMatchesForComebackBadges, loadAllMatchIDsForPlayer, loadFlaggedMatchIDs :
 // déplacés vers engine_backfills.go (refactor 2026-05-21).

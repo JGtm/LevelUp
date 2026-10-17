@@ -126,7 +126,7 @@ Sélecteurs (un ou plusieurs requis) :
 | `--citations` | Non | Recalcul de `match_citations` depuis mappings + médailles + stats + awards. |
 | `--citations-recompute-all` | Non | Recalcul total (force) + vérifications d'invariants V1-V4. |
 | `--composite-only` | Non | Citations composites uniquement (additif). |
-| `--lusr` | Non | Recalcul LUSR (TrueSkill 2 + poids médailles). `--dry-run` prévisualise par playlist_group. |
+| `--lusr` | Non | Rejeu complet du LUSR v2 du joueur (note + les 8 composantes de performance). |
 | `--perf` | Non | Recalcul du performance score relatif (v5). |
 | `--assists-model` | Non | Modèle OLS expected_assists par mode. |
 | `--csr` | Oui | CSR par match via `GetMatchSkill` (RankRecap), idempotent. |
@@ -134,7 +134,7 @@ Sélecteurs (un ou plusieurs requis) :
 | `--weapons` | Oui | `weapon_kills` depuis le CDN film. |
 | `--compare-formulas` | Non | Simule 5 variantes de formule LUSR sur `--last-n` matchs (défaut 20). |
 
-`--force` retraite les données déjà persistées. `--dry-run` n'est valide qu'avec `--shared-csr` ou `--lusr`. Les sélecteurs adossés à l'API rafraîchissent les tokens Halo du joueur via le refresh token OAuth (voir Auth). Le recalcul LUSR utilise le chemin v2 canonical ; le v1 est mort.
+`--force` retraite les données déjà persistées. `--dry-run` n'est valide qu'avec `--shared-csr`. Les sélecteurs adossés à l'API rafraîchissent les tokens Halo du joueur via le refresh token OAuth (voir Auth). Le recalcul LUSR utilise le chemin v2 ; la v1 est supprimée (plus aucun interrupteur d'environnement).
 
 Le backfill est aussi exposé en HTTP (`POST /backfill/start`) ; la CLI est la voie locale sans serveur.
 

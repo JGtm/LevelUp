@@ -231,6 +231,15 @@
 # TestRequireAdmin_DemoMode_RefusesExceptNamedReads. 8 lignes JSONL, exactement 2 paires (Package, Test),
 # vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-17 (lot backlog-2026-10-16, E4, D-6 : suppression du LUSR v1) : 7 tests de
+# `internal/sync` dont le code testé est supprimé — TestE2E_ARTPipeline_BatchComputeLUSR_ProducesWrites
+# (cascade v1), TestPipelineFixture_LUSRRatings et TestPipelineFixture_LUSRRatings_RankedExcluded (étape
+# LUSR v1 de la fixture de pipeline), et les quatre TestRecomputeAfterARTRebuild_* (orchestrateur sans
+# appelant de production, qui rejouait la v1). Le LUSR v2 est couvert par
+# TestMatchRecomputer_ExclusionServeLaNoteV2SansLeMatchExclu, TestPostSyncLUSRV2_WritesTheEightComponents
+# et les tests de `internal/sync/skill`. 40 lignes JSONL, exactement 7 paires (Package, Test), vérifié par
+# différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

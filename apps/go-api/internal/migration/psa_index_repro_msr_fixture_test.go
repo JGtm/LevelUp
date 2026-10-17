@@ -193,12 +193,6 @@ WHERE match_id IN (` + sq + `) AND expected_win_prob IS NOT NULL GROUP BY match_
 			`SELECT DISTINCT match_id FROM match_skill_rank WHERE rating_type = 'CSR'`, nil, true},
 		{"F5a", "LoadExistingRatingIDs('LUSR') (sync/skill/skill_rating_loaders.go)",
 			`SELECT match_id FROM match_skill_rank WHERE rating_type = ?`, []any{"LUSR"}, true},
-		{"F5b", "loadExistingLUSRStates (sync/skill/skill_rating_loaders.go)", `
-SELECT msr.playlist_group, msr.rating_value, msr.rating_deviation FROM match_skill_rank msr
-JOIN (SELECT playlist_group, MAX(start_time) AS max_st FROM match_skill_rank
-      WHERE rating_type = 'LUSR' GROUP BY playlist_group) last
-  ON msr.playlist_group = last.playlist_group AND msr.start_time = last.max_st
-WHERE msr.rating_type = 'LUSR'`, nil, true},
 		{"F6a", "loadPreviousLUSRRating('arena_slayer') (sync/skill/skill_v2_canonical.go)", `
 SELECT rating_value FROM match_skill_rank
 WHERE rating_type = 'LUSR' AND playlist_group = ? AND rating_value IS NOT NULL

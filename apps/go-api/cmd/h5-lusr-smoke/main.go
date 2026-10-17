@@ -36,9 +36,6 @@ func main() {
 	if len(os.Args) > 1 {
 		src = os.Args[1]
 	}
-	if err := os.Setenv("LEVELUP_LUSR_V2_ENABLED", "1"); err != nil {
-		fatal("setenv: %v", err)
-	}
 
 	// Classifier LUSR title-aware : défaut Infinite (fail-loud) + dédié Halo 5
 	// (chaîne unique h5_arena ; h5 n'a pas de pair_name).

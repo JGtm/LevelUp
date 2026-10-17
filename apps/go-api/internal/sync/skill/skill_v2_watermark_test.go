@@ -21,8 +21,6 @@ import (
 // jeu porte le cas mesuré le 2026-09-23 : un match non notable (ici à trois équipes)
 // resté au-dessus du filigrane pour toujours, plus un candidat sans chaîne LUSR.
 func TestLUSRV2Shadow_Stationary_NoWriterAndOneInfoLine(t *testing.T) {
-	t.Setenv(lusrV2EnvFlag, "1")
-	t.Setenv(lusrCanonicalEnvFlag, "") // shadow-only : seule la base shared est écrite
 
 	path := openShadowTestFileDB(t)
 	seed, err := sql.Open("duckdb", path)
@@ -75,8 +73,6 @@ func TestLUSRV2Shadow_Stationary_NoWriterAndOneInfoLine(t *testing.T) {
 // TestLUSRV2Shadow_NoCandidate_NoWriterAndOneInfoLine : un joueur sans aucun
 // candidat ne prend pas d'écrivain et a quand même sa ligne INFO du cycle.
 func TestLUSRV2Shadow_NoCandidate_NoWriterAndOneInfoLine(t *testing.T) {
-	t.Setenv(lusrV2EnvFlag, "1")
-	t.Setenv(lusrCanonicalEnvFlag, "")
 
 	buf, restore := captureSlog(t)
 	defer restore()

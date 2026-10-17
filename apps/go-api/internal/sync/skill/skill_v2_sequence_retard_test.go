@@ -67,8 +67,6 @@ func preparePlayerDBMSRRetard(t *testing.T) string {
 }
 
 func TestRunLUSRV2ShadowOwnerOnly_CheminV2_SequenceEnRetardAligneeAvantLEcriture(t *testing.T) {
-	t.Setenv(lusrV2EnvFlag, "1")
-	t.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
 	sharedDB := openShadowTestDB(t)
 	seedCanonical2v2(t, sharedDB, "m_retard", time.Date(2025, 4, 1, 14, 0, 0, 0, time.UTC))
 

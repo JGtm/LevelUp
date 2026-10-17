@@ -86,10 +86,8 @@ func parityArrivals() []shadowFixture {
 }
 
 func TestLUSRV2Shadow_ParityWithLegacyOrchestration(t *testing.T) {
-	t.Setenv(lusrV2EnvFlag, "1")
-	t.Setenv(lusrCanonicalEnvFlag, "LUSR_V2") // écrit aussi match_skill_rank (Stratégie C)
-	t.Setenv(lusrModeCouplingEnvFlag, "1")    // fuite inter-modes : écrit d'autres groupes
-	t.Setenv(lusrSquadOffsetEnvFlag, "1")     // offsets d'escouade lus sous la rafale
+	t.Setenv(lusrModeCouplingEnvFlag, "1") // fuite inter-modes : écrit d'autres groupes
+	t.Setenv(lusrSquadOffsetEnvFlag, "1")  // offsets d'escouade lus sous la rafale
 
 	legacy, current := newParityWorld(t), newParityWorld(t)
 
@@ -143,7 +141,7 @@ func runLegacyOrchestration(t *testing.T, w parityWorld, xuid string) int {
 	if err != nil {
 		t.Fatalf("référence : loadShadowMatches: %v", err)
 	}
-	base := newShadowRunContext(w.player, xuid, IsLUSRV2Canonical(), true)
+	base := newShadowRunContext(w.player, xuid, true, true)
 	var s shadowRunStats
 	heldGroups := make(map[string]bool)
 	const legacyBurstChunk = 3 // l'ancien postsyncLUSRBurstChunk

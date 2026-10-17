@@ -407,9 +407,9 @@ type componentRow struct {
 //     matchs et la moyenne des 10 plus anciens dans la fenêtre — ≥ 20 matchs
 //     requis pour significativité).
 //
-// Source : table `lusr_component_history` (V2 §1) alimentée live par
-// sync.upsertLUSRRatings et au backfill via re-run de ComputeSkillRatingsBatch
-// en mode force.
+// Source : table `lusr_component_history` (V2 §1) alimentée live par le
+// LUSR v2 (sync/skill, componentTracker) et, au rattrapage, par son rejeu complet
+// (RecomputeLUSRCanonicalForPlayer).
 //
 // Une seule query CTE batchée groupe AVG / QUANTILE / trend pour les 8
 // composantes (V2 §1 polish — évite les 8 round-trips initiaux). Si la table

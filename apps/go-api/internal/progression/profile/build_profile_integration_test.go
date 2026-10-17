@@ -135,8 +135,8 @@ func seedMatchesForProfile(t *testing.T, pdb *duckdb.PlayerDB, now time.Time, co
 		`, matchID, mu, startTime); err != nil {
 			t.Fatalf("match_skill_rank %s: %v", matchID, err)
 		}
-		// V2 §1 : peupler lusr_component_history (simule la live write de
-		// sync.upsertLUSRRatings). Valeurs déterministes pour permettre
+		// V2 §1 : peupler lusr_component_history (simule la live write du
+		// LUSR v2, skill.componentTracker). Valeurs déterministes pour permettre
 		// l'assertion sur current_avg / top20 / trend.
 		for j, comp := range componentNames {
 			value := 0.4 + float64((i+j)%6)*0.08 // valeurs [0.4..0.84]

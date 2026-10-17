@@ -38,8 +38,6 @@ const (
 )
 
 func TestRecomputeLUSRCanonical_UsesEngineTitleNotCtxTitle(t *testing.T) {
-	t.Setenv("LEVELUP_LUSR_V2_ENABLED", "1")
-	t.Setenv("LEVELUP_LUSR_CANONICAL", "LUSR_V2")
 
 	const gamertag = "LUSRTitleCtxPlayer"
 	const xuid = "owner"

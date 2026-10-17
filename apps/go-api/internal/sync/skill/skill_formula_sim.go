@@ -368,7 +368,7 @@ func RunFormulaSim(
 		if match.PairName != nil {
 			pairName = *match.PairName
 		}
-		// Title-aware (C6) : cohérent avec computeSkillRatingsBatch (le simulateur
+		// Title-aware (C6) : cohérent avec processOneShadowMatch (le simulateur
 		// doit classer les modes comme le calcul réel). ""/halo_infinite → défaut.
 		chain := GetLUSRChainForTitle(ctxkeys.TitleSlug(ctx), pairName)
 		if chain == "" {

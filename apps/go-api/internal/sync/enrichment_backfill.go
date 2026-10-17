@@ -14,7 +14,7 @@
 // friends + aggregates) hors LUSR — le LUSR est recalculé séparément (cmd/h5-lusr-backfill),
 // APRÈS la classification ranked, pour ne pas mêler de l'Arena classé au rating social.
 //
-// Distinct de RecomputeAfterARTRebuild (qui suppose les rows enrichment déjà
+// Distinct du recalcul post-rebuild ART retiré (qui supposait les rows enrichment déjà
 // présentes et fait des UPDATE force=true) : ici la player DB est VIERGE, donc
 // ensurePlayerEnrichmentRows DOIT s'exécuter en premier — sinon tous les recomputes,
 // composés d'UPDATE, sont des no-op silencieux (cf. incident 2026-05-27).
@@ -212,4 +212,25 @@ func baselineFailed(r EnrichmentBackfillReport) bool {
 		}
 	}
 	return false
+}
+
+// loadAllMatchIDsForXUID charge la liste des match_ids où le xuid a participé.
+// Utilise `xuid || ” = ?` pour forcer un table-scan (court-circuite l'index
+// ART au cas où). Sans ORDER BY — la chronologie n'importe pas pour dominance.
+func loadAllMatchIDsForXUID(ctx context.Context, sharedDB *sql.DB, xuid string) ([]string, error) {
+	rows, err := sharedDB.QueryContext(ctx,
+		`SELECT DISTINCT match_id FROM match_participants WHERE xuid || '' = ?`, xuid)
+	if err != nil {
+		return nil, fmt.Errorf("loadAllMatchIDsForXUID: %w", err)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("loadAllMatchIDsForXUID scan: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }

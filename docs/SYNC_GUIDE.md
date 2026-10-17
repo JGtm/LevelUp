@@ -126,7 +126,7 @@ Selectors (one or more required):
 | `--citations` | No | Recompute `match_citations` from mappings + medals + stats + awards. |
 | `--citations-recompute-all` | No | Full recompute (force) + invariant checks V1-V4. |
 | `--composite-only` | No | Composite citations only (additive). |
-| `--lusr` | No | Recompute LUSR (TrueSkill 2 + medal weights). `--dry-run` previews per playlist_group. |
+| `--lusr` | No | Full LUSR v2 replay of the player (rating + the 8 performance components). |
 | `--perf` | No | Recompute relative performance score (v5). |
 | `--assists-model` | No | Per-mode OLS expected_assists model. |
 | `--csr` | Yes | Per-match CSR via `GetMatchSkill` (RankRecap), idempotent. |
@@ -134,7 +134,7 @@ Selectors (one or more required):
 | `--weapons` | Yes | `weapon_kills` from the film CDN. |
 | `--compare-formulas` | No | Simulate 5 LUSR formula variants on `--last-n` matches (default 20). |
 
-`--force` reprocesses already-persisted data. `--dry-run` is only valid with `--shared-csr` or `--lusr`. API-backed selectors refresh the player's Halo tokens via the OAuth refresh token (see Auth). LUSR recompute uses the v2 canonical path; v1 is dead.
+`--force` reprocesses already-persisted data. `--dry-run` is only valid with `--shared-csr`. API-backed selectors refresh the player's Halo tokens via the OAuth refresh token (see Auth). LUSR recompute uses the v2 path; the v1 was removed (no environment switch remains).
 
 Backfill is also exposed over HTTP (`POST /backfill/start`); the CLI is the local, server-free path.
 

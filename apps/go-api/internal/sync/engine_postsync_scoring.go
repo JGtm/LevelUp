@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/skill"
 )
 
 func (e *SyncEngine) runScoringSteps(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
@@ -131,17 +132,15 @@ func (e *SyncEngine) runScoringStepsWithDB(ctx context.Context, playerDB, shared
 	}
 }
 
-// runSkillRatingSteps exécute le bloc LUSR du post-sync : v1 (TrueSkill 2),
-// v2 shadow, et la sentinelle dual-row. Tout est gardé par la capability
-// title.CapLUSR (gate sur e.titleSlug, autoritatif côté engine) — un titre sans
-// CapLUSR saute proprement. Best-effort : chaque sous-étape logue + trackFatalErr
-// sur erreur sans interrompre le reste (idempotent).
+// runSkillRatingSteps exécute le bloc LUSR du post-sync : le LUSR v2 (seul modèle, ADR 0024)
+// puis la sentinelle dual-row. Tout est gardé par la capability title.CapLUSR (gate sur
+// e.titleSlug, autoritatif côté engine) — un titre sans CapLUSR saute proprement.
+// Best-effort : chaque sous-étape logue sur erreur sans interrompre le reste (idempotent).
 //
-// Découpage contention (fix read-only 2026-07-03) : le v1 LIT shared et écrit la
-// PLAYER DB → segment Read (release immédiat). Le v2 shadow, lui, écrit
-// player_skill_state_v2 CÔTÉ SHARED : il reçoit le *SharedAccess (pas un handle
-// de lecture) et fait ses PROPRES bursts Write. Le Read v1 est relâché AVANT →
-// aucun Read en vol quand le shadow demande son burst (garde anti-deadlock).
+// Accès shared : le v2 écrit player_skill_state_v2 CÔTÉ SHARED, il reçoit donc le
+// *SharedAccess (pas un handle de lecture) et fait sa sélection sous Read puis ses PROPRES
+// rafales Write("lusr"). Ne JAMAIS lui passer un handle de lecture (régression read-only
+// 2026-07-03) ni appeler cette étape sous un Read en vol (garde anti-deadlock).
 func (e *SyncEngine) runSkillRatingSteps(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
 	ctx = e.pinTitle(ctx)
 	if !slugHasLUSR(e.titleSlug) {
@@ -149,72 +148,33 @@ func (e *SyncEngine) runSkillRatingSteps(ctx context.Context, playerDB *sql.DB, 
 			"gamertag", e.gamertag, "title_slug", e.titleSlug)
 		return
 	}
-	// 2. LUSR v1 (TrueSkill 2) sous segment Read (release immédiat).
-	e.runLUSRV1UnderRead(ctx, playerDB, shared, r)
 
-	// 2.5 LUSR v2 — shadow mode (LEVELUP_LUSR_V2_ENABLED=1). Reçoit le
-	// *SharedAccess : il persiste player_skill_state_v2 (côté shared) via ses
-	// propres bursts Write("lusr"). Ne JAMAIS lui passer un handle de lecture
-	// (régression read-only 2026-07-03). Si LEVELUP_LUSR_CANONICAL=LUSR_V2, écrit
-	// AUSSI match_skill_rank (Stratégie C, ADR 0024). RunLUSRV2ShadowOwnerOnly
-	// self-gate la capability ; le garde ici évite l'appel inutile.
-	if IsLUSRV2Enabled() {
-		// OWNER-ONLY (fix 2026-06-08) : le post-sync de CE joueur ne persiste/avance
-		// que SON propre état + watermark + ligne canonique, jamais ceux de ses
-		// coéquipiers (sinon couplage cross-joueur → matchs sautés sans ligne LUSR).
-		// Porte le titre de l'engine dans le ctx pour le seam LUSR title-aware
-		// (GetLUSRChainForTitle : Infinite → classifier défaut ; h5 → dédié).
-		scoringCtx := ctxkeys.WithTitleSlug(ctx, e.titleSlug)
-		if n, err := RunLUSRV2ShadowOwnerOnly(scoringCtx, playerDB, shared, e.xuid); err != nil {
-			slog.WarnContext(ctx, "post-sync: LUSR v2 shadow échoué",
-				"gamertag", e.gamertag, "err", err)
-		} else if n > 0 {
-			slog.InfoContext(ctx, "post-sync: LUSR v2 shadow OK",
-				"gamertag", e.gamertag, "processed", n, "canonical", IsLUSRV2Canonical())
-		}
+	// OWNER-ONLY (fix 2026-06-08) : le post-sync de CE joueur ne persiste/avance
+	// que SON propre état + watermark + ligne canonique, jamais ceux de ses
+	// coéquipiers (sinon couplage cross-joueur → matchs sautés sans ligne LUSR).
+	// Porte le titre de l'engine dans le ctx pour le seam LUSR title-aware
+	// (GetLUSRChainForTitle : Infinite → classifier défaut ; h5 → dédié). Écrit la note
+	// (match_skill_rank, Stratégie C) ET les 8 composantes de performance
+	// (lusr_component_history) des matchs notés ; les matchs exclus n'y entrent pas.
+	scoringCtx := ctxkeys.WithTitleSlug(ctx, e.titleSlug)
+	if n, err := RunLUSRV2ShadowOwnerOnly(scoringCtx, playerDB, shared, e.xuid,
+		skill.WithMedalExploit(e.loadMedalExploitMapBestEffort)); err != nil {
+		slog.WarnContext(ctx, "post-sync: LUSR v2 échoué", "gamertag", e.gamertag, "err", err)
+	} else if n > 0 {
+		r.LUSRUpdated = n
+		slog.InfoContext(ctx, "post-sync: LUSR v2 OK", "gamertag", e.gamertag, "processed", n)
 	}
 
-	// 2.6 Sentinelle dual-row (playerDB-only, mode canonical).
+	// Sentinelle dual-row (playerDB-only).
 	e.runDualRowSentinelBestEffort(ctx, playerDB)
 }
 
-// runLUSRV1UnderRead calcule LUSR v1 (TrueSkill 2 closed-form) sous un segment de
-// LECTURE shared (v1 lit shared + medal map, écrit la PLAYER DB). Skippé en mode
-// canonical=LUSR_V2 (v2 écrit alors directement rating_type='LUSR', Stratégie C).
-// Le Read est relâché en sortie (defer) — AUCUN Read ne doit rester en vol quand
-// le shadow v2 demande son burst Write (garde anti-deadlock).
-func (e *SyncEngine) runLUSRV1UnderRead(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
-	ctx = e.pinTitle(ctx)
-	if IsLUSRV2Canonical() {
-		slog.DebugContext(ctx, "post-sync: LUSR v1 skippé (canonical=LUSR_V2)", "gamertag", e.gamertag)
-		return
-	}
-	sharedDB, releaseRead, rerr := shared.Read(ctx)
-	if rerr != nil {
-		slog.WarnContext(ctx, "post-sync: LUSR v1 — lecture shared indisponible, skippé",
-			"gamertag", e.gamertag, "err", rerr)
-		trackFatalErr(r, "lusr shared read", rerr)
-		return
-	}
-	defer releaseRead()
-	slog.DebugContext(ctx, "post-sync: calcul LUSR v1", "gamertag", e.gamertag)
-	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
-	if n, err := batchComputeLUSR(ctx, playerDB, sharedDB, e.xuid, medalMap, false); err != nil {
-		slog.WarnContext(ctx, "post-sync: LUSR v1 échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(r, "LUSR", err)
-	} else {
-		r.LUSRUpdated = n
-		slog.DebugContext(ctx, "post-sync: LUSR v1 mis à jour", "gamertag", e.gamertag, "count", n)
-	}
-}
-
-// runDualRowSentinelBestEffort exécute la sentinelle dual-row (Sprint 2.C) —
-// SEULEMENT en mode canonical (sinon la table LUSR_V2 n'est pas censée exister).
+// runDualRowSentinelBestEffort exécute la sentinelle dual-row (Sprint 2.C).
 // Détecte l'invariant Stratégie C cassé (match avec LUSR_V2 sans LUSR). Read-only
 // sur la PLAYER DB (n'a pas besoin de shared), idempotente, timeout 30s pour ne
 // jamais bloquer le post-sync. Toute incohérence → slog.ErrorContext.
 func (e *SyncEngine) runDualRowSentinelBestEffort(ctx context.Context, playerDB *sql.DB) {
-	if !IsLUSRV2Canonical() || playerDB == nil {
+	if playerDB == nil {
 		return
 	}
 	sentCtx, cancel := context.WithTimeout(ctx, 30*time.Second)

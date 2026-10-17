@@ -2,7 +2,7 @@
 // éradication ART de la table lusr_component_history (player DB, V2 §1) — 2026-06-20.
 //
 // **Pourquoi** : l'ancien schéma avait PK (match_id, component_name), ce qui forçait
-// writeLUSRComponentHistory à écrire en `INSERT ... ON CONFLICT (match_id, component_name)
+// l'écrivain des composantes à écrire en `INSERT ... ON CONFLICT (match_id, component_name)
 // DO UPDATE` — donc un delete+insert interne sur l'index ART, déclencheur du bug DuckDB
 // amont #23645 ("Failed to delete all rows from index" → DB FATAL invalidated).
 // lusr_component_history est la table SŒUR de match_skill_rank (même pipeline LUSR,
@@ -51,9 +51,9 @@ func init() {
 // coercé vers cette colonne TIMESTAMP naive par le fuseau de SESSION : ici, ce n'est pas
 // une colonne d'horodatage parmi d'autres, c'est LA colonne d'arbitrage de
 // `lusr_component_history_latest` (ORDER BY computed_at DESC, id DESC). Ses deux écrivains
-// la dataient sur DEUX horloges — persist.persistLUSRComponents omet la colonne et prenait
-// donc ce DEFAULT local, tandis que sync/skill.writeLUSRComponentHistory la pose
-// explicitement en `time.Now().UTC()`. A UTC+2, la ligne du persister se datait deux heures
+// d'alors la dataient sur DEUX horloges — persist.persistLUSRComponents omet la colonne et
+// prenait donc ce DEFAULT local, tandis que l'écrivain du calcul LUSR (supprimé depuis, il ne
+// reste que persistLUSRComponents) la posait explicitement en `time.Now().UTC()`. A UTC+2, la ligne du persister se datait deux heures
 // dans le futur et gagnait l'arbitrage contre toute composante recalculee dans les deux
 // heures suivantes : la lecture servait la version PERIMEE, sans erreur ni compteur.
 // C'est le mecanisme demontre par R1 sur written_at, sur la table soeur (ADR 0026).

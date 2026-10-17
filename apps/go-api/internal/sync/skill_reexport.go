@@ -83,7 +83,6 @@ const (
 // Types ré-exportés (alias).
 type (
 	FormulaSimReport = skill.FormulaSimReport
-	LUSRDryRunReport = skill.LUSRDryRunReport
 	LUSRChainConfig  = skill.LUSRChainConfig
 	SkillTier        = skill.SkillTier
 	lusrMatchData    = skill.LusrMatchData
@@ -99,13 +98,8 @@ var (
 // Fonctions ré-exportées (valeur de fonction — les appelants sync-root gardent leur nom
 // d'origine ; les impl minuscules sont exportées côté skill sans collision).
 var (
-	IsLUSRV2Canonical          = skill.IsLUSRV2Canonical
-	IsLUSRV2Enabled            = skill.IsLUSRV2Enabled
 	RunFormulaSim              = skill.RunFormulaSim
 	RunLUSRV2ShadowOwnerOnly   = skill.RunLUSRV2ShadowOwnerOnly
-	BatchComputeLUSR           = skill.BatchComputeLUSR
-	batchComputeLUSR           = skill.BatchComputeLUSRWithMedals
-	batchComputeLUSRPreview    = skill.BatchComputeLUSRPreview
 	loadExistingRatingIDs      = skill.LoadExistingRatingIDs
 	slugHasLUSR                = skill.SlugHasLUSR
 	GetPerformanceChain        = skill.GetPerformanceChain
@@ -130,8 +124,6 @@ var (
 	IsObjectiveFamilyForTitle            = skill.IsObjectiveFamilyForTitle
 
 	SimulationVariants                     = skill.SimulationVariants
-	DefaultLUSRModeIfUnset                 = skill.DefaultLUSRModeIfUnset
-	LogLUSRModeAtBoot                      = skill.LogLUSRModeAtBoot
 	ValidateLUSRChainClassifierWired       = skill.ValidateLUSRChainClassifierWired
 	ValidateObjectiveFamilyClassifierWired = skill.ValidateObjectiveFamilyClassifierWired
 )

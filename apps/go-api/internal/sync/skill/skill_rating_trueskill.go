@@ -59,14 +59,4 @@ func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float
 	return newMU, newSigma
 }
 
-// applyInactivityDecay augmente sigma proportionnellement à l'inactivité.
-func applyInactivityDecay(sigma, daysInactive float64) float64 {
-	capped := math.Min(daysInactive, float64(MaxInactivityDays))
-	if capped <= InactivityThresholdDay {
-		return sigma
-	}
-	added := InactivitySigmaPerDay * (capped - InactivityThresholdDay)
-	return ClampF(sigma+added, MinSigma, MaxSigma)
-}
-
 // ── Score composite ─────────────────────────────────────────────────────────

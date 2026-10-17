@@ -58,6 +58,13 @@ var requestPathWriterAllowlist = map[string]struct {
 	// validé avant la prise du writer (L5-4).
 	"internal/service/openspartan_import_service.go":      {1, "import OpenSpartan : writer pris après validation du fichier"},
 	"internal/service/openspartan_post_import_service.go": {6, "suite de l'import OpenSpartan : un import à la fois par compte"},
+	// 2026-10-17 : exclusion de match (PATCH …/matches/{id}/exclusion, RequireAuth). Le rejeu
+	// LUSR v2 écrit l'état du joueur côté shared : décision D-6 du plan backlog 2026-10-16
+	// (utilisateur) — le recalcul prend l'écrivain par RAFALES COURTES (sentinelle de reset, puis
+	// au plus 50 matchs ou 2 s par rafale), jamais en continu, et les demandes concurrentes d'un
+	// même joueur sont absorbées (coalesce.Runs). Remplace l'ancien contrat « jamais l'écrivain »
+	// (TestMatchRecomputer_TakesTheSharedWriterInShortBurstsOnly).
+	"internal/sync/match_recomputer.go": {1, "exclusion de match : rejeu LUSR v2 par rafales courtes, jamais en continu (D-6)"},
 }
 
 // writerCallSites rend, par fichier analysé, le nombre d'appels à une fonction de prise de writer.

@@ -148,7 +148,8 @@ Stats par joueur par match Firefight : `match_id`, `xuid`, `waves`, `boss_kills`
 | `player_match_enrichment` | `performance_score`, `session_id`, `is_with_friends` |
 | `personal_score_awards` | Awards objectifs (PersonalScores API) |
 | `match_citations` | Citations calculées par match |
-| `match_skill_rank` | Rating LUSR ou CSR par match — **append-only : lire via `match_skill_rank_latest`** |
+| `match_skill_rank` | Rating LUSR ou CSR par match — **append-only : lire via `match_skill_rank_latest`** (une ligne par match, priorité CSR > LUSR, `start_time` avant `written_at`) ou `match_skill_rank_latest_by_type` (une par match ET type, `written_at` : graphe d'évolution). Le LUSR n'est écrit que par la v2 (ADR 0024) : lignes `LUSR` + `LUSR_V2` (audit) dans la même transaction |
+| `lusr_component_history` | 8 composantes de performance par match (Prestige, profil, escouade) — écrites par le LUSR v2 seul ; **append-only : lire via `lusr_component_history_latest`** |
 | `career_progression` | Historique rangs |
 | `sessions` | Sessions groupées |
 | `media_files` | Fichiers médias indexés |
@@ -170,7 +171,7 @@ WHERE mp.xuid = '{coequipier_xuid}'
 
 ## Tables append-only + vues `_latest` (ADR 0026 — règle critique)
 
-`match_skill_rank`, `match_csrs`, `player_csr_snapshots`, `pve_match_stats` sont
+`match_skill_rank`, `lusr_component_history`, `match_csrs`, `player_csr_snapshots`, `pve_match_stats` sont
 append-only (PK technique `id` + `written_at`). Les tables produites par une passe de décodage
 de film (`match_kill_events`, `kill_positions`, `match_lives`, `match_death_context`,
 `match_life_placement`, `match_death_mates`, …) le sont aussi, arbitrées par `decode_pass` : leur vue `_latest`

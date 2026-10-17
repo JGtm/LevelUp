@@ -144,3 +144,30 @@ func (p *AppendOnlyLUSRPersister) Persist(ctx context.Context, rows []LUSRRating
 	}
 	return nil
 }
+
+// PersistComponents ajoute les composantes de performance d'un match (jusqu'à 8 lignes :
+// lusr_component_history) en INSERT pur, dans une seule transaction. La table est
+// append-only (ADR 0026) : un rejeu ajoute une version plus récente, la vue
+// lusr_component_history_latest sert la dernière. Même corps d'INSERT que le flux
+// d'ingestion (persistLUSRComponents) : une seule définition de la ligne.
+//
+// Distinct de PlayerPersister.Persist, qui n'écrit les composantes qu'avec la ligne
+// d'enrichissement « live » d'un match qu'il ingère et ne fait rien pour un match déjà
+// ingéré : le LUSR v2 note des matchs après coup.
+func (p *AppendOnlyLUSRPersister) PersistComponents(ctx context.Context, rows []LUSRComponentInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("persist: BeginTx LUSR components: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := persistLUSRComponents(ctx, tx, rows); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("persist: Commit LUSR components: %w", err)
+	}
+	return nil
+}

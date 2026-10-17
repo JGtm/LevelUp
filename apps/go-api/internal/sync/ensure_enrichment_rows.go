@@ -13,7 +13,7 @@
 //	WHERE xuid=?) → arrête le delta → PlayerPersister.Persist jamais appelé
 //	→ aucune row dans player_match_enrichment côté Madina/Choco/XxDaemon.
 //
-//	Le post-sync existant (batchComputePerformanceScores, upsertLUSRRatingsBatch,
+//	Le post-sync existant (batchComputePerformanceScores, le LUSR v2,
 //	writeSessionAssignmentsBatch, citations, dominance, etc.) est composé
 //	exclusivement d'UPDATE — `affected:0` silencieux si la row n'existe pas.
 //	Conséquence UI : page Match detail vide (citations, sessions, perf, weapon).

@@ -3,34 +3,36 @@
 //
 // Sémantique : lorsque l'utilisateur (dé)exclut un match via PATCH
 // /matches/{id}/exclusion, le flag `is_excluded` est mis à jour dans
-// player_match_enrichment. Les batches `batchComputePerformanceScores` et
-// `batchComputeLUSR` filtrent les matchs exclus en amont via
-// `loadExcludedMatchIDs`. Il faut donc relancer ces deux batches en mode
-// force=true pour propager le changement aux matchs ultérieurs de la même
-// chaîne / playlist_group.
+// player_match_enrichment. `batchComputePerformanceScores` et le rejeu LUSR v2
+// (RecomputeLUSRCanonicalWithAccess) filtrent les matchs exclus en amont via
+// `loadExcludedMatchIDs`. Il faut donc relancer ces deux calculs en mode complet pour
+// propager le changement aux matchs ultérieurs de la même chaîne / playlist_group.
 //
-// Choix d'implémentation : recompute global force=true plutôt que ciblé par
-// chaîne+fromTime. Justification :
-//   - La cascade TrueSkill LUSR doit de toute façon repartir du premier match
-//     du playlist_group concerné pour reconstituer l'état mu/sigma (pas de
-//     reprise en milieu de chaîne).
-//   - Les chaînes/groupes non impactés produisent des scores identiques sous
-//     force=true (idempotent par construction) → coût marginal en lecture
-//     seulement, pas de divergence de valeurs.
-//   - Implémentation drastiquement plus simple, sans dupliquer la logique des
-//     batches.
+// Choix d'implémentation : recompute global plutôt que ciblé par chaîne+fromTime.
+// Justification :
+//   - La cascade LUSR doit de toute façon repartir du premier match du playlist_group
+//     concerné pour reconstituer l'état mu/sigma (pas de reprise en milieu de chaîne) :
+//     le rejeu v2 remet à zéro l'état du joueur (sentinelle is_reset) puis rejoue tout.
+//   - Les chaînes/groupes non impactés produisent des scores identiques (idempotent par
+//     construction) → coût marginal en lecture seulement, pas de divergence de valeurs.
+//   - Implémentation drastiquement plus simple, sans dupliquer la logique des calculs.
 //
 // Volumétrie typique : 5000-10000 matchs total → ~2-10s en synchrone.
 // Si la latence pose problème, ré-introduire un mode ciblé via paramètre.
 //
-// Base partagée : LUE SEULEMENT. Les notes et le LUSR s'écrivent en base joueur
-// (persisters INSERT-only) ; le recalcul n'acquiert donc jamais le writer partagé (une
-// bascule en écriture ferait répondre 503 aux lecteurs de tout le site pendant 2 à 10 s).
-// Des demandes répétées pour un même joueur sont absorbées (coalesce.Runs).
+// Base partagée — contrat d'accès (D-6, plan backlog 2026-10-16) : le recalcul LIT
+// la base partagée sous des segments de lecture (le calcul des notes de performance),
+// et le LUSR v2 y écrit son état (player_skill_state_v2) par RAFALES COURTES : une
+// rafale pour la sentinelle de reset, puis au plus 50 matchs ou 2 s par rafale pour le
+// rejeu. L'écrivain partagé n'est JAMAIS tenu en continu pendant le recalcul : une
+// bascule en écriture longue ferait répondre 503 aux lecteurs de tout le site. Les notes
+// LUSR et les composantes s'écrivent en base joueur (persisters INSERT-only). Des demandes
+// répétées pour un même joueur sont absorbées (coalesce.Runs).
 package sync
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"time"
@@ -39,6 +41,7 @@ import (
 	"levelup/go-api/internal/platform/coalesce"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/sync/skill"
 )
 
 // MatchRecomputer recalcule performance_score + LUSR pour un joueur après une
@@ -110,6 +113,20 @@ func (r *MatchRecomputer) RecomputePending() bool {
 // exclusionRecomputes absorbe les recalculs d'exclusion par base joueur, pour tout le process.
 var exclusionRecomputes coalesce.Runs
 
+// sharedAccess construit l'accès en rafales à la base partagée de ce recalcul : lecture par
+// le fournisseur (ou OpenReadForQuery sans fournisseur), écriture par un burst
+// AcquireSharedWriterStandalone relâché dès la rafale terminée.
+func (r *MatchRecomputer) sharedAccess() *SharedAccess {
+	return NewBurstSharedAccess(
+		func(ctx context.Context) (*sql.DB, func(), error) {
+			return AcquireSharedWriterStandalone(ctx, r.sharedProvider, r.sharedDBPath)
+		},
+		func(ctx context.Context) (*sql.DB, func(), error) {
+			return acquireSharedReaderStandalone(ctx, r.sharedProvider, r.sharedDBPath)
+		},
+		"match_recompute")
+}
+
 func (r *MatchRecomputer) recompute(ctx context.Context, matchID string) error {
 	ctx = r.titledCtx(ctx)
 	start := time.Now()
@@ -128,22 +145,16 @@ func (r *MatchRecomputer) recompute(ctx context.Context, matchID string) error {
 	}
 	defer playerHandle.Close()
 
-	sharedSQL, releaseShared, err := acquireSharedReaderStandalone(ctx, r.sharedProvider, r.sharedDBPath)
-	if err != nil {
-		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion: %w", err)
-	}
-	defer releaseShared()
-
+	shared := r.sharedAccess()
 	playerSQL := playerHandle.SQLDb()
 
-	medalMap := loadMedalExploitMap(ctx, r.metadataDBPath, sharedSQL, r.xuid)
-
-	updatedPerf, err := batchComputePerformanceScores(ctx, playerSQL, sharedSQL, r.xuid, medalMap, true)
+	updatedPerf, err := r.recomputePerformance(ctx, playerSQL, shared)
 	if err != nil {
-		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion perf: %w", err)
+		return err
 	}
 
-	updatedLUSR, err := batchComputeLUSR(ctx, playerSQL, sharedSQL, r.xuid, medalMap, true)
+	updatedLUSR, err := RecomputeLUSRCanonicalWithAccess(ctx, playerSQL, shared, r.xuid,
+		skill.WithMedalExploit(r.medalExploit))
 	if err != nil {
 		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion lusr: %w", err)
 	}
@@ -153,4 +164,26 @@ func (r *MatchRecomputer) recompute(ctx context.Context, matchID string) error {
 		"updated_perf", updatedPerf, "updated_lusr", updatedLUSR,
 		"duration_ms", time.Since(start).Milliseconds())
 	return nil
+}
+
+// medalExploit charge les scores d'exploit médailles du joueur (metadata DB + médailles
+// gagnées de la base partagée) pour les calculs de ce recalcul.
+func (r *MatchRecomputer) medalExploit(ctx context.Context, sharedDB *sql.DB) map[string]float64 {
+	return loadMedalExploitMap(ctx, r.metadataDBPath, sharedDB, r.xuid)
+}
+
+// recomputePerformance relance les notes de performance en force sous un segment de
+// LECTURE shared, relâché avant le rejeu LUSR (garde anti-deadlock d'un SharedAccess :
+// aucun Read en vol quand une rafale d'écriture est demandée).
+func (r *MatchRecomputer) recomputePerformance(ctx context.Context, playerSQL *sql.DB, shared *SharedAccess) (int, error) {
+	sharedSQL, release, err := shared.Read(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion: %w", err)
+	}
+	defer release()
+	updated, err := batchComputePerformanceScores(ctx, playerSQL, sharedSQL, r.xuid, r.medalExploit(ctx, sharedSQL), true)
+	if err != nil {
+		return 0, fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion perf: %w", err)
+	}
+	return updated, nil
 }

@@ -2,7 +2,7 @@
 
 ---
 
-## 🔄 En cours : plan `.ai/PLAN_BACKLOG_2026-10-16.md` (les entrées ci-dessous, traitées étape par étape ; E1 CI, E2 connexion Xbox/participation et E3 séquence d'arrêt closes)
+## 🔄 En cours : plan `.ai/PLAN_BACKLOG_2026-10-16.md` (les entrées ci-dessous, traitées étape par étape ; E1 CI, E2 connexion Xbox/participation, E3 séquence d'arrêt et E4 LUSR (retrait de la v1) closes)
 
 ---
 
@@ -18,18 +18,6 @@ de bord observé juste après : la vue d'un match a répondu une fois 503 (véri
 de budget, voir l'entrée suivante). Travail : relever les requêtes (probablement une par carte, zone ou
 cellule), regrouper en une ou quelques requêtes par écran (endpoint agrégé ou chargement à la demande), mesurer
 avant/après (nombre de requêtes, temps jusqu'à l'affichage). **Effort : M.**
-
----
-
-### [data/LUSR] Le recalcul après exclusion d'un match utilise encore LUSR v1
-
-Relevé par le chantier sécurité le 2026-10-16 (D-L5b-1, `.ai/PLAN_SECURITE_2026-10-15.md`), mis au
-backlog par décision de l'utilisateur du 2026-10-16. `sync/match_recomputer.go` (recalcul déclenché par
-`PATCH …/matches/{id}/exclusion`) appelle `batchComputeLUSR` (v1, mort selon CLAUDE.md), alors que le
-post-sync saute v1 quand `IsLUSRV2Canonical()` est vrai (`sync/engine_postsync_scoring.go:182-185`) et que
-le boot serveur pose `LEVELUP_LUSR_CANONICAL=LUSR_V2` par défaut (`cmd/server/main.go`). À vérifier : ce
-que le v1 écrit réellement en prod après une exclusion (lignes `LUSR` par-dessus le canonique v2 ?).
-Travail : faire passer le recalcul par `RecomputeLUSRCanonicalForPlayer`, test d'intégration. **Effort : S.**
 
 ---
 
@@ -304,6 +292,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-10-17 | **[data/LUSR] Le recalcul après exclusion d'un match utilisait encore LUSR v1** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E4, branche `feat/backlog-2026-10-16`) : la v1 du LUSR est supprimée (batch, étape de post-sync, aperçu `levelup backfill --lusr --dry-run`, interrupteurs `LEVELUP_LUSR_V2_ENABLED` et `LEVELUP_LUSR_CANONICAL`, `RecomputeAfterARTRebuild`, tests v1). L'exclusion d'un match rejoue la chaîne v2 du joueur (sentinelle de reset puis rejeu ; l'écrivain partagé est pris par rafales courtes, jamais en continu) et la v2 saute les matchs `is_excluded`. Les 8 composantes (`lusr_component_history`, lues par Prestige, le profil et l'escouade), écrites jusque-là par la seule v1 donc figées depuis la bascule canonique, sont écrites par la v2 : même calcul, parité vérifiée valeur à valeur (275 valeurs identiques à 1e-12). Constat corrigé : la vue `match_skill_rank_latest` ne laissait pas la v1 masquer la v2 (`start_time` avant `written_at`), mais le graphe d'évolution (`match_skill_rank_latest_by_type`) servait bien les lignes v1. Mesure sur une copie à froid de JGtm (sauvegarde du 16/10) : composantes 7 137 lignes pour 1 028 matchs, dernière ligne du 18/07, 125 matchs notés sans composantes, puis après rejeu 8 011 lignes pour 1 153 matchs et 0 note sans composantes (rejeu complet 47 s en 24 rafales). Reste : le simulateur de formules `levelup backfill --compare-formulas` (TrueSkill v1, n'écrit rien) est conservé. |
 | 2026-10-17 | **[ops/arrêt] Séquence d'arrêt du serveur bornée sous le délai de Docker** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E3, branche `feat/backlog-2026-10-16`) : `stop_grace_period: 45s` sur `levelup` et `levelup-demo` ; budget global de 40 s depuis la demande d'arrêt (5 s gardés pour la fermeture des bases), chaque phase d'attente prend la plus petite de sa borne et du budget restant, y compris `watcherDaemon.Stop`, `BatchQueue.Close`, `workerWG.Wait` et le gate (jusque-là non bornés ou hors chronomètre) ; `slog.WarnContext` nommant la phase qui dépasse ; `duckdb.CloseAll` toujours atteint. Séquence extraite de `main()` dans `cmd/server/shutdown.go` + `shutdown_budget.go`. Tests : budget sous la grâce lue dans `docker-compose.yml` (rouge prouvé sans la clé), phases bloquées, ordre HTTP, recalculs, écrivains, fermeture. Commentaire périmé (`stop_timeout=20s`) supprimé. |
 | 2026-10-17 | **[sécurité/suites] Code Xbox redemandé après une connexion réussie, et vérification de participation en 503** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E2, branche `feat/backlog-2026-10-16`) : (1) `XboxLoginPage` ne relance plus `start` sur `attempt_not_found` une fois la tentative autorisée (la rotation de session au succès rend l'ancienne tentative introuvable) et le sondage `useDeviceFlowStatus` s'arrête dès `authorized`/`provisioned` (prédicat `isDeviceFlowSucceeded`, `setup/queries.ts`) ; test Vitest rouge avant le correctif (5 sondages au lieu de 1). (2) `RequireMatchParticipation` : cache borné (4 096 entrées, le plus ancien sort) des participations CONFIRMÉES seulement, clé titre + xuid + match, ni `false` ni erreur mémorisés, 503 fermé conservé sur échec non caché (`api/wire/participation_cache.go`, câblé dans `MatchParticipation`) ; tests : 2 appels = 1 requête, clé, borne, bout en bout avec le middleware. La première vérification d'un couple reste soumise au budget de lecture. |
 | 2026-10-17 | **[ci/durée] CI raccourcie de 49 à ~16 min, mêmes tests** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E1, branche `feat/backlog-2026-10-16`) : suite Go de couverture en 6 lots sur 6 machines, chacun en `-p 1` (définition unique `.github/ci/go-shards.txt`, dernier lot = complément calculé, `grammar` coupé en deux par une liste nommée de tests lourds `-run`/`-skip`), job de fusion (contrôle 356 paquets sur 356, gate baseline, profils additionnés, ratchet de couverture : 81,0 % identique) ; second passage `internal/sync` supprimé ; Vitest en 3 lots fusionnés ; `concurrency` (runs périmés annulés sur les branches de travail, groupe propre au run sur `main`/`feat/v75`) ; filtre de chemins sur les branches de travail (base `feat/v75`) ; `-timeout` revenu à 600 s ; `make gate-push` à deux voies (film sans DuckDB en parallèle). Garde-rails archlint : lots et partition, contournement du filtre, concurrency, voie film sans DuckDB. Run de preuve 38979844734 : 15 min 39 s. |

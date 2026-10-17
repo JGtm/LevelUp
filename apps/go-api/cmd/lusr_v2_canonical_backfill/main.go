@@ -5,8 +5,8 @@
 // par l'UI + 'LUSR_V2' audit) pour chaque match, via Stratégie C (ADR 0024).
 //
 // Différence avec cmd/lusr_v2_replay : ce backfill passe la DB JOUEUR (RW) à
-// RunLUSRV2Shadow (playerDB ≠ nil) + pose LEVELUP_LUSR_CANONICAL=LUSR_V2, donc
-// writeCanonicalLUSRRow écrit match_skill_rank. Le replay restait shadow-only.
+// RunLUSRV2Shadow (playerDB ≠ nil), donc writeCanonicalLUSRRow écrit match_skill_rank
+// et les composantes de performance. Le replay restait shadow-only (playerDB nil).
 //
 // match_skill_rank est APPEND-ONLY : le backfill AJOUTE des lignes v2 (la vue
 // _latest les fait gagner par written_at) ; les lignes v1 restent intactes →
@@ -70,17 +70,6 @@ func main() {
 	}
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
-
-	if err := os.Setenv("LEVELUP_LUSR_V2_ENABLED", "1"); err != nil {
-		slog.Error("setenv ENABLED", "err", err)
-		os.Exit(1)
-	}
-	if *commit {
-		if err := os.Setenv("LEVELUP_LUSR_CANONICAL", "LUSR_V2"); err != nil {
-			slog.Error("setenv CANONICAL", "err", err)
-			os.Exit(1)
-		}
-	}
 
 	shared, closeShared := openDB(sharedDBPath(*dataRoot))
 	defer closeShared()

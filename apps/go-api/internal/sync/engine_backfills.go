@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/skill"
 )
 
 // RunBackfill détecte les matchs avec données manquantes et retourne la liste.
@@ -135,33 +136,6 @@ func (e *SyncEngine) RunBackfillEngagementCoefficients(ctx context.Context) (int
 	return batchRecomputeCoefficients(ctx, playerHandle.SQLDb(), e.xuid)
 }
 
-// RunBackfillLUSRDryRun simule un recompute LUSR sans écrire en DB. Compare
-// l'état persisté actuel avec celui qui serait produit par un recompute force,
-// agrégé par playlist_group. Utile pour valider l'impact d'un rebuild ART
-// (cf. Phase 1 plan stabilisation 2026-05-22) avant d'engager l'écriture.
-//
-// Retourne un LUSRDryRunReport. Lock writer non requis (lecture seule) ;
-// le caller doit s'assurer qu'aucun sync ne tourne en parallèle pour avoir
-// un snapshot cohérent.
-func (e *SyncEngine) RunBackfillLUSRDryRun(ctx context.Context) (*LUSRDryRunReport, error) {
-	ctx = e.pinTitle(ctx)
-	playerHandle, err := OpenPlayerDB(e.playerDBPath)
-	if err != nil {
-		return nil, fmt.Errorf("RunBackfillLUSRDryRun OpenPlayerDB: %w", err)
-	}
-	defer playerHandle.Close()
-
-	// shared DB en read-only suffit pour le dry-run.
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_lusr_dryrun"))
-	if err != nil {
-		return nil, fmt.Errorf("RunBackfillLUSRDryRun: %w", err)
-	}
-	defer releaseShared()
-
-	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
-	return batchComputeLUSRPreview(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, medalMap)
-}
-
 // RunFormulaSim simule les 5 variantes de formule LUSR sur les lastN derniers matchs.
 // Lecture seule — aucune écriture DB. lastN=0 → tous les matchs.
 func (e *SyncEngine) RunFormulaSim(ctx context.Context, lastN int) (*FormulaSimReport, error) {
@@ -215,7 +189,8 @@ func (e *SyncEngine) RecomputeLUSRCanonical(ctx context.Context) (int, error) {
 	// h5_arena du 2026-06-26 (.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.3 G4).
 	// Ce point unique couvre tous les appelants (admin, CLI, backfill_orchestrator).
 	titleCtx := ctxkeys.WithTitleSlug(ctx, e.titleSlug)
-	return RecomputeLUSRCanonicalForPlayer(titleCtx, playerHandle.SQLDb(), sharedDB, e.xuid)
+	return RecomputeLUSRCanonicalForPlayer(titleCtx, playerHandle.SQLDb(), sharedDB, e.xuid,
+		skill.WithMedalExploit(e.loadMedalExploitMapBestEffort))
 }
 
 // RunBackfillCSR ré-importe les CSR par-match depuis l'API Halo skill pour

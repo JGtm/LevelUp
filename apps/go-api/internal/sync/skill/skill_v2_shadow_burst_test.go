@@ -121,8 +121,6 @@ func (a *roRwSplitAccess) Write(ctx context.Context, _ string) (*sql.DB, func(),
 // passe par un handle read-only, le persist par un burst RW → traite ET persiste,
 // le watermark avance. Sur l'ancien code (handle unique de lecture) : ROUGE.
 func TestLUSRV2Shadow_PersistsViaWriteBurst_WhenReadHandleIsReadOnly(t *testing.T) {
-	t.Setenv(lusrV2EnvFlag, "1")
-	t.Setenv(lusrCanonicalEnvFlag, "") // shadow-only (v1 canonical par défaut)
 
 	path := openShadowTestFileDB(t)
 	// seed via une connexion RW éphémère (refermée avant les attach).
@@ -207,8 +205,6 @@ func (a *orderTrackingAccess) Write(_ context.Context, step string) (*sql.DB, fu
 // par-dessus cet historique déjà traité, plus un candidat sans chaîne LUSR → une
 // seule rafale de plus.
 func TestLUSRV2Shadow_OneWriterBurstPerCycle(t *testing.T) {
-	t.Setenv(lusrV2EnvFlag, "1")
-	t.Setenv(lusrCanonicalEnvFlag, "")
 
 	db := openShadowTestDB(t)
 	base := time.Date(2025, 2, 1, 12, 0, 0, 0, time.UTC)

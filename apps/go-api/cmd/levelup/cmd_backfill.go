@@ -8,7 +8,7 @@
 //   - --engagement-scores          [--force]
 //   - --citations                  [--force]
 //   - --citations-recompute-all              (recompute total + checks V1-V4)
-//   - --lusr                       [--force]  (recalcule LUSR TrueSkill 2 + poids médailles)
+//   - --lusr                       [--force]  (rejoue le LUSR v2 complet + les 8 composantes)
 //   - --perf                       [--force]  (recalcule performance score relatif v5)
 //
 // Usage :
@@ -40,7 +40,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	engagementScores := fs.Bool("engagement-scores", false, "Backfill du score d'engagement (Phase 6 plan engagement)")
 	engagementTitle := fs.String("title", titlePkg.DefaultSlug, "Slug du titre pour --engagement-scores (halo_infinite | halo_5)")
 	citations := fs.Bool("citations", false, "Backfill des citations (match_citations) depuis citation_mappings + medals + stats + awards")
-	lusr := fs.Bool("lusr", false, "Backfill LUSR TrueSkill 2 avec poids medailles v5")
+	lusr := fs.Bool("lusr", false, "Rejoue le LUSR v2 complet du joueur (note + 8 composantes de performance)")
 	csr := fs.Bool("csr", false, "Backfill CSR par-match via GetMatchSkill (RankRecap). Idempotent ; --force re-fetche tous les matchs ranked")
 	sharedCSR := fs.Bool("shared-csr", false, "Backfill shared.match_csrs (CSR de TOUS les participants des matchs ranked). --dry-run pour compter sans écrire.")
 	perf := fs.Bool("perf", false, "Backfill performance score relatif v5 (off_conv + def_res + medal_exploit)")
@@ -48,7 +48,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	compositeOnly := fs.Bool("composite-only", false, "Backfill citations composites uniquement (additive, sans recalcul depuis shared_matches)")
 	citationsRecomputeAll := fs.Bool("citations-recompute-all", false, "Recompute total des citations (force=true) + vérifications invariants V1-V4")
 	force := fs.Bool("force", false, "Force le recalcul meme si deja persiste")
-	dryRun := fs.Bool("dry-run", false, "Mode dry-run (--shared-csr ou --lusr) : --shared-csr compte les matchs sans appel API ni écriture ; --lusr compute LUSR sans écrire et diff vs état persisté par playlist_group")
+	dryRun := fs.Bool("dry-run", false, "Mode dry-run (--shared-csr) : compte les matchs sans appel API ni écriture")
 	compareFormulas := fs.Bool("compare-formulas", false, "Simulation des 5 variantes de formule LUSR (baseline/piste-A/B/C/A+C) sur --last-n matchs")
 	lastN := fs.Int("last-n", 20, "Nombre de derniers matchs pour --compare-formulas (0 = tous)")
 	if err := fs.Parse(args); err != nil {
@@ -64,8 +64,8 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	if !*engagementScores && !*citations && !*citationsRecomputeAll && !*lusr && !*csr && !*sharedCSR && !*perf && !*assistsModel && !*compositeOnly && !*compareFormulas {
 		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --citations-recompute-all, --lusr, --csr, --shared-csr, --perf, --assists-model, --composite-only ou --compare-formulas)")
 	}
-	if *dryRun && !*sharedCSR && !*lusr {
-		return fmt.Errorf("--dry-run n'est supporté qu'avec --shared-csr ou --lusr")
+	if *dryRun && !*sharedCSR {
+		return fmt.Errorf("--dry-run n'est supporté qu'avec --shared-csr")
 	}
 
 	ctx := context.Background()
@@ -100,21 +100,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 		}
 	}
 	if *lusr {
-		if *dryRun {
-			if *allPlayers {
-				if err := runBackfillAllLUSRDryRun(ctx, cfg); err != nil {
-					return err
-				}
-			} else {
-				player, err := loadPlayerSummary(cfg, *gamertag)
-				if err != nil {
-					return err
-				}
-				if err := runBackfillLUSRDryRunForPlayer(ctx, cfg, player); err != nil {
-					return err
-				}
-			}
-		} else if *allPlayers {
+		if *allPlayers {
 			if err := runBackfillAllLUSR(ctx, cfg); err != nil {
 				return err
 			}
@@ -421,99 +407,6 @@ func runBackfillLUSRForPlayer(ctx context.Context, cfg *config.AppConfig, player
 	return nil
 }
 
-// ── LUSR dry-run (preview, sans écriture) ─────────────────────────────────────
-//
-// Simule un recompute force=true et imprime un diff per-playlist_group :
-// (OldMU, NewMU, delta). Utile pour valider l'impact d'un rebuild ART
-// (cf. Phase 1 plan stabilisation 2026-05-22) avant d'engager l'écriture.
-
-func runBackfillAllLUSRDryRun(ctx context.Context, cfg *config.AppConfig) error {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return fmt.Errorf("chargement db_profiles.json: %w", err)
-	}
-	if len(players) == 0 {
-		return fmt.Errorf("aucun joueur configure")
-	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	total, processed, skipped, failed := len(players), 0, 0, 0
-	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
-		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
-			skipped++
-			fmt.Printf("dry-run lusr SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
-			continue
-		}
-		if err := runBackfillLUSRDryRunForPlayer(ctx, cfg, &player); err != nil {
-			failed++
-			fmt.Printf("dry-run lusr FAIL: gamertag=%s err=%v\n", player.Gamertag, err)
-			continue
-		}
-		processed++
-	}
-	fmt.Printf("dry-run lusr batch: total=%d processed=%d skipped=%d failed=%d (aucune écriture)\n",
-		total, processed, skipped, failed)
-	if failed > 0 {
-		return fmt.Errorf("dry-run lusr: %d joueur(s) en echec", failed)
-	}
-	return nil
-}
-
-func runBackfillLUSRDryRunForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary) error {
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, nil)
-	report, err := engine.RunBackfillLUSRDryRun(ctx)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("\n══ dry-run lusr %s (xuid=%s) ══\n", player.Gamertag, player.XUID)
-	fmt.Printf("  matches_processed: %d\n", report.MatchesProcessed)
-	if len(report.Playlists) == 0 {
-		fmt.Printf("  (aucun playlist_group calculé — pas de matchs éligibles)\n")
-		return nil
-	}
-	// Ordre canonique des composantes pour l'affichage reproductible.
-	compOrder := []struct{ key, short string }{
-		{go_sync.MetricKeyKillsVsExpected, "KvE"},
-		{go_sync.MetricKeyDeathsVsExpected, "DvE"},
-		{go_sync.MetricKeyWinFactor, "win"},
-		{go_sync.MetricKeyDamageEfficiency, "dmg"},
-		{go_sync.MetricKeyAccuracyDelta, "acc"},
-		{go_sync.MetricKeyMedalExploit, "med"},
-		{go_sync.MetricKeyOffensiveConv, "off"},
-		{go_sync.MetricKeyDefensiveResist, "def"},
-	}
-	fmt.Printf("  %-30s %-15s %-15s %-12s %s\n", "playlist_group", "OLD μ/σ", "NEW μ/σ", "Δ μ", "matchs")
-	fmt.Printf("  %s\n", strings.Repeat("─", 90))
-	for _, p := range report.Playlists {
-		fmt.Printf("  %-30s %-15s %-15s %+8.1f    %d\n",
-			truncate(p.PlaylistGroup, 30),
-			formatMuSigma(p.OldMU, p.OldSigma),
-			formatMuSigma(p.NewMU, p.NewSigma),
-			p.DeltaMU(),
-			p.MatchCount,
-		)
-		if len(p.ComponentAvgs) > 0 {
-			fmt.Printf("    avgs:")
-			for _, c := range compOrder {
-				if v, ok := p.ComponentAvgs[c.key]; ok {
-					marker := " "
-					if v < 0.48 {
-						marker = "↓"
-					} else if v > 0.52 {
-						marker = "↑"
-					}
-					fmt.Printf("  %s=%.3f%s", c.short, v, marker)
-				}
-			}
-			fmt.Println()
-		}
-	}
-	if !report.HasChanges() {
-		fmt.Printf("  → AUCUN CHANGEMENT significatif (tous deltas < 1.0 μ)\n")
-	}
-	return nil
-}
-
 // ── Simulation de formules LUSR ──────────────────────────────────────────────
 //
 // Compare 5 variantes (baseline / piste-A / B / C / A+C) sur les N derniers
@@ -580,20 +473,6 @@ func runFormulaSimForPlayer(ctx context.Context, cfg *config.AppConfig, player *
 	}
 	fmt.Println()
 	return nil
-}
-
-func formatMuSigma(mu, sigma float64) string {
-	if mu == 0 && sigma == 0 {
-		return "n/a"
-	}
-	return fmt.Sprintf("%.1f/%.1f", mu, sigma)
-}
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n-1] + "…"
 }
 
 // ── Performance score backfill ─────────────────────────────────────────────────

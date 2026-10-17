@@ -38,6 +38,14 @@ func lusrWatermarkCovers(wm *time.Time, start time.Time) bool {
 	return wm != nil && !start.After(*wm)
 }
 
+// shadowSelection règle la sélection d'un cycle.
+type shadowSelection struct {
+	// excluded : matchs is_excluded du joueur, jamais notés (nil : aucun).
+	excluded map[string]bool
+	// medals : chargeur du score d'exploit médailles (nil : composante absente).
+	medals MedalExploitLoader
+}
+
 // shadowWork est la sélection d'un cycle, faite sous le segment LECTURE.
 type shadowWork struct {
 	candidates int // candidats SQL du joueur (loadShadowMatches), tous groupes
@@ -46,7 +54,10 @@ type shadowWork struct {
 	// l'écrivain.
 	pending []shadowMatch
 	// scorable : au moins un candidat de pending est notable → l'écrivain est requis.
-	scorable        bool
+	scorable bool
+	// medals : score d'exploit médailles du joueur par match, chargé seulement si le cycle
+	// écrit (scorable) et qu'un chargeur est fourni. nil sinon.
+	medals          map[string]float64
 	withGameplayDur int // observabilité TS2 : candidats à durée de gameplay connue
 }
 
@@ -55,7 +66,11 @@ type shadowWork struct {
 // de rendre la main — un Read encore en vol ferait échouer la rafale Write suivante
 // (garde anti-deadlock). Les candidats écartés ici (sans chaîne, déjà traités, et
 // non notables quand aucun ne l'est) sont comptés dans s.
-func selectShadowWorkUnderRead(ctx context.Context, shared SharedAccessor, xuid string, s *shadowRunStats) (shadowWork, error) {
+//
+// sel.excluded : les matchs is_excluded du joueur (LoadExcludedMatchIDs). Ils ne sont ni notés ni
+// comptés dans l'état v2 : retirés ici, avant le calcul de `scorable`, pour qu'un cycle dont le
+// seul match en attente est exclu ne prenne aucun écrivain.
+func selectShadowWorkUnderRead(ctx context.Context, shared SharedAccessor, xuid string, sel shadowSelection, s *shadowRunStats) (shadowWork, error) {
 	readDB, release, err := shared.Read(ctx)
 	if err != nil {
 		return shadowWork{}, err
@@ -85,6 +100,8 @@ func selectShadowWorkUnderRead(ctx context.Context, shared SharedAccessor, xuid 
 		switch {
 		case group == "":
 			s.skippedChain++
+		case sel.excluded[m.matchID]:
+			s.skippedExcluded++
 		case lusrWatermarkCovers(watermarks[group], m.startTime):
 			s.skippedAlready++
 		default:
@@ -92,6 +109,10 @@ func selectShadowWorkUnderRead(ctx context.Context, shared SharedAccessor, xuid 
 		}
 	}
 	w.scorable = hasScorablePending(ctx, readDB, w.pending, s)
+	if w.scorable && sel.medals != nil {
+		// Une fois par cycle qui écrira, sous ce même segment de lecture : jamais dans une rafale.
+		w.medals = sel.medals(ctx, readDB)
+	}
 	return w, nil
 }
 
@@ -132,6 +153,7 @@ func logShadowIdle(ctx context.Context, xuid string, w shadowWork, s shadowRunSt
 		"skipped_already_seen", s.skippedAlready,
 		"skipped_non_two_team", s.skippedNonTwoTeam,
 		"skipped_imbalance", s.skippedImbalance,
+		"skipped_excluded", s.skippedExcluded,
 	)
 }
 
@@ -149,6 +171,7 @@ func logShadowBurstDone(ctx context.Context, xuid string, w shadowWork, s shadow
 		"skipped_already_seen", s.skippedAlready,
 		"skipped_non_two_team", s.skippedNonTwoTeam,
 		"skipped_imbalance", s.skippedImbalance,
+		"skipped_excluded", s.skippedExcluded,
 		"skipped_write_failed", s.skippedWriteFailed,
 		"skipped_group_held", s.skippedGroupHeld,
 		// Observabilité TS2 : candidats où wᵢ = time_played / durée de gameplay est
