@@ -81,11 +81,11 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
       Retirer le code mort (couleur `muted` si plus lue) et mettre à jour les tests.
 
 ### E4 — Couleurs des rôles d'impact (D3)
-- [ ] E4.1 Nouvelles rampes `IMPACT_GREEN_RED` (light + dark) plus douces : pas de vert
+- [x] E4.1 (IMPACT_GREEN_RED + repli globals.css + snapshot coverage mis a jour ; pas 1 des gains clairs inchange en pratique : plancher de clarte impose par le seuil DeltaE 15 en deuteranopie, voir le commentaire du fichier) Nouvelles rampes `IMPACT_GREEN_RED` (light + dark) plus douces : pas de vert
       quasi noir ni fluo ; ancrées sur `divergent-pos` / `divergent-neg` de la palette par
       défaut. Toutes les contraintes d'`impactRoleTokens.test.ts` tenues sans relâcher un seuil.
       Les autres palettes (Okabe-Ito, Cividis, Tol) : inchangées sauf si un test l'exige.
-- [ ] E4.2 Rapport : valeurs avant/après, contrastes et ΔE mesurés.
+- [x] E4.2 (valeurs avant/apres, contrastes et DeltaE au journal et au rapport) Rapport : valeurs avant/après, contrastes et ΔE mesurés.
 
 ### E5 — Emprise : placeholders au lieu de sections absentes (D4)
 - [ ] E5.1 Règle : capability du titre absente (Halo 5 sans film) = section absente (pas la
