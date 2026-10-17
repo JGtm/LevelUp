@@ -25,14 +25,15 @@ import { resolveToken } from '@/lib/accessibility/resolveToken'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { TacticalMapCard } from '@/lib/api/types'
+import { useVisibleUneFois } from '@/lib/hooks/useVisibleUneFois'
 import type { Locale } from '@/lib/i18n/locale'
 import { lisserLaGrille } from '@/lib/replay/chaleurLissee'
-import { drawTacticalHeatmap, heatRamp } from '@/lib/replay/heatPaint'
+import { drawTacticalHeatmap, heatRamp, mapFrame } from '@/lib/replay/heatPaint'
 import { useTitleSlug } from '@/lib/title-routing'
 
 import { VIGNETTE_LARGEUR_PX } from './cockpit.logic'
 import type { TacticalText } from './i18n'
-import { useTacticalMapBackgroundFrame, useTacticalMapBackgroundUrl } from './queries'
+import { useTacticalMapBackgroundUrl } from './queries'
 import { barreResultats, libelleExplorateur, nomCarte } from './tacticalLogic'
 import { grilleDuPlan, repereDuPlan, vueContain } from './tacticalView.logic'
 
@@ -48,11 +49,15 @@ interface TacticalMapTileProps {
 export function TacticalMapTile({ carte, playerSlug, locale, t, selectionnee, onSelect }: TacticalMapTileProps) {
   const nom = nomCarte(carte, locale)
   const parts = barreResultats(carte)
-  const fond = useTacticalMapBackgroundUrl(playerSlug, carte.map_id)
+  // L'IMAGE NE PART QU'À L'ENTRÉE DANS LE CHAMP DE VISION, et seulement si la carte porte un
+  // calage : sans lui, elle n'a pas de fond figé (aucune requête vouée au 404). Même clé de cache
+  // que le plan principal — l'image d'une carte déjà vue n'est jamais redemandée.
+  const [refTuile, visible] = useVisibleUneFois<HTMLDivElement>()
+  const fond = useTacticalMapBackgroundUrl(playerSlug, carte.map_id, visible && carte.calage_fond != null)
   const bordure = selectionnee ? 'border-2 border-primary p-[3px]' : 'border border-border p-1 hover:border-primary'
 
   return (
-    <div className="relative flex-[0_0_var(--tac-cartes-l)] min-[1400px]:flex-none">
+    <div ref={refTuile} className="relative flex-[0_0_var(--tac-cartes-l)] min-[1400px]:flex-none">
       <button
         type="button"
         aria-pressed={selectionnee}
@@ -75,7 +80,7 @@ export function TacticalMapTile({ carte, playerSlug, locale, t, selectionnee, on
               data-testid={`tactical-map-fond-${carte.map_id}`}
             />
           )}
-          <MiniPlan carte={carte} playerSlug={playerSlug} />
+          <MiniPlan carte={carte} />
         </span>
         <span className="flex min-w-0 flex-col gap-px">
           <span className="truncate text-xs font-medium leading-4 text-foreground">{nom}</span>
@@ -129,9 +134,12 @@ function LienExplorateur({ carte, playerSlug, t }: { carte: TacticalMapCard; pla
  * d'intensité que le plan de la carte, MÊME REPÈRE (le cadre du fond quand il est connu) : la
  * vignette et le plan se lisent pareil, en chaleur lissée (`chaleurLissee.ts`). Sans bornes, rien
  * n'est posé sur le fond.
+ *
+ * LE CADRE DU FOND VIENT DE LA CARTE (`calage_fond`, servi avec la grille) : aucune requête de
+ * calage par vignette. Carte sans fond figé : pas de calage, le repère retombe sur les bornes.
  */
-function MiniPlan({ carte, playerSlug }: { carte: TacticalMapCard; playerSlug: string }) {
-  const cadreFond = useTacticalMapBackgroundFrame(playerSlug, carte.map_id)
+function MiniPlan({ carte }: { carte: TacticalMapCard }) {
+  const cadreFond = useMemo(() => (carte.calage_fond ? mapFrame(carte.calage_fond) : null), [carte.calage_fond])
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const paletteVersion = useColorPaletteVersion()
   const ramp = useMemo(() => {

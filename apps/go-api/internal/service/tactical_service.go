@@ -121,9 +121,10 @@ func (s *TacticalService) MapsPlayed(ctx context.Context, scope domain.TacticalS
 			SousPlancher: r.Matchs < domain.PlancherMatchsParCarte,
 		})
 	}
+	avecFond := s.poserLesCalagesDeFond(ctx, &page)
 	s.peindreLesVignettes(ctx, &page, scope)
 	s.logger.InfoContext(ctx, "tactique: cartes jouees",
-		"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "cartes", len(page.Cartes),
+		"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "cartes", len(page.Cartes), "cartes_avec_fond", avecFond,
 		"matchs_filtres", len(scope.MatchIDs), "coequipiers", len(scope.Coequipiers),
 		"plancher_matchs", domain.PlancherMatchsParCarte, "duration", time.Since(debut))
 	return page, nil

@@ -29,6 +29,14 @@ type TacticalMapCard struct {
 	// non ouvrable — une lecture de placement sur trois matchs est du bruit.
 	SousPlancher bool `json:"sous_plancher"`
 
+	// CalageFond est le calage du fond fige de la carte (le rectangle MONDE que l'image
+	// couvre), porte par la carte pour que la grille n'ait pas a le demander carte par carte.
+	// ABSENT quand la carte n'a pas de fond fige (cas nominal), quand le titre n'a pas de
+	// service de rejeu, ou quand la carte est sous le plancher (elle n'a pas de vignette).
+	// Sa presence dit aussi au client qu'une image existe : il ne demande pas celle d'une
+	// carte sans fond.
+	CalageFond *replaydoc.MapBackgroundCalibration `json:"calage_fond,omitempty" doc:"Calage du fond fige de la carte (metres par pixel, origine monde, taille de l'image). Absent : pas de fond fige pour cette carte."`
+
 	// ─── LE MINI-PLAN DE LA VIGNETTE (lot F, 2026-09-13, maquette 034b1915) ────
 	//
 	// La vignette ne montre pas qu'un fond de carte : elle montre OU LE JOUEUR Y MEURT.

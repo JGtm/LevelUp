@@ -356,18 +356,26 @@ aucun fichier web touché. Contrôle visuel du user : OUVERT.
 
 ### E7 — Tactique : requêtes du chargement (entrée 2, D-10) — M
 
-- [ ] E7.1 Mesure avant (profil JGtm, données locales) : nombre de requêtes et temps jusqu'à
-  l'affichage, au journal.
-- [ ] E7.2 Calage du fond ajouté à `TacticalMapCard` (domaine, service, OpenAPI,
-  `make generate-types`), absent pour une carte sans fond ; test Go.
-- [ ] E7.3 `TacticalMapTile` : plus de `GET .../background` par tuile (calage lu de la carte), image
+- [x] E7.1 Mesure avant (profil JGtm, données locales) : nombre de requêtes et temps jusqu'à
+  l'affichage, au journal. Établi par le code et le relevé du 16/10 (pas de navigateur ici) : 96 requêtes = 4 fixes + 2 x 46
+  cartes ouvrables ; temps jusqu'à l'affichage non mesuré (mesure en navigateur laissée au contrôle visuel du user).
+- [x] E7.2 Calage du fond ajouté à `TacticalMapCard` (domaine, service, OpenAPI,
+  `make generate-types`), absent pour une carte sans fond ; test Go. Champ `calage_fond`, posé par
+  `service/tactical_service_fonds.go` (cartes ouvrables seulement, section de durée `tactical_maps_fonds`).
+- [x] E7.3 `TacticalMapTile` : plus de `GET .../background` par tuile (calage lu de la carte), image
   en chargement paresseux (D-10) ; plan principal inchangé (mêmes clés de cache). Tests Vitest : une
-  grille de N cartes ne déclenche aucune requête de calage, aucune image hors écran.
-- [ ] E7.4 Mesure après, au journal (critère : ≤ 10 requêtes au chargement hors images visibles).
+  grille de N cartes ne déclenche aucune requête de calage, aucune image hors écran. REPLI de D-10 appliqué
+  (image par IntersectionObserver, pas `<img loading="lazy">`) : voir journal.
+- [x] E7.4 Mesure après, au journal (critère : ≤ 10 requêtes au chargement hors images visibles). 5 requêtes
+  (4 fixes + le calage de la seule carte du plan) ; test Vitest à 46 cartes.
 
 Gate : `go test ./internal/api/... ./internal/service/...` ; `make check-types` ; vitest
 `features/tactical` ; `npx playwright test` des specs tactiques s'il en existe (PR vers main
 seulement en CI) ; contrôle visuel du user.
+
+Statut du gate (exécutant, 2026-10-17) : VERT (sorties au journal). Aucune spec Playwright ne joue la page
+Tactique (seul `e2e/visual/readme-shots.visual.spec.ts` la photographie, serveur requis : non lancé). Mesure en
+navigateur et contrôle visuel du user : OUVERTS.
 
 ### E8 — Lot film : position à la mort, score KOTH Lattice, Harvest, vies sans identité (entrées 7, 8, 9, 6) — M+
 
@@ -513,6 +521,18 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
 - E6 : le serveur ne rejoue jamais le seed des citations : `cmd/server/prebuilt_metadata.go:34` n'extrait le zip que si la
   base est absente et `deploy.yml` ne lance pas `levelup seed` (commentaire l. 333) ; seule la commande manuelle
   `levelup seed citation-mappings` (`cmd/levelup/cmd_data.go:355`) met à jour une metadata existante.
+- E7 (exécutant, 2026-10-17) : `/tactical/maps` fait désormais UNE résolution de fond par carte ouvrable côté serveur
+  (`MapBackgroundForMap` : une requête `MapKeysForMap` + `os.Stat` + lecture du sidecar), soit le travail que les 46
+  requêtes HTTP faisaient déjà, sans les allers-retours. Coût serveur non mesuré (bases verrouillées) ; la section de
+  durée `tactical_maps_fonds` le donnera dans les journaux. Une lecture groupée (une requête pour les N cartes) serait
+  l'étape suivante si elle pèse (ADR 0036 : un chargement par requête). Non traité.
+- E7 : la page Tactique garde `GET /tactical/{map}/background` pour la carte du plan (1 requête) et pour une carte
+  sans fond le plan demande encore l'image (404 nominal) : le calage du plan ne vient pas de la grille (« plan
+  principal inchangé »). Une amorce du cache `tacticalMapBackgroundFrame` depuis `calage_fond` supprimerait la requête
+  restante. Non traité.
+- E7 : `TacticalFond.mesure.test.ts` (instrument de parc, ignoré par défaut) servait le calage par la route ; sa page de
+  cartes porte maintenant `calage_fond` (sinon les vignettes n'y demanderaient plus d'image). Corrigé car l'instrument
+  aurait cessé de mesurer le chemin de l'image ; il n'a pas été rejoué (données de parc, hors gate).
 
 ## 4. Journal
 
@@ -749,3 +769,48 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
     `ok` (un premier passage d'archlint a échoué sur `TestNoRawKillScopeLiteral`, corrigé) ; `golangci-lint run --new-from-rev=HEAD~1`
     (`./internal/analysis/ ./internal/progression/profile/ ./internal/games/halo_infinite/`, avec et sans `-tags=integration`) :
     `0 issues`. Aucun test renommé ni retiré : la baseline JSONL n'est pas touchée.
+- 2026-10-17 E7 (exécutant, worktree `LevelUp-wt-backlog-1016`) : E7.1 à E7.4 faits, gate vert, contrôle visuel du user ouvert.
+  - E7.1 AVANT (sur pièces, sans navigateur). Pièces rouvertes : `TacticalMapsColumn.tsx` monte une `TacticalMapTile` par carte
+    ouvrable ; chaque tuile appelait `useTacticalMapBackgroundUrl` (`GET /tactical/{map}/background.png`) et, par `MiniPlan`,
+    `useTacticalMapBackgroundFrame` (`GET /tactical/{map}/background`), clés de cache sans paresse. Fixes : `POST
+    /filters/match-ids`, `POST /tactical/maps`, coéquipiers (`useCompositionOptions`), raster de la carte du plan = 4. Formule
+    2N + 4 ; le relevé du 16/10 (96 requêtes) donne N = 46 cartes ouvrables. N n'a pas été relu sur une copie à froid : la
+    sauvegarde `data/backups/avant_recuisson_98_2026-10-16/` (1,8 Go) existe mais aucun client DuckDB n'est installé sur le
+    poste et une sonde Go jetable est écartée par la règle du dépôt ; N = 46 reste donc DÉDUIT du relevé (si le relevé
+    comptait 6 fixes, N = 45, le témoin du backlog : même ordre de grandeur). Temps jusqu'à l'affichage : non mesuré.
+  - E7.2. `domain.TacticalMapCard.CalageFond *replaydoc.MapBackgroundCalibration` (`json:"calage_fond,omitempty"`), posé par
+    `TacticalService.poserLesCalagesDeFond` (`service/tactical_service_fonds.go`) depuis `detail.rejeu.MapBackgroundForMap`,
+    la MÊME source que la route par carte. Cartes sous le plancher non lues (pas de vignette) ; absence de fond
+    (`ErrMapBackgroundNotAvailable`) = pas de champ, sans trace ; autre panne = `WarnContext` nominatif + carte sans calage,
+    grille jamais arrêtée ; sans service de rejeu = aucun calage. Section de durée `tactical_maps_fonds`, compte
+    `cartes_avec_fond` à la ligne « tactique: cartes jouees ». `make openapi-gen` puis `npm run generate-types` (2 lignes
+    dans `generated.ts`) ; `openapi-gen -check` à jour. Tests : `tactical_service_fonds_test.go` (calage posé, carte sans
+    fond, carte sous le plancher non lue, panne journalisée sans arrêter la grille, sans service de rejeu).
+  - E7.3. CHOIX D-10 : REPLI par IntersectionObserver, pas `<img loading="lazy">`. Vérification demandée : `api.getBlob`
+    passe par `sendRequest`, qui pose `X-LevelUp-Title` et `X-LevelUp-Locale` ; le cookie de session suffirait à un `<img>`
+    même origine (le proxy Vite `/api` le transmet), mais un `<img>` n'emporte pas l'en-tête de titre, et
+    `middleware.resolveTitleSlug` retombe alors sur le titre de la SESSION (puis `halo_infinite`) : un `map_id` est propre à
+    un titre, l'image pourrait être résolue sur le mauvais titre, et la garde anti-fuite `X-LevelUp-Title-Resolved` du client
+    ne s'appliquerait pas (doc de `api.getBlob`). S'y ajoutent le 404 nominal d'une carte sans fond (console, requête
+    perdue) et le partage du cache blob avec le plan principal (clé `tacticalMapBackground(titleSlug, mapId)` inchangée).
+    Réalisation : hook `lib/hooks/useVisibleUneFois.ts` (observateur à marge de 100 px, débranché à la première entrée,
+    réputé visible sans `IntersectionObserver`), `useTacticalMapBackgroundUrl(playerSlug, mapId, actif = true)` ; la tuile
+    passe `actif = visible && carte.calage_fond != null` (une carte sans calage ne demande jamais d'image) ; `MiniPlan`
+    lit le cadre dans `carte.calage_fond` (`mapFrame`), plus aucun `useTacticalMapBackgroundFrame` par tuile (le hook reste
+    pour `TacticalPlanCard`). Tests Vitest : `TacticalMapsColumn.fonds.test.tsx` (46 cartes montées : 0 appel `get`, 0
+    `getBlob` ; 2 vignettes rendues visibles : exactement 2 `getBlob`, aux bonnes URL, une seule fois ; carte sans calage
+    visible : 0 ; mini-plan peint sur le calage de la carte, bornes invalides) et `useVisibleUneFois.test.tsx` (5 cas).
+    Rouge prouvé par mutation (image demandée sans condition : 3 des 4 tests échouent). `TacticalPage.test.tsx` : la carte du
+    chemin nominal du fond porte `calage_fond` ; `TacticalFond.mesure.test.ts` aussi (voir section 3).
+  - E7.4 APRÈS. Au chargement : 4 fixes + 1 calage (la carte du plan, `TacticalPlanCard`) = 5 requêtes hors images (critère
+    <= 10 tenu), puis une image par vignette ENTRÉE dans le champ de vision (+ celle du plan, même clé de cache que sa
+    vignette) au lieu de 46 images + 46 calages. Établi par le code et par le test à 46 cartes, pas en navigateur : la
+    mesure réelle (onglet Réseau de `ascension/tactique`, profil JGtm : attendu ~5 requêtes de données + ~10 images selon la
+    hauteur de colonne, sous 1 400 px la rangée défile horizontalement) reste au contrôle visuel du user.
+  - Gate (sorties réelles, un seul `go` à la fois, `GOCACHE=%LOCALAPPDATA%\go-build-backlog1016`) : `go test ./internal/api/...
+    ./internal/service/... ./internal/domain/... -count=1` : tout `ok`, 0 échec ; `go test -tags=integration -p 1
+    ./internal/service/ ./internal/domain/` : `ok` (service 21 s) ; `go run ./cmd/openapi-gen -check` : à jour ;
+    `golangci-lint run --new-from-rev=HEAD ./internal/service/ ./internal/domain/` (avec et sans `-tags=integration`) :
+    `0 issues` ; `npm run typecheck` (`tsc -b`) : propre ; `eslint` des 7 fichiers web touchés : propre ; `vitest run
+    src/features/tactical src/lib/hooks src/lib/query` : 36 fichiers passés, 1 ignoré (l'instrument de mesure), 425 tests
+    passés, 2 ignorés. Aucun test renommé ni retiré : la baseline JSONL n'est pas touchée. Pas de spec Playwright tactique.

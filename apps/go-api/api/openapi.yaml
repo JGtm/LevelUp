@@ -29170,6 +29170,9 @@ components:
       properties:
         bornes:
           $ref: '#/components/schemas/BornesMonde'
+        calage_fond:
+          $ref: '#/components/schemas/MapBackgroundCalibration'
+          description: 'Calage du fond fige de la carte (metres par pixel, origine monde, taille de l''image). Absent : pas de fond fige pour cette carte.'
         cellules:
           items:
             $ref: '#/components/schemas/CelluleTactique'

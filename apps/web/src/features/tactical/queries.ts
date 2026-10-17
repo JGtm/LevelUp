@@ -165,8 +165,14 @@ export function useTacticalMaps(
  *
  * 404 = la carte n'a pas de fond figé : cas NOMINAL (toutes les cartes n'en ont pas). Pas
  * de nouvelle tentative, rien à dire à l'utilisateur — la vignette s'affiche sans image.
+ *
+ * `actif` à faux n'envoie RIEN (la requête reste en attente, elle part au passage à vrai) :
+ * c'est par là qu'une vignette ne demande son image qu'une fois visible et seulement si la
+ * carte porte un calage (`TacticalMapCard.calage_fond`). Un `<img src>` direct ne convient pas
+ * ici : il n'emporte pas l'en-tête `X-LevelUp-Title` (cf. `api.getBlob`), et l'API résoudrait le
+ * titre de la session au lieu de celui de la page. La clé de cache reste celle du plan principal.
  */
-export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string): string | null {
+export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string, actif = true): string | null {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const { data } = useQuery({
     queryKey: queryKeys.tacticalMapBackground(titleSlug, mapId),
@@ -181,7 +187,7 @@ export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string): 
     },
     staleTime: Infinity,
     gcTime: Infinity,
-    enabled: !!playerSlug && !!mapId,
+    enabled: !!playerSlug && !!mapId && actif,
     retry: false,
   })
   return data ?? null

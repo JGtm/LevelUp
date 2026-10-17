@@ -13096,6 +13096,8 @@ export interface components {
         };
         TacticalMapCard: {
             bornes?: components["schemas"]["BornesMonde"];
+            /** @description Calage du fond fige de la carte (metres par pixel, origine monde, taille de l'image). Absent : pas de fond fige pour cette carte. */
+            calage_fond?: components["schemas"]["MapBackgroundCalibration"];
             cellules?: components["schemas"]["CelluleTactique"][] | null;
             /** Format: int64 */
             defaites: number;

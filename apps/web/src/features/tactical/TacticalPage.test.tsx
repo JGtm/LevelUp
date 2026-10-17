@@ -507,6 +507,19 @@ describe('TacticalPage — l’écran unique', () => {
       .spyOn(URL, 'createObjectURL')
       .mockReturnValue(urlObjet)
     getBlob.mockResolvedValue(new Blob(['png']))
+    // La grille sert le calage avec la carte : c'est lui qui dit qu'une image existe.
+    const calage = { metersPerPixel: 1, originX: 0, originY: 10, widthPx: 10, heightPx: 10, convention: 'xy' }
+    post.mockImplementation((path: string) => {
+      if (path.endsWith('/filters/match-ids')) return Promise.resolve({ match_ids: PERIMETRE })
+      if (path.endsWith('/tactical/maps')) {
+        return Promise.resolve({
+          ...page,
+          cartes: (page.cartes ?? []).map((c) => (c.map_id === 'streets' ? { ...c, calage_fond: calage } : c)),
+        })
+      }
+      if (path.endsWith('/tactical/streets/raster')) return Promise.resolve(RASTER_VIDE)
+      return Promise.reject(new Error(`appel inattendu : ${path}`))
+    })
     try {
       renderWithProviders(<TacticalPage />)
       const img = await screen.findByTestId('tactical-map-fond-streets')

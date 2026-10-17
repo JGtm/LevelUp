@@ -310,6 +310,8 @@ function pageDesCartes(cartes: Carte[], n: number): TacticalMapsPage {
       victoires: Math.floor((n + (i % 7)) / 2),
       defaites: Math.ceil((n + (i % 7)) / 2),
       sous_plancher: false,
+      // La grille sert le calage avec la carte (E7, D-10) : sans lui, la vignette ne demande pas d image.
+      calage_fond: c.fond.calibration,
     })),
   }
 }
