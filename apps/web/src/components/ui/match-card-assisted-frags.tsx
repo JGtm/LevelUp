@@ -37,13 +37,16 @@ export function MatchCardAssistedFrags({
   assisted,
   locale,
   analysisPending = false,
+  analysisInProgress = false,
 }: {
   assisted: MatchAssistedFrags | null | undefined
   locale: Locale
-  /** L'analyse du film du match est en cours : l'emplacement vide annonce l'attente. */
+  /** L'analyse du film du match n'est pas finie : l'emplacement vide annonce l'attente. */
   analysisPending?: boolean
+  /** Un décodage porte sur CE match (`analysis_state`) : « en cours » ; sinon « en attente ». */
+  analysisInProgress?: boolean
 }) {
-  if (!assisted && analysisPending) return <MatchCardAssistedFragsPending locale={locale} />
+  if (!assisted && analysisPending) return <MatchCardAssistedFragsPending locale={locale} inProgress={analysisInProgress} />
   if (!assisted) {
     return <div data-testid="match-card-assisted-frags-slot" className={SLOT_CLASS} aria-hidden="true" />
   }

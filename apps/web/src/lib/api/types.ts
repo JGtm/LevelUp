@@ -1053,6 +1053,9 @@ export interface RecentMatchItem {
   /** Les causes de `analysis_pending` (`kill_source`, `citations`, `replay`, ordre stable) :
    *  chaque emplacement en attente de la tuile regarde la sienne. Absent = aucune cause. */
   analysis_pending_parts?: string[] | null
+  /** `in_progress` si un décodage de film porte sur CE match, `queued` sinon (`domain.AnalysisState*`).
+   *  Posé seulement quand `analysis_pending` est vrai ; « en cours » ne se dit que pour `in_progress`. */
+  analysis_state?: string | null
   /** Part des frags du joueur assistés par un coéquipier sur CE match, par tranche de
    *  part de dégâts (le sens « reçues » de la page Relations, sur un seul match). Absent
    *  quand le film du match ne porte pas l'assistance : la tuile n'affiche rien —

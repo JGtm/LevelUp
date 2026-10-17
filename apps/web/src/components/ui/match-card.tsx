@@ -12,12 +12,12 @@
 import type { RecentMatchItem } from '@/lib/api/types'
 import { MatchReplayLink } from '@/lib/match-nav/MatchReplayLink'
 import { getPerfColor } from '@/lib/perf-color'
-import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-card-presentation'
+import { analysisPendingPartKeys, getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-card-presentation'
 import { CitationProgressRing } from './citation-progress-ring'
 import { citationMastery } from '@/lib/citations/mastery'
 import { CombatYieldDisplay } from './combat-yield-display'
 import { MatchCardAssistedFrags } from './match-card-assisted-frags'
-import { ANALYSIS_PART, hasPendingPart } from '@/lib/analysis-pending/analysisPending.logic'
+import { ANALYSIS_PART, hasPendingPart, isAnalysisInProgress } from '@/lib/analysis-pending/analysisPending.logic'
 import { AnalysisPendingBadge } from './analysis-pending-badge'
 import { MatchCardCitationsPending, MatchCardReplayPending } from './match-card-analysis-pending'
 import { MedalIcon } from './MedalIcon'
@@ -81,6 +81,8 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
   // Analyse du film en cours (serveur : analysis_pending) : pastille + emplacements en attente
   // à la place des trous. Jamais sur une tuile dont l'analyse est finie.
   const analysisPending = m.analysis_pending === true
+  // « En cours » seulement si un décodage porte sur CE match, sinon « en attente ».
+  const analysisInProgress = isAnalysisInProgress(m)
   // Chaque emplacement regarde SA cause : le rejeu ne s'annonce pas quand seules les citations
   // manquent (film absent : aucun rejeu ne viendra).
   const killSourcePending = hasPendingPart(m, ANALYSIS_PART.killSource)
@@ -164,7 +166,9 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
         </div>
 
         {/* Pastille « Analyse en cours » en overlay coin supérieur droit (+ infobulle) */}
-        {analysisPending && <AnalysisPendingBadge locale={locale} />}
+        {analysisPending && (
+          <AnalysisPendingBadge locale={locale} inProgress={analysisInProgress} parts={analysisPendingPartKeys(m)} />
+        )}
 
         {/* Bouton favori en overlay coin supérieur gauche */}
         {onToggleFavorite && (
@@ -293,7 +297,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
             />
           )}
           {/* Rejeu pas encore là mais en route : puce en pointillés à la place du bouton absent. */}
-          {playerSlug && replayPending && m.has_replay !== true && <MatchCardReplayPending locale={locale} />}
+          {playerSlug && replayPending && m.has_replay !== true && <MatchCardReplayPending locale={locale} inProgress={analysisInProgress} />}
         </div>
 
         {/* Bloc perf + skill rating + barre KDA */}
@@ -401,7 +405,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
                 {/* Part des frags assistés par un coéquipier (film analysé). L'emplacement est
                     RÉSERVÉ (même hauteur sans mesure) : sur la grille de l'accueil, les tuiles
                     voisines gardent leurs stats alignées, qu'elles aient une mesure ou non. */}
-                <MatchCardAssistedFrags assisted={m.assisted_frags} locale={locale} analysisPending={killSourcePending} />
+                <MatchCardAssistedFrags assisted={m.assisted_frags} locale={locale} analysisPending={killSourcePending} analysisInProgress={analysisInProgress} />
               </div>
             )}
 
@@ -548,7 +552,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
 
             {/* Citations pas encore calculées : trois cercles en pointillés à la place du vide */}
             {citationsPending && !(m.top_citations && m.top_citations.length > 0) && (
-              <MatchCardCitationsPending locale={locale} />
+              <MatchCardCitationsPending locale={locale} inProgress={analysisInProgress} />
             )}
 
             {/* Citations — max 3, filtrées et triées par delta DESC */}

@@ -51,14 +51,14 @@ func (r *AnalysisPendingResolver) WithDecodeObserver(o port.FilmDecodeObserver) 
 	return r
 }
 
-// StateOf rend l'état d'un match dont l'analyse est en attente (`domain.AnalysisState*`) : « en
-// cours » seulement si un décodage vivant porte sur lui, sinon « en attente ».
-func (r *AnalysisPendingResolver) StateOf(matchID string) string {
-	decoding := ""
-	if r != nil && r.decodes != nil {
-		decoding = r.decodes.DecodingMatchID()
+// DecodingMatchID rend le match que décode un processus vivant, "" sinon (ou sans observateur).
+// Un appel LIT le détenteur du verrou machine : l'appelant le fait UNE fois par requête, puis
+// décide chaque tuile par `analysis.AnalysisStateOf`.
+func (r *AnalysisPendingResolver) DecodingMatchID() string {
+	if r == nil || r.decodes == nil {
+		return ""
 	}
-	return analysis.AnalysisStateOf(matchID, decoding)
+	return r.decodes.DecodingMatchID()
 }
 
 // ReplayLookup dit si un match a son artefact de rejeu, et si la réponse est fiable.
@@ -130,11 +130,16 @@ func (s *HomeService) applyAnalysisPendingToRecentItems(ctx context.Context, rep
 	if len(pending) == 0 {
 		return
 	}
+	// Le détenteur du verrou se lit UNE fois pour toutes les tuiles de la requête.
+	decoding := s.analysisPending.DecodingMatchID()
 	for _, items := range itemLists {
 		for i := range items {
 			parts := pending[items[i].MatchID]
 			items[i].AnalysisPending = len(parts) > 0
 			items[i].AnalysisPendingParts = parts
+			if len(parts) > 0 {
+				items[i].AnalysisState = analysis.AnalysisStateOf(items[i].MatchID, decoding)
+			}
 		}
 	}
 }
@@ -158,6 +163,6 @@ func (s *MatchViewService) applyHeaderAnalysisPending(ctx context.Context, h *do
 	h.AnalysisPending = len(parts) > 0
 	h.AnalysisPendingParts = parts
 	if h.AnalysisPending {
-		h.AnalysisState = s.analysisPending.StateOf(h.MatchID)
+		h.AnalysisState = analysis.AnalysisStateOf(h.MatchID, s.analysisPending.DecodingMatchID())
 	}
 }

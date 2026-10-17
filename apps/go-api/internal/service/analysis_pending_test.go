@@ -192,3 +192,64 @@ func TestMatchViewService_HeaderAnalysisState(t *testing.T) {
 		})
 	}
 }
+
+// compteurObservateur compte les lectures du détenteur du verrou machine.
+type compteurObservateur struct {
+	match    string
+	lectures int
+}
+
+func (o *compteurObservateur) DecodingMatchID() string {
+	o.lectures++
+	return o.match
+}
+
+func TestHomeService_AnalysisState_UneLectureDuDetenteurPourToutesLesTuiles(t *testing.T) {
+	repo := &probeRepoFactice{probes: map[string]domain.AnalysisProbe{
+		"m1":   synchroIlYA(time.Hour, func(p *domain.AnalysisProbe) { p.KillSourceDone = false }),
+		"m2":   synchroIlYA(time.Hour, func(p *domain.AnalysisProbe) { p.KillSourceDone = false }),
+		"m3":   synchroIlYA(time.Hour, func(p *domain.AnalysisProbe) { p.KillSourceDone = false }),
+		"fini": synchroIlYA(time.Hour, nil),
+	}}
+	obs := &compteurObservateur{match: "m2"}
+	s := &HomeService{analysisPending: resolveurDeTest(repo, false).WithDecodeObserver(obs)}
+	recent := []domain.RecentMatchItem{{MatchID: "m1"}, {MatchID: "m2"}, {MatchID: "fini"}}
+	favorites := []domain.RecentMatchItem{{MatchID: "m3"}, {MatchID: "m2"}}
+
+	s.applyAnalysisPendingToRecentItems(context.Background(), nil, recent, favorites)
+
+	want := map[string]string{"m1": domain.AnalysisStateQueued, "m2": domain.AnalysisStateInProgress, "fini": ""}
+	for _, it := range recent {
+		if it.AnalysisState != want[it.MatchID] {
+			t.Errorf("récents %s : état %q, want %q", it.MatchID, it.AnalysisState, want[it.MatchID])
+		}
+	}
+	if favorites[0].AnalysisState != domain.AnalysisStateQueued || favorites[1].AnalysisState != domain.AnalysisStateInProgress {
+		t.Errorf("favoris : états %q / %q", favorites[0].AnalysisState, favorites[1].AnalysisState)
+	}
+	if obs.lectures != 1 {
+		t.Fatalf("le détenteur doit être lu UNE fois par requête, got %d lectures", obs.lectures)
+	}
+}
+
+func TestHomeService_AnalysisState_AbsentSansAnalyseEnAttenteOuSansObservateur(t *testing.T) {
+	repo := &probeRepoFactice{probes: map[string]domain.AnalysisProbe{"fini": synchroIlYA(time.Hour, nil)}}
+	obs := &compteurObservateur{match: "fini"}
+	s := &HomeService{analysisPending: resolveurDeTest(repo, false).WithDecodeObserver(obs)}
+	items := []domain.RecentMatchItem{{MatchID: "fini"}}
+	s.applyAnalysisPendingToRecentItems(context.Background(), nil, items)
+	if items[0].AnalysisState != "" || items[0].AnalysisPending {
+		t.Fatalf("analyse finie : aucun état, got %+v", items[0])
+	}
+	if obs.lectures != 0 {
+		t.Fatalf("rien en attente : le détenteur n'est pas lu, got %d lectures", obs.lectures)
+	}
+
+	repo.probes["m1"] = synchroIlYA(time.Hour, func(p *domain.AnalysisProbe) { p.KillSourceDone = false })
+	s = &HomeService{analysisPending: resolveurDeTest(repo, false)}
+	items = []domain.RecentMatchItem{{MatchID: "m1"}}
+	s.applyAnalysisPendingToRecentItems(context.Background(), nil, items)
+	if items[0].AnalysisState != domain.AnalysisStateQueued {
+		t.Fatalf("sans observateur câblé : jamais « en cours », got %q", items[0].AnalysisState)
+	}
+}
