@@ -28754,6 +28754,11 @@ components:
             - "null"
         weapon_records:
           $ref: '#/components/schemas/SynthesisWeaponRecords'
+        weapon_records_gap:
+          enum:
+            - pending
+            - missing
+          type: string
       required:
         - scope
         - overview

@@ -394,7 +394,10 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 		// temporelles (registry_pages.go) — le repo seul décide qu'un titre n'a pas de
 		// positions par kill (games.ErrCapabilityNotSupported), un `if capability` ici
 		// prendrait la même décision à deux endroits.
-		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))
+		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb))).
+		// « Analyse du film en cours » des records de distance : MÊME règle et MÊME porte de titre que
+		// l'accueil, la vue match et l'Escouade (film.kill_source) ; nil pour un titre sans elle.
+		WithAnalysisPending(r.analysisPendingFor(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}

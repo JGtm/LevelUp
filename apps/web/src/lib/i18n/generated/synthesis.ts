@@ -44,6 +44,7 @@ export const synthesisManifest = {
   "synthesis.empty.no_comparison": { fr: "Pas assez de données pour une comparaison Solo / Escouade", en: "Not enough data for Solo / Squad comparison" },
   "synthesis.empty.no_data": { fr: "Aucune donnée disponible pour cette période", en: "No data available for this period" },
   "synthesis.empty.synthesis_unavailable": { fr: "Synthèse indisponible", en: "Synthesis unavailable" },
+  "synthesis.empty.synthesis_unavailable_description": { fr: "Aucune donnée n'a été renvoyée pour cette page avec les filtres actuels.", en: "No data was returned for this page with the current filters." },
   "synthesis.errors.load_failed": { fr: "Erreur lors du chargement de la synthèse", en: "Failed to load synthesis" },
   "synthesis.errors.retry": { fr: "Réessayer", en: "Retry" },
   "synthesis.filters.experience": { fr: "Expérience", en: "Experience" },

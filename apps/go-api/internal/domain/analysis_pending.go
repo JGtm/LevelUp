@@ -31,3 +31,12 @@ const (
 	// AnalysisPartReplay : le rejeu 2D est absent alors que le film n'est pas déclaré absent.
 	AnalysisPartReplay = "replay"
 )
+
+// Causes pour lesquelles une section tirée du film n'a rien à montrer sur le périmètre d'une page, telles
+// que servies à côté du bloc manquant (le web choisit entre l'indicateur d'analyse et l'état vide).
+const (
+	// FilmGapPending : l'analyse du film d'au moins un match du périmètre est EN COURS.
+	FilmGapPending = "pending"
+	// FilmGapMissing : le film du périmètre n'est ni lu ni en cours d'analyse.
+	FilmGapMissing = "missing"
+)

@@ -408,6 +408,10 @@ en = "Skull grabs"
 fr = "Synthèse indisponible"
 en = "Synthesis unavailable"
 
+[synthesis.empty.synthesis_unavailable_description]
+fr = "Aucune donnée n'a été renvoyée pour cette page avec les filtres actuels."
+en = "No data was returned for this page with the current filters."
+
 [synthesis.charts.top_vs_total_per_week]
 fr = "Matchs Top vs Total par semaine"
 en = "Top vs Total matches per week"

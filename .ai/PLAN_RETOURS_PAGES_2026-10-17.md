@@ -44,19 +44,19 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
       non migrées vide si possible, sinon chaque reste justifié.
 
 ### P2 — États vides et sections absentes
-- [ ] P2.1 Inventaire (tableau au rapport) pour Sessions (détail), Synthèse, Séries temporelles et
+- [x] P2.1 (tableau au rapport et au journal §4 ; sources lues sur pièces, page par page) Inventaire (tableau au rapport) pour Sessions (détail), Synthèse, Séries temporelles et
       le calendrier d'activité : chaque bloc, sa source (feuille de match / film / autre), ce qui
       s'affiche aujourd'hui quand ses données manquent (rien, titre sur du vide, pointillé nu,
       état conforme), et si le manque est « fonction absente » (capability du titre) ou
       « données absentes » (film pas encore analysé, pas analysé, périmètre vide).
-- [ ] P2.2 Corriger : capability absente = bloc absent ; données absentes = bloc AFFICHÉ (titre +
+- [x] P2.2 (squadagg.NoteFilmGaps commun aux 3 pages Emprise ; Sessions : une carte d etat par famille tiree du film + Portee ; Series temporelles Usages : 7 sections ; Synthese : weapon_records_gap + carte Records ; module partage features/_shared/filmGap + garde filmGap.guard.test.ts) Corriger : capability absente = bloc absent ; données absentes = bloc AFFICHÉ (titre +
       bloc parent + état vide conforme). Film en cours d'analyse → `AnalysisPendingSlot` ;
       film non analysé → `EmptyStateNotice`. Réutiliser `EmpriseFilmGapSection` / ses textes
       en le remontant dans un module partagé s'il sert à plusieurs pages (règle n°6 : à la 3e
       copie, helper + garde-rail). Le signal « en cours / non analysé » : réutiliser
       `ResolvePending` côté Go (aucune seconde règle), contrat openapi + `make generate-types`.
-- [ ] P2.3 Corriger tout `EmptyStateNotice` nu (sans bloc parent) de ces pages.
-- [ ] P2.4 Textes FR/EN factuels, sans personne ni impératif ni vocabulaire interne ; gardes de
+- [x] P2.3 (SessionSummaryCard, tiroir sans comparaison, onglet Usages vide, TimeseriesKdaBars : bloc parent ; calendrier : bloc conserve en echec de lecture ; erreur et vide de la Synthese traduits) Corriger tout `EmptyStateNotice` nu (sans bloc parent) de ces pages.
+- [x] P2.4 (FILM_GAP_TEXT, synthesis.empty.*, session.detail.summary_unavailable_description, activityCalendarUnavailable ; textesSansPersonne etendu) Textes FR/EN factuels, sans personne ni impératif ni vocabulaire interne ; gardes de
       textes existantes (`textesSansPersonne.test.ts`, `noUnknownMentions`) vertes.
 
 ### P3 — Bulle (i) de la Tactique

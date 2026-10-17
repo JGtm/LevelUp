@@ -172,6 +172,26 @@ export function buildActivityCalendarOption(opts: BuildOpts): EChartsCoreOption 
   }
 }
 
+/**
+ * Le calendrier quand sa lecture a échoué : le bloc garde son titre et le dit (constat traduit), au lieu de
+ * disparaître de l'onglet — une absence silencieuse laissait croire que la fonction n'existe pas.
+ */
+export function ActivityCalendarUnavailable({ height }: { height?: number }) {
+  const locale = useAppShellStore((s) => s.locale) as ManifestLocale
+  const t = getAscensionText(locale)
+  return (
+    <section aria-label={t.activityCalendarAria} data-testid="activity-calendar-unavailable">
+      <ChartCard
+        title={t.activityCalendarTitle}
+        series={[]}
+        error={new Error(t.activityCalendarUnavailable)}
+        buildOption={() => ({})}
+        height={height ?? 180}
+      />
+    </section>
+  )
+}
+
 export function ActivityCalendarChart({ since, until, days, height }: ActivityCalendarChartProps) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = getAscensionText(locale)

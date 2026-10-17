@@ -3,7 +3,7 @@
  * personne (« reviens », « vérifie », « connecte », « choisis » ; « connect it », « pick » en anglais) dans les textes des Séries temporelles › Usages, de toute la
  * page Escouade (`squad/i18n.ts`, les `*Strings.ts` de `features/squad/`, le sélecteur
  * `squadPresets.i18n.ts`, les jeux des cartes d'objectif `formes/i18n.ts` et `formes/cardsI18n.ts`,
- * le manifeste `squad.toml`), des cartes de la page Sessions et de la Vue match (titres, intertitres, légendes,
+ * le manifeste `squad.toml`, les textes d'une section dont le film n'est pas lu `_shared/filmGap`), des cartes de la page Sessions et de la Vue match (titres, intertitres, légendes,
  * aides ⓘ, infobulles, messages), en français comme en anglais. Pour la Vue match, s'y ajoutent les
  * littéraux de phrase de ses sources (`features/match-view/`). Le joueur est désigné par son
  * gamertag, les groupes par « Équipe », « Adversaire », « Reste de l'équipe » ; « camp » n'est
@@ -21,6 +21,7 @@ import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { FILM_GAP_TEXT } from '@/features/_shared/filmGap/filmGapStrings'
 import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
 import { MATCH_VIEW_TEXT } from '@/features/match-view/i18n'
 import { MATCH_EMPRISE_TEXT } from '@/features/match-view/matchEmpriseText'
@@ -132,6 +133,7 @@ const TEXTS = {
   MATCH_VIEW_TEXT,
   MATCH_EMPRISE_TEXT,
   MATCH_EQUIPMENT_USAGE_TEXT,
+  FILM_GAP_TEXT,
 } as const
 
 describe('aucun possessif ni pronom de personne', () => {
@@ -156,6 +158,12 @@ describe('aucun possessif ni pronom de personne', () => {
 
   it('manifeste synthesis.toml, section « Portée » des Séries temporelles (synthesis.weapon_range.*)', () => {
     expect(offendingManifestLines('synthesis.toml', 'synthesis.weapon_range.')).toEqual([])
+  })
+
+  it('manifeste synthesis.toml, états vides, erreurs et records de distance (synthesis.empty.*, errors, weapon_records)', () => {
+    for (const section of ['synthesis.empty.', 'synthesis.errors.', 'synthesis.weapon_records.']) {
+      expect(offendingManifestLines('synthesis.toml', section), section).toEqual([])
+    }
   })
 
   it('manifeste match_view.toml (fr, en)', () => {

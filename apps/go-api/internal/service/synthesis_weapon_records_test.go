@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
@@ -69,7 +70,7 @@ func TestBuildWeaponRecordsSection_Nominal(t *testing.T) {
 		labels: map[string]port.WeaponLabel{"hinf_br75": {Label: "BR75", LabelEN: "BR75"}},
 	}
 
-	block := buildWeaponRecordsSection(context.Background(), wrecQuery(repo, rows))
+	block, _ := buildWeaponRecordsSection(context.Background(), wrecQuery(repo, rows))
 	if block == nil {
 		t.Fatal("section nil, attendue peuplée")
 	}
@@ -132,7 +133,7 @@ func TestBuildWeaponRecordsSection_ClassesEcarteesNommees(t *testing.T) {
 		labels: map[string]port.WeaponLabel{"hinf_environment": {Label: "Chute et environnement", LabelEN: "Environment"}},
 	}
 
-	block := buildWeaponRecordsSection(context.Background(), wrecQuery(repo, wrCanonRows(1, 20, 5)))
+	block, _ := buildWeaponRecordsSection(context.Background(), wrecQuery(repo, wrCanonRows(1, 20, 5)))
 	if block == nil {
 		t.Fatal("section nil")
 	}
@@ -173,7 +174,7 @@ func TestBuildWeaponRecordsSection_RegistreMuetOuEnPanne(t *testing.T) {
 		{"registre en panne", &mockWeaponRangeRepo{kills: kills, dimsErr: errors.New("metadata indisponible")}},
 	} {
 		t.Run(c.nom, func(t *testing.T) {
-			block := buildWeaponRecordsSection(context.Background(), wrecQuery(c.repo, wrCanonRows(1, 9, 5)))
+			block, _ := buildWeaponRecordsSection(context.Background(), wrecQuery(c.repo, wrCanonRows(1, 9, 5)))
 			if block == nil || len(block.Weapons) != 2 || len(block.Excluded) != 0 {
 				t.Fatalf("section = %+v, attendue peuplée de 2 armes sans exclusion", block)
 			}
@@ -188,7 +189,7 @@ func TestBuildWeaponRecordsSection_LibellesEnPanne_LaSectionSurvit(t *testing.T)
 	repo := &mockWeaponRangeRepo{
 		kills: []analysis.MeasuredKill{wrecKill("hinf_br75", "m1", 1, 20)}, labelsErr: errors.New("boom"),
 	}
-	block := buildWeaponRecordsSection(context.Background(), wrecQuery(repo, wrCanonRows(1, 9, 5)))
+	block, _ := buildWeaponRecordsSection(context.Background(), wrecQuery(repo, wrCanonRows(1, 9, 5)))
 	if block == nil || len(block.Weapons) != 1 || block.Weapons[0].Label != "" || block.Weapons[0].WeaponKey != "hinf_br75" {
 		t.Fatalf("section = %+v, attendue peuplée avec la clé conservée et le libellé vide", block)
 	}
@@ -213,8 +214,51 @@ func TestBuildWeaponRecordsSection_DegradationsSansSection(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			if block := buildWeaponRecordsSection(context.Background(), c.q); block != nil {
+			if block, _ := buildWeaponRecordsSection(context.Background(), c.q); block != nil {
 				t.Errorf("section = %+v, attendu nil", block)
+			}
+		})
+	}
+}
+
+// pendingFixe (solo_emprise_block_test.go) sert aussi ici : un résolveur d'analyse en cours à table fixe.
+
+// Le titre mesure des positions, le scope a des frags, aucun n'est mesuré : la section manque ET la page en
+// donne la cause — « en cours » quand l'analyse d'un match du scope tourne, « non analysé » sinon.
+func TestBuildWeaponRecordsSection_CauseDeLAbsence(t *testing.T) {
+	rows := wrCanonRows(2, 9, 5)
+	q := wrecQuery(&mockWeaponRangeRepo{}, rows)
+
+	if block, gap := buildWeaponRecordsSection(context.Background(), q); block != nil || gap != domain.FilmGapMissing {
+		t.Errorf("sans résolveur : section=%v cause=%q, attendu nil et %q", block, gap, domain.FilmGapMissing)
+	}
+	q.Pending = pendingFixe{table: map[string][]string{"ma": {domain.AnalysisPartKillSource}}}
+	if _, gap := buildWeaponRecordsSection(context.Background(), q); gap != domain.FilmGapPending {
+		t.Errorf("analyse en cours : cause=%q, attendu %q", gap, domain.FilmGapPending)
+	}
+	q.Pending = pendingFixe{}
+	if _, gap := buildWeaponRecordsSection(context.Background(), q); gap != domain.FilmGapMissing {
+		t.Errorf("rien en cours : cause=%q, attendu %q", gap, domain.FilmGapMissing)
+	}
+}
+
+// Les absences qui n'ont rien à dire : fonction absente (le titre ne mesure pas), lecture en échec, scope sans frag.
+func TestBuildWeaponRecordsSection_AucuneCauseQuandLaFonctionOuLaDonneeNExistePas(t *testing.T) {
+	pending := pendingFixe{table: map[string][]string{"ma": {domain.AnalysisPartKillSource}}}
+	cas := []struct {
+		nom string
+		q   weaponRecordsQuery
+	}{
+		{"capability absente", wrecQuery(&mockWeaponRangeRepo{killsErr: games.ErrCapabilityNotSupported}, wrCanonRows(1, 9, 5))},
+		{"erreur SQL", wrecQuery(&mockWeaponRangeRepo{killsErr: errors.New("boom")}, wrCanonRows(1, 9, 5))},
+		{"scope sans frag", wrecQuery(&mockWeaponRangeRepo{}, wrCanonRows(1, 0, 5))},
+		{"repo non câblé", wrecQuery(nil, wrCanonRows(1, 9, 5))},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			c.q.Pending = pending
+			if block, gap := buildWeaponRecordsSection(context.Background(), c.q); block != nil || gap != "" {
+				t.Errorf("section=%v cause=%q, attendu nil et aucune cause", block, gap)
 			}
 		})
 	}

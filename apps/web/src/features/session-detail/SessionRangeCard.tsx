@@ -22,6 +22,10 @@
  * référence dépend du filtre, pas de la session) et chacune y surligne SA session — c'est
  * exactement la lecture demandée : deux soirées situées dans la même population.
  *
+ * FILM NON LU. Sans point à tracer, la carte garde son titre quand le film des matchs de la session n'est
+ * pas lu (`filmGap` : analyse en cours, ou non analysé) : l'état est DANS le bloc, sous le titre. Sans
+ * `filmGap` (titre qui ne lit pas le film, ou films lus sans frag mesuré), elle n'est pas rendue.
+ *
  * D22-VERBOSITÉ (LOI) : graphe et légende, centrée en bas de la carte ; aucune mention de
  * couverture (« n matchs mesurés sur N ») sous le graphe. La lecture tient dans l'infobulle (i) du
  * titre, trois phrases.
@@ -31,6 +35,9 @@ import { useMemo } from 'react'
 import { ChartCard } from '@/components/charts/ChartCard'
 import { TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
+import { FilmGapState } from '@/features/_shared/filmGap/FilmGapSection'
+import type { FilmGap } from '@/features/_shared/filmGap/filmGap.logic'
+import { FILM_GAP_TEXT } from '@/features/_shared/filmGap/filmGapStrings'
 import { titleWithInfo } from '@/components/ui/title-with-info'
 import { buildSquadRangeRolesOption } from '@/features/squad/charts/squadRangeRolesChart'
 import { getSquadPlayerColors } from '@/features/squad/colors'
@@ -54,6 +61,7 @@ export function SessionRangeCard({
   meLabel,
   compact = false,
   yDomain,
+  filmGap,
 }: {
   /** Le bloc `range_profiles` de la réponse — les matchs de CETTE session (surbrillance). */
   block: MatchRangeBlock | null | undefined
@@ -69,6 +77,8 @@ export function SessionRangeCard({
   compact?: boolean
   /** Bornes d'axe Y plancher partagées A/B (mode comparaison) — figées par la page. */
   yDomain?: [number, number]
+  /** Le film des matchs de la session n'est pas lu (`sessionFilmGap`) : la carte garde son titre et le dit. */
+  filmGap?: FilmGap | null
 }) {
   const locale = useAppShellStore((s) => s.locale)
   const t = COORDINATION_TEXT[locale]
@@ -130,8 +140,18 @@ export function SessionRangeCard({
     [serie, nuage, couleurs, encreSession, encrePeriode, yDomain, t, numFmt],
   )
 
-  // Sans point (aucune distance de frag sur la session), la carte n'est pas rendue : aucun texte ne dit l'absence.
-  if (block == null || serie == null || serie.points.length === 0) return null
+  // Sans point (aucune distance de frag sur la session) : film non lu = la carte garde son titre et le dit ;
+  // sinon la carte n'est pas rendue (rien à tracer, et aucune cause à nommer).
+  if (block == null || serie == null || serie.points.length === 0) {
+    if (!filmGap) return null
+    return (
+      <SectionCard title={t.cardRange} label={t.cardRange}>
+        <div className="px-3 py-2" data-testid="session-portee-film-gap">
+          <FilmGapState gap={filmGap} t={FILM_GAP_TEXT[locale]} />
+        </div>
+      </SectionCard>
+    )
+  }
 
   return (
     <SectionCard

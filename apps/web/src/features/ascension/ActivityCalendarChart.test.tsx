@@ -13,6 +13,7 @@ import { renderWithProviders } from '@/test/render-utils'
 import type { ActivityDay } from './types'
 import {
   ActivityCalendarChart,
+  ActivityCalendarUnavailable,
   buildActivityCalendarOption,
   buildCalendarGrid,
 } from './ActivityCalendarChart'
@@ -113,5 +114,20 @@ describe('infobulle du calendrier d’activité', () => {
     expect(html).toContain('6 mai 2026')
     expect(html).not.toContain('2026-05-06')
     expect(html).toContain('<b>1 200</b>')
+  })
+})
+
+describe('calendrier d’activité — états', () => {
+  it('aucun jour joué : le bloc garde son titre et le dit (pointillé dans la carte)', async () => {
+    renderWithProviders(<ActivityCalendarChart since="2026-05-04" until="2026-05-31" days={[]} />)
+    expect(await screen.findByText("Calendrier d'activité")).toBeInTheDocument()
+    expect(screen.getByTestId('chart-card-empty').textContent).toContain('Aucun match sur les 90 derniers jours.')
+  })
+
+  it('lecture en échec : le bloc reste, avec son titre, et dit que le calendrier est indisponible', () => {
+    renderWithProviders(<ActivityCalendarUnavailable />)
+    const bloc = screen.getByTestId('activity-calendar-unavailable')
+    expect(bloc.textContent).toContain("Calendrier d'activité")
+    expect(screen.getByRole('alert').textContent).toBe("Calendrier d'activité indisponible.")
   })
 })

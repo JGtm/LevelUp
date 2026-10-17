@@ -12924,6 +12924,8 @@ export interface components {
             top_weeks: components["schemas"]["TopWeekEntry"][] | null;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
             weapon_records?: components["schemas"]["SynthesisWeaponRecords"];
+            /** @enum {string} */
+            weapon_records_gap?: "pending" | "missing";
         };
         SynthesisScope: {
             /** Format: date-time */

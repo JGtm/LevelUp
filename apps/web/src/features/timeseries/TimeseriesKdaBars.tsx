@@ -9,6 +9,7 @@ import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { resolveToken } from '@/lib/accessibility'
 import { outcomeScale } from '@/lib/accessibility/scales'
@@ -104,7 +105,11 @@ export function TimeseriesKdaBars({
 
   if (rows.length === 0) {
     return (
-      <EmptyStateNotice title={labels.emptyTitle} description={labels.emptyDescription} />
+      <Card>
+        <CardContent className="pt-4">
+          <EmptyStateNotice title={labels.emptyTitle} description={labels.emptyDescription} />
+        </CardContent>
+      </Card>
     )
   }
 

@@ -81,6 +81,7 @@ export interface AscensionText {
   activityCalendarTitle: string
   activityCalendarAria: string
   activityCalendarEmpty: string
+  activityCalendarUnavailable: string
   activityCalendarLegendLess: string
   activityCalendarLegendMore: string
 
@@ -254,6 +255,7 @@ const FR: AscensionText = {
   activityCalendarAria:
     "Calendrier des jours joués sur les 90 derniers jours : une case remplie par jour joué, l'intensité reflète le nombre de matchs.",
   activityCalendarEmpty: 'Aucun match sur les 90 derniers jours.',
+  activityCalendarUnavailable: "Calendrier d'activité indisponible.",
   activityCalendarLegendLess: 'Moins',
   activityCalendarLegendMore: 'Plus',
   streaksSectionTitle: 'Mes séries',
@@ -489,6 +491,7 @@ const EN: AscensionText = {
   activityCalendarAria:
     'Calendar of days played over the last 90 days: one filled cell per day played, intensity reflects the number of matches.',
   activityCalendarEmpty: 'No match over the last 90 days.',
+  activityCalendarUnavailable: 'Activity calendar unavailable.',
   activityCalendarLegendLess: 'Less',
   activityCalendarLegendMore: 'More',
   streaksSectionTitle: 'My streaks',

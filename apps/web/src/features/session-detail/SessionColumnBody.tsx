@@ -46,7 +46,7 @@ import {
 } from './_sections'
 import { pairGridClass, useSessionChartSections } from './_chartSections'
 import { SessionCoordinationSection } from './SessionCoordinationSection'
-import type { SessionColumnBlocks } from './sessionEmprise.logic'
+import { sessionFilmGap, type SessionColumnBlocks } from './sessionEmprise.logic'
 import { SessionMatchesTable } from './SessionMatchesTable'
 import { SessionRangeCard } from './SessionRangeCard'
 import { SessionSummaryCard } from './SessionSummaryCard'
@@ -82,6 +82,8 @@ function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKe
   const locale = useAppShellStore((s) => s.locale)
   const { blocks, playerSlug, compact, participationSide = 'right' } = props
   const { entry, matches, coordination, rangeProfiles } = blocks
+  // Le film des matchs n'est pas lu : la portée garde sa carte (titre et état) au lieu de disparaître.
+  const filmGap = sessionFilmGap(blocks)
 
   const chartSections = useSessionChartSections({
     entry,
@@ -106,7 +108,7 @@ function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKe
     ...(coordination
       ? { coordination: <SessionCoordinationSection coordination={coordination} compact={compact} /> }
       : {}),
-    ...(rangeProfiles
+    ...(rangeProfiles || filmGap
       ? {
           range: (
             <SessionRangeCard
@@ -115,6 +117,7 @@ function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKe
               meLabel={playerSlug}
               compact={compact}
               yDomain={props.scale?.rangeDelta}
+              filmGap={filmGap}
             />
           ),
         }

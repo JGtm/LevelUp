@@ -11,6 +11,8 @@
 import { useCallback, useMemo, type ReactNode } from 'react'
 
 import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'
+import { FilmGapCard } from '@/features/_shared/filmGap/FilmGapSection'
+import { FILM_GAP_TEXT } from '@/features/_shared/filmGap/filmGapStrings'
 import { equipmentFamilyLabel, USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
 import { empriseObjectName } from '@/features/squad/emprise/objectName'
 import { ProductionCard } from '@/features/squad/emprise/ProductionCard'
@@ -34,7 +36,8 @@ import type { DominanceValue, OutcomeValue } from '@/components/charts/outcomeSe
 
 import {
   buildSessionEmpriseModels,
-  sessionCardsPresence,
+  drawnCards,
+  sessionFilmGaps,
   sessionPlayerName,
   type SessionCardsPresence,
   type SessionColumnBlocks,
@@ -74,7 +77,11 @@ export function useSessionEmpriseCards(
     () => buildSessionEmpriseModels({ entry, matches, emprise, lives, formes }, objectName),
     [entry, matches, emprise, lives, formes, objectName],
   )
-  const present = useMemo(() => sessionCardsPresence({ entry, matches, emprise }, models), [entry, matches, emprise, models])
+  // Les cartes qui dessinent quelque chose, et les cartes d'ancrage qui portent « film non lu » à la place
+  // d'une famille entièrement absente (même lecture que les rangées partagées et les intertitres).
+  const drawn = useMemo(() => drawnCards({ entry, matches, emprise }, models), [entry, matches, emprise, models])
+  const gaps = useMemo(() => sessionFilmGaps({ emprise }, drawn), [emprise, drawn])
+  const gapText = FILM_GAP_TEXT[locale]
   const player = sessionPlayerName(col, fallbackName)
   const playerName = useCallback(
     (xuid: string) => emprise?.players?.find((p) => p.xuid === xuid)?.gamertag ?? '',
@@ -99,7 +106,9 @@ export function useSessionEmpriseCards(
   const render = cardRenderers(ctx)
   const cards: SessionEmpriseCards = {}
   for (const key of Object.keys(render) as (keyof SessionCardsPresence)[]) {
-    if (present[key]) cards[key] = render[key]()
+    const gap = gaps[key]
+    if (gap) cards[key] = <FilmGapCard gap={gap} t={gapText} />
+    else if (drawn[key]) cards[key] = render[key]()
   }
   return cards
 }

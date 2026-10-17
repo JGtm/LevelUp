@@ -281,7 +281,10 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 		// savoir si ce titre a des positions par kill — il rend
 		// games.ErrCapabilityNotSupported et le service omet le bloc ; un `if capability`
 		// ici prendrait la même décision à deux endroits qui divergeraient.
-		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID)
+		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID).
+		// « Analyse du film en cours » de l'Emprise : MÊME règle et MÊME porte de titre que l'accueil, la
+		// vue match et l'Escouade (film.kill_source) ; nil pour un titre sans elle.
+		WithAnalysisPending(r.analysisPendingFor(pdb))
 	// Axe « Objectifs » par opportunité (profil de participation Session) : gated par
 	// la capability match.objective.stats (Infinite ; absente pour Halo 5 → axe
 	// retiré). Jamais slug==.
@@ -350,7 +353,10 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 		// deux endroits qui divergeraient.
 		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb))).
 		// Roles de portee (D23-a) : MEME repo, autre lecture (tout le lobby, par match).
-		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID)
+		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID).
+		// « Analyse du film en cours » de l'Emprise (onglet Usages) : MÊME règle et MÊME porte de titre que
+		// l'accueil, la vue match et l'Escouade (film.kill_source) ; nil pour un titre sans elle.
+		WithAnalysisPending(r.analysisPendingFor(pdb))
 	svc = r.cablerUsagesTimeseries(svc, pdb) // onglet « Usages » : registry_pages_timeseries.go
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
