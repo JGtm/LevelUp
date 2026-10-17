@@ -261,8 +261,8 @@ describe('buildHsPerfectOption', () => {
 })
 
 describe('infobulles : lignes lisibles (retours 2026-10-17)', () => {
-  const formatterOf = (opt: { tooltip?: unknown }) =>
-    (opt.tooltip as { formatter: (p: unknown) => string }).formatter
+  const formatterOf = (opt: object) =>
+    (opt as { tooltip: { formatter: (p: unknown) => string } }).tooltip.formatter
 
   it('frags / bonus / morts : bonus arrondi, morts en valeur absolue, ordre des barres du haut vers le bas', () => {
     const opt = buildKillsDeathsButterflyOption(

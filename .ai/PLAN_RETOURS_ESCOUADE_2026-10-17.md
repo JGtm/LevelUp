@@ -74,10 +74,10 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
 - Gate : tests des builders touchés mis à jour ; vitest squad.
 
 ### E3 — « Par soirée » : barres pleines, sans changement au survol (D2)
-- [ ] E3.1 `habitChart.ts` : toutes les barres pleines, couleur de leur ressource, quelle que
+- [x] E3.1 `habitChart.ts` : toutes les barres pleines, couleur de leur ressource, quelle que
       soit la soirée. Plus aucun style « hors comparaison » (gris, liseré).
-- [ ] E3.2 Le survol ne change pas la couleur des barres (emphase neutralisée sur ce graphe).
-- [ ] E3.3 La non-comparabilité reste : hors médiane, et mentionnée dans l'infobulle seulement.
+- [x] E3.2 (emphasis.disabled + legendHoverLink false) Le survol ne change pas la couleur des barres (emphase neutralisée sur ce graphe).
+- [x] E3.3 (muted, notComparable et son entree de legende retires ; info FR/EN reecrite) La non-comparabilité reste : hors médiane, et mentionnée dans l'infobulle seulement.
       Retirer le code mort (couleur `muted` si plus lue) et mettre à jour les tests.
 
 ### E4 — Couleurs des rôles d'impact (D3)
