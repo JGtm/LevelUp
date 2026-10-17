@@ -1,5 +1,5 @@
 /**
- * filmGap.logic.ts — « ANALYSE DU FILM EN COURS » / « FILM NON ANALYSÉ » : la décision, PARTAGÉE.
+ * filmGap.logic.ts — « ANALYSE DU FILM EN ATTENTE » / « FILM NON ANALYSÉ » : la décision, PARTAGÉE.
  *
  * Une section tirée du film (usages des ressources, portée, vies, équipement, records de distance) qui
  * n'a rien à montrer parce que le film du périmètre n'est pas lu reste AFFICHÉE avec un état vide : une
@@ -12,7 +12,7 @@
  */
 import type { SquadEmpriseBlock } from '@/lib/api/types'
 
-/** `pending` : au moins une analyse en cours (« Analyse du film en cours ») ; `missing` : aucune en cours (« Film non analysé »). */
+/** `pending` : au moins une analyse en cours (« Analyse du film en attente ») ; `missing` : aucune en cours (« Film non analysé »). */
 export type FilmGap = 'pending' | 'missing'
 
 /** Le titre lit le film : le bloc existe et ne dit pas `film_unsupported` (capability `film.usage_summary`). */

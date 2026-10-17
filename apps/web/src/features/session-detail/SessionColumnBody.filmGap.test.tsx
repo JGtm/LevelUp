@@ -4,7 +4,7 @@
  * Retour du 2026-10-17 : une famille de cartes tirée du film (Ressources, Rendement, Isolement, Équipement,
  * Portée) disparaissait avec son intertitre quand les films de la soirée n'étaient pas encore analysés, et
  * rien ne disait pourquoi. Elle garde désormais son intertitre et UNE carte d'état dans un bloc parent :
- * « Analyse du film en cours » (indicateur) ou « Film non analysé » (pointillé). Un titre qui ne lit pas
+ * « Analyse du film en attente » (indicateur) ou « Film non analysé » (pointillé). Un titre qui ne lit pas
  * le film (capability absente) n'a toujours rien.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -80,7 +80,7 @@ describe('SessionColumnBody — film non lu', () => {
     const blocs = screen.getAllByTestId('film-gap')
     expect(blocs).toHaveLength(3)
     for (const bloc of blocs) {
-      expect(within(bloc).getByTestId('analysis-pending-slot').textContent).toContain('Analyse du film en cours')
+      expect(within(bloc).getByTestId('analysis-pending-slot').textContent).toContain('Analyse du film en attente')
     }
     expect(screen.getByText('Frags et usages')).toBeInTheDocument()
   })
@@ -100,7 +100,7 @@ describe('SessionColumnBody — film non lu', () => {
     const { container } = monter(colonneSansFilm({ matches_film_pending: 1 }), true)
     const portee = container.querySelector('[data-testid="session-portee-film-gap"]')
     expect(portee).not.toBeNull()
-    expect(portee!.textContent).toContain('Analyse du film en cours')
+    expect(portee!.textContent).toContain('Analyse du film en attente')
     expect(screen.getAllByText('Portée des engagements').length).toBeGreaterThan(0)
   })
 
