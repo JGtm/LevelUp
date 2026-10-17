@@ -506,7 +506,7 @@ describe('Film non lu sur le périmètre (retours 2026-10-17)', () => {
     mount({ pageData: page(sansResume({ matches_film_pending: 5 })) })
     for (const id of SECTIONS) {
       const section = screen.getByTestId(`emprise-section-${id}`)
-      const bloc = within(section).getByTestId('emprise-film-gap')
+      const bloc = within(section).getByTestId('film-gap')
       expect(within(bloc).getByTestId('analysis-pending-slot').textContent).toContain('Analyse du film en cours')
       expect(bloc.className).toContain('border')
     }
@@ -519,7 +519,7 @@ describe('Film non lu sur le périmètre (retours 2026-10-17)', () => {
   it('film non analysé, rien en cours : l’état vide pointillé est DANS le bloc parent', () => {
     mount({ pageData: page(sansResume({ matches_film_missing: 5 })) })
     for (const id of SECTIONS) {
-      const bloc = within(screen.getByTestId(`emprise-section-${id}`)).getByTestId('emprise-film-gap')
+      const bloc = within(screen.getByTestId(`emprise-section-${id}`)).getByTestId('film-gap')
       expect(bloc.textContent).toContain('Film non analysé')
       const notice = bloc.querySelector('.border-dashed')
       expect(notice).not.toBeNull()
@@ -540,19 +540,19 @@ describe('Film non lu sur le périmètre (retours 2026-10-17)', () => {
   it('une section qui a ses données reste telle quelle ; seule la section sans donnée porte le placeholder', () => {
     mount({ pageData: page({ ...EMPRISE_2209, matches_film_pending: 1 }) })
     expect(screen.getByTestId('emprise-control')).toBeInTheDocument()
-    expect(within(screen.getByTestId('emprise-section-bilan')).queryByTestId('emprise-film-gap')).toBeNull()
+    expect(within(screen.getByTestId('emprise-section-bilan')).queryByTestId('film-gap')).toBeNull()
     expect(within(screen.getByTestId('emprise-section-placement')).getByTestId('analysis-pending-slot')).toBeInTheDocument()
   })
 
   it('tous les films lus : une section sans donnée reste absente (aucun faux « non analysé »)', () => {
     mount()
-    expect(screen.queryByTestId('emprise-film-gap')).toBeNull()
+    expect(screen.queryByTestId('film-gap')).toBeNull()
     expect(screen.queryByTestId('emprise-section-placement')).toBeNull()
   })
 
   it('titre sans lecture du film : jamais de placeholder, la section reste absente (capability absente)', () => {
     mount({ pageData: page(sansResume({ film_unavailable: 'film_unsupported', matches_film_missing: 5 })) })
-    expect(screen.queryByTestId('emprise-film-gap')).toBeNull()
+    expect(screen.queryByTestId('film-gap')).toBeNull()
     for (const id of SECTIONS) expect(screen.queryByTestId(`emprise-section-${id}`)).toBeNull()
   })
 

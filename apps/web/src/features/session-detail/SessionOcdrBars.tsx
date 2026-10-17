@@ -22,6 +22,7 @@ import {
   getTooltipBase,
   legendEntries,
 } from '@/components/charts/_utils'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 import { useOffensiveConversionP80, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
@@ -92,9 +93,9 @@ export function buildSessionOcdrBarsOption(
         if (!p) return ''
         const lines = [
           `<strong>${escapeHtml(p.label.replace('\n', ' · '))}</strong>`,
-          `${opts.ocLabel} : <b>${p.ocRaw.toFixed(2)}</b> (${p.ocNorm.toFixed(0)}% P80)`,
+          `${opts.ocLabel} : <b>${tipNumber(p.ocRaw, 2)}</b> (${tipNumber(p.ocNorm, 0)} % P80)`,
         ]
-        if (showDr) lines.push(`${opts.drLabel} : <b>${p.drRaw.toFixed(2)}</b> (${p.drNorm.toFixed(0)}% P80)`)
+        if (showDr) lines.push(`${opts.drLabel} : <b>${tipNumber(p.drRaw, 2)}</b> (${tipNumber(p.drNorm, 0)} % P80)`)
         return lines.join('<br/>')
       },
     },
@@ -118,7 +119,7 @@ export function buildSessionOcdrBarsOption(
       ...axis,
       type: 'value',
       // Référence P80 = 100% ; on affiche les valeurs en %
-      axisLabel: { ...(axis.axisLabel as Record<string, unknown>), formatter: (v: number) => `${v}%` },
+      axisLabel: { ...(axis.axisLabel as Record<string, unknown>), formatter: (v: number) => `${tipNumber(v, 0)} %` },
     },
     series: [
       {
@@ -129,7 +130,7 @@ export function buildSessionOcdrBarsOption(
         markLine: {
           ...markLineBase,
           lineStyle: { ...markLineBase.lineStyle, color: ocColor },
-          label: { ...markLineBase.label, color: ocColor, formatter: `${opts.meanLabel} ${ocMean}%` },
+          label: { ...markLineBase.label, color: ocColor, formatter: `${opts.meanLabel} ${tipNumber(ocMean, 1)} %` },
           data: [{ yAxis: ocMean }],
         },
       },
@@ -144,7 +145,7 @@ export function buildSessionOcdrBarsOption(
             markLine: {
               ...markLineBase,
               lineStyle: { ...markLineBase.lineStyle, color: drColor },
-              label: { ...markLineBase.label, color: drColor, formatter: `${opts.meanLabel} ${drMean}%` },
+              label: { ...markLineBase.label, color: drColor, formatter: `${opts.meanLabel} ${tipNumber(drMean, 1)} %` },
               data: [{ yAxis: drMean }],
             },
           }]

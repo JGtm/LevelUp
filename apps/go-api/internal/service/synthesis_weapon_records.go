@@ -45,6 +45,9 @@ type weaponRecordsQuery struct {
 	TitleSlug string
 	Gamertag  string
 	Rows      []canonical.PlayerMatchRow
+	// Pending : l'avancement de l'analyse du film, pour dire « en cours » quand la section manque faute de
+	// frag mesuré. nil = la cause est « non analysé ».
+	Pending port.AnalysisPendingMatches
 }
 
 // buildWeaponRecordsSection charge et assemble la section pour un scope donné.
@@ -53,10 +56,14 @@ type weaponRecordsQuery struct {
 // le joueur ou le scope est vide, si le titre ne produit pas de positions par kill
 // (`games.ErrCapabilityNotSupported` -> Debug) ou si la lecture échoue (-> Warn). Une section
 // absente ne casse jamais la page.
-func buildWeaponRecordsSection(ctx context.Context, q weaponRecordsQuery) *domain.SynthesisWeaponRecords {
+//
+// Le second résultat est la CAUSE d'une section absente faute de frag mesuré (domain.FilmGap*) : vide dans
+// tous les autres cas (titre sans positions, lecture en échec, scope sans frag) — seul « le titre mesure,
+// le scope a des frags, aucun n'a de position » mérite un état vide plutôt qu'une absence.
+func buildWeaponRecordsSection(ctx context.Context, q weaponRecordsQuery) (*domain.SynthesisWeaponRecords, string) {
 	defer timing.FromContext(ctx).Section("weapon_records")()
 	if q.Repo == nil || q.Gamertag == "" || len(q.Rows) == 0 {
-		return nil
+		return nil, ""
 	}
 	scope := weaponRangeScope(q.Rows)
 	filters := port.WeaponRangeFilters{MatchIDs: scope.matchIDs, Gamertag: q.Gamertag}
@@ -65,13 +72,13 @@ func buildWeaponRecordsSection(ctx context.Context, q weaponRecordsQuery) *domai
 	if err != nil {
 		logWeaponRangeFailure(ctx, weaponRangeQuery{TitleSlug: q.TitleSlug, Gamertag: q.Gamertag},
 			"records", len(scope.matchIDs), err)
-		return nil
+		return nil, ""
 	}
 	mine := keepMeasuredSide(kills, analysis.SideKiller)
 	if len(mine) == 0 {
 		slog.DebugContext(ctx, "records de distance — aucun frag mesure sur le scope",
 			"title", q.TitleSlug, "gamertag", q.Gamertag, "match_count", len(scope.matchIDs))
-		return nil
+		return nil, weaponRecordsGap(ctx, q.Pending, scope.matchIDs, scope.totalKills)
 	}
 
 	dims := resolveWeaponRecordsDimensions(ctx, q, mine)
@@ -87,7 +94,20 @@ func buildWeaponRecordsSection(ctx context.Context, q weaponRecordsQuery) *domai
 	slog.DebugContext(ctx, "records de distance par arme",
 		"title", q.TitleSlug, "gamertag", q.Gamertag,
 		"armes", len(block.Weapons), "ecartees", len(excluded), "frags_mesures", block.MeasuredKills)
-	return block
+	return block, ""
+}
+
+// weaponRecordsGap nomme la cause d'une section sans frag mesuré : « en cours » quand l'analyse du film
+// d'au moins un match du scope tourne (règle unique `analysis.AnalysisPendingParts`, via le résolveur),
+// « non analysé » sinon. Un scope sans frag n'a rien à mesurer : pas de cause.
+func weaponRecordsGap(ctx context.Context, pending port.AnalysisPendingMatches, matchIDs []string, totalKills int) string {
+	if totalKills <= 0 {
+		return ""
+	}
+	if pending != nil && len(pending.ResolvePending(ctx, matchIDs)) > 0 {
+		return domain.FilmGapPending
+	}
+	return domain.FilmGapMissing
 }
 
 // keepMeasuredSide ne garde que les frags d'un côté. Ordre d'entrée conservé.

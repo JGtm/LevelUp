@@ -20,6 +20,7 @@ import type { SessionManifestKey } from '@/lib/i18n/generated/session'
 import {
   sessionColumnBlocks,
   sessionColumnPresence,
+  sessionFilmGap,
   type SessionCardsPresence,
 } from './sessionEmprise.logic'
 
@@ -274,7 +275,8 @@ export function sessionRowKeys(data: SessionPageResponse): SessionSectionKey[] {
     return sessionSectionKeys({
       ...sessionColumnPresence(col),
       coordination: col.coordination != null,
-      range: col.rangeProfiles != null,
+      // La portée garde sa carte quand le film n'est pas lu (titre et état) : même lecture que le corps de colonne.
+      range: col.rangeProfiles != null || sessionFilmGap(col) != null,
     })
   }
   return mergeSessionSectionKeys(keysOf('current'), keysOf('compare'))

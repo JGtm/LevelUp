@@ -223,7 +223,7 @@ export const sessionManifest = {
   "session.detail.subsection_objectif": { fr: "Objectif", en: "Objective" },
   "session.detail.subsection_prendre": { fr: "Rendement des ressources", en: "Resource efficiency" },
   "session.detail.subsection_resources": { fr: "Ressources", en: "Resources" },
-  "session.detail.summary_unavailable_description": { fr: "La session demandée n'a pas pu être reconstruite avec les filtres actuels.", en: "Requested session could not be reconstructed with the current filters." },
+  "session.detail.summary_unavailable_description": { fr: "Aucune donnée pour la session demandée avec les filtres actuels.", en: "No data for the requested session with the current filters." },
   "session.detail.summary_unavailable_title": { fr: "Session indisponible", en: "Session unavailable" },
   "session.detail.unavailable_not_found": { fr: "Cette session n'existe pas ou ne fait pas partie des matchs disponibles.", en: "This session doesn't exist or isn't part of the available matches." },
   "session.detail.unavailable_title": { fr: "Session indisponible", en: "Session unavailable" },

@@ -12,6 +12,12 @@
  * Aucun branchement sur le titre : tout se lit dans les blocs (Halo 5 sans film n'a que la feuille
  * de match : A, B, B' et la barre épaisse des armes spéciales de G).
  *
+ * FILM NON LU. Un titre qui lit le film dont certains matchs n'ont pas leur résumé (analyse en cours, ou
+ * jamais faite) ne retire pas les cartes qui en dépendent : chaque famille sans aucune carte (Ressources,
+ * Prendre, Vies, Équipement) garde son intertitre et UNE carte d'état (`sessionFilmGaps`, ancrée sur la
+ * première clé de la famille) — une section absente laissait croire à un bug. Capability absente
+ * (`film_unsupported`) : famille absente, comme avant.
+ *
  * Pur : aucun React, aucune couleur, aucune chaîne de langue.
  */
 import type { EmpriseMatchIndex, ControlRow, MatchGrid, ResourceFil } from '@/features/squad/emprise/emprise.logic'
@@ -47,6 +53,7 @@ import type {
   SquadFormesBlock,
   TimeseriesLivesNearTeammate,
 } from '@/lib/api/types'
+import { filmGapOfBlock, type FilmGap } from '@/features/_shared/filmGap/filmGap.logic'
 import { outcomeCodeToValue } from '@/lib/outcome'
 
 /** Les outils montrés en vue compacte (maquette `makeTools` : les six plus meurtriers). */
@@ -172,6 +179,37 @@ export interface SessionCardsPresence {
   equipment: boolean
 }
 
+/** sessionFilmGap — le film des matchs de la colonne n'est pas lu pour au moins un match (`filmGapOfBlock`). */
+export function sessionFilmGap(col: Pick<SessionColumnBlocks, 'emprise'>): FilmGap | null {
+  return filmGapOfBlock(col.emprise)
+}
+
+/**
+ * Les familles de cartes tirées du film : si AUCUNE de leurs cartes ne se dessine alors que le film n'est
+ * pas lu, la première porte l'état (`FilmGapCard`) sous l'intertitre de la famille. Objectif (feuille de
+ * match) et frags (feuille de match) n'en font pas partie : leur absence dit « aucun match concerné ».
+ */
+const FILM_FAMILIES: ReadonlyArray<readonly (keyof SessionCardsPresence)[]> = [
+  ['control', 'fil', 'grid', 'mine'],
+  ['production', 'yield'],
+  ['lives'],
+  ['equipment'],
+]
+
+/** sessionFilmGaps — les cartes d'ancrage qui portent un état « film non lu » au lieu de leur contenu. */
+export function sessionFilmGaps(
+  col: Pick<SessionColumnBlocks, 'emprise'>,
+  drawn: SessionCardsPresence,
+): Partial<Record<keyof SessionCardsPresence, FilmGap>> {
+  const gap = sessionFilmGap(col)
+  const out: Partial<Record<keyof SessionCardsPresence, FilmGap>> = {}
+  if (!gap) return out
+  for (const family of FILM_FAMILIES) {
+    if (!family.some((key) => drawn[key])) out[family[0]] = gap
+  }
+  return out
+}
+
 /** Libellés NEUTRES : ils servent à COMPTER les outils, jamais à les afficher. */
 const COUNT_ONLY_TOOL_LABELS: SquadToolKindLabels = {
   melee: 'melee',
@@ -191,7 +229,7 @@ export function sessionPlayerName(col: SessionColumnBlocks, fallback: string): s
 
 /**
  * sessionCardsPresence — LA présence de chaque carte d'une colonne. Une carte n'existe que si elle
- * dessine quelque chose (S10) :
+ * dessine quelque chose (S10) — ou porte l'état « film non lu » de sa famille (`sessionFilmGaps`) :
  *   - A : des frags par classe ; B : au moins un outil NOMMÉ (« Non attribué » seul ne se dessine
  *     pas en vue compacte, la carte ne s'ouvre donc nulle part) ; B' : la précision par arme native ;
  *   - C, D : des prises de ressource ; E : au moins une ligne lue au film ; F : au moins une prise de
@@ -199,6 +237,15 @@ export function sessionPlayerName(col: SessionColumnBlocks, fallback: string): s
  *   - L : au moins une famille d'équipement tenue.
  */
 export function sessionCardsPresence(col: SessionColumnBlocks, m: SessionEmpriseModels): SessionCardsPresence {
+  const drawn = drawnCards(col, m)
+  const gaps = sessionFilmGaps(col, drawn)
+  return Object.fromEntries(
+    (Object.keys(drawn) as (keyof SessionCardsPresence)[]).map((key) => [key, drawn[key] || gaps[key] != null]),
+  ) as unknown as SessionCardsPresence
+}
+
+/** Les cartes qui DESSINENT quelque chose, sans les cartes d'état. */
+export function drawnCards(col: SessionColumnBlocks, m: SessionEmpriseModels): SessionCardsPresence {
   const entry = col.entry
   const classes = entry?.frag_distribution?.classes ?? []
   const tools = buildSquadToolRows(entry?.weapon_tools, { locale: 'fr', labels: COUNT_ONLY_TOOL_LABELS, top: SESSION_TOOLS_TOP })

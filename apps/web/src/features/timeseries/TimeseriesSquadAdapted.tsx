@@ -20,10 +20,12 @@ import {
   getTooltipBase,
   LEGEND_ITEM_WIDTH_LINE,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber, tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { effectiveDmgPerFrag, formatNumberFixed, intlLocale } from '@/lib/formatters'
+import { effectiveDmgPerFrag, intlLocale } from '@/lib/formatters'
 import { ChartFromOption } from './ChartFromOption'
 import type {
   TimeseriesMatchRow,
@@ -135,7 +137,14 @@ export function TimeseriesSessionPerformance({
       // Marge droite élargie quand l'axe MMR est présent : il est décalé de 48 px
       // de l'axe des pourcentages (B5), il faut la place pour ses étiquettes.
       grid: { top: 24, right: showMmr ? 116 : 60, bottom: 64, left: 56, containLabel: true },
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: {
+        ...getTooltipBase(tc),
+        trigger: 'axis',
+        // Le taux de victoire est en pourcentage (une décimale), la performance et le MMR sans unité.
+        formatter: axisTooltipFormatter({
+          value: (r) => (r.name === winRateLabel ? `${tipNumber(r.value, 1)} %` : tipNumberAuto(r.value)),
+        }),
+      },
       // Pastille élargie : la courbe « MMR équipe » est tiretée, et à 12 px son icône
       // n'affiche qu'un seul tiret — impossible de deviner qu'elle nomme la courbe en
       // pointillé (retour utilisateur 2026-09-09).
@@ -413,9 +422,9 @@ function efficiencyTooltip(unitByName: Record<string, string>, refLabel: string)
       const d = it.data as NonNullable<RateDatum>
       const unit = unitByName[it.seriesName ?? ''] ?? ''
       const raw =
-        d.perEvent == null ? '' : ` · ${formatNumberFixed(d.perEvent, 0)} ${escapeHtml(unit)}`
+        d.perEvent == null ? '' : ` · ${tipNumber(d.perEvent, 0)} ${escapeHtml(unit)}`
       const name = escapeHtml(it.seriesName ?? '')
-      return `${it.marker ?? ''}${name} : <b>${formatNumberFixed(d.value, 0)} %</b>${raw}`
+      return `${it.marker ?? ''}${name} : <b>${tipNumber(d.value, 0)} %</b>${raw}`
     })
     // Le pivot est rappelé : c'est la clé de lecture commune aux deux courbes.
     return [

@@ -236,6 +236,11 @@ en = "Kills by weapon role"
 fr = "Précision par arme"
 en = "Accuracy by weapon"
 
+# Unité du décompte « touchés / tirés » de l'infobulle du graphe (précision par arme).
+[synthesis.charts.weapon_accuracy_shots_unit]
+fr = "tirs"
+en = "shots"
+
 [synthesis.charts.role_automatic]
 fr = "Automatique"
 en = "Automatic"
@@ -402,6 +407,10 @@ en = "Skull grabs"
 [synthesis.empty.synthesis_unavailable]
 fr = "Synthèse indisponible"
 en = "Synthesis unavailable"
+
+[synthesis.empty.synthesis_unavailable_description]
+fr = "Aucune donnée n'a été renvoyée pour cette page avec les filtres actuels."
+en = "No data was returned for this page with the current filters."
 
 [synthesis.charts.top_vs_total_per_week]
 fr = "Matchs Top vs Total par semaine"

@@ -25,6 +25,7 @@ import {
   getEChartsThemeColors,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
 import { engagementGapEvents } from '@/lib/charts/engagementGap'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
@@ -86,7 +87,7 @@ export function buildSessionEngagementGapOption(
   const values = points.map((p) => p.cumulative)
   const divergentColor = divergentZeroGradient(values)
   const fmt = (v: number | null, signed = false) =>
-    v == null ? '—' : signed && v >= 0 ? `+${Math.round(v)}` : `${Math.round(v)}`
+    v == null ? '—' : tipNumber(v, 0, signed)
 
   return {
     backgroundColor: CHART_BG,

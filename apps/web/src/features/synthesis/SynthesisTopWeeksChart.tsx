@@ -14,6 +14,8 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter, stackTopFirstOrder } from '@/components/charts/axisTooltip'
+import { tipNumber, tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import type { TopWeekItem } from '@/lib/api/types'
 
@@ -23,7 +25,11 @@ interface Props {
   height?: number
 }
 
-function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
+/** Rang de la série « taux » (courbe sur l'axe de droite) dans le tableau de séries. */
+const RATE_SERIES_INDEX = 2
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
   if (weeks.length === 0) return { backgroundColor: CHART_BG }
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
@@ -37,10 +43,49 @@ function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
   const others = sorted.map((w) => ({ value: Math.max(0, w.match_count - (w.wins ?? 0)) }))
   const rates = sorted.map((w) => +w.win_rate.toFixed(1))
 
+  const series = [
+    {
+      name: 'Top 1',
+      type: 'bar',
+      stack: 'total',
+      data: wins,
+      itemStyle: { color: winColor, opacity: 0.85 },
+      label: barLabel({ formatter: (p: { value: number }) => tipNumberAuto(p.value) }),
+    },
+    {
+      name: 'Autres',
+      type: 'bar',
+      stack: 'total',
+      data: others,
+      itemStyle: { color: tc.axisLine, opacity: 0.55 },
+      label: barLabel({ formatter: (p: { value: number }) => (p.value > 0 ? tipNumberAuto(p.value) : '') }),
+    },
+    {
+      name: 'Taux Top (%)',
+      type: 'line',
+      yAxisIndex: 1,
+      data: rates,
+      itemStyle: { color: resolveToken('outcome-draw') },
+      lineStyle: { color: resolveToken('outcome-draw'), width: 2 },
+      symbol: 'circle',
+      symbolSize: 6,
+      smooth: false,
+    },
+  ]
+
   return {
     backgroundColor: CHART_BG,
     grid: { left: 40, right: 60, top: 30, bottom: 80, containLabel: false },
-    tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' } },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      // Barres de la plus haute à la plus basse de la pile, puis la courbe du taux (axe de droite).
+      formatter: axisTooltipFormatter({
+        value: (r) => (r.seriesIndex === RATE_SERIES_INDEX ? `${tipNumber(r.value, 1)} %` : tipNumberAuto(r.value)),
+        order: stackTopFirstOrder(series),
+      }),
+    },
     legend: { ...getLegendBase(tc), orient: 'horizontal', bottom: 5, left: 'center', top: undefined },
     xAxis: {
       ...axis,
@@ -65,35 +110,7 @@ function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
         axisLabel: { ...axis.axisLabel },
       },
     ],
-    series: [
-      {
-        name: 'Top 1',
-        type: 'bar',
-        stack: 'total',
-        data: wins,
-        itemStyle: { color: winColor, opacity: 0.85 },
-        label: barLabel({ formatter: (p: { value: number }) => String(p.value) }),
-      },
-      {
-        name: 'Autres',
-        type: 'bar',
-        stack: 'total',
-        data: others,
-        itemStyle: { color: tc.axisLine, opacity: 0.55 },
-        label: barLabel({ formatter: (p: { value: number }) => (p.value > 0 ? String(p.value) : '') }),
-      },
-      {
-        name: 'Taux Top (%)',
-        type: 'line',
-        yAxisIndex: 1,
-        data: rates,
-        itemStyle: { color: resolveToken('outcome-draw') },
-        lineStyle: { color: resolveToken('outcome-draw'), width: 2 },
-        symbol: 'circle',
-        symbolSize: 6,
-        smooth: false,
-      },
-    ],
+    series,
   }
 }
 

@@ -16,14 +16,21 @@
  * AUCUNE REQUÊTE NEUVE : tout arrive avec la réponse de page. Les cartes sont celles de l'Escouade
  * (textes du périmètre solo) et quatre cartes propres à l'onglet ; le joueur y est désigné par son
  * gamertag (`player`). Un bloc sans donnée se retire,
- * intertitre compris (prédicat unique `usagesSections`) ; sans rien à montrer, l'onglet le DIT.
- * Sans film (Halo 5), seuls les frags aux armes spéciales de la feuille de match restent.
+ * intertitre compris (prédicat unique `usagesSections`), SAUF quand le titre lit le film et que le film des
+ * matchs n'est pas lu pour l'un d'eux au moins (`filmGapOfBlock`) : il garde alors son intertitre et un état
+ * dans un bloc parent (« Analyse du film en cours » ou « Film non analysé »), jamais un trou. Sans rien à
+ * montrer, l'onglet le DIT (bloc parent + pointillé dedans). Sans film (Halo 5), seuls les frags aux armes
+ * spéciales de la feuille de match restent.
  */
 import type { ReactNode } from 'react'
 import { useMemo } from 'react'
 
+import { Card, CardContent } from '@/components/ui/card'
 import { SectionTitle } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { FilmGapSection } from '@/features/_shared/filmGap/FilmGapSection'
+import { filmGapOfBlock } from '@/features/_shared/filmGap/filmGap.logic'
+import { FILM_GAP_TEXT } from '@/features/_shared/filmGap/filmGapStrings'
 import { PAIR_ROW_CLASS } from '@/components/ui/pair-row'
 import { ProductionCard } from '@/features/squad/emprise/ProductionCard'
 import { ResourceControlCard } from '@/features/squad/emprise/ResourceControlCard'
@@ -36,6 +43,8 @@ import { useCapability } from '@/lib/capabilities/capabilities'
 import type { TimeseriesPageResponse } from '@/lib/api/types'
 import type { TimeseriesManifestKey } from '@/lib/i18n/generated/timeseries'
 import type { Locale } from '@/lib/i18n/locale'
+import { formatMessage } from '@/lib/i18n/format'
+import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import { dominanceLabels } from '@/lib/narrative/dominance'
 
 import { TimeseriesRangeRolesCard } from './TimeseriesRangeRolesCard'
@@ -65,8 +74,20 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
   // La carte se retire seule sans bloc de profils ; sans capability, elle n'existe pas.
   const rangeRoles = hasWeaponRange ? <TimeseriesRangeRolesCard bloc={data.range_profiles} /> : null
 
-  if (!Object.values(show).some(Boolean)) {
-    return <EmptyStateNotice title={t('timeseries.usages.empty_title')} description={t('timeseries.usages.empty_description')} />
+  // Le film des matchs n'est pas lu (analyse en cours, ou jamais faite) : un bloc tiré du film sans donnée
+  // reste affiché avec son état. Objectif (feuille de match) n'en fait pas partie.
+  const gap = filmGapOfBlock(data.emprise)
+  const gapText = FILM_GAP_TEXT[locale]
+  const rangeGap = gap && hasWeaponRange && !show.range && data.range_profiles == null
+
+  if (!Object.values(show).some(Boolean) && !gap) {
+    return (
+      <Card data-testid="timeseries-usages-empty">
+        <CardContent className="pt-4">
+          <EmptyStateNotice title={t('timeseries.usages.empty_title')} description={t('timeseries.usages.empty_description')} />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -76,27 +97,43 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
       {show.range ? (
         <WeaponRangeSection range={data.weapon_range} aside={rangeRoles} />
       ) : (
-        rangeRoles
+        <>
+          {rangeGap && gap && (
+            <FilmGapSection
+              title={formatMessage(synthesisManifest, 'synthesis.weapon_range.heading', locale)}
+              testId="usages-section-range"
+              gap={gap}
+              t={gapText}
+            />
+          )}
+          {rangeRoles}
+        </>
       )}
-      {show.bilan && m.fil && (
+      {show.bilan && m.fil ? (
         <Block id="bilan" title={ut.sections.bilan}>
           <div className="grid gap-4 lg:grid-cols-2">
             <ResourceControlCard rows={m.controlRows} t={et} />
             <ResourceFilCard fil={m.fil} dominanceLabels={dominance} outcomeLabels={outcomes} locale={locale} t={et} axe={u.filAxe} />
           </div>
         </Block>
+      ) : (
+        gap && <FilmGapSection title={ut.sections.bilan} testId="usages-section-bilan" gap={gap} t={gapText} />
       )}
-      {show.carte && m.mapGrid && (
+      {show.carte && m.mapGrid ? (
         <Block id="carte" title={ut.sections.carte}>
           <ResourceMapGridCard grid={m.mapGrid} itemName={(row) => (row.object ? u.objectName(row.object) : '')} playerName={u.playerName} t={et} ut={ut.cards} />
         </Block>
+      ) : (
+        gap && <FilmGapSection title={ut.sections.carte} testId="usages-section-carte" gap={gap} t={gapText} />
       )}
-      {show.mine && m.mine && (
+      {show.mine && m.mine ? (
         <Block id="mine" title={ut.sections.mine}>
           <MinePickupsCard mine={m.mine} itemName={u.objectName} player={u.player} t={et} ut={ut.cards} />
         </Block>
+      ) : (
+        gap && <FilmGapSection title={ut.sections.mine} testId="usages-section-mine" gap={gap} t={gapText} />
       )}
-      {show.prendre && (
+      {show.prendre ? (
         <Block id="prendre" title={ut.sections.prendre}>
           {/* Une carte seule (sans rendement : Halo 5) prend la rangée. */}
           <div className={PAIR_ROW_CLASS}>
@@ -104,11 +141,15 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
             {m.yieldRows.length > 0 && <YieldCard rows={m.yieldRows} t={et} />}
           </div>
         </Block>
+      ) : (
+        gap && <FilmGapSection title={ut.sections.prendre} testId="usages-section-prendre" gap={gap} t={gapText} />
       )}
-      {show.lives && m.lives && (
+      {show.lives && m.lives ? (
         <Block id="lives" title={ut.sections.lives}>
           <LivesNearTeammateCard model={m.lives} player={u.player} ut={ut.cards} />
         </Block>
+      ) : (
+        gap && <FilmGapSection title={ut.sections.lives} testId="usages-section-lives" gap={gap} t={gapText} />
       )}
       {show.objectif && (
         <Block id="objectif" title={ut.sections.objectif}>
@@ -120,10 +161,12 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
           </div>
         </Block>
       )}
-      {show.equipment && (
+      {show.equipment ? (
         <Block id="equipment" title={ut.sections.equipment}>
           <EquipmentOutcomesCard rows={m.equipment} familyLabel={u.equipmentLabel} player={u.player} ut={ut.cards} />
         </Block>
+      ) : (
+        gap && <FilmGapSection title={ut.sections.equipment} testId="usages-section-equipment" gap={gap} t={gapText} />
       )}
     </div>
   )

@@ -4,7 +4,7 @@ import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { getTooltipBase } from './_utils'
-import { tipNumber, tipNumberAuto } from './tipNumber'
+import { tipNumber, tipNumberAuto, tipNumberUpTo } from './tipNumber'
 
 afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
 
@@ -58,5 +58,15 @@ describe('getTooltipBase : valeur par défaut', () => {
   it('un valueFormatter explicite, posé après le spread, le remplace', () => {
     const opt = { ...base, valueFormatter: (v: unknown) => '<' + String(v) + '>' }
     expect(opt.valueFormatter(3)).toBe('<3>')
+  })
+})
+
+describe('tipNumberUpTo', () => {
+  it('décimales au plus, sans zéro inutile, signe typographique', () => {
+    expect(tipNumberUpTo(12, 1, true)).toBe('+12')
+    expect(tipNumberUpTo(12.34, 1, true)).toBe('+12,3')
+    expect(tipNumberUpTo(-1.25, 2)).toBe('−1,25')
+    expect(tipNumberUpTo(0, 1, true)).toBe('0')
+    expect(tipNumberUpTo(Number.NaN, 1)).toBe('—')
   })
 })

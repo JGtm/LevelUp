@@ -48,6 +48,14 @@ describe('les mots de la maquette, en français', () => {
     expect(fr.planLegendLabel('0', '5 morts par match')).toBe('Échelle de la lecture, de 0 à 5 morts par match')
   })
 
+  it('la bulle (i) du plan nomme la source en constat factuel, FR et EN, sans mot interne', () => {
+    expect([fr.planInfoSourceJournal, fr.planInfoSourceReplay]).toEqual(['journal des morts', 'positions du film'])
+    expect([en.planInfoSourceJournal, en.planInfoSourceReplay]).toEqual(['death log', 'film positions'])
+    for (const t of [fr, en]) {
+      expect(t.planInfo(38, t.planInfoSourceReplay, 2, 3)).not.toMatch(/artefact|artifact|cuisson|bake/i)
+    }
+  })
+
   it('la zone sélectionnée et sa mini-tuile', () => {
     expect(fr.zoneTitle).toBe('Zone sélectionnée')
     expect(fr.zoneNone).toBe('Aucune zone sélectionnée')

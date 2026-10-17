@@ -488,10 +488,14 @@ export function SessionDetailPage() {
                   <Spinner size="md" label={t('session.detail.loading')} />
                 </div>
               ) : (
-                <EmptyStateNotice
-                  title={t('session.detail.no_compare_title')}
-                  description={t('session.detail.drawer_no_compare')}
-                />
+                <Card data-testid="session-no-compare">
+                  <CardContent className="pt-4">
+                    <EmptyStateNotice
+                      title={t('session.detail.no_compare_title')}
+                      description={t('session.detail.drawer_no_compare')}
+                    />
+                  </CardContent>
+                </Card>
               )}
             </>
           )}

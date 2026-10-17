@@ -102,7 +102,7 @@ interface BuildOpts {
 }
 
 /** Valeur d'axe affichée sur le radar : entier tel quel, sinon 1 décimale. */
-const fmtRadarValue = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))
+const fmtRadarValue = (v: number) => tipNumber(v, Number.isInteger(v) ? 0 : 1)
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildRadarOption(

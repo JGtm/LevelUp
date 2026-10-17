@@ -56,8 +56,9 @@ describe('infoDuPlan — l’aide ⓘ du titre', () => {
     )
   })
 
-  it('une lecture d’artefact cite les artefacts de rejeu', () => {
-    expect(infoDuPlan(t, 'fr', 'temps', LECTURE, 2)).toContain('artefacts de rejeu')
+  it('une lecture de rejeu cite les positions du film, sans mot interne (artefact)', () => {
+    expect(infoDuPlan(t, 'fr', 'temps', LECTURE, 2)).toContain('positions du film')
+    expect(infoDuPlan(t, 'fr', 'temps', LECTURE, 2)).not.toMatch(/artefact/i)
   })
 
   it('« victoires − défaites » : les deux dénominateurs, de chaque côté', () => {

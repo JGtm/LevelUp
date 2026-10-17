@@ -16,6 +16,7 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import type { ComparisonMetricItem } from '@/lib/api/types'
 import { formatClockMShort } from '@/lib/formatters'
@@ -33,20 +34,20 @@ function formatMetricValue(key: string, value: number): string {
   switch (key) {
     case 'win_rate':
       // 0-1 côté API (ADR 0006) → multiplier par 100 pour afficher %
-      return `${(value * 100).toFixed(1)}%`
+      return `${tipNumber(value * 100, 1)} %`
     case 'accuracy':
       // 0-100 nativement dans canonical.PlayerSelf (échelle API Halo) → pas de ×100
-      return `${value.toFixed(1)}%`
+      return `${tipNumber(value, 1)} %`
     case 'offensive_conversion':
-      return `${Math.round(value * 100)}%`
+      return `${tipNumber(value * 100, 0)} %`
     case 'defensive_resistance':
-      return `${Math.round((value - 1) * 100)}%`
+      return `${tipNumber((value - 1) * 100, 0)} %`
     case 'performance_score':
     case 'match_count':
     case 'ranked_match_count':
     case 'avg_damage_dealt':
     case 'avg_damage_taken':
-      return value.toFixed(0)
+      return tipNumber(value, 0)
     case 'avg_life_seconds': {
       // SOUS LA MINUTE, LA MOYENNE SE LIT « 37 s » : le « 0m » d'un format M m SS s
       // n'apporterait rien sur une durée de vie moyenne, et cette décision-là reste ici.
@@ -75,7 +76,7 @@ function formatMetricValue(key: string, value: number): string {
       return parts.join(' ')
     }
     default:
-      return value.toFixed(2)
+      return tipNumber(value, 2)
   }
 }
 

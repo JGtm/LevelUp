@@ -47,6 +47,16 @@ type sessionBlocksDeps struct {
 	formesObjectives port.SquadFormesObjectiveRepository
 	// roundsDecide : game_variant_name -> le résultat se lit en manches (ADR 0032).
 	roundsDecide map[string]bool
+	// analysisPending : l'avancement de l'analyse du film, pour dire « en cours » ou « non analysé » sur
+	// les matchs sans résumé d'usage de l'Emprise (squadagg.NoteFilmGaps). nil = « non analysé ».
+	analysisPending port.AnalysisPendingMatches
+}
+
+// WithAnalysisPending injecte la décision « analyse du film en cours » de l'Emprise (nil : tout match
+// sans résumé d'usage est compté « non analysé »). Un résolveur nil de type concret est sûr.
+func (s *SessionPageService) WithAnalysisPending(r port.AnalysisPendingMatches) *SessionPageService {
+	s.analysisPending = r
+	return s
 }
 
 // WithSessionUsageSummary injecte le résumé d'usage et la racine des catalogues du titre. Câblé sous

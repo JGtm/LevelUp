@@ -42,6 +42,9 @@ type soloEmpriseQuery struct {
 	// Players : les joueurs des fiches, dans l'ordre de la page (Vue match : les joueurs de l'équipe).
 	// nil = le joueur de la page seul (Séries temporelles, Sessions).
 	Players []domain.SessionUsageSquadPlayer
+	// Pending : l'avancement de l'analyse du film des matchs sans résumé d'usage, pour dire « en cours »
+	// ou « non analysé » (squadagg.NoteFilmGaps). nil = tout match sans résumé est « non analysé ».
+	Pending port.AnalysisPendingMatches
 }
 
 // buildSoloEmpriseBlock rend le bloc des matchs `q.Current`. L'appelant garantit une liste non vide
@@ -71,11 +74,13 @@ func buildSoloEmpriseBlock(ctx context.Context, q soloEmpriseQuery) *domain.Solo
 			"page", q.Page, "player", q.Player, "matchs_sans_echelle", n, "matchs", len(q.Current))
 	}
 	block := &domain.SoloEmpriseBlock{SquadEmpriseBlock: squademprise.Build(in), Equipment: squademprise.BuildEquipment(in)}
+	squadagg.NoteFilmGaps(ctx, &block.SquadEmpriseBlock, q.Pending)
 	if q.WithMaps {
 		block.Maps = squademprise.BuildMaps(in)
 	}
 	slog.DebugContext(ctx, "emprise",
 		"page", q.Page, "player", q.Player, "matchs", block.MatchesTotal, "mesures", block.MatchesMeasured,
+		"film_en_cours", block.MatchesFilmPending, "film_manquant", block.MatchesFilmMissing,
 		"cartes", len(block.Maps), "film", block.FilmUnavailable, "feuille", block.SheetUnavailable,
 		"equipement", block.Equipment != nil)
 	return block

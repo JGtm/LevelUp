@@ -118,7 +118,7 @@ export const tacticalManifest = {
   "tactical.plan.info_isole": { fr: "seul : aucun coéquipier visible, ou le plus proche au-delà de {portee} (portée du radar)", en: "alone: no teammate in sight, or the nearest beyond {portee} (radar range)" },
   "tactical.plan.info_off_frame": { fr: "{hors, plural, one {# zone hors du cadre du fond} other {# zones hors du cadre du fond}} sur {total}", en: "{hors, plural, one {# zone outside the background frame} other {# zones outside the background frame}} out of {total}" },
   "tactical.plan.info_source_journal": { fr: "journal des morts", en: "death log" },
-  "tactical.plan.info_source_replay": { fr: "artefacts de rejeu", en: "replay artifacts" },
+  "tactical.plan.info_source_replay": { fr: "positions du film", en: "film positions" },
   "tactical.plan.info_team_down": { fr: "{n, plural, one {# mort écartée, aucun coéquipier en mesure d'accompagner} other {# morts écartées, aucun coéquipier en mesure d'accompagner}}", en: "{n, plural, one {# death set aside, no teammate able to follow} other {# deaths set aside, no teammate able to follow}}" },
   "tactical.plan.legend_label": { fr: "Échelle de la lecture, de {lo} à {hi}", en: "Reading scale, from {lo} to {hi}" },
   "tactical.plan.pill_players": { fr: "Joueurs", en: "Players" },
