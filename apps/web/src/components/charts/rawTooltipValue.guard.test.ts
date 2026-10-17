@@ -10,6 +10,9 @@
  * `value` d'un paramètre ECharts EST la valeur numérique brute. Périmètre : TOUT `src/` hors tests
  * (relevé nul au 2026-10-17, plus aucune surface non migrée).
  *
+ * Garde 1 bis — gabarit ECharts : un `formatter` en chaîne qui pose `{c}` (la valeur) ou `{d}` (la part) sort le
+ * nombre sans la langue de l'application (« 33.33% »). Périmètre : tout `src/` hors tests, relevé nul au 2026-10-17.
+ *
  * Garde 2 — `toFixed` : dans un fichier qui construit un graphe (il importe `getTooltipBase` ou type
  * son option `EChartsCoreOption`), un `.toFixed(` ne sort jamais un texte affiché. Périmètre :
  * `components/charts`, Sessions, Synthèse, Séries temporelles et le calendrier d'activité. RESTE
@@ -21,6 +24,8 @@ import { describe, expect, it } from 'vitest'
 
 const RAW_VALUE =
   /\$\{\s*(?:p|param|params|item|point|d|it|r)\.(?:value|data)(?:\[\d+\]|\?\.\[\d+\])?\s*(?:\?\?[^}]*)?\}|String\(\s*(?:p|param|params|item)\.value\s*\)/
+
+const RAW_TEMPLATE = /formatter:\s*['"`][^'"`]*\{(?:c|d)\}/
 
 const TO_FIXED = /\.toFixed\(/
 
@@ -61,11 +66,17 @@ describe('valeur brute de graphe', () => {
     }
   })
 
+  it('le motif de gabarit reconnaît `{c}` et `{d}`, pas `{b}`', () => {
+    expect(RAW_TEMPLATE.test("formatter: '{b} : <b>{c}</b> ({d}%)'")).toBe(true)
+    expect(RAW_TEMPLATE.test("formatter: '{d}%'")).toBe(true)
+    expect(RAW_TEMPLATE.test("formatter: '{b}'")).toBe(false)
+  })
+
   it('aucun graphe de l’application n’écrit une valeur brute', () => {
     const offenders: string[] = []
     for (const [path, src] of sources()) {
       src.split('\n').forEach((line, i) => {
-        if (RAW_VALUE.test(line)) offenders.push(`${path}:${i + 1} ${line.trim()}`)
+        if (RAW_VALUE.test(line) || RAW_TEMPLATE.test(line)) offenders.push(`${path}:${i + 1} ${line.trim()}`)
       })
     }
     expect(offenders, `valeur brute dans un graphe (utiliser tipNumberAuto / tipNumber) :\n${offenders.join('\n')}`).toEqual([])
