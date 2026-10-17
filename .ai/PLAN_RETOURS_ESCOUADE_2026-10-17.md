@@ -88,20 +88,20 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
 - [x] E4.2 (valeurs avant/apres, contrastes et DeltaE au journal et au rapport) Rapport : valeurs avant/après, contrastes et ΔE mesurés.
 
 ### E5 — Emprise : placeholders au lieu de sections absentes (D4)
-- [ ] E5.1 Règle : capability du titre absente (Halo 5 sans film) = section absente (pas la
+- [x] E5.1 (EmpriseFilmGapSection ; condition : titre qui lit le film ET au moins un match du perimetre sans resume d usage) Règle : capability du titre absente (Halo 5 sans film) = section absente (pas la
       fonction) ; capability présente mais données du film manquantes sur le périmètre =
       section AFFICHÉE avec son intertitre et un état vide conforme à la convention (bloc
       parent + `EmptyStateNotice` dedans, ou `AnalysisPendingSlot` dans le bloc parent quand
       l'analyse est en cours).
-- [ ] E5.2 Signal : le bloc `squad_emprise` doit dire, pour son périmètre, combien de matchs
+- [x] E5.2 (matches_film_pending / matches_film_missing dans squad_emprise ; port.AnalysisPendingMatches + AnalysisPendingResolver.ResolvePending, regle unique AnalysisPendingParts) Signal : le bloc `squad_emprise` doit dire, pour son périmètre, combien de matchs
       ont une analyse du film EN COURS et combien n'en ont pas. Réutiliser la règle unique
       d'`analysis_pending_parts` côté Go (pas de seconde règle) ; contrat openapi +
       `make generate-types`.
-- [ ] E5.3 Libellés FR/EN : « Analyse du film en cours » / « Film analysis in progress » ;
+- [x] E5.3 (emprise/filmGapStrings.ts, FR et EN) Libellés FR/EN : « Analyse du film en cours » / « Film analysis in progress » ;
       « Film non analysé » / « Film not analysed » (+ description factuelle courte). Sections
       concernées : toutes celles de l'onglet Emprise qui lisent le film (Bilan / Ressources,
       Prises par joueur, Par match, Prendre et s'en servir, Groupés ou isolés).
-- [ ] E5.4 L'onglet Emprise reste visible dès que le titre a la capability (plus masqué faute
+- [x] E5.4 (empriseFilmExpected ; empriseHasContent reste le predicat unique page + barre d onglets) L'onglet Emprise reste visible dès que le titre a la capability (plus masqué faute
       de données) ; `empriseContent.ts` reste le prédicat unique page + barre d'onglets.
 - Gate : vitest squad + tests Go du paquet touché (tag integration si persist/sync touché).
 
@@ -125,3 +125,5 @@ autres onglets d'Escouade que l'Emprise pour les placeholders (à noter s'ils on
 
 - E1.3 : quatre infobulles ECharts recopiees hors de `getTooltipBase` ne servent pas l Escouade et gardent le placement par defaut (donc encore susceptibles de deborder de la fenetre) : `components/charts/FragWeaponBreakdown.tsx:68`, `components/charts/WeaponAccuracyChart.tsx:70` (Synthese, Series temporelles), `features/ascension/ActivityCalendarChart.tsx:115`, `features/timeseries/TimeseriesKdaDensity.tsx:192`.
 - E2 : `features/squad/charts/heatmapChart.ts` (+ test) n est importe par aucun composant (code mort probable). `components/charts/OutcomeSequenceTape.tsx` : la ligne "+N" des series longues n a pas de mot. `features/squad/v2/SquadEngagementView.tsx` et `components/charts/EngagementCurve.tsx` : nom d axe Y en anglais en dur ("events / min (auto-zoom ...)"). `components/charts/heatmap2DOption.ts` : texte par defaut "Win Rate: / Matchs:" en dur (non utilise par l Escouade, qui passe formatTooltip).
+- E5 : pas de rechargement automatique de l onglet Emprise tant qu une analyse est en cours (accueil et vue match rechargent toutes les 60 s) : non demande par le plan, la page Escouade est lourde ; a decider avec l utilisateur.
+- E5 : un titre qui lirait le film sans la capability des positions de frag verrait la section Groupes ou isoles marquee Film non analyse faute de donnee ; aucun titre actuel n est dans ce cas (Halo 5 est film_unsupported).
