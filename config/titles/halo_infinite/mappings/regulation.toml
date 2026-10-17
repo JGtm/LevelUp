@@ -150,8 +150,8 @@ schema_version = 8
 #
 # CETTE TABLE N EST PLUS QU UN REPLI (2026-10-09, demande du user). Le seuil se MESURE DANS LE
 # FILM, match par match : au point, la garde prise par le camp qui marque depuis le point
-# precedent EST le seuil (valeur la plus frequente sur les points du match, a egalite la plus
-# haute — `film/replay/hill_hold_threshold.go`). Des qu un point est marque, le seuil du film
+# precedent EST le seuil (plus grand gain du groupe de la valeur la plus frequente sur les points du match,
+# `film/replay/hill_hold_threshold.go`). Des qu un point est marque, le seuil du film
 # vaut pour tout le match, et il PRIME sur cette table quand ils divergent (contradiction comptee :
 # `repli_seuil_garde_table_contredite`). La table ne sert qu un match SANS point lisible :
 # son entree est alors publiee et le repli compte (`repli_seuil_garde_table_de_variante`).

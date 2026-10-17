@@ -190,3 +190,42 @@ func TestSeuilGardeHorsModeAColline(t *testing.T) {
 		t.Error("mode a colline : la lecture du seuil doit etre rendue pour le journal")
 	}
 }
+
+// TestSeuilGardeDeuxTicsPerdusSurTroisIntervalles — `7de0b91d` (E8.2, 2026-10-17) : une fois la
+// courbe de score juste, le film donne trois points sains aux gains 39, 39 et 40. Un intervalle
+// sain ne PERD qu'un tic, jamais n'en gagne : le seuil est le plus grand gain du groupe, 40, et non
+// la valeur la plus frequente (39). La table dit 40 : aucune contradiction.
+func TestSeuilGardeDeuxTicsPerdusSurTroisIntervalles(t *testing.T) {
+	holds, teams := htBuild([]htPoint{
+		{team: 1, gains: [2]int{0, 39}},
+		{team: 0, gains: [2]int{39, 5}},
+		{team: 1, gains: [2]int{2, 40}},
+	})
+	fb := fallback.NouveauCompteur()
+	got, cov := resolveHoldThreshold(holds, teams, 40, fb)
+	if got != 40 || cov.film != 40 || cov.tableDisagrees {
+		t.Fatalf("seuil %d, lecture %+v ; attendu 40 du film, sans contradiction avec la table", got, cov)
+	}
+	if n := fb.Compte(fallback.NomSeuilGardeTableContredite); n != 0 {
+		t.Errorf("contradiction film / table comptee %d fois, attendu 0", n)
+	}
+}
+
+// TestSeuilGardeLeGroupeBorneLeMaximum — le maximum ne sort jamais du groupe de la valeur la plus
+// frequente : un intervalle fusionne (73) reste hors du seuil meme quand il est le plus grand gain.
+func TestSeuilGardeLeGroupeBorneLeMaximum(t *testing.T) {
+	for nom, gains := range map[string][]int{
+		"fusion apres un tic perdu": {73, 39, 39, 40},
+		"fusion seule au sommet":    {40, 40, 40, 80},
+		"petit gain isole":          {40, 40, 20, 40},
+	} {
+		pts := make([]htPoint, 0, len(gains))
+		for _, g := range gains {
+			pts = append(pts, htPoint{team: 0, gains: [2]int{g, 0}})
+		}
+		holds, teams := htBuild(pts)
+		if got, _ := resolveHoldThreshold(holds, teams, 0, nil); got != 40 {
+			t.Errorf("%s : seuil %d, attendu 40", nom, got)
+		}
+	}
+}

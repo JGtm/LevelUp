@@ -40,5 +40,11 @@
 #               la couche ne change : les valeurs amont `grammar.Rev` (`grammar-2026-10-16`) et
 #               `source` (types du film) bougent ; les objectifs ne lisent ni les temps forts, ni
 #               BOT_METADATA, ni l equipement porte (cf. le complement du 2026-10-16 de `rev.go`).
+#   2026-10-17  REVISION MONTEE (lot E8.2 du plan du backlog du 2026-10-16). Le canal B d un slot
+#               d equipe n est pas un score : `emissionHorsDomaine` jette les emissions d equipe a B non
+#               nul (45 sur 21 042 dans 35 films du cache de faits ; 6 films changent de serie). La
+#               courbe de score de `26602661` et de `7de0b91d` cesse de rendre 0 pour un camp a un
+#               point (cf. l entree `objectives-2026-10-17` de `rev.go`).
 objectives-2026-09-26	f6cb78cf7aa0e0a20fb5fbbd543449a404d786fd8c049f97c5d2faacbf97912e
 objectives-2026-09-27	22e8dc858c338ae260b6b12217f815b22bf71d914d054674f2f24132e1e4846f
+objectives-2026-10-17	e2eaf32150a9b809c2fd5d259bf4ef49ab487e209b0727593c46f37021b9979b

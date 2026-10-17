@@ -131,7 +131,7 @@ func coreEmissionOf(r types.StatRecord) (coreEmission, bool) {
 		if k.Side == sideB {
 			val = v.B
 		}
-		if emissionHorsDomaine(k, v, val) {
+		if emissionHorsDomaine(k, r.Slot, v, val) {
 			continue
 		}
 		e.vals[i], e.has[i], lu = val, true, true

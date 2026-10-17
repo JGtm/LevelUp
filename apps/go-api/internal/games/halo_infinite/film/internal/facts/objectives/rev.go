@@ -198,6 +198,20 @@ package objectives
 // films du corpus, binaires de `feat/v75` `15e2e2a04` contre ceux de `feat/integ-film` `3881e58ad`, un
 // film par processus : etape `objectives` IDENTIQUE sur les 20 ; seules `killsource`, `carriedEquipment`
 // et l artefact bougent. Golden regenere a revision constante.
+//
+// ENTREE `objectives-2026-10-17` (2026-10-17, lot E8.2 du plan `.ai/PLAN_BACKLOG_2026-10-16.md`, branche
+// `feat/backlog-2026-10-16`) : LE CANAL B D'UN SLOT D'EQUIPE N'EST PAS UN SCORE. [emissionHorsDomaine]
+// jette desormais l'emission du score de mode d'un slot d'EQUIPE dont le canal B est non nul. Avant,
+// une emission `A=0 B=5` PASSAIT la borne de domaine et, plus tardive que le dernier point reel,
+// GAGNAIT le departage de [longestRun] : `26602661` (registre 3-1) rendait 0 pour le camp qui avait
+// marque un point, `7de0b91d` (registre 1-2) rendait 0 pour le camp a un point. LA SORTIE CHANGE :
+// `scoreTimeline.teams[]` (courbes par manche et cumulee), donc les intervalles et le seuil de la barre
+// de garde (`scoreTimeline.holdTicksPerPoint`). Mesure sur les 237 films du cache de faits du poste
+// (section statborg, aucun film decode) : 21 042 emissions d'equipe du composant 0, 20 997 a B = 0, 45
+// a B != 0 dans 35 films (`(0, 5)` seize fois, le reste aberrant) ; seuls 6 films changent de serie
+// (`03ccbe42`, `21ece4d8`, `26602661`, `4577fcc4`, `7de0b91d`, `7fce3219`), les 231 autres sont
+// identiques ; les deux scores finaux faux rejoignent le registre. Les faits persistes et les calques
+// dates `objectives-2026-09-27` deviennent `redecoder`. Aucun backlog killsource ne s'ouvre.
 
 // Rev est la revision de la sortie des objectifs.
-const Rev = "objectives-2026-09-27"
+const Rev = "objectives-2026-10-17"

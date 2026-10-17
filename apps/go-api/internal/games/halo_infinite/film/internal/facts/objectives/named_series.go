@@ -56,7 +56,7 @@ func rawSeriesByKey(recs []types.StatRecord, table map[statSlotKey]statSlot,
 			// Memes deux rejets que [rawSeriesByRound], et pour les memes raisons : une
 			// emission negative est un ancrage parasite, et un score de mode hors domaine
 			// denonce une emission mal alignee sur ses DEUX canaux.
-			if emissionHorsDomaine(key, v, val) {
+			if emissionHorsDomaine(key, r.Slot, v, val) {
 				cons.noterEmissionJetee(key, r)
 				continue
 			}
@@ -116,7 +116,7 @@ func rawSeriesByRound(recs []types.StatRecord, key statSlotKey, teams bool,
 		if key.Side == sideB {
 			val = v.B
 		}
-		if emissionHorsDomaine(key, v, val) {
+		if emissionHorsDomaine(key, r.Slot, v, val) {
 			cons.noterEmissionJetee(key, r)
 			continue
 		}
@@ -144,8 +144,24 @@ func rawSeriesByRound(recs []types.StatRecord, key statSlotKey, teams bool,
 // et l'enregistrement `ce083875` slot 16 a 219075 ms porte A=66 avec B=16635 — un saut de 66 unites
 // que [incrementTimes] transformait en 66 explosions publiees au meme instant. Sa seule marque
 // distinctive est ce B hors domaine ; son A passait la borne.
-func emissionHorsDomaine(key statSlotKey, v types.StatValue, val int64) bool {
-	return val < 0 || (key.Comp == modeScoreComp && !modeScoreInDomain(v))
+//
+// LE CANAL B D'UN SLOT D'EQUIPE EST NUL. Sur les 21 042 emissions d'equipe du composant 0 des 237
+// films du cache de faits, 20 997 portent B = 0 ; les 45 autres, dans 35 films, sont des paires
+// illisibles (`(0, 5)` seize fois, le reste aberrant) et aucune n'est un score. Elles PASSENT
+// pourtant la borne de domaine (0 <= 5 <= 250) et, plus tardives que le dernier point reel, elles
+// gagnent le departage de [longestRun] (a longueur egale, la derniere emission) : `26602661` rendait
+// 0 pour un camp qui avait marque un point (le registre dit 3-1), `7de0b91d` rendait 0 pour un camp a
+// un point (1-2) et le seuil de garde de la colline en sortait faux. La regle est celle du slot
+// d'EQUIPE seulement : un JOUEUR re-emet le composant 0 a valeur A egale quand sa valeur B bouge
+// ([SkullTicksComponent]), ses canaux B sont des lectures.
+func emissionHorsDomaine(key statSlotKey, slot int, v types.StatValue, val int64) bool {
+	if val < 0 {
+		return true
+	}
+	if key.Comp != modeScoreComp {
+		return false
+	}
+	return !modeScoreInDomain(v) || (IsTeamSlot(slot) && v.B != 0)
 }
 
 // cumulateRounds filtre chaque manche par la plus longue sous-suite non decroissante, puis

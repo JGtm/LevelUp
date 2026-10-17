@@ -17,22 +17,21 @@ package replay
 //	             perdre son tic : le gain vaut alors le seuil moins un ou deux. Releve sur 11
 //	             films : 34 et 33 en arene (seuil 35), 39 en classe (seuil 40), le dernier tic
 //	             tombant toujours sur l'image du point. Jamais au-dessus sur un intervalle sain.
-//	AU-DESSUS    un point que la courbe de score ne porte pas (courbes anormales de deux films
-//	             classes de Lattice) fusionne deux intervalles : 73 tics sur `26602661`.
+//	AU-DESSUS    un point que la courbe de score ne porte pas fusionne deux intervalles (73 tics
+//	             sur `26602661` avant que la courbe de score ne soit juste).
 //
-// Le MAXIMUM tomberait dans le second piege, la MEDIANE dans le premier quand les points sont
-// peu nombreux. La valeur la plus frequente ecarte les deux, puisque le seuil exact est la
-// valeur qui se repete ; a egalite, la plus haute gagne, parce que le seul ecart d'un intervalle
-// sain est un tic PERDU. Mesure : 35 sur les sept films d'arene et de Doubles, 40 sur cinq des six
-// films classes (`26602661` compris, malgre son 73). Le sixieme, `7de0b91d`, n'a qu'un intervalle
-// sain, et il a perdu un tic : 39, desaccord avec la table compte (le film prime).
+// Le MAXIMUM seul tomberait dans le second piege, la MEDIANE dans le premier quand les points sont
+// peu nombreux. La valeur la plus frequente DESIGNE LE GROUPE du seuil et ecarte les deux
+// ecarts ; DANS CE GROUPE (au plus 5/4 de cette valeur), le plus grand gain est le seuil, parce
+// que le seul ecart d'un intervalle sain est un tic PERDU, jamais un tic de trop — et que la perte
+// se repete quand les points sont peu nombreux (`7de0b91d` : 39, 39, 40 rend 40). Mesure : 35 sur
+// les sept films d'arene et de Doubles, 40 sur les six films classes de Lattice.
 //
 // # UN INTERVALLE INCOHERENT N'EST PAS UN POINT
 //
 // Sur un intervalle sain, le camp qui marque a la plus grande garde : l'autre n'a pas atteint
 // le seuil, sinon il aurait marque. Un point ou un autre camp a garde AUTANT OU PLUS est le signe
-// d'un point manquant dans la courbe, et il est ecarte (compte au journal de cuisson) —
-// `7de0b91d` : 66 tics pour le camp qui marque, 77 pour l'autre.
+// d'un point manquant dans la courbe, et il est ecarte (compte au journal de cuisson).
 //
 // # UN TIC PAR POINT : PAS DE BARRE
 //
@@ -101,7 +100,7 @@ func resolveHoldThreshold(holds []TeamHold, teams []TeamScore, table int,
 ) (int, holdThresholdReading) {
 	gains, rejected := holdGainsAtPoints(holds, teams)
 	r := holdThresholdReading{points: len(gains), rejected: rejected, table: table,
-		film: mostFrequentHighest(gains)}
+		film: holdThresholdOf(gains)}
 	switch {
 	case len(holds) == 0:
 		return 0, r
@@ -219,6 +218,34 @@ func mostFrequentHighest(vals []int) int {
 	for v, n := range counts {
 		if n > bestN || (n == bestN && v > best) {
 			best, bestN = v, n
+		}
+	}
+	return best
+}
+
+// holdThresholdGroupNum / holdThresholdGroupDen : le groupe du seuil est borne a 5/4 de la valeur la
+// plus frequente. Un intervalle SAIN perd au plus quelques tics (relevé : un ou deux), un
+// intervalle FUSIONNE par un point absent de la courbe en vaut le double ou plus : la marge d'un
+// quart separe les deux sans toucher au premier.
+const (
+	holdThresholdGroupNum = 5
+	holdThresholdGroupDen = 4
+)
+
+// holdThresholdOf rend le seuil lu dans les gains aux points : LE PLUS GRAND GAIN DU GROUPE DE LA
+// VALEUR LA PLUS FREQUENTE, 0 sur une liste vide.
+//
+// La valeur la plus frequente ([mostFrequentHighest]) DESIGNE le groupe — elle ecarte aussi bien
+// un gain fusionne qu'un petit gain isole. Dans le groupe, c'est le plus grand qui est le seuil :
+// un intervalle sain ne perd qu'un tic, jamais il n'en gagne, et quand les points sont peu
+// nombreux la perte se repete (`7de0b91d` : 39, 39 et 40 rend 40, la valeur la plus frequente seule
+// disait 39 et contredisait la table).
+func holdThresholdOf(gains []int) int {
+	ref := mostFrequentHighest(gains)
+	best := 0
+	for _, g := range gains {
+		if g > best && g*holdThresholdGroupDen <= ref*holdThresholdGroupNum {
+			best = g
 		}
 	}
 	return best
