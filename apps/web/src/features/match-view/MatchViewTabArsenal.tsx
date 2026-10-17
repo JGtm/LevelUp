@@ -26,6 +26,7 @@ import { buildEquipmentUsage, hasEquipmentUsage } from '@/features/match-replay/
 import { DetailSection } from '@/components/ui/detail-section'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { PAIR_ROW_CLASS } from '@/components/ui/pair-row'
 import { AnalysisPendingSlot } from '@/components/ui/analysis-pending-slot'
 import { ANALYSIS_PART, hasPendingPart, type AnalysisPendingCarrier } from '@/lib/analysis-pending/analysisPending.logic'
 import type {
@@ -153,7 +154,7 @@ export function MatchViewTabArsenal({
           {e.sheets}
           <MatchEquipmentUsageSection playerSlug={playerSlug} matchId={matchId} replayAvailable={replayAvailable} scoreboard={scoreboard} locale={locale} />
           {(e.present.production || e.present.yield) && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className={PAIR_ROW_CLASS} data-testid="match-emprise-production-row">
               {e.production}
               {e.yieldCard}
             </div>

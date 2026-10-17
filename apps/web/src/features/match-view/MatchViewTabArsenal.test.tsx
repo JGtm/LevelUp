@@ -201,3 +201,39 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
   })
 })
 
+describe('MatchViewTabArsenal — aucune carte seule à largeur partielle', () => {
+  const ROW_RULE = 'lg:[&>*:only-child]:col-span-2'
+
+  it('« Frags par ressource » seul sur sa rangée (sans rendement) : la rangée lui laisse toute la largeur', () => {
+    hoisted.equipment = false
+    const halo5: MatchEmpriseBlock = {
+      ...STARBOARD,
+      film_unavailable: 'film_unsupported',
+      objects: [],
+      resources: [],
+      matches: [{ match_id: 'h5', has_film: false, team_known: false, resources: [] }],
+      production: [{ resource: 'power_weapon', kills: { us: 3, them: 5 } }],
+    }
+    afficher({ emprise: halo5, lives: null, positions: false })
+    const row = screen.getByTestId('match-emprise-production-row')
+    expect(row.children).toHaveLength(1)
+    expect(row.firstElementChild).toBe(screen.getByTestId('emprise-production'))
+    expect(row.className).toContain('lg:grid-cols-2')
+    expect(row.className).toContain(ROW_RULE)
+  })
+
+  it('les deux cartes (frags | rendement) se partagent la rangée', () => {
+    afficher()
+    const row = screen.getByTestId('match-emprise-production-row')
+    expect([...row.children]).toEqual([screen.getByTestId('emprise-production'), screen.getByTestId('emprise-yield')])
+    expect(row.className).toContain('lg:grid-cols-2')
+  })
+
+  it('les autres blocs de l’onglet sont posés un par rangée, jamais dans une grille partielle', () => {
+    afficher()
+    for (const id of ['match-emprise-control', 'match-emprise-lives', 'positions-heatmap']) {
+      const parent = screen.getByTestId(id).parentElement!
+      expect(parent.className, id).not.toContain('grid-cols-2')
+    }
+  })
+})

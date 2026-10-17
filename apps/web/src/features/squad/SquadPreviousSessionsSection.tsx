@@ -11,6 +11,7 @@
  * pas de carte.
  */
 import { SectionTitle } from '@/components/ui/detail-section'
+import { PAIR_ROW_CLASS } from '@/components/ui/pair-row'
 import type { SquadFormesBlock, SquadObjectiveHistory } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
@@ -40,7 +41,7 @@ export function SquadPreviousSessionsSection({ habit, objective, objectiveHistor
     <section className="space-y-2" data-testid="emprise-section-habitude">
       <SectionTitle>{et.sections.habitude}</SectionTitle>
       {/* Une carte seule prend la rangée entière. */}
-      <div className="grid gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
+      <div className={PAIR_ROW_CLASS}>
         {showHabit && <HabitCard view={habit} locale={locale} t={et} />}
         {showEvenings && (
           <ObjectiveEveningsCard

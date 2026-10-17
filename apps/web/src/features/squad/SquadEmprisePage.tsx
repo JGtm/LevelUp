@@ -38,6 +38,7 @@
 import { useMemo } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
+import { PAIR_ROW_CLASS } from '@/components/ui/pair-row'
 import { SectionTitle } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -209,7 +210,7 @@ function UsageSections({
         <section className="space-y-2" data-testid="emprise-section-prendre">
           <SectionTitle>{et.sections.prendre}</SectionTitle>
           {/* Une carte seule (sans rendement : Halo 5, D10) prend la rangée (précédent : Dynamique, L1). */}
-          <div className="grid gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
+          <div className={PAIR_ROW_CLASS}>
             {production.length > 0 && <ProductionCard rows={production} t={et} />}
             {yieldRows.length > 0 && <YieldCard rows={yieldRows} t={et} />}
           </div>
