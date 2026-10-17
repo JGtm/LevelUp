@@ -811,40 +811,34 @@ export function SynthesisPage() {
 
         <SynthesisHeatmapChart title={t('synthesis.section.activity')} cells={data.heatmap_data ?? []} />
 
-        {topWeeks.length > 0 && (
-          <SynthesisTopWeeksChart title={t('synthesis.charts.top_vs_total_per_week')} weeks={topWeeks} />
-        )}
+        {/* Ces trois graphes sortent de la feuille de match : sans donnée sur la sélection, la carte reste avec
+            son titre et son état vide (ChartCard), comme la carte d'activité au-dessus — jamais un trou. */}
+        <SynthesisTopWeeksChart title={t('synthesis.charts.top_vs_total_per_week')} weeks={topWeeks} />
 
-        {data.breakdowns && (
-          <div className="flex flex-col gap-4">
-            {(data.breakdowns.top_maps ?? []).length > 0 && (
-              <SynthesisOutcomesByGroupChart
-                title={t('synthesis.breakdown.by_map')}
-                entries={(data.breakdowns.top_maps ?? []).map((m) => ({
-                  name: m.map_name,
-                  wins: m.wins,
-                  losses: m.losses,
-                  ties: m.ties,
-                  unfinished: m.unfinished,
-                }))}
-                height={360}
-              />
-            )}
-            {(data.breakdowns.top_modes ?? []).length > 0 && (
-              <SynthesisOutcomesByGroupChart
-                title={t('synthesis.breakdown.by_mode')}
-                entries={(data.breakdowns.top_modes ?? []).map((m) => ({
-                  name: m.mode_name,
-                  wins: m.wins,
-                  losses: m.losses,
-                  ties: m.ties,
-                  unfinished: m.unfinished,
-                }))}
-                height={360}
-              />
-            )}
-          </div>
-        )}
+        <div className="flex flex-col gap-4">
+          <SynthesisOutcomesByGroupChart
+            title={t('synthesis.breakdown.by_map')}
+            entries={(data.breakdowns?.top_maps ?? []).map((m) => ({
+              name: m.map_name,
+              wins: m.wins,
+              losses: m.losses,
+              ties: m.ties,
+              unfinished: m.unfinished,
+            }))}
+            height={360}
+          />
+          <SynthesisOutcomesByGroupChart
+            title={t('synthesis.breakdown.by_mode')}
+            entries={(data.breakdowns?.top_modes ?? []).map((m) => ({
+              name: m.mode_name,
+              wins: m.wins,
+              losses: m.losses,
+              ties: m.ties,
+              unfinished: m.unfinished,
+            }))}
+            height={360}
+          />
+        </div>
       </section>
       </div>
     </div>
