@@ -19,3 +19,15 @@ type AnalysisProbe struct {
 	// (delta, ou sentinelle `_processed` d'un match à zéro citation).
 	HasCitationRows bool
 }
+
+// Causes d'une analyse non finie, telles que servies dans `analysis_pending_parts`. Les trois
+// chaînes sont le contrat avec le web (une section regarde SA cause) : ne pas les renommer
+// sans le miroir `lib/analysis-pending/analysisPending.logic.ts`.
+const (
+	// AnalysisPartKillSource : la source du kill n'est pas traitée (arme par frag, frags assistés).
+	AnalysisPartKillSource = "kill_source"
+	// AnalysisPartCitations : les citations ne sont pas calculées.
+	AnalysisPartCitations = "citations"
+	// AnalysisPartReplay : le rejeu 2D est absent alors que le film n'est pas déclaré absent.
+	AnalysisPartReplay = "replay"
+)

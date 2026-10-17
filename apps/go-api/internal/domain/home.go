@@ -320,6 +320,10 @@ type RecentMatchItem struct {
 	// des trous. Règle : analysis.IsAnalysisPending. Faux/absent hors du titre qui analyse des
 	// films, et au-delà de analysis.AnalysisPendingWindow après la synchro.
 	AnalysisPending bool `json:"analysis_pending,omitempty"`
+	// AnalysisPendingParts : les causes de AnalysisPending (`AnalysisPart*`, ordre stable
+	// kill_source, citations, replay), pour que chaque emplacement de la tuile regarde la
+	// sienne. Invariant : AnalysisPending == (len(AnalysisPendingParts) > 0).
+	AnalysisPendingParts []string `json:"analysis_pending_parts,omitempty"`
 }
 
 // RecentMatchMedal est une médaille compacte pour l'affichage dans MatchCard.

@@ -138,6 +138,10 @@ type MatchViewHeader struct {
 	// Faux/absent hors du titre qui analyse des films, et au-delà de analysis.AnalysisPendingWindow
 	// après la synchro.
 	AnalysisPending bool `json:"analysis_pending,omitempty"`
+	// AnalysisPendingParts : les causes de AnalysisPending (`AnalysisPart*`, ordre stable
+	// kill_source, citations, replay), pour que chaque section regarde la sienne. Invariant :
+	// AnalysisPending == (len(AnalysisPendingParts) > 0).
+	AnalysisPendingParts []string `json:"analysis_pending_parts,omitempty"`
 	// ScoreTimelineKind : COMMENT le bloc « Score dans le temps » de la vue match doit se
 	// montrer sur ce mode. Deux valeurs servies, et une troisième qui se dit en se taisant :
 	//

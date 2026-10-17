@@ -26,24 +26,43 @@ type AnalysisPendingInput struct {
 	HasReplay bool
 }
 
-// IsAnalysisPending dit si l'analyse du film d'un match synchronisé n'est pas finie.
+// AnalysisPendingParts rend les causes pour lesquelles l'analyse du film d'un match
+// synchronisé n'est pas finie, dans l'ordre stable `kill_source`, `citations`, `replay`
+// (constantes `domain.AnalysisPart*`). Nil si rien ne manque.
 //
-// Vrai si et seulement si le match a été synchronisé il y a MOINS de `AnalysisPendingWindow`
-// ET qu'au moins un de ces trois points manque :
-//   - la source du kill n'est pas traitée (`Probe.KillSourceDone`) ;
-//   - les citations ne sont pas calculées (`Probe.HasCitationRows`) ;
-//   - le rejeu est absent alors que le film n'est pas déclaré absent.
+// Une cause n'est rendue QUE si le match a été synchronisé il y a MOINS de
+// `AnalysisPendingWindow` et que :
+//   - kill_source : la source du kill n'est pas traitée (`Probe.KillSourceDone`) ;
+//   - citations : les citations ne sont pas calculées (`Probe.HasCitationRows`) ;
+//   - replay : le rejeu est absent alors que le titre en produit, que la lecture des
+//     artefacts a abouti et que le film n'est pas déclaré absent.
 //
-// La porte de titre (capability) n'est pas évaluée ici : un titre sans la capability n'a
-// pas de résolveur câblé, donc jamais d'appel.
-func IsAnalysisPending(in AnalysisPendingInput) bool {
+// C'est la SEULE copie de la règle : `IsAnalysisPending` s'en dérive. La porte de titre
+// (capability) n'est pas évaluée ici : un titre sans la capability n'a pas de résolveur
+// câblé, donc jamais d'appel.
+func AnalysisPendingParts(in AnalysisPendingInput) []string {
 	p := in.Probe
 	if p.FirstSyncAt == nil {
-		return false
+		return nil
 	}
 	if in.Now.Sub(*p.FirstSyncAt) >= AnalysisPendingWindow {
-		return false
+		return nil
 	}
-	replayMissing := in.ReplayExpected && in.ReplayKnown && !in.HasReplay && !p.FilmAbsent
-	return !p.KillSourceDone || !p.HasCitationRows || replayMissing
+	var parts []string
+	if !p.KillSourceDone {
+		parts = append(parts, domain.AnalysisPartKillSource)
+	}
+	if !p.HasCitationRows {
+		parts = append(parts, domain.AnalysisPartCitations)
+	}
+	if in.ReplayExpected && in.ReplayKnown && !in.HasReplay && !p.FilmAbsent {
+		parts = append(parts, domain.AnalysisPartReplay)
+	}
+	return parts
+}
+
+// IsAnalysisPending dit si l'analyse du film d'un match synchronisé n'est pas finie : vrai si
+// et seulement si `AnalysisPendingParts` rend au moins une cause.
+func IsAnalysisPending(in AnalysisPendingInput) bool {
+	return len(AnalysisPendingParts(in)) > 0
 }
