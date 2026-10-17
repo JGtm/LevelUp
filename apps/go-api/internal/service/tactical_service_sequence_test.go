@@ -141,14 +141,18 @@ func TestSequence_Indisponible(t *testing.T) {
 		mod  func(*mockTacticalRepo, *fakePistes) port.TacticalSequenceStore
 		want error
 	}{
-		{"artefact absent", func(_ *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore { s.pistes = nil; return s }, port.ErrReplayNotAvailable},
-		{"origine non etablie", func(_ *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore { s.pistes.OriginMs = nil; return s }, port.ErrReplayNotAvailable},
+		{"artefact absent", func(_ *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore { s.pistes = nil; return s }, port.ErrSequenceFilmNonAnalyse},
+		{"origine non etablie", func(_ *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore { s.pistes.OriginMs = nil; return s }, port.ErrSequenceFilmAReanalyser},
 		{"sans echelle de temps", func(_ *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore {
 			s.pistes.FrameIntervalMS = 0
 			return s
-		}, port.ErrReplayNotAvailable},
+		}, port.ErrSequenceFilmAReanalyser},
 		{"match d'un autre joueur", func(r *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore {
 			r.ouvrables = map[string]time.Time{}
+			return s
+		}, port.ErrReplayNotAvailable},
+		{"carte etrangere au match", func(r *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore {
+			r.univ.Matchs = nil
 			return s
 		}, port.ErrReplayNotAvailable},
 		{"match sans rayon", func(r *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore {
@@ -156,11 +160,11 @@ func TestSequence_Indisponible(t *testing.T) {
 				r.univ.Matchs[i].GameVariantName = "Inconnue"
 			}
 			return s
-		}, port.ErrReplayNotAvailable},
+		}, port.ErrSequenceCarteNonMesuree},
 		{"victime sans position a sa mort", func(_ *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore {
 			s.pistes.Tracks[0] = ligneDePiste(tsMoi, "", 0, 5, fixe(1))
 			return s
-		}, port.ErrReplayNotAvailable},
+		}, port.ErrSequenceSansPosition},
 		{"lecteur de pistes non cable", func(*mockTacticalRepo, *fakePistes) port.TacticalSequenceStore { return nil }, games.ErrCapabilityNotSupported},
 	}
 	for _, c := range cas {
@@ -170,6 +174,11 @@ func TestSequence_Indisponible(t *testing.T) {
 			_, err := serviceSequence(repo, lecteur).Sequence(context.Background(), demandeSequence())
 			if !errors.Is(err, c.want) {
 				t.Fatalf("err = %v, want %v", err, c.want)
+			}
+			for _, autre := range toutesLesCausesDeSequence {
+				if autre != c.want && errors.Is(err, autre) {
+					t.Errorf("err = %v se lit aussi comme %v : une cause = un code", err, autre)
+				}
 			}
 		})
 	}

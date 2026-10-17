@@ -59,5 +59,8 @@ func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.Tacti
 		WithWeaponLabels(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb))).
 		WithReplay(r.replayServiceFor(pdb)).
 		// LES PISTES DE L ARTEFACT (sequence d une mort) : meme racine d artefacts que le service de rejeu.
+		// « ANALYSE EN COURS » d une sequence sans artefact : le resolveur partage de l indicateur (nil sur
+		// un titre sans film.kill_source, la porte de titre est dans analysisPendingFor).
+		WithAnalysisPending(r.analysisPendingFor(pdb)).
 		WithSequenceStore(service.NewTacticalSequenceStore(r.cfg.RuntimePaths().RepoRoot(), pdb.TitleSlug)), nil
 }

@@ -93,3 +93,33 @@ func TestSequence_MatchIDHorsFormeHalo(t *testing.T) {
 		}
 	}
 }
+
+// TestSequence_UneCauseUnCode : chaque cause « donnees » est un 404 a code propre et STABLE (le web
+// l'ecrit en texte), distinct du refus `replay_not_available` — une cause = un test.
+func TestSequence_UneCauseUnCode(t *testing.T) {
+	cas := []struct {
+		err  error
+		code string
+	}{
+		{port.ErrSequenceAnalyseEnCours, "sequence_analysis_pending"},
+		{port.ErrSequenceFilmNonAnalyse, "sequence_film_not_analysed"},
+		{port.ErrSequenceFilmAReanalyser, "sequence_film_to_reanalyse"},
+		{port.ErrSequenceCarteNonMesuree, "sequence_map_unmeasured"},
+		{port.ErrSequenceSansPosition, "sequence_no_death_position"},
+	}
+	for _, c := range cas {
+		t.Run(c.code, func(t *testing.T) {
+			svc := &fakeTacticalSvc{errSeq: c.err}
+			w := postSequence(newSequenceRouter(tacticalFactory(svc, nil)), "carte-a", corpsSequence)
+			if w.Code != http.StatusNotFound {
+				t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
+			}
+			if !strings.Contains(w.Body.String(), `"`+c.code+`"`) {
+				t.Errorf("code %s attendu dans le corps : %s", c.code, w.Body.String())
+			}
+			if strings.Contains(w.Body.String(), "replay_not_available") {
+				t.Errorf("une cause ne se confond pas avec le refus : %s", w.Body.String())
+			}
+		})
+	}
+}
