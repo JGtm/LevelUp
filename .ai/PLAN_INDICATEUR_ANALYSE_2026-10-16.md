@@ -184,7 +184,13 @@ gcc ucrt64. Jamais `go build ./...`. Un seul `go` à la fois. Intégration : `-t
   ok (23 skipped préexistants) ; `make gate-push` exit 0 (baseline 21 102 tests vs 9 398 requis).
 - 2026-10-16 E5 : entrée thought_log posée, cache dédié nettoyé, push de `feat/indicateur-analyse`.
 
+- 2026-10-17 suite `feat/indicateur-causes` : la limite (a) de E3 (puce « Rejeu à venir » pour un film
+  absent dont seules les citations manquent) est levée. Le serveur sert `analysis_pending_parts`
+  (`kill_source`, `citations`, `replay`) ; chaque emplacement regarde sa cause, le booléen pilote
+  pastille, infobulle, bandeau et rechargement. Gates verts : go test + intégration `-p 1`,
+  lint 0 issue, `check-types`, `test-web` 9 846 tests, `make gate-push` exit 0 (baseline 21 118 vs 9 398).
+
 ## 5. Statut final
 
-Tous les items `[x]`. Rien en `[!]`. Limites assumées : cf. E3 (puce « Rejeu à venir »), D-5
+Tous les items `[x]`. Rien en `[!]`. Limites assumées : D-5
 (Unknown/CarteNonResolue), D-3 (joueur fraîchement onboardé).

@@ -1050,6 +1050,9 @@ export interface RecentMatchItem {
    *  citations ou rejeu 2D encore à venir) : la tuile le dit au lieu d'afficher des trous.
    *  Règle serveur `analysis.IsAnalysisPending` (synchro < 24 h). Absent = faux. */
   analysis_pending?: boolean
+  /** Les causes de `analysis_pending` (`kill_source`, `citations`, `replay`, ordre stable) :
+   *  chaque emplacement en attente de la tuile regarde la sienne. Absent = aucune cause. */
+  analysis_pending_parts?: string[] | null
   /** Part des frags du joueur assistés par un coéquipier sur CE match, par tranche de
    *  part de dégâts (le sens « reçues » de la page Relations, sur un seul match). Absent
    *  quand le film du match ne porte pas l'assistance : la tuile n'affiche rien —

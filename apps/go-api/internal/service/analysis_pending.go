@@ -11,7 +11,7 @@ import (
 )
 
 // AnalysisPendingResolver décide, pour un lot de matchs, lesquels ont une analyse de film
-// non finie (`analysis.IsAnalysisPending`). Il ne se construit QUE pour un titre qui porte la
+// non finie et pour quelles causes (`analysis.AnalysisPendingParts`). Il ne se construit QUE pour un titre qui porte la
 // capability du film (porte posée au câblage, cf. wire.newAnalysisPendingResolver) : un
 // titre sans elle n'a pas de résolveur, et le champ reste faux partout.
 //
@@ -48,10 +48,11 @@ type ReplayLookup struct {
 	Has func(matchID string) bool
 }
 
-// Resolve rend l'ensemble des match_id du lot dont l'analyse est en cours. Récepteur nil,
-// lot vide ou lecture en échec : ensemble vide (l'échec est journalisé en WARN, jamais un
-// indicateur fabriqué sur une lecture ratée).
-func (r *AnalysisPendingResolver) Resolve(ctx context.Context, matchIDs []string, lookup ReplayLookup) map[string]bool {
+// Resolve rend, pour chaque match_id du lot dont l'analyse est en cours, ses causes (jamais
+// vides : un match sans cause est absent de la table). Récepteur nil, lot vide ou lecture en
+// échec : table vide (l'échec est journalisé en WARN, jamais un indicateur fabriqué sur une
+// lecture ratée).
+func (r *AnalysisPendingResolver) Resolve(ctx context.Context, matchIDs []string, lookup ReplayLookup) map[string][]string {
 	if r == nil || len(matchIDs) == 0 {
 		return nil
 	}
@@ -62,18 +63,19 @@ func (r *AnalysisPendingResolver) Resolve(ctx context.Context, matchIDs []string
 		return nil
 	}
 	now := r.now()
-	pending := make(map[string]bool)
+	pending := make(map[string][]string)
 	for _, id := range matchIDs {
 		probe, ok := probes[id]
 		if !ok {
 			continue
 		}
 		has := lookup.Known && lookup.Has != nil && lookup.Has(id)
-		if analysis.IsAnalysisPending(analysis.AnalysisPendingInput{
+		parts := analysis.AnalysisPendingParts(analysis.AnalysisPendingInput{
 			Probe: probe, Now: now,
 			ReplayExpected: r.replayExpected, ReplayKnown: lookup.Known, HasReplay: has,
-		}) {
-			pending[id] = true
+		})
+		if len(parts) > 0 {
+			pending[id] = parts
 		}
 	}
 	return pending
@@ -109,7 +111,9 @@ func (s *HomeService) applyAnalysisPendingToRecentItems(ctx context.Context, rep
 	}
 	for _, items := range itemLists {
 		for i := range items {
-			items[i].AnalysisPending = pending[items[i].MatchID]
+			parts := pending[items[i].MatchID]
+			items[i].AnalysisPending = len(parts) > 0
+			items[i].AnalysisPendingParts = parts
 		}
 	}
 }
@@ -129,5 +133,7 @@ func (s *MatchViewService) applyHeaderAnalysisPending(ctx context.Context, h *do
 		return
 	}
 	lookup := ReplayLookup{Known: s.replaySvc != nil, Has: func(string) bool { return h.ReplayAvailable }}
-	h.AnalysisPending = s.analysisPending.Resolve(ctx, []string{h.MatchID}, lookup)[h.MatchID]
+	parts := s.analysisPending.Resolve(ctx, []string{h.MatchID}, lookup)[h.MatchID]
+	h.AnalysisPending = len(parts) > 0
+	h.AnalysisPendingParts = parts
 }

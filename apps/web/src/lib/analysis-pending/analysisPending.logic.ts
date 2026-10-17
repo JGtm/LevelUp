@@ -5,6 +5,11 @@
  * analysé (règle `analysis.IsAnalysisPending`, bornée à 24 h après la synchro). Tant qu'au
  * moins un match AFFICHÉ porte ce signal, les requêtes qui le portent se rechargent toutes
  * les 60 s ; elles s'arrêtent d'elles-mêmes quand plus rien n'est en cours.
+ *
+ * Le serveur sert aussi les CAUSES (`analysis_pending_parts`, mêmes conditions que le booléen,
+ * invariant `analysis_pending == (parts non vide)`) : chaque emplacement en attente regarde
+ * SA cause (`hasPendingPart`), jamais le booléen seul. La pastille, l'infobulle, le bandeau et
+ * le rechargement restent pilotés par le booléen.
  */
 import type { HomePageResponse, MatchViewResponse } from '@/lib/api/types'
 
@@ -13,6 +18,23 @@ export const ANALYSIS_PENDING_REFETCH_MS = 60_000
 
 /** Période du poll de première synchro de l'accueil (joueur sans aucun match). */
 export const FIRST_SYNC_REFETCH_MS = 30_000
+
+/** Les causes servies par le serveur (`domain.AnalysisPart*`). */
+export const ANALYSIS_PART = {
+  killSource: 'kill_source',
+  citations: 'citations',
+  replay: 'replay',
+} as const
+
+export type AnalysisPendingPart = (typeof ANALYSIS_PART)[keyof typeof ANALYSIS_PART]
+
+/** Tout objet qui porte les causes (tuile de l'accueil, en-tête de la vue match). */
+export type AnalysisPendingCarrier = { analysis_pending_parts?: ReadonlyArray<string> | null }
+
+/** L'élément attend CETTE cause. Absent, vide ou null : aucune cause. */
+export function hasPendingPart(item: AnalysisPendingCarrier | null | undefined, part: AnalysisPendingPart): boolean {
+  return item?.analysis_pending_parts?.includes(part) === true
+}
 
 type PendingFlag = { analysis_pending?: boolean | null }
 

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -49,8 +50,8 @@ func TestAnalysisPendingResolver_Resolve(t *testing.T) {
 	replays := port.ReplayAvailability{title.FilmShortMatchID("fini"): {}}
 	got := r.Resolve(context.Background(), []string{"fini", "sansArme", "ancien", "absent"},
 		ReplayLookup{Known: true, Has: replays.Has})
-	if len(got) != 1 || !got["sansArme"] {
-		t.Fatalf("pending = %v, want {sansArme}", got)
+	if len(got) != 1 || !reflect.DeepEqual(got["sansArme"], []string{domain.AnalysisPartKillSource, domain.AnalysisPartReplay}) {
+		t.Fatalf("pending = %v, want {sansArme: [kill_source replay]}", got)
 	}
 	if repo.appels != 1 {
 		t.Fatalf("lectures = %d, want 1 par lot", repo.appels)
@@ -88,8 +89,13 @@ func TestHomeService_AnalysisPending_UneLectureEtDeuxListes(t *testing.T) {
 	favorites := []domain.RecentMatchItem{{MatchID: "m1", IsFavorite: true}}
 	s.applyAnalysisPendingToRecentItems(context.Background(), nil, recent, favorites)
 
+	wantParts := []string{domain.AnalysisPartCitations}
 	if !recent[0].AnalysisPending || recent[1].AnalysisPending || !favorites[0].AnalysisPending {
 		t.Fatalf("recent=%+v favoris=%+v", recent, favorites)
+	}
+	if !reflect.DeepEqual(recent[0].AnalysisPendingParts, wantParts) || !reflect.DeepEqual(favorites[0].AnalysisPendingParts, wantParts) ||
+		recent[1].AnalysisPendingParts != nil {
+		t.Fatalf("causes: recent=%v favoris=%v", recent, favorites)
 	}
 	if repo.appels != 1 || len(repo.lots[0]) != 2 {
 		t.Fatalf("un seul lot dédoublonné attendu, got %d lectures, lots=%v", repo.appels, repo.lots)
@@ -112,8 +118,8 @@ func TestHomeService_AnalysisPending_RejeuAbsentEtEnsembleNonResolu(t *testing.T
 	// Ensemble résolu et vide : le rejeu manque -> en cours.
 	items := []domain.RecentMatchItem{{MatchID: "m1"}}
 	s.applyAnalysisPendingToRecentItems(context.Background(), port.ReplayAvailability{}, items)
-	if !items[0].AnalysisPending {
-		t.Fatal("rejeu absent d'un ensemble résolu : attendu en cours")
+	if !items[0].AnalysisPending || !reflect.DeepEqual(items[0].AnalysisPendingParts, []string{domain.AnalysisPartReplay}) {
+		t.Fatalf("rejeu absent d'un ensemble résolu : attendu en cours pour replay, got %+v", items[0])
 	}
 	// Ensemble non résolu (nil) : la condition rejeu est ignorée.
 	items = []domain.RecentMatchItem{{MatchID: "m1"}}
@@ -129,8 +135,8 @@ func TestMatchViewService_HeaderAnalysisPending(t *testing.T) {
 
 	h := domain.MatchViewHeader{MatchID: "m1", ReplayAvailable: false}
 	s.applyHeaderAnalysisPending(context.Background(), &h)
-	if !h.AnalysisPending {
-		t.Fatal("rejeu absent, service de rejeu câblé : attendu en cours")
+	if !h.AnalysisPending || !reflect.DeepEqual(h.AnalysisPendingParts, []string{domain.AnalysisPartReplay}) {
+		t.Fatalf("rejeu absent, service de rejeu câblé : attendu en cours pour replay, got %+v", h)
 	}
 	h = domain.MatchViewHeader{MatchID: "m1", ReplayAvailable: true}
 	s.applyHeaderAnalysisPending(context.Background(), &h)

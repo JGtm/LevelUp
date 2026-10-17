@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -92,5 +93,98 @@ func TestIsAnalysisPending(t *testing.T) {
 				t.Fatalf("IsAnalysisPending = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestAnalysisPendingParts(t *testing.T) {
+	const (
+		ks    = domain.AnalysisPartKillSource
+		cit   = domain.AnalysisPartCitations
+		rep   = domain.AnalysisPartReplay
+		heure = time.Hour
+	)
+	sansKill := func(p *domain.AnalysisProbe) { p.KillSourceDone = false }
+	sansCit := func(p *domain.AnalysisProbe) { p.HasCitationRows = false }
+	rejeu := func(mod func(*domain.AnalysisProbe), hasReplay bool) AnalysisPendingInput {
+		return AnalysisPendingInput{Probe: probeSynchroIlYA(heure, mod), ReplayExpected: true, ReplayKnown: true, HasReplay: hasReplay}
+	}
+	tests := []struct {
+		name string
+		in   AnalysisPendingInput
+		want []string
+	}{
+		{"tout est fait", rejeu(nil, true), nil},
+		{"kill_source seule", rejeu(sansKill, true), []string{ks}},
+		{"citations seules", rejeu(sansCit, true), []string{cit}},
+		{"replay seul", rejeu(nil, false), []string{rep}},
+		{"kill_source + citations", rejeu(func(p *domain.AnalysisProbe) { sansKill(p); sansCit(p) }, true), []string{ks, cit}},
+		{"kill_source + replay", rejeu(sansKill, false), []string{ks, rep}},
+		{"citations + replay", rejeu(sansCit, false), []string{cit, rep}},
+		{"les trois, ordre stable", rejeu(func(p *domain.AnalysisProbe) { sansKill(p); sansCit(p) }, false), []string{ks, cit, rep}},
+		{
+			"film absent sans rejeu : pas de replay, les citations restent",
+			rejeu(func(p *domain.AnalysisProbe) { p.FilmAbsent = true; p.HasCitationRows = false }, false),
+			[]string{cit},
+		},
+		{"film absent sans rejeu, le reste fait : rien", rejeu(func(p *domain.AnalysisProbe) { p.FilmAbsent = true }, false), nil},
+		{
+			"sans capability rejeu : jamais replay",
+			AnalysisPendingInput{Probe: probeSynchroIlYA(heure, sansCit), ReplayExpected: false, ReplayKnown: true},
+			[]string{cit},
+		},
+		{
+			"presence des rejeux non lue : jamais replay",
+			AnalysisPendingInput{Probe: probeSynchroIlYA(heure, sansKill), ReplayExpected: true, ReplayKnown: false},
+			[]string{ks},
+		},
+		{
+			"hors fenetre : rien, quoi qu'il manque",
+			AnalysisPendingInput{Probe: probeSynchroIlYA(AnalysisPendingWindow, func(p *domain.AnalysisProbe) {
+				sansKill(p)
+				sansCit(p)
+			}), ReplayExpected: true, ReplayKnown: true},
+			nil,
+		},
+		{"premiere synchro inconnue : rien", AnalysisPendingInput{Probe: domain.AnalysisProbe{}}, nil},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.in.Now = instantRef
+			got := AnalysisPendingParts(tc.in)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("AnalysisPendingParts = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestAnalysisPending_InvarianteBooleenEtCauses balaie toutes les combinaisons de faits et de
+// ages : `IsAnalysisPending` doit valoir `len(AnalysisPendingParts) > 0`, et les causes
+// rendues restent dans l'ordre stable, sans doublon.
+func TestAnalysisPending_InvarianteBooleenEtCauses(t *testing.T) {
+	ordre := map[string]int{domain.AnalysisPartKillSource: 0, domain.AnalysisPartCitations: 1, domain.AnalysisPartReplay: 2}
+	ages := []time.Duration{time.Hour, AnalysisPendingWindow - time.Second, AnalysisPendingWindow, 30 * time.Hour}
+	for _, age := range ages {
+		for mask := 0; mask < 1<<7; mask++ {
+			bit := func(i uint) bool { return mask&(1<<i) != 0 }
+			in := AnalysisPendingInput{
+				Probe: probeSynchroIlYA(age, func(p *domain.AnalysisProbe) {
+					p.KillSourceDone, p.HasCitationRows, p.FilmAbsent = bit(0), bit(1), bit(2)
+				}),
+				Now: instantRef, ReplayExpected: bit(3), ReplayKnown: bit(4), HasReplay: bit(5),
+			}
+			if bit(6) {
+				in.Probe.FirstSyncAt = nil
+			}
+			parts := AnalysisPendingParts(in)
+			if got := IsAnalysisPending(in); got != (len(parts) > 0) {
+				t.Fatalf("age=%v mask=%07b : IsAnalysisPending=%v mais parts=%v", age, mask, got, parts)
+			}
+			for i := 1; i < len(parts); i++ {
+				if ordre[parts[i-1]] >= ordre[parts[i]] {
+					t.Fatalf("age=%v mask=%07b : ordre instable %v", age, mask, parts)
+				}
+			}
+		}
 	}
 }

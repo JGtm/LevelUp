@@ -26,6 +26,7 @@ import { buildEquipmentUsage, hasEquipmentUsage } from '@/features/match-replay/
 import { DetailSection } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { AnalysisPendingSlot } from '@/components/ui/analysis-pending-slot'
+import { ANALYSIS_PART, hasPendingPart, type AnalysisPendingCarrier } from '@/lib/analysis-pending/analysisPending.logic'
 import type {
   FragDistribution,
   MatchEmpriseBlock,
@@ -62,9 +63,9 @@ interface Props {
   emprise: MatchEmpriseBlock | null | undefined
   /** « Isolement » de chaque joueur de l'équipe — absent sans positions de film. */
   livesNearTeammate: MatchLivesNearTeammate | null | undefined
-  /** `header.analysis_pending` : l'analyse du film est en cours, les sections qui en dépendent
-   *  montrent un emplacement d'attente au lieu de leur état vide. */
-  analysisPending?: boolean
+  /** L'en-tête de la vue (ses causes `analysis_pending_parts`) : chaque section qui dépend du
+   *  film montre un emplacement d'attente, au lieu de son état vide, quand SA cause est servie. */
+  analysisCauses?: AnalysisPendingCarrier | null
   meXUID: string | null
   friendGamertags: readonly string[]
   matchPositions: MatchPlayerPosition[] | undefined
@@ -92,7 +93,7 @@ export function MatchViewTabArsenal({
   killDistance,
   emprise,
   livesNearTeammate,
-  analysisPending = false,
+  analysisCauses,
   meXUID,
   friendGamertags,
   matchPositions,
@@ -108,10 +109,12 @@ export function MatchViewTabArsenal({
   const showKillsWeapons = hasMatchFragData(fragDistribution, weaponTools) || showKillDistance
   const showEquipmentTerrain = hasEquipmentEmpriseCard(e.present) || equipment || hasPositions(matchPositions)
 
-  // Analyse du film en cours : l'arme de chaque frag et le rejeu 2D (Emprise, équipements,
-  // positions) s'annoncent par un emplacement d'attente au lieu de l'état vide.
+  // Analyse du film en cours : l'arme de chaque frag (cause kill_source) et le rejeu 2D
+  // (cause replay : Emprise, équipements, positions) s'annoncent par un emplacement d'attente
+  // au lieu de l'état vide, chacun pour SA cause.
   const pending = arsenalPendingSlots({
-    analysisPending,
+    killSourcePending: hasPendingPart(analysisCauses, ANALYSIS_PART.killSource),
+    replayPending: hasPendingPart(analysisCauses, ANALYSIS_PART.replay),
     hasKillDistance: (killDistance?.length ?? 0) > 0,
     hasTerrain: showEquipmentTerrain,
   })

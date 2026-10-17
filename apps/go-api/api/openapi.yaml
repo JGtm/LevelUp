@@ -19968,6 +19968,12 @@ components:
       properties:
         analysis_pending:
           type: boolean
+        analysis_pending_parts:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
         dominance_badge:
           $ref: '#/components/schemas/MatchViewDominanceBadge'
         dominance_flag:

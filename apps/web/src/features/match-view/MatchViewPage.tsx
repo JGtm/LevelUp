@@ -431,7 +431,7 @@ export function MatchViewPage() {
             killDistance={combat_tab.kill_distance_by_weapon}
             emprise={data.emprise}
             livesNearTeammate={data.lives_near_teammate}
-            analysisPending={header.analysis_pending === true}
+            analysisCauses={header}
             meXUID={meXUID}
             friendGamertags={friendGamertags}
             matchPositions={matchPositions}
