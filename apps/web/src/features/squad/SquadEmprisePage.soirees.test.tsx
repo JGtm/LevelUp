@@ -6,7 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, within } from '@testing-library/react'
 
-import type { SquadEmpriseBlock, TeammateRow, TeammatesPageResponse } from '@/lib/api/types'
+import type { SquadEmpriseBlock, SquadFormesBlock, TeammateRow, TeammatesPageResponse } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { renderWithProviders } from '@/test/render-utils'
 
@@ -174,6 +174,33 @@ describe('Soirées précédentes — une rangée, deux cartes', () => {
     mount({ pageData: { ...withEvenings(EMPRISE_2209), squad_objective_history: undefined } as TeammatesPageResponse })
     expect(screen.queryByTestId('objective-evenings')).toBeNull()
     expect(screen.getByTestId('emprise-habit')).toBeInTheDocument()
+  })
+})
+
+describe('Soirées précédentes — aucun match à objectif', () => {
+  const sansObjectif = (): SquadFormesBlock => ({ ...block0709(), matches: [] })
+  const withBlock = (formes: SquadFormesBlock | undefined): TeammatesPageResponse =>
+    ({ ...page(), squad_emprise: EMPRISE_2209, formes_retenues: formes, match_history: history0709() }) as TeammatesPageResponse
+
+  it('« Rapport de force, soirée après soirée » reste à droite de la carte des ressources, titre gardé, avec le constat', () => {
+    mount({ pageData: withBlock(sansObjectif()) })
+    const empty = screen.getByTestId('objective-evenings-empty')
+    expect(empty).toHaveTextContent('Rapport de force, soirée après soirée')
+    expect(empty).toHaveTextContent('Aucun match à objectif sur ce périmètre')
+    expect(empty.querySelector('.border-dashed')).not.toBeNull()
+    expect(screen.getByTestId('emprise-habit').parentElement).toBe(empty.parentElement)
+  })
+
+  it('titre sans objectif (capability absente) : pas de carte de rapport de force', () => {
+    mount({ pageData: withBlock({ available: false, unavailable_reason: 'unsupported', matches_measured: 0, matches_total: 3 }) })
+    expect(screen.queryByTestId('objective-evenings-empty')).toBeNull()
+    expect(screen.queryByTestId('squad-objective-section')).toBeNull()
+  })
+
+  it('les sections d’objectif de l’onglet gardent leur intertitre et le constat', () => {
+    mount({ pageData: withBlock(sansObjectif()) })
+    expect(within(screen.getByTestId('squad-objective-section')).getByTestId('squad-objective-empty')).toBeInTheDocument()
+    expect(within(screen.getByTestId('squad-objective-sheets-section')).getByTestId('squad-objective-sheets-empty')).toBeInTheDocument()
   })
 })
 

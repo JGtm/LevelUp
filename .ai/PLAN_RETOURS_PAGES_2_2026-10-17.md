@@ -41,7 +41,7 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
       n°6) — réutiliser `features/_shared/filmGap/` ou son voisin si pertinent.
 
 ### Q2 — Blocs « aucun match concerné »
-- [ ] Q2.1 Escouade : Objectif et Répartition de l'objectif (onglet Emprise), « Rapport de force,
+- [x] Q2.1 (`objectif.logic.ts objectiveExpected` ; `SquadObjectiveSection.tsx` : deux sections gardées avec `ScopeEmptyCard` ; `SquadPreviousSessionsSection.tsx` : `ObjectifFrame` + `ScopeEmptyState` ; prédicat d'onglet `empriseTabHasContent` inchangé : l'onglet est visible dès que le titre lit le film, et le constat ne s'affiche que sur une page qui a du contenu ; capability absente ou lecture en échec : bloc retiré) Escouade : Objectif et Répartition de l'objectif (onglet Emprise), « Rapport de force,
       soirée après soirée » (Soirées précédentes) : bloc affiché avec « Aucun match à objectif sur
       ce périmètre » (FR) / EN équivalent, au lieu d'être retiré. Le prédicat d'onglet
       (`empriseTabHasContent`) reste cohérent.
