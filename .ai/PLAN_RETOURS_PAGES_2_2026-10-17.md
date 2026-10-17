@@ -54,7 +54,7 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
       absente).
 
 ### Q3 — Libellés de la Synthèse
-- [ ] Q3.1 `SynthesisTopWeeksChart` et autres noms de séries / légendes en dur de
+- [x] Q3.1 (manifeste `synthesis.charts.top_weeks_*` + `topWeeksNames` ; `SynthesisBipolaireChart` : `synthesis.scope.solo_label/squad_label` ; `SynthesisOutcomesByGroupChart` : repli de l'axe `common.charts.axis_matches` ; garde `seriesNames.guard.test.ts`) `SynthesisTopWeeksChart` et autres noms de séries / légendes en dur de
       `features/synthesis` : clés i18n FR/EN, FR sans anglicisme (« Taux de victoire »).
 
 ### Q4 — Clôture
