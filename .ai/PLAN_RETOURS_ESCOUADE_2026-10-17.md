@@ -106,7 +106,7 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
 - Gate : vitest squad + tests Go du paquet touché (tag integration si persist/sync touché).
 
 ### E6 — Bloc Médias : bloc parent rétabli (D5)
-- [ ] E6.1 `MatchMediaTab.tsx` : état vide = bloc parent (même gabarit que les autres blocs
+- [x] E6.1 (Card + CardContent autour de l EmptyStateNotice ; test ajoute) `MatchMediaTab.tsx` : état vide = bloc parent (même gabarit que les autres blocs
       vides de la page) avec l'`EmptyStateNotice` dedans. Test mis à jour.
 
 ### E7 — Clôture
@@ -127,3 +127,4 @@ autres onglets d'Escouade que l'Emprise pour les placeholders (à noter s'ils on
 - E2 : `features/squad/charts/heatmapChart.ts` (+ test) n est importe par aucun composant (code mort probable). `components/charts/OutcomeSequenceTape.tsx` : la ligne "+N" des series longues n a pas de mot. `features/squad/v2/SquadEngagementView.tsx` et `components/charts/EngagementCurve.tsx` : nom d axe Y en anglais en dur ("events / min (auto-zoom ...)"). `components/charts/heatmap2DOption.ts` : texte par defaut "Win Rate: / Matchs:" en dur (non utilise par l Escouade, qui passe formatTooltip).
 - E5 : pas de rechargement automatique de l onglet Emprise tant qu une analyse est en cours (accueil et vue match rechargent toutes les 60 s) : non demande par le plan, la page Escouade est lourde ; a decider avec l utilisateur.
 - E5 : un titre qui lirait le film sans la capability des positions de frag verrait la section Groupes ou isoles marquee Film non analyse faute de donnee ; aucun titre actuel n est dans ce cas (Halo 5 est film_unsupported).
+- E6 : `features/match-view/MatchViewTabArsenal.tsx:125` rend aussi un `EmptyStateNotice` NU (onglet Armes et terrain sans contenu) : meme ecart a la convention, non traite.
