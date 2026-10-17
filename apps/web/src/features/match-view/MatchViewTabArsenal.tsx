@@ -120,8 +120,10 @@ export function MatchViewTabArsenal({
     hasKillDistance: (killDistance?.length ?? 0) > 0,
     hasTerrain: showEquipmentTerrain,
   })
-  const showKillsWeaponsSection = showKillsWeapons || pending.killsWeapons
   const showTerrainSection = showEquipmentTerrain || pending.terrain
+  // Un onglet qui montre déjà du terrain garde aussi « Frags et armes » : sans frag, la carte dit son constat
+  // (MatchFragCard) au lieu de laisser la section disparaître.
+  const showKillsWeaponsSection = showKillsWeapons || pending.killsWeapons || showTerrainSection
 
   if (!showKillsWeaponsSection && !showTerrainSection) {
     // Convention de l'application : l'état vide pointillé vit DANS un bloc parent, jamais nu.

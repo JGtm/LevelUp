@@ -279,27 +279,26 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
               {/* Rangée 1 : « Répartition des frags » (sunburst LARGE) + colonne KPI Taux de
                   victoire / FDA / Incidents. Survol LIÉ au breakdown de la rangée 2 (état `frags`). */}
               <div className="flex gap-4 items-stretch">
-                {fragDistribution && (
-                  <div className="flex min-w-0 flex-1 flex-col gap-2">
-                    <FragSunburst
-                      distribution={fragDistribution}
-                      maxWidthPx={520}
-                      hideCenterLabel
-                      legendSide="left"
-                      externalHoveredClass={frags.hovered}
-                      onClassHover={frags.setHovered}
-                    />
-                    {frags.insightText && (
-                      <p className="w-full text-xs leading-snug text-muted-foreground">
-                        <span className="font-semibold text-foreground">
-                          {t('synthesis.coach.label')}
-                          {' : '}
-                        </span>
-                        {frags.insightText}
-                      </p>
-                    )}
-                  </div>
-                )}
+                {/* Sans frag, l'anneau reste avec son constat (FragSunburst) : un bloc qui disparaît se lit comme un bug. */}
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <FragSunburst
+                    distribution={fragDistribution}
+                    maxWidthPx={520}
+                    hideCenterLabel
+                    legendSide="left"
+                    externalHoveredClass={frags.hovered}
+                    onClassHover={frags.setHovered}
+                  />
+                  {frags.insightText && (
+                    <p className="w-full text-xs leading-snug text-muted-foreground">
+                      <span className="font-semibold text-foreground">
+                        {t('synthesis.coach.label')}
+                        {' : '}
+                      </span>
+                      {frags.insightText}
+                    </p>
+                  )}
+                </div>
                 <div className="flex flex-col gap-3 w-[22rem] shrink-0">
 
                   {/* Taux de victoire */}

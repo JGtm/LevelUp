@@ -46,7 +46,7 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
       ce périmètre » (FR) / EN équivalent, au lieu d'être retiré. Le prédicat d'onglet
       (`empriseTabHasContent`) reste cohérent.
 - [x] Q2.2 (Sessions : `sessionEmprise.logic.ts` `objectiveEmpty` + `sessionScopeEmpties`, carte d'ancrage `objective_balance` dans `useSessionEmpriseCards.tsx` ; Séries temporelles : `usages.logic.ts objectiveEmpty` + `ScopeEmptySection` dans `TimeseriesPage.usages.tsx`, affiché seulement si l'onglet a autre chose à montrer ; bandeau : `TimeseriesObjectiveCard.tsx` constat `objectiveActions`) Sessions et Séries temporelles : Objectif, bandeau d'objectifs.
-- [ ] Q2.3 Anneau des frags (`FragSunburst` et cartes qui le portent) sans frag : bloc affiché,
+- [x] Q2.3 (`FragSunburst` : sans frag, carte (ou bloc nu) avec `EmptyStateNotice`, texte `scopeEmptyText('frags')` = clé `frags.empty.no_data` ; Sessions `sessionScopeEmpties` ; Synthèse : retrait du `fragDistribution &&` ; Séries temporelles : le résumé montait déjà l'anneau sans condition ; Vue match : `MatchFragCard` garde la carte A et `MatchViewTabArsenal` garde « Frags et armes » dès que l'onglet montre du terrain ; Escouade : `SquadFragBreakdownCard` avait déjà son état vide dans la carte) Anneau des frags (`FragSunburst` et cartes qui le portent) sans frag : bloc affiché,
       « Aucun frag sur ce périmètre » (réutiliser la clé `frags.toml` si elle convient).
 - [ ] Q2.4 Inventaire des autres blocs retirés pour « aucun match concerné » sur Escouade, Sessions,
       Séries temporelles, Synthèse, Vue match : tableau au rapport ; corriger ceux de ces pages
