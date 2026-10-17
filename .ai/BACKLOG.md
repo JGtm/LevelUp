@@ -2,7 +2,7 @@
 
 ---
 
-## 🔄 En cours : plan `.ai/PLAN_BACKLOG_2026-10-16.md` (les entrées ci-dessous, traitées étape par étape ; E1 CI, E2 connexion Xbox/participation, E3 séquence d'arrêt, E4 LUSR (retrait de la v1) et E5 dettes Go du 2026-10-15 closes)
+## 🔄 En cours : plan `.ai/PLAN_BACKLOG_2026-10-16.md` (les entrées ci-dessous, traitées étape par étape ; E1 CI, E2 connexion Xbox/participation, E3 séquence d'arrêt, E4 LUSR (retrait de la v1), E5 dettes Go du 2026-10-15 et E6 citations et profil closes)
 
 ---
 
@@ -92,22 +92,6 @@ exécuté : base de production, serveur à arrêter). La commande est écrite au
 (`docs/RUNBOOK_DEPLOY_CHECKLIST.md`, section Post-deploy) : `levelup reset-bitmasks --dry-run` puis `--apply`
 serveur arrêté, puis `levelup backfill --skill` pour ce qui reste sans donnée de skill. **Effort : S**
 (décision et fenêtre du user).
-
----
-
-### [dette/citations-2026-10-16] Découvertes non traitées du plan des citations Halo 5
-
-Reprises du plan `.ai/V7.5/PLAN_CITATIONS_FILM_2026-10-16.md` (section Découvertes), non traitées.
-- **Premiers frags du profil toujours à 0 sur Infinite** : `computeFKFD`
-  (`internal/progression/profile/queries.go:289-310`) lit un type d'événement `first_kill` qu'Infinite ne
-  stocke pas (seuls `kill`, `death`, `medal`, `mode`). La règle « Premier sang » existe déjà
-  (`analysis.FirstBlood`, sur les frags de `highlight_events`) : la réutiliser. **S.**
-- **Capability `citations.engine` fausse pour Infinite** : `config/titles/halo_infinite/mappings/capabilities.toml`
-  la déclare `not_exposed` alors que le moteur des citations tourne pour ce titre. Vérifier ses lecteurs
-  avant de la passer à `supported`. **S.**
-- **Maîtrise du Fusil Storm absente** : `static/commendations/halo_infinite/HI_Commendations_Storm.png`
-  (image native) n'est utilisée par aucune citation ; ajouter la maîtrise au seed sachant que dans Halo Infinite son équivalent est "Pulse Carbine" mais à voir si on a pas déjà une image pour la carabine à impulsion (`weapon_stat`, nom EN
-  canonique de l'arme). **S.**
 
 ---
 
@@ -270,6 +254,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-10-17 | **[dette/citations] Premiers frags du profil, capability des citations, maîtrise Carabine à impulsion** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E6, branche `feat/backlog-2026-10-16`) : (1) `computeFKFD` lisait des colonnes absentes de `highlight_events` et avalait l'erreur : premiers frags et premières morts à 0 pour tous les titres ; il passe par le chargeur unifié des événements (repli sur le journal des frags pour Halo 5), `analysis.FirstBlood` et le nouveau `analysis.FirstDeath`, sur les matchs du joueur, Campagne exclue, erreur journalisée ; tests Infinite et Halo 5 rouges avant, verts après. (2) `citations.engine` passe à `supported` pour Infinite (TOML, repli de l'adapter, parité verte ; seul lecteur : la matrice des fonctionnalités admin). (3) Diagnostic de la maîtrise Carabine à impulsion absente de la page Citations : aucun défaut de code (ligne présente et active au seed et dans les copies à froid de la metadata, chaîne service/page rejouée sur copie, image suivie par git, les 32 maîtrises `weapon_kills:` du seed se résolvent) ; reste à lire l'état de la metadata de l'instance regardée (requête au journal du plan) et, au besoin, `levelup seed citation-mappings`. Storm : aucune citation ajoutée (l'équivalent Infinite est la Carabine à impulsion). |
 | 2026-10-17 | **[dette] Dettes Go du plan du 2026-10-15** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E5, branche `feat/backlog-2026-10-16`) : code mort supprimé avec ses tests et lignes de baseline (`FindMatchesMissingParticipantBits`, `loadAwardsForScoreboard`, `WithAwardsRepo`, `CachedHighlightEventsRepo`, `BatchBuilder.AddLUSRComponents`, paramètre `titleSlug` de `SquadUsualContexts` remplacé par `prestige.Deps.TitleSlug`, 14 réexportations de constantes) ; erreurs avalées journalisées avant la dégradation (libellés d'armes, image de carte, modes connus, nom de paire, assistances attendues) et `ApplyResolutionViews` remonte l'échec de `v_match_full` ; DDL de `v_match_full` en source unique `migration.VMatchFullViewSQL` + garde-rail archlint ; une requête abandonnée ne bascule plus en lecture live ni ne compte ni n'écrit d'ERROR sur la vue match ; garde de la Campagne étendu au registre lu sur fenêtre de temps (2 dispenses d'outils opérateur) ; `reset-bitmasks` sur `matchflags.BackfillParticipants`, mapper OpenSpartan honnête sur les médailles (`EventsLoaded` supprimé), `--title` sur 3 CLI et passage du slug à `backfill-killsource` ; `match_bomb_stats` exporté dans le snapshot (un cut ancien reste lisible) ; un ami suivi sans player DB est une absence et non plus une panne des extras. Reste : le bit skill de 157 matchs (geste de déploiement, runbook). |
 | 2026-10-17 | **[data/LUSR] Le recalcul après exclusion d'un match utilisait encore LUSR v1** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E4, branche `feat/backlog-2026-10-16`) : la v1 du LUSR est supprimée (batch, étape de post-sync, aperçu `levelup backfill --lusr --dry-run`, interrupteurs `LEVELUP_LUSR_V2_ENABLED` et `LEVELUP_LUSR_CANONICAL`, `RecomputeAfterARTRebuild`, tests v1). L'exclusion d'un match rejoue la chaîne v2 du joueur (sentinelle de reset puis rejeu ; l'écrivain partagé est pris par rafales courtes, jamais en continu) et la v2 saute les matchs `is_excluded`. Les 8 composantes (`lusr_component_history`, lues par Prestige, le profil et l'escouade), écrites jusque-là par la seule v1 donc figées depuis la bascule canonique, sont écrites par la v2 : même calcul, parité vérifiée valeur à valeur (275 valeurs identiques à 1e-12). Constat corrigé : la vue `match_skill_rank_latest` ne laissait pas la v1 masquer la v2 (`start_time` avant `written_at`), mais le graphe d'évolution (`match_skill_rank_latest_by_type`) servait bien les lignes v1. Mesure sur une copie à froid de JGtm (sauvegarde du 16/10) : composantes 7 137 lignes pour 1 028 matchs, dernière ligne du 18/07, 125 matchs notés sans composantes, puis après rejeu 8 011 lignes pour 1 153 matchs et 0 note sans composantes (rejeu complet 47 s en 24 rafales). Reste : le simulateur de formules `levelup backfill --compare-formulas` (TrueSkill v1, n'écrit rien) est conservé. |
 | 2026-10-17 | **[ops/arrêt] Séquence d'arrêt du serveur bornée sous le délai de Docker** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E3, branche `feat/backlog-2026-10-16`) : `stop_grace_period: 45s` sur `levelup` et `levelup-demo` ; budget global de 40 s depuis la demande d'arrêt (5 s gardés pour la fermeture des bases), chaque phase d'attente prend la plus petite de sa borne et du budget restant, y compris `watcherDaemon.Stop`, `BatchQueue.Close`, `workerWG.Wait` et le gate (jusque-là non bornés ou hors chronomètre) ; `slog.WarnContext` nommant la phase qui dépasse ; `duckdb.CloseAll` toujours atteint. Séquence extraite de `main()` dans `cmd/server/shutdown.go` + `shutdown_budget.go`. Tests : budget sous la grâce lue dans `docker-compose.yml` (rouge prouvé sans la clé), phases bloquées, ordre HTTP, recalculs, écrivains, fermeture. Commentaire périmé (`stop_timeout=20s`) supprimé. |

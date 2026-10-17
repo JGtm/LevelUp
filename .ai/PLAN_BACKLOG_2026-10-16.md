@@ -325,22 +325,34 @@ Statut du gate (exécutant, 2026-10-17) : VERT (sorties au journal). `[!]` E5.9a
 
 ### E6 — Citations et profil (entrée 11) — S
 
-- [ ] E6.1 `computeFKFD` réécrit : événements `kill`/`death` via `HighlightEventsRepo.Load` (repli
+- [x] E6.1 `computeFKFD` réécrit : événements `kill`/`death` via `HighlightEventsRepo.Load` (repli
   `killer_victim_pairs` → Halo 5 couvert), `analysis.FirstBlood` + nouvel `analysis.FirstDeath`
   (pur, testé), instants négatifs exclus ; erreur journalisée, plus avalée. Tests : Infinite et
-  Halo 5 avec fixtures.
-- [ ] E6.2 `citations.engine` → `supported` pour Infinite (TOML + repli `adapter_data.go:180`,
-  test de parité), en-tête du TOML corrigé.
-- [ ] E6.3 Diagnostic « maîtrise Carabine à impulsion absente de la page Citations » : présence et
+  Halo 5 avec fixtures. Fait : `internal/progression/profile/first_events.go` (la fenêtre est celle des matchs du
+  JOUEUR, Campagne exclue par `campaignExcl`), `analysis.CountFirstKillsAndDeaths` (règle de la vue match, un
+  frag ou une mort sans identité ouvre le match sans créditer personne), erreurs remontées à `BuildProfile`
+  qui les journalise (`slog.WarnContext`). Le repli du chargeur lit `match_kill_events_latest` (alimenté par les
+  couples `killer_victim_pairs` en prod, `persist/kill_events_credit.go`), pas la table des couples elle-même.
+- [x] E6.2 `citations.engine` → `supported` pour Infinite (TOML + repli `adapter_data.go:180`,
+  test de parité), en-tête du TOML corrigé. Fait : `config/titles/halo_infinite/mappings/capabilities.toml:50`,
+  `games/halo_infinite/adapter_data.go:180`, parité `capabilities_parity_test.go` verte. Seul lecteur
+  fonctionnel (`games/feature.go:37`, feature-matrix admin) ; aucun test ne figeait l'ancienne valeur pour Infinite.
+- [x] E6.3 Diagnostic « maîtrise Carabine à impulsion absente de la page Citations » : présence et
   `enabled` dans `citation_mappings` (local, sur copie ; prod en lecture, user prévenu), image
   servie, résolution du nom d'arme `weapon_kills:Pulse Carbine`, filtre de la page. Cause nommée
   `fichier:ligne`, correctif S avec test ; même contrôle sur toutes les maîtrises d'armes Infinite
   (liste de celles qui n'apparaissent pas). Storm (D-13) : entrée retirée du backlog une fois la
-  page juste.
+  page juste. Diagnostic fait, AUCUN défaut de code trouvé (journal) ; Storm retirée du backlog.
+- [!] E6.3b État de la metadata de l'instance que le user regardait (poste ou prod) : non lisible ici (bases du
+  serveur local verrouillées, prod interdite, l'API locale exige une session). Requête exacte au journal pour le
+  pilote ; contrôle visuel du user ouvert (témoin : la maîtrise Carabine à impulsion visible avec son image).
 
 Gate : `go test ./internal/progression/... ./internal/analysis/... ./internal/games/...` ;
 vitest du dossier `features/citations` si touché ; contrôle visuel de la page Citations par le
 user (témoin : la maîtrise Carabine à impulsion visible avec son image).
+
+Statut du gate (exécutant, 2026-10-17) : VERT (sorties au journal). Vitest et `make check-types` non joués :
+aucun fichier web touché. Contrôle visuel du user : OUVERT.
 
 ### E7 — Tactique : requêtes du chargement (entrée 2, D-10) — M
 
@@ -490,6 +502,17 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
   — hors des fonctions nommées par E5.3. Non traité.
 - E5 : l'extraction de la démo (`ops/seed_demo*.go`) ne cite pas `match_bomb_stats` (grep) :
   la vue match de la démo n'aurait donc pas ses statistiques d'Assaut. Non vérifié sur une démo, non traité.
+- E6 (exécutant, 2026-10-17) : `service/citations_service.go:32` (`GetCitationsPage`) avale l'échec de
+  `LoadCitationMappings` (`mappings = nil`) sans journal : une metadata illisible rend une page de citations
+  VIDE au lieu d'une erreur. Hors périmètre, non traité.
+- E6 : la page Citations n'applique aucun filtre : le corps `{filters: ...}` envoyé par `features/citations/queries.ts`
+  n'est pas lu (`handlers/citations.go:85` ne décode que `category`). La barre de filtres de la page est donc sans effet
+  sur la liste. Hors périmètre, non traité.
+- E6 : le nom des tuiles (`CitationCard.tsx:48`, `truncate` sur 98 px) coupe « Maîtrise du/de la ... » après ~16 caractères :
+  les maîtrises d'armes sont indiscernables par le nom seul à l'écran (infobulle = nom complet). Hors périmètre, non traité.
+- E6 : le serveur ne rejoue jamais le seed des citations : `cmd/server/prebuilt_metadata.go:34` n'extrait le zip que si la
+  base est absente et `deploy.yml` ne lance pas `levelup seed` (commentaire l. 333) ; seule la commande manuelle
+  `levelup seed citation-mappings` (`cmd/levelup/cmd_data.go:355`) met à jour une metadata existante.
 
 ## 4. Journal
 
@@ -679,3 +702,50 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
     `golangci-lint run --new-from-merge-base=origin/main` (paquets touchés, `GOLANGCI_LINT_CACHE=%LOCALAPPDATA%\golangci-backlog1016`) :
     `0 issues` ; `bash scripts/check_test_baseline.sh tests` : `Baseline : 9373 tests` (9 391 - 18), `Courant : 21068 tests`, tous
     les tests de la baseline présents, aucun échec de test ni de paquet, `EXIT=0` (voie film 122 s, voie DuckDB 1 378 s).
+
+- 2026-10-17 E6 (exécutant, worktree `LevelUp-wt-backlog-1016`) : E6.1 et E6.2 faits, E6.3 diagnostiqué sans défaut de code, E6.3b `[!]`, gate vert.
+  - E6.1. Pièces rouvertes : `computeFKFD` lisait `he.killer_xuid` / `he.victim_xuid` (colonnes absentes de `highlight_events`,
+    qui porte `xuid`) et avalait l'erreur de liaison : 0/0 pour tous les titres. Rouge prouvé : avec l'ancien `computeFKFD`
+    restauré (`git show HEAD:`), `TestComputeFKFD_Infinite` et `TestComputeFKFD_Halo5RepliSurLesFrags` échouent (`0 / 0, attendu 1 / 1`) ;
+    verts avec le correctif. Tests unitaires purs : `TestFirstDeath`, `TestCountFirstKillsAndDeaths` (match ouvert par le joueur,
+    première mort du joueur, instant négatif écarté, tueur vide et tueur absent = bot qui n'ouvre pour personne, médaille ignorée).
+    La fenêtre lue est celle des matchs du joueur (`match_participants`) et applique `campaignExcl` (testé : un match Campagne Halo 5
+    n'est pas compté). Le test d'intégration Halo 5 a été arrêté par le garde `TestNoRawKillScopeLiteral` (littéraux de portée
+    bruts dans un `INSERT INTO match_kill_events`) : constantes `killscope` utilisées.
+  - E6.2. Lecteurs de `CapCitationsEngine` relus : `games/feature.go:37` seul (feature-matrix) ; les commentaires `home.go:372`,
+    `home_service.go:476`, `NavL2.tsx:40` parlent d'Halo 5 (`not_exposed`, inchangé). `synthetic_title_b` était déjà `supported`.
+  - E6.3 DIAGNOSTIC (aucune lecture de la prod ; bases du poste verrouillées : « Device or resource busy » sur `metadata.duckdb`
+    et son WAL ; l'API locale (:8000) exige une session et l'origine CSRF, non contournée). Copies à froid utilisées : la
+    sauvegarde `data/backups/avant_rattrapage_2026-10-08/metadata.duckdb` (= le zip de production `metadata-prebuilt.zip`, 106
+    lignes dont 99 actives) puis la même copie après `ops.SeedCitationMappings` (« 4 insérées, 106 mises à jour », 110 lignes).
+    (1) `pulse_carbine_mastery` est présente et `enabled = true` dans les deux copies (et dans la démo locale, 88 lignes),
+    catégorie `weapon`, sous-catégorie `Paria`, image `static/commendations/halo_infinite/HI_Commendations_Carabine.png`, 5 paliers.
+    (2) Le seed n'est jamais rejoué par le serveur : `cmd/server/prebuilt_metadata.go:34` n'extrait le zip que si la base est
+    absente, `deploy.yml` ne lance pas `levelup seed`, seule la commande manuelle `levelup seed citation-mappings`
+    (`cmd/levelup/cmd_data.go:355` → `ops/seed.go:328`) met à jour une metadata existante ; la ligne est au seed depuis mars 2026
+    (`98c015b82`, `ef25be1e0`) et le seed du poste du 16/10 (E5 du plan des citations) l'a mise à jour. (3) Chaîne rejouée en code
+    sur la copie seedée (`CitationsRepo.LoadCitationMappings` → `analysis.MergeCitationTotals` → `BuildCitationsByCategory`, sonde
+    jetable supprimée) : 103 citations actives, 6 catégories, la catégorie `weapon` compte 31 tuiles dont `pulse_carbine_mastery`
+    (total 0, 5 paliers, image trouvée sur disque) ; aucun filtre côté service (`citations_service.go:25-77`), côté handler (le
+    corps `{filters}` n'est pas lu, `handlers/citations.go:85`) ni côté page (`CitationsView`, `normalize.ts` : rien ne masque un
+    total 0 ni une sous-catégorie). (4) Résolution du nom : les 32 citations `weapon_kills:` du seed (24 armes, 8 véhicules) se résolvent
+    toutes sur la requête de `loadWeaponKeyNames` exécutée sur la copie (`hinf_pulse_carbine` → `Pulse Carbine`, FR « Carabine à
+    impulsion ») ; `TestWeaponStatCitations_ResolvableName` et `TestCitationImagePaths_ExistOnDisk` (existants) verts. L'image
+    `HI_Commendations_Carabine.png` est suivie par git (100 x 100, lisible), copiée dans l'image Docker (`COPY static`). Aucune maîtrise
+    d'arme Infinite du seed n'est invisible ou irrésolue. CONCLUSION : pas de défaut de code ; la seule cause restante est l'état de la
+    metadata de l'instance regardée (ligne absente ou `enabled` faux, seed non rejoué). Deux pistes d'affichage non vérifiées, notées
+    en section 3 (le nom coupé des tuiles ; la barre de filtres sans effet).
+  - REQUÊTE POUR LE PILOTE (poste, serveur arrêté ou copie à froid ; prod : lecture seule, user prévenu) :
+    `SELECT citation_name_norm, enabled, category, subcategory, image_path, tier_targets FROM citation_mappings WHERE citation_name_norm IN ('pulse_carbine_mastery', 'paria_weapons_mastery');`
+    attendu : 2 lignes, `enabled = true`, `pulse_carbine_mastery` en catégorie `weapon` avec l'image `HI_Commendations_Carabine.png`.
+    Si la ligne manque ou `enabled` est faux : `levelup seed citation-mappings` (serveur arrêté, un seul écrivain sur la metadata), sans
+    recalcul requis pour l'affichage (les totaux viennent de `match_citations_latest`). Compter aussi : `SELECT count(*), count(*) FILTER
+    (WHERE enabled IS NOT FALSE) FROM citation_mappings;` attendu 110 et 103.
+  - Storm (D-13) : aucune citation ajoutée ; l'équivalent Infinite est la Carabine à impulsion (`pulse_carbine_mastery`, déjà au seed
+    avec son image) ; entrée « [dette/citations-2026-10-16] » retirée du backlog, trois lignes soldées retirées de `REGISTRE_REPORTS.md`.
+  - Gate (sorties réelles, un seul `go` à la fois, `GOCACHE=%LOCALAPPDATA%\go-build-backlog1016`) : `go test ./internal/progression/...
+    ./internal/analysis/... ./internal/games/...` : tous `ok` (66 paquets) ; `go test -tags=integration -p 1 ./internal/progression/...
+    ./internal/analysis/` : `ok` (profile 27 s) ; `go test ./internal/archlint/ ./internal/api/... ./internal/domain/title/... ./internal/ops/` :
+    `ok` (un premier passage d'archlint a échoué sur `TestNoRawKillScopeLiteral`, corrigé) ; `golangci-lint run --new-from-rev=HEAD~1`
+    (`./internal/analysis/ ./internal/progression/profile/ ./internal/games/halo_infinite/`, avec et sans `-tags=integration`) :
+    `0 issues`. Aucun test renommé ni retiré : la baseline JSONL n'est pas touchée.

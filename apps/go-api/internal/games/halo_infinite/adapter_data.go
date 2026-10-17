@@ -177,7 +177,7 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapPveFirefight:       games.CapSupported,
 		games.CapTimeseries:         games.CapNotExposed,
 		games.CapScoreboardExtra:    games.CapNotExposed,
-		games.CapCitationsEngine:    games.CapNotExposed,
+		games.CapCitationsEngine:    games.CapSupported,
 		games.CapEngagement:         games.CapSupported,
 		games.CapBattlePass:         games.CapSupported,
 		games.CapChallenges:         games.CapSupported,

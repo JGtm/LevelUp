@@ -23,7 +23,8 @@
 # Pour halo_infinite, certaines clés sont not_exposed/degraded parce que la
 # migration de l'adapter (Phase 1.7a/B/C) ne les a pas encore câblées — l'app
 # sert ces surfaces via les chemins LEGACY. Ce n'est PAS une absence de données
-# (ex. la page timeseries et les citations tournent en prod via le legacy).
+# (ex. la page timeseries tourne en prod via le legacy). Les citations, elles, sont déclarées
+# supported : le moteur dérivé est ce que le titre sert, quel que soit le chemin de lecture.
 # Pour un titre servi UNIQUEMENT par l'adapter (ex. un 2e titre), ces statuts
 # == son plafond RÉEL : à régler d'après ce que SA source fournit, pas en
 # recopiant halo_infinite.
@@ -47,7 +48,7 @@ schema_version = 1
 "pve.firefight_stats"    = "supported"
 "analytics.timeseries"   = "not_exposed"
 "match.scoreboard.extra" = "not_exposed"
-"citations.engine"       = "not_exposed"
+"citations.engine"       = "supported" # moteur de citations dérivé (LoadMatchCitations, page Citations, tuiles) : servi en production pour Infinite
 # engagement.score (chantier F7 — double porte) : reflete ce que le titre PEUT
 # fournir. supported = coefficients calibres valides -> score servi avec
 # calibration=validated ; degraded = signaux OK mais calibration provisoire ->

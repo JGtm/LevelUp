@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -108,8 +109,9 @@ func TestComputeFKFD_Halo5RepliSurLesFrags(t *testing.T) {
 			INSERT INTO match_kill_events (match_id, decode_pass, decoder_rev, publishable, time_ms,
 				victim_gamertag, victim_xuid, feed_killer_gamertag, feed_killer_xuid, feed_present,
 				assist_known, assist_extra_count, read_path, read_origin)
-			VALUES (?, ?, 'test', TRUE, ?, ?, ?, ?, ?, TRUE, FALSE, 0, 'kill-feed', 'credit-seul')`,
-			k.match, "pairs-"+k.match, k.ms, k.victim, k.victim, k.killer, k.killer); err != nil {
+			VALUES (?, ?, 'test', TRUE, ?, ?, ?, ?, ?, TRUE, FALSE, 0, ?, ?)`,
+			k.match, "pairs-"+k.match, k.ms, k.victim, k.victim, k.killer, k.killer,
+			killscope.ReadPathLiveFeed, killscope.OriginCreditOnly); err != nil {
 			t.Fatalf("match_kill_events %s: %v", k.match, err)
 		}
 	}
