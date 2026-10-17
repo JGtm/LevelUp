@@ -91,6 +91,16 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
 - [x] T5.2 Entrée `.ai/thought_log.md` ; découvertes hors périmètre listées au rapport.
 - [x] T5.3 Commits sur `feat/retours-tactique` uniquement, un par étape ; pas de push.
 
+### T6 — Libellés d'état sans action ni jargon (retour du 2026-10-17)
+- [x] T6.1 « Film à réanalyser » retiré (l'utilisateur n'a aucun contrôle dessus) : constat factuel sur la donnée,
+      « Séquence absente de l'analyse du film ». Code machine renommé `sequence_film_clock_missing` (erreur Go
+      `ErrSequenceFilmSansHorloge`), cause web `film_sans_horloge`, clés `tactical.mort.seq_missing_clock_*`.
+- [x] T6.2 Relecture des autres états (FR et EN, Go et web) : « Film non analysé », « Film en cours d'analyse », « Rayon du
+      radar inconnu », « Position de la mort absente », « Séquence indisponible », « La séquence se lit sur les morts » sont
+      des constats, inchangés ; messages d'erreur Go de `port.ErrSequence*` neutralisés (plus d'« artefact »). Garde-rail :
+      test de chaînes sur `tactical.mort.seq_missing_*`, `seq_only_deaths_*`, `seq_pending`, `seq_loading` (aucun mot de
+      réanalyse, cuisson, artefact, reconstruction, relance).
+
 ## 3. Hors périmètre
 
 Activation du rejeu en prod (release) ; bots dans les positions ; autres pages.
@@ -99,7 +109,7 @@ Activation du rejeu en prod (release) ; bots dans les positions ; autres pages.
 
 ### T1 (2026-10-17)
 - Causes servies (404, code dans le corps ; `handlers/tactical_sequence.go` `sequenceCauses`) :
-  `sequence_analysis_pending`, `sequence_film_not_analysed`, `sequence_film_to_reanalyse`,
+  `sequence_analysis_pending`, `sequence_film_not_analysed`, `sequence_film_clock_missing`,
   `sequence_map_unmeasured`, `sequence_no_death_position`. Le refus (`replay_not_available`) garde
   match non ouvrable, carte étrangère, forme invalide et garde du rejeu.
 - « Analyse en cours » = cause `replay` du résolveur partagé (`AnalysisPendingResolver`), jamais une

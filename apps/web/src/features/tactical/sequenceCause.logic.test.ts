@@ -20,7 +20,7 @@ describe('cause d’une requête en échec', () => {
   it('chaque code servi par la route donne sa cause', () => {
     expect(causeDeLErreur(erreur(CODE_SEQUENCE.analyseEnCours))).toBe('analyse_en_cours')
     expect(causeDeLErreur(erreur(CODE_SEQUENCE.filmNonAnalyse))).toBe('film_non_analyse')
-    expect(causeDeLErreur(erreur(CODE_SEQUENCE.filmAReanalyser))).toBe('film_a_reanalyser')
+    expect(causeDeLErreur(erreur(CODE_SEQUENCE.filmSansHorloge))).toBe('film_sans_horloge')
     expect(causeDeLErreur(erreur(CODE_SEQUENCE.carteSansRayon))).toBe('carte_sans_rayon')
     expect(causeDeLErreur(erreur(CODE_SEQUENCE.sansPosition))).toBe('sans_position')
   })

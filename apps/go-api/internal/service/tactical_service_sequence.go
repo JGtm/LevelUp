@@ -15,7 +15,7 @@ package service
 // `instantAffiche` (tactical_service_cellule_horloge.go), le T0 du registre comme pour les tuiles.
 //
 // UNE SEQUENCE ABSENTE DIT POURQUOI (tactical_service_sequence_cause.go) : analyse du film en cours,
-// film non analyse (pas d artefact), film a reanalyser (`originMs` ou echelle de temps absents),
+// film non analyse (pas de rejeu construit), film sans horloge (`originMs` ou echelle de temps absents),
 // carte sans rayon de radar, victime sans position a sa mort — une erreur typee par cause
 // (`port.ErrSequence*`). Un match que l appelant n a pas joue, une forme invalide ou une carte
 // etrangere restent un REFUS (`port.ErrReplayNotAvailable`), indiscernable d un match sans rejeu
@@ -72,7 +72,7 @@ func (s *TacticalService) Sequence(ctx context.Context, req domain.TacticalSeque
 		return out, s.causeDeLaSequence(ctx, req, s.causeArtefactAbsent(ctx, req.MatchID))
 	}
 	if pistes.OriginMs == nil || pistes.FrameIntervalMS <= 0 {
-		return out, s.causeDeLaSequence(ctx, req, port.ErrSequenceFilmAReanalyser)
+		return out, s.causeDeLaSequence(ctx, req, port.ErrSequenceFilmSansHorloge)
 	}
 	entree := s.acteursDeLaSequence(ctx, req, pistes)
 	entree.FrameIntervalMs = pistes.FrameIntervalMS

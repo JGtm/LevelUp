@@ -197,7 +197,7 @@ describe('le parcours : zone, mort choisie, étapes, retour', () => {
 describe('une mort choisie montre TOUJOURS un état : la séquence, ou pourquoi elle manque', () => {
   const CAS: { code: string; etat: string; titre: string; description: RegExp }[] = [
     { code: 'sequence_film_not_analysed', etat: 'film_non_analyse', titre: 'Film non analysé', description: /n'a pas été analysé/ },
-    { code: 'sequence_film_to_reanalyse', etat: 'film_a_reanalyser', titre: 'Film à réanalyser', description: /l'horloge dont la séquence a besoin/ },
+    { code: 'sequence_film_clock_missing', etat: 'film_sans_horloge', titre: "Séquence absente de l'analyse du film", description: /ne contient pas la séquence de cette mort/ },
     { code: 'sequence_map_unmeasured', etat: 'carte_sans_rayon', titre: 'Rayon du radar inconnu', description: /portée du radar de cette variante/ },
     { code: 'sequence_no_death_position', etat: 'sans_position', titre: 'Position de la mort absente', description: /position de la victime/ },
     { code: 'autre_chose_du_serveur', etat: 'inconnue', titre: 'Séquence indisponible', description: /n'a pas pu être lue/ },

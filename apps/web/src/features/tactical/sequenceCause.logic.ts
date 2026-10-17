@@ -20,7 +20,7 @@ export const CODE_SEQUENCE = {
   refus: 'replay_not_available',
   analyseEnCours: 'sequence_analysis_pending',
   filmNonAnalyse: 'sequence_film_not_analysed',
-  filmAReanalyser: 'sequence_film_to_reanalyse',
+  filmSansHorloge: 'sequence_film_clock_missing',
   carteSansRayon: 'sequence_map_unmeasured',
   sansPosition: 'sequence_no_death_position',
 } as const
@@ -29,7 +29,7 @@ export const CODE_SEQUENCE = {
 export type CauseDeSequence =
   | 'analyse_en_cours'
   | 'film_non_analyse'
-  | 'film_a_reanalyser'
+  | 'film_sans_horloge'
   | 'carte_sans_rayon'
   | 'sans_position'
   | 'inconnue'
@@ -37,7 +37,7 @@ export type CauseDeSequence =
 const CAUSE_PAR_CODE: Readonly<Record<string, CauseDeSequence>> = {
   [CODE_SEQUENCE.analyseEnCours]: 'analyse_en_cours',
   [CODE_SEQUENCE.filmNonAnalyse]: 'film_non_analyse',
-  [CODE_SEQUENCE.filmAReanalyser]: 'film_a_reanalyser',
+  [CODE_SEQUENCE.filmSansHorloge]: 'film_sans_horloge',
   [CODE_SEQUENCE.carteSansRayon]: 'carte_sans_rayon',
   [CODE_SEQUENCE.sansPosition]: 'sans_position',
 }

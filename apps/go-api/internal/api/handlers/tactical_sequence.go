@@ -83,7 +83,7 @@ var sequenceCauses = []struct {
 }{
 	{port.ErrSequenceAnalyseEnCours, "sequence_analysis_pending"},
 	{port.ErrSequenceFilmNonAnalyse, "sequence_film_not_analysed"},
-	{port.ErrSequenceFilmAReanalyser, "sequence_film_to_reanalyse"},
+	{port.ErrSequenceFilmSansHorloge, "sequence_film_clock_missing"},
 	{port.ErrSequenceCarteNonMesuree, "sequence_map_unmeasured"},
 	{port.ErrSequenceSansPosition, "sequence_no_death_position"},
 }

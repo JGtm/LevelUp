@@ -69,9 +69,9 @@ export function getMortText(m: Formateur) {
         title: m('tactical.mort.seq_missing_film_title') as string,
         description: m('tactical.mort.seq_missing_film_desc') as string,
       },
-      film_a_reanalyser: {
-        title: m('tactical.mort.seq_missing_reanalyse_title') as string,
-        description: m('tactical.mort.seq_missing_reanalyse_desc') as string,
+      film_sans_horloge: {
+        title: m('tactical.mort.seq_missing_clock_title') as string,
+        description: m('tactical.mort.seq_missing_clock_desc') as string,
       },
       carte_sans_rayon: {
         title: m('tactical.mort.seq_missing_radius_title') as string,

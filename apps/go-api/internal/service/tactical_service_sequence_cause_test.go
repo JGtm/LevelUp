@@ -16,7 +16,7 @@ import (
 // toutesLesCausesDeSequence : les causes « donnees » (hors refus) ; chaque cas de
 // TestSequence_Indisponible verifie qu'une cause ne se lit pas comme une autre.
 var toutesLesCausesDeSequence = []error{
-	port.ErrSequenceAnalyseEnCours, port.ErrSequenceFilmNonAnalyse, port.ErrSequenceFilmAReanalyser,
+	port.ErrSequenceAnalyseEnCours, port.ErrSequenceFilmNonAnalyse, port.ErrSequenceFilmSansHorloge,
 	port.ErrSequenceCarteNonMesuree, port.ErrSequenceSansPosition, port.ErrReplayNotAvailable,
 }
 
@@ -67,15 +67,15 @@ func TestSequence_SansArtefact_SansResolveurOuLectureEnEchec(t *testing.T) {
 	}
 }
 
-// Un artefact present sans horloge est « a reanalyser », meme quand l'analyse du match est en cours :
+// Un artefact present sans horloge est « sans horloge », meme quand l'analyse du match est en cours :
 // la cause `replay` ne s'applique qu'a un artefact ABSENT.
 func TestSequence_ArtefactSansHorloge_PasEnCours(t *testing.T) {
 	repo, store := corpusSequence()
 	store.pistes.OriginMs = nil
 	probe := &probeRepoFactice{probes: map[string]domain.AnalysisProbe{"m2": synchroIlYA(time.Hour, nil)}}
 	svc := serviceSequence(repo, store).WithAnalysisPending(resolveurDeTest(probe, true))
-	if _, err := svc.Sequence(context.Background(), demandeSequence()); !errors.Is(err, port.ErrSequenceFilmAReanalyser) {
-		t.Fatalf("err = %v, want film a reanalyser", err)
+	if _, err := svc.Sequence(context.Background(), demandeSequence()); !errors.Is(err, port.ErrSequenceFilmSansHorloge) {
+		t.Fatalf("err = %v, want film sans horloge", err)
 	}
 	if probe.appels != 0 {
 		t.Errorf("%d lecture(s) de l'avancement pour un artefact present", probe.appels)

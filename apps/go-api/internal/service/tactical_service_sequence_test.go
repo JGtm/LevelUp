@@ -142,11 +142,11 @@ func TestSequence_Indisponible(t *testing.T) {
 		want error
 	}{
 		{"artefact absent", func(_ *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore { s.pistes = nil; return s }, port.ErrSequenceFilmNonAnalyse},
-		{"origine non etablie", func(_ *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore { s.pistes.OriginMs = nil; return s }, port.ErrSequenceFilmAReanalyser},
+		{"origine non etablie", func(_ *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore { s.pistes.OriginMs = nil; return s }, port.ErrSequenceFilmSansHorloge},
 		{"sans echelle de temps", func(_ *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore {
 			s.pistes.FrameIntervalMS = 0
 			return s
-		}, port.ErrSequenceFilmAReanalyser},
+		}, port.ErrSequenceFilmSansHorloge},
 		{"match d'un autre joueur", func(r *mockTacticalRepo, s *fakePistes) port.TacticalSequenceStore {
 			r.ouvrables = map[string]time.Time{}
 			return s

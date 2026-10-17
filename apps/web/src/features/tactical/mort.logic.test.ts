@@ -159,6 +159,17 @@ describe('les mots de la lecture des coéquipiers', () => {
       expect(texte).not.toMatch(/non mesur|\bheure\b|\b(ma|mes|mon|moi|notre)\b/i)
     }
   })
+
+  it('les états vides de la séquence sont des constats : aucune action de l’utilisateur, aucun vocabulaire interne', async () => {
+    const { tacticalManifest } = await import('@/lib/i18n/generated/tactical')
+    const textes = Object.entries(tacticalManifest as Record<string, { fr: string; en: string }>)
+      .filter(([cle]) => /^tactical\.mort\.seq_(missing_|only_deaths_|pending|loading)/.test(cle))
+      .flatMap(([, v]) => [v.fr, v.en])
+    expect(textes.length).toBeGreaterThanOrEqual(18)
+    for (const texte of textes) {
+      expect(texte).not.toMatch(/r[ée]analys|re-?analys|analyse[a-z ]* again|cuisson|re-?cuir|bake|artefact|artifact|reconstru|rebuild|relanc|\bretry\b|\bà (refaire|lancer)\b/i)
+    }
+  })
 })
 
 describe('séquence : plein / creux selon le rayon, publié par le serveur', () => {

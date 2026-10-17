@@ -635,13 +635,13 @@ en = "Film not analysed"
 fr = "La séquence se construit à partir du film du match, qui n'a pas été analysé."
 en = "The sequence is built from the match film, which has not been analysed."
 
-[tactical.mort.seq_missing_reanalyse_title]
-fr = "Film à réanalyser"
-en = "Film to analyse again"
+[tactical.mort.seq_missing_clock_title]
+fr = "Séquence absente de l'analyse du film"
+en = "Sequence missing from the film analysis"
 
-[tactical.mort.seq_missing_reanalyse_desc]
-fr = "L'analyse du film de ce match ne donne pas l'horloge dont la séquence a besoin."
-en = "The analysis of this match's film does not give the clock the sequence needs."
+[tactical.mort.seq_missing_clock_desc]
+fr = "L'analyse de ce film ne contient pas la séquence de cette mort."
+en = "The analysis of this film does not contain the sequence for this death."
 
 [tactical.mort.seq_missing_radius_title]
 fr = "Rayon du radar inconnu"
