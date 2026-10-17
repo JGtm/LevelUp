@@ -408,7 +408,7 @@ export function ReplayCanvas({
     doc, view: canvasView, ink: neutralInk, outline: markInk.outline,
   })
   // LA COURONNE VIP (schéma 22) : marqueur sur le VIP courant, relu image par image (useReplayVipCrown).
-  const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, ink: neutralInk, reducedMotion })
+  const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, allegiance, teamColorOf, neutral: floorStyle.edge, outline: markInk.outline, reducedMotion })
   // LE PORTEUR DU CRÂNE d'Oddball (schéma 23) : crâne sur le porteur courant, relu image par image.
   const skullCarrier = useReplaySkullCarrier({ doc, view: canvasView, enabled: showSkullCarrier, ink: neutralInk, outline: markInk.outline, reducedMotion })
   // LA BOMBE d'Assaut (schéma 30) : portée sur son porteur, au sol au dernier point du lâcheur.

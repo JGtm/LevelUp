@@ -34,21 +34,39 @@ describe('drawVipCrown', () => {
     pad: 0,
   }
 
+  // Un contexte qui consigne l'encre au moment de chaque remplissage.
+  function recordingCtx() {
+    const fills: string[] = []
+    const ctx = {
+      beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), rect: vi.fn(), arc: vi.fn(),
+      stroke: vi.fn(),
+      fillStyle: '',
+      fill: vi.fn(function (this: { fillStyle: string }) { fills.push(this.fillStyle) }),
+    }
+    return { ctx: ctx as unknown as CanvasRenderingContext2D, fills, raw: ctx }
+  }
+  const style = (inkOf: (xuid: string) => string) => ({ inkOf, outline: 'fond', reducedMotion: true })
+
   it('ne dessine pas un VIP non localisable (aucune position propre à inventer)', () => {
-    const ctx = { beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), fill: vi.fn() } as unknown as CanvasRenderingContext2D
-    const layer: VipCrownInput = { style: { ink: '#fff', reducedMotion: true }, posOf: () => null }
+    const { ctx, raw } = recordingCtx()
+    const layer: VipCrownInput = { style: style(() => 'neutre'), posOf: () => null }
     drawVipCrown(ctx, layer, [period({ t0: 0, t1: 100 })], view, 10)
-    expect(ctx.fill).not.toHaveBeenCalled()
+    expect(raw.fill).not.toHaveBeenCalled()
   })
 
-  it('dessine la couronne sur la position relue du VIP courant', () => {
-    const fill = vi.fn()
-    const ctx = { beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), fill } as unknown as CanvasRenderingContext2D
-    const layer: VipCrownInput = {
-      style: { ink: '#fff', reducedMotion: true },
-      posOf: () => ({ x: 50, y: 50 }),
-    }
+  it('dessine la couronne sur la position relue du VIP courant, liseré puis forme', () => {
+    const { ctx, raw } = recordingCtx()
+    const layer: VipCrownInput = { style: style(() => 'neutre'), posOf: () => ({ x: 50, y: 50 }) }
     drawVipCrown(ctx, layer, [period({ t0: 0, t1: 100 })], view, 10)
-    expect(fill).toHaveBeenCalledTimes(1)
+    expect(raw.stroke).toHaveBeenCalledTimes(1)
+    expect(raw.fill).toHaveBeenCalledTimes(1)
+  })
+
+  it('peint chaque couronne à l’encre du camp de son VIP', () => {
+    const { ctx, fills } = recordingCtx()
+    const inkOf = (xuid: string) => (xuid === 'allie' ? 'encre-alliee' : 'encre-adverse')
+    const layer: VipCrownInput = { style: style(inkOf), posOf: () => ({ x: 50, y: 50 }) }
+    drawVipCrown(ctx, layer, [period({ xuid: 'allie' }), period({ xuid: 'adverse' })], view, 10)
+    expect(fills).toEqual(['encre-alliee', 'encre-adverse'])
   })
 })
