@@ -38,6 +38,7 @@ var canonicalOrder = []string{
 	"seed_custom_vengeur_medal",                             // metadata
 	"seed_clash_of_kings_medal",                             // metadata
 	"fix_clash_of_kings_placeholder",                        // metadata
+	"fix_watch_the_throne_medal",                            // metadata
 	"fix_meganaut_fr_description",                           // metadata
 	"fix_super_fiesta_fr_label",                             // metadata
 	"seed_playlist_fr_translations",                         // metadata

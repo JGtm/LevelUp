@@ -166,17 +166,39 @@ func buildVipCrown(scan VipCrownScan, ctx matchClock) ([]VipPeriod, *VipCrownCov
 			cov.NoBridge++
 			continue
 		}
-		f0 := ctx.frameOfMatchMS(r.t0MS)
-		if f0 < 0 || f0 >= ctx.frames {
+		f0, f1, ok := vipPeriodFrames(ctx, r)
+		if !ok {
 			cov.OutOfWindow++
 			continue
 		}
-		f1 := max(clampFrame(ctx.frameOfMatchMS(r.t1MS), ctx.frames), f0)
 		out = append(out, VipPeriod{XUID: r.xuid, T0: f0, T1: f1, Closed: r.closed})
 		cov.tally(r)
 	}
 	cov.Periods = len(out)
 	return out, cov
+}
+
+// vipPeriodFrames pose une periode de port sur l'axe de frames du rejeu, ou rend ok=false si
+// elle ne le recoupe pas.
+//
+// UNE PERIODE OUVERTE AVANT LA FRAME 0 COMMENCE A LA FRAME 0 quand elle se ferme apres : les
+// premiers VIP sont designes au lancement de la partie, pendant l'intro, avant le premier paquet
+// de position — et portent la couronne bien au-dela. Les jeter effacait le VIP de chaque camp
+// jusqu'a sa premiere mort. Seule une periode FERMEE avant la frame 0, ou ouverte apres la
+// derniere, est hors fenetre (un axe sans echelle rend -1 aux deux bouts : hors fenetre aussi).
+func vipPeriodFrames(ctx matchClock, r vipRawPeriod) (f0, f1 int, ok bool) {
+	f0 = ctx.frameOfMatchMS(r.t0MS)
+	if f0 >= ctx.frames {
+		return 0, 0, false
+	}
+	end := ctx.frameOfMatchMS(r.t1MS)
+	if f0 < 0 {
+		if end < 0 {
+			return 0, 0, false
+		}
+		f0 = 0
+	}
+	return f0, max(clampFrame(end, ctx.frames), f0), true
 }
 
 // attachVipCrown pose les periodes de la couronne sur le document, avec leur couverture.

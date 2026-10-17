@@ -11,8 +11,13 @@
  * que la période ne publie qu'un intervalle. Sans position, la couronne ne se dessine pas — elle
  * n'a pas de place propre. VIP EMBARQUÉ : c'est la position du VÉHICULE qui répond (décision
  * produit du 2026-09-05, cf. l'en-tête de `carrierPosition.ts`).
+ *
+ * L'ENCRE SUIT LE CAMP DU VIP VU DU JOUEUR REGARDÉ (`FilmAllegiance.ofXuid`), comme le drapeau :
+ * la couleur qu'il a choisie pour allié et adverse. Sans allégeance, le neutre du thème.
  */
 import { useCallback, useMemo } from 'react'
+
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { useCarrierPosAt } from '../model/carrierPosition'
 import { type CanvasView } from '../model/replayView'
@@ -24,8 +29,14 @@ interface UseReplayVipCrownArgs {
   view: CanvasView
   /** Faux quand le calque est éteint : rien n'est dessiné. */
   enabled: boolean
-  /** L'encre de la couronne, déjà résolue par l'appelant (token du thème). */
-  ink: string
+  /** L'allégeance lue dans le film, vue du point de vue : le camp de chaque VIP. */
+  allegiance: Pick<FilmAllegiance, 'ofXuid'>
+  /** Encre d'un camp vu de la page (tokens déjà résolus par l'appelant). */
+  teamColorOf: (ally: boolean) => string
+  /** Encre servie quand le camp est inconnu (token du thème). */
+  neutral: string
+  /** Encre du FOND, pour le liseré (la même que le drapeau et le crâne). */
+  outline: string
   reducedMotion: boolean
 }
 
@@ -46,7 +57,10 @@ export function useReplayVipCrown({
   doc,
   view,
   enabled,
-  ink,
+  allegiance,
+  teamColorOf,
+  neutral,
+  outline,
   reducedMotion,
 }: UseReplayVipCrownArgs): ReplayVipCrown {
   const periods = doc.vipCrown
@@ -55,9 +69,17 @@ export function useReplayVipCrown({
   // sinon celle du bipède.
   const posOf = useCarrierPosAt(doc)
 
+  const inkOf = useCallback(
+    (xuid: string) => {
+      const ally = allegiance.ofXuid(xuid)
+      return ally === null ? neutral : teamColorOf(ally)
+    },
+    [allegiance, neutral, teamColorOf],
+  )
+
   const layer = useMemo<VipCrownInput>(
-    () => ({ style: { ink, reducedMotion }, posOf }),
-    [ink, reducedMotion, posOf],
+    () => ({ style: { inkOf, outline, reducedMotion }, posOf }),
+    [inkOf, outline, reducedMotion, posOf],
   )
 
   const paint = useCallback(

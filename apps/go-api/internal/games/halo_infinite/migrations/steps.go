@@ -1527,6 +1527,8 @@ func Steps() []migration.Migration {
 	steps = append(steps, playerPrestigeSourceSteps()...)
 	// RACINE metadata (asset_translations + fix_super_fiesta) — dernier root → b26.
 	steps = append(steps, metadataRootSteps()...)
+	// Médaille VIP Watch the Throne, absente du catalogue officiel (steps_medal_watch_the_throne.go).
+	steps = append(steps, medalWatchTheThroneSteps()...)
 	// God-file shared (34 steps, RACINE shared_matches_v2 : match_registry/participants/…) → b23.
 	steps = append(steps, sharedCoreSteps()...)
 	// Manches gagnées par camp (source CoreStats.RoundsWon/Lost/Tied) : la seule grandeur
