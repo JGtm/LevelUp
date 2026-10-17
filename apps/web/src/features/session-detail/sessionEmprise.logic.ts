@@ -18,6 +18,11 @@
  * première clé de la famille) — une section absente laissait croire à un bug. Capability absente
  * (`film_unsupported`) : famille absente, comme avant.
  *
+ * AUCUN MATCH CONCERNÉ. Une carte tirée de la feuille de match dont aucun match de la session n'est concerné
+ * (l'objectif sans match à objectif, la répartition des frags sans frag) reste affichée avec son constat
+ * (`sessionScopeEmpties`, `ScopeEmptyCard`) : un bloc qui disparaît se lit comme un bug. Capability absente
+ * (`objectiveExpected` faux) : carte absente.
+ *
  * Pur : aucun React, aucune couleur, aucune chaîne de langue.
  */
 import type { EmpriseMatchIndex, ControlRow, MatchGrid, ResourceFil } from '@/features/squad/emprise/emprise.logic'
@@ -29,6 +34,7 @@ import { objectiveMatches } from '@/features/squad/formes/model/objectives'
 import {
   buildObjectiveBalance,
   buildSoloObjectiveSheet,
+  objectiveExpected,
   type BalanceFamily,
   type SoloObjectiveSheet,
 } from '@/features/squad/objectif/objectif.logic'
@@ -53,6 +59,7 @@ import type {
   SquadFormesBlock,
   TimeseriesLivesNearTeammate,
 } from '@/lib/api/types'
+import type { ScopeEmptyKind } from '@/components/ui/scope-empty-text'
 import { filmGapOfBlock, type FilmGap } from '@/features/_shared/filmGap/filmGap.logic'
 import { outcomeCodeToValue } from '@/lib/outcome'
 
@@ -136,6 +143,8 @@ export interface SessionEmpriseModels {
   objective: SquadFormesBlock | null
   balance: BalanceFamily[]
   soloSheet: SoloObjectiveSheet | null
+  /** Le titre mesure l'objectif mais aucun match de la session n'est à objectif : la carte dit le constat. */
+  objectiveEmpty: boolean
 }
 
 /** buildSessionEmpriseModels — tous les modèles d'une colonne, depuis ses blocs (aucune requête). */
@@ -159,6 +168,7 @@ export function buildSessionEmpriseModels(
     objective,
     balance: objective ? buildObjectiveBalance(objective) : [],
     soloSheet: objective ? buildSoloObjectiveSheet(objective) : null,
+    objectiveEmpty: objective == null && objectiveExpected(formes),
   }
 }
 
@@ -239,9 +249,30 @@ export function sessionPlayerName(col: SessionColumnBlocks, fallback: string): s
 export function sessionCardsPresence(col: SessionColumnBlocks, m: SessionEmpriseModels): SessionCardsPresence {
   const drawn = drawnCards(col, m)
   const gaps = sessionFilmGaps(col, drawn)
+  const empties = sessionScopeEmpties(col, m, drawn)
   return Object.fromEntries(
-    (Object.keys(drawn) as (keyof SessionCardsPresence)[]).map((key) => [key, drawn[key] || gaps[key] != null]),
+    (Object.keys(drawn) as (keyof SessionCardsPresence)[]).map((key) => [
+      key,
+      drawn[key] || gaps[key] != null || empties[key] != null,
+    ]),
   ) as unknown as SessionCardsPresence
+}
+
+/**
+ * sessionScopeEmpties — les cartes qui restent affichées faute de match concerné, avec ce qui manque :
+ * la répartition des frags d'une session sans frag, l'objectif d'une session sans match à objectif (carte
+ * d'ancrage `objective_balance`, sous l'intertitre « Objectif »). Une colonne sans session (`entry` nul)
+ * n'a rien à dire.
+ */
+export function sessionScopeEmpties(
+  col: Pick<SessionColumnBlocks, 'entry'>,
+  m: Pick<SessionEmpriseModels, 'objectiveEmpty'>,
+  drawn: SessionCardsPresence,
+): Partial<Record<keyof SessionCardsPresence, ScopeEmptyKind>> {
+  const out: Partial<Record<keyof SessionCardsPresence, ScopeEmptyKind>> = {}
+  if (col.entry != null && !drawn.frag_donut) out.frag_donut = 'frags'
+  if (m.objectiveEmpty) out.objective_balance = 'objective'
+  return out
 }
 
 /** Les cartes qui DESSINENT quelque chose, sans les cartes d'état. */

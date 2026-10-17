@@ -45,7 +45,7 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
       soirée après soirée » (Soirées précédentes) : bloc affiché avec « Aucun match à objectif sur
       ce périmètre » (FR) / EN équivalent, au lieu d'être retiré. Le prédicat d'onglet
       (`empriseTabHasContent`) reste cohérent.
-- [ ] Q2.2 Sessions et Séries temporelles : Objectif, bandeau d'objectifs.
+- [x] Q2.2 (Sessions : `sessionEmprise.logic.ts` `objectiveEmpty` + `sessionScopeEmpties`, carte d'ancrage `objective_balance` dans `useSessionEmpriseCards.tsx` ; Séries temporelles : `usages.logic.ts objectiveEmpty` + `ScopeEmptySection` dans `TimeseriesPage.usages.tsx`, affiché seulement si l'onglet a autre chose à montrer ; bandeau : `TimeseriesObjectiveCard.tsx` constat `objectiveActions`) Sessions et Séries temporelles : Objectif, bandeau d'objectifs.
 - [ ] Q2.3 Anneau des frags (`FragSunburst` et cartes qui le portent) sans frag : bloc affiché,
       « Aucun frag sur ce périmètre » (réutiliser la clé `frags.toml` si elle convient).
 - [ ] Q2.4 Inventaire des autres blocs retirés pour « aucun match concerné » sur Escouade, Sessions,

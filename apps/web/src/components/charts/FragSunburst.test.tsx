@@ -193,14 +193,20 @@ describe('FragSunburst (composant SVG)', () => {
     expect(screen.getByText('18')).toBeInTheDocument()
   })
 
-  it('total 0 → rend null (aucune carte)', () => {
-    const { container } = render(<FragSunburst distribution={{ total_kills: 0, classes: [] }} />)
-    expect(container).toBeEmptyDOMElement()
+  it('total 0 → la carte reste, son titre gardé, avec le constat « Aucun frag sur ce périmètre » dans un bloc', () => {
+    render(<FragSunburst distribution={{ total_kills: 0, classes: [] }} />)
+    const card = screen.getByTestId('frag-sunburst-empty')
+    expect(card).toHaveTextContent('Répartition des frags')
+    expect(card).toHaveTextContent('Aucun frag sur ce périmètre')
+    expect(card.querySelector('.border-dashed')).not.toBeNull()
+    expect(screen.queryByTestId('frag-sunburst')).toBeNull()
   })
 
-  it('distribution absente → rend null', () => {
-    const { container } = render(<FragSunburst distribution={null} />)
-    expect(container).toBeEmptyDOMElement()
+  it('distribution absente → même constat ; nu, le bloc parent de l’appelant porte le titre', () => {
+    render(<FragSunburst distribution={null} bare />)
+    const empty = screen.getByTestId('frag-sunburst-empty')
+    expect(empty).toHaveTextContent('Aucun frag sur ce périmètre')
+    expect(empty).not.toHaveTextContent('Répartition des frags')
   })
 
   it('I5 (V7.1) : heightPx fixe la hauteur du conteneur SVG (h-full, pas h-auto) — aligne la carte sur un graphe voisin de hauteur fixe', () => {

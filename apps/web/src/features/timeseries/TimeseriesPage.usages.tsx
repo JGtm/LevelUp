@@ -20,7 +20,9 @@
  * matchs n'est pas lu pour l'un d'eux au moins (`filmGapOfBlock`) : il garde alors son intertitre et un état
  * dans un bloc parent (« Analyse du film en cours » ou « Film non analysé »), jamais un trou. Sans rien à
  * montrer, l'onglet le DIT (bloc parent + pointillé dedans). Sans film (Halo 5), seuls les frags aux armes
- * spéciales de la feuille de match restent.
+ * spéciales de la feuille de match restent. L'objectif, tiré de la feuille de match, garde de même son
+ * intertitre quand aucun match du périmètre n'est à objectif (« Aucun match à objectif sur ce périmètre »,
+ * `ScopeEmptySection`) ; il ne se retire que si le titre ne mesure pas l'objectif.
  */
 import type { ReactNode } from 'react'
 import { useMemo } from 'react'
@@ -28,6 +30,7 @@ import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { SectionTitle } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { ScopeEmptySection } from '@/components/ui/scope-empty'
 import { FilmGapSection } from '@/features/_shared/filmGap/FilmGapSection'
 import { filmGapOfBlock } from '@/features/_shared/filmGap/filmGap.logic'
 import { FILM_GAP_TEXT } from '@/features/_shared/filmGap/filmGapStrings'
@@ -150,6 +153,9 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
         </Block>
       ) : (
         gap && <FilmGapSection title={ut.sections.lives} testId="usages-section-lives" gap={gap} t={gapText} />
+      )}
+      {!show.objectif && m.objectiveEmpty && (
+        <ScopeEmptySection title={ut.sections.objectif} kind="objective" locale={locale} testId="usages-section-objectif" />
       )}
       {show.objectif && (
         <Block id="objectif" title={ut.sections.objectif}>
