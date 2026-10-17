@@ -116,18 +116,25 @@ func loadKnownModesEN(ctx context.Context, meta *DB) []string {
 	defer cancel()
 	rows, err := meta.QueryRecovered(ctx2, selectDistinctModeEN)
 	if err != nil {
-		if !isTableNotFoundErr(err) {
-			slog.WarnContext(ctx, "fr_translations: loadKnownModesEN failed", "err", err)
-		}
+		slog.Log(ctx, degradedLookupLevel(ctx, err),
+			"fr_translations: loadKnownModesEN failed, variantes de mode non rattrapées", "err", err)
 		return nil
 	}
 	defer rows.Close()
 	var out []string
 	for rows.Next() {
 		var m string
-		if rows.Scan(&m) == nil && strings.TrimSpace(m) != "" {
+		if err := rows.Scan(&m); err != nil {
+			slog.Log(ctx, degradedLookupLevel(ctx, err), "fr_translations: loadKnownModesEN ligne illisible ignorée", "err", err)
+			continue
+		}
+		if strings.TrimSpace(m) != "" {
 			out = append(out, m)
 		}
+	}
+	if err := rows.Err(); err != nil {
+		slog.Log(ctx, degradedLookupLevel(ctx, err),
+			"fr_translations: loadKnownModesEN itération interrompue, liste partielle", "err", err, "modes", len(out))
 	}
 	return out
 }

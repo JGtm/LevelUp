@@ -191,9 +191,6 @@ type PlayerBatch struct {
 	// SkillRank : rating LUSR ou CSR pour ce match (1 row, PK=match_id).
 	SkillRank *SkillRankInsert `json:"skill_rank,omitempty"`
 
-	// LUSRComponents : breakdown des 8 composantes (si LUSR computed).
-	LUSRComponents []LUSRComponentInsert `json:"lusr_components,omitempty"`
-
 	// Citations : citations gagnées pour ce match.
 	Citations []CitationInsert `json:"citations,omitempty"`
 

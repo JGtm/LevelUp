@@ -122,7 +122,7 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 		// requête (SQL invalide, colonne renommée, conn timeout) — à SIGNALER avant la
 		// dégradation best-effort (parité loaders Synthesis/Session), pas à avaler. Le
 		// fallback weapon_labels seul (parité nom) reste servi pour ne pas casser l'UI.
-		slog.WarnContext(ctx, "weapon resolver: unified registry query failed, falling back to labels-only",
+		slog.Log(ctx, degradedLookupLevel(ctx, err), "weapon resolver: unified registry query failed, falling back to labels-only",
 			"title", titleSlug, "weapon_ids", len(unique), "err", err)
 		return resolveWeaponLabelsOnly(ctx, meta, unique)
 	}
@@ -130,16 +130,25 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 	for rows.Next() {
 		var idStr, label, labelEN, nameEN, weaponKey, role, class, family, faction string
 		if err := rows.Scan(&idStr, &label, &labelEN, &nameEN, &weaponKey, &role, &class, &family, &faction); err != nil {
+			slog.Log(ctx, degradedLookupLevel(ctx, err),
+				"weapon resolver: ligne du registre illisible ignorée", "title", titleSlug, "err", err)
 			continue
 		}
 		u, perr := strconv.ParseUint(idStr, 10, 64)
 		if perr != nil {
+			slog.WarnContext(ctx, "weapon resolver: identifiant d'arme illisible ignoré",
+				"title", titleSlug, "id", idStr, "err", perr)
 			continue
 		}
 		out[int64(u)] = weaponResolved{
 			label: label, labelEN: labelEN, nameEN: nameEN, weaponKey: weaponKey,
 			role: role, class: class, family: family, faction: faction,
 		}
+	}
+	if err := rows.Err(); err != nil {
+		slog.Log(ctx, degradedLookupLevel(ctx, err),
+			"weapon resolver: itération interrompue, armes partielles", "title", titleSlug,
+			"resolved", len(out), "err", err)
 	}
 	return out
 }
@@ -183,15 +192,27 @@ func resolveWeaponLabelsOnly(ctx context.Context, meta *DB, uniqueIDs []int64) m
 		" FROM weapon_labels WHERE weapon_id IN (" + strings.Join(parts, ",") + ")"
 	rows, err := meta.Query(ctx, query)
 	if err != nil {
+		slog.Log(ctx, degradedLookupLevel(ctx, err),
+			"weapon_labels: lecture des libellés d'armes en échec, armes sans libellé",
+			"err", err, "weapons", len(uniqueIDs))
 		return out
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id UBigint
 		var label, labelEN, nameEN string
-		if err := rows.Scan(&id, &label, &labelEN, &nameEN); err == nil && label != "" {
+		if err := rows.Scan(&id, &label, &labelEN, &nameEN); err != nil {
+			slog.Log(ctx, degradedLookupLevel(ctx, err),
+				"weapon_labels: ligne illisible ignorée", "err", err)
+			continue
+		}
+		if label != "" {
 			out[id.Int64()] = weaponResolved{label: label, labelEN: labelEN, nameEN: nameEN}
 		}
+	}
+	if err := rows.Err(); err != nil {
+		slog.Log(ctx, degradedLookupLevel(ctx, err),
+			"weapon_labels: itération interrompue, libellés partiels", "err", err, "resolved", len(out))
 	}
 	return out
 }

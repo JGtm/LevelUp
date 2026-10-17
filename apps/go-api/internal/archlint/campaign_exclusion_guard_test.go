@@ -15,7 +15,10 @@
 // ses utilisateurs (un seul signalement, au lieu de la déclarer deux fois).
 //
 // Lecteur = \b(match_participants|mv_player_matches)\b ET \bxuid\s*(=\s*\?|IN\s*\(), la
-// forme de projection « (… xuid = ?) AS … » étant retirée avant le test.
+// forme de projection « (… xuid = ?) AS … » étant retirée avant le test. Est aussi un lecteur le
+// registre (match_registry, v_match_full) lu SEUL sur une fenêtre de temps (une inégalité ou un
+// BETWEEN contre un paramètre) : le filtre joueur y vient d'ailleurs, par match_id, et aucun
+// `xuid = ?` n'y paraît (E5.6, plan backlog 2026-10-16).
 // Exclusion reconnue = le jeton (campaignExclusionToken / analysis.CampaignExclusionToken)
 // ou l'appel d'un résolveur listé dans resolveursCampagne, dans la déclaration ou dans une
 // constante-fragment qu'elle compose.
@@ -76,10 +79,20 @@ var (
 	sourceMatchsJoueur = regexp.MustCompile(`\b(match_participants|mv_player_matches|killer_victim_pairs|match_kill_events(_latest)?|medals_earned)\b`)
 	filtreXUID         = regexp.MustCompile(`(?i)(\bxuid|_xuid)\s*(=\s*\?|IN\s*\()`)
 	projectionXUID     = regexp.MustCompile(`(?i)\([^()]*\bxuid\s*=\s*\?[^()]*\)\s*AS\b`)
+	// Lecteur du registre SEUL sur une fenêtre de temps : le filtre joueur est appliqué
+	// ailleurs (player DB, par match_id), donc aucun `xuid = ?` n'y paraît (E5.6 du plan
+	// backlog 2026-10-16 ; loadLUSRMatchIDsInWindow en était un).
+	lectureRegistre = regexp.MustCompile(`(?i)\bFROM\s+(match_registry|v_match_full)\b`)
+	// Une borne = une inégalité contre un paramètre. `<>` (différent de) n'en est pas une.
+	fenetreDeTemps = regexp.MustCompile(`(?i)(>=|<=|<|(?:^|[^<])>)\s*\?|\bBETWEEN\s+\?`)
 )
 
-// estLecteurCampagne applique le critère de D-5 à un texte SQL agrégé.
+// estLecteurCampagne applique le critère de D-5 à un texte SQL agrégé : les matchs d'un joueur
+// (source de matchs ET filtre xuid), ou le registre lu sur une fenêtre de temps.
 func estLecteurCampagne(texte string) bool {
+	if lectureRegistre.MatchString(texte) && fenetreDeTemps.MatchString(texte) {
+		return true
+	}
 	if !sourceMatchsJoueur.MatchString(texte) {
 		return false
 	}

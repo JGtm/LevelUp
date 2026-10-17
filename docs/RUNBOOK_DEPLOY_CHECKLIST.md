@@ -173,6 +173,31 @@ Each item cites its source so it can be re-verified against the code. Structure:
         ./apps/go-api/internal/platform/auth/
       ```
 
+- [ ] **One-shot data catch-up: the skill bit of 157 Halo Infinite matches (operator gesture,
+      backlog 2026-10-16 E5.9).** 157 Halo Infinite matches first synced between 2026-05-25 and
+      2026-05-30 (the days the batch path went live without setting the completion bits; JGtm 77,
+      Chocoboflor 70, XxDaemonGamerxX 10 in prod) carry no skill bit (`4`) in
+      `match_registry.backfill_completed`, so the `skill` scope of `levelup backfill` can select
+      them again on every run (reading of the selection code, no job was run). The participants
+      bit (`512`) of the same matches is set by the migration `shared_registry_participants_bit_v1`;
+      that migration does not touch the skill bit. `levelup reset-bitmasks` sets it only where the skill data
+      is already there (`match_participants.team_mmr IS NOT NULL`); matches without it keep the
+      bit unset and are legitimately re-fetched by `levelup backfill --skill`. The CLI needs the
+      database unlocked (it writes, and a read-only open next to a running writer is forbidden),
+      so stop the server first, from `/opt/levelup`:
+
+      ```bash
+      docker compose stop levelup
+      docker compose run --rm --no-deps levelup levelup reset-bitmasks --dry-run
+      #   -> "[skill] match_registry à updater" counts the matches whose bit will be set (<= 157)
+      docker compose run --rm --no-deps levelup levelup reset-bitmasks --apply
+      docker compose up -d levelup
+      ```
+
+      Re-run `--dry-run` afterwards: the `[skill]` counters must read 0. Matches still unmarked are then
+      the ones whose skill data is truly missing; a `levelup backfill --skill` per affected player
+      fetches them (check `GET /health` and the sync log before launching it).
+
 ## Rollback
 
 - [ ] **Rollback = `git revert -m 1 <merge-commit>` + push** (redeploys the previous

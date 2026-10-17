@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/matchflags"
 
 	"database/sql"
 )
@@ -97,7 +98,7 @@ func previewReset(db *sql.DB, pvePath string) error {
 		SELECT COUNT(*) FROM match_registry mr
 		WHERE EXISTS (SELECT 1 FROM match_participants WHERE match_id = mr.match_id)
 		  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
-	`, backfillFlagParticipantsForReset).Scan(&partReg)
+	`, matchflags.BackfillParticipants).Scan(&partReg)
 	fmt.Printf("[participants] match_registry à updater (BackfillFlags[participants]) : %d\n", partReg)
 
 	// PVE — via ATTACH cross-DB
@@ -157,7 +158,7 @@ func applyReset(db *sql.DB, pvePath string) error {
 		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
 		WHERE EXISTS (SELECT 1 FROM match_participants WHERE match_id = match_registry.match_id)
 		  AND (COALESCE(backfill_completed, 0) & ?) = 0
-	`, backfillFlagParticipantsForReset, backfillFlagParticipantsForReset)
+	`, matchflags.BackfillParticipants, matchflags.BackfillParticipants)
 	if err != nil {
 		return fmt.Errorf("UPDATE participants registry: %w", err)
 	}
@@ -193,12 +194,11 @@ func applyReset(db *sql.DB, pvePath string) error {
 // Constantes locales (dupliquées depuis internal/sync — évite l'import lourd
 // pour un one-shot CLI).
 const (
-	pBitTeamMMR                      = 1 << 0
-	pBitEnemyMMR                     = 1 << 1
-	pBitKillsExp                     = 1 << 2
-	pBitDeathsExp                    = 1 << 3
-	skillBitsForReset                = pBitTeamMMR | pBitEnemyMMR | pBitKillsExp | pBitDeathsExp
-	backfillFlagSkillForReset        = 1 << 2  // 4
-	backfillFlagParticipantsForReset = 1 << 9  // 512
-	mBitPVEStatsForReset             = 1 << 20 // 1048576
+	pBitTeamMMR               = 1 << 0
+	pBitEnemyMMR              = 1 << 1
+	pBitKillsExp              = 1 << 2
+	pBitDeathsExp             = 1 << 3
+	skillBitsForReset         = pBitTeamMMR | pBitEnemyMMR | pBitKillsExp | pBitDeathsExp
+	backfillFlagSkillForReset = 1 << 2  // 4
+	mBitPVEStatsForReset      = 1 << 20 // 1048576
 )

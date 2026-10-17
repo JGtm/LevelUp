@@ -95,13 +95,16 @@ const vueWeaponKillsSQL = `CREATE OR REPLACE VIEW v_weapon_kills AS
 			) WHERE rk = 1`
 
 // vuesDesTablesDuTitre : la vue de dernière génération (nom live) de chaque table de sharedSnapshotTitleOwnedRaw.
-var vuesDesTablesDuTitre = map[string]string{tableWeaponKills: vueWeaponKillsSQL}
+var vuesDesTablesDuTitre = map[string]string{
+	tableWeaponKills:    vueWeaponKillsSQL,
+	tableMatchBombStats: migration.MatchBombStatsLatestViewSQL(tableMatchBombStats),
+}
 
 // OpenSnapshotShared ouvre la version courante comme une DuckDB :memory: reconstruisant
 // le SCHÉMA SHARED COMPLET — toutes les tables de base + TOUTES les vues aux noms live
 // (v_gamertag_lookup, v_match_full, match_kill_events_latest, match_csrs_latest,
-// match_objective_stats_latest, mv_player_matches, et v_weapon_kills quand le titre porte
-// `weapon_kills`) → un SharedReader peut servir TOUTES les lectures shared de l'app depuis
+// match_objective_stats_latest, mv_player_matches, et les vues des tables de
+// sharedSnapshotTitleOwnedRaw que le titre porte : v_weapon_kills, match_bomb_stats_latest) → un SharedReader peut servir TOUTES les lectures shared de l'app depuis
 // le snapshot, hors fenêtre RW. Retourne ErrNoSnapshot (aucune version) ou
 // ErrSnapshotIncomplete (table requise absente) → le caller dégrade vers live (jamais de
 // schéma partiel servi : soit le schéma complet du titre, soit le live).

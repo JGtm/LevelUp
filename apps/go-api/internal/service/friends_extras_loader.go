@@ -30,6 +30,11 @@ import (
 // les appels suivants. Implémenté par registry.makeTitlePlayerResolver.
 type FriendDBOpener func(ctx context.Context, titleSlug, gamertag string) (FriendMatchExtrasRepo, error)
 
+// ErrFriendWithoutPlayerDB : le FriendDBOpener rend cette erreur pour un ami dont la player DB
+// n'existe pas encore (profil suivi, jamais synchronisé). C'est une ABSENCE : le résolveur ne le
+// compte ni comme panne ni comme erreur de section.
+var ErrFriendWithoutPlayerDB = errors.New("friends_extras: aucune player DB pour cet ami")
+
 // FriendMatchExtrasRepo : sous-ensemble du MatchViewRepository nécessaire pour
 // charger les extras per-friend (perf score + skill rank + enrich + assists model).
 // Permet de découpler le loader du repo concret côté tests.
@@ -73,6 +78,11 @@ func NewFriendsExtrasResolver(
 			}
 			repo, err := opener(ctx, profile.TitleSlug, profile.Gamertag)
 			if err != nil {
+				if errors.Is(err, ErrFriendWithoutPlayerDB) {
+					slog.DebugContext(ctx, "friends_extras: ami sans player DB (absence, pas une panne)",
+						"match_id", matchID, "xuid", xuid, "gamertag", profile.Gamertag)
+					continue
+				}
 				slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError), "friends_extras: open player db failed",
 					"match_id", matchID, "xuid", xuid, "gamertag", profile.Gamertag, "err", err)
 				failures = append(failures, fmt.Errorf("ami %s: ouverture de la player DB: %w", xuid, err))

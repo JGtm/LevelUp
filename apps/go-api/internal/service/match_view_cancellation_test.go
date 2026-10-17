@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,6 +12,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/port"
 )
 
@@ -127,4 +129,77 @@ func TestMatchView_DelaiInterneExpire_RequeteVivante_EstUnePanne(t *testing.T) {
 			t.Errorf("ERROR attendu : %s", logs.String())
 		}
 	})
+}
+
+// E5.3 : le repli populationnel des assistances attendues qui échoue est DIT avant de rendre
+// rien ; une requête abandonnée n'est jamais un ERROR.
+func TestComputeExpectedAssists_CoefPopulationnelEnEchec_EstJournalise(t *testing.T) {
+	repo := &mockMatchViewRepo{}
+	t.Run("panne de lecture", func(t *testing.T) {
+		logs := logsNiveau(t)
+		got := computeExpectedAssists(context.Background(), repo,
+			&fakeMetadataRepo{coefErr: errors.New("database is locked")}, "Slayer", &domain.PlayerMatchStatsRaw{})
+		if got != nil {
+			t.Errorf("aucune valeur attendue, obtenu %v", *got)
+		}
+		if !strings.Contains(logs.String(), "level=ERROR msg=\"match_view: modèle populationnel d'assists attendus illisible") {
+			t.Errorf("ERROR attendu : %s", logs.String())
+		}
+	})
+	t.Run("modèle non seedé", func(t *testing.T) {
+		logs := logsNiveau(t)
+		_ = computeExpectedAssists(context.Background(), repo,
+			&fakeMetadataRepo{coefErr: sql.ErrNoRows}, "Slayer", &domain.PlayerMatchStatsRaw{})
+		if !strings.Contains(logs.String(), "level=WARN msg=\"match_view: modèle populationnel d'assists attendus illisible") {
+			t.Errorf("WARN attendu : %s", logs.String())
+		}
+	})
+	t.Run("requête abandonnée", func(t *testing.T) {
+		logs := logsNiveau(t)
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_ = computeExpectedAssists(ctx, repo,
+			&fakeMetadataRepo{coefErr: fmt.Errorf("lecture: %w", context.Canceled)}, "Slayer", &domain.PlayerMatchStatsRaw{})
+		assertAucuneErreurJournalisee(t, logs)
+	})
+}
+
+// E5.5 : l'échec de lecture des métadonnées et de résolution des médailles du feed, sur une
+// requête abandonnée, n'est jamais un ERROR ; sur une requête vivante, il l'est.
+func TestMatchView_MetadonneesEtMedaillesDuFeed_NiveauSelonLaRequete(t *testing.T) {
+	annule := fmt.Errorf("lecture: %w", context.Canceled)
+	panne := errors.New("database is locked")
+	vivante := context.Background()
+	abandonnee, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	medailles := []domain.MatchHighlightEvent{{EventType: highlightevent.EventTypeMedal, MedalName: "Killing Spree"}}
+	for _, c := range []struct {
+		nom       string
+		ctx       context.Context
+		err       error
+		wantError bool
+	}{
+		{"requête abandonnée", abandonnee, annule, false},
+		{"panne, requête vivante", vivante, panne, true},
+	} {
+		t.Run("métadonnées : "+c.nom, func(t *testing.T) {
+			logs := logsNiveau(t)
+			repo := &mockMatchViewRepo{metaErr: c.err}
+			if _, err := NewMatchViewService(repo, "xuid1").GetMatchView(c.ctx, "m1"); err == nil {
+				t.Fatal("l'échec de lecture des métadonnées doit remonter")
+			}
+			if got := strings.Contains(logs.String(), "level=ERROR"); got != c.wantError {
+				t.Errorf("ERROR journalisé = %v, want %v : %s", got, c.wantError, logs.String())
+			}
+		})
+		t.Run("médailles du feed : "+c.nom, func(t *testing.T) {
+			logs := logsNiveau(t)
+			repo := &mockMatchViewRepo{errs: map[string]error{"LookupMedalMetaByName": c.err}}
+			decorateMedalEvents(c.ctx, medailles, repo, nil)
+			if got := strings.Contains(logs.String(), "level=ERROR"); got != c.wantError {
+				t.Errorf("ERROR journalisé = %v, want %v : %s", got, c.wantError, logs.String())
+			}
+		})
+	}
 }

@@ -57,7 +57,7 @@ var colonnesIntegriteRetirees = []string{colonneParticipantsLoaded, colonnePlaye
 // l'échange. Toute autre vue qui lit match_registry est rejouée depuis son DDL stocké.
 var vuesCanoniquesDuRegistre = map[string]string{
 	"mv_player_matches": mvPlayerMatchesViewSQL,
-	"v_match_full":      vMatchFullViewSQL,
+	"v_match_full":      VMatchFullViewSQL,
 }
 
 func init() {

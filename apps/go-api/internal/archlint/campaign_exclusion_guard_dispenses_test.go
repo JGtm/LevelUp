@@ -139,8 +139,6 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 		"même prédicat classé (csr_shared_backfill.go:202-206), même preuve (games/halo_5/mapping.go:102)."},
 
 	// internal/sync : sélection de matchs d'un backfill, écritures par match (D-2, outil opérateur)
-	"internal/sync/backfill.go:FindMatchesMissingParticipantBits": {dispenseEnsembleFourni, "2026-10-15",
-		"sélection de travail d'un backfill (backfill.go:86-115) : matchs à compléter, aucune donnée servie ; aucun appelant de production (backfill_integration_test.go:219, :238), signalé aux découvertes du plan."},
 	"internal/sync/backfill.go:findMatchesInSharedAll": {dispenseEnsembleFourni, "2026-10-15",
 		"sélection de travail : matchs à compléter (backfill.go:58), rendus à l'appelant qui les rattrape un à un ; aucune donnée servie ni agrégat."},
 	"internal/sync/backfill.go:findMatchesInSharedDB": {dispenseEnsembleFourni, "2026-10-15",
@@ -219,4 +217,10 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 		"backfill : UPDATE des mécaniques de frag du match lu (cmd_backfill_h5_kill_mechanics.go:376)."},
 	"cmd/seed-medal/main.go:main": {dispenseOperateur, "2026-10-15",
 		"script de développement (//go:build ignore) qui pose un badge sur le dernier match lu (main.go:1-14) : réécrit le match lui-même."},
+
+	// ── E5.6 (plan backlog 2026-10-16) : lecteurs du registre sur fenêtre de temps, sans `xuid = ?` ──
+	"cmd/diag_film_avail/main.go:lireCandidats": {dispenseOperateur, "2026-10-17",
+		"cmd/diag_* : mesure, par mois, des matchs sans voie de film (main.go:123, `>= ?` sur le mois), lecture seule : la mesure porte sur le registre entier, Campagne comprise."},
+	"cmd/lusr_v2_squad_estimate/main.go:loadWindowMatches": {dispenseOperateur, "2026-10-17",
+		"outil d'estimation du LUSR v2 par escouade (cmd/, main.go:135, `start_time >= ?`) : lecture seule, n'écrit rien ; l'estimation porte sur les matchs de tous les joueurs de la fenêtre, pas sur un affichage joueur."},
 }

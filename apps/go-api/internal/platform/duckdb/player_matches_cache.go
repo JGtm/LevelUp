@@ -115,13 +115,6 @@ func cloneAssetRef(ref *canonical.AssetReference) *canonical.AssetReference {
 	return &c
 }
 
-// cacheMetrics compte les hits/misses d'un cache décorateur. Reste consommé par
-// highlight_events_cache.go (CachedHighlightEventsRepo).
-type cacheMetrics struct {
-	hits   int64
-	misses int64
-}
-
 // filtersCacheKey produit une clé stable pour des filtres équivalents,
 // indépendante de l'ordre des slices. SHA-256 hex sur JSON canonique.
 func filtersCacheKey(f port.PlayerMatchFilters) string {

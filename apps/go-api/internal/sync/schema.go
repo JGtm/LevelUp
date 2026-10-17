@@ -464,10 +464,7 @@ func EnsureSharedSchema(ctx context.Context, db *sql.DB) error {
 // dans le post-sync ; voir godoc EnsureSharedSchema pour le contexte.
 // v_gamertag_lookup est posée séparément (cf. EnsureSharedSchema) car son DDL
 // est généré par analysis.GamertagLookupViewSQL (source unique).
-const sharedViewsSQL = `
-CREATE OR REPLACE VIEW v_match_full AS
-SELECT mr.* FROM match_registry mr;
-`
+const sharedViewsSQL = migration.VMatchFullViewSQL + ";"
 
 // OpenPlayerDB ouvre stats.duckdb d'un joueur en lecture/écriture via le cache process-level.
 // Crée le répertoire si nécessaire. Applique le schéma player si absent.

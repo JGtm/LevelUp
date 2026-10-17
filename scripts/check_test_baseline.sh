@@ -240,6 +240,14 @@
 # et les tests de `internal/sync/skill`. 40 lignes JSONL, exactement 7 paires (Package, Test), vérifié par
 # différence avant/après.
 #
+# RETRAIT DU 2026-10-17 (lot backlog-2026-10-16, E5.1 : code mort supprimé) : 18 tests dont le code
+# testé est supprimé (règle n°7) — `FindMatchesMissingParticipantBits` (3 tests de `internal/sync`),
+# `loadAwardsForScoreboard` (4 tests de `internal/service`), `CachedHighlightEventsRepo` et son cache
+# (10 tests de `internal/platform/duckdb`, dont TestHighlightEventsCacheKey_* et TestTTLCacheHE_*) et le
+# assainissement des composantes LUSR du lot d'ingestion (`PlayerBatch.LUSRComponents`, sans appelant de production
+# depuis E4 : TestSanitizeBatch_LUSRComponentsNaN_BecomesZero de `internal/persist`). 128 lignes JSONL,
+# exactement 18 paires (Package, Test), vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

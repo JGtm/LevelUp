@@ -103,7 +103,10 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 	defer cancel()
 
 	row, err := r.scanMatchMeta(ctx, r.sharedRead(), matchID)
-	if err != nil && r.sharedReader != nil && !r.forceLive {
+	// Contexte terminé (client parti ou délai de la lecture épuisé) : la lecture live échouerait de
+	// même, et ce n'est ni une absence ni un schéma en retard : ni bascule, ni journal, ni compteur.
+	// L'erreur remonte telle quelle.
+	if err != nil && r.sharedReader != nil && !r.forceLive && ctx.Err() == nil {
 		// LA BASCULE COUVRE TOUTE ERREUR DU SNAPSHOT, pas seulement la ligne absente.
 		// Un snapshot est un artefact FIGE d'un schema passe : toute colonne ajoutee a
 		// Q13 apres son cut le fait echouer en Binder Error jusqu'au cut suivant — vecu
@@ -166,7 +169,11 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		if r.pdb.Metadata != nil && row.PairAssetID != nil {
 			metaRepo := NewMetadataRepoFromDB(r.pdb.Metadata)
 			langs := PreferredLangsForLocale("fr")
-			pairNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "pair", []string{*row.PairAssetID}, langs)
+			pairNames, pairErr := metaRepo.ResolveAssetNamesBulk(ctx, "pair", []string{*row.PairAssetID}, langs)
+			if pairErr != nil {
+				slog.Log(ctx, degradedLookupLevel(ctx, pairErr), "match_view: nom du mode indisponible (résolution de la paire en échec)",
+					"match_id", matchID, "pair_asset_id", *row.PairAssetID, "err", pairErr)
+			}
 			pairAssetName = strings.TrimSpace(pairNames[*row.PairAssetID])
 		}
 
@@ -289,7 +296,12 @@ func (r *MatchViewRepo) resolveAssetName(ctx context.Context, assetType, assetID
 	}
 	meta := NewMetadataRepoFromDB(r.pdb.Metadata)
 	name, _, ok, err := meta.ResolveAssetName(ctx, assetType, assetID, PreferredLangsForLocale("fr"))
-	if err != nil || !ok || strings.TrimSpace(name) == "" {
+	if err != nil {
+		slog.Log(ctx, degradedLookupLevel(ctx, err), "match_view: nom d'actif indisponible (résolution en échec)",
+			"asset_type", assetType, "asset_id", assetID, "err", err)
+		return nil
+	}
+	if !ok || strings.TrimSpace(name) == "" {
 		return nil
 	}
 	return &name
@@ -305,7 +317,12 @@ func (r *MatchViewRepo) resolveAssetNameEN(ctx context.Context, assetType, asset
 	}
 	meta := NewMetadataRepoFromDB(r.pdb.Metadata)
 	name, _, ok, err := meta.ResolveAssetName(ctx, assetType, assetID, PreferredLangsForLocale("en"))
-	if err != nil || !ok || strings.TrimSpace(name) == "" {
+	if err != nil {
+		slog.Log(ctx, degradedLookupLevel(ctx, err), "match_view: nom d'actif indisponible (résolution en échec)",
+			"asset_type", assetType, "asset_id", assetID, "err", err)
+		return nil
+	}
+	if !ok || strings.TrimSpace(name) == "" {
 		return nil
 	}
 	return &name
@@ -325,14 +342,25 @@ func (r *MatchViewRepo) lookupMapImageURL(ctx context.Context, mapAssetID string
 		LIMIT 1`
 	rows, err := r.pdb.Metadata.Query(ctx, q, r.pdb.TitleSlug, mapAssetID)
 	if err != nil {
+		slog.Log(ctx, degradedLookupLevel(ctx, err), "match_view: image de carte indisponible (registre illisible)",
+			"map_asset_id", mapAssetID, "title", r.pdb.TitleSlug, "err", err)
 		return nil
 	}
 	defer rows.Close()
 	if rows.Next() {
 		var path string
-		if err := rows.Scan(&path); err == nil && path != "" {
+		if err := rows.Scan(&path); err != nil {
+			slog.Log(ctx, degradedLookupLevel(ctx, err), "match_view: image de carte indisponible (ligne illisible)",
+				"map_asset_id", mapAssetID, "title", r.pdb.TitleSlug, "err", err)
+			return nil
+		}
+		if path != "" {
 			return &path
 		}
+	}
+	if err := rows.Err(); err != nil {
+		slog.Log(ctx, degradedLookupLevel(ctx, err), "match_view: image de carte indisponible (itération interrompue)",
+			"map_asset_id", mapAssetID, "title", r.pdb.TitleSlug, "err", err)
 	}
 	return nil
 }

@@ -62,22 +62,6 @@ const (
 	TierLabelDiamant   = skill.TierLabelDiamant
 	TierLabelOnyx      = skill.TierLabelOnyx
 	TierLabelPlacement = skill.TierLabelPlacement
-
-	InitialMU              = skill.InitialMU
-	InitialSigma           = skill.InitialSigma
-	Beta                   = skill.Beta
-	AccuracyHistorySize    = skill.AccuracyHistorySize
-	InactivitySigmaPerDay  = skill.InactivitySigmaPerDay
-	MaxInactivityDays      = skill.MaxInactivityDays
-	InactivityThresholdDay = skill.InactivityThresholdDay
-
-	Tau                  = skill.Tau
-	KElo                 = skill.KElo
-	MaxSigma             = skill.MaxSigma
-	MinSigma             = skill.MinSigma
-	MinRating            = skill.MinRating
-	DefaultOpponentSigma = skill.DefaultOpponentSigma
-	IndividualMUAlpha    = skill.IndividualMUAlpha
 )
 
 // Types ré-exportés (alias).

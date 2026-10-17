@@ -81,54 +81,6 @@ func FindMatchesMissingData(
 	return localMatchIDs, nil
 }
 
-// FindMatchesMissingParticipantBits trouve les matchs où un joueur a des bits
-// backfill_bits manquants (bitmask granulaire).
-//
-// Portage de find_matches_missing_participant_bits() (detection.py).
-func FindMatchesMissingParticipantBits(
-	ctx context.Context,
-	sharedDB *sql.DB,
-	xuid string,
-	bitsRequired int,
-	force bool,
-	maxMatches int,
-) ([]string, error) {
-	var condition string
-	if force {
-		condition = "1=1"
-	} else {
-		condition = fmt.Sprintf("(COALESCE(mp.backfill_bits, 0) & %d) != %d", bitsRequired, bitsRequired)
-	}
-
-	mrSrc := getMatchSource(ctx, sharedDB)
-	query := fmt.Sprintf(`
-		SELECT mp.match_id
-		FROM match_participants mp
-		JOIN %s mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ? AND %s
-		ORDER BY mr.start_time DESC
-	`, mrSrc, condition)
-	if maxMatches > 0 {
-		query += fmt.Sprintf(" LIMIT %d", maxMatches)
-	}
-
-	rows, err := sharedDB.QueryContext(ctx, query, xuid)
-	if err != nil {
-		return nil, fmt.Errorf("FindMatchesMissingParticipantBits: %w", err)
-	}
-	defer rows.Close()
-
-	var result []string
-	for rows.Next() {
-		var matchID string
-		if err := rows.Scan(&matchID); err != nil {
-			return nil, err
-		}
-		result = append(result, matchID)
-	}
-	return result, rows.Err()
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers internes
 // ─────────────────────────────────────────────────────────────────────────────

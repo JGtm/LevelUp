@@ -189,7 +189,7 @@ func (h *PrestigeHandler) ListMySquads(ctx context.Context, in *listMySquadsInpu
 				roster = append(roster, m.Xuid)
 			}
 		}
-		if pls, mds, uErr := h.svc.SquadUsualContexts(ctx, roster, ""); uErr == nil {
+		if pls, mds, uErr := h.svc.SquadUsualContexts(ctx, roster); uErr == nil {
 			entry.UsualPlaylists = pls
 			entry.UsualModes = mds
 		} else {

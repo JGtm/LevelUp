@@ -202,6 +202,11 @@ func (r *ServiceRegistry) buildFriendsExtrasResolver(mainPDB *duckdb.PlayerDB) p
 		if slug == "" {
 			return nil, fmt.Errorf("friends_extras: player not found gamertag=%q title=%q", gamertag, titleSlug)
 		}
+		// Profil suivi jamais synchronisé : pas de player DB, donc rien à lire. Une absence, pas une
+		// panne, et la lecture ne crée pas la base d'un autre joueur.
+		if !config.PlayerDBFileExists(cfg, titleSlug, gamertag) {
+			return nil, service.ErrFriendWithoutPlayerDB
+		}
 		pdb, perr := config.ResolvePlayer(ctx, cfg, slug, titleSlug)
 		if perr != nil {
 			return nil, perr

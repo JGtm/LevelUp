@@ -296,3 +296,20 @@ func readXUIDFile(path string) (string, error) {
 	}
 	return xuid, nil
 }
+
+// PlayerDBFileExists dit si la player DB d'un profil suivi est déjà sur disque pour ce titre.
+//
+// Pour les chemins de LECTURE qui visitent la base d'un autre joueur (extras des amis d'un
+// match) : ouvrir par le pool une base qui n'existe pas échoue quand son dossier est absent
+// (ami onboardé, jamais synchronisé), et ce n'est pas une panne. Le dossier et la base sont créés
+// par la première synchronisation du joueur (OpenPlayerDB), jamais par une lecture.
+//
+// En démo, ResolvePlayer lit des fixtures et dit lui-même leur absence, et LoadPlayers ne rend
+// que les joueurs dont la base a été seedée : la fonction rend true.
+func PlayerDBFileExists(cfg *AppConfig, titleSlug, gamertag string) bool {
+	if cfg.demoState() {
+		return true
+	}
+	info, err := os.Stat(PlayerDBPath(cfg, titleSlug, gamertag))
+	return err == nil && !info.IsDir()
+}

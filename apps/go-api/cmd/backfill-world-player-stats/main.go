@@ -71,6 +71,7 @@ type cliFlags struct {
 	season        string
 	tokenGamertag string
 	sharedDB      string
+	title         string
 	checkpoint    string
 	limit         int
 	concurrency   int
@@ -132,6 +133,7 @@ func parseFlags() cliFlags {
 	var f cliFlags
 	flag.StringVar(&f.season, "season", "all", "saison CSR ciblée (ex: csrseason13-2) ou 'all'")
 	flag.StringVar(&f.tokenGamertag, "token-gamertag", "", "gamertag du compte dont le token sert à résoudre les xuid (PeopleHub) — requis")
+	flag.StringVar(&f.title, "title", titlepkg.DefaultSlug, "slug du titre : base partagée par défaut et migrations jouées")
 	flag.StringVar(&f.sharedDB, "shared-db", "",
 		"chemin shared_matches_v2.duckdb (RW — stopper le serveur) ; vide = dérivé de RepoRoot")
 	flag.StringVar(&f.checkpoint, "checkpoint", "", "fichier de reprise (JSON) ; vide = <RepoRoot>/data/world_backfill_checkpoint.json")
@@ -186,7 +188,7 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 	// 3. Shared DB en RW (serveur stoppé) + migrations.
 	sharedPath := f.sharedDB
 	if strings.TrimSpace(sharedPath) == "" {
-		sharedPath = titlepkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(titlepkg.DefaultSlug)
+		sharedPath = titlepkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(f.title)
 	}
 	f.sharedDB = sharedPath // propagé aux flush ultérieurs
 	fmt.Printf("shared DB: %s\n", sharedPath)
@@ -196,7 +198,7 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 	}
 	defer db.Close()
 	if !f.dryRun {
-		if err := migration.RunForDB(db, migration.TargetShared); err != nil {
+		if err := migration.RunForTitleDB(db, f.title, migration.TargetShared); err != nil {
 			return fmt.Errorf("migration shared: %w", err)
 		}
 	}

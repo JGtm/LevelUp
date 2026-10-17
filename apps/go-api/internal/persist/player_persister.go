@@ -50,7 +50,7 @@ func NewPlayerPersister(db txBeginner) *PlayerPersister {
 //   - row stage='live' existe déjà pour ce match_id → skip (idempotent ACK).
 //
 // L'enrichment 'live' est l'ancre d'idempotence : si la row baseline existe déjà
-// pour ce match_id, tout le sous-batch (skill_rank/lusr/citations/psa/career) est
+// pour ce match_id, tout le sous-batch (skill_rank/citations/psa/career) est
 // considéré déjà persisté. Cible stage='live' car la table est append-only et
 // porte N rows par match (1 par stage post-sync).
 func (p *PlayerPersister) Persist(ctx context.Context, batch *MatchBatch) error {
@@ -83,9 +83,6 @@ func (p *PlayerPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 		return err
 	}
 	if err := persistSkillRank(ctx, tx, pb.SkillRank); err != nil {
-		return err
-	}
-	if err := persistLUSRComponents(ctx, tx, pb.LUSRComponents); err != nil {
 		return err
 	}
 	if err := persistCitations(ctx, tx, pb.Citations); err != nil {

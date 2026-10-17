@@ -210,62 +210,6 @@ func TestFindMatchesMissingData_Events(t *testing.T) {
 	}
 }
 
-// ── FindMatchesMissingParticipantBits ─────────────────────────────────────
-
-func TestFindMatchesMissingParticipantBits_All(t *testing.T) {
-	db := openBackfillTestDB(t)
-	seedBackfillShared(t, db)
-
-	matches, err := FindMatchesMissingParticipantBits(t.Context(), db, "xuid001", 1, false, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// All 3 matches have backfill_bits=0, so all missing bit 1
-	if len(matches) != 3 {
-		t.Fatalf("expected 3, got %d", len(matches))
-	}
-}
-
-func TestFindMatchesMissingParticipantBits_Force(t *testing.T) {
-	db := openBackfillTestDB(t)
-	seedBackfillShared(t, db)
-	// Set bits for m1
-	if _, err := db.Exec(`UPDATE match_participants SET backfill_bits=1 WHERE match_id='m1'`); err != nil {
-		t.Fatal(err)
-	}
-
-	// Force mode should return all
-	matches, err := FindMatchesMissingParticipantBits(t.Context(), db, "xuid001", 1, true, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(matches) != 3 {
-		t.Fatalf("force: expected 3, got %d", len(matches))
-	}
-
-	// Non-force should skip m1
-	matches, err = FindMatchesMissingParticipantBits(t.Context(), db, "xuid001", 1, false, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(matches) != 2 {
-		t.Fatalf("no-force: expected 2, got %d", len(matches))
-	}
-}
-
-func TestFindMatchesMissingParticipantBits_Limit(t *testing.T) {
-	db := openBackfillTestDB(t)
-	seedBackfillShared(t, db)
-
-	matches, err := FindMatchesMissingParticipantBits(t.Context(), db, "xuid001", 1, false, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(matches) != 1 {
-		t.Fatalf("expected 1, got %d", len(matches))
-	}
-}
-
 func strContains(s, sub string) bool {
 	return len(s) >= len(sub) && (s == sub || len(s) > 0 && strContainsHelper(s, sub))
 }

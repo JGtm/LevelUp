@@ -5,6 +5,8 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"log/slog"
 	"math"
 
@@ -143,6 +145,14 @@ func computeExpectedAssists(
 	}
 	slope, intercept, err := metaRepo.GetAssistsCoef(ctx, gameVariantName)
 	if err != nil {
+		// Aucune ligne `__global__` : le modèle populationnel n'est pas seedé (donnée manquante,
+		// WARN). Toute autre erreur est une panne de lecture (ERROR, DEBUG si requête abandonnée).
+		level := observability.LevelUnlessCanceled(ctx, err, slog.LevelError)
+		if errors.Is(err, sql.ErrNoRows) {
+			level = slog.LevelWarn
+		}
+		slog.Log(ctx, level, "match_view: modèle populationnel d'assists attendus illisible, valeur omise",
+			"mode", gameVariantName, "err", err)
 		return nil
 	}
 	ps := 0.0

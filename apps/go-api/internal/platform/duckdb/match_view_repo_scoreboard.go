@@ -370,8 +370,8 @@ func (r *MatchViewRepo) GetMatchObjectiveScore(ctx context.Context, xuid, matchI
 //
 // MÊME CONTRAT QUE `loadMatchObjectiveStats` (lignes lues + erreur de section, journalisée en
 // ERREUR), à UNE distinction explicite près : la vue `match_bomb_stats_latest` ABSENTE du
-// lecteur n'est pas une panne de requête. Le lecteur SNAPSHOT ne l'exporte pas (cf.
-// ops/snapshot_export.go : sharedSnapshotTables / sharedSnapshotMatchKeyedRaw) : sans cette
+// lecteur n'est pas une panne de requête. Un lecteur SNAPSHOT coupé avant l'export de la table (cf.
+// ops/snapshot_export.go : sharedSnapshotTitleOwnedRaw) ne la porte pas : sans cette
 // sonde, chaque vue d'un match d'un titre à statistiques d'Assaut servie du snapshot passerait
 // pour en panne. L'absence est constatée (relationExists), journalisée en WARN, et rend une
 // map vide sans erreur ; toute autre défaillance remonte.

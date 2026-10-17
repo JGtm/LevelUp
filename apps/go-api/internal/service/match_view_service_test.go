@@ -76,7 +76,7 @@ func (m *mockMatchViewRepo) GetMatchEvents(_ context.Context, _ string) ([]domai
 	return m.events, m.eventsErr
 }
 func (m *mockMatchViewRepo) LookupMedalMetaByName(_ context.Context, _ []string) (map[string]domain.MedalNameMeta, error) {
-	return m.medalMetasByName, nil
+	return m.medalMetasByName, m.errs["LookupMedalMetaByName"]
 }
 func (m *mockMatchViewRepo) GetMatchKillSources(_ context.Context, _ string) ([]domain.KillSourceRaw, error) {
 	return m.killSources, m.killSrcErr

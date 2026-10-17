@@ -165,17 +165,15 @@ func (l *LazyPrestigeService) DeleteSquad(ctx context.Context, squadID, requeste
 }
 
 // SquadUsualContexts lit l'indice d'escouade dans la base partagée du PlayerDB résolu : le
-// titre est donc CELUI DE CE PlayerDB (pdb.TitleSlug), jamais celui de l'appelant (lot
-// B-C8 du backlog 2026-09-26). Le web appelle GET /squads sans title_slug : le handler
-// transmettait "", et l'exclusion de la Campagne du titre (D-5) ne s'appliquait pas. Un
-// titre d'appelant différent de celui de la base lue appliquerait, lui, la mauvaise
-// exclusion : il n'a pas voix ici.
-func (l *LazyPrestigeService) SquadUsualContexts(ctx context.Context, rosterXUIDs []string, _ string) ([]string, []string, error) {
-	pdb, svc, err := l.resolveWithPlayerDB(ctx)
+// titre est donc CELUI DE CE PlayerDB (prestige.Deps.TitleSlug, posé par serviceAndPlayerDB),
+// jamais celui de l'appelant : le web appelle GET /squads sans title_slug, et un titre
+// d'appelant différent de celui de la base lue appliquerait la mauvaise exclusion de la Campagne.
+func (l *LazyPrestigeService) SquadUsualContexts(ctx context.Context, rosterXUIDs []string) ([]string, []string, error) {
+	_, svc, err := l.resolveWithPlayerDB(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	return svc.SquadUsualContexts(ctx, rosterXUIDs, pdb.TitleSlug)
+	return svc.SquadUsualContexts(ctx, rosterXUIDs)
 }
 
 func (l *LazyPrestigeService) EvaluateSquadChallenge(ctx context.Context, squadChallengeID, requestedBy string) ([]prestige.SquadParticipantProgress, error) {

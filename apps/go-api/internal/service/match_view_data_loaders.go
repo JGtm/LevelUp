@@ -9,7 +9,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -18,7 +17,6 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/port"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -134,10 +132,6 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	})
 	// MV4.A : events canoniques via le loader unifié (match_view_source_failures.go).
 	s.loadCanonicalEvents(gctx, g, matchID, &d)
-
-	// MV4.B' : awards chargés après l'errgroup principal car ils dépendent du
-	// scoreboard (xuids). Voir l'appel `s.loadAwardsForScoreboard(...)` plus
-	// bas, après `g.Wait()`.
 	d.failures.goLoadSection(gctx, g, matchID, "kill_sources", func() error {
 		var e error
 		d.killSources, e = s.repo.GetMatchKillSources(gctx, matchID)
@@ -485,51 +479,6 @@ func correctMatchViewEventsT0(d *matchViewData, matchID string, tl domain.MatchT
 	// La VICTIME s'apparie par la même clé exacte : copie corrigée, kvPairs intact
 	// (tug-of-war et KD timeline restent sur l'horloge brute).
 	d.kvPairsFeed = timeline.CorrectKVPairRaws(d.kvPairs, tl)
-}
-
-// loadAwardsForScoreboard charge les awards pour tous les xuids du scoreboard
-// (chunk MV4.B'). Sérialisé après l'errgroup principal — la liste des xuids
-// dépend du scoreboard chargé en parallèle. Dégradation gracieuse :
-//
-//	awardsRepo nil       -> retourne nil
-//	scoreboard vide      -> retourne nil
-//	capability absente   -> retourne nil (silencieux)
-//	autre erreur         -> log warn + retourne nil
-//
-// tests utilisent toujours "m1" — la signature reste configurable et le caller prod
-// passe le vrai matchID variable.
-//
-//nolint:unparam // matchID paramétré (caller passe le matchID courant), bien que les
-func (s *MatchViewService) loadAwardsForScoreboard(
-	ctx context.Context,
-	matchID string,
-	scoreboard []domain.ScoreboardRaw,
-) []port.PersonalScoreAwardRow {
-	if s.awardsRepo == nil || len(scoreboard) == 0 {
-		return nil
-	}
-	xuids := extractMatchSquadXUIDs(scoreboard)
-	if len(xuids) == 0 {
-		return nil
-	}
-	filters := port.PersonalScoreAwardsFilters{
-		MatchIDs: []string{matchID},
-		XUIDs:    xuids,
-	}
-	if err := filters.Validate(); err != nil {
-		slog.WarnContext(ctx, "match_view: PersonalScoreAwardsFilters invalides",
-			"match_id", matchID, "err", err)
-		return nil
-	}
-	rows, err := s.awardsRepo.LoadPersonalScoreAwards(ctx, s.titleSlug, filters)
-	if err != nil {
-		if !errors.Is(err, games.ErrCapabilityNotSupported) {
-			slog.WarnContext(ctx, "match_view: LoadPersonalScoreAwards echec",
-				"match_id", matchID, "err", err)
-		}
-		return nil
-	}
-	return rows
 }
 
 // matchModeFamilyFromMeta résout la mode family pour le calcul des seuils

@@ -39,15 +39,17 @@ type MatchRegistryRow struct {
 	Team1Score              *int16
 	Team0PsScore            *int
 	Team1PsScore            *int
-	// BackfillCompleted : the mapper sets BackfillBitMedals only (the payload carries the
-	// medals). It is NOT copied to the shared registry : service.toSyncRegistry computes
+	// BackfillCompleted : MapMatch sets BackfillBitMedals only, and only when the payload carries
+	// medals. It is NOT copied to the shared registry : service.toSyncRegistry computes
 	// backfill_completed from the batch (participants bit when the roster is written).
 	BackfillCompleted int
-	EventsLoaded      bool // true after import (HighlightEvents rows attached)
-	MedalsLoaded      bool // true after import
-	FirstSyncBy       string
-	FirstSyncAt       time.Time
-	LastUpdatedAt     time.Time
+	// MedalsLoaded : true only when MapMatch mapped at least one medal for the match. There is no
+	// events counterpart : HighlightEvents is a sibling table imported in its own pass (MapHighlight),
+	// so a MappedMatch can never say whether events were loaded.
+	MedalsLoaded  bool
+	FirstSyncBy   string
+	FirstSyncAt   time.Time
+	LastUpdatedAt time.Time
 	// SeasonID est l'identifiant CSR de la saison du match (ex. "CsrSeason13-1").
 	// Phase 9.5 du plan pipeline CSR : lu depuis le payload OpenSpartan
 	// (MatchInfo.SeasonId, déjà disponible mais non exploité historiquement)

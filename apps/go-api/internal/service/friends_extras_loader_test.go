@@ -9,6 +9,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -281,3 +282,49 @@ func TestNewFriendsExtrasResolver_PartialResults(t *testing.T) {
 
 // Garantit que le type port.FriendsExtrasResolver est bien satisfait.
 var _ port.FriendsExtrasResolver = NewFriendsExtrasResolver(nil, nil, nil)
+
+// ---------------------------------------------------------------------------
+// Ami sans player DB : une absence, pas une panne
+// ---------------------------------------------------------------------------
+
+// E5.9 : un profil suivi jamais synchronisé n'a pas de player DB (l'ouverture par le pool échoue
+// quand son dossier manque). L'opener le dit par ErrFriendWithoutPlayerDB : le résolveur ne rend
+// aucune erreur (donc aucune raison `section_unavailable`), ne journalise aucun ERROR, et lit
+// quand même les autres amis.
+func TestFriendsExtrasResolver_AmiSansPlayerDB_EstUneAbsence(t *testing.T) {
+	logs := logsNiveau(t)
+	score := 61.0
+	lu := &mockFriendRepo{enrichResult: &domain.MatchEnrichmentRaw{PerformanceScore: &score}}
+	opener := func(_ context.Context, _, gamertag string) (FriendMatchExtrasRepo, error) {
+		if gamertag == "Jamais" {
+			return nil, fmt.Errorf("ouverture de %s: %w", gamertag, ErrFriendWithoutPlayerDB)
+		}
+		return lu, nil
+	}
+	resolve := NewFriendsExtrasResolver(map[string]FriendProfile{
+		"x-jamais": {XUID: "x-jamais", Gamertag: "Jamais", TitleSlug: "halo_infinite"},
+		"x-sync":   {XUID: "x-sync", Gamertag: "Synchro", TitleSlug: "halo_infinite"},
+	}, opener, nil)
+
+	extras, err := resolve(context.Background(), "m1", "", []string{"x-jamais", "x-sync"})
+	if err != nil {
+		t.Fatalf("un ami sans player DB ne doit pas produire d'erreur, obtenu : %v", err)
+	}
+	if _, ok := extras["x-jamais"]; ok {
+		t.Error("aucun extra attendu pour l'ami sans player DB")
+	}
+	if got := extras["x-sync"]; got.PerformanceScore == nil || *got.PerformanceScore != 61.0 {
+		t.Errorf("l'ami synchronisé doit rester lu, obtenu %+v", got)
+	}
+	assertAucuneErreurJournalisee(t, logs)
+
+	// Contrôle : toute autre panne d'ouverture reste une panne remontée.
+	panne := NewFriendsExtrasResolver(map[string]FriendProfile{
+		"x-jamais": {XUID: "x-jamais", Gamertag: "Jamais", TitleSlug: "halo_infinite"},
+	}, func(context.Context, string, string) (FriendMatchExtrasRepo, error) {
+		return nil, errors.New("database is locked")
+	}, nil)
+	if _, err := panne(context.Background(), "m1", "", []string{"x-jamais"}); err == nil {
+		t.Error("une ouverture en échec autre que l'absence doit rester une panne remontée")
+	}
+}

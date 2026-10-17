@@ -36,13 +36,6 @@ type shadowMatch struct {
 	gameplayDurMs int64
 }
 
-// shadowParticipant : un participant brut, pour construire les rosters par équipe.
-type shadowParticipant struct {
-	xuid    string
-	teamID  int
-	hasTeam bool
-}
-
 // RunLUSRV2Shadow calcule les états LUSR v2 pour tous les matchs du joueur qui
 // n'ont pas encore été vus (filtre incrémental sur last_match_at par groupe).
 // Retourne le nombre de matchs traités. Best-effort : les erreurs sur un match

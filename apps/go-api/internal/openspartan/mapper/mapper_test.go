@@ -135,8 +135,8 @@ func TestMapMatch_FullCycle(t *testing.T) {
 	if mm.Registry.PlaylistID == nil || *mm.Registry.PlaylistID != "playlist-1" {
 		t.Errorf("PlaylistID: want 'playlist-1', got %v", mm.Registry.PlaylistID)
 	}
-	if !mm.Registry.EventsLoaded || !mm.Registry.MedalsLoaded {
-		t.Error("EventsLoaded / MedalsLoaded should both be true")
+	if !mm.Registry.MedalsLoaded || mm.Registry.BackfillCompleted&BackfillBitMedals == 0 {
+		t.Error("a match carrying medals must set MedalsLoaded and the medals backfill bit")
 	}
 
 	if len(mm.Participants) != 2 {
@@ -403,4 +403,27 @@ func deref[T any](p *T) any {
 		return "<nil>"
 	}
 	return *p
+}
+
+// A match whose players earned no medal does not claim the medals flags: they follow the data
+// actually mapped, not the fact that an import ran.
+func TestMapMatch_NoMedalsDoesNotClaimMedalsFlags(t *testing.T) {
+	ms := sampleMatch(t)
+	for i := range ms.Players {
+		for j := range ms.Players[i].PlayerTeamStats {
+			ms.Players[i].PlayerTeamStats[j].Stats.CoreStats.Medals = nil
+		}
+	}
+	pm := &openspartan.ParsedMatch{MatchID: ms.MatchID, Stats: ms}
+	mm, err := MapMatch(pm, MapOptions{Now: time.Date(2026, 5, 18, 10, 0, 0, 0, time.UTC)})
+	if err != nil {
+		t.Fatalf("MapMatch: %v", err)
+	}
+	if len(mm.Medals) != 0 {
+		t.Fatalf("fixture : no medal expected, got %d", len(mm.Medals))
+	}
+	if mm.Registry.MedalsLoaded || mm.Registry.BackfillCompleted != 0 {
+		t.Errorf("MedalsLoaded = %v, BackfillCompleted = %d, want false and 0",
+			mm.Registry.MedalsLoaded, mm.Registry.BackfillCompleted)
+	}
 }

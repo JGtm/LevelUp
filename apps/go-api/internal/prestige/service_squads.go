@@ -202,11 +202,11 @@ const usualContextsWindow = 60
 // SquadUsualContexts dérive les playlists/modes dominants des matchs communs du
 // roster (indice d'affichage du sélecteur, jamais stocké). Best-effort : si le
 // provider est absent, retourne des listes vides (pas d'erreur).
-func (s *service) SquadUsualContexts(ctx context.Context, rosterXUIDs []string, titleSlug string) (playlists, modes []string, err error) {
+func (s *service) SquadUsualContexts(ctx context.Context, rosterXUIDs []string) (playlists, modes []string, err error) {
 	if len(rosterXUIDs) == 0 || s.deps.SquadMatches == nil {
 		return nil, nil, nil
 	}
-	return s.deps.SquadMatches.SquadUsualContexts(ctx, rosterXUIDs, titleSlug, usualContextsWindow)
+	return s.deps.SquadMatches.SquadUsualContexts(ctx, rosterXUIDs, s.deps.TitleSlug, usualContextsWindow)
 }
 
 // assertMemberUser vérifie que userID (player_slug) est membre-user de

@@ -170,19 +170,24 @@ func TestService_DeleteSquad_PartialFailure_ReturnsError(t *testing.T) {
 
 func TestService_SquadUsualContexts_DelegatesToProvider(t *testing.T) {
 	svc, _, _, _, _, _ := buildFullService()
-	svc.deps.SquadMatches = &fakeSquadMatchProvider{
+	provider := &fakeSquadMatchProvider{
 		usualPlaylists: []string{"Classé", "Grande équipe"},
 		usualModes:     []string{"Slayer"},
 	}
-	pls, mds, err := svc.SquadUsualContexts(context.Background(), []string{"x1", "x2"}, "halo_infinite")
+	svc.deps.SquadMatches = provider
+	svc.deps.TitleSlug = "halo_5"
+	pls, mds, err := svc.SquadUsualContexts(context.Background(), []string{"x1", "x2"})
 	if err != nil {
 		t.Fatalf("SquadUsualContexts: %v", err)
 	}
 	if len(pls) != 2 || pls[0] != "Classé" || len(mds) != 1 || mds[0] != "Slayer" {
 		t.Errorf("got pls=%v mds=%v", pls, mds)
 	}
+	if provider.lastUsualTitle != "halo_5" {
+		t.Errorf("titre transmis au fournisseur = %q, want %q (celui du service, jamais un titre d'appelant)", provider.lastUsualTitle, "halo_5")
+	}
 	// roster vide → nil sans erreur (best-effort)
-	if pls2, _, _ := svc.SquadUsualContexts(context.Background(), nil, "halo_infinite"); pls2 != nil {
+	if pls2, _, _ := svc.SquadUsualContexts(context.Background(), nil); pls2 != nil {
 		t.Errorf("roster vide: want nil, got %v", pls2)
 	}
 }
@@ -209,6 +214,7 @@ type fakeSquadMatchProvider struct {
 	err            error
 	usualPlaylists []string
 	usualModes     []string
+	lastUsualTitle string    // titre reçu par SquadUsualContexts
 	lastSince      time.Time // capture la borne basse reçue (Lot 4)
 }
 
@@ -217,7 +223,8 @@ func (f *fakeSquadMatchProvider) SquadMatchMetrics(_ context.Context, _ []string
 	return f.matches, f.err
 }
 
-func (f *fakeSquadMatchProvider) SquadUsualContexts(_ context.Context, _ []string, _ string, _ int) ([]string, []string, error) {
+func (f *fakeSquadMatchProvider) SquadUsualContexts(_ context.Context, _ []string, titleSlug string, _ int) ([]string, []string, error) {
+	f.lastUsualTitle = titleSlug
 	return f.usualPlaylists, f.usualModes, nil
 }
 

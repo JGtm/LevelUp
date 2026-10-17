@@ -202,12 +202,6 @@ func (b *BatchBuilder) SetSkillRank(row *SkillRankInsert) *BatchBuilder {
 	return b
 }
 
-// AddLUSRComponents ajoute le breakdown LUSR (8 composantes typiquement).
-func (b *BatchBuilder) AddLUSRComponents(rows []LUSRComponentInsert) *BatchBuilder {
-	b.batch.PlayerData.LUSRComponents = append(b.batch.PlayerData.LUSRComponents, rows...)
-	return b
-}
-
 // AddCitations ajoute les citations gagnées pour ce match.
 func (b *BatchBuilder) AddCitations(rows []CitationInsert) *BatchBuilder {
 	b.batch.PlayerData.Citations = append(b.batch.PlayerData.Citations, rows...)

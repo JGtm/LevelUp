@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 )
 
@@ -45,7 +46,7 @@ func decorateMedalEvents(
 	}
 	metas, err := repo.LookupMedalMetaByName(ctx, names)
 	if err != nil {
-		slog.ErrorContext(ctx, "match_view: résolution des médailles du feed en échec",
+		slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError), "match_view: résolution des médailles du feed en échec",
 			"medal_events", len(names), "err", err)
 		return
 	}

@@ -924,8 +924,7 @@ func recreateSharedViews(ctx context.Context, db *sql.DB) error {
 	if _, err := db.ExecContext(ctx, analysis.GamertagLookupViewSQL()); err != nil {
 		return fmt.Errorf("v_gamertag_lookup: %w", err)
 	}
-	if _, err := db.ExecContext(ctx, `
-		CREATE OR REPLACE VIEW v_match_full AS SELECT mr.* FROM match_registry mr`); err != nil {
+	if _, err := db.ExecContext(ctx, migration.VMatchFullViewSQL); err != nil {
 		return fmt.Errorf("v_match_full: %w", err)
 	}
 	// v_weapon_kills : seulement quand la table existe (titre sans décodeur de film, cf.

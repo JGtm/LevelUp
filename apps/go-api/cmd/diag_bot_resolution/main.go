@@ -5,6 +5,7 @@
 //
 //	go run ./cmd/diag_bot_resolution [path]            # inspection lecture seule
 //	go run ./cmd/diag_bot_resolution [path] --repair   # re-applique la vue
+//	go run ./cmd/diag_bot_resolution [path] --repair --title halo_5   # titre des migrations (défaut : halo_infinite)
 package main
 
 import (
@@ -14,6 +15,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	halo5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 )
@@ -21,9 +23,18 @@ import (
 func main() {
 	// Phase 1.5.1 B : steps Halo title-owned fournis au runner via le provider.
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+	halo5migrations.Register()
 	path := "../../data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb"
 	repair := false
-	for _, a := range os.Args[1:] {
+	title := migration.DefaultSlug
+	args := os.Args[1:]
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--title" && i+1 < len(args) {
+			title = args[i+1]
+			i++
+			continue
+		}
 		if a == "--repair" {
 			repair = true
 			continue
@@ -39,7 +50,7 @@ func main() {
 			fmt.Printf("open write: %v\n", err)
 			os.Exit(1)
 		}
-		if err := migration.RunForDB(dbw, migration.TargetShared); err != nil {
+		if err := migration.RunForTitleDB(dbw, title, migration.TargetShared); err != nil {
 			fmt.Printf("RunForDB: %v\n", err)
 			dbw.Close()
 			os.Exit(1)

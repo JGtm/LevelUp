@@ -46,15 +46,25 @@ var sharedSnapshotMatchKeyedRaw = []string{
 }
 
 // sharedSnapshotTitleOwnedRaw : tables shared append-only exportées RAW que le schéma d'un
-// titre peut ne pas porter. `weapon_kills` n'existe que dans le fichier des titres sans
-// décodeur de film (migration title-owned games/halo_infinite/migrations/
-// steps_shared_drop_weapon_kills.go) : l'export l'emporte quand la base la porte, la lecture
-// la reconstruit (avec sa vue v_weapon_kills) quand le Parquet est là, et sinon sert le
-// schéma du titre tel quel — comme le live, qui n'a alors ni la table ni la vue.
-var sharedSnapshotTitleOwnedRaw = []string{tableWeaponKills}
+// titre peut ne pas porter ; aucune n'est REQUISE à la lecture.
+//   - `weapon_kills` n'existe que dans le fichier des titres sans décodeur de film (migration
+//     title-owned games/halo_infinite/migrations/steps_shared_drop_weapon_kills.go).
+//   - `match_bomb_stats` (statistiques d'Assaut reconstruites du film) n'existe que dans la base
+//     des titres à décodeur de film, et seulement si la migration l'y a posée.
+//
+// L'export emporte la table quand la base la porte, la lecture la reconstruit (avec sa vue
+// `_latest` : vuesDesTablesDuTitre) quand le Parquet est là, et sinon sert le schéma du titre tel
+// quel — comme le live, qui n'a alors ni la table ni la vue. Un snapshot coupé avant l'ajout
+// d'une table à cette liste reste donc lisible : la vue match reçoit, de ce lecteur, les colonnes
+// concernées absentes (loadMatchBombStats le journalise), jusqu'au prochain cut.
+var sharedSnapshotTitleOwnedRaw = []string{tableWeaponKills, tableMatchBombStats}
 
 // tableWeaponKills : la table shared que seul le schema des titres sans decodeur de film porte.
 const tableWeaponKills = "weapon_kills"
+
+// tableMatchBombStats : la table des statistiques d'Assaut du film (migration
+// steps_shared_bomb_stats.go) ; sa seule lecture est la vue match_bomb_stats_latest.
+const tableMatchBombStats = "match_bomb_stats"
 
 // sharedSnapshotGlobalTables : relations shared NON match-keyed (clé xuid) exportées en
 // ENTIER (petites, globales) — requises par v_gamertag_lookup au moment de la lecture.

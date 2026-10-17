@@ -38,6 +38,12 @@ func MapMatch(pm *openspartan.ParsedMatch, opts MapOptions) (MappedMatch, error)
 	if err != nil {
 		return MappedMatch{}, fmt.Errorf("map medals %s: %w", pm.MatchID, err)
 	}
+	// The medals flags describe the payload actually mapped: a match whose players earned no
+	// medal does not claim them.
+	if len(medals) > 0 {
+		reg.MedalsLoaded = true
+		reg.BackfillCompleted |= BackfillBitMedals
+	}
 	return MappedMatch{Registry: reg, Participants: parts, Medals: medals}, nil
 }
 
@@ -64,9 +70,6 @@ func MapRegistry(ms openspartan.MatchStats, opts MapOptions) (MatchRegistryRow, 
 		StartTimeUTC:            ms.MatchInfo.StartTime.UTC(),
 		DurationSeconds:         durSec,
 		PlayableDurationSeconds: playableSec,
-		BackfillCompleted:       BackfillBitMedals,
-		EventsLoaded:            true,
-		MedalsLoaded:            true,
 		FirstSyncBy:             opts.source(),
 		FirstSyncAt:             now,
 		LastUpdatedAt:           now,

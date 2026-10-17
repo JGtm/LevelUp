@@ -233,18 +233,18 @@ func ApplyResolutionViews(db *sql.DB) error {
 		return fmt.Errorf("create v_gamertag_lookup: %w", err)
 	}
 
-	_, _ = db.ExecContext(bootCtx(), vMatchFullViewSQL)
+	if _, err := db.ExecContext(bootCtx(), VMatchFullViewSQL); err != nil {
+		return fmt.Errorf("create v_match_full: %w", err)
+	}
 
 	return nil
 }
 
-// vMatchFullViewSQL : DDL canonique de v_match_full. DuckDB fige l'étoile à la création : toute
-// colonne ajoutée ou retirée de match_registry exige de rejouer ce DDL.
-const vMatchFullViewSQL = `
-		CREATE OR REPLACE VIEW v_match_full AS
-		SELECT mr.*
-		FROM match_registry mr
-	`
+// VMatchFullViewSQL : DDL canonique de v_match_full, SOURCE UNIQUE (archlint/
+// v_match_full_ddl_single_source_test.go interdit tout second littéral hors tests). DuckDB fige
+// l'étoile à la création : toute colonne ajoutée ou retirée de match_registry exige de rejouer ce
+// DDL. Sans point-virgule final.
+const VMatchFullViewSQL = `CREATE OR REPLACE VIEW v_match_full AS SELECT mr.* FROM match_registry mr`
 
 // ApplyMvPlayerMatchesView crée ou recrée mv_player_matches.
 func ApplyMvPlayerMatchesView(db *sql.DB) error {

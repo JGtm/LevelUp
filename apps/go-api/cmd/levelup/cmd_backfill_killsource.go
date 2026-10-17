@@ -312,7 +312,7 @@ func jouerLesDeuxPasses(
 func migrerSchemaPartage(db *sql.DB, slug string) error {
 	_ = migration.All()
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
-	if err := migration.RunForDB(db, migration.TargetShared); err != nil {
+	if err := migration.RunForTitleDB(db, slug, migration.TargetShared); err != nil {
 		return fmt.Errorf("migrations shared (%s): %w", slug, err)
 	}
 	return nil

@@ -8,8 +8,7 @@
 //
 // Découpage thématique (audit #1 god files) :
 //   - match_view_data_loaders.go : matchViewData + loadMatchViewDataParallel +
-//     buildMatchViewFromData + detectPartialMatchData + matchModeFamilyFromMeta +
-//     loadAwardsForScoreboard.
+//     buildMatchViewFromData + detectPartialMatchData + matchModeFamilyFromMeta.
 //   - match_view_builders_header.go  : buildMatchHeader + buildScoreLabelFromMeta + buildRankBlock.
 //   - match_view_builders_summary.go : buildSummaryTabFull + computeExpectedAssists + buildExpectedStats + convertMedals + buildCitationsTab + toIntPtr.
 //   - match_view_builders_combat.go  : buildCombatTabFull + buildKillerVictimPairs + buildTugEvents + buildImpactInput + buildKDEvents.
@@ -124,10 +123,6 @@ type MatchViewService struct {
 	// HighlightEventsRepository n'a aucun implémenteur de prod (LoadHighlightEvents
 	// stub sur le DataAdapter, pas d'InvalidateMatch côté duckdb).
 	eventsRepo highlightEventsLoader
-	// awardsRepo (optionnel, chunk MV4.B) : loader des personal_score_awards
-	// pour le radar 6 axes via narrative.ComputeParticipationProfile. Si nil,
-	// le radar reste vide (axes à 0).
-	awardsRepo port.PersonalScoreAwardsRepository
 	xuid       string
 	// titleSlug est nécessaire pour HighlightEventsRepository (capability check
 	// + selection de la DB shared). Injecté via WithTitleSlug.
@@ -291,13 +286,6 @@ func (s *MatchViewService) WithPlayerPositionsRepo(r port.PlayerPositionsReposit
 	return s
 }
 
-// WithAwardsRepo injecte le loader personal_score_awards pour le radar
-// 6 axes (chunk MV4.B). Dégradation gracieuse si nil : radar à 0.
-func (s *MatchViewService) WithAwardsRepo(r port.PersonalScoreAwardsRepository) *MatchViewService {
-	s.awardsRepo = r
-	return s
-}
-
 // WithAssetURL configure l'adapter d'URLs d'assets (map image, rank icon).
 // Dégradation gracieuse : si nil ou si l'adapter retourne "", les champs
 // restent vides côté response et le front affiche les fallbacks texte.
@@ -370,7 +358,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		// page (2026-08-29 : Binder Error sur snapshot au schéma en retard → 404 sur
 		// TOUS les matchs, log en Info que personne ne lit). Une panne se dit : 500,
 		// log ERROR, et l'état d'erreur générique du front.
-		slog.ErrorContext(ctx, "match_view: lecture des métadonnées en échec (pas une absence)",
+		slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError), "match_view: lecture des métadonnées en échec (pas une absence)",
 			"match_id", matchID, "err", err)
 		return domain.MatchViewResponse{}, fmt.Errorf("match_view: métadonnées illisibles pour %s: %w", matchID, err)
 	}

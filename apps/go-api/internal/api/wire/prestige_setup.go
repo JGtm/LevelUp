@@ -224,6 +224,7 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 
 	deps := prestige.Deps{
 		Tuning:          b.tuning,
+		TitleSlug:       pdb.TitleSlug,
 		Challenges:      prestigedb.NewPrestigeChallengeRepo(pdb.Player),
 		Arcs:            prestigedb.NewPrestigeArcRepo(pdb.Player),
 		Moments:         prestigedb.NewPrestigeMomentCardRepo(pdb.Player),
