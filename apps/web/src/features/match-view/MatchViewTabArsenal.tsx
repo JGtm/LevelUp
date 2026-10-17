@@ -24,6 +24,7 @@ import { useMemo } from 'react'
 import { MatchEquipmentUsageSection } from '@/features/match-replay/MatchEquipmentUsageSection'
 import { buildEquipmentUsage, hasEquipmentUsage } from '@/features/match-replay/model/equipmentUsageLogic'
 import { DetailSection } from '@/components/ui/detail-section'
+import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { AnalysisPendingSlot } from '@/components/ui/analysis-pending-slot'
 import { ANALYSIS_PART, hasPendingPart, type AnalysisPendingCarrier } from '@/lib/analysis-pending/analysisPending.logic'
@@ -122,7 +123,14 @@ export function MatchViewTabArsenal({
   const showTerrainSection = showEquipmentTerrain || pending.terrain
 
   if (!showKillsWeaponsSection && !showTerrainSection) {
-    return <EmptyStateNotice title={t.arsenalEmptyTitle} description={t.arsenalEmptyDescription} />
+    // Convention de l'application : l'état vide pointillé vit DANS un bloc parent, jamais nu.
+    return (
+      <Card data-testid="match-arsenal-empty">
+        <CardContent className="pt-4">
+          <EmptyStateNotice title={t.arsenalEmptyTitle} description={t.arsenalEmptyDescription} />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (

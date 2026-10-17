@@ -188,4 +188,16 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
     expect(screen.queryByText(MATCH_VIEW_TEXT.fr.sectionEquipmentTerrain)).toBeNull()
     expect(screen.getByText(MATCH_VIEW_TEXT.fr.arsenalEmptyTitle)).toBeInTheDocument()
   })
+
+  it('rien à montrer : le pointillé est DANS un bloc parent (Card), jamais nu', () => {
+    hoisted.equipment = false
+    afficher({ emprise: null, lives: null, positions: false })
+    const bloc = screen.getByTestId('match-arsenal-empty')
+    const notice = bloc.querySelector('.border-dashed')
+    expect(notice).not.toBeNull()
+    expect(notice).not.toBe(bloc)
+    expect(bloc.className).toContain('border')
+    expect(bloc.contains(notice)).toBe(true)
+  })
 })
+
