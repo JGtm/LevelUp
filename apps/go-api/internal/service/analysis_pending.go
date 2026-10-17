@@ -22,6 +22,8 @@ type AnalysisPendingResolver struct {
 	replayExpected bool
 	// now : horloge injectable (tests de la borne des 24 h).
 	now func() time.Time
+	// decodes : qui décode quoi sur la machine (nil : tout match en attente est « queued »).
+	decodes port.FilmDecodeObserver
 }
 
 // NewAnalysisPendingResolver construit le résolveur. repo nil → nil (rien à résoudre).
@@ -38,6 +40,25 @@ func (r *AnalysisPendingResolver) WithClock(now func() time.Time) *AnalysisPendi
 		r.now = now
 	}
 	return r
+}
+
+// WithDecodeObserver branche la lecture du décodage en cours (état « en cours » vs « en
+// attente » de l'en-tête de la vue match). Récepteur nil : sans effet.
+func (r *AnalysisPendingResolver) WithDecodeObserver(o port.FilmDecodeObserver) *AnalysisPendingResolver {
+	if r != nil {
+		r.decodes = o
+	}
+	return r
+}
+
+// DecodingMatchID rend le match que décode un processus vivant, "" sinon (ou sans observateur).
+// Un appel LIT le détenteur du verrou machine : l'appelant le fait UNE fois par requête, puis
+// décide chaque tuile par `analysis.AnalysisStateOf`.
+func (r *AnalysisPendingResolver) DecodingMatchID() string {
+	if r == nil || r.decodes == nil {
+		return ""
+	}
+	return r.decodes.DecodingMatchID()
 }
 
 // ReplayLookup dit si un match a son artefact de rejeu, et si la réponse est fiable.
@@ -117,11 +138,16 @@ func (s *HomeService) applyAnalysisPendingToRecentItems(ctx context.Context, rep
 	if len(pending) == 0 {
 		return
 	}
+	// Le détenteur du verrou se lit UNE fois pour toutes les tuiles de la requête.
+	decoding := s.analysisPending.DecodingMatchID()
 	for _, items := range itemLists {
 		for i := range items {
 			parts := pending[items[i].MatchID]
 			items[i].AnalysisPending = len(parts) > 0
 			items[i].AnalysisPendingParts = parts
+			if len(parts) > 0 {
+				items[i].AnalysisState = analysis.AnalysisStateOf(items[i].MatchID, decoding)
+			}
 		}
 	}
 }
@@ -144,4 +170,7 @@ func (s *MatchViewService) applyHeaderAnalysisPending(ctx context.Context, h *do
 	parts := s.analysisPending.Resolve(ctx, []string{h.MatchID}, lookup)[h.MatchID]
 	h.AnalysisPending = len(parts) > 0
 	h.AnalysisPendingParts = parts
+	if h.AnalysisPending {
+		h.AnalysisState = analysis.AnalysisStateOf(h.MatchID, s.analysisPending.DecodingMatchID())
+	}
 }

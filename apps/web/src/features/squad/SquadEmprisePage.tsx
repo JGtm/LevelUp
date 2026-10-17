@@ -33,7 +33,7 @@
  * (sélection vide ou invalide) ; sans rien à montrer, l'onglet le DIT au lieu de rester nu. Un
  * bloc sans donnée se retire, intertitre compris, SAUF quand le titre lit le film et que le film du
  * périmètre n'est pas lu pour un match au moins : il reste alors avec son intertitre et un état vide
- * (`FilmGapSection` : « Analyse du film en cours » ou « Film non analysé »), jamais un trou.
+ * (`FilmGapSection` : « Analyse du film en attente » ou « Film non analysé »), jamais un trou.
  */
 import { useMemo } from 'react'
 

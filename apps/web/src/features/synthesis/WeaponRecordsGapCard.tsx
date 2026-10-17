@@ -1,6 +1,6 @@
 /**
  * WeaponRecordsGapCard — « Records de distance par arme » quand le film du périmètre ne donne aucun frag
- * mesuré : la carte garde son titre et dit pourquoi (« Analyse du film en cours » ou « Film non analysé »)
+ * mesuré : la carte garde son titre et dit pourquoi (« Analyse du film en attente » ou « Film non analysé »)
  * dans son bloc, au lieu de disparaître. Le serveur nomme la cause (`weapon_records_gap`, règle unique
  * d'analyse en cours) ; un titre qui ne mesure pas de positions (capability `weapon_range` absente) n'en
  * a pas et la page n'affiche rien.

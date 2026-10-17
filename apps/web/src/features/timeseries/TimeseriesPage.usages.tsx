@@ -18,7 +18,7 @@
  * gamertag (`player`). Un bloc sans donnée se retire,
  * intertitre compris (prédicat unique `usagesSections`), SAUF quand le titre lit le film et que le film des
  * matchs n'est pas lu pour l'un d'eux au moins (`filmGapOfBlock`) : il garde alors son intertitre et un état
- * dans un bloc parent (« Analyse du film en cours » ou « Film non analysé »), jamais un trou. Sans rien à
+ * dans un bloc parent (« Analyse du film en attente » ou « Film non analysé »), jamais un trou. Sans rien à
  * montrer, l'onglet le DIT (bloc parent + pointillé dedans). Sans film (Halo 5), seuls les frags aux armes
  * spéciales de la feuille de match restent.
  */

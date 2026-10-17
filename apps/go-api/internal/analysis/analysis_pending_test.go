@@ -188,3 +188,23 @@ func TestAnalysisPending_InvarianteBooleenEtCauses(t *testing.T) {
 		}
 	}
 }
+
+func TestAnalysisStateOf(t *testing.T) {
+	cas := []struct {
+		nom, match, decodant, want string
+	}{
+		{"aucun décodage", "m1", "", domain.AnalysisStateQueued},
+		{"décodage de ce match", "m1", "m1", domain.AnalysisStateInProgress},
+		{"casse différente", "ABC-1", "abc-1", domain.AnalysisStateInProgress},
+		{"décodage d'un autre match", "m1", "m2", domain.AnalysisStateQueued},
+		{"match inconnu et rien ne décode", "", "", domain.AnalysisStateQueued},
+		{"match inconnu, un autre décode", "", "m2", domain.AnalysisStateQueued},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			if got := AnalysisStateOf(c.match, c.decodant); got != c.want {
+				t.Fatalf("AnalysisStateOf(%q, %q) = %q, want %q", c.match, c.decodant, got, c.want)
+			}
+		})
+	}
+}

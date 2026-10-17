@@ -37,7 +37,7 @@ describe('Onglet Usages — le film des matchs n’est pas lu', () => {
     // La barre des armes spéciales (feuille de match) reste : « Rendement des ressources » garde sa carte.
     for (const id of SECTIONS.filter((s) => s !== 'prendre')) {
       const bloc = within(screen.getByTestId(`usages-section-${id}`)).getByTestId('film-gap')
-      expect(within(bloc).getByTestId('analysis-pending-slot').textContent).toContain('Analyse du film en cours')
+      expect(within(bloc).getByTestId('analysis-pending-slot').textContent).toContain('Analyse du film en attente')
     }
     // La portée (positions lues au film) garde son intertitre : le titre déclare la capability (Infinite).
     expect(within(screen.getByTestId('usages-section-range')).getByTestId('film-gap')).toBeInTheDocument()

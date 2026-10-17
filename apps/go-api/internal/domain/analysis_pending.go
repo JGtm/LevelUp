@@ -32,10 +32,20 @@ const (
 	AnalysisPartReplay = "replay"
 )
 
+// États de l'analyse d'un match, tels que servis dans `MatchViewHeader.analysis_state`
+// (posé seulement quand `analysis_pending` est vrai). Les deux chaînes sont le contrat avec
+// le web : miroir `lib/analysis-pending/analysisPending.logic.ts`.
+const (
+	// AnalysisStateInProgress : un décodage de film tient le verrou machine POUR CE MATCH.
+	AnalysisStateInProgress = "in_progress"
+	// AnalysisStateQueued : rien ne décode ce match en ce moment ; il attend son tour.
+	AnalysisStateQueued = "queued"
+)
+
 // Causes pour lesquelles une section tirée du film n'a rien à montrer sur le périmètre d'une page, telles
 // que servies à côté du bloc manquant (le web choisit entre l'indicateur d'analyse et l'état vide).
 const (
-	// FilmGapPending : l'analyse du film d'au moins un match du périmètre est EN COURS.
+	// FilmGapPending : l'analyse du film d'au moins un match du périmètre n'est pas finie.
 	FilmGapPending = "pending"
 	// FilmGapMissing : le film du périmètre n'est ni lu ni en cours d'analyse.
 	FilmGapMissing = "missing"

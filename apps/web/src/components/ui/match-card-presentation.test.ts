@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-card-presentation'
+import {
+  analysisPendingLabelKey,
+  analysisPendingPartKeys,
+  getMatchCardOutcomeStyle,
+  getMatchNarrativeBadgeMeta,
+} from './match-card-presentation'
 
 describe('match-card-presentation', () => {
   it('retourne des CSS vars de palette pour les scores victoire et défaite', () => {
@@ -34,5 +39,27 @@ describe('match-card-presentation', () => {
     expect(getMatchNarrativeBadgeMeta('abnegation', 'fr')?.label).toBe('ABNÉGATION')
     expect(getMatchNarrativeBadgeMeta('debacle', 'fr')?.label).toBe('DÉBÂCLE')
     expect(getMatchNarrativeBadgeMeta('debacle')?.label).toBe('DÉBÂCLE')
+  })
+})
+
+describe('indicateur d\'analyse — libellés selon l\'état', () => {
+  it.each(['badge', 'tooltip_title', 'assisted_frags', 'citations', 'replay'] as const)(
+    '%s : « en cours » et « en attente » sont deux clés distinctes',
+    (label) => {
+      const enCours = analysisPendingLabelKey(label, true)
+      const enAttente = analysisPendingLabelKey(label, false)
+      expect(enCours).toBe(`common.match_card.analysis_pending.${label}`)
+      expect(enAttente).toBe(`common.match_card.analysis_pending.${label}_queued`)
+    },
+  )
+
+  it('parties en attente : noms courts, ordre servi, causes inconnues ignorées', () => {
+    expect(analysisPendingPartKeys({ analysis_pending_parts: ['replay', 'inconnue', 'kill_source'] })).toEqual([
+      'common.match_card.analysis_pending.part_replay',
+      'common.match_card.analysis_pending.part_kill_source',
+    ])
+    expect(analysisPendingPartKeys({ analysis_pending_parts: null })).toEqual([])
+    expect(analysisPendingPartKeys({})).toEqual([])
+    expect(analysisPendingPartKeys(undefined)).toEqual([])
   })
 })

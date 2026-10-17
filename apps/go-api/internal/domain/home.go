@@ -324,6 +324,10 @@ type RecentMatchItem struct {
 	// kill_source, citations, replay), pour que chaque emplacement de la tuile regarde la
 	// sienne. Invariant : AnalysisPending == (len(AnalysisPendingParts) > 0).
 	AnalysisPendingParts []string `json:"analysis_pending_parts,omitempty"`
+	// AnalysisState : `in_progress` si un décodage de film tient le verrou machine pour ce match,
+	// `queued` sinon (`AnalysisState*`). Posé seulement quand AnalysisPending est vrai. Règle :
+	// analysis.AnalysisStateOf.
+	AnalysisState string `json:"analysis_state,omitempty"`
 }
 
 // RecentMatchMedal est une médaille compacte pour l'affichage dans MatchCard.

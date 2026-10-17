@@ -9,7 +9,7 @@
  *    précédent quand les deux coexistent.
  */
 import type { MatchViewResponse } from '@/lib/api/types'
-import { matchViewHasAnalysisPending } from '@/lib/analysis-pending/analysisPending.logic'
+import { matchViewHasAnalysisPending, matchViewRefetchInterval } from '@/lib/analysis-pending/analysisPending.logic'
 
 /**
  * Raisons « lecture en échec » émises par l'API (miroir de `domain.IsUnavailableReason`) :
@@ -41,6 +41,21 @@ export function selectMatchPartialBanner(
   if (!data.is_partial || reasons.length === 0) return null
   if (reasons.some(isUnavailableReason)) return { kind: 'unavailable' }
   return { kind: 'partial', reasons }
+}
+
+/** Période du nouvel essai automatique tant que la vue porte une lecture en échec. */
+export const MATCH_VIEW_RETRY_MS = 30_000
+
+/**
+ * `refetchInterval` de la vue match : 30 s tant qu'une source est en panne (le message
+ * « Nouvel essai automatique » est vrai), sinon 60 s tant que l'analyse du film n'est pas
+ * finie, sinon plus de rechargement.
+ */
+export function matchViewPollInterval(
+  data: (Pick<MatchViewResponse, 'is_partial' | 'partial_reasons'> & Partial<Pick<MatchViewResponse, 'header'>>) | undefined,
+): number | false {
+  if (data && selectMatchPartialBanner(data)?.kind === 'unavailable') return MATCH_VIEW_RETRY_MS
+  return matchViewRefetchInterval(data)
 }
 
 const MATCH_VIEW_STALE_MS = 10 * 60 * 1000

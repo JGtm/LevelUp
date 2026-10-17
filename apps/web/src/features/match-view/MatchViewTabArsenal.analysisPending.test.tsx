@@ -32,12 +32,13 @@ const TOUTES_CAUSES = ['kill_source', 'citations', 'replay']
 
 interface Over {
   parts?: string[]
+  state?: string
   killDistance?: boolean
   positions?: boolean
   locale?: 'fr' | 'en'
 }
 
-function afficher({ parts, killDistance = false, positions = false, locale = 'fr' }: Over = {}) {
+function afficher({ parts, state, killDistance = false, positions = false, locale = 'fr' }: Over = {}) {
   return render(
     <MatchViewTabArsenal
       playerSlug="jgtm"
@@ -50,7 +51,7 @@ function afficher({ parts, killDistance = false, positions = false, locale = 'fr
       killDistance={killDistance ? [{ xuid: 'x1', weapons: [] }] : null}
       emprise={null}
       livesNearTeammate={null}
-      analysisCauses={{ analysis_pending_parts: parts }}
+      analysisCauses={{ analysis_pending_parts: parts, analysis_state: state }}
       meXUID={null}
       friendGamertags={[]}
       matchPositions={positions ? [{ timeMs: 0, x: 1, y: 2, z: 0, team: 0 }] : []}
@@ -84,24 +85,35 @@ describe('arsenalPendingSlots', () => {
 })
 
 describe('MatchViewTabArsenal — analyse du film en cours', () => {
-  it("met « En cours d'analyse » (arme par frag) et « En préparation » (rejeu 2D) à la place de l'état vide", () => {
-    afficher({ parts: TOUTES_CAUSES })
+  it("décodage sur ce match : « Analyse en cours » à la place de l'état vide, pour l'arme par frag et le rejeu 2D", () => {
+    afficher({ parts: TOUTES_CAUSES, state: 'in_progress' })
     const slots = screen.getAllByTestId('analysis-pending-slot')
-    expect(slots.map((s) => s.textContent)).toEqual(["En cours d'analyse", 'En préparation'])
+    expect(slots.map((s) => s.textContent)).toEqual(['Analyse en cours', 'Analyse en cours'])
     expect(screen.getByText(MATCH_VIEW_TEXT.fr.sectionKillsWeapons)).toBeInTheDocument()
     expect(screen.getByText(MATCH_VIEW_TEXT.fr.sectionEquipmentTerrain)).toBeInTheDocument()
     expect(screen.queryByText(MATCH_VIEW_TEXT.fr.arsenalEmptyTitle)).toBeNull()
     expect(screen.queryByTestId('kill-distance')).toBeNull()
   })
 
+  it("en attente (aucun décodage sur ce match) : « Analyse en attente », jamais « en cours »", () => {
+    for (const state of ['queued', undefined]) {
+      const { unmount } = afficher({ parts: TOUTES_CAUSES, state })
+      expect(screen.getAllByTestId('analysis-pending-slot').map((s) => s.textContent)).toEqual([
+        'Analyse en attente',
+        'Analyse en attente',
+      ])
+      unmount()
+    }
+  })
+
   it("causes isolées : kill_source seule n'annonce que l'arme par frag", () => {
-    afficher({ parts: ['kill_source'] })
-    expect(screen.getAllByTestId('analysis-pending-slot').map((s) => s.textContent)).toEqual(["En cours d'analyse"])
+    afficher({ parts: ['kill_source'], state: 'in_progress' })
+    expect(screen.getAllByTestId('analysis-pending-slot').map((s) => s.textContent)).toEqual(['Analyse en cours'])
   })
 
   it("causes isolées : replay seul n'annonce que le rejeu 2D, la distance par arme garde sa lecture", () => {
     afficher({ parts: ['replay'] })
-    expect(screen.getAllByTestId('analysis-pending-slot').map((s) => s.textContent)).toEqual(['En préparation'])
+    expect(screen.getAllByTestId('analysis-pending-slot').map((s) => s.textContent)).toEqual(['Analyse en attente'])
     expect(screen.getByTestId('kill-distance')).toBeInTheDocument()
   })
 
@@ -112,11 +124,16 @@ describe('MatchViewTabArsenal — analyse du film en cours', () => {
   })
 
   it('traduit en anglais', () => {
-    afficher({ parts: TOUTES_CAUSES, locale: 'en' })
+    afficher({ parts: TOUTES_CAUSES, locale: 'en', state: 'in_progress' })
     expect(screen.getAllByTestId('analysis-pending-slot').map((s) => s.textContent)).toEqual([
       'Analysis in progress',
-      'Being prepared',
+      'Analysis in progress',
     ])
+  })
+
+  it("traduit l'attente en anglais", () => {
+    afficher({ parts: ['kill_source'], locale: 'en' })
+    expect(screen.getAllByTestId('analysis-pending-slot').map((s) => s.textContent)).toEqual(['Analysis pending'])
   })
 
   it('ne remplace que ce qui manque : distance par arme et positions déjà là = aucun emplacement', () => {
