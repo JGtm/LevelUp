@@ -9,6 +9,11 @@
  * spéciales. L'onglet ne garde alors que « Frags obtenus avec les ressources », barre épaisse
  * seule — la grille match par match exige au moins une ligne lue au film (la seule ligne des
  * frags ne fait pas une grille). Aucun branchement sur le titre : tout se lit dans le bloc.
+ *
+ * Capability présente mais film non lu sur le périmètre (analyse en cours, ou jamais faite) : la
+ * section sans donnée reste AFFICHÉE avec un état vide (`empriseFilmGap`) — une section absente
+ * laissait croire à un bug. Capability absente : section absente, comme avant. L'onglet reste visible
+ * dès que le titre lit le film (`empriseFilmExpected`), même sans donnée.
  */
 import type { SquadEmpriseBlock, SquadEmprisePlacement, SquadFormesBlock } from '@/lib/api/types'
 
@@ -41,6 +46,23 @@ export function placementHasLives(placement: SquadEmprisePlacement | null | unde
   return placement != null && (placement.players ?? []).some((p) => p.lives_measured > 0)
 }
 
+/** Le titre lit le film : le bloc existe et ne dit pas `film_unsupported` (capability `film.usage_summary`). */
+export function empriseFilmExpected(block: SquadEmpriseBlock | null | undefined): boolean {
+  return block != null && block.film_unavailable !== 'film_unsupported'
+}
+
+/**
+ * Le film du périmètre n'est pas lu pour au moins un match : `pending` (au moins une analyse en cours,
+ * l'état vide dit « en cours ») ou `missing` (aucune en cours, « non analysé »). `null` : le titre ne lit
+ * pas le film, ou tous les matchs ont leur résumé — une section sans donnée est alors légitimement absente.
+ * Les comptes viennent du Go (règle unique `analysis.AnalysisPendingParts`), jamais recalculés ici.
+ */
+export function empriseFilmGap(block: SquadEmpriseBlock | null | undefined): 'pending' | 'missing' | null {
+  if (!empriseFilmExpected(block)) return null
+  if ((block?.matches_film_pending ?? 0) > 0) return 'pending'
+  return (block?.matches_film_missing ?? 0) > 0 ? 'missing' : null
+}
+
 /** Les blocs à rendre, depuis les modèles des cartes. */
 export function empriseSections(m: {
   controlRows: unknown[]
@@ -61,7 +83,7 @@ export function empriseSections(m: {
   }
 }
 
-/** L'onglet a-t-il quelque chose à montrer ? (Faux sans bloc.) */
+/** L'onglet a-t-il quelque chose à montrer ? Vrai dès que le titre lit le film ; faux sans bloc. */
 export function empriseHasContent(block: SquadEmpriseBlock | null | undefined): boolean {
   if (!block) return false
   const s = empriseSections({
@@ -73,7 +95,7 @@ export function empriseHasContent(block: SquadEmpriseBlock | null | undefined): 
     habit: buildHabitView(block),
     placement: block.placement,
   })
-  return Object.values(s).some(Boolean)
+  return empriseFilmExpected(block) || Object.values(s).some(Boolean)
 }
 
 /**

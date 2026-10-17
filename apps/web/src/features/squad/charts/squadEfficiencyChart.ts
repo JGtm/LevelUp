@@ -38,6 +38,8 @@ import {
   hoverRevealSymbol,
   legendEntries,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter, type AxisTipRow } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import {
   ONE_LIFE_RATE_BOUNDS,
   ONE_LIFE_RATE_PCT,
@@ -45,7 +47,7 @@ import {
   oneLifeWindowBoundsForData,
   oneLifeZonesMarkArea,
 } from '@/lib/charts/oneLifeWindow'
-import { effectiveDmgPerFrag, formatNumberFixed } from '@/lib/formatters'
+import { effectiveDmgPerFrag } from '@/lib/formatters'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { truncateMap } from '@/lib/charts/matchLabels'
 
@@ -147,40 +149,32 @@ const LINE_W = 2
 /** Donnée d'un point de courbe : la valeur tracée porte ses valeurs brutes. */
 type SeriesDatum = { value: number; point: EfficiencyPoint } | null
 
-/** Formatter de tooltip : taux + valeurs brutes du match survolé, tous joueurs. */
+/**
+ * Infobulle : le match en titre, puis un joueur par ligne (le meilleur taux d'abord, comme sur le
+ * graphe) avec son taux « une vie » et, dessous, les dégâts bruts et le rapport par événement.
+ * Un joueur absent du match n'a pas de ligne ; la définition du pivot reste en pied.
+ */
 function tooltipFormatter(opts: EfficiencyChartOpts, xLabels: string[]) {
   const l = opts.labels
   const offensive = opts.metric === 'offensive'
   const metric = offensive ? l.offensiveMetric : l.defensiveMetric
   const damage = offensive ? l.damageDealt : l.damageTaken
   const unit = offensive ? l.perFrag : l.perDeath
-  return (params: unknown): string => {
-    const items = params as Array<{
-      seriesName?: string
-      color?: string
-      dataIndex?: number
-      data?: SeriesDatum
-    }>
-    if (!Array.isArray(items)) return ''
-    const hits = items.filter((it) => it.data?.point != null)
-    if (hits.length === 0) return ''
-    const order = hits[0].data?.point?.order ?? hits[0].dataIndex ?? 0
-    const rows = hits.map((it) => {
-      const pt = it.data?.point as EfficiencyPoint
-      const dot = `<span style="color:${it.color ?? ''}">●</span>`
-      return [
-        `${dot} ${escapeHtml(it.seriesName ?? '')} — <b>${formatNumberFixed(pt.rate, 0)} %</b>`,
-        `${escapeHtml(damage)} ${formatNumberFixed(pt.rawDamage, 0)}`,
-        `${formatNumberFixed(pt.perEvent, 0)} ${escapeHtml(unit)}`,
-      ].join(' · ')
-    })
-    return [
-      `<div style="font-size:11px">${escapeHtml(xLabels[order] ?? `#${order + 1}`)}`,
-      ...rows,
-      // Définition compacte : le pivot est la clé de lecture de la carte.
-      `<span style="opacity:.7">${escapeHtml(metric)} — 100 % = ${escapeHtml(l.oneLife)}</span></div>`,
-    ].join('<br/>')
-  }
+  const pointOf = (row: AxisTipRow) => (row.param as { data?: SeriesDatum }).data?.point
+  return axisTooltipFormatter({
+    title: (p) => xLabels[p.dataIndex ?? 0] ?? `#${(p.dataIndex ?? 0) + 1}`,
+    value: (r) => `${tipNumber(r.value, 0)} %`,
+    detail: (r) => {
+      const pt = pointOf(r)
+      if (!pt) return ''
+      const parts = [`${damage} ${pt.rawDamage == null ? '—' : tipNumber(pt.rawDamage)}`]
+      if (pt.perEvent != null) parts.push(`${tipNumber(pt.perEvent)} ${unit}`)
+      return parts.join(' · ')
+    },
+    skip: (r) => pointOf(r) == null,
+    order: 'value-desc',
+    footer: () => `<div style="opacity:.7;margin-top:4px">${escapeHtml(metric)} — 100 % = ${escapeHtml(l.oneLife)}</div>`,
+  })
 }
 
 /**

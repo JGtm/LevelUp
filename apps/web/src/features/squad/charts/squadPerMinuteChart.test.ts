@@ -2,6 +2,7 @@
  * squadPerMinuteChart.test.ts — teammates.14.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { buildSquadPerMinuteOption } from './squadPerMinuteChart'
 import { hexComplement } from '@/lib/accessibility/hexComplement'
 import type { ChartSeries } from '@/components/charts/ChartCard'
@@ -98,8 +99,8 @@ describe('buildSquadPerMinuteOption', () => {
       label: { formatter: (p: { value: number; dataIndex: number }) => string }
     }>
     const fmt = series[0].label.formatter
-    expect(fmt({ value: -0.7, dataIndex: 1 })).toBe('0.70')
-    expect(fmt({ value: 1.5, dataIndex: 0 })).toBe('1.50')
+    expect(fmt({ value: -0.7, dataIndex: 1 })).toBe(tipNumber(0.7, 2))
+    expect(fmt({ value: 1.5, dataIndex: 0 })).toBe(tipNumber(1.5, 2))
   })
 
   it('axe X = ligne foreground en gras (zero line emphasis)', () => {

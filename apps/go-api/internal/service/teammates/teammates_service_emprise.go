@@ -75,8 +75,10 @@ func (s *TeammatesService) loadEmprise(
 			"player", s.gamertag, "matchs_sans_echelle", n, "matchs", len(current))
 	}
 	block := squademprise.Build(in)
+	s.noteFilmGaps(ctx, &block)
 	slog.DebugContext(ctx, "teammates_emprise",
 		"player", s.gamertag, "matchs", block.MatchesTotal, "mesures", block.MatchesMeasured,
+		"film_en_cours", block.MatchesFilmPending, "film_manquant", block.MatchesFilmMissing,
 		"ressources", len(block.Resources), "objets", len(block.Objects),
 		"film", block.FilmUnavailable, "feuille", block.SheetUnavailable, "habitude", block.Habit != nil)
 	return &block

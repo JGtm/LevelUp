@@ -30,28 +30,33 @@ export interface ImpactRoleRamps {
 }
 
 /**
- * Palette par défaut — vert / rouge (teintes de `divergent-pos` / `divergent-neg`). Valeurs de la
- * maquette validée par l'utilisateur ; en sombre, `impact-gain-2` et `impact-loss-3` relevés d'un
- * cran imperceptible pour tenir ΔE ≥ 15 sous deutéranopie / protanopie.
+ * Palette par défaut — vert / rouge sur les teintes de `divergent-pos` (#22C55E, OKLCH 149,6°) et
+ * `divergent-neg` (#EF4444, 25,3°), que le reste de l'application emploie : chaque pas garde la
+ * teinte de son ancre (écart < 1°), seules la clarté et la chroma varient. Chroma 0,08 à 0,16, sous
+ * celle des ancres (0,19 et 0,21) : plus de vert fluo ni de rouge saturé (retour du 2026-10-17).
+ *
+ * Le pas 1 des gains clairs reste un vert profond (clarté 0,28) : le ΔE ≥ 15 sous deutéranopie /
+ * protanopie entre quatre verts ne tient qu'avec des pas de 0,15 de clarté entre ce pas et le plus
+ * pâle (0,74, plafonné par le contraste 2:1 sur la carte) ; le relever exigerait de relâcher le seuil.
  */
 export const IMPACT_GREEN_RED: ImpactRoleRamps = {
   light: {
-    'impact-gain-1': '#023212', // Finisseur +2
-    'impact-gain-2': '#0A6031', // Premier sang +2
-    'impact-gain-3': '#159257', // Héros silencieux +1,5
-    'impact-gain-4': '#22CE89', // Bourreau +1
-    'impact-loss-1': '#A30E22', // Boulet −2
-    'impact-loss-2': '#F2393E', // Faux-frère −1,5
-    'impact-loss-3': '#FD9A8F', // Première victime, Touriste, Kamikaze, Voleur −1
+    'impact-gain-1': '#003412', // Finisseur +2
+    'impact-gain-2': '#1D6131', // Premier sang +2
+    'impact-gain-3': '#3C9253', // Héros silencieux +1,5
+    'impact-gain-4': '#5DC677', // Bourreau +1
+    'impact-loss-1': '#901E20', // Boulet −2
+    'impact-loss-2': '#C45852', // Faux-frère −1,5
+    'impact-loss-3': '#F98F86', // Première victime, Touriste, Kamikaze, Voleur −1
   },
   dark: {
-    'impact-gain-1': '#7DF861',
-    'impact-gain-2': '#21C546',
-    'impact-gain-3': '#14904C',
-    'impact-gain-4': '#095E3A',
-    'impact-loss-1': '#FC8F84',
-    'impact-loss-2': '#E82D34',
-    'impact-loss-3': '#97091E',
+    'impact-gain-1': '#9DF6AF',
+    'impact-gain-2': '#6DBF7F',
+    'impact-gain-3': '#3E8B51',
+    'impact-gain-4': '#085A27',
+    'impact-loss-1': '#FE9B93',
+    'impact-loss-2': '#C9605A',
+    'impact-loss-3': '#942223',
   },
 }
 

@@ -17,6 +17,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard } from './ChartCard'
 import { CHART_BG, escapeHtml, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesColor } from './_utils'
+import { tipNumber } from './tipNumber'
 
 /** 1 axe radar : libellé + valeur 0..100 + raw debug. */
 export interface RadarAxis {
@@ -150,9 +151,9 @@ export function buildRadarOption(
         const lines = axes.map((a, i) => {
           if (raw) {
             const v = raw[axisKeys[i]]
-            return `${escapeHtml(a.name)}: <b>${v != null ? v.toFixed(1) : '—'}</b>`
+            return `${escapeHtml(a.name)}: <b>${v != null ? tipNumber(v, 1) : '—'}</b>`
           }
-          return `${escapeHtml(a.name)}: <b>${params.value[i].toFixed(0)}</b>`
+          return `${escapeHtml(a.name)}: <b>${tipNumber(params.value[i], 0)}</b>`
         })
         return `<b>${escapeHtml(params.name)}</b><br/>${lines.join('<br/>')}`
       },

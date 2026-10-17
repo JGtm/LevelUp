@@ -18126,6 +18126,12 @@ components:
           type:
             - array
             - "null"
+        matches_film_missing:
+          format: int64
+          type: integer
+        matches_film_pending:
+          format: int64
+          type: integer
         matches_measured:
           format: int64
           type: integer
@@ -26002,6 +26008,12 @@ components:
           type:
             - array
             - "null"
+        matches_film_missing:
+          format: int64
+          type: integer
+        matches_film_pending:
+          format: int64
+          type: integer
         matches_measured:
           format: int64
           type: integer
@@ -26323,6 +26335,12 @@ components:
           type:
             - array
             - "null"
+        matches_film_missing:
+          format: int64
+          type: integer
+        matches_film_pending:
+          format: int64
+          type: integer
         matches_measured:
           format: int64
           type: integer

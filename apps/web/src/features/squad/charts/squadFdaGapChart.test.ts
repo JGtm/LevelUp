@@ -218,3 +218,21 @@ describe('buildFdaGapCumulativeOption', () => {
     expect(x.data).toEqual(xAxisLabels(3))
   })
 })
+
+describe('infobulle du graphe d écart cumulé', () => {
+  it('un joueur masqué n a pas de ligne ; la courbe la plus haute vient en premier', () => {
+    const opt = buildFdaGapCumulativeOption(
+      { Me: [pt(0, 3, 2)], F1: [pt(0, 1, 2)], Hidden: [pt(0, 5, 2)] },
+      { colorByPlayer: {}, playerOrder: ['Me', 'F1', 'Hidden'], hiddenPlayers: new Set(['Hidden']), intlLocale: 'fr-FR' },
+    )
+    const formatter = (opt.tooltip as { formatter: (p: unknown) => string }).formatter
+    const html = formatter([
+      { seriesIndex: 0, seriesName: 'F1', value: -1, color: 'a', axisValueLabel: '#1' },
+      { seriesIndex: 1, seriesName: 'Me', value: 1, color: 'b', axisValueLabel: '#1' },
+      { seriesIndex: 2, seriesName: 'Hidden', value: null, color: 'c', axisValueLabel: '#1' },
+    ])
+    expect(html.indexOf('Me')).toBeLessThan(html.indexOf('F1'))
+    expect(html).not.toContain('Hidden')
+    expect(html).toContain('+1,0')
+  })
+})

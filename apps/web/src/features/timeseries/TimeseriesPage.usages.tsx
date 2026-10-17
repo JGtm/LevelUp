@@ -24,6 +24,7 @@ import { useMemo } from 'react'
 
 import { SectionTitle } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { PAIR_ROW_CLASS } from '@/components/ui/pair-row'
 import { ProductionCard } from '@/features/squad/emprise/ProductionCard'
 import { ResourceControlCard } from '@/features/squad/emprise/ResourceControlCard'
 import { ResourceFilCard } from '@/features/squad/emprise/ResourceFilCard'
@@ -98,7 +99,7 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
       {show.prendre && (
         <Block id="prendre" title={ut.sections.prendre}>
           {/* Une carte seule (sans rendement : Halo 5) prend la rangée. */}
-          <div className="grid gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
+          <div className={PAIR_ROW_CLASS}>
             {m.production.length > 0 && <ProductionCard rows={m.production} t={et} />}
             {m.yieldRows.length > 0 && <YieldCard rows={m.yieldRows} t={et} />}
           </div>

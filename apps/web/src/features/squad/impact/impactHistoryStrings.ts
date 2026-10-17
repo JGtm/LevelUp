@@ -18,8 +18,6 @@ export interface ImpactHistoryText {
   scaleJoin: (labels: string[]) => string
   /** Nombre signé : « +1,5 », « −2 », « 0 ». */
   signed: (v: number) => string
-  eveningOf: (date: string) => string
-  eveningAt: (date: string, hour: string) => string
   hourOf: (d: Date) => string
   matchesWins: (matches: number, wins: number) => string
   noRole: string
@@ -77,8 +75,6 @@ const FR: ImpactHistoryText = {
   },
   scaleJoin: frJoin,
   signed: signedWith(','),
-  eveningOf: (date) => `Soirée du ${date}`,
-  eveningAt: (date, hour) => `Soirée du ${date}, ${hour}`,
   hourOf: (d) => `${d.getHours()}h${pad(d.getMinutes())}`,
   matchesWins: (matches, wins) =>
     `${matches} match${matches > 1 ? 's' : ''}, ` +
@@ -115,8 +111,6 @@ const EN: ImpactHistoryText = {
   },
   scaleJoin: enJoin,
   signed: signedWith('.'),
-  eveningOf: (date) => `Evening of ${date}`,
-  eveningAt: (date, hour) => `Evening of ${date}, ${hour}`,
   hourOf: (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`,
   matchesWins: (matches, wins) =>
     `${matches} match${matches > 1 ? 'es' : ''}, ` + (wins === 0 ? 'no win' : `${wins} win${wins > 1 ? 's' : ''}`),

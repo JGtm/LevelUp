@@ -98,6 +98,10 @@ type TeammatesService struct {
 	objectiveModeEcarte func(pairName string) bool  // D6, cf. teammates_service_objective_history.go
 	empriseRepo         port.SquadEmpriseRepository // feuille de match de l'Emprise, cf. teammates_service_emprise.go
 	vehicleRepo         port.SquadVehicleRepository // ressource véhicules de l'Emprise, cf. teammates_service_emprise_vehicles.go
+	// analysisPending (optionnel) : l'avancement de l'analyse du film des matchs du périmètre, pour dire
+	// à l'Emprise « analyse en cours » plutôt que « film non analysé ». Nil : tous les matchs sans film
+	// sont « non analysés ». Cf. teammates_service_emprise_gaps.go.
+	analysisPending port.AnalysisPendingMatches
 	// matchRangeRepo (optionnel) : le lecteur de portee de frag de TOUT le lobby, par
 	// match (lot N2, D22-5). Sans lui, pas de referentiel : le bloc « roles de portee »
 	// est omis. Cf. teammates_squad_range.go.

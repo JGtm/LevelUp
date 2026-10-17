@@ -24,8 +24,6 @@ const LABEL_LINE = lineHeightFor(LABEL_FONT)
 export interface HabitChartColors {
   resource: (resource: string) => string
   parity: string
-  /** Le gris des soirées hors comparaison (encre atténuée du thème). */
-  muted: string
   theme: EChartsThemeColors
 }
 
@@ -61,8 +59,9 @@ const HABIT_CATEGORY_GAP = '26%'
 
 /**
  * Une série de barres par ressource : une soirée par groupe, la part de la ressource dans la
- * soirée. Une soirée HORS comparaison (aucune des familles de mode de ce soir) garde sa barre,
- * GRISÉE et liserée de la couleur de la ressource, la raison au survol, hors médiane. La médiane
+ * soirée. TOUTES les barres sont pleines, à la couleur de la ressource, et ne changent pas de couleur au
+ * survol (emphase neutralisée). Une soirée HORS comparaison (aucune des familles de mode de ce soir) garde
+ * sa barre : elle est seulement hors médiane, la raison est écrite dans son infobulle. La médiane
  * des soirées précédentes comparables est un pointillé fin de la couleur de la ressource, le
  * trait 50 % est posé sur la première série. La valeur est écrite sur la barre de CE SOIR
  * seulement (les autres se lisent à l'infobulle) : sans part ce soir, aucune valeur n'est écrite.
@@ -86,7 +85,7 @@ function habitSeries(
     const tipBase = t.pointTip(label, eveningName(p), t.pctFmt(v), p.comparable ? med : null)
     return {
       value: v,
-      itemStyle: p.comparable ? { color } : { color: c.muted, borderColor: color, borderWidth: 1.5 },
+      itemStyle: { color },
       tip: p.comparable ? tipBase : `${tipBase}\n${t.notComparableTip(p.families.join(', '))}`,
       ...(p.current
         ? {
@@ -114,6 +113,9 @@ function habitSeries(
     barGap: HABIT_BAR_GAP,
     barCategoryGap: HABIT_CATEGORY_GAP,
     itemStyle: { color, borderRadius: [2, 2, 0, 0] },
+    // Aucune couleur ne change au survol : ni la barre, ni les autres séries estompées.
+    emphasis: { disabled: true },
+    legendHoverLink: false,
     label: { show: false },
     labelLayout: { moveOverlap: 'shiftX' as const },
     markLine: {
@@ -132,7 +134,7 @@ function habitSeries(
 /**
  * buildHabitOption — « Contrôle des ressources, par soirée » : des barres GROUPÉES, un groupe par
  * soirée (une barre par ressource, couleurs `resource-*`), ce soir à droite dans une colonne
- * grisée avec ses valeurs écrites, une soirée hors comparaison en barres grises, la médiane des
+ * grisée avec ses valeurs écrites, une soirée hors comparaison en barres pleines comme les autres, la médiane des
  * soirées précédentes comparables en pointillé fin de la couleur de chaque ressource, le trait
  * 50 % ; sous l'axe, la date de chaque soirée, « ce soir » en gras.
  */
@@ -183,5 +185,5 @@ export function buildHabitOption(
 /** Les couleurs du graphe d'habitude, résolues au rendu (thème, palette). */
 export function resolveHabitColors(): HabitChartColors {
   const theme = getEChartsThemeColors()
-  return { resource: resolveResourceColor, parity: resolveToken('warning'), muted: theme.axisLabel, theme }
+  return { resource: resolveResourceColor, parity: resolveToken('warning'), theme }
 }

@@ -288,26 +288,26 @@
   --ac-objective-role-defend:  #0891B2;
   --ac-objective-role-hold:    #A924BD;
   /* Rôles d'impact — rampes ordinales, thème clair (cf. palettes/_impactRoleColors.ts) */
-  --ac-impact-gain-1: #023212;
-  --ac-impact-gain-2: #0A6031;
-  --ac-impact-gain-3: #159257;
-  --ac-impact-gain-4: #22CE89;
-  --ac-impact-loss-1: #A30E22;
-  --ac-impact-loss-2: #F2393E;
-  --ac-impact-loss-3: #FD9A8F;
+  --ac-impact-gain-1: #003412;
+  --ac-impact-gain-2: #1D6131;
+  --ac-impact-gain-3: #3C9253;
+  --ac-impact-gain-4: #5DC677;
+  --ac-impact-loss-1: #901E20;
+  --ac-impact-loss-2: #C45852;
+  --ac-impact-loss-3: #F98F86;
 }
 
 /* Rôles d'impact en thème sombre : seuls jetons --ac-* qui changent avec le fond (la rampe
    s'inverse en clarté). Repli sans JS (palette par défaut) ; applyPalette() écrit sinon les
    valeurs de la palette active (paletteForTheme). */
 :root[data-theme='dark'] {
-  --ac-impact-gain-1: #7DF861;
-  --ac-impact-gain-2: #21C546;
-  --ac-impact-gain-3: #14904C;
-  --ac-impact-gain-4: #095E3A;
-  --ac-impact-loss-1: #FC8F84;
-  --ac-impact-loss-2: #E82D34;
-  --ac-impact-loss-3: #97091E;
+  --ac-impact-gain-1: #9DF6AF;
+  --ac-impact-gain-2: #6DBF7F;
+  --ac-impact-gain-3: #3E8B51;
+  --ac-impact-gain-4: #085A27;
+  --ac-impact-loss-1: #FE9B93;
+  --ac-impact-loss-2: #C9605A;
+  --ac-impact-loss-3: #942223;
 }
 
 /* ─── Teintes d'EFFET DE TIR du rejeu 2D (--replay-fx-*) ────────────────────── */
