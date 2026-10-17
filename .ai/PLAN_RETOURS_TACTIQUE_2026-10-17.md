@@ -86,10 +86,10 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
 - [~] T4.2 Colonnes latérales : toujours à la hauteur du plan. (couvert : TacticalPage.test.tsx l.251-256 tient `self-stretch` + `contain: size` sur les deux colonnes ; la carte du plan, enveloppée d'un div qui devient l'élément de grille, reste ce qui fixe la hauteur de la rangée)
 
 ### T5 — Clôture
-- [ ] T5.1 `make check-types`, `make test-web` (vitest hors sandbox), lint web,
+- [x] T5.1 `make check-types`, `make test-web` (vitest hors sandbox), lint web,
       `go test` des paquets touchés + `internal/archlint`, `make go-api-lint`.
-- [ ] T5.2 Entrée `.ai/thought_log.md` ; découvertes hors périmètre listées au rapport.
-- [ ] T5.3 Commits sur `feat/retours-tactique` uniquement, un par étape ; pas de push.
+- [x] T5.2 Entrée `.ai/thought_log.md` ; découvertes hors périmètre listées au rapport.
+- [x] T5.3 Commits sur `feat/retours-tactique` uniquement, un par étape ; pas de push.
 
 ## 3. Hors périmètre
 
@@ -138,3 +138,22 @@ Activation du rejeu en prod (release) ; bots dans les positions ; autres pages.
 - `useReplayViewport` : le second paramètre accepte tout élément (le cadre du plan) et l'observateur de taille est
   optionnel (jsdom), comme le patron du dépôt ; comportement du rejeu inchangé (son test passe).
 - `PLAN_HAUTEUR_MIN_PX` et `PLAN_MARGE_BAS_PX` supprimés (code mort) ; `hauteurDisponible` supprimée.
+
+### T5 (2026-10-17)
+Gates rejoués sur l'arbre final : `go test` (service, port, api, api/handlers, api/wire, analysis/tactical, archlint,
+contracttest) ; `go vet` des paquets touchés ; `golangci-lint run --new-from-merge-base=origin/main ./...` (0 issue) ;
+`npx tsc -b --force` ; `npm run lint` (0 erreur) ; `npm run lint:colors` / `lint:fields` ; `node tools/lint-cross-feature-imports.mjs`
+(pas d'échec, 7 occurrences préexistantes sous plafond) ; `node tools/knip-ratchet.mjs` (0/0/0) ; `npx vitest run` complet.
+Ordre des commits : T1, T2+T3 (indissociables : la zone séquence héberge les deux), T4, T5.
+
+## 5. Découvertes (non traitées, hors périmètre)
+
+- En production, aucun artefact de rejeu n'est cuit et le garde local ferme la route : le 404 `replay_not_available`
+  fait taire la zone. Le jour où le garde s'ouvre, tout match sans artefact (donc la quasi-totalité) affichera « Film non
+  analysé » : c'est exact, mais la fenêtre de 24 h de « en cours d'analyse » ne couvre que les matchs récents.
+- `go-vet` du pre-commit tourne sans l'environnement CGO : il liste des dizaines de paquets « build constraints exclude
+  all Go files » et réussit quand même ; le bruit masque une vraie erreur éventuelle.
+- Les tests de chaînes de la feature (`mort.logic.test.ts`) interdisent « non mesuré », « heure » et les possessifs dans
+  tout le préfixe `tactical.mort.*` : à retenir pour toute nouvelle clé de ce préfixe.
+- L'instant écrit pendant la lecture suppose que l'étape de la mort (`offset_ms == 0`) porte `instant_affiche_ms` ; sans
+  coup d'envoi connu, l'horloge écrit le décalage (« −1,5 s ») : couvert par un test, jamais vu sur le parc.
