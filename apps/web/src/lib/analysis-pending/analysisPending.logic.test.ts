@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest'
 import type { HomePageResponse, MatchViewResponse, RecentMatchItem } from '@/lib/api/types'
 import {
   ANALYSIS_PENDING_REFETCH_MS,
+  ANALYSIS_PART,
   FIRST_SYNC_REFETCH_MS,
+  type AnalysisPendingCarrier,
   anyAnalysisPending,
   homeHasAnalysisPending,
   homeRefetchInterval,
+  hasPendingPart,
   homeStaleTime,
   matchViewHasAnalysisPending,
   matchViewRefetchInterval,
@@ -65,5 +68,27 @@ describe('matchViewRefetchInterval', () => {
     expect(matchViewRefetchInterval(view())).toBe(false)
     expect(matchViewRefetchInterval(undefined)).toBe(false)
     expect(matchViewHasAnalysisPending(view(true))).toBe(true)
+  })
+})
+
+describe('hasPendingPart', () => {
+  it('vrai seulement pour une cause présente dans la liste', () => {
+    const item = { analysis_pending_parts: ['kill_source', 'replay'] }
+    expect(hasPendingPart(item, ANALYSIS_PART.killSource)).toBe(true)
+    expect(hasPendingPart(item, ANALYSIS_PART.replay)).toBe(true)
+    expect(hasPendingPart(item, ANALYSIS_PART.citations)).toBe(false)
+  })
+  it('faux sur liste vide, absente, null ou élément absent', () => {
+    expect(hasPendingPart({ analysis_pending_parts: [] }, ANALYSIS_PART.replay)).toBe(false)
+    expect(hasPendingPart({}, ANALYSIS_PART.replay)).toBe(false)
+    expect(hasPendingPart({ analysis_pending_parts: null }, ANALYSIS_PART.replay)).toBe(false)
+    expect(hasPendingPart(null, ANALYSIS_PART.replay)).toBe(false)
+    expect(hasPendingPart(undefined, ANALYSIS_PART.replay)).toBe(false)
+  })
+  it('ne lit pas le booléen : analysis_pending seul ne fait aucune cause', () => {
+    expect(hasPendingPart({ analysis_pending: true } as AnalysisPendingCarrier, ANALYSIS_PART.killSource)).toBe(false)
+  })
+  it('les trois chaînes sont celles du serveur (domain.AnalysisPart*)', () => {
+    expect(ANALYSIS_PART).toEqual({ killSource: 'kill_source', citations: 'citations', replay: 'replay' })
   })
 })

@@ -1,6 +1,6 @@
 /**
  * Tests — MatchViewTabArsenal, emplacements d'ATTENTE pendant l'analyse du film
- * (`header.analysis_pending`) : l'arme de chaque frag (« En cours d'analyse ») et le rejeu 2D
+ * (`header.analysis_pending_parts`) : l'arme de chaque frag (« En cours d'analyse ») et le rejeu 2D
  * (« En préparation ») remplacent l'état vide ; hors analyse, l'état normal est inchangé.
  */
 import { describe, expect, it, vi } from 'vitest'
@@ -28,14 +28,16 @@ vi.mock('./blockPredicates', async (importOriginal) => ({
   useHasKillDistanceSection: () => hoisted.killDistanceGate,
 }))
 
+const TOUTES_CAUSES = ['kill_source', 'citations', 'replay']
+
 interface Over {
-  analysisPending?: boolean
+  parts?: string[]
   killDistance?: boolean
   positions?: boolean
   locale?: 'fr' | 'en'
 }
 
-function afficher({ analysisPending, killDistance = false, positions = false, locale = 'fr' }: Over = {}) {
+function afficher({ parts, killDistance = false, positions = false, locale = 'fr' }: Over = {}) {
   return render(
     <MatchViewTabArsenal
       playerSlug="jgtm"
@@ -48,7 +50,7 @@ function afficher({ analysisPending, killDistance = false, positions = false, lo
       killDistance={killDistance ? [{ xuid: 'x1', weapons: [] }] : null}
       emprise={null}
       livesNearTeammate={null}
-      analysisPending={analysisPending}
+      analysisCauses={{ analysis_pending_parts: parts }}
       meXUID={null}
       friendGamertags={[]}
       matchPositions={positions ? [{ timeMs: 0, x: 1, y: 2, z: 0, team: 0 }] : []}
@@ -59,22 +61,22 @@ function afficher({ analysisPending, killDistance = false, positions = false, lo
 }
 
 describe('arsenalPendingSlots', () => {
-  it('rien hors analyse en cours', () => {
-    expect(arsenalPendingSlots({ analysisPending: false, hasKillDistance: false, hasTerrain: false })).toEqual({
-      killsWeapons: false,
-      terrain: false,
-    })
+  const base = { killSourcePending: false, replayPending: false, hasKillDistance: false, hasTerrain: false }
+  it('rien sans cause', () => {
+    expect(arsenalPendingSlots(base)).toEqual({ killsWeapons: false, terrain: false })
   })
-  it('un emplacement par section dont la donnée manque', () => {
-    expect(arsenalPendingSlots({ analysisPending: true, hasKillDistance: false, hasTerrain: false })).toEqual({
+  it('chaque section regarde sa cause', () => {
+    expect(arsenalPendingSlots({ ...base, killSourcePending: true })).toEqual({ killsWeapons: true, terrain: false })
+    expect(arsenalPendingSlots({ ...base, replayPending: true })).toEqual({ killsWeapons: false, terrain: true })
+    expect(arsenalPendingSlots({ ...base, killSourcePending: true, replayPending: true })).toEqual({
       killsWeapons: true,
       terrain: true,
     })
-    expect(arsenalPendingSlots({ analysisPending: true, hasKillDistance: true, hasTerrain: false })).toEqual({
-      killsWeapons: false,
-      terrain: true,
-    })
-    expect(arsenalPendingSlots({ analysisPending: true, hasKillDistance: true, hasTerrain: true })).toEqual({
+  })
+  it('ne remplace que ce qui manque', () => {
+    const causes = { ...base, killSourcePending: true, replayPending: true }
+    expect(arsenalPendingSlots({ ...causes, hasKillDistance: true })).toEqual({ killsWeapons: false, terrain: true })
+    expect(arsenalPendingSlots({ ...causes, hasKillDistance: true, hasTerrain: true })).toEqual({
       killsWeapons: false,
       terrain: false,
     })
@@ -83,7 +85,7 @@ describe('arsenalPendingSlots', () => {
 
 describe('MatchViewTabArsenal — analyse du film en cours', () => {
   it("met « En cours d'analyse » (arme par frag) et « En préparation » (rejeu 2D) à la place de l'état vide", () => {
-    afficher({ analysisPending: true })
+    afficher({ parts: TOUTES_CAUSES })
     const slots = screen.getAllByTestId('analysis-pending-slot')
     expect(slots.map((s) => s.textContent)).toEqual(["En cours d'analyse", 'En préparation'])
     expect(screen.getByText(MATCH_VIEW_TEXT.fr.sectionKillsWeapons)).toBeInTheDocument()
@@ -92,8 +94,25 @@ describe('MatchViewTabArsenal — analyse du film en cours', () => {
     expect(screen.queryByTestId('kill-distance')).toBeNull()
   })
 
+  it("causes isolées : kill_source seule n'annonce que l'arme par frag", () => {
+    afficher({ parts: ['kill_source'] })
+    expect(screen.getAllByTestId('analysis-pending-slot').map((s) => s.textContent)).toEqual(["En cours d'analyse"])
+  })
+
+  it("causes isolées : replay seul n'annonce que le rejeu 2D, la distance par arme garde sa lecture", () => {
+    afficher({ parts: ['replay'] })
+    expect(screen.getAllByTestId('analysis-pending-slot').map((s) => s.textContent)).toEqual(['En préparation'])
+    expect(screen.getByTestId('kill-distance')).toBeInTheDocument()
+  })
+
+  it('causes isolées : citations seules ne touchent pas cet onglet', () => {
+    afficher({ parts: ['citations'] })
+    expect(screen.queryByTestId('analysis-pending-slot')).toBeNull()
+    expect(screen.getByTestId('kill-distance')).toBeInTheDocument()
+  })
+
   it('traduit en anglais', () => {
-    afficher({ analysisPending: true, locale: 'en' })
+    afficher({ parts: TOUTES_CAUSES, locale: 'en' })
     expect(screen.getAllByTestId('analysis-pending-slot').map((s) => s.textContent)).toEqual([
       'Analysis in progress',
       'Being prepared',
@@ -101,14 +120,14 @@ describe('MatchViewTabArsenal — analyse du film en cours', () => {
   })
 
   it('ne remplace que ce qui manque : distance par arme et positions déjà là = aucun emplacement', () => {
-    afficher({ analysisPending: true, killDistance: true, positions: true })
+    afficher({ parts: TOUTES_CAUSES, killDistance: true, positions: true })
     expect(screen.queryByTestId('analysis-pending-slot')).toBeNull()
     expect(screen.getByTestId('kill-distance')).toBeInTheDocument()
     expect(screen.getByTestId('positions-heatmap')).toBeInTheDocument()
   })
 
   it('état normal : aucun emplacement, la section garde sa lecture habituelle', () => {
-    afficher({ analysisPending: false })
+    afficher({ parts: [] })
     expect(screen.queryByTestId('analysis-pending-slot')).toBeNull()
     expect(screen.getByTestId('kill-distance')).toBeInTheDocument()
   })
@@ -116,7 +135,7 @@ describe('MatchViewTabArsenal — analyse du film en cours', () => {
   it("état normal sans porte de titre : l'onglet garde son état vide nommé", () => {
     hoisted.killDistanceGate = false
     try {
-      afficher({ analysisPending: false })
+      afficher({ parts: [] })
       expect(screen.queryByTestId('analysis-pending-slot')).toBeNull()
       expect(screen.getByText(MATCH_VIEW_TEXT.fr.arsenalEmptyTitle)).toBeInTheDocument()
     } finally {

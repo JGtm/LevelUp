@@ -52,7 +52,12 @@ const BASE: RecentMatchItem = {
   is_favorite: false,
 }
 
-const PENDING: RecentMatchItem = { ...BASE, analysis_pending: true }
+const ALL_PARTS = ['kill_source', 'citations', 'replay']
+const PENDING: RecentMatchItem = { ...BASE, analysis_pending: true, analysis_pending_parts: ALL_PARTS }
+
+function pendingWith(...parts: string[]): RecentMatchItem {
+  return { ...BASE, analysis_pending: true, analysis_pending_parts: parts }
+}
 
 const TOOLTIP_BODY_FR =
   "Le match est synchronisé. Les frags assistés, les citations et le rejeu 2D arrivent dès que le film est analysé, d'ici quelques instants."
@@ -161,6 +166,41 @@ describe('MatchCard — analyse du film en cours', () => {
       expect(screen.queryByTestId('match-card-citations-pending')).toBeNull()
       expect(screen.queryByTestId('match-card-replay-pending')).toBeNull()
       expect(screen.getByTestId('match-card-assisted-frags')).toBeTruthy()
+    })
+
+    describe('chaque emplacement regarde sa cause', () => {
+      it('citations seules : cercles en pointillés, aucune puce de rejeu, frags assistés normaux', () => {
+        render(<MatchCard match={pendingWith('citations')} locale="fr" playerSlug="chief" />)
+        expect(screen.getByRole('button', { name: 'Analyse en cours' })).toBeTruthy()
+        const citations = screen.getByTestId('match-card-citations-pending')
+        expect(citations.querySelectorAll('.border-dashed')).toHaveLength(3)
+        expect(screen.queryByTestId('match-card-replay-pending')).toBeNull()
+        expect(screen.queryByTestId('match-card-assisted-frags-pending')).toBeNull()
+        expect(screen.getByTestId('match-card-assisted-frags-slot')).toBeTruthy()
+      })
+
+      it('kill_source seule : frags assistés en attente, ni citations ni rejeu', () => {
+        render(<MatchCard match={pendingWith('kill_source')} locale="fr" playerSlug="chief" />)
+        expect(screen.getByTestId('match-card-assisted-frags-pending')).toBeTruthy()
+        expect(screen.queryByTestId('match-card-citations-pending')).toBeNull()
+        expect(screen.queryByTestId('match-card-replay-pending')).toBeNull()
+      })
+
+      it('replay seul : puce « Rejeu à venir » seule', () => {
+        render(<MatchCard match={pendingWith('replay')} locale="fr" playerSlug="chief" />)
+        expect(screen.getByTestId('match-card-replay-pending').textContent).toBe('Rejeu à venir')
+        expect(screen.queryByTestId('match-card-citations-pending')).toBeNull()
+        expect(screen.queryByTestId('match-card-assisted-frags-pending')).toBeNull()
+        expect(screen.getByTestId('match-card-assisted-frags-slot')).toBeTruthy()
+      })
+
+      it('booléen sans cause : la pastille reste, aucun emplacement', () => {
+        render(<MatchCard match={{ ...BASE, analysis_pending: true }} locale="fr" playerSlug="chief" />)
+        expect(screen.getByRole('button', { name: 'Analyse en cours' })).toBeTruthy()
+        expect(screen.queryByTestId('match-card-assisted-frags-pending')).toBeNull()
+        expect(screen.queryByTestId('match-card-citations-pending')).toBeNull()
+        expect(screen.queryByTestId('match-card-replay-pending')).toBeNull()
+      })
     })
 
     it('sans playerSlug, pas de puce de rejeu (la route de rejeu est par joueur)', () => {
