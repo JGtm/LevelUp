@@ -98,3 +98,20 @@ describe('ActivityCalendarChart — rendu', () => {
     expect(screen.queryByTestId('echarts-stub')).not.toBeInTheDocument()
   })
 })
+
+describe('infobulle du calendrier d’activité', () => {
+  it('écrit la date à la langue de l’application (jamais « 2026-05-06 ») et le décompte à la langue', () => {
+    const opt = buildActivityCalendarOption({
+      since: '2026-05-04',
+      until: '2026-05-31',
+      days: [{ date: '2026-05-06', count: 1200 }],
+      locale: 'fr',
+    }) as unknown as {
+      tooltip: { formatter: (p: unknown) => string }
+    }
+    const html = opt.tooltip.formatter({ data: { value: [0, 2, 1200], date: '2026-05-06' } }).normalize('NFKC')
+    expect(html).toContain('6 mai 2026')
+    expect(html).not.toContain('2026-05-06')
+    expect(html).toContain('<b>1 200</b>')
+  })
+})

@@ -20,8 +20,9 @@ import {
   getTooltipBase,
   legendEntries,
   CHART_BG,
-  escapeHtml,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber, tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import { perfScale } from '@/lib/accessibility/scales'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
@@ -62,34 +63,13 @@ function rollingMean(values: (number | null | undefined)[], window: number): (nu
  */
 const FDA_THRESHOLD = 1
 
-/** Entrée d'infobulle `trigger: 'axis'` — sous-ensemble des champs consommés ici. */
-interface AxisTooltipItem {
-  axisValueLabel?: string
-  marker?: string
-  seriesName?: string
-  value?: unknown
-}
-
 /**
- * axisTooltipSkippingNulls — l'infobulle d'axe standard, MOINS les séries qui n'ont pas de
- * valeur sur le point survolé.
- *
- * Nécessaire dès qu'un même fait est réparti sur plusieurs séries EXCLUSIVES (le FDA d'un
- * match est soit au-dessus, soit en dessous du seuil) : l'infobulle par défaut listerait
- * l'autre série avec un « — », qui se lit comme une donnée manquante alors que c'est une
- * donnée qui n'a pas lieu d'être.
+ * Infobulles d'axe du dossier : UNE ligne par série qui a une valeur au point survolé (le FDA d'un
+ * match est au-dessus OU en dessous du seuil, l'autre série ne porte pas de « — » qui se lirait
+ * comme une donnée manquante), nombres à la langue de l'application (`tipNumber`).
  */
-function axisTooltipSkippingNulls(params: unknown): string {
-  const items = (Array.isArray(params) ? params : [params]) as AxisTooltipItem[]
-  const hits = items.filter((it) => typeof it.value === 'number' && Number.isFinite(it.value))
-  if (hits.length === 0) return ''
-  const header = escapeHtml((items[0]?.axisValueLabel ?? '').replace(/\n/g, ' · '))
-  // `marker` est la pastille HTML fabriquée par ECharts (pas une donnée) : pas d'échappement.
-  const lines = hits.map(
-    (it) => `${it.marker ?? ''}${escapeHtml(it.seriesName ?? '')}: <b>${String(it.value)}</b>`,
-  )
-  return [header, ...lines].join('<br/>')
-}
+const AXIS_TIP = axisTooltipFormatter({ value: (r) => tipNumberAuto(r.value) })
+const FDA_TIP = axisTooltipFormatter({ value: (r) => tipNumber(r.value, 2) })
 
 interface CommonRenderProps {
   height: number
@@ -174,9 +154,7 @@ export function TimeseriesKdaValueTrend({
       tooltip: {
         ...getTooltipBase(tc),
         trigger: 'axis',
-        // Une valeur n'existe que d'un côté du seuil : sans filtre, l'autre série ferait
-        // une ligne « — » dans chaque infobulle.
-        formatter: axisTooltipSkippingNulls,
+        formatter: FDA_TIP,
       },
       legend: {
         ...getLegendBase(tc),
@@ -269,7 +247,7 @@ export function TimeseriesPerformanceTrend({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase(),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),
@@ -335,7 +313,7 @@ export function TimeseriesAssistsTrend({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase(),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),
@@ -409,10 +387,6 @@ export function TimeseriesPerMinuteTrend({
       return v / (sec / 60)
     }
     const round2 = (v: number | null) => (v == null ? null : Math.round(v * 100) / 100)
-    const fmt = (v: unknown) => {
-      const n = typeof v === 'number' ? v : 0
-      return Math.abs(n).toFixed(2)
-    }
 
     const kills = rows.map((r) => round2(perMin(r.kills, r.time_played_seconds)))
     const deaths = rows.map((r) => {
@@ -428,16 +402,10 @@ export function TimeseriesPerMinuteTrend({
         ...getTooltipBase(tc),
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        formatter: (params: unknown) => {
-          const arr = Array.isArray(params) ? params : []
-          if (arr.length === 0) return ''
-          const cat = escapeHtml((arr[0] as { name?: string }).name?.replace(/\n/g, ' ') ?? '')
-          const lines = arr.map((p) => {
-            const point = p as { seriesName: string; value: number; color: string }
-            return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${point.color};margin-right:6px"></span>${escapeHtml(point.seriesName ?? '')}: ${fmt(point.value)}${perMinuteSuffix}`
-          })
-          return `<strong>${cat}</strong><br/>${lines.join('<br/>')}`
-        },
+        // Les morts sont tracées sous l'axe (négatives) : la bulle écrit leur valeur absolue.
+        formatter: axisTooltipFormatter({
+          value: (r) => `${tipNumber(Math.abs(r.value), 2)}${perMinuteSuffix}`,
+        }),
       },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -456,7 +424,7 @@ export function TimeseriesPerMinuteTrend({
         type: 'value',
         axisLabel: {
           ...getAxisBase(tc).axisLabel,
-          formatter: (v: number) => Math.abs(v).toFixed(1),
+          formatter: (v: number) => tipNumber(Math.abs(v), 1),
         },
       },
       series: [
@@ -525,7 +493,7 @@ export function TimeseriesAvgLifeTrend({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase({ bottom: 48 }),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       xAxis: {
         ...getAxisBase(tc),
         type: 'category',
@@ -597,7 +565,7 @@ export function TimeseriesSpreeHeadshots({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase(),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),
@@ -677,7 +645,7 @@ export function TimeseriesSkillRankPerformance({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase({ right: 56, left: 56 }),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),
@@ -778,7 +746,7 @@ export function TimeseriesRankScore({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase({ right: 56, left: 56 }),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),
@@ -869,7 +837,7 @@ export function TimeseriesCareerXP({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase({ right: 64, left: 64 }),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),

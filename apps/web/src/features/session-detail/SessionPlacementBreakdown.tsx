@@ -12,7 +12,8 @@ import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import { tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
@@ -59,7 +60,7 @@ export function buildSessionPlacementOption(
         const arr = Array.isArray(params) ? params : []
         if (arr.length === 0) return ''
         const p = arr[0] as { name: string; value: number }
-        return `${p.name}: <b>${p.value}</b> ${opts.countLabel}`
+        return `${escapeHtml(p.name)}: <b>${tipNumberAuto(p.value)}</b> ${escapeHtml(opts.countLabel)}`
       },
     },
     xAxis: {
@@ -79,7 +80,7 @@ export function buildSessionPlacementOption(
           show: true,
           position: 'top',
           color: tc.text,
-          formatter: (p: { value: number }) => (p.value > 0 ? String(p.value) : ''),
+          formatter: (p: { value: number }) => (p.value > 0 ? tipNumberAuto(p.value) : ''),
         },
       },
     ],

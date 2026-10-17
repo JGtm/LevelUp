@@ -43,6 +43,7 @@ import { useCallback, useMemo } from 'react'
 import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import { escapeHtml } from '@/components/charts/_utils'
+import { tipNumber, tipNumberAuto } from '@/components/charts/tipNumber'
 import { dowLabels, HOUR_LABELS, calendarChartText } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { ManifestLocale } from '@/lib/i18n/format'
@@ -92,8 +93,8 @@ export function SynthesisHeatmapChart({ cells, title, height }: Props) {
   const formatTooltip = useCallback(
     (point: ChartPointHeatmap) => {
       const count = (point.detail?.count as number | undefined) ?? 0
-      const wrStr = `${((point.value ?? 0) * 100).toFixed(1)}%`
-      return `${escapeHtml(point.y)} ${escapeHtml(point.x)}<br/>${txt.winRate} : ${wrStr}<br/>${txt.matches} : ${count}`
+      const wrStr = `${tipNumber((point.value ?? 0) * 100, 1)} %`
+      return `${escapeHtml(point.y)} ${escapeHtml(point.x)}<br/>${txt.winRate} : ${wrStr}<br/>${txt.matches} : ${tipNumberAuto(count)}`
     },
     [txt],
   )

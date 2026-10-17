@@ -21,6 +21,7 @@ import {
   getTooltipBase,
   type EChartsThemeColors,
 } from './_utils'
+import { tipNumber, tipNumberAuto } from './tipNumber'
 
 
 /** Caractère affiché SUR une case vide (décision D3 : « un tiret »), au lieu de rien. */
@@ -367,8 +368,8 @@ export function buildHeatmap2DOption(
         if (formatTooltip) {
           return formatTooltip({ x: xs[xi], y: ys[yi], value: v, detail })
         }
-        const count = detail?.count ?? 0
-        return `${escapeHtml(ys[yi])} × ${escapeHtml(xs[xi])}<br/>Win Rate: <b>${(v * 100).toFixed(1)}%</b><br/>Matchs: <b>${count}</b>`
+        const count = Number(detail?.count ?? 0)
+        return `${escapeHtml(ys[yi])} × ${escapeHtml(xs[xi])}<br/>Win Rate: <b>${tipNumber(v * 100, 1)} %</b><br/>Matchs: <b>${tipNumberAuto(count)}</b>`
       },
     },
     xAxis: {
@@ -431,7 +432,7 @@ export function buildHeatmap2DOption(
             // Case vide : un tiret (décision D3) — un « 0 » se lirait comme une mesure. En
             // mode `hidden`, rien : la case n'a pas de forme, elle n'a pas d'étiquette.
             if (typeof brut !== 'number') return emptyCells === 'hatched' ? EMPTY_CELL_LABEL : ''
-            return String(detail?.count ?? 0)
+            return tipNumberAuto(Number(detail?.count ?? 0))
           },
           // Encre de l'étiquette, fournie par l'appelant : lui seul sait quelle rampe il a
           // demandée, donc quelle encre s'y lit. Une CHAÎNE, jamais une fonction — un

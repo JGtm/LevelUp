@@ -15,6 +15,8 @@ import {
   getTooltipBase,
   stackedAxisExtent,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter, stackTopFirstOrder } from '@/components/charts/axisTooltip'
+import { tipNumberAuto } from '@/components/charts/tipNumber'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
@@ -73,6 +75,33 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
     // morts jamais négatives ici (pas de `stack`) → min fixé à 0.
     const { min: yMin, max: yMax } = stackedAxisExtent([[kills, bonus], [deaths]])
 
+    const series = [
+      {
+        name: labels.kills,
+        type: 'bar',
+        stack: 'kills',
+        data: kills,
+        itemStyle: { color: colKills, opacity: 0.85 },
+        barGap: 0,
+        barMaxWidth: 14,
+      },
+      {
+        name: labels.bonus,
+        type: 'bar',
+        stack: 'kills',
+        data: bonus,
+        itemStyle: { color: colBonus, opacity: 0.85 },
+        barMaxWidth: 14,
+      },
+      {
+        name: labels.deaths,
+        type: 'bar',
+        data: deaths,
+        itemStyle: { color: colDeaths, opacity: 0.85 },
+        barMaxWidth: 14,
+      },
+    ]
+
     return {
       backgroundColor: CHART_BG,
       grid: { top: 32, right: 16, bottom: 64, left: 48, containLabel: true },
@@ -80,6 +109,12 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
         ...getTooltipBase(tc),
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
+        // Frags et bonus (assistances / 3) sont empilés, les morts sont à côté : la ligne du haut est la barre
+        // du haut. Le bonus garde ses décimales (au plus deux), frags et morts sont des entiers.
+        formatter: axisTooltipFormatter({
+          value: (r) => tipNumberAuto(r.value),
+          order: stackTopFirstOrder(series),
+        }),
       },
       legend: {
         ...getLegendBase(tc),
@@ -106,32 +141,7 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
         max: yMax,
         minInterval: 1,
       },
-      series: [
-        {
-          name: labels.kills,
-          type: 'bar',
-          stack: 'kills',
-          data: kills,
-          itemStyle: { color: colKills, opacity: 0.85 },
-          barGap: 0,
-          barMaxWidth: 14,
-        },
-        {
-          name: labels.bonus,
-          type: 'bar',
-          stack: 'kills',
-          data: bonus,
-          itemStyle: { color: colBonus, opacity: 0.85 },
-          barMaxWidth: 14,
-        },
-        {
-          name: labels.deaths,
-          type: 'bar',
-          data: deaths,
-          itemStyle: { color: colDeaths, opacity: 0.85 },
-          barMaxWidth: 14,
-        },
-      ],
+      series,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, labels, themeVersion, showBonus])

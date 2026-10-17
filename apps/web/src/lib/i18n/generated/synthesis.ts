@@ -25,6 +25,7 @@ export const synthesisManifest = {
   "synthesis.charts.role_unattributed": { fr: "Non attribué", en: "Unattributed" },
   "synthesis.charts.role_vehicle": { fr: "Véhicule", en: "Vehicle" },
   "synthesis.charts.top_vs_total_per_week": { fr: "Matchs Top vs Total par semaine", en: "Top vs Total matches per week" },
+  "synthesis.charts.weapon_accuracy_shots_unit": { fr: "tirs", en: "shots" },
   "synthesis.charts.weapon_accuracy_title": { fr: "Précision par arme", en: "Accuracy by weapon" },
   "synthesis.charts.weapon_kills_title": { fr: "Frags par arme", en: "Kills by weapon" },
   "synthesis.coach.blind_spot_power": { fr: "Tu n'exploites quasiment jamais les armes lourdes. En prendre le contrôle (lance-roquettes, sniper, empaleur…) fait souvent basculer le match — priorise-les quand elles apparaissent.", en: "You almost never use power weapons. Taking control of them (rockets, sniper, skewer…) often decides the match — prioritise them when they spawn." },

@@ -52,3 +52,12 @@ export function tipNumber(value: number, decimals = 0, signed = false): string {
 export function tipNumberAuto(value: number): string {
   return format(value, 0, TIP_AUTO_MAX_DECIMALS, false)
 }
+
+/**
+ * Nombre d'infobulle à `maxDecimals` décimales AU PLUS, sans zéro inutile (« +12 » ou « +12,3 », jamais
+ * « +12,0 ») : pour une valeur dont la précision varie d'un point à l'autre (cumul, écart). `signed` :
+ * « +3 » / « −1,2 », zéro sans signe.
+ */
+export function tipNumberUpTo(value: number, maxDecimals: number, signed = false): string {
+  return format(value, 0, maxDecimals, signed)
+}

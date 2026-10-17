@@ -13,6 +13,8 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter, stackTopFirstOrder } from '@/components/charts/axisTooltip'
+import { tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import { useFieldMappings, useOutcomeLabel } from '@/lib/i18n/fieldMappings'
 
@@ -33,24 +35,74 @@ interface Props {
 
 interface OutcomeLabels { win: string; loss: string; tie: string; dnf: string }
 
-function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxisLabel: string): EChartsCoreOption {
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxisLabel: string): EChartsCoreOption {
   if (entries.length === 0) return { backgroundColor: CHART_BG }
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
 
   const categories = entries.map((e) => e.name)
 
-  const labelAll = barLabel({ formatter: (p: { value: number }) => String(p.value) })
-  const labelIfNonzero = barLabel({ formatter: (p: { value: number }) => (p.value > 0 ? String(p.value) : '') })
+  const labelAll = barLabel({ formatter: (p: { value: number }) => tipNumberAuto(p.value) })
+  const labelIfNonzero = barLabel({ formatter: (p: { value: number }) => (p.value > 0 ? tipNumberAuto(p.value) : '') })
   const winColor = resolveToken('outcome-win')
   const lossColor = resolveToken('outcome-loss')
   const tieColor = resolveToken('outcome-draw')
   const dnfColor = resolveToken('outcome-dnf')
 
+  const series = [
+    {
+      name: labels.win,
+      type: 'bar',
+      stack: 'total',
+      data: entries.map((e) => ({ value: e.wins, win_rate: e.win_rate })),
+      itemStyle: { color: winColor, opacity: 0.85 },
+      label: labelAll,
+      barCategoryGap: '15%',
+    },
+    {
+      name: labels.loss,
+      type: 'bar',
+      stack: 'total',
+      data: entries.map((e) => ({ value: e.losses })),
+      itemStyle: { color: lossColor, opacity: 0.75 },
+      label: labelAll,
+      barCategoryGap: '15%',
+    },
+    {
+      name: labels.tie,
+      type: 'bar',
+      stack: 'total',
+      data: entries.map((e) => ({ value: e.ties })),
+      itemStyle: { color: tieColor, opacity: 0.7 },
+      label: labelIfNonzero,
+      barCategoryGap: '15%',
+    },
+    {
+      name: labels.dnf,
+      type: 'bar',
+      stack: 'total',
+      data: entries.map((e) => ({ value: e.unfinished })),
+      itemStyle: { color: dnfColor, opacity: 0.6 },
+      label: labelIfNonzero,
+      barCategoryGap: '15%',
+    },
+  ]
+
   return {
     backgroundColor: CHART_BG,
     grid: { left: 40, right: 20, top: 30, bottom: 100, containLabel: false },
-    tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      // Une ligne par issue présente : un segment à zéro n'est ni dessiné ni étiqueté.
+      formatter: axisTooltipFormatter({
+        value: (r) => tipNumberAuto(r.value),
+        order: stackTopFirstOrder(series),
+        skip: (r) => r.value === 0,
+      }),
+    },
     legend: { ...getLegendBase(tc), orient: 'horizontal', bottom: 8, left: 'center', right: undefined, top: undefined },
     xAxis: {
       ...axis,
@@ -65,44 +117,7 @@ function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxis
       name: yAxisLabel,
       splitLine: { show: true, lineStyle: { color: tc.splitLine } },
     },
-    series: [
-      {
-        name: labels.win,
-        type: 'bar',
-        stack: 'total',
-        data: entries.map((e) => ({ value: e.wins, win_rate: e.win_rate })),
-        itemStyle: { color: winColor, opacity: 0.85 },
-        label: labelAll,
-        barCategoryGap: '15%',
-      },
-      {
-        name: labels.loss,
-        type: 'bar',
-        stack: 'total',
-        data: entries.map((e) => ({ value: e.losses })),
-        itemStyle: { color: lossColor, opacity: 0.75 },
-        label: labelAll,
-        barCategoryGap: '15%',
-      },
-      {
-        name: labels.tie,
-        type: 'bar',
-        stack: 'total',
-        data: entries.map((e) => ({ value: e.ties })),
-        itemStyle: { color: tieColor, opacity: 0.7 },
-        label: labelIfNonzero,
-        barCategoryGap: '15%',
-      },
-      {
-        name: labels.dnf,
-        type: 'bar',
-        stack: 'total',
-        data: entries.map((e) => ({ value: e.unfinished })),
-        itemStyle: { color: dnfColor, opacity: 0.6 },
-        label: labelIfNonzero,
-        barCategoryGap: '15%',
-      },
-    ],
+    series,
   }
 }
 

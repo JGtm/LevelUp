@@ -193,7 +193,7 @@ describe('buildHeatmap2DOption — formatTooltip', () => {
     const opt = buildHeatmap2DOption(cellule) as unknown as Fmt
     const rendu = opt.tooltip.formatter({ data: [0, 0, 4, { count: 4 }] })
     expect(rendu).toContain('Win Rate')
-    expect(rendu).toContain('400.0%')
+    expect(rendu).toContain('400,0 %')
   })
 
   it('ne dit RIEN sur une case vide, pas même « 0 »', () => {

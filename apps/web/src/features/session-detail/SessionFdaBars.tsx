@@ -14,6 +14,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
@@ -50,7 +51,7 @@ export function buildSessionFdaBarsOption(
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const fmt = (n: number) => Number(n.toFixed(opts.decimals))
-  const abs = (v: number) => Math.abs(v).toFixed(opts.decimals)
+  const abs = (v: number) => tipNumber(Math.abs(v), opts.decimals)
 
   // Visuel page Escouade : Frags/Assists au-dessus de l'axe zéro (positifs),
   // Morts en dessous (négatifs). Axe X accentué (= ligne zéro), labels en valeur

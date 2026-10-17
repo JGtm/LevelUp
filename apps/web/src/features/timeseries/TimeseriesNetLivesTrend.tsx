@@ -34,6 +34,7 @@ import {
   getTooltipBase,
   hoverRevealSymbol,
 } from '@/components/charts/_utils'
+import { tipNumberUpTo } from '@/components/charts/tipNumber'
 import { titleWithInfo } from '@/components/ui/title-with-info'
 import { cumulativeSigned, meanOfValid } from '@/lib/charts/cumulativeSeries'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
@@ -97,7 +98,7 @@ export interface TimeseriesNetLivesLabels {
 /** Formate une balance : « — » si absente, préfixe « + » au-dessus de zéro. */
 function fmtBalance(v: number | null): string {
   if (v == null) return '—'
-  return v >= 0 ? `+${v}` : `${v}`
+  return tipNumberUpTo(v, 1, true)
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
