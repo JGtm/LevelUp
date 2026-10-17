@@ -58,14 +58,21 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
       `features/synthesis` : clés i18n FR/EN, FR sans anglicisme (« Taux de victoire »).
 
 ### Q4 — Clôture
-- [ ] Q4.1 `rm -rf node_modules/.tmp && npx tsc -b --force`, vitest complet, `npm run lint`,
+- [x] Q4.1 (tsc -b --force, vitest 969 fichiers / 10058 tests, eslint 0 erreur, lint:colors, lint:fields, knip 0/0/0, imports croisés 7<=7, parité Go de la clé de capability ; aucun Go modifié)  `rm -rf node_modules/.tmp && npx tsc -b --force`, vitest complet, `npm run lint`,
       `lint:colors`, `lint:fields`, knip, lint des imports croisés ; Go si touché (paquets + archlint).
-- [ ] Q4.2 Entrée `.ai/thought_log.md`, découvertes au §3.
-- [ ] Q4.3 Un commit par étape sur `feat/retours-pages-2` ; pas de push ; disk-hygiene du lot.
+- [x] Q4.2 (entrée du 2026-10-17 en tête de thought_log.md ; §3 rempli) Entrée `.ai/thought_log.md`, découvertes au §3.
+- [x] Q4.3 (cinq commits Q1, Q2.1, Q2.2, Q2.3, Q2.4, Q3 + clôture ; aucun push ; disk-hygiene -Lot retours-pages-2 -Apply) Un commit par étape sur `feat/retours-pages-2` ; pas de push ; disk-hygiene du lot.
 
-## 3. Découvertes
+## 3. Découvertes (non traitées, hors périmètre)
 
-(à remplir)
+- Décision d'origine : aucune phrase de l'utilisateur ne vise « l'Objectif » nommément avant celle du 2026-10-17 ; la règle retrouvée est la mémoire `feedback_etats_vides_fonction_vs_donnees.md` (retours du 2026-10-17) et `.ai/PLAN_RETOURS_ESCOUADE_2026-10-17.md` D4/E5 (Emprise). Les sections d'objectif de l'Escouade (`SquadObjectiveSection`, `SquadPreviousSessionsSection`) étaient donc le contre-exemple écrit avant la règle.
+- Lecture en échec (`formes_retenues.unavailable_reason = load_failed`) : le bloc d'objectif se retire sans rien dire à l'écran (une erreur de lecture n'est pas « aucun match à objectif »). Un état « lecture en échec » commun à l'Emprise, aux Séries temporelles et aux Sessions reste à décider.
+- Escouade › Emprise › Rapport de force par soirée : les notes « sous le minimum » / « première soirée » (`objectifStrings.ts`) disent encore « la carte se masque » alors que la carte reste affichée (texte antérieur au lot du 17/10).
+- `squad_impact_history` absent de la réponse (titre sans événements horodatés, équipe alliée non lue, lecture en échec) : la carte « Points d'impact par soirée et par rôle » reste absente faute de signal distinguant capability et donnée (le Go renvoie `nil` pour les deux).
+- Synthèse : tuiles de KPI individuelles à zéro (incidents, séries de victoires ou de défaites, véhicules, détournements, tirs) restent absentes (une tuile, pas un bloc titré) ; `SynthesisPage.test.tsx` garde 14 tests ignorés sur l'ancienne interface.
+- Vue match : « Objectifs » (propre au mode du match : un match d'un mode sans objectif n'a pas ce bloc), courbes et événements de score (mode non pris en charge), `MatchAssistChart` et positions (film non lu, signalé par `analysis_pending_parts`) : non modifiés ; à confirmer avec l'utilisateur si un mode sans objectif doit lui aussi dire « aucun match à objectif ».
+- Titre du graphe des meilleures semaines : « Matchs Top vs Total par semaine » devient « Victoires et autres matchs, par semaine » (les séries ne s'appellent plus « Top 1 » / « Autres »).
+- Nouvelle clé de capability de données consommée par le front : `analytics.career_xp_estimate` (`DATA_CAPABILITIES`, parité Go vérifiée).
 
 ## 4. Inventaire Q2.4 (blocs retirés pour « aucun match concerné »)
 
