@@ -22,6 +22,8 @@ type AnalysisPendingResolver struct {
 	replayExpected bool
 	// now : horloge injectable (tests de la borne des 24 h).
 	now func() time.Time
+	// decodes : qui décode quoi sur la machine (nil : tout match en attente est « queued »).
+	decodes port.FilmDecodeObserver
 }
 
 // NewAnalysisPendingResolver construit le résolveur. repo nil → nil (rien à résoudre).
@@ -38,6 +40,25 @@ func (r *AnalysisPendingResolver) WithClock(now func() time.Time) *AnalysisPendi
 		r.now = now
 	}
 	return r
+}
+
+// WithDecodeObserver branche la lecture du décodage en cours (état « en cours » vs « en
+// attente » de l'en-tête de la vue match). Récepteur nil : sans effet.
+func (r *AnalysisPendingResolver) WithDecodeObserver(o port.FilmDecodeObserver) *AnalysisPendingResolver {
+	if r != nil {
+		r.decodes = o
+	}
+	return r
+}
+
+// StateOf rend l'état d'un match dont l'analyse est en attente (`domain.AnalysisState*`) : « en
+// cours » seulement si un décodage vivant porte sur lui, sinon « en attente ».
+func (r *AnalysisPendingResolver) StateOf(matchID string) string {
+	decoding := ""
+	if r != nil && r.decodes != nil {
+		decoding = r.decodes.DecodingMatchID()
+	}
+	return analysis.AnalysisStateOf(matchID, decoding)
 }
 
 // ReplayLookup dit si un match a son artefact de rejeu, et si la réponse est fiable.
@@ -136,4 +157,7 @@ func (s *MatchViewService) applyHeaderAnalysisPending(ctx context.Context, h *do
 	parts := s.analysisPending.Resolve(ctx, []string{h.MatchID}, lookup)[h.MatchID]
 	h.AnalysisPending = len(parts) > 0
 	h.AnalysisPendingParts = parts
+	if h.AnalysisPending {
+		h.AnalysisState = s.analysisPending.StateOf(h.MatchID)
+	}
 }

@@ -158,3 +158,37 @@ func TestMatchViewService_HeaderAnalysisPending(t *testing.T) {
 		t.Fatal("sans résolveur : faux")
 	}
 }
+
+type observateurFactice struct{ match string }
+
+func (o observateurFactice) DecodingMatchID() string { return o.match }
+
+func TestMatchViewService_HeaderAnalysisState(t *testing.T) {
+	repo := &probeRepoFactice{probes: map[string]domain.AnalysisProbe{
+		"m1": synchroIlYA(time.Hour, func(p *domain.AnalysisProbe) { p.KillSourceDone = false }),
+		"m2": synchroIlYA(time.Hour, nil),
+	}}
+	cas := []struct {
+		nom      string
+		match    string
+		decodant port.FilmDecodeObserver
+		want     string
+	}{
+		{"décodage de ce match", "m1", observateurFactice{"m1"}, domain.AnalysisStateInProgress},
+		{"décodage d'un autre match", "m1", observateurFactice{"m9"}, domain.AnalysisStateQueued},
+		{"aucun décodage", "m1", observateurFactice{""}, domain.AnalysisStateQueued},
+		{"observateur non câblé", "m1", nil, domain.AnalysisStateQueued},
+		{"analyse finie : champ absent même si le match est décodé", "m2", observateurFactice{"m2"}, ""},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			r := resolveurDeTest(repo, false).WithDecodeObserver(c.decodant)
+			s := &MatchViewService{analysisPending: r}
+			h := domain.MatchViewHeader{MatchID: c.match}
+			s.applyHeaderAnalysisPending(context.Background(), &h)
+			if h.AnalysisState != c.want {
+				t.Fatalf("AnalysisState = %q, want %q (header %+v)", h.AnalysisState, c.want, h)
+			}
+		})
+	}
+}

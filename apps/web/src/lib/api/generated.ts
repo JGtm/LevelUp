@@ -9395,6 +9395,7 @@ export interface components {
         MatchViewHeader: {
             analysis_pending?: boolean;
             analysis_pending_parts?: string[] | null;
+            analysis_state?: string;
             dominance_badge?: components["schemas"]["MatchViewDominanceBadge"];
             dominance_flag: boolean;
             had_bot_teammate: boolean;

@@ -329,7 +329,7 @@ export const commonManifest = {
   "common.match_card.analysis_pending.assisted_frags": { fr: "Frags assistés : analyse en cours", en: "Assisted kills: analysis in progress" },
   "common.match_card.analysis_pending.badge": { fr: "Analyse en cours", en: "Analysis in progress" },
   "common.match_card.analysis_pending.citations": { fr: "Citations après l'analyse du film", en: "Citations after the film analysis" },
-  "common.match_card.analysis_pending.replay": { fr: "Rejeu à venir", en: "Replay coming" },
+  "common.match_card.analysis_pending.replay": { fr: "Rejeu en attente", en: "Replay pending" },
   "common.match_card.analysis_pending.tooltip_body": { fr: "Le match est synchronisé. Les frags assistés, les citations et le rejeu 2D arrivent dès que le film est analysé, d'ici quelques instants.", en: "The match is synced. Assisted kills, citations and the 2D replay will appear as soon as the film has been analysed, within moments." },
   "common.match_card.analysis_pending.tooltip_note": { fr: "La tuile se met à jour seule.", en: "The tile updates by itself." },
   "common.match_card.analysis_pending.tooltip_title": { fr: "Analyse du film en cours", en: "Film analysis in progress" },

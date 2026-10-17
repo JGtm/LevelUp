@@ -1312,8 +1312,8 @@ fr = "Citations après l'analyse du film"
 en = "Citations after the film analysis"
 
 [common.match_card.analysis_pending.replay]
-fr = "Rejeu à venir"
-en = "Replay coming"
+fr = "Rejeu en attente"
+en = "Replay pending"
 
 # ─── Setup wizard (StepDeviceCode, StepInitialSync, StepPlayer) ─────────
 

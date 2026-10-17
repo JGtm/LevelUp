@@ -15,3 +15,12 @@ type AnalysisProbeRepository interface {
 	// propagée : l'appelant journalise et dégrade (aucun indicateur).
 	LoadAnalysisProbes(ctx context.Context, matchIDs []string) (map[string]domain.AnalysisProbe, error)
 }
+
+// FilmDecodeObserver dit quel match un décodage de film est en train de traiter sur la machine.
+// Implémenté par filmproc.DecodeObserver (lecture de la description du détenteur du verrou
+// machine, sans jamais prendre le verrou).
+type FilmDecodeObserver interface {
+	// DecodingMatchID rend l'identifiant du match que décode un processus vivant, ou "" quand
+	// aucun décodage n'est en cours (ou que le détenteur ne s'est pas décrit).
+	DecodingMatchID() string
+}

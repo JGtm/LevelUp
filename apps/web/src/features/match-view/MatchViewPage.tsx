@@ -7,7 +7,7 @@ import { useFriendGamertags } from '@/features/friends/queries'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useMatchView, useMatchObjectiveEvents, useMatchPositions } from './queries'
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
-import { MatchAnalysisPendingBanner } from './MatchAnalysisPendingBanner'
+import { MatchNotices } from './MatchNotices'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
 import { MatchMediaTab } from './MatchMediaTab'
@@ -21,41 +21,11 @@ import { MatchViewTabArsenal } from './MatchViewTabArsenal'
 import { MatchViewTabPlayers } from './MatchViewTabPlayers'
 import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT } from './i18n'
-import { selectMatchPartialBanner } from './matchPartial.logic'
 import type { MatchViewTab } from './tabs'
 import type { MatchViewRadarSeries } from '@/lib/api/types'
-import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { PageUnavailable } from '@/components/ui/page-unavailable'
 import { apiErrorCode } from '@/lib/api/client'
 import { useAppShellStore } from '@/stores/appShellStore'
-
-/**
- * Traduit un code stable de partial_reason en impact end-user concret.
- * Décrit ce que l'utilisateur ne peut PAS voir, pas la raison technique.
- */
-function translatePartialReason(code: string, locale: string): string {
-  const isEN = locale === 'en'
-  switch (code) {
-    case 'scoreboard_empty':
-      return isEN
-        ? 'Scoreboard and individual player stats are unavailable'
-        : "Le tableau des scores et les stats individuelles sont indisponibles"
-    case 'events_empty':
-      return isEN
-        ? 'Combat charts cannot be displayed — Cadence, Dominance and Frag diff are empty'
-        : "Les graphes de combat sont vides — Cadence, Dominance et Frags différentiel ne peuvent pas être tracés"
-    case 'player_stats_empty':
-      return isEN
-        ? 'Some personal stats are missing — datas may be incomplete'
-        : "Certaines statistiques personnelles sont absentes — les données peuvent être incomplètes"
-    case 'medals_empty':
-      return isEN
-        ? 'Medals and commendations are unavailable'
-        : "Les médailles et citations ne sont pas disponibles"
-    default:
-      return code
-  }
-}
 
 // Libellés résolus au rendu via MATCH_VIEW_TEXT (GH2-B2 : bilingue). Les ids
 // canoniques et la rétro-compat des deep-links vivent dans `./tabs`.
@@ -213,7 +183,6 @@ export function MatchViewPage() {
   const impactBadges = combat_tab.impact_badges ?? []
   const tugOfWar = combat_tab.tug_of_war ?? []
 
-  const partialBanner = selectMatchPartialBanner(data)
   const meRow = scoreboard.find((r) => r.is_me)
   const meXUID = meRow?.xuid ?? null
   // `radar` est typé `unknown[]` dans le contrat (le générateur OpenAPI a perdu
@@ -224,71 +193,6 @@ export function MatchViewPage() {
   return (
     <div className="flex flex-col">
       <MatchBreadcrumb playerSlug={playerSlug} matchLabel={breadcrumbLabel} locale={locale === 'en' ? 'en' : 'fr'} />
-
-      {/* Sprint 54-B : avertissement privacy */}
-      {data.privacy_warning && (
-        <div className="px-6 pt-4">
-          <PrivacyBanner warning={data.privacy_warning} />
-        </div>
-      )}
-
-      {/* RC6 — bandeau "sync incomplet" : le match existe mais des sections
-          critiques sont vides (parser highlight expirée, sync partiel, etc.).
-          Le match reste rendu normalement, on signale juste la dégradation. */}
-      {partialBanner?.kind === 'unavailable' && (
-        // E4 : une source est EN PANNE (≠ vide) — bandeau distinct, qui prime sur le
-        // bandeau « match partiel ». Choix dans matchPartial.logic.ts.
-        <div className="px-6 pt-4">
-          <div role="status" className="flex gap-3 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <p className="text-sm font-semibold text-foreground">{t.pageUnavailableBanner}</p>
-          </div>
-        </div>
-      )}
-      {partialBanner?.kind === 'partial' && (
-        <div className="px-6 pt-4">
-          <div className="flex gap-3 rounded-md border border-warning/50 bg-warning/10 px-4 py-3">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="mt-0.5 h-4 w-4 shrink-0 text-warning"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">
-                {t.pagePartialLoad}
-              </p>
-              <ul className="mt-1.5 space-y-1">
-                {partialBanner.reasons.map((r) => (
-                  <li key={r} className="flex gap-2 text-xs text-muted-foreground">
-                    <span className="mt-px shrink-0 text-warning" aria-hidden="true">▸</span>
-                    <span>{translatePartialReason(r, locale)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Barre nav full-width — Match précédent · Match X/Y · Match suivant */}
       <MatchNavigationBar playerSlug={playerSlug} matchId={matchId} locale={locale} />
@@ -303,8 +207,9 @@ export function MatchViewPage() {
         locale={locale}
       />
 
-      {/* Analyse du film en cours : bandeau INFO (pas un avertissement), la vue se recharge seule. */}
-      {header.analysis_pending === true && <MatchAnalysisPendingBanner t={t} />}
+      {/* La SEULE zone de messages de la page : lecture en échec, données absentes, analyse du
+          film, confidentialité (ordre et libellés : matchNotices.logic.ts). */}
+      <MatchNotices data={data} t={t} locale={locale} />
 
       {/* Onglets — mx-6 aligne la bordure sur le header card (même inset px-6) */}
       <div className="mx-6 mt-4 border-b border-border">

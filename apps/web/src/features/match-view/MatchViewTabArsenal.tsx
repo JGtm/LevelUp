@@ -26,7 +26,14 @@ import { buildEquipmentUsage, hasEquipmentUsage } from '@/features/match-replay/
 import { DetailSection } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { AnalysisPendingSlot } from '@/components/ui/analysis-pending-slot'
-import { ANALYSIS_PART, hasPendingPart, type AnalysisPendingCarrier } from '@/lib/analysis-pending/analysisPending.logic'
+import {
+  ANALYSIS_PART,
+  hasPendingPart,
+  isAnalysisInProgress,
+  type AnalysisPendingCarrier,
+  type AnalysisStateCarrier,
+} from '@/lib/analysis-pending/analysisPending.logic'
+import { analysisSlotLabel } from './matchNotices.logic'
 import type {
   FragDistribution,
   MatchEmpriseBlock,
@@ -65,7 +72,7 @@ interface Props {
   livesNearTeammate: MatchLivesNearTeammate | null | undefined
   /** L'en-tête de la vue (ses causes `analysis_pending_parts`) : chaque section qui dépend du
    *  film montre un emplacement d'attente, au lieu de son état vide, quand SA cause est servie. */
-  analysisCauses?: AnalysisPendingCarrier | null
+  analysisCauses?: (AnalysisPendingCarrier & AnalysisStateCarrier) | null
   meXUID: string | null
   friendGamertags: readonly string[]
   matchPositions: MatchPlayerPosition[] | undefined
@@ -118,6 +125,8 @@ export function MatchViewTabArsenal({
     hasKillDistance: (killDistance?.length ?? 0) > 0,
     hasTerrain: showEquipmentTerrain,
   })
+  // « En cours » seulement si un décodage porte sur ce match, sinon « en attente ».
+  const slotLabel = analysisSlotLabel(isAnalysisInProgress(analysisCauses), t)
   const showKillsWeaponsSection = showKillsWeapons || pending.killsWeapons
   const showTerrainSection = showEquipmentTerrain || pending.terrain
 
@@ -131,7 +140,7 @@ export function MatchViewTabArsenal({
         <DetailSection title={t.sectionKillsWeapons}>
           <MatchFragCard distribution={fragDistribution} tools={weaponTools} locale={locale} />
           {pending.killsWeapons ? (
-            <AnalysisPendingSlot label={t.analysisPendingSlotInProgress} />
+            <AnalysisPendingSlot label={slotLabel} />
           ) : (
             <MatchKillDistanceSection players={killDistance} scoreboard={scoreboard} roster={roster} meXUID={meXUID} friendGamertags={friendGamertags} t={t} />
           )}
@@ -140,7 +149,7 @@ export function MatchViewTabArsenal({
 
       {showTerrainSection && (
         <DetailSection title={t.sectionEquipmentTerrain}>
-          {pending.terrain && <AnalysisPendingSlot label={t.analysisPendingSlotPreparing} />}
+          {pending.terrain && <AnalysisPendingSlot label={slotLabel} />}
           {e.control}
           {e.sheets}
           <MatchEquipmentUsageSection playerSlug={playerSlug} matchId={matchId} replayAvailable={replayAvailable} scoreboard={scoreboard} locale={locale} />

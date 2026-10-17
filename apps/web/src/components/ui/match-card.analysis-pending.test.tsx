@@ -116,7 +116,7 @@ describe('MatchCard — analyse du film en cours', () => {
       const citations = screen.getByTestId('match-card-citations-pending')
       expect(citations.textContent).toBe("Citations après l'analyse du film")
       expect(citations.querySelectorAll('.border-dashed')).toHaveLength(3)
-      expect(screen.getByTestId('match-card-replay-pending').textContent).toBe('Rejeu à venir')
+      expect(screen.getByTestId('match-card-replay-pending').textContent).toBe('Rejeu en attente')
       // L'emplacement vide d'origine cède la place à l'emplacement en attente.
       expect(screen.queryByTestId('match-card-assisted-frags-slot')).toBeNull()
     })
@@ -128,7 +128,7 @@ describe('MatchCard — analyse du film en cours', () => {
         'Assisted kills: analysis in progress',
       )
       expect(screen.getByTestId('match-card-citations-pending').textContent).toBe('Citations after the film analysis')
-      expect(screen.getByTestId('match-card-replay-pending').textContent).toBe('Replay coming')
+      expect(screen.getByTestId('match-card-replay-pending').textContent).toBe('Replay pending')
     })
 
     it('n\'anime que sous motion-safe (prefers-reduced-motion respecté)', () => {
@@ -186,9 +186,9 @@ describe('MatchCard — analyse du film en cours', () => {
         expect(screen.queryByTestId('match-card-replay-pending')).toBeNull()
       })
 
-      it('replay seul : puce « Rejeu à venir » seule', () => {
+      it('replay seul : puce « Rejeu en attente » seule', () => {
         render(<MatchCard match={pendingWith('replay')} locale="fr" playerSlug="chief" />)
-        expect(screen.getByTestId('match-card-replay-pending').textContent).toBe('Rejeu à venir')
+        expect(screen.getByTestId('match-card-replay-pending').textContent).toBe('Rejeu en attente')
         expect(screen.queryByTestId('match-card-citations-pending')).toBeNull()
         expect(screen.queryByTestId('match-card-assisted-frags-pending')).toBeNull()
         expect(screen.getByTestId('match-card-assisted-frags-slot')).toBeTruthy()

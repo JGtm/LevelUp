@@ -6,7 +6,7 @@
  *
  *  - frags assistés : petit indicateur tournant + « Frags assistés : analyse en cours » ;
  *  - citations : trois cercles en pointillés + « Citations après l'analyse du film » ;
- *  - rejeu : puce en pointillés « Rejeu à venir », à la place du bouton absent.
+ *  - rejeu : puce en pointillés « Rejeu en attente », à la place du bouton absent.
  *
  * Tout mouvement est sous `motion-safe:` (`prefers-reduced-motion`). Jetons sémantiques
  * uniquement (`info`, `muted-foreground`).

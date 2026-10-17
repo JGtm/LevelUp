@@ -31,3 +31,13 @@ const (
 	// AnalysisPartReplay : le rejeu 2D est absent alors que le film n'est pas déclaré absent.
 	AnalysisPartReplay = "replay"
 )
+
+// États de l'analyse d'un match, tels que servis dans `MatchViewHeader.analysis_state`
+// (posé seulement quand `analysis_pending` est vrai). Les deux chaînes sont le contrat avec
+// le web : miroir `lib/analysis-pending/analysisPending.logic.ts`.
+const (
+	// AnalysisStateInProgress : un décodage de film tient le verrou machine POUR CE MATCH.
+	AnalysisStateInProgress = "in_progress"
+	// AnalysisStateQueued : rien ne décode ce match en ce moment ; il attend son tour.
+	AnalysisStateQueued = "queued"
+)

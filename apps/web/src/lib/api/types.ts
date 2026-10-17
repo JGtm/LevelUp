@@ -1047,7 +1047,7 @@ export interface RecentMatchItem {
    *  de rejeu (résolu côté back en un listing de dossier par requête, cf. Explorer). */
   has_replay?: boolean
   /** Le match est synchronisé mais l'analyse de son film n'est pas finie (frags assistés,
-   *  citations ou rejeu 2D encore à venir) : la tuile le dit au lieu d'afficher des trous.
+   *  citations ou rejeu 2D pas encore produits) : la tuile le dit au lieu d'afficher des trous.
    *  Règle serveur `analysis.IsAnalysisPending` (synchro < 24 h). Absent = faux. */
   analysis_pending?: boolean
   /** Les causes de `analysis_pending` (`kill_source`, `citations`, `replay`, ordre stable) :
