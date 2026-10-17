@@ -48,7 +48,7 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
 - [x] Q2.2 (Sessions : `sessionEmprise.logic.ts` `objectiveEmpty` + `sessionScopeEmpties`, carte d'ancrage `objective_balance` dans `useSessionEmpriseCards.tsx` ; Séries temporelles : `usages.logic.ts objectiveEmpty` + `ScopeEmptySection` dans `TimeseriesPage.usages.tsx`, affiché seulement si l'onglet a autre chose à montrer ; bandeau : `TimeseriesObjectiveCard.tsx` constat `objectiveActions`) Sessions et Séries temporelles : Objectif, bandeau d'objectifs.
 - [x] Q2.3 (`FragSunburst` : sans frag, carte (ou bloc nu) avec `EmptyStateNotice`, texte `scopeEmptyText('frags')` = clé `frags.empty.no_data` ; Sessions `sessionScopeEmpties` ; Synthèse : retrait du `fragDistribution &&` ; Séries temporelles : le résumé montait déjà l'anneau sans condition ; Vue match : `MatchFragCard` garde la carte A et `MatchViewTabArsenal` garde « Frags et armes » dès que l'onglet montre du terrain ; Escouade : `SquadFragBreakdownCard` avait déjà son état vide dans la carte) Anneau des frags (`FragSunburst` et cartes qui le portent) sans frag : bloc affiché,
       « Aucun frag sur ce périmètre » (réutiliser la clé `frags.toml` si elle convient).
-- [ ] Q2.4 Inventaire des autres blocs retirés pour « aucun match concerné » sur Escouade, Sessions,
+- [x] Q2.4 (tableau au §4 ; corrigés : Escouade Mécaniques de frag / Points d'impact / Appui et portée, Sessions XP et outils, Séries temporelles XP, Synthèse Détails des frags et Objectifs, Vue match Répartition des frags) Inventaire des autres blocs retirés pour « aucun match concerné » sur Escouade, Sessions,
       Séries temporelles, Synthèse, Vue match : tableau au rapport ; corriger ceux de ces pages
       selon la même règle. Ne pas toucher aux blocs absents par capability du titre (fonction
       absente).
@@ -66,3 +66,34 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
 ## 3. Découvertes
 
 (à remplir)
+
+## 4. Inventaire Q2.4 (blocs retirés pour « aucun match concerné »)
+
+Capability absente (fonction absente du titre) : le bloc reste absent.
+
+| Page | Bloc | Avant | Après (FR) |
+|---|---|---|---|
+| Escouade › Emprise | Objectif ; Répartition de l'objectif dans l'escouade | retirés (intertitres compris) | intertitres gardés + « Aucun match à objectif sur ce périmètre » (Q2.1) |
+| Escouade › Emprise | Rapport de force, soirée après soirée | carte retirée | carte titrée + « Aucun match à objectif sur ce périmètre » (Q2.1) |
+| Escouade › Contributions | Mécaniques de frag natives (capability présente) | carte retirée sans donnée | carte titrée + « Aucune donnée / Aucune donnée pour cette sélection » |
+| Escouade › Contributions | Points d'impact par soirée et par rôle | carte retirée sans soirée | carte titrée + état vide du graphe |
+| Escouade › Synergies | Appui et portée | section retirée sans appui ni portée | titre qui lit le film : intertitre gardé + « Analyse du film en cours » / « Film non analysé » / « Aucune assistance ni portée de frag sur ce périmètre » ; titre sans film : absente |
+| Sessions | Objectif (rapport de force, fiche) | retiré | intertitre « Objectif » + « Aucun match à objectif sur ce périmètre » (Q2.2) |
+| Sessions | Répartition des frags ; Outils de destruction | cartes retirées sans frag | cartes titrées + « Aucun frag sur ce périmètre » / état vide du graphe (Q2.3) |
+| Sessions | XP de carrière estimée | carte retirée sans estimation | titre avec la capability `analytics.career_xp_estimate` : carte titrée + état vide ; sans : absente |
+| Séries temporelles › Usages | Objectif | retiré | intertitre + « Aucun match à objectif sur ce périmètre » (Q2.2), seulement si l'onglet montre autre chose |
+| Séries temporelles | Bandeau Objectifs | retiré | titre gardé + « Aucune action d'objectif sur ce périmètre » (Q2.2) ; capability `objective_stats` absente : absent |
+| Séries temporelles › Résumé | Répartition des frags (anneau) | rien (`null`) | carte titrée + « Aucun frag sur ce périmètre » (Q2.3) |
+| Séries temporelles › Progression | XP de carrière estimée | carte retirée sans match estimé | capability : carte titrée + état vide ; sans : absente |
+| Synthèse | Répartition des frags (anneau) | retiré sans distribution | carte titrée + « Aucun frag sur ce périmètre » (Q2.3) |
+| Synthèse | Détails des frags | retiré sans distribution | carte titrée + état vide du graphe |
+| Synthèse | Objectifs (KPI) | retiré sans stats | titre gardé + « Aucun match à objectif sur ce périmètre » (pas de stats) ou « Aucune action d'objectif sur ce périmètre » (stats à zéro) ; capability absente : absent |
+| Vue match › Armes et terrain | Répartition des frags | carte retirée sans frag | carte titrée + « Aucun frag sur ce périmètre » ; « Frags et armes » reste dès que l'onglet montre du terrain (Q2.3) |
+
+Examinés, non modifiés (justification) :
+- Capability du titre absente : FDA attendu, dégâts subis, MMR d'équipe, précision par arme native, engagement, bloc de coordination, portée par arme, mécaniques de frag natives (parent `FeatureGate`).
+- Graphes qui retournent `null` dans leur constructeur d'option (Séries temporelles : `Timeseries*Trend`, `*Density`, `TimeseriesFormCharts`, `TimeseriesSquadAdapted`, `Timeseries ScatterWithTrend`) : leur `ChartCard` affiche déjà titre + état vide.
+- Escouade › Dynamique et Contributions (hors cartes ci-dessus), Sessions (graphes de `_chartSections`), Synthèse (heatmap, semaines, résultats par carte) : cartes toujours montées avec état vide (plans clos du jour).
+- Synthèse : tuiles de KPI individuelles à zéro (incidents, séries, véhicules, détournements) : une tuile, pas un bloc titré (voir §3).
+- Vue match : « Objectifs » (propre au mode du match), courbes et événements de score (mode non pris en charge), `MatchAssistChart` et positions (film, signal `analysis_pending_parts`) : voir §3.
+- Escouade › `SquadObjectivesPanel` (objectifs d'escouade à atteindre) : sans lien avec les matchs du périmètre.

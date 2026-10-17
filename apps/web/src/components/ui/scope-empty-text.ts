@@ -14,8 +14,8 @@ import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
 import type { Locale } from '@/lib/i18n/locale'
 
-/** Ce que le périmètre n'a pas : des matchs à objectif, des actions d'objectif, des frags. */
-export type ScopeEmptyKind = 'objective' | 'objectiveActions' | 'frags'
+/** Ce que le périmètre n'a pas : des matchs à objectif, des actions d'objectif, des frags, une assistance ou une portée lues au film. */
+export type ScopeEmptyKind = 'objective' | 'objectiveActions' | 'frags' | 'support'
 
 export interface ScopeEmptyText {
   title: string
@@ -32,6 +32,10 @@ const TEXT: Record<Locale, Record<Exclude<ScopeEmptyKind, 'frags'>, ScopeEmptyTe
       title: 'Aucune action d’objectif sur ce périmètre',
       description: 'Aucune action de drapeau, de zone ou de crâne n’est enregistrée sur les matchs de ce périmètre.',
     },
+    support: {
+      title: 'Aucune assistance ni portée de frag sur ce périmètre',
+      description: 'Aucun match de ce périmètre n’a d’assistance ni de portée de frag lue au film.',
+    },
     fragsDescription: 'Aucun frag n’est enregistré sur les matchs de ce périmètre.',
   },
   en: {
@@ -42,6 +46,10 @@ const TEXT: Record<Locale, Record<Exclude<ScopeEmptyKind, 'frags'>, ScopeEmptyTe
     objectiveActions: {
       title: 'No objective action in this scope',
       description: 'No flag, zone or skull action is recorded on the matches in this scope.',
+    },
+    support: {
+      title: 'No assist or kill range in this scope',
+      description: 'None of the matches in this scope has an assist or a kill range read from the film.',
     },
     fragsDescription: 'No kill is recorded on the matches in this scope.',
   },
@@ -58,5 +66,5 @@ export function scopeEmptyText(kind: ScopeEmptyKind, locale: Locale): ScopeEmpty
 
 /** Tous les constats d'une langue : ce que la garde des textes sans personne parcourt. */
 export function allScopeEmptyTexts(locale: Locale): ScopeEmptyText[] {
-  return (['objective', 'objectiveActions', 'frags'] as const).map((k) => scopeEmptyText(k, locale))
+  return (['objective', 'objectiveActions', 'frags', 'support'] as const).map((k) => scopeEmptyText(k, locale))
 }

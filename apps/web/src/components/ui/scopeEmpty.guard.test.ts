@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-const PHRASES = /Aucun match à objectif sur ce périmètre|No objective match in this scope|Aucune action d’objectif sur ce périmètre/
+const PHRASES = /Aucun match à objectif sur ce périmètre|No objective match in this scope|Aucune action d’objectif sur ce périmètre|Aucune assistance ni portée de frag sur ce périmètre/
 const OWNER = /\/components\/ui\/scope-empty-text\.ts$/
 
 const withoutComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')

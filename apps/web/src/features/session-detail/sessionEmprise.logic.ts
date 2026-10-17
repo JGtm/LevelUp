@@ -260,7 +260,7 @@ export function sessionCardsPresence(col: SessionColumnBlocks, m: SessionEmprise
 
 /**
  * sessionScopeEmpties — les cartes qui restent affichées faute de match concerné, avec ce qui manque :
- * la répartition des frags d'une session sans frag, l'objectif d'une session sans match à objectif (carte
+ * la répartition des frags et les outils de destruction d'une session sans frag, l'objectif d'une session sans match à objectif (carte
  * d'ancrage `objective_balance`, sous l'intertitre « Objectif »). Une colonne sans session (`entry` nul)
  * n'a rien à dire.
  */
@@ -270,7 +270,11 @@ export function sessionScopeEmpties(
   drawn: SessionCardsPresence,
 ): Partial<Record<keyof SessionCardsPresence, ScopeEmptyKind>> {
   const out: Partial<Record<keyof SessionCardsPresence, ScopeEmptyKind>> = {}
-  if (col.entry != null && !drawn.frag_donut) out.frag_donut = 'frags'
+  if (col.entry != null && !drawn.frag_donut) {
+    out.frag_donut = 'frags'
+    // Sans frag, « Outils de destruction » n'a rien non plus : sa carte reste avec l'état vide de son graphe.
+    if (!drawn.tools) out.tools = 'frags'
+  }
   if (m.objectiveEmpty) out.objective_balance = 'objective'
   return out
 }

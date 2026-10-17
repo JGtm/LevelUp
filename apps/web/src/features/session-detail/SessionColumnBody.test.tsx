@@ -152,6 +152,8 @@ describe('SessionColumnBody — chaque carte se retire seule', () => {
     expect(donut).toHaveTextContent('Répartition des frags')
     expect(donut).toHaveTextContent('Aucun frag sur ce périmètre')
     expect(donut.querySelector('.border-dashed')).not.toBeNull()
+    // « Outils de destruction » n'a rien non plus : sa carte reste avec son titre et l'état vide de son graphe.
+    expect(screen.getByText('Outils de destruction')).toBeInTheDocument()
   })
 
   it('aucune session : « Frags et usages » disparaît ENTIÈREMENT, titre compris', () => {

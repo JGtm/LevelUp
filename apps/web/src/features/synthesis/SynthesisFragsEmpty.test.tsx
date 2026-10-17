@@ -1,6 +1,7 @@
 /**
- * La Synthèse sans aucun frag : l'anneau « Répartition des frags » reste dans sa rangée avec son
- * constat « Aucun frag sur ce périmètre » (bloc parent + pointillé), au lieu de disparaître.
+ * La Synthèse sans match concerné : l'anneau « Répartition des frags » reste dans sa rangée avec son
+ * constat « Aucun frag sur ce périmètre » (bloc parent + pointillé), et le bloc « Objectifs » garde son
+ * titre avec le constat « Aucun match à objectif » ou « Aucune action d'objectif », au lieu de disparaître.
  */
 import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
@@ -43,13 +44,38 @@ const detailed = {
   total_hijacks: 0,
 }
 
-describe('Synthèse — aucun frag', () => {
+function servir(extra: Record<string, unknown>) {
+  server.use(
+    http.post('/api/v1/players/:playerSlug/pages/synthesis', () =>
+      HttpResponse.json({ ...synthesisFixture, detailed_stats: detailed, frag_distribution: null, ...extra }),
+    ),
+  )
+}
+
+describe('Synthèse — aucun match concerné', () => {
+  it('sans match à objectif : le bloc « Objectifs » garde son titre et dit le constat', async () => {
+    servir({ objective_stats: null })
+    renderWithProviders(<SynthesisPage />)
+    const bloc = await screen.findByTestId('synthesis-objectives-empty')
+    expect(bloc).toHaveTextContent('Aucun match à objectif sur ce périmètre')
+    expect(bloc.querySelector('.border-dashed')).not.toBeNull()
+  })
+
+  it('des matchs à objectif sans aucune action : le constat le dit', async () => {
+    servir({ objective_stats: { flag_captures: 0, zone_captures: 0, skull_grabs: 0 } })
+    renderWithProviders(<SynthesisPage />)
+    expect(await screen.findByTestId('synthesis-objectives-empty')).toHaveTextContent('Aucune action d’objectif sur ce périmètre')
+  })
+
+  it('des actions d’objectif : les KPI, pas de constat', async () => {
+    servir({ objective_stats: { flag_captures: 4 } })
+    renderWithProviders(<SynthesisPage />)
+    expect(await screen.findByText('4')).toBeInTheDocument()
+    expect(screen.queryByTestId('synthesis-objectives-empty')).toBeNull()
+  })
+
   it('l’anneau des frags reste, avec le constat dans un bloc', async () => {
-    server.use(
-      http.post('/api/v1/players/:playerSlug/pages/synthesis', () =>
-        HttpResponse.json({ ...synthesisFixture, detailed_stats: detailed, frag_distribution: null }),
-      ),
-    )
+    servir({})
     renderWithProviders(<SynthesisPage />)
     const bloc = await screen.findByTestId('frag-sunburst-empty')
     expect(bloc).toHaveTextContent('Répartition des frags')

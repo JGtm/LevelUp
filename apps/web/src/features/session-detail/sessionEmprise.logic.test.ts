@@ -115,6 +115,7 @@ describe('sessionCardsPresence — une carte n’existe que si elle dessine quel
     const solo = sessionSolo()
     const noFrags = { ...solo, entry: { ...solo.entry, frag_distribution: undefined } as unknown as SessionCompareEntry }
     expect(sessionColumnPresence(noFrags).frag_donut).toBe(true)
+    expect(sessionColumnPresence({ ...noFrags, entry: { ...noFrags.entry, weapon_tools: undefined } as unknown as SessionCompareEntry }).tools).toBe(true)
     expect(sessionColumnPresence({ ...solo, entry: null }).frag_donut).toBe(false)
   })
 

@@ -49,21 +49,21 @@ export function SquadImpactHistoryCard({ history, colorByPlayer, inkOf, locale }
         : {},
     [view, colorByPlayer, t, narrow],
   )
-  if (!view) return null
+  // Sans soirée à tracer (aucun joueur, aucune soirée), la carte reste : titre et état vide du graphe.
   return (
     <div className="min-w-0" data-testid="squad-impact-history">
       <ChartCard
         title={
           <span className="flex items-center gap-1.5">
             {t.title}
-            <InfoTooltip content={view.info} />
+            {view && <InfoTooltip content={view.info} />}
           </span>
         }
         series={series}
         height={IMPACT_HISTORY_HEIGHT}
         renderer="svg"
         buildOption={buildOption}
-        legend={<ImpactHistoryLegend view={view} inkOf={inkOf} t={t} />}
+        legend={view ? <ImpactHistoryLegend view={view} inkOf={inkOf} t={t} /> : undefined}
       />
     </div>
   )
