@@ -259,3 +259,45 @@ describe('buildHsPerfectOption', () => {
     expect(series[1].data).toEqual([null]) // Perfect undefined → null
   })
 })
+
+describe('infobulles : lignes lisibles (retours 2026-10-17)', () => {
+  const formatterOf = (opt: { tooltip?: unknown }) =>
+    (opt.tooltip as { formatter: (p: unknown) => string }).formatter
+
+  it('frags / bonus / morts : bonus arrondi, morts en valeur absolue, ordre des barres du haut vers le bas', () => {
+    const opt = buildKillsDeathsButterflyOption(
+      { Me: [pt(0, { kills: 10, deaths: 5, assists: 4 })] },
+      { colorByPlayer: COLORS, playerOrder: ['Me'], killsLabel: 'Frags', deathsLabel: 'Morts' },
+    )
+    const series = opt.series as unknown as Array<{ name: string; data: Array<number | null> }>
+    const params = series.map((s, i) => ({
+      seriesIndex: i,
+      seriesName: s.name,
+      value: s.data[0],
+      color: 'c',
+      axisValueLabel: '#1',
+    }))
+    const html = formatterOf(opt)(params)
+    const names = [...html.matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1])
+    expect(names).toEqual(['Me — Bonus', 'Me — Frags', 'Me — Morts'])
+    expect(html).toContain('1,3')
+    expect(html).not.toContain('1,3333')
+    expect(html).toContain('>5<')
+    expect(html).not.toContain('−5')
+  })
+
+  it('courbes : la plus haute d abord, un joueur sans valeur n a pas de ligne', () => {
+    const opt = buildPerformanceLineOption(
+      { Me: [pt(0)], F1: [pt(0)] },
+      { colorByPlayer: COLORS, playerOrder: ORDER, metric: 'kda', unitSuffix: ' %' },
+    )
+    const html = formatterOf(opt)([
+      { seriesIndex: 0, seriesName: 'Me', value: 1.5, color: 'c0', axisValueLabel: '#1' },
+      { seriesIndex: 1, seriesName: 'F1', value: 2.5, color: 'c1', axisValueLabel: '#1' },
+      { seriesIndex: 2, seriesName: 'X', value: null, color: 'c2', axisValueLabel: '#1' },
+    ])
+    expect(html.indexOf('F1')).toBeLessThan(html.indexOf('Me'))
+    expect(html).toContain('2,5 %')
+    expect(html).not.toContain('>X<')
+  })
+})

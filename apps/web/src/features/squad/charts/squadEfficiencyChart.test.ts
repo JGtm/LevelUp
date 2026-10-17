@@ -10,6 +10,7 @@
  */
 import { describe, it, expect } from 'vitest'
 
+import { tipNumber } from '@/components/charts/axisTooltip'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { ONE_LIFE_RATE_PCT, ONE_LIFE_ZONE_OPACITY } from '@/lib/charts/oneLifeWindow'
 import {
@@ -308,13 +309,13 @@ describe('buildSquadEfficiencyOption', () => {
     const series = opt.series as unknown as PlayerSeries[]
     const formatter = (opt.tooltip as unknown as { formatter: (p: unknown) => string }).formatter
     const html = formatter([
-      { seriesName: 'Me', color: '#aaa', dataIndex: 0, data: series[0].data[0] },
-      { seriesName: 'F1', color: '#bbb', dataIndex: 0, data: series[1].data[0] },
+      { seriesName: 'Me', color: '#aaa', dataIndex: 0, data: series[0].data[0], value: series[0].data[0]?.value },
+      { seriesName: 'F1', color: '#bbb', dataIndex: 0, data: series[1].data[0], value: series[1].data[0]?.value },
     ])
     expect(html).toContain('#1')
     expect(html).toContain('Me')
     expect(html).toContain('108 %')
-    expect(html).toContain('Dégâts infligés 1800')
+    expect(html).toContain(`Dégâts infligés ${tipNumber(1800)}`)
     expect(html).toContain('200 / frag effectif')
     expect(html).toContain('F1')
     expect(html).toContain('90 %')
@@ -333,10 +334,10 @@ describe('buildSquadEfficiencyOption', () => {
     const series = opt.series as unknown as PlayerSeries[]
     const formatter = (opt.tooltip as unknown as { formatter: (p: unknown) => string }).formatter
     const html = formatter([
-      { seriesName: 'Me', color: '#aaa', dataIndex: 0, data: series[0].data[0] },
+      { seriesName: 'Me', color: '#aaa', dataIndex: 0, data: series[0].data[0], value: series[0].data[0]?.value },
     ])
     expect(html).toContain('165 %')
-    expect(html).toContain('Dégâts subis 1200')
+    expect(html).toContain(`Dégâts subis ${tipNumber(1200)}`)
     expect(html).toContain('300 / mort')
     expect(html).toContain('Résistance — 100 % = 1 vie')
   })

@@ -40,6 +40,7 @@ import {
   type FragSunburstLabels,
   type SunArc,
 } from './fragSunburstModel'
+import { placeTooltip } from './tooltipPosition'
 
 // La géométrie, les types et le builder pur buildSunburstModel sont extraits dans
 // ./fragSunburstModel (react-refresh : ce module n'exporte que des composants).
@@ -297,10 +298,7 @@ export function FragSunburst({
       {tip && (
         <div
           className="pointer-events-none fixed z-50 max-w-[240px] rounded-md border border-border bg-card px-2.5 py-1.5 text-xs shadow-lg"
-          style={{
-            left: typeof window !== 'undefined' && tip.x + 260 > window.innerWidth ? tip.x - 254 : tip.x + 14,
-            top: tip.y + 14,
-          }}
+          style={tipStyle(tip)}
           role="tooltip"
         >
           <div className="mb-0.5 flex items-center gap-1.5 font-medium">
@@ -312,6 +310,20 @@ export function FragSunburst({
       )}
     </div>
   )
+}
+
+/** Taille estimée de l'infobulle (deux lignes, 240 px au plus) : sert à la borner à la fenêtre. */
+const TIP_SIZE_ESTIMATE = [250, 52] as const
+
+/** Coin de l'infobulle : près du pointeur, jamais hors de la fenêtre (même règle que les infobulles ECharts). */
+function tipStyle(tip: { x: number; y: number }) {
+  if (typeof window === 'undefined') return { left: tip.x + 14, top: tip.y + 14 }
+  const [left, top] = placeTooltip({
+    pointer: [tip.x, tip.y],
+    size: TIP_SIZE_ESTIMATE,
+    viewport: [window.innerWidth, window.innerHeight],
+  })
+  return { left, top }
 }
 
 // ── FragClassLegend : légende des classes EXTRACTIBLE ─────────────────────────

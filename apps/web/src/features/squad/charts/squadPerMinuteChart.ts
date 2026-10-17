@@ -22,13 +22,13 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import {
   CHART_BG,
-  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getLegendBase,
   getTooltipBase,
   legendEntries,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter, tipNumber } from '@/components/charts/axisTooltip'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadPerMinuteEntry } from '@/lib/api/types'
 import { hexComplement } from '@/lib/accessibility'
@@ -43,8 +43,9 @@ export interface SquadPerMinuteOpts {
 /** Repli quand aucune couleur n'est attribuée au joueur — gris structurel, pas une charte. */
 const NO_PLAYER_COLOR = '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
 
+/** Deux décimales, dans la langue de l'application (axe, étiquettes et infobulle). */
 function fmt(v: number): string {
-  return v.toFixed(2)
+  return tipNumber(v, 2)
 }
 
 export function buildSquadPerMinuteOption(
@@ -103,17 +104,11 @@ export function buildSquadPerMinuteOption(
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      formatter: (params: unknown) => {
-        const arr = Array.isArray(params) ? params : []
-        if (arr.length === 0) return ''
-        const cat = (arr[0] as { name?: string }).name ?? ''
-        const lines = arr.map((p) => {
-          const point = p as { seriesName: string; value: number; color: string }
-          const v = Math.abs(point.value)
-          return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${point.color};margin-right:6px"></span>${escapeHtml(point.seriesName ?? '')}: ${fmt(v)}${opts.perMinuteSuffix}`
-        })
-        return `<strong>${escapeHtml(cat)}</strong><br/>${lines.join('<br/>')}`
-      },
+      // Un titre (frags, morts ou assistances), puis un joueur par ligne dans l'ordre des barres.
+      formatter: axisTooltipFormatter({
+        title: (p) => p.name ?? '',
+        value: (r) => `${fmt(Math.abs(r.value))}${opts.perMinuteSuffix}`,
+      }),
     },
     xAxis: {
       ...axis,

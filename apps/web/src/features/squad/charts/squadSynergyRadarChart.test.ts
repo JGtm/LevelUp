@@ -2,6 +2,7 @@
  * squadSynergyRadarChart.test.ts — teammates.06.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { tipNumber } from '@/components/charts/axisTooltip'
 import { buildSquadSynergyRadarOption } from './squadSynergyRadarChart'
 import type { SquadSynergyRadarSeries } from '@/lib/api/types'
 
@@ -98,8 +99,8 @@ describe('buildSquadSynergyRadarOption', () => {
     }
     const html = tooltip.formatter({ name: 'Me', value: p.axes.map((a) => a.value) })
     expect(html).toContain('<b>80</b>')
-    expect(html).toContain('brut 1240')
-    expect(html).toContain('brut 1.59')
+    expect(html).toContain(`brut ${tipNumber(1240)}`)
+    expect(html).toContain(`brut ${tipNumber(1.59, 2)}`)
   })
 
   it('tooltip : valeur brute absente → seulement le normalisé (pas de NaN)', () => {

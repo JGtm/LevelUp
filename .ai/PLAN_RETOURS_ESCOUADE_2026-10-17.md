@@ -63,10 +63,10 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
 - Gate : vitest des charts + `make check-types`.
 
 ### E2 — Contenu des infobulles de l'Escouade (D1)
-- [ ] E2.1 Inventaire : pour CHAQUE graphe des onglets Synergies, Contributions, Dynamique,
+- [x] E2.1 (tableau au rapport et au journal) Inventaire : pour CHAQUE graphe des onglets Synergies, Contributions, Dynamique,
       Emprise (ECharts et bulles DOM), relever le contenu actuel de la bulle (lignes, ordre,
       formats). Tableau dans le rapport.
-- [ ] E2.2 Corriger : une bulle = l'élément survolé + ses valeurs utiles, rien de redondant avec
+- [x] E2.2 (`components/charts/axisTooltip.ts`, builders migres) Corriger : une bulle = l'élément survolé + ses valeurs utiles, rien de redondant avec
       l'axe ; nombres au format de la locale (séparateurs, %, décimales cohérentes avec le
       graphe) ; lignes dans l'ordre visuel du graphe (empilement / légende) ; bulle des points
       d'impact raccourcie. Textes FR et EN, factuels, sans personne (garde
@@ -124,3 +124,4 @@ autres onglets d'Escouade que l'Emprise pour les placeholders (à noter s'ils on
 ## 4. Decouvertes (non traitees, hors perimetre)
 
 - E1.3 : quatre infobulles ECharts recopiees hors de `getTooltipBase` ne servent pas l Escouade et gardent le placement par defaut (donc encore susceptibles de deborder de la fenetre) : `components/charts/FragWeaponBreakdown.tsx:68`, `components/charts/WeaponAccuracyChart.tsx:70` (Synthese, Series temporelles), `features/ascension/ActivityCalendarChart.tsx:115`, `features/timeseries/TimeseriesKdaDensity.tsx:192`.
+- E2 : `features/squad/charts/heatmapChart.ts` (+ test) n est importe par aucun composant (code mort probable). `components/charts/OutcomeSequenceTape.tsx` : la ligne "+N" des series longues n a pas de mot. `features/squad/v2/SquadEngagementView.tsx` et `components/charts/EngagementCurve.tsx` : nom d axe Y en anglais en dur ("events / min (auto-zoom ...)"). `components/charts/heatmap2DOption.ts` : texte par defaut "Win Rate: / Matchs:" en dur (non utilise par l Escouade, qui passe formatTooltip).

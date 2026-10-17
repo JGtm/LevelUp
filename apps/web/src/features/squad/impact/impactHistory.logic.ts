@@ -60,7 +60,8 @@ export interface ImpactBar {
   gainTotal: number
   lossTotal: number
   net: number
-  tip: { player: string; evening: string; matches: string; roles: ImpactTipRole[]; net: string }
+  /** Infobulle : joueur, matchs, rôles dans l'ordre de lecture des barres (haut vers bas), net. La soirée est sur l'axe. */
+  tip: { player: string; matches: string; roles: ImpactTipRole[]; net: string }
 }
 
 /** Une entrée de légende des rôles. */
@@ -102,7 +103,7 @@ function stack(roles: { role: string; points: number }[]): ImpactSegment[] {
   return out
 }
 
-/** Le nom d'une soirée : « Soirée du 07/09 », l'heure ajoutée si la date est partagée. */
+/** Les repères d'axe des soirées : la date, sur deux lignes avec l'heure si la date est partagée. */
 function eveningNames(evenings: SquadImpactEvening[], locale: Locale, t: ImpactHistoryText) {
   const dates = evenings.map((e) => eveningDate(e.start_time, locale))
   const shared = dates.map((d) => dates.filter((x) => x === d).length > 1)
@@ -111,7 +112,6 @@ function eveningNames(evenings: SquadImpactEvening[], locale: Locale, t: ImpactH
     dates,
     twoLineAxis: shared.some(Boolean),
     axisLabels: dates.map((d, i) => (shared[i] ? `${d}\n${hours[i]}` : d)),
-    names: dates.map((d, i) => (shared[i] ? t.eveningAt(d, hours[i]) : t.eveningOf(d))),
   }
 }
 
@@ -176,7 +176,7 @@ export function buildImpactHistoryView(
   const players = h.players ?? []
   if (evenings.length === 0 || players.length === 0) return null
   const scale = h.scale ?? []
-  const { dates, twoLineAxis, axisLabels, names } = eveningNames(evenings, locale, t)
+  const { dates, twoLineAxis, axisLabels } = eveningNames(evenings, locale, t)
   const nets = players.map(() => evenings.map(() => 0))
   const bars: ImpactBar[] = []
   evenings.forEach((ev, e) => {
@@ -197,9 +197,10 @@ export function buildImpactHistoryView(
         net,
         tip: {
           player: gt,
-          evening: names[e],
           matches: t.matchesWins(ev.matches, ev.wins),
-          roles: roles.map((r) => ({
+          // Du haut vers le bas du graphe : les gains du plus faible au plus fort barème (le plus fort
+          // touche l'axe), puis les pertes du plus fort au plus faible.
+          roles: [...gains].reverse().concat(losses).map((r) => ({
             token: impactRoleToken(r.role, r.points),
             label: t.roles[r.role] ?? r.role,
             count: r.count,

@@ -85,7 +85,8 @@ describe('buildImpactHistoryOption', () => {
     expect(html).toContain('Chocoboflor')
     expect(html).toContain('1 match, aucune victoire')
     expect(html).toContain('Boulet ×1')
-    expect(html).toContain('Net <b>−4</b>')
+    expect(html).toMatch(new RegExp('Net</span><span[^>]*>−4</span>'))
+    expect(html).not.toContain('Soirée')
     expect(option().tooltip.formatter({ seriesIndex: 2, dataIndex: 0 })).toBe('')
   })
 

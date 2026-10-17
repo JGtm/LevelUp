@@ -23,6 +23,7 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter, tipNumber } from '@/components/charts/axisTooltip'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
 import { netLives } from '@/lib/charts/netLives'
@@ -65,8 +66,7 @@ export interface NetLivesCumulativeOpts extends CommonOpts {
 
 /** Formate une valeur de balance signée (`+1.2` / `-0.4` / `+0.0`). */
 function fmtSigned(v: number, decimals: number): string {
-  const fixed = v.toFixed(decimals)
-  return v >= 0 ? `+${fixed}` : fixed
+  return tipNumber(v, decimals, true)
 }
 
 export function buildNetLivesCumulativeOption(
@@ -123,7 +123,7 @@ export function buildNetLivesCumulativeOption(
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'line' },
-      valueFormatter: (v: unknown) => (typeof v === 'number' ? fmtSigned(v, decimals) : '-'),
+      formatter: axisTooltipFormatter({ value: (r) => tipNumber(r.value, decimals, true), order: 'value-desc' }),
     },
     legend: { ...getLegendBase(tc), data: players },
     xAxis: {

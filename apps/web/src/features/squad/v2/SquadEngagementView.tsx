@@ -18,6 +18,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
+import { axisTooltipFormatter, tipNumber } from '@/components/charts/axisTooltip'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
   CHART_BG,
@@ -264,8 +265,8 @@ function buildSquadEngagementOption(
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
-      valueFormatter: (v: unknown) =>
-        typeof v === 'number' ? v.toFixed(2) : String(v),
+      // Rythme en événements par minute : deux décimales, la courbe la plus haute d'abord.
+      formatter: axisTooltipFormatter({ value: (r) => tipNumber(r.value, 2), order: 'value-desc' }),
     },
     // legendBase a déjà bottom: 0 — pas d'override top
     legend: { ...getLegendBase(tc) },

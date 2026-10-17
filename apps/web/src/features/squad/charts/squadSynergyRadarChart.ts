@@ -19,6 +19,7 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { tipNumber } from '@/components/charts/axisTooltip'
 import type { SquadSynergyRadarSeries } from '@/lib/api/types'
 
 export interface SquadSynergyRadarOpts {
@@ -41,9 +42,9 @@ export interface SquadSynergyRadarOpts {
  */
 function formatRaw(v: number): string {
   const a = Math.abs(v)
-  if (a >= 100) return v.toFixed(0)
-  if (a >= 10) return v.toFixed(1)
-  return v.toFixed(2)
+  if (a >= 100) return tipNumber(v, 0)
+  if (a >= 10) return tipNumber(v, 1)
+  return tipNumber(v, 2)
 }
 
 export function buildSquadSynergyRadarOption(
@@ -86,7 +87,7 @@ export function buildSquadSynergyRadarOption(
       formatter: (params: { name: string; value: number[] }) => {
         const raws = rawByPlayer.get(params.name) ?? []
         const lines = axes.map((a, i) => {
-          const norm = `${escapeHtml(a.name ?? '')}: <b>${params.value[i].toFixed(0)}</b>`
+          const norm = `${escapeHtml(a.name ?? '')}: <b>${tipNumber(params.value[i], 0)}</b>`
           const raw = raws[i]
           // Valeur brute absente (profil partiel) → on n'affiche que le normalisé
           // plutôt qu'un « (brut NaN) ». `Number.isFinite` couvre aussi undefined.

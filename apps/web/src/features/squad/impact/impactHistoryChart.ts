@@ -7,7 +7,7 @@
  *   - au pied de chaque barre, la pastille du joueur ;
  *   - une courbe du net par joueur, à sa couleur, détachée par un halo de la couleur de la
  *     carte, chaque point un losange posé sur sa barre ; seuls les deux nets extrêmes écrits ;
- *   - une infobulle par barre : joueur, soirée (matchs, victoires), rôles « ×n · ±points », net.
+ *   - une infobulle par barre : joueur et matchs, rôles « ×n » et points dans l’ordre du graphe, net.
  *
  * Toutes les couleurs arrivent résolues (jetons, palette des joueurs de l'Escouade).
  */
@@ -83,27 +83,34 @@ function segmentRects(
   return out
 }
 
-/** L'infobulle d'une barre (données échappées). */
+/**
+ * L'infobulle d'une barre (données échappées) : le joueur à la couleur de sa barre et ses matchs,
+ * puis une ligne par rôle dans l'ordre où les segments se lisent sur le graphe (nom et nombre à
+ * gauche, points à droite), puis le net. La soirée n'y est pas : l'axe la nomme déjà.
+ */
 function barTip(bar: ImpactBar, c: ImpactChartColors, noRole: string, netLabel: string): string {
   const tc = c.theme
   const t = bar.tip
+  const line = (left: string, right: string, swatch: string) =>
+    `<div style="display:flex;align-items:center;gap:8px;margin-top:3px">${swatch}<span>${left}</span>` +
+    `<span style="margin-left:auto;padding-left:14px;font-weight:600">${right}</span></div>`
   const head =
-    `<div style="color:${tc.axisLabel};margin-bottom:6px"><span style="color:${tc.text};font-weight:500">` +
-    `${escapeHtml(t.player)}</span> · ${escapeHtml(t.evening)} · ${escapeHtml(t.matches)}</div>`
+    `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${c.players[bar.player]}"></span>` +
+    `<b>${escapeHtml(t.player)}</b></div><div style="color:${tc.axisLabel}">${escapeHtml(t.matches)}</div>`
   const rows = t.roles.length
     ? t.roles
-        .map(
-          (r) =>
-            `<div style="display:flex;align-items:center;gap:8px;margin-top:4px">` +
-            `<span style="width:12px;height:4px;border-radius:1px;background:${c.role(r.token)}"></span>` +
-            `<span>${escapeHtml(r.label)} ×${r.count}</span>` +
-            `<span style="color:${tc.axisLabel}">· ${escapeHtml(r.points)}</span></div>`,
+        .map((r) =>
+          line(
+            `${escapeHtml(r.label)} ×${r.count}`,
+            escapeHtml(r.points),
+            `<span style="width:12px;height:4px;border-radius:1px;background:${c.role(r.token)}"></span>`,
+          ),
         )
         .join('')
-    : `<div style="color:${tc.axisLabel}">${escapeHtml(noRole)}</div>`
+    : `<div style="color:${tc.axisLabel};margin-top:3px">${escapeHtml(noRole)}</div>`
   const net =
-    `<div style="border-top:1px solid ${tc.axisLine};margin-top:6px;padding-top:5px">` +
-    `${escapeHtml(netLabel)} <b>${escapeHtml(t.net)}</b></div>`
+    `<div style="border-top:1px solid ${tc.axisLine};margin-top:6px;padding-top:2px">` +
+    `${line(escapeHtml(netLabel), escapeHtml(t.net), '')}</div>`
   return head + rows + net
 }
 

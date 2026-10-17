@@ -16,11 +16,11 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import {
   CHART_BG,
-  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter, tipNumber } from '@/components/charts/axisTooltip'
 import type { SquadWeaponAccuracy } from '@/lib/api/types'
 
 export interface SquadWeaponAccuracyBarsOpts {
@@ -30,6 +30,11 @@ export interface SquadWeaponAccuracyBarsOpts {
   roleLabel: (role: string) => string
   /** Libellé « Tirs » (contexte tooltip). */
   shotsLabel: string
+}
+
+/** Précision en %, dans la langue de l'application : entière quand elle l'est, sinon une décimale. */
+function accuracyText(v: number): string {
+  return `${tipNumber(v, Number.isInteger(v) ? 0 : 1)} %`
 }
 
 export function buildSquadWeaponAccuracyBarsOption(
@@ -70,7 +75,7 @@ export function buildSquadWeaponAccuracyBarsOption(
         color: tc.text,
         fontSize: 11,
         fontWeight: 'bold' as const,
-        formatter: (p: { value: unknown }) => (typeof p.value === 'number' ? `${p.value} %` : ''),
+        formatter: (p: { value: unknown }) => (typeof p.value === 'number' ? accuracyText(p.value) : ''),
       },
       barCategoryGap: '35%',
       barGap: '8%',
@@ -84,23 +89,13 @@ export function buildSquadWeaponAccuracyBarsOption(
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      formatter: (params: unknown) => {
-        const arr = (Array.isArray(params) ? params : [params]) as Array<{
-          axisValue?: string
-          seriesName: string
-          value: unknown
-          marker: string
-          dataIndex: number
-        }>
-        const lines = arr
-          .filter((p) => typeof p.value === 'number')
-          .map((p) => {
-            const shots = bars[p.dataIndex]?.shots_fired_by_player?.[p.seriesName] ?? 0
-            return `${p.marker} ${escapeHtml(p.seriesName)} : <b>${p.value} %</b> (${shots} ${escapeHtml(opts.shotsLabel)})`
-          })
-        if (lines.length === 0) return ''
-        return `${escapeHtml(arr[0].axisValue ?? '')}<br/>${lines.join('<br/>')}`
-      },
+      // Le rôle en titre, un joueur par ligne dans l'ordre des barres : précision et tirs tentés.
+      formatter: axisTooltipFormatter({
+        value: (r) => {
+          const shots = bars[r.param.dataIndex ?? 0]?.shots_fired_by_player?.[r.name] ?? 0
+          return `${accuracyText(r.value)} (${tipNumber(shots)} ${opts.shotsLabel})`
+        },
+      }),
     },
     // Pas de legend — la pill et le multiselect identifient déjà chaque joueur par sa couleur.
     legend: { show: false },

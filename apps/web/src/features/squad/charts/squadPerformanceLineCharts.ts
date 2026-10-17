@@ -23,6 +23,7 @@ import {
   stackedAxisExtent,
   LEGEND_ITEM_WIDTH_LINE,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter, stackTopFirstOrder, tipNumber } from '@/components/charts/axisTooltip'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { hexComplement, resolveToken } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility'
@@ -106,11 +107,6 @@ function extractValue(p: SquadPerformanceSeriesPoint, metric: PerformanceMetricK
     case 'max_killing_spree':
       return p.max_killing_spree ?? null
   }
-}
-
-function fmtVal(v: number | null, decimals = 1, suffix = '', scale = 1): string {
-  if (v === null) return '-'
-  return `${(v * scale).toFixed(decimals)}${suffix}`
 }
 
 export function orderedPlayers(rows: Record<string, SquadPerformanceSeriesPoint[]>, playerOrder?: string[]): string[] {
@@ -216,7 +212,12 @@ export function buildPerformanceLineOption(
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: isBar ? 'shadow' : 'line' },
-      valueFormatter: (v: unknown) => fmtVal(typeof v === 'number' ? v : null, decimals, suffix),
+      // Barres : l'ordre des séries (joueurs côte à côte) ; courbes : la plus haute d'abord. Un joueur
+      // sans valeur sur ce match n'a pas de ligne.
+      formatter: axisTooltipFormatter({
+        value: (r) => `${tipNumber(r.value, decimals)}${suffix}`,
+        order: isBar ? 'series' : 'value-desc',
+      }),
     },
     // Couleur portée par l'ENTRÉE de légende : en mode barres, chaque barre porte SA
     // couleur (celle du joueur, ou son opposé colorimétrique sous le seuil) et la série n'en
@@ -243,7 +244,7 @@ export function buildPerformanceLineOption(
       ...(showZones ? { min: 0, max: 100 } : {}),
       axisLabel: {
         ...axis.axisLabel,
-        formatter: (v: number) => `${v.toFixed(decimals)}${suffix}`,
+        formatter: (v: number) => `${tipNumber(v, decimals)}${suffix}`,
       },
     },
     series,
@@ -340,7 +341,13 @@ export function buildKillsDeathsButterflyOption(
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      valueFormatter: (v: unknown) => (typeof v === 'number' ? `${Math.abs(v)}` : '-'),
+      // Les morts sont tracées en négatif : la ligne les écrit en valeur absolue. Le bonus (assistances / 3)
+      // garde une décimale, les frags et les morts sont des entiers. Dans chaque pile, la ligne du haut est la
+      // barre du haut (bonus, frags, puis morts sous l'axe).
+      formatter: axisTooltipFormatter({
+        value: (r) => tipNumber(Math.abs(r.value), Number.isInteger(r.value) ? 0 : 1),
+        order: stackTopFirstOrder(seriesPerPlayer),
+      }),
     },
     legend: { show: false }, // légende custom React (cf. SquadToggleLegendChart)
     xAxis: { ...axis, type: 'category', data: xLabels },
@@ -425,7 +432,13 @@ export function buildHsPerfectOption(
   return {
     backgroundColor: CHART_BG,
     grid: { top: 36, bottom: 36, left: 8, right: 24, containLabel: true },
-    tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' } },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      // Frags parfaits empilés sur les tirs à la tête : la ligne du haut est la barre du haut.
+      formatter: axisTooltipFormatter({ value: (r) => tipNumber(r.value, 0), order: stackTopFirstOrder(series) }),
+    },
     legend: { show: false }, // légende custom React (cf. SquadToggleLegendChart)
     xAxis: { ...axis, type: 'category', data: xLabels },
     yAxis: {
@@ -528,7 +541,8 @@ export function buildTeamMMROption(
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      valueFormatter: (v: unknown) => (typeof v === 'number' ? v.toFixed(0) : '-'),
+      // Rang par joueur (barres, ordre de la légende) puis MMR d'équipe ; les matchs sans rang n'ont pas de ligne.
+      formatter: axisTooltipFormatter({ value: (r) => tipNumber(r.value, 0) }),
     },
     // Pastille élargie : la courbe « MMR équipe » est tiretée, illisible à 12 px.
     legend: {
@@ -549,7 +563,7 @@ export function buildTeamMMROption(
     yAxis: {
       ...axis,
       type: 'value',
-      axisLabel: { ...axis.axisLabel, formatter: (v: number) => v.toFixed(0) },
+      axisLabel: { ...axis.axisLabel, formatter: (v: number) => tipNumber(v, 0) },
     },
     series: allSeries,
   }
