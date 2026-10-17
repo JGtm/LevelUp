@@ -202,8 +202,8 @@ fr = "journal des morts"
 en = "death log"
 
 [tactical.plan.info_source_replay]
-fr = "artefacts de rejeu"
-en = "replay artifacts"
+fr = "positions du film"
+en = "film positions"
 
 [tactical.plan.info_gagne]
 fr = "{v, plural, one {# victoire} other {# victoires}} et {d, plural, one {# défaite} other {# défaites}}, {plancher, plural, one {# match distinct} other {# matchs distincts}} de chaque côté"

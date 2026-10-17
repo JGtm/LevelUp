@@ -60,7 +60,7 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
       textes existantes (`textesSansPersonne.test.ts`, `noUnknownMentions`) vertes.
 
 ### P3 — Bulle (i) de la Tactique
-- [ ] P3.1 `tactical.plan.info_source_replay` (manifeste `lib/i18n/manifests/tactical.toml`) :
+- [x] P3.1 (positions du film / film positions ; test de chaînes FR+EN sans artefact) `tactical.plan.info_source_replay` (manifeste `lib/i18n/manifests/tactical.toml`) :
       retirer « artefacts de rejeu » ; constat factuel FR/EN.
 
 ### P4 — Clôture
