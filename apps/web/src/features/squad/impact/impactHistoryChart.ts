@@ -5,8 +5,8 @@
  *   - trois barres par soirée (une par joueur, dans l'ordre de la page), empilées par rôle en
  *     points : gains au-dessus de zéro, pertes en dessous, le plus fort barème contre l'axe ;
  *   - au pied de chaque barre, la pastille du joueur ;
- *   - une courbe du net par joueur, à sa couleur, détachée par un halo de la couleur de la
- *     carte, chaque point un losange posé sur sa barre ; seuls les deux nets extrêmes écrits ;
+ *   - une courbe du net par joueur, un trait à sa couleur sans halo ni bordure, chaque point un
+ *     losange plein posé sur sa barre ; seuls les deux nets extrêmes écrits (fond de la couleur de la carte) ;
  *   - une infobulle par barre : joueur et matchs, rôles « ×n » et points dans l’ordre du graphe, net.
  *
  * Toutes les couleurs arrivent résolues (jetons, palette des joueurs de l'Escouade).
@@ -148,7 +148,7 @@ function barsSeries(view: ImpactHistoryView, c: ImpactChartColors, narrow: boole
   }
 }
 
-/** La série des courbes du net : halo, trait, losanges, et les deux nets extrêmes écrits. */
+/** La série des courbes du net : trait et losanges pleins à la couleur du joueur, sans bordure, et les deux nets extrêmes écrits. */
 function netSeries(view: ImpactHistoryView, c: ImpactChartColors, narrow: boolean, signed: (v: number) => string) {
   const n = view.players.length
   const tc = c.theme
@@ -164,14 +164,13 @@ function netSeries(view: ImpactHistoryView, c: ImpactChartColors, narrow: boolea
       const color = c.players[p]
       const pts = view.nets[p].map((v, e) => [barGeom(api, e, p, n, narrow).mid, api.coord([e, v])[1]])
       const children: unknown[] = [
-        { type: 'polyline', shape: { points: pts }, style: { fill: null, stroke: tc.card, lineWidth: 5, opacity: 0.85, lineJoin: 'round', lineCap: 'round' } },
         { type: 'polyline', shape: { points: pts }, style: { fill: null, stroke: color, lineWidth: 2, lineJoin: 'round', lineCap: 'round' } },
       ]
       pts.forEach(([px, py], e) => {
         children.push({
           type: 'polygon',
           shape: { points: [[px, py - r], [px + r, py], [px, py + r], [px - r, py]] },
-          style: { fill: color, stroke: tc.card, lineWidth: 2 },
+          style: { fill: color },
         })
         if (!view.extremes.has(pointKey(p, e))) return
         const left = p === 0 && px - params.coordSys.x > 34
