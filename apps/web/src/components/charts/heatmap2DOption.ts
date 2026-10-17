@@ -359,7 +359,6 @@ export function buildHeatmap2DOption(
     aria: { decal: { show: emptyCells === 'hatched' } },
     tooltip: {
       ...getTooltipBase(tc),
-      position: 'top',
       formatter: (params: { data: HeatCellDatum }) => {
         const [xi, yi, brut, detail] = heatCellTuple(params.data)
         // Case vide : rien à dire, pas même « 0 ».

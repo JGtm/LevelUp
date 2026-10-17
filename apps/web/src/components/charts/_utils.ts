@@ -26,6 +26,8 @@ import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { getEChartsThemeColors, type EChartsThemeColors } from '@/lib/echarts/themeColors'
 import { formatNumberFixed } from '@/lib/formatters'
 
+import { chartTooltipPosition } from './tooltipPosition'
+
 export const CHART_BG = 'transparent'
 
 /**
@@ -64,9 +66,19 @@ export function getGridBase(overrides: Record<string, number | boolean> = {}) {
   return { top: 16, right: 16, bottom: 64, left: 48, containLabel: true, ...overrides }
 }
 
-/** Base tooltip style. À spread avant `formatter` ou `trigger`. */
+/**
+ * Base tooltip style. À spread avant `formatter` ou `trigger`.
+ *
+ * Placement : l'infobulle est ajoutée au `body` (elle peut sortir du cadre du graphe, que la
+ * carte rogne sinon) et `chartTooltipPosition` la borne à la fenêtre en évitant la marque
+ * survolée — voir `tooltipPosition.ts`. Pas de `confine` (borne au graphe) ni de transition
+ * (une bulle qui glisse masque la marque qu'elle décrit).
+ */
 export function getTooltipBase(tc: EChartsThemeColors) {
   return {
+    appendToBody: true,
+    position: chartTooltipPosition,
+    transitionDuration: 0,
     backgroundColor: tc.tooltipBg,
     borderColor: tc.tooltipBorder,
     textStyle: { color: tc.text, fontSize: 11 },

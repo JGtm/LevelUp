@@ -211,7 +211,6 @@ export function buildImpactHistoryOption(
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'item',
-      confine: true,
       formatter: (p: { seriesIndex?: number; dataIndex: number }) => {
         const bar = p.seriesIndex === BARS_SERIES ? view.bars[p.dataIndex] : undefined
         return bar ? barTip(bar, c, t.noRole, t.net) : ''
