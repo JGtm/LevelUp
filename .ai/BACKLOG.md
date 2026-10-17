@@ -2,7 +2,7 @@
 
 ---
 
-## 🔄 En cours : plan `.ai/PLAN_BACKLOG_2026-10-16.md` (les entrées ci-dessous, traitées étape par étape ; E1 CI, E2 connexion Xbox/participation, E3 séquence d'arrêt et E4 LUSR (retrait de la v1) closes)
+## 🔄 En cours : plan `.ai/PLAN_BACKLOG_2026-10-16.md` (les entrées ci-dessous, traitées étape par étape ; E1 CI, E2 connexion Xbox/participation, E3 séquence d'arrêt, E4 LUSR (retrait de la v1) et E5 dettes Go du 2026-10-15 closes)
 
 ---
 
@@ -85,35 +85,13 @@ d'objectifs (même recette que recos-a), puis cuire le témoin. **Effort : S.**
 
 ---
 
-### [dette/backlog-2026-10-15] Découvertes non traitées du plan du 2026-10-15
+### [données/prod] 157 matchs Halo Infinite du 25 au 30 mai sans le bit skill (4) — geste de déploiement
 
-Reprises du plan `.ai/PLAN_BACKLOG_2026-10-15.md` (section 3), non traitées, à trier. Chacune est
-une dette locale ; regrouper en un lot de nettoyage Go. **Effort global : M.**
-- **Code mort (règle n°7)** : `sync.FindMatchesMissingParticipantBits` (`internal/sync/backfill.go:86`),
-  `sync.RecomputeAfterARTRebuild` (`recompute_after_art_rebuild.go:46`), `loadAwardsForScoreboard` +
-  `MatchViewService.WithAwardsRepo` (`service/match_view_data_loaders.go:~496`), `CachedHighlightEventsRepo`
-  (`platform/duckdb/highlight_events_cache.go`), paramètre `titleSlug` ignoré de `SquadUsualContexts`
-  (`api/wire/prestige_lazy_service_squad.go:173-178`), 15 constantes de calibrage de `sync/skill_reexport.go`
-  (seul `cmd/diag_lusr_player/replay.go`). **S.**
-- **Erreurs avalées (anti-pattern n°10)** : `resolveWeaponLabelsOnly` (`weapon_resolver.go`) sans journal ;
-  `migration.ApplyResolutionViews` avale l'erreur de `v_match_full` (`steps_shared.go`), dont le DDL existe
-  en trois exemplaires (`vMatchFullViewSQL`, `sync/schema.go`, `ops/seed_demo.go`, règle n°6) ; sources de
-  la vue match qui rendent `nil, nil` + WARN (`GetMatchKillSources`, `GetMatchKillAssists`, ...),
-  `lookupMapImageURL`, `ResolveAssetNamesBulk`, `lookupWeaponMeta`, `loadKnownModesEN`, `computeExpectedAssists`
-  (liste complète au plan, E4.8b). **M.**
-- **Annulation de requête sur la vue match (P2)** : pendant `GetMatchMeta` (`service/match_view_service.go:373`,
-  `platform/duckdb/match_view_repo.go:121-123` : 2 ERROR et `match_view_snapshot_stale_schema_live_fallback_total`
-  incrémenté à tort) et pendant `decorateMedalEvents` (`service/match_view_killfeed_medals.go:48`). **S.**
-- **Garde de la Campagne** : angle mort des lecteurs du registre SEUL (`match_registry` sans `xuid =`, ex.
-  `loadLUSRMatchIDsInWindow`) ; `selectRecentMatchIDs` garde un doublon d'exclusion pour rester visible du
-  garde. **S.**
-- **Duplications et valeurs figées** : `cmd/levelup/cmd_reset_bitmasks.go:202` recopie 512 au lieu de
-  `matchflags.BackfillParticipants` ; `EventsLoaded` / `MedalsLoaded` du mapper OpenSpartan posés à vrai et
-  jamais recopiés ; `RunForDB` des CLI force `halo_infinite` sur la base d'un autre titre. **S.**
-- **Données** : 157 matchs Halo Infinite du 25 au 30 mai sans le bit skill (4) ; `match_bomb_stats` non
-  exporté dans le snapshot (`ops/snapshot_export.go`) : statistiques d'Assaut absentes d'un match servi du
-  snapshot ; un profil suivi dont la player DB n'a jamais été créée devient une panne dite des vues
-  (surveiller `friends_extras: open player db failed` au premier déploiement). **M.**
+Reste du plan du 2026-10-15 après le lot E5 du plan `.ai/PLAN_BACKLOG_2026-10-16.md` (`[!]` E5.9a, non
+exécuté : base de production, serveur à arrêter). La commande est écrite au runbook
+(`docs/RUNBOOK_DEPLOY_CHECKLIST.md`, section Post-deploy) : `levelup reset-bitmasks --dry-run` puis `--apply`
+serveur arrêté, puis `levelup backfill --skill` pour ce qui reste sans donnée de skill. **Effort : S**
+(décision et fenêtre du user).
 
 ---
 
@@ -292,6 +270,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-10-17 | **[dette] Dettes Go du plan du 2026-10-15** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E5, branche `feat/backlog-2026-10-16`) : code mort supprimé avec ses tests et lignes de baseline (`FindMatchesMissingParticipantBits`, `loadAwardsForScoreboard`, `WithAwardsRepo`, `CachedHighlightEventsRepo`, `BatchBuilder.AddLUSRComponents`, paramètre `titleSlug` de `SquadUsualContexts` remplacé par `prestige.Deps.TitleSlug`, 14 réexportations de constantes) ; erreurs avalées journalisées avant la dégradation (libellés d'armes, image de carte, modes connus, nom de paire, assistances attendues) et `ApplyResolutionViews` remonte l'échec de `v_match_full` ; DDL de `v_match_full` en source unique `migration.VMatchFullViewSQL` + garde-rail archlint ; une requête abandonnée ne bascule plus en lecture live ni ne compte ni n'écrit d'ERROR sur la vue match ; garde de la Campagne étendu au registre lu sur fenêtre de temps (2 dispenses d'outils opérateur) ; `reset-bitmasks` sur `matchflags.BackfillParticipants`, mapper OpenSpartan honnête sur les médailles (`EventsLoaded` supprimé), `--title` sur 3 CLI et passage du slug à `backfill-killsource` ; `match_bomb_stats` exporté dans le snapshot (un cut ancien reste lisible) ; un ami suivi sans player DB est une absence et non plus une panne des extras. Reste : le bit skill de 157 matchs (geste de déploiement, runbook). |
 | 2026-10-17 | **[data/LUSR] Le recalcul après exclusion d'un match utilisait encore LUSR v1** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E4, branche `feat/backlog-2026-10-16`) : la v1 du LUSR est supprimée (batch, étape de post-sync, aperçu `levelup backfill --lusr --dry-run`, interrupteurs `LEVELUP_LUSR_V2_ENABLED` et `LEVELUP_LUSR_CANONICAL`, `RecomputeAfterARTRebuild`, tests v1). L'exclusion d'un match rejoue la chaîne v2 du joueur (sentinelle de reset puis rejeu ; l'écrivain partagé est pris par rafales courtes, jamais en continu) et la v2 saute les matchs `is_excluded`. Les 8 composantes (`lusr_component_history`, lues par Prestige, le profil et l'escouade), écrites jusque-là par la seule v1 donc figées depuis la bascule canonique, sont écrites par la v2 : même calcul, parité vérifiée valeur à valeur (275 valeurs identiques à 1e-12). Constat corrigé : la vue `match_skill_rank_latest` ne laissait pas la v1 masquer la v2 (`start_time` avant `written_at`), mais le graphe d'évolution (`match_skill_rank_latest_by_type`) servait bien les lignes v1. Mesure sur une copie à froid de JGtm (sauvegarde du 16/10) : composantes 7 137 lignes pour 1 028 matchs, dernière ligne du 18/07, 125 matchs notés sans composantes, puis après rejeu 8 011 lignes pour 1 153 matchs et 0 note sans composantes (rejeu complet 47 s en 24 rafales). Reste : le simulateur de formules `levelup backfill --compare-formulas` (TrueSkill v1, n'écrit rien) est conservé. |
 | 2026-10-17 | **[ops/arrêt] Séquence d'arrêt du serveur bornée sous le délai de Docker** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E3, branche `feat/backlog-2026-10-16`) : `stop_grace_period: 45s` sur `levelup` et `levelup-demo` ; budget global de 40 s depuis la demande d'arrêt (5 s gardés pour la fermeture des bases), chaque phase d'attente prend la plus petite de sa borne et du budget restant, y compris `watcherDaemon.Stop`, `BatchQueue.Close`, `workerWG.Wait` et le gate (jusque-là non bornés ou hors chronomètre) ; `slog.WarnContext` nommant la phase qui dépasse ; `duckdb.CloseAll` toujours atteint. Séquence extraite de `main()` dans `cmd/server/shutdown.go` + `shutdown_budget.go`. Tests : budget sous la grâce lue dans `docker-compose.yml` (rouge prouvé sans la clé), phases bloquées, ordre HTTP, recalculs, écrivains, fermeture. Commentaire périmé (`stop_timeout=20s`) supprimé. |
 | 2026-10-17 | **[sécurité/suites] Code Xbox redemandé après une connexion réussie, et vérification de participation en 503** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E2, branche `feat/backlog-2026-10-16`) : (1) `XboxLoginPage` ne relance plus `start` sur `attempt_not_found` une fois la tentative autorisée (la rotation de session au succès rend l'ancienne tentative introuvable) et le sondage `useDeviceFlowStatus` s'arrête dès `authorized`/`provisioned` (prédicat `isDeviceFlowSucceeded`, `setup/queries.ts`) ; test Vitest rouge avant le correctif (5 sondages au lieu de 1). (2) `RequireMatchParticipation` : cache borné (4 096 entrées, le plus ancien sort) des participations CONFIRMÉES seulement, clé titre + xuid + match, ni `false` ni erreur mémorisés, 503 fermé conservé sur échec non caché (`api/wire/participation_cache.go`, câblé dans `MatchParticipation`) ; tests : 2 appels = 1 requête, clé, borne, bout en bout avec le middleware. La première vérification d'un couple reste soumise au budget de lecture. |

@@ -254,38 +254,74 @@ Statut du gate (exécutant, 2026-10-17) : VERT (sorties au journal).
 
 ### E5 — Dettes Go du 2026-10-15 (entrée 10) — M
 
-- [ ] E5.1 Code mort supprimé avec tests, dispenses et lignes de baseline :
-  `FindMatchesMissingParticipantBits`, `RecomputeAfterARTRebuild` (`[~]` supprimé par E4.5, sans appelant de production),
-  `loadAwardsForScoreboard` + `WithAwardsRepo` + champ `awardsRepo`, `CachedHighlightEventsRepo`
-  (+ commentaire de `player_matches_cache.go:119`), paramètre `titleSlug` de `SquadUsualContexts`
-  (interface, handler, mocks).
-- [ ] E5.2 Constantes de calibrage réexportées : `cmd/diag_lusr_player` importe `skill`
-  directement, les 14 réexportations sont retirées (si l'outil ne compile plus après E4 : supprimé).
-- [ ] E5.3 Erreurs avalées : `resolveWeaponLabelsOnly`, `ApplyResolutionViews` (erreur remontée),
-  `lookupMapImageURL`, `ResolveAssetNamesBulk`, `lookupWeaponMeta`, `loadKnownModesEN`,
-  `GetAssistsCoef` dans `computeExpectedAssists` : erreur remontée ou journalisée
-  (`observability.LevelUnlessCanceled`) AVANT la dégradation. `GetMatchKillSources`/`Assists` :
-  `[~]` déjà corrigés (constat E0).
-- [ ] E5.4 DDL de `v_match_full` : une source exportée, trois sites l'importent
-  (`steps_shared.go:243`, `sync/schema.go:468`, `ops/seed_demo.go:928`) + garde-rail grep (règle 6).
-- [ ] E5.5 Annulation de requête dans la vue match : `match_view_repo.go:114-125` ne journalise,
-  ne compte ni ne bascule en direct quand `ctx.Err() != nil` ; `match_view_service.go:373` et
-  `match_view_killfeed_medals.go:48` en `LevelUnlessCanceled`. Test : contexte annulé → compteur
-  inchangé.
-- [ ] E5.6 Garde de Campagne étendu aux lecteurs de `match_registry` sur fenêtre de temps (sans
-  `xuid =`) ; mutation prouvée sur `loadLUSRMatchIDsInWindow` ; doublon d'exclusion de
-  `selectRecentMatchIDs` retiré s'il n'est plus nécessaire au garde.
-- [ ] E5.7 `cmd_reset_bitmasks.go:202` → `matchflags.BackfillParticipants` ; mapper OpenSpartan :
-  `EventsLoaded`/`MedalsLoaded` posés selon la présence réelle des données ; `RunForDB` des 4 CLI :
-  titre passé explicitement (flag `--title`, défaut inchangé).
-- [ ] E5.8 `match_bomb_stats` ajouté au snapshot (`ops/snapshot_export.go`) ; compatibilité des
-  snapshots existants vérifiée (un ancien snapshot reste lisible, ou refus documenté et assumé).
-- [ ] E5.9 Données : les 157 matchs Infinite du 25-30 mai sans bit skill → `[!]` en E5 avec la
-  commande de rattrapage écrite au runbook de déploiement (geste prod) ; « profil sans player DB =
-  panne des vues » → test qui prouve une dégradation propre, ou correctif S.
+- [x] E5.1 Code mort supprimé avec tests, dispenses et lignes de baseline :
+  `FindMatchesMissingParticipantBits` (+ 3 tests + dispense archlint), `RecomputeAfterARTRebuild` (`[~]` supprimé par E4.5),
+  `loadAwardsForScoreboard` + `WithAwardsRepo` + champ `awardsRepo` (+ 4 tests), `CachedHighlightEventsRepo` (fichier et
+  test entiers, dont `ttlCacheHE`, `highlightEventsCacheKey`, et `cacheMetrics` de `player_matches_cache.go` qui n'avait plus
+  d'autre lecteur : le commentaire de `:119` part avec), paramètre `titleSlug` de `SquadUsualContexts` (interface
+  `prestige.Service`, handler, mocks, `LazyPrestigeService`). Le paramètre n'était pas mort pour le service interne, qui le
+  passait au fournisseur : le titre est désormais `prestige.Deps.TitleSlug`, posé par `serviceAndPlayerDB` depuis le PlayerDB
+  résolu (même principe que `BaselineProvider` : l'identité ne traverse pas la frontière), et le test unitaire du service
+  affirme le titre reçu par le fournisseur. Ajouts demandés par le journal d'E4 : `BatchBuilder.AddLUSRComponents` (zéro
+  appelant de production) supprimé avec `PlayerBatch.LUSRComponents`, son appel dans `PlayerPersister`, son assainissement
+  (`SanitizeBatch`) et son test (`persistLUSRComponents` reste : `AppendOnlyLUSRPersister.PersistComponents` l'utilise) ; type
+  mort `shadowParticipant` supprimé. Baseline : 128 lignes JSONL / 18 paires retirées, en-tête de
+  `check_test_baseline.sh` mis à jour.
+- [x] E5.2 Constantes de calibrage réexportées : l'outil compile après E4 ; `cmd/diag_lusr_player/replay.go` importe
+  `internal/sync/skill` pour ses 14 constantes (`InitialMU` ... `IndividualMUAlpha`), les 14 réexportations de
+  `sync/skill_reexport.go` sont retirées (grep : aucun autre appelant `sync.X`).
+- [x] E5.3 Erreurs avalées, toutes journalisées AVANT la dégradation : `resolveWeaponLabelsOnly` (requête, ligne illisible,
+  itération), `resolveWeaponMeta` (c'est lui qui rend `lookupWeaponMeta` muet : ligne illisible, identifiant illisible,
+  itération ; la requête unifiée en échec était déjà en WARN), `ApplyResolutionViews` (erreur de `v_match_full` REMONTÉE),
+  `lookupMapImageURL`, `ResolveAssetNamesBulk` du mode du match, `resolveAssetName`/`resolveAssetNameEN` (même motif, relevé
+  en E4.8b), `loadKnownModesEN` (table absente = DEBUG, jamais plus de silence), `GetAssistsCoef` dans
+  `computeExpectedAssists` (ErrNoRows = WARN modèle non seedé, autre = ERROR, requête abandonnée = DEBUG). Niveau par le
+  nouveau `degradedLookupLevel` (table absente DEBUG, sinon `observability.LevelUnlessCanceled` à WARN). Tests :
+  `lookups_degrades_journalises_test.go` (4 résolutions, panne = WARN, table absente = DEBUG),
+  `TestApplyResolutionViews_VMatchFullEnEchecRemonte`, `TestComputeExpectedAssists_CoefPopulationnelEnEchec_EstJournalise`.
+  `GetMatchKillSources`/`Assists` : `[~]` déjà corrigés (constat E0).
+- [x] E5.4 DDL de `v_match_full` : source unique `migration.VMatchFullViewSQL` ; `sync/schema.go` (`sharedViewsSQL`) et
+  `ops/seed_demo.go` l'importent ; garde-rail `archlint/v_match_full_ddl_single_source_test.go` (aucun second
+  `CREATE [OR REPLACE] VIEW v_match_full` hors de la source dans le code non-test), mutation prouvée (littéral recopié dans
+  `sync/schema.go` : échec nommant le fichier), auto-preuve du motif.
+- [x] E5.5 `GetMatchMeta` : sur `ctx.Err() != nil` après la lecture du snapshot, ni bascule en direct, ni ERROR, ni
+  compteur ; l'erreur remonte. `match_view_service.go` (métadonnées) et `match_view_killfeed_medals.go` en
+  `LevelUnlessCanceled`. Tests : `TestGetMatchMeta_ContexteAnnule_NiBasculeNiCompteurNiError` (rouge prouvé sans la garde :
+  forceLive armé, compteur 0 -> 1, ERROR), `TestMatchView_MetadonneesEtMedaillesDuFeed_NiveauSelonLaRequete`.
+- [x] E5.6 Garde de Campagne étendu : `estLecteurCampagne` reconnaît le registre (`match_registry`, `v_match_full`) lu SEUL sur
+  une fenêtre de temps (inégalité ou BETWEEN contre un paramètre ; `<>` n'en est pas une, relevé par un faux positif de
+  `killcollector/postsync.go:conditionBacklog`). Mutation prouvée : retirer `excludeCampaignClause` de
+  `loadLUSRMatchIDsInWindow` fait échouer le garde. Deux nouveaux lecteurs statués par dispense datée du 2026-10-17
+  (`cmd/diag_film_avail`, `cmd/lusr_v2_squad_estimate` : outils opérateur). `selectRecentMatchIDs` : le doublon est CONSERVÉ,
+  il est encore nécessaire au garde (mutation : sans lui le garde échoue, le garde ne voit pas que `dc.excludeCampaign`
+  filtre l'ensemble final).
+- [x] E5.7 `cmd_reset_bitmasks.go` : `matchflags.BackfillParticipants` (copie 512 retirée). Mapper OpenSpartan : `MedalsLoaded`
+  et le bit `BackfillBitMedals` ne sont posés que si des médailles sont mappées ; `EventsLoaded` SUPPRIMÉ (écart au libellé :
+  la table d'événements est importée dans une passe à part, `MapMatch` ne peut jamais savoir si des événements sont
+  chargés, un champ toujours faux serait un champ mort). `RunForDB` -> `RunForTitleDB` avec `--title` (défaut
+  `halo_infinite`) dans `apply_shared_migrations` (+ `halo5migrations.Register()`), `backfill-world-player-stats` (aussi pour
+  le chemin du shared) et `diag_bot_resolution`, et `slug` déjà porté par `levelup backfill-killsource`
+  (`migrerSchemaPartage`, flag `--title` existant).
+- [x] E5.8 `match_bomb_stats` ajouté à `sharedSnapshotTitleOwnedRaw` : exportée quand la base la porte, reconstruite avec
+  `match_bomb_stats_latest` (`migration.MatchBombStatsLatestViewSQL`) à la lecture. Table NON requise : un cut ancien (sans le
+  Parquet) reste lisible, la vue match en sert les colonnes d'Assaut absentes (WARN existant de `loadMatchBombStats`), aucun
+  repli live global. Tests : `TestSnapshot_ExporteLesStatsDAssaut` (dernière génération servie, match non prêt exclu ; rouge
+  prouvé sans l'ajout), `TestSnapshot_CutAnterieurAuxStatsDAssaut_resteLisible`.
+- [!] E5.9a Les 157 matchs Infinite du 25-30 mai sans bit skill (4) : NON traités ici, geste prod. Commande écrite au runbook
+  (`docs/RUNBOOK_DEPLOY_CHECKLIST.md`, section Post-deploy) : serveur arrêté, `levelup reset-bitmasks --dry-run` puis
+  `--apply` (pose le bit là où `team_mmr` est présent), nouveau `--dry-run` à 0, puis `levelup backfill --skill` pour ce qui
+  reste. Aucune exécution : décision et fenêtre de maintenance du user.
+- [x] E5.9b « Profil suivi sans player DB = panne des vues » : CONFIRMÉ par un test (l'ouverture par le pool échoue,
+  « chemin introuvable », quand le dossier du joueur n'existe pas), donc correctif S : `config.PlayerDBFileExists` (rend true
+  en démo) consulté par l'opener des amis (`registry_pages.go`) ; absence => `service.ErrFriendWithoutPlayerDB`, que le
+  résolveur traite en absence (DEBUG, ni erreur ni `section_unavailable`) en lisant les autres amis. Une autre panne
+  d'ouverture reste une panne remontée. Tests : `TestFriendsExtrasResolver_AmiSansPlayerDB_EstUneAbsence`,
+  `TestPlayerDBFileExists`.
 
 Gate : `go test -tags=integration -p 1` des paquets touchés ; `go test ./internal/archlint/
 ./internal/api/...` ; `make go-api-lint` (ratchet).
+
+Statut du gate (exécutant, 2026-10-17) : VERT (sorties au journal). `[!]` E5.9a : geste prod du user (runbook).
 
 ### E6 — Citations et profil (entrée 11) — S
 
@@ -359,6 +395,10 @@ corpus de rejeu ; contrôle visuel du rejeu EN LECTURE par le user (témoins : `
   constat E0).
 - [ ] E9.4 Séquence écrite dans le runbook de déploiement (EN) : recalculs H5 par routes admin,
   puis re-seed de la démo prod (`deploy.yml`, job `deploy-demo`). Exécution = geste du user.
+  Ajout du pilote (2026-10-17, suite d'E4) : la même séquence porte un recalcul LUSR v2 de TOUS
+  les joueurs suivis (les lignes v1 écrites par d'anciennes exclusions restent servies par
+  `match_skill_rank_latest_by_type` jusque-là, et les composantes manquantes depuis 2026-07-18 sont
+  réécrites par ce recalcul).
 
 Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `make check-types`.
 
@@ -437,6 +477,19 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
   des fichiers non touchés par E4 (`cmd/levelup/cmd_backfill_replay_passe.go`, `migration/steps_*`,
   `sync/invariants`, `sync/killcollector` ; héritées de `feat/v75` par rapport à `main`) ; `--new-from-rev=HEAD`
   (le diff d'E4 seul) : 0 remarque.
+- E5 (exécutant, 2026-10-17) : `RunForDB` (titre par défaut forcé) reste l'appel de `cmd/populate-playlists-catalog`,
+  `cmd/seed-assists-model`, `cmd/levelup/migrations_cli.go:applyMigrationsOnDB` (treize appelants dans la CLI) et du
+  serveur (par construction, une base par titre) : seuls les quatre CLI nommés par E5.7 prennent un titre. Non traité.
+- E5 : `cmd_reset_bitmasks.go` recopie encore les constantes `pBit*`, `backfillFlagSkillForReset` et
+  `mBitPVEStatsForReset` ; `matchflags` n'exporte que `BackfillParticipants` et `MBitPVEStats` (la copie du PVE pourrait
+  suivre). Non traité (hors libellé E5.7).
+- E5 : l'ouverture d'une player DB d'un AUTRE joueur par le pool (`config.ResolvePlayer` -> `GetOrOpen`) échoue quand le dossier
+  du joueur manque ; seul le chemin des extras d'amis de la vue match le teste maintenant (`PlayerDBFileExists`). Les autres
+  lecteurs d'amis ou de coéquipiers (escouade, relations) n'ont pas été relus pour ce cas. Non traité.
+- E5 : `platform/duckdb/weapon_resolver.go` garde deux autres `continue` silencieux sur erreur de lecture de ligne (`:280`, résolution par clé hors arsenal, et `:365`, résolution par clé)
+  — hors des fonctions nommées par E5.3. Non traité.
+- E5 : l'extraction de la démo (`ops/seed_demo*.go`) ne cite pas `match_bomb_stats` (grep) :
+  la vue match de la démo n'aurait donc pas ses statistiques d'Assaut. Non vérifié sur une démo, non traité.
 
 ## 4. Journal
 
@@ -604,3 +657,25 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
     `bash scripts/check_test_baseline.sh tests` : `Baseline : 9391 tests`, `Courant : 21061 tests`, tous les tests de la
     baseline présents, aucun échec de test ni de paquet, `EXIT=0` (voie film 119 s, voie DuckDB 1 396 s). Un premier passage
     de ce script avait échoué sur `TestNoUnauthorizedSharedSocialMention` (régression d'E3, réparée : voir Découvertes).
+- 2026-10-17 E5 (exécutant, worktree `LevelUp-wt-backlog-1016`) : E5.1 à E5.8 et E5.9b faits, E5.9a `[!]` (geste prod), gates verts.
+  - Pièces rouvertes avant de coder : chaque symbole mort re-grepé (appelants de production : 0), `SquadUsualContexts` (le
+    service interne passait bien le titre au fournisseur), `ApplyResolutionViews`, les trois DDL de `v_match_full`,
+    `GetMatchMeta`, le garde de la Campagne, `OpenSnapshotShared`, `resolveWeaponMeta`, `config.ResolvePlayer`/`GetOrOpen`.
+  - Rouge -> vert / mutations : garde `v_match_full` (littéral recopié dans `sync/schema.go` : échec), `GetMatchMeta` annulé
+    (sans la garde : `forceLive` armé, compteur stale-schema 0 -> 1, ERROR journalisé ; avec : rien), garde de la Campagne
+    (exclusion de `loadLUSRMatchIDsInWindow` retirée : échec ; exclusion de `selectRecentMatchIDs` retirée : échec, doublon
+    conservé), export de snapshot (`tableMatchBombStats` retiré de la liste : `match_bomb_stats_latest` absente),
+    `ApplyResolutionViews` sans `match_registry` (rendait nil avant), ami sans dossier de player DB (le pool échouait
+    « chemin introuvable » : panne dite pour toute la section avant `PlayerDBFileExists`).
+  - Découvertes en route : le critère « registre sur fenêtre de temps » prenait `<> ?` pour une borne (faux positif sur
+    `killcollector/postsync.go`), motif resserré et testé ; deux outils opérateur dispensés. Voir section 3 pour le reste.
+  - Gate (sorties réelles, un seul `go` à la fois, `GOCACHE=%LOCALAPPDATA%\go-build-backlog1016`) :
+    `go test -tags=integration -p 1 ./internal/persist/... ./internal/service/... ./internal/prestige/... ./internal/migration/...
+    ./internal/ops/... ./internal/openspartan/... ./internal/config/...` : `ok` ; `... ./internal/platform/duckdb/...
+    ./internal/api/... ./internal/games/halo_infinite/migrations/...` : `ok` (platform/duckdb 242 s) ; `... ./internal/sync/...` :
+    `ok` (sync 185 s) ; `... ./cmd/levelup/ ./cmd/apply_shared_migrations/ ./cmd/diag_bot_resolution/
+    ./cmd/backfill-world-player-stats/ ./cmd/diag_lusr_player/ ./internal/archlint/` : `ok` ; `go test ./internal/archlint/
+    ./internal/api/...` (tags par défaut) : `ok` ; `go vet -tags=integration` des paquets touchés : sans sortie ;
+    `golangci-lint run --new-from-merge-base=origin/main` (paquets touchés, `GOLANGCI_LINT_CACHE=%LOCALAPPDATA%\golangci-backlog1016`) :
+    `0 issues` ; `bash scripts/check_test_baseline.sh tests` : `Baseline : 9373 tests` (9 391 - 18), `Courant : 21068 tests`, tous
+    les tests de la baseline présents, aucun échec de test ni de paquet, `EXIT=0` (voie film 122 s, voie DuckDB 1 378 s).
