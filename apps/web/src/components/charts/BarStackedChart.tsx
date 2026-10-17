@@ -34,6 +34,7 @@ import {
   seriesColor,
   type EChartsThemeColors,
 } from './_utils'
+import { tipNumberAuto } from './tipNumber'
 
 /** Distance (px) entre les étiquettes d'un axe et son titre, quand il en a un. */
 const AXIS_NAME_GAP = 28
@@ -313,7 +314,7 @@ function buildStackedSeries(
       // l'infobulle. Les zeros ne s'ecrivent jamais.
       ...(valueLabels?.segments
         ? {
-            label: barLabel({ fontSize: 10, formatter: (p: { value?: number | null }) => (p.value ? String(p.value) : '') }),
+            label: barLabel({ fontSize: 10, formatter: (p: { value?: number | null }) => (p.value ? tipNumberAuto(p.value) : '') }),
             labelLayout: { hideOverlap: true },
           }
         : {}),
@@ -423,7 +424,7 @@ function buildStackedTooltip(
                 // Le rôle précède le nom (« Patron · X ») : la note et le compte gardent leur
                 // place, et `tooltipComponentNote` reçoit toujours le nom NU.
                 const shown = tooltipRoles ? `${tooltipRoles.component} · ${name}` : name
-                return `${p.marker ?? ''}${escapeHtml(shown)}: <strong>${p.value}</strong>${suffix}`
+                return `${p.marker ?? ''}${escapeHtml(shown)}: <strong>${typeof p.value === 'number' ? tipNumberAuto(p.value) : String(p.value ?? '')}</strong>${suffix}`
               })
             if (lines.length === 0) return ''
             const title = tooltipRoles ? `${tooltipRoles.category} · ${header}` : header

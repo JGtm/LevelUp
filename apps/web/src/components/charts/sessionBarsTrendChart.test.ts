@@ -46,7 +46,9 @@ describe('buildSessionBarsTrendOption', () => {
     const y = deuxSeries().yAxis as Record<string, unknown>
     expect(Array.isArray(y)).toBe(false)
     expect(y.min).toBe(0)
-    expect((y.axisLabel as { formatter: string }).formatter).toBe('{value} %')
+    // Un pourcentage à la langue de l'application (virgule décimale en français), pas le gabarit brut d'ECharts.
+    const fmt = (y.axisLabel as { formatter: (v: number) => string }).formatter
+    expect([fmt(40), fmt(12.5)]).toEqual(['40 %', '12,5 %'])
   })
 
   it('pose DEUX séries de bâtons et DEUX repères tiretés sur le même axe', () => {
@@ -172,7 +174,7 @@ describe('buildSessionBarsTrendOption — mode écart', () => {
     const y = enEcart().yAxis as Record<string, unknown>
     expect(y.min).toBeUndefined()
     const fmt = (y.axisLabel as { formatter: (v: number) => string }).formatter
-    expect([fmt(10), fmt(0), fmt(-10)]).toEqual(['+10', '0', '-10'])
+    expect([fmt(10), fmt(0), fmt(-10)]).toEqual(['+10', '0', '−10'])
   })
 
   it('décale la tendance comme ses bâtons et la trace en pointillé fin, sans marqueur', () => {
@@ -193,8 +195,8 @@ describe('buildSessionBarsTrendOption — mode écart', () => {
       { axisValue: '12/09', dataIndex: 0, marker: '<m>', seriesName: 'Je suis couvert', value: 6.2 },
       { axisValue: '12/09', dataIndex: 0, marker: '<m>', seriesName: 'Je riposte', value: -1 },
     ])
-    expect(rendu).toContain('Je suis couvert : 54.2 % (+6.2 pts)')
-    expect(rendu).toContain('Je riposte : 24 % (-1 pts)')
+    expect(rendu).toContain('Je suis couvert : 54,2 % (+6,2 pts)')
+    expect(rendu).toContain('Je riposte : 24 % (−1 pts)')
   })
 
   it('nomme le bâton creux en légende par un TÉMOIN sans donnée', () => {
@@ -270,7 +272,7 @@ describe('buildSessionBarsTrendOption — valeur lue sur le bâton', () => {
     const html = avecValeurs().tooltip.formatter([
       { marker: '', seriesName: 'Frags appuyés', value: -0.6, axisValue: 'a', dataIndex: 0 },
     ])
-    expect(html).toBe('a<br/>Frags appuyés : 37 % (51/137) · écart -0.6 pts')
+    expect(html).toBe('a<br/>Frags appuyés : 37 % (51/137) · écart −0,6 pts')
   })
 
   it('sans valeur lue : le comportement d’avant (valeur absolue recalculée, écart entre parenthèses)', () => {
@@ -283,7 +285,7 @@ describe('buildSessionBarsTrendOption — valeur lue sur le bâton', () => {
     expect(o.series[0].data).toEqual([-0.6])
     expect(o.series[0].labelLayout).toBeUndefined()
     expect(o.tooltip.formatter([{ marker: '', seriesName: 'S', value: -0.6, axisValue: 'a', dataIndex: 0 }])).toBe(
-      'a<br/>S : 37.2 % (-0.6 pts)',
+      'a<br/>S : 37,2 % (−0,6 pts)',
     )
   })
 })

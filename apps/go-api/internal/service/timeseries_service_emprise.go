@@ -33,6 +33,15 @@ type usagesDeps struct {
 	livesRepo port.SoloLivesRepository
 	// radarRange : game_variant_name -> portée du radar en mètres (`regulation.toml [radar_range_m]`).
 	radarRange map[string]int
+	// analysisPending : l'avancement de l'analyse du film des matchs sans résumé d'usage ; nil = « non analysé ».
+	analysisPending port.AnalysisPendingMatches
+}
+
+// WithAnalysisPending injecte la décision « analyse du film en cours » de l'Emprise (nil : tout match
+// sans résumé d'usage est compté « non analysé »). Un résolveur nil de type concret est sûr.
+func (s *TimeseriesService) WithAnalysisPending(r port.AnalysisPendingMatches) *TimeseriesService {
+	s.usages.analysisPending = r
+	return s
 }
 
 // WithEmprise injecte la feuille de match de l'Emprise. Câblage inconditionnel : la colonne est
@@ -70,7 +79,7 @@ func (s *TimeseriesService) attachEmprise(
 		RepoRoot: s.repoRoot, TitleSlug: s.titleSlug, Locale: locale,
 		Current: timeseriesEmpriseMatches(filteredCanon, locale), Lectures: lu,
 		UsageRepo: s.sessionUsageRepo, EmpriseRepo: s.usages.empriseRepo, VehicleRepo: s.usages.vehicleRepo,
-		WithMaps: true,
+		WithMaps: true, Pending: s.usages.analysisPending,
 	})
 }
 

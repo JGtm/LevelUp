@@ -253,3 +253,18 @@ func TestHomeService_AnalysisState_AbsentSansAnalyseEnAttenteOuSansObservateur(t
 		t.Fatalf("sans observateur câblé : jamais « en cours », got %q", items[0].AnalysisState)
 	}
 }
+
+func TestAnalysisPendingResolver_ResolvePendingIgnoreLeRejeu(t *testing.T) {
+	repo := &probeRepoFactice{probes: map[string]domain.AnalysisProbe{
+		"rejeuSeulManquant": synchroIlYA(time.Hour, nil),
+		"sansArme":          synchroIlYA(time.Hour, func(p *domain.AnalysisProbe) { p.KillSourceDone = false }),
+	}}
+	got := resolveurDeTest(repo, true).ResolvePending(context.Background(), []string{"rejeuSeulManquant", "sansArme"})
+	if len(got) != 1 || !reflect.DeepEqual(got["sansArme"], []string{domain.AnalysisPartKillSource}) {
+		t.Fatalf("pending = %v, want {sansArme: [kill_source]} : le rejeu n'est pas une attente de l'Emprise", got)
+	}
+	var nul *AnalysisPendingResolver
+	if nul.ResolvePending(context.Background(), []string{"m"}) != nil {
+		t.Fatal("résolveur nil : table vide attendue")
+	}
+}

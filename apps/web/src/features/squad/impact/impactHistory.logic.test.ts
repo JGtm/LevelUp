@@ -58,11 +58,11 @@ describe('buildImpactHistoryView', () => {
     expect(v.axisLabels[1]).not.toBe(v.axisLabels[2])
   })
 
-  it('infobulle : joueur, soirée, matchs et victoires, rôles « ×n · ±points », net', () => {
+  it('infobulle : joueur, matchs et victoires, rôles dans l’ordre de lecture des barres, net', () => {
     const v = view()
     const choco = v.bars[7].tip
     expect(choco.player).toBe('Chocoboflor')
-    expect(choco.evening).toMatch(/^Soirée du \d\d\/\d\d, /)
+    expect(choco).not.toHaveProperty('evening')
     expect(choco.matches).toBe('1 match, aucune victoire')
     expect(choco.roles.map((r) => `${r.label} ×${r.count} · ${r.points}`)).toEqual([
       'Boulet ×1 · −2',
@@ -72,6 +72,11 @@ describe('buildImpactHistoryView', () => {
     expect(choco.net).toBe('−4')
     expect(v.bars[0].tip.matches).toBe('11 matchs, 5 victoires')
     expect(v.bars[6].tip.roles).toEqual([])
+    // Du haut vers le bas du graphe : gains du plus faible barème au plus fort, puis pertes.
+    const points = v.bars[0].tip.roles.map((r) => parseFloat(r.points.replace('−', '-').replace(',', '.')))
+    const gains = points.filter((p) => p > 0)
+    expect(gains).toEqual([...gains].sort((a, b) => a - b))
+    expect(points.findIndex((p) => p < 0)).toBe(gains.length)
   })
 
   it('légende : gains un par un, pertes à −1 réunies', () => {

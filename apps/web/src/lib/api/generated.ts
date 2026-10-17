@@ -8596,6 +8596,10 @@ export interface components {
             kill_journal: "publishable" | "not_publishable" | "unavailable";
             matches: components["schemas"]["SquadEmpriseMatch"][] | null;
             /** Format: int64 */
+            matches_film_missing?: number;
+            /** Format: int64 */
+            matches_film_pending?: number;
+            /** Format: int64 */
             matches_measured: number;
             /** Format: int64 */
             matches_total: number;
@@ -11838,6 +11842,10 @@ export interface components {
             maps: components["schemas"]["EmpriseMapColumn"][] | null;
             matches: components["schemas"]["SquadEmpriseMatch"][] | null;
             /** Format: int64 */
+            matches_film_missing?: number;
+            /** Format: int64 */
+            matches_film_pending?: number;
+            /** Format: int64 */
             matches_measured: number;
             /** Format: int64 */
             matches_total: number;
@@ -11953,6 +11961,10 @@ export interface components {
             film_unavailable?: string;
             habit?: components["schemas"]["SquadEmpriseHabit"];
             matches: components["schemas"]["SquadEmpriseMatch"][] | null;
+            /** Format: int64 */
+            matches_film_missing?: number;
+            /** Format: int64 */
+            matches_film_pending?: number;
             /** Format: int64 */
             matches_measured: number;
             /** Format: int64 */
@@ -12913,6 +12925,8 @@ export interface components {
             top_weeks: components["schemas"]["TopWeekEntry"][] | null;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
             weapon_records?: components["schemas"]["SynthesisWeaponRecords"];
+            /** @enum {string} */
+            weapon_records_gap?: "pending" | "missing";
         };
         SynthesisScope: {
             /** Format: date-time */

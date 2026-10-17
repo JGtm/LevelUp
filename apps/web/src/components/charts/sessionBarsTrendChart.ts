@@ -43,6 +43,7 @@ import {
   getLegendBase,
   getTooltipBase,
 } from './_utils'
+import { tipNumberAuto } from './tipNumber'
 
 /** Le repère de comparaison d'une série : sa valeur en POURCENTS et son libellé. */
 export interface SessionBarsUsual {
@@ -115,7 +116,7 @@ function round1(v: number): number {
 
 /** Un écart SIGNÉ : sans le « + » porté, un +3 et un -3 ne se distinguent qu'au signe absent. */
 function signe(v: number): string {
-  return v > 0 ? `+${round1(v)}` : `${round1(v)}`
+  return v > 0 ? `+${tipNumberAuto(round1(v))}` : tipNumberAuto(round1(v))
 }
 
 /**
@@ -220,7 +221,7 @@ function ligneInfobulle(
   absolute: SessionBarsAbsolute | null | undefined,
 ): string {
   const v = r.value as number
-  if (!baseline) return `${r.marker}${r.seriesName} : ${v} %`
+  if (!baseline) return `${r.marker}${r.seriesName} : ${tipNumberAuto(v)} %`
   const ecart = `${signe(v)} ${baseline.deltaUnit}`
   // La valeur lue telle qu'écrite sur le bâton (« 37 % (51/137) »), l'écart à côté.
   if (absolute) {
@@ -228,7 +229,7 @@ function ligneInfobulle(
     return `${r.marker}${r.seriesName} : ${absolute.main} (${absolute.detail}) · ${gap}`
   }
   const absolu = round1(v + (decalages.get(r.seriesName) ?? 0))
-  return `${r.marker}${r.seriesName} : ${absolu} % (${ecart})`
+  return `${r.marker}${r.seriesName} : ${tipNumberAuto(absolu)} % (${ecart})`
 }
 
 /** Les bâtons d'une série, avec le repère qui lui revient selon le mode. */
@@ -371,7 +372,7 @@ export function buildSessionBarsTrendOption(opts: SessionBarsTrendOpts): ECharts
       nameTextStyle: { color: tc.axisLabel, fontSize: 10, align: 'left' },
       axisLabel: {
         ...axis.axisLabel,
-        formatter: ecart ? (v: number) => signe(v) : '{value} %',
+        formatter: ecart ? (v: number) => signe(v) : (v: number) => `${tipNumberAuto(v)} %`,
       },
     },
     series: [...barres, ...tendances, ...temoins],

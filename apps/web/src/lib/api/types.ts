@@ -1597,6 +1597,10 @@ export interface SynthesisPageResponse {
   // pour ouvrir le rejeu à cet instant) — omis pour un titre sans positions par kill (Halo 5)
   // ou un scope sans frag mesuré. Cf. PLAN_RECORDS_DISTANCE_2026-09-20.md.
   weapon_records?: SynthesisWeaponRecords | null
+  // Pourquoi `weapon_records` manque quand le titre mesure des positions par kill et que le scope porte des
+  // frags : analyse du film en cours, ou aucun frag avec position lue. Absent quand le bloc est servi ou que la
+  // fonction n'existe pas pour le titre.
+  weapon_records_gap?: 'pending' | 'missing'
 }
 
 // Records de distance par arme : le bloc, une ligne, le frag du record, une arme écartée.

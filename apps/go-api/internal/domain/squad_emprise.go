@@ -71,6 +71,14 @@ type SquadEmpriseBlock struct {
 	// FilmUnavailable : raison machine quand AUCUNE grandeur du film n'est servie
 	// (EmpriseFilmUnsupported, EmpriseFilmLoadFailed). Vide sinon.
 	FilmUnavailable string `json:"film_unavailable,omitempty"`
+	// MatchesFilmPending : parmi les matchs du périmètre sans résumé d'usage du film (HasFilm faux), ceux
+	// dont l'analyse du film est EN COURS (règle unique `analysis.AnalysisPendingParts`, hors condition
+	// du rejeu). Zéro quand le titre ne publie pas de résumé d'usage (FilmUnavailable = EmpriseFilmUnsupported)
+	// ou que la page n'a pas de résolveur : l'absence du film n'est alors pas une attente.
+	MatchesFilmPending int `json:"matches_film_pending,omitempty"`
+	// MatchesFilmMissing : les autres matchs du périmètre sans résumé d'usage — ni lu, ni en cours d'analyse
+	// (« film non analysé »). Même condition de titre que MatchesFilmPending.
+	MatchesFilmMissing int `json:"matches_film_missing,omitempty"`
 	// SheetUnavailable : raison machine quand la feuille de match (frags aux armes spéciales) n'a
 	// pas pu être lue (EmpriseSheetUnsupported, EmpriseSheetLoadFailed). Vide sinon.
 	SheetUnavailable string `json:"sheet_unavailable,omitempty"`

@@ -37,6 +37,7 @@ import type {
   MatchObjectiveEvent,
   MatchScoreboardRow,
 } from '@/lib/api/types'
+import { tipNumberAuto } from '@/components/charts/tipNumber'
 import { buildKdCumul, type KdCumul, type KdCumulBadge } from './_kdCumul'
 import type { MatchViewText } from './i18n'
 import { resolveXuidMeta } from './xuidMeta'
@@ -293,7 +294,7 @@ function tooltipFormatter(t: MatchViewText) {
     }
     if (seen.size === 0) return ''
     const rows = [...seen.values()]
-      .map((p) => `${p.marker} ${escapeHtml(p.seriesName ?? '')}: <b>${p.value[1]}</b>`)
+      .map((p) => `${p.marker} ${escapeHtml(p.seriesName ?? '')}: <b>${tipNumberAuto(p.value[1])}</b>`)
       .join('<br/>')
     return `${formatClockMShort(params[0].axisValue)}<br/>${rows}`
   }

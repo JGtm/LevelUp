@@ -18126,6 +18126,12 @@ components:
           type:
             - array
             - "null"
+        matches_film_missing:
+          format: int64
+          type: integer
+        matches_film_pending:
+          format: int64
+          type: integer
         matches_measured:
           format: int64
           type: integer
@@ -26004,6 +26010,12 @@ components:
           type:
             - array
             - "null"
+        matches_film_missing:
+          format: int64
+          type: integer
+        matches_film_pending:
+          format: int64
+          type: integer
         matches_measured:
           format: int64
           type: integer
@@ -26325,6 +26337,12 @@ components:
           type:
             - array
             - "null"
+        matches_film_missing:
+          format: int64
+          type: integer
+        matches_film_pending:
+          format: int64
+          type: integer
         matches_measured:
           format: int64
           type: integer
@@ -28738,6 +28756,11 @@ components:
             - "null"
         weapon_records:
           $ref: '#/components/schemas/SynthesisWeaponRecords'
+        weapon_records_gap:
+          enum:
+            - pending
+            - missing
+          type: string
       required:
         - scope
         - overview

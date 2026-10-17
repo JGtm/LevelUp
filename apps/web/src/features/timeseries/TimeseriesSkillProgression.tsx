@@ -24,6 +24,8 @@ import {
   tickInterval,
   CHART_BG,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import { frameToData, buildSkillTierMarkArea } from '@/lib/charts/skillTierBands'
 import { gridForRatingTypes } from '@/lib/skillTiers'
@@ -128,7 +130,12 @@ function buildOption(
   return {
     backgroundColor: CHART_BG,
     grid: { left: 12, right: 20, top: 30, bottom: 40, containLabel: true },
-    tooltip: { trigger: 'axis', ...getTooltipBase(tc) },
+    tooltip: {
+      trigger: 'axis',
+      ...getTooltipBase(tc),
+      // Une ligne par courbe notée au match survolé (pas de « - » pour les matchs non notés).
+      formatter: axisTooltipFormatter({ value: (r) => tipNumberAuto(r.value) }),
+    },
     legend: { ...getLegendBase(tc), data: legendData, type: 'scroll' },
     xAxis: {
       ...axisBase,

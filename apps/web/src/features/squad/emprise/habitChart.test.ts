@@ -16,7 +16,6 @@ const T = EMPRISE_TEXT.fr
 const COLORS: HabitChartColors = {
   resource: (r) => `res-${r}`,
   parity: 'parity',
-  muted: 'muted',
   theme: {
     axisLabel: 'axis',
     axisLine: 'line',
@@ -42,6 +41,8 @@ interface BarSeries {
   name?: string
   data: (Item | null)[]
   barGap?: string
+  emphasis?: { disabled?: boolean }
+  legendHoverLink?: boolean
   markLine?: { data: { yAxis: number; lineStyle?: { color?: string; type?: number[] } }[] }
 }
 interface Opt {
@@ -133,12 +134,21 @@ describe('buildHabitOption — une soirée d’autres modes que ce soir', () => 
   const { opt } = build({ ...EMPRISE_2209, habit: { ...HABIT_2209, previous } })
   const [bonus, armes] = opt.series.filter((s) => s.type === 'bar')
 
-  it('barre GRISE liserée de la couleur de la ressource, la raison au survol, hors médiane', () => {
+  it('barre PLEINE de la couleur de la ressource comme les autres, la raison au survol, hors médiane', () => {
     const bar = bonus.data[2] as Item
-    expect(bar.itemStyle).toMatchObject({ color: 'muted', borderColor: 'res-powerup' })
+    expect(bar.itemStyle).toEqual({ color: 'res-powerup' })
     expect(bar.tip).toBe('Bonus\nSoirée du 27/08 : 75 %\nAutres modes que ce soir (Bases, Roi de la colline) : hors médiane')
-    expect((armes.data[2] as Item).itemStyle).toMatchObject({ color: 'muted', borderColor: 'res-power_weapon' })
-    // Les autres soirées gardent la couleur de la ressource.
-    expect((bonus.data[1] as Item).itemStyle.color).toBe('res-powerup')
+    expect((armes.data[2] as Item).itemStyle).toEqual({ color: 'res-power_weapon' })
+    // Les autres soirées ont le même style : une soirée hors comparaison ne se distingue pas à l'œil.
+    expect((bonus.data[1] as Item).itemStyle).toEqual(bar.itemStyle)
+  })
+
+  it('le survol ne change aucune couleur : emphase neutralisée sur chaque série de barres', () => {
+    const bars = opt.series.filter((x) => x.type === 'bar' && x.name !== undefined)
+    expect(bars.length).toBeGreaterThan(1)
+    for (const b of bars) {
+      expect(b.emphasis).toEqual({ disabled: true })
+      expect(b.legendHoverLink).toBe(false)
+    }
   })
 })

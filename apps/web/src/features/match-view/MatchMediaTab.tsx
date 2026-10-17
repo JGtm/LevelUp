@@ -7,6 +7,7 @@ import { usePlayerGamertag } from '@/features/media/usePlayerGamertag'
 import { useToggleMediaLike } from '@/features/media/queries'
 import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { toMediaItemRow } from './_mediaItemRow'
+import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { MatchViewText } from './i18n'
 
@@ -49,7 +50,14 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
   }
 
   if (mediaRows.length === 0) {
-    return <EmptyStateNotice title={t.mediaNoCaptures} description={t.mediaNoCapturesDesc} />
+    // Convention de l'application : l'état vide pointillé vit DANS un bloc parent, jamais nu sous le titre de section.
+    return (
+      <Card data-testid="match-media-empty">
+        <CardContent className="pt-4">
+          <EmptyStateNotice title={t.mediaNoCaptures} description={t.mediaNoCapturesDesc} />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (

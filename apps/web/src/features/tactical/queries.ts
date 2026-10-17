@@ -43,10 +43,13 @@ import type {
   TacticalSequence,
   ReplayMapBackground,
 } from '@/lib/api/types'
+import { ANALYSIS_PENDING_REFETCH_MS } from '@/lib/analysis-pending/analysisPending.logic'
 import { queryKeys } from '@/lib/query/keys'
 import { SANS_BARRE_META } from '@/lib/query/sansBarre'
 import { mapFrame, type MapFrame } from '@/lib/replay/heatPaint'
 import { useAppShellStore } from '@/stores/appShellStore'
+
+import { causeDeLErreur } from './sequenceCause.logic'
 
 /** FNV-1a 32 bits — même algorithme que `useFiltersPreview` et `computeHash`. */
 export function hashFiltre(valeur: unknown): string {
@@ -385,12 +388,16 @@ export function useTacticalCellule(
 
 /**
  * useTacticalSequence — la SÉQUENCE d'une mort (vue D) : traces de la victime, du tueur et des
- * coéquipiers de −8 à +3 s, étapes de −4 à +3 s. La route vit sous les gardes du rejeu 2D : elle
- * répond 404 `replay_not_available` là où le rejeu n'est pas servi (production, artefact absent,
- * horloge non établie) — c'est le cas NOMINAL de ces endroits, pas une panne. Pas de nouvelle
- * tentative, pas d'erreur à l'écran : la vue D n'est rendue que si la requête réussit.
+ * coéquipiers de −8 à +3 s, étapes de −4 à +3 s. La route vit sous les gardes du rejeu 2D.
  *
- * `mort` à `null` = aucune mort choisie (ou sans rejeu) : la requête N'EST PAS lancée.
+ * UN ÉCHEC N'EST PAS UN SILENCE : le corps de l'erreur porte la cause (`sequenceCause.logic.ts`) — film non
+ * analysé, analyse en cours, horloge ou rayon absents, position de la mort absente — ou le refus
+ * `replay_not_available` (fonction fermée : production, match non joué par l'appelant), que la page
+ * écrit ou tait selon le cas. Pas de nouvelle tentative sur une erreur (c'est un fait, pas une panne) ;
+ * tant que l'analyse du film est EN COURS, la requête se refait toutes les 60 s (comme l'indicateur
+ * « analyse en cours » des autres surfaces) et la séquence apparaît d'elle-même.
+ *
+ * `mort` à `null` = aucune mort choisie : la requête N'EST PAS lancée.
  */
 export function useTacticalSequence(
   playerSlug: string,
@@ -405,5 +412,7 @@ export function useTacticalSequence(
     enabled: !!playerSlug && !!mapId && !!mort,
     staleTime: 5 * 60 * 1000,
     retry: false,
+    refetchInterval: (query) =>
+      causeDeLErreur(query.state.error) === 'analyse_en_cours' ? ANALYSIS_PENDING_REFETCH_MS : false,
   })
 }

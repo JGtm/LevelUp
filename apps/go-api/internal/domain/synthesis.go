@@ -160,6 +160,12 @@ type SynthesisPageV2Response struct {
 	// (Halo 5, `games.ErrCapabilityNotSupported` — jamais slug==) ou un scope sans frag
 	// mesuré. Cf. synthesis_weapon_records.go et PLAN_RECORDS_DISTANCE_2026-09-20.md.
 	WeaponRecords *SynthesisWeaponRecords `json:"weapon_records,omitempty"`
+
+	// WeaponRecordsGap dit pourquoi `weapon_records` manque quand le titre mesure des positions par
+	// kill et que le scope porte des frags : FilmGapPending (l'analyse du film d'au moins un match est
+	// en cours) ou FilmGapMissing (aucun frag n'a de position lue). Vide quand le bloc est servi, quand
+	// le titre ne mesure pas de positions (fonction absente) ou que la lecture a échoué.
+	WeaponRecordsGap string `json:"weapon_records_gap,omitempty" enum:"pending,missing"`
 }
 
 // SynthesisWeaponKillEntry est une ligne du classement frags par arme. Class/Role

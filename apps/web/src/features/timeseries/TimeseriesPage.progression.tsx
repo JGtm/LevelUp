@@ -13,6 +13,7 @@
  */
 import { useMemo } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
+import { PAIR_ROW_CLASS } from '@/components/ui/pair-row'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
 import { intensityTooltipText } from '@/components/charts/intensityTooltipText'
@@ -243,7 +244,7 @@ export function TimeseriesProgressionTab({
           La carte se retire quand le titre ne sert pas de bloc de coordination (Rendement
           reprend alors toute la rangée) ; elle est CONSERVÉE, vide et nommée, quand le bloc
           est servi mais indisponible sur le périmètre (D8). */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
+      <div className={PAIR_ROW_CLASS}>
         <TimeseriesEfficiency
           title={
             <span className="flex items-center gap-1.5">

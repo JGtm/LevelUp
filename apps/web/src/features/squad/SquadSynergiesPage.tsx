@@ -218,6 +218,8 @@ export function SquadSynergiesPage() {
           tier5: t.heatmap.pieceTier5,
         }}
         noScoreLabel={t.heatmap.noScore}
+        perfLabel={t.heatmap.tooltipPerf}
+        matchesLabel={t.heatmap.tooltipMatches}
         yAxisName={t.heatmap.yAxis}
       />
       <SquadSessionTimelineChart

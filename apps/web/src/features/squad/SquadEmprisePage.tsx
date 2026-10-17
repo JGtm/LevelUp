@@ -31,12 +31,18 @@
  * pour le résultat, la carte et la dominance ; emblèmes des fiches de médailles), publié par
  * `SquadLayout` depuis l'unique `useTeammates`. Mêmes gardes que l'onglet qu'elle remplace
  * (sélection vide ou invalide) ; sans rien à montrer, l'onglet le DIT au lieu de rester nu. Un
- * bloc sans donnée se retire, intertitre compris.
+ * bloc sans donnée se retire, intertitre compris, SAUF quand le titre lit le film et que le film du
+ * périmètre n'est pas lu pour un match au moins : il reste alors avec son intertitre et un état vide
+ * (`FilmGapSection` : « Analyse du film en cours » ou « Film non analysé »), jamais un trou.
  */
 import { useMemo } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
+import { PAIR_ROW_CLASS } from '@/components/ui/pair-row'
 import { SectionTitle } from '@/components/ui/detail-section'
+import { FilmGapSection } from '@/features/_shared/filmGap/FilmGapSection'
+import { filmGapOfBlock, type FilmGap } from '@/features/_shared/filmGap/filmGap.logic'
+import { FILM_GAP_TEXT, type FilmGapText } from '@/features/_shared/filmGap/filmGapStrings'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { Locale } from '@/lib/i18n/locale'
@@ -77,6 +83,8 @@ export function SquadEmprisePage() {
   const medalDigest = useMemo(() => pageData?.medal_digest ?? [], [pageData?.medal_digest])
   const { objectName, controlRows, fil, sheets, grid, production, yieldRows, habit, placement, identities, playerName } = models
   const show = empriseSections(models)
+  const gap = filmGapOfBlock(pageData?.squad_emprise)
+  const gapText = FILM_GAP_TEXT[locale]
 
   if (confirmedGamertags.length === 0 || selectedRows.length === 0) {
     const none = confirmedGamertags.length === 0
@@ -88,13 +96,13 @@ export function SquadEmprisePage() {
     )
   }
 
-  if (!Object.values(show).some(Boolean) && !hasSquadObjective(pageData?.formes_retenues)) {
+  if (!Object.values(show).some(Boolean) && gap == null && !hasSquadObjective(pageData?.formes_retenues)) {
     return <EmptyCard title={t.empty.noDecodedFilmTitle} description={t.empty.noDecodedFilmDescription} />
   }
 
   return (
     <div className="space-y-6" data-testid="squad-emprise-page">
-      {show.bilan && fil && (
+      {show.bilan && fil ? (
         <section className="space-y-2" data-testid="emprise-section-bilan">
           <SectionTitle>{et.sections.bilan}</SectionTitle>
           <div className="grid gap-4 lg:grid-cols-2">
@@ -102,8 +110,10 @@ export function SquadEmprisePage() {
             <ResourceFilCard fil={fil} dominanceLabels={dominance} outcomeLabels={outcomes} locale={locale} t={et} />
           </div>
         </section>
+      ) : (
+        gap && <FilmGapSection title={et.sections.bilan} testId="emprise-section-bilan" gap={gap} t={gapText} />
       )}
-      {show.roles && sheets && (
+      {show.roles && sheets ? (
         <section className="space-y-2" data-testid="emprise-section-roles">
           <SectionTitle className="flex items-center gap-1.5">
             {et.sections.roles}
@@ -111,8 +121,10 @@ export function SquadEmprisePage() {
           </SectionTitle>
           <PickupSheetsCard sheets={sheets} identities={identities} itemName={(line) => objectName(line.object)} bare t={et} />
         </section>
+      ) : (
+        gap && <FilmGapSection title={et.sections.roles} testId="emprise-section-roles" gap={gap} t={gapText} />
       )}
-      {show.carte && grid && (
+      {show.carte && grid ? (
         <section className="space-y-2" data-testid="emprise-section-carte">
           <SectionTitle>{et.sections.carte}</SectionTitle>
           <ResourceMatchGridCard
@@ -126,12 +138,16 @@ export function SquadEmprisePage() {
             showTime={false}
           />
         </section>
+      ) : (
+        gap && <FilmGapSection title={et.sections.carte} testId="emprise-section-carte" gap={gap} t={gapText} />
       )}
       <UsageSections
         show={show}
         production={production}
         yieldRows={yieldRows}
         placement={placement}
+        gap={gap}
+        gapText={gapText}
         locale={locale}
         et={et}
       />
@@ -170,6 +186,8 @@ function UsageSections({
   production,
   yieldRows,
   placement,
+  gap,
+  gapText,
   locale,
   et,
 }: {
@@ -177,21 +195,30 @@ function UsageSections({
   production: ProductionRow[]
   yieldRows: YieldRow[]
   placement: PlacementBlock | null
+  /** Le film du périmètre n'est pas lu pour au moins un match (`filmGapOfBlock`) ; null sinon. */
+  gap: FilmGap | null
+  gapText: FilmGapText
   locale: Locale
   et: EmpriseText
 }) {
   const pt = PLACEMENT_TEXT[locale]
   return (
     <>
+      {!show.prendre && gap && (
+        <FilmGapSection title={et.sections.prendre} testId="emprise-section-prendre" gap={gap} t={gapText} />
+      )}
       {show.prendre && (
         <section className="space-y-2" data-testid="emprise-section-prendre">
           <SectionTitle>{et.sections.prendre}</SectionTitle>
           {/* Une carte seule (sans rendement : Halo 5, D10) prend la rangée (précédent : Dynamique, L1). */}
-          <div className="grid gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
+          <div className={PAIR_ROW_CLASS}>
             {production.length > 0 && <ProductionCard rows={production} t={et} />}
             {yieldRows.length > 0 && <YieldCard rows={yieldRows} t={et} />}
           </div>
         </section>
+      )}
+      {!(show.placement && placement) && gap && (
+        <FilmGapSection title={pt.section} testId="emprise-section-placement" gap={gap} t={gapText} />
       )}
       {show.placement && placement && (
         <section className="space-y-2" data-testid="emprise-section-placement">

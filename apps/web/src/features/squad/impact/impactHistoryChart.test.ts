@@ -73,8 +73,11 @@ describe('buildImpactHistoryOption', () => {
   it('courbes : halo puis trait à la couleur du joueur, un losange par soirée, les nets extrêmes écrits', () => {
     const nets = option().series[2]
     const jgtm = nets.renderItem({ coordSys: { x: 0 } }, api(nets.data[0]))?.children ?? []
-    expect(jgtm.filter((c) => c.type === 'polyline').map((c) => (c.style as { stroke: string }).stroke)).toEqual(['c-card', 'c-p1'])
-    expect(jgtm.filter((c) => c.type === 'polygon')).toHaveLength(3)
+    // Un seul trait, à la couleur du joueur : ni halo ni bordure de la couleur de la carte.
+    expect(jgtm.filter((c) => c.type === 'polyline').map((c) => (c.style as { stroke: string }).stroke)).toEqual(['c-p1'])
+    const losanges = jgtm.filter((c) => c.type === 'polygon')
+    expect(losanges).toHaveLength(3)
+    for (const l of losanges) expect(l.style).toEqual({ fill: 'c-p1' })
     expect(jgtm.filter((c) => c.type === 'text').map((c) => (c.style as { text: string }).text)).toEqual(['−9'])
     const madina = nets.renderItem({ coordSys: { x: 0 } }, api(nets.data[2]))?.children ?? []
     expect(madina.filter((c) => c.type === 'text')).toHaveLength(0)
@@ -85,7 +88,8 @@ describe('buildImpactHistoryOption', () => {
     expect(html).toContain('Chocoboflor')
     expect(html).toContain('1 match, aucune victoire')
     expect(html).toContain('Boulet ×1')
-    expect(html).toContain('Net <b>−4</b>')
+    expect(html).toMatch(new RegExp('Net</span><span[^>]*>−4</span>'))
+    expect(html).not.toContain('Soirée')
     expect(option().tooltip.formatter({ seriesIndex: 2, dataIndex: 0 })).toBe('')
   })
 

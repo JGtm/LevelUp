@@ -6,6 +6,17 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+// AnalysisPendingMatches dit, pour un lot de matchs, lesquels ont une analyse du film EN COURS et
+// pour quelles causes (`analysis.AnalysisPendingParts`, la règle unique). Implémenté par
+// service.AnalysisPendingResolver ; un récepteur nil rend une table vide (titre sans la capability du
+// film). Hors condition du rejeu : l'appelant n'attend pas d'artefact de rejeu.
+type AnalysisPendingMatches interface {
+	// ResolvePending rend, par match_id du lot dont l'analyse est en cours, ses causes (jamais vides).
+	// Un lot vide ou une lecture en échec (journalisée) rend une table vide : jamais un indicateur
+	// fabriqué sur une lecture ratée.
+	ResolvePending(ctx context.Context, matchIDs []string) map[string][]string
+}
+
 // AnalysisProbeRepository lit l'avancement de l'analyse du film d'un LOT de matchs.
 // Implémenté par platform/duckdb.AnalysisProbeRepo.
 type AnalysisProbeRepository interface {

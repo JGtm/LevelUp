@@ -113,13 +113,31 @@ describe('SquadLayout — barre d\'onglets', () => {
   it('D10 : sans rien à montrer (Halo 5 sans frags aux armes spéciales, périmètre vide), l’onglet Emprise se masque', async () => {
     server.use(
       http.post('/api/v1/players/:playerSlug/pages/teammates', () =>
-        HttpResponse.json({ ...teammatesReponse, squad_emprise: { ...EMPRISE_2209, resources: [], objects: [], matches: [], production: [], habit: undefined } }),
+        HttpResponse.json({
+          ...teammatesReponse,
+          squad_emprise: { ...EMPRISE_2209, film_unavailable: 'film_unsupported', resources: [], objects: [], matches: [], production: [], habit: undefined },
+        }),
       ),
     )
     await monter()
     const t = getSquadText('fr')
     const liens = Array.from(screen.getAllByRole('navigation')[0].querySelectorAll('a'))
     expect(liens.map((a) => a.textContent)).toEqual([t.nav.synergies, t.nav.contributions, t.nav.dynamique])
+  })
+
+  it('titre qui lit le film : sans aucune donnée (film non analysé), l’onglet Emprise reste visible', async () => {
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/teammates', () =>
+        HttpResponse.json({
+          ...teammatesReponse,
+          squad_emprise: { ...EMPRISE_2209, resources: [], objects: [], matches: [], production: [], habit: undefined, matches_film_missing: 3 },
+        }),
+      ),
+    )
+    await monter()
+    const t = getSquadText('fr')
+    const liens = Array.from(screen.getAllByRole('navigation')[0].querySelectorAll('a'))
+    expect(liens.map((a) => a.textContent)).toEqual([t.nav.synergies, t.nav.contributions, t.nav.dynamique, t.nav.emprise])
   })
 
   it('constat R13 (revue L6.1) : sur l’onglet Emprise, il reste visible même sans rien à montrer', async () => {

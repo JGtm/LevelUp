@@ -124,7 +124,7 @@ describe('SynthesisHeatmapChart — migration Heatmap2DChart (lot C2)', () => {
     const html = option.tooltip.formatter({ data: datum })
     expect(html).toContain('Mer')
     expect(html).toContain('14h')
-    expect(html).toContain('40.0%')
+    expect(html).toContain('40,0 %')
     expect(html).toContain('Taux de victoire')
     expect(html).toContain('Matchs')
     expect(html).toContain('5')

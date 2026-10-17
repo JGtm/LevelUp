@@ -24,7 +24,9 @@ import { useMemo } from 'react'
 import { MatchEquipmentUsageSection } from '@/features/match-replay/MatchEquipmentUsageSection'
 import { buildEquipmentUsage, hasEquipmentUsage } from '@/features/match-replay/model/equipmentUsageLogic'
 import { DetailSection } from '@/components/ui/detail-section'
+import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { PAIR_ROW_CLASS } from '@/components/ui/pair-row'
 import { AnalysisPendingSlot } from '@/components/ui/analysis-pending-slot'
 import {
   ANALYSIS_PART,
@@ -131,7 +133,14 @@ export function MatchViewTabArsenal({
   const showTerrainSection = showEquipmentTerrain || pending.terrain
 
   if (!showKillsWeaponsSection && !showTerrainSection) {
-    return <EmptyStateNotice title={t.arsenalEmptyTitle} description={t.arsenalEmptyDescription} />
+    // Convention de l'application : l'état vide pointillé vit DANS un bloc parent, jamais nu.
+    return (
+      <Card data-testid="match-arsenal-empty">
+        <CardContent className="pt-4">
+          <EmptyStateNotice title={t.arsenalEmptyTitle} description={t.arsenalEmptyDescription} />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -154,7 +163,7 @@ export function MatchViewTabArsenal({
           {e.sheets}
           <MatchEquipmentUsageSection playerSlug={playerSlug} matchId={matchId} replayAvailable={replayAvailable} scoreboard={scoreboard} locale={locale} />
           {(e.present.production || e.present.yield) && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className={PAIR_ROW_CLASS} data-testid="match-emprise-production-row">
               {e.production}
               {e.yieldCard}
             </div>

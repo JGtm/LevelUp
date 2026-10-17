@@ -11,6 +11,7 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { tokenCssVar } from '@/lib/accessibility'
 import { useSynthesisPage } from './queries'
 import { useFiltersPreview } from '@/features/filters/queries'
+import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { ProportionalBar } from '@/components/ui/proportional-bar'
@@ -21,6 +22,8 @@ import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'
 import { AccentCard, SectionSubtitle } from '@/components/ui/section-primitives'
 import { useSynthesisFragCharts } from './useSynthesisFragCharts'
 import { WeaponRecordsRuler } from './WeaponRecordsRuler'
+import { WeaponRecordsGapCard } from './WeaponRecordsGapCard'
+import type { FilmGap } from '@/features/_shared/filmGap/filmGap.logic'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
 import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
@@ -121,9 +124,11 @@ interface SynthesisOverviewSectionProps {
   combatProfile?: CombatProfileBlock | null
   objectiveStats?: ObjectiveAggregate | null
   weaponRecords?: SynthesisWeaponRecords | null
+  /** Pourquoi les records manquent quand le titre mesure des positions (`weapon_records_gap`). */
+  weaponRecordsGap?: FilmGap
   playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, objectiveStats, weaponRecords, playerSlug }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, objectiveStats, weaponRecords, weaponRecordsGap, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -479,6 +484,13 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                   <WeaponRecordsRuler records={weaponRecords} playerSlug={playerSlug} />
                 </div>
               )}
+              {/* Aucun frag mesuré : la carte garde son titre et dit pourquoi (analyse en cours / film non
+                  analysé), au lieu de disparaître. Titre sans la capability : rien. */}
+              {hasWeaponRange && !weaponRecords && weaponRecordsGap && (
+                <div className="mt-4">
+                  <WeaponRecordsGapCard gap={weaponRecordsGap} />
+                </div>
+              )}
 
             </div>
 
@@ -638,7 +650,7 @@ export function SynthesisPage() {
     start_date: hasPeriod ? committedPeriod.start_date : undefined,
     end_date: hasPeriod ? committedPeriod.end_date : undefined,
   }
-  const { data, isLoading, isError, error } = useSynthesisPage(playerSlug, committedPeriod, request)
+  const { data, isLoading, isError } = useSynthesisPage(playerSlug, committedPeriod, request)
 
   const comparisonMetrics = data?.comparison_metrics ?? []
   const topWeeks = data?.top_weeks ?? []
@@ -646,13 +658,24 @@ export function SynthesisPage() {
   const labelOf = (key: string): string => fieldMappings?.fields[key]?.label ?? key
 
   if (isLoading) return null
-  if (isError) return <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
+  if (isError) {
+    // Bloc parent + constat traduit (jamais le texte brut de l'erreur ni un mot en dur).
+    return (
+      <div className="px-6">
+        <Card data-testid="synthesis-load-failed">
+          <CardContent className="py-8 text-center">
+            <p className="font-medium text-destructive">{t('synthesis.errors.load_failed')}</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
   if (!data) {
     return (
       <div className="px-6">
         <EmptyStateCard
           title={t('synthesis.empty.synthesis_unavailable')}
-          description="Aucune charge utile n'a été renvoyée pour cette page. Vérifie les agrégats solo/escouade et le contexte de filtres."
+          description={t('synthesis.empty.synthesis_unavailable_description')}
         />
       </div>
     )
@@ -764,6 +787,7 @@ export function SynthesisPage() {
           combatProfile={data.combat_profile}
           objectiveStats={data.objective_stats}
           weaponRecords={data.weapon_records}
+          weaponRecordsGap={data.weapon_records_gap}
           playerSlug={playerSlug}
         />
       )}
@@ -787,40 +811,34 @@ export function SynthesisPage() {
 
         <SynthesisHeatmapChart title={t('synthesis.section.activity')} cells={data.heatmap_data ?? []} />
 
-        {topWeeks.length > 0 && (
-          <SynthesisTopWeeksChart title={t('synthesis.charts.top_vs_total_per_week')} weeks={topWeeks} />
-        )}
+        {/* Ces trois graphes sortent de la feuille de match : sans donnée sur la sélection, la carte reste avec
+            son titre et son état vide (ChartCard), comme la carte d'activité au-dessus — jamais un trou. */}
+        <SynthesisTopWeeksChart title={t('synthesis.charts.top_vs_total_per_week')} weeks={topWeeks} />
 
-        {data.breakdowns && (
-          <div className="flex flex-col gap-4">
-            {(data.breakdowns.top_maps ?? []).length > 0 && (
-              <SynthesisOutcomesByGroupChart
-                title={t('synthesis.breakdown.by_map')}
-                entries={(data.breakdowns.top_maps ?? []).map((m) => ({
-                  name: m.map_name,
-                  wins: m.wins,
-                  losses: m.losses,
-                  ties: m.ties,
-                  unfinished: m.unfinished,
-                }))}
-                height={360}
-              />
-            )}
-            {(data.breakdowns.top_modes ?? []).length > 0 && (
-              <SynthesisOutcomesByGroupChart
-                title={t('synthesis.breakdown.by_mode')}
-                entries={(data.breakdowns.top_modes ?? []).map((m) => ({
-                  name: m.mode_name,
-                  wins: m.wins,
-                  losses: m.losses,
-                  ties: m.ties,
-                  unfinished: m.unfinished,
-                }))}
-                height={360}
-              />
-            )}
-          </div>
-        )}
+        <div className="flex flex-col gap-4">
+          <SynthesisOutcomesByGroupChart
+            title={t('synthesis.breakdown.by_map')}
+            entries={(data.breakdowns?.top_maps ?? []).map((m) => ({
+              name: m.map_name,
+              wins: m.wins,
+              losses: m.losses,
+              ties: m.ties,
+              unfinished: m.unfinished,
+            }))}
+            height={360}
+          />
+          <SynthesisOutcomesByGroupChart
+            title={t('synthesis.breakdown.by_mode')}
+            entries={(data.breakdowns?.top_modes ?? []).map((m) => ({
+              name: m.mode_name,
+              wins: m.wins,
+              losses: m.losses,
+              ties: m.ties,
+              unfinished: m.unfinished,
+            }))}
+            height={360}
+          />
+        </div>
       </section>
       </div>
     </div>

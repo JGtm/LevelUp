@@ -41,6 +41,7 @@ func (s *SessionPageService) sessionEmprise(
 		RepoRoot: s.repoRoot, TitleSlug: s.titleSlug, Locale: locale,
 		Current: timeseriesEmpriseMatches(rows, locale), Lectures: lu,
 		UsageRepo: s.sessionUsageRepo, EmpriseRepo: s.empriseRepo, VehicleRepo: s.vehicleRepo,
+		Pending: s.analysisPending,
 	})
 }
 

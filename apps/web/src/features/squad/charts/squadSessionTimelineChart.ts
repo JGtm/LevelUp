@@ -20,6 +20,8 @@ import {
   getTooltipBase,
   seriesColor,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadSessionPoint } from '@/lib/api/types'
 
@@ -122,7 +124,19 @@ export function buildSquadSessionTimelineOption(
   return {
     backgroundColor: CHART_BG,
     grid: { top: 36, bottom: 40, left: 8, right: hasMmr ? 60 : 24, containLabel: true },
-    tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' } },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      // Une unité par ligne : la performance sur 100, le taux de victoire en %, le MMR entier. Ordre de la légende.
+      formatter: axisTooltipFormatter({
+        value: (r) => {
+          if (r.name === opts.winRateLabel) return `${tipNumber(r.value, 1)} %`
+          if (r.name === opts.mmrLabel) return tipNumber(r.value, 0)
+          return tipNumber(r.value, 1)
+        },
+      }),
+    },
     legend: { ...getLegendBase(tc), data: legendData },
     xAxis: {
       ...axis,

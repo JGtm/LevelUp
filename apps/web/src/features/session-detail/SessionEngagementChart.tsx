@@ -11,6 +11,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import { tipNumberUpTo } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
 
@@ -58,7 +59,7 @@ export function buildSessionEngagementOption(
       formatter: (params: Array<{ name: string; value: number; marker: string }>) => {
         if (!Array.isArray(params) || params.length === 0) return ''
         const p = params[0]
-        return `${escapeHtml(p.name.replace('\n', ' · '))}<br/>${p.marker} ${opts.axisName}: <b>${p.value}</b>`
+        return `${escapeHtml(p.name.replace('\n', ' · '))}<br/>${p.marker} ${escapeHtml(opts.axisName)}: <b>${tipNumberUpTo(p.value, 2, true)}</b>`
       },
     },
     xAxis: {
@@ -84,7 +85,7 @@ export function buildSessionEngagementOption(
           label: {
             show: true,
             position: 'end',
-            formatter: `${opts.meanLabel} ${mean}`,
+            formatter: `${opts.meanLabel} ${tipNumberUpTo(mean, 2, true)}`,
             color: meanColor,
             fontWeight: 'bold',
             textBorderColor: CHART_BG,

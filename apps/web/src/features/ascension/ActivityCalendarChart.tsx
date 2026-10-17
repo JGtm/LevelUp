@@ -16,9 +16,10 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { heatmapRampTokens } from '@/components/charts/heatmapColors'
-import { CHART_BG, escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import { tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
-import { dowLabels, calendarChartText } from '@/lib/formatters'
+import { dowLabels, calendarChartText, formatDate, intlLocale } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { getAscensionText } from './i18n'
@@ -113,14 +114,14 @@ export function buildActivityCalendarOption(opts: BuildOpts): EChartsCoreOption 
     backgroundColor: CHART_BG,
     grid: { left: 44, right: 16, top: 12, bottom: 44, containLabel: false },
     tooltip: {
+      ...getTooltipBase(tc),
       trigger: 'item',
-      backgroundColor: tc.tooltipBg,
-      borderColor: tc.tooltipBorder,
-      textStyle: { color: tc.text },
       formatter: (params: { data?: { value: [number, number, number]; date: string } }) => {
         const d = params.data
         if (!d) return ''
-        return `${escapeHtml(d.date)}<br>${escapeHtml(chartTxt.matches)} : <b>${d.value[2]}</b>`
+        // "YYYY-MM-DD" lu en UTC : la date écrite est celle du jour joué, quel que soit le fuseau.
+        const day = formatDate(d.date, intlLocale(locale), { dateStyle: 'long', timeZone: 'UTC' })
+        return `${escapeHtml(day)}<br>${escapeHtml(chartTxt.matches)} : <b>${tipNumberAuto(d.value[2])}</b>`
       },
     },
     xAxis: {
@@ -169,6 +170,26 @@ export function buildActivityCalendarOption(opts: BuildOpts): EChartsCoreOption 
       },
     ],
   }
+}
+
+/**
+ * Le calendrier quand sa lecture a échoué : le bloc garde son titre et le dit (constat traduit), au lieu de
+ * disparaître de l'onglet — une absence silencieuse laissait croire que la fonction n'existe pas.
+ */
+export function ActivityCalendarUnavailable({ height }: { height?: number }) {
+  const locale = useAppShellStore((s) => s.locale) as ManifestLocale
+  const t = getAscensionText(locale)
+  return (
+    <section aria-label={t.activityCalendarAria} data-testid="activity-calendar-unavailable">
+      <ChartCard
+        title={t.activityCalendarTitle}
+        series={[]}
+        error={new Error(t.activityCalendarUnavailable)}
+        buildOption={() => ({})}
+        height={height ?? 180}
+      />
+    </section>
+  )
 }
 
 export function ActivityCalendarChart({ since, until, days, height }: ActivityCalendarChartProps) {

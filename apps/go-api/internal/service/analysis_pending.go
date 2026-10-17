@@ -102,6 +102,14 @@ func (r *AnalysisPendingResolver) Resolve(ctx context.Context, matchIDs []string
 	return pending
 }
 
+// ResolvePending est `Resolve` sans lecture du rejeu : la condition « rejeu manquant » n'est pas
+// évaluée (pages qui n'attendent aucun artefact de rejeu, ex. l'Emprise de l'Escouade).
+func (r *AnalysisPendingResolver) ResolvePending(ctx context.Context, matchIDs []string) map[string][]string {
+	return r.Resolve(ctx, matchIDs, ReplayLookup{})
+}
+
+var _ port.AnalysisPendingMatches = (*AnalysisPendingResolver)(nil)
+
 // WithAnalysisPending injecte le résolveur de l'indicateur d'analyse (nil : champ toujours
 // faux). Retourne le service (chaînage).
 func (s *HomeService) WithAnalysisPending(r *AnalysisPendingResolver) *HomeService {

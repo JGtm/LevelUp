@@ -9,8 +9,16 @@
  * spéciales. L'onglet ne garde alors que « Frags obtenus avec les ressources », barre épaisse
  * seule — la grille match par match exige au moins une ligne lue au film (la seule ligne des
  * frags ne fait pas une grille). Aucun branchement sur le titre : tout se lit dans le bloc.
+ *
+ * Capability présente mais film non lu sur le périmètre (analyse en cours, ou jamais faite) : la
+ * section sans donnée reste AFFICHÉE avec un état vide (`filmGapOfBlock`, partagé avec Séries temporelles et
+ * Sessions : `features/_shared/filmGap`) — une section absente
+ * laissait croire à un bug. Capability absente : section absente, comme avant. L'onglet reste visible
+ * dès que le titre lit le film (`filmExpected`), même sans donnée.
  */
 import type { SquadEmpriseBlock, SquadEmprisePlacement, SquadFormesBlock } from '@/lib/api/types'
+
+import { filmExpected } from '@/features/_shared/filmGap/filmGap.logic'
 
 import { hasSquadObjective } from '../objectif/objectif.logic'
 import { buildControlRows, buildMatchGrid, buildPickupSheets, squadPickupSheets, type MatchGrid, type PickupSheets } from './emprise.logic'
@@ -61,7 +69,7 @@ export function empriseSections(m: {
   }
 }
 
-/** L'onglet a-t-il quelque chose à montrer ? (Faux sans bloc.) */
+/** L'onglet a-t-il quelque chose à montrer ? Vrai dès que le titre lit le film ; faux sans bloc. */
 export function empriseHasContent(block: SquadEmpriseBlock | null | undefined): boolean {
   if (!block) return false
   const s = empriseSections({
@@ -73,7 +81,7 @@ export function empriseHasContent(block: SquadEmpriseBlock | null | undefined): 
     habit: buildHabitView(block),
     placement: block.placement,
   })
-  return Object.values(s).some(Boolean)
+  return filmExpected(block) || Object.values(s).some(Boolean)
 }
 
 /**

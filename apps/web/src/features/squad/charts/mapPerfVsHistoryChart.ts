@@ -28,6 +28,8 @@ import {
   getTooltipBase,
   legendEntries,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { MapBreakdownRow } from '@/lib/api/types'
 
@@ -101,7 +103,8 @@ export function buildMapPerfVsHistoryOption(
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      valueFormatter: (v: unknown) => (typeof v === 'number' ? v.toFixed(1) : '-'),
+      // Deux lignes (historique puis session), dans l'ordre des barres ; l'axe nomme déjà la carte.
+      formatter: axisTooltipFormatter({ value: (r) => tipNumber(r.value, 1) }),
     },
     // Couleurs portées par les ENTRÉES de légende : la barre de session est colorée au
     // POINT (un palier de performance par carte) et ne donne donc aucune couleur de série

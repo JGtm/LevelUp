@@ -5,8 +5,9 @@
  *
  * Un graphe (S6 : mêmes mesure et échelle) : la part de l'équipe dans les prises des bonus et des
  * armes spéciales, des barres GROUPÉES (une soirée de la composition par groupe, une barre par
- * ressource), ce soir à droite dans une colonne grisée avec ses valeurs ; une soirée sans aucun des
- * modes de ce soir garde ses barres, grises, raison au survol, hors médiane ; la médiane des soirées
+ * ressource), ce soir à droite dans une colonne grisée avec ses valeurs ; toutes les barres sont pleines,
+ * à la couleur de leur ressource ; une soirée sans aucun des modes de ce soir garde ses barres, hors
+ * médiane (la raison à l'infobulle) ; la médiane des soirées
  * précédentes comparables en pointillé fin de la couleur de chaque ressource (trois au moins), le
  * trait 50 % ; les dates sous l'axe, « ce soir » en gras (`buildHabitOption`). Posée à gauche de
  * « Rapport de force, soirée après soirée », dans la même rangée (`SquadPreviousSessionsSection`).
@@ -27,9 +28,6 @@ import type { EmpriseText } from './empriseStrings'
 import type { HabitPoint, HabitView } from './habit.logic'
 import { resourceInk } from './resourceColors'
 
-/** Le gris des soirées hors comparaison : l'encre atténuée du thème (celle que lit le graphe). */
-const MUTED_INK = 'var(--muted-foreground)' // color-allow: encre atténuée du thème, même valeur que resolveHabitColors().muted
-
 interface Props {
   view: Exclude<HabitView, { kind: 'none' }>
   locale: Locale
@@ -46,7 +44,6 @@ export function HabitCard({ view, locale, t }: Props) {
           ariaLabel={t.habit.title}
           items={[
             ...resources.map((r) => ({ kind: 'square' as const, label: t.resources[r].label, color: resourceInk(r) })),
-            ...(points.some((p) => !p.comparable) ? [{ kind: 'square' as const, label: t.habit.notComparable, color: MUTED_INK }] : []),
             { kind: 'parity', label: t.parity, color: tokenCssVar('warning') },
           ]}
         />

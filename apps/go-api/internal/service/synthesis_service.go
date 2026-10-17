@@ -81,6 +81,9 @@ type SynthesisService struct {
 	// games.ErrCapabilityNotSupported, qu'un titre n'a pas de positions — nil ou titre
 	// sans décodeur → bloc weapon_records omis. Best-effort.
 	weaponRangeRepo port.WeaponRangeRepository
+	// analysisPending : l'avancement de l'analyse du film, pour dire « en cours » quand les records de
+	// distance manquent faute de frag mesuré. nil = « non analysé ».
+	analysisPending port.AnalysisPendingMatches
 	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
 	titleSlug  string
@@ -252,8 +255,9 @@ func (s *SynthesisService) GetSynthesisPage(
 
 	// Records de distance par arme : best-effort, nil si repo absent, titre sans positions
 	// par kill (capability absente → Debug) ou scope sans frag mesuré → bloc omis.
-	weaponRecords := buildWeaponRecordsSection(ctx, weaponRecordsQuery{
+	weaponRecords, weaponRecordsGap := buildWeaponRecordsSection(ctx, weaponRecordsQuery{
 		Repo: s.weaponRangeRepo, TitleSlug: s.titleSlug, Gamertag: s.gamertag, Rows: filteredCanon,
+		Pending: s.analysisPending,
 	})
 
 	scope := domain.SynthesisScope{
@@ -294,6 +298,7 @@ func (s *SynthesisService) GetSynthesisPage(
 		CombatProfile:     combatProfile,
 		ObjectiveStats:    objectiveStats,
 		WeaponRecords:     weaponRecords,
+		WeaponRecordsGap:  weaponRecordsGap,
 	}, nil
 }
 
@@ -480,3 +485,10 @@ func (s *SynthesisService) loadWeaponAccuracy(
 
 // filterSynthesisByPeriod filtre les matchs Synthèse selon la période demandée.
 // Retourne les matchs filtrés, les filtres appliqués et ceux ignorés.
+
+// WithAnalysisPending injecte la décision « analyse du film en cours » des records de distance (nil :
+// un scope sans frag mesuré est compté « non analysé »). Un résolveur nil de type concret est sûr.
+func (s *SynthesisService) WithAnalysisPending(r port.AnalysisPendingMatches) *SynthesisService {
+	s.analysisPending = r
+	return s
+}

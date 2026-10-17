@@ -19,6 +19,7 @@ import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesColor } from './_utils'
+import { tipNumberAuto } from './tipNumber'
 
 export interface ChartPointScatter {
   x: number
@@ -144,9 +145,9 @@ export function buildScatterOption(
         const p = params as { seriesName?: string; value?: [number, number] }
         const xLabel = xAxisLabel ?? 'X'
         const yLabel = yAxisLabel ?? 'Y'
-        const x = p.value?.[0] ?? '—'
-        const y = p.value?.[1] ?? '—'
-        return `${escapeHtml(p.seriesName ?? '')}<br>${xLabel} : <b>${x}</b><br>${yLabel} : <b>${y}</b>`
+        const x = p.value ? tipNumberAuto(p.value[0]) : '—'
+        const y = p.value ? tipNumberAuto(p.value[1]) : '—'
+        return `${escapeHtml(p.seriesName ?? '')}<br>${escapeHtml(xLabel)} : <b>${x}</b><br>${escapeHtml(yLabel)} : <b>${y}</b>`
       },
     },
     legend: { ...getLegendBase(tc), data: legendNames },

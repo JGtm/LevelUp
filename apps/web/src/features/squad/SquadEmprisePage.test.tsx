@@ -474,11 +474,94 @@ describe('Isolement (lot V4 du plan Emprise vies)', () => {
     expect(screen.queryByTestId('emprise-section-placement')).toBeNull()
   })
 
-  it('l’onglet reste masqué sans aucun contenu, y compris avec un placement sans vie mesurée ; une vie mesurée suffit à le montrer', () => {
-    const rien: SquadEmpriseBlock = { matches_total: 7, matches_measured: 0, players: EMPRISE_2209.players, resources: [], objects: [], matches: [], production: [] }
+  it('titre qui ne lit pas le film : l’onglet reste masqué sans contenu, y compris avec un placement sans vie mesurée ; une vie mesurée suffit à le montrer', () => {
+    const rien: SquadEmpriseBlock = { matches_total: 7, matches_measured: 0, film_unavailable: 'film_unsupported', players: EMPRISE_2209.players, resources: [], objects: [], matches: [], production: [] }
     const sansVie = sansMesure()
     expect(empriseHasContent(rien)).toBe(false)
     expect(empriseHasContent({ ...rien, placement: sansVie })).toBe(false)
     expect(empriseHasContent({ ...rien, placement: PLACEMENT_2209 })).toBe(true)
+  })
+
+  it('titre qui lit le film : l’onglet reste visible même sans aucune donnée (plus masqué faute de données)', () => {
+    const rien: SquadEmpriseBlock = { matches_total: 7, matches_measured: 0, players: EMPRISE_2209.players, resources: [], objects: [], matches: [], production: [] }
+    expect(empriseHasContent(rien)).toBe(true)
+  })
+})
+
+describe('Film non lu sur le périmètre (retours 2026-10-17)', () => {
+  /** Le bloc d'une soirée dont aucun film n'est analysé : cinq matchs, aucun résumé d'usage. */
+  const sansResume = (extra: Partial<SquadEmpriseBlock>): SquadEmpriseBlock => ({
+    matches_total: 5,
+    matches_measured: 0,
+    players: EMPRISE_2209.players,
+    resources: [],
+    objects: [],
+    production: [],
+    matches: ['a', 'b', 'c', 'd', 'e'].map((id) => ({ match_id: id, has_film: false, team_known: true, resources: [] })),
+    ...extra,
+  })
+  const SECTIONS = ['bilan', 'roles', 'carte', 'prendre', 'placement'] as const
+
+  it('analyse en cours : chaque section garde son intertitre et un emplacement « en cours » dans son bloc', () => {
+    mount({ pageData: page(sansResume({ matches_film_pending: 5 })) })
+    for (const id of SECTIONS) {
+      const section = screen.getByTestId(`emprise-section-${id}`)
+      const bloc = within(section).getByTestId('film-gap')
+      expect(within(bloc).getByTestId('analysis-pending-slot').textContent).toContain('Analyse du film en cours')
+      expect(bloc.className).toContain('border')
+    }
+    expect(within(screen.getByTestId('emprise-section-bilan')).getByText('Ressources')).toBeInTheDocument()
+    expect(within(screen.getByTestId('emprise-section-roles')).getByText('Prises par joueur')).toBeInTheDocument()
+    expect(within(screen.getByTestId('emprise-section-carte')).getByText('Par match')).toBeInTheDocument()
+    expect(screen.queryByText('Aucun film décodé')).toBeNull()
+  })
+
+  it('film non analysé, rien en cours : l’état vide pointillé est DANS le bloc parent', () => {
+    mount({ pageData: page(sansResume({ matches_film_missing: 5 })) })
+    for (const id of SECTIONS) {
+      const bloc = within(screen.getByTestId(`emprise-section-${id}`)).getByTestId('film-gap')
+      expect(bloc.textContent).toContain('Film non analysé')
+      const notice = bloc.querySelector('.border-dashed')
+      expect(notice).not.toBeNull()
+      expect(notice).not.toBe(bloc)
+      expect(bloc.contains(notice)).toBe(true)
+      expect(within(bloc).queryByTestId('analysis-pending-slot')).toBeNull()
+    }
+  })
+
+  it('les sections dans l’ordre du débrief, placeholders compris', () => {
+    mount({ pageData: page(sansResume({ matches_film_pending: 2, matches_film_missing: 3 })) })
+    const els = SECTIONS.map((id) => screen.getByTestId(`emprise-section-${id}`))
+    for (let i = 1; i < els.length; i++) {
+      expect(els[i - 1].compareDocumentPosition(els[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
+  })
+
+  it('une section qui a ses données reste telle quelle ; seule la section sans donnée porte le placeholder', () => {
+    mount({ pageData: page({ ...EMPRISE_2209, matches_film_pending: 1 }) })
+    expect(screen.getByTestId('emprise-control')).toBeInTheDocument()
+    expect(within(screen.getByTestId('emprise-section-bilan')).queryByTestId('film-gap')).toBeNull()
+    expect(within(screen.getByTestId('emprise-section-placement')).getByTestId('analysis-pending-slot')).toBeInTheDocument()
+  })
+
+  it('tous les films lus : une section sans donnée reste absente (aucun faux « non analysé »)', () => {
+    mount()
+    expect(screen.queryByTestId('film-gap')).toBeNull()
+    expect(screen.queryByTestId('emprise-section-placement')).toBeNull()
+  })
+
+  it('titre sans lecture du film : jamais de placeholder, la section reste absente (capability absente)', () => {
+    mount({ pageData: page(sansResume({ film_unavailable: 'film_unsupported', matches_film_missing: 5 })) })
+    expect(screen.queryByTestId('film-gap')).toBeNull()
+    for (const id of SECTIONS) expect(screen.queryByTestId(`emprise-section-${id}`)).toBeNull()
+  })
+
+  it('anglais', () => {
+    useAppShellStore.setState({ locale: 'en' })
+    mount({ pageData: page(sansResume({ matches_film_pending: 5 })) })
+    expect(within(screen.getByTestId('emprise-section-bilan')).getByTestId('analysis-pending-slot').textContent).toContain('Film analysis in progress')
+    vi.restoreAllMocks()
+    mount({ pageData: page(sansResume({ matches_film_missing: 5 })) })
+    expect(screen.getAllByText('Film not analysed').length).toBeGreaterThan(0)
   })
 })

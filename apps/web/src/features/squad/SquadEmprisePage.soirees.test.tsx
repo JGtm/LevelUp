@@ -114,11 +114,11 @@ describe('Soirées précédentes', () => {
     expect(note.querySelector('.border-dashed')).not.toBeNull()
   })
 
-  it('une soirée d’autres modes que ce soir : la légende nomme le point gris', () => {
+  it('une soirée d’autres modes que ce soir : aucune entrée de légende grise, le graphe reste', () => {
     const previous = EMPRISE_2209.habit!.previous!.map((e, i) => (i === 0 ? { ...e, comparable: false, families: ['Bases'] } : e))
     mount({ pageData: page({ ...EMPRISE_2209, habit: { ...EMPRISE_2209.habit!, previous } }) })
     const legend = within(screen.getByTestId('emprise-habit')).getByTestId('chart-card-legend')
-    expect(legend.textContent).toContain('Autres modes que ce soir')
+    expect(legend.textContent).not.toContain('Autres modes que ce soir')
   })
 
   it('sans habitude publiée : le bloc se retire', () => {

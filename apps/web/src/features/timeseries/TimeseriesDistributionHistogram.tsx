@@ -13,8 +13,13 @@ import {
   getEChartsThemeColors,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber, tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { DistributionBucket } from '@/lib/api/types'
 import { ChartFromOption } from './ChartFromOption'
 
@@ -61,16 +66,18 @@ export function TimeseriesDistributionHistogram({
   reviewKey,
 }: TimeseriesDistributionHistogramProps) {
   const themeVersion = useThemeVersion()
+  const locale = useAppShellStore((st) => st.locale)
 
 
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (buckets.length === 0) return null
     const tc = getEChartsThemeColors()
+    const countLabel = formatMessage(commonManifest, 'common.charts.axis_matches', locale)
     const fill = resolveToken(colorToken)
     const medianColor = resolveToken('outcome-loss')
 
     const categories = buckets.map((b) =>
-      `${b.bucket_lower.toFixed(b.bucket_lower % 1 === 0 ? 0 : 1)}`,
+      tipNumber(b.bucket_lower, b.bucket_lower % 1 === 0 ? 0 : 1),
     )
     // Per-bar coloring : si colorTokenByBucket est fourni, chaque barre porte
     // son propre itemStyle (sinon série uniforme via fill).
@@ -102,9 +109,18 @@ export function TimeseriesDistributionHistogram({
     return {
       backgroundColor: CHART_BG,
       grid: { top: 16, right: 16, bottom: 36, left: 40 },
+      // La barre est un EFFECTIF de matchs sur une plage de valeurs : la bulle nomme la plage
+      // (l'axe n'écrit que sa borne basse) et dit « Matchs », pas le nom de la grandeur.
       tooltip: {
         ...getTooltipBase(tc),
         trigger: 'axis',
+        formatter: axisTooltipFormatter({
+          value: (r) => tipNumberAuto(r.value),
+          title: (p) => {
+            const b = buckets[p.dataIndex ?? 0]
+            return b ? `${tipNumberAuto(b.bucket_lower)}–${tipNumberAuto(b.bucket_upper)}` : ''
+          },
+        }),
       },
       xAxis: {
         ...getAxisBase(tc),
@@ -123,7 +139,7 @@ export function TimeseriesDistributionHistogram({
       series: [
         {
           type: 'bar',
-          name: xAxisLabel,
+          name: countLabel,
           data: values,
           // itemStyle de série utilisé seulement quand pas de coloring per-bar.
           itemStyle: colorTokenByBucket ? undefined : { color: fill, opacity: 0.85 },
@@ -135,7 +151,7 @@ export function TimeseriesDistributionHistogram({
                   symbol: 'none',
                   lineStyle: { color: medianColor, width: 1.5, type: 'dashed' },
                   label: {
-                    formatter: `${medianLabel} ${medianRounded}`,
+                    formatter: `${medianLabel} ${tipNumberAuto(medianRounded)}`,
                     color: medianColor,
                     fontSize: 10,
                     fontWeight: 600,
@@ -151,7 +167,7 @@ export function TimeseriesDistributionHistogram({
       ],
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buckets, colorToken, xAxisLabel, medianLabel, themeVersion])
+  }, [buckets, colorToken, xAxisLabel, medianLabel, locale, themeVersion])
 
   return (
     <ChartFromOption

@@ -195,8 +195,8 @@ fr = "Session indisponible"
 en = "Session unavailable"
 
 [session.detail.summary_unavailable_description]
-fr = "La session demandée n'a pas pu être reconstruite avec les filtres actuels."
-en = "Requested session could not be reconstructed with the current filters."
+fr = "Aucune donnée pour la session demandée avec les filtres actuels."
+en = "No data for the requested session with the current filters."
 
 # Stats du résumé
 [session.detail.stat_matches]

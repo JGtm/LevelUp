@@ -42,3 +42,36 @@ func TestBuildSoloEmpriseBlock_JoueursFournis(t *testing.T) {
 		t.Errorf("parts = %+v, attendu P 1, A 2", sniper.Squad)
 	}
 }
+
+// pendingFixe — un résolveur d'analyse en cours à table fixe.
+type pendingFixe struct{ table map[string][]string }
+
+func (p pendingFixe) ResolvePending(_ context.Context, _ []string) map[string][]string {
+	return p.table
+}
+
+// Le bloc dit, pour son périmètre, combien de matchs sans résumé d'usage ont une analyse EN COURS et combien
+// n'en ont pas (Sessions et Séries temporelles passent par cet assemblage).
+func TestBuildSoloEmpriseBlock_DitLesMatchsSansFilm(t *testing.T) {
+	usage := usageTestRepoMock()
+	usage.padTiers = []sessionusage.PadTierRow{
+		{MatchID: "m1", XUID: "P", Tier: domain.PadTierPower, WeaponFamily: "sniper", Pickups: 1, PadsTotal: 2, PadsConfirmed: 2},
+	}
+	q := soloEmpriseQuery{
+		Page: "sessions", Player: "Papa", PlayerXUID: "P", Locale: "fr",
+		Current:   []squademprise.Match{{MatchID: "m1"}, {MatchID: "m2"}, {MatchID: "m3"}},
+		UsageRepo: usage,
+		Pending:   pendingFixe{table: map[string][]string{"m2": {domain.AnalysisPartKillSource}}},
+	}
+	b := buildSoloEmpriseBlock(context.Background(), q)
+	if b.MatchesFilmPending != 1 || b.MatchesFilmMissing != 1 {
+		t.Fatalf("en cours=%d manquant=%d, attendu 1 et 1 (m1 lu, m2 en cours, m3 ni lu ni en cours)",
+			b.MatchesFilmPending, b.MatchesFilmMissing)
+	}
+
+	q.Pending = nil
+	b = buildSoloEmpriseBlock(context.Background(), q)
+	if b.MatchesFilmPending != 0 || b.MatchesFilmMissing != 2 {
+		t.Fatalf("sans résolveur : en cours=%d manquant=%d, attendu 0 et 2", b.MatchesFilmPending, b.MatchesFilmMissing)
+	}
+}
