@@ -20,7 +20,8 @@ import {
   getTooltipBase,
   seriesColor,
 } from '@/components/charts/_utils'
-import { axisTooltipFormatter, tipNumber } from '@/components/charts/axisTooltip'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadSessionPoint } from '@/lib/api/types'
 

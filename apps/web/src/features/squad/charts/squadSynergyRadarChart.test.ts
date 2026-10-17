@@ -2,7 +2,7 @@
  * squadSynergyRadarChart.test.ts — teammates.06.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { tipNumber } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { buildSquadSynergyRadarOption } from './squadSynergyRadarChart'
 import type { SquadSynergyRadarSeries } from '@/lib/api/types'
 

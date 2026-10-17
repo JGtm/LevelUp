@@ -18,7 +18,8 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
-import { axisTooltipFormatter, tipNumber } from '@/components/charts/axisTooltip'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
   CHART_BG,

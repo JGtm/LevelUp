@@ -19,7 +19,7 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
-import { tipNumber } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import type { SquadSynergyRadarSeries } from '@/lib/api/types'
 
 export interface SquadSynergyRadarOpts {

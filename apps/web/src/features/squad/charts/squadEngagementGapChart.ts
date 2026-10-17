@@ -19,7 +19,8 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
-import { axisTooltipFormatter, tipNumber } from '@/components/charts/axisTooltip'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { truncateMap } from '@/lib/charts/matchLabels'
 import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
 import { engagementGapEvents } from '@/lib/charts/engagementGap'

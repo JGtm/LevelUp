@@ -2,7 +2,7 @@
  * squadPerMinuteChart.test.ts — teammates.14.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { tipNumber } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { buildSquadPerMinuteOption } from './squadPerMinuteChart'
 import { hexComplement } from '@/lib/accessibility/hexComplement'
 import type { ChartSeries } from '@/components/charts/ChartCard'

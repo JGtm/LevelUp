@@ -38,7 +38,8 @@ import {
   hoverRevealSymbol,
   legendEntries,
 } from '@/components/charts/_utils'
-import { axisTooltipFormatter, tipNumber, type AxisTipRow } from '@/components/charts/axisTooltip'
+import { axisTooltipFormatter, type AxisTipRow } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import {
   ONE_LIFE_RATE_BOUNDS,
   ONE_LIFE_RATE_PCT,

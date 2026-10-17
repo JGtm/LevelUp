@@ -23,7 +23,8 @@ import {
   stackedAxisExtent,
   LEGEND_ITEM_WIDTH_LINE,
 } from '@/components/charts/_utils'
-import { axisTooltipFormatter, stackTopFirstOrder, tipNumber } from '@/components/charts/axisTooltip'
+import { axisTooltipFormatter, stackTopFirstOrder } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { hexComplement, resolveToken } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility'

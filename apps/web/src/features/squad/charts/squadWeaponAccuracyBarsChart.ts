@@ -20,7 +20,8 @@ import {
   getEChartsThemeColors,
   getTooltipBase,
 } from '@/components/charts/_utils'
-import { axisTooltipFormatter, tipNumber } from '@/components/charts/axisTooltip'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import type { SquadWeaponAccuracy } from '@/lib/api/types'
 
 export interface SquadWeaponAccuracyBarsOpts {

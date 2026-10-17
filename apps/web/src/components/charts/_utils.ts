@@ -26,6 +26,7 @@ import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { getEChartsThemeColors, type EChartsThemeColors } from '@/lib/echarts/themeColors'
 import { formatNumberFixed } from '@/lib/formatters'
 
+import { tipNumberAuto } from './tipNumber'
 import { chartTooltipPosition } from './tooltipPosition'
 
 export const CHART_BG = 'transparent'
@@ -66,6 +67,13 @@ export function getGridBase(overrides: Record<string, number | boolean> = {}) {
   return { top: 16, right: 16, bottom: 64, left: 48, containLabel: true, ...overrides }
 }
 
+/** Valeur d'une ligne de l'infobulle par défaut : un nombre à la langue, tout autre texte tel quel. */
+function defaultTooltipValue(value: unknown): string {
+  if (typeof value === 'number') return tipNumberAuto(value)
+  if (Array.isArray(value)) return value.map(defaultTooltipValue).join(', ')
+  return value == null ? '-' : String(value)
+}
+
 /**
  * Base tooltip style. À spread avant `formatter` ou `trigger`.
  *
@@ -73,9 +81,14 @@ export function getGridBase(overrides: Record<string, number | boolean> = {}) {
  * carte rogne sinon) et `chartTooltipPosition` la borne à la fenêtre en évitant la marque
  * survolée — voir `tooltipPosition.ts`. Pas de `confine` (borne au graphe) ni de transition
  * (une bulle qui glisse masque la marque qu'elle décrit).
+ *
+ * `valueFormatter` par défaut : le rendu par défaut d'ECharts écrit un nombre tel quel
+ * (« 1.3333333333333333 »). Ici, la langue de l'application, entier sans décimale, deux décimales
+ * au plus. Un `valueFormatter` ou un `formatter` explicite, posé après le spread, le remplace.
  */
 export function getTooltipBase(tc: EChartsThemeColors) {
   return {
+    valueFormatter: defaultTooltipValue,
     appendToBody: true,
     position: chartTooltipPosition,
     transitionDuration: 0,

@@ -10,7 +10,7 @@
  */
 import { describe, it, expect } from 'vitest'
 
-import { tipNumber } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { ONE_LIFE_RATE_PCT, ONE_LIFE_ZONE_OPACITY } from '@/lib/charts/oneLifeWindow'
 import {

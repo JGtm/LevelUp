@@ -31,6 +31,7 @@ import {
   outcomeColor,
   seriesColor,
 } from './_utils'
+import { tipNumberAuto } from './tipNumber'
 
 export interface ChartPoint2D {
   x: string | number | Date
@@ -309,7 +310,7 @@ export function buildTimeseriesLineOption(
       ...(xAxisLabelFormatter ? {
         formatter: (params: Array<{ axisValue: number | string; marker: string; seriesName: string; value: [number, number] }>) => {
           if (!Array.isArray(params) || !params.length) return ''
-          const rows = params.map(p => `${p.marker} ${escapeHtml(p.seriesName)}: <b>${p.value[1]}</b>`).join('<br/>')
+          const rows = params.map(p => `${p.marker} ${escapeHtml(p.seriesName)}: <b>${tipNumberAuto(p.value[1])}</b>`).join('<br/>')
           return `${xAxisLabelFormatter(params[0].axisValue)}<br/>${rows}`
         },
       } : {}),

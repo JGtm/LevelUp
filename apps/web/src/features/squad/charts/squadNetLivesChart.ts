@@ -23,7 +23,8 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
-import { axisTooltipFormatter, tipNumber } from '@/components/charts/axisTooltip'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
 import { netLives } from '@/lib/charts/netLives'

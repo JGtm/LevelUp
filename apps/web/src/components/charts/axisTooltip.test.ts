@@ -2,29 +2,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { axisTooltipFormatter, stackTopFirstOrder, tipNumber } from './axisTooltip'
+import { axisTooltipFormatter, stackTopFirstOrder } from './axisTooltip'
+import { tipNumber } from './tipNumber'
 
 afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
 
-const NNBSP = ' '
-
-describe('tipNumber', () => {
-  it('suit la langue de l application (séparateurs et décimale)', () => {
-    useAppShellStore.setState({ locale: 'fr' })
-    expect(tipNumber(1234.5, 1)).toBe(`1${NNBSP}234,5`)
-    useAppShellStore.setState({ locale: 'en' })
-    expect(tipNumber(1234.5, 1)).toBe('1,234.5')
-  })
-  it('décimales fixes, signe typographique, zéro sans signe', () => {
-    expect(tipNumber(3, 1, true)).toBe('+3,0')
-    expect(tipNumber(-1.25, 1, true)).toBe('−1,3')
-    expect(tipNumber(0, 1, true)).toBe('0,0')
-    expect(tipNumber(-4)).toBe('−4')
-  })
-  it('une valeur non finie ne s écrit pas NaN', () => {
-    expect(tipNumber(Number.NaN)).toBe('—')
-  })
-})
 
 describe('axisTooltipFormatter', () => {
   const param = (seriesIndex: number, seriesName: string, value: unknown, extra = {}) => ({

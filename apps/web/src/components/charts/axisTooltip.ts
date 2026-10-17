@@ -11,40 +11,7 @@
  * valeur : pastille de sa couleur, nom, valeur alignée à droite. Les nombres suivent la langue de
  * l'application (`tipNumber`). L'ordre est choisi par l'appelant (`order`).
  */
-import { intlLocale } from '@/lib/formatters'
-import { useAppShellStore } from '@/stores/appShellStore'
-
 import { escapeHtml } from './_utils'
-
-/** Signe moins typographique, le même que `formatSignedFixed`. */
-const MINUS = '−'
-
-const formats = new Map<string, Intl.NumberFormat>()
-
-function numberFormat(locale: string, decimals: number, signed: boolean): Intl.NumberFormat {
-  const key = `${locale}|${decimals}|${signed ? 1 : 0}`
-  let nf = formats.get(key)
-  if (!nf) {
-    nf = new Intl.NumberFormat(locale, {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-      ...(signed ? { signDisplay: 'exceptZero' as const } : {}),
-    })
-    formats.set(key, nf)
-  }
-  return nf
-}
-
-/**
- * Nombre d'infobulle dans la langue de l'application (« 1 234,5 » / « 1,234.5 »), `decimals`
- * décimales fixes. `signed` : « +3,0 » / « −1,2 » (signe moins typographique), zéro sans signe.
- * Non fini : tiret demi-cadratin.
- */
-export function tipNumber(value: number, decimals = 0, signed = false): string {
-  if (!Number.isFinite(value)) return '—'
-  const text = numberFormat(intlLocale(useAppShellStore.getState().locale), decimals, signed).format(value)
-  return text.replace(/^-/, MINUS)
-}
 
 /** Un paramètre de série tel que l'ECharts à déclenchement par axe le fournit. */
 export interface AxisTipParam {

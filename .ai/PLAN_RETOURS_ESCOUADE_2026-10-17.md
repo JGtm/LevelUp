@@ -116,6 +116,11 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
       traitées).
 - [x] E7.3 (un commit par etape sur feat/retours-escouade, aucun push) Commits sur `feat/retours-escouade` uniquement, un par étape ; pas de push.
 
+### E8 — Suite du 2026-10-17 (retours de l utilisateur, meme branche)
+- [x] E8.1 (tipNumber.ts feuille ; getTooltipBase.valueFormatter = tipNumberAuto ; garde components/charts/rawTooltipValue.guard.test.ts sur components/charts, features/squad, features/match-view) Formats de nombres : valueFormatter PAR DEFAUT dans getTooltipBase (nombre a la langue, 2 decimales au plus, entiers sans decimale), sans ecraser un formatter explicite. Puis chercher dans features/ et components/ les infobulles et libelles de graphes qui ecrivent une valeur brute (String(v), template sur un nombre, toFixed absent) : corriger ceux de l Escouade et de la Vue match, lister les autres en decouverte. Garde-rail (regle n6) si un motif grep fiable existe, sinon dire pourquoi.
+- [ ] E8.2 Vue match, onglet Armes et terrain (MatchViewTabArsenal.tsx:125) : etat vide nu -> bloc parent + pointille dedans (comme les Medias). Verifier les autres etats vides de cet onglet et de la Vue match, corriger ceux de la Vue match.
+- [ ] E8.3 Meme onglet : « Frags par ressource » ne prend pas toute la largeur quand il est seul sur sa rangee. Regle de la page : aucun bloc seul a largeur partielle. Corriger ce graphe et tout autre bloc de l onglet qui peut se retrouver seul (la survivante prend la rangee). Test de rendu.
+
 ## 3. Hors périmètre
 
 Tactique (lot jumeau) ; autres pages que l'Escouade pour le contenu des infobulles (E2) ;
@@ -128,3 +133,4 @@ autres onglets d'Escouade que l'Emprise pour les placeholders (à noter s'ils on
 - E5 : pas de rechargement automatique de l onglet Emprise tant qu une analyse est en cours (accueil et vue match rechargent toutes les 60 s) : non demande par le plan, la page Escouade est lourde ; a decider avec l utilisateur.
 - E5 : un titre qui lirait le film sans la capability des positions de frag verrait la section Groupes ou isoles marquee Film non analyse faute de donnee ; aucun titre actuel n est dans ce cas (Halo 5 est film_unsupported).
 - E6 : `features/match-view/MatchViewTabArsenal.tsx:125` rend aussi un `EmptyStateNotice` NU (onglet Armes et terrain sans contenu) : meme ecart a la convention, non traite.
+- E8.1 (hors Escouade et Vue match, non traite) : valeur brute `${p.value}` / `String(p.value)` dans features/session-detail (SessionEngagementChart, SessionModeBreakdown, SessionParticipationBars, SessionPerfTrend, SessionPlacementBreakdown), features/synthesis (SynthesisOutcomesByGroupChart, SynthesisTopWeeksChart), features/ascension/ActivityCalendarChart ; `components/charts/sessionBarsTrendChart.ts:223` (`${v} %`), `HistogramChart.tsx:99` et `heatmap2DOption.ts:371` (toFixed a point decimal). Leur infobulle par defaut beneficie deja du valueFormatter de getTooltipBase.
