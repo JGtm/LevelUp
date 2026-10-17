@@ -284,34 +284,6 @@ func (s *Service) computeObjectiveIndexAxis(
 	return narrative.ComputeObjectiveIndex(inputs[userID])
 }
 
-// computeFKFD compte les First Kill / First Death du joueur sur la fenêtre.
-// Source : shared.highlight_events (event_type IN ('first_kill','first_death')).
-// Si la table n'est pas peuplée pour ces matchs, retourne (0, 0, nil).
-func (s *Service) computeFKFD(ctx context.Context, userID string, since, until time.Time) (int, int, error) {
-	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
-	defer cancel()
-	sharedDB, release, err := s.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return 0, 0, nil
-	}
-	defer release()
-	var fk, fd int
-	err = sharedDB.QueryRowContext(ctx, `
-		SELECT
-			COALESCE(SUM(CASE WHEN he.event_type = 'first_kill'  AND he.killer_xuid = ? THEN 1 ELSE 0 END), 0),
-			COALESCE(SUM(CASE WHEN he.event_type = 'first_death' AND he.victim_xuid = ? THEN 1 ELSE 0 END), 0)
-		FROM highlight_events he
-		JOIN match_registry mr ON mr.match_id = he.match_id
-		WHERE `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?`+s.campaignExcl("mr")+`
-	`, userID, userID, since, until).Scan(&fk, &fd)
-	if err != nil {
-		// La table highlight_events peut ne pas exister ou être vide selon
-		// l'état de sync : on dégrade gracieusement.
-		return 0, 0, nil
-	}
-	return fk, fd, nil
-}
-
 // computeEngagementSimple calcule un EngagementSnapshot heuristique :
 //
 //   - score = min(100, matches_per_day_avg × 25)
