@@ -87,6 +87,13 @@ premier item sans statut.
   ciblée en fin d'E8 (serveur local arrêté pendant la recuisson). Toujours un seul décodage à la
   fois, jamais en arrière-plan pendant un autre, jamais de boucle de shell autour d'un CLI qui
   décode (protections `internal/filmproc`).
+- **D-16** (user, 2026-10-17, après l'enquête E8.1) Les trois erreurs de lecture des positions du
+  coup fatal sont corrigées dans E8 : rattachement par xuid (joueurs renommés), dernière position
+  tenue tant que le film n'émet pas de changement (même vie, hors embarquement), position du siège
+  pour l'occupant d'un véhicule. La position à la mort (contexte) suit la même lecture. Remplace la
+  branche « STOP si perte » de D-7 : l'unification ne doit plus rien perdre.
+- **D-17** (user, 2026-10-17) Frag posthume (tueur déjà mort, projectile en vol) : le tueur est
+  placé au lieu de sa mort, repéré comme position posthume (repli nommé et compté).
 - **D-14** H5 au déploiement : les passes `--perf`, `--assists-model`, `--lusr`, `--citations`
   deviennent title-aware (CLI `--title` et champ `title` de `POST /backfill/start`) ; l'EXÉCUTION en
   prod reste un geste du user, préparée par une séquence écrite au runbook.
@@ -384,10 +391,24 @@ navigateur et contrôle visuel du user : OUVERTS.
 
 ### E8 — Lot film : position à la mort, score KOTH Lattice, Harvest, vies sans identité (entrées 7, 8, 9, 6) — M+
 
-- [!] E8.1 Position unique (D-7) -- STOP D-7 (2026-10-17) : 12 contextes perdus sur 1 054 au corpus versionne, 151 sur 22 454 aux faits locaux (0 ambiguite de corps, 100 pct "aucun echantillon a +-120 ms") ; travail parque sur la ref locale `wip/b1016-e8-1-parque` (non integre), decision du user attendue ; cf. journal. Texte d origine :
-  Position unique (D-7) : `ContextesDesMorts` lit la position de `positionOf` ; test
-  d'égalité à 1e-6 ; tolérance 0,5 m du test `research` retirée ; compte des contextes perdus sur le
-  corpus versionné et les films locaux (0 attendu, sinon STOP).
+- [ ] E8.1 Positions du coup fatal et position à la mort (D-7 amendée par D-16, D-17). Historique :
+  première tentative (source unique `positionOf`) arrêtée le 2026-10-17 (151 contextes perdus sur
+  22 454), ref `wip/b1016-e8-1-parque` ; enquête (ref `wip/b1016-e8-1-enquete`, journal) : en base,
+  8,3 % des tueurs et 5,9 % des victimes sans position, causes = lecture. Travail :
+  (a) passe des positions sur le journal fusionné par xuid (joueurs renommés : 0 position sur tout
+  le match aujourd'hui, `killRefsFromDeaths(batch.Deaths)` avant fusion) ; commentaire faux de
+  `positions.go` (« crédit-seul sans position ») corrigé ;
+  (b) dernière position tenue dans la même vie tant que le film n'émet pas de changement (i0 émis
+  sur changement seulement), hors embarquement ;
+  (c) occupant d'un véhicule : position du siège par la couche véhicules déjà utilisée pour les
+  tirs ;
+  (d) tueur déjà mort au moment du frag (projectile en vol) : lieu de sa mort, repéré comme
+  position posthume (repli nommé, compté) ;
+  (e) `ContextesDesMorts` lit la victime par cette même lecture (source unique, test d'égalité à
+  1e-6, tolérance 0,5 m retirée) ;
+  (f) mesure avant/après sur le corpus versionné et les 237 films à faits locaux (manquants par
+  côté et par cause), critère : aucune perte, baisse des manquants conforme à l'enquête ;
+  (g) révisions montées une fois (D-8), rattrapage killsource/positions prévu à E8.6 et en prod.
 - [x] E8.2 KOTH Lattice : émissions brutes de `SeriesTotal` autour de l'image 2268 (`26602661`) et
   5346 (`7de0b91d`) ; cause nommée (point jeté, émission hors domaine, camps, manches) ; correctif à
   la source ; critère : `7de0b91d` rend 40 sans contradiction comptée, `26602661` sans descente, les
