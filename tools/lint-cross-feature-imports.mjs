@@ -126,6 +126,12 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'tactical=>match-replay/hooks/useReplayWheelZoom',
   'tactical=>match-replay/hooks/useReplayZoomKeys',
   'tactical=>match-replay/ui/ReplayZoomControl',
+  //  - la règle de HAUTEUR de la toile du rejeu 2D pour le plan de l'onglet Tactique (2026-10-17) : le
+  //    plan tient dans l'écran selon la même règle (plancher, plafond, marge basse, pas, chrome
+  //    déduit — légende et barre de lecture comptées). Une copie serait la deuxième définition de
+  //    « la hauteur que l'écran laisse à une carte » ; la descendre dans `lib/` emmènerait les
+  //    constantes du cadrage du rejeu. Dépendance durable, même raison que les hooks de zoom.
+  'tactical=>match-replay/hooks/useReplayViewport',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history

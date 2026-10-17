@@ -12,7 +12,7 @@
  * rapport (`boiteDuPlan`), donc l'image n'y est ni rognée ni déformée. Sans carte (`mapId` vide),
  * la boîte garde le rapport par défaut, sans image.
  */
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
 
 import { boiteDuPlan, type CadrageDuFond } from './plan.logic'
 import { useTacticalMapBackgroundUrl } from './queries'
@@ -22,6 +22,8 @@ export interface TacticalPlanFondProps {
   mapId: string
   /** Rapport largeur/hauteur du cadre — celui du calage du fond (`aspectDuPlan`). */
   aspect: number
+  /** Le cadre lui-même : sa hauteur est celle que `useHauteurDuPlan` règle (le chrome s'en déduit). */
+  cadreRef?: RefObject<HTMLDivElement | null>
   /** La hauteur que la fenêtre laisse au cadre, en px (`useHauteurDuPlan`). */
   hauteurMax: number
   /** La place de l'image dans le cadre au zoom courant (`cadrageDuFond`). */
@@ -29,10 +31,11 @@ export interface TacticalPlanFondProps {
   children?: ReactNode
 }
 
-export function TacticalPlanFond({ playerSlug, mapId, aspect, hauteurMax, cadrage, children }: TacticalPlanFondProps) {
+export function TacticalPlanFond({ playerSlug, mapId, aspect, hauteurMax, cadrage, cadreRef, children }: TacticalPlanFondProps) {
   const fond = useTacticalMapBackgroundUrl(playerSlug, mapId)
   return (
     <div
+      ref={cadreRef}
       className="relative flex-none overflow-hidden rounded-md bg-muted"
       style={boiteDuPlan(aspect, hauteurMax)}
       data-testid="tactical-plan-frame"

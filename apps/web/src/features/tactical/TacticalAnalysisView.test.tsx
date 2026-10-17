@@ -20,6 +20,7 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import type { UseQueryResult } from '@tanstack/react-query'
 
 import type { TacticalRaster } from '@/lib/api/types'
+import { fitCanvasHeight, VIEWPORT_BOTTOM_MARGIN } from '@/features/match-replay/hooks/useReplayViewport'
 import { renderWithProviders } from '@/test/render-utils'
 
 import type { CarteEffective } from './cockpit.logic'
@@ -27,10 +28,9 @@ import { getTacticalText } from './i18n'
 import { MORT_COMPLETE } from './mort.fixtures'
 import { TacticalAnalysisView } from './TacticalAnalysisView'
 import { PLAN_ASPECT_DEFAUT } from './tacticalView.logic'
-import { hauteurDisponible } from './useHauteurDuPlan'
 
-/** La hauteur que la fenêtre de test laisse au plan (jsdom : aucune mise en page, le cadre en haut). */
-const HAUTEUR = hauteurDisponible(window.innerHeight, 0)
+/** La hauteur que la fenêtre de test laisse au plan : la règle du rejeu (jsdom : aucune mise en page, le cadre en haut). */
+const HAUTEUR = fitCanvasHeight(window.innerHeight - VIEWPORT_BOTTOM_MARGIN)
 
 const getBlob = vi.fn()
 vi.mock('@/lib/api/client', async (importOriginal) => {

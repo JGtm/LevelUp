@@ -164,8 +164,9 @@ export function TacticalPlanCard({
   const { scene, zoom, fenetre } = useCadrageDuPlan(repere, cadreFond)
   const peinture = usePeinture(t, locale, question, lue, repere)
   const zones = useMemo(() => normalizeCalloutZones(lue?.zones), [lue?.zones])
-  const boite = useRef<HTMLDivElement>(null)
-  const hauteurMax = useHauteurDuPlan(boite)
+  const carteRef = useRef<HTMLDivElement>(null)
+  const cadreRef = useRef<HTMLDivElement>(null)
+  const hauteurMax = useHauteurDuPlan(carteRef, cadreRef)
   const estompe = etat === 'relecture' ? ` ${ESTOMPE}` : ''
   const peintes = peinture.grid?.filled ?? 0
   const raisonVide = lue ? planEmptyReason(peintes, lue.matchs_retenus, lue.matchs_filtres) : null
@@ -194,80 +195,83 @@ export function TacticalPlanCard({
   )
 
   return (
-    <SectionCard
-      title={titre}
-      label={titre || undefined}
-      titleAdornment={titleWithInfo(lue ? infoDuPlan(t, locale, question, lue, peintes) : null, {
-        trailing: <ReglagesEnPilules t={t} locale={locale} {...reglages} />,
-        testId: 'tactical-plan-title',
-      })}
-    >
-      {messages.length > 0 && (
-        <div role="status" className={`px-3 pt-1.5 text-xs text-warning${estompe}`} data-testid="tactical-plan-status">
-          {messages.map((msg) => (
-            <p key={msg}>{msg}</p>
-          ))}
+    <div ref={carteRef} className="min-w-0">
+      <SectionCard
+        title={titre}
+        label={titre || undefined}
+        titleAdornment={titleWithInfo(lue ? infoDuPlan(t, locale, question, lue, peintes) : null, {
+          trailing: <ReglagesEnPilules t={t} locale={locale} {...reglages} />,
+          testId: 'tactical-plan-title',
+        })}
+      >
+        {messages.length > 0 && (
+          <div role="status" className={`px-3 pt-1.5 text-xs text-warning${estompe}`} data-testid="tactical-plan-status">
+            {messages.map((msg) => (
+              <p key={msg}>{msg}</p>
+            ))}
+          </div>
+        )}
+        <div className="relative mx-3 mb-3 mt-2.5 flex justify-center" style={{ paddingRight: MARGE_LEGENDE }}>
+          <TacticalPlanFond
+            playerSlug={playerSlug}
+            mapId={mapId}
+            aspect={aspectDuPlan(cadreFond, repere)}
+            hauteurMax={hauteurMax}
+            cadreRef={cadreRef}
+            cadrage={cadrageDuFond(scene, fenetre)}
+          >
+            {lue && raisonVide === null && (
+              <CalqueDuPlan
+                grid={peinture.grid}
+                repere={repere}
+                fenetre={fenetre}
+                zoom={zoom}
+                ramp={peinture.ramp}
+                zones={zones}
+                locale={locale}
+                selected={selected}
+                onPointSelect={onPointSelect}
+                estompe={estompe}
+              />
+            )}
+            {repere && pointsTueurs.length > 0 && (
+              <CoucheDesTueurs
+                t={t}
+                locale={locale}
+                repere={repere}
+                fenetre={fenetre}
+                contributions={contributions}
+                points={pointsTueurs}
+                survol={survol}
+                onSurvol={onSurvol}
+                choisie={choisie}
+                onChoisir={onChoisir}
+                estompe={estompe}
+              />
+            )}
+            {repere && (sceneMort.marques.length > 0 || sceneMort.cercle !== null) && (
+              <CoucheDesCoequipiers repere={repere} fenetre={fenetre} scene={sceneMort} estompe={estompe} lecture={lectureDeLaToile} />
+            )}
+            {repere && selected && etiquette && !mortSelectionnee && (
+              <EtiquetteDeZone selected={selected} repere={repere} fenetre={fenetre} texte={etiquette} estompe={estompe} />
+            )}
+            <AvisSurLeFond t={t} etat={etat} inconnus={inconnus} estompe={estompe}>
+              {lue && raisonVide ? titreDuPlanVide(t, raisonVide) : null}
+            </AvisSurLeFond>
+            <IndicateurDeLecture t={t} etat={etat} />
+            {mapId && <ReplayZoomControl zoom={zoom} locale={locale} />}
+          </TacticalPlanFond>
+          <RampeVerticale
+            t={t}
+            legende={lue && raisonVide === null ? peinture.legende : null}
+            ramp={peinture.ramp}
+            unite={unitForQuestion(t, question)}
+            estompe={estompe}
+          />
         </div>
-      )}
-      <div ref={boite} className="relative mx-3 mb-3 mt-2.5 flex justify-center" style={{ paddingRight: MARGE_LEGENDE }}>
-        <TacticalPlanFond
-          playerSlug={playerSlug}
-          mapId={mapId}
-          aspect={aspectDuPlan(cadreFond, repere)}
-          hauteurMax={hauteurMax}
-          cadrage={cadrageDuFond(scene, fenetre)}
-        >
-          {lue && raisonVide === null && (
-            <CalqueDuPlan
-              grid={peinture.grid}
-              repere={repere}
-              fenetre={fenetre}
-              zoom={zoom}
-              ramp={peinture.ramp}
-              zones={zones}
-              locale={locale}
-              selected={selected}
-              onPointSelect={onPointSelect}
-              estompe={estompe}
-            />
-          )}
-          {repere && pointsTueurs.length > 0 && (
-            <CoucheDesTueurs
-              t={t}
-              locale={locale}
-              repere={repere}
-              fenetre={fenetre}
-              contributions={contributions}
-              points={pointsTueurs}
-              survol={survol}
-              onSurvol={onSurvol}
-              choisie={choisie}
-              onChoisir={onChoisir}
-              estompe={estompe}
-            />
-          )}
-          {repere && (sceneMort.marques.length > 0 || sceneMort.cercle !== null) && (
-            <CoucheDesCoequipiers repere={repere} fenetre={fenetre} scene={sceneMort} estompe={estompe} lecture={lectureDeLaToile} />
-          )}
-          {repere && selected && etiquette && !mortSelectionnee && (
-            <EtiquetteDeZone selected={selected} repere={repere} fenetre={fenetre} texte={etiquette} estompe={estompe} />
-          )}
-          <AvisSurLeFond t={t} etat={etat} inconnus={inconnus} estompe={estompe}>
-            {lue && raisonVide ? titreDuPlanVide(t, raisonVide) : null}
-          </AvisSurLeFond>
-          <IndicateurDeLecture t={t} etat={etat} />
-          {mapId && <ReplayZoomControl zoom={zoom} locale={locale} />}
-        </TacticalPlanFond>
-        <RampeVerticale
-          t={t}
-          legende={lue && raisonVide === null ? peinture.legende : null}
-          ramp={peinture.ramp}
-          unite={unitForQuestion(t, question)}
-          estompe={estompe}
-        />
-      </div>
-      <PiedDuPlan t={t} locale={locale} scene={sceneMort} vue={vue} roles={rolesPresents(pointsTueurs)} etatSequence={etatSequence} />
-    </SectionCard>
+        <PiedDuPlan t={t} locale={locale} scene={sceneMort} vue={vue} roles={rolesPresents(pointsTueurs)} etatSequence={etatSequence} />
+      </SectionCard>
+    </div>
   )
 }
 

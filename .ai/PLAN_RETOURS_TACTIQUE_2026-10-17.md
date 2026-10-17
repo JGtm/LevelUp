@@ -78,12 +78,12 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
       interpolation) dans un `*.logic.ts` testé ; composant sans logique métier.
 
 ### T4 — Hauteur du cockpit = règle du rejeu
-- [ ] T4.1 Le plan suit la même règle que la toile du rejeu : même plafond (720), même plancher,
+- [x] T4.1 Le plan suit la même règle que la toile du rejeu : même plafond (720), même plancher,
       même marge basse, même pas ; la légende et la barre de lecture (pied du plan) sont
       déduites. Réutiliser le helper du rejeu (pas de copie, règle CLAUDE.md n°6) en déclarant
       l'import croisé dans `lint-cross-feature-imports` (précédent : commit `44349fcd0`), ou le
       remonter dans un module partagé.
-- [ ] T4.2 Colonnes latérales : toujours à la hauteur du plan.
+- [~] T4.2 Colonnes latérales : toujours à la hauteur du plan. (couvert : TacticalPage.test.tsx l.251-256 tient `self-stretch` + `contain: size` sur les deux colonnes ; la carte du plan, enveloppée d'un div qui devient l'élément de grille, reste ce qui fixe la hauteur de la rangée)
 
 ### T5 — Clôture
 - [ ] T5.1 `make check-types`, `make test-web` (vitest hors sandbox), lint web,
@@ -127,3 +127,14 @@ Activation du rejeu en prod (release) ; bots dans les positions ; autres pages.
 - T3.3 : instants écrits = `instant_affiche_ms` de l'étape de la mort (déjà converti par le serveur sur l'horloge du
   coup d'envoi) + décalage, plancher 0 ; `formatClock` partagé. Aucune conversion d'axe refaite côté web. (`matchClock`
   est l'outil du document de rejeu complet, absent ici : la séquence ne charge que ses pistes.)
+
+### T4 (2026-10-17)
+- `useHauteurDuPlan(carte, cadre)` = `useReplayViewport(carte, cadre).freeHeight` : le helper du rejeu, pas une copie
+  (paire `tactical=>match-replay/hooks/useReplayViewport` déclarée dans `lint-cross-feature-imports`). Règle avant :
+  hauteur = fenêtre − haut du cadre − 40 px, plancher 360, aucun plafond, pas de pas, légende et barre non comptées.
+  Règle après (celle du rejeu) : plancher 360, plafond 720, marge basse 16, pas de 8 px, mesure refaite 120 ms après le
+  dernier redimensionnement, chrome déduit = hauteur de la carte entière (titre, états, légende, zone séquence) moins
+  celle du cadre.
+- `useReplayViewport` : le second paramètre accepte tout élément (le cadre du plan) et l'observateur de taille est
+  optionnel (jsdom), comme le patron du dépôt ; comportement du rejeu inchangé (son test passe).
+- `PLAN_HAUTEUR_MIN_PX` et `PLAN_MARGE_BAS_PX` supprimés (code mort) ; `hauteurDisponible` supprimée.
