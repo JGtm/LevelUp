@@ -13,9 +13,16 @@
 // C'EST UNE LECTURE EN POST (le corps porte la cle de la mort), declaree comme telle par le prefixe
 // `/tactical/` de `middleware.readOnlyPostPrefixes`.
 //
-// ZERO LOGIQUE ICI. Le handler valide la forme des identifiants, delegue, traduit un refus en statut.
-// Match inconnu, match d'un autre joueur, artefact absent, horloge non etablie, carte sans rayon :
-// TOUS rendent le meme 404 `replay_not_available` — ils sont indiscernables par construction.
+// ZERO LOGIQUE ICI. Le handler valide la forme des identifiants, delegue, traduit un refus ou une
+// cause en statut et en code.
+//
+// DEUX FAMILLES D'ABSENCE (le web doit pouvoir distinguer une fonction absente d'une donnee absente) :
+//
+//	REFUS    match inconnu ou d'un autre joueur, forme invalide, garde du rejeu : TOUS rendent le meme
+//	         404 `replay_not_available` — indiscernables par construction (ADR 0029). Le web n'y lit
+//	         rien : fonction absente, la vue de sequence n'est pas rendue (comme le lien de rejeu).
+//	CAUSE    le match est celui de l'appelant, la sequence manque pour une raison de DONNEES : 404 a
+//	         code propre (`sequenceCauses`), que le web lit pour ecrire lui-meme le texte.
 package handlers
 
 import (
@@ -66,6 +73,31 @@ type tacticalSequenceOutput struct{ Body domain.TacticalSequence }
 // messageSansSequence : LE message de tous les refus de la route (cf. l en-tete).
 const messageSansSequence = "aucune sequence disponible pour cette mort"
 
+// sequenceCauses : les causes « donnees » d'une sequence absente et leur code machine STABLE. Le web
+// (`features/tactical/sequenceCause.logic.ts`) les lit pour ecrire le texte de l'etat vide : ne pas
+// renommer un code sans le miroir. Statut 404 pour toutes : la sequence demandee n'existe pas (encore
+// ou plus), le code dit pourquoi.
+var sequenceCauses = []struct {
+	err  error
+	code string
+}{
+	{port.ErrSequenceAnalyseEnCours, "sequence_analysis_pending"},
+	{port.ErrSequenceFilmNonAnalyse, "sequence_film_not_analysed"},
+	{port.ErrSequenceFilmSansHorloge, "sequence_film_clock_missing"},
+	{port.ErrSequenceCarteNonMesuree, "sequence_map_unmeasured"},
+	{port.ErrSequenceSansPosition, "sequence_no_death_position"},
+}
+
+// erreurDeCause rend l'erreur HTTP d'une cause « donnees », ou nil si err n'en est pas une.
+func erreurDeCause(ctx context.Context, err error) error {
+	for _, c := range sequenceCauses {
+		if errors.Is(err, c.err) {
+			return humacore.NewErrorFrom(ctx, http.StatusNotFound, c.code, err)
+		}
+	}
+	return nil
+}
+
 // handleGetSequence rend la sequence d'une mort du joueur de la page.
 //
 // Formes en LISTE BLANCHE, comme `MapIDValide` : le match_id par title.IsValidMatchID, le
@@ -87,6 +119,9 @@ func (h *TacticalSequenceHandler) handleGetSequence(ctx context.Context, in *tac
 	})
 	if errors.Is(err, port.ErrReplayNotAvailable) {
 		return nil, humacore.NewError(http.StatusNotFound, "replay_not_available", messageSansSequence)
+	}
+	if httpErr := erreurDeCause(ctx, err); httpErr != nil {
+		return nil, httpErr
 	}
 	if err != nil {
 		return nil, mapTacticalError(ctx, err, "tactical.sequence")

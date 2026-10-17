@@ -1,7 +1,8 @@
 /**
  * mort.logic — la logique PURE de la lecture des coéquipiers à la mort : le bilan de la zone (barre
  * des quatre statuts, rose, phrases), la fiche d'UNE mort (tueur, coéquipiers, distances, échange),
- * et les SCÈNES que le plan peint (nuage de la zone, instantané d'une mort, étape de la séquence).
+ * et les SCÈNES que le plan peint (nuage de la zone, instantané d'une mort ; la scène d'un instant de la
+ * séquence est dans `sequenceLecture.logic.ts`).
  *
  * LES RÈGLES DE PORTÉE NE SONT PAS ICI : le serveur publie `statut` et `dans_le_rayon` (borne
  * inclusive, `coordination.APortee`) ; ce fichier les LIT et ne compare jamais une distance à un
@@ -229,43 +230,6 @@ type Acteur = NonNullable<TacticalSequence['acteurs']>[number]
 function positionDe(a: Acteur, offsetMs: number): Pt | null {
   const p = (a.points ?? []).find((q) => q.offset_ms === offsetMs)
   return p ? { x: p.x, y: p.y } : null
-}
-
-/** La traîne d'un acteur à `offsetMs` : ses échantillons des `traineMs` précédentes, coupés aux lacunes. */
-function traineDe(a: Acteur, offsetMs: number, traineMs: number): Pt[][] {
-  const segments: Pt[][] = []
-  let courant: Pt[] = []
-  for (const p of a.points ?? []) {
-    if (p.offset_ms > offsetMs || p.offset_ms < offsetMs - traineMs) continue
-    if (p.coupure && courant.length > 0) {
-      segments.push(courant)
-      courant = []
-    }
-    courant.push({ x: p.x, y: p.y })
-  }
-  if (courant.length > 0) segments.push(courant)
-  return segments.filter((s) => s.length > 1)
-}
-
-/**
- * sceneDeSequence — l'étape `etape` (index de `seq.etapes`) de la séquence : le cercle à son centre
- * (la victime avant la mort, le lieu de la mort ensuite), les traînes de 4 s, et chaque acteur à sa
- * position de l'instant. Le mort reste au lieu de sa mort à partir de l'instant 0 ; un acteur sans
- * position à cet instant n'est pas peint.
- */
-export function sceneDeSequence(seq: TacticalSequence, etape: number): SceneDuPlan {
-  const e = seq.etapes?.[etape]
-  if (!e) return SCENE_VIDE
-  const marques: MarqueDeScene[] = []
-  const traines: TraineDeScene[] = []
-  for (const a of seq.acteurs ?? []) {
-    const role = a.role === 'victime' ? 'mort' : a.role === 'tueur' ? 'tueur' : 'coequipier'
-    const pos = a.role === 'victime' && e.offset_ms >= 0 ? seq.mort : positionDe(a, e.offset_ms)
-    if (pos) marques.push({ role, pt: pos, plein: a.role !== 'coequipier' || (e.dans_le_rayon_xuids ?? []).includes(a.xuid ?? '') })
-    const segments = traineDe(a, e.offset_ms, seq.traine_ms)
-    if (segments.length > 0) traines.push({ role, segments })
-  }
-  return { cercle: { centre: e.centre, rayonM: seq.rayon_m }, traines, marques }
 }
 
 /** Une ligne de la fiche d'étape : un acteur et sa distance au centre du cercle (« — » sans position). */

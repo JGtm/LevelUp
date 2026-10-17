@@ -118,7 +118,8 @@ function freeSpaceFor(el: HTMLElement, chrome: number): number {
 
 /**
  * @param ref  le conteneur mesuré : il porte le terrain ET tout ce qui l'accompagne.
- * @param canvasRef  la toile elle-même. Elle sert à ISOLER le chrome par soustraction, et c'est
+ * @param canvasRef  la toile elle-même — ou, pour le plan de l'onglet Tactique, son cadre : tout
+ *   élément dont la hauteur est celle qu'on règle. Elle sert à ISOLER le chrome par soustraction, et c'est
  *   pour cela qu'on la lit dans le DOM plutôt que de suivre la hauteur qu'on vient de servir :
  *   le DOM dit ce qui est réellement peint, une valeur recopiée ne dirait que ce qu'on croit
  *   avoir demandé — et à la première divergence, la mesure suivante croirait que le chrome a
@@ -126,7 +127,7 @@ function freeSpaceFor(el: HTMLElement, chrome: number): number {
  */
 export function useReplayViewport(
   ref: RefObject<HTMLElement | null>,
-  canvasRef: RefObject<HTMLCanvasElement | null>,
+  canvasRef: RefObject<HTMLElement | null>,
 ): ReplayViewport {
   const [viewport, setViewport] = useState<ReplayViewport>({
     width: 0,
@@ -160,12 +161,13 @@ export function useReplayViewport(
     }
 
     measure()
-    const ro = new ResizeObserver(settle)
-    ro.observe(el)
+    // L'observateur est optionnel (jsdom ne le fournit pas) : sans lui, `resize` et la mesure initiale restent.
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(settle)
+    ro?.observe(el)
     window.addEventListener('resize', settle)
     return () => {
       window.clearTimeout(timer)
-      ro.disconnect()
+      ro?.disconnect()
       window.removeEventListener('resize', settle)
     }
   }, [ref, canvasRef])
