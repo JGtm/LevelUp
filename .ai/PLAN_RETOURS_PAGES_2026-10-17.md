@@ -64,11 +64,81 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
       retirer « artefacts de rejeu » ; constat factuel FR/EN.
 
 ### P4 — Clôture
-- [ ] P4.1 `npx tsc -b --force`, vitest complet, lint web (+ colors, fields, knip), `go test` des
+- [x] P4.1 (gates au journal §4) `npx tsc -b --force`, vitest complet, lint web (+ colors, fields, knip), `go test` des
       paquets Go touchés + `internal/archlint`, golangci-lint sur ces paquets.
-- [ ] P4.2 Entrée `.ai/thought_log.md`, découvertes hors périmètre au plan §3.
-- [ ] P4.3 Un commit par étape sur `feat/retours-pages` ; pas de push.
+- [x] P4.2 (entree du journal 2026-10-17 ; decouvertes ci-dessous) Entrée `.ai/thought_log.md`, découvertes hors périmètre au plan §3.
+- [x] P4.3 (un commit par etape, plus deux commits de suite P1 et P2 ; branche feat/retours-pages, aucun push) Un commit par étape sur `feat/retours-pages` ; pas de push.
 
-## 3. Découvertes
+## 3. Découvertes (non traitées, hors périmètre)
 
-(à remplir)
+- `features/synthesis/SynthesisHighlightsSection.tsx` n'est importé par aucune page (seul son test le monte) : code mort avec
+  une description d'état vide écrite en dur en français (« scope »). `knip` ne le voit pas parce que le test le référence.
+- `SynthesisPage.test.tsx` : 14 tests `it.skip` d'une ancienne interface (dette annoncée dans le fichier depuis le merge 818a26bc).
+- `SynthesisTopWeeksChart` : noms de séries en dur, non traduits (« Top 1 », « Autres », « Taux Top (%) », axe « Win % »).
+- Nombres à point décimal restants, hors graphes des pages du lot : `toFixed` des cartes KPI de la Synthèse
+  (`SynthesisPage.tsx`), de `_shared.ts formatPercent` (Sessions), des formateurs canoniques `lib/formatters` (`formatPercent`,
+  `formatNumberFixed`), de `features/career/CareerChartsSection.xpHistory.tsx` et de `features/explorer` (carte d'activité, cadence).
+  Le garde `rawTooltipValue.guard.test.ts` nomme le périmètre tenu et ces restes.
+- Blocs dont l'absence dit « aucun match concerné » et que le lot laisse absents (à confirmer avec l'utilisateur) : l'Objectif des
+  Sessions et des Séries temporelles (aucun match à objectif), le bandeau d'objectifs des Séries temporelles, les cartes de frags
+  (aucun frag), `FragSunburst` (renvoie `null` sans frag alors que son voisin `FragWeaponBreakdown` affiche un état vide).
+- `TimeseriesKdaBars` n'est monté que par la page de laboratoire `/lab/charts`.
+- Vue match : l'Emprise solo (`buildSoloEmpriseBlock`) ne reçoit pas de résolveur (`Pending` nil) ; la Vue match dit « en cours »
+  par ses propres `analysis_pending_parts`, donc `matches_film_*` y restent à zéro.
+- Les causes de la Synthèse (`weapon_records_gap`) comptent « non analysé » dès qu'un scope porte des frags sans position : sur un
+  historique ancien dont le film n'existe plus, le texte « Le film de ces matchs n'a pas été analysé » reste vrai mais permanent.
+- `go-vet` du pre-commit tourne sans l'environnement CGO (déjà noté au lot Tactique).
+
+## 4. Journal d'exécution
+
+### P1 (2026-10-17)
+- Périmètre migré sur `tipNumber` / `tipNumberAuto` / `tipNumberUpTo` (nouveau : décimales au plus, sans zéro inutile) et
+  `axisTooltipFormatter` : 14 graphes de Sessions, 4 de la Synthèse (+ carte de chaleur et barres bipolaires), calendrier d'activité,
+  14 des Séries temporelles, `HistogramChart`, `heatmap2DOption`, `sessionBarsTrendChart`, `WeaponAccuracyChart` (unité « tirs »
+  traduite), `FragWeaponBreakdown`, `RadarChart`, `DonutChart` (gabarit `{d}%`), `ScatterChart`.
+- Gardes : `rawTooltipValue.guard.test.ts` couvre tout `src/` (interpolation de `value`/`data`, gabarits `{c}`/`{d}`) et les
+  fichiers de graphe du lot pour `toFixed`.
+
+### P2 (2026-10-17)
+- Règle : fonction absente (capability) = bloc absent ; film non lu sur un périmètre qui lit le film = bloc affiché (intertitre +
+  bloc parent + `AnalysisPendingSlot` ou `EmptyStateNotice`) ; film lu partout et bloc sans sujet = bloc absent (même règle que
+  l'Emprise de l'Escouade).
+- Go : `squadagg.NoteFilmGaps` (ex-méthode de l'Escouade) pose `matches_film_pending` / `matches_film_missing` ; Sessions et
+  Séries temporelles la branchent sur leur bloc d'Emprise via le résolveur partagé (`WithAnalysisPending`, garde de câblage
+  `registry_pages_film_gap_wiring_test.go`) ; la Synthèse publie `weapon_records_gap`. `openapi.yaml` et `generated.ts` régénérés.
+- Web : module partagé `features/_shared/filmGap` (décision, textes, `FilmGapState` / `FilmGapCard` / `FilmGapSection`), utilisé par
+  l'Escouade, Sessions, Séries temporelles et la Synthèse ; garde `filmGap.guard.test.ts` (un seul lecteur des compteurs, un seul
+  littéral « Film non analysé »). Texte « non analysé » rendu neutre (plus de « pas encore »).
+
+| Page | Bloc | Source | Avant (données manquantes) | Après |
+|---|---|---|---|---|
+| Sessions | Bande KPI (résumé) | feuille de match | pointillé nu en tête de colonne | bloc parent + pointillé dedans ; texte sans « reconstruite » |
+| Sessions | Issues, frags/morts/assistances (anneaux) | feuille de match | carte absente (`null`) | carte titrée + état vide |
+| Sessions | Modes, placements, radars, FDA, perf, dégâts, MMR/OC-DR | feuille de match | ChartCard : état vide conforme | inchangé |
+| Sessions | Écart au FDA attendu, balance de vies, engagement, MMR, XP | capability | absent | inchangé (fonction absente) |
+| Sessions | Intensité, Premier sang | film (événements) | ChartCard : état vide conforme | inchangé |
+| Sessions | Appui reçu | journal des morts | absent sans bloc, raison affichée si indisponible | inchangé |
+| Sessions | Portée des engagements | film (positions) | carte absente, « aucun texte ne dit l'absence » | titre + « en cours » / « non analysé » dans la carte |
+| Sessions | Ressources, Prendre, Vies, Équipement | film (résumé d'usage) | famille et intertitre absents | intertitre + carte d'état par famille sans carte dessinée |
+| Sessions | Objectif | feuille de match | absent sans match à objectif | inchangé (périmètre sans objet) |
+| Sessions | Tiroir de comparaison vide | — | pointillé nu | bloc parent + pointillé |
+| Séries temporelles › Résumé | graphes (FDA, vies, assistances, performance, cartes) | feuille de match | ChartCard : état vide conforme | inchangé |
+| Séries temporelles › Résumé | Répartition des frags (anneau) | feuille de match | `null` sans frag | inchangé (découverte) |
+| Séries temporelles › Usages | Portée, Ressources, Par carte, Prises, Rendement, Isolement, Équipement | film | section et intertitre absents | intertitre + état par section sans donnée |
+| Séries temporelles › Usages | onglet sans rien | — | pointillé nu | bloc parent + pointillé |
+| Séries temporelles › Usages | Objectif | feuille de match | absent | inchangé |
+| Séries temporelles | Appui reçu | journal des morts / capability | absent | inchangé |
+| Synthèse | Records de distance par arme | film (positions) | section absente | titre + « en cours » / « non analysé » dans la carte |
+| Synthèse | Meilleures semaines, par carte, par mode | feuille de match | chart absent si vide | carte titrée + état vide |
+| Synthèse | Page sans charge utile / erreur de chargement | — | texte en dur FR avec impératif et mots internes / « Erreur : … » brut | constats traduits, bloc parent |
+| Synthèse | Précision par arme | capability (natif) | absent | inchangé (fonction absente) |
+| Calendrier d'activité | calendrier | feuille de match | bloc absent si la lecture échoue | bloc conservé, « Calendrier d'activité indisponible. » ; sans jour joué : état vide déjà conforme |
+
+### P3 (2026-10-17)
+- `tactical.plan.info_source_replay` : « artefacts de rejeu » / « replay artifacts » devient « positions du film » / « film positions ».
+
+### P4 (2026-10-17) — gates rejoués sur l'arbre final
+- Web : `npx tsc -b --force`, `npx vitest run` (complet), `npm run lint` (0 erreur, 26 avertissements préexistants), `lint:colors`,
+  `lint:fields`, `node tools/knip-ratchet.mjs` (0/0/0), `node tools/lint-cross-feature-imports.mjs` (7 <= plafond).
+- Go : `go test` des paquets touchés (service, squadagg, teammates, domain, api, api/wire, api/handlers, archlint, contracttest),
+  `golangci-lint run --new-from-merge-base=origin/main` sur service, domain, api (0 issue), `TestOpenAPIYAMLIsUpToDate` vert.
