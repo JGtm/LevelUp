@@ -57,23 +57,23 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
 - [x] T1.3 Tests Go : une cause = un test.
 
 ### T2 — La page affiche toujours un état (web)
-- [ ] T2.1 Contribution sélectionnée dans la colonne droite : mort avec séquence servie →
+- [x] T2.1 Contribution sélectionnée dans la colonne droite : mort avec séquence servie →
       lecteur (T3) ; mort sans séquence → état vide conforme (bloc parent + `EmptyStateNotice`,
       ou `AnalysisPendingSlot` si analyse en cours) avec la cause en texte factuel FR/EN ;
       `replay_available` faux côté liste → même état « Film non analysé » sans requête ;
       tuile de frag (ou autre face) → état « La séquence se lit sur les morts » (FR/EN).
-- [ ] T2.2 La requête ne se tait plus : cause lue dans le corps de l'erreur ; erreur réseau ou
+- [x] T2.2 La requête ne se tait plus : cause lue dans le corps de l'erreur ; erreur réseau ou
       inconnue → état vide générique, jamais rien.
 - Textes : factuels, neutres, sans personne ni imperatif (voir mémoire Tactique v2).
 
 ### T3 — Mini-rejeu animé
-- [ ] T3.1 Au clic sur une mort dont la séquence est servie, lecture automatique de −4 s à
+- [x] T3.1 Au clic sur une mort dont la séquence est servie, lecture automatique de −4 s à
       +3 s sur le plan principal, à partir des pistes 200 ms déjà servies (interpolation
       entre échantillons), traînes comme aujourd'hui ; arrêt sur +3 s.
-- [ ] T3.2 Bouton « Rejouer » ; la barre d'étapes reste utilisable (clic = pause + saut à
+- [x] T3.2 Bouton « Rejouer » ; la barre d'étapes reste utilisable (clic = pause + saut à
       l'étape, comme un curseur) ; `prefers-reduced-motion` : pas de lecture automatique,
       l'étape de la mort affichée.
-- [ ] T3.3 Instants écrits à l'écran : horloge du rejeu, conversion partagée existante
+- [x] T3.3 Instants écrits à l'écran : horloge du rejeu, conversion partagée existante
       (`matchClock`), jamais une seconde conversion. Logique pure (horloge de lecture,
       interpolation) dans un `*.logic.ts` testé ; composant sans logique métier.
 
@@ -109,3 +109,21 @@ Activation du rejeu en prod (release) ; bots dans les positions ; autres pages.
 - Écart au plan (T2.1) à porter en T2 : la requête de séquence part aussi quand `replay_available` est
   faux, car seul le serveur sait distinguer « analyse en cours » (état dédié) de « film non analysé », et
   seul le 404 `replay_not_available` du garde distingue « fonction absente » de « donnée absente ».
+
+### T2 + T3 (2026-10-17)
+- Un seul commit : la zone « séquence » du pied du plan héberge à la fois les états (T2) et le lecteur (T3)
+  (`TacticalSequenceSlot.tsx`), les deux partagent `VueDeMort` / `useVueDeMort`.
+- T2.1, écart au plan : la requête de séquence part aussi quand `replay_available` est faux (voir T1) ; le texte
+  « Film non analysé » vient donc du serveur, et « Film en cours d'analyse » (`AnalysisPendingSlot`) n'est possible
+  que par lui. Un 404 `replay_not_available` (garde du rejeu, match non joué) ou un titre sans capability `replay`
+  = aucune zone, comme le lien de rejeu. Frag, entrée, réapparition : « La séquence se lit sur les morts ».
+- T2.2 : `causeDeLErreur` lit le code de l'`ApiError` ; erreur réseau ou code inconnu = « Séquence indisponible ».
+  Tant que la cause est « analyse en cours », la requête se refait toutes les 60 s (`ANALYSIS_PENDING_REFETCH_MS`).
+- T3.1 : `useLectureDeSequence` (rAF, horloge à abonnés lue par `useSyncExternalStore` : la tête de lecture n'est
+  pas un état React), bornes = première et dernière étape servies, pas borné à 100 ms, arrêt sur +3 s ; la scène est
+  `sceneALInstant` (interpolation linéaire entre échantillons consécutifs, jamais à travers une coupure).
+- T3.2 : bouton Pause / Reprendre / Rejouer, barre d'étapes (clic = pause + saut), « Instantané » ; mouvement réduit
+  = pas de lecture automatique, étape de la mort affichée.
+- T3.3 : instants écrits = `instant_affiche_ms` de l'étape de la mort (déjà converti par le serveur sur l'horloge du
+  coup d'envoi) + décalage, plancher 0 ; `formatClock` partagé. Aucune conversion d'axe refaite côté web. (`matchClock`
+  est l'outil du document de rejeu complet, absent ici : la séquence ne charge que ses pistes.)

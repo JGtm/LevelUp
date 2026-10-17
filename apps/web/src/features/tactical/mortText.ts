@@ -57,6 +57,39 @@ export function getMortText(m: Formateur) {
     seqSummary: (inside: number, total: number, r: string) => m('tactical.mort.seq_summary', { inside, total, r }),
     seqDistanceNote: m('tactical.mort.seq_distance_note'),
     seqStage: (offset: string) => m('tactical.mort.seq_stage', { offset }),
+    seqPlayReplay: m('tactical.mort.seq_play_replay'),
+    seqPlayPause: m('tactical.mort.seq_play_pause'),
+    seqPlayResume: m('tactical.mort.seq_play_resume'),
+    seqLoading: m('tactical.mort.seq_loading'),
+    seqPending: m('tactical.mort.seq_pending'),
+    // Pourquoi une séquence manque (une paire titre / description par cause, `CauseDeSequence`), et
+    // l'état d'une contribution qui n'est pas une mort.
+    seqMissing: {
+      film_non_analyse: {
+        title: m('tactical.mort.seq_missing_film_title') as string,
+        description: m('tactical.mort.seq_missing_film_desc') as string,
+      },
+      film_a_reanalyser: {
+        title: m('tactical.mort.seq_missing_reanalyse_title') as string,
+        description: m('tactical.mort.seq_missing_reanalyse_desc') as string,
+      },
+      carte_sans_rayon: {
+        title: m('tactical.mort.seq_missing_radius_title') as string,
+        description: m('tactical.mort.seq_missing_radius_desc') as string,
+      },
+      sans_position: {
+        title: m('tactical.mort.seq_missing_position_title') as string,
+        description: m('tactical.mort.seq_missing_position_desc') as string,
+      },
+      inconnue: {
+        title: m('tactical.mort.seq_missing_unknown_title') as string,
+        description: m('tactical.mort.seq_missing_unknown_desc') as string,
+      },
+    },
+    seqOnlyDeaths: {
+      title: m('tactical.mort.seq_only_deaths_title') as string,
+      description: m('tactical.mort.seq_only_deaths_desc') as string,
+    },
     mortZoneSection: m('tactical.mort.zone_section'),
   }
 }

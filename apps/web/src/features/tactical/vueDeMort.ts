@@ -1,14 +1,16 @@
 /**
  * vueDeMort — la vue D'UNE MORT ouverte par la sélection d'une tuile : l'instantané (A, B) et, quand la
- * séquence est servie, ses étapes (D). Partagée par le plan (scène, légende, barre d'étapes) et la
- * colonne de droite (fiche de la mort).
+ * séquence est servie, sa lecture animée et ses étapes (D). Partagée par le plan (scène, légende, pied
+ * de lecture) et la colonne de droite (fiche de la mort).
  */
 import type { TacticalContribution, TacticalSequence } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import type { TacticalText } from './i18n'
 
-import { metresEntiers, sceneDeMort, sceneDeSequence, sceneDeZone, type SceneDuPlan } from './mort.logic'
+import { metresEntiers, sceneDeMort, sceneDeZone, type SceneDuPlan } from './mort.logic'
+import { sceneDeSequence } from './sequenceLecture.logic'
+import type { LectureDeSequence } from './useLectureDeSequence'
 
 export interface VueDeMort {
   /** L'index de la contribution choisie dans la liste servie. */
@@ -16,9 +18,11 @@ export interface VueDeMort {
   contribution: TacticalContribution
   /** La séquence, quand la requête a réussi ; `null` sinon (la vue D n'est alors pas offerte). */
   sequence: TacticalSequence | null
-  /** L'index de l'étape affichée, `null` = l'instantané de la mort. */
+  /** L'index de l'étape en vigueur (étape choisie, ou étape atteinte par la lecture), `null` = l'instantané de la mort. */
   etape: number | null
   onEtape: (etape: number | null) => void
+  /** La lecture animée de la séquence servie ; absente sans séquence. */
+  lecture?: LectureDeSequence | null
 }
 
 /**
@@ -45,14 +49,16 @@ export function modeDeLaScene(scene: SceneDuPlan, vue: VueDeMort | null): ModeDe
 
 /**
  * sequenceDemandee — le corps de la requête de séquence pour la contribution choisie, `null` quand elle
- * n'en a pas (ni mort, ni rejeu servi pour ce match, ni victime nommée).
+ * n'en a pas (ni mort, ni victime nommée). Le rejeu du match n'est PAS une condition : c'est le serveur qui
+ * dit pourquoi une séquence manque (film non analysé, analyse en cours, ...), et la page l'écrit.
  */
 export function sequenceDemandee(
   c: TacticalContribution | undefined,
 ): { match_id: string; victim_xuid: string; time_ms: number } | null {
-  if (!c || c.face !== 'mort' || !c.replay_available || !c.xuid) return null
+  if (!c || c.face !== 'mort' || !c.xuid) return null
   return { match_id: c.match_id, victim_xuid: c.xuid, time_ms: c.instant_ms }
 }
+
 /** La contribution choisie, s'il s'agit d'une mort ou d'un frag (les autres faces n'ont pas de vue). */
 export function contributionDeLaVue(
   contributions: readonly TacticalContribution[],

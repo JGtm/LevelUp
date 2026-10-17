@@ -15,10 +15,10 @@ import {
   phraseDeLaRose,
   resumeDeLEquipe,
   sceneDeMort,
-  sceneDeSequence,
   sceneDeZone,
 } from './mort.logic'
 import { BILAN, FRAG, MORT_COMPLETE, SEQUENCE } from './mort.fixtures'
+import { sceneDeSequence } from './sequenceLecture.logic'
 import { sceneDeLaVue, sequenceDemandee } from './vueDeMort'
 
 const t = getTacticalText('fr')
@@ -138,9 +138,11 @@ describe('étapes et requête', () => {
     expect(libelleDeDecalage(-1500, 'en')).toBe('−1.5 s')
   })
 
-  it('la séquence n’est demandée que pour une mort dont le rejeu est servi', () => {
+  it('la séquence est demandée pour toute mort dont la victime est nommée, rejeu construit ou non', () => {
     expect(sequenceDemandee(MORT_COMPLETE)).toEqual({ match_id: 'm1', victim_xuid: '111', time_ms: 462_000 })
-    expect(sequenceDemandee({ ...MORT_COMPLETE, replay_available: false })).toBeNull()
+    // Seul le serveur sait dire pourquoi une séquence manque : la liste n'écarte rien.
+    expect(sequenceDemandee({ ...MORT_COMPLETE, replay_available: false })).toEqual({ match_id: 'm1', victim_xuid: '111', time_ms: 462_000 })
+    expect(sequenceDemandee({ ...MORT_COMPLETE, xuid: '' })).toBeNull()
     expect(sequenceDemandee(FRAG)).toBeNull()
     expect(sequenceDemandee(undefined)).toBeNull()
   })

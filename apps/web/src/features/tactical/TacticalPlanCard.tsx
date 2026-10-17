@@ -63,7 +63,7 @@ import { aspectDuPlan, ESTOMPE } from './tacticalLecture.logic'
 import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
 import { CalqueDuPlan, EtiquetteDeZone } from './TacticalPlanCalque'
 import { TacticalPlanFond } from './TacticalPlanFond'
-import { CoucheDesCoequipiers, PiedDuPlan } from './TacticalPlanCoequipiers'
+import { CoucheDesCoequipiers, PiedDuPlan, type LectureDeLaToile } from './TacticalPlanCoequipiers'
 import { CoucheDesTueurs } from './TacticalPlanTueurs'
 import {
   grilleDuPlan,
@@ -77,6 +77,7 @@ import {
   type TacticalQui,
 } from './tacticalView.logic'
 import { pointsDeLaCouche, rolesPresents } from './tueurs.logic'
+import type { EtatDeLaSequence } from './sequenceCause.logic'
 import { useCadrageDuPlan } from './useCadrageDuPlan'
 import { useHauteurDuPlan } from './useHauteurDuPlan'
 import { SCENE_VIDE } from './mort.logic'
@@ -130,6 +131,8 @@ export interface TacticalPlanCardProps {
   onChoisir: (index: number) => void
   /** La vue de la mort choisie (instantané, séquence) ; `null` = vue de la zone. */
   vue?: VueDeMort | null
+  /** L'état de la zone « séquence » du pied du plan pour la contribution choisie ; `null` = aucune zone. */
+  etatSequence?: EtatDeLaSequence | null
 }
 
 export function TacticalPlanCard({
@@ -152,6 +155,7 @@ export function TacticalPlanCard({
   choisie,
   onChoisir,
   vue = null,
+  etatSequence = null,
 }: TacticalPlanCardProps) {
   // LE CADRE DU FOND EST LE REPÈRE, quand il existe. Sans lecture, il donne encore le rapport.
   const cadreFond = useTacticalMapBackgroundFrame(playerSlug, mapId)
@@ -180,6 +184,14 @@ export function TacticalPlanCard({
   )
   // Une mort choisie (`vue`) : le nom de la zone (déjà en tête de la colonne de droite) se retire du plan.
   const mortSelectionnee = vue !== null
+  // La toile suit la tête de lecture tant qu'une étape de la séquence est affichée (et non l'instantané).
+  const sequenceLue = vue?.sequence ?? null
+  const lectureDeVue = vue?.lecture ?? null
+  const enSequence = vue?.etape !== null && vue?.etape !== undefined
+  const lectureDeLaToile = useMemo<LectureDeLaToile | null>(
+    () => (sequenceLue && lectureDeVue && enSequence ? { sequence: sequenceLue, lecture: lectureDeVue } : null),
+    [sequenceLue, lectureDeVue, enSequence],
+  )
 
   return (
     <SectionCard
@@ -235,7 +247,7 @@ export function TacticalPlanCard({
             />
           )}
           {repere && (sceneMort.marques.length > 0 || sceneMort.cercle !== null) && (
-            <CoucheDesCoequipiers repere={repere} fenetre={fenetre} scene={sceneMort} estompe={estompe} />
+            <CoucheDesCoequipiers repere={repere} fenetre={fenetre} scene={sceneMort} estompe={estompe} lecture={lectureDeLaToile} />
           )}
           {repere && selected && etiquette && !mortSelectionnee && (
             <EtiquetteDeZone selected={selected} repere={repere} fenetre={fenetre} texte={etiquette} estompe={estompe} />
@@ -254,7 +266,7 @@ export function TacticalPlanCard({
           estompe={estompe}
         />
       </div>
-      <PiedDuPlan t={t} locale={locale} scene={sceneMort} vue={vue} roles={rolesPresents(pointsTueurs)} />
+      <PiedDuPlan t={t} locale={locale} scene={sceneMort} vue={vue} roles={rolesPresents(pointsTueurs)} etatSequence={etatSequence} />
     </SectionCard>
   )
 }
