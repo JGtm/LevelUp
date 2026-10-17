@@ -149,6 +149,8 @@ const (
 	NomEpisodeOccupationParTrouDePosition Nom = "repli_episode_occupation_par_trou_de_position"
 	// NomCoequipierHorsDeVueParDefaut : compte par `death_context.go` (lot J8.7).
 	NomCoequipierHorsDeVueParDefaut Nom = "repli_coequipier_hors_de_vue_par_defaut"
+	// NomPositionPosthumeDuTueur : compte par `replay/killpos.go`, `BuildKillPositions` (E8.1, D-17).
+	NomPositionPosthumeDuTueur Nom = "repli_position_posthume_du_tueur"
 	// NomIndexDrapeauZeroPourTous : compte par `flag_assign.go` (lot J8.7).
 	NomIndexDrapeauZeroPourTous Nom = "repli_index_drapeau_zero_pour_tous"
 	// NomSocleDuFilmAuCentreDesVols : compte par `replay/flag_film_bases.go`.

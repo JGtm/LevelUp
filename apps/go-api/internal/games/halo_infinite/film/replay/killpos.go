@@ -3,6 +3,7 @@ package replay
 import (
 	"slices"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
@@ -126,20 +127,47 @@ type KillPosReport struct {
 	// aucune frontière de vie, et c'est précisément pour cela que l'entame a besoin d'une
 	// fonction dédiée (voir killpos_opening.go).
 	OpeningOutOfLife int
+	// Posthumous compte les TUEURS poses au lieu de leur propre mort : morts avant le frag, non
+	// reapparus (decision D-17, killpos_posthume.go). PosthumousUnplaced, ceux que la regle
+	// reconnait morts mais dont la mort n est pas localisable — ils restent nil. Seule
+	// `BuildKillPositions` les renseigne : l entame d un tueur mort n a pas de sens.
+	Posthumous, PosthumousUnplaced int
+}
+
+// EntreeDesPositions porte ce que `BuildKillPositions` consulte, deja lu par l appelant.
+type EntreeDesPositions struct {
+	// Positions : les positions bipedes du film, coordonnees monde.
+	Positions []grammar.BipedPosition
+	// Registre : qui occupe quel siege a quel instant (et les vies nommees).
+	Registre IdentityRegistry
+	// Kills : les couples (tueur, victime, instant du match) a placer, resolus en xuid.
+	Kills []KillRef
+	// Morts : TOUTES les morts du journal a victime resolue (frags et morts sans tueur). Elles
+	// disent si le tueur d un frag etait deja mort (killpos_posthume.go). Vides : la regle posthume
+	// ne s applique pas.
+	Morts []MortDuJournal
+	// OrigineUS : le decalage entre l horloge du fil des morts et celle du film (cf.
+	// bestDeathOffset), en microsecondes.
+	OrigineUS int64
+	// Fallbacks : le compteur de replis de la passe de l appelant. Nil ne compte rien.
+	Fallbacks *fallback.Compteur
 }
 
 // BuildKillPositions rend les positions monde des deux joueurs de chaque mort.
 //
-// PUR : aucune I/O, aucune base. `offsetUS` est le décalage entre l'horloge du fil des morts et
+// PUR : aucune I/O, aucune base. `OrigineUS` est le décalage entre l'horloge du fil des morts et
 // celle du film, résolu par mesure (cf. bestDeathOffset) — le passer en paramètre évite que ce
 // producteur ne refasse un calage que le pont a déjà fait.
 //
 // ELLE NE CONNAÎT AUCUNE FRONTIÈRE DE VIE, et c'est licite ICI : l'instant demandé est celui du
 // coup fatal, donc à l'intérieur des deux vies concernées par construction. Pour un instant
-// DÉCALÉ — l'entame — cette ignorance devient un piège, d'où `BuildKillOpenings`.
-func BuildKillPositions(pos []grammar.BipedPosition, reg IdentityRegistry,
-	kills []KillRef, offsetUS int64) ([]KillPosition, KillPosReport) {
-	p := placeKillPositions(pos, reg, kills, offsetUS)
+// DÉCALÉ — l'entame — cette ignorance devient un piège, d'où `BuildKillOpenings`. La seule
+// exception est le tueur DEJA MORT (D-17) : il est pose au lieu de sa mort, et c'est un repli
+// nomme et compte (`repli_position_posthume_du_tueur`).
+func BuildKillPositions(e EntreeDesPositions) ([]KillPosition, KillPosReport) {
+	p := placeKillPositions(e.Positions, e.Registre, e.Kills, e.OrigineUS,
+		nouvellesMortsDuTueur(e.Morts, e.Registre))
+	e.Fallbacks.DeclencheN(fallback.NomPositionPosthumeDuTueur, p.report.Posthumous)
 	return p.positions, p.report
 }
 
@@ -159,9 +187,10 @@ type killPlacement struct {
 	report    KillPosReport
 }
 
-// placeKillPositions est LE placement, et le seul.
+// placeKillPositions est LE placement, et le seul. `posthume` porte les morts du journal pour la
+// regle du tueur deja mort (nil : la regle ne s'applique pas — c'est le cas de l'entame).
 func placeKillPositions(pos []grammar.BipedPosition, reg IdentityRegistry,
-	kills []KillRef, offsetUS int64) killPlacement {
+	kills []KillRef, offsetUS int64, posthume *mortsDuTueur) killPlacement {
 	out := killPlacement{report: KillPosReport{Kills: len(kills)}}
 	if len(pos) == 0 || !reg.PontEtabli() || len(kills) == 0 {
 		out.report.Dropped = len(kills)
@@ -178,6 +207,9 @@ func placeKillPositions(pos []grammar.BipedPosition, reg IdentityRegistry,
 		var sides killSides
 		kp.Killer, sides.killer = positionOf(out.tracks, duTueur, tUS)
 		kp.Victim, sides.victim = positionOf(out.tracks, deLaVictime, tUS)
+		if kp.Killer == nil {
+			placerLeTueurPosthume(&out, posthume, reg, sieges, &kp, offsetUS)
+		}
 		if len(duTueur) == 0 || len(deLaVictime) == 0 {
 			out.report.NoBridge++
 		}

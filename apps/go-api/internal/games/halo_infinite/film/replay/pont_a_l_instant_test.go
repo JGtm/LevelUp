@@ -186,7 +186,7 @@ func TestPositionDeKillSuitLOccupantDuSiege(t *testing.T) {
 		posAt(901, siegeLectureUS, 1, 2, 0),
 	}
 	kills := []KillRef{{KillerXUID: 222, VictimXUID: 333, TimeMS: 2_500}}
-	got, rep := BuildKillPositions(pos, reg, kills, 0)
+	got, rep := BuildKillPositions(EntreeDesPositions{Positions: pos, Registre: reg, Kills: kills, OrigineUS: 0})
 	if len(got) != 1 {
 		t.Fatalf("une mort placee attendue, obtenu %d (%+v)", len(got), rep)
 	}
@@ -213,7 +213,7 @@ func TestPositionDeKillSeTaitHorsDesVies(t *testing.T) {
 	}
 	// 111 n'a AUCUN corps a cet instant : sa seule vie sur 900 est finie depuis 1,5 s.
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 333, TimeMS: 2_500}}
-	got, rep := BuildKillPositions(pos, reg, kills, 0)
+	got, rep := BuildKillPositions(EntreeDesPositions{Positions: pos, Registre: reg, Kills: kills, OrigineUS: 0})
 	if len(got) != 1 || got[0].Killer != nil {
 		t.Fatalf("le tueur ne devait PAS etre place sur le corps d'un autre : %+v", got)
 	}

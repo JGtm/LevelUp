@@ -65,7 +65,7 @@ func TestBuildKillOpeningsRendLaPositionDAvantEtLInstantDuKill(t *testing.T) {
 	slotXUID := map[uint32]uint64{1: 111, 2: 222}
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: mortMS}}
 
-	fatal, _ := BuildKillPositions(pos, regPlat(slotXUID), kills, 0)
+	fatal, _ := BuildKillPositions(EntreeDesPositions{Positions: pos, Registre: regPlat(slotXUID), Kills: kills, OrigineUS: 0})
 	entame, rep := BuildKillOpenings(pos, regPlat(slotXUID), kills, 0)
 	if len(fatal) != 1 || len(entame) != 1 || rep.Both != 1 || rep.OpeningOutOfLife != 0 {
 		t.Fatalf("les deux placements devaient aboutir : fatal %+v, entame %+v (%+v)",
@@ -98,7 +98,7 @@ func TestBuildKillOpeningsRefuseUnPointDApparition(t *testing.T) {
 
 	// Témoin : sans frontière de vie, le placement TOMBE dans le piège. Si ce témoin cesse de
 	// valoir, le test qui suit ne prouve plus rien et il faut le réécrire.
-	piege, _ := BuildKillPositions(pos, regPlat(slotXUID), ShiftKillRefs(kills, -OpeningLeadMS), 0)
+	piege, _ := BuildKillPositions(EntreeDesPositions{Positions: pos, Registre: regPlat(slotXUID), Kills: ShiftKillRefs(kills, -OpeningLeadMS), OrigineUS: 0})
 	if len(piege) != 1 || piege[0].Killer == nil || piege[0].Victim == nil {
 		t.Fatalf("témoin invalide : le placement nu devait rendre les deux apparitions, %+v", piege)
 	}
@@ -130,7 +130,7 @@ func TestBuildKillOpeningsRefuseLaVieSuivante(t *testing.T) {
 	slotXUID := map[uint32]uint64{1: 111, 2: 222}
 	kills := []KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: mortMS}}
 
-	piege, _ := BuildKillPositions(pos, regPlat(slotXUID), ShiftKillRefs(kills, -OpeningLeadMS), 0)
+	piege, _ := BuildKillPositions(EntreeDesPositions{Positions: pos, Registre: regPlat(slotXUID), Kills: ShiftKillRefs(kills, -OpeningLeadMS), OrigineUS: 0})
 	if len(piege) != 1 || piege[0].Victim == nil {
 		t.Fatalf("témoin invalide : le placement nu devait rendre la réapparition, %+v", piege)
 	}
@@ -170,7 +170,7 @@ func TestBuildKillOpeningsInstantNegatifNeDonneAucunePosition(t *testing.T) {
 		t.Fatalf("instant décalé attendu -100 ms, obtenu %d", decales[0].TimeMS)
 	}
 
-	piege, _ := BuildKillPositions(pos, regPlat(slotXUID), decales, offsetUS)
+	piege, _ := BuildKillPositions(EntreeDesPositions{Positions: pos, Registre: regPlat(slotXUID), Kills: decales, OrigineUS: offsetUS})
 	if len(piege) != 1 || piege[0].Killer == nil || piege[0].Victim == nil {
 		t.Fatalf("témoin invalide : l'instant décalé est DANS la tolérance, %+v", piege)
 	}

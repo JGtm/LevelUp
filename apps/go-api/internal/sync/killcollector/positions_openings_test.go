@@ -91,7 +91,7 @@ func TestComposerPassePositions_LEntameEstPriseAvantLeKillEtPorteSonInstant(t *t
 	slotXUID := map[uint32]uint64{1: 111, 2: 222}
 	kills := []replay.KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: mortMS}}
 
-	pass := composerPassePositions(positions, registreSynthetique(positions, slotXUID), kills, 0, "m1")
+	pass := composerPassePositions(replay.EntreeDesPositions{Positions: positions, Registre: registreSynthetique(positions, slotXUID), Kills: kills}, "m1")
 
 	if len(pass.rows) != 1 || len(pass.openRows) != 1 {
 		t.Fatalf("attendu 1 position et 1 entame, obtenu %d et %d", len(pass.rows), len(pass.openRows))
@@ -155,7 +155,7 @@ func TestComposerPassePositions_ReapparitionEcarteLEntameEtLaCompte(t *testing.T
 	slotXUID := map[uint32]uint64{1: 111, 2: 222}
 	kills := []replay.KillRef{{KillerXUID: 111, VictimXUID: 222, TimeMS: mortMS}}
 
-	pass := composerPassePositions(positions, registreSynthetique(positions, slotXUID), kills, 0, "m1")
+	pass := composerPassePositions(replay.EntreeDesPositions{Positions: positions, Registre: registreSynthetique(positions, slotXUID), Kills: kills}, "m1")
 
 	if len(pass.rows) != 1 || pass.rows[0].KillerX == nil {
 		t.Fatalf("la position du coup fatal doit rester entière : %+v", pass.rows)

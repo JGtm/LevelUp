@@ -268,17 +268,13 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 	// LES POSITIONS, SUR LE MEME FILM (G.2bis) — memes garanties que les tirs : best-effort,
 	// jamais de remise en cause des morts deja ecrites.
 	//
-	// DEUX LISTES, ET ELLES NE SONT PAS INTERCHANGEABLES (correction de la revue de 7C) :
-	//
-	//	batch.Deaths   la liste PRE-FUSION. Seule population qui peut structurellement avoir
-	//	               une POSITION — un kill recupere par le producteur credit-seul n a aucune
-	//	               position a offrir (cf. l en-tete de positions.go).
-	//	fusionne       ce que le JOURNAL a reellement ecrit (MergeCreditAndFilm : credit + film,
-	//	               orphelins compris). C est la liste que les FAITS D ISOLEMENT doivent
-	//	               suivre : une mort credit-seule absente du fil n aurait sinon aucun
-	//	               contexte, ET sa victime ne serait jamais « en attente » aux morts
-	//	               suivantes — elle passerait pour vivante et hors de vue.
-	c.collectPositions(ctx, matchID, film, res, ids, batch.Deaths, fusionne)
+	// LA LISTE EST LE JOURNAL FUSIONNE (`fusionne`, MergeCreditAndFilm : credit + film, orphelins
+	// compris), pour les positions comme pour les faits d isolement (E8.1, 2026-10-17). La liste
+	// pre-fusion `batch.Deaths` ne nomme un joueur que par son gamertag du film : un joueur renomme y
+	// perdait toutes ses positions (cf. collectPositions). Les faits d isolement la suivaient deja :
+	// une mort credit-seule absente du fil n aurait sinon aucun contexte, ET sa victime ne serait
+	// jamais « en attente » aux morts suivantes.
+	c.collectPositions(ctx, matchID, film, res, ids, fusionne)
 
 	// LE NUMERATEUR DE PRECISION PAR ARME (weapon_accuracy + distance), Infinite depuis le film.
 	// Best-effort au meme titre que les tirs : son echec ou son absence (film non sur disque,

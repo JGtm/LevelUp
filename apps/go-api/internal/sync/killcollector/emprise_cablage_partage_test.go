@@ -109,7 +109,7 @@ func v1RejouerLaPasse(t *testing.T, ctx context.Context, col *KillSourceCollecto
 	if err != nil {
 		t.Fatalf("%s : carte : %v", id, err)
 	}
-	_, mat, err := buildPositionRows(ctx, film, res, entry, ids, killRefsFromDeaths(passeFilm.Deaths), id)
+	_, mat, err := buildPositionRows(ctx, film, res, entry, ids, passeFilm.Deaths, id)
 	if err != nil {
 		t.Fatalf("%s : positions : %v", id, err)
 	}

@@ -36,6 +36,28 @@ const cibleOption2Positions = "option 2 du rapport positions_limbe (porte gramma
 
 var registreReplayPositions = []Repli{
 	{
+		Nom:  "repli_position_posthume_du_tueur",
+		Fait: "ou se trouvait le tueur d un frag a l instant du frag (`kill_positions`)",
+		Mecanisme: "le tueur est mort STRICTEMENT avant le frag (une mort du journal a son nom) et n a reapparu " +
+			"dans aucune vie nommee depuis : il n a plus de corps, et il est pose au lieu de sa propre mort, lu " +
+			"par la meme fonction que la position d une victime ; sans lieu de mort, il reste nil " +
+			"(`KillPosReport.PosthumousUnplaced`)",
+		// LE FILM NE PEUT PAS ECRIRE LE CORPS D UN JOUEUR MORT : le projectile en vol (grenade, roquette)
+		// tue apres la mort de son tireur. Mesure de l enquete E8.1 (2026-10-17, 237 films a faits
+		// locaux) : 355 tueurs sur 22 535 frags, tous sans echantillon de corps a l instant.
+		Condition: CondFilmMuet,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{
+			{Fichier: pkgReplay + "killpos.go", Ancre: "e.Fallbacks.DeclencheN(fallback.NomPositionPosthumeDuTueur, p.report.Posthumous)"},
+			{Fichier: pkgReplay + "killpos_posthume.go", Ancre: "func placerLeTueurPosthume("},
+		},
+		DatePose:     "2026-10-17",
+		CibleRetrait: "aucune : decision utilisateur D-17 du 2026-10-17 (plan du backlog du 2026-10-16), le lieu de la mort est la position d un tueur posthume",
+		CritereRetrait: "sans objet tant que D-17 tient ; le compte se lit a l expvar `killsource_repli_position_posthume_du_tueur` " +
+			"et au journal de la passe des positions",
+		CompteurBranche: true,
+	},
+	{
 		Nom:  "repli_position_hors_emprise_ecartee",
 		Fait: "quelles positions decodees sont publiees : points de trace, echantillons et naissances de vehicule",
 		Mecanisme: "une position hors de l emprise jouee du film (p1..p99 plus 12 etendues centrales par axe, " +

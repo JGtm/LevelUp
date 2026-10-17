@@ -390,7 +390,12 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           `replay.ShieldlessKillRef` : les frags sans bouclier du
 //	                                           resume d usage, que `replayartifacts` et le backfill
 //	                                           alimentent depuis le fil des morts en base. Aucun retrait.
-const plafondSurfaceReplay = 309 // 2026-10-16 — base 27947da10 re-mesuree a 306 + 3 (frags sans bouclier) ; cf. l historique ci-dessus
+//	310  backlog E8.1 (2026-10-17)              base `d8356df11` re-mesuree a 309. +1 :
+//	                                           `replay.EntreeDesPositions`, l entree de
+//	                                           `BuildKillPositions` (couples, morts du journal pour la
+//	                                           regle du tueur posthume D-17, compteur de replis) : six
+//	                                           entrees ne tiennent plus en parametres. Aucun retrait.
+const plafondSurfaceReplay = 310 // 2026-10-17 — base d8356df11 re-mesuree a 309 + 1 (EntreeDesPositions) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

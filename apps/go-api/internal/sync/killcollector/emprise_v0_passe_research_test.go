@@ -331,7 +331,7 @@ func v0Instrumenter(t *testing.T, ctx context.Context, col *KillSourceCollector,
 	if err != nil {
 		t.Fatalf("%s : carte : %v", p.MatchID, err)
 	}
-	_, mat, err := buildPositionRows(ctx, film, res, entry, ids, killRefsFromDeaths(batch.Deaths), p.MatchID)
+	_, mat, err := buildPositionRows(ctx, film, res, entry, ids, batch.Deaths, p.MatchID)
 	if err != nil {
 		t.Fatalf("%s : positions : %v", p.MatchID, err)
 	}

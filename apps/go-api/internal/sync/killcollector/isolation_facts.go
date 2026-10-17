@@ -273,7 +273,21 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // troisieme table qui rend un match deja decode incomplet. Sans bump, `matchsAJour` le tiendrait
 // pour a jour et la table resterait vide pour tout le corpus. Le bump ne declenche rien par
 // lui-meme : seule la commande `levelup backfill-killsource` re-decode.
-const IsolationDecoderRev = "isolement-2026-10-14-coequipiers"
+//
+// # POURQUOI ELLE BOUGE LE 2026-10-17 (plan du backlog du 2026-10-16, E8.1, decisions D-16 et D-17)
+//
+// Deux changements de SORTIE de `kill_positions` (et de la passe d entames, meme lecture) :
+//   - les couples places sont ceux du JOURNAL FUSIONNE, plus la liste pre-fusion du film : un joueur
+//     renomme (fil du film et base portant deux gamertags) n avait AUCUNE position sur tout le match
+//     (enquete du 2026-10-17, 240 films : 678 lignes absentes en base, 90 par la lecture du journal) ;
+//   - le tueur deja mort au moment du frag (projectile en vol) est pose au lieu de sa mort, repli
+//     nomme `repli_position_posthume_du_tueur` (`replay/killpos_posthume.go`).
+//
+// CE QUI NE CHANGE PAS : `match_lives`, `match_death_context`, `match_death_mates` (meme journal,
+// meme lecture qu avant) et le journal des morts (`killsource.Rev` ne bouge pas). Une montee pour
+// TOUT le lot film E8 (D-8) : un changement ulterieur du meme lot garde cette valeur tant qu aucun
+// `backfill-killsource` ne l a publiee. Le bump ne declenche rien par lui-meme.
+const IsolationDecoderRev = "isolement-2026-10-17-positions"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
 //

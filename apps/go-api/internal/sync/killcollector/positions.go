@@ -103,14 +103,20 @@ const (
 
 // collectPositions : la TROISIÈME écriture de la passe — `shared.kill_positions`.
 //
-// `deaths` est le SOUS-ENSEMBLE PRÉ-FUSION (batch.Deaths dans collect(), avant
-// MergeCreditAndFilm) : les positions n'existent QUE pour les kills que CE FILM a lui-même
-// décodés — un kill récupéré par le producteur crédit-seul (highlight_events, sans film) n'a
-// structurellement aucune position à offrir. Utiliser la liste pré-fusion n'est donc pas une
-// approximation, c'est la population exacte qui peut avoir une position.
+// LES COUPLES A PLACER SONT CEUX DU JOURNAL FUSIONNE (`fusionne`, ce que `match_kill_events` porte
+// apres `MergeCreditAndFilm`), PAS la liste pre-fusion du film (correction E8.1 du 2026-10-17,
+// decision utilisateur D-16). La liste pre-fusion ne porte un xuid que pour les noms que le roster
+// resout par GAMERTAG : un joueur renomme (fil du film « Fluxnic », base « DI0NIC ») y avait un xuid
+// vide, et AUCUN de ses frags n'etait place — sur tout le match. La fusion lui rend l'identite que
+// le credit porte. Une mort du credit absente du fil du film est placee au meme instant du match :
+// c'est le meme fil des temps forts, donc la meme horloge (cf. `replay.MatchKillsInput`) ; si le
+// film ne la montre pas, ses deux positions restent nil et rien n'est ecrit.
+//
+// Le journal fusionne sert aussi la regle du TUEUR DEJA MORT (D-17, `replay/killpos_posthume.go`) :
+// ses morts disent si le tueur d un frag etait mort avant lui.
 func (c *KillSourceCollector) collectPositions(
 	ctx context.Context, matchID string, film *decfilm.Film, res *decfilm.Result,
-	ids MatchIdentities, deaths []persist.KillEventInsert, fusionne persist.KillSourceBatch,
+	ids MatchIdentities, fusionne persist.KillSourceBatch,
 ) {
 	if !c.caps.Has(games.CapFilmKillPositions) {
 		slog.DebugContext(ctx, "killsource: positions, vies et placement des vies — capability absente, passe ignoree",
@@ -126,8 +132,7 @@ func (c *KillSourceCollector) collectPositions(
 		return
 	}
 
-	kills := killRefsFromDeaths(deaths)
-	if len(kills) == 0 {
+	if len(killRefsFromDeaths(fusionne.Deaths)) == 0 {
 		slog.DebugContext(ctx, "killsource: positions — aucune mort avec tueur ET victime resolus, "+
 			"rien a placer", "match_id", matchID)
 		return
@@ -148,7 +153,7 @@ func (c *KillSourceCollector) collectPositions(
 		return
 	}
 
-	pass, mat, err := buildPositionRows(ctx, film, res, entry, ids, kills, matchID)
+	pass, mat, err := buildPositionRows(ctx, film, res, entry, ids, fusionne.Deaths, matchID)
 	if err != nil {
 		slog.WarnContext(ctx, "killsource: positions — passe ignoree", "match_id", matchID, "err", err)
 		return
@@ -268,7 +273,7 @@ func optionsDeBalayageDesPositions(
 // B1 : aucun test ne pincait l accord entre le decalage et l instant persiste).
 func buildPositionRows(ctx context.Context,
 	film *decfilm.Film, res *decfilm.Result, entry decfilm.MapQuantEntry, ids MatchIdentities,
-	kills []replay.KillRef, matchID string,
+	journal []persist.KillEventInsert, matchID string,
 ) (passePositions, materiauDIsolement, error) {
 	lectures, originUS, err := lireLePontDuCollecteur(ctx, film, entry, ids, matchID)
 	if err != nil {
@@ -304,7 +309,10 @@ func buildPositionRows(ctx context.Context,
 	// rescanner le film (cf. isolation_facts.go).
 	mat := materiauDIsolement{registre: reg, positions: lectures.positions, film: film,
 		contexte: lectures.contexte, carte: entry, profil: profilCalibre(res), identite: entree}
-	return composerPassePositions(lectures.positions, reg, kills, int64(originUS), matchID), mat, nil
+	morts, _ := journalDesMorts(journal)
+	entreePositions := replay.EntreeDesPositions{Positions: lectures.positions, Registre: reg,
+		Kills: killRefsFromDeaths(journal), Morts: morts, OrigineUS: int64(originUS), Fallbacks: ids.replis}
+	return composerPassePositions(entreePositions, matchID), mat, nil
 }
 
 // lireLePontDuCollecteur appelle l etage unique du pont d identite et y applique les POLITIQUES
@@ -369,12 +377,9 @@ func lireLePontDuCollecteur(ctx context.Context,
 // serait un point de reapparition — et rend des `KillPosition` dont le `TimeMS` est DEJA celui
 // du kill. `toKillOpeningRows` n a donc AUCUNE avance a readditionner : le faire decalerait
 // toutes les lignes de 1,5 s.
-func composerPassePositions(
-	positions []decfilm.BipedPosition, reg replay.IdentityRegistry,
-	kills []replay.KillRef, originUS int64, matchID string,
-) passePositions {
-	posOut, rep := replay.BuildKillPositions(positions, reg, kills, originUS)
-	openOut, openRep := replay.BuildKillOpenings(positions, reg, kills, originUS)
+func composerPassePositions(e replay.EntreeDesPositions, matchID string) passePositions {
+	posOut, rep := replay.BuildKillPositions(e)
+	openOut, openRep := replay.BuildKillOpenings(e.Positions, e.Registre, e.Kills, e.OrigineUS)
 	return passePositions{
 		rep:      rep,
 		rows:     toKillPositionRows(matchID, posOut),
@@ -472,7 +477,8 @@ func publishPositionsPass(ctx context.Context, matchID string, rep replay.KillPo
 	slog.InfoContext(ctx, "killsource: positions decodees",
 		"match_id", matchID, "kills", rep.Kills, "deux_cotes", rep.Both,
 		"tueur_seul", rep.KillerOnly, "victime_seule", rep.VictimOnly,
-		"sans_position", rep.Dropped, "sans_pont_identite", rep.NoBridge, "lignes", rowsWritten)
+		"sans_position", rep.Dropped, "sans_pont_identite", rep.NoBridge,
+		"tueurs_posthumes", rep.Posthumous, "tueurs_posthumes_sans_lieu", rep.PosthumousUnplaced, "lignes", rowsWritten)
 }
 
 // entreeDuRegistre et lecturesDuFilm sont EXTRAITES vers positions_identity_entree.go (lot 5.1) :

@@ -117,7 +117,7 @@ func duelsBTueursLocalises(s duelsBSonde) []bool {
 	}
 	// BuildKillPositions n'emet PAS les morts dont aucun des deux n'est localise : le resultat
 	// se relit par couple (tueur, victime, instant), jamais par indice.
-	posOut, _ := replay.BuildKillPositions(s.positions, s.registre, refs, s.originUS)
+	posOut, _ := replay.BuildKillPositions(replay.EntreeDesPositions{Positions: s.positions, Registre: s.registre, Kills: refs, OrigineUS: s.originUS})
 	localise := make(map[replay.KillRef]bool, len(posOut))
 	for i := range posOut {
 		if posOut[i].Killer != nil {
