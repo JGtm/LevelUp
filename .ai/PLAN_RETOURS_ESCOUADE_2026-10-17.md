@@ -110,11 +110,11 @@ Statuts : `[x]` fait · `[~]` couvert ailleurs · `[!]` non traité (justificati
       vides de la page) avec l'`EmptyStateNotice` dedans. Test mis à jour.
 
 ### E7 — Clôture
-- [ ] E7.1 `make check-types`, `make test-web` (vitest hors sandbox), lint web, `go test` des
+- [x] E7.1 (check-types, vitest complet, eslint, lint:colors, lint:fields, knip ; go test des paquets Go touches, golangci-lint sur les paquets touches, openapi-gen -check) `make check-types`, `make test-web` (vitest hors sandbox), lint web, `go test` des
       paquets Go touchés, `make go-api-lint` si Go touché.
-- [ ] E7.2 Entrée `.ai/thought_log.md` ; découvertes hors périmètre listées au rapport (non
+- [x] E7.2 (entree du journal 2026-10-17 ; decouvertes en section 4) Entrée `.ai/thought_log.md` ; découvertes hors périmètre listées au rapport (non
       traitées).
-- [ ] E7.3 Commits sur `feat/retours-escouade` uniquement, un par étape ; pas de push.
+- [x] E7.3 (un commit par etape sur feat/retours-escouade, aucun push) Commits sur `feat/retours-escouade` uniquement, un par étape ; pas de push.
 
 ## 3. Hors périmètre
 

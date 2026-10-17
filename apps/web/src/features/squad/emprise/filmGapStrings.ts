@@ -18,11 +18,11 @@ export const FILM_GAP_TEXT: Record<Locale, FilmGapText> = {
   fr: {
     pending: 'Analyse du film en cours',
     missingTitle: 'Film non analysé',
-    missingDescription: 'Aucune lecture du film n’est disponible pour les matchs de cette sélection : la section se remplit quand le film est analysé.',
+    missingDescription: 'Le film des matchs de cette sélection n’a pas encore été lu : la section se remplit quand le film est analysé.',
   },
   en: {
     pending: 'Film analysis in progress',
     missingTitle: 'Film not analysed',
-    missingDescription: 'No film reading is available for the matches of this selection: the section fills in once the film is analysed.',
+    missingDescription: 'The film of the matches in this selection has not been read yet: the section fills in once the film is analysed.',
   },
 }
