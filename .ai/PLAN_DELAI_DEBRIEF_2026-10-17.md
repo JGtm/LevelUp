@@ -208,8 +208,8 @@ normal (aucune cuisson en lot ni en boucle).
       `.ai/REGISTRE_REPORTS.md` alimenté des découvertes non traitées.
 - [x] 6.2 Fusion dans `feat/v75` sur accord explicite de l'utilisateur ; CI verte au niveau job
       sur `feat/v75`.
-- [ ] 6.3 Session de release prévenue (`ListAgents` puis `SendMessage`).
-- [ ] 6.4 `powershell -File scripts/disk-hygiene.ps1 -Lot delai-debrief -Apply` ; worktree
+- [x] 6.3 Session de release prévenue (`ListAgents` puis `SendMessage`).
+- [x] 6.4 `powershell -File scripts/disk-hygiene.ps1 -Lot delai-debrief -Apply` ; worktree
       retiré sans `--force`.
 
 ## Reprise de session
@@ -354,3 +354,9 @@ courante. `git -C ../LevelUp-wt-delai-debrief log --oneline -10` pour l'état de
 - 2026-10-18 : 4.5 CI de la branche verte (run 39128534319). 5.1 à 5.4 `[!]` : preuve reportée par
   décision de l'utilisateur, consignée au registre des reports avec sa condition de reprise.
   6.1-6.2 : fusion `1b01444a1` dans `feat/v75` ; CI de `feat/v75` suivie au niveau job.
+- 2026-10-18 : CI de `feat/v75` verte sur la fusion (run 39131709680, tous les jobs ; E2E réservé
+  aux PR vers main). 6.3 : sessions pairs prévenues (levelup-b5, levelup-34, levelup-22 ; la
+  session de release n'étant pas identifiable par son nom). 6.4 : caches dédiés du lot purgés,
+  worktree retiré. Reste ouvert : l'étape 5 (preuve), au registre des reports — l'utilisateur la
+  fera quand le traitement de recherche de levelup-50 sera fini. Le serveur local tourne déjà sur
+  le code fusionné (relancé à 16 h 02).
