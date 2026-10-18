@@ -37,21 +37,39 @@ type syncCallSite struct {
 }
 
 var expectedSyncCallSites = []syncCallSite{
-	// NB : newSyncEngineRe ne matche que le wrapper `NewSyncEngine(`. sync_handler.go
-	// est passé à NewSyncEngineForTitle (newEngineFor, sync_handler.go:175) et n'est
-	// donc plus détecté — l'entrée a été retirée (sinon signalée « obsolète »).
-	// Suivi : étendre newSyncEngineRe à NewSyncEngineForTitle + l'alias `syncpkg`
-	// pour re-couvrir ces sites (sync_handler.go, cmd/server/sync_v2_wiring.go).
+	// NB : newSyncEngineRe couvre les deux constructeurs (NewSyncEngine et
+	// NewSyncEngineForTitle) sous les alias d'import de internal/. Les sites de cmd/
+	// (CLI, cmd/server/sync_v2_wiring.go) sont hors du balayage de ce test.
 	{
 		pathSuffix: "internal/api/handlers/backfill.go",
 		status:     "no-runner-ok",
 		reason:     "Backfill HTTP explicite — pas un sync nominal, progression V2 hors-scope",
 	},
+	{
+		pathSuffix: "internal/api/handlers/sync_handler.go",
+		status:     "legacy-hook",
+		reason:     "Sync HTTP « Sync now » : progression par SyncHandler.WithPostSyncDeltaHook (chemin legacy, hors engineBuilder)",
+	},
+	{
+		pathSuffix: "internal/api/wire/registry_lusr_gaps.go",
+		status:     "no-runner-ok",
+		reason:     "Rejeu LUSR d'un joueur (RecomputeLUSRCanonical) — aucun sync nominal",
+	},
+	{
+		pathSuffix: "internal/games/halo_5/livesync/wire.go",
+		status:     "no-runner-ok",
+		reason:     "Hook succès Halo 5 (RunAchievementsHook) — aucun sync nominal, la progression V2 passe par le PostScore",
+	},
+	{
+		pathSuffix: "internal/scheduler/auto_sync_engine.go",
+		status:     "wired",
+		reason:     "Auto-sync : WithPostSyncRunner(s.postSyncRunner, gamertag)",
+	},
 }
 
-// newSyncEngineRe : matche les call sites NewSyncEngine, y compris les
-// alias d'import (sync.NewSyncEngine, gosync.NewSyncEngine, go_sync.NewSyncEngine).
-var newSyncEngineRe = regexp.MustCompile(`\b(?:sync|gosync|go_sync)\.NewSyncEngine\s*\(`)
+// newSyncEngineRe : matche les call sites NewSyncEngine et NewSyncEngineForTitle, y
+// compris sous les alias d'import (sync, gosync, go_sync, syncpkg, sync_pkg).
+var newSyncEngineRe = regexp.MustCompile(`\b(?:sync|gosync|go_sync|syncpkg|sync_pkg)\.NewSyncEngine(?:ForTitle)?\s*\(`)
 
 // TestAssertProgressionDeps_HookWiredOnAllSyncPaths vérifie que tout call
 // site NewSyncEngine dans internal/ (hors tests) est dans la whitelist
