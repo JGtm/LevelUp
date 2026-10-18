@@ -58,9 +58,9 @@ func TestSharedReadDepot_ProviderFermeSauteLEtape(t *testing.T) {
 // du provider du titre à Deriver : le test du helper seul ne dit pas qu'il est branché (revue du
 // lot L4, constat C-2).
 func TestDepot_TransmetLeSegmentDeLectureAuxDerivations(t *testing.T) {
-	src, err := os.ReadFile("registry_build_queue.go")
+	src, err := os.ReadFile("registry_build_queue_derivations.go")
 	if err != nil {
-		t.Fatalf("lecture de registry_build_queue.go : %v", err)
+		t.Fatalf("lecture de registry_build_queue_derivations.go : %v", err)
 	}
 	if !strings.Contains(string(src), "WithRead:      sharedReadDepot(provider, titleSlug),") {
 		t.Error("le dépôt d'ouvrier n'appelle plus Deriver avec le segment de lecture du titre : les " +

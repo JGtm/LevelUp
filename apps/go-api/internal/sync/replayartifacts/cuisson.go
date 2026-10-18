@@ -81,7 +81,7 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 				"gamertag", d.Gamertag, "match_id", w.matchID, "lignes_de_match", len(w.facts.Players))
 			pourAppauvrissement = true
 		}
-		if err := d.Enqueue(ctx, d.TitleSlug, w.matchID); err != nil {
+		if err := d.Enqueue(ctx, d.TitleSlug, w.matchID, w.priorite); err != nil {
 			// Cas nominal du refus : film absent ou expiré côté serveur (~29 % du
 			// corpus). Journalisé en debug, jamais avalé.
 			slog.DebugContext(ctx, "post-sync: rejeu 2D non mis en file",

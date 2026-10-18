@@ -122,20 +122,20 @@ Jamais `go build ./...`, jamais `git add -A`, jamais `git stash`.
 
 ### Étape 2 — Priorité du match frais (B)
 
-- [ ] 2.1 `domain` : constantes `BuildPriorityInsere`, `BuildPriorityRecent`,
+- [x] 2.1 `domain` : constantes `BuildPriorityInsere`, `BuildPriorityRecent`,
       `BuildPriorityRattrapage` (DD-3).
-- [ ] 2.2 `replayartifacts.EnqueueFunc` et `ServiceRegistry.EnqueueReplayBuild(Job)` prennent la
+- [x] 2.2 `replayartifacts.EnqueueFunc` et `ServiceRegistry.EnqueueReplayBuild(Job)` prennent la
       priorité ; l'action admin passe `BuildPriorityRattrapage` (comportement inchangé, cf.
       Découvertes D-1).
-- [ ] 2.3 `buildWork.priorite` posé par `selectionnerLeTravail` : insérés → Insere ; rattrapage
+- [x] 2.3 `buildWork.priorite` posé par `selectionnerLeTravail` : insérés → Insere ; rattrapage
       → Recent si fin de match dans `AnalysisPendingWindow`, sinon Rattrapage (heure canonique
       lue par `lireQueueRecente`, fragment `SQLStartTimeCanonical`, pas `start_time` brut).
-- [ ] 2.4 `ops.EnqueueBuildJob` : job existant `queued` à priorité inférieure → événement
+- [x] 2.4 `ops.EnqueueBuildJob` : job existant `queued` à priorité inférieure → événement
       `queued` à la priorité demandée, `enqueued_at` d'origine conservé ; `running` intact ;
       jamais d'abaissement.
-- [ ] 2.5 Local (DD-4) : `selectionnerLeTravail` ne retient pas le rattrapage quand des insérés
+- [x] 2.5 Local (DD-4) : `selectionnerLeTravail` ne retient pas le rattrapage quand des insérés
       cuisables existent ; jauge de retard toujours mesurée.
-- [ ] 2.6 Tests : `ops` (prise dans l'ordre Insere > Recent > Rattrapage puis ancienneté ;
+- [x] 2.6 Tests : `ops` (prise dans l'ordre Insere > Recent > Rattrapage puis ancienneté ;
       relèvement ; non-abaissement) ; `replayartifacts` (priorités posées ; local sans rattrapage
       quand insérés ; jauge publiée).
 
@@ -248,3 +248,20 @@ courante. `git -C ../LevelUp-wt-delai-debrief log --oneline -10` pour l'état de
     i18n admin), générées par `scripts/build_i18n_manifests.mjs`.
   - 1.9 : la même affirmation périmée existait en trois copies (`engine_options.go`, `engine.go`,
     en-tête de `replayartifacts/artifacts.go`) : les trois corrigées.
+- 2026-10-18 : étape 2 exécutée. Écarts tranchés sur pièces :
+  - 2.3 : « récent » se juge sur l'âge de SYNCHRO (`first_sync_at`, en Go contre
+    `analysis.AnalysisPendingWindow`), la règle même de l'indicateur « Analyse en cours », et non
+    sur la fin du match ; lu par une requête courte sur les seuls matchs retenus
+    (`prioriserLeRattrapage`) plutôt qu'en ajoutant une colonne à `requeteQueueRecente`, partagée
+    avec deux autres lecteurs. Une première écriture en SQL (`first_sync_at >= ?`) a été refusée
+    par le garde-rail `no_retention_window_inline_test.go` : l'âge se juge en Go.
+  - 2.2 : `EnqueueReplayBuild` (action admin) garde sa signature et la priorité de rattrapage ;
+    `EnqueueReplayBuildJob` (fil de l'eau) porte la priorité de la sélection.
+  - Seuil de 500 lignes : `registry_build_queue.go` (500 après 2.2) a été découpé —
+    dérivations du dépôt dans `registry_build_queue_derivations.go` ; `build_queue.go` (509) —
+    relèvement dans `build_queue_priority.go`. Garde-rails suivis : entrée d'allowlist
+    `no_shared_writer_on_request_path_test.go` déplacée sur le nouveau fichier (même prise de
+    writer), motif `registry_build_queue*.go` dans `no_replay_firefight_literal_test.go`, lecture
+    de source de `build_queue_read_segment_test.go`.
+  - Commentaire de `ClaimBuildJob` corrigé : il promettait que l'action admin passait devant le
+    rattrapage, ce qu'aucun appelant ne faisait (D-1).

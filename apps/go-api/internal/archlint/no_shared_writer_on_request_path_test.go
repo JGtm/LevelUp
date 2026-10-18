@@ -50,10 +50,10 @@ var requestPathWriterAllowlist = map[string]struct {
 }{
 	// 2026-10-16 : routes d'administration (RequireAdmin) ou de protocole ouvrier (jeton
 	// dédié), jamais /players ni anonymes.
-	"internal/api/wire/registry_actions.go":           {1, "reset des lying bits : action admin (RequireAdmin), single-flight"},
-	"internal/api/wire/registry_asset_names_sweep.go": {1, "balayage des noms d'assets : action admin, sérialisée"},
-	"internal/api/wire/registry_build_queue.go":       {1, "protocole ouvrier de rejeu (jeton dédié RequireWorkerToken)"},
-	"internal/api/handlers/settings.go":               {1, "PATCH /settings : recalcul des sessions, réglage d'administration"},
+	"internal/api/wire/registry_actions.go":                 {1, "reset des lying bits : action admin (RequireAdmin), single-flight"},
+	"internal/api/wire/registry_asset_names_sweep.go":       {1, "balayage des noms d'assets : action admin, sérialisée"},
+	"internal/api/wire/registry_build_queue_derivations.go": {1, "protocole ouvrier de rejeu (jeton dédié RequireWorkerToken)"},
+	"internal/api/handlers/settings.go":                     {1, "PATCH /settings : recalcul des sessions, réglage d'administration"},
 	// 2026-10-16 : import OpenSpartan, RequireAuth, un import à la fois par compte, fichier
 	// validé avant la prise du writer (L5-4).
 	"internal/service/openspartan_import_service.go":      {1, "import OpenSpartan : writer pris après validation du fichier"},

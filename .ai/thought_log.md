@@ -1,3 +1,11 @@
+## [2026-10-18] Délai du débrief, étape 2 : le match frais passe devant l'historique — Complété (branche `feat/delai-debrief`)
+
+**Décision technique principale** : trois priorités dans la file de l'ouvrier (`domain.BuildPriorityInsere` 100, `BuildPriorityRecent` 50, `BuildPriorityRattrapage` 0), posées par la sélection du post-sync : inséré du cycle, rattrapage synchronisé depuis moins de `analysis.AnalysisPendingWindow` (règle de l'indicateur, jugée en Go), historique. Un job déjà en file redemandé plus haut est relevé (événement append-only, date de mise en file conservée), jamais abaissé, jamais retouché en cours. En construction locale, un cycle qui insère ne cuit pas de rattrapage à sa suite (les dérivations attendaient jusqu'à quatre vieux films). L'action admin garde la priorité de rattrapage.
+
+**Résultats observés** : gates verts — unitaires (ops, api/..., replayartifacts, domain, scheduler, sync rejoué seul après un dépassement de délai sous charge, archlint) ; intégration `-p 1` (ops, api/wire, replayartifacts, domain) ; `make go-api-lint` 0 issue. Deux fichiers ramenés sous 500 lignes par découpage ; trois garde-rails suivis sur les nouveaux fichiers ; un garde-rail (fenêtre de rétention en SQL) a refusé une première écriture, corrigée.
+
+**Conclusion** : étape 2 close. Prochaine étape : citations du film recalculées à la livraison (étape 3).
+
 ## [2026-10-18] Délai du débrief, étape 1 : mesure de bout en bout par match — Complété (branche `feat/delai-debrief`)
 
 **Décision technique principale** : chaque étape du chemin d'un match (fin, détection par le watcher, stats écrites, morts lues, rejeu en file ou lancé en local, pris par l'ouvrier, rangé, dérivations, citations par joueur) est captée à l'instant où elle a lieu par un collecteur en mémoire borné (`observability.ReportMatchStep`), armé par le seul serveur avec le store monitoring, et écrite par la boucle de flush monitoring dans `match_step_events` (append-only, sans index secondaire, rétention 50 000 lignes). `analysis.DebriefDelay` met bout à bout les instants d'un match ; le rapport est joint à `GET /admin/monitoring/build-queue` (`match_delays`) et affiché dans la section « File de construction » (tableau « Délai du débrief », FR + EN).
