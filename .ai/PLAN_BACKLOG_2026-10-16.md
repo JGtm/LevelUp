@@ -434,10 +434,24 @@ navigateur et contrôle visuel du user : OUVERTS.
   parc APRÈS accord du user (durée estimée annoncée) ; ventilation par build et par cause ; pièces de
   `3f048bf3` présentées au user pour trancher ; correctifs par règle générale ; arrêt au 2e lot sans
   baisse.
-- [ ] E8.5 Révisions : une montée par couche touchée (D-8), empreintes et tests de révision à jour ;
-  `replay-corpus-gate` vert.
-- [ ] E8.6 Recuisson ciblée locale (accord du user) : KOTH, témoin Harvest, films d'E8.4 ; mesures
-  au journal ; séquence prod écrite au runbook de déploiement.
+- [x] E8.5 Révisions (pilote, 2026-10-18) : montées une fois sur tout E8 — `objectives-2026-10-17`
+  (E8.2), `isolement-2026-10-17-positions` (E8.1), `SchemaVersion` 99 et `placement-2026-10-17`
+  (E8.4), `grammar-2026-10-18` et `killsource-2026-10-18` (E8.1 b/c/e + fin d'E8.4) ; inchangés :
+  `profile`, `source`, `SchemaDesFaits`. `replay-corpus-gate --base=HEAD` vert (19/19, 0 perte).
+  Décisions du pilote sur les deux restes d'E8.1 : silences après un mouvement TENUS (D-16 à la
+  lettre, 16 tueurs reprennent leur trace à 0,02 m médian) ; 2 contextes de mort sur 23 326 non
+  placés (deux corps du même joueur à 83 m, refus d'ambiguïté commun avec `kill_positions` ;
+  victime attachée à un objet ni véhicule échantillonné ni bipède), comptés, contre 148 gagnés.
+- [~] E8.6 Recuisson locale -> déplacée dans la séquence d'après fusion (E10.5) (pilote,
+  2026-10-18). Raison : le serveur local tourne sur `feat/v75` (schéma 98, révisions d'avant) ;
+  publier des artefacts au schéma 99 et réécrire les positions avec les révisions de cette branche
+  avant la fusion mettrait les données du poste en avance sur le code qui les sert. Les mesures
+  (parc entier par `replay-parc-vies`, KOTH, positions sur les faits) sont faites sans rien
+  publier. Séquence (poste après fusion et redémarrage du serveur, puis prod) : serveur arrêté,
+  `levelup backfill-replay --only-existing` (rejeux), `levelup backfill-killsource` (réécrit
+  `kill_positions`, `kill_openings`, `match_lives`, `match_death_context`, `match_death_mates`),
+  usage-summary, `backfill-pad-tiers --force`. Harvest : `.mvar` téléchargé le 2026-10-18 (serveur
+  arrêté, jeton de JGtm, `data/cache/mvar/ff6b8a12-.../map.mvar` et `fo11_blank.mvar`) pour E8.3.
 
 Gate : `go test ./internal/games/halo_infinite/film/... ./internal/sync/killcollector/...
 ./internal/replaybuild/...` ; `make go-api-test-gamefiles` si `internal/himap` touché ; gate du
