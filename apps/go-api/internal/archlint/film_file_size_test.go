@@ -295,7 +295,9 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 98 -> 99 (2026-10-17, E8.4 du plan du backlog du 2026-10-16), +33 : l entree v99 (l index des
 	// chunks hors table, la chaine de contradictions, la mesure au parc, les revisions). Exception ecrite,
 	// dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3435,
+	// SCHEMA 99, MEME ENTREE (2026-10-18, E8.4 D-18 et E8.1 du meme plan, serie non publiee), +12 : la
+	// condition c des declarations et l abstention du pont d equipe, grammar et killsource qui montent.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3447,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du

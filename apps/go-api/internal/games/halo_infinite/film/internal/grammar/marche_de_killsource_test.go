@@ -97,3 +97,25 @@ func bobineDeLaMarche(t *testing.T) *source.Film {
 	}
 	return film
 }
+
+// TestLOccupationDeLaMarcheDeKillsourceEstCelleDeLaCuisson : l'occupation (`object-parent-state`) que
+// [LireLaMarcheDeKillsource] rend est celle que la marche de la cuisson lit
+// ([ScanMarcheDesTramesAvec], lecture des morts) sur le meme film : meme canal, meme marche.
+func TestLOccupationDeLaMarcheDeKillsourceEstCelleDeLaCuisson(t *testing.T) {
+	film := bobineDeLaMarche(t)
+	lus, err := LireLaMarcheDeKillsource(NewFilmContext(film))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cuisson, err := ScanMarcheDesTramesAvec(NewFilmContext(film), LecturesDeLaMarche{Morts: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lus.Occupation) == 0 {
+		t.Fatalf("aucune lecture d occupation sur la bobine : elle ne prouve rien")
+	}
+	if !slices.Equal(lus.Occupation, cuisson.Occupancy) {
+		t.Fatalf("occupation de la marche de killsource (%d) != celle de la cuisson (%d)",
+			len(lus.Occupation), len(cuisson.Occupancy))
+	}
+}

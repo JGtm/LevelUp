@@ -212,6 +212,9 @@ package objectives
 // (`03ccbe42`, `21ece4d8`, `26602661`, `4577fcc4`, `7de0b91d`, `7fce3219`), les 231 autres sont
 // identiques ; les deux scores finaux faux rejoignent le registre. Les faits persistes et les calques
 // dates `objectives-2026-09-27` deviennent `redecoder`. Aucun backlog killsource ne s'ouvre.
+// A REVISION CONSTANTE, MEME LOT FILM (E8.1, 2026-10-18, serie non publiee) : la VALEUR de
+// `grammar.Rev` monte a `grammar-2026-10-18` (occupation rendue a killsource) ; aucune source de cette
+// couche ne change, l empreinte du golden est recopiee au meme rang.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-10-17"

@@ -56,6 +56,10 @@ func dcEntree(pos []grammar.BipedPosition, mortsFilm []types.Death, journal []Mo
 		Registre:  rep,
 		Journal:   journal,
 		Equipes:   map[uint64]int{111: 0, 222: 0, 333: 0, 444: 0, 999: 1},
+		// MEME ORIGINE QUE LE CALAGE DU REGISTRE par defaut, et l occupation LUE (aucune montee) : la
+		// victime silencieuse est tenue. Les tests qui veulent les separer les posent eux-memes.
+		OrigineDuFilmUS: rep.DeathOffsetMS() * 1000,
+		Bord:            LectureDuBord{Lue: true},
 	}
 }
 
@@ -218,8 +222,9 @@ func TestContextesDesMorts_LaFenetreDeVisibilite(t *testing.T) {
 // donc ISOLÉE : une absence de mesure deviendrait un verdict.
 func TestContextesDesMorts_MortSansLieu_NeSortPas(t *testing.T) {
 	pos, mortsFilm, _ := corpusDeReference()
-	// Une mort de 111 a 15 000 : il n'est plus repliqué depuis 10 000.
-	journal := []MortDuJournal{{VictimeXUID: 111, TempsMS: 15_000}}
+	// Une mort de 111 a 15 000 : sa vie s'est close a 10 000 (le journal porte cette mort), il n'est
+	// plus repliqué depuis — la tenue ne traverse pas une mort.
+	journal := []MortDuJournal{{VictimeXUID: 111, TempsMS: 10_000}, {VictimeXUID: 111, TempsMS: 15_000}}
 	for _, c := range ContextesDesMorts(dcEntree(pos, mortsFilm, journal)) {
 		if c.VictimeXUID == 111 && c.TempsMS == 15_000 {
 			t.Fatalf("contexte rendu pour une mort sans lieu : %+v", c)

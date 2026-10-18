@@ -118,8 +118,7 @@ func decodeFilmVehicleScan(ctx context.Context,
 			"err", err, "match_id", matchID)
 		return VehicleScan{}
 	}
-	pos, err := grammar.ScanBipedPositionsForBand(
-		fc, grammar.NewSlotBand(kf.Band), vehicleScanOptions(fc, wr))
+	pos, err := nuageDesVehicules(fc, kf.Band, wr)
 	if err != nil {
 		slog.WarnContext(ctx, "vehicules : nuage de positions illisible — AUCUN vehicule publie (sans lui, une"+
 			" vie recensee n aurait ni trajectoire ni cap)", "err", err, "match_id", matchID)
@@ -133,6 +132,24 @@ func decodeFilmVehicleScan(ctx context.Context,
 		"imagesCles", len(kf.TimesUS), "viesRecensees", len(kf.SeenUS),
 		"echantillons", len(pos), "evenements", len(out.Events), "viseesSansPosition", len(out.Aims))
 	return out
+}
+
+// nuageDesVehicules lit le nuage de positions `ti=40` sur la bande `band` des images-cles, aux
+// reglages du calque ([vehicleScanOptions]). C'est LA lecture des positions de vehicule : la cuisson
+// et la passe des positions du collecteur ([PositionsDesVehicules]) la partagent.
+func nuageDesVehicules(fc *grammar.FilmContext, band map[uint32]bool, wr *profile.Vec3Range,
+) ([]grammar.BipedPosition, error) {
+	return grammar.ScanBipedPositionsForBand(fc, grammar.NewSlotBand(band), vehicleScanOptions(fc, wr))
+}
+
+// PositionsDesVehicules rend le nuage de positions des vehicules du film, lu comme la cuisson le lit
+// (bande `ti=40` des images-cles, [nuageDesVehicules]) : nil sans bande. HORS LIGNE.
+func PositionsDesVehicules(fc *grammar.FilmContext, wr *profile.Vec3Range) ([]grammar.BipedPosition, error) {
+	kf := grammar.ScanWorldObjectKeyframes(fc, grammar.VehicleTypeIndex)
+	if len(kf.Band) == 0 {
+		return nil, nil
+	}
+	return nuageDesVehicules(fc, kf.Band, wr)
 }
 
 // mortsDeVehicule rend les MORTS ECRITES des vehicules et les lectures d occupation que la marche

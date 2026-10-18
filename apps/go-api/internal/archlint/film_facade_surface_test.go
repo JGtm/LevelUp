@@ -395,7 +395,12 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           `BuildKillPositions` (couples, morts du journal pour la
 //	                                           regle du tueur posthume D-17, compteur de replis) : six
 //	                                           entrees ne tiennent plus en parametres. Aucun retrait.
-const plafondSurfaceReplay = 310 // 2026-10-17 — base d8356df11 re-mesuree a 309 + 1 (EntreeDesPositions) ; cf. l historique ci-dessus
+//	312  backlog E8.1 (b) (c) (2026-10-18)      base `9d8879471` re-mesuree a 310. +2 :
+//	                                           `replay.LectureDuBord` (occupation des vehicules et leur
+//	                                           nuage, decision D-16) et `replay.PositionsDesVehicules`
+//	                                           (le nuage `ti=40` lu comme la cuisson le lit), que la passe
+//	                                           des positions du collecteur fournit. Aucun retrait.
+const plafondSurfaceReplay = 312 // 2026-10-18 — base 9d8879471 re-mesuree a 310 + 2 (LectureDuBord, PositionsDesVehicules) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

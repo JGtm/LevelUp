@@ -3418,18 +3418,30 @@ package replay
 //	`coverage.identity.filmTable`  `direct` baisse et `repli` monte d autant pour les membres de chaine.
 //	journal          la contradiction table/chunks porte son detail (`xuid:siege->controle`), l alarme
 //	                 `index_hors_table` les index lus des vies restees sans nom.
+//	`tracks[].bot`   (suite, D-18) le corps d un index de bots cree avant le PREMIER paquet BOT_METADATA
+//	`tracks[].team`  qui declare un bot de cet index, et mort avant lui, est nomme a ce bot quand le
+//	                 paquet n en declare qu un et qu aucune image-cle porteuse ne les separe (condition c
+//	                 de `identity_registry_declarations.go`) ; sa piste prend l equipe de l entree. Le pont
+//	                 slot -> index se TAIT sur un index dont un bot declare ecrit une autre equipe que la
+//	                 table par index (`teamPublication.indexRelayes`) : cette table ne lit que les entites
+//	                 `ti=9`, l equipe d un autre occupant n est pas celle du corps (compte dans
+//	                 `coverage.teams.tracksSlotAmbiguous`).
 //
 //	MESURE          parc de 2 676 films (hors 5 films de build inconnu et 2 de Firefight) : vies
 //	                publiees sans identite 449 -> 17 sur les 36 films fautifs, aucune vie nommee
 //	                perdue ; les noms qui changent sont des vies que le relais donnait a un bot dont
 //	                le corps propre vivait au meme instant, et les corps des membres de chaine (equipe
 //	                de la feuille retrouvee sur 43 vies de trois films). Pont par morts sur les 44 films
-//	                a contradiction : concordances 4 655 -> 5 178, discordances 488 -> 446.
+//	                a contradiction : concordances 4 655 -> 5 178, discordances 488 -> 446. Condition c :
+//	                `3f048bf3` (« 343 Lacuna », equipe 0 au lieu de 1) et `8c19b7dc` (« 343 Godfather »).
 //
 //	CE QUI MONTE    `SchemaVersion` 98 -> 99 ; `killcollector.PlacementRev` `placement-2026-10-16` ->
-//	AVEC ELLE       `placement-2026-10-17` (le document interne des portages lit le meme registre).
-//	                `source`, `profile`, `grammar`, `killsource` et `SchemaDesFaits` gardent leur valeur
-//	                (`objectives.Rev` a monte a `objectives-2026-10-17` au meme plan, E8.2, sans schema) :
-//	                les faits persistes du registre d identite sont identiques a l octet.
+//	AVEC ELLE       `placement-2026-10-17` (le document interne des portages lit le meme registre) ;
+//	                `grammar.Rev` `grammar-2026-10-16` -> `grammar-2026-10-18` et `killsource.Rev`
+//	                `killsource-2026-10-16` -> `killsource-2026-10-18` (E8.1 : l occupation des vehicules
+//	                rendue a la passe des positions du collecteur ; `coverage.decoder` les publie).
+//	                `source`, `profile` et `SchemaDesFaits` gardent leur valeur (`objectives.Rev` a monte
+//	                a `objectives-2026-10-17` au meme plan, E8.2, sans schema).
 //
-//	LE PARC         un artefact 98 dont les faits sont sur disque : verdict `republier`.
+//	LE PARC         un artefact 98 : verdict `redecoder` (les faits persistes portent l ancienne
+//	                grammaire), la recuisson relit le film.

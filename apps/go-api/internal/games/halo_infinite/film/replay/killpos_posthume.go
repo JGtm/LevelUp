@@ -21,8 +21,8 @@ import (
 // (2) le journal porte une mort de ce joueur STRICTEMENT AVANT le frag (une mort a la meme
 // milliseconde est un echange ou un suicide : le placement direct en a deja decide), et (3) aucune vie
 // NOMMEE a son nom ne s'ouvre entre cette mort et le frag (il n'a pas reapparu). Sa position est
-// alors celle de sa mort, lue par la MEME fonction que la position d'une victime (`positionOf` sur
-// ses sieges a l'instant de sa mort) ; si sa mort n'est pas localisable, il reste nil.
+// alors celle de sa mort, lue par la MEME lecture que la position d'une victime ([lectureALInstant.placer]
+// sur ses sieges a l'instant de sa mort, tenue et siege compris) ; si sa mort n'est pas localisable, il reste nil.
 //
 // AUCUNE BORNE DE DUREE : un joueur mort et non reapparu n'a qu'un lieu, celui de sa mort. Le
 // repli est nomme (`repli_position_posthume_du_tueur`) et compte au compteur de la passe ; le
@@ -96,7 +96,7 @@ func (m *mortsDuTueur) placerPosthume(p *killPlacement, reg IdentityRegistry, si
 		return nil, false
 	}
 	tUS := uint64(mortMS*1000 + offsetUS) //nolint:gosec // horloge du film, bien sous 2^63
-	v, _ := positionOf(p.tracks, siegesDe(reg, sieges, k.KillerXUID, tUS), tUS)
+	v, _, _ := p.lecture.placer(siegesDe(reg, sieges, k.KillerXUID, tUS), k.KillerXUID, tUS)
 	return v, true
 }
 

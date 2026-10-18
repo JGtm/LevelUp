@@ -112,6 +112,11 @@ type EntreeContexteMorts struct {
 	// Fallbacks : le compteur de replis de la PASSE de l appelant (le collecteur, hors cuisson :
 	// il le publie en expvar par nom et au journal du film). Nil ne compte rien (lot J8.7).
 	Fallbacks *fallback.Compteur
+	// OrigineDuFilmUS : l'origine que `BuildKillPositions` recoit (`EntreeDesPositions.OrigineUS`). La
+	// victime est placee a `TempsMS*1000 + OrigineDuFilmUS`, l'instant de sa ligne de `kill_positions`.
+	OrigineDuFilmUS int64
+	// Bord : la meme lecture du bord que `EntreeDesPositions.Bord` (tenue et siege de la victime).
+	Bord LectureDuBord
 }
 
 // ContexteMort est ce que la lecture saura d'une mort : combien de coéquipiers dans chaque état,
@@ -125,6 +130,10 @@ type ContexteMort struct {
 	PlusProcheM                    *float64
 	Visibles, EnAttente, HorsDeVue int
 	Total                          int
+	// Lieu : ou la victime est morte, monde, metres — le lieu que `kill_positions` ecrit pour cette
+	// mort, par la meme lecture ([lectureALInstant.placer]) au meme instant. Les distances aux
+	// coequipiers se mesurent depuis ce point.
+	Lieu Vec3
 	// Coequipiers : UNE entrée par coéquipier de la victime, triée par xuid croissant (l'ordre
 	// d'une map n'est pas un ordre). Les compteurs ci-dessus et `PlusProcheM` en sont DÉRIVÉS :
 	// ce sont les mêmes états, jamais une seconde lecture.
@@ -175,6 +184,11 @@ type CoequipierDeMort struct {
 // distances à ses coéquipiers ne se calculent pas, et écrire une ligne à `nearest_teammate_m`
 // NULL la ferait lire « aucun coéquipier à portée », c'est-à-dire ISOLÉE. Une absence de mesure
 // deviendrait un verdict.
+//
+// LE LIEU DE LA VICTIME EST CELUI DE `kill_positions`, ET IL N'Y EN A PAS D'AUTRE (D-7, D-16) : la
+// lecture a l'instant ([lectureALInstant.placer] : echantillon a la tolerance, tenue, siege), a
+// `TempsMS*1000 + OrigineDuFilmUS`. Les coequipiers gardent la lecture par vie du registre (etat et
+// position dans la fenetre de visibilite).
 func ContextesDesMorts(e EntreeContexteMorts) []ContexteMort {
 	if !e.Registre.PontPubliable() {
 		return nil
@@ -182,11 +196,16 @@ func ContextesDesMorts(e EntreeContexteMorts) []ContexteMort {
 	pos := indexerParXUID(e.Positions, e.Registre)
 	vies := viesParXUID(e.Registre)
 	mortsPar := mortsParVictime(e.Journal)
+	pistes := indexBySlot(e.Positions)
+	lecture := lectureALInstant{tracks: pistes, bord: lireLeBord(e.Bord, e.Positions, e.Fallbacks),
+		morts: nouvellesMortsDuTueur(e.Journal, e.Registre), offsetUS: e.OrigineDuFilmUS}
+	sieges := siegesTries(pistes)
 
 	out := make([]ContexteMort, 0, len(e.Journal))
 	for _, m := range e.Journal {
-		lieu, connu := pos.visibleA(m.VictimeXUID, m.TempsMS)
-		if !connu {
+		tUS := uint64(m.TempsMS*1000 + e.OrigineDuFilmUS) //nolint:gosec // horloge du film, bien sous 2^63
+		lieu, _, _ := lecture.placer(siegesDe(e.Registre, sieges, m.VictimeXUID, tUS), m.VictimeXUID, tUS)
+		if lieu == nil {
 			continue
 		}
 		// UNE VICTIME HORS DE TOUTE EQUIPE NE SORT PAS : sans son camp, ses coequipiers ne se designent
@@ -195,16 +214,16 @@ func ContextesDesMorts(e EntreeContexteMorts) []ContexteMort {
 		if !dansUneEquipe {
 			continue
 		}
-		out = append(out, contexteDUneMort(e, pos, vies, mortsPar, m, son, lieu))
+		out = append(out, contexteDUneMort(e, pos, vies, mortsPar, m, son, *lieu))
 	}
 	return out
 }
 
 // contexteDUneMort classe chaque coéquipier de la victime et retient le plus proche des visibles.
 func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID, vies map[uint64][]vieMatch,
-	mortsPar map[uint64][]int64, m MortDuJournal, son int, lieu point,
+	mortsPar map[uint64][]int64, m MortDuJournal, son int, lieu Vec3,
 ) ContexteMort {
-	c := ContexteMort{VictimeXUID: m.VictimeXUID, TempsMS: m.TempsMS}
+	c := ContexteMort{VictimeXUID: m.VictimeXUID, TempsMS: m.TempsMS, Lieu: lieu}
 	// Tri par xuid AVANT le parcours : l'ordre d'une map change d'un appel à l'autre, et les
 	// replis comptes (`Fallbacks`) comme la liste publiee doivent etre reproductibles.
 	coequipiers := make([]uint64, 0, len(e.Equipes))
@@ -221,7 +240,7 @@ func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID, vies map[uint
 		switch ligne.Etat {
 		case EtatVisible:
 			c.Visibles++
-			poserPosition(&ligne, pos, m.TempsMS, lieu)
+			poserPosition(&ligne, pos, m.TempsMS, point{x: lieu.X, y: lieu.Y})
 		case EtatEnAttente:
 			c.EnAttente++
 		default:

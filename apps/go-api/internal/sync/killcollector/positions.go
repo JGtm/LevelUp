@@ -99,6 +99,8 @@ const (
 	// fourni au collecteur — régression de câblage, la table reste vide en silence si ce
 	// compteur n'est pas observé (Q8, .ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md).
 	metricPositionsNotWired = "killsource_positions_non_cablees"
+	// metricPositionsSilencesSansLieu : cotes a bord d un vehicule sans echantillon ou debarques (D-16).
+	metricPositionsSilencesSansLieu = "killsource_positions_silences_sans_lieu"
 )
 
 // collectPositions : la TROISIÈME écriture de la passe — `shared.kill_positions`.
@@ -307,11 +309,19 @@ func buildPositionRows(ctx context.Context,
 	// LE MATERIAU REMONTE TEL QUEL : le registre porte les vies nommees et le calage d horloge,
 	// les positions portent le monde. La projection des faits d isolement s en sert sans
 	// rescanner le film (cf. isolation_facts.go).
+	//
+	// LE BORD (E8.1, decision D-16) : l occupation que la marche de killsource a DEJA lue (`res`) et le
+	// nuage des vehicules, lu comme la cuisson le lit. Un cote sans echantillon a l instant est tenu
+	// a son dernier echantillon hors embarquement, ou pose au siege du vehicule qu il occupe ; le
+	// contexte de mort place sa victime par la MEME lecture (isolation_facts.go).
+	bord := lireLeBordDuCollecteur(ctx, lectures.contexte, entry, res, matchID)
 	mat := materiauDIsolement{registre: reg, positions: lectures.positions, film: film,
-		contexte: lectures.contexte, carte: entry, profil: profilCalibre(res), identite: entree}
+		contexte: lectures.contexte, carte: entry, profil: profilCalibre(res), identite: entree,
+		origineUS: int64(originUS), bord: bord}
 	morts, _ := journalDesMorts(journal)
 	entreePositions := replay.EntreeDesPositions{Positions: lectures.positions, Registre: reg,
-		Kills: killRefsFromDeaths(journal), Morts: morts, OrigineUS: int64(originUS), Fallbacks: ids.replis}
+		Kills: killRefsFromDeaths(journal), Morts: morts, OrigineUS: int64(originUS), Fallbacks: ids.replis,
+		Bord: bord}
 	return composerPassePositions(entreePositions, matchID), mat, nil
 }
 
@@ -471,6 +481,7 @@ func refuserSequenceTrouee(film *decfilm.Film) error {
 func publishPositionsPass(ctx context.Context, matchID string, rep replay.KillPosReport, rowsWritten int) {
 	observability.AddInt(metricPositionsMatches, 1)
 	observability.AddInt(metricPositionsRows, int64(rowsWritten))
+	observability.AddInt(metricPositionsSilencesSansLieu, int64(rep.AboardNoVehicle+rep.Disembarked))
 	if rep.Dropped > 0 {
 		observability.AddInt(metricPositionsKillsDropped, int64(rep.Dropped))
 	}
@@ -478,7 +489,9 @@ func publishPositionsPass(ctx context.Context, matchID string, rep replay.KillPo
 		"match_id", matchID, "kills", rep.Kills, "deux_cotes", rep.Both,
 		"tueur_seul", rep.KillerOnly, "victime_seule", rep.VictimOnly,
 		"sans_position", rep.Dropped, "sans_pont_identite", rep.NoBridge,
-		"tueurs_posthumes", rep.Posthumous, "tueurs_posthumes_sans_lieu", rep.PosthumousUnplaced, "lignes", rowsWritten)
+		"tueurs_posthumes", rep.Posthumous, "tueurs_posthumes_sans_lieu", rep.PosthumousUnplaced,
+		"cotes_tenus", rep.Held, "cotes_au_siege", rep.Seated, "cotes_a_bord_sans_vehicule", rep.AboardNoVehicle,
+		"cotes_debarques", rep.Disembarked, "lignes", rowsWritten)
 }
 
 // entreeDuRegistre et lecturesDuFilm sont EXTRAITES vers positions_identity_entree.go (lot 5.1) :

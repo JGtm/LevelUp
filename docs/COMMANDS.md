@@ -178,7 +178,7 @@ freshness rule is unchanged: a named match that is already fresh is skipped unle
 match and in ONE transaction sharing a single `decode_pass`: `match_lives`, `match_death_context`
 and `match_death_mates` (the state and position of each teammate of the victim at the instant of
 each death; INSERT-only, read through `match_death_mates_latest`). A match is stale until its
-`IsolationDecoderRev` reaches `isolement-2026-10-17-positions` (the 2026-10-17 bump also rewrites `kill_positions`: renamed players and posthumous killers): the first run after that bump
+`IsolationDecoderRev` reaches `isolement-2026-10-17-positions` (the 2026-10-17 bump also rewrites `kill_positions`: renamed players, posthumous killers, and a side the film shows no sample for at the instant, held at its last sample outside a vehicle or placed at the seat of the vehicle it occupies; the victim of `match_death_context` is placed by the same reading): the first run after that bump
 re-decodes the whole park (about 1 600 films, resumable by `decoder_rev`). The pass is atomic per
 match: if the teammate rows of a match fail validation, nothing of that match is published for
 the pass (`match_lives` and `match_death_context` included).

@@ -283,10 +283,16 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 //   - le tueur deja mort au moment du frag (projectile en vol) est pose au lieu de sa mort, repli
 //     nomme `repli_position_posthume_du_tueur` (`replay/killpos_posthume.go`).
 //
-// CE QUI NE CHANGE PAS : `match_lives`, `match_death_context`, `match_death_mates` (meme journal,
-// meme lecture qu avant) et le journal des morts (`killsource.Rev` ne bouge pas). Une montee pour
-// TOUT le lot film E8 (D-8) : un changement ulterieur du meme lot garde cette valeur tant qu aucun
-// `backfill-killsource` ne l a publiee. Le bump ne declenche rien par lui-meme.
+// A REVISION CONSTANTE, SUITE DU MEME LOT (E8.1 (b) (c) (e), decision D-16, serie non publiee) : un
+// cote sans echantillon a l instant est TENU a son dernier echantillon (meme vie, hors embarquement)
+// ou pose au SIEGE du vehicule qu il occupe, par l occupation que la marche de killsource lit
+// (`replay/killpos_a_l_instant.go`) ; la victime du contexte de mort (`match_death_context`,
+// `match_death_mates`) est placee par cette meme lecture, a l instant de sa ligne de
+// `kill_positions`. `match_lives` ne change pas ; le journal des morts non plus (`killsource.Rev`
+// monte avec `grammar.Rev`, qui expose l occupation, sans qu aucune ligne de kill ne bouge).
+//
+// Une montee pour TOUT le lot film E8 (D-8) : un changement ulterieur du meme lot garde cette valeur
+// tant qu aucun `backfill-killsource` ne l a publiee. Le bump ne declenche rien par lui-meme.
 const IsolationDecoderRev = "isolement-2026-10-17-positions"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
@@ -308,6 +314,10 @@ type materiauDIsolement struct {
 	carte     decfilm.MapQuantEntry
 	profil    *decfilm.ProfilDeBalayage
 	identite  replay.IdentityInput
+	// origineUS / bord : l origine d horloge et la lecture du bord de `kill_positions` — le contexte de
+	// mort place sa victime au meme instant, par la meme lecture.
+	origineUS int64
+	bord      replay.LectureDuBord
 }
 
 // toLifeRows traduit les vies pures en lignes ecrivables.
@@ -364,6 +374,9 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 		Equipes:   equipes,
 		// LES DEUX REPLIS DU CONTEXTE DE MORT se comptent sur le compteur de la passe (lot J8.7).
 		Fallbacks: ids.replis,
+		// LE LIEU DE LA VICTIME EST CELUI DE `kill_positions` (D-7, D-16) : meme instant, meme lecture.
+		OrigineDuFilmUS: mat.origineUS,
+		Bord:            mat.bord,
 	})
 	// LE RESTE EST « SANS LIEU » : la mort est resolue, sa victime a une equipe, et pourtant
 	// aucun contexte n'est sorti — c'est que le film ne la montrait pas a cet instant.

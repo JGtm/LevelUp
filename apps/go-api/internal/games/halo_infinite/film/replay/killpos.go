@@ -132,6 +132,26 @@ type KillPosReport struct {
 	// reconnait morts mais dont la mort n est pas localisable — ils restent nil. Seule
 	// `BuildKillPositions` les renseigne : l entame d un tueur mort n a pas de sens.
 	Posthumous, PosthumousUnplaced int
+	// Held / Seated comptent les CÔTÉS (tueur ou victime) places par la TENUE du dernier echantillon
+	// et par le SIEGE d'un vehicule occupe (D-16, killpos_a_l_instant.go). AboardNoVehicle /
+	// Disembarked, les cotes que l'occupation met a bord d'un vehicule sans echantillon a la
+	// tolerance, ou debarques pendant le silence : ils restent nil. Seule `BuildKillPositions` les
+	// renseigne.
+	Held, Seated, AboardNoVehicle, Disembarked int
+}
+
+// compterLaVoie ventile la voie d'un cote place ou tu dans le rapport.
+func (r *KillPosReport) compterLaVoie(v voieDuLieu) {
+	switch v {
+	case voieTenue:
+		r.Held++
+	case voieSiege:
+		r.Seated++
+	case voieABordSansVehicule:
+		r.AboardNoVehicle++
+	case voieDebarque:
+		r.Disembarked++
+	}
 }
 
 // EntreeDesPositions porte ce que `BuildKillPositions` consulte, deja lu par l appelant.
@@ -151,6 +171,9 @@ type EntreeDesPositions struct {
 	OrigineUS int64
 	// Fallbacks : le compteur de replis de la passe de l appelant. Nil ne compte rien.
 	Fallbacks *fallback.Compteur
+	// Bord : l'occupation des vehicules et leurs positions (killpos_a_l_instant.go). Non lue : un
+	// cote sans echantillon a la tolerance reste nil.
+	Bord LectureDuBord
 }
 
 // BuildKillPositions rend les positions monde des deux joueurs de chaque mort.
@@ -164,11 +187,22 @@ type EntreeDesPositions struct {
 // DÉCALÉ — l'entame — cette ignorance devient un piège, d'où `BuildKillOpenings`. La seule
 // exception est le tueur DEJA MORT (D-17) : il est pose au lieu de sa mort, et c'est un repli
 // nomme et compte (`repli_position_posthume_du_tueur`).
+//
+// LE SILENCE SE LIT (D-16) : un cote sans echantillon a la tolerance est pose par la TENUE du dernier
+// echantillon ou par le SIEGE du vehicule occupe, selon `e.Bord` (cf. killpos_a_l_instant.go).
 func BuildKillPositions(e EntreeDesPositions) ([]KillPosition, KillPosReport) {
-	p := placeKillPositions(e.Positions, e.Registre, e.Kills, e.OrigineUS,
-		nouvellesMortsDuTueur(e.Morts, e.Registre))
+	p := placeKillPositions(e.Positions, e.Registre, e.Kills, e.OrigineUS, reglesDuPlacement{
+		posthume: nouvellesMortsDuTueur(e.Morts, e.Registre), bord: lireLeBord(e.Bord, e.Positions, e.Fallbacks)})
 	e.Fallbacks.DeclencheN(fallback.NomPositionPosthumeDuTueur, p.report.Posthumous)
 	return p.positions, p.report
+}
+
+// reglesDuPlacement porte ce qui s'ajoute a l'echantillon a la tolerance : la regle du tueur deja
+// mort (nil : elle ne s'applique pas) et la lecture du bord (non lue : ni tenue ni siege). L'entame
+// n'en demande aucune.
+type reglesDuPlacement struct {
+	posthume *mortsDuTueur
+	bord     bordDuFilm
 }
 
 // killSides porte le SLOT retenu de chaque côté d'une mort placée. Un slot n'a de sens que si
@@ -185,18 +219,21 @@ type killPlacement struct {
 	slots     []killSides // parallèle à positions : même index, même mort
 	tracks    map[uint32]slotTrack
 	report    KillPosReport
+	// lecture : LA lecture du lieu a l'instant (killpos_a_l_instant.go), sur les memes trajectoires.
+	lecture lectureALInstant
 }
 
-// placeKillPositions est LE placement, et le seul. `posthume` porte les morts du journal pour la
-// regle du tueur deja mort (nil : la regle ne s'applique pas — c'est le cas de l'entame).
+// placeKillPositions est LE placement, et le seul. `regles` porte la regle du tueur deja mort et la
+// lecture du bord (l'entame n'en porte aucune).
 func placeKillPositions(pos []grammar.BipedPosition, reg IdentityRegistry,
-	kills []KillRef, offsetUS int64, posthume *mortsDuTueur) killPlacement {
+	kills []KillRef, offsetUS int64, regles reglesDuPlacement) killPlacement {
 	out := killPlacement{report: KillPosReport{Kills: len(kills)}}
 	if len(pos) == 0 || !reg.PontEtabli() || len(kills) == 0 {
 		out.report.Dropped = len(kills)
 		return out
 	}
 	out.tracks = indexBySlot(pos)
+	out.lecture = lectureALInstant{tracks: out.tracks, bord: regles.bord, morts: regles.posthume, offsetUS: offsetUS}
 	sieges := siegesTries(out.tracks)
 	out.positions = make([]KillPosition, 0, len(kills))
 	out.slots = make([]killSides, 0, len(kills))
@@ -205,10 +242,13 @@ func placeKillPositions(pos []grammar.BipedPosition, reg IdentityRegistry,
 		duTueur, deLaVictime := siegesDe(reg, sieges, k.KillerXUID, tUS), siegesDe(reg, sieges, k.VictimXUID, tUS)
 		kp := KillPosition{KillRef: k}
 		var sides killSides
-		kp.Killer, sides.killer = positionOf(out.tracks, duTueur, tUS)
-		kp.Victim, sides.victim = positionOf(out.tracks, deLaVictime, tUS)
+		var voieT, voieV voieDuLieu
+		kp.Killer, sides.killer, voieT = out.lecture.placer(duTueur, k.KillerXUID, tUS)
+		kp.Victim, sides.victim, voieV = out.lecture.placer(deLaVictime, k.VictimXUID, tUS)
+		out.report.compterLaVoie(voieT)
+		out.report.compterLaVoie(voieV)
 		if kp.Killer == nil {
-			placerLeTueurPosthume(&out, posthume, reg, sieges, &kp, offsetUS)
+			placerLeTueurPosthume(&out, regles.posthume, reg, sieges, &kp, offsetUS)
 		}
 		if len(duTueur) == 0 || len(deLaVictime) == 0 {
 			out.report.NoBridge++

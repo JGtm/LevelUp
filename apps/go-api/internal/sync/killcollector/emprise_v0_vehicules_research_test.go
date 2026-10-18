@@ -158,6 +158,7 @@ func v0Sonder(res *v0Vehicules, journal []replay.MortDuJournal, sondes []v0Sonde
 	}
 	ctxs := replay.ContextesDesMorts(replay.EntreeContexteMorts{
 		Positions: mat.positions, Registre: mat.registre, Journal: journal, Equipes: equipes,
+		OrigineDuFilmUS: mat.origineUS, Bord: mat.bord,
 	})
 	j := 0
 	for i, m := range journal {

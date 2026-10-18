@@ -362,3 +362,11 @@ package killsource
 // objets engendres et sa position i0 ; le lecteur de position des objets du monde est scinde sans
 // changement. `replay-equiv` (20 films, `a9a9ac78a` contre le lot) : etape `killsource` identique sur
 // les 20.
+//
+// ENTREE `killsource-2026-10-18` (2026-10-18, plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E8.1 (b) (c),
+// decision utilisateur D-16) : la VALEUR de `grammar.Rev` monte a `grammar-2026-10-18`
+// ([grammar.LectureDeKillsource.Occupation]), et [Result.Occupation] rend au collecteur l occupation
+// des vehicules que la marche a lue (hors serialisation, comme les diagnostics). AUCUNE ligne de kill
+// ne change : la lecture d occupation sert la passe des positions (tenue hors embarquement, siege du
+// vehicule occupe), pas le journal des morts. La porte [Result.LineByLinePublishable] passe dans
+// `kill_publication.go` par deplacement pur (seuil de 500 lignes de kill.go).

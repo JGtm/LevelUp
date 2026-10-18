@@ -185,7 +185,7 @@ et avec `--credit-only` (la passe SQL → SQL ne lit pas cette sélection).
 par match et en UNE transaction partageant une seule `decode_pass` : `match_lives`,
 `match_death_context` et `match_death_mates` (l'état et la position de chaque coéquipier de la
 victime à l'instant de chaque mort ; INSERT-only, lue par `match_death_mates_latest`). Un match
-est périmé tant que son `IsolationDecoderRev` n'a pas atteint `isolement-2026-10-17-positions` (le bump du 2026-10-17 réécrit aussi `kill_positions` : joueurs renommés et tueurs posthumes) :
+est périmé tant que son `IsolationDecoderRev` n'a pas atteint `isolement-2026-10-17-positions` (le bump du 2026-10-17 réécrit aussi `kill_positions` : joueurs renommés, tueurs posthumes, et un côté sans échantillon à l'instant, tenu à son dernier échantillon hors d'un véhicule ou posé au siège du véhicule qu'il occupe ; la victime de `match_death_context` est placée par la même lecture) :
 le premier passage après ce bump redécode tout le parc (environ 1 600 films, reprise par
 `decoder_rev`). La passe est atomique par match : si les lignes de coéquipiers d'un match
 échouent à la validation, rien de ce match n'est publié pour la passe (`match_lives` et

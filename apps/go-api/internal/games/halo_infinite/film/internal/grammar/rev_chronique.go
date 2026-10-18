@@ -347,3 +347,12 @@ package grammar
 // 0 cree une entite ti=38 (la faille), nommee par la pile au paquet suivant ; 123/123 positions lues.
 // Contre l arrivee du premier echange (74) : ecart XY mediane 0,02 m, max 0,13 (l arrivee est 0,11 a
 // 0,53 m plus haut) ; contre le porteur a l image de la pose (120) : XY mediane 0,04 m, max 0,17.
+//
+// ENTREE `grammar-2026-10-18` (2026-10-18, plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E8.1 (b) (c),
+// decision utilisateur D-16, option B du pilote) : L OCCUPATION DES VEHICULES QUE LA MARCHE DE
+// KILLSOURCE RECOLTE EST RENDUE. Aucun bit n est lu autrement : le canal des morts recoltait deja les
+// lectures d `object-parent-state` (i10) de la bande bipede pendant la marche de killsource, et les
+// jetait. [LectureDeKillsource.Occupation] les rend, triees et dedoublonnees comme celles de la
+// cuisson ([ScanMarcheDesTramesAvec], `TestLOccupationDeLaMarcheDeKillsourceEstCelleDeLaCuisson`) :
+// la passe des positions du collecteur y lit qui est a bord (tenue hors embarquement, siege du
+// vehicule occupe) sans seconde marche. `killsource.Rev` monte avec cette valeur.

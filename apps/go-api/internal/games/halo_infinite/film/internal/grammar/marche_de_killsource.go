@@ -84,6 +84,10 @@ type LectureDeKillsource struct {
 	// repli a largeur libre (`repli_localisation_largeur_libre`).
 	Stats        ObjectDeathStats
 	LargeurLibre int
+	// Occupation : les lectures d `object-parent-state` (i10) de la bande bipede que le canal des
+	// morts recolte sur la meme marche, triees et dedoublonnees comme celles de la cuisson
+	// ([ScanMarcheDesTramesAvec]) : la passe des positions du collecteur y lit qui est a bord.
+	Occupation []types.VehicleOccupancy
 	// Rattrapage : ce que le rattrapage des kills a fait.
 	Rattrapage BilanDuRattrapage
 }
@@ -102,7 +106,8 @@ func LireLaMarcheDeKillsource(fc *FilmContext) (LectureDeKillsource, error) {
 	}
 	r := &kills.rattrapage
 	return LectureDeKillsource{Morts: morts.mortsLues, Kills: kills.kills, Fil: kills.fil, Stats: morts.st,
-		LargeurLibre: morts.largeurLibre, Rattrapage: BilanDuRattrapage{Kills: kills.rattrapes,
+		LargeurLibre: morts.largeurLibre, Occupation: dedupOccupancy(morts.h.rides),
+		Rattrapage: BilanDuRattrapage{Kills: kills.rattrapes,
 			ChainesArretees: r.chainesArretees, Gate15: r.gate15, Tranche: r.tranche}}, nil
 }
 

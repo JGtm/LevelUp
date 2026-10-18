@@ -71,6 +71,8 @@ type decodeCtx struct {
 	mult     map[multKey]int
 	calib    calibration
 	bijScore int
+	// occupation : les lectures d occupation de la marche (cf. [Result.Occupation]).
+	occupation []types.VehicleOccupancy
 	// diag : les DIAGNOSTICS du decodage (lot J12.3, ADR 0034 D-4) — ce que ce paquet journalisait,
 	// rendu a l orchestrateur par [Result.Diagnostics].
 	diag constat.Diagnostics
@@ -307,6 +309,7 @@ func (c *decodeCtx) finish() *Result {
 		res.Health.TagOutOfCatalogueScan = probe.Uncovered
 	}
 	res.Stats.Replis = c.replisDuResultat(kills, p.unclaimed, res.Probe != nil)
+	res.Occupation = c.occupation
 	res.Diagnostics = c.diag.Relever()
 	return res
 }
@@ -380,6 +383,7 @@ func (c *decodeCtx) marcher(ctx context.Context, src *source.Film) error {
 	c.walkRes = mortsDeLaMarche(lecture, c.film, c.roster)
 	c.killEvents = killEventsDeLaMarche(lecture, c.film)
 	c.fil = filDeLaMarche(lecture)
+	c.occupation = lecture.Occupation
 	fc.Diagnostics().Verser(&c.diag)
 	return nil
 }

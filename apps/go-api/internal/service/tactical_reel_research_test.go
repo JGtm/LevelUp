@@ -236,6 +236,12 @@ func reelSequenceCandidate(ctx context.Context, t *testing.T, svc *TacticalServi
 	return nil
 }
 
+// reelEcartArrondiM : le SEUL ecart tolere entre la distance publiee d un coequipier et celle que
+// donnent ses points. La victime est placee par la lecture de `kill_positions` pour les deux (D-7,
+// D-16 : plus de seconde position de mort) ; ne reste que l arrondi a 2 decimales du coequipier (X, Y
+// et distance), soit au plus ~0,012 m.
+const reelEcartArrondiM = 0.02
+
 func reelControles(question string, d domain.TacticalCelluleReponse) []string {
 	var out []string
 	add := func(format string, a ...any) {
@@ -245,7 +251,7 @@ func reelControles(question string, d domain.TacticalCelluleReponse) []string {
 		if c.Equipe != nil {
 			for _, m := range c.Equipe.Coequipiers {
 				if m.Statut == domain.TacticalMateVisible && m.Point != nil && c.Point != nil && m.DistanceMortM != nil {
-					if ecart := math.Abs(math.Hypot(m.Point.X-c.Point.X, m.Point.Y-c.Point.Y) - *m.DistanceMortM); ecart > 0.5 {
+					if ecart := math.Abs(math.Hypot(m.Point.X-c.Point.X, m.Point.Y-c.Point.Y) - *m.DistanceMortM); ecart > reelEcartArrondiM {
 						add("match %s mort %d ms : distance du coequipier %s = %.2f m, mais ses points en donnent %.2f m",
 							c.MatchID, c.InstantMs, m.XUID, *m.DistanceMortM, *m.DistanceMortM+ecart)
 					}
