@@ -2,7 +2,7 @@
 
 ---
 
-## 🔄 En cours : plan `.ai/PLAN_BACKLOG_2026-10-16.md` (les entrées ci-dessous, traitées étape par étape ; E1 CI, E2 connexion Xbox/participation, E3 séquence d'arrêt, E4 LUSR (retrait de la v1), E5 dettes Go du 2026-10-15, E6 citations et profil et E7 requêtes du chargement de la Tactique closes)
+## 🔄 En cours : plan `.ai/PLAN_BACKLOG_2026-10-16.md` (les entrées ci-dessous, traitées étape par étape ; E1 CI, E2 connexion Xbox/participation, E3 séquence d'arrêt, E4 LUSR (retrait de la v1), E5 dettes Go du 2026-10-15, E6 citations et profil, E7 requêtes du chargement de la Tactique et E8 lot film (positions du coup fatal, score KOTH Lattice, Harvest, vies sans nom) closes ; la recuisson et le rattrapage de E8 se jouent après la fusion, E10.5)
 
 ---
 
@@ -10,67 +10,28 @@
 
 ---
 
-### [rejeu/identité] Vies sans identité restantes dans les rejeux cuits (règle « aucune vie anonyme »)
+### [rejeu/identité] 15 vies sans nom restantes dans les rejeux cuits
 
-Relevé le 2026-10-16 à l'intégration des lots film du 15/10 (`feat/integ-film`, mesure sur les
-2 676 films, contexte de cuisson) : **2 376 vies sans identité sur 43 films** dans les rejeux
-cuits (2 379 avant les lots : préexistant). 5 films de build inconnu (supposés d'avant 1.8,
-abandonnés par décision du user du 2026-10-15, ex. 47d20b5d : pont d'identité vide) ; **38 films de
-HI_1_9_0 à HI_1_13_0**, qui relèvent de la règle du user (`feedback_no_anonymous_lives_every_life_is_named`).
-Également : **3f048bf3 (HI_1_13_0)**, deux bots successifs sur l'indice 8 : depuis la règle « le bot
-tient l'indice jusqu'à la fin de sa dernière déclaration » (lot K-D), une vie de 6 images du slot 540
-perd son nom (« 343 Lacuna » avant) et la vie du slot 527 passe de Lacuna (équipe 0) à « 343 Ritzy »
-(équipe 1) — à trancher : laquelle des deux lectures est juste. Décision du user du 2026-10-16 :
-noter ici, pas d'enquête lancée pour l'instant. Pistes : mesure des 38 films par build et par
-cause (sièges, bots relayés, pistes parasites hors plage des bipèdes comme 7aa132d1). **Effort : M.**
+Reste du lot film E8.4 (plan `.ai/PLAN_BACKLOG_2026-10-16.md`) : sur les 36 films en cause (449 vies
+sans nom), 15 vies restent sans nom, aucune lecture du film ne les nomme : `72c48587` (7 vies, table
+d'identité refusée pour siège vacant intercalé, aucune lecture d'index dans les chunks), `5da6fd30`
+(6 vies, film de 38 s, trois bots que BOT_METADATA ne déclare jamais), `7aa132d1` (2 vies, pistes
+parasites hors plage des bipèdes, slots 36 et 292). Règle du user : aucune vie anonyme. Reprise : une
+mesure par film des enregistrements de création qui nomment ces pistes ; arrêt si aucune lecture n'en
+sort. Hors périmètre, déjà décidé : les 5 films de build inconnu (abandonnés par le user le
+2026-10-15) et les 2 films Firefight. **Effort : S.**
 
 ---
 
-### [tactique] Écart de position entre le contexte de mort et `kill_positions`
+### [rejeu] Découvertes du lot film (E8) non traitées
 
-Noté à la demande de l'utilisateur le 2026-10-15 (chantier Tactique coéquipiers,
-`.ai/V7.5/` puis `.ai/PLAN_TACTIQUE_COEQUIPIERS_2026-10-14.md`). La position de la victime au
-moment d'une mort existe dans deux sources qui ne la lisent pas au même instant :
-`match_death_context` (passe d'isolement, positions des coéquipiers et distances à la mort) et
-`kill_positions` (positions tueur/victime du coup fatal). Sur la preuve réelle du 2026-10-14,
-elles diffèrent de **0,05 à 0,28 m** (matchs `3ba5a548`, `5909b276`, `5caa00ac`, `f54d20b0`,
-`1bec6619`) ; la tolérance de contrôle a été portée à 0,5 m. Sans effet visible aujourd'hui : la
-page Tactique place la mort et le tueur depuis `kill_positions` et les distances des coéquipiers
-depuis le contexte.
-
-À faire si un affichage compare un jour les deux côte à côte (ou si l'écart grandit sur un
-nouveau build) : établir sur pièces l'instant lu par chaque source (image du coup fatal vs
-échantillon de position voisin) et choisir une source unique pour la position de la mort, avec
-un garde-rail qui empêche de remélanger les deux. Inscrit aussi au registre des reports.
-**Effort : S.**
-
----
-
-### [rejeu/score] Courbe de score anormale sur deux matchs classés de Lattice (KOTH)
-
-Relevé par le lot Roi de la colline (2026-10-09, D1 de `.ai/PLAN_KOTH_REJEU_2026-10-09.md`),
-noté au backlog à la demande de l'utilisateur le 2026-10-14. La courbe de score publiée dans le rejeu
-est fausse sur deux films de `Ranked:King of the Hill` (carte Lattice - Ranked) :
-- `26602661` publie une DESCENTE du score (« camp 1 -> 0 » à l'image 2268) ;
-- `7de0b91d` SAUTE un point (camp 1 de 1 à 2 à l'image 5346, avec 66 tics de garde dans
-  l'intervalle, puis « camp 0 -> 0 » à 5414).
-
-Conséquence visible : sur `7de0b91d`, le seuil de garde lu dans le film vaut 39 au lieu de 40 (un
-seul intervalle sain) et la contradiction avec la table est comptée
-(`repli_seuil_garde_table_contredite`). La barre et les collines restent justes sur les autres
-intervalles. Travail : instruire le pont du score de mode sur ces deux films. Critère de succès :
-`7de0b91d` rend 40 sans contradiction comptée, `26602661` ne publie plus de descente. Registre des
-reports, ligne « Courbe de score de films classés de Lattice ». **Effort : S à M.**
-
----
-
-### [rejeu/cartes] Carte Harvest absente des bornes de quantification
-
-Relevé par le lot Roi de la colline (2026-10-09, D2 du plan), noté au backlog le 2026-10-14. Les
-matchs sur Harvest ne se rejouent pas (cuisson refusée : « carte hors catalogue ») faute de bornes
-dans `map_quant_bounds.json`. Témoin : `e449a696` (Squad:King of the Hill, 18/09). Vacancy - Ranked
-est entrée au catalogue avec le lot recos-a. Travail : ajouter Harvest au catalogue de bornes et
-d'objectifs (même recette que recos-a), puis cuire le témoin. **Effort : S.**
+Relevées par E8.1, E8.3 et E8.4 (détail : section « Découvertes » du plan, hors périmètre de leur
+lot) : l'entame (`kill_openings`) ne lit pas le bord, donc un côté sans échantillon à l'instant décalé
+reste sans position alors que la tenue le placerait ; `siegesDe` donne un second corps vivant à 83 m
+à une victime (`4f77afc1`) et la mort perd son lieu ; des lectures d'occupation attachent un bipède à un
+parent qui n'est ni un véhicule échantillonné ni un bipède (`5676a9ba`) ; le châssis de véhicule
+`b857fb95` (`e449a696`, `99b8ba5c`) n'est pas dans la table des familles (marqueur neutre). **Effort : S
+chacune, à instruire une par une.**
 
 ---
 
@@ -243,6 +204,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-10-18 | **[rejeu] Lot film : positions du coup fatal, score KOTH Lattice, Harvest, vies sans nom** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E8, branche `feat/backlog-2026-10-16`) : (1) positions : la passe lit le journal fusionné par xuid (joueurs renommés), tient la dernière position dans la même vie, lit le siège du véhicule et place le tueur déjà mort à sa mort ; le contexte de mort lit la victime par la même lecture que `kill_positions` (source unique, tolérance de 0,5 m retirée) : tueurs sans position 1 476 -> 78 et victimes 1 028 -> 85 sur 233 films (22 535 frags), 2 contextes de mort sur 23 326 non placés contre 148 gagnés. (2) vies sans nom : 449 -> 15 sur les 36 films en cause (index des chunks hors table, chaîne de contradictions, corps de bot arrivé avant sa première déclaration), aucune vie nommée perdue sur les 2 660 films comparés. (3) score KOTH Lattice : une émission hors domaine (canal B non nul d'un slot d'équipe) remplaçait le point réel par 0 et le seuil de garde retenait un intervalle fusionné : `7de0b91d` rend 40 sans contradiction, `26602661` sans descente, 6 films changent de série, les autres KOTH inchangés. (4) Harvest : carte Forge, canevas `fo11_blank` prouvé par le level_id de la variante (426470249, unicité 1/1), catalogues à 85 cartes (bornes) et 131 (objectifs), `e449a696` et `99b8ba5c` cuisent (158 et 144 pistes, 0 vie sans nom). Révisions montées une fois : `objectives-2026-10-17`, `isolement-2026-10-17-positions`, schéma 99, `placement-2026-10-17`, `grammar-2026-10-18`, `killsource-2026-10-18`. Gate : `replay-corpus-gate` 19/19, 0 perte. Reste après la fusion (serveur arrêté, puis prod, le user prévenu) : `backfill-replay --only-existing`, `backfill-killsource`, usage-summary, `backfill-pad-tiers --force` ; contrôle visuel du user en lecture sur `7de0b91d` et `e449a696`. |
 | 2026-10-17 | **[perf/tactique] Chargement de la page Tactique : de 96 requêtes à 5 hors images** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E7, branche `feat/backlog-2026-10-16`) : le chargement coûtait 2 requêtes par carte ouvrable (le calage `GET /tactical/{map}/background`, puis l'image `background.png`) en plus de 4 requêtes fixes, soit 96 pour 46 cartes. `/tactical/maps` porte désormais le calage du fond de chaque carte ouvrable (`calage_fond`, absent pour une carte sans fond figé ; même source que la route par carte ; panne journalisée sans arrêter la grille) ; la vignette lit le cadre du fond dans la carte (plus aucune requête de calage par vignette) et ne demande son image qu'une fois entrée dans le champ de vision, et seulement si la carte a un calage (hook `useVisibleUneFois`, même clé de cache que le plan principal). Repli de D-10 : pas de `<img loading="lazy">`, car un `<img>` n'emporte pas `X-LevelUp-Title` et l'API résoudrait le titre de la session. Restent 5 requêtes de données (4 fixes + le calage de la carte du plan) puis les images des vignettes visibles. Mesure établie par le code et un test à 46 cartes ; la mesure en navigateur (onglet Réseau, temps d'affichage) reste au contrôle visuel. |
 | 2026-10-17 | **[dette/citations] Premiers frags du profil, capability des citations, maîtrise Carabine à impulsion** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E6, branche `feat/backlog-2026-10-16`) : (1) `computeFKFD` lisait des colonnes absentes de `highlight_events` et avalait l'erreur : premiers frags et premières morts à 0 pour tous les titres ; il passe par le chargeur unifié des événements (repli sur le journal des frags pour Halo 5), `analysis.FirstBlood` et le nouveau `analysis.FirstDeath`, sur les matchs du joueur, Campagne exclue, erreur journalisée ; tests Infinite et Halo 5 rouges avant, verts après. (2) `citations.engine` passe à `supported` pour Infinite (TOML, repli de l'adapter, parité verte ; seul lecteur : la matrice des fonctionnalités admin). (3) Diagnostic de la maîtrise Carabine à impulsion absente de la page Citations : aucun défaut de code (ligne présente et active au seed et dans les copies à froid de la metadata, chaîne service/page rejouée sur copie, image suivie par git, les 32 maîtrises `weapon_kills:` du seed se résolvent) ; reste à lire l'état de la metadata de l'instance regardée (requête au journal du plan) et, au besoin, `levelup seed citation-mappings`. Storm : aucune citation ajoutée (l'équivalent Infinite est la Carabine à impulsion). |
 | 2026-10-17 | **[dette] Dettes Go du plan du 2026-10-15** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E5, branche `feat/backlog-2026-10-16`) : code mort supprimé avec ses tests et lignes de baseline (`FindMatchesMissingParticipantBits`, `loadAwardsForScoreboard`, `WithAwardsRepo`, `CachedHighlightEventsRepo`, `BatchBuilder.AddLUSRComponents`, paramètre `titleSlug` de `SquadUsualContexts` remplacé par `prestige.Deps.TitleSlug`, 14 réexportations de constantes) ; erreurs avalées journalisées avant la dégradation (libellés d'armes, image de carte, modes connus, nom de paire, assistances attendues) et `ApplyResolutionViews` remonte l'échec de `v_match_full` ; DDL de `v_match_full` en source unique `migration.VMatchFullViewSQL` + garde-rail archlint ; une requête abandonnée ne bascule plus en lecture live ni ne compte ni n'écrit d'ERROR sur la vue match ; garde de la Campagne étendu au registre lu sur fenêtre de temps (2 dispenses d'outils opérateur) ; `reset-bitmasks` sur `matchflags.BackfillParticipants`, mapper OpenSpartan honnête sur les médailles (`EventsLoaded` supprimé), `--title` sur 3 CLI et passage du slug à `backfill-killsource` ; `match_bomb_stats` exporté dans le snapshot (un cut ancien reste lisible) ; un ami suivi sans player DB est une absence et non plus une panne des extras. Reste : le bit skill de 157 matchs (geste de déploiement, runbook). |
