@@ -135,6 +135,7 @@ func (s *MonitoringStore) BuildQueueReport(ctx context.Context, limit int) (doma
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Jobs:        []domain.BuildQueueJob{},
 		Workers:     []domain.BuildQueueWorker{},
+		MatchDelays: []domain.MatchDelay{},
 	}
 	if s == nil || s.db == nil {
 		return resp, nil

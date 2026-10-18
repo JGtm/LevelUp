@@ -29,7 +29,9 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
+	"levelup/go-api/internal/service/citationsrelance"
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // demoPolicy : sort d'une tâche de fond en mode démo.
@@ -45,62 +47,64 @@ const (
 
 // Noms des tâches de fond et des étapes de boot (log de boot, tests).
 const (
-	taskJanitor        = "janitor (sync_cache, WAL)"
-	taskWALRecovery    = "recovery WAL périodique"
-	taskSocialCkpt     = "checkpoint shared_social"
-	taskPoolRescan     = "re-scan du pool de tokens"
-	taskAutoSync       = "scheduler d'auto-sync"
-	taskDataHealth     = "santé données"
-	taskDetectionFlush = "flush des détections (monitoring)"
-	taskDiskWatch      = "surveillance disque"
-	taskReplayNotify   = "notification des rejeux prêts"
-	taskCatalogCron    = "cron catalogue"
-	taskAssetNameSweep = "balayage des noms d'assets"
-	taskSpartanCron    = "cron Spartan"
-	taskWorldLeaderbd  = "cron classement mondial"
-	taskReplayPurge    = "purge des rejeux"
-	taskAppRelease     = "notification de version (app_release)"
-	taskHeartbeat      = "heartbeat"
-	stepFriendsMigr    = "migration des amis par joueur"
-	stepGroupMigr      = "migration du groupe par défaut"
-	stepTokenPool      = "pool de tokens (auto-sync)"
-	stepPersistQueue   = "file persist asynchrone (WAL, RecoverPending)"
-	stepWatcher        = "watcher de présence"
-	monitoringInMemory = "monitoring.duckdb (magasin en mémoire)"
-	heartbeatPeriod    = 30 * time.Second
-	janitorPeriod      = 24 * time.Hour
-	janitorMaxAge      = 7 * 24 * time.Hour
-	walRecoveryPeriod  = 10 * time.Minute
-	socialCkptPeriod   = 5 * time.Minute
-	socialCkptTimeout  = 10 * time.Second
-	poolRescanPeriod   = 15 * time.Minute
+	taskJanitor          = "janitor (sync_cache, WAL)"
+	taskWALRecovery      = "recovery WAL périodique"
+	taskSocialCkpt       = "checkpoint shared_social"
+	taskPoolRescan       = "re-scan du pool de tokens"
+	taskAutoSync         = "scheduler d'auto-sync"
+	taskDataHealth       = "santé données"
+	taskDetectionFlush   = "flush des détections (monitoring)"
+	taskDiskWatch        = "surveillance disque"
+	taskReplayNotify     = "notification des rejeux prêts"
+	taskCitationsRelance = "relance des citations du film"
+	taskCatalogCron      = "cron catalogue"
+	taskAssetNameSweep   = "balayage des noms d'assets"
+	taskSpartanCron      = "cron Spartan"
+	taskWorldLeaderbd    = "cron classement mondial"
+	taskReplayPurge      = "purge des rejeux"
+	taskAppRelease       = "notification de version (app_release)"
+	taskHeartbeat        = "heartbeat"
+	stepFriendsMigr      = "migration des amis par joueur"
+	stepGroupMigr        = "migration du groupe par défaut"
+	stepTokenPool        = "pool de tokens (auto-sync)"
+	stepPersistQueue     = "file persist asynchrone (WAL, RecoverPending)"
+	stepWatcher          = "watcher de présence"
+	monitoringInMemory   = "monitoring.duckdb (magasin en mémoire)"
+	heartbeatPeriod      = 30 * time.Second
+	janitorPeriod        = 24 * time.Hour
+	janitorMaxAge        = 7 * 24 * time.Hour
+	walRecoveryPeriod    = 10 * time.Minute
+	socialCkptPeriod     = 5 * time.Minute
+	socialCkptTimeout    = 10 * time.Second
+	poolRescanPeriod     = 15 * time.Minute
 )
 
 // demoPolicies : LA déclaration du statut démo de chaque tâche de fond et de chaque étape de
 // boot (tableau B5.0 du plan). Une tâche absente de la table est traitée comme coupée en
 // démo (défaut sûr) — background_tasks_test.go exige que chaque nom y figure.
 var demoPolicies = map[string]demoPolicy{
-	taskJanitor:        demoCut,
-	taskWALRecovery:    demoCut,
-	taskSocialCkpt:     demoKeep,
-	taskPoolRescan:     demoCut,
-	taskAutoSync:       demoCut,
-	taskDataHealth:     demoCut,
-	taskDetectionFlush: demoKeep,
-	taskDiskWatch:      demoCut,
-	taskReplayNotify:   demoCut,
-	taskCatalogCron:    demoCut,
-	taskAssetNameSweep: demoCut,
-	taskSpartanCron:    demoCut,
-	taskWorldLeaderbd:  demoCut,
-	taskReplayPurge:    demoCut,
-	taskAppRelease:     demoKeep,
-	taskHeartbeat:      demoKeep,
-	stepFriendsMigr:    demoCut,
-	stepGroupMigr:      demoCut,
-	stepTokenPool:      demoCut,
-	stepPersistQueue:   demoCut,
-	stepWatcher:        demoCut,
+	taskJanitor:          demoCut,
+	taskWALRecovery:      demoCut,
+	taskSocialCkpt:       demoKeep,
+	taskPoolRescan:       demoCut,
+	taskAutoSync:         demoCut,
+	taskDataHealth:       demoCut,
+	taskDetectionFlush:   demoKeep,
+	taskDiskWatch:        demoCut,
+	taskReplayNotify:     demoCut,
+	taskCitationsRelance: demoCut,
+	taskCatalogCron:      demoCut,
+	taskAssetNameSweep:   demoCut,
+	taskSpartanCron:      demoCut,
+	taskWorldLeaderbd:    demoCut,
+	taskReplayPurge:      demoCut,
+	taskAppRelease:       demoKeep,
+	taskHeartbeat:        demoKeep,
+	stepFriendsMigr:      demoCut,
+	stepGroupMigr:        demoCut,
+	stepTokenPool:        demoCut,
+	stepPersistQueue:     demoCut,
+	stepWatcher:          demoCut,
 }
 
 // policyOf rend le statut démo déclaré d'une tâche ; inconnue → coupée (défaut sûr).
@@ -174,6 +178,17 @@ func (b *bootTasks) logCut(ctx context.Context) {
 // loopTask : une boucle de fond déjà construite (cron, scheduler, registre).
 func loopTask(name string, tracked bool, ctx context.Context, run func(context.Context)) backgroundTask {
 	return backgroundTask{name: name, tracked: tracked, run: func() { run(ctx) }}
+}
+
+// citationsRelanceTask : la relance des citations du film (délai du débrief). Branchée comme
+// notifieur des dérivations le temps de sa boucle, débranchée à l'arrêt — les dérivations
+// d'après ne posent plus rien. Coupée en démo : elle écrit les bases joueurs.
+func citationsRelanceTask(ctx context.Context, relance *citationsrelance.Service) backgroundTask {
+	return backgroundTask{name: taskCitationsRelance, tracked: true, run: func() {
+		replayartifacts.SetNotifieurDerivations(relance.Soumettre)
+		defer replayartifacts.SetNotifieurDerivations(nil)
+		relance.Run(ctx)
+	}}
 }
 
 // janitorTask : purge 1× / 24 h `data/sync_cache` > 7 jours et les WAL ACKés > 7 jours,

@@ -8008,6 +8008,12 @@ components:
           type:
             - array
             - "null"
+        match_delays:
+          items:
+            $ref: '#/components/schemas/MatchDelay'
+          type:
+            - array
+            - "null"
         workers:
           items:
             $ref: '#/components/schemas/BuildQueueWorker'
@@ -8020,6 +8026,7 @@ components:
         - counts
         - jobs
         - workers
+        - match_delays
       type: object
     AdminConvergenceReport:
       additionalProperties: false
@@ -18106,6 +18113,62 @@ components:
         - impact_badges
         - kd_timeline
         - nemesis_duels
+      type: object
+    MatchDelay:
+      additionalProperties: false
+      properties:
+        citations_players:
+          format: int64
+          type: integer
+        ended_at:
+          type: string
+        match_id:
+          type: string
+        objective_met:
+          type: boolean
+        steps:
+          items:
+            $ref: '#/components/schemas/MatchDelayStep'
+          type:
+            - array
+            - "null"
+        title_slug:
+          type: string
+        total_seconds:
+          format: double
+          type: number
+      required:
+        - title_slug
+        - match_id
+        - steps
+        - citations_players
+      type: object
+    MatchDelayStep:
+      additionalProperties: false
+      properties:
+        at:
+          type: string
+        detail:
+          type: string
+        offset_seconds:
+          format: double
+          type: number
+        step:
+          enum:
+            - match_end
+            - detected
+            - stats_written
+            - killsource_written
+            - replay_enqueued
+            - replay_build_started
+            - replay_claimed
+            - artifact_stored
+            - derivations_written
+            - citations_written
+          type: string
+      required:
+        - step
+        - at
       type: object
     MatchEmpriseBlock:
       additionalProperties: false

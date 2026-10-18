@@ -19,11 +19,25 @@ import (
 // Comparaison d'horodatages UTC écrits par les deux tables (`written_at`). Un titre sans film (vue
 // absente sur la base partagée) ne rend rien.
 func SelectMatchesFilmPlusRecent(ctx context.Context, playerDB, sharedDB *sql.DB) ([]string, error) {
-	calculees, err := citationsWrittenAt(ctx, playerDB)
+	return filmPlusRecent(ctx, playerDB, sharedDB, "")
+}
+
+// FilmPlusRecentPourLeMatch : la même règle pour UN match — vrai si le joueur a des citations de
+// ce match et que le film en a été dérivé après elles. Un match sans citations rend faux : son
+// premier calcul appartient au post-sync du joueur, qui a lu ses récompenses (étape 1.56).
+func FilmPlusRecentPourLeMatch(ctx context.Context, playerDB, sharedDB *sql.DB, matchID string) (bool, error) {
+	ids, err := filmPlusRecent(ctx, playerDB, sharedDB, matchID)
+	return len(ids) == 1, err
+}
+
+// filmPlusRecent porte LA requête des deux formes ; matchID vide = tous les matchs du joueur.
+func filmPlusRecent(ctx context.Context, playerDB, sharedDB *sql.DB, matchID string) ([]string, error) {
+	calculees, err := citationsWrittenAt(ctx, playerDB, matchID)
 	if err != nil || len(calculees) == 0 {
 		return nil, err
 	}
-	rows, err := sharedDB.QueryContext(ctx, `SELECT match_id, MAX(written_at) FROM match_usage_films_latest GROUP BY match_id`)
+	rows, err := sharedDB.QueryContext(ctx, `SELECT match_id, MAX(written_at) FROM match_usage_films_latest
+		WHERE (? = '' OR match_id = ?) GROUP BY match_id`, matchID, matchID)
 	if err != nil {
 		if strings.Contains(err.Error(), "does not exist") {
 			slog.DebugContext(ctx, "citations post-sync: résumé d'usage absent (titre sans film)", "err", err)
@@ -46,9 +60,11 @@ func SelectMatchesFilmPlusRecent(ctx context.Context, playerDB, sharedDB *sql.DB
 	return out, rows.Err()
 }
 
-// citationsWrittenAt : pour chaque match du joueur, l'instant d'écriture de sa génération courante.
-func citationsWrittenAt(ctx context.Context, playerDB *sql.DB) (map[string]time.Time, error) {
-	rows, err := playerDB.QueryContext(ctx, `SELECT match_id, MAX(written_at) FROM match_citations_latest GROUP BY match_id`)
+// citationsWrittenAt : pour chaque match du joueur (ou le seul matchID), l'instant d'écriture de
+// sa génération courante.
+func citationsWrittenAt(ctx context.Context, playerDB *sql.DB, matchID string) (map[string]time.Time, error) {
+	rows, err := playerDB.QueryContext(ctx, `SELECT match_id, MAX(written_at) FROM match_citations_latest
+		WHERE (? = '' OR match_id = ?) GROUP BY match_id`, matchID, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("citations: générations courantes: %w", err)
 	}

@@ -26,7 +26,7 @@ var fichiersDuRejeu = []string{
 	"internal/replaybuild/*.go",
 	"cmd/levelup/cmd_backfill_replay*.go",
 	"internal/api/wire/registry_replay_build.go",
-	"internal/api/wire/registry_build_queue.go",
+	"internal/api/wire/registry_build_queue*.go",
 	"internal/service/replay_service.go",
 	"internal/platform/duckdb/replay_mode_gate.go",
 	"internal/platform/duckdb/replay_map_repo.go",

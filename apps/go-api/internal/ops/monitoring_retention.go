@@ -45,6 +45,9 @@ const (
 	// ~2 900/jour pour un ouvrier. 20 000 ≈ une semaine d'ouvrier permanent ; la
 	// vue ne sert QUE le dernier battement, l'historique est du confort.
 	buildWorkerEventsRetentionCap = 20_000
+	// match_step_events : une dizaine d'instants par match synchronisé. 50 000 ≈ 5 000 matchs,
+	// soit des semaines de jeu d'une escouade ; le rapport n'en lit que les 50 derniers.
+	matchStepEventsRetentionCap = 50_000
 )
 
 // retentionSpec décrit la purge d'une table append-only : son cap et le DELETE
@@ -120,6 +123,16 @@ var monitoringRetentionSpecs = []retentionSpec{
 			)
 			AND id NOT IN (
 				SELECT MAX(id) FROM build_worker_events GROUP BY worker_id
+			)`,
+	},
+	{
+		// Des faits sans état courant (aucune vue `_latest`) : on garde simplement les N plus
+		// récents. Un match dont les plus vieux instants partent sort du rapport par le bas.
+		table: "match_step_events",
+		cap:   matchStepEventsRetentionCap,
+		deleteSQL: `DELETE FROM match_step_events
+			WHERE id NOT IN (
+				SELECT id FROM match_step_events ORDER BY written_at DESC, id DESC LIMIT ?
 			)`,
 	},
 }

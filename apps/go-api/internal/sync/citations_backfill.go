@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
@@ -467,4 +468,24 @@ func (e *SyncEngine) runPostSyncCitations(ctx context.Context, playerDB, sharedD
 		return 0, fmt.Errorf("backfill: %w", err)
 	}
 	return len(matchIDs), nil
+}
+
+// RecalculerCitations recalcule les citations de ces matchs pour UN joueur hors du cycle de sync
+// (livraison d'un film), avec les MÊMES entrées que l'étape 1.6 du post-sync : statistiques
+// Firefight en lecture et source de dégât du titre. L'appelant tient le lease writer de la base
+// joueur et fournit des segments de lecture metadata et shared ; le titre est posé dans le
+// contexte pour les instants du délai du débrief.
+func RecalculerCitations(ctx context.Context, in RecalculCitations) error {
+	ctx = ctxkeys.WithTitleSlug(ctx, in.TitleSlug)
+	pve := OpenPveReadForCitations(ctx, titlePkg.NewPathResolver(in.RepoRoot).SharedPVEDBPath(in.TitleSlug))
+	defer pve.Close()
+	return BackfillMatchCitations(ctx, in.MetaDB, in.SharedDB, in.PlayerDB, pve, in.XUID, in.MatchIDs,
+		citationWeaponSourceDuTitre(ctx, in.RepoRoot, in.TitleSlug)...)
+}
+
+// RecalculCitations : les entrées de [RecalculerCitations].
+type RecalculCitations struct {
+	RepoRoot, TitleSlug, XUID  string
+	MetaDB, SharedDB, PlayerDB *sql.DB
+	MatchIDs                   []string
 }

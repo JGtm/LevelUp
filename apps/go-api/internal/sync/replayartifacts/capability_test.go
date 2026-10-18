@@ -92,7 +92,7 @@ func TestRun_TitreSansCapability_NeSelectionneRien(t *testing.T) {
 		RepoRoot:  racineDepot(t),
 		TitleSlug: "halo_5",
 		Placement: replaybuild.PlacementWorker,
-		Enqueue: func(context.Context, string, string) error {
+		Enqueue: func(context.Context, string, string, int) error {
 			enfile = true
 			return nil
 		},

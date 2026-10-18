@@ -126,9 +126,15 @@ type CitationWeaponSource struct {
 // Elle est resolue par le pont `killcollector`, qui porte deja l'import title-specific et
 // la garde de capability — le paquet `sync` racine n'a donc rien a savoir du titre.
 func (e *SyncEngine) citationWeaponSourceDuMoteur(ctx context.Context) []CitationWeaponSource {
-	c := killcollector.ClassifierPourTitre(ctx, e.repoRoot, e.titleSlug)
+	return citationWeaponSourceDuTitre(ctx, e.repoRoot, e.titleSlug)
+}
+
+// citationWeaponSourceDuTitre : la même option pour un titre, hors de tout moteur — celle du
+// recalcul des citations à la livraison d'un film ([RecalculerCitations]).
+func citationWeaponSourceDuTitre(ctx context.Context, repoRoot, titleSlug string) []CitationWeaponSource {
+	c := killcollector.ClassifierPourTitre(ctx, repoRoot, titleSlug)
 	if c == nil {
 		return nil
 	}
-	return []CitationWeaponSource{{TitleSlug: e.titleSlug, Classifier: c}}
+	return []CitationWeaponSource{{TitleSlug: titleSlug, Classifier: c}}
 }

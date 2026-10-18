@@ -61,6 +61,22 @@ function baseResponse(overrides: Partial<AdminBuildQueueResponse> = {}): AdminBu
         online: false,
       },
     ],
+    match_delays: [
+      {
+        title_slug: 'halo_infinite',
+        match_id: 'match-debrief-1',
+        ended_at: '2026-08-14T09:50:00Z',
+        citations_players: 2,
+        total_seconds: 250,
+        objective_met: true,
+        steps: [
+          { step: 'match_end', at: '2026-08-14T09:50:00Z', offset_seconds: 0 },
+          { step: 'replay_enqueued', at: '2026-08-14T09:51:35Z', offset_seconds: 95 },
+          { step: 'derivations_written', at: '2026-08-14T09:53:45Z', offset_seconds: 225 },
+          { step: 'citations_written', at: '2026-08-14T09:54:10Z', offset_seconds: 250, detail: 'x2' },
+        ],
+      },
+    ],
     ...overrides,
   }
 }
@@ -97,5 +113,21 @@ describe('BuildQueueSection', () => {
     render(<BuildQueueSection />)
     expect(screen.getByText(/file vide|empty queue/i)).toBeInTheDocument()
     expect(screen.getByText(/aucun ouvrier connu|no known worker/i)).toBeInTheDocument()
+  })
+
+  it('délai du débrief : écart de chaque étape depuis la fin du match et objectif', () => {
+    dataRef.current = baseResponse()
+    render(<BuildQueueSection />)
+    expect(screen.getByText('match-debrief-1')).toBeInTheDocument()
+    expect(screen.getByText('+1:35')).toBeInTheDocument()
+    // Les citations ferment le chemin : leur écart est aussi le total.
+    expect(screen.getAllByText('+4:10')).toHaveLength(2)
+    expect(screen.getByText(/^(tenu|met)$/i)).toBeInTheDocument()
+  })
+
+  it('délai du débrief : aucun match mesuré, état vide explicite', () => {
+    dataRef.current = baseResponse({ match_delays: [] })
+    render(<BuildQueueSection />)
+    expect(screen.getByText(/aucun match mesuré|no measured match/i)).toBeInTheDocument()
   })
 })
