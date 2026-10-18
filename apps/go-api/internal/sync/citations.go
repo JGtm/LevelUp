@@ -20,9 +20,11 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/citationsfilm"
+	"levelup/go-api/internal/sync/debrief"
 )
 
 // BackfillMatchCitations calcule et persiste les citations pour une liste de matchs.
@@ -170,6 +172,7 @@ func BackfillMatchCitations(
 		}
 
 		written++
+		debrief.ReportCitations(ctxkeys.TitleSlug(ctx), xuid, matchID)
 		// Mise à jour incrémentale du cumulPre pour le match suivant dans le batch.
 		for _, d := range deltas {
 			cumulPre[d.NameNorm] += d.Value

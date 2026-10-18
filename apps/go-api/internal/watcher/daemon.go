@@ -602,6 +602,7 @@ func (d *Daemon) consumeQueue(ctx context.Context) {
 			reqCtx, reqID := logging.WithEvent(baseCtx, "watcher.trigger:"+req.Gamertag)
 			slog.InfoContext(reqCtx, "watcher_daemon: match dequeued → sync trigger",
 				"gamertag", req.Gamertag, "xuid", req.XUID, "match_count", len(req.MatchIDs), "event", reqID)
+			reportDetected(req)
 			d.coordinator.Submit(reqCtx, syncpkg.CoordinatorRequest{
 				Gamertag:  req.Gamertag,
 				XUID:      req.XUID,

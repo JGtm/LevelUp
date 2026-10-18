@@ -4361,6 +4361,7 @@ export interface components {
             enabled: boolean;
             generated_at: string;
             jobs: components["schemas"]["BuildQueueJob"][] | null;
+            match_delays: components["schemas"]["MatchDelay"][] | null;
             workers: components["schemas"]["BuildQueueWorker"][] | null;
         };
         AdminConvergenceReport: {
@@ -8588,6 +8589,25 @@ export interface components {
             nemesis_duels: components["schemas"]["MatchNemesisRow"][] | null;
             tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
             weapon_tools?: components["schemas"]["SquadWeaponTools"];
+        };
+        MatchDelay: {
+            /** Format: int64 */
+            citations_players: number;
+            ended_at?: string;
+            match_id: string;
+            objective_met?: boolean;
+            steps: components["schemas"]["MatchDelayStep"][] | null;
+            title_slug: string;
+            /** Format: double */
+            total_seconds?: number;
+        };
+        MatchDelayStep: {
+            at: string;
+            detail?: string;
+            /** Format: double */
+            offset_seconds?: number;
+            /** @enum {string} */
+            step: "match_end" | "detected" | "stats_written" | "killsource_written" | "replay_enqueued" | "replay_build_started" | "replay_claimed" | "artifact_stored" | "derivations_written" | "citations_written";
         };
         MatchEmpriseBlock: {
             film_unavailable?: string;

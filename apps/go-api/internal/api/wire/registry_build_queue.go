@@ -97,6 +97,7 @@ func (r *ServiceRegistry) EnqueueReplayBuild(ctx context.Context, titleSlug, mat
 	}
 	if created {
 		observability.IncCounter("build_queue_replay_enqueued_total")
+		observability.ReportMatchStep(titleSlug, fullID, domain.MatchStepReplayEnqueued, "")
 		monitoringLog.InfoContext(ctx, "build queue: rejeu 2D mis en file",
 			"job_id", job.JobID, "match_id", fullID, "title", titleSlug, "chunks", len(chunks),
 			"faits", !facts.Empty(), "joueurs", len(facts.Players), "variante", facts.GameVariantName)
@@ -232,6 +233,7 @@ func (r *ServiceRegistry) StoreBuildArtifact(ctx context.Context, jobID, workerI
 		return domain.BuildArtifactReceipt{}, err
 	}
 	observability.IncCounter("build_queue_artifacts_received_total")
+	observability.ReportMatchStep(slug, job.MatchID, domain.MatchStepArtifactStored, "worker")
 	observability.AddInt("build_queue_artifact_bytes_total", int64(stored.Bytes))
 	monitoringLog.InfoContext(ctx, "build queue: artefact reçu et rangé",
 		"job_id", jobID, "worker_id", workerID, "match_id", job.MatchID, "title", slug,
@@ -377,7 +379,11 @@ func (r *ServiceRegistry) ClaimBuildJob(ctx context.Context, workerID, hostname,
 	if r.monitoringStore == nil {
 		return nil, fmt.Errorf("file de construction indisponible (store monitoring non ouvert)")
 	}
-	return r.monitoringStore.ClaimBuildJob(ctx, workerID, hostname, version)
+	job, err := r.monitoringStore.ClaimBuildJob(ctx, workerID, hostname, version)
+	if err == nil && job != nil {
+		observability.ReportMatchStep(job.TitleSlug, job.MatchID, domain.MatchStepReplayClaimed, "")
+	}
+	return job, err
 }
 
 // CompleteBuildJob enregistre le résultat d'un job (protocole ouvrier).
@@ -455,6 +461,7 @@ func (r *ServiceRegistry) BuildQueueReport(ctx context.Context, limit int) (doma
 			GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 			Jobs:        []domain.BuildQueueJob{},
 			Workers:     []domain.BuildQueueWorker{},
+			MatchDelays: []domain.MatchDelay{},
 		}, nil
 	}
 	resp, err := r.monitoringStore.BuildQueueReport(ctx, limit)
@@ -462,7 +469,7 @@ func (r *ServiceRegistry) BuildQueueReport(ctx context.Context, limit int) (doma
 		return resp, err
 	}
 	resp.Enabled = strings.TrimSpace(r.cfg.BuildWorkerToken) != ""
-	return resp, nil
+	return resp, r.attachMatchDelays(ctx, &resp)
 }
 
 // reclaimBuildQueue rend à la file les jobs dont le bail a expiré. Greffé sur la

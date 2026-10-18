@@ -178,8 +178,10 @@ func (e *SyncEngine) WithMediaScanHook(hook func(ctx context.Context)) *SyncEngi
 }
 
 // WithReplayArtifacts installe le fil de l'eau des artefacts de rejeu 2D (étape 1.58,
-// implémentée par internal/sync/replayartifacts). À N'APPELER QU'EN LOCAL
-// (cfg.IsProduction() == false) : le VPS web ne décode jamais.
+// implémentée par internal/sync/replayartifacts). Les trois sites de wiring l'installent
+// TOUJOURS ; le hook décide à chaque cycle où se construit le rejeu (local, ouvrier ou rien,
+// replaybuild.DecidePlacement), et « local » est refusé en production : le VPS web ne décode
+// jamais, il met en file pour l'ouvrier.
 func (e *SyncEngine) WithReplayArtifacts(h *replayartifacts.Hook) *SyncEngine {
 	e.replayArtifacts = h
 	return e

@@ -27,6 +27,9 @@ const detectionFlushInterval = 60 * time.Second
 // les détections dégradent en liste vide et le PATCH répond 503.
 func (r *ServiceRegistry) WithMonitoringStore(s *ops.MonitoringStore) *ServiceRegistry {
 	r.monitoringStore = s
+	// Le collecteur des instants mesurés (délai du débrief) ne s'arme qu'avec un store pour le
+	// vider : sans lui, capter ne servirait qu'à remplir la mémoire.
+	observability.EnableMatchSteps(s != nil)
 	return r
 }
 
@@ -44,6 +47,7 @@ func (r *ServiceRegistry) closeMonitoringStore() {
 		return
 	}
 	observability.SetCronRunSink(nil)
+	observability.EnableMatchSteps(false)
 	if err := r.monitoringStore.Close(); err != nil {
 		monitoringLog.Warn("admin_monitoring: fermeture du store échouée", "err", err)
 	}
@@ -97,10 +101,12 @@ func (r *ServiceRegistry) RunDetectionFlushLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			r.flushDetections(context.Background())
+			r.flushMatchSteps(context.Background())
 			r.sweepMonitoringRetention(context.Background())
 			return
 		case <-t.C:
 			r.flushDetections(ctx)
+			r.flushMatchSteps(ctx)
 			// Reprise des jobs de construction dont le bail a expiré : greffée ici
 			// plutôt que dans un cron dédié, parce que c'est la même base, le même
 			// writer et la même cadence — et parce que la reprise doit avoir lieu

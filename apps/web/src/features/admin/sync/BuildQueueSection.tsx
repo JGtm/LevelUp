@@ -22,6 +22,7 @@ import { SectionHeader } from '../components/SectionHeader'
 import { StatusBadge } from '../components/StatusBadge'
 import { adminAbsoluteTime, adminRelativeTime } from '../format'
 import { jobStatusToAdminStatus } from '../statusDisplay'
+import { DebriefDelayTable } from './DebriefDelayTable'
 import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
 import type { AdminLocale } from '../format'
 
@@ -59,6 +60,9 @@ export function BuildQueueSection() {
       <JobsTable jobs={data.jobs ?? []} tA={tA} locale={locale} />
       <SectionHeader title={tA('admin.buildqueue.workers_section')} />
       <WorkersTable workers={data.workers ?? []} tA={tA} locale={locale} />
+      <SectionHeader title={tA('admin.buildqueue.delays_section')} />
+      <p className="text-sm text-muted-foreground">{tA('admin.buildqueue.delays_intro')}</p>
+      <DebriefDelayTable delays={data.match_delays ?? []} tA={tA} locale={locale} />
     </section>
   )
 }

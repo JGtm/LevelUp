@@ -2782,6 +2782,12 @@ export type BuildQueueWorker = components['schemas']['BuildQueueWorker']
 /** Réponse GET /admin/monitoring/build-queue. */
 export type AdminBuildQueueResponse = components['schemas']['AdminBuildQueueResponse']
 
+/** Délai du débrief d'un match : instants de chaque étape depuis la fin du match. */
+export type MatchDelay = components['schemas']['MatchDelay']
+
+/** Une étape mesurée du chemin d'un match (domain.MatchStep). */
+export type MatchDelayStep = components['schemas']['MatchDelayStep']
+
 // NB : les types Watcher (WatcherStatusResponse, WatcherPlayerStatus) existent
 // déjà plus haut dans ce fichier (section watcher historique) — le dashboard
 // monitoring les réutilise via features/settings/watcher-queries.ts.

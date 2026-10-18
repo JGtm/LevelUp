@@ -337,7 +337,7 @@ func TestCandidatsDerivations_ConvergeApresDerivation(t *testing.T) {
 	// La dérivation pose la marque (marquerDerivations, appelé par Deriver). Bilan VIERGE :
 	// aucune famille n'a échoué, donc la marque se pose — c'est la seule condition depuis le
 	// constat C1 de la revue A-R1.
-	marquerDerivations(context.Background(), &bilanDerivations{},
+	marquerDerivations(context.Background(), "halo_infinite", &bilanDerivations{},
 		lireArtefacts(context.Background(), d, work))
 
 	work2, restant, _ := candidatsDerivations(context.Background(), db, d)

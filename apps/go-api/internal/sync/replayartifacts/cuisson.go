@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/finalise"
@@ -340,6 +341,7 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 	//
 	// SOUS DEADLINE (item 5.5) : passé cette borne, l'enfant est TUÉ (le contexte est celui de
 	// `exec.CommandContext`), le film compte en échec, et le cycle passe au suivant.
+	observability.ReportMatchStep(d.TitleSlug, w.matchID, domain.MatchStepReplayBuildStarted, "")
 	cctx, annuler := context.WithTimeout(ctx, deadlineDuFilm(d, restant))
 	defer annuler()
 	out, berr := buildAndStoreOne(cctx, d, w, filmcache.ChunkDir(d.CacheRoot, short))
@@ -348,6 +350,7 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 		return
 	}
 	b.construits++
+	observability.ReportMatchStep(d.TitleSlug, w.matchID, domain.MatchStepArtifactStored, "local")
 	// L'ARTEFACT EST RANGÉ : c'est le seul fait qui déclenche les dérivations (cf.
 	// derivations.go). Il est mis de côté, jamais dérivé ici — les projections lisent le
 	// FICHIER RANGÉ (jamais les octets candidats, que `StoreArtifact` peut refuser) et

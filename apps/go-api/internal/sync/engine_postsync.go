@@ -31,6 +31,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability/logging"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/debrief"
 	"levelup/go-api/internal/sync/snapshot"
 )
 
@@ -220,6 +221,11 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// partagé avec les étapes extraites, cf. convergence.go).
 	withSharedRead := func(step string, fn func(sharedDB *sql.DB)) {
 		e.withSharedRead(ctx, shared, &r, step, fn)
+	}
+	if len(insertedIDs) > 0 {
+		withSharedRead("debrief_steps", func(sharedDB *sql.DB) {
+			debrief.ReportInserted(ctx, sharedDB, e.titleSlug, insertedIDs)
+		})
 	}
 
 	// -2 Ensure player_match_enrichment rows exist for all matches where the

@@ -33,10 +33,9 @@
 //     data/cache/replays/{title}/{short8}.json. Le décodage est sérialisé par le verrou
 //     process filmdec (partagé avec killsource).
 //
-// CONDITIONNÉ LOCAL : l'étape n'existe que si le wiring installe le Hook, et le wiring ne
-// l'installe qu'en environnement non-production — « le VPS web ne décode JAMAIS » (le
-// garde de service replay_local_gate protège la lecture ; ce gate-ci protège le CPU du
-// VPS). Best-effort : aucun échec ne casse le pipeline post-sync.
+// LE LIEU DE CONSTRUCTION SE DÉCIDE PAR CYCLE ([Hook.Placement]) : construction locale (1 et 2
+// ci-dessus), mise en file pour un ouvrier, ou rien. « Local » est refusé en production — le VPS
+// web ne décode JAMAIS, il met en file. Best-effort : aucun échec ne casse le pipeline post-sync.
 package replayartifacts
 
 import (

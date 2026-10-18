@@ -127,6 +127,8 @@ type AdminBuildQueueResponse struct {
 	Counts      BuildQueueCounts   `json:"counts"`
 	Jobs        []BuildQueueJob    `json:"jobs"`
 	Workers     []BuildQueueWorker `json:"workers"`
+	// MatchDelays : le délai du débrief des matchs les plus récents (cf. match_steps.go).
+	MatchDelays []MatchDelay `json:"match_delays"`
 }
 
 // WorkerOfflineAfter : au-delà de ce silence, un ouvrier s'affiche hors ligne.
