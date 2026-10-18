@@ -307,6 +307,7 @@ func marquerDerivations(ctx context.Context, titleSlug string, b *bilanDerivatio
 			"artefacts", len(lus), "echecs", len(b.echecs))
 		return
 	}
+	ecrits := make([]string, 0, len(lus))
 	for _, a := range lus {
 		if b.aEchoue(a.matchID) {
 			slog.WarnContext(ctx, "post-sync: derivation NON marquee — au moins une famille n'a "+
@@ -317,12 +318,16 @@ func marquerDerivations(ctx context.Context, titleSlug string, b *bilanDerivatio
 		// Les dérivations de ce match SONT écrites : le délai du débrief le note avant la marque, dont
 		// l'échec ne retire rien à ce qui est en base.
 		observability.ReportMatchStep(titleSlug, a.matchID, domain.MatchStepDerivationsWritten, "")
+		ecrits = append(ecrits, a.matchID)
 		if err := replaybuild.WriteDerivationsMark(a.path, a.doc.SchemaVersion, a.octets); err != nil {
 			slog.WarnContext(ctx, "post-sync: marque de derivation non ecrite — le rattrapage "+
 				"rejouera ces derivations au prochain cycle",
 				"match_id", a.matchID, "path", a.path, "err", err)
 		}
 	}
+	// Ce qui lit ces dérivations (citations du film) est prévenu pour les seuls matchs écrits
+	// (cf. notifieur.go).
+	notifierDerivations(ctx, titleSlug, ecrits)
 }
 
 // lireArtefacts lit et deserialise chaque artefact UNE fois. Un artefact illisible est un echec

@@ -145,30 +145,30 @@ Jamais `go build ./...`, jamais `git add -A`, jamais `git stash`.
 
 ### Étape 3 — Citations du film à la livraison (C)
 
-- [ ] 3.1 Dérivations à la livraison : `[~]` déjà en place (constat 2) — vérifier que les tests
+- [~] 3.1 Dérivations à la livraison : `[~]` déjà en place (constat 2) — vérifier que les tests
       existants le tiennent (`build_queue` dépôt → `Deriver`, cuisson locale → `Deriver`) ; en
       ajouter un s'il manque.
-- [ ] 3.2 `DerivationsDeps.ApresDerivation func(ctx, titleSlug string, matchIDs []string)` :
+- [x] 3.2 `DerivationsDeps.ApresDerivation func(ctx, titleSlug string, matchIDs []string)` :
       appelé par `marquerDerivations` avec les seuls matchs marqués ; nil = rien. Branché aux
       trois appelants de `Deriver` (post-sync local, dépôt d'ouvrier, rattrapage des dérivés).
-- [ ] 3.3 Vérifier sur pièces avant de coder : mode d'ouverture de la base joueur par le
+- [x] 3.3 Vérifier sur pièces avant de coder : mode d'ouverture de la base joueur par le
       post-sync (lease tenu tout le pipeline ou non) ; `BackfillMatchCitations` n'écrit pas la
       base partagée (sinon lecture seule impossible → writer borné) ; options du moteur
       (`citationWeaponSourceDuMoteur`) reproduites à l'identique.
-- [ ] 3.4 Factoriser le prédicat « dérivation plus récente que les citations » de
+- [x] 3.4 Factoriser le prédicat « dérivation plus récente que les citations » de
       `citationsfilm.SelectMatchesFilmPlusRecent` en une fonction par match réutilisée par le
       post-sync et le service (une seule écriture SQL).
-- [ ] 3.5 `internal/service/citationsrelance` (port dans `internal/port/`) : file bornée
+- [x] 3.5 `internal/service/citationsrelance` (port dans `internal/port/`) : file bornée
       dédoublonnée, une goroutine ; par match : participants (lecture shared par le provider du
       titre) ∩ profils suivis du titre (`PlayerDirectory`/`ProfileGate`) ; par joueur :
       prédicat 3.4, lease writer joueur borné (constante nommée), `BackfillMatchCitations`,
       `ReportMatchStep(citations_written)` ; échecs journalisés (`slog.WarnContext` + `"err"`) et
       comptés ; jamais de panic.
-- [ ] 3.6 Câblage au boot (`cmd/server/main.go`) sur `schedulerCtx`/`schedulerWG` ; aucun appel
+- [x] 3.6 Câblage au boot (`cmd/server/main.go`) sur `schedulerCtx`/`schedulerWG` ; aucun appel
       depuis un handler (le dépôt ne fait que POSER dans la file, non bloquant).
-- [ ] 3.7 Multi-titre : le service n'est sollicité que par `Deriver`, déjà gardé par
+- [x] 3.7 Multi-titre : le service n'est sollicité que par `Deriver`, déjà gardé par
       `film.replay_artifact` ; chemins par `PathResolver` ; aucun `slug ==`.
-- [ ] 3.8 Tests : unitaires du service (mocks des ports : joueur non suivi ignoré, prédicat faux
+- [x] 3.8 Tests : unitaires du service (mocks des ports : joueur non suivi ignoré, prédicat faux
       → rien, lease refusé → compteur, dédoublonnage, arrêt propre) ; intégration
       (`-tags=integration`) : artefact déposé → dérivation → nouvelle génération dans
       `match_citations_latest` pour deux joueurs suivis d'un même match, passe crédit absente
@@ -265,3 +265,33 @@ courante. `git -C ../LevelUp-wt-delai-debrief log --oneline -10` pour l'état de
     de source de `build_queue_read_segment_test.go`.
   - Commentaire de `ClaimBuildJob` corrigé : il promettait que l'action admin passait devant le
     rattrapage, ce qu'aucun appelant ne faisait (D-1).
+- 2026-10-18 : étape 3 exécutée. Constats sur pièces (3.3) et écarts :
+  - 3.3 : le post-sync tient le lease writer de la base joueur (`dblease.KindPlayer`) pendant
+    TOUT le pipeline (`engine.go`, post-drain) ; `BackfillMatchCitations` n'écrit que la base
+    joueur (aucune écriture shared) — la relance lit la base partagée par le provider du titre,
+    sans writer ; options du moteur reproduites par `citationWeaponSourceDuTitre` (une seule
+    écriture, utilisée par le moteur et par `sync.RecalculerCitations`).
+  - 3.2 : pas de champ `ApresDerivation` dans `DerivationsDeps` mais un notifieur unique du
+    processus (`replayartifacts.SetNotifieurDerivations`), appelé par `marquerDerivations`
+    avec les seuls matchs écrits : les trois appelants de `Deriver` en héritent sans trois
+    chaînes d'injection (scheduler, V2, handler), et un CLI ne le branche jamais. Branché et
+    débranché par la tâche de fond `citationsRelanceTask` (`cmd/server/background_tasks.go`,
+    coupée en démo : elle écrit les bases joueurs).
+  - 3.5 : la relance ne recalcule QUE si le joueur a déjà des citations du match et que le film
+    a été dérivé après elles (`citationsfilm.FilmPlusRecentPourLeMatch`) : un premier calcul
+    sans les récompenses du joueur (étape 1.56 de SON post-sync) serait faux et ne serait plus
+    jamais repris. Joueur occupé : borne `citationsfilm.AttenteBaseJoueur` (20 s). Travail
+    base dans `internal/sync/citationsfilm/relance.go` (lease, ouverture, prédicat, calcul
+    injecté) ; file et boucle dans `internal/service/citationsrelance` ; câblage dans
+    `internal/api/wire/registry_citations_relance.go` (port `port.FilmCitationsRecomputer`).
+  - 3.8 : la chaîne est tenue par morceaux plutôt que par un seul test de bout en bout : dépôt →
+    `Deriver` (test existant `TestStoreBuildArtifact_DeclencheLesDerivations`), `Deriver` →
+    notifieur (`notifieur_test.go`), service multi-joueurs (`service_test.go`, deux suivis + en
+    pause + auth seule + absent), recalcul réel sur une base joueur fichier avec lease
+    (`citations_relance_integration_test.go`), lecture des participants par le provider
+    (`registry_citations_relance_cgo_test.go`). La preuve de bout en bout est l'étape 5.
+  - 3.1 `[~]` : déjà en place, tenu par `TestStoreBuildArtifact_DeclencheLesDerivations` (dépôt)
+    et `TestDeriver_LesAppelantsTransmettentLeSegmentDeLecture` (cuisson locale, rattrapage).
+  - Ajout après le premier gate : PRÉ-VÉRIFICATION EN LECTURE (`duckdb.OpenReadForQuery`, sans
+    lease) avant d'attendre la base joueur — une relance sans objet ne patiente plus 20 s
+    derrière un post-sync, et ne laisse pas de WARN « dblease ctx cancelled » dans les détections.
