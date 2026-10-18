@@ -4,7 +4,12 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { matchViewStaleTime, selectMatchPartialBanner } from './matchPartial.logic'
+import {
+  MATCH_VIEW_RETRY_MS,
+  matchViewPollInterval,
+  matchViewStaleTime,
+  selectMatchPartialBanner,
+} from './matchPartial.logic'
 
 const DIX_MINUTES = 10 * 60 * 1000
 
@@ -63,5 +68,28 @@ describe('matchViewStaleTime', () => {
     expect(matchViewStaleTime({ is_partial: false })).toBe(DIX_MINUTES)
     expect(matchViewStaleTime({ is_partial: true, partial_reasons: ['events_empty'] })).toBe(DIX_MINUTES)
     expect(matchViewStaleTime(undefined)).toBe(DIX_MINUTES)
+  })
+})
+
+describe('matchViewPollInterval', () => {
+  it("30 s tant qu'une source est en panne, même si l'analyse est aussi en cours", () => {
+    expect(matchViewPollInterval({ is_partial: true, partial_reasons: ['scoreboard_unavailable'] })).toBe(
+      MATCH_VIEW_RETRY_MS,
+    )
+    expect(
+      matchViewPollInterval({
+        is_partial: true,
+        partial_reasons: ['section_unavailable'],
+        header: { analysis_pending: true },
+      } as never),
+    ).toBe(MATCH_VIEW_RETRY_MS)
+    expect(MATCH_VIEW_RETRY_MS).toBe(30_000)
+  })
+
+  it("60 s tant que l'analyse est en cours, sinon plus de rechargement", () => {
+    expect(matchViewPollInterval({ is_partial: false, header: { analysis_pending: true } } as never)).toBe(60_000)
+    expect(matchViewPollInterval({ is_partial: false, header: { analysis_pending: false } } as never)).toBe(false)
+    expect(matchViewPollInterval({ is_partial: true, partial_reasons: ['events_empty'] })).toBe(false)
+    expect(matchViewPollInterval(undefined)).toBe(false)
   })
 })

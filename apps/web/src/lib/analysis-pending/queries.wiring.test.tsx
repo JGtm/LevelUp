@@ -83,6 +83,16 @@ describe('useMatchView — rechargement tant que l\'analyse est en cours', () =>
     expect(options.staleTime(query)).toBe(0)
   })
 
+  it('30 s tant qu\'une source est en panne (« Nouvel essai automatique » est vrai), vue jamais conservée', async () => {
+    hoisted.payload = { header: {}, is_partial: true, partial_reasons: ['scoreboard_unavailable'] }
+    const { client, wrapper } = setup()
+    const { result } = renderHook(() => useMatchView('chief', 'm1'), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    const { query, options } = optionsDe(client)
+    expect(options.refetchInterval(query)).toBe(30_000)
+    expect(options.staleTime(query)).toBe(0)
+  })
+
   it('puis s\'arrête, fraîcheur normale (10 min)', async () => {
     hoisted.payload = vue(false)
     const { client, wrapper } = setup()

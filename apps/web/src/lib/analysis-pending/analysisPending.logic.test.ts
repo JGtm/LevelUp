@@ -9,6 +9,8 @@ import {
   homeHasAnalysisPending,
   homeRefetchInterval,
   hasPendingPart,
+  ANALYSIS_STATE,
+  isAnalysisInProgress,
   homeStaleTime,
   matchViewHasAnalysisPending,
   matchViewRefetchInterval,
@@ -90,5 +92,16 @@ describe('hasPendingPart', () => {
   })
   it('les trois chaînes sont celles du serveur (domain.AnalysisPart*)', () => {
     expect(ANALYSIS_PART).toEqual({ killSource: 'kill_source', citations: 'citations', replay: 'replay' })
+  })
+})
+
+describe('isAnalysisInProgress', () => {
+  it("vrai seulement pour l'état « in_progress » servi par le serveur", () => {
+    expect(isAnalysisInProgress({ analysis_state: ANALYSIS_STATE.inProgress })).toBe(true)
+    expect(isAnalysisInProgress({ analysis_state: ANALYSIS_STATE.queued })).toBe(false)
+    expect(isAnalysisInProgress({ analysis_state: '' })).toBe(false)
+    expect(isAnalysisInProgress({})).toBe(false)
+    expect(isAnalysisInProgress(null)).toBe(false)
+    expect(isAnalysisInProgress(undefined)).toBe(false)
   })
 })

@@ -1,9 +1,9 @@
 /**
  * AnalysisPendingSlot — emplacement d'attente d'une section de la vue match qui dépend du
- * film (arme de chaque frag, rejeu 2D) tant que son analyse est en cours
+ * film (arme de chaque frag, rejeu 2D) tant que son analyse n'est pas finie
  * (`header.analysis_pending`). Il remplace l'état vide habituel de la section : un bloc en
- * pointillés, un petit indicateur tournant et un libellé (« En cours d'analyse », « En
- * préparation »).
+ * pointillés, un petit indicateur tournant et un libellé
+ * (« Analyse en cours » ou « Analyse en attente », selon `header.analysis_state`).
  *
  * L'indicateur ne tourne que hors `prefers-reduced-motion` (`motion-safe:`). Jetons
  * sémantiques uniquement.

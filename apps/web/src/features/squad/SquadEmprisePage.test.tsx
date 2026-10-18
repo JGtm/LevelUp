@@ -507,7 +507,7 @@ describe('Film non lu sur le périmètre (retours 2026-10-17)', () => {
     for (const id of SECTIONS) {
       const section = screen.getByTestId(`emprise-section-${id}`)
       const bloc = within(section).getByTestId('film-gap')
-      expect(within(bloc).getByTestId('analysis-pending-slot').textContent).toContain('Analyse du film en cours')
+      expect(within(bloc).getByTestId('analysis-pending-slot').textContent).toContain('Analyse du film en attente')
       expect(bloc.className).toContain('border')
     }
     expect(within(screen.getByTestId('emprise-section-bilan')).getByText('Ressources')).toBeInTheDocument()
@@ -559,7 +559,7 @@ describe('Film non lu sur le périmètre (retours 2026-10-17)', () => {
   it('anglais', () => {
     useAppShellStore.setState({ locale: 'en' })
     mount({ pageData: page(sansResume({ matches_film_pending: 5 })) })
-    expect(within(screen.getByTestId('emprise-section-bilan')).getByTestId('analysis-pending-slot').textContent).toContain('Film analysis in progress')
+    expect(within(screen.getByTestId('emprise-section-bilan')).getByTestId('analysis-pending-slot').textContent).toContain('Film analysis pending')
     vi.restoreAllMocks()
     mount({ pageData: page(sansResume({ matches_film_missing: 5 })) })
     expect(screen.getAllByText('Film not analysed').length).toBeGreaterThan(0)

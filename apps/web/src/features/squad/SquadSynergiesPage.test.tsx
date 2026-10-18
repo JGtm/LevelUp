@@ -194,7 +194,7 @@ describe('SquadSynergiesPage — titres de section', () => {
     const { unmount } = renderWithProviders(<SquadSynergiesPage />)
     const section = screen.getByTestId('squad-appui-portee')
     expect(within(section).getByText('Appui et portée')).toBeInTheDocument()
-    expect(within(section).getByTestId('analysis-pending-slot')).toHaveTextContent('Analyse du film en cours')
+    expect(within(section).getByTestId('analysis-pending-slot')).toHaveTextContent('Analyse du film en attente')
     unmount()
     mockSquadContext({ selectedRows: [ROW('A'), ROW('B')], confirmedGamertags: ['A', 'B'], pageData: sansMesure({ matches_film_missing: 2 }) })
     const second = renderWithProviders(<SquadSynergiesPage />)

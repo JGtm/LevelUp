@@ -134,7 +134,7 @@ type MatchViewHeader struct {
 	// il mènerait à un 404. Faux aussi quand le titre ne produit pas de rejeu.
 	ReplayAvailable bool `json:"replay_available"`
 	// AnalysisPending : le match est synchronisé mais l'analyse de son film n'est pas finie
-	// (arme par frag, citations, rejeu 2D encore à venir). Règle : analysis.IsAnalysisPending.
+	// (arme par frag, citations, rejeu 2D pas encore produits). Règle : analysis.IsAnalysisPending.
 	// Faux/absent hors du titre qui analyse des films, et au-delà de analysis.AnalysisPendingWindow
 	// après la synchro.
 	AnalysisPending bool `json:"analysis_pending,omitempty"`
@@ -142,6 +142,10 @@ type MatchViewHeader struct {
 	// kill_source, citations, replay), pour que chaque section regarde la sienne. Invariant :
 	// AnalysisPending == (len(AnalysisPendingParts) > 0).
 	AnalysisPendingParts []string `json:"analysis_pending_parts,omitempty"`
+	// AnalysisState : `in_progress` si un décodage de film tient le verrou machine pour ce match,
+	// `queued` sinon (`AnalysisState*`). Posé seulement quand AnalysisPending est vrai.
+	// Règle : analysis.AnalysisStateOf.
+	AnalysisState string `json:"analysis_state,omitempty"`
 	// ScoreTimelineKind : COMMENT le bloc « Score dans le temps » de la vue match doit se
 	// montrer sur ce mode. Deux valeurs servies, et une troisième qui se dit en se taisant :
 	//

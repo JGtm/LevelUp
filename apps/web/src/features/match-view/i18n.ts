@@ -8,6 +8,7 @@
  */
 
 import type { Locale } from '@/lib/i18n/locale'
+import type { AnalysisPendingPart } from '@/lib/analysis-pending/analysisPending.logic'
 
 /** Alias de compat du type central `Locale` (lib/i18n/locale) : conservé car consommé dans plus de 5 fichiers du header match-view. */
 export type MatchViewLocale = Locale
@@ -53,9 +54,12 @@ export interface MatchViewText {
   mapUnknown: string
   pageErrorTitle: string
   pageRetry: string
-  pagePartialLoad: string
-  /** Bandeau E4 : une source de la vue est en panne (≠ vide). Prime sur pagePartialLoad. */
-  pageUnavailableBanner: string
+  /** Zone de messages : une source de la vue est en panne (≠ vide). Prime sur noticePartialLead. */
+  noticeUnavailable: string
+  /** Mention qui suit : la vue se relance seule tant que la panne dure. */
+  noticeUnavailableRetry: string
+  /** Source vide : amorce de la liste des sections absentes (translatePartialReason). */
+  noticePartialLead: string
   // État dédié 404 match_not_found — match absent du substrat local (pas encore
   // synchronisé, ou identifiant invalide). Remplace l'écran d'erreur générique
   // (retiré le 2026-07-25 avec le fallback LIVE du Match view, cf. BACKLOG).
@@ -226,14 +230,17 @@ export interface MatchViewText {
   // titre sans positions de film, sur un match sans frag) : un onglet ne reste jamais vide.
   arsenalEmptyTitle: string
   arsenalEmptyDescription: string
-  // Analyse du film en cours (header.analysis_pending) : bandeau INFO sous l'en-tête et
-  // emplacements d'attente des sections qui dépendent du film. « D'ici quelques instants »,
-  // jamais « en général » ni « quelques minutes » (texte validé par l'utilisateur, 2026-10-16).
-  analysisPendingTitle: string
-  analysisPendingBody: string
+  // Analyse du film non finie (header.analysis_pending) : message de la zone de messages et
+  // emplacements d'attente des sections qui dépendent du film. « En cours » seulement quand un
+  // décodage porte sur CE match (header.analysis_state), sinon « en attente » ; jamais de délai
+  // promis ni formule d'avenir (les données manquent, ce n'est pas une fonctionnalité qui arrive).
+  analysisPendingTitleInProgress: string
+  analysisPendingTitleQueued: string
+  /** Nom court de chaque cause en attente (domain.AnalysisPart*). */
+  analysisPendingParts: Record<AnalysisPendingPart, string>
   analysisPendingAutoUpdate: string
   analysisPendingSlotInProgress: string
-  analysisPendingSlotPreparing: string
+  analysisPendingSlotQueued: string
   // Scoreboard team header (Eagle / Cobra avec couleur team-ally/enemy)
   scoreboardTitle: string
   scoreboardNoData: string
@@ -377,8 +384,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     mapUnknown: 'Map inconnue',
     pageErrorTitle: 'Match introuvable ou erreur de chargement.',
     pageRetry: 'Réessayer',
-    pagePartialLoad: 'Ce match n\'a pas pu être chargé en totalité.',
-    pageUnavailableBanner: 'Données momentanément indisponibles, réessayez plus tard',
+    noticeUnavailable: "Une partie de ce match n'a pas pu être lue.",
+    noticeUnavailableRetry: 'Nouvel essai automatique',
+    noticePartialLead: 'Données absentes pour ce match :',
     notSyncedTitle: 'Match pas encore synchronisé',
     notSyncedDescription:
       "Ce match n'est pas encore dans la base locale. Un match qui vient d'être joué apparaît après la prochaine synchronisation, dans quelques minutes ; s'il n'apparaît pas, le lien du match est peut-être erroné ou la synchronisation du joueur inactive.",
@@ -504,12 +512,16 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     arsenalEmptyTitle: "Aucune donnée d'armes ni de film pour ce match",
     arsenalEmptyDescription:
       "Ni la répartition des frags ni les calques décodés du film ne sont disponibles ici.",
-    analysisPendingTitle: 'Analyse du film en cours',
-    analysisPendingBody:
-      "Les frags assistés, l'arme de chaque frag, les citations et le rejeu 2D apparaîtront ici d'eux-mêmes d'ici quelques instants.",
+    analysisPendingTitleInProgress: 'Analyse du film en cours',
+    analysisPendingTitleQueued: 'Analyse du film en attente',
+    analysisPendingParts: {
+      kill_source: 'Frags assistés, arme de chaque frag',
+      citations: 'Citations',
+      replay: 'Rejeu 2D',
+    },
     analysisPendingAutoUpdate: 'Mise à jour automatique',
-    analysisPendingSlotInProgress: "En cours d'analyse",
-    analysisPendingSlotPreparing: 'En préparation',
+    analysisPendingSlotInProgress: 'Analyse en cours',
+    analysisPendingSlotQueued: 'Analyse en attente',
     scoreboardTitle: 'Tableau des scores',
     scoreboardNoData: 'Aucune donnée de tableau des scores disponible pour ce match.',
     teamLabelFmt: (name) => `Équipe ${name}`,
@@ -703,8 +715,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     mapUnknown: 'Unknown map',
     pageErrorTitle: 'Match not found or load error.',
     pageRetry: 'Retry',
-    pagePartialLoad: 'This match could not be fully loaded.',
-    pageUnavailableBanner: 'Data temporarily unavailable, please try again later',
+    noticeUnavailable: 'Part of this match could not be read.',
+    noticeUnavailableRetry: 'Retrying automatically',
+    noticePartialLead: 'Data missing for this match:',
     notSyncedTitle: 'Match not synced yet',
     notSyncedDescription:
       "This match isn't in the local database yet. A match that was just played shows up after the next sync, within a few minutes; if it doesn't, the match link may be wrong or the player's sync inactive.",
@@ -829,12 +842,16 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     arsenalEmptyTitle: 'No weapon or film data for this match',
     arsenalEmptyDescription:
       'Neither the kill breakdown nor the decoded film layers are available here.',
-    analysisPendingTitle: 'Film analysis in progress',
-    analysisPendingBody:
-      'Assisted kills, the weapon of each kill, citations and the 2D replay will appear here on their own within moments.',
+    analysisPendingTitleInProgress: 'Film analysis in progress',
+    analysisPendingTitleQueued: 'Film analysis pending',
+    analysisPendingParts: {
+      kill_source: 'Assisted frags, weapon per frag',
+      citations: 'Citations',
+      replay: '2D replay',
+    },
     analysisPendingAutoUpdate: 'Automatic update',
     analysisPendingSlotInProgress: 'Analysis in progress',
-    analysisPendingSlotPreparing: 'Being prepared',
+    analysisPendingSlotQueued: 'Analysis pending',
     scoreboardTitle: 'Scoreboard',
     scoreboardNoData: 'No scoreboard data available for this match.',
     teamLabelFmt: (name) => `Team ${name}`,

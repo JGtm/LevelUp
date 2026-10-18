@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -65,4 +66,16 @@ func AnalysisPendingParts(in AnalysisPendingInput) []string {
 // et seulement si `AnalysisPendingParts` rend au moins une cause.
 func IsAnalysisPending(in AnalysisPendingInput) bool {
 	return len(AnalysisPendingParts(in)) > 0
+}
+
+// AnalysisStateOf dit où en est l'analyse d'un match dont `AnalysisPendingParts` est non vide :
+// `domain.AnalysisStateInProgress` si et seulement si le décodage en cours sur la machine
+// (`decodingMatchID`, vide quand aucun décodage ne tourne) porte sur CE match, sinon
+// `domain.AnalysisStateQueued`. « En cours » n'est dit que si c'est vrai : une analyse en attente
+// derrière le verrou d'un autre film, ou d'un outil qui travaille ailleurs, reste « en attente ».
+func AnalysisStateOf(matchID, decodingMatchID string) string {
+	if matchID != "" && strings.EqualFold(matchID, decodingMatchID) {
+		return domain.AnalysisStateInProgress
+	}
+	return domain.AnalysisStateQueued
 }

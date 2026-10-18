@@ -16,7 +16,7 @@ describe('WeaponRecordsGapCard', () => {
   it('analyse en cours : le titre de la carte et l’indicateur d’attente', () => {
     renderWithProviders(<WeaponRecordsGapCard gap="pending" />)
     const bloc = screen.getByTestId('weapon-records-gap')
-    expect(within(bloc).getByTestId('analysis-pending-slot').textContent).toContain('Analyse du film en cours')
+    expect(within(bloc).getByTestId('analysis-pending-slot').textContent).toContain('Analyse du film en attente')
     expect(screen.getAllByText('Records de distance par arme').length).toBeGreaterThan(0)
   })
 

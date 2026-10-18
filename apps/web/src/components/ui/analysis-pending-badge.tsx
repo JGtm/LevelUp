@@ -1,11 +1,13 @@
 /**
- * AnalysisPendingBadge — la pastille « Analyse en cours » d'une tuile de match, en overlay
- * en haut à droite de l'image de carte, et son infobulle.
+ * AnalysisPendingBadge — la pastille « Analyse en cours » ou « Analyse en attente » d'une tuile
+ * de match, en overlay en haut à droite de l'image de carte, et son infobulle.
  *
- * Le match est synchronisé, le film n'est pas encore analysé : la tuile le dit au lieu
- * d'afficher des trous (`RecentMatchItem.analysis_pending`). La pastille est un `<button>`
- * accessible (focus clavier) décrit par l'infobulle (`aria-describedby`) ; l'infobulle
- * s'ouvre au survol ET au focus, se ferme à la sortie, au flou, à Échap, au défilement.
+ * Le match est synchronisé, le film n'est pas encore analysé (`RecentMatchItem.analysis_pending`) :
+ * la tuile le dit au lieu d'afficher des trous, et nomme les seules parties en attente.
+ * « En cours » seulement si un décodage porte sur ce match (`analysis_state`), sinon « en
+ * attente ». La pastille est un `<button>` accessible (focus clavier) décrit par l'infobulle
+ * (`aria-describedby`) ; l'infobulle s'ouvre au survol ET au focus, se ferme à la sortie, au
+ * flou, à Échap, au défilement.
  *
  * L'infobulle est rendue dans `document.body` (portail, `position: fixed`) : l'image de la
  * tuile et la tuile elle-même sont `overflow-hidden`, un panneau en place serait rogné. Elle
@@ -21,6 +23,7 @@ import { createPortal } from 'react-dom'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import type { Locale } from '@/lib/i18n/locale'
+import { analysisPendingLabelKey } from './match-card-presentation'
 
 const PANEL_WIDTH = 256 // px
 const GAP = 8 // px — marge pastille/panneau et marge de viewport
@@ -30,7 +33,7 @@ interface PanelPos {
   left: number
 }
 
-export function AnalysisPendingBadge({ locale }: { locale: Locale }) {
+export function AnalysisPendingBadge({ locale, inProgress, parts }: { locale: Locale; inProgress: boolean; parts: readonly CommonManifestKey[] }) {
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const tooltipId = useId()
   const [open, setOpen] = useState(false)
@@ -91,7 +94,7 @@ export function AnalysisPendingBadge({ locale }: { locale: Locale }) {
           <span className="absolute inline-flex h-full w-full rounded-full bg-info opacity-75 motion-safe:animate-ping" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-info" />
         </span>
-        {t('common.match_card.analysis_pending.badge')}
+        {t(analysisPendingLabelKey('badge', inProgress))}
       </button>
       {createPortal(
         <div
@@ -108,8 +111,12 @@ export function AnalysisPendingBadge({ locale }: { locale: Locale }) {
           }}
           className="z-[9999] rounded-lg border border-border bg-background p-3 text-xs font-normal normal-case tracking-normal text-foreground shadow-lg"
         >
-          <p className="font-semibold text-foreground">{t('common.match_card.analysis_pending.tooltip_title')}</p>
-          <p className="mt-1.5 text-muted-foreground">{t('common.match_card.analysis_pending.tooltip_body')}</p>
+          <p className="font-semibold text-foreground">{t(analysisPendingLabelKey('tooltip_title', inProgress))}</p>
+          {parts.length > 0 && (
+            <p className="mt-1.5 text-muted-foreground" data-testid="match-card-analysis-pending-parts">
+              {parts.map((key) => t(key)).join(' · ')}
+            </p>
+          )}
           <p className="mt-1.5 italic text-muted-foreground">{t('common.match_card.analysis_pending.tooltip_note')}</p>
         </div>,
         document.body,

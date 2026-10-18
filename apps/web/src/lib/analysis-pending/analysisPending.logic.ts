@@ -10,6 +10,10 @@
  * invariant `analysis_pending == (parts non vide)`) : chaque emplacement en attente regarde
  * SA cause (`hasPendingPart`), jamais le booléen seul. La pastille, l'infobulle, le bandeau et
  * le rechargement restent pilotés par le booléen.
+ *
+ * `analysis_state` (posé seulement quand `analysis_pending` est vrai) dit si un décodage de film
+ * porte sur CE match (`in_progress`) ou si le match attend son tour (`queued`) : « en cours »
+ * ne s'affiche que dans le premier cas (`isAnalysisInProgress`).
  */
 import type { HomePageResponse, MatchViewResponse } from '@/lib/api/types'
 
@@ -27,6 +31,20 @@ export const ANALYSIS_PART = {
 } as const
 
 export type AnalysisPendingPart = (typeof ANALYSIS_PART)[keyof typeof ANALYSIS_PART]
+
+/** Les états servis par le serveur (`domain.AnalysisState*`). */
+export const ANALYSIS_STATE = {
+  inProgress: 'in_progress',
+  queued: 'queued',
+} as const
+
+/** Tout objet qui porte l'état de l'analyse (en-tête de la vue match). */
+export type AnalysisStateCarrier = { analysis_state?: string | null }
+
+/** Un décodage porte sur CE match. Absent ou autre valeur : en attente, jamais « en cours ». */
+export function isAnalysisInProgress(item: AnalysisStateCarrier | null | undefined): boolean {
+  return item?.analysis_state === ANALYSIS_STATE.inProgress
+}
 
 /** Tout objet qui porte les causes (tuile de l'accueil, en-tête de la vue match). */
 export type AnalysisPendingCarrier = { analysis_pending_parts?: ReadonlyArray<string> | null }
