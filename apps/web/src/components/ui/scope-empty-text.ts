@@ -4,7 +4,8 @@
  *
  * Règle produit (2026-10-17) : un manque de fonction (capability du titre absente) retire le bloc ;
  * un manque de données (aucun match du périmètre n'est concerné) le laisse, avec son titre et un état
- * vide dans un bloc parent — un bloc qui disparaît se lit comme un bug. Constats factuels : ni
+ * vide dans un bloc parent — un bloc qui disparaît se lit comme un bug. Une lecture en échec (`objectiveUnavailable`) se dit à part : elle n'est pas « aucun match concerné »,
+ * mais le bloc reste de même affiché. Constats factuels : ni
  * personne, ni action possible, ni mot interne (garde `textesSansPersonne.test.ts`).
  *
  * Le titre du constat des frags est celui du manifeste partagé (`frags.empty.no_data`), lu aussi par
@@ -14,8 +15,12 @@ import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
 import type { Locale } from '@/lib/i18n/locale'
 
-/** Ce que le périmètre n'a pas : des matchs à objectif, des actions d'objectif, des frags, une assistance ou une portée lues au film. */
-export type ScopeEmptyKind = 'objective' | 'objectiveActions' | 'frags' | 'support'
+/**
+ * Ce que le périmètre n'a pas : des matchs à objectif, des actions d'objectif, des frags, une assistance ou une portée lues
+ * au film ; ou ce que la lecture n'a pas rendu (`objectiveUnavailable` : lecture de l'objectif en échec, qui n'est pas
+ * « aucun match à objectif »).
+ */
+export type ScopeEmptyKind = 'objective' | 'objectiveActions' | 'objectiveUnavailable' | 'frags' | 'support'
 
 export interface ScopeEmptyText {
   title: string
@@ -32,6 +37,10 @@ const TEXT: Record<Locale, Record<Exclude<ScopeEmptyKind, 'frags'>, ScopeEmptyTe
       title: 'Aucune action d’objectif sur ce périmètre',
       description: 'Aucune action de drapeau, de zone ou de crâne n’est enregistrée sur les matchs de ce périmètre.',
     },
+    objectiveUnavailable: {
+      title: 'Objectif indisponible pour ce périmètre',
+      description: 'Les données d’objectif de ce périmètre n’ont pas pu être chargées.',
+    },
     support: {
       title: 'Aucune assistance ni portée de frag sur ce périmètre',
       description: 'Aucun match de ce périmètre n’a d’assistance ni de portée de frag lue au film.',
@@ -46,6 +55,10 @@ const TEXT: Record<Locale, Record<Exclude<ScopeEmptyKind, 'frags'>, ScopeEmptyTe
     objectiveActions: {
       title: 'No objective action in this scope',
       description: 'No flag, zone or skull action is recorded on the matches in this scope.',
+    },
+    objectiveUnavailable: {
+      title: 'Objective unavailable for this scope',
+      description: 'The objective data for this scope could not be loaded.',
     },
     support: {
       title: 'No assist or kill range in this scope',
@@ -66,5 +79,5 @@ export function scopeEmptyText(kind: ScopeEmptyKind, locale: Locale): ScopeEmpty
 
 /** Tous les constats d'une langue : ce que la garde des textes sans personne parcourt. */
 export function allScopeEmptyTexts(locale: Locale): ScopeEmptyText[] {
-  return (['objective', 'objectiveActions', 'frags', 'support'] as const).map((k) => scopeEmptyText(k, locale))
+  return (['objective', 'objectiveActions', 'objectiveUnavailable', 'frags', 'support'] as const).map((k) => scopeEmptyText(k, locale))
 }

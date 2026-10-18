@@ -114,9 +114,9 @@ export function useSessionEmpriseCards(
     if (gap) cards[key] = <FilmGapCard gap={gap} t={gapText} />
     else if (drawn[key]) cards[key] = render[key]()
     // Aucun match concerné : les frags gardent leur carte (l'anneau dit le constat sous son titre), l'objectif
-    // dit le sien sous l'intertitre de son sous-groupe.
+    // dit le sien (aucun match à objectif, ou lecture en échec) sous l'intertitre de son sous-groupe.
     else if (empties[key] === 'frags') cards[key] = render[key]()
-    else if (empties[key] === 'objective') cards[key] = <ScopeEmptyCard kind="objective" locale={locale} testId="session-objective-empty" />
+    else if (empties[key] != null) cards[key] = <ScopeEmptyCard kind={empties[key]} locale={locale} testId="session-objective-empty" />
   }
   return cards
 }

@@ -317,3 +317,41 @@ func TestGetPage_PointsParSoiree_FragsReconstituesParGroupe(t *testing.T) {
 	comparerSoireeEtMatrice(t, "S1", h.Evenings[0], matrice("S1"))
 	comparerSoireeEtMatrice(t, "S2", h.Evenings[1], s2)
 }
+
+// TestBuildSquadImpact_HistoriqueAbsentJournalise : une escouade sélectionnée dont aucun rôle ne
+// tombe (ni événement ni équipe alliée) rend un historique nul ET le journalise avec sa raison ;
+// sans soirée, la raison est « no_evening ».
+func TestBuildSquadImpact_HistoriqueAbsentJournalise(t *testing.T) {
+	repo, all := soireesFixture()
+	repo.impactRows, repo.allyRows = nil, nil
+	svc := &TeammatesService{repo: repo, titleSlug: "halo_infinite", gamertag: "Main"}
+	tm := []domain.TeammateRow{{Gamertag: "Ally", XUID: strPtr("x_ally")}}
+	cas := []struct {
+		nom, raison string
+		sansSoiree  bool
+	}{
+		{"aucun rôle attribué", "no_role_attributed", false},
+		{"aucune soirée", "no_evening", true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			evenings := soireesDImpact(all, all, true)
+			if c.sansSoiree {
+				evenings = nil
+			}
+			var history *domain.SquadImpactHistory
+			logs := withCapturedLogs(t, func() {
+				_, history = svc.buildSquadImpact(context.Background(), impactEscouade{
+					rows: all, timeline: all, evenings: evenings,
+					mainXUID: "x_main", selected: []string{"Ally"}, teammates: tm,
+				})
+			})
+			if history != nil {
+				t.Fatalf("historique nul attendu, obtenu %+v", history)
+			}
+			if !strings.Contains(logs, "teammates_squad_impact_history_absent") || !strings.Contains(logs, `"reason":"`+c.raison+`"`) {
+				t.Errorf("journal attendu avec la raison %q, obtenu :\n%s", c.raison, logs)
+			}
+		})
+	}
+}

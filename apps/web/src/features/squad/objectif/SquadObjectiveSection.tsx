@@ -13,7 +13,8 @@
  * AUCUNE REQUÊTE NEUVE : le bloc `formes_retenues` (périmètre D2) et l'historique de matchs de la
  * page (résultat, score, dominance, L3.2) arrivent avec la réponse de `useTeammates`. Sans match à objectif dans le périmètre, les deux
  * sections gardent leur intertitre et disent « Aucun match à objectif sur ce périmètre » dans un bloc parent
- * (`ScopeEmptyCard`) ; elles ne se retirent que si le titre ne mesure pas l'objectif (`objectiveExpected`).
+ * (`ScopeEmptyCard`) ; une lecture en échec le dit à part (« Objectif indisponible pour ce périmètre ») ; elles ne se
+ * retirent que si le titre ne mesure pas l'objectif (`objectiveGap` nul).
  */
 import { useCallback, useMemo } from 'react'
 
@@ -32,7 +33,7 @@ import {
   buildObjectiveSheets,
   buildSessionFil,
   hasSquadObjective,
-  objectiveExpected,
+  objectiveGap,
   squadSheetsOnly,
 } from './objectif.logic'
 import { ObjectiveBalanceCard } from './ObjectiveBalanceCard'
@@ -77,8 +78,9 @@ export function SquadObjectiveSection({
     })
   }, [b, medalDigest, mainPlayerLabel, inkOf])
 
-  if (!objectiveExpected(block)) return null
   const measured = hasSquadObjective(b)
+  const gap = objectiveGap(block)
+  if (!measured && gap == null) return null
 
   return (
     <>
@@ -99,7 +101,7 @@ export function SquadObjectiveSection({
             />
           </div>
         ) : (
-          <ScopeEmptyCard kind="objective" locale={locale} testId="squad-objective-empty" />
+          gap && <ScopeEmptyCard kind={gap} locale={locale} testId="squad-objective-empty" />
         )}
       </section>
       <section className="space-y-2" data-testid="squad-objective-sheets-section">
@@ -110,7 +112,7 @@ export function SquadObjectiveSection({
         {measured ? (
           <ObjectiveSheetsCard sheets={sheets} identities={identities} familyLabel={familyLabel} columns={columns} t={t} />
         ) : (
-          <ScopeEmptyCard kind="objective" locale={locale} testId="squad-objective-sheets-empty" />
+          gap && <ScopeEmptyCard kind={gap} locale={locale} testId="squad-objective-sheets-empty" />
         )}
       </section>
     </>

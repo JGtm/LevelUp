@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-const PHRASES = /Aucun match à objectif sur ce périmètre|No objective match in this scope|Aucune action d’objectif sur ce périmètre|Aucune assistance ni portée de frag sur ce périmètre/
+const PHRASES = /Aucun match à objectif sur ce périmètre|No objective match in this scope|Aucune action d’objectif sur ce périmètre|Aucune assistance ni portée de frag sur ce périmètre|Objectif indisponible pour ce périmètre|Objective unavailable for this scope/
 const OWNER = /\/components\/ui\/scope-empty-text\.ts$/
 
 const withoutComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
@@ -22,5 +22,20 @@ describe('garde « aucun match concerné »', () => {
       .filter(([, src]) => PHRASES.test(withoutComments(src)))
       .map(([path]) => path)
     expect(offenders, `utiliser scopeEmptyText / ScopeEmptyCard :\n${offenders.join('\n')}`).toEqual([])
+  })
+})
+
+describe('garde « lecture de l’objectif en échec »', () => {
+  it('la raison d’indisponibilité du bloc d’objectif ne se lit que dans objectiveGap (objectif.logic.ts)', () => {
+    const files = import.meta.glob('/src/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true }) as Record<
+      string,
+      string
+    >
+    const offenders = Object.entries(files)
+      .filter(([path]) => !/\/features\/squad\/objectif\/objectif\.logic\.ts$/.test(path) && !/\.test\.tsx?$/.test(path))
+      .filter(([path]) => !/\/lib\/(api|i18n)\//.test(path))
+      .filter(([, src]) => /objectiveExpected|unavailable_reason\s*===\s*['"]load_failed['"]/.test(withoutComments(src)))
+      .map(([path]) => path)
+    expect(offenders, `utiliser objectiveGap :\n${offenders.join('\n')}`).toEqual([])
   })
 })

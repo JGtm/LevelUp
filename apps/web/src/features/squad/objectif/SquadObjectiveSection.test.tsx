@@ -131,8 +131,29 @@ describe('SquadObjectiveSection', () => {
     expect(container).toBeEmptyDOMElement()
     const { container: c2 } = renderSection(undefined)
     expect(c2).toBeEmptyDOMElement()
+  })
+
+  it('lecture de l’objectif en échec : les deux sections gardent leur intertitre et le disent, sans « aucun match à objectif »', () => {
     const failed: SquadFormesBlock = { available: false, unavailable_reason: 'load_failed', matches_measured: 0, matches_total: 3 }
-    const { container: c3 } = renderSection(failed)
-    expect(c3).toBeEmptyDOMElement()
+    renderSection(failed)
+    for (const [section, empty] of [
+      ['squad-objective-section', 'squad-objective-empty'],
+      ['squad-objective-sheets-section', 'squad-objective-sheets-empty'],
+    ] as const) {
+      const el = screen.getByTestId(section)
+      expect(el.querySelector('h3')).not.toBeNull()
+      const bloc = within(el).getByTestId(empty)
+      expect(bloc).toHaveTextContent('Objectif indisponible pour ce périmètre')
+      expect(bloc).not.toHaveTextContent('Aucun match à objectif')
+      expect(bloc.querySelector('.border-dashed')).not.toBeNull()
+    }
+  })
+
+  it('lecture en échec, en anglais', () => {
+    const failed: SquadFormesBlock = { available: false, unavailable_reason: 'load_failed', matches_measured: 0, matches_total: 3 }
+    render(
+      <SquadObjectiveSection block={failed} matchHistory={[]} medalDigest={[]} mainPlayerLabel="JGtm" locale="en" />,
+    )
+    expect(screen.getAllByText('Objective unavailable for this scope')).toHaveLength(2)
   })
 })

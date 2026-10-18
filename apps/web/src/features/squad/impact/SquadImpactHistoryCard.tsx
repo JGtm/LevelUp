@@ -3,9 +3,9 @@
  * sous la matrice d'impact ; maquette validée, forme « Détail des rôles »).
  *
  * Données : `squad_impact_history` (comptes, points et nets calculés côté Go). Mise en forme :
- * `impactHistory.logic.ts` ; option ECharts : `impactHistoryChart.ts`. Bloc absent quand la
- * réponse n'en porte pas (titre sans événements horodatés ni équipe alliée) : l'appelant ne le
- * monte pas.
+ * `impactHistory.logic.ts` ; option ECharts : `impactHistoryChart.ts`. Réponse sans historique : la carte reste,
+ * titre gardé, avec son constat (`t.empty`) ; c'est à l'appelant de ne pas la monter pour un titre qui ne lit pas
+ * les événements horodatés (fonction absente : carte absente).
  */
 import { useCallback, useMemo, type CSSProperties } from 'react'
 
@@ -26,7 +26,8 @@ const IMPACT_HISTORY_HEIGHT = 360
 const NARROW_QUERY = '(max-width: 640px)'
 
 interface Props {
-  history: SquadImpactHistory
+  /** Absent : la réponse n'a pas d'historique (aucune soirée, aucun rôle attribué). */
+  history: SquadImpactHistory | null | undefined
   /** gamertag → couleur résolue (palette des joueurs de l'Escouade). */
   colorByPlayer: Record<string, string>
   /** gamertag → encre CSS du joueur (légende). */
@@ -37,7 +38,7 @@ interface Props {
 export function SquadImpactHistoryCard({ history, colorByPlayer, inkOf, locale }: Props) {
   const t = IMPACT_HISTORY_TEXT[locale]
   const narrow = useMediaQuery(NARROW_QUERY)
-  const view = useMemo(() => buildImpactHistoryView(history, locale, t), [history, locale, t])
+  const view = useMemo(() => (history ? buildImpactHistoryView(history, locale, t) : null), [history, locale, t])
   const series = useMemo<ChartSeries<ImpactHistoryView>[]>(
     () => (view ? [{ key: 'squad-impact-history', datapoints: [view] }] : []),
     [view],
@@ -49,7 +50,7 @@ export function SquadImpactHistoryCard({ history, colorByPlayer, inkOf, locale }
         : {},
     [view, colorByPlayer, t, narrow],
   )
-  // Sans soirée à tracer (aucun joueur, aucune soirée), la carte reste : titre et état vide du graphe.
+  // Sans soirée à tracer (historique absent, aucun joueur, aucune soirée), la carte reste : titre et état vide du graphe.
   return (
     <div className="min-w-0" data-testid="squad-impact-history">
       <ChartCard
@@ -60,6 +61,8 @@ export function SquadImpactHistoryCard({ history, colorByPlayer, inkOf, locale }
           </span>
         }
         series={series}
+        emptyTitle={t.empty.title}
+        emptyMessage={t.empty.description}
         height={IMPACT_HISTORY_HEIGHT}
         renderer="svg"
         buildOption={buildOption}

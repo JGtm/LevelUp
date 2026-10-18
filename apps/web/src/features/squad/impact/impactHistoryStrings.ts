@@ -20,6 +20,8 @@ export interface ImpactHistoryText {
   signed: (v: number) => string
   hourOf: (d: Date) => string
   matchesWins: (matches: number, wins: number) => string
+  /** Le constat de la carte quand la réponse n'a pas d'historique (titre qui lit les événements horodatés). */
+  empty: { title: string; description: string }
   noRole: string
   net: string
   legendNet: string
@@ -79,6 +81,10 @@ const FR: ImpactHistoryText = {
   matchesWins: (matches, wins) =>
     `${matches} match${matches > 1 ? 's' : ''}, ` +
     (wins === 0 ? 'aucune victoire' : `${wins} victoire${wins > 1 ? 's' : ''}`),
+  empty: {
+    title: 'Aucun point d’impact sur ce périmètre',
+    description: 'Aucun rôle d’impact n’est attribué aux joueurs de l’escouade sur les soirées de ce périmètre.',
+  },
   noRole: 'Aucun rôle',
   net: 'Net',
   legendNet: 'Net de la soirée :',
@@ -114,6 +120,10 @@ const EN: ImpactHistoryText = {
   hourOf: (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`,
   matchesWins: (matches, wins) =>
     `${matches} match${matches > 1 ? 'es' : ''}, ` + (wins === 0 ? 'no win' : `${wins} win${wins > 1 ? 's' : ''}`),
+  empty: {
+    title: 'No impact point in this scope',
+    description: 'No impact role is assigned to the squad players on the evenings in this scope.',
+  },
   noRole: 'No role',
   net: 'Net',
   legendNet: 'Evening net:',

@@ -87,6 +87,16 @@ describe('Onglet Usages — aucun match à objectif', () => {
     expect(screen.getByTestId('usages-section-objectif')).toHaveTextContent('No objective match in this scope')
   })
 
+  it('lecture de l’objectif en échec : le bloc garde son intertitre et le dit', () => {
+    renderWithProviders(
+      <TimeseriesUsagesTab data={avec(formes({ available: false, unavailable_reason: 'load_failed' }))} locale="fr" t={(k) => k} />,
+    )
+    const section = screen.getByTestId('usages-section-objectif')
+    expect(within(section).getByRole('heading', { name: 'Objectif' })).toBeInTheDocument()
+    expect(section).toHaveTextContent('Objectif indisponible pour ce périmètre')
+    expect(section).not.toHaveTextContent('Aucun match à objectif')
+  })
+
   it('titre sans objectif (capability absente) ou bloc absent : le bloc est retiré', () => {
     renderWithProviders(
       <TimeseriesUsagesTab data={avec(formes({ available: false, unavailable_reason: 'unsupported' }))} locale="fr" t={(k) => k} />,
