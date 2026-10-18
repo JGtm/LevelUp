@@ -102,7 +102,7 @@ var registreReplayIdentites = []Repli{
 		Mecanisme: "ni visible ni en attente : « hors de vue » par defaut de fin de fonction — indistinct de « canal non lu »",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillcollector + "isolation_facts.go", Ancre: "Fallbacks: ids.replis,"}, {
+		Sites: []Site{{Fichier: pkgKillcollector + "positions_entrees.go", Ancre: "Fallbacks: ids.replis, OrigineDuFilmUS"}, {
 			Fichier: pkgReplay + "death_context.go",
 			Ancre:   "return EtatHorsDeVue",
 		}, {
