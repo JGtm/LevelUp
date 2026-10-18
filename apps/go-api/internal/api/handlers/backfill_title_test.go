@@ -24,7 +24,7 @@ func backfillTitleFixture(t *testing.T) (*BackfillHandler, string) {
 	root := t.TempDir()
 	profiles := `{"version":"3.0","admin":"JGtm","profiles":{
 		"halo_infinite":{"JGtm":{"xuid":"1001"},"Solo":{"xuid":"1002"}},
-		"halo_5":{"JGtm":{"xuid":"1001"}}}}`
+		"halo_5":{"JGtm":{"xuid":"1001"},"H5Seul":{"xuid":"1003"}}}}`
 	profilesPath := filepath.Join(root, "db_profiles.json")
 	if err := os.WriteFile(profilesPath, []byte(profiles), 0o600); err != nil {
 		t.Fatalf("db_profiles: %v", err)
@@ -93,4 +93,36 @@ func TestStartBackfill_TitreRoute(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestStartBackfill_SansTitreRefuseUnJoueurSuiviSurHalo5Seulement : un titre absent vaut le titre
+// par défaut AVANT la recherche du joueur. Sinon la recherche couvrait tous les titres, trouvait un
+// joueur suivi sur Halo 5 seulement, puis le moteur du titre par défaut ouvrait les bases d'Infinite
+// pour lui (revue adversariale E10.1, constat C5) : 404, rien lancé, aucune base créée.
+func TestStartBackfill_SansTitreRefuseUnJoueurSuiviSurHalo5Seulement(t *testing.T) {
+	h, root := backfillTitleFixture(t)
+	_, err := startBackfill(h, map[string]any{"player_slug": "H5Seul", "dry_run": true})
+	var se huma.StatusError
+	if !errors.As(err, &se) || se.GetStatus() != http.StatusNotFound {
+		t.Fatalf("attendu 404, got %v", err)
+	}
+	pr := titlePkg.NewPathResolver(root)
+	for _, slug := range []string{titlePkg.DefaultSlug, "halo_5"} {
+		if _, statErr := os.Stat(pr.PlayerDBPath(slug, "H5Seul")); !os.IsNotExist(statErr) {
+			t.Errorf("une base joueur de %s a été touchée pour un joueur refusé (stat: %v)", slug, statErr)
+		}
+	}
+	// Le même joueur, avec son titre, est accepté.
+	out, err := startBackfill(h, map[string]any{"player_slug": "H5Seul", "title": "halo_5", "dry_run": true})
+	if err != nil {
+		t.Fatalf("title=halo_5 devait être accepté: %v", err)
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		if job := h.jobStore.Get(out.Body.JobID); job != nil && job.IsTerminal() {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatal("le job accepté n'est pas terminé")
 }
