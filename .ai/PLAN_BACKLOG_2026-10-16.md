@@ -495,8 +495,20 @@ Statut du gate (exécutant, 2026-10-18) : VERT. `go test -count=1 ./cmd/levelup/
 
 ### E10 — Clôture
 
-- [ ] E10.1 Une revue adversariale (skill `adversarial-review`, Sonnet, contexte frais) sur le diff
-  des étapes à risque (E1, E4, E8) ; constats corrigés ou statués.
+- [x] E10.1 Une revue adversariale (skill `adversarial-review`, Sonnet, contexte frais) sur le diff
+  des étapes à risque (E1, E4, E8) ; constats corrigés ou statués. Revue faite ; constats retenus par le
+  pilote corrigés par l'exécutant (2026-10-18), un commit `b1016(E10.1)` par constat :
+  - [x] C1 LUSR : précédent du chaînage (delta, hystérésis) lu par `match_skill_rank_latest_by_type`, matchs exclus ignorés — `6c5097a86`
+  - [x] C2 LUSR : écrivain indisponible / contexte annulé entre deux rafales = erreur remontée (coalesce : échec retenu, la demande suivante relance) — `4b61cb5af`
+  - [x] C3 LUSR : `sync.MedalExploitOption` sur les 5 sites sans l'option (service OpenSpartan, `recompute_perfnote`, `lusr_v2_canonical_backfill`, `h5-lusr-backfill`, post-score Halo 5) + 3 sites migrés + garde-rail archlint — `dfd1a4262`, `684ce2565`
+  - [x] C4 CI : sources Go lues par des tests Vitest dans `croisee` + garde-rail archlint — `ef1498646`
+  - [x] C5 `POST /backfill/start` : titre vide résolu au titre par défaut avant la recherche du joueur — `43e3885c8`
+  - [x] C6 `backfill --csr/--shared-csr` : refus sur la capability `match.skill.snapshot`, plus sur le slug (réserve en section 3) — `6a7a07b45`
+  - [x] C7 film : bord lu une fois par passe (`LectureDuBord.Partagee`), repli compté une fois — `790ab9974`, `38ba344b3`
+  - [x] C8 film : câblage du bord dans le collecteur testé (`entreeDesPositions`, `entreeContexteMorts`) — `790ab9974`
+  - [x] C9 film : tueur posthume posé par la tenue / le siège, testé — `790ab9974`
+  - [x] C10 film : deux sièges à la tolérance, bord lu, testé — `790ab9974`
+  - [x] C11 (CI rouge `39153410524`) : `TestAssertProgressionDeps_HookWiredOnAllSyncPaths`, regex étendue à `NewSyncEngineForTitle`, cinq sites déclarés — `e155beab8`
 - [ ] E10.2 Fusion de `origin/feat/v75` dans la branche si elle a bougé ; gates locaux rejoués.
 - [ ] E10.3 Push → CI complète verte (durées au journal).
 - [ ] E10.4 `.ai/BACKLOG.md` : contrôle final (les 12 entrées traitées au fil des étapes, aucune
@@ -654,6 +666,25 @@ Statut du gate (exécutant, 2026-10-18) : VERT. `go test -count=1 ./cmd/levelup/
 - E9 : `docs/COMMANDS.md` documente `backfill-vehicle-takes` comme exigeant `--force` après une re-cuisson ; la séquence film d'E8.6 ne le
   prévoit pas. Si la re-cuisson au schéma 99 change la lecture d'occupation qu'il projette n'est pas établi ici : question posée au pilote (runbook R7).
 
+- E10.1 (exécutant, 2026-10-18) : un match exclu reste tracé dans le graphe de carrière avec sa note d'avant (Q8 `queries_career.go:~224-234`
+  et `profile/queries.go:~403` ne filtrent pas `is_excluded`). Antérieur à ce chantier. Non traité.
+- E10.1 : le ratchet `no_slug_comparison_test.go` ne couvre pas `cmd/` (la comparaison de slug de `cmd_backfill.go` n'était donc vue par
+  aucun garde-rail). Non traité (non étendu ici).
+- E10.1 (C6) : les passes `--csr` / `--shared-csr` (`cmd_backfill_csr.go`) fixent encore `titlePkg.DefaultSlug` pour leurs chemins de bases.
+  Le refus par capability suffit tant que seul Infinite déclare `match.skill.snapshot` ; un second titre qui la déclarerait serait traité
+  sur les bases d'Infinite. Le routage par titre de ces passes est à faire avant d'ouvrir la capability (commentaire de `requireCSRCapability`).
+  Non traité.
+- E10.1 (C1) : la lecture du précédent par la vue coûte ~6 ms par requête contre ~1,2 ms pour la lecture brute (20 000 lignes, mesure sur
+  base en mémoire), deux requêtes par match noté : un rejeu complet de 10 000 matchs ajoute de l'ordre de la minute. Un index en mémoire par
+  groupe, mis à jour à chaque écriture, supprimerait ce coût. Non traité.
+- E10.1 (C2) : `skippedWriteFailed` (écriture canonique en échec, groupe tenu) laisse aussi `RunLUSRV2Shadow` rendre `nil` : un recalcul
+  d'exclusion dont une note n'a pas pu s'écrire se dit terminé. Même famille que C2, hors de son énoncé. Non traité.
+- E10.1 : `migration/psa_index_repro_msr_fixture_test.go` (F6a, F6b) recopie en littéral les deux anciennes requêtes de précédent (table
+  brute) ; elles ne sont plus celles de la production depuis C1. Fixture de reproduction d'incident, non modifiée.
+- E10.1 (C11) : le gate local d'E9 n'a pas vu le test rouge parce que `hook_wired_assertion_test.go` porte `//go:build integration` et que
+  le gate d'E9 ne jouait `-tags=integration` que sur `./cmd/levelup/ ./internal/config/ ./internal/service/ ./internal/api/handlers/
+  ./internal/api/wire/`, pas sur `./internal/sync/`. Leçon : tout changement d'un constructeur de moteur rejoue `-tags=integration` sur
+  `./internal/sync/`.
 
 ## 4. Journal
 
@@ -1035,3 +1066,16 @@ Statut du gate (exécutant, 2026-10-18) : VERT. `go test -count=1 ./cmd/levelup/
   - RÉVISIONS : aucune de montée (catalogue de bornes hors `profile`, `PlacementRev`, `SchemaVersion`, `grammar`, `killsource` inchangés). À JOUER APRÈS FUSION (E8.6/E10.5) : `backfill-replay` sur les films Harvest du parc de prod, qui n'avaient aucun rejeu.
 - 2026-10-18 clôture d'E8 (exécutant Sonnet, même worktree). Gate d'étape rejoué après E8.3, un seul `go` à la fois : `go test -count=1 ./internal/games/halo_infinite/film/... ./internal/sync/killcollector/... ./internal/replaybuild/...` : 21 paquets `ok`, 0 échec ; `go test -count=1 ./internal/himap/... ./cmd/mapquant-build/... ./cmd/mapobj-build/... ./internal/replaybuild/... ./internal/service/... ./internal/archlint/` : tous `ok` ; `CGO_ENABLED=0 go run ./cmd/replay-corpus-gate --base=HEAD~1` (E8.3 contre l'état d'avant, deux passes de 590 s au plus, reprise par le cache de la base) : 19 témoins `ok`, 0 gain, 0 perte, 0 changement, FIN=0 (les trois témoins les plus récents cuits à froid, dont `f75e7053` KOTH) ; le gate d'E8.1/E8.4 contre `HEAD` (pilote) reste celui qui porte les changements de révision. Items : E8.1 `[x]`, E8.2 `[x]`, E8.3 `[x]`, E8.4 `[x]`, E8.5 `[x]`, E8.6 `[~]` (E10.5). `.ai/BACKLOG.md` : quatre entrées retirées (vies sans identité, écart de position, courbe Lattice, Harvest), deux entrées pour les restes réels (15 vies sans nom ; découvertes d'E8 non traitées), une ligne « Récemment complété » ; `.ai/REGISTRE_REPORTS.md` : lignes Lattice, Harvest et écart de position soldées. Contrôle visuel du user : OUVERT jusqu'après la fusion.
 - 2026-10-18 E9 (exécutant Sonnet, même worktree) : E9.1 à E9.4 faits, gate vert (détail sous l'étape). Pièces rouvertes avant de coder : `cmd_backfill.go` (seul `--engagement-scores` portait un titre), `engine_options.go` (`NewSyncEngine` = `DefaultSlug`), `handlers/backfill.go` (moteur sans titre, provider du boot), `handlers/settings.go:518` (titre vide), `config/player_resolver.go` (`cfg.SharedProvider` = titre par défaut), `migration/registry.go` (`RunForDB` force `DefaultSlug`), `Dockerfile` (binaires de l'image), `deploy.yml` (job `deploy-demo`), COMMANDS.md (doctrine des passes film). Écarts au brief : (1) `--title` couvre aussi `--composite-only`, `--citations-recompute-all`, `--compare-formulas` (même code, sinon piège silencieux) ; (2) les passes sélectionnées tournent TOUTES (avant : `--perf --assists-model` ne lançait que `--perf`, les autres retournaient tôt) ; (3) le gate de capability est aux appelants (CLI, job), pas dans `RunBackfillCitations` : les tests de pipeline le pilotent sans manifeste de titre ; (4) le champ `title` n'a pas de schéma OpenAPI (corps lu à la main) : ajouté à la description du fragment et à `types.ts`. Fichiers : voir `git show --stat` du commit `b1016(E9)`.
+
+- 2026-10-18 E10.1 (exécutant Sonnet, même worktree, onze constats retenus par le pilote, tous vérifiés sur pièces avant correction : aucun faux). Un commit par constat (SHA à l'item E10.1). Rouge -> vert :
+  - C1 : `TestRunLUSRV2Shadow_Rejeu_PrecedentIgnoreLeMatchExclu` rouge sur l'ancien code (delta de m3 = 323,79 contre la ligne périmée de m2, attendu 311,78 contre m1), vert ensuite ; `TestLoadPrevious_IgnoreLesMatchsExclus` (note et palier). Lecture par `match_skill_rank_latest_by_type` (la vue `_latest` plain arbitre CSR > LUSR par match et masquerait les LUSR des matchs classés).
+  - C2 : `TestRunLUSRV2Shadow_EcrivainIndisponible_RemonteLErreur` et `..._ContexteAnnuleEntreDeuxRafales_...` rouges (`err = nil`), verts ; `TestMatchRecomputer_EcrivainPerduPendantLeRejeu_EchecPuisRelance` (provider qui refuse la 2e prise de l'écrivain) rouge sur le code d'avant (`err = nil`), vert : l'échec est retenu (`RecomputePending`), la demande suivante recalcule et note les 12 matchs.
+  - C3 : les 5 sites sans l'option (le post-score Halo 5 `livesync/wire.go` en est un cinquième, hors énoncé) passent `sync.MedalExploitOption` ; les 3 copies existantes (`engine_backfills`, `engine_postsync_scoring`, `match_recomputer`) migrées ; garde-rail `archlint/lusr_medal_exploit_option_test.go` (scan AST ; exemptions : `opts...` relayé, base joueur `nil`), rouge sur les 5 sites si les correctifs sont retirés, auto-preuve sur texte synthétique. L'helper a rejoint `lusr_full_recompute.go` (ratchet `TestSyncRootPackageFrozen` : un fichier racine de plus était refusé).
+  - C4 : `TestWebTestsReadingGoSourcesAreCoveredByCroisee` rouge (9 chemins Go non couverts), vert après ajout de 6 motifs sous `croisee` (`boot_gate.go`, `weapon_range.go`, `film/replay/**`, `film/internal/grammar/**`, `film/killicon/data/**`, `loader_replay_labels*.go`) ; auto-preuve `TestWebReadsGoGuardDetectsDefects` ; `TestCIPathsIgnoreSubsetOfDeployPathsIgnore` vert.
+  - C5 : `TestStartBackfill_SansTitreRefuseUnJoueurSuiviSurHalo5Seulement` rouge (`err = nil`), vert (404, aucune base créée).
+  - C6 : `TestRunBackfill_CSRRefuseUnTitreSansLaCapability` rouge avec l'ancienne comparaison de slug (message sans capability), vert ; `TestRequireCSRCapability` ; le compte de `titlePkg.DefaultSlug` autorisé dans `cmd_backfill.go` passe de 2 à 1.
+  - C7 : `TestLeBordPartageNeCompteLeRepliHorsEmpriseQuUneFois` ; mutation (`Partagee` sans index commun) : repli compté 6 fois au lieu de 3 = le défaut constaté (compteur et lecture doublés). Le bord du collecteur est `Partagee()`. L'ancre du registre des replis (`repli_coequipier_hors_de_vue_par_defaut`) suit la composition de l'entrée (`positions_entrees.go`). Aucune révision montée (sorties inchangées : seul le compte du repli change ; `RevSuit`/`Chronique` verts).
+  - C8 : constructeurs `entreeDesPositions` / `entreeContexteMorts` (nouveau `positions_entrees.go`, `positions.go` passe de 499 à 495 lignes) ; `positions_cablage_bord_test.go` ; mutation (bord retiré des deux entrées) : trois tests rouges (victime silencieuse sans lieu, contexte absent).
+  - C9, C10 : `killpos_bord_lu_test.go` ; mutations : retour à `positionOf` dans `placerPosthume` (tenue et siège rouges), retrait de `proches > 1 ||` (`TestLectureDuLieu_DeuxSiegesALaToleranceRefusentMemeAvecLeBord` rouge, victime tenue en (5, 0)).
+  - C11 : regex `newSyncEngineRe` étendue à `NewSyncEngineForTitle` et aux alias `syncpkg`, `sync_pkg` ; cinq sites déclarés avec leur statut lu dans le code (`backfill.go`, `registry_lusr_gaps.go`, `livesync/wire.go` : `no-runner-ok` ; `sync_handler.go` : `legacy-hook` (`WithPostSyncDeltaHook`) ; `auto_sync_engine.go` : `wired` (`WithPostSyncRunner`)). Cause du trou du gate d'E9 : section 3.
+  - Gate (un seul `go` à la fois, `GOCACHE` dédié) : `go test -count=1 ./internal/archlint/ ./internal/sync/skill/ ./internal/service/... ./internal/api/... ./cmd/levelup/ ./internal/domain/...` et `./internal/games/halo_infinite/film/... ./internal/sync/killcollector/...` : tous `ok` (après correction de l'ancre du registre des replis, rouge `TestToutSiteDuRegistreExiste` d'abord) ; `go test -count=1 -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./cmd/levelup/` : tous `ok` (`internal/sync` 191 s, `persist` 55 s), dont `TestAssertProgressionDeps_HookWiredOnAllSyncPaths` ; `golangci-lint run --new-from-rev=74cc3e534` sur les paquets touchés, tags par défaut, `integration`, `research` : 0 issue ; aucun test renommé de la baseline JSONL. Aucun fichier web touché (vitest non rejoué). Non poussé.
