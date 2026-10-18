@@ -48,6 +48,24 @@ type LectureDuBord struct {
 	// Vehicules : le nuage de positions des vehicules (`ti=40`), lu comme la cuisson le lit
 	// ([PositionsDesVehicules]).
 	Vehicules []grammar.BipedPosition
+	// indexe : l'index de la lecture, partage par les copies de [LectureDuBord.Partagee].
+	indexe *bordIndexe
+}
+
+// bordIndexe est l'index d'une lecture partagee, pose a la premiere lecture.
+type bordIndexe struct {
+	fait bool
+	bord bordDuFilm
+}
+
+// Partagee rend la lecture dotee d'un index commun a toutes ses copies : la passe qui place les morts
+// (`kill_positions`) et celle qui en date le contexte lisent le MEME bord contre les MEMES bipedes, et
+// ne l'indexent qu'une fois — le repli `position_hors_emprise_ecartee` se compte alors une seule fois
+// par passe, au lieu d'une fois par lecteur. Les copies ne se lisent que contre les positions du
+// premier lecteur.
+func (l LectureDuBord) Partagee() LectureDuBord {
+	l.indexe = &bordIndexe{}
+	return l
 }
 
 // voieDuLieu dit comment un lieu a ete lu, ou pourquoi il ne l'a pas ete.
@@ -72,10 +90,24 @@ type bordDuFilm struct {
 
 // lireLeBord indexe la lecture du bord. Les echantillons de vehicule hors de l'emprise jouee du film
 // sont ecartes (F-1, la porte du calque des vehicules), l'emprise etant mesuree sur les bipedes.
+//
+// Une lecture [LectureDuBord.Partagee] n'est indexee, et ses replis comptes, qu'a la premiere lecture.
 func lireLeBord(l LectureDuBord, bipedes []grammar.BipedPosition, fb *fallback.Compteur) bordDuFilm {
 	if !l.Lue {
 		return bordDuFilm{}
 	}
+	if l.indexe != nil && l.indexe.fait {
+		return l.indexe.bord
+	}
+	b := indexerLeBord(l, bipedes, fb)
+	if l.indexe != nil {
+		l.indexe.fait, l.indexe.bord = true, b
+	}
+	return b
+}
+
+// indexerLeBord construit l'index d'une lecture lue.
+func indexerLeBord(l LectureDuBord, bipedes []grammar.BipedPosition, fb *fallback.Compteur) bordDuFilm {
 	b := bordDuFilm{lu: true, occupation: map[uint32][]types.VehicleOccupancy{}}
 	for _, o := range l.Occupation {
 		b.occupation[o.Slot] = append(b.occupation[o.Slot], o)

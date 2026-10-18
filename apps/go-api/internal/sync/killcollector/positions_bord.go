@@ -27,5 +27,7 @@ func lireLeBordDuCollecteur(ctx context.Context, fc *decfilm.FilmContext, entry 
 			"match_id", matchID, "err", err)
 		vehicules = nil
 	}
-	return replay.LectureDuBord{Lue: true, Occupation: res.Occupation, Vehicules: vehicules}
+	// Partagee : les deux lecteurs de la passe (placement des morts, contexte de mort) lisent ce bord
+	// contre les memes positions et ne l'indexent qu'une fois.
+	return replay.LectureDuBord{Lue: true, Occupation: res.Occupation, Vehicules: vehicules}.Partagee()
 }

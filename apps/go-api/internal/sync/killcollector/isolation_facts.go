@@ -367,17 +367,7 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 		ecarts.pontNonPublicable = max(len(journal)-ecarts.sansEquipe, 0)
 		return nil, nil, ecarts
 	}
-	ctxs := replay.ContextesDesMorts(replay.EntreeContexteMorts{
-		Positions: mat.positions,
-		Registre:  mat.registre,
-		Journal:   journal,
-		Equipes:   equipes,
-		// LES DEUX REPLIS DU CONTEXTE DE MORT se comptent sur le compteur de la passe (lot J8.7).
-		Fallbacks: ids.replis,
-		// LE LIEU DE LA VICTIME EST CELUI DE `kill_positions` (D-7, D-16) : meme instant, meme lecture.
-		OrigineDuFilmUS: mat.origineUS,
-		Bord:            mat.bord,
-	})
+	ctxs := replay.ContextesDesMorts(entreeContexteMorts(mat, journal, equipes, ids))
 	// LE RESTE EST « SANS LIEU » : la mort est resolue, sa victime a une equipe, et pourtant
 	// aucun contexte n'est sorti — c'est que le film ne la montrait pas a cet instant.
 	ecarts.sansLieu = max(len(journal)-ecarts.sansEquipe-len(ctxs), 0)

@@ -318,11 +318,7 @@ func buildPositionRows(ctx context.Context,
 	mat := materiauDIsolement{registre: reg, positions: lectures.positions, film: film,
 		contexte: lectures.contexte, carte: entry, profil: profilCalibre(res), identite: entree,
 		origineUS: int64(originUS), bord: bord}
-	morts, _ := journalDesMorts(journal)
-	entreePositions := replay.EntreeDesPositions{Positions: lectures.positions, Registre: reg,
-		Kills: killRefsFromDeaths(journal), Morts: morts, OrigineUS: int64(originUS), Fallbacks: ids.replis,
-		Bord: bord}
-	return composerPassePositions(entreePositions, matchID), mat, nil
+	return composerPassePositions(entreeDesPositions(mat, journal, ids), matchID), mat, nil
 }
 
 // lireLePontDuCollecteur appelle l etage unique du pont d identite et y applique les POLITIQUES
