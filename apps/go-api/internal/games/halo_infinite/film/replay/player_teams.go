@@ -95,7 +95,8 @@ type TeamCoverage struct {
 	Tracks      int `json:"tracks"`
 	TracksNamed int `json:"tracksNamed"`
 	// TracksSlotAmbiguous : les vies sans xuid dont le SLOT a porte deux joueurs nommes
-	// d'equipes differentes, et sur lesquelles le pont s'est ABSTENU.
+	// d'equipes differentes, ou dont l'INDEX porte un bot declare d'une autre equipe que la table par
+	// index ([teamPublication.indexRelayes]), et sur lesquelles le pont s'est ABSTENU.
 	//
 	// IL DIT POURQUOI UNE VIE N'EST PAS NOMMEE, ET C'EST LE CORRECTIF DE LA REVUE DE JALON M1
 	// (lentille L4). `equipeDuSlot` lisait `IndexParSlot()`, qui garde le PREMIER occupant nomme
@@ -129,6 +130,11 @@ type teamPublication struct {
 	// slotsAmbigus : les slots que deux joueurs nommes se sont partages. `bySlot` y garde le
 	// PREMIER occupant, donc le pont s'y tait (cf. [TeamCoverage.TracksSlotAmbiguous]).
 	slotsAmbigus map[uint32]bool
+	// indexRelayes : les index dont un bot que BOT_METADATA y declare ecrit une AUTRE equipe que celle
+	// de la table par index. Cette table ne lit que les entites `ti=9` ; le bot dont toute la presence
+	// tombe entre deux images-cles n'en a aucune, et l'index y porte l'equipe d'un AUTRE occupant
+	// (cf. [teamPublication.retenirLesIndexRelayes]). Le pont slot -> index s'y tait.
+	indexRelayes map[int]bool
 	rep          grammar.TeamScanReport
 	controle     map[string]int
 }
@@ -169,6 +175,9 @@ func (p teamPublication) equipeDuXUID(x uint64) (int, bool) {
 // d'equipes differentes se partagent publie l'equipe du premier sur la vie du second. Le second
 // retour distingue les deux silences — `false, false` = le pont ne connait pas ce slot,
 // `false, true` = il le connait mais deux joueurs s'en disputent l'identite.
+//
+// ELLE SE TAIT AUSSI SUR UN INDEX RELAYE ([teamPublication.indexRelayes]) : l'equipe de l'index y est
+// celle d'un autre occupant que celui du corps, pas une lecture de ce corps.
 func (p teamPublication) equipeDuSlot(slot uint32) (equipe int, lue, ambigu bool) {
 	if p.slotsAmbigus[slot] {
 		return 0, false, true
@@ -177,8 +186,34 @@ func (p teamPublication) equipeDuSlot(slot uint32) (equipe int, lue, ambigu bool
 	if !ok {
 		return 0, false, false
 	}
+	if p.indexRelayes[idx] {
+		return 0, false, true
+	}
 	t, ok := p.byIndex[idx]
 	return t, ok, false
+}
+
+// retenirLesIndexRelayes note les index dont un bot declare ecrit une equipe que la table par index
+// contredit.
+//
+// LA TABLE PAR INDEX N'EST PAS L'EQUIPE D'UN CORPS. Elle agrege les entites `ti=9` de l'index sur
+// tout le film ; un bot sans entite (toute sa presence entre deux images-cles) n'y entre pas. Sur
+// `3f048bf3`, l'index 8 porte l'equipe 1 de « 343 Ritzy », lue a sa seule image-cle, et le corps
+// d'index 8 ne 55 s plus tard, a l'arrivee de « 343 Lacuna » (equipe 0, ecrite par sa declaration),
+// la recevait par le pont. Un joueur n'a pas deux equipes : l'erreur est celle de la lecture par
+// index, et le pont se tait des que l'index porte un occupant d'une autre equipe.
+func (p *teamPublication) retenirLesIndexRelayes(bots []BotIdentity) {
+	for _, b := range bots {
+		if b.Team == nil {
+			continue
+		}
+		if t, ok := p.byIndex[b.FilmIndex]; ok && t != *b.Team {
+			if p.indexRelayes == nil {
+				p.indexRelayes = map[int]bool{}
+			}
+			p.indexRelayes[b.FilmIndex] = true
+		}
+	}
 }
 
 // poserEquipesParEntree pose sur le roster l'equipe PAR ENTREE que la liaison aux entites a lue
@@ -327,8 +362,8 @@ func logTeamCoverage(ctx context.Context, matchID string, cov TeamCoverage, nive
 		"silence", cov.Silence, "vies", cov.Tracks, "viesAvecEquipe", cov.TracksNamed,
 		"viesSlotAmbigu", cov.TracksSlotAmbiguous)
 	if cov.TracksSlotAmbiguous > 0 {
-		slog.WarnContext(ctx, "rejeu : le pont slot -> index s'ABSTIENT sur des vies dont le slot a porte "+
-			"deux joueurs nommes — leur equipe reste inconnue plutot qu'empruntee au premier "+
+		slog.WarnContext(ctx, "rejeu : le pont slot -> index s'ABSTIENT sur des vies dont le slot a porte deux joueurs nommes, "+
+			"ou l'index un occupant d'une autre equipe — leur equipe reste inconnue plutot qu'empruntee a un autre "+
 			"occupant", "match_id", matchID, "vies", cov.TracksSlotAmbiguous)
 	}
 	if cov.Contradiction > 0 {

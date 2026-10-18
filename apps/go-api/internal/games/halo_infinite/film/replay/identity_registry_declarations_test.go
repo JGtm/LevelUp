@@ -24,7 +24,10 @@ package replay
 //	R-UNE-DECLARATION  aucune declaration du bot ne couvre a la fois creation et vie : elle se tait ;
 //	R-UN-SEUL-BOT   un index d'un seul bot n'entre pas dans la lecture ;
 //	R-BORNES        une declaration est [debut, fin), `fin == 0` court jusqu'au bout ;
-//	R-NEGATIF       un instant negatif ne se lit pas.
+//	R-NEGATIF       un instant negatif ne se lit pas ;
+//	R-AVANT-DECLARATION  la vie se termine avant le premier paquet qui declare un bot de l index, qui
+//	                n en declare qu un, sans image-cle entre la creation et lui : il nomme le corps ;
+//	                gardes : image-cle entre les deux, deux bots au premier paquet ; seul le premier compte.
 
 import (
 	"context"
@@ -322,5 +325,56 @@ func TestDeclarationSeTaitQuandLEntiteDeLHumainEstInstable(t *testing.T) {
 	if got := bidsParSlot(reg)[532]; got != "" || reg.creation.ParDeclaration != 0 {
 		t.Fatalf("corps 532 : bid %q, par declaration %d — une entite instable ne prouve pas l'absence",
 			got, reg.creation.ParDeclaration)
+	}
+}
+
+// R-AVANT-DECLARATION (gabarit de `3f048bf3`, index 8) : le corps 532 nait a 50,586 s et meurt a
+// 54,09 s, AVANT le premier paquet qui declare un bot de l'index (Donos, 54,3 s) ; aucun bot n'est
+// declare a la creation, aucune image-cle porteuse (41,2 s, 61,2 s) ne tombe entre la creation et ce
+// paquet, qui ne declare que Donos : il nomme le corps.
+func TestPremiereDeclarationApresUneVieCourteNommeLeCorps(t *testing.T) {
+	in := entreeDonos(54_088_267)
+	in.Bots[0].Declarations = [][2]uint64{{54_300_000, 55_350_000}}
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if got := bidsParSlot(reg)[532]; got != "bid(6.0)" || reg.creation.ParDeclaration != 1 {
+		t.Fatalf("corps 532 : bid %q, par declaration %d — attendu %q et 1 : le premier paquet apres la "+
+			"creation ne declare que Donos, sans image-cle entre les deux", got, reg.creation.ParDeclaration, "bid(6.0)")
+	}
+}
+
+// R-AVANT-DECLARATION-IMAGE-CLE (garde) : le premier paquet qui declare un bot de l'index (62 s) suit
+// l'image-cle porteuse de 61,2 s, qui ne le declarait pas : la lecture se tait.
+func TestPremiereDeclarationSeTaitQuandUneImageCleLaPrecede(t *testing.T) {
+	in := entreeDonos(54_088_267)
+	in.Bots[0].Declarations = [][2]uint64{{62_000_000, 63_000_000}}
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if got := bidsParSlot(reg)[532]; got != "" || reg.creation.ParDeclaration != 0 {
+		t.Fatalf("corps 532 : bid %q, par declaration %d — une image-cle separe la creation du premier paquet",
+			got, reg.creation.ParDeclaration)
+	}
+}
+
+// R-AVANT-DECLARATION-DEUX (garde) : le premier paquet apres la creation declare DEUX bots de l'index :
+// rien ne dit lequel est ne dans ce corps. La lecture se tait.
+func TestPremiereDeclarationSeTaitQuandElleDeclareDeuxBots(t *testing.T) {
+	in := entreeDonos(54_088_267)
+	in.Bots[0].Declarations = [][2]uint64{{54_300_000, 55_350_000}}
+	in.Bots[1].Declarations = [][2]uint64{{54_300_000, 58_000_000}}
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if got := bidsParSlot(reg)[532]; got != "" || reg.creation.ParDeclaration != 0 {
+		t.Fatalf("corps 532 : bid %q, par declaration %d — le premier paquet declare deux bots",
+			got, reg.creation.ParDeclaration)
+	}
+}
+
+// R-AVANT-DECLARATION-PREMIER : seul le PREMIER paquet apres la creation compte ; The Thumb, declare
+// plus tard (57 s), ne dispute pas le corps a Donos (54,3 s).
+func TestPremiereDeclarationNeRetientQueLePremierPaquet(t *testing.T) {
+	in := entreeDonos(54_088_267)
+	in.Bots[0].Declarations = [][2]uint64{{54_300_000, 55_350_000}}
+	in.Bots[1].Declarations = [][2]uint64{{57_000_000, 58_000_000}}
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if got := bidsParSlot(reg)[532]; got != "bid(6.0)" {
+		t.Fatalf("corps 532 : bid %q, attendu %q — le premier paquet apres la creation le nomme", got, "bid(6.0)")
 	}
 }

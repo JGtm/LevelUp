@@ -104,6 +104,7 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	// contradiction d'un bot entre son entite et sa declaration (plus bas).
 	// Posee APRES le nommage : le xuid d'une vie est ce qui la relie a son index de joueur.
 	a.equipes = newTeamPublication(a.reg, a.opt.PlayerTeams, a.opt.TeamScan, a.opt.ScoreboardTeams)
+	a.equipes.retenirLesIndexRelayes(a.opt.Bots)
 	// LE BOT QUI SUCCEDE A UN HUMAIN SUR SON INDEX Y ENTRE AUSSI (revue M2-R1) : ses vies sont
 	// nommees, il lui faut son entree, donc sa place — celle du partant (roster_bots_successeurs.go).
 	var botsSuccesseurs, botsParDeclaration int

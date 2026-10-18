@@ -28,7 +28,12 @@ package replay
 //     BOT_METADATA qui declare son bot), une seule declaration de l'index croise [t, to] — celle de
 //     `b`, nee apres `t` —, elle couvre la vie jusqu'a son terme, et aucune image-cle porteuse ne
 //     tombe entre la creation et sa naissance : BOT_METADATA est reecrit en tete de chaque chunk, un
-//     bot deja la a cette image-cle y serait declare.
+//     bot deja la a cette image-cle y serait declare ;
+//     c. a `t`, AUCUN bot de `pi` n'est declare, AUCUNE declaration ne croise [t, to] — la vie se
+//     termine avant le paquet qui declare son bot —, le PREMIER paquet qui declare un bot de `pi`
+//     apres `t` n'en declare qu'un, `b`, et aucune image-cle porteuse ne tombe entre la creation et
+//     ce paquet. C'est la condition b quand la vie est plus courte que le retard du paquet : le corps
+//     du bot qui arrive, ne et retire avant sa premiere declaration (`3f048bf3`, `8c19b7dc`).
 //
 // Sinon la lecture se tait et les voies d'avant reprennent. C'est une lecture du film, pas un
 // repli : aucun seuil, aucune fenetre choisie.
@@ -143,11 +148,40 @@ func (m lectureParDeclaration) botDeclareApresLaCreation(pi int, t, a uint64) (s
 			}
 		}
 	}
+	if croisees == 0 {
+		return m.premiereDeclarationApres(pi, t)
+	}
 	if croisees != 1 || decl[0] <= t || !declarationCouvre([][2]uint64{decl}, decl[0], a) ||
 		m.imageCleEntre(t, decl[0]) {
 		return "", false
 	}
 	return elu, true
+}
+
+// premiereDeclarationApres est la condition c de l'en-tete : la vie du corps cree a `t` se termine
+// AVANT le premier paquet qui declare un bot de l'index `pi`. Ce premier paquet nomme le bot arrive
+// sur l'index quand il declare un seul bot de `pi` et qu'aucune image-cle porteuse ne tombe entre la
+// creation et lui (un bot deja la a cette image-cle y serait declare). Faux sinon.
+func (m lectureParDeclaration) premiereDeclarationApres(pi int, t uint64) (string, bool) {
+	var elus []string
+	naissance := uint64(math.MaxUint64)
+	for _, b := range m.bots[pi] {
+		for _, d := range b.Declarations {
+			switch {
+			case d[0] <= t || d[0] > naissance:
+				continue
+			case d[0] < naissance:
+				naissance, elus = d[0], nil
+			}
+			if !contientBid(elus, b.Bid()) {
+				elus = append(elus, b.Bid())
+			}
+		}
+	}
+	if len(elus) != 1 || m.imageCleEntre(t, naissance) {
+		return "", false
+	}
+	return elus[0], true
 }
 
 // imageCleEntre dit qu'une image-cle porteuse tombe STRICTEMENT entre `de` et `a`.
