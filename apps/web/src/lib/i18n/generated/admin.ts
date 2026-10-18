@@ -115,7 +115,7 @@ export const adminManifest = {
   "admin.buildqueue.delays_col_replay": { fr: "Rejeu lancé", en: "Replay started" },
   "admin.buildqueue.delays_col_stats": { fr: "Stats", en: "Stats" },
   "admin.buildqueue.delays_col_total": { fr: "Total", en: "Total" },
-  "admin.buildqueue.delays_empty_desc": { fr: "Un match apparaît ici dès que le serveur en a mesuré une étape.", en: "A match shows up here as soon as the server has measured one of its steps." },
+  "admin.buildqueue.delays_empty_desc": { fr: "Un match apparaît ici dès que le serveur le synchronise après sa fin.", en: "A match shows up here as soon as the server syncs it after it ends." },
   "admin.buildqueue.delays_empty_title": { fr: "Aucun match mesuré", en: "No measured match" },
   "admin.buildqueue.delays_intro": { fr: "Temps écoulé entre la fin de chaque match et chacune de ses étapes. Objectif : toutes les données en moins de 5 min.", en: "Time elapsed between the end of each match and each of its steps. Goal: all data in under 5 min." },
   "admin.buildqueue.delays_objective_met": { fr: "Tenu", en: "Met" },

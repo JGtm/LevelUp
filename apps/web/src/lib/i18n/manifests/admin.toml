@@ -2223,8 +2223,8 @@ fr = "Aucun match mesuré"
 en = "No measured match"
 
 [admin.buildqueue.delays_empty_desc]
-fr = "Un match apparaît ici dès que le serveur en a mesuré une étape."
-en = "A match shows up here as soon as the server has measured one of its steps."
+fr = "Un match apparaît ici dès que le serveur le synchronise après sa fin."
+en = "A match shows up here as soon as the server syncs it after it ends."
 
 [admin.buildqueue.delays_col_ended]
 fr = "Fin du match"

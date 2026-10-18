@@ -10,33 +10,30 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
-// ReportInserted capte, pour les matchs que le cycle vient d'insérer, l'écriture de leurs stats
-// (maintenant) et leur fin (`match_registry.end_time_utc`, lue dans le segment de lecture que
-// le post-sync prête). Une lecture en échec perd seulement la fin de match, journalisé.
-func ReportInserted(ctx context.Context, sharedDB *sql.DB, titleSlug string, insertedIDs []string) {
-	if len(insertedIDs) == 0 {
-		return
-	}
+// ReportStatsWritten capte l'écriture des stats des matchs que le cycle vient d'insérer (début du
+// post-sync qui les a insérés).
+func ReportStatsWritten(titleSlug string, insertedIDs []string) {
 	for _, id := range insertedIDs {
 		observability.ReportMatchStep(titleSlug, id, domain.MatchStepStatsWritten, "")
 	}
-	if sharedDB == nil {
+}
+
+// ReportMatchEnds capte la fin de ces matchs (`match_registry.end_time_utc`), lue dans le segment
+// de lecture que le post-sync prête. Une lecture en échec perd la fin de match, journalisé.
+func ReportMatchEnds(ctx context.Context, sharedDB *sql.DB, titleSlug string, insertedIDs []string) {
+	if len(insertedIDs) == 0 || sharedDB == nil {
 		return
 	}
-	args := make([]any, len(insertedIDs))
-	for i, id := range insertedIDs {
-		args[i] = id
-	}
 	rows, err := sharedDB.QueryContext(ctx, `SELECT match_id, end_time_utc FROM match_registry
-		WHERE end_time_utc IS NOT NULL AND match_id IN (`+
-		strings.TrimSuffix(strings.Repeat("?,", len(insertedIDs)), ",")+`)`, args...)
+		WHERE end_time_utc IS NOT NULL AND match_id IN (`+duckdbpkg.Placeholders(len(insertedIDs))+`)`,
+		duckdbpkg.ToAnySlice(insertedIDs)...)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: fin des matchs insérés illisible — délai du débrief sans référence",
 			"err", err, "matchs", len(insertedIDs))

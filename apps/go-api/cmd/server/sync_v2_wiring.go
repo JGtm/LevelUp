@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
+	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
 	settingsplatform "levelup/go-api/internal/platform/settings"
@@ -122,14 +123,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	// playerDBOpenerRO ici causait des ERROR "Cannot execute UPDATE on
 	// database attached in read-only mode" qui silencieusement perdaient
 	// toutes les écritures post-sync.
-	playerDBOpenerRW := func(_ context.Context, gamertag string) (*sql.DB, func(), error) {
-		path := deps.PathResolver.PlayerDBPath(deps.TitleSlug, gamertag)
-		db, err := duckdbpkg.OpenReadWrite(path)
-		if err != nil {
-			return nil, nil, err
-		}
-		return db.SQLDb(), func() { _ = db.Close() }, nil
-	}
+	playerDBOpenerRW := postSyncPlayerOpener(deps.PathResolver, deps.TitleSlug)
 
 	// HaloClient factory : pinned client par joueur via pool.
 	clientFactory := func(gamertag, xuid string) syncv2.HaloClient {
@@ -412,4 +406,29 @@ func buildCyclePersister(deps SyncV2WiringDeps, getSharedDB func() *sql.DB) sync
 		persister = syncv2.WithFriendsSource(persister, deps.Friends.Get, knownSetSharedBorrower(deps, getSharedDB))
 	}
 	return persister
+}
+
+// postSyncPlayerOpener ouvre la base joueur du post-sync V2 en READ-WRITE SOUS LE LEASE WRITER
+// JOUEUR (dblease.KindPlayer), tenu jusqu'à la fermeture — le même que le post-sync V1 tient
+// pendant tout son pipeline (ADR 0013 : un seul écrivain par base). Sans lui, un post-sync V2 et
+// un autre écrivain de la même base joueur (sync du watcher, relance des citations du film)
+// écrivaient en même temps. L'attente n'est bornée que par le contexte du cycle : céder la base
+// tant qu'un autre la tient est le but.
+func postSyncPlayerOpener(pr *titlePkg.PathResolver, titleSlug string) func(context.Context, string) (*sql.DB, func(), error) {
+	return func(ctx context.Context, gamertag string) (*sql.DB, func(), error) {
+		path := pr.PlayerDBPath(titleSlug, gamertag)
+		lease, err := dblease.AcquireWriterCtx(ctx, nil, path, dblease.KindPlayer)
+		if err != nil {
+			return nil, nil, fmt.Errorf("lease writer joueur %s: %w", gamertag, err)
+		}
+		db, err := duckdbpkg.OpenReadWrite(path)
+		if err != nil {
+			lease.Release()
+			return nil, nil, err
+		}
+		return db.SQLDb(), func() {
+			_ = db.Close()
+			lease.Release()
+		}, nil
+	}
 }

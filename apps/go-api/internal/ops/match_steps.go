@@ -39,8 +39,10 @@ func (s *MonitoringStore) RecordMatchSteps(ctx context.Context, events []domain.
 	return nil
 }
 
-// MatchDelays rend le délai du débrief des `limit` matchs les plus récents (par fin de match,
-// à défaut par dernier instant mesuré), du plus récent au plus ancien.
+// MatchDelays rend le délai du débrief des `limit` matchs les plus récents par FIN DE MATCH, du
+// plus récent au plus ancien. Seuls les matchs dont la fin est mesurée y figurent : la fin n'est
+// captée qu'à l'insertion, et un vieux match qui repasse dans la chaîne (rattrapage, recalcul)
+// n'a pas de délai de débrief — il chasserait les matchs frais du rapport.
 func (s *MonitoringStore) MatchDelays(ctx context.Context, limit int) ([]domain.MatchDelay, error) {
 	out := []domain.MatchDelay{}
 	if s == nil || s.db == nil {
@@ -51,17 +53,16 @@ func (s *MonitoringStore) MatchDelays(ctx context.Context, limit int) ([]domain.
 	}
 	rows, err := s.db.Query(ctx, `
 		WITH recents AS (
-			SELECT match_id,
-				MAX(CASE WHEN step = ? THEN step_at END) AS fin,
-				MAX(step_at) AS dernier
+			SELECT match_id, MAX(step_at) AS fin
 			FROM match_step_events
+			WHERE step = ?
 			GROUP BY match_id
-			ORDER BY COALESCE(fin, dernier) DESC, match_id
+			ORDER BY fin DESC, match_id
 			LIMIT ?
 		)
 		SELECT e.title_slug, e.match_id, e.step, e.step_at, e.detail
 		FROM match_step_events e JOIN recents r USING (match_id)
-		ORDER BY COALESCE(r.fin, r.dernier) DESC, e.match_id, e.step_at, e.id`,
+		ORDER BY r.fin DESC, e.match_id, e.step_at, e.id`,
 		string(domain.MatchStepEnd), limit)
 	if err != nil {
 		return out, fmt.Errorf("match steps: lecture: %w", err)

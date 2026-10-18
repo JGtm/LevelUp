@@ -25,6 +25,9 @@ func TestMatchSteps_EcritureEtRapport(t *testing.T) {
 		ev("recent", domain.MatchStepEnd, 0, ""),
 		ev("recent", domain.MatchStepDerivationsWritten, 3*time.Minute, ""),
 		ev("recent", domain.MatchStepCitationsWritten, 4*time.Minute, "x1"),
+		// Un vieux match qui repasse (rattrapage) sans fin mesurée, APRÈS les autres : hors rapport.
+		ev("historique", domain.MatchStepArtifactStored, time.Hour, "worker"),
+		ev("historique", domain.MatchStepDerivationsWritten, time.Hour+time.Second, ""),
 	})
 	if err != nil {
 		t.Fatalf("RecordMatchSteps: %v", err)
@@ -38,7 +41,7 @@ func TestMatchSteps_EcritureEtRapport(t *testing.T) {
 		t.Fatalf("MatchDelays: %v", err)
 	}
 	if len(delais) != 2 || delais[0].MatchID != "recent" || delais[1].MatchID != "ancien" {
-		t.Fatalf("ordre des matchs : %+v", delais)
+		t.Fatalf("ordre des matchs : %+v (un match sans fin mesurée n'y figure pas)", delais)
 	}
 	if delais[0].TotalSeconds == nil || *delais[0].TotalSeconds != 240 || !*delais[0].ObjectiveMet {
 		t.Fatalf("délai du match récent : %+v", delais[0])

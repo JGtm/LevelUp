@@ -145,12 +145,13 @@ func luSansKill(o KillSourceOutcome) bool {
 }
 
 // signalerPasseFilm capte, pour le délai du débrief, l'écriture de la passe film d'un match :
-// morts écrites, ou film lu sans kill-feed (rien à écrire, mais l'étape est faite).
+// morts écrites, ou film lu EN ENTIER sans kill-feed (rien à écrire, mais l'étape est faite).
 func signalerPasseFilm(ctx context.Context, matchID string, outcome KillSourceOutcome) {
 	switch outcome {
 	case OutcomeWritten:
 		debrief.ReportKillSource(ctxkeys.TitleSlug(ctx), matchID, "")
-	case OutcomeNoKillFeed, OutcomeSansKillFeedARelire:
+	// OutcomeSansKillFeedARelire n'écrit rien et sera relu : son instant n'est pas celui de l'étape.
+	case OutcomeNoKillFeed:
 		debrief.ReportKillSource(ctxkeys.TitleSlug(ctx), matchID, "sans_killfeed")
 	}
 }

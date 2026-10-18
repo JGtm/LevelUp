@@ -14,7 +14,7 @@ import (
 	"levelup/go-api/internal/observability"
 )
 
-func TestReportInserted_StatsEtFinDeMatch(t *testing.T) {
+func TestReportStatsEtFinDeMatch(t *testing.T) {
 	db, err := sql.Open("duckdb", ":memory:")
 	if err != nil {
 		t.Fatalf("open: %v", err)
@@ -30,7 +30,8 @@ func TestReportInserted_StatsEtFinDeMatch(t *testing.T) {
 	observability.EnableMatchSteps(true)
 	t.Cleanup(func() { observability.EnableMatchSteps(false) })
 
-	ReportInserted(context.Background(), db, "halo_infinite", []string{"m1", "m2"})
+	ReportStatsWritten("halo_infinite", []string{"m1", "m2"})
+	ReportMatchEnds(context.Background(), db, "halo_infinite", []string{"m1", "m2"})
 
 	var stats, fins int
 	for _, ev := range observability.DrainMatchSteps() {
@@ -48,7 +49,8 @@ func TestReportInserted_StatsEtFinDeMatch(t *testing.T) {
 		t.Fatalf("stats=%d fins=%d, attendu 2 et 1 (m2 sans fin connue)", stats, fins)
 	}
 
-	ReportInserted(context.Background(), db, "halo_infinite", nil)
+	ReportStatsWritten("halo_infinite", nil)
+	ReportMatchEnds(context.Background(), db, "halo_infinite", nil)
 	if got := observability.DrainMatchSteps(); len(got) != 0 {
 		t.Fatalf("aucun inséré, aucun instant : %+v", got)
 	}

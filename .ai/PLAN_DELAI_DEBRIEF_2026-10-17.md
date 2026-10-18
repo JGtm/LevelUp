@@ -295,3 +295,29 @@ courante. `git -C ../LevelUp-wt-delai-debrief log --oneline -10` pour l'état de
   - Ajout après le premier gate : PRÉ-VÉRIFICATION EN LECTURE (`duckdb.OpenReadForQuery`, sans
     lease) avant d'attendre la base joueur — une relance sans objet ne patiente plus 20 s
     derrière un post-sync, et ne laisse pas de WARN « dblease ctx cancelled » dans les détections.
+- 2026-10-18 : étape 4, gates 4.1 (`go test ./...`) et 4.2 (intégration `-p 1` des 14 paquets
+  touchés) VERTS. Revue adversariale ronde 1 : deux relecteurs Opus aveugles (L1 DuckDB /
+  concurrence ; L6 + L3 tests et règles). Constats recevables :
+  - R1 (trouvé par LES DEUX, P1 retenu) : le post-sync du cycle V2 (`cmd/server/sync_v2_wiring.go`
+    `playerDBOpenerRW`, `internal/sync/v2/post_sync_runner.go`) ouvre la base joueur en écriture
+    SANS le lease `KindPlayer` que tient le post-sync V1. La garde « base tenue » de la relance ne
+    protège donc pas d'un post-sync V2 : deux recalculs du même match, et la ligne de base
+    cumulée (`loadCumulExcluding`) du post-sync peut lire une génération à moitié écrite par la
+    relance. Défaut antérieur de V2 (V1 et V2 se chevauchent déjà), que la relance rend
+    atteignable par un nouvel écrivain. DÉCISION DEMANDÉE À L'UTILISATEUR (modèle de verrou du
+    moteur V2).
+  - R2 (P1, corrigé) : le rapport triait les matchs sans fin mesurée par leur dernier instant ;
+    un rattrapage ou un recalcul de vieux matchs chassait les matchs frais du tableau. Le rapport
+    ne retient plus que les matchs dont la fin est mesurée (test étendu).
+  - R3 (P2, corrigé, code du lot) : « morts lues » était capté pour une lecture à refaire
+    (`OutcomeSansKillFeedARelire`). Retiré ; test `killcollector/debrief_steps_test.go` ajouté.
+  - R4 (P2, corrigé) : l'ajout dans `runPostSyncPipeline` ramené à une ligne
+    (`reportDebriefInserted`) ; « stats écrites » n'est plus conditionné à la lecture partagée.
+  - R5 (P2, corrigé) : deux copies à la main de la liste de `?` remplacées par
+    `duckdbpkg.Placeholders` / `ToAnySlice`.
+  Conditions vérifiées qui tiennent : 17 (L1) et 26 (L6+L3).
+  - R1 tranché par l'utilisateur le 2026-10-18 (« V2 prend le verrou ») : `postSyncPlayerOpener`
+    (`cmd/server/sync_v2_wiring.go`) ouvre la base joueur du post-sync V2 sous le lease
+    `KindPlayer`, tenu jusqu'à la fermeture, comme V1 ; test `sync_v2_wiring_lease_test.go`.
+    Gates rejoués verts (intégration sync/v2, scheduler, cmd/server, ops, sync, debrief,
+    killcollector, replayartifacts, api/wire, archlint ; lint 0 issue).

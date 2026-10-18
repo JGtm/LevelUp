@@ -54,6 +54,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/matchflags"
 )
 
@@ -280,15 +281,15 @@ func prioriserLeRattrapage(ctx context.Context, sharedDB *sql.DB, rattrapage []b
 	if sharedDB == nil || len(rattrapage) == 0 {
 		return
 	}
-	args := make([]any, 0, len(rattrapage))
+	ids := make([]string, 0, len(rattrapage))
 	for _, w := range rattrapage {
-		args = append(args, w.matchID)
+		ids = append(ids, w.matchID)
 	}
 	// L'âge se juge en Go, comme la règle de l'indicateur (analysis.AnalysisPendingParts) : une
 	// seule définition de « récent », pas une seconde borne SQL.
 	rows, err := sharedDB.QueryContext(ctx, `SELECT match_id, first_sync_at FROM match_registry
-		WHERE first_sync_at IS NOT NULL AND match_id IN (`+
-		strings.TrimSuffix(strings.Repeat("?,", len(rattrapage)), ",")+`)`, args...)
+		WHERE first_sync_at IS NOT NULL AND match_id IN (`+duckdbpkg.Placeholders(len(ids))+`)`,
+		duckdbpkg.ToAnySlice(ids)...)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: rejeu 2D — âge de synchro du rattrapage illisible, priorité de base gardée",
 			"err", err)

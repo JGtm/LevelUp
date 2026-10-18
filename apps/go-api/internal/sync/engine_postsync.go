@@ -222,11 +222,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	withSharedRead := func(step string, fn func(sharedDB *sql.DB)) {
 		e.withSharedRead(ctx, shared, &r, step, fn)
 	}
-	if len(insertedIDs) > 0 {
-		withSharedRead("debrief_steps", func(sharedDB *sql.DB) {
-			debrief.ReportInserted(ctx, sharedDB, e.titleSlug, insertedIDs)
-		})
-	}
+	e.reportDebriefInserted(ctx, withSharedRead, insertedIDs)
 
 	// -2 Ensure player_match_enrichment rows exist for all matches where the
 	// player has a row in shared.match_participants (incident 2026-05-27).
@@ -444,3 +440,15 @@ func (e *SyncEngine) runAggregatesRefresh(ctx context.Context, playerDB *sql.DB,
 // player DB : had_bot_teammate, sessions, performance scores, engagement scores,
 // engagement coefficients, assists model. Best-effort : chaque sous-étape logue
 // + trackFatalErr sur erreur sans interrompre le reste (toutes idempotentes).
+
+// reportDebriefInserted capte, pour le délai du débrief, l'écriture des stats des matchs insérés
+// (toujours) et leur fin de match (si la base partagée se lit).
+func (e *SyncEngine) reportDebriefInserted(ctx context.Context, withSharedRead func(string, func(*sql.DB)), insertedIDs []string) {
+	debrief.ReportStatsWritten(e.titleSlug, insertedIDs)
+	if len(insertedIDs) == 0 {
+		return
+	}
+	withSharedRead("debrief_steps", func(sharedDB *sql.DB) {
+		debrief.ReportMatchEnds(ctx, sharedDB, e.titleSlug, insertedIDs)
+	})
+}
