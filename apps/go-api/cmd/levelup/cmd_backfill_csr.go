@@ -17,11 +17,29 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/migration"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	auth_pool "levelup/go-api/internal/platform/auth/pool"
 	go_sync "levelup/go-api/internal/sync"
 )
+
+// requireCSRCapability refuse --csr / --shared-csr pour un titre qui ne déclare pas la capability
+// « match.skill.snapshot » (CSR par match, capabilities.toml). Les deux passes lisent et écrivent
+// les bases du titre par défaut (chemins fixés dans ce fichier) : tant qu'elles ne sont pas
+// routées par titre, un titre qui déclarerait la capability y serait traité à tort sur les bases
+// d'Infinite — le routage est à faire avant d'ouvrir cette capability à un autre titre.
+func requireCSRCapability(cfg *config.AppConfig, titleSlug string) error {
+	caps, err := games.LoadCapabilityMap(cfg.RepoRoot, titleSlug)
+	if err != nil {
+		return fmt.Errorf("backfill csr: capabilities du titre %s: %w", titleSlug, err)
+	}
+	if !caps.Has(games.CapMatchSkillSnapshot) {
+		return fmt.Errorf("--csr et --shared-csr exigent la capability %s : le titre %s ne la declare pas",
+			games.CapMatchSkillSnapshot, titleSlug)
+	}
+	return nil
+}
 
 // newDryRunEngine : moteur SANS client Halo pour une passe --dry-run (aucun appel API, aucun
 // pool, aucune rotation de token). RunBackfillSharedCSR n exige un client qu en non-dry-run.

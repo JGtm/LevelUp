@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
@@ -148,23 +149,39 @@ func TestRunTitledPass_PassesRealesSurLesBasesDeHalo5(t *testing.T) {
 	}
 }
 
-// TestRunBackfill_CSRRefuseUnAutreTitre : --csr / --shared-csr ne portent que sur le titre par
-// défaut ; --title ne les redirige pas en silence vers lui.
-func TestRunBackfill_CSRRefuseUnAutreTitre(t *testing.T) {
+// TestRunBackfill_CSRRefuseUnTitreSansLaCapability : --csr / --shared-csr se règlent sur la
+// capability « match.skill.snapshot » (CSR par match) du titre, pas sur son slug : Halo 5 ne la
+// déclare pas, le refus la nomme ; --title ne redirige rien en silence vers le titre par défaut.
+func TestRunBackfill_CSRRefuseUnTitreSansLaCapability(t *testing.T) {
 	cfg, _ := racineBackfillTitre(t)
 	for _, flag := range []string{"--csr", "--shared-csr"} {
 		err := runBackfill(cfg, []string{"--all", flag, "--title", titreHalo5})
-		if err == nil || !strings.Contains(err.Error(), "titre par defaut") {
-			t.Errorf("%s --title halo_5 : refus attendu, got %v", flag, err)
+		if err == nil || !strings.Contains(err.Error(), string(games.CapMatchSkillSnapshot)) {
+			t.Errorf("%s --title halo_5 : refus nommant la capability attendu, got %v", flag, err)
 		}
+	}
+}
+
+// TestRequireCSRCapability : le titre qui déclare la capability passe (Infinite : degraded), celui
+// qui ne la déclare pas ou n'a pas de mappings est refusé.
+func TestRequireCSRCapability(t *testing.T) {
+	cfg, _ := racineBackfillTitre(t)
+	if err := requireCSRCapability(cfg, titlePkg.DefaultSlug); err != nil {
+		t.Errorf("%s déclare la capability : accepté attendu, got %v", titlePkg.DefaultSlug, err)
+	}
+	if err := requireCSRCapability(cfg, titreHalo5); err == nil {
+		t.Errorf("%s ne la déclare pas : refus attendu", titreHalo5)
+	}
+	if err := requireCSRCapability(cfg, "titre_inconnu"); err == nil {
+		t.Error("titre sans mappings : refus attendu")
 	}
 }
 
 // TestBackfillPasses_AucunTitreParDefautEnDur : garde-rail. Les passes ne codent plus le titre
 // par défaut (l'ancien littéral rendait --title sans effet sur Halo 5) : seuls le repli du titre
-// vide du pilote, la valeur par défaut du drapeau et le refus de --csr/--shared-csr le nomment.
+// vide du pilote et la valeur par défaut du drapeau le nomment.
 func TestBackfillPasses_AucunTitreParDefautEnDur(t *testing.T) {
-	for fichier, max := range map[string]int{"cmd_backfill_titled.go": 1, "cmd_backfill.go": 2} {
+	for fichier, max := range map[string]int{"cmd_backfill_titled.go": 1, "cmd_backfill.go": 1} {
 		src, err := os.ReadFile(fichier)
 		if err != nil {
 			t.Fatal(err)

@@ -74,8 +74,10 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	if *dryRun && !*sharedCSR {
 		return fmt.Errorf("--dry-run n'est supporté qu'avec --shared-csr")
 	}
-	if *titleSlug != titlePkg.DefaultSlug && (*csr || *sharedCSR) {
-		return fmt.Errorf("--csr et --shared-csr ne portent que sur le titre par defaut : --title %s refuse", *titleSlug)
+	if *csr || *sharedCSR {
+		if err := requireCSRCapability(cfg, *titleSlug); err != nil {
+			return err
+		}
 	}
 
 	ctx := context.Background()
