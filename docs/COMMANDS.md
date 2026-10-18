@@ -910,6 +910,24 @@ itself. Its measurement stays frozen in `.ai/V7.5/MESURES_CUISSON_PERF.md` §2 a
 by the mini-reel test of `internal/analysis/filmsource`.
 
 ```bash
+levelup replay-parc-vies --faits <facts dir> --cache <repo>/data/cache --sortie <work root> \
+  [--ids <file>] [--garder-documents] [--title slug]
+levelup replay-parc-vies --comparer <work root before> <work root after>
+```
+
+Lives without identity across the film park. For every film named by a facts file
+(`replay-facts-export`), it builds the replay in a bounded child (`internal/replaychild`: solo
+lock with a 10 min wait on the film cache, memory sentinel, low priority), one film at a time,
+with **no DB opened and nothing written under the repo** (the artifact goes through the child's
+temp file, film facts are not stored). It writes `films.tsv` (one line per film: match, build,
+outcome, variant, tracks, tracks without identity, bridge counters, `slot:start-end` of each
+nameless track) and `identites/<id>.tsv` (slot, bounds, team, identity and link provenance of every
+published track); `--garder-documents` also keeps `documents/<id>.json`. A film already in
+`films.tsv` is skipped: re-run to resume. `--comparer` reads two such roots and reports lives named,
+named lives lost, names changed, teams changed and re-cut tracks — the proof a naming fix must
+give on the whole park. Give the work root a `parc*` name in the scratchpad (disk hygiene).
+
+```bash
 LEVELUP_LOG_LEVEL=debug go run ./cmd/replay-build --map "<map name>" --facts <f>.facts.json \
   --cpuprofile tmp/<f>.cpu.prof --memprofile tmp/<f>.heap.prof <short8> [filmDir]
 ```

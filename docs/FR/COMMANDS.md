@@ -953,6 +953,26 @@ ne se comparait donc plus qu'à lui-même. Sa mesure reste figée au §2 de
 `internal/analysis/filmsource`.
 
 ```bash
+levelup replay-parc-vies --faits <dossier des faits> --cache <depot>/data/cache --sortie <racine de travail> \
+  [--ids <fichier>] [--garder-documents] [--title slug]
+levelup replay-parc-vies --comparer <racine avant> <racine après>
+```
+
+Les vies sans identité sur le parc des films. Pour chaque film nommé par un fichier de faits
+(`replay-facts-export`), la commande construit le rejeu dans un enfant borné
+(`internal/replaychild` : verrou solo en attente bornée à 10 min sur le cache des films, sentinelle
+mémoire, priorité basse), un film à la fois, **sans ouvrir de base ni rien écrire sous le dépôt**
+(l'artefact passe par le fichier temporaire de l'enfant, les faits de film ne sont pas rangés).
+Elle écrit `films.tsv` (une ligne par film : match, build, issue, variante, pistes, pistes sans
+identité, compteurs du pont, `slot:début-fin` de chaque piste sans nom) et `identites/<id>.tsv`
+(slot, bornes, équipe, identité et provenance du lien de chaque piste publiée) ;
+`--garder-documents` dépose aussi `documents/<id>.json`. Un film déjà présent dans `films.tsv` est
+sauté : on reprend en relançant. `--comparer` relit deux racines et rend les vies nommées, les vies
+nommées perdues, les noms changés, les équipes changées et les pistes redécoupées — la preuve qu'un
+correctif du nommage doit apporter sur le parc entier. Nommer la racine de travail `parc*` dans le
+scratchpad (hygiène du disque).
+
+```bash
 LEVELUP_LOG_LEVEL=debug go run ./cmd/replay-build --map "<nom de carte>" --facts <f>.facts.json \
   --cpuprofile tmp/<f>.cpu.prof --memprofile tmp/<f>.heap.prof <short8> [dossierFilm]
 ```

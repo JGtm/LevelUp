@@ -168,6 +168,8 @@ func main() {
 		exitErr = runTacticalRasters(cfg, args)
 	case "replay-facts-export":
 		exitErr = runReplayFactsExport(cfg, args)
+	case "replay-parc-vies":
+		exitErr = runReplayParcVies(cfg, args)
 	case "migrate":
 		exitErr = runMigrate(cfg, args)
 	case "restore-csr":
@@ -279,6 +281,9 @@ Commandes:
                   data/cache/replays/{slug}/rasters/. Idempotent (un sidecar n'est refait que s'il manque ou si son artefact a
                   change de schema) (--backfill obligatoire, --dry-run, --title, --limit)
   replay-facts-export  Exporte les faits de match (JSON, forme de replay-build --facts) et les cartes candidates de matchs nommes, pour le harnais d'equivalence (--out, --title, --oracle : + <short8>.oracle.json)
+  replay-parc-vies  Mesure les vies sans identite du parc : cuit chaque film nomme par un fichier de faits dans un enfant borne (un a la fois,
+                  verrou solo), sans base ni ecriture sous le depot ; films.tsv + identites/<id>.tsv (--faits, --cache, --sortie, --ids) ;
+                  --comparer <avant> <apres> : vies nommees, perdues, noms changes entre deux passes
   migrate         Migrer les donnees vers le namespace multi-titres
   restore-csr     Ajouter les CSR historiques absents depuis un backup DuckDB legacy (INSERT seul, le CSR prime sur le LUSR à la lecture) (--gamertag X --backup PATH [--dry-run])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu
