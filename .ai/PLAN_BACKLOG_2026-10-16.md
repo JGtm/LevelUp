@@ -450,7 +450,7 @@ navigateur et contrôle visuel du user : OUVERTS.
   publier. Séquence (poste après fusion et redémarrage du serveur, puis prod) : serveur arrêté,
   `levelup backfill-replay --only-existing` (rejeux), `levelup backfill-killsource` (réécrit
   `kill_positions`, `kill_openings`, `match_lives`, `match_death_context`, `match_death_mates`),
-  usage-summary, `backfill-pad-tiers --force`. Harvest : `.mvar` téléchargé le 2026-10-18 (serveur
+  usage-summary, `backfill-pad-tiers --force`, `backfill-vehicle-takes --force` (ajout du pilote, 2026-10-18 : reprise par présence, cf. `docs/COMMANDS.md`). Harvest : `.mvar` téléchargé le 2026-10-18 (serveur
   arrêté, jeton de JGtm, `data/cache/mvar/ff6b8a12-.../map.mvar` et `fo11_blank.mvar`) pour E8.3.
 
 Gate : `go test ./internal/games/halo_infinite/film/... ./internal/sync/killcollector/...

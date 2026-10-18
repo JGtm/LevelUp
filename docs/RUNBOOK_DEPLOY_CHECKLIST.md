@@ -314,8 +314,8 @@ for (const title of ['halo_infinite', 'halo_5']) {
 Replay cooking is never run in batch without an explicit go (memory: one film = one child process
 under a cap, `--mem-limit-gib` to raise it). The film cache must be under `data/cache` (or
 `--cache`); if production keeps no film cache, 7a and 7b cannot decode here (see
-`docs/RUNBOOK_REPLAY_WORKER.md`). Order is the E8.6 order; 7c and 7d read the artifacts cooked by 7a
-and do not depend on 7b:
+`docs/RUNBOOK_REPLAY_WORKER.md`). Order is the E8.6 order; 7c, 7d
+and 7e read the artifacts cooked by 7a and do not depend on 7b:
 
 ```bash
 # 7a  re-cook the artifacts already served (schema bump): republishes from the persisted film
@@ -333,15 +333,16 @@ LU backfill-usage-summary
 # 7d  weapon tiers of pad pickups; --force: rows already written carry the previous join
 LU backfill-pad-tiers --dry-run
 LU backfill-pad-tiers --force
+# 7e  vehicle takes projected from the artifacts; --force: resume keys on presence, rows written
+#     from the schema 98 artifacts would keep the previous identities and occupations
+LU backfill-vehicle-takes --dry-run
+LU backfill-vehicle-takes --force
 ```
 
 - Harvest films have no replay artifact yet (the map had no bounds catalogue entry before E8.3), so
   `--only-existing` does not cook them. Cook them one by one, on the user's go,
   with `LU backfill-replay --one <match_id>`, then `LU backfill-usage-summary --match <id>` and
   `LU backfill-pad-tiers --match <id> --force` for those matches.
-- To confirm with the pilot: `docs/COMMANDS.md` states that `backfill-vehicle-takes` keys its
-  resume on presence and needs `--force` after a re-bake; whether the schema 99 re-bake changes the
-  occupation read it projects is not established here.
 
 ### R8 — start the server, recompute the sessions (up)
 
