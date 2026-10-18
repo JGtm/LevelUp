@@ -686,6 +686,12 @@ func openCanonicalPlayerTestDBWithCheck(t *testing.T, check string) *sql.DB {
 		  SELECT * FROM match_skill_rank
 		  QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, rating_type
 		                             ORDER BY written_at DESC) = 1;
+		-- Même définition que la migration applyMSRViewLatestByType : la vue que lisent les
+		-- précédents du chaînage (une ligne par match ET par type de note).
+		CREATE VIEW match_skill_rank_latest_by_type AS
+		  SELECT * FROM match_skill_rank
+		  QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, rating_type
+		                             ORDER BY written_at DESC, id DESC) = 1;
 	`
 	if _, err := db.Exec(ddl); err != nil {
 		t.Fatalf("DDL match_skill_rank: %v", err)
@@ -1415,7 +1421,7 @@ func TestLoadPreviousLUSRRating_ChronologicalOrder(t *testing.T) {
 		t.Fatalf("insert: %v", err)
 	}
 	// Précédent de m2 (start 13:00) = m1 (start 12:00 < 13:00).
-	if prev := loadPreviousLUSRRating(ctx, playerDB, "arena_slayer", "m2", t2); prev == nil || *prev != 1500 {
+	if prev := loadPreviousLUSRRating(ctx, playerDB, previousQuery{group: "arena_slayer", matchID: "m2", start: t2}); prev == nil || *prev != 1500 {
 		t.Errorf("prev(m2) = %v, want 1500 (m1)", prev)
 	}
 	// Doublon m2 (retry append, written_at PLUS RÉCENT mais même start_time) : m2
@@ -1426,12 +1432,12 @@ func TestLoadPreviousLUSRRating_ChronologicalOrder(t *testing.T) {
 		VALUES ('m2', 'LUSR', 1600, 'arena_slayer', TIMESTAMP '2025-01-01 13:00:00', TIMESTAMP '2025-01-01 14:00:00')`); err != nil {
 		t.Fatalf("insert dup: %v", err)
 	}
-	if prev := loadPreviousLUSRRating(ctx, playerDB, "arena_slayer", "m2", t2); prev == nil || *prev != 1500 {
+	if prev := loadPreviousLUSRRating(ctx, playerDB, previousQuery{group: "arena_slayer", matchID: "m2", start: t2}); prev == nil || *prev != 1500 {
 		t.Errorf("avec doublon m2, prev(m2) = %v, want 1500 (m1)", prev)
 	}
 	// m1 est le PREMIER chronologiquement → aucun précédent (nil), MÊME si m2 existe
 	// (postérieur). L'ancien tri written_at DESC aurait retourné m2 à tort.
-	if prev := loadPreviousLUSRRating(ctx, playerDB, "arena_slayer", "m1", t1); prev != nil {
+	if prev := loadPreviousLUSRRating(ctx, playerDB, previousQuery{group: "arena_slayer", matchID: "m1", start: t1}); prev != nil {
 		t.Errorf("prev(m1) = %v, want nil (m1 premier ; m2 postérieur)", *prev)
 	}
 }
@@ -1453,11 +1459,11 @@ func TestLoadPreviousDisplayedOrdinal_ChronologicalOrder(t *testing.T) {
 	}
 	// Précédent de m2 (13:00) = m1 (Gold 3).
 	wantM1 := skillv2.TierOrdinal(bnd, "Gold", 3)
-	if got := loadPreviousDisplayedOrdinal(ctx, playerDB, "arena_slayer", "m2", t2, bnd); got != wantM1 {
+	if got := loadPreviousDisplayedOrdinal(ctx, playerDB, previousQuery{group: "arena_slayer", matchID: "m2", start: t2}, bnd); got != wantM1 {
 		t.Errorf("prev ordinal(m2) = %d, want %d (m1 Gold 3)", got, wantM1)
 	}
 	// m1 est le premier chronologiquement → -1, même si m2 (postérieur) existe.
-	if got := loadPreviousDisplayedOrdinal(ctx, playerDB, "arena_slayer", "m1", t1, bnd); got != -1 {
+	if got := loadPreviousDisplayedOrdinal(ctx, playerDB, previousQuery{group: "arena_slayer", matchID: "m1", start: t1}, bnd); got != -1 {
 		t.Errorf("prev ordinal(m1) = %d, want -1 (premier match)", got)
 	}
 }

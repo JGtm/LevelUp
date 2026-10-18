@@ -120,6 +120,7 @@ func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccesso
 	// impose de persister au fil de l'eau, dans l'ordre chronologique, rafale après
 	// rafale, dans ce même cycle.
 	base := newShadowRunContext(playerDB, xuid, canonical, cfg.ownerOnly)
+	base.excluded = excluded
 	base.components.medals = work.medals
 	bursts := runWriterBursts(ctx, shared, base, work, &s)
 	logShadowBurstDone(ctx, xuid, work, s, bursts)
@@ -184,6 +185,9 @@ type shadowRunContext struct {
 	countHypCache map[string]map[skillv2.CountType]skillv2.CountHyperparams
 	// burst : bornes d'une rafale d'écrivain (skill_v2_shared_access.go).
 	burst lusrBurstLimits
+	// excluded : matchs is_excluded du joueur, que le chaînage des notes ne prend jamais
+	// pour « match précédent » (nil sans base joueur).
+	excluded map[string]bool
 	// components : calcul des 8 composantes de performance des matchs notés (référence
 	// partagée : les fenêtres glissantes survivent aux copies par valeur du contexte).
 	components *componentTracker
@@ -300,8 +304,8 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 			if !c.canonical {
 				return nil // shadow-only : pas d'écriture canonical durable
 			}
-			if err := writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *computed.ownerNew,
-				computed.expectedWinProb, m.startTime, c.tierBoundaries); err != nil {
+			if err := writeCanonicalLUSRRow(ctx, c, m.matchID, *computed.ownerNew,
+				computed.expectedWinProb, m.startTime); err != nil {
 				return err
 			}
 			c.writeMatchComponents(ctx, m.matchID, group)

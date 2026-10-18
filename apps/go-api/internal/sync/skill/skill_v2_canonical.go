@@ -37,8 +37,9 @@ import (
 // disponible (match dégénéré) → colonne NULL.
 //
 // Incrémente les compteurs expvar `canonicalWritesTotal` / `canonicalWriteErrors`.
-func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string,
-	state domain.SkillV2State, expectedWinProb *float64, startTime time.Time, boundaries []skillv2.TierBoundary) error {
+func writeCanonicalLUSRRow(ctx context.Context, c shadowRunContext, matchID string,
+	state domain.SkillV2State, expectedWinProb *float64, startTime time.Time) error {
+	playerDB, boundaries := c.playerDB, c.tierBoundaries
 	if playerDB == nil {
 		return fmt.Errorf("writeCanonicalLUSRRow: playerDB nil")
 	}
@@ -50,7 +51,8 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 	// Cf. skill_v2/display_smoothing.go + étude .ai/thought_log.md [2026-05-31].
 	tgtTier, tgtSub := skillv2.InferTier(state.Mu, boundaries)
 	targetOrd := skillv2.TierOrdinal(boundaries, tgtTier.Name, tgtSub)
-	prevOrd := loadPreviousDisplayedOrdinal(ctx, playerDB, state.PlaylistGroup, matchID, startTime, boundaries)
+	prev := previousQuery{group: state.PlaylistGroup, matchID: matchID, start: startTime, excluded: c.excluded}
+	prevOrd := loadPreviousDisplayedOrdinal(ctx, playerDB, prev, boundaries)
 	dispOrd := skillv2.SmoothDisplayedOrdinal(prevOrd, targetOrd, state.Experience)
 	tier, sub := skillv2.TierSubFromOrdinal(boundaries, dispOrd)
 
@@ -84,12 +86,12 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 		zero := 0
 		subPtr = &zero
 	}
-	// Sprint 3.B : delta vs le rating LUSR précédent du groupe ("+12 LUSR ce
-	// match"). nil au premier match. Calculé AVANT l'insertion (la row courante
+	// Sprint 3.B : delta vs le rating LUSR précédent du groupe, hors matchs exclus
+	// ("+12 LUSR ce match"). nil au premier match. Calculé AVANT l'insertion (la row courante
 	// n'existe pas encore → la query renvoie bien le match précédent).
 	var ratingDelta *float64
-	if prev := loadPreviousLUSRRating(ctx, playerDB, state.PlaylistGroup, matchID, startTime); prev != nil {
-		d := rating - *prev
+	if prevRating := loadPreviousLUSRRating(ctx, playerDB, prev); prevRating != nil {
+		d := rating - *prevRating
 		ratingDelta = &d
 	}
 	startPtr := &startTime
@@ -123,76 +125,105 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 	return nil
 }
 
-// loadPreviousLUSRRating retourne le rating_value LUSR du match CHRONOLOGIQUEMENT
-// précédent du groupe (start_time juste avant currentStart) — base du delta.
-// nil si aucun (premier match du groupe).
+// previousQuery borne la recherche du match précédent d'un groupe de playlist.
+type previousQuery struct {
+	group string
+	// matchID est exclu (retry sur table append-only : sa propre ligne peut exister).
+	matchID string
+	// start borne strictement (<) : ni soi-même ni un match futur déjà écrit.
+	start time.Time
+	// excluded : matchs is_excluded du joueur. Leur ancienne ligne reste dans la table
+	// append-only après l'exclusion : elle ne peut pas servir de précédent.
+	excluded map[string]bool
+}
+
+// previousLUSRSQL liste les lignes LUSR candidates au rôle de précédent, du plus récent
+// au plus ancien, par la vue match_skill_rank_latest_by_type (règle ART n°2 : une ligne
+// par match et par type de note, jamais une version périmée). %s : prédicat de non-nullité
+// de la colonne dont l'appelant a besoin.
 //
 // Ordre par start_time (date réelle du match), PAS written_at (= ordre d'ÉCRITURE,
 // fragile : NULL si DEFAULT manquant, ou désordonné après ré-écriture/live re-sync
 // — cause du bug delta +75 sur Choco, 2026-06-11). Fallback written_at uniquement
 // pour les rows pas encore re-backfillées (start_time NULL), dominées dès qu'une
 // row avec start_time existe (NULLS LAST).
-//
-// currentMatchID est EXCLU (retry sur table append-only → sa propre ligne pourrait
-// exister). currentStart borne strictement (< ) pour ne pas se sélectionner soi-même
-// ni un match futur déjà écrit par un run antérieur.
+const previousLUSRSQL = `
+	SELECT match_id, rating_value, tier, sub_tier FROM match_skill_rank_latest_by_type
+	WHERE rating_type = 'LUSR' AND playlist_group = ? AND %s
+	  AND match_id != ?
+	  AND (start_time IS NULL OR start_time < ?)
+	ORDER BY start_time DESC NULLS LAST, written_at DESC, id DESC`
+
+// previousRow est une ligne candidate au rôle de précédent.
+type previousRow struct {
+	rating sql.NullFloat64
+	tier   sql.NullString
+	sub    sql.NullInt64
+}
+
+// loadPreviousRow rend la ligne LUSR du match CHRONOLOGIQUEMENT précédent du groupe qui
+// n'est pas exclu (start_time juste avant q.start). nil si aucune. notNull : colonne que la
+// ligne doit porter (rating_value ou tier).
+func loadPreviousRow(ctx context.Context, playerDB *sql.DB, q previousQuery, notNull string) (*previousRow, error) {
+	rows, err := playerDB.QueryContext(ctx, fmt.Sprintf(previousLUSRSQL, notNull+" IS NOT NULL"),
+		q.group, q.matchID, q.start)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var r previousRow
+		if err := rows.Scan(&id, &r.rating, &r.tier, &r.sub); err != nil {
+			return nil, err
+		}
+		if q.excluded[id] {
+			continue
+		}
+		return &r, nil
+	}
+	return nil, rows.Err()
+}
+
+// loadPreviousLUSRRating retourne le rating_value LUSR du match CHRONOLOGIQUEMENT
+// précédent du groupe, hors matchs exclus — base du delta. nil si aucun (premier match
+// du groupe).
 //
 // Best-effort : toute erreur → nil + warn (delta simplement absent, pas de blocage).
-func loadPreviousLUSRRating(ctx context.Context, playerDB *sql.DB, playlistGroup, currentMatchID string, currentStart time.Time) *float64 {
-	var v sql.NullFloat64
-	err := playerDB.QueryRowContext(ctx, `
-		SELECT rating_value FROM match_skill_rank
-		WHERE rating_type = 'LUSR' AND playlist_group = ? AND rating_value IS NOT NULL
-		  AND match_id != ?
-		  AND (start_time IS NULL OR start_time < ?)
-		ORDER BY start_time DESC NULLS LAST, written_at DESC, id DESC
-		LIMIT 1`, playlistGroup, currentMatchID, currentStart).Scan(&v)
-	if err == sql.ErrNoRows {
-		return nil
-	}
+func loadPreviousLUSRRating(ctx context.Context, playerDB *sql.DB, q previousQuery) *float64 {
+	r, err := loadPreviousRow(ctx, playerDB, q, "rating_value")
 	if err != nil {
 		slog.WarnContext(ctx, "LUSR v2: lecture rating précédent échouée — delta absent",
-			"group", playlistGroup, "err", err)
+			"group", q.group, "err", err)
 		return nil
 	}
-	if !v.Valid {
+	if r == nil || !r.rating.Valid {
 		return nil
 	}
-	return &v.Float64
+	return &r.rating.Float64
 }
 
 // loadPreviousDisplayedOrdinal retourne l'ordinal de palier AFFICHÉ au match
-// précédent du groupe (slot rating_type='LUSR'), pour alimenter l'hystérésis de
-// descente. Retourne -1 si aucun précédent ou en cas d'erreur (→ pas de lissage,
-// on affiche la cible). Lit le tier/sub_tier lissés du match précédent, donc
+// précédent du groupe (slot rating_type='LUSR', hors matchs exclus), pour alimenter
+// l'hystérésis de descente. Retourne -1 si aucun précédent ou en cas d'erreur (→ pas de
+// lissage, on affiche la cible). Lit le tier/sub_tier lissés du match précédent, donc
 // l'hystérésis se chaîne correctement de match en match.
-//
-// currentMatchID est EXCLU (retry sur table append-only). Ordre par start_time
-// chronologique (même robustesse que loadPreviousLUSRRating), fallback written_at.
-func loadPreviousDisplayedOrdinal(ctx context.Context, playerDB *sql.DB, playlistGroup, currentMatchID string, currentStart time.Time, boundaries []skillv2.TierBoundary) int {
+func loadPreviousDisplayedOrdinal(ctx context.Context, playerDB *sql.DB, q previousQuery, boundaries []skillv2.TierBoundary) int {
 	if playerDB == nil {
 		return -1
 	}
-	var tierName sql.NullString
-	var subTier sql.NullInt64
-	err := playerDB.QueryRowContext(ctx, `
-		SELECT tier, sub_tier FROM match_skill_rank
-		WHERE rating_type = 'LUSR' AND playlist_group = ? AND tier IS NOT NULL
-		  AND match_id != ?
-		  AND (start_time IS NULL OR start_time < ?)
-		ORDER BY start_time DESC NULLS LAST, written_at DESC, id DESC
-		LIMIT 1`, playlistGroup, currentMatchID, currentStart).Scan(&tierName, &subTier)
-	if err == sql.ErrNoRows || !tierName.Valid {
-		return -1
-	}
+	r, err := loadPreviousRow(ctx, playerDB, q, "tier")
 	if err != nil {
 		slog.WarnContext(ctx, "LUSR v2: lecture palier précédent échouée — hystérésis désactivée ce match",
-			"group", playlistGroup, "err", err)
+			"group", q.group, "err", err)
+		return -1
+	}
+	if r == nil || !r.tier.Valid {
 		return -1
 	}
 	sub := 0
-	if subTier.Valid {
-		sub = int(subTier.Int64)
+	if r.sub.Valid {
+		sub = int(r.sub.Int64)
 	}
-	return skillv2.TierOrdinal(boundaries, tierName.String, sub)
+	return skillv2.TierOrdinal(boundaries, r.tier.String, sub)
 }
