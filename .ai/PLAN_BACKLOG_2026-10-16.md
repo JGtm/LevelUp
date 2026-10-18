@@ -1102,3 +1102,14 @@ Statut du gate (exécutant, 2026-10-18) : VERT. `go test -count=1 ./cmd/levelup/
   déjà la Campagne, `ops/milestone_dates.go:~297`) ; 157 matchs sans bit skill : laissés (entrée du
   backlog conservée). Mise à jour du poste par le pilote sur accord du user : fusion en avance rapide de
   `feat/v75`, puis séquence d'après fusion serveur coupé.
+- 2026-10-18 (pilote, sur accord du user) : `feat/v75` avancée en rapide jusqu'à `36366f4af` (poussée,
+  CI de `feat/v75`), checkout principal à jour, séquence d'après fusion jouée sur le poste serveur
+  coupé (binaire construit depuis le checkout principal) : `backfill-replay --only-existing` 21:46 ->
+  22:10 rc=0 ; `backfill-killsource` 22:10 -> 23:41 rc=0 (2 824 films, phase crédit 9 241 matchs,
+  0 erreur de décodage ni d'écriture) ; `backfill-usage-summary`, `backfill-pad-tiers --force`,
+  `backfill-vehicle-takes --force` : 248 écrits chacun, 0 échec. Puis `reset-bitmasks` (décision du
+  user : les 157 matchs ont leur donnée de compétence, seul l'indicateur manquait) : base partagée
+  sauvegardée dans `data/backups/avant_reset_bitmasks_2026-10-18/`, 157 + 1 302 lignes, dry-run
+  rejoué = 0, `healthcheck` tout OK. Serveur relancé. Les bases locales partent vers le VPS à la
+  release (`.ai/PLAN_RELEASE_V8_2026-10-17.md`, étape 2, où les recalculs R2-R6, R4b, R8 et
+  l'indicateur ont été ajoutés en 2.8b-2.8e et 2.10b sur demande du user).
