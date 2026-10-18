@@ -181,10 +181,10 @@ Jamais `go build ./...`, jamais `git add -A`, jamais `git stash`.
 
 ### Étape 4 — Gates complets et revue adversariale
 
-- [ ] 4.1 `cd apps/go-api && go test ./...` vert.
-- [ ] 4.2 `go test -tags=integration -p 1` sur tous les paquets touchés.
-- [ ] 4.3 `make go-api-lint`, `make check-types`, `make test-web`, `make gate-push` (exit 0).
-- [ ] 4.4 Revue adversariale (skill `adversarial-review`, contexte frais, Opus : lot à risque
+- [x] 4.1 `cd apps/go-api && go test ./...` vert.
+- [x] 4.2 `go test -tags=integration -p 1` sur tous les paquets touchés.
+- [x] 4.3 `make go-api-lint`, `make check-types`, `make test-web`, `make gate-push` (exit 0).
+- [x] 4.4 Revue adversariale (skill `adversarial-review`, contexte frais, Opus : lot à risque
       persist/sync) ; constats recevables corrigés ou statués par écrit ici.
 - [ ] 4.5 Commit(s) sur accord, push `feat/delai-debrief`, CI verte au niveau job.
 
@@ -223,6 +223,20 @@ courante. `git -C ../LevelUp-wt-delai-debrief log --oneline -10` pour l'état de
   `ClaimBuildJob` (`ops/build_queue.go:121-122`) promet qu'« un rattrapage massif ne double jamais
   un match qu'un admin vient de demander ». Hors périmètre : elle reste au niveau Rattrapage (même
   service qu'avant pour elle).
+
+- D-2 (revue ronde 2, P2) : depuis que le post-sync V2 tient le lease joueur, un sync du watcher
+  du MÊME joueur qui tombe pendant ce post-sync voit son lot asynchrone attendre le lease : le
+  worker unique du `CombinedPersister` (`internal/persist/combined_persister.go:171-174`) épuise
+  ses 3 × 30 s (~93 s, tous joueurs en attente derrière lui), puis le lot repasse par le WAL
+  (reprise périodique, jusqu'à 10 min). Même classe que l'existant (un post-sync V1 qui tient
+  le lease bloque de même un lot V2) ; le cycle V2 ne réclame pas le `SyncGate` par joueur
+  (`internal/scheduler/auto_sync.go` `runOnceV2`). Non traité : la mesure de l'étape 5 dira
+  si le cas se produit.
+- D-3 (revue ronde 2) : `replayartifacts/backlog.go:220` garde une construction de placeholders
+  à la main (code antérieur au lot).
+- D-4 : `internal/platform/duckdb` (non touché par le lot) frôle le budget de 300 s du test de
+  baseline de `make gate-push` : 290 s seul en intégration, 300,3 s sous charge (un traitement de
+  recherche tournait) — le paquet a été compté « absent » ce jour-là. Rejoué seul : vert.
 
 ## Journal
 
@@ -321,3 +335,11 @@ courante. `git -C ../LevelUp-wt-delai-debrief log --oneline -10` pour l'état de
     `KindPlayer`, tenu jusqu'à la fermeture, comme V1 ; test `sync_v2_wiring_lease_test.go`.
     Gates rejoués verts (intégration sync/v2, scheduler, cmd/server, ops, sync, debrief,
     killcollector, replayartifacts, api/wire, archlint ; lint 0 issue).
+- 2026-10-18 : revue ronde 2 (un relecteur Opus aveugle, sur le seul commit de corrections) :
+  0 P0/P1 (contre 2 en ronde 1 : convergence), 1 P2 consigné en D-2, 14 conditions vérifiées
+  qui tiennent dont l'absence d'interblocage (aucune réacquisition du lease joueur dans le
+  pipeline ni dans les hooks, ordre joueur puis shared cohérent avec V1). Arrêt des rondes (§8).
+- 2026-10-18 : 4.3 — `make go-api-lint` 0 issue ; `make check-types` et eslint (0 erreur) dans
+  `make gate-push` ; `make test-web` 962 fichiers / 10 020 tests. `make gate-push` rouge sur sa
+  seule étape baseline : `internal/platform/duckdb` hors budget sous charge (D-4), rejoué seul en
+  intégration (`-p 1 -timeout=300s`) : vert en 290 s. La CI fait foi (4.5).
