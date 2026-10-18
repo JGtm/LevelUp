@@ -4369,6 +4369,7 @@ export interface components {
             enabled: boolean;
             generated_at: string;
             jobs: components["schemas"]["BuildQueueJob"][] | null;
+            match_delays: components["schemas"]["MatchDelay"][] | null;
             workers: components["schemas"]["BuildQueueWorker"][] | null;
         };
         AdminConvergenceReport: {
@@ -8597,12 +8598,35 @@ export interface components {
             tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
             weapon_tools?: components["schemas"]["SquadWeaponTools"];
         };
+        MatchDelay: {
+            /** Format: int64 */
+            citations_players: number;
+            ended_at?: string;
+            match_id: string;
+            objective_met?: boolean;
+            steps: components["schemas"]["MatchDelayStep"][] | null;
+            title_slug: string;
+            /** Format: double */
+            total_seconds?: number;
+        };
+        MatchDelayStep: {
+            at: string;
+            detail?: string;
+            /** Format: double */
+            offset_seconds?: number;
+            /** @enum {string} */
+            step: "match_end" | "detected" | "stats_written" | "killsource_written" | "replay_enqueued" | "replay_build_started" | "replay_claimed" | "artifact_stored" | "derivations_written" | "citations_written";
+        };
         MatchEmpriseBlock: {
             film_unavailable?: string;
             habit?: components["schemas"]["SquadEmpriseHabit"];
             /** @enum {string} */
             kill_journal: "publishable" | "not_publishable" | "unavailable";
             matches: components["schemas"]["SquadEmpriseMatch"][] | null;
+            /** Format: int64 */
+            matches_film_missing?: number;
+            /** Format: int64 */
+            matches_film_pending?: number;
             /** Format: int64 */
             matches_measured: number;
             /** Format: int64 */
@@ -9401,6 +9425,9 @@ export interface components {
             label_key: string;
         };
         MatchViewHeader: {
+            analysis_pending?: boolean;
+            analysis_pending_parts?: string[] | null;
+            analysis_state?: string;
             dominance_badge?: components["schemas"]["MatchViewDominanceBadge"];
             dominance_flag: boolean;
             had_bot_teammate: boolean;
@@ -11843,6 +11870,10 @@ export interface components {
             maps: components["schemas"]["EmpriseMapColumn"][] | null;
             matches: components["schemas"]["SquadEmpriseMatch"][] | null;
             /** Format: int64 */
+            matches_film_missing?: number;
+            /** Format: int64 */
+            matches_film_pending?: number;
+            /** Format: int64 */
             matches_measured: number;
             /** Format: int64 */
             matches_total: number;
@@ -11958,6 +11989,10 @@ export interface components {
             film_unavailable?: string;
             habit?: components["schemas"]["SquadEmpriseHabit"];
             matches: components["schemas"]["SquadEmpriseMatch"][] | null;
+            /** Format: int64 */
+            matches_film_missing?: number;
+            /** Format: int64 */
+            matches_film_pending?: number;
             /** Format: int64 */
             matches_measured: number;
             /** Format: int64 */
@@ -12918,6 +12953,8 @@ export interface components {
             top_weeks: components["schemas"]["TopWeekEntry"][] | null;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
             weapon_records?: components["schemas"]["SynthesisWeaponRecords"];
+            /** @enum {string} */
+            weapon_records_gap?: "pending" | "missing";
         };
         SynthesisScope: {
             /** Format: date-time */

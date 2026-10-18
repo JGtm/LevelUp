@@ -25,6 +25,7 @@ import {
   getEChartsThemeColors,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { tipNumberAuto } from '@/components/charts/tipNumber'
 import { fragClassColor } from '@/lib/accessibility/scales'
 
 /** Part (0..1) du total du joueur sous laquelle la part écrite est masquée (mode `share`). */
@@ -113,7 +114,7 @@ export function buildSquadWeaponKillsOption(
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const mode = opts.valueLabel ?? 'count'
-  const valueText = opts.valueText ?? ((v: number, pct: number) => `<b>${v}</b> (${pct} %)`)
+  const valueText = opts.valueText ?? ((v: number, pct: number) => `<b>${tipNumberAuto(v)}</b> (${pct} %)`)
 
   // Total du joueur = somme de ses frags sur TOUTES les lignes (dénominateur de la part), sauf
   // dénominateur fourni par l'appelant.
@@ -146,7 +147,7 @@ export function buildSquadWeaponKillsOption(
         formatter: (p: { value: unknown }) => {
           const v = typeof p.value === 'number' ? p.value : 0
           if (v <= 0) return ''
-          if (mode === 'count') return String(v)
+          if (mode === 'count') return tipNumberAuto(v)
           const share = shareOf(player, v)
           return share < minShare ? '' : `${Math.round(share * 100)} %`
         },

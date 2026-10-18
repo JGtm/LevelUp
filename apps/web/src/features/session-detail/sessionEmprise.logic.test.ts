@@ -8,6 +8,8 @@ import { describe, expect, it } from 'vitest'
 import { soloEmpriseSansFilm } from '@/features/timeseries/usages/usages.fixtures'
 import type { SessionCompareEntry, SessionPageResponse } from '@/lib/api/types'
 
+import { block2209 } from '@/features/squad/objectif/objectif.fixtures'
+
 import { sessionRowKeys } from './_sections'
 import { MATCHES_2209, ME_GAMERTAG, session2209, sessionSolo } from './sessionEmprise.fixtures'
 import {
@@ -88,15 +90,33 @@ describe('sessionCardsPresence — une carte n’existe que si elle dessine quel
     })
   })
 
-  it('session solo sans match à objectif : ni rapport de force ni fiche ; aucune prise : ni C, ni D, ni F', () => {
+  it('session solo sans match à objectif : la carte d’objectif reste (constat), sans fiche ; aucune prise : ni C, ni D, ni F', () => {
     const p = sessionColumnPresence(sessionSolo())
-    expect(p.objective_balance).toBe(false)
+    expect(p.objective_balance).toBe(true)
     expect(p.objective_sheet).toBe(false)
     expect(p.control).toBe(false)
     expect(p.fil).toBe(false)
     expect(p.mine).toBe(false)
     expect(p.production).toBe(true)
     expect(p.lives).toBe(true)
+  })
+
+  it('objectif : le constat s’ancre sur objective_balance seulement quand le titre mesure l’objectif', () => {
+    const solo = sessionSolo()
+    const models = (formes: SessionColumnBlocks['formes']) => buildSessionEmpriseModels({ ...solo, formes }, () => '')
+    expect(models(solo.formes).objectiveGap).toBe('objective')
+    expect(models(null).objectiveGap).toBeNull()
+    expect(models({ available: false, unavailable_reason: 'unsupported', matches_measured: 0, matches_total: 6 }).objectiveGap).toBeNull()
+    expect(models({ available: false, unavailable_reason: 'load_failed', matches_measured: 0, matches_total: 6 }).objectiveGap).toBe('objectiveUnavailable')
+    expect(models(block2209()).objectiveGap).toBeNull()
+  })
+
+  it('une session sans frag garde sa carte de répartition (constat) ; sans session, rien', () => {
+    const solo = sessionSolo()
+    const noFrags = { ...solo, entry: { ...solo.entry, frag_distribution: undefined } as unknown as SessionCompareEntry }
+    expect(sessionColumnPresence(noFrags).frag_donut).toBe(true)
+    expect(sessionColumnPresence({ ...noFrags, entry: { ...noFrags.entry, weapon_tools: undefined } as unknown as SessionCompareEntry }).tools).toBe(true)
+    expect(sessionColumnPresence({ ...solo, entry: null }).frag_donut).toBe(false)
   })
 
   it('Halo 5 (sans film) : A, B, B’ et la barre des armes spéciales de G, rien d’autre', () => {

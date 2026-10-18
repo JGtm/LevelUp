@@ -46,6 +46,7 @@ import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { buildScoreCurve, formatClock, teamIdsOf, type ScoreCurve, type ScoreCurveSeries } from './_scoreCurve'
+import { tipNumberAuto } from '@/components/charts/tipNumber'
 import type { MatchViewText } from './i18n'
 import { SCORE_TIMELINE_HIDDEN } from './scoreTimelineKind'
 import { teamSeriesColor } from './teamSeriesColor'
@@ -239,7 +240,7 @@ function tooltipFormatter(curve: ScoreCurve, t: MatchViewText) {
     }>
     const ms = arr[0]?.value?.[0] ?? 0
     const lignes = arr.map(
-      (p) => `${escapeHtml(p.seriesName ?? '')} : <b>${p.value?.[1] ?? 0}</b>`,
+      (p) => `${escapeHtml(p.seriesName ?? '')} : <b>${tipNumberAuto(p.value?.[1] ?? 0)}</b>`,
     )
     const lead = curve.leads.find((l) => Math.abs(l.ms - ms) < 1)
     if (lead) {

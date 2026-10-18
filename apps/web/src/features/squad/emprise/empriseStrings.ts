@@ -100,8 +100,7 @@ export interface EmpriseText {
     pointTip: (resource: string, evening: string, value: string, median: string | null) => string
     eveningOf: (date: string) => string
     medianTip: (resource: string, value: string) => string
-    /** Légende et infobulle d'une soirée hors comparaison (aucun mode de ce soir filmé). */
-    notComparable: string
+    /** Infobulle d'une soirée hors comparaison (aucun mode de ce soir filmé) : sa raison, hors médiane. */
     notComparableTip: (families: string) => string
     /** Le bloc placeholder : aucune soirée, ce soir compris, n'a de part. */
     empty: { title: string; description: string }
@@ -272,14 +271,13 @@ const FR: BaseEmpriseText = {
     title: 'Contrôle des ressources, par soirée',
     info:
       'Part de l’équipe dans les prises de chaque ressource : un groupe de barres par soirée de la composition, ' +
-      'la plus récente à droite. Barre grise : soirée sans aucun des modes de ce soir, hors médiane ; pointillé ' +
-      'fin : médiane des soirées précédentes jouées dans les modes de ce soir.',
+      'la plus récente à droite. Pointillé fin : médiane des soirées précédentes jouées dans les modes de ce ' +
+      'soir ; une soirée sans aucun de ces modes n’entre pas dans la médiane.',
     tonight: 'ce soir',
     pointTip: (resource, evening, value, med) =>
       `${resource}\n${evening} : ${value}${med ? `\nMédiane des soirées précédentes : ${med}` : ''}`,
     eveningOf: (date) => `Soirée du ${date}`,
     medianTip: (resource, value) => `${resource}\nMédiane des soirées précédentes : ${value}`,
-    notComparable: 'Autres modes que ce soir',
     notComparableTip: (families) => `Autres modes que ce soir${families ? ` (${families})` : ''} : hors médiane`,
     empty: { title: 'Aucune prise', description: 'Aucune prise de ressource sur les matchs filmés des soirées de la composition.' },
   },
@@ -422,14 +420,13 @@ const EN: BaseEmpriseText = {
     title: 'Resource control, by session',
     info:
       'The team’s share of each resource’s pickups: one group of bars per session of the line-up, the latest ' +
-      'on the right. Grey bar: a session with none of tonight’s modes, left out of the median; thin dotted ' +
-      'line: median of the previous sessions played in tonight’s modes.',
+      'on the right. Thin dotted line: median of the previous sessions played in tonight’s modes; a session ' +
+      'with none of those modes is left out of the median.',
     tonight: 'tonight',
     pointTip: (resource, evening, value, med) =>
       `${resource}\n${evening}: ${value}${med ? `\nMedian of the previous sessions: ${med}` : ''}`,
     eveningOf: (date) => `Session of ${date}`,
     medianTip: (resource, value) => `${resource}\nMedian of the previous sessions: ${value}`,
-    notComparable: 'Other modes than tonight',
     notComparableTip: (families) => `Other modes than tonight${families ? ` (${families})` : ''}: left out of the median`,
     empty: { title: 'No pickups', description: 'No resource pickup in the filmed matches of the line-up’s sessions.' },
   },

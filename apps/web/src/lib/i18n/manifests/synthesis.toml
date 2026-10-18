@@ -236,6 +236,11 @@ en = "Kills by weapon role"
 fr = "Précision par arme"
 en = "Accuracy by weapon"
 
+# Unité du décompte « touchés / tirés » de l'infobulle du graphe (précision par arme).
+[synthesis.charts.weapon_accuracy_shots_unit]
+fr = "tirs"
+en = "shots"
+
 [synthesis.charts.role_automatic]
 fr = "Automatique"
 en = "Automatic"
@@ -403,9 +408,30 @@ en = "Skull grabs"
 fr = "Synthèse indisponible"
 en = "Synthesis unavailable"
 
+[synthesis.empty.synthesis_unavailable_description]
+fr = "Aucune donnée n'a été renvoyée pour cette page avec les filtres actuels."
+en = "No data was returned for this page with the current filters."
+
 [synthesis.charts.top_vs_total_per_week]
-fr = "Matchs Top vs Total par semaine"
-en = "Top vs Total matches per week"
+fr = "Victoires et autres matchs, par semaine"
+en = "Wins and other matches per week"
+
+# Séries et axe du graphe ci-dessus (barres empilées + courbe du taux sur l'axe de droite).
+[synthesis.charts.top_weeks_wins]
+fr = "Victoires"
+en = "Wins"
+
+[synthesis.charts.top_weeks_others]
+fr = "Autres matchs"
+en = "Other matches"
+
+[synthesis.charts.top_weeks_rate]
+fr = "Taux de victoire"
+en = "Win rate"
+
+[synthesis.charts.top_weeks_rate_axis]
+fr = "Taux de victoire (%)"
+en = "Win rate (%)"
 
 # Section "Relations de jeu" retirée le 2026-05-27 (cf. thought_log).
 

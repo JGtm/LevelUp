@@ -114,7 +114,7 @@ func tachesDeTest(ctx context.Context, cfg *config.AppConfig, doublures map[stri
 		loopTask(taskReplayPurge, true, ctx, scheduler.NewReplayPurgeCron(cfg.RepoRoot, func() int { return 1 }, 0).Run),
 		heartbeatTask(ctx, time.Now()),
 	}
-	for _, nom := range []string{taskAutoSync, taskDetectionFlush, taskDiskWatch, taskReplayNotify,
+	for _, nom := range []string{taskAutoSync, taskDetectionFlush, taskDiskWatch, taskReplayNotify, taskCitationsRelance,
 		taskCatalogCron, taskAssetNameSweep, taskSpartanCron, taskWorldLeaderbd, taskAppRelease} {
 		d := &doublure{}
 		doublures[nom] = d
@@ -239,8 +239,8 @@ func TestBackgroundTasks_DeclarationDemo(t *testing.T) {
 	}
 	tous := []string{
 		taskJanitor, taskWALRecovery, taskSocialCkpt, taskPoolRescan, taskAutoSync, taskDataHealth,
-		taskDetectionFlush, taskDiskWatch, taskReplayNotify, taskCatalogCron, taskAssetNameSweep,
-		taskSpartanCron, taskWorldLeaderbd, taskReplayPurge, taskAppRelease, taskHeartbeat,
+		taskDetectionFlush, taskDiskWatch, taskReplayNotify, taskCitationsRelance, taskCatalogCron,
+		taskAssetNameSweep, taskSpartanCron, taskWorldLeaderbd, taskReplayPurge, taskAppRelease, taskHeartbeat,
 		stepFriendsMigr, stepGroupMigr, stepTokenPool, stepPersistQueue, stepWatcher,
 	}
 	if len(tous) != len(demoPolicies) {

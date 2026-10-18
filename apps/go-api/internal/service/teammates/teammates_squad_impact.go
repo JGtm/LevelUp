@@ -13,6 +13,7 @@ package teammates
 import (
 	"cmp"
 	"context"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -95,7 +96,10 @@ func groupesDImpact(rows []domain.SquadMatchRow, evenings []squadimpact.Evening)
 
 // buildSquadImpact rend la matrice d'impact et les points par soirée, tirés des mêmes rôles.
 // Nil pour chacun quand la population est vide, sans coéquipier sélectionné, ou quand aucun
-// rôle ne tombe sur l'escouade (titre sans événements ni équipe alliée).
+// rôle ne tombe sur l'escouade (titre sans événements ni équipe alliée, ou lecture des événements
+// en échec, journalisée par loadImpactEventsByMatch). L'historique nul d'une escouade pourtant
+// sélectionnée se journalise avec sa raison (raisonHistoriqueAbsent) : le front distingue le titre
+// sans la fonction (capability match.events.timeline) du titre qui l'a et n'a rien à montrer.
 func (s *TeammatesService) buildSquadImpact(
 	ctx context.Context, in impactEscouade,
 ) (*domain.SquadImpactMatrix, *domain.SquadImpactHistory) {
@@ -112,7 +116,28 @@ func (s *TeammatesService) buildSquadImpact(
 	history := squadimpact.BuildHistory(squadimpact.HistoryInput{
 		Evenings: in.evenings, Players: players, Roles: roles,
 	})
+	if history == nil {
+		slog.InfoContext(ctx, "teammates_squad_impact_history_absent",
+			"reason", raisonHistoriqueAbsent(in.evenings), "evenings", len(in.evenings),
+			"squad_size", len(players), "matches", len(roles))
+	}
 	return assemblerMatrice(in.rows, players, roles), history
+}
+
+// Les raisons d'un historique d'impact absent alors qu'une escouade est sélectionnée.
+const (
+	historiqueSansSoiree = "no_evening"
+	historiqueSansRole   = "no_role_attributed"
+)
+
+// raisonHistoriqueAbsent dit pourquoi BuildHistory n'a rien publié : aucune soirée (aucun match de
+// la population ne porte de libellé de session) ou aucun rôle attribué à l'escouade sur les
+// soirées (titre sans événements horodatés exploitables, ou lecture en échec).
+func raisonHistoriqueAbsent(evenings []squadimpact.Evening) string {
+	if len(evenings) == 0 {
+		return historiqueSansSoiree
+	}
+	return historiqueSansRole
 }
 
 // rolesDesMatchs calcule, par match des groupes, les rôles tombés sur l'escouade. Les

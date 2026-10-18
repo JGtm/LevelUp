@@ -127,6 +127,8 @@ type AdminBuildQueueResponse struct {
 	Counts      BuildQueueCounts   `json:"counts"`
 	Jobs        []BuildQueueJob    `json:"jobs"`
 	Workers     []BuildQueueWorker `json:"workers"`
+	// MatchDelays : le délai du débrief des matchs les plus récents (cf. match_steps.go).
+	MatchDelays []MatchDelay `json:"match_delays"`
 }
 
 // WorkerOfflineAfter : au-delà de ce silence, un ouvrier s'affiche hors ligne.
@@ -142,6 +144,20 @@ const BuildJobLeaseDuration = 5 * time.Minute
 // BuildJobMaxAttempts : au-delà, un job repris trop de fois part en `failed`
 // plutôt que de tourner en boucle (un film corrompu ne se décodera jamais).
 const BuildJobMaxAttempts = 3
+
+// Priorités de la file de construction : la prise sert la priorité la plus haute d'abord,
+// puis la plus ancienne mise en file (ops.ClaimBuildJob). Le joueur attend le match qu'il
+// vient de finir ; l'historique, personne.
+const (
+	// BuildPriorityRattrapage : l'historique sans rejeu, et l'action admin.
+	BuildPriorityRattrapage = 0
+	// BuildPriorityRecent : un match synchronisé depuis moins de analysis.AnalysisPendingWindow,
+	// celui que l'indicateur « Analyse en cours » montre au joueur (film publié en retard,
+	// coéquipier suivi dont le cycle passe après celui qui a inséré le match).
+	BuildPriorityRecent = 50
+	// BuildPriorityInsere : un match que le cycle de synchronisation vient d'insérer.
+	BuildPriorityInsere = 100
+)
 
 // MaxBuildArtifactBytes borne le corps du dépôt d'artefact
 // (POST /internal/build-queue/artifact).

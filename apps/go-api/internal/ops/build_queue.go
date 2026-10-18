@@ -86,7 +86,8 @@ func (s *MonitoringStore) EnqueueBuildJob(ctx context.Context, req EnqueueBuildJ
 		return domain.BuildQueueJob{}, false, err
 	}
 	if existing != nil {
-		return *existing, false, nil
+		job, err := s.raisePriorityLocked(ctx, w, *existing, req.Priority, payload)
+		return job, false, err
 	}
 
 	now := time.Now().UTC()
@@ -118,8 +119,9 @@ func (s *MonitoringStore) EnqueueBuildJob(ctx context.Context, req EnqueueBuildJ
 // moment naturel où reprendre le travail d'un ouvrier disparu, et il n'y a pas
 // besoin d'un cron pour ça.
 //
-// Ordre de service : priorité décroissante, puis ancienneté de mise en file —
-// un rattrapage massif ne double jamais un match qu'un admin vient de demander.
+// Ordre de service : priorité décroissante, puis ancienneté de mise en file — un match que le
+// cycle vient d'insérer passe devant un match récent, qui passe devant le rattrapage de
+// l'historique (domain.BuildPriority*).
 func (s *MonitoringStore) ClaimBuildJob(ctx context.Context, workerID, hostname, version string) (*domain.BuildQueueJob, error) {
 	if s == nil || s.db == nil {
 		return nil, fmt.Errorf("build queue: store non ouvert")
@@ -446,8 +448,9 @@ func (s *MonitoringStore) beatLocked(ctx context.Context, w *dblease.LeasedWrite
 	return nil
 }
 
-// activeJobFor rend le job non terminal du même (type, titre, match), s'il existe.
-func (s *MonitoringStore) activeJobFor(ctx context.Context, w *dblease.LeasedWriter, jobType, titleSlug, matchID string) (*domain.BuildQueueJob, error) {
+// activeJobFor rend le job non terminal du même (type, titre, match), s'il existe, avec son
+// travail brut (une remise en file qui relève la priorité doit pouvoir le reporter).
+func (s *MonitoringStore) activeJobFor(ctx context.Context, w *dblease.LeasedWriter, jobType, titleSlug, matchID string) (*scannedJob, error) {
 	row := w.QueryRowContext(ctx, `SELECT `+buildJobColumns+`
 		FROM build_jobs_latest
 		WHERE job_type = ? AND COALESCE(title_slug, '') = ? AND match_id = ?
@@ -461,7 +464,7 @@ func (s *MonitoringStore) activeJobFor(ctx context.Context, w *dblease.LeasedWri
 	if err != nil {
 		return nil, err
 	}
-	return &job.BuildQueueJob, nil
+	return &job, nil
 }
 
 // marshalPayload sérialise le travail résolu (URL pré-signées). Payload nil =

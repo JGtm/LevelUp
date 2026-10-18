@@ -2,7 +2,7 @@
  * SquadSynergiesPage.test.tsx — états vides, titres de section et ratchet du lot 3.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import * as squadContextModule from './SquadContext'
@@ -171,13 +171,40 @@ describe('SquadSynergiesPage — titres de section', () => {
     expect(screen.getByText('Historique')).toBeInTheDocument()
   })
 
-  it('« Appui et portée » absente sans appui ni portée', () => {
+  it('« Appui et portée » absente sans appui ni portée quand le titre ne lit pas le film (capability absente)', () => {
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
       confirmedGamertags: ['A', 'B'],
     })
     renderWithProviders(<SquadSynergiesPage />)
     expect(screen.queryByText('Appui et portée')).toBeNull()
+    mockSquadContext({
+      selectedRows: [ROW('A'), ROW('B')],
+      confirmedGamertags: ['A', 'B'],
+      pageData: { ...pageWithAssistPairs(), assist_pairs: undefined, squad_emprise: { film_unavailable: 'film_unsupported' } } as unknown as TeammatesPageResponse,
+    })
+    renderWithProviders(<SquadSynergiesPage />)
+    expect(screen.queryByText('Appui et portée')).toBeNull()
+  })
+
+  it('« Appui et portée » reste, intertitre gardé, sur un titre qui lit le film : état du film non lu, ou constat', () => {
+    const sansMesure = (emprise: Record<string, unknown>) =>
+      ({ ...pageWithAssistPairs(), assist_pairs: undefined, squad_emprise: emprise }) as unknown as TeammatesPageResponse
+    mockSquadContext({ selectedRows: [ROW('A'), ROW('B')], confirmedGamertags: ['A', 'B'], pageData: sansMesure({ matches_film_pending: 2 }) })
+    const { unmount } = renderWithProviders(<SquadSynergiesPage />)
+    const section = screen.getByTestId('squad-appui-portee')
+    expect(within(section).getByText('Appui et portée')).toBeInTheDocument()
+    expect(within(section).getByTestId('analysis-pending-slot')).toHaveTextContent('Analyse du film en attente')
+    unmount()
+    mockSquadContext({ selectedRows: [ROW('A'), ROW('B')], confirmedGamertags: ['A', 'B'], pageData: sansMesure({ matches_film_missing: 2 }) })
+    const second = renderWithProviders(<SquadSynergiesPage />)
+    expect(screen.getByTestId('squad-appui-portee')).toHaveTextContent('Film non analysé')
+    second.unmount()
+    mockSquadContext({ selectedRows: [ROW('A'), ROW('B')], confirmedGamertags: ['A', 'B'], pageData: sansMesure({}) })
+    renderWithProviders(<SquadSynergiesPage />)
+    const constat = screen.getByTestId('squad-appui-portee')
+    expect(constat).toHaveTextContent('Aucune assistance ni portée de frag sur ce périmètre')
+    expect(constat.querySelector('.border-dashed')).not.toBeNull()
   })
 
   it('« Appui et portée » montée par l’appui seul', () => {

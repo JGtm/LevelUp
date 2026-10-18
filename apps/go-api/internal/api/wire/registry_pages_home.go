@@ -40,6 +40,7 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 		// l'endpoint /replay et l'Explorer — une seule résolution de chemin dans le
 		// dépôt. Seul AvailableSet est appelé : un listing de dossier par requête.
 		WithReplay(r.replayServiceFor(pdb)).
+		WithAnalysisPending(r.analysisPendingFor(pdb)).
 		WithDemoMode(r.cfg.DemoMode)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
@@ -235,7 +236,10 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		// Onglet « Emprise » (lot L4) : la feuille de match (frags aux armes spéciales) est
 		// écrite par tous les titres — câblage INCONDITIONNEL ; ses grandeurs du film passent par
 		// le résumé d'usage ci-dessous, gated par film.usage_summary (D10). Jamais slug==.
-		WithEmprise(duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb)))
+		WithEmprise(duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb))).
+		// « Analyse du film en cours » de l'Emprise : MÊME règle et MÊME porte de titre que l'accueil et la
+		// vue match (film.kill_source) ; nil pour un titre sans elle.
+		WithAnalysisPending(r.analysisPendingFor(pdb))
 	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
 	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
 	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.
@@ -390,7 +394,10 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 		// temporelles (registry_pages.go) — le repo seul décide qu'un titre n'a pas de
 		// positions par kill (games.ErrCapabilityNotSupported), un `if capability` ici
 		// prendrait la même décision à deux endroits.
-		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))
+		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb))).
+		// « Analyse du film en cours » des records de distance : MÊME règle et MÊME porte de titre que
+		// l'accueil, la vue match et l'Escouade (film.kill_source) ; nil pour un titre sans elle.
+		WithAnalysisPending(r.analysisPendingFor(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}

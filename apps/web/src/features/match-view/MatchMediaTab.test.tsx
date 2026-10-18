@@ -14,6 +14,17 @@ describe('MatchMediaTab - etat vide', () => {
     expect(screen.getByText(t.mediaNoCaptures)).toBeInTheDocument()
     expect(screen.getByText(t.mediaNoCapturesDesc)).toBeInTheDocument()
   })
+
+  it('l état vide pointillé est DANS un bloc parent (Card), jamais nu sous le titre de section', () => {
+    const t = MATCH_VIEW_TEXT.fr
+    renderWithProviders(<MatchMediaTab items={[]} playerSlug="p" matchId="m" t={t} />)
+    const bloc = screen.getByTestId('match-media-empty')
+    const notice = bloc.querySelector('.border-dashed')
+    expect(notice).not.toBeNull()
+    expect(notice).not.toBe(bloc)
+    expect(bloc.className).toContain('border')
+    expect(bloc.contains(notice)).toBe(true)
+  })
 })
 
 describe("MatchMediaTab - profil d'un ami", () => {

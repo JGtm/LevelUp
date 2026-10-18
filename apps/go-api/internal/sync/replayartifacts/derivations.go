@@ -48,7 +48,9 @@ import (
 	"database/sql"
 	"log/slog"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -170,7 +172,7 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	// trois autres garantit que si le writer devient indisponible en cours de route, ce sont les
 	// donnees les moins couteuses a rejouer qui manquent.
 	persisterPositions(ctx, d, b, lus)
-	marquerDerivations(ctx, b, lus)
+	marquerDerivations(ctx, dd.TitleSlug, b, lus)
 }
 
 // writerUnique memoise l'acquisition du segment d'ecriture pour UNE passe de derivations.
@@ -298,13 +300,14 @@ func (b *bilanDerivations) aEchoue(matchID string) bool { return b.echecs[matchI
 //
 // UNE MARQUE QUI ECHOUE NE FAIT RIEN ECHOUER : les derives sont deja ecrits, la seule
 // consequence est que le rattrapage les rejouera. C'est journalise, jamais avale.
-func marquerDerivations(ctx context.Context, b *bilanDerivations, lus []artefactLu) {
+func marquerDerivations(ctx context.Context, titleSlug string, b *bilanDerivations, lus []artefactLu) {
 	if b.sansWriter {
 		slog.WarnContext(ctx, "post-sync: derivations NON marquees — aucun segment d'ecriture "+
 			"shared n'a pu etre ouvert, le rattrapage rejouera tout le lot",
 			"artefacts", len(lus), "echecs", len(b.echecs))
 		return
 	}
+	ecrits := make([]string, 0, len(lus))
 	for _, a := range lus {
 		if b.aEchoue(a.matchID) {
 			slog.WarnContext(ctx, "post-sync: derivation NON marquee — au moins une famille n'a "+
@@ -312,12 +315,19 @@ func marquerDerivations(ctx context.Context, b *bilanDerivations, lus []artefact
 				"match_id", a.matchID, "path", a.path)
 			continue
 		}
+		// Les dérivations de ce match SONT écrites : le délai du débrief le note avant la marque, dont
+		// l'échec ne retire rien à ce qui est en base.
+		observability.ReportMatchStep(titleSlug, a.matchID, domain.MatchStepDerivationsWritten, "")
+		ecrits = append(ecrits, a.matchID)
 		if err := replaybuild.WriteDerivationsMark(a.path, a.doc.SchemaVersion, a.octets); err != nil {
 			slog.WarnContext(ctx, "post-sync: marque de derivation non ecrite — le rattrapage "+
 				"rejouera ces derivations au prochain cycle",
 				"match_id", a.matchID, "path", a.path, "err", err)
 		}
 	}
+	// Ce qui lit ces dérivations (citations du film) est prévenu pour les seuls matchs écrits
+	// (cf. notifieur.go).
+	notifierDerivations(ctx, titleSlug, ecrits)
 }
 
 // lireArtefacts lit et deserialise chaque artefact UNE fois. Un artefact illisible est un echec

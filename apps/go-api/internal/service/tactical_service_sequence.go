@@ -14,10 +14,12 @@ package service
 // unique de `matchClock.filmMsOfMatchMs`, cote web), et l'horloge AFFICHEE des etapes est
 // `instantAffiche` (tactical_service_cellule_horloge.go), le T0 du registre comme pour les tuiles.
 //
-// SANS ARTEFACT, SANS `originMs`, SANS RAYON DE RADAR OU SANS POSITION DE LA VICTIME A SA MORT, LA
-// SEQUENCE EST INDISPONIBLE (`port.ErrReplayNotAvailable`, 404) SANS AUTRE MESSAGE : le web ne rend
-// la vue D que si la requete reussit. Un match que l'appelant n'a pas joue est indiscernable d'un
-// match sans rejeu (ADR 0029) : meme erreur, meme statut.
+// UNE SEQUENCE ABSENTE DIT POURQUOI (tactical_service_sequence_cause.go) : analyse du film en cours,
+// film non analyse (pas de rejeu construit), film sans horloge (`originMs` ou echelle de temps absents),
+// carte sans rayon de radar, victime sans position a sa mort — une erreur typee par cause
+// (`port.ErrSequence*`). Un match que l appelant n a pas joue, une forme invalide ou une carte
+// etrangere restent un REFUS (`port.ErrReplayNotAvailable`), indiscernable d un match sans rejeu
+// (ADR 0029) : la cause n est rendue qu apres la verification d ouvrabilite.
 
 import (
 	"context"
@@ -56,9 +58,9 @@ func (s *TacticalService) Sequence(ctx context.Context, req domain.TacticalSeque
 			"player", s.xuid, "match_id", req.MatchID)
 		return out, port.ErrReplayNotAvailable
 	}
-	match, rayon, ok := s.matchDeLaSequence(ctx, req)
-	if !ok {
-		return out, port.ErrReplayNotAvailable
+	match, rayon, err := s.matchDeLaSequence(ctx, req)
+	if err != nil {
+		return out, s.causeDeLaSequence(ctx, req, err)
 	}
 	pistes, err := s.sequences.Pistes(ctx, req.MatchID)
 	if err != nil {
@@ -66,8 +68,11 @@ func (s *TacticalService) Sequence(ctx context.Context, req domain.TacticalSeque
 			"player", s.xuid, "match_id", req.MatchID, "err", err)
 		return out, err
 	}
-	if pistes == nil || pistes.OriginMs == nil || pistes.FrameIntervalMS <= 0 {
-		return out, port.ErrReplayNotAvailable
+	if pistes == nil {
+		return out, s.causeDeLaSequence(ctx, req, s.causeArtefactAbsent(ctx, req.MatchID))
+	}
+	if pistes.OriginMs == nil || pistes.FrameIntervalMS <= 0 {
+		return out, s.causeDeLaSequence(ctx, req, port.ErrSequenceFilmSansHorloge)
 	}
 	entree := s.acteursDeLaSequence(ctx, req, pistes)
 	entree.FrameIntervalMs = pistes.FrameIntervalMS
@@ -75,9 +80,7 @@ func (s *TacticalService) Sequence(ctx context.Context, req domain.TacticalSeque
 	entree.MortMatchMs, entree.T0Ms, entree.RayonM = req.TimeMs, match.T0Ms, rayon
 	seq, err := tactical.Sequence(entree)
 	if errors.Is(err, tactical.ErrSequenceSansMort) {
-		s.logger.InfoContext(ctx, "tactique: sequence sans position de la victime a sa mort",
-			"player", s.xuid, "match_id", req.MatchID)
-		return out, port.ErrReplayNotAvailable
+		return out, s.causeDeLaSequence(ctx, req, port.ErrSequenceSansPosition)
 	}
 	s.logger.InfoContext(ctx, "tactique: sequence d'une mort",
 		"player", s.xuid, "match_id", req.MatchID, "acteurs", len(seq.Acteurs),
@@ -85,23 +88,28 @@ func (s *TacticalService) Sequence(ctx context.Context, req domain.TacticalSeque
 	return seq, err
 }
 
-// matchDeLaSequence lit l'univers du seul match demande : son coup d'envoi et le rayon
-// de son radar. Faux quand le match n'est pas de cette carte ou n'a pas de rayon connu.
+// matchDeLaSequence lit l'univers du seul match demande : son coup d'envoi et le rayon de son radar.
+// Rend `port.ErrReplayNotAvailable` (refus) quand le match n'est pas de cette carte ou que l'univers
+// est illisible, et `port.ErrSequenceCarteNonMesuree` (cause) quand sa variante n'a pas de rayon.
 func (s *TacticalService) matchDeLaSequence(ctx context.Context, req domain.TacticalSequenceRequest,
-) (domain.TacticalMatch, float64, bool) {
+) (domain.TacticalMatch, float64, error) {
 	univers, err := s.repo.Univers(ctx, domain.TacticalQuery{
 		PlayerXUID: s.xuid, MapID: req.MapID, Matchs: domain.RestreindreAux([]string{req.MatchID}),
 	})
-	if err != nil || len(univers.Matchs) == 0 {
-		if err != nil {
-			s.logger.ErrorContext(ctx, "tactique: univers de la sequence en echec",
-				"player", s.xuid, "match_id", req.MatchID, "err", err)
-		}
-		return domain.TacticalMatch{}, 0, false
+	if err != nil {
+		s.logger.ErrorContext(ctx, "tactique: univers de la sequence en echec",
+			"player", s.xuid, "match_id", req.MatchID, "err", err)
+		return domain.TacticalMatch{}, 0, port.ErrReplayNotAvailable
+	}
+	if len(univers.Matchs) == 0 {
+		return domain.TacticalMatch{}, 0, port.ErrReplayNotAvailable
 	}
 	rayons, _ := s.rayonsParMatch(univers.Matchs)
 	rayon, ok := rayons[req.MatchID]
-	return univers.Matchs[0], rayon, ok
+	if !ok {
+		return univers.Matchs[0], 0, port.ErrSequenceCarteNonMesuree
+	}
+	return univers.Matchs[0], rayon, nil
 }
 
 // viesDuFilm : les pistes de l'artefact rangees par porteur (xuid, ou nom de bot en minuscules), UNE

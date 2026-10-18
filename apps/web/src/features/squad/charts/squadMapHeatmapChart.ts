@@ -47,6 +47,9 @@ export interface SquadMapHeatmapOpts {
   mapLabelOf: (mapUI: string) => string
   pieceLabels: { tier1: string; tier2: string; tier3: string; tier4: string; tier5: string }
   noScoreLabel: string
+  /** Libellés des deux lignes de l'infobulle d'une case. */
+  perfLabel: string
+  matchesLabel: string
   /** Nom de l'axe Y (« Joueur ») — localise par l'appelant. */
   yAxisName: string
 }

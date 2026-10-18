@@ -12,6 +12,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import { useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
@@ -65,12 +66,11 @@ export function buildSessionMmrDumbbellOption(
         const idx = (arr[0] as { dataIndex: number }).dataIndex
         const p = points[idx]
         if (!p) return ''
-        const gap = Math.round(p.team - p.enemy)
-        const gapStr = gap >= 0 ? `+${gap}` : `${gap}`
+        const gapStr = tipNumber(Math.round(p.team - p.enemy), 0, true)
         return [
           `<strong>${escapeHtml(p.label.replace('\n', ' · '))}</strong>`,
-          `${opts.teamLabel}: <b>${Math.round(p.team)}</b>`,
-          `${opts.enemyLabel}: <b>${Math.round(p.enemy)}</b>`,
+          `${opts.teamLabel}: <b>${tipNumber(p.team, 0)}</b>`,
+          `${opts.enemyLabel}: <b>${tipNumber(p.enemy, 0)}</b>`,
           `Δ: <b>${gapStr}</b>`,
         ].join('<br/>')
       },

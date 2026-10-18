@@ -13,6 +13,7 @@
  */
 import { useMemo } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
+import { PAIR_ROW_CLASS } from '@/components/ui/pair-row'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
 import { intensityTooltipText } from '@/components/charts/intensityTooltipText'
@@ -37,6 +38,7 @@ import { TimeseriesEngagementGapTrend } from './TimeseriesEngagementGapTrend'
 import { TimeseriesCoordinationSection } from './TimeseriesCoordinationSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
+import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
 import { NUMERIC_SORT } from '@/features/explorer/explorerMatchesClientSort'
 import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
@@ -107,10 +109,11 @@ export function TimeseriesProgressionTab({
   const hasRanked = useCapability('ranked')
   const hasLusr = useCapability('lusr')
   const hasSkillRating = hasRanked || hasLusr
-  // XP de carrière estimée : gate DATA-DRIVEN. Le backend ne renseigne
-  // career_xp_estimated que si le titre porte la capability analytics.career_xp_estimate
-  // (Infinite) ; un titre sans capability → tous nuls → chart masqué (pas de slug côté front).
-  const hasCareerXP = (data.match_rows ?? []).some((r) => r.career_xp_estimated != null)
+  // XP de carrière estimée : la capability du titre (analytics.career_xp_estimate, Infinite) garde la carte
+  // même sans match estimé sur le périmètre (Firefight seul : titre et état vide, pas un trou) ; la présence
+  // d'un match estimé la monte aussi, le temps que la capability se charge. Titre sans capability : carte absente.
+  const careerXpSupported = useDataCapability('analytics.career_xp_estimate')
+  const hasCareerXP = careerXpSupported || (data.match_rows ?? []).some((r) => r.career_xp_estimated != null)
   return (
     <div className="space-y-8">
       {/* Premier frag / première mort (gauche, bande solo) | timeseries.14 — Par
@@ -243,7 +246,7 @@ export function TimeseriesProgressionTab({
           La carte se retire quand le titre ne sert pas de bloc de coordination (Rendement
           reprend alors toute la rangée) ; elle est CONSERVÉE, vide et nommée, quand le bloc
           est servi mais indisponible sur le périmètre (D8). */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
+      <div className={PAIR_ROW_CLASS}>
         <TimeseriesEfficiency
           title={
             <span className="flex items-center gap-1.5">

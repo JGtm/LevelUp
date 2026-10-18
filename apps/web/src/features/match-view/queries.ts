@@ -6,7 +6,7 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { matchViewStaleTime } from './matchPartial.logic'
+import { matchViewPollInterval, matchViewStaleTime } from './matchPartial.logic'
 import type { MatchObjectiveEvent, MatchPlayerPosition, MatchViewResponse } from '@/lib/api/types'
 
 export function useMatchView(playerSlug: string, matchId: string) {
@@ -16,8 +16,12 @@ export function useMatchView(playerSlug: string, matchId: string) {
     queryFn: () =>
       api.get<MatchViewResponse>(`/players/${playerSlug}/matches/${matchId}`),
     enabled: !!playerSlug && !!matchId,
-    // Une vue avec une source en panne n'est jamais conservée (D-9) : périmée d'emblée.
+    // Une vue avec une source en panne n'est jamais conservée (D-9) : périmée d'emblée. Idem
+    // tant que l'analyse du film est en cours : la vue ne reste pas figée 10 min.
     staleTime: (query) => matchViewStaleTime(query.state.data),
+    // Nouvel essai toutes les 30 s tant qu'une source est en panne, puis 60 s tant que l'analyse du
+    // film est en cours, puis arrêt (matchViewPollInterval).
+    refetchInterval: (query) => matchViewPollInterval(query.state.data),
   })
 }
 

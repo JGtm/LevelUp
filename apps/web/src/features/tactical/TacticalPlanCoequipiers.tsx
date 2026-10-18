@@ -2,48 +2,66 @@
  * TacticalPlanCoequipiers — ce que la lecture des coéquipiers pose SUR LE PLAN PRINCIPAL (amendement
  * A1 : même fond, même projection, même cadrage et même zoom que la chaleur et la couche des tueurs) :
  *
- *   - `CoucheDesCoequipiers` : la toile de la scène (nuage de la zone, instantané d'une mort, étape de
- *     la séquence) ;
- *   - `PiedDeLaMort` : la légende par forme et la barre des étapes de la séquence (D), rendue
- *     seulement quand la séquence est servie.
+ *   - `CoucheDesCoequipiers` : la toile de la scène (nuage de la zone, instantané d'une mort, étape ou
+ *     instant de la séquence en lecture) ;
+ *   - `PiedDuPlan` : la légende par forme et la zone « séquence » (lecteur, ou état qui dit pourquoi
+ *     elle manque — `TacticalSequenceSlot`).
  *
  * La toile n'intercepte aucun geste. Couleurs : jetons d'équipe de l'app (`team-ally`, `team-enemy`),
  * encre et fond du thème lus sur des éléments du DOM — ils suivent le thème et les couleurs d'équipe
  * choisies. Aucune teinte de la rampe de chaleur.
+ *
+ * PENDANT LA LECTURE (`lecture`), la scène n'est pas une prop : la toile s'abonne à la tête de lecture
+ * (`useSyncExternalStore`) et repeint la scène de l'instant, sans repeindre le reste du plan.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
+import type { TacticalSequence } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { peindreLaScene } from './coequipiersPaint'
 import type { TacticalText } from './i18n'
-import {
-  libelleDeDecalage,
-  secondesDeTraine,
-  type SceneDuPlan,
-} from './mort.logic'
+import { secondesDeTraine, type SceneDuPlan } from './mort.logic'
+import type { EtatDeLaSequence } from './sequenceCause.logic'
+import { sceneALInstant } from './sequenceLecture.logic'
 import { projectionDuPlan, type FenetreDuPlan, type RepereTactique } from './tacticalView.logic'
+import { ZoneSequence } from './TacticalSequenceSlot'
 import { dimensionsDeLaCouche } from './tueurs.logic'
+import type { LectureDeSequence } from './useLectureDeSequence'
 import { useTailleDuCanvas } from './useTailleDuCanvas'
 import { entreesDeLegende, modeDeLaScene, type FormeDeLegende, type VueDeMort } from './vueDeMort'
-import { decimale } from './zone.logic'
+
+/** La lecture animée que la toile suit : la séquence et sa tête de lecture. */
+export interface LectureDeLaToile {
+  sequence: TacticalSequence
+  lecture: LectureDeSequence
+}
 
 interface CoucheDesCoequipiersProps {
   repere: RepereTactique
   fenetre: FenetreDuPlan
   scene: SceneDuPlan
   estompe: string
+  /** Quand elle est posée, la scène est celle de l'instant de la tête de lecture, et `scene` n'est pas peinte. */
+  lecture?: LectureDeLaToile | null
 }
 
+const SANS_ABONNEMENT = () => () => {}
+
 /** CoucheDesCoequipiers — la toile de la scène. */
-export function CoucheDesCoequipiers({ repere, fenetre, scene, estompe }: CoucheDesCoequipiersProps) {
+export function CoucheDesCoequipiers({ repere, fenetre, scene: sceneFixe, estompe, lecture = null }: CoucheDesCoequipiersProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fondRef = useRef<HTMLSpanElement>(null)
   const taille = useTailleDuCanvas(canvasRef)
   const paletteVersion = useColorPaletteVersion()
+  const instant = useSyncExternalStore(lecture?.lecture.horloge.abonner ?? SANS_ABONNEMENT, lecture?.lecture.horloge.lire ?? (() => 0))
+  const scene = useMemo(
+    () => (lecture ? sceneALInstant(lecture.sequence, instant) : sceneFixe),
+    [lecture, instant, sceneFixe],
+  )
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -117,14 +135,20 @@ interface PiedDuPlanProps {
   locale: Locale
   scene: SceneDuPlan
   vue: VueDeMort | null
+  /** L'état de la zone « séquence » de la contribution choisie ; `null` = rien de choisi ou fonction fermée. */
+  etatSequence?: EtatDeLaSequence | null
 }
 
-/** PiedDuPlan — LA légende du plan (une forme = une entrée, les deux couches ensemble), puis la barre des étapes quand la séquence est servie. */
-export function PiedDuPlan({ t, locale, scene, vue, roles }: PiedDuPlanProps) {
+/**
+ * PiedDuPlan — LA légende du plan (une forme = une entrée, les deux couches ensemble), puis la zone
+ * « séquence » : le lecteur quand la séquence est servie, sinon l'état qui dit pourquoi elle manque.
+ */
+export function PiedDuPlan({ t, locale, scene, vue, roles, etatSequence = null }: PiedDuPlanProps) {
   const mode = modeDeLaScene(scene, vue)
   const entrees = entreesDeLegende(t, mode, scene, locale, roles)
   const seq = vue?.sequence ?? null
-  if (entrees.length === 0 && !seq) return null
+  const avecZone = seq !== null || (etatSequence !== null && etatSequence.kind !== 'servie')
+  if (entrees.length === 0 && !avecZone) return null
   return (
     <div className="mx-3 mb-3 -mt-1 flex flex-col gap-2" data-testid="tactical-plan-pied">
       {entrees.length > 0 && (
@@ -138,40 +162,7 @@ export function PiedDuPlan({ t, locale, scene, vue, roles }: PiedDuPlanProps) {
           {mode === 'sequence' && seq && <li className="ml-auto">{t.seqTrail(secondesDeTraine(seq.traine_ms, locale))}</li>}
         </ul>
       )}
-      {vue && seq && <BarreDEtapes t={t} locale={locale} vue={vue} />}
-    </div>
-  )
-}
-
-const BOUTON =
-  'min-h-8 rounded-md border px-1.5 py-1 font-mono text-[11px] tabular-nums transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring'
-
-/** BarreDEtapes — « Instantané » puis une étape par seconde, de −4 s à +3 s ; la traîne en note. */
-function BarreDEtapes({ t, locale, vue }: { t: TacticalText; locale: Locale; vue: VueDeMort }) {
-  const etapes = vue.sequence?.etapes ?? []
-  return (
-    <div role="group" aria-label={t.seqGroup} className="flex flex-wrap items-center gap-1" data-testid="tactical-sequence-etapes">
-      <button
-        type="button"
-        aria-pressed={vue.etape === null}
-        onClick={() => vue.onEtape(null)}
-        className={`${BOUTON} ${vue.etape === null ? 'border-foreground bg-foreground text-background' : 'border-border bg-card text-muted-foreground hover:bg-accent'}`}
-      >
-        {t.seqSnapshot}
-      </button>
-      {etapes.map((e, i) => (
-        <button
-          key={e.offset_ms}
-          type="button"
-          aria-pressed={vue.etape === i}
-          aria-label={t.seqStage(decimale(e.offset_ms / 1000, locale))}
-          onClick={() => vue.onEtape(i)}
-          className={`${BOUTON} ${vue.etape === i ? 'border-foreground bg-foreground text-background' : e.offset_ms === 0 ? 'border-foreground bg-card text-foreground' : 'border-border bg-card text-muted-foreground hover:bg-accent'}`}
-          data-testid="tactical-sequence-etape"
-        >
-          {libelleDeDecalage(e.offset_ms, locale)}
-        </button>
-      ))}
+      {avecZone && <ZoneSequence t={t} locale={locale} vue={vue} etat={etatSequence} />}
     </div>
   )
 }

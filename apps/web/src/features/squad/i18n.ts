@@ -222,6 +222,9 @@ export interface SquadText {
     pieceTier4: string
     pieceTier5: string
     noScore: string
+    /** Infobulle d'une case : les deux lignes de valeurs. */
+    tooltipPerf: string
+    tooltipMatches: string
   }
   impact: {
     title: string
@@ -573,6 +576,8 @@ const FR_TEXT: SquadText = {
     pieceTier4: 'Sous-moyenne',
     pieceTier5: 'Faible',
     noScore: 'Pas de score',
+    tooltipPerf: 'Performance',
+    tooltipMatches: 'Matchs',
   },
   impact: {
     title: 'Impact des coéquipiers',
@@ -933,6 +938,8 @@ const EN_TEXT: SquadText = {
     pieceTier4: 'Below average',
     pieceTier5: 'Poor',
     noScore: 'No score',
+    tooltipPerf: 'Performance',
+    tooltipMatches: 'Matches',
   },
   impact: {
     title: 'Teammates impact',

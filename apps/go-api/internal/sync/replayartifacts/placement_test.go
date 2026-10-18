@@ -30,7 +30,7 @@ func hookAvec(location string, env replaybuild.PlacementEnv, enqueue EnqueueFunc
 	}
 }
 
-func noopEnqueue(context.Context, string, string) error { return nil }
+func noopEnqueue(context.Context, string, string, int) error { return nil }
 
 // TestHookPlacement : le réglage commande, et l'absence de file ne fait JAMAIS
 // retomber sur une construction locale (le VPS web ne décode jamais).
@@ -98,7 +98,7 @@ func TestEnqueueAll_SauteLesArtefactsAJour(t *testing.T) {
 	d := Deps{
 		RepoRoot:  repoRoot,
 		TitleSlug: titlePkg.DefaultSlug,
-		Enqueue: func(_ context.Context, _, matchID string) error {
+		Enqueue: func(_ context.Context, _, matchID string, _ int) error {
 			enfiles = append(enfiles, matchID)
 			return nil
 		},
@@ -133,7 +133,7 @@ func TestEnqueueAll_ReEnfileUnArtefactAppauvri(t *testing.T) {
 	d := Deps{
 		RepoRoot:  repoRoot,
 		TitleSlug: titlePkg.DefaultSlug,
-		Enqueue: func(_ context.Context, _, matchID string) error {
+		Enqueue: func(_ context.Context, _, matchID string, _ int) error {
 			enfiles = append(enfiles, matchID)
 			return nil
 		},
@@ -160,7 +160,7 @@ func TestEnqueueAll_ArtefactCompletResteSaute(t *testing.T) {
 	var enfiles []string
 	d := Deps{
 		RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug,
-		Enqueue: func(_ context.Context, _, matchID string) error {
+		Enqueue: func(_ context.Context, _, matchID string, _ int) error {
 			enfiles = append(enfiles, matchID)
 			return nil
 		},
@@ -190,7 +190,7 @@ func TestEnqueueAll_FaitsSansLignes_NeReEnfilePas(t *testing.T) {
 	var enfiles []string
 	d := Deps{
 		RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug,
-		Enqueue: func(_ context.Context, _, matchID string) error {
+		Enqueue: func(_ context.Context, _, matchID string, _ int) error {
 			enfiles = append(enfiles, matchID)
 			return nil
 		},
@@ -217,7 +217,7 @@ func TestEnqueueAll_SansFaitsConnus_NeReEnfilePas(t *testing.T) {
 	var enfiles []string
 	d := Deps{
 		RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug,
-		Enqueue: func(_ context.Context, _, matchID string) error {
+		Enqueue: func(_ context.Context, _, matchID string, _ int) error {
 			enfiles = append(enfiles, matchID)
 			return nil
 		},

@@ -3,7 +3,7 @@
  * personne (« reviens », « vérifie », « connecte », « choisis » ; « connect it », « pick » en anglais) dans les textes des Séries temporelles › Usages, de toute la
  * page Escouade (`squad/i18n.ts`, les `*Strings.ts` de `features/squad/`, le sélecteur
  * `squadPresets.i18n.ts`, les jeux des cartes d'objectif `formes/i18n.ts` et `formes/cardsI18n.ts`,
- * le manifeste `squad.toml`), des cartes de la page Sessions et de la Vue match (titres, intertitres, légendes,
+ * le manifeste `squad.toml`, les textes d'une section dont le film n'est pas lu `_shared/filmGap`, les constats « aucun match concerné » `components/ui/scope-empty-text`), des cartes de la page Sessions et de la Vue match (titres, intertitres, légendes,
  * aides ⓘ, infobulles, messages), en français comme en anglais. Pour la Vue match, s'y ajoutent les
  * littéraux de phrase de ses sources (`features/match-view/`). Le joueur est désigné par son
  * gamertag, les groupes par « Équipe », « Adversaire », « Reste de l'équipe » ; « camp » n'est
@@ -21,6 +21,8 @@ import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { allScopeEmptyTexts } from '@/components/ui/scope-empty-text'
+import { FILM_GAP_TEXT } from '@/features/_shared/filmGap/filmGapStrings'
 import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
 import { MATCH_VIEW_TEXT } from '@/features/match-view/i18n'
 import { MATCH_EMPRISE_TEXT } from '@/features/match-view/matchEmpriseText'
@@ -31,6 +33,7 @@ import { PLACEMENT_TEXT } from '@/features/squad/emprise/placementStrings'
 import { FORMES_CARDS_TEXT } from '@/features/squad/formes/cardsI18n'
 import { FORMES_TEXT } from '@/features/squad/formes/i18n'
 import { EN_TEXT as SQUAD_EN, FR_TEXT as SQUAD_FR } from '@/features/squad/i18n'
+import { IMPACT_HISTORY_TEXT } from '@/features/squad/impact/impactHistoryStrings'
 import { OBJECTIF_TEXT } from '@/features/squad/objectif/objectifStrings'
 import { getSquadFocusText } from '@/features/squad/squadFocusStrings'
 import { SQUAD_PRESETS_STRINGS } from '@/features/squad/squadPresets.i18n'
@@ -114,6 +117,12 @@ const SQUAD_TEXT = { fr: SQUAD_FR, en: SQUAD_EN }
 const SQUAD_FOCUS_TEXT = { fr: getSquadFocusText('fr'), en: getSquadFocusText('en') }
 const SQUAD_RANGE_ROLES_TEXT = { fr: getSquadRangeRolesText('fr'), en: getSquadRangeRolesText('en') }
 
+/** Les constats « aucun match concerné » des blocs laissés affichés (components/ui/scope-empty-text). */
+const SCOPE_EMPTY_TEXT = { fr: allScopeEmptyTexts('fr'), en: allScopeEmptyTexts('en') }
+
+/** Le constat de « Points d'impact par soirée et par rôle » quand la réponse n'a pas d'historique. */
+const IMPACT_HISTORY_EMPTY = { fr: IMPACT_HISTORY_TEXT.fr.empty, en: IMPACT_HISTORY_TEXT.en.empty }
+
 const TEXTS = {
   SQUAD_TEXT,
   SQUAD_FOCUS_TEXT,
@@ -132,6 +141,9 @@ const TEXTS = {
   MATCH_VIEW_TEXT,
   MATCH_EMPRISE_TEXT,
   MATCH_EQUIPMENT_USAGE_TEXT,
+  FILM_GAP_TEXT,
+  SCOPE_EMPTY_TEXT,
+  IMPACT_HISTORY_EMPTY,
 } as const
 
 describe('aucun possessif ni pronom de personne', () => {
@@ -156,6 +168,12 @@ describe('aucun possessif ni pronom de personne', () => {
 
   it('manifeste synthesis.toml, section « Portée » des Séries temporelles (synthesis.weapon_range.*)', () => {
     expect(offendingManifestLines('synthesis.toml', 'synthesis.weapon_range.')).toEqual([])
+  })
+
+  it('manifeste synthesis.toml, états vides, erreurs et records de distance (synthesis.empty.*, errors, weapon_records)', () => {
+    for (const section of ['synthesis.empty.', 'synthesis.errors.', 'synthesis.weapon_records.']) {
+      expect(offendingManifestLines('synthesis.toml', section), section).toEqual([])
+    }
   })
 
   it('manifeste match_view.toml (fr, en)', () => {

@@ -194,7 +194,7 @@ describe('TimeseriesCoordinationSection', () => {
     const html = option.tooltip.formatter([
       { marker: '', seriesName: 'Frags appuyés', value: bar.value, axisValue: '22/09/2026', dataIndex: 0 },
     ])
-    expect(html.normalize('NFKC')).toContain('Frags appuyés : 37 % (51/137) · écart -0.6 pts')
+    expect(html.normalize('NFKC')).toContain('Frags appuyés : 37 % (51/137) · écart −0,6 pts')
   })
 
   it('ne rend RIEN quand la page ne sert aucun bloc de coordination', () => {

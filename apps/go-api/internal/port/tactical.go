@@ -48,8 +48,9 @@ type TacticalService interface {
 	Cellule(ctx context.Context, req domain.TacticalCelluleRequest) (domain.TacticalCelluleReponse, error)
 
 	// Sequence rend la sequence d UNE mort (vue D) : les traces des acteurs de -8 a +3 s et les
-	// etapes de -4 a +3 s, lues sur les trajectoires du rejeu 2D. Refus : match non ouvrable par
-	// l appelant ou sans artefact exploitable -> port.ErrReplayNotAvailable (404 replay_not_available).
+	// etapes de -4 a +3 s, lues sur les trajectoires du rejeu 2D. Refus (match non ouvrable par
+	// l appelant, carte etrangere) -> port.ErrReplayNotAvailable (404 replay_not_available). Cause
+	// de donnees (match ouvrable, sequence absente) -> une erreur port.ErrSequence* (tactical_sequence_causes.go).
 	Sequence(ctx context.Context, req domain.TacticalSequenceRequest) (domain.TacticalSequence, error)
 }
 

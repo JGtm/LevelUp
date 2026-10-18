@@ -56,11 +56,11 @@ describe('buildHistogramOption', () => {
     expect(opt.xAxis?.data).toEqual(['0–5', '5–10'])
   })
 
-  it('formate les bornes float avec 2 décimales', () => {
+  it('écrit les bornes décimales à la langue de l’application, deux décimales au plus', () => {
     const opt = buildHistogramOption(
       makeSeries([{ binStart: 0.5, binEnd: 1.25, count: 1 }]),
     ) as OptionShape
-    expect(opt.xAxis?.data).toEqual(['0.50–1.25'])
+    expect(opt.xAxis?.data).toEqual(['0,5–1,25'])
   })
 
   it('respecte un formatBin custom', () => {

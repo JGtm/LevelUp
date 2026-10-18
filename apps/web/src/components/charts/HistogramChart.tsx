@@ -22,6 +22,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
 import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase, seriesColor } from './_utils'
+import { tipNumberAuto } from './tipNumber'
 
 export interface ChartPointHistogram {
   binStart: number
@@ -96,7 +97,7 @@ interface BuildOpts {
 }
 
 function defaultFormatBin(point: ChartPointHistogram): string {
-  const fmt = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(2))
+  const fmt = (n: number): string => tipNumberAuto(n)
   return `${fmt(point.binStart)}–${fmt(point.binEnd)}`
 }
 

@@ -62,3 +62,28 @@ export function hasPositions(positions: MatchPlayerPosition[] | null | undefined
 export function useHasKillDistanceSection(): boolean {
   return useDataCapability('film.kill_positions')
 }
+
+/**
+ * arsenalPendingSlots — quelles sections de l'onglet « Armes et terrain » montrent un
+ * emplacement d'ATTENTE à la place de leur état vide. Même règle de rendu pour le bloc et
+ * pour la pose du titre de section. Chaque section regarde SA cause serveur
+ * (`header.analysis_pending_parts`) :
+ *
+ *  - `killsWeapons` : la source du kill (`kill_source`) n'est pas traitée ET l'arme de chaque
+ *    frag (distance par arme) n'est pas encore lue ;
+ *  - `terrain` : le rejeu (`replay`) est attendu ET ni l'Emprise, ni l'usage d'équipements, ni
+ *    les positions du film (le rejeu 2D) n'existent encore.
+ *
+ * Cause absente : aucun emplacement, la section garde son état normal.
+ */
+export function arsenalPendingSlots(p: {
+  killSourcePending: boolean
+  replayPending: boolean
+  hasKillDistance: boolean
+  hasTerrain: boolean
+}): { killsWeapons: boolean; terrain: boolean } {
+  return {
+    killsWeapons: p.killSourcePending && !p.hasKillDistance,
+    terrain: p.replayPending && !p.hasTerrain,
+  }
+}

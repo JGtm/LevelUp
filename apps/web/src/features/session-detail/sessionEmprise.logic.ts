@@ -12,6 +12,17 @@
  * Aucun branchement sur le titre : tout se lit dans les blocs (Halo 5 sans film n'a que la feuille
  * de match : A, B, B' et la barre épaisse des armes spéciales de G).
  *
+ * FILM NON LU. Un titre qui lit le film dont certains matchs n'ont pas leur résumé (analyse en cours, ou
+ * jamais faite) ne retire pas les cartes qui en dépendent : chaque famille sans aucune carte (Ressources,
+ * Prendre, Vies, Équipement) garde son intertitre et UNE carte d'état (`sessionFilmGaps`, ancrée sur la
+ * première clé de la famille) — une section absente laissait croire à un bug. Capability absente
+ * (`film_unsupported`) : famille absente, comme avant.
+ *
+ * AUCUN MATCH CONCERNÉ. Une carte tirée de la feuille de match dont aucun match de la session n'est concerné
+ * (l'objectif sans match à objectif, la répartition des frags sans frag) reste affichée avec son constat
+ * (`sessionScopeEmpties`, `ScopeEmptyCard`) : un bloc qui disparaît se lit comme un bug ; une lecture de l'objectif
+ * en échec le dit à part (`objectiveGap`). Capability absente (`objectiveGap` nul) : carte absente.
+ *
  * Pur : aucun React, aucune couleur, aucune chaîne de langue.
  */
 import type { EmpriseMatchIndex, ControlRow, MatchGrid, ResourceFil } from '@/features/squad/emprise/emprise.logic'
@@ -23,6 +34,7 @@ import { objectiveMatches } from '@/features/squad/formes/model/objectives'
 import {
   buildObjectiveBalance,
   buildSoloObjectiveSheet,
+  objectiveGap,
   type BalanceFamily,
   type SoloObjectiveSheet,
 } from '@/features/squad/objectif/objectif.logic'
@@ -47,6 +59,8 @@ import type {
   SquadFormesBlock,
   TimeseriesLivesNearTeammate,
 } from '@/lib/api/types'
+import type { ScopeEmptyKind } from '@/components/ui/scope-empty-text'
+import { filmGapOfBlock, type FilmGap } from '@/features/_shared/filmGap/filmGap.logic'
 import { outcomeCodeToValue } from '@/lib/outcome'
 
 /** Les outils montrés en vue compacte (maquette `makeTools` : les six plus meurtriers). */
@@ -129,6 +143,8 @@ export interface SessionEmpriseModels {
   objective: SquadFormesBlock | null
   balance: BalanceFamily[]
   soloSheet: SoloObjectiveSheet | null
+  /** Aucun match de la session n'est à objectif (ou la lecture a échoué) et le titre mesure l'objectif : la carte dit ce constat ; nul sinon. */
+  objectiveGap: ScopeEmptyKind | null
 }
 
 /** buildSessionEmpriseModels — tous les modèles d'une colonne, depuis ses blocs (aucune requête). */
@@ -152,6 +168,7 @@ export function buildSessionEmpriseModels(
     objective,
     balance: objective ? buildObjectiveBalance(objective) : [],
     soloSheet: objective ? buildSoloObjectiveSheet(objective) : null,
+    objectiveGap: objective == null ? objectiveGap(formes) : null,
   }
 }
 
@@ -170,6 +187,37 @@ export interface SessionCardsPresence {
   objective_balance: boolean
   objective_sheet: boolean
   equipment: boolean
+}
+
+/** sessionFilmGap — le film des matchs de la colonne n'est pas lu pour au moins un match (`filmGapOfBlock`). */
+export function sessionFilmGap(col: Pick<SessionColumnBlocks, 'emprise'>): FilmGap | null {
+  return filmGapOfBlock(col.emprise)
+}
+
+/**
+ * Les familles de cartes tirées du film : si AUCUNE de leurs cartes ne se dessine alors que le film n'est
+ * pas lu, la première porte l'état (`FilmGapCard`) sous l'intertitre de la famille. Objectif (feuille de
+ * match) et frags (feuille de match) n'en font pas partie : leur absence dit « aucun match concerné ».
+ */
+const FILM_FAMILIES: ReadonlyArray<readonly (keyof SessionCardsPresence)[]> = [
+  ['control', 'fil', 'grid', 'mine'],
+  ['production', 'yield'],
+  ['lives'],
+  ['equipment'],
+]
+
+/** sessionFilmGaps — les cartes d'ancrage qui portent un état « film non lu » au lieu de leur contenu. */
+export function sessionFilmGaps(
+  col: Pick<SessionColumnBlocks, 'emprise'>,
+  drawn: SessionCardsPresence,
+): Partial<Record<keyof SessionCardsPresence, FilmGap>> {
+  const gap = sessionFilmGap(col)
+  const out: Partial<Record<keyof SessionCardsPresence, FilmGap>> = {}
+  if (!gap) return out
+  for (const family of FILM_FAMILIES) {
+    if (!family.some((key) => drawn[key])) out[family[0]] = gap
+  }
+  return out
 }
 
 /** Libellés NEUTRES : ils servent à COMPTER les outils, jamais à les afficher. */
@@ -191,7 +239,7 @@ export function sessionPlayerName(col: SessionColumnBlocks, fallback: string): s
 
 /**
  * sessionCardsPresence — LA présence de chaque carte d'une colonne. Une carte n'existe que si elle
- * dessine quelque chose (S10) :
+ * dessine quelque chose (S10) — ou porte l'état « film non lu » de sa famille (`sessionFilmGaps`) :
  *   - A : des frags par classe ; B : au moins un outil NOMMÉ (« Non attribué » seul ne se dessine
  *     pas en vue compacte, la carte ne s'ouvre donc nulle part) ; B' : la précision par arme native ;
  *   - C, D : des prises de ressource ; E : au moins une ligne lue au film ; F : au moins une prise de
@@ -199,6 +247,40 @@ export function sessionPlayerName(col: SessionColumnBlocks, fallback: string): s
  *   - L : au moins une famille d'équipement tenue.
  */
 export function sessionCardsPresence(col: SessionColumnBlocks, m: SessionEmpriseModels): SessionCardsPresence {
+  const drawn = drawnCards(col, m)
+  const gaps = sessionFilmGaps(col, drawn)
+  const empties = sessionScopeEmpties(col, m, drawn)
+  return Object.fromEntries(
+    (Object.keys(drawn) as (keyof SessionCardsPresence)[]).map((key) => [
+      key,
+      drawn[key] || gaps[key] != null || empties[key] != null,
+    ]),
+  ) as unknown as SessionCardsPresence
+}
+
+/**
+ * sessionScopeEmpties — les cartes qui restent affichées faute de match concerné, avec ce qui manque :
+ * la répartition des frags et les outils de destruction d'une session sans frag, l'objectif d'une session sans match à objectif (carte
+ * d'ancrage `objective_balance`, sous l'intertitre « Objectif »). Une colonne sans session (`entry` nul)
+ * n'a rien à dire.
+ */
+export function sessionScopeEmpties(
+  col: Pick<SessionColumnBlocks, 'entry'>,
+  m: Pick<SessionEmpriseModels, 'objectiveGap'>,
+  drawn: SessionCardsPresence,
+): Partial<Record<keyof SessionCardsPresence, ScopeEmptyKind>> {
+  const out: Partial<Record<keyof SessionCardsPresence, ScopeEmptyKind>> = {}
+  if (col.entry != null && !drawn.frag_donut) {
+    out.frag_donut = 'frags'
+    // Sans frag, « Outils de destruction » n'a rien non plus : sa carte reste avec l'état vide de son graphe.
+    if (!drawn.tools) out.tools = 'frags'
+  }
+  if (m.objectiveGap) out.objective_balance = m.objectiveGap
+  return out
+}
+
+/** Les cartes qui DESSINENT quelque chose, sans les cartes d'état. */
+export function drawnCards(col: SessionColumnBlocks, m: SessionEmpriseModels): SessionCardsPresence {
   const entry = col.entry
   const classes = entry?.frag_distribution?.classes ?? []
   const tools = buildSquadToolRows(entry?.weapon_tools, { locale: 'fr', labels: COUNT_ONLY_TOOL_LABELS, top: SESSION_TOOLS_TOP })

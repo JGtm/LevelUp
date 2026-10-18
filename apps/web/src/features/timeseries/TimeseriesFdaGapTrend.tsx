@@ -38,6 +38,7 @@ import {
   hoverRevealSymbol,
   LEGEND_ITEM_WIDTH_LINE,
 } from '@/components/charts/_utils'
+import { tipNumberUpTo } from '@/components/charts/tipNumber'
 import { cumulativeFdaGap, meanFdaGap } from '@/lib/charts/cumulativeFdaGap'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -64,7 +65,7 @@ export interface FdaGapCumulativeLabels {
 /** Formate un écart : « — » si absent, préfixe « + » si signé positif. */
 function fmtGap(v: number | null, signed = false): string {
   if (v == null) return '—'
-  return signed && v >= 0 ? `+${v}` : `${v}`
+  return tipNumberUpTo(v, 1, signed)
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

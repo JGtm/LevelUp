@@ -36,9 +36,9 @@ describe('buildRadarOption — tooltip', () => {
     })
     const html = formatterOf(opt)({ name: 'Session', value: [64, 25, 48] })
     // Valeurs brutes par match, pas le % normalisé.
-    expect(html).toContain('Folie meurtrière (moy.): <b>6.4</b>')
-    expect(html).toContain('Tirs à la tête / match: <b>3.0</b>')
-    expect(html).toContain('Œil de lynx / match: <b>2.4</b>')
+    expect(html).toContain('Folie meurtrière (moy.): <b>6,4</b>')
+    expect(html).toContain('Tirs à la tête / match: <b>3,0</b>')
+    expect(html).toContain('Œil de lynx / match: <b>2,4</b>')
     // Ne doit PAS afficher les valeurs normalisées entières.
     expect(html).not.toContain('<b>64</b>')
   })

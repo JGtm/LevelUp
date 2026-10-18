@@ -241,7 +241,9 @@ func (h *MatchViewHandler) handleGetMatchView(ctx context.Context, in *matchView
 	// et le média dans le lecteur tombent en 404 (chemins relatifs bruts).
 	h.transformMatchMediaURLs(in.PlayerSlug, resp.MediaTab.MediaItems)
 	out := &matchViewOutput{Body: resp}
-	if resp.HasUnavailableSource() {
+	// Vue en panne partielle (D-9) OU analyse du film en cours : réponses transitoires, aucun
+	// cache HTTP ne doit les rejouer une fois la panne passée / l'analyse finie.
+	if resp.HasUnavailableSource() || resp.Header.AnalysisPending {
 		out.CacheControl = noStoreCacheControl
 	}
 	return out, nil

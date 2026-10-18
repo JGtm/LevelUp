@@ -30,6 +30,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from './_utils'
+import { tipNumber } from './tipNumber'
 
 export interface EngagementPoint {
   /** Timestamp en ms (Match View) ou index match (Session) */
@@ -228,7 +229,7 @@ function buildEngagementOption(
         }>
         const head = escapeHtml(items[0]?.axisValueLabel ?? '')
         const lines = items.map((p) => {
-          const v = typeof p.value === 'number' && Number.isFinite(p.value) ? p.value.toFixed(2) : '—'
+          const v = typeof p.value === 'number' && Number.isFinite(p.value) ? tipNumber(p.value, 2) : '—'
           return `${p.marker ?? ''} ${escapeHtml(p.seriesName ?? '')}: <b>${v}</b>`
         })
         // Ligne « Lobby » (l'ancre de l'attendu) : non dessinée (D4 : 3 courbes
@@ -237,7 +238,7 @@ function buildEngagementOption(
         const idx = items[0]?.dataIndex
         const lobby = typeof idx === 'number' ? points[idx]?.paceLobby : undefined
         if (typeof lobby === 'number' && Number.isFinite(lobby)) {
-          lines.push(`${escapeHtml(labels.lobby)}: <b>${lobby.toFixed(2)}</b>`)
+          lines.push(`${escapeHtml(labels.lobby)}: <b>${tipNumber(lobby, 2)}</b>`)
         }
         return [head, ...lines].join('<br/>')
       },

@@ -25,6 +25,7 @@ import {
   getTooltipBase,
   outcomeColor,
 } from '@/components/charts/_utils'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
@@ -79,7 +80,7 @@ export function buildSessionNetScoreOption(
         const idx = params[0]?.dataIndex ?? 0
         const p = points[idx]
         if (!p) return ''
-        const vStr = p.cumulative >= 0 ? `+${p.cumulative}` : `${p.cumulative}`
+        const vStr = tipNumber(p.cumulative, 0, true)
         const swatch = `<span style="display:inline-block;width:9px;height:9px;border-radius:9px;background:${outcomeColor(
           p.outcomeKey ?? undefined,
         )};margin-right:5px;vertical-align:middle"></span>`

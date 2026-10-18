@@ -16,6 +16,13 @@ import { SquadContributionsPage } from './SquadContributionsPage'
 import { block0709, history0709, history0709Evenings } from './objectif/objectif.fixtures'
 import { impactHistory3 } from './impact/impactHistory.fixtures'
 
+// Capability de données du titre courant (match.events.timeline : porte des points d'impact par soirée).
+const capability = vi.hoisted(() => ({ timeline: true }))
+vi.mock('@/lib/capabilities/dataCapabilities', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/capabilities/dataCapabilities')>()),
+  useDataCapability: (key: string) => (key === 'match.events.timeline' ? capability.timeline : true),
+}))
+
 // Stub des charts ECharts pour éviter les erreurs de résolution en env test.
 vi.mock('./SquadPerMinuteChart', () => ({
   SquadPerMinuteChart: () => <div data-testid="per-minute-chart" />,
@@ -36,6 +43,7 @@ function mockSquadContext(overrides: Partial<ReturnType<typeof squadContextModul
 }
 
 beforeEach(() => {
+  capability.timeline = true
   useAppShellStore.setState({ locale: 'fr' })
 })
 
@@ -132,8 +140,8 @@ describe('SquadContributionsPage', () => {
     expect(screen.getByText('Outils de destruction')).toBeInTheDocument()
   })
 
-  // Points d'impact par soirée : sous la matrice d'impact, monté seulement quand la réponse
-  // porte le bloc (un titre sans événements horodatés ni équipe alliée ne l'a pas).
+  // Points d'impact par soirée : sous la matrice d'impact. Réponse avec le bloc : la carte. Réponse sans
+  // le bloc : la carte reste avec son constat quand le titre lit les événements horodatés, sinon elle est absente.
   it('monte « Points d’impact par soirée et par rôle » sous la matrice quand le bloc est servi', () => {
     mockSquadContext({
       confirmedGamertags: ['Chocoboflor', 'Madina97294'],
@@ -146,10 +154,21 @@ describe('SquadContributionsPage', () => {
     expect(text.indexOf('Points d’impact par soirée et par rôle')).toBeLessThan(text.search(/Médailles/))
   })
 
-  it('ne monte pas les points d’impact par soirée sans le bloc', () => {
+  it('sans le bloc, le titre qui lit les événements horodatés garde la carte, titre et constat', () => {
+    mockSquadContext({ confirmedGamertags: ['FriendA'], pageData: { main_player: 'test' } as unknown as TeammatesPageResponse })
+    renderWithProviders(<SquadContributionsPage />)
+    const card = screen.getByTestId('squad-impact-history')
+    expect(card).toHaveTextContent('Points d’impact par soirée et par rôle')
+    expect(card).toHaveTextContent('Aucun point d’impact sur ce périmètre')
+    expect(card.querySelector('.border-dashed')).not.toBeNull()
+  })
+
+  it('sans le bloc, le titre sans événements horodatés n’a pas la fonction : la carte est absente', () => {
+    capability.timeline = false
     mockSquadContext({ confirmedGamertags: ['FriendA'], pageData: { main_player: 'test' } as unknown as TeammatesPageResponse })
     renderWithProviders(<SquadContributionsPage />)
     expect(screen.queryByTestId('squad-impact-history')).toBeNull()
+    expect(screen.queryByText('Points d’impact par soirée et par rôle')).toBeNull()
   })
 
   // L'objectif est parti dans l'onglet Emprise : même avec des matchs à objectif, Contributions

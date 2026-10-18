@@ -11,9 +11,11 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { tokenCssVar } from '@/lib/accessibility'
 import { useSynthesisPage } from './queries'
 import { useFiltersPreview } from '@/features/filters/queries'
+import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { ProportionalBar } from '@/components/ui/proportional-bar'
+import { ScopeEmptyCard } from '@/components/ui/scope-empty'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { FragSunburst } from '@/components/charts/FragSunburst'
 import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
@@ -21,6 +23,8 @@ import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'
 import { AccentCard, SectionSubtitle } from '@/components/ui/section-primitives'
 import { useSynthesisFragCharts } from './useSynthesisFragCharts'
 import { WeaponRecordsRuler } from './WeaponRecordsRuler'
+import { WeaponRecordsGapCard } from './WeaponRecordsGapCard'
+import type { FilmGap } from '@/features/_shared/filmGap/filmGap.logic'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
 import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
@@ -121,9 +125,15 @@ interface SynthesisOverviewSectionProps {
   combatProfile?: CombatProfileBlock | null
   objectiveStats?: ObjectiveAggregate | null
   weaponRecords?: SynthesisWeaponRecords | null
+  /** Pourquoi les records manquent quand le titre mesure des positions (`weapon_records_gap`). */
+  weaponRecordsGap?: FilmGap
   playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, objectiveStats, weaponRecords, playerSlug }: SynthesisOverviewSectionProps) {
+/** Le cumul d'objectif a au moins un KPI à afficher (drapeau, zone ou crâne au-dessus de zéro). */
+function hasObjectiveKpis(stats: ObjectiveAggregate | null | undefined): stats is ObjectiveAggregate {
+  return stats != null && ((stats.flag_captures ?? 0) > 0 || (stats.zone_captures ?? 0) > 0 || (stats.skull_grabs ?? 0) > 0)
+}
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, objectiveStats, weaponRecords, weaponRecordsGap, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -274,27 +284,26 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
               {/* Rangée 1 : « Répartition des frags » (sunburst LARGE) + colonne KPI Taux de
                   victoire / FDA / Incidents. Survol LIÉ au breakdown de la rangée 2 (état `frags`). */}
               <div className="flex gap-4 items-stretch">
-                {fragDistribution && (
-                  <div className="flex min-w-0 flex-1 flex-col gap-2">
-                    <FragSunburst
-                      distribution={fragDistribution}
-                      maxWidthPx={520}
-                      hideCenterLabel
-                      legendSide="left"
-                      externalHoveredClass={frags.hovered}
-                      onClassHover={frags.setHovered}
-                    />
-                    {frags.insightText && (
-                      <p className="w-full text-xs leading-snug text-muted-foreground">
-                        <span className="font-semibold text-foreground">
-                          {t('synthesis.coach.label')}
-                          {' : '}
-                        </span>
-                        {frags.insightText}
-                      </p>
-                    )}
-                  </div>
-                )}
+                {/* Sans frag, l'anneau reste avec son constat (FragSunburst) : un bloc qui disparaît se lit comme un bug. */}
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <FragSunburst
+                    distribution={fragDistribution}
+                    maxWidthPx={520}
+                    hideCenterLabel
+                    legendSide="left"
+                    externalHoveredClass={frags.hovered}
+                    onClassHover={frags.setHovered}
+                  />
+                  {frags.insightText && (
+                    <p className="w-full text-xs leading-snug text-muted-foreground">
+                      <span className="font-semibold text-foreground">
+                        {t('synthesis.coach.label')}
+                        {' : '}
+                      </span>
+                      {frags.insightText}
+                    </p>
+                  )}
+                </div>
                 <div className="flex flex-col gap-3 w-[22rem] shrink-0">
 
                   {/* Taux de victoire */}
@@ -426,38 +435,42 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                     </div>
                   )}
 
-                  {/* Objectifs (CTF/Zones/Oddball) — capability-gated + data-driven (KPI > 0). */}
-                  {hasObjectiveStats && objectiveStats && (
+                  {/* Objectifs (CTF/Zones/Oddball) — capability du titre ; sans match à objectif ou sans action
+                      d'objectif, le bloc garde son titre et dit le constat (ScopeEmptyCard). */}
+                  {hasObjectiveStats && (
                     <div>
                       <p className="mb-1 text-xs font-semibold text-muted-foreground">{t('synthesis.kpi.objectives_title')}</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {(objectiveStats.flag_captures ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.flag_captures')} value={(objectiveStats.flag_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
-                        )}
-                        {(objectiveStats.zone_captures ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.zone_captures')} value={(objectiveStats.zone_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
-                        )}
-                        {(objectiveStats.skull_grabs ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.skull_grabs')} value={(objectiveStats.skull_grabs ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
-                        )}
-                      </div>
+                      {hasObjectiveKpis(objectiveStats) ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          {(objectiveStats.flag_captures ?? 0) > 0 && (
+                            <AccentCard label={t('synthesis.kpi.flag_captures')} value={(objectiveStats.flag_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
+                          )}
+                          {(objectiveStats.zone_captures ?? 0) > 0 && (
+                            <AccentCard label={t('synthesis.kpi.zone_captures')} value={(objectiveStats.zone_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
+                          )}
+                          {(objectiveStats.skull_grabs ?? 0) > 0 && (
+                            <AccentCard label={t('synthesis.kpi.skull_grabs')} value={(objectiveStats.skull_grabs ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
+                          )}
+                        </div>
+                      ) : (
+                        <ScopeEmptyCard kind={objectiveStats ? 'objectiveActions' : 'objective'} locale={locale} testId="synthesis-objectives-empty" />
+                      )}
                     </div>
                   )}
                 </div>
-                {fragDistribution && (
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <FragWeaponBreakdown
-                      weapons={frags.breakdown}
-                      title={frags.detailTitle}
-                      hoveredClass={frags.hovered}
-                      onClassHover={frags.setHovered}
-                      fillHeight
-                      // fluid : le tracé prend flex-1, la légende de pied reste collée au
-                      // bas de la card (sinon flex-1 laisserait un vide sous le footer).
-                      fluid
-                    />
-                  </div>
-                )}
+                {/* Toujours monté : sans frag, la carte garde son titre et l'état vide du graphe. */}
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <FragWeaponBreakdown
+                    weapons={frags.breakdown}
+                    title={frags.detailTitle}
+                    hoveredClass={frags.hovered}
+                    onClassHover={frags.setHovered}
+                    fillHeight
+                    // fluid : le tracé prend flex-1, la légende de pied reste collée au
+                    // bas de la card (sinon flex-1 laisserait un vide sous le footer).
+                    fluid
+                  />
+                </div>
                 {hasWeaponAccuracy && (
                   <div className="flex min-w-0 flex-1 flex-col">
                     <WeaponAccuracyChart
@@ -477,6 +490,13 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
               {hasWeaponRange && weaponRecords && (
                 <div className="mt-4">
                   <WeaponRecordsRuler records={weaponRecords} playerSlug={playerSlug} />
+                </div>
+              )}
+              {/* Aucun frag mesuré : la carte garde son titre et dit pourquoi (analyse en cours / film non
+                  analysé), au lieu de disparaître. Titre sans la capability : rien. */}
+              {hasWeaponRange && !weaponRecords && weaponRecordsGap && (
+                <div className="mt-4">
+                  <WeaponRecordsGapCard gap={weaponRecordsGap} />
                 </div>
               )}
 
@@ -638,7 +658,7 @@ export function SynthesisPage() {
     start_date: hasPeriod ? committedPeriod.start_date : undefined,
     end_date: hasPeriod ? committedPeriod.end_date : undefined,
   }
-  const { data, isLoading, isError, error } = useSynthesisPage(playerSlug, committedPeriod, request)
+  const { data, isLoading, isError } = useSynthesisPage(playerSlug, committedPeriod, request)
 
   const comparisonMetrics = data?.comparison_metrics ?? []
   const topWeeks = data?.top_weeks ?? []
@@ -646,13 +666,24 @@ export function SynthesisPage() {
   const labelOf = (key: string): string => fieldMappings?.fields[key]?.label ?? key
 
   if (isLoading) return null
-  if (isError) return <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
+  if (isError) {
+    // Bloc parent + constat traduit (jamais le texte brut de l'erreur ni un mot en dur).
+    return (
+      <div className="px-6">
+        <Card data-testid="synthesis-load-failed">
+          <CardContent className="py-8 text-center">
+            <p className="font-medium text-destructive">{t('synthesis.errors.load_failed')}</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
   if (!data) {
     return (
       <div className="px-6">
         <EmptyStateCard
           title={t('synthesis.empty.synthesis_unavailable')}
-          description="Aucune charge utile n'a été renvoyée pour cette page. Vérifie les agrégats solo/escouade et le contexte de filtres."
+          description={t('synthesis.empty.synthesis_unavailable_description')}
         />
       </div>
     )
@@ -764,6 +795,7 @@ export function SynthesisPage() {
           combatProfile={data.combat_profile}
           objectiveStats={data.objective_stats}
           weaponRecords={data.weapon_records}
+          weaponRecordsGap={data.weapon_records_gap}
           playerSlug={playerSlug}
         />
       )}
@@ -787,40 +819,34 @@ export function SynthesisPage() {
 
         <SynthesisHeatmapChart title={t('synthesis.section.activity')} cells={data.heatmap_data ?? []} />
 
-        {topWeeks.length > 0 && (
-          <SynthesisTopWeeksChart title={t('synthesis.charts.top_vs_total_per_week')} weeks={topWeeks} />
-        )}
+        {/* Ces trois graphes sortent de la feuille de match : sans donnée sur la sélection, la carte reste avec
+            son titre et son état vide (ChartCard), comme la carte d'activité au-dessus — jamais un trou. */}
+        <SynthesisTopWeeksChart title={t('synthesis.charts.top_vs_total_per_week')} weeks={topWeeks} />
 
-        {data.breakdowns && (
-          <div className="flex flex-col gap-4">
-            {(data.breakdowns.top_maps ?? []).length > 0 && (
-              <SynthesisOutcomesByGroupChart
-                title={t('synthesis.breakdown.by_map')}
-                entries={(data.breakdowns.top_maps ?? []).map((m) => ({
-                  name: m.map_name,
-                  wins: m.wins,
-                  losses: m.losses,
-                  ties: m.ties,
-                  unfinished: m.unfinished,
-                }))}
-                height={360}
-              />
-            )}
-            {(data.breakdowns.top_modes ?? []).length > 0 && (
-              <SynthesisOutcomesByGroupChart
-                title={t('synthesis.breakdown.by_mode')}
-                entries={(data.breakdowns.top_modes ?? []).map((m) => ({
-                  name: m.mode_name,
-                  wins: m.wins,
-                  losses: m.losses,
-                  ties: m.ties,
-                  unfinished: m.unfinished,
-                }))}
-                height={360}
-              />
-            )}
-          </div>
-        )}
+        <div className="flex flex-col gap-4">
+          <SynthesisOutcomesByGroupChart
+            title={t('synthesis.breakdown.by_map')}
+            entries={(data.breakdowns?.top_maps ?? []).map((m) => ({
+              name: m.map_name,
+              wins: m.wins,
+              losses: m.losses,
+              ties: m.ties,
+              unfinished: m.unfinished,
+            }))}
+            height={360}
+          />
+          <SynthesisOutcomesByGroupChart
+            title={t('synthesis.breakdown.by_mode')}
+            entries={(data.breakdowns?.top_modes ?? []).map((m) => ({
+              name: m.mode_name,
+              wins: m.wins,
+              losses: m.losses,
+              ties: m.ties,
+              unfinished: m.unfinished,
+            }))}
+            height={360}
+          />
+        </div>
       </section>
       </div>
     </div>

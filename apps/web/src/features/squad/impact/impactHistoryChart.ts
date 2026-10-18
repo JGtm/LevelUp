@@ -5,9 +5,9 @@
  *   - trois barres par soirée (une par joueur, dans l'ordre de la page), empilées par rôle en
  *     points : gains au-dessus de zéro, pertes en dessous, le plus fort barème contre l'axe ;
  *   - au pied de chaque barre, la pastille du joueur ;
- *   - une courbe du net par joueur, à sa couleur, détachée par un halo de la couleur de la
- *     carte, chaque point un losange posé sur sa barre ; seuls les deux nets extrêmes écrits ;
- *   - une infobulle par barre : joueur, soirée (matchs, victoires), rôles « ×n · ±points », net.
+ *   - une courbe du net par joueur, un trait à sa couleur sans halo ni bordure, chaque point un
+ *     losange plein posé sur sa barre ; seuls les deux nets extrêmes écrits (fond de la couleur de la carte) ;
+ *   - une infobulle par barre : joueur et matchs, rôles « ×n » et points dans l’ordre du graphe, net.
  *
  * Toutes les couleurs arrivent résolues (jetons, palette des joueurs de l'Escouade).
  */
@@ -83,27 +83,34 @@ function segmentRects(
   return out
 }
 
-/** L'infobulle d'une barre (données échappées). */
+/**
+ * L'infobulle d'une barre (données échappées) : le joueur à la couleur de sa barre et ses matchs,
+ * puis une ligne par rôle dans l'ordre où les segments se lisent sur le graphe (nom et nombre à
+ * gauche, points à droite), puis le net. La soirée n'y est pas : l'axe la nomme déjà.
+ */
 function barTip(bar: ImpactBar, c: ImpactChartColors, noRole: string, netLabel: string): string {
   const tc = c.theme
   const t = bar.tip
+  const line = (left: string, right: string, swatch: string) =>
+    `<div style="display:flex;align-items:center;gap:8px;margin-top:3px">${swatch}<span>${left}</span>` +
+    `<span style="margin-left:auto;padding-left:14px;font-weight:600">${right}</span></div>`
   const head =
-    `<div style="color:${tc.axisLabel};margin-bottom:6px"><span style="color:${tc.text};font-weight:500">` +
-    `${escapeHtml(t.player)}</span> · ${escapeHtml(t.evening)} · ${escapeHtml(t.matches)}</div>`
+    `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${c.players[bar.player]}"></span>` +
+    `<b>${escapeHtml(t.player)}</b></div><div style="color:${tc.axisLabel}">${escapeHtml(t.matches)}</div>`
   const rows = t.roles.length
     ? t.roles
-        .map(
-          (r) =>
-            `<div style="display:flex;align-items:center;gap:8px;margin-top:4px">` +
-            `<span style="width:12px;height:4px;border-radius:1px;background:${c.role(r.token)}"></span>` +
-            `<span>${escapeHtml(r.label)} ×${r.count}</span>` +
-            `<span style="color:${tc.axisLabel}">· ${escapeHtml(r.points)}</span></div>`,
+        .map((r) =>
+          line(
+            `${escapeHtml(r.label)} ×${r.count}`,
+            escapeHtml(r.points),
+            `<span style="width:12px;height:4px;border-radius:1px;background:${c.role(r.token)}"></span>`,
+          ),
         )
         .join('')
-    : `<div style="color:${tc.axisLabel}">${escapeHtml(noRole)}</div>`
+    : `<div style="color:${tc.axisLabel};margin-top:3px">${escapeHtml(noRole)}</div>`
   const net =
-    `<div style="border-top:1px solid ${tc.axisLine};margin-top:6px;padding-top:5px">` +
-    `${escapeHtml(netLabel)} <b>${escapeHtml(t.net)}</b></div>`
+    `<div style="border-top:1px solid ${tc.axisLine};margin-top:6px;padding-top:2px">` +
+    `${line(escapeHtml(netLabel), escapeHtml(t.net), '')}</div>`
   return head + rows + net
 }
 
@@ -141,7 +148,7 @@ function barsSeries(view: ImpactHistoryView, c: ImpactChartColors, narrow: boole
   }
 }
 
-/** La série des courbes du net : halo, trait, losanges, et les deux nets extrêmes écrits. */
+/** La série des courbes du net : trait et losanges pleins à la couleur du joueur, sans bordure, et les deux nets extrêmes écrits. */
 function netSeries(view: ImpactHistoryView, c: ImpactChartColors, narrow: boolean, signed: (v: number) => string) {
   const n = view.players.length
   const tc = c.theme
@@ -157,14 +164,13 @@ function netSeries(view: ImpactHistoryView, c: ImpactChartColors, narrow: boolea
       const color = c.players[p]
       const pts = view.nets[p].map((v, e) => [barGeom(api, e, p, n, narrow).mid, api.coord([e, v])[1]])
       const children: unknown[] = [
-        { type: 'polyline', shape: { points: pts }, style: { fill: null, stroke: tc.card, lineWidth: 5, opacity: 0.85, lineJoin: 'round', lineCap: 'round' } },
         { type: 'polyline', shape: { points: pts }, style: { fill: null, stroke: color, lineWidth: 2, lineJoin: 'round', lineCap: 'round' } },
       ]
       pts.forEach(([px, py], e) => {
         children.push({
           type: 'polygon',
           shape: { points: [[px, py - r], [px + r, py], [px, py + r], [px - r, py]] },
-          style: { fill: color, stroke: tc.card, lineWidth: 2 },
+          style: { fill: color },
         })
         if (!view.extremes.has(pointKey(p, e))) return
         const left = p === 0 && px - params.coordSys.x > 34
@@ -211,7 +217,6 @@ export function buildImpactHistoryOption(
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'item',
-      confine: true,
       formatter: (p: { seriesIndex?: number; dataIndex: number }) => {
         const bar = p.seriesIndex === BARS_SERIES ? view.bars[p.dataIndex] : undefined
         return bar ? barTip(bar, c, t.noRole, t.net) : ''

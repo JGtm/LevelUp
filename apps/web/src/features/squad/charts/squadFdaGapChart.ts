@@ -31,6 +31,7 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
 import { withEndPoint } from '@/components/charts/endPoint'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { cumulativeFdaGap, type FdaGapPair } from '@/lib/charts/cumulativeFdaGap'
@@ -179,7 +180,8 @@ export function buildFdaGapCumulativeOption(
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'line' },
-      valueFormatter: (v: unknown) => (typeof v === 'number' ? fmtSigned(v) : '-'),
+      // Un joueur masqué (série vidée) n'a pas de ligne ; la courbe la plus haute vient en premier.
+      formatter: axisTooltipFormatter({ value: (r) => fmtSigned(r.value), order: 'value-desc' }),
     },
     // Légende en bas (getLegendBase) et CENTRÉE, explicitement (spec S2 du plan).
     legend: { ...getLegendBase(tc), left: 'center', data: players },

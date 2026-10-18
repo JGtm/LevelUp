@@ -109,8 +109,8 @@ type SyncEngine struct {
 	// replayArtifacts (lot 6 v7.5) — fil de l'eau des artefacts de rejeu 2D : après
 	// l étape 1.57, les matchs insérés (fenêtre replay_retention_months) voient leur
 	// film persisté au cache disque (filmcache.Write) puis leur artefact construit
-	// (replaybuild). Nil = étape absente — le wiring ne l'installe qu'en LOCAL : « le
-	// VPS web ne décode JAMAIS » (cf. WithReplayArtifacts).
+	// (replaybuild), ou mis en file pour l'ouvrier. Nil = étape absente (le wiring
+	// l'installe toujours ; le lieu de construction se décide par cycle, cf. WithReplayArtifacts).
 	replayArtifacts *replayartifacts.Hook
 	// killSource (2026-08-29) — fil de l'eau de la source du kill (étape 1.57). Installé
 	// PAR DÉFAUT dans le constructeur, pas au wiring : cf. killcollector/postsync.go.

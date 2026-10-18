@@ -37,8 +37,10 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/sync/debrief"
 	"levelup/go-api/internal/sync/matchflags"
 )
 
@@ -106,6 +108,9 @@ func marquerFilmParOutcome(outcome KillSourceOutcome, morts int) (bit int, aMarq
 // deja en base) mais il se journalise — un marqueur manquant se traduit par un match
 // redemande au cycle suivant, jamais par une perte de donnee.
 func (c *KillSourceCollector) marquerFilm(ctx context.Context, matchID string, outcome KillSourceOutcome, morts int) {
+	// Le délai du débrief lit ICI l'instant où la passe film d'un match est écrite : c'est le seul
+	// point que traversent les deux boucles (série et ouvriers) avec l'issue d'un film.
+	signalerPasseFilm(ctx, matchID, outcome)
 	bit, aMarquer := marquerFilmParOutcome(outcome, morts)
 	sansKill := luSansKill(outcome)
 	if (!aMarquer && !sansKill) || c.acquireShared == nil {
@@ -137,4 +142,16 @@ func (c *KillSourceCollector) marquerFilm(ctx context.Context, matchID string, o
 // kill. [OutcomeSansKillFeedARelire] (film non finalise, temps forts non servis) n affirme rien.
 func luSansKill(o KillSourceOutcome) bool {
 	return o == OutcomeNoKillFeed
+}
+
+// signalerPasseFilm capte, pour le délai du débrief, l'écriture de la passe film d'un match :
+// morts écrites, ou film lu EN ENTIER sans kill-feed (rien à écrire, mais l'étape est faite).
+func signalerPasseFilm(ctx context.Context, matchID string, outcome KillSourceOutcome) {
+	switch outcome {
+	case OutcomeWritten:
+		debrief.ReportKillSource(ctxkeys.TitleSlug(ctx), matchID, "")
+	// OutcomeSansKillFeedARelire n'écrit rien et sera relu : son instant n'est pas celui de l'étape.
+	case OutcomeNoKillFeed:
+		debrief.ReportKillSource(ctxkeys.TitleSlug(ctx), matchID, "sans_killfeed")
+	}
 }

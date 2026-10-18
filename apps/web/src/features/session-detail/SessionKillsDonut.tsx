@@ -67,12 +67,12 @@ export function SessionKillsDonut({ title, matches, kda, height = 260, compact }
     [labels.assists]: 'stat-assists',
   }
 
-  if (total === 0) return null
-
+  // Aucun frag, mort ni assistance : la carte garde son titre et dit « Aucune donnée » (ChartCard), elle ne
+  // disparaît pas. Une série VIDE (et non un donut sans tranche) déclenche l'état vide.
   return (
     <DonutChart
       title={title}
-      series={series}
+      series={total === 0 ? [] : series}
       sliceColors={sliceColors}
       height={height}
       compact={compact}

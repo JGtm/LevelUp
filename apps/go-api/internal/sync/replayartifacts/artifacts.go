@@ -33,10 +33,9 @@
 //     data/cache/replays/{title}/{short8}.json. Le décodage est sérialisé par le verrou
 //     process filmdec (partagé avec killsource).
 //
-// CONDITIONNÉ LOCAL : l'étape n'existe que si le wiring installe le Hook, et le wiring ne
-// l'installe qu'en environnement non-production — « le VPS web ne décode JAMAIS » (le
-// garde de service replay_local_gate protège la lecture ; ce gate-ci protège le CPU du
-// VPS). Best-effort : aucun échec ne casse le pipeline post-sync.
+// LE LIEU DE CONSTRUCTION SE DÉCIDE PAR CYCLE ([Hook.Placement]) : construction locale (1 et 2
+// ci-dessus), mise en file pour un ouvrier, ou rien. « Local » est refusé en production — le VPS
+// web ne décode JAMAIS, il met en file. Best-effort : aucun échec ne casse le pipeline post-sync.
 package replayartifacts
 
 import (
@@ -64,9 +63,9 @@ import (
 const maxPerCycle = 5
 
 // EnqueueFunc met la construction du rejeu d'un match dans la FILE DURABLE (le
-// travail part alors à un ouvrier, éventuellement sur une autre machine).
-// Implémentée par wire.ServiceRegistry.EnqueueReplayBuild.
-type EnqueueFunc func(ctx context.Context, titleSlug, matchID string) error
+// travail part alors à un ouvrier, éventuellement sur une autre machine), à la priorité donnée
+// (domain.BuildPriority*). Implémentée par wire.ServiceRegistry.EnqueueReplayBuildJob.
+type EnqueueFunc func(ctx context.Context, titleSlug, matchID string, priority int) error
 
 // Hook : réglage du fil de l'eau replay, injecté au wiring.
 //
@@ -233,6 +232,8 @@ type buildWork struct {
 	matchID  string
 	mapNames []string
 	facts    port.MatchFacts
+	// priorite : rang dans la file de l'ouvrier (domain.BuildPriority*), posé par la sélection.
+	priorite int
 }
 
 // attachMatchFacts lit, DANS LE MÊME SEGMENT DE LECTURE que la sélection, ce que la base sait
@@ -404,12 +405,28 @@ func selectionnerLeTravail(ctx context.Context, d Deps, insertedIDs []string) (w
 		}
 		// Le retard est TOUJOURS mesuré, même quand le lot est déjà plein : une jauge qu'on
 		// ne rafraîchit que les bons jours ne décrit plus rien.
-		rattrapage, restant := candidatsARattraper(ctx, sharedDB, d.MetaDB, d, deja, maxPerCycle-len(work))
+		rattrapage, restant := candidatsARattraper(ctx, sharedDB, d.MetaDB, d, deja, placeDuRattrapage(d, len(work)))
+		prioriserLeRattrapage(ctx, sharedDB, rattrapage, time.Now())
 		work = append(work, rattrapage...)
 		retard = restant
 		attachMatchFacts(ctx, sharedDB, work)
 	})
 	return work, retard
+}
+
+// placeDuRattrapage rend la place laissée au rattrapage dans le lot du cycle.
+//
+// EN CONSTRUCTION LOCALE, AUCUNE QUAND LE CYCLE A INSÉRÉ DES MATCHS À CUIRE : les dérivations ne
+// partent qu'après TOUTE la cuisson du lot (cf. [cuireLeCycle]) et les citations après l'étape,
+// donc chaque vieux film cuit à la suite retarderait le débrief du match qui vient de finir. Le
+// rattrapage reprend aux cycles sans insertion. En placement ouvrier, mettre en file ne coûte
+// qu'une résolution de manifeste et la file sert le match frais d'abord (domain.BuildPriority*) :
+// le lot garde sa place.
+func placeDuRattrapage(d Deps, inseres int) int {
+	if d.Placement == replaybuild.PlacementLocal && inseres > 0 {
+		return 0
+	}
+	return maxPerCycle - inseres
 }
 
 // armee dit si l'étape peut travailler, et DIT POURQUOI quand elle ne le peut pas.

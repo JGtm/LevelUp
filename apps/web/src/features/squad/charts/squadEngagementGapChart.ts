@@ -19,6 +19,8 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { truncateMap } from '@/lib/charts/matchLabels'
 import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
 import { engagementGapEvents } from '@/lib/charts/engagementGap'
@@ -62,7 +64,7 @@ export function buildSquadEngagementGapOption(
     const m = mapNames[i]
     return m ? `#${i + 1}\n${truncateMap(m)}` : `#${i + 1}`
   })
-  const fmtSigned = (v: number) => (v >= 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
+  const fmtSigned = (v: number) => tipNumber(v, 0, true)
 
   const players = session.players
   const series = players.map((player, idx) => {
@@ -103,7 +105,8 @@ export function buildSquadEngagementGapOption(
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'line' },
-      valueFormatter: (v: unknown) => (typeof v === 'number' ? fmtSigned(v) : '-'),
+      // Courbes : la plus haute d'abord, comme sur le graphe ; le cumul est un nombre entier d'événements.
+      formatter: axisTooltipFormatter({ value: (r) => fmtSigned(r.value), order: 'value-desc' }),
     },
     legend: { ...getLegendBase(tc), data: players.map((p) => p.gamertag) },
     xAxis: {

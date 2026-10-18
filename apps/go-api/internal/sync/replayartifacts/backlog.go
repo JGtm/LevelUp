@@ -52,7 +52,9 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/matchflags"
 )
 
@@ -244,7 +246,7 @@ func selectBuildWork(
 			continue // hors fenêtre de rétention : le backfill CLI reste libre de le faire
 		}
 		out = append(out, buildWork{matchID: id, mapNames: nomsDeCarte(ctx, metaDB,
-			candidatARattraper{matchID: id, rawName: rawName.String, mapID: mapID.String})})
+			candidatARattraper{matchID: id, rawName: rawName.String, mapID: mapID.String}), priorite: domain.BuildPriorityInsere})
 	}
 	if err := rows.Err(); err != nil {
 		slog.WarnContext(ctx, "post-sync: sélection rejeu (rows)", "err", err)
@@ -266,4 +268,51 @@ func resolveMapNameEN(ctx context.Context, metaDB *sql.DB, mapID string) string 
 		return ""
 	}
 	return strings.TrimSpace(en)
+}
+
+// prioriserLeRattrapage relève à domain.BuildPriorityRecent les matchs du rattrapage synchronisés
+// depuis moins de analysis.AnalysisPendingWindow : ceux que l'indicateur « Analyse en cours »
+// montre au joueur (film publié après le premier cycle, coéquipier suivi dont le cycle n'a pas
+// inséré le match). Les autres restent à domain.BuildPriorityRattrapage.
+//
+// Une requête courte sur les seuls matchs retenus, dans le segment de lecture de la sélection ;
+// en échec, le rattrapage garde sa priorité de base (journalisé) — jamais le cycle.
+func prioriserLeRattrapage(ctx context.Context, sharedDB *sql.DB, rattrapage []buildWork, now time.Time) {
+	if sharedDB == nil || len(rattrapage) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(rattrapage))
+	for _, w := range rattrapage {
+		ids = append(ids, w.matchID)
+	}
+	// L'âge se juge en Go, comme la règle de l'indicateur (analysis.AnalysisPendingParts) : une
+	// seule définition de « récent », pas une seconde borne SQL.
+	rows, err := sharedDB.QueryContext(ctx, `SELECT match_id, first_sync_at FROM match_registry
+		WHERE first_sync_at IS NOT NULL AND match_id IN (`+duckdbpkg.Placeholders(len(ids))+`)`,
+		duckdbpkg.ToAnySlice(ids)...)
+	if err != nil {
+		slog.WarnContext(ctx, "post-sync: rejeu 2D — âge de synchro du rattrapage illisible, priorité de base gardée",
+			"err", err)
+		return
+	}
+	defer func() { _ = rows.Close() }()
+	recents := map[string]bool{}
+	for rows.Next() {
+		var id string
+		var synchro time.Time
+		if err := rows.Scan(&id, &synchro); err != nil {
+			slog.WarnContext(ctx, "post-sync: rejeu 2D — âge de synchro du rattrapage (scan)", "err", err)
+			return
+		}
+		recents[id] = now.Sub(synchro) < analysis.AnalysisPendingWindow
+	}
+	if err := rows.Err(); err != nil {
+		slog.WarnContext(ctx, "post-sync: rejeu 2D — âge de synchro du rattrapage (rows)", "err", err)
+		return
+	}
+	for i := range rattrapage {
+		if recents[rattrapage[i].matchID] {
+			rattrapage[i].priorite = domain.BuildPriorityRecent
+		}
+	}
 }

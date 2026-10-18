@@ -15,7 +15,8 @@
 import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { fragClassColor } from '@/lib/accessibility/scales'
 import type { SynthesisWeaponAccuracyEntry, SynthesisWeaponKillEntry } from '@/lib/api/types'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
@@ -49,13 +50,15 @@ interface AccuracyPoint {
   classKey?: string
 }
 
-function buildWeaponAccuracyOption(
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildWeaponAccuracyOption(
   series: ChartSeries<AccuracyPoint>[],
   locale: ManifestLocale,
   hoveredClass?: string | null,
 ): EChartsCoreOption {
   const tc = getEChartsThemeColors()
   const numLoc = intlLocale(locale)
+  const shotsUnit = formatMessage(synthesisManifest, 'synthesis.charts.weapon_accuracy_shots_unit', locale)
   // L'axe catégoriel ECharts empile de bas en haut → reverse pour afficher la meilleure
   // précision EN HAUT (les datapoints arrivent triés desc côté Go).
   const data = [...(series[0]?.datapoints ?? [])].reverse()
@@ -68,16 +71,14 @@ function buildWeaponAccuracyOption(
     animation: false,
     grid: { top: 8, bottom: 8, left: 8, right: 64, containLabel: true },
     tooltip: {
-      backgroundColor: tc.tooltipBg,
-      borderColor: tc.tooltipBorder,
-      textStyle: { color: tc.text, fontSize: 11 },
+      ...getTooltipBase(tc),
       trigger: 'item',
       formatter: ((p: { name?: string; value?: number; data?: { shotsFired?: number; shotsLanded?: number; className?: string } }) => {
         const v = typeof p.value === 'number' ? p.value : 0
         const d = p.data ?? {}
-        const shots = `<br/>${(d.shotsLanded ?? 0).toLocaleString(numLoc)} / ${(d.shotsFired ?? 0).toLocaleString(numLoc)} tirs`
+        const shots = `<br/>${(d.shotsLanded ?? 0).toLocaleString(numLoc)} / ${(d.shotsFired ?? 0).toLocaleString(numLoc)} ${escapeHtml(shotsUnit)}`
         const cls = d.className ? `<br/><span style="opacity:0.7">${escapeHtml(d.className)}</span>` : ''
-        return `${escapeHtml(p.name ?? '')}<br/><b>${v.toFixed(1)} %</b>${shots}${cls}`
+        return `${escapeHtml(p.name ?? '')}<br/><b>${tipNumber(v, 1)} %</b>${shots}${cls}`
       }) as unknown as string,
     },
     xAxis: { type: 'value', show: false, max: 100 },
@@ -105,7 +106,7 @@ function buildWeaponAccuracyOption(
         position: 'right',
         color: tc.axisLabel,
         fontSize: 11,
-        formatter: (p: { value: number }) => `${p.value.toFixed(1)} %`,
+        formatter: (p: { value: number }) => `${tipNumber(p.value, 1)} %`,
       },
     }],
   }

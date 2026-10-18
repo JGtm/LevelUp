@@ -1060,6 +1060,8 @@ func main() {
 	// la surveillance disque — la boucle ne fait que des lectures shared courtes, drainées
 	// avant duckdb.CloseAll.
 	boot.launch(loopTask(taskReplayNotify, true, schedulerCtx, reg.RunReplayNotifyLoop))
+	// Citations du film recalculées dès la livraison d'un rejeu (délai du débrief).
+	boot.launch(citationsRelanceTask(schedulerCtx, reg.NewCitationsRelance()))
 
 	// Cron catalogue (hebdomadaire) : rafraîchit le catalogue (playlists / couples
 	// map-mode / maps / modes) via le drain DiscoveryUGC testé (même chemin que l'action

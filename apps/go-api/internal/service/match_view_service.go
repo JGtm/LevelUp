@@ -191,8 +191,9 @@ type MatchViewService struct {
 	// l'issue du match (outcomes.toml, localisé) posé sur l'en-tête. Injecté via
 	// WithSemantic. Nil → repli FR documenté (outcome_label.go), le comportement
 	// d'avant le 2026-09-07.
-	semantic games.TitleSemanticAdapter
-	emprise  matchViewEmpriseDeps // blocs de l'Emprise (match_view_emprise.go)
+	semantic        games.TitleSemanticAdapter
+	emprise         matchViewEmpriseDeps     // blocs de l'Emprise (match_view_emprise.go)
+	analysisPending *AnalysisPendingResolver // signal analysis_pending de l'en-tête (analysis_pending.go)
 }
 
 // NewMatchViewService crée un MatchViewService.

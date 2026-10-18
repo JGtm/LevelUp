@@ -78,8 +78,13 @@ describe('MatchFragCard — anneau et outils de destruction', () => {
     expect(container.firstElementChild?.className).not.toContain('grid-cols-2')
   })
 
-  it('aucune des deux : rien', () => {
-    const { container } = render(<MatchFragCard distribution={{ total_kills: 0, classes: [] }} tools={{ players: [], lines: [] }} locale="fr" />)
-    expect(container).toBeEmptyDOMElement()
+  it('aucune des deux : la carte de répartition reste, titre gardé, avec le constat dans son cadre', () => {
+    render(<MatchFragCard distribution={{ total_kills: 0, classes: [] }} tools={{ players: [], lines: [] }} locale="fr" />)
+    // L'anneau (mocké ici) porte lui-même le constat « Aucun frag sur ce périmètre » : la carte lui reste montée.
+    const carte = screen.getByTestId('match-frag-donut')
+    expect(carte).toHaveTextContent('Répartition des frags')
+    expect(within(carte).getByTestId('sunburst')).toBeInTheDocument()
+    expect(recu.anneau?.distribution).toEqual({ total_kills: 0, classes: [] })
+    expect(screen.queryByTestId('outils')).toBeNull()
   })
 })

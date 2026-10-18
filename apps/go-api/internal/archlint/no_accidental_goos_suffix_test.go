@@ -49,6 +49,8 @@ var goosArchSuffixes = []string{
 // d'exploitation, ou type de donnee propre a une architecture) — pas un fichier metier dont le
 // nom tombe par hasard sur un suffixe.
 var goosSuffixAllowed = map[string]string{
+	"internal/filmproc/alive_windows.go": "vie d'un processus : OpenProcess/GetExitCodeProcess (Win32), " +
+		"ajoute le 2026-10-17 (lecture du detenteur du verrou de decodage)",
 	"internal/filmproc/priority_windows.go":          "priorite de processus : SetPriorityClass (Win32)",
 	"internal/filmproc/selfpriority_windows.go":      "priorite du processus courant : Win32",
 	"internal/himodule/projection_windows.go":        "projection memoire d'un module : CreateFileMapping (Win32)",

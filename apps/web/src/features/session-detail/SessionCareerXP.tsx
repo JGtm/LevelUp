@@ -31,6 +31,7 @@ import {
   getTooltipBase,
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
+import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
 import { buildCareerXpSeries } from '@/lib/charts/careerXpSeries'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
@@ -120,6 +121,7 @@ interface Props {
 
 export function SessionCareerXP({ title, matches, height = 280 }: Props) {
   const t = useSessionT()
+  const careerXpSupported = useDataCapability('analytics.career_xp_estimate')
 
   const series = useMemo<ChartSeries<CareerXpPoint>[]>(() => {
     const sorted = [...matches].sort((a, b) => a.start_time.localeCompare(b.start_time))
@@ -137,9 +139,9 @@ export function SessionCareerXP({ title, matches, height = 280 }: Props) {
     ]
   }, [matches])
 
-  // Sans estimation sur la session (titre sans capability / que du Firefight) :
-  // masquage silencieux, comme Timeseries (pas de carte vide).
-  if (series.length === 0) return null
+  // Sans estimation sur la session : titre sans la capability analytics.career_xp_estimate → carte absente ;
+  // titre qui l'a (session de Firefight seul) → la carte reste, titre gardé, état vide du graphe.
+  if (series.length === 0 && !careerXpSupported) return null
 
   return (
     <ChartCard

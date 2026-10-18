@@ -14,7 +14,7 @@
  */
 import type React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 
 import type { CelluleTactique, TacticalCelluleReponse, TacticalRaster } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -27,6 +27,7 @@ import { peindreLePlan } from './planPaint'
 import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
 import { TacticalZoneCard } from './TacticalZoneCard'
 import { peindreLaCouche } from './tueursPaint'
+import type { LectureDeSequence } from './useLectureDeSequence'
 import type { VueDeMort } from './vueDeMort'
 
 vi.mock('./planPaint', () => ({ peindreLePlan: vi.fn() }))
@@ -133,6 +134,33 @@ function rendrePlan(v: VueDeMort | null, contributions = [MORT_COMPLETE, FRAG]) 
       vue={v}
     />,
   )
+}
+
+/** Une lecture factice : la tête se pose à la main (`poser`), les abonnés sont prévenus. */
+function lectureFactice(depart: number, etat: LectureDeSequence['etat'] = 'lecture') {
+  let valeur = depart
+  const abonnes = new Set<() => void>()
+  const lecture: LectureDeSequence = {
+    horloge: {
+      lire: () => valeur,
+      abonner: (rappel) => {
+        abonnes.add(rappel)
+        return () => abonnes.delete(rappel)
+      },
+    },
+    etat,
+    rejouer: vi.fn(),
+    basculer: vi.fn(),
+    allerA: vi.fn(),
+    suspendre: vi.fn(),
+  }
+  return {
+    lecture,
+    poser: (v: number) => {
+      valeur = v
+      act(() => abonnes.forEach((rappel) => rappel()))
+    },
+  }
 }
 
 function derniereScene() {
@@ -324,6 +352,38 @@ describe('vue D — la séquence', () => {
     const seq = { ...SEQUENCE, etapes: SEQUENCE.etapes!.map((e, i) => (i === 0 ? { ...e, instant_affiche_ms: 0 } : e)) }
     rendreZone({ vue: vue({ sequence: seq, etape: 0 }) })
     expect(screen.getByTestId('tactical-etape-fiche')).toHaveTextContent('À 0:00')
+  })
+
+  it('la toile suit la tête de lecture : la scène de l’instant, repeinte à chaque tick, sans toucher au reste', () => {
+    const { lecture, poser } = lectureFactice(-3900)
+    rendrePlan(vue({ sequence: SEQUENCE, etape: 0, lecture }))
+    expect(derniereScene()?.marques.find((m) => m.role === 'mort')?.pt).toEqual({ x: 0.25, y: 10 })
+    poser(500)
+    expect(derniereScene()?.marques.find((m) => m.role === 'mort')?.pt).toEqual({ x: 10, y: 10 })
+    expect(derniereScene()?.marques.find((m) => m.role === 'coequipier')?.plein).toBe(true)
+    expect(derniereScene()?.traines.length).toBeGreaterThan(0)
+  })
+
+  it('« Instantané » (étape nulle) : la toile ne suit plus la tête, elle peint l’instantané de la mort', () => {
+    const { lecture, poser } = lectureFactice(-3900)
+    rendrePlan(vue({ sequence: SEQUENCE, etape: null, lecture }))
+    expect(derniereScene()?.traines).toEqual([])
+    const avant = vi.mocked(peindreLaScene).mock.calls.length
+    poser(500)
+    expect(vi.mocked(peindreLaScene).mock.calls.length).toBe(avant)
+  })
+
+  it('le bouton de lecture : « Pause » en lecture, « Reprendre » en pause, « Rejouer » à la fin', () => {
+    const cas = [['lecture', 'Pause'], ['pause', 'Reprendre'], ['fin', 'Rejouer']] as const
+    for (const [etat, libelle] of cas) {
+      const { lecture } = lectureFactice(0, etat)
+      const { unmount } = rendrePlan(vue({ sequence: SEQUENCE, etape: 4, lecture }))
+      const bouton = screen.getByTestId('tactical-sequence-lecture')
+      expect(bouton).toHaveTextContent(libelle)
+      fireEvent.click(bouton)
+      expect(lecture.basculer).toHaveBeenCalledTimes(1)
+      unmount()
+    }
   })
 })
 

@@ -15,10 +15,10 @@ import {
   phraseDeLaRose,
   resumeDeLEquipe,
   sceneDeMort,
-  sceneDeSequence,
   sceneDeZone,
 } from './mort.logic'
 import { BILAN, FRAG, MORT_COMPLETE, SEQUENCE } from './mort.fixtures'
+import { sceneDeSequence } from './sequenceLecture.logic'
 import { sceneDeLaVue, sequenceDemandee } from './vueDeMort'
 
 const t = getTacticalText('fr')
@@ -138,9 +138,11 @@ describe('étapes et requête', () => {
     expect(libelleDeDecalage(-1500, 'en')).toBe('−1.5 s')
   })
 
-  it('la séquence n’est demandée que pour une mort dont le rejeu est servi', () => {
+  it('la séquence est demandée pour toute mort dont la victime est nommée, rejeu construit ou non', () => {
     expect(sequenceDemandee(MORT_COMPLETE)).toEqual({ match_id: 'm1', victim_xuid: '111', time_ms: 462_000 })
-    expect(sequenceDemandee({ ...MORT_COMPLETE, replay_available: false })).toBeNull()
+    // Seul le serveur sait dire pourquoi une séquence manque : la liste n'écarte rien.
+    expect(sequenceDemandee({ ...MORT_COMPLETE, replay_available: false })).toEqual({ match_id: 'm1', victim_xuid: '111', time_ms: 462_000 })
+    expect(sequenceDemandee({ ...MORT_COMPLETE, xuid: '' })).toBeNull()
     expect(sequenceDemandee(FRAG)).toBeNull()
     expect(sequenceDemandee(undefined)).toBeNull()
   })
@@ -155,6 +157,17 @@ describe('les mots de la lecture des coéquipiers', () => {
     expect(textes.length).toBeGreaterThan(40)
     for (const texte of textes) {
       expect(texte).not.toMatch(/non mesur|\bheure\b|\b(ma|mes|mon|moi|notre)\b/i)
+    }
+  })
+
+  it('les états vides de la séquence sont des constats : aucune action de l’utilisateur, aucun vocabulaire interne', async () => {
+    const { tacticalManifest } = await import('@/lib/i18n/generated/tactical')
+    const textes = Object.entries(tacticalManifest as Record<string, { fr: string; en: string }>)
+      .filter(([cle]) => /^tactical\.mort\.seq_(missing_|only_deaths_|pending|loading)/.test(cle))
+      .flatMap(([, v]) => [v.fr, v.en])
+    expect(textes.length).toBeGreaterThanOrEqual(18)
+    for (const texte of textes) {
+      expect(texte).not.toMatch(/r[ée]analys|re-?analys|analyse[a-z ]* again|cuisson|re-?cuir|bake|artefact|artifact|reconstru|rebuild|relanc|\bretry\b|\bà (refaire|lancer)\b/i)
     }
   })
 })

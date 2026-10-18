@@ -23,14 +23,15 @@
  * d'accessibilité — d'où `aria-hidden` ici.
  *
  * LES GLYPHES REPRENNENT CEUX DE LA CARTE, forme pour forme : hampe + fanion pour le drapeau,
- * boule à deux orbites pour le crâne (cf. `skullGlyph.ts`), couronne pour le VIP. Ils sont
- * RÉÉCRITS en SVG et non partagés parce que les calques de la carte tracent sur un canvas
- * impératif : aucune géométrie n'y est exposée sous une forme que le DOM saurait lire. Deux
- * écritures d'une même forme, donc — la limite de la règle « ≤ 2 copies », à ne pas franchir
- * sans publier un chemin SVG commun.
+ * boule à deux orbites pour le crâne (cf. `skullGlyph.ts`), couronne pour le VIP. La couronne
+ * est PARTAGÉE avec la carte (`layers/crownGlyph.ts`, qui publie son chemin SVG) ; les autres
+ * sont RÉÉCRITES en SVG parce que leurs calques tracent sur un canvas impératif sans exposer de
+ * géométrie. Deux écritures d'une même forme, donc — la limite de la règle « ≤ 2 copies », à ne
+ * pas franchir sans publier un chemin SVG commun, comme la couronne.
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
+import { CROWN_SVG_PATH } from '../layers/crownGlyph'
 import type { ObjectiveMarkKind } from '../model/objectiveMark'
 
 /**
@@ -57,8 +58,8 @@ const GLYPH_PATHS: Record<ObjectiveMarkKind, string> = {
   flag: 'M4 15.2V1.6a.8.8 0 0 1 1.6 0v13.6a.8.8 0 0 1-1.6 0Z M5.6 2.4h7.6l-1.9 2.9 1.9 2.9H5.6Z',
   // Boule + deux orbites creusées — la forme canonique du crâne (cf. skullGlyph.ts).
   skull: 'M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Z M5.7 6.2a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2Z M10.3 6.2a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2Z',
-  // Couronne — le même dessin que la couronne de la carte (cf. vipCrownLayer).
-  vip: 'M1.8 4.9 4.6 7.3 8 2.6l3.4 4.7 2.8-2.4L12.9 12.6H3.1Z',
+  // Couronne — le chemin de la couronne de la carte, publié par crownGlyph.ts.
+  vip: CROWN_SVG_PATH,
   // Colline : un mamelon posé sur son socle, distinct de la couronne à petite taille.
   hill: 'M1.4 12.6 6.4 3.9a1.8 1.8 0 0 1 3.2 0l5 8.7Z',
   // Base : hexagone évidé, la forme des zones du calque d'objectifs.
@@ -67,6 +68,13 @@ const GLYPH_PATHS: Record<ObjectiveMarkKind, string> = {
   // du crâne à cette taille — c'est elle, pas le corps, qui porte l'identification.
   bomb: 'M7.4 5.9a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2Z M6.3 4.3h2.2v1.6H6.3Z M8.5 4.9c1.4-.6 2.5-1.5 2.9-2.9l1.5.5c-.6 2-2 3.2-3.7 3.9Z',
 }
+
+/**
+ * Les glyphes faits de pièces qui se CHEVAUCHENT (les perles de la couronne sur ses pointes) :
+ * `evenodd` y creuserait les recouvrements. Ils se remplissent en `nonzero`, toutes leurs pièces
+ * tracées dans le même sens.
+ */
+const NONZERO_KINDS: ReadonlySet<ObjectiveMarkKind> = new Set(['vip'])
 
 /**
  * ReplayObjectiveMark — le filigrane, aligné à droite de la tuile et débordant légèrement :
@@ -94,7 +102,7 @@ export function ReplayObjectiveMark({
       style={{ color: tokenCssVar('extreme'), opacity: WATERMARK_OPACITY }}
     >
       <svg width={sizePx} height={sizePx} viewBox="0 0 16 16" fill="currentColor">
-        <path d={GLYPH_PATHS[kind]} fillRule="evenodd" />
+        <path d={GLYPH_PATHS[kind]} fillRule={NONZERO_KINDS.has(kind) ? 'nonzero' : 'evenodd'} />
       </svg>
     </span>
   )

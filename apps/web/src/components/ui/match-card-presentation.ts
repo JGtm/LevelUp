@@ -1,6 +1,8 @@
 import { outcomeScale, narrativeScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { Locale } from '@/lib/i18n/locale'
+import type { CommonManifestKey } from '@/lib/i18n/generated/common'
+import type { AnalysisPendingCarrier, AnalysisPendingPart } from '@/lib/analysis-pending/analysisPending.logic'
 
 export interface MatchCardOutcomeStyle {
   scoreColor: string
@@ -91,4 +93,51 @@ export function getMatchNarrativeBadgeMeta(
     color:     tokenCssVar(token),
     textColor: tokenCssVar(`${token}-text` as Parameters<typeof tokenCssVar>[0]),
   }
+}
+
+/** Éléments de l'indicateur d'analyse d'une tuile dont le libellé dépend de l'état. */
+export type AnalysisPendingLabel = 'badge' | 'tooltip_title' | 'assisted_frags' | 'citations' | 'replay'
+
+const ANALYSIS_PENDING_LABEL_KEYS: Record<AnalysisPendingLabel, { inProgress: CommonManifestKey; queued: CommonManifestKey }> = {
+  badge: {
+    inProgress: 'common.match_card.analysis_pending.badge',
+    queued: 'common.match_card.analysis_pending.badge_queued',
+  },
+  tooltip_title: {
+    inProgress: 'common.match_card.analysis_pending.tooltip_title',
+    queued: 'common.match_card.analysis_pending.tooltip_title_queued',
+  },
+  assisted_frags: {
+    inProgress: 'common.match_card.analysis_pending.assisted_frags',
+    queued: 'common.match_card.analysis_pending.assisted_frags_queued',
+  },
+  citations: {
+    inProgress: 'common.match_card.analysis_pending.citations',
+    queued: 'common.match_card.analysis_pending.citations_queued',
+  },
+  replay: {
+    inProgress: 'common.match_card.analysis_pending.replay',
+    queued: 'common.match_card.analysis_pending.replay_queued',
+  },
+}
+
+/** Clé du manifeste d'un libellé de l'indicateur : « en cours » seulement si `inProgress`. */
+export function analysisPendingLabelKey(label: AnalysisPendingLabel, inProgress: boolean): CommonManifestKey {
+  const keys = ANALYSIS_PENDING_LABEL_KEYS[label]
+  return inProgress ? keys.inProgress : keys.queued
+}
+
+const ANALYSIS_PENDING_PART_KEYS: Record<AnalysisPendingPart, CommonManifestKey> = {
+  kill_source: 'common.match_card.analysis_pending.part_kill_source',
+  citations: 'common.match_card.analysis_pending.part_citations',
+  replay: 'common.match_card.analysis_pending.part_replay',
+}
+
+/** Clés (noms courts) des SEULES parties en attente de la tuile, dans l'ordre servi ; causes inconnues ignorées. */
+export function analysisPendingPartKeys(item: AnalysisPendingCarrier | null | undefined): CommonManifestKey[] {
+  const keys: CommonManifestKey[] = []
+  for (const part of item?.analysis_pending_parts ?? []) {
+    if (part in ANALYSIS_PENDING_PART_KEYS) keys.push(ANALYSIS_PENDING_PART_KEYS[part as AnalysisPendingPart])
+  }
+  return keys
 }

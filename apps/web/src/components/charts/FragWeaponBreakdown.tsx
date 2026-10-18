@@ -22,7 +22,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
 import { ChartLegend, type ChartLegendItem } from './ChartLegend'
-import { CHART_BG, escapeHtml, getEChartsThemeColors } from './_utils'
+import { CHART_BG, escapeHtml, getEChartsThemeColors, getTooltipBase } from './_utils'
 
 /** Libellés injectés (builder pur, testable sans i18n). */
 export interface FragWeaponLabels {
@@ -66,9 +66,7 @@ export function buildFragWeaponBreakdownOption(
     animation: false,
     grid: { top: 8, bottom: 8, left: 8, right: 80, containLabel: true },
     tooltip: {
-      backgroundColor: tc.tooltipBg,
-      borderColor: tc.tooltipBorder,
-      textStyle: { color: tc.text, fontSize: 11 },
+      ...getTooltipBase(tc),
       trigger: 'item',
       formatter: ((p: { name?: string; value?: number; data?: { className?: string } }) => {
         const value = typeof p.value === 'number' ? p.value : 0

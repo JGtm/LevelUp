@@ -201,7 +201,7 @@ func TestRun_RattrapeSansAucuneInsertion(t *testing.T) {
 		RepoRoot:  repoRoot,
 		TitleSlug: titlePkg.DefaultSlug,
 		WithRead:  func(ctx context.Context, _ string, fn func(*sql.DB)) { fn(db) },
-		Enqueue: func(_ context.Context, _, matchID string) error {
+		Enqueue: func(_ context.Context, _, matchID string, _ int) error {
 			enfiles = append(enfiles, matchID)
 			return nil
 		},
@@ -236,7 +236,7 @@ func TestRun_LaJaugeDecroitSurDeuxCycles(t *testing.T) {
 		RepoRoot:  repoRoot,
 		TitleSlug: titlePkg.DefaultSlug,
 		WithRead:  func(ctx context.Context, _ string, fn func(*sql.DB)) { fn(db) },
-		Enqueue: func(_ context.Context, _, matchID string) error {
+		Enqueue: func(_ context.Context, _, matchID string, _ int) error {
 			poserArtefact(t, repoRoot, matchID) // l ouvrier a fait son travail
 			return nil
 		},
@@ -337,7 +337,7 @@ func TestCandidatsDerivations_ConvergeApresDerivation(t *testing.T) {
 	// La dérivation pose la marque (marquerDerivations, appelé par Deriver). Bilan VIERGE :
 	// aucune famille n'a échoué, donc la marque se pose — c'est la seule condition depuis le
 	// constat C1 de la revue A-R1.
-	marquerDerivations(context.Background(), &bilanDerivations{},
+	marquerDerivations(context.Background(), "halo_infinite", &bilanDerivations{},
 		lireArtefacts(context.Background(), d, work))
 
 	work2, restant, _ := candidatsDerivations(context.Background(), db, d)
@@ -451,7 +451,7 @@ func TestRun_SelectionDeCuissonVide_RattrapeQuandMeme(t *testing.T) {
 		AcquireWriter: func(context.Context) (*sql.DB, func(), error) {
 			return db, func() {}, nil
 		},
-		Enqueue: func(context.Context, string, string) error { enfiles++; return nil },
+		Enqueue: func(context.Context, string, string, int) error { enfiles++; return nil },
 	}
 
 	Run(context.Background(), d, nil)

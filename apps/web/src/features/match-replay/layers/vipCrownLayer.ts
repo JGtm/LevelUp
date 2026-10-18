@@ -12,10 +12,16 @@
  * `closed` faux = RIEN ne date la fin du port : l'intervalle court jusqu'à la fin de l'axe, une
  * BORNE HAUTE. La couronne est alors ATTÉNUÉE — l'incertitude est à l'écran, pas dans une note.
  *
+ * L'ENCRE EST CELLE DU CAMP DU VIP, vu du joueur regardé (allié / adverse), comme le drapeau :
+ * avec deux VIP à l'écran, la couleur dit lequel est à protéger et lequel est à abattre. Sans
+ * allégeance connue, le neutre du thème — jamais un camp supposé. L'encre est RÉSOLUE par
+ * l'appelant (règle color-tokens). Le glyphe pose un LISERÉ à l'encre du fond, à la même cote que
+ * le drapeau et le crâne, pour garder un bord franc sur un fond de carte chargé.
+ *
  * AUCUNE VIGNETTE DU JEU : le film ne porte pas le bit VIP (la voie est le statborg), il n'y a
- * donc ni tag ni image à deviner. Le glyphe est tracé au canvas — une petite couronne — à l'encre
- * résolue par l'appelant (règle color-tokens). Aucun texte : la couronne se pose SUR le joueur
- * déjà nommé par son marqueur.
+ * donc ni tag ni image à deviner. La forme est décrite dans `crownGlyph.ts`, partagée avec le
+ * filigrane de la fiche. Aucun texte : la couronne se pose SUR le joueur déjà nommé par son
+ * marqueur, AU-DESSUS de lui — elle le qualifie, elle ne le remplace pas.
  *
  * LE PORTEUR SE RELIT DANS SES TRAJECTOIRES (`posOf`), comme le drapeau : sans position, la
  * couronne ne se dessine pas — elle n'a pas de position propre (elle est TOUJOURS sur le joueur).
@@ -26,11 +32,14 @@ import { type CanvasView, projectTo } from '../model/replayView'
 import type { ReplayVipPeriod } from '../../../lib/replay/replayNormalize'
 import { carriedGlyphAlpha } from './carriedGlyphPulse'
 import { covers } from '../model/replaySpans'
+import { CROWN_BOTTOM, CROWN_BOX, traceCrown } from './crownGlyph'
 
-/** Style du calque : l'encre de la couronne est RÉSOLUE par l'appelant (règle color-tokens). */
+/** Style du calque : les encres sont RÉSOLUES par l'appelant (règle color-tokens). */
 export interface VipCrownStyle {
-  /** Encre de la couronne (token du thème déjà résolu par l'appelant). */
-  ink: string
+  /** Encre de la couronne d'un VIP : la couleur de son camp vu du joueur regardé, ou le neutre. */
+  inkOf: (xuid: string) => string
+  /** Encre du FOND, pour le liseré (celle du drapeau et du crâne). */
+  outline: string
   /** Mouvement réduit : la pulsation de la couronne « ouverte » devient une opacité constante. */
   reducedMotion: boolean
 }
@@ -47,16 +56,15 @@ export interface VipCrownInput {
   posOf: (xuid: string, frame: number) => XY | null
 }
 
-// Réglages du glyphe. La couronne se pose AU-DESSUS du marqueur du joueur, plus petite que lui :
-// elle le qualifie, elle ne le remplace pas.
-const CROWN_W = 12
-const CROWN_H = 8
-/** Décalage vertical au-dessus du point du joueur (le marqueur occupe le point lui-même). */
-const CROWN_OFFSET_Y = 12
-const CROWN_STROKE_WIDTH = 1.4
-/** Rayon de SURVOL potentiel, en pixels : exporté pour un futur survol, non consommé ici. */
-export const VIP_CROWN_HIT_RADIUS = 10
-
+/** Côté du glyphe, en pixels canvas : la largeur du crâne porté (r=7 + liseré). */
+export const CROWN_SIZE_PX = 18
+/**
+ * Hauteur du bas de la couronne au-dessus du point du joueur : le bas du crâne porté (centre à
+ * 12, rayon 7), pour que les objets portés tiennent la même place au-dessus du marqueur.
+ */
+const CROWN_FOOT_Y = 5
+/** Débord du liseré au-delà de la forme — MÊME COTE que le drapeau (`FLAG_OUTLINE_PAD`). */
+const CROWN_LISERE_PAD = 1.6
 
 /**
  * vipActiveAt rend les périodes qui COUVRENT l'image demandée — au plus une par VIP courant, mais
@@ -90,9 +98,9 @@ export function drawVipCrown(
   for (const p of vipActiveAt(periods, frame)) {
     const w = layer.posOf(p.xuid, frame)
     if (!w) continue
-    const at = projectTo(view, w)
-    drawCrownGlyph(ctx, at, {
-      ink: layer.style.ink,
+    drawCrownGlyph(ctx, projectTo(view, w), {
+      ink: layer.style.inkOf(p.xuid),
+      outline: layer.style.outline,
       alpha: carriedGlyphAlpha(p.closed, frame, layer.style.reducedMotion),
     })
   }
@@ -102,37 +110,30 @@ export function drawVipCrown(
 /** Ce que le tracé d'un glyphe a besoin de savoir. */
 interface CrownGlyphPaint {
   ink: string
+  outline: string
   alpha: number
 }
 
 /**
- * drawCrownGlyph trace une petite COURONNE au-dessus du point servi : une base et trois pointes,
- * la centrale plus haute. Tracé au canvas, sans image (cf. l'en-tête du fichier).
+ * drawCrownGlyph trace la couronne AU-DESSUS du point servi : le liseré à l'encre du fond d'abord
+ * (trait centré, dont le remplissage recouvre la moitié intérieure), puis la forme à l'encre du camp.
  */
 export function drawCrownGlyph(
   ctx: CanvasRenderingContext2D,
   at: XY,
   paint: CrownGlyphPaint,
 ): void {
-  const cx = at.x
-  const baseY = at.y - CROWN_OFFSET_Y
-  const topY = baseY - CROWN_H
-  const midY = baseY - CROWN_H * 0.45
-  const hw = CROWN_W / 2
+  const scale = CROWN_SIZE_PX / CROWN_BOX
+  const origin: XY = {
+    x: at.x - CROWN_SIZE_PX / 2,
+    y: at.y - CROWN_FOOT_Y - CROWN_BOTTOM * scale,
+  }
   ctx.globalAlpha = paint.alpha
-  ctx.fillStyle = paint.ink
-  ctx.strokeStyle = paint.ink
-  ctx.lineWidth = CROWN_STROKE_WIDTH
+  traceCrown(ctx, origin, scale)
   ctx.lineJoin = 'round'
-  ctx.beginPath()
-  // Bord bas gauche -> pointe gauche -> creux -> pointe centrale -> creux -> pointe droite -> bas droit.
-  ctx.moveTo(cx - hw, baseY)
-  ctx.lineTo(cx - hw, midY)
-  ctx.lineTo(cx - hw * 0.45, baseY - CROWN_H * 0.7)
-  ctx.lineTo(cx, topY)
-  ctx.lineTo(cx + hw * 0.45, baseY - CROWN_H * 0.7)
-  ctx.lineTo(cx + hw, midY)
-  ctx.lineTo(cx + hw, baseY)
-  ctx.closePath()
+  ctx.lineWidth = 2 * CROWN_LISERE_PAD
+  ctx.strokeStyle = paint.outline
+  ctx.stroke()
+  ctx.fillStyle = paint.ink
   ctx.fill()
 }

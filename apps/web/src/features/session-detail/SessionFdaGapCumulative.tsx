@@ -36,6 +36,7 @@ import {
   hoverRevealSymbol,
   LEGEND_ITEM_WIDTH_LINE,
 } from '@/components/charts/_utils'
+import { tipNumberUpTo } from '@/components/charts/tipNumber'
 import { cumulativeFdaGap, type FdaGapCumPoint } from '@/lib/charts/cumulativeFdaGap'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -92,7 +93,7 @@ export function buildSessionFdaGapOption(
   const divergentColor = divergentZeroGradient(values)
   const expectedColor = resolveToken('chart-series-2')
   const fmt = (v: number | null, signed = false) =>
-    v == null ? '—' : signed && v >= 0 ? `+${v}` : `${v}`
+    v == null ? '—' : tipNumberUpTo(v, 1, signed)
 
   return {
     backgroundColor: CHART_BG,

@@ -34,10 +34,26 @@ describe('SquadImpactHistoryCard', () => {
     expect(screen.getByText('Other −1 roles (First down, Late starter, Kamikaze, Thief)')).toBeInTheDocument()
   })
 
-  it('rien sans soirée', () => {
+  it('historique absent : la carte reste, titre gardé, avec le constat (FR et EN)', () => {
+    const { unmount } = renderWithProviders(
+      <SquadImpactHistoryCard history={undefined} colorByPlayer={{}} inkOf={inkOf} locale="fr" />,
+    )
+    const card = screen.getByTestId('squad-impact-history')
+    expect(within(card).getByText('Points d’impact par soirée et par rôle')).toBeInTheDocument()
+    expect(card).toHaveTextContent('Aucun point d’impact sur ce périmètre')
+    expect(card).toHaveTextContent('Aucun rôle d’impact n’est attribué aux joueurs de l’escouade sur les soirées de ce périmètre.')
+    expect(within(card).getByTestId('chart-card-empty').querySelector('.border-dashed')).not.toBeNull()
+    unmount()
+    renderWithProviders(<SquadImpactHistoryCard history={null} colorByPlayer={{}} inkOf={inkOf} locale="en" />)
+    expect(screen.getByTestId('squad-impact-history')).toHaveTextContent('No impact point in this scope')
+  })
+
+  it('sans soirée : la carte reste, son titre gardé, avec l’état vide du graphe', () => {
     renderWithProviders(
       <SquadImpactHistoryCard history={{ ...impactHistory3, evenings: [] }} colorByPlayer={{}} inkOf={inkOf} locale="fr" />,
     )
-    expect(screen.queryByTestId('squad-impact-history')).toBeNull()
+    const card = screen.getByTestId('squad-impact-history')
+    expect(within(card).getByText('Points d’impact par soirée et par rôle')).toBeInTheDocument()
+    expect(within(card).getByTestId('chart-card-empty').querySelector('.border-dashed')).not.toBeNull()
   })
 })

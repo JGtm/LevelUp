@@ -6,6 +6,9 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { HomePageResponse, SeasonPassPageResponse } from '@/lib/api/types'
+import { homeRefetchInterval, homeStaleTime } from '@/lib/analysis-pending/analysisPending.logic'
+
+const HOME_STALE_MS = 5 * 60 * 1000
 
 export function useHomePage(playerSlug: string) {
   // Le titre courant scope la clé : au switch de titre, la clé change → refetch
@@ -19,13 +22,13 @@ export function useHomePage(playerSlug: string) {
     queryFn: ({ signal }) =>
       api.get<HomePageResponse>(`/players/${playerSlug}/pages/home`, undefined, { signal }),
     enabled: !!playerSlug,
-    staleTime: 5 * 60 * 1000,
+    staleTime: (query) => homeStaleTime(query.state.data, HOME_STALE_MS),
     // AXE E first-sync : tant que le joueur n'a AUCUN match synchronisé (première
     // synchro d'un titre fraîchement activé en cours), on poll toutes les 30 s pour
-    // basculer automatiquement vers l'accueil dès que les données arrivent. S'arrête
-    // (false) dès qu'au moins un match est présent → aucun poll pour un joueur établi.
-    refetchInterval: (query) =>
-      (query.state.data?.hero.kpis.total_matches ?? 0) <= 0 ? 30_000 : false,
+    // basculer automatiquement vers l'accueil dès que les données arrivent. Ensuite, 60 s
+    // tant qu'une tuile affichée a son analyse de film en cours (`analysis_pending`),
+    // puis plus aucun poll. Règle dans lib/analysis-pending/analysisPending.logic.ts.
+    refetchInterval: (query) => homeRefetchInterval(query.state.data),
   })
 }
 

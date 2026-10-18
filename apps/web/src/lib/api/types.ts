@@ -1048,6 +1048,16 @@ export interface RecentMatchItem {
   /** Un artefact de rejeu 2D existe pour ce match : la tuile porte le lien vers la page
    *  de rejeu (résolu côté back en un listing de dossier par requête, cf. Explorer). */
   has_replay?: boolean
+  /** Le match est synchronisé mais l'analyse de son film n'est pas finie (frags assistés,
+   *  citations ou rejeu 2D pas encore produits) : la tuile le dit au lieu d'afficher des trous.
+   *  Règle serveur `analysis.IsAnalysisPending` (synchro < 24 h). Absent = faux. */
+  analysis_pending?: boolean
+  /** Les causes de `analysis_pending` (`kill_source`, `citations`, `replay`, ordre stable) :
+   *  chaque emplacement en attente de la tuile regarde la sienne. Absent = aucune cause. */
+  analysis_pending_parts?: string[] | null
+  /** `in_progress` si un décodage de film porte sur CE match, `queued` sinon (`domain.AnalysisState*`).
+   *  Posé seulement quand `analysis_pending` est vrai ; « en cours » ne se dit que pour `in_progress`. */
+  analysis_state?: string | null
   /** Part des frags du joueur assistés par un coéquipier sur CE match, par tranche de
    *  part de dégâts (le sens « reçues » de la page Relations, sur un seul match). Absent
    *  quand le film du match ne porte pas l'assistance : la tuile n'affiche rien —
@@ -1589,6 +1599,10 @@ export interface SynthesisPageResponse {
   // pour ouvrir le rejeu à cet instant) — omis pour un titre sans positions par kill (Halo 5)
   // ou un scope sans frag mesuré. Cf. PLAN_RECORDS_DISTANCE_2026-09-20.md.
   weapon_records?: SynthesisWeaponRecords | null
+  // Pourquoi `weapon_records` manque quand le titre mesure des positions par kill et que le scope porte des
+  // frags : analyse du film en cours, ou aucun frag avec position lue. Absent quand le bloc est servi ou que la
+  // fonction n'existe pas pour le titre.
+  weapon_records_gap?: 'pending' | 'missing'
 }
 
 // Records de distance par arme : le bloc, une ligne, le frag du record, une arme écartée.
@@ -2772,6 +2786,12 @@ export type BuildQueueWorker = components['schemas']['BuildQueueWorker']
 
 /** Réponse GET /admin/monitoring/build-queue. */
 export type AdminBuildQueueResponse = components['schemas']['AdminBuildQueueResponse']
+
+/** Délai du débrief d'un match : instants de chaque étape depuis la fin du match. */
+export type MatchDelay = components['schemas']['MatchDelay']
+
+/** Une étape mesurée du chemin d'un match (domain.MatchStep). */
+export type MatchDelayStep = components['schemas']['MatchDelayStep']
 
 // NB : les types Watcher (WatcherStatusResponse, WatcherPlayerStatus) existent
 // déjà plus haut dans ce fichier (section watcher historique) — le dashboard

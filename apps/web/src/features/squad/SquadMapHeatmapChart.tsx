@@ -25,7 +25,8 @@ import { useMemo } from 'react'
 import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import { ChartLegend } from '@/components/charts/ChartLegend'
-import { escapeHtml } from '@/components/charts/_utils'
+import { tipRowHtml, tipTitleHtml } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import type { SquadMapHeatmap } from '@/lib/api/types'
 import {
@@ -78,6 +79,8 @@ export function SquadMapHeatmapChart({
   mapLabelOf,
   pieceLabels,
   noScoreLabel,
+  perfLabel,
+  matchesLabel,
   yAxisName,
 }: SquadMapHeatmapChartProps) {
   const points = useMemo(() => buildSquadMapHeatmapPoints(data, mapLabelOf), [data, mapLabelOf])
@@ -109,10 +112,14 @@ export function SquadMapHeatmapChart({
     () => (point: ChartPointHeatmap) => {
       const mapName = (point.detail?.mapName as string | undefined) ?? ''
       const n = (point.detail?.matchCount as number | undefined) ?? 0
-      const perf = point.value == null ? noScoreLabel : point.value.toFixed(1)
-      return `${escapeHtml(point.y)} — ${escapeHtml(mapName)}<br/>Perf: ${perf}<br/>N: ${n}`
+      const perf = point.value == null ? noScoreLabel : tipNumber(point.value, 1)
+      return (
+        tipTitleHtml(`${point.y} — ${mapName}`) +
+        tipRowHtml(perfLabel, '', perf) +
+        tipRowHtml(matchesLabel, '', tipNumber(n))
+      )
     },
-    [noScoreLabel],
+    [noScoreLabel, perfLabel, matchesLabel],
   )
 
   const axisTuning = useMemo(

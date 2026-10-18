@@ -23,6 +23,7 @@ import {
   getEChartsThemeColors,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { tipNumberUpTo } from '@/components/charts/tipNumber'
 import { cumulativeSigned, meanOfValid } from '@/lib/charts/cumulativeSeries'
 import { netLives } from '@/lib/charts/netLives'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
@@ -82,7 +83,7 @@ export function buildSessionNetLivesOption(
   const values = points.map((p) => p.cumulative)
   const divergentColor = divergentZeroGradient(values)
   const fmt = (v: number | null, signed = false) =>
-    v == null ? '—' : signed && v >= 0 ? `+${v}` : `${v}`
+    v == null ? '—' : tipNumberUpTo(v, 1, signed)
 
   return {
     backgroundColor: CHART_BG,

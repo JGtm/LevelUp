@@ -18,6 +18,7 @@
  * Pur : aucun React, aucune couleur, aucune chaîne de langue.
  */
 import { asDominance, type DominanceValue, type OutcomeValue } from '@/components/charts/outcomeSequence'
+import type { ScopeEmptyKind } from '@/components/ui/scope-empty-text'
 import type {
   SquadFormesBlock,
   SquadFormesMatch,
@@ -295,6 +296,26 @@ export function buildObjectiveSheets(block: SquadFormesBlock): ObjectiveSheets {
  */
 export function hasSquadObjective(block: SquadFormesBlock | null | undefined): boolean {
   return block != null && objectiveMatches(block).length > 0
+}
+
+/** La raison que le serveur pose sur le bloc quand la lecture du résumé d'usage a échoué (`SessionUsageLoadFailed`, Go). */
+const OBJECTIVE_LOAD_FAILED = 'load_failed'
+
+/**
+ * objectiveGap — le constat d'un bloc d'objectif AFFICHÉ faute de match à objectif, ou null quand le bloc
+ * ne s'affiche pas de cette façon (périmètre mesuré : les cartes elles-mêmes ; capability absente : bloc retiré).
+ *
+ *   - bloc présent, sans raison d'indisponibilité : `objective` (« aucun match à objectif », donnée absente) ;
+ *   - `load_failed` : `objectiveUnavailable` — une lecture en échec n'est pas « aucun match à objectif », elle
+ *     le dit à part ;
+ *   - toute autre raison (`unsupported` : fonction absente) ou bloc absent : null, le bloc se retire.
+ *
+ * Fonction absente = bloc absent ; données absentes ou lecture en échec = bloc affiché (`ScopeEmptyCard`).
+ */
+export function objectiveGap(block: SquadFormesBlock | null | undefined): ScopeEmptyKind | null {
+  if (block == null || hasSquadObjective(block)) return null
+  if (!block.unavailable_reason) return 'objective'
+  return block.unavailable_reason === OBJECTIVE_LOAD_FAILED ? 'objectiveUnavailable' : null
 }
 
 /**

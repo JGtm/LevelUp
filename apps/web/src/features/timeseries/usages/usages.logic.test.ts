@@ -15,6 +15,7 @@ import {
   buildLivesModel,
   buildMapGrid,
   buildMinePickups,
+  buildUsagesModels,
   timeseriesMatchIndex,
   usagesSections,
 } from './usages.logic'
@@ -184,7 +185,15 @@ describe('usagesSections — un seul prédicat pour la page et l’état vide', 
     expect(Object.values(usagesSections(page({}), true, nameOf)).some(Boolean)).toBe(false)
   })
 
-  it('objectif retiré sans match à objectif', () => {
-    expect(usagesSections(page({ formes_retenues: { ...solo, matches: [] } }), true, nameOf).objectif).toBe(false)
+  it('objectif : sans match à objectif, pas de bloc de cartes mais un constat (objectiveGap) ; lecture en échec : son propre constat ; capability absente : rien', () => {
+    const sansMatch = { ...solo, matches: [] }
+    expect(usagesSections(page({ formes_retenues: sansMatch }), true, nameOf).objectif).toBe(false)
+    expect(buildUsagesModels(page({ formes_retenues: sansMatch }), nameOf).objectiveGap).toBe('objective')
+    expect(buildUsagesModels(page({ formes_retenues: solo }), nameOf).objectiveGap).toBeNull()
+    expect(buildUsagesModels(page({}), nameOf).objectiveGap).toBeNull()
+    const failed = { ...sansMatch, available: false, unavailable_reason: 'load_failed' }
+    expect(buildUsagesModels(page({ formes_retenues: failed }), nameOf).objectiveGap).toBe('objectiveUnavailable')
+    const unsupported = { ...sansMatch, available: false, unavailable_reason: 'unsupported' }
+    expect(buildUsagesModels(page({ formes_retenues: unsupported }), nameOf).objectiveGap).toBeNull()
   })
 })

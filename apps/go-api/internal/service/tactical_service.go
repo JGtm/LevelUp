@@ -60,6 +60,9 @@ type TacticalService struct {
 	callouts port.TacticalCalloutsStore
 	// sequences lit les pistes de l artefact de rejeu (sequence d une mort). Nil = Sequence indisponible.
 	sequences port.TacticalSequenceStore
+	// analysisPending decide si l'absence d'un artefact de rejeu est une analyse EN COURS (sequence
+	// d une mort). Nil = jamais « en cours » : la sequence sans artefact est « film non analyse ».
+	analysisPending *AnalysisPendingResolver
 	// radar : game_variant_name -> portee du radar en metres (`regulation.toml`). Une
 	// variante absente n'a PAS de rayon : ses matchs sortent de la lecture « isole » et se
 	// comptent a part (jamais un rayon de repli, qui rendrait une mesure d'apparence normale
