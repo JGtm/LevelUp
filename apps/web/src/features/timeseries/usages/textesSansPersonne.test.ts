@@ -33,6 +33,7 @@ import { PLACEMENT_TEXT } from '@/features/squad/emprise/placementStrings'
 import { FORMES_CARDS_TEXT } from '@/features/squad/formes/cardsI18n'
 import { FORMES_TEXT } from '@/features/squad/formes/i18n'
 import { EN_TEXT as SQUAD_EN, FR_TEXT as SQUAD_FR } from '@/features/squad/i18n'
+import { IMPACT_HISTORY_TEXT } from '@/features/squad/impact/impactHistoryStrings'
 import { OBJECTIF_TEXT } from '@/features/squad/objectif/objectifStrings'
 import { getSquadFocusText } from '@/features/squad/squadFocusStrings'
 import { SQUAD_PRESETS_STRINGS } from '@/features/squad/squadPresets.i18n'
@@ -119,6 +120,9 @@ const SQUAD_RANGE_ROLES_TEXT = { fr: getSquadRangeRolesText('fr'), en: getSquadR
 /** Les constats « aucun match concerné » des blocs laissés affichés (components/ui/scope-empty-text). */
 const SCOPE_EMPTY_TEXT = { fr: allScopeEmptyTexts('fr'), en: allScopeEmptyTexts('en') }
 
+/** Le constat de « Points d'impact par soirée et par rôle » quand la réponse n'a pas d'historique. */
+const IMPACT_HISTORY_EMPTY = { fr: IMPACT_HISTORY_TEXT.fr.empty, en: IMPACT_HISTORY_TEXT.en.empty }
+
 const TEXTS = {
   SQUAD_TEXT,
   SQUAD_FOCUS_TEXT,
@@ -139,6 +143,7 @@ const TEXTS = {
   MATCH_EQUIPMENT_USAGE_TEXT,
   FILM_GAP_TEXT,
   SCOPE_EMPTY_TEXT,
+  IMPACT_HISTORY_EMPTY,
 } as const
 
 describe('aucun possessif ni pronom de personne', () => {

@@ -31,6 +31,7 @@ import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
 import { SquadImpactHistoryCard } from './impact/SquadImpactHistoryCard'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
+import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
 
 export function SquadContributionsPage() {
   const { confirmedGamertags, pageData, playerSlug } = useSquadContext()
@@ -190,6 +191,9 @@ function ImpactMedalsMechanics({
   t: SquadText
 }) {
   const impactHistory = pageData?.squad_impact_history
+  // Les rôles d'impact se lisent de la timeline horodatée : un titre qui la déclare garde la carte (constat sans
+  // historique) ; un titre qui ne la déclare pas n'a pas la fonction, la carte est absente.
+  const impactSupported = useDataCapability('match.events.timeline')
   return (
     <>
       {/* IMPACT DES COÉQUIPIERS — arrivé de Synergies (lot 3 « sections », 2026-09-22) :
@@ -202,9 +206,9 @@ function ImpactMedalsMechanics({
           matrix={pageData?.impact_matrix ?? { matches: [], players: [], cells: [], badge_ord: [] }}
         />
         {/* Points d'impact par soirée : mêmes rôles et même barème que la matrice, la soirée
-            affichée et les précédentes. Absent de la réponse (titre sans événements horodatés
-            ni équipe alliée) : rien n'est monté. */}
-        {impactHistory && (
+            affichée et les précédentes. Réponse sans historique : la carte reste avec son constat quand le
+            titre lit les événements horodatés (donnée absente) ; sinon elle est absente (fonction absente). */}
+        {(impactHistory || impactSupported) && (
           <SquadImpactHistoryCard history={impactHistory} colorByPlayer={playerColors} inkOf={inkOf} locale={locale} />
         )}
       </section>
