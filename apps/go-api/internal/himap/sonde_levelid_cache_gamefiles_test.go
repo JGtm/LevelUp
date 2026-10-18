@@ -32,6 +32,7 @@ var preuvesLevelIDCache = []struct {
 	{"Serenity - Ranked", "1de0bf60-e446-4fb9-970f-d0e54fc6c74a", CanevasWetland},
 	{"Interference", "654dff62-d618-496a-8914-06ab73d991e3", CanevasFrost},
 	{"Vacancy - Ranked", "6a1e8432-88ae-4430-8f7d-9ffefc97cc8d", CanevasAcademy},
+	{"Harvest", "ff6b8a12-6b95-4eac-8ee1-9ba4c985c2e0", CanevasBlank},
 }
 
 func TestPreuveLevelIDCartesDuCache(t *testing.T) {

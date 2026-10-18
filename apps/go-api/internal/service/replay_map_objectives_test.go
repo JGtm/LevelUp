@@ -336,9 +336,13 @@ func TestMapObjectives_ModesPonctuels_AucuneZoneSurTOUTLeCatalogue(t *testing.T)
 	// RELEVÉ DU 2026-10-09 : CTF 35 -> 36. Le catalogue gagne « Serenity - Ranked » et « Vacancy -
 	// Ranked » (cartes Forge jouées hors catalogue), dont une pose ses socles de drapeau en formes ;
 	// l assertion par (role, camp) passe sur les 130 cartes.
-	for mode, attendu := range map[string]int{"CTF": 36, "Stockpile": 22, "Assault": 2} {
+	//
+	// RELEVÉ DU 2026-10-18 : CTF 36 -> 37. Le catalogue gagne « Harvest » (carte Forge sur
+	// fo11_blank, variante téléchargée hors ligne) ; l assertion par (role, camp) passe sur les
+	// 131 cartes.
+	for mode, attendu := range map[string]int{"CTF": 37, "Stockpile": 22, "Assault": 2} {
 		if avecForme[mode] != attendu {
-			t.Errorf("%s : %d carte(s) à forme au catalogue, relevé %d le 2026-10-09 — "+
+			t.Errorf("%s : %d carte(s) à forme au catalogue, relevé %d le 2026-10-18 — "+
 				"le catalogue a bougé, revérifier le correctif avant d ajuster ce compte",
 				mode, avecForme[mode], attendu)
 		}

@@ -172,6 +172,12 @@ const deployVariant = "ds"
 // Ce sont les canevas que `himap.CartesForge` déclare pour les fonds de Serenity, Interference et
 // Vacancy. Les clés normalisées (`serenity`, `interference`, `vacancy`) couvrent la base et sa
 // variante « - Ranked ».
+//
+// Harvest (2026-10-18) : carte Forge (aucun module natif de ce nom sur le poste), variante
+// téléchargée hors ligne sous `<cache>/mvar/ff6b8a12-6b95-4eac-8ee1-9ba4c985c2e0/map.mvar` ;
+// même méthode, unicité 1/1, rejouée par `himap.TestPreuveLevelIDCartesDuCache` :
+//
+//	Harvest            426470249   (0x196B6B69) -> fo11_blank   (même level_id qu'Argyle)
 var mapModule = map[string]string{
 	"Absolution":          "fo09_academy",
 	"Aquarius":            "ctf_aquarius",
@@ -207,6 +213,7 @@ var mapModule = map[string]string{
 	"Fortress":            "fo09_academy",
 	"Fragmentation":       "btb_fragmentation",
 	"Goliath":             "fo11_blank",
+	"Harvest":             "fo11_blank",
 	"High Ground":         "fo08_wetland",
 	"Highpower":           "btb_highpower",
 	"Houseki":             "fo09_academy",

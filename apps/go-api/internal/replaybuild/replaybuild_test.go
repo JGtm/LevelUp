@@ -117,11 +117,15 @@ func TestResolveMapEntry_SurLeCatalogueLivre(t *testing.T) {
 		t.Errorf("aucun candidat : attendu ErrMapNotInCatalog, obtenu %v", err)
 	}
 	// Les candidats que la cuisson journalisait « hors catalogue de bornes » du 05 au 09/10/2026
-	// (`[Serenity - Ranked]`, `[Interference]`, `[Vacancy - Ranked]`) résolvent sur leur canevas.
+	// (`[Serenity - Ranked]`, `[Interference]`, `[Vacancy - Ranked]`) et Harvest résolvent sur leur
+	// canevas.
 	for nom, module := range map[string]string{
 		"Serenity - Ranked": "fo08_wetland",
 		"Interference":      "fo13_frost",
 		"Vacancy - Ranked":  "fo09_academy",
+		// Harvest (2026-10-18) : refusée « hors catalogue » à chaque cycle jusqu'à l'entrée de
+		// sa variante au catalogue de bornes (level_id 426470249 -> fo11_blank).
+		"Harvest": "fo11_blank",
 	} {
 		entry, err := b.ResolveMapEntry([]string{nom, nom})
 		if err != nil {

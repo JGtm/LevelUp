@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "title_slug": "halo_infinite",
-  "generated_at": "2026-10-09T14:22:47.1737298Z",
+  "generated_at": "2026-10-18T17:06:48.6240358Z",
   "maps": {
     "003c828e-c2b3-43b5-b482-4005f9d4ec25": {
       "map_id": "003c828e-c2b3-43b5-b482-4005f9d4ec25",
@@ -116689,6 +116689,2085 @@
           94.93565368652344
         ]
       }
+    },
+    "ff6b8a12-6b95-4eac-8ee1-9ba4c985c2e0": {
+      "map_id": "ff6b8a12-6b95-4eac-8ee1-9ba4c985c2e0",
+      "version_id": "",
+      "public_name": "",
+      "mvar_file": "ff6b8a12-6b95-4eac-8ee1-9ba4c985c2e0_map.mvar",
+      "module": "ff6b8a12-6b95-4eac-8ee1-9ba4c985c2e0_map",
+      "level_id": 426470249,
+      "objects_n": 5296,
+      "fetched_at": "2026-10-18T17:06:29.91552Z",
+      "objectives": [
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": 0.040676433593034744,
+            "y": 0.018895117565989494,
+            "z": 125.45228576660156
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 4266,
+          "shape": {
+            "family": "box",
+            "half_x": 1.5820236206054688,
+            "half_y": 5.770317077636719,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": 1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 207359,
+              "s6": 756327,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": -15.41232681274414,
+            "y": -0.031337425112724304,
+            "z": 122.36861419677734
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 4267,
+          "shape": {
+            "family": "box",
+            "half_x": 1.5820236206054688,
+            "half_y": 5.0559844970703125,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": 1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 207359,
+              "s6": 662698,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": 15.589046478271484,
+            "y": -0.1351902186870575,
+            "z": 122.36861419677734
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 4268,
+          "shape": {
+            "family": "box",
+            "half_x": 1.5820236206054688,
+            "half_y": 5.0559844970703125,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": 1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 207359,
+              "s6": 662698,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": -6.417783260345459,
+            "y": 20.11618423461914,
+            "z": 122.20194244384766
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 4269,
+          "shape": {
+            "family": "cylinder",
+            "radius": 3.1640472412109375,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": 1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 207359,
+              "s6": 662698,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "extraction_zone",
+          "type_id": -1239931096,
+          "pos": {
+            "x": 6.198338031768799,
+            "y": -19.58733558654785,
+            "z": 122.20194244384766
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "extraction_include",
+            "extraction_zone"
+          ],
+          "object_index": 4270,
+          "shape": {
+            "family": "cylinder",
+            "radius": 3.1640472412109375,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": 1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 207359,
+              "s6": 662698,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "flag_delivery",
+          "type_id": -508752201,
+          "pos": {
+            "x": -28.327041625976562,
+            "y": 0.00013672039494849741,
+            "z": 121.77850341796875
+          },
+          "forward": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "flag_delivery",
+            "ctf_include"
+          ],
+          "object_index": 619
+        },
+        {
+          "role": "flag_delivery",
+          "type_id": -508752201,
+          "pos": {
+            "x": 28.405323028564453,
+            "y": -0.11048178374767303,
+            "z": 121.7791748046875
+          },
+          "forward": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "flag_delivery",
+            "ctf_include"
+          ],
+          "object_index": 620
+        },
+        {
+          "role": "flag_delivery",
+          "type_id": -863615175,
+          "pos": {
+            "x": 28.64999771118164,
+            "y": -9.238651728082914e-7,
+            "z": 121.7800064086914
+          },
+          "forward": {
+            "x": -0.9999247193336487,
+            "y": -0.012271496467292309,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "flag_delivery",
+            "minigame_include"
+          ],
+          "unresolved_labels": [
+            -1101617395,
+            -1734121946
+          ],
+          "object_index": 5247,
+          "shape": {
+            "family": "cylinder",
+            "radius": 3.5999908447265625,
+            "up_z": 1.79998779296875,
+            "down_z": 1.399993896484375,
+            "forward": {
+              "x": -0.9999247193336487,
+              "y": -0.012271496467292309,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 235929,
+              "s6": 0,
+              "s7": 117964,
+              "s8": 91750
+            }
+          }
+        },
+        {
+          "role": "flag_delivery",
+          "type_id": -863615175,
+          "pos": {
+            "x": -29,
+            "y": 9.844079613685608e-7,
+            "z": 121.77973175048828
+          },
+          "forward": {
+            "x": -0.9999247193336487,
+            "y": -0.012271489016711712,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "flag_delivery",
+            "minigame_include"
+          ],
+          "unresolved_labels": [
+            -48107149,
+            -1734121946
+          ],
+          "object_index": 5251,
+          "shape": {
+            "family": "cylinder",
+            "radius": 3.5999908447265625,
+            "up_z": 2.399993896484375,
+            "down_z": 1.399993896484375,
+            "forward": {
+              "x": -0.9999247193336487,
+              "y": -0.012271489016711712,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 235929,
+              "s6": 0,
+              "s7": 157286,
+              "s8": 91750
+            }
+          }
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": 28.402992248535156,
+            "y": -0.11773810535669327,
+            "z": 121.7791748046875
+          },
+          "forward": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "flag_spawn"
+          ],
+          "unresolved_labels": [
+            -1750228438,
+            1671527437,
+            -831896525
+          ],
+          "object_index": 618
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": 28.399572372436523,
+            "y": -0.1260717511177063,
+            "z": 121.7791748046875
+          },
+          "forward": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "flag_spawn"
+          ],
+          "unresolved_labels": [
+            -1750228438,
+            -831896525
+          ],
+          "object_index": 634
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": 28.421113967895508,
+            "y": -0.10742133110761642,
+            "z": 121.7791748046875
+          },
+          "forward": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "flag_spawn"
+          ],
+          "unresolved_labels": [
+            -1750228438,
+            -831896525
+          ],
+          "object_index": 635
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -28.320552825927734,
+            "y": -0.01693253219127655,
+            "z": 121.77850341796875
+          },
+          "forward": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "flag_spawn"
+          ],
+          "unresolved_labels": [
+            -1750228438,
+            1671527437,
+            -831896525
+          ],
+          "object_index": 638
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -28.332189559936523,
+            "y": -0.006073668133467436,
+            "z": 121.77850341796875
+          },
+          "forward": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "flag_spawn"
+          ],
+          "unresolved_labels": [
+            -1750228438,
+            -831896525
+          ],
+          "object_index": 639
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": -28.3323917388916,
+            "y": 0.0003507923102006316,
+            "z": 121.77850341796875
+          },
+          "forward": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "flag_spawn"
+          ],
+          "unresolved_labels": [
+            -1750228438,
+            -831896525
+          ],
+          "object_index": 640
+        },
+        {
+          "role": "flag_spawn",
+          "type_id": -1430101324,
+          "pos": {
+            "x": 28.419092178344727,
+            "y": -0.12034061551094055,
+            "z": 121.78263092041016
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "flag_spawn"
+          ],
+          "unresolved_labels": [
+            1186941395,
+            -481595552,
+            -831896525
+          ],
+          "object_index": 641
+        },
+        {
+          "role": "hill",
+          "type_id": -1476457415,
+          "pos": {
+            "x": -4.935637474060059,
+            "y": 18.365276336669922,
+            "z": 121.49298095703125
+          },
+          "forward": {
+            "x": 0.9999247193336487,
+            "y": 0.012271538376808167,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [],
+          "unresolved_labels": [
+            -767961569,
+            2133978317,
+            -831896525
+          ],
+          "object_index": 615,
+          "shape": {
+            "family": "cylinder",
+            "radius": 2.92474365234375,
+            "up_z": 2.4192047119140625,
+            "down_z": 0.0999908447265625,
+            "forward": {
+              "x": 0.9999247193336487,
+              "y": 0.012271538376808167,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 191676,
+              "s6": 95837,
+              "s7": 158545,
+              "s8": 6553
+            }
+          }
+        },
+        {
+          "role": "hill",
+          "type_id": -1476457415,
+          "pos": {
+            "x": -0.04265674576163292,
+            "y": -0.0003671743907034397,
+            "z": 123.8686294555664
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [],
+          "unresolved_labels": [
+            -767961569,
+            2133978317,
+            -831896525
+          ],
+          "object_index": 617,
+          "shape": {
+            "family": "box",
+            "half_x": 1.3981552124023438,
+            "half_y": 5.779411315917969,
+            "up_z": 2,
+            "down_z": 0.0999908447265625,
+            "forward": {
+              "x": 1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 183259,
+              "s6": 757519,
+              "s7": 131072,
+              "s8": 6553
+            }
+          }
+        },
+        {
+          "role": "hill",
+          "type_id": -1476457415,
+          "pos": {
+            "x": 5.3980913162231445,
+            "y": -18.268835067749023,
+            "z": 121.06018829345703
+          },
+          "forward": {
+            "x": 0.9999247193336487,
+            "y": 0.012271538376808167,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [],
+          "unresolved_labels": [
+            -767961569,
+            2133978317,
+            -831896525
+          ],
+          "object_index": 631,
+          "shape": {
+            "family": "cylinder",
+            "radius": 3.24053955078125,
+            "up_z": 2.983245849609375,
+            "down_z": 0.0999908447265625,
+            "forward": {
+              "x": 0.9999247193336487,
+              "y": 0.012271538376808167,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 212372,
+              "s6": 106186,
+              "s7": 195510,
+              "s8": 6553
+            }
+          }
+        },
+        {
+          "role": "hill",
+          "type_id": -1476457415,
+          "pos": {
+            "x": -15.717205047607422,
+            "y": 0.05597034469246864,
+            "z": 121.26025390625
+          },
+          "forward": {
+            "x": 0.9999247193336487,
+            "y": 0.012271538376808167,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [],
+          "unresolved_labels": [
+            -767961569,
+            2133978317,
+            -831896525
+          ],
+          "object_index": 632,
+          "shape": {
+            "family": "box",
+            "half_x": 1.9937973022460938,
+            "half_y": 2.5955657958984375,
+            "up_z": 2,
+            "down_z": 0.0999908447265625,
+            "forward": {
+              "x": 0.9999247193336487,
+              "y": 0.012271538376808167,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 261331,
+              "s6": 340206,
+              "s7": 131072,
+              "s8": 6553
+            }
+          }
+        },
+        {
+          "role": "hill",
+          "type_id": -1476457415,
+          "pos": {
+            "x": 15.665874481201172,
+            "y": 0.21908122301101685,
+            "z": 121.31422424316406
+          },
+          "forward": {
+            "x": 0.9999247193336487,
+            "y": 0.012271538376808167,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [],
+          "unresolved_labels": [
+            -767961569,
+            2133978317,
+            -831896525
+          ],
+          "object_index": 633,
+          "shape": {
+            "family": "box",
+            "half_x": 2.1298675537109375,
+            "half_y": 2.9603042602539062,
+            "up_z": 2,
+            "down_z": 0.0999908447265625,
+            "forward": {
+              "x": 0.9999247193336487,
+              "y": 0.012271538376808167,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 279166,
+              "s6": 388013,
+              "s7": 131072,
+              "s8": 6553
+            }
+          }
+        },
+        {
+          "role": "landgrab_zone",
+          "type_id": -1902667258,
+          "pos": {
+            "x": -6.392906188964844,
+            "y": -4.246446132659912,
+            "z": 125.7959213256836
+          },
+          "forward": {
+            "x": -0.012260745279490948,
+            "y": 0.9999248385429382,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "landgrab_include",
+            "landgrab_zone"
+          ],
+          "object_index": 4809,
+          "shape": {
+            "family": "box",
+            "half_x": 1.5,
+            "half_y": 2.0999984741210938,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": -0.012260745279490948,
+              "y": 0.9999248385429382,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 196608,
+              "s6": 275251,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "landgrab_zone",
+          "type_id": -1902667258,
+          "pos": {
+            "x": 6.408614635467529,
+            "y": 4.204506874084473,
+            "z": 125.79995727539062
+          },
+          "forward": {
+            "x": 0.01227152906358242,
+            "y": -0.9999247193336487,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "landgrab_include",
+            "landgrab_zone"
+          ],
+          "object_index": 4845,
+          "shape": {
+            "family": "box",
+            "half_x": 1.1999969482421875,
+            "half_y": 1.7999954223632812,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": 0.01227152906358242,
+              "y": -0.9999247193336487,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 157286,
+              "s6": 235929,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "landgrab_zone",
+          "type_id": -1902667258,
+          "pos": {
+            "x": -13.838869094848633,
+            "y": -17.3332462310791,
+            "z": 122.18040466308594
+          },
+          "forward": {
+            "x": -0.9999247193336487,
+            "y": 0.012271485291421413,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "landgrab_include",
+            "landgrab_zone"
+          ],
+          "object_index": 4846,
+          "shape": {
+            "family": "box",
+            "half_x": 2.3499984741210938,
+            "half_y": 2.524993896484375,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": -0.9999247193336487,
+              "y": 0.012271485291421413,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 308019,
+              "s6": 330956,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "landgrab_zone",
+          "type_id": -1902667258,
+          "pos": {
+            "x": 14.449992179870605,
+            "y": 17.924972534179688,
+            "z": 122.0999984741211
+          },
+          "forward": {
+            "x": -0.9999247193336487,
+            "y": 0.012271485291421413,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "landgrab_include",
+            "landgrab_zone"
+          ],
+          "object_index": 4847,
+          "shape": {
+            "family": "box",
+            "half_x": 3.0999984741210938,
+            "half_y": 3.0999984741210938,
+            "up_z": 3.399993896484375,
+            "down_z": 2,
+            "forward": {
+              "x": -0.9999247193336487,
+              "y": 0.012271485291421413,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 406323,
+              "s6": 406323,
+              "s7": 222822,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "landgrab_zone",
+          "type_id": -1902667258,
+          "pos": {
+            "x": -18.49996566772461,
+            "y": 10.399999618530273,
+            "z": 121.80000305175781
+          },
+          "forward": {
+            "x": -0.9999247193336487,
+            "y": 0.012271485291421413,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "landgrab_include",
+            "landgrab_zone"
+          ],
+          "object_index": 4848,
+          "shape": {
+            "family": "cylinder",
+            "radius": 2,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": -0.9999247193336487,
+              "y": 0.012271485291421413,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 131072,
+              "s6": 131072,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "landgrab_zone",
+          "type_id": -1902667258,
+          "pos": {
+            "x": 19.877574920654297,
+            "y": -10.259493827819824,
+            "z": 122.05290222167969
+          },
+          "forward": {
+            "x": -0.9999247193336487,
+            "y": 0.012271485291421413,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "landgrab_include",
+            "landgrab_zone"
+          ],
+          "object_index": 4849,
+          "shape": {
+            "family": "cylinder",
+            "radius": 2,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": -0.9999247193336487,
+              "y": 0.012271485291421413,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 131072,
+              "s6": 131072,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "landgrab_zone",
+          "type_id": -1902667258,
+          "pos": {
+            "x": -2.9460415840148926,
+            "y": 17.90966796875,
+            "z": 122.4905014038086
+          },
+          "forward": {
+            "x": -0.9999247193336487,
+            "y": 0.012271485291421413,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "landgrab_include",
+            "landgrab_zone"
+          ],
+          "object_index": 5137,
+          "shape": {
+            "family": "cylinder",
+            "radius": 3,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": -0.9999247193336487,
+              "y": 0.012271485291421413,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 196608,
+              "s6": 330956,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "landgrab_zone",
+          "type_id": -1902667258,
+          "pos": {
+            "x": -0.0018718241481110454,
+            "y": 0.025415347889065742,
+            "z": 121.95474243164062
+          },
+          "forward": {
+            "x": -0.9999247193336487,
+            "y": 0.012271485291421413,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "landgrab_include",
+            "landgrab_zone"
+          ],
+          "object_index": 5138,
+          "shape": {
+            "family": "box",
+            "half_x": 0.8499984741210938,
+            "half_y": 5.0749969482421875,
+            "up_z": 2,
+            "down_z": 2,
+            "forward": {
+              "x": -0.9999247193336487,
+              "y": 0.012271485291421413,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 111411,
+              "s6": 665190,
+              "s7": 131072,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "landgrab_zone",
+          "type_id": -1902667258,
+          "pos": {
+            "x": 3.8999998569488525,
+            "y": -16.700002670288086,
+            "z": 122.70002746582031
+          },
+          "forward": {
+            "x": -0.9999247193336487,
+            "y": 0.012271485291421413,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "landgrab_include",
+            "landgrab_zone"
+          ],
+          "object_index": 5139,
+          "shape": {
+            "family": "cylinder",
+            "radius": 3,
+            "up_z": 3,
+            "down_z": 2,
+            "forward": {
+              "x": -0.9999247193336487,
+              "y": 0.012271485291421413,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 2,
+              "s5": 196608,
+              "s6": 258867,
+              "s7": 196608,
+              "s8": 131072
+            }
+          }
+        },
+        {
+          "role": "oddball_spawn",
+          "type_id": 848694842,
+          "pos": {
+            "x": 0.0426349975168705,
+            "y": 0.04185173660516739,
+            "z": 122.17781066894531
+          },
+          "forward": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "oddball_spawn",
+            "oddball_include"
+          ],
+          "object_index": 621
+        },
+        {
+          "role": "oddball_spawn",
+          "type_id": 848694842,
+          "pos": {
+            "x": -24.399999618530273,
+            "y": 0,
+            "z": 121.7786636352539
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "oddball_spawn",
+            "minigame_include"
+          ],
+          "unresolved_labels": [
+            -1101617395,
+            -1843278509
+          ],
+          "object_index": 5249
+        },
+        {
+          "role": "oddball_spawn",
+          "type_id": 848694842,
+          "pos": {
+            "x": 24.399999618530273,
+            "y": 0,
+            "z": 121.77605438232422
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "oddball_spawn",
+            "minigame_include"
+          ],
+          "unresolved_labels": [
+            -48107149,
+            -1843278509
+          ],
+          "object_index": 5257
+        },
+        {
+          "role": "oddball_spawn",
+          "type_id": 848694842,
+          "pos": {
+            "x": 0,
+            "y": 0.04080000892281532,
+            "z": 122.1736068725586
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "oddball_spawn",
+            "minigame_include"
+          ],
+          "unresolved_labels": [
+            -1101617395,
+            -1537427652
+          ],
+          "object_index": 5259
+        }
+      ],
+      "unresolved_labels": {
+        "-1101617395": 6,
+        "-1482301937": 5,
+        "-1537427652": 2,
+        "-1676315585": 4,
+        "-1734121946": 5,
+        "-1750228438": 6,
+        "-1843278509": 4,
+        "-2072819386": 1,
+        "-48107149": 4,
+        "-481595552": 1,
+        "-48901254": 1,
+        "-752088371": 3,
+        "-767961569": 7,
+        "-831896525": 116,
+        "-941529218": 9,
+        "-961536527": 1,
+        "-975844529": 14,
+        "1011660313": 6,
+        "1065383626": 10,
+        "1186941395": 1,
+        "1444579965": 10,
+        "1652309630": 13,
+        "1671527437": 2,
+        "1865268241": 8,
+        "2062593711": 5,
+        "2117885420": 1,
+        "2133978317": 10,
+        "260350496": 4
+      },
+      "names": [
+        " 0.615",
+        "AllGamemodes V2.0",
+        "Covenant Cruiser",
+        "st5",
+        "InfectionObjects V1.1",
+        "Harvest Rocks",
+        "Planter V1",
+        "Prefab",
+        "AllWeaponsEquipmentVehicles v1.6",
+        "SetupHelp v1.1",
+        "Harvest Tower V1",
+        "Planter V2",
+        "Harvest Hallway2",
+        "The Clawwwwww",
+        "tsg hiddenNamedLocations V1.1",
+        "AAAA",
+        "Totoro",
+        "Overgrown stump",
+        "Fallen Tree",
+        "cg.spline.prog1",
+        "rotate",
+        "cg.spline.pos1",
+        "cg.spline.rot1",
+        "cg.spline",
+        "travelerTick",
+        "waypoints 1",
+        "traveler",
+        "objectMovement",
+        "trainCars1",
+        "tickAmount",
+        "waypoints 2",
+        "cg.spline.pos2",
+        "cg.spline.prog2",
+        "cg.spline.rot2",
+        "trainCars2",
+        "Green Crane",
+        "UneeQ | Foundry | Double Crate",
+        "UneeQ | Foundry | Double Crate Open",
+        "UneeQ | Foundry | Single Crate Open",
+        "Halo Classic Crate Double",
+        "Halo Classic Crate",
+        "Harvest Punch Tower",
+        "Surveillance Cone",
+        "Firefight Setup",
+        "HFT Confetti mini",
+        "Miss You",
+        "Kusini Crate Double",
+        "Bomb_WeaponType",
+        "Bomb_CleanUp",
+        "Bomb_Index",
+        "Waypoint_Offset_Spawn",
+        "Sites_All",
+        "Bombs_All",
+        "Site_Index",
+        "CurrentPhase_Eagle",
+        "CurrentPhase_Cobra",
+        "Site_Index_Team",
+        "IsCarrier",
+        "AlliesOnSite",
+        "Sites_Active",
+        "EnemiesOnSite",
+        "Sites_Phase_1",
+        "Sites_Phase_2",
+        "Bomb_Player",
+        "Sites_Phase_3",
+        "Player_Bomb",
+        "Bomb_Site",
+        "Bomb_BombSpawn",
+        "Player_Site",
+        "IsBeingCarried",
+        "Sites_Eagle",
+        "Sites_Cobra",
+        "Team",
+        "Site_Bomb",
+        "Progress_Incoming_Site",
+        "Progress_Arming_Bomb",
+        "Progress_Resetting_Bomb",
+        "Progress_Disarming_Bomb",
+        "Waypoint_Offset_Site",
+        "Waypoint_Offset_Bomb",
+        "Waypoint_Offset_Carrier",
+        "Progress_Incoming_Bomb",
+        "Progress_Fuse_Bomb",
+        "Progress_Revealed_Bomb",
+        "Seconds_Incoming_Bomb",
+        "Seconds_Resetting_Bomb",
+        "Seconds_Disarming_Bomb",
+        "Seconds_Fuse_Bomb",
+        "Seconds_Revealed_Bomb",
+        "Seconds_Incoming_Site",
+        "OnTick_Rate",
+        "IsSpotted",
+        "BombSpawn_Bomb",
+        "Site_Plate",
+        "Plates_All",
+        "BombSpawns_All",
+        "Bomb_Offset_Spawn",
+        "Bomb_Offset_Planting",
+        "Bomb_Offset_Deactivated",
+        "Bomb_Offset_Incoming",
+        "FX_Explosion",
+        "IsMultiPhase",
+        "Enable_Disarm",
+        "Seconds_Arming_Bomb",
+        "Bomb_Offset_Armed",
+        "PersonalScoring_PlantPoints",
+        "PersonalScoring_PlantAssistPoints",
+        "PersonalScoring_DetonationPoints",
+        "PersonalScoring_KillCarrierPoints",
+        "Scoring_DetonationPoints",
+        "ObjectiveAssisters",
+        "GameplayObjects_All",
+        "Explosion_Damage",
+        "Explosion_Impulse",
+        "Explosion_Damage_OffSite",
+        "Explosion_Impulse_Radius",
+        "IsNeutralBomb",
+        "IsOneBomb",
+        "IsTwoBomb",
+        "IsRanked",
+        "PersonalScoring_KillCarrierAssistPoints",
+        "IsClockPaused",
+        "GameClock_CurrentTime",
+        "BombSpawn_Index",
+        "IsInOvertime",
+        "PersonalScoring_DisarmingPoints",
+        "Team_Attacker",
+        "Team_Defender",
+        "GameClock_TotalTime",
+        "OnTick_Update_Progress_Site",
+        "OvertimeDetection",
+        "OnTick_Update_Progress_Bomb",
+        "Variables_Initialize_Sites",
+        "PersonalScore_KillingCarrierAssist",
+        "Sites_Activate_ActiveSites",
+        "Variable_Initialize_Bombs",
+        "Bombs_Activate_Bombs",
+        "Variable_Initialize_Players",
+        "GameClock_Pause",
+        "Variables_Set_MultiPhase",
+        "Variable_Initialize_Player",
+        "Variables_ModeSetUp_ArmTime",
+        "Bomb_Spotted",
+        "Spotted_Bomb",
+        "Announcer_BombAvailable",
+        "Announcer_ModeIntro",
+        "PersonalScore_KillingCarrier",
+        "GameClock_Unpause",
+        "UI_Splash_ModeIntro",
+        "Variable_Set_AsymTeams",
+        "ForgeStartUp",
+        "Carrier",
+        "Site_Change_State",
+        "Bomb_Change_State",
+        "Site_State_Deactivated",
+        "Bomb_State_Deactivated",
+        "Create_Announcer_Stopwatches",
+        "Reset_Medals",
+        "Set_Phase_1",
+        "Increment_CurrentPhase",
+        "Set_Phase_2",
+        "Set_Phase_3",
+        "Set_NextPhase",
+        "SoundFX_Site_Online",
+        "SoundFX_Site_OnlineAlert",
+        "SoundFX_Site_Spawn",
+        "SoundFX_Site_SpawnAlert",
+        "SoundFX_Bomb_PickUp",
+        "SoundFX_Bomb_Spawned",
+        "SoundFX_Bomb_Reset",
+        "SoundFX_Bomb_ArmingProgressTick",
+        "SoundFX_Bomb_ArmingCompleteTick",
+        "SoundFX_Bomb_Armed",
+        "SoundFX_Bomb_AboutToDetonate",
+        "SoundFX_Bomb_FuseTick",
+        "SoundFX_Bomb_DisarmingTick",
+        "SoundFX_Bomb_DisarmingComplete",
+        "Variable_Bomb_SetObjectFilters",
+        "Variable_Set_Team",
+        "tmp_distance",
+        "Variable_Set_SiteTeams",
+        "Variables_Initialize_Site",
+        "Bomb_State_Idle",
+        "Variable_Initialize_Bomb",
+        "Variable_Site_SetAllowList",
+        "Utility_NearestObject",
+        "Utility_FindNearestObjectInList",
+        "Utility_SearchThreshold_PlantPlate",
+        "Utility_SearchThreshold_Spawn",
+        "Variable_Bomb_DenyObjectFilters",
+        "Teams",
+        "CheckIfArming",
+        "Site_State_Idle",
+        "Site_State_Incoming",
+        "AddRemovePlayerOnSite",
+        "Set_States",
+        "Site_State_Previous",
+        "Site_State_Active",
+        "Site_State_Arming",
+        "Site_State_Armed",
+        "Site_State_Destroyed",
+        "Site_State_Disarming",
+        "Site_State_Disarmed",
+        "Site_State_Standby",
+        "Handle_GameObject",
+        "Handle_Waypoints_Attacker",
+        "Handle_Announcer",
+        "Handle_SoundFX",
+        "Handle_Waypoints_Defender",
+        "Waypoint_Disable_Attacker_Site",
+        "Waypoint_Disable_Defender_Site",
+        "Waypoint_Docking_Attacker_Site_ZoneOff",
+        "Waypoint_Docking_Defender_Site_ZoneOff",
+        "Waypoint_Move_Attacker_Site_ToSite",
+        "Waypoint_Attach_Attacker_Site_ToSite",
+        "Waypoint_Move_Defender_Site_ToSite",
+        "Waypoint_Attach_Defender_Site_ToSite",
+        "Waypoint_Enable_Attacker_Site",
+        "Waypoint_Enable_Defender_Site",
+        "Waypoint_Icon_Attacker_Site_SetIncoming",
+        "Waypoint_Icon_Defender_Site_SetIncoming",
+        "Waypoint_Team_Attacker_Site_SetTeam",
+        "Waypoint_Team_Defender_Site_SetTeam",
+        "Waypoint_Text_Attacker_Site_SetIncoming",
+        "Waypoint_Text_Defender_Site_SetIncoming",
+        "Waypoint_Team_Attacker_Site_SetTeamViz",
+        "Waypoint_Team_Defender_Site_SetTeamViz",
+        "Incoming_Site",
+        "Waypoint_Docking_Defender_Site_Zone",
+        "Waypoint_Text_Attacker_Site_SetAttack",
+        "Waypoint_Docking_Attacker_Site_Zone",
+        "IsSoloSite",
+        "Waypoint_Icon_Attacker_Site_SetLetter",
+        "Waypoint_Text_Defender_Site_SetDefend",
+        "Check_AmountOfActiveTeamSites",
+        "Waypoint_Icon_Attacker_Site_SetAttack",
+        "Waypoint_Icon_Defender_Site_SetLetter",
+        "Waypoint_Icon_Defender_Site_SetDefend",
+        "Waypoint_Disable_Attacker_Bomb",
+        "Waypoints_Attacker_Sites",
+        "Waypoint_Disable_Defender_Bomb",
+        "Waypoints_Defender_Sites",
+        "Waypoints_Attacker_Bombs",
+        "Waypoint_Enable_Defender_Bomb",
+        "Waypoints_Defender_Bombs",
+        "Waypoint_Enable_Attacker_Bomb",
+        "Remove_OldSites",
+        "Phase_NextPhase",
+        "Waypoint_Attacker_1",
+        "Waypoint_Attacker_2",
+        "Waypoint_Attacker_3",
+        "Waypoint_Attacker_4",
+        "Waypoint_Attacker_5",
+        "Waypoint_Attacker_6",
+        "Waypoint_Attacker_7",
+        "Waypoint_Attacker_8",
+        "Waypoint_Attacker_9",
+        "Waypoint_Attacker_10",
+        "Waypoints_Attacker_Bomb_1",
+        "Waypoints_Attacker_Bomb_2",
+        "Waypoint_Defender_1",
+        "Waypoint_Defender_2",
+        "Waypoint_Defender_3",
+        "Waypoint_Defender_4",
+        "Waypoint_Defender_5",
+        "Waypoint_Defender_6",
+        "Waypoint_Defender_9",
+        "Waypoint_Defender_10",
+        "Waypoint_Defender_7",
+        "Waypoint_Defender_8",
+        "Waypoints_Defender_Bomb_1",
+        "Waypoints_Defender_Bomb_2",
+        "Waypoint_Icon_Attacker_Site_SetBomb",
+        "Waypoint_Text_Attacker_Site_SetArming",
+        "Waypoint_Text_Defender_Site_SetArming",
+        "Waypoint_Icon_Defender_Site_SetAlpha",
+        "Waypoint_Icon_Defender_Site_SetDelta",
+        "Waypoint_Icon_Attacker_Site_SetAlpha",
+        "Waypoint_Icon_Defender_Site_SetBravo",
+        "Waypoint_Icon_Attacker_Site_SetCharlie",
+        "Waypoint_Icon_Attacker_Site_SetEcho",
+        "Waypoint_Icon_Attacker_Site_SetBravo",
+        "Waypoint_Icon_Attacker_Site_SetDelta",
+        "Waypoint_Icon_Defender_Site_SetCharlie",
+        "Waypoint_Icon_Defender_Site_SetEcho",
+        "Waypoint_Icon_Attacker_Site_SetDefend",
+        "Waypoint_Icon_Defender_Site_SetAttack",
+        "Waypoint_Icon_Attacker_Site_SetArmed",
+        "Waypoint_Icon_Defender_Site_SetArmed",
+        "Bomb_State_Active",
+        "Commander_BombIncoming",
+        "Commander_BombAvailable",
+        "Commander_BombRespawned",
+        "Commander_ModeIntro",
+        "Commander_SiteDestroyed",
+        "NumberOfActiveTeamSites",
+        "Commander_RemainingSites",
+        "Announcer_BombTaken",
+        "Bomb_State_Incoming",
+        "PersonalScore_TrackObjectiveAssists",
+        "CheckNewPosession",
+        "Bomb_State_Carrying",
+        "Bomb_State_Planting",
+        "Bomb_State_Resetting",
+        "Bomb_State_Detonated",
+        "Bomb_State_Arming",
+        "Bomb_State_Previous",
+        "Bomb_State_Armed",
+        "Bomb_State_Disarming",
+        "Bomb_State_Disarmed",
+        "Carrying_Bomb",
+        "Waypoint_Move_Attacker_Bomb_ToCarrier",
+        "Waypoint_Team_Attacker_Bomb_PlayerVizOff",
+        "Waypoint_Move_Defender_Bomb_ToCarrier",
+        "Handle_Waypoints_Attacker_PlayerViz",
+        "Waypoint_Text_Attacker_Bomb_Clear",
+        "Waypoint_Filter_Defender_Bomb_HitVizRef",
+        "Waypoint_Filter_Defender_Bomb_AnyPass",
+        "Waypoint_Team_Attacker_Bomb_PlayerVizOn",
+        "Handle_Waypoints_Defender_PlayerViz",
+        "Waypoint_Attach_Attacker_Bomb_ToCarrier",
+        "Waypoint_Attach_Defender_Bomb_ToCarrier",
+        "Waypoint_Text_Defender_Bomb_Clear",
+        "Waypoint_Filter_Defender_Bomb_LOSVizOn",
+        "Waypoint_Docking_Attacker_Bomb_PlayerOn",
+        "Bomb_State_Carrying_PlayerViz",
+        "Waypoint_Team_Defender_Bomb_PlayerVizOff",
+        "Waypoint_Team_Defender_Bomb_SetTeam",
+        "Waypoint_Team_Attacker_Bomb_SetTeam",
+        "UI_Banner_TakenBomb",
+        "Medal_FastBreak",
+        "Medal_RememberThis_PickedUp",
+        "Bots_BombPickUp",
+        "Bomb_State_Deactivated_MoveBomb",
+        "UI_Banner_TakeTheBomb",
+        "Announcer_BombReset",
+        "Bomb_State_Idle_PlayerViz",
+        "Bomb_State_Idle_MoveBomb",
+        "Waypoint_Move_Defender_Bomb_ToBomb",
+        "Waypoint_Attach_Defender_Bomb_ToBomb",
+        "Announcer_BombRespawned",
+        "Waypoint_Icon_Defender_Bomb_SetBomb",
+        "Waypoint_Move_Attacker_Bomb_ToBomb",
+        "Waypoint_Attach_Attacker_Bomb_ToBomb",
+        "Waypoint_Icon_Attacker_Bomb_SetBomb",
+        "Waypoint_Text_Attacker_Bomb_SetTake",
+        "Waypoint_Team_Defender_Bomb_PlayerVizOn",
+        "Waypoint_Team_Attacker_Bomb_RemoveTeam",
+        "Waypoint_Team_Defender_Bomb_RemoveTeam",
+        "Bots_BombDropped",
+        "Resetting_Bomb",
+        "Waypoint_Filter_Defender_Bomb_LOSVizOff",
+        "Waypoint_Text_Defender_Bomb_SetDefend",
+        "Waypoint_Docking_Attacker_Bomb_PlayerOff",
+        "Bomb_State_Resetting_PlayerViz",
+        "Waypoint_Filter_Defender_Bomb_HitVizOff",
+        "Medal_RememberThis_Start",
+        "Waypoint_Icon_Defender_Bomb_SetDefend",
+        "Waypoint_Icon_Attacker_Bomb_SetIncoming",
+        "Waypoint_Icon_Defender_Bomb_SetIncoming",
+        "Waypoint_Icon_Attacker_Bomb_SetAttack",
+        "Waypoint_Icon_Attacker_Bomb_SetDefend",
+        "Waypoint_Icon_Defender_Bomb_SetAttack",
+        "Waypoint_Team_Defender_Site_ClearTeamViz",
+        "Waypoint_Team_Attacker_Bomb_PlayerVizClr",
+        "Waypoint_Team_Attacker_Site_ClearTeamViz",
+        "Waypoint_Team_Defender_Bomb_PlayerVizClr",
+        "GoToStandby",
+        "ComeOffStandby",
+        "Bomb_State_Arming_PlayerViz",
+        "Arming_Bomb",
+        "Announcer_BombArming",
+        "TickSound",
+        "UI_Banner_ArmingBomb",
+        "Bomb_State_Armed_PlayerViz",
+        "Waypoint_Team_Attacker_Bomb_ClearTeamViz",
+        "Waypoint_Team_Defender_Bomb_ClearTeamViz",
+        "Detonating_Bomb",
+        "AboutToDetonateHasNotSounded",
+        "JustArmedHasNotSounded",
+        "Announcer_BombAboutToExplode",
+        "BombNearingDetonationHasNotSounded",
+        "UI_Banner_ArmedBomb",
+        "Waypoint_Disabled_Attacker_Bomb",
+        "Waypoint_Disabled_Defender_Bomb",
+        "Announcer_BombDisarming",
+        "Bomb_State_Disarming_PlayerViz",
+        "Disarming_Bomb",
+        "PersonalScore_GrantDisarmingPoints",
+        "UI_Banner_DisarmingBomb",
+        "Bomb_State_Disarmed_PlayerViz",
+        "Announcer_BombDisarmed",
+        "UI_Splash_DefusedBomb",
+        "Medal_GameSaver",
+        "Waypoint_Progress_Defender_Site",
+        "Local_Temp_Progress",
+        "Progress_Update_Enemy",
+        "Waypoint_Progress_Attacker_Site",
+        "Progress_Update_Friendly",
+        "Local_Temp_Waypoint",
+        "Progress_Update_Neutral",
+        "Waypoint_Progress_Attacker_Bomb",
+        "Waypoint_Progress_Defender_Bomb",
+        "Incoming_Bomb",
+        "Waypoint_Text_Attacker_Bomb_SetResetting",
+        "Idle_Bomb",
+        "Planting_Bomb",
+        "Waypoint_Text_Defender_Site_SetArmed",
+        "Waypoint_Text_Attacker_Site_SetArmed",
+        "Progress_Update_Contested",
+        "Progress_Update_Relative",
+        "Bomb_State_Incoming_PlayerViz",
+        "Waypoint_Text_Attacker_Bomb_SetIncoming",
+        "Waypoint_Text_Defender_Bomb_SetIncoming",
+        "Waypoint_Move_Attacker_Bomb_ToSpawn",
+        "Waypoint_Attach_Attacker_Bomb_ToSpawn",
+        "Waypoint_Move_Defender_Bomb_ToSpawn",
+        "Waypoint_Attach_Defender_Bomb_ToSpawn",
+        "Announcer_BombIncoming",
+        "Announcer_BombArmed",
+        "Bomb_State_Planting_MoveBomb",
+        "Bomb_State_Planting_PlayerViz",
+        "Score_SomeonePlanted",
+        "UI_Splash_ArmedBomb",
+        "Medal_LateBoomer",
+        "Medal_RememberThis_Armed",
+        "Bomb_Explode",
+        "Announcer_BombDetonated",
+        "SpawnExplosion",
+        "Bomb_State_Detonated_PlayerViz",
+        "Score_SomeoneScored",
+        "Waypoint_Icon_Attacker_Site_SetDead",
+        "Waypoint_Icon_Defender_Site_SetDead",
+        "Waypoint_Text_Defender_Site_SetArmedViz",
+        "Waypoint_Text_Attacker_Site_SetArmedViz",
+        "Waypoint_Text_Attacker_Site_SetDefend",
+        "Waypoint_Text_Attacker_Site_SetDisarming",
+        "Waypoint_Text_Defender_Site_SetAttack",
+        "Waypoint_Text_Defender_Site_SetDisarming",
+        "Marking_Player",
+        "Marked_Player",
+        "Bomb",
+        "Bomb_Spotted_End",
+        "UI_Splash_Spotted",
+        "Seconds_Arming_NeutralBomb_Ranked",
+        "Seconds_Arming_NeutralBomb_Social",
+        "Seconds_Arming_OneBomb_Ranked",
+        "Seconds_Arming_OneBomb_Social",
+        "Seconds_Disarming_NeutralBomb_Ranked",
+        "Seconds_Disarming_OneBomb_Ranked",
+        "Seconds_Disarming_NeutralBomb_Social",
+        "Seconds_Disarming_OneBomb_Social",
+        "Seconds_Fuse_NeutralBomb",
+        "Seconds_Fuse_OneBomb",
+        "Waypoint_Docking_Defender_Bomb_PlayerOn",
+        "Waypoint_Docking_Defender_Bomb_PlayerOff",
+        "Score_GrantDetonationPoints",
+        "PersonalScore_GrantPlantPoints",
+        "PersonalScore_GrantDetonationPoints",
+        "VO_TeamScored",
+        "UI_Splash_Scored",
+        "Announcer_CarrierKill",
+        "Announcer_BombDropped",
+        "Medal_BomberSpree",
+        "UI_Splash_Clear",
+        "VO_Announcer_TeamScored",
+        "VO_NextPointWins",
+        "local_TeamsWithOnePointLeft",
+        "ScoreVOGiven",
+        "VO_HalfWayToVictory",
+        "local_secondPlace",
+        "doesNextPointWins",
+        "VO_NearingVictory",
+        "CheckRoundOver",
+        "local_firstPlace",
+        "UI_Banner_PlayerDisabled",
+        "UI_Banner_AllDisabled",
+        "Waypoint_Icon_Defender_Site_SetBomb",
+        "Bot_Arming",
+        "tmp_list",
+        "FilterForObjectsToExplode",
+        "Bomb_Explosion_FindObjectsAroundSite",
+        "Bomb_Explode_SetAroundSite",
+        "Bomb_Explosion_FindObjectsOnSite",
+        "Bomb_Explode_SetOnSite",
+        "ExplodeAllObjects",
+        "ObjectsOnSite",
+        "ObjectsAroundSite",
+        "Waypoint_Filter_Attacker_Bomb_AllPass",
+        "Waypoint_Filter_Defender_Bomb_AllPass",
+        "Waypoint_Filter_Attacker_Bomb_AnyPass",
+        "Waypoint_Filter_Defender_Bomb_HitVizOn",
+        "Waypoint_Text_Attacker_Bomb_SetDefend",
+        "Cooldown_Announcer_BombArming",
+        "Cooldown_Announcer_BombDisarming",
+        "Commander_BombDisarmed",
+        "Commander_BombTaken",
+        "Commander_BombDropped",
+        "Commander_BombArmed",
+        "Commander_BombDetonated",
+        "VO_Commander_TeamScored",
+        "RememberThis_Valid",
+        "RememberThis_FirstArmingTeam",
+        "FastBreak_Awarded",
+        "Bots_Guard-AttackPlayer",
+        "Bots_BombArming",
+        "Assault:One Bomb Squad",
+        "CheckArming",
+        "BombsSite",
+        "isCarrier",
+        "isOnSite",
+        "PlayersBomb",
+        "Site_Entered",
+        "PlayersSite",
+        "isBeingCarried",
+        "Bomb_State_Change",
+        "Bomb_WeaponPickup",
+        "Site_Exited",
+        "BombsPlayer",
+        "Bomb_State",
+        "Bomb_WeaponDropped",
+        "PersonalScore_TrackDisarmAssists",
+        "CheckDisarming",
+        "SitesBomb",
+        "ManageOnSiteDefenders",
+        "DefendersOnSite",
+        "BombSites",
+        "DisarmPlayerCleanup",
+        "Progress_Arming",
+        "Seconds_ToArm",
+        "Seconds_ToReset",
+        "BombsSpawn",
+        "Bombs",
+        "Progress_Detonating",
+        "Seconds_ToDisarm",
+        "isTeamNeutral",
+        "BombType",
+        "Nav_SiteOffset",
+        "Nav_BombOffset",
+        "Spawn_BombOffset",
+        "Plant_BombOffset",
+        "SitesPlant",
+        "Plants",
+        "Seconds_ToDetonate",
+        "Seconds_ToDecay",
+        "Progress_Resetting",
+        "BombSpawns",
+        "Progress_Incoming",
+        "BombStateStrings",
+        "Bomb_Text",
+        "Seconds_ToBombIncoming",
+        "Progress_Disarming",
+        "Progress_Decaying",
+        "Bomb_Explosion",
+        "Spawn_State",
+        "SpawnStateStrings",
+        "Spawn_Text",
+        "SpawnsBomb",
+        "Spawn_Index",
+        "ExplosionDamageImpulseRadius",
+        "BombThrowVelocityScalar",
+        "Seconds_ToTickSFX",
+        "ShieldAndHealth",
+        "isRoundOver",
+        "DisarmAssisters",
+        "Attackers",
+        "Defenders",
+        "Scoring_DefendSuccessPoints",
+        "Attacker_Bomb_1",
+        "Attacker_Bomb_2",
+        "Nav_AttackerBombs",
+        "Defender_Bomb_1",
+        "Defender_Bomb_2",
+        "Nav_DefenderBombs",
+        "Attacker_Site_1",
+        "Attacker_Site_2",
+        "Nav_AttackerSites",
+        "Defender_Site_1",
+        "Defender_Site_2",
+        "Nav_DefenderSites",
+        "BombSites_Active",
+        "isAsymMode",
+        "SecondsRevealed",
+        "Var_Init_Player",
+        "Bomb_Tick",
+        "Tick_CheckSpawnProgress",
+        "Var_Init_Sites",
+        "Var_Init_Bombs",
+        "VO_Mode_Name",
+        "Tick_CheckBombProgress",
+        "End_ScoreWatch",
+        "Nav_Init_Sites",
+        "Nav_Init_Bombs",
+        "Bomb_Defused",
+        "Bomb_Detonated",
+        "SpawnBomb",
+        "Bomb_Reset",
+        "Site_Incoming",
+        "Bomb_Disarmed",
+        "VO_BombDisarmed",
+        "Bomb_Decaying",
+        "Var_Init_Stopwatches",
+        "Begin_ScoreWatch",
+        "Bomb_Incoming",
+        "NavAttach_Attacker_Bomb_toSpawn",
+        "VO_BombIncoming",
+        "Var_Init_BombSpawns",
+        "UI_Banner_Disabled",
+        "SpawnExplosionImpulse",
+        "SFX_BombPickup",
+        "Nav_OnMark",
+        "Sites_Activate",
+        "Var_Init_AttackerDefender",
+        "Score_GrantDefendSuccessPoints",
+        "Utility_CheckIsAsymMode",
+        "SFX_BombReset",
+        "VO_SiteIncoming",
+        "VO_BombArming",
+        "VO_BombArmed",
+        "VO_BombDefusing",
+        "VO_BombDefused",
+        "VO_BombReset",
+        "cooldown_BombArming",
+        "SFX_BombTick",
+        "SFX_BombArmed",
+        "SFX_BombSpawned",
+        "VO_BombTaken",
+        "cooldown_BombTaken",
+        "VO_BombDropped",
+        "cooldown_BombDropped",
+        "cooldown_BombDisarming",
+        "NavText_Defender_Site_SetDefend",
+        "NavIcon_Defender_Site_SetDefend",
+        "NavTeam_Defender_Site_SetTeam",
+        "NavTeam_Defender_Site_SetTeamViz",
+        "NavIcon_Attacker_Site_SetAttack",
+        "NavTeam_Attacker_Site_SetTeam",
+        "NavTeam_Attacker_Site_SetTeamViz",
+        "NavText_Attacker_Site_SetDefend",
+        "NavEnable_Defender_Site",
+        "NavMove_Defender_Site_toSite",
+        "NavMove_Attacker_Site_toSite",
+        "NavEnable_Attacker_Site",
+        "NavIcon_Attacker_Bomb_SetBomb",
+        "NavIcon_Attacker_Bomb_SetDefend",
+        "NavIcon_Attacker_Bomb_SetDead",
+        "NavIcon_Defender_Bomb_SetKill",
+        "NavIcon_Defender_Bomb_SetAttack",
+        "NavIcon_Defender_Bomb_SetDead",
+        "NavIcon_Defender_Bomb_SetBomb",
+        "NavIcon_Attacker_Bomb_SetAttack",
+        "Nav_Init_Bomb",
+        "NavTeam_Bomb_SetVizParams",
+        "NavEnable_Bomb",
+        "UpdateNavProgress",
+        "NavAttach_Bomb_ToBomb",
+        "NavIcon_Bomb_SetBomb",
+        "NavText_Bomb_Clear",
+        "local_Progress",
+        "Nav_Bomb_UpdateProgress_Neutral",
+        "SetProgress",
+        "Nav_Bomb_UpdateProgress_Team",
+        "Tick_UpdateNavProgress",
+        "local_Bomb_Text",
+        "local_Bomb",
+        "local_PlayersBomb",
+        "local_Bomb_State",
+        "local_Bomb_Index",
+        "local_BombsPlayer",
+        "local_BombsSpawn",
+        "Bomb_DeleteForNSeconds",
+        "local_BombsSite",
+        "local_isTeamNeutral",
+        "SetTeams",
+        "NavMove_Attacker_Bomb_toSite",
+        "PlaceBomb",
+        "NavAttach_Attacker_Bomb_toBomb",
+        "NavMove_Attacker_Bomb_toSpawn",
+        "NavDisable_Defender_Bomb",
+        "NavEnable_Defender_Bomb",
+        "NavDisable_Defender_Site",
+        "NavDisable_Attacker_Site",
+        "NavEnable_Attacker_Bomb",
+        "NavDisable_Attacker_Bomb",
+        "NavDamageFilter_Remove_Defender_Bomb",
+        "NavDamageFilter_Remove_Attacker_Bomb",
+        "NavDamageFilter_Set_Defender_Bomb",
+        "NavDamageFilter_Set_Attacker_Bomb",
+        "NavDamageFilter_Refresh_Defender_Bomb",
+        "NavAttach_Attacker_Bomb_toSite",
+        "NavAttach_Defender_Bomb_toSpawn",
+        "NavAttach_Defender_Site_toSite",
+        "NavAttach_Attacker_Site_toSite",
+        "NavAttach_Defender_Bomb_toSite",
+        "NavAttach_Defender_Bomb_toBomb",
+        "NavText_Defender_Bomb_SetKill",
+        "NavText_Attacker_Bomb_Update",
+        "NavText_Attacker_Bomb_Clear",
+        "NavText_Defender_Bomb_SetAttack",
+        "NavText_Defender_Bomb_Update",
+        "NavText_Attacker_Bomb_Defend",
+        "NavText_Defender_Bomb_Clear",
+        "NavText_Defender_Bomb_ArmProgress",
+        "NavText_Attacker_Bomb_ArmProgress",
+        "Arming",
+        "Planting",
+        "Nav_Arming",
+        "Disarming",
+        "Armed",
+        "Reset",
+        "Disarmed",
+        "Resetting",
+        "Nav_Decay",
+        "Nav_Armed",
+        "Decaying",
+        "UpdateState_IDs",
+        "Nav_Resetting",
+        "Nav_Reset",
+        "Spawn_State_Change",
+        "Nav_Bomb",
+        "Nav_Disarming",
+        "UI_Banner_DefusingBomb",
+        "Begin_Stopwatch",
+        "End_Stopwatch",
+        "Duration_TimeMarked",
+        "SetBombFilters",
+        "NavTeam_Bomb_EnablePlayerViz",
+        "NavTeam_BombAttacker_EnablePlayerViz",
+        "NavTeam_BombAttacker_DisablePlayerViz",
+        "NavTeam_Bomb_DisablePlayerViz",
+        "SFX_Tick",
+        "PersonalScore_DisarmingBomb",
+        "NavTeam_Attacker_Bomb_Dedock",
+        "NavTeam_Attacker_Bomb_DockCarrier",
+        "NavTeam_Attacker_Bomb_DisablePlayerViz",
+        "NavTeam_Attacker_Bomb_ClearTeam",
+        "NavTeam_Defender_Bomb_EnablePlayerViz",
+        "NavTeam_Defender_Bomb_DisablePlayerViz",
+        "NavTeam_Attacker_Bomb_SetTeam",
+        "NavTeam_Defender_Bomb_ClearTeam",
+        "NavTeam_Defender_Bomb_SetTeam",
+        "NavTeam_Attacker_Bomb_EnablePlayerViz",
+        "Idle",
+        "Incoming",
+        "UpdateString",
+        "NavText_Attacker_Clear_Bomb",
+        "NavMove_Defender_Bomb_toSite",
+        "NavMove_Attacker_Bomb_toBomb",
+        "NavMoveAndAttach_Attacker_Bomb_toSpawn",
+        "NavMove_Defender_Bomb_toBomb",
+        "NavMoveAndAttach_Attacker_Bomb_toSite",
+        "NavMoveAndAttach_Attacker_Bomb_toBomb",
+        "NavMoveAndAttach_Defender_Bomb_toSite",
+        "NavMoveAndAttach_Defender_Bomb_toBomb",
+        "NavMoveAndAttach_Defender_Site_toSite",
+        "NavMove_Defender_Bomb_toSpawn",
+        "NavMoveAndAttach_Defender_Bomb_toSpawn",
+        "NavTeam_Defender_Bomb_SetTeamViz",
+        "NavIcon_Defender_Bomb_SetDefend",
+        "FrameTick_PauseGameClock",
+        "FrameTickTrigger"
+      ],
+      "bounds": {
+        "max": [
+          299.3846130371094,
+          1495.05859375,
+          761.1649169921875
+        ],
+        "min": [
+          -572.6428833007812,
+          -178.10000610351562,
+          -29.963321685791016
+        ]
+      }
     }
   },
   "notes": {
@@ -117220,6 +119299,10 @@
     "fdde5715-cd2b-4f78-ad7d-9a83a4f968c6": {
       "objectives": 16,
       "unresolved_label_hashes": 8
+    },
+    "ff6b8a12-6b95-4eac-8ee1-9ba4c985c2e0": {
+      "objectives": 34,
+      "unresolved_label_hashes": 28
     }
   }
 }
