@@ -2,7 +2,7 @@
 
 ---
 
-## 🔄 En cours : plan `.ai/PLAN_BACKLOG_2026-10-16.md` (les entrées ci-dessous, traitées étape par étape ; E1 CI, E2 connexion Xbox/participation, E3 séquence d'arrêt, E4 LUSR (retrait de la v1), E5 dettes Go du 2026-10-15, E6 citations et profil, E7 requêtes du chargement de la Tactique et E8 lot film (positions du coup fatal, score KOTH Lattice, Harvest, vies sans nom) et E9 (recalcul des dérivés Halo 5 : `--title` des passes, chemin des sessions, séquence de déploiement au runbook) closes ; la recuisson et le rattrapage de E8 se jouent après la fusion, E10.5)
+## 🔄 Aucune tâche en cours (plan `.ai/PLAN_BACKLOG_2026-10-16.md` clos le 2026-10-18 ; fusion dans `feat/v75` = geste du user)
 
 ---
 
@@ -32,6 +32,48 @@ reste sans position alors que la tenue le placerait ; `siegesDe` donne un second
 parent qui n'est ni un véhicule échantillonné ni un bipède (`5676a9ba`) ; le châssis de véhicule
 `b857fb95` (`e449a696`, `99b8ba5c`) n'est pas dans la table des familles (marqueur neutre). **Effort : S
 chacune, à instruire une par une.**
+
+---
+
+### [ui] Indicateur « Analyse en cours » (tuile + vue match) — maquette validée le 2026-10-16
+
+Maquette validée par l'utilisateur le 2026-10-16 (artefact Claude Design, canvas Main / MatchView / Tile),
+lot jamais inscrit au backlog jusqu'ici (découverte E0 du plan `.ai/PLAN_BACKLOG_2026-10-16.md`). Retenu :
+pastille « Analyse en cours » sur l'image de carte de la tuile, emplacements en attente (frags assistés,
+citations, rejeu), bandeau INFO dans la vue match ; état donné par le SERVEUR, rechargement auto ~1 min
+tant que l'analyse court, disparition au-delà de 24 h ; libellés « d'ici quelques instants » ; FR + EN,
+tokens de couleur. **Effort : M.**
+
+---
+
+### [dette/backlog-2026-10-16] Découvertes non traitées du plan du 2026-10-16
+
+Section « Découvertes » de `.ai/PLAN_BACKLOG_2026-10-16.md` (détail, `fichier:ligne` et origine par
+étape). Les principales, à trier :
+- **LUSR** : un match exclu reste tracé dans le graphe de carrière avec sa note d'avant (Q8
+  `queries_career.go`, `profile/queries.go` sans filtre `is_excluded`) ; `skippedWriteFailed` laisse
+  `RunLUSRV2Shadow` rendre `nil` (une exclusion dont une écriture canonique échoue répond « terminé ») ;
+  la lecture du précédent par la vue coûte ~5 ms de plus par match noté (index en mémoire possible) ;
+  la fixture `psa_index_repro_msr_fixture_test.go` recopie les anciennes requêtes. **S chacune.**
+- **Multi-titre** : `auto_sync_engine.go` et `sync_handler.go` passent le provider d'Infinite aux moteurs
+  d'autres titres ; passes `--csr`/`--shared-csr` aux chemins fixés sur le titre par défaut (le titre
+  de test `synthetic_title_b` déclare la capability) ; ratchet `no_slug_comparison_test.go` sans `cmd/` ;
+  `cmd/levelup` n'installe pas les étapes de migration par titre ; `RunForDB` reste dans 3 outils ;
+  la route des sessions parcourt les profils `auth_only`. **S à M.**
+- **CI / outillage** : `scripts/gate-push.ps1` joue une seule suite en série ; le filtre de chemins ne voit
+  pas tous les tests Go qui lisent `apps/web/src` (rattrapé par la CI complète de `feat/v75`) ; le corpus
+  `-tags=gamefiles` n'est pas vert sur le poste (dépôt `.ai/re_dump/mapvar` absent, banc Cliffhanger
+  64,4 % contre 64,7 %). **S.**
+- **Citations** : échec de `LoadCitationMappings` avalé (page vide) ; la barre de filtres de la page est
+  sans effet (corps ignoré) ; noms de tuiles tronqués (« Maîtrise de la … » indiscernables) ; le serveur
+  ne rejoue jamais le seed des citations sur une metadata existante. **S chacune.**
+- **Divers** : `StepDeviceCode.tsx` garde l'effet de récupération sans garde (sondage déjà arrêté) ;
+  premières vérifications de participation soumises au budget de lecture ; `cmd_reset_bitmasks.go`
+  recopie d'autres constantes ; deux `continue` silencieux dans `weapon_resolver.go` ; démo sans
+  `match_bomb_stats` ; coût de `/tactical/maps` (une résolution de fond par carte) à mesurer ;
+  instruments `research` de `film/replay` en `filepath.Join(depot, "data", ...)` (~31 fichiers, motif ancien) ;
+  `cmd/backfill_milestone_dates` absent de l'image de prod (dates de paliers Halo 5 non recalculables
+  en prod : l'ajouter au `Dockerfile` ou laisser les dates, décision du user). **S.**
 
 ---
 

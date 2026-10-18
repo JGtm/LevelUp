@@ -509,9 +509,18 @@ Statut du gate (exécutant, 2026-10-18) : VERT. `go test -count=1 ./cmd/levelup/
   - [x] C9 film : tueur posthume posé par la tenue / le siège, testé — `790ab9974`
   - [x] C10 film : deux sièges à la tolérance, bord lu, testé — `790ab9974`
   - [x] C11 (CI rouge `39153410524`) : `TestAssertProgressionDeps_HookWiredOnAllSyncPaths`, regex étendue à `NewSyncEngineForTitle`, cinq sites déclarés — `e155beab8`
-- [ ] E10.2 Fusion de `origin/feat/v75` dans la branche si elle a bougé ; gates locaux rejoués.
-- [ ] E10.3 Push → CI complète verte (durées au journal).
-- [ ] E10.4 `.ai/BACKLOG.md` : contrôle final (les 12 entrées traitées au fil des étapes, aucune
+  Ronde 2 (relecteur frais, diff `74cc3e534..29f80c764`) : 0 P0/P1, 3 P2 consignés en section 3
+  (`skippedWriteFailed` rend `nil`, passes CSR aux chemins du titre par défaut alors que le titre de test
+  `synthetic_title_b` déclare la capability, `r.LUSRUpdated` non renseigné sur le nouveau chemin d'erreur) ;
+  24 conditions vérifiées qui tiennent. Bornes du skill tenues (P0+P1 : 11 -> 0) : pas de ronde 3.
+- [x] E10.2 Fusion de `origin/feat/v75` (66 commits : délai du débrief, retours-fin) : `283e2e5b4`.
+  Conflits : imports de `sync/citations_backfill.go` (les deux gardés) ; `.ai/REGISTRE_REPORTS.md`
+  (lignes de feat/v75 gardées, les 3 lignes citations soldées par E6 retirées). Gates rejoués :
+  `go vet -tags=integration` (sync, service, api, cmd/server, cmd/levelup) propre ; archlint vert ;
+  `-tags=integration -p 1` sync, sync/skill, service verts ; `openapi-gen -check` et types frais OK ;
+  `tsc -b` propre.
+- [x] E10.3 Push → CI complète verte : run `39157804437` sur `283e2e5b4` (branche fusionnée avec `feat/v75`), succès en 13 min 20 s. Run précédent `39153410524` rouge (C11, corrigé) ; `39156759265` annulé par le push suivant (concurrency).
+- [x] E10.4 `.ai/BACKLOG.md` : contrôle final (les 12 entrées traitées au fil des étapes, aucune
   entrée orpheline) ; `.ai/REGISTRE_REPORTS.md` à jour (lignes Lattice, position à la mort) ; thought_log ;
   `disk-hygiene.ps1 -Lot backlog1016 -Apply`.
 - [ ] E10.5 Remise au user : fusion dans `feat/v75` (son geste), séquence de déploiement (E8.6,
@@ -685,6 +694,10 @@ Statut du gate (exécutant, 2026-10-18) : VERT. `go test -count=1 ./cmd/levelup/
   le gate d'E9 ne jouait `-tags=integration` que sur `./cmd/levelup/ ./internal/config/ ./internal/service/ ./internal/api/handlers/
   ./internal/api/wire/`, pas sur `./internal/sync/`. Leçon : tout changement d'un constructeur de moteur rejoue `-tags=integration` sur
   `./internal/sync/`.
+- E10 (pilote, contrôle de livraison) : les instruments `research` de `film/replay` lisent le dépôt de
+  données par `filepath.Join(depot, "data", ...)` (variable `L1_DEPOT`) au lieu de `PathResolver` : 7
+  fichiers ajoutés par E8 reprennent un motif déjà présent dans ~24 tests `research` du dépôt (règle 6 :
+  helper + garde-rail). Tests de recherche seulement, jamais en CI ; non traité.
 
 ## 4. Journal
 
@@ -1079,3 +1092,7 @@ Statut du gate (exécutant, 2026-10-18) : VERT. `go test -count=1 ./cmd/levelup/
   - C9, C10 : `killpos_bord_lu_test.go` ; mutations : retour à `positionOf` dans `placerPosthume` (tenue et siège rouges), retrait de `proches > 1 ||` (`TestLectureDuLieu_DeuxSiegesALaToleranceRefusentMemeAvecLeBord` rouge, victime tenue en (5, 0)).
   - C11 : regex `newSyncEngineRe` étendue à `NewSyncEngineForTitle` et aux alias `syncpkg`, `sync_pkg` ; cinq sites déclarés avec leur statut lu dans le code (`backfill.go`, `registry_lusr_gaps.go`, `livesync/wire.go` : `no-runner-ok` ; `sync_handler.go` : `legacy-hook` (`WithPostSyncDeltaHook`) ; `auto_sync_engine.go` : `wired` (`WithPostSyncRunner`)). Cause du trou du gate d'E9 : section 3.
   - Gate (un seul `go` à la fois, `GOCACHE` dédié) : `go test -count=1 ./internal/archlint/ ./internal/sync/skill/ ./internal/service/... ./internal/api/... ./cmd/levelup/ ./internal/domain/...` et `./internal/games/halo_infinite/film/... ./internal/sync/killcollector/...` : tous `ok` (après correction de l'ancre du registre des replis, rouge `TestToutSiteDuRegistreExiste` d'abord) ; `go test -count=1 -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./cmd/levelup/` : tous `ok` (`internal/sync` 191 s, `persist` 55 s), dont `TestAssertProgressionDeps_HookWiredOnAllSyncPaths` ; `golangci-lint run --new-from-rev=74cc3e534` sur les paquets touchés, tags par défaut, `integration`, `research` : 0 issue ; aucun test renommé de la baseline JSONL. Aucun fichier web touché (vitest non rejoué). Non poussé.
+- 2026-10-18 (pilote) E10.1 ronde 2 et E10.2 : voir les statuts. `.ai/BACKLOG.md` : contrôle final fait
+  (les 12 entrées d'origine retirées ; restent 15 vies sans nom, découvertes du lot film, 157 matchs sans
+  skill, et deux entrées neuves : indicateur « Analyse en cours », découvertes du plan) ; ligne 5 remise à
+  « Aucune tâche en cours ».
