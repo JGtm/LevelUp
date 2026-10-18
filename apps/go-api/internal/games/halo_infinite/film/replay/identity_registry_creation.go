@@ -66,7 +66,6 @@ import (
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Les DEUX voies de nommage par le record de creation. Elles repondent a « comment sait-on a qui
@@ -116,6 +115,11 @@ type creationReport struct {
 	// participants (cf. identity_registry_scoreboard.go). Le reconstruire ailleurs demanderait
 	// un second balayage des records — exactement la seconde lecture que ce fichier evite.
 	indexLu map[int]uint32
+	// parIndexDesChunks : indice de vie -> index des chunks hors table qui l'a nommee
+	// (identity_registry_index_des_chunks.go). SOUS-POPULATION de `Direct` + `Propagated`.
+	parIndexDesChunks map[int]int
+	// IndexDesChunksRefuses : index des chunks hors table retires par la garde du chevauchement.
+	IndexDesChunksRefuses int
 }
 
 // Lues rend le nombre de vies que la lecture directe a nommees, propagation comprise.
@@ -131,15 +135,13 @@ func (r IdentityRegistry) CauseNonResolue(i int) canonical.LinkMethod {
 	return r.creation.causes[i]
 }
 
-// nommerViesParCreations pose le lien DIRECT sur les vies, AVANT toute autre voie.
-//
-// Elle n'ecrase jamais rien : elle est la PREMIERE etape de [BuildIdentityRegistry], les vies y
-// arrivent anonymes. Elle rend le rapport, jamais une decision — le registre en tire la
-// couverture et les alarmes.
-func nommerViesParCreations(lives []lifeSpan, creations []grammar.BipedCreation,
-	idx types.PlayerIndexTable, bots []BotIdentity, scan grammar.PlayerEntityScan) creationReport {
+// nommerAvecLesTables est UNE lecture directe des vies par les records de creation : la table
+// effective, plus l'index des chunks hors table `chunks` (index -> xuid, nil = aucun ; cf.
+// identity_registry_index_des_chunks.go, qui decide lesquels survivent a la garde).
+func nommerAvecLesTables(lives []lifeSpan, in IdentityInput, chunks map[int]uint64) creationReport {
+	creations, idx, bots, scan := in.BipedCreations, in.PlayerIndices, in.Bots, in.Entities
 	rep := creationReport{Records: len(creations), causes: map[int]canonical.LinkMethod{},
-		indexLu: map[int]uint32{}}
+		indexLu: map[int]uint32{}, parIndexDesChunks: map[int]int{}}
 	if len(lives) == 0 {
 		return rep
 	}
@@ -160,7 +162,12 @@ func nommerViesParCreations(lives []lifeSpan, creations []grammar.BipedCreation,
 	}
 	res := resolutionDIndex{versXUID: indexToXUIDOf(idx.ByXUID), versBot: indexDesBotsDeclares(bots),
 		parEntite:      lireEntitesDesIndexPartages(scan, bots, idx),
-		parDeclaration: lireLesDeclarations(bots, idx, scan)}
+		parDeclaration: lireLesDeclarations(bots, idx, scan), parChunks: map[int]bool{}}
+	for j, x := range chunks {
+		if _, tenu := res.versXUID[j]; !tenu {
+			res.versXUID[j], res.parChunks[j] = x, true
+		}
+	}
 	for slot, vies := range indicesDeViesParSlot(lives) {
 		c, ok := corps[slot]
 		if !ok {
@@ -184,6 +191,9 @@ type resolutionDIndex struct {
 	// parDeclaration : les index que plusieurs occupants se relaient, lus par les declarations de leurs bots
 	// (identity_registry_declarations.go).
 	parDeclaration lectureParDeclaration
+	// parChunks : les index de `versXUID` que seule la lecture des chunks attribue (index des chunks
+	// hors table, identity_registry_index_des_chunks.go).
+	parChunks map[int]bool
 }
 
 // indicesDeViesParSlot groupe les INDICES des vies par slot, dans l'ordre chronologique.
@@ -267,6 +277,9 @@ func (r *creationReport) poser(lives []lifeSpan, i int, d dateDeCreation, t reso
 		return false
 	}
 	lives[i].xuid = x
+	if t.parChunks[pi] {
+		r.parIndexDesChunks[i] = pi
+	}
 	return true
 }
 
@@ -441,15 +454,18 @@ func indexDesBotsDeclares(bots []BotIdentity) map[int]bool {
 // tombe sous zero ou sous le vrai residu, et l'alarme se tait ou se sous-evalue — exactement le
 // defaut consigne. `causes.IndexOutOfTable`, LUI, exclut deja tout bot NOMME (bid pose) : une
 // vie qui en sort n'est plus `non_resolu`, donc plus dans ce compte. Rien a soustraire.
-func (r creationReport) alarmerSurLesRefus(ctx context.Context, matchID string, causes canonical.UnresolvedCauses) {
+func (r creationReport) alarmerSurLesRefus(ctx context.Context, matchID string, causes canonical.UnresolvedCauses,
+	index []string) {
 	slog.InfoContext(ctx, "rejeu : lien direct corps -> joueur",
 		"match_id", matchID, "records", r.Records, "corps", r.Slots,
 		"direct", r.Direct, "propage", r.Propagated, "indexBot", r.IndexBot,
-		"parEntite", r.ParEntite, "parDeclaration", r.ParDeclaration, "slotsRecycles", r.Recycled)
+		"parEntite", r.ParEntite, "parDeclaration", r.ParDeclaration, "slotsRecycles", r.Recycled,
+		"parIndexDesChunks", len(r.parIndexDesChunks), "indexDesChunksRefuses", r.IndexDesChunksRefuses)
 	if causes.IndexOutOfTable > 0 {
+		// `index` porte la piece : chaque index lu des vies restees sans nom, et leur nombre.
 		slog.WarnContext(ctx, "rejeu : index de participant LU mais absent de la table publiee — vies NON "+
 			"rattachees (verdict I0 : participant que PlayerIndexTable ne nomme pas)",
-			"match_id", matchID, "vies", causes.IndexOutOfTable)
+			"match_id", matchID, "vies", causes.IndexOutOfTable, "index", index)
 	}
 	if causes.DivergentReadings > 0 {
 		slog.WarnContext(ctx, "rejeu : vie anterieure au premier record de son slot RECYCLE — aucun corps "+

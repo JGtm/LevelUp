@@ -18,8 +18,16 @@ package replay
 // Le diagnostic est « ce xuid n'a pas de siege dans la table du film », et il a une population
 // MESUREE : la table du film est celle du DEBUT du film, donc un joueur qui rejoint en cours de
 // partie n'y figure pas (mesure du 2026-09-14, huit builds : 0 a 5 par film, 13 au total). Un
-// DESACCORD, lui, ne declenche rien : le film fait foi, l'ecart se COMPTE
+// DESACCORD, lui, ne retire aucun siege hors chaine (cf. plus bas) : l ecart se COMPTE
 // (`contradiction`) et le relecteur le lit. Mesure du 2026-09-14 : 125 accords, 0 contradiction.
+//
+// # LE DESACCORD SE COMPTE ; L INDEX QUE LA TABLE TAIT SE LIT ; LA CHAINE SE LIT DANS LES CHUNKS
+//
+// Quand les chunks lisent un joueur a un index `j` que la table ne donne a personne, alors qu elle
+// l assied a `i`, le siege `i` reste et `j` nomme EN PLUS les corps qui le portent, sous la garde du
+// chevauchement (identity_registry_index_des_chunks.go). Quand `j` est le siege d un AUTRE joueur
+// que les chunks contredisent aussi, la table est dementie par deux lectures : les membres de cette
+// chaine prennent leur index des chunks (identity_registry_chaines.go).
 //
 // # LE CONTROLE, ET CE QU'IL EST
 //
@@ -45,6 +53,7 @@ package replay
 import (
 	"context"
 	"log/slog"
+	"strconv"
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -62,6 +71,17 @@ type filmTableLinks struct {
 	noms map[uint64]string
 	// couverture est ce que la section publie.
 	couverture canonical.FilmTableCounts
+	// contradictions porte, pour le journal, chaque xuid que la lecture des chunks place a un AUTRE
+	// index que la table du film : « xuid:siege->controle ». Hors chaine la table fait foi ; la piece reste.
+	contradictions []string
+	// indexDesChunks : les index SUPPLEMENTAIRES de la lecture des corps (index -> xuid ;
+	// identity_registry_index_des_chunks.go et identity_registry_chaines.go).
+	indexDesChunks map[int]uint64
+	// indexTenus : contradictions hors chaine dont l index des chunks est tenu par un joueur non contredit.
+	indexTenus int
+	// membresDeChaine : joueurs portes a leur index des chunks par une chaine resolue ; chaines : chaines
+	// laissees telles que la table les ecrit (un index des chunks tenu par un joueur non contredit).
+	membresDeChaine, chaines int
 }
 
 // composerTableDIndex compose les deux lectures dans l'ordre de la doctrine et rend la table
@@ -89,7 +109,12 @@ func composerTableDIndex(in IdentityInput) filmTableLinks {
 		poserSiegesDuFilm(&out, in)
 	}
 	completerParLesChunks(&out, in)
+	// LA CHAINE SE RESOUT AVANT LE RETRAIT DES COLLISIONS : un siege contredit que les chunks donnent
+	// a un autre joueur est une collision qu elle explique (identity_registry_chaines.go).
+	cs := contradictionsAssises(out.table, in)
+	membres := resoudreLesChaines(&out, cs, in)
 	retirerLesIndexEnCollision(&out)
+	out.indexDesChunks, out.indexTenus = indexDesChunksHorsTable(out.table, cs, membres)
 	return out
 }
 
@@ -157,6 +182,8 @@ func poserSiegesDuFilm(out *filmTableLinks, in IdentityInput) {
 			out.couverture.Accord++
 		default:
 			out.couverture.Contradiction++
+			out.contradictions = append(out.contradictions, strconv.FormatUint(s.XUID, 10)+":"+
+				strconv.Itoa(s.FilmIndex)+"->"+strconv.Itoa(pi))
 		}
 	}
 }
@@ -190,9 +217,11 @@ func (l filmTableLinks) alarmerSurLaTableDuFilm(ctx context.Context, matchID str
 			c.Direct+c.Fallback)
 	}
 	if c.Contradiction > 0 {
-		slog.WarnContext(ctx, "rejeu : la lecture des chunks CONTREDIT la table du film sur des index — la "+
+		slog.WarnContext(ctx, "rejeu : la lecture des chunks CONTREDIT la table du film sur des index — hors chaine, la "+
 			"table du film fait foi, l'ecart est compte",
-			"match_id", matchID, "contradictions", c.Contradiction, "accords", c.Accord)
+			"match_id", matchID, "contradictions", c.Contradiction, "accords", c.Accord,
+			"detail", l.contradictions, "indexDesChunksHorsTable", len(l.indexDesChunks),
+			"indexTenus", l.indexTenus, "membresDeChaine", l.membresDeChaine, "chainesNonResolues", l.chaines)
 	}
 	if !c.Read {
 		slog.Log(ctx, niveau, "rejeu : table du film NON EMPLOYEE — le lien index <-> xuid retombe "+

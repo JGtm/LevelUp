@@ -292,7 +292,10 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 97 -> 98 (2026-10-16, integration groupee `feat/integ-film` des lots « faille a la pose »,
 	// « ks-a », « ks-d », K-B et K-C), +49 : l entree v98 (la faille situee a sa pose et sa fin lue, une sous-entree par
 	// lot, les rangs abandonnes des branches). Exception ecrite, dans le commit qui fixe la montee.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3402,
+	// SCHEMA 98 -> 99 (2026-10-17, E8.4 du plan du backlog du 2026-10-16), +33 : l entree v99 (l index des
+	// chunks hors table, la chaine de contradictions, la mesure au parc, les revisions). Exception ecrite,
+	// dans le commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3435,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -414,7 +417,9 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 96 -> 97 (2026-10-15, plan du residu des images-cles) : 1448 -> 1452, la justification de
 	// la montee.
 	// SCHEMA 97 -> 98 (2026-10-15, lot « faille a la pose ») : 1452 -> 1454, la justification de la montee.
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1454,
+	// SCHEMA 98 -> 99 (2026-10-17, E8.4 du plan du backlog du 2026-10-16) : 1454 -> 1458, la justification
+	// de la montee (index des chunks hors table, chaine de contradictions).
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1458,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

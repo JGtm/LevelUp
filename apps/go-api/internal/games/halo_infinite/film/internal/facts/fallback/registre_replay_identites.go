@@ -242,4 +242,23 @@ var registreReplayIdentites = []Repli{
 		CritereRetrait:  "0 piste nommee par occupation sur le corpus du gate de rejeu",
 		CompteurBranche: true,
 	},
+	{
+		Nom: "repli_index_des_chunks_hors_table",
+		Fait: "le joueur d un corps dont le record de creation porte un index que la table effective ne nomme pas, " +
+			"quand les chunks de replication lisent CET index pour un joueur que la table du film assied ailleurs",
+		Mecanisme: "l index des chunks nomme en plus les corps qui le portent si aucun joueur de la table ni aucun bot " +
+			"declare ne le tient, et si aucun de ces corps ne chevauche dans le temps un corps du meme joueur nomme " +
+			"autrement (sinon l index est retire pour ce joueur et le refus se compte)",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{
+			{Fichier: pkgReplay + "identity_registry.go", Ancre: "reg.fb.DeclencheN(fallback.NomIndexDesChunksHorsTable,"},
+			{Fichier: pkgReplay + "identity_registry_index_des_chunks.go", Ancre: "func indexDesChunksHorsTable("},
+		},
+		DatePose: "2026-10-17",
+		CibleRetrait: "la lecture de l index de participant d un joueur dans le temps (sa table a l instant, et non au " +
+			"debut du film), qui rendrait inutile le complement par les chunks",
+		CritereRetrait:  "0 corps nomme par l index des chunks hors table sur le parc, ou la voie retiree avec ses tests",
+		CompteurBranche: true,
+	},
 }

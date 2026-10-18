@@ -122,6 +122,9 @@ const (
 	NomGenerationVivanteInconnueTag1 Nom = "repli_generation_vivante_inconnue_tag1"
 	// NomIdentiteVieParOccupationDuCorps : `replay/unnamed_lives.go`, `nameRemainingLives` (lot J5.4).
 	NomIdentiteVieParOccupationDuCorps Nom = "repli_identite_vie_par_occupation_du_corps"
+	// NomIndexDesChunksHorsTable : `replay/identity_registry_index_des_chunks.go` ; compte par
+	// `replay/identity_registry.go`, `BuildIdentityRegistry` (E8.4 du plan du backlog du 2026-10-16).
+	NomIndexDesChunksHorsTable Nom = "repli_index_des_chunks_hors_table"
 	// NomLiaisonParAnticipation : `grammar/world.go`, `World.LierParRepliDAnticipation` ; compte par
 	// `replay/film_scan_mouvement.go`, `balayerEtatsDeMouvement` (lot J8.1, constat GA1-2).
 	NomLiaisonParAnticipation Nom = "repli_liaison_par_anticipation"

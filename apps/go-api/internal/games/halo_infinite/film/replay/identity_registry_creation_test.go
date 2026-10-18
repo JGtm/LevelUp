@@ -351,7 +351,7 @@ func TestAlarmerSurLesRefusNeSoustraitPasDeuxPopulationsNonComparables(t *testin
 	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
 	defer slog.SetDefault(prev)
 
-	reg.creation.alarmerSurLesRefus(context.Background(), "test", c.UnresolvedByCause)
+	reg.creation.alarmerSurLesRefus(context.Background(), "test", c.UnresolvedByCause, reg.indexDesViesHorsTable())
 
 	vies := viesAlarmeesIndexHorsTable(t, buf.Bytes())
 	if vies != 1 {

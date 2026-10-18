@@ -114,6 +114,9 @@ type IdentityInput struct {
 	// ([niveauDePublication]). NON EXPORTE : seul l'assemblage le pose ; faux, sa valeur zero, est
 	// celui de tout autre registre (cuisson, collecteur).
 	documentInterne bool
+	// indexDesChunks : index des chunks hors table (index -> xuid), pose par [BuildIdentityRegistry]
+	// apres la composition de la table effective (identity_registry_index_des_chunks.go).
+	indexDesChunks map[int]uint64
 }
 
 // StatborgIdentityInput porte l'identite des slots d'entite statborg et les enregistrements qui
@@ -210,7 +213,10 @@ func BuildIdentityRegistry(ctx context.Context, in IdentityInput) IdentityRegist
 	reg.filmTable = composerTableDIndex(in)
 	reg.filmTable.alarmerSurLaTableDuFilm(ctx, in.MatchID, niveauDePublication(in.documentInterne))
 	in.PlayerIndices = reg.filmTable.table
+	in.indexDesChunks = reg.filmTable.indexDesChunks
 	reg.own, reg.creation, reg.bridge = buildOwners(ctx, in)
+	// L'INDEX DES CHUNKS HORS TABLE EST UN REPLI NOMME, compte par vie qu'il nomme a la decoupe finale.
+	reg.fb.DeclencheN(fallback.NomIndexDesChunksHorsTable, len(reg.creation.parIndexDesChunks))
 	reg.resolveByScoreboard(ctx, in)
 	reg.resolveByRosterElimination(ctx, in)
 	reg.resolveByTemporalExclusion(ctx, in)

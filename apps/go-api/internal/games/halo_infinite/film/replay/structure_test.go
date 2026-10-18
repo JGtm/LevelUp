@@ -1447,8 +1447,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `killsource.Rev` montent avec elle : un v96 se lit « a redecoder ». Detail : `document_chronicle.go`.
 	// - 98 (2026-10-15, lot « faille a la pose ») : la position
 	//   de la faille vient de l objet que la pose cree (`riftPoses[].src`), plus du premier echange.
-	if SchemaVersion != 98 {
-		t.Fatalf("SchemaVersion = %d, attendu 98 : incrémenter exige une raison écrite ci-dessus "+
+	// - 99 (2026-10-17, E8.4 du plan du backlog du 2026-10-16) : aucun champ neuf ; le CONTENU change :
+	//   l index que les chunks lisent pour un joueur que la table du film assied ailleurs nomme les
+	//   corps qui le portent, et une chaine de contradictions se lit dans les chunks. Un v98 se lit
+	//   « a republier ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 99 {
+		t.Fatalf("SchemaVersion = %d, attendu 99 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

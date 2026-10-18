@@ -3400,3 +3400,36 @@ package replay
 //	                lots, sont abandonnés.
 //
 //	LE PARC         un artefact 97 ou d'avant : verdict `redecoder` (révision de grammaire).
+
+// v99 (2026-10-17, E8.4 du plan `.ai/PLAN_BACKLOG_2026-10-16.md`, « vies sans identite ») : contenu
+// seul. La FORME du document ne change pas ; son CONTENU change, et un artefact 98 doit se lire « a
+// republier ».
+//
+//	`tracks[].xuid`  le corps dont le record de creation porte l index que les chunks de replication
+//	`identity`       lisent pour un joueur que la table du film assied AILLEURS est nomme a ce joueur
+//	                 quand aucun joueur de la table ni aucun bot declare ne tient cet index, et
+//	                 qu aucun de ses corps ne chevauche un autre corps du meme joueur
+//	                 (`identity_registry_index_des_chunks.go`, repli `repli_index_des_chunks_hors_table`).
+//	                 Une CHAINE de contradictions (l index des chunks d un joueur est le siege de table
+//	                 d un autre joueur contredit, ou l index qu ils donnent a un joueur que la table
+//	                 n assied pas) porte ses membres a leur index des chunks dans la table effective
+//	                 (`identity_registry_chaines.go`) : leurs corps changent de nom.
+//	`identity.players[].link`  la voie d un membre de chaine passe de `film_table` a `PlayerIndexTable`.
+//	`coverage.identity.filmTable`  `direct` baisse et `repli` monte d autant pour les membres de chaine.
+//	journal          la contradiction table/chunks porte son detail (`xuid:siege->controle`), l alarme
+//	                 `index_hors_table` les index lus des vies restees sans nom.
+//
+//	MESURE          parc de 2 676 films (hors 5 films de build inconnu et 2 de Firefight) : vies
+//	                publiees sans identite 449 -> 17 sur les 36 films fautifs, aucune vie nommee
+//	                perdue ; les noms qui changent sont des vies que le relais donnait a un bot dont
+//	                le corps propre vivait au meme instant, et les corps des membres de chaine (equipe
+//	                de la feuille retrouvee sur 43 vies de trois films). Pont par morts sur les 44 films
+//	                a contradiction : concordances 4 655 -> 5 178, discordances 488 -> 446.
+//
+//	CE QUI MONTE    `SchemaVersion` 98 -> 99 ; `killcollector.PlacementRev` `placement-2026-10-16` ->
+//	AVEC ELLE       `placement-2026-10-17` (le document interne des portages lit le meme registre).
+//	                `source`, `profile`, `grammar`, `killsource` et `SchemaDesFaits` gardent leur valeur
+//	                (`objectives.Rev` a monte a `objectives-2026-10-17` au meme plan, E8.2, sans schema) :
+//	                les faits persistes du registre d identite sont identiques a l octet.
+//
+//	LE PARC         un artefact 98 dont les faits sont sur disque : verdict `republier`.

@@ -50,7 +50,7 @@ func buildOwnersFromTracks(ctx context.Context, tracks map[uint32]slotTrack,
 	// LE LIEN DIRECT EN PREMIER, ET SANS CONDITION : c'est la doctrine « l'index est l'index ».
 	// Il tourne sur l'echafaudage parce que la decoupe qui suit a besoin de savoir SI le joueur
 	// d'un sejour meurt dans le film.
-	nommerViesParCreations(lives, in.BipedCreations, idx, in.Bots, in.Entities)
+	nommerViesParCreations(lives, in)
 	// LE PONT PAR MORTS ENSUITE, EN TEMOIN. Son appariement pose la CAUSE de fin — la seule qui
 	// dise « ce joueur est mort » — puis confronte la victime au joueur que le film ecrit.
 	off, matched, second := bestDeathOffset(lives, deaths)
@@ -72,7 +72,7 @@ func buildOwnersFromTracks(ctx context.Context, tracks map[uint32]slotTrack,
 	// LA vie du corps (et non le premier de ses sejours), et l'appariement des morts se refait sur
 	// les fins de vie publiees. Le CALAGE, lui, ne se remesure pas — il est mesure une seule fois,
 	// sur l'echafaudage, et reste l'octet d'avant.
-	crea := nommerViesParCreations(lives, in.BipedCreations, idx, in.Bots, in.Entities)
+	crea := nommerViesParCreations(lives, in)
 	paires := apparierMortsEtVies(lives, deaths, off)
 	marquerCauseDeMort(lives, paires)
 	verif := verifierParLesMorts(ctx, lives, deaths, paires, in.MatchID)
@@ -89,6 +89,7 @@ func buildOwnersFromTracks(ctx context.Context, tracks map[uint32]slotTrack,
 	rep.IndexReadings = idx.Readings
 	rep.IndexDisagreements = idx.Disagreements
 	owners, byXUID, ambigus, recycles := ownersFromLives(lives, idx.ByXUID, corpsParSlot(in.BipedCreations))
+	garderLIndexDesCorpsParChunks(owners, lives, idx.ByXUID, crea.parIndexDesChunks)
 	// LE PONT SLOT -> INDEX DES CREATIONS COMPLETE CELUI DES VIES, et il le fait pour les corps
 	// que les vies nommees ne peuvent PAS porter : un bot n'a pas de xuid, donc `ownersFromLives`
 	// ignore son slot. Le record de creation, lui, porte l'index quel qu'il soit.

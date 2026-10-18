@@ -9,7 +9,10 @@ package replay
 import (
 	"context"
 	"log/slog"
+	"slices"
+	"strconv"
 
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/observability"
 )
 
@@ -80,7 +83,8 @@ func (r IdentityRegistry) logRegistry(ctx context.Context, matchID string) {
 		"sansCandidatAuTableau", r.ViesSansCandidatAuTableau(),
 		"liensDirects", total.Direct, "liensDeduits", total.Inferred,
 		"liensNonResolus", total.Unresolved)
-	r.creation.alarmerSurLesRefus(ctx, matchID, r.Section.Coverage.BipedSlot.UnresolvedByCause)
+	r.creation.alarmerSurLesRefus(ctx, matchID, r.Section.Coverage.BipedSlot.UnresolvedByCause,
+		r.indexDesViesHorsTable())
 	r.publierDiscordancesDuPont(ctx, matchID)
 	if r.ViesNommeesParLePont() > 0 {
 		slog.WarnContext(ctx, "rejeu : AUCUNE lecture directe corps -> joueur — le pont par morts a nomme en "+
@@ -116,4 +120,29 @@ func (r IdentityRegistry) publierDiscordancesDuPont(ctx context.Context, matchID
 		"fait foi, les noms du pont sont ecartes",
 		"match_id", matchID, "discordances", n,
 		"concordances", r.PontConcordant(), "slots", r.PontSlotsDiscordants())
+}
+
+// indexDesViesHorsTable rend, pour le journal, chaque index de participant LU sur une vie restee
+// sans nom faute de table (`index_hors_table`), et le nombre de ces vies : « index:vies », par
+// index croissant. C'est la piece que l'alarme doit porter pour qu'on ouvre l'enquete.
+func (r IdentityRegistry) indexDesViesHorsTable() []string {
+	par := map[uint32]int{}
+	for i, l := range r.Vies() {
+		if l.xuid != 0 || l.bid != "" || r.creation.causes[i] != canonical.MethodIndexOutOfTable {
+			continue
+		}
+		if pi, lu := r.creation.indexLu[i]; lu {
+			par[pi]++
+		}
+	}
+	index := make([]uint32, 0, len(par))
+	for pi := range par {
+		index = append(index, pi)
+	}
+	slices.Sort(index)
+	out := make([]string, 0, len(index))
+	for _, pi := range index {
+		out = append(out, strconv.FormatUint(uint64(pi), 10)+":"+strconv.Itoa(par[pi]))
+	}
+	return out
 }
