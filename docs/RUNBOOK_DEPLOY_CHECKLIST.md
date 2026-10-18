@@ -225,6 +225,7 @@ is empty).
 | R2 | Halo 5 engagement scores | stopped | — | not measured |
 | R3 | Halo 5 performance scores | stopped | — | not measured |
 | R4 | Halo 5 assists model | stopped | — | not measured |
+| R4b | Halo 5 milestone dates (`earned_at`, Campaign excluded) | stopped | — | not measured |
 | R5 | LUSR v2 replay, every tracked Infinite player | stopped | — | one player, 1 108 matches: 47 s (E4.6, local copy) |
 | R6 | LUSR v2 replay, every tracked Halo 5 player | stopped | — | not measured |
 | R7 | Film sequence (replay re-cook, kill source, usage summary, pad tiers) | stopped | the user's explicit go; its own window | hours; `--dry-run` prints the plan, `backfill-killsource --dry-run` an ETA |
@@ -266,6 +267,15 @@ excluded). One command per pass, in the order of the post-sync pipeline:
 LU backfill --all --title halo_5 --engagement-scores --force   # R2
 LU backfill --all --title halo_5 --perf --force                # R3
 LU backfill --all --title halo_5 --assists-model --force       # R4
+```
+
+R4b, milestone dates: the dedicated binary `backfill_milestone_dates` (built into the image like
+`backfill_objective_stats`) replays each Halo 5 player's matches, Campaign excluded, and rewrites the
+`earned_at` of the milestones; a date that cannot be derived is stored NULL (no date shown). Dry-run first:
+
+```bash
+docker compose run --rm --no-deps levelup backfill_milestone_dates --data-root /app/data/titles/halo_5
+docker compose run --rm --no-deps levelup backfill_milestone_dates --data-root /app/data/titles/halo_5 --apply
 ```
 
 Citations are not applicable to Halo 5: the title does not declare `citations.engine` (it serves
@@ -395,15 +405,6 @@ docker compose up -d --force-recreate levelup-demo    # a failed seed publishes 
 
 `data/demo_films/` must already be provisioned (see *Deploy* above). Then smoke the demo (Home,
 Sessions, one Halo 5 page) and `GET /health` on both containers.
-
-### Decisions still open
-
-- **Milestone dates (Halo 5 `earned_at`).** The source is `apps/go-api/cmd/backfill_milestone_dates`
-  (`ops.BackfillMilestoneDates`; `--data-root data/titles/halo_5 [--apply]`, server stopped,
-  dry-run by default). The production image does **not** ship it (the Dockerfile builds
-  `levelup-server`, `levelup` and `backfill_objective_stats` only), so no command of this section
-  can run it. Either add a build stage like `backfill_objective_stats`, or leave the dates: a date
-  that cannot be derived is stored NULL and the front shows none, never a wrong date.
 
 ## Rollback
 

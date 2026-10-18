@@ -71,9 +71,7 @@ Section « Découvertes » de `.ai/PLAN_BACKLOG_2026-10-16.md` (détail, `fichie
   premières vérifications de participation soumises au budget de lecture ; `cmd_reset_bitmasks.go`
   recopie d'autres constantes ; deux `continue` silencieux dans `weapon_resolver.go` ; démo sans
   `match_bomb_stats` ; coût de `/tactical/maps` (une résolution de fond par carte) à mesurer ;
-  instruments `research` de `film/replay` en `filepath.Join(depot, "data", ...)` (~31 fichiers, motif ancien) ;
-  `cmd/backfill_milestone_dates` absent de l'image de prod (dates de paliers Halo 5 non recalculables
-  en prod : l'ajouter au `Dockerfile` ou laisser les dates, décision du user). **S.**
+  instruments `research` de `film/replay` en `filepath.Join(depot, "data", ...)` (~31 fichiers, motif ancien). **S.**
 
 ---
 

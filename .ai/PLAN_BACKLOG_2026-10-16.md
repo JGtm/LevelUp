@@ -1096,3 +1096,9 @@ Statut du gate (exécutant, 2026-10-18) : VERT. `go test -count=1 ./cmd/levelup/
   (les 12 entrées d'origine retirées ; restent 15 vies sans nom, découvertes du lot film, 157 matchs sans
   skill, et deux entrées neuves : indicateur « Analyse en cours », découvertes du plan) ; ligne 5 remise à
   « Aucune tâche en cours ».
+- 2026-10-18 (pilote, décisions du user du même jour) : dates de paliers Halo 5 → `backfill_milestone_dates`
+  ajouté à l'image (`Dockerfile`, étage dédié comme `backfill_objective_stats`) et étape R4b du runbook
+  (`--data-root /app/data/titles/halo_5`, dry-run puis `--apply`, serveur arrêté ; le chargeur exclut
+  déjà la Campagne, `ops/milestone_dates.go:~297`) ; 157 matchs sans bit skill : laissés (entrée du
+  backlog conservée). Mise à jour du poste par le pilote sur accord du user : fusion en avance rapide de
+  `feat/v75`, puis séquence d'après fusion serveur coupé.
