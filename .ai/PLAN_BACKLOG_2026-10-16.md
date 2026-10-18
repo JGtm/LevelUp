@@ -94,6 +94,14 @@ premier item sans statut.
   branche « STOP si perte » de D-7 : l'unification ne doit plus rien perdre.
 - **D-17** (user, 2026-10-17) Frag posthume (tueur déjà mort, projectile en vol) : le tueur est
   placé au lieu de sa mort, repéré comme position posthume (repli nommé et compté).
+- **D-18** (user, 2026-10-18) `3f048bf3` (Vagabond, 26/02, pas un match de JGtm) : l'API confirme
+  deux bots (équipe 1, 18 s ; équipe 0, 9 s ; décalage constant ~44 s entre ses horaires et le chrono
+  du film). (a) Le joueur de l'équipe 1 entre 0:52 et 1:01 = 343 Ritzy : lecture actuelle juste.
+  (b) La silhouette de 1:44,4-1:44,9 = l'arrivée de 343 Lacuna, en ÉQUIPE 0. Le user : « ce n'est pas
+  possible qu'un bot ou un joueur ait deux équipes » → la couleur équipe 1 lue à cet instant est
+  présumée être une ERREUR DE LECTURE (équipe héritée de l'occupant précédent de la place) : la
+  chercher et la corriger par une règle générale ; à défaut de lecture prouvée, la vie prend l'équipe
+  du reste de sa vie (0). Même traitement pour `8c19b7dc` (Isolation, 09/06).
 - **D-14** H5 au déploiement : les passes `--perf`, `--assists-model`, `--lusr`, `--citations`
   deviennent title-aware (CLI `--title` et champ `title` de `POST /backfill/start`) ; l'EXÉCUTION en
   prod reste un geste du user, préparée par une séquence écrite au runbook.
