@@ -16,6 +16,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -92,46 +93,53 @@ type burstQueue struct {
 // transaction ne couvre plusieurs matchs — chaque état v2 est un INSERT autonome, la
 // ligne canonique a sa propre transaction côté player DB — donc la découpe ne change pas
 // les écritures (TestLUSRV2Shadow_ParityWithLegacyOrchestration). Une ligne INFO par
-// rafale ; rend le nombre de rafales prises. Écrivain indisponible → le reste de la file
-// est reporté au prochain cycle (filigrane non avancé), comme avant.
-func runWriterBursts(ctx context.Context, shared SharedAccessor, base shadowRunContext, w shadowWork, s *shadowRunStats) int {
+// rafale ; rend le nombre de rafales prises.
+//
+// Une file que le cycle n'a pas pu vider est un ÉCHEC, pas un succès partiel : écrivain
+// indisponible, ou contexte annulé entre deux rafales. L'erreur remonte (le filigrane n'a
+// pas avancé : le reste est repris au prochain cycle) pour qu'un appelant qui attend un
+// état complet — le recalcul d'une exclusion — ne se déclare pas terminé sur un état vide
+// ou partiel.
+func runWriterBursts(ctx context.Context, shared SharedAccessor, base shadowRunContext, w shadowWork, s *shadowRunStats) (int, error) {
 	q := &burstQueue{pending: w.pending, heldGroups: make(map[string]bool)}
 	bursts := 0
 	for len(q.pending) > 0 {
 		if err := ctx.Err(); bursts > 0 && err != nil {
 			slog.InfoContext(ctx, "lusr_v2: cycle interrompu entre deux rafales — reste reporté au prochain cycle",
 				"xuid", base.xuid, "bursts", bursts, "remaining", len(q.pending), "err", err)
-			return bursts
+			return bursts, fmt.Errorf("cycle interrompu après %d rafale(s), %d match(s) restants: %w", bursts, len(q.pending), err)
 		}
-		matches, held, ok := runOneWriterBurst(ctx, shared, base, q, s)
-		if !ok {
-			return bursts
+		matches, held, err := runOneWriterBurst(ctx, shared, base, q, s)
+		if err != nil {
+			return bursts, err
 		}
 		bursts++
 		slog.InfoContext(ctx, "lusr_v2: rafale bornée",
 			"xuid", base.xuid, "candidates", w.candidates, "new", len(w.pending), "bursts", bursts,
 			"matches", matches, "held_ms", held.Milliseconds(), "remaining", len(q.pending))
 	}
-	return bursts
+	return bursts, nil
 }
 
 // runOneWriterBurst prend UNE rafale Write("lusr") et y traite la tête de la file dans les
-// bornes (processShadowBurst). ok=false : écrivain indisponible.
-func runOneWriterBurst(ctx context.Context, shared SharedAccessor, base shadowRunContext, q *burstQueue, s *shadowRunStats) (int, time.Duration, bool) {
+// bornes (processShadowBurst). Erreur : écrivain indisponible, journalisée avec le travail
+// reporté.
+func runOneWriterBurst(ctx context.Context, shared SharedAccessor, base shadowRunContext, q *burstQueue, s *shadowRunStats) (int, time.Duration, error) {
 	burstDB, release, err := shared.Write(ctx, "lusr")
+	if err == nil && burstDB == nil {
+		if release != nil {
+			release()
+		}
+		err = errNilBurstHandle
+	}
 	if err != nil {
 		slog.ErrorContext(ctx, "LUSR v2 shadow: rafale Write shared indisponible — travail reporté au prochain cycle",
 			"xuid", base.xuid, "new", len(q.pending), "err", err)
-		return 0, 0, false
+		return 0, 0, fmt.Errorf("rafale Write shared indisponible: %w", err)
 	}
 	defer release()
-	if burstDB == nil {
-		slog.ErrorContext(ctx, "LUSR v2 shadow: rafale Write shared indisponible — travail reporté au prochain cycle",
-			"xuid", base.xuid, "new", len(q.pending), "err", errNilBurstHandle)
-		return 0, 0, false
-	}
 	matches, held := processShadowBurst(ctx, base, burstDB, q, s)
-	return matches, held, true
+	return matches, held, nil
 }
 
 // processShadowBurst traite la tête de la file SOUS le handle de la rafale Write (RW),

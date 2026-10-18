@@ -122,8 +122,11 @@ func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccesso
 	base := newShadowRunContext(playerDB, xuid, canonical, cfg.ownerOnly)
 	base.excluded = excluded
 	base.components.medals = work.medals
-	bursts := runWriterBursts(ctx, shared, base, work, &s)
+	bursts, err := runWriterBursts(ctx, shared, base, work, &s)
 	logShadowBurstDone(ctx, xuid, work, s, bursts)
+	if err != nil {
+		return s.processed, fmt.Errorf("RunLUSRV2Shadow: %w", err)
+	}
 	return s.processed, nil
 }
 
