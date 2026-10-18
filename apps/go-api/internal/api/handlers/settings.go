@@ -526,8 +526,6 @@ func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *
 	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
 	jobSnapshot := *job
 
-	sharedDBPath := config.SharedDBPath(h.cfg, "")
-
 	go func() {
 		step := "Recalcul des sessions en cours"
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusRunning, &step)
@@ -553,10 +551,12 @@ func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *
 				}
 				friendGamertags = fs
 			}
-			playerDBPath := config.PlayerDBPath(h.cfg, "", p.Gamertag)
+			// Bases ET provider shared DU TITRE du profil : un profil Halo 5 se recalcule sur les bases
+			// de Halo 5, jamais sur celles du titre par défaut.
+			playerDBPath, sharedDBPath := sessionsRecalcPaths(h.cfg, p)
 			n, err := go_sync.RecalculatePlayerSessions(
-				ctxkeys.WithTitleSlug(context.Background(), p.TitleSlug), h.cfg.SharedProvider, playerDBPath, sharedDBPath, p.XUID,
-				opts, friendGamertags,
+				ctxkeys.WithTitleSlug(context.Background(), p.TitleSlug), h.cfg.SharedProviderForTitle(p.TitleSlug),
+				playerDBPath, sharedDBPath, p.XUID, opts, friendGamertags,
 			)
 			if err != nil {
 				slog.Warn("sessions recalculate: erreur joueur",

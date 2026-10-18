@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
@@ -77,6 +78,20 @@ func OpenPveReadForCitations(ctx context.Context, pvePath string) *duckdbpkg.Rec
 		return nil
 	}
 	return reader
+}
+
+// CitationsEngineSupported dit si le titre du moteur sert le moteur de citations dérivé
+// (capability citations.engine). Halo 5 ne la déclare pas : il affiche les citations natives
+// (commendations.native), et ce moteur, calibré sur les médailles et les armes d'Infinite, ne doit
+// pas tourner sur ses matchs. Les rattrapages (CLI `backfill`, job HTTP) l'interrogent AVANT de
+// lancer RunBackfillCitations, qui ne porte pas la porte lui-même (les tests de pipeline le
+// pilotent sans manifeste de titre).
+func (e *SyncEngine) CitationsEngineSupported() (bool, error) {
+	caps, err := games.LoadCapabilityMap(e.repoRoot, e.titleSlug)
+	if err != nil {
+		return false, fmt.Errorf("CitationsEngineSupported: %w", err)
+	}
+	return caps.Has(games.CapCitationsEngine), nil
 }
 
 // RunBackfillCitations calcule et persiste les citations dans match_citations

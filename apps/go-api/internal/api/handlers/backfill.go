@@ -88,8 +88,9 @@ func (h *BackfillHandler) handleStartBackfill(ctx context.Context, in *backfillS
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_player_slug", "player_slug vide ou trop long.")
 	}
 
-	// Chercher le joueur dans db_profiles.json.
-	players, err := h.cfg.LoadPlayers()
+	// Chercher le joueur dans db_profiles.json. Un titre demandé restreint la recherche aux profils
+	// de CE titre : un titre inconnu, ou où le joueur n'est pas suivi, répond 404 sans rien lancer.
+	players, err := h.cfg.LoadPlayers(req.Title)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "profiles_load_error",
 			"Impossible de charger db_profiles.json.")
@@ -134,9 +135,11 @@ func (h *BackfillHandler) handleStartBackfill(ctx context.Context, in *backfillS
 	// acquireSharedWriter rend ce wire sûr) — sans Provider, RunBackfill*
 	// utiliseraient OpenSharedDB direct (mode legacy) en parallèle des syncs auto
 	// → conflit "different configuration" pour les readers HTTP.
-	engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, nil)
-	if h.cfg.SharedProvider != nil {
-		engine = engine.WithSharedProvider(h.cfg.SharedProvider)
+	// Moteur DU TITRE demandé (vide = titre par défaut) et provider shared de ce titre : le provider
+	// du boot est celui du titre par défaut, il ferait écrire un autre titre dans la mauvaise base.
+	engine := go_sync.NewSyncEngineForTitle(h.cfg.RepoRoot, req.Title, gamertag, xuid, tokens, nil)
+	if provider := h.cfg.SharedProviderForTitle(req.Title); provider != nil {
+		engine = engine.WithSharedProvider(provider)
 	}
 
 	job := h.jobStore.Create(domain.JobTypeBackfill, req.PlayerSlug)

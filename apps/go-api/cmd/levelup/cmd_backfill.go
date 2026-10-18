@@ -10,12 +10,20 @@
 //   - --citations-recompute-all              (recompute total + checks V1-V4)
 //   - --lusr                       [--force]  (rejoue le LUSR v2 complet + les 8 composantes)
 //   - --perf                       [--force]  (recalcule performance score relatif v5)
+//   - --assists-model              [--force]  (modele OLS des assistances attendues)
+//
+// `--title` (defaut : le titre par defaut) choisit le titre de toutes les passes locales ci-dessus
+// et de --compare-formulas ; --csr et --shared-csr (appel API, base du titre par defaut) le refusent
+// pour un autre titre. Une passe dont le titre ne declare pas la capability (citations sur Halo 5)
+// repond « non supporte » sans rien executer. Les passes selectionnees tournent toutes, dans l'ordre
+// de la table de cmd_backfill_titled.go.
 //
 // Usage :
 //
 //	levelup backfill --gamertag X --lusr  [--force]
 //	levelup backfill --all          --perf  [--force]
 //	levelup backfill --all          --lusr --perf --force
+//	levelup backfill --all --title halo_5 --perf --assists-model --lusr --force
 //	levelup backfill --gamertag X --citations-recompute-all
 package main
 
@@ -29,7 +37,6 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/migration"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -38,7 +45,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	gamertag := fs.String("gamertag", "", "Gamertag du joueur (mutuellement exclusif avec --all)")
 	allPlayers := fs.Bool("all", false, "Applique le backfill a tous les joueurs configures")
 	engagementScores := fs.Bool("engagement-scores", false, "Backfill du score d'engagement (Phase 6 plan engagement)")
-	engagementTitle := fs.String("title", titlePkg.DefaultSlug, "Slug du titre pour --engagement-scores (halo_infinite | halo_5)")
+	titleSlug := fs.String("title", titlePkg.DefaultSlug, "Slug du titre des passes locales (halo_infinite | halo_5)")
 	citations := fs.Bool("citations", false, "Backfill des citations (match_citations) depuis citation_mappings + medals + stats + awards")
 	lusr := fs.Bool("lusr", false, "Rejoue le LUSR v2 complet du joueur (note + 8 composantes de performance)")
 	csr := fs.Bool("csr", false, "Backfill CSR par-match via GetMatchSkill (RankRecap). Idempotent ; --force re-fetche tous les matchs ranked")
@@ -67,343 +74,102 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	if *dryRun && !*sharedCSR {
 		return fmt.Errorf("--dry-run n'est supporté qu'avec --shared-csr")
 	}
+	if *titleSlug != titlePkg.DefaultSlug && (*csr || *sharedCSR) {
+		return fmt.Errorf("--csr et --shared-csr ne portent que sur le titre par defaut : --title %s refuse", *titleSlug)
+	}
 
 	ctx := context.Background()
-	if *engagementScores {
-		if *allPlayers {
-			if err := runBackfillAllEngagement(ctx, cfg, *engagementTitle, *force); err != nil {
-				return err
-			}
-		} else {
-			player, err := loadPlayerSummary(cfg, *gamertag)
-			if err != nil {
-				return err
-			}
-			if err := runBackfillEngagementForPlayer(ctx, cfg, *engagementTitle, player.Gamertag, player.XUID, *force); err != nil {
+	target := backfillTarget{titleSlug: *titleSlug, all: *allPlayers, gamertag: strings.TrimSpace(*gamertag)}
+	selected := []struct {
+		on   bool
+		pass titledPass
+	}{
+		{*engagementScores, passEngagement},
+		{*citations, passCitations},
+		{*lusr, passLUSR},
+	}
+	for _, s := range selected {
+		if s.on {
+			if err := runTitledPass(ctx, cfg, target, *force, s.pass); err != nil {
 				return err
 			}
 		}
 	}
-	if *citations {
-		var err error
-		if *allPlayers {
-			err = runBackfillAllCitations(ctx, cfg, *force)
-		} else {
-			player, err2 := loadPlayerSummary(cfg, *gamertag)
-			if err2 != nil {
-				return err2
-			}
-			err = runBackfillCitationsForPlayer(ctx, cfg, player.Gamertag, player.XUID, *force)
-		}
-		if err != nil {
-			return err
-		}
+	if err := runBackfillCSRPasses(ctx, cfg, target, *csr, *sharedCSR, *force, *dryRun); err != nil {
+		return err
 	}
-	if *lusr {
-		if *allPlayers {
-			if err := runBackfillAllLUSR(ctx, cfg); err != nil {
-				return err
-			}
-		} else {
-			player, err := loadPlayerSummary(cfg, *gamertag)
-			if err != nil {
-				return err
-			}
-			if err := runBackfillLUSRForPlayer(ctx, cfg, player); err != nil {
-				return err
-			}
-		}
+	selected = []struct {
+		on   bool
+		pass titledPass
+	}{
+		{*perf, passPerf},
+		{*assistsModel, passAssistsModel},
+		{*compositeOnly, passCompositeOnly},
+		{*citationsRecomputeAll, passCitationsRecomputeAll},
 	}
-	if *csr {
-		if *allPlayers {
-			if err := runBackfillAllCSR(ctx, cfg, *force); err != nil {
-				return err
-			}
-		} else {
-			player, err := loadPlayerSummary(cfg, *gamertag)
-			if err != nil {
-				return err
-			}
-			if err := runBackfillCSRForPlayer(ctx, cfg, player, *force); err != nil {
+	for _, s := range selected {
+		if s.on {
+			if err := runTitledPass(ctx, cfg, target, *force, s.pass); err != nil {
 				return err
 			}
 		}
-	}
-	if *sharedCSR {
-		if *allPlayers {
-			if err := runBackfillAllSharedCSR(ctx, cfg, *force, *dryRun); err != nil {
-				return err
-			}
-		} else {
-			player, err := loadPlayerSummary(cfg, *gamertag)
-			if err != nil {
-				return err
-			}
-			if err := runBackfillSharedCSRForPlayer(ctx, cfg, player, *force, *dryRun); err != nil {
-				return err
-			}
-		}
-	}
-	if *perf {
-		if *allPlayers {
-			return runBackfillAllPerf(ctx, cfg, *force)
-		}
-		player, err := loadPlayerSummary(cfg, *gamertag)
-		if err != nil {
-			return err
-		}
-		return runBackfillPerfForPlayer(ctx, cfg, player, *force)
-	}
-	if *assistsModel {
-		if *allPlayers {
-			return runBackfillAllAssistsModel(ctx, cfg, *force)
-		}
-		player, err := loadPlayerSummary(cfg, *gamertag)
-		if err != nil {
-			return err
-		}
-		return runBackfillAssistsModelForPlayer(ctx, cfg, player.Gamertag, player.XUID, *force)
-	}
-	if *compositeOnly {
-		if *allPlayers {
-			return runBackfillAllCompositeOnly(ctx, cfg)
-		}
-		player, err := loadPlayerSummary(cfg, *gamertag)
-		if err != nil {
-			return err
-		}
-		return runBackfillCompositeOnlyForPlayer(ctx, cfg, player.Gamertag, player.XUID)
-	}
-	if *citationsRecomputeAll {
-		if *allPlayers {
-			return runRecomputeAllCitationsAll(ctx, cfg)
-		}
-		player, err := loadPlayerSummary(cfg, *gamertag)
-		if err != nil {
-			return err
-		}
-		return runRecomputeAllCitationsForPlayer(ctx, cfg, player.Gamertag, player.XUID)
 	}
 	if *compareFormulas {
-		if *allPlayers {
-			if err := runFormulaSimAll(ctx, cfg, *lastN); err != nil {
-				return err
-			}
-		} else {
-			player, err := loadPlayerSummary(cfg, *gamertag)
-			if err != nil {
-				return err
-			}
-			if err := runFormulaSimForPlayer(ctx, cfg, player, *lastN); err != nil {
-				return err
-			}
-		}
+		return runFormulaSims(ctx, cfg, target, *lastN)
 	}
 	return nil
 }
 
-func runBackfillAllEngagement(ctx context.Context, cfg *config.AppConfig, titleSlug string, force bool) error {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return fmt.Errorf("chargement db_profiles.json: %w", err)
+// runBackfillCSRPasses : --csr puis --shared-csr (titre par defaut, appel API).
+func runBackfillCSRPasses(ctx context.Context, cfg *config.AppConfig, t backfillTarget, csr, sharedCSR, force, dryRun bool) error {
+	if !csr && !sharedCSR {
+		return nil
 	}
-	if len(players) == 0 {
-		return fmt.Errorf("aucun joueur configure")
-	}
-
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	total := len(players)
-	processed := 0
-	skipped := 0
-	failed := 0
-	totalUpdated := 0
-
-	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titleSlug, player.Gamertag)
-		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
-			skipped++
-			fmt.Printf("backfill engagement SKIP: title=%s gamertag=%s reason=no_player_db\n", titleSlug, player.Gamertag)
-			continue
+	var player *domain.PlayerSummary
+	if !t.all {
+		p, err := loadPlayerSummary(cfg, t.gamertag)
+		if err != nil {
+			return err
 		}
-
-		updated, runErr := runBackfillEngagementOne(ctx, cfg, titleSlug, player.Gamertag, player.XUID, force)
-		if runErr != nil {
-			failed++
-			fmt.Printf("backfill engagement FAIL: title=%s gamertag=%s err=%v\n", titleSlug, player.Gamertag, runErr)
-			continue
-		}
-		processed++
-		totalUpdated += updated
-		fmt.Printf("backfill engagement OK: title=%s gamertag=%s updated=%d\n", titleSlug, player.Gamertag, updated)
+		player = p
 	}
-
-	fmt.Printf("backfill engagement batch: title=%s total=%d processed=%d skipped=%d failed=%d total_updated=%d\n",
-		titleSlug, total, processed, skipped, failed, totalUpdated)
-	if failed > 0 {
-		return fmt.Errorf("backfill engagement: %d joueur(s) en echec", failed)
+	if csr {
+		if t.all {
+			if err := runBackfillAllCSR(ctx, cfg, force); err != nil {
+				return err
+			}
+		} else if err := runBackfillCSRForPlayer(ctx, cfg, player, force); err != nil {
+			return err
+		}
+	}
+	if sharedCSR {
+		if t.all {
+			return runBackfillAllSharedCSR(ctx, cfg, force, dryRun)
+		}
+		return runBackfillSharedCSRForPlayer(ctx, cfg, player, force, dryRun)
 	}
 	return nil
 }
 
-func runBackfillEngagementForPlayer(ctx context.Context, cfg *config.AppConfig, titleSlug, gamertag, xuid string, force bool) error {
-	updated, err := runBackfillEngagementOne(ctx, cfg, titleSlug, gamertag, xuid, force)
+// runFormulaSims : --compare-formulas sur les joueurs du titre.
+func runFormulaSims(ctx context.Context, cfg *config.AppConfig, t backfillTarget, lastN int) error {
+	players, err := backfillPlayers(cfg, t)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("backfill engagement OK: title=%s gamertag=%s updated=%d force=%t\n", titleSlug, gamertag, updated, force)
-	return nil
-}
-
-// runBackfillEngagementOne instancie un SyncEngine sans tokens (calcul local
-// pur) et appelle RunBackfillEngagementScores. Aucune requete API requise.
-//
-// Applique les migrations Phase 2 engagement (colonnes player + match_intensity
-// shared) avant le backfill, car sync.OpenPlayerDB/OpenSharedDB ne lance pas
-// migration.RunForDB (contrairement au pool DuckDB / boot serveur).
-func runBackfillEngagementOne(ctx context.Context, cfg *config.AppConfig, titleSlug, gamertag, xuid string, force bool) (int, error) {
-	if titleSlug == "" {
-		titleSlug = titlePkg.DefaultSlug
-	}
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	playerDBPath := resolver.PlayerDBPath(titleSlug, gamertag)
-	sharedDBPath := resolver.SharedDBPath(titleSlug)
-
-	if err := applyMigrationsOnDB(playerDBPath, migration.TargetPlayer); err != nil {
-		return 0, fmt.Errorf("migrations player %s: %w", gamertag, err)
-	}
-	if err := applyMigrationsOnDB(sharedDBPath, migration.TargetShared); err != nil {
-		return 0, fmt.Errorf("migrations shared: %w", err)
-	}
-
-	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, gamertag, xuid, nil, nil)
-	return engine.RunBackfillEngagementScores(ctx, force)
-}
-
-// runBackfillAllCitations applique le backfill citations sur tous les joueurs
-// configures dans db_profiles.json.
-func runBackfillAllCitations(ctx context.Context, cfg *config.AppConfig, force bool) error {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return fmt.Errorf("chargement db_profiles.json: %w", err)
-	}
-	if len(players) == 0 {
-		return fmt.Errorf("aucun joueur configure")
-	}
-
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	processed := 0
-	skipped := 0
-	failed := 0
-	totalUpdated := 0
-
 	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
-		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
-			skipped++
-			fmt.Printf("backfill citations SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
+		if _, statErr := os.Stat(resolver.PlayerDBPath(t.titleSlug, player.Gamertag)); os.IsNotExist(statErr) {
+			fmt.Printf("sim-formula SKIP: title=%s gamertag=%s reason=no_player_db\n", t.titleSlug, player.Gamertag)
 			continue
 		}
-
-		updated, runErr := runBackfillCitationsOne(ctx, cfg, player.Gamertag, player.XUID, force)
-		if runErr != nil {
-			failed++
-			fmt.Printf("backfill citations FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
-			continue
+		if err := runFormulaSimForPlayer(ctx, cfg, t.titleSlug, &player, lastN); err != nil {
+			if !t.all {
+				return err
+			}
+			fmt.Printf("sim-formula FAIL: gamertag=%s err=%v\n", player.Gamertag, err)
 		}
-		processed++
-		totalUpdated += updated
-		fmt.Printf("backfill citations OK: gamertag=%s updated=%d\n", player.Gamertag, updated)
 	}
-
-	fmt.Printf("backfill citations batch: total=%d processed=%d skipped=%d failed=%d total_updated=%d\n",
-		len(players), processed, skipped, failed, totalUpdated)
-	if failed > 0 {
-		return fmt.Errorf("backfill citations: %d joueur(s) en echec", failed)
-	}
-	return nil
-}
-
-func runBackfillCitationsForPlayer(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string, force bool) error {
-	updated, err := runBackfillCitationsOne(ctx, cfg, gamertag, xuid, force)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("backfill citations OK: gamertag=%s updated=%d force=%t\n", gamertag, updated, force)
-	return nil
-}
-
-// runBackfillCitationsOne applique les migrations puis appelle
-// SyncEngine.RunBackfillCitations. Aucun appel API requis.
-func runBackfillCitationsOne(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string, force bool) (int, error) {
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	playerDBPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, gamertag)
-	sharedDBPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
-	metaDBPath := resolver.MetadataDBPath(titlePkg.DefaultSlug)
-
-	if err := applyMigrationsOnDB(playerDBPath, migration.TargetPlayer); err != nil {
-		return 0, fmt.Errorf("migrations player %s: %w", gamertag, err)
-	}
-	if err := applyMigrationsOnDB(sharedDBPath, migration.TargetShared); err != nil {
-		return 0, fmt.Errorf("migrations shared: %w", err)
-	}
-	if err := applyMigrationsOnDB(metaDBPath, migration.TargetMetadata); err != nil {
-		return 0, fmt.Errorf("migrations metadata: %w", err)
-	}
-
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
-	return engine.RunBackfillCitations(ctx, force)
-}
-
-// ── LUSR backfill ─────────────────────────────────────────────────────────────
-
-func runBackfillAllLUSR(ctx context.Context, cfg *config.AppConfig) error {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return fmt.Errorf("chargement db_profiles.json: %w", err)
-	}
-	if len(players) == 0 {
-		return fmt.Errorf("aucun joueur configure")
-	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	total, processed, skipped, failed, totalUpdated := len(players), 0, 0, 0, 0
-	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
-		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
-			skipped++
-			fmt.Printf("backfill lusr SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
-			continue
-		}
-		if err := applyMigrationsOnDB(dbPath, migration.TargetPlayer); err != nil {
-			failed++
-			fmt.Printf("backfill lusr FAIL: gamertag=%s err=migrations: %v\n", player.Gamertag, err)
-			continue
-		}
-		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, nil)
-		updated, runErr := engine.RecomputeLUSRCanonical(ctx)
-		if runErr != nil {
-			failed++
-			fmt.Printf("backfill lusr FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
-			continue
-		}
-		processed++
-		totalUpdated += updated
-		fmt.Printf("backfill lusr OK: gamertag=%s updated=%d\n", player.Gamertag, updated)
-	}
-	fmt.Printf("backfill lusr batch: total=%d processed=%d skipped=%d failed=%d total_updated=%d\n",
-		total, processed, skipped, failed, totalUpdated)
-	if failed > 0 {
-		return fmt.Errorf("backfill lusr: %d joueur(s) en echec", failed)
-	}
-	return nil
-}
-
-func runBackfillLUSRForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary) error {
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, nil)
-	updated, err := engine.RecomputeLUSRCanonical(ctx)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("backfill lusr OK: gamertag=%s updated=%d\n", player.Gamertag, updated)
 	return nil
 }
 
@@ -412,30 +178,8 @@ func runBackfillLUSRForPlayer(ctx context.Context, cfg *config.AppConfig, player
 // Compare 5 variantes (baseline / piste-A / B / C / A+C) sur les N derniers
 // matchs, partant de InitialMU=1500. Aide à choisir la formule optimale.
 
-func runFormulaSimAll(ctx context.Context, cfg *config.AppConfig, lastN int) error {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return fmt.Errorf("chargement db_profiles.json: %w", err)
-	}
-	if len(players) == 0 {
-		return fmt.Errorf("aucun joueur configure")
-	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
-		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
-			fmt.Printf("sim-formula SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
-			continue
-		}
-		if err := runFormulaSimForPlayer(ctx, cfg, &player, lastN); err != nil {
-			fmt.Printf("sim-formula FAIL: gamertag=%s err=%v\n", player.Gamertag, err)
-		}
-	}
-	return nil
-}
-
-func runFormulaSimForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, lastN int) error {
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, nil)
+func runFormulaSimForPlayer(ctx context.Context, cfg *config.AppConfig, titleSlug string, player *domain.PlayerSummary, lastN int) error {
+	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, nil)
 	report, err := engine.RunFormulaSim(ctx, lastN)
 	if err != nil {
 		return err
@@ -473,258 +217,4 @@ func runFormulaSimForPlayer(ctx context.Context, cfg *config.AppConfig, player *
 	}
 	fmt.Println()
 	return nil
-}
-
-// ── Performance score backfill ─────────────────────────────────────────────────
-
-func runBackfillAllPerf(ctx context.Context, cfg *config.AppConfig, force bool) error {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return fmt.Errorf("chargement db_profiles.json: %w", err)
-	}
-	if len(players) == 0 {
-		return fmt.Errorf("aucun joueur configure")
-	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	total, processed, skipped, failed, totalUpdated := len(players), 0, 0, 0, 0
-	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
-		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
-			skipped++
-			fmt.Printf("backfill perf SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
-			continue
-		}
-		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, nil)
-		updated, runErr := engine.RunBackfillPerf(ctx, force)
-		if runErr != nil {
-			failed++
-			fmt.Printf("backfill perf FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
-			continue
-		}
-		processed++
-		totalUpdated += updated
-		fmt.Printf("backfill perf OK: gamertag=%s updated=%d\n", player.Gamertag, updated)
-	}
-	fmt.Printf("backfill perf batch: total=%d processed=%d skipped=%d failed=%d total_updated=%d\n",
-		total, processed, skipped, failed, totalUpdated)
-	if failed > 0 {
-		return fmt.Errorf("backfill perf: %d joueur(s) en echec", failed)
-	}
-	return nil
-}
-
-func runBackfillPerfForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, force bool) error {
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, nil)
-	updated, err := engine.RunBackfillPerf(ctx, force)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("backfill perf OK: gamertag=%s updated=%d force=%t\n", player.Gamertag, updated, force)
-	return nil
-}
-
-// ── Assists model backfill ─────────────────────────────────────────────────────
-
-func runBackfillAllAssistsModel(ctx context.Context, cfg *config.AppConfig, force bool) error {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return fmt.Errorf("chargement db_profiles.json: %w", err)
-	}
-	if len(players) == 0 {
-		return fmt.Errorf("aucun joueur configure")
-	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	total, processed, skipped, failed, totalUpdated := len(players), 0, 0, 0, 0
-	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
-		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
-			skipped++
-			fmt.Printf("backfill assists-model SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
-			continue
-		}
-		updated, runErr := runBackfillAssistsModelOne(ctx, cfg, player.Gamertag, player.XUID, force)
-		if runErr != nil {
-			failed++
-			fmt.Printf("backfill assists-model FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
-			continue
-		}
-		processed++
-		totalUpdated += updated
-		fmt.Printf("backfill assists-model OK: gamertag=%s n_modes=%d\n", player.Gamertag, updated)
-	}
-	fmt.Printf("backfill assists-model batch: total=%d processed=%d skipped=%d failed=%d total_modes=%d\n",
-		total, processed, skipped, failed, totalUpdated)
-	if failed > 0 {
-		return fmt.Errorf("backfill assists-model: %d joueur(s) en echec", failed)
-	}
-	return nil
-}
-
-func runBackfillAssistsModelForPlayer(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string, force bool) error {
-	n, err := runBackfillAssistsModelOne(ctx, cfg, gamertag, xuid, force)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("backfill assists-model OK: gamertag=%s n_modes=%d force=%t\n", gamertag, n, force)
-	return nil
-}
-
-func runBackfillAssistsModelOne(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string, force bool) (int, error) {
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	playerDBPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, gamertag)
-
-	if err := applyMigrationsOnDB(playerDBPath, migration.TargetPlayer); err != nil {
-		return 0, fmt.Errorf("migrations player %s: %w", gamertag, err)
-	}
-
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
-	return engine.RunBackfillAssistsModel(ctx, force)
-}
-
-// ── Composite-only citations backfill ──────────────────────────────────────────
-
-func runBackfillAllCompositeOnly(ctx context.Context, cfg *config.AppConfig) error {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return fmt.Errorf("chargement db_profiles.json: %w", err)
-	}
-	if len(players) == 0 {
-		return fmt.Errorf("aucun joueur configure")
-	}
-
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	total, processed, skipped, failed, totalUpdated := len(players), 0, 0, 0, 0
-	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
-		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
-			skipped++
-			fmt.Printf("backfill composite-only SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
-			continue
-		}
-		updated, runErr := runBackfillCompositeOnlyOne(ctx, cfg, player.Gamertag, player.XUID)
-		if runErr != nil {
-			failed++
-			fmt.Printf("backfill composite-only FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
-			continue
-		}
-		processed++
-		totalUpdated += updated
-		fmt.Printf("backfill composite-only OK: gamertag=%s updated=%d\n", player.Gamertag, updated)
-	}
-	fmt.Printf("backfill composite-only batch: total=%d processed=%d skipped=%d failed=%d total_updated=%d\n",
-		total, processed, skipped, failed, totalUpdated)
-	if failed > 0 {
-		return fmt.Errorf("backfill composite-only: %d joueur(s) en echec", failed)
-	}
-	return nil
-}
-
-func runBackfillCompositeOnlyForPlayer(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string) error {
-	updated, err := runBackfillCompositeOnlyOne(ctx, cfg, gamertag, xuid)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("backfill composite-only OK: gamertag=%s updated=%d\n", gamertag, updated)
-	return nil
-}
-
-// runBackfillCompositeOnlyOne applique les migrations puis appelle
-// SyncEngine.RunBackfillCompositeOnlyCitations. Aucun appel API requis.
-func runBackfillCompositeOnlyOne(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string) (int, error) {
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	playerDBPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, gamertag)
-	metaDBPath := resolver.MetadataDBPath(titlePkg.DefaultSlug)
-
-	if err := applyMigrationsOnDB(playerDBPath, migration.TargetPlayer); err != nil {
-		return 0, fmt.Errorf("migrations player %s: %w", gamertag, err)
-	}
-	if err := applyMigrationsOnDB(metaDBPath, migration.TargetMetadata); err != nil {
-		return 0, fmt.Errorf("migrations metadata: %w", err)
-	}
-
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
-	return engine.RunBackfillCompositeOnlyCitations(ctx)
-}
-
-// ── Citations recompute-all (force + vérifications V1-V4) ─────────────────────
-
-func runRecomputeAllCitationsAll(ctx context.Context, cfg *config.AppConfig) error {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return fmt.Errorf("chargement db_profiles.json: %w", err)
-	}
-	if len(players) == 0 {
-		return fmt.Errorf("aucun joueur configure")
-	}
-
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	total, processed, skipped, failed := len(players), 0, 0, 0
-
-	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
-		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
-			skipped++
-			fmt.Printf("citations-recompute-all SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
-			continue
-		}
-		if runErr := runRecomputeAllCitationsOne(ctx, cfg, player.Gamertag, player.XUID); runErr != nil {
-			failed++
-			fmt.Printf("citations-recompute-all FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
-			continue
-		}
-		processed++
-	}
-
-	fmt.Printf("citations-recompute-all batch: total=%d processed=%d skipped=%d failed=%d\n",
-		total, processed, skipped, failed)
-	if failed > 0 {
-		return fmt.Errorf("citations-recompute-all: %d joueur(s) en echec", failed)
-	}
-	return nil
-}
-
-func runRecomputeAllCitationsForPlayer(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string) error {
-	return runRecomputeAllCitationsOne(ctx, cfg, gamertag, xuid)
-}
-
-// runRecomputeAllCitationsOne : recompute force=true puis invariants V1-V4.
-func runRecomputeAllCitationsOne(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string) error {
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	playerDBPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, gamertag)
-	sharedDBPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
-	metaDBPath := resolver.MetadataDBPath(titlePkg.DefaultSlug)
-
-	for _, p := range []struct {
-		path   string
-		target migration.TargetDB
-	}{
-		{playerDBPath, migration.TargetPlayer},
-		{sharedDBPath, migration.TargetShared},
-		{metaDBPath, migration.TargetMetadata},
-	} {
-		if err := applyMigrationsOnDB(p.path, p.target); err != nil {
-			return fmt.Errorf("migrations %s: %w", p.path, err)
-		}
-	}
-
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
-
-	updated, err := engine.RunBackfillCitations(ctx, true)
-	if err != nil {
-		return fmt.Errorf("recompute citations: %w", err)
-	}
-	fmt.Printf("citations-recompute-all OK: gamertag=%s matches_updated=%d\n", gamertag, updated)
-
-	violations, err := engine.RunCitationPostComputeChecks(ctx)
-	if err != nil {
-		return fmt.Errorf("post-compute checks: %w", err)
-	}
-	if len(violations) == 0 {
-		fmt.Printf("citations-recompute-all checks OK: gamertag=%s invariants=V1-V4\n", gamertag)
-		return nil
-	}
-	for _, v := range violations {
-		fmt.Printf("citations-recompute-all VIOLATION [%s]: gamertag=%s %s\n", v.Rule, gamertag, v.Details)
-	}
-	return fmt.Errorf("citations-recompute-all: %d violation(s) détectée(s) pour %s", len(violations), gamertag)
 }

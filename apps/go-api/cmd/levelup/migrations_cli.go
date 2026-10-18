@@ -30,13 +30,20 @@ import (
 // backfill. `OpenReadWrite` passe par le cache `rw:` du paquet duckdb — ce n'est pas un
 // « bare connect », le modèle mono-process (ADR 0013) est respecté.
 func applyMigrationsOnDB(path string, target migration.TargetDB) error {
+	return applyTitleMigrationsOnDB(path, titlePkg.DefaultSlug, target)
+}
+
+// applyTitleMigrationsOnDB : applyMigrationsOnDB pour la base d'un titre donné. `RunForDB` force
+// `DefaultSlug` et appliquerait le jeu de Halo Infinite à la base d'un autre titre : une passe qui
+// vise un titre passe par ici, avec son slug.
+func applyTitleMigrationsOnDB(path, titleSlug string, target migration.TargetDB) error {
 	_ = migration.All()
 	db, err := duckdbpkg.OpenReadWrite(path)
 	if err != nil {
 		return fmt.Errorf("open rw %s: %w", path, err)
 	}
 	defer db.Close()
-	return migration.RunForDB(db.SQLDb(), target)
+	return migration.RunForTitleDB(db.SQLDb(), titleSlug, target)
 }
 
 // applySharedMigrationsForTitle applique les migrations SHARED du titre donné avant une

@@ -173,30 +173,236 @@ Each item cites its source so it can be re-verified against the code. Structure:
         ./apps/go-api/internal/platform/auth/
       ```
 
-- [ ] **One-shot data catch-up: the skill bit of 157 Halo Infinite matches (operator gesture,
-      backlog 2026-10-16 E5.9).** 157 Halo Infinite matches first synced between 2026-05-25 and
-      2026-05-30 (the days the batch path went live without setting the completion bits; JGtm 77,
-      Chocoboflor 70, XxDaemonGamerxX 10 in prod) carry no skill bit (`4`) in
-      `match_registry.backfill_completed`, so the `skill` scope of `levelup backfill` can select
-      them again on every run (reading of the selection code, no job was run). The participants
-      bit (`512`) of the same matches is set by the migration `shared_registry_participants_bit_v1`;
-      that migration does not touch the skill bit. `levelup reset-bitmasks` sets it only where the skill data
-      is already there (`match_participants.team_mmr IS NOT NULL`); matches without it keep the
-      bit unset and are legitimately re-fetched by `levelup backfill --skill`. The CLI needs the
-      database unlocked (it writes, and a read-only open next to a running writer is forbidden),
-      so stop the server first, from `/opt/levelup`:
+- [ ] **Post-deploy recomputes (v7.5).** The v7.5 release changes derived values that the deploy does not
+      recompute (Halo 5 derived values counted Campaign matches, LUSR v1 rows, film decoder
+      revisions, the skill bit of 157 Infinite matches, the token-pool consent). They are an
+      operator gesture, ordered, in the section **Post-deploy recomputes (v7.5)** below. Nothing in
+      it runs by itself.
 
-      ```bash
-      docker compose stop levelup
-      docker compose run --rm --no-deps levelup levelup reset-bitmasks --dry-run
-      #   -> "[skill] match_registry à updater" counts the matches whose bit will be set (<= 157)
-      docker compose run --rm --no-deps levelup levelup reset-bitmasks --apply
-      docker compose up -d levelup
-      ```
+## Post-deploy recomputes (v7.5)
 
-      Re-run `--dry-run` afterwards: the `[skill]` counters must read 0. Matches still unmarked are then
-      the ones whose skill data is truly missing; a `levelup backfill --skill` per affected player
-      fetches them (check `GET /health` and the sync log before launching it).
+**Operator gesture — nothing here runs by itself** (backlog 2026-10-16 E9, deploy decision D-14).
+The deploy ships code; it does not recompute stored values. Several derived values written by
+earlier builds are stale and are only rewritten by the steps below, in this order:
+
+- Halo 5 derived values (engagement, performance score, assists model, LUSR, sessions) were
+  computed with Campaign matches counted; the loaders now exclude them but never recompute on
+  their own.
+- LUSR v1 rows written by older exclusions are still served by `match_skill_rank_latest_by_type`
+  until a v2 replay overwrites them, and the 8 LUSR components have not been written since
+  2026-07-18 (E4: the v1 path was removed, the v2 replay writes them again).
+- Film-derived tables (kill positions, lives, death context, replay artifacts) moved revisions
+  (E8).
+- The 157 Infinite matches without the skill bit (E5).
+- The 9 token-pool consents (ADR 0038).
+- The demo copies JGtm's production databases, so it is re-seeded last.
+
+**Conventions** (all commands from `/opt/levelup` on the VPS):
+
+- `LU` = `docker compose run --rm --no-deps levelup levelup` — the CLI shipped in the image (the
+  same form `deploy.yml` uses). Define it once per shell:
+  `LU() { docker compose run --rm --no-deps levelup levelup "$@"; }`. A CLI pass writes the
+  shared database, so **the server is stopped** (single writer, ADR 0013); the `--dry-run` of a
+  pass that runs migrations needs it stopped too.
+- "Stopped" = `docker compose stop levelup` before, `docker compose up -d levelup` after the window.
+  `levelup-demo` is left running until R10.
+- "Admin route" = the browser console of the production site, signed in as admin (same-origin
+  `fetch` with `credentials: 'include'`; the CSRF check is origin-based). Jobs are polled with
+  `GET /api/v1/jobs/<job_id>` until `status` is `succeeded`.
+- A pass prints one line per player (`backfill <pass> OK: title=… gamertag=…`) and a `batch` line
+  with `failed=N`; a non-zero `failed` makes the command exit non-zero. A profile without a player
+  database for the title is `SKIP`ped, listed, not created.
+
+**Preconditions.** The whole `deploy.yml` run is finished (jobs `deploy`, `deploy-demo` AND
+`deploy-worker` — `deploy-demo` stops and restarts `levelup` itself, so a window opened too early
+collides with it), `GET /health` is 200, boot logs are clean, and a fresh restic snapshot exists
+(`scripts/RESTIC_BACKUP.md`). No host-side `backfill` process is running (`pgrep -f '[b]ackfill'`
+is empty).
+
+| Step | What | Server | Needs | Duration |
+|------|------|--------|-------|----------|
+| R1 | Skill bit of 157 Infinite matches | stopped | — | seconds (SQL update); not measured |
+| R2 | Halo 5 engagement scores | stopped | — | not measured |
+| R3 | Halo 5 performance scores | stopped | — | not measured |
+| R4 | Halo 5 assists model | stopped | — | not measured |
+| R5 | LUSR v2 replay, every tracked Infinite player | stopped | — | one player, 1 108 matches: 47 s (E4.6, local copy) |
+| R6 | LUSR v2 replay, every tracked Halo 5 player | stopped | — | not measured |
+| R7 | Film sequence (replay re-cook, kill source, usage summary, pad tiers) | stopped | the user's explicit go; its own window | hours; `--dry-run` prints the plan, `backfill-killsource --dry-run` an ETA |
+| R8 | Start the server, recompute the sessions | up, admin route | R7 finished | not measured |
+| R9 | Pool consent grandfathering (9 players) | up | server up | seconds |
+| R10 | Demo re-seed | prod + demo stopped for the seed | R1-R8 done (the demo copies the recomputed JGtm data) | not measured; production is down only while `levelup` is stopped |
+
+R1 to R6 are one maintenance window (a single `docker compose stop levelup`); R7 is a second,
+longer window on its own; R8 to R10 follow with the server up.
+
+### R1 — skill bit of the 157 Infinite matches (stopped)
+
+157 Halo Infinite matches first synced between 2026-05-25 and 2026-05-30 (the days the batch path
+went live without setting the completion bits; JGtm 77, Chocoboflor 70, XxDaemonGamerxX 10 in
+prod) carry no skill bit (`4`) in `match_registry.backfill_completed`. The participants bit
+(`512`) of the same matches is set by the migration `shared_registry_participants_bit_v1`; that
+migration does not touch the skill bit. `levelup reset-bitmasks` sets it only where the skill
+data is already there (`match_participants.team_mmr IS NOT NULL`).
+
+```bash
+docker compose stop levelup
+LU reset-bitmasks --dry-run
+#   -> "[skill] match_registry à updater" counts the matches whose bit will be set (<= 157)
+LU reset-bitmasks --apply
+LU reset-bitmasks --dry-run      # the [skill] counters must now read 0
+```
+
+Matches still unmarked afterwards have no skill data. No command re-fetches it today:
+`levelup backfill` has no `--skill` flag, and the HTTP backfill job reports the `skill` scope as
+"detected but not implemented" (`BackfillOrchestrator.warnUnimplemented`). They keep the bit unset;
+nothing else reads it (decision for the user if they should be fetched: it needs a new pass).
+
+### R2 to R4 — Halo 5 derived values (stopped)
+
+`--all --title halo_5` takes the Halo 5 profiles of `db_profiles.json` (`auth_only` profiles
+excluded). One command per pass, in the order of the post-sync pipeline:
+
+```bash
+LU backfill --all --title halo_5 --engagement-scores --force   # R2
+LU backfill --all --title halo_5 --perf --force                # R3
+LU backfill --all --title halo_5 --assists-model --force       # R4
+```
+
+Citations are not applicable to Halo 5: the title does not declare `citations.engine` (it serves
+the native commendations), and `backfill --all --title halo_5 --citations` answers
+`non supporte pour le titre halo_5` and runs nothing. Sessions are R8 (no CLI form).
+
+Admin-route equivalent for R2 and R3 (server up, one call per player; `force_rescan` is needed or
+the job recomputes only what is missing; the assists model has **no route**, CLI only):
+
+```js
+await (await fetch('/api/v1/backfill/start', {method: 'POST', credentials: 'include',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({player_slug: 'JGtm', title: 'halo_5', engagement_scores: true,
+                        performance_scores: true, force_rescan: true})})).json()
+```
+
+(`title` absent = the default title; a player not tracked on that title answers 404
+`player_not_found`. Do not put `lusr` in this body: use R5/R6.)
+
+### R5 and R6 — LUSR v2 replay of every tracked player, both titles (stopped)
+
+Rewrites `match_skill_rank` (v2) and the 8 `lusr_component_history` components for every player,
+which also supersedes the stale v1 rows:
+
+```bash
+LU backfill --all --lusr                    # R5, default title (halo_infinite)
+LU backfill --all --title halo_5 --lusr     # R6
+```
+
+Admin-route equivalent (server up), one call per player and title (the report lists the tracked
+players of the title; skip any `auth_only` slug):
+
+```js
+for (const title of ['halo_infinite', 'halo_5']) {
+  const rep = await (await fetch(`/api/v1/admin/monitoring/lusr-gaps?title=${title}`, {credentials: 'include'})).json();
+  for (const p of rep.players) {
+    const r = await fetch(`/api/v1/admin/monitoring/lusr-gaps/${encodeURIComponent(p.player_slug)}/recompute?title=${title}`,
+                          {method: 'POST', credentials: 'include'});
+    console.log(title, p.player_slug, r.status, await r.json());   // {ok: true, updated: N}
+  }
+}
+```
+
+### R7 — film sequence (stopped, its own window, on the user's explicit go)
+
+Replay cooking is never run in batch without an explicit go (memory: one film = one child process
+under a cap, `--mem-limit-gib` to raise it). The film cache must be under `data/cache` (or
+`--cache`); if production keeps no film cache, 7a and 7b cannot decode here (see
+`docs/RUNBOOK_REPLAY_WORKER.md`). Order is the E8.6 order; 7c and 7d read the artifacts cooked by 7a
+and do not depend on 7b:
+
+```bash
+# 7a  re-cook the artifacts already served (schema bump): republishes from the persisted film
+#     facts when fresh ("republier", fast), re-decodes otherwise ("redecoder", tens of seconds a film)
+LU backfill-replay --only-existing --dry-run
+LU backfill-replay --only-existing
+# 7b  kill source: rewrites kill_positions, kill_openings, match_lives, match_death_context,
+#     match_death_mates (append-only, read through _latest). Resumable: relaunch to resume;
+#     `LU backfill-killsource --status` from another terminal shows where it stands
+LU backfill-killsource --dry-run
+LU backfill-killsource
+# 7c  equipment and pad usage projected from the artifacts
+LU backfill-usage-summary --dry-run
+LU backfill-usage-summary
+# 7d  weapon tiers of pad pickups; --force: rows already written carry the previous join
+LU backfill-pad-tiers --dry-run
+LU backfill-pad-tiers --force
+```
+
+- Harvest films have no replay artifact yet (the map had no bounds catalogue entry before E8.3), so
+  `--only-existing` does not cook them. Cook them one by one, on the user's go,
+  with `LU backfill-replay --one <match_id>`, then `LU backfill-usage-summary --match <id>` and
+  `LU backfill-pad-tiers --match <id> --force` for those matches.
+- To confirm with the pilot: `docs/COMMANDS.md` states that `backfill-vehicle-takes` keys its
+  resume on presence and needs `--force` after a re-bake; whether the schema 99 re-bake changes the
+  occupation read it projects is not established here.
+
+### R8 — start the server, recompute the sessions (up)
+
+```bash
+docker compose up -d levelup
+curl -sf http://127.0.0.1:8000/health      # 200 before going on
+```
+
+Sessions have no CLI form: admin route, every profile of every title, each on the databases of
+its own title (before this release the route recalculated every profile on the Infinite
+databases):
+
+```js
+await (await fetch('/api/v1/settings/sessions/recalculate', {method: 'POST', credentials: 'include'})).json()
+```
+
+### R9 — token-pool consent grandfathering (server may stay up)
+
+`ADR 0038`: a token joins the shared pool only on a recorded consent. Nine players gave theirs
+outside the application; record exactly those, **never `XxGdakilla187xX`, never `--all`**. Simulation
+first, then `--yes`. The command only writes `data/auth/watcher_tokens/`, never a DuckDB file; the
+running pool applies it at its next scan.
+
+```bash
+docker compose exec -T levelup levelup pool-sharing list
+docker compose exec -T levelup levelup pool-sharing grandfather \
+  --players JGtm,Chocoboflor,XxDaemonGamerxX,Madina97294,DankerGlue,GeleJugefi,Trimbutton,QuiteSiren,UppedJoker
+docker compose exec -T levelup levelup pool-sharing grandfather \
+  --players JGtm,Chocoboflor,XxDaemonGamerxX,Madina97294,DankerGlue,GeleJugefi,Trimbutton,QuiteSiren,UppedJoker --yes
+```
+
+### R10 — demo re-seed (after R1-R8)
+
+The `deploy-demo` job already re-seeded the demo right after the deploy, **before** the
+recomputes. The demo copies JGtm's production databases and replay artifacts and filters the
+Campaign matches of the frozen Halo 5 manifest (`config/demo/JGtm/halo_5.json`) at load, so it
+is re-seeded once more now. Either dispatch *Deploy to VPS* on `main` (a full redeploy; its
+`deploy-demo` job does it) or replay the job's own steps by hand — the pre-checks and the exit
+guarantees of the job (`.github/workflows/deploy.yml`, job `deploy-demo`) apply:
+
+```bash
+pgrep -f '[b]ackfill' && echo "host backfill running: stop here"      # the job skips the regen on a hit
+docker compose stop levelup levelup-demo
+docker compose run --rm levelup levelup index-media --gamertag JGtm --title halo_5 --buffer-min 10 \
+  || echo "index-media halo_5 failed (no H5 clip this regen)"
+docker compose run --rm levelup levelup seed-demo --gamertag JGtm --service-tag SPTA --out data/demo --max-media 12
+docker compose up -d levelup                          # run these two EVEN IF seed-demo failed:
+docker compose up -d --force-recreate levelup-demo    # a failed seed publishes nothing, the previous demo stays
+```
+
+`data/demo_films/` must already be provisioned (see *Deploy* above). Then smoke the demo (Home,
+Sessions, one Halo 5 page) and `GET /health` on both containers.
+
+### Decisions still open
+
+- **Milestone dates (Halo 5 `earned_at`).** The source is `apps/go-api/cmd/backfill_milestone_dates`
+  (`ops.BackfillMilestoneDates`; `--data-root data/titles/halo_5 [--apply]`, server stopped,
+  dry-run by default). The production image does **not** ship it (the Dockerfile builds
+  `levelup-server`, `levelup` and `backfill_objective_stats` only), so no command of this section
+  can run it. Either add a build stage like `backfill_objective_stats`, or leave the dates: a date
+  that cannot be derived is stored NULL and the front shows none, never a wrong date.
 
 ## Rollback
 

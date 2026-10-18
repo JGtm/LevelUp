@@ -1964,6 +1964,13 @@ paths:
         - auth
   /backfill/start:
     post:
+      description: |
+        Corps JSON lu à la main (400 `invalid_body` sinon) : `player_slug` (obligatoire), les
+        portées (`medals`, `events`, `skill`, `performance_scores`, `lusr`, `citations`,
+        `engagement_scores`... ; aucune = tout), `force_rescan`, `max_matches`, `dry_run` et
+        `title` (slug du titre, défaut : le titre par défaut ; le joueur doit y être suivi, 404
+        `player_not_found` sinon). Sur un titre qui ne déclare pas `citations.engine` (Halo 5),
+        la portée `citations` est ignorée avec un avertissement du job.
       operationId: postBackfillStart
       responses:
         "202":

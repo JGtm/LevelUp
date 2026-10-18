@@ -463,20 +463,35 @@ est celui de feat/v75 tant que la recuisson d'après fusion n'est pas jouée (E8
 
 ### E9 — Halo 5 au déploiement : recalcul des dérivés et démo (entrée 12, D-14) — S à M
 
-- [ ] E9.1 `--perf`, `--assists-model`, `--lusr`, `--citations` honorent `--title` (CLI) ; champ
-  `title` de `POST /backfill/start` (OpenAPI + types) ; tests par titre.
-- [ ] E9.2 Chemin des sessions (`POST /settings/sessions/recalculate`) vérifié pour Halo 5
-  (`PlayerDBPath` avec titre vide) ; corrigé si faux, avec test.
-- [ ] E9.3 « Dates de paliers » : source identifiée ou `[!]` justifié (symbole introuvable au
-  constat E0).
-- [ ] E9.4 Séquence écrite dans le runbook de déploiement (EN) : recalculs H5 par routes admin,
-  puis re-seed de la démo prod (`deploy.yml`, job `deploy-demo`). Exécution = geste du user.
-  Ajout du pilote (2026-10-17, suite d'E4) : la même séquence porte un recalcul LUSR v2 de TOUS
-  les joueurs suivis (les lignes v1 écrites par d'anciennes exclusions restent servies par
-  `match_skill_rank_latest_by_type` jusque-là, et les composantes manquantes depuis 2026-07-18 sont
-  réécrites par ce recalcul).
+- [x] E9.1 `--perf`, `--assists-model`, `--lusr`, `--citations` honorent `--title` (CLI) ; champ
+  `title` de `POST /backfill/start` (OpenAPI + types) ; tests par titre. Fait : `cmd/levelup/cmd_backfill_titled.go`
+  (un pilote `runTitledPass` et une table de passes remplacent six paires de boucles recopiées ; `cmd_backfill.go`
+  730 -> 222 lignes) ; `--title` couvre aussi `--engagement-scores`, `--citations-recompute-all`, `--composite-only`,
+  `--compare-formulas` ; `--csr`/`--shared-csr` refusent un autre titre. Migrations des bases DU titre
+  (`applyTitleMigrationsOnDB` : `RunForDB` forçait le jeu du titre par défaut). Porte `citations.engine` par la
+  capability (CLI : « non supporte pour le titre », rien ouvert ; job HTTP : avertissement `citations_ignorees`,
+  y compris sous le scope « tout » ; `SyncEngine.CitationsEngineSupported`). HTTP : `domain.BackfillStartRequest.Title`,
+  recherche du joueur restreinte au titre (404 sinon), moteur `NewSyncEngineForTitle` et provider shared DU titre
+  (`config.SharedProviderForTitle` : `cfg.SharedProvider` est celui d'Infinite, `AcquireWriter` ignore le chemin) ;
+  même correction au replay LUSR admin (`registry_lusr_gaps.go`). Fragment OpenAPI + `generated.ts` + `types.ts`.
+- [x] E9.2 Chemin des sessions (`POST /settings/sessions/recalculate`) vérifié pour Halo 5 : FAUX. La route
+  appelait `config.PlayerDBPath(cfg, "", gt)` et `config.SharedDBPath(cfg, "")` (titre vide = Infinite) pour CHAQUE
+  profil, avec le provider d'Infinite : un profil Halo 5 n'était jamais recalculé et créait une base Infinite vide.
+  Corrigé par profil (`sessionsRecalcPaths`, `SharedProviderForTitle`). Tests rouges par mutation :
+  `TestSessionsRecalcPaths`, `TestPostRecalculateSessions_ProfilHalo5SurLesBasesDeHalo5`.
+- [x] E9.3 « Dates de paliers » : source identifiée = `cmd/backfill_milestone_dates` (`ops.BackfillMilestoneDates`,
+  `--data-root data/titles/halo_5 [--apply]`, serveur arrêté ; déjà corrigé pour la Campagne par E2 du plan du
+  15/10). Elle n'est PAS dans l'image de prod (Dockerfile : `levelup-server`, `levelup`, `backfill_objective_stats`) :
+  l'exécution est une décision du user (étage de build ou abandon : date non dérivable = NULL), écrite au runbook
+  (« Decisions still open »).
+- [x] E9.4 Séquence écrite dans le runbook de déploiement (EN) : `docs/RUNBOOK_DEPLOY_CHECKLIST.md`, section
+  « Post-deploy recomputes (v7.5) », R1 à R10 ordonnées (157 matchs, engagement/perf/assists Halo 5, LUSR v2 des
+  deux titres, séquence film d'E8.6, sessions, accords du pool, re-seed de la démo), mode (serveur arrêté / route
+  admin), dépendances et durées connues. Rien n'est exécuté. L'ancien item E5 du runbook devient un renvoi vers R1 ;
+  sa dernière phrase (`levelup backfill --skill`) citait une commande inexistante : corrigée.
 
 Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `make check-types`.
+Statut du gate (exécutant, 2026-10-18) : VERT. `go test -count=1 ./cmd/levelup/ ./internal/api/... ./internal/service/... ./internal/config/... ./internal/domain/...` : tous `ok` (cmd/levelup 27 s, internal/api 43 s, handlers 26 s, service 13 s) ; avec `-tags=integration -p 1` sur `./cmd/levelup/ ./internal/config/ ./internal/service/ ./internal/api/handlers/ ./internal/api/wire/` : 5 `ok` ; `go test -count=1 ./internal/sync/ ./internal/archlint/` : `ok` (101 s, 75 s) ; `go vet` des paquets touchés sans sortie ; `golangci-lint run --new-from-rev=HEAD --build-tags=integration ./cmd/levelup/... ./internal/config/... ./internal/api/... ./internal/service/... ./internal/sync/` : 0 issue (après correction d'un goconst) ; `openapi-gen -check` à jour, `tools/check-generated-types-fresh.mjs` OK, `npm run typecheck` (cache `.tmp` purgé) sans erreur ; aucun test renommé ni retiré (baseline JSONL inchangée). Rouge prouvé par mutation : moteur sans titre dans le pilote CLI (`TestRunTitledPass_PassesRealesSurLesBasesDeHalo5` rouge, base partagée d'Infinite créée), porte de capability retirée (`TestRunTitledPass_CitationsNonSupporteesSurHalo5` rouge), chemins des sessions et moteur HTTP sans titre (`TestSessionsRecalcPaths`, `TestPostRecalculateSessions_Profil...`, `TestStartBackfill_TitreRoute` rouges).
 
 ### E10 — Clôture
 
@@ -623,6 +638,22 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
   `TestSondeBouillie`, `TestSondeCanevasCartesOrphelines`, ...) et `TestBancCliffhanger` donne ACCORD 64,4 % sous la référence 64,7 %
   (carte native, code `himap` non touché). Les trois cibles `cmd/` du corpus (`film-profiles-build`, `mapfond-build`,
   `mapstruct-build`) sont vertes. Non traité.
+- E9 (exécutant, 2026-10-18) : `scheduler/auto_sync_engine.go:55` et `handlers/sync_handler.go:202` branchent `cfg.SharedProvider`
+  (provider d'Infinite) sur un moteur construit pour le titre du ctx/de la requête, comme le faisaient `/backfill/start` et le replay
+  LUSR admin avant E9. Non vérifié si un sync Halo 5 passe par ces deux chemins (le livesync Halo 5 résout son propre provider) ;
+  `config.SharedProviderForTitle` est le correctif prêt. Non traité.
+- E9 : `handlePostRecalculateSessions` parcourt `LoadPlayers()` profils `auth_only` compris ; `RecalculatePlayerSessions` ouvre
+  (donc crée) leur base joueur. Antérieur à E9, inchangé. `openspartan_post_import_service.go:240` calcule aussi ses chemins sur le titre
+  par défaut (import OpenSpartan, Infinite par nature). Non traités.
+- E9 : `levelup backfill` n'a pas de `--skill` et le job HTTP déclare la portée `skill` « non implémentée » : les matchs sans donnée de skill
+  que `reset-bitmasks` ne marque pas n'ont aucune commande de rattrapage (le runbook de E5 et l'entrée « [données/prod] » du BACKLOG citaient
+  une commande inexistante : corrigés). Un rattrapage serait une passe neuve. Non traité.
+- E9 : `cmd/levelup/main.go` n'installe pas `migration.SetTitleStepsProvider(halomigrations.StepsFor)` (les autres outils `cmd/` le font) :
+  les migrations shared jouées par la CLI (`backfill --engagement-scores`, etc.) n'ont pas les étapes propres au titre. Sans effet sur une base
+  déjà migrée au boot du serveur (cas de la prod) ; observable sur une base neuve (le test E9 pose le fournisseur lui-même). Non traité.
+- E9 : `docs/COMMANDS.md` documente `backfill-vehicle-takes` comme exigeant `--force` après une re-cuisson ; la séquence film d'E8.6 ne le
+  prévoit pas. Si la re-cuisson au schéma 99 change la lecture d'occupation qu'il projette n'est pas établi ici : question posée au pilote (runbook R7).
+
 
 ## 4. Journal
 
@@ -1003,3 +1034,4 @@ Gate : `go test ./cmd/levelup/ ./internal/api/... ./internal/service/...` ; `mak
   - GATE E8.3 : `go test -count=1 ./internal/himap/... ./cmd/mapquant-build/... ./cmd/mapobj-build/... ./internal/replaybuild/... ./internal/service/... ./internal/archlint/` : tous `ok` (himap 3,5 s, archlint 72 s, service 13 s) ; `golangci-lint run --new-from-rev=HEAD` : 0 issues (tags par défaut, et `gamefiles` sur `internal/himap`). `go-api-test-gamefiles` : `film-profiles-build`, `mapfond-build`, `mapstruct-build` `ok` ; `internal/himap` NON vert pour des causes étrangères au lot (cf. découvertes : dépôt de variantes `.ai/re_dump/mapvar` absent, `TestBancCliffhanger` 64,4 % < 64,7 %), `TestPreuveLevelIDCartesDuCache` (la sonde du lot) `PASS` avec ses 4 cartes.
   - RÉVISIONS : aucune de montée (catalogue de bornes hors `profile`, `PlacementRev`, `SchemaVersion`, `grammar`, `killsource` inchangés). À JOUER APRÈS FUSION (E8.6/E10.5) : `backfill-replay` sur les films Harvest du parc de prod, qui n'avaient aucun rejeu.
 - 2026-10-18 clôture d'E8 (exécutant Sonnet, même worktree). Gate d'étape rejoué après E8.3, un seul `go` à la fois : `go test -count=1 ./internal/games/halo_infinite/film/... ./internal/sync/killcollector/... ./internal/replaybuild/...` : 21 paquets `ok`, 0 échec ; `go test -count=1 ./internal/himap/... ./cmd/mapquant-build/... ./cmd/mapobj-build/... ./internal/replaybuild/... ./internal/service/... ./internal/archlint/` : tous `ok` ; `CGO_ENABLED=0 go run ./cmd/replay-corpus-gate --base=HEAD~1` (E8.3 contre l'état d'avant, deux passes de 590 s au plus, reprise par le cache de la base) : 19 témoins `ok`, 0 gain, 0 perte, 0 changement, FIN=0 (les trois témoins les plus récents cuits à froid, dont `f75e7053` KOTH) ; le gate d'E8.1/E8.4 contre `HEAD` (pilote) reste celui qui porte les changements de révision. Items : E8.1 `[x]`, E8.2 `[x]`, E8.3 `[x]`, E8.4 `[x]`, E8.5 `[x]`, E8.6 `[~]` (E10.5). `.ai/BACKLOG.md` : quatre entrées retirées (vies sans identité, écart de position, courbe Lattice, Harvest), deux entrées pour les restes réels (15 vies sans nom ; découvertes d'E8 non traitées), une ligne « Récemment complété » ; `.ai/REGISTRE_REPORTS.md` : lignes Lattice, Harvest et écart de position soldées. Contrôle visuel du user : OUVERT jusqu'après la fusion.
+- 2026-10-18 E9 (exécutant Sonnet, même worktree) : E9.1 à E9.4 faits, gate vert (détail sous l'étape). Pièces rouvertes avant de coder : `cmd_backfill.go` (seul `--engagement-scores` portait un titre), `engine_options.go` (`NewSyncEngine` = `DefaultSlug`), `handlers/backfill.go` (moteur sans titre, provider du boot), `handlers/settings.go:518` (titre vide), `config/player_resolver.go` (`cfg.SharedProvider` = titre par défaut), `migration/registry.go` (`RunForDB` force `DefaultSlug`), `Dockerfile` (binaires de l'image), `deploy.yml` (job `deploy-demo`), COMMANDS.md (doctrine des passes film). Écarts au brief : (1) `--title` couvre aussi `--composite-only`, `--citations-recompute-all`, `--compare-formulas` (même code, sinon piège silencieux) ; (2) les passes sélectionnées tournent TOUTES (avant : `--perf --assists-model` ne lançait que `--perf`, les autres retournaient tôt) ; (3) le gate de capability est aux appelants (CLI, job), pas dans `RunBackfillCitations` : les tests de pipeline le pilotent sans manifeste de titre ; (4) le champ `title` n'a pas de schéma OpenAPI (corps lu à la main) : ajouté à la description du fragment et à `types.ts`. Fichiers : voir `git show --stat` du commit `b1016(E9)`.

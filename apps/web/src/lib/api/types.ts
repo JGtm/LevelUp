@@ -357,6 +357,8 @@ export interface EngagementProfileAPI {
 
 export interface BackfillStartRequest {
   player_slug: string
+  /** Slug du titre à recalculer ; absent = titre par défaut. Le joueur doit y être suivi. */
+  title?: string
   medals?: boolean
   events?: boolean
   skill?: boolean

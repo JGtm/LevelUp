@@ -137,8 +137,10 @@ func (r *ServiceRegistry) RecomputeLUSRGapsForPlayer(ctx context.Context, titleS
 	before, beforeOK := r.scanPlayerInteriorGaps(ctx, titleSlug, p)
 
 	engine := sync_pkg.NewSyncEngineForTitle(r.cfg.RepoRoot, titleSlug, p.Gamertag, p.XUID, nil, r.provider)
-	if r.cfg.SharedProvider != nil {
-		engine = engine.WithSharedProvider(r.cfg.SharedProvider)
+	// Provider shared DU TITRE : cfg.SharedProvider est celui du titre par défaut, il ferait rejouer
+	// un joueur d'un autre titre sur la base partagée du mauvais titre.
+	if provider := r.cfg.SharedProviderForTitle(titleSlug); provider != nil {
+		engine = engine.WithSharedProvider(provider)
 	}
 	monitoringLog.InfoContext(ctx, "admin_actions: replay LUSR démarré",
 		"gamertag", p.Gamertag, "xuid", p.XUID, "title", titleSlug)

@@ -122,6 +122,23 @@ go run ./cmd/levelup backfill --all          --weapons        [--force]   # film
 go run ./cmd/levelup backfill --gamertag X --citations-recompute-all
 ```
 
+`--title <slug>` (default: the default title) picks the title of every local pass above
+(`--engagement-scores`, `--citations`, `--citations-recompute-all`, `--composite-only`, `--lusr`,
+`--perf`, `--assists-model`, `--compare-formulas`); `--all` then takes the profiles of THAT title.
+`--csr` / `--shared-csr` stay on the default title and refuse any other. A pass whose title does not
+declare the capability (citations on Halo 5: no `citations.engine`, native commendations instead)
+answers "non supporte pour le titre" and runs nothing. Selected passes all run, in the order
+`--engagement-scores`, `--citations`, `--lusr`, `--perf`, `--assists-model`, `--composite-only`,
+`--citations-recompute-all`. The HTTP job takes the same choice in the `title` field of
+`POST /backfill/start`.
+
+```bash
+go run ./cmd/levelup backfill --all --title halo_5 --engagement-scores --force
+go run ./cmd/levelup backfill --all --title halo_5 --perf --force
+go run ./cmd/levelup backfill --all --title halo_5 --assists-model --force
+go run ./cmd/levelup backfill --all --title halo_5 --lusr
+```
+
 A match is ranked iff the `RankRecap.PostMatchCsr.InitialMeasurementMatches` of its skill payload is
 > 0 (the OpenSpartan Workshop rule; one decision point, `internal/sync/csr_writes.go`).
 `backfill-is-ranked` repairs `match_registry.is_ranked` from the per-match CSR already written

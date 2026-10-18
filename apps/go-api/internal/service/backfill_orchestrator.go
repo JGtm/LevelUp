@@ -134,7 +134,7 @@ func (o *BackfillOrchestrator) Run(jobID string) {
 // du `missing` de la détection ; tournent avant l'early-return pour couvrir les joueurs
 // à jour en données mais avec citations/dominance_flag manquants.
 func (o *BackfillOrchestrator) runCitationsComeback(jobID string, c *backfillCounts) {
-	if o.scope.Citations && !o.dryRun {
+	if o.scope.Citations && !o.dryRun && o.citationsServed(jobID) {
 		o.setStep(jobID, "Backfill citations")
 		n, citErr := o.engine.RunBackfillCitations(context.Background(), o.scope.ForceCitations)
 		if citErr != nil {
@@ -150,6 +150,22 @@ func (o *BackfillOrchestrator) runCitationsComeback(jobID string, c *backfillCou
 		}
 		c.comebackUpdated = n
 	}
+}
+
+// citationsServed dit si la passe citations s'applique au titre du moteur. Le titre qui ne
+// déclare pas citations.engine (Halo 5 : citations natives) n'est pas servi : le job le dit en
+// avertissement (code `citations_ignorees`, sans accent : ratchet des libellés en dur) et ne lance rien, y compris sous le scope « tout » (AllData l'inclut). Un
+// manifeste illisible est un avertissement aussi, et la passe n'a pas lieu.
+func (o *BackfillOrchestrator) citationsServed(jobID string) bool {
+	ok, err := o.engine.CitationsEngineSupported()
+	if err != nil {
+		o.warn(jobID, "citations_ignorees: capabilities du titre illisibles (%v)", err)
+		return false
+	}
+	if !ok {
+		o.warn(jobID, "citations_ignorees: non supporte pour ce titre (capability citations.engine absente)")
+	}
+	return ok
 }
 
 // runEngagement : Phases 2.5 (scores d'engagement, local) et 2.6 (coefficients

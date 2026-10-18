@@ -6,6 +6,10 @@ type BackfillStartRequest struct {
 	// PlayerSlug identifie le joueur dans db_profiles.json.
 	PlayerSlug string `json:"player_slug"`
 
+	// Title est le slug du titre à recalculer (ex. "halo_5"). Vide = le titre par défaut. Le joueur
+	// doit être suivi dans CE titre (404 sinon) : le moteur lit et écrit les bases de ce titre.
+	Title string `json:"title,omitempty"`
+
 	// Scope : données à inclure dans le backfill.
 	// Si tous les champs sont false (défaut), AllData est implicitement true.
 	Medals            bool `json:"medals"`

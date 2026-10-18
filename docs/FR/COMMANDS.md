@@ -128,6 +128,23 @@ go run ./cmd/levelup backfill --all          --weapons        [--force]   # film
 go run ./cmd/levelup backfill --gamertag X --citations-recompute-all
 ```
 
+`--title <slug>` (défaut : le titre par défaut) choisit le titre de chaque passe locale ci-dessus
+(`--engagement-scores`, `--citations`, `--citations-recompute-all`, `--composite-only`, `--lusr`,
+`--perf`, `--assists-model`, `--compare-formulas`) ; `--all` prend alors les profils de CE titre.
+`--csr` / `--shared-csr` restent sur le titre par défaut et refusent tout autre. Une passe dont le
+titre ne déclare pas la capability (citations sur Halo 5 : pas de `citations.engine`, citations
+natives à la place) répond « non supporte pour le titre » et n'exécute rien. Les passes choisies
+tournent toutes, dans l'ordre `--engagement-scores`, `--citations`, `--lusr`, `--perf`,
+`--assists-model`, `--composite-only`, `--citations-recompute-all`. Le job HTTP prend le même choix
+dans le champ `title` de `POST /backfill/start`.
+
+```bash
+go run ./cmd/levelup backfill --all --title halo_5 --engagement-scores --force
+go run ./cmd/levelup backfill --all --title halo_5 --perf --force
+go run ./cmd/levelup backfill --all --title halo_5 --assists-model --force
+go run ./cmd/levelup backfill --all --title halo_5 --lusr
+```
+
 Un match est classé ssi le `RankRecap.PostMatchCsr.InitialMeasurementMatches` de sa charge skill est
 > 0 (règle d'OpenSpartan Workshop ; un seul point de décision, `internal/sync/csr_writes.go`).
 `backfill-is-ranked` répare `match_registry.is_ranked` depuis le CSR par match déjà écrit (faux/NULL
