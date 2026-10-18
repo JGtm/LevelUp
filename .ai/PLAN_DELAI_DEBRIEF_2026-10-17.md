@@ -343,3 +343,11 @@ courante. `git -C ../LevelUp-wt-delai-debrief log --oneline -10` pour l'état de
   `make gate-push` ; `make test-web` 962 fichiers / 10 020 tests. `make gate-push` rouge sur sa
   seule étape baseline : `internal/platform/duckdb` hors budget sous charge (D-4), rejoué seul en
   intégration (`-p 1 -timeout=300s`) : vert en 290 s. La CI fait foi (4.5).
+- 2026-10-18 : étape 5 en attente, deux dépendances : (1) l'utilisateur ne peut pas jouer les
+  deux matchs aujourd'hui (report valide : action que seul l'utilisateur peut faire) ; (2) un
+  traitement de recherche d'une autre session (`replay-parc-vies`) tient le verrou de décodage du
+  poste — session levelup-50 sollicitée pour en connaître la fin. CI de la branche en cours.
+- 2026-10-18 : DÉCISION UTILISATEUR (message du 2026-10-18) : fusionner dans `feat/v75` dès la CI
+  verte, la preuve de l'étape 5 se fera ensuite (en local quand l'utilisateur pourra jouer, ou en
+  prod après le déploiement, par le tableau « Délai du débrief »). Le traitement de recherche de
+  levelup-50 finit vers 19 h 45 ; une autre passe longue sera annoncée avant d'être lancée.
