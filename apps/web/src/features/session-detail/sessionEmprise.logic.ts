@@ -20,8 +20,8 @@
  *
  * AUCUN MATCH CONCERNÉ. Une carte tirée de la feuille de match dont aucun match de la session n'est concerné
  * (l'objectif sans match à objectif, la répartition des frags sans frag) reste affichée avec son constat
- * (`sessionScopeEmpties`, `ScopeEmptyCard`) : un bloc qui disparaît se lit comme un bug. Capability absente
- * (`objectiveExpected` faux) : carte absente.
+ * (`sessionScopeEmpties`, `ScopeEmptyCard`) : un bloc qui disparaît se lit comme un bug ; une lecture de l'objectif
+ * en échec le dit à part (`objectiveGap`). Capability absente (`objectiveGap` nul) : carte absente.
  *
  * Pur : aucun React, aucune couleur, aucune chaîne de langue.
  */
@@ -34,7 +34,7 @@ import { objectiveMatches } from '@/features/squad/formes/model/objectives'
 import {
   buildObjectiveBalance,
   buildSoloObjectiveSheet,
-  objectiveExpected,
+  objectiveGap,
   type BalanceFamily,
   type SoloObjectiveSheet,
 } from '@/features/squad/objectif/objectif.logic'
@@ -143,8 +143,8 @@ export interface SessionEmpriseModels {
   objective: SquadFormesBlock | null
   balance: BalanceFamily[]
   soloSheet: SoloObjectiveSheet | null
-  /** Le titre mesure l'objectif mais aucun match de la session n'est à objectif : la carte dit le constat. */
-  objectiveEmpty: boolean
+  /** Aucun match de la session n'est à objectif (ou la lecture a échoué) et le titre mesure l'objectif : la carte dit ce constat ; nul sinon. */
+  objectiveGap: ScopeEmptyKind | null
 }
 
 /** buildSessionEmpriseModels — tous les modèles d'une colonne, depuis ses blocs (aucune requête). */
@@ -168,7 +168,7 @@ export function buildSessionEmpriseModels(
     objective,
     balance: objective ? buildObjectiveBalance(objective) : [],
     soloSheet: objective ? buildSoloObjectiveSheet(objective) : null,
-    objectiveEmpty: objective == null && objectiveExpected(formes),
+    objectiveGap: objective == null ? objectiveGap(formes) : null,
   }
 }
 
@@ -266,7 +266,7 @@ export function sessionCardsPresence(col: SessionColumnBlocks, m: SessionEmprise
  */
 export function sessionScopeEmpties(
   col: Pick<SessionColumnBlocks, 'entry'>,
-  m: Pick<SessionEmpriseModels, 'objectiveEmpty'>,
+  m: Pick<SessionEmpriseModels, 'objectiveGap'>,
   drawn: SessionCardsPresence,
 ): Partial<Record<keyof SessionCardsPresence, ScopeEmptyKind>> {
   const out: Partial<Record<keyof SessionCardsPresence, ScopeEmptyKind>> = {}
@@ -275,7 +275,7 @@ export function sessionScopeEmpties(
     // Sans frag, « Outils de destruction » n'a rien non plus : sa carte reste avec l'état vide de son graphe.
     if (!drawn.tools) out.tools = 'frags'
   }
-  if (m.objectiveEmpty) out.objective_balance = 'objective'
+  if (m.objectiveGap) out.objective_balance = m.objectiveGap
   return out
 }
 

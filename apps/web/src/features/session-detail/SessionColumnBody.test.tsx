@@ -145,6 +145,15 @@ describe('SessionColumnBody — chaque carte se retire seule', () => {
     expect(intertitres(container)).not.toContain('Objectif')
   })
 
+  it('lecture de l’objectif en échec : l’intertitre « Objectif » reste et le dit', () => {
+    const { container } = monter({ ...sessionSolo(), formes: { available: false, unavailable_reason: 'load_failed', matches_measured: 0, matches_total: 6 } })
+    expect(cartes(container)).toContain('objective_empty')
+    expect(intertitres(container)).toContain('Objectif')
+    const bloc = container.querySelector('[data-testid="session-objective-empty"]')!
+    expect(bloc).toHaveTextContent('Objectif indisponible pour ce périmètre')
+    expect(bloc).not.toHaveTextContent('Aucun match à objectif')
+  })
+
   it('aucun frag : la répartition des frags reste, son titre gardé, avec le constat', () => {
     const { container } = monter({ entry: { ...session2209().entry, frag_distribution: undefined, weapon_tools: undefined } as unknown as SessionCompareEntry, matches: [] })
     expect(titresRendus()).toEqual([...SECTIONS])

@@ -11,6 +11,7 @@
  *
  * Pur : aucun React, aucune couleur, aucune chaîne de langue.
  */
+import type { ScopeEmptyKind } from '@/components/ui/scope-empty-text'
 import { gridHasFilmRows } from '@/features/squad/emprise/empriseContent'
 import {
   RESOURCE_RACK,
@@ -25,7 +26,7 @@ import {
 } from '@/features/squad/emprise/emprise.logic'
 import { buildProductionRows, buildYieldRows, type ProductionRow, type YieldRow } from '@/features/squad/emprise/production.logic'
 import { objectiveMatches } from '@/features/squad/formes/model/objectives'
-import { objectiveExpected } from '@/features/squad/objectif/objectif.logic'
+import { objectiveGap } from '@/features/squad/objectif/objectif.logic'
 import type {
   EmpriseEquipmentFamily,
   EmpriseMapColumn,
@@ -277,8 +278,8 @@ export interface UsagesModels {
   equipment: EquipmentRow[]
   /** Le bloc d'objectif, seulement quand le périmètre a au moins un match à objectif. */
   objective: SquadFormesBlock | null
-  /** Le titre mesure l'objectif mais aucun match du périmètre n'est à objectif : le bloc dit le constat. */
-  objectiveEmpty: boolean
+  /** Aucun match du périmètre n'est à objectif (ou la lecture a échoué) et le titre mesure l'objectif : le bloc dit ce constat ; nul sinon. */
+  objectiveGap: ScopeEmptyKind | null
 }
 
 /** buildUsagesModels — tous les modèles de l'onglet depuis la réponse de page (aucune requête). */
@@ -297,7 +298,7 @@ export function buildUsagesModels(data: TimeseriesPageResponse, nameOf: (o: Squa
     lives: buildLivesModel(data.lives_near_teammate),
     equipment: block ? buildEquipmentRows(block) : [],
     objective,
-    objectiveEmpty: objective == null && objectiveExpected(formes),
+    objectiveGap: objective == null ? objectiveGap(formes) : null,
   }
 }
 

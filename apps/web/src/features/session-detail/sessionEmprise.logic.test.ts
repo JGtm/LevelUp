@@ -104,11 +104,11 @@ describe('sessionCardsPresence — une carte n’existe que si elle dessine quel
   it('objectif : le constat s’ancre sur objective_balance seulement quand le titre mesure l’objectif', () => {
     const solo = sessionSolo()
     const models = (formes: SessionColumnBlocks['formes']) => buildSessionEmpriseModels({ ...solo, formes }, () => '')
-    expect(models(solo.formes).objectiveEmpty).toBe(true)
-    expect(models(null).objectiveEmpty).toBe(false)
-    expect(models({ available: false, unavailable_reason: 'unsupported', matches_measured: 0, matches_total: 6 }).objectiveEmpty).toBe(false)
-    expect(models({ available: false, unavailable_reason: 'load_failed', matches_measured: 0, matches_total: 6 }).objectiveEmpty).toBe(false)
-    expect(models(block2209()).objectiveEmpty).toBe(false)
+    expect(models(solo.formes).objectiveGap).toBe('objective')
+    expect(models(null).objectiveGap).toBeNull()
+    expect(models({ available: false, unavailable_reason: 'unsupported', matches_measured: 0, matches_total: 6 }).objectiveGap).toBeNull()
+    expect(models({ available: false, unavailable_reason: 'load_failed', matches_measured: 0, matches_total: 6 }).objectiveGap).toBe('objectiveUnavailable')
+    expect(models(block2209()).objectiveGap).toBeNull()
   })
 
   it('une session sans frag garde sa carte de répartition (constat) ; sans session, rien', () => {

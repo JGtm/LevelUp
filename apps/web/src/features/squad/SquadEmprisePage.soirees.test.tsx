@@ -197,6 +197,14 @@ describe('Soirées précédentes — aucun match à objectif', () => {
     expect(screen.queryByTestId('squad-objective-section')).toBeNull()
   })
 
+  it('lecture de l’objectif en échec : la carte de rapport de force reste et le dit', () => {
+    mount({ pageData: withBlock({ available: false, unavailable_reason: 'load_failed', matches_measured: 0, matches_total: 3 }) })
+    const empty = screen.getByTestId('objective-evenings-empty')
+    expect(empty).toHaveTextContent('Rapport de force, soirée après soirée')
+    expect(empty).toHaveTextContent('Objectif indisponible pour ce périmètre')
+    expect(empty).not.toHaveTextContent('Aucun match à objectif')
+  })
+
   it('les sections d’objectif de l’onglet gardent leur intertitre et le constat', () => {
     mount({ pageData: withBlock(sansObjectif()) })
     expect(within(screen.getByTestId('squad-objective-section')).getByTestId('squad-objective-empty')).toBeInTheDocument()

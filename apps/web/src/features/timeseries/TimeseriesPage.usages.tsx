@@ -22,7 +22,8 @@
  * montrer, l'onglet le DIT (bloc parent + pointillé dedans). Sans film (Halo 5), seuls les frags aux armes
  * spéciales de la feuille de match restent. L'objectif, tiré de la feuille de match, garde de même son
  * intertitre quand aucun match du périmètre n'est à objectif (« Aucun match à objectif sur ce périmètre »,
- * `ScopeEmptySection`) ; il ne se retire que si le titre ne mesure pas l'objectif.
+ * `ScopeEmptySection`) ou quand sa lecture a échoué (« Objectif indisponible pour ce périmètre ») ; il ne se retire
+ * que si le titre ne mesure pas l'objectif.
  */
 import type { ReactNode } from 'react'
 import { useMemo } from 'react'
@@ -154,8 +155,8 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
       ) : (
         gap && <FilmGapSection title={ut.sections.lives} testId="usages-section-lives" gap={gap} t={gapText} />
       )}
-      {!show.objectif && m.objectiveEmpty && (
-        <ScopeEmptySection title={ut.sections.objectif} kind="objective" locale={locale} testId="usages-section-objectif" />
+      {!show.objectif && m.objectiveGap && (
+        <ScopeEmptySection title={ut.sections.objectif} kind={m.objectiveGap} locale={locale} testId="usages-section-objectif" />
       )}
       {show.objectif && (
         <Block id="objectif" title={ut.sections.objectif}>
