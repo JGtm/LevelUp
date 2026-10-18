@@ -16,7 +16,7 @@ import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { SectionTitle } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { InfoTooltip, TooltipParagraphs } from '@/components/ui/info-tooltip'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
@@ -30,8 +30,7 @@ import { WinRateVsHistoryBulletChart } from './WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from './MapPerfVsHistoryChart'
 import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
 import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
-import { SquadAppuiCard } from './SquadAppuiCard'
-import { SquadRangeRolesCard } from './SquadRangeRolesCard'
+import { SquadAppuiPorteeSection } from './SquadAppuiPorteeSection'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { useSquadPlayerPalette } from './useSquadPlayerPalette'
 
@@ -111,9 +110,8 @@ export function SquadSynergiesPage() {
   const sessionTimeline = pageData?.session_timeline ?? []
   const mapHeatmap = pageData?.map_heatmap
   // assist_pairs n'est PAS comblé par un défaut : son absence est un ÉTAT (aucun match
-  // de la sélection n'a d'assistance mesurée — dont le cas d'un titre sans décodeur de
-  // film). Le bloc n'est alors pas monté du tout, plutôt que d'afficher un cadre vide
-  // qui laisserait croire à une escouade sans entraide.
+  // de la sélection n'a d'assistance mesurée). La section le dit (SquadAppuiPorteeSection) au lieu
+  // de se retirer, sauf sur un titre sans décodeur de film.
   const assistPairs = pageData?.assist_pairs
   // Les profils de PORTÉE par match : même politique que le bloc ci-dessus — absent =
   // aucun film décodé sur la sélection, jamais des zéros.
@@ -121,27 +119,17 @@ export function SquadSynergiesPage() {
 
   return (
     <div className="space-y-4">
-      {/* SECTION « APPUI ET PORTÉE » — DEUX CARTES, UNE RANGÉE, MÊME HAUTEUR :
-            « Appui » à gauche — les assistances que les joueurs de l'escouade se donnent ;
-            « Rôles de portée » à droite — la distance à laquelle chaque joueur frague,
-            rapportée au lobby.
-
-          CHAQUE CARTE SE MONTE INDÉPENDAMMENT : l'appui vient du résumé du film, les rôles des
-          films décodés. L'absence d'un bloc est un ÉTAT (rien de mesuré sur la sélection) : sa
-          cellule n'est pas montée (la carte restante garde sa demi-largeur), et sans aucun des
-          deux la section ne l'est pas. */}
-      {(assistPairs || rangeProfiles) && (
-        <section className="space-y-4" aria-label={t.sections.appuiPortee}>
-          <SectionTitle className="flex items-center gap-1.5">
-            {t.sections.appuiPortee}
-            <InfoTooltip content={<TooltipParagraphs items={t.sections.appuiPorteeHelp} />} />
-          </SectionTitle>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="squad-appui-portee-row">
-            {assistPairs && <SquadAppuiCard block={assistPairs} roster={roster} colorByPlayer={colorByPlayer} />}
-            {rangeProfiles && <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} colorByPlayer={colorByPlayer} />}
-          </div>
-        </section>
-      )}
+      {/* SECTION « APPUI ET PORTÉE » : deux cartes sur une rangée, ou l'état de la section quand rien
+          n'est mesuré (film non lu, constat) — voir SquadAppuiPorteeSection. */}
+      <SquadAppuiPorteeSection
+        assistPairs={assistPairs}
+        rangeProfiles={rangeProfiles}
+        emprise={pageData?.squad_emprise}
+        roster={roster}
+        colorByPlayer={colorByPlayer}
+        locale={locale}
+        t={t}
+      />
       {/* Graphes toujours montés : ChartCard affiche son état vide (titre +
           message) au lieu de faire disparaître le bloc quand mapBreakdown
           est vide ou sans champs de performance. */}

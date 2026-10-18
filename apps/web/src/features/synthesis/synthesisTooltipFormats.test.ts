@@ -8,7 +8,7 @@ import type { TopWeekItem } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { buildOutcomesOption } from './SynthesisOutcomesByGroupChart'
-import { buildTopWeeksOption } from './SynthesisTopWeeksChart'
+import { buildTopWeeksOption, topWeeksNames } from './SynthesisTopWeeksChart'
 
 afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
 
@@ -39,16 +39,32 @@ describe('infobulles de la Synthèse', () => {
     const weeks = [
       { week_label: '12/10', week_start: '2026-10-12', match_count: 1500, wins: 700, win_rate: 46.666666, kd_ratio: null },
     ] as TopWeekItem[]
-    const opt = buildTopWeeksOption(weeks)
+    const opt = buildTopWeeksOption(weeks, topWeeksNames('fr'))
     const html = flat(
       tip(opt)([
-        { seriesName: 'Top 1', seriesIndex: 0, value: 700, color: '#111', axisValueLabel: '12/10' },
-        { seriesName: 'Autres', seriesIndex: 1, value: 800, color: '#222', axisValueLabel: '12/10' },
-        { seriesName: 'Taux Top (%)', seriesIndex: 2, value: 46.7, color: '#333', axisValueLabel: '12/10' },
+        { seriesName: 'Victoires', seriesIndex: 0, value: 700, color: '#111', axisValueLabel: '12/10' },
+        { seriesName: 'Autres matchs', seriesIndex: 1, value: 800, color: '#222', axisValueLabel: '12/10' },
+        { seriesName: 'Taux de victoire', seriesIndex: 2, value: 46.7, color: '#333', axisValueLabel: '12/10' },
       ]),
     )
     expect(html).toContain('46,7 %')
     expect(html).toContain('800')
-    expect(html.indexOf('Autres')).toBeLessThan(html.indexOf('Top 1'))
+    expect(html.indexOf('Autres matchs')).toBeLessThan(html.indexOf('Victoires'))
+  })
+
+  it('meilleures semaines : noms des séries et de l’axe traduits, sans « Top 1 » ni « Win % »', () => {
+    const weeks = [{ week_label: '12/10', week_start: '2026-10-12', match_count: 10, wins: 6, win_rate: 60, kd_ratio: null }] as TopWeekItem[]
+    for (const [locale, names] of [
+      ['fr', ['Victoires', 'Autres matchs', 'Taux de victoire', 'Taux de victoire (%)']],
+      ['en', ['Wins', 'Other matches', 'Win rate', 'Win rate (%)']],
+    ] as const) {
+      const opt = buildTopWeeksOption(weeks, topWeeksNames(locale)) as unknown as {
+        series: { name: string }[]
+        yAxis: { name?: string }[]
+      }
+      expect(opt.series.map((x) => x.name)).toEqual([names[0], names[1], names[2]])
+      expect(opt.yAxis[1].name).toBe(names[3])
+      expect(JSON.stringify(opt)).not.toMatch(/Top 1|Taux Top|Win %/)
+    }
   })
 })

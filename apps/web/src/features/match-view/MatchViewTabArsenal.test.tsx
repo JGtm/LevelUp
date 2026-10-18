@@ -80,6 +80,12 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
     expect(order(container)).toEqual(CARDS)
   })
 
+  it('du terrain mais aucun frag : « Frags et armes » reste, sa carte de répartition montée (elle dit son constat)', () => {
+    afficher()
+    expect(screen.getByText(MATCH_VIEW_TEXT.fr.sectionKillsWeapons)).toBeInTheDocument()
+    expect(screen.getByTestId('frag-card')).toBeInTheDocument()
+  })
+
   it('l’intertitre est nu : ni sous-titre de couverture film', () => {
     afficher()
     expect(screen.getByText(MATCH_VIEW_TEXT.fr.sectionEquipmentTerrain)).toBeInTheDocument()

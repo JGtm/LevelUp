@@ -6,8 +6,10 @@
  * aide, l'anneau, puis la légende des classes (`FragClassLegend`) en pied de carte, centrée, renvoyée
  * à la ligne quand la largeur manque ; survol lié entre l'anneau et la légende. B : les outils de
  * destruction (`MatchToolsCard`, le graphe de l'Escouade et de Sessions). Deux colonnes égales ; une
- * carte seule prend toute la largeur. Rend null sans aucune des deux — le MÊME prédicat
- * (`hasMatchFragData`) que celui lu par l'onglet pour poser son titre.
+ * carte seule prend toute la largeur. Sans aucune des deux (aucun frag du joueur sur le match), la
+ * carte A reste avec son titre et le constat « Aucun frag sur ce périmètre » dans son cadre
+ * (`FragSunburst`) : le parent décide si la section existe (`hasMatchFragData` pour son titre), ce bloc
+ * n'a pas à disparaître dans une section affichée.
  *
  * Non gaté : Infinite = classes sans Spartan ; Halo 5 = avec (la capability décide côté backend via
  * native_kill_mechanics).
@@ -33,7 +35,7 @@ interface Props {
 }
 
 export function MatchFragCard({ distribution, tools, locale }: Props) {
-  if (!hasMatchFragData(distribution, tools)) return null
+  if (!hasMatchFragData(distribution, tools)) return <MatchFragDonut distribution={distribution} locale={locale} />
   const both = hasFragSunburst(distribution) && hasWeaponTools(tools)
   return (
     <div className={both ? 'grid grid-cols-1 gap-4 lg:grid-cols-2' : ''}>

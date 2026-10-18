@@ -147,9 +147,12 @@ describe('SessionDetailPage — rangees partagees (D16), une par carte', () => {
     expect(left).not.toContain('frags')
   })
 
-  it('le cote sans la carte porte le marqueur : la session solo n’a pas de carte d’objectif', async () => {
+  it('le cote sans la carte porte le marqueur : la session solo n’a ni fiche d’objectif ni prise ; sa carte d’objectif dit le constat', async () => {
     const { container } = await openedCompare()
-    for (const key of ['objective_balance', 'objective_sheet', 'control', 'mine']) {
+    const [, soloBalance] = cells(container, 'objective_balance')
+    expect(placeholder(soloBalance)).toBeNull()
+    expect(soloBalance).toHaveTextContent('Aucun match à objectif sur ce périmètre')
+    for (const key of ['objective_sheet', 'control', 'mine']) {
       const [left, right] = cells(container, key)
       expect(placeholder(left), `${key} a gauche`).toBeNull()
       expect(placeholder(right), `${key} a droite`).not.toBeNull()

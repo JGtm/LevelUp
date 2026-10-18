@@ -129,8 +129,10 @@ export function MatchViewTabArsenal({
   })
   // « En cours » seulement si un décodage porte sur ce match, sinon « en attente ».
   const slotLabel = analysisSlotLabel(isAnalysisInProgress(analysisCauses), t)
-  const showKillsWeaponsSection = showKillsWeapons || pending.killsWeapons
   const showTerrainSection = showEquipmentTerrain || pending.terrain
+  // Un onglet qui montre déjà du terrain garde aussi « Frags et armes » : sans frag, la carte dit son constat
+  // (MatchFragCard) au lieu de laisser la section disparaître.
+  const showKillsWeaponsSection = showKillsWeapons || pending.killsWeapons || showTerrainSection
 
   if (!showKillsWeaponsSection && !showTerrainSection) {
     // Convention de l'application : l'état vide pointillé vit DANS un bloc parent, jamais nu.

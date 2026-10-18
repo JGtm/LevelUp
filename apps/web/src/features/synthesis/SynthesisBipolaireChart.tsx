@@ -20,6 +20,9 @@ import { tipNumber } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import type { ComparisonMetricItem } from '@/lib/api/types'
 import { formatClockMShort } from '@/lib/formatters'
+import { formatMessage } from '@/lib/i18n/format'
+import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
   metrics: ComparisonMetricItem[]
@@ -101,9 +104,16 @@ function soloBarValue(solo: number, squad: number): number {
   return raw                                        // deux positifs : formule standard
 }
 
+/** Les noms des deux séries (et des lignes de l'infobulle), à la langue de l'application. */
+interface BipolaireNames {
+  solo: string
+  squad: string
+}
+
 function buildBipolaireOption(
   metrics: ComparisonMetricItem[],
   fieldLabels: string[],
+  names: BipolaireNames,
 ): EChartsCoreOption {
   if (metrics.length === 0) return { backgroundColor: CHART_BG }
   const tc = getEChartsThemeColors()
@@ -142,8 +152,8 @@ function buildBipolaireOption(
         const squad = squadTexts[idx] ?? ''
         return [
           `<div style="font-weight:600;margin-bottom:4px">${title}</div>`,
-          `<div>${dot(soloColors[idx])}Solo : <b>${solo}</b></div>`,
-          `<div>${dot(squadColors[idx])}Escouade : <b>${squad}</b></div>`,
+          `<div>${dot(soloColors[idx])}${escapeHtml(names.solo)} : <b>${solo}</b></div>`,
+          `<div>${dot(squadColors[idx])}${escapeHtml(names.squad)} : <b>${squad}</b></div>`,
         ].join('')
       },
     },
@@ -166,7 +176,7 @@ function buildBipolaireOption(
     barCategoryGap: '30%',
     series: [
       {
-        name: 'Solo',
+        name: names.solo,
         type: 'bar',
         data: soloVals.map((v, i) => ({
           value: v,
@@ -190,7 +200,7 @@ function buildBipolaireOption(
         },
       },
       {
-        name: 'Escouade',
+        name: names.squad,
         type: 'bar',
         data: squadVals.map((v, i) => ({
           value: v,
@@ -213,6 +223,7 @@ function buildBipolaireOption(
 }
 
 export function SynthesisBipolaireChart({ metrics, fieldLabels, title, children, height }: Props) {
+  const locale = useAppShellStore((st) => st.locale)
   const resolvedLabels = fieldLabels ?? metrics.map((m) => m.label)
   const series: ChartSeries<ComparisonMetricItem>[] = metrics.length > 0
     ? [{ key: 'bipolaire', datapoints: metrics }]
@@ -222,9 +233,13 @@ export function SynthesisBipolaireChart({ metrics, fieldLabels, title, children,
   const metricsKey = JSON.stringify(metrics)
   const labelsKey = JSON.stringify(resolvedLabels)
   const buildOption = useCallback(
-    () => buildBipolaireOption(metrics, resolvedLabels),
+    () =>
+      buildBipolaireOption(metrics, resolvedLabels, {
+        solo: formatMessage(synthesisManifest, 'synthesis.scope.solo_label', locale),
+        squad: formatMessage(synthesisManifest, 'synthesis.scope.squad_label', locale),
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [metricsKey, labelsKey],
+    [metricsKey, labelsKey, locale],
   )
 
   return (

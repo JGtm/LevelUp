@@ -54,6 +54,7 @@ const CARD_IDS: [string, string][] = [
   ['yield', '[data-testid="emprise-yield"]'],
   ['lives', '[data-testid="usages-lives"]'],
   ['objective_balance', '[data-testid="objective-balance"]'],
+  ['objective_empty', '[data-testid="session-objective-empty"]'],
   ['objective_sheet', '[data-testid="objective-solo-sheet"]'],
   ['equipment', '[data-testid="usages-equipment"]'],
 ]
@@ -124,18 +125,39 @@ describe('SessionColumnBody — titres de groupe et intertitres', () => {
 })
 
 describe('SessionColumnBody — chaque carte se retire seule', () => {
-  it('session solo sans match à objectif : ni rapport de force, ni fiche, ni intertitre « Objectif »', () => {
+  it('session solo sans match à objectif : ni rapport de force ni fiche, mais l’intertitre « Objectif » et son constat', () => {
     const { container } = monter(sessionSolo())
     expect(cartes(container)).not.toContain('objective_balance')
     expect(cartes(container)).not.toContain('objective_sheet')
-    expect(intertitres(container)).not.toContain('Objectif')
+    expect(cartes(container)).toContain('objective_empty')
+    expect(intertitres(container)).toContain('Objectif')
+    const bloc = container.querySelector('[data-testid="session-objective-empty"]')!
+    expect(bloc).toHaveTextContent('Aucun match à objectif sur ce périmètre')
+    expect(bloc.querySelector('.border-dashed')).not.toBeNull()
     // Aucune prise de ressource : ni contrôle, ni fil, ni « Contribution aux prises ».
     expect(cartes(container)).not.toContain('control')
     expect(cartes(container)).not.toContain('mine')
   })
 
-  it('aucune carte : « Frags et usages » disparaît ENTIÈREMENT, titre compris', () => {
-    monter({ entry: { ...session2209().entry, frag_distribution: undefined, weapon_tools: undefined } as unknown as SessionCompareEntry, matches: [] })
+  it('titre sans objectif (capability absente) : ni carte ni intertitre « Objectif »', () => {
+    const { container } = monter({ ...sessionSolo(), formes: { available: false, unavailable_reason: 'unsupported', matches_measured: 0, matches_total: 6 } })
+    expect(cartes(container)).not.toContain('objective_empty')
+    expect(intertitres(container)).not.toContain('Objectif')
+  })
+
+  it('aucun frag : la répartition des frags reste, son titre gardé, avec le constat', () => {
+    const { container } = monter({ entry: { ...session2209().entry, frag_distribution: undefined, weapon_tools: undefined } as unknown as SessionCompareEntry, matches: [] })
+    expect(titresRendus()).toEqual([...SECTIONS])
+    const donut = container.querySelector('[data-testid="session-frag-donut"]')!
+    expect(donut).toHaveTextContent('Répartition des frags')
+    expect(donut).toHaveTextContent('Aucun frag sur ce périmètre')
+    expect(donut.querySelector('.border-dashed')).not.toBeNull()
+    // « Outils de destruction » n'a rien non plus : sa carte reste avec son titre et l'état vide de son graphe.
+    expect(screen.getByText('Outils de destruction')).toBeInTheDocument()
+  })
+
+  it('aucune session : « Frags et usages » disparaît ENTIÈREMENT, titre compris', () => {
+    monter({ entry: null, matches: [] })
     expect(titresRendus()).toEqual(['Bilan', 'Match par match', 'Détail des matchs'])
   })
 

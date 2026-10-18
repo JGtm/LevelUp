@@ -15,6 +15,7 @@ import {
   buildLivesModel,
   buildMapGrid,
   buildMinePickups,
+  buildUsagesModels,
   timeseriesMatchIndex,
   usagesSections,
 } from './usages.logic'
@@ -184,7 +185,13 @@ describe('usagesSections — un seul prédicat pour la page et l’état vide', 
     expect(Object.values(usagesSections(page({}), true, nameOf)).some(Boolean)).toBe(false)
   })
 
-  it('objectif retiré sans match à objectif', () => {
-    expect(usagesSections(page({ formes_retenues: { ...solo, matches: [] } }), true, nameOf).objectif).toBe(false)
+  it('objectif : sans match à objectif, pas de bloc de cartes mais un constat (objectiveEmpty) ; capability absente : rien', () => {
+    const sansMatch = { ...solo, matches: [] }
+    expect(usagesSections(page({ formes_retenues: sansMatch }), true, nameOf).objectif).toBe(false)
+    expect(buildUsagesModels(page({ formes_retenues: sansMatch }), nameOf).objectiveEmpty).toBe(true)
+    expect(buildUsagesModels(page({ formes_retenues: solo }), nameOf).objectiveEmpty).toBe(false)
+    expect(buildUsagesModels(page({}), nameOf).objectiveEmpty).toBe(false)
+    const unsupported = { ...sansMatch, available: false, unavailable_reason: 'unsupported' }
+    expect(buildUsagesModels(page({ formes_retenues: unsupported }), nameOf).objectiveEmpty).toBe(false)
   })
 })

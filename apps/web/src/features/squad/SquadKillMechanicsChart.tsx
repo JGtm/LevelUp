@@ -2,8 +2,9 @@
  * SquadKillMechanicsChart — breakdown des mécaniques de kill NATIVES Halo 5 par
  * coéquipier (assassinats + compétences spartiate), en barres empilées. Réutilise
  * SquadWeaponKillsChart en mappant chaque mécanique sur une « barre » (label =
- * nom localisé, weapon_id synthétique). Null si aucune donnée (titre sans la
- * capability native_kill_mechanics → pageData.native_kill_mechanics absent).
+ * nom localisé, weapon_id synthétique). Le titre sans la capability native_kill_mechanics n'en monte
+ * pas (`FeatureGate` du parent) ; sur un titre qui l'a, sans mécanique de frag sur la sélection, la carte
+ * reste avec son titre et son état vide (plus de trou).
  */
 import { useMemo } from 'react'
 import type { SquadKillMechanics } from '@/lib/api/types'
@@ -35,7 +36,6 @@ export function SquadKillMechanicsChart({ data, title, emptyMessage, colorByPlay
     }
   }, [data, labelOf])
 
-  if (!mapped) return null
   return (
     <SquadWeaponKillsChart
       data={mapped}

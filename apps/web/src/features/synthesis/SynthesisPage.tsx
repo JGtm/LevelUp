@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { ProportionalBar } from '@/components/ui/proportional-bar'
+import { ScopeEmptyCard } from '@/components/ui/scope-empty'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { FragSunburst } from '@/components/charts/FragSunburst'
 import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
@@ -127,6 +128,10 @@ interface SynthesisOverviewSectionProps {
   /** Pourquoi les records manquent quand le titre mesure des positions (`weapon_records_gap`). */
   weaponRecordsGap?: FilmGap
   playerSlug: string
+}
+/** Le cumul d'objectif a au moins un KPI à afficher (drapeau, zone ou crâne au-dessus de zéro). */
+function hasObjectiveKpis(stats: ObjectiveAggregate | null | undefined): stats is ObjectiveAggregate {
+  return stats != null && ((stats.flag_captures ?? 0) > 0 || (stats.zone_captures ?? 0) > 0 || (stats.skull_grabs ?? 0) > 0)
 }
 function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, objectiveStats, weaponRecords, weaponRecordsGap, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
@@ -279,27 +284,26 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
               {/* Rangée 1 : « Répartition des frags » (sunburst LARGE) + colonne KPI Taux de
                   victoire / FDA / Incidents. Survol LIÉ au breakdown de la rangée 2 (état `frags`). */}
               <div className="flex gap-4 items-stretch">
-                {fragDistribution && (
-                  <div className="flex min-w-0 flex-1 flex-col gap-2">
-                    <FragSunburst
-                      distribution={fragDistribution}
-                      maxWidthPx={520}
-                      hideCenterLabel
-                      legendSide="left"
-                      externalHoveredClass={frags.hovered}
-                      onClassHover={frags.setHovered}
-                    />
-                    {frags.insightText && (
-                      <p className="w-full text-xs leading-snug text-muted-foreground">
-                        <span className="font-semibold text-foreground">
-                          {t('synthesis.coach.label')}
-                          {' : '}
-                        </span>
-                        {frags.insightText}
-                      </p>
-                    )}
-                  </div>
-                )}
+                {/* Sans frag, l'anneau reste avec son constat (FragSunburst) : un bloc qui disparaît se lit comme un bug. */}
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <FragSunburst
+                    distribution={fragDistribution}
+                    maxWidthPx={520}
+                    hideCenterLabel
+                    legendSide="left"
+                    externalHoveredClass={frags.hovered}
+                    onClassHover={frags.setHovered}
+                  />
+                  {frags.insightText && (
+                    <p className="w-full text-xs leading-snug text-muted-foreground">
+                      <span className="font-semibold text-foreground">
+                        {t('synthesis.coach.label')}
+                        {' : '}
+                      </span>
+                      {frags.insightText}
+                    </p>
+                  )}
+                </div>
                 <div className="flex flex-col gap-3 w-[22rem] shrink-0">
 
                   {/* Taux de victoire */}
@@ -431,38 +435,42 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                     </div>
                   )}
 
-                  {/* Objectifs (CTF/Zones/Oddball) — capability-gated + data-driven (KPI > 0). */}
-                  {hasObjectiveStats && objectiveStats && (
+                  {/* Objectifs (CTF/Zones/Oddball) — capability du titre ; sans match à objectif ou sans action
+                      d'objectif, le bloc garde son titre et dit le constat (ScopeEmptyCard). */}
+                  {hasObjectiveStats && (
                     <div>
                       <p className="mb-1 text-xs font-semibold text-muted-foreground">{t('synthesis.kpi.objectives_title')}</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {(objectiveStats.flag_captures ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.flag_captures')} value={(objectiveStats.flag_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
-                        )}
-                        {(objectiveStats.zone_captures ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.zone_captures')} value={(objectiveStats.zone_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
-                        )}
-                        {(objectiveStats.skull_grabs ?? 0) > 0 && (
-                          <AccentCard label={t('synthesis.kpi.skull_grabs')} value={(objectiveStats.skull_grabs ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
-                        )}
-                      </div>
+                      {hasObjectiveKpis(objectiveStats) ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          {(objectiveStats.flag_captures ?? 0) > 0 && (
+                            <AccentCard label={t('synthesis.kpi.flag_captures')} value={(objectiveStats.flag_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
+                          )}
+                          {(objectiveStats.zone_captures ?? 0) > 0 && (
+                            <AccentCard label={t('synthesis.kpi.zone_captures')} value={(objectiveStats.zone_captures ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
+                          )}
+                          {(objectiveStats.skull_grabs ?? 0) > 0 && (
+                            <AccentCard label={t('synthesis.kpi.skull_grabs')} value={(objectiveStats.skull_grabs ?? 0).toLocaleString(numLoc)} accent="chart-series-1" />
+                          )}
+                        </div>
+                      ) : (
+                        <ScopeEmptyCard kind={objectiveStats ? 'objectiveActions' : 'objective'} locale={locale} testId="synthesis-objectives-empty" />
+                      )}
                     </div>
                   )}
                 </div>
-                {fragDistribution && (
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <FragWeaponBreakdown
-                      weapons={frags.breakdown}
-                      title={frags.detailTitle}
-                      hoveredClass={frags.hovered}
-                      onClassHover={frags.setHovered}
-                      fillHeight
-                      // fluid : le tracé prend flex-1, la légende de pied reste collée au
-                      // bas de la card (sinon flex-1 laisserait un vide sous le footer).
-                      fluid
-                    />
-                  </div>
-                )}
+                {/* Toujours monté : sans frag, la carte garde son titre et l'état vide du graphe. */}
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <FragWeaponBreakdown
+                    weapons={frags.breakdown}
+                    title={frags.detailTitle}
+                    hoveredClass={frags.hovered}
+                    onClassHover={frags.setHovered}
+                    fillHeight
+                    // fluid : le tracé prend flex-1, la légende de pied reste collée au
+                    // bas de la card (sinon flex-1 laisserait un vide sous le footer).
+                    fluid
+                  />
+                </div>
                 {hasWeaponAccuracy && (
                   <div className="flex min-w-0 flex-1 flex-col">
                     <WeaponAccuracyChart

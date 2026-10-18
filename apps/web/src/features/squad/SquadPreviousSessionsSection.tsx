@@ -7,11 +7,13 @@
  *
  * Même rangée, mêmes hauteurs (cartes étirées, graphes de même hauteur). Une carte seule prend la
  * rangée entière. Aucune des deux : la section se retire, intertitre compris. Le rapport de force
- * suit la règle de l'objectif : sans match à objectif dans le périmètre (`hasSquadObjective`),
- * pas de carte.
+ * suit la règle de l'objectif : sans match à objectif dans le périmètre (`hasSquadObjective`), la carte
+ * reste, titre gardé, avec « Aucun match à objectif sur ce périmètre » dans son cadre ; elle ne se retire
+ * que si le titre ne mesure pas l'objectif (`objectiveExpected`).
  */
 import { SectionTitle } from '@/components/ui/detail-section'
 import { PAIR_ROW_CLASS } from '@/components/ui/pair-row'
+import { ScopeEmptyState } from '@/components/ui/scope-empty'
 import type { SquadFormesBlock, SquadObjectiveHistory } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
@@ -19,8 +21,9 @@ import type { EmpriseText } from './emprise/empriseStrings'
 import { HabitCard } from './emprise/HabitCard'
 import type { HabitView } from './emprise/habit.logic'
 import { FORMES_CARDS_TEXT } from './formes/cardsI18n'
-import { hasSquadObjective } from './objectif/objectif.logic'
+import { hasSquadObjective, objectiveExpected } from './objectif/objectif.logic'
 import { ObjectiveEveningsCard } from './objectif/ObjectiveEveningsCard'
+import { ObjectifFrame } from './objectif/ObjectifFrame'
 import { OBJECTIF_TEXT } from './objectif/objectifStrings'
 
 interface Props {
@@ -35,8 +38,10 @@ interface Props {
 export function SquadPreviousSessionsSection({ habit, objective, objectiveHistory, locale, et }: Props) {
   const families = FORMES_CARDS_TEXT[locale].families
   const showHabit = habit.kind !== 'none'
-  const showEvenings = objectiveHistory != null && hasSquadObjective(objective)
-  if (!showHabit && !showEvenings) return null
+  const measured = hasSquadObjective(objective)
+  const showEvenings = objectiveHistory != null && measured
+  const showEveningsEmpty = !measured && objectiveExpected(objective)
+  if (!showHabit && !showEvenings && !showEveningsEmpty) return null
   return (
     <section className="space-y-2" data-testid="emprise-section-habitude">
       <SectionTitle>{et.sections.habitude}</SectionTitle>
@@ -50,6 +55,11 @@ export function SquadPreviousSessionsSection({ habit, objective, objectiveHistor
             locale={locale}
             t={OBJECTIF_TEXT[locale]}
           />
+        )}
+        {showEveningsEmpty && (
+          <ObjectifFrame title={OBJECTIF_TEXT[locale].evenings.title} info={OBJECTIF_TEXT[locale].evenings.info} testId="objective-evenings-empty">
+            <ScopeEmptyState kind="objective" locale={locale} />
+          </ObjectifFrame>
         )}
       </div>
     </section>

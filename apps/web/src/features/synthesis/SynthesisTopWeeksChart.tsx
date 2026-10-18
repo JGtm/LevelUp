@@ -2,6 +2,8 @@
  * SynthesisTopWeeksChart — synthesis.04.
  * Stacked bar (victoires / autres) + line win_rate% sur axe Y secondaire.
  * Couleurs : victoires=outcome-win, autres=gris neutre, line=outcome-draw (ambre).
+ * Noms des séries et de l'axe : manifeste `synthesis.charts.top_weeks_*` (`topWeeksNames`), à la langue de
+ * l'application — aucun libellé écrit dans le constructeur d'option.
  */
 import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -18,6 +20,10 @@ import { axisTooltipFormatter, stackTopFirstOrder } from '@/components/charts/ax
 import { tipNumber, tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import type { TopWeekItem } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
+import type { Locale } from '@/lib/i18n/locale'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
   weeks: TopWeekItem[]
@@ -25,11 +31,30 @@ interface Props {
   height?: number
 }
 
+/** Les noms des trois séries (barres victoires et autres, courbe du taux) et de l'axe de droite. */
+export interface TopWeeksNames {
+  wins: string
+  others: string
+  rate: string
+  rateAxis: string
+}
+
+/** topWeeksNames — les noms à la langue demandée (manifeste `synthesis.charts.top_weeks_*`). */
+// eslint-disable-next-line react-refresh/only-export-components
+export function topWeeksNames(locale: Locale): TopWeeksNames {
+  return {
+    wins: formatMessage(synthesisManifest, 'synthesis.charts.top_weeks_wins', locale),
+    others: formatMessage(synthesisManifest, 'synthesis.charts.top_weeks_others', locale),
+    rate: formatMessage(synthesisManifest, 'synthesis.charts.top_weeks_rate', locale),
+    rateAxis: formatMessage(synthesisManifest, 'synthesis.charts.top_weeks_rate_axis', locale),
+  }
+}
+
 /** Rang de la série « taux » (courbe sur l'axe de droite) dans le tableau de séries. */
 const RATE_SERIES_INDEX = 2
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
+export function buildTopWeeksOption(weeks: TopWeekItem[], names: TopWeeksNames): EChartsCoreOption {
   if (weeks.length === 0) return { backgroundColor: CHART_BG }
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
@@ -45,7 +70,7 @@ export function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
 
   const series = [
     {
-      name: 'Top 1',
+      name: names.wins,
       type: 'bar',
       stack: 'total',
       data: wins,
@@ -53,7 +78,7 @@ export function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
       label: barLabel({ formatter: (p: { value: number }) => tipNumberAuto(p.value) }),
     },
     {
-      name: 'Autres',
+      name: names.others,
       type: 'bar',
       stack: 'total',
       data: others,
@@ -61,7 +86,7 @@ export function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
       label: barLabel({ formatter: (p: { value: number }) => (p.value > 0 ? tipNumberAuto(p.value) : '') }),
     },
     {
-      name: 'Taux Top (%)',
+      name: names.rate,
       type: 'line',
       yAxisIndex: 1,
       data: rates,
@@ -102,7 +127,7 @@ export function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
       },
       {
         ...axis,
-        name: 'Win %',
+        name: names.rateAxis,
         min: 0,
         max: 100,
         splitLine: { show: false },
@@ -117,6 +142,7 @@ export function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
 type Pt = { week_label: string }
 
 export function SynthesisTopWeeksChart({ weeks, title, height }: Props) {
+  const locale = useAppShellStore((st) => st.locale)
   const series: ChartSeries<Pt>[] = weeks.length > 0
     ? [{ key: 'topweeks', datapoints: weeks.map((w) => ({ week_label: w.week_label })) }]
     : []
@@ -124,9 +150,9 @@ export function SynthesisTopWeeksChart({ weeks, title, height }: Props) {
   // Clé de recalcul stable : on ne rebuild l'option que si le contenu change.
   const weeksKey = JSON.stringify(weeks)
   const buildOption = useCallback(
-    () => buildTopWeeksOption(weeks),
+    () => buildTopWeeksOption(weeks, topWeeksNames(locale)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [weeksKey],
+    [weeksKey, locale],
   )
 
   return (

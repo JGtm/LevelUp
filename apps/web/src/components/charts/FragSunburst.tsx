@@ -17,10 +17,12 @@
  * Couleurs : gamme « Antagonistes » réactive à la palette (fragClassColor via token) ;
  * rôles = teintes éclaircies (fragRoleColor). Double encodage couleur + label +
  * position. Composant PARTAGÉ (Synthesis/Match view/Timeseries/Sessions) — cf.
- * .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P1.4. Rend null si total 0.
+ * .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P1.4. Sans frag (total 0) : la carte reste avec son constat « Aucun frag sur ce périmètre ».
  */
 import { useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
 
+import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { scopeEmptyText } from '@/components/ui/scope-empty-text'
 import { fragClassColor, fragRoleColor, fragLeafColor } from '@/lib/accessibility/scales'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { FragDistribution } from '@/lib/api/types'
@@ -165,10 +167,25 @@ export function FragSunburst({
     [classes, arcTotal, appLocale, paletteVersion],
   )
 
-  if (total <= 0 || classes.length === 0) return null
+  const cardTitle = title ?? formatMessage(fragsManifest, 'frags.charts.sunburst_title', appLocale)
+  // Aucun frag sur le périmètre : le bloc reste, avec son constat (un anneau qui disparaît se lit comme un bug).
+  // Nu, c'est le bloc parent de l'appelant qui porte le titre ; sinon la carte garde sa barre de titre.
+  if (total <= 0 || classes.length === 0) {
+    const none = scopeEmptyText('frags', appLocale)
+    const notice = <EmptyStateNotice title={none.title} description={none.description} />
+    return bare ? (
+      <div className={className} data-testid="frag-sunburst-empty">
+        {notice}
+      </div>
+    ) : (
+      <div className={`rounded-lg border border-border bg-card ${className}`} data-testid="frag-sunburst-empty">
+        <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">{cardTitle}</div>
+        <div className="p-3">{notice}</div>
+      </div>
+    )
+  }
 
   const tc = getEChartsThemeColors()
-  const cardTitle = title ?? formatMessage(fragsManifest, 'frags.charts.sunburst_title', appLocale)
   const centerLabel = formatMessage(fragsManifest, 'frags.charts.center_total_label', appLocale)
 
   // Classe active = survol interne (arc/légende) OU survol externe (composant frère lié).

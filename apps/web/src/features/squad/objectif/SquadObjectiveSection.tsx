@@ -11,13 +11,15 @@
  *      joueur de l'escouade, à même la section comme les médailles. Pas de fiche du reste du camp.
  *
  * AUCUNE REQUÊTE NEUVE : le bloc `formes_retenues` (périmètre D2) et l'historique de matchs de la
- * page (résultat, score, dominance, L3.2) arrivent avec la réponse de `useTeammates`. Sans match à objectif dans le périmètre, les deux sections se retirent,
- * intertitres compris (`hasSquadObjective`).
+ * page (résultat, score, dominance, L3.2) arrivent avec la réponse de `useTeammates`. Sans match à objectif dans le périmètre, les deux
+ * sections gardent leur intertitre et disent « Aucun match à objectif sur ce périmètre » dans un bloc parent
+ * (`ScopeEmptyCard`) ; elles ne se retirent que si le titre ne mesure pas l'objectif (`objectiveExpected`).
  */
 import { useCallback, useMemo } from 'react'
 
 import { SectionTitle } from '@/components/ui/detail-section'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { ScopeEmptyCard } from '@/components/ui/scope-empty'
 import type { MedalDigestEntry, SquadFormesBlock, SquadMatchHistoryRow } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import { dominanceLabels } from '@/lib/narrative/dominance'
@@ -25,7 +27,14 @@ import { dominanceLabels } from '@/lib/narrative/dominance'
 import { FORMES_CARDS_TEXT } from '../formes/cardsI18n'
 import { FORMES_TEXT } from '../formes/i18n'
 import { useSquadPlayerPalette } from '../useSquadPlayerPalette'
-import { buildObjectiveBalance, buildObjectiveSheets, buildSessionFil, hasSquadObjective, squadSheetsOnly } from './objectif.logic'
+import {
+  buildObjectiveBalance,
+  buildObjectiveSheets,
+  buildSessionFil,
+  hasSquadObjective,
+  objectiveExpected,
+  squadSheetsOnly,
+} from './objectif.logic'
 import { ObjectiveBalanceCard } from './ObjectiveBalanceCard'
 import { ObjectiveSessionFilCard } from './ObjectiveSessionFilCard'
 import { ObjectiveSheetsCard, type SheetIdentity } from './ObjectiveSheetsCard'
@@ -68,7 +77,8 @@ export function SquadObjectiveSection({
     })
   }, [b, medalDigest, mainPlayerLabel, inkOf])
 
-  if (!hasSquadObjective(b)) return null
+  if (!objectiveExpected(block)) return null
+  const measured = hasSquadObjective(b)
 
   return (
     <>
@@ -77,23 +87,31 @@ export function SquadObjectiveSection({
           {t.sectionTitle}
           <InfoTooltip content={t.balance.info} />
         </SectionTitle>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <ObjectiveBalanceCard families={balance} familyLabel={familyLabel} columns={columns} t={t} bare />
-          <ObjectiveSessionFilCard
-            matches={fil}
-            familyLabel={familyLabel}
-            dominanceLabels={dominance}
-            locale={locale}
-            t={t}
-          />
-        </div>
+        {measured ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ObjectiveBalanceCard families={balance} familyLabel={familyLabel} columns={columns} t={t} bare />
+            <ObjectiveSessionFilCard
+              matches={fil}
+              familyLabel={familyLabel}
+              dominanceLabels={dominance}
+              locale={locale}
+              t={t}
+            />
+          </div>
+        ) : (
+          <ScopeEmptyCard kind="objective" locale={locale} testId="squad-objective-empty" />
+        )}
       </section>
       <section className="space-y-2" data-testid="squad-objective-sheets-section">
         <SectionTitle className="flex items-center gap-1.5">
           {t.sheets.title}
           <InfoTooltip content={t.sheets.info} />
         </SectionTitle>
-        <ObjectiveSheetsCard sheets={sheets} identities={identities} familyLabel={familyLabel} columns={columns} t={t} />
+        {measured ? (
+          <ObjectiveSheetsCard sheets={sheets} identities={identities} familyLabel={familyLabel} columns={columns} t={t} />
+        ) : (
+          <ScopeEmptyCard kind="objective" locale={locale} testId="squad-objective-sheets-empty" />
+        )}
       </section>
     </>
   )

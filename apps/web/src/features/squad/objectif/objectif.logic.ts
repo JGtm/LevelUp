@@ -298,6 +298,18 @@ export function hasSquadObjective(block: SquadFormesBlock | null | undefined): b
 }
 
 /**
+ * objectiveExpected — le titre mesure l'objectif de ce périmètre : le bloc existe et ne porte aucune raison
+ * d'indisponibilité (`unsupported` : capability absente, le bloc se retire ; `load_failed` : lecture en
+ * échec, le bloc se retire aussi au lieu d'affirmer à tort qu'aucun match n'est à objectif).
+ *
+ * Avec `hasSquadObjective` faux, c'est la condition d'un bloc d'objectif AFFICHÉ avec son constat « aucun
+ * match à objectif » (`ScopeEmptyCard`) : fonction absente = bloc absent ; données absentes = bloc affiché.
+ */
+export function objectiveExpected(block: SquadFormesBlock | null | undefined): boolean {
+  return block != null && !block.unavailable_reason
+}
+
+/**
  * squadSheetsOnly — les fiches des SEULS joueurs de l'escouade (Escouade › Emprise) : la fiche du
  * reste du camp (joueurs inconnus) se retire. Le rôle dominant garde sa référence (la part du
  * camp entier) ; l'échelle d'une ligne se recalcule sur les fiches restantes.

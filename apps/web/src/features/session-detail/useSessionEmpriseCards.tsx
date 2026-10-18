@@ -6,11 +6,13 @@
  * (`sessionEmprise.logic.ts`) et le jeu de textes de SA vue (`sessionEmpriseText.ts`) : pleine page,
  * ou vue compacte du tiroir de comparaison — `compact` est transmis à CHAQUE carte, des deux côtés.
  * Une carte n'est rendue que si `sessionCardsPresence` la dit présente : la même lecture que les
- * rangées partagées de la page et que les intertitres de la colonne.
+ * rangées partagées de la page et que les intertitres de la colonne. Une session sans frag ou sans match à
+ * objectif garde sa carte avec son constat (`sessionScopeEmpties`).
  */
 import { useCallback, useMemo, type ReactNode } from 'react'
 
 import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'
+import { ScopeEmptyCard } from '@/components/ui/scope-empty'
 import { FilmGapCard } from '@/features/_shared/filmGap/FilmGapSection'
 import { FILM_GAP_TEXT } from '@/features/_shared/filmGap/filmGapStrings'
 import { equipmentFamilyLabel, USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
@@ -39,6 +41,7 @@ import {
   drawnCards,
   sessionFilmGaps,
   sessionPlayerName,
+  sessionScopeEmpties,
   type SessionCardsPresence,
   type SessionColumnBlocks,
   type SessionEmpriseModels,
@@ -81,6 +84,7 @@ export function useSessionEmpriseCards(
   // d'une famille entièrement absente (même lecture que les rangées partagées et les intertitres).
   const drawn = useMemo(() => drawnCards({ entry, matches, emprise }, models), [entry, matches, emprise, models])
   const gaps = useMemo(() => sessionFilmGaps({ emprise }, drawn), [emprise, drawn])
+  const empties = useMemo(() => sessionScopeEmpties({ entry }, models, drawn), [entry, models, drawn])
   const gapText = FILM_GAP_TEXT[locale]
   const player = sessionPlayerName(col, fallbackName)
   const playerName = useCallback(
@@ -109,6 +113,10 @@ export function useSessionEmpriseCards(
     const gap = gaps[key]
     if (gap) cards[key] = <FilmGapCard gap={gap} t={gapText} />
     else if (drawn[key]) cards[key] = render[key]()
+    // Aucun match concerné : les frags gardent leur carte (l'anneau dit le constat sous son titre), l'objectif
+    // dit le sien sous l'intertitre de son sous-groupe.
+    else if (empties[key] === 'frags') cards[key] = render[key]()
+    else if (empties[key] === 'objective') cards[key] = <ScopeEmptyCard kind="objective" locale={locale} testId="session-objective-empty" />
   }
   return cards
 }

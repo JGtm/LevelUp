@@ -68,3 +68,36 @@ describe('Onglet Usages — le film des matchs n’est pas lu', () => {
     expect(bloc.querySelector('.border-dashed')).not.toBeNull()
   })
 })
+
+describe('Onglet Usages — aucun match à objectif', () => {
+  const formes = (extra: Record<string, unknown>) => ({ available: true, matches_measured: 4, matches_total: 4, matches: [], ...extra })
+  const avec = (f: unknown) =>
+    ({ total_matches: 4, match_rows: MATCH_ROWS, emprise: soloEmprise(), formes_retenues: f }) as unknown as TimeseriesPageResponse
+
+  it('le bloc « Objectif » garde son intertitre et dit le constat dans un bloc parent', () => {
+    renderWithProviders(<TimeseriesUsagesTab data={avec(formes({}))} locale="fr" t={(k) => k} />)
+    const section = screen.getByTestId('usages-section-objectif')
+    expect(within(section).getByRole('heading', { name: 'Objectif' })).toBeInTheDocument()
+    expect(section).toHaveTextContent('Aucun match à objectif sur ce périmètre')
+    expect(section.querySelector('.border-dashed')).not.toBeNull()
+  })
+
+  it('en anglais, le constat est traduit', () => {
+    renderWithProviders(<TimeseriesUsagesTab data={avec(formes({}))} locale="en" t={(k) => k} />)
+    expect(screen.getByTestId('usages-section-objectif')).toHaveTextContent('No objective match in this scope')
+  })
+
+  it('titre sans objectif (capability absente) ou bloc absent : le bloc est retiré', () => {
+    renderWithProviders(
+      <TimeseriesUsagesTab data={avec(formes({ available: false, unavailable_reason: 'unsupported' }))} locale="fr" t={(k) => k} />,
+    )
+    expect(screen.queryByTestId('usages-section-objectif')).toBeNull()
+  })
+
+  it('sans autre contenu : l’onglet porte son état vide, pas un constat d’objectif seul', () => {
+    const vide = { total_matches: 0, match_rows: [], emprise: null, formes_retenues: formes({}) } as unknown as TimeseriesPageResponse
+    renderWithProviders(<TimeseriesUsagesTab data={vide} locale="fr" t={(k) => k} />)
+    expect(screen.getByTestId('timeseries-usages-empty')).toBeInTheDocument()
+    expect(screen.queryByTestId('usages-section-objectif')).toBeNull()
+  })
+})

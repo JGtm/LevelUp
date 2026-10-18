@@ -17,6 +17,9 @@ import { axisTooltipFormatter, stackTopFirstOrder } from '@/components/charts/ax
 import { tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import { useFieldMappings, useOutcomeLabel } from '@/lib/i18n/fieldMappings'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface GroupEntry {
   name: string
@@ -129,7 +132,9 @@ export function SynthesisOutcomesByGroupChart({ entries, title, height }: Props)
   const lossLabel = useOutcomeLabel('loss')
   const tieLabel  = useOutcomeLabel('tie')
   const dnfLabel  = useOutcomeLabel('dnf')
-  const yAxisLabel = fieldMappings?.fields['match_count']?.label ?? 'Matchs'
+  const locale = useAppShellStore((st) => st.locale)
+  const yAxisLabel =
+    fieldMappings?.fields['match_count']?.label ?? formatMessage(commonManifest, 'common.charts.axis_matches', locale)
 
   const series: ChartSeries<Pt>[] = entries.length > 0
     ? [{ key: 'outcomes', datapoints: entries.map((e) => ({ name: e.name })) }]
