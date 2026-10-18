@@ -523,7 +523,7 @@ Statut du gate (exécutant, 2026-10-18) : VERT. `go test -count=1 ./cmd/levelup/
 - [x] E10.4 `.ai/BACKLOG.md` : contrôle final (les 12 entrées traitées au fil des étapes, aucune
   entrée orpheline) ; `.ai/REGISTRE_REPORTS.md` à jour (lignes Lattice, position à la mort) ; thought_log ;
   `disk-hygiene.ps1 -Lot backlog1016 -Apply`.
-- [ ] E10.5 Remise au user : fusion dans `feat/v75` (son geste), séquence de déploiement (E8.6,
+- [x] E10.5 (2026-10-18) Remise au user : fusion dans `feat/v75` (son geste), séquence de déploiement (E8.6,
   E9.4, E5.9, grandfather du pool déjà prévu).
 
 ## 3. Découvertes
