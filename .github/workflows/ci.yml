@@ -106,7 +106,8 @@ jobs:
   #   go       apps/go-api/** hors openapi.yaml
   #   croisee  le contrat OpenAPI (relie les deux piles) et les miroirs TypeScript que des tests
   #            Go relisent (parité des capacités, variations sonores, familles d'objectifs,
-  #            fixtures de contrat du rejeu) : touchent les deux piles
+  #            fixtures de contrat du rejeu), et les sources Go que des tests Vitest relisent
+  #            (archlint/ci_web_reads_go_test.go tient la liste) : touchent les deux piles
   #   autre    tout le reste (.github/, scripts/, Makefile, docs/, config/, tools/, ...) : les
   #            tests Go et les lints web lisent des fichiers hors de leur dossier
   #   tous     au moins un fichier modifié (sinon, rien à classer : tout tourne)
@@ -148,6 +149,12 @@ jobs:
               - '**/openapi.yaml'
               - 'apps/web/src/lib/capabilities/**'
               - 'apps/web/src/features/match-replay/**'
+              - 'apps/go-api/cmd/server/boot_gate.go'
+              - 'apps/go-api/internal/analysis/weapon_range.go'
+              - 'apps/go-api/internal/games/halo_infinite/film/replay/**'
+              - 'apps/go-api/internal/games/halo_infinite/film/internal/grammar/**'
+              - 'apps/go-api/internal/games/halo_infinite/film/killicon/data/**'
+              - 'apps/go-api/internal/games/mappings/loader_replay_labels*.go'
             autre:
               - '**'
               - '!apps/web/**'
