@@ -243,7 +243,8 @@ func runLUSR(ctx context.Context, env runEnv) error {
 			return err
 		}
 		start := time.Now()
-		n, err := lusync.RecomputeLUSRCanonicalForPlayer(ctx, player, shared, xuid)
+		n, err := lusync.RecomputeLUSRCanonicalForPlayer(ctx, player, shared, xuid,
+			lusync.MedalExploitOption(env.paths.MetadataDBPath(titleSlug), xuid))
 		if err != nil {
 			closePlayer()
 			return fmt.Errorf("recompute lusr %s: %w", gt, err)

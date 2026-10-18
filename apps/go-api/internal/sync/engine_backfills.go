@@ -22,7 +22,6 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/sync/skill"
 )
 
 // RunBackfill détecte les matchs avec données manquantes et retourne la liste.
@@ -190,7 +189,7 @@ func (e *SyncEngine) RecomputeLUSRCanonical(ctx context.Context) (int, error) {
 	// Ce point unique couvre tous les appelants (admin, CLI, backfill_orchestrator).
 	titleCtx := ctxkeys.WithTitleSlug(ctx, e.titleSlug)
 	return RecomputeLUSRCanonicalForPlayer(titleCtx, playerHandle.SQLDb(), sharedDB, e.xuid,
-		skill.WithMedalExploit(e.loadMedalExploitMapBestEffort))
+		MedalExploitOption(e.metadataDBPath, e.xuid))
 }
 
 // RunBackfillCSR ré-importe les CSR par-match depuis l'API Halo skill pour

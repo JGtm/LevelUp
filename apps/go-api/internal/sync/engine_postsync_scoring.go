@@ -12,7 +12,6 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/sync/skill"
 )
 
 func (e *SyncEngine) runScoringSteps(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
@@ -158,7 +157,7 @@ func (e *SyncEngine) runSkillRatingSteps(ctx context.Context, playerDB *sql.DB, 
 	// (lusr_component_history) des matchs notés ; les matchs exclus n'y entrent pas.
 	scoringCtx := ctxkeys.WithTitleSlug(ctx, e.titleSlug)
 	if n, err := RunLUSRV2ShadowOwnerOnly(scoringCtx, playerDB, shared, e.xuid,
-		skill.WithMedalExploit(e.loadMedalExploitMapBestEffort)); err != nil {
+		MedalExploitOption(e.metadataDBPath, e.xuid)); err != nil {
 		slog.WarnContext(ctx, "post-sync: LUSR v2 échoué", "gamertag", e.gamertag, "err", err)
 	} else if n > 0 {
 		r.LUSRUpdated = n

@@ -41,7 +41,6 @@ import (
 	"levelup/go-api/internal/platform/coalesce"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
-	"levelup/go-api/internal/sync/skill"
 )
 
 // MatchRecomputer recalcule performance_score + LUSR pour un joueur après une
@@ -154,7 +153,7 @@ func (r *MatchRecomputer) recompute(ctx context.Context, matchID string) error {
 	}
 
 	updatedLUSR, err := RecomputeLUSRCanonicalWithAccess(ctx, playerSQL, shared, r.xuid,
-		skill.WithMedalExploit(r.medalExploit))
+		MedalExploitOption(r.metadataDBPath, r.xuid))
 	if err != nil {
 		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion lusr: %w", err)
 	}

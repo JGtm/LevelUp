@@ -168,7 +168,11 @@ func (s *OpenSpartanPostImportService) recomputeLUSR(
 		return
 	}
 	defer releaseShared()
-	n, err := sync.RecomputeLUSRCanonicalForPlayer(ctx, playerDB, sharedDB, xuid)
+	// Les composantes de performance (dont medal_exploit) se lisent dans la metadata du titre
+	// des bases, celui que postImportCtx a stampé sur le ctx.
+	metadataDBPath := titlePkg.NewPathResolver(s.cfg.RepoRoot).MetadataDBPath(ctxkeys.TitleSlug(ctx))
+	n, err := sync.RecomputeLUSRCanonicalForPlayer(ctx, playerDB, sharedDB, xuid,
+		sync.MedalExploitOption(metadataDBPath, xuid))
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "lusr", Err: err.Error()})
 		s.log.Warn("post_import_lusr_failed", "xuid", xuid, "err", err)

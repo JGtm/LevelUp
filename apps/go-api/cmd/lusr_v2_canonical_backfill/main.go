@@ -35,6 +35,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/titleseams"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	lusync "levelup/go-api/internal/sync"
@@ -71,6 +72,7 @@ func main() {
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
+	metadataPath := titlePkg.NewPathResolver(*dataRoot).MetadataDBPath(titlePkg.DefaultSlug)
 	shared, closeShared := openDB(sharedDBPath(*dataRoot))
 	defer closeShared()
 
@@ -104,7 +106,8 @@ func main() {
 			playerDB, closePlayer = openDB(playerDBPath(*dataRoot, gt))
 		}
 
-		processed, err := lusync.RunLUSRV2ShadowOwnerOnly(ctx, playerDB, lusync.NewPinnedSharedAccess(shared), xuid)
+		processed, err := lusync.RunLUSRV2ShadowOwnerOnly(ctx, playerDB, lusync.NewPinnedSharedAccess(shared), xuid,
+			lusync.MedalExploitOption(metadataPath, xuid))
 		closePlayer()
 		if err != nil {
 			slog.Warn("RunLUSRV2ShadowOwnerOnly", "gamertag", gt, "err", err)

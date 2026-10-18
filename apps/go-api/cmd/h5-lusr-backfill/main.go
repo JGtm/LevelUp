@@ -103,7 +103,8 @@ func main() {
 	// is_reset=TRUE (append-only #23645), JAMAIS le DELETE WHERE xuid qui est le
 	// vecteur ART sur idx_pssv2 (cf. ADR 0026 + RecomputeLUSRCanonicalForPlayer).
 	// Owner-only : ne touche que l'état de ce joueur.
-	processed, err := lusync.RecomputeLUSRCanonicalForPlayer(runCtx, playerDB, shared, xuid)
+	processed, err := lusync.RecomputeLUSRCanonicalForPlayer(runCtx, playerDB, shared, xuid,
+		lusync.MedalExploitOption(pr.MetadataDBPath(halo5.TitleSlug), xuid))
 	if err != nil {
 		fatal("RecomputeLUSRCanonicalForPlayer: %v", err)
 	}
