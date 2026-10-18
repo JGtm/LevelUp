@@ -186,27 +186,27 @@ Jamais `go build ./...`, jamais `git add -A`, jamais `git stash`.
 - [x] 4.3 `make go-api-lint`, `make check-types`, `make test-web`, `make gate-push` (exit 0).
 - [x] 4.4 Revue adversariale (skill `adversarial-review`, contexte frais, Opus : lot à risque
       persist/sync) ; constats recevables corrigés ou statués par écrit ici.
-- [ ] 4.5 Commit(s) sur accord, push `feat/delai-debrief`, CI verte au niveau job.
+- [x] 4.5 Commit(s) sur accord, push `feat/delai-debrief`, CI verte au niveau job.
 
 ### Étape 5 — Preuve sur vrais matchs (D)
 
 Dépendance utilisateur : jouer un match 4v4 par mode. Une cuisson par match, par le pipeline
 normal (aucune cuisson en lot ni en boucle).
 
-- [ ] 5.1 Préalables : aucun détenteur de `data/cache/film_decode.lock.json`, aucun traitement de
+- [!] 5.1 Préalables : aucun détenteur de `data/cache/film_decode.lock.json`, aucun traitement de
       recherche en cours ; serveur local relancé sur la branche (air, port 8000 vérifié).
-- [ ] 5.2 Mode local (`replay_build_location=local`) : un match 4v4 joué ; rapport « Délai du
+- [!] 5.2 Mode local (`replay_build_location=local`) : un match 4v4 joué ; rapport « Délai du
       débrief » relevé (capture des valeurs dans le journal du plan) ; total ≤ 5 min.
-- [ ] 5.3 Mode ouvrier : jeton d'ouvrier local, `go run ./cmd/replay-worker` sur le poste,
+- [!] 5.3 Mode ouvrier : jeton d'ouvrier local, `go run ./cmd/replay-worker` sur le poste,
       réglage `worker` ; un match 4v4 joué ; rapport relevé ; total ≤ 5 min.
-- [ ] 5.4 Si un total dépasse 5 min : arrêt, ventilation par étape rapportée à l'utilisateur
+- [!] 5.4 Si un total dépasse 5 min : arrêt, ventilation par étape rapportée à l'utilisateur
       (R1/R2 ou autre), aucune adaptation silencieuse.
 
 ### Étape 6 — Livraison
 
-- [ ] 6.1 Entrée `.ai/thought_log.md` ; ce plan à jour (cases, journal, découvertes) ;
+- [x] 6.1 Entrée `.ai/thought_log.md` ; ce plan à jour (cases, journal, découvertes) ;
       `.ai/REGISTRE_REPORTS.md` alimenté des découvertes non traitées.
-- [ ] 6.2 Fusion dans `feat/v75` sur accord explicite de l'utilisateur ; CI verte au niveau job
+- [x] 6.2 Fusion dans `feat/v75` sur accord explicite de l'utilisateur ; CI verte au niveau job
       sur `feat/v75`.
 - [ ] 6.3 Session de release prévenue (`ListAgents` puis `SendMessage`).
 - [ ] 6.4 `powershell -File scripts/disk-hygiene.ps1 -Lot delai-debrief -Apply` ; worktree
@@ -351,3 +351,6 @@ courante. `git -C ../LevelUp-wt-delai-debrief log --oneline -10` pour l'état de
   verte, la preuve de l'étape 5 se fera ensuite (en local quand l'utilisateur pourra jouer, ou en
   prod après le déploiement, par le tableau « Délai du débrief »). Le traitement de recherche de
   levelup-50 finit vers 19 h 45 ; une autre passe longue sera annoncée avant d'être lancée.
+- 2026-10-18 : 4.5 CI de la branche verte (run 39128534319). 5.1 à 5.4 `[!]` : preuve reportée par
+  décision de l'utilisateur, consignée au registre des reports avec sa condition de reprise.
+  6.1-6.2 : fusion `1b01444a1` dans `feat/v75` ; CI de `feat/v75` suivie au niveau job.
