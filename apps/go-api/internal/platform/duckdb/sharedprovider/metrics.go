@@ -14,7 +14,7 @@ import (
 //   - shared_provider_state{state}                       : gauge 0/1, 1 sur l'état courant
 //   - shared_provider_swap_total{direction}              : compteur (ro_to_rw, rw_to_ro)
 //   - shared_provider_swap_duration_ms_total{direction}  : somme des durées de swap (ms)
-//   - shared_provider_swap_failures_total{reason}        : compteur échecs (reopen_ro, acquire_writer, drain_timeout, panic)
+//   - shared_provider_swap_failures_total{reason}        : compteur échecs (reopen_ro, acquire_writer, open_rw, drain_timeout, panic)
 //   - shared_provider_get_wait_ms_total                  : somme du drain MOTEUR (≠ stall lecteur réel)
 //   - shared_provider_get_timeout_total                  : compteur ErrSwapTimeout
 //   - shared_provider_readers_in_use                     : gauge readers en vol
@@ -50,8 +50,11 @@ const (
 
 	failReasonReopenRO      = "reopen_ro"
 	failReasonAcquireWriter = "acquire_writer"
-	failReasonDrainTimeout  = "drain_timeout"
-	failReasonPanic         = "panic"
+	// failReasonOpenRW : OpenReadWrite du swap refusé, handle RO du provider déjà fermé (un
+	// autre handle du processus tient le fichier). Distinct d'acquire_writer (lease dblease).
+	failReasonOpenRW       = "open_rw"
+	failReasonDrainTimeout = "drain_timeout"
+	failReasonPanic        = "panic"
 )
 
 // init force la publication des clés dès l'import du package, pour que
@@ -80,7 +83,7 @@ func initMetrics() {
 			swapTotal.Add(d, 0)
 			swapDurationMsTotal.Add(d, 0)
 		}
-		for _, r := range []string{failReasonReopenRO, failReasonAcquireWriter, failReasonDrainTimeout, failReasonPanic} {
+		for _, r := range []string{failReasonReopenRO, failReasonAcquireWriter, failReasonOpenRW, failReasonDrainTimeout, failReasonPanic} {
 			swapFailuresTotal.Add(r, 0)
 		}
 

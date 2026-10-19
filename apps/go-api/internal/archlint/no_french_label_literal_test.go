@@ -167,7 +167,6 @@ var frenchLabelAllowlist = map[string]int{
 	"api/handlers/assets.go":                      2,
 	"api/handlers/assets_metadata.go":             5,
 	"api/handlers/auth.go":                        5,
-	"api/handlers/auth_xbox_oauth.go":             5,
 	"api/handlers/backfill.go":                    2,
 	"api/handlers/build_worker.go":                8,
 	"api/handlers/build_worker_artifact.go":       4,
@@ -210,7 +209,8 @@ var frenchLabelAllowlist = map[string]int{
 	"api/handlers/session_context.go":             2,
 	"api/handlers/session_page.go":                1,
 	"api/handlers/sessions.go":                    1,
-	"api/handlers/settings.go":                    19,
+	"api/handlers/settings.go":                    17,
+	"api/handlers/settings_sessions_recalc.go":    2, // 2026-10-19 : les 2 libellés du job, déplacés de settings.go
 	"api/handlers/settings_backup.go":             1,
 	"api/handlers/settings_replay_sound.go":       1,
 	"api/handlers/setup.go":                       12,

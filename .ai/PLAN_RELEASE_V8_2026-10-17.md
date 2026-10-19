@@ -159,8 +159,9 @@ Une étape est **close** quand tous ses items sont statués ET que son gate est 
       Gate : tests de `pickDemoReplays` (candidat retenu, candidat à un seul type de véhicule
       écarté, départage) et de l'émission (rejeu existant conservé face à un candidat plus récent,
       famille vide remplie) ; `go test ./internal/ops/` exit 0.
-- [ ] 1.3d (2026-10-19 : `8e1540403` + `2d6580168` sur `feat/rv8-demo-film`, fusionnés dans
-      `feat/release-v8` `d394589ac` ; reste CI puis fusion dans `feat/v75`.) 14 tables dérivées du
+- [x] 1.3d (2026-10-19 : `8e1540403` + `2d6580168` sur `feat/rv8-demo-film`, fusionnés dans
+      `feat/release-v8` `d394589ac` (CI 39264886409 verte), puis dans `feat/v75` `ec9805253` par-dessus
+      le commit de l'utilisateur `66add1866` (cockpit Tactique) ; CI 39267242985 verte.) 14 tables dérivées du
       film extraites (usages, bonus par palier, véhicules, vies, contexte et coéquipiers à la mort,
       placement, prises de drapeau, ouvertures de kill, stats de bombe, événements d'objectif,
       positions) + `personal_score_awards` (base joueur : radar et score d'objectif),
@@ -256,7 +257,7 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
       `5bbba3d4…`, après `de5c583a…`).
       Texte d'origine : **Zones nommées des cartes Forge** : `backfill-map-callouts --dry-run`, puis
       `--hors-ligne`, puis sans option. Gate : bilan chiffré final, `map_callouts.json` modifié.
-- [ ] 2.3 **Recuisson** (D3) : `backfill-replay --since 2025-09-01 --demo --dry-run` (union, cf.
+- [x] 2.3 (résultat au journal, 19/10) **Recuisson** (D3) : `backfill-replay --since 2025-09-01 --demo --dry-run` (union, cf.
       1.3b ; les rejeux déjà figés de la démo sont cuits dans la même passe ; 2.9 ne recuit que les
       rejeux nouvellement émis, dont le 4v4 à véhicules) (nombre de films ;
       ~30 s par film, 2 742 films en cache au total le 17/10), puis la même sans `--dry-run` et
@@ -264,30 +265,30 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
       Puis `backfill-replay --match` sur les sept films du corpus nommé du garde de rejeu
       (`replay_local_gate.go` : 5 sur 7 sans artefact en local le 17/10), pour pouvoir mesurer 7.3b.
       Gate : le dry-run rejoué = 0 film à cuire ; échecs listés et statués.
-- [ ] 2.3b **Artefacts appauvris** (`RUNBOOK_REPLAY_WORKER.md` §4 étape 2, à faire AVANT le
+- [!] 2.3b (19/10 : 43 restent appauvris, limite du décodeur, voir journal et D-12) **Artefacts appauvris** (`RUNBOOK_REPLAY_WORKER.md` §4 étape 2, à faire AVANT le
       premier passage de l'ouvrier ; les artefacts locaux partent en prod) :
       `backfill-replay --repair-impoverished --dry-run`, puis sans `--dry-run`.
       Gate : le dry-run rejoué = 0 artefact appauvri.
-- [ ] 2.4 `backfill-usage-summary` (lit les artefacts : après 2.3).
-- [ ] 2.5 `backfill-pad-tiers --force` (lit les artefacts : après 2.4).
-- [ ] 2.6 `backfill-vehicle-takes --dry-run`, puis `--force`. Gate : soirée Big Team Battle, onglet
+- [x] 2.4 (résultat au journal, 19/10) `backfill-usage-summary` (lit les artefacts : après 2.3).
+- [x] 2.5 (résultat au journal, 19/10) `backfill-pad-tiers --force` (lit les artefacts : après 2.4).
+- [x] 2.6 (résultat au journal, 19/10) `backfill-vehicle-takes --dry-run`, puis `--force`. Gate : soirée Big Team Battle, onglet
       Emprise, lignes « Véhicules » chiffrées.
-- [ ] 2.7 `backfill-killsource`, puis `--status`. Gate : 0 erreur.
-- [ ] 2.8 **Inventaire fermé des autres passes** — chacune jouée ou statuée `[~]`/`[!]` :
+- [x] 2.7 (résultat au journal, 19/10) `backfill-killsource`, puis `--status`. Gate : 0 erreur.
+- [x] 2.8 (résultat au journal, 19/10) **Inventaire fermé des autres passes** — chacune jouée ou statuée `[~]`/`[!]` :
       `backfill-bomb-stats`, `backfill-flag-grabs-net`, `backfill-h5-kill-mechanics`,
       `backfill-is-ranked`, `backfill-medailles-feed`, `backfill-registry-names`,
       `backfill-squad-creators` (dry-run d'abord ; 0 à écrire = `[x]` « rien à faire »).
-- [ ] 2.8b **Dérivés Halo 5 recalculés hors Campagne** (ajouté le 2026-10-18 depuis le plan backlog du
+- [x] 2.8b (résultat au journal, 19/10) **Dérivés Halo 5 recalculés hors Campagne** (ajouté le 2026-10-18 depuis le plan backlog du
       2026-10-16, runbook R2-R4 ; `--title` honoré depuis ce plan) : `levelup_v8.exe backfill --all
       --title halo_5 --engagement-scores --force`, puis `--perf --force`, puis `--assists-model --force`
       (une commande par passe, dans cet ordre). Gate : chaque passe sort 0, nombre de joueurs Halo 5
       traités = profils Halo 5 non `auth_only` de `db_profiles.json`. Citations : sans objet pour Halo 5
       (`citations.engine` non déclaré, la passe répond « non supporte »).
-- [ ] 2.8c **Dates de paliers Halo 5** (runbook R4b) : depuis `apps/go-api`,
+- [x] 2.8c (résultat au journal, 19/10) **Dates de paliers Halo 5** (runbook R4b) : depuis `apps/go-api`,
       `go run -tags cgo ./cmd/backfill_milestone_dates --data-root ../../data/titles/halo_5` (simulation),
       puis la même avec `--apply`. Le chargeur exclut la Campagne. Gate : bilan sans erreur ; une date
       non dérivable est NULL (aucune date affichée), jamais fausse.
-- [ ] 2.8d **LUSR v2 de tous les joueurs, les deux titres** (runbook R5-R6 ; la v1 est supprimée depuis
+- [x] 2.8d (résultat au journal, 19/10) **LUSR v2 de tous les joueurs, les deux titres** (runbook R5-R6 ; la v1 est supprimée depuis
       le plan backlog du 2026-10-16) : `levelup_v8.exe backfill --all --lusr`, puis
       `levelup_v8.exe backfill --all --title halo_5 --lusr`. Réécrit `match_skill_rank` (v2) et les 8
       composantes de `lusr_component_history` ; remplace les lignes v1 laissées par d'anciennes
@@ -300,7 +301,7 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
       2026-10-18 par `levelup reset-bitmasks --dry-run` puis `--apply` (serveur arrêté), donc dans la copie
       des bases vers le VPS : RIEN à faire en prod. Gate de release : `levelup_v8.exe reset-bitmasks
       --dry-run` annonce 0 ligne `match_registry` à mettre à jour (vérifié le 2026-10-18 à 23:43 : 0).
-- [ ] 2.9 **Démo (D6)** :
+- [x] 2.9 (résultat au journal, 19/10 ; contrôle à l écran de la démo -> 3.1 et 5.11) **Démo (D6)** :
       - inventaire des modes présents dans les films où joue le joueur source de la démo : une
         ligne par famille avec son match retenu ; les variantes qu'aucune famille ne reconnaît sont
         listées à l'utilisateur (ajouter une famille ou non) ;
@@ -314,7 +315,7 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
         absent.
       Gate : un rejeu par famille + le rejeu véhicules au bilan, tous au dernier schéma ; démo locale
       ouverte, un rejeu par mode s'affiche.
-- [ ] 2.10 Serveur local relancé (Start-Process détaché, port 8000) ; **un cycle de synchro complet
+- [x] 2.10 (19/10, voir journal) Serveur local relancé (Start-Process détaché, port 8000) ; **un cycle de synchro complet
       par joueur suivi** pour le recalcul des citations du film (D5). Gate : logs
       `citations post-sync: film dérivé après les citations, recalcul` pour chaque joueur (ou la
       tâche de fond « relance des citations du film » du lot délai du débrief) ; si un match a été
@@ -323,20 +324,20 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
       sur une copie de la base partagée, `shieldless_kills IS NULL` ≈ 0 parmi les matchs depuis le
       2025-09-01 qui ont un film ; les citations « Presque, ça ne compte pas » et « Jouets
       éducatifs » augmentent sur la page Citations.
-- [ ] 2.10b **Sessions recalculées, les deux titres** (runbook R8 ; serveur relancé, route admin, pas de
+- [x] 2.10b (19/10, voir journal) **Sessions recalculées, les deux titres** (runbook R8 ; serveur relancé, route admin, pas de
       forme CLI) : dans la console du navigateur connecté en admin,
       `await (await fetch('/api/v1/settings/sessions/recalculate', {method: 'POST', credentials: 'include'})).json()`.
       Depuis le plan backlog du 2026-10-16, chaque profil est recalculé sur les bases de SON titre (avant,
       un profil Halo 5 ne l'était jamais). Gate : réponse sans erreur, sessions Halo 5 présentes sur la
       page Sessions d'un joueur Halo 5.
-- [ ] 2.11 Serveur local arrêté, vidage des journaux des bases (ouverture/fermeture → 0 `.wal` sous
+- [x] 2.11 (19/10, voir journal ; à REFAIRE en 5.2 avant le rsync) Serveur local arrêté, vidage des journaux des bases (ouverture/fermeture → 0 `.wal` sous
       `data/titles`), `levelup healthcheck` tout OK, serveur relancé.
 
 **Gate** : `find data/titles -name '*.wal' | wc -l` = 0 ; healthcheck OK.
 
 ### Étape 3 — Contrôles de l'utilisateur (gate utilisateur)
 
-- [ ] 3.1 Les 42 contrôles visuels et les 7 contrôles techniques de l'encadré Notion, sur le
+- [ ] 3.1 (19/10 : fiche interactive publiée à la demande de l'utilisateur, https://claude.ai/artifact/BM28Ax8NZ3HFFZmJzWcJBy — statut OK/KO/v8.1 + commentaire par contrôle, base `resultats` lisible par Claude via ArtifactData ; copie texte `.ai/FICHE_CONTROLES_RELEASE_V8.md`) Les 42 contrôles visuels et les 7 contrôles techniques de l'encadré Notion, sur le
       local à jour. Claude prépare une fiche avec un lien direct par contrôle (match, page, onglet).
 - [ ] 3.2 Chaque anomalie : correctif (nouvelle branche, retour en 1.5) ou report en v8.1 —
       décision de l'utilisateur. Un correctif du décodeur fait remonter le schéma : rejouer 2.3 à
@@ -374,18 +375,18 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 
 ### Étape 4 — Préparation du VPS (prod intacte ; prévenir avant chaque commande)
 
-- [ ] 4.1 Lecture seule de `/opt/levelup/.env.local` : `LEVELUP_ENV=production`,
+- [x] 4.1 (19/10 : revérifié, tout présent ; `replay_build_location` absent = worker) Lecture seule de `/opt/levelup/.env.local` : `LEVELUP_ENV=production`,
       `LEVELUP_BUILD_WORKER_TOKEN`, `LEVELUP_REPLAY_PUBLIC=1` présents (constaté le 17/10) ;
       `replay_build_location` absent de `app_settings.json` prod (constaté le 17/10) = défaut
       `worker` en production : le VPS ne décode jamais, il met en file pour csstat.
-- [ ] 4.2 **csstat** : l'unité `levelup-worker.service` (aujourd'hui un LIEN vers
+- [x] 4.2 (19/10, voir journal) **csstat** : l'unité `levelup-worker.service` (aujourd'hui un LIEN vers
       `/opt/levelup/packaging/…`, constaté le 17/10) devient une copie root (runbook §7 de
       `RUNBOOK_REPLAY_WORKER.md`), `systemd-analyze verify`. Sans ça, le job `deploy-worker` passe au
       rouge. Gate : fichier régulier `root:root`, verify exit 0.
-- [ ] 4.3 **Staging** (P2) : `/opt/levelup-staging/` (deploy:deploy), rsync msys64 + ssh msys64
+- [~] 4.3 (19/10, premier passage ; complété par 5.2, serveur local arrêté) **Staging** (P2) : `/opt/levelup-staging/` (deploy:deploy), rsync msys64 + ssh msys64
       `--delete` de `data/titles/`, `data/cache/replays/`, `data/global/xbox_aliases.duckdb`,
       `data/demo_films/`. Gate : nombre de bases DuckDB et d'artefacts = local, 0 `.wal`.
-- [ ] 4.4 Suppression de `/opt/levelup-data.incoming-restes-2026-09-23` (sur accord).
+- [x] 4.4 (19/10, accord de l'utilisateur : 186 Mo supprimés) Suppression de `/opt/levelup-data.incoming-restes-2026-09-23` (sur accord).
 - [ ] 4.5 **Répétition du premier boot** : binaire serveur final sur une racine à part en local
       (copie de `data/titles` + `config/` + `static/` + `app_settings.json`/`db_profiles.json` de
       prod, sans `data/auth`), `LEVELUP_REPO_ROOT`/`LEVELUP_LOGS_DIR`/`LEVELUP_API_PORT`.
@@ -413,7 +414,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       (simulation), puis la même avec `--yes` ; `list` = 9 `granted`, XxGdakilla187xX `undecided` ;
       `docker compose restart levelup`.
 - [ ] 5.9 **Nuzzles** (D2) : onboarding admin (xuid `2535472547643888`), aucun ami, hors du groupe.
-- [ ] 5.10 **Ouvrier** (séquence de `RUNBOOK_REPLAY_WORKER.md` §4, qui fait foi) : test d'accès à `/api/v1/internal/build-queue/claim` (503 sans jeton, 401
+- [ ] 5.10 **Ouvrier** (D’ABORD, en root sur csstat, une fois le déploiement de l’ouvrier passé : `install -o root -g root -m 0644 /opt/levelup/packaging/systemd/levelup-worker.service /etc/systemd/system/levelup-worker.service && systemctl daemon-reload && systemd-analyze verify …`, cf. 4.2 ; puis séquence de `RUNBOOK_REPLAY_WORKER.md` §4, qui fait foi) : test d'accès à `/api/v1/internal/build-queue/claim` (503 sans jeton, 401
       jeton faux ; jamais 403 `csrf_rejected` ni 404) ; `allow <IP csstat>; deny all;` dans
       `location /api/v1/internal/` + `nginx -t && systemctl reload nginx` ; sur csstat
       `systemctl enable --now levelup-worker` ; `journalctl -u levelup-worker` ; un job de bout en
@@ -509,6 +510,16 @@ des gamertags des fixtures, réécriture de l'historique (push forcé sur `main`
   (`demoVehicleFamilyUnknown`, ratchet de façade du film) sans test qui les lie ; une dispense de
   `campaign_exclusion_guard_dispenses_test.go` cite un numéro de ligne (fragile).
 
+- **D-11 (19/10, recuisson)** : anomalies de lecture journalisées en ERROR sur 26 films recuits (23 « entrée(s) du roster présente(s) SANS ÉQUIPE lue », 2 « vies PUBLIÉES sans identité », 1 « bot sans place ») ; artefacts produits. Liste : `replay_cuisson.log` du scratchpad de la session ; à recouper avec le contrôle visuel n°32 (`b1ad85eb`, 3 équipes).
+- **D-12 (19/10)** : 43 artefacts restent « appauvris » après `--repair-impoverished` (registre d identité vide : aucune vie nommée ; ex. `07af7c78`, `0e640074`, `279ac3dd`, `29206c7c`, `2c16c553`, `f80cdf71`, `f10237b1`, `44e14331`). Le runbook de l ouvrier suppose la réparation suffisante : ce n est pas le cas pour ces films.
+- **D-13 (19/10, instruit)** : `--assists-model --force` rend `n_modes=0` pour Halo 5 parce que la régression OLS (`sync/assists_model.go` : assists ~ kills + morts + dégâts infligés + dégâts subis + écart de MMR) est SINGULIÈRE : Halo 5 ne fournit ni `damage_taken` ni `team_mmr`/`enemy_mmr` (JGtm : 1 970 matchs, 1 970 assistances, 0 dégât subi, 0 MMR), deux colonnes constantes à 0, `fitOLS` rend nil. Les assistances Halo 5 existent ; seul le modèle personnel d « assistances attendues » manque (repli populationnel). **Attendu : les assistances attendues sont hors capacités de Halo 5 (utilisateur, 19/10).** Reste un défaut mineur : la passe `assists-model` (`cmd/levelup/cmd_backfill_titled.go`, `passAssistsModel`) n a pas de garde de capacité (contrairement à `citations`), et aucune clé de `capabilities.toml` ne nomme les assistances attendues ; elle tourne donc pour rien sur Halo 5. Hors périmètre.
+
+- **D-14 (19/10)** : au premier démarrage du serveur après les passes, la mise en écriture de la base partagée pour la relecture killsource échoue (« drain inflight readers », « drain timeout, rollback vers RO ») pendant ~1 min, le temps du recalcul de masse des citations ; 3 films reportés au cycle suivant, rien ensuite. En prod, même premier boot avec les bases recuites : à surveiller en 5.7 (échecs transitoires attendus, persistants = anomalie).
+
+- **D-15 (19/10, BLOQUANT POTENTIEL pour la prod)** : sur le serveur local, la prise d écriture de la base partagée Infinite échoue tant que des lectures sont en vol (« drain timeout, rollback vers RO »), et une fois `RestoreSharedAfterSwap: OpenReadOnly failed` survenu (20:38), TOUTE prise d écriture échoue (« open RW after RO close : base tenue par un autre processus ») jusqu au redémarrage, sans autre processus sur la machine (vérifié). En prod, le même état bloquerait les écritures de la synchro. À instruire avant la release (lot dédié, proposé à l utilisateur le 19/10).
+
+- **D-16 (19/10, audit T1, agent Sonnet en lecture seule)** : capacités des nouveautés v8. OK : rejeu (routes `RequireCapability(CapReplay)` + `RouteCapabilityGate`), Tactique, Emprise, « Analyse en cours », zones nommées, mise en commun. À trancher : (a) `MatchHeader.replayLink.tsx:36` ne teste que `replay_available` (`os.Stat`), pas `replay` ; (b) citations : pas de garde web, `/pages/citations` sans `RequireCapability`, menu basculé sur `currentTitleSlug === halo_5` (`NavL1.tsx:280`, `NavL2.tsx:157`, `HomeCitationsNearCompletion.tsx:47`, juin), pas de ratchet web du slug ; (c) assistances attendues affichées dans la vue match pour Halo 5 (`match_view_data_loaders.go:301`, `MatchStatCards.tsx:100`, sans `expected_stats`), alors que Timeseries/Sessions/Escouade les masquent. Soumis à l utilisateur (fiche, T1).
+
 ## 3. Reprise de session
 
 Relire `plan-execution`, puis ce fichier : reprendre à la première case vide de la première étape
@@ -530,3 +541,113 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   sur l'état fusionné : `go vet` (cmd/levelup, ops, handlers) 0 ; `go test -count=1
   ./cmd/levelup/ ./internal/ops/ ./internal/api/handlers/ ./internal/archlint/` tous ok. Push et
   CI de `feat/release-v8` ensuite, puis 1.5 sur accord.
+- **2026-10-19 — Étape 1 close.** 1.1 à 1.6 statués ; `feat/v75` = `ec9805253`, CI verte ; E2E
+  local 34/0. Étape 2 démarrée par amendement (2.1, 2.2 faits, 2.3 en cours depuis 15:42 :
+  2 260 films à cuire, 733 faits à 16:28, 0 dépassement mémoire).
+- **2026-10-19 — Étape 2, passes locales (binaire `levelup_v8.exe` @ `2b4953ce5`, puis `levelup_v8b.exe` @ `aa4871dcd` pour 2.9).**
+  - 2.3 : 15:42 → 19:23, **2 249 construits**, 250 déjà à jour, 0 mort mémoire, 0 mort subite. Restent
+    11 non cuisables, définitivement : 9 « carte hors catalogue » (Forge sans bornes : Kusini Bay ×2,
+    Exiled ×2, Perdition, Narrows, Night Of The Undead…, retirées de Waypoint, cf. 2.2) et 2 films
+    sans chunk de données (`f3e3112f`, `e869bcdf`). Dry-run rejoué : ces 11 seuls. Les 7 films du
+    corpus du garde (7.3b) : `--match … --dry-run` = 0 à cuire, 7 à jour. Anomalies de lecture
+    journalisées en ERROR, artefacts produits quand même : 23 « roster SANS EQUIPE », 2 « vies
+    PUBLIEES sans identité », 1 « bot sans place » (D-11).
+  - 2.3b `[!]` : 43 artefacts appauvris ; `--repair-impoverished` les reconstruit (43, 5 s, depuis les
+    faits frais) mais ils RESTENT appauvris : le registre d'identité ne nomme aucune vie (ex.
+    `07af7c78` Vacancy classé : `viesNommees=0`, `repli_table_identite_vide`). Limite du décodeur,
+    pas de la passe : rejeux servis sans compteurs de joueur (D-12).
+  - 2.4 usage : 2 433 écrits, 66 à jour, 0 échec (1 min 23). 2.5 pad-tiers `--force` : 2 498 écrits,
+    0 échec. 2.6 véhicules : dry-run 0 (présence en base), donc `--force` après recuisson : 2 499
+    écrits, 2 181 prises, 1 329 frags d'engin dont 106 non appariés, 0 échec. Contrôle Emprise à
+    l'écran -> 2.10 / 3.1.
+  - 2.7 killsource : 12 films (8 écrits, 751 morts, 3 sans kill-feed, 1 clé inconnue), 0 erreur ;
+    crédit 9 243 matchs.
+  - 2.8 : bomb-stats `--force` 8 écrits (un artefact recuit se re-projette par `--force`) ;
+    flag-grabs-net `--force` 347 écrits ; registry-names 959 colonnes réparées sur 713 matchs
+    (`game_variant_name` 713, `pair_name` 246 ; 5 `playlist_name` sans source) ; is-ranked 0 ;
+    medailles-feed 0 identifié (passe inopérante, connue depuis le 23/09) ; squad-creators 0 ;
+    h5-kill-mechanics `[~]` : one-shot déjà joué en juillet, simulation complète > 15 min (réseau),
+    échantillon `--limit 20` : 0 ligne à corriger.
+  - 2.8b Halo 5 (4 joueurs = profils non `auth_only`) : engagement 5 091, perf 5 032, assists-model
+    `n_modes=0` pour les 4 (D-13). 2.8c : 40 dates recalculées, 1 NULL, `--apply` fait. 2.8d LUSR :
+    Infinite 4 898 lignes (5 joueurs), 1 WARN EP non convergé (BTB `6222be27`) ; Halo 5 0 ligne :
+    attendu, `match.skill.snapshot = "not_exposed"` pour halo_5 (aucune entrée de note).
+  - 2.9 : émission additive : 9 familles conservées, `vehicles` remplie par `4898d586` (Behemoth,
+    16 lignes de prise, 24 prises) ; escalation et extraction sans candidat ; variante sans famille
+    `CASTLE WARS` (soumise à l'utilisateur). Manifeste reporté sur `feat/release-v8`. `--demo` :
+    10 à jour. `seed-demo` : 0 fuite, 10 rejeux `copie`, Infinite 68 matchs ; base démo : véhicules
+    67 matchs, usages 67, paliers 67, vies 68, contexte de mort 68 ; `4898d586` : 16 lignes =
+    source.
+  - 2.10 : air relancé à 20:20 (journaux du serveur sous `apps/go-api/logs/` : `LEVELUP_LOGS_DIR` non
+    posé par ce lancement), `/health` 200. Citations du film recalculées pour les 5 joueurs entre 20:22
+    et 20:23 (Chocoboflor 574, Madina97294 580, XxDaemonGamerxX 39, JGtm 1 139, Nuzzles 1 158 matchs).
+    Sur une COPIE de la base partagée : depuis le 2025-09-01, 2 477 matchs résumés, 56 avec
+    `shieldless_kills` NULL (186 lignes sur 20 157 : les artefacts appauvris de D-12 et voisins) ;
+    avant : 109 résumés, tous NULL (rejeux non recuits, attendu). Au démarrage, 3 échecs killsource
+    « drain inflight readers » + 6 « drain timeout, rollback vers RO » entre 20:22:21 et 20:23:27,
+    aucun ensuite (D-14). Preuve du délai du débrief : aucun match joué depuis le boot (faite le
+    19/10 matin, cf. 0.2).
+  - 2.10b : route admin appelée depuis un Chrome où l'utilisateur s'est connecté (19/10). 1er passage
+    (20:38) : 11 731 matchs mis à jour, mais 4 joueurs Infinite en erreur ; 2e et 3e passages : tous
+    les joueurs Infinite en erreur (« open RW after RO close : base tenue par un autre processus »,
+    puis `RestoreSharedAfterSwap: OpenReadOnly failed`) ; après redémarrage du serveur, 4e passage :
+    Halo 5 recalculé (3 818 matchs) mais Infinite en « drain timeout » ; 5e passage, serveur calme
+    (20:45) : 0 erreur, 0 changement (sessions Infinite déjà justes). D-15.
+  - 2.11 : serveur arrêté ; 7 WAL restants (arrêt brutal de Windows) vidés par CHECKPOINT (outil
+    jetable compilé hors dépôt, supprimé) ; 0 `.wal` sous `data/titles` ; `healthcheck` TOUT OK ;
+    serveur relancé, `/health` 200.
+- **2026-10-19 — Étape 2 close** (2.3b `[!]` justifié, D-11 à D-15 consignés).
+- **2026-10-19 — Étape 4 avancée par amendement** (l'utilisateur : « continue tant que tu peux » ;
+  4.1 à 4.4 ne dépendent pas de l'étape 3, la copie est rafraîchie en 5.2).
+  - 4.2 : sur csstat, `/etc/systemd/system/levelup-worker.service` était un lien PENDANT vers
+    `/opt/levelup/packaging/systemd/…`, fichier ABSENT du checkout de csstat (`97a109b0d`, branche
+    `main` : l'unité n'existe que dans `feat/v75`). Lien retiré (ouvrier ni activé ni actif) ;
+    copie impossible avant la release. `deploy-worker.sh` de la v8 traite une unité ABSENTE comme
+    « phase pré-activation » (message, pas d'échec) et ne refuse qu'un LIEN : le risque de rouge au
+    déploiement est levé. L'installation de la copie root + `systemd-analyze verify` passent en 5.10.
+  - 4.1 : `.env.local` prod : `LEVELUP_ENV=production`, `LEVELUP_REPLAY_PUBLIC=1`, jeton de l'ouvrier
+    présent ; `replay_build_location` absent de `app_settings.json`.
+  - 4.3 : `/opt/levelup-staging/` créé (deploy:deploy). rsync msys64 : il faut
+    `-o UserKnownHostsFile=/c/Users/Guillaume/.ssh/known_hosts` (sinon « Host key verification
+    failed », le ssh msys64 lit un autre `known_hosts`). Copié : 3,1 Go de bases (15 sur 23 : les 8
+    bases tenues par le serveur local sont verrouillées par Windows, « Device or resource busy »),
+    5,4 Go de rejeux (2 928 fichiers, = local), 250 Mo de films de la démo, alias. Les 8 bases
+    manquantes partent en 5.2, serveur arrêté.
+- **2026-10-19 — Décisions de l'utilisateur sur T1** : (a) bouton rejeu : ne corriger que si le test
+  coûte (c'est un `os.Stat` par ouverture de vue, négligeable) → pas de correctif ; (b) Citations /
+  Commendations : correctif pour la v8.0.0 (agent Sonnet, `feat/rv8-citations`) ; (c) assistances
+  attendues Halo 5 : calcul local volontaire du 23/06 (`01f7ddbf3`, durée comme prédicteur, validé
+  sur 3 135 matchs, libellé « Estimé localement ») — rien à corriger sauf avis contraire.
+  « Toute correction retenue est pour la v8.0.0. »
+- **2026-10-19 — T1-b fait** : `b3673e232` + `5c8a1af62` (`feat/rv8-citations`), fusionnés dans
+  `feat/release-v8` (`f91a599e0`). Capacité de titre `citations` (Infinite seulement), miroir testé
+  avec `citations.engine` ; `POST /pages/citations` sous `RequireCapability` (Halo 5 : 503) ; route web
+  doublement gardée ; nav et accueil sur la capacité ; ratchet vitest des comparaisons de slug (une
+  exception datée : `waypointUrl.ts`), rouge prouvé. Gate du superviseur sur l'état fusionné :
+  `go test ./internal/api/handlers/ ./internal/domain/title/ ./internal/games/` ok ; vitest
+  capabilities, shell, home : 296/296. Découverte : `career/commendations` gardée par `career` seul
+  (un joueur Infinite voit un état vide) ; l'exécutant a encore utilisé un script Python d'édition
+  (rien de versionné, LF vérifié par le superviseur).
+- **2026-10-19 — D-15 corrigé** : `a3a4293b4` + `7de33add1` (`feat/rv8-swap-ecriture`, Opus), fusionnés
+  dans `feat/release-v8` (`760fc2d68`). Cause : le crochet `pool_swap_hook.go` (présent sur `main`)
+  rouvrait en lecture, à chaque retour en lecture du provider Infinite, la base partagée de CHAQUE
+  joueur du pool, Halo 5 compris : le provider Halo 5 ne pouvait plus passer en écriture
+  (« different configuration »), état collant jusqu'au redémarrage. Crochet et `Provider.Subscribe`
+  supprimés, garde-rail archlint, refus d'écriture journalisé et compté (`open_rw`), citations du
+  post-sync lues par segments, balayage des noms d'assets relâche la base avant le réseau, job des
+  sessions en `failed` si un joueur échoue. ADR 0016 amendée. Gate du superviseur sur l'état
+  fusionné : `go vet` + `go test` api, sync, platform/duckdb, archlint, scheduler, cmd/server : ok.
+  Vérification sur le serveur local (binaire de `feat/release-v8` sur les vraies bases, 19/10
+  22:37) : 0 « open RW after RO close », 0 `RestoreSharedAfterSwap` ; 3 recalculs de sessions
+  pendant les ~4 min suivant le démarrage : `failed`, 7 à 10 joueurs Infinite en « drain timeout »
+  (Halo 5 OK) ; à 22:41 puis 2 fois de suite : `succeeded`, 14 joueurs, 0 échec (D-17).
+- **D-17 (19/10)** : pendant ~4 min après le démarrage du serveur, un lecteur tient la base partagée
+  Infinite plus de 5 s d'affilée : toute écriture qui demande la bascule (recalcul des sessions, et
+  potentiellement la synchro) expire en « drain timeout », puis tout rentre dans l'ordre. Plus d'état
+  collant. Lecteur non identifié (suspects : tâches de démarrage, balayage des noms d'assets,
+  `career_live`). En prod : écritures du premier cycle possiblement reportées au cycle suivant ; à
+  surveiller en 5.7. Soumis à l'utilisateur.
+- **D-18 (19/10)** : libellés : l'onglet porte la même clé i18n pour les deux titres (FR « Citations »,
+  EN « Commendations ») ; seule la page derrière change (Infinite : citations calculées par LevelUp,
+  `/career/citations` ; Halo 5 : commendations natives du jeu, `/career/commendations`). Incohérence
+  mineure : `lib/pageTitle.ts:59` donne le titre EN « Citations » à `/career/citations`.

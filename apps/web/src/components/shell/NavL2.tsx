@@ -36,11 +36,10 @@ const CAREER_TABS = [
   { labelKey: 'common.nav.tab_season_pass', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/career/season-pass' },
 ] as const satisfies readonly NavTab[]
 
-// Halo 5 : les commendations sont NATIVES (carnage) — l'onglet « Citations » (moteur
-// dérivé d'Infinite, capability `citations.engine` not_exposed pour h5) est remplacé
-// par « Commendations » (totaux à vie natifs). Le slug courant est le SEUL signal
-// front pour distinguer h5 : aucune capability COARSE ne le fait (Infinite les
-// déclare toutes) et `commendations.native` est une capability FINE non exposée au nav.
+// Titre sans citations calculées (Halo 5) : les commendations sont NATIVES (carnage) —
+// l'onglet « Citations » (moteur dérivé d'Infinite) est remplacé par « Commendations »
+// (totaux à vie natifs). Signal : l'absence de la capability de titre `citations`
+// (pendant de `citations.engine`, not_exposed pour h5).
 // Halo 5 n'a PAS de pass saisonnier / Battlepass (capability `season_pass` absente).
 // L'inventaire REQ personnel n'étant pas servi (sonde 404), aucune surface de
 // remplacement n'est câblée → pas d'onglet « Pass saisonnier » pour h5.
@@ -142,7 +141,7 @@ export function NavL2() {
   // early-return). NO-OP pour halo_infinite (déclare career + world.leaderboard).
   const hasCareer = useCapability('career')
   const hasWorldLeaderboard = useCapability('world.leaderboard')
-  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const hasCitations = useCapability('citations')
 
   const section = detectSection(pathname)
   if (!section) return null
@@ -153,8 +152,8 @@ export function NavL2() {
   if (section === 'career') {
     // Titre sans capability `career` : pas de barre (la page est gatée en amont).
     if (!hasCareer) return null
-    // h5 : onglets carrière avec « Commendations » natif au lieu de « Citations ».
-    const careerTabs = currentTitleSlug === 'halo_5' ? CAREER_TABS_H5 : CAREER_TABS
+    // Sans citations calculées (h5) : « Commendations » natif au lieu de « Citations ».
+    const careerTabs = hasCitations ? CAREER_TABS : CAREER_TABS_H5
     return (
       <NavTabBar
         tabs={careerTabs}

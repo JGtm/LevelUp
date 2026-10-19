@@ -34,7 +34,9 @@ func (m *mockCitationsService) GetCommendationsPage(_ context.Context, _ string)
 
 func newCitationsRouter(factory handlers.ContextFactory[port.CitationsService]) *chi.Mux {
 	r := chi.NewRouter()
-	h := handlers.NewCitationsHandler(factory)
+	// Porte de titre ouverte : ces tests exercent les handlers ; la porte a son propre test
+	// (citations_capability_gate_test.go) sur le registre réel.
+	h := handlers.NewCitationsHandler(factory, func(next http.Handler) http.Handler { return next })
 	r.Route("/players/{player_slug}", func(sub chi.Router) {
 		h.Mount(sub)
 	})

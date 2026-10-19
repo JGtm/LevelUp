@@ -45,6 +45,9 @@ media_filename_prefixes = ["Halo_5_Guardians-"]
 # internal/ops/media_filename.go ; l'indexation est title-aware (SharedDBPath h5).
 # Exclus pour l'instant : firefight (Warzone FF, modèle != FF HINF), forge (UGC
 # HINF-shaped), world.leaderboard (scrape Waypoint HINF).
+# Aussi exclu : citations (moteur de citations CALCULÉES d'Infinite). Halo 5 sert des
+# commendations NATIVES (capabilities.toml : commendations.native) ; l'absence de `citations`
+# bascule le front sur Commendations et ferme POST /pages/citations (503).
 capabilities = [
   "matchmaking",
   "ranked",

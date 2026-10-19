@@ -9,8 +9,8 @@
 // incrément de refCount — et le release rendu est un no-op. Le propriétaire peut
 // donc fermer le `*sql.DB` sous les pieds de l'emprunteur :
 //
-//   - B-swap RO→RW (ADR 0016) : `PlayerDB.PrepareForSharedSwap` ferme `pdb.Shared`
-//     pour que le Provider puisse ouvrir le fichier en RW ;
+//   - B-swap RO→RW (ADR 0016) : le provider ferme son handle RO (`swapToRW`)
+//     pour pouvoir ouvrir le fichier en RW ;
 //   - fin d'un autre `OpenReadForQuery` PROPRIÉTAIRE (celui qui a eu le cache
 //     miss et détient donc refCount=1) : son release supprime l'entrée du cache
 //     et ferme le `*sql.DB` — que d'autres lecteurs concurrents ont pourtant
@@ -29,7 +29,7 @@
 // # Pourquoi PAS « rendre l'emprunt possédant »
 //
 // Faire incrémenter le refCount par `OpenReadForQuery` supprimerait la classe
-// entière… en cassant le B-swap : `pdb.Shared.Close()` deviendrait un simple
+// entière… en cassant le B-swap : la fermeture du handle du provider deviendrait un simple
 // décrément, le fichier resterait tenu en RO, et l'`OpenReadWrite` du Provider
 // échouerait ("different configuration"). Le modèle assumé est « le swap gagne,
 // le lecteur se répare » — d'où la reprise ci-dessous plutôt qu'une possession.

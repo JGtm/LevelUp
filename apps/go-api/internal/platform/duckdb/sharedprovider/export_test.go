@@ -52,3 +52,10 @@ func SetRWHoldWatchdogForTest(p Provider, d time.Duration) {
 func SetSlowSwapThresholdForTest(p Provider, d time.Duration) {
 	p.(*providerImpl).slowSwapThreshold = d
 }
+
+// OpenRWRefusalsForTest rend le compteur des OpenReadWrite refusés pendant un swap
+// (shared_provider_swap_failures_total{reason="open_rw"}), process-wide.
+func OpenRWRefusalsForTest() int64 {
+	initMetrics()
+	return mapInt(swapFailuresTotal, failReasonOpenRW)
+}
