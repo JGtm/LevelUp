@@ -194,7 +194,7 @@ func (p *providerImpl) refusOuvertureRWLocked(ctx context.Context, err error) er
 	recordStateTransition(StateDraining, StateError)
 	swapFailuresTotal.Add(failReasonOpenRW, 1)
 	close(p.ready)
-	slog.ErrorContext(ctx, "sharedprovider: écriture refusée — le fichier reste ouvert ailleurs dans le processus",
+	slog.ErrorContext(ctx, "sharedprovider: écriture refusée par DuckDB — cause habituelle : un autre handle du processus tient encore le fichier",
 		"path", p.path, "label", ctxkeys.DBWriterLabel(ctx),
 		"references_lecture_hors_provider", duckdbpkg.CachedReadOnlyRefs(p.path), "err", err)
 	// event_id du caller propagé à la reprise asynchrone (traçabilité).

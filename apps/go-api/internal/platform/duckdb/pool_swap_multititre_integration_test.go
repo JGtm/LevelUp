@@ -6,7 +6,10 @@
 // Topologie de production reproduite : un provider par base partagée de titre (le Manager en ouvre
 // un par chemin), un PlayerDB du second titre dans le pool global en mode B-swap (SharedReader =
 // provider de SON titre, comme config.sharedReaderForTitle). Le serveur n'abonne plus rien aux
-// bascules d'un provider (cmd/server) : le test non plus.
+// bascules d'un provider (cmd/server) : le test non plus. Ce test tient l'INVARIANT (base B
+// inscriptible et tenue une seule fois après une écriture A) ; il a été rouge sur le code fautif
+// avec une copie du câblage du serveur d'alors, qui n'existe plus. La résurrection d'un crochet du
+// pool qui rouvrirait la base est interdite par archlint/pool_no_shared_handle_test.go.
 //
 // Le symptôme du serveur local : après une écriture sur la base du titre par défaut, toute prise
 // d'écriture de la base Halo 5 échouait (« open RW after RO close : … different configuration »)
