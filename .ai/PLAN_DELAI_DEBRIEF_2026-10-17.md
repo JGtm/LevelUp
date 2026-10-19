@@ -193,13 +193,13 @@ Jamais `go build ./...`, jamais `git add -A`, jamais `git stash`.
 Dépendance utilisateur : jouer un match 4v4 par mode. Une cuisson par match, par le pipeline
 normal (aucune cuisson en lot ni en boucle).
 
-- [!] 5.1 Préalables : aucun détenteur de `data/cache/film_decode.lock.json`, aucun traitement de
+- [x] 5.1 Préalables : aucun détenteur de `data/cache/film_decode.lock.json`, aucun traitement de
       recherche en cours ; serveur local relancé sur la branche (air, port 8000 vérifié).
-- [!] 5.2 Mode local (`replay_build_location=local`) : un match 4v4 joué ; rapport « Délai du
+- [x] 5.2 Mode local (`replay_build_location=local`) : un match 4v4 joué ; rapport « Délai du
       débrief » relevé (capture des valeurs dans le journal du plan) ; total ≤ 5 min.
-- [!] 5.3 Mode ouvrier : jeton d'ouvrier local, `go run ./cmd/replay-worker` sur le poste,
+- [x] 5.3 Mode ouvrier : jeton d'ouvrier local, `go run ./cmd/replay-worker` sur le poste,
       réglage `worker` ; un match 4v4 joué ; rapport relevé ; total ≤ 5 min.
-- [!] 5.4 Si un total dépasse 5 min : arrêt, ventilation par étape rapportée à l'utilisateur
+- [x] 5.4 Si un total dépasse 5 min : arrêt, ventilation par étape rapportée à l'utilisateur
       (R1/R2 ou autre), aucune adaptation silencieuse.
 
 ### Étape 6 — Livraison
@@ -360,3 +360,25 @@ courante. `git -C ../LevelUp-wt-delai-debrief log --oneline -10` pour l'état de
   worktree retiré. Reste ouvert : l'étape 5 (preuve), au registre des reports — l'utilisateur la
   fera quand le traitement de recherche de levelup-50 sera fini. Le serveur local tourne déjà sur
   le code fusionné (relancé à 16 h 02).
+- 2026-10-19 : ÉTAPE 5, PREUVE FAITE sur deux vrais matchs 4v4 joués par l'utilisateur, verrou de
+  décodage libre, serveur local sur `feat/v75` (lot inclus). Instants lus dans une copie de la
+  base monitoring (serveur arrêté une minute, puis relancé). Écart à la fin du match :
+  | Étape | Match 1, local (`53ca795f`) | Match 2, ouvrier (`680e0b32`) |
+  |---|---|---|
+  | détecté (watcher) | +0:17 | +0:07 |
+  | stats écrites | +0:20 | +0:41 |
+  | morts lues | +1:14 | +1:27 |
+  | rejeu lancé (local) / mis en file (ouvrier) | +2:40 | +2:31 |
+  | pris par l'ouvrier | — | +2:32 |
+  | rejeu rangé | +2:49 | +2:38 |
+  | dérivations écrites | +2:49 | +2:41 |
+  | citations après les dérivations | +2:49 | +2:45 (relance à la livraison) |
+  | **total** | **2 min 49 s, tenu** | **2 min 45 s, tenu** |
+  Le job du match 2 est entré en file à la priorité 100 (inséré). Les citations du match 2 ont
+  été écrites deux fois : par le post-sync (+2:31, avant le film) puis par la relance dès les
+  dérivations (+2:45) — c'est la relance qui livre les citations du film sans attendre le cycle
+  suivant. Plus gros poste dans les deux cas : de « morts lues » à « rejeu lancé » (86 s et 64 s),
+  l'étape de lecture des morts traitant son retard (7 vieux matchs) avant de passer la main au
+  rejeu (risque R1, hors périmètre, sans effet sur l'objectif). Mode ouvrier monté pour la mesure
+  (jeton temporaire dans `.env.local`, réglage `worker`, ouvrier local) puis RETIRÉ : `.env.local`
+  et `app_settings.json` restaurés à l'octet, ouvrier arrêté, serveur relancé en local.

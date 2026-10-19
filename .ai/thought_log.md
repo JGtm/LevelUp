@@ -1,3 +1,11 @@
+## [2026-10-19] Délai du débrief : preuve sur deux vrais matchs 4v4 — Complété (plan `.ai/PLAN_DELAI_DEBRIEF_2026-10-17.md`)
+
+**Décision technique principale** : mesure sur le poste, verrou de décodage libre, serveur local sur `feat/v75` ; match 1 en construction locale, match 2 en mode ouvrier (jeton temporaire, ouvrier local, retirés ensuite, configuration restaurée à l'octet). Instants lus dans une copie de la base monitoring.
+
+**Résultats observés** : match 1 (local) toutes les données à +2 min 49 s de la fin ; match 2 (ouvrier) à +2 min 45 s, job pris 1 s après sa mise en file (priorité 100), citations du film relancées 3 s après les dérivations. Objectif « moins de 5 min » tenu dans les deux modes. Plus gros poste : l'attente entre la lecture des morts et le rejeu (64 à 86 s), l'étape de lecture des morts traitant son retard avant le rejeu (risque R1, hors périmètre).
+
+**Conclusion** : lot clos ; le report « preuve » est retiré du registre.
+
 ## [2026-10-19] Véhicules : une bande `ti=40` vide sur des images-clés lues est un zéro mesuré, pas « non mesuré » — Complété (branche `feat/v75`, non commité)
 
 **Décision technique principale** : `decodeFilmVehicleScan` (`film/replay/build_vehicles.go`) rend désormais `Scanned=true` (`scanBandeVide`) quand les images-clés sont lues mais ne portent aucun slot `ti=40` ; les deux échecs de lecture (créations, nuage) et le film sans image-clé gardent `Scanned=false`. Constat d'origine : `backfill-vehicle-takes --force` du 2026-10-18 rendait 201 « non mesurés » sur 248 ; les 201 sont des matchs d'arène (Vacancy, Detachment, Argyle, Recharge, ...), tous `vehicles_not_scanned`, 0 vie recensée.
