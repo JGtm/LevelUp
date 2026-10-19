@@ -273,13 +273,12 @@ export function NavL1() {
     .filter(sectionVisible)
     .map((s) => {
       if (!s.tabs) return s
-      // h5 : « Citations » (moteur dérivé d'Infinite) → « Commendations » natif —
-      // cohérent avec NavL2. Le slug est le seul signal front (aucune capability
-      // coarse ne distingue h5, cf. CAREER_TABS_H5).
+      // Titre sans citations calculées (Halo 5) : « Citations » (moteur dérivé) →
+      // « Commendations » natif — cohérent avec NavL2. Signal : capability `citations`.
       const tabs = s.tabs.filter(tabVisible).map((tab): L1Tab =>
-        currentTitleSlug === 'halo_5' && tab.key === 'citations'
+        !hasCapabilityIn(titleCaps, 'citations') && tab.key === 'citations'
           ? {
-              // Halo 5 : commendations natives. On conserve la clé i18n d'origine
+              // Commendations natives. On conserve la clé i18n d'origine
               // (`tab_citations` = FR « Citations » / EN « Commendations », terme
               // officiel Halo) et on ne change QUE la clé de tab + le chemin.
               ...tab,

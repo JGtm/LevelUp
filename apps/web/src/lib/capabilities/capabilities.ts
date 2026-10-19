@@ -41,6 +41,12 @@ export const TITLE_CAPABILITIES = [
   // non accordée par aucun titre. Absente ⇒ carte / colonnes « Prob. vic. »
   // masquées. Miroir de title.CapExpectedWinProb (registry.go).
   'expected_win_prob',
+  // Citations CALCULÉES par LevelUp (moteur dérivé : page Citations, tuiles de la home).
+  // Absente ⇒ le titre sert des commendations NATIVES (Halo 5) : la page career/citations
+  // est remplacée par FeatureUnavailable, et la nav comme la home basculent sur
+  // Commendations. Miroir de title.CapCitations (registry.go), pendant title-level de la
+  // capability data-level `citations.engine`.
+  'citations',
 ] as const
 
 export type TitleCapability = (typeof TITLE_CAPABILITIES)[number]

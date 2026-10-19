@@ -904,8 +904,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		synthesis := handlers.NewSynthesisHandler(reg.SynthesisCtx)
 		synthesis.Mount(r, playerOpt)
 
-		// Sprint 13 → Sprint 32 : Citations + Commendations + Médias → POST
-		citations := handlers.NewCitationsHandler(reg.CitationsCtx)
+		// Sprint 13 → Sprint 32 : Citations + Commendations + Médias → POST.
+		// /pages/citations (moteur de citations CALCULÉES) est gardée par CapCitations :
+		// 503 capability_unavailable pour un titre qui sert des commendations natives
+		// (Halo 5). /pages/commendations reste ouverte à tous les titres.
+		citations := handlers.NewCitationsHandler(reg.CitationsCtx,
+			middleware.RequireCapability(titleRegistry, titlePkg.CapCitations))
 		citations.Mount(r, playerOpt)
 
 		// Page Médailles : catalogue complet du titre + compteur obtenu par joueur

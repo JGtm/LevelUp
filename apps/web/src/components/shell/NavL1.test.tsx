@@ -185,6 +185,56 @@ describe('NavL1', () => {
     expect(screen.getByRole('link', { name: 'Médias' })).toBeInTheDocument()
   })
 
+  // ─── Citations calculées vs Commendations natives ─────────────────────────
+  // Le choix de l'onglet suit la capability `citations`, JAMAIS le slug du titre
+  // (règle title-agnostic) : le slug 'partial' sert ici de preuve que seul le
+  // contenu de `capabilities` décide.
+
+  function openCareerMenu() {
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Carrière' }))
+  }
+
+  it('propose Citations (moteur calculé) quand le titre déclare la capability citations', () => {
+    setPartialTitle(['career', 'citations'])
+
+    renderWithProviders(<NavL1 />)
+    openCareerMenu()
+
+    expect(screen.getByRole('menuitem', { name: 'Citations' })).toHaveAttribute(
+      'href',
+      '/t/partial/players/test-player/career/citations',
+    )
+  })
+
+  it('bascule sur les commendations natives quand le titre ne déclare pas citations', () => {
+    setPartialTitle(['career'])
+
+    renderWithProviders(<NavL1 />)
+    openCareerMenu()
+
+    expect(screen.getByRole('menuitem', { name: 'Citations' })).toHaveAttribute(
+      'href',
+      '/t/partial/players/test-player/commendations',
+    )
+  })
+
+  it('ne se fie pas au slug : halo_5 avec la capability citations garde Citations', () => {
+    useAppShellStore.setState({
+      currentTitleSlug: 'halo_5',
+      availableTitles: [
+        { slug: 'halo_5', name: 'Halo 5', status: 'active', capabilities: ['career', 'citations'], is_default: false, effective_hp_to_kill: 225 },
+      ] as unknown as ReturnType<typeof useAppShellStore.getState>['availableTitles'],
+    })
+
+    renderWithProviders(<NavL1 />)
+    openCareerMenu()
+
+    expect(screen.getByRole('menuitem', { name: 'Citations' })).toHaveAttribute(
+      'href',
+      '/t/halo_5/players/test-player/career/citations',
+    )
+  })
+
   // ─── Onglet Tactique (2026-09-08) ─────────────────────────────────────────
   // La page portait ses cinq onglets en L2 depuis le 2026-09-06 pendant que le dropdown L1 en
   // comptait quatre : la page existait sans qu'aucun menu du bandeau n'y mène. Ces deux tests
