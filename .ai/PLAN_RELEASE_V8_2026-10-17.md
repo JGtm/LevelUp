@@ -337,7 +337,7 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
 
 ### Étape 3 — Contrôles de l'utilisateur (gate utilisateur)
 
-- [ ] 3.1 Les 42 contrôles visuels et les 7 contrôles techniques de l'encadré Notion, sur le
+- [ ] 3.1 (19/10 : fiche interactive publiée à la demande de l'utilisateur, https://claude.ai/artifact/BM28Ax8NZ3HFFZmJzWcJBy — statut OK/KO/v8.1 + commentaire par contrôle, base `resultats` lisible par Claude via ArtifactData ; copie texte `.ai/FICHE_CONTROLES_RELEASE_V8.md`) Les 42 contrôles visuels et les 7 contrôles techniques de l'encadré Notion, sur le
       local à jour. Claude prépare une fiche avec un lien direct par contrôle (match, page, onglet).
 - [ ] 3.2 Chaque anomalie : correctif (nouvelle branche, retour en 1.5) ou report en v8.1 —
       décision de l'utilisateur. Un correctif du décodeur fait remonter le schéma : rejouer 2.3 à
@@ -386,7 +386,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 - [~] 4.3 (19/10, premier passage ; complété par 5.2, serveur local arrêté) **Staging** (P2) : `/opt/levelup-staging/` (deploy:deploy), rsync msys64 + ssh msys64
       `--delete` de `data/titles/`, `data/cache/replays/`, `data/global/xbox_aliases.duckdb`,
       `data/demo_films/`. Gate : nombre de bases DuckDB et d'artefacts = local, 0 `.wal`.
-- [ ] 4.4 Suppression de `/opt/levelup-data.incoming-restes-2026-09-23` (sur accord).
+- [x] 4.4 (19/10, accord de l'utilisateur : 186 Mo supprimés) Suppression de `/opt/levelup-data.incoming-restes-2026-09-23` (sur accord).
 - [ ] 4.5 **Répétition du premier boot** : binaire serveur final sur une racine à part en local
       (copie de `data/titles` + `config/` + `static/` + `app_settings.json`/`db_profiles.json` de
       prod, sans `data/auth`), `LEVELUP_REPO_ROOT`/`LEVELUP_LOGS_DIR`/`LEVELUP_API_PORT`.
@@ -613,3 +613,9 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
     bases tenues par le serveur local sont verrouillées par Windows, « Device or resource busy »),
     5,4 Go de rejeux (2 928 fichiers, = local), 250 Mo de films de la démo, alias. Les 8 bases
     manquantes partent en 5.2, serveur arrêté.
+- **2026-10-19 — Décisions de l'utilisateur sur T1** : (a) bouton rejeu : ne corriger que si le test
+  coûte (c'est un `os.Stat` par ouverture de vue, négligeable) → pas de correctif ; (b) Citations /
+  Commendations : correctif pour la v8.0.0 (agent Sonnet, `feat/rv8-citations`) ; (c) assistances
+  attendues Halo 5 : calcul local volontaire du 23/06 (`01f7ddbf3`, durée comme prédicteur, validé
+  sur 3 135 matchs, libellé « Estimé localement ») — rien à corriger sauf avis contraire.
+  « Toute correction retenue est pour la v8.0.0. »
