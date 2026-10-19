@@ -518,6 +518,8 @@ des gamertags des fixtures, réécriture de l'historique (push forcé sur `main`
 
 - **D-15 (19/10, BLOQUANT POTENTIEL pour la prod)** : sur le serveur local, la prise d écriture de la base partagée Infinite échoue tant que des lectures sont en vol (« drain timeout, rollback vers RO »), et une fois `RestoreSharedAfterSwap: OpenReadOnly failed` survenu (20:38), TOUTE prise d écriture échoue (« open RW after RO close : base tenue par un autre processus ») jusqu au redémarrage, sans autre processus sur la machine (vérifié). En prod, le même état bloquerait les écritures de la synchro. À instruire avant la release (lot dédié, proposé à l utilisateur le 19/10).
 
+- **D-16 (19/10, audit T1, agent Sonnet en lecture seule)** : capacités des nouveautés v8. OK : rejeu (routes `RequireCapability(CapReplay)` + `RouteCapabilityGate`), Tactique, Emprise, « Analyse en cours », zones nommées, mise en commun. À trancher : (a) `MatchHeader.replayLink.tsx:36` ne teste que `replay_available` (`os.Stat`), pas `replay` ; (b) citations : pas de garde web, `/pages/citations` sans `RequireCapability`, menu basculé sur `currentTitleSlug === halo_5` (`NavL1.tsx:280`, `NavL2.tsx:157`, `HomeCitationsNearCompletion.tsx:47`, juin), pas de ratchet web du slug ; (c) assistances attendues affichées dans la vue match pour Halo 5 (`match_view_data_loaders.go:301`, `MatchStatCards.tsx:100`, sans `expected_stats`), alors que Timeseries/Sessions/Escouade les masquent. Soumis à l utilisateur (fiche, T1).
+
 ## 3. Reprise de session
 
 Relire `plan-execution`, puis ce fichier : reprendre à la première case vide de la première étape

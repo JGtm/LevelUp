@@ -88,7 +88,7 @@ Pages : [Explorer](http://localhost:5173/t/halo_infinite/players/JGtm/explorer) 
 
 | N° | Quoi | Où | Réponse |
 |---|---|---|---|
-| T1 | Nouveautés derrière des capacités | (je le vérifie dans le code) | |
+| T1 | Nouveautés derrière des capacités | audit du 19/10 (lecture du code, tests non rejoués) | **5 OK, 3 à trancher** : (a) le bouton « rejeu » de la vue match n'est caché que par l'absence de fichier, pas par la capacité `replay` (mineur, invisible pour Halo 5) ; (b) citations : aucune garde côté web, l'URL directe `/career/citations` d'un joueur Halo 5 interroge l'API des citations Infinite, et le menu bascule Citations/Commendations sur le slug (préexistant, juin) ; (c) **assistances attendues : contrairement à ce qu'on pensait, la vue match d'un joueur Halo 5 LES AFFICHE** (badge « estimé localement »), alors que Séries temporelles, Sessions et Escouade les masquent (capacité `expected_stats`). Rejeu, Tactique, Emprise, « Analyse en cours », zones nommées, mise en commun des jetons : OK. Réponse attendue pour (a), (b), (c) : corriger avant la release, ou v8.1. |
 | T2 | Autosnap : la page Escouade s'ouvre sur la dernière session en escouade | Escouade | |
 | T3 | « Composition exacte » dans la L2 de l'Escouade : cochée par défaut ? | Escouade | |
 | T4 | Drapeau : score qui suit, bases neutres dessinées, pas d'équipe « sans équipe », grenades cohérentes, armes au kill-feed | J (le match cité), D | |
