@@ -135,8 +135,10 @@ const playerEnrichmentTable = "player_match_enrichment"
 
 // Colonnes d'identité les plus courantes des tables extraites (champ `identity`).
 const (
-	colXUID     = "xuid"
-	colGamertag = "gamertag"
+	colXUID       = "xuid"
+	colGamertag   = "gamertag"
+	colKillerXUID = "killer_xuid"
+	colVictimXUID = "victim_xuid"
 )
 
 // Tables shared/player référencées plus de 3 fois dans seed_demo + tests.
@@ -187,7 +189,7 @@ var sharedTablesWhere = []extractTable{
 	{name: "highlight_events", where: matchIDInClause, identity: [][2]string{{colXUID, ""}},
 		jsonIdentity: []string{"raw_json"}},
 	{name: "killer_victim_pairs", where: matchIDInClause, identity: [][2]string{
-		{"killer_xuid", "killer_gamertag"}, {"victim_xuid", "victim_gamertag"}}},
+		{colKillerXUID, "killer_gamertag"}, {colVictimXUID, "victim_gamertag"}}},
 	// match_kill_events : le kill-feed canonique, écrit en parallèle de la table ci-dessus
 	// depuis le 2026-08-02 (double écriture datée). L'omettre livrerait une démo dont les
 	// surfaces bâties sur la table canonique sont vides — panne silencieuse, visible seulement
@@ -200,7 +202,7 @@ var sharedTablesWhere = []extractTable{
 	// TROIS paires d'identité : le tueur, la victime et l'ASSISTANT (absent de
 	// killer_victim_pairs, qui n'a jamais su le représenter).
 	{name: "match_kill_events", where: matchIDInClause, identity: [][2]string{
-		{"feed_killer_xuid", "feed_killer_gamertag"}, {"victim_xuid", "victim_gamertag"},
+		{"feed_killer_xuid", "feed_killer_gamertag"}, {colVictimXUID, "victim_gamertag"},
 		{"assist_xuid", "assist_gamertag"}}},
 	// La sous-requête vise la table SOURCE (src.) : la copie démo de match_participants,
 	// déjà créée, porte des xuid ANONYMISÉS qui ne filtreraient plus rien.
@@ -230,7 +232,7 @@ var sharedTablesWhere = []extractTable{
 	// written_at, vue kill_positions_latest), comme match_objective_stats : copiée telle quelle,
 	// colonnes techniques comprises, et son killer_xuid est remappé À LA COPIE — jamais par un
 	// UPDATE après coup (garde-rail TestNoMutationOnAppendOnlyTablesInOps).
-	{name: "kill_positions", where: matchIDInClause, identity: [][2]string{{"killer_xuid", ""}}},
+	{name: "kill_positions", where: matchIDInClause, identity: [][2]string{{colKillerXUID, ""}}},
 	{name: "weapon_accuracy", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
 }
 
