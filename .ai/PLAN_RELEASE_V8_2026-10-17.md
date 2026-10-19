@@ -101,7 +101,13 @@ Une étape est **close** quand tous ses items sont statués ET que son gate est 
 
 ### Étape 1 — Code et docs (worktree `feat/release-v8`)
 
-- [ ] 1.1 **Groupes au format standard de l'API** : migrer les routes de
+- [x] 1.1 (2026-10-19, `29f623091` sur `feat/rv8-groupes`) **La migration était déjà faite** depuis
+      `3b2db1574` (V72-01 H4-H5) : les 7 routes `/groups` sont déclarées par `huma.*`, aucun
+      `writeJSON` (vérifié par le superviseur : 7 déclarations, 0 route chi-native) ; l'exception
+      de l'allowlist était périmée. Seule action : retrait de l'entrée. Gates de l'exécutant :
+      `go test ./internal/api/...` 0, `go vet` 0, `openapi-gen -check` 0, `tsc` 0, vitest groupes
+      + garde de fraîcheur 0 ; golangci : 49 constats préexistants, aucun dans le fichier touché.
+      Texte d'origine de l'item : **Groupes au format standard de l'API** : migrer les routes de
       `internal/api/handlers/groups.go` (345 L) vers Huma (path params `{id}`/`{xuid}`, flux
       d'invitation Xbox), comportement de `groups_test.go` conservé, `openapi.yaml` +
       `make generate-types` régénérés, appelants web adaptés, entrée `groups.go` retirée de
@@ -111,7 +117,16 @@ Une étape est **close** quand tous ses items sont statués ET que son gate est 
 - [~] 1.2 et 1.3 (version, notes, README) : déplacés en **étape 3b**, dernière étape avant le VPS
       (utilisateur, 2026-10-18), pour couvrir tout ce qui aura fusionné, correctifs de l'étape 3
       compris.
-- [ ] 1.3b **Recuisson bornée (D3)** : `backfill-replay` n'a ni filtre de date ni liste de matchs
+- [x] 1.3b (2026-10-19, `54a2402db` sur `feat/rv8-rejeu-cli`) Fait. `--since` (date canonique,
+      borne incluse, sans date = écarté, compté, journalisé ; lecture `OpenReadForQuery` de
+      `match_registry`), `--match` (résolveur partagé avec killsource et vehicle-takes, préfixes ≥ 8),
+      `--demo` (`ops.DemoReplayMatchIDs`, manifestes du `--title`, liste vide = refus).
+      **`--since` + `--demo` = union** (le cas D3 se lance donc en UNE commande :
+      `backfill-replay --since 2025-09-01 --demo`) ; `--match` seul (refusé avec les deux autres).
+      Gates de l'exécutant : `go test ./cmd/levelup/` 0, tests ops ciblés 0, archlint 0, `go vet` 0,
+      golangci ratchet (`--new-from-merge-base=origin/main`) 0 ; aucun `.py` ni CRLF dans le diff
+      (vérifié par le superviseur).
+      Texte d'origine : **Recuisson bornée (D3)** : `backfill-replay` n'a ni filtre de date ni liste de matchs
       (constaté le 17/10). Ajouter `--since AAAA-MM-JJ` (date canonique du match, fragment SQL
       partagé de timezone, jamais `start_time` brut) et `--match id1,id2,...` (même forme que
       `backfill-vehicle-takes`), et `--demo` qui lit la liste `replay_matches` des manifestes
@@ -121,7 +136,17 @@ Une étape est **close** quand tous ses items sont statués ET que son gate est 
       `go test ./cmd/levelup/` exit 0. Le `--dry-run --since 2025-09-01` sur les vraies données
       est la première commande de 2.3 (serveur arrêté), pas un gate de l'exécutant (son worktree
       n'a pas les données).
-- [ ] 1.3c **Rejeu « 4v4 avec plusieurs véhicules » de la démo (D6)** : nouvelle famille dans
+- [x] 1.3c (2026-10-19, `e9e90d7a1` sur `feat/rv8-demo`) Fait. Famille `vehicles` : 8 présents au
+      départ (`present_at_beginning`, bots compris, repli sur tous les participants si le drapeau
+      est NULL) en exactement deux camps de 4 ; `COUNT(DISTINCT family) >= 2` sur
+      `match_vehicle_takes_latest` (`take`, mesuré, `family <> 'unknown'`) ; départage montées,
+      date canonique, id. Émission additive (`mergeDemoReplayPicks`) : famille figée conservée,
+      famille absente remplie, famille inconnue conservée (WARN), idempotente. Corpus : déjà garanti
+      (`CorpusMatchIDs` = union avec les rejeux figés), test ajouté ; dédoublonnage d'un match sous
+      deux familles dans `seedDemoReplays`. Gates de l'exécutant : `go test ./internal/ops/` 0,
+      intégration `-p 1` 0, `go vet` 0, archlint 0 ; mutations (seuil à 1, dédoublonnage retiré)
+      rendues rouges.
+      Texte d'origine : **Rejeu « 4v4 avec plusieurs véhicules » de la démo (D6)** : nouvelle famille dans
       `internal/ops/seed_demo_replay_picks.go`, choisie par règle déterministe et non par nom de
       variante : match à 8 joueurs (4 contre 4), au moins 2 types de véhicules distincts montés
       (`match_vehicle_takes`), départage par le plus grand nombre de montées, puis le plus récent,
@@ -134,7 +159,11 @@ Une étape est **close** quand tous ses items sont statués ET que son gate est 
       Gate : tests de `pickDemoReplays` (candidat retenu, candidat à un seul type de véhicule
       écarté, départage) et de l'émission (rejeu existant conservé face à un candidat plus récent,
       famille vide remplie) ; `go test ./internal/ops/` exit 0.
-- [ ] 1.4 **Runbook de déploiement** : `docs/RUNBOOK_DEPLOY_CHECKLIST.md` prescrit « merge commit,
+- [x] 1.4 (2026-10-19, `6b12cf885`) Fait : squash + `git revert <squash-commit>` ; étape « Replay
+      schema bump: cook the demo locally » (`--demo --dry-run` puis `--demo`, serveur arrêté, accord
+      utilisateur ; rsync `--files-from` des seuls artefacts de la démo ; contrôle : rejeux du seed
+      `copie`/`conserve`, jamais `perime`/`recuit`/`absent`).
+      Texte d'origine : **Runbook de déploiement** : `docs/RUNBOOK_DEPLOY_CHECKLIST.md` prescrit « merge commit,
       no squash » et un retour arrière `git revert -m 1`, faux depuis que GitHub n'autorise que le
       squash (CLAUDE.md, stratégie de branches §8). Aligner sur le squash (revert simple du commit).
       Ajouter l'étape permanente **« Replay schema bump: cook the demo locally »** (D7) :
@@ -165,7 +194,9 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
 - [ ] 2.1 Serveur local arrêté (air + `tmp/server.exe`), port 8000 libre.
 - [ ] 2.2 **Zones nommées des cartes Forge** : `backfill-map-callouts --dry-run`, puis
       `--hors-ligne`, puis sans option. Gate : bilan chiffré final, `map_callouts.json` modifié.
-- [ ] 2.3 **Recuisson** (D3) : `backfill-replay --since 2025-09-01 --dry-run` (nombre de films ;
+- [ ] 2.3 **Recuisson** (D3) : `backfill-replay --since 2025-09-01 --demo --dry-run` (union, cf.
+      1.3b ; les rejeux déjà figés de la démo sont cuits dans la même passe ; 2.9 ne recuit que les
+      rejeux nouvellement émis, dont le 4v4 à véhicules) (nombre de films ;
       ~30 s par film, 2 742 films en cache au total le 17/10), puis la même sans `--dry-run` et
       sans `--force` (cuit les manquants et les périmés, reprend après interruption).
       Puis `backfill-replay --match` sur les sept films du corpus nommé du garde de rejeu
@@ -394,6 +425,28 @@ des gamertags des fixtures, réécriture de l'historique (push forcé sur `main`
   sur disque » (registre, plan citations D7) est levé pour les matchs depuis le 2025-09-01 par 2.3,
   2.4 et 2.10 ; à mettre à jour au registre en 7.5 (les matchs antérieurs restent non mesurés).
 
+- **D-7 (19/10, exécutant 1.1)** : `groups.go` — `handleRenameGroup` avale l'erreur de
+  `h.groups.Get` (`updated, _ :=`, règle n°3) ; `handleGenerateInvite` ignore sans log l'erreur
+  de `json.Unmarshal` (corps optionnel) ; les corps POST/PATCH lus en `RawBody` n'apparaissent pas
+  typés dans `openapi.yaml`. Non traité (hors périmètre). L'item Notion « page des groupes au
+  format standard » est à cocher comme déjà réalisé.
+
+- **D-8 (19/10, exécutant 1.3b)** : le texte d'aide de `--match` est recopié dans trois
+  sous-commandes (parseur partagé, aide non ; règle n°6 sans garde-rail) ; `printUsage` > 80 L et
+  `main` complexité 54 (dette gelée) ; `registry.go` 1 144 L. L'exécutant signale qu'un Python
+  lancé depuis Windows a réécrit des fichiers en CRLF pendant son travail (remis en LF, rien de
+  Python versionné) — rappel : pas de Python, même comme outil d'édition.
+
+- **D-9 (19/10, exécutant 1.3c, vérifié par le superviseur)** : la démo n'extrait AUCUNE table
+  dérivée du film (`sharedTablesWhere`, `seed_demo.go:181` : ni `match_vehicle_takes`, ni
+  `match_usage_*`, ni `match_pad_tiers`, ni `match_objective_score_timeline`). Les rejeux de la
+  démo s'affichent (ils lisent l'artefact), mais les onglets Emprise / Tactique / usages des
+  matchs de la démo seront vides ou « non mesurés », y compris pour le rejeu à véhicules (D6).
+  Préexistant, hors périmètre : soumis à l'utilisateur le 19/10.
+- **D-10 (19/10)** : la constante `replay.VehicleFamilyUnknown` est recopiée dans `ops`
+  (`demoVehicleFamilyUnknown`, ratchet de façade du film) sans test qui les lie ; une dispense de
+  `campaign_exclusion_guard_dispenses_test.go` cite un numéro de ligne (fragile).
+
 ## 3. Reprise de session
 
 Relire `plan-execution`, puis ce fichier : reprendre à la première case vide de la première étape
@@ -410,3 +463,8 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   `LevelUp-wt-rv8-groupes` (`feat/rv8-groupes`, 1.1), `LevelUp-wt-rv8-rejeu-cli`
   (`feat/rv8-rejeu-cli`, 1.3b + 1.4), `LevelUp-wt-rv8-demo` (`feat/rv8-demo`, 1.3c). Exécutants
   Sonnet (préférence quota du 09/10), effort high.
+- **2026-10-19 — Étape 1, items 1.1 à 1.4 faits.** Trois branches fusionnées (`--no-ff`, sans
+  conflit) dans `feat/release-v8` : `eb33e29b3`, `7c1313d63`, `208133fed`. Gate du superviseur
+  sur l'état fusionné : `go vet` (cmd/levelup, ops, handlers) 0 ; `go test -count=1
+  ./cmd/levelup/ ./internal/ops/ ./internal/api/handlers/ ./internal/archlint/` tous ok. Push et
+  CI de `feat/release-v8` ensuite, puis 1.5 sur accord.
