@@ -315,7 +315,7 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
         absent.
       Gate : un rejeu par famille + le rejeu véhicules au bilan, tous au dernier schéma ; démo locale
       ouverte, un rejeu par mode s'affiche.
-- [ ] 2.10 Serveur local relancé (Start-Process détaché, port 8000) ; **un cycle de synchro complet
+- [x] 2.10 (19/10, voir journal) Serveur local relancé (Start-Process détaché, port 8000) ; **un cycle de synchro complet
       par joueur suivi** pour le recalcul des citations du film (D5). Gate : logs
       `citations post-sync: film dérivé après les citations, recalcul` pour chaque joueur (ou la
       tâche de fond « relance des citations du film » du lot délai du débrief) ; si un match a été
@@ -324,13 +324,13 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
       sur une copie de la base partagée, `shieldless_kills IS NULL` ≈ 0 parmi les matchs depuis le
       2025-09-01 qui ont un film ; les citations « Presque, ça ne compte pas » et « Jouets
       éducatifs » augmentent sur la page Citations.
-- [ ] 2.10b **Sessions recalculées, les deux titres** (runbook R8 ; serveur relancé, route admin, pas de
+- [x] 2.10b (19/10, voir journal) **Sessions recalculées, les deux titres** (runbook R8 ; serveur relancé, route admin, pas de
       forme CLI) : dans la console du navigateur connecté en admin,
       `await (await fetch('/api/v1/settings/sessions/recalculate', {method: 'POST', credentials: 'include'})).json()`.
       Depuis le plan backlog du 2026-10-16, chaque profil est recalculé sur les bases de SON titre (avant,
       un profil Halo 5 ne l'était jamais). Gate : réponse sans erreur, sessions Halo 5 présentes sur la
       page Sessions d'un joueur Halo 5.
-- [ ] 2.11 Serveur local arrêté, vidage des journaux des bases (ouverture/fermeture → 0 `.wal` sous
+- [x] 2.11 (19/10, voir journal ; à REFAIRE en 5.2 avant le rsync) Serveur local arrêté, vidage des journaux des bases (ouverture/fermeture → 0 `.wal` sous
       `data/titles`), `levelup healthcheck` tout OK, serveur relancé.
 
 **Gate** : `find data/titles -name '*.wal' | wc -l` = 0 ; healthcheck OK.
@@ -512,7 +512,11 @@ des gamertags des fixtures, réécriture de l'historique (push forcé sur `main`
 
 - **D-11 (19/10, recuisson)** : anomalies de lecture journalisées en ERROR sur 26 films recuits (23 « entrée(s) du roster présente(s) SANS ÉQUIPE lue », 2 « vies PUBLIÉES sans identité », 1 « bot sans place ») ; artefacts produits. Liste : `replay_cuisson.log` du scratchpad de la session ; à recouper avec le contrôle visuel n°32 (`b1ad85eb`, 3 équipes).
 - **D-12 (19/10)** : 43 artefacts restent « appauvris » après `--repair-impoverished` (registre d identité vide : aucune vie nommée ; ex. `07af7c78`, `0e640074`, `279ac3dd`, `29206c7c`, `2c16c553`, `f80cdf71`, `f10237b1`, `44e14331`). Le runbook de l ouvrier suppose la réparation suffisante : ce n est pas le cas pour ces films.
-- **D-13 (19/10)** : `backfill --all --title halo_5 --assists-model --force` rend `n_modes=0` pour les 4 joueurs Halo 5 (modèle d assistances vide pour ce titre) ; à vérifier : attendu (capability) ou défaut.
+- **D-13 (19/10, instruit)** : `--assists-model --force` rend `n_modes=0` pour Halo 5 parce que la régression OLS (`sync/assists_model.go` : assists ~ kills + morts + dégâts infligés + dégâts subis + écart de MMR) est SINGULIÈRE : Halo 5 ne fournit ni `damage_taken` ni `team_mmr`/`enemy_mmr` (JGtm : 1 970 matchs, 1 970 assistances, 0 dégât subi, 0 MMR), deux colonnes constantes à 0, `fitOLS` rend nil. Les assistances Halo 5 existent ; seul le modèle personnel d « assistances attendues » manque (repli populationnel). **Attendu : les assistances attendues sont hors capacités de Halo 5 (utilisateur, 19/10).** Reste un défaut mineur : la passe `assists-model` (`cmd/levelup/cmd_backfill_titled.go`, `passAssistsModel`) n a pas de garde de capacité (contrairement à `citations`), et aucune clé de `capabilities.toml` ne nomme les assistances attendues ; elle tourne donc pour rien sur Halo 5. Hors périmètre.
+
+- **D-14 (19/10)** : au premier démarrage du serveur après les passes, la mise en écriture de la base partagée pour la relecture killsource échoue (« drain inflight readers », « drain timeout, rollback vers RO ») pendant ~1 min, le temps du recalcul de masse des citations ; 3 films reportés au cycle suivant, rien ensuite. En prod, même premier boot avec les bases recuites : à surveiller en 5.7 (échecs transitoires attendus, persistants = anomalie).
+
+- **D-15 (19/10, BLOQUANT POTENTIEL pour la prod)** : sur le serveur local, la prise d écriture de la base partagée Infinite échoue tant que des lectures sont en vol (« drain timeout, rollback vers RO »), et une fois `RestoreSharedAfterSwap: OpenReadOnly failed` survenu (20:38), TOUTE prise d écriture échoue (« open RW after RO close : base tenue par un autre processus ») jusqu au redémarrage, sans autre processus sur la machine (vérifié). En prod, le même état bloquerait les écritures de la synchro. À instruire avant la release (lot dédié, proposé à l utilisateur le 19/10).
 
 ## 3. Reprise de session
 
@@ -572,3 +576,22 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
     10 à jour. `seed-demo` : 0 fuite, 10 rejeux `copie`, Infinite 68 matchs ; base démo : véhicules
     67 matchs, usages 67, paliers 67, vies 68, contexte de mort 68 ; `4898d586` : 16 lignes =
     source.
+  - 2.10 : air relancé à 20:20 (journaux du serveur sous `apps/go-api/logs/` : `LEVELUP_LOGS_DIR` non
+    posé par ce lancement), `/health` 200. Citations du film recalculées pour les 5 joueurs entre 20:22
+    et 20:23 (Chocoboflor 574, Madina97294 580, XxDaemonGamerxX 39, JGtm 1 139, Nuzzles 1 158 matchs).
+    Sur une COPIE de la base partagée : depuis le 2025-09-01, 2 477 matchs résumés, 56 avec
+    `shieldless_kills` NULL (186 lignes sur 20 157 : les artefacts appauvris de D-12 et voisins) ;
+    avant : 109 résumés, tous NULL (rejeux non recuits, attendu). Au démarrage, 3 échecs killsource
+    « drain inflight readers » + 6 « drain timeout, rollback vers RO » entre 20:22:21 et 20:23:27,
+    aucun ensuite (D-14). Preuve du délai du débrief : aucun match joué depuis le boot (faite le
+    19/10 matin, cf. 0.2).
+  - 2.10b : route admin appelée depuis un Chrome où l'utilisateur s'est connecté (19/10). 1er passage
+    (20:38) : 11 731 matchs mis à jour, mais 4 joueurs Infinite en erreur ; 2e et 3e passages : tous
+    les joueurs Infinite en erreur (« open RW after RO close : base tenue par un autre processus »,
+    puis `RestoreSharedAfterSwap: OpenReadOnly failed`) ; après redémarrage du serveur, 4e passage :
+    Halo 5 recalculé (3 818 matchs) mais Infinite en « drain timeout » ; 5e passage, serveur calme
+    (20:45) : 0 erreur, 0 changement (sessions Infinite déjà justes). D-15.
+  - 2.11 : serveur arrêté ; 7 WAL restants (arrêt brutal de Windows) vidés par CHECKPOINT (outil
+    jetable compilé hors dépôt, supprimé) ; 0 `.wal` sous `data/titles` ; `healthcheck` TOUT OK ;
+    serveur relancé, `/health` 200.
+- **2026-10-19 — Étape 2 close** (2.3b `[!]` justifié, D-11 à D-15 consignés).

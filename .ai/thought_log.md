@@ -1,3 +1,11 @@
+## [2026-10-19] Release v8.0.0, étape 2 : passes locales — Complété (plan `.ai/PLAN_RELEASE_V8_2026-10-17.md`, branche `feat/release-v8`)
+
+**Décision technique principale** : tout le rattrapage en local, serveur arrêté, avec un binaire construit une fois ; recuisson bornée aux matchs depuis le 2025-09-01 plus la démo ; les passes qui lisent les artefacts relancées en `--force` après la recuisson (un artefact recuit ne se re-projette pas sinon) ; citations du film laissées au post-sync (sélection « film dérivé après les citations »).
+
+**Résultats observés** : 2 249 rejeux construits (11 non cuisables : 9 cartes Forge retirées de Waypoint, 2 films vides), 0 mort mémoire ; 43 artefacts restent appauvris (identité non résolue par le décodeur) ; usages 2 433, paliers 2 498, véhicules 2 499, killsource 0 erreur ; 959 colonnes de noms réparées ; Halo 5 engagement/perf/dates recalculés, LUSR Infinite 4 898 ; démo : rejeu « véhicules » `4898d586` (Behemoth), seed sans fuite, tables du film présentes ; « Presque, ça ne compte pas » mesurée sur 98 % des matchs depuis le 2025-09-01 ; sessions recalculées (Halo 5 3 818 matchs). Constat D-15 : la prise d'écriture de la base partagée peut rester bloquée jusqu'au redémarrage après un échec de restauration du lecteur.
+
+**Conclusion** : étape 3 (contrôles de l'utilisateur) ; D-15 à instruire avant la release, sur décision de l'utilisateur.
+
 ## [2026-10-19] Release v8.0.0, étape 1 : code et nettoyage — Complété (plan `.ai/PLAN_RELEASE_V8_2026-10-17.md`, branche `feat/release-v8`)
 
 **Décision technique principale** : quatre exécutants Sonnet, un worktree chacun : `backfill-replay` gagne `--since` (date canonique, union avec `--demo`), `--match` (résolveur partagé) et `--demo` (rejeux figés des manifestes) ; la démo choisit un rejeu « 4v4 à plusieurs véhicules » par règle et n'écrase plus ses rejeux figés (émission additive) ; la démo extrait les 14 tables dérivées du film, le score d'objectif, les synergies d'escouade et le modèle d'assistances, anonymisés (décision utilisateur du 19/10) ; runbook aligné sur le squash et la cuisson locale de la démo. Les routes `/groups` étaient déjà au format Huma : seule l'exception périmée a été retirée.
