@@ -13,6 +13,15 @@ import type { RefObject } from 'react'
 
 import { useReplayViewport } from '@/features/match-replay/hooks/useReplayViewport'
 
+/**
+ * L'ORIGINE DE LA MESURE EST LA BARRE D'ONGLETS (L2) de la section : la hauteur se compte depuis le
+ * contenu qui la suit (barre de filtres, cockpit), pas depuis l'en-tête et le bandeau d'astuces
+ * au-dessus d'elle — page défilée sous la L2, le cockpit tient dans l'écran.
+ */
+function barreDOnglets(carte: HTMLElement): HTMLElement | null {
+  return carte.closest('main')?.querySelector<HTMLElement>('[role="tablist"]') ?? null
+}
+
 export function useHauteurDuPlan(carte: RefObject<HTMLElement | null>, cadre: RefObject<HTMLElement | null>): number {
-  return useReplayViewport(carte, cadre).freeHeight
+  return useReplayViewport(carte, cadre, barreDOnglets).freeHeight
 }

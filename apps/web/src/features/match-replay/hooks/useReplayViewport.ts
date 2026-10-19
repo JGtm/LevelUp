@@ -107,9 +107,16 @@ function scrollParentOf(el: HTMLElement): HTMLElement | null {
  * `chrome` = tout ce que le conteneur porte EN PLUS du terrain (ses marges internes, la frise,
  * la barre de lecture). C'est la seule part incompressible ; le terrain prend ce qui reste.
  */
-function freeSpaceFor(el: HTMLElement, chrome: number): number {
+function freeSpaceFor(el: HTMLElement, chrome: number, origin: HTMLElement | null): number {
   const rect = el.getBoundingClientRect()
   const scroller = scrollParentOf(el)
+  // Origine fournie : la hauteur se compte depuis son bord BAS (le contenu qui la suit tient dans
+  // l'écran une fois la page défilée jusque-là), pas depuis le haut de la page. Les deux boîtes
+  // défilent ensemble : l'écart ne dépend pas de la position de défilement.
+  if (origin) {
+    const viewportHeight = scroller ? scroller.clientHeight : window.innerHeight
+    return viewportHeight - (rect.top - origin.getBoundingClientRect().bottom) - chrome - VIEWPORT_BOTTOM_MARGIN
+  }
   if (!scroller) return window.innerHeight - rect.top - chrome - VIEWPORT_BOTTOM_MARGIN
   const box = scroller.getBoundingClientRect()
   const topInScroller = rect.top - box.top + scroller.scrollTop
@@ -124,10 +131,13 @@ function freeSpaceFor(el: HTMLElement, chrome: number): number {
  *   le DOM dit ce qui est réellement peint, une valeur recopiée ne dirait que ce qu'on croit
  *   avoir demandé — et à la première divergence, la mesure suivante croirait que le chrome a
  *   changé de taille et partirait en oscillation.
+ * @param origin  optionnel : l'élément dont le bord bas ouvre la zone comptée (la barre d'onglets
+ *   qui précède le contenu). Absent, la zone commence en haut de la page défilante.
  */
 export function useReplayViewport(
   ref: RefObject<HTMLElement | null>,
   canvasRef: RefObject<HTMLElement | null>,
+  origin?: (el: HTMLElement) => HTMLElement | null,
 ): ReplayViewport {
   const [viewport, setViewport] = useState<ReplayViewport>({
     width: 0,
@@ -145,7 +155,7 @@ export function useReplayViewport(
       const chrome = Math.max(el.offsetHeight - painted, 0)
       const next = {
         width: Math.max(Math.floor(el.getBoundingClientRect().width), 0),
-        freeHeight: fitCanvasHeight(freeSpaceFor(el, chrome)),
+        freeHeight: fitCanvasHeight(freeSpaceFor(el, chrome, origin?.(el) ?? null)),
       }
       // ÉGALITÉ D'ABORD : la mesure qui suit un ajustement de hauteur retombe sur la même
       // valeur (le chrome, lui, n'a pas bougé). Rendre l'objet précédent arrête la chaîne
@@ -170,7 +180,7 @@ export function useReplayViewport(
       ro?.disconnect()
       window.removeEventListener('resize', settle)
     }
-  }, [ref, canvasRef])
+  }, [ref, canvasRef, origin])
 
   return viewport
 }

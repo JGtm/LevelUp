@@ -1,3 +1,11 @@
+## [2026-10-19] Tactique : la hauteur du cockpit se compte depuis la L2 — Complété (branche `feat/v75`)
+
+**Décision technique principale** : `useReplayViewport` accepte une origine optionnelle (fonction rendant l'élément dont le bord bas ouvre la zone comptée) ; `useHauteurDuPlan` lui passe la barre d'onglets Ascension (`[role="tablist"]` du `main` parent). La hauteur libre du plan = hauteur du défilant - écart entre le haut de la carte et le bas de la L2 - chrome - marge ; indépendante du défilement, le rejeu 2D garde son calcul.
+
+**Résultats observés** : typecheck propre, vitest `features/tactical` + `match-replay/hooks` verts (647 passés). Rendu non vérifié au navigateur (API locale arrêtée).
+
+**Conclusion** : page défilée sous la L2, barre de filtres + plan + barre de lecture tiennent dans l'écran ; au défilement 0 il faut défiler un peu. À valider à l'oeil par l'utilisateur.
+
 ## [2026-10-19] Release v8.0.0, étape 0 : gel vérifié, worktrees de l'étape 1 posés — En cours (plan `.ai/PLAN_RELEASE_V8_2026-10-17.md`, branche `feat/release-v8`)
 
 **Décision technique principale** : plan de release v8.0.0 versionné (dérivé de la séquence Notion « Pour la v8 », décisions D1-D8 de l'utilisateur des 17-18/10) ; étape 0 close sur pièces ; l'étape 1 part en trois exécutants Sonnet, un worktree chacun depuis `6e4ebfc80` (groupes au format Huma ; options `--since`/`--match`/`--demo` de `backfill-replay` + runbook ; rejeu « 4v4 à plusieurs véhicules » et émission additive des rejeux de la démo).
