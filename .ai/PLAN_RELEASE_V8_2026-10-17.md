@@ -619,3 +619,12 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   attendues Halo 5 : calcul local volontaire du 23/06 (`01f7ddbf3`, durée comme prédicteur, validé
   sur 3 135 matchs, libellé « Estimé localement ») — rien à corriger sauf avis contraire.
   « Toute correction retenue est pour la v8.0.0. »
+- **2026-10-19 — T1-b fait** : `b3673e232` + `5c8a1af62` (`feat/rv8-citations`), fusionnés dans
+  `feat/release-v8` (`f91a599e0`). Capacité de titre `citations` (Infinite seulement), miroir testé
+  avec `citations.engine` ; `POST /pages/citations` sous `RequireCapability` (Halo 5 : 503) ; route web
+  doublement gardée ; nav et accueil sur la capacité ; ratchet vitest des comparaisons de slug (une
+  exception datée : `waypointUrl.ts`), rouge prouvé. Gate du superviseur sur l'état fusionné :
+  `go test ./internal/api/handlers/ ./internal/domain/title/ ./internal/games/` ok ; vitest
+  capabilities, shell, home : 296/296. Découverte : `career/commendations` gardée par `career` seul
+  (un joueur Infinite voit un état vide) ; l'exécutant a encore utilisé un script Python d'édition
+  (rien de versionné, LF vérifié par le superviseur).
