@@ -159,8 +159,9 @@ Une étape est **close** quand tous ses items sont statués ET que son gate est 
       Gate : tests de `pickDemoReplays` (candidat retenu, candidat à un seul type de véhicule
       écarté, départage) et de l'émission (rejeu existant conservé face à un candidat plus récent,
       famille vide remplie) ; `go test ./internal/ops/` exit 0.
-- [ ] 1.3d (2026-10-19 : `8e1540403` + `2d6580168` sur `feat/rv8-demo-film`, fusionnés dans
-      `feat/release-v8` `d394589ac` ; reste CI puis fusion dans `feat/v75`.) 14 tables dérivées du
+- [x] 1.3d (2026-10-19 : `8e1540403` + `2d6580168` sur `feat/rv8-demo-film`, fusionnés dans
+      `feat/release-v8` `d394589ac` (CI 39264886409 verte), puis dans `feat/v75` `ec9805253` par-dessus
+      le commit de l'utilisateur `66add1866` (cockpit Tactique) ; CI 39267242985 verte.) 14 tables dérivées du
       film extraites (usages, bonus par palier, véhicules, vies, contexte et coéquipiers à la mort,
       placement, prises de drapeau, ouvertures de kill, stats de bombe, événements d'objectif,
       positions) + `personal_score_awards` (base joueur : radar et score d'objectif),
@@ -530,3 +531,6 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   sur l'état fusionné : `go vet` (cmd/levelup, ops, handlers) 0 ; `go test -count=1
   ./cmd/levelup/ ./internal/ops/ ./internal/api/handlers/ ./internal/archlint/` tous ok. Push et
   CI de `feat/release-v8` ensuite, puis 1.5 sur accord.
+- **2026-10-19 — Étape 1 close.** 1.1 à 1.6 statués ; `feat/v75` = `ec9805253`, CI verte ; E2E
+  local 34/0. Étape 2 démarrée par amendement (2.1, 2.2 faits, 2.3 en cours depuis 15:42 :
+  2 260 films à cuire, 733 faits à 16:28, 0 dépassement mémoire).

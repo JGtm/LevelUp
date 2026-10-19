@@ -1,3 +1,11 @@
+## [2026-10-19] Release v8.0.0, étape 1 : code et nettoyage — Complété (plan `.ai/PLAN_RELEASE_V8_2026-10-17.md`, branche `feat/release-v8`)
+
+**Décision technique principale** : quatre exécutants Sonnet, un worktree chacun : `backfill-replay` gagne `--since` (date canonique, union avec `--demo`), `--match` (résolveur partagé) et `--demo` (rejeux figés des manifestes) ; la démo choisit un rejeu « 4v4 à plusieurs véhicules » par règle et n'écrase plus ses rejeux figés (émission additive) ; la démo extrait les 14 tables dérivées du film, le score d'objectif, les synergies d'escouade et le modèle d'assistances, anonymisés (décision utilisateur du 19/10) ; runbook aligné sur le squash et la cuisson locale de la démo. Les routes `/groups` étaient déjà au format Huma : seule l'exception périmée a été retirée.
+
+**Résultats observés** : CI verte sur `feat/release-v8` et sur `feat/v75` (`ec9805253`) ; E2E local 34 passés, 0 échec ; intégration `./internal/ops/` verte ; 14 worktrees et 56 branches locales + 54 distantes retirés (cache de films intact, 90 030 + 2 879), étude « Tendances » versée dans `.ai/`, recherche 2.7.d1 sauvegardée dans `Downloads`, `wt/power-positions` gardée (utilisateur).
+
+**Conclusion** : étape 2 en cours (zones Forge faites : 78 cartes ajoutées, 36 retirées de Waypoint ; recuisson de 2 260 films lancée).
+
 ## [2026-10-19] Tactique : la hauteur du cockpit se compte depuis la L2 — Complété (branche `feat/v75`)
 
 **Décision technique principale** : `useReplayViewport` accepte une origine optionnelle (fonction rendant l'élément dont le bord bas ouvre la zone comptée) ; `useHauteurDuPlan` lui passe la barre d'onglets Ascension (`[role="tablist"]` du `main` parent). La hauteur libre du plan = hauteur du défilant - écart entre le haut de la carte et le bas de la L2 - chrome - marge ; indépendante du défilement, le rejeu 2D garde son calcul.
