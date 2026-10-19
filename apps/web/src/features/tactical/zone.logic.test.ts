@@ -16,12 +16,15 @@ import type { CelluleTactique, TacticalContribution } from '@/lib/api/types'
 
 import { getTacticalText } from './i18n'
 import {
+  choixApresClic,
   choixDuClic,
   coordonneesDeZone,
   modeleDeTuile,
   positionEtiquette,
   sousLigneDeZone,
   valeurAffichee,
+  zoneAffichee,
+  ZONE_ECARTEE,
   zoneLaPlusChaude,
 } from './zone.logic'
 
@@ -260,5 +263,26 @@ describe('choixDuClic — le clic retient une cellule SERVIE', () => {
   it('loin de toute cellule servie : rien', () => {
     expect(choixDuClic(cellules, { x: 5, y: 12 }, 2)).toBeNull()
     expect(choixDuClic(cellules, { x: 5, y: 7 }, 0)).toBeNull()
+  })
+})
+
+describe('zoneAffichee et choixApresClic — écarter la zone', () => {
+  const chaude = { col: 5, row: 2 }
+
+  it('sans choix la plus chaude s’affiche ; le choix prime ; écartée, aucune', () => {
+    expect(zoneAffichee(null, chaude)).toEqual(chaude)
+    expect(zoneAffichee({ col: 1, row: 1 }, chaude)).toEqual({ col: 1, row: 1 })
+    expect(zoneAffichee(ZONE_ECARTEE, chaude)).toBeNull()
+    expect(zoneAffichee(null, null)).toBeNull()
+  })
+
+  it('un clic sur une autre cellule la choisit', () => {
+    expect(choixApresClic(chaude, { col: 1, row: 1 })).toEqual({ col: 1, row: 1 })
+    expect(choixApresClic(null, { col: 1, row: 1 })).toEqual({ col: 1, row: 1 })
+  })
+
+  it('un clic sur la zone affichée, ou loin de toute cellule, l’écarte', () => {
+    expect(choixApresClic(chaude, { col: 5, row: 2 })).toBe(ZONE_ECARTEE)
+    expect(choixApresClic(chaude, null)).toBe(ZONE_ECARTEE)
   })
 })

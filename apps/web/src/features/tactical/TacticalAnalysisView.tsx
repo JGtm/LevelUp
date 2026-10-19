@@ -17,9 +17,11 @@
  * jour… », échec (lecture, périmètre ou composition impossible), carte hors du filtre.
  *
  * LA ZONE LA PLUS CHAUDE EST PRÉSÉLECTIONNÉE (`useZone`) tant que l'utilisateur n'a rien choisi ; son
- * détail (`useTacticalCellule`) part quand la lecture est prête, et nomme la zone sur le plan.
+ * détail (`useTacticalCellule`) part quand la lecture est prête, et nomme la zone sur le plan. Elle
+ * s'ÉCARTE par un re-clic sur elle, un clic loin de toute cellule, ou Échap (sans mort choisie) ; elle
+ * ne revient alors qu'au changement de carte, de lecture, de joueurs ou de réapparition.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { TacticalContribution, TacticalRaster } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
@@ -34,7 +36,15 @@ import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
 import { basculerChoix } from './tueurs.logic'
 import { trouveCellule, type TacticalQuestion, type TacticalQui } from './tacticalView.logic'
 import { useVueDeMort } from './useVueDeMort'
-import { choixDuClic, titreDeZone, zoneLaPlusChaude } from './zone.logic'
+import {
+  choixApresClic,
+  choixDuClic,
+  titreDeZone,
+  zoneAffichee,
+  ZONE_ECARTEE,
+  zoneLaPlusChaude,
+  type ChoixDeZone,
+} from './zone.logic'
 
 export interface TacticalAnalysisViewProps {
   playerSlug: string
@@ -111,6 +121,7 @@ export function TacticalAnalysisView({
   })
   // La contribution mise en avant, partagée par la tuile et le plan ; remise à zéro avec la zone.
   const { survol, setSurvol, choisie, choisir } = useContributionChoisie(zone.cle)
+  useEchapEcarteLaZone(zone.selected !== null && choisie === null, zone.ecarter)
   const { vue, etatSequence } = useVueDeMort(playerSlug, carte.mapId, zone.contributions, choisie)
 
   return (
@@ -208,13 +219,32 @@ function useReglages(
  * un effet : un effet ferait clignoter l'ancienne cellule un rendu de plus.
  */
 function useZoneChoisie(cle: string) {
-  const [selected, setSelected] = useState<{ col: number; row: number } | null>(null)
+  const [choix, setChoix] = useState<ChoixDeZone>(null)
   const [cleAnterieure, setCleAnterieure] = useState(cle)
   if (cle !== cleAnterieure) {
     setCleAnterieure(cle)
-    if (selected !== null) setSelected(null)
+    if (choix !== null) setChoix(null)
   }
-  return [selected, setSelected] as const
+  return [choix, setChoix] as const
+}
+
+/**
+ * useEchapEcarteLaZone — Échap écarte la zone affichée (`actif`). Inactif tant qu'une mort est choisie :
+ * le même Échap referme d'abord la mort (`useContributionChoisie`), un second écarte la zone. Il ne
+ * prend pas la touche d'un champ de saisie ni d'une fenêtre qui l'a déjà traitée.
+ */
+function useEchapEcarteLaZone(actif: boolean, ecarter: () => void) {
+  useEffect(() => {
+    if (!actif) return
+    const surTouche = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      const cible = event.target
+      if (cible instanceof HTMLElement && (cible.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(cible.tagName))) return
+      ecarter()
+    }
+    window.addEventListener('keydown', surTouche)
+    return () => window.removeEventListener('keydown', surTouche)
+  }, [actif, ecarter])
 }
 
 /** Aucune contribution : une référence stable, pour que les mémos de la couche ne se recalculent pas. */
@@ -310,7 +340,8 @@ function useZone({
 }) {
   const [choix, setChoix] = useZoneChoisie(cle)
   const chaude = lecture ? zoneLaPlusChaude(lecture.cellules ?? [], lecture.echelle.symetrique) : null
-  const selected = choix ?? (chaude ? { col: chaude.col, row: chaude.lig } : null)
+  const selected = zoneAffichee(choix, chaude ? { col: chaude.col, row: chaude.lig } : null)
+  const ecarter = useCallback(() => setChoix(ZONE_ECARTEE), [setChoix])
   const cellule = selected && lecture ? trouveCellule(lecture.cellules ?? [], selected.col, selected.row) : null
   const requete = useTacticalCellule(
     playerSlug,
@@ -323,11 +354,12 @@ function useZone({
     // L'identité de la zone et de ses contributions : le survol qui en dépend ne survit pas à un changement.
     cle: `${cle}:${selected?.col}:${selected?.row}`,
     contributions: selected ? (requete.data?.contributions ?? AUCUNE_CONTRIBUTION) : AUCUNE_CONTRIBUTION,
-    // Un clic loin de toute cellule servie ne change rien (choixDuClic).
+    // Un clic sur la zone affichée, ou loin de toute cellule servie, l'écarte (choixApresClic).
     choisir: (point: { x: number; y: number }) => {
-      const choisi = lecture ? choixDuClic(lecture.cellules ?? [], point, lecture.pas_m) : null
-      if (choisi) setChoix(choisi)
+      const cliquee = lecture ? choixDuClic(lecture.cellules ?? [], point, lecture.pas_m) : null
+      setChoix(choixApresClic(selected, cliquee))
     },
+    ecarter,
     cellule,
     detail: {
       data: requete.data,

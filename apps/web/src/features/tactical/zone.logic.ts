@@ -44,6 +44,34 @@ export function zoneLaPlusChaude(cellules: readonly CelluleTactique[], signee: b
   return meilleure
 }
 
+/** Le choix de l'utilisateur est d'ÉCARTER la zone : la présélection de la plus chaude ne revient pas. */
+export const ZONE_ECARTEE = 'ecartee' as const
+
+/** Ce que l'utilisateur a décidé : une cellule, l'écart de toute zone, ou rien (présélection). */
+export type ChoixDeZone = { col: number; row: number } | typeof ZONE_ECARTEE | null
+
+/** zoneAffichee — la zone du plan : le choix, sinon la plus chaude ; aucune une fois écartée. */
+export function zoneAffichee(
+  choix: ChoixDeZone,
+  chaude: { col: number; row: number } | null,
+): { col: number; row: number } | null {
+  if (choix === ZONE_ECARTEE) return null
+  return choix ?? chaude
+}
+
+/**
+ * choixApresClic — le choix après un clic sur le plan : un clic sur la zone déjà affichée, ou loin de
+ * toute cellule servie (`cliquee` nulle), l'ÉCARTE ; un clic sur une autre cellule la choisit.
+ */
+export function choixApresClic(
+  affichee: { col: number; row: number } | null,
+  cliquee: { col: number; row: number } | null,
+): ChoixDeZone {
+  if (cliquee === null) return ZONE_ECARTEE
+  if (affichee !== null && affichee.col === cliquee.col && affichee.row === cliquee.row) return ZONE_ECARTEE
+  return cliquee
+}
+
 /**
  * Distance maximale, en pas de grille, entre un clic et le CENTRE d'une cellule servie pour que le
  * clic la retienne : la chaleur lissée déborde de quelques dixièmes de pas autour de chaque cellule
@@ -54,7 +82,7 @@ const CLIC_PORTEE_PAS = 1
 /**
  * choixDuClic — l'adresse que retient un clic sur le plan (`point`, en mètres monde) : la cellule
  * SERVIE qui le contient, sinon la cellule servie dont le centre est le plus proche à moins d'un
- * pas ; `null` sinon (le clic est ignoré : la zone courante reste, aucun détail n'est demandé).
+ * pas ; `null` sinon (loin de toute cellule : `choixApresClic` y lit l'écart de la zone).
  */
 export function choixDuClic(
   cellules: readonly CelluleTactique[],

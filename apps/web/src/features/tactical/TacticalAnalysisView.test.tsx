@@ -406,25 +406,66 @@ describe('TacticalAnalysisView — la zone choisie', () => {
     }
   })
 
-  it('un clic HORS de toute cellule servie est ignoré : même zone, aucune requête neuve', () => {
-    mockRaster({ data: RASTER_NOMINAL })
-    const largeur = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(100)
-    const hauteur = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(50)
-    try {
-      renderVue()
-      const avant = useTacticalCellule.mock.calls.length
-      // (95 ; 5) px : x = 95 m, y = 45 m → cellule (9, 4), absente de la lecture.
-      fireEvent.click(screen.getByTestId('tactical-plan-canvas'), { clientX: 95, clientY: 5 })
-      expect(derniereZone()).toEqual({ col: 5, lig: 2, pas_m: 10 })
-      expect(screen.getByTestId('tactical-zone-value')).toHaveTextContent('5')
-      expect(screen.queryByText(t.zoneNone)).toBeNull()
-      // Aucune adresse neuve n'a été demandée depuis le clic.
-      const neuves = useTacticalCellule.mock.calls.slice(avant).map((c) => JSON.stringify(c[2]))
-      expect(neuves.every((n) => n === JSON.stringify({ col: 5, lig: 2, pas_m: 10 }))).toBe(true)
-    } finally {
-      largeur.mockRestore()
-      hauteur.mockRestore()
+  describe('écarter la zone', () => {
+    /** Rend la vue sur un plan de 100 x 50 m, la zone la plus chaude (5, 2) présélectionnée. */
+    function avecPlan(corps: () => void) {
+      mockRaster({ data: RASTER_NOMINAL })
+      const largeur = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(100)
+      const hauteur = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(50)
+      try {
+        renderVue()
+        corps()
+      } finally {
+        largeur.mockRestore()
+        hauteur.mockRestore()
+      }
     }
+    const surLeCanvas = (clientX: number, clientY: number) =>
+      fireEvent.click(screen.getByTestId('tactical-plan-canvas'), { clientX, clientY })
+
+    it('un clic HORS de toute cellule servie écarte la zone : plus de détail demandé', () => {
+      avecPlan(() => {
+        // (95 ; 5) px : x = 95 m, y = 45 m → cellule (9, 4), absente de la lecture.
+        surLeCanvas(95, 5)
+        expect(derniereZone()).toBeNull()
+        expect(screen.getByText(t.zoneNone)).toBeInTheDocument()
+        expect(screen.queryByTestId('tactical-zone-value')).toBeNull()
+      })
+    })
+
+    it('un re-clic sur la zone affichée, même présélectionnée, l’écarte', () => {
+      avecPlan(() => {
+        // (55 ; 25) px : x = 55 m, y = 25 m → cellule (5, 2), la plus chaude.
+        surLeCanvas(55, 25)
+        expect(derniereZone()).toBeNull()
+        expect(screen.getByText(t.zoneNone)).toBeInTheDocument()
+      })
+    })
+
+    it('Échap écarte la zone ; la zone écartée ne revient pas d’elle-même, un clic en choisit une', () => {
+      avecPlan(() => {
+        fireEvent.keyDown(window, { key: 'Escape' })
+        expect(derniereZone()).toBeNull()
+        expect(screen.getByText(t.zoneNone)).toBeInTheDocument()
+        surLeCanvas(25, 35)
+        expect(derniereZone()).toEqual({ col: 2, lig: 1, pas_m: 10 })
+      })
+    })
+
+    it('Échap dans un champ de saisie n’écarte pas la zone', () => {
+      avecPlan(() => {
+        fireEvent.keyDown(screen.getByRole('combobox', { name: t.pillReading }), { key: 'Escape' })
+        expect(derniereZone()).toEqual({ col: 5, lig: 2, pas_m: 10 })
+      })
+    })
+
+    it('changer de lecture ramène la présélection de la zone la plus chaude', () => {
+      avecPlan(() => {
+        fireEvent.keyDown(window, { key: 'Escape' })
+        fireEvent.change(screen.getByRole('combobox', { name: t.pillReading }), { target: { value: 'kills' } })
+        expect(derniereZone()).toEqual({ col: 5, lig: 2, pas_m: 10 })
+      })
+    })
   })
 
   it.each([

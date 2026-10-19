@@ -1,3 +1,11 @@
+## [2026-10-19] Tactique : la zone sélectionnée peut s'écarter — Complété (branche `feat/v75`, non commité)
+
+**Décision technique principale** : D10 conservée (la zone la plus chaude reste présélectionnée à l'ouverture), mais le choix de l'utilisateur gagne une valeur « écartée » (`ZONE_ECARTEE`, `zone.logic`). Trois gestes l'écartent : re-clic sur la zone affichée (présélectionnée comprise), clic loin de toute cellule servie (qui était ignoré), Échap quand aucune mort n'est choisie (Échap referme d'abord la mort, jamais dans un champ de saisie). La zone écartée ne revient qu'au changement de carte, de lecture, de joueurs ou de réapparition (remise à zéro existante par `cle`).
+
+**Résultats observés** : typecheck propre, vitest `features/tactical` vert (468 passés) ; test « clic hors cellule ignoré » remplacé par cinq tests d'écart ; tests purs `zoneAffichee` / `choixApresClic`. Rendu non vérifié au navigateur.
+
+**Conclusion** : l'état vide existant (« Aucune zone sélectionnée », plan sans anneau ni étiquette) sert d'état écarté.
+
 ## [2026-10-19] Tactique : la hauteur du cockpit se compte depuis la L2 — Complété (branche `feat/v75`)
 
 **Décision technique principale** : `useReplayViewport` accepte une origine optionnelle (fonction rendant l'élément dont le bord bas ouvre la zone comptée) ; `useHauteurDuPlan` lui passe la barre d'onglets Ascension (`[role="tablist"]` du `main` parent). La hauteur libre du plan = hauteur du défilant - écart entre le haut de la carte et le bas de la L2 - chrome - marge ; indépendante du défilement, le rejeu 2D garde son calcul.
