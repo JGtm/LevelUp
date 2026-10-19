@@ -53,8 +53,9 @@ import (
 // UNE ENTREE DE DONNEES, comme `PadScans` : `Scanned` faux veut dire « pas lu », ce qui n est pas
 // « aucun vehicule ». La couverture publie la distinction (cf. VehicleCoverage.Scanned).
 type VehicleScan struct {
-	// Scanned dit que le film a ete BALAYE jusqu au bout. Faux : archetype absent des
-	// images-cles, creations illisibles, ou pas de film du tout (assemblage sur positions figees).
+	// Scanned dit que le film a ete BALAYE jusqu au bout. Faux : aucune image-cle lue, creations
+	// ou nuage illisibles, ou pas de film du tout (assemblage sur positions figees). Des images-cles
+	// lues sans slot `ti=40` sont balayees : zero vehicule mesure (`scanBandeVide`).
 	Scanned bool
 	// Keyframes porte la BANDE de slots `ti=40` et le RECENSEMENT qui borne les fins de vie.
 	Keyframes grammar.WorldObjectKeyframes
@@ -108,9 +109,9 @@ func decodeFilmVehicleScan(ctx context.Context,
 	defer gwInstallMPPWidths(fc, gwWidthsForFilm(fc, mpp))()
 	kf := grammar.ScanWorldObjectKeyframes(fc, grammar.VehicleTypeIndex)
 	if len(kf.Band) == 0 {
-		slog.InfoContext(ctx, "vehicules : aucun slot ti=40 aux images-cles — rejeu sans ce calque",
+		slog.InfoContext(ctx, "vehicules : aucun slot ti=40 aux images-cles — film lu, aucun vehicule",
 			"match_id", matchID, "imagesCles", len(kf.TimesUS))
-		return VehicleScan{}
+		return scanBandeVide(kf)
 	}
 	cre, st, err := grammar.ScanVehicleCreationsForBand(fc, wr, kf.Band)
 	if err != nil {
@@ -132,6 +133,14 @@ func decodeFilmVehicleScan(ctx context.Context,
 		"imagesCles", len(kf.TimesUS), "viesRecensees", len(kf.SeenUS),
 		"echantillons", len(pos), "evenements", len(out.Events), "viseesSansPosition", len(out.Aims))
 	return out
+}
+
+// scanBandeVide rend le balayage d'un film dont les images-cles ne portent aucun slot `ti=40`.
+// BANDE VIDE SUR DES IMAGES-CLES LUES = ZERO VEHICULE MESURE (une arene), pas « pas lu » : seul un
+// film sans aucune image-cle reste non balaye. Les deux echecs de lecture de
+// `decodeFilmVehicleScan` gardent `Scanned` faux.
+func scanBandeVide(kf grammar.WorldObjectKeyframes) VehicleScan {
+	return VehicleScan{Scanned: len(kf.TimesUS) > 0, Keyframes: kf}
 }
 
 // nuageDesVehicules lit le nuage de positions `ti=40` sur la bande `band` des images-cles, aux

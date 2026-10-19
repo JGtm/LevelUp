@@ -297,7 +297,7 @@ var plafondsParFichier = map[string]int{
 	// dans le commit qui monte `SchemaVersion`.
 	// SCHEMA 99, MEME ENTREE (2026-10-18, E8.4 D-18 et E8.1 du meme plan, serie non publiee), +12 : la
 	// condition c des declarations et l abstention du pont d equipe, grammar et killsource qui montent.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3447,
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3466,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -421,7 +421,7 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 97 -> 98 (2026-10-15, lot « faille a la pose ») : 1452 -> 1454, la justification de la montee.
 	// SCHEMA 98 -> 99 (2026-10-17, E8.4 du plan du backlog du 2026-10-16) : 1454 -> 1458, la justification
 	// de la montee (index des chunks hors table, chaine de contradictions).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1458,
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1462,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

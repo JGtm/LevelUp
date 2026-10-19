@@ -3445,3 +3445,22 @@ package replay
 //
 //	LE PARC         un artefact 98 : verdict `redecoder` (les faits persistes portent l ancienne
 //	                grammaire), la recuisson relit le film.
+
+// v100 (2026-10-19, correctif des vehicules d arene, suite de l etat des lieux du 2026-10-19) : contenu
+// seul. La FORME du document ne change pas ; son CONTENU change, et un artefact 99 doit se lire « a
+// redecoder ».
+//
+//	`coverage.vehicles.scanned`  vrai pour un film dont les images-cles sont lues sans slot `ti=40` (une
+//	                 arene) : zero vehicule MESURE, et non plus « pas lu ». Les echecs de lecture (creations,
+//	                 nuage) et le film sans image-cle restent faux (`scanBandeVide`, `build_vehicles.go`).
+//	ressource vehicules  la projection des prises (`ProjectVehicleTakes`) rend `Measured` pour ces films :
+//	                 zero prise mesure, plus « non mesure » (D8).
+//
+//	MESURE          parc du poste, 248 artefacts : 201 « non mesures » (`vehicles_not_scanned`, 0 vie
+//	                 recensee), tous sur des cartes d'arene disjointes des 47 mesures ; 0 ligne de degat de
+//	                 transfert de vehicule ni de collision dans ces 201 matchs (2 359 et 696 au registre).
+//
+//	CE QUI MONTE    `SchemaVersion` 99 -> 100 ; `SchemaDesFaits` 16 -> 17 (les faits portent `Scanned` : sans
+//	AVEC ELLE       cette montee la recuisson les rejouerait). Aucune revision de couche ne bouge.
+//
+//	LE PARC         un artefact 99 : verdict `redecoder` (faits refuses sur l en-tete), la recuisson relit le film.

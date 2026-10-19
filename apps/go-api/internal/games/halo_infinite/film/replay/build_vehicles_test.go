@@ -375,6 +375,20 @@ func TestVehiculeNonBalayeNePublieRien(t *testing.T) {
 	}
 }
 
+// TestVehiculeBandeVideBalayee : des images-cles lues sans slot `ti=40` (une arene) sont un zero
+// MESURE ; sans aucune image-cle, le film reste « pas lu ».
+func TestVehiculeBandeVideBalayee(t *testing.T) {
+	lues := scanBandeVide(grammar.WorldObjectKeyframes{TimesUS: []uint64{2_000_000, 22_000_000}})
+	got, cov, _ := buildVehicleTracks(context.Background(), lues, nil, IdentityRegistry{}, vehClock())
+	if !cov.Scanned || len(got) != 0 || cov.Lives != 0 {
+		t.Errorf("bande vide sur images-cles lues : scanned=%v vies=%d recensees=%d, attendu balaye sans vehicule",
+			cov.Scanned, len(got), cov.Lives)
+	}
+	if scanBandeVide(grammar.WorldObjectKeyframes{}).Scanned {
+		t.Error("aucune image-cle : le film n'a pas ete lu, Scanned doit rester faux")
+	}
+}
+
 // TestVehiculeVieSansPositionNiNaissance : une vie recensee dont rien ne donne la position n a
 // rien a dessiner. Elle est ECARTEE et COMPTEE — jamais inventee a l origine du repere.
 func TestVehiculeVieSansPositionNiNaissance(t *testing.T) {

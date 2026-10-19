@@ -1451,8 +1451,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   l index que les chunks lisent pour un joueur que la table du film assied ailleurs nomme les
 	//   corps qui le portent, et une chaine de contradictions se lit dans les chunks. Un v98 se lit
 	//   « a republier ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 99 {
-		t.Fatalf("SchemaVersion = %d, attendu 99 : incrémenter exige une raison écrite ci-dessus "+
+	// - 100 (2026-10-19, correctif des vehicules d arene) : aucun champ neuf ; le CONTENU change :
+	//   `coverage.vehicles.scanned` est vrai pour un film aux images-cles lues sans vehicule, et la
+	//   ressource vehicules de l Emprise y lit un zero mesure. `SchemaDesFaits` monte avec elle (16 -> 17) :
+	//   un v99 se lit « a redecoder ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 100 {
+		t.Fatalf("SchemaVersion = %d, attendu 100 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

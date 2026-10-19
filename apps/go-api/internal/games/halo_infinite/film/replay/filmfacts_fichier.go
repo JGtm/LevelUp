@@ -225,7 +225,12 @@ const VersionCodecFaits = 2
 // (`Spawned` : instant, archetype, position i0), et deux denominateurs s ajoutent (`SpawnedBirths`,
 // `SpawnedPositioned`). Un fichier cuit sur l une des deux branches porte d autres revisions de couche
 // (`grammar-2026-10-15.3`) et se refuse sur elles.
-const SchemaDesFaits = 16
+// SCHEMA 17 (2026-10-19, correctif des vehicules d arene) : la section 1 porte `VehicleScan.Scanned`, et
+// il change de SENS pour un film dont les images-cles sont lues sans slot `ti=40` (une arene) : vrai
+// (zero vehicule mesure) au lieu de faux (« pas lu »). Aucune revision de couche ne bouge (aucun bit n est
+// lu autrement) : c est ce numero qui refuse, SUR L EN-TETE, les faits d avant, sans quoi la recuisson les
+// rejouerait et le correctif n atteindrait aucun artefact (meme raisonnement qu au schema 6).
+const SchemaDesFaits = 17
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.
