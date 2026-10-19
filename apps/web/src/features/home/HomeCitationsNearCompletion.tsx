@@ -8,9 +8,8 @@
  * DEUX sources, comme `UnifiedCitationsPage` :
  *   - Infinite : moteur de citations dérivé (`/pages/citations`).
  *   - Halo 5   : commendations NATIVES, totaux à vie (`/commendations/totals`).
- * Le SEUL signal front pour distinguer h5 est le slug courant (aucune capability
- * coarse ne le fait ; `citations.engine`/`commendations.native` sont fines et non
- * exposées au front) — même règle que NavL1/NavL2. Chaque source appelle EXACTEMENT
+ * Signal de choix : la capability de titre `citations` (moteur de citations calculées
+ * servi ou non) — même règle que NavL1/NavL2. Chaque source appelle EXACTEMENT
  * un data-hook → règles des hooks respectées.
  *
  * Frontière front-only : aucune plomberie backend (les deux endpoints existaient
@@ -35,6 +34,7 @@ import {
 } from '@/lib/citations/nearCompletion'
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { intlLocale } from '@/lib/formatters'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
@@ -44,11 +44,11 @@ import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 const HOME_NEAR_COMPLETION_HASH = 'home-near-completion'
 
 export function HomeCitationsNearCompletion({ playerSlug }: { playerSlug: string }) {
-  const isHalo5 = useAppShellStore((s) => s.currentTitleSlug === 'halo_5')
-  return isHalo5 ? (
-    <NativeNearCompletion playerSlug={playerSlug} />
-  ) : (
+  const hasComputedCitations = useCapability('citations')
+  return hasComputedCitations ? (
     <InfiniteNearCompletion playerSlug={playerSlug} />
+  ) : (
+    <NativeNearCompletion playerSlug={playerSlug} />
   )
 }
 
