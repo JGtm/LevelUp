@@ -184,6 +184,19 @@ const (
 	// (match_skill_rank.expected_win_prob) pour analyse interne. Reprise : accorder
 	// la capability au titre concerné quand le modèle est recalibré.
 	CapExpectedWinProb Capability = "expected_win_prob"
+
+	// CapCitations — le titre sert les CITATIONS CALCULÉES par LevelUp (moteur dérivé :
+	// LoadMatchCitations, page Citations, tuiles de la home). Absente ⇒ le titre sert à la
+	// place des commendations NATIVES déclarées par le jeu (Halo 5) : la route
+	// POST /pages/citations rend 503 capability_unavailable, la page web
+	// career/citations est remplacée par FeatureUnavailable, et le front (onglets de la
+	// section Carrière, bloc « presque terminées » de la home) bascule sur Commendations.
+	//
+	// Pendant title-level de la capability data-level `citations.engine` (capabilities.toml) :
+	// celle-ci décrit ce que l'adapter produit, celle-là gouverne l'accès et l'affichage —
+	// même partage des rôles que `replay` / `film.replay_artifact`. Leur cohérence est
+	// verrouillée par TestCitationsCoarseFineMirror (internal/games).
+	CapCitations Capability = "citations"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -370,6 +383,9 @@ func NewRegistry() *Registry {
 			// Portée et dénivelé mesurés des engagements, par arme et des deux côtés —
 			// section « Portée par arme » de la Synthèse (PLAN_DUELS_PORTEE_2026-09-06).
 			CapWeaponRange,
+			// Citations calculées (moteur dérivé) : page Citations, route /pages/citations,
+			// tuiles de la home. Halo 5 ne la déclare pas : il sert des commendations natives.
+			CapCitations,
 			// Précision par arme (CapWeaponAccuracy) : REMISÉE le 2026-09-01 — NON déclarée
 			// par Infinite. Elle avait été ajoutée au Lot 3 pour allumer les charts a/c depuis
 			// un numérateur reconstruit du film, mais ce numérateur s'est révélé NON FIABLE au
