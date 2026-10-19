@@ -270,8 +270,10 @@ Commandes:
                   --carte ID[,ID...], --rps, --cache-dir, --title, serveur arrete)
   backfill-replay Construit les artefacts de rejeu 2D de tous les films en cache : décodage HORS LIGNE via la librairie replaybuild,
                   UN PROCESSUS PAR FILM (un film-bombe n'emporte plus la passe ni la machine ; gros films en dernier, reprenable par
-                  SchemaVersion, échecs ventilés : carte hors catalogue, mémoire, mort subite) (--dry-run, --limit, --force,
-                  --only-existing, --mem-limit-gib)
+                  SchemaVersion, échecs ventilés : carte hors catalogue, mémoire, mort subite). Sélection : --since AAAA-MM-JJ
+                  (matchs depuis ce jour UTC, date canonique ; sans date = écarté et compté), --demo (rejeux figés des manifestes
+                  config/demo du --title, s'ajoute à --since), --match id1,id2 (liste exacte, ID complets ou préfixes de 8+ ;
+                  s'emploie seul) (--dry-run, --limit, --force, --only-existing, --mem-limit-gib)
   backfill-usage-summary Résume les artefacts de rejeu déjà cuits en usages d'équipement et de socles (match_usage_players +
                   match_usage_films, append-only) : AUCUN décodage de film, un artefact lu à la fois, reprenable par (summary_rev,
                   artifact_schema) via la vue _latest. --dry-run imprime les compteurs par match (prises nommées/anonymes, bonus par

@@ -42,8 +42,11 @@ Each item cites its source so it can be re-verified against the code. Structure:
 
 ## Deploy
 
-- [ ] Merge on `main` with a **merge commit, no squash** (per-lot history = traceability):
-      `git checkout main && git pull && git merge refactor/audits-2026-07`, then `git push`.
+- [ ] Merge on `main` with a **squash merge** (the only merge method GitHub allows on this
+      repository; one branch = one commit on `main`, titled in Conventional Commits and
+      summarising the task; the branch is deleted afterwards — see `CLAUDE.md`, branch strategy).
+      Merge through the pull request, never with a local `git merge` into `main`. The squash
+      commit landing on `main` is what triggers the deploy.
 - [ ] **The deploy WAITS for the CI verdict** (D29, 2026-07-26 — `deploy.yml` job `attente-ci`).
       Before that date CI and Deploy ran in parallel: production received the code before any
       verdict, and a red CI had no consequence (40 % of `main` runs red over 14 days, no visible
@@ -102,6 +105,40 @@ Each item cites its source so it can be re-verified against the code. Structure:
       previous artifact (or is not served) — never a crash. A re-cook runs one film per child
       process under an explicit memory cap (`ops/seed_demo_replay_cook.go`,
       `demoReplaySoftLimit`), while prod and demo are stopped for the seed.
+- [ ] **Replay schema bump: cook the demo locally** (permanent step, every release that raises
+      `replay.SchemaVersion`). A schema bump makes every replay artifact outdated at once. The
+      demo seed would then re-cook each frozen demo replay on the VPS (`deploy-demo` job), one
+      child process per film under `demoReplaySoftLimit` (1 GiB, `ops/seed_demo_replay_cook.go`)
+      while prod and demo are stopped: slow, and a film above the cap is not re-cooked. Cook them
+      on the workstation instead and ship the artifacts **before the push on `main`**, so the
+      seed copies them (`ops/seed_demo_replays.go`: it copies an up-to-date artifact from
+      `<repo>/data/cache/replays/<title>/` before it ever considers cooking). This is a cooking
+      run: do it on the user's explicit go, like R7.
+
+      ```bash
+      # 1. Local, server stopped (the pass reads the shared registry; one film = one child process;
+      #    `levelup` = a built binary, or `go run ./apps/go-api/cmd/levelup`).
+      #    Dry-run first: it lists the demo films the pass would cook, and names any demo match
+      #    that has no film in the local cache ("demandes sans film cuisable").
+      levelup backfill-replay --demo --dry-run
+      levelup backfill-replay --demo
+      # (--title <slug> picks the title, default halo_infinite; one title at a time)
+
+      # 2. Ship the artifacts of the demo replays only (not the whole local cache).
+      title=halo_infinite
+      for id in $(jq -r '.corpus.replay_matches[].match_id' config/demo/*/"$title".json); do
+        echo "${id%%-*}.json"
+      done > /tmp/demo_replays.txt
+      rsync -a --files-from=/tmp/demo_replays.txt \
+        data/cache/replays/"$title"/ deploy@<vps>:/opt/levelup/data/cache/replays/"$title"/
+      ```
+
+      `--demo` reads the `replay_matches` of `config/demo/*/<title>.json`; no identifier is typed
+      by hand. Check: after the deploy, the `deploy-demo` log of `seed-demo` (section
+      `rejeux figés`) must list every demo replay as `copie` (or `conserve`) and **none** as
+      `perime` (stale: served at the previous schema) or `recuit` (cooked on the VPS, meaning the
+      shipped artifact was missing or outdated); `absent` (no artifact, replay not served) is a
+      failure too. A release that does not raise `replay.SchemaVersion` skips this step.
 
 ## Post-deploy
 
@@ -408,8 +445,9 @@ Sessions, one Halo 5 page) and `GET /health` on both containers.
 
 ## Rollback
 
-- [ ] **Rollback = `git revert -m 1 <merge-commit>` + push** (redeploys the previous
-      application state; deploy is auto). Source: merge plan step 7.
+- [ ] **Rollback = `git revert <squash-commit>` + push** (the squash commit is a plain,
+      single-parent commit, so no `-m` option; the revert redeploys the previous application
+      state; deploy is auto). Source: merge plan step 7.
 - [ ] **Before relying on revert, re-check the irreversible-migrations inventory** from
       pre-deploy. If a migration made the DB incompatible with the previous binary, the
       revert is NOT enough — you must ALSO restore the DBs from restic

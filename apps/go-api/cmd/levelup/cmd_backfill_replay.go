@@ -75,6 +75,10 @@ package main
 //	levelup backfill-replay --only-existing        # re-cuit UNIQUEMENT les artefacts deja la
 //	levelup backfill-replay --repair-impoverished  # re-cuit les artefacts appauvris reparables
 //	levelup backfill-replay --mem-limit-gib 6      # remonte le plafond memoire des enfants
+//	levelup backfill-replay --since 2025-09-01 --dry-run   # seulement les films des matchs depuis ce jour (UTC)
+//	levelup backfill-replay --match a1b2c3d4,<uuid>        # ces matchs (prefixes de 8+ caracteres univoques)
+//	levelup backfill-replay --demo --dry-run               # les rejeux figes de la demo (config/demo/*/*.json)
+//	levelup backfill-replay --since 2025-09-01 --demo      # l union des deux (D3 du plan v8.0.0)
 //	levelup backfill-replay --purge-non-geres --dry-run   # liste les artefacts Firefight a retirer
 //	levelup backfill-replay --purge-non-geres             # les retire (artefact, marque, raster)
 //
@@ -112,6 +116,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
@@ -157,11 +162,19 @@ type replayBackfillOptions struct {
 	mapNames listeDrapeau
 	// memLimitGiB : le plafond memoire de CHAQUE enfant (0 = desarme).
 	memLimitGiB int
+	// SELECTION DES FILMS (cmd_backfill_replay_selection.go) : depuis = `--since` (minuit UTC,
+	// zero = absent), match = `--match` (liste brute), demo = `--demo`.
+	depuis time.Time
+	match  string
+	demo   bool
 }
 
 func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 	o, err := parserOptionsReplay(args)
 	if err != nil {
+		return err
+	}
+	if err := validerSelectionReplay(o); err != nil {
 		return err
 	}
 	// `--repair-impoverished` EST une selection ciblee (les seuls appauvris-reparables) ; `--force`
@@ -204,6 +217,7 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 		fmt.Printf("films a construire : %d (cache %s, %d deja a jour, %d hors registre, %d mode non gere, %d sans artefact)\n",
 			len(aFaire), cacheRoot, report.dejaAJour, report.horsRegistre, report.nonGeres, report.sansArtefact)
 	}
+	afficherBilanSelectionReplay(o, report)
 	if o.dryRun {
 		afficherPlanReplay(aFaire)
 		return nil
@@ -231,11 +245,21 @@ func parserOptionsReplay(args []string) (replayBackfillOptions, error) {
 			"(remediation du cache appauvri — passe A LANCER AVANT activation ouvrier)")
 	fs.BoolVar(&o.purgeNonGeres, "purge-non-geres", false,
 		"retirer les artefacts deja cuits des matchs de mode non gere (Firefight) ; combine avec --dry-run : liste seulement")
+	depuis := fs.String("since", "", "ne garder que les films dont le match a commence a cette date UTC (AAAA-MM-JJ, minuit inclus) ou apres ; "+
+		"date canonique du registre, un match sans date est ecarte et compte ; s ajoute a --demo")
+	fs.StringVar(&o.match, "match", "", "ne cuire que ces matchs : liste separee par des virgules, identifiants complets ou prefixes "+
+		"univoques d au moins 8 caracteres, resolus contre le registre (refus sinon) ; s emploie seul, sans --since ni --demo")
+	fs.BoolVar(&o.demo, "demo", false, "ajouter les rejeux figes (replay_matches) des manifestes config/demo/*/*.json du --title courant, "+
+		"quelle que soit leur date ; s ajoute a --since")
 	fs.StringVar(&o.one, "one", "", "INTERNE : cuire CE seul match dans ce processus (forme appelee par le parent)")
 	fs.Var(&o.mapNames, "map-name", "INTERNE : identite de carte candidate (repetable, du plus fiable au moins fiable)")
 	fs.IntVar(&o.memLimitGiB, "mem-limit-gib", filmproc.DefaultLimitGiB,
 		"plafond memoire de chaque enfant, en GiB (0 = desarme)")
 	if err := fs.Parse(args); err != nil {
+		return o, err
+	}
+	var err error
+	if o.depuis, err = parserDepuisReplay(*depuis); err != nil {
 		return o, err
 	}
 	return o, nil
@@ -298,6 +322,10 @@ func replaysACuire(
 	if err != nil {
 		return nil, err
 	}
+	sel, err := preparerSelectionReplay(ctx, pr, o, registre)
+	if err != nil {
+		return nil, err
+	}
 
 	out := make([]replayCandidat, 0, len(shorts))
 	for _, short := range shorts {
@@ -310,12 +338,16 @@ func replaysACuire(
 			report.nonGeres++
 			continue
 		}
+		if o.selectionActive() && !appliquerSelectionReplay(ctx, sel, entry.matchID, report) {
+			continue
+		}
 		n, ok := compterChunks(cacheRoot, short)
 		if !ok {
 			continue // manifeste illisible/vide : rien a decoder
 		}
 		out = append(out, replayCandidat{matchID: entry.matchID, mapNames: entry.mapNames, chunks: n})
 	}
+	noterDemandesSansFilm(sel, out, report)
 	return out, nil
 }
 
