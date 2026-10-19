@@ -47,13 +47,14 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 	if err := p.waitForDrain(ctx); err != nil {
 		// Drain expiré : rollback vers RO. Les readers en vol terminent OK
 		// (handle pas fermé), les nouveaux Get reprennent. Le sync engine
-		// retentera au prochain cycle.
+		// retentera au prochain cycle. Les lecteurs qui ont tenu le drain sont nommés.
+		enVol := p.decrireLecteursEnVol()
 		p.rollbackFromDraining()
 		lease.Release()
 		swapFailuresTotal.Add(failReasonDrainTimeout, 1)
 		slog.WarnContext(ctx, "provider: drain timeout, rollback vers RO",
 			"path", p.path, "label", label,
-			"drain_ms", time.Since(drainStart).Milliseconds(), "err", err)
+			"drain_ms", time.Since(drainStart).Milliseconds(), "lecteurs_en_vol", enVol, "err", err)
 		if ctx.Err() == nil {
 			// La borne PROPRE au drain a expiré, pas le contexte de l'appelant :
 			// erreur transitoire typée (sentinelle + cause), retentable par errors.Is.

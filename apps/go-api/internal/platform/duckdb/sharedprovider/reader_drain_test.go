@@ -18,9 +18,9 @@ import (
 // p.mu puis release à usage unique.
 func acquireReaderForTest(p *providerImpl) func() {
 	p.mu.Lock()
-	p.trackReaderLocked()
+	id := p.trackReaderLocked(lecteurEnVol{})
 	p.mu.Unlock()
-	return sync.OnceFunc(p.releaseReader)
+	return sync.OnceFunc(func() { p.releaseReader(id) })
 }
 
 // drainExpired attend le canal de drain au plus d, et rend false s'il n'a pas

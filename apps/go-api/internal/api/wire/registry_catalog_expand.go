@@ -27,43 +27,27 @@ const playlistExpandRPS = 3
 // playlist : un fetch raté est loggé et n'interrompt pas les autres. Retourne le nombre
 // de couples enfants enfilés. In-process (handles DB du serveur) → pas de lock.
 func (r *ServiceRegistry) ExpandPlaylistChildren(ctx context.Context, titleSlug string) (int, error) {
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
+	// La base partagée n'est lue que le temps de lister les playlists, puis rendue : la boucle
+	// réseau qui suit dure plusieurs minutes (320 playlists à 3 req/s) et un lecteur en vol fait
+	// échouer toute prise d'écriture de la base (ADR 0016).
+	playlists, err := r.playlistsVuesEnMatch(ctx, titleSlug)
 	if err != nil {
 		return 0, err
 	}
-	defer closeAll()
-	if metaSQL == nil || sharedSQL == nil {
+	metaSQL, closeMeta := r.metadataDuTitre(ctx, titleSlug)
+	defer closeMeta()
+	if metaSQL == nil {
 		return 0, fmt.Errorf("DBs indisponibles pour %s", titleSlug)
 	}
 	if err := ensurePlaylistWeightsTable(ctx, metaSQL); err != nil {
 		return 0, err
 	}
 
-	tokens, err := r.haloTokensForDrain(ctx, titleSlug)
+	tokens, err := jetonsCatalogue(r, ctx, titleSlug)
 	if err != nil {
 		return 0, err
 	}
 	client := syncpkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, playlistExpandRPS)
-
-	// Playlists distinctes vues en match, avec leur version (l'API la requiert :
-	// 404 sans version, 400 sur "latest"). 216 lignes non vides observées 2026-06-12.
-	rows, err := sharedSQL.QueryContext(ctx, `
-		SELECT DISTINCT playlist_id, playlist_version_id
-		FROM match_registry
-		WHERE playlist_id IS NOT NULL AND playlist_id != ''
-		  AND playlist_version_id IS NOT NULL AND playlist_version_id != ''`)
-	if err != nil {
-		return 0, fmt.Errorf("query playlists: %w", err)
-	}
-	type pl struct{ id, ver string }
-	var playlists []pl
-	for rows.Next() {
-		var p pl
-		if err := rows.Scan(&p.id, &p.ver); err == nil {
-			playlists = append(playlists, p)
-		}
-	}
-	_ = rows.Close()
 
 	slog.InfoContext(ctx, "catalog_expand: démarré", "module", logging.ModuleCatalog,
 		"title", titleSlug, "playlists", len(playlists))
@@ -154,4 +138,35 @@ func upsertPlaylistWeight(ctx context.Context, db *sql.DB, titleSlug, playlistID
 		`INSERT INTO playlist_map_mode_weights (title_slug, playlist_asset_id, pair_asset_id, weight, updated_at) VALUES (?,?,?,?,?)`,
 		[]any{titleSlug, playlistID, pairID, weight, now},
 	)
+}
+
+// playlistVersionnee : une playlist vue en match, avec sa version (l'API la requiert : 404 sans
+// version, 400 sur "latest").
+type playlistVersionnee struct{ id, ver string }
+
+// playlistsVuesEnMatch lit les playlists distinctes de match_registry, dans une lecture de la base
+// partagée rendue en sortant.
+func (r *ServiceRegistry) playlistsVuesEnMatch(ctx context.Context, titleSlug string) ([]playlistVersionnee, error) {
+	sharedSQL, release, err := r.lectureSharedDuTitre(ctx, titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	rows, err := sharedSQL.QueryContext(ctx, `
+		SELECT DISTINCT playlist_id, playlist_version_id
+		FROM match_registry
+		WHERE playlist_id IS NOT NULL AND playlist_id != ''
+		  AND playlist_version_id IS NOT NULL AND playlist_version_id != ''`)
+	if err != nil {
+		return nil, fmt.Errorf("query playlists: %w", err)
+	}
+	defer rows.Close()
+	var playlists []playlistVersionnee
+	for rows.Next() {
+		var p playlistVersionnee
+		if err := rows.Scan(&p.id, &p.ver); err == nil {
+			playlists = append(playlists, p)
+		}
+	}
+	return playlists, rows.Err()
 }

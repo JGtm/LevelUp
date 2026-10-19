@@ -12,6 +12,7 @@ package wire
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	gosync "sync"
 
@@ -50,24 +51,22 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 	// avant ce defer). err = erreur finale nommée.
 	defer func() { r.journalAction(ctx, adminstate.ActionCatalogUGCDrain, err) }()
 
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
-	if err != nil {
-		return res, err
-	}
-	defer closeAll()
+	metaSQL, closeMeta := r.metadataDuTitre(ctx, titleSlug)
+	defer closeMeta()
 	if metaSQL == nil {
 		return res, fmt.Errorf("metadata indisponible pour %s", titleSlug)
 	}
 
-	// 1. Recensement (zéro réseau).
-	seeded, err := ops.SeedCatalogQueueFromRegistry(ctx, metaSQL, sharedSQL, titleSlug)
+	// 1. Recensement (zéro réseau) : seule étape qui lit la base partagée, rendue avant le
+	// réseau (un lecteur en vol fait échouer toute prise d'écriture de la base, ADR 0016).
+	seeded, err := r.recenserCatalogue(ctx, metaSQL, titleSlug)
 	if err != nil {
-		return res, fmt.Errorf("seed queue: %w", err)
+		return res, err
 	}
 	res.Seeded = seeded.Total()
 
 	// 2. Tokens Halo (DiscoveryUGC nécessite un Spartan token valide).
-	tokens, err := r.haloTokensForDrain(ctx, titleSlug)
+	tokens, err := jetonsCatalogue(r, ctx, titleSlug)
 	if err != nil {
 		return res, err
 	}
@@ -170,4 +169,24 @@ func (r *ServiceRegistry) haloTokensForDrain(ctx context.Context, titleSlug stri
 		}
 	}
 	return nil, fmt.Errorf("aucun token Halo valide (le drain UGC nécessite un joueur authentifié — re-capturer un token)")
+}
+
+// jetonsCatalogue : prise des jetons Halo du catalogue (expansion des playlists, drain UGC), le
+// premier accès réseau de ces deux tâches. Variable de paquet : les tests y substituent une prise
+// factice, sans réseau ni magasin de jetons.
+var jetonsCatalogue = (*ServiceRegistry).haloTokensForDrain
+
+// recenserCatalogue enfile dans catalog_fetch_queue les assets vus en match, dans une lecture de
+// la base partagée rendue en sortant.
+func (r *ServiceRegistry) recenserCatalogue(ctx context.Context, metaSQL *sql.DB, titleSlug string) (ops.CatalogQueueSeedResult, error) {
+	sharedSQL, release, err := r.lectureSharedDuTitre(ctx, titleSlug)
+	if err != nil {
+		return ops.CatalogQueueSeedResult{}, err
+	}
+	defer release()
+	seeded, err := ops.SeedCatalogQueueFromRegistry(ctx, metaSQL, sharedSQL, titleSlug)
+	if err != nil {
+		return seeded, fmt.Errorf("seed queue: %w", err)
+	}
+	return seeded, nil
 }

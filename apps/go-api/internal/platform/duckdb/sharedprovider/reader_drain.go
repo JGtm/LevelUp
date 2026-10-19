@@ -36,27 +36,6 @@ package sharedprovider
 // consommateur relâche le handle entre deux unités de travail (un match, une
 // requête) et jamais pendant une attente réseau.
 
-// trackReaderLocked comptabilise un lecteur qui vient d'obtenir le handle.
-// Doit être appelé avec p.mu tenu, AVANT de le relâcher — sinon un swap
-// concurrent drainerait sans nous attendre.
-func (p *providerImpl) trackReaderLocked() {
-	p.readers++
-	readersInUse.Add(1)
-}
-
-// releaseReader comptabilise la fin d'un lecteur et réveille le drain en attente
-// si c'était le dernier. Appelé une seule fois par lecteur (sync.OnceFunc).
-func (p *providerImpl) releaseReader() {
-	p.mu.Lock()
-	p.readers--
-	if p.readers <= 0 && p.drainCh != nil {
-		close(p.drainCh)
-		p.drainCh = nil
-	}
-	p.mu.Unlock()
-	readersInUse.Add(-1)
-}
-
 // beginDrain déclare l'attente du drain des lecteurs en vol et rend le canal
 // fermé quand il n'en reste plus. Sans lecteur en vol, le canal rendu est DÉJÀ
 // fermé (drain immédiat). Deux demandes concurrentes (AcquireWriter + Close)

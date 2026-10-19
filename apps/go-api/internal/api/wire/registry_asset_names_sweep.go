@@ -60,16 +60,12 @@ func (r *ServiceRegistry) sweepAssetNames(ctx context.Context, titleSlug string,
 	if err != nil {
 		return assetnames.Result{}, err
 	}
-	meta, err := duckdb.OpenReadWriteShared(titlePkg.NewPathResolver(r.cfg.RepoRoot).MetadataDBPath(titleSlug))
-	if err != nil {
-		return assetnames.Result{}, fmt.Errorf("metadata indisponible pour %s: %w", titleSlug, err)
+	metaSQL, closeMeta := r.metadataDuTitre(ctx, titleSlug)
+	defer closeMeta()
+	if metaSQL == nil {
+		return assetnames.Result{}, fmt.Errorf("metadata indisponible pour %s", titleSlug)
 	}
-	defer func() {
-		if cerr := meta.Close(); cerr != nil {
-			monitoringLog.WarnContext(ctx, "asset_name_sweep: fermeture metadata échouée", "title", titleSlug, "err", cerr)
-		}
-	}()
-	return syncpkg.ResolveUnresolvedAssetNames(ctx, p, meta.SQLDb(), titleSlug, refs), nil
+	return syncpkg.ResolveUnresolvedAssetNames(ctx, p, metaSQL, titleSlug, refs), nil
 }
 
 // collecterAssetsNonResolus lit les références d'assets restées en UUID dans la base partagée du
