@@ -20,6 +20,7 @@ import (
 //   - shared_provider_readers_in_use                     : gauge readers en vol
 //   - shared_provider_reader_stall_ns_total              : somme NS d'attente RÉELLE des Get retardés (Phase 0)
 //   - shared_provider_reader_delayed_total               : nb de Get retardés par une fenêtre RW (Phase 0)
+//   - shared_provider_reader_slow_total                  : nb de lectures tenues au-delà du seuil (reader_inflight.go)
 //   - shared_provider_rw_window_ms (observability)       : durée fenêtre RW stricte, avg/max (Phase 0)
 //
 // Pour la durée moyenne d'un swap : swap_duration_ms_total / swap_total.
@@ -42,6 +43,7 @@ var (
 	// Phase 0 — STALL LECTEUR réel (côté Get), distinct du drain moteur ci-dessus.
 	readerStallNsTotal *expvar.Int // somme NS du temps d'attente réel des Get retardés
 	readerDelayedTotal *expvar.Int // nb de Get ayant dû attendre ≥1 fenêtre RW
+	readerSlowTotal    *expvar.Int // nb de lectures tenues au-delà de slowReaderThreshold
 )
 
 const (
@@ -75,6 +77,7 @@ func initMetrics() {
 		readersInUse = expvar.NewInt("shared_provider_readers_in_use")
 		readerStallNsTotal = expvar.NewInt("shared_provider_reader_stall_ns_total")
 		readerDelayedTotal = expvar.NewInt("shared_provider_reader_delayed_total")
+		readerSlowTotal = expvar.NewInt("shared_provider_reader_slow_total")
 
 		for _, s := range allStates {
 			stateGauge.Add(s.String(), 0)

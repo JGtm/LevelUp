@@ -175,3 +175,21 @@ outside `p.mu`, so a restore could land between the next swap's `PreSwapToRW` an
 - `internal/platform/duckdb/pool_swap_multititre_integration_test.go`: two titles, one provider
   each, a PlayerDB of the second title in the pool; a write on the first title's file leaves the
   second one writable twice in a row and held once (by its provider).
+
+## Amendment 2026-10-19 — the provider names its readers (release v8, D-17)
+
+A reader obtained by `Get` blocks every writer while it is held, and the reader count alone does
+not say who holds it. The provider now records, for each in-flight reader, the time of its `Get`
+and a bounded call stack (`reader_inflight.go`, ~180 ns per `Get`):
+
+- a reader released after more than `defaultSlowReaderThreshold` (2 s, same boundary as the writer
+  watchdog) is logged at WARN with its caller chain and duration, and counted in
+  `shared_provider_reader_slow_total`;
+- the `drain timeout` WARN lists the readers still in flight (`lecteurs_en_vol`, caller and age).
+
+Found with it on the local server (2026-10-19, boot): the weekly catalog cron, which runs at boot,
+held the default title's shared file for 2 min 42 s — `ExpandPlaylistChildren` kept the read handle
+across 320 playlist config fetches, then `RunCatalogUGCDrain` across its DiscoveryUGC passes. Both
+now read the shared file in a short segment (`playlistsVuesEnMatch`, `recenserCatalogue`) and
+release it before any network call; `dataQualityHandles` is split into `lectureSharedDuTitre` and
+`metadataDuTitre` for that purpose.
