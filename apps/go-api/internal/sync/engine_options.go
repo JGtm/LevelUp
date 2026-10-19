@@ -101,8 +101,8 @@ func (e *SyncEngine) WithResolver(r assets.Resolver) *SyncEngine {
 
 // WithSharedProvider (commit 8i) attache un sharedprovider.Provider que le
 // sync engine utilise pour ses ouvertures RW de shared (via AcquireWriter).
-// En mode B-swap, c'est le chemin qui coordonne avec le pool joueur via
-// les notifs Subscribe (PreSwapToRW / RWToRO).
+// En mode B-swap, AcquireWriter vide les lecteurs en vol puis bascule le
+// handle unique du provider en RW (ADR 0016).
 //
 // Si nil (mode legacy), le sync engine fait directement OpenSharedDB —
 // comportement pre-sprint, avec risque de conflit "different configuration".

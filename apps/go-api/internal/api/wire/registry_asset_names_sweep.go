@@ -51,18 +51,39 @@ func (r *ServiceRegistry) ResolveUnresolvedAssetNames(ctx context.Context, title
 	return res, nil
 }
 
-// sweepAssetNames : la passe de résolution des traductions. Handles : shared RO + metadata RW
-// partagé (dataQualityHandles), RELÂCHÉS avant la convergence qui prend le writer shared.
+// sweepAssetNames : la passe de résolution des traductions. La base partagée n'est lue que le
+// temps de collecter les références non résolues (collecterAssetsNonResolus), puis RENDUE avant le
+// réseau (jeton du pool, API d'assets) : un lecteur en vol fait échouer toute prise d'écriture de
+// la base (ADR 0016). La résolution n'écrit que dans metadata (RW partagé, ref-compté).
 func (r *ServiceRegistry) sweepAssetNames(ctx context.Context, titleSlug string, p pool.Pool) (assetnames.Result, error) {
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
+	refs, err := r.collecterAssetsNonResolus(ctx, titleSlug)
 	if err != nil {
 		return assetnames.Result{}, err
 	}
+	meta, err := duckdb.OpenReadWriteShared(titlePkg.NewPathResolver(r.cfg.RepoRoot).MetadataDBPath(titleSlug))
+	if err != nil {
+		return assetnames.Result{}, fmt.Errorf("metadata indisponible pour %s: %w", titleSlug, err)
+	}
+	defer func() {
+		if cerr := meta.Close(); cerr != nil {
+			monitoringLog.WarnContext(ctx, "asset_name_sweep: fermeture metadata échouée", "title", titleSlug, "err", cerr)
+		}
+	}()
+	return syncpkg.ResolveUnresolvedAssetNames(ctx, p, meta.SQLDb(), titleSlug, refs), nil
+}
+
+// collecterAssetsNonResolus lit les références d'assets restées en UUID dans la base partagée du
+// titre, et rend ses handles (shared + metadata, dataQualityHandles) en sortant.
+func (r *ServiceRegistry) collecterAssetsNonResolus(ctx context.Context, titleSlug string) ([]assetnames.AssetRef, error) {
+	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
+	if err != nil {
+		return nil, err
+	}
 	defer closeAll()
 	if metaSQL == nil {
-		return assetnames.Result{}, fmt.Errorf("metadata indisponible pour %s", titleSlug)
+		return nil, fmt.Errorf("metadata indisponible pour %s", titleSlug)
 	}
-	return syncpkg.ResolveUnresolvedAssetNames(ctx, p, metaSQL, sharedSQL, titleSlug), nil
+	return syncpkg.CollectUnresolvedAssetRefs(ctx, sharedSQL), nil
 }
 
 // convergeRegistryNames exécute sync.BackfillRegistryNames sous le writer shared du titre

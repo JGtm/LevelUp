@@ -153,3 +153,24 @@ func (a *SharedAccess) Write(ctx context.Context, step string) (*sql.DB, func(),
 	}
 	return db, release, nil
 }
+
+// lireShared ouvre un segment de lecture de la base partagée le temps de fn et le rend ensuite.
+// Une erreur d'ouverture du segment est rendue telle quelle, fn n'est alors pas appelée.
+type lireShared func(fn func(sharedDB *sql.DB) error) error
+
+// lireSharedTenu : segments sur un handle déjà tenu par l'appelant (writer, lecture fixe).
+func lireSharedTenu(db *sql.DB) lireShared {
+	return func(fn func(*sql.DB) error) error { return fn(db) }
+}
+
+// lireSharedParAcces : un segment = une lecture de SharedAccess, rendue à la fin de fn.
+func lireSharedParAcces(ctx context.Context, shared *SharedAccess) lireShared {
+	return func(fn func(*sql.DB) error) error {
+		db, release, err := shared.Read(ctx)
+		if err != nil {
+			return err
+		}
+		defer release()
+		return fn(db)
+	}
+}

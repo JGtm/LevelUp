@@ -411,8 +411,8 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	defer playerHandle.Close()
 	playerDB := playerHandle.SQLDb()
 
-	// Commit 8i : route via Provider en mode B-swap (coordonne avec le pool
-	// joueur via Subscribe). Fallback OpenSharedDB direct si Provider nil.
+	// Route via Provider en mode B-swap (le provider arbitre lectures et
+	// écriture). Fallback OpenSharedDB direct si Provider nil.
 	// Étape 0 attribution : label du détenteur pour la ventilation rw_window.
 	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "sync_v1_run"))
 	if err != nil {

@@ -317,17 +317,17 @@ func (e *SyncEngine) runDominanceFlags(ctx context.Context, playerDB *sql.DB, sh
 // runCitations — étape 1.6 : pipeline primaire, pas un heal. Traite tous les matchs absents
 // de match_citations (LEFT JOIN IS NULL). Le sentinel "_processed" empêche les matchs à
 // 0 delta d'être re-traités. APRÈS la source du kill (1.57) : les citations par arme lisent
-// ses lignes et leur calcul est unique.
+// ses lignes et leur calcul est unique. La base partagée est lue par segments courts (un par
+// match) et non sous un seul segment : un lot se compte en centaines de matchs après une
+// recuisson, et un lecteur en vol bloque toute prise d'écriture de la base (ADR 0016).
 func (e *SyncEngine) runCitations(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
-	e.withSharedRead(ctx, shared, r, "citations", func(sharedDB *sql.DB) {
-		if n, err := e.runPostSyncCitations(ctx, playerDB, sharedDB); err != nil {
-			slog.WarnContext(ctx, "post-sync: citations échoué", "gamertag", e.gamertag, "err", err)
-			trackFatalErr(r, "citations", err)
-		} else if n > 0 {
-			r.CitationsComputed = n
-			slog.InfoContext(ctx, "post-sync: citations calculées", "gamertag", e.gamertag, "count", n)
-		}
-	})
+	if n, err := e.runPostSyncCitations(ctx, playerDB, lireSharedParAcces(ctx, shared)); err != nil {
+		slog.WarnContext(ctx, "post-sync: citations échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(r, "citations", err)
+	} else if n > 0 {
+		r.CitationsComputed = n
+		slog.InfoContext(ctx, "post-sync: citations calculées", "gamertag", e.gamertag, "count", n)
+	}
 }
 
 // flushReadCaches vide les caches de lecture du joueur (lignes de filtres et historique

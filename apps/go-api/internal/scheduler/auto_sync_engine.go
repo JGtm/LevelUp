@@ -50,7 +50,7 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	engine := sync.NewSyncEngineForTitle(s.cfg.RepoRoot, titleSlug, gamertag, xuid, &domain.HaloTokens{}, s.provider)
 	// Commit 8i : en mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1), router les
 	// ouvertures RW de shared via Provider.AcquireWriter au lieu d'OpenSharedDB
-	// direct. Coordonne avec le pool joueur via Subscribe (DETACH/REATTACH).
+	// direct (le provider arbitre seul lectures et écriture, ADR 0016).
 	if s.cfg.SharedProvider != nil {
 		engine.WithSharedProvider(s.cfg.SharedProvider)
 	}

@@ -97,93 +97,63 @@ func TestPool_AttachSharedConflictsWithSwap_integration(t *testing.T) {
 	}
 }
 
-// TestPool_AttachShared_SurvivesSwapCycle_integration (T9 cible, activé
-// commit 8h) — l'objectif initial du plan : la conn player avec ATTACH RO
-// shared doit pouvoir faire SELECT shared.* après un cycle complet de
-// swap RW du Provider.
-//
-// Implémentation : utilise OnSharedSwap (le helper de prod câblé dans
-// main.go) pour exercer le chemin complet Subscribe → DETACH/Close →
-// OpenReadWrite → re-ATTACH/Open. La preuve que main.go en mode flag-on
-// résout le bug "different configuration" / "Unique file handle conflict"
-// observé sur auto_sync RunDelta.
-//
-// Variante de TestPool_PrepareAndRestoreSharedSwap : ce test passe par
-// OnSharedSwap (qui itère le globalPool) au lieu d'appeler Prepare/Restore
-// directement. Couverture supplémentaire du code de prod.
+// TestPool_AttachShared_SurvivesSwapCycle_integration (T9 cible) : un PlayerDB en mode B-swap
+// lit la base partagée par son provider après un cycle complet d'écriture, sans aucun abonnement
+// aux bascules — il ne tient aucun handle sur le fichier (pdb.Shared nil), le provider en est
+// l'unique détenteur.
 func TestPool_AttachShared_SurvivesSwapCycle_integration(t *testing.T) {
-	// isole le globalPool des autres tests.
 	duckdb.CloseAll()
 	t.Cleanup(duckdb.CloseAll)
-
-	sharedPath, provider, pdb := setupPoolFixturesForSwap(t)
-	defer func() { _ = provider.Close() }()
-
 	ctx := context.Background()
 
-	// Subscribe : utiliser le helper de prod OnSharedSwap (équivalent au
-	// câblage main.go commit 8g).
-	unsubscribe := provider.Subscribe(func(_ context.Context, evt sharedprovider.SwapEvent) {
-		switch evt.Direction {
-		case sharedprovider.DirectionPreSwapToRW:
-			duckdb.OnSharedSwap(ctx, duckdb.SwapDirPreSwapToRW)
-		case sharedprovider.DirectionRWToRO:
-			duckdb.OnSharedSwap(ctx, duckdb.SwapDirRWToRO)
-		case sharedprovider.DirectionErrorToRO:
-			duckdb.OnSharedSwap(ctx, duckdb.SwapDirErrorToRO)
-		}
+	dir := t.TempDir()
+	sharedPath, metaPath := baseTitre(t, dir)
+	provider, err := sharedprovider.New(sharedPath)
+	if err != nil {
+		t.Fatalf("sharedprovider.New: %v", err)
+	}
+	t.Cleanup(func() { _ = provider.Close() })
+	pdb, err := duckdb.GetOrOpen(ctx, duckdb.PlayerPoolConfig{
+		Gamertag: "swap-test", XUID: "999", TitleSlug: "halo_infinite",
+		PlayerDBPath: filepath.Join(dir, "player.duckdb"),
+		SharedDBPath: sharedPath, MetaDBPath: metaPath, SharedReader: provider,
 	})
-	defer unsubscribe()
-
-	// attachShared retiré de pdb.Player. Le test
-	// utilise désormais SharedReader.Get (path Provider) à la place de
-	// pdb.Player.QueryRow("shared.X"). Le cycle DETACH/REATTACH testé reste
-	// pertinent pour pdb.SharedSocial (media_repo) et pour valider qu'aucune
-	// régression ne se glisse côté Provider.
-
-	// Sanity : query initiale via Provider — count initial 0.
-	rdb, release, err := pdb.SharedReadDB().Get(ctx)
 	if err != nil {
-		t.Fatalf("SharedReadDB().Get initial: %v", err)
+		t.Fatalf("GetOrOpen: %v", err)
 	}
-	var count int
-	if err := rdb.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM match_registry").Scan(&count); err != nil {
-		release()
-		t.Fatalf("query initial via SharedReader: %v", err)
-	}
-	release()
-	if count != 0 {
-		t.Errorf("count initial = %d, attendu 0", count)
+	if pdb.Shared != nil {
+		t.Fatal("pdb.Shared ouvert en mode B-swap : le PlayerDB tient un handle sur la base partagée")
 	}
 
-	// Cycle complet : Provider.AcquireWriter → INSERT → Release.
-	// OnSharedSwap est invoqué via Subscribe sur PreSwap puis RWToRO.
-	w, err := provider.AcquireWriter(ctx)
-	if err != nil {
-		t.Fatalf("AcquireWriter (chaîne complète) : %v", err)
-	}
-	if _, err := w.DB().ExecContext(ctx,
-		"INSERT INTO match_registry (match_id, start_time) VALUES ('t9-cible-1', NOW())"); err != nil {
-		w.Release()
-		t.Fatalf("INSERT via writer: %v", err)
-	}
-	w.Release()
-
-	// ASSERTION CRITIQUE : la conn Provider doit voir l'INSERT après le cycle.
-	rdb, release, err = pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		t.Fatalf("SharedReadDB().Get post-cycle: %v", err)
-	}
-	if err := rdb.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM match_registry").Scan(&count); err != nil {
-		release()
-		t.Fatalf("query post-cycle via SharedReader: %v (chaîne B-swap cassée?)", err)
-	}
-	release()
-	if count != 1 {
-		t.Errorf("count post-cycle = %d, attendu 1 (INSERT pas visible — swap stale?)", count)
+	compter := func(etape string) int {
+		t.Helper()
+		rdb, release, err := pdb.SharedReadDB().Get(ctx)
+		if err != nil {
+			t.Fatalf("SharedReadDB().Get %s: %v", etape, err)
+		}
+		defer release()
+		var n int
+		if err := rdb.QueryRowContext(ctx, "SELECT COUNT(*) FROM match_registry").Scan(&n); err != nil {
+			t.Fatalf("lecture %s via SharedReader: %v", etape, err)
+		}
+		return n
 	}
 
-	t.Logf("T9 cible OK : cycle B-swap complet sur shared = %s", sharedPath)
+	if n := compter("initiale"); n != 0 {
+		t.Errorf("count initial = %d, attendu 0", n)
+	}
+	for i, id := range []string{"t9-cible-1", "t9-cible-2"} {
+		if err := cycleEcriture(ctx, provider, id); err != nil {
+			t.Fatalf("cycle d'écriture n°%d : %v", i+1, err)
+		}
+		if n := compter("après le cycle"); n != i+1 {
+			t.Errorf("count après le cycle n°%d = %d, attendu %d", i+1, n, i+1)
+		}
+	}
+	if pdb.Shared != nil {
+		t.Error("pdb.Shared rouvert par un cycle d'écriture")
+	}
+	if n := duckdb.CachedReadOnlyRefs(sharedPath); n != 1 {
+		t.Errorf("base partagée tenue %d fois en lecture dans le processus, attendu 1 (le provider)", n)
+	}
 }
