@@ -74,6 +74,9 @@ func seedDemoReplays(ctx context.Context, opts SeedDemoOptions, layout titlePkg.
 	films := titlePkg.NewPathResolver(opts.RepoRoot).DemoFilmsCacheRoot(slug)
 	for _, p := range picks {
 		short := titlePkg.FilmShortMatchID(p.MatchID)
+		if keep[short] {
+			continue // un match qui représente deux familles (ex. « véhicules » et son mode) : rangé et indexé une fois
+		}
 		keep[short] = true
 		filmOK := embedDemoFilm(ctx, titlePkg.NewPathResolver(opts.cacheRepoRoot()).CacheRootDir(), films, short)
 		if filmOK {

@@ -176,7 +176,7 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 	"internal/ops/seed_demo_prestige.go:loadDemoCorpusStats": {dispenseEnsembleFourni, "2026-10-15",
 		"agrège le corpus démo déjà extrait (matchIDs fournis, seed_demo_prestige.go:147-160) ; le corpus est celui de resolveDemoCorpus (seed_demo.go:421), Campagne exclue de l'ensemble final, manifeste figé compris, par dc.excludeCampaign (seed_demo_corpus.go:432, E6.2b-C2)."},
 	"internal/ops/seed_demo_replay_picks.go:loadDemoReplayCandidates": {dispenseSemantique, "2026-10-15",
-		"candidats au rejeu démo : seuls les matchs dont le cache porte un film (seed_demo_replay_picks.go:166) ; Halo 5 n'a aucun décodeur de film (config/titles/halo_5/mappings/capabilities.toml:65), donc aucune ligne de Campagne."},
+		"candidats au rejeu démo : seuls les matchs dont le cache porte un film (seed_demo_replay_picks.go:248) ; Halo 5 n'a aucun décodeur de film (config/titles/halo_5/mappings/capabilities.toml:65), donc aucune ligne de Campagne."},
 
 	// cmd : outils opérateur (D-2) — diag_*, audit_*, backfills et reconstruction de la ligne lue
 	"cmd/audit_coverage/main.go:auditPlayer": {dispenseOperateur, "2026-10-15",

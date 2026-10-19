@@ -24,11 +24,12 @@ func TestLoadDemoReplayCandidates_ExclutLeModeNonGere(t *testing.T) {
 	for _, q := range []string{
 		`CREATE TABLE match_registry (match_id VARCHAR, game_variant_name VARCHAR, map_name VARCHAR,
 			start_time TIMESTAMP, start_time_utc TIMESTAMPTZ, is_firefight BOOLEAN)`,
-		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)`,
+		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, team_id INTEGER, present_at_beginning BOOLEAN)`,
+		`CREATE TABLE match_vehicle_takes_latest (match_id VARCHAR, row_kind VARCHAR, family VARCHAR, takes INTEGER, measured BOOLEAN)`,
 		`INSERT INTO match_registry VALUES
 			('39910eb1-8c01-4e26-bc60-965cb2dcc789', 'CTF:Arena', 'Recharge', TIMESTAMP '2026-10-01 10:00:00', TIMESTAMP '2026-10-01 10:00:00', FALSE),
 			('edc5daf6-0df8-4eb0-b578-b8eb892ce184', 'Battle of the Academy', 'Cole Protocol', TIMESTAMP '2026-10-02 10:00:00', TIMESTAMP '2026-10-02 10:00:00', TRUE)`,
-		`INSERT INTO match_participants VALUES
+		`INSERT INTO match_participants (match_id, xuid) VALUES
 			('39910eb1-8c01-4e26-bc60-965cb2dcc789', '` + xuid + `'), ('edc5daf6-0df8-4eb0-b578-b8eb892ce184', '` + xuid + `')`,
 		`CHECKPOINT`,
 	} {

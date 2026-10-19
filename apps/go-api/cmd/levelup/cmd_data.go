@@ -212,8 +212,8 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 	emitManifest := fs.Bool("emit-manifest", false, "Émettre les manifestes figés (config/demo/<gamertag>/<slug>.json) depuis la sélection dynamique, sans seeder — à curer puis committer")
 	ignoreManifest := fs.Bool("ignore-manifest", false, "Forcer la sélection dynamique même si un manifeste figé existe")
 	emitReplayPicks := fs.Bool("emit-replay-picks", false,
-		"Choisir les rejeux figés de la démo (un par famille de mode, parmi les films du cache) "+
-			"et les écrire dans les manifestes existants, sans seeder — à relire puis committer")
+		"Choisir les rejeux figés de la démo (un par famille de mode, plus un 4v4 à plusieurs véhicules, parmi les films du cache) "+
+			"et les AJOUTER aux manifestes existants (une famille déjà figée garde son match ; un retrait se fait à la main), sans seeder — à relire puis committer")
 	cacheRepoRoot := fs.String("cache-repo-root", "", "Racine du dépôt dont data/cache fournit les films et artefacts de rejeu sources (vide = racine du dépôt)")
 	synthetic := fs.Bool("synthetic", false, "Générer une fixture SYNTHÉTIQUE déterministe (aucune donnée réelle, aucune DB de prod) — voie CI ; le défaut reste l'extraction d'un joueur réel anonymisé")
 	if err := fs.Parse(args); err != nil {
