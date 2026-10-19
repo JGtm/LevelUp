@@ -248,6 +248,14 @@
 # depuis E4 : TestSanitizeBatch_LUSRComponentsNaN_BecomesZero de `internal/persist`). 128 lignes JSONL,
 # exactement 18 paires (Package, Test), vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-19 (release v8, D-15 : le pool ne s'abonne plus aux bascules du provider,
+# ADR 0016 amendée) : 8 tests dont le code testé est supprimé (règle n°7) — le crochet du pool
+# (`PrepareForSharedSwap` / `RestoreSharedAfterSwap` : TestPool_PrepareAndRestoreSharedSwap_integration,
+# TestPool_PrepareForSharedSwap_NoopWithoutSharedReader_integration de `internal/platform/duckdb`) et
+# `Provider.Subscribe` (TestProvider_Subscribe_* ×5, TestFromInMemoryDB_SubscribeNoEvents de
+# `internal/platform/duckdb/sharedprovider`). 207 lignes JSONL, exactement 8 paires (Package, Test),
+# vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

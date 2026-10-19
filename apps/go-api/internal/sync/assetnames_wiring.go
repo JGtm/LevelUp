@@ -98,15 +98,13 @@ func ResolveAssetsFromStats(ctx context.Context, p pool.Pool, metaDB *sql.DB, ti
 	resolveRefsWithPool(ctx, p, metaDB, titleSlug, "v2_cycle", refs, assetFirstWriteMaxAssets)
 }
 
-// ResolveUnresolvedAssetNames balaye match_registry pour les assets restés en UUID
-// (name == id) et résout leurs noms localisés → asset_translations. FILET de
-// convergence pour la traîne (asset jamais résolu ET jamais rejoué → jamais
-// re-tenté in-sync). À appeler en BASSE fréquence (cron catalogue). Best-effort ;
-// ExistsFresh rend les balayages suivants ~no-op. p/metaDB/sharedDB nil → no-op.
-func ResolveUnresolvedAssetNames(ctx context.Context, p pool.Pool, metaDB, sharedDB *sql.DB, titleSlug string) assetnames.Result {
-	var zero assetnames.Result
-	if p == nil || metaDB == nil || sharedDB == nil {
-		return zero
+// CollectUnresolvedAssetRefs liste dans match_registry les assets restés en UUID (name == id),
+// première moitié du FILET de convergence pour la traîne (asset jamais résolu ET jamais rejoué →
+// jamais re-tenté in-sync). Lecture seule de la base partagée, rien d'autre : l'appelant la rend
+// AVANT ResolveUnresolvedAssetNames, qui va sur le réseau. sharedDB nil → aucune référence.
+func CollectUnresolvedAssetRefs(ctx context.Context, sharedDB *sql.DB) []assetnames.AssetRef {
+	if sharedDB == nil {
+		return nil
 	}
 	var refs []assetnames.AssetRef
 	for _, c := range unresolvedAssetColumns {
@@ -116,6 +114,17 @@ func ResolveUnresolvedAssetNames(ctx context.Context, p pool.Pool, metaDB, share
 			continue
 		}
 		refs = append(refs, rs...)
+	}
+	return refs
+}
+
+// ResolveUnresolvedAssetNames résout les noms localisés des refs collectées par
+// CollectUnresolvedAssetRefs → asset_translations (jeton du pool + API d'assets, aucune lecture
+// de la base partagée). À appeler en BASSE fréquence (cron catalogue). Best-effort ; ExistsFresh
+// rend les balayages suivants ~no-op. p/metaDB nil → no-op.
+func ResolveUnresolvedAssetNames(ctx context.Context, p pool.Pool, metaDB *sql.DB, titleSlug string, refs []assetnames.AssetRef) assetnames.Result {
+	if p == nil || metaDB == nil {
+		return assetnames.Result{}
 	}
 	return resolveRefsWithPool(ctx, p, metaDB, titleSlug, "sweep", refs, assetSweepMaxAssets)
 }

@@ -24,7 +24,7 @@ import (
 //
 //  2. **Tests** : les tests integration `_test.go` du package duckdb
 //     instancient des PlayerDB avec un `*DB` direct, sans plomberie
-//     Provider/Subscribe. LegacySharedReader leur permet de satisfaire
+//     Provider. LegacySharedReader leur permet de satisfaire
 //     l'interface SharedReader sans changer le setup test.
 //
 // Plan de retrait : si après un trimestre en prod (≥ 2026-Q3) aucun

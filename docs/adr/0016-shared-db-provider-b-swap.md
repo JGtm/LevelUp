@@ -128,3 +128,50 @@ For these 5 queries, `attachShared` remains in place as an explicit, documented 
 - `apps/go-api/internal/platform/duckdb/pool_sync_burst_integration_test.go` (T5)
 - `apps/go-api/internal/sync/engine.go::acquireSharedWriter` — sync side
 - `.ai/thought_log.md` — commits 8a–8k.13 detailed history
+
+## Amendment 2026-10-19 — the pool no longer subscribes to swaps (release v8, D-15)
+
+**Status** : Accepted. Supersedes the "Coordination with pool's ATTACH" section above and the
+`Subscribe` part of the interface.
+
+### What broke
+
+Since `attachShared` was removed (9c.4/9c.5) and `pdb.Shared` became nil in B-swap mode (9d.3), the
+pool hook kept doing one thing: on every `RWToRO` / `ErrorToRO` of the **default title's** provider,
+`RestoreSharedAfterSwap` opened a read-only handle on the shared file of **every** `PlayerDB` in the
+global pool, whatever its title. `OpenReadOnly` is ref-counted per path in the process cache, so
+those references were shares of the other title's provider handle. That provider (Halo 5, one
+provider per shared file since 2026-06-22) had no subscriber: its `swapToRW` released only its own
+reference, `OpenReadWrite` was refused (`different configuration`), the provider went to
+`StateError`, recovered read-only from the still-cached handle, and every later write was refused
+the same way. On the local server (2026-10-19) every Halo 5 sessions recalculation failed until
+restart. The default title had a smaller exposure of the same kind: the `RWToRO` notification ran
+outside `p.mu`, so a restore could land between the next swap's `PreSwapToRW` and its
+`OpenReadWrite`, and a second restore overwrote `pdb.Shared` without closing it.
+
+### Decision
+
+- The pool swap hook (`pool_swap_hook.go`: `PrepareForSharedSwap`, `RestoreSharedAfterSwap`,
+  `OnSharedSwap`) and the server subscription are removed. In B-swap mode a `PlayerDB` holds **no**
+  handle on its shared file; the provider of each shared file is its only holder. The legacy mode
+  (`LEVELUP_USE_SHARED_PROVIDER=0`) still opens `pdb.Shared` once at construction and never swaps.
+- `Provider.Subscribe` and the swap events (`subscriber.go`, `provider_subscribe.go`) had no other
+  consumer and are removed with their tests.
+- A refused `OpenReadWrite` during a swap is logged at ERROR with the number of read-only references
+  the process still holds on the file (`references_lecture_hors_provider`, from
+  `duckdb.CachedReadOnlyRefs`), and counted under its own reason:
+  `shared_provider_swap_failures_total{reason="open_rw"}` (previously folded into `acquire_writer`,
+  which now only counts dblease failures). Reasons are `reopen_ro`, `acquire_writer`, `open_rw`,
+  `drain_timeout`, `panic`.
+- A reader obtained by `Get` blocks every writer for as long as it is held (the drain waits up to
+  `drainTimeout`, then rolls back with `ErrDrainTimeout`). Consumers release the handle between
+  units of work and never across network waits: the post-sync citations step now reads the shared
+  file in one segment per match, and the asset-name sweep releases it before calling the network.
+
+### Guard-rails
+
+- `internal/archlint/pool_no_shared_handle_test.go`: no `x.Shared = …` assignment and no `Open*` on
+  the shared path in the pool package outside `openPlayerDB` (empty allowlist).
+- `internal/platform/duckdb/pool_swap_multititre_integration_test.go`: two titles, one provider
+  each, a PlayerDB of the second title in the pool; a write on the first title's file leaves the
+  second one writable twice in a row and held once (by its provider).

@@ -134,11 +134,9 @@ func (r *ServiceRegistry) MediaUpload(ctx context.Context, slug string) (
 	if pdb.SharedSocial != nil {
 		sharedSocialPath = pdb.SharedSocial.Path()
 	}
-	sharedMatchesPath := ""
-	if pdb.Shared != nil {
-		sharedMatchesPath = pdb.Shared.Path()
-	}
-	return svc, pdb.Gamertag, pdb.TitleSlug, pdb.Player.Path(), sharedSocialPath, sharedMatchesPath, nil
+	// Chemin du fichier, pas d'un handle : en mode B-swap le PlayerDB n'en tient aucun sur
+	// la base partagée (pdb.Shared nil), l'association des médias lit par le cache process.
+	return svc, pdb.Gamertag, pdb.TitleSlug, pdb.Player.Path(), sharedSocialPath, pdb.SharedDBPath(), nil
 }
 
 // MediaPlayerCtx résout slug → (titleSlug, gamertag) sans construire de service.

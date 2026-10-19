@@ -17,7 +17,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -39,7 +38,6 @@ import (
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/service"
-	go_sync "levelup/go-api/internal/sync"
 	"levelup/go-api/pkg/duckdbbackup"
 )
 
@@ -511,69 +509,4 @@ func sessionComputeOptionsFor(store *settings_platform.Store, overlayPath func(s
 		TeamChangeMode:      domain.TeamChangeMode(cfg.SessionTeamChangeMode),
 		Mode:                domain.SessionModeContext,
 	}
-}
-
-// handlePostRecalculateSessions lance un recalcul des sessions pour tous les joueurs.
-// POST /settings/sessions/recalculate — retourne un AsyncJobStatus (202).
-func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *struct{}) (*asyncJobOutput, error) {
-	players, err := h.cfg.LoadPlayers()
-	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "players_load_error",
-			"Impossible de charger les joueurs configurés.")
-	}
-
-	job := h.jobStore.Create(domain.JobTypeSessionsRecalc, "")
-	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
-	jobSnapshot := *job
-
-	go func() {
-		step := "Recalcul des sessions en cours"
-		h.jobStore.SetStatus(job.JobID, domain.JobStatusRunning, &step)
-
-		total := 0
-		for _, p := range players {
-			if p.XUID == "" {
-				continue
-			}
-			// SessionGapMinutes / split / team-change sont per-titre (overlay
-			// PMT-4 : le rythme de session dépend du titre). Overlay absent ⇒
-			// valeurs globales byte-identiques.
-			opts := sessionComputeOptionsFor(h.settingsStore, h.cfg.TitleSettingsPath, p.TitleSlug)
-			// Amis DU joueur recalculé (data/global/player_friends.json) : les
-			// sessions d'escouade de chacun se calculent sur SA liste. Store absent
-			// ou lecture en échec → aucun ami (log avant dégradation).
-			var friendGamertags []string
-			if h.friendStore != nil {
-				fs, ferr := h.friendStore.Get(p.XUID)
-				if ferr != nil {
-					slog.WarnContext(context.Background(), "sessions recalculate: lecture des amis échouée",
-						"gamertag", p.Gamertag, "err", ferr)
-				}
-				friendGamertags = fs
-			}
-			// Bases ET provider shared DU TITRE du profil : un profil Halo 5 se recalcule sur les bases
-			// de Halo 5, jamais sur celles du titre par défaut.
-			playerDBPath, sharedDBPath := sessionsRecalcPaths(h.cfg, p)
-			n, err := go_sync.RecalculatePlayerSessions(
-				ctxkeys.WithTitleSlug(context.Background(), p.TitleSlug), h.cfg.SharedProviderForTitle(p.TitleSlug),
-				playerDBPath, sharedDBPath, p.XUID, opts, friendGamertags,
-			)
-			if err != nil {
-				slog.Warn("sessions recalculate: erreur joueur",
-					"gamertag", p.Gamertag, "err", err)
-				continue
-			}
-			total += n
-		}
-
-		done := fmt.Sprintf("Sessions recalculées (%d matchs mis à jour)", total)
-		pct := 100
-		h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
-			j.Status = domain.JobStatusSucceeded
-			j.ProgressPct = &pct
-			j.CurrentStep = &done
-		})
-	}()
-
-	return &asyncJobOutput{Body: &jobSnapshot}, nil
 }

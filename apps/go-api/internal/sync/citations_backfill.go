@@ -26,7 +26,6 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/sync/citationsfilm"
 )
 
 // OpenPveReadForCitations ouvre shared_pve.duckdb en LECTURE pour le pipeline
@@ -429,60 +428,6 @@ WHERE value > 0`)
 		result[matchID][nameNorm] = value
 	}
 	return result, rows.Err()
-}
-
-// runPostSyncCitations branche les citations dans le pipeline post-sync.
-// Réutilise les DBs déjà ouvertes par runPostSyncPipeline (player + shared)
-// au lieu d'acquérir de nouveaux leases. Best-effort : retourne (0, nil) si
-// metadata.duckdb absent ou citation_mappings vide.
-func (e *SyncEngine) runPostSyncCitations(ctx context.Context, playerDB, sharedDB *sql.DB) (int, error) {
-	// Emprunte la connexion metadata déjà ouverte dans le cache process (RW par
-	// le pool serveur). OpenReadOnly échoue si une connexion RW existe déjà sur
-	// le même fichier ("Can't open a connection with a different configuration").
-	// LookupCachedDB retourne RW en priorité, RO sinon — sans incrémenter le
-	// refCount, donc pas de Close() ici.
-	var metaDB *sql.DB
-	if e.metaDB != nil {
-		metaDB = e.metaDB
-	} else if cached, ok := duckdbpkg.LookupCachedDB(e.metadataDBPath); ok {
-		metaDB = cached.SQLDb()
-	} else {
-		slog.WarnContext(ctx, "citations post-sync: metadata DB non disponible — skip", "player", e.gamertag)
-		return 0, nil
-	}
-
-	matchIDs, err := selectMatchesForCitations(ctx, playerDB, false)
-	if err != nil {
-		return 0, fmt.Errorf("select: %w", err)
-	}
-	// Les matchs dont le film a été dérivé APRÈS leurs citations : recalcul complet.
-	filmPlusRecent, err := citationsfilm.SelectMatchesFilmPlusRecent(ctx, playerDB, sharedDB)
-	if err != nil {
-		slog.WarnContext(ctx, "citations post-sync: dérivations du film illisibles, citations du film non recalculées",
-			"player", e.gamertag, "err", err)
-	}
-	if len(filmPlusRecent) > 0 {
-		slog.InfoContext(ctx, "citations post-sync: film dérivé après les citations, recalcul",
-			"player", e.gamertag, "count", len(filmPlusRecent))
-	}
-	matchIDs = citationsfilm.UnionMatchIDs(matchIDs, filmPlusRecent)
-	if len(matchIDs) == 0 {
-		slog.DebugContext(ctx, "citations post-sync: aucun nouveau match", "player", e.gamertag)
-		return 0, nil
-	}
-	slog.InfoContext(ctx, "citations post-sync: nouveaux matchs détectés",
-		"player", e.gamertag, "count", len(matchIDs))
-
-	// shared_pve en lecture RO (BUG A / I7) : le reader réutilise le handle
-	// process s'il est déjà tenu. Dégradation gracieuse si absent.
-	pve := OpenPveReadForCitations(ctx, e.pveDBPath)
-	defer pve.Close()
-
-	if err := BackfillMatchCitations(ctx, metaDB, sharedDB, playerDB, pve, e.xuid, matchIDs,
-		e.citationWeaponSourceDuMoteur(ctx)...); err != nil {
-		return 0, fmt.Errorf("backfill: %w", err)
-	}
-	return len(matchIDs), nil
 }
 
 // RecalculerCitations recalcule les citations de ces matchs pour UN joueur hors du cycle de sync

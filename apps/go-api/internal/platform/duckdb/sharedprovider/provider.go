@@ -72,6 +72,9 @@ const defaultSlowSwapThreshold = 2 * time.Second
 // handle DuckDB pour un chemin donné. Jamais de sql.Open direct sur ce fichier
 // ailleurs — RO et RW coexistent via un swap arbitré (drain), pas via des
 // handles concurrents (limite native duckdb-go « different configuration »).
+// OpenReadOnly partage un handle ref-compté par chemin : une seule référence
+// tenue hors du provider survit à la fermeture de son handle RO et fait refuser
+// l'OpenReadWrite du swap, à chaque tentative, tant qu'elle n'est pas rendue.
 type Provider interface {
 	// Get retourne un *sql.DB en mode RO + une fonction release qui DOIT
 	// être appelée (typiquement via defer) une fois les lectures terminées.
@@ -116,18 +119,6 @@ type Provider interface {
 	// fermé. Best-effort drain des readers en vol (timeout court 3s) avant
 	// fermeture forcée. Idempotent.
 	Close() error
-
-	// Subscribe enregistre un callback invoqué après chaque transition
-	// d'état observable (cf. Direction). Le callback est exécuté
-	// synchroniquement sans tenir le mutex interne — il est safe d'appeler
-	// Get/AcquireWriter depuis le callback, mais PAS Subscribe/Unsubscribe.
-	//
-	// Retourne une fonction unsubscribe à appeler quand le callback n'est
-	// plus nécessaire (typiquement via defer). Idempotente.
-	//
-	// Cas d'usage principal : le pool joueur réagit à DirectionRWToRO pour
-	// purger ses conns idle qui auraient un ATTACH RO stale sur shared.
-	Subscribe(fn Subscriber) (unsubscribe func())
 }
 
 // providerImpl est l'implémentation par défaut.
@@ -182,12 +173,6 @@ type providerImpl struct {
 	slowSwapThreshold time.Duration
 
 	failNextReopen atomic.Bool
-
-	// subsMu protège les subscribers Subscribe/Unsubscribe.
-	// Distinct de p.mu pour ne pas bloquer un Subscribe pendant un swap.
-	subsMu    sync.Mutex
-	subs      map[int64]Subscriber
-	nextSubID int64
 }
 
 // New ouvre une nouvelle instance Provider sur path en mode read-only.

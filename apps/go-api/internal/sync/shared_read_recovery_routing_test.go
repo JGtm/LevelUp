@@ -208,8 +208,10 @@ var sharedReadAllowlist = []sharedReadAllowEntry{
 	// traitées sont shared_matches_v2 et shared_pve). metadata.duckdb n'est géré
 	// par aucun sharedprovider. L'emprunt reste non possédant : consigné en
 	// découverte, à traiter dans un lot dédié aux lectures metadata.
+	// 2026-10-19 (D-15) : runPostSyncCitations déplacé de citations_backfill.go vers citations.go
+	// avec le calcul par segments ; l'emprunt metadata est inchangé.
 	{
-		rel:       "internal/sync/citations_backfill.go",
+		rel:       "internal/sync/citations.go",
 		construct: "LookupCachedDB(",
 		needle:    "metadataDBPath",
 		reason:    "emprunt metadata preexistant au lot, hors perimetre",

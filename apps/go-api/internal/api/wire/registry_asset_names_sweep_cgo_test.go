@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -96,6 +97,70 @@ func TestResolveUnresolvedAssetNames_FaitConvergerLeRegistre(t *testing.T) {
 		}
 		if categorie.String != "other" {
 			t.Errorf("%s mode_category = %q, want inchangée", id, categorie.String)
+		}
+	}
+}
+
+// poolQuiEcrit : à la prise d'un jeton (premier appel réseau du balayage), tente une écriture de
+// la base partagée par son provider et retient son issue. Aucun jeton servi ensuite.
+type poolQuiEcrit struct {
+	pool.Pool
+	prov   sharedprovider.Provider
+	essais int
+	errs   []error
+}
+
+func (p *poolQuiEcrit) Acquire(ctx context.Context, _ pool.AcquirePolicy, _ string) (*pool.Lease, error) {
+	p.essais++
+	wctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	w, err := p.prov.AcquireWriter(wctx)
+	if err == nil {
+		w.Release()
+	}
+	p.errs = append(p.errs, err)
+	return nil, errors.New("aucun jeton (test)")
+}
+
+// TestResolveUnresolvedAssetNames_RendLaBasePartageeAvantLeReseau : la base partagée n'est lue que
+// le temps de collecter les noms non résolus ; elle est rendue avant les appels réseau (jeton puis
+// API d'assets), sinon toute écriture de la base échoue pendant le balayage. Le 2026-10-19, au
+// démarrage du serveur local, le balayage l'a tenue environ 60 s : chaque recalcul de sessions
+// échouait sur « drain timeout ».
+func TestResolveUnresolvedAssetNames_RendLaBasePartageeAvantLeReseau(t *testing.T) {
+	repoRoot := t.TempDir()
+	pr := titlePkg.NewPathResolver(repoRoot)
+	sharedPath := pr.SharedDBPath(titlePkg.DefaultSlug)
+	creerBase(t, sharedPath,
+		`CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY,
+			playlist_id VARCHAR, playlist_name VARCHAR, playlist_version_id VARCHAR,
+			map_id VARCHAR, map_name VARCHAR, map_version_id VARCHAR,
+			pair_id VARCHAR, pair_name VARCHAR, pair_version_id VARCHAR,
+			game_variant_id VARCHAR, game_variant_name VARCHAR, game_variant_version_id VARCHAR,
+			mode_category VARCHAR)`,
+		`INSERT INTO match_registry (match_id, map_id, map_name, map_version_id, mode_category)
+			VALUES ('m1', 'map-inconnue', NULL, 'v1', 'other')`)
+	creerBase(t, pr.MetadataDBPath(titlePkg.DefaultSlug),
+		`CREATE TABLE asset_translations (asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR,
+			name VARCHAR, description VARCHAR, fetched_at TIMESTAMP)`)
+
+	prov, err := sharedprovider.New(sharedPath)
+	if err != nil {
+		t.Fatalf("sharedprovider.New: %v", err)
+	}
+	t.Cleanup(func() { _ = prov.Close() })
+	reg := &ServiceRegistry{cfg: &config.AppConfig{RepoRoot: repoRoot, SharedProvider: prov}}
+
+	p := &poolQuiEcrit{prov: prov}
+	if _, err := reg.ResolveUnresolvedAssetNames(context.Background(), titlePkg.DefaultSlug, p); err != nil {
+		t.Fatalf("ResolveUnresolvedAssetNames: %v", err)
+	}
+	if p.essais == 0 {
+		t.Fatal("aucune prise de jeton : le balayage n'a rien trouvé à résoudre (fixture)")
+	}
+	for i, err := range p.errs {
+		if err != nil {
+			t.Errorf("écriture de la base partagée pendant la prise de jeton n°%d : %v", i+1, err)
 		}
 	}
 }

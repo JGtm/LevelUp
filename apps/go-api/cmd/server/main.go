@@ -523,7 +523,6 @@ func main() {
 		sharedReader duckdb.SharedReader
 		closeShared  func() error
 	)
-	var unsubscribeSwap func()
 	if useSharedProvider {
 		sharedMgr := sharedprovider.NewManager()
 		provider, err := sharedMgr.For(sharedPath)
@@ -533,28 +532,9 @@ func main() {
 		}
 		sharedReader = provider
 
-		// Commit 8g : brancher le Provider au pool joueur via Subscribe.
-		// Sur PreSwap, le pool DETACH ses ATTACH RO sur shared (cf. POC
-		// diagnostique commit 8f : DETACH explicite libère le file alors
-		// que Reopen ne le fait pas). Sur RWToRO/ErrorToRO, le pool
-		// re-ATTACH.
-		//
-		// L'adapter traduit sharedprovider.SwapEvent → duckdb.SwapDirection
-		// (évite le cycle d'import duckdb ↔ sharedprovider).
-		//
-		// Sprint B1 commit 19 : ctx propagé depuis le caller du swap (sync
-		// engine typiquement) — porte l'event_id pour traçabilité du
-		// callback pool dans logs/duckdb.log.
-		unsubscribeSwap = provider.Subscribe(func(ctx context.Context, evt sharedprovider.SwapEvent) {
-			switch evt.Direction {
-			case sharedprovider.DirectionPreSwapToRW:
-				duckdb.OnSharedSwap(ctx, duckdb.SwapDirPreSwapToRW)
-			case sharedprovider.DirectionRWToRO:
-				duckdb.OnSharedSwap(ctx, duckdb.SwapDirRWToRO)
-			case sharedprovider.DirectionErrorToRO:
-				duckdb.OnSharedSwap(ctx, duckdb.SwapDirErrorToRO)
-			}
-		})
+		// Aucun abonnement du pool joueur aux bascules : en mode B-swap, un PlayerDB
+		// ne tient AUCUN handle sur le fichier shared (pdb.Shared nil) — le provider
+		// de chaque titre en est l'unique détenteur (ADR 0016).
 
 		// Injecter le Provider dans le AppConfig pour que les
 		// PlayerPoolConfig créés ensuite (resolveDemoPlayer, buildPlayerPool
@@ -568,13 +548,8 @@ func main() {
 		// les providers via sharedMgr.Close().
 		cfg.SharedManager = sharedMgr
 
-		closeShared = func() error {
-			if unsubscribeSwap != nil {
-				unsubscribeSwap()
-			}
-			return sharedMgr.Close()
-		}
-		slog.Info("shared_matches_v2: mode sharedprovider (B-swap actif, pool inscrit via Subscribe)")
+		closeShared = sharedMgr.Close
+		slog.Info("shared_matches_v2: mode sharedprovider (B-swap actif, un provider par base partagée)")
 	} else {
 		sharedDB, err := duckdb.OpenReadOnly(sharedPath)
 		if err != nil {
