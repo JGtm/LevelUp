@@ -257,7 +257,7 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
       `5bbba3d4…`, après `de5c583a…`).
       Texte d'origine : **Zones nommées des cartes Forge** : `backfill-map-callouts --dry-run`, puis
       `--hors-ligne`, puis sans option. Gate : bilan chiffré final, `map_callouts.json` modifié.
-- [ ] 2.3 **Recuisson** (D3) : `backfill-replay --since 2025-09-01 --demo --dry-run` (union, cf.
+- [x] 2.3 (résultat au journal, 19/10) **Recuisson** (D3) : `backfill-replay --since 2025-09-01 --demo --dry-run` (union, cf.
       1.3b ; les rejeux déjà figés de la démo sont cuits dans la même passe ; 2.9 ne recuit que les
       rejeux nouvellement émis, dont le 4v4 à véhicules) (nombre de films ;
       ~30 s par film, 2 742 films en cache au total le 17/10), puis la même sans `--dry-run` et
@@ -265,30 +265,30 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
       Puis `backfill-replay --match` sur les sept films du corpus nommé du garde de rejeu
       (`replay_local_gate.go` : 5 sur 7 sans artefact en local le 17/10), pour pouvoir mesurer 7.3b.
       Gate : le dry-run rejoué = 0 film à cuire ; échecs listés et statués.
-- [ ] 2.3b **Artefacts appauvris** (`RUNBOOK_REPLAY_WORKER.md` §4 étape 2, à faire AVANT le
+- [!] 2.3b (19/10 : 43 restent appauvris, limite du décodeur, voir journal et D-12) **Artefacts appauvris** (`RUNBOOK_REPLAY_WORKER.md` §4 étape 2, à faire AVANT le
       premier passage de l'ouvrier ; les artefacts locaux partent en prod) :
       `backfill-replay --repair-impoverished --dry-run`, puis sans `--dry-run`.
       Gate : le dry-run rejoué = 0 artefact appauvri.
-- [ ] 2.4 `backfill-usage-summary` (lit les artefacts : après 2.3).
-- [ ] 2.5 `backfill-pad-tiers --force` (lit les artefacts : après 2.4).
-- [ ] 2.6 `backfill-vehicle-takes --dry-run`, puis `--force`. Gate : soirée Big Team Battle, onglet
+- [x] 2.4 (résultat au journal, 19/10) `backfill-usage-summary` (lit les artefacts : après 2.3).
+- [x] 2.5 (résultat au journal, 19/10) `backfill-pad-tiers --force` (lit les artefacts : après 2.4).
+- [x] 2.6 (résultat au journal, 19/10) `backfill-vehicle-takes --dry-run`, puis `--force`. Gate : soirée Big Team Battle, onglet
       Emprise, lignes « Véhicules » chiffrées.
-- [ ] 2.7 `backfill-killsource`, puis `--status`. Gate : 0 erreur.
-- [ ] 2.8 **Inventaire fermé des autres passes** — chacune jouée ou statuée `[~]`/`[!]` :
+- [x] 2.7 (résultat au journal, 19/10) `backfill-killsource`, puis `--status`. Gate : 0 erreur.
+- [x] 2.8 (résultat au journal, 19/10) **Inventaire fermé des autres passes** — chacune jouée ou statuée `[~]`/`[!]` :
       `backfill-bomb-stats`, `backfill-flag-grabs-net`, `backfill-h5-kill-mechanics`,
       `backfill-is-ranked`, `backfill-medailles-feed`, `backfill-registry-names`,
       `backfill-squad-creators` (dry-run d'abord ; 0 à écrire = `[x]` « rien à faire »).
-- [ ] 2.8b **Dérivés Halo 5 recalculés hors Campagne** (ajouté le 2026-10-18 depuis le plan backlog du
+- [x] 2.8b (résultat au journal, 19/10) **Dérivés Halo 5 recalculés hors Campagne** (ajouté le 2026-10-18 depuis le plan backlog du
       2026-10-16, runbook R2-R4 ; `--title` honoré depuis ce plan) : `levelup_v8.exe backfill --all
       --title halo_5 --engagement-scores --force`, puis `--perf --force`, puis `--assists-model --force`
       (une commande par passe, dans cet ordre). Gate : chaque passe sort 0, nombre de joueurs Halo 5
       traités = profils Halo 5 non `auth_only` de `db_profiles.json`. Citations : sans objet pour Halo 5
       (`citations.engine` non déclaré, la passe répond « non supporte »).
-- [ ] 2.8c **Dates de paliers Halo 5** (runbook R4b) : depuis `apps/go-api`,
+- [x] 2.8c (résultat au journal, 19/10) **Dates de paliers Halo 5** (runbook R4b) : depuis `apps/go-api`,
       `go run -tags cgo ./cmd/backfill_milestone_dates --data-root ../../data/titles/halo_5` (simulation),
       puis la même avec `--apply`. Le chargeur exclut la Campagne. Gate : bilan sans erreur ; une date
       non dérivable est NULL (aucune date affichée), jamais fausse.
-- [ ] 2.8d **LUSR v2 de tous les joueurs, les deux titres** (runbook R5-R6 ; la v1 est supprimée depuis
+- [x] 2.8d (résultat au journal, 19/10) **LUSR v2 de tous les joueurs, les deux titres** (runbook R5-R6 ; la v1 est supprimée depuis
       le plan backlog du 2026-10-16) : `levelup_v8.exe backfill --all --lusr`, puis
       `levelup_v8.exe backfill --all --title halo_5 --lusr`. Réécrit `match_skill_rank` (v2) et les 8
       composantes de `lusr_component_history` ; remplace les lignes v1 laissées par d'anciennes
@@ -301,7 +301,7 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
       2026-10-18 par `levelup reset-bitmasks --dry-run` puis `--apply` (serveur arrêté), donc dans la copie
       des bases vers le VPS : RIEN à faire en prod. Gate de release : `levelup_v8.exe reset-bitmasks
       --dry-run` annonce 0 ligne `match_registry` à mettre à jour (vérifié le 2026-10-18 à 23:43 : 0).
-- [ ] 2.9 **Démo (D6)** :
+- [x] 2.9 (résultat au journal, 19/10 ; contrôle à l écran de la démo -> 3.1 et 5.11) **Démo (D6)** :
       - inventaire des modes présents dans les films où joue le joueur source de la démo : une
         ligne par famille avec son match retenu ; les variantes qu'aucune famille ne reconnaît sont
         listées à l'utilisateur (ajouter une famille ou non) ;
@@ -510,6 +510,10 @@ des gamertags des fixtures, réécriture de l'historique (push forcé sur `main`
   (`demoVehicleFamilyUnknown`, ratchet de façade du film) sans test qui les lie ; une dispense de
   `campaign_exclusion_guard_dispenses_test.go` cite un numéro de ligne (fragile).
 
+- **D-11 (19/10, recuisson)** : anomalies de lecture journalisées en ERROR sur 26 films recuits (23 « entrée(s) du roster présente(s) SANS ÉQUIPE lue », 2 « vies PUBLIÉES sans identité », 1 « bot sans place ») ; artefacts produits. Liste : `replay_cuisson.log` du scratchpad de la session ; à recouper avec le contrôle visuel n°32 (`b1ad85eb`, 3 équipes).
+- **D-12 (19/10)** : 43 artefacts restent « appauvris » après `--repair-impoverished` (registre d identité vide : aucune vie nommée ; ex. `07af7c78`, `0e640074`, `279ac3dd`, `29206c7c`, `2c16c553`, `f80cdf71`, `f10237b1`, `44e14331`). Le runbook de l ouvrier suppose la réparation suffisante : ce n est pas le cas pour ces films.
+- **D-13 (19/10)** : `backfill --all --title halo_5 --assists-model --force` rend `n_modes=0` pour les 4 joueurs Halo 5 (modèle d assistances vide pour ce titre) ; à vérifier : attendu (capability) ou défaut.
+
 ## 3. Reprise de session
 
 Relire `plan-execution`, puis ce fichier : reprendre à la première case vide de la première étape
@@ -534,3 +538,37 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
 - **2026-10-19 — Étape 1 close.** 1.1 à 1.6 statués ; `feat/v75` = `ec9805253`, CI verte ; E2E
   local 34/0. Étape 2 démarrée par amendement (2.1, 2.2 faits, 2.3 en cours depuis 15:42 :
   2 260 films à cuire, 733 faits à 16:28, 0 dépassement mémoire).
+- **2026-10-19 — Étape 2, passes locales (binaire `levelup_v8.exe` @ `2b4953ce5`, puis `levelup_v8b.exe` @ `aa4871dcd` pour 2.9).**
+  - 2.3 : 15:42 → 19:23, **2 249 construits**, 250 déjà à jour, 0 mort mémoire, 0 mort subite. Restent
+    11 non cuisables, définitivement : 9 « carte hors catalogue » (Forge sans bornes : Kusini Bay ×2,
+    Exiled ×2, Perdition, Narrows, Night Of The Undead…, retirées de Waypoint, cf. 2.2) et 2 films
+    sans chunk de données (`f3e3112f`, `e869bcdf`). Dry-run rejoué : ces 11 seuls. Les 7 films du
+    corpus du garde (7.3b) : `--match … --dry-run` = 0 à cuire, 7 à jour. Anomalies de lecture
+    journalisées en ERROR, artefacts produits quand même : 23 « roster SANS EQUIPE », 2 « vies
+    PUBLIEES sans identité », 1 « bot sans place » (D-11).
+  - 2.3b `[!]` : 43 artefacts appauvris ; `--repair-impoverished` les reconstruit (43, 5 s, depuis les
+    faits frais) mais ils RESTENT appauvris : le registre d'identité ne nomme aucune vie (ex.
+    `07af7c78` Vacancy classé : `viesNommees=0`, `repli_table_identite_vide`). Limite du décodeur,
+    pas de la passe : rejeux servis sans compteurs de joueur (D-12).
+  - 2.4 usage : 2 433 écrits, 66 à jour, 0 échec (1 min 23). 2.5 pad-tiers `--force` : 2 498 écrits,
+    0 échec. 2.6 véhicules : dry-run 0 (présence en base), donc `--force` après recuisson : 2 499
+    écrits, 2 181 prises, 1 329 frags d'engin dont 106 non appariés, 0 échec. Contrôle Emprise à
+    l'écran -> 2.10 / 3.1.
+  - 2.7 killsource : 12 films (8 écrits, 751 morts, 3 sans kill-feed, 1 clé inconnue), 0 erreur ;
+    crédit 9 243 matchs.
+  - 2.8 : bomb-stats `--force` 8 écrits (un artefact recuit se re-projette par `--force`) ;
+    flag-grabs-net `--force` 347 écrits ; registry-names 959 colonnes réparées sur 713 matchs
+    (`game_variant_name` 713, `pair_name` 246 ; 5 `playlist_name` sans source) ; is-ranked 0 ;
+    medailles-feed 0 identifié (passe inopérante, connue depuis le 23/09) ; squad-creators 0 ;
+    h5-kill-mechanics `[~]` : one-shot déjà joué en juillet, simulation complète > 15 min (réseau),
+    échantillon `--limit 20` : 0 ligne à corriger.
+  - 2.8b Halo 5 (4 joueurs = profils non `auth_only`) : engagement 5 091, perf 5 032, assists-model
+    `n_modes=0` pour les 4 (D-13). 2.8c : 40 dates recalculées, 1 NULL, `--apply` fait. 2.8d LUSR :
+    Infinite 4 898 lignes (5 joueurs), 1 WARN EP non convergé (BTB `6222be27`) ; Halo 5 0 ligne :
+    attendu, `match.skill.snapshot = "not_exposed"` pour halo_5 (aucune entrée de note).
+  - 2.9 : émission additive : 9 familles conservées, `vehicles` remplie par `4898d586` (Behemoth,
+    16 lignes de prise, 24 prises) ; escalation et extraction sans candidat ; variante sans famille
+    `CASTLE WARS` (soumise à l'utilisateur). Manifeste reporté sur `feat/release-v8`. `--demo` :
+    10 à jour. `seed-demo` : 0 fuite, 10 rejeux `copie`, Infinite 68 matchs ; base démo : véhicules
+    67 matchs, usages 67, paliers 67, vies 68, contexte de mort 68 ; `4898d586` : 16 lignes =
+    source.
