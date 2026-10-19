@@ -252,6 +252,11 @@ var playerTablesWhere = []extractTable{
 	{name: "match_skill_rank", where: matchIDInClause, appendOnly: true},
 	{name: "player_csr_snapshots", where: "1=1", appendOnly: true},
 	{name: "battlepass_snapshots", where: "1=1", identity: [][2]string{{colXUID, ""}}},
+	// personal_score_awards : append-only par GÉNÉRATION (generation_id, written_at, is_tombstone),
+	// copiée telle quelle ; sa vue _latest (score d'objectif du tableau, radar de la vue match) est
+	// recréée par la migration. player_assists_model : coefficients par mode, sans identité.
+	{name: "personal_score_awards", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
+	{name: "player_assists_model", where: "1=1"},
 }
 
 // extractSelectExpr retourne l'expression SELECT pour une table extraite.

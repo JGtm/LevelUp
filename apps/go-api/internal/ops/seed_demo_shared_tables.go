@@ -65,6 +65,17 @@ var filmDerivedTables = []extractTable{
 	{name: "match_player_positions", where: matchIDInClause},
 }
 
+// squadOffsetExtract : player_squad_offset (synergies de coéquipiers du LUSR, lues par l'Escouade),
+// append-only (vue _latest), clé xuid et NON match_id : filtrée sur les COUPLES de joueurs qui
+// ont partagé un match du corpus. Les deux colonnes sont remappées, et tout couple dont un
+// membre est hors corpus est écarté — un xuid hors roster ne serait pas remappé.
+var squadOffsetExtract = extractTable{
+	name: "player_squad_offset",
+	where: `(xuid, partner_xuid) IN (SELECT a.xuid, b.xuid FROM src.match_participants a
+		JOIN src.match_participants b ON a.match_id = b.match_id WHERE a.match_id IN (%s))`,
+	identity: [][2]string{{colXUID, ""}, {"partner_xuid", ""}},
+}
+
 // titleOwnsWeaponKills dit si le fichier shared du titre porte la table weapon_kills : tous les
 // titres sans décodeur de film, et un titre inconnu du registre (la table est alors tentée, son
 // absence source reste tolérée par copyAnonymizedTables).
@@ -73,11 +84,13 @@ func titleOwnsWeaponKills(desc *titlePkg.TitleDescriptor) bool {
 }
 
 // sharedTablesFor rend la liste des tables shared à extraire pour un titre : le socle commun
-// (sharedTablesWhere), les tables dérivées du film (filmDerivedTables), plus weapon_kills quand
+// (sharedTablesWhere), les tables dérivées du film (filmDerivedTables), les synergies
+// d'escouade (squadOffsetExtract), plus weapon_kills quand
 // le titre la porte. Rend une liste neuve.
 func sharedTablesFor(titleSlug string) []extractTable {
 	tables := append([]extractTable(nil), sharedTablesWhere...)
 	tables = append(tables, filmDerivedTables...)
+	tables = append(tables, squadOffsetExtract)
 	if titleOwnsWeaponKills(titlePkg.DefaultRegistry().Get(titleSlug)) {
 		tables = append(tables, weaponKillsExtract)
 	}
