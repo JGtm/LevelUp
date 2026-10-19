@@ -628,3 +628,26 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   capabilities, shell, home : 296/296. Découverte : `career/commendations` gardée par `career` seul
   (un joueur Infinite voit un état vide) ; l'exécutant a encore utilisé un script Python d'édition
   (rien de versionné, LF vérifié par le superviseur).
+- **2026-10-19 — D-15 corrigé** : `a3a4293b4` + `7de33add1` (`feat/rv8-swap-ecriture`, Opus), fusionnés
+  dans `feat/release-v8` (`760fc2d68`). Cause : le crochet `pool_swap_hook.go` (présent sur `main`)
+  rouvrait en lecture, à chaque retour en lecture du provider Infinite, la base partagée de CHAQUE
+  joueur du pool, Halo 5 compris : le provider Halo 5 ne pouvait plus passer en écriture
+  (« different configuration »), état collant jusqu'au redémarrage. Crochet et `Provider.Subscribe`
+  supprimés, garde-rail archlint, refus d'écriture journalisé et compté (`open_rw`), citations du
+  post-sync lues par segments, balayage des noms d'assets relâche la base avant le réseau, job des
+  sessions en `failed` si un joueur échoue. ADR 0016 amendée. Gate du superviseur sur l'état
+  fusionné : `go vet` + `go test` api, sync, platform/duckdb, archlint, scheduler, cmd/server : ok.
+  Vérification sur le serveur local (binaire de `feat/release-v8` sur les vraies bases, 19/10
+  22:37) : 0 « open RW after RO close », 0 `RestoreSharedAfterSwap` ; 3 recalculs de sessions
+  pendant les ~4 min suivant le démarrage : `failed`, 7 à 10 joueurs Infinite en « drain timeout »
+  (Halo 5 OK) ; à 22:41 puis 2 fois de suite : `succeeded`, 14 joueurs, 0 échec (D-17).
+- **D-17 (19/10)** : pendant ~4 min après le démarrage du serveur, un lecteur tient la base partagée
+  Infinite plus de 5 s d'affilée : toute écriture qui demande la bascule (recalcul des sessions, et
+  potentiellement la synchro) expire en « drain timeout », puis tout rentre dans l'ordre. Plus d'état
+  collant. Lecteur non identifié (suspects : tâches de démarrage, balayage des noms d'assets,
+  `career_live`). En prod : écritures du premier cycle possiblement reportées au cycle suivant ; à
+  surveiller en 5.7. Soumis à l'utilisateur.
+- **D-18 (19/10)** : libellés : l'onglet porte la même clé i18n pour les deux titres (FR « Citations »,
+  EN « Commendations ») ; seule la page derrière change (Infinite : citations calculées par LevelUp,
+  `/career/citations` ; Halo 5 : commendations natives du jeu, `/career/commendations`). Incohérence
+  mineure : `lib/pageTitle.ts:59` donne le titre EN « Citations » à `/career/citations`.
