@@ -46,6 +46,11 @@ type replayBackfillReport struct {
 	mortsMemoire  int // plafond memoire depasse — film-bombe
 	mortsSubites  int // code hors protocole : crash, OOM systeme, tue par l'OS
 
+	// LA SELECTION (--since / --match / --demo, cf. cmd_backfill_replay_selection.go).
+	horsPerimetre    int      // ecarte : ni dans la liste demandee ni apres la date
+	sansDate         int      // ecarte par --since : match sans date canonique
+	demandesSansFilm []string // identifiants demandes (--match, --demo) sans film cuisable
+
 	// Ventilation propre au mode --repair-impoverished (0 en passe ordinaire).
 	dejaComplets      int // a jour AVEC compteurs de joueur — rien a reparer
 	vacuitesLegitimes int // a jour, sans compteurs, mais base SANS joueur — re-cuire ne donnerait rien
@@ -230,6 +235,11 @@ func afficherRapportReplay(r replayBackfillReport) {
 	fmt.Printf("  hors registre        %d (film en cache sans match en base)\n", r.horsRegistre)
 	fmt.Printf("  mode non gere        %d (Firefight : le rejeu ne le gere pas, jamais cuit)\n", r.nonGeres)
 	fmt.Printf("  sans artefact        %d (ecartes par --only-existing)\n", r.sansArtefact)
+	if r.horsPerimetre+r.sansDate+len(r.demandesSansFilm) > 0 {
+		fmt.Printf("  hors selection       %d (ni dans --match/--demo ni apres --since)\n", r.horsPerimetre)
+		fmt.Printf("  sans date canonique  %d (ecartes par --since, jamais cuits)\n", r.sansDate)
+		fmt.Printf("  demandes sans film   %d (--match/--demo sans film cuisable, nommes au plan de passe)\n", len(r.demandesSansFilm))
+	}
 	fmt.Printf("  erreurs de decodage  %d\n", r.erreurs)
 	fmt.Printf("  echecs de preparation %d (l enfant n a pas pu demarrer)\n", r.preparation)
 	fmt.Printf("  morts memoire        %d (plafond depasse — film-bombe, passe poursuivie)\n", r.mortsMemoire)

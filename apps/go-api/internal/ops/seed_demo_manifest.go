@@ -47,7 +47,10 @@ type DemoManifestCorpus struct {
 	MediaMatchIDs  []string `json:"media_match_ids"`
 	// ReplayMatches : les rejeux FIGÉS de la démo, un par mode de jeu (décision D-3 du plan
 	// des recommandations du 2026-10-09). Émis par `seed-demo --emit-replay-picks`
-	// (seed_demo_replay_picks.go), committés ; leurs matchs entrent dans le corpus.
+	// (seed_demo_replay_picks.go), committés ; leurs matchs entrent dans le corpus
+	// ([DemoManifest.CorpusMatchIDs], dédoublonné). Une famille par mode, plus « vehicles »
+	// (seed_demo_replay_vehicles.go) : un même match peut figurer sous deux familles, le seed le
+	// range et l'indexe une fois. L'émission est additive : un retrait se fait à la main.
 	ReplayMatches []DemoReplayPick `json:"replay_matches,omitempty"`
 }
 

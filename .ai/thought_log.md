@@ -1,3 +1,11 @@
+## [2026-10-19] Release v8.0.0, étape 0 : gel vérifié, worktrees de l'étape 1 posés — En cours (plan `.ai/PLAN_RELEASE_V8_2026-10-17.md`, branche `feat/release-v8`)
+
+**Décision technique principale** : plan de release v8.0.0 versionné (dérivé de la séquence Notion « Pour la v8 », décisions D1-D8 de l'utilisateur des 17-18/10) ; étape 0 close sur pièces ; l'étape 1 part en trois exécutants Sonnet, un worktree chacun depuis `6e4ebfc80` (groupes au format Huma ; options `--since`/`--match`/`--demo` de `backfill-replay` + runbook ; rejeu « 4v4 à plusieurs véhicules » et émission additive des rejeux de la démo).
+
+**Résultats observés** : `origin/feat/v75` = `6e4ebfc80`, CI verte sur le dernier commit de code `2ed8b05b1` ; lots backlog du 16/10 et délai du débrief fusionnés ; sessions sœurs au repos.
+
+**Conclusion** : suite = étape 1 (exécutants), puis fusion dans `feat/v75` sur accord de l'utilisateur.
+
 ## [2026-10-19] Délai du débrief : preuve sur deux vrais matchs 4v4 — Complété (plan `.ai/PLAN_DELAI_DEBRIEF_2026-10-17.md`)
 
 **Décision technique principale** : mesure sur le poste, verrou de décodage libre, serveur local sur `feat/v75` ; match 1 en construction locale, match 2 en mode ouvrier (jeton temporaire, ouvrier local, retirés ensuite, configuration restaurée à l'octet). Instants lus dans une copie de la base monitoring.

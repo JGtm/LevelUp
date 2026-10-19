@@ -58,8 +58,8 @@ type SeedDemoMultiOptions struct {
 	EmitManifest bool
 	// IgnoreManifest : forcer la sélection dynamique même si un manifeste existe.
 	IgnoreManifest bool
-	// EmitReplayPicks : au lieu de seeder, choisir les rejeux figés (un par famille de mode)
-	// et les écrire dans le manifeste existant de chaque titre qui a un rejeu (CapReplay).
+	// EmitReplayPicks : au lieu de seeder, choisir les rejeux figés (un par famille de mode, plus « véhicules »)
+	// et les AJOUTER au manifeste existant de chaque titre qui a un rejeu (CapReplay) : émission additive.
 	EmitReplayPicks bool
 	// CacheRepoRoot : cf. SeedDemoOptions.CacheRepoRoot (vide → RepoRoot).
 	CacheRepoRoot string
