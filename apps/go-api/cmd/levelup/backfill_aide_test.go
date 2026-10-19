@@ -111,3 +111,17 @@ func TestLigneDryRunVehiculesSepareLesRaisons(t *testing.T) {
 		t.Errorf("raisons vides : %q", vide)
 	}
 }
+
+// TestAideBackfillReplayCiteSaSelection : l'aide de backfill-replay nomme les trois options de
+// selection (--since, --demo, --match) dans SON bloc.
+func TestAideBackfillReplayCiteSaSelection(t *testing.T) {
+	bloc, ok := entreesBackfill(aideCapturee(t))["backfill-replay"]
+	if !ok {
+		t.Fatal("backfill-replay : absente de l'aide")
+	}
+	for _, option := range []string{"--since", "--demo", "--match"} {
+		if !strings.Contains(bloc, option) {
+			t.Errorf("backfill-replay : son bloc ne cite pas %s :\n%s", option, bloc)
+		}
+	}
+}
