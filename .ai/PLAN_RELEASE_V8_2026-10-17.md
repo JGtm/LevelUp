@@ -159,6 +159,17 @@ Une étape est **close** quand tous ses items sont statués ET que son gate est 
       Gate : tests de `pickDemoReplays` (candidat retenu, candidat à un seul type de véhicule
       écarté, départage) et de l'émission (rejeu existant conservé face à un candidat plus récent,
       famille vide remplie) ; `go test ./internal/ops/` exit 0.
+- [ ] 1.3d **Démo : données dérivées du film** (D-9 ; décision de l'utilisateur du 2026-10-19 :
+      « on corrige avant la release ») : inventaire des tables (et fichiers) que lisent la vue
+      match (onglet Emprise, usages, citations du film) et la page Tactique ; extraction de chacune
+      dans la démo, filtrée sur le corpus, colonnes d'identité déclarées et anonymisées, vues
+      `_latest` intactes ; garde d'anonymisation étendue (mutation rouge). Exécutant Sonnet,
+      worktree `LevelUp-wt-rv8-demo-film`, branche `feat/rv8-demo-film` depuis `2b4953ce5`.
+      **Amendement d'ordre (2026-10-19)** : 1.3d ne bloque que 2.9 (seul `seed-demo` en dépend) ;
+      les passes 2.1 à 2.8 partent sans l'attendre, avec un binaire construit depuis `2b4953ce5`
+      (2.9 reconstruit le binaire après la fusion de 1.3d).
+      Gate : `go test ./internal/ops/` + intégration `-p 1` 0, archlint 0, ratchet lint 0 ; fusion
+      dans `feat/v75` (accord de l'utilisateur pour le lot : le « on corrige » du 19/10), CI verte.
 - [x] 1.4 (2026-10-19, `6b12cf885`) Fait : squash + `git revert <squash-commit>` ; étape « Replay
       schema bump: cook the demo locally » (`--demo --dry-run` puis `--demo`, serveur arrêté, accord
       utilisateur ; rsync `--files-from` des seuls artefacts de la démo ; contrôle : rejeux du seed
@@ -171,9 +182,37 @@ Une étape est **close** quand tous ses items sont statués ET que son gate est 
       `/opt/levelup/data/cache/replays/` du VPS AVANT le push sur `main` ; le seed de la démo les
       copie alors au lieu de recuire sur le VPS. Contrôle : bilan du job `deploy-demo` sans rejeu
       « périmé » ni « recuit ». (Runbook EN-only, règle docs/FR.)
-- [ ] 1.5 Fusion `feat/release-v8` → `feat/v75` sur accord ; CI verte au niveau job ;
+- [ ] 1.5 (2026-10-19 : CI de `feat/release-v8` @ `8c5edda15` VERTE sur tous les jobs, runs
+      39257297620 CI, 39257297550 Deploy Pre-Check, 39257297544 gitleaks ; `npx playwright test`
+      local contre `make dev` : 34 passés, 47 sautés (specs DEMO_MODE), 0 échec, 12,8 min ;
+      accord de l'utilisateur le 19/10 ; fusion `--no-ff` `2b4953ce5` poussée sur `feat/v75` ;
+      CI de la fusion en cours.)
+      Fusion `feat/release-v8` → `feat/v75` sur accord ; CI verte au niveau job ;
       `npx playwright test` en local (l'E2E ne tourne en CI que sur la PR vers `main`).
-- [ ] 1.6 **Nettoyage des worktrees, branches et caches** (après 1.5) :
+- [x] 1.6 (2026-10-19) **Décision de l'utilisateur du 19/10** (« ok avec tes recos, on ne garde
+      que wt/power-positions ») appliquée : étude + maquette « Tendances » versées dans `.ai/`
+      (`ETUDE_TENDANCES_2026-09-30.md`, avec en annexe l'entrée de journal du 30/09 jamais
+      versionnée ; maquette identique octet pour octet) ; recherche 2.7.d1 copiée dans
+      `Downloads/LevelUp_recherche_ri27d1/` (6 fichiers neufs + 3 modifiés + patch, comparés
+      octet pour octet) ; worktrees `imagecle` (jonctions retirées d'abord), `equip-porte` et
+      `trend-analysis` retirés ; branches `feat/cg-l2`, `feat/cg-l9`, `feat/cg2-ln`, `feat/cg2-lp`,
+      `claude/trend-analysis-halo-stats-8771a8`, `feat/faille-pose`, `feat/imagecle-etat-complet`,
+      `feat/tactique-coequipiers` supprimées ; `wt/power-positions` GARDÉE (locale et `origin`).
+      Gate : `git worktree list` = principal + release + `rv8-demo-film` (lot 1.3d en cours) ;
+      cache de films 90 030 + 2 879, identique.
+      Premier passage : Cache de films avant/après :
+      90 030 morceaux + 2 879 manifestes, identique. 11 worktrees propres et entièrement fusionnés
+      retirés (8 jonctions retirées d'abord par `(Get-Item).Delete()`, `remove` sans `--force`),
+      plus le worktree de gate oublié `Temp\replay-corpus-gate-3878327983` ; 56 branches locales
+      fusionnées supprimées ; 54 branches `origin/` fusionnées supprimées ; `disk-hygiene` :
+      1,98 Go libérés (dont les trois caches de lot rv8). **Soumis à l'utilisateur** :
+      3 worktrees avec du travail non commité (`trend-analysis-halo-stats-8771a8` : étude et
+      maquette « Tendances » du 30/09, jamais versionnées ; `LevelUp-wt-equip-porte` : ébauche de la
+      fin de faille, remplacée par `3881e58ad` dans `feat/v75` ; `LevelUp-wt-imagecle` : fichiers
+      de recherche 2.7.d1, tag `research`, non versionnés par conception) et 5 branches non
+      fusionnées (`feat/cg-l2`, `feat/cg-l9`, `feat/cg2-ln`, `feat/cg2-lp` : lots « non retenus »
+      de la campagne grammaire ; `wt/power-positions` : docs du 20/09, aussi sur `origin`).
+      Texte d'origine : **Nettoyage des worktrees, branches et caches** (après 1.5) :
       - worktrees : pour chacun des 11 hors checkout principal (`git worktree list`, sauf
         `LevelUp-wt-release-v8`, retiré en 7.6) : commits non fusionnés dans `feat/v75`
         (`git log feat/v75..<branche>`) ; s'il y en a → liste soumise à l'utilisateur, rien supprimé ;
