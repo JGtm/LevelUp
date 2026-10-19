@@ -375,15 +375,15 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 
 ### Étape 4 — Préparation du VPS (prod intacte ; prévenir avant chaque commande)
 
-- [ ] 4.1 Lecture seule de `/opt/levelup/.env.local` : `LEVELUP_ENV=production`,
+- [x] 4.1 (19/10 : revérifié, tout présent ; `replay_build_location` absent = worker) Lecture seule de `/opt/levelup/.env.local` : `LEVELUP_ENV=production`,
       `LEVELUP_BUILD_WORKER_TOKEN`, `LEVELUP_REPLAY_PUBLIC=1` présents (constaté le 17/10) ;
       `replay_build_location` absent de `app_settings.json` prod (constaté le 17/10) = défaut
       `worker` en production : le VPS ne décode jamais, il met en file pour csstat.
-- [ ] 4.2 **csstat** : l'unité `levelup-worker.service` (aujourd'hui un LIEN vers
+- [x] 4.2 (19/10, voir journal) **csstat** : l'unité `levelup-worker.service` (aujourd'hui un LIEN vers
       `/opt/levelup/packaging/…`, constaté le 17/10) devient une copie root (runbook §7 de
       `RUNBOOK_REPLAY_WORKER.md`), `systemd-analyze verify`. Sans ça, le job `deploy-worker` passe au
       rouge. Gate : fichier régulier `root:root`, verify exit 0.
-- [ ] 4.3 **Staging** (P2) : `/opt/levelup-staging/` (deploy:deploy), rsync msys64 + ssh msys64
+- [~] 4.3 (19/10, premier passage ; complété par 5.2, serveur local arrêté) **Staging** (P2) : `/opt/levelup-staging/` (deploy:deploy), rsync msys64 + ssh msys64
       `--delete` de `data/titles/`, `data/cache/replays/`, `data/global/xbox_aliases.duckdb`,
       `data/demo_films/`. Gate : nombre de bases DuckDB et d'artefacts = local, 0 `.wal`.
 - [ ] 4.4 Suppression de `/opt/levelup-data.incoming-restes-2026-09-23` (sur accord).
@@ -414,7 +414,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       (simulation), puis la même avec `--yes` ; `list` = 9 `granted`, XxGdakilla187xX `undecided` ;
       `docker compose restart levelup`.
 - [ ] 5.9 **Nuzzles** (D2) : onboarding admin (xuid `2535472547643888`), aucun ami, hors du groupe.
-- [ ] 5.10 **Ouvrier** (séquence de `RUNBOOK_REPLAY_WORKER.md` §4, qui fait foi) : test d'accès à `/api/v1/internal/build-queue/claim` (503 sans jeton, 401
+- [ ] 5.10 **Ouvrier** (D’ABORD, en root sur csstat, une fois le déploiement de l’ouvrier passé : `install -o root -g root -m 0644 /opt/levelup/packaging/systemd/levelup-worker.service /etc/systemd/system/levelup-worker.service && systemctl daemon-reload && systemd-analyze verify …`, cf. 4.2 ; puis séquence de `RUNBOOK_REPLAY_WORKER.md` §4, qui fait foi) : test d'accès à `/api/v1/internal/build-queue/claim` (503 sans jeton, 401
       jeton faux ; jamais 403 `csrf_rejected` ni 404) ; `allow <IP csstat>; deny all;` dans
       `location /api/v1/internal/` + `nginx -t && systemctl reload nginx` ; sur csstat
       `systemctl enable --now levelup-worker` ; `journalctl -u levelup-worker` ; un job de bout en
@@ -595,3 +595,19 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
     jetable compilé hors dépôt, supprimé) ; 0 `.wal` sous `data/titles` ; `healthcheck` TOUT OK ;
     serveur relancé, `/health` 200.
 - **2026-10-19 — Étape 2 close** (2.3b `[!]` justifié, D-11 à D-15 consignés).
+- **2026-10-19 — Étape 4 avancée par amendement** (l'utilisateur : « continue tant que tu peux » ;
+  4.1 à 4.4 ne dépendent pas de l'étape 3, la copie est rafraîchie en 5.2).
+  - 4.2 : sur csstat, `/etc/systemd/system/levelup-worker.service` était un lien PENDANT vers
+    `/opt/levelup/packaging/systemd/…`, fichier ABSENT du checkout de csstat (`97a109b0d`, branche
+    `main` : l'unité n'existe que dans `feat/v75`). Lien retiré (ouvrier ni activé ni actif) ;
+    copie impossible avant la release. `deploy-worker.sh` de la v8 traite une unité ABSENTE comme
+    « phase pré-activation » (message, pas d'échec) et ne refuse qu'un LIEN : le risque de rouge au
+    déploiement est levé. L'installation de la copie root + `systemd-analyze verify` passent en 5.10.
+  - 4.1 : `.env.local` prod : `LEVELUP_ENV=production`, `LEVELUP_REPLAY_PUBLIC=1`, jeton de l'ouvrier
+    présent ; `replay_build_location` absent de `app_settings.json`.
+  - 4.3 : `/opt/levelup-staging/` créé (deploy:deploy). rsync msys64 : il faut
+    `-o UserKnownHostsFile=/c/Users/Guillaume/.ssh/known_hosts` (sinon « Host key verification
+    failed », le ssh msys64 lit un autre `known_hosts`). Copié : 3,1 Go de bases (15 sur 23 : les 8
+    bases tenues par le serveur local sont verrouillées par Windows, « Device or resource busy »),
+    5,4 Go de rejeux (2 928 fichiers, = local), 250 Mo de films de la démo, alias. Les 8 bases
+    manquantes partent en 5.2, serveur arrêté.
