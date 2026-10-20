@@ -394,22 +394,22 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 
 ### Étape 5 — Jour J (fenêtre annoncée, utilisateur disponible, chaque geste prévenu)
 
-- [ ] 5.1 Aucune passe en cours, ni en local ni sur le VPS (`fuser` sur les bases partagées).
-- [ ] 5.2 Delta : vidage des journaux en local, puis rsync `--delete` vers le staging (rapide).
-- [ ] 5.3 Snapshot restic manuel sur le VPS, identifiant noté ici.
-- [ ] 5.4 `docker compose stop levelup` (la démo reste servie).
-- [ ] 5.5 **Bascule** : `data/titles` → `data/titles.pre-v8`, `data/cache/replays` →
+- [x] 5.1 (20/10, voir journal) Aucune passe en cours, ni en local ni sur le VPS (`fuser` sur les bases partagées).
+- [x] 5.2 (20/10, voir journal) Delta : vidage des journaux en local, puis rsync `--delete` vers le staging (rapide).
+- [x] 5.3 (20/10, voir journal) Snapshot restic manuel sur le VPS, identifiant noté ici.
+- [x] 5.4 (20/10, voir journal) `docker compose stop levelup` (la démo reste servie).
+- [x] 5.5 (20/10, voir journal) **Bascule** : `data/titles` → `data/titles.pre-v8`, `data/cache/replays` →
       `data/cache/replays.pre-v8`, puis les dossiers du staging mis à leur place, alias et
       `data/demo_films` idem ; `chown -R deploy:deploy`. **Jamais** `data/auth`,
       `data/global/player_friends.json`, `app_settings.json`, `db_profiles.json`.
-- [ ] 5.6 PR `feat/v75` → `main` (description), CI + E2E vertes → **squash par l'utilisateur** →
+- [x] 5.6 (20/10, voir journal) PR `feat/v75` → `main` (description), CI + E2E vertes → **squash par l'utilisateur** →
       tag `v8.0.0` poussé aussitôt sur le commit squash (P3).
-- [ ] 5.7 Suivi du déploiement : attente de la CI, démo puis prod, conteneurs durcis
+- [x] 5.7 (20/10, voir journal) Suivi du déploiement : attente de la CI, démo puis prod, conteneurs durcis
       (`docker compose ps` + logs : aucun « permission denied » ni « cannot read directory » sur
       `data/auth` ou `film_facts`), sortie de `deploy.sh` = `LEVELUP_APP_VERSION=v8.0.0`,
       `/health` 200 ; logs du boot : la tâche « relance des citations du film » démarre en prod
       et PAS dans la démo ; aucun conflit de verrou de la base joueur au premier post-sync.
-- [ ] 5.8 **Mise en commun des jetons** (juste après le boot) : `pool-sharing list` ;
+- [x] 5.8 (20/10, voir journal) **Mise en commun des jetons** (juste après le boot) : `pool-sharing list` ;
       `pool-sharing grandfather --players JGtm,Chocoboflor,XxDaemonGamerxX,Madina97294,DankerGlue,GeleJugefi,Trimbutton,QuiteSiren,UppedJoker`
       (simulation), puis la même avec `--yes` ; `list` = 9 `granted`, XxGdakilla187xX `undecided` ;
       `docker compose restart levelup`.
@@ -419,7 +419,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       `location /api/v1/internal/` + `nginx -t && systemctl reload nginx` ; sur csstat
       `systemctl enable --now levelup-worker` ; `journalctl -u levelup-worker` ; un job de bout en
       bout (claim → décodage → artefact) visible dans le tableau admin.
-- [ ] 5.11 Démo : un rejeu s'ouvre sur demo.lvelup.info.
+- [x] 5.11 (20/10, voir journal) Démo : un rejeu s'ouvre sur demo.lvelup.info.
 - [ ] 5.12 Conf nginx versionnée (`packaging/nginx/`) = VPS (`sites-available/levelup`,
       `demo-levelup`, `snippets/levelup-assets-v.conf`, `conf.d/rate_limit.conf`) ; écart →
       correction du fichier versionné (branche dédiée).
@@ -520,6 +520,11 @@ des gamertags des fixtures, réécriture de l'historique (push forcé sur `main`
 - **D-15 (19/10, BLOQUANT POTENTIEL pour la prod)** : sur le serveur local, la prise d écriture de la base partagée Infinite échoue tant que des lectures sont en vol (« drain timeout, rollback vers RO »), et une fois `RestoreSharedAfterSwap: OpenReadOnly failed` survenu (20:38), TOUTE prise d écriture échoue (« open RW after RO close : base tenue par un autre processus ») jusqu au redémarrage, sans autre processus sur la machine (vérifié). En prod, le même état bloquerait les écritures de la synchro. À instruire avant la release (lot dédié, proposé à l utilisateur le 19/10).
 
 - **D-16 (19/10, audit T1, agent Sonnet en lecture seule)** : capacités des nouveautés v8. OK : rejeu (routes `RequireCapability(CapReplay)` + `RouteCapabilityGate`), Tactique, Emprise, « Analyse en cours », zones nommées, mise en commun. À trancher : (a) `MatchHeader.replayLink.tsx:36` ne teste que `replay_available` (`os.Stat`), pas `replay` ; (b) citations : pas de garde web, `/pages/citations` sans `RequireCapability`, menu basculé sur `currentTitleSlug === halo_5` (`NavL1.tsx:280`, `NavL2.tsx:157`, `HomeCitationsNearCompletion.tsx:47`, juin), pas de ratchet web du slug ; (c) assistances attendues affichées dans la vue match pour Halo 5 (`match_view_data_loaders.go:301`, `MatchStatCards.tsx:100`, sans `expected_stats`), alors que Timeseries/Sessions/Escouade les masquent. Soumis à l utilisateur (fiche, T1).
+
+- **D-20 (20/10)** : `deploy.sh` sort en exit 1 juste après `/health OK`, dans le contrôle « version servie » censé non bloquant (affectation `_served_version=$(… | … | head -1)` sous `set -euo pipefail`) ; non reproduit à froid ; le rerun est passé. À durcir (`|| true`) pour que ce contrôle ne puisse jamais faire échouer le déploiement.
+- **D-21 (20/10)** : le job `deploy-worker` appelle `/opt/levelup/scripts/deploy-worker.sh` sur csstat SANS mettre le checkout à jour d abord ; au premier déploiement le script n existait pas (checkout figé à `97a109b0d`). Débloqué à la main ; le job devrait faire `git fetch/reset` avant d appeler le script.
+- **D-22 (20/10)** : les commandes CLI dans le conteneur durci doivent tourner en `-u appuser` (en root : `permission denied` sur `data/auth`) ; à corriger dans le runbook (`docker compose exec -T -u appuser levelup levelup …`) et dans la séquence Notion.
+- **D-23 (20/10)** : nginx prod : la conf active est `/etc/nginx/sites-enabled/levelup` (fichier), `sites-available/levelup` est une ancienne copie ; la conf versionnée `packaging/nginx/levelup.conf` ne porte pas le `allow/deny` de csstat ajouté le 20/10 (5.12).
 
 ## 3. Reprise de session
 
@@ -685,3 +690,31 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
 - **2026-10-20 — Jour J décidé par l'utilisateur.** Contrôles et captures repoussés après la release.
   3b.1-3b.2 confiés à un exécutant Sonnet (`feat/rv8-docs`). PR #96 `feat/v75` → `main` ouverte
   (https://github.com/JGtm/LevelUp/pull/96) pour lancer l'E2E tôt ; elle se mettra à jour avec les docs.
+- **2026-10-20 — JOUR J (étape 5).**
+  - 5.1-5.2 : serveur local arrêté 09:46 ; 10 WAL vidés par CHECKPOINT ; healthcheck TOUT OK ; rsync
+    final 09:47-09:48 : 23 bases identiques, 0 WAL, 2 928 rejeux = local.
+  - 5.3 : `systemctl start levelup-restic-backup.service` → snapshot **`fc487630`** (07:48 UTC).
+  - 5.6 : PR #96 en conflit avec `main` (1 commit `c084aefad`, correctif #89 déjà dans v75 ; seul conflit :
+    l'exception `groups.go` de l'allowlist, résolu côté v75) → `13c5f4dac` ; checks de la PR TOUS verts,
+    E2E Playwright compris ; squash par Claude sur autorisation explicite de l'utilisateur
+    (« Tu as mon autorisation ») → `main` = **`5252889a6`** ; tag **`v8.0.0`** poussé aussitôt.
+  - 5.4-5.5 : déploiement : attente CI réussie, job deploy démarré 10:07:10 ; bascule 10:07:17 → 10:07:21
+    (`/root/swap_v8.sh` : `docker compose stop levelup`, `titles` → `titles.pre-v8`, staging en place,
+    alias, `cache/replays`, `demo_films`, chown) ; `LEVELUP_APP_VERSION=v8.0.0` dans `.env`.
+  - 5.7 : v8 démarrée 10:11 ; `/health` 200 ; 0 ERROR au boot ; 0 « permission denied » ; migrations
+    `applied=0` partout (bases déjà migrées en local) ; `friends … created=4` ; `pool: créé size=13` ;
+    **notification Discord `discord_version_sent` à 08:11:36 UTC**. Le job « Deploy lvelup.info » a
+    échoué APRÈS le `/health OK` (exit 1 dans le contrôle de version, non reproduit à froid : D-20) →
+    regen démo et ouvrier sautés ; `gh run rerun --failed` : deploy OK, regen démo OK (10 rejeux figés
+    `copie`, aucun recuit sur le VPS), ouvrier en échec (`deploy-worker.sh` absent : checkout de csstat
+    jamais mis à jour, D-21) → checkout de csstat remis à `origin/main` (en `deploy`), rerun : OK.
+  - 5.8 : `pool-sharing grandfather` échoue en `root` (`permission denied` sur
+    `watcher_tokens/*.json.tmp`, conteneur durci) → relancé avec `-u appuser` : 9 `granted`
+    (`grandfathered_explicit`), XxGdakilla187xX `undecided` (D-22 : runbook et Notion à corriger).
+  - 5.10 : jetons prod et csstat identiques (empreinte) ; pré-vol 401/401 ; nginx : la conf ACTIVE est
+    `sites-enabled/levelup` (fichier, pas lien ; `sites-available/levelup` est périmé) : `allow
+    82.165.167.179; deny all;` ajoutés dans `location /api/v1/internal/` (sauvegarde
+    `/root/nginx-levelup.bak-20261020-preworker`), `nginx -t` OK, reload ; depuis l'extérieur 403, depuis
+    csstat 401 (jeton faux) ; unité installée en copie root, `systemd-analyze verify` 0, `enable --now` :
+    enabled/active, « replay-worker: démarré ». Premier job de bout en bout : en attente d'un match.
+  - 5.11 : démo 200 ; rejeux figés copiés.
