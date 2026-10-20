@@ -428,7 +428,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 
 - [ ] 6.1 `schema_migrations` de `metadata.duckdb` : migrations médailles passées ; la médaille
       VIP s'affiche « Clash of Kings » avec son image.
-- [ ] 6.2 `data/global/player_friends.json` existe avec N entrées ; groupe par défaut non vide.
+- [ ] 6.2 `data/global/player_friends.json` existe avec N entrées (4 attendues, cf. 4.5) ; pas de groupe par défaut (D-19).
 - [ ] 6.3 +1 h : logs `post-sync: kill source` → `sans_killfeed=0`, `ecrits` > 0,
       `backlog_restant` en baisse.
 - [ ] 6.4 Synchro de Nuzzles réussie (`auto_sync: sync delta réussie`), plus de `joueur en échec`.
@@ -677,3 +677,8 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   `db_profiles.json` (sortie silencieuse, sans log, de `migrateDefaultGroupAtBoot`). Options : poser
   `"admin": "JGtm"` dans le `db_profiles.json` de prod avant le déploiement (groupe « Mon foyer » créé
   depuis les amis de JGtm), le créer à la main dans l'app après le déploiement, ou rester sans groupe.
+- **2026-10-20 — D-19 tranché (utilisateur, « Ok »)** : rien à faire pour la release. La migration du
+  groupe par défaut est un one-shot de transition (juin) déjà présent en v7.3.2 et sauté en prod depuis
+  (pas de champ `"admin"`) ; la prod n'a aucun groupe et la v8 garde ce comportement. Un groupe se crée
+  dans l'app après le déploiement si l'utilisateur le souhaite. Le contrôle 6.2 « groupe par défaut non
+  vide » est caduc : 6.2 vérifie seulement `player_friends.json` (N entrées).
