@@ -125,6 +125,21 @@ Même mécanisme, même erreur, prouvé par la sonde. Non demandés dans le pér
 ## Axes sans constat
 Aucun axe n'a été passé sans constat : l'axe unique passé a produit les constats ci-dessus. Aucun `ON CONFLICT` n'est sur le chemin chaud d'une table append-only protégée (règles ART 1 et 2 respectées sur ce point).
 
+## Statut des correctifs (2026-10-21, branche `fix/v802-cles-primaires`, cible v8.0.2)
+
+| Constat | Statut | Commits | Preuve |
+|---|---|---|---|
+| C1 restauration Parquet | **Corrigé** | `64d3dbe00` (+ `7bb9d4831`, `d4a8a1a39` : ratchets) | `pkg/duckdbbackup/importer_test.go` (export puis import : PK/UNIQUE présentes dans `duckdb_constraints()`, `ON CONFLICT` et `INSERT OR IGNORE` réussissent), `internal/ops/restore_schema_cgo_test.go` (base joueur migrée, exportée, restaurée : clés, vue `_latest`, cycle de migrations suivant) |
+| C2 `challenge_template` + séquelles de C1 | **Corrigé** (sauf `streak` de Chocoboflor, voir ci-dessous) | `ba46b8cdd` | `internal/migration/declared_keys_repair_test.go`, `internal/games/halo_infinite/migrations/declared_keys_repair_test.go` (dont le seed Prestige en `ON CONFLICT` sur la table réparée) |
+| C3 `cmd/prestige-seed` | **Corrigé** (outil supprimé) | `f30a7073d` | ratchets `no_bare_duckdb_rw_open` et `no_attach_on_social` verts sans l'entrée |
+| C4 garde-rail ART et migrations | **Corrigé** | `ce529939e` | `internal/sync/no_art_upsert_migrations_test.go` : rouge sur `ranked_playlists.go` avant correctif, vert sur tout le module après ; témoin `TestUpsertProtegeDetection_Sanity` |
+
+**C1** : chaque base restaurée est d'abord créée par le jeu de migrations de son titre et de sa cible (`ops.RestoreSchema`), puis remplie table par table par colonnes nommées (`pkg/duckdbkeys`). Une table hors schéma canonique est recréée depuis le DDL que l'export écrit désormais (`_ddl_<horodatage>.json`) ; repli `CREATE TABLE AS` journalisé et compté seulement sans DDL (instantanés antérieurs). Mesure (export puis restauration de copies) : Chocoboflor 60 272 lignes identiques, tables sans clé 23 → 9 ; JGtm 105 713 lignes identiques ; metadata 44 153 lignes identiques (11 tables recréées depuis le DDL, `challenge_template` retrouve sa clé) ; shared 20 461 480 lignes identiques en 46 s, clés intactes.
+
+**C2** : passe générique en fin de cycle de migrations (`internal/migration/declared_keys_repair.go`). Mesure sur copies du `data/backups/` : metadata (08/10) 1 table réparée (`challenge_template`, 27 lignes, 29 ms) ; Chocoboflor (16/10) 13 tables réparées (`arc`, `baseline_state`, `challenge`, `coach_proposal`, `improvement_campaign`, `milestone_earned`, `moment_card`, `player_achievements`, `player_assists_model`, `player_privacy_state`, `prestige_telemetry`, `schema_migrations`, `sessions`), 0 doublon, lignes identiques, cycle 0,43 s référence comprise ; JGtm, Madina97294, Nuzzles, XxDaemonGamerxX, shared Halo Infinite et shared Halo 5 : rien à réparer.
+
+**Reste à décider** : `streak` de Chocoboflor (table append-only, vue `streak_latest`, 1 ligne) n'a pas sa clé technique `id` ; la passe refuse par principe les tables append-only (WARN `migration_key_repair_skipped_total`). Écritures non bloquées (INSERT pur). Les tables `mv_global_stats`, `mv_mode_category_stats`, `mv_session_stats` et `spartan_identity` de Chocoboflor, héritées hors migrations et sans écrivain Go, restent sans clé. La vérification de production (tables sans clé de la shared et de la metadata de prod) reste à faire : la passe C2 les réparera au premier démarrage de la v8.0.2, et journalisera ce qu'elle refuse.
+
 ## Suite
 - C1 : à escalader (procédure de reprise sur sinistre) ; vérifier d'abord, avant toute restauration réelle, que `cmd/restore` re-pose les clés. Sans dépendre de C1, une vérification de production reste à faire : lister les tables sans PK de la base partagée et de la metadata de prod (sauvegarde restic ou arrêt du serveur ; les fichiers vivants sont verrouillés), avec la requête de « Reproduction ».
 - C2 : à planifier avant la prochaine montée de version du seed Prestige ; contrôle préalable de l'état du fichier vivant `metadata.duckdb` (verrouillé pendant l'audit).
