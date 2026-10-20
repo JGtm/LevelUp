@@ -6,7 +6,7 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
-## [8.0.1] - Non publiée
+## [8.0.1] - 2026-10-20
 
 ### Ajouté
 - **Tactique : un réglage « Zones nommées »** — le plan affiche ou masque les zones nommées de la carte ; le bouton est centré, sur le même gabarit que les pilules.

@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
-## [8.0.1] - Unreleased
+## [8.0.1] - 2026-10-20
 
 ### Added
 - **Tactics: a "Named zones" toggle** — the plan shows or hides the named zones of the map; the button sits centred, on the same template as the pills.
