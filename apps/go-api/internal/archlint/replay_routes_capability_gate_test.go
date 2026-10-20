@@ -145,8 +145,8 @@ type siteMontage struct {
 // englobants — au montage reel : le corps du `r.Group(func(r chi.Router) { ... })`, puis
 // celui de `mountAPIV1`, etc.
 //
-// Parametree par le constructeur depuis le 2026-09-06 : le ratchet du garde local des
-// routes tactiques (`tactical_background_local_gate_test.go`) a exactement le meme besoin
+// Parametree par le constructeur depuis le 2026-09-06 : le ratchet de la garde du rejeu des
+// routes tactiques (`tactical_background_demo_gate_test.go`) a exactement le meme besoin
 // d'extraction, et une seconde copie de cette remontee de pile aurait diverge.
 func sitesDeMontage(fichier *ast.File, ctor string) []siteMontage {
 	var out []siteMontage

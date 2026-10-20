@@ -6,11 +6,9 @@
 // quand aucun artefact n'existe pour le match — la feature s'allume par présence
 // d'artefact, pas par flag global.
 //
-// Le garde local (le rejeu n'est servi qu'en local tant que ses écarts n'ont pas été
-// confrontés à un second film) est un middleware de TRANSPORT, pas une branche du
-// handler : il lit l'adresse de la connexion TCP, que la couche Huma n'expose pas.
-// Cf. replay_local_gate.go, qui porte la date de bascule, la cible de retrait et le
-// critère mesurable.
+// En démo, la garde des routes de rejeu (ReplayGate, replay_demo_gate.go) est un
+// middleware de TRANSPORT, pas une branche du handler : elle ne laisse passer que les
+// matchs figés de la démo.
 package handlers
 
 import (
@@ -38,11 +36,11 @@ func NewReplayHandler(newSvc ServiceFactory[port.ReplayService]) *ReplayHandler 
 }
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
-// /players/{player_slug} + middlewares ownership/titre/garde local hérités).
+// /players/{player_slug} + middlewares ownership/titre/garde de démo hérités).
 //
 // L'IMAGE DU FOND reste une route chi NUE, comme l'export CSV de l'historique : Huma décrit
 // des charges utiles JSON typées, et forcer 700 Kio de PNG dans ce moule n'apporterait qu'un
-// schéma qui ment. Elle hérite des mêmes middlewares (ownership, titre, garde local) puisque
+// schéma qui ment. Elle hérite des mêmes middlewares (ownership, titre, garde de démo) puisque
 // c'est le même sous-routeur.
 func (h *ReplayHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)

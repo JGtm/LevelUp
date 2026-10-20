@@ -18,6 +18,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ### Ops
 - **Le déploiement ne peut plus échouer sur le contrôle de version servie** — après `/health`, `deploy.sh` vérifie que le conteneur sert la version déployée ; ce contrôle est un simple avertissement, mais son enchaînement `docker inspect | sed | head` tournait sous `set -euo pipefail` et pouvait arrêter le script en exit 1 (constaté une fois au déploiement de la v8.0.0, qui a alors sauté la régénération de la démo et le déploiement de l'ouvrier). L'enchaînement se termine désormais par `|| true`.
+- **La variable `LEVELUP_REPLAY_PUBLIC` disparaît** — le rejeu est servi comme les autres routes joueur depuis la 8.0.0 ; le garde « local seulement » qu'elle levait et ses tests sont retirés. Les contrôles de propriété du joueur et de participation au match sont inchangés ; la démo ne sert toujours que ses matchs figés. La variable peut être retirée du `.env.local` de production (elle est ignorée).
 - **La CLI du conteneur durci se lance en `appuser`** — `docker compose exec -T -u appuser levelup levelup …` : en root, la commande n'a plus les capacités pour écrire les fichiers de l'application (`permission denied` sur `data/auth/watcher_tokens/`). Référence des commandes et runbook de déploiement mis à jour.
 - **Protocole ouvrier réservé à csstat dans la configuration nginx versionnée** — `location /api/v1/internal/` porte `allow <csstat>; deny all;`, comme appliqué en production le jour de la release v8.0.0.
 

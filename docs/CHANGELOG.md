@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Ops
 - **Deployment cannot fail on the served-version check any more** — `deploy.sh` checks after `/health` that the container serves the deployed version; this check is warn-only, but its `docker inspect | sed | head` pipeline ran under `set -euo pipefail` and could end the script with exit 1 (seen once on the v8.0.0 deployment, which then skipped the demo regeneration and the worker deployment). The pipeline now ends in `|| true`.
+- **The `LEVELUP_REPLAY_PUBLIC` variable is gone** — the replay is served like any other player route since 8.0.0; the "local only" guard it lifted and its tests are removed. Player ownership and match participation checks are unchanged; the demo still serves only its frozen matches. The variable can be removed from the production `.env.local` (it is ignored).
 - **CLI in the hardened container runs as `appuser`** — `docker compose exec -T -u appuser levelup levelup …`: as root the command lacks the capabilities to write files owned by the app (`permission denied` on `data/auth/watcher_tokens/`). Commands reference and deployment runbook updated.
 - **Worker protocol restricted to csstat in the versioned nginx configuration** — `location /api/v1/internal/` carries `allow <csstat>; deny all;`, as applied in production on the v8.0.0 release day.
 

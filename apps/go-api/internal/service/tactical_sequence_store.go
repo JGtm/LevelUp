@@ -7,7 +7,7 @@ package service
 //
 // MEME FICHIER, MEME RESOLVEUR DE CHEMIN que le service de rejeu (`PathResolver.ReplayArtifactPath`,
 // racine d'execution). Il n'est monte que derriere la porte `film.replay_artifact` du titre et, au
-// transport, derriere les gardes du rejeu (`RequireCapability(CapReplay)` + `LocalOnlyReplay`).
+// transport, derriere les gardes du rejeu (`RequireCapability(CapReplay)` + `ReplayGate`).
 
 import (
 	"context"

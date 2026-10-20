@@ -1965,8 +1965,7 @@ paths:
         Image vue du dessus de la carte du match (PNG), cuite hors ligne par
         `cmd/mapfond-build`. Elle ne se lit qu'avec son CALAGE, servi par
         `GET .../replay/background` : une image dont on ignore où elle se pose ne se
-        superpose à rien. Servie uniquement en local, comme le reste du rejeu 2D
-        (cf. `handlers/replay_local_gate.go`).
+        superpose à rien.
       responses:
         '200':
           description: Image PNG du fond de carte

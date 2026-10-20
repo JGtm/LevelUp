@@ -41,7 +41,7 @@ func PreserveRemoteAddr(next http.Handler) http.Handler {
 // PeerAddr rend l'adresse TCP du pair (« hôte:port ») capturée par
 // PreserveRemoteAddr, ou r.RemoteAddr si ce middleware n'est pas monté en amont
 // (routeur de test nu). Jamais un en-tête : c'est l'adresse sur laquelle décident
-// les gardes « requête locale » (LoopbackOnly, garde du rejeu).
+// la garde « requête locale » (LoopbackOnly).
 func PeerAddr(r *http.Request) string {
 	if v, ok := r.Context().Value(ctxKeyPeerAddr{}).(string); ok && v != "" {
 		return v

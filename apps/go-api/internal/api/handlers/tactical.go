@@ -65,12 +65,11 @@ func NewTacticalHandler(
 
 // Mount enregistre les routes de l'onglet sur le sous-routeur chi.
 //
-// LE FOND DE CARTE N'EST PAS SOUS LE GARDE LOCAL DU REJEU (`LocalOnlyReplay`), et c'est
-// deliberé : ce garde protege les TRAJECTOIRES decodees du film, dont la couverture n'est
-// pas encore productionnalisable (cf. replay_local_gate.go). Une image de fond est une
-// donnee de REFERENCE versionnee, extraite des fichiers de carte et non d'un film : la
-// masquer hors localhost rendrait la grille des cartes vide en production sans rien
-// proteger.
+// LE FOND DE CARTE N'EST PAS SOUS LA GARDE DU REJEU (`ReplayGate`), et c'est deliberé :
+// en démo, cette garde ne sert que les matchs figés (cf. replay_demo_gate.go). Une image de
+// fond est une donnee de REFERENCE versionnee, extraite des fichiers de carte et non d'un
+// film, et une carte n'a pas de match : la placer sous cette garde rendrait la grille des
+// cartes vide en démo sans rien proteger.
 func (h *TacticalHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/tactical/maps", h.handleGetMaps,
