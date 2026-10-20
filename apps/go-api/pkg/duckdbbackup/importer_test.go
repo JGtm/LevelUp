@@ -222,3 +222,60 @@ func removeDDL(t *testing.T, staging string) {
 		}
 	}
 }
+
+// TestImport_SchemaTronqueDegradeLaCleSeulement : un `_ddl_` plus récent mais tronqué (export
+// interrompu, disque plein) ne fait pas échouer la restauration : la clé concernée retombe sur
+// des tables sans clé (comptées), sans perte de ligne, et les autres clés sont restaurées avec
+// leur schéma.
+func TestImport_SchemaTronqueDegradeLaCleSeulement(t *testing.T) {
+	staging := exportDB(t, "db1", `CREATE TABLE t (v INTEGER PRIMARY KEY); INSERT INTO t VALUES (1), (2);`)
+	other := exportDB(t, "db2", `CREATE TABLE u (v INTEGER PRIMARY KEY); INSERT INTO u VALUES (1);`)
+	if err := os.Rename(filepath.Join(other, "db2"), filepath.Join(staging, "db2")); err != nil {
+		t.Fatal(err)
+	}
+	truncated := filepath.Join(staging, "db1", ddlFilePrefix+"99991231_235959"+ddlFileSuffix)
+	if err := os.WriteFile(truncated, []byte(`{"sequences": [], "tables": {"t": "CREATE TA`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	res, err := ImportFromStaging(context.Background(), staging, func(k string) string {
+		return filepath.Join(dir, k+".duckdb")
+	}, nil, false)
+	if err != nil {
+		t.Fatalf("un schéma tronqué ne doit pas arrêter la restauration : %v", err)
+	}
+	if len(res.Restored) != 2 || len(res.FallbackTables) != 1 || res.FallbackTables[0] != "db1:t" {
+		t.Fatalf("résultat : %+v", res)
+	}
+	db1 := openRestored(t, filepath.Join(dir, "db1.duckdb"))
+	if n := scalar(t, db1, `SELECT count(*) FROM t`); n != 2 {
+		t.Fatalf("lignes perdues : %d", n)
+	}
+	if countConstraints(t, openRestored(t, filepath.Join(dir, "db2.duckdb")), "u", "PRIMARY KEY") != 1 {
+		t.Fatal("la clé voisine doit garder son schéma")
+	}
+}
+
+// TestWriteSchemaDDL_EcritureAtomique : le schéma est écrit en entier ou pas du tout — aucun
+// fichier partiel ni temporaire ne reste quand l'écriture échoue (répertoire absent).
+func TestWriteSchemaDDL_EcritureAtomique(t *testing.T) {
+	db := openRestored(t, filepath.Join(t.TempDir(), "s.duckdb"))
+	if _, err := db.Exec(`CREATE TABLE t (v INTEGER PRIMARY KEY)`); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	ok := filepath.Join(dir, ddlFilePrefix+"1"+ddlFileSuffix)
+	writeSchemaDDL(context.Background(), db, "k", ok)
+	if s, err := loadSchemaDDL(dir); err != nil || s == nil || s.Tables["t"] == "" {
+		t.Fatalf("schéma écrit illisible : %+v (err=%v)", s, err)
+	}
+	missing := filepath.Join(dir, "absent")
+	writeSchemaDDL(context.Background(), db, "k", filepath.Join(missing, ddlFilePrefix+"2"+ddlFileSuffix))
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("fichiers restants après un échec d'écriture : %d, want 1", len(entries))
+	}
+}
