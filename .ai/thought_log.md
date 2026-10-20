@@ -4,7 +4,7 @@
 
 **Résultats observés** : en prod, connecté, `/en/` donnait la page 404 du routeur (aucune route ne correspondait ; déconnecté le renvoi vers /login masquait le défaut). Nouveau test `routes/{-$lang}/index.test.tsx` (18 cas) : résolution sur l'arbre réel, priorité des pages statiques et du splat legacy conservée, connecté vers l'accueil, anonyme vers /login, `/xx/` introuvable. `DASHBOARD_PATH` (`'/'`, destination post-login, chaîne non typée) laissé tel quel : il atteint la même route.
 
-**Conclusion** : à vérifier à l'écran après déploiement avec un compte connecté : `/en/` et `/fr/`. Non traité (hors périmètre) : le titre d'onglet de `/en/` retombe sur « LevelUp » le temps de la redirection (la règle `/` de `pageTitle.ts` ne reconnaît pas le segment).
+**Conclusion** : à vérifier à l'écran après déploiement avec un compte connecté : `/en/` et `/fr/`. Le garde-rail de titres de `pageTitle.test.ts` (toute route réelle a un titre) a failli : la règle `/` de `pageTitle.ts` reconnaît maintenant `/` et `/{fr|en}/` (une langue inconnue garde le titre par défaut). Leçon : le premier push n'avait été vérifié que sur les dossiers touchés, la CI a attrapé ce test ; vitest complet (979 fichiers) rejoué en local avant le second push.
 
 ## [2026-10-20] Accueil et vue match : sections de durée pour mesurer en prod — Complété (branche `feat/v801-chronos`, vers `feat/v75`)
 
