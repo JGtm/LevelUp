@@ -137,16 +137,28 @@ une PR de release v8.0.1 est ouverte depuis `feat/v75`.
   ./internal/domain/ ./internal/port/` exit 0.
 
 ### Étape 4 — Branchement web (rapide)
-- [ ] 4.1 Hook `useMatchReplayContext` (clé `queryKeys.matchReplayContext`), page de rejeu
+- [x] 4.1 Hook `useMatchReplayContext` (clé `queryKeys.matchReplayContext`), page de rejeu
       branchée dessus ; adaptateur provisoire de l'étape 1.2 supprimé s'il n'a plus d'appelant.
-- [ ] 4.2 `replayLoadState` : `identityPending` lit la nouvelle requête.
+- [x] 4.2 `replayLoadState` : `identityPending` lit la nouvelle requête.
 - Gate : `npx tsc -b --force`, `npx eslint` sur les fichiers touchés, vitest `match-replay` + `lib/replay` + `routes` vert ; `grep -n useMatchView` dans la route de rejeu : aucun résultat.
+- Journal (2026-10-20) : `useMatchReplayContext` dans `lib/replay/queries.ts` (clé
+  `matchReplayContext`, classée title-scopée dans `keys.title-slug.guard.test.ts` ; fraîcheur
+  nulle et rechargement 60 s pendant l'analyse du film, comme la vue complète). L'adaptateur
+  `replayContextFromMatchView` n'a plus d'appelant : supprimé, remplacé par
+  `normalizeReplayMatchContext` (tableaux `null` du transport → vides, testé) et
+  `replayContextStaleTime`. La route ne lit plus `useMatchView` ; `identityPending` lit
+  `isPending` du contexte ; commentaires de `replayLoadState` et de la route remis à jour.
+  Gate : `tsc -b --force` exit 0 ; `eslint` (9 fichiers touchés) exit 0 ; vitest
+  `match-replay` + `lib/replay` + `routes` + `lib/api` + `lib/query` + `match-view` : 331 fichiers
+  / 4 305 tests verts, exit 0 (premier passage rouge : la nouvelle clé n'était pas classée par le
+  garde title-slug, corrigé) ; `grep -n useMatchView` sur la route : aucun résultat (exit 1) ;
+  `npx knip` exit 0 ; `lint-cross-feature-imports` exit 0.
 
 ### Étape 5 — Vérification et clôture (rapide)
-- [ ] 5.1 Mesure au navigateur (instance Chrome déjà connectée, une seule page) : durées des
+- [~] 5.1 (superviseur, après l'exécutant) Mesure au navigateur (instance Chrome déjà connectée, une seule page) : durées des
       requêtes de la page, capture à l'affichage ; comparaison visuelle avec la capture d'avant
       (fiches, frise, médailles, fil).
-- [ ] 5.2 `adversarial-review` du diff (lot à risque : parité de données).
+- [~] 5.2 (superviseur, après l'exécutant) `adversarial-review` du diff (lot à risque : parité de données).
 - [ ] 5.3 `.ai/thought_log.md` ; commit(s) ; push `feat/replay-contexte` ; CI verte.
 - Gate : CI de la branche verte (`gh run list --branch feat/replay-contexte`).
 

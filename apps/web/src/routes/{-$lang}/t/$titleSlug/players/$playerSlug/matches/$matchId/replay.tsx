@@ -12,7 +12,7 @@
  *  - `replay` : le titre a des matchs, mais aucune chaîne de rejeu (capability title-level du
  *    lot C, servie par le bootstrap). Halo 5 est dans ce cas.
  * La porte est posée AU-DESSUS du composant : la page n'est pas montée, donc aucun de ses
- * hooks de chargement ne tourne — ni l'artefact (1,5 à 2,7 Mio), ni la vue match, ni le fond
+ * hooks de chargement ne tourne — ni l'artefact (1,5 à 2,7 Mio), ni le contexte du match, ni le fond
  * de carte. Un titre sans rejeu ne paie aucune requête, et lit un état qui le dit
  * (`FeatureUnavailable`, libellé `replay` FR/EN).
  *
@@ -42,6 +42,7 @@ import {
 } from '@/features/match-replay/hooks/useReplayFullscreen'
 import {
   useMatchReplay,
+  useMatchReplayContext,
   useReplayMapBackground,
   useReplayMapCallouts,
   useReplayMapImage,
@@ -50,7 +51,6 @@ import { ReplayCanvas } from '@/features/match-replay/ui/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ui/ReplayKillFeed'
 import { ReplayMatchRecall } from '@/features/match-replay/ui/ReplayMatchRecall'
 import { frameToMs, resolveTacticalOpenAtFrame } from '@/lib/replay/replayLogic'
-import { replayContextFromMatchView } from '@/lib/replay/replayMatchContext'
 import { ReplayBombCountdownOverlay } from '@/features/match-replay/ui/ReplayBombCountdownOverlay'
 import { ReplayRoundBreakOverlay } from '@/features/match-replay/ui/ReplayRoundBreakOverlay'
 import { ReplaySchemaBadge } from '@/features/match-replay/ui/ReplaySchemaBadge'
@@ -59,7 +59,6 @@ import { ReplayTeams } from '@/features/match-replay/ui/ReplayTeams'
 import { ReplayVictoryOverlay } from '@/features/match-replay/ui/ReplayVictoryOverlay'
 import { MatchBreadcrumb } from '@/features/match-view/MatchHeader'
 import { buildMatchHeadingStr } from '@/features/match-view/format'
-import { useMatchView } from '@/features/match-view/queries'
 import { useFriendGamertags } from '@/features/friends/queries'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
@@ -128,10 +127,9 @@ function ReplayPage() {
   // DEUX SOURCES, DEUX RÔLES. Le film porte ce qui se passe et l'identifie par XUID ; la
   // base porte qui sont les gens. L'artefact ne mélange pas les deux — la jointure se fait
   // ici, sur le xuid, qui est la seule clé qui ne suppose rien (surtout pas un ordre).
-  const { data: matchView, isPending: matchViewPending } = useMatchView(playerSlug, matchId)
-  // Le rejeu ne lit que quatre morceaux de la vue (`ReplayMatchContext`) : projetés une fois,
-  // mémoïsés sur la réponse pour que le modèle ne se reconstruise pas à chaque rendu.
-  const replayContext = useMemo(() => replayContextFromMatchView(matchView), [matchView])
+  // La base est lue par le CONTEXTE DE MATCH du rejeu (en-tête, tableau de score, fil, médias),
+  // pas par la vue complète du match : le rejeu n'en lit que ces quatre morceaux.
+  const { data: replayContext, isPending: replayContextPending } = useMatchReplayContext(playerSlug, matchId)
   // LA POSITION DE LECTURE VIENT DU MAGASIN, la page n'en garde plus de copie (2026-09-06,
   // W1) : le canvas ecrit, cette page lit. L'abonnement suit la cadence de PUBLICATION
   // (150 ms), pas celle de l'ecran — cf. `model/playbackStore`.
@@ -153,7 +151,7 @@ function ReplayPage() {
   const callouts = useMemo(() => normalizeCallouts(calloutsEntry), [calloutsEntry])
 
   // LE MODÈLE DE LA PAGE, JOINT ICI ET NULLE PART AILLEURS (2026-09-06, W1). L'artefact dit
-  // ce qui s'est passé et l'identifie par XUID ; la vue match dit qui sont les gens. La
+  // ce qui s'est passé et l'identifie par XUID ; le contexte du match dit qui sont les gens. La
   // jointure des deux — identité, marques, horloge, fenêtre de gameplay, roster, fil recalé,
   // médias, score final — vit dans `model/replayModel`, pure et testée sans React ; ce hook
   // ne fait que la mémoïser. La page n'en garde que ce qui dépend de la LANGUE ou de
@@ -194,7 +192,7 @@ function ReplayPage() {
     isLoading,
     hasTracks: !!data && data.tracks.length > 0,
     error,
-    identityPending: matchViewPending,
+    identityPending: replayContextPending,
   })
   // LE MODE PLEIN ÉCRAN vit ICI parce qu'il change le cadre de LA GRILLE (cf. useReplayFullscreen) ;
   // le canvas n'en reçoit que la commande, pour le bouton de la barre de lecture et la touche F.
