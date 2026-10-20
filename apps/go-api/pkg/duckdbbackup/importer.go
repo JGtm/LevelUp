@@ -21,31 +21,20 @@ import (
 type ImportResult struct {
 	Restored []string // keys successfully imported
 	Skipped  []string // keys with no target path mapping
-	// FallbackTables : tables ("clé:table") absentes du schéma canonique de leur base,
-	// importées par CREATE TABLE AS — donc SANS clé ni défaut. Chacune est journalisée en WARN.
+	// FallbackTables : tables ("clé:table") importées par CREATE TABLE AS — donc SANS clé ni
+	// défaut : sauvegarde sans schéma lisible, table absente de son schéma, ou schéma refusé.
+	// Chacune est journalisée en WARN ; la réparation des clés du démarrage suivant rétablit
+	// celles que le schéma canonique déclare.
 	FallbackTables []string
-	// SourceDDLTables : tables ("clé:table") absentes du schéma canonique, recréées avec leurs
-	// clés depuis le DDL que porte la sauvegarde.
-	SourceDDLTables []string
-	// DroppedRows : lignes écartées à l'import (doublons d'une clé du schéma canonique, clé
-	// primaire NULL). Chaque table concernée est journalisée en WARN avec son compte.
-	DroppedRows int64
-	DurationMs  int64
+	// SchemaFailures : séquences, index ou vues ("clé:<ordre DDL abrégé>") du schéma de la
+	// sauvegarde que DuckDB a refusé de recréer. Chacun est journalisé en WARN.
+	SchemaFailures []string
+	DurationMs     int64
 }
 
-// CanonicalSchema pose le schéma canonique d'une base AVANT l'import de ses tables, puis la
-// finalise APRÈS. C'est par lui que la base restaurée retrouve ses clés primaires et UNIQUE,
-// ses défauts, ses séquences, ses index et ses vues : un Parquet ne porte que des lignes.
-//
-// Provision reçoit la base neuve (vide). Elle rend ErrNoCanonicalSchema quand la clé n'a pas
-// de schéma connu : toutes les tables de la base sont alors importées par le repli (WARN).
-type CanonicalSchema interface {
-	Provision(ctx context.Context, key string, db *sql.DB) error
-	Finalize(ctx context.Context, key string, db *sql.DB) error
-}
-
-// ErrNoCanonicalSchema : la clé de sauvegarde ne correspond à aucun schéma connu.
-var ErrNoCanonicalSchema = errors.New("aucun schéma canonique pour cette clé de sauvegarde")
+// FinalizeFunc s'applique à chaque base restaurée, après le versement de ses tables (ex.
+// alignement des séquences sur les identifiants restaurés). nil : aucune finalisation.
+type FinalizeFunc func(ctx context.Context, key string, db *sql.DB) error
 
 // tsPattern strips the timestamp suffix appended by ExportTarget to table filenames.
 // e.g. "match_registry_20260525_132028.parquet" → "match_registry"
@@ -55,10 +44,9 @@ var tsPattern = regexp.MustCompile(`_\d{8}_\d{6}\.parquet$`)
 type importer struct {
 	stagingDir string
 	keyToPath  func(string) string
-	schema     CanonicalSchema
+	finalize   FinalizeFunc
 	dryRun     bool
 	result     *ImportResult
-	ddl        map[string]string // DDL de la sauvegarde de la clé en cours (table → CREATE TABLE)
 }
 
 // ImportFromStaging walks stagingDir and imports each key's Parquet files into DuckDB.
@@ -66,17 +54,18 @@ type importer struct {
 // keyToPath maps a backup key (e.g. "halo_infinite:shared_matches_v2") to the
 // target DuckDB file path. Keys with no mapping (empty string) are skipped.
 //
-// schema pose le schéma canonique de chaque base avant d'y verser ses tables (obligatoire :
-// sans lui, une base restaurée perdrait toutes ses clés).
+// Chaque base est recréée dans l'état de son ÉPOQUE : le schéma exporté avec la sauvegarde
+// (`_ddl_<horodatage>.json`, même instant que les lignes et que le registre des migrations)
+// est rejoué, puis chaque table est remplie. Jamais le schéma du code courant : une étape de
+// migration absente du registre restauré doit trouver la base telle qu'elle était, sinon une
+// conversion qui se saute sur un schéma déjà à jour perdrait les lignes restées dans l'ancienne
+// table. Le démarrage suivant applique les étapes manquantes, puis rétablit les clés déclarées.
 //
 // When dryRun is true the function logs what it would do but makes no changes.
 func ImportFromStaging(ctx context.Context, stagingDir string, keyToPath func(string) string,
-	schema CanonicalSchema, dryRun bool) (*ImportResult, error) {
-	if schema == nil {
-		return nil, errors.New("import: schéma canonique requis (une base restaurée sans lui perd ses clés)")
-	}
+	finalize FinalizeFunc, dryRun bool) (*ImportResult, error) {
 	start := time.Now()
-	im := &importer{stagingDir: stagingDir, keyToPath: keyToPath, schema: schema, dryRun: dryRun,
+	im := &importer{stagingDir: stagingDir, keyToPath: keyToPath, finalize: finalize, dryRun: dryRun,
 		result: &ImportResult{}}
 
 	top, err := os.ReadDir(stagingDir)
@@ -197,8 +186,8 @@ func (im *importer) restoreBackup(ctx context.Context, dbPath, bakPath string) {
 	}
 }
 
-// doImport crée la base neuve à dbPath, y pose le schéma canonique, y verse chaque table
-// Parquet puis la finalise.
+// doImport crée la base neuve à dbPath : séquences du schéma de la sauvegarde, tables (créées
+// depuis ce schéma puis remplies), index, vues, puis finalisation.
 func (im *importer) doImport(ctx context.Context, key, parquetDir, dbPath string) error {
 	db, err := sql.Open("duckdb", dbPath)
 	if err != nil {
@@ -206,31 +195,33 @@ func (im *importer) doImport(ctx context.Context, key, parquetDir, dbPath string
 	}
 	defer func() { _ = db.Close() }()
 
-	canonical := true
-	if err := im.schema.Provision(ctx, key, db); err != nil {
-		if !errors.Is(err, ErrNoCanonicalSchema) {
-			return fmt.Errorf("schéma canonique: %w", err)
-		}
-		canonical = false
-		slog.WarnContext(ctx, "restore: aucun schéma canonique pour cette base — tables importées sans clé",
-			"key", key, "db", dbPath)
+	schema, err := loadSchemaDDL(parquetDir)
+	switch {
+	case err != nil:
+		slog.WarnContext(ctx, "restore: schéma de la sauvegarde illisible — tables importées sans clé",
+			"key", key, "err", err)
+		schema = nil
+	case schema == nil:
+		slog.WarnContext(ctx, "restore: sauvegarde sans schéma (antérieure à son export) — tables importées sans clé",
+			"key", key)
 	}
+	ts := &tableSchema{key: key, ddl: schema, result: im.result}
+	ts.replay(ctx, db, ts.sequences())
 
-	if im.ddl, err = loadTableDDL(parquetDir); err != nil {
-		return err
-	}
 	files, err := parquetFiles(parquetDir)
 	if err != nil {
 		return err
 	}
 	for _, f := range files {
-		if err := im.importTable(ctx, db, key, f.table, f.path); err != nil {
+		if err := ts.importTable(ctx, db, f.table, f.path); err != nil {
 			return fmt.Errorf("table %q: %w", f.table, err)
 		}
 	}
-	if canonical {
-		if err := im.schema.Finalize(ctx, key, db); err != nil {
-			return fmt.Errorf("finalisation du schéma: %w", err)
+	ts.replay(ctx, db, ts.indexes())
+	ts.replayViews(ctx, db)
+	if im.finalize != nil {
+		if err := im.finalize(ctx, key, db); err != nil {
+			return fmt.Errorf("finalisation: %w", err)
 		}
 	}
 	slog.InfoContext(ctx, "restore: import terminé", "tables", len(files), "db", dbPath)

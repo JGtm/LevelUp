@@ -3,12 +3,10 @@ package ops
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
-	"levelup/go-api/pkg/duckdbbackup"
 )
 
 // Format des clés de sauvegarde (une clé = un fichier DuckDB) : `<titre>:<base>` pour une base
@@ -78,24 +76,9 @@ func (k BackupKey) LivePath(pr *title.PathResolver) string {
 	return ""
 }
 
-// RestoreSchema est le schéma canonique d'une base restaurée (duckdbbackup.CanonicalSchema) :
-// le jeu de migrations de son titre et de sa cible, celui que l'application applique à
-// l'ouverture (migration.RunForTitleDB). L'appelant câble les étapes title-owned
-// (titleseams.RegisterAll) avant l'import, comme le serveur.
-type RestoreSchema struct{}
-
-// Provision applique le jeu de migrations de la base à la base neuve.
-func (RestoreSchema) Provision(_ context.Context, key string, db *sql.DB) error {
-	k, ok := ParseBackupKey(key)
-	if !ok {
-		return fmt.Errorf("%w: %q", duckdbbackup.ErrNoCanonicalSchema, key)
-	}
-	return migration.RunForTitleDB(db, k.Slug, k.Target)
-}
-
-// Finalize aligne les séquences sur les identifiants restaurés : une séquence repartie de son
-// départ rendrait des identifiants déjà pris.
-func (RestoreSchema) Finalize(ctx context.Context, _ string, db *sql.DB) error {
+// FinalizeRestoredDB finalise une base restaurée (duckdbbackup.FinalizeFunc) : chaque séquence
+// est alignée sur les identifiants restaurés, pour ne jamais rendre une valeur déjà prise.
+func FinalizeRestoredDB(ctx context.Context, _ string, db *sql.DB) error {
 	_, err := migration.AlignSequencesToColumns(ctx, db)
 	return err
 }

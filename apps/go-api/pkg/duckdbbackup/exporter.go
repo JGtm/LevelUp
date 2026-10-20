@@ -98,7 +98,7 @@ func ExportTarget(ctx context.Context, t Target, outputDir string, compressionLe
 	slog.DebugContext(ctx, "backup: export démarré", "key", t.Key, "tables", len(tables))
 	start := time.Now()
 	ts := start.UTC().Format("20060102_150405")
-	writeTableDDL(ctx, db, t.Key, filepath.Join(outputDir, ddlFilePrefix+ts+ddlFileSuffix))
+	writeSchemaDDL(ctx, db, t.Key, filepath.Join(outputDir, ddlFilePrefix+ts+ddlFileSuffix))
 	exported := 0
 	var failed []string
 	for _, table := range tables {

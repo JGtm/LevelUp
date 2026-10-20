@@ -26,7 +26,6 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/pkg/duckdbbackup"
 )
@@ -72,10 +71,9 @@ func main() {
 		}
 	}
 
-	// Schéma canonique de la base restaurée : le jeu de migrations player, étapes title-owned
-	// comprises (câblées comme au démarrage du serveur).
-	titleseams.RegisterAll(titleseams.PrestigeConfigDir(cfg.RepoRoot))
-	result, err := duckdbbackup.ImportFromStaging(context.Background(), *staging, keyToPath, ops.RestoreSchema{}, *dryRun)
+	// Chaque base est recréée dans l'état de son époque (schéma exporté avec la sauvegarde) ;
+	// le démarrage suivant applique les migrations manquantes.
+	result, err := duckdbbackup.ImportFromStaging(context.Background(), *staging, keyToPath, ops.FinalizeRestoredDB, *dryRun)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "import: %v\n", err)
 		os.Exit(1)
@@ -86,7 +84,7 @@ func main() {
 	fmt.Printf("  restored    : %v\n", result.Restored)
 	fmt.Printf("  skipped     : %v\n", result.Skipped)
 	fmt.Printf("  sans clé    : %v\n", result.FallbackTables)
-	fmt.Printf("  écartées    : %d\n", result.DroppedRows)
+	fmt.Printf("  schéma KO   : %v\n", result.SchemaFailures)
 	if *dryRun {
 		fmt.Println("(dry-run, aucune modif)")
 		return

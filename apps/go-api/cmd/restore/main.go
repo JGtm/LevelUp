@@ -24,7 +24,6 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/pkg/duckdbbackup"
 )
@@ -106,10 +105,9 @@ func main() {
 		keyToPath = outputPathResolver(outDir)
 	}
 
-	// Schéma canonique de chaque base restaurée : le jeu de migrations de son titre, étapes
-	// title-owned comprises (câblées comme au démarrage du serveur).
-	titleseams.RegisterAll(titleseams.PrestigeConfigDir(cfg.RepoRoot))
-	result, err := duckdbbackup.ImportFromStaging(ctx, stagingDir, keyToPath, ops.RestoreSchema{}, *dryRun)
+	// Chaque base est recréée dans l'état de son époque (schéma exporté avec la sauvegarde) ;
+	// le démarrage suivant applique les migrations manquantes.
+	result, err := duckdbbackup.ImportFromStaging(ctx, stagingDir, keyToPath, ops.FinalizeRestoredDB, *dryRun)
 	if err != nil {
 		fatalf("import: %v", err)
 	}
@@ -224,14 +222,16 @@ func printResult(result *duckdbbackup.ImportResult) {
 		}
 	}
 	if len(result.FallbackTables) > 0 {
-		fmt.Printf("Tables hors schéma canonique, importées SANS clé (%d) :\n", len(result.FallbackTables))
+		fmt.Printf("Tables importées SANS clé (réparées au prochain démarrage) (%d) :\n", len(result.FallbackTables))
 		for _, t := range result.FallbackTables {
 			fmt.Printf("  ! %s\n", t)
 		}
 	}
-	if result.DroppedRows > 0 {
-		fmt.Printf("Lignes écartées (doublon de clé ou clé primaire NULL) : %d (détail dans le journal)\n",
-			result.DroppedRows)
+	if len(result.SchemaFailures) > 0 {
+		fmt.Printf("Objets du schéma non recréés (%d, détail dans le journal) :\n", len(result.SchemaFailures))
+		for _, s := range result.SchemaFailures {
+			fmt.Printf("  ! %s\n", s)
+		}
 	}
 }
 

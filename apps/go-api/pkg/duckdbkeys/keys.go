@@ -2,9 +2,9 @@
 // DuckDB, et recopie des lignes vers une table à clés en écartant les doublons de façon
 // déterministe.
 //
-// Deux appelants : l'import d'une sauvegarde Parquet dans le schéma canonique d'une base
-// (pkg/duckdbbackup) et la réparation, au démarrage, des tables dont la base a perdu les clés
-// que son schéma déclare (internal/migration). Le paquet ne dépend d'aucun paquet du projet.
+// Appelants : la réparation, au démarrage, des tables dont la base a perdu les clés que son
+// schéma déclare (internal/migration), l'écriture sans ON CONFLICT (Upsert) et la citation
+// d'identifiants de la restauration (pkg/duckdbbackup). Le paquet ne dépend d'aucun paquet du projet.
 //
 // Toutes les lectures portent sur la base COURANTE (`current_database()`), schéma `main` : un
 // catalogue attaché n'est jamais lu ni écrit.
@@ -111,29 +111,6 @@ func ColumnNames(cols []Column) []string {
 	out := make([]string, len(cols))
 	for i, c := range cols {
 		out[i] = c.Name
-	}
-	return out
-}
-
-// CoveredKeys rend les clés dont toutes les colonnes figurent dans cols : seules celles-là
-// peuvent servir à écarter des doublons d'une source qui porte ces colonnes.
-func CoveredKeys(keys []Key, cols []string) []Key {
-	have := make(map[string]bool, len(cols))
-	for _, c := range cols {
-		have[c] = true
-	}
-	var out []Key
-	for _, k := range keys {
-		covered := true
-		for _, c := range k.Columns {
-			if !have[c] {
-				covered = false
-				break
-			}
-		}
-		if covered {
-			out = append(out, k)
-		}
 	}
 	return out
 }

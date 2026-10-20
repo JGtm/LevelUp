@@ -25,8 +25,8 @@ type CopyStats struct {
 //
 // Une ligne dont une colonne de la clé PRIMAIRE est NULL est écartée (une clé primaire refuse
 // NULL). Pour une contrainte UNIQUE, une ligne dont une colonne de la clé est NULL n'entre en
-// conflit avec aucune autre : elle est gardée. Les clés doivent être couvertes par cols
-// (CoveredKeys).
+// conflit avec aucune autre : elle est gardée. Les colonnes de chaque clé doivent
+// figurer dans cols.
 func DedupSelect(src string, cols []string, keys []Key, recency string) string {
 	colList := identList(cols)
 	order := make([]string, 0, len(cols)+1)
