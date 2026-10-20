@@ -387,7 +387,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       `--delete` de `data/titles/`, `data/cache/replays/`, `data/global/xbox_aliases.duckdb`,
       `data/demo_films/`. Gate : nombre de bases DuckDB et d'artefacts = local, 0 `.wal`.
 - [x] 4.4 (19/10, accord de l'utilisateur : 186 Mo supprimés) Suppression de `/opt/levelup-data.incoming-restes-2026-09-23` (sur accord).
-- [ ] 4.5 **Répétition du premier boot** : binaire serveur final sur une racine à part en local
+- [x] 4.5 (20/10, voir journal) **Répétition du premier boot** : binaire serveur final sur une racine à part en local
       (copie de `data/titles` + `config/` + `static/` + `app_settings.json`/`db_profiles.json` de
       prod, sans `data/auth`), `LEVELUP_REPO_ROOT`/`LEVELUP_LOGS_DIR`/`LEVELUP_API_PORT`.
       Gate : boot sans FATAL, `friends: … created=N` (N > 0), groupe par défaut non vide.
@@ -664,3 +664,16 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   de suite entre 23:27:48 et 23:29:25 : tous `succeeded`, 0 joueur en échec ; 0 « drain timeout »,
   0 « open RW after RO close », 0 « lecture tenue longtemps ». Découvertes : `data_health` ouvre la
   base partagée hors provider ; un segment de lecture couvre les 5 étapes de scoring du post-sync.
+- **2026-10-20 — 4.5 répétition du premier boot** : binaire de `feat/release-v8` (= `feat/v75`
+  8ccfb9e7e) sur une copie de `data/titles` (23 bases, serveur local arrêté le temps de la copie),
+  `config/`, `static/`, et `app_settings.json` + `db_profiles.json` de PROD (scp), sans `data/auth`,
+  port 8090. Boot OK, `/health` 200, aucun FATAL ni panic, 1 seul ERROR (`catalog_refresh_cron: cycle
+  échoué`, attendu sans jetons). `friends: listes d'amis par joueur créées … created=4` ;
+  `player_friends.json` produit (JGtm → XxDaemonGamerxX, Madina97294, Chocoboflor, etc.). **Groupe par
+  défaut : AUCUN créé** — `migrateDefaultGroupAtBoot` sort en silence car le `db_profiles.json` de
+  prod n'a pas de champ `"admin"` (le local non plus) ; la prod n'a pas de `groups.json` aujourd'hui
+  (même état qu'en v7.3.2). D-19, soumis à l'utilisateur. Copie supprimée, serveur local relancé.
+- **D-19 (20/10)** : pas de groupe par défaut en prod au premier boot v8 faute de `"admin"` dans
+  `db_profiles.json` (sortie silencieuse, sans log, de `migrateDefaultGroupAtBoot`). Options : poser
+  `"admin": "JGtm"` dans le `db_profiles.json` de prod avant le déploiement (groupe « Mon foyer » créé
+  depuis les amis de JGtm), le créer à la main dans l'app après le déploiement, ou rester sans groupe.
