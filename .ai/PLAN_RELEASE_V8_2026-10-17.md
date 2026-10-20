@@ -414,22 +414,22 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       (simulation), puis la même avec `--yes` ; `list` = 9 `granted`, XxGdakilla187xX `undecided` ;
       `docker compose restart levelup`.
 - [ ] 5.9 **Nuzzles** (D2) : onboarding admin (xuid `2535472547643888`), aucun ami, hors du groupe.
-- [ ] 5.10 **Ouvrier** (D’ABORD, en root sur csstat, une fois le déploiement de l’ouvrier passé : `install -o root -g root -m 0644 /opt/levelup/packaging/systemd/levelup-worker.service /etc/systemd/system/levelup-worker.service && systemctl daemon-reload && systemd-analyze verify …`, cf. 4.2 ; puis séquence de `RUNBOOK_REPLAY_WORKER.md` §4, qui fait foi) : test d'accès à `/api/v1/internal/build-queue/claim` (503 sans jeton, 401
+- [x] 5.10 (20/10 ; premier job de bout en bout -> 6.7b) **Ouvrier** (D’ABORD, en root sur csstat, une fois le déploiement de l’ouvrier passé : `install -o root -g root -m 0644 /opt/levelup/packaging/systemd/levelup-worker.service /etc/systemd/system/levelup-worker.service && systemctl daemon-reload && systemd-analyze verify …`, cf. 4.2 ; puis séquence de `RUNBOOK_REPLAY_WORKER.md` §4, qui fait foi) : test d'accès à `/api/v1/internal/build-queue/claim` (503 sans jeton, 401
       jeton faux ; jamais 403 `csrf_rejected` ni 404) ; `allow <IP csstat>; deny all;` dans
       `location /api/v1/internal/` + `nginx -t && systemctl reload nginx` ; sur csstat
       `systemctl enable --now levelup-worker` ; `journalctl -u levelup-worker` ; un job de bout en
       bout (claim → décodage → artefact) visible dans le tableau admin.
 - [x] 5.11 (20/10, voir journal) Démo : un rejeu s'ouvre sur demo.lvelup.info.
-- [ ] 5.12 Conf nginx versionnée (`packaging/nginx/`) = VPS (`sites-available/levelup`,
+- [x] 5.12 (20/10 : conf active = sites-enabled/levelup ; versionné aligné par fix/v8-0-1-deploiement) Conf nginx versionnée (`packaging/nginx/`) = VPS (`sites-available/levelup`,
       `demo-levelup`, `snippets/levelup-assets-v.conf`, `conf.d/rate_limit.conf`) ; écart →
       correction du fichier versionné (branche dédiée).
 
 ### Étape 6 — Contrôles après le boot
 
-- [ ] 6.1 `schema_migrations` de `metadata.duckdb` : migrations médailles passées ; la médaille
+- [x] 6.1 (20/10, voir journal) `schema_migrations` de `metadata.duckdb` : migrations médailles passées ; la médaille
       VIP s'affiche « Clash of Kings » avec son image.
-- [ ] 6.2 `data/global/player_friends.json` existe avec N entrées (4 attendues, cf. 4.5) ; pas de groupe par défaut (D-19).
-- [ ] 6.3 +1 h : logs `post-sync: kill source` → `sans_killfeed=0`, `ecrits` > 0,
+- [x] 6.2 (20/10, voir journal) `data/global/player_friends.json` existe avec N entrées (4 attendues, cf. 4.5) ; pas de groupe par défaut (D-19).
+- [x] 6.3 (20/10, voir journal) +1 h : logs `post-sync: kill source` → `sans_killfeed=0`, `ecrits` > 0,
       `backlog_restant` en baisse.
 - [ ] 6.4 Synchro de Nuzzles réussie (`auto_sync: sync delta réussie`), plus de `joueur en échec`.
 - [ ] 6.5 Logs `pool: créé` à la bonne taille ; bannière de mise en commun pour un nouvel inscrit ;
@@ -444,7 +444,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 - [ ] 6.7c **Délai du débrief en prod** : premier match joué après le boot, la mesure de bout en
       bout du lot « délai du débrief » (vue admin) montre toutes les données en moins de 5 min
       après la fin du match.
-- [ ] 6.8 Post-déploiement du runbook : `/debug/vars` admin seulement, ffmpeg présent, premier
+- [x] 6.8 (20/10, voir journal) Post-déploiement du runbook : `/debug/vars` admin seulement, ffmpeg présent, premier
       cycle de synchro complet, pages clés FR + EN, endpoint device-code joignable.
 - [ ] 6.9 Items de la séquence Notion cochés (sur demande de l'utilisateur).
 
@@ -718,3 +718,19 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
     csstat 401 (jeton faux) ; unité installée en copie root, `systemd-analyze verify` 0, `enable --now` :
     enabled/active, « replay-worker: démarré ». Premier job de bout en bout : en attente d'un match.
   - 5.11 : démo 200 ; rejeux figés copiés.
+- **2026-10-20 — contrôles d'après boot (étape 6), 11:17.** 6.1 : copie de `metadata.duckdb` de prod :
+  « Clash of Kings » (1053114074, `name_fr` vide par conception) et « Garde du trône » (1210968206)
+  présentes ; migrations `applied=0` (bases migrées en local). 6.2 : `player_friends.json` (4 entrées) ;
+  **groupe « Mon foyer » créé le 20/10 sur demande de l'utilisateur** (« et pour les groupes aussi ? ») :
+  `"admin": "JGtm"` posé dans le `db_profiles.json` de prod (sauvegarde
+  `db_profiles.json.bak-20261020-admin`), `docker compose restart levelup` → « groupe par défaut créé
+  depuis les amis de l'admin », propriétaire JGtm, 4 membres (remplace la décision D-19 du même jour).
+  6.3 : `post-sync: kill source` : `sans_killfeed=0`, `ecrits` 5 à 8, `backlog_restant` 5 578 → 5 572.
+  6.8 : `/debug/vars` 401 sans compte ; ffmpeg présent ; synchros delta réussies (12) ; ERROR du jour
+  toutes à 08:13 (arrêt pour la régénération de la démo) ou 08:32:49 (redémarrage pour le groupe) :
+  `context canceled` à l'arrêt, sans suite. La CLI `healthcheck` dans le conteneur échoue sur les
+  verrous (attendu : elle exige le serveur arrêté ; `/health` du serveur est la référence).
+  Restent : 6.4 (Nuzzles, à déclarer par l'utilisateur ce soir dans l'admin), 6.5 (bannière, réglages :
+  visuel), 6.6 (pied de page AGPL : visuel), 6.7 / 6.7b / 6.7c (au premier match joué ce soir), 6.9.
+  Branche `fix/v8-0-1-deploiement` (`0db0ec7f5`) : D-20, D-22, D-23 + changelog [8.0.1] ; fusion vers
+  `main` = déploiement, sur feu vert de l'utilisateur.
