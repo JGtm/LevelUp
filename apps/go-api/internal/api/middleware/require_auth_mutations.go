@@ -37,6 +37,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"levelup/go-api/internal/authz"
 )
@@ -51,11 +52,26 @@ import (
 var readOnlyPostPrefixes = []string{
 	"/pages/",   // toutes les pages sont des projections en lecture
 	"/filters/", // résolution de filtres (match-ids, resolve)
+	// Onglet Tactique (2026-09-06) : les deux lectures (grille des cartes, raster
+	// d'une carte) sont passées en POST parce que leur périmètre est une LISTE de
+	// match_id, qui ne tient pas dans une query string. Elles n'écrivent rien — pas
+	// même un compteur. Sans cette entrée, la garde d'écriture refusait en 401 une
+	// lecture que la même personne obtenait en GET la veille.
+	"/tactical/",
 }
 
 // readOnlyPostExact : POST de lecture hors des familles ci-dessus.
 var readOnlyPostExact = map[string]bool{
 	"/engagement/timeseries": true, // série temporelle d'engagement (filtres en corps)
+}
+
+// readOnlyPostPatterns : POST de lecture désignés par un préfixe, UN segment d'identifiant, un
+// suffixe. Un motif par suffixe est plus étroit qu'un préfixe de famille : seule la forme
+// `<préfixe><id><suffixe>` est une lecture, jamais un sous-chemin plus profond.
+var readOnlyPostPatterns = []struct{ prefix, suffix string }{
+	// Suggestion du défi Prestige suivant : lit le défi terminé et le catalogue de gabarits,
+	// n'écrit rien (prestige.service.SuggestNext).
+	{"/prestige/challenges/", "/suggest-next"},
 }
 
 // RequireAuthForMutations retourne un middleware qui exige une session
@@ -74,7 +90,7 @@ func RequireAuthForMutations(demoMode bool, authMode string) func(http.Handler) 
 				return
 			}
 			slog.WarnContext(r.Context(), "authz: écriture refusée — aucune session authentifiée",
-				"method", r.Method, "path", r.URL.Path, "ip", r.RemoteAddr)
+				"method", r.Method, "path", r.URL.Path, "ip", chimiddleware.GetClientIP(r.Context()))
 			writeAuthRequired(w)
 		})
 	}
@@ -90,7 +106,9 @@ func IsMutatingRequest(r *http.Request) bool {
 	case http.MethodGet, http.MethodHead, http.MethodOptions:
 		return false
 	case http.MethodPost:
-		return !isReadOnlyPost(playerScopedSubPath(r))
+		// Un chemin AMBIGU n'est jamais une lecture : la garde le lirait autrement que chi
+		// ne le route (cf. AmbiguousPath).
+		return AmbiguousPath(r) || !isReadOnlyPost(playerScopedSubPath(r))
 	default:
 		// PUT / PATCH / DELETE : toujours des écritures.
 		return true
@@ -110,7 +128,22 @@ func isReadOnlyPost(sub string) bool {
 			return true
 		}
 	}
+	for _, p := range readOnlyPostPatterns {
+		if matchesIDPattern(sub, p.prefix, p.suffix) {
+			return true
+		}
+	}
 	return false
+}
+
+// matchesIDPattern dit si sub vaut exactement `<prefix><id><suffix>`, id étant un SEUL segment
+// non vide.
+func matchesIDPattern(sub, prefix, suffix string) bool {
+	if !strings.HasPrefix(sub, prefix) || !strings.HasSuffix(sub, suffix) || len(sub) <= len(prefix)+len(suffix) {
+		return false
+	}
+	id := sub[len(prefix) : len(sub)-len(suffix)]
+	return id != "" && !strings.Contains(id, "/")
 }
 
 // playerScopedSubPath retourne le chemin RELATIF au groupe joueur
@@ -118,17 +151,45 @@ func isReadOnlyPost(sub string) bool {
 //
 // Il est recalculé depuis l'URL plutôt que lu dans le RouteContext de chi :
 // au moment où les middlewares du groupe s'exécutent, le motif de la route
-// FINALE n'est pas encore résolu. Retourne "" hors d'un groupe player-scoped —
-// auquel cas aucun POST n'est réputé en lecture (fail-closed).
+// FINALE n'est pas encore résolu. Le chemin est lu TEL QUEL : un chemin qui ne
+// se lit pas comme il se route (AmbiguousPath) rend "".
+//
+// Dans le groupe, le slug vient du paramètre chi. Hors du groupe (garde démo
+// montée à la racine, où aucun paramètre n'est encore résolu), il est lu dans
+// le chemin sous [playersPathMarker]. Retourne "" hors d'un chemin player-scoped —
+// auquel cas aucun POST n'est réputé en lecture et aucune action de visiteur
+// n'est reconnue (fail-closed).
 func playerScopedSubPath(r *http.Request) string {
-	slug := chi.URLParam(r, "player_slug")
-	if slug == "" {
+	if AmbiguousPath(r) {
 		return ""
 	}
-	marker := "/players/" + slug
-	idx := strings.Index(r.URL.Path, marker)
+	cleaned := r.URL.Path
+	slug := chi.URLParam(r, "player_slug")
+	if slug == "" {
+		return subPathAfterPlayerSegment(cleaned)
+	}
+	marker := playersPathMarker + slug
+	idx := strings.Index(cleaned, marker)
 	if idx < 0 {
 		return ""
 	}
-	return r.URL.Path[idx+len(marker):]
+	return cleaned[idx+len(marker):]
+}
+
+// playersPathMarker : le segment qui ouvre le groupe joueur (/api/v1/players/{player_slug}).
+const playersPathMarker = "/players/"
+
+// subPathAfterPlayerSegment rend ce qui suit "/players/<slug>" dans un chemin,
+// "" si le chemin n'en porte pas ou s'arrête au slug.
+func subPathAfterPlayerSegment(cleaned string) string {
+	idx := strings.Index(cleaned, playersPathMarker)
+	if idx < 0 {
+		return ""
+	}
+	rest := cleaned[idx+len(playersPathMarker):]
+	slash := strings.IndexByte(rest, '/')
+	if slash <= 0 {
+		return ""
+	}
+	return rest[slash:]
 }

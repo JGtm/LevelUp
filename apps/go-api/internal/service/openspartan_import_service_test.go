@@ -14,6 +14,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/matchflags"
 )
 
 const (
@@ -119,8 +120,8 @@ func buildMinimalFixtureDB(t *testing.T, dir, filename, ownerXUID string) string
 			"TeamMmr": 1041.7,
 			// RankRecap : présent uniquement sur les matchs classés → source du CSR par-match.
 			"RankRecap": map[string]any{
-				"PreMatchCsr":  map[string]any{"Value": 1450, "Tier": "Gold", "SubTier": 4, "MeasurementMatchesRemaining": 0},
-				"PostMatchCsr": map[string]any{"Value": 1465, "Tier": "Gold", "SubTier": 5, "MeasurementMatchesRemaining": 0},
+				"PreMatchCsr":  map[string]any{"Value": 1450, "Tier": "Gold", "SubTier": 4, "MeasurementMatchesRemaining": 0, "InitialMeasurementMatches": 5},
+				"PostMatchCsr": map[string]any{"Value": 1465, "Tier": "Gold", "SubTier": 5, "MeasurementMatchesRemaining": 0, "InitialMeasurementMatches": 5},
 			},
 		},
 	}}}
@@ -268,6 +269,17 @@ func TestOpenSpartanImport_EndToEnd_WritesAllRowFamilies(t *testing.T) {
 	}
 	if !isRanked.Valid || !isRanked.Bool {
 		t.Error("match_registry.is_ranked devrait être TRUE (RankRecap présent → classé)")
+	}
+	// Bit « participants » (512) de backfill_completed posé à l'insertion : sans lui, la
+	// sélection du backfill admin re-sélectionnerait ce match à chaque lancement.
+	var completed sql.NullInt64
+	if err := sharedDB.QueryRow(
+		`SELECT backfill_completed FROM match_registry WHERE match_id = ?`,
+		"11111111-aaaa-bbbb-cccc-000000000001").Scan(&completed); err != nil {
+		t.Fatalf("query registry backfill_completed: %v", err)
+	}
+	if !completed.Valid || completed.Int64&matchflags.BackfillParticipants == 0 {
+		t.Errorf("match_registry.backfill_completed = %v, le bit participants (512) doit être posé", completed)
 	}
 	if result.InsertedAliases != 2 {
 		t.Errorf("InsertedAliases: want 2, got %d", result.InsertedAliases)

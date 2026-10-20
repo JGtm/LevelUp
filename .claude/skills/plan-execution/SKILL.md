@@ -87,3 +87,25 @@ Avant de déclarer une étape (ou le plan) terminé, répondre honnêtement :
   plan-review AVANT, plan-execution PENDANT, delivery-checklist à CHAQUE clôture.
 - Si le plan lui-même contient un contrat d'exécution (section dédiée), le plan fait foi
   en cas de divergence — ce skill est le défaut.
+
+## 5. Disque : caches de compilation dédiés et dossiers de gate
+
+Go ne retire de son cache que les entrées inutilisées depuis 5 jours, et seulement quand une
+commande réutilise CE cache : un `GOCACHE` dédié abandonné à la clôture d'un lot ne rétrécit
+jamais (57 caches orphelins, 141 Go, constatés le 2026-10-08).
+
+- **Nommage** : un lot qui compile en parallèle d'autres sessions pose
+  `GOCACHE=%LOCALAPPDATA%\go-build-<lot>` (et, s'il lance golangci-lint,
+  `GOLANGCI_LINT_CACHE=%LOCALAPPDATA%\golangci-<lot>`). Jamais un cache dédié ailleurs (profil,
+  racine de `C:`, scratchpad) : seuls ces noms sont rendus par le nettoyage.
+- **Clôture du lot** (règle 6, une fois le gate passé et le commit fait) :
+  `powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply`. Le script supprime
+  `go-build-<lot>` et `golangci-<lot>`, et refuse un cache écrit dans les 10 dernières minutes ou
+  contenant une jonction.
+- **Racines de gate** (`replay-corpus-gate --keep-work`, copies du parc) : les nommer
+  `gate_work*` / `parc*` dans le scratchpad ; supprimer celles qu'un nouveau gate remplace.
+- **Filet** : la tâche planifiée `LevelUp-disk-hygiene` (chaque jour à 4 h) supprime les caches
+  dédiés inactifs depuis 48 h, les dossiers de session inactifs depuis 72 h et, dans une session
+  active, les `gate_work*` / `gocache*` / `golangci*` / `parc*` inactifs depuis 24 h. Elle ne
+  touche à rien si un processus `go` ou de test tourne. Sans `-Apply`, le script ne fait que
+  simuler : à lancer avant un build lourd pour voir la place récupérable.

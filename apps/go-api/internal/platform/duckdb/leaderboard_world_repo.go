@@ -29,6 +29,19 @@ const logModuleLeaderboard = "leaderboard"
 // classement de stats (évite les flukes sur 1-2 parties).
 const statLeaderboardMinMatches = 10
 
+// defaultRepoLeaderboardLimit est la taille servie quand l'appelant n'en demande aucune.
+const defaultRepoLeaderboardLimit = 100
+
+// boundedLeaderboardLimit ramène la limite demandée dans [1, domain.MaxLeaderboardLimit] :
+// absente ou négative, elle prend la valeur par défaut. Les deux lectures du classement
+// dimensionnent leur tampon de sortie sur ce résultat, jamais sur la valeur brute.
+func boundedLeaderboardLimit(limit int) int {
+	if limit <= 0 {
+		return defaultRepoLeaderboardLimit
+	}
+	return min(limit, domain.MaxLeaderboardLimit)
+}
+
 // GetCSRWorldLeaderboard lit le dernier snapshot du classement CSR mondial pour
 // une saison + playlist depuis world_csr_leaderboard_latest (shared).
 // Le tier/sous-palier sont re-dérivés du CSR (source unique domain.DeriveCSRTier).
@@ -42,9 +55,7 @@ func (r *LeaderboardRepo) GetCSRWorldLeaderboard(
 	if strings.TrimSpace(season) == "" || strings.TrimSpace(playlist) == "" {
 		return nil, fmt.Errorf("GetCSRWorldLeaderboard: season et playlist requis")
 	}
-	if limit <= 0 {
-		limit = 100
-	}
+	limit = boundedLeaderboardLimit(limit)
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -391,8 +402,10 @@ func playlistName(id, locale, frOfficial, enOfficial, canonical string) string {
 		if enOfficial != "" {
 			return enOfficial
 		}
-		if hasPL && pl.NameEN != "" {
-			return pl.NameEN
+		if hasPL {
+			if en := pl.NameEN(); en != "" {
+				return en
+			}
 		}
 		if canonical != "" {
 			return canonical
@@ -400,16 +413,20 @@ func playlistName(id, locale, frOfficial, enOfficial, canonical string) string {
 		if frOfficial != "" {
 			return frOfficial
 		}
-		if hasPL && pl.NameFR != "" {
-			return pl.NameFR
+		if hasPL {
+			if fr := pl.NameFR(); fr != "" {
+				return fr
+			}
 		}
 		return id
 	}
 	if frOfficial != "" {
 		return frOfficial
 	}
-	if hasPL && pl.NameFR != "" {
-		return pl.NameFR
+	if hasPL {
+		if fr := pl.NameFR(); fr != "" {
+			return fr
+		}
 	}
 	if canonical != "" {
 		return canonical
@@ -519,11 +536,11 @@ func scanCatalogColumn(ctx context.Context, db *sql.DB, q string, displayFn func
 // playlistDisplayName résout un asset_id de playlist en libellé (FR > EN > id).
 func playlistDisplayName(assetID string) string {
 	if pl, ok := rankedplaylists.Lookup(assetID); ok {
-		if pl.NameFR != "" {
-			return pl.NameFR
+		if fr := pl.NameFR(); fr != "" {
+			return fr
 		}
-		if pl.NameEN != "" {
-			return pl.NameEN
+		if en := pl.NameEN(); en != "" {
+			return en
 		}
 	}
 	return assetID
@@ -570,9 +587,7 @@ func (r *LeaderboardRepo) GetStatLeaderboard(
 	if !ok {
 		return nil, fmt.Errorf("GetStatLeaderboard: catégorie inconnue %q", category)
 	}
-	if limit <= 0 {
-		limit = 100
-	}
+	limit = boundedLeaderboardLimit(limit)
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 

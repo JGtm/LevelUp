@@ -1,12 +1,14 @@
 /**
  * ExplorerPage — efficacité (E2 revue 2026-07).
  *
- * Deux garde-rails :
+ * Trois garde-rails :
  *   1. Mode Joueur → la query matches-query (incluant le briefing serveur) est
  *      DÉSACTIVÉE (enabled=false) et include_briefing=false : aucun recompute
  *      serveur inutile quand son résultat n'est pas consommé.
  *   2. Frappe rapide dans l'input match-ID → une seule valeur atteint la query
  *      après le debounce (250 ms) : 1 POST par rafale, pas un par caractère.
+ *   3. Mode Joueur avec une cible → les deux tableaux (allié / ennemi) partagent
+ *      UNE requête matches-query portant tous les matchs communs.
  *
  * On espionne les ARGUMENTS passés à useExplorerMatches (le proxy fidèle du
  * déclenchement réseau : React Query émet 1 POST par queryKey distincte, et
@@ -22,6 +24,7 @@ import type { ExplorerScope } from './explorerScope'
 const hoisted = vi.hoisted(() => ({
   search: {} as Record<string, unknown>,
   matchesCalls: [] as Array<{ request: Record<string, unknown>; enabled: boolean }>,
+  player: undefined as Record<string, unknown> | undefined,
 }))
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -44,7 +47,7 @@ vi.mock('./queries', () => ({
     hoisted.matchesCalls.push({ request, enabled })
     return { data: undefined, isLoading: false, isError: false, isFetching: false, error: null }
   },
-  useExplorerPlayer: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
+  useExplorerPlayer: () => ({ data: hoisted.player, isLoading: false, isError: false, error: null }),
 }))
 
 vi.mock('@/lib/page-scope/usePageScope', async () => {
@@ -72,6 +75,7 @@ describe('ExplorerPage — efficacité (E2)', () => {
   beforeEach(() => {
     hoisted.search = {}
     hoisted.matchesCalls.length = 0
+    hoisted.player = undefined
   })
 
   it('mode Joueur : query matches-query désactivée + include_briefing=false', () => {
@@ -114,5 +118,23 @@ describe('ExplorerPage — efficacité (E2)', () => {
     // Seule 'abc' a jamais atteint la query (jamais 'a' ni 'ab') → 1 POST par rafale.
     const distinct = [...new Set(mainCalls().map((c) => c.request.match_id_search).filter(Boolean))]
     expect(distinct).toEqual(['abc'])
+  })
+
+  it('mode Joueur : une seule requête matches-query pour les deux tableaux', () => {
+    hoisted.search = { mode: 'player', target: 'Cible' }
+    hoisted.player = {
+      target_gamertag: 'Cible',
+      common_matches: [
+        { match_id: 'm1', were_teammates: true },
+        { match_id: 'm2', were_teammates: false },
+        { match_id: 'm3', were_teammates: true },
+      ],
+    }
+    renderWithProviders(<ExplorerPage />)
+    const tableCalls = hoisted.matchesCalls.filter(
+      (c) => c.enabled && c.request.include_export_hint !== true,
+    )
+    const distinctBodies = new Set(tableCalls.map((c) => JSON.stringify(c.request.match_ids)))
+    expect([...distinctBodies]).toEqual([JSON.stringify(['m1', 'm2', 'm3'])])
   })
 })

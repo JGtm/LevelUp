@@ -23,9 +23,16 @@ import (
 	"os"
 
 	"levelup/go-api/internal/api/openapigen"
+	"levelup/go-api/internal/games/titleseams"
 )
 
 func main() {
+	// Seams title-owned : ce binaire embarque le moteur de sync TRANSITIVEMENT (ratchet
+	// titleseams_wired_test.go, 2026-09-16). Sans ce câblage, tout chemin qui atteindrait un
+	// classifier ou une étape de migration title-owned partirait en panic fail-loud MT-15 ou
+	// en scores muets.
+	titleseams.RegisterAll("")
+
 	out := flag.String("out", "api/openapi.yaml", "fichier de sortie")
 	fragment := flag.String("fragment", "api/openapi_manual_fragment.yaml", "fragment manuel versionné")
 	check := flag.Bool("check", false, "ne rien écrire ; sortie 1 si le fichier n'est pas à jour")

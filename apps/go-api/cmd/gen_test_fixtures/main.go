@@ -41,6 +41,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 func main() {
@@ -141,14 +143,14 @@ func runCompleteChunks(args []string) {
 		}
 		chunksDir := filepath.Join(*src, shortID)
 		for _, ch := range mf.CustomData.Chunks {
-			localPath := filepath.Join(chunksDir, fmt.Sprintf("chunk_%02d.bin", ch.Index))
+			localPath := filmcache.CheminDuChunk(chunksDir, ch.Index)
 			if _, err := os.Stat(localPath); err == nil {
 				continue // deja present
 			}
 			chunksToFetch++
 			if *dryRun {
-				fmt.Printf("MISSING %s chunk_%02d.bin (type=%d, size=%d)\n",
-					shortID, ch.Index, ch.ChunkType, ch.ChunkSize)
+				fmt.Printf("MISSING %s (type=%d, size=%d)\n",
+					localPath, ch.ChunkType, ch.ChunkSize)
 				continue
 			}
 			url := mf.BlobStoragePathPrefix +
@@ -317,7 +319,7 @@ func runListExternal(args []string) {
 		chunksDir := filepath.Join(*src, shortID)
 		missing := 0
 		for _, ch := range mf.CustomData.Chunks {
-			localPath := filepath.Join(chunksDir, fmt.Sprintf("chunk_%02d.bin", ch.Index))
+			localPath := filmcache.CheminDuChunk(chunksDir, ch.Index)
 			if _, err := os.Stat(localPath); err != nil {
 				missing++
 			}

@@ -1,0 +1,3468 @@
+{
+  "couverture_incomplete": false,
+  "temoins": [
+    {
+      "id": "bcb6d393",
+      "famille": "ctf_mono_manche",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 8860,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "fb1a1a72",
+      "famille": "ctf_multi_manche",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 7,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 22892,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "43450",
+            "apres": "43457"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "35",
+            "apres": "33"
+          }
+        ]
+      }
+    },
+    {
+      "id": "d9781168",
+      "famille": "oddball",
+      "statut": "PERTE",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 61,
+      "pertes": 66,
+      "changements": 6,
+      "dureeMs": 19869,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "26317",
+            "apres": "36654"
+          },
+          {
+            "mesure": "R-1 repli repli_debut_de_liste_ferme_au_bit",
+            "sens": "info",
+            "avant": "261",
+            "apres": "283"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "240",
+            "apres": "107"
+          },
+          {
+            "mesure": "R-1 repli repli_localisation_largeur_libre",
+            "sens": "info",
+            "avant": "838",
+            "apres": "196"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale",
+            "sens": "perte",
+            "ancien": "19523",
+            "nouveau": "16366"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/558",
+            "sens": "perte",
+            "ancien": "350",
+            "nouveau": "204"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/559",
+            "sens": "perte",
+            "ancien": "548",
+            "nouveau": "248"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/561",
+            "sens": "perte",
+            "ancien": "206",
+            "nouveau": "110"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/563",
+            "sens": "perte",
+            "ancien": "99",
+            "nouveau": "53"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/565",
+            "sens": "perte",
+            "ancien": "235",
+            "nouveau": "122"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/566",
+            "sens": "perte",
+            "ancien": "483",
+            "nouveau": "234"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/567",
+            "sens": "perte",
+            "ancien": "182",
+            "nouveau": "162"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/568",
+            "sens": "perte",
+            "ancien": "88",
+            "nouveau": "84"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/569",
+            "sens": "perte",
+            "ancien": "145",
+            "nouveau": "135"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/571",
+            "sens": "perte",
+            "ancien": "482",
+            "nouveau": "183"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/576",
+            "sens": "perte",
+            "ancien": "122",
+            "nouveau": "100"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/577",
+            "sens": "perte",
+            "ancien": "272",
+            "nouveau": "210"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/582",
+            "sens": "perte",
+            "ancien": "45",
+            "nouveau": "42"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/584",
+            "sens": "perte",
+            "ancien": "244",
+            "nouveau": "183"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/585",
+            "sens": "perte",
+            "ancien": "91",
+            "nouveau": "65"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/586",
+            "sens": "perte",
+            "ancien": "142",
+            "nouveau": "109"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/590",
+            "sens": "perte",
+            "ancien": "230",
+            "nouveau": "119"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/591",
+            "sens": "perte",
+            "ancien": "225",
+            "nouveau": "180"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/593",
+            "sens": "perte",
+            "ancien": "169",
+            "nouveau": "158"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/596",
+            "sens": "perte",
+            "ancien": "58",
+            "nouveau": "43"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/599",
+            "sens": "perte",
+            "ancien": "156",
+            "nouveau": "85"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/600",
+            "sens": "perte",
+            "ancien": "86",
+            "nouveau": "48"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/604",
+            "sens": "perte",
+            "ancien": "305",
+            "nouveau": "107"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/605",
+            "sens": "perte",
+            "ancien": "273",
+            "nouveau": "213"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/607",
+            "sens": "perte",
+            "ancien": "141",
+            "nouveau": "52"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/608",
+            "sens": "perte",
+            "ancien": "106",
+            "nouveau": "83"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/612",
+            "sens": "perte",
+            "ancien": "235",
+            "nouveau": "105"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/613",
+            "sens": "perte",
+            "ancien": "192",
+            "nouveau": "153"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/618",
+            "sens": "perte",
+            "ancien": "90",
+            "nouveau": "67"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/619",
+            "sens": "perte",
+            "ancien": "410",
+            "nouveau": "374"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/620",
+            "sens": "perte",
+            "ancien": "130",
+            "nouveau": "104"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/622",
+            "sens": "perte",
+            "ancien": "107",
+            "nouveau": "72"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/623",
+            "sens": "perte",
+            "ancien": "223",
+            "nouveau": "191"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/625",
+            "sens": "perte",
+            "ancien": "139",
+            "nouveau": "95"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/626",
+            "sens": "perte",
+            "ancien": "190",
+            "nouveau": "83"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/627",
+            "sens": "perte",
+            "ancien": "56",
+            "nouveau": "21"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/630",
+            "sens": "perte",
+            "ancien": "96",
+            "nouveau": "43"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/631",
+            "sens": "perte",
+            "ancien": "109",
+            "nouveau": "97"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/632",
+            "sens": "perte",
+            "ancien": "233",
+            "nouveau": "169"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/634",
+            "sens": "perte",
+            "ancien": "122",
+            "nouveau": "68"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/636",
+            "sens": "perte",
+            "ancien": "161",
+            "nouveau": "150"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/637",
+            "sens": "perte",
+            "ancien": "533",
+            "nouveau": "69"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/641",
+            "sens": "perte",
+            "ancien": "246",
+            "nouveau": "186"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/642",
+            "sens": "perte",
+            "ancien": "127",
+            "nouveau": "77"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/645",
+            "sens": "perte",
+            "ancien": "145",
+            "nouveau": "139"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/646",
+            "sens": "perte",
+            "ancien": "136",
+            "nouveau": "72"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/649",
+            "sens": "perte",
+            "ancien": "117",
+            "nouveau": "80"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/651",
+            "sens": "perte",
+            "ancien": "31",
+            "nouveau": "23"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/652",
+            "sens": "perte",
+            "ancien": "84",
+            "nouveau": "48"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/653",
+            "sens": "perte",
+            "ancien": "45",
+            "nouveau": "37"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/660",
+            "sens": "perte",
+            "ancien": "40",
+            "nouveau": "21"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/661",
+            "sens": "perte",
+            "ancien": "234",
+            "nouveau": "176"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/662",
+            "sens": "perte",
+            "ancien": "219",
+            "nouveau": "156"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/663",
+            "sens": "perte",
+            "ancien": "121",
+            "nouveau": "120"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/664",
+            "sens": "perte",
+            "ancien": "99",
+            "nouveau": "80"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/665",
+            "sens": "perte",
+            "ancien": "54",
+            "nouveau": "25"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/666",
+            "sens": "perte",
+            "ancien": "157",
+            "nouveau": "113"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/668",
+            "sens": "perte",
+            "ancien": "110",
+            "nouveau": "104"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/669",
+            "sens": "perte",
+            "ancien": "89",
+            "nouveau": "80"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesOpenViewB",
+            "sens": "perte",
+            "ancien": "36",
+            "nouveau": "97"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.innerHoles",
+            "sens": "perte",
+            "ancien": "0",
+            "nouveau": "1"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.deathsPaths.directScan.matched",
+            "sens": "perte",
+            "ancien": "101",
+            "nouveau": "2"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.deathsPaths.directScan.published",
+            "sens": "perte",
+            "ancien": "101",
+            "nouveau": "2"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNewUndecided",
+            "sens": "perte",
+            "ancien": "29",
+            "nouveau": "31"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNews",
+            "sens": "perte",
+            "ancien": "30",
+            "nouveau": "32"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale",
+          "sens": "perte",
+          "ancien": "19523",
+          "nouveau": "16366"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/558",
+          "sens": "perte",
+          "ancien": "350",
+          "nouveau": "204"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/559",
+          "sens": "perte",
+          "ancien": "548",
+          "nouveau": "248"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/561",
+          "sens": "perte",
+          "ancien": "206",
+          "nouveau": "110"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/563",
+          "sens": "perte",
+          "ancien": "99",
+          "nouveau": "53"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/565",
+          "sens": "perte",
+          "ancien": "235",
+          "nouveau": "122"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/566",
+          "sens": "perte",
+          "ancien": "483",
+          "nouveau": "234"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/567",
+          "sens": "perte",
+          "ancien": "182",
+          "nouveau": "162"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/568",
+          "sens": "perte",
+          "ancien": "88",
+          "nouveau": "84"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/569",
+          "sens": "perte",
+          "ancien": "145",
+          "nouveau": "135"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/571",
+          "sens": "perte",
+          "ancien": "482",
+          "nouveau": "183"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/576",
+          "sens": "perte",
+          "ancien": "122",
+          "nouveau": "100"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/577",
+          "sens": "perte",
+          "ancien": "272",
+          "nouveau": "210"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/582",
+          "sens": "perte",
+          "ancien": "45",
+          "nouveau": "42"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/584",
+          "sens": "perte",
+          "ancien": "244",
+          "nouveau": "183"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/585",
+          "sens": "perte",
+          "ancien": "91",
+          "nouveau": "65"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/586",
+          "sens": "perte",
+          "ancien": "142",
+          "nouveau": "109"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/590",
+          "sens": "perte",
+          "ancien": "230",
+          "nouveau": "119"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/591",
+          "sens": "perte",
+          "ancien": "225",
+          "nouveau": "180"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/593",
+          "sens": "perte",
+          "ancien": "169",
+          "nouveau": "158"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/596",
+          "sens": "perte",
+          "ancien": "58",
+          "nouveau": "43"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/599",
+          "sens": "perte",
+          "ancien": "156",
+          "nouveau": "85"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/600",
+          "sens": "perte",
+          "ancien": "86",
+          "nouveau": "48"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/604",
+          "sens": "perte",
+          "ancien": "305",
+          "nouveau": "107"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/605",
+          "sens": "perte",
+          "ancien": "273",
+          "nouveau": "213"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/607",
+          "sens": "perte",
+          "ancien": "141",
+          "nouveau": "52"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/608",
+          "sens": "perte",
+          "ancien": "106",
+          "nouveau": "83"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/612",
+          "sens": "perte",
+          "ancien": "235",
+          "nouveau": "105"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/613",
+          "sens": "perte",
+          "ancien": "192",
+          "nouveau": "153"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/618",
+          "sens": "perte",
+          "ancien": "90",
+          "nouveau": "67"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/619",
+          "sens": "perte",
+          "ancien": "410",
+          "nouveau": "374"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/620",
+          "sens": "perte",
+          "ancien": "130",
+          "nouveau": "104"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/622",
+          "sens": "perte",
+          "ancien": "107",
+          "nouveau": "72"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/623",
+          "sens": "perte",
+          "ancien": "223",
+          "nouveau": "191"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/625",
+          "sens": "perte",
+          "ancien": "139",
+          "nouveau": "95"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/626",
+          "sens": "perte",
+          "ancien": "190",
+          "nouveau": "83"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/627",
+          "sens": "perte",
+          "ancien": "56",
+          "nouveau": "21"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/630",
+          "sens": "perte",
+          "ancien": "96",
+          "nouveau": "43"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/631",
+          "sens": "perte",
+          "ancien": "109",
+          "nouveau": "97"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/632",
+          "sens": "perte",
+          "ancien": "233",
+          "nouveau": "169"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/634",
+          "sens": "perte",
+          "ancien": "122",
+          "nouveau": "68"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/636",
+          "sens": "perte",
+          "ancien": "161",
+          "nouveau": "150"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/637",
+          "sens": "perte",
+          "ancien": "533",
+          "nouveau": "69"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/641",
+          "sens": "perte",
+          "ancien": "246",
+          "nouveau": "186"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/642",
+          "sens": "perte",
+          "ancien": "127",
+          "nouveau": "77"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/645",
+          "sens": "perte",
+          "ancien": "145",
+          "nouveau": "139"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/646",
+          "sens": "perte",
+          "ancien": "136",
+          "nouveau": "72"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/649",
+          "sens": "perte",
+          "ancien": "117",
+          "nouveau": "80"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/651",
+          "sens": "perte",
+          "ancien": "31",
+          "nouveau": "23"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/652",
+          "sens": "perte",
+          "ancien": "84",
+          "nouveau": "48"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/653",
+          "sens": "perte",
+          "ancien": "45",
+          "nouveau": "37"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/660",
+          "sens": "perte",
+          "ancien": "40",
+          "nouveau": "21"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/661",
+          "sens": "perte",
+          "ancien": "234",
+          "nouveau": "176"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/662",
+          "sens": "perte",
+          "ancien": "219",
+          "nouveau": "156"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/663",
+          "sens": "perte",
+          "ancien": "121",
+          "nouveau": "120"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/664",
+          "sens": "perte",
+          "ancien": "99",
+          "nouveau": "80"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/665",
+          "sens": "perte",
+          "ancien": "54",
+          "nouveau": "25"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/666",
+          "sens": "perte",
+          "ancien": "157",
+          "nouveau": "113"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/668",
+          "sens": "perte",
+          "ancien": "110",
+          "nouveau": "104"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/669",
+          "sens": "perte",
+          "ancien": "89",
+          "nouveau": "80"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesOpenViewB",
+          "sens": "perte",
+          "ancien": "36",
+          "nouveau": "97"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.innerHoles",
+          "sens": "perte",
+          "ancien": "0",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.directScan.matched",
+          "sens": "perte",
+          "ancien": "101",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.directScan.published",
+          "sens": "perte",
+          "ancien": "101",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNewUndecided",
+          "sens": "perte",
+          "ancien": "29",
+          "nouveau": "31"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNews",
+          "sens": "perte",
+          "ancien": "30",
+          "nouveau": "32"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.notContinuous",
+          "sens": "changement",
+          "ancien": "1",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.directScan.population",
+          "sens": "changement",
+          "ancien": "106",
+          "nouveau": "5"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.walk.population",
+          "sens": "changement",
+          "ancien": "40",
+          "nouveau": "141"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.jumpDerived",
+          "sens": "changement",
+          "ancien": "372",
+          "nouveau": "391"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.sprint",
+          "sens": "changement",
+          "ancien": "558",
+          "nouveau": "713"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.jumpEpisodes",
+          "sens": "changement",
+          "ancien": "1956",
+          "nouveau": "2064"
+        }
+      ]
+    },
+    {
+      "id": "c75f33b8",
+      "famille": "assaut_bombe",
+      "statut": "PERTE",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 41,
+      "pertes": 42,
+      "changements": 6,
+      "dureeMs": 11110,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "23872",
+            "apres": "26148"
+          },
+          {
+            "mesure": "R-1 repli repli_deadstate_hors_bande_bipede",
+            "sens": "info",
+            "avant": "1",
+            "apres": "5"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "79",
+            "apres": "65"
+          },
+          {
+            "mesure": "R-1 repli repli_localisation_largeur_libre",
+            "sens": "info",
+            "avant": "323",
+            "apres": "52"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale",
+            "sens": "perte",
+            "ancien": "11986",
+            "nouveau": "8092"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/530",
+            "sens": "perte",
+            "ancien": "547",
+            "nouveau": "446"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/537",
+            "sens": "perte",
+            "ancien": "115",
+            "nouveau": "67"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/539",
+            "sens": "perte",
+            "ancien": "190",
+            "nouveau": "138"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/540",
+            "sens": "perte",
+            "ancien": "48",
+            "nouveau": "36"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/541",
+            "sens": "perte",
+            "ancien": "223",
+            "nouveau": "113"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/542",
+            "sens": "perte",
+            "ancien": "85",
+            "nouveau": "78"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/543",
+            "sens": "perte",
+            "ancien": "2336",
+            "nouveau": "323"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/545",
+            "sens": "perte",
+            "ancien": "108",
+            "nouveau": "20"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/549",
+            "sens": "perte",
+            "ancien": "271",
+            "nouveau": "240"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/552",
+            "sens": "perte",
+            "ancien": "131",
+            "nouveau": "77"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/553",
+            "sens": "perte",
+            "ancien": "176",
+            "nouveau": "108"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/554",
+            "sens": "perte",
+            "ancien": "256",
+            "nouveau": "218"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/557",
+            "sens": "perte",
+            "ancien": "47",
+            "nouveau": "11"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/558",
+            "sens": "perte",
+            "ancien": "144",
+            "nouveau": "135"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/559",
+            "sens": "perte",
+            "ancien": "65",
+            "nouveau": "63"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/560",
+            "sens": "perte",
+            "ancien": "347",
+            "nouveau": "346"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/561",
+            "sens": "perte",
+            "ancien": "740",
+            "nouveau": "164"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/562",
+            "sens": "perte",
+            "ancien": "86",
+            "nouveau": "82"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/563",
+            "sens": "perte",
+            "ancien": "96",
+            "nouveau": "71"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/564",
+            "sens": "perte",
+            "ancien": "482",
+            "nouveau": "182"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/565",
+            "sens": "perte",
+            "ancien": "89",
+            "nouveau": "68"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/566",
+            "sens": "perte",
+            "ancien": "555",
+            "nouveau": "259"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/567",
+            "sens": "perte",
+            "ancien": "172",
+            "nouveau": "167"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/569",
+            "sens": "perte",
+            "ancien": "67",
+            "nouveau": "49"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/570",
+            "sens": "perte",
+            "ancien": "203",
+            "nouveau": "145"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/572",
+            "sens": "perte",
+            "ancien": "206",
+            "nouveau": "202"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/573",
+            "sens": "perte",
+            "ancien": "65",
+            "nouveau": "11"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/574",
+            "sens": "perte",
+            "ancien": "99",
+            "nouveau": "62"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/575",
+            "sens": "perte",
+            "ancien": "149",
+            "nouveau": "140"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/579",
+            "sens": "perte",
+            "ancien": "191",
+            "nouveau": "185"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/580",
+            "sens": "perte",
+            "ancien": "269",
+            "nouveau": "202"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/582",
+            "sens": "perte",
+            "ancien": "77",
+            "nouveau": "76"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/583",
+            "sens": "perte",
+            "ancien": "330",
+            "nouveau": "325"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/589",
+            "sens": "perte",
+            "ancien": "20",
+            "nouveau": "13"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/591",
+            "sens": "perte",
+            "ancien": "70",
+            "nouveau": "56"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesKind",
+            "sens": "perte",
+            "ancien": "1",
+            "nouveau": "3"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesOpenViewB",
+            "sens": "perte",
+            "ancien": "92",
+            "nouveau": "126"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.deathsPaths.directScan.matched",
+            "sens": "perte",
+            "ancien": "56",
+            "nouveau": "8"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.deathsPaths.directScan.published",
+            "sens": "perte",
+            "ancien": "56",
+            "nouveau": "8"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNewFalseReads",
+            "sens": "perte",
+            "ancien": "1",
+            "nouveau": "2"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.refusedNews",
+            "sens": "perte",
+            "ancien": "9",
+            "nouveau": "10"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale",
+          "sens": "perte",
+          "ancien": "11986",
+          "nouveau": "8092"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/530",
+          "sens": "perte",
+          "ancien": "547",
+          "nouveau": "446"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/537",
+          "sens": "perte",
+          "ancien": "115",
+          "nouveau": "67"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/539",
+          "sens": "perte",
+          "ancien": "190",
+          "nouveau": "138"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/540",
+          "sens": "perte",
+          "ancien": "48",
+          "nouveau": "36"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/541",
+          "sens": "perte",
+          "ancien": "223",
+          "nouveau": "113"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/542",
+          "sens": "perte",
+          "ancien": "85",
+          "nouveau": "78"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/543",
+          "sens": "perte",
+          "ancien": "2336",
+          "nouveau": "323"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/545",
+          "sens": "perte",
+          "ancien": "108",
+          "nouveau": "20"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/549",
+          "sens": "perte",
+          "ancien": "271",
+          "nouveau": "240"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/552",
+          "sens": "perte",
+          "ancien": "131",
+          "nouveau": "77"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/553",
+          "sens": "perte",
+          "ancien": "176",
+          "nouveau": "108"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/554",
+          "sens": "perte",
+          "ancien": "256",
+          "nouveau": "218"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/557",
+          "sens": "perte",
+          "ancien": "47",
+          "nouveau": "11"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/558",
+          "sens": "perte",
+          "ancien": "144",
+          "nouveau": "135"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/559",
+          "sens": "perte",
+          "ancien": "65",
+          "nouveau": "63"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/560",
+          "sens": "perte",
+          "ancien": "347",
+          "nouveau": "346"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/561",
+          "sens": "perte",
+          "ancien": "740",
+          "nouveau": "164"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/562",
+          "sens": "perte",
+          "ancien": "86",
+          "nouveau": "82"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/563",
+          "sens": "perte",
+          "ancien": "96",
+          "nouveau": "71"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/564",
+          "sens": "perte",
+          "ancien": "482",
+          "nouveau": "182"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/565",
+          "sens": "perte",
+          "ancien": "89",
+          "nouveau": "68"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/566",
+          "sens": "perte",
+          "ancien": "555",
+          "nouveau": "259"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/567",
+          "sens": "perte",
+          "ancien": "172",
+          "nouveau": "167"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/569",
+          "sens": "perte",
+          "ancien": "67",
+          "nouveau": "49"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/570",
+          "sens": "perte",
+          "ancien": "203",
+          "nouveau": "145"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/572",
+          "sens": "perte",
+          "ancien": "206",
+          "nouveau": "202"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/573",
+          "sens": "perte",
+          "ancien": "65",
+          "nouveau": "11"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/574",
+          "sens": "perte",
+          "ancien": "99",
+          "nouveau": "62"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/575",
+          "sens": "perte",
+          "ancien": "149",
+          "nouveau": "140"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/579",
+          "sens": "perte",
+          "ancien": "191",
+          "nouveau": "185"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/580",
+          "sens": "perte",
+          "ancien": "269",
+          "nouveau": "202"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/582",
+          "sens": "perte",
+          "ancien": "77",
+          "nouveau": "76"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/583",
+          "sens": "perte",
+          "ancien": "330",
+          "nouveau": "325"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/589",
+          "sens": "perte",
+          "ancien": "20",
+          "nouveau": "13"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/591",
+          "sens": "perte",
+          "ancien": "70",
+          "nouveau": "56"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "1",
+          "nouveau": "3"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesOpenViewB",
+          "sens": "perte",
+          "ancien": "92",
+          "nouveau": "126"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.directScan.matched",
+          "sens": "perte",
+          "ancien": "56",
+          "nouveau": "8"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.directScan.published",
+          "sens": "perte",
+          "ancien": "56",
+          "nouveau": "8"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNewFalseReads",
+          "sens": "perte",
+          "ancien": "1",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.refusedNews",
+          "sens": "perte",
+          "ancien": "9",
+          "nouveau": "10"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.directScan.population",
+          "sens": "changement",
+          "ancien": "61",
+          "nouveau": "11"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.walk.population",
+          "sens": "changement",
+          "ancien": "4",
+          "nouveau": "54"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.clamber",
+          "sens": "changement",
+          "ancien": "33",
+          "nouveau": "37"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.jumpDerived",
+          "sens": "changement",
+          "ancien": "251",
+          "nouveau": "256"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.sprint",
+          "sens": "changement",
+          "ancien": "335",
+          "nouveau": "394"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.jumpEpisodes",
+          "sens": "changement",
+          "ancien": "855",
+          "nouveau": "878"
+        }
+      ]
+    },
+    {
+      "id": "bf15f7ab",
+      "famille": "slayer",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 0,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 11142,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "51ebbc0f",
+      "famille": "deux_manches",
+      "statut": "PERTE",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 34,
+      "pertes": 29,
+      "changements": 3,
+      "dureeMs": 20422,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "20443",
+            "apres": "25472"
+          },
+          {
+            "mesure": "R-1 repli repli_debut_de_liste_ferme_au_bit",
+            "sens": "info",
+            "avant": "90",
+            "apres": "100"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "92",
+            "apres": "49"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale",
+            "sens": "perte",
+            "ancien": "12213",
+            "nouveau": "9522"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/550",
+            "sens": "perte",
+            "ancien": "303",
+            "nouveau": "175"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/552",
+            "sens": "perte",
+            "ancien": "82",
+            "nouveau": "72"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/553",
+            "sens": "perte",
+            "ancien": "272",
+            "nouveau": "91"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/554",
+            "sens": "perte",
+            "ancien": "136",
+            "nouveau": "37"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/556",
+            "sens": "perte",
+            "ancien": "299",
+            "nouveau": "168"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/558",
+            "sens": "perte",
+            "ancien": "289",
+            "nouveau": "53"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/559",
+            "sens": "perte",
+            "ancien": "63",
+            "nouveau": "7"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/560",
+            "sens": "perte",
+            "ancien": "199",
+            "nouveau": "182"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/561",
+            "sens": "perte",
+            "ancien": "344",
+            "nouveau": "62"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/562",
+            "sens": "perte",
+            "ancien": "108",
+            "nouveau": "36"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/564",
+            "sens": "perte",
+            "ancien": "55",
+            "nouveau": "52"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/565",
+            "sens": "perte",
+            "ancien": "630",
+            "nouveau": "147"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/566",
+            "sens": "perte",
+            "ancien": "592",
+            "nouveau": "359"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/567",
+            "sens": "perte",
+            "ancien": "123",
+            "nouveau": "57"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/568",
+            "sens": "perte",
+            "ancien": "93",
+            "nouveau": "91"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/569",
+            "sens": "perte",
+            "ancien": "185",
+            "nouveau": "124"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/570",
+            "sens": "perte",
+            "ancien": "196",
+            "nouveau": "147"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/571",
+            "sens": "perte",
+            "ancien": "892",
+            "nouveau": "860"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/572",
+            "sens": "perte",
+            "ancien": "92",
+            "nouveau": "81"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/574",
+            "sens": "perte",
+            "ancien": "207",
+            "nouveau": "114"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/576",
+            "sens": "perte",
+            "ancien": "384",
+            "nouveau": "160"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/577",
+            "sens": "perte",
+            "ancien": "516",
+            "nouveau": "337"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/579",
+            "sens": "perte",
+            "ancien": "198",
+            "nouveau": "162"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/580",
+            "sens": "perte",
+            "ancien": "126",
+            "nouveau": "97"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/584",
+            "sens": "perte",
+            "ancien": "158",
+            "nouveau": "111"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/587",
+            "sens": "perte",
+            "ancien": "106",
+            "nouveau": "63"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/591",
+            "sens": "perte",
+            "ancien": "78",
+            "nouveau": "50"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesOpenViewB",
+            "sens": "perte",
+            "ancien": "83",
+            "nouveau": "132"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale",
+          "sens": "perte",
+          "ancien": "12213",
+          "nouveau": "9522"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/550",
+          "sens": "perte",
+          "ancien": "303",
+          "nouveau": "175"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/552",
+          "sens": "perte",
+          "ancien": "82",
+          "nouveau": "72"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/553",
+          "sens": "perte",
+          "ancien": "272",
+          "nouveau": "91"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/554",
+          "sens": "perte",
+          "ancien": "136",
+          "nouveau": "37"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/556",
+          "sens": "perte",
+          "ancien": "299",
+          "nouveau": "168"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/558",
+          "sens": "perte",
+          "ancien": "289",
+          "nouveau": "53"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/559",
+          "sens": "perte",
+          "ancien": "63",
+          "nouveau": "7"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/560",
+          "sens": "perte",
+          "ancien": "199",
+          "nouveau": "182"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/561",
+          "sens": "perte",
+          "ancien": "344",
+          "nouveau": "62"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/562",
+          "sens": "perte",
+          "ancien": "108",
+          "nouveau": "36"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/564",
+          "sens": "perte",
+          "ancien": "55",
+          "nouveau": "52"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/565",
+          "sens": "perte",
+          "ancien": "630",
+          "nouveau": "147"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/566",
+          "sens": "perte",
+          "ancien": "592",
+          "nouveau": "359"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/567",
+          "sens": "perte",
+          "ancien": "123",
+          "nouveau": "57"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/568",
+          "sens": "perte",
+          "ancien": "93",
+          "nouveau": "91"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/569",
+          "sens": "perte",
+          "ancien": "185",
+          "nouveau": "124"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/570",
+          "sens": "perte",
+          "ancien": "196",
+          "nouveau": "147"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/571",
+          "sens": "perte",
+          "ancien": "892",
+          "nouveau": "860"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/572",
+          "sens": "perte",
+          "ancien": "92",
+          "nouveau": "81"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/574",
+          "sens": "perte",
+          "ancien": "207",
+          "nouveau": "114"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/576",
+          "sens": "perte",
+          "ancien": "384",
+          "nouveau": "160"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/577",
+          "sens": "perte",
+          "ancien": "516",
+          "nouveau": "337"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/579",
+          "sens": "perte",
+          "ancien": "198",
+          "nouveau": "162"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/580",
+          "sens": "perte",
+          "ancien": "126",
+          "nouveau": "97"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/584",
+          "sens": "perte",
+          "ancien": "158",
+          "nouveau": "111"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/587",
+          "sens": "perte",
+          "ancien": "106",
+          "nouveau": "63"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/591",
+          "sens": "perte",
+          "ancien": "78",
+          "nouveau": "50"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesOpenViewB",
+          "sens": "perte",
+          "ancien": "83",
+          "nouveau": "132"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.jumpDerived",
+          "sens": "changement",
+          "ancien": "321",
+          "nouveau": "328"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.sprint",
+          "sens": "changement",
+          "ancien": "306",
+          "nouveau": "373"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.jumpEpisodes",
+          "sens": "changement",
+          "ancien": "1605",
+          "nouveau": "1662"
+        }
+      ]
+    },
+    {
+      "id": "084a804d",
+      "famille": "vehicules",
+      "statut": "PERTE",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 12,
+      "pertes": 1,
+      "changements": 0,
+      "dureeMs": 89656,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "4832",
+            "apres": "4837"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "928",
+            "apres": "929"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.stances.records",
+            "sens": "perte",
+            "ancien": "448661",
+            "nouveau": "448660"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.records",
+          "sens": "perte",
+          "ancien": "448661",
+          "nouveau": "448660"
+        }
+      ]
+    },
+    {
+      "id": "0797ce72",
+      "famille": "region_index_2_bits",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 13227,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "111fa685",
+      "famille": "version_39",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 31735,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "591",
+            "apres": "592"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e5adf7b2",
+      "famille": "version_40_build_1_11",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 10,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 35236,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "4147",
+            "apres": "4149"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "784",
+            "apres": "782"
+          }
+        ]
+      }
+    },
+    {
+      "id": "60ae07c4",
+      "famille": "version_37",
+      "statut": "FAUX",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 40,
+      "pertes": 59,
+      "changements": 6,
+      "dureeMs": 24494,
+      "verite": {
+        "statut": "FAUX",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "13946",
+            "apres": "14597"
+          },
+          {
+            "mesure": "R-1 repli repli_deadstate_indice_hors_roster",
+            "sens": "FAUX",
+            "avant": "0",
+            "apres": "2",
+            "detail": [
+              "repli nouveau"
+            ]
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "441",
+            "apres": "444"
+          },
+          {
+            "mesure": "R-1 repli repli_localisation_largeur_libre",
+            "sens": "info",
+            "avant": "884",
+            "apres": "680"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale",
+            "sens": "perte",
+            "ancien": "22637",
+            "nouveau": "20613"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/602",
+            "sens": "perte",
+            "ancien": "280",
+            "nouveau": "204"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/603",
+            "sens": "perte",
+            "ancien": "67",
+            "nouveau": "44"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/604",
+            "sens": "perte",
+            "ancien": "65",
+            "nouveau": "59"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/605",
+            "sens": "perte",
+            "ancien": "233",
+            "nouveau": "139"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/606",
+            "sens": "perte",
+            "ancien": "77",
+            "nouveau": "71"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/607",
+            "sens": "perte",
+            "ancien": "201",
+            "nouveau": "141"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/608",
+            "sens": "perte",
+            "ancien": "511",
+            "nouveau": "170"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/609",
+            "sens": "perte",
+            "ancien": "127",
+            "nouveau": "114"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/611",
+            "sens": "perte",
+            "ancien": "82",
+            "nouveau": "81"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/614",
+            "sens": "perte",
+            "ancien": "202",
+            "nouveau": "119"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/615",
+            "sens": "perte",
+            "ancien": "94",
+            "nouveau": "69"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/616",
+            "sens": "perte",
+            "ancien": "87",
+            "nouveau": "80"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/617",
+            "sens": "perte",
+            "ancien": "117",
+            "nouveau": "102"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/618",
+            "sens": "perte",
+            "ancien": "157",
+            "nouveau": "147"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/619",
+            "sens": "perte",
+            "ancien": "57",
+            "nouveau": "51"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/620",
+            "sens": "perte",
+            "ancien": "339",
+            "nouveau": "144"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/622",
+            "sens": "perte",
+            "ancien": "428",
+            "nouveau": "243"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/623",
+            "sens": "perte",
+            "ancien": "359",
+            "nouveau": "236"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/626",
+            "sens": "perte",
+            "ancien": "219",
+            "nouveau": "209"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/627",
+            "sens": "perte",
+            "ancien": "204",
+            "nouveau": "198"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/628",
+            "sens": "perte",
+            "ancien": "87",
+            "nouveau": "30"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/629",
+            "sens": "perte",
+            "ancien": "77",
+            "nouveau": "63"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/632",
+            "sens": "perte",
+            "ancien": "208",
+            "nouveau": "206"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/633",
+            "sens": "perte",
+            "ancien": "280",
+            "nouveau": "265"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/634",
+            "sens": "perte",
+            "ancien": "150",
+            "nouveau": "126"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/635",
+            "sens": "perte",
+            "ancien": "174",
+            "nouveau": "168"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/636",
+            "sens": "perte",
+            "ancien": "124",
+            "nouveau": "91"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/637",
+            "sens": "perte",
+            "ancien": "62",
+            "nouveau": "55"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/639",
+            "sens": "perte",
+            "ancien": "97",
+            "nouveau": "96"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/640",
+            "sens": "perte",
+            "ancien": "104",
+            "nouveau": "101"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/641",
+            "sens": "perte",
+            "ancien": "88",
+            "nouveau": "74"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/642",
+            "sens": "perte",
+            "ancien": "127",
+            "nouveau": "125"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/643",
+            "sens": "perte",
+            "ancien": "78",
+            "nouveau": "77"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/644",
+            "sens": "perte",
+            "ancien": "185",
+            "nouveau": "158"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/645",
+            "sens": "perte",
+            "ancien": "407",
+            "nouveau": "279"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/646",
+            "sens": "perte",
+            "ancien": "435",
+            "nouveau": "184"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/648",
+            "sens": "perte",
+            "ancien": "173",
+            "nouveau": "136"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/651",
+            "sens": "perte",
+            "ancien": "116",
+            "nouveau": "108"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/652",
+            "sens": "perte",
+            "ancien": "379",
+            "nouveau": "364"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/655",
+            "sens": "perte",
+            "ancien": "142",
+            "nouveau": "93"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/656",
+            "sens": "perte",
+            "ancien": "165",
+            "nouveau": "109"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/657",
+            "sens": "perte",
+            "ancien": "64",
+            "nouveau": "58"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/659",
+            "sens": "perte",
+            "ancien": "335",
+            "nouveau": "308"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/662",
+            "sens": "perte",
+            "ancien": "57",
+            "nouveau": "29"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/668",
+            "sens": "perte",
+            "ancien": "136",
+            "nouveau": "127"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/669",
+            "sens": "perte",
+            "ancien": "156",
+            "nouveau": "133"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/670",
+            "sens": "perte",
+            "ancien": "170",
+            "nouveau": "109"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/673",
+            "sens": "perte",
+            "ancien": "153",
+            "nouveau": "135"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/675",
+            "sens": "perte",
+            "ancien": "284",
+            "nouveau": "248"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/677",
+            "sens": "perte",
+            "ancien": "114",
+            "nouveau": "82"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/680",
+            "sens": "perte",
+            "ancien": "57",
+            "nouveau": "24"
+          },
+          {
+            "axe": "autres:stances",
+            "metrique": "stances/duree-totale/par-slot/683",
+            "sens": "perte",
+            "ancien": "128",
+            "nouveau": "123"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesKind",
+            "sens": "perte",
+            "ancien": "741",
+            "nouveau": "743"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "30829",
+            "nouveau": "32672"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesOpenViewB",
+            "sens": "perte",
+            "ancien": "742",
+            "nouveau": "773"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.deathsPaths.directScan.matched",
+            "sens": "perte",
+            "ancien": "80",
+            "nouveau": "2"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.deathsPaths.directScan.published",
+            "sens": "perte",
+            "ancien": "80",
+            "nouveau": "2"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.fallbacks/n",
+            "sens": "perte",
+            "ancien": "21",
+            "nouveau": "22"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale",
+          "sens": "perte",
+          "ancien": "22637",
+          "nouveau": "20613"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/602",
+          "sens": "perte",
+          "ancien": "280",
+          "nouveau": "204"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/603",
+          "sens": "perte",
+          "ancien": "67",
+          "nouveau": "44"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/604",
+          "sens": "perte",
+          "ancien": "65",
+          "nouveau": "59"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/605",
+          "sens": "perte",
+          "ancien": "233",
+          "nouveau": "139"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/606",
+          "sens": "perte",
+          "ancien": "77",
+          "nouveau": "71"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/607",
+          "sens": "perte",
+          "ancien": "201",
+          "nouveau": "141"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/608",
+          "sens": "perte",
+          "ancien": "511",
+          "nouveau": "170"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/609",
+          "sens": "perte",
+          "ancien": "127",
+          "nouveau": "114"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/611",
+          "sens": "perte",
+          "ancien": "82",
+          "nouveau": "81"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/614",
+          "sens": "perte",
+          "ancien": "202",
+          "nouveau": "119"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/615",
+          "sens": "perte",
+          "ancien": "94",
+          "nouveau": "69"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/616",
+          "sens": "perte",
+          "ancien": "87",
+          "nouveau": "80"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/617",
+          "sens": "perte",
+          "ancien": "117",
+          "nouveau": "102"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/618",
+          "sens": "perte",
+          "ancien": "157",
+          "nouveau": "147"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/619",
+          "sens": "perte",
+          "ancien": "57",
+          "nouveau": "51"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/620",
+          "sens": "perte",
+          "ancien": "339",
+          "nouveau": "144"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/622",
+          "sens": "perte",
+          "ancien": "428",
+          "nouveau": "243"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/623",
+          "sens": "perte",
+          "ancien": "359",
+          "nouveau": "236"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/626",
+          "sens": "perte",
+          "ancien": "219",
+          "nouveau": "209"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/627",
+          "sens": "perte",
+          "ancien": "204",
+          "nouveau": "198"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/628",
+          "sens": "perte",
+          "ancien": "87",
+          "nouveau": "30"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/629",
+          "sens": "perte",
+          "ancien": "77",
+          "nouveau": "63"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/632",
+          "sens": "perte",
+          "ancien": "208",
+          "nouveau": "206"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/633",
+          "sens": "perte",
+          "ancien": "280",
+          "nouveau": "265"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/634",
+          "sens": "perte",
+          "ancien": "150",
+          "nouveau": "126"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/635",
+          "sens": "perte",
+          "ancien": "174",
+          "nouveau": "168"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/636",
+          "sens": "perte",
+          "ancien": "124",
+          "nouveau": "91"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/637",
+          "sens": "perte",
+          "ancien": "62",
+          "nouveau": "55"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/639",
+          "sens": "perte",
+          "ancien": "97",
+          "nouveau": "96"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/640",
+          "sens": "perte",
+          "ancien": "104",
+          "nouveau": "101"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/641",
+          "sens": "perte",
+          "ancien": "88",
+          "nouveau": "74"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/642",
+          "sens": "perte",
+          "ancien": "127",
+          "nouveau": "125"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/643",
+          "sens": "perte",
+          "ancien": "78",
+          "nouveau": "77"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/644",
+          "sens": "perte",
+          "ancien": "185",
+          "nouveau": "158"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/645",
+          "sens": "perte",
+          "ancien": "407",
+          "nouveau": "279"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/646",
+          "sens": "perte",
+          "ancien": "435",
+          "nouveau": "184"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/648",
+          "sens": "perte",
+          "ancien": "173",
+          "nouveau": "136"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/651",
+          "sens": "perte",
+          "ancien": "116",
+          "nouveau": "108"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/652",
+          "sens": "perte",
+          "ancien": "379",
+          "nouveau": "364"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/655",
+          "sens": "perte",
+          "ancien": "142",
+          "nouveau": "93"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/656",
+          "sens": "perte",
+          "ancien": "165",
+          "nouveau": "109"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/657",
+          "sens": "perte",
+          "ancien": "64",
+          "nouveau": "58"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/659",
+          "sens": "perte",
+          "ancien": "335",
+          "nouveau": "308"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/662",
+          "sens": "perte",
+          "ancien": "57",
+          "nouveau": "29"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/668",
+          "sens": "perte",
+          "ancien": "136",
+          "nouveau": "127"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/669",
+          "sens": "perte",
+          "ancien": "156",
+          "nouveau": "133"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/670",
+          "sens": "perte",
+          "ancien": "170",
+          "nouveau": "109"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/673",
+          "sens": "perte",
+          "ancien": "153",
+          "nouveau": "135"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/675",
+          "sens": "perte",
+          "ancien": "284",
+          "nouveau": "248"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/677",
+          "sens": "perte",
+          "ancien": "114",
+          "nouveau": "82"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/680",
+          "sens": "perte",
+          "ancien": "57",
+          "nouveau": "24"
+        },
+        {
+          "axe": "autres:stances",
+          "metrique": "stances/duree-totale/par-slot/683",
+          "sens": "perte",
+          "ancien": "128",
+          "nouveau": "123"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesKind",
+          "sens": "perte",
+          "ancien": "741",
+          "nouveau": "743"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "30829",
+          "nouveau": "32672"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesOpenViewB",
+          "sens": "perte",
+          "ancien": "742",
+          "nouveau": "773"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.directScan.matched",
+          "sens": "perte",
+          "ancien": "80",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.directScan.published",
+          "sens": "perte",
+          "ancien": "80",
+          "nouveau": "2"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.fallbacks/n",
+          "sens": "perte",
+          "ancien": "21",
+          "nouveau": "22"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.directScan.population",
+          "sens": "changement",
+          "ancien": "83",
+          "nouveau": "3"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.deathsPaths.walk.population",
+          "sens": "changement",
+          "ancien": "83",
+          "nouveau": "163"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.clamber",
+          "sens": "changement",
+          "ancien": "57",
+          "nouveau": "58"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.jumpDerived",
+          "sens": "changement",
+          "ancien": "756",
+          "nouveau": "759"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.byKind.sprint",
+          "sens": "changement",
+          "ancien": "1111",
+          "nouveau": "1242"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.stances.jumpEpisodes",
+          "sens": "changement",
+          "ancien": "2520",
+          "nouveau": "2534"
+        }
+      ]
+    },
+    {
+      "id": "a349fea8",
+      "famille": "version_33_sans_identification",
+      "statut": "PERTE",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 2,
+      "pertes": 1,
+      "changements": 0,
+      "dureeMs": 115808,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "1020",
+            "apres": "1018"
+          }
+        ],
+        "filets": [
+          {
+            "axe": "couverture",
+            "metrique": "coverage.continuousFire.holesNotClosing",
+            "sens": "perte",
+            "ancien": "22852",
+            "nouveau": "22856"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.continuousFire.holesNotClosing",
+          "sens": "perte",
+          "ancien": "22852",
+          "nouveau": "22856"
+        }
+      ]
+    },
+    {
+      "id": "a521164d",
+      "famille": "version_33_build_1_4_1",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 0,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 33979,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "11de8353",
+      "famille": "version_38_build_1_9_0",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 7,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 30121,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "5629",
+            "apres": "5631"
+          },
+          {
+            "mesure": "R-1 repli repli_liaison_par_anticipation",
+            "sens": "info",
+            "avant": "512",
+            "apres": "513"
+          }
+        ]
+      }
+    },
+    {
+      "id": "50247b26",
+      "famille": "version_31_sans_identification",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 66393,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "bfecd02b",
+      "famille": "vehicules_v41_utilisateur",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 7,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 17122,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "27666",
+            "apres": "27668"
+          }
+        ]
+      }
+    },
+    {
+      "id": "4f77afc1",
+      "famille": "equipement_origine_utilisateur",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 13,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 91019,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "P-1 paquets fermes au bit pres",
+            "sens": "gain",
+            "avant": "24082",
+            "apres": "24104"
+          }
+        ]
+      }
+    },
+    {
+      "id": "396cfc92",
+      "famille": "strongholds_zones",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 0,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 18593,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "f75e7053",
+      "famille": "koth_collines",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 77,
+      "schemaHead": 77,
+      "gains": 0,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 11220,
+      "verite": {
+        "statut": "ok"
+      }
+    }
+  ]
+}

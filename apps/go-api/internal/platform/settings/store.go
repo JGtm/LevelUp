@@ -54,14 +54,24 @@ type AppSettings struct {
 	SpnkrRefreshBackfillPerfScores     bool     `json:"spnkr_refresh_backfill_performance_scores"`
 	SpnkrRefreshBackfillLUSR           bool     `json:"spnkr_refresh_backfill_lusr"`
 	SpnkrRefreshBackfillEvents         bool     `json:"spnkr_refresh_backfill_events"`
-	SpnkrRefreshBackfillWeapons        bool     `json:"spnkr_refresh_backfill_weapons"`
-	// Escouade — gamertags des amis par défaut
-	FriendGamertags []string `json:"friend_gamertags"`
-
 	// --- Règles de sessions ---
 	SessionGapMinutes          int    `json:"session_gap_minutes"`
 	SessionSplitOnRankedChange bool   `json:"session_split_on_ranked_change"`
 	SessionTeamChangeMode      string `json:"session_team_change_mode"`
+
+	// ReplayRetentionMonths borne la fenêtre des artefacts de rejeu 2D : le fil de l'eau
+	// post-sync ne construit que les matchs plus récents que N mois, et la purge
+	// récurrente supprime les ARTEFACTS (jamais les films) plus anciens. 0 = illimité
+	// (défaut : tout construire, ne rien purger). Relu à CHAQUE cycle/tick — un
+	// changement prend effet sans redémarrage (patron scheduler).
+	ReplayRetentionMonths int `json:"replay_retention_months"`
+
+	// ReplayBuildLocation dit OÙ se construit un rejeu : "local" (ce serveur décode
+	// lui-même), "worker" (il met en file, un ouvrier distant décode), "off" (aucune
+	// construction). Vide = défaut de l'instance (worker en production, local en
+	// développement) ; la résolution vit dans replaybuild.DecidePlacement, point de
+	// décision unique. Relu à CHAQUE cycle — un changement prend effet sans redémarrage.
+	ReplayBuildLocation string `json:"replay_build_location"`
 
 	// --- Règles de badges narratifs ---
 	OutcomeExcludeBotMatchesFromBadges  bool   `json:"outcome_exclude_bot_matches_from_badges"`
@@ -82,13 +92,28 @@ type AppSettings struct {
 	// pour ceux-là).
 	CoachProactiveMode bool `json:"coach_proactive_mode"`
 
-	// Capabilities (défaut : true)
+	// ReplaySoundVariationPercent / ReplaySoundDistancePercent — sons d'armes du
+	// rejeu 2D, réglages d'INSTANCE (page admin), pas des préférences utilisateur.
+	// Les .wav extraits du jeu sont purs : ces deux réglages rejouent côté app ce
+	// que le moteur fait à chaque coup. Variation 0-100 % (défaut 100 = fourchettes
+	// du jeu telles quelles, réappliqué par applyAbsentDefaults car 0 est une valeur
+	// légitime) ; distance 0-100 % (défaut 0 = son pur, aucun traitement).
+	ReplaySoundVariationPercent int `json:"replay_sound_variation_percent"`
+	ReplaySoundDistancePercent  int `json:"replay_sound_distance_percent"`
+
+	// Capabilities. CanStartInitialSync : défaut true (clé absente).
+	// CanSelfProvision : défaut true hors mode appliqué, FALSE quand l'instance
+	// applique la propriété des joueurs (Store.WithEnforcedDefaults, ADR 0035 D5).
 	CanSelfProvision    bool `json:"can_self_provision"`
 	CanStartInitialSync bool `json:"can_start_initial_sync"`
 
-	// InstanceLocked : verrou « instance fermée » activable à chaud (défaut false).
-	// Bloque la création de nouvelles identités/BDD (register, SSO xuid inconnu,
-	// setup/players). Cumulé en OU avec LEVELUP_INSTANCE_LOCKED (env, verrou forcé).
+	// InstanceLocked : verrou « instance fermée » activable à chaud. Défaut
+	// (clé absente) : false hors mode appliqué, TRUE quand l'instance applique la
+	// propriété des joueurs (Store.WithEnforcedDefaults, ADR 0035 D5 — bascule du
+	// 2026-09-15). Bloque la création de nouvelles identités/BDD (register, SSO
+	// xuid inconnu, setup/players hors admin). Cumulé en OU avec
+	// LEVELUP_INSTANCE_LOCKED (env, verrou forcé) — résolution unique :
+	// authz.InstanceLocked.
 	InstanceLocked bool `json:"instance_locked"`
 
 	// AuthProvider détermine le mécanisme d'authentification Microsoft/Halo.
@@ -103,6 +128,11 @@ type AppSettings struct {
 type Store struct {
 	mu   sync.RWMutex
 	path string
+	// enforcedDefaults bascule les défauts des DEUX clés de sécurité
+	// (`instance_locked`, `can_self_provision`) sur leur valeur sûre quand
+	// l'instance applique la propriété des joueurs (ADR 0035, D5). Cf.
+	// WithEnforcedDefaults.
+	enforcedDefaults bool
 }
 
 // NewStore crée un Store pour le fichier donné.
@@ -119,7 +149,11 @@ func (s *Store) Load() (*AppSettings, error) {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return defaultSettings(), nil
+			// Fichier absent = TOUTES les clés absentes : mêmes défauts que pour un
+			// fichier présent mais muet (dont les défauts sûrs en mode appliqué).
+			cfg := defaultSettings()
+			applyAbsentDefaults(cfg, nil, s.enforcedDefaults)
+			return cfg, nil
 		}
 		return nil, fmt.Errorf("settings.Load: %w", err)
 	}
@@ -136,26 +170,8 @@ func (s *Store) Load() (*AppSettings, error) {
 		return nil, fmt.Errorf("settings.Load typed: %w", err)
 	}
 	cfg.raw = raw
-	applyAbsentDefaults(cfg, raw)
+	applyAbsentDefaults(cfg, raw, s.enforcedDefaults)
 	return cfg, nil
-}
-
-// applyAbsentDefaults réapplique les défauts « clé absente → true » sur un
-// AppSettings dérivé de la map raw donnée (rétrocompatibilité fichiers existants).
-// Partagé entre Load et ResolveForTitle pour garder une seule source de vérité.
-func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage) {
-	if _, ok := raw["can_self_provision"]; !ok {
-		cfg.CanSelfProvision = true
-	}
-	if _, ok := raw["can_start_initial_sync"]; !ok {
-		cfg.CanStartInitialSync = true
-	}
-	if _, ok := raw["show_progression"]; !ok {
-		cfg.ShowProgression = true
-	}
-	if _, ok := raw["coach_proactive_mode"]; !ok {
-		cfg.CoachProactiveMode = true // DEC-2 : défaut ON (bascule 2026-07-22)
-	}
 }
 
 // ResolveForTitle charge les settings GLOBAUX puis applique l'overlay du titre
@@ -206,7 +222,7 @@ func (s *Store) ResolveForTitle(overlayPath string) (*AppSettings, error) {
 		return nil, fmt.Errorf("settings.ResolveForTitle unmarshal merged: %w", err)
 	}
 	out.raw = merged
-	applyAbsentDefaults(out, merged)
+	applyAbsentDefaults(out, merged, s.enforcedDefaults)
 	return out, nil
 }
 
@@ -385,12 +401,6 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.SpnkrRefreshBackfillEvents != nil {
 		cfg.SpnkrRefreshBackfillEvents = *req.SpnkrRefreshBackfillEvents
 	}
-	if req.SpnkrRefreshBackfillWeapons != nil {
-		cfg.SpnkrRefreshBackfillWeapons = *req.SpnkrRefreshBackfillWeapons
-	}
-	if req.FriendGamertags != nil {
-		cfg.FriendGamertags = req.FriendGamertags
-	}
 	if req.SessionGapMinutes != nil {
 		cfg.SessionGapMinutes = *req.SessionGapMinutes
 	}
@@ -399,6 +409,12 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	}
 	if req.SessionTeamChangeMode != nil {
 		cfg.SessionTeamChangeMode = *req.SessionTeamChangeMode
+	}
+	if req.ReplayRetentionMonths != nil {
+		cfg.ReplayRetentionMonths = *req.ReplayRetentionMonths
+	}
+	if req.ReplayBuildLocation != nil {
+		cfg.ReplayBuildLocation = *req.ReplayBuildLocation
 	}
 	if req.OutcomeExcludeBotMatchesFromBadges != nil {
 		cfg.OutcomeExcludeBotMatchesFromBadges = *req.OutcomeExcludeBotMatchesFromBadges
@@ -423,6 +439,12 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	}
 	if req.InstanceLocked != nil {
 		cfg.InstanceLocked = *req.InstanceLocked
+	}
+	if req.ReplaySoundVariationPercent != nil {
+		cfg.ReplaySoundVariationPercent = *req.ReplaySoundVariationPercent
+	}
+	if req.ReplaySoundDistancePercent != nil {
+		cfg.ReplaySoundDistancePercent = *req.ReplaySoundDistancePercent
 	}
 }
 
@@ -468,11 +490,11 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		SpnkrRefreshBackfillPerfScores:      cfg.SpnkrRefreshBackfillPerfScores,
 		SpnkrRefreshBackfillLUSR:            cfg.SpnkrRefreshBackfillLUSR,
 		SpnkrRefreshBackfillEvents:          cfg.SpnkrRefreshBackfillEvents,
-		SpnkrRefreshBackfillWeapons:         cfg.SpnkrRefreshBackfillWeapons,
-		FriendGamertags:                     cfg.FriendGamertags,
 		SessionGapMinutes:                   cfg.SessionGapMinutes,
 		SessionSplitOnRankedChange:          cfg.SessionSplitOnRankedChange,
 		SessionTeamChangeMode:               cfg.SessionTeamChangeMode,
+		ReplayRetentionMonths:               cfg.ReplayRetentionMonths,
+		ReplayBuildLocation:                 cfg.ReplayBuildLocation,
 		OutcomeExcludeBotMatchesFromBadges:  cfg.OutcomeExcludeBotMatchesFromBadges,
 		OutcomeExcludeBotMatchesFromRecords: cfg.OutcomeExcludeBotMatchesFromRecords,
 		OutcomeBadgeSensitivity:             cfg.OutcomeBadgeSensitivity,
@@ -481,33 +503,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		CoachProactiveMode:                  cfg.CoachProactiveMode,
 		AuthProvider:                        cfg.AuthProvider,
 		InstanceLocked:                      cfg.InstanceLocked,
-	}
-}
-
-// Defaults retourne les valeurs par défaut de app_settings.json.
-func Defaults() *AppSettings {
-	return defaultSettings()
-}
-
-// defaultSettings retourne les valeurs par défaut de app_settings.json.
-func defaultSettings() *AppSettings {
-	return &AppSettings{
-		Lang:                "en",
-		DiscordLang:         "fr",
-		UserTimezone:        "Europe/Paris",
-		MediaBufferMinutes:  2,
-		CanSelfProvision:    true,
-		CanStartInitialSync: true,
-		// Règles de sessions
-		SessionGapMinutes:     120,       // 2 heures — historique Python
-		SessionTeamChangeMode: "friends", // amis seulement — moins sensible aux randoms
-		// Règles de badges narratifs
-		OutcomeExcludeBotMatchesFromBadges:  true,       // bots faussent les scores adverses
-		OutcomeExcludeBotMatchesFromRecords: false,      // pas de changement de comportement par défaut
-		OutcomeBadgeSensitivity:             "standard", // seuils historiques Python
-		// Affichage Objectifs/Prestige activé par défaut
-		ShowProgression: true,
-		// Coach proactif activé par défaut (DEC-2, bascule 2026-07-22).
-		CoachProactiveMode: true,
+		ReplaySoundVariationPercent:         cfg.ReplaySoundVariationPercent,
+		ReplaySoundDistancePercent:          cfg.ReplaySoundDistancePercent,
 	}
 }

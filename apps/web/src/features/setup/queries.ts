@@ -26,12 +26,26 @@ export function useStartDeviceFlow() {
   })
 }
 
+/** Intervalle de sondage d'une tentative de connexion (ms). */
+const DEVICE_FLOW_POLL_MS = 5_000
+
+/**
+ * Vrai quand la tentative a abouti. Au succès le serveur fait tourner la session : toute
+ * requête suivante sur l'ancienne tentative peut répondre 404 attempt_not_found, ce qui
+ * n'est plus un signe de tentative perdue.
+ */
+export function isDeviceFlowSucceeded(status: string | null | undefined): boolean {
+  return status === 'authorized' || status === 'provisioned'
+}
+
 export function useDeviceFlowStatus(attemptId: string, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.deviceFlow(attemptId),
     queryFn: () => api.get<DeviceFlowStatusResponse>(`/auth/device-flow/${attemptId}`),
     enabled: enabled && !!attemptId,
-    refetchInterval: 5_000,
+    // Le sondage s'arrête une fois la tentative aboutie (voir isDeviceFlowSucceeded).
+    refetchInterval: (query) =>
+      isDeviceFlowSucceeded(query.state.data?.status) ? false : DEVICE_FLOW_POLL_MS,
     staleTime: 0,
     // Polling : ne pas réessayer un 404 (attempt_not_found, ex. tentative balayée
     // ou backend redémarré). L'erreur doit remonter vite pour que l'onboarding

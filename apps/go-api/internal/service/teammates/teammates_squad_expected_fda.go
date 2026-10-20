@@ -83,7 +83,7 @@ func (z *squadExpectedAssistsResolver) personalModel(gt, mode string) *domain.Pl
 	}
 	m, err := z.loader.LoadPlayerAssistsModel(z.ctx, z.slug, gt, mode)
 	if err != nil {
-		slog.WarnContext(z.ctx, "squad_expected_assists_personal_failed", "gamertag", gt, "mode", mode, "err", err)
+		slog.ErrorContext(z.ctx, "squad_expected_assists_personal_failed", "gamertag", gt, "mode", mode, "err", err)
 	}
 	z.personal[key] = m // m peut être nil (membre sans modèle) — marque résolu
 	return m

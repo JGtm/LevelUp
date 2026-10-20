@@ -13,7 +13,7 @@ package migration
 //   - un index secondaire idx_catalog_fetch_queue_drain incluant la colonne
 //     `attempts` → index ART touché par l'UPDATE de markError.
 // Le DELETE/UPDATE per-row sur une table ART-indexée déclenche le bug DuckDB
-// 1.5.x #23046 ("Failed to delete all rows from index. Only deleted 0 out of N
+// 1.5.x #23645 ("Failed to delete all rows from index. Only deleted 0 out of N
 // rows") → metadata.duckdb passe FATAL "database has been invalidated" pour tout
 // le reste de la vie du process → résolution des noms d'assets (maps/playlists/
 // modes FR) cassée jusqu'au prochain restart (qui re-casse au boot suivant).

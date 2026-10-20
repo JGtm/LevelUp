@@ -1,0 +1,17 @@
+K1	ROUGE	M1 rejoue : regle du masque retiree (NEW)	debut_de_liste_masque_test.go:175: NEW, bit au-dela de l archetype : debut 5 (true), attendu 61 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+K2	ROUGE	M2 rejoue : regle du masque retiree (delta)	debut_de_liste_masque_test.go:175: delta, bit au-dela de l archetype : debut 5 (true), attendu 61 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+K3	ROUGE	i31 : N = 8 traite comme echec (borne CMP 8 ; JLE decalee d un)	components_device_ti43_test.go:74: V31c (device-dispenser-monitors-changed-component) : porte false, attendu true
+K4	ROUGE	pasDEssai : seule la regle hors archetype (dense<=7 et epars non croissant acceptes)	debut_de_liste_masque_test.go:175: NEW, dense de sept composants : debut 5 (true), attendu 123 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+K5	ROUGE	i27 : R(5) au lieu de R(6)	ecs_widths_guard_test.go:200: G4 : ligne 962 (ti=43 i=27 device-health-station-charges-component) : la table annonce 7 bits, le deser de production en consomme 
+K6	ROUGE	i40 retire du maillon	ecs_widths_guard_test.go:216: G4 : 137 largeurs fixes et 67 gardees, gelees a 138 et 66 (mesure du 2026-09-06).
+K7	ROUGE	i20 : 255 bits	ecs_widths_guard_test.go:200: G4 : ligne 955 (ti=43 i=20 device-position-animation-control-component) : la table annonce 256 bits, le deser de production en con
+K8	ROUGE	queue de FUN_1407f0354 a 6 bits	components_device_ti43_test.go:78: V37 (device-object-dispenser-timer-component) : 38 bits consommes, l ecrivain en a ecrit 37 (0 | 1 1111111111 0000000000 0001
+K9	ROUGE	i35 : code 1 traite comme poids nul	components_device_ti43_test.go:78: V35c (device-animation-layer-state-component) : 19 bits consommes, l ecrivain en a ecrit 33 (1 | 1 0000000001 00000000000000 
+K10	ROUGE	i25, i40 : Q(9)	ecs_widths_guard_test.go:200: G4 : ligne 960 (ti=43 i=25 device-interaction-hold-time-component) : la table annonce 8 bits, le deser de production en consomme 9
+K11	ROUGE	i38 : Q(17)	ecs_widths_guard_test.go:200: G4 : ligne 973 (ti=43 i=38 device-position-transition-velocity-component) : la table annonce 18 bits, le deser de production en co
+K12	ROUGE	i26 : un seul R(32)	ecs_widths_guard_test.go:200: G4 : ligne 961 (ti=43 i=26 device-control-action-string-override-component) : la table annonce 64 bits, le deser de production en 
+K4n	ROUGE	pasDEssai NEW seul : seule la regle hors archetype	debut_de_liste_masque_test.go:175: NEW, dense de sept composants : debut 5 (true), attendu 123 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+K4d	ROUGE	pasDEssai delta seul : seule la regle hors archetype	debut_de_liste_masque_test.go:175: delta, dense de sept composants : debut 5 (true), attendu 123 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+K1	ROUGE	M1 rejoue : regle du masque retiree (NEW)	debut_de_liste_masque_test.go:175: NEW, bit au-dela de l archetype : debut 5 (true), attendu 61 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+K4e	ROUGE	pasDEssai : epars non croissant accepte (NEW et delta)	debut_de_liste_masque_test.go:175: NEW, epars non croissant : debut 5 (true), attendu 69 garde — un masque que l ecrivain n ecrit pas ne prouve rien
+K4c	ROUGE	pasDEssai : dense court accepte (NEW et delta)	debut_de_liste_masque_test.go:175: NEW, dense de sept composants : debut 5 (true), attendu 123 garde — un masque que l ecrivain n ecrit pas ne prouve rien

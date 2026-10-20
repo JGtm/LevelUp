@@ -9,7 +9,7 @@
 // post-sync (cf. post_sync_progression.go). Les endpoints sont purement
 // lecture pour l'UI.
 //
-// Réf : .ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1 (handlers).
+// Réf : .ai/archive/V7/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1 (handlers).
 package handlers
 
 import (
@@ -73,7 +73,7 @@ type progPlayerInput struct {
 // progRecordsInput : {player_slug} + ?history_limit= (records).
 type progRecordsInput struct {
 	PlayerSlug   string `path:"player_slug"`
-	HistoryLimit int    `query:"history_limit"`
+	HistoryLimit int    `query:"history_limit" maximum:"200"`
 }
 
 type streaksHumaOutput struct{ Body streaksResponse }
@@ -157,7 +157,7 @@ func (h *ProgressionHandler) handleStreaks(ctx context.Context, in *progPlayerIn
 	list, err := repo.List(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug))
 	if err != nil {
 		slog.WarnContext(ctx, "progression: list streaks", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "list_streaks_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_streaks_error", err)
 	}
 	items := make([]streakDTO, 0, len(list))
 	for _, s := range list {
@@ -167,7 +167,7 @@ func (h *ProgressionHandler) handleStreaks(ctx context.Context, in *progPlayerIn
 }
 
 // handleRecords : GET /records → PB courants + timeline.
-// Query param optionnel history_limit (défaut 50, max 200).
+// Query param optionnel history_limit (défaut 50 ; le schéma refuse au-delà de 200).
 func (h *ProgressionHandler) handleRecords(ctx context.Context, in *progRecordsInput) (*recordsHumaOutput, error) {
 	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
 	if err != nil {
@@ -177,22 +177,19 @@ func (h *ProgressionHandler) handleRecords(ctx context.Context, in *progRecordsI
 	if limit <= 0 {
 		limit = 50
 	}
-	if limit > 200 {
-		limit = 200
-	}
 
 	pbRepo := duckdb.NewPersonalRecordsRepo(pdb)
 	pbList, err := pbRepo.ListByXUID(ctx, pdb.XUID)
 	if err != nil {
 		slog.WarnContext(ctx, "progression: list PBs", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "list_pbs_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_pbs_error", err)
 	}
 
 	historyRepo := duckdb.NewRecordHistoryRepo(pdb.Player)
 	histList, err := historyRepo.ListRecent(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug), limit)
 	if err != nil {
 		slog.WarnContext(ctx, "progression: list record history", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "list_history_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_history_error", err)
 	}
 
 	resp := recordsResponse{
@@ -241,12 +238,12 @@ func (h *ProgressionHandler) milestoneDTOs(ctx context.Context, pdb *duckdb.Play
 	catalog, err := duckdb.NewMilestoneCatalogRepo(pdb.Metadata).ListByTitle(ctx, titleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "progression: list catalog", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "list_catalog_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_catalog_error", err)
 	}
 	earnedList, err := duckdb.NewMilestoneEarnedRepo(pdb.Player).ListByUser(ctx, pdb.XUID, titleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "progression: list earned", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "list_earned_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_earned_error", err)
 	}
 	earnedByID := make(map[string]time.Time, len(earnedList))
 	for _, e := range earnedList {
@@ -277,7 +274,7 @@ func (h *ProgressionHandler) milestoneDTOs(ctx context.Context, pdb *duckdb.Play
 func (h *ProgressionHandler) resolvePlayer(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
 	pdb, err := h.resolve(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return pdb, nil
 }

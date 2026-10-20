@@ -44,7 +44,7 @@ func applyRankedPlaylistSeeds(db *sql.DB) error {
 			  is_ranked      = TRUE,
 			  is_active      = excluded.is_active,
 			  last_fetched_at = excluded.last_fetched_at`,
-			rankedSeedTitleSlug, p.AssetID, p.NameEN, p.Active, now, now, now,
+			rankedSeedTitleSlug, p.AssetID, p.NameEN(), p.Active, now, now, now,
 		); err != nil {
 			return fmt.Errorf("seed ranked playlist %s: %w", p.AssetID, err)
 		}
@@ -60,7 +60,8 @@ func applyRankedPlaylistSeeds(db *sql.DB) error {
 // seedRankedPlaylistFR insère la traduction FR (fr + fr-FR) de la playlist dans
 // asset_translations si NameFR est renseigné.
 func seedRankedPlaylistFR(ctx context.Context, db *sql.DB, p rankedplaylists.Playlist) error {
-	if p.NameFR == "" {
+	nameFR := p.NameFR()
+	if nameFR == "" {
 		return nil
 	}
 	for _, lang := range []string{"fr", "fr-FR"} {
@@ -68,7 +69,7 @@ func seedRankedPlaylistFR(ctx context.Context, db *sql.DB, p rankedplaylists.Pla
 			INSERT INTO asset_translations (asset_id, asset_type, lang, name)
 			VALUES (?, 'playlist', ?, ?)
 			ON CONFLICT (asset_id, asset_type, lang) DO UPDATE SET name = excluded.name`,
-			p.AssetID, lang, p.NameFR,
+			p.AssetID, lang, nameFR,
 		); err != nil {
 			return fmt.Errorf("seed FR playlist %s [%s]: %w", p.AssetID, lang, err)
 		}

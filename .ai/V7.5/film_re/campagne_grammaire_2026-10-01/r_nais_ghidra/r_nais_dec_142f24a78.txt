@@ -1,0 +1,31 @@
+
+int FUN_142f24a78(longlong param_1,undefined8 *param_2)
+
+{
+  int iVar1;
+  int iVar2;
+  longlong lVar3;
+  undefined8 local_38;
+  undefined8 uStack_30;
+  undefined4 local_28;
+  undefined4 uStack_24;
+  longlong lStack_20;
+  undefined8 local_18;
+  
+  local_38 = *param_2;
+  uStack_30 = param_2[1];
+  local_28 = *(undefined4 *)(param_2 + 2);
+  uStack_24 = *(undefined4 *)((longlong)param_2 + 0x14);
+  lStack_20 = param_2[3];
+  local_18 = param_2[4];
+  lVar3 = param_1 + 0x1afb8 + (longlong)*(int *)((longlong)param_2 + 4) * 0xd8;
+  iVar1 = FUN_14076b9b0(lVar3);
+  lStack_20 = lVar3;
+  iVar2 = FUN_14076b9b0();
+  local_18 = CONCAT44(local_18._4_4_,
+                      (*(int *)(lVar3 + 0x18) * 8 - *(int *)((longlong)param_2 + 0x24)) - iVar2);
+  FUN_142f2cee0(param_1,&local_38);
+  iVar2 = FUN_14076b9b0(lVar3);
+  return iVar2 - iVar1;
+}
+

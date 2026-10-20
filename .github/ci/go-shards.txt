@@ -1,0 +1,44 @@
+# Définition UNIQUE des lots de la suite Go de la CI (job `go-coverage`, matrice de ci.yml).
+# Lue par scripts/ci_go_shard.sh ; la matrice de ci.yml et ce fichier portent les mêmes noms
+# de lots (garde-rail : archlint/ci_go_shards_test.go).
+#
+# Syntaxe (une directive par ligne, champs séparés par des blancs, `#` commence un commentaire) :
+#
+#   heavy <nom> <Test> [<Test> ...]
+#       Liste NOMMÉE de tests de premier niveau. Elle sert à la fois de `-run '^(A|B)$'` et de
+#       `-skip '^(A|B)$'` : deux lots complémentaires, une seule source.
+#
+#   lot <nom> <filtre> <motif> [<motif> ...]
+#       <filtre> : `-` (tous les tests), `run:<liste>` ou `skip:<liste>` (liste déclarée par
+#       `heavy`). <motif> : motif de paquet Go relatif au module (`./a/b/...` ou `./a/b`),
+#       précédé de `!` pour l'exclure du lot, ou `@reste` (le COMPLÉMENT, réservé au dernier lot).
+#
+# Règles (vérifiées par `scripts/ci_go_shard.sh --verifier` et par archlint) :
+#   - un paquet appartient à UN SEUL lot, sauf un paquet découpé par `run:`/`skip:` sur la même
+#     liste, qui apparaît dans exactement deux lots complémentaires ;
+#   - le dernier lot est le complément calculé (`go list -tags=integration ./...` moins tous les
+#     motifs explicites) : l'union des lots couvre `./...` par construction, un paquet ajouté au
+#     module tombe dans ce lot sans que personne ait à y penser.
+#
+# DURÉES (run 38938482739 de la CI, couverture atomic + -coverpkg=./..., en secondes de test ;
+# estimation grammar = durée des tests terminés avant la coupure à 900 s, extrapolée aux autres
+# par le rapport des durées locales) : le paquet `grammar` pèse ~1 170 s à lui seul. Un lot vise
+# moins de 600 s de test ; ajouter ~1 s par paquet pour l'édition de liens des binaires de test.
+# Rééquilibrer ici quand un lot dépasse durablement les autres dans le résumé de la CI.
+
+# Tests lourds de `grammar` (233 + ~139 + 78 + 44 + 40 + 39 s sous couverture) : ils pèsent la
+# moitié du paquet. Un nom qui disparaît du paquet fait rougir archlint (liste périmée).
+heavy grammar-lourds TestSuivanteEgaleLaBoucleDAvantSurTamponsSynthetiques TestLaStructureDesBobinesTientSesInvariants TestFrameClosureDetailleeRendLaCarteDeFrameClosure TestGoldenMiniBobineFamilles TestLaFermetureDeLaStructureNeDescendPas TestChaqueLectureCiteUneEtendueDeLaStructure
+
+lot film-grammar-lourd run:grammar-lourds ./internal/games/halo_infinite/film/internal/grammar
+lot film-grammar-reste skip:grammar-lourds ./internal/games/halo_infinite/film/internal/grammar
+lot film                - ./internal/games/halo_infinite/film/... !./internal/games/halo_infinite/film/internal/grammar ./internal/persist ./internal/ops
+lot platform            - ./internal/platform/duckdb/... ./internal/migration ./internal/games/halo_infinite/migrations ./internal/mapdecoupe ./cmd/levelup
+lot sync                - ./internal/sync/... ./internal/api/wire ./internal/archlint
+lot reste               - @reste
+
+# Budget `-timeout` PAR PROCESSUS DE TEST (un paquet = un processus), pas par lot : 600 s partout.
+# Mesures sous couverture (run 38979844734) : moitiés de `grammar` 245 et 248 s, platform/duckdb
+# 301 s, internal/sync 261 s. Le critère de retour à 600 s (une moitié de `grammar` sous 450 s) est
+# tenu ; un lot qui s'approche de 450 s se rééquilibre ici plutôt que d'allonger son délai.
+timeout-defaut 600s

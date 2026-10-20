@@ -10,21 +10,80 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"strings"
 
-	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/replayview"
 )
 
 // replayService lit l'artefact de rejeu d'un titre donné via le PathResolver.
+//
+// DEUX RACINES (lot B-C7 du backlog 2026-09-26). repoRoot porte les DONNÉES VERSIONNÉES :
+// fonds de carte, catalogues de référence, mappings, libellés, zones, règles de tiers.
+// artifactsDir porte les ARTEFACTS : les rejeux construits. Hors démo, c'est le dossier
+// d'artefacts du dépôt ; en démo, celui des rejeux FIGÉS de la démo
+// (title.DemoLayout.ReplayArtifactsDir), seul servi.
+//
+// demoIndexPath (démo seulement) : l'index des rejeux figés, dont la correspondance des
+// identités MASQUE les joueurs réels dans le document servi (décision D-1 : l'artefact n'est
+// jamais modifié). Vide hors démo.
 type replayService struct {
-	titleSlug string
-	repoRoot  string
+	titleSlug     string
+	repoRoot      string
+	artifactsDir  string
+	demoIndexPath string
+	// maps nomme la carte d'un match (fond de carte). Nil = pas de fond servi, jamais
+	// d'erreur : le rejeu reste lisible sur son sol structurel.
+	maps port.ReplayMapNameRepo
 }
 
 // NewReplayService construit le service de rejeu pour un titre (résolu depuis le joueur).
-func NewReplayService(titleSlug, repoRoot string) port.ReplayService {
-	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot}
+//
+// `maps` est la SEULE dépendance base du service — elle nomme la carte du match, ce que
+// l'artefact ne sait pas faire. Nil est un cas servi : pas de fond de carte, le rejeu garde
+// son sol structurel. Un paramètre plutôt qu'un `With*` : un service à deux formes de
+// construction finit toujours par n'en avoir qu'une de testée.
+//
+// Données versionnées ET artefacts du même dépôt (cas hors démo, CLI, tests).
+func NewReplayService(titleSlug, repoRoot string, maps port.ReplayMapNameRepo) port.ReplayService {
+	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot,
+		artifactsDir: title.NewPathResolver(repoRoot).ReplayArtifactsDir(titleSlug), maps: maps}
+}
+
+// NewDemoReplayService construit le service de la DÉMO : données versionnées du dépôt,
+// artefacts et index des rejeux figés de la disposition démo, identités masquées.
+func NewDemoReplayService(titleSlug, repoRoot string, layout title.DemoLayout, maps port.ReplayMapNameRepo) port.ReplayService {
+	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot,
+		artifactsDir: layout.ReplayArtifactsDir(titleSlug), demoIndexPath: layout.ReplayIndexPath(titleSlug), maps: maps}
+}
+
+// modeNonGere dit si le registre classe ce match dans un mode que le rejeu ne gere pas
+// (Firefight) : son artefact, s'il traine dans le cache, n'est ni annonce ni servi.
+//
+// FAIL-OPEN ET JOURNALISE : sans capacite (`maps` nil ou sans [port.ReplayModeGate]) ou sur
+// registre illisible, on ne retire rien — une panne de lecture ne doit pas effacer les rejeux
+// des modes geres.
+func (s *replayService) modeNonGere(ctx context.Context, matchID string) bool {
+	gate, ok := s.maps.(port.ReplayModeGate)
+	if !ok {
+		return false
+	}
+	nonGere, err := gate.ModeNonGere(ctx, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "rejeu 2D : mode du match illisible — non filtre",
+			"err", err, "match_id", matchID, "titleSlug", s.titleSlug)
+		return false
+	}
+	return nonGere
+}
+
+// artifactPath rend le chemin de l'artefact d'un match dans le dossier servi.
+func (s *replayService) artifactPath(matchID string) string {
+	return filepath.Join(s.artifactsDir, title.ReplayArtifactFileName(matchID))
 }
 
 // IsAvailable dit si l'artefact existe, par un os.Stat — JAMAIS par une lecture : la
@@ -34,7 +93,7 @@ func NewReplayService(titleSlug, repoRoot string) port.ReplayService {
 // Tout échec vaut « pas de rejeu » (répertoire absent, droits, chemin non résolu) :
 // l'absence de lien est la dégradation sûre, une erreur 500 sur la page match ne l'est pas.
 func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
-	path := title.NewPathResolver(s.repoRoot).ReplayArtifactPath(s.titleSlug, matchID)
+	path := s.artifactPath(matchID)
 	info, err := os.Stat(path)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
@@ -45,23 +104,138 @@ func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
 		}
 		return false
 	}
-	return !info.IsDir()
+	return !info.IsDir() && !s.modeNonGere(ctx, matchID)
 }
+
+// AvailableSet liste les matchs du titre qui ont un artefact, par UN SEUL listing du
+// dossier d'artefacts — jamais un os.Stat par match. C'est la forme qu'interrogent les
+// TABLEAUX de matchs (Explorer, escouade) : ils affichent des centaines de lignes, et un
+// appel disque par ligne coûterait la page entière pour une icône.
+//
+// Le dossier absent est nominal (titre sans rejeu construit) : ensemble vide, pas
+// d'erreur. Une lecture qui échoue pour une autre raison est journalisée ET remontée —
+// l'appelant dégrade sur l'ensemble vide (aucune icône), jamais sur un 500.
+func (s *replayService) AvailableSet(ctx context.Context) (port.ReplayAvailability, error) {
+	dir := s.artifactsDir
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return port.ReplayAvailability{}, nil
+	}
+	if err != nil {
+		slog.ErrorContext(ctx, "rejeu 2D : dossier d'artefacts illisible",
+			"err", err, "dir", dir, "titleSlug", s.titleSlug)
+		return port.ReplayAvailability{}, fmt.Errorf("listing artefacts rejeu %s: %w", s.titleSlug, err)
+	}
+	set := make(port.ReplayAvailability, len(entries))
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, replayArtifactExt) {
+			continue // on ne compte QUE des artefacts {short8}.json
+		}
+		set[strings.TrimSuffix(name, replayArtifactExt)] = struct{}{}
+	}
+	s.retirerModesNonGeres(ctx, set)
+	return set, nil
+}
+
+// retirerModesNonGeres retire de l'ensemble les matchs d'un mode non gere (cf. modeNonGere :
+// meme fail-open journalise). Une seule lecture du registre, et seulement s'il y a des
+// artefacts a filtrer.
+func (s *replayService) retirerModesNonGeres(ctx context.Context, set port.ReplayAvailability) {
+	if len(set) == 0 {
+		return
+	}
+	gate, ok := s.maps.(port.ReplayModeGate)
+	if !ok {
+		return
+	}
+	nonGeres, err := gate.ModesNonGeresShortIDs(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "rejeu 2D : modes non geres illisibles — liste non filtree",
+			"err", err, "titleSlug", s.titleSlug)
+		return
+	}
+	for short := range nonGeres {
+		delete(set, short)
+	}
+}
+
+// replayArtifactExt est l'extension des artefacts de rejeu ({short8}.json) — la même
+// convention que PathResolver.ReplayArtifactPath et que la purge récurrente.
+const replayArtifactExt = ".json"
 
 // GetReplay lit et désérialise l'artefact du match. Retourne port.ErrReplayNotAvailable
 // si aucun artefact n'existe (404 côté handler), une erreur enveloppée sinon.
-func (s *replayService) GetReplay(_ context.Context, matchID string) (replay.ReplayDocument, error) {
-	path := title.NewPathResolver(s.repoRoot).ReplayArtifactPath(s.titleSlug, matchID)
-	raw, err := os.ReadFile(path)
+//
+// TROIS RÉSOLUTIONS SE POSENT ICI, à la requête, et pour la même raison : elles viennent
+// d'un catalogue du TITRE, que l'artefact (décodé des seuls chunks du film) ne connaît pas.
+//   - le calque d'objectifs statiques (MapObjectives), qui dépend de la carte et du mode ;
+//   - les EMPLACEMENTS DE SOCLE de la carte (MapWeaponPads), croisés avec les socles du
+//     match : le fichier de carte les pose, seul le film dit lesquels sont allumés (cf.
+//     replay_map_weapon_pads.go) ;
+//   - ce que le TITRE sait de chaque arme (WeaponLabel.Key et .Tint) : la clé qui ouvre la
+//     banque de sons du client, et la nature de la décharge qui teinte son éclair de
+//     bouche (cf. replay_weapon_labels.go) ;
+//   - le SPRITE de chaque famille de châssis de véhicule (VehicleLabels) : l'artefact publie
+//     la famille, le service compose son URL sous /static (cf. replay_vehicle_labels.go) ;
+//   - le REGISTRE DES ARMES DE VÉHICULE (VehicleWeapons) employées par les tirs : forme, teinte,
+//     son et montage de chacune (cf. replay_vehicle_weapons.go, schéma 69).
+//   - le DÉCOR DE CARTE (VehicleScenery) : les vies posées par la carte hors de sa zone jouable
+//     (cf. replay_vehicle_scenery.go, lot M7).
+//
+// L'absence de l'une ou de l'autre n'est jamais une erreur — le rejeu se sert entier sans.
+//
+// LE TYPE DE RETOUR EST LE DOCUMENT SERVI, pas le document stocké : l'artefact est lu dans sa
+// forme de FICHIER (`games/halo_infinite/film/replay`), enrichi des trois résolutions ci-dessus, puis PROJETÉ
+// sur la forme de FIL (`domain/replaydoc`) — c'est la seule frontière où les deux se croisent
+// (cf. internal/service/replayview).
+func (s *replayService) GetReplay(ctx context.Context, matchID string) (replaydoc.ReplayDocument, error) {
+	// UN MODE NON GERE N'A PAS DE REJEU, MEME SI UN ARTEFACT TRAINE dans le cache : meme reponse
+	// que l'absence d'artefact (404 replay_not_available), jamais un 500.
+	if s.modeNonGere(ctx, matchID) {
+		return replaydoc.ReplayDocument{}, port.ErrReplayNotAvailable
+	}
+	raw, err := os.ReadFile(s.artifactPath(matchID))
 	if errors.Is(err, os.ErrNotExist) {
-		return replay.ReplayDocument{}, port.ErrReplayNotAvailable
+		return replaydoc.ReplayDocument{}, port.ErrReplayNotAvailable
 	}
 	if err != nil {
-		return replay.ReplayDocument{}, fmt.Errorf("lecture artefact rejeu %s: %w", matchID, err)
+		return replaydoc.ReplayDocument{}, fmt.Errorf("lecture artefact rejeu %s: %w", matchID, err)
 	}
 	var doc replay.ReplayDocument
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		return replay.ReplayDocument{}, fmt.Errorf("désérialisation artefact rejeu %s: %w", matchID, err)
+		return replaydoc.ReplayDocument{}, fmt.Errorf("désérialisation artefact rejeu %s: %w", matchID, err)
 	}
-	return doc, nil
+	// LES CLÉS DE CARTE, UNE SEULE FOIS : deux calques statiques les partagent, et la base
+	// ne doit pas être interrogée deux fois pour la même réponse.
+	keys := s.matchMapKeys(ctx, matchID)
+	doc.MapObjectives = s.mapObjectivesForKeys(ctx, matchID, keys)
+	doc.MapWeaponPads = s.mapWeaponPadsForKeys(ctx, matchID, keys, doc.WeaponPads)
+	// LES REGLAGES DE NIVEAU D ARME, meme regime et meme raison : ils dependent du MODE, que
+	// l artefact ne nomme pas (cf. replay_weapon_tiers.go).
+	doc.WeaponTiers = s.weaponTiersForKeys(ctx, matchID, keys)
+	// La CLÉ CANONIQUE et la TEINTE de chaque arme, même règle et même raison : elles se
+	// résolvent d'un catalogue du titre, donc ici et pas dans l'artefact (cf.
+	// replay_weapon_labels.go).
+	s.resolveWeaponLabels(ctx, &doc)
+	// LE SPRITE DE CHAQUE FAMILLE DE CHASSIS, même règle et même raison : une URL d'asset
+	// statique dépend du titre, et ne se fige donc pas dans l'artefact (cf.
+	// replay_vehicle_labels.go).
+	s.resolveVehicleLabels(ctx, &doc)
+	// LE REGISTRE DES ARMES DE VÉHICULE, même règle et même raison : une résolution du titre qui
+	// s'améliore (cf. replay_vehicle_weapons.go).
+	s.resolveVehicleWeapons(ctx, &doc)
+	// LE DECOR DE CARTE, meme regle et meme raison : la zone jouable est une reference de CARTE,
+	// que l artefact ne connait pas (cf. replay_vehicle_scenery.go, lot M7).
+	s.resolveVehicleScenery(ctx, &doc, matchID, keys)
+	// LE GARDE-RAIL DES NIVEAUX D'ARMES : il a besoin des clés canoniques que les deux
+	// résolutions ci-dessus viennent de poser, donc il passe en dernier (cf.
+	// replay_weapon_tier_check.go). Silencieux quand tout va bien.
+	s.checkWeaponTierJoin(ctx, matchID, &doc)
+	served := replayview.FromArtifact(doc)
+	if s.demoIndexPath != "" {
+		// DÉMO : les joueurs réels sont masqués dans le document SERVI (cf. replay_demo_mask.go).
+		return maskDemoReplay(ctx, s.demoIndexPath, served)
+	}
+	return served, nil
 }

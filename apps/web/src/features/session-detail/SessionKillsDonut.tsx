@@ -62,17 +62,17 @@ export function SessionKillsDonut({ title, matches, kda, height = 260, compact }
 
   // Couleurs sémantiques mappées par nom de slice (résolu via tokens).
   const sliceColors: Record<string, SemanticToken> = {
-    [labels.kills]: 'outcome-win',
-    [labels.deaths]: 'outcome-loss',
-    [labels.assists]: 'outcome-draw',
+    [labels.kills]: 'stat-kills',
+    [labels.deaths]: 'stat-deaths',
+    [labels.assists]: 'stat-assists',
   }
 
-  if (total === 0) return null
-
+  // Aucun frag, mort ni assistance : la carte garde son titre et dit « Aucune donnée » (ChartCard), elle ne
+  // disparaît pas. Une série VIDE (et non un donut sans tranche) déclenche l'état vide.
   return (
     <DonutChart
       title={title}
-      series={series}
+      series={total === 0 ? [] : series}
       sliceColors={sliceColors}
       height={height}
       compact={compact}

@@ -99,31 +99,6 @@ func TestSanitizeBatch_EnrichmentNaN_BecomesNil(t *testing.T) {
 	}
 }
 
-func TestSanitizeBatch_LUSRComponentsNaN_BecomesZero(t *testing.T) {
-	batch := &MatchBatch{
-		BatchID: "test",
-		PlayerData: PlayerBatch{
-			LUSRComponents: []LUSRComponentInsert{
-				{MatchID: "m1", ComponentName: "kills", Value: math.NaN(), Weight: 0.31},
-				{MatchID: "m1", ComponentName: "deaths", Value: 0.5, Weight: math.Inf(1)},
-			},
-		},
-	}
-	SanitizeBatch(batch)
-
-	c0 := batch.PlayerData.LUSRComponents[0]
-	if c0.Value != 0.0 {
-		t.Errorf("LUSRComponent[0].Value = %v, want 0 (NaN→0)", c0.Value)
-	}
-	if c0.Weight != 0.31 {
-		t.Errorf("LUSRComponent[0].Weight preserve, got %v", c0.Weight)
-	}
-	c1 := batch.PlayerData.LUSRComponents[1]
-	if c1.Weight != 0.0 {
-		t.Errorf("LUSRComponent[1].Weight = %v, want 0 (+Inf→0)", c1.Weight)
-	}
-}
-
 func TestSanitizeBatch_MarshalSucceedsAfterSanitize(t *testing.T) {
 	// Reproduit le bug observe en prod : batch avec champ NaN → json.Marshal
 	// echec. Apres SanitizeBatch, le marshal reussit.

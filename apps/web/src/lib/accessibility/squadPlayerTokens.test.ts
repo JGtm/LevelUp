@@ -23,6 +23,7 @@ import { okabePalette } from './palettes/okabe-ito'
 import { cividisPalette } from './palettes/cividis'
 import { tolBrightPalette } from './palettes/tol-bright'
 import { contrastRatio } from './wcagContrast'
+import { deltaE, simulateCvd, type CvdKind } from './colorDistance'
 
 /** Les 4 tokens verrouillés — ordre = ordre d'attribution des joueurs. */
 const SQUAD_PLAYER_TOKENS: SemanticToken[] = [
@@ -45,73 +46,6 @@ const MIN_CONTRAST = 3
 const MIN_DELTA_E_NORMAL = 15
 /** Idem sous simulation daltonisme : la perte de gamut impose un seuil plus bas. */
 const MIN_DELTA_E_CVD = 8
-
-// ── Conversions couleur (autonomes) ─────────────────────────────────────────
-
-function parseHex(hex: string): [number, number, number] {
-  return [
-    parseInt(hex.slice(1, 3), 16),
-    parseInt(hex.slice(3, 5), 16),
-    parseInt(hex.slice(5, 7), 16),
-  ]
-}
-
-const toLinear = (c: number): number => {
-  const v = c / 255
-  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
-}
-
-const toSrgb = (v: number): number => {
-  const c = v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055
-  return Math.max(0, Math.min(255, Math.round(c * 255)))
-}
-
-/** sRGB → OKLab (Björn Ottosson, 2020). */
-function oklab(hex: string): [number, number, number] {
-  const [r, g, b] = parseHex(hex).map(toLinear)
-  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
-  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
-  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
-  return [
-    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
-    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
-    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
-  ]
-}
-
-/** Distance euclidienne OKLab × 100 (≈ 1 unité = 1 « just noticeable step »). */
-function deltaE(hexA: string, hexB: string): number {
-  const a = oklab(hexA)
-  const b = oklab(hexB)
-  return 100 * Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
-}
-
-/** Machado et al. (2009), sévérité 1.0 — matrices en RGB linéaire, ligne par ligne. */
-const CVD_MATRICES = {
-  protanopie: [
-    0.152286, 1.052583, -0.204868,
-    0.114503, 0.786281, 0.099216,
-    -0.003882, -0.048116, 1.051998,
-  ],
-  deuteranopie: [
-    0.367322, 0.860646, -0.227968,
-    0.280085, 0.672501, 0.047413,
-    -0.011820, 0.042940, 0.968881,
-  ],
-} as const
-
-type CvdKind = keyof typeof CVD_MATRICES
-
-function simulateCvd(hex: string, kind: CvdKind): string {
-  const m = CVD_MATRICES[kind]
-  const [r, g, b] = parseHex(hex).map(toLinear)
-  const out = [
-    m[0] * r + m[1] * g + m[2] * b,
-    m[3] * r + m[4] * g + m[5] * b,
-    m[6] * r + m[7] * g + m[8] * b,
-  ]
-  return '#' + out.map((v) => toSrgb(v).toString(16).padStart(2, '0')).join('')
-}
 
 // ── Périmètre par palette ───────────────────────────────────────────────────
 

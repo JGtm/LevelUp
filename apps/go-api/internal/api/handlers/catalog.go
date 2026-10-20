@@ -114,7 +114,7 @@ func (h *CatalogHandler) handlePlaylists(ctx context.Context, in *catalogPlaylis
 
 	playlists, err := h.repo.PlaylistsByTitle(ctx, in.Slug, in.XUID, onlyPlayed)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "catalog_query_failed", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "catalog_query_failed", err)
 	}
 	out := &catalogPlaylistsOutput{CacheControl: catalogCacheControl}
 	out.Body.TitleSlug = in.Slug
@@ -129,7 +129,7 @@ func (h *CatalogHandler) handlePairs(ctx context.Context, in *catalogPairsInput)
 	}
 	pairs, err := h.repo.PairsByPlaylist(ctx, in.Slug, in.PlaylistAssetID) // playlist_asset_id optionnel
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "catalog_query_failed", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "catalog_query_failed", err)
 	}
 	out := &catalogPairsOutput{CacheControl: catalogCacheControl}
 	out.Body.TitleSlug = in.Slug
@@ -151,7 +151,7 @@ func (h *CatalogHandler) handleMaps(ctx context.Context, in *catalogMapsInput) (
 
 	maps, err := h.repo.MapsByTitle(ctx, in.Slug, in.XUID, onlyPlayed)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "catalog_query_failed", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "catalog_query_failed", err)
 	}
 	out := &catalogMapsOutput{CacheControl: catalogCacheControl}
 	out.Body.TitleSlug = in.Slug

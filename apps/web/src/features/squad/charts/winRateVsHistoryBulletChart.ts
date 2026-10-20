@@ -17,7 +17,7 @@
  * s'affiche en haut.
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { resolveToken, tokenCssVar } from '@/lib/accessibility'
+import { resolveToken } from '@/lib/accessibility'
 import {
   CHART_BG,
   escapeHtml,
@@ -25,7 +25,10 @@ import {
   getEChartsThemeColors,
   getLegendBase,
   getTooltipBase,
+  legendEntries,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { MapBreakdownRow } from '@/lib/api/types'
 
@@ -53,34 +56,29 @@ function toPercent(v: number): number {
   return parseFloat((v * 100).toFixed(1))
 }
 
-type BulletTooltipParam = { dataIndex?: number; marker?: string; seriesName?: string; value?: number | null }
-
 /**
- * bulletTooltipFormatter — tooltip custom : titre carte + valeurs par série +
- * ligne « nombre de parties » (session ET historique). escapeHtml sur les
- * données non constantes (nom de carte UGC) — garde-rail XSS tooltip.
+ * bulletTooltipFormatter — titre carte, une ligne par série (session, historique) avec son taux en %,
+ * puis le nombre de parties (session ET historique). Le nom de carte est une donnée non constante :
+ * échappé par le helper (garde-rail XSS tooltip).
  */
 function bulletTooltipFormatter(
   sorted: MapBreakdownRow[],
   mapLabelOf: (mapUI: string) => string,
   countsLabel?: (session: number, history?: number) => string,
 ) {
-  return (params: unknown): string => {
-    const arr = (Array.isArray(params) ? params : [params]) as BulletTooltipParam[]
-    const row = sorted[arr[0]?.dataIndex ?? 0]
-    if (!row) return ''
-    const header = escapeHtml(mapLabelOf(row.map_ui))
-    const lines = arr
-      .map((p) => {
-        const val = typeof p.value === 'number' ? `${p.value.toFixed(1)}%` : '-'
-        return `${p.marker ?? ''}${escapeHtml(p.seriesName ?? '')}: ${val}`
-      })
-      .join('<br/>')
-    const counts = countsLabel
-      ? `<br/>${escapeHtml(countsLabel(row.match_count, row.historical_match_count))}`
-      : ''
-    return `${header}<br/>${lines}${counts}`
-  }
+  const rowOf = (index: number | undefined) => sorted[index ?? 0]
+  return axisTooltipFormatter({
+    title: (p) => {
+      const row = rowOf(p.dataIndex)
+      return row ? mapLabelOf(row.map_ui) : ''
+    },
+    value: (r) => `${tipNumber(r.value, 1)} %`,
+    footer: (rows) => {
+      const row = rowOf(rows[0]?.param.dataIndex)
+      if (!row || !countsLabel) return ''
+      return `<div style="opacity:0.7;margin-top:4px">${escapeHtml(countsLabel(row.match_count, row.historical_match_count))}</div>`
+    },
+  })
 }
 
 export function buildWinRateVsHistoryBulletOption(
@@ -103,7 +101,9 @@ export function buildWinRateVsHistoryBulletOption(
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
 
-  const histColor = tokenCssVar('chart-series-1')
+  // `resolveToken` et NON `tokenCssVar` : ECharts peint dans un canvas, qui n'évalue pas
+  // `var(--ac-chart-series-1)` — la barre historique recevait une couleur invalide.
+  const histColor = resolveToken('chart-series-1')
   const histData = sorted.map((r) =>
     r.historical_win_rate !== undefined
       ? { value: toPercent(r.historical_win_rate), itemStyle: { color: histColor, opacity: 0.85 } }
@@ -127,7 +127,18 @@ export function buildWinRateVsHistoryBulletOption(
       axisPointer: { type: 'shadow' },
       formatter: bulletTooltipFormatter(sorted, mapLabelOf, countsLabel),
     },
-    legend: { ...getLegendBase(tc), data: [historyLabel, sessionLabel] },
+    // Couleurs portées par les ENTRÉES de légende : la barre de session est colorée au
+    // POINT (une teinte par carte selon l'écart) et ne donne donc aucune couleur de série
+    // à ECharts, qui retombait sur sa palette par défaut.
+    legend: {
+      ...getLegendBase(tc),
+      data: legendEntries([
+        { name: historyLabel, color: histColor },
+        // La session est peinte selon son ÉCART à l'historique (au-dessus / à parité / en
+        // dessous) : la pastille porte la teinte de PARITÉ, seule des trois qui ne juge pas.
+        { name: sessionLabel, color: resolveToken('divergent-neutral') },
+      ]),
+    },
     xAxis: {
       ...axis,
       type: 'value',

@@ -209,8 +209,9 @@ func buildFixtureOldCSRSnapshots(t *testing.T, path string) {
 
 // (b) sentinelle DM-5 présente, expected_win_prob absente de match_skill_rank.
 // DuckDB refuse DROP COLUMN si un index dépend d'une colonne POSITIONNÉE APRÈS elle (written_at)
-// ou si la vue _latest (SELECT *) la référence : on retire d'abord la vue + les index msr (tous
-// recréés par playerSchemaSQL au boot de convergence, CREATE IF NOT EXISTS / CREATE OR REPLACE).
+// ou si la vue _latest (SELECT *) la référence : on retire d'abord la vue (recréée par
+// playerSchemaSQL au boot de convergence, CREATE OR REPLACE) et les index msr d'une DB
+// antérieure au 2026-09-27 (retirés depuis ; le soin ne les repose plus, il les DROP).
 func buildFixtureNoExpectedWinProb(t *testing.T, path string) {
 	buildPostSquashSentinelFixture(t, path, []string{
 		`DROP VIEW IF EXISTS match_skill_rank_latest`,

@@ -1,0 +1,100 @@
+LevelUp
+Copyright (C) 2026 Guillaume Sitbon ("JGtm")
+https://github.com/JGtm/LevelUp
+
+This file states how the contents of this repository are licensed, the attribution
+that the licence requires, and what the licence does NOT cover.
+
+1. Source code
+--------------
+
+All source code written for this project is licensed under the GNU Affero General
+Public License, version 3 only (SPDX: AGPL-3.0-only). The full text is in LICENSE.
+
+Running a modified version of LevelUp as a network service obliges you to offer its
+complete corresponding source to the users of that service (AGPL section 13). The
+public instance does so through the "Source code" link of its footer.
+
+2. Additional terms (AGPL section 7)
+------------------------------------
+
+The following additional terms apply under section 7 of the AGPL:
+
+  (b) Attribution. Any modified version that is conveyed, or made available to users
+      over a network, must preserve in its Appropriate Legal Notices (for a web
+      application: a footer or "about" page reachable from every screen) the line
+      below and a link to the original repository. A derived product may add its
+      own notices next to it, but may not remove or replace this one:
+
+        (C) JGtm - LevelUp - https://github.com/JGtm/LevelUp
+
+      A published work that reuses the findings written up in the documentation
+      (see section 3), in particular the Theater film decoder research, must cite
+      the same source.
+
+  (c) Origin. A modified version must be marked as such, and must not be presented
+      as the original or as endorsed by its author.
+
+  (e) Trade names. No right is granted to use the name "LevelUp" or the "JGtm"
+      pseudonym to name a derived product.
+
+3. Documentation and research
+-----------------------------
+
+The prose written for this project - the files under docs/ and the research write-ups
+under .ai/V7.5/ (Markdown) - is licensed under Creative Commons Attribution 4.0
+International (CC BY 4.0). The full text is in LICENSE-DOCS. Reuse requires crediting
+"LevelUp by JGtm (Guillaume Sitbon)" with a link to the repository.
+
+This covers the text, tables and measurements the author wrote. It does not cover
+excerpts of the game's code or data quoted inside those write-ups (disassembly or
+decompiler listings, byte dumps, strings taken from the game files): they remain
+Microsoft's and fall under section 4.
+
+The facts documented there (file formats, protocol behaviour, structures) are not
+owned by anyone and stay free to reimplement. What the licence protects is the text,
+the code and the measurements as written.
+
+4. What this licence does NOT cover
+-----------------------------------
+
+Halo, Halo Infinite, Halo 5: Guardians, Xbox, the Halo Theater film format as a
+product, the game binaries, and every asset extracted from or distributed by the game
+or its services belong to Microsoft Corporation and its licensors. No licence on them
+is granted or implied by this repository. LevelUp is an independent project, not
+affiliated with or endorsed by Microsoft or Halo Studios.
+
+The following material in this repository is third-party property and is outside
+sections 1 to 3. It is present so that the application can display game data, or as
+evidence for interoperability research, and is used on the same footing as other
+fan content. It is listed so that nobody mistakes it for something this licence
+lets them reuse:
+
+  - Game imagery and audio shipped with the application: static/ (medals, maps,
+    ranks, commendations, weapons, vehicles, abilities, prestige, sounds),
+    apps/web/public/titles/ (Halo 5 emblems and nameplates), and the reference
+    images under data/titles/.
+  - Captures of the game's memory, kept as research evidence: the dumps under
+    .ai/V7.5/dumps/ and tools/ce/. (Decompiler output is no longer kept in the
+    repository: it is ignored by .gitignore and lives outside it.)
+  - Recordings and film fragments of real matches used as test fixtures
+    (testdata/ and fixtures/ directories under apps/): the match content belongs
+    to Microsoft, and the players named in them keep their rights over their own
+    identifiers.
+
+A rights holder who wants any of this removed can open an issue on the repository;
+it will be removed from the current tree.
+
+5. Earlier versions
+-------------------
+
+Versions published before 2026-10-16 were released under the MIT licence. Copies
+obtained under that licence remain under it. The licence of this file applies to
+everything published from that date.
+
+6. Dependencies
+---------------
+
+Third-party libraries keep their own licences (see apps/go-api/go.mod and
+apps/web/package-lock.json). Prior art that informed this work is credited in
+docs/ACKNOWLEDGMENTS.md.

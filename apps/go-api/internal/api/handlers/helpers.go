@@ -3,15 +3,15 @@ package handlers
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // Clés JSON partagées entre handlers (params actor logs, response error envelopes).
@@ -26,14 +26,15 @@ const (
 	// Valeurs courantes
 	jsonBoolTrueStr = "true"
 
-	// Codes d'erreur partagés (MSAL device-code flow).
-	errCodeMSALAcquire = "msal_acquire_error"
+	// Codes d'erreur partagés (device-code flow SISU).
+	errCodeDeviceFlowAcquire = "device_flow_acquire_error"
 
 	// Modes auth.
 	authModeXbox = "xbox"
 
-	// headerRetryAfter : nom de l'en-tête HTTP 503 « réessayer dans N s », émis par
-	// tous les handlers qui rencontrent une base occupée (dblease.ErrDBLocked).
+	// headerRetryAfter : nom de l'en-tête HTTP « réessayer dans N s », émis en 503 par
+	// tous les handlers qui rencontrent une base occupée (dblease.ErrDBLocked), et en
+	// 429 par le limiteur d'échecs de connexion (user_auth.go).
 	// Posée au passage du ratchet goconst (10e occurrence du littéral), puis
 	// GÉNÉRALISÉE à l'ensemble du paquet le 2026-08-03 : plus aucun littéral
 	// "Retry-After" ne subsiste dans le code de production de handlers, et
@@ -43,6 +44,10 @@ const (
 	// ce qui est précisément ce qu'on veut vérifier côté client.
 	headerRetryAfter = "Retry-After"
 )
+
+// codeDBBusy : code machine d'une base occupée (errDBBusy ; échec de sync par contention de
+// bail). Seul littéral "db_busy" du paquet (garde-rail ci-dessous).
+const codeDBBusy = "db_busy"
 
 // errDBBusy construit la réponse canonique « base occupée » : 503 `db_busy` +
 // en-tête `Retry-After: 5`, via huma.ErrorWithHeaders.
@@ -59,10 +64,61 @@ const (
 // sémantique de dégradation de page, pas un refus d'écriture.
 func errDBBusy() error {
 	return huma.ErrorWithHeaders(
-		humacore.NewError(http.StatusServiceUnavailable, "db_busy",
+		humacore.NewError(http.StatusServiceUnavailable, codeDBBusy,
 			"database is currently busy, please retry"),
 		http.Header{headerRetryAfter: []string{"5"}},
 	)
+}
+
+// Réponse « client parti » des handlers de pages (plan perf du 2026-09-23, D3.2).
+const (
+	// statusClientClosed : 499, convention nginx « Client Closed Request », que Huma
+	// emploie lui-même quand l'écriture d'une réponse échoue sur un client déconnecté.
+	// Personne ne lit cette réponse : le statut sert au journal d'accès et aux compteurs
+	// du middleware, où il compte en 4xx — jamais en 5xx, ce n'est pas une panne serveur.
+	statusClientClosed = 499
+	codeClientClosed   = "client_closed"
+)
+
+// mapServiceError traduit l'erreur d'un service de page en réponse HTTP (plan perf du
+// 2026-09-23, D3.2). Trois issues, testées dans cet ordre :
+//
+//  1. le client est parti (contexte de la requête annulé : onglet fermé, requête
+//     remplacée — le front transmet l'AbortSignal de TanStack Query à fetch) : 499
+//     `client_closed`, journalisé en DEBUG. Testé EN PREMIER : une attente de verrou
+//     interrompue par l'annulation remonte en dblease.ErrDBLocked, et un 503 à un
+//     client disparu ne servirait qu'à gonfler les compteurs 5xx ;
+//  2. base momentanément indisponible (isDBBusy) : errDBBusy(), 503 + Retry-After,
+//     journalisé en WARN — transitoire, le front rejoue ;
+//  3. sinon : 500 avec le code propre à la page, journalisé en ERROR (le client ne
+//     reçoit que le message générique, cf. humacore.NewError).
+func mapServiceError(ctx context.Context, err error, code string) error {
+	switch {
+	case isClientClosed(ctx):
+		slog.DebugContext(ctx, "page: requête abandonnée par le client", jsonKeyCode, code, "err", err)
+		return humacore.NewError(statusClientClosed, codeClientClosed, "client closed request")
+	case isDBBusy(err):
+		slog.WarnContext(ctx, "page: base occupée", jsonKeyCode, code, "err", err)
+		return errDBBusy()
+	default:
+		slog.ErrorContext(ctx, "page: erreur service", jsonKeyCode, code, "err", err)
+		return humacore.NewErrorFrom(ctx, http.StatusInternalServerError, code, err)
+	}
+}
+
+// isClientClosed : la requête a été annulée par le client. Seul le contexte DE LA
+// REQUÊTE fait foi : un context.Canceled né d'une annulation interne (un errgroup qui
+// arrête ses goroutines sœurs après une erreur) alors que le client attend toujours
+// reste une erreur serveur, pas un départ du client.
+func isClientClosed(ctx context.Context) bool {
+	return errors.Is(ctx.Err(), context.Canceled)
+}
+
+// isDBBusy : l'erreur signale une base momentanément indisponible — verrou d'écriture
+// non obtenu (dblease.ErrDBLocked) ou bascule RO/RW du provider partagé pendant une
+// synchronisation (isSharedSwapContention, home.go : un seul prédicat pour le paquet).
+func isDBBusy(err error) bool {
+	return errors.Is(err, dblease.ErrDBLocked) || isSharedSwapContention(err)
 }
 
 // writeJSON sérialise v en JSON et l'écrit dans w avec le code HTTP donné.
@@ -92,7 +148,11 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	_, _ = w.Write([]byte("\n"))
 }
 
-// writeJSONCached sérialise v, pose un ETag SHA-256 et retourne 304 si le client est à jour.
+// writeJSONCached sérialise v et délègue à servirBlobAvecETag (cache_http.go) la
+// pose de l'ETag fort et la négociation 304 — seul appelant JSON du helper : les
+// endpoints Huma (capabilities, feature_matrix, field_mappings, home) posent leur
+// ETag via un champ de sortie déclaratif et ne peuvent pas appeler un writer
+// direct, donc n'utilisent pas cette fonction (cf. § Découvertes du plan).
 // À utiliser sur les endpoints GET dont les données changent peu entre deux syncs.
 //
 // tous les callers passent 200/OK mais la signature reste configurable.
@@ -108,32 +168,17 @@ func writeJSONCached(w http.ResponseWriter, r *http.Request, status int, v inter
 		writeError(r.Context(), w, http.StatusInternalServerError, "encode_error", "erreur de sérialisation")
 		return
 	}
-	sum := sha256.Sum256(body)
-	etag := fmt.Sprintf(`"%x"`, sum[:8])
-	w.Header().Set("ETag", etag)
-	if r.Header.Get("If-None-Match") == etag {
-		w.WriteHeader(http.StatusNotModified)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_, _ = w.Write(body)
+	servirBlobAvecETag(w, r, body, "application/json", "")
 }
 
-// writeError écrit une réponse d'erreur JSON standardisée et **logge l'erreur
-// côté serveur** selon le statut HTTP :
-//   - 5xx → slog.ErrorContext (erreur serveur, anormal — toujours visible)
-//   - 401/403/422 → slog.WarnContext (auth/validation refusée — tracé pour audit)
-//   - autres 4xx → slog.DebugContext (404 / bad request — volume, log à la demande)
+// writeError écrit une réponse d'erreur JSON standardisée avec un message écrit à la main et
+// **logge la réponse côté serveur** (niveau selon le statut : humacore.LogErrorResponse).
 //
-// L'objectif est qu'aucune erreur renvoyée au client n'échappe à un trace serveur.
-// Le ctx fait remonter event_id / request_id auto-injectés par ContextHandler.
+// Sur une 5xx le message part masqué : message générique stable, le `code` (non sensible)
+// porte la sémantique (revue 2026-06-02 — fuite d'info interne sur les réponses 500). Quand
+// le refus vient d'une erreur, writeErrorFrom : le texte d'une erreur ne part jamais au client.
 func writeError(ctx context.Context, w http.ResponseWriter, status int, code, message string) {
-	// Le détail (souvent err.Error()) est toujours logué côté serveur, corrélable
-	// via event_id/request_id. Mais sur une 5xx on ne l'expose JAMAIS au client :
-	// message générique stable, le `code` (non sensible) porte la sémantique
-	// (revue 2026-06-02 — fuite d'info interne sur les réponses 500).
-	logErrorResponse(ctx, status, code, message, nil)
+	humacore.LogErrorResponse(ctx, status, code, message, nil)
 	clientMessage := message
 	if status >= 500 {
 		clientMessage = "internal error"
@@ -145,6 +190,18 @@ func writeError(ctx context.Context, w http.ResponseWriter, status int, code, me
 	})
 }
 
+// writeErrorFrom écrit la réponse d'erreur d'un refus dont la cause est err : la cause est
+// journalisée, le client reçoit le message fixe du code (humacore.FixedMessage).
+func writeErrorFrom(ctx context.Context, w http.ResponseWriter, status int, code string, err error) {
+	msg := humacore.FixedMessage(status, code)
+	humacore.LogErrorResponse(ctx, status, code, msg, err)
+	writeJSON(w, status, map[string]interface{}{
+		"code":      code,
+		"message":   msg,
+		"retryable": status >= 500,
+	})
+}
+
 // httpError est un wrapper de net/http.Error qui logge l'erreur côté serveur
 // (mêmes règles de niveau que writeError) avant de répondre en text/plain.
 //
@@ -152,29 +209,11 @@ func writeError(ctx context.Context, w http.ResponseWriter, status int, code, me
 // statiques, redirects) — sinon préférer writeError qui renvoie un body JSON
 // standardisé.
 func httpError(ctx context.Context, w http.ResponseWriter, message string, status int) {
-	logErrorResponse(ctx, status, "", message, nil)
+	humacore.LogErrorResponse(ctx, status, "", message, nil)
 	clientMessage := message
 	if status >= 500 {
 		// Idem writeError : pas de détail interne au client sur une 5xx.
 		clientMessage = "internal error"
 	}
 	http.Error(w, clientMessage, status)
-}
-
-// logErrorResponse centralise la décision de niveau de log selon le statut HTTP.
-// Séparé de writeError pour permettre la réutilisation (writeServerError, et
-// futurs helpers d'erreur).
-func logErrorResponse(ctx context.Context, status int, code, message string, err error) {
-	attrs := []any{jsonKeyStatus, status, jsonKeyCode, code, jsonKeyMessage, message}
-	if err != nil {
-		attrs = append(attrs, "err", err)
-	}
-	switch {
-	case status >= 500:
-		slog.ErrorContext(ctx, "http: erreur réponse", attrs...)
-	case status == http.StatusUnauthorized, status == http.StatusForbidden, status == http.StatusUnprocessableEntity:
-		slog.WarnContext(ctx, "http: refus", attrs...)
-	case status >= 400:
-		slog.DebugContext(ctx, "http: client error", attrs...)
-	}
 }

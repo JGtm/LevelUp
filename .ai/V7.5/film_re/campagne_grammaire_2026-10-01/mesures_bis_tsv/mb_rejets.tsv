@@ -1,0 +1,449 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	121	121	0	928
+0797ce72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	27	1602	1602	0	10493
+0797ce72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	44	60	34	1	403
+0797ce72	HI_1_13_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	1	1	1	0	9
+0797ce72	HI_1_13_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	7	9	7	0	62
+0797ce72	HI_1_13_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	8	10	10	0	74
+0797ce72	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	78	89	70	0	655
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	2	2	2	0	12
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	2	2	0	0
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	2	2	2	0	14
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	28	33	25	3	185
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	26	227	216	0	1572
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	35	144	134	0	438
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	42	189	166	1	1326
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	408	779	621	4	4839
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	3	3	3	0	25
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · paquet precedent · non lie · aucun NEW desynchronise anterieur	4	9	8	0	64
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	53	65	29	2	441
+0797ce72	HI_1_13_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	665	1229	898	4	7105
+0797ce72	HI_1_13_0	dans un record lu (faux positif probable) · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	10	14	6	1	93
+0797ce72	HI_1_13_0	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	33	38	27	0	264
+0797ce72	HI_1_13_0	dans un record lu (faux positif probable) · paquet precedent · non lie · aucun NEW desynchronise anterieur	18	32	17	0	219
+0797ce72	HI_1_13_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	599	759	543	9	5190
+084a804d	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	29	1958	1956	2	29294
+084a804d	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	24	728	721	6	14035
+084a804d	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	136	6102	6100	2	112810
+084a804d	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	48	61	29	29	564
+084a804d	HI_1_10_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	55	1977	1976	0	29402
+084a804d	HI_1_10_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	33	524	515	9	11356
+084a804d	HI_1_10_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	183	3815	3815	0	90632
+084a804d	HI_1_10_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	58	335	295	36	6436
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	1	46	46	0	1150
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	23	23	0	511
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · ti=10 i2 managed-object-navpoint-component	1	38	38	0	939
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	6	202	202	0	4474
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	10	63	58	3	1167
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	67	1164	1162	2	27278
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	81	2246	2240	5	48933
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	67	1703	1699	4	38367
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	127	968	923	31	18726
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	0	2	0
+084a804d	HI_1_10_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	61	1144	1102	28	3099
+084a804d	HI_1_10_0	dans un record lu (faux positif probable) · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	1	1	25
+084a804d	HI_1_10_0	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	4	4	0	2	17
+084a804d	HI_1_10_0	dans un record lu (faux positif probable) · paquet precedent · non lie · aucun NEW desynchronise anterieur	5	26	25	1	475
+084a804d	HI_1_10_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	35	37	15	14	130
+111fa685	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	8	211	211	0	3786
+111fa685	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	17	119	117	1	2368
+111fa685	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	83	1765	1765	0	34039
+111fa685	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	62	111	93	11	1406
+111fa685	HI_1_10_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	20	174	173	1	3185
+111fa685	HI_1_10_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	33	276	269	3	5350
+111fa685	HI_1_10_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	183	3806	3806	0	73024
+111fa685	HI_1_10_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	135	356	328	9	4328
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	1	10	10	0	205
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	38	38	0	788
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	4	86	86	0	1740
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	6	6	6	0	53
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	25	339	337	1	6071
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	57	1111	1109	2	20913
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	49	734	733	0	14612
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	220	1013	973	13	17152
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : terminateur · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	3	2	1	23
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : terminateur · paquet precedent · non lie · aucun NEW desynchronise anterieur	2	3	3	0	54
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	25	34	32	0	310
+111fa685	HI_1_10_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	133	376	342	9	5424
+111fa685	HI_1_10_0	dans un record lu (faux positif probable) · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	1	1	9
+111fa685	HI_1_10_0	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	7	7	6	0	103
+111fa685	HI_1_10_0	dans un record lu (faux positif probable) · paquet precedent · non lie · aucun NEW desynchronise anterieur	3	4	4	0	88
+111fa685	HI_1_10_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	116	122	99	8	1385
+11de8353	HI_1_9_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	16	196	195	1	3531
+11de8353	HI_1_9_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	17	325	323	2	6402
+11de8353	HI_1_9_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	70	1039	1039	0	20340
+11de8353	HI_1_9_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	48	75	58	7	1023
+11de8353	HI_1_9_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	34	471	471	0	8827
+11de8353	HI_1_9_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	23	430	426	2	7946
+11de8353	HI_1_9_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	137	2991	2989	1	56652
+11de8353	HI_1_9_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	87	290	260	6	5166
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	1	0	0
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	4	16	15	0	374
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	4	4	0	1	46
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	34	560	559	1	10273
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	56	1279	1277	0	22639
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	40	623	617	4	10288
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	175	975	923	13	17253
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	1	0	32
+11de8353	HI_1_9_0	(iii) NEW lu desynchronise · 4-10 paquets avant · non lie · ti=43 i19 device-position-animation-name-component	1	1	0	0	16
+11de8353	HI_1_9_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	133	248	200	11	3140
+11de8353	HI_1_9_0	dans un record lu (faux positif probable) · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	1	0
+11de8353	HI_1_9_0	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	4	9	8	0	133
+11de8353	HI_1_9_0	dans un record lu (faux positif probable) · paquet precedent · non lie · aucun NEW desynchronise anterieur	6	7	7	0	91
+11de8353	HI_1_9_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	165	245	198	3	3670
+1c4c63c2	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	42	2993	2971	22	34665
+1c4c63c2	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	39	1733	1667	65	14326
+1c4c63c2	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	140	11227	11187	40	178007
+1c4c63c2	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	341	1712	1161	537	20104
+1c4c63c2	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · ti=43 i19 device-position-animation-name-component	1	1	0	0	4
+1c4c63c2	HI_1_10_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	73	4359	4334	25	62694
+1c4c63c2	HI_1_10_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	58	434	353	78	7251
+1c4c63c2	HI_1_10_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	106	8150	8128	22	114372
+1c4c63c2	HI_1_10_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · ti=35 i59 biped-spartan-ability-non-predicted-state	1	6	6	0	3
+1c4c63c2	HI_1_10_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	551	2008	1158	837	15209
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	3	97	94	3	1835
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	7	15	9	5	166
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	3	92	91	1	1855
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	28	69	34	34	117
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	60	2185	2071	114	36496
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	79	2208	2151	57	42428
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	67	1212	1158	53	21692
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	589	3094	2326	742	41920
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : terminateur · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	0	2	0
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	19	36	8	27	30
+1c4c63c2	HI_1_10_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	347	7443	6767	653	2734
+1c4c63c2	HI_1_10_0	dans un record lu (faux positif probable) · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	1	0
+1c4c63c2	HI_1_10_0	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	8	8	2	5	13
+1c4c63c2	HI_1_10_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	143	225	20	196	195
+396cfc92	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	1	0	8
+396cfc92	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	100	5300	5300	0	37805
+396cfc92	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	11	441	440	1	3626
+396cfc92	HI_1_13_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	4	69	68	1	579
+396cfc92	HI_1_13_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	13	564	564	0	3415
+396cfc92	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	131	131	0	1115
+396cfc92	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	1	3	3	0	19
+396cfc92	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	7	455	455	0	2916
+396cfc92	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	6	431	431	0	3433
+396cfc92	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	1	57	57	0	434
+396cfc92	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	16	895	895	0	3408
+396cfc92	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	1	0	7
+396cfc92	HI_1_13_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	5	5	3	1	22
+396cfc92	HI_1_13_0	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	1	0	4
+396cfc92	HI_1_13_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	1	0
+4f77afc1	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	12	605	602	3	5795
+4f77afc1	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	9	358	352	6	8711
+4f77afc1	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	42	994	993	1	23880
+4f77afc1	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	67	400	343	56	7411
+4f77afc1	HI_1_13_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	16	217	217	0	5503
+4f77afc1	HI_1_13_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	15	211	201	10	5017
+4f77afc1	HI_1_13_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	57	1794	1793	1	42573
+4f77afc1	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	85	931	865	63	14738
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	1	25	25	0	598
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	0	2	0
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	4	146	145	1	3205
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	17	19	0	19	0
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	25	603	603	0	13548
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	28	352	339	13	7865
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	38	998	996	2	22524
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	72	554	494	58	9837
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	1	0
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	2	0	2	0
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	5	17	0	17	0
+4f77afc1	HI_1_13_0	(iii) NEW lu desynchronise · plus de 10 paquets avant · non lie · ti=10 i2 managed-object-navpoint-component	1	4	4	0	97
+4f77afc1	HI_1_13_0	(iii) NEW lu desynchronise · plus de 10 paquets avant · non lie · ti=43 i19 device-position-animation-name-component	1	4	4	0	115
+4f77afc1	HI_1_13_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	57	1506	1448	57	5413
+4f77afc1	HI_1_13_0	dans un record lu (faux positif probable) · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	1	1	29
+4f77afc1	HI_1_13_0	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	5	9	5	3	137
+4f77afc1	HI_1_13_0	dans un record lu (faux positif probable) · paquet precedent · non lie · aucun NEW desynchronise anterieur	3	48	46	1	1237
+4f77afc1	HI_1_13_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	72	88	7	79	205
+50247b26	version-31	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	7	359	359	0	7948
+50247b26	version-31	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	5	138	138	0	3007
+50247b26	version-31	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	65	1892	1892	0	39845
+50247b26	version-31	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	16	303	303	0	7324
+50247b26	version-31	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	19	527	527	0	13019
+50247b26	version-31	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	19	153	151	1	3315
+50247b26	version-31	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	103	3128	3128	0	71163
+50247b26	version-31	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	29	189	183	3	3764
+50247b26	version-31	(iii') apres l arret de la vue B : ouverte · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	2	6	6	0	158
+50247b26	version-31	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	148	148	0	3852
+50247b26	version-31	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	4	90	90	0	2466
+50247b26	version-31	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	31	831	831	0	17378
+50247b26	version-31	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	37	1177	1176	1	25961
+50247b26	version-31	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	38	854	854	0	19038
+50247b26	version-31	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	61	897	886	2	17863
+50247b26	version-31	(iii') apres l arret de la vue B : terminateur · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	1	7	7	0	137
+50247b26	version-31	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	2	2	0	0	20
+50247b26	version-31	dans un record lu (faux positif probable) · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	1	0	0
+50247b26	version-31	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	6	6	4	1	73
+51ebbc0f	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	13	395	395	0	658
+51ebbc0f	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · ti=3 i0 low-frequency	1	15	15	0	0
+51ebbc0f	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	15	15	0	0
+51ebbc0f	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	10	393	393	0	2627
+51ebbc0f	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	1	1	8
+51ebbc0f	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · ti=3 i0 low-frequency	10	264	264	0	1
+51ebbc0f	HI_1_13_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	34	933	927	0	3461
+51ebbc0f	HI_1_13_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · ti=3 i0 low-frequency	34	559	559	0	0
+51ebbc0f	HI_1_13_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	9	166	145	0	371
+51ebbc0f	HI_1_13_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · ti=3 i0 low-frequency	5	92	92	0	1
+51ebbc0f	HI_1_13_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	39	1378	1377	0	8731
+51ebbc0f	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	22	152	142	9	348
+51ebbc0f	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · ti=3 i0 low-frequency	18	411	411	0	0
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · 2-3 paquets avant · lie par l oracle · ti=3 i0 low-frequency	5	129	129	0	3
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	73	73	0	149
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	1	92	92	0	593
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	116	115	1	605
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · ti=3 i0 low-frequency	7	191	191	0	4
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	28	735	735	0	2945
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · ti=3 i0 low-frequency	69	1205	1205	0	11
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	13	211	211	0	839
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · ti=3 i0 low-frequency	7	117	117	0	8
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	23	1085	1085	0	6432
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · ti=3 i0 low-frequency	1	27	27	0	0
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	77	1097	1086	7	1379
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · ti=3 i0 low-frequency	82	2092	2092	0	23
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · ti=7 i16 forge-sim-generic-component	1	2	2	0	0
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	5	4	0	0
+51ebbc0f	HI_1_13_0	(iii) NEW lu desynchronise · 2-3 paquets avant · lie par l oracle · ti=3 i0 low-frequency	167	4443	4443	0	112
+51ebbc0f	HI_1_13_0	(iii) NEW lu desynchronise · 4-10 paquets avant · non lie · ti=3 i0 low-frequency	10	190	190	0	1
+51ebbc0f	HI_1_13_0	(iii) NEW lu desynchronise · 4-10 paquets avant · non lie · ti=7 i16 forge-sim-generic-component	1	2	2	0	0
+51ebbc0f	HI_1_13_0	(iii) NEW lu desynchronise · plus de 10 paquets avant · non lie · ti=3 i0 low-frequency	1	9	9	0	0
+51ebbc0f	HI_1_13_0	(iv) NEW lu refuse · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	4	4	0	0
+51ebbc0f	HI_1_13_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	48	61	41	2	66
+51ebbc0f	HI_1_13_0	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	1	0	0
+51ebbc0f	HI_1_13_0	dans un record lu (faux positif probable) · paquet precedent · non lie · aucun NEW desynchronise anterieur	1	3	3	0	0
+51ebbc0f	HI_1_13_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	6	6	5	1	18
+60ae07c4	HI_1_8_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	6	469	469	0	2559
+60ae07c4	HI_1_8_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	63	62	0	373
+60ae07c4	HI_1_8_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	91	6773	6773	0	41786
+60ae07c4	HI_1_8_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	65	110	79	9	619
+60ae07c4	HI_1_8_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	22	1264	1261	2	6615
+60ae07c4	HI_1_8_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	21	775	771	3	4124
+60ae07c4	HI_1_8_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	133	9559	9557	2	57824
+60ae07c4	HI_1_8_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	74	248	222	13	1442
+60ae07c4	HI_1_8_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · ti=0 i13 game-engine-disabled-kill-volume-flags-component	1	1	1	0	9
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : ouverte · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	3	4	4	0	28
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	4	11	5	1	73
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	7	271	271	0	1649
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	67	82	54	2	516
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	56	1873	1866	0	10891
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	79	3762	3749	3	19575
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	42	1053	1047	0	5881
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	276	2026	1915	16	11315
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · ti=51 avant les composants	1	1	0	0	6
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · ti=55 avant les composants	1	3	0	0	19
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · ti=59 avant les composants	1	4	4	0	24
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : terminateur · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	0	8
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : terminateur · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	4	3	0	21
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : terminateur · paquet precedent · non lie · aucun NEW desynchronise anterieur	8	12	12	0	87
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	24	55	42	0	209
+60ae07c4	HI_1_8_0	(iii) NEW lu desynchronise · 4-10 paquets avant · non lie · ti=19 i1 sound-placement-state-data-component	1	5	5	0	7
+60ae07c4	HI_1_8_0	(iii) NEW lu desynchronise · plus de 10 paquets avant · non lie · ti=0 i11 game-engine-soft-ceilings-component	1	1	1	0	8
+60ae07c4	HI_1_8_0	(iii) NEW lu desynchronise · plus de 10 paquets avant · non lie · ti=2 i14 GameEngineComposerLetterboxComponent	1	1	1	0	5
+60ae07c4	HI_1_8_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	633	970	717	28	5220
+60ae07c4	HI_1_8_0	(v) introuvable · sans naissance trouvee · non lie · ti=61 avant les composants	1	1	0	0	6
+60ae07c4	HI_1_8_0	dans un record lu (faux positif probable) · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	10	14	12	0	93
+60ae07c4	HI_1_8_0	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	17	27	18	0	182
+60ae07c4	HI_1_8_0	dans un record lu (faux positif probable) · paquet precedent · non lie · aucun NEW desynchronise anterieur	18	32	25	0	183
+60ae07c4	HI_1_8_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	411	522	343	19	3119
+a349fea8	version-33	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	24	997	997	0	17604
+a349fea8	version-33	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	13	203	203	0	4720
+a349fea8	version-33	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	127	4553	4553	0	87915
+a349fea8	version-33	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	55	677	671	0	15644
+a349fea8	version-33	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	48	1066	1065	1	25909
+a349fea8	version-33	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	36	628	626	1	15585
+a349fea8	version-33	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	150	4041	4041	0	85539
+a349fea8	version-33	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	95	709	695	4	15099
+a349fea8	version-33	(iii') apres l arret de la vue B : ouverte · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	2	10	9	0	255
+a349fea8	version-33	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	4	6	5	0	103
+a349fea8	version-33	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	8	204	204	0	4766
+a349fea8	version-33	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	11	33	33	0	702
+a349fea8	version-33	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	64	1510	1509	0	35042
+a349fea8	version-33	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	53	1019	1015	1	25559
+a349fea8	version-33	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	36	945	945	0	15547
+a349fea8	version-33	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	171	1388	1351	9	27672
+a349fea8	version-33	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	13	14	7	2	35
+a349fea8	version-33	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	173	1387	1293	5	2752
+a349fea8	version-33	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	3	1	0	7
+a349fea8	version-33	dans un record lu (faux positif probable) · paquet precedent · non lie · aucun NEW desynchronise anterieur	2	2	2	0	43
+a349fea8	version-33	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	33	33	20	0	64
+a521164d	HI_1_4_1	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	11	361	361	0	8919
+a521164d	HI_1_4_1	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	6	109	109	0	2462
+a521164d	HI_1_4_1	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	57	1222	1222	0	26047
+a521164d	HI_1_4_1	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	12	37	32	0	569
+a521164d	HI_1_4_1	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	17	448	447	0	9564
+a521164d	HI_1_4_1	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	14	191	188	0	4002
+a521164d	HI_1_4_1	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	63	1349	1346	0	28344
+a521164d	HI_1_4_1	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	56	260	251	1	4790
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : ouverte · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	4	95	94	0	1987
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	1	0	1
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	6	72	72	0	1751
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	7	7	3	0	28
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	25	471	469	0	10875
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	29	579	578	0	13333
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	20	645	644	0	13048
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	117	485	455	1	6956
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	11	11	10	0	3
+a521164d	HI_1_4_1	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	142	144	50	5	22
+a521164d	HI_1_4_1	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	4	4	3	0	0
+a521164d	HI_1_4_1	dans un record lu (faux positif probable) · paquet precedent · non lie · aucun NEW desynchronise anterieur	1	1	1	0	1
+a521164d	HI_1_4_1	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	34	34	26	0	20
+bcb6d393	HI_1_12_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	2	179	179	0	1226
+bcb6d393	HI_1_12_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	18	1292	1292	0	7792
+bcb6d393	HI_1_12_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	4	13	11	1	82
+bcb6d393	HI_1_12_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	1	57	57	0	288
+bcb6d393	HI_1_12_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	14	637	637	0	3879
+bcb6d393	HI_1_12_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	1	0	0
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	4	240	240	0	1498
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	12	12	9	0	0
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · ti=10 i2 managed-object-navpoint-component	1	16	16	0	91
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	2	169	169	0	800
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	22	22	0	129
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	6	418	418	0	2556
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	22	34	29	0	59
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	0	0
+bcb6d393	HI_1_12_0	(iii) NEW lu desynchronise · 4-10 paquets avant · non lie · ti=10 i2 managed-object-navpoint-component	1	11	11	0	122
+bcb6d393	HI_1_12_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	87	96	60	1	12
+bcb6d393	HI_1_12_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	69	71	49	0	3
+bf15f7ab	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	127	127	0	30
+bf15f7ab	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	8	661	661	0	4414
+bf15f7ab	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	5	11	5	0	77
+bf15f7ab	HI_1_13_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	1	1	1	0	7
+bf15f7ab	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	8	10	3	0	70
+bf15f7ab	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · ti=56 avant les composants	1	1	1	0	7
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	1	1	1	0	7
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	12	19	14	0	133
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · ti=56 avant les composants	1	2	2	0	14
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	3	241	240	0	1742
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	10	261	261	0	1332
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	4	5	5	0	7
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	17	64	55	0	155
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · ti=56 avant les composants	1	1	1	0	7
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · paquet precedent · non lie · aucun NEW desynchronise anterieur	1	107	107	0	837
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	5	6	3	1	35
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · ti=56 avant les composants	1	2	2	0	14
+bf15f7ab	HI_1_13_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	38	52	32	1	331
+bf15f7ab	HI_1_13_0	(v) introuvable · sans naissance trouvee · non lie · ti=56 avant les composants	1	1	1	0	7
+bf15f7ab	HI_1_13_0	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	3	1	0	21
+bf15f7ab	HI_1_13_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	109	180	94	1	1243
+bf15f7ab	HI_1_13_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · ti=56 avant les composants	4	4	4	0	28
+bfecd02b	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	2	133	133	0	843
+bfecd02b	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	102	102	0	773
+bfecd02b	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	16	1793	1793	0	13672
+bfecd02b	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	1	0
+bfecd02b	HI_1_13_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	3	7	7	0	60
+bfecd02b	HI_1_13_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	4	428	428	0	2717
+bfecd02b	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	1	0
+bfecd02b	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	1	0
+bfecd02b	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	5	583	583	0	4771
+bfecd02b	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	45	45	0	378
+bfecd02b	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	1	51	51	0	1
+bfecd02b	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	1	0	9
+bfecd02b	HI_1_13_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	6	6	1	3	8
+bfecd02b	HI_1_13_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	1	1	7
+c75f33b8	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	1	0	11
+c75f33b8	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	1	0
+c75f33b8	HI_1_13_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	8	353	353	0	1826
+c75f33b8	HI_1_13_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	1	1	9
+c75f33b8	HI_1_13_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	16	1182	1182	0	5468
+c75f33b8	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	11	79	76	3	294
+c75f33b8	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · ti=3 i0 low-frequency	1	26	26	0	0
+c75f33b8	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	1	0
+c75f33b8	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · ti=3 i0 low-frequency	1	23	23	0	0
+c75f33b8	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	237	237	0	1188
+c75f33b8	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	1	6	6	0	24
+c75f33b8	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	9	270	266	4	1401
+c75f33b8	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	3	0	3	0
+c75f33b8	HI_1_13_0	(iii) NEW lu desynchronise · 2-3 paquets avant · lie par l oracle · ti=3 i0 low-frequency	3	86	86	0	0
+c75f33b8	HI_1_13_0	(iii) NEW lu desynchronise · paquet precedent · lie par l oracle · ti=3 i0 low-frequency	1	25	25	0	0
+c75f33b8	HI_1_13_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	15	18	1	6	8
+c75f33b8	HI_1_13_0	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	1	0
+c75f33b8	HI_1_13_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	3	0	3	0
+d9781168	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	1	9	9	0	90
+d9781168	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	13	935	935	0	5920
+d9781168	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	3	0	3	0
+d9781168	HI_1_13_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	20	1191	1190	1	7694
+d9781168	HI_1_13_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	7	114	108	6	828
+d9781168	HI_1_13_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	78	5411	5409	2	31022
+d9781168	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	33	214	183	31	921
+d9781168	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	1	136	136	0	769
+d9781168	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	9	539	539	0	3812
+d9781168	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	19	1604	1604	0	7999
+d9781168	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	11	480	479	1	3113
+d9781168	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	23	467	458	9	2110
+d9781168	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	1	0
+d9781168	HI_1_13_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	21	34	9	24	0
+d9781168	HI_1_13_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	14	18	1	17	6
+e5adf7b2	HI_1_11_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	14	418	418	0	9128
+e5adf7b2	HI_1_11_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	10	87	84	2	1856
+e5adf7b2	HI_1_11_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	78	1484	1482	1	31561
+e5adf7b2	HI_1_11_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	48	58	30	14	534
+e5adf7b2	HI_1_11_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	26	416	415	1	8760
+e5adf7b2	HI_1_11_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	26	234	230	1	4830
+e5adf7b2	HI_1_11_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	158	2539	2537	0	52232
+e5adf7b2	HI_1_11_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	101	307	272	7	5401
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	0	19
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	2	53	53	0	1113
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	9	10	6	0	70
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	39	753	753	0	15332
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	63	1505	1502	0	31995
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	57	1122	1120	2	23439
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	187	851	789	13	15543
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : terminateur · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	0	0	21
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : terminateur · paquet precedent · non lie · aucun NEW desynchronise anterieur	1	1	1	0	16
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	10	12	10	0	82
+e5adf7b2	HI_1_11_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	220	256	125	8	929
+e5adf7b2	HI_1_11_0	dans un record lu (faux positif probable) · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	1	0	0
+e5adf7b2	HI_1_11_0	dans un record lu (faux positif probable) · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	9	9	5	2	38
+e5adf7b2	HI_1_11_0	dans un record lu (faux positif probable) · paquet precedent · non lie · aucun NEW desynchronise anterieur	4	5	5	0	94
+e5adf7b2	HI_1_11_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	105	106	72	10	382
+f75e7053	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	2	75	75	0	271
+f75e7053	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	32	2284	2284	0	14832
+f75e7053	HI_1_13_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	10	1467	1467	0	9860
+f75e7053	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	128	127	1	896
+f75e7053	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	4	94	94	0	0
+f75e7053	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	111	111	0	124
+f75e7053	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	2	128	128	0	456
+f75e7053	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	1	1	1	0	0
+f75e7053	HI_1_13_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	2	2	0	1	0
+fb1a1a72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	55	1762	1762	0	2712
+fb1a1a72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	72	72	0	147
+fb1a1a72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · 4-10 paquets avant · non lie · ti=3 i0 low-frequency	1	26	26	0	0
+fb1a1a72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	13	414	414	0	2805
+fb1a1a72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	12	91	86	4	12
+fb1a1a72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · plus de 10 paquets avant · non lie · ti=3 i0 low-frequency	23	635	635	0	7
+fb1a1a72	HI_1_13_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	10	244	244	0	364
+fb1a1a72	HI_1_13_0	(ii) paquet a evenements non localise · 2-3 paquets avant · lie par l oracle · ti=3 i0 low-frequency	2	54	54	0	0
+fb1a1a72	HI_1_13_0	(ii) paquet a evenements non localise · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	3	53	53	0	436
+fb1a1a72	HI_1_13_0	(ii) paquet a evenements non localise · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	10	289	289	0	1498
+fb1a1a72	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	7	124	123	0	119
+fb1a1a72	HI_1_13_0	(ii) paquet a evenements non localise · plus de 10 paquets avant · non lie · ti=3 i0 low-frequency	10	261	261	0	4
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	2	46	46	0	345
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	49	48	1	282
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · 4-10 paquets avant · non lie · ti=3 i0 low-frequency	1	13	13	0	0
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	5	213	213	0	1258
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	8	118	114	1	13
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · ti=10 i2 managed-object-navpoint-component	2	66	66	0	507
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · plus de 10 paquets avant · non lie · ti=3 i0 low-frequency	14	384	384	0	15
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · aucun NEW desynchronise anterieur	26	377	377	0	682
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 2-3 paquets avant · lie par l oracle · ti=3 i0 low-frequency	121	1735	1735	0	63
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · aucun NEW desynchronise anterieur	8	121	121	0	344
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · ti=3 i0 low-frequency	6	152	152	0	0
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · 4-10 paquets avant · non lie · ti=43 i32 device-dispenser-state-flags-component	1	4	2	0	0
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · aucun NEW desynchronise anterieur	16	327	319	0	1958
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · paquet precedent · lie par l oracle · ti=3 i0 low-frequency	1	28	28	0	0
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	71	937	918	6	676
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · ti=10 i2 managed-object-navpoint-component	4	53	53	0	448
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · plus de 10 paquets avant · non lie · ti=3 i0 low-frequency	178	4792	4792	0	133
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	1	13	13	0	0
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · paquet precedent · non lie · aucun NEW desynchronise anterieur	3	44	40	0	271
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	2	2	2	0	0
+fb1a1a72	HI_1_13_0	(iii) NEW lu desynchronise · 2-3 paquets avant · lie par l oracle · ti=3 i0 low-frequency	340	9424	9424	0	300
+fb1a1a72	HI_1_13_0	(iii) NEW lu desynchronise · 4-10 paquets avant · non lie · ti=12 i24 managed-navpoint-visual-state-groups-component-4	1	1	1	0	0
+fb1a1a72	HI_1_13_0	(iii) NEW lu desynchronise · 4-10 paquets avant · non lie · ti=3 i0 low-frequency	11	298	298	0	31
+fb1a1a72	HI_1_13_0	(iii) NEW lu desynchronise · 4-10 paquets avant · non lie · ti=43 i30 device-in-primary-mode-component	1	4	2	0	0
+fb1a1a72	HI_1_13_0	(iii) NEW lu desynchronise · plus de 10 paquets avant · non lie · ti=10 i2 managed-object-navpoint-component	2	14	14	0	114
+fb1a1a72	HI_1_13_0	(iii) NEW lu desynchronise · plus de 10 paquets avant · non lie · ti=3 i0 low-frequency	3	57	57	0	2
+fb1a1a72	HI_1_13_0	(v) introuvable · sans naissance trouvee · non lie · aucun NEW desynchronise anterieur	66	211	184	0	74
+fb1a1a72	HI_1_13_0	dans un record lu (faux positif probable) · 2-3 paquets avant · non lie · aucun NEW desynchronise anterieur	2	9	9	0	0
+fb1a1a72	HI_1_13_0	dans un record lu (faux positif probable) · paquet precedent · non lie · aucun NEW desynchronise anterieur	5	25	6	0	0
+fb1a1a72	HI_1_13_0	dans un record lu (faux positif probable) · plus de 10 paquets avant · non lie · aucun NEW desynchronise anterieur	7	7	4	2	4

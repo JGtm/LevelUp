@@ -125,6 +125,61 @@ export function AnalyseTab({ merged, handleChange, t, frozen }: TabProps) {
         </CardContent>
       </Card>
 
+      {/* Card : Rejeu 2D — fenêtre de rétention des artefacts (0 = illimité).
+          Les films téléchargés ne sont JAMAIS purgés, seulement les artefacts. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.replayRetentionTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-1 py-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">{t.replayRetentionLabel}</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={0}
+                  max={120}
+                  className="w-20 rounded border border-border bg-background px-2 py-1 text-right text-sm text-foreground"
+                  value={merged.replay_retention_months ?? 0}
+                  onChange={(e) =>
+                    handleChange('replay_retention_months', parseInt(e.target.value, 10) || 0)
+                  }
+                />
+                <span className="text-sm text-muted-foreground">{t.replayRetentionUnit}</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">{t.replayRetentionHint}</p>
+          </div>
+          {/* Où se construit un rejeu — à côté de la fenêtre, parce que les deux
+              réglages commandent le même travail : ce qu'on construit, et où.
+              « Ce serveur » est refusé par l'API en production (le VPS web ne
+              décode jamais un film) : le refus vient du serveur, pas d'un choix
+              masqué ici — l'admin doit lire le motif. */}
+          <div className="flex flex-col gap-1 border-t border-border/50 py-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">{t.replayLocationLabel}</span>
+              <Select
+                value={merged.replay_build_location ?? ''}
+                onChange={(e) =>
+                  handleChange(
+                    'replay_build_location',
+                    e.target.value as '' | 'local' | 'worker' | 'off',
+                  )
+                }
+                className="w-auto"
+              >
+                <option value="">{t.replayLocationAuto}</option>
+                <option value="local">{t.replayLocationLocal}</option>
+                <option value="worker">{t.replayLocationWorker}</option>
+                <option value="off">{t.replayLocationOff}</option>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">{t.replayLocationHint}</p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Card : Badges de performance */}
       <Card>
         <CardHeader>

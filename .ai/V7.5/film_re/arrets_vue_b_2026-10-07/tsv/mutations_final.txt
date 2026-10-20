@@ -1,0 +1,29 @@
+base	rc=0
+K3	ROUGE	i31 : N = 8 traite comme echec	components_device_ti43_test.go:74: V31c (device-dispenser-monitors-changed-component) : porte false, attendu true
+K5	ROUGE	i27 : R(5) au lieu de R(6)	ecs_widths_guard_test.go:179: G4 : ligne 962 (ti=43 i=27 device-health-station-charges-component) : la table annonce 7 bits, le deser de production en
+K7	ROUGE	i20 : 255 bits	ecs_widths_guard_test.go:179: G4 : ligne 955 (ti=43 i=20 device-position-animation-control-component) : la table annonce 256 bits, le deser de product
+K9	ROUGE	i35 : code 1 traite comme poids nul	components_device_ti43_test.go:78: V35c (device-animation-layer-state-component) : 19 bits consommes, l ecrivain en a ecrit 33 (1 | 1 0000000001 00000
+K10	ROUGE	i25, i40 : Q(9)	ecs_widths_guard_test.go:179: G4 : ligne 960 (ti=43 i=25 device-interaction-hold-time-component) : la table annonce 8 bits, le deser de production en 
+K11	ROUGE	i38 : Q(17)	ecs_widths_guard_test.go:179: G4 : ligne 973 (ti=43 i=38 device-position-transition-velocity-component) : la table annonce 18 bits, le deser de produc
+K12	ROUGE	i26 : un seul R(32)	ecs_widths_guard_test.go:179: G4 : ligne 961 (ti=43 i=26 device-control-action-string-override-component) : la table annonce 64 bits, le deser de prod
+M3	ROUGE	i35 : condition du poids ignoree	components_device_ti43_test.go:78: V35b (device-animation-layer-state-component) : 129 bits consommes, l ecrivain en a ecrit 43 (1 | 1 0000000000 | 1 
+M4	ROUGE	i31 : N borne a 8 au lieu d echouer	components_device_ti43_test.go:74: V31b (device-dispenser-monitors-changed-component) : porte true, attendu false
+M5	ROUGE	i36 : categorie 1 au lieu de 0	components_device_ti43_test.go:78: V36 (device-dispenser-state-component) : 25 bits consommes, l ecrivain en a ecrit 24 (0 101 | 1 1 0000001000010 01 
+M6	ROUGE	i37 : troisieme Q(n) de FUN_142ba78dc omis	components_device_ti43_test.go:78: V37 (device-object-dispenser-timer-component) : 27 bits consommes, l ecrivain en a ecrit 37 (0 | 1 1111111111 00000
+M7	ROUGE	i34 : un Q(14) de moins par couche	components_device_ti43_test.go:78: V34b (device-animation-layer-settings-component) : 225 bits consommes, l ecrivain en a ecrit 95 (1 | 1 000000000000
+M8	ROUGE	i21 : porte du groupe omise	components_device_ti43_test.go:78: V21a (device-position-group-component) : 32 bits consommes, l ecrivain en a ecrit 41 (00000000000000000000000000000
+M9	ROUGE	i24, i29 : categorie 0 au lieu de 1	components_device_ti43_test.go:78: V24b (device-interaction-in-progress-component) : 16 bits consommes, l ecrivain en a ecrit 17 (1 0 0000000000101 10
+M11	ROUGE	i36 : queue R(3) omise	components_device_ti43_test.go:78: V36 (device-dispenser-state-component) : 3 bits consommes, l ecrivain en a ecrit 24 (0 101 | 1 1 0000001000010 01 0
+M12	ROUGE	maillon des dispositifs debranche	components_device_ti43_test.go:74: V35a (device-animation-layer-state-component) : porte false, attendu true
+M13	ROUGE	i19 : Q(11)	components_device_ti43_test.go:78: V19 (device-position-animation-name-component) : 43 bits consommes, l ecrivain en a ecrit 42 (110111101010110110111
+M14	ROUGE	i39 : R(8)	components_device_ti43_test.go:78: V39 (device-machine-flags-component) : 8 bits consommes, l ecrivain en a ecrit 9 (110100101)
+N1	ROUGE	ti=12 i16 : R(4)	components_arrets_vue_b_test.go:47: N16a (managed-navpoint-override-flags) : 4 bits consommes, l ecrivain en a ecrit 5 (10110)
+N2	ROUGE	ti=12 i16 debranche	components_arrets_vue_b_test.go:43: N16a (managed-navpoint-override-flags) : non porte
+S1	ROUGE	ti=45 i0 : index R(3)	components_arrets_vue_b_test.go:47: S0a (matchflow-sequence-data-component) : 131 bits consommes, l ecrivain en a ecrit 132 (0011 | 000000000000000000
+S2	ROUGE	ti=45 i0 : trois mots	components_arrets_vue_b_test.go:47: S0a (matchflow-sequence-data-component) : 100 bits consommes, l ecrivain en a ecrit 132 (0011 | 000000000000000000
+S3	ROUGE	ti=45 i0 debranche	components_arrets_vue_b_test.go:43: S0a (matchflow-sequence-data-component) : non porte
+O1	ROUGE	ti=10 i2-i17 : R(31)	components_arrets_vue_b_test.go:47: O2a (managed-object-navpoint-component) : 31 bits consommes, l ecrivain en a ecrit 32 (111111111111111111111111111
+O2	ROUGE	ti=10 i2-i17 debranche	components_arrets_vue_b_test.go:43: O2a (managed-object-navpoint-component) : non porte
+P1	ROUGE	ti=12 i18 : niveau 0x1E	lecteur_position_sites_test.go:304: navpoint-position-offset idx=-1 : 79 bits lus, l ecrivain du jeu en pose 67
+P2	ROUGE	ti=12 i18 : sans la garde de pleine precision	components_arrets_vue_b_test.go:66: ti=12 i18 sous la garde : 42 bits lus, l ecrivain en pose 96
+P3	ROUGE	ti=12 i18 debranche	components_arrets_vue_b_test.go:63: ti=12 i18 : non porte

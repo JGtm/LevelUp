@@ -15,14 +15,31 @@
  * Pictos : Fluent Emoji Flat (cf. components/feedback/BadgeIcon).
  * Aligne le rendu sur la branche main (badges + horodatage). La résolution
  * xuid → gamertag se fait via le scoreboard du match.
+ *
+ * TEMPS FORTS D'ÉQUIPEMENT (LOT F.3, PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F) : la barre
+ * s'auto-alimente en plus, EXACTEMENT COMME `MatchEquipmentUsageSection` (même artefact, même
+ * clé de cache `useMatchReplay`, aucun appel de plus) — le meilleur épisode par famille
+ * (camo, surbouclier) quand il franchit le seuil de frags écrit d'avance
+ * (`equipmentKillBadges.ts`). Rendu via `NarrativeBadge` (pilule), délibérément DIFFÉRENT de la
+ * carte des badges d'impact serveur : ce sont deux sources distinctes (film client vs
+ * `analysis.ComputeMatchImpactFull` côté Go), et les confondre visuellement laisserait croire
+ * à une seule liste officielle.
  */
+import { useMemo } from 'react'
+
 import { BadgeIcon } from '@/components/feedback/BadgeIcon'
+import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { hexToRgba } from '@/components/charts/_utils'
 import { Tooltip } from '@/components/ui/tooltip'
-import { resolveToken } from '@/lib/accessibility'
+import { resolveToken, tokenVar } from '@/lib/accessibility'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getSquadText } from '@/features/squad/i18n'
+import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
+import { useMatchReplay } from '@/lib/replay/queries'
 import type { MatchImpactBadge, MatchScoreboardRow } from '@/lib/api/types'
+import { formatClockMShort } from '@/lib/formatters'
+import { stripBotSuffix } from '@/lib/players/displayName'
+import { computeEquipmentKillBadges } from './equipmentKillBadges'
 import type { MatchViewText } from './i18n'
 
 type Valence = 'positive' | 'negative' | 'neutral'
@@ -57,12 +74,17 @@ function valenceColorToken(v: Valence | undefined): 'success' | 'destructive' | 
   return null
 }
 
+/**
+ * L'instant d'un fait marquant, ou RIEN.
+ *
+ * LE `null` EST LA DÉCISION PROPRE À CE SITE, et c'est pour lui que la fonction survit : un
+ * badge sans instant mesuré n'affiche pas d'horodatage du tout, là où le formateur canonique
+ * rendrait « 0m00s » — le coup d'envoi, qui serait ici une affirmation fausse. L'ÉCRITURE du
+ * format, elle, vient de `lib/formatters` (registre 2026-09-05, N3).
+ */
 function formatTime(ms: number | null | undefined): string | null {
   if (ms == null || ms <= 0) return null
-  const totalSec = Math.floor(ms / 1000)
-  const m = Math.floor(totalSec / 60)
-  const s = totalSec % 60
-  return `${m}m${s.toString().padStart(2, '0')}s`
+  return formatClockMShort(ms)
 }
 
 function buildXUIDIndex(scoreboard: MatchScoreboardRow[]): Map<string, MatchScoreboardRow> {
@@ -81,13 +103,32 @@ interface Props {
   badges: MatchImpactBadge[] | null | undefined
   scoreboard: MatchScoreboardRow[] | null | undefined
   t: MatchViewText
+  /** Le triplet qui alimente `useMatchReplay` (même contrat que MatchEquipmentUsageSection) —
+   * requis pour les badges « temps fort » d'équipement (LOT F.3). */
+  playerSlug: string
+  matchId: string
+  replayAvailable: boolean
 }
 
-export function MatchImpactBadgesBar({ badges, scoreboard, t }: Props) {
+export function MatchImpactBadgesBar({
+  badges,
+  scoreboard,
+  t,
+  playerSlug,
+  matchId,
+  replayAvailable,
+}: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const badgeI18n = getSquadText(locale).impact
+  const eqText = REPLAY_TEXT[locale].equipmentUsage
 
-  if (!badges || badges.length === 0) {
+  const { data: replayDoc } = useMatchReplay(playerSlug, matchId, replayAvailable)
+  const killBadges = useMemo(
+    () => (replayDoc ? computeEquipmentKillBadges(replayDoc, scoreboard ?? undefined) : []),
+    [replayDoc, scoreboard],
+  )
+
+  if ((!badges || badges.length === 0) && killBadges.length === 0) {
     // Placeholder muet (style carte badge) au lieu de disparaître : la colonne
     // garde sa place à côté du graphe Frags cumulés.
     return (
@@ -99,7 +140,7 @@ export function MatchImpactBadgesBar({ badges, scoreboard, t }: Props) {
 
   const xuidIndex = buildXUIDIndex(scoreboard ?? [])
 
-  const sorted = [...badges].sort((a, b) => {
+  const sorted = [...(badges ?? [])].sort((a, b) => {
     const oa = BADGE_META[a.key]?.order ?? 99
     const ob = BADGE_META[b.key]?.order ?? 99
     if (oa !== ob) return oa - ob
@@ -108,9 +149,22 @@ export function MatchImpactBadgesBar({ badges, scoreboard, t }: Props) {
 
   return (
     <div className="flex h-full flex-col gap-2">
+      {killBadges.map((kb) => (
+        <Tooltip
+          key={`equipment-kill:${kb.family}`}
+          content={<span>{`${eqText.killBadgeHint} — ${kb.playerName}`}</span>}
+        >
+          <NarrativeBadge
+            label={eqText.killBadgeFmt[kb.family](kb.kills)}
+            colorVar={tokenVar('success')}
+          />
+        </Tooltip>
+      ))}
       {sorted.map((b) => {
         const player = b.player_xuid ? xuidIndex.get(b.player_xuid) : undefined
-        const rawGamertag = player?.gamertag ?? null
+        // Suffixe « [bot] » = marqueur de donnée killsource, retiré avant le garde
+        // xuid-brut ci-dessous (qui vise un tout autre défaut de donnée).
+        const rawGamertag = player?.gamertag ? stripBotSuffix(player.gamertag) : null
         const gamertag = isRawXUID(rawGamertag) ? null : rawGamertag
         const isMe = player?.is_me ?? false
         const time = BADGE_META[b.key]?.hideTime ? null : formatTime(b.time_ms)

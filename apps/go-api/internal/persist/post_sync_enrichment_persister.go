@@ -1,7 +1,7 @@
 // Package persist — post_sync_enrichment_persister.go : helper pour
 // persister des colonnes de player_match_enrichment.
 //
-// APPEND-ONLY (#23046, 2026-06-21) : player_match_enrichment est append-only.
+// APPEND-ONLY (#23645, 2026-06-21) : player_match_enrichment est append-only.
 // BatchUpdateColumn/BatchUpdateMulti n'UPDATENT plus — ils INSÈRENT une row
 // partielle taguée du `stage` propriétaire de la/des colonne(s). La lecture
 // courante passe par la vue player_match_enrichment_latest (merge-on-read
@@ -47,7 +47,7 @@ func NewPostSyncEnrichmentPersister(db txBeginner) *PostSyncEnrichmentPersister 
 }
 
 // enrichmentColumnStage mappe chaque colonne persistable vers son `stage`
-// propriétaire (append-only #23046). Sert AUSSI de whitelist anti SQL injection
+// propriétaire (append-only #23645). Sert AUSSI de whitelist anti SQL injection
 // (les noms sont concaténés dans la query). Doit rester aligné avec pmeColumnStage
 // de la migration (internal/migration/steps_player_append_only_match_enrichment.go).
 // stageEngagement : stage le plus fréquent (colonnes engagement). Constante pour
@@ -97,7 +97,7 @@ func deriveEnrichmentStage(columns []string) (string, error) {
 }
 
 // BatchUpdateColumn INSÈRE N rows partielles (1 colonne) taguées du `stage`
-// propriétaire de la colonne, dans 1 transaction (append-only #23046).
+// propriétaire de la colonne, dans 1 transaction (append-only #23645).
 // La lecture courante passe par player_match_enrichment_latest.
 // Atomique : 1 TX. Si une row échoue, rollback total. No-op si rows est vide.
 //
@@ -145,7 +145,7 @@ type EnrichmentMultiColumnUpdate struct {
 }
 
 // BatchUpdateMulti INSÈRE N rows partielles (plusieurs colonnes du MÊME stage)
-// dans 1 transaction (append-only #23046). Toutes les rows doivent avoir le même
+// dans 1 transaction (append-only #23645). Toutes les rows doivent avoir le même
 // set de fields (homogénéité) ET ces colonnes doivent appartenir à un seul stage.
 // Atomique : 1 TX. No-op si rows est vide.
 //

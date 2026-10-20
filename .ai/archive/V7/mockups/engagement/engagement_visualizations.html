@@ -1,0 +1,1949 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>EngagementScore &mdash; Mockups visualisations</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #0f1419;
+      color: #e6edf3;
+      font-family: -apple-system, system-ui, "Segoe UI", sans-serif;
+    }
+    h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+    p.lead { color: #8b949e; margin-top: 0; font-size: 13px; max-width: 900px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 16px; }
+    .panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      padding: 14px 18px;
+    }
+    .panel h2 { margin: 0 0 2px; font-size: 14px; font-weight: 600; }
+    .panel .num { color: #8b949e; font-size: 11px; font-weight: 500; letter-spacing: 0.5px; }
+    .panel .desc { color: #8b949e; font-size: 12px; margin: 4px 0 10px; line-height: 1.4; }
+    .panel .legend {
+      display: flex; gap: 16px; margin-top: 8px; font-size: 11px; color: #8b949e;
+      flex-wrap: wrap; padding-top: 8px; border-top: 1px solid #21262d;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .swatch { width: 14px; height: 3px; display: inline-block; }
+    .swatch.dot { width: 8px; height: 8px; border-radius: 50%; }
+    .swatch.tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid #f85149; }
+    .swatch.dashed { background: repeating-linear-gradient(90deg, #8b949e 0 4px, transparent 4px 7px); }
+    .chart-tall { height: 280px; }
+    .chart-mid  { height: 220px; }
+    .chart-card { height: 100px; }
+    .meta-row { display: flex; gap: 18px; margin-top: 6px; font-size: 11px; color: #8b949e; }
+    .meta-row b { color: #e6edf3; font-weight: 600; }
+
+    /* Carte synthese mockup */
+    .card-synth {
+      display: grid;
+      grid-template-columns: 90px 1fr 120px;
+      gap: 16px;
+      align-items: center;
+      padding: 12px 16px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+    }
+    .card-score { text-align: center; }
+    .card-score .num-big {
+      font-size: 38px; font-weight: 700; line-height: 1;
+      color: #3fb950;
+    }
+    .card-score .num-big.mid { color: #d29922; }
+    .card-score .num-big.low { color: #f85149; }
+    .card-score .label { font-size: 10px; color: #8b949e; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 4px; }
+    .card-meta { font-size: 12px; color: #8b949e; }
+    .card-meta b { color: #e6edf3; font-weight: 600; font-size: 13px; }
+    .card-spark { height: 60px; }
+
+    /* Notes editoriales */
+    .notes {
+      margin-top: 12px; padding: 10px 12px; background: #0d1117;
+      border-left: 3px solid #1f6feb; font-size: 12px; color: #c9d1d9;
+      line-height: 1.5;
+    }
+    .notes b { color: #fff; }
+
+    /* Mock 15 chips squad — pour overlay 1 joueur a la fois sur la vue team */
+    .m15-chips {
+      display: flex;
+      gap: 8px;
+      margin: 8px 0 6px 90px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .m15-chips-label {
+      color: #8b949e;
+      font-size: 11px;
+      margin-right: 4px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+    .m15-chip {
+      background: #0d1117;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      padding: 5px 11px 5px 9px;
+      font-family: -apple-system, system-ui, "Segoe UI", sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      letter-spacing: 0.2px;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+    .m15-chip:hover { background: #161b22; color: #fff; }
+    .m15-chip:focus-visible {
+      outline: 2px solid #58a6ff;
+      outline-offset: 1px;
+    }
+    .m15-chip-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      flex-shrink: 0;
+    }
+    .m15-chip.active {
+      color: #fff;
+      background: var(--chip-active-bg, rgba(88,166,255,0.14));
+      border-color: var(--chip-active-border, #58a6ff);
+    }
+  </style>
+</head>
+<body>
+  <h1>EngagementScore &mdash; mockups visualisations</h1>
+  <p class="lead">
+    7 representations distinctes du concept "EngagementScore" defini dans
+    <code>.ai/REFLEXION_FORM_SCORE_INTRA_MATCH.md</code>. Donnees synthetiques pour visualiser :
+    match Slayer 12 min, joueur avec coef_team_share = 1.12, peak engagement entre 5-7 min puis fade
+    en derniere mi-temps. P25 = 40, P75 = 60 pour la baseline personnelle.
+  </p>
+
+  <div class="grid">
+
+    <!-- MOCK 1 : Match View canonical 3 traces -->
+    <div class="panel">
+      <div class="num">MOCK 1 &middot; Match View &middot; canonical 3 traces</div>
+      <h2>Equipe / Attendu / Joueur sur l'axe temps</h2>
+      <p class="desc">
+        Lecture la plus directe : trois courbes superposees sans embellissement. Le joueur (bleu)
+        est compare a son attendu (gris pointille = coef_team_share &times; pace_equipe). L'equipe
+        alliee (gris clair) sert de contexte pour comprendre comment l'attendu se construit.
+      </p>
+      <div id="mock1" class="chart-tall"></div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:#6e7681"></span>Equipe alliee (pace per player)</span>
+        <span class="legend-item"><span class="swatch dashed"></span>Attendu du joueur (coef &times; equipe)</span>
+        <span class="legend-item"><span class="swatch" style="background:#58a6ff;height:4px"></span>Joueur (observe)</span>
+      </div>
+      <div class="notes"><b>Lecture :</b> 0-3 min joueur sous attendu (slow start), 5-7 min joueur au-dessus (peak engagement), puis decroche en derniere mi-temps. La courbe attendue suit dynamiquement l'equipe.</div>
+    </div>
+
+    <!-- MOCK 2 : Match View residu signe seul -->
+    <div class="panel">
+      <div class="num">MOCK 2 &middot; Match View &middot; residu signe seul</div>
+      <h2>Une seule trace = (joueur &minus; attendu) oscillant autour de zero</h2>
+      <p class="desc">
+        Variante minimaliste : on ne montre que la difference. Au-dessus de zero = en engagement cet
+        instant. En-dessous = sous-engagement. Bandes vertes/rouges sous la trace pour amplifier.
+        Lisible en miniature, ideal pour sparkline embarque.
+      </p>
+      <div id="mock2" class="chart-mid"></div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:#3fb950"></span>Au-dessus de l'attendu (en engagement)</span>
+        <span class="legend-item"><span class="swatch" style="background:#f85149"></span>Sous l'attendu (sous-engagement)</span>
+      </div>
+      <div class="notes"><b>Trade-off :</b> tres lisible mais on perd l'information du contexte (pace absolu de l'equipe). Convient quand on a deja le contexte ailleurs.</div>
+    </div>
+
+    <!-- MOCK 3 : Match View hybride (3 traces + gap shading + annotations) -->
+    <div class="panel">
+      <div class="num">MOCK 3 &middot; Match View &middot; hybride avec gap shading + annotations</div>
+      <h2>Variante editoriale : ecart colore entre joueur et attendu, deaths annotees</h2>
+      <p class="desc">
+        Le plus dense en information : les 3 traces du mock 1, plus un remplissage colore entre
+        joueur et attendu (vert au-dessus, rouge en-dessous), plus les marqueurs de mort
+        (triangle rouge = passive, disque = active) et bandes post-mort translucides.
+      </p>
+      <div id="mock3" class="chart-tall"></div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:#6e7681"></span>Equipe</span>
+        <span class="legend-item"><span class="swatch dashed"></span>Attendu</span>
+        <span class="legend-item"><span class="swatch" style="background:#58a6ff;height:4px"></span>Joueur</span>
+        <span class="legend-item"><span class="swatch" style="background:rgba(63,185,80,0.3)"></span>Au-dessus attendu</span>
+        <span class="legend-item"><span class="swatch" style="background:rgba(248,81,73,0.3)"></span>Sous attendu</span>
+        <span class="legend-item"><span class="swatch tri"></span>Mort passive</span>
+        <span class="legend-item"><span class="swatch dot" style="background:#8b949e"></span>Mort active</span>
+      </div>
+      <div class="notes"><b>Lecture narrative :</b> "Demarrage hesitant (zone rouge 0-3 min), peak en milieu de match (zone verte 5-8 min, plus large), puis fade nettement en fin (zone rouge 9-12 min). Mort passive a 1:40 marque le sortir du jeu."</div>
+    </div>
+
+    <!-- MOCK 4 : Carte synthese (vignette match) -->
+    <div class="panel">
+      <div class="num">MOCK 4 &middot; Carte synthese &middot; vignette match</div>
+      <h2>Affichage compact dans une liste de matchs (Timeseries / Profil)</h2>
+      <p class="desc">
+        Pour les vues qui listent les matchs sans afficher la courbe complete : un nombre 0-100
+        avec couleur de zone, un sparkline du residu, et des meta-donnees contextuelles
+        (intensite du match, percentile de l'attendu).
+      </p>
+      <div class="card-synth">
+        <div class="card-score">
+          <div class="num-big">62</div>
+          <div class="label">EngagementScore</div>
+        </div>
+        <div class="card-meta">
+          <div><b>Slayer ranked &middot; Aquarius</b> &middot; 12:04</div>
+          <div style="margin-top: 4px">Au-dessus de votre habitude (P64)</div>
+          <div style="margin-top: 2px">Intensite du match : <b>14.2</b> events/min &middot; chaotique (P88)</div>
+          <div style="margin-top: 2px">Coef team_share du match : <b>1.21</b> (vs habituel 1.12)</div>
+        </div>
+        <div id="mock4spark" class="card-spark"></div>
+      </div>
+      <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px">
+        <div class="card-synth" style="grid-template-columns: 90px 1fr">
+          <div class="card-score">
+            <div class="num-big mid">48</div>
+            <div class="label">EngagementScore</div>
+          </div>
+          <div class="card-meta">
+            <div><b>CTF unranked &middot; Live Fire</b></div>
+            <div style="margin-top: 4px">Engagement normale (P48)</div>
+            <div style="margin-top: 2px">Intensite : 9.8 (calme)</div>
+          </div>
+        </div>
+        <div class="card-synth" style="grid-template-columns: 90px 1fr">
+          <div class="card-score">
+            <div class="num-big low">31</div>
+            <div class="label">EngagementScore</div>
+          </div>
+          <div class="card-meta">
+            <div><b>Strongholds ranked &middot; Recharge</b></div>
+            <div style="margin-top: 4px">Sous-engagement (P31)</div>
+            <div style="margin-top: 2px">Intensite : 11.4 (standard)</div>
+          </div>
+        </div>
+      </div>
+      <div class="notes"><b>Format optimise pour density :</b> 3 vignettes tiennent dans la hauteur d'un graphe Match View. Le code couleur du nombre permet un balayage visuel rapide d'une longue liste.</div>
+    </div>
+
+    <!-- MOCK 5 : Session option B (batons positifs colores) -->
+    <div class="panel">
+      <div class="num">MOCK 5 &middot; Session &middot; OPTION B &middot; batons positifs colores</div>
+      <h2>Une session de 8 matchs &mdash; warmup puis burnout</h2>
+      <p class="desc">
+        Decision retenue dans le doc : batons partant de zero, hauteur = EngagementScore 0-100, couleur
+        selon zone (vert > P75, orange entre P25-P75, rouge < P25). Bande grise = zone P25-P75
+        personnelle. Le pattern warmup/peak/fade se lit instantanement.
+      </p>
+      <div id="mock5" class="chart-mid"></div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:#3fb950"></span>En engagement (&gt; P75 = 60)</span>
+        <span class="legend-item"><span class="swatch" style="background:#d29922"></span>Normal (P25-P75)</span>
+        <span class="legend-item"><span class="swatch" style="background:#f85149"></span>Sous-engagement (&lt; P25 = 40)</span>
+        <span class="legend-item"><span class="swatch" style="background:#21262d;height:8px;width:18px"></span>Bande P25-P75 personnelle</span>
+      </div>
+      <div class="notes"><b>Pattern session :</b> warmup matchs 1-4 (35 -&gt; 71), plateau 5-6 (68, 55), burnout 7-8 (38, 28). Le shift de couleur signale l'effondrement en fin de session.</div>
+    </div>
+
+    <!-- MOCK 6 : Session option A (batons signes centres sur zero) -->
+    <div class="panel">
+      <div class="num">MOCK 6 &middot; Session &middot; OPTION A &middot; batons signes centres sur zero</div>
+      <h2>Variante mathematiquement honnete : delta brut signe</h2>
+      <p class="desc">
+        Alternative a l'option B : axe centre sur 0 (= ecart neutre vs attendu). Hauteur =
+        delta brut. Positif vers le haut (en engagement), negatif vers le bas. Plus rigoureux car la
+        magnitude reflette l'intensite reelle de l'ecart, mais moins immediatement lisible
+        qu'un code couleur unique.
+      </p>
+      <div id="mock6" class="chart-mid"></div>
+      <div class="notes"><b>Trade-off :</b> Option A est plus precise (preserve le signe et la magnitude), Option B est plus immediate (couleur = lecture instantanee). Decision en faveur de B dans le doc, mais A reste pertinent pour un onglet "diagnostic detaille".</div>
+    </div>
+
+    <!-- MOCK 7 : Timeseries long (batons agreges par session) -->
+    <div class="panel">
+      <div class="num">MOCK 7 &middot; Timeseries long &middot; batons agreges par session</div>
+      <h2>12 sessions sur ~3 mois &mdash; un creux puis une montee</h2>
+      <p class="desc">
+        Vue long terme : 1 baton = 1 session, hauteur = mean EngagementScore de la session, largeur
+        proportionnelle au nombre de matchs. Bande P25-P75 fixe en arriere-plan. Permet
+        d'identifier les phases (creux S4-S5, peak S8-S9) sur un horizon long sans bruit.
+      </p>
+      <div id="mock7" class="chart-tall"></div>
+      <div class="legend">
+        <span class="legend-item">Largeur baton &prop; nb matchs de la session</span>
+        <span class="legend-item"><span class="swatch" style="background:#21262d;height:8px;width:18px"></span>Bande P25-P75</span>
+        <span class="legend-item"><span class="swatch" style="background:#3fb950"></span>Session en engagement</span>
+        <span class="legend-item"><span class="swatch" style="background:#d29922"></span>Session normale</span>
+        <span class="legend-item"><span class="swatch" style="background:#f85149"></span>Session creux</span>
+      </div>
+      <div class="notes"><b>Lecture macro :</b> creux S4-S5 (35-38, sessions sous P25), recovery progressive S6-S7, peak S8-S9 (67-70), puis stabilisation. Le code couleur permet de spot les regimes sans avoir a lire les valeurs.</div>
+    </div>
+
+    <!-- MOCK 8 : Mock 1 transpose a l'echelle session -->
+    <div class="panel">
+      <div class="num">MOCK 8 &middot; Session &middot; Mock 1 transpose &mdash; 3 traces, 1 point par match</div>
+      <h2>Meme grammaire visuelle que Match View, granularite "1 point = 1 match"</h2>
+      <p class="desc">
+        Mock 1 applique a une session de 8 matchs consecutifs. Chaque trace = moyenne events/min/joueur
+        sur le match. La narration warmup/burnout devient immediatement lisible : la trace joueur
+        plonge sous l'attendu sur les premiers matchs (warmup), passe au-dessus de M3 a M6 (peak engagement),
+        puis chute nettement sous l'attendu en fin (burnout). L'oeil ne doit pas changer de langage
+        visuel entre Match View et Session.
+      </p>
+      <div id="mock8" class="chart-mid"></div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:#6e7681"></span>Equipe alliee (mean per match)</span>
+        <span class="legend-item"><span class="swatch dashed"></span>Attendu (coef &times; equipe)</span>
+        <span class="legend-item"><span class="swatch" style="background:#58a6ff;height:4px"></span>Joueur (mean per match)</span>
+      </div>
+      <div class="notes"><b>Cle de lecture :</b> le **gap** entre joueur et attendu en chaque point = la engagement de ce match. Pas besoin de pastilles ou de batons : la courbe raconte la trajectoire complete de la session. Marqueurs ronds visibles pour rappeler que les matchs sont discrets.</div>
+    </div>
+
+    <!-- MOCK 9 : 2-lignes (lignes continues + batons EngagementScore alignes) -->
+    <div class="panel">
+      <div class="num">MOCK 9 &middot; Session &middot; variante 2-lignes &mdash; lignes continues + batons alignes</div>
+      <h2>Combinaison densitee : la trajectoire (haut) + le score precis par match (bas)</h2>
+      <p class="desc">
+        Pour un onglet "session" plus dense en information : Mock 8 en haut (lecture continue de la
+        trajectoire), Mock 5 en bas (lecture discrete du EngagementScore). Les deux axes X sont alignes
+        donc M1 du graphe du haut est directement au-dessus du baton M1 du graphe du bas. L'oeil suit
+        la courbe pour le **pattern**, lit les batons pour les **valeurs** et zones de engagement.
+      </p>
+      <div id="mock9" class="chart-tall"></div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:#6e7681"></span>Equipe</span>
+        <span class="legend-item"><span class="swatch dashed"></span>Attendu</span>
+        <span class="legend-item"><span class="swatch" style="background:#58a6ff;height:4px"></span>Joueur</span>
+        <span class="legend-item"><span class="swatch" style="background:#3fb950"></span>En engagement (&gt; P75)</span>
+        <span class="legend-item"><span class="swatch" style="background:#d29922"></span>Normal (P25-P75)</span>
+        <span class="legend-item"><span class="swatch" style="background:#f85149"></span>Sous-engagement (&lt; P25)</span>
+      </div>
+      <div class="notes"><b>Trade-off :</b> plus dense en info que Mock 8 seul, mais aussi plus charge visuellement. A reserver aux ecrans qui peuvent allouer la hauteur. Mock 8 reste preferable pour vignettes ou cards compactes.</div>
+    </div>
+
+    <!-- MOCK 10 : Mock 1 sur match equilibre realiste -->
+    <div class="panel">
+      <div class="num">MOCK 10 &middot; Match View &middot; cas realiste &mdash; auto-zoom Y + hierarchie visuelle</div>
+      <h2>Match equilibre, joueur dans son style habituel &mdash; le chart parle-t-il encore ?</h2>
+      <p class="desc">
+        Le risque identifie : sur ~70 % des matchs (matchmaking equilibre + joueur dans son style),
+        les 3 courbes risquent d'etre collees et le chart "muet". Mock 10 applique deux leviers
+        sans gap shading ni pastille : (1) <b>auto-zoom Y</b> sur la plage des donnees (8 a 15
+        au lieu de 0 a 20), (2) <b>hierarchie visuelle marquee</b> &mdash; trace joueur epaisse
+        et saturee, attendu fine pointillee, equipe tres effacee. Donnees : equipe stable autour
+        de 11-12, joueur avec coef = 1.05 (legerement leader), variations realistes de +/- 1
+        event/min autour de l'attendu.
+      </p>
+      <div id="mock10" class="chart-mid"></div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:#444c56;height:2px"></span>Equipe alliee (trace effacee)</span>
+        <span class="legend-item"><span class="swatch dashed"></span>Attendu (trace pointillee fine)</span>
+        <span class="legend-item"><span class="swatch" style="background:#58a6ff;height:5px"></span>Joueur (trace epaisse saturee)</span>
+      </div>
+      <div class="notes"><b>Lecture :</b> meme avec des courbes proches (spread max ~2 events/min), l'auto-zoom rend les variations de 0.5-1 event/min visibles, et la hierarchie visuelle fait que le joueur "pop" toujours. On distingue : sous-engagement debut M1-M2 (joueur sous attendu de ~1), peak court M6-M8 (joueur au-dessus de ~1), creux mid-match M16-M17, neutre M19-M21, fade fin M22-M25. Le chart raconte les nuances meme dans un match peu spectaculaire. Trade-off : plus possible de comparer deux matchs visuellement (Y differe), mais ce n'est pas l'usage principal de Match View.</div>
+    </div>
+
+    <!-- MOCK 11 : Mock 8 (session) sur donnees realistes avec auto-zoom + hierarchie visuelle -->
+    <div class="panel">
+      <div class="num">MOCK 11 &middot; Session &middot; cas realiste &mdash; auto-zoom Y + hierarchie visuelle</div>
+      <h2>Mock 8 applique a une session realiste : 8 matchs proches, hierarchie visuelle marquee</h2>
+      <p class="desc">
+        Adaptation de Mock 10 a l'echelle session : meme grammaire que Mock 8 (3 traces, 1 point/match)
+        mais avec donnees realistes ou les 3 moyennes restent proches d'un match a l'autre. Auto-zoom
+        Y sur la plage des donnees (9 a 14 au lieu de 0 a 20). Trace joueur epaisse et saturee qui
+        domine visuellement, equipe et attendu en arriere-plan. Pattern warmup leger M1-M2 (joueur
+        legerement sous attendu), peak modere M3-M5, fade M6-M8.
+      </p>
+      <div id="mock11" class="chart-mid"></div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:#444c56;height:2px"></span>Equipe alliee (mean per match, trace effacee)</span>
+        <span class="legend-item"><span class="swatch dashed"></span>Attendu (trace pointillee fine)</span>
+        <span class="legend-item"><span class="swatch" style="background:#58a6ff;height:5px"></span>Joueur (trace epaisse saturee)</span>
+      </div>
+      <div class="notes"><b>Coherence Match View &harr; Session :</b> la grammaire visuelle (trois traces, hierarchie identique, auto-zoom) est strictement la meme entre Mock 10 (intra-match) et Mock 11 (session). Le joueur ne change pas de reflexe de lecture en zoomant in/out. Variations subtiles de 1-2 events/min restent lisibles meme sur des sessions ou rien de spectaculaire ne se passe.</div>
+    </div>
+
+    <!-- MOCK 12 : Session/periode squad (2-4 joueurs) -->
+    <div class="panel">
+      <div class="num">MOCK 12 &middot; Squad session/periode &middot; residus signes des coequipiers</div>
+      <h2>Comparaison parallele &mdash; 1 trace par joueur du squad, axe centre sur 0</h2>
+      <p class="desc">
+        Pour la session/periode squad de 2 a 4 joueurs : on abandonne la grammaire des 3 traces
+        (equipe/attendu/joueur) au profit d'<b>un chart unique de residus signes</b>. Chaque trace =
+        ecart d'un joueur vs son propre attendu (`joueur_i &minus; attendu_i` par match). Tous les
+        joueurs sur le meme axe Y centre sur 0. La comparaison entre coequipiers devient parallele
+        et instantanee : qui porte, qui suit, qui decroche, et surtout est-ce que le squad bouge en
+        synchronisation ou en divergence.
+      </p>
+      <div id="mock12" class="chart-tall"></div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:#58a6ff;height:5px"></span>Joueur cible (focus, trace epaisse)</span>
+        <span class="legend-item"><span class="swatch" style="background:#d29922"></span>Coequipier 2</span>
+        <span class="legend-item"><span class="swatch" style="background:#a371f7"></span>Coequipier 3</span>
+        <span class="legend-item"><span class="swatch" style="background:#56d364"></span>Coequipier 4</span>
+        <span class="legend-item"><span class="swatch dashed"></span>Ligne 0 = exactement a l'attendu personnel</span>
+      </div>
+      <div class="notes"><b>Lecture squad :</b> M1 demarrage incoherent (residus entre -1.5 et +1), M2 tous proches de zero (squad neutre), <b>M3 tous positifs ensemble</b> (peak collectif, signal de squad-flow), M4 J1 carry (+2.5) pendant que les autres decrochent, M5 neutre, <b>M6-M8 burnout progressif collectif</b> (les 4 traces plongent ensemble). La synchronisation visible directement = info impossible a tirer de 4 mini-charts separes. Le grammaire est differente de Mock 11 par necessite : la comparaison entre coequipiers exige un axe partage centre sur 0. Variante archive (trop ascetique) : voir Mock 13 pour la version enrichie avec bande historique + team_residual.</div>
+    </div>
+
+    <!-- MOCK 13 : Mock 12 enrichi (bande P25-P75 + team_residual fantome) -->
+    <div class="panel">
+      <div class="num">MOCK 13 &middot; Squad session/periode &middot; Compromis B &mdash; bande historique + team_residual</div>
+      <h2>Mock 12 enrichi avec referentiels visibles mais hierarchises</h2>
+      <p class="desc">
+        Reprise de Mock 12 + ajout de deux referentiels manquants : (1) <b>bande translucide
+        P25-P75</b> (zone normale historique de variance des residus, ~[&minus;1.5, +1.5]) et
+        (2) <b>trace team_residual</b> en gris fantome qui montre comment l'equipe alliee a fait
+        par rapport a l'attendu collectif du squad. Hierarchie visuelle marquee : bande quasi
+        invisible, team trace tres pale, joueurs colores au premier plan. Le compte d'elements
+        passe a 6 mais l'oeil n'en distingue que 4 grace au design.
+      </p>
+      <div id="mock13" class="chart-tall"></div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:rgba(139,148,158,0.15);height:8px;width:18px"></span>Zone normale historique (P25-P75)</span>
+        <span class="legend-item"><span class="swatch" style="background:#586069;height:2px"></span>Team_residual (contexte equipe, fantome)</span>
+        <span class="legend-item"><span class="swatch" style="background:#58a6ff;height:5px"></span>Joueur cible</span>
+        <span class="legend-item"><span class="swatch" style="background:#d29922"></span>Coeq. 2</span>
+        <span class="legend-item"><span class="swatch" style="background:#a371f7"></span>Coeq. 3</span>
+        <span class="legend-item"><span class="swatch" style="background:#56d364"></span>Coeq. 4</span>
+        <span class="legend-item"><span class="swatch dashed"></span>Ligne 0</span>
+      </div>
+      <div class="notes"><b>Narration recuperee :</b> on lit maintenant "le squad est dans sa zone normale" (M1-M2 dans la bande), "tout le monde sort par le haut M3 et l'equipe entiere suit" (peak collectif), "M4 J1 carry mais l'equipe est juste au-dessus de neutre", "M6-M8 effondrement collectif, le team trace plonge avec les joueurs sous P25". La bande et la trace fantome donnent le contexte, les couleurs saturees gardent la lecture parallele du squad. <b>Note technique :</b> dans le mock, team_residual = moyenne des residus du squad (proxy). En production, c'est `pace_team_per_player &minus; mean(squad_attendus)`, qui inclut aussi les coequipiers non-squad du match si applicable.</div>
+    </div>
+
+    <!-- MOCK 14 : Two-row hybrid (Mock 11 cible top + Mock 12 squad bottom) -->
+    <div class="panel">
+      <div class="num">MOCK 14 &middot; Squad session/periode &middot; Compromis C &mdash; two-row Mock 11 + Mock 12</div>
+      <h2>Variante luxe : contexte single-player complet en haut + comparaison squad en bas</h2>
+      <p class="desc">
+        Pour les ecrans qui peuvent allouer la hauteur. Top row = Mock 11 du <b>joueur cible</b>
+        en isolation (3 traces equipe/attendu/joueur, contexte single-player complet). Bottom row =
+        Mock 12 squad (4 residus comparatifs). Axes X alignes (memes matchs). L'utilisateur lit
+        haut pour son contexte personnel, bas pour la comparaison avec le squad. Aucun referentiel
+        sacrifie au cout d'une hauteur ecran ~2x.
+      </p>
+      <div id="mock14" class="chart-tall" style="height: 380px"></div>
+      <div class="legend">
+        <span class="legend-item">Haut : Mock 11 du joueur cible (equipe / attendu / joueur)</span>
+        <span class="legend-item">Bas : Mock 12 squad (4 residus colores autour de 0)</span>
+      </div>
+      <div class="notes"><b>Quand preferer Mock 14 a Mock 13 :</b> quand l'utilisateur veut a la fois "comprendre son match" (top) et "se situer dans son squad" (bottom). Trade-off : prend ~2x la place verticale. <b>Quand preferer Mock 13 :</b> espace ecran limite, ou si la lecture squad est l'objectif principal (le top est de la decoration). En pratique, Mock 14 sur la page Squad principale, Mock 13 sur les vignettes/cards compactes.</div>
+    </div>
+
+    <!-- MOCK 15 : Vue equipe + overlay joueur on-demand -->
+    <div class="panel">
+      <div class="num">MOCK 15 &middot; Squad session/periode &middot; vue team + overlay joueur on-demand</div>
+      <h2>Analyse au niveau equipe avec details par joueur sans surcharger</h2>
+      <p class="desc">
+        Vue principale Squad Page : <b>3 courbes team-level toujours visibles</b> (lobby, attendu
+        equipe, equipe observee) raconter "comment l'equipe a fait par rapport a ce qu'elle aurait
+        du faire vu le lobby". Sous le chart, <b>chips squad</b> pour overlay <b>1 joueur a la fois</b>
+        sur le meme row : click une chip ajoute la courbe du joueur sur le chart team. Click la chip
+        active pour la deselectionner. Pas de comparaison inter-joueurs ici (c'est l'objet de
+        Mock 13/14) ; ici on analyse l'equipe et on inspecte un joueur a la fois pour voir ou il se
+        situe par rapport a l'attendu equipe.
+      </p>
+      <div id="mock15" class="chart-tall" style="height: 280px"></div>
+      <div class="m15-chips" role="group" aria-label="Selecteur de joueur a afficher">
+        <span class="m15-chips-label">Afficher joueur :</span>
+        <button class="m15-chip" data-player="0" type="button" aria-pressed="false">
+          <span class="m15-chip-dot" style="background:#58a6ff"></span>
+          <span>Joueur cible</span>
+        </button>
+        <button class="m15-chip" data-player="1" type="button" aria-pressed="false">
+          <span class="m15-chip-dot" style="background:#d29922"></span>
+          <span>Coeq. 2</span>
+        </button>
+        <button class="m15-chip" data-player="2" type="button" aria-pressed="false">
+          <span class="m15-chip-dot" style="background:#a371f7"></span>
+          <span>Coeq. 3</span>
+        </button>
+        <button class="m15-chip" data-player="3" type="button" aria-pressed="false">
+          <span class="m15-chip-dot" style="background:#56d364"></span>
+          <span>Coeq. 4</span>
+        </button>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch dashed"></span>Lobby (pace per player)</span>
+        <span class="legend-item"><span class="swatch" style="background:#8b949e;height:2px;border-top:1px dashed #8b949e"></span>Attendu equipe (= mean coef squad &times; lobby)</span>
+        <span class="legend-item"><span class="swatch" style="background:#444c56;height:3px"></span>Equipe observee</span>
+        <span class="legend-item">+ joueur selectionne (overlay couleur saturee)</span>
+      </div>
+      <div class="notes"><b>Lecture par defaut :</b> on voit immediatement si l'equipe a sur/sous-perengagement son attendu, et son rapport au pace lobby. <b>Click chip :</b> la courbe du joueur s'ajoute, on lit "ou est ce joueur par rapport a l'attendu equipe ?" &mdash; pour une equipe equilibree, un joueur sous l'attendu equipe se dit "j'ai fait moins que ma part attendue". <b>Pour une autre vue :</b> click une autre chip, la courbe precedente disparait, la nouvelle apparait. Cycle rapide pour inspecter chaque membre. <b>Variant v1 archive :</b> 5 rows alignees avec drill-down decomposition (toggle expand/collapse) &mdash; abandonnee parce que trop loin du besoin "analyse equipe", trop proche de la comparaison qui est deja l'objet de Mock 13/14.</div>
+    </div>
+
+  </div>
+
+  <script>
+    // Donnees communes
+    const TIMES = [];
+    for (let t = 0; t <= 720; t += 30) TIMES.push(t);
+
+    const TEAM = [4.0, 4.5, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 13.5, 14.0, 14.0, 13.5, 13.0, 12.5, 11.5, 10.5, 9.5, 8.5, 7.5, 6.5, 5.5, 5.0];
+    const COEF = 1.12;
+    const EXPECTED = TEAM.map(v => +(v * COEF).toFixed(2));
+    const PLAYER = [2.5, 3.5, 5.0, 6.5, 8.5, 10.0, 12.0, 14.0, 16.0, 17.5, 18.5, 17.5, 15.5, 14.0, 12.5, 11.5, 10.5, 9.0, 7.5, 6.5, 5.5, 4.5, 3.5, 3.0, 2.5];
+    const RESIDUAL = PLAYER.map((v, i) => +(v - EXPECTED[i]).toFixed(2));
+
+    // Format axe X en mm:ss
+    function fmtTime(s) {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return m + ':' + (sec < 10 ? '0' : '') + sec;
+    }
+    const TIME_LABELS = TIMES.map(fmtTime);
+
+    // Deaths : t (s), type ('passive' | 'active'), recovery_until (s)
+    const DEATHS = [
+      { t: 100, type: 'passive', recovery: 145 },
+      { t: 320, type: 'active',  recovery: 340 },
+      { t: 510, type: 'active',  recovery: 530 },
+      { t: 670, type: 'passive', recovery: 700 }
+    ];
+
+    const C_TEAM = '#6e7681';
+    const C_EXPECTED = '#8b949e';
+    const C_PLAYER = '#58a6ff';
+    const C_GREEN = '#3fb950';
+    const C_RED = '#f85149';
+    const C_ORANGE = '#d29922';
+    const C_GRID = '#21262d';
+    const C_AXIS = '#30363d';
+    const C_TEXT = '#8b949e';
+    const FONT = '-apple-system, system-ui, "Segoe UI", sans-serif';
+
+    function baseAxis(maxY, opts = {}) {
+      return {
+        grid: { left: 50, right: 24, top: 18, bottom: 32 },
+        xAxis: {
+          type: 'category',
+          data: TIME_LABELS,
+          axisLine: { lineStyle: { color: C_AXIS } },
+          axisTick: { show: false },
+          axisLabel: { color: C_TEXT, fontSize: 10, fontFamily: FONT, interval: 2 },
+          name: 'temps (mm:ss)',
+          nameLocation: 'middle',
+          nameGap: 22,
+          nameTextStyle: { color: C_TEXT, fontSize: 10, fontFamily: FONT }
+        },
+        yAxis: {
+          type: 'value',
+          min: opts.min !== undefined ? opts.min : 0,
+          max: maxY,
+          splitLine: { lineStyle: { color: C_GRID, type: 'solid' } },
+          axisLine: { show: false },
+          axisLabel: { color: C_TEXT, fontSize: 10, fontFamily: FONT },
+          name: opts.yName || 'events / min',
+          nameLocation: 'middle',
+          nameGap: 36,
+          nameTextStyle: { color: C_TEXT, fontSize: 10, fontFamily: FONT }
+        }
+      };
+    }
+
+    function deathMarkPoints() {
+      return DEATHS.map(d => ({
+        coord: [Math.round(d.t / 30), 0.5],
+        symbol: d.type === 'passive' ? 'triangle' : 'circle',
+        symbolSize: d.type === 'passive' ? 12 : 8,
+        symbolRotate: 180,
+        itemStyle: {
+          color: d.type === 'passive' ? C_RED : C_TEXT,
+          borderColor: d.type === 'passive' ? C_RED : C_TEXT,
+          borderWidth: 1
+        },
+        label: {
+          show: true,
+          formatter: d.type === 'passive' ? 'M' : '·',
+          position: 'top',
+          color: C_TEXT,
+          fontSize: 9
+        }
+      }));
+    }
+
+    function deathMarkAreas() {
+      return DEATHS.map(d => [
+        {
+          xAxis: Math.round(d.t / 30),
+          itemStyle: { color: 'rgba(248,81,73,0.08)' }
+        },
+        {
+          xAxis: Math.round(d.recovery / 30)
+        }
+      ]);
+    }
+
+    // -------- MOCK 1 : 3 traces canonical
+    echarts.init(document.getElementById('mock1')).setOption({
+      ...baseAxis(20),
+      tooltip: { trigger: 'axis', backgroundColor: '#0d1117', borderColor: C_AXIS, textStyle: { color: '#e6edf3', fontSize: 11 } },
+      series: [
+        {
+          name: 'Equipe alliee',
+          type: 'line',
+          data: TEAM,
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: C_TEAM, width: 2 },
+          z: 1
+        },
+        {
+          name: 'Attendu',
+          type: 'line',
+          data: EXPECTED,
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: C_EXPECTED, width: 2, type: 'dashed' },
+          z: 2
+        },
+        {
+          name: 'Joueur',
+          type: 'line',
+          data: PLAYER,
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: C_PLAYER, width: 2.5 },
+          z: 3
+        }
+      ]
+    });
+
+    // -------- MOCK 2 : residu signe seul
+    echarts.init(document.getElementById('mock2')).setOption({
+      ...baseAxis(8, { min: -8, yName: 'ecart joueur - attendu' }),
+      grid: { left: 50, right: 24, top: 18, bottom: 32 },
+      tooltip: { trigger: 'axis', backgroundColor: '#0d1117', borderColor: C_AXIS, textStyle: { color: '#e6edf3', fontSize: 11 } },
+      series: [
+        {
+          name: 'Au-dessus de l\'attendu',
+          type: 'line',
+          data: RESIDUAL.map(v => v >= 0 ? v : null),
+          smooth: true,
+          symbol: 'none',
+          areaStyle: { color: 'rgba(63,185,80,0.4)' },
+          lineStyle: { color: C_GREEN, width: 2 },
+          connectNulls: false
+        },
+        {
+          name: 'Sous l\'attendu',
+          type: 'line',
+          data: RESIDUAL.map(v => v < 0 ? v : null),
+          smooth: true,
+          symbol: 'none',
+          areaStyle: { color: 'rgba(248,81,73,0.4)' },
+          lineStyle: { color: C_RED, width: 2 },
+          connectNulls: false
+        },
+        {
+          type: 'line',
+          data: RESIDUAL.map(() => 0),
+          symbol: 'none',
+          lineStyle: { color: C_AXIS, width: 1, type: 'solid' },
+          z: 0
+        }
+      ]
+    });
+
+    // -------- MOCK 3 : hybride (3 traces + gap shading + annotations)
+    echarts.init(document.getElementById('mock3')).setOption({
+      ...baseAxis(20),
+      tooltip: { trigger: 'axis', backgroundColor: '#0d1117', borderColor: C_AXIS, textStyle: { color: '#e6edf3', fontSize: 11 } },
+      series: [
+        {
+          name: 'Equipe',
+          type: 'line',
+          data: TEAM,
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: C_TEAM, width: 2 },
+          z: 1
+        },
+        {
+          name: 'Attendu',
+          type: 'line',
+          data: EXPECTED,
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: C_EXPECTED, width: 1.5, type: 'dashed' },
+          z: 2,
+          areaStyle: { color: 'rgba(0,0,0,0)' }
+        },
+        // Gap shading vert (joueur au-dessus de attendu)
+        {
+          name: 'Au-dessus',
+          type: 'line',
+          data: PLAYER.map((v, i) => v > EXPECTED[i] ? v : EXPECTED[i]),
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: 'transparent', width: 0 },
+          areaStyle: { color: 'rgba(63,185,80,0.18)', origin: 'start' },
+          stack: 'gap',
+          z: 0
+        },
+        // Gap shading rouge (joueur en-dessous de attendu)
+        {
+          name: 'Sous',
+          type: 'line',
+          data: PLAYER.map((v, i) => v < EXPECTED[i] ? EXPECTED[i] - v : 0),
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: 'transparent', width: 0 },
+          areaStyle: { color: 'rgba(248,81,73,0.18)' },
+          z: 0,
+          // Trick : ne fait pas de stack, on dessine sous attendu
+          // Pour ce mockup, simplification visuelle ci-dessous
+        },
+        {
+          name: 'Joueur',
+          type: 'line',
+          data: PLAYER,
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: C_PLAYER, width: 2.5 },
+          z: 5,
+          markPoint: {
+            data: deathMarkPoints(),
+            silent: true
+          },
+          markArea: {
+            silent: true,
+            data: deathMarkAreas()
+          }
+        }
+      ]
+    });
+
+    // -------- MOCK 4 : sparkline pour la carte synthese
+    echarts.init(document.getElementById('mock4spark')).setOption({
+      grid: { left: 0, right: 0, top: 6, bottom: 6 },
+      xAxis: { type: 'category', show: false, data: TIME_LABELS },
+      yAxis: { type: 'value', show: false, min: -8, max: 8 },
+      series: [
+        {
+          type: 'line',
+          data: RESIDUAL.map(v => v >= 0 ? v : null),
+          smooth: true,
+          symbol: 'none',
+          areaStyle: { color: 'rgba(63,185,80,0.5)' },
+          lineStyle: { color: C_GREEN, width: 1.5 },
+          connectNulls: false
+        },
+        {
+          type: 'line',
+          data: RESIDUAL.map(v => v < 0 ? v : null),
+          smooth: true,
+          symbol: 'none',
+          areaStyle: { color: 'rgba(248,81,73,0.5)' },
+          lineStyle: { color: C_RED, width: 1.5 },
+          connectNulls: false
+        }
+      ]
+    });
+
+    // -------- MOCK 5 : Session option B (batons positifs colores)
+    const SESSION_SCORES = [35, 48, 62, 71, 68, 55, 38, 28];
+    const SESSION_LABELS = SESSION_SCORES.map((_, i) => 'M' + (i + 1));
+    const P25 = 40, P75 = 60;
+    function colorForScore(s) {
+      if (s >= P75) return C_GREEN;
+      if (s >= P25) return C_ORANGE;
+      return C_RED;
+    }
+
+    echarts.init(document.getElementById('mock5')).setOption({
+      grid: { left: 50, right: 24, top: 16, bottom: 32 },
+      tooltip: { trigger: 'axis', backgroundColor: '#0d1117', borderColor: C_AXIS, textStyle: { color: '#e6edf3', fontSize: 11 } },
+      xAxis: {
+        type: 'category',
+        data: SESSION_LABELS,
+        axisLine: { lineStyle: { color: C_AXIS } },
+        axisTick: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 11, fontFamily: FONT },
+        name: 'matchs consecutifs',
+        nameLocation: 'middle',
+        nameGap: 22,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: 100,
+        splitLine: { lineStyle: { color: C_GRID } },
+        axisLine: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 10 },
+        name: 'EngagementScore (0-100)',
+        nameLocation: 'middle',
+        nameGap: 36,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      series: [
+        // Bande P25-P75 (markArea)
+        {
+          name: 'Bande P25-P75',
+          type: 'bar',
+          data: SESSION_SCORES.map(() => null),
+          markArea: {
+            silent: true,
+            data: [[
+              { yAxis: P25, itemStyle: { color: 'rgba(255,255,255,0.04)' } },
+              { yAxis: P75 }
+            ]]
+          }
+        },
+        {
+          name: 'EngagementScore',
+          type: 'bar',
+          data: SESSION_SCORES.map(s => ({
+            value: s,
+            itemStyle: { color: colorForScore(s), borderRadius: 0 }
+          })),
+          barWidth: 32,
+          label: {
+            show: true,
+            position: 'top',
+            color: '#e6edf3',
+            fontSize: 11,
+            fontWeight: 600
+          }
+        }
+      ]
+    });
+
+    // -------- MOCK 6 : Session option A (batons signes centres sur zero)
+    const SESSION_DELTAS = SESSION_SCORES.map(s => s - 50);  // delta vs neutral
+    echarts.init(document.getElementById('mock6')).setOption({
+      grid: { left: 50, right: 24, top: 16, bottom: 32 },
+      tooltip: { trigger: 'axis', backgroundColor: '#0d1117', borderColor: C_AXIS, textStyle: { color: '#e6edf3', fontSize: 11 } },
+      xAxis: {
+        type: 'category',
+        data: SESSION_LABELS,
+        axisLine: { onZero: true, lineStyle: { color: C_AXIS } },
+        axisTick: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 11, fontFamily: FONT, margin: 18 },
+        name: 'matchs consecutifs',
+        nameLocation: 'middle',
+        nameGap: 26,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        min: -30,
+        max: 30,
+        splitLine: { lineStyle: { color: C_GRID } },
+        axisLine: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 10 },
+        name: 'delta vs neutre (50)',
+        nameLocation: 'middle',
+        nameGap: 36,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      series: [
+        {
+          name: 'Delta',
+          type: 'bar',
+          data: SESSION_DELTAS.map(d => ({
+            value: d,
+            itemStyle: {
+              color: d >= 10 ? C_GREEN : (d <= -10 ? C_RED : C_ORANGE),
+              borderRadius: 0
+            }
+          })),
+          barWidth: 32,
+          label: {
+            show: true,
+            position: 'top',
+            color: '#e6edf3',
+            fontSize: 11,
+            fontWeight: 600,
+            formatter: p => (p.value > 0 ? '+' : '') + p.value
+          }
+        }
+      ]
+    });
+
+    // -------- MOCK 7 : Timeseries long (batons agreges par session, largeur variable)
+    // 12 sessions : [meanEngagementScore, nbMatchs]
+    const SESSIONS = [
+      { id: 'S1', score: 50, n: 4 },
+      { id: 'S2', score: 55, n: 6 },
+      { id: 'S3', score: 48, n: 5 },
+      { id: 'S4', score: 35, n: 7 },
+      { id: 'S5', score: 38, n: 5 },
+      { id: 'S6', score: 52, n: 8 },
+      { id: 'S7', score: 62, n: 6 },
+      { id: 'S8', score: 67, n: 5 },
+      { id: 'S9', score: 70, n: 7 },
+      { id: 'S10', score: 58, n: 4 },
+      { id: 'S11', score: 55, n: 6 },
+      { id: 'S12', score: 60, n: 5 }
+    ];
+    const totalMatches = SESSIONS.reduce((s, x) => s + x.n, 0);
+    // Coordonnee X cumulative (chaque session = sa largeur en n matchs)
+    let xAcc = 0;
+    const customData = SESSIONS.map(s => {
+      const x0 = xAcc;
+      const x1 = xAcc + s.n;
+      xAcc = x1;
+      return [x0, x1, s.score, s.id, s.n];
+    });
+
+    echarts.init(document.getElementById('mock7')).setOption({
+      grid: { left: 50, right: 24, top: 16, bottom: 36 },
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: '#0d1117',
+        borderColor: C_AXIS,
+        textStyle: { color: '#e6edf3', fontSize: 11 },
+        formatter: p => {
+          const [x0, x1, score, id, n] = p.data;
+          return `<b>${id}</b><br>EngagementScore moyen : <b>${score}</b><br>Matchs : ${n}`;
+        }
+      },
+      xAxis: {
+        type: 'value',
+        min: 0,
+        max: totalMatches,
+        splitLine: { show: false },
+        axisLine: { lineStyle: { color: C_AXIS } },
+        axisTick: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 10 },
+        name: 'matchs cumules (echelle proportionnelle)',
+        nameLocation: 'middle',
+        nameGap: 22,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: 100,
+        splitLine: { lineStyle: { color: C_GRID } },
+        axisLine: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 10 },
+        name: 'EngagementScore moyen',
+        nameLocation: 'middle',
+        nameGap: 36,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      series: [
+        {
+          // Bande P25-P75
+          type: 'custom',
+          renderItem: (params, api) => {
+            const ymin = api.coord([0, P25]);
+            const ymax = api.coord([0, P75]);
+            const xmax = api.coord([totalMatches, 0]);
+            return {
+              type: 'rect',
+              shape: {
+                x: ymin[0],
+                y: ymax[1],
+                width: xmax[0] - ymin[0],
+                height: ymin[1] - ymax[1]
+              },
+              style: { fill: 'rgba(255,255,255,0.04)' }
+            };
+          },
+          data: [[0]],
+          z: 0
+        },
+        {
+          name: 'Sessions',
+          type: 'custom',
+          renderItem: (params, api) => {
+            const x0 = api.coord([api.value(0), 0]);
+            const x1 = api.coord([api.value(1), 0]);
+            const yTop = api.coord([0, api.value(2)]);
+            const yBot = api.coord([0, 0]);
+            const score = api.value(2);
+            const id = api.value(3);
+            const color = score >= P75 ? C_GREEN : (score >= P25 ? C_ORANGE : C_RED);
+            const w = x1[0] - x0[0] - 2;
+            return {
+              type: 'group',
+              children: [
+                {
+                  type: 'rect',
+                  shape: {
+                    x: x0[0] + 1,
+                    y: yTop[1],
+                    width: w,
+                    height: yBot[1] - yTop[1]
+                  },
+                  style: { fill: color }
+                },
+                {
+                  type: 'text',
+                  style: {
+                    text: id,
+                    x: x0[0] + 1 + w / 2,
+                    y: yTop[1] - 8,
+                    textAlign: 'center',
+                    fill: C_TEXT,
+                    fontSize: 10
+                  }
+                },
+                {
+                  type: 'text',
+                  style: {
+                    text: score,
+                    x: x0[0] + 1 + w / 2,
+                    y: yTop[1] + 12,
+                    textAlign: 'center',
+                    fill: '#fff',
+                    fontSize: 11,
+                    fontWeight: 600
+                  }
+                }
+              ]
+            };
+          },
+          encode: { x: [0, 1], y: 2 },
+          data: customData,
+          z: 2
+        }
+      ]
+    });
+
+    // -------- MOCK 8 : Mock 1 transpose a la session (3 traces, 1 point/match)
+    const SESSION_TEAM     = [11.0, 11.5, 12.0, 11.5, 12.0, 11.0, 12.0, 11.5];
+    const SESSION_EXPECTED = SESSION_TEAM.map(v => +(v * COEF).toFixed(2));
+    const SESSION_PLAYER   = [9.5, 11.5, 14.5, 16.0, 15.5, 12.5, 10.5, 8.5];
+
+    echarts.init(document.getElementById('mock8')).setOption({
+      grid: { left: 50, right: 24, top: 18, bottom: 32 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: '#0d1117',
+        borderColor: C_AXIS,
+        textStyle: { color: '#e6edf3', fontSize: 11 }
+      },
+      legend: { show: false },
+      xAxis: {
+        type: 'category',
+        data: SESSION_LABELS,
+        axisLine: { lineStyle: { color: C_AXIS } },
+        axisTick: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 11, fontFamily: FONT },
+        name: 'matchs consecutifs',
+        nameLocation: 'middle',
+        nameGap: 22,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: 20,
+        splitLine: { lineStyle: { color: C_GRID } },
+        axisLine: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 10 },
+        name: 'events / min (mean per match)',
+        nameLocation: 'middle',
+        nameGap: 36,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      series: [
+        {
+          name: 'Equipe alliee',
+          type: 'line',
+          data: SESSION_TEAM,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { color: C_TEAM, width: 2 },
+          itemStyle: { color: C_TEAM },
+          z: 1
+        },
+        {
+          name: 'Attendu',
+          type: 'line',
+          data: SESSION_EXPECTED,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { color: C_EXPECTED, width: 2, type: 'dashed' },
+          itemStyle: { color: C_EXPECTED },
+          z: 2
+        },
+        {
+          name: 'Joueur',
+          type: 'line',
+          data: SESSION_PLAYER,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 8,
+          lineStyle: { color: C_PLAYER, width: 2.5 },
+          itemStyle: { color: C_PLAYER },
+          z: 3
+        }
+      ]
+    });
+
+    // -------- MOCK 9 : 2-lignes (lignes continues du haut + batons alignes en bas)
+    echarts.init(document.getElementById('mock9')).setOption({
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross', crossStyle: { color: C_TEXT } },
+        backgroundColor: '#0d1117',
+        borderColor: C_AXIS,
+        textStyle: { color: '#e6edf3', fontSize: 11 }
+      },
+      axisPointer: { link: [{ xAxisIndex: 'all' }] },
+      grid: [
+        { left: 50, right: 24, top: 12, height: '52%' },
+        { left: 50, right: 24, top: '70%', height: '20%' }
+      ],
+      xAxis: [
+        {
+          type: 'category',
+          gridIndex: 0,
+          data: SESSION_LABELS,
+          axisLine: { lineStyle: { color: C_AXIS } },
+          axisTick: { show: false },
+          axisLabel: { show: false }
+        },
+        {
+          type: 'category',
+          gridIndex: 1,
+          data: SESSION_LABELS,
+          axisLine: { lineStyle: { color: C_AXIS } },
+          axisTick: { show: false },
+          axisLabel: { color: C_TEXT, fontSize: 11, fontFamily: FONT }
+        }
+      ],
+      yAxis: [
+        {
+          type: 'value',
+          gridIndex: 0,
+          min: 0,
+          max: 20,
+          splitLine: { lineStyle: { color: C_GRID } },
+          axisLine: { show: false },
+          axisLabel: { color: C_TEXT, fontSize: 10 },
+          name: 'events / min',
+          nameLocation: 'middle',
+          nameGap: 36,
+          nameTextStyle: { color: C_TEXT, fontSize: 10 }
+        },
+        {
+          type: 'value',
+          gridIndex: 1,
+          min: 0,
+          max: 100,
+          splitLine: { lineStyle: { color: C_GRID } },
+          axisLine: { show: false },
+          axisLabel: { color: C_TEXT, fontSize: 10 },
+          name: 'EngagementScore',
+          nameLocation: 'middle',
+          nameGap: 36,
+          nameTextStyle: { color: C_TEXT, fontSize: 10 }
+        }
+      ],
+      series: [
+        {
+          name: 'Equipe',
+          type: 'line',
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          data: SESSION_TEAM,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { color: C_TEAM, width: 2 },
+          itemStyle: { color: C_TEAM }
+        },
+        {
+          name: 'Attendu',
+          type: 'line',
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          data: SESSION_EXPECTED,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { color: C_EXPECTED, width: 2, type: 'dashed' },
+          itemStyle: { color: C_EXPECTED }
+        },
+        {
+          name: 'Joueur',
+          type: 'line',
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          data: SESSION_PLAYER,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 8,
+          lineStyle: { color: C_PLAYER, width: 2.5 },
+          itemStyle: { color: C_PLAYER }
+        },
+        {
+          name: 'EngagementScore',
+          type: 'bar',
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          data: SESSION_SCORES.map(s => ({
+            value: s,
+            itemStyle: { color: colorForScore(s), borderRadius: 0 }
+          })),
+          barWidth: 28,
+          markArea: {
+            silent: true,
+            data: [[
+              { yAxis: P25, itemStyle: { color: 'rgba(255,255,255,0.04)' } },
+              { yAxis: P75 }
+            ]]
+          },
+          label: {
+            show: true,
+            position: 'top',
+            color: '#e6edf3',
+            fontSize: 10,
+            fontWeight: 600
+          }
+        }
+      ]
+    });
+
+    // -------- MOCK 13 : Squad enrichi avec bande P25-P75 + team_residual fantome
+    // (defini en bas, juste avant Mock 12 pour reutiliser ses constantes)
+
+    // -------- MOCK 14 : Two-row hybrid (Mock 11 cible top + Mock 12 squad bottom)
+    // (defini en bas pour reutiliser SQUAD constants)
+
+    // -------- MOCK 12 : Squad session/periode (2-4 joueurs, residus signes)
+    const SQUAD_LABELS = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8'];
+    // Residus par joueur : ecart vs son propre attendu, par match
+    const SQUAD_PLAYER_TARGET = [-0.5, 0.5, 2.0, 2.5, 1.5, -0.5, -1.0, -2.0];
+    const SQUAD_PLAYER_2      = [-1.0, 0.5, 1.5, -0.5, 0.0, -1.5, -1.5, -2.5];
+    const SQUAD_PLAYER_3      = [ 1.0, 0.0, 1.0, -1.0, 0.5, -1.0,  0.5, -1.5];
+    const SQUAD_PLAYER_4      = [-1.5, -0.5, 1.0, 0.5, -1.0, -2.0, -2.0, -3.0];
+
+    const _allSquad = [...SQUAD_PLAYER_TARGET, ...SQUAD_PLAYER_2, ...SQUAD_PLAYER_3, ...SQUAD_PLAYER_4];
+    const _squadYMin = Math.floor(Math.min(..._allSquad) - 1);
+    const _squadYMax = Math.ceil(Math.max(..._allSquad) + 1);
+
+    const C_SQUAD_2 = '#d29922';
+    const C_SQUAD_3 = '#a371f7';
+    const C_SQUAD_4 = '#56d364';
+
+    echarts.init(document.getElementById('mock12')).setOption({
+      grid: { left: 50, right: 24, top: 32, bottom: 32 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: '#0d1117',
+        borderColor: C_AXIS,
+        textStyle: { color: '#e6edf3', fontSize: 11 }
+      },
+      legend: {
+        show: true,
+        top: 4,
+        textStyle: { color: C_TEXT, fontSize: 11 },
+        itemGap: 16,
+        data: ['Joueur cible', 'Coeq. 2', 'Coeq. 3', 'Coeq. 4']
+      },
+      xAxis: {
+        type: 'category',
+        data: SQUAD_LABELS,
+        axisLine: { lineStyle: { color: C_AXIS } },
+        axisTick: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 11, fontFamily: FONT },
+        name: 'matchs joues ensemble',
+        nameLocation: 'middle',
+        nameGap: 22,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        min: _squadYMin,
+        max: _squadYMax,
+        splitLine: { lineStyle: { color: C_GRID } },
+        axisLine: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 10 },
+        name: 'ecart vs attendu personnel (events/min, auto-zoom ' + _squadYMin + '..' + _squadYMax + ')',
+        nameLocation: 'middle',
+        nameGap: 36,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      series: [
+        // Ligne de reference 0 = exactement a l'attendu personnel
+        {
+          type: 'line',
+          data: SQUAD_LABELS.map(() => 0),
+          symbol: 'none',
+          lineStyle: { color: C_AXIS, width: 1, type: 'dashed' },
+          z: 0,
+          silent: true
+        },
+        {
+          name: 'Joueur cible',
+          type: 'line',
+          data: SQUAD_PLAYER_TARGET,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 9,
+          lineStyle: { color: C_PLAYER, width: 4 },
+          itemStyle: { color: C_PLAYER },
+          z: 5
+        },
+        {
+          name: 'Coeq. 2',
+          type: 'line',
+          data: SQUAD_PLAYER_2,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { color: C_SQUAD_2, width: 2.5 },
+          itemStyle: { color: C_SQUAD_2 },
+          z: 4
+        },
+        {
+          name: 'Coeq. 3',
+          type: 'line',
+          data: SQUAD_PLAYER_3,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { color: C_SQUAD_3, width: 2.5 },
+          itemStyle: { color: C_SQUAD_3 },
+          z: 3
+        },
+        {
+          name: 'Coeq. 4',
+          type: 'line',
+          data: SQUAD_PLAYER_4,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { color: C_SQUAD_4, width: 2.5 },
+          itemStyle: { color: C_SQUAD_4 },
+          z: 2
+        }
+      ]
+    });
+
+    // -------- MOCK 11 : Mock 8 (session) sur donnees realistes avec auto-zoom + hierarchie visuelle
+    const BAL_SESSION_TEAM     = [11.0, 11.5, 12.0, 12.0, 11.5, 11.0, 11.0, 10.5];
+    const BAL_SESSION_COEF     = 1.05;
+    const BAL_SESSION_EXPECTED = BAL_SESSION_TEAM.map(v => +(v * BAL_SESSION_COEF).toFixed(2));
+    const BAL_SESSION_PLAYER   = [10.5, 11.5, 13.0, 13.5, 13.0, 11.0, 10.5, 9.5];
+    const _allBalSession = [...BAL_SESSION_TEAM, ...BAL_SESSION_EXPECTED, ...BAL_SESSION_PLAYER];
+    const _balYMin = Math.floor(Math.min(..._allBalSession) - 1);
+    const _balYMax = Math.ceil(Math.max(..._allBalSession) + 1);
+
+    echarts.init(document.getElementById('mock11')).setOption({
+      grid: { left: 50, right: 24, top: 18, bottom: 32 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: '#0d1117',
+        borderColor: C_AXIS,
+        textStyle: { color: '#e6edf3', fontSize: 11 }
+      },
+      xAxis: {
+        type: 'category',
+        data: SESSION_LABELS,
+        axisLine: { lineStyle: { color: C_AXIS } },
+        axisTick: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 11, fontFamily: FONT },
+        name: 'matchs consecutifs',
+        nameLocation: 'middle',
+        nameGap: 22,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        min: _balYMin,
+        max: _balYMax,
+        splitLine: { lineStyle: { color: C_GRID } },
+        axisLine: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 10 },
+        name: 'events / min (auto-zoom ' + _balYMin + '-' + _balYMax + ')',
+        nameLocation: 'middle',
+        nameGap: 36,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      series: [
+        {
+          name: 'Equipe alliee',
+          type: 'line',
+          data: BAL_SESSION_TEAM,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 5,
+          lineStyle: { color: '#444c56', width: 1.5 },
+          itemStyle: { color: '#444c56' },
+          z: 1
+        },
+        {
+          name: 'Attendu',
+          type: 'line',
+          data: BAL_SESSION_EXPECTED,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 5,
+          lineStyle: { color: C_EXPECTED, width: 1.5, type: 'dashed' },
+          itemStyle: { color: C_EXPECTED },
+          z: 2
+        },
+        {
+          name: 'Joueur',
+          type: 'line',
+          data: BAL_SESSION_PLAYER,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 9,
+          lineStyle: { color: C_PLAYER, width: 4 },
+          itemStyle: { color: C_PLAYER, borderColor: C_PLAYER, borderWidth: 2 },
+          z: 5
+        }
+      ]
+    });
+
+    // -------- MOCK 10 : match equilibre realiste avec auto-zoom Y + hierarchie visuelle
+    const BALANCED_TEAM = [10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0, 13.0, 12.5, 12.0, 12.0, 11.5, 11.5, 11.0, 11.0, 10.5, 10.0, 10.0, 10.5, 11.0, 11.5, 11.0, 10.5, 10.0, 9.5];
+    const BALANCED_COEF = 1.05;
+    const BALANCED_EXPECTED = BALANCED_TEAM.map(v => +(v * BALANCED_COEF).toFixed(2));
+    const BALANCED_PLAYER = [9.5, 10.5, 11.0, 11.5, 12.5, 13.5, 14.5, 14.0, 13.5, 13.0, 12.5, 12.0, 11.5, 11.0, 11.0, 10.5, 9.5, 10.0, 11.0, 12.0, 12.5, 11.0, 10.0, 9.5, 9.0];
+
+    // Auto-zoom Y : calcul du range data avec un peu de padding
+    const _allBalanced = [...BALANCED_TEAM, ...BALANCED_EXPECTED, ...BALANCED_PLAYER];
+    const _yMin = Math.floor(Math.min(..._allBalanced) - 1);
+    const _yMax = Math.ceil(Math.max(..._allBalanced) + 1);
+
+    echarts.init(document.getElementById('mock10')).setOption({
+      grid: { left: 50, right: 24, top: 18, bottom: 32 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: '#0d1117',
+        borderColor: C_AXIS,
+        textStyle: { color: '#e6edf3', fontSize: 11 }
+      },
+      xAxis: {
+        type: 'category',
+        data: TIME_LABELS,
+        axisLine: { lineStyle: { color: C_AXIS } },
+        axisTick: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 10, fontFamily: FONT, interval: 2 },
+        name: 'temps (mm:ss)',
+        nameLocation: 'middle',
+        nameGap: 22,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        min: _yMin,
+        max: _yMax,
+        splitLine: { lineStyle: { color: C_GRID } },
+        axisLine: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 10 },
+        name: 'events / min (auto-zoom ' + _yMin + '-' + _yMax + ')',
+        nameLocation: 'middle',
+        nameGap: 36,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      series: [
+        {
+          // Equipe : trace tres effacee, plus fine, gris fonce/discret
+          name: 'Equipe alliee',
+          type: 'line',
+          data: BALANCED_TEAM,
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: '#444c56', width: 1.5 },
+          z: 1
+        },
+        {
+          // Attendu : trace fine pointillee gris medium
+          name: 'Attendu',
+          type: 'line',
+          data: BALANCED_EXPECTED,
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: C_EXPECTED, width: 1.5, type: 'dashed' },
+          z: 2
+        },
+        {
+          // Joueur : trace epaisse et saturee, qui pop meme si proche de l'attendu
+          name: 'Joueur',
+          type: 'line',
+          data: BALANCED_PLAYER,
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { color: C_PLAYER, width: 4 },
+          z: 5
+        }
+      ]
+    });
+
+    // -------- MOCK 13 : Squad enrichi (bande P25-P75 + team_residual fantome)
+    // team_residual = moyenne des residus des squad members par match (proxy)
+    const SQUAD_TEAM_RESIDUAL = SQUAD_LABELS.map((_, i) =>
+      +((SQUAD_PLAYER_TARGET[i] + SQUAD_PLAYER_2[i] + SQUAD_PLAYER_3[i] + SQUAD_PLAYER_4[i]) / 4).toFixed(2)
+    );
+
+    echarts.init(document.getElementById('mock13')).setOption({
+      grid: { left: 50, right: 24, top: 32, bottom: 32 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: '#0d1117',
+        borderColor: C_AXIS,
+        textStyle: { color: '#e6edf3', fontSize: 11 }
+      },
+      legend: {
+        show: true,
+        top: 4,
+        textStyle: { color: C_TEXT, fontSize: 11 },
+        itemGap: 14,
+        data: ['Team residual', 'Joueur cible', 'Coeq. 2', 'Coeq. 3', 'Coeq. 4']
+      },
+      xAxis: {
+        type: 'category',
+        data: SQUAD_LABELS,
+        axisLine: { lineStyle: { color: C_AXIS } },
+        axisTick: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 11, fontFamily: FONT },
+        name: 'matchs joues ensemble',
+        nameLocation: 'middle',
+        nameGap: 22,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        min: _squadYMin,
+        max: _squadYMax,
+        splitLine: { lineStyle: { color: C_GRID } },
+        axisLine: { show: false },
+        axisLabel: { color: C_TEXT, fontSize: 10 },
+        name: 'ecart vs attendu (events/min, auto-zoom)',
+        nameLocation: 'middle',
+        nameGap: 36,
+        nameTextStyle: { color: C_TEXT, fontSize: 10 }
+      },
+      series: [
+        // Bande P25-P75 (zone normale historique)
+        {
+          name: 'Zone normale',
+          type: 'line',
+          data: SQUAD_LABELS.map(() => null),
+          markArea: {
+            silent: true,
+            data: [[
+              { yAxis: -1.5, itemStyle: { color: 'rgba(139,148,158,0.10)' } },
+              { yAxis: 1.5 }
+            ]]
+          }
+        },
+        // Ligne 0 dashed (reference attendu personnel)
+        {
+          type: 'line',
+          data: SQUAD_LABELS.map(() => 0),
+          symbol: 'none',
+          lineStyle: { color: C_AXIS, width: 1, type: 'dashed' },
+          z: 0,
+          silent: true,
+          legendHoverLink: false,
+          showInLegend: false
+        },
+        // Team residual : tres pale, fine, sans markers, fantome
+        {
+          name: 'Team residual',
+          type: 'line',
+          data: SQUAD_TEAM_RESIDUAL,
+          smooth: false,
+          symbol: 'none',
+          lineStyle: { color: '#586069', width: 1.5, opacity: 0.7 },
+          itemStyle: { color: '#586069' },
+          z: 1
+        },
+        // Joueur cible : epais, sature
+        {
+          name: 'Joueur cible',
+          type: 'line',
+          data: SQUAD_PLAYER_TARGET,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 9,
+          lineStyle: { color: C_PLAYER, width: 4 },
+          itemStyle: { color: C_PLAYER },
+          z: 5
+        },
+        {
+          name: 'Coeq. 2',
+          type: 'line',
+          data: SQUAD_PLAYER_2,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { color: C_SQUAD_2, width: 2.5 },
+          itemStyle: { color: C_SQUAD_2 },
+          z: 4
+        },
+        {
+          name: 'Coeq. 3',
+          type: 'line',
+          data: SQUAD_PLAYER_3,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { color: C_SQUAD_3, width: 2.5 },
+          itemStyle: { color: C_SQUAD_3 },
+          z: 3
+        },
+        {
+          name: 'Coeq. 4',
+          type: 'line',
+          data: SQUAD_PLAYER_4,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { color: C_SQUAD_4, width: 2.5 },
+          itemStyle: { color: C_SQUAD_4 },
+          z: 2
+        }
+      ]
+    });
+
+    // -------- MOCK 14 : Two-row hybrid (Mock 11 cible top + squad residus bottom)
+    // Cible : on reutilise BAL_SESSION_TEAM/EXPECTED/PLAYER de Mock 11
+    // Residu cible derive : BAL_SESSION_PLAYER - BAL_SESSION_EXPECTED
+    const M14_TARGET_RESIDUAL = BAL_SESSION_PLAYER.map((v, i) =>
+      +(v - BAL_SESSION_EXPECTED[i]).toFixed(2)
+    );
+    // 3 coequipiers fictifs avec residus realistes coherents avec la session "balanced"
+    const M14_SQUAD_2 = [-0.5,  0.2,  0.7, -0.5,  0.1, -1.0, -1.5, -2.0];
+    const M14_SQUAD_3 = [ 0.5, -0.2,  0.5, -0.3,  0.5, -0.7,  0.0, -1.0];
+    const M14_SQUAD_4 = [-1.5, -0.7,  0.3,  0.0, -0.8, -1.5, -2.0, -2.5];
+
+    const _allM14Bot = [...M14_TARGET_RESIDUAL, ...M14_SQUAD_2, ...M14_SQUAD_3, ...M14_SQUAD_4];
+    const _m14YMin = Math.floor(Math.min(..._allM14Bot) - 1);
+    const _m14YMax = Math.ceil(Math.max(..._allM14Bot) + 1);
+
+    echarts.init(document.getElementById('mock14')).setOption({
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross', crossStyle: { color: C_TEXT } },
+        backgroundColor: '#0d1117',
+        borderColor: C_AXIS,
+        textStyle: { color: '#e6edf3', fontSize: 11 }
+      },
+      axisPointer: { link: [{ xAxisIndex: 'all' }] },
+      grid: [
+        { left: 50, right: 24, top: 30, height: '46%' },
+        { left: 50, right: 24, top: '70%', height: '23%' }
+      ],
+      legend: [
+        {
+          show: true,
+          top: 4,
+          left: 50,
+          textStyle: { color: C_TEXT, fontSize: 10 },
+          itemGap: 14,
+          data: ['Equipe alliee', 'Attendu', 'Joueur cible']
+        }
+      ],
+      xAxis: [
+        {
+          type: 'category',
+          gridIndex: 0,
+          data: SESSION_LABELS,
+          axisLine: { lineStyle: { color: C_AXIS } },
+          axisTick: { show: false },
+          axisLabel: { show: false }
+        },
+        {
+          type: 'category',
+          gridIndex: 1,
+          data: SESSION_LABELS,
+          axisLine: { lineStyle: { color: C_AXIS } },
+          axisTick: { show: false },
+          axisLabel: { color: C_TEXT, fontSize: 11, fontFamily: FONT }
+        }
+      ],
+      yAxis: [
+        {
+          type: 'value',
+          gridIndex: 0,
+          min: _balYMin,
+          max: _balYMax,
+          splitLine: { lineStyle: { color: C_GRID } },
+          axisLine: { show: false },
+          axisLabel: { color: C_TEXT, fontSize: 10 },
+          name: 'events / min (joueur cible)',
+          nameLocation: 'middle',
+          nameGap: 36,
+          nameTextStyle: { color: C_TEXT, fontSize: 10 }
+        },
+        {
+          type: 'value',
+          gridIndex: 1,
+          min: _m14YMin,
+          max: _m14YMax,
+          splitLine: { lineStyle: { color: C_GRID } },
+          axisLine: { show: false },
+          axisLabel: { color: C_TEXT, fontSize: 10 },
+          name: 'residus squad',
+          nameLocation: 'middle',
+          nameGap: 36,
+          nameTextStyle: { color: C_TEXT, fontSize: 10 }
+        }
+      ],
+      series: [
+        // TOP ROW : Mock 11 grammaire pour le joueur cible
+        {
+          name: 'Equipe alliee',
+          type: 'line',
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          data: BAL_SESSION_TEAM,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 5,
+          lineStyle: { color: '#444c56', width: 1.5 },
+          itemStyle: { color: '#444c56' }
+        },
+        {
+          name: 'Attendu',
+          type: 'line',
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          data: BAL_SESSION_EXPECTED,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 5,
+          lineStyle: { color: C_EXPECTED, width: 1.5, type: 'dashed' },
+          itemStyle: { color: C_EXPECTED }
+        },
+        {
+          name: 'Joueur cible',
+          type: 'line',
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          data: BAL_SESSION_PLAYER,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 8,
+          lineStyle: { color: C_PLAYER, width: 4 },
+          itemStyle: { color: C_PLAYER }
+        },
+        // BOTTOM ROW : Mock 12 squad residus, joueur cible inclus
+        {
+          // Ligne 0 ref
+          type: 'line',
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          data: SESSION_LABELS.map(() => 0),
+          symbol: 'none',
+          lineStyle: { color: C_AXIS, width: 1, type: 'dashed' },
+          z: 0,
+          silent: true
+        },
+        {
+          name: 'Cible (residu)',
+          type: 'line',
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          data: M14_TARGET_RESIDUAL,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 8,
+          lineStyle: { color: C_PLAYER, width: 3.5 },
+          itemStyle: { color: C_PLAYER }
+        },
+        {
+          name: 'Coeq. 2',
+          type: 'line',
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          data: M14_SQUAD_2,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 5,
+          lineStyle: { color: C_SQUAD_2, width: 2.2 },
+          itemStyle: { color: C_SQUAD_2 }
+        },
+        {
+          name: 'Coeq. 3',
+          type: 'line',
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          data: M14_SQUAD_3,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 5,
+          lineStyle: { color: C_SQUAD_3, width: 2.2 },
+          itemStyle: { color: C_SQUAD_3 }
+        },
+        {
+          name: 'Coeq. 4',
+          type: 'line',
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          data: M14_SQUAD_4,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 5,
+          lineStyle: { color: C_SQUAD_4, width: 2.2 },
+          itemStyle: { color: C_SQUAD_4 }
+        }
+      ]
+    });
+
+    // -------- MOCK 15 : Vue team avec overlay joueur on-demand (chips squad)
+    // 3 base curves toujours visibles : lobby, attendu equipe, equipe observee
+    // Click chip squad : ajoute la courbe pace_observed du joueur selectionne (1 a la fois)
+
+    const M15_LOBBY     = [11.5, 11.8, 11.5, 11.5, 12.0, 12.5, 12.5, 13.0];
+    const M15_TEAM_COEF = 1.05;  // mean(coef_lobby_share_i pour i in squad)
+    const M15_TEAM_EXPECTED = M15_LOBBY.map(v => +(v * M15_TEAM_COEF).toFixed(2));
+    const M15_TEAM_OBSERVED = [11.0, 11.5, 12.0, 12.0, 11.5, 11.0, 11.0, 10.5];
+
+    // Pace observe par joueur (somme des 4 / 4 = M15_TEAM_OBSERVED, coherent)
+    const M15_PLAYERS = [
+      { name: 'Joueur cible', color: C_PLAYER,  data: [11.0, 11.5, 13.0, 13.5, 13.0, 11.5, 11.0, 10.0], activeBg: 'rgba(88,166,255,0.18)',  activeBorder: '#58a6ff' },
+      { name: 'Coeq. 2',     color: C_SQUAD_2, data: [10.0, 11.0, 12.0, 11.5, 11.0, 10.5, 10.5,  9.5], activeBg: 'rgba(210,153,34,0.20)', activeBorder: '#d29922' },
+      { name: 'Coeq. 3',     color: C_SQUAD_3, data: [12.0, 11.5, 12.5, 11.5, 11.5, 11.0, 11.5, 10.5], activeBg: 'rgba(163,113,247,0.20)', activeBorder: '#a371f7' },
+      { name: 'Coeq. 4',     color: C_SQUAD_4, data: [11.0, 12.0, 10.5, 11.5, 10.5, 11.0, 11.0, 12.0], activeBg: 'rgba(86,211,100,0.18)', activeBorder: '#56d364' }
+    ];
+
+    function buildM15Option(selectedPlayerIndex) {
+      // Auto-zoom Y inclut la courbe joueur selectionnee
+      const allValues = [...M15_LOBBY, ...M15_TEAM_EXPECTED, ...M15_TEAM_OBSERVED];
+      if (selectedPlayerIndex !== null) {
+        allValues.push(...M15_PLAYERS[selectedPlayerIndex].data);
+      }
+      const yMin = Math.floor(Math.min(...allValues) - 1);
+      const yMax = Math.ceil(Math.max(...allValues) + 1);
+
+      const series = [
+        // Lobby : trace plus pale, dashed, en arriere-plan
+        {
+          name: 'Lobby',
+          type: 'line',
+          data: M15_LOBBY,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 5,
+          lineStyle: { color: '#586069', width: 1.5, type: 'dashed' },
+          itemStyle: { color: '#586069' },
+          z: 1
+        },
+        // Attendu equipe : trace pointillee plus marquee
+        {
+          name: 'Attendu equipe',
+          type: 'line',
+          data: M15_TEAM_EXPECTED,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { color: C_EXPECTED, width: 2, type: 'dashed' },
+          itemStyle: { color: C_EXPECTED },
+          z: 2
+        },
+        // Equipe observee : trace pleine, plus epaisse, gris fonce sature
+        {
+          name: 'Equipe observee',
+          type: 'line',
+          data: M15_TEAM_OBSERVED,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 7,
+          lineStyle: { color: '#8b949e', width: 3 },
+          itemStyle: { color: '#8b949e' },
+          z: 3
+        }
+      ];
+
+      // Overlay joueur si selectionne
+      if (selectedPlayerIndex !== null) {
+        const p = M15_PLAYERS[selectedPlayerIndex];
+        series.push({
+          name: p.name,
+          type: 'line',
+          data: p.data,
+          smooth: false,
+          symbol: 'circle',
+          symbolSize: 9,
+          lineStyle: { color: p.color, width: 4 },
+          itemStyle: { color: p.color },
+          z: 5
+        });
+      }
+
+      return {
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: '#0d1117',
+          borderColor: C_AXIS,
+          textStyle: { color: '#e6edf3', fontSize: 11 }
+        },
+        legend: { show: false },
+        grid: { left: 50, right: 24, top: 18, bottom: 32 },
+        xAxis: {
+          type: 'category',
+          data: SESSION_LABELS,
+          axisLine: { lineStyle: { color: C_AXIS } },
+          axisTick: { show: false },
+          axisLabel: { color: C_TEXT, fontSize: 11, fontFamily: FONT },
+          name: 'matchs joues ensemble',
+          nameLocation: 'middle',
+          nameGap: 22,
+          nameTextStyle: { color: C_TEXT, fontSize: 10 }
+        },
+        yAxis: {
+          type: 'value',
+          min: yMin,
+          max: yMax,
+          splitLine: { lineStyle: { color: C_GRID } },
+          axisLine: { show: false },
+          axisLabel: { color: C_TEXT, fontSize: 10 },
+          name: 'events / min (auto-zoom ' + yMin + '..' + yMax + ')',
+          nameLocation: 'middle',
+          nameGap: 36,
+          nameTextStyle: { color: C_TEXT, fontSize: 10 }
+        },
+        series: series
+      };
+    }
+
+    const m15Chart = echarts.init(document.getElementById('mock15'));
+    let m15SelectedPlayer = null;  // null = aucun joueur, 0..3 = index joueur
+
+    function renderMock15() {
+      m15Chart.setOption(buildM15Option(m15SelectedPlayer), true);
+      // Update chip states (active class + dynamic colors)
+      document.querySelectorAll('.m15-chip').forEach(chip => {
+        const idx = parseInt(chip.dataset.player, 10);
+        if (idx === m15SelectedPlayer) {
+          chip.classList.add('active');
+          chip.setAttribute('aria-pressed', 'true');
+          chip.style.setProperty('--chip-active-bg', M15_PLAYERS[idx].activeBg);
+          chip.style.setProperty('--chip-active-border', M15_PLAYERS[idx].activeBorder);
+        } else {
+          chip.classList.remove('active');
+          chip.setAttribute('aria-pressed', 'false');
+        }
+      });
+    }
+
+    document.querySelectorAll('.m15-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const idx = parseInt(chip.dataset.player, 10);
+        // Toggle : clicking the active chip deselects
+        m15SelectedPlayer = (m15SelectedPlayer === idx) ? null : idx;
+        renderMock15();
+      });
+    });
+
+    renderMock15();
+
+  </script>
+</body>
+</html>

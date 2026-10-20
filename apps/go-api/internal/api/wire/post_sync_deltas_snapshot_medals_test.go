@@ -49,7 +49,7 @@ func TestLoadEarnedMedalIDs_Aggregate(t *testing.T) {
 		}
 	}
 
-	got := loadEarnedMedalIDs(context.Background(), db, "x1")
+	got := loadEarnedMedalIDs(context.Background(), db, "x1", "halo_infinite")
 	if got == nil {
 		t.Fatal("set nil alors que la lecture est saine (nil est réservé à l'INVALIDITÉ)")
 	}
@@ -73,7 +73,7 @@ func TestLoadEarnedMedalIDs_Aggregate(t *testing.T) {
 // sans médaille, PAS une invalidité — set vide non-nil.
 func TestLoadEarnedMedalIDs_EmptyIsValid(t *testing.T) {
 	db := newMedalsEarnedDB(t)
-	got := loadEarnedMedalIDs(context.Background(), db, "inconnu")
+	got := loadEarnedMedalIDs(context.Background(), db, "inconnu", "halo_infinite")
 	if got == nil {
 		t.Fatal("aucune ligne ≠ invalidité : le set doit être vide non-nil")
 	}
@@ -90,7 +90,7 @@ func TestLoadEarnedMedalIDs_MissingTableIsInvalid(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	defer db.Close()
-	if got := loadEarnedMedalIDs(context.Background(), db, "x1"); got != nil {
+	if got := loadEarnedMedalIDs(context.Background(), db, "x1", "halo_infinite"); got != nil {
 		t.Fatalf("table absente : want nil (invalide), got %v", got)
 	}
 }
@@ -106,7 +106,7 @@ func TestLoadEarnedMedalIDs_CancelledContextIsInvalid(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if got := loadEarnedMedalIDs(ctx, db, "x1"); got != nil {
+	if got := loadEarnedMedalIDs(ctx, db, "x1", "halo_infinite"); got != nil {
 		t.Fatalf("lecture interrompue : want nil (invalide), got %v", got)
 	}
 }

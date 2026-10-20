@@ -56,11 +56,11 @@ describe('buildHistogramOption', () => {
     expect(opt.xAxis?.data).toEqual(['0–5', '5–10'])
   })
 
-  it('formate les bornes float avec 2 décimales', () => {
+  it('écrit les bornes décimales à la langue de l’application, deux décimales au plus', () => {
     const opt = buildHistogramOption(
       makeSeries([{ binStart: 0.5, binEnd: 1.25, count: 1 }]),
     ) as OptionShape
-    expect(opt.xAxis?.data).toEqual(['0.50–1.25'])
+    expect(opt.xAxis?.data).toEqual(['0,5–1,25'])
   })
 
   it('respecte un formatBin custom', () => {
@@ -80,10 +80,14 @@ describe('buildHistogramOption', () => {
     expect(opt.yAxis?.name).toBe('Matchs')
   })
 
-  it('par défaut yAxisLabel = "Matchs"', () => {
+  // Le builder est PUR : il n'a pas de locale, donc aucun libellé par défaut (ce serait un
+  // littéral FR, cf. chartEmptyStateCanonical.guard.test.ts). Le défaut bilingue
+  // (« Matchs » / « Matches », common.charts.axis_matches) est résolu par le composant,
+  // qui lit la locale du shell — couvert par HistogramChart.locale.test.tsx.
+  it('sans yAxisLabel le builder ne pose aucun libellé (le composant le fournit)', () => {
     const opt = buildHistogramOption(
       makeSeries([{ binStart: 0, binEnd: 1, count: 1 }]),
     ) as OptionShape
-    expect(opt.yAxis?.name).toBe('Matchs')
+    expect(opt.yAxis?.name).toBe('')
   })
 })

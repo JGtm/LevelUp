@@ -96,11 +96,16 @@ Certaines specs restent skippées avec un motif explicite (helpers de
   (route `/stats/history`), 1 test `p7-dto-rename` (sélecteur canvas du graphique bipolaire).
   L'ancienne spec `ascension-2tabs` a été SUPPRIMÉE (2026-07-22, F6) : la page Ascension est
   passée à 4 onglets ; sa réécriture e2e est un chantier dédié.
-- **`skipRequiresRealPlayer(reason)`** — exige les données d'un JOUEUR RÉEL spécifique
-  (gamertags nommés + synergies, chart LUSR multi-groupes) non reproductibles en synthétique ;
-  skip UNIQUEMENT quand `E2E_SYNTHETIC_DEMO=1` (posé par la CI), s'exécute contre une démo
-  réelle. Concernées : `career-lusr-legend`, `squad-charts-render`, `theme-switch-charts`.
-- **`engagement`** — skip via `E2E_DEMO_MODE=1` (backfill engagement absent en démo).
+
+Les specs « joueur riche » (`career-lusr-legend`, `engagement`, `squad-charts-render`,
+`theme-switch-charts`) ne skippent PLUS selon une variable d'environnement : elles visent
+la fixture synthétique (`demo-player` + coéquipiers `DemoPlayer2`/`DemoPlayer3`, 36 matchs
+communs, événements et colonnes engagement) et s'exécutent donc en CI comme en local.
+`E2E_PLAYER_SLUG` et `E2E_TEAMMATES` (CSV de gamertags) les redirigent vers un jeu de
+données réel ; `E2E_API_URL` (racine de l'API, sans `/api/v1`) vers un serveur sur un autre
+port. Le serveur doit autoriser l'origine de Vite (`LEVELUP_CORS_ORIGINS`) hors ports par
+défaut. La fixture écrit des identifiants de match de forme UUID : les routes `/matches/{id}`
+refusent en 404 tout identifiant hors hexadécimal-et-tirets.
 
 ### Ajouter une spec
 

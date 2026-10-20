@@ -27,12 +27,18 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	halo5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/migration"
 	lusync "levelup/go-api/internal/sync"
 )
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	gt := "JGtm"
 	if len(os.Args) > 1 {
 		gt = os.Args[1]
@@ -77,8 +83,8 @@ func main() {
 	// Classifier de chaîne (title-aware) : la segmentation d'historique du
 	// performance_score délègue au seam LUSR (GetPerformanceChain → GetLUSRChain),
 	// donc requis MÊME pour l'enrichment hors-LUSR (sinon panic au 1er perf).
-	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
-	lusync.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
+	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif) : h5
+	// n'a pas de sous-mode → classifier dédié qui répond false.
 
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
 	sharedPath := pr.SharedDBPath(halo5.TitleSlug)

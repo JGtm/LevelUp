@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : hors perimetre du lot D (modele web du rejeu) : l'exemption DATE la dette, elle ne l'absout pas — le decoupage revient au lot qui touchera ce fichier. */
 /**
  * HomePage — Accueil Mission Control (Slice 5).
  *
@@ -30,6 +31,7 @@ import { HomeCitationsNearCompletion } from './HomeCitationsNearCompletion'
 import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSettings } from '@/features/settings/queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
@@ -82,6 +84,7 @@ export function HomePage() {
   const [squadIdx, setSquadIdx] = useState(0)
   const [customizerOpen, setCustomizerOpen] = useState(false)
   const favoriteMutation = useSetMatchFavorite(playerSlug)
+  const canWriteProfile = useCanWritePlayer(playerSlug) // profil d'ami : pas d'étoile favori
   const navigateToMatch = useNavigateToMatch(playerSlug)
 
   function goToMatch(matchId: string, source: 'home_recent' | 'home_favorites') {
@@ -518,8 +521,9 @@ export function HomePage() {
                         match={m}
                         locale={locale}
                         timezone={userTimezone}
+                        playerSlug={playerSlug}
                         onClick={() => goToMatch(m.match_id, 'home_recent')}
-                        onToggleFavorite={() =>
+                        onToggleFavorite={!canWriteProfile ? undefined : () =>
                           favoriteMutation.mutate({ matchId: m.match_id, favorite: !m.is_favorite })
                         }
                         favoriteDisabled={favoriteMutation.isPending && favoriteMutation.variables?.matchId === m.match_id}
@@ -542,8 +546,9 @@ export function HomePage() {
                         match={m}
                         locale={locale}
                         timezone={userTimezone}
+                        playerSlug={playerSlug}
                         onClick={() => goToMatch(m.match_id, 'home_favorites')}
-                        onToggleFavorite={() =>
+                        onToggleFavorite={!canWriteProfile ? undefined : () =>
                           favoriteMutation.mutate({ matchId: m.match_id, favorite: false })
                         }
                         favoriteDisabled={favoriteMutation.isPending && favoriteMutation.variables?.matchId === m.match_id}

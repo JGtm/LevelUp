@@ -71,7 +71,7 @@ func LoadPriorsFromHyperparams(params map[string]float64, defaultP Priors) Prior
 //
 //	bias = mean - (w_p + w_o)·mu0
 //
-// ⚠️ Le plan d'origine (.ai/LUSR_V2_ROADMAP_SPRINTS.md, étape 1.B.2) prescrivait
+// ⚠️ Le plan d'origine (.ai/archive/V7/LUSR v2/LUSR_V2_ROADMAP_SPRINTS.md, étape 1.B.2) prescrivait
 // "bias = kill_mean_empirical" en direct — c'est dimensionnellement faux pour ce
 // modèle (poserait expected ≈ 2× la moyenne à skill moyen). On applique la
 // formule correcte, qui se réduit exactement aux défauts pour une moyenne

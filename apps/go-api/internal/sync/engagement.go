@@ -1,6 +1,6 @@
 // Package sync — engagement.go : calcul batch du score d'engagement par match.
 //
-// Reference plan : .ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md §3 (Sync/Backfill).
+// Reference plan : .ai/archive/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §3 (Sync/Backfill).
 //
 // Pipeline :
 //   - Selection des matchs PvP du joueur sans engagement_score (ou tous si force)
@@ -356,9 +356,9 @@ func loadMatchesForEngagement(ctx context.Context, sharedDB *sql.DB, xuid string
 		  AND (
 		    (COALESCE(mr.backfill_completed, 0) & %d) = 0
 		    OR EXISTS (SELECT 1 FROM highlight_events he WHERE he.match_id = mr.match_id)
-		  )
+		  )%s
 		ORDER BY mr.start_time ASC
-	`, MBitEvents)
+	`, MBitEvents, analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id"))
 	rows, err := sharedDB.QueryContext(ctx, q, xuid)
 	if err != nil {
 		return nil, err
@@ -593,7 +593,7 @@ func loadHistoryForCategory(ctx context.Context, playerDB *sql.DB, modeCategory,
 // loadExistingEngagementScores retourne le set des match_id dont l'engagement a
 // déjà été TENTÉ (présence d'une row stage='engagement'), pour skip en non-force.
 //
-// Append-only #23046 — IDEMPOTENCE : on lit la présence du stage, PAS
+// Append-only #23645 — IDEMPOTENCE : on lit la présence du stage, PAS
 // engagement_score IS NOT NULL. Un match insufficient_history (score NULL LÉGITIME
 // et PERMANENT — les ~10 premiers matchs d'une catégorie n'auront jamais assez
 // d'historique) serait sinon ré-INSÉRÉ à CHAQUE post-sync → croissance non bornée

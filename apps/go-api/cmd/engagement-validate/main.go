@@ -1,6 +1,6 @@
 // Command engagement-validate — outil CLI Phase 0 du plan engagement.
 //
-// Reference : .ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md §1 (Phase 0)
+// Reference : .ai/archive/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §1 (Phase 0)
 //
 // Valide les hypotheses critiques avant deploiement production :
 //

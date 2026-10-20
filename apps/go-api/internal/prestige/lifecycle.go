@@ -106,7 +106,7 @@ func MarkAbandoned(c Challenge, now time.Time) (Challenge, error) {
 // d'abandon promet déjà un cooldown — l'exemption historique du libre était
 // donc un trou. Les déclencheurs sont gouvernés par la durée par statut :
 // abandon (24h) et expiration (12h) ; la complétion reste à 0h (pas de
-// cooldown). Cf. décision .ai/PLAN_ASCENSION_ARCS_PRESETS_ET_ONGLETS.md.
+// cooldown). Cf. décision .ai/archive/V7/PLAN_ASCENSION_ARCS_PRESETS_ET_ONGLETS.md.
 func CooldownEndsAt(t Tuning, c Challenge) time.Time {
 	if !c.Status.IsTerminal() {
 		return time.Time{}

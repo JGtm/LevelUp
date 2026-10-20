@@ -1,0 +1,1134 @@
+temoin       famille          base(af6e93e23)   HEAD    gains   pertes   chang.      duree base   cache  statut
+bcb6d393     ctf_mono_manche      76     76       24       11        2     11.08s cuite  A+F    PERTE
+fb1a1a72     ctf_multi_manche     76     76       42        7       12     30.09s cuite  A+F    PERTE
+d9781168     oddball              76     76       28        8        9     26.13s cuite  A+F    PERTE
+c75f33b8     assaut_bombe         76     76       41        3        6     15.43s cuite  A+F    PERTE
+bf15f7ab     slayer               76     76       31        4        2     15.01s cuite  A+F    PERTE
+51ebbc0f     deux_manches         76     76       47        5        6     20.32s cuite  A+F    PERTE
+084a804d     vehicules            76     76       52       35        4   1m56.33s cuite  A+F    PERTE
+0797ce72     region_index_2_bits     76     76       10        2        0     16.56s cuite  A+F    PERTE
+111fa685     version_39           76     76       24        6        7     40.18s cuite  A+F    PERTE
+e5adf7b2     version_40_build_1_11     76     76        5        2        0     44.36s cuite  A+F    PERTE
+60ae07c4     version_37           76     76       30       24        3     31.67s cuite  A+F    FAUX
+a349fea8     version_33_sans_identification     76     76       59       29        4   2m28.06s cuite  A+F    PERTE
+a521164d     version_33_build_1_4_1     76     76       32       14        4     42.69s cuite  A+F    PERTE
+11de8353     version_38_build_1_9_0     76     76       26        6        5     38.29s cuite  A+F    PERTE
+50247b26     version_31_sans_identification     76     76       19        2        4   1m25.07s cuite  A+F    PERTE
+bfecd02b     vehicules_v41_utilisateur     76     76       39        4        3     22.08s cuite  A+F    PERTE
+4f77afc1     equipement_origine_utilisateur     76     76       77       34        6   1m59.19s cuite  A+F    PERTE
+396cfc92     strongholds_zones     76     76       24        5        3     23.39s cuite  A+F    PERTE
+f75e7053     koth_collines        76     76       29        6        3     13.34s cuite  A+F    PERTE
+
+BANC DE VERITE (19 temoin(s)) — le verdict du gate :
+
+BANC DE VERITE — bcb6d393 : ok
+  [gain] P-1 paquets fermes au bit pres : 5830 -> 5879
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 4 -> 5
+  [info] R-1 repli repli_liaison_par_anticipation : 10 -> 11
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 39 / FP 0 / FN 10
+    O-K2 morts (statborg)                    VP 37 / FP 0 / FN 13
+    O-K3 assistances (statborg)              VP 9 / FP 0 / FN 2
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S2 actions de marque par camp          VP 3 / FP 0 / FN 0
+    O-S3 score personnel                     VP 5185 / FP 405 / FN 1540
+    O-T1 equipes du roster                   VP 11 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 44 / FP 0 / FN 6
+    O-V2 fins de vie (sans identite)         VP 50 / FP 3 / FN 0
+    P-1 paquets fermes au bit pres           5879
+    P-2 preuves contradictoires (image-cle)  2
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    2
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 2
+    V-8 mort sans fin de vie                 3
+  [FILET] autres:stances stances/duree-totale : 7184 -> 7141 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/530 : 460 -> 442 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/536 : 869 -> 862 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/542 : 454 -> 441 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/550 : 123 -> 95 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesKind : 63 -> 67 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 3254 -> 3292 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 625 -> 641 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewFalseReads : 2 -> 3 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewUndecided : — -> 1 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 2 -> 4 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — fb1a1a72 : ok
+  [gain] P-1 paquets fermes au bit pres : 22276 -> 22713
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 39 -> 40
+  [info] R-1 repli repli_liaison_par_anticipation : 81 -> 64
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 140 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 141 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 47 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S2 actions de marque par camp          VP 1 / FP 0 / FN 0
+    O-S3 score personnel                     VP 17570 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 136 / FP 0 / FN 5
+    O-V2 fins de vie (sans identite)         VP 141 / FP 2 / FN 0
+    P-1 paquets fermes au bit pres           22713
+    P-2 preuves contradictoires (image-cle)  2
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    2
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   4
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 10
+    V-8 mort sans fin de vie                 1
+  [FILET] armes weaponChanges/par-kind/taken : 70 -> 69 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holeRuns : 13711 -> 13919 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesBlockBC : 44 -> 46 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesKind : 144 -> 146 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 23983 -> 24094 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewFalseReads : 60 -> 62 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 112 -> 113 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — d9781168 : ok
+  [gain] P-1 paquets fermes au bit pres : 26210 -> 26317
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 254 -> 259
+  [info] R-1 repli repli_liaison_par_anticipation : 236 -> 240
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 142 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 144 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 70 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 21595 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 144 / FP 8 / FN 0
+    O-V2 fins de vie (sans identite)         VP 144 / FP 14 / FN 0
+    P-1 paquets fermes au bit pres           26317
+    P-2 preuves contradictoires (image-cle)  1
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0 (38 exemptees)
+    V-2 objet hors emprise                   1
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 13
+    V-8 mort sans fin de vie                 2
+  [FILET] armes weaponChanges/par-kind/taken : 50 -> 49 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/par-kind/jumpDerived : 374 -> 372 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 11503 -> 11556 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 1298 -> 1301 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.jumpsDerived : 374 -> 372 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.reads : 2722 -> 2721 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewUndecided : 21 -> 26 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 22 -> 27 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — c75f33b8 : ok
+  [gain] P-1 paquets fermes au bit pres : 22854 -> 23053
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 90 -> 92
+  [info] R-1 repli repli_liaison_par_anticipation : 94 -> 91
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 40 / FP 0 / FN 22
+    O-K2 morts (statborg)                    VP 48 / FP 0 / FN 14
+    O-K3 assistances (statborg)              VP 15 / FP 0 / FN 7
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S2 actions de marque par camp          VP 0 / FP 0 / FN 3
+    O-S3 score personnel                     VP 5670 / FP 0 / FN 3340
+    O-T1 equipes du roster                   VP 10 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 59 / FP 9 / FN 3
+    O-V2 fins de vie (sans identite)         VP 62 / FP 14 / FN 0
+    P-1 paquets fermes au bit pres           23053
+    P-2 preuves contradictoires (image-cle)  3
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    1
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   2
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 10
+    V-8 mort sans fin de vie                 1
+  [FILET] armes weaponChanges/par-kind/taken : 28 -> 27 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewUndecided : 7 -> 8 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 9 -> 10 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — bf15f7ab : ok
+  [gain] P-1 paquets fermes au bit pres : 28465 -> 28603
+  [info] R-1 repli repli_liaison_par_anticipation : 23 -> 18
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 75 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 76 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 26 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 8710 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 75 / FP 0 / FN 1
+    O-V2 fins de vie (sans identite)         VP 76 / FP 3 / FN 0
+    P-1 paquets fermes au bit pres           28603
+    P-2 preuves contradictoires (image-cle)  2
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 0
+    V-8 mort sans fin de vie                 0
+  [FILET] autres:stances stances/duree-totale : 9316 -> 9248 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/552 : 131 -> 43 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesBlockBC : 106 -> 107 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 1669 -> 1678 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 51ebbc0f : ok
+  [gain] P-1 paquets fermes au bit pres : 9759 -> 9953
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 74 -> 77
+  [info] R-1 repli repli_liaison_par_anticipation : 163 -> 156
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 70 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 71 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 39 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 11555 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 70 / FP 6 / FN 1
+    O-V2 fins de vie (sans identite)         VP 71 / FP 9 / FN 0
+    P-1 paquets fermes au bit pres           9953
+    P-2 preuves contradictoires (image-cle)  2
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 0
+    V-8 mort sans fin de vie                 0
+  [FILET] couverture coverage.continuousFire.holeRuns : 5849 -> 5977 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesBlockBC : 39 -> 40 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesKind : 96 -> 99 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 17017 -> 17180 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.innerHoles : 327 -> 330 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 084a804d : ok
+  [gain] P-1 paquets fermes au bit pres : 4773 -> 4803
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 457 -> 468
+  [info] R-1 repli repli_liaison_par_anticipation : 920 -> 921
+  [info] R-1 repli repli_physique_de_type_de_vehicule_supposee : 8914 -> 9040
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 124 / FP 0 / FN 230
+    O-K2 morts (statborg)                    VP 117 / FP 0 / FN 239
+    O-K3 assistances (statborg)              VP 50 / FP 0 / FN 72
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S2 actions de marque par camp          VP 0 / FP 0 / FN 5
+    O-S3 score personnel                     VP 16690 / FP 0 / FN 29645
+    O-T1 equipes du roster                   VP 26 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 353 / FP 1 / FN 3
+    O-V2 fins de vie (sans identite)         VP 356 / FP 17 / FN 0
+    P-1 paquets fermes au bit pres           4803
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    1
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   10
+    V-3 action hors vie                      92
+    V-4 deux corps                           1
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              6
+    V-7 identite discordante                 31
+    V-8 mort sans fin de vie                 12
+  [FILET] autres:stances stances/duree-totale : 80590 -> 79781 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/521 : 1270 -> 1261 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/533 : 228 -> 217 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/536 : 1187 -> 1186 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/537 : 398 -> 394 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/538 : 717 -> 715 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/545 : 592 -> 582 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/546 : 239 -> 238 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/554 : 350 -> 238 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/556 : 1116 -> 1077 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/590 : 300 -> 299 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/591 : 1842 -> 1283 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/592 : 1211 -> 1203 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/593 : 403 -> 400 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/628 : 860 -> 774 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/634 : 672 -> 605 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/676 : 219 -> 179 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/683 : 127 -> 122 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/688 : 237 -> 230 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/696 : 489 -> 488 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/710 : 2178 -> 2163 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/718 : 101 -> 81 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/726 : 695 -> 686 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/729 : 164 -> 163 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/730 : 1164 -> 1150 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/731 : 235 -> 204 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/737 : 137 -> 131 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.heldHoleMs : 943781 -> 961595 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesBlockBC : 14 -> 15 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 23544 -> 23752 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.weaponUnknown : 4 -> 5 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.dropped : 5 -> 6 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 3649 -> 3661 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewFalseReads : 14 -> 16 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 26 -> 28 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 0797ce72 : ok
+  [gain] P-1 paquets fermes au bit pres : 19072 -> 19076
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 17 -> 20
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 92 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 93 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 29 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 10640 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 91 / FP 0 / FN 2
+    O-V2 fins de vie (sans identite)         VP 93 / FP 1 / FN 0
+    P-1 paquets fermes au bit pres           19076
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      2
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 6
+    V-8 mort sans fin de vie                 0
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 5609 -> 5617 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 1270 -> 1281 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 111fa685 : ok
+  [gain] P-1 paquets fermes au bit pres : 4012 -> 4014
+  [info] R-1 repli repli_deadstate_indice_hors_roster : 80 -> 81
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 138 -> 139
+  [info] R-1 repli repli_liaison_par_anticipation : 587 -> 588
+  [info] R-1 repli repli_record_desynchronise_jete : 10 -> 11
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 78 / FP 0 / FN 113
+    O-K2 morts (statborg)                    VP 67 / FP 0 / FN 126
+    O-K3 assistances (statborg)              VP 28 / FP 0 / FN 34
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 9295 / FP 0 / FN 12930
+    O-T1 equipes du roster                   VP 25 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 188 / FP 0 / FN 5
+    O-V2 fins de vie (sans identite)         VP 193 / FP 8 / FN 0
+    P-1 paquets fermes au bit pres           4014
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      5
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 17
+    V-8 mort sans fin de vie                 1
+  [FILET] couverture coverage.continuousFire.holesKind : 169 -> 170 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 11084 -> 11105 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 1924 -> 1930 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewFalseReads : 13 -> 15 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewUndecided : 8 -> 9 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 21 -> 24 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — e5adf7b2 : ok
+  [gain] P-1 paquets fermes au bit pres : 4123 -> 4124
+  [info] R-1 repli repli_liaison_par_anticipation : 783 -> 784
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 52 / FP 0 / FN 145
+    O-K2 morts (statborg)                    VP 64 / FP 0 / FN 135
+    O-K3 assistances (statborg)              VP 16 / FP 0 / FN 29
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 6060 / FP 0 / FN 16235
+    O-T1 equipes du roster                   VP 28 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 190 / FP 0 / FN 9
+    O-V2 fins de vie (sans identite)         VP 199 / FP 11 / FN 0
+    P-1 paquets fermes au bit pres           4124
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   535
+    V-3 action hors vie                      10
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 21
+    V-8 mort sans fin de vie                 9
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 10360 -> 10361 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 2092 -> 2094 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 60ae07c4 : FAUX
+  [FAUX] R-1 repli repli_physique_de_type_de_vehicule_supposee : 0 -> 1
+      repli nouveau
+  [gain] P-1 paquets fermes au bit pres : 13802 -> 13946
+  [info] R-1 repli repli_deadstate_hors_bande_bipede : 6 -> 7
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 103 -> 104
+  [info] R-1 repli repli_liaison_par_anticipation : 439 -> 441
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 162 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 163 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 63 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 22930 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 160 / FP 1 / FN 3
+    O-V2 fins de vie (sans identite)         VP 163 / FP 4 / FN 0
+    P-1 paquets fermes au bit pres           13946
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0 (1 exemptees)
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 12
+    V-8 mort sans fin de vie                 2
+  [FILET] autres:stances stances/duree-totale : 23438 -> 22637 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/519 : 195 -> 167 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/522 : 163 -> 147 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/530 : 401 -> 305 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/540 : 319 -> 159 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/542 : 197 -> 97 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/547 : 96 -> 95 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/552 : 282 -> 191 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/556 : 343 -> 228 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/577 : 248 -> 112 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/578 : 148 -> 147 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/602 : 287 -> 280 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/641 : 89 -> 88 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/652 : 391 -> 379 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/671 : 288 -> 93 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/673 : 155 -> 153 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesBlockBC : 145 -> 148 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesKind : 729 -> 740 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 30445 -> 30830 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.fallbacks/n : 21 -> 22 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 1207 -> 1220 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewUndecided : 60 -> 61 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 82 -> 83 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.vehicles.deathsUnmatched : 0 -> 1 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — a349fea8 : ok
+  [gain] P-1 paquets fermes au bit pres : 420 -> 424
+  [info] R-1 repli repli_liaison_par_anticipation : 992 -> 994
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 0 / FP 0 / FN 290
+    O-K2 morts (statborg)                    VP 0 / FP 0 / FN 293
+    O-K3 assistances (statborg)              VP 0 / FP 0 / FN 119
+    O-S1 score par camp                      VP 0 / FP 0 / FN 3
+    O-S3 score personnel                     VP 0 / FP 0 / FN 40730
+    O-T1 equipes du roster                   VP 0 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 0 / FP 0 / FN 293
+    O-V2 fins de vie (sans identite)         VP 293 / FP 113 / FN 0
+    P-1 paquets fermes au bit pres           424
+    P-2 preuves contradictoires (image-cle)  1
+    P-4 verdicts de couverture bridge        0
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   1076
+    V-3 action hors vie                      17
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              1
+    V-7 identite discordante                 0
+    V-8 mort sans fin de vie                 0
+  [FILET] autres:stances stances/duree-totale : 151604 -> 150936 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/515 : 8393 -> 8367 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/526 : 72 -> 66 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/528 : 690 -> 679 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/534 : 7231 -> 7219 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/556 : 223 -> 208 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/565 : 333 -> 227 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/567 : 1181 -> 1173 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/629 : 449 -> 438 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/632 : 101 -> 96 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/637 : 343 -> 268 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/649 : 727 -> 584 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/650 : 351 -> 307 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/657 : 171 -> 133 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/658 : 284 -> 277 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/668 : 216 -> 180 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/669 : 67 -> 66 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/673 : 372 -> 362 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/708 : 148 -> 139 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/719 : 1215 -> 1208 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/730 : 33 -> 32 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/737 : 330 -> 298 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/750 : 811 -> 399 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/751 : 1158 -> 647 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/753 : 223 -> 205 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesBlockBC : 152 -> 155 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesKind : 927 -> 944 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 22249 -> 22721 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.desyncs : 11 -> 12 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — a521164d : ok
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 4 -> 5
+  [info] R-1 repli repli_liaison_par_anticipation : 605 -> 604
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 0 / FP 0 / FN 101
+    O-K2 morts (statborg)                    VP 0 / FP 0 / FN 106
+    O-K3 assistances (statborg)              VP 0 / FP 0 / FN 41
+    O-S1 score par camp                      VP 0 / FP 0 / FN 3
+    O-S3 score personnel                     VP -100 / FP 100 / FN 14225
+    O-T1 equipes du roster                   VP 27 / FP 0 / FN 1
+    O-V1 morts par les vies                  VP 101 / FP 0 / FN 5
+    O-V2 fins de vie (sans identite)         VP 106 / FP 17 / FN 0
+    P-1 paquets fermes au bit pres           692
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   430
+    V-3 action hors vie                      2
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 5
+    V-8 mort sans fin de vie                 0
+  [FILET] autres:stances stances/duree-totale : 35269 -> 34425 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/561 : 370 -> 321 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/563 : 522 -> 521 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/581 : 868 -> 867 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/589 : 586 -> 192 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/595 : 766 -> 755 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/612 : 387 -> 177 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/616 : 208 -> 207 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/622 : 231 -> 220 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/629 : 731 -> 324 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/636 : 191 -> 185 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesBlockBC : 139 -> 143 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesKind : 254 -> 255 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 8373 -> 8496 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 11de8353 : ok
+  [gain] P-1 paquets fermes au bit pres : 5612 -> 5622
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 125 -> 126
+  [info] R-1 repli repli_liaison_par_anticipation : 501 -> 502
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 48 / FP 0 / FN 117
+    O-K2 morts (statborg)                    VP 40 / FP 0 / FN 126
+    O-K3 assistances (statborg)              VP 9 / FP 0 / FN 33
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 5250 / FP 0 / FN 13840
+    O-T1 equipes du roster                   VP 27 / FP 0 / FN 1
+    O-V1 morts par les vies                  VP 156 / FP 0 / FN 10
+    O-V2 fins de vie (sans identite)         VP 166 / FP 7 / FN 0
+    P-1 paquets fermes au bit pres           5622
+    P-2 preuves contradictoires (image-cle)  1
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0 (47 exemptees)
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      8
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 17
+    V-8 mort sans fin de vie                 7
+  [FILET] couverture coverage.continuousFire.holesBlockBC : 18 -> 19 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesKind : 189 -> 195 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 9919 -> 9958 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 1700 -> 1709 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewFalseReads : 8 -> 9 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 11 -> 12 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 50247b26 : ok
+  [info] R-1 repli repli_physique_de_type_de_vehicule_supposee : 5374 -> 5395
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 0 / FP 0 / FN 150
+    O-K2 morts (statborg)                    VP 0 / FP 0 / FN 154
+    O-K3 assistances (statborg)              VP 0 / FP 0 / FN 91
+    O-S1 score par camp                      VP 0 / FP 0 / FN 150
+    O-S3 score personnel                     VP -200 / FP 200 / FN 18930
+    O-T1 equipes du roster                   VP 0 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 0 / FP 0 / FN 154
+    O-V2 fins de vie (sans identite)         VP 154 / FP 89 / FN 0
+    P-1 paquets fermes au bit pres           139
+    P-2 preuves contradictoires (image-cle)  2
+    P-4 verdicts de couverture bridge        0
+    P-4 verdicts de couverture grenades      1
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   899
+    V-3 action hors vie                      4
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 0
+    V-8 mort sans fin de vie                 0
+  [FILET] couverture coverage.continuousFire.holesKind : 896 -> 900 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 13794 -> 13835 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — bfecd02b : ok
+  [gain] P-1 paquets fermes au bit pres : 26380 -> 26930
+  [info] R-1 repli repli_deadstate_indice_hors_roster : 29 -> 30
+  [info] R-1 repli repli_liaison_par_anticipation : 25 -> 12
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 84 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 84 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 44 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 10660 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 82 / FP 0 / FN 2
+    O-V2 fins de vie (sans identite)         VP 84 / FP 3 / FN 0
+    P-1 paquets fermes au bit pres           26930
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 2
+    V-8 mort sans fin de vie                 2
+  [FILET] autres:stances stances/duree-totale : 9794 -> 9743 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/538 : 487 -> 447 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/555 : 103 -> 77 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/570 : 322 -> 321 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 4f77afc1 : ok
+  [gain] P-1 paquets fermes au bit pres : 22260 -> 23254
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 991 -> 1023
+  [info] R-1 repli repli_liaison_par_anticipation : 297 -> 231
+  [info] R-1 repli repli_physique_de_type_de_vehicule_supposee : 14117 -> 14679
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 144 / FP 0 / FN 159
+    O-K2 morts (statborg)                    VP 101 / FP 0 / FN 203
+    O-K3 assistances (statborg)              VP 34 / FP 0 / FN 88
+    O-S1 score par camp                      VP 0 / FP 0 / FN 2
+    O-S3 score personnel                     VP 18410 / FP 0 / FN 21735
+    O-T1 equipes du roster                   VP 28 / FP 0 / FN 1
+    O-V1 morts par les vies                  VP 297 / FP 1 / FN 7
+    O-V2 fins de vie (sans identite)         VP 304 / FP 27 / FN 0
+    P-1 paquets fermes au bit pres           23254
+    P-2 preuves contradictoires (image-cle)  6
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    1
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   10
+    V-3 action hors vie                      112
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              3
+    V-7 identite discordante                 32
+    V-8 mort sans fin de vie                 20
+  [FILET] autres:bursts bursts.holes.t0/presents : 3 -> 2 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:bursts bursts.holes.t1/presents : 3 -> 2 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:bursts bursts.holes/duree-totale : 58 -> 38 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:bursts bursts.holes/n : 3 -> 2 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:bursts bursts.holes/total : 3 -> 2 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale : 71799 -> 71437 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/513 : 180 -> 179 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/514 : 291 -> 280 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/515 : 658 -> 587 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/539 : 2090 -> 1969 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/552 : 185 -> 111 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/557 : 388 -> 369 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/614 : 336 -> 301 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/620 : 513 -> 501 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/629 : 189 -> 188 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/632 : 439 -> 96 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/633 : 570 -> 565 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/636 : 182 -> 173 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/676 : 186 -> 181 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/697 : 1258 -> 1248 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/700 : 276 -> 194 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/718 : 465 -> 448 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/730 : 156 -> 142 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/733 : 652 -> 646 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/735 : 830 -> 744 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/738 : 674 -> 648 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/760 : 1019 -> 1015 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.burstsWithHole : 231 -> 233 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holeRuns : 2417 -> 2425 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.innerHoles : 1246 -> 1272 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.noTrack : 79 -> 87 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.dropped : 17 -> 21 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewUndecided : 29 -> 31 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 61 -> 63 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 396cfc92 : ok
+  [gain] P-1 paquets fermes au bit pres : 22819 -> 23131
+  [info] R-1 repli repli_liaison_par_anticipation : 81 -> 75
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 67 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 67 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 27 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 10710 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 9 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 63 / FP 0 / FN 4
+    O-V2 fins de vie (sans identite)         VP 67 / FP 4 / FN 0
+    P-1 paquets fermes au bit pres           23131
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    2
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 8
+    V-8 mort sans fin de vie                 1
+  [FILET] autres:stances stances/duree-totale : 10524 -> 10516 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/535 : 212 -> 207 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/541 : 552 -> 538 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/par-kind/jumpDerived : 260 -> 259 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.jumpsDerived : 260 -> 259 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — f75e7053 : ok
+  [gain] P-1 paquets fermes au bit pres : 23416 -> 23673
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 7 -> 8
+  [info] R-1 repli repli_liaison_par_anticipation : 47 -> 46
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 82 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 83 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 43 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 12030 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 81 / FP 0 / FN 2
+    O-V2 fins de vie (sans identite)         VP 83 / FP 2 / FN 0
+    P-1 paquets fermes au bit pres           23673
+    P-2 preuves contradictoires (image-cle)  1
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   2
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 7
+    V-8 mort sans fin de vie                 0
+  [FILET] autres:stances stances/duree-totale : 9283 -> 9269 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/530 : 309 -> 304 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/545 : 142 -> 137 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/547 : 156 -> 137 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/571 : 48 -> 39 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/573 : 34 -> 26 (aucune mesure du banc ne couvre ce bloc)
+
+DETAIL DES PERTES (19 temoin(s)) :
+
+  [bcb6d393] ctf_mono_manche (schema 76 -> 76)
+    perte     autres:stances   stances/duree-totale                                     7184 -> 7141      
+    perte     autres:stances   stances/duree-totale/par-slot/530                         460 -> 442       
+    perte     autres:stances   stances/duree-totale/par-slot/536                         869 -> 862       
+    perte     autres:stances   stances/duree-totale/par-slot/542                         454 -> 441       
+    perte     autres:stances   stances/duree-totale/par-slot/550                         123 -> 95        
+    perte     couverture       coverage.continuousFire.holesKind                          63 -> 67        
+    perte     couverture       coverage.continuousFire.holesNotClosing                  3254 -> 3292      
+    perte     couverture       coverage.stances.forgottenBindings                        625 -> 641       
+    perte     couverture       coverage.stances.refusedNewFalseReads                       2 -> 3         
+    perte     couverture       coverage.stances.refusedNewUndecided                        — -> 1         
+    perte     couverture       coverage.stances.refusedNews                                2 -> 4         
+
+  [fb1a1a72] ctf_multi_manche (schema 76 -> 76)
+    perte     armes            weaponChanges/par-kind/taken                               70 -> 69        
+    perte     couverture       coverage.continuousFire.holeRuns                        13711 -> 13919     
+    perte     couverture       coverage.continuousFire.holesBlockBC                       44 -> 46        
+    perte     couverture       coverage.continuousFire.holesKind                         144 -> 146       
+    perte     couverture       coverage.continuousFire.holesNotClosing                 23983 -> 24094     
+    perte     couverture       coverage.stances.refusedNewFalseReads                      60 -> 62        
+    perte     couverture       coverage.stances.refusedNews                              112 -> 113       
+
+  [d9781168] oddball (schema 76 -> 76)
+    perte     armes            weaponChanges/par-kind/taken                               50 -> 49        
+    perte     autres:stances   stances/par-kind/jumpDerived                              374 -> 372       
+    perte     couverture       coverage.continuousFire.holesNotClosing                 11503 -> 11556     
+    perte     couverture       coverage.stances.forgottenBindings                       1298 -> 1301      
+    perte     couverture       coverage.stances.jumpsDerived                             374 -> 372       
+    perte     couverture       coverage.stances.reads                                   2722 -> 2721      
+    perte     couverture       coverage.stances.refusedNewUndecided                       21 -> 26        
+    perte     couverture       coverage.stances.refusedNews                               22 -> 27        
+
+  [c75f33b8] assaut_bombe (schema 76 -> 76)
+    perte     armes            weaponChanges/par-kind/taken                               28 -> 27        
+    perte     couverture       coverage.stances.refusedNewUndecided                        7 -> 8         
+    perte     couverture       coverage.stances.refusedNews                                9 -> 10        
+
+  [bf15f7ab] slayer (schema 76 -> 76)
+    perte     autres:stances   stances/duree-totale                                     9316 -> 9248      
+    perte     autres:stances   stances/duree-totale/par-slot/552                         131 -> 43        
+    perte     couverture       coverage.continuousFire.holesBlockBC                      106 -> 107       
+    perte     couverture       coverage.continuousFire.holesNotClosing                  1669 -> 1678      
+
+  [51ebbc0f] deux_manches (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holeRuns                         5849 -> 5977      
+    perte     couverture       coverage.continuousFire.holesBlockBC                       39 -> 40        
+    perte     couverture       coverage.continuousFire.holesKind                          96 -> 99        
+    perte     couverture       coverage.continuousFire.holesNotClosing                 17017 -> 17180     
+    perte     couverture       coverage.continuousFire.innerHoles                        327 -> 330       
+
+  [084a804d] vehicules (schema 76 -> 76)
+    perte     autres:stances   stances/duree-totale                                    80590 -> 79781     
+    perte     autres:stances   stances/duree-totale/par-slot/521                        1270 -> 1261      
+    perte     autres:stances   stances/duree-totale/par-slot/533                         228 -> 217       
+    perte     autres:stances   stances/duree-totale/par-slot/536                        1187 -> 1186      
+    perte     autres:stances   stances/duree-totale/par-slot/537                         398 -> 394       
+    perte     autres:stances   stances/duree-totale/par-slot/538                         717 -> 715       
+    perte     autres:stances   stances/duree-totale/par-slot/545                         592 -> 582       
+    perte     autres:stances   stances/duree-totale/par-slot/546                         239 -> 238       
+    perte     autres:stances   stances/duree-totale/par-slot/554                         350 -> 238       
+    perte     autres:stances   stances/duree-totale/par-slot/556                        1116 -> 1077      
+    perte     autres:stances   stances/duree-totale/par-slot/590                         300 -> 299       
+    perte     autres:stances   stances/duree-totale/par-slot/591                        1842 -> 1283      
+    perte     autres:stances   stances/duree-totale/par-slot/592                        1211 -> 1203      
+    perte     autres:stances   stances/duree-totale/par-slot/593                         403 -> 400       
+    perte     autres:stances   stances/duree-totale/par-slot/628                         860 -> 774       
+    perte     autres:stances   stances/duree-totale/par-slot/634                         672 -> 605       
+    perte     autres:stances   stances/duree-totale/par-slot/676                         219 -> 179       
+    perte     autres:stances   stances/duree-totale/par-slot/683                         127 -> 122       
+    perte     autres:stances   stances/duree-totale/par-slot/688                         237 -> 230       
+    perte     autres:stances   stances/duree-totale/par-slot/696                         489 -> 488       
+    perte     autres:stances   stances/duree-totale/par-slot/710                        2178 -> 2163      
+    perte     autres:stances   stances/duree-totale/par-slot/718                         101 -> 81        
+    perte     autres:stances   stances/duree-totale/par-slot/726                         695 -> 686       
+    perte     autres:stances   stances/duree-totale/par-slot/729                         164 -> 163       
+    perte     autres:stances   stances/duree-totale/par-slot/730                        1164 -> 1150      
+    perte     autres:stances   stances/duree-totale/par-slot/731                         235 -> 204       
+    perte     autres:stances   stances/duree-totale/par-slot/737                         137 -> 131       
+    perte     couverture       coverage.continuousFire.heldHoleMs                     943781 -> 961595    
+    perte     couverture       coverage.continuousFire.holesBlockBC                       14 -> 15        
+    perte     couverture       coverage.continuousFire.holesNotClosing                 23544 -> 23752     
+    perte     couverture       coverage.continuousFire.weaponUnknown                       4 -> 5         
+    perte     couverture       coverage.stances.dropped                                    5 -> 6         
+    perte     couverture       coverage.stances.forgottenBindings                       3649 -> 3661      
+    perte     couverture       coverage.stances.refusedNewFalseReads                      14 -> 16        
+    perte     couverture       coverage.stances.refusedNews                               26 -> 28        
+
+  [0797ce72] region_index_2_bits (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesNotClosing                  5609 -> 5617      
+    perte     couverture       coverage.stances.forgottenBindings                       1270 -> 1281      
+
+  [111fa685] version_39 (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesKind                         169 -> 170       
+    perte     couverture       coverage.continuousFire.holesNotClosing                 11084 -> 11105     
+    perte     couverture       coverage.stances.forgottenBindings                       1924 -> 1930      
+    perte     couverture       coverage.stances.refusedNewFalseReads                      13 -> 15        
+    perte     couverture       coverage.stances.refusedNewUndecided                        8 -> 9         
+    perte     couverture       coverage.stances.refusedNews                               21 -> 24        
+
+  [e5adf7b2] version_40_build_1_11 (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesNotClosing                 10360 -> 10361     
+    perte     couverture       coverage.stances.forgottenBindings                       2092 -> 2094      
+
+  [60ae07c4] version_37 (schema 76 -> 76)
+    perte     autres:stances   stances/duree-totale                                    23438 -> 22637     
+    perte     autres:stances   stances/duree-totale/par-slot/519                         195 -> 167       
+    perte     autres:stances   stances/duree-totale/par-slot/522                         163 -> 147       
+    perte     autres:stances   stances/duree-totale/par-slot/530                         401 -> 305       
+    perte     autres:stances   stances/duree-totale/par-slot/540                         319 -> 159       
+    perte     autres:stances   stances/duree-totale/par-slot/542                         197 -> 97        
+    perte     autres:stances   stances/duree-totale/par-slot/547                          96 -> 95        
+    perte     autres:stances   stances/duree-totale/par-slot/552                         282 -> 191       
+    perte     autres:stances   stances/duree-totale/par-slot/556                         343 -> 228       
+    perte     autres:stances   stances/duree-totale/par-slot/577                         248 -> 112       
+    perte     autres:stances   stances/duree-totale/par-slot/578                         148 -> 147       
+    perte     autres:stances   stances/duree-totale/par-slot/602                         287 -> 280       
+    perte     autres:stances   stances/duree-totale/par-slot/641                          89 -> 88        
+    perte     autres:stances   stances/duree-totale/par-slot/652                         391 -> 379       
+    perte     autres:stances   stances/duree-totale/par-slot/671                         288 -> 93        
+    perte     autres:stances   stances/duree-totale/par-slot/673                         155 -> 153       
+    perte     couverture       coverage.continuousFire.holesBlockBC                      145 -> 148       
+    perte     couverture       coverage.continuousFire.holesKind                         729 -> 740       
+    perte     couverture       coverage.continuousFire.holesNotClosing                 30445 -> 30830     
+    perte     couverture       coverage.fallbacks/n                                       21 -> 22        
+    perte     couverture       coverage.stances.forgottenBindings                       1207 -> 1220      
+    perte     couverture       coverage.stances.refusedNewUndecided                       60 -> 61        
+    perte     couverture       coverage.stances.refusedNews                               82 -> 83        
+    perte     couverture       coverage.vehicles.deathsUnmatched                           0 -> 1         
+
+  [a349fea8] version_33_sans_identification (schema 76 -> 76)
+    perte     autres:stances   stances/duree-totale                                   151604 -> 150936    
+    perte     autres:stances   stances/duree-totale/par-slot/515                        8393 -> 8367      
+    perte     autres:stances   stances/duree-totale/par-slot/526                          72 -> 66        
+    perte     autres:stances   stances/duree-totale/par-slot/528                         690 -> 679       
+    perte     autres:stances   stances/duree-totale/par-slot/534                        7231 -> 7219      
+    perte     autres:stances   stances/duree-totale/par-slot/556                         223 -> 208       
+    perte     autres:stances   stances/duree-totale/par-slot/565                         333 -> 227       
+    perte     autres:stances   stances/duree-totale/par-slot/567                        1181 -> 1173      
+    perte     autres:stances   stances/duree-totale/par-slot/629                         449 -> 438       
+    perte     autres:stances   stances/duree-totale/par-slot/632                         101 -> 96        
+    perte     autres:stances   stances/duree-totale/par-slot/637                         343 -> 268       
+    perte     autres:stances   stances/duree-totale/par-slot/649                         727 -> 584       
+    perte     autres:stances   stances/duree-totale/par-slot/650                         351 -> 307       
+    perte     autres:stances   stances/duree-totale/par-slot/657                         171 -> 133       
+    perte     autres:stances   stances/duree-totale/par-slot/658                         284 -> 277       
+    perte     autres:stances   stances/duree-totale/par-slot/668                         216 -> 180       
+    perte     autres:stances   stances/duree-totale/par-slot/669                          67 -> 66        
+    perte     autres:stances   stances/duree-totale/par-slot/673                         372 -> 362       
+    perte     autres:stances   stances/duree-totale/par-slot/708                         148 -> 139       
+    perte     autres:stances   stances/duree-totale/par-slot/719                        1215 -> 1208      
+    perte     autres:stances   stances/duree-totale/par-slot/730                          33 -> 32        
+    perte     autres:stances   stances/duree-totale/par-slot/737                         330 -> 298       
+    perte     autres:stances   stances/duree-totale/par-slot/750                         811 -> 399       
+    perte     autres:stances   stances/duree-totale/par-slot/751                        1158 -> 647       
+    perte     autres:stances   stances/duree-totale/par-slot/753                         223 -> 205       
+    perte     couverture       coverage.continuousFire.holesBlockBC                      152 -> 155       
+    perte     couverture       coverage.continuousFire.holesKind                         927 -> 944       
+    perte     couverture       coverage.continuousFire.holesNotClosing                 22249 -> 22721     
+    perte     couverture       coverage.stances.desyncs                                   11 -> 12        
+
+  [a521164d] version_33_build_1_4_1 (schema 76 -> 76)
+    perte     autres:stances   stances/duree-totale                                    35269 -> 34425     
+    perte     autres:stances   stances/duree-totale/par-slot/561                         370 -> 321       
+    perte     autres:stances   stances/duree-totale/par-slot/563                         522 -> 521       
+    perte     autres:stances   stances/duree-totale/par-slot/581                         868 -> 867       
+    perte     autres:stances   stances/duree-totale/par-slot/589                         586 -> 192       
+    perte     autres:stances   stances/duree-totale/par-slot/595                         766 -> 755       
+    perte     autres:stances   stances/duree-totale/par-slot/612                         387 -> 177       
+    perte     autres:stances   stances/duree-totale/par-slot/616                         208 -> 207       
+    perte     autres:stances   stances/duree-totale/par-slot/622                         231 -> 220       
+    perte     autres:stances   stances/duree-totale/par-slot/629                         731 -> 324       
+    perte     autres:stances   stances/duree-totale/par-slot/636                         191 -> 185       
+    perte     couverture       coverage.continuousFire.holesBlockBC                      139 -> 143       
+    perte     couverture       coverage.continuousFire.holesKind                         254 -> 255       
+    perte     couverture       coverage.continuousFire.holesNotClosing                  8373 -> 8496      
+
+  [11de8353] version_38_build_1_9_0 (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesBlockBC                       18 -> 19        
+    perte     couverture       coverage.continuousFire.holesKind                         189 -> 195       
+    perte     couverture       coverage.continuousFire.holesNotClosing                  9919 -> 9958      
+    perte     couverture       coverage.stances.forgottenBindings                       1700 -> 1709      
+    perte     couverture       coverage.stances.refusedNewFalseReads                       8 -> 9         
+    perte     couverture       coverage.stances.refusedNews                               11 -> 12        
+
+  [50247b26] version_31_sans_identification (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesKind                         896 -> 900       
+    perte     couverture       coverage.continuousFire.holesNotClosing                 13794 -> 13835     
+
+  [bfecd02b] vehicules_v41_utilisateur (schema 76 -> 76)
+    perte     autres:stances   stances/duree-totale                                     9794 -> 9743      
+    perte     autres:stances   stances/duree-totale/par-slot/538                         487 -> 447       
+    perte     autres:stances   stances/duree-totale/par-slot/555                         103 -> 77        
+    perte     autres:stances   stances/duree-totale/par-slot/570                         322 -> 321       
+
+  [4f77afc1] equipement_origine_utilisateur (schema 76 -> 76)
+    perte     autres:bursts    bursts.holes.t0/presents                                    3 -> 2         
+    perte     autres:bursts    bursts.holes.t1/presents                                    3 -> 2         
+    perte     autres:bursts    bursts.holes/duree-totale                                  58 -> 38        
+    perte     autres:bursts    bursts.holes/n                                              3 -> 2         
+    perte     autres:bursts    bursts.holes/total                                          3 -> 2         
+    perte     autres:stances   stances/duree-totale                                    71799 -> 71437     
+    perte     autres:stances   stances/duree-totale/par-slot/513                         180 -> 179       
+    perte     autres:stances   stances/duree-totale/par-slot/514                         291 -> 280       
+    perte     autres:stances   stances/duree-totale/par-slot/515                         658 -> 587       
+    perte     autres:stances   stances/duree-totale/par-slot/539                        2090 -> 1969      
+    perte     autres:stances   stances/duree-totale/par-slot/552                         185 -> 111       
+    perte     autres:stances   stances/duree-totale/par-slot/557                         388 -> 369       
+    perte     autres:stances   stances/duree-totale/par-slot/614                         336 -> 301       
+    perte     autres:stances   stances/duree-totale/par-slot/620                         513 -> 501       
+    perte     autres:stances   stances/duree-totale/par-slot/629                         189 -> 188       
+    perte     autres:stances   stances/duree-totale/par-slot/632                         439 -> 96        
+    perte     autres:stances   stances/duree-totale/par-slot/633                         570 -> 565       
+    perte     autres:stances   stances/duree-totale/par-slot/636                         182 -> 173       
+    perte     autres:stances   stances/duree-totale/par-slot/676                         186 -> 181       
+    perte     autres:stances   stances/duree-totale/par-slot/697                        1258 -> 1248      
+    perte     autres:stances   stances/duree-totale/par-slot/700                         276 -> 194       
+    perte     autres:stances   stances/duree-totale/par-slot/718                         465 -> 448       
+    perte     autres:stances   stances/duree-totale/par-slot/730                         156 -> 142       
+    perte     autres:stances   stances/duree-totale/par-slot/733                         652 -> 646       
+    perte     autres:stances   stances/duree-totale/par-slot/735                         830 -> 744       
+    perte     autres:stances   stances/duree-totale/par-slot/738                         674 -> 648       
+    perte     autres:stances   stances/duree-totale/par-slot/760                        1019 -> 1015      
+    perte     couverture       coverage.continuousFire.burstsWithHole                    231 -> 233       
+    perte     couverture       coverage.continuousFire.holeRuns                         2417 -> 2425      
+    perte     couverture       coverage.continuousFire.innerHoles                       1246 -> 1272      
+    perte     couverture       coverage.continuousFire.noTrack                            79 -> 87        
+    perte     couverture       coverage.stances.dropped                                   17 -> 21        
+    perte     couverture       coverage.stances.refusedNewUndecided                       29 -> 31        
+    perte     couverture       coverage.stances.refusedNews                               61 -> 63        
+
+  [396cfc92] strongholds_zones (schema 76 -> 76)
+    perte     autres:stances   stances/duree-totale                                    10524 -> 10516     
+    perte     autres:stances   stances/duree-totale/par-slot/535                         212 -> 207       
+    perte     autres:stances   stances/duree-totale/par-slot/541                         552 -> 538       
+    perte     autres:stances   stances/par-kind/jumpDerived                              260 -> 259       
+    perte     couverture       coverage.stances.jumpsDerived                             260 -> 259       
+
+  [f75e7053] koth_collines (schema 76 -> 76)
+    perte     autres:stances   stances/duree-totale                                     9283 -> 9269      
+    perte     autres:stances   stances/duree-totale/par-slot/530                         309 -> 304       
+    perte     autres:stances   stances/duree-totale/par-slot/545                         142 -> 137       
+    perte     autres:stances   stances/duree-totale/par-slot/547                         156 -> 137       
+    perte     autres:stances   stances/duree-totale/par-slot/571                          48 -> 39        
+    perte     autres:stances   stances/duree-totale/par-slot/573                          34 -> 26        
+
+DETAIL DES CHANGEMENTS (17 temoin(s)) :
+
+  [bcb6d393] ctf_mono_manche (schema 76 -> 76)
+    changement couverture       coverage.stances.byKind.sprint                            347 -> 351       
+    changement couverture       coverage.stances.jumpEpisodes                            1222 -> 1223      
+
+  [fb1a1a72] ctf_multi_manche (schema 76 -> 76)
+    changement autres:stances   stances/duree-totale/par-slot/524                         167 -> 73        
+    changement autres:stances   stances/duree-totale/par-slot/533                         746 -> 740       
+    changement autres:stances   stances/duree-totale/par-slot/589                          77 -> 8         
+    changement autres:stances   stances/duree-totale/par-slot/616                         149 -> 145       
+    changement autres:stances   stances/duree-totale/par-slot/636                         161 -> 160       
+    changement couverture       coverage.birthLoadouts.beforeOrigin                         7 -> 8         
+    changement couverture       coverage.birthLoadouts.unarmedGrants                        7 -> 8         
+    changement couverture       coverage.stances.byKind.jumpDerived                       252 -> 256       
+    changement couverture       coverage.stances.byKind.sprint                            272 -> 276       
+    changement couverture       coverage.stances.jumpEpisodes                            1578 -> 1582      
+    changement couverture       coverage.weaponChanges.swapped                             19 -> 20        
+    changement couverture       coverage.weaponChanges.taken                               70 -> 69        
+
+  [d9781168] oddball (schema 76 -> 76)
+    changement autres:stances   stances/duree-totale/par-slot/626                         195 -> 190       
+    changement autres:stances   stances/duree-totale/par-slot/657                          97 -> 91        
+    changement couverture       coverage.birthLoadouts.snapped                             19 -> 20        
+    changement couverture       coverage.birthLoadouts.unarmedGrants                       22 -> 24        
+    changement couverture       coverage.stances.byKind.jumpDerived                       374 -> 372       
+    changement couverture       coverage.stances.byKind.sprint                            556 -> 558       
+    changement couverture       coverage.stances.jumpEpisodes                            1952 -> 1956      
+    changement couverture       coverage.weaponChanges.swapped                             16 -> 17        
+    changement couverture       coverage.weaponChanges.taken                               50 -> 49        
+
+  [c75f33b8] assaut_bombe (schema 76 -> 76)
+    changement couverture       coverage.birthLoadouts.unarmedGrants                       20 -> 22        
+    changement couverture       coverage.stances.byKind.jumpDerived                       245 -> 247       
+    changement couverture       coverage.stances.byKind.sprint                            327 -> 329       
+    changement couverture       coverage.stances.jumpEpisodes                             851 -> 853       
+    changement couverture       coverage.weaponChanges.swapped                             13 -> 14        
+    changement couverture       coverage.weaponChanges.taken                               28 -> 27        
+
+  [bf15f7ab] slayer (schema 76 -> 76)
+    changement couverture       coverage.stances.byKind.sprint                            457 -> 461       
+    changement couverture       coverage.stances.jumpEpisodes                             847 -> 849       
+
+  [51ebbc0f] deux_manches (schema 76 -> 76)
+    changement autres:stances   stances/duree-totale/par-slot/592                          85 -> 53        
+    changement couverture       coverage.birthLoadouts.snapped                             21 -> 22        
+    changement couverture       coverage.birthLoadouts.unarmedGrants                       15 -> 16        
+    changement couverture       coverage.stances.byKind.jumpDerived                       230 -> 237       
+    changement couverture       coverage.stances.byKind.sprint                            135 -> 136       
+    changement couverture       coverage.stances.jumpEpisodes                            1258 -> 1266      
+
+  [084a804d] vehicules (schema 76 -> 76)
+    changement couverture       coverage.stances.byKind.clamber                           123 -> 124       
+    changement couverture       coverage.stances.byKind.jumpDerived                      2115 -> 2125      
+    changement couverture       coverage.stances.byKind.sprint                           2618 -> 2659      
+    changement couverture       coverage.stances.jumpEpisodes                            8351 -> 8376      
+
+  [111fa685] version_39 (schema 76 -> 76)
+    changement autres:stances   stances/duree-totale/par-slot/608                         653 -> 652       
+    changement autres:stances   stances/duree-totale/par-slot/635                          82 -> 81        
+    changement autres:stances   stances/duree-totale/par-slot/637                         198 -> 189       
+    changement couverture       coverage.deathsPaths.walk.population                      205 -> 206       
+    changement couverture       coverage.stances.byKind.jumpDerived                      1300 -> 1301      
+    changement couverture       coverage.stances.byKind.sprint                           1435 -> 1437      
+    changement couverture       coverage.stances.jumpEpisodes                            3708 -> 3709      
+
+  [60ae07c4] version_37 (schema 76 -> 76)
+    changement couverture       coverage.stances.byKind.jumpDerived                       753 -> 756       
+    changement couverture       coverage.stances.byKind.sprint                           1091 -> 1111      
+    changement couverture       coverage.stances.jumpEpisodes                            2512 -> 2520      
+
+  [a349fea8] version_33_sans_identification (schema 76 -> 76)
+    changement couverture       coverage.stances.byKind.clamber                            83 -> 85        
+    changement couverture       coverage.stances.byKind.jumpDerived                      1059 -> 1081      
+    changement couverture       coverage.stances.byKind.sprint                           1275 -> 1312      
+    changement couverture       coverage.stances.jumpEpisodes                            6490 -> 6547      
+
+  [a521164d] version_33_build_1_4_1 (schema 76 -> 76)
+    changement couverture       coverage.stances.byKind.jumpDerived                       460 -> 471       
+    changement couverture       coverage.stances.byKind.slide                              90 -> 91        
+    changement couverture       coverage.stances.byKind.sprint                            650 -> 664       
+    changement couverture       coverage.stances.jumpEpisodes                            2520 -> 2534      
+
+  [11de8353] version_38_build_1_9_0 (schema 76 -> 76)
+    changement autres:stances   stances/duree-totale/par-slot/528                         321 -> 320       
+    changement autres:stances   stances/duree-totale/par-slot/625                         254 -> 244       
+    changement autres:stances   stances/duree-totale/par-slot/648                         104 -> 89        
+    changement couverture       coverage.stances.byKind.sprint                           1191 -> 1195      
+    changement couverture       coverage.stances.jumpEpisodes                            4152 -> 4155      
+
+  [50247b26] version_31_sans_identification (schema 76 -> 76)
+    changement autres:stances   stances/duree-totale/par-slot/596                          59 -> 32        
+    changement couverture       coverage.stances.byKind.jumpDerived                       683 -> 686       
+    changement couverture       coverage.stances.byKind.sprint                            860 -> 862       
+    changement couverture       coverage.stances.jumpEpisodes                            2385 -> 2388      
+
+  [bfecd02b] vehicules_v41_utilisateur (schema 76 -> 76)
+    changement couverture       coverage.birthLoadouts.snapped                             14 -> 15        
+    changement couverture       coverage.stances.byKind.sprint                            553 -> 560       
+    changement couverture       coverage.stances.jumpEpisodes                            2115 -> 2124      
+
+  [4f77afc1] equipement_origine_utilisateur (schema 76 -> 76)
+    changement couverture       coverage.birthLoadouts.snapped                             98 -> 99        
+    changement couverture       coverage.continuousFire.notContinuous                     110 -> 111       
+    changement couverture       coverage.continuousFire.onVehicle                          52 -> 56        
+    changement couverture       coverage.stances.byKind.jumpDerived                      1512 -> 1528      
+    changement couverture       coverage.stances.byKind.sprint                           2034 -> 2068      
+    changement couverture       coverage.stances.jumpEpisodes                            7944 -> 7992      
+
+  [396cfc92] strongholds_zones (schema 76 -> 76)
+    changement couverture       coverage.stances.byKind.jumpDerived                       260 -> 259       
+    changement couverture       coverage.stances.byKind.sprint                            568 -> 572       
+    changement couverture       coverage.stances.jumpEpisodes                             748 -> 750       
+
+  [f75e7053] koth_collines (schema 76 -> 76)
+    changement couverture       coverage.stances.byKind.jumpDerived                       623 -> 625       
+    changement couverture       coverage.stances.byKind.sprint                            678 -> 689       
+    changement couverture       coverage.stances.jumpEpisodes                            1584 -> 1591      
+
+TELEMETRIE (1 valeur(s) — affichee, jamais comptee au verdict) :
+    coverage.decoder.grammarRev                            grammar-2026-10-02 -> grammar-2026-10-02.2        19 temoin(s)
+rc=1

@@ -1,0 +1,75 @@
+--- a/apps/go-api/internal/games/halo_infinite/film/internal/facts/killsource/walk.go (post-J12, df228c24c)
++++ b/surcouche_unique_postj12/walk.go
+@@ -29,6 +29,8 @@
+ // film, dont un double kill).
+ 
+ import (
++	"os"
++
+ 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+ 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+ 	"levelup/go-api/internal/games/halo_infinite/film/types"
+@@ -85,6 +87,9 @@
+ // locateStrict : premiere position S >= 2 telle que le bit S-1 vaille 0 (fin de la liste
+ // d evenements) et que la signature stricte y decode. -1 si aucune.
+ func locateStrict(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
++	if rlocLS {
++		return rlocLocateStrictLS(pl, w, cfg)
++	}
+ 	nb := len(pl) * 8
+ 	for s := 2; s+35 < nb; s++ {
+ 		if source.BitAt(pl, s-1) != 0 {
+@@ -257,3 +262,53 @@
+ 	}
+ 	return dedup(out), noBit
+ }
++
++// ---- SURCOUCHE DE RECHERCHE UNIQUE post-J12 : localisateur R-LS (campagne de grammaire) ---------
++// Ce fichier n est PAS le fichier de production : c est une copie que `-overlay` substitue a
++// `walk.go` pour la seule duree d une mesure. Ajout : la bascule [rlocLS] et la regle R-LS de
++// `r_loc_overlay/` (2026-10-02), la meme que la surcouche de `grammar.marchLocateStrict`. Sans
++// bascule, [locateStrict] lit exactement comme la production.
++
++// rlocLS : vrai -> [locateStrict] suit la regle R-LS. Pose par CAMPAGNE_RLOC_LS=1 (lue au
++// chargement). Absente -> la production.
++var rlocLS = os.Getenv("CAMPAGNE_RLOC_LS") == "1"
++
++// rlocLocateStrictLS : slot 123 strict, sinon premiere signature stricte sur un autre slot lie a
++// un archetype « high-frequency » (lu par NOM dans le registre du film), generation du profil.
++func rlocLocateStrictLS(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
++	nb := len(pl) * 8
++	hf := rlocArchetypesHauteFrequence(w.Reg)
++	autre := -1
++	for s := 2; s+35 < nb; s++ {
++		if source.BitAt(pl, s-1) != 0 {
++			continue
++		}
++		rec, end, ok := grammar.TryDeltaAt(pl, s, w, cfg)
++		if !ok || end != s+35 || len(rec.Trace.Comps) != 1 {
++			continue
++		}
++		if rec.Slot == 123 {
++			return s
++		}
++		if autre < 0 && hf[rec.TypeIndex] &&
++			w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
++			autre = s
++		}
++	}
++	return autre
++}
++
++// rlocArchetypesHauteFrequence : les archetypes a un seul composant nomme `high-frequency`
++// (SURCOUCHE DE RECHERCHE r_loc).
++func rlocArchetypesHauteFrequence(reg *grammar.Registry) map[uint32]bool {
++	out := map[uint32]bool{}
++	if reg == nil {
++		return out
++	}
++	for _, a := range reg.Archetypes {
++		if len(a.Components) == 1 && a.Components[0] == "high-frequency" {
++			out[uint32(a.Index)] = true //nolint:gosec // indice de registre
++		}
++	}
++	return out
++}

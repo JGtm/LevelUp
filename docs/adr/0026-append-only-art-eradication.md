@@ -1,4 +1,4 @@
-# ADR 0026 — Tables append-only pour éradiquer le bug DuckDB ART #23046
+# ADR 0026 — Tables append-only pour éradiquer le bug DuckDB ART #23645
 
 - **Statut** : Accepté (campagne livrée 2026-06-21)
 - **Contexte technique** : DuckDB 1.5.x file-backed, driver CGO
@@ -9,7 +9,7 @@
 Sur DuckDB file-backed (1.5.x), l'enforcement d'une contrainte `PRIMARY KEY`/`UNIQUE`
 passe par un index **ART** (Adaptive Radix Tree). Sous churn — `DELETE` ligne-à-ligne,
 `UPDATE` d'une colonne indexée, `INSERT ... ON CONFLICT DO UPDATE`, `INSERT OR
-REPLACE/IGNORE` — l'ART corrompt le heap (bug amont #23046) :
+REPLACE/IGNORE` — l'ART perd la cohérence de son index (bug amont #23645, « Failed to delete all rows from index ») :
 
 ```
 Failed to delete all rows from index
@@ -42,7 +42,7 @@ construction**.
 Faible pression concurrente : on lit l'existant puis `UPDATE`-or-`INSERT` ciblé (pas de
 `ON CONFLICT`). Hors périmètre de cet ADR (voir `.ai/V7/audit_art_writes.md`).
 
-## Les 3 mécanismes de discrimination « version courante »
+## Les 4 mécanismes de discrimination « version courante »
 
 Le choix dépend de la sémantique métier de la réécriture :
 
@@ -50,7 +50,45 @@ Le choix dépend de la sémantique métier de la réécriture :
 |---|---|---|---|---|
 | **written_at** | « dernier-écrit gagne » par clé (1 ligne/clé) | `written_at TIMESTAMP` | `ROW_NUMBER() OVER (PARTITION BY <clé> ORDER BY written_at DESC, id DESC) = 1` | `match_skill_rank`, `player_csr_snapshots`, `match_csrs`, `pve_match_stats`, `lusr_component_history` |
 | **generation_id** | remplacer l'ENSEMBLE des lignes d'une clé en bloc atomique (N lignes/clé) | `generation_id BIGINT` (1 valeur par appel d'écriture) | `DENSE_RANK() OVER (PARTITION BY <clé> ORDER BY generation_id DESC) = 1` | `personal_score_awards` (+ `is_tombstone` pour l'extraction vide), `match_citations` |
+| **decode_pass** | la ligne est le PRODUIT d'un décodage, et une passe doit pouvoir RÉTRACTER ce qu'elle ne retrouve plus | `decode_pass VARCHAR NOT NULL` (1 valeur par passe de décodage d'un match) | dernière passe ENTIÈRE par match : `QUALIFY decode_pass = FIRST_VALUE(decode_pass) OVER (PARTITION BY match_id ORDER BY written_at DESC, id DESC)` | `match_kill_events`, `kill_openings`, `kill_positions` |
 | **stage merge-on-read** | colonnes écrites par des chemins DISTINCTS, à fusionner | `stage VARCHAR` + `written_at` | `ROW_NUMBER()` par `(<clé>, stage)` puis `GROUP BY <clé>` + `COALESCE` par colonne selon priorité de stage | `player_match_enrichment` |
+
+### `decode_pass` — le seul mécanisme qui sait RÉTRACTER
+
+Les trois autres mécanismes arbitrent **par clé** : ils savent servir la dernière valeur
+d'une ligne, jamais constater son ABSENCE. C'est suffisant tant qu'une réécriture réécrit
+toujours les mêmes clés — et c'est faux dès que les lignes sont le produit d'un décodage.
+
+`replay.BuildKillPositions` n'écrit aucune ligne pour une mort dont ni le tueur ni la
+victime n'ont pu être localisés (bornes de trajectoire, joueur non résolu, film
+re-téléchargé plus court), et un décodeur amélioré en écarte d'autres. Sous un arbitrage
+par clé, une position que la nouvelle passe ne retrouve plus n'est pas réécrite — elle est
+simplement absente — et la vue continue donc de servir **à jamais** la ligne de la passe
+précédente, mêlée aux nouvelles. **Une valeur fausse survit à sa propre correction.**
+
+`decode_pass` déplace l'unité d'arbitrage de la clé vers **la passe** : la vue retient la
+dernière passe entière d'un match et ignore toutes les précédentes, donc une ligne
+qu'une passe neuve n'écrit pas disparaît de la vue. L'écriture reste un INSERT pur — c'est
+toujours le même append-only, avec un discriminant qui porte sur un ENSEMBLE.
+
+Trois points de vigilance, tous payés sur pièces :
+
+- **Migrer une table existante exige un rebuild CTAS, pas un `ALTER TABLE ADD COLUMN`.** La
+  colonne est `NOT NULL` (une ligne sans passe serait injointable au mécanisme) et un
+  `DEFAULT` constant fondrait toutes les lignes existantes dans UNE passe inter-matchs — la
+  première passe neuve d'un match retirerait alors de la vue les lignes de tous les autres.
+  Le CTAS permet une expression PAR LIGNE : `'legacy-' || match_id`, soit une passe
+  synthétique par match, ce qui rend exactement l'état d'avant migration jusqu'à ce qu'une
+  passe neuve remplace CE match. Cf. `steps_shared_kill_positions_pass.go`.
+- **Une table à passé peut avoir besoin d'un second étage de déduplication.** Regrouper tout
+  le passé d'un match dans une seule passe synthétique y fait cohabiter des doublons de clé
+  que l'ancienne vue par clé masquait. La vue de `kill_positions` ajoute donc un
+  `ROW_NUMBER() = 1` par `(match_id, decode_pass, killer_xuid, time_ms)` À L'INTÉRIEUR de la
+  passe retenue : no-op sur toute passe bien formée, et incapable par construction de
+  ressusciter une ligne d'une passe antérieure.
+- **Le step porte un nom NEUF.** Les migrations sont name-keyed : modifier
+  `shared_append_only_kill_positions_v1`, déjà appliquée en local et en prod, ne rejouerait
+  rien et ferait diverger deux schémas.
 
 **`DENSE_RANK` vs `ROW_NUMBER`** : générationnel = on veut TOUTES les lignes de la
 dernière génération (pas une par clé) → `DENSE_RANK`. written_at = exactement une ligne

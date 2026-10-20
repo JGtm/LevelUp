@@ -8,7 +8,7 @@ package migration
 // Strongholds/KOTH/Oddball ~5-20s). details (JSON-as-VARCHAR) = échappatoire pour les champs non encore modélisés.
 //
 // Écriture : DELETE-then-INSERT par match (comme weapon_kills) depuis le backfill diagnostic v3 (sérialisé,
-// MaxOpenConns(1)), HORS chemin live → pas de pression concurrente ART. Voir .ai/PLAN_WEAPON_ATTRIBUTION_V3.md §10.
+// MaxOpenConns(1)), HORS chemin live → pas de pression concurrente ART. Voir le plan PLAN_WEAPON_ATTRIBUTION_V3 §10 (retiré du dépôt le 2026-07-13 par ca6b1864a).
 
 import "database/sql"
 

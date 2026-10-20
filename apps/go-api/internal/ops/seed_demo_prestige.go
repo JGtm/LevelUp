@@ -81,15 +81,15 @@ func demoTelemetryKindFor(status prestige.ChallengeStatus) string {
 // dont le jeu de migrations ne la porte pas) est loguée et ignorée, jamais fatale.
 // Retourne le nombre de lignes écrites par table.
 //
-// titleOut = racine de sortie du titre (plate pour le titre par défaut, cf.
-// demoTitleSubdir). matchIDs vide = tout le corpus du joueur démo présent dans le
+// layout = disposition de l'arbre démo (plate pour le titre par défaut, cf.
+// title.DemoLayout). matchIDs vide = tout le corpus du joueur démo présent dans le
 // shared de sortie (cas du générateur synthétique, qui n'a pas de liste externe).
-func seedDemoPrestige(ctx context.Context, titleOut, titleSlug string,
+func seedDemoPrestige(ctx context.Context, layout titlePkg.DemoLayout, titleSlug string,
 	matchIDs []string) (map[string]int, error) {
-	playerDBPath := filepath.Join(titleOut, "players", demoDirForIndex(0), "stats.duckdb")
-	sharedDBPath := filepath.Join(titleOut, "warehouse", "shared_matches_v2.duckdb")
-	socialDBPath := filepath.Join(titleOut, "warehouse", "shared_social.duckdb")
-	metaDBPath := filepath.Join(titleOut, "warehouse", "metadata.duckdb")
+	playerDBPath := layout.PlayerDBPath(titleSlug, demoDirForIndex(0))
+	sharedDBPath := layout.SharedDBPath(titleSlug)
+	socialDBPath := layout.SharedSocialDBPath(titleSlug)
+	metaDBPath := layout.MetadataDBPath(titleSlug)
 
 	stats, matches, err := loadDemoCorpusStats(ctx, sharedDBPath, demoXUIDForIndex(0), matchIDs)
 	if err != nil {

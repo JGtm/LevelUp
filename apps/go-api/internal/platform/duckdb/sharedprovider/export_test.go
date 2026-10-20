@@ -43,3 +43,31 @@ func SetDrainTimeoutForTest(p Provider, d time.Duration) {
 func SetRWHoldWatchdogForTest(p Provider, d time.Duration) {
 	p.(*providerImpl).rwHoldWatchdog = d
 }
+
+// SetSlowSwapThresholdForTest configure le seuil au-delà duquel une phase du
+// cycle B-swap est journalisée en INFO au lieu de DEBUG. Par défaut 2s
+// (defaultSlowSwapThreshold) — abaissé à ~1ns en tests pour qualifier n'importe
+// quel cycle de « lent » sans devoir en fabriquer un vraiment long. d <= 0
+// désactive la remontée INFO (tout le nominal reste en DEBUG).
+func SetSlowSwapThresholdForTest(p Provider, d time.Duration) {
+	p.(*providerImpl).slowSwapThreshold = d
+}
+
+// OpenRWRefusalsForTest rend le compteur des OpenReadWrite refusés pendant un swap
+// (shared_provider_swap_failures_total{reason="open_rw"}), process-wide.
+func OpenRWRefusalsForTest() int64 {
+	initMetrics()
+	return mapInt(swapFailuresTotal, failReasonOpenRW)
+}
+
+// SetSlowReaderThresholdForTest configure le seuil au-delà duquel une lecture est journalisée
+// au relâchement (défaut defaultSlowReaderThreshold). d <= 0 désactive le journal.
+func SetSlowReaderThresholdForTest(p Provider, d time.Duration) {
+	p.(*providerImpl).slowReaderThreshold = d
+}
+
+// SlowReadersForTest rend le compteur shared_provider_reader_slow_total, process-wide.
+func SlowReadersForTest() int64 {
+	initMetrics()
+	return readerSlowTotal.Value()
+}

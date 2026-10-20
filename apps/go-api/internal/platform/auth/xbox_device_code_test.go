@@ -27,8 +27,9 @@ func TestStartXboxDeviceCode_Success(t *testing.T) {
 		if r.Form.Get("client_id") != "test-client-id" {
 			t.Errorf("client_id inattendu: %q", r.Form.Get("client_id"))
 		}
-		// Garde-rail 401 SISU (2026-07-15) : le scope DOIT être le scope MSA natif —
-		// les scopes Azure AD produisent un JWT que SISU /authorize rejette en 401.
+		// Le scope DOIT être le scope MSA natif : le ticket rendu s'échange en User
+		// Token XBL avec le préfixe « t= » ; les scopes Azure AD produiraient un JWT
+		// AAD hors de cette famille.
 		if r.Form.Get("scope") != sisuMSAScope {
 			t.Errorf("scope attendu %q (MSA natif SISU), obtenu %q", sisuMSAScope, r.Form.Get("scope"))
 		}

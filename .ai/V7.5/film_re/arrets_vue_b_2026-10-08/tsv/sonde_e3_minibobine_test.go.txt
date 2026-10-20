@@ -1,0 +1,50 @@
+package grammar
+
+import (
+	"fmt"
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
+func TestZZSondeE3(t *testing.T) {
+	film, err := source.LoadDir(bobineFamilles, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wr := profile.QuantRangeCEBiped()
+	objets, _ := ScanWorldObjects(NewFilmContext(film), &wr, GroundWeaponTypeIndex)
+	for _, o := range objets {
+		fmt.Printf("WO\t%d\t%d\t%d\t%d\n", o.Slot, o.Gen, len(o.Pts), o.Pts[0].TimestampUS)
+	}
+	gr, _, _ := ScanGrappleReads(NewFilmContext(film))
+	for _, g := range gr {
+		fmt.Printf("GR\t%d\t%d\t%d\t%v\t%v\n", g.Slot, g.Chunk, g.PacketIndex, g.Heavy, g.PosQ)
+	}
+}
+
+func TestZZSondeE3Trames(t *testing.T) {
+	film, err := source.LoadDir(bobineFamilles, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fc := NewFilmContext(film)
+	_, trames, err := fc.objetsDuMonde()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ch := range fc.ChunkNumbers() {
+		_, pks, _ := fc.ChunkAt(ch)
+		for _, pk := range pks {
+			if pk.TimestampUS != 4563148690 && pk.TimestampUS != 4563866344 {
+				continue
+			}
+			tr, vu := trames[paquetDuFlux{ch, pk.Index}]
+			fmt.Printf("TR\t%d:%d\tvu=%v\tprouvee=%d\n", ch, pk.Index, vu, tr.prouveeDes)
+			for i, s := range tr.slots {
+				fmt.Printf("TR\t  slot %d ti %d\n", s, tr.archetypes[i])
+			}
+		}
+	}
+}

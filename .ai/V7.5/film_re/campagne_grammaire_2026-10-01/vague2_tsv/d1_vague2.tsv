@@ -1,0 +1,31 @@
+film	build	fixe_consolide	fixe_vague	source	fixe_large	source_large	utiles_sains_base	utiles_sains_tete	fixe_base	fixe_tete	large_base	large_tete	var_base	var_tete
+bcb6d393	HI_1_12_0	148160	148160	consolide	148160	consolide	35492	35492	24.0%	24.0%	24.0%	24.0%	28.9%	28.9%
+e5adf7b2	HI_1_11_0	383476	383476	consolide	383476	consolide	80067	80107	20.9%	20.9%	20.9%	20.9%	27.7%	27.7%
+1c4c63c2	HI_1_10_0	1314310	1314310	consolide	1314310	consolide	165965	176899	12.6%	13.5%	12.6%	13.5%	21.3%	19.7%
+50247b26	version-31	328128	328128	consolide	328128	consolide	274	274	0.1%	0.1%	0.1%	0.1%	0.1%	0.1%
+60ae07c4	HI_1_8_0	359291	359291	consolide	359291	consolide	83669	88047	23.3%	24.5%	23.3%	24.5%	30.8%	30.6%
+084a804d	HI_1_10_0	780716	780716	consolide	780716	consolide	89616	89755	11.5%	11.5%	11.5%	11.5%	16.6%	16.6%
+111fa685	HI_1_10_0	328525	328525	consolide	328525	consolide	42896	42896	13.1%	13.1%	13.1%	13.1%	17.4%	17.4%
+f75e7053	HI_1_13_0	192371	192371	consolide	192371	consolide	162137	162137	84.3%	84.3%	84.3%	84.3%	85.8%	85.8%
+bfecd02b	HI_1_13_0	272952	272952	consolide	272952	consolide	239045	239064	87.6%	87.6%	87.6%	87.6%	91.0%	91.0%
+4f77afc1	HI_1_13_0	825839	825839	consolide	838986	LP	607244	607913	73.5%	73.6%	72.4%	72.5%	79.8%	79.8%
+c75f33b8	HI_1_13_0	179123	179123	consolide	180143	LN	153997	173096	86.0%	96.6%	85.5%	96.1%	96.1%	97.3%
+a521164d	HI_1_4_1	198500	198500	consolide	198500	consolide	78	78	0.0%	0.0%	0.0%	0.0%	0.0%	0.0%
+bf15f7ab	HI_1_13_0	232833	232833	consolide	232833	consolide	216104	216104	92.8%	92.8%	92.8%	92.8%	94.4%	94.4%
+396cfc92	HI_1_13_0	239503	239503	consolide	239503	consolide	169502	169502	70.8%	70.8%	70.8%	70.8%	74.6%	74.6%
+a349fea8	version-33	519304	519304	consolide	571847	LP	3654	3654	0.7%	0.7%	0.6%	0.6%	0.8%	0.8%
+0797ce72	HI_1_13_0	225114	225114	consolide	225114	consolide	159929	159929	71.0%	71.0%	71.0%	71.0%	77.7%	77.7%
+51ebbc0f	HI_1_13_0	223827	223827	consolide	223827	consolide	140617	185712	62.8%	83.0%	62.8%	83.0%	78.0%	87.8%
+d9781168	HI_1_13_0	321902	321902	consolide	321902	consolide	180854	278340	56.2%	86.5%	56.2%	86.5%	73.5%	89.7%
+11de8353	HI_1_9_0	324613	324613	consolide	324613	consolide	65621	65658	20.2%	20.2%	20.2%	20.2%	26.4%	26.4%
+fb1a1a72	HI_1_13_0	359803	359803	consolide	359803	consolide	325749	325815	90.5%	90.6%	90.5%	90.6%	93.1%	93.1%
+AGG	HI_1_10_0	fixe_consolide=2423551	fixe_vague=2423551	fixe_large=2423551	sains 298477 -> 309550	fixe 12.3% -> 12.8%	large 12.3% -> 12.8%	variable 19.0% -> 18.4%
+AGG	HI_1_13_0	fixe_consolide=3073267	fixe_vague=3073267	fixe_large=3087434	sains 2355178 -> 2517612	fixe 76.6% -> 81.9%	large 76.3% -> 81.5%	variable 83.8% -> 86.1%
+AGG	corpus	fixe_consolide=7758290	fixe_vague=7758290	fixe_large=7825000	sains 2922510 -> 3100472	fixe 37.7% -> 40.0%	large 37.3% -> 39.6%	variable 46.4% -> 47.4%
+AGG	HI_1_8_0	fixe_consolide=359291	fixe_vague=359291	fixe_large=359291	sains 83669 -> 88047	fixe 23.3% -> 24.5%	large 23.3% -> 24.5%	variable 30.8% -> 30.6%
+AGG	HI_1_11_0	fixe_consolide=383476	fixe_vague=383476	fixe_large=383476	sains 80067 -> 80107	fixe 20.9% -> 20.9%	large 20.9% -> 20.9%	variable 27.7% -> 27.7%
+AGG	version-31	fixe_consolide=328128	fixe_vague=328128	fixe_large=328128	sains 274 -> 274	fixe 0.1% -> 0.1%	large 0.1% -> 0.1%	variable 0.1% -> 0.1%
+AGG	HI_1_9_0	fixe_consolide=324613	fixe_vague=324613	fixe_large=324613	sains 65621 -> 65658	fixe 20.2% -> 20.2%	large 20.2% -> 20.2%	variable 26.4% -> 26.4%
+AGG	version-33	fixe_consolide=519304	fixe_vague=519304	fixe_large=571847	sains 3654 -> 3654	fixe 0.7% -> 0.7%	large 0.6% -> 0.6%	variable 0.8% -> 0.8%
+AGG	HI_1_4_1	fixe_consolide=198500	fixe_vague=198500	fixe_large=198500	sains 78 -> 78	fixe 0.0% -> 0.0%	large 0.0% -> 0.0%	variable 0.0% -> 0.0%
+AGG	HI_1_12_0	fixe_consolide=148160	fixe_vague=148160	fixe_large=148160	sains 35492 -> 35492	fixe 24.0% -> 24.0%	large 24.0% -> 24.0%	variable 28.9% -> 28.9%

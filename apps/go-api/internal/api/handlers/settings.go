@@ -16,7 +16,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -33,25 +33,23 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/notifications"
-	"levelup/go-api/internal/notify"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
-	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/service"
-	go_sync "levelup/go-api/internal/sync"
 	"levelup/go-api/pkg/duckdbbackup"
 )
 
 // SettingsHandler gère les endpoints de configuration.
 type SettingsHandler struct {
-	cfg                 *config.AppConfig
-	settingsStore       *settings_platform.Store
-	jobStore            *jobs.Store
-	mediaIndexer        service.MediaIndexer
-	friendsOrchestrator port.FriendsOrchestrator    // nil = recompute désactivé (mode legacy)
-	notifierFor         NotificationsEmitterFactory // nil = pas de notifs friend_added
-	backupSched         *duckdbbackup.Scheduler     // nil = backup désactivé
+	cfg           *config.AppConfig
+	settingsStore *settings_platform.Store
+	friendStore   *friendstore.FriendStore // nil = aucun ami résolu au recalcul des sessions
+	jobStore      *jobs.Store
+	mediaIndexer  service.MediaIndexer
+	backupSched   *duckdbbackup.Scheduler // nil = backup désactivé
+	users         authz.UserLookup        // relecture du rôle admin (settings_admin.go)
 }
 
 // NewSettingsHandler crée un SettingsHandler avec le DirMediaIndexer par défaut.
@@ -75,18 +73,10 @@ func NewSettingsHandlerWithIndexer(
 	}
 }
 
-// WithFriendsOrchestrator branche un FriendsOrchestrator déclenché sur diff
-// friend_gamertags lors d'un PATCH /settings. §4 plan Squad/Sessions overhaul.
-func (h *SettingsHandler) WithFriendsOrchestrator(o port.FriendsOrchestrator) *SettingsHandler {
-	h.friendsOrchestrator = o
-	return h
-}
-
-// WithNotificationsEmitter branche la factory d'émetteurs pour les notifications
-// friend_added (§6 plan Squad/Sessions overhaul). Sans wiring, le PATCH
-// fonctionne mais aucune notif n'est émise.
-func (h *SettingsHandler) WithNotificationsEmitter(f NotificationsEmitterFactory) *SettingsHandler {
-	h.notifierFor = f
+// WithFriendStore branche le store des amis par joueur, lu par le recalcul des
+// sessions (chaque joueur est recalculé avec SA liste). Nil → aucun ami résolu.
+func (h *SettingsHandler) WithFriendStore(store *friendstore.FriendStore) *SettingsHandler {
+	h.friendStore = store
 	return h
 }
 
@@ -159,9 +149,9 @@ func (h *SettingsHandler) handleGetSettings(ctx context.Context, _ *struct{}) (*
 	}
 
 	// PMT-4 PR-3c : résout l'overlay per-titre (ShowProgression / OutcomeExclude*).
-	// Titre par défaut sans overlay ⇒ == Load() (byte-identique).
-	pr := titlePkg.NewPathResolver(h.cfg.RepoRoot)
-	cfg, err := h.settingsStore.ResolveForTitle(pr.TitleSettingsPath(ctxkeys.TitleSlug(ctx)))
+	// Titre par défaut sans overlay ⇒ == Load() (byte-identique). Overlay : cfg.TitleSettingsPath
+	// (celui de la fixture en démo, lot B5).
+	cfg, err := h.settingsStore.ResolveForTitle(h.cfg.TitleSettingsPath(ctxkeys.TitleSlug(ctx)))
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
@@ -210,13 +200,8 @@ func extractPerTitleOverlay(req *domain.UpdateSettingsRequest) map[string]json.R
 }
 
 // handlePatchSettings met à jour partiellement la configuration.
-// PATCH /settings — 422 en mode démo.
+// PATCH /settings — refusé en démo par la garde générale (middleware/demo_read_only.go).
 func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsBodyInput) (*settingsJSONOutput, error) {
-	if h.cfg.DemoMode {
-		return nil, humacore.NewError(http.StatusUnprocessableEntity, "demo_mode_unsupported",
-			"La modification des settings n'est pas disponible en mode démo.")
-	}
-
 	var req domain.UpdateSettingsRequest
 	if err := json.Unmarshal(in.RawBody, &req); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
@@ -227,19 +212,34 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 	// No-op quand l'auth n'est pas appliquée (mode none/demo, single-user dev) :
 	// l'opérateur passe alors par env / app_settings.json directement.
 	if req.InstanceLocked != nil && authz.Enforced(h.cfg.DemoMode, h.cfg.AuthMode) {
-		sess := middleware.GetSession(ctx)
-		if sess == nil || sess.Role == nil || *sess.Role != "admin" {
+		if !authz.IsAdmin(middleware.GetSession(ctx), h.users) {
 			slog.WarnContext(ctx, "settings: toggle instance_locked refusé (admin requis)")
 			return nil, humacore.NewError(http.StatusForbidden, "admin_required",
 				"Seul un administrateur peut modifier le verrou d'instance.")
 		}
 		slog.InfoContext(ctx, "settings: verrou d'instance modifié", "locked", *req.InstanceLocked)
 	}
+	// Verrou forcé par l'environnement (LEVELUP_INSTANCE_LOCKED) : le fichier ne
+	// peut pas l'ouvrir — écrire `false` réussirait sur disque alors que l'instance
+	// resterait fermée, et l'interrupteur admin se recocherait seul (revue
+	// adversariale du 2026-09-16). Refus explicite, quel que soit le mode d'auth.
+	if req.InstanceLocked != nil && !*req.InstanceLocked && h.cfg.InstanceLocked {
+		slog.WarnContext(ctx, "settings: déverrouillage refusé — verrou forcé par l'environnement")
+		return nil, humacore.NewError(http.StatusConflict, "instance_lock_forced",
+			"Le verrou est force par l'environnement (LEVELUP_INSTANCE_LOCKED) et ne peut pas etre leve depuis les reglages.")
+	}
 
 	// Validation des champs analyse.
 	if req.SessionGapMinutes != nil && *req.SessionGapMinutes < 0 {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_session_gap",
 			"session_gap_minutes doit être ≥ 0.")
+	}
+	if req.ReplayRetentionMonths != nil && *req.ReplayRetentionMonths < 0 {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_replay_retention",
+			"replay_retention_months doit être ≥ 0 (0 = illimité).")
+	}
+	if err := h.validateReplayBuildLocation(ctx, req.ReplayBuildLocation); err != nil {
+		return nil, err
 	}
 	if req.SessionTeamChangeMode != nil {
 		switch *req.SessionTeamChangeMode {
@@ -249,6 +249,12 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 			return nil, humacore.NewError(http.StatusBadRequest, "invalid_team_change_mode",
 				"session_team_change_mode doit être \"ignore\", \"group\" ou \"friends\".")
 		}
+	}
+	// Sons du rejeu : deux pourcentages. Une valeur hors bornes n'est pas « clampée
+	// en silence » — un curseur qui affiche 100 alors que le serveur a retenu autre
+	// chose est un mensonge d'interface.
+	if err := validerPourcentagesSonsRejeu(&req); err != nil {
+		return nil, err
 	}
 	if req.OutcomeBadgeSensitivity != nil {
 		switch *req.OutcomeBadgeSensitivity {
@@ -266,7 +272,6 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 	// chemin global byte-identique. Détection via le flag IsDefault (jamais une
 	// comparaison de slug littérale — archlint no_slug_comparison).
 	titleSlug := ctxkeys.TitleSlug(ctx)
-	pr := titlePkg.NewPathResolver(h.cfg.RepoRoot)
 	var perTitleOverlay map[string]json.RawMessage
 	if desc := titlePkg.DefaultRegistry().Get(titleSlug); desc != nil && !desc.IsDefault {
 		perTitleOverlay = extractPerTitleOverlay(&req)
@@ -276,9 +281,6 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
-
-	// Snapshot friend_gamertags avant Apply pour détecter le diff post-save.
-	prevFriends := append([]string(nil), cfg.FriendGamertags...)
 
 	settings_platform.Apply(cfg, &req)
 
@@ -295,31 +297,9 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 	}
 	analysis.SetExcludeAssistsFromYield(cfg.RendementExcludeAssists)
 
-	// §4 plan Squad/Sessions overhaul : si friend_gamertags a changé,
-	// déclencher async le recompute is_with_friends sur toutes les player DBs.
-	// Idempotent (la garde FALSE dans friends_recompute.go protège les retries).
-	if h.friendsOrchestrator != nil && friendGamertagsChanged(prevFriends, cfg.FriendGamertags) {
-		go func() {
-			bgCtx := context.Background()
-			if err := h.friendsOrchestrator.OnFriendsChanged(bgCtx); err != nil {
-				slog.ErrorContext(bgCtx, "friends recompute orchestration failed", "err", err)
-			}
-		}()
-	}
-
-	// §6 plan Squad/Sessions overhaul : notif friend_added pour chaque nouveau
-	// gamertag (set diff prev → next). Best-effort (warn log si l'émetteur
-	// échoue, mais la réponse PATCH reste OK).
-	if h.notifierFor != nil {
-		added := newFriendsAdded(prevFriends, cfg.FriendGamertags)
-		if len(added) > 0 {
-			h.emitFriendsAdded(ctx, added)
-		}
-	}
-
 	// PMT-4 PR-3c : persiste l'overlay per-titre (après le Save global réussi).
 	if len(perTitleOverlay) > 0 {
-		if err := h.settingsStore.SaveTitleOverlay(pr.TitleSettingsPath(titleSlug), perTitleOverlay); err != nil {
+		if err := h.settingsStore.SaveTitleOverlay(h.cfg.TitleSettingsPath(titleSlug), perTitleOverlay); err != nil {
 			return nil, humacore.NewError(http.StatusInternalServerError, "settings_overlay_save_error",
 				"Impossible de sauvegarder l'overlay du titre.")
 		}
@@ -327,81 +307,43 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 
 	// Réponse : settings RÉSOLUS pour le titre (global + overlay). Titre par défaut
 	// sans overlay ⇒ == cfg global (byte-identique).
-	resolved, rerr := h.settingsStore.ResolveForTitle(pr.TitleSettingsPath(titleSlug))
+	resolved, rerr := h.settingsStore.ResolveForTitle(h.cfg.TitleSettingsPath(titleSlug))
 	if rerr != nil {
 		resolved = cfg
 	}
 	return &settingsJSONOutput{Body: h.settingsResponse(resolved)}, nil
 }
 
-// newFriendsAdded retourne les gamertags présents dans next mais pas dans prev
-// (set diff case-insensitive + trim, cohérent avec friendGamertagsChanged).
-// Retourne les gamertags **dans la casse next** (préserve la saisie utilisateur).
-func newFriendsAdded(prev, next []string) []string {
-	prevSet := make(map[string]struct{}, len(prev))
-	for _, gt := range prev {
-		prevSet[normalizeGamertag(gt)] = struct{}{}
+// validateReplayBuildLocation contrôle le réglage « où se construit un rejeu ».
+//
+// LE REFUS DE « local » EN PRODUCTION EST EXPLICITE, ET C'EST LE POINT. Le VPS
+// web ne décode jamais un film : posé silencieusement, ce réglage n'aurait aucun
+// effet (le placement retomberait sur « off ») et l'admin croirait avoir activé
+// quelque chose. Mieux vaut un 400 qui dit pourquoi.
+func (h *SettingsHandler) validateReplayBuildLocation(ctx context.Context, loc *string) error {
+	if loc == nil {
+		return nil
 	}
-	var added []string
-	for _, gt := range next {
-		if _, ok := prevSet[normalizeGamertag(gt)]; !ok {
-			added = append(added, gt)
+	value := strings.TrimSpace(*loc)
+	if !replaybuild.ValidPlacementSetting(value) {
+		return humacore.NewError(http.StatusBadRequest, "invalid_replay_build_location",
+			"replay_build_location doit être \"local\", \"worker\" ou \"off\" (vide = défaut de l'instance).")
+	}
+	if _, err := replaybuild.DecidePlacement(value, replaybuild.PlacementEnv{
+		Production:       h.cfg.IsProduction(),
+		WorkerConfigured: true, // l'absence d'ouvrier dégrade à l'exécution, elle n'interdit pas le réglage
+	}); err != nil {
+		slog.WarnContext(ctx, "settings: lieu de construction des rejeux refusé",
+			"valeur", value, "raison", err.Error())
+		// Le motif d'un refus de politique tient dans son code : l'admin lit le code, le
+		// texte de l'erreur reste au journal.
+		code := "invalid_replay_build_location"
+		if errors.Is(err, replaybuild.ErrLocalBuildInProduction) {
+			code = "replay_build_local_in_production"
 		}
+		return humacore.NewErrorFrom(ctx, http.StatusBadRequest, code, err)
 	}
-	return added
-}
-
-// emitFriendsAdded émet 1 notification friend_added (in-app) par nouveau
-// gamertag, et déclenche le webhook Discord si activé. §6.A + §6.B.
-// Best-effort sur les 2 canaux : warn log + continue, jamais bloquant.
-func (h *SettingsHandler) emitFriendsAdded(ctx context.Context, added []string) {
-	if h.notifierFor == nil {
-		return
-	}
-	em, err := h.notifierFor(ctx, "")
-	if err != nil || em == nil {
-		slog.WarnContext(ctx, "notifications: friend_added emitter factory failed", "err", err)
-		return
-	}
-	// Charger NotifyConfig une fois pour la batch (évite N reads disk).
-	notifyCfg := notify.LoadNotifyConfig(h.cfg.AppSettingsPath)
-	// PMT-11 : libellés Discord du titre courant (outcomes + footer). Failsafe Halo.
-	notifyCfg.Labels = notify.LabelsForSlug(ctxkeys.TitleSlug(ctx))
-	for _, gt := range added {
-		if err := em.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategoryFriendAdded,
-			Severity: notifications.SeverityInfo,
-			TitleKey: "notif.friend_added.title",
-			BodyKey:  "notif.friend_added.body",
-			Params:   map[string]any{"gamertag": gt},
-			Source:   "settings_handler",
-		}); err != nil {
-			slog.WarnContext(ctx, "notifications: friend_added emit", "gamertag", gt, "err", err)
-		}
-		// §6.B Discord : webhook failsafe (no-op si webhook vide / NotifyFriends off).
-		go notify.NotifyFriendAdded(notifyCfg, gt)
-	}
-}
-
-// friendGamertagsChanged compare deux listes (set-equality, case-insensitive).
-func friendGamertagsChanged(prev, next []string) bool {
-	if len(prev) != len(next) {
-		return true
-	}
-	set := make(map[string]struct{}, len(prev))
-	for _, gt := range prev {
-		set[normalizeGamertag(gt)] = struct{}{}
-	}
-	for _, gt := range next {
-		if _, ok := set[normalizeGamertag(gt)]; !ok {
-			return true
-		}
-	}
-	return false
-}
-
-func normalizeGamertag(gt string) string {
-	return strings.ToLower(strings.TrimSpace(gt))
+	return nil
 }
 
 // handlePostMediaResetIndex réinitialise l'index des médias (opération destructive).
@@ -463,13 +405,10 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 			job.JobID,
 		)
 		if err != nil {
-			errMsg := err.Error()
+			slog.ErrorContext(ctx, "settings: réinitialisation de l'index médias échouée", "job_id", job.JobID, "err", err)
 			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
 				j.Status = domain.JobStatusFailed
-				j.Error = &domain.JobErrorDetail{
-					Code:    "media_reset_error",
-					Message: errMsg,
-				}
+				j.Error = domain.NewJobError("media_reset_error", false)
 			})
 			return
 		}
@@ -487,12 +426,9 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 }
 
 // handlePostMediaScan lance une indexation non-destructive des médias pour tous les joueurs.
-// POST /settings/media/scan — retourne un AsyncJobStatus (202). 422 en mode démo.
+// POST /settings/media/scan — retourne un AsyncJobStatus (202). Refusé en démo par la
+// garde générale (middleware/demo_read_only.go).
 func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) (*asyncJobOutput, error) {
-	if h.cfg.DemoMode {
-		return nil, humacore.NewError(http.StatusUnprocessableEntity, "demo_mode_unsupported",
-			"Le scan des médias n'est pas disponible en mode démo.")
-	}
 	job := h.jobStore.Create(domain.JobTypeScanMedia, "")
 	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
 	jobSnapshot := *job
@@ -530,13 +466,10 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 			job.JobID,
 		)
 		if err != nil {
-			errMsg := err.Error()
+			slog.ErrorContext(ctx, "settings: scan des médias échoué", "job_id", job.JobID, "err", err)
 			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
 				j.Status = domain.JobStatusFailed
-				j.Error = &domain.JobErrorDetail{
-					Code:    "media_scan_error",
-					Message: errMsg,
-				}
+				j.Error = domain.NewJobError("media_scan_error", false)
 			})
 			return
 		}
@@ -557,11 +490,12 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 // via l'overlay PMT-4 (SessionGapMinutes / split / team-change sont per-titre :
 // le rythme de session dépend du titre). Overlay absent ⇒ valeurs globales
 // byte-identiques ; store nil ou erreur ⇒ Defaults(). Extrait pour rester
-// testable hors de la goroutine de PostRecalculateSessions.
-func sessionComputeOptionsFor(store *settings_platform.Store, pr *titlePkg.PathResolver, titleSlug string) domain.SessionComputeOptions {
+// testable hors de la goroutine de PostRecalculateSessions. overlayPath rend le chemin de
+// l'overlay d'un titre (cfg.TitleSettingsPath : celui de la fixture en démo, lot B5).
+func sessionComputeOptionsFor(store *settings_platform.Store, overlayPath func(string) string, titleSlug string) domain.SessionComputeOptions {
 	cfg := settings_platform.Defaults()
 	if store != nil {
-		if resolved, err := store.ResolveForTitle(pr.TitleSettingsPath(titleSlug)); err == nil && resolved != nil {
+		if resolved, err := store.ResolveForTitle(overlayPath(titleSlug)); err == nil && resolved != nil {
 			cfg = resolved
 		}
 	}
@@ -575,69 +509,4 @@ func sessionComputeOptionsFor(store *settings_platform.Store, pr *titlePkg.PathR
 		TeamChangeMode:      domain.TeamChangeMode(cfg.SessionTeamChangeMode),
 		Mode:                domain.SessionModeContext,
 	}
-}
-
-// handlePostRecalculateSessions lance un recalcul des sessions pour tous les joueurs.
-// POST /settings/sessions/recalculate — retourne un AsyncJobStatus (202).
-func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *struct{}) (*asyncJobOutput, error) {
-	// FriendGamertags reste GLOBAL (cross-titre, PMT-4) : les amis sont des
-	// personnes transverses au titre + le grant d'accès famille ne doit pas
-	// varier par jeu. Résolu une seule fois via Load(), jamais par overlay.
-	globalCfg := settings_platform.Defaults()
-	if h.settingsStore != nil {
-		if cfg, err := h.settingsStore.Load(); err == nil {
-			globalCfg = cfg
-		}
-	}
-	friendGamertags := globalCfg.FriendGamertags
-
-	players, err := h.cfg.LoadPlayers()
-	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "players_load_error",
-			"Impossible de charger les joueurs configurés.")
-	}
-
-	job := h.jobStore.Create(domain.JobTypeSessionsRecalc, "")
-	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
-	jobSnapshot := *job
-
-	pr := titlePkg.NewPathResolver(h.cfg.RepoRoot)
-	sharedDBPath := config.SharedDBPath(h.cfg, "")
-
-	go func() {
-		step := "Recalcul des sessions en cours"
-		h.jobStore.SetStatus(job.JobID, domain.JobStatusRunning, &step)
-
-		total := 0
-		for _, p := range players {
-			if p.XUID == "" {
-				continue
-			}
-			// SessionGapMinutes / split / team-change sont per-titre (overlay
-			// PMT-4 : le rythme de session dépend du titre). Overlay absent ⇒
-			// valeurs globales byte-identiques.
-			opts := sessionComputeOptionsFor(h.settingsStore, pr, p.TitleSlug)
-			playerDBPath := config.PlayerDBPath(h.cfg, "", p.Gamertag)
-			n, err := go_sync.RecalculatePlayerSessions(
-				context.Background(), h.cfg.SharedProvider, playerDBPath, sharedDBPath, p.XUID,
-				opts, friendGamertags,
-			)
-			if err != nil {
-				slog.Warn("sessions recalculate: erreur joueur",
-					"gamertag", p.Gamertag, "err", err)
-				continue
-			}
-			total += n
-		}
-
-		done := fmt.Sprintf("Sessions recalculées (%d matchs mis à jour)", total)
-		pct := 100
-		h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
-			j.Status = domain.JobStatusSucceeded
-			j.ProgressPct = &pct
-			j.CurrentStep = &done
-		})
-	}()
-
-	return &asyncJobOutput{Body: &jobSnapshot}, nil
 }

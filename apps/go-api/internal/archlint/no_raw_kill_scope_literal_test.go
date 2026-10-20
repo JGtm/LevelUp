@@ -33,7 +33,8 @@ import (
 	"testing"
 )
 
-// killScopeAllowlist : VIDE, et elle doit le rester.
+// killScopeAllowlist : VIDE (cible atteinte le 2026-08-20 — l'unique entrée a disparu
+// avec la suppression de l'outil de sonde qui la causait ; cf. historique git).
 //
 // Contrairement aux ratchets de dette (allowlist décroissante), il n'y a rien à migrer ici : les
 // quatre écrivains lisent déjà `domain/killscope`. Une entrée ajoutée ici serait une seconde
@@ -64,7 +65,7 @@ var killScopeRE = regexp.MustCompile(
 // verrouillée par un test, pas par ce ratchet.
 var killScopeOwners = []string{
 	"internal/domain/killscope/",
-	"internal/games/halo_infinite/film/killsource/",
+	"internal/games/halo_infinite/film/internal/facts/killsource/",
 }
 
 func TestNoRawKillScopeLiteral(t *testing.T) {
@@ -125,5 +126,34 @@ func TestNoRawKillScopeLiteral(t *testing.T) {
 			"import : importable depuis persist, migration, killcollector et ops sans cycle). "+
 			"Une copie qui dérive d'un caractère rend la préséance film aveugle, SANS erreur "+
 			"ni compteur :\n  %s", strings.Join(violations, "\n  "))
+	}
+}
+
+// TestKillScopeAllowlistEntriesStayJustified (self-check, même leçon V4d/VF-6 que
+// `TestHalowaypointAllowlistEntriesPointToExistingFiles`) — chaque clé de killScopeAllowlist
+// doit désigner un fichier EXISTANT qui matche RÉELLEMENT le motif. Une entrée dont le fichier
+// a disparu, ou dont le littéral a été retiré, est un trou latent : un fichier recréé à ce
+// chemin pourrait écrire une vraie valeur de portée sans déclencher le ratchet. C'est ce test
+// qui garantit que l'exception du 2026-08-20 s'efface d'elle-même le jour où sa cause s'en va.
+func TestKillScopeAllowlistEntriesStayJustified(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a échoué")
+	}
+	apiRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile))) // .../apps/go-api
+
+	for rel := range killScopeAllowlist {
+		data, err := os.ReadFile(filepath.Join(apiRoot, filepath.FromSlash(rel)))
+		if err != nil {
+			t.Errorf("killScopeAllowlist : entrée %q pointe un fichier inexistant (%v) — sa cause "+
+				"a disparu, retirer l'entrée (un fichier recréé à ce chemin échapperait au "+
+				"ratchet).", rel, err)
+			continue
+		}
+		if !killScopeRE.Match(data) {
+			t.Errorf("killScopeAllowlist : entrée %q ne matche plus le motif de portée — le "+
+				"littéral a été retiré ou renommé, retirer l'entrée (allowlist décroissante, "+
+				"cible : VIDE).", rel)
+		}
 	}
 }

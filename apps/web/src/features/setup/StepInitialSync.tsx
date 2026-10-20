@@ -11,6 +11,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
 import { queryKeys } from '@/lib/query/keys'
 import { useStartInitialSync, useJobStatus } from './queries'
+import { apiErrorCode } from '@/lib/api/client'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -81,10 +82,13 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
 
   const errorMessages: Record<string, string> = {
     sync_auth_expired: t('common.initial_sync.err_auth_expired'),
+    halo_tokens_missing: t('common.initial_sync.err_halo_tokens_missing'),
     sync_halo_api_error: t('common.initial_sync.err_halo_api'),
     sync_db_error: t('common.initial_sync.err_db'),
     sync_aborted: t('common.initial_sync.err_aborted'),
     internal_error: t('common.initial_sync.err_internal'),
+    db_busy: t('common.initial_sync.err_busy'),
+    sync_failed: t('common.initial_sync.err_internal'),
   }
 
   return (
@@ -111,6 +115,13 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
         <Button onClick={handleStart} disabled={startSync.isPending}>
           {startSync.isPending ? t('common.initial_sync.starting') : t('common.initial_sync.start_action')}
         </Button>
+      )}
+
+      {/* Refus du lancement (ex. session sans jetons Halo, 403) : le dire, sans quitter la page. */}
+      {startSync.isError && (
+        <p className="text-sm text-destructive" role="alert">
+          {errorMessages[apiErrorCode(startSync.error) ?? ''] ?? t('common.setup.sync_failed')}
+        </p>
       )}
 
       {job && (
@@ -148,7 +159,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
           {/* Warnings */}
           {job.warnings.length > 0 && (
             <ul className="text-xs text-warning space-y-0.5">
-              {job.warnings.map((w) => <li key={w}>⚠️ {w}</li>)}
+              {job.warnings.map((w) => <li key={w}>{w}</li>)}
             </ul>
           )}
 
@@ -193,7 +204,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
               <p className="text-destructive font-medium">{t('common.setup.sync_failed')}</p>
               {job.error?.code && (
                 <p className="text-sm text-muted-foreground">
-                  {errorMessages[job.error.code] ?? job.error.message}
+                  {errorMessages[job.error.code] ?? t('common.initial_sync.err_internal')}
                 </p>
               )}
               {job.error?.retryable !== false && (
@@ -204,7 +215,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
                     handleStart()
                   }}
                 >
-                  Réessayer
+                  {t('common.initial_sync.retry')}
                 </Button>
               )}
             </div>

@@ -18,7 +18,7 @@
 //     devenue caduque font échouer le test.
 //
 // Inventaire fermé des sémantiques NON portables (destination = fragment manuel
-// H6, sauf mention) — cf. .ai/V7/PLAN_V72_HUMA_OPENAPI.md, section H3 :
+// H6, sauf mention) — cf. .ai/archive/V7.2/PLAN_V72_HUMA_OPENAPI.md, section H3 :
 //   - descriptions de SCHÉMA RACINE (Huma n'a pas de tag type-level ; seul
 //     SchemaProvider/SchemaTransformer, hors périmètre tag) : cf. rootDescAllowlist.
 //   - schémas SANS type Go huma-généré (chi-brut / décodage manuel RawBody /

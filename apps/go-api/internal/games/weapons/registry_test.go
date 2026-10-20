@@ -1,7 +1,7 @@
 //go:build cgo
 
 // weapon_registry_test.go — applique le seed du registre d'armes sur DuckDB
-// :memory: et verrouille : cardinalités (84 armes / 51 familles / 102 ids),
+// :memory: et verrouille : cardinalités (84 armes / 51 familles / 103 ids),
 // intégrité référentielle (family_key ∈ weapon_families, weapon_ids → weapons),
 // enums class/faction, idempotence (double apply), et quelques résolutions
 // (dont le long-tail H5 : grenades/mêlée + hors-arsenal non-combat mappés depuis
@@ -44,20 +44,20 @@ func queryCount(t *testing.T, db *sql.DB, query string, args ...any) int {
 
 func TestWeaponRegistry_SeedCardinalities(t *testing.T) {
 	db := openWeaponRegistryDB(t)
-	if got := queryCount(t, db, "SELECT count(*) FROM weapons"); got != 84 {
-		t.Errorf("weapons = %d, want 84", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapons"); got != 108 {
+		t.Errorf("weapons = %d, want 108 (84 + 6 hors-arsenal HINF du 2026-08-29 + 14 vehicules et tourelles de l etape A6, 2026-09-01 + `hinf_warthog`, `hinf_gungoose` et `hinf_mutilator` le 2026-09-10 + `hinf_unarmed` le 2026-09-24)", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 51 {
-		t.Errorf("weapon_families = %d, want 51", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 54 {
+		t.Errorf("weapon_families = %d, want 54 (51 + famille equipment + famille mutilator le 2026-09-10 + famille unarmed le 2026-09-24)", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids"); got != 102 {
-		t.Errorf("weapon_ids = %d, want 102 (36 filmshell + 66 stock_id)", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids"); got != 106 {
+		t.Errorf("weapon_ids = %d, want 106 (40 filmshell + 66 stock_id ; id filmshell du Mutilator pose le 2026-09-13 ; mains nues et deux bobines a fusion UNSC le 2026-09-24)", got)
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids WHERE id_kind='stock_id'"); got != 66 {
 		t.Errorf("weapon_ids stock_id = %d, want 66", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_infinite'"); got != 29 {
-		t.Errorf("weapons HINF = %d, want 29", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_infinite'"); got != 53 {
+		t.Errorf("weapons HINF = %d, want 53 (29 arsenal + 6 hors-arsenal + 14 vehicules et tourelles + `hinf_warthog` + `hinf_gungoose` + `hinf_mutilator` + `hinf_unarmed`)", got)
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_5'"); got != 55 {
 		t.Errorf("weapons H5 = %d, want 55", got)
@@ -90,13 +90,13 @@ func TestWeaponRegistry_Enums(t *testing.T) {
 		t.Errorf("%d armes ont une faction hors enum", got)
 	}
 	if got := queryCount(t, db, `SELECT count(*) FROM weapons
-		WHERE class NOT IN ('sidearm','shoulder','heavy','melee','grenade',
+		WHERE class NOT IN ('sidearm','shoulder','heavy','melee','grenade','equipment',
 			'vehicle','turret','environmental','unattributed','other')`); got != 0 {
 		t.Errorf("%d armes ont une class hors enum", got)
 	}
 	// Rôles : 9 rôles de combat + 5 rôles non-combat (donut hors-arsenal H5).
 	if got := queryCount(t, db, `SELECT count(*) FROM weapons
-		WHERE role NOT IN ('automatic','precision','sniper','shotgun','sidearm','power','special','melee','grenade',
+		WHERE role NOT IN ('automatic','precision','sniper','shotgun','sidearm','power','special','melee','grenade','equipment',
 			'vehicle','turret','environmental','unattributed','other')`); got != 0 {
 		t.Errorf("%d armes ont un role hors enum", got)
 	}

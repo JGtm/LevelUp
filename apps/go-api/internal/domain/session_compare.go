@@ -84,6 +84,9 @@ type SessionCompareEntry struct {
 	// buildWeaponAccuracy) : accuracy = tirs au but / tirs tirés (0..1), tri
 	// précision décroissante, cap top N (synthesisWeaponChartTopN).
 	WeaponAccuracy []SynthesisWeaponAccuracyEntry `json:"weapon_accuracy,omitempty"`
+	// WeaponTools : « Outils de destruction » du joueur sur la session — chaque frag nommé, un
+	// seul joueur (même builder que l'Escouade, squadagg.BuildWeaponTools). Nil sans frag.
+	WeaponTools *SquadWeaponTools `json:"weapon_tools,omitempty"`
 }
 
 // SessionCompareMetricRow est une ligne de comparaison métrique A vs B.

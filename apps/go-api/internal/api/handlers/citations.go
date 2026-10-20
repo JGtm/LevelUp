@@ -33,22 +33,34 @@ import (
 // CitationsHandler gère les endpoints des pages Citations et Commendations.
 type CitationsHandler struct {
 	newSvc ContextFactory[port.CitationsService]
+	// citationsGate est la porte de TITRE de la seule route /pages/citations (moteur de
+	// citations calculées : capability title-level `citations`, 503 sans elle). La route
+	// /pages/commendations n'est pas concernée : elle sert aussi les commendations natives.
+	citationsGate func(http.Handler) http.Handler
 }
 
-// NewCitationsHandler crée un CitationsHandler.
-func NewCitationsHandler(newSvc ContextFactory[port.CitationsService]) *CitationsHandler {
-	return &CitationsHandler{newSvc: newSvc}
+// NewCitationsHandler crée un CitationsHandler. citationsGate est REQUIS (le montage
+// serait sinon sans porte de titre) : le point de composition y passe
+// middleware.RequireCapability(registre, CapCitations).
+func NewCitationsHandler(newSvc ContextFactory[port.CitationsService], citationsGate func(http.Handler) http.Handler) *CitationsHandler {
+	if citationsGate == nil {
+		panic("handlers.NewCitationsHandler: citationsGate requis (porte de titre de /pages/citations)")
+	}
+	return &CitationsHandler{newSvc: newSvc, citationsGate: citationsGate}
 }
 
 // Mount enregistre les 2 routes via Huma sur le sous-routeur chi (préfixe
-// /players/{player_slug} + middleware ownership/title hérités).
+// /players/{player_slug} + middleware ownership/title hérités). /pages/citations passe
+// en plus par la porte de titre ; /pages/commendations n'en a pas.
 func (h *CitationsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
+	gated := humacore.NewAPI(r.With(h.citationsGate), opts...)
+	huma.Post(gated, "/pages/citations", h.handleGetCitations, humacore.Op("postCitations", "Citations (filtres en body)", "career"))
+
 	api := humacore.NewAPI(r, opts...)
-	huma.Post(api, "/pages/citations", h.handleGetCitations, humacore.Op("postCitations", "Citations (filtres en body)", "career"))
 	huma.Post(api, "/pages/commendations", h.handleGetCommendations, humacore.Op("postCommendations", "Commendations et médailles par catégorie", "career"))
 	// Body OPTIONNEL (décodé seulement si présent) : RawBody est requis par défaut
 	// côté Huma → on le rend optionnel pour préserver le 200 sur corps absent.
-	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/citations")
+	humacore.MarkRequestBodyOptional(gated, http.MethodPost, "/pages/citations")
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/commendations")
 }
 
@@ -76,20 +88,20 @@ type commendationsPageOutput struct {
 func (h *CitationsHandler) handleGetCitations(ctx context.Context, in *citationsInput) (*citationsPageOutput, error) {
 	svc, _, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.CitationsPageRequest
 	// Body optionnel : décoder uniquement si présent.
 	if len(in.RawBody) > 0 {
 		if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 		}
 	}
 
 	page, err := svc.GetCitationsPage(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "citations_page_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "citations_page_error", err)
 	}
 
 	// Filtrage par catégorie si demandé.
@@ -106,19 +118,19 @@ func (h *CitationsHandler) handleGetCitations(ctx context.Context, in *citations
 func (h *CitationsHandler) handleGetCommendations(ctx context.Context, in *citationsInput) (*commendationsPageOutput, error) {
 	svc, xuid, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.CommendationsPageRequest
 	if len(in.RawBody) > 0 {
 		if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 		}
 	}
 
 	page, err := svc.GetCommendationsPage(ctx, xuid)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "commendations_page_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "commendations_page_error", err)
 	}
 
 	// Filtrage par catégorie si demandé.

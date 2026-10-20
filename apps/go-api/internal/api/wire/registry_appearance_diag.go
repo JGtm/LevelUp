@@ -1,5 +1,5 @@
 // Package wire — registry_appearance_diag.go : runner du diagnostic apparence
-// Spartan ID (volet 2 du plan .ai/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md, Lot F).
+// Spartan ID (volet 2 du plan .ai/archive/V7.1/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md, Lot F).
 //
 // Assemble le service à la demande : profils db_profiles.json, lecteur de valeurs
 // servies via le pool player DB, tokens du PROFIL via le store multi-user
@@ -50,7 +50,7 @@ func (r *ServiceRegistry) newAppearanceDiagService() *service.AppearanceDiagServ
 			return duckdb.NewCareerLiveRepo(pdb), nil
 		},
 		FetchTokens: func(ctx context.Context, xuid, gamertag string) (string, string, error) {
-			res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, r.provider, xuid, gamertag, auth.LegacyAuthInputs{})
+			res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, r.provider, xuid, gamertag)
 			if err != nil {
 				return "", "", err
 			}

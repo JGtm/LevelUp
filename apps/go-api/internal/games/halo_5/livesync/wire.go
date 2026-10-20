@@ -54,6 +54,7 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
 	sharedPath := pr.SharedDBPath(halo5.TitleSlug)
 	playerPath := pr.PlayerDBPath(halo5.TitleSlug, gamertag)
+	metadataPath := pr.MetadataDBPath(halo5.TitleSlug)
 	logger := slog.Default()
 	// Provider per-titre du shared h5 : MÊME provider que la lecture (pool joueur
 	// h5 via player_resolver.sharedReaderForTitle). En B-swap, lire ET écrire un
@@ -104,7 +105,8 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 			}
 			// LUSR incrémental owner-only (gated capability via registre boot + env
 			// LUSR_V2 posés au boot serveur). Best-effort.
-			if _, lerr := syncpkg.RunLUSRV2ShadowOwnerOnly(runCtx, playerDB.SQLDb(), syncpkg.NewPinnedSharedAccess(shared), xuid); lerr != nil {
+			if _, lerr := syncpkg.RunLUSRV2ShadowOwnerOnly(runCtx, playerDB.SQLDb(), syncpkg.NewPinnedSharedAccess(shared), xuid,
+				syncpkg.MedalExploitOption(metadataPath, xuid)); lerr != nil {
 				slog.WarnContext(runCtx, "h5 post-score: LUSR incrémental échoué (non bloquant)",
 					"gamertag", gamertag, "err", lerr)
 			}

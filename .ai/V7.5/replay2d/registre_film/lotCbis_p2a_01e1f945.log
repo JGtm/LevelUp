@@ -1,0 +1,82 @@
+﻿=== RUN   TestZoneEtatPhase2aStabilite
+    zone_state_p2a_stabilite_test.go:51: STABILITE 7344d24f vs 696a9d7c — 5 slots d'un cote, 3 de l'autre
+    zone_state_p2a_stabilite_test.go:51:   slot 1532  : zone 1 (19/22) vs zone 1 (21/21) — identique · cles 0x00000000 / 0x00000000
+    zone_state_p2a_stabilite_test.go:51:   slot 1537  : zone 2 (18/18) vs zone 2 (23/23) — identique · cles 0x27954600 / 0xE2D00983
+    zone_state_p2a_stabilite_test.go:51:   slot 1542  : zone 0 (14/15) vs zone 0 (18/19) — identique · cles 0x00000000 / 0x00000000
+    zone_state_p2a_stabilite_test.go:51:   slot 1545  : zone 0 (2/2 votes) — ABSENT de 696a9d7c
+    zone_state_p2a_stabilite_test.go:51:   slot 1547  : zone 1 (1/1 votes) — ABSENT de 696a9d7c
+    zone_state_p2a_stabilite_test.go:51:   CLAUSE DE STABILITE : 3/3 slots communs designent la MEME zone = 100.0 % (seuil 90 %) — TENUE
+--- PASS: TestZoneEtatPhase2aStabilite (0.00s)
+=== RUN   TestZoneEtatPhase2a
+    zone_state_p2a_test.go:92: FILM 01e1f945 (KOTH, catalyst) — 20 slots dans la bande ti=13 · 6845 records ancres, 5226 rejoues entierement, 4155 CHAINES (79.5 %)
+    zone_state_p2a_test.go:95:   VALEURS : i1 scalaire 3736 · i2..i33 par joueur 3651 · film de 552836 ms (0 -> 552836)
+    zone_state_p2a_test.go:97:   CHAINAGE par population : records SCALAIRES (i0/i1 seuls) 3681/3798 = 96.9 % · records PAR JOUEUR 474/1428 = 33.2 % · temoin decale de 3 bits 35/5226 = 0.7 %
+2026/08/18 13:09:45 INFO pont slot->joueur slots=99 viesNommees=97 viesTotal=113 lecturesIndex=28 desaccordsIndex=0 collisionsSlot=0
+2026/08/18 13:09:45 INFO rejeu : poses d'equipement balaye=false calibre=false decoupage="" poses=0 nommees=0 autres=0 avecPoseur=0 avecCap=0 deployees=0 lachees=0 origineInconnue=0
+2026/08/18 13:09:45 INFO rejeu : socles d'arme au sol balaye=false ancres=0 acceptees=0 retenues=0 ecartees=0 lachees=0 apparues=0 auRepos=0 grappes=0 socles=0 occupations=0 datees=0 sansPassage=0 jamaisVidees=0 cyclesEtablis=0
+2026/08/18 13:09:45 INFO rejeu : episodes d'equipement actif viesPubliees=113 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/18 13:09:45 INFO rejeu : palette de capacites palette="non classee" lectures=0 rangsNommes=0
+2026/08/18 13:09:45 INFO rejeu : couverture par calque tirsRattaches=0 tirsDisponibles=0 tirsSansSlot=0 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs="aucune donnée" verdictGrenades="aucune donnée" verdictPont=nominal
+    zone_state_p2a_test.go:108:   REJEU : 113 trajectoires, 5343 frames de 100 ms, origine 12588 ms · CATALOGUE : 8 zones
+    zone_state_p2a_test.go:117: 
+    zone_state_p2a_test.go:117: === STRUCTURE de ti=13 — 17 slots emettent une valeur scalaire
+    zone_state_p2a_test.go:117:     slot 1384  nom i0 0x12501429 x1 · tag dominant 10 (1/2)
+    zone_state_p2a_test.go:117:     slot 1385  nom i0 0x379F8101 x1 · tag dominant 2 (1/4)
+    zone_state_p2a_test.go:117:     slot 1386  nom i0 0x253BCBAC x1 · tag dominant 6 (1/3)
+    zone_state_p2a_test.go:117:     slot 1387  nom i0 0xEC12FC0D x2 · tag dominant 10 (2/7)
+    zone_state_p2a_test.go:117:     slot 1388  nom i0 0xA8B92000 x3 · tag dominant 4 (2/10)
+    zone_state_p2a_test.go:117:     slot 1389  nom i0 0xAFC080EF x1 · tag dominant 9 (1/2)
+    zone_state_p2a_test.go:117:     slot 1390  nom i0 0x04BCE9A1 x1 · tag dominant 12 (1/1)
+    zone_state_p2a_test.go:117:     slot 1392  nom i0 0xF400816F x1 · tag dominant 12 (1/2)
+    zone_state_p2a_test.go:117:     slot 1393  nom i0 0x41E32968 x1 · tag dominant 9 (1/3)
+    zone_state_p2a_test.go:117:     slot 1395  nom i0 0x37E54102 x1 · tag dominant 8 (1/4)
+    zone_state_p2a_test.go:117:     slot 1396  nom i0 0x05B784A1 x1 · tag dominant 6 (1/4)
+    zone_state_p2a_test.go:117:     slot 1397  nom i0 0x0615B0A1 x2 · tag dominant 10 (1/2)
+    zone_state_p2a_test.go:117:     slot 1470  nom i0 0xFBE080EB x4 · tag dominant 8 (1/1)
+    zone_state_p2a_test.go:117:     slot 1471  nom i0 0xFBE080EB x2 · tag dominant 5 (4/4)
+    zone_state_p2a_test.go:117:     slot 1472  nom i0 0xFBE080EB x2 · tag dominant 4 (99/103)
+    zone_state_p2a_test.go:117:     slot 1473  nom i0 0x97C081EB x1 · tag dominant 4 (106/108)
+    zone_state_p2a_test.go:117:     slot 1474  nom i0 0xFBE080EB x4 · tag dominant 3 (3474/3476)
+    zone_state_p2a_test.go:118: 
+    zone_state_p2a_test.go:118: === CB.2a.1 APPARIEMENT slot ti=13 -> zone — 0 captures identifiees par xuid
+    zone_state_p2a_test.go:118:   aucun oracle nomme sur ce mode : volet CB.2a.1 SANS OBJET (attendu hors zones)
+    zone_state_p2a_test.go:120: 
+    zone_state_p2a_test.go:120: === CB.2a.2 SEMANTIQUE DU TAG 4
+    zone_state_p2a_test.go:120:   aucune carte slot -> zone : volet CB.2a.2 SANS OBJET sur ce film
+    zone_state_p2a_test.go:122: 
+    zone_state_p2a_test.go:122: === CB.2a.3 KOTH — zone active appariee par la grappe des positions
+    zone_state_p2a_test.go:122:   60 rampes -> 60 periodes brutes, attribuees par la grappe puis fusionnees
+    zone_state_p2a_test.go:122:   periode slot 1474  [  49438 ;   60020]  10582 ms -> zone rang 1 (InstanceID 0) · 88/219 positions dedans (2e zone 54) · temoin translate 20
+    zone_state_p2a_test.go:122:   periode slot 1474  [  60020 ;   64787]   4767 ms -> zone rang 0 (InstanceID 0) · 31/83 positions dedans (2e zone 18) · temoin translate 0
+    zone_state_p2a_test.go:122:   periode slot 1474  [  64787 ;   68692]   3905 ms -> zone rang 3 (InstanceID 0) · 68/196 positions dedans (2e zone 47) · temoin translate 42
+    zone_state_p2a_test.go:122:   periode slot 1474  [  68692 ;  124515]  55823 ms -> zone rang 0 (InstanceID 0) · 1056/3145 positions dedans (2e zone 473) · temoin translate 336
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 124515 ;  142306]  17791 ms -> zone rang 6 (InstanceID 0) · 167/387 positions dedans (2e zone 52) · temoin translate 140
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 142306 ;  152933]  10627 ms -> zone rang 4 (InstanceID 0) · 36/129 positions dedans (2e zone 30) · temoin translate 54
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 152933 ;  188785]  35852 ms -> zone rang 6 (InstanceID 0) · 245/419 positions dedans (2e zone 69) · temoin translate 168
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 188785 ;  198733]   9948 ms -> zone rang 3 (InstanceID 0) · 57/158 positions dedans (2e zone 47) · temoin translate 45
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 198733 ;  211241]  12508 ms -> zone rang 6 (InstanceID 0) · 84/278 positions dedans (2e zone 49) · temoin translate 120
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 211241 ;  215579]   4338 ms -> zone rang 4 (InstanceID 0) · 41/106 positions dedans (2e zone 34) · temoin translate 35
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 215579 ;  240623]  25044 ms -> zone rang 6 (InstanceID 0) · 259/604 positions dedans (2e zone 92) · temoin translate 273
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 240623 ;  247680]   7057 ms -> zone rang 4 (InstanceID 0) · 72/219 positions dedans (2e zone 52) · temoin translate 57
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 247680 ;  363045] 115365 ms -> zone rang 6 (InstanceID 0) · 1222/2844 positions dedans (2e zone 418) · temoin translate 1050
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 363045 ;  374306]  11261 ms -> zone rang 4 (InstanceID 0) · 10/70 positions dedans (2e zone 10) · temoin translate 13
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 374306 ;  388322]  14016 ms -> zone rang 6 (InstanceID 0) · 30/133 positions dedans (2e zone 25) · temoin translate 43
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 388322 ;  412679]  24357 ms -> zone rang 0 (InstanceID 0) · 19/77 positions dedans (2e zone 15) · temoin translate 16
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 412679 ;  416899]   4220 ms -> zone rang 2 (InstanceID 0) · 11/66 positions dedans (2e zone 11) · temoin translate 22
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 416899 ;  425876]   8977 ms -> zone rang 4 (InstanceID 0) · 16/50 positions dedans (2e zone 10) · temoin translate 10
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 425876 ;  430217]   4341 ms -> zone rang 3 (InstanceID 0) · 35/126 positions dedans (2e zone 21) · temoin translate 21
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 430217 ;  451036]  20819 ms -> zone rang 4 (InstanceID 0) · 174/871 positions dedans (2e zone 97) · temoin translate 155
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 451036 ;  451670]    634 ms -> zone rang 2 (InstanceID 0) · 4/20 positions dedans (2e zone 4) · temoin translate 0
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 451670 ;  462518]  10848 ms -> zone rang 0 (InstanceID 0) · 133/420 positions dedans (2e zone 64) · temoin translate 39
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 462518 ;  474230]  11712 ms -> zone rang 7 (InstanceID 0) · 42/160 positions dedans (2e zone 17) · temoin translate 38
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 474230 ;  498468]  24238 ms -> zone rang 0 (InstanceID 0) · 170/375 positions dedans (2e zone 56) · temoin translate 24
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 498468 ;  508144]   9676 ms -> zone rang 2 (InstanceID 0) · 22/77 positions dedans (2e zone 22) · temoin translate 21
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 508144 ;  523477]  15333 ms -> zone rang 0 (InstanceID 0) · 71/274 positions dedans (2e zone 44) · temoin translate 27
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 523477 ;  525829]   2352 ms -> zone rang 4 (InstanceID 0) · 5/33 positions dedans (2e zone 5) · temoin translate 7
+    zone_state_p2a_test.go:122:   periode slot 1474  [ 525829 ;  552836]  27007 ms -> zone rang 2 (InstanceID 0) · 11/37 positions dedans (2e zone 11) · temoin translate 11
+    zone_state_p2a_test.go:122:   NETTETE : 7/28 periodes ou la zone retenue devance la 2e d'un facteur 2 ET bat le temoin translate — 271629 ms sur 503398 ms attribues (54.0 %)
+    zone_state_p2a_test.go:122:   28 periodes · temps couvert 503398 ms dont 503398 ms ATTRIBUES a une zone = 91.1 % du film (552836 ms) — seuil 80 % : TENU
+    zone_state_p2a_test.go:122:   GRAPPE : 4179/11576 positions dans la zone retenue (36.1 %) · TEMOIN zones a 12 m : 2787 (24.1 %)
+--- PASS: TestZoneEtatPhase2a (139.56s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	146.701s

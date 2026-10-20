@@ -2,16 +2,17 @@
 //
 // Extrait de engine.go (refactor 2026-05-21). Regroupe :
 //   - runConditionalPostSync : branche post-sync selon matchs insérés ou heal.
-//   - runPostSyncPipeline : pipeline complet 16 étapes (heals fallback,
-//     had_bot, sessions, perf, engagement, assists, weapon kills,
-//     citations (1.6), dominance_flag (1.7), LUSR, CSR, friends, aggregates,
-//     achievements). Citations et dominance sont des étapes primaires du pipeline,
-//     pas des heals : ils tournent pour chaque nouveau match et comblent le backlog.
+//   - runPostSyncPipeline : pipeline complet, dans l'ordre : lignes d'enrichissement,
+//     scoring, événements (1.54), PSA (1.56), escouade (3.5), domination (1.7), LUSR,
+//     CSR (3.1), agrégats (4), vidage des caches de lecture, puis les étapes film lentes
+//     (source du kill 1.57, rejeu 1.58), citations (1.6), médias, succès, préparation du
+//     match. Citations et domination sont des étapes primaires, pas des heals : elles
+//     tournent pour chaque nouveau match et comblent le backlog.
 //   - runCSRSnapshotSync : CSR snapshots best-effort si csrSeasonID renseigné.
 //   - runAchievementsSync + RunAchievementsOnly : sync Xbox achievements via
 //     TokenProvider (resolveAchievementsAccessToken → XSTS → SyncAchievements).
 //   - hasMatchesNeedingScoreRefresh : heuristique heal-only path.
-//   - resolveAchievementsAccessToken : store-first (ADR 0023) + résidus legacy.
+//   - resolveAchievementsAccessToken : MultiUserTokenStore seul (ADR 0023).
 //
 // Voir engine.go (struct SyncEngine + run()) pour le contexte.
 package sync
@@ -27,12 +28,10 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
-	"levelup/go-api/internal/ops"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/debrief"
 	"levelup/go-api/internal/sync/snapshot"
 )
 
@@ -61,7 +60,7 @@ func trackFatalErr(r *domain.PostSyncResult, stepName string, err error) {
 // n'échoue jamais).
 //
 // Helper CANONIQUE : toute étape qui a besoin de lire shared passe par ici — y
-// compris les étapes extraites (engine_postsync_films.go). Ne pas ré-écrire ce
+// compris les étapes extraites (convergence.go). Ne pas ré-écrire ce
 // bloc ailleurs : le release DOIT précéder tout burst Write (garde anti-deadlock
 // de SharedAccess.Write).
 func (e *SyncEngine) withSharedRead(
@@ -155,11 +154,12 @@ func hasMatchesNeedingScoreRefresh(ctx context.Context, playerDB, sharedDB *sql.
 	return n > 0, nil
 }
 
-// runPostSyncPipeline exécute le pipeline post-sync :
-// 1. Performance scores
-// 2. LUSR (TrueSkill 2)
-// 3. Career rank
-// 4. Aggregates (materialized views)
+// runPostSyncPipeline exécute le pipeline post-sync d'un joueur, dans l'ordre : lignes
+// d'enrichissement, scoring, événements (1.54), PSA (1.56), catalogue, escouade (recalcul
+// is_with_friends), domination (1.7), LUSR, CSR (3.1), agrégats (4), vidage des caches de
+// lecture, puis les étapes film lentes (source du kill 1.57, rejeu 1.58), citations (1.6),
+// médias, succès et préparation du match. Les dépendances qui fixent cet ordre sont dans le
+// commentaire « ORDRE DES ÉTAPES » du corps ; TestRunPostSyncPipeline_StepOrder le tient.
 func (e *SyncEngine) runPostSyncPipeline(
 	ctx context.Context,
 	playerDB *sql.DB,
@@ -167,6 +167,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	client HaloClient,
 	insertedIDs []string,
 ) (r domain.PostSyncResult) {
+	defer duckdbpkg.InvalidatePlayerReadCaches(ctx, e.xuid, e.titleSlug) // perf L5b : fin du post-sync = lectures joueur cachées périmées (posé en premier, exécuté en dernier)
 	// Capture des panics du pipeline post-sync — avant ce defer un panic dans
 	// n'importe quelle étape (perf scores, LUSR, citations, etc.) tuait
 	// silencieusement tout le process server sans laisser de stack trace dans
@@ -217,10 +218,11 @@ func (e *SyncEngine) runPostSyncPipeline(
 	}
 	// withSharedRead : segment de LECTURE court par étape (délègue au helper
 	// canonique e.withSharedRead — même sémantique, un seul point de vérité
-	// partagé avec les étapes extraites, cf. engine_postsync_films.go).
+	// partagé avec les étapes extraites, cf. convergence.go).
 	withSharedRead := func(step string, fn func(sharedDB *sql.DB)) {
 		e.withSharedRead(ctx, shared, &r, step, fn)
 	}
+	e.reportDebriefInserted(ctx, withSharedRead, insertedIDs)
 
 	// -2 Ensure player_match_enrichment rows exist for all matches where the
 	// player has a row in shared.match_participants (incident 2026-05-27).
@@ -263,118 +265,51 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// 1er sync) se récupère via backfill CLI explicite et contrôlé.
 	// Cf. ADR 0019 + thought_log 2026-06-01.
 
+	// ORDRE DES ÉTAPES — ce que l'utilisateur lit d'abord passe avant ce qui télécharge un
+	// film. Les étapes rapides qui portent la tuile du match (escouade, LUSR, CSR,
+	// agrégats) précèdent la source du kill (1.57) et le rejeu (1.58), qui lisent des films
+	// pendant des minutes. Dépendances qui fixent l'ordre :
+	//   - 1.54 (événements) avant la domination (1.7) et le reste : ils lisent highlight_events ;
+	//   - 1.56 (PSA) avant l'escouade et les citations ;
+	//   - 1.57 avant le rejeu (1.58, qui retrouve le film sur disque), avant les citations
+	//     (les citations par arme lisent ses lignes, calcul unique) et avant la préparation ;
+	//   - le LUSR lit la passe crédit-seul de match_kill_events (écrite au premier écrit ou par
+	//     1.54), pas la passe film : il n'attend pas 1.57.
+
 	// -0.3 had_bot, 0 sessions, 1 perf, 1.5 engagement, 1.5.b coefs, 1.52 assists —
 	// bloc de scoring enrichment (player DB), extrait pour réduire la taille de
 	// runPostSyncPipeline (cf. revue D7-3).
 	e.runScoringSteps(ctx, playerDB, shared, &r)
 	clock.lap("scoring", r.EngagementScoresComputed)
 
-	// 1.54 convergence events puis 1.55 weapon kills — les deux étapes « film »
-	// du post-sync, extraites dans engine_postsync_films.go (split COLLECT/FLUSH :
-	// le téléchargement du film ne tient plus le writer RW).
+	// 1.54 convergence events — étape « film » du post-sync, extraite dans convergence.go
+	// (split COLLECT/FLUSH : le téléchargement du film ne tient plus le writer RW).
+	//
+	// L'ÉTAPE 1.55 (weapon kills) A ÉTÉ SUPPRIMÉE le 2026-09-01 avec son producteur :
+	// elle corrélait les tirs de l'attaquant avec l'instant du kill, une méthode que
+	// la source de dégât (1.57) remplace intégralement. Le numéro n'est pas réattribué.
 	films := postSyncFilmSteps{engine: e, playerDB: playerDB, shared: shared, client: client, result: &r}
 	films.runEventsConvergence(ctx)
 	clock.lap("convergence_events", r.ConvergedEvents)
-	films.runWeaponKills(ctx, insertedIDs)
-	clock.lap("weapon_kills", r.WeaponKillsProcessed)
 
-	// 1.56 PSA — convergence des personal_score_awards. Cas nominal : matchs
-	// delta-skippés (insérés en shared par un coéquipier) dont seul le
-	// traitement per-match écrivait les PSA (gate invariants psa_missing,
-	// 2026-06-10). Marqueur terminal psa_checked_at → chaque match n'est
-	// fetché qu'une fois, borné par convergenceHorizon.
-	psaWork := selectMatchesMissingPSA(ctx, playerDB)
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_psa_pending_total", int64(len(psaWork)))
-	if len(psaWork) > 0 {
-		// Split 4b : fetch réseau + écritures PLAYER hors de tout lease shared ;
-		// seul le flush des alias (shared.xuid_aliases) passe en burst court.
-		n, pairs := convergePSACollect(ctx, playerDB, client, e.xuid, psaWork)
-		if len(pairs) > 0 {
-			if wdb, releaseW, werr := shared.Write(ctx, "psa_aliases"); werr != nil {
-				slog.WarnContext(ctx, "post-sync: burst psa_aliases indisponible — alias non flushés (retentés au prochain cycle)",
-					"gamertag", e.gamertag, "count", len(pairs), "err", werr)
-			} else {
-				// Corps du burst sous closure : releaseW en defer, donc la fenêtre
-				// RW est rendue même si flushAliasPairs panique. Moment nominal de
-				// libération inchangé — fin de la branche else, avant la reprise du
-				// pipeline. Même classe de correctif que les bursts events/weapons.
-				func() {
-					defer releaseW()
-					flushAliasPairs(ctx, wdb, e.xuid, pairs)
-				}()
-			}
-		}
-		r.ConvergedPSA = n
-		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_psa_processed_total", int64(n))
-		slog.InfoContext(ctx, "post-sync: convergence PSA",
-			"gamertag", e.gamertag, "selected", len(psaWork), "processed", n)
-	}
+	// 1.56 PSA — convergence des personal_score_awards.
+	e.runPSAConvergence(ctx, playerDB, shared, client, &r)
 	clock.lap("convergence_psa", r.ConvergedPSA)
 
-	// Registry names heal DÉCOMMISSIONNÉ (2026-06-01) — map_name/pair_name/
+	// Pas de réécriture des noms du registre ici : map_name/pair_name/
 	// playlist_name/game_variant_name sont résolus au sync PRIMAIRE via
-	// EnrichRegistryFromMetadata (metadata saine). Le nettoyage one-shot des
-	// GUID hérités d'un incident ART metadata se fait via `cmd/backfill_registry_names`
-	// (CLI explicite), pas un heal post-sync automatique.
+	// EnrichRegistryFromMetadata. Les noms restés en identifiant convergent par
+	// sync.BackfillRegistryNames, après le balayage périodique des noms d'assets
+	// (serveur) ou par `levelup backfill-registry-names` (CLI).
+	e.runCatalogRefresh(ctx, shared, &r, insertedIDs)
 
-	// Catalogue in-sync (chemin V1/CLI) : inscrit les nouvelles playlists/maps/
-	// paires/variantes dans les tables catalogue (zéro réseau) → résorbe les
-	// « playlists hors catalogue » sans action admin. TOUJOURS actif (autonome) :
-	// CatalogRefreshFromRegistry est désormais ART-safe (SELECT-then-write), plus de
-	// flag LEVELUP_CATALOG_REFRESH. V2 gère le catalogue dans son persister (et son
-	// engine post-sync n'a pas de metaDB → skip propre ici). Best-effort.
-	if e.assetPool != nil && e.metaDB != nil && len(insertedIDs) > 0 {
-		withSharedRead("catalog_refresh", func(sharedDB *sql.DB) {
-			if sharedDB == nil {
-				return // parité avec l'ancien gate sharedDB != nil
-			}
-			if _, cerr := ops.CatalogRefreshFromRegistry(ctx, e.metaDB, sharedDB, e.titleSlug); cerr != nil {
-				slog.WarnContext(ctx, "post-sync: refresh catalogue non-bloquant",
-					"gamertag", e.gamertag, "err", cerr)
-			}
-		})
-	}
+	// 3.5 Friends — recalcul convergent de is_with_friends. Autorité sur la valeur : le premier
+	// écrit ne la pose que pour le joueur qui a récupéré le match, avec la liste d'amis connue à cet instant.
+	e.runFriendsRecompute(ctx, playerDB, shared, &r)
+	clock.lap("friends", int(r.MatchesPromotedFriends))
 
-	// 1.6 Citations — pipeline primaire, pas un heal. Traite tous les matchs
-	// absents de match_citations (LEFT JOIN IS NULL). Le sentinel "_processed"
-	// (fix citations.go) empêche les matchs à 0 delta d'être re-traités.
-	withSharedRead("citations", func(sharedDB *sql.DB) {
-		if n, err := e.runPostSyncCitations(ctx, playerDB, sharedDB); err != nil {
-			slog.WarnContext(ctx, "post-sync: citations échoué", "gamertag", e.gamertag, "err", err)
-			trackFatalErr(&r, "citations", err)
-		} else if n > 0 {
-			r.CitationsComputed = n
-			slog.InfoContext(ctx, "post-sync: citations calculées", "gamertag", e.gamertag, "count", n)
-		}
-	})
-	clock.lap("citations", r.CitationsComputed)
-
-	// 1.7 Dominance flags — matchs nouvellement insérés + backlog (dominance_flag IS NULL).
-	// Reconstruit la courbe score depuis highlight_events. Valeur 0 = calculé/sans dominance,
-	// NULL = jamais calculé. UPSERT idempotent.
-	{
-		missingIDs, merr := selectMatchesMissingDominanceFlags(ctx, playerDB)
-		if merr != nil {
-			slog.WarnContext(ctx, "post-sync: dominance detect échoué", "gamertag", e.gamertag, "err", merr)
-			trackFatalErr(&r, "dominance detect", merr)
-		}
-		allDominanceIDs := mergeUniqMatchIDs(insertedIDs, missingIDs)
-		if len(allDominanceIDs) > 0 {
-			// Lecture shared (courbe score depuis highlight_events) ; écriture via
-			// PostSyncEnrichmentPersister(playerDB) — segment Read suffit.
-			withSharedRead("dominance", func(sharedDB *sql.DB) {
-				if err := BackfillDominanceFlags(ctx, sharedDB, playerDB, e.xuid, allDominanceIDs); err != nil {
-					slog.WarnContext(ctx, "post-sync: dominance flags échoué",
-						"gamertag", e.gamertag, "err", err, "count", len(allDominanceIDs))
-					trackFatalErr(&r, "dominance flags", err)
-				} else {
-					r.DominanceFlagsComputed = len(allDominanceIDs)
-					slog.InfoContext(ctx, "post-sync: dominance flags calculés",
-						"gamertag", e.gamertag, "count", r.DominanceFlagsComputed)
-				}
-			})
-		}
-	}
+	// 1.7 Dominance flags (après 1.54 : la courbe de score vient de highlight_events).
+	e.runDominanceFlags(ctx, playerDB, shared, &r, insertedIDs)
 	clock.lap("dominance", r.DominanceFlagsComputed)
 
 	// 2 / 2.5 / 2.6 — bloc LUSR (v1 + v2 shadow + sentinelle dual-row), extrait
@@ -403,37 +338,28 @@ func (e *SyncEngine) runPostSyncPipeline(
 	}
 	clock.lap("csr_snapshots", len(pendingCSRs))
 
-	// 3.5 Friends recompute is_with_friends (best-effort).
-	// Avant l'étape 4 (aggregates) pour éviter un double-refresh : on passe
-	// refreshAggregates=false, le refresh natif de l'engine couvre les UPDATEs.
-	// Skip silencieux si pas de loader (legacy) ou liste vide.
-	if e.friendsLoader != nil {
-		if friends, ferr := e.friendsLoader(); ferr != nil {
-			slog.WarnContext(ctx, "post-sync: friends loader échoué", "gamertag", e.gamertag, "err", ferr)
-			trackFatalErr(&r, "friends loader", ferr)
-		} else if len(friends) > 0 {
-			slog.DebugContext(ctx, "post-sync: friends recompute", "gamertag", e.gamertag, "friends_count", len(friends))
-			withSharedRead("friends", func(sharedDB *sql.DB) {
-				fres, err := RecomputeIsWithFriendsCore(ctx, playerDB, sharedDB, e.xuid, friends, false)
-				if err != nil {
-					slog.WarnContext(ctx, "post-sync: friends recompute échoué", "gamertag", e.gamertag, "err", err)
-					trackFatalErr(&r, "friends recompute", err)
-				} else if fres.MatchesPromoted > 0 {
-					r.MatchesPromotedFriends = fres.MatchesPromoted
-					slog.InfoContext(ctx, "post-sync: matchs reclasses comme escouade-amis",
-						"gamertag", e.gamertag,
-						"promoted", fres.MatchesPromoted,
-					)
-				}
-			})
-		}
-	}
-	clock.lap("friends", int(r.MatchesPromotedFriends))
-
 	// 4. Aggregates (vues matérialisées player) + catalog seeding, en parallèle
 	// via errgroup — extrait pour réduire runPostSyncPipeline (cf. revue D7-3).
 	e.runAggregatesRefresh(ctx, playerDB, pendingCSRs, &r)
 	clock.lap("aggregates", r.ViewsRefreshed)
+
+	// Les lignes que les pages lisent sont à jour : vider les caches de lecture MAINTENANT,
+	// avant la lecture des films (le `defer` de tête vide encore à la sortie).
+	e.flushReadCaches(ctx)
+
+	// 1.57 source du kill : décodage du kill-feed — la SEULE origine de `assist_known`.
+	// AVANT 1.58, qui retrouve alors le film sur disque (cf. killcollector/postsync.go).
+	clock.lap("kill_source", films.runKillSource(ctx, insertedIDs))
+	// 1.58 artefacts de rejeu 2D (fil de l'eau LOCAL, lot 6 v7.5) : pont disque
+	// filmcache + construction replaybuild des matchs insérés, fenêtre
+	// replay_retention_months relue à chaque cycle. No-op si le hook n'est pas
+	// installé (VPS web : jamais). Cf. convergence.go.
+	films.runReplayArtifacts(ctx, insertedIDs)
+	clock.lap("replay_artifacts", 0)
+
+	// 1.6 Citations (après les films, cf. runCitations).
+	e.runCitations(ctx, playerDB, shared, &r)
+	clock.lap("citations", r.CitationsComputed)
 
 	// 4.5 Media scan post-sync — indexe les captures présentes dans le dossier
 	// du joueur et les associe aux matchs fraîchement insérés (best-effort).
@@ -453,6 +379,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// dérivations terminales, ou terminalement-absentes / grâce dépassée) éligibles
 	// au snapshot immuable. Best-effort : n'interrompt pas le pipeline ; réévalué à
 	// chaque cycle convergent (aucun nouveau call site — runConditionalPostSync gère).
+	// DERNIÈRE étape : elle juge de la complétude de toutes les dérivations ci-dessus.
 	withSharedRead("snapshot_readiness", func(sharedDB *sql.DB) {
 		if n, err := snapshot.EvaluateSnapshotReadiness(ctx, playerDB, sharedDB, e.xuid, e.titleSlug); err != nil {
 			slog.WarnContext(ctx, "post-sync: snapshot readiness échoué", "gamertag", e.gamertag, "err", err)
@@ -513,3 +440,15 @@ func (e *SyncEngine) runAggregatesRefresh(ctx context.Context, playerDB *sql.DB,
 // player DB : had_bot_teammate, sessions, performance scores, engagement scores,
 // engagement coefficients, assists model. Best-effort : chaque sous-étape logue
 // + trackFatalErr sur erreur sans interrompre le reste (toutes idempotentes).
+
+// reportDebriefInserted capte, pour le délai du débrief, l'écriture des stats des matchs insérés
+// (toujours) et leur fin de match (si la base partagée se lit).
+func (e *SyncEngine) reportDebriefInserted(ctx context.Context, withSharedRead func(string, func(*sql.DB)), insertedIDs []string) {
+	debrief.ReportStatsWritten(e.titleSlug, insertedIDs)
+	if len(insertedIDs) == 0 {
+		return
+	}
+	withSharedRead("debrief_steps", func(sharedDB *sql.DB) {
+		debrief.ReportMatchEnds(ctx, sharedDB, e.titleSlug, insertedIDs)
+	})
+}

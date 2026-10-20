@@ -1,0 +1,123 @@
+diff --git a/apps/go-api/internal/games/halo_infinite/film/internal/grammar/r_comb2_configs_research_test.go b/apps/go-api/internal/games/halo_infinite/film/internal/grammar/r_comb2_configs_research_test.go
+index 35639c7b5..5878b5e08 100644
+--- a/apps/go-api/internal/games/halo_infinite/film/internal/grammar/r_comb2_configs_research_test.go
++++ b/apps/go-api/internal/games/halo_infinite/film/internal/grammar/r_comb2_configs_research_test.go
+@@ -16,6 +16,7 @@ package grammar
+ //	  -count=1 -timeout 240m -run '^TestRComb2$' ./internal/games/halo_infinite/film/internal/grammar/
+ 
+ import (
++	"strconv"
+ 	"fmt"
+ 	"os"
+ 	"strings"
+@@ -36,6 +37,8 @@ type rc2Res struct {
+ 	debut                           []int32
+ 	sig                             map[string]int
+ 	score                           map[int][2]int
++	cles                            []string
++	detail                          string
+ }
+ 
+ // rc2Cmp : une marche contre une base, paquet par paquet.
+@@ -89,7 +92,7 @@ func (x *rc2Film) marcher(k rc2L, oracle map[[2]int][]cmLiaison, diag bool) (*rc
+ 	o.a.paquets, o.a.utilesLus = r.Paquets, r.Utiles.Records
+ 	o.a.horsCadre, o.a.rejets = r.Bloquants[CauseHorsCadre].Paquets, obs.RejetsHorsDatum
+ 	return &rc2Res{nl9: b3Compter(oracle), actifs: o.actifs, desav: o.desav, a: o.a, st: o.st, ut: o.ut,
+-		debut: o.debut, sig: o.sig, score: o.score}, d
++		debut: o.debut, sig: o.sig, score: o.score, cles: o.cles, detail: o.detail}, d
+ }
+ 
+ // jouer mesure `k` sous le nom `nom` ; `base` : marche qui derive aussi l oracle L9.
+@@ -244,6 +247,7 @@ func rc2UnFilm(t *testing.T, racine, id, carte string, cat *profile.MapQuantCata
+ 	x.b, x.hf = cmLireBlocs(x.f), rlocArchetypesHF(x.f.reg)
+ 	x.format, _ = FilmFormatVersion(x.f.fc.Film())
+ 	res := rc2Configurations(x)
++	rc2Vider(id, res)
+ 	var ref, full *rc2Res
+ 	for _, r := range res {
+ 		switch r.nom {
+@@ -324,3 +328,47 @@ func rc2LsL8(id, build string, res []*rc2Res) string {
+ 	}
+ 	return fmt.Sprintf("%s\t%s\t%d\t%d\t%d\t%d\t%d", id, build, ev, egal, diff, seulLS, seulLS8)
+ }
++
++// rc2Vider (instruction du lot L4a, 2026-10-03, hors depot) : paquets dont le statut ou les utiles
++// different entre `full` et `full-L4a`, dans CAMPAGNE_RCOMB2_DUMP.
++func rc2Vider(id string, res []*rc2Res) {
++	d := os.Getenv("CAMPAGNE_RCOMB2_DUMP")
++	if d == "" {
++		return
++	}
++	var a, b *rc2Res
++	for _, r := range res {
++		switch r.nom {
++		case "full":
++			a = r
++		case "full-L4a":
++			b = r
++		}
++	}
++	if a == nil || b == nil || len(a.st) != len(b.st) {
++		fmt.Fprintf(os.Stderr, "dump impossible : %v %v\n", a == nil, b == nil)
++		return
++	}
++	var lignes []string
++	for i := range a.st {
++		if a.st[i] != b.st[i] || a.ut[i] != b.ut[i] {
++			lignes = append(lignes, fmt.Sprintf("%s\t%s\t%d\t%d\t%d\t%d", id, a.cles[i], a.st[i], a.ut[i], b.st[i], b.ut[i]))
++		}
++	}
++	_ = os.WriteFile(d+"/"+id+".detail.txt", []byte("== full\n"+a.detail+"== full-L4a\n"+b.detail), 0o600)
++	_ = os.WriteFile(d+"/"+id+".tsv", []byte("film\tpaquet\tst_full\tut_full\tst_sans_L4a\tut_sans_L4a\n"+strings.Join(lignes, "\n")+"\n"), 0o600)
++}
++
++// rc2Detailler decrit un paquet : debut de liste, fermeture, records (instruction L4a, hors depot).
++func rc2Detailler(p *cmPaquet) string {
++	s := fmt.Sprintf("debut=%d strict=%d ferme=%v utiles_fermes=%d recs=%d\n", p.debut, p.strict, p.d.Fermee, p.utilesFermes, len(p.recs))
++	for i, r := range p.recs {
++		var comps []string
++		for _, c := range r.Trace.Comps {
++			comps = append(comps, strconv.Itoa(c.Index))
++		}
++		s += fmt.Sprintf("  #%d type=%d slot=%d eid=%#x ti=%d desync=%d hdr=%d fin=%d comps=[%s]\n", i, r.Type, r.Slot, r.ID,
++			r.TypeIndex, r.DesyncAt, r.HeaderBit, r.Trace.EndBit, strings.Join(comps, ","))
++	}
++	return s
++}
+diff --git a/apps/go-api/internal/games/halo_infinite/film/internal/grammar/r_comb2_research_test.go b/apps/go-api/internal/games/halo_infinite/film/internal/grammar/r_comb2_research_test.go
+index 3bbd48243..51f78bb95 100644
+--- a/apps/go-api/internal/games/halo_infinite/film/internal/grammar/r_comb2_research_test.go
++++ b/apps/go-api/internal/games/halo_infinite/film/internal/grammar/r_comb2_research_test.go
+@@ -33,6 +33,8 @@ package grammar
+ // (flock-position seul), L1a-ref (condition calculee sur la marche de reference, forme de R_NAIS).
+ 
+ import (
++	"fmt"
++	"os"
+ 	"strconv"
+ 	"strings"
+ 
+@@ -181,6 +183,8 @@ func rc2Lever() {
+ // ferme, 1 ferme contredit, 2 ferme sain), records utiles fermes, score d allocateur de L1a,
+ // desaveu de LP, signatures du localisateur.
+ type rc2Obs struct {
++	detail  string
++	cles    []string
+ 	chk     *cmCollecteur
+ 	b       *cmBlocs
+ 	lp      bool
+@@ -222,6 +226,14 @@ func (o *rc2Obs) debutDeChunk(c int, _ []byte, _ []FilmPacket, w *World) {
+ func (o *rc2Obs) finDeFilm() {}
+ 
+ func (o *rc2Obs) paquet(c int, p *cmPaquet, _ *World) {
++	o.cles = append(o.cles, strconv.Itoa(c)+":"+strconv.Itoa(p.pk.Index))
++	if k := os.Getenv("CAMPAGNE_RCOMB2_PAQUET"); k == strconv.Itoa(c)+":"+strconv.Itoa(p.pk.Index) {
++		o.detail = rc2Detailler(p)
++		for _, r := range p.recs {
++			e, ok := o.b.entree(c, r.Slot)
++			o.detail += fmt.Sprintf("  bloc type 1, chunk %d slot %d : present=%v %+v vivante=%v declare_image_cle=%v\n", c, r.Slot, ok, e, e.Vivante(), o.b.declares[c][r.Slot])
++		}
++	}
+ 	if bis2C3 != nil {
+ 		bis2C3.evenements = bis2C3.evenements[:0]
+ 	}

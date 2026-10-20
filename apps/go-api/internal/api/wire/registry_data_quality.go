@@ -25,55 +25,55 @@ import (
 
 // dataQualityHandles ouvre shared (RO) + metadata (RW partagé). closeAll
 // décrémente les ref-counts — à defer par le caller. metadata absente →
-// metaSQL nil (les fonctions ops dégradent explicitement).
+// metaSQL nil (les fonctions ops dégradent explicitement). Une tâche qui va sur le
+// réseau prend les deux séparément (lectureSharedDuTitre, metadataDuTitre) et rend la
+// base partagée avant : un lecteur en vol fait échouer toute prise d'écriture (ADR 0016).
 func (r *ServiceRegistry) dataQualityHandles(ctx context.Context, titleSlug string) (sharedSQL, metaSQL *sql.DB, closeAll func(), err error) {
-	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
-	sharedPath := pr.SharedDBPath(titleSlug)
-	if _, statErr := os.Stat(sharedPath); statErr != nil {
-		return nil, nil, nil, fmt.Errorf("shared DB absente pour %s: %w", titleSlug, statErr)
+	sharedSQL, sharedRelease, err := r.lectureSharedDuTitre(ctx, titleSlug)
+	if err != nil {
+		return nil, nil, nil, err
 	}
+	metaSQL, metaRelease := r.metadataDuTitre(ctx, titleSlug)
+	return sharedSQL, metaSQL, func() { sharedRelease(); metaRelease() }, nil
+}
 
+// lectureSharedDuTitre ouvre la base partagée du titre en lecture ; release la rend.
+func (r *ServiceRegistry) lectureSharedDuTitre(ctx context.Context, titleSlug string) (*sql.DB, func(), error) {
+	sharedPath := titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug)
+	if _, statErr := os.Stat(sharedPath); statErr != nil {
+		return nil, nil, fmt.Errorf("shared DB absente pour %s: %w", titleSlug, statErr)
+	}
 	// Lecture shared B-swap-safe : si le SharedProvider tient CE fichier (titre par
 	// défaut), passer par lui (drain RO↔RW, résilient au sync concurrent) ; sinon
 	// OpenReadOnly direct (aucune fenêtre RW en process pour ce titre).
-	var sharedRelease func()
 	if r.cfg.SharedProvider != nil && r.cfg.SharedProvider.Path() == sharedPath {
 		db, release, gerr := acquireProgressionSharedRead(ctx, r.cfg.SharedProvider)
 		if gerr != nil {
-			return nil, nil, nil, fmt.Errorf("acquire shared read (provider): %w", gerr)
+			return nil, nil, fmt.Errorf("acquire shared read (provider): %w", gerr)
 		}
-		sharedSQL = db
-		sharedRelease = release
-	} else {
-		shared, oerr := duckdb.OpenReadOnly(sharedPath)
-		if oerr != nil {
-			return nil, nil, nil, fmt.Errorf("open shared RO: %w", oerr)
-		}
-		sharedSQL = shared.SQLDb()
-		sharedRelease = func() { _ = shared.Close() } //nolint:errcheck // ref-count
+		return db, release, nil
 	}
+	shared, oerr := duckdb.OpenReadOnly(sharedPath)
+	if oerr != nil {
+		return nil, nil, fmt.Errorf("open shared RO: %w", oerr)
+	}
+	return shared.SQLDb(), func() { _ = shared.Close() }, nil //nolint:errcheck // ref-count
+}
 
-	var meta *duckdb.DB
-	metaPath := pr.MetadataDBPath(titleSlug)
-	if _, statErr := os.Stat(metaPath); statErr == nil {
-		if m, openErr := duckdb.OpenReadWriteShared(metaPath); openErr == nil {
-			meta = m
-		} else {
-			monitoringLog.WarnContext(ctx, "data_quality: metadata indisponible",
-				"title", titleSlug, "err", openErr)
-		}
+// metadataDuTitre ouvre metadata du titre (RW partagé, handle process ref-compté) ; release le
+// rend. Absente ou illisible → nil (journalisé), jamais d'erreur : les appelants dégradent.
+func (r *ServiceRegistry) metadataDuTitre(ctx context.Context, titleSlug string) (*sql.DB, func()) {
+	metaPath := titlePkg.NewPathResolver(r.cfg.RepoRoot).MetadataDBPath(titleSlug)
+	if _, statErr := os.Stat(metaPath); statErr != nil {
+		return nil, func() {}
 	}
-
-	closeAll = func() {
-		sharedRelease()
-		if meta != nil {
-			_ = meta.Close() //nolint:errcheck // ref-count
-		}
+	meta, openErr := duckdb.OpenReadWriteShared(metaPath)
+	if openErr != nil {
+		monitoringLog.WarnContext(ctx, "data_quality: metadata indisponible",
+			"title", titleSlug, "err", openErr)
+		return nil, func() {}
 	}
-	if meta != nil {
-		metaSQL = meta.SQLDb()
-	}
-	return sharedSQL, metaSQL, closeAll, nil
+	return meta.SQLDb(), func() { _ = meta.Close() } //nolint:errcheck // ref-count
 }
 
 // DataQualityCounts calcule les compteurs d'inconnus (lectures seules). locale =

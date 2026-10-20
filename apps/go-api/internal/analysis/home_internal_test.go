@@ -193,18 +193,8 @@ func TestBestRatioMatch_FindsBest(t *testing.T) {
 	}
 }
 
-func TestOutcomeLabel_Win(t *testing.T) {
-	l := outcomeLabel(homeOutcomeWin)
-	if l == "" || l == "DNF" {
-		t.Errorf("outcomeLabel(WIN) = %q", l)
-	}
-}
-
-func TestOutcomeLabel_Unknown(t *testing.T) {
-	if outcomeLabel(99) != "DNF" {
-		t.Error("expected DNF for unknown")
-	}
-}
+// outcomeLabel (analysis) a été supprimé le 2026-09-07 (D5, lot Q4) : la clé canonique
+// vient du titre, jamais d'une map Go — cf. home_locale_test.go.
 
 func TestOutcomeTone_Win(t *testing.T) {
 	tone := outcomeTone(homeOutcomeWin)

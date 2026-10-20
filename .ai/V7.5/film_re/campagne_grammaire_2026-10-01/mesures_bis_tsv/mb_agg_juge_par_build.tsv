@@ -1,0 +1,628 @@
+build	variante	statut	paquets	utiles_fermes(variante pour gagne/conserve ; reference pour perdu ; delta pour conserve)
+HI_1_10_0	bande+inv	conserve · ref contredit · variante contredit	6	0
+HI_1_10_0	bande+inv	conserve · ref contredit · variante sain	816	-986
+HI_1_10_0	bande+inv	conserve · ref sain · variante sain	22326	0
+HI_1_10_0	bande+inv	gagne · sain	24	428
+HI_1_10_0	bande+inv	perdu · ref contredit	5588	5779
+HI_1_10_0	bande+inv	perdu · ref sain	5	1
+HI_1_10_0	oracle-(i)	conserve · ref contredit · variante contredit	6340	254
+HI_1_10_0	oracle-(i)	conserve · ref contredit · variante sain	17	102
+HI_1_10_0	oracle-(i)	conserve · ref sain · variante contredit	12	83
+HI_1_10_0	oracle-(i)	conserve · ref sain · variante sain	21799	25
+HI_1_10_0	oracle-(i)	gagne · contredit	55	699
+HI_1_10_0	oracle-(i)	gagne · sain	2217	55286
+HI_1_10_0	oracle-(i)	perdu · ref contredit	53	23
+HI_1_10_0	oracle-(i)	perdu · ref sain	520	13081
+HI_1_10_0	oracle-(i)+(ii)	conserve · ref contredit · variante contredit	6270	307
+HI_1_10_0	oracle-(i)+(ii)	conserve · ref contredit · variante sain	22	106
+HI_1_10_0	oracle-(i)+(ii)	conserve · ref sain · variante contredit	40	36
+HI_1_10_0	oracle-(i)+(ii)	conserve · ref sain · variante sain	20875	19
+HI_1_10_0	oracle-(i)+(ii)	gagne · contredit	151	1643
+HI_1_10_0	oracle-(i)+(ii)	gagne · sain	3772	94143
+HI_1_10_0	oracle-(i)+(ii)	perdu · ref contredit	118	354
+HI_1_10_0	oracle-(i)+(ii)	perdu · ref sain	1416	31624
+HI_1_10_0	oracle-(ii)	conserve · ref contredit · variante contredit	6329	22
+HI_1_10_0	oracle-(ii)	conserve · ref contredit · variante sain	9	12
+HI_1_10_0	oracle-(ii)	conserve · ref sain · variante contredit	35	-21
+HI_1_10_0	oracle-(ii)	conserve · ref sain · variante sain	21138	-6
+HI_1_10_0	oracle-(ii)	gagne · contredit	96	935
+HI_1_10_0	oracle-(ii)	gagne · sain	1535	38278
+HI_1_10_0	oracle-(ii)	perdu · ref contredit	72	331
+HI_1_10_0	oracle-(ii)	perdu · ref sain	1158	24870
+HI_1_10_0	oracle-(iii')-ouverte	conserve · ref contredit · variante contredit	6409	0
+HI_1_10_0	oracle-(iii')-ouverte	conserve · ref sain · variante sain	22331	0
+HI_1_10_0	oracle-(iii')-ouverte	gagne · contredit	3	27
+HI_1_10_0	oracle-(iii')-ouverte	perdu · ref contredit	1	1
+HI_1_10_0	oracle-(iii')-rejet	conserve · ref contredit · variante contredit	6260	-41
+HI_1_10_0	oracle-(iii')-rejet	conserve · ref contredit · variante sain	35	-33
+HI_1_10_0	oracle-(iii')-rejet	conserve · ref sain · variante contredit	23	-15
+HI_1_10_0	oracle-(iii')-rejet	conserve · ref sain · variante sain	21803	-29
+HI_1_10_0	oracle-(iii')-rejet	gagne · contredit	64	234
+HI_1_10_0	oracle-(iii')-rejet	gagne · sain	6	134
+HI_1_10_0	oracle-(iii')-rejet	perdu · ref contredit	115	75
+HI_1_10_0	oracle-(iii')-rejet	perdu · ref sain	505	10619
+HI_1_10_0	oracle-(iii)	conserve · ref contredit · variante contredit	6410	0
+HI_1_10_0	oracle-(iii)	conserve · ref sain · variante sain	22331	0
+HI_1_10_0	oracle-NEW	conserve · ref contredit · variante contredit	6123	271
+HI_1_10_0	oracle-NEW	conserve · ref contredit · variante sain	56	88
+HI_1_10_0	oracle-NEW	conserve · ref sain · variante contredit	50	47
+HI_1_10_0	oracle-NEW	conserve · ref sain · variante sain	20760	19
+HI_1_10_0	oracle-NEW	gagne · contredit	214	1886
+HI_1_10_0	oracle-NEW	gagne · sain	3728	92771
+HI_1_10_0	oracle-NEW	perdu · ref contredit	231	401
+HI_1_10_0	oracle-NEW	perdu · ref sain	1521	34039
+HI_1_10_0	oracle-bloc	conserve · ref contredit · variante contredit	6401	195
+HI_1_10_0	oracle-bloc	conserve · ref contredit · variante sain	6	79
+HI_1_10_0	oracle-bloc	conserve · ref sain · variante contredit	8	104
+HI_1_10_0	oracle-bloc	conserve · ref sain · variante sain	22323	27
+HI_1_10_0	oracle-bloc	gagne · contredit	23	260
+HI_1_10_0	oracle-bloc	gagne · sain	1103	24499
+HI_1_10_0	oracle-bloc	perdu · ref contredit	3	1
+HI_1_10_0	oracle-bloc+tete-bloc	conserve · ref contredit · variante contredit	6193	911
+HI_1_10_0	oracle-bloc+tete-bloc	conserve · ref contredit · variante sain	117	-71
+HI_1_10_0	oracle-bloc+tete-bloc	conserve · ref sain · variante contredit	223	427
+HI_1_10_0	oracle-bloc+tete-bloc	conserve · ref sain · variante sain	19690	-14
+HI_1_10_0	oracle-bloc+tete-bloc	gagne · contredit	1597	2851
+HI_1_10_0	oracle-bloc+tete-bloc	gagne · sain	1586	21565
+HI_1_10_0	oracle-bloc+tete-bloc	perdu · ref contredit	100	789
+HI_1_10_0	oracle-bloc+tete-bloc	perdu · ref sain	2418	54543
+HI_1_10_0	tete-bloc	conserve · ref contredit · variante contredit	6192	707
+HI_1_10_0	tete-bloc	conserve · ref contredit · variante sain	112	-143
+HI_1_10_0	tete-bloc	conserve · ref sain · variante contredit	219	288
+HI_1_10_0	tete-bloc	conserve · ref sain · variante sain	19501	-61
+HI_1_10_0	tete-bloc	gagne · contredit	1563	2523
+HI_1_10_0	tete-bloc	gagne · sain	668	1522
+HI_1_10_0	tete-bloc	perdu · ref contredit	106	882
+HI_1_10_0	tete-bloc	perdu · ref sain	2611	58904
+HI_1_10_0	tete-bloc+inv	conserve · ref contredit · variante contredit	6	0
+HI_1_10_0	tete-bloc+inv	conserve · ref contredit · variante sain	1053	-1096
+HI_1_10_0	tete-bloc+inv	conserve · ref sain · variante contredit	8	-89
+HI_1_10_0	tete-bloc+inv	conserve · ref sain · variante sain	21324	7
+HI_1_10_0	tete-bloc+inv	gagne · contredit	49	602
+HI_1_10_0	tete-bloc+inv	gagne · sain	707	1635
+HI_1_10_0	tete-bloc+inv	perdu · ref contredit	5351	5586
+HI_1_10_0	tete-bloc+inv	perdu · ref sain	999	22914
+HI_1_10_0	tete-bloc+inv+paquet	conserve · ref contredit · variante contredit	6	0
+HI_1_10_0	tete-bloc+inv+paquet	conserve · ref contredit · variante sain	1053	-1096
+HI_1_10_0	tete-bloc+inv+paquet	conserve · ref sain · variante contredit	8	-89
+HI_1_10_0	tete-bloc+inv+paquet	conserve · ref sain · variante sain	21324	7
+HI_1_10_0	tete-bloc+inv+paquet	gagne · contredit	49	602
+HI_1_10_0	tete-bloc+inv+paquet	gagne · sain	707	1635
+HI_1_10_0	tete-bloc+inv+paquet	perdu · ref contredit	5351	5586
+HI_1_10_0	tete-bloc+inv+paquet	perdu · ref sain	999	22914
+HI_1_11_0	bande+inv	conserve · ref contredit · variante contredit	2	0
+HI_1_11_0	bande+inv	conserve · ref contredit · variante sain	6	-22
+HI_1_11_0	bande+inv	conserve · ref sain · variante sain	4098	-21
+HI_1_11_0	bande+inv	perdu · ref contredit	156	489
+HI_1_11_0	bande+inv	perdu · ref sain	23	726
+HI_1_11_0	oracle-(i)	conserve · ref contredit · variante contredit	163	0
+HI_1_11_0	oracle-(i)	conserve · ref sain · variante sain	4121	0
+HI_1_11_0	oracle-(i)	gagne · contredit	3	54
+HI_1_11_0	oracle-(i)	gagne · sain	483	12818
+HI_1_11_0	oracle-(i)	perdu · ref contredit	1	0
+HI_1_11_0	oracle-(i)+(ii)	conserve · ref contredit · variante contredit	161	0
+HI_1_11_0	oracle-(i)+(ii)	conserve · ref sain · variante sain	4112	0
+HI_1_11_0	oracle-(i)+(ii)	gagne · contredit	6	98
+HI_1_11_0	oracle-(i)+(ii)	gagne · sain	966	24407
+HI_1_11_0	oracle-(i)+(ii)	perdu · ref contredit	3	17
+HI_1_11_0	oracle-(i)+(ii)	perdu · ref sain	9	280
+HI_1_11_0	oracle-(ii)	conserve · ref contredit · variante contredit	162	0
+HI_1_11_0	oracle-(ii)	conserve · ref sain · variante sain	4112	0
+HI_1_11_0	oracle-(ii)	gagne · contredit	3	44
+HI_1_11_0	oracle-(ii)	gagne · sain	441	10782
+HI_1_11_0	oracle-(ii)	perdu · ref contredit	2	17
+HI_1_11_0	oracle-(ii)	perdu · ref sain	9	280
+HI_1_11_0	oracle-(iii')-ouverte	conserve · ref contredit · variante contredit	164	0
+HI_1_11_0	oracle-(iii')-ouverte	conserve · ref sain · variante sain	4121	0
+HI_1_11_0	oracle-(iii')-rejet	conserve · ref contredit · variante contredit	163	0
+HI_1_11_0	oracle-(iii')-rejet	conserve · ref sain · variante sain	4105	0
+HI_1_11_0	oracle-(iii')-rejet	gagne · contredit	4	79
+HI_1_11_0	oracle-(iii')-rejet	gagne · sain	7	175
+HI_1_11_0	oracle-(iii')-rejet	perdu · ref contredit	1	0
+HI_1_11_0	oracle-(iii')-rejet	perdu · ref sain	16	395
+HI_1_11_0	oracle-(iii)	conserve · ref contredit · variante contredit	164	0
+HI_1_11_0	oracle-(iii)	conserve · ref sain · variante sain	4121	0
+HI_1_11_0	oracle-NEW	conserve · ref contredit · variante contredit	160	0
+HI_1_11_0	oracle-NEW	conserve · ref sain · variante sain	4096	0
+HI_1_11_0	oracle-NEW	gagne · contredit	10	177
+HI_1_11_0	oracle-NEW	gagne · sain	973	24582
+HI_1_11_0	oracle-NEW	perdu · ref contredit	4	17
+HI_1_11_0	oracle-NEW	perdu · ref sain	25	675
+HI_1_11_0	oracle-bloc	conserve · ref contredit · variante contredit	164	0
+HI_1_11_0	oracle-bloc	conserve · ref sain · variante sain	4121	0
+HI_1_11_0	oracle-bloc	gagne · contredit	1	8
+HI_1_11_0	oracle-bloc	gagne · sain	77	2140
+HI_1_11_0	oracle-bloc+tete-bloc	conserve · ref contredit · variante contredit	161	12
+HI_1_11_0	oracle-bloc+tete-bloc	conserve · ref sain · variante contredit	5	-16
+HI_1_11_0	oracle-bloc+tete-bloc	conserve · ref sain · variante sain	3783	14
+HI_1_11_0	oracle-bloc+tete-bloc	gagne · contredit	153	631
+HI_1_11_0	oracle-bloc+tete-bloc	gagne · sain	125	1763
+HI_1_11_0	oracle-bloc+tete-bloc	perdu · ref contredit	3	49
+HI_1_11_0	oracle-bloc+tete-bloc	perdu · ref sain	333	7840
+HI_1_11_0	tete-bloc	conserve · ref contredit · variante contredit	161	12
+HI_1_11_0	tete-bloc	conserve · ref sain · variante contredit	5	-16
+HI_1_11_0	tete-bloc	conserve · ref sain · variante sain	3783	0
+HI_1_11_0	tete-bloc	gagne · contredit	153	631
+HI_1_11_0	tete-bloc	gagne · sain	68	94
+HI_1_11_0	tete-bloc	perdu · ref contredit	3	49
+HI_1_11_0	tete-bloc	perdu · ref sain	333	7840
+HI_1_11_0	tete-bloc+inv	conserve · ref contredit · variante contredit	2	0
+HI_1_11_0	tete-bloc+inv	conserve · ref contredit · variante sain	9	-21
+HI_1_11_0	tete-bloc+inv	conserve · ref sain · variante sain	4052	-21
+HI_1_11_0	tete-bloc+inv	gagne · sain	77	113
+HI_1_11_0	tete-bloc+inv	perdu · ref contredit	153	510
+HI_1_11_0	tete-bloc+inv	perdu · ref sain	69	2071
+HI_1_11_0	tete-bloc+inv+paquet	conserve · ref contredit · variante contredit	2	0
+HI_1_11_0	tete-bloc+inv+paquet	conserve · ref contredit · variante sain	9	-21
+HI_1_11_0	tete-bloc+inv+paquet	conserve · ref sain · variante sain	4052	-21
+HI_1_11_0	tete-bloc+inv+paquet	gagne · sain	77	113
+HI_1_11_0	tete-bloc+inv+paquet	perdu · ref contredit	153	510
+HI_1_11_0	tete-bloc+inv+paquet	perdu · ref sain	69	2071
+HI_1_12_0	bande+inv	conserve · ref contredit · variante sain	1	0
+HI_1_12_0	bande+inv	conserve · ref sain · variante sain	5830	0
+HI_1_12_0	bande+inv	perdu · ref contredit	4	5
+HI_1_12_0	oracle-(i)	conserve · ref contredit · variante contredit	5	0
+HI_1_12_0	oracle-(i)	conserve · ref sain · variante sain	5830	0
+HI_1_12_0	oracle-(i)	gagne · sain	289	2404
+HI_1_12_0	oracle-(i)+(ii)	conserve · ref contredit · variante contredit	5	0
+HI_1_12_0	oracle-(i)+(ii)	conserve · ref sain · variante sain	5830	0
+HI_1_12_0	oracle-(i)+(ii)	gagne · sain	401	3215
+HI_1_12_0	oracle-(ii)	conserve · ref contredit · variante contredit	5	0
+HI_1_12_0	oracle-(ii)	conserve · ref sain · variante sain	5830	0
+HI_1_12_0	oracle-(ii)	gagne · sain	112	811
+HI_1_12_0	oracle-(iii')-ouverte	conserve · ref contredit · variante contredit	5	0
+HI_1_12_0	oracle-(iii')-ouverte	conserve · ref sain · variante sain	5830	0
+HI_1_12_0	oracle-(iii')-ouverte	gagne · contredit	1	5
+HI_1_12_0	oracle-(iii')-ouverte	gagne · sain	1	6
+HI_1_12_0	oracle-(iii')-rejet	conserve · ref contredit · variante contredit	5	0
+HI_1_12_0	oracle-(iii')-rejet	conserve · ref sain · variante sain	5830	0
+HI_1_12_0	oracle-(iii')-rejet	gagne · sain	9	68
+HI_1_12_0	oracle-(iii)	conserve · ref contredit · variante contredit	5	0
+HI_1_12_0	oracle-(iii)	conserve · ref sain · variante sain	5830	0
+HI_1_12_0	oracle-NEW	conserve · ref contredit · variante contredit	5	0
+HI_1_12_0	oracle-NEW	conserve · ref sain · variante sain	5830	0
+HI_1_12_0	oracle-NEW	gagne · contredit	1	5
+HI_1_12_0	oracle-NEW	gagne · sain	411	3289
+HI_1_12_0	oracle-bloc	conserve · ref contredit · variante contredit	5	0
+HI_1_12_0	oracle-bloc	conserve · ref sain · variante sain	5830	0
+HI_1_12_0	oracle-bloc+tete-bloc	conserve · ref contredit · variante contredit	5	0
+HI_1_12_0	oracle-bloc+tete-bloc	conserve · ref sain · variante sain	5830	19
+HI_1_12_0	oracle-bloc+tete-bloc	gagne · contredit	13	32
+HI_1_12_0	oracle-bloc+tete-bloc	gagne · sain	682	6136
+HI_1_12_0	tete-bloc	conserve · ref contredit · variante contredit	5	0
+HI_1_12_0	tete-bloc	conserve · ref sain · variante sain	5830	19
+HI_1_12_0	tete-bloc	gagne · contredit	13	32
+HI_1_12_0	tete-bloc	gagne · sain	682	6136
+HI_1_12_0	tete-bloc+inv	conserve · ref contredit · variante sain	1	0
+HI_1_12_0	tete-bloc+inv	conserve · ref sain · variante sain	5830	19
+HI_1_12_0	tete-bloc+inv	gagne · contredit	1	15
+HI_1_12_0	tete-bloc+inv	gagne · sain	683	6136
+HI_1_12_0	tete-bloc+inv	perdu · ref contredit	4	5
+HI_1_12_0	tete-bloc+inv+paquet	conserve · ref contredit · variante sain	1	0
+HI_1_12_0	tete-bloc+inv+paquet	conserve · ref sain · variante sain	5830	19
+HI_1_12_0	tete-bloc+inv+paquet	gagne · contredit	1	15
+HI_1_12_0	tete-bloc+inv+paquet	gagne · sain	540	4597
+HI_1_12_0	tete-bloc+inv+paquet	perdu · ref contredit	4	5
+HI_1_13_0	bande+inv	conserve · ref contredit · variante contredit	36	0
+HI_1_13_0	bande+inv	conserve · ref contredit · variante sain	161	-316
+HI_1_13_0	bande+inv	conserve · ref sain · variante sain	223330	109
+HI_1_13_0	bande+inv	gagne · sain	603	18840
+HI_1_13_0	bande+inv	perdu · ref contredit	1290	4750
+HI_1_13_0	bande+inv	perdu · ref sain	1	31
+HI_1_13_0	oracle-(i)	conserve · ref contredit · variante contredit	1476	21
+HI_1_13_0	oracle-(i)	conserve · ref contredit · variante sain	9	223
+HI_1_13_0	oracle-(i)	conserve · ref sain · variante sain	223319	171
+HI_1_13_0	oracle-(i)	gagne · contredit	20	215
+HI_1_13_0	oracle-(i)	gagne · sain	10322	104604
+HI_1_13_0	oracle-(i)	perdu · ref contredit	2	24
+HI_1_13_0	oracle-(i)	perdu · ref sain	12	103
+HI_1_13_0	oracle-(i)+(ii)	conserve · ref contredit · variante contredit	1453	38
+HI_1_13_0	oracle-(i)+(ii)	conserve · ref contredit · variante sain	28	801
+HI_1_13_0	oracle-(i)+(ii)	conserve · ref sain · variante contredit	4	86
+HI_1_13_0	oracle-(i)+(ii)	conserve · ref sain · variante sain	223304	555
+HI_1_13_0	oracle-(i)+(ii)	gagne · contredit	82	799
+HI_1_13_0	oracle-(i)+(ii)	gagne · sain	16981	190956
+HI_1_13_0	oracle-(i)+(ii)	perdu · ref contredit	6	34
+HI_1_13_0	oracle-(i)+(ii)	perdu · ref sain	23	154
+HI_1_13_0	oracle-(ii)	conserve · ref contredit · variante contredit	1458	21
+HI_1_13_0	oracle-(ii)	conserve · ref contredit · variante sain	25	763
+HI_1_13_0	oracle-(ii)	conserve · ref sain · variante contredit	4	86
+HI_1_13_0	oracle-(ii)	conserve · ref sain · variante sain	223316	487
+HI_1_13_0	oracle-(ii)	gagne · contredit	66	699
+HI_1_13_0	oracle-(ii)	gagne · sain	6764	93679
+HI_1_13_0	oracle-(ii)	perdu · ref contredit	4	10
+HI_1_13_0	oracle-(ii)	perdu · ref sain	11	51
+HI_1_13_0	oracle-(iii')-ouverte	conserve · ref contredit · variante contredit	1487	0
+HI_1_13_0	oracle-(iii')-ouverte	conserve · ref sain · variante sain	223330	0
+HI_1_13_0	oracle-(iii')-ouverte	gagne · contredit	2	8
+HI_1_13_0	oracle-(iii')-ouverte	gagne · sain	10	63
+HI_1_13_0	oracle-(iii')-ouverte	perdu · ref sain	1	0
+HI_1_13_0	oracle-(iii')-rejet	conserve · ref contredit · variante contredit	1478	4
+HI_1_13_0	oracle-(iii')-rejet	conserve · ref contredit · variante sain	2	0
+HI_1_13_0	oracle-(iii')-rejet	conserve · ref sain · variante contredit	2	-28
+HI_1_13_0	oracle-(iii')-rejet	conserve · ref sain · variante sain	223094	-30
+HI_1_13_0	oracle-(iii')-rejet	gagne · contredit	63	535
+HI_1_13_0	oracle-(iii')-rejet	gagne · sain	103	808
+HI_1_13_0	oracle-(iii')-rejet	perdu · ref contredit	7	57
+HI_1_13_0	oracle-(iii')-rejet	perdu · ref sain	235	5092
+HI_1_13_0	oracle-(iii)	conserve · ref contredit · variante contredit	1486	0
+HI_1_13_0	oracle-(iii)	conserve · ref sain · variante sain	223242	-15
+HI_1_13_0	oracle-(iii)	gagne · contredit	25	132
+HI_1_13_0	oracle-(iii)	perdu · ref contredit	1	9
+HI_1_13_0	oracle-(iii)	perdu · ref sain	89	832
+HI_1_13_0	oracle-NEW	conserve · ref contredit · variante contredit	1448	42
+HI_1_13_0	oracle-NEW	conserve · ref contredit · variante sain	27	720
+HI_1_13_0	oracle-NEW	conserve · ref sain · variante contredit	5	37
+HI_1_13_0	oracle-NEW	conserve · ref sain · variante sain	222979	440
+HI_1_13_0	oracle-NEW	gagne · contredit	172	1422
+HI_1_13_0	oracle-NEW	gagne · sain	16746	183451
+HI_1_13_0	oracle-NEW	perdu · ref contredit	12	82
+HI_1_13_0	oracle-NEW	perdu · ref sain	347	6063
+HI_1_13_0	oracle-bloc	conserve · ref contredit · variante contredit	1479	0
+HI_1_13_0	oracle-bloc	conserve · ref contredit · variante sain	8	201
+HI_1_13_0	oracle-bloc	conserve · ref sain · variante contredit	2	35
+HI_1_13_0	oracle-bloc	conserve · ref sain · variante sain	223329	0
+HI_1_13_0	oracle-bloc	gagne · contredit	1	8
+HI_1_13_0	oracle-bloc	gagne · sain	504	9400
+HI_1_13_0	oracle-bloc+tete-bloc	conserve · ref contredit · variante contredit	1429	1289
+HI_1_13_0	oracle-bloc+tete-bloc	conserve · ref contredit · variante sain	44	540
+HI_1_13_0	oracle-bloc+tete-bloc	conserve · ref sain · variante contredit	122	336
+HI_1_13_0	oracle-bloc+tete-bloc	conserve · ref sain · variante sain	220168	-52
+HI_1_13_0	oracle-bloc+tete-bloc	gagne · contredit	1236	6176
+HI_1_13_0	oracle-bloc+tete-bloc	gagne · sain	14359	151204
+HI_1_13_0	oracle-bloc+tete-bloc	perdu · ref contredit	14	198
+HI_1_13_0	oracle-bloc+tete-bloc	perdu · ref sain	3041	58144
+HI_1_13_0	tete-bloc	conserve · ref contredit · variante contredit	1435	1240
+HI_1_13_0	tete-bloc	conserve · ref contredit · variante sain	38	389
+HI_1_13_0	tete-bloc	conserve · ref sain · variante contredit	119	300
+HI_1_13_0	tete-bloc	conserve · ref sain · variante sain	220171	-52
+HI_1_13_0	tete-bloc	gagne · contredit	1235	6100
+HI_1_13_0	tete-bloc	gagne · sain	14013	143659
+HI_1_13_0	tete-bloc	perdu · ref contredit	14	198
+HI_1_13_0	tete-bloc	perdu · ref sain	3041	58144
+HI_1_13_0	tete-bloc+inv	conserve · ref contredit · variante contredit	36	0
+HI_1_13_0	tete-bloc+inv	conserve · ref contredit · variante sain	226	60
+HI_1_13_0	tete-bloc+inv	conserve · ref sain · variante contredit	6	-12
+HI_1_13_0	tete-bloc+inv	conserve · ref sain · variante sain	222858	252
+HI_1_13_0	tete-bloc+inv	gagne · sain	14627	161315
+HI_1_13_0	tete-bloc+inv	perdu · ref contredit	1225	4603
+HI_1_13_0	tete-bloc+inv	perdu · ref sain	467	9699
+HI_1_13_0	tete-bloc+inv+paquet	conserve · ref contredit · variante contredit	32	-1
+HI_1_13_0	tete-bloc+inv+paquet	conserve · ref contredit · variante sain	226	60
+HI_1_13_0	tete-bloc+inv+paquet	conserve · ref sain · variante contredit	6	-12
+HI_1_13_0	tete-bloc+inv+paquet	conserve · ref sain · variante sain	221939	221
+HI_1_13_0	tete-bloc+inv+paquet	gagne · sain	14381	158865
+HI_1_13_0	tete-bloc+inv+paquet	perdu · ref contredit	1229	4639
+HI_1_13_0	tete-bloc+inv+paquet	perdu · ref sain	1386	22850
+HI_1_4_1	bande+inv	conserve · ref contredit · variante contredit	5	0
+HI_1_4_1	bande+inv	conserve · ref sain · variante sain	692	0
+HI_1_4_1	bande+inv	perdu · ref contredit	4	2
+HI_1_4_1	oracle-(i)	conserve · ref contredit · variante contredit	9	0
+HI_1_4_1	oracle-(i)	conserve · ref sain · variante sain	692	0
+HI_1_4_1	oracle-(i)+(ii)	conserve · ref contredit · variante contredit	9	0
+HI_1_4_1	oracle-(i)+(ii)	conserve · ref sain · variante sain	692	0
+HI_1_4_1	oracle-(ii)	conserve · ref contredit · variante contredit	9	0
+HI_1_4_1	oracle-(ii)	conserve · ref sain · variante sain	692	0
+HI_1_4_1	oracle-(iii')-ouverte	conserve · ref contredit · variante contredit	9	0
+HI_1_4_1	oracle-(iii')-ouverte	conserve · ref sain · variante sain	692	0
+HI_1_4_1	oracle-(iii')-rejet	conserve · ref contredit · variante contredit	9	0
+HI_1_4_1	oracle-(iii')-rejet	conserve · ref sain · variante sain	692	0
+HI_1_4_1	oracle-(iii)	conserve · ref contredit · variante contredit	9	0
+HI_1_4_1	oracle-(iii)	conserve · ref sain · variante sain	692	0
+HI_1_4_1	oracle-NEW	conserve · ref contredit · variante contredit	9	0
+HI_1_4_1	oracle-NEW	conserve · ref sain · variante sain	692	0
+HI_1_4_1	oracle-bloc	conserve · ref contredit · variante contredit	9	0
+HI_1_4_1	oracle-bloc	conserve · ref sain · variante sain	692	0
+HI_1_4_1	oracle-bloc+tete-bloc	conserve · ref contredit · variante contredit	9	0
+HI_1_4_1	oracle-bloc+tete-bloc	conserve · ref sain · variante sain	692	0
+HI_1_4_1	oracle-bloc+tete-bloc	gagne · contredit	6	0
+HI_1_4_1	oracle-bloc+tete-bloc	gagne · sain	4	0
+HI_1_4_1	tete-bloc	conserve · ref contredit · variante contredit	9	0
+HI_1_4_1	tete-bloc	conserve · ref sain · variante sain	692	0
+HI_1_4_1	tete-bloc	gagne · contredit	6	0
+HI_1_4_1	tete-bloc	gagne · sain	4	0
+HI_1_4_1	tete-bloc+inv	conserve · ref contredit · variante contredit	5	0
+HI_1_4_1	tete-bloc+inv	conserve · ref sain · variante sain	692	0
+HI_1_4_1	tete-bloc+inv	gagne · sain	4	0
+HI_1_4_1	tete-bloc+inv	perdu · ref contredit	4	2
+HI_1_4_1	tete-bloc+inv+paquet	conserve · ref contredit · variante contredit	5	0
+HI_1_4_1	tete-bloc+inv+paquet	conserve · ref sain · variante sain	692	0
+HI_1_4_1	tete-bloc+inv+paquet	gagne · sain	4	0
+HI_1_4_1	tete-bloc+inv+paquet	perdu · ref contredit	4	2
+HI_1_8_0	bande+inv	conserve · ref contredit · variante contredit	35	0
+HI_1_8_0	bande+inv	conserve · ref contredit · variante sain	3	0
+HI_1_8_0	bande+inv	conserve · ref sain · variante sain	13828	0
+HI_1_8_0	bande+inv	perdu · ref contredit	103	72
+HI_1_8_0	oracle-(i)	conserve · ref contredit · variante contredit	141	4
+HI_1_8_0	oracle-(i)	conserve · ref sain · variante sain	13828	0
+HI_1_8_0	oracle-(i)	gagne · contredit	3	18
+HI_1_8_0	oracle-(i)	gagne · sain	3211	24687
+HI_1_8_0	oracle-(i)+(ii)	conserve · ref contredit · variante contredit	138	4
+HI_1_8_0	oracle-(i)+(ii)	conserve · ref sain · variante sain	13825	0
+HI_1_8_0	oracle-(i)+(ii)	gagne · contredit	28	184
+HI_1_8_0	oracle-(i)+(ii)	gagne · sain	6080	46648
+HI_1_8_0	oracle-(i)+(ii)	perdu · ref contredit	3	1
+HI_1_8_0	oracle-(i)+(ii)	perdu · ref sain	3	31
+HI_1_8_0	oracle-(ii)	conserve · ref contredit · variante contredit	138	0
+HI_1_8_0	oracle-(ii)	conserve · ref sain · variante sain	13825	0
+HI_1_8_0	oracle-(ii)	gagne · contredit	25	166
+HI_1_8_0	oracle-(ii)	gagne · sain	2868	21954
+HI_1_8_0	oracle-(ii)	perdu · ref contredit	3	1
+HI_1_8_0	oracle-(ii)	perdu · ref sain	3	31
+HI_1_8_0	oracle-(iii')-ouverte	conserve · ref contredit · variante contredit	141	0
+HI_1_8_0	oracle-(iii')-ouverte	conserve · ref sain · variante sain	13828	0
+HI_1_8_0	oracle-(iii')-ouverte	gagne · sain	4	24
+HI_1_8_0	oracle-(iii')-rejet	conserve · ref contredit · variante contredit	141	0
+HI_1_8_0	oracle-(iii')-rejet	conserve · ref sain · variante sain	13826	0
+HI_1_8_0	oracle-(iii')-rejet	gagne · contredit	14	87
+HI_1_8_0	oracle-(iii')-rejet	gagne · sain	86	524
+HI_1_8_0	oracle-(iii')-rejet	perdu · ref sain	2	23
+HI_1_8_0	oracle-(iii)	conserve · ref contredit · variante contredit	141	0
+HI_1_8_0	oracle-(iii)	conserve · ref sain · variante sain	13828	0
+HI_1_8_0	oracle-NEW	conserve · ref contredit · variante contredit	138	4
+HI_1_8_0	oracle-NEW	conserve · ref sain · variante sain	13823	0
+HI_1_8_0	oracle-NEW	gagne · contredit	49	324
+HI_1_8_0	oracle-NEW	gagne · sain	6170	47196
+HI_1_8_0	oracle-NEW	perdu · ref contredit	3	1
+HI_1_8_0	oracle-NEW	perdu · ref sain	5	54
+HI_1_8_0	oracle-bloc	conserve · ref contredit · variante contredit	141	0
+HI_1_8_0	oracle-bloc	conserve · ref sain · variante sain	13828	0
+HI_1_8_0	oracle-bloc	gagne · contredit	1	9
+HI_1_8_0	oracle-bloc	gagne · sain	279	2397
+HI_1_8_0	oracle-bloc+tete-bloc	conserve · ref contredit · variante contredit	139	0
+HI_1_8_0	oracle-bloc+tete-bloc	conserve · ref sain · variante contredit	5	-16
+HI_1_8_0	oracle-bloc+tete-bloc	conserve · ref sain · variante sain	12463	-26
+HI_1_8_0	oracle-bloc+tete-bloc	gagne · contredit	157	175
+HI_1_8_0	oracle-bloc+tete-bloc	gagne · sain	431	2754
+HI_1_8_0	oracle-bloc+tete-bloc	perdu · ref contredit	2	10
+HI_1_8_0	oracle-bloc+tete-bloc	perdu · ref sain	1360	9097
+HI_1_8_0	tete-bloc	conserve · ref contredit · variante contredit	139	0
+HI_1_8_0	tete-bloc	conserve · ref sain · variante contredit	5	-16
+HI_1_8_0	tete-bloc	conserve · ref sain · variante sain	12446	-28
+HI_1_8_0	tete-bloc	gagne · contredit	156	164
+HI_1_8_0	tete-bloc	gagne · sain	163	451
+HI_1_8_0	tete-bloc	perdu · ref contredit	2	10
+HI_1_8_0	tete-bloc	perdu · ref sain	1377	9196
+HI_1_8_0	tete-bloc+inv	conserve · ref contredit · variante contredit	35	0
+HI_1_8_0	tete-bloc+inv	conserve · ref contredit · variante sain	6	-2
+HI_1_8_0	tete-bloc+inv	conserve · ref sain · variante contredit	2	-3
+HI_1_8_0	tete-bloc+inv	conserve · ref sain · variante sain	13512	-34
+HI_1_8_0	tete-bloc+inv	gagne · contredit	6	43
+HI_1_8_0	tete-bloc+inv	gagne · sain	181	550
+HI_1_8_0	tete-bloc+inv	perdu · ref contredit	100	70
+HI_1_8_0	tete-bloc+inv	perdu · ref sain	314	2473
+HI_1_8_0	tete-bloc+inv+paquet	conserve · ref contredit · variante contredit	35	0
+HI_1_8_0	tete-bloc+inv+paquet	conserve · ref contredit · variante sain	6	-2
+HI_1_8_0	tete-bloc+inv+paquet	conserve · ref sain · variante contredit	2	-3
+HI_1_8_0	tete-bloc+inv+paquet	conserve · ref sain · variante sain	13512	-34
+HI_1_8_0	tete-bloc+inv+paquet	gagne · contredit	6	43
+HI_1_8_0	tete-bloc+inv+paquet	gagne · sain	181	550
+HI_1_8_0	tete-bloc+inv+paquet	perdu · ref contredit	100	70
+HI_1_8_0	tete-bloc+inv+paquet	perdu · ref sain	314	2473
+HI_1_9_0	bande+inv	conserve · ref contredit · variante sain	3	2
+HI_1_9_0	bande+inv	conserve · ref sain · variante sain	5613	0
+HI_1_9_0	bande+inv	perdu · ref contredit	123	186
+HI_1_9_0	oracle-(i)	conserve · ref contredit · variante contredit	125	0
+HI_1_9_0	oracle-(i)	conserve · ref sain · variante sain	5611	0
+HI_1_9_0	oracle-(i)	gagne · contredit	3	35
+HI_1_9_0	oracle-(i)	gagne · sain	368	8385
+HI_1_9_0	oracle-(i)	perdu · ref contredit	1	0
+HI_1_9_0	oracle-(i)	perdu · ref sain	2	53
+HI_1_9_0	oracle-(i)+(ii)	conserve · ref contredit · variante contredit	124	0
+HI_1_9_0	oracle-(i)+(ii)	conserve · ref sain · variante sain	5610	0
+HI_1_9_0	oracle-(i)+(ii)	gagne · contredit	13	196
+HI_1_9_0	oracle-(i)+(ii)	gagne · sain	1271	28378
+HI_1_9_0	oracle-(i)+(ii)	perdu · ref contredit	2	0
+HI_1_9_0	oracle-(i)+(ii)	perdu · ref sain	3	85
+HI_1_9_0	oracle-(ii)	conserve · ref contredit · variante contredit	125	0
+HI_1_9_0	oracle-(ii)	conserve · ref sain · variante sain	5612	0
+HI_1_9_0	oracle-(ii)	gagne · contredit	10	161
+HI_1_9_0	oracle-(ii)	gagne · sain	881	19571
+HI_1_9_0	oracle-(ii)	perdu · ref contredit	1	0
+HI_1_9_0	oracle-(ii)	perdu · ref sain	1	32
+HI_1_9_0	oracle-(iii')-ouverte	conserve · ref contredit · variante contredit	126	0
+HI_1_9_0	oracle-(iii')-ouverte	conserve · ref sain · variante sain	5613	0
+HI_1_9_0	oracle-(iii')-rejet	conserve · ref contredit · variante contredit	122	0
+HI_1_9_0	oracle-(iii')-rejet	conserve · ref sain · variante sain	5613	0
+HI_1_9_0	oracle-(iii')-rejet	gagne · contredit	2	16
+HI_1_9_0	oracle-(iii')-rejet	gagne · sain	5	43
+HI_1_9_0	oracle-(iii')-rejet	perdu · ref contredit	4	1
+HI_1_9_0	oracle-(iii)	conserve · ref contredit · variante contredit	126	0
+HI_1_9_0	oracle-(iii)	conserve · ref sain · variante sain	5613	0
+HI_1_9_0	oracle-NEW	conserve · ref contredit · variante contredit	120	0
+HI_1_9_0	oracle-NEW	conserve · ref sain · variante sain	5610	0
+HI_1_9_0	oracle-NEW	gagne · contredit	15	212
+HI_1_9_0	oracle-NEW	gagne · sain	1276	28421
+HI_1_9_0	oracle-NEW	perdu · ref contredit	6	1
+HI_1_9_0	oracle-NEW	perdu · ref sain	3	85
+HI_1_9_0	oracle-bloc	conserve · ref contredit · variante contredit	126	0
+HI_1_9_0	oracle-bloc	conserve · ref sain · variante sain	5613	0
+HI_1_9_0	oracle-bloc	gagne · sain	101	2066
+HI_1_9_0	oracle-bloc+tete-bloc	conserve · ref contredit · variante contredit	126	109
+HI_1_9_0	oracle-bloc+tete-bloc	conserve · ref sain · variante contredit	6	0
+HI_1_9_0	oracle-bloc+tete-bloc	conserve · ref sain · variante sain	5343	0
+HI_1_9_0	oracle-bloc+tete-bloc	gagne · contredit	167	1273
+HI_1_9_0	oracle-bloc+tete-bloc	gagne · sain	249	4516
+HI_1_9_0	oracle-bloc+tete-bloc	perdu · ref sain	264	5210
+HI_1_9_0	tete-bloc	conserve · ref contredit · variante contredit	126	109
+HI_1_9_0	tete-bloc	conserve · ref sain · variante contredit	6	0
+HI_1_9_0	tete-bloc	conserve · ref sain · variante sain	5343	0
+HI_1_9_0	tete-bloc	gagne · contredit	167	1273
+HI_1_9_0	tete-bloc	gagne · sain	170	2850
+HI_1_9_0	tete-bloc	perdu · ref sain	264	5210
+HI_1_9_0	tete-bloc+inv	conserve · ref contredit · variante sain	5	16
+HI_1_9_0	tete-bloc+inv	conserve · ref sain · variante sain	5541	0
+HI_1_9_0	tete-bloc+inv	gagne · sain	54	59
+HI_1_9_0	tete-bloc+inv	perdu · ref contredit	121	174
+HI_1_9_0	tete-bloc+inv	perdu · ref sain	72	1528
+HI_1_9_0	tete-bloc+inv+paquet	conserve · ref contredit · variante sain	5	16
+HI_1_9_0	tete-bloc+inv+paquet	conserve · ref sain · variante sain	5541	0
+HI_1_9_0	tete-bloc+inv+paquet	gagne · sain	54	59
+HI_1_9_0	tete-bloc+inv+paquet	perdu · ref contredit	121	174
+HI_1_9_0	tete-bloc+inv+paquet	perdu · ref sain	72	1528
+corpus	bande+inv	conserve · ref contredit · variante contredit	84	0
+corpus	bande+inv	conserve · ref contredit · variante sain	990	-1322
+corpus	bande+inv	conserve · ref sain · variante sain	276287	88
+corpus	bande+inv	gagne · sain	627	19268
+corpus	bande+inv	perdu · ref contredit	7314	11293
+corpus	bande+inv	perdu · ref sain	29	758
+corpus	oracle-(i)	conserve · ref contredit · variante contredit	8305	279
+corpus	oracle-(i)	conserve · ref contredit · variante sain	26	325
+corpus	oracle-(i)	conserve · ref sain · variante contredit	12	83
+corpus	oracle-(i)	conserve · ref sain · variante sain	275770	196
+corpus	oracle-(i)	gagne · contredit	84	1021
+corpus	oracle-(i)	gagne · sain	16890	208184
+corpus	oracle-(i)	perdu · ref contredit	57	47
+corpus	oracle-(i)	perdu · ref sain	534	13237
+corpus	oracle-(i)+(ii)	conserve · ref contredit · variante contredit	8205	349
+corpus	oracle-(i)+(ii)	conserve · ref contredit · variante sain	50	907
+corpus	oracle-(i)+(ii)	conserve · ref sain · variante contredit	44	122
+corpus	oracle-(i)+(ii)	conserve · ref sain · variante sain	274818	574
+corpus	oracle-(i)+(ii)	gagne · contredit	280	2920
+corpus	oracle-(i)+(ii)	gagne · sain	29475	387891
+corpus	oracle-(i)+(ii)	perdu · ref contredit	133	407
+corpus	oracle-(i)+(ii)	perdu · ref sain	1454	32174
+corpus	oracle-(ii)	conserve · ref contredit · variante contredit	8271	43
+corpus	oracle-(ii)	conserve · ref contredit · variante sain	34	775
+corpus	oracle-(ii)	conserve · ref sain · variante contredit	39	65
+corpus	oracle-(ii)	conserve · ref sain · variante sain	275095	481
+corpus	oracle-(ii)	gagne · contredit	200	2005
+corpus	oracle-(ii)	gagne · sain	12605	185219
+corpus	oracle-(ii)	perdu · ref contredit	83	360
+corpus	oracle-(ii)	perdu · ref sain	1182	25264
+corpus	oracle-(iii')-ouverte	conserve · ref contredit · variante contredit	8387	0
+corpus	oracle-(iii')-ouverte	conserve · ref sain · variante sain	276315	0
+corpus	oracle-(iii')-ouverte	gagne · contredit	6	40
+corpus	oracle-(iii')-ouverte	gagne · sain	15	93
+corpus	oracle-(iii')-ouverte	perdu · ref contredit	1	1
+corpus	oracle-(iii')-ouverte	perdu · ref sain	1	0
+corpus	oracle-(iii')-rejet	conserve · ref contredit · variante contredit	8224	-37
+corpus	oracle-(iii')-rejet	conserve · ref contredit · variante sain	37	-33
+corpus	oracle-(iii')-rejet	conserve · ref sain · variante contredit	25	-43
+corpus	oracle-(iii')-rejet	conserve · ref sain · variante sain	275533	-59
+corpus	oracle-(iii')-rejet	gagne · contredit	147	951
+corpus	oracle-(iii')-rejet	gagne · sain	216	1752
+corpus	oracle-(iii')-rejet	perdu · ref contredit	127	133
+corpus	oracle-(iii')-rejet	perdu · ref sain	758	16129
+corpus	oracle-(iii)	conserve · ref contredit · variante contredit	8387	0
+corpus	oracle-(iii)	conserve · ref sain · variante sain	276227	-15
+corpus	oracle-(iii)	gagne · contredit	25	132
+corpus	oracle-(iii)	perdu · ref contredit	1	9
+corpus	oracle-(iii)	perdu · ref sain	89	832
+corpus	oracle-NEW	conserve · ref contredit · variante contredit	8048	317
+corpus	oracle-NEW	conserve · ref contredit · variante sain	83	808
+corpus	oracle-NEW	conserve · ref sain · variante contredit	55	84
+corpus	oracle-NEW	conserve · ref sain · variante sain	274360	459
+corpus	oracle-NEW	gagne · contredit	461	4026
+corpus	oracle-NEW	gagne · sain	29308	379854
+corpus	oracle-NEW	perdu · ref contredit	257	503
+corpus	oracle-NEW	perdu · ref sain	1901	40916
+corpus	oracle-bloc	conserve · ref contredit · variante contredit	8371	195
+corpus	oracle-bloc	conserve · ref contredit · variante sain	14	280
+corpus	oracle-bloc	conserve · ref sain · variante contredit	10	139
+corpus	oracle-bloc	conserve · ref sain · variante sain	276306	27
+corpus	oracle-bloc	gagne · contredit	26	285
+corpus	oracle-bloc	gagne · sain	2064	40502
+corpus	oracle-bloc	perdu · ref contredit	3	1
+corpus	oracle-bloc+tete-bloc	conserve · ref contredit · variante contredit	8108	2321
+corpus	oracle-bloc+tete-bloc	conserve · ref contredit · variante sain	161	469
+corpus	oracle-bloc+tete-bloc	conserve · ref sain · variante contredit	361	731
+corpus	oracle-bloc+tete-bloc	conserve · ref sain · variante sain	268539	-59
+corpus	oracle-bloc+tete-bloc	gagne · contredit	3356	11172
+corpus	oracle-bloc+tete-bloc	gagne · sain	17453	187940
+corpus	oracle-bloc+tete-bloc	perdu · ref contredit	119	1046
+corpus	oracle-bloc+tete-bloc	perdu · ref sain	7416	134834
+corpus	tete-bloc	conserve · ref contredit · variante contredit	8113	2068
+corpus	tete-bloc	conserve · ref contredit · variante sain	150	246
+corpus	tete-bloc	conserve · ref sain · variante contredit	354	556
+corpus	tete-bloc	conserve · ref sain · variante sain	268336	-122
+corpus	tete-bloc	gagne · contredit	3320	10757
+corpus	tete-bloc	gagne · sain	15785	154714
+corpus	tete-bloc	perdu · ref contredit	125	1139
+corpus	tete-bloc	perdu · ref sain	7626	139294
+corpus	tete-bloc+inv	conserve · ref contredit · variante contredit	84	0
+corpus	tete-bloc+inv	conserve · ref contredit · variante sain	1300	-1043
+corpus	tete-bloc+inv	conserve · ref sain · variante contredit	16	-104
+corpus	tete-bloc+inv	conserve · ref sain · variante sain	274379	223
+corpus	tete-bloc+inv	gagne · contredit	56	660
+corpus	tete-bloc+inv	gagne · sain	16351	169810
+corpus	tete-bloc+inv	perdu · ref contredit	7004	10960
+corpus	tete-bloc+inv	perdu · ref sain	1921	38685
+corpus	tete-bloc+inv+paquet	conserve · ref contredit · variante contredit	80	-1
+corpus	tete-bloc+inv+paquet	conserve · ref contredit · variante sain	1300	-1043
+corpus	tete-bloc+inv+paquet	conserve · ref sain · variante contredit	16	-104
+corpus	tete-bloc+inv+paquet	conserve · ref sain · variante sain	273460	192
+corpus	tete-bloc+inv+paquet	gagne · contredit	56	660
+corpus	tete-bloc+inv+paquet	gagne · sain	15962	165821
+corpus	tete-bloc+inv+paquet	perdu · ref contredit	7008	10996
+corpus	tete-bloc+inv+paquet	perdu · ref sain	2840	51836
+version-31	bande+inv	conserve · ref sain · variante sain	143	0
+version-31	bande+inv	perdu · ref contredit	10	3
+version-31	oracle-(i)	conserve · ref contredit · variante contredit	10	0
+version-31	oracle-(i)	conserve · ref sain · variante sain	143	0
+version-31	oracle-(i)+(ii)	conserve · ref contredit · variante contredit	10	0
+version-31	oracle-(i)+(ii)	conserve · ref sain · variante sain	143	0
+version-31	oracle-(ii)	conserve · ref contredit · variante contredit	10	0
+version-31	oracle-(ii)	conserve · ref sain · variante sain	143	0
+version-31	oracle-(iii')-ouverte	conserve · ref contredit · variante contredit	10	0
+version-31	oracle-(iii')-ouverte	conserve · ref sain · variante sain	143	0
+version-31	oracle-(iii')-rejet	conserve · ref contredit · variante contredit	10	0
+version-31	oracle-(iii')-rejet	conserve · ref sain · variante sain	143	0
+version-31	oracle-(iii)	conserve · ref contredit · variante contredit	10	0
+version-31	oracle-(iii)	conserve · ref sain · variante sain	143	0
+version-31	oracle-NEW	conserve · ref contredit · variante contredit	10	0
+version-31	oracle-NEW	conserve · ref sain · variante sain	143	0
+version-31	oracle-bloc	conserve · ref contredit · variante contredit	10	0
+version-31	oracle-bloc	conserve · ref sain · variante sain	143	0
+version-31	oracle-bloc+tete-bloc	conserve · ref contredit · variante contredit	10	0
+version-31	oracle-bloc+tete-bloc	conserve · ref sain · variante sain	143	0
+version-31	oracle-bloc+tete-bloc	gagne · contredit	6	1
+version-31	oracle-bloc+tete-bloc	gagne · sain	6	0
+version-31	tete-bloc	conserve · ref contredit · variante contredit	10	0
+version-31	tete-bloc	conserve · ref sain · variante sain	143	0
+version-31	tete-bloc	gagne · contredit	6	1
+version-31	tete-bloc	gagne · sain	6	0
+version-31	tete-bloc+inv	conserve · ref sain · variante sain	143	0
+version-31	tete-bloc+inv	gagne · sain	6	0
+version-31	tete-bloc+inv	perdu · ref contredit	10	3
+version-31	tete-bloc+inv+paquet	conserve · ref sain · variante sain	143	0
+version-31	tete-bloc+inv+paquet	gagne · sain	6	0
+version-31	tete-bloc+inv+paquet	perdu · ref contredit	10	3
+version-33	bande+inv	conserve · ref sain · variante sain	427	0
+version-33	bande+inv	perdu · ref contredit	36	7
+version-33	oracle-(i)	conserve · ref contredit · variante contredit	36	0
+version-33	oracle-(i)	conserve · ref sain · variante sain	427	0
+version-33	oracle-(i)+(ii)	conserve · ref contredit · variante contredit	35	0
+version-33	oracle-(i)+(ii)	conserve · ref sain · variante sain	427	0
+version-33	oracle-(i)+(ii)	gagne · sain	4	144
+version-33	oracle-(i)+(ii)	perdu · ref contredit	1	1
+version-33	oracle-(ii)	conserve · ref contredit · variante contredit	35	0
+version-33	oracle-(ii)	conserve · ref sain · variante sain	427	0
+version-33	oracle-(ii)	gagne · sain	4	144
+version-33	oracle-(ii)	perdu · ref contredit	1	1
+version-33	oracle-(iii')-ouverte	conserve · ref contredit · variante contredit	36	0
+version-33	oracle-(iii')-ouverte	conserve · ref sain · variante sain	427	0
+version-33	oracle-(iii')-rejet	conserve · ref contredit · variante contredit	36	0
+version-33	oracle-(iii')-rejet	conserve · ref sain · variante sain	427	0
+version-33	oracle-(iii)	conserve · ref contredit · variante contredit	36	0
+version-33	oracle-(iii)	conserve · ref sain · variante sain	427	0
+version-33	oracle-NEW	conserve · ref contredit · variante contredit	35	0
+version-33	oracle-NEW	conserve · ref sain · variante sain	427	0
+version-33	oracle-NEW	gagne · sain	4	144
+version-33	oracle-NEW	perdu · ref contredit	1	1
+version-33	oracle-bloc	conserve · ref contredit · variante contredit	36	0
+version-33	oracle-bloc	conserve · ref sain · variante sain	427	0
+version-33	oracle-bloc+tete-bloc	conserve · ref contredit · variante contredit	36	0
+version-33	oracle-bloc+tete-bloc	conserve · ref sain · variante sain	427	0
+version-33	oracle-bloc+tete-bloc	gagne · contredit	21	33
+version-33	oracle-bloc+tete-bloc	gagne · sain	11	2
+version-33	tete-bloc	conserve · ref contredit · variante contredit	36	0
+version-33	tete-bloc	conserve · ref sain · variante sain	427	0
+version-33	tete-bloc	gagne · contredit	21	33
+version-33	tete-bloc	gagne · sain	11	2
+version-33	tete-bloc+inv	conserve · ref sain · variante sain	427	0
+version-33	tete-bloc+inv	gagne · sain	12	2
+version-33	tete-bloc+inv	perdu · ref contredit	36	7
+version-33	tete-bloc+inv+paquet	conserve · ref sain · variante sain	427	0
+version-33	tete-bloc+inv+paquet	gagne · sain	12	2
+version-33	tete-bloc+inv+paquet	perdu · ref contredit	36	7

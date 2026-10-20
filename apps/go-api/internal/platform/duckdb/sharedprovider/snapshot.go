@@ -19,7 +19,7 @@ type SwapSnapshot struct {
 	DrainMsTotal   int64  // somme des temps d'attente du drain des lecteurs en vol
 	ReadsTimedOut  int64  // lectures rejetées (ErrSwapTimeout → HTTP 503)
 	ReadersInUse   int64  // lecteurs en vol à l'instant T
-	SwapFailures   int64  // échecs de swap (reopen_ro + acquire_writer + panic)
+	SwapFailures   int64  // échecs de swap (reopen_ro + acquire_writer + open_rw + drain_timeout + panic)
 	// Fenêtre de blocage des lecteurs par swap (drain + maintien RW + reopen) —
 	// la durée la plus représentative du stall ressenti. 0 tant qu'aucun swap
 	// complet n'a eu lieu.
@@ -57,6 +57,7 @@ func Snapshot() SwapSnapshot {
 		ReadersInUse:   intVal(readersInUse),
 		SwapFailures: mapInt(swapFailuresTotal, failReasonReopenRO) +
 			mapInt(swapFailuresTotal, failReasonAcquireWriter) +
+			mapInt(swapFailuresTotal, failReasonOpenRW) +
 			mapInt(swapFailuresTotal, failReasonDrainTimeout) +
 			mapInt(swapFailuresTotal, failReasonPanic),
 		BlockedWindowAvgMs: blockedAvg,

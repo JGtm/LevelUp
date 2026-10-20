@@ -1,0 +1,81 @@
+--- a/apps/go-api/internal/games/halo_infinite/film/internal/grammar/object_deaths_march.go (post-J12, df228c24c)
++++ b/surcouche_unique_postj12/object_deaths_march.go
+@@ -34,6 +34,7 @@
+ 
+ import (
+ 	"cmp"
++	"os"
+ 	"slices"
+ 
+ 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+@@ -120,6 +121,9 @@
+ // marchLocateStrict rend la première position `s >= 2`, précédée d'un bit nul, qui porte la
+ // signature stricte ; -1 si aucune.
+ func marchLocateStrict(pay []byte, w *World, cfg FrameConfig) int {
++	if rlocLS {
++		return rlocMarchLocateStrictLS(pay, w, cfg)
++	}
+ 	defer cfg.Obs.neutraliserEtatsDeMouvement()() // essais d offset : aucune lecture publiee
+ 	nb := len(pay) * 8
+ 	for s := 2; s+marchSignatureBits < nb; s++ {
+@@ -215,3 +219,60 @@
+ 	}
+ 	return s, true, true, aLargeurLibre
+ }
++
++// ---- SURCOUCHE DE RECHERCHE UNIQUE post-J12 : localisateur R-LS (campagne de grammaire) ---------
++// Ce fichier n est PAS le fichier de production : c est une copie que `-overlay` substitue a
++// `object_deaths_march.go` pour la seule duree d une mesure. Ajout : la bascule [rlocLS] et la
++// regle R-LS de `r_loc_overlay/` (2026-10-02). Sans bascule, [marchLocateStrict] lit exactement
++// comme la production.
++
++// rlocLS : vrai -> [marchLocateStrict] suit la regle R-LS. Pose par la variable d environnement
++// CAMPAGNE_RLOC_LS=1 (lue au chargement du paquet : les instruments `cmd_fermeture` et
++// `cmd/killsource` sont des binaires, sans crochet de test). Absente -> la production.
++var rlocLS = os.Getenv("CAMPAGNE_RLOC_LS") == "1"
++
++// rlocMarchLocateStrictLS : deux passes dans l ordre de l enquete D-67 : (1) la signature stricte
++// du slot 123, inchangee ; (2) si elle manque, la signature stricte (35 bits, composant unique,
++// generation du profil) sur un AUTRE slot que le monde lie a un archetype « high-frequency » (lu
++// par NOM dans le registre du film : un archetype a un seul composant nomme `high-frequency`). Une
++// seule boucle : la premiere position de la passe 2 est retenue en chemin et ne sert que si la
++// passe 1 echoue, ce qui rend exactement « premiere position 123, sinon premiere position
++// high-frequency ».
++func rlocMarchLocateStrictLS(pay []byte, w *World, cfg FrameConfig) int {
++	defer cfg.Obs.neutraliserEtatsDeMouvement()() // essais d offset : aucune lecture publiee
++	nb := len(pay) * 8
++	hf := rlocArchetypesHauteFrequence(w.Reg)
++	autre := -1
++	for s := 2; s+marchSignatureBits < nb; s++ {
++		if source.BitAt(pay, s-1) != 0 {
++			continue
++		}
++		rec, end, ok := TryDeltaAt(pay, s, w, cfg)
++		if !ok || end != s+marchSignatureBits || len(rec.Trace.Comps) != 1 {
++			continue
++		}
++		if rec.Slot == marchSignatureSlot {
++			return s
++		}
++		if autre < 0 && hf[rec.TypeIndex] &&
++			w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
++			autre = s
++		}
++	}
++	return autre
++}
++
++// rlocArchetypesHauteFrequence rend les archetypes du registre qui n ont qu un composant, nomme
++// `high-frequency` (SURCOUCHE DE RECHERCHE r_loc).
++func rlocArchetypesHauteFrequence(reg *Registry) map[uint32]bool {
++	out := map[uint32]bool{}
++	if reg == nil {
++		return out
++	}
++	for _, a := range reg.Archetypes {
++		if len(a.Components) == 1 && a.Components[0] == "high-frequency" {
++			out[uint32(a.Index)] = true //nolint:gosec // indice de registre
++		}
++	}
++	return out
++}

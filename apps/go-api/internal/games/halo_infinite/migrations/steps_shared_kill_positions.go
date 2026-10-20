@@ -10,6 +10,11 @@ import (
 // inter-titres). Positions monde (Vec3) du tueur et de la victime par kill,
 // jointes au kill par (match_id, killer_xuid, time_ms).
 //
+// Forme actuelle : append-only depuis G.2 (steps_appendonly_misc.go : id PK + written_at),
+// arbitrée PAR PASSE depuis le lot 1.7 (steps_shared_kill_positions_pass.go : + decode_pass,
+// vue kill_positions_latest = dernière passe entière par match). Le CREATE ci-dessous est le
+// schéma d'ORIGINE, name-keyed et donc figé : les deux steps suivants le font évoluer.
+//
 // Halo 5 la remplit NATIVEMENT (KillerWorldLocation/VictimWorldLocation dans la
 // timeline) ; Halo Infinite la laisse vide tant que le décodeur de film n'extrait
 // pas les coordonnées monde (`not_exposed`). C'est le schéma de référence que

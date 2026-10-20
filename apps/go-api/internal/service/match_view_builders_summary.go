@@ -5,11 +5,16 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"log/slog"
 	"math"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 )
 
@@ -26,6 +31,7 @@ func buildSummaryTabFull(
 	titleSlug string,
 	richCitations []domain.HomeMatchCitationRaw,
 	durationSec int,
+	outcomes *mappings.OutcomeMappingSet, //nolint:revive // PLR0913 : clé canonique d'issue (D5, 2026-09-07), même limite déjà relaxée que buildTeamTabFull
 ) domain.MatchSummaryTab {
 	citations := analysis.BuildCitationSnippets(richCitations, math.MaxInt32)
 	if citations == nil {
@@ -33,7 +39,7 @@ func buildSummaryTabFull(
 	}
 	tab := domain.MatchSummaryTab{
 		KPIs:           domain.MatchSummaryKpis{},
-		PersonalResult: domain.MatchPersonalResult{OutcomeLabel: "-", OutcomeColor: mvHexOutcomeUnknown},
+		PersonalResult: domain.MatchPersonalResult{OutcomeColor: mvHexOutcomeUnknown},
 		Medals:         convertMedals(medals, titleSlug),
 		Citations:      citations,
 		ExpectedStats:  buildExpectedStats(expected, histRows, meta, durationSec),
@@ -85,7 +91,7 @@ func buildSummaryTabFull(
 			score = int(math.Round(*stats.PersonalScore))
 		}
 		tab.PersonalResult = domain.MatchPersonalResult{
-			OutcomeLabel:      outcomeLabel(stats.OutcomeCode),
+			Outcome:           outcomeKey(outcomes, stats.OutcomeCode),
 			OutcomeColor:      outcomeColor(stats.OutcomeCode),
 			OutcomeColorToken: outcomeColorToken(stats.OutcomeCode),
 			Score:             &score,
@@ -121,7 +127,14 @@ func computeExpectedAssists(
 	}
 
 	// 1. Modèle personnel (arithmétique factorisée dans analysis).
-	if m, err := repo.GetPlayerAssistsModel(ctx, gameVariantName); err == nil && m != nil {
+	m, err := repo.GetPlayerAssistsModel(ctx, gameVariantName)
+	if err != nil {
+		// Panne de lecture du modèle personnel : dite AVANT de retomber sur le populationnel,
+		// dont la valeur reste servie (chaîne de résolution documentée ci-dessus).
+		slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError),
+			"match_view: modèle personnel d'assists attendus illisible, repli populationnel",
+			"mode", gameVariantName, "err", err)
+	} else if m != nil {
 		v := analysis.ApplyPersonalAssistsModel(m, kills, deaths, dd, dt, mmrDelta)
 		return &v
 	}
@@ -132,6 +145,14 @@ func computeExpectedAssists(
 	}
 	slope, intercept, err := metaRepo.GetAssistsCoef(ctx, gameVariantName)
 	if err != nil {
+		// Aucune ligne `__global__` : le modèle populationnel n'est pas seedé (donnée manquante,
+		// WARN). Toute autre erreur est une panne de lecture (ERROR, DEBUG si requête abandonnée).
+		level := observability.LevelUnlessCanceled(ctx, err, slog.LevelError)
+		if errors.Is(err, sql.ErrNoRows) {
+			level = slog.LevelWarn
+		}
+		slog.Log(ctx, level, "match_view: modèle populationnel d'assists attendus illisible, valeur omise",
+			"mode", gameVariantName, "err", err)
 		return nil
 	}
 	ps := 0.0

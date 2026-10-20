@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"levelup/go-api/internal/domain/title"
 )
 
 // redirectTransport redirige toutes les requêtes vers une URL cible fixe (pour mocker les URLs hardcodées).
@@ -202,7 +204,7 @@ func TestRequestUserToken_DeterministicPrefixFromProvenance(t *testing.T) {
 		var prefixes []string
 		srv := newServer(&prefixes)
 		defer srv.Close()
-		ctx := withTokenClientFamily(context.Background(), TokenFamilyXboxNative)
+		ctx := WithTokenClientFamily(context.Background(), TokenFamilyXboxNative)
 		if _, err := requestUserToken(ctx, mockClient(srv.URL), "EwAmsa"); err != nil {
 			t.Fatal(err)
 		}
@@ -215,7 +217,7 @@ func TestRequestUserToken_DeterministicPrefixFromProvenance(t *testing.T) {
 		var prefixes []string
 		srv := newServer(&prefixes)
 		defer srv.Close()
-		ctx := withTokenClientFamily(context.Background(), TokenFamilyAzure)
+		ctx := WithTokenClientFamily(context.Background(), TokenFamilyAzure)
 		if _, err := requestUserToken(ctx, mockClient(srv.URL), "eyJhbGc"); err != nil {
 			t.Fatal(err)
 		}
@@ -296,7 +298,10 @@ func TestRequestXSTSToken_MissingToken(t *testing.T) {
 	}
 }
 
-// requestSpartanToken
+// requestSpartanTokenWith (descripteur Halo par défaut)
+
+// haloAuth est le descripteur d'auth Halo par défaut, celui de la chaîne d'échange.
+var haloAuth = title.DefaultHaloAuthDescriptor()
 
 func TestRequestSpartanToken_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -304,7 +309,7 @@ func TestRequestSpartanToken_Success(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"SpartanToken": "spartan_xyz"})
 	}))
 	defer srv.Close()
-	token, _, err := requestSpartanToken(context.Background(), mockClient(srv.URL), "xsts_tok")
+	token, _, err := requestSpartanTokenWith(context.Background(), mockClient(srv.URL), "xsts_tok", haloAuth.SpartanAudience, haloAuth.SpartanTokenURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,13 +324,13 @@ func TestRequestSpartanToken_Missing(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"other": "value"})
 	}))
 	defer srv.Close()
-	_, _, err := requestSpartanToken(context.Background(), mockClient(srv.URL), "xsts_tok")
+	_, _, err := requestSpartanTokenWith(context.Background(), mockClient(srv.URL), "xsts_tok", haloAuth.SpartanAudience, haloAuth.SpartanTokenURL)
 	if err == nil {
 		t.Error("expected error when SpartanToken absent")
 	}
 }
 
-// requestClearanceToken
+// requestClearanceTokenWith (descripteur Halo par défaut)
 
 func TestRequestClearanceToken_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -337,7 +342,7 @@ func TestRequestClearanceToken_Success(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"FlightConfigurationId": "flight_123"})
 	}))
 	defer srv.Close()
-	token, err := requestClearanceToken(context.Background(), mockClient(srv.URL), "spartan_tok")
+	token, err := requestClearanceTokenWith(context.Background(), mockClient(srv.URL), "spartan_tok", haloAuth.ClearanceURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +356,7 @@ func TestRequestClearanceToken_HTTPError(t *testing.T) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 	}))
 	defer srv.Close()
-	_, err := requestClearanceToken(context.Background(), mockClient(srv.URL), "spartan_tok")
+	_, err := requestClearanceTokenWith(context.Background(), mockClient(srv.URL), "spartan_tok", haloAuth.ClearanceURL)
 	if err == nil {
 		t.Error("expected error for HTTP 403")
 	}
@@ -363,7 +368,7 @@ func TestRequestClearanceToken_MissingField(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"other": "value"})
 	}))
 	defer srv.Close()
-	_, err := requestClearanceToken(context.Background(), mockClient(srv.URL), "spartan_tok")
+	_, err := requestClearanceTokenWith(context.Background(), mockClient(srv.URL), "spartan_tok", haloAuth.ClearanceURL)
 	if err == nil {
 		t.Error("expected error when FlightConfigurationId absent")
 	}
@@ -395,4 +400,95 @@ func TestParseSpartanExpiry(t *testing.T) {
 	}); !exp.IsZero() {
 		t.Errorf("date illisible → expiry zéro attendu, got %v", exp)
 	}
+}
+
+// TestRequestUserToken_ProvenanceMesuree — la provenance qui compte est celle que
+// l'endpoint XBL ACCEPTE, pas celle du client OAuth qui a rafraîchi (constat du
+// 2026-09-20 : 13 refresh sur 13 par l'app Azure, et pourtant 5 comptes se font
+// refuser « d= » en 401 et ne passent qu'en « t= »). L'observateur enregistre donc
+// le préfixe effectivement accepté, y compris quand c'est le repli.
+func TestRequestUserToken_ProvenanceMesuree(t *testing.T) {
+	// serveur qui n'accepte QUE le préfixe donné, 401 sur l'autre.
+	serverAccepting := func(accepted string) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			props, _ := body["Properties"].(map[string]any)
+			ticket, _ := props["RpsTicket"].(string)
+			if ticket[:2] != accepted {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{"Token": "user_tok"})
+		}))
+	}
+
+	t.Run("le repli accepté est mesuré (cas des 5 comptes en 401 au boot)", func(t *testing.T) {
+		srv := serverAccepting("t=")
+		defer srv.Close()
+		// Provenance inconnue (état du store avant ce lot) → « d= » d'abord → 401.
+		ctx, observer := WithTokenFamilyObserver(context.Background())
+		if _, err := requestUserToken(ctx, mockClient(srv.URL), "EwA"); err != nil {
+			t.Fatal(err)
+		}
+		if got := observer.Observed(); got != TokenFamilyXboxNative {
+			t.Errorf("provenance mesurée = %q, want %q — sans elle le boot suivant re-tente « d= » et reprend un 401",
+				got, TokenFamilyXboxNative)
+		}
+	})
+
+	t.Run("le préfixe primaire accepté est mesuré", func(t *testing.T) {
+		srv := serverAccepting("d=")
+		defer srv.Close()
+		ctx, observer := WithTokenFamilyObserver(context.Background())
+		if _, err := requestUserToken(ctx, mockClient(srv.URL), "eyJ"); err != nil {
+			t.Fatal(err)
+		}
+		if got := observer.Observed(); got != TokenFamilyAzure {
+			t.Errorf("provenance mesurée = %q, want %q", got, TokenFamilyAzure)
+		}
+	})
+
+	t.Run("provenance mesurée réutilisée : aucun 401 au passage suivant", func(t *testing.T) {
+		var prefixes []string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			props, _ := body["Properties"].(map[string]any)
+			ticket, _ := props["RpsTicket"].(string)
+			prefixes = append(prefixes, ticket[:2])
+			if ticket[:2] != "t=" {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{"Token": "user_tok"})
+		}))
+		defer srv.Close()
+
+		ctx, observer := WithTokenFamilyObserver(context.Background())
+		if _, err := requestUserToken(ctx, mockClient(srv.URL), "EwA"); err != nil {
+			t.Fatal(err)
+		}
+		// 2e passage avec la provenance mesurée (ce que persiste le store).
+		ctx2 := WithTokenClientFamily(context.Background(), observer.Observed())
+		if _, err := requestUserToken(ctx2, mockClient(srv.URL), "EwA"); err != nil {
+			t.Fatal(err)
+		}
+		if want := []string{"d=", "t=", "t="}; len(prefixes) != len(want) {
+			t.Fatalf("préfixes essayés = %v, want %v (le 2e passage doit tomber juste du premier coup)", prefixes, want)
+		}
+		if prefixes[2] != "t=" {
+			t.Errorf("2e passage a essayé %q — la provenance mesurée n'a pas été réutilisée", prefixes[2])
+		}
+	})
+
+	t.Run("aucun observateur installé : pas de panique", func(t *testing.T) {
+		srv := serverAccepting("d=")
+		defer srv.Close()
+		if _, err := requestUserToken(context.Background(), mockClient(srv.URL), "eyJ"); err != nil {
+			t.Fatal(err)
+		}
+	})
 }

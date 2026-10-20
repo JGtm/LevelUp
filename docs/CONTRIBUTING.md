@@ -109,6 +109,10 @@ Never use `.env.local` or `sync_meta` as a credential source (legacy fallbacks o
 5. Add a `.ai/thought_log.md` entry (see [Agent Workflow](#agent-workflow-thought_log--skills)).
 6. Open a Pull Request using Conventional Commits.
 
+By opening a Pull Request you agree that your contribution is released under the project
+licence (AGPL-3.0, documentation under CC BY 4.0 — see [NOTICE](../NOTICE)). Do not submit
+game files, extracted assets or decompiled game code: they are not yours to license.
+
 ---
 
 ## Branch Strategy
@@ -129,6 +133,7 @@ Applied rules:
 - Create a new branch for every new feature/fix from the current branch (`git checkout -b <type>/<name>`).
 - Do not switch branches if unrelated work is already in progress on the current branch.
 - Pushing `main` triggers an automatic production deploy — merge to `main` deliberately.
+- **Merges to `main` are squash merges only** (enforced in GitHub: only "Squash and merge" is enabled). One branch = one commit on `main`; the squash title follows Conventional Commits and summarizes the task. The branch is deleted after merge. Never run a local `git merge` into `main`.
 
 Commit message format (Conventional Commits):
 

@@ -15,7 +15,7 @@ package handlers
 // L'accès données vit dans duckdb.PatternsRepo (port.PatternsRepository) :
 // ce handler ne connaît ni le SQL ni le moteur de stockage (refactor Axe 1).
 //
-// Ref : .ai/PLAN_PATTERN_ENGINE_V3.md
+// Ref : .ai/archive/V7/PLAN_PATTERN_ENGINE.md
 
 import (
 	"context"
@@ -83,7 +83,7 @@ func (h *PatternsHandler) GetPatterns(ctx context.Context, in *patternsInput) (*
 	repo, err := h.resolveRepo(ctx, in.PlayerSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "patterns: player not found", "player_slug", in.PlayerSlug, "err", err)
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	n := patternDefaultN
@@ -100,7 +100,7 @@ func (h *PatternsHandler) GetPatterns(ctx context.Context, in *patternsInput) (*
 	rows, err := repo.LoadRows(ctx, n)
 	if err != nil {
 		slog.ErrorContext(ctx, "patterns: échec chargement rows", "player_slug", in.PlayerSlug, "n", n, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "load_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "load_error", err)
 	}
 	if len(rows) == 0 {
 		slog.InfoContext(ctx, "patterns: aucun row chargé — rapport vide retourné", "player_slug", in.PlayerSlug)

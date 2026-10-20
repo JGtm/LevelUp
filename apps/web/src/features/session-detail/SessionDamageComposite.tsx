@@ -9,6 +9,7 @@ import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { barLabel } from '@/components/charts/barLabel'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
@@ -53,13 +54,7 @@ export function buildSessionDamageOption(
   const takenColor = resolveToken('divergent-neg')
   const labels = points.map((p) => p.label)
 
-  const segLabel = {
-    show: true,
-    position: 'inside' as const,
-    color: tc.text,
-    fontSize: 10,
-    formatter: (p: { value: number }) => (p.value > 0 ? fmtInt(p.value) : ''),
-  }
+  const segLabel = barLabel({ fontSize: 10, formatter: (p: { value: number }) => (p.value > 0 ? fmtInt(p.value) : '') })
 
   return {
     backgroundColor: CHART_BG,

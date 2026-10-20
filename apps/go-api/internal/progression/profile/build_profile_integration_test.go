@@ -65,7 +65,7 @@ func setupProfileEnv(t *testing.T) *duckdb.PlayerDB {
 	// schema géré par sync.EnsurePlayerSchema). On le crée à la main pour les
 	// tests qui consomment ce qui sera la source des axes radar enrichis
 	// par awards.toml (V2 §2).
-	// Append-only #23046 (Phase 2) : born append-only (generation_id + is_tombstone) ;
+	// Append-only #23645 (Phase 2) : born append-only (generation_id + is_tombstone) ;
 	// les readers (applyAwardsRadarAxes) lisent la vue personal_score_awards_latest.
 	if _, err := player.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS personal_score_awards (
@@ -135,8 +135,8 @@ func seedMatchesForProfile(t *testing.T, pdb *duckdb.PlayerDB, now time.Time, co
 		`, matchID, mu, startTime); err != nil {
 			t.Fatalf("match_skill_rank %s: %v", matchID, err)
 		}
-		// V2 §1 : peupler lusr_component_history (simule la live write de
-		// sync.upsertLUSRRatings). Valeurs déterministes pour permettre
+		// V2 §1 : peupler lusr_component_history (simule la live write du
+		// LUSR v2, skill.componentTracker). Valeurs déterministes pour permettre
 		// l'assertion sur current_avg / top20 / trend.
 		for j, comp := range componentNames {
 			value := 0.4 + float64((i+j)%6)*0.08 // valeurs [0.4..0.84]

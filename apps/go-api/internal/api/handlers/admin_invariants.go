@@ -1,5 +1,5 @@
 // Package handlers — admin_invariants.go : dashboard admin « Intégrité des
-// données » (Phase 4 du plan .ai/PLAN_SYNC_INVARIANTS_GATE.md).
+// données » (Phase 4 du plan .ai/archive/V7/PLAN_SYNC_INVARIANTS_GATE.md).
 //
 // GET /admin/invariants?title={slug} → exécute les invariants de données
 // déclarés (internal/sync/invariants) pour chaque joueur suivi et retourne

@@ -40,6 +40,11 @@ func AcquireRunner(ctx context.Context, tokenPool pool.Pool, cfg *config.AppConf
 	// xuid du joueur CONSULTÉ (la collecte fetche bien ses stats, pas celles du compte pool).
 	lease, err := tokenPool.Acquire(ctx, pool.PolicyPinnedPlayer, gamertag)
 	if err != nil {
+		// Un joueur qui garde son jeton hors du pool n'emprunte pas ceux des autres, y
+		// compris quand le sien est momentanément indisponible : la synchro attend.
+		if tokenPool.IsWithheld(gamertag) {
+			return nil, ctx, noop, fmt.Errorf("acquire token (%s): pinned=%w ; no pool fallback (token pooling not consented)", gamertag, err)
+		}
 		fallback, ferr := tokenPool.Acquire(ctx, pool.PolicyAnyPublic, "")
 		if ferr != nil {
 			return nil, ctx, noop, fmt.Errorf("acquire token (%s): pinned=%v ; pool=%w", gamertag, err, ferr)

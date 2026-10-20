@@ -1,4 +1,4 @@
-// Package duckdb â€” squad_repo.go : accÃ¨s DB pour la page Escouade et SynthÃ¨se.
+// Package duckdb — squad_repo.go : accès DB pour la page Escouade et Synthèse.
 package duckdb
 
 import (
@@ -10,21 +10,22 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
 
-// SquadRepo implÃ©mente port.SquadRepository.
+// SquadRepo implémente port.SquadRepository.
 type SquadRepo struct {
 	pdb *PlayerDB
 }
 
-// NewSquadRepo crÃ©e un SquadRepo pour un joueur.
+// NewSquadRepo crée un SquadRepo pour un joueur.
 func NewSquadRepo(pdb *PlayerDB) *SquadRepo {
 	return &SquadRepo{pdb: pdb}
 }
 
-// LoadTopTeammates charge les meilleurs coÃ©quipiers du joueur (Q29, top 50).
+// LoadTopTeammates charge les meilleurs coéquipiers du joueur (Q29, top 50).
 //
 // split cross-DB en 2 étapes.
 //
@@ -62,9 +63,27 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 	args = append(args, ToAnySlice(matchIDs)...)
 	args = append(args, xuid)
 
-	rows, err := db.QueryContext(ctx, query, args...)
+	result, err := scanTopTeammates(ctx, db, query, args)
 	if err != nil {
 		return nil, fmt.Errorf("LoadTopTeammates: %w", err)
+	}
+	// Noms : l'annuaire de la lecture (squad_repo_annuaire.go) — les xuids du top, sur les
+	// matchs « avec amis » que Q29 vient de lire.
+	if err := nommerLignes(ctx, db, matchIDs, result, accesLigne[domain.TopTeammateRow]{
+		xuid:   func(r domain.TopTeammateRow) string { return r.XUID },
+		nommer: func(r *domain.TopTeammateRow, gt string) { r.Gamertag = gt },
+	}); err != nil {
+		return nil, fmt.Errorf("LoadTopTeammates: %w", err)
+	}
+	return result, nil
+}
+
+// scanTopTeammates execute Q29 et rend ses lignes, SANS nom (cf. nommerLignes). Le curseur
+// est ferme au retour : l'annuaire relit la meme connexion ensuite.
+func scanTopTeammates(ctx context.Context, db *sql.DB, query string, args []any) ([]domain.TopTeammateRow, error) {
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -73,7 +92,6 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 		var row domain.TopTeammateRow
 		if err := rows.Scan(
 			&row.XUID,
-			&row.Gamertag,
 			&row.GamesTogether,
 			&row.WinsTogether,
 			&row.WinRate,
@@ -81,7 +99,7 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 			&row.AvgDeaths,
 			&row.AvgKDA,
 		); err != nil {
-			return nil, fmt.Errorf("LoadTopTeammates scan: %w", err)
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 		result = append(result, row)
 	}
@@ -111,12 +129,12 @@ func (r *SquadRepo) loadWithFriendsMatchIDs(ctx context.Context) ([]string, erro
 	return ids, rows.Err()
 }
 
-// LookupXUIDByGamertag rÃ©sout un gamertag (ILIKE, case-insensitive) vers son
-// XUID via shared.xuid_aliases. Sert de fallback pour les coÃ©quipiers sÃ©lectionnÃ©s
+// LookupXUIDByGamertag résout un gamertag (ILIKE, case-insensitive) vers son
+// XUID via shared.xuid_aliases. Sert de fallback pour les coéquipiers sélectionnés
 // qui sortent du top 50 LoadTopTeammates (saisie libre dans la combobox).
 //
-// Si plusieurs aliases correspondent au mÃªme gamertag (changement de pseudo
-// historique), on retourne le plus rÃ©cent. Si aucun alias, retourne ("", false, nil).
+// Si plusieurs aliases correspondent au même gamertag (changement de pseudo
+// historique), on retourne le plus récent. Si aucun alias, retourne ("", false, nil).
 func (r *SquadRepo) LookupXUIDByGamertag(ctx context.Context, gamertag string) (string, bool, error) {
 	gamertag = strings.TrimSpace(gamertag)
 	if gamertag == "" {
@@ -158,7 +176,7 @@ LIMIT 1`
 	return xuid, xuid != "", nil
 }
 
-// LoadSquadMatches charge les matchs communs joueur+coÃ©quipier (Q30).
+// LoadSquadMatches charge les matchs communs joueur+coéquipier (Q30).
 //
 // split cross-DB en 3 étapes.
 //
@@ -302,6 +320,10 @@ func (r *SquadRepo) loadSquadMatchesShared(ctx context.Context, playerXUID, team
 			&row.EnemyMMR,
 			&row.MyTeamScore,
 			&row.EnemyTeamScore,
+			&row.MyRoundsWon,
+			&row.EnemyRoundsWon,
+			&row.RoundsTotal,
+			&row.GameVariantName,
 			&row.MapID,
 			&row.PlaylistID,
 			&row.PairNameFR,
@@ -315,7 +337,7 @@ func (r *SquadRepo) loadSquadMatchesShared(ctx context.Context, playerXUID, team
 	return result, rows.Err()
 }
 
-// LoadTeammateMatches charge les stats du coÃ©quipier sur les matchs communs (Q31).
+// LoadTeammateMatches charge les stats du coéquipier sur les matchs communs (Q31).
 //
 // query shared-only (match_participants x2 + v_match_full)
 // migrée vers SharedReader.Get.
@@ -364,19 +386,25 @@ func (r *SquadRepo) LoadTeammateMatches(ctx context.Context, playerXUID, teammat
 	return result, rows.Err()
 }
 
-// LoadImpactEvents charge les Ã©vÃ©nements highlight pour une liste de match_ids (Q32 dynamique).
-// matchIDs est la liste des identifiants â€” si vide, retourne nil directement.
-//
-// Title-agnostic (centralisé au niveau lecture) : highlight_events ne porte pas
-// forcément les kills selon le titre. Infinite y stocke kill/death/medal ; Halo 5
-// n'y stocke QUE des médailles, les kills horodatés vivant dans killer_victim_pairs.
-// Si le lot chargé ne contient AUCUN kill/death (HasCanonicalKillOrDeath==false),
-// on synthétise les kill/death depuis killer_victim_pairs (LoadKVPairs) via le
-// helper partagé analysis.SynthesizeKillEventsFromKVPairs (source unique de la
-// règle) et on les fusionne, triés par TimeMS. NO-OP sur Infinite (kills déjà
-// présents → fallback jamais pris). Évite que les 4 builders Escouade (first
-// events, intensité, matrice d'impact, squad V1) restent vides en H5.
+// LoadImpactEvents charge les événements highlight pour une liste de match_ids (Q32 dynamique) :
+// une lecture d'un seul groupe (cf. LoadImpactEventsParGroupes). Vide → nil.
 func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]domain.ImpactEventRow, error) {
+	return r.LoadImpactEventsParGroupes(ctx, [][]string{matchIDs})
+}
+
+// LoadImpactEventsParGroupes lit Q32 UNE fois sur l'union de groupes de matchs disjoints, et
+// rend à chaque groupe exactement ce que sa lecture dédiée lui aurait rendu.
+//
+// Title-agnostic (centralisé au niveau lecture) : highlight_events ne porte pas forcément les
+// kills selon le titre. Infinite y stocke kill/death/medal ; Halo 5 n'y stocke QUE des
+// médailles. Un groupe dont aucune ligne n'est un frag ou une mort
+// (analysis.ImpactMatchesNeedingKVFallback — décision PAR GROUPE, jamais sur l'union) reçoit
+// des kill/death synthétisés depuis le journal des frags (Q32c, une lecture pour tous les
+// groupes qui en ont besoin) via analysis.SynthesizeKillEventsFromKVPairs, fusionnés et triés
+// par TimeMS. Évite que les builders Escouade (premier frag, intensité, matrice d'impact,
+// points par soirée, squad V1) restent vides en H5.
+func (r *SquadRepo) LoadImpactEventsParGroupes(ctx context.Context, groupes [][]string) ([]domain.ImpactEventRow, error) {
+	matchIDs := unionDesGroupes(groupes)
 	if len(matchIDs) == 0 {
 		return nil, nil
 	}
@@ -399,43 +427,55 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 	}
 	defer release()
 
-	rows, err := db.QueryContext(ctx, query, args...)
+	result, err := scanImpactEvents(ctx, db, query, args)
 	if err != nil {
 		return nil, fmt.Errorf("LoadImpactEvents: %w", err)
+	}
+	// Noms des acteurs : l'annuaire de la lecture (squad_repo_annuaire.go), sur les mêmes
+	// matchs. Les events synthétisés plus bas gardent un gamertag vide, comme avant.
+	if err := nommerLignes(ctx, db, matchIDs, result, accesLigne[domain.ImpactEventRow]{
+		xuid:   func(r domain.ImpactEventRow) string { return r.XUID },
+		match:  func(r domain.ImpactEventRow) string { return r.MatchID },
+		nommer: func(r *domain.ImpactEventRow, gt string) { r.Gamertag = gt },
+	}); err != nil {
+		return nil, fmt.Errorf("LoadImpactEvents: %w", err)
+	}
+
+	// Repli title-agnostic, groupe par groupe : kills/deaths absents → synthèse depuis le journal.
+	besoin := analysis.ImpactMatchesNeedingKVFallback(result, groupes)
+	if len(besoin) == 0 {
+		return result, nil
+	}
+	kvPairs, kvErr := r.loadKVPairsOn(ctx, db, besoin)
+	if kvErr != nil {
+		slog.WarnContext(ctx, "LoadImpactEvents: kv pairs fallback indisponible (best-effort)",
+			"err", kvErr, "n_matches", len(besoin))
+		return result, nil
+	}
+	if synth := synthesizeImpactRowsFromKVPairs(kvPairs); len(synth) > 0 {
+		result = mergeImpactRowsByTime(result, synth)
+	}
+	return result, nil
+}
+
+// scanImpactEvents exécute Q32 et rend ses lignes, SANS nom (cf. nommerLignes). Le curseur
+// est fermé au retour : l'annuaire et le repli kvPairs relisent la même connexion ensuite.
+func scanImpactEvents(ctx context.Context, db *sql.DB, query string, args []any) ([]domain.ImpactEventRow, error) {
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
 	}
 	defer rows.Close()
 
 	var result []domain.ImpactEventRow
 	for rows.Next() {
 		var row domain.ImpactEventRow
-		if err := rows.Scan(
-			&row.MatchID,
-			&row.XUID,
-			&row.Gamertag,
-			&row.EventType,
-			&row.TimeMS,
-		); err != nil {
-			return nil, fmt.Errorf("LoadImpactEvents scan: %w", err)
+		if err := rows.Scan(&row.MatchID, &row.XUID, &row.EventType, &row.TimeMS); err != nil {
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 		result = append(result, row)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	// Fallback title-agnostic : kills/deaths absents → synthèse depuis kvPairs.
-	if !impactRowsHaveKillOrDeath(result) {
-		kvPairs, kvErr := r.loadKVPairsOn(ctx, db, matchIDs)
-		if kvErr != nil {
-			slog.WarnContext(ctx, "LoadImpactEvents: kv pairs fallback indisponible (best-effort)",
-				"err", kvErr, "n_matches", len(matchIDs))
-			return result, nil
-		}
-		if synth := synthesizeImpactRowsFromKVPairs(kvPairs); len(synth) > 0 {
-			result = mergeImpactRowsByTime(result, synth)
-		}
-	}
-	return result, nil
+	return result, rows.Err()
 }
 
 // LoadMainTeamParticipants charge tous les participants de l'équipe alliée

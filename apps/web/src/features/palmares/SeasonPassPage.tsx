@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : hors perimetre du lot D (modele web du rejeu) : l'exemption DATE la dette, elle ne l'absout pas — le decoupage revient au lot qui touchera ce fichier. */
 import { useCallback, useMemo, useRef, useState } from 'react'
 
 import { useParams } from '@tanstack/react-router'
@@ -486,6 +487,9 @@ function PassShowcase({
             activeTierRank={pass.active_tier_rank}
             onOpenCard={handleOpenCard}
             freeLabel={text.seasonPass.freeLabel}
+            prevAriaLabel={text.seasonPass.carousel.prevAriaLabel}
+            nextAriaLabel={text.seasonPass.carousel.nextAriaLabel}
+            viewDetailAriaLabel={text.seasonPass.carousel.viewDetailAriaLabel}
           />
 
           <div className="flex justify-center">

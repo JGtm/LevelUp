@@ -1,5 +1,5 @@
 // Package domain — appearance_diag.go : DTO du diagnostic apparence Spartan ID
-// (volet 2 du plan .ai/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md). Surface admin, à la
+// (volet 2 du plan .ai/archive/V7.1/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md). Surface admin, à la
 // demande, par joueur suivi. Structure neutre (aucune dépendance haloclient/duckdb)
 // sérialisée telle quelle par le handler Huma GET /admin/diag/appearance/{player_slug}.
 package domain

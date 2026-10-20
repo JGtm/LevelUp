@@ -62,12 +62,11 @@
 //        sur match_skill_rank. Le ConcurrentInserts simule 20×5×50
 //        ecritures concurrentes — replique le pattern qui crashait.
 //
-//   2. internal/sync/art_rebuild_e2e_test.go
-//      - TestE2E_ARTPipeline_BatchComputeLUSR_ProducesWrites
-//      - Couvre BatchComputeLUSR avec dataset 10 matchs synthetiques :
-//        run end-to-end avec le AppendOnlyLUSRPersister + verification
-//        des writes match_skill_rank.
-//      - Validation de la chaine compute → persist post-bascule.
+//   2. internal/sync/match_recomputer_lusr_v2_integration_test.go
+//      - TestMatchRecomputer_ExclusionServeLaNoteV2SansLeMatchExclu
+//      - Rejeu LUSR v2 complet (reset du filigrane + replay) sur 12 matchs, puis
+//        recalcul d'exclusion : verification des writes match_skill_rank servis par
+//        les vues _latest / _latest_by_type, via l'AppendOnlyLUSRPersister.
 //
 // Couverture combinee : suffisante pour signaler toute regression de l'eradication
 // ART LUSR. Le test concurrent insert garantit l'invariance "0 ART crash"

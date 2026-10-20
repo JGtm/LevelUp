@@ -10,6 +10,8 @@ import type {
   RegisterRequest,
   RegisterResponse,
   AdminUserSummary,
+  AdminInviteSummary,
+  InviteCode,
 } from '@/lib/api/types'
 
 // ---------------------------------------------------------------------------
@@ -42,11 +44,17 @@ export function useLogout() {
   })
 }
 
+/** Corps de POST /auth/password : `current_password` est exigé quand le compte a déjà un mot de passe. */
+export interface SetPasswordInput {
+  password: string
+  current_password?: string
+}
+
 /** PR-C : définition/changement opt-in du mot de passe de l'utilisateur connecté. */
 export function useSetPassword() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (password: string) => api.post<void>('/auth/password', { password }),
+    mutationFn: (input: SetPasswordInput) => api.post<void>('/auth/password', input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap }),
   })
 }
@@ -83,6 +91,35 @@ export function useResetPassword() {
   })
 }
 
-// NB : les invitations ne sont plus gérées côté Admin — elles ont migré vers la
-// page end-user /groups (invitation "rejoindre un groupe", cf. features/groups/queries.ts).
-// Les endpoints /admin/invites subsistent côté serveur pour le flow password legacy.
+// ---------------------------------------------------------------------------
+// Admin : invitations SANS groupe
+// ---------------------------------------------------------------------------
+//
+// Deux invitations coexistent, et elles ne font pas la même chose : celle d'un
+// propriétaire de groupe (features/groups/queries.ts) fait REJOINDRE un groupe ;
+// celle-ci, réservée à l'admin, crée un compte qui ne voit que lui-même — et lui
+// donne le droit de créer son profil joueur, même sur instance verrouillée.
+
+export function useAdminInvites() {
+  return useQuery({
+    queryKey: queryKeys.adminInvites,
+    queryFn: () => api.get<AdminInviteSummary[]>('/admin/invites'),
+  })
+}
+
+export function useGenerateAdminInvite() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (expiresInDays?: number) =>
+      api.post<InviteCode>('/admin/invites', { expires_in_days: expiresInDays ?? 7 }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.adminInvites }),
+  })
+}
+
+export function useRevokeAdminInvite() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (code: string) => api.delete<void>(`/admin/invites/${encodeURIComponent(code)}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.adminInvites }),
+  })
+}

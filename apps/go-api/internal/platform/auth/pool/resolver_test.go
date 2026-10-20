@@ -14,9 +14,6 @@ import (
 
 // mockTokenProvider implémente auth.TokenProvider pour les tests.
 type mockTokenProvider struct {
-	silentRefreshResult string // accessToken retourné par TrySilentRefresh
-	silentRefreshErr    error
-
 	oauthRefreshResult string // accessToken retourné par TryOAuthRefresh / TryOAuthRefreshWithRotation
 	oauthRefreshErr    error
 	rotatedRefresh     string // RT rotaté retourné par TryOAuthRefreshWithRotation (vide = pas de rotation)
@@ -31,13 +28,6 @@ type mockTokenProvider struct {
 
 func (m *mockTokenProvider) InitDeviceFlow(ctx context.Context) (auth.DeviceFlow, error) {
 	return nil, errors.New("not implemented")
-}
-
-func (m *mockTokenProvider) TrySilentRefresh(ctx context.Context, cacheJSON string) (string, error) {
-	m.mu.Lock()
-	m.callLog = append(m.callLog, "TrySilentRefresh")
-	m.mu.Unlock()
-	return m.silentRefreshResult, m.silentRefreshErr
 }
 
 func (m *mockTokenProvider) TryOAuthRefresh(ctx context.Context, refreshToken string) (string, error) {
@@ -142,14 +132,14 @@ func TestResolverResolve_ConfigError_NoReauthSignal(t *testing.T) {
 // déclenche onReauth(required=false) pour effacer un éventuel flag.
 func TestResolverResolve_Success_FiresReauthCleared(t *testing.T) {
 	provider := &mockTokenProvider{
-		silentRefreshResult: "at",
-		exchangeResult:      &auth.ExchangeResult{Tokens: &domain.HaloTokens{SpartanToken: "s"}},
+		oauthRefreshResult: "at",
+		exchangeResult:     &auth.ExchangeResult{Tokens: &domain.HaloTokens{SpartanToken: "s"}},
 	}
 	var lastRequired *bool
 	onReauth := func(_ context.Context, _, _ string, required bool) { v := required; lastRequired = &v }
 	resolver := NewResolverWithReauth(provider, time.Hour, nil, onReauth)
 
-	if _, err := resolver.Resolve(context.Background(), CredentialSource{Gamertag: "Alice", XUID: "111", MSALCache: "cache"}); err != nil {
+	if _, err := resolver.Resolve(context.Background(), CredentialSource{Gamertag: "Alice", XUID: "111", RefreshToken: "rt"}); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	if lastRequired == nil || *lastRequired {
@@ -170,10 +160,11 @@ func TestResolverResolve_NoCreds_NoReauthSignal(t *testing.T) {
 	}
 }
 
-// TestResolverResolve_PipelineSilentRefresh teste le chemin heureux : MSAL cache → TrySilentRefresh.
-func TestResolverResolve_PipelineSilentRefresh(t *testing.T) {
+// TestResolverResolve_PipelineOAuthRefresh teste le chemin heureux (ADR 0023
+// Phase 5, source unique) : refresh_token du store → OAuth refresh → Exchange.
+func TestResolverResolve_PipelineOAuthRefresh(t *testing.T) {
 	provider := &mockTokenProvider{
-		silentRefreshResult: "access_token_from_msal",
+		oauthRefreshResult: "access_token_from_oauth",
 		exchangeResult: &auth.ExchangeResult{
 			Tokens: &domain.HaloTokens{
 				SpartanToken:   "spartan_token",
@@ -188,9 +179,8 @@ func TestResolverResolve_PipelineSilentRefresh(t *testing.T) {
 	src := CredentialSource{
 		Gamertag:     "Bob",
 		XUID:         "123",
-		MSALCache:    "cache_json",
-		RefreshToken: "",
-		Source:       "duckdb_msal",
+		RefreshToken: "rt_store",
+		Source:       credSourceWatcherOAuth,
 	}
 
 	resolved, err := resolver.Resolve(ctx, src)
@@ -205,13 +195,13 @@ func TestResolverResolve_PipelineSilentRefresh(t *testing.T) {
 		t.Errorf("expected spartan_token, got %s", resolved.Tokens.SpartanToken)
 	}
 
-	// Vérifier le pipeline : Silent → Exchange (pas OAuth car token obtenu par Silent).
+	// Pipeline : TryOAuthRefreshWithRotation → Exchange (plus aucune étape MSAL).
 	provider.mu.Lock()
 	callLog := provider.callLog
 	provider.mu.Unlock()
-	expectedCalls := []string{"TrySilentRefresh", "Exchange"}
+	expectedCalls := []string{"TryOAuthRefreshWithRotation", "Exchange"}
 	if len(callLog) != len(expectedCalls) {
-		t.Errorf("expected %d calls, got %d", len(expectedCalls), len(callLog))
+		t.Errorf("expected %d calls, got %d: %v", len(expectedCalls), len(callLog), callLog)
 	}
 	for i, expected := range expectedCalls {
 		if i < len(callLog) && callLog[i] != expected {
@@ -220,54 +210,11 @@ func TestResolverResolve_PipelineSilentRefresh(t *testing.T) {
 	}
 }
 
-// TestResolverResolve_PipelineOAuthFallback teste le fallback : MSAL échoue → TryOAuthRefresh → Exchange.
-func TestResolverResolve_PipelineOAuthFallback(t *testing.T) {
-	provider := &mockTokenProvider{
-		silentRefreshErr:   errors.New("cache expired"),
-		oauthRefreshResult: "access_token_from_oauth",
-		exchangeResult: &auth.ExchangeResult{
-			Tokens: &domain.HaloTokens{
-				SpartanToken:   "spartan_oauth",
-				ClearanceToken: "clearance_oauth",
-			},
-		},
-	}
-
-	resolver := NewResolver(provider, 1*time.Hour, nil)
-	ctx := context.Background()
-
-	src := CredentialSource{
-		Gamertag:     "Alice",
-		XUID:         "456",
-		MSALCache:    "expired_cache",
-		RefreshToken: "refresh_token_value",
-		Source:       "duckdb_msal+duckdb_oauth",
-	}
-
-	resolved, err := resolver.Resolve(ctx, src)
-	if err != nil {
-		t.Fatalf("Resolve failed: %v", err)
-	}
-
-	if resolved.Tokens.SpartanToken != "spartan_oauth" {
-		t.Errorf("expected spartan_oauth, got %s", resolved.Tokens.SpartanToken)
-	}
-
-	// Pipeline : TrySilentRefresh → TryOAuthRefreshWithRotation → Exchange.
-	provider.mu.Lock()
-	callLog := provider.callLog
-	provider.mu.Unlock()
-	expectedCalls := []string{"TrySilentRefresh", "TryOAuthRefreshWithRotation", "Exchange"}
-	if len(callLog) != len(expectedCalls) {
-		t.Fatalf("expected %d calls, got %d: %v", len(expectedCalls), len(callLog), callLog)
-	}
-}
-
 // TestResolverResolve_CacheTTL teste que le cache TTL fonctionne.
 func TestResolverResolve_CacheTTL(t *testing.T) {
 	callCount := 0
 	provider := &mockTokenProvider{
-		silentRefreshResult: "access_token",
+		oauthRefreshResult: "access_token",
 		exchangeResult: &auth.ExchangeResult{
 			Tokens: &domain.HaloTokens{
 				SpartanToken:   "spartan",
@@ -280,10 +227,10 @@ func TestResolverResolve_CacheTTL(t *testing.T) {
 	ctx := context.Background()
 
 	src := CredentialSource{
-		Gamertag:  "Carl",
-		XUID:      "789",
-		MSALCache: "cache",
-		Source:    "duckdb_msal",
+		Gamertag:     "Carl",
+		XUID:         "789",
+		RefreshToken: "rt",
+		Source:       "duckdb_msal",
 	}
 
 	// Première résolution → Exchange appelé.
@@ -326,7 +273,7 @@ func TestResolverResolve_CacheTTL(t *testing.T) {
 // TestResolverRefresh teste Refresh() — force un re-échange.
 func TestResolverRefresh(t *testing.T) {
 	provider := &mockTokenProvider{
-		silentRefreshResult: "token1",
+		oauthRefreshResult: "token1",
 		exchangeResult: &auth.ExchangeResult{
 			Tokens: &domain.HaloTokens{
 				SpartanToken: "token1",
@@ -338,10 +285,10 @@ func TestResolverRefresh(t *testing.T) {
 	ctx := context.Background()
 
 	src := CredentialSource{
-		Gamertag:  "Dave",
-		XUID:      "999",
-		MSALCache: "cache",
-		Source:    "duckdb_msal",
+		Gamertag:     "Dave",
+		XUID:         "999",
+		RefreshToken: "rt",
+		Source:       "duckdb_msal",
 	}
 
 	// Première résolution.
@@ -351,7 +298,7 @@ func TestResolverRefresh(t *testing.T) {
 	}
 
 	// Forcer un refresh avec un nouveau token.
-	provider.silentRefreshResult = "token2"
+	provider.oauthRefreshResult = "token2"
 	provider.exchangeResult = &auth.ExchangeResult{
 		Tokens: &domain.HaloTokens{
 			SpartanToken: "token2",
@@ -434,7 +381,6 @@ func TestResolverResolve_NoTokenSources(t *testing.T) {
 	src := CredentialSource{
 		Gamertag:     "NoToken",
 		XUID:         "000",
-		MSALCache:    "", // vide
 		RefreshToken: "", // vide
 		Source:       "none",
 	}
@@ -611,7 +557,7 @@ func TestResolverRotation_NoRotationDoesNotInvokeCallback(t *testing.T) {
 // TestResolverResolve_ConcurrentResolve teste la thread-safety du cache.
 func TestResolverResolve_ConcurrentResolve(t *testing.T) {
 	provider := &mockTokenProvider{
-		silentRefreshResult: "token",
+		oauthRefreshResult: "token",
 		exchangeResult: &auth.ExchangeResult{
 			Tokens: &domain.HaloTokens{SpartanToken: "token"},
 		},
@@ -621,10 +567,10 @@ func TestResolverResolve_ConcurrentResolve(t *testing.T) {
 	ctx := context.Background()
 
 	src := CredentialSource{
-		Gamertag:  "Concurrent",
-		XUID:      "111",
-		MSALCache: "cache",
-		Source:    "duckdb_msal",
+		Gamertag:     "Concurrent",
+		XUID:         "111",
+		RefreshToken: "rt",
+		Source:       "duckdb_msal",
 	}
 
 	// Lancer 10 goroutines qui resolvent le même gamertag.

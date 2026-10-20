@@ -1,0 +1,887 @@
+film	build	cause	ti	index	composant	statut	usage_produit	paquets	utiles_en_jeu
+bcb6d393	HI_1_12_0	liste d evenements non localisee	-1	-1				283	0
+bcb6d393	HI_1_12_0	ti=0 i15 managed-engine-timers-component	0	15	managed-engine-timers-component	non_porte	aucun	1	0
+bcb6d393	HI_1_12_0	ti=10 i12 managed-object-navpoint-component	10	12	managed-object-navpoint-component	non_porte	aucun	1	1
+bcb6d393	HI_1_12_0	ti=10 i16 managed-object-navpoint-component	10	16	managed-object-navpoint-component	non_porte	aucun	1	0
+bcb6d393	HI_1_12_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	17	0
+bcb6d393	HI_1_12_0	ti=10 i4 managed-object-navpoint-component	10	4	managed-object-navpoint-component	non_porte	aucun	1	0
+bcb6d393	HI_1_12_0	ti=11 i4 managed-objective-interaction-filter-component	11	4	managed-objective-interaction-filter-component	non_porte	aucun	2	11
+bcb6d393	HI_1_12_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	18	125
+bcb6d393	HI_1_12_0	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	17	97
+bcb6d393	HI_1_12_0	ti=12 i23 managed-navpoint-visual-state-groups-component-3	12	23	managed-navpoint-visual-state-groups-component-3	non_porte	aucun	2	12
+bcb6d393	HI_1_12_0	ti=18 i0 effect-state-data-component	18	0	effect-state-data-component	partiel	aucun	3	0
+bcb6d393	HI_1_12_0	ti=18 i1 effect-state-data-component	18	1	effect-state-data-component	partiel	aucun	4	0
+bcb6d393	HI_1_12_0	ti=18 i2 effect-state-data-component	18	2	effect-state-data-component	partiel	aucun	2	0
+bcb6d393	HI_1_12_0	ti=18 i3 effect-state-data-component	18	3	effect-state-data-component	partiel	aucun	2	0
+bcb6d393	HI_1_12_0	ti=18 i8 effect-state-data-component	18	8	effect-state-data-component	partiel	aucun	1	0
+bcb6d393	HI_1_12_0	ti=19 i0 sound-placement-state-data-component	19	0	sound-placement-state-data-component	non_porte	aucun	1	1
+bcb6d393	HI_1_12_0	ti=2 i11 game-engine-soft-ceilings-component	2	11	game-engine-soft-ceilings-component	non_porte	aucun	9	0
+bcb6d393	HI_1_12_0	ti=2 i14 GameEngineComposerLetterboxComponent	2	14	GameEngineComposerLetterboxComponent	non_porte	aucun	5	0
+bcb6d393	HI_1_12_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	161	1
+bcb6d393	HI_1_12_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	6	0
+bcb6d393	HI_1_12_0	ti=26 i0 supply-lines-blocked-status-component	26	0	supply-lines-blocked-status-component	non_porte	aucun	1	0
+bcb6d393	HI_1_12_0	ti=26 i1 supply-lines-blocked-status-component	26	1	supply-lines-blocked-status-component	non_porte	aucun	4	0
+bcb6d393	HI_1_12_0	ti=26 i2 supply-lines-blocked-status-component	26	2	supply-lines-blocked-status-component	non_porte	aucun	1	0
+bcb6d393	HI_1_12_0	ti=27 i0 supply-lines-item-unlocked-component	27	0	supply-lines-item-unlocked-component	non_porte	aucun	1	1
+bcb6d393	HI_1_12_0	ti=34 i12 tacmap-backmenulocked-state	34	12	tacmap-backmenulocked-state	non_porte	aucun	7	0
+bcb6d393	HI_1_12_0	ti=34 i14 tacmap-playercontrol	34	14	tacmap-playercontrol	non_porte	aucun	4	0
+bcb6d393	HI_1_12_0	ti=35 i59 biped-spartan-ability-non-predicted-state	35	59	biped-spartan-ability-non-predicted-state	partiel	rejeu : grappleLines[] (schema 8) — la ligne blanche du joueur vers son ancre, fenetre [t0,t1] par vie	2	2
+bcb6d393	HI_1_12_0	ti=40 i35 vehicle-auto-turret-target-component	40	35	vehicle-auto-turret-target-component	non_porte	aucun	1	1
+bcb6d393	HI_1_12_0	ti=43 i21 device-position-group-component	43	21	device-position-group-component	non_porte	aucun	3	19
+bcb6d393	HI_1_12_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	1
+bcb6d393	HI_1_12_0	ti=43 i34 device-animation-layer-settings-component	43	34	device-animation-layer-settings-component	non_porte	aucun	10	53
+bcb6d393	HI_1_12_0	ti=43 i35 device-animation-layer-state-component	43	35	device-animation-layer-state-component	non_porte	aucun	12112	67598
+bcb6d393	HI_1_12_0	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	1	8
+bcb6d393	HI_1_12_0	ti=50 archetype hors registre	50	-1				8	0
+bcb6d393	HI_1_12_0	ti=57 archetype hors registre	57	-1				2	0
+bcb6d393	HI_1_12_0	ti=58 archetype hors registre	58	-1				12	0
+bcb6d393	HI_1_12_0	vue B : fin de payload	-1	-1				1	1
+bcb6d393	HI_1_12_0	vue C : bloc 0xbc non porte	-1	-1				8	1
+bcb6d393	HI_1_12_0	vue C : debordement	-1	-1				1	0
+bcb6d393	HI_1_12_0	vue C : kind non porte	-1	-1				63	8
+bcb6d393	HI_1_12_0	vue C : terminateur hors cadre	-1	-1				3249	18529
+fb1a1a72	HI_1_13_0	liste d evenements non localisee	-1	-1				692	0
+fb1a1a72	HI_1_13_0	ti=0 i11 game-engine-soft-ceilings-component	0	11	game-engine-soft-ceilings-component	non_porte	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=1 i13 game-engine-disabled-kill-volume-flags-component	1	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	24	1
+fb1a1a72	HI_1_13_0	ti=10 i22 managed-object-interaction-filter-component	10	22	managed-object-interaction-filter-component	non_porte	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=10 i3 managed-object-navpoint-component	10	3	managed-object-navpoint-component	non_porte	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=11 i4 managed-objective-interaction-filter-component	11	4	managed-objective-interaction-filter-component	non_porte	aucun	7	43
+fb1a1a72	HI_1_13_0	ti=12 i13 managed-navpoint-top-progress	12	13	managed-navpoint-top-progress	non_porte	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	77	547
+fb1a1a72	HI_1_13_0	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	55	314
+fb1a1a72	HI_1_13_0	ti=12 i24 managed-navpoint-visual-state-groups-component-4	12	24	managed-navpoint-visual-state-groups-component-4	non_porte	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=18 i0 effect-state-data-component	18	0	effect-state-data-component	partiel	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=18 i2 effect-state-data-component	18	2	effect-state-data-component	partiel	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=19 i0 sound-placement-state-data-component	19	0	sound-placement-state-data-component	non_porte	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	551	17
+fb1a1a72	HI_1_13_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	5	0
+fb1a1a72	HI_1_13_0	ti=27 i24 supply-lines-item-unlocked-component	27	24	supply-lines-item-unlocked-component	non_porte	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=27 i8 supply-lines-item-unlocked-component	27	8	supply-lines-item-unlocked-component	non_porte	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=3 i0 low-frequency	3	0	low-frequency	non_porte	aucun	735	0
+fb1a1a72	HI_1_13_0	ti=43 i21 device-position-group-component	43	21	device-position-group-component	non_porte	aucun	147	913
+fb1a1a72	HI_1_13_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=43 i30 device-in-primary-mode-component	43	30	device-in-primary-mode-component	non_porte	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=43 i32 device-dispenser-state-flags-component	43	32	device-dispenser-state-flags-component	non_porte	aucun	1	0
+fb1a1a72	HI_1_13_0	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	1	8
+fb1a1a72	HI_1_13_0	ti=50 archetype hors registre	50	-1				1	0
+fb1a1a72	HI_1_13_0	ti=52 archetype hors registre	52	-1				2	8
+fb1a1a72	HI_1_13_0	ti=53 archetype hors registre	53	-1				1	0
+fb1a1a72	HI_1_13_0	ti=55 archetype hors registre	55	-1				2	6
+fb1a1a72	HI_1_13_0	ti=56 archetype hors registre	56	-1				1	0
+fb1a1a72	HI_1_13_0	ti=59 archetype hors registre	59	-1				1	0
+fb1a1a72	HI_1_13_0	ti=62 archetype hors registre	62	-1				1	0
+fb1a1a72	HI_1_13_0	ti=63 archetype hors registre	63	-1				1	0
+fb1a1a72	HI_1_13_0	vue B : fin de payload	-1	-1				5	1
+fb1a1a72	HI_1_13_0	vue C : bloc 0xbc non porte	-1	-1				44	17
+fb1a1a72	HI_1_13_0	vue C : debordement	-1	-1				1	0
+fb1a1a72	HI_1_13_0	vue C : kind non porte	-1	-1				144	19
+fb1a1a72	HI_1_13_0	vue C : terminateur hors cadre	-1	-1				23941	15682
+d9781168	HI_1_13_0	liste d evenements non localisee	-1	-1				5741	0
+d9781168	HI_1_13_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	8	18
+d9781168	HI_1_13_0	ti=10 i22 managed-object-interaction-filter-component	10	22	managed-object-interaction-filter-component	non_porte	aucun	3	0
+d9781168	HI_1_13_0	ti=11 i4 managed-objective-interaction-filter-component	11	4	managed-objective-interaction-filter-component	non_porte	aucun	11	103
+d9781168	HI_1_13_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	1	12
+d9781168	HI_1_13_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	5	28
+d9781168	HI_1_13_0	ti=12 i24 managed-navpoint-visual-state-groups-component-4	12	24	managed-navpoint-visual-state-groups-component-4	non_porte	aucun	2	10
+d9781168	HI_1_13_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	146	1
+d9781168	HI_1_13_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	8	0
+d9781168	HI_1_13_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	1
+d9781168	HI_1_13_0	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	1	8
+d9781168	HI_1_13_0	ti=51 archetype hors registre	51	-1				2	14
+d9781168	HI_1_13_0	vue B : fin de payload	-1	-1				1	6
+d9781168	HI_1_13_0	vue C : debordement	-1	-1				1	0
+d9781168	HI_1_13_0	vue C : kind non porte	-1	-1				1	0
+d9781168	HI_1_13_0	vue C : terminateur hors cadre	-1	-1				11249	64305
+c75f33b8	HI_1_13_0	liste d evenements non localisee	-1	-1				2332	0
+c75f33b8	HI_1_13_0	ti=0 i18 forge-engine-player-roles-component	0	18	forge-engine-player-roles-component	non_porte	aucun	1	10
+c75f33b8	HI_1_13_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	4	2
+c75f33b8	HI_1_13_0	ti=10 i22 managed-object-interaction-filter-component	10	22	managed-object-interaction-filter-component	non_porte	aucun	5	15
+c75f33b8	HI_1_13_0	ti=11 i4 managed-objective-interaction-filter-component	11	4	managed-objective-interaction-filter-component	non_porte	aucun	24	0
+c75f33b8	HI_1_13_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	3	9
+c75f33b8	HI_1_13_0	ti=12 i18 managed-navpoint-position-offset	12	18	managed-navpoint-position-offset	non_porte	aucun	8	39
+c75f33b8	HI_1_13_0	ti=12 i20 managed-navpoint-visual-state-groups-component-0	12	20	managed-navpoint-visual-state-groups-component-0	non_porte	aucun	14	93
+c75f33b8	HI_1_13_0	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	20	128
+c75f33b8	HI_1_13_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	115	1
+c75f33b8	HI_1_13_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	7	0
+c75f33b8	HI_1_13_0	ti=3 i0 low-frequency	3	0	low-frequency	non_porte	aucun	7	0
+c75f33b8	HI_1_13_0	ti=34 i12 tacmap-backmenulocked-state	34	12	tacmap-backmenulocked-state	non_porte	aucun	1	0
+c75f33b8	HI_1_13_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	1
+c75f33b8	HI_1_13_0	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	1	8
+c75f33b8	HI_1_13_0	ti=48 i1 forge-player-data-editing-graphs-component	48	1	forge-player-data-editing-graphs-component	non_porte	aucun	1	8
+c75f33b8	HI_1_13_0	vue C : debordement	-1	-1				1	0
+c75f33b8	HI_1_13_0	vue C : kind non porte	-1	-1				15	0
+c75f33b8	HI_1_13_0	vue C : terminateur hors cadre	-1	-1				2296	10245
+bf15f7ab	HI_1_13_0	liste d evenements non localisee	-1	-1				362	0
+bf15f7ab	HI_1_13_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	1	1
+bf15f7ab	HI_1_13_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	2	25
+bf15f7ab	HI_1_13_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	7	51
+bf15f7ab	HI_1_13_0	ti=19 i0 sound-placement-state-data-component	19	0	sound-placement-state-data-component	non_porte	aucun	1	7
+bf15f7ab	HI_1_13_0	ti=19 i3 sound-placement-state-data-component	19	3	sound-placement-state-data-component	non_porte	aucun	4	28
+bf15f7ab	HI_1_13_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	147	0
+bf15f7ab	HI_1_13_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	5	0
+bf15f7ab	HI_1_13_0	ti=26 i3 supply-lines-blocked-status-component	26	3	supply-lines-blocked-status-component	non_porte	aucun	4	28
+bf15f7ab	HI_1_13_0	ti=27 i3 supply-lines-item-unlocked-component	27	3	supply-lines-item-unlocked-component	non_porte	aucun	2	14
+bf15f7ab	HI_1_13_0	ti=43 i19 device-position-animation-name-component	43	19	device-position-animation-name-component	non_porte	aucun	2	14
+bf15f7ab	HI_1_13_0	ti=43 i20 device-position-animation-control-component	43	20	device-position-animation-control-component	non_porte	aucun	2	14
+bf15f7ab	HI_1_13_0	ti=43 i21 device-position-group-component	43	21	device-position-group-component	non_porte	aucun	2	15
+bf15f7ab	HI_1_13_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	1
+bf15f7ab	HI_1_13_0	ti=52 archetype hors registre	52	-1				1	9
+bf15f7ab	HI_1_13_0	ti=55 archetype hors registre	55	-1				1	2
+bf15f7ab	HI_1_13_0	ti=56 archetype hors registre	56	-1				109	759
+bf15f7ab	HI_1_13_0	ti=62 archetype hors registre	62	-1				1	7
+bf15f7ab	HI_1_13_0	vue B : fin de payload	-1	-1				13	95
+bf15f7ab	HI_1_13_0	vue C : bloc 0xbc non porte	-1	-1				106	743
+bf15f7ab	HI_1_13_0	vue C : debordement	-1	-1				1	0
+bf15f7ab	HI_1_13_0	vue C : kind non porte	-1	-1				145	995
+bf15f7ab	HI_1_13_0	vue C : terminateur hors cadre	-1	-1				1658	9831
+51ebbc0f	HI_1_13_0	liste d evenements non localisee	-1	-1				2893	0
+51ebbc0f	HI_1_13_0	ti=0 i16 scenario-intro-component	0	16	scenario-intro-component	non_porte	aucun	6	0
+51ebbc0f	HI_1_13_0	ti=0 i17 matchflow-isplaying-flags-component	0	17	matchflow-isplaying-flags-component	non_porte	aucun	13	0
+51ebbc0f	HI_1_13_0	ti=1 i13 game-engine-disabled-kill-volume-flags-component	1	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	1	0
+51ebbc0f	HI_1_13_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	2	4
+51ebbc0f	HI_1_13_0	ti=10 i22 managed-object-interaction-filter-component	10	22	managed-object-interaction-filter-component	non_porte	aucun	1	0
+51ebbc0f	HI_1_13_0	ti=10 i3 managed-object-navpoint-component	10	3	managed-object-navpoint-component	non_porte	aucun	2	1
+51ebbc0f	HI_1_13_0	ti=11 i4 managed-objective-interaction-filter-component	11	4	managed-objective-interaction-filter-component	non_porte	aucun	5	46
+51ebbc0f	HI_1_13_0	ti=12 i13 managed-navpoint-top-progress	12	13	managed-navpoint-top-progress	non_porte	aucun	2	0
+51ebbc0f	HI_1_13_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	1	5
+51ebbc0f	HI_1_13_0	ti=12 i20 managed-navpoint-visual-state-groups-component-0	12	20	managed-navpoint-visual-state-groups-component-0	non_porte	aucun	1	0
+51ebbc0f	HI_1_13_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	3	19
+51ebbc0f	HI_1_13_0	ti=12 i3 managed-navpoint-visible-offscreen-filters-component	12	3	managed-navpoint-visible-offscreen-filters-component	partiel	aucun	1	7
+51ebbc0f	HI_1_13_0	ti=15 i2 nav-cutscene-flag-component	15	2	nav-cutscene-flag-component	partiel	aucun	1	0
+51ebbc0f	HI_1_13_0	ti=18 i7 effect-state-data-component	18	7	effect-state-data-component	partiel	aucun	1	0
+51ebbc0f	HI_1_13_0	ti=19 i13 sound-placement-state-data-component	19	13	sound-placement-state-data-component	non_porte	aucun	1	0
+51ebbc0f	HI_1_13_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	327	1
+51ebbc0f	HI_1_13_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	6	0
+51ebbc0f	HI_1_13_0	ti=23 i13 selectable-zone-data-component	23	13	selectable-zone-data-component	deser_non_cable	aucun	1	0
+51ebbc0f	HI_1_13_0	ti=27 i0 supply-lines-item-unlocked-component	27	0	supply-lines-item-unlocked-component	non_porte	aucun	1	0
+51ebbc0f	HI_1_13_0	ti=27 i12 supply-lines-item-unlocked-component	27	12	supply-lines-item-unlocked-component	non_porte	aucun	1	0
+51ebbc0f	HI_1_13_0	ti=27 i13 supply-lines-item-unlocked-component	27	13	supply-lines-item-unlocked-component	non_porte	aucun	1	0
+51ebbc0f	HI_1_13_0	ti=3 i0 low-frequency	3	0	low-frequency	non_porte	aucun	434	0
+51ebbc0f	HI_1_13_0	ti=43 i19 device-position-animation-name-component	43	19	device-position-animation-name-component	non_porte	aucun	1	0
+51ebbc0f	HI_1_13_0	ti=43 i21 device-position-group-component	43	21	device-position-group-component	non_porte	aucun	29	191
+51ebbc0f	HI_1_13_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	1
+51ebbc0f	HI_1_13_0	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	1	8
+51ebbc0f	HI_1_13_0	ti=51 archetype hors registre	51	-1				2	9
+51ebbc0f	HI_1_13_0	ti=54 archetype hors registre	54	-1				1	1
+51ebbc0f	HI_1_13_0	ti=56 archetype hors registre	56	-1				1	7
+51ebbc0f	HI_1_13_0	ti=61 archetype hors registre	61	-1				1	0
+51ebbc0f	HI_1_13_0	ti=62 archetype hors registre	62	-1				1	0
+51ebbc0f	HI_1_13_0	ti=7 i0 forge-sim-generic-component	7	0	forge-sim-generic-component	non_porte	aucun	1	0
+51ebbc0f	HI_1_13_0	ti=7 i16 forge-sim-generic-component	7	16	forge-sim-generic-component	non_porte	aucun	4	0
+51ebbc0f	HI_1_13_0	vue B : fin de payload	-1	-1				6	7
+51ebbc0f	HI_1_13_0	vue C : bloc 0xbc non porte	-1	-1				39	2
+51ebbc0f	HI_1_13_0	vue C : debordement	-1	-1				1	0
+51ebbc0f	HI_1_13_0	vue C : kind non porte	-1	-1				96	35
+51ebbc0f	HI_1_13_0	vue C : terminateur hors cadre	-1	-1				16929	29399
+084a804d	HI_1_10_0	liste d evenements non localisee	-1	-1				3414	0
+084a804d	HI_1_10_0	ti=0 i11 game-engine-soft-ceilings-component	0	11	game-engine-soft-ceilings-component	non_porte	aucun	1	0
+084a804d	HI_1_10_0	ti=0 i13 game-engine-disabled-kill-volume-flags-component	0	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	1	6
+084a804d	HI_1_10_0	ti=0 i15 managed-engine-timers-component	0	15	managed-engine-timers-component	non_porte	aucun	3	0
+084a804d	HI_1_10_0	ti=10 i15 managed-object-navpoint-component	10	15	managed-object-navpoint-component	non_porte	aucun	1	1
+084a804d	HI_1_10_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	39	388
+084a804d	HI_1_10_0	ti=10 i21 managed-object-networked-property-component	10	21	managed-object-networked-property-component	non_porte	aucun	1	0
+084a804d	HI_1_10_0	ti=10 i3 managed-object-navpoint-component	10	3	managed-object-navpoint-component	non_porte	aucun	1	24
+084a804d	HI_1_10_0	ti=10 i4 managed-object-navpoint-component	10	4	managed-object-navpoint-component	non_porte	aucun	1	6
+084a804d	HI_1_10_0	ti=10 i6 managed-object-navpoint-component	10	6	managed-object-navpoint-component	non_porte	aucun	1	6
+084a804d	HI_1_10_0	ti=11 i4 managed-objective-interaction-filter-component	11	4	managed-objective-interaction-filter-component	non_porte	aucun	4	93
+084a804d	HI_1_10_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	2	26
+084a804d	HI_1_10_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	34	799
+084a804d	HI_1_10_0	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	29	654
+084a804d	HI_1_10_0	ti=12 i23 managed-navpoint-visual-state-groups-component-3	12	23	managed-navpoint-visual-state-groups-component-3	non_porte	aucun	1	26
+084a804d	HI_1_10_0	ti=18 i0 effect-state-data-component	18	0	effect-state-data-component	partiel	aucun	1	0
+084a804d	HI_1_10_0	ti=18 i1 effect-state-data-component	18	1	effect-state-data-component	partiel	aucun	2	0
+084a804d	HI_1_10_0	ti=18 i6 effect-state-data-component	18	6	effect-state-data-component	partiel	aucun	1	0
+084a804d	HI_1_10_0	ti=2 i11 game-engine-soft-ceilings-component	2	11	game-engine-soft-ceilings-component	non_porte	aucun	1	1
+084a804d	HI_1_10_0	ti=2 i14 GameEngineComposerLetterboxComponent	2	14	GameEngineComposerLetterboxComponent	non_porte	aucun	1	1
+084a804d	HI_1_10_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	227	1
+084a804d	HI_1_10_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	1	0
+084a804d	HI_1_10_0	ti=24 i4 persistence-state-bucket-component	24	4	persistence-state-bucket-component	non_porte	aucun	1	1
+084a804d	HI_1_10_0	ti=31 i2 tacmap-visiblity	31	2	tacmap-visiblity	non_porte	aucun	1	0
+084a804d	HI_1_10_0	ti=34 i10 tacmap-mapdismissallock	34	10	tacmap-mapdismissallock	non_porte	aucun	2	14
+084a804d	HI_1_10_0	ti=34 i12 tacmap-backmenulocked-state	34	12	tacmap-backmenulocked-state	non_porte	aucun	1	0
+084a804d	HI_1_10_0	ti=34 i14 tacmap-playercontrol	34	14	tacmap-playercontrol	non_porte	aucun	1	14
+084a804d	HI_1_10_0	ti=35 i59 biped-spartan-ability-non-predicted-state	35	59	biped-spartan-ability-non-predicted-state	partiel	rejeu : grappleLines[] (schema 8) — la ligne blanche du joueur vers son ancre, fenetre [t0,t1] par vie	84	566
+084a804d	HI_1_10_0	ti=40 i33 vehicle-type-state-component	40	33	vehicle-type-state-component	non_porte	aucun	5	119
+084a804d	HI_1_10_0	ti=40 i38 vehicle-weapon-set-component	40	38	vehicle-weapon-set-component	non_porte	aucun	164	3582
+084a804d	HI_1_10_0	ti=40 i47 vehicle-low-frequency-component	40	47	vehicle-low-frequency-component	non_porte	aucun	8	178
+084a804d	HI_1_10_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	0
+084a804d	HI_1_10_0	ti=49 archetype hors registre	49	-1				1	8
+084a804d	HI_1_10_0	ti=50 archetype hors registre	50	-1				4	26
+084a804d	HI_1_10_0	ti=51 archetype hors registre	51	-1				3	21
+084a804d	HI_1_10_0	ti=52 archetype hors registre	52	-1				2	1
+084a804d	HI_1_10_0	ti=54 archetype hors registre	54	-1				1	0
+084a804d	HI_1_10_0	ti=55 archetype hors registre	55	-1				1	11
+084a804d	HI_1_10_0	ti=57 archetype hors registre	57	-1				1	14
+084a804d	HI_1_10_0	ti=58 archetype hors registre	58	-1				1	1
+084a804d	HI_1_10_0	ti=60 archetype hors registre	60	-1				1	15
+084a804d	HI_1_10_0	ti=61 archetype hors registre	61	-1				1	12
+084a804d	HI_1_10_0	ti=62 archetype hors registre	62	-1				1	4
+084a804d	HI_1_10_0	ti=63 archetype hors registre	63	-1				4	20
+084a804d	HI_1_10_0	vue B : fin de payload	-1	-1				1	0
+084a804d	HI_1_10_0	vue C : bloc 0xbc non porte	-1	-1				14	65
+084a804d	HI_1_10_0	vue C : debordement	-1	-1				1	0
+084a804d	HI_1_10_0	vue C : kind non porte	-1	-1				68	204
+084a804d	HI_1_10_0	vue C : terminateur hors cadre	-1	-1				23082	439828
+0797ce72	HI_1_13_0	liste d evenements non localisee	-1	-1				309	0
+0797ce72	HI_1_13_0	ti=0 i11 game-engine-soft-ceilings-component	0	11	game-engine-soft-ceilings-component	non_porte	aucun	9	77
+0797ce72	HI_1_13_0	ti=0 i13 game-engine-disabled-kill-volume-flags-component	0	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	4	13
+0797ce72	HI_1_13_0	ti=0 i15 managed-engine-timers-component	0	15	managed-engine-timers-component	non_porte	aucun	2	15
+0797ce72	HI_1_13_0	ti=0 i16 scenario-intro-component	0	16	scenario-intro-component	non_porte	aucun	2	13
+0797ce72	HI_1_13_0	ti=0 i17 matchflow-isplaying-flags-component	0	17	matchflow-isplaying-flags-component	non_porte	aucun	1	7
+0797ce72	HI_1_13_0	ti=0 i18 forge-engine-player-roles-component	0	18	forge-engine-player-roles-component	non_porte	aucun	2	15
+0797ce72	HI_1_13_0	ti=0 i19 forge-engine-total-budget-component	0	19	forge-engine-total-budget-component	non_porte	aucun	6	33
+0797ce72	HI_1_13_0	ti=0 i22 forge-engine-monitor-noclip-component	0	22	forge-engine-monitor-noclip-component	non_porte	aucun	1	6
+0797ce72	HI_1_13_0	ti=0 i23 forge-engine-ugc-status-component	0	23	forge-engine-ugc-status-component	non_porte	aucun	1	7
+0797ce72	HI_1_13_0	ti=1 i11 game-engine-soft-ceilings-component	1	11	game-engine-soft-ceilings-component	non_porte	aucun	3	20
+0797ce72	HI_1_13_0	ti=1 i13 game-engine-disabled-kill-volume-flags-component	1	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	3	23
+0797ce72	HI_1_13_0	ti=10 i4 managed-object-navpoint-component	10	4	managed-object-navpoint-component	non_porte	aucun	1	2
+0797ce72	HI_1_13_0	ti=10 i5 managed-object-navpoint-component	10	5	managed-object-navpoint-component	non_porte	aucun	1	7
+0797ce72	HI_1_13_0	ti=11 i4 managed-objective-interaction-filter-component	11	4	managed-objective-interaction-filter-component	non_porte	aucun	2	11
+0797ce72	HI_1_13_0	ti=12 i13 managed-navpoint-top-progress	12	13	managed-navpoint-top-progress	non_porte	aucun	4	25
+0797ce72	HI_1_13_0	ti=12 i15 managed-navpoint-bottom-progress	12	15	managed-navpoint-bottom-progress	non_porte	aucun	3	17
+0797ce72	HI_1_13_0	ti=12 i2 managed-navpoint-visibility-distance-filters-component	12	2	managed-navpoint-visibility-distance-filters-component	partiel	aucun	1	6
+0797ce72	HI_1_13_0	ti=12 i4 managed-navpoint-can-be-occluded-filters-component	12	4	managed-navpoint-can-be-occluded-filters-component	partiel	aucun	1	7
+0797ce72	HI_1_13_0	ti=14 i1 crew-marked-objects-component	14	1	crew-marked-objects-component	partiel	aucun	2	16
+0797ce72	HI_1_13_0	ti=15 i1 nav-cutscene-flag-component	15	1	nav-cutscene-flag-component	partiel	aucun	3	18
+0797ce72	HI_1_13_0	ti=18 i0 effect-state-data-component	18	0	effect-state-data-component	partiel	aucun	6	46
+0797ce72	HI_1_13_0	ti=18 i1 effect-state-data-component	18	1	effect-state-data-component	partiel	aucun	1	7
+0797ce72	HI_1_13_0	ti=18 i12 effect-state-data-component	18	12	effect-state-data-component	partiel	aucun	2	11
+0797ce72	HI_1_13_0	ti=18 i2 effect-state-data-component	18	2	effect-state-data-component	partiel	aucun	2	13
+0797ce72	HI_1_13_0	ti=18 i28 effect-state-data-component	18	28	effect-state-data-component	partiel	aucun	1	9
+0797ce72	HI_1_13_0	ti=18 i3 effect-state-data-component	18	3	effect-state-data-component	partiel	aucun	1	6
+0797ce72	HI_1_13_0	ti=18 i4 effect-state-data-component	18	4	effect-state-data-component	partiel	aucun	1	4
+0797ce72	HI_1_13_0	ti=18 i7 effect-state-data-component	18	7	effect-state-data-component	partiel	aucun	2	14
+0797ce72	HI_1_13_0	ti=18 i8 effect-state-data-component	18	8	effect-state-data-component	partiel	aucun	1	10
+0797ce72	HI_1_13_0	ti=18 i9 effect-state-data-component	18	9	effect-state-data-component	partiel	aucun	1	7
+0797ce72	HI_1_13_0	ti=19 i0 sound-placement-state-data-component	19	0	sound-placement-state-data-component	non_porte	aucun	6	43
+0797ce72	HI_1_13_0	ti=19 i2 sound-placement-state-data-component	19	2	sound-placement-state-data-component	non_porte	aucun	3	36
+0797ce72	HI_1_13_0	ti=19 i4 sound-placement-state-data-component	19	4	sound-placement-state-data-component	non_porte	aucun	2	14
+0797ce72	HI_1_13_0	ti=19 i8 sound-placement-state-data-component	19	8	sound-placement-state-data-component	non_porte	aucun	1	9
+0797ce72	HI_1_13_0	ti=19 i9 sound-placement-state-data-component	19	9	sound-placement-state-data-component	non_porte	aucun	1	1
+0797ce72	HI_1_13_0	ti=2 i11 game-engine-soft-ceilings-component	2	11	game-engine-soft-ceilings-component	non_porte	aucun	15	132
+0797ce72	HI_1_13_0	ti=2 i13 game-engine-disabled-kill-volume-flags-component	2	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	8	72
+0797ce72	HI_1_13_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	1	1
+0797ce72	HI_1_13_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	6	0
+0797ce72	HI_1_13_0	ti=20 i2 spawn-filter-filters-component	20	2	spawn-filter-filters-component	non_porte	aucun	1	8
+0797ce72	HI_1_13_0	ti=23 i0 selectable-zone-data-component	23	0	selectable-zone-data-component	deser_non_cable	aucun	2	13
+0797ce72	HI_1_13_0	ti=24 i0 state-checksum-component	24	0	state-checksum-component	non_porte	aucun	1	8
+0797ce72	HI_1_13_0	ti=24 i14 persistence-state-bucket-component	24	14	persistence-state-bucket-component	non_porte	aucun	1	8
+0797ce72	HI_1_13_0	ti=24 i3 persistence-state-bucket-component	24	3	persistence-state-bucket-component	non_porte	aucun	2	16
+0797ce72	HI_1_13_0	ti=24 i5 persistence-state-bucket-component	24	5	persistence-state-bucket-component	non_porte	aucun	1	6
+0797ce72	HI_1_13_0	ti=25 i0 powerframe-player-selection-data-component	25	0	powerframe-player-selection-data-component	non_porte	aucun	1	7
+0797ce72	HI_1_13_0	ti=26 i0 supply-lines-blocked-status-component	26	0	supply-lines-blocked-status-component	non_porte	aucun	3	20
+0797ce72	HI_1_13_0	ti=26 i1 supply-lines-blocked-status-component	26	1	supply-lines-blocked-status-component	non_porte	aucun	3	13
+0797ce72	HI_1_13_0	ti=26 i29 supply-lines-blocked-status-component	26	29	supply-lines-blocked-status-component	non_porte	aucun	1	6
+0797ce72	HI_1_13_0	ti=26 i4 supply-lines-blocked-status-component	26	4	supply-lines-blocked-status-component	non_porte	aucun	1	6
+0797ce72	HI_1_13_0	ti=27 i10 supply-lines-item-unlocked-component	27	10	supply-lines-item-unlocked-component	non_porte	aucun	1	8
+0797ce72	HI_1_13_0	ti=27 i3 supply-lines-item-unlocked-component	27	3	supply-lines-item-unlocked-component	non_porte	aucun	1	5
+0797ce72	HI_1_13_0	ti=28 i0 narrative-moment-beat-activation-component	28	0	narrative-moment-beat-activation-component	non_porte	aucun	4	31
+0797ce72	HI_1_13_0	ti=31 i1 tacmap-mission	31	1	tacmap-mission	non_porte	aucun	1	6
+0797ce72	HI_1_13_0	ti=31 i8 tacmap-objectives	31	8	tacmap-objectives	non_porte	aucun	1	7
+0797ce72	HI_1_13_0	ti=34 i10 tacmap-mapdismissallock	34	10	tacmap-mapdismissallock	non_porte	aucun	4	30
+0797ce72	HI_1_13_0	ti=34 i12 tacmap-backmenulocked-state	34	12	tacmap-backmenulocked-state	non_porte	aucun	1	8
+0797ce72	HI_1_13_0	ti=34 i14 tacmap-playercontrol	34	14	tacmap-playercontrol	non_porte	aucun	1	8
+0797ce72	HI_1_13_0	ti=34 i15 tacmap-tooltip-state	34	15	tacmap-tooltip-state	non_porte	aucun	1	8
+0797ce72	HI_1_13_0	ti=35 i59 biped-spartan-ability-non-predicted-state	35	59	biped-spartan-ability-non-predicted-state	partiel	rejeu : grappleLines[] (schema 8) — la ligne blanche du joueur vers son ancre, fenetre [t0,t1] par vie	26	99
+0797ce72	HI_1_13_0	ti=40 i30 vehicle-auto-turret-triggers-component	40	30	vehicle-auto-turret-triggers-component	non_porte	aucun	3	21
+0797ce72	HI_1_13_0	ti=40 i31 vehicle-auto-turret-aiming-vector-component	40	31	vehicle-auto-turret-aiming-vector-component	non_porte	aucun	2	17
+0797ce72	HI_1_13_0	ti=40 i32 vehicle-transformed-or-desired-open-state-changed-component	40	32	vehicle-transformed-or-desired-open-state-changed-component	non_porte	aucun	1	5
+0797ce72	HI_1_13_0	ti=40 i33 vehicle-type-state-component	40	33	vehicle-type-state-component	non_porte	aucun	1	6
+0797ce72	HI_1_13_0	ti=40 i36 vehicle-sentry-state-component	40	36	vehicle-sentry-state-component	non_porte	aucun	2	18
+0797ce72	HI_1_13_0	ti=40 i38 vehicle-weapon-set-component	40	38	vehicle-weapon-set-component	non_porte	aucun	1	8
+0797ce72	HI_1_13_0	ti=43 i21 device-position-group-component	43	21	device-position-group-component	non_porte	aucun	1	4
+0797ce72	HI_1_13_0	ti=43 i23 device-power-group-component	43	23	device-power-group-component	non_porte	aucun	2	16
+0797ce72	HI_1_13_0	ti=43 i27 device-health-station-charges-component	43	27	device-health-station-charges-component	non_porte	aucun	1	6
+0797ce72	HI_1_13_0	ti=43 i28 device-health-station-in-use-component	43	28	device-health-station-in-use-component	non_porte	aucun	1	8
+0797ce72	HI_1_13_0	ti=45 i0 matchflow-sequence-data-component	45	0	matchflow-sequence-data-component	non_porte	aucun	2	14
+0797ce72	HI_1_13_0	ti=46 i0 state-broker-state-changed-data-component	46	0	state-broker-state-changed-data-component	non_porte	aucun	1	8
+0797ce72	HI_1_13_0	ti=46 i1 state-broker-state-changed-data-component	46	1	state-broker-state-changed-data-component	non_porte	aucun	2	12
+0797ce72	HI_1_13_0	ti=46 i23 state-broker-state-changed-data-component	46	23	state-broker-state-changed-data-component	non_porte	aucun	1	6
+0797ce72	HI_1_13_0	ti=46 i4 state-broker-state-changed-data-component	46	4	state-broker-state-changed-data-component	non_porte	aucun	1	5
+0797ce72	HI_1_13_0	ti=48 i0 forge-player-data-edited-objects-ids-component	48	0	forge-player-data-edited-objects-ids-component	non_porte	aucun	7	44
+0797ce72	HI_1_13_0	ti=48 i1 forge-player-data-editing-graphs-component	48	1	forge-player-data-editing-graphs-component	non_porte	aucun	3	18
+0797ce72	HI_1_13_0	ti=49 i0 managed-radialmenu-title-component	49	0	managed-radialmenu-title-component	non_porte	aucun	4	24
+0797ce72	HI_1_13_0	ti=49 i4 managed-radialmenu-title-component	49	4	managed-radialmenu-title-component	non_porte	aucun	1	5
+0797ce72	HI_1_13_0	ti=49 i7 managed-radialmenu-title-component	49	7	managed-radialmenu-title-component	non_porte	aucun	1	6
+0797ce72	HI_1_13_0	ti=49 i8 managed-radialmenu-description-component	49	8	managed-radialmenu-description-component	non_porte	aucun	1	9
+0797ce72	HI_1_13_0	ti=5 i10 player-primary-respawn-object-component	5	10	player-primary-respawn-object-component	partiel	aucun	5	29
+0797ce72	HI_1_13_0	ti=50 archetype hors registre	50	-1				13	103
+0797ce72	HI_1_13_0	ti=51 archetype hors registre	51	-1				10	71
+0797ce72	HI_1_13_0	ti=52 archetype hors registre	52	-1				8	67
+0797ce72	HI_1_13_0	ti=53 archetype hors registre	53	-1				7	50
+0797ce72	HI_1_13_0	ti=54 archetype hors registre	54	-1				5	33
+0797ce72	HI_1_13_0	ti=55 archetype hors registre	55	-1				6	44
+0797ce72	HI_1_13_0	ti=56 archetype hors registre	56	-1				37	100
+0797ce72	HI_1_13_0	ti=57 archetype hors registre	57	-1				7	44
+0797ce72	HI_1_13_0	ti=58 archetype hors registre	58	-1				7	43
+0797ce72	HI_1_13_0	ti=59 archetype hors registre	59	-1				17	63
+0797ce72	HI_1_13_0	ti=60 archetype hors registre	60	-1				12	104
+0797ce72	HI_1_13_0	ti=61 archetype hors registre	61	-1				1	8
+0797ce72	HI_1_13_0	ti=62 archetype hors registre	62	-1				12	82
+0797ce72	HI_1_13_0	ti=63 archetype hors registre	63	-1				4	33
+0797ce72	HI_1_13_0	ti=7 i0 forge-sim-generic-component	7	0	forge-sim-generic-component	non_porte	aucun	3	20
+0797ce72	HI_1_13_0	ti=7 i2 forge-sim-generic-component	7	2	forge-sim-generic-component	non_porte	aucun	1	6
+0797ce72	HI_1_13_0	ti=7 i22 forge-sim-generic-component	7	22	forge-sim-generic-component	non_porte	aucun	1	5
+0797ce72	HI_1_13_0	ti=7 i3 forge-sim-generic-component	7	3	forge-sim-generic-component	non_porte	aucun	1	7
+0797ce72	HI_1_13_0	ti=7 i4 forge-sim-generic-component	7	4	forge-sim-generic-component	non_porte	aucun	1	6
+0797ce72	HI_1_13_0	vue B : fin de payload	-1	-1				217	1173
+0797ce72	HI_1_13_0	vue C : bloc 0xbc non porte	-1	-1				196	1371
+0797ce72	HI_1_13_0	vue C : debordement	-1	-1				21	149
+0797ce72	HI_1_13_0	vue C : kind non porte	-1	-1				914	5382
+0797ce72	HI_1_13_0	vue C : terminateur hors cadre	-1	-1				5510	35108
+111fa685	HI_1_10_0	liste d evenements non localisee	-1	-1				1892	0
+111fa685	HI_1_10_0	ti=0 i14 GameEngineComposerLetterboxComponent	0	14	GameEngineComposerLetterboxComponent	non_porte	aucun	1	16
+111fa685	HI_1_10_0	ti=0 i15 managed-engine-timers-component	0	15	managed-engine-timers-component	non_porte	aucun	1	1
+111fa685	HI_1_10_0	ti=0 i16 scenario-intro-component	0	16	scenario-intro-component	non_porte	aucun	1	0
+111fa685	HI_1_10_0	ti=0 i17 matchflow-isplaying-flags-component	0	17	matchflow-isplaying-flags-component	non_porte	aucun	1	1
+111fa685	HI_1_10_0	ti=1 i14 GameEngineComposerLetterboxComponent	1	14	GameEngineComposerLetterboxComponent	non_porte	aucun	1	1
+111fa685	HI_1_10_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	13	280
+111fa685	HI_1_10_0	ti=10 i22 managed-object-interaction-filter-component	10	22	managed-object-interaction-filter-component	non_porte	aucun	2	18
+111fa685	HI_1_10_0	ti=12 i15 managed-navpoint-bottom-progress	12	15	managed-navpoint-bottom-progress	non_porte	aucun	1	0
+111fa685	HI_1_10_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	17	2
+111fa685	HI_1_10_0	ti=12 i23 managed-navpoint-visual-state-groups-component-3	12	23	managed-navpoint-visual-state-groups-component-3	non_porte	aucun	1	16
+111fa685	HI_1_10_0	ti=18 i0 effect-state-data-component	18	0	effect-state-data-component	partiel	aucun	3	0
+111fa685	HI_1_10_0	ti=18 i1 effect-state-data-component	18	1	effect-state-data-component	partiel	aucun	3	1
+111fa685	HI_1_10_0	ti=18 i2 effect-state-data-component	18	2	effect-state-data-component	partiel	aucun	1	0
+111fa685	HI_1_10_0	ti=18 i23 effect-state-data-component	18	23	effect-state-data-component	partiel	aucun	1	0
+111fa685	HI_1_10_0	ti=18 i4 effect-state-data-component	18	4	effect-state-data-component	partiel	aucun	1	0
+111fa685	HI_1_10_0	ti=18 i7 effect-state-data-component	18	7	effect-state-data-component	partiel	aucun	1	0
+111fa685	HI_1_10_0	ti=19 i6 sound-placement-state-data-component	19	6	sound-placement-state-data-component	non_porte	aucun	1	0
+111fa685	HI_1_10_0	ti=19 i8 sound-placement-state-data-component	19	8	sound-placement-state-data-component	non_porte	aucun	2	17
+111fa685	HI_1_10_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	17	0
+111fa685	HI_1_10_0	ti=2 i16 scenario-intro-component	2	16	scenario-intro-component	non_porte	aucun	1	1
+111fa685	HI_1_10_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	2	13
+111fa685	HI_1_10_0	ti=24 i0 state-checksum-component	24	0	state-checksum-component	non_porte	aucun	1	17
+111fa685	HI_1_10_0	ti=24 i10 persistence-state-bucket-component	24	10	persistence-state-bucket-component	non_porte	aucun	1	9
+111fa685	HI_1_10_0	ti=25 i0 powerframe-player-selection-data-component	25	0	powerframe-player-selection-data-component	non_porte	aucun	1	1
+111fa685	HI_1_10_0	ti=26 i0 supply-lines-blocked-status-component	26	0	supply-lines-blocked-status-component	non_porte	aucun	1	10
+111fa685	HI_1_10_0	ti=26 i8 supply-lines-blocked-status-component	26	8	supply-lines-blocked-status-component	non_porte	aucun	1	9
+111fa685	HI_1_10_0	ti=28 i0 narrative-moment-beat-activation-component	28	0	narrative-moment-beat-activation-component	non_porte	aucun	1	1
+111fa685	HI_1_10_0	ti=3 i0 low-frequency	3	0	low-frequency	non_porte	aucun	2	32
+111fa685	HI_1_10_0	ti=31 i5 tacmap-description	31	5	tacmap-description	non_porte	aucun	1	1
+111fa685	HI_1_10_0	ti=35 i59 biped-spartan-ability-non-predicted-state	35	59	biped-spartan-ability-non-predicted-state	partiel	rejeu : grappleLines[] (schema 8) — la ligne blanche du joueur vers son ancre, fenetre [t0,t1] par vie	16	222
+111fa685	HI_1_10_0	ti=40 i30 vehicle-auto-turret-triggers-component	40	30	vehicle-auto-turret-triggers-component	non_porte	aucun	1	1
+111fa685	HI_1_10_0	ti=40 i33 vehicle-type-state-component	40	33	vehicle-type-state-component	non_porte	aucun	4	82
+111fa685	HI_1_10_0	ti=40 i36 vehicle-sentry-state-component	40	36	vehicle-sentry-state-component	non_porte	aucun	1	15
+111fa685	HI_1_10_0	ti=40 i38 vehicle-weapon-set-component	40	38	vehicle-weapon-set-component	non_porte	aucun	24	476
+111fa685	HI_1_10_0	ti=40 i47 vehicle-low-frequency-component	40	47	vehicle-low-frequency-component	non_porte	aucun	1	24
+111fa685	HI_1_10_0	ti=43 i19 device-position-animation-name-component	43	19	device-position-animation-name-component	non_porte	aucun	1	8
+111fa685	HI_1_10_0	ti=43 i20 device-position-animation-control-component	43	20	device-position-animation-control-component	non_porte	aucun	1	18
+111fa685	HI_1_10_0	ti=46 i1 state-broker-state-changed-data-component	46	1	state-broker-state-changed-data-component	non_porte	aucun	1	6
+111fa685	HI_1_10_0	ti=48 i1 forge-player-data-editing-graphs-component	48	1	forge-player-data-editing-graphs-component	non_porte	aucun	1	20
+111fa685	HI_1_10_0	ti=49 archetype hors registre	49	-1				1	8
+111fa685	HI_1_10_0	ti=50 archetype hors registre	50	-1				1	0
+111fa685	HI_1_10_0	ti=51 archetype hors registre	51	-1				6	87
+111fa685	HI_1_10_0	ti=52 archetype hors registre	52	-1				1	25
+111fa685	HI_1_10_0	ti=53 archetype hors registre	53	-1				1	7
+111fa685	HI_1_10_0	ti=54 archetype hors registre	54	-1				1	1
+111fa685	HI_1_10_0	ti=55 archetype hors registre	55	-1				1	21
+111fa685	HI_1_10_0	ti=56 archetype hors registre	56	-1				4	34
+111fa685	HI_1_10_0	ti=58 archetype hors registre	58	-1				1	8
+111fa685	HI_1_10_0	ti=59 archetype hors registre	59	-1				3	44
+111fa685	HI_1_10_0	ti=60 archetype hors registre	60	-1				1	1
+111fa685	HI_1_10_0	ti=62 archetype hors registre	62	-1				1	9
+111fa685	HI_1_10_0	ti=63 archetype hors registre	63	-1				1	38
+111fa685	HI_1_10_0	vue B : fin de payload	-1	-1				4	21
+111fa685	HI_1_10_0	vue C : bloc 0xbc non porte	-1	-1				45	449
+111fa685	HI_1_10_0	vue C : debordement	-1	-1				1	0
+111fa685	HI_1_10_0	vue C : kind non porte	-1	-1				169	1575
+111fa685	HI_1_10_0	vue C : terminateur hors cadre	-1	-1				10944	199075
+e5adf7b2	HI_1_11_0	liste d evenements non localisee	-1	-1				1727	0
+e5adf7b2	HI_1_11_0	ti=0 i16 scenario-intro-component	0	16	scenario-intro-component	non_porte	aucun	1	0
+e5adf7b2	HI_1_11_0	ti=0 i25 forge-engine-baking-data-component	0	25	forge-engine-baking-data-component	non_porte	aucun	1	0
+e5adf7b2	HI_1_11_0	ti=10 i18 managed-object-networked-property-component	10	18	managed-object-networked-property-component	non_porte	aucun	1	0
+e5adf7b2	HI_1_11_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	17	343
+e5adf7b2	HI_1_11_0	ti=10 i22 managed-object-interaction-filter-component	10	22	managed-object-interaction-filter-component	non_porte	aucun	15	298
+e5adf7b2	HI_1_11_0	ti=10 i3 managed-object-navpoint-component	10	3	managed-object-navpoint-component	non_porte	aucun	1	25
+e5adf7b2	HI_1_11_0	ti=10 i4 managed-object-navpoint-component	10	4	managed-object-navpoint-component	non_porte	aucun	1	13
+e5adf7b2	HI_1_11_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	13	22
+e5adf7b2	HI_1_11_0	ti=12 i2 managed-navpoint-visibility-distance-filters-component	12	2	managed-navpoint-visibility-distance-filters-component	partiel	aucun	1	22
+e5adf7b2	HI_1_11_0	ti=18 i0 effect-state-data-component	18	0	effect-state-data-component	partiel	aucun	1	1
+e5adf7b2	HI_1_11_0	ti=18 i1 effect-state-data-component	18	1	effect-state-data-component	partiel	aucun	3	0
+e5adf7b2	HI_1_11_0	ti=18 i10 effect-state-data-component	18	10	effect-state-data-component	partiel	aucun	1	20
+e5adf7b2	HI_1_11_0	ti=2 i13 game-engine-disabled-kill-volume-flags-component	2	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	1	0
+e5adf7b2	HI_1_11_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	1	0
+e5adf7b2	HI_1_11_0	ti=20 i2 spawn-filter-filters-component	20	2	spawn-filter-filters-component	non_porte	aucun	4	83
+e5adf7b2	HI_1_11_0	ti=23 i0 selectable-zone-data-component	23	0	selectable-zone-data-component	deser_non_cable	aucun	1	18
+e5adf7b2	HI_1_11_0	ti=24 i2 persistence-state-bucket-component	24	2	persistence-state-bucket-component	non_porte	aucun	1	0
+e5adf7b2	HI_1_11_0	ti=27 i0 supply-lines-item-unlocked-component	27	0	supply-lines-item-unlocked-component	non_porte	aucun	1	21
+e5adf7b2	HI_1_11_0	ti=28 i0 narrative-moment-beat-activation-component	28	0	narrative-moment-beat-activation-component	non_porte	aucun	1	22
+e5adf7b2	HI_1_11_0	ti=34 i12 tacmap-backmenulocked-state	34	12	tacmap-backmenulocked-state	non_porte	aucun	2	0
+e5adf7b2	HI_1_11_0	ti=34 i14 tacmap-playercontrol	34	14	tacmap-playercontrol	non_porte	aucun	1	0
+e5adf7b2	HI_1_11_0	ti=35 i59 biped-spartan-ability-non-predicted-state	35	59	biped-spartan-ability-non-predicted-state	partiel	rejeu : grappleLines[] (schema 8) — la ligne blanche du joueur vers son ancre, fenetre [t0,t1] par vie	31	350
+e5adf7b2	HI_1_11_0	ti=40 i30 vehicle-auto-turret-triggers-component	40	30	vehicle-auto-turret-triggers-component	non_porte	aucun	2	23
+e5adf7b2	HI_1_11_0	ti=40 i31 vehicle-auto-turret-aiming-vector-component	40	31	vehicle-auto-turret-aiming-vector-component	non_porte	aucun	7	2
+e5adf7b2	HI_1_11_0	ti=40 i33 vehicle-type-state-component	40	33	vehicle-type-state-component	non_porte	aucun	1	23
+e5adf7b2	HI_1_11_0	ti=40 i38 vehicle-weapon-set-component	40	38	vehicle-weapon-set-component	non_porte	aucun	66	1373
+e5adf7b2	HI_1_11_0	ti=40 i40 vehicle-equipment-turret-parent-component	40	40	vehicle-equipment-turret-parent-component	non_porte	aucun	1	1
+e5adf7b2	HI_1_11_0	ti=40 i45 air-drop-flight-component	40	45	air-drop-flight-component	non_porte	aucun	16	393
+e5adf7b2	HI_1_11_0	ti=40 i46 warp-component	40	46	warp-component	non_porte	aucun	12	275
+e5adf7b2	HI_1_11_0	ti=40 i47 vehicle-low-frequency-component	40	47	vehicle-low-frequency-component	non_porte	aucun	9	182
+e5adf7b2	HI_1_11_0	ti=43 i19 device-position-animation-name-component	43	19	device-position-animation-name-component	non_porte	aucun	3	44
+e5adf7b2	HI_1_11_0	ti=43 i20 device-position-animation-control-component	43	20	device-position-animation-control-component	non_porte	aucun	1	0
+e5adf7b2	HI_1_11_0	ti=43 i21 device-position-group-component	43	21	device-position-group-component	non_porte	aucun	3	44
+e5adf7b2	HI_1_11_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	0
+e5adf7b2	HI_1_11_0	ti=43 i23 device-power-group-component	43	23	device-power-group-component	non_porte	aucun	1	22
+e5adf7b2	HI_1_11_0	ti=43 i27 device-health-station-charges-component	43	27	device-health-station-charges-component	non_porte	aucun	1	22
+e5adf7b2	HI_1_11_0	ti=45 i0 matchflow-sequence-data-component	45	0	matchflow-sequence-data-component	non_porte	aucun	2	0
+e5adf7b2	HI_1_11_0	ti=46 i0 state-broker-state-changed-data-component	46	0	state-broker-state-changed-data-component	non_porte	aucun	2	0
+e5adf7b2	HI_1_11_0	ti=48 i0 forge-player-data-edited-objects-ids-component	48	0	forge-player-data-edited-objects-ids-component	non_porte	aucun	2	0
+e5adf7b2	HI_1_11_0	ti=49 archetype hors registre	49	-1				3	19
+e5adf7b2	HI_1_11_0	ti=5 i7 player-desired-respawn-seat-component	5	7	player-desired-respawn-seat-component	partiel	aucun	1	0
+e5adf7b2	HI_1_11_0	ti=50 archetype hors registre	50	-1				2	0
+e5adf7b2	HI_1_11_0	ti=51 archetype hors registre	51	-1				6	133
+e5adf7b2	HI_1_11_0	ti=52 archetype hors registre	52	-1				5	63
+e5adf7b2	HI_1_11_0	ti=53 archetype hors registre	53	-1				1	22
+e5adf7b2	HI_1_11_0	ti=54 archetype hors registre	54	-1				3	21
+e5adf7b2	HI_1_11_0	ti=55 archetype hors registre	55	-1				1	14
+e5adf7b2	HI_1_11_0	ti=56 archetype hors registre	56	-1				1	0
+e5adf7b2	HI_1_11_0	ti=57 archetype hors registre	57	-1				1	0
+e5adf7b2	HI_1_11_0	ti=59 archetype hors registre	59	-1				4	84
+e5adf7b2	HI_1_11_0	ti=60 archetype hors registre	60	-1				1	0
+e5adf7b2	HI_1_11_0	ti=61 archetype hors registre	61	-1				2	2
+e5adf7b2	HI_1_11_0	ti=7 i0 forge-sim-generic-component	7	0	forge-sim-generic-component	non_porte	aucun	1	0
+e5adf7b2	HI_1_11_0	ti=7 i15 forge-sim-generic-component	7	15	forge-sim-generic-component	non_porte	aucun	1	0
+e5adf7b2	HI_1_11_0	vue B : fin de payload	-1	-1				3	65
+e5adf7b2	HI_1_11_0	vue C : bloc 0xbc non porte	-1	-1				88	271
+e5adf7b2	HI_1_11_0	vue C : debordement	-1	-1				38	0
+e5adf7b2	HI_1_11_0	vue C : kind non porte	-1	-1				222	2112
+e5adf7b2	HI_1_11_0	vue C : terminateur hors cadre	-1	-1				10198	202898
+60ae07c4	HI_1_8_0	liste d evenements non localisee	-1	-1				3260	0
+60ae07c4	HI_1_8_0	ti=0 i11 game-engine-soft-ceilings-component	0	11	game-engine-soft-ceilings-component	non_porte	aucun	13	70
+60ae07c4	HI_1_8_0	ti=0 i13 game-engine-disabled-kill-volume-flags-component	0	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	21	159
+60ae07c4	HI_1_8_0	ti=0 i14 GameEngineComposerLetterboxComponent	0	14	GameEngineComposerLetterboxComponent	non_porte	aucun	4	30
+60ae07c4	HI_1_8_0	ti=0 i15 managed-engine-timers-component	0	15	managed-engine-timers-component	non_porte	aucun	1	3
+60ae07c4	HI_1_8_0	ti=0 i16 scenario-intro-component	0	16	scenario-intro-component	non_porte	aucun	1	6
+60ae07c4	HI_1_8_0	ti=0 i19 forge-engine-total-budget-component	0	19	forge-engine-total-budget-component	non_porte	aucun	1	6
+60ae07c4	HI_1_8_0	ti=0 i22 forge-engine-monitor-noclip-component	0	22	forge-engine-monitor-noclip-component	non_porte	aucun	1	5
+60ae07c4	HI_1_8_0	ti=1 i11 game-engine-soft-ceilings-component	1	11	game-engine-soft-ceilings-component	non_porte	aucun	1	6
+60ae07c4	HI_1_8_0	ti=1 i13 game-engine-disabled-kill-volume-flags-component	1	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	1	6
+60ae07c4	HI_1_8_0	ti=1 i14 GameEngineComposerLetterboxComponent	1	14	GameEngineComposerLetterboxComponent	non_porte	aucun	1	7
+60ae07c4	HI_1_8_0	ti=10 i17 managed-object-navpoint-component	10	17	managed-object-navpoint-component	non_porte	aucun	1	8
+60ae07c4	HI_1_8_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	14	28
+60ae07c4	HI_1_8_0	ti=10 i22 managed-object-interaction-filter-component	10	22	managed-object-interaction-filter-component	non_porte	aucun	2	0
+60ae07c4	HI_1_8_0	ti=10 i3 managed-object-navpoint-component	10	3	managed-object-navpoint-component	non_porte	aucun	3	22
+60ae07c4	HI_1_8_0	ti=10 i4 managed-object-navpoint-component	10	4	managed-object-navpoint-component	non_porte	aucun	3	23
+60ae07c4	HI_1_8_0	ti=10 i5 managed-object-navpoint-component	10	5	managed-object-navpoint-component	non_porte	aucun	2	19
+60ae07c4	HI_1_8_0	ti=10 i7 managed-object-navpoint-component	10	7	managed-object-navpoint-component	non_porte	aucun	1	6
+60ae07c4	HI_1_8_0	ti=10 i8 managed-object-navpoint-component	10	8	managed-object-navpoint-component	non_porte	aucun	1	7
+60ae07c4	HI_1_8_0	ti=11 i4 managed-objective-interaction-filter-component	11	4	managed-objective-interaction-filter-component	non_porte	aucun	18	129
+60ae07c4	HI_1_8_0	ti=12 i13 managed-navpoint-top-progress	12	13	managed-navpoint-top-progress	non_porte	aucun	1	6
+60ae07c4	HI_1_8_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	2	3
+60ae07c4	HI_1_8_0	ti=12 i17 managed-navpoint-object-marker	12	17	managed-navpoint-object-marker	non_porte	aucun	2	11
+60ae07c4	HI_1_8_0	ti=12 i2 managed-navpoint-visibility-distance-filters-component	12	2	managed-navpoint-visibility-distance-filters-component	partiel	aucun	1	7
+60ae07c4	HI_1_8_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	11	67
+60ae07c4	HI_1_8_0	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	1	5
+60ae07c4	HI_1_8_0	ti=12 i23 managed-navpoint-visual-state-groups-component-3	12	23	managed-navpoint-visual-state-groups-component-3	non_porte	aucun	1	5
+60ae07c4	HI_1_8_0	ti=12 i24 managed-navpoint-visual-state-groups-component-4	12	24	managed-navpoint-visual-state-groups-component-4	non_porte	aucun	1	3
+60ae07c4	HI_1_8_0	ti=15 i2 nav-cutscene-flag-component	15	2	nav-cutscene-flag-component	partiel	aucun	1	8
+60ae07c4	HI_1_8_0	ti=18 i13 effect-state-data-component	18	13	effect-state-data-component	partiel	aucun	1	7
+60ae07c4	HI_1_8_0	ti=18 i2 effect-state-data-component	18	2	effect-state-data-component	partiel	aucun	1	8
+60ae07c4	HI_1_8_0	ti=18 i31 effect-state-data-component	18	31	effect-state-data-component	partiel	aucun	1	7
+60ae07c4	HI_1_8_0	ti=18 i4 effect-state-data-component	18	4	effect-state-data-component	partiel	aucun	1	8
+60ae07c4	HI_1_8_0	ti=19 i0 sound-placement-state-data-component	19	0	sound-placement-state-data-component	non_porte	aucun	1	7
+60ae07c4	HI_1_8_0	ti=19 i1 sound-placement-state-data-component	19	1	sound-placement-state-data-component	non_porte	aucun	2	2
+60ae07c4	HI_1_8_0	ti=19 i18 sound-placement-state-data-component	19	18	sound-placement-state-data-component	non_porte	aucun	1	7
+60ae07c4	HI_1_8_0	ti=19 i31 sound-placement-state-data-component	19	31	sound-placement-state-data-component	non_porte	aucun	2	15
+60ae07c4	HI_1_8_0	ti=19 i9 sound-placement-state-data-component	19	9	sound-placement-state-data-component	non_porte	aucun	9	54
+60ae07c4	HI_1_8_0	ti=2 i11 game-engine-soft-ceilings-component	2	11	game-engine-soft-ceilings-component	non_porte	aucun	28	112
+60ae07c4	HI_1_8_0	ti=2 i13 game-engine-disabled-kill-volume-flags-component	2	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	3	13
+60ae07c4	HI_1_8_0	ti=2 i14 GameEngineComposerLetterboxComponent	2	14	GameEngineComposerLetterboxComponent	non_porte	aucun	11	46
+60ae07c4	HI_1_8_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	544	0
+60ae07c4	HI_1_8_0	ti=2 i16 scenario-intro-component	2	16	scenario-intro-component	non_porte	aucun	2	16
+60ae07c4	HI_1_8_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	7	0
+60ae07c4	HI_1_8_0	ti=23 i16 selectable-zone-data-component	23	16	selectable-zone-data-component	deser_non_cable	aucun	1	8
+60ae07c4	HI_1_8_0	ti=23 i17 selectable-zone-data-component	23	17	selectable-zone-data-component	deser_non_cable	aucun	1	6
+60ae07c4	HI_1_8_0	ti=23 i3 selectable-zone-data-component	23	3	selectable-zone-data-component	deser_non_cable	aucun	1	9
+60ae07c4	HI_1_8_0	ti=24 i0 state-checksum-component	24	0	state-checksum-component	non_porte	aucun	1	7
+60ae07c4	HI_1_8_0	ti=25 i0 powerframe-player-selection-data-component	25	0	powerframe-player-selection-data-component	non_porte	aucun	1	8
+60ae07c4	HI_1_8_0	ti=26 i0 supply-lines-blocked-status-component	26	0	supply-lines-blocked-status-component	non_porte	aucun	2	11
+60ae07c4	HI_1_8_0	ti=27 i0 supply-lines-item-unlocked-component	27	0	supply-lines-item-unlocked-component	non_porte	aucun	2	13
+60ae07c4	HI_1_8_0	ti=27 i1 supply-lines-item-unlocked-component	27	1	supply-lines-item-unlocked-component	non_porte	aucun	1	6
+60ae07c4	HI_1_8_0	ti=27 i3 supply-lines-item-unlocked-component	27	3	supply-lines-item-unlocked-component	non_porte	aucun	2	12
+60ae07c4	HI_1_8_0	ti=3 i0 low-frequency	3	0	low-frequency	non_porte	aucun	4	29
+60ae07c4	HI_1_8_0	ti=31 i0 tacmap-category	31	0	tacmap-category	non_porte	aucun	2	15
+60ae07c4	HI_1_8_0	ti=40 i32 vehicle-transformed-or-desired-open-state-changed-component	40	32	vehicle-transformed-or-desired-open-state-changed-component	non_porte	aucun	1	7
+60ae07c4	HI_1_8_0	ti=43 i20 device-position-animation-control-component	43	20	device-position-animation-control-component	non_porte	aucun	1	9
+60ae07c4	HI_1_8_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	0
+60ae07c4	HI_1_8_0	ti=43 i31 device-dispenser-monitors-changed-component	43	31	device-dispenser-monitors-changed-component	non_porte	aucun	1	8
+60ae07c4	HI_1_8_0	ti=43 i35 device-animation-layer-state-component	43	35	device-animation-layer-state-component	non_porte	aucun	1	6
+60ae07c4	HI_1_8_0	ti=45 i0 matchflow-sequence-data-component	45	0	matchflow-sequence-data-component	non_porte	aucun	3	20
+60ae07c4	HI_1_8_0	ti=46 i23 state-broker-state-changed-data-component	46	23	state-broker-state-changed-data-component	non_porte	aucun	1	6
+60ae07c4	HI_1_8_0	ti=46 i31 state-broker-state-changed-data-component	46	31	state-broker-state-changed-data-component	non_porte	aucun	1	8
+60ae07c4	HI_1_8_0	ti=46 i35 state-broker-state-changed-data-component	46	35	state-broker-state-changed-data-component	non_porte	aucun	1	7
+60ae07c4	HI_1_8_0	ti=46 i5 state-broker-state-changed-data-component	46	5	state-broker-state-changed-data-component	non_porte	aucun	2	11
+60ae07c4	HI_1_8_0	ti=48 i0 forge-player-data-edited-objects-ids-component	48	0	forge-player-data-edited-objects-ids-component	non_porte	aucun	10	68
+60ae07c4	HI_1_8_0	ti=48 i1 forge-player-data-editing-graphs-component	48	1	forge-player-data-editing-graphs-component	non_porte	aucun	1	6
+60ae07c4	HI_1_8_0	ti=5 i10 player-primary-respawn-object-component	5	10	player-primary-respawn-object-component	partiel	aucun	2	16
+60ae07c4	HI_1_8_0	ti=5 i7 player-desired-respawn-seat-component	5	7	player-desired-respawn-seat-component	partiel	aucun	1	9
+60ae07c4	HI_1_8_0	ti=50 archetype hors registre	50	-1				8	49
+60ae07c4	HI_1_8_0	ti=51 archetype hors registre	51	-1				22	142
+60ae07c4	HI_1_8_0	ti=52 archetype hors registre	52	-1				8	57
+60ae07c4	HI_1_8_0	ti=53 archetype hors registre	53	-1				8	43
+60ae07c4	HI_1_8_0	ti=54 archetype hors registre	54	-1				8	28
+60ae07c4	HI_1_8_0	ti=55 archetype hors registre	55	-1				11	61
+60ae07c4	HI_1_8_0	ti=56 archetype hors registre	56	-1				73	180
+60ae07c4	HI_1_8_0	ti=57 archetype hors registre	57	-1				4	28
+60ae07c4	HI_1_8_0	ti=58 archetype hors registre	58	-1				4	29
+60ae07c4	HI_1_8_0	ti=59 archetype hors registre	59	-1				16	53
+60ae07c4	HI_1_8_0	ti=60 archetype hors registre	60	-1				5	34
+60ae07c4	HI_1_8_0	ti=61 archetype hors registre	61	-1				3	20
+60ae07c4	HI_1_8_0	ti=62 archetype hors registre	62	-1				4	33
+60ae07c4	HI_1_8_0	ti=63 archetype hors registre	63	-1				5	35
+60ae07c4	HI_1_8_0	ti=7 i0 forge-sim-generic-component	7	0	forge-sim-generic-component	non_porte	aucun	2	17
+60ae07c4	HI_1_8_0	ti=7 i1 forge-sim-generic-component	7	1	forge-sim-generic-component	non_porte	aucun	1	8
+60ae07c4	HI_1_8_0	ti=7 i31 forge-sim-generic-component	7	31	forge-sim-generic-component	non_porte	aucun	1	7
+60ae07c4	HI_1_8_0	ti=7 i42 forge-sim-generic-component	7	42	forge-sim-generic-component	non_porte	aucun	1	7
+60ae07c4	HI_1_8_0	ti=7 i8 forge-sim-generic-component	7	8	forge-sim-generic-component	non_porte	aucun	1	9
+60ae07c4	HI_1_8_0	vue B : fin de payload	-1	-1				329	1649
+60ae07c4	HI_1_8_0	vue C : bloc 0xbc non porte	-1	-1				145	926
+60ae07c4	HI_1_8_0	vue C : debordement	-1	-1				26	126
+60ae07c4	HI_1_8_0	vue C : kind non porte	-1	-1				729	4083
+60ae07c4	HI_1_8_0	vue C : terminateur hors cadre	-1	-1				30283	176241
+a349fea8	version-33	liste d evenements non localisee	-1	-1				4041	0
+a349fea8	version-33	ti=0 i11 game-engine-soft-ceilings-component	0	11	game-engine-soft-ceilings-component	non_porte	aucun	1	0
+a349fea8	version-33	ti=0 i13 game-engine-disabled-kill-volume-flags-component	0	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	1	6
+a349fea8	version-33	ti=0 i21 forge-engine-forge-mode-component	0	21	forge-engine-forge-mode-component	non_porte	aucun	1	0
+a349fea8	version-33	ti=10 i10 managed-object-navpoint-component	10	10	managed-object-navpoint-component	non_porte	aucun	1	10
+a349fea8	version-33	ti=10 i15 managed-object-navpoint-component	10	15	managed-object-navpoint-component	non_porte	aucun	1	0
+a349fea8	version-33	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	13	123
+a349fea8	version-33	ti=10 i22 managed-object-interaction-filter-component	10	22	managed-object-interaction-filter-component	non_porte	aucun	10	241
+a349fea8	version-33	ti=10 i3 managed-object-navpoint-component	10	3	managed-object-navpoint-component	non_porte	aucun	3	23
+a349fea8	version-33	ti=10 i4 managed-object-navpoint-component	10	4	managed-object-navpoint-component	non_porte	aucun	1	0
+a349fea8	version-33	ti=12 i13 managed-navpoint-top-progress	12	13	managed-navpoint-top-progress	non_porte	aucun	1	1
+a349fea8	version-33	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	5	89
+a349fea8	version-33	ti=12 i18 managed-navpoint-position-offset	12	18	managed-navpoint-position-offset	non_porte	aucun	2	0
+a349fea8	version-33	ti=12 i20 managed-navpoint-visual-state-groups-component-0	12	20	managed-navpoint-visual-state-groups-component-0	non_porte	aucun	16	416
+a349fea8	version-33	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	37	937
+a349fea8	version-33	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	70	1754
+a349fea8	version-33	ti=15 i2 nav-cutscene-flag-component	15	2	nav-cutscene-flag-component	partiel	aucun	1	0
+a349fea8	version-33	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	499	0
+a349fea8	version-33	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	1	0
+a349fea8	version-33	ti=27 i3 supply-lines-item-unlocked-component	27	3	supply-lines-item-unlocked-component	non_porte	aucun	1	0
+a349fea8	version-33	ti=34 i14 tacmap-playercontrol	34	14	tacmap-playercontrol	non_porte	aucun	1	0
+a349fea8	version-33	ti=35 i59 biped-spartan-ability-non-predicted-state	35	59	biped-spartan-ability-non-predicted-state	partiel	rejeu : grappleLines[] (schema 8) — la ligne blanche du joueur vers son ancre, fenetre [t0,t1] par vie	11	98
+a349fea8	version-33	ti=40 i30 vehicle-auto-turret-triggers-component	40	30	vehicle-auto-turret-triggers-component	non_porte	aucun	10	6
+a349fea8	version-33	ti=40 i31 vehicle-auto-turret-aiming-vector-component	40	31	vehicle-auto-turret-aiming-vector-component	non_porte	aucun	5	3
+a349fea8	version-33	ti=40 i36 vehicle-sentry-state-component	40	36	vehicle-sentry-state-component	non_porte	aucun	2	2
+a349fea8	version-33	ti=40 i38 vehicle-weapon-set-component	40	38	vehicle-weapon-set-component	non_porte	aucun	80	1747
+a349fea8	version-33	ti=40 i40 vehicle-equipment-turret-parent-component	40	40	vehicle-equipment-turret-parent-component	non_porte	aucun	4	3
+a349fea8	version-33	ti=40 i45 air-drop-flight-component	40	45	air-drop-flight-component	non_porte	aucun	20	493
+a349fea8	version-33	ti=40 i46 warp-component	40	46	warp-component	non_porte	aucun	10	233
+a349fea8	version-33	ti=40 i47 vehicle-low-frequency-component	40	47	vehicle-low-frequency-component	non_porte	aucun	15	331
+a349fea8	version-33	ti=43 i19 device-position-animation-name-component	43	19	device-position-animation-name-component	non_porte	aucun	3	0
+a349fea8	version-33	ti=43 i20 device-position-animation-control-component	43	20	device-position-animation-control-component	non_porte	aucun	1	0
+a349fea8	version-33	ti=43 i21 device-position-group-component	43	21	device-position-group-component	non_porte	aucun	84	1986
+a349fea8	version-33	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	0
+a349fea8	version-33	ti=43 i23 device-power-group-component	43	23	device-power-group-component	non_porte	aucun	2	0
+a349fea8	version-33	ti=43 i24 device-interaction-in-progress-component	43	24	device-interaction-in-progress-component	non_porte	aucun	2	45
+a349fea8	version-33	ti=43 i30 device-in-primary-mode-component	43	30	device-in-primary-mode-component	non_porte	aucun	1	22
+a349fea8	version-33	ti=43 i34 device-animation-layer-settings-component	43	34	device-animation-layer-settings-component	non_porte	aucun	1	0
+a349fea8	version-33	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	12	298
+a349fea8	version-33	ti=46 i0 state-broker-state-changed-data-component	46	0	state-broker-state-changed-data-component	non_porte	aucun	1	0
+a349fea8	version-33	ti=46 i1 state-broker-state-changed-data-component	46	1	state-broker-state-changed-data-component	non_porte	aucun	1	0
+a349fea8	version-33	ti=48 i0 forge-player-data-edited-objects-ids-component	48	0	forge-player-data-edited-objects-ids-component	non_porte	aucun	1	0
+a349fea8	version-33	ti=48 i1 forge-player-data-editing-graphs-component	48	1	forge-player-data-editing-graphs-component	non_porte	aucun	1	9
+a349fea8	version-33	ti=49 archetype hors registre	49	-1				2	0
+a349fea8	version-33	ti=5 i10 player-primary-respawn-object-component	5	10	player-primary-respawn-object-component	partiel	aucun	1	0
+a349fea8	version-33	ti=50 archetype hors registre	50	-1				2	0
+a349fea8	version-33	ti=52 archetype hors registre	52	-1				2	0
+a349fea8	version-33	ti=54 archetype hors registre	54	-1				1	0
+a349fea8	version-33	ti=56 archetype hors registre	56	-1				1	0
+a349fea8	version-33	ti=58 archetype hors registre	58	-1				1	0
+a349fea8	version-33	ti=59 archetype hors registre	59	-1				1	0
+a349fea8	version-33	ti=61 archetype hors registre	61	-1				1	1
+a349fea8	version-33	ti=7 i0 forge-sim-generic-component	7	0	forge-sim-generic-component	non_porte	aucun	1	1
+a349fea8	version-33	vue B : fin de payload	-1	-1				7	4
+a349fea8	version-33	vue C : bloc 0xbc non porte	-1	-1				152	2087
+a349fea8	version-33	vue C : debordement	-1	-1				8	0
+a349fea8	version-33	vue C : kind non porte	-1	-1				927	21404
+a349fea8	version-33	vue C : terminateur hors cadre	-1	-1				22206	433476
+a521164d	HI_1_4_1	liste d evenements non localisee	-1	-1				1291	0
+a521164d	HI_1_4_1	ti=0 i16 scenario-intro-component	0	16	scenario-intro-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=10 i11 managed-object-navpoint-component	10	11	managed-object-navpoint-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=10 i15 managed-object-navpoint-component	10	15	managed-object-navpoint-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	17	353
+a521164d	HI_1_4_1	ti=10 i22 managed-object-interaction-filter-component	10	22	managed-object-interaction-filter-component	non_porte	aucun	6	122
+a521164d	HI_1_4_1	ti=10 i3 managed-object-navpoint-component	10	3	managed-object-navpoint-component	non_porte	aucun	2	40
+a521164d	HI_1_4_1	ti=10 i4 managed-object-navpoint-component	10	4	managed-object-navpoint-component	non_porte	aucun	1	12
+a521164d	HI_1_4_1	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	4	48
+a521164d	HI_1_4_1	ti=12 i18 managed-navpoint-position-offset	12	18	managed-navpoint-position-offset	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=12 i20 managed-navpoint-visual-state-groups-component-0	12	20	managed-navpoint-visual-state-groups-component-0	non_porte	aucun	5	106
+a521164d	HI_1_4_1	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	10	235
+a521164d	HI_1_4_1	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	25	582
+a521164d	HI_1_4_1	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	127	0
+a521164d	HI_1_4_1	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=25 i0 powerframe-player-selection-data-component	25	0	powerframe-player-selection-data-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=34 i10 tacmap-mapdismissallock	34	10	tacmap-mapdismissallock	non_porte	aucun	2	8
+a521164d	HI_1_4_1	ti=34 i12 tacmap-backmenulocked-state	34	12	tacmap-backmenulocked-state	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=34 i14 tacmap-playercontrol	34	14	tacmap-playercontrol	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=35 i59 biped-spartan-ability-non-predicted-state	35	59	biped-spartan-ability-non-predicted-state	partiel	rejeu : grappleLines[] (schema 8) — la ligne blanche du joueur vers son ancre, fenetre [t0,t1] par vie	3	29
+a521164d	HI_1_4_1	ti=40 i30 vehicle-auto-turret-triggers-component	40	30	vehicle-auto-turret-triggers-component	non_porte	aucun	9	5
+a521164d	HI_1_4_1	ti=40 i31 vehicle-auto-turret-aiming-vector-component	40	31	vehicle-auto-turret-aiming-vector-component	non_porte	aucun	2	0
+a521164d	HI_1_4_1	ti=40 i38 vehicle-weapon-set-component	40	38	vehicle-weapon-set-component	non_porte	aucun	43	840
+a521164d	HI_1_4_1	ti=40 i45 air-drop-flight-component	40	45	air-drop-flight-component	non_porte	aucun	10	223
+a521164d	HI_1_4_1	ti=40 i46 warp-component	40	46	warp-component	non_porte	aucun	6	143
+a521164d	HI_1_4_1	ti=40 i47 vehicle-low-frequency-component	40	47	vehicle-low-frequency-component	non_porte	aucun	6	129
+a521164d	HI_1_4_1	ti=43 i19 device-position-animation-name-component	43	19	device-position-animation-name-component	non_porte	aucun	3	0
+a521164d	HI_1_4_1	ti=43 i20 device-position-animation-control-component	43	20	device-position-animation-control-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=43 i21 device-position-group-component	43	21	device-position-group-component	non_porte	aucun	24	460
+a521164d	HI_1_4_1	ti=43 i23 device-power-group-component	43	23	device-power-group-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=43 i24 device-interaction-in-progress-component	43	24	device-interaction-in-progress-component	non_porte	aucun	2	40
+a521164d	HI_1_4_1	ti=43 i25 device-interaction-hold-time-component	43	25	device-interaction-hold-time-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=43 i29 device-exclusive-user-component	43	29	device-exclusive-user-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	3	73
+a521164d	HI_1_4_1	ti=45 i0 matchflow-sequence-data-component	45	0	matchflow-sequence-data-component	non_porte	aucun	2	0
+a521164d	HI_1_4_1	ti=45 i1 matchflow-focus-data-component	45	1	matchflow-focus-data-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=46 i1 state-broker-state-changed-data-component	46	1	state-broker-state-changed-data-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=46 i5 state-broker-state-changed-data-component	46	5	state-broker-state-changed-data-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=48 i0 forge-player-data-edited-objects-ids-component	48	0	forge-player-data-edited-objects-ids-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	ti=50 archetype hors registre	50	-1				2	0
+a521164d	HI_1_4_1	ti=51 archetype hors registre	51	-1				2	0
+a521164d	HI_1_4_1	ti=52 archetype hors registre	52	-1				2	1
+a521164d	HI_1_4_1	ti=54 archetype hors registre	54	-1				2	12
+a521164d	HI_1_4_1	ti=55 archetype hors registre	55	-1				1	1
+a521164d	HI_1_4_1	ti=56 archetype hors registre	56	-1				1	0
+a521164d	HI_1_4_1	ti=59 archetype hors registre	59	-1				1	0
+a521164d	HI_1_4_1	ti=60 archetype hors registre	60	-1				1	1
+a521164d	HI_1_4_1	ti=7 i3 forge-sim-generic-component	7	3	forge-sim-generic-component	non_porte	aucun	1	0
+a521164d	HI_1_4_1	vue B : fin de payload	-1	-1				1	1
+a521164d	HI_1_4_1	vue C : bloc 0xbc non porte	-1	-1				139	2322
+a521164d	HI_1_4_1	vue C : debordement	-1	-1				39	0
+a521164d	HI_1_4_1	vue C : kind non porte	-1	-1				254	4714
+a521164d	HI_1_4_1	vue C : terminateur hors cadre	-1	-1				8364	171027
+11de8353	HI_1_9_0	liste d evenements non localisee	-1	-1				1641	0
+11de8353	HI_1_9_0	ti=0 i11 game-engine-soft-ceilings-component	0	11	game-engine-soft-ceilings-component	non_porte	aucun	3	1
+11de8353	HI_1_9_0	ti=0 i20 forge-engine-map-properties-component	0	20	forge-engine-map-properties-component	non_porte	aucun	1	0
+11de8353	HI_1_9_0	ti=0 i21 forge-engine-forge-mode-component	0	21	forge-engine-forge-mode-component	non_porte	aucun	1	1
+11de8353	HI_1_9_0	ti=1 i13 game-engine-disabled-kill-volume-flags-component	1	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	2	2
+11de8353	HI_1_9_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	4	78
+11de8353	HI_1_9_0	ti=10 i21 managed-object-networked-property-component	10	21	managed-object-networked-property-component	non_porte	aucun	1	0
+11de8353	HI_1_9_0	ti=10 i22 managed-object-interaction-filter-component	10	22	managed-object-interaction-filter-component	non_porte	aucun	7	68
+11de8353	HI_1_9_0	ti=10 i3 managed-object-navpoint-component	10	3	managed-object-navpoint-component	non_porte	aucun	1	17
+11de8353	HI_1_9_0	ti=10 i4 managed-object-navpoint-component	10	4	managed-object-navpoint-component	non_porte	aucun	3	51
+11de8353	HI_1_9_0	ti=10 i8 managed-object-navpoint-component	10	8	managed-object-navpoint-component	non_porte	aucun	2	34
+11de8353	HI_1_9_0	ti=12 i15 managed-navpoint-bottom-progress	12	15	managed-navpoint-bottom-progress	non_porte	aucun	1	0
+11de8353	HI_1_9_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	3	23
+11de8353	HI_1_9_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	1	17
+11de8353	HI_1_9_0	ti=18 i0 effect-state-data-component	18	0	effect-state-data-component	partiel	aucun	4	0
+11de8353	HI_1_9_0	ti=18 i1 effect-state-data-component	18	1	effect-state-data-component	partiel	aucun	1	0
+11de8353	HI_1_9_0	ti=18 i4 effect-state-data-component	18	4	effect-state-data-component	partiel	aucun	2	0
+11de8353	HI_1_9_0	ti=19 i3 sound-placement-state-data-component	19	3	sound-placement-state-data-component	non_porte	aucun	1	0
+11de8353	HI_1_9_0	ti=2 i11 game-engine-soft-ceilings-component	2	11	game-engine-soft-ceilings-component	non_porte	aucun	13	174
+11de8353	HI_1_9_0	ti=2 i13 game-engine-disabled-kill-volume-flags-component	2	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	3	48
+11de8353	HI_1_9_0	ti=2 i14 GameEngineComposerLetterboxComponent	2	14	GameEngineComposerLetterboxComponent	non_porte	aucun	25	394
+11de8353	HI_1_9_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	28	1
+11de8353	HI_1_9_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	1	0
+11de8353	HI_1_9_0	ti=23 i2 selectable-zone-data-component	23	2	selectable-zone-data-component	deser_non_cable	aucun	1	21
+11de8353	HI_1_9_0	ti=23 i3 selectable-zone-data-component	23	3	selectable-zone-data-component	deser_non_cable	aucun	1	22
+11de8353	HI_1_9_0	ti=26 i1 supply-lines-blocked-status-component	26	1	supply-lines-blocked-status-component	non_porte	aucun	1	21
+11de8353	HI_1_9_0	ti=3 i0 low-frequency	3	0	low-frequency	non_porte	aucun	5	74
+11de8353	HI_1_9_0	ti=35 i59 biped-spartan-ability-non-predicted-state	35	59	biped-spartan-ability-non-predicted-state	partiel	rejeu : grappleLines[] (schema 8) — la ligne blanche du joueur vers son ancre, fenetre [t0,t1] par vie	9	93
+11de8353	HI_1_9_0	ti=40 i30 vehicle-auto-turret-triggers-component	40	30	vehicle-auto-turret-triggers-component	non_porte	aucun	1	0
+11de8353	HI_1_9_0	ti=40 i31 vehicle-auto-turret-aiming-vector-component	40	31	vehicle-auto-turret-aiming-vector-component	non_porte	aucun	4	4
+11de8353	HI_1_9_0	ti=40 i33 vehicle-type-state-component	40	33	vehicle-type-state-component	non_porte	aucun	4	79
+11de8353	HI_1_9_0	ti=40 i38 vehicle-weapon-set-component	40	38	vehicle-weapon-set-component	non_porte	aucun	30	548
+11de8353	HI_1_9_0	ti=40 i47 vehicle-low-frequency-component	40	47	vehicle-low-frequency-component	non_porte	aucun	3	55
+11de8353	HI_1_9_0	ti=43 i19 device-position-animation-name-component	43	19	device-position-animation-name-component	non_porte	aucun	16	264
+11de8353	HI_1_9_0	ti=43 i20 device-position-animation-control-component	43	20	device-position-animation-control-component	non_porte	aucun	8	129
+11de8353	HI_1_9_0	ti=43 i21 device-position-group-component	43	21	device-position-group-component	non_porte	aucun	6	101
+11de8353	HI_1_9_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	2	17
+11de8353	HI_1_9_0	ti=43 i23 device-power-group-component	43	23	device-power-group-component	non_porte	aucun	3	35
+11de8353	HI_1_9_0	ti=43 i25 device-interaction-hold-time-component	43	25	device-interaction-hold-time-component	non_porte	aucun	3	48
+11de8353	HI_1_9_0	ti=43 i26 device-control-action-string-override-component	43	26	device-control-action-string-override-component	non_porte	aucun	1	17
+11de8353	HI_1_9_0	ti=43 i27 device-health-station-charges-component	43	27	device-health-station-charges-component	non_porte	aucun	1	17
+11de8353	HI_1_9_0	ti=43 i29 device-exclusive-user-component	43	29	device-exclusive-user-component	non_porte	aucun	1	17
+11de8353	HI_1_9_0	ti=43 i32 device-dispenser-state-flags-component	43	32	device-dispenser-state-flags-component	non_porte	aucun	1	17
+11de8353	HI_1_9_0	ti=43 i34 device-animation-layer-settings-component	43	34	device-animation-layer-settings-component	non_porte	aucun	1	16
+11de8353	HI_1_9_0	ti=43 i36 device-dispenser-state-component	43	36	device-dispenser-state-component	non_porte	aucun	5	82
+11de8353	HI_1_9_0	ti=43 i38 device-position-transition-velocity-component	43	38	device-position-transition-velocity-component	non_porte	aucun	1	14
+11de8353	HI_1_9_0	ti=46 i0 state-broker-state-changed-data-component	46	0	state-broker-state-changed-data-component	non_porte	aucun	2	1
+11de8353	HI_1_9_0	ti=46 i13 state-broker-state-changed-data-component	46	13	state-broker-state-changed-data-component	non_porte	aucun	1	1
+11de8353	HI_1_9_0	ti=49 archetype hors registre	49	-1				2	1
+11de8353	HI_1_9_0	ti=5 i10 player-primary-respawn-object-component	5	10	player-primary-respawn-object-component	partiel	aucun	1	17
+11de8353	HI_1_9_0	ti=51 archetype hors registre	51	-1				1	0
+11de8353	HI_1_9_0	ti=52 archetype hors registre	52	-1				1	22
+11de8353	HI_1_9_0	ti=53 archetype hors registre	53	-1				4	63
+11de8353	HI_1_9_0	ti=55 archetype hors registre	55	-1				3	47
+11de8353	HI_1_9_0	ti=57 archetype hors registre	57	-1				2	17
+11de8353	HI_1_9_0	ti=58 archetype hors registre	58	-1				1	1
+11de8353	HI_1_9_0	ti=59 archetype hors registre	59	-1				6	111
+11de8353	HI_1_9_0	ti=61 archetype hors registre	61	-1				1	1
+11de8353	HI_1_9_0	ti=62 archetype hors registre	62	-1				1	0
+11de8353	HI_1_9_0	ti=63 archetype hors registre	63	-1				1	19
+11de8353	HI_1_9_0	vue B : fin de payload	-1	-1				6	36
+11de8353	HI_1_9_0	vue C : bloc 0xbc non porte	-1	-1				18	122
+11de8353	HI_1_9_0	vue C : debordement	-1	-1				1	0
+11de8353	HI_1_9_0	vue C : kind non porte	-1	-1				189	2319
+11de8353	HI_1_9_0	vue C : terminateur hors cadre	-1	-1				9792	177455
+50247b26	version-31	liste d evenements non localisee	-1	-1				2257	0
+50247b26	version-31	ti=0 i11 game-engine-soft-ceilings-component	0	11	game-engine-soft-ceilings-component	non_porte	aucun	6	85
+50247b26	version-31	ti=0 i16 scenario-intro-component	0	16	scenario-intro-component	non_porte	aucun	2	28
+50247b26	version-31	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	24	480
+50247b26	version-31	ti=10 i3 managed-object-navpoint-component	10	3	managed-object-navpoint-component	non_porte	aucun	1	26
+50247b26	version-31	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	2	51
+50247b26	version-31	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	1	26
+50247b26	version-31	ti=18 i22 effect-state-data-component	18	22	effect-state-data-component	partiel	aucun	1	17
+50247b26	version-31	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	44	0
+50247b26	version-31	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	2	0
+50247b26	version-31	ti=35 i58 biped-spartan-ability-non-predicted-state	35	58	biped-spartan-ability-non-predicted-state	partiel	rejeu : grappleLines[] (schema 8) — la ligne blanche du joueur vers son ancre, fenetre [t0,t1] par vie	1	16
+50247b26	version-31	ti=37 i27 equipment-charges-used-component	37	27	equipment-charges-used-component	hors table	hors table	3	0
+50247b26	version-31	ti=40 i32 vehicle-type-state-component	40	32	vehicle-type-state-component	non_porte	aucun	2	33
+50247b26	version-31	ti=40 i37 vehicle-weapon-set-component	40	37	vehicle-weapon-set-component	non_porte	aucun	60	1294
+50247b26	version-31	ti=40 i44 air-drop-flight-component	40	44	air-drop-flight-component	non_porte	aucun	13	335
+50247b26	version-31	ti=40 i45 warp-component	40	45	warp-component	non_porte	aucun	8	210
+50247b26	version-31	ti=40 i46 vehicle-low-frequency-component	40	46	vehicle-low-frequency-component	non_porte	aucun	3	59
+50247b26	version-31	ti=43 i21 device-position-group-component	43	21	device-position-group-component	non_porte	aucun	97	2137
+50247b26	version-31	ti=43 i26 device-control-action-string-override-component	43	26	device-control-action-string-override-component	non_porte	aucun	1	0
+50247b26	version-31	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	5	123
+50247b26	version-31	ti=52 archetype hors registre	52	-1				1	0
+50247b26	version-31	ti=59 archetype hors registre	59	-1				1	29
+50247b26	version-31	vue B : fin de payload	-1	-1				2	2
+50247b26	version-31	vue C : bloc 0xbc non porte	-1	-1				552	13569
+50247b26	version-31	vue C : debordement	-1	-1				1	0
+50247b26	version-31	vue C : kind non porte	-1	-1				896	23319
+50247b26	version-31	vue C : terminateur hors cadre	-1	-1				13780	276937
+bfecd02b	HI_1_13_0	liste d evenements non localisee	-1	-1				526	0
+bfecd02b	HI_1_13_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	2	15
+bfecd02b	HI_1_13_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	2	7
+bfecd02b	HI_1_13_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	17	139
+bfecd02b	HI_1_13_0	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	9	70
+bfecd02b	HI_1_13_0	ti=12 i23 managed-navpoint-visual-state-groups-component-3	12	23	managed-navpoint-visual-state-groups-component-3	non_porte	aucun	2	14
+bfecd02b	HI_1_13_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	318	0
+bfecd02b	HI_1_13_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	5	0
+bfecd02b	HI_1_13_0	ti=40 i30 vehicle-auto-turret-triggers-component	40	30	vehicle-auto-turret-triggers-component	non_porte	aucun	1	8
+bfecd02b	HI_1_13_0	ti=40 i31 vehicle-auto-turret-aiming-vector-component	40	31	vehicle-auto-turret-aiming-vector-component	non_porte	aucun	787	4800
+bfecd02b	HI_1_13_0	ti=40 i38 vehicle-weapon-set-component	40	38	vehicle-weapon-set-component	non_porte	aucun	2	9
+bfecd02b	HI_1_13_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	1
+bfecd02b	HI_1_13_0	vue C : debordement	-1	-1				1	0
+bfecd02b	HI_1_13_0	vue C : kind non porte	-1	-1				2	0
+bfecd02b	HI_1_13_0	vue C : terminateur hors cadre	-1	-1				3154	23320
+4f77afc1	HI_1_13_0	liste d evenements non localisee	-1	-1				2277	0
+4f77afc1	HI_1_13_0	ti=1 i11 game-engine-soft-ceilings-component	1	11	game-engine-soft-ceilings-component	non_porte	aucun	1	2
+4f77afc1	HI_1_13_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	57	1360
+4f77afc1	HI_1_13_0	ti=10 i22 managed-object-interaction-filter-component	10	22	managed-object-interaction-filter-component	non_porte	aucun	3	0
+4f77afc1	HI_1_13_0	ti=10 i3 managed-object-navpoint-component	10	3	managed-object-navpoint-component	non_porte	aucun	2	49
+4f77afc1	HI_1_13_0	ti=10 i4 managed-object-navpoint-component	10	4	managed-object-navpoint-component	non_porte	aucun	1	26
+4f77afc1	HI_1_13_0	ti=11 i4 managed-objective-interaction-filter-component	11	4	managed-objective-interaction-filter-component	non_porte	aucun	10	220
+4f77afc1	HI_1_13_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	4	85
+4f77afc1	HI_1_13_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	42	1099
+4f77afc1	HI_1_13_0	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	27	660
+4f77afc1	HI_1_13_0	ti=12 i24 managed-navpoint-visual-state-groups-component-4	12	24	managed-navpoint-visual-state-groups-component-4	non_porte	aucun	2	51
+4f77afc1	HI_1_13_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	207	1
+4f77afc1	HI_1_13_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	1	0
+4f77afc1	HI_1_13_0	ti=31 i3 tacmap-rawlocation	31	3	tacmap-rawlocation	non_porte	aucun	1	29
+4f77afc1	HI_1_13_0	ti=35 i59 biped-spartan-ability-non-predicted-state	35	59	biped-spartan-ability-non-predicted-state	partiel	rejeu : grappleLines[] (schema 8) — la ligne blanche du joueur vers son ancre, fenetre [t0,t1] par vie	32	338
+4f77afc1	HI_1_13_0	ti=40 i33 vehicle-type-state-component	40	33	vehicle-type-state-component	non_porte	aucun	66	1444
+4f77afc1	HI_1_13_0	ti=40 i38 vehicle-weapon-set-component	40	38	vehicle-weapon-set-component	non_porte	aucun	68	1698
+4f77afc1	HI_1_13_0	ti=40 i47 vehicle-low-frequency-component	40	47	vehicle-low-frequency-component	non_porte	aucun	3	66
+4f77afc1	HI_1_13_0	ti=43 i19 device-position-animation-name-component	43	19	device-position-animation-name-component	non_porte	aucun	8	4
+4f77afc1	HI_1_13_0	ti=43 i21 device-position-group-component	43	21	device-position-group-component	non_porte	aucun	203	4514
+4f77afc1	HI_1_13_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	0
+4f77afc1	HI_1_13_0	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	10	276
+4f77afc1	HI_1_13_0	ti=52 archetype hors registre	52	-1				1	1
+4f77afc1	HI_1_13_0	ti=54 archetype hors registre	54	-1				1	1
+4f77afc1	HI_1_13_0	ti=56 archetype hors registre	56	-1				2	54
+4f77afc1	HI_1_13_0	ti=57 archetype hors registre	57	-1				1	5
+4f77afc1	HI_1_13_0	ti=59 archetype hors registre	59	-1				1	24
+4f77afc1	HI_1_13_0	ti=63 archetype hors registre	63	-1				1	31
+4f77afc1	HI_1_13_0	vue B : fin de payload	-1	-1				1	25
+4f77afc1	HI_1_13_0	vue C : bloc 0xbc non porte	-1	-1				3	31
+4f77afc1	HI_1_13_0	vue C : debordement	-1	-1				1	0
+4f77afc1	HI_1_13_0	vue C : kind non porte	-1	-1				16	252
+4f77afc1	HI_1_13_0	vue C : terminateur hors cadre	-1	-1				9535	179588
+396cfc92	HI_1_13_0	liste d evenements non localisee	-1	-1				480	0
+396cfc92	HI_1_13_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	5	26
+396cfc92	HI_1_13_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	3	34
+396cfc92	HI_1_13_0	ti=12 i18 managed-navpoint-position-offset	12	18	managed-navpoint-position-offset	non_porte	aucun	1	0
+396cfc92	HI_1_13_0	ti=12 i20 managed-navpoint-visual-state-groups-component-0	12	20	managed-navpoint-visual-state-groups-component-0	non_porte	aucun	25	226
+396cfc92	HI_1_13_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	59	455
+396cfc92	HI_1_13_0	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	66	538
+396cfc92	HI_1_13_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	176	3
+396cfc92	HI_1_13_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	5	0
+396cfc92	HI_1_13_0	ti=40 i38 vehicle-weapon-set-component	40	38	vehicle-weapon-set-component	non_porte	aucun	1	8
+396cfc92	HI_1_13_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	1
+396cfc92	HI_1_13_0	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	28	238
+396cfc92	HI_1_13_0	ti=48 i1 forge-player-data-editing-graphs-component	48	1	forge-player-data-editing-graphs-component	non_porte	aucun	2	17
+396cfc92	HI_1_13_0	ti=51 archetype hors registre	51	-1				2	16
+396cfc92	HI_1_13_0	ti=55 archetype hors registre	55	-1				2	17
+396cfc92	HI_1_13_0	ti=56 archetype hors registre	56	-1				1	7
+396cfc92	HI_1_13_0	ti=59 archetype hors registre	59	-1				1	7
+396cfc92	HI_1_13_0	ti=63 archetype hors registre	63	-1				2	17
+396cfc92	HI_1_13_0	vue C : debordement	-1	-1				1	0
+396cfc92	HI_1_13_0	vue C : kind non porte	-1	-1				1	0
+396cfc92	HI_1_13_0	vue C : terminateur hors cadre	-1	-1				8362	56886
+f75e7053	HI_1_13_0	liste d evenements non localisee	-1	-1				477	0
+f75e7053	HI_1_13_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	12	85
+f75e7053	HI_1_13_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	2	13
+f75e7053	HI_1_13_0	ti=12 i20 managed-navpoint-visual-state-groups-component-0	12	20	managed-navpoint-visual-state-groups-component-0	non_porte	aucun	54	417
+f75e7053	HI_1_13_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	5	37
+f75e7053	HI_1_13_0	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	16	114
+f75e7053	HI_1_13_0	ti=12 i23 managed-navpoint-visual-state-groups-component-3	12	23	managed-navpoint-visual-state-groups-component-3	non_porte	aucun	1	3
+f75e7053	HI_1_13_0	ti=12 i25 managed-navpoint-visual-state-groups-component-5	12	25	managed-navpoint-visual-state-groups-component-5	non_porte	aucun	4	28
+f75e7053	HI_1_13_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	195	0
+f75e7053	HI_1_13_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	6	0
+f75e7053	HI_1_13_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	1	1
+f75e7053	HI_1_13_0	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	17	116
+f75e7053	HI_1_13_0	vue C : debordement	-1	-1				1	0
+f75e7053	HI_1_13_0	vue C : kind non porte	-1	-1				1	0
+f75e7053	HI_1_13_0	vue C : terminateur hors cadre	-1	-1				4287	26439
+1c4c63c2	HI_1_10_0	liste d evenements non localisee	-1	-1				12825	0
+1c4c63c2	HI_1_10_0	ti=0 i13 game-engine-disabled-kill-volume-flags-component	0	13	game-engine-disabled-kill-volume-flags-component	non_porte	aucun	1	4
+1c4c63c2	HI_1_10_0	ti=0 i14 GameEngineComposerLetterboxComponent	0	14	GameEngineComposerLetterboxComponent	non_porte	aucun	1	0
+1c4c63c2	HI_1_10_0	ti=0 i15 managed-engine-timers-component	0	15	managed-engine-timers-component	non_porte	aucun	1	0
+1c4c63c2	HI_1_10_0	ti=10 i13 managed-object-navpoint-component	10	13	managed-object-navpoint-component	non_porte	aucun	1	4
+1c4c63c2	HI_1_10_0	ti=10 i16 managed-object-navpoint-component	10	16	managed-object-navpoint-component	non_porte	aucun	1	0
+1c4c63c2	HI_1_10_0	ti=10 i17 managed-object-navpoint-component	10	17	managed-object-navpoint-component	non_porte	aucun	1	1
+1c4c63c2	HI_1_10_0	ti=10 i2 managed-object-navpoint-component	10	2	managed-object-navpoint-component	non_porte	aucun	18	236
+1c4c63c2	HI_1_10_0	ti=10 i3 managed-object-navpoint-component	10	3	managed-object-navpoint-component	non_porte	aucun	1	0
+1c4c63c2	HI_1_10_0	ti=10 i4 managed-object-navpoint-component	10	4	managed-object-navpoint-component	non_porte	aucun	1	0
+1c4c63c2	HI_1_10_0	ti=10 i5 managed-object-navpoint-component	10	5	managed-object-navpoint-component	non_porte	aucun	1	0
+1c4c63c2	HI_1_10_0	ti=10 i6 managed-object-navpoint-component	10	6	managed-object-navpoint-component	non_porte	aucun	1	0
+1c4c63c2	HI_1_10_0	ti=12 i16 managed-navpoint-override-flags	12	16	managed-navpoint-override-flags	non_porte	aucun	22	0
+1c4c63c2	HI_1_10_0	ti=12 i18 managed-navpoint-position-offset	12	18	managed-navpoint-position-offset	non_porte	aucun	4	0
+1c4c63c2	HI_1_10_0	ti=12 i21 managed-navpoint-visual-state-groups-component-1	12	21	managed-navpoint-visual-state-groups-component-1	non_porte	aucun	7	143
+1c4c63c2	HI_1_10_0	ti=12 i22 managed-navpoint-visual-state-groups-component-2	12	22	managed-navpoint-visual-state-groups-component-2	non_porte	aucun	5	88
+1c4c63c2	HI_1_10_0	ti=12 i24 managed-navpoint-visual-state-groups-component-4	12	24	managed-navpoint-visual-state-groups-component-4	non_porte	aucun	1	22
+1c4c63c2	HI_1_10_0	ti=12 i25 managed-navpoint-visual-state-groups-component-5	12	25	managed-navpoint-visual-state-groups-component-5	non_porte	aucun	2	38
+1c4c63c2	HI_1_10_0	ti=18 i1 effect-state-data-component	18	1	effect-state-data-component	partiel	aucun	1	0
+1c4c63c2	HI_1_10_0	ti=18 i19 effect-state-data-component	18	19	effect-state-data-component	partiel	aucun	1	5
+1c4c63c2	HI_1_10_0	ti=2 i11 game-engine-soft-ceilings-component	2	11	game-engine-soft-ceilings-component	non_porte	aucun	1	1
+1c4c63c2	HI_1_10_0	ti=2 i15 managed-engine-timers-component	2	15	managed-engine-timers-component	non_porte	aucun	166	0
+1c4c63c2	HI_1_10_0	ti=2 i17 matchflow-isplaying-flags-component	2	17	matchflow-isplaying-flags-component	non_porte	aucun	9	0
+1c4c63c2	HI_1_10_0	ti=20 i2 spawn-filter-filters-component	20	2	spawn-filter-filters-component	non_porte	aucun	1	4
+1c4c63c2	HI_1_10_0	ti=24 i0 state-checksum-component	24	0	state-checksum-component	non_porte	aucun	1	1
+1c4c63c2	HI_1_10_0	ti=27 i8 supply-lines-item-unlocked-component	27	8	supply-lines-item-unlocked-component	non_porte	aucun	1	0
+1c4c63c2	HI_1_10_0	ti=34 i10 tacmap-mapdismissallock	34	10	tacmap-mapdismissallock	non_porte	aucun	3	22
+1c4c63c2	HI_1_10_0	ti=35 i59 biped-spartan-ability-non-predicted-state	35	59	biped-spartan-ability-non-predicted-state	partiel	rejeu : grappleLines[] (schema 8) — la ligne blanche du joueur vers son ancre, fenetre [t0,t1] par vie	25	195
+1c4c63c2	HI_1_10_0	ti=40 i30 vehicle-auto-turret-triggers-component	40	30	vehicle-auto-turret-triggers-component	non_porte	aucun	1	1
+1c4c63c2	HI_1_10_0	ti=40 i31 vehicle-auto-turret-aiming-vector-component	40	31	vehicle-auto-turret-aiming-vector-component	non_porte	aucun	1	1
+1c4c63c2	HI_1_10_0	ti=40 i32 vehicle-transformed-or-desired-open-state-changed-component	40	32	vehicle-transformed-or-desired-open-state-changed-component	non_porte	aucun	1	1
+1c4c63c2	HI_1_10_0	ti=40 i38 vehicle-weapon-set-component	40	38	vehicle-weapon-set-component	non_porte	aucun	51	926
+1c4c63c2	HI_1_10_0	ti=43 i19 device-position-animation-name-component	43	19	device-position-animation-name-component	non_porte	aucun	5	48
+1c4c63c2	HI_1_10_0	ti=43 i20 device-position-animation-control-component	43	20	device-position-animation-control-component	non_porte	aucun	3	26
+1c4c63c2	HI_1_10_0	ti=43 i21 device-position-group-component	43	21	device-position-group-component	non_porte	aucun	4	26
+1c4c63c2	HI_1_10_0	ti=43 i22 device-power-component	43	22	device-power-component	non_porte	aucun	2	4
+1c4c63c2	HI_1_10_0	ti=43 i23 device-power-group-component	43	23	device-power-group-component	non_porte	aucun	1	4
+1c4c63c2	HI_1_10_0	ti=43 i24 device-interaction-in-progress-component	43	24	device-interaction-in-progress-component	non_porte	aucun	1	4
+1c4c63c2	HI_1_10_0	ti=43 i27 device-health-station-charges-component	43	27	device-health-station-charges-component	non_porte	aucun	1	4
+1c4c63c2	HI_1_10_0	ti=43 i29 device-exclusive-user-component	43	29	device-exclusive-user-component	non_porte	aucun	1	4
+1c4c63c2	HI_1_10_0	ti=43 i30 device-in-primary-mode-component	43	30	device-in-primary-mode-component	non_porte	aucun	1	4
+1c4c63c2	HI_1_10_0	ti=43 i32 device-dispenser-state-flags-component	43	32	device-dispenser-state-flags-component	non_porte	aucun	6	20
+1c4c63c2	HI_1_10_0	ti=43 i35 device-animation-layer-state-component	43	35	device-animation-layer-state-component	non_porte	aucun	1	4
+1c4c63c2	HI_1_10_0	ti=43 i36 device-dispenser-state-component	43	36	device-dispenser-state-component	non_porte	aucun	1	3
+1c4c63c2	HI_1_10_0	ti=43 i39 device-machine-flags-component	43	39	device-machine-flags-component	non_porte	aucun	3	12
+1c4c63c2	HI_1_10_0	ti=43 i40 device-interaction-start-time-override-component	43	40	device-interaction-start-time-override-component	non_porte	aucun	1	4
+1c4c63c2	HI_1_10_0	ti=48 i0 forge-player-data-edited-objects-ids-component	48	0	forge-player-data-edited-objects-ids-component	non_porte	aucun	910	8031
+1c4c63c2	HI_1_10_0	ti=5 i10 player-primary-respawn-object-component	5	10	player-primary-respawn-object-component	partiel	aucun	1	0
+1c4c63c2	HI_1_10_0	ti=52 archetype hors registre	52	-1				2	5
+1c4c63c2	HI_1_10_0	ti=53 archetype hors registre	53	-1				2	4
+1c4c63c2	HI_1_10_0	ti=54 archetype hors registre	54	-1				5	8
+1c4c63c2	HI_1_10_0	ti=58 archetype hors registre	58	-1				2	1
+1c4c63c2	HI_1_10_0	vue B : fin de payload	-1	-1				7	7
+1c4c63c2	HI_1_10_0	vue C : bloc 0xbc non porte	-1	-1				21	145
+1c4c63c2	HI_1_10_0	vue C : debordement	-1	-1				1	0
+1c4c63c2	HI_1_10_0	vue C : kind non porte	-1	-1				119	309
+1c4c63c2	HI_1_10_0	vue C : terminateur hors cadre	-1	-1				45938	596561

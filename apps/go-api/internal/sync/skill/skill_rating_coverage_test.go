@@ -3,7 +3,6 @@ package skill
 import (
 	"math"
 	"testing"
-	"time"
 )
 
 // ── NewPlayerState ───────────────────────────────────────────────────────────
@@ -176,73 +175,5 @@ func TestSplitParticipantKEs_WithTeamID(t *testing.T) {
 	}
 	if len(enemies) != 2 {
 		t.Fatalf("expected 2 enemies, got %d", len(enemies))
-	}
-}
-
-// ── computeSkillRatingsBatch ─────────────────────────────────────────────────
-
-func TestComputeSkillRatingsBatch_Empty(t *testing.T) {
-	results := computeSkillRatingsBatch("", nil, nil, nil, nil)
-	if len(results) != 0 {
-		t.Fatalf("expected 0 results, got %d", len(results))
-	}
-}
-
-func TestComputeSkillRatingsBatch_SingleMatch(t *testing.T) {
-	outcome := 2 // WIN
-	now := time.Now()
-	pl := "Ranked Arena"
-	matches := []LusrMatchData{
-		{
-			MatchID:        "m1",
-			StartTime:      now,
-			PlaylistName:   &pl,
-			Outcome:        &outcome,
-			Kills:          20,
-			Deaths:         5,
-			KillsExpected:  10,
-			DeathsExpected: 8,
-			DamageDealt:    2000,
-			DamageTaken:    500,
-			Accuracy:       0.5,
-		},
-	}
-	team1 := 1
-	participants := map[string][]lusrParticipant{
-		"m1": {
-			{MatchID: "m1", XUID: "x1", TeamID: &team1, KillsExpected: 10},
-			{MatchID: "m1", XUID: "x2", TeamID: &team1, KillsExpected: 8},
-		},
-	}
-	results := computeSkillRatingsBatch("", matches, participants, nil, nil)
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result, got %d", len(results))
-	}
-	if results[0].MatchID != "m1" {
-		t.Fatalf("expected m1, got %s", results[0].MatchID)
-	}
-	if results[0].RatingValue <= 0 {
-		t.Fatalf("expected positive rating, got %f", results[0].RatingValue)
-	}
-}
-
-func TestComputeSkillRatingsBatch_NilOutcomeGuard(t *testing.T) {
-	now := time.Now()
-	matches := []LusrMatchData{
-		{
-			MatchID:   "m-noout",
-			StartTime: now,
-			Outcome:   nil,
-			Kills:     5,
-			Deaths:    5,
-		},
-	}
-	results := computeSkillRatingsBatch("", matches, nil, nil, nil)
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result, got %d", len(results))
-	}
-	// Should still produce a result with default MU
-	if results[0].RatingValue <= 0 {
-		t.Fatal("expected positive rating even with nil outcome")
 	}
 }

@@ -27,14 +27,32 @@ import type { ColorPalette } from '@/stores/settingsDraftStore'
  *  - 'divergent'  : indicateur signé (K/D vs 0) — rampe bas → neutre → haut.
  *  - 'frequency'  : intensité NEUTRE (nombre de rencontres, activité) — rampe
  *    fréquence mono-teinte dans toutes les palettes.
+ *  - 'intensity'  : intensité NEUTRE À TROIS POINTS, dont le dernier est un
+ *    EXTRÊME RARE (carte de chaleur du rejeu 2D). La rampe de fréquence est
+ *    mono-teinte : elle dit « plus ou moins », jamais « et là, beaucoup plus ».
+ *    Celle-ci change de teinte deux fois, ce qui rend visible le haut de
+ *    l'échelle — c'est la demande du 2026-08-18 (« bleu -> rouge -> violet aux
+ *    extrêmes rares »). Elle n'est PAS mono-teinte, donc pas monotone en
+ *    luminance : elle s'emploie là où le nombre de paliers est grand (64) et où
+ *    l'OPACITÉ monte avec l'intensité, ce qui rétablit l'ordre perceptuel.
  */
-export type HeatmapRampMode = 'sequential' | 'divergent' | 'frequency'
+export type HeatmapRampMode = 'sequential' | 'divergent' | 'frequency' | 'intensity'
 
 /** Rampe de fréquence : mono-teinte, monotone en luminance → CVD-safe partout. */
 const FREQ_RAMP: readonly SemanticToken[] = ['heatmap-freq-low', 'heatmap-freq-high']
 
 /** Rampe séquentielle « à connotation » (vision standard uniquement). */
 const CONNOTATION_RAMP: readonly SemanticToken[] = ['heatmap-cold', 'heatmap-hot']
+
+/**
+ * Rampe d'INTENSITÉ à trois points : bleu (peu) → rouge (beaucoup) → violet (extrême rare).
+ *
+ * TROIS TOKENS DÉJÀ SÉMANTIQUES, et c'est délibéré : chaque palette d'accessibilité les
+ * remappe déjà pour rester distinguables entre eux (sous Okabe-Ito, la rampe devient Sky
+ * Blue → Vermillion → Reddish Purple, trois couleurs de la même référence CUD). Inventer
+ * trois nouveaux tokens aurait dupliqué ce travail sans rien ajouter.
+ */
+const INTENSITY_RAMP: readonly SemanticToken[] = ['info', 'destructive', 'extreme']
 
 /** Rampe divergente signée (bas → neutre → haut). */
 const DIVERGENT_RAMP: readonly SemanticToken[] = [
@@ -57,6 +75,8 @@ export function heatmapRampTokens(
       return [...DIVERGENT_RAMP]
     case 'frequency':
       return [...FREQ_RAMP]
+    case 'intensity':
+      return [...INTENSITY_RAMP]
     case 'sequential':
     default:
       // Palette CVD → rampe luminance-monotone ; sinon rampe cold→hot familière.

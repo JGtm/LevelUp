@@ -265,5 +265,6 @@ func mediaCapturesBase(store *settings.Store) string {
 // implicite via le préfixe rpath).
 //
 // Compat legacy : fallbacks vers capturesBase+slug (rpath sans préfixe owner)
-// et repoRoot interne pour les URLs encore présentes en cache navigateur ou
-// dans des paths absolus non migrés.
+// et le dossier captures/ interne du joueur pour les URLs encore présentes en
+// cache navigateur ou dans des paths absolus non migrés. Seules les extensions
+// média (media.IsServableExt) sont servies, sur toutes les racines.

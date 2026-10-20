@@ -95,27 +95,6 @@ func findCoreStats(player map[string]any) map[string]any {
 	return nil
 }
 
-// isRankedPlaylist détermine si le match est un match classé.
-// Portage de _is_ranked_playlist() Python.
-func isRankedPlaylist(matchInfo map[string]any) bool {
-	playlist, _ := matchInfo["Playlist"].(map[string]any)
-	if playlist == nil {
-		return false
-	}
-	name, _ := playlist["PublicName"].(string)
-	if strings.Contains(strings.ToLower(name), PerfChainRanked) {
-		return true
-	}
-	if tags, ok := playlist["Tags"].([]any); ok {
-		for _, t := range tags {
-			if s, ok := t.(string); ok && strings.ToLower(s) == PerfChainRanked {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // isFirefightMatch détermine si le match est un mode Firefight/PvE.
 // Portage de _is_firefight_match() Python.
 func isFirefightMatch(matchInfo map[string]any) bool {
@@ -135,29 +114,27 @@ func isFirefightMatch(matchInfo map[string]any) bool {
 	return false
 }
 
-// determineModeCategory déduit la catégorie custom depuis pair_name.
-// Portage simplifié de infer_custom_category_from_pair_name() Python.
-func determineModeCategory(pairName string) string {
-	lower := strings.ToLower(pairName)
-	switch {
-	case strings.Contains(lower, PerfChainRanked):
-		return modeCategoryRanked
-	case strings.Contains(lower, PerfChainFirefight):
-		return modeCategoryFirefight
-	case strings.Contains(lower, "btb") || strings.Contains(lower, "big team") || strings.Contains(lower, "big-team"):
-		return modeCategoryBTB
-	case strings.Contains(lower, "fiesta"):
-		return modeCategoryFiesta
-	case strings.Contains(lower, "assassin"):
-		return modeCategoryAssassin
-	default:
-		return modeCategoryOther
-	}
-}
-
-// extractTeamScoresByID extrait les scores de team_0 et team_1.
+// ExtractTeamScoresByID extrait les scores de team_0 et team_1 depuis le payload
+// GetMatchStats, en les indexant par `Teams[].TeamId` (jamais par position dans le
+// tableau : l'ordre y suit le rang, pas l'identifiant de camp).
+//
 // Portage de _extract_team_scores_by_id() Python.
-func extractTeamScoresByID(matchJSON map[string]any) (*int, *int) {
+//
+// SOURCE UNIQUE DU SCORE D'ÉQUIPE, ET C'EST POUR ÇA QU'ELLE EST EXPORTÉE. Le champ lu,
+// `Teams[].Stats.CoreStats.Score`, est le score AFFICHÉ par le jeu — mesuré sur les 1 934
+// matchs du corpus le 2026-08-24 (rapport `.ai/V7.5/replay2d/RAPPORT_QUALITE_SCORE_EQUIPE.md`).
+// Le bloc voisin `Stats.ZonesStats.StrongholdScoringTicks` porte, lui, le compteur brut du
+// mode : 69 lignes de `match_registry` le contiennent par erreur, héritage d'une période où
+// l'API 343 servait ce compteur dans `CoreStats.Score` (corrigée entre avril et mai 2026).
+//
+// Toute relecture de ce score — sync ou backfill — passe par ICI. Une seconde
+// implémentation re-divergerait le jour où l'un des deux appelants suivrait le mauvais
+// champ, et c'est exactement le défaut que le backfill répare.
+// Appelants : `ExtractRegistry` (`transforms.go:128`, la sync) et `cmd/backfill-team-scores`.
+//
+// Retourne (nil, nil) si aucun bloc `Teams` exploitable ; un pointeur nil par camp absent
+// (FFA, équipes au-delà de 0/1) — l'appelant ne doit JAMAIS substituer un zéro à un nil.
+func ExtractTeamScoresByID(matchJSON map[string]any) (*int, *int) {
 	teams, _ := matchJSON["Teams"].([]any)
 	scores := map[int]int{}
 	for _, t := range teams {
@@ -190,6 +167,67 @@ func extractTeamScoresByID(matchJSON map[string]any) (*int, *int) {
 		p1 = &t1
 	}
 	return p0, p1
+}
+
+// ExtractTeamRoundsByID extrait les MANCHES de team_0 et team_1 depuis le payload
+// GetMatchStats, en les indexant par `Teams[].TeamId` — jumelle exacte de
+// ExtractTeamScoresByID, et pour la même raison : l'ordre du tableau suit le rang, pas
+// l'identifiant de camp.
+//
+// SOURCE UNIQUE DES MANCHES. Le champ lu, `Teams[].Stats.CoreStats.RoundsWon` (et ses
+// voisins `RoundsLost` / `RoundsTied`), est publié par l'API depuis toujours et n'était lu
+// nulle part avant le 2026-08-29. Il porte la seule grandeur qui dise le résultat d'un mode à
+// manches : mesuré sur les 1 942 matchs à score du corpus
+// (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`), 4 matchs Oddball donnent la victoire à l'équipe
+// qui a le MOINS de points, et seul le compte de manches les départage.
+//
+// LE TOTAL EST LE MAX DES DEUX CAMPS, PAS LE TOTAL D'UN SEUL. Quatre matchs du corpus
+// (abandons) créditent 1 manche à un camp et 0 à l'autre : lire un seul camp les ferait
+// passer pour des matchs sans manche. Le max est la lecture sûre — il ne peut que
+// sous-estimer un camp muet, jamais inventer une manche.
+//
+// Retourne (nil, nil, nil) si aucun bloc `Teams` exploitable ; un pointeur nil par camp
+// absent (FFA, équipes au-delà de 0/1). L'appelant ne doit JAMAIS substituer un zéro à un
+// nil : « 0 manche gagnée » et « on ne sait pas » sont deux affirmations différentes.
+func ExtractTeamRoundsByID(matchJSON map[string]any) (won0, won1, total *int) {
+	teams, _ := matchJSON["Teams"].([]any)
+	wonByID := map[int]int{}
+	maxTotal := 0
+	found := false
+	for _, t := range teams {
+		team, ok := t.(map[string]any)
+		if !ok {
+			continue
+		}
+		stats, _ := team["Stats"].(map[string]any)
+		if stats == nil {
+			continue
+		}
+		core, _ := stats["CoreStats"].(map[string]any)
+		if core == nil {
+			continue
+		}
+		w := intFrom(core, "RoundsWon")
+		sum := w + intFrom(core, "RoundsLost") + intFrom(core, "RoundsTied")
+		if sum > maxTotal {
+			maxTotal = sum
+		}
+		found = true
+		wonByID[intFrom(team, "TeamId")] = w
+	}
+	if !found {
+		return nil, nil, nil
+	}
+	if w, ok := wonByID[0]; ok {
+		v := w
+		won0 = &v
+	}
+	if w, ok := wonByID[1]; ok {
+		v := w
+		won1 = &v
+	}
+	t := maxTotal
+	return won0, won1, &t
 }
 
 // parsePTDuration convertit une durée ISO 8601 "PT1H2M3.456S" en secondes.

@@ -1,0 +1,22 @@
+film	build	ti	neufs	neufs_fermes	deltas	deltas_fermes	utiles	utiles_fermes	bloquant
+81c02726	HI_1_13_0	0	1	1	0	0	0	0	
+81c02726	HI_1_13_0	2	0	0	610	363	0	0	ti=2 i15 managed-engine-timers-component
+81c02726	HI_1_13_0	4	2	0	19329	15054	0	0	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	5	0	0	963	714	0	0	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	6	1	1	271	188	0	0	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	9	8	0	0	0	8	0	ti=43 i39 device-machine-flags-component
+81c02726	HI_1_13_0	10	96	22	13427	10466	0	0	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	12	2	1	9296	7169	9136	7112	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	13	0	0	1943	1456	1943	1456	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	21	2	0	2	2	0	0	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	22	2	1	1	0	0	0	vue C : kind non porte
+81c02726	HI_1_13_0	35	46	37	104298	81257	103470	80541	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	37	209	153	20531	18238	14170	12817	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	38	10	7	58	6	0	0	ti=12 i20 managed-navpoint-visual-state-groups-component-0
+81c02726	HI_1_13_0	40	3	2	13514	10795	13255	10556	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	41	349	252	5059	4223	4940	4056	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	42	120	73	8449	7685	7678	7006	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	43	0	0	1653	1310	0	0	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	44	1	1	0	0	0	0	
+81c02726	HI_1_13_0	47	0	0	8382	6531	0	0	vue C : terminateur hors cadre
+81c02726	HI_1_13_0	51	1	0	0	0	0	0	ti=51 archetype hors registre

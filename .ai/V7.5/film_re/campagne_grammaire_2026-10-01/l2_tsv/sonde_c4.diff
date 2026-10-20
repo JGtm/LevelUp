@@ -1,0 +1,175 @@
+--- movement_states.go	2026-10-02 21:39:18.419245400 +0200
++++ movement_states.go	2026-10-03 10:53:08.107043700 +0200
+@@ -193,7 +193,7 @@
+ 	if etats {
+ 		obs.EtatMouvementHook = sc.recevoir
+ 	}
+-	obs.VueControleHook = sc.tir.recevoir
++	obs.VueControleHook = func(l LectureVueC) { c4VueC, c4Vu = l, true; sc.tir.recevoir(l) }
+ 	cfg.Obs = obs
+ 	sc.obs = obs
+ 	sc.monde = NewWorld(reg)
+@@ -290,8 +290,11 @@
+ 	if _, present := PacketHeadEventType(pay); present {
+ 		sc.st.EventPackets++
+ 		var parRecordNeuf bool
++		strict := marchLocateStrict(pay, sc.monde, cfg)
++		r2 := sc.obs.DebutsDeListeParRepliFermeAuBit
+ 		debut, parRecordNeuf = debutDeLaListe(pay, sc.monde, cfg)
+ 		if debut < 0 {
++			c4Ecrire("P	%d	%d	%d	non_localisee	-1	-	-	-	-", chunk, pk.Index, pk.TimestampUS)
+ 			sc.st.EventPacketsUnlocated++
+ 			sc.tir.fermer(true) // liste non localisee : la vue C n est pas lue, c est un TROU
+ 			return
+@@ -300,10 +303,28 @@
+ 		if parRecordNeuf {
+ 			sc.st.EventPacketsNewRecordStart++
+ 		}
++		switch {
++		case strict >= 0 && !parRecordNeuf:
++			c4Classe = "strict"
++		case strict >= 0:
++			c4Classe = "chaine"
++		case sc.obs.DebutsDeListeParRepliFermeAuBit > r2:
++			c4Classe = "fermeture_rang2"
++		default:
++			c4Classe = "fermeture_rang1"
++		}
++	} else {
++		c4Classe = "sans_liste"
+ 	}
+ 	sc.st.Packets++
+ 	sc.chunk, sc.paquetIndex, sc.ts = chunk, pk.Index, pk.TimestampUS
++	c4Vu = false
+ 	recs, _ := DecodeFrameViews(pay, sc.monde, cfg, MovementStateViews, debut)
++	if c4Vu {
++		c4Ecrire("P	%d	%d	%d	%s	%d	%v	%v	%v	%s", chunk, pk.Index, pk.TimestampUS, c4Classe, debut, c4VueC.Atteinte, c4VueC.FermeeAuBit, c4VueC.Fermee, c4VueC.Invariant)
++	} else {
++		c4Ecrire("P	%d	%d	%d	%s	%d	-	-	-	-", chunk, pk.Index, pk.TimestampUS, c4Classe, debut)
++	}
+ 	sc.tir.fermer(false) // le verdict de la vue C, publie par la marche
+ 	for _, r := range recs {
+ 		sc.st.VehicleTypePhysicsAssumed += lecturesDeComposant(r, compVehicleTypePhysics)
+@@ -356,6 +377,7 @@
+ 	case EtatVitesse:
+ 		// PAS UN ETAT, LA MATIERE D UN ETAT : la vitesse verticale sert a DERIVER le saut
+ 		// (`movement_states_jump.go`), qui publiera ses propres transitions apres la marche.
++		c4Ecrire("V	%d	%d	%d	%d", sc.chunk, sc.paquetIndex, sc.ts, slot)
+ 		sc.vitesse(slot, v)
+ 		return
+ 	case EtatPosture, EtatControleUnite:
+@@ -373,6 +395,7 @@
+ 	}
+ 	sc.vues[k] = lu
+ 	sc.st.Read++
++	c4Ecrire("R	%d	%d	%d	%d	%s	%v", lu.Chunk, lu.PacketIndex, lu.TimestampUS, lu.Slot, lu.Kind, lu.On)
+ }
+ 
+ // publier vide la table de deduplication dans la sortie, TRIEE.
+@@ -380,6 +403,9 @@
+ 	sc.out = make([]types.MovementStateRead, 0, len(sc.vues))
+ 	for _, r := range sc.vues {
+ 		sc.out = append(sc.out, r)
++		if r.Kind == types.MovementJumpDerived {
++			c4Ecrire("J	%d	%d	%d	%d	%s	%v", r.Chunk, r.PacketIndex, r.TimestampUS, r.Slot, r.Kind, r.On)
++		}
+ 	}
+ 	sortMovementStates(sc.out)
+ }
+--- birth_loadouts.go	2026-10-02 21:39:18.200303800 +0200
++++ birth_loadouts.go	2026-10-03 10:47:20.198559800 +0200
+@@ -182,12 +182,15 @@
+ 	switch {
+ 	case tr.DesyncAt != -1:
+ 		s.st.Desync++
++		c4Ecrire("B	%d	%d	%d	%d	desync	-", c.Chunk, c.PacketIndex, c.Slot, c.BitPos)
+ 		return bl, false
+ 	case tr.EndBit > len(pay)*8:
+ 		s.st.Overflow++
++		c4Ecrire("B	%d	%d	%d	%d	debordement	-", c.Chunk, c.PacketIndex, c.Slot, c.BitPos)
+ 		return bl, false
+ 	case !s.fermeSur(pay, tr.EndBit):
+ 		s.st.Unconfirmed++
++		c4Ecrire("B	%d	%d	%d	%d	non_confirmee	%s", c.Chunk, c.PacketIndex, c.Slot, c.BitPos, c4Conf)
+ 		return bl, false
+ 	}
+ 	bl = types.BirthLoadout{TimestampUS: c.TimestampUS, Chunk: c.Chunk, PacketIndex: c.PacketIndex,
+@@ -204,8 +207,10 @@
+ 	}
+ 	if len(bl.Weapons) == 0 {
+ 		s.st.NoWeaponComponent++
++		c4Ecrire("B	%d	%d	%d	%d	sans_arme	%s", c.Chunk, c.PacketIndex, c.Slot, c.BitPos, c4Conf)
+ 		return bl, false
+ 	}
++	c4Ecrire("B	%d	%d	%d	%d	lue	%s", c.Chunk, c.PacketIndex, c.Slot, c.BitPos, c4Conf)
+ 	s.st.Read++
+ 	return bl, true
+ }
+@@ -215,6 +220,7 @@
+ // image-clé ULTÉRIEURE donne le même archétype. Tout autre record — terminateur compris, que
+ // des bits nuls imitent — ne confirme rien.
+ func (s *birthScan) fermeSur(pay []byte, p int) bool {
++	c4Conf = fmt.Sprintf("fin=%d rien", p)
+ 	br := LecteurSur(pay)
+ 	br.poserCadre(s.cfg)
+ 	br.SetBitPos(p)
+@@ -226,7 +232,8 @@
+ 	}
+ 	switch readRecordType(br) {
+ 	case recDelta:
+-		if _, _, ok := TryDeltaAt(pay, p, s.monde, s.cfg); ok {
++		if rec, _, ok := TryDeltaAt(pay, p, s.monde, s.cfg); ok {
++			c4Conf = fmt.Sprintf("fin=%d delta slot=%d ti=%d", p, rec.Slot, rec.TypeIndex)
+ 			s.st.ClosedByDelta++
+ 			return true
+ 		}
+@@ -234,10 +241,12 @@
+ 		id := readRecordID(br, s.cfg.IDLowBits, s.cfg.IDBase)
+ 		ti := uint32(source.BitsTolerants(pay, br.BitPos(), 6)) //nolint:gosec // 6 bits
+ 		if lie, ok := s.monde.ArchetypeForSlot(id & 0x3fffffff); ok && lie == ti {
++			c4Conf = fmt.Sprintf("fin=%d neuf_lie ti=%d", p, ti)
+ 			s.st.ClosedByBoundNew++
+ 			return true
+ 		}
+ 		if ta, _, ok := s.tableAnticipee().ArchetypeApres(id, s.chunk); ok && ta == ti {
++			c4Conf = fmt.Sprintf("fin=%d neuf_anticipe ti=%d", p, ti)
+ 			s.st.ClosedByAnticipatedNew++
+ 			return true
+ 		}
+--- c4_sonde.go (fichier ajoute)
+package grammar
+
+// c4_sonde.go — SONDE DE MESURE (surcouche du controle de L2, point C4) : jamais dans le depot.
+// Ecrit, si C4_DUMP est pose, une ligne par paquet de la marche des etats de mouvement (classe
+// de la liste, verdict de la vue C), une par lecture d etat retenue et une par dotation de
+// naissance (lue ou non, et ce qui la confirme).
+
+import (
+	"fmt"
+	"os"
+	"sync"
+)
+
+var (
+	c4Once sync.Once
+	c4F    *os.File
+	c4Mu   sync.Mutex
+	c4VueC LectureVueC
+	c4Vu   bool
+)
+
+func c4Ecrire(format string, a ...any) {
+	c4Once.Do(func() {
+		if p := os.Getenv("C4_DUMP"); p != "" {
+			c4F, _ = os.Create(p)
+		}
+	})
+	if c4F == nil {
+		return
+	}
+	c4Mu.Lock()
+	defer c4Mu.Unlock()
+	fmt.Fprintf(c4F, format+"\n", a...)
+}
+var c4Classe string
+var c4Conf string

@@ -1,0 +1,1425 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Riposte, Portee, Appui — trois sujets en travers de quatre pages</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Jetons de l'app (apps/web/src/styles/globals.css + lib/accessibility/palettes/default.ts),
+     repris a l'identique de MAQUETTE_SECTIONS_TRANSVERSES_2026-09-21.html. Rien d'invente.
+     Palette categorielle validee : node scripts/validate_palette.js
+     "#3B82F6,#F59E0B,#10B981,#818CF8,#D97706" --mode light  ->  ALL CHECKS PASS
+     (WARN de contraste vs surface : leve par etiquettes directes + legende sur chaque graphe). */
+  :root {
+    --background: oklch(0.985 0.004 255); --foreground: oklch(0.255 0.02 255);
+    --card: oklch(0.995 0.002 255); --border: oklch(0.9 0.01 255); --muted: oklch(0.96 0.008 255);
+    --muted-foreground: oklch(0.52 0.015 255); --popover: oklch(0.995 0.002 255);
+    --info: #3B82F6; --success: #10B981; --warning: #F59E0B; --destructive: #EF4444;
+    --outcome-win: #10B981; --outcome-loss: #EF4444;
+    --stat-kills: #059669; --stat-deaths: #F43F5E;
+    --compare-a: #818CF8; --compare-b: #D97706;
+    --chart-series-1: #93C5FD; --chart-series-2: #6366F1; --chart-series-3: #4F46E5; --chart-series-4: #4338CA;
+    --radius: 0.5rem;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0);
+  } }
+  :root[data-theme="dark"] {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0);
+  }
+  body { margin:0; background:var(--background); color:var(--foreground); font-family:'Roboto',system-ui,sans-serif; font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1180px; margin:0 auto; padding:24px 20px 80px; }
+  .crumb { font-size:12px; color:var(--muted-foreground); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .toolbar { margin-left:auto; display:flex; gap:8px; }
+  button { font:inherit; font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--card); color:var(--foreground); cursor:pointer; }
+  h1 { font-size:21px; margin:16px 0 6px; }
+  p.lede { margin:0; font-size:13px; color:var(--muted-foreground); max-width:88ch; }
+  section.block { display:flex; flex-direction:column; gap:12px; margin-top:40px; scroll-margin-top:12px; }
+  section.block > header h2 { margin:0; font-size:17px; font-weight:600; border-bottom:1px solid var(--border); padding-bottom:6px; }
+  section.block > header p { margin:6px 0 0; font-size:12.5px; color:var(--muted-foreground); max-width:92ch; }
+  h3.sub { margin:20px 0 0; font-size:14px; font-weight:600; }
+  .chip { display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:1px 9px; font-size:10.5px; letter-spacing:.03em; text-transform:uppercase; border:1px solid var(--border); color:var(--muted-foreground); white-space:nowrap; }
+  .chip.on { border-color:var(--success); color:var(--success); }
+  .chip.new { border-color:var(--info); color:var(--info); border-style:dashed; }
+  .chip.kill { border-color:var(--destructive); color:var(--destructive); }
+  .chip.warn { border-color:var(--warning); color:var(--warning); }
+  .chip.keep { border-color:var(--compare-a); color:var(--compare-a); }
+  .section-card { display:flex; flex-direction:column; border-radius:var(--radius); border:1px solid var(--border); background:var(--card); min-width:0; }
+  .section-card.bad { border-color:var(--destructive); }
+  .section-card.star { border-color:var(--info); }
+  .section-card > h4 { margin:0; border-bottom:1px solid var(--border); padding:8px 12px; font-size:13.5px; font-weight:500; display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .section-card > h4 .count { font-size:11px; font-weight:400; color:var(--muted-foreground); font-variant-numeric:tabular-nums; }
+  .chart { width:100%; padding:10px 12px 4px; box-sizing:border-box; }
+  .chart svg { display:block; width:100%; height:auto; overflow:visible; font-family:inherit; }
+  .note { padding:6px 12px 10px; font-size:11.5px; color:var(--muted-foreground); margin:0; }
+  .note b { font-weight:500; color:var(--foreground); }
+  .say { margin:10px 12px 2px; border-left:2px solid var(--info); padding-left:10px; font-size:12.5px; color:var(--foreground); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; align-items:start; }
+  @media (max-width:860px){ .grid2, .grid3 { grid-template-columns:1fr; } }
+  svg text { fill:var(--foreground); font-size:11px; }
+  svg text.muted { fill:var(--muted-foreground); font-size:10px; }
+  svg text.num { font-variant-numeric:tabular-nums; }
+  svg text.big { font-size:27px; font-weight:700; font-variant-numeric:tabular-nums; }
+  svg .grid { stroke:var(--border); stroke-width:1; }
+  svg .axis { stroke:var(--muted-foreground); stroke-width:1.2; }
+  table.cmp { border-collapse:collapse; font-size:12px; width:100%; margin-top:4px; }
+  table.cmp th, table.cmp td { text-align:left; padding:7px 9px; border-bottom:1px solid var(--border); vertical-align:top; }
+  table.cmp th { font-weight:600; color:var(--muted-foreground); font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  table.cmp td.s { white-space:nowrap; }
+  ul.tight { margin:6px 0 0; padding-left:18px; font-size:12.5px; color:var(--muted-foreground); }
+  ul.tight li { margin:4px 0; } ul.tight b { color:var(--foreground); font-weight:500; }
+  .cost { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:11.5px; color:var(--muted-foreground); padding:8px 12px 12px; border-top:1px dashed var(--border); margin-top:2px; }
+  .cost dt { font-weight:500; color:var(--foreground); white-space:nowrap; }
+  .cost dd { margin:0; }
+  nav.toc { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  nav.toc a { font-size:12px; text-decoration:none; color:var(--muted-foreground); border:1px solid var(--border); border-radius:999px; padding:3px 11px; }
+  nav.toc a:hover { color:var(--foreground); border-color:var(--info); }
+  blockquote.verdict { margin:14px 0 0; border-left:3px solid var(--warning); padding:2px 0 2px 14px; font-size:13px; color:var(--foreground); max-width:92ch; }
+  details { border-top:1px dashed var(--border); margin-top:6px; }
+  details > summary { cursor:pointer; padding:7px 12px; font-size:12px; color:var(--muted-foreground); }
+  details > summary:hover { color:var(--foreground); }
+  details .inner { padding:0 12px 10px; }
+  code { font-size:11.5px; background:var(--muted); padding:1px 4px; border-radius:3px; }
+</style>
+
+<div class="page">
+  <div class="crumb">
+    <span>LevelUp</span><span style="opacity:.5">/</span><span>V7.5</span><span style="opacity:.5">/</span>
+    <span>Sections transverses &rsaquo; Riposte, Portee, Appui</span>
+    <span class="chip">Maquette 2026-09-21</span><span class="chip">Rien d'implemente</span>
+    <span class="toolbar"><button id="theme">Theme clair / sombre</button></span>
+  </div>
+
+  <h1>Riposte, Portee des engagements, Appui — en travers de quatre pages</h1>
+  <p class="lede">
+    Suite de <code>MAQUETTE_SECTIONS_TRANSVERSES_2026-09-21.html</code>, resserree sur les cases
+    tranchees en <b>D21</b>. Vocabulaire <b>D19</b> : la section s'appelle <b>Coordination</b>, la
+    vengeance s'appelle <b>Riposte</b>, l'assistance rendue ou recue s'appelle <b>Appui</b> ; la
+    <b>statistique de jeu</b> publiee par l'API reste nommee <b>assistances</b> — on ne renomme pas une
+    colonne de score.
+  </p>
+  <p class="lede" style="margin-top:8px">
+    <b>Une proposition par case</b>, pas trois : D21 a deja tranche la forme. Chaque case porte
+    <b>Aujourd'hui</b> (ce que la page montre deja, releve dans le code au 2026-09-21), la
+    <b>proposition dessinee</b> avec des donnees de demonstration, la <b>phrase de lecteur</b> ecrite telle
+    qu'elle s'afficherait, le <b>cout</b> en composants existants, et la <b>reserve d'echantillon</b>.
+    Seule exception : <b>Portee / Escouade</b>, ou D21 demande de choisir entre trois angles narratifs —
+    les trois sont dessines et l'un est marque.
+  </p>
+  <p class="lede" style="margin-top:8px">
+    Palette categorielle validee (<code>validate_palette.js "#3B82F6,#F59E0B,#10B981,#818CF8,#D97706"
+    --mode light</code> &rarr; ALL CHECKS PASS) ; le WARN de contraste est leve partout par des
+    etiquettes directes. Aucune forme neuve : jauges a parite, bande de regularite, frise batons +
+    tendance, batons p10&rarr;p90, barres empilees — toutes en service dans l'app.
+  </p>
+
+  <nav class="toc">
+    <a href="#reserves">0. Les deux reserves</a>
+    <a href="#r-sessions">1. Riposte / Sessions</a>
+    <a href="#r-match">2. Riposte / Match view</a>
+    <a href="#r-ts">3. Riposte / Timeseries</a>
+    <a href="#p-sessions">4. Portee / Sessions</a>
+    <a href="#p-squad">5. Portee / Escouade</a>
+    <a href="#a-sessions">6. Appui / Sessions</a>
+    <a href="#a-ts">7. Appui / Timeseries</a>
+    <a href="#couts">Recapitulatif des couts</a>
+  </nav>
+
+  <!-- ======================================================= 0 RESERVES -->
+  <section class="block" id="reserves">
+    <header>
+      <h2>0. Les deux reserves de donnees, verifiees sur pieces</h2>
+      <p>D21 les posait comme conditions. Les deux ont ete relues dans le code Go du worktree au
+         2026-09-21 ; chaque verdict cite ses lignes. Une proposition qui en depend le dit.</p>
+    </header>
+
+    <div class="section-card">
+      <h4>R1 — la taille d'equipe par match est-elle servie a Sessions et a Timeseries ?
+        <span class="count"><span class="chip warn">a lever pour Sessions</span></span></h4>
+      <div class="note" style="padding:10px 12px">
+        <p style="margin:0 0 8px"><b>Timeseries : SERVI</b>, mais seulement sur les matchs a film decode.
+          <code>SquadFormesMatch.TeamSize</code> (<code>internal/domain/squad_formes.go:77</code>, avec
+          <code>LobbySize</code>:78 et <code>PlayerTeam</code>:76) voyage dans
+          <code>TimeseriesPageResponse.SquadFormes</code> (<code>internal/domain/timeseries.go:345</code>)
+          et est deja lu par le web (<code>TimeseriesPage.progression.tsx:267</code>). Le roster complet du
+          camp est meme derivable (<code>SquadFormesMatch.Lobby[].TeamID</code>, squad_formes.go:80/99).
+          <b>Limite</b> : <code>TimeseriesMatchRow</code> (timeseries.go:190-256) n'a ni
+          <code>team_size</code> ni <code>lobby_size</code> — un match non mesure n'a pas d'effectif.</p>
+        <p style="margin:0 0 8px"><b>Sessions : NON SERVI par match.</b>
+          <code>SessionDetailMatchRow.LobbySize</code> (<code>internal/domain/session_page.go:59</code>)
+          donne le lobby entier, pas mon camp, et il n'y a ni <code>team_id</code> ni
+          <code>team_size</code>. <code>SessionUsageBlock.TeamSizeAvg</code>
+          (<code>internal/domain/session_usage.go:314-315</code>) est une <b>moyenne de session</b>, et
+          <code>SessionUsageMatchPoint</code> (session_usage.go:84-89), seul point par match servi, ne
+          porte aucun effectif : 1/n par match n'est pas derivable cote web.</p>
+        <p style="margin:0"><b>La donnee existe pourtant cote serveur</b> :
+          <code>sessionusage.TeamContext.TeamSize</code> (matchID &rarr; effectif de mon camp,
+          <code>internal/analysis/sessionusage/team_context.go:19-21</code>, bati par
+          <code>BuildTeamContext</code> :25-54 depuis <code>match_participants</code>) — elle n'est
+          consommee qu'en moyenne (<code>objectives.go:53-66</code>).
+          <b>A servir</b> : <code>TeamSize</code> (+ <code>PlayerTeam</code>) sur
+          <code>SessionUsageMatchPoint</code>, alimente par <code>TeamContext.TeamSize[matchID]</code> ;
+          absent = camp inconnu (FFA), jamais un 1 invente. Variante plus large :
+          <code>TeamSize *int</code> a cote de <code>LobbySize</code> sur
+          <code>SessionDetailMatchRow</code>, qui couvrirait aussi les matchs sans film.</p>
+      </div>
+      <dl class="cost">
+        <dt>Consequence</dt><dd>Les jauges « ma part face a 1/n » de Sessions (&sect;1 et &sect;6)
+          <b>exigent ce champ</b>. Sans lui : soit un 1/n de session (moyenne) — honnete mais moins juste
+          et a ecrire dans l'infobulle —, soit on ne publie que la grandeur « je suis couvert », qui n'a
+          pas besoin de n.</dd>
+        <dt>Cout du deblocage</dt><dd>Un champ dans le DTO + la ligne qui le remplit chez le producteur
+          (la valeur est deja calculee), openapi + <code>generate-types</code>. Aucune requete nouvelle.</dd>
+      </dl>
+    </div>
+
+    <div class="section-card" style="margin-top:12px">
+      <h4>R2 — les appuis sont-ils attribues aux coequipiers NON SUIVIS ?
+        <span class="count"><span class="chip on">levee</span></span></h4>
+      <div class="note" style="padding:10px 12px">
+        <p style="margin:0 0 8px"><b>Oui : tous les joueurs du film</b>, non suivis compris, bots compris
+          quand le roster les rattache. Aucun filtre « joueur suivi » sur la chaine :
+          <code>BuildKillSourceBatch</code> boucle sur toutes les morts
+          (<code>internal/sync/killcollector/collector_batch.go:37-46</code>, resolution des trois roles
+          :56-96) ; la table d'identites vient de <code>match_participants</code> +
+          <code>v_gamertag_lookup</code> (<code>killcollector/roster.go:65-94</code>,
+          <code>identities.go:71-83</code>), <b>jamais</b> de <code>db_profiles.json</code> — celui-ci
+          n'est lu que par les <code>cmd/*</code> pour choisir le compte porteur des tokens.
+          La persistance n'ecarte personne (<code>internal/persist/kill_events_persister.go</code>,
+          xuid vide accepte).</p>
+        <p style="margin:0 0 8px">Lecture match : <code>assist_pairs</code> (Q21d,
+          <code>internal/platform/duckdb/match_view_repo_assist_pairs.go:73-108</code>) ne filtre que sur
+          la <b>qualite de mesure</b> (<code>publishable</code>, <code>assist_known</code>, xuids non
+          nuls) ; le builder (<code>internal/service/match_view_builders_assists.go:64-105</code>) se sert
+          du scoreboard pour embellir les noms, avec repli sur le nom du film. Cote film,
+          <code>usage_summary_owners.go:27-90</code> attribue par slot &rarr; vie &rarr; xuid, sans notion
+          de suivi.</p>
+        <p style="margin:0"><b>Le seul retrecissement</b> est la page Escouade : Q32d
+          (<code>internal/platform/duckdb/queries_squad.go:254-283</code>) contraint les DEUX joueurs aux
+          xuids du roster affiche (<code>service/teammates/teammates_squad_assist_pairs.go:62,67</code>) —
+          c'est le main + les coequipiers <b>selectionnes a l'ecran</b>, pas db_profiles. Cote Sessions, le
+          cadrage <code>p.XUID == playerXUID</code> / <code>TeamOf[p.XUID] == PlayerTeam</code>
+          (<code>analysis/sessionusage/usage_outcomes.go:118,140-158,197-202</code>) est une lecture
+          « bilan du joueur consulte », pas un filtre de production.</p>
+      </div>
+      <dl class="cost">
+        <dt>Consequence</dt><dd>&sect;6 et &sect;7 (Appui cote recu) peuvent compter <b>tous</b> mes frags
+          prepares, y compris par un coequipier de rencontre — c'est la bonne mesure, et la plus stable
+          (elle ne varie pas avec la composition suivie). &sect;5 (roles de portee) peut de meme nommer
+          n'importe quel coequipier du film.</dd>
+        <dt>Attention</dt><dd>Si une carte d'Escouade veut « tous les coequipiers du match » et non « le
+          roster selectionne », Q32d est a assouplir explicitement — ne pas le faire par accident.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ======================================================= 1 RIPOSTE / SESSIONS -->
+  <section class="block" id="r-sessions">
+    <header>
+      <h2>1. Riposte &mdash; page Sessions</h2>
+      <p>Deux grandeurs, une seule forme : la <b>jauge a parite</b> deja en service dans le bloc
+         « usages » de la session (<code>UsageGaugeGrid</code>), doublee de la <b>bande de regularite</b>
+         match par match (<code>UsageRegularityBand</code>). La normalisation est <b>par mort de camp</b>,
+         jamais par mort totale du lobby.</p>
+    </header>
+
+    <div class="section-card">
+      <h4>Aujourd'hui <span class="count">releve dans <code>features/session-detail/</code></span></h4>
+      <div class="note" style="padding:10px 12px">
+        <b>Rien.</b> Les 18 sections de la colonne de session
+        (<code>session-detail/_sections.ts:12-29</code>) ne portent aucune notion de riposte : ni delai de
+        vengeance, ni mort ripostee. La seule chose proche est le duel vu de loin — « Premier sang »
+        (<code>first_blood</code>) et le tableau des matchs. La riposte n'existe aujourd'hui que sur
+        l'Escouade (<code>features/squad/SquadRiposteCard.tsx</code>, lot J) et dans l'onglet Tactique.
+        Une session — le grain ou le joueur se demande « est-ce que ce soir on se couvrait ? » — n'en dit
+        rien.
+      </div>
+    </div>
+
+    <div class="section-card star" style="margin-top:12px">
+      <h4>Proposition &mdash; « Riposte » dans le bloc Coordination de la session
+        <span class="count">jauges a parite + bande</span></h4>
+      <p class="say">« Ce soir, <b>62 %</b> de tes morts ont ete ripostees par ton camp dans les 5 s —
+        ton habituel est 48 %. Tu as toi-meme riposte <b>31 %</b> des morts de ton camp, pour une part
+        equitable de 25 % a quatre. Tu couvres plus que ton tour, et tu es mieux couvert que d'habitude. »</p>
+      <div class="chart">
+        <svg viewBox="0 0 660 250" role="img" aria-label="Deux jauges a parite et une bande de regularite">
+          <!-- axe -->
+          <line class="grid" x1="160" y1="24" x2="160" y2="150"></line>
+          <line class="grid" x1="385" y1="24" x2="385" y2="150"></line>
+          <line class="grid" x1="610" y1="24" x2="610" y2="150"></line>
+          <text class="muted num" x="160" y="18" text-anchor="middle">0 %</text>
+          <text class="muted num" x="385" y="18" text-anchor="middle">50 %</text>
+          <text class="muted num" x="610" y="18" text-anchor="middle">100 %</text>
+
+          <!-- ligne 1 : je suis couvert -->
+          <text x="0" y="46" font-weight="500">Je suis couvert</text>
+          <text class="muted" x="0" y="60">part de mes morts ripostees</text>
+          <rect x="160" y="34" width="450" height="22" rx="4" fill="var(--muted)"></rect>
+          <rect x="160" y="34" width="279" height="22" rx="4" fill="#3B82F6"></rect>
+          <text class="num" x="449" y="50" font-weight="500">62 %</text>
+          <line x1="376" y1="28" x2="376" y2="62" stroke="var(--muted-foreground)" stroke-width="2" stroke-dasharray="3 3"></line>
+          <text class="muted num" x="376" y="74" text-anchor="middle">habituel 48 %</text>
+
+          <!-- ligne 2 : je riposte -->
+          <text x="0" y="108" font-weight="500">Je riposte</text>
+          <text class="muted" x="0" y="122">ma part des morts de mon camp</text>
+          <rect x="160" y="96" width="450" height="22" rx="4" fill="var(--muted)"></rect>
+          <rect x="160" y="96" width="140" height="22" rx="4" fill="#10B981"></rect>
+          <text class="num" x="310" y="112" font-weight="500">31 %</text>
+          <line x1="272" y1="90" x2="272" y2="124" stroke="#F59E0B" stroke-width="2"></line>
+          <text class="num" x="272" y="136" text-anchor="middle" fill="#F59E0B">parite 1/4 = 25 %</text>
+
+          <!-- bande de regularite -->
+          <line class="grid" x1="0" y1="168" x2="660" y2="168"></line>
+          <text x="0" y="196" font-weight="500">Match par match</text>
+          <text class="muted" x="0" y="210">je riposte, ecart a la parite</text>
+          <g>
+            <rect x="160" y="182" width="46" height="20" rx="3" fill="#10B981"></rect>
+            <rect x="212" y="182" width="46" height="20" rx="3" fill="#10B981" opacity=".55"></rect>
+            <rect x="264" y="182" width="46" height="20" rx="3" fill="var(--muted)"></rect>
+            <rect x="316" y="182" width="46" height="20" rx="3" fill="#10B981"></rect>
+            <rect x="368" y="182" width="46" height="20" rx="3" fill="#EF4444" opacity=".55"></rect>
+            <rect x="420" y="182" width="46" height="20" rx="3" fill="#10B981" opacity=".55"></rect>
+            <rect x="472" y="182" width="46" height="20" rx="3" fill="#10B981"></rect>
+            <rect x="524" y="182" width="46" height="20" rx="3" fill="#EF4444" opacity=".55"></rect>
+          </g>
+          <text class="num" x="580" y="196">5/8</text>
+          <text class="muted" x="160" y="222">au-dessus de la parite</text>
+          <rect x="300" y="213" width="10" height="10" rx="2" fill="#EF4444" opacity=".55"></rect>
+          <text class="muted" x="316" y="222">sous la parite</text>
+          <rect x="400" y="213" width="10" height="10" rx="2" fill="var(--muted)"></rect>
+          <text class="muted" x="416" y="222">aucune mort de camp mesuree</text>
+        </svg>
+      </div>
+      <p class="note"><b>Normalisation.</b> Denominateur de « je riposte » = les morts <b>de mon camp</b>
+        du match, pas mes morts ni les morts du lobby : sans cela un match ou le camp meurt peu gonfle
+        artificiellement ma part. La <b>parite</b> est 1/n avec n = effectif de mon camp du match
+        (R1), pas une constante 1/4.</p>
+      <dl class="cost">
+        <dt>Front</dt><dd><code>UsageGaugeGrid</code> + <code>UsageRegularityBand</code> + la legende
+          partagee <code>UsageBandLegend</code> : trois composants existants, aucun graphe neuf.
+          Une carte dans une nouvelle section « Coordination » de la colonne de session
+          (<code>_sections.ts</code> : une cle de plus, l'ordre canonique la place apres
+          <code>first_blood</code>).</dd>
+        <dt>Backend</dt><dd>Un bloc par session : morts de mon camp, morts ripostees dans la fenetre,
+          mes ripostes, par match. La mesure existe deja pour l'Escouade
+          (<code>queries_squad.go</code>, fenetre et plancher dans <code>squadRiposte.logic.ts</code>)
+          — c'est le <b>meme calcul a un autre scope</b>. <b>Plus le champ <code>team_size</code> de
+          R1</b>, sans lequel la deuxieme jauge n'a pas de parite juste.</dd>
+        <dt>Reserve d'echantillon</dt><dd>Le plancher de l'Escouade (<code>PLANCHER_MORTS</code>) se
+          transpose : sous ce nombre de morts de camp dans la session, on affiche les comptes et on tait
+          les parts. Une case de la bande sans mort de camp mesuree reste <b>grise</b> — non mesure n'est
+          pas zero.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ======================================================= 2 RIPOSTE / MATCH VIEW -->
+  <section class="block" id="r-match">
+    <header>
+      <h2>2. Riposte &mdash; page Match view</h2>
+      <p>Un match, ce sont <b>des comptes</b>. Un taux sur 11 morts est du bruit affiche avec deux
+         decimales : D21 tranche, ici on ecrit les nombres. Deux etages : les deux camps en face-a-face,
+         puis une ligne par joueur.</p>
+    </header>
+
+    <div class="section-card">
+      <h4>Aujourd'hui <span class="count">releve dans <code>features/match-view/</code></span></h4>
+      <div class="note" style="padding:10px 12px">
+        Deux blocs approchent le sujet sans le dire. <b>Nemesis / Souffre-douleur</b>
+        (<code>MatchNemesisCards.tsx:1-11</code>) nomme l'adversaire qui m'a le plus tue et celui que j'ai
+        le plus tue &mdash; c'est un <b>solde de duel</b>, pas une riposte : ni fenetre de temps, ni ordre
+        des evenements. <b>Qui est l'assistant de qui</b> (<code>MatchAssistChart.tsx:1-15</code>) rend les
+        paires d'appui en barres empilees horizontales depuis <code>combat_tab.assist_pairs</code>. La
+        <b>riposte</b> &mdash; « la mort de X a ete vengee dans les 5 s, par Y » &mdash; n'est rendue nulle
+        part sur la page, alors que la matiere est la : <code>match_kill_events_latest</code> porte
+        l'ordre, l'instant, la victime et le tueur de chaque mort.
+      </div>
+    </div>
+
+    <div class="section-card star" style="margin-top:12px">
+      <h4>Proposition &mdash; « Riposte » : les deux camps, puis les joueurs
+        <span class="count">comptes, jamais de taux</span></h4>
+      <p class="say">« Mon camp a perdu <b>34</b> vies, <b>19</b> ont ete ripostees, en <b>4,2 s</b> de
+        delai median. En face : <b>41</b> morts, <b>17</b> ripostees, <b>6,0 s</b>. Vous punissez plus vite
+        que vous n'etes punis. »</p>
+      <div class="chart">
+        <svg viewBox="0 0 660 176" role="img" aria-label="Face a face des deux camps : vies perdues, morts ripostees, delai median">
+          <text class="muted" x="330" y="12" text-anchor="middle">un chiffre par camp, lus sur la meme ligne</text>
+          <text x="150" y="36" text-anchor="end" font-weight="500" fill="#3B82F6">Mon camp</text>
+          <text x="510" y="36" font-weight="500" fill="#D97706">Eux</text>
+          <line class="grid" x1="0" y1="44" x2="660" y2="44"></line>
+
+          <text class="muted" x="330" y="74" text-anchor="middle">Vies perdues</text>
+          <text class="num big" x="150" y="80" text-anchor="end" fill="#3B82F6">34</text>
+          <text class="num big" x="510" y="80" fill="#D97706">41</text>
+          <line class="grid" x1="0" y1="90" x2="660" y2="90"></line>
+
+          <text class="muted" x="330" y="120" text-anchor="middle">Morts ripostees (5 s)</text>
+          <text class="num big" x="150" y="126" text-anchor="end" fill="#3B82F6">19</text>
+          <text class="num big" x="510" y="126" fill="#D97706">17</text>
+          <line class="grid" x1="0" y1="136" x2="660" y2="136"></line>
+
+          <text class="muted" x="330" y="166" text-anchor="middle">Delai median</text>
+          <text class="num big" x="150" y="172" text-anchor="end" fill="#3B82F6">4,2 s</text>
+          <text class="num big" x="510" y="172" fill="#D97706">6,0 s</text>
+        </svg>
+      </div>
+      <div class="chart">
+        <svg viewBox="0 0 660 302" role="img" aria-label="Une ligne par joueur : a gauche ses morts vengees par son camp, a droite les ripostes qu il a portees">
+          <text class="muted" x="172" y="12" text-anchor="end">a ete riposte</text>
+          <text class="muted" x="190" y="12">a riposte</text>
+          <line class="axis" x1="180" y1="18" x2="180" y2="278"></line>
+          <g class="grid" stroke="var(--border)" stroke-width="1">
+            <line x1="70" y1="18" x2="70" y2="278"></line>
+            <line x1="290" y1="18" x2="290" y2="278"></line>
+            <line x1="400" y1="18" x2="400" y2="278"></line>
+          </g>
+          <text class="muted num" x="70" y="292" text-anchor="middle">5</text>
+          <text class="muted num" x="180" y="292" text-anchor="middle">0</text>
+          <text class="muted num" x="290" y="292" text-anchor="middle">5</text>
+          <text class="muted num" x="400" y="292" text-anchor="middle">10 vies</text>
+
+          <g>
+            <text x="188" y="36" font-weight="500">JGtm (moi)</text>
+            <rect x="136" y="25" width="42" height="14" rx="3" fill="#93C5FD"></rect>
+            <text class="num muted" x="130" y="37" text-anchor="end">2</text>
+            <rect x="182" y="25" width="130" height="14" rx="3" fill="#3B82F6"></rect>
+            <text class="num" x="318" y="37">6</text>
+          </g>
+          <g>
+            <text x="188" y="62" font-weight="500">Kaya</text>
+            <rect x="92" y="51" width="86" height="14" rx="3" fill="#93C5FD"></rect>
+            <text class="num muted" x="86" y="63" text-anchor="end">4</text>
+            <rect x="182" y="51" width="64" height="14" rx="3" fill="#3B82F6"></rect>
+            <text class="num" x="252" y="63">3</text>
+          </g>
+          <g>
+            <text x="188" y="88" font-weight="500">Ronan</text>
+            <rect x="114" y="77" width="64" height="14" rx="3" fill="#93C5FD"></rect>
+            <text class="num muted" x="108" y="89" text-anchor="end">3</text>
+            <rect x="182" y="77" width="108" height="14" rx="3" fill="#3B82F6"></rect>
+            <text class="num" x="296" y="89">5</text>
+          </g>
+          <g>
+            <text x="188" y="114" font-weight="500">Wisp</text>
+            <rect x="70" y="103" width="108" height="14" rx="3" fill="#93C5FD"></rect>
+            <text class="num muted" x="64" y="115" text-anchor="end">5</text>
+            <rect x="182" y="103" width="108" height="14" rx="3" fill="#3B82F6"></rect>
+            <text class="num" x="296" y="115">5</text>
+          </g>
+
+          <line class="grid" x1="0" y1="128" x2="660" y2="128" stroke-dasharray="4 4"></line>
+
+          <g>
+            <text x="188" y="162" font-weight="500">Vex</text>
+            <rect x="114" y="151" width="64" height="14" rx="3" fill="#FBD38D"></rect>
+            <text class="num muted" x="108" y="163" text-anchor="end">3</text>
+            <rect x="182" y="151" width="152" height="14" rx="3" fill="#D97706"></rect>
+            <text class="num" x="340" y="163">7</text>
+          </g>
+          <g>
+            <text x="188" y="188" font-weight="500">Otto</text>
+            <rect x="136" y="177" width="42" height="14" rx="3" fill="#FBD38D"></rect>
+            <text class="num muted" x="130" y="189" text-anchor="end">2</text>
+            <rect x="182" y="177" width="86" height="14" rx="3" fill="#D97706"></rect>
+            <text class="num" x="274" y="189">4</text>
+          </g>
+          <g>
+            <text x="188" y="214" font-weight="500">Marlow</text>
+            <rect x="92" y="203" width="86" height="14" rx="3" fill="#FBD38D"></rect>
+            <text class="num muted" x="86" y="215" text-anchor="end">4</text>
+            <rect x="182" y="203" width="42" height="14" rx="3" fill="#D97706"></rect>
+            <text class="num" x="230" y="215">2</text>
+          </g>
+          <g>
+            <text x="188" y="240" font-weight="500">Sable</text>
+            <rect x="158" y="229" width="20" height="14" rx="3" fill="#FBD38D"></rect>
+            <text class="num muted" x="152" y="241" text-anchor="end">1</text>
+            <rect x="182" y="229" width="86" height="14" rx="3" fill="#D97706"></rect>
+            <text class="num" x="274" y="241">4</text>
+          </g>
+
+          <g>
+            <rect x="0" y="260" width="10" height="10" rx="2" fill="#93C5FD"></rect>
+            <text class="muted" x="16" y="269">ses morts vengees par son camp</text>
+            <rect x="230" y="260" width="10" height="10" rx="2" fill="#3B82F6"></rect>
+            <text class="muted" x="246" y="269">les ripostes qu'il a portees</text>
+            <text class="muted" x="450" y="269">teinte pale / pleine ; encre du camp</text>
+          </g>
+        </svg>
+      </div>
+      <p class="note"><b>Une seule echelle</b> pour les huit lignes et pour les deux cotes de l'axe : un
+        joueur qui riposte deux fois plus qu'un autre a un baton deux fois plus long, quel que soit le camp.
+        <b>Les deux cotes ne s'additionnent pas</b> &mdash; a gauche un evenement subi, a droite un
+        evenement porte ; l'infobulle nomme le couple (« vengee par Ronan, 3,1 s »).</p>
+      <dl class="cost">
+        <dt>Front</dt><dd><code>BarStackedChart</code> en barres horizontales divergentes &mdash; la
+          grammaire est deja sur la page (<code>MatchAntagonistChart</code>, <code>MatchAssistChart</code>)
+          &mdash; et la palette de joueurs du match, la meme que
+          <code>MatchKillDistanceSection</code> : un joueur garde son encre d'un bloc a l'autre. Le
+          face-a-face est une rangee de tuiles, pas un graphe.</dd>
+        <dt>Backend</dt><dd>Un bloc <code>riposte</code> dans <code>combat_tab</code> : par mort, le couple
+          (victime, vengeur, delai) et son camp &mdash; meme source que <code>assist_pairs</code>
+          (<code>match_kill_events_latest</code>, requete voisine de Q21d,
+          <code>internal/platform/duckdb/match_view_repo_assist_pairs.go:73-108</code>). Aucune table
+          nouvelle.</dd>
+        <dt>Reserve d'echantillon</dt><dd>Aucune au sens statistique : ce sont des comptes exhaustifs du
+          match, et c'est pourquoi D21 interdit le taux ici. La seule porte est la <b>couverture du
+          film</b> : sans film decode, pas d'ordre des morts &mdash; etat vide nomme (politique D8),
+          jamais une section qui disparait sans rien dire.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ======================================================= 3 RIPOSTE / TIMESERIES -->
+  <section class="block" id="r-ts">
+    <header>
+      <h2>3. Riposte &mdash; page Series temporelles</h2>
+      <p>Les deux memes grandeurs qu'en &sect;1, mais dans le temps : la <b>frise batons + tendance +
+         repere d'habituel</b> deja ecrite pour l'Escouade (<code>SquadRiposteSessionsChart</code>,
+         lot J). Deux grandeurs = <b>deux panneaux</b> sur la meme largeur, jamais deux axes dans un
+         graphe.</p>
+    </header>
+
+    <div class="section-card">
+      <h4>Aujourd'hui <span class="count">releve dans <code>features/timeseries/</code></span></h4>
+      <div class="note" style="padding:10px 12px">
+        <b>Rien sur la riposte.</b> La page porte une tendance d'<b>assistances</b>
+        (<code>TimeseriesFormCharts.tsx:305-368</code>, batons + moyenne glissante sur 10 matchs) et des
+        wrappers solo de graphes d'escouade (<code>TimeseriesSquadAdapted.tsx:1-9</code>), mais aucune
+        notion d'ordre des morts. La <code>WeaponRangeSection</code> voisine montre au contraire ce qu'on
+        veut ici : une section transverse servie par le meme endpoint, avec ses denominateurs affiches.
+      </div>
+    </div>
+
+    <div class="section-card star" style="margin-top:12px">
+      <h4>Proposition &mdash; « Riposte » dans le temps, deux panneaux
+        <span class="count">grain : la soiree</span></h4>
+      <p class="say">« Sur les 12 dernieres soirees, <b>54 %</b> de tes morts ont ete ripostees (habituel
+        48 %) et tu as porte <b>29 %</b> des ripostes de ton camp (part equitable 25 %). Les deux courbes
+        montent depuis fin aout. »</p>
+      <div class="chart">
+        <svg viewBox="0 0 660 150" role="img" aria-label="Part de mes morts ripostees, par soiree : batons, tendance et repere d habituel">
+          <text x="0" y="12" font-weight="500">Je suis couvert &mdash; part de mes morts ripostees</text>
+          <line class="axis" x1="44" y1="24" x2="44" y2="112"></line>
+          <line class="axis" x1="44" y1="112" x2="652" y2="112"></line>
+          <text class="muted num" x="38" y="28" text-anchor="end">80 %</text>
+          <text class="muted num" x="38" y="72" text-anchor="end">40 %</text>
+          <text class="muted num" x="38" y="116" text-anchor="end">0</text>
+          <line class="grid" x1="44" y1="59" x2="652" y2="59" stroke-dasharray="4 4"></line>
+          <text class="muted num" x="652" y="55" text-anchor="end">habituel 48 %</text>
+          <g fill="#3B82F6">
+            <rect x="54" y="68" width="34" height="44" rx="4"></rect>
+            <rect x="104" y="75" width="34" height="37" rx="4"></rect>
+            <rect x="154" y="61" width="34" height="51" rx="4"></rect>
+            <rect x="204" y="84" width="34" height="28" rx="4"></rect>
+            <rect x="254" y="63" width="34" height="49" rx="4"></rect>
+            <rect x="304" y="56" width="34" height="56" rx="4"></rect>
+            <rect x="354" y="71" width="34" height="41" rx="4"></rect>
+            <rect x="404" y="49" width="34" height="63" rx="4"></rect>
+            <rect x="454" y="54" width="34" height="58" rx="4"></rect>
+            <rect x="504" y="44" width="34" height="68" rx="4"></rect>
+            <rect x="554" y="51" width="34" height="61" rx="4"></rect>
+            <rect x="604" y="40" width="34" height="72" rx="4"></rect>
+          </g>
+          <polyline fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"
+            points="71,71 121,73 171,70 221,74 271,70 321,66 371,66 421,60 471,58 521,54 571,52 621,48"></polyline>
+          <g class="muted">
+            <text class="num" x="71" y="126" text-anchor="middle">18</text>
+            <text class="num" x="171" y="126" text-anchor="middle">31</text>
+            <text class="num" x="271" y="126" text-anchor="middle">24</text>
+            <text class="num" x="371" y="126" text-anchor="middle">29</text>
+            <text class="num" x="471" y="126" text-anchor="middle">22</text>
+            <text class="num" x="621" y="126" text-anchor="middle">27</text>
+            <text x="44" y="140">morts de la soiree sous chaque baton</text>
+          </g>
+          <g>
+            <rect x="400" y="132" width="10" height="10" rx="2" fill="#3B82F6"></rect>
+            <text class="muted" x="416" y="141">part de la soiree</text>
+            <line x1="530" y1="137" x2="548" y2="137" stroke="#F59E0B" stroke-width="2"></line>
+            <text class="muted" x="554" y="141">tendance (5 soirees)</text>
+          </g>
+        </svg>
+      </div>
+      <div class="chart">
+        <svg viewBox="0 0 660 138" role="img" aria-label="Ma part des ripostes de mon camp, par soiree, face a la part equitable">
+          <text x="0" y="12" font-weight="500">Je riposte &mdash; ma part des morts de mon camp</text>
+          <line class="axis" x1="44" y1="24" x2="44" y2="112"></line>
+          <line class="axis" x1="44" y1="112" x2="652" y2="112"></line>
+          <text class="muted num" x="38" y="28" text-anchor="end">50 %</text>
+          <text class="muted num" x="38" y="72" text-anchor="end">25 %</text>
+          <text class="muted num" x="38" y="116" text-anchor="end">0</text>
+          <line x1="44" y1="68" x2="652" y2="68" stroke="#F59E0B" stroke-width="2"></line>
+          <text class="num" x="652" y="64" text-anchor="end" fill="#F59E0B">part equitable 1/n</text>
+          <g fill="#10B981">
+            <rect x="54" y="76" width="34" height="36" rx="4"></rect>
+            <rect x="104" y="70" width="34" height="42" rx="4"></rect>
+            <rect x="154" y="62" width="34" height="50" rx="4"></rect>
+            <rect x="204" y="80" width="34" height="32" rx="4"></rect>
+            <rect x="254" y="66" width="34" height="46" rx="4"></rect>
+            <rect x="304" y="59" width="34" height="53" rx="4"></rect>
+            <rect x="354" y="72" width="34" height="40" rx="4"></rect>
+            <rect x="404" y="57" width="34" height="55" rx="4"></rect>
+            <rect x="454" y="63" width="34" height="49" rx="4"></rect>
+            <rect x="504" y="52" width="34" height="60" rx="4"></rect>
+            <rect x="554" y="60" width="34" height="52" rx="4"></rect>
+            <rect x="604" y="55" width="34" height="57" rx="4"></rect>
+          </g>
+          <polyline fill="none" stroke="#818CF8" stroke-width="2" stroke-linecap="round"
+            points="71,78 121,75 171,72 221,74 271,71 321,68 371,68 421,64 471,63 521,60 571,59 621,57"></polyline>
+          <g class="muted">
+            <text x="44" y="132">n = effectif du camp, soiree par soiree (R1) ; une soiree mixte 4v4 / BTB a une parite ponderee</text>
+          </g>
+        </svg>
+      </div>
+      <p class="note"><b>Pourquoi la soiree et pas le match.</b> Le denominateur de la premiere grandeur,
+        ce sont <b>mes</b> morts : 8 a 14 par match en arene. Une part sur 9 morts bouge de 11 points quand
+        une seule mort change de cote &mdash; la frise par match dessinerait le bruit et sa tendance
+        lisserait ce bruit. La soiree cumule 20 a 35 morts, ou le point vaut quelque chose, et c'est deja
+        le grain choisi pour la frise de l'Escouade. Le match reste <b>consultable</b> : l'infobulle d'une
+        soiree liste ses matchs. Si une soiree passe sous le plancher de morts, son baton est <b>creux</b>
+        et exclu de la tendance, jamais absent (la trame du temps ne doit pas mentir).</p>
+      <dl class="cost">
+        <dt>Front</dt><dd><code>SquadRiposteSessionsChart</code> (lot J) rendu <b>reutilisable</b> : il
+          prend deja batons + tendance + repere d'habituel + volumes. Deux instances empilees, une par
+          grandeur, chacune avec SON echelle &mdash; jamais deux axes dans un graphe.</dd>
+        <dt>Backend</dt><dd>Le meme bloc qu'en &sect;1, agrege par soiree sur le scope du filtre, dans
+          <code>TimeseriesPageResponse</code> (a cote de <code>weapon_range</code>,
+          <code>internal/domain/timeseries.go:332</code>). La parite 1/n par soiree est deja derivable ici
+          &mdash; <code>SquadFormesMatch.TeamSize</code> voyage sur cette page (R1) &mdash; mais
+          <b>seulement sur les matchs a film decode</b> : ecrire la couverture sous le graphe, comme la
+          section portee le fait.</dd>
+        <dt>Reserve d'echantillon</dt><dd>Plancher de morts par soiree (le <code>PLANCHER_MORTS</code> de
+          l'Escouade) ; sous 5 soiries mesurees, pas de tendance tracee &mdash; on affiche les batons
+          seuls.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ======================================================= 4 PORTEE / SESSIONS -->
+  <section class="block" id="p-sessions">
+    <header>
+      <h2>4. Portee des engagements &mdash; page Sessions</h2>
+      <p>La grammaire est celle de <code>WeaponRangeSection</code> : <b>batons p10&rarr;p90</b> avec la
+         mediane marquee, jamais min&rarr;max (un tir de melee et un tir chanceux decrivent deux
+         accidents &mdash; <code>internal/analysis/weapon_range.go:18-22</code>). Ici, deux bâtons sur la
+         meme ligne : <b>la session</b> et <b>l'habituel de la periode</b>.</p>
+    </header>
+
+    <div class="section-card">
+      <h4>Aujourd'hui <span class="count">releve dans <code>features/session-detail/</code></span></h4>
+      <div class="note" style="padding:10px 12px">
+        <b>Rien.</b> Aucune des 18 sections de la colonne ne parle de distance. La portee est servie sur
+        l'onglet Resume (<code>features/timeseries/WeaponRangeSection.tsx</code>, alimente par
+        <code>TimeseriesPageResponse.WeaponRange</code>, <code>internal/domain/timeseries.go:332</code>),
+        sur la comparaison (<code>domain/compare_weapons.go:98</code>) et sur l'Explorer
+        (<code>domain/explorer.go:94</code>) &mdash; le meme type <code>SynthesisWeaponRange</code> a trois
+        scopes differents. <b>La session n'est pas l'un d'eux</b>, alors que « ce soir je jouais plus
+        court que d'habitude » est exactement une question de session.
+      </div>
+    </div>
+
+    <div class="section-card star" style="margin-top:12px">
+      <h4>Proposition &mdash; « A quelle distance j'ai joue ce soir »
+        <span class="count">4 classes + mes morts</span></h4>
+      <p class="say">« Ce soir tu as fragge plus court que d'habitude : ta mediane au fusil de precision
+        tombe de <b>27 m</b> a <b>21 m</b>, et au fusil d'assaut de <b>14 m</b> a <b>11 m</b>. Tu meurs en
+        revanche a la meme distance qu'a l'ordinaire. »</p>
+      <div class="chart">
+        <svg viewBox="0 0 660 262" role="img" aria-label="Portee p10 p90 par classe d arme, session contre habituel de la periode">
+          <g class="grid">
+            <line x1="150" y1="22" x2="150" y2="214"></line>
+            <line x1="273" y1="22" x2="273" y2="214"></line>
+            <line x1="396" y1="22" x2="396" y2="214"></line>
+            <line x1="519" y1="22" x2="519" y2="214"></line>
+            <line x1="642" y1="22" x2="642" y2="214"></line>
+          </g>
+          <g class="muted num">
+            <text x="150" y="16" text-anchor="middle">0</text>
+            <text x="273" y="16" text-anchor="middle">10 m</text>
+            <text x="396" y="16" text-anchor="middle">20 m</text>
+            <text x="519" y="16" text-anchor="middle">30 m</text>
+            <text x="642" y="16" text-anchor="middle">40 m</text>
+          </g>
+
+          <!-- fusil de precision : p10 14 -> p90 34 session, mediane 21 ; habituel 18->38 med 27 -->
+          <text x="0" y="40" font-weight="500">Fusil de precision</text>
+          <text class="muted num" x="0" y="54">142 frags</text>
+          <rect x="322" y="30" width="246" height="9" rx="4" fill="var(--muted)"></rect>
+          <circle cx="482" cy="34" r="4" fill="var(--muted-foreground)"></circle>
+          <rect x="292" y="43" width="246" height="11" rx="4" fill="#3B82F6"></rect>
+          <circle cx="408" cy="48" r="5" fill="var(--card)" stroke="#3B82F6" stroke-width="3"></circle>
+          <text class="num" x="546" y="52">21 m</text>
+
+          <!-- fusil d'assaut : session 6->22 med 11 ; habituel 8->24 med 14 -->
+          <text x="0" y="82" font-weight="500">Fusil d'assaut</text>
+          <text class="muted num" x="0" y="96">96 frags</text>
+          <rect x="248" y="72" width="197" height="9" rx="4" fill="var(--muted)"></rect>
+          <circle cx="322" cy="76" r="4" fill="var(--muted-foreground)"></circle>
+          <rect x="224" y="85" width="197" height="11" rx="4" fill="#3B82F6"></rect>
+          <circle cx="285" cy="90" r="5" fill="var(--card)" stroke="#3B82F6" stroke-width="3"></circle>
+          <text class="num" x="429" y="94">11 m</text>
+
+          <!-- mitraillette -->
+          <text x="0" y="124" font-weight="500">Mitraillette</text>
+          <text class="muted num" x="0" y="138">54 frags</text>
+          <rect x="199" y="114" width="123" height="9" rx="4" fill="var(--muted)"></rect>
+          <circle cx="248" cy="118" r="4" fill="var(--muted-foreground)"></circle>
+          <rect x="199" y="127" width="110" height="11" rx="4" fill="#3B82F6"></rect>
+          <circle cx="242" cy="132" r="5" fill="var(--card)" stroke="#3B82F6" stroke-width="3"></circle>
+          <text class="num" x="317" y="136">7 m</text>
+
+          <!-- fusil a pompe : sous le seuil -->
+          <text class="muted" x="0" y="166">Fusil a pompe</text>
+          <text class="muted num" x="0" y="180">11 frags</text>
+          <rect x="162" y="156" width="74" height="9" rx="4" fill="var(--muted)"></rect>
+          <circle cx="187" cy="160" r="4" fill="var(--muted-foreground)"></circle>
+          <rect x="165" y="169" width="62" height="11" rx="4" fill="none" stroke="#3B82F6" stroke-width="2" stroke-dasharray="4 3"></rect>
+          <text class="muted" x="240" y="178">trop peu de frags ce soir &mdash; habituel seul</text>
+
+          <line class="grid" x1="0" y1="196" x2="660" y2="196" stroke-dasharray="4 4"></line>
+
+          <!-- mes morts -->
+          <text x="0" y="214" font-weight="500">La ou je meurs</text>
+          <text class="muted num" x="0" y="228">63 morts, toutes armes</text>
+          <rect x="199" y="204" width="234" height="9" rx="4" fill="var(--muted)"></rect>
+          <circle cx="297" cy="208" r="4" fill="var(--muted-foreground)"></circle>
+          <rect x="205" y="217" width="228" height="11" rx="4" fill="#F43F5E"></rect>
+          <circle cx="303" cy="222" r="5" fill="var(--card)" stroke="#F43F5E" stroke-width="3"></circle>
+          <text class="num" x="441" y="226">12 m</text>
+
+          <g>
+            <rect x="0" y="244" width="24" height="9" rx="4" fill="var(--muted)"></rect>
+            <text class="muted" x="30" y="252">habituel de la periode (p10&rarr;p90, mediane)</text>
+            <rect x="270" y="244" width="24" height="9" rx="4" fill="#3B82F6"></rect>
+            <text class="muted" x="300" y="252">cette session, mes frags</text>
+            <rect x="460" y="244" width="24" height="9" rx="4" fill="#F43F5E"></rect>
+            <text class="muted" x="490" y="252">cette session, mes morts</text>
+          </g>
+        </svg>
+      </div>
+      <p class="note"><b>Par classe, pas par arme.</b> Une session donne 10 a 40 frags par arme : la
+        ventilation fine de l'onglet Resume y tomberait sous son propre seuil de publication. La classe
+        (precision / assaut / rapprochee / lourde) regroupe assez de frags pour que le baton tienne, et
+        c'est la granularite a laquelle la phrase de lecteur est vraie. Le detail par arme reste dans un
+        <b>repli ferme</b>, avec ses effectifs.</p>
+      <dl class="cost">
+        <dt>Front</dt><dd>La carte de <code>WeaponRangeSection</code> sait deja dessiner deux batons sur
+          une meme ligne (frags au-dessus, morts en dessous) ; ici les deux batons sont
+          <b>session / habituel</b>. Le chart partage <code>components/charts/weaponRangeChart</code> est
+          reutilise tel quel, la projection change d'appelant.</dd>
+        <dt>Backend</dt><dd><code>SynthesisWeaponRange</code> a <b>un scope de plus</b> : il est deja servi
+          a trois scopes (timeseries, compare, explorer) par le meme agregat pur
+          (<code>analysis.WeaponRangeAggregate</code>). Il faut le calculer sur les matchs de la session
+          ET sur la periode de reference, plus un regroupement par classe d'arme (le registre du titre
+          porte deja la classe &mdash; c'est lui qui decide des exclusions dans les records de distance,
+          <code>internal/analysis/weapon_distance_records.go:21</code>).</dd>
+        <dt>Reserve d'echantillon</dt><dd><b>Sous 30 frags mesures dans la classe</b>, on ne trace pas le
+          baton de session : la ligne garde l'habituel et dit « trop peu de frags ce soir » avec son
+          compte (cas du fusil a pompe ci-dessus). Et la <b>couverture</b> se lit en pied comme ailleurs :
+          seuls les frags dont les deux positions sont decodees comptent (plancher mesure 75,8 %,
+          <code>MatchKillDistanceSection.tsx:26-28</code>) &mdash; un baton sans son denominateur
+          laisserait croire a l'exhaustivite.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ======================================================= 5 PORTEE / ESCOUADE -->
+  <section class="block" id="p-squad">
+    <header>
+      <h2>5. Portee des engagements &mdash; page Escouade : les roles de portee, dans le temps</h2>
+      <p>Angle retenu (amendement utilisateur du 2026-09-21) : <b>« Roles de portee »</b>, pousse
+         <b>par match</b> pour obtenir une tendance &mdash; qui tient la ligne de front, qui joue en appui
+         lointain, et <b>qui a change</b>. Trois formes du meme angle sont dessinees ci-dessous ; l'une est
+         marquee. Avant elles, la normalisation, sans laquelle rien de tout cela n'est lisible.</p>
+    </header>
+
+    <div class="section-card">
+      <h4>Aujourd'hui <span class="count">releve dans <code>features/squad/</code></span></h4>
+      <div class="note" style="padding:10px 12px">
+        <b>Aucune portee de frag.</b> La page porte un <b>nuage d'isolement</b>
+        (<code>SquadIsolementNuageCard.tsx</code>, <code>squadIsolement.logic.ts</code>) : il mesure la
+        distance <b>entre coequipiers</b> &mdash; a quel point je joue seul &mdash; ce qui est une autre
+        question que « a quelle distance je frague ». La distance de frag n'existe sur aucune carte de
+        l'escouade ; elle vit sur la Match view
+        (<code>MatchKillDistanceSection.tsx</code>, un match), sur le Resume
+        (<code>WeaponRangeSection.tsx</code>, un joueur sur une periode) et dans les records de la
+        Synthese. <b>Rien ne compare les coequipiers entre eux, ni dans le temps.</b>
+      </div>
+    </div>
+
+    <div class="section-card" style="margin-top:12px">
+      <h4>R3 &mdash; la distance de frag de TOUS les joueurs d'un match est-elle servie ?
+        <span class="count"><span class="chip on">mesuree pour tous</span> <span class="chip warn">a servir a ce scope</span></span></h4>
+      <div class="note" style="padding:10px 12px">
+        <p style="margin:0 0 8px"><b>La mesure existe pour tout le lobby.</b> Le producteur de positions
+          ecrit une ligne pour <b>toutes</b> les morts decodees du film, sans notion de joueur suivi
+          (<code>internal/sync/killcollector/positions.go:128</code> et <code>:380</code>) ; la table
+          <code>kill_positions(match_id, killer_xuid, time_ms, killer_x/y/z, victim_x/y/z)</code>
+          (<code>internal/games/halo_infinite/migrations/steps_shared_kill_positions.go:30</code>) est
+          donc <b>par tueur, quel que soit le joueur</b>. La distance n'est pas stockee : elle est calculee
+          a la lecture par la jointure canonique
+          <code>match_kill_events_latest &times; kill_positions_latest</code>
+          (<code>internal/platform/duckdb/kill_measured.go</code>, <code>measuredKillsSQLTemplate</code>
+          + <code>hypot3D</code>), sans filtre joueur par defaut.</p>
+        <p style="margin:0 0 8px"><b>Deja servi, pour UN match</b> :
+          <code>KillDistanceRepo.LoadMatch</code>
+          (<code>internal/platform/duckdb/kill_distance_repo.go</code>, portee
+          <code>e.match_id = ?</code>, <b>aucun filtre xuid</b>) alimente
+          <code>combat_tab.kill_distance_by_weapon</code> (<code>internal/domain/match_view.go:511</code>,
+          DTO <code>internal/domain/match_view_kill_distance.go</code>) &mdash; c'est la donnee que la
+          Match view affiche deja pour tout le scoreboard. <b>Mais</b> elle est par (joueur, arme) et
+          donne moyenne/min/max, <b>pas de mediane</b>.</p>
+        <p style="margin:0 0 8px"><b>Ce qu'il manque pour cette carte</b> (periode &times; coequipiers) :
+          le seul lecteur multi-matchs est <b>contraint a un joueur par contrat</b> &mdash;
+          <code>internal/port/weapon_range.go:51</code> exige un designant de joueur, sinon
+          <code>ErrWeaponRangeFiltersTooBroad</code>, applique en
+          <code>internal/platform/duckdb/weapon_range_repo.go:149-174</code>. A servir :
+          (1) un filtre <code>AllPlayers</code> autorisant des MatchIDs sans designant (le scan reste
+          borne par les matchs, la garde anti-scan tient) ; (2) une variante de
+          <code>buildWeaponRangeQuery</code> sans <code>appendXUIDFilter</code>, remontant
+          <code>match_id</code> + <code>feed_killer_xuid</code> (deja projetes par le template) ;
+          (3) un regroupement pur par <code>(match_id, killer_xuid)</code> puis par <code>match_id</code>
+          &mdash; la mediane existe (<code>analysis/weapon_range.go:339</code> <code>percentileLinear</code>,
+          <code>:368</code> <code>WeaponRangeSideTotals</code>, sans seuil de publication : exactement la
+          semantique voulue) ; (4) un DTO
+          <code>{MatchID, PlayedAt, Players[{XUID, MedianM, Measured}], LobbyMedianM, LobbyMeasured}</code>.</p>
+        <p style="margin:0"><b>Deux pieges nommes par la verification</b> : la mediane du lobby n'est
+          <b>pas</b> la moyenne des medianes par joueur (elle se calcule sur les frags, pas sur les
+          joueurs) ; et la couverture des positions (~75,8 %) rend les effectifs inegaux d'un joueur a
+          l'autre &mdash; publier <code>measured</code> a cote de chaque mediane est obligatoire
+          (<code>analysis/weapon_range.go:360-365</code>).</p>
+      </div>
+    </div>
+
+    <div class="section-card" style="margin-top:12px">
+      <h4>La normalisation : la portee RELATIVE AU MATCH, jamais la mediane brute
+        <span class="count">condition de lisibilite</span></h4>
+      <div class="note" style="padding:10px 12px">
+        <p style="margin:0 0 8px">L'axe des y n'est <b>pas</b> la mediane des frags du coequipier, mais son
+          <b>ecart a la mediane de TOUS les joueurs du match</b> &mdash; les huit ou les seize, camp
+          adverse compris. C'est ce qui neutralise la carte et le mode.</p>
+        <p style="margin:0 0 8px"><b>Exemple.</b> Sur un BTB a Fragmentation, la mediane du lobby est
+          &asymp; 24 m : un joueur a 30 m y est un tireur d'elite <b>modeste</b>. Sur une arene a
+          Live Fire, la mediane du lobby est &asymp; 11 m : le meme 30 m serait une anomalie extreme. En
+          mediane brute, ce joueur dessine un escalier qui ne raconte que <b>la playlist de la soiree</b>.
+          En ecart au lobby (+6 m dans un cas, +19 m dans l'autre), il raconte enfin <b>sa facon de
+          jouer</b>.</p>
+        <p style="margin:0"><b>Les bandes de role se posent sur cette echelle relative</b>, et leurs seuils
+          sont les <b>quantiles de l'escouade sur la periode</b> (tiers bas / median / haut), pas des
+          metres en dur : une escouade entierement « longue » garde trois roles internes, ce qui est le
+          seul moyen d'en lire un equilibre. La difference ecart (m) / rapport (&times;) est un detail
+          d'implementation : l'ecart se lit en metres et se comprend sans notice ; le rapport est plus
+          stable quand les medianes de lobby varient du simple au triple. <b>Ecart en metres</b> est
+          retenu ici, le rapport est l'alternative si le melange BTB/arene s'avere trop large.</p>
+      </div>
+    </div>
+
+    <h3 class="sub">Forme 1 &mdash; le nuage des portees <span class="chip new" style="margin-left:8px">preferee</span></h3>
+    <div class="section-card star">
+      <h4>Roles de portee, match par match
+        <span class="count">x = le temps &middot; y = ecart a la mediane du lobby &middot; taille = frags mesures</span></h4>
+      <p class="say">« Sur ces 8 soirees, <b>Kaya</b> tient la portee longue (+7 m au-dessus du lobby, 8
+        matchs sur 8), <b>Wisp</b> la ligne de front (-5 m), et toi tu es au milieu. Votre escouade couvre
+        les trois distances &mdash; c'est un equilibre, pas un hasard. »</p>
+      <div class="chart">
+        <svg viewBox="0 0 660 232" role="img" aria-label="Nuage : un point par coequipier et par match, ecart a la mediane du lobby, avec bandes de role et tendances">
+          <!-- bandes de role -->
+          <rect x="60" y="24" width="580" height="69" fill="#6366F1" opacity=".07"></rect>
+          <rect x="60" y="93" width="580" height="48" fill="var(--muted)" opacity=".5"></rect>
+          <rect x="60" y="141" width="580" height="49" fill="#F59E0B" opacity=".08"></rect>
+          <text class="muted" x="636" y="38" text-anchor="end">Tireur d'elite</text>
+          <text class="muted" x="636" y="112" text-anchor="end">Polyvalent</text>
+          <text class="muted" x="636" y="184" text-anchor="end">Ligne de front</text>
+
+          <!-- axes -->
+          <line class="axis" x1="60" y1="24" x2="60" y2="190"></line>
+          <line x1="60" y1="121" x2="640" y2="121" stroke="var(--muted-foreground)" stroke-width="1.5" stroke-dasharray="5 4"></line>
+          <text class="muted num" x="54" y="66" text-anchor="end">+10 m</text>
+          <text class="muted num" x="54" y="124" text-anchor="end">lobby</text>
+          <text class="muted num" x="54" y="180" text-anchor="end">-8 m</text>
+          <text class="muted" x="60" y="206">8 sep.</text>
+          <text class="muted" x="640" y="206" text-anchor="end">19 sep.</text>
+
+          <!-- tendances -->
+          <polyline fill="none" stroke="#3B82F6" stroke-width="1.5" opacity=".7"
+            points="80,82 150,83 220,76 290,84 360,74 430,68 500,73 570,67"></polyline>
+          <polyline fill="none" stroke="#10B981" stroke-width="1.5" opacity=".7"
+            points="80,114 150,111 220,118 290,108 360,115 430,110 500,113 570,122"></polyline>
+          <polyline fill="none" stroke="#818CF8" stroke-width="1.5" opacity=".7"
+            points="80,155 150,159 220,152 290,166 360,156 430,146 500,160 570,155"></polyline>
+
+          <!-- Kaya (#3B82F6) -->
+          <g fill="#3B82F6" stroke="var(--card)" stroke-width="2">
+            <circle cx="80" cy="79" r="7"></circle><circle cx="150" cy="86" r="6"></circle>
+            <circle cx="220" cy="66" r="8"></circle><circle cx="290" cy="93" r="5"></circle>
+            <circle cx="360" cy="72" r="7"></circle><circle cx="430" cy="59" r="6"></circle>
+            <circle cx="500" cy="79" r="7"></circle><circle cx="570" cy="66" r="8"></circle>
+          </g>
+          <!-- moi (#10B981) -->
+          <g fill="#10B981" stroke="var(--card)" stroke-width="2">
+            <circle cx="80" cy="114" r="7"></circle><circle cx="150" cy="107" r="6"></circle>
+            <circle cx="220" cy="128" r="7"></circle><circle cx="290" cy="100" r="5"></circle>
+            <circle cx="360" cy="121" r="8"></circle><circle cx="430" cy="107" r="6"></circle>
+            <circle cx="500" cy="114" r="7"></circle><circle cx="570" cy="135" r="6"></circle>
+          </g>
+          <!-- Wisp (#818CF8) -->
+          <g fill="#818CF8" stroke="var(--card)" stroke-width="2">
+            <circle cx="80" cy="155" r="6"></circle><circle cx="150" cy="162" r="7"></circle>
+            <circle cx="220" cy="149" r="6"></circle><circle cx="290" cy="169" r="8"></circle>
+            <circle cx="360" cy="155" r="7"></circle><circle cx="430" cy="142" r="6"></circle>
+            <circle cx="500" cy="162" r="7"></circle><circle cx="570" cy="155" r="7"></circle>
+          </g>
+          <!-- points creux : moins de 5 frags mesures -->
+          <circle cx="325" cy="62" r="6" fill="none" stroke="#3B82F6" stroke-width="2" stroke-dasharray="3 2"></circle>
+          <circle cx="465" cy="171" r="6" fill="none" stroke="#818CF8" stroke-width="2" stroke-dasharray="3 2"></circle>
+          <text class="muted" x="330" y="50">3 frags mesures &mdash; pas de role, hors tendance</text>
+
+          <!-- legende -->
+          <g>
+            <circle cx="66" cy="220" r="6" fill="#3B82F6"></circle><text class="muted" x="78" y="224">Kaya</text>
+            <circle cx="136" cy="220" r="6" fill="#10B981"></circle><text class="muted" x="148" y="224">JGtm (moi)</text>
+            <circle cx="242" cy="220" r="6" fill="#818CF8"></circle><text class="muted" x="254" y="224">Wisp</text>
+            <circle cx="326" cy="220" r="6" fill="none" stroke="var(--muted-foreground)" stroke-width="2" stroke-dasharray="3 2"></circle>
+            <text class="muted" x="338" y="224">moins de 5 frags mesures</text>
+            <line x1="512" y1="220" x2="530" y2="220" stroke="var(--muted-foreground)" stroke-width="1.5"></line>
+            <text class="muted" x="536" y="224">tendance (5 matchs)</text>
+          </g>
+        </svg>
+      </div>
+      <p class="note"><b>Le point atypique reste visible</b>, et c'est voulu : un match ou Kaya descend a
+        -4 m du lobby est peut-etre un essai de style (un fusil a pompe toute la partie), pas une erreur de
+        mesure. Le <b>role</b>, lui, se lit sur la <b>fenetre glissante de 5 matchs</b> (la tendance fine) :
+        le point atypique se voit, il ne fait pas basculer l'etiquette. Un match a <b>moins de 5 frags
+        mesures</b> donne un point <b>creux</b>, exclu de la tendance et sans role &mdash; une mediane sur
+        3 frags n'est pas une mediane.</p>
+      <dl class="cost">
+        <dt>Front</dt><dd><code>components/charts/ScatterChart.tsx</code> existe et porte deja la taille de
+          marque ; les bandes de fond sont des <code>markArea</code>, la tendance une serie ligne fine par
+          joueur. Encres joueur = la palette de la page (la meme que le nuage d'isolement), <b>une encre
+          par joueur, jamais par rang</b>.</dd>
+        <dt>Backend</dt><dd>Les quatre points de R3 : filtre <code>AllPlayers</code>, lecteur sans
+          <code>appendXUIDFilter</code>, regroupement <code>(match_id, killer_xuid)</code> + lobby,
+          DTO par match. <b>Un aller-retour</b> pour toute la periode.</dd>
+        <dt>Reserve d'echantillon</dt><dd>5 frags mesures par point (sinon creux) ; <code>measured</code>
+          publie a cote de chaque mediane ; couverture des positions ecrite en pied (~76 %). Les seuils de
+          bandes sont recalcules quand le filtre change &mdash; et ils sont <b>nommes</b> dans l'infobulle
+          (« tiers haut de l'escouade : +4 m et au-dela »), sinon le role passe pour un jugement absolu.</dd>
+      </dl>
+    </div>
+
+    <h3 class="sub">Forme 2 &mdash; la bande des roles</h3>
+    <div class="section-card">
+      <h4>Une ligne par coequipier, un jeton par match, colore par role
+        <span class="count">aucune valeur ecrite</span></h4>
+      <p class="say">« Wisp tient la ligne de front <b>11 matchs sur 14</b>. Kaya a bascule : longue
+        portee jusqu'au 12 septembre, polyvalente depuis. »</p>
+      <div class="chart">
+        <svg viewBox="0 0 660 138" role="img" aria-label="Bande des roles : une ligne par coequipier, un jeton par match colore par role">
+          <text class="muted" x="0" y="12">8 sep.</text><text class="muted" x="640" y="12" text-anchor="end">19 sep.</text>
+          <g>
+            <text x="0" y="38" font-weight="500">Kaya</text>
+            <g>
+              <rect x="120" y="26" width="32" height="18" rx="3" fill="#4338CA"></rect>
+              <rect x="156" y="26" width="32" height="18" rx="3" fill="#4338CA"></rect>
+              <rect x="192" y="26" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="228" y="26" width="32" height="18" rx="3" fill="#4338CA"></rect>
+              <rect x="264" y="26" width="32" height="18" rx="3" fill="#4338CA"></rect>
+              <rect x="300" y="26" width="32" height="18" rx="3" fill="#4338CA"></rect>
+              <rect x="336" y="26" width="32" height="18" rx="3" fill="var(--muted)"></rect>
+              <rect x="372" y="26" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="408" y="26" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="444" y="26" width="32" height="18" rx="3" fill="#4338CA"></rect>
+              <rect x="480" y="26" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="516" y="26" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="552" y="26" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="588" y="26" width="32" height="18" rx="3" fill="#4338CA"></rect>
+            </g>
+          </g>
+          <g>
+            <text x="0" y="70" font-weight="500">JGtm (moi)</text>
+            <g>
+              <rect x="120" y="58" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="156" y="58" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="192" y="58" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+              <rect x="228" y="58" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="264" y="58" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="300" y="58" width="32" height="18" rx="3" fill="#4338CA"></rect>
+              <rect x="336" y="58" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="372" y="58" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="408" y="58" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+              <rect x="444" y="58" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="480" y="58" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="516" y="58" width="32" height="18" rx="3" fill="var(--muted)"></rect>
+              <rect x="552" y="58" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="588" y="58" width="32" height="18" rx="3" fill="#6366F1"></rect>
+            </g>
+          </g>
+          <g>
+            <text x="0" y="102" font-weight="500">Wisp</text>
+            <g>
+              <rect x="120" y="90" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+              <rect x="156" y="90" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+              <rect x="192" y="90" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+              <rect x="228" y="90" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="264" y="90" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+              <rect x="300" y="90" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+              <rect x="336" y="90" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+              <rect x="372" y="90" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="408" y="90" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+              <rect x="444" y="90" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+              <rect x="480" y="90" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+              <rect x="516" y="90" width="32" height="18" rx="3" fill="#6366F1"></rect>
+              <rect x="552" y="90" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+              <rect x="588" y="90" width="32" height="18" rx="3" fill="#93C5FD"></rect>
+            </g>
+          </g>
+          <g>
+            <rect x="0" y="124" width="12" height="12" rx="3" fill="#93C5FD"></rect><text class="muted" x="18" y="134">Ligne de front</text>
+            <rect x="120" y="124" width="12" height="12" rx="3" fill="#6366F1"></rect><text class="muted" x="138" y="134">Polyvalent</text>
+            <rect x="228" y="124" width="12" height="12" rx="3" fill="#4338CA"></rect><text class="muted" x="246" y="134">Tireur d'elite</text>
+            <rect x="340" y="124" width="12" height="12" rx="3" fill="var(--muted)"></rect><text class="muted" x="358" y="134">moins de 5 frags mesures &mdash; pas de role</text>
+          </g>
+        </svg>
+      </div>
+      <p class="note">Trois teintes d'<b>une seule teinte</b>, du clair au fonce : le role est <b>ordinal</b>
+        (du plus pres au plus loin), et une rampe ordonnee se lit sans legende une fois le sens compris.
+        La bande dit la <b>stabilite</b> mieux que le nuage &mdash; et moins bien l'<b>amplitude</b> : elle
+        ne distingue pas +4 m de +19 m. C'est sa limite, et c'est pourquoi elle vient en second.</p>
+      <dl class="cost">
+        <dt>Front</dt><dd><code>components/charts/OutcomeSequenceTape.tsx</code> <b>generalise</b> : il sait
+          deja poser un jeton par match sur une ligne avec sa legende ; il faut lui passer une echelle de
+          categories au lieu de victoire/defaite. Une ligne par joueur = une instance.</dd>
+        <dt>Backend</dt><dd>Le meme que la forme 1, plus le <b>role calcule</b> (serveur ou front : le
+          front a tout ce qu'il faut si les medianes par match arrivent).</dd>
+        <dt>Reserve</dt><dd>Jeton gris pour un match sous 5 frags mesures &mdash; jamais un role devine.</dd>
+      </dl>
+    </div>
+
+    <h3 class="sub">Forme 3 &mdash; le classement qui bouge</h3>
+    <div class="section-card">
+      <h4>A chaque match, les coequipiers du plus loin au plus pres
+        <span class="count">le rang, pas la distance</span></h4>
+      <p class="say">« Kaya et toi avez echange vos places les 12 et 15 septembre : ces soirs-la, c'est toi
+        qui jouais le plus loin. »</p>
+      <div class="chart">
+        <svg viewBox="0 0 660 154" role="img" aria-label="Classement des coequipiers par portee, match apres match">
+          <text class="muted" x="0" y="34" text-anchor="start">le plus loin</text>
+          <text class="muted" x="0" y="118" text-anchor="start">le plus pres</text>
+          <g class="grid">
+            <line x1="120" y1="20" x2="120" y2="130"></line><line x1="206" y1="20" x2="206" y2="130"></line>
+            <line x1="292" y1="20" x2="292" y2="130"></line><line x1="378" y1="20" x2="378" y2="130"></line>
+            <line x1="464" y1="20" x2="464" y2="130"></line><line x1="550" y1="20" x2="550" y2="130"></line>
+            <line x1="636" y1="20" x2="636" y2="130"></line>
+          </g>
+          <polyline fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linejoin="round"
+            points="120,34 206,34 292,76 378,34 464,76 550,34 636,34"></polyline>
+          <polyline fill="none" stroke="#10B981" stroke-width="2.5" stroke-linejoin="round"
+            points="120,76 206,76 292,34 378,76 464,34 550,76 636,76"></polyline>
+          <polyline fill="none" stroke="#818CF8" stroke-width="2.5" stroke-linejoin="round"
+            points="120,118 206,118 292,118 378,118 464,118 550,118 636,118"></polyline>
+          <g stroke="var(--card)" stroke-width="2">
+            <circle cx="120" cy="34" r="5" fill="#3B82F6"></circle><circle cx="292" cy="76" r="5" fill="#3B82F6"></circle>
+            <circle cx="464" cy="76" r="5" fill="#3B82F6"></circle><circle cx="636" cy="34" r="5" fill="#3B82F6"></circle>
+            <circle cx="120" cy="76" r="5" fill="#10B981"></circle><circle cx="292" cy="34" r="5" fill="#10B981"></circle>
+            <circle cx="464" cy="34" r="5" fill="#10B981"></circle><circle cx="636" cy="76" r="5" fill="#10B981"></circle>
+            <circle cx="120" cy="118" r="5" fill="#818CF8"></circle><circle cx="636" cy="118" r="5" fill="#818CF8"></circle>
+          </g>
+          <text x="644" y="38" fill="#3B82F6" font-weight="500">Kaya</text>
+          <text x="644" y="80" fill="#10B981" font-weight="500">moi</text>
+          <text x="644" y="122" fill="#818CF8" font-weight="500">Wisp</text>
+          <text class="muted" x="0" y="148">Le rang efface l'amplitude : trois joueurs a 1 m d'ecart dessinent les memes croisements que trois joueurs a 15 m.</text>
+        </svg>
+      </div>
+      <dl class="cost">
+        <dt>Front</dt><dd><b>Neuf</b> : aucun graphe de rangs (bump) dans l'app. C'est une serie ligne par
+          joueur sur un axe de rangs inverse, plus la gestion des ex aequo et des absents (un coequipier
+          qui n'a pas joue le match coupe sa ligne &mdash; le piege classique de cette forme).</dd>
+        <dt>Backend</dt><dd>Le meme que la forme 1.</dd>
+        <dt>Reserve</dt><dd>Un rang n'a pas d'echantillon : il est toujours calculable, et toujours
+          affichable meme quand il ne veut rien dire. C'est le defaut de fond de cette forme &mdash; elle
+          <b>cache</b> la reserve au lieu de la montrer.</dd>
+      </dl>
+    </div>
+
+    <h3 class="sub">Le challenge : un role par match bascule au bruit</h3>
+    <div class="section-card" style="border-color:var(--warning)">
+      <h4>Trois lectures du meme mois, cote a cote <span class="count">brut / fenetre 5 matchs / par soiree</span></h4>
+      <div class="note" style="padding:10px 12px 0">
+        Par match, la mediane d'un joueur repose sur <b>10 a 15 frags mesures</b> &mdash; souvent moins
+        apres la porte de couverture. A cet effectif, deplacer deux frags suffit a faire changer un role de
+        case. Voici la meme serie, lue de trois facons.
+      </div>
+      <div class="chart">
+        <svg viewBox="0 0 660 176" role="img" aria-label="Le role de Kaya lu brut par match, sur fenetre glissante de 5 matchs, et par soiree">
+          <text x="0" y="26" font-weight="500">Brut, par match</text>
+          <g>
+            <rect x="180" y="14" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="214" y="14" width="30" height="16" rx="3" fill="#6366F1"></rect>
+            <rect x="248" y="14" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="282" y="14" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="316" y="14" width="30" height="16" rx="3" fill="#93C5FD"></rect>
+            <rect x="350" y="14" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="384" y="14" width="30" height="16" rx="3" fill="#6366F1"></rect>
+            <rect x="418" y="14" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="452" y="14" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="486" y="14" width="30" height="16" rx="3" fill="#6366F1"></rect>
+            <rect x="520" y="14" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="554" y="14" width="30" height="16" rx="3" fill="#4338CA"></rect>
+          </g>
+          <text class="muted" x="596" y="26">7 bascules</text>
+
+          <text x="0" y="66" font-weight="500">Fenetre glissante, 5 matchs</text>
+          <g>
+            <rect x="180" y="54" width="30" height="16" rx="3" fill="var(--muted)"></rect>
+            <rect x="214" y="54" width="30" height="16" rx="3" fill="var(--muted)"></rect>
+            <rect x="248" y="54" width="30" height="16" rx="3" fill="var(--muted)"></rect>
+            <rect x="282" y="54" width="30" height="16" rx="3" fill="var(--muted)"></rect>
+            <rect x="316" y="54" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="350" y="54" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="384" y="54" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="418" y="54" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="452" y="54" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="486" y="54" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="520" y="54" width="30" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="554" y="54" width="30" height="16" rx="3" fill="#4338CA"></rect>
+          </g>
+          <text class="muted" x="596" y="66">0 bascule</text>
+
+          <text x="0" y="106" font-weight="500">Par soiree</text>
+          <g>
+            <rect x="180" y="94" width="98" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="282" y="94" width="98" height="16" rx="3" fill="#4338CA"></rect>
+            <rect x="384" y="94" width="98" height="16" rx="3" fill="#6366F1"></rect>
+            <rect x="486" y="94" width="98" height="16" rx="3" fill="#4338CA"></rect>
+          </g>
+          <text class="muted" x="596" y="106">2 bascules</text>
+
+          <text class="muted" x="0" y="140">La serie est la meme. Le brut invente 7 changements de style en 12 matchs ; la soiree en garde 2 mais</text>
+          <text class="muted" x="0" y="156">ne dit plus QUAND ; la fenetre glissante garde la trame par match ET ne bascule que sur un vrai virage.</text>
+          <text class="muted" x="0" y="172">Prix de la fenetre : ses 4 premiers matchs n'ont pas de role (cases grises) &mdash; on l'ecrit, on ne le cache pas.</text>
+        </svg>
+      </div>
+      <blockquote class="verdict" style="margin:0 12px 14px">
+        <b>Celle qui tient : la fenetre glissante de 5 matchs.</b> La soiree parait plus robuste, mais elle
+        melange deux choses qu'on ne veut pas melanger &mdash; une soiree de 3 matchs et une de 11 y pesent
+        pareil, et un changement de playlist en cours de soiree y devient invisible. La fenetre garde le
+        <b>match</b> comme trame (donc la date d'un virage est lisible), atteint 50 a 70 frags mesures par
+        point (un effectif ou la mediane tient), et se raconte en une phrase : « ton role, sur tes 5
+        derniers matchs ». Et elle preserve ce a quoi l'utilisateur tient : <b>le point atypique reste au
+        nuage</b>, visible, meme quand il ne fait pas basculer l'etiquette.
+      </blockquote>
+    </div>
+
+    <blockquote class="verdict">
+      <b>Preferee : la forme 1, le nuage.</b> C'est la seule des trois qui porte en meme temps
+      l'<b>amplitude</b> (combien de metres au-dessus du lobby), la <b>date</b> (quand ca change), le
+      <b>volume</b> (la taille du point) et la <b>reserve</b> (le point creux). La bande (forme 2) est un
+      excellent <b>second</b> etage, a poser sous le nuage dans un repli : elle repond a « est-ce stable ? »
+      d'un coup d'oeil. Le bump (forme 3) est a <b>ecarter</b> : il est le plus cher (forme neuve), et il
+      efface justement ce que la normalisation venait de rendre lisible &mdash; trois joueurs separes par un
+      metre y dessinent le meme spectacle que trois joueurs separes par quinze.
+    </blockquote>
+  </section>
+
+  <!-- ======================================================= 6 APPUI / SESSIONS -->
+  <section class="block" id="a-sessions">
+    <header>
+      <h2>6. Appui &mdash; page Sessions, cote RECU</h2>
+      <p>L'app compte depuis toujours les appuis <b>donnes</b> (la statistique de jeu « assistances »).
+         Le cote <b>recu</b> &mdash; « combien de mes frags m'ont ete prepares » &mdash; n'est compte nulle
+         part, alors que c'est la moitie de la coordination : un joueur qui finit tout ce que son camp
+         entame ne joue pas comme un joueur qui ouvre seul. Memes formes qu'en &sect;1 : jauges a parite
+         plus bande de regularite.</p>
+    </header>
+
+    <div class="section-card">
+      <h4>Aujourd'hui <span class="count">releve dans <code>features/session-detail/</code></span></h4>
+      <div class="note" style="padding:10px 12px">
+        Les assistances existent comme <b>statistique de jeu brute</b> : troisieme baton du graphe FDA
+        (<code>SessionFdaBars.tsx:31-39</code>, encre <code>stat-assists</code>) et troisieme axe du radar
+        (<code>SessionFdaRadar.tsx:15</code>, plafond 12). Les deux repondent a « combien j'en ai donne »,
+        jamais a « combien on m'en a donne », ni a « quelle part des appuis du camp m'est revenue ». Le
+        cote recu n'existe qu'a l'echelle du match
+        (<code>match-view/MatchAssistChart.tsx</code>, les paires patron / larbin) et de l'escouade
+        (<code>squad/SquadAppuiCard.tsx</code>, lot J).
+      </div>
+    </div>
+
+    <div class="section-card star" style="margin-top:12px">
+      <h4>Proposition &mdash; « Appui recu » dans le bloc Coordination de la session
+        <span class="count">jauges a parite + bande</span></h4>
+      <p class="say">« <b>44 %</b> de tes frags de ce soir avaient ete prepares par un coequipier (ton
+        habituel : 37 %). Sur tous les appuis distribues dans ton camp, <b>34 %</b> te sont revenus, pour
+        une part equitable de 25 % a quatre : ce soir, c'est toi qu'on servait. »</p>
+      <div class="chart">
+        <svg viewBox="0 0 660 250" role="img" aria-label="Deux jauges a parite cote appui recu et une bande de regularite">
+          <line class="grid" x1="160" y1="24" x2="160" y2="150"></line>
+          <line class="grid" x1="385" y1="24" x2="385" y2="150"></line>
+          <line class="grid" x1="610" y1="24" x2="610" y2="150"></line>
+          <text class="muted num" x="160" y="18" text-anchor="middle">0 %</text>
+          <text class="muted num" x="385" y="18" text-anchor="middle">50 %</text>
+          <text class="muted num" x="610" y="18" text-anchor="middle">100 %</text>
+
+          <text x="0" y="46" font-weight="500">On me prepare</text>
+          <text class="muted" x="0" y="60">part de mes frags appuyes</text>
+          <rect x="160" y="34" width="450" height="22" rx="4" fill="var(--muted)"></rect>
+          <rect x="160" y="34" width="198" height="22" rx="4" fill="#3B82F6"></rect>
+          <text class="num" x="368" y="50" font-weight="500">44 %</text>
+          <line x1="327" y1="28" x2="327" y2="62" stroke="var(--muted-foreground)" stroke-width="2" stroke-dasharray="3 3"></line>
+          <text class="muted num" x="327" y="74" text-anchor="middle">habituel 37 %</text>
+
+          <text x="0" y="108" font-weight="500">Ma part des appuis</text>
+          <text class="muted" x="0" y="122">sur tous ceux du camp</text>
+          <rect x="160" y="96" width="450" height="22" rx="4" fill="var(--muted)"></rect>
+          <rect x="160" y="96" width="153" height="22" rx="4" fill="#10B981"></rect>
+          <text class="num" x="323" y="112" font-weight="500">34 %</text>
+          <line x1="272" y1="90" x2="272" y2="124" stroke="#F59E0B" stroke-width="2"></line>
+          <text class="num" x="272" y="136" text-anchor="middle" fill="#F59E0B">parite 1/4 = 25 %</text>
+
+          <line class="grid" x1="0" y1="168" x2="660" y2="168"></line>
+          <text x="0" y="196" font-weight="500">Match par match</text>
+          <text class="muted" x="0" y="210">ma part des appuis du camp</text>
+          <g>
+            <rect x="160" y="182" width="46" height="20" rx="3" fill="#10B981"></rect>
+            <rect x="212" y="182" width="46" height="20" rx="3" fill="#10B981"></rect>
+            <rect x="264" y="182" width="46" height="20" rx="3" fill="#EF4444" opacity=".55"></rect>
+            <rect x="316" y="182" width="46" height="20" rx="3" fill="#10B981" opacity=".55"></rect>
+            <rect x="368" y="182" width="46" height="20" rx="3" fill="#10B981"></rect>
+            <rect x="420" y="182" width="46" height="20" rx="3" fill="var(--muted)"></rect>
+            <rect x="472" y="182" width="46" height="20" rx="3" fill="#10B981" opacity=".55"></rect>
+            <rect x="524" y="182" width="46" height="20" rx="3" fill="#EF4444" opacity=".55"></rect>
+          </g>
+          <text class="num" x="580" y="196">5/8</text>
+          <text class="muted" x="160" y="222">au-dessus de la parite</text>
+          <rect x="300" y="213" width="10" height="10" rx="2" fill="#EF4444" opacity=".55"></rect>
+          <text class="muted" x="316" y="222">sous la parite</text>
+          <rect x="400" y="213" width="10" height="10" rx="2" fill="var(--muted)"></rect>
+          <text class="muted" x="416" y="222">aucun appui mesure dans le camp</text>
+        </svg>
+      </div>
+      <p class="note"><b>Deux denominateurs differents, et c'est le point.</b> La premiere jauge se
+        normalise par <b>mes frags</b> (« quelle proportion de mes frags m'a ete preparee ») ; la seconde
+        par <b>les appuis du camp</b> (« sur ce que le camp a distribue, combien m'est revenu »), face a la
+        part equitable 1/n. La premiere dit mon style, la seconde dit ma place dans l'escouade. Les melanger
+        &mdash; en divisant les appuis recus par mes frags puis en comparant a 1/n &mdash; donnerait un
+        nombre qui ne veut rien dire.</p>
+      <dl class="cost">
+        <dt>Front</dt><dd>Les memes trois composants qu'en &sect;1 : <code>UsageGaugeGrid</code>,
+          <code>UsageRegularityBand</code>, <code>UsageBandLegend</code>. Les deux cartes (Riposte, Appui)
+          partagent la section Coordination de la session : <b>une seule cle de section</b> a ajouter pour
+          les deux.</dd>
+        <dt>Backend</dt><dd>Un agregat de session sur <code>assist_pairs</code> : mes frags appuyes / mes
+          frags, et les appuis recus par chacun du camp. <b>R2 est levee</b> &mdash; les appuis sont
+          mesures pour tous les joueurs du film, coequipiers non suivis compris
+          (<code>killcollector/collector_batch.go:37-46</code>) : le denominateur « appuis du camp » est
+          complet, il ne depend pas de la composition suivie. <b>Plus le champ <code>team_size</code> de
+          R1</b> pour la parite.</dd>
+        <dt>Reserve d'echantillon</dt><dd>La porte de mesure est <code>assist_known</code> /
+          <code>publishable</code> (Q21d,
+          <code>internal/platform/duckdb/match_view_repo_assist_pairs.go:73-108</code>) : un appui dont
+          l'auteur n'est pas resolu n'entre dans aucun des deux denominateurs &mdash; la <b>couverture</b>
+          s'ecrit sous les jauges. Sous 20 frags mesures dans la session, comptes seulement, pas de part.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ======================================================= 7 APPUI / TIMESERIES -->
+  <section class="block" id="a-ts">
+    <header>
+      <h2>7. Appui &mdash; page Series temporelles</h2>
+      <p>Les deux memes grandeurs, soiree par soiree, dans la frise du &sect;3. Cote a cote avec la riposte,
+         elles font une page qui raconte <b>la coordination dans le temps</b> plutot que deux statistiques
+         orphelines.</p>
+    </header>
+
+    <div class="section-card">
+      <h4>Aujourd'hui <span class="count">releve dans <code>features/timeseries/</code></span></h4>
+      <div class="note" style="padding:10px 12px">
+        <b>Une tendance d'assistances donnees</b> : batons par match + moyenne glissante sur 10
+        (<code>TimeseriesFormCharts.tsx:305-368</code>), et une variante par minute (:381-422). C'est la
+        statistique de jeu brute, sans denominateur : 5 assistances dans un match a 30 frags de camp et 5
+        dans un match a 12 ne disent pas la meme chose, et la courbe les superpose. Le cote <b>recu</b> est
+        absent de la page.
+      </div>
+    </div>
+
+    <div class="section-card star" style="margin-top:12px">
+      <h4>Proposition &mdash; « Appui recu » dans le temps, deux panneaux
+        <span class="count">grain : la soiree</span></h4>
+      <p class="say">« Depuis trois semaines, on te prepare de plus en plus de frags : <b>41 %</b> sur la
+        derniere soiree contre 33 % d'habitude, et ta part des appuis du camp est passee au-dessus de la
+        part equitable. »</p>
+      <div class="chart">
+        <svg viewBox="0 0 660 150" role="img" aria-label="Part de mes frags appuyes, par soiree : batons, tendance et repere d habituel">
+          <text x="0" y="12" font-weight="500">On me prepare &mdash; part de mes frags appuyes</text>
+          <line class="axis" x1="44" y1="24" x2="44" y2="112"></line>
+          <line class="axis" x1="44" y1="112" x2="652" y2="112"></line>
+          <text class="muted num" x="38" y="28" text-anchor="end">60 %</text>
+          <text class="muted num" x="38" y="72" text-anchor="end">30 %</text>
+          <text class="muted num" x="38" y="116" text-anchor="end">0</text>
+          <line class="grid" x1="44" y1="64" x2="652" y2="64" stroke-dasharray="4 4"></line>
+          <text class="muted num" x="652" y="60" text-anchor="end">habituel 33 %</text>
+          <g fill="#3B82F6">
+            <rect x="54" y="74" width="34" height="38" rx="4"></rect>
+            <rect x="104" y="70" width="34" height="42" rx="4"></rect>
+            <rect x="154" y="79" width="34" height="33" rx="4"></rect>
+            <rect x="204" y="66" width="34" height="46" rx="4"></rect>
+            <rect x="254" y="71" width="34" height="41" rx="4"></rect>
+            <rect x="304" y="62" width="34" height="50" rx="4"></rect>
+            <rect x="354" y="68" width="34" height="44" rx="4"></rect>
+            <rect x="404" y="57" width="34" height="55" rx="4"></rect>
+            <rect x="454" y="61" width="34" height="51" rx="4"></rect>
+            <rect x="504" y="54" width="34" height="58" rx="4"></rect>
+            <rect x="554" y="58" width="34" height="54" rx="4"></rect>
+            <rect x="604" y="51" width="34" height="61" rx="4"></rect>
+          </g>
+          <polyline fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"
+            points="71,76 121,74 171,76 221,72 271,71 321,67 371,66 421,62 471,60 521,57 571,56 621,53"></polyline>
+          <g class="muted">
+            <text class="num" x="71" y="126" text-anchor="middle">38</text>
+            <text class="num" x="171" y="126" text-anchor="middle">51</text>
+            <text class="num" x="271" y="126" text-anchor="middle">44</text>
+            <text class="num" x="371" y="126" text-anchor="middle">47</text>
+            <text class="num" x="471" y="126" text-anchor="middle">40</text>
+            <text class="num" x="621" y="126" text-anchor="middle">49</text>
+            <text x="44" y="140">mes frags mesures de la soiree sous chaque baton</text>
+          </g>
+        </svg>
+      </div>
+      <div class="chart">
+        <svg viewBox="0 0 660 132" role="img" aria-label="Ma part des appuis distribues dans mon camp, par soiree, face a la part equitable">
+          <text x="0" y="12" font-weight="500">Ma part des appuis &mdash; sur tous ceux du camp</text>
+          <line class="axis" x1="44" y1="24" x2="44" y2="112"></line>
+          <line class="axis" x1="44" y1="112" x2="652" y2="112"></line>
+          <text class="muted num" x="38" y="28" text-anchor="end">50 %</text>
+          <text class="muted num" x="38" y="72" text-anchor="end">25 %</text>
+          <text class="muted num" x="38" y="116" text-anchor="end">0</text>
+          <line x1="44" y1="68" x2="652" y2="68" stroke="#F59E0B" stroke-width="2"></line>
+          <text class="num" x="652" y="64" text-anchor="end" fill="#F59E0B">part equitable 1/n</text>
+          <g fill="#10B981">
+            <rect x="54" y="82" width="34" height="30" rx="4"></rect>
+            <rect x="104" y="76" width="34" height="36" rx="4"></rect>
+            <rect x="154" y="84" width="34" height="28" rx="4"></rect>
+            <rect x="204" y="73" width="34" height="39" rx="4"></rect>
+            <rect x="254" y="70" width="34" height="42" rx="4"></rect>
+            <rect x="304" y="75" width="34" height="37" rx="4"></rect>
+            <rect x="354" y="66" width="34" height="46" rx="4"></rect>
+            <rect x="404" y="71" width="34" height="41" rx="4"></rect>
+            <rect x="454" y="64" width="34" height="48" rx="4"></rect>
+            <rect x="504" y="61" width="34" height="51" rx="4"></rect>
+            <rect x="554" y="67" width="34" height="45" rx="4"></rect>
+            <rect x="604" y="59" width="34" height="53" rx="4"></rect>
+          </g>
+          <polyline fill="none" stroke="#818CF8" stroke-width="2" stroke-linecap="round"
+            points="71,84 121,80 171,80 221,76 271,73 321,73 371,70 421,69 471,66 521,63 571,63 621,60"></polyline>
+          <text class="muted" x="44" y="128">n = effectif de mon camp, soiree par soiree (R1) ; une soiree sans appui mesure donne un baton creux, hors tendance</text>
+        </svg>
+      </div>
+      <dl class="cost">
+        <dt>Front</dt><dd>Le meme composant de frise qu'en &sect;3 (<code>SquadRiposteSessionsChart</code>
+          rendu reutilisable) : <b>quatre instances</b> au total sur la page, deux Riposte et deux Appui,
+          chacune avec son echelle.</dd>
+        <dt>Backend</dt><dd>Le meme agregat qu'en &sect;6, groupe par soiree, dans
+          <code>TimeseriesPageResponse</code>. Aucune requete de plus si le bloc Coordination sert les deux
+          sujets.</dd>
+        <dt>Reserve d'echantillon</dt><dd>Plancher de frags mesures par soiree ; couverture
+          <code>assist_known</code> ecrite en pied ; pas de tendance sous 5 soirees mesurees.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ======================================================= COUTS -->
+  <section class="block" id="couts">
+    <header>
+      <h2>Recapitulatif</h2>
+      <p>Sept cases, sept propositions, et le detail de ce qu'elles partagent. Rien n'est implemente.</p>
+    </header>
+    <table class="cmp">
+      <tr><th>&sect;</th><th>Page &middot; sujet</th><th>Forme</th><th>Front</th><th>Backend</th><th>Reserve</th></tr>
+      <tr>
+        <td>1</td><td>Sessions &middot; Riposte</td>
+        <td class="s">2 jauges a parite + bande</td>
+        <td>existant (<code>UsageGaugeGrid</code>, <code>UsageRegularityBand</code>)</td>
+        <td>bloc riposte de session + <b>R1 : <code>team_size</code> par match</b></td>
+        <td class="s">plancher de morts de camp</td>
+      </tr>
+      <tr>
+        <td>2</td><td>Match view &middot; Riposte</td>
+        <td class="s">face-a-face + barres divergentes</td>
+        <td>existant (<code>BarStackedChart</code>, palette joueurs)</td>
+        <td>bloc riposte dans <code>combat_tab</code></td>
+        <td class="s">aucune (comptes) ; film requis</td>
+      </tr>
+      <tr>
+        <td>3</td><td>Timeseries &middot; Riposte</td>
+        <td class="s">2 frises batons + tendance</td>
+        <td><code>SquadRiposteSessionsChart</code> a rendre reutilisable</td>
+        <td>meme bloc, groupe par soiree</td>
+        <td class="s">plancher par soiree ; 5 soirees pour la tendance</td>
+      </tr>
+      <tr>
+        <td>4</td><td>Sessions &middot; Portee</td>
+        <td class="s">batons p10&rarr;p90 par classe, session vs habituel</td>
+        <td><code>weaponRangeChart</code> partage, nouvel appelant</td>
+        <td><code>SynthesisWeaponRange</code> a un scope de plus + classe d'arme</td>
+        <td class="s"><b>30 frags par classe</b> ; couverture ~76 %</td>
+      </tr>
+      <tr>
+        <td>5</td><td>Escouade &middot; Portee</td>
+        <td class="s"><b>nuage</b> des portees relatives (+ bande en repli ; bump ecarte)</td>
+        <td><code>ScatterChart</code> existant ; <code>OutcomeSequenceTape</code> generalise ; bump = neuf</td>
+        <td><b>R3</b> : filtre <code>AllPlayers</code>, lecteur sans filtre xuid, medianes par (match, joueur) + lobby</td>
+        <td class="s">5 frags par point ; role sur fenetre de 5 matchs</td>
+      </tr>
+      <tr>
+        <td>6</td><td>Sessions &middot; Appui recu</td>
+        <td class="s">2 jauges a parite + bande</td>
+        <td>existant, memes composants que &sect;1</td>
+        <td>agregat <code>assist_pairs</code> de session + <b>R1</b></td>
+        <td class="s">couverture <code>assist_known</code> ; 20 frags</td>
+      </tr>
+      <tr>
+        <td>7</td><td>Timeseries &middot; Appui recu</td>
+        <td class="s">2 frises batons + tendance</td>
+        <td>meme frise qu'en &sect;3</td>
+        <td>meme agregat, groupe par soiree</td>
+        <td class="s">plancher par soiree</td>
+      </tr>
+    </table>
+    <ul class="tight">
+      <li><b>Un seul champ debloque trois cases.</b> <code>team_size</code> par match sur
+        <code>SessionUsageMatchPoint</code> (R1) conditionne la parite de &sect;1, &sect;6 et, hors matchs
+        mesures, de &sect;3 et &sect;7. C'est la premiere chose a livrer.</li>
+      <li><b>Un seul composant sert quatre graphes.</b> La frise du lot J, rendue reutilisable, porte
+        &sect;3 et &sect;7 (quatre instances). Ne pas la recopier : la deplacer et la parametrer (regle
+        des deux copies).</li>
+      <li><b>Un seul agregat sert deux pages.</b> Le bloc Coordination (riposte + appui recu) se calcule
+        une fois et se groupe par match, par session ou par soiree selon la page.</li>
+      <li><b>R2 est levee</b> : aucune de ces cartes n'a besoin que les coequipiers soient suivis. La
+        seule restriction du depot est Q32d, sur la page Escouade, et elle est volontaire.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+  (function () {
+    var b = document.getElementById('theme');
+    b.addEventListener('click', function () {
+      var r = document.documentElement;
+      var cur = r.getAttribute('data-theme');
+      if (!cur) {
+        cur = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      r.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+    });
+  })();
+</script>
+</html>

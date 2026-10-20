@@ -18,6 +18,7 @@ import {
   useAbandonSquadChallenge,
 } from '@/features/prestige/hooks/useSquads'
 import { useJoinSquadChallenge } from '@/features/prestige/hooks'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import type { SquadMember, SquadParticipantProgress } from '@/lib/prestige'
 import type { SquadFocusText } from './squadFocusStrings'
 
@@ -40,6 +41,8 @@ export function SquadObjectivesPanel({
   const refreshPool = useRefreshSquadPool()
   const createChallenge = useCreateSquadChallenge(squadId)
   const abandon = useAbandonSquadChallenge(squadId)
+  // Profil d'un ami (lecture seule) : défis et progression affichés, sans action.
+  const readOnly = !useCanWritePlayer(playerSlug)
   const challenges = data?.squad_challenges ?? []
   const pool = refreshPool.data?.pool ?? []
 
@@ -118,7 +121,7 @@ export function SquadObjectivesPanel({
                       </span>
                     ) : null}
                   </span>
-                  <span className="flex shrink-0 gap-2">
+                  <span className={readOnly ? 'hidden' : 'flex shrink-0 gap-2'}>
                     <Button
                       variant="outline"
                       size="sm"
@@ -159,7 +162,7 @@ export function SquadObjectivesPanel({
       )}
 
       {/* Proposer puis créer un défi depuis le pool (biaisé coach). */}
-      <div className="border-t border-border pt-3">
+      <div className={readOnly ? 'hidden' : 'border-t border-border pt-3'}>
         <Button
           variant="outline"
           size="sm"

@@ -1,16 +1,19 @@
-// Package middleware — loopback.go : garde-fou pour endpoints diagnostic.
+// Package middleware — loopback.go : pair TCP de la connexion et garde-fou des
+// endpoints de diagnostic.
 //
-// LoopbackOnly retourne 403 si la requête ne provient pas de 127.0.0.1 / ::1.
-// Utilisé pour les endpoints /_diag/* qui exposent des informations sensibles
-// (état interne du scheduler, force d'un sync) sans authentification.
+// LoopbackOnly retourne 403 si le pair TCP n'est pas 127.0.0.1 / ::1. Utilisé pour
+// les endpoints /_diag/* qui exposent des informations sensibles (état interne du
+// scheduler, force d'un sync) sans authentification.
 //
-// L'idée : en dev local, tout fonctionne par défaut ; en prod derrière un
-// reverse proxy, les requêtes externes arrivent avec X-Forwarded-For et
-// RemoteAddr = IP du proxy (souvent loopback si même machine), mais si le
-// proxy est sur une autre machine, RemoteAddr ne sera pas loopback.
+// Le pair TCP est l'adresse de la connexion, que le demandeur ne peut pas choisir.
+// Derrière un reverse proxy, c'est le proxy : s'il tourne sur la même machine et
+// joint le serveur par loopback, toute requête qu'il relaie est « locale » pour ce
+// garde. Ne pas exposer ces endpoints derrière un tel proxy sans autre contrôle —
+// préférer une vraie auth admin.
 //
-// Sécurité : ne pas activer ces endpoints derrière un proxy qui forwarde
-// sans assainir RemoteAddr — préférer une vraie auth admin.
+// Ce fichier est le seul lecteur de r.RemoteAddr du module (garde-rail
+// archlint/client_ip_test.go) : l'IP cliente des journaux et du limiteur se lit par
+// chimiddleware.GetClientIP, le pair TCP par PeerAddr.
 package middleware
 
 import (
@@ -20,42 +23,37 @@ import (
 	"net/http"
 )
 
-// ctxKeyRealRemoteAddr porte l'adresse TCP réelle du peer, capturée avant toute
-// réécriture de RemoteAddr par chi RealIP.
-type ctxKeyRealRemoteAddr struct{}
+// ctxKeyPeerAddr porte l'adresse TCP du pair, capturée en tête de chaîne.
+type ctxKeyPeerAddr struct{}
 
-// PreserveRemoteAddr stocke l'adresse TCP réelle du peer (r.RemoteAddr tel que vu
-// par le serveur HTTP, AVANT toute réécriture par chi RealIP à partir des en-têtes
-// X-Real-IP / X-Forwarded-For / True-Client-IP) dans le contexte de la requête.
+// PreserveRemoteAddr stocke l'adresse TCP du pair (r.RemoteAddr tel que vu par le
+// serveur HTTP) dans le contexte de la requête, pour PeerAddr.
 //
-// À monter en TÊTE de chaîne, avant RealIP. LoopbackOnly lit cette valeur, ce qui
-// rend le garde insensible aux en-têtes d'IP client falsifiables : sans ça, un
-// attaquant externe envoyant `X-Real-IP: 127.0.0.1` derrière un proxy/CDN pouvait
-// se faire passer pour loopback et atteindre les endpoints /_diag (revue P0
-// 2026-06-02).
+// À monter en TÊTE de chaîne (applyTransverseMiddlewares) : ce qui suit ne peut
+// alors plus changer ce que PeerAddr rend, même en réécrivant r.RemoteAddr.
 func PreserveRemoteAddr(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), ctxKeyRealRemoteAddr{}, r.RemoteAddr)
+		ctx := context.WithValue(r.Context(), ctxKeyPeerAddr{}, r.RemoteAddr)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-// realRemoteAddr retourne l'adresse peer capturée par PreserveRemoteAddr, ou
-// r.RemoteAddr en fallback si le middleware n'a pas été monté en amont.
-func realRemoteAddr(r *http.Request) string {
-	if v, ok := r.Context().Value(ctxKeyRealRemoteAddr{}).(string); ok && v != "" {
+// PeerAddr rend l'adresse TCP du pair (« hôte:port ») capturée par
+// PreserveRemoteAddr, ou r.RemoteAddr si ce middleware n'est pas monté en amont
+// (routeur de test nu). Jamais un en-tête : c'est l'adresse sur laquelle décident
+// les gardes « requête locale » (LoopbackOnly, garde du rejeu).
+func PeerAddr(r *http.Request) string {
+	if v, ok := r.Context().Value(ctxKeyPeerAddr{}).(string); ok && v != "" {
 		return v
 	}
 	return r.RemoteAddr
 }
 
-// LoopbackOnly bloque les requêtes non-loopback avec 403.
-// Compare l'adresse TCP réelle du peer (capturée par PreserveRemoteAddr avant
-// RealIP), pas le RemoteAddr courant qui peut avoir été réécrit depuis des en-têtes
-// X-Forwarded-* / X-Real-IP facilement falsifiables.
+// LoopbackOnly bloque avec 403 les requêtes dont le pair TCP (PeerAddr) n'est pas
+// une adresse de loopback.
 func LoopbackOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		peer := realRemoteAddr(r)
+		peer := PeerAddr(r)
 		host, _, err := net.SplitHostPort(peer)
 		if err != nil {
 			host = peer

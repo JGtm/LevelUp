@@ -16,7 +16,7 @@ import (
 // (commendations dérivées via le moteur de citations, pas une donnée per-match
 // native) — c'est le substrat append-only que Halo 5 valide.
 //
-// ART-SAFETY (#23046) : INSERT-only / INSERT OR IGNORE côté persister. La clé
+// ART-SAFETY (#23645) : INSERT-only / INSERT OR IGNORE côté persister. La clé
 // naturelle (match_id, xuid, commendation_id) n'est JAMAIS mutée (count + progress
 // posés une fois à l'INSERT). AUCUN index secondaire — la PK suffit (parité
 // medals_earned). commendation_id est l'UUID natif de commendation (VARCHAR).

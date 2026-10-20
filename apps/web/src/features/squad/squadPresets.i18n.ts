@@ -6,8 +6,8 @@
  */
 export const SQUAD_PRESETS_STRINGS = {
   fr: {
-    squadsHeader: 'Mes escouades',
-    groupsHeader: 'Mes groupes',
+    squadsHeader: 'Escouades enregistrées',
+    groupsHeader: 'Groupes',
     save: 'Enregistrer la compo',
     saving: 'Enregistrement…',
     saved: 'Compo déjà enregistrée',
@@ -22,8 +22,8 @@ export const SQUAD_PRESETS_STRINGS = {
     usualPrefix: 'surtout',
   },
   en: {
-    squadsHeader: 'My squads',
-    groupsHeader: 'My groups',
+    squadsHeader: 'Saved squads',
+    groupsHeader: 'Groups',
     save: 'Save lineup',
     saving: 'Saving…',
     saved: 'Lineup already saved',

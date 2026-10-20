@@ -1,0 +1,352 @@
+package grammar
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
+// Sonde jetable (jamais dans le depot) : la vue A d un paquet, message par message.
+func TestZZSondeGenre0(t *testing.T) {
+	dir := os.Getenv("SONDE_FILM")
+	if dir == "" {
+		dir = bobineFamilles
+	}
+	ch, _ := strconv.Atoi(os.Getenv("SONDE_CHUNK"))
+	idx, _ := strconv.Atoi(os.Getenv("SONDE_PAQUET"))
+	film, err := source.LoadDir(dir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fc := NewFilmContext(film)
+	g := fc.grammaireDeLaVueA()
+	bal := fc.ProfilDeBalayage()
+	if cp := os.Getenv("SONDE_CATALOGUE"); cp != "" {
+		cat, err := profile.LoadMapQuantCatalog(cp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		e, err := cat.Lookup(os.Getenv("SONDE_CARTE"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		bal.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout())
+		fmt.Printf("G0\tcarte %s %+v\n", os.Getenv("SONDE_CARTE"), e.Layout())
+	}
+	data, pks, _ := fc.ChunkAt(ch)
+	for rang, pk := range pks {
+		if pk.Index != idx {
+			continue
+		}
+		pay := payloadDeRang(data, pks, pk.Index)
+		fmt.Printf("G0\trang %d index %d type %d bits %d classe %v genres %d\n", rang, pk.Index, pk.Type, len(pay)*8, g.classe, g.genres)
+		br := LecteurSur(pay)
+		br.PoserProfil(bal)
+		br.vueA = g
+		br.SetBitPos(0)
+		fmt.Printf("G0\tconfig=%v\n", br.ReadBit())
+		for n := 0; n < 200; n++ {
+			d := br.BitPos()
+			if !br.ReadBit() {
+				fmt.Printf("G0\tterminateur au bit %d, fin %d\n", d, br.BitPos())
+				break
+			}
+			genre := int(br.ReadBits(LargeurGenreVueA))
+			ok := lireUnMessage(br, genre)
+			fmt.Printf("G0\tmsg %d : debut %d genre %d fin %d ok=%v\n", n, d, genre, br.BitPos(), ok)
+			if !ok {
+				break
+			}
+		}
+	}
+}
+
+func TestZZSondeGenre0Fins(t *testing.T) {
+	film, err := source.LoadDir(bobineFamilles, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fc := NewFilmContext(film)
+	g := fc.grammaireDeLaVueA()
+	bal := fc.ProfilDeBalayage()
+	data, pks, _ := fc.ChunkAt(3)
+	for rang, pk := range pks {
+		pay := payloadDeRang(data, pks, pk.Index)
+		if pay == nil {
+			continue
+		}
+		a := lireLaVueA(pay, 1, bal, g)
+		if a.Fin > 2700 && a.Fin < 3300 {
+			fmt.Printf("FN\trang %d index %d type %d porte %v fin %d genres %v\n", rang, pk.Index, pk.Type, a.Porte, a.Fin, a.Genres)
+		}
+	}
+}
+
+func TestZZSondeVueAFilms(t *testing.T) {
+	racine := os.Getenv("SONDE_RACINE")
+	if racine == "" {
+		t.Skip()
+	}
+	for _, f := range []string{"78919882", "fccc61cd", "9b191a7f", "000d5950"} {
+		film, err := source.LoadDir(racine+"/"+f, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fc := NewFilmContext(film)
+		g := fc.grammaireDeLaVueA()
+		bal := fc.ProfilDeBalayage()
+		for _, ch := range fc.ChunkNumbers() {
+			data, pks, _ := fc.ChunkAt(ch)
+			for _, pk := range pks {
+				pay := payloadDeRang(data, pks, pk.Index)
+				if pay == nil {
+					continue
+				}
+				a := lireLaVueA(pay, 1, bal, g)
+				z := false
+				for _, x := range a.Genres {
+					if x == 0 {
+						z = true
+					}
+				}
+				if a.Porte {
+					fmt.Printf("VA\t%s\t%d\t%d\t%d\t%v\t%v\n", f, ch, pk.Index, a.Fin, z, a.Genres)
+				}
+			}
+		}
+	}
+}
+
+func zzBits(br *Lecteur, n int) string {
+	s := ""
+	for i := 0; i < n; i++ {
+		if br.ReadBit() {
+			s += "1"
+		} else {
+			s += "0"
+		}
+	}
+	return s
+}
+
+func TestZZSondeGenre0Champs(t *testing.T) {
+	ch, _ := strconv.Atoi(os.Getenv("SONDE_CHUNK"))
+	idx, _ := strconv.Atoi(os.Getenv("SONDE_PAQUET"))
+	dir := os.Getenv("SONDE_FILM")
+	if dir == "" {
+		dir = bobineFamilles
+	}
+	film, _ := source.LoadDir(dir, nil)
+	fc := NewFilmContext(film)
+	bal := fc.ProfilDeBalayage()
+	data, pks, _ := fc.ChunkAt(ch)
+	pay := payloadDeRang(data, pks, idx)
+	br := LecteurSur(pay)
+	br.PoserProfil(bal)
+	br.vueA = fc.grammaireDeLaVueA()
+	p := func(nom string, f func()) {
+		d := br.BitPos()
+		f()
+		fin := br.BitPos()
+		br.SetBitPos(d)
+		fmt.Printf("CH\t%-28s %5d..%5d  %s\n", nom, d, fin, zzBits(br, fin-d))
+	}
+	deb, _ := strconv.Atoi(os.Getenv("SONDE_DEBUT"))
+	if deb > 0 {
+		br.SetBitPos(deb - 1)
+	}
+	p("config", func() { br.ReadBit() })
+	p("continuation+genre", func() { br.ReadBits(8) })
+	for i := 0; i < 3; i++ {
+		dom := []int{1, 1, 7}[i]
+		p(fmt.Sprintf("ref %d", i), func() {
+			if br.ReadBit() {
+				readVarWidthInt(br, dom)
+			}
+		})
+	}
+	p("gate32 14080d69c", func() { consumeGateR(br, 32) })
+	p("gate0 5 1407f2058", func() { consumeGate0R(br, 5) })
+	p("dir 19", func() { br.Skip(19) })
+	var b20 bool
+	p("bit +0x20", func() { b20 = br.ReadBit() })
+	if b20 {
+		p("dir19+12", func() { br.Skip(31) })
+	}
+	p("5+5+6", func() { br.Skip(16) })
+	p("gate 5", func() { consumeGateR(br, 5) })
+	var dernier bool
+	p("15 drapeaux", func() {
+		for range 15 {
+			dernier = br.ReadBit()
+		}
+	})
+	if dernier {
+		p("R32 bit28", func() { br.Skip(32) })
+	}
+	p("bit19 + R3", func() { br.Skip(4) })
+	p("5+5 echelle", func() { br.Skip(10) })
+	p("echelle + R4", func() { br.Skip(5) })
+	p("gate0 10", func() { consumeGate0R(br, 10) })
+	var f58 uint64
+	p("f58 R4", func() { f58 = br.ReadBits(4) })
+	p("gate32 141015740", func() { consumeGateR(br, 32) })
+	if f58 == 1 {
+		p("R8", func() { br.Skip(8) })
+	}
+	p("R(bitLen 10)", func() { br.Skip(bitLen(10)) })
+	p("gate varwidth0", func() {
+		if br.ReadBit() {
+			readVarWidthInt(br, 0)
+		}
+	})
+	p("corruption?", func() {})
+	p("suite 160", func() { br.Skip(160) })
+	fmt.Printf("CH\tcontrole de corruption %v\n", bal.Grammaire.ControleDeCorruption)
+}
+
+// Chaine de messages depuis `pos` jusqu au terminateur ; rend la fin et les genres.
+func zzChaine(br *Lecteur, pos, total int) (int, []int, bool) {
+	br.SetBitPos(pos)
+	var gs []int
+	for n := 0; n < 300; n++ {
+		if br.BitPos() >= total {
+			return br.BitPos(), gs, false
+		}
+		if !br.ReadBit() {
+			return br.BitPos(), gs, true
+		}
+		genre := int(br.ReadBits(LargeurGenreVueA))
+		gs = append(gs, genre)
+		if !lireUnMessage(br, genre) || br.Deborde() {
+			return br.BitPos(), gs, false
+		}
+	}
+	return br.BitPos(), gs, false
+}
+
+func TestZZSondeDecalage(t *testing.T) {
+	dir := os.Getenv("SONDE_FILM")
+	ch, _ := strconv.Atoi(os.Getenv("SONDE_CHUNK"))
+	idx, _ := strconv.Atoi(os.Getenv("SONDE_PAQUET"))
+	d0, _ := strconv.Atoi(os.Getenv("SONDE_DEBUT0"))  // debut du message de genre 0
+	f0, _ := strconv.Atoi(os.Getenv("SONDE_FIN0"))    // fin lue du message de genre 0
+	cible, _ := strconv.Atoi(os.Getenv("SONDE_CIBLE")) // debut de vue B qui ferme
+	film, _ := source.LoadDir(dir, nil)
+	fc := NewFilmContext(film)
+	data, pks, _ := fc.ChunkAt(ch)
+	pay := payloadDeRang(data, pks, idx)
+	br := LecteurSur(pay)
+	br.PoserProfil(fc.ProfilDeBalayage())
+	br.vueA = fc.grammaireDeLaVueA()
+	_ = d0
+	for e := f0 - 80; e <= f0+200; e++ {
+		fin, gs, ok := zzChaine(br, e, len(pay)*8)
+		if ok && fin == cible {
+			fmt.Printf("DC\tfin du genre 0 a %d (delta %+d) : chaine jusqu a %d, %d messages %v\n", e, e-f0, fin, len(gs), gs)
+		}
+	}
+}
+
+func TestZZSondeDecalageTous(t *testing.T) {
+	dir := os.Getenv("SONDE_FILM")
+	ch, _ := strconv.Atoi(os.Getenv("SONDE_CHUNK"))
+	idx, _ := strconv.Atoi(os.Getenv("SONDE_PAQUET"))
+	cible, _ := strconv.Atoi(os.Getenv("SONDE_CIBLE"))
+	film, _ := source.LoadDir(dir, nil)
+	fc := NewFilmContext(film)
+	data, pks, _ := fc.ChunkAt(ch)
+	pay := payloadDeRang(data, pks, idx)
+	br := LecteurSur(pay)
+	br.PoserProfil(fc.ProfilDeBalayage())
+	br.vueA = fc.grammaireDeLaVueA()
+	// les debuts des messages lus
+	var debuts []int
+	var genres []int
+	br.SetBitPos(1)
+	for {
+		d := br.BitPos()
+		if !br.ReadBit() {
+			break
+		}
+		g := int(br.ReadBits(LargeurGenreVueA))
+		debuts = append(debuts, d)
+		genres = append(genres, g)
+		if !lireUnMessage(br, g) {
+			break
+		}
+	}
+	n := 0
+	for i, d := range debuts {
+		for e := d + 8; e <= d+600 && e < len(pay)*8; e++ {
+			fin, gs, ok := zzChaine(br, e, len(pay)*8)
+			if ok && fin == cible && n < 40 {
+				n++
+				fmt.Printf("DT\tmessage %d (genre %d, debut %d) fini a %d : chaine de %d messages %v\n", i, genres[i], d, e, len(gs), gs)
+			}
+		}
+	}
+}
+
+func TestZZSondeRemontee(t *testing.T) {
+	dir := os.Getenv("SONDE_FILM")
+	ch, _ := strconv.Atoi(os.Getenv("SONDE_CHUNK"))
+	idx, _ := strconv.Atoi(os.Getenv("SONDE_PAQUET"))
+	cible, _ := strconv.Atoi(os.Getenv("SONDE_CIBLE"))
+	film, _ := source.LoadDir(dir, nil)
+	fc := NewFilmContext(film)
+	data, pks, _ := fc.ChunkAt(ch)
+	pay := payloadDeRang(data, pks, idx)
+	br := LecteurSur(pay)
+	br.PoserProfil(fc.ProfilDeBalayage())
+	br.vueA = fc.grammaireDeLaVueA()
+	min := cible
+	var meilleur []int
+	for p := 1; p < cible; p++ {
+		fin, gs, ok := zzChaine(br, p, len(pay)*8)
+		if ok && fin == cible && p < min {
+			min, meilleur = p, gs
+		}
+	}
+	fmt.Printf("RM\tla plus longue chaine qui finit a %d part de %d : %d messages %v\n", cible, min, len(meilleur), meilleur)
+	// et la chaine la plus longue qui finit a la cible en partant d un debut de message valide
+	for p := min - 400; p < min; p++ {
+		if p < 1 {
+			continue
+		}
+		fin, gs, ok := zzChaine(br, p, len(pay)*8)
+		fmt.Printf("RX\t%d -> fin %d ok %v genres %v\n", p, fin, ok, gs[:minInt(len(gs), 4)])
+	}
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func TestZZSondeChainesLongues(t *testing.T) {
+	dir := os.Getenv("SONDE_FILM")
+	ch, _ := strconv.Atoi(os.Getenv("SONDE_CHUNK"))
+	idx, _ := strconv.Atoi(os.Getenv("SONDE_PAQUET"))
+	de, _ := strconv.Atoi(os.Getenv("SONDE_DE"))
+	a, _ := strconv.Atoi(os.Getenv("SONDE_A"))
+	film, _ := source.LoadDir(dir, nil)
+	fc := NewFilmContext(film)
+	data, pks, _ := fc.ChunkAt(ch)
+	pay := payloadDeRang(data, pks, idx)
+	br := LecteurSur(pay)
+	br.PoserProfil(fc.ProfilDeBalayage())
+	br.vueA = fc.grammaireDeLaVueA()
+	for p := de; p < a; p++ {
+		fin, gs, ok := zzChaine(br, p, len(pay)*8)
+		if len(gs) >= 3 {
+			fmt.Printf("CL\t%d -> %d ok=%v n=%d %v\n", p, fin, ok, len(gs), gs[:minInt(len(gs), 12)])
+		}
+	}
+}

@@ -8,7 +8,7 @@ package migration
 //
 // MAIS les 6 helpers RESTENT ici (exportés) car ApplyResolutionViews + ApplyMvPlayerMatchesView
 // sont appelés par RebuildMatchParticipantsART (steps_shared_rebuild_match_participants.go),
-// util runtime appelé par cmd/server au boot + cmd/force_rebuild_art + internal/sync — qui DOIT
+// util runtime appelé par cmd/server au boot + cmd/rebuild_mp + internal/sync — qui DOIT
 // rester dans le package migration. Les déplacer au titre créerait un cycle migration→titre.
 // Les steps title-owned appellent migration.ApplyResolutionViews etc.
 //
@@ -233,18 +233,28 @@ func ApplyResolutionViews(db *sql.DB) error {
 		return fmt.Errorf("create v_gamertag_lookup: %w", err)
 	}
 
-	_, _ = db.ExecContext(bootCtx(), `
-		CREATE OR REPLACE VIEW v_match_full AS
-		SELECT mr.*
-		FROM match_registry mr
-	`)
+	if _, err := db.ExecContext(bootCtx(), VMatchFullViewSQL); err != nil {
+		return fmt.Errorf("create v_match_full: %w", err)
+	}
 
 	return nil
 }
 
+// VMatchFullViewSQL : DDL canonique de v_match_full, SOURCE UNIQUE (archlint/
+// v_match_full_ddl_single_source_test.go interdit tout second littéral hors tests). DuckDB fige
+// l'étoile à la création : toute colonne ajoutée ou retirée de match_registry exige de rejouer ce
+// DDL. Sans point-virgule final.
+const VMatchFullViewSQL = `CREATE OR REPLACE VIEW v_match_full AS SELECT mr.* FROM match_registry mr`
+
 // ApplyMvPlayerMatchesView crée ou recrée mv_player_matches.
 func ApplyMvPlayerMatchesView(db *sql.DB) error {
-	_, err := db.ExecContext(bootCtx(), `
+	_, err := db.ExecContext(bootCtx(), mvPlayerMatchesViewSQL)
+	return err
+}
+
+// mvPlayerMatchesViewSQL : DDL canonique de mv_player_matches (registre x participants), joué
+// aussi par la reconstruction de match_registry (steps_shared_registry_integrity_columns.go).
+const mvPlayerMatchesViewSQL = `
 		CREATE OR REPLACE VIEW mv_player_matches AS
 		SELECT
 			mr.match_id,
@@ -272,7 +282,6 @@ func ApplyMvPlayerMatchesView(db *sql.DB) error {
 			mr.team_1_score,
 			mr.team_0_ps_score,
 			mr.team_1_ps_score,
-			mr.player_count,
 			mp.xuid,
 			mp.gamertag,
 			mp.team_id,
@@ -304,6 +313,4 @@ func ApplyMvPlayerMatchesView(db *sql.DB) error {
 			mp.backfill_bits
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
-	`)
-	return err
-}
+	`

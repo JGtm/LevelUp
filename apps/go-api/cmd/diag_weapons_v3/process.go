@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -19,7 +20,9 @@ func processMatch(ctx context.Context, c *conn, cfg runConfig, m matchRef) error
 	if !ok {
 		return fmt.Errorf("absent de match_registry")
 	}
-	src, ok, err := newDiskFilmSource(cfg.cacheDir, m.short)
+	// LE FILM EST CHARGE UNE FOIS (chunks decompresses, paquets decoupes) : c'est ce que prend
+	// desormais `objectives` (item 1.5 de PLAN_CUISSON_PERF).
+	film, ok, err := filmcache.LoadFilm(cfg.cacheDir, m.short)
 	if err != nil {
 		return err
 	}
@@ -31,8 +34,13 @@ func processMatch(ctx context.Context, c *conn, cfg runConfig, m matchRef) error
 		return err
 	}
 
-	events := objectiveevents.Extract(m.full, reg.variant, src, objectiveevents.MapRoster(roster))
+	events, ctl := decfilm.Extract(m.full, reg.variant, film, decfilm.MapRoster(roster))
 	printSummary(m, reg, events)
+	// L'EQUIPE VIENT DU PIED DU FILM (lot 1.7.3) : le roster ci-dessus n'en est que le controle,
+	// et ces trois comptes sont ce que la feuille de match en dit. Les taire ferait passer un
+	// basculement de source pour une affirmation.
+	fmt.Printf("  [equipes] %d event(s) du film · accord=%d contradiction=%d silence=%d\n",
+		ctl.Film, ctl.Accord, ctl.Contradiction, ctl.Silence)
 
 	if cfg.write {
 		if err := writeEvents(ctx, c, m.full, events); err != nil {
@@ -46,7 +54,7 @@ func processMatch(ctx context.Context, c *conn, cfg runConfig, m matchRef) error
 
 // writeEvents persiste les events via ObjectiveEventsRepo (PlayerDB minimal :
 // seul Shared est requis, SharedReadDB() retombe sur LegacySharedReader).
-func writeEvents(ctx context.Context, c *conn, matchID string, events []domain.ObjectiveEvent) error {
+func writeEvents(ctx context.Context, c *conn, matchID string, events []objectiveevent.Event) error {
 	if c.rwDB == nil {
 		return fmt.Errorf("connexion non-RW (write impossible)")
 	}
@@ -57,7 +65,7 @@ func writeEvents(ctx context.Context, c *conn, matchID string, events []domain.O
 
 // printSummary affiche le résumé d'un match : mode décodé, events par
 // objective_type/event_type, split par équipe, timeline, + compare CTF vs DB.
-func printSummary(m matchRef, reg *registryRow, events []domain.ObjectiveEvent) {
+func printSummary(m matchRef, reg *registryRow, events []objectiveevent.Event) {
 	fmt.Printf("[%s] %s — variant=%q\n", m.short, m.full, reg.variant)
 	if len(events) == 0 {
 		fmt.Println("  Aucun event objectif décodé (mode non-objectif, footer absent, ou film sans capture).")
@@ -79,7 +87,7 @@ func printSummary(m matchRef, reg *registryRow, events []domain.ObjectiveEvent) 
 }
 
 // printTimeline affiche chaque event ordonné (seq, t en s, type, équipe, scorer).
-func printTimeline(events []domain.ObjectiveEvent) {
+func printTimeline(events []objectiveevent.Event) {
 	fmt.Println("  Timeline :")
 	for _, e := range events {
 		fmt.Printf("    seq=%-3d t=%-8s %s/%s team=%s %s conf=%s%s\n",
@@ -89,7 +97,7 @@ func printTimeline(events []domain.ObjectiveEvent) {
 }
 
 // printCTFCompare confronte le COUNT/split de captures décodées au score DB.
-func printCTFCompare(reg *registryRow, t0, t1 int, events []domain.ObjectiveEvent) {
+func printCTFCompare(reg *registryRow, t0, t1 int, events []objectiveevent.Event) {
 	captures := countCaptures(events)
 	fmt.Println("  --- Comparaison CTF vs DB ---")
 	if !reg.hasScores {
@@ -107,7 +115,7 @@ func printCTFCompare(reg *registryRow, t0, t1 int, events []domain.ObjectiveEven
 
 // eventTypeBreakdown agrège les events par (objective_type, event_type),
 // ordonné, en lignes "type/event : N".
-func eventTypeBreakdown(events []domain.ObjectiveEvent) []string {
+func eventTypeBreakdown(events []objectiveevent.Event) []string {
 	counts := make(map[string]int)
 	for _, e := range events {
 		counts[e.ObjectiveType+"/"+e.EventType]++
@@ -125,7 +133,7 @@ func eventTypeBreakdown(events []domain.ObjectiveEvent) []string {
 }
 
 // teamSplit compte les events par team_id (0/1/inconnu).
-func teamSplit(events []domain.ObjectiveEvent) (t0, t1, unknown int) {
+func teamSplit(events []objectiveevent.Event) (t0, t1, unknown int) {
 	for _, e := range events {
 		switch {
 		case e.TeamID == nil:
@@ -140,10 +148,10 @@ func teamSplit(events []domain.ObjectiveEvent) (t0, t1, unknown int) {
 }
 
 // countCaptures compte les events CTF capture.
-func countCaptures(events []domain.ObjectiveEvent) int {
+func countCaptures(events []objectiveevent.Event) int {
 	n := 0
 	for _, e := range events {
-		if e.EventType == objectiveevents.EventTypeCapture {
+		if e.EventType == decfilm.EventTypeCapture {
 			n++
 		}
 	}

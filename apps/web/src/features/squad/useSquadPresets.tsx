@@ -3,11 +3,11 @@
  * (rosters nommés chargeables d'un clic) + un footer de gestion.
  *
  * Deux sources, clairement distinctes (anti-confusion) :
- *  - « Mes escouades » : compositions sauvegardées (entité Squad). Charger =
+ *  - « Escouades enregistrées » : compositions sauvegardées (entité Squad). Charger =
  *    appliquer le roster ; gérer = renommer / supprimer ; enregistrer la compo
  *    courante. Sous-titre = indice dérivé des playlists/modes habituels (si le
  *    backend le fournit ; jamais stocké).
- *  - « Mes groupes » : cercles d'accès familles/amis. Charger leurs membres dans
+ *  - « Groupes » : cercles d'accès familles/amis. Charger leurs membres dans
  *    la sélection (reprend la capacité de l'ancien SquadGroupLoader).
  *
  * Toute la logique métier vit ici pour garder GamertagCombobox (components/ui)
@@ -27,6 +27,7 @@ import { useMyGroups } from '@/features/groups/queries'
 import type { TeammateRow } from '@/lib/api/types'
 import { normalizeModeLabel } from '@/lib/halo/modeLabel'
 import { findSquadByRoster, squadTeammates } from './squadRoster'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { SQUAD_PRESETS_STRINGS, type SquadPresetsStrings } from './squadPresets.i18n'
 
 /**
@@ -129,6 +130,9 @@ export function scoreSquadContext(
   )
 }
 
+/** Ce que le hook lit d'une ligne de coéquipier : de quoi enregistrer l'escouade. */
+export type SquadPresetRow = Pick<TeammateRow, 'gamertag' | 'xuid'>
+
 export interface UseSquadPresetsOptions {
   playerSlug: string
   /** XUID absolu du joueur courant — exclut le viewer du roster (player-agnostic).
@@ -137,7 +141,7 @@ export interface UseSquadPresetsOptions {
   hasLinkedIdentity: boolean
   locale: string
   /** Coéquipiers actuellement sélectionnés (pour « enregistrer la compo »). */
-  selectedRows: TeammateRow[]
+  selectedRows: readonly SquadPresetRow[]
   /** Labels (playlists/modes) du filtre courant → trie en tête les escouades
    *  dont les contextes habituels matchent (indice souple, jamais un verrou). */
   activeContextLabels?: string[]
@@ -170,6 +174,8 @@ export function useSquadPresets({
   const createSquad = useCreateSquad(playerSlug)
   const renameSquad = useRenameSquad(playerSlug)
   const deleteSquad = useDeleteSquad(playerSlug)
+  // Profil d'un ami (lecture seule) : escouades chargeables, ni enregistrement ni gestion.
+  const readOnly = !useCanWritePlayer(playerSlug)
 
   const slugLower = playerSlug.toLowerCase()
 
@@ -266,7 +272,7 @@ export function useSquadPresets({
       name: sm.squad.name,
       subtitle: buildUsualSubtitle(sm.usual_playlists, sm.usual_modes, t),
       gamertags,
-      trailing: manageMode ? manageControls(sm.squad.id, sm.squad.name) : undefined,
+      trailing: manageMode && !readOnly ? manageControls(sm.squad.id, sm.squad.name) : undefined,
     }
   })
 
@@ -310,7 +316,7 @@ export function useSquadPresets({
   }
   const saveLabel = createSquad.isPending ? t.saving : alreadySaved ? t.saved : t.save
 
-  const footer = (
+  const footer = readOnly ? null : (
     <div className="flex items-center justify-between gap-2 px-3 py-2">
       <button
         type="button"

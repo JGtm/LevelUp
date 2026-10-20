@@ -46,7 +46,7 @@ export function useUpdateSettings() {
   const navigate = useNavigate()
   return useMutation({
     mutationFn: async (req: UpdateSettingsRequest) => {
-      // En démo, le PATCH /settings est refusé (422 — settings figés et partagés
+      // En démo, le PATCH /settings est refusé (403 demo_mode_forbidden — settings figés et partagés
       // entre visiteurs). Le seul réglage modifiable est la langue : on l'applique
       // client-side (onSuccess ci-dessous), sans toucher au serveur. Les autres
       // champs sont ignorés (no-op) — l'UI les grise de toute façon.

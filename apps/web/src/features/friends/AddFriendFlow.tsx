@@ -2,8 +2,9 @@
  * AddFriendFlow — composant partagé Squad + Settings pour ajouter un ami.
  *
  * §3 du plan Squad/Sessions overhaul. La modale propose une confirmation
- * explicite avant de PATCH /settings (ajout à `friend_gamertags`). Le
- * recompute `is_with_friends` s'exécute automatiquement côté serveur (§4).
+ * explicite avant le PUT de la liste d'amis du joueur
+ * (`/players/{slug}/friends`). Le recompute `is_with_friends` s'exécute
+ * automatiquement côté serveur (§4).
  *
  * Note MVP : la création de profil joueur (POST /setup/players via
  * useCreatePlayer) + sync initial (POST /sync/initial via useStartInitialSync)
@@ -17,9 +18,10 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { useSettings, useUpdateSettings } from '@/features/settings/queries'
 import { queryKeys } from '@/lib/query/keys'
 import { Card, CardContent } from '@/components/ui/card'
+import { usePlayerFriends, useUpdatePlayerFriends } from './queries'
+import { friendsErrorMessage } from './errors'
 
 // ─── Texte i18n ──────────────────────────────────────────────────────────────
 
@@ -57,15 +59,15 @@ function getTexts(locale: string): Texts {
 // ─── Hook : useAddFriend ─────────────────────────────────────────────────────
 
 /**
- * Hook qui chaîne PATCH /settings pour ajouter `gamertag` à friend_gamertags.
- * Le recompute `is_with_friends` côté backend est déclenché automatiquement
- * sur diff (§4). Invalide les queries Squad pour rafraîchir le dropdown.
+ * Hook qui chaîne le PUT de la liste d'amis DU JOUEUR `playerSlug` pour y
+ * ajouter `gamertag`. Le recompute `is_with_friends` côté backend est déclenché
+ * automatiquement (§4). Invalide les queries Squad pour rafraîchir le dropdown.
  */
 // eslint-disable-next-line react-refresh/only-export-components
-export function useAddFriend(locale: string = 'fr') {
+export function useAddFriend(playerSlug: string, locale: string = 'fr') {
   const t = getTexts(locale)
-  const { data: settings } = useSettings()
-  const update = useUpdateSettings()
+  const { data: friends } = usePlayerFriends(playerSlug)
+  const update = useUpdatePlayerFriends(playerSlug)
   const qc = useQueryClient()
 
   return {
@@ -73,20 +75,21 @@ export function useAddFriend(locale: string = 'fr') {
       const trimmed = gamertag.trim()
       if (!trimmed) return { ok: false, reason: 'error', error: 'empty gamertag' }
 
-      const current = settings?.friend_gamertags ?? []
+      const current = friends?.gamertags ?? []
       if (current.some((g) => g.toLowerCase() === trimmed.toLowerCase())) {
         return { ok: false, reason: 'already' }
       }
 
       try {
         const next = [...current, trimmed]
-        await update.mutateAsync({ friend_gamertags: next })
+        await update.mutateAsync(next)
         toast.success(t.successToast(trimmed))
-        // Invalide tout ce qui dépend de friend_gamertags : Squad, settings.
+        // Invalide tout ce qui dépend de la liste d'amis : Squad.
         qc.invalidateQueries({ queryKey: queryKeys.teammatesAll })
         return { ok: true }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
+        // L'API ne renvoie qu'un code machine : le texte lisible vient d'ici.
+        const msg = friendsErrorMessage(err, locale)
         toast.error(t.errorToast(trimmed, msg))
         return { ok: false, reason: 'error', error: msg }
       }
@@ -98,6 +101,8 @@ export function useAddFriend(locale: string = 'fr') {
 // ─── Modale de confirmation ──────────────────────────────────────────────────
 
 export interface AddFriendModalProps {
+  /** Joueur dont la liste d'amis est modifiée. */
+  playerSlug: string
   /** Gamertag à ajouter (affiché dans le titre). */
   gamertag: string
   /** Si false, la modale n'est pas montée. */
@@ -110,9 +115,9 @@ export interface AddFriendModalProps {
   onSuccess?: (gamertag: string) => void
 }
 
-export function AddFriendModal({ gamertag, open, onClose, locale, onSuccess }: AddFriendModalProps) {
+export function AddFriendModal({ playerSlug, gamertag, open, onClose, locale, onSuccess }: AddFriendModalProps) {
   const t = getTexts(locale)
-  const { addFriend, isAdding } = useAddFriend(locale)
+  const { addFriend, isAdding } = useAddFriend(playerSlug, locale)
   const [submitted, setSubmitted] = useState(false)
 
   if (!open) return null

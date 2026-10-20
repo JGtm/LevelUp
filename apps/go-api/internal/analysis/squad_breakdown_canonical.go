@@ -135,8 +135,8 @@ func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad 
 	}
 	kpis.Wins = wins
 	if totalWL > 0 {
-		// Note: WinRate canonique 0..1 (ADR 0006). math.Round/1000 prÃ©serve la
-		// mÃªme prÃ©cision que ComputeSynthesisKPIs (3 dÃ©cimales).
+		// Note: WinRate canonique 0..1 (ADR 0006). math.Round/1000 préserve la
+		// même précision que ComputeSynthesisKPIs (3 décimales).
 		kpis.WinRate = math.Round(WinRate(wins, totalWL)*1000) / 1000
 	}
 	if nKDA > 0 {
@@ -311,7 +311,7 @@ func ComputeSynthesisBreakdownFromCanonical(rows []canonical.PlayerMatchRow, isS
 }
 
 // ComputeTemporalHeatmapFromCanonical est la variante canonical-aware de
-// ComputeTemporalHeatmap. Pas de logique mÃ©tier â€” seulement l'extraction
+// ComputeTemporalHeatmap. Pas de logique métier — seulement l'extraction
 // du jour/heure depuis Summary.StartedAtUTC.
 func ComputeTemporalHeatmapFromCanonical(rows []canonical.PlayerMatchRow) []domain.TemporalHeatmapCell {
 	type heatmapAgg struct {
@@ -350,4 +350,4 @@ func ComputeTemporalHeatmapFromCanonical(rows []canonical.PlayerMatchRow) []doma
 	return result
 }
 
-// ComputeComparisonMetrics construit les mÃ©triques bipolaires solo/escouade.
+// ComputeComparisonMetrics construit les métriques bipolaires solo/escouade.

@@ -2,6 +2,10 @@ package mapper
 
 import "time"
 
+// BackfillBitMedals : bit 0 (1) of the legacy backfill flags, « medals supplied »
+// (sync.BackfillFlags["medals"]).
+const BackfillBitMedals = 1
+
 // MatchRegistryRow mirrors a row in shared.match_registry (DuckDB v6).
 // Column names follow the schema in internal/sync/schema.go. Pointer fields
 // represent SQL NULL (left empty when the data is unavailable from the
@@ -35,14 +39,17 @@ type MatchRegistryRow struct {
 	Team1Score              *int16
 	Team0PsScore            *int
 	Team1PsScore            *int
-	BackfillCompleted       int  // 1 once the import has supplied all rows
-	ParticipantsLoaded      bool // true after import
-	EventsLoaded            bool // true after import (HighlightEvents rows attached)
-	MedalsLoaded            bool // true after import
-	FirstSyncBy             string
-	FirstSyncAt             time.Time
-	LastUpdatedAt           time.Time
-	PlayerCount             int16
+	// BackfillCompleted : MapMatch sets BackfillBitMedals only, and only when the payload carries
+	// medals. It is NOT copied to the shared registry : service.toSyncRegistry computes
+	// backfill_completed from the batch (participants bit when the roster is written).
+	BackfillCompleted int
+	// MedalsLoaded : true only when MapMatch mapped at least one medal for the match. There is no
+	// events counterpart : HighlightEvents is a sibling table imported in its own pass (MapHighlight),
+	// so a MappedMatch can never say whether events were loaded.
+	MedalsLoaded  bool
+	FirstSyncBy   string
+	FirstSyncAt   time.Time
+	LastUpdatedAt time.Time
 	// SeasonID est l'identifiant CSR de la saison du match (ex. "CsrSeason13-1").
 	// Phase 9.5 du plan pipeline CSR : lu depuis le payload OpenSpartan
 	// (MatchInfo.SeasonId, déjà disponible mais non exploité historiquement)

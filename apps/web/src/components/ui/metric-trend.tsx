@@ -7,16 +7,14 @@
  * saison sélectionnée vs la précédente). NE PAS réinliner TREND_GLYPH /
  * TREND_VAR / MetricWithTrend ailleurs — garde-rail : metric-trend.guard.test.ts.
  *
- * Distinct du vocabulaire `above/below/near` (KPIStrip, PlayerScoreCard) qui
- * compare une valeur à une RÉFÉRENCE (moyenne, all-time), pas à un instant
- * antérieur. Ces deux copies restent à centraliser (dette pré-existante notée
- * dans le handoff C1 — Découvertes) ; ne pas les fusionner ici sans mapper leur
+ * Distinct du vocabulaire `above/below/near` (PlayerScoreCard) qui compare une valeur à une
+ * RÉFÉRENCE (moyenne, all-time), pas à un instant antérieur : ne pas les fusionner sans mapper leur
  * sémantique.
  */
 export type Trend = 'up' | 'down' | 'stable'
 
 const TREND_GLYPH: Record<Trend, string> = { up: '▲', down: '▼', stable: '=' }
-// Tokens sémantiques de tendance (cf. KPIStrip) — jamais de hex direct.
+// Tokens sémantiques de tendance — jamais de hex direct.
 const TREND_VAR: Record<Trend, string> = {
   up: '--narrative-trend-positive',
   down: '--narrative-trend-negative',

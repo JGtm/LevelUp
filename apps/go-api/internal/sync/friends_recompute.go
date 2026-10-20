@@ -1,7 +1,7 @@
 // Package sync — friends_recompute.go : recompute is_with_friends pour un joueur.
 //
 // §4 du plan Squad/Sessions overhaul. Suit le pattern session_recalc.go :
-// acquisition de leases sur les deux DBs, ouverture séparée, résolution des
+// bail d'écriture sur la base joueur seule, lecture de la base partagée, résolution des
 // XUIDs amis depuis xuid_aliases, UPDATE atomique, refresh aggregates.
 //
 // Sémantique CONVERGENTE (2026-06-19, project_convergent_sync_direction) :
@@ -21,8 +21,9 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
@@ -41,14 +42,15 @@ type FriendsRecomputeResult struct {
 // un match où au moins un xuid d'ami (résolu via xuid_aliases) a participé
 // dans la même équipe que le joueur.
 //
-// friendGamertags : liste des amis (settings.friend_gamertags). Vide → no-op.
+// friendGamertags : liste des amis du joueur. Vide → démotion complète (plus aucun
+// ami : tous les matchs TRUE repassent FALSE) — ce n est PAS un no-op, cf. en-tête.
 // Les gamertags non résolus dans xuid_aliases sont logués Warn et ignorés.
 //
-// provider : si non-nil, passe par Provider.AcquireWriter pour coordonner avec
-// le pool joueur et les readers HTTP. Si nil, fallback legacy (dblease +
-// OpenSharedDB direct, risque "different configuration"). Sprint B1 commit 13b.
+// provider : si non-nil, la base partagée se lit par Provider.Get (lecteur en vol,
+// coordonné avec les swaps du sync) ; si nil, par OpenReadForQuery. Dans les deux cas
+// elle n'est jamais ouverte en écriture : seul le bail de la base joueur est pris.
 //
-// Cette variante acquiert ses propres leases + ouvre les DBs. Pour appel
+// Cette variante acquiert son bail joueur + ouvre les DBs. Pour appel
 // inline depuis le sync engine (qui détient déjà les leases), utiliser
 // RecomputeIsWithFriendsCore.
 func RecomputeIsWithFriends(
@@ -57,6 +59,7 @@ func RecomputeIsWithFriends(
 	playerDBPath, sharedDBPath, playerXUID string,
 	friendGamertags []string,
 ) (FriendsRecomputeResult, error) {
+	defer duckdbpkg.InvalidatePlayerReadCaches(ctx, playerXUID, "") // perf L5b : is_with_friends recalculé hors sync = lectures joueur cachées périmées
 	// Sémantique convergente : on NE court-circuite PLUS sur liste vide — une liste
 	// vide signifie « plus aucun ami », donc tous les matchs TRUE doivent être
 	// démotés. On acquiert les leases et on laisse Core réconcilier.
@@ -72,13 +75,18 @@ func RecomputeIsWithFriends(
 	}
 	defer playerHandle.Close()
 
-	// Sprint B1 commit 13b : helper standalone (Provider en B-swap, dblease +
-	// OpenSharedDB en legacy).
-	sharedDB, releaseShared, err := AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "friends_recompute"), provider, sharedDBPath)
-	if err != nil {
-		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends: %w", err)
+	// La base partagée est LUE seulement (alias des amis, participants) ; les flags
+	// s'écrivent en base joueur. Aucune bascule en écriture de la base partagée, et
+	// aucune lecture quand la liste est vide (la démotion ne regarde que la base joueur).
+	var sharedDB *sql.DB
+	if len(friendGamertags) > 0 {
+		db, releaseShared, err := acquireSharedReaderStandalone(ctx, provider, sharedDBPath)
+		if err != nil {
+			return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends: %w", err)
+		}
+		defer releaseShared()
+		sharedDB = db
 	}
-	defer releaseShared()
 
 	return RecomputeIsWithFriendsCore(ctx, playerHandle.SQLDb(), sharedDB, playerXUID, friendGamertags, true)
 }
@@ -221,7 +229,7 @@ func loadMatchesWithFriends(
 }
 
 // updateIsWithFriendsBatch fait passer is_with_friends à TRUE pour les matchs fournis.
-// Append-only #23046 : INSERT pur stage='friends' valeur TRUE EXPLICITE (le bug NULL
+// Append-only #23645 : INSERT pur stage='friends' valeur TRUE EXPLICITE (le bug NULL
 // historique — badge "Solo" persistant, cf. thought_log 2026-05-08 — disparaît
 // nativement). Pré-filtre delta via _latest (ne réécrit que les matchs réellement FALSE).
 func updateIsWithFriendsBatch(ctx context.Context, playerDB *sql.DB, matchIDs []string) (int64, error) {
@@ -233,7 +241,7 @@ func updateIsWithFriendsBatch(ctx context.Context, playerDB *sql.DB, matchIDs []
 // actuellement TRUE qui ne figurent PLUS dans targetIDs (ami retiré / dernier ami
 // supprimé → targetIDs vide → démotion complète). Convergent.
 func demoteStaleIsWithFriends(ctx context.Context, playerDB *sql.DB, targetIDs []string) (int64, error) {
-	// Append-only #23046 : lire la valeur mergée (vue _latest) — sinon de vieilles
+	// Append-only #23645 : lire la valeur mergée (vue _latest) — sinon de vieilles
 	// rows TRUE + nouvelles FALSE coexistent et la démotion opère sur un état faux.
 	rows, err := playerDB.QueryContext(ctx,
 		`SELECT match_id FROM player_match_enrichment_latest WHERE COALESCE(is_with_friends, FALSE) = TRUE`)
@@ -273,8 +281,87 @@ func demoteStaleIsWithFriends(ctx context.Context, playerDB *sql.DB, targetIDs [
 }
 
 // demoteIsWithFriendsBatch fait passer is_with_friends à FALSE pour les matchs fournis.
-// Append-only #23046 : INSERT pur stage='friends' valeur FALSE EXPLICITE (jamais NULL).
+// Append-only #23645 : INSERT pur stage='friends' valeur FALSE EXPLICITE (jamais NULL).
 func demoteIsWithFriendsBatch(ctx context.Context, playerDB *sql.DB, matchIDs []string) (int64, error) {
 	n, err := insertEnrichmentBoolFlagDelta(ctx, playerDB, matchIDs, "is_with_friends", "friends", false)
 	return int64(n), err
+}
+
+// withFriends dit si le joueur a joué ce match avec un ami : au moins un participant de SA
+// équipe dont le xuid figure dans friendXUIDs, hors le joueur lui-même.
+//
+// Prédicat pur, jumeau exact de loadMatchesWithFriends (la requête du recalcul) : même équipe
+// (`team_id` égaux ; un `team_id` inconnu n'égale rien, comme `NULL = NULL` en SQL), xuid ami,
+// xuid différent du joueur (le joueur est souvent dans sa propre liste d'amis). Un bot n'a pas
+// de xuid de compte : il n'est jamais dans la liste, donc jamais compté. Le joueur absent des
+// participants, ou sans équipe connue, ne joue avec personne. L'équivalence avec la requête est
+// tenue par TestWithFriends_MatchesSQLVerdict.
+func withFriends(participants []ParticipantRow, playerXUID string, friendXUIDs []string) bool {
+	if playerXUID == "" || len(friendXUIDs) == 0 {
+		return false
+	}
+	friends := make(map[string]struct{}, len(friendXUIDs))
+	for _, x := range friendXUIDs {
+		friends[x] = struct{}{}
+	}
+	for _, me := range participants {
+		if me.XUID != playerXUID || me.TeamID == nil {
+			continue
+		}
+		for _, p := range participants {
+			if p.XUID == playerXUID || p.TeamID == nil || *p.TeamID != *me.TeamID {
+				continue
+			}
+			if _, ok := friends[p.XUID]; ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// applyIsWithFriends pose `is_with_friends` sur la ligne d'enrichissement du PREMIER écrit
+// d'un match. Sans quoi la colonne prend son défaut FALSE et la tuile s'affiche « Solo »
+// jusqu'au recalcul du post-sync (étape escouade), qui reste l'autorité convergente (ami
+// ajouté ou retiré). Liste d'amis inconnue ou vide : champ non posé, comportement inchangé.
+func applyIsWithFriends(row *persist.EnrichmentRow, participants []ParticipantRow, playerXUID string, friendXUIDs []string) {
+	if row == nil || len(friendXUIDs) == 0 {
+		return
+	}
+	v := withFriends(participants, playerXUID, friendXUIDs)
+	row.IsWithFriends = &v
+}
+
+// ApplyFriendsToBatch pose `is_with_friends` sur le lot d'un match déjà construit (chemin
+// V2, dont le lot est bâti hors du moteur). Même prédicat que le chemin V1.
+func ApplyFriendsToBatch(batch *persist.MatchBatch, playerXUID string, friendXUIDs []string) {
+	if batch == nil {
+		return
+	}
+	applyIsWithFriends(batch.PlayerData.Enrichment, batch.Shared.Participants, playerXUID, friendXUIDs)
+}
+
+// ResolveFriendXUIDs résout les gamertags d'amis en xuids (xuid_aliases de shared), UNE fois
+// par passe de sync. Rend nil quand la liste est inconnue (loader absent ou en échec) ou
+// vide : l'appelant ne pose alors pas `is_with_friends` au premier écrit. Un échec ou des
+// amis non résolus se journalisent en WARN ; ils n'arrêtent jamais le sync.
+func ResolveFriendXUIDs(ctx context.Context, sharedDB *sql.DB, load FriendsLoader, playerXUID string) []string {
+	if load == nil || sharedDB == nil {
+		return nil
+	}
+	gamertags, err := load()
+	if err != nil {
+		slog.WarnContext(ctx, "sync: amis indisponibles — is_with_friends non posé au premier écrit (recalculé au post-sync)",
+			"player_xuid", playerXUID, "err", err)
+		return nil
+	}
+	if len(gamertags) == 0 {
+		return nil
+	}
+	xuids := LookupFriendXUIDs(ctx, sharedDB, gamertags)
+	if len(xuids) < len(gamertags) {
+		slog.WarnContext(ctx, "sync: amis non résolus pour le premier écrit",
+			"player_xuid", playerXUID, "gamertags", len(gamertags), "xuids_resolved", len(xuids))
+	}
+	return xuids
 }

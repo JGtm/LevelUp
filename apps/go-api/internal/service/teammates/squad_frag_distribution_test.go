@@ -32,7 +32,9 @@ func TestSquadFragClassesByPlayer_PerPlayerSplit(t *testing.T) {
 		"Alice": {{Kills: 10, MeleeKills: intPtr(2), GrenadeKills: intPtr(1)}},
 		"Bob":   {{Kills: 8, MeleeKills: intPtr(1)}},
 	}
-	out := squadFragClassesByPlayer(rows, players, xuidByPlayer, perf, nil, false)
+	out := squadFragClassesByPlayer(squadFragInputs{
+		rows: rows, playersOrdered: players, xuidByPlayer: xuidByPlayer, perf: perf,
+	})
 	if out == nil {
 		t.Fatal("want per-player classes, got nil")
 	}
@@ -66,7 +68,10 @@ func TestSquadFragClassesByPlayer_MechMergeCapOn(t *testing.T) {
 	mechByGT := map[string]port.KillMechanicsRow{
 		"Alice": {Assassinations: 2, GroundPound: 1, ShoulderBash: 1},
 	}
-	out := squadFragClassesByPlayer(rows, players, xuidByPlayer, perf, mechByGT, true)
+	out := squadFragClassesByPlayer(squadFragInputs{
+		rows: rows, playersOrdered: players, xuidByPlayer: xuidByPlayer, perf: perf,
+		mechByGT: mechByGT, hasMechanics: true,
+	})
 	alice := classKills(out["Alice"])
 	// melee classe = melee(3)+assass(2)=5 ; spartan = ground(1)+shoulder(1)=2.
 	if alice["melee"] != 5 {

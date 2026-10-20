@@ -1,0 +1,43 @@
+# lot C-ter volet 1 — CT.1.2 — film 606d9844 (KOTH / chasm)
+# increment	film	equipe	valeur	t_ms	frame	terminal
+# hasard_1	film	part	t0_ms	t1_ms
+# periode_actuelle	film	zone	frame_t0	frame_t1 · rampe	film	slot	frame_t0	frame_pic
+# lecture	film	mode	tag	lecture	role	slot_candidat	bascules	exclusivite	ok_tous	tot_tous	taux_tous	ok_chg	tot_chg	taux_chg	decale	permute	hasard_1	hasard_n	delai_film_ms	delai_rejeu_ms	kf_premiere_presente_ms	kf_derniere_absente_ms	premier_contact_ms	verdict
+increment	606d9844	8	1	105041	981	false
+increment	606d9844	8	2	155808	1489	false
+increment	606d9844	8	3	233520	2266	true
+hasard_1	606d9844	0.0256	6890	241090
+periode_actuelle	606d9844	0	449	920
+periode_actuelle	606d9844	3	1668	2341
+periode_actuelle	606d9844	4	379	448
+periode_actuelle	606d9844	4	921	1120
+periode_actuelle	606d9844	5	1121	1667
+rampe	606d9844	1501	379	387
+rampe	606d9844	1501	449	502
+rampe	606d9844	1501	871	880
+rampe	606d9844	1501	921	930
+rampe	606d9844	1501	931	1109
+rampe	606d9844	1501	1121	1657
+rampe	606d9844	1501	1668	1907
+lecture	606d9844	A	2	F	candidat	sans_objet
+lecture	606d9844	A	1	F	candidat	1420	1	0.9985	0	3	0.0000	0	2	0.0000	0.0000	0.0000	0.0256	0.0067	175225	168335	19992	0	44791	NON TENU [hors terminal : NON TENU]
+lecture	606d9844	A	1	D	candidat	1420	1	0.9985	0	3	0.0000	0	2	0.0000	0.0000	0.0000	0.0256	0.0067	175225	168335	19992	0	44791	NON TENU [hors terminal : NON TENU]
+lecture	606d9844	A	6	D	candidat	sans_objet
+lecture	606d9844	A	5	D	hors liste	1498	2	0.9442	2	3	0.6667	2	2	1.0000	0.0000	0.3333	0.0256	0.0133	105056	98166	39996	19992	44791	NON TENU [hors terminal : NON TENU]
+lecture	606d9844	A	4	D	temoin	1500	14	0.0041	0	3	0.0000	0	2	0.0000	0.0000	0.6667	0.0256	0.1250	44791	37901	39996	19992	44791	NON TENU [hors terminal : NON TENU]
+lecture	606d9844	A	3	D	temoin	1501	80	0.9995	0	3	0.0000	0	2	0.0000	0.0000	0.0000	0.0256	0.5200	44791	37901	39996	19992	44791	NON TENU [hors terminal : NON TENU]
+lecture	606d9844	B	7	D	candidat	1420	111	0.0036	0	3	0.0000	0	2	0.0000	0.6667	0.0000	0.0256	0.6300	46677	39787	19992	0	44791	NON TENU [hors terminal : NON TENU]
+lecture	606d9844	B	8	D	candidat	1413	3	0.0329	3	3	1.0000	2	2	1.0000	0.0000	0.0000	0.0256	0.0233	105039	98149	19992	0	44791	NON TENU [hors terminal : NON TENU]
+lecture	606d9844	B	9	D	candidat	sans_objet
+lecture	606d9844	B	10	F	candidat	sans_objet
+lecture	606d9844	B	10	D	candidat	1413	1	0.0235	0	3	0.0000	0	2	0.0000	0.0000	0.0000	0.0256	0.0067	98799	91909	19992	0	44791	NON TENU [hors terminal : NON TENU]
+lecture	606d9844	B	11	F	candidat	1413	1	0.8257	0	3	0.0000	0	2	0.0000	0.0000	0.0000	0.0256	0.0067	98799	91909	19992	0	44791	NON TENU [hors terminal : NON TENU]
+lecture	606d9844	B	11	D	candidat	1413	1	0.8257	0	3	0.0000	0	2	0.0000	0.0000	0.0000	0.0256	0.0067	98799	91909	19992	0	44791	NON TENU [hors terminal : NON TENU]
+lecture	606d9844	B	12	F	candidat	sans_objet
+lecture	606d9844	B	12	D	candidat	sans_objet
+lecture	606d9844	B	13	F	candidat	sans_objet
+lecture	606d9844	B	13	D	candidat	sans_objet
+lecture	606d9844	B	14	F	candidat	sans_objet
+lecture	606d9844	B	14	D	candidat	sans_objet
+lecture	606d9844	B	15	F	candidat	1471	1	0.9995	0	3	0.0000	0	2	0.0000	0.0000	0.0000	0.0256	0.0067	57537	50647	-1	240034	44791	NON TENU [hors terminal : NON TENU]
+lecture	606d9844	B	15	D	candidat	1471	1	0.9995	0	3	0.0000	0	2	0.0000	0.0000	0.0000	0.0256	0.0067	57537	50647	-1	240034	44791	NON TENU [hors terminal : NON TENU]

@@ -5,6 +5,7 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -114,5 +115,18 @@ func TestParseCareerRank_Full(t *testing.T) {
 	}
 	if data.SpartanID != "spartan123" {
 		t.Fatalf("expected spartanId, got %s", data.SpartanID)
+	}
+}
+
+// TestSyncCareerRank_AutreErreur_Remontee — syncCareerRank n'avale aucune erreur : la
+// dégradation « sans token propre » a disparu avec la mesure du 2026-09-16 (le rang de
+// carrière est public, D4 du plan robustesse), et rien ne doit la remplacer en silence.
+// Déplacé depuis career_no_pinned_token_test.go, supprimé avec cette dégradation.
+func TestSyncCareerRank_AutreErreur_Remontee(t *testing.T) {
+	panne := errors.New("economy 500")
+	client := &mockHaloClient{getCareerErr: panne}
+
+	if _, err := syncCareerRank(context.Background(), client, "2533274800000000"); !errors.Is(err, panne) {
+		t.Errorf("erreur = %v, attendu la panne d'origine (pas d'avalement)", err)
 	}
 }

@@ -22,7 +22,7 @@ import {
   dmgPerDeath,
   type ColumnExtremes,
 } from './LeaderboardBlock.highlight'
-import { enrichmentCoverage, pickEffectiveOption, playlistsForSeason, resolveSort } from './LeaderboardBlock.logic'
+import { pickEffectiveOption, showEnrichedColumns, playlistsForSeason, resolveSort } from './LeaderboardBlock.logic'
 import { LeaderboardNotes } from './LeaderboardNotes'
 import { Selector } from './LeaderboardSelector'
 import { Spinner } from '@/components/ui/spinner'
@@ -106,9 +106,6 @@ const fmtPct = (v: number, locale: ManifestLocale): string =>
 export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
-  // Variante avec interpolation ICU (bandeaux de couverture : « x sur y »).
-  const tv = (key: CommonManifestKey, vars: Record<string, unknown>) =>
-    formatMessage(commonManifest, key, locale, vars)
   const navigate = useNavigate()
   const titleSlug = useTitleSlug()
 
@@ -205,11 +202,10 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
 
   const rows = useMemo(() => data?.entries ?? [], [data?.entries])
 
-  // Couverture d'enrichissement (décision D2, seuils dans LeaderboardBlock.logic) :
-  // sous le seuil, colonnes masquées + bandeau (1 enrichie sur 100 = 11 colonnes de tirets).
-  const coverage = useMemo(() => enrichmentCoverage(rows), [rows])
-  const hasEnrichment = isWorld && coverage.showColumns
-  const coverageVars = { enriched: coverage.enriched, total: coverage.total }
+  // Colonnes détaillées (décision D2, seuil dans LeaderboardBlock.logic) : sous le seuil, masquées
+  // (1 enrichie sur 100 = 11 colonnes de tirets).
+  const enrichedColumns = useMemo(() => showEnrichedColumns(rows), [rows])
+  const hasEnrichment = isWorld && enrichedColumns
   // Tri EFFECTIF : une colonne enrichie masquée ne doit pas continuer à trier la table
   // (ordre invisible, inannulable) → repli sur le rang ; l'état choisi est conservé.
   const { key: activeSortKey, dir: activeSortDir } = resolveSort(sortKey, sortDir, hasEnrichment)
@@ -291,11 +287,6 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
         <LeaderboardNotes
           notes={[
             selectedSeasonArchived && t('common.leaderboard.archived_season_note'),
-            // Saison archivée : le bandeau ci-dessus dit déjà pourquoi il n'y a pas
-            // de stats détaillées — on ne le répète pas sous une autre formulation.
-            isWorld && !selectedSeasonArchived && coverage.showUnavailableNote &&
-              tv('common.leaderboard.enrichment_unavailable', coverageVars),
-            isWorld && coverage.showPartialNote && tv('common.leaderboard.enrichment_partial', coverageVars),
           ]}
         />
       </CardHeader>

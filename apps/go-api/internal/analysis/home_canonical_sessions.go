@@ -1,4 +1,4 @@
-// Package analysis â€” home_canonical_sessions.go : BuildSessionSummary[ies]
+// Package analysis — home_canonical_sessions.go : BuildSessionSummary[ies]
 // canonical (P4.3 finale). Agrege les matchs par session (solo/squad).
 package analysis
 
@@ -11,8 +11,8 @@ import (
 )
 
 // BuildSessionSummaryFromCanonical : full canonical (P4.3 finale).
-// Filtre par IsWithFriends (squadMode), trouve la session la plus rÃ©cente
-// par StartedAtUTC, agrÃ¨ge ses matchs en KPIs.
+// Filtre par IsWithFriends (squadMode), trouve la session la plus récente
+// par StartedAtUTC, agrège ses matchs en KPIs.
 func BuildSessionSummaryFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool, locale string, effectiveHpToKill float64) *domain.SessionSummaryItem {
 	if len(rows) == 0 {
 		return nil
@@ -29,7 +29,7 @@ func BuildSessionSummaryFromCanonical(rows []canonical.PlayerMatchRow, squadMode
 		return nil
 	}
 
-	// Trouver le label de la session la plus rÃ©cente (par StartedAtUTC DESC).
+	// Trouver le label de la session la plus récente (par StartedAtUTC DESC).
 	latestLabel := latestSessionLabelCanonical(filtered)
 	if latestLabel == "" {
 		return nil
@@ -59,7 +59,7 @@ func BuildSessionSummaryFromCanonical(rows []canonical.PlayerMatchRow, squadMode
 	return item
 }
 
-// latestSessionLabelCanonical : trouve le label de la session la plus rÃ©cente.
+// latestSessionLabelCanonical : trouve le label de la session la plus récente.
 func latestSessionLabelCanonical(rows []canonical.PlayerMatchRow) string {
 	sorted := make([]canonical.PlayerMatchRow, len(rows))
 	copy(sorted, rows)
@@ -87,10 +87,10 @@ func earliestStartTimeCanonical(rows []canonical.PlayerMatchRow) *time.Time {
 }
 
 // BuildSessionSummariesFromCanonical : full canonical (P4.3 finale).
-// Liste des N derniÃ¨res sessions solo ou squad avec KPIs agrÃ©gÃ©s.
+// Liste des N dernières sessions solo ou squad avec KPIs agrégés.
 //
 // Note ADR 0011 : legacymatch.HomeMatchRow.PairNameFR (composite Halo-only)
-// n'a pas d'Ã©quivalent canonical. dominantMode est dÃ©rivÃ© de
+// n'a pas d'équivalent canonical. dominantMode est dérivé de
 // Summary.GameVariant.Labels["fr"] || DefaultLabel comme proxy.
 func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool, limit int, locale string, effectiveHpToKill float64) []domain.SessionSummaryItem {
 	if len(rows) == 0 {
@@ -108,7 +108,7 @@ func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMo
 		return nil
 	}
 
-	// Labels distincts triÃ©s par StartedAtUTC DESC.
+	// Labels distincts triés par StartedAtUTC DESC.
 	labels := distinctSessionLabelsCanonical(filtered)
 
 	resultCap := len(labels)
@@ -161,7 +161,7 @@ func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMo
 			}
 		}
 
-		// Performance Ã©quipe : uniquement en mode escouade.
+		// Performance équipe : uniquement en mode escouade.
 		var avgTeamPerf *float64
 		if squadMode {
 			var scores []*float64
@@ -255,7 +255,7 @@ func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMo
 	return result
 }
 
-// distinctSessionLabelsCanonical : labels distincts triÃ©s par StartedAtUTC DESC.
+// distinctSessionLabelsCanonical : labels distincts triés par StartedAtUTC DESC.
 func distinctSessionLabelsCanonical(rows []canonical.PlayerMatchRow) []string {
 	labelTimes := make(map[string]time.Time)
 	for _, r := range rows {
@@ -278,7 +278,7 @@ func distinctSessionLabelsCanonical(rows []canonical.PlayerMatchRow) []string {
 	return labels
 }
 
-// latestEndTimeCanonical : end time estimÃ© du dernier match (start + duration).
+// latestEndTimeCanonical : end time estimé du dernier match (start + duration).
 func latestEndTimeCanonical(rows []canonical.PlayerMatchRow) *time.Time {
 	var latest *canonical.PlayerMatchRow
 	for i := range rows {

@@ -23,8 +23,8 @@
  *   - Le redimensionnement suit le conteneur : `echarts-for-react` monte un
  *     size-sensor (`autoResize` par défaut) — aucun ResizeObserver à câbler ici.
  *
- * Couleurs : `outcome-win` (premier frag) / `outcome-loss` (première mort) —
- * mêmes tokens que l'histogramme remplacé, aucune valeur hex.
+ * Couleurs : `stat-kills` (premier frag) / `stat-deaths` (première mort) — famille des
+ * stats de combat, aucune valeur hex.
  * Modèle pur (médianes, tri, formats) : `./firstBloodLanesModel` — nommé ainsi (et
  * pas `firstBloodLanes.ts`) pour ne pas différer de ce fichier par la seule casse :
  * sur un FS insensible à la casse, Vite résoudrait `./firstBloodLanes` vers ce
@@ -34,19 +34,28 @@ import { useCallback, useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken } from '@/lib/accessibility'
+import { formatDate } from '@/lib/formatters/date'
 import { formatMessage } from '@/lib/i18n/format'
 import { firstBloodManifest, type FirstBloodManifestKey } from '@/lib/i18n/generated/first_blood'
 import type { Locale } from '@/lib/i18n/locale'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, escapeHtml, getEChartsThemeColors, getTooltipBase } from './_utils'
+import {
+  CHART_BG,
+  escapeHtml,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
+  legendEntries,
+} from './_utils'
 import {
   DEFAULT_MAX_SEC,
   GAP_BAR_HEIGHT,
   GRID_BOTTOM,
   GRID_TOP,
   LABEL_WIDTH,
+  LEGEND_HEIGHT,
   POINT_OFFSET,
   buildFirstBloodLanes,
   firstBloodLanesHeight,
@@ -58,11 +67,32 @@ import {
   type FirstBloodPlayerSeries,
 } from './firstBloodLanesModel'
 
-/** Placeholder d'une médiane manquante dans la colonne de libellés. */
+/** Placeholder d'une médiane ou d'un libellé (carte/mode) manquant. */
 const NO_VALUE = '—'
 /** Taille des points de nuage / des marqueurs de médiane. */
-const CLOUD_SYMBOL_SIZE = 6
+const CLOUD_SYMBOL_SIZE = 8
 const MEDIAN_SYMBOL_SIZE = 16
+/**
+ * Opacité des points de nuage. Retour utilisateur (2026-09-09) : à 0.55 le vert et
+ * le rouge viraient au pastel sur fond de carte et ne se distinguaient plus l'un de
+ * l'autre au premier coup d'œil. 0.85 laisse encore lire la DENSITÉ (deux points
+ * superposés restent plus sombres qu'un seul) sans délaver la teinte.
+ */
+const CLOUD_OPACITY = 0.85
+/**
+ * Opacité de la barre d'avance. Même retour : c'est l'élément PRINCIPAL du graphe et
+ * il était le plus pâle des trois (0.32). 0.5 le pose devant le fond sans masquer les
+ * points de nuage qui la traversent.
+ */
+const GAP_BAR_OPACITY = 0.5
+/**
+ * Sous ce nombre de matchs, une lane n'a pas de distribution à montrer (1-2
+ * points valent la médiane elle-même) : le nuage est supprimé pour elle,
+ * seuls la médiane et la barre d'avance restent dessinées. Retour utilisateur
+ * (2026-08-29) : à faible N, le nuage (6 px/0.4 d'opacité) se confondait avec
+ * le marqueur de médiane (16 px).
+ */
+const MIN_MATCHES_FOR_CLOUD = 3
 
 export type { FirstBloodMatch, FirstBloodPlayerSeries } from './firstBloodLanesModel'
 
@@ -72,15 +102,23 @@ export interface FirstBloodLanesLabels {
   medianPrefix: string
   /** 3e ligne — reçoit l'écart DÉJÀ signé et formaté (« +14s »). */
   advance: (gap: string) => string
-  /** Tooltip d'un point de nuage (déjà échappé HTML). */
+  /**
+   * Tooltip d'un point de nuage (déjà échappé HTML). `map`/`mode` sont déjà
+   * résolus en placeholder (NO_VALUE) si absents ; `startTime` est l'ISO brut,
+   * formaté en date locale ICI (le builder pur ne connaît pas la locale) —
+   * DEC-4 : carte · mode · date, plus jamais l'uuid du match.
+   */
   matchEvent: (
     kind: 'kill' | 'death',
-    v: { player: string; matchId: string; time: string },
+    v: { player: string; map: string; mode: string; startTime: string; time: string },
   ) => string
   /** Tooltip d'un marqueur de médiane. */
   medianEvent: (kind: 'kill' | 'death', v: { time: string; n: number; total: number }) => string
   /** Tooltip de la barre d'avance (écart déjà signé et formaté). */
   gap: (gap: string) => string
+  /** Les deux entrées de la légende : premier frag, première mort. */
+  legendKill: string
+  legendDeath: string
 }
 
 export interface FirstBloodLanesProps {
@@ -97,6 +135,14 @@ export interface FirstBloodLanesProps {
   emptyMessage?: string
   /** Force la locale (défaut : celle du shell). */
   locale?: Locale
+  /**
+   * Hauteur imposée (px). Absente : la hauteur se DÉRIVE du nombre de lanes.
+   *
+   * POURQUOI L'IMPOSER PARFOIS (2026-09-19) : sur une rangée partagée avec « Stats par
+   * minute », la bande dérivée de deux lanes faisait le tiers de la hauteur de sa voisine —
+   * la rangée se lisait bancale. Les lanes se répartissent alors dans la hauteur donnée.
+   */
+  height?: number
 }
 
 export function FirstBloodLanes({
@@ -107,6 +153,7 @@ export function FirstBloodLanes({
   error,
   emptyMessage,
   locale: localeProp,
+  height,
 }: FirstBloodLanesProps) {
   const shellLocale = useAppShellStore((s) => s.locale)
   const locale = localeProp ?? shellLocale
@@ -134,8 +181,15 @@ export function FirstBloodLanes({
       loading={loading}
       error={error}
       emptyMessage={emptyMessage ?? formatMessage(firstBloodManifest, 'first_blood.empty', locale)}
-      height={firstBloodLanesHeight(lanes.length)}
+      height={height ?? firstBloodLanesHeight(lanes.length)}
       buildOption={buildOption}
+      // SVG et pas canvas : la colonne de gauche (pseudo, « méd. 50s → 1m04 »,
+      // « +14s d'avance ») est l'essentiel de la lecture de ce graphe, et c'est du TEXTE.
+      // En canvas il est peint dans un bitmap figé au devicePixelRatio du montage, donc
+      // visiblement plus flou que le texte DOM qui l'entoure sur un écran à mise à
+      // l'échelle fractionnaire. Le coût du SVG — un nœud DOM par point — reste négligeable
+      // ici : quelques points par joueur, pas un nuage dense.
+      renderer="svg"
     />
   )
 }
@@ -150,7 +204,9 @@ function makeLabels(locale: Locale): FirstBloodLanesLabels {
     matchEvent: (kind, v) =>
       t(kind === 'kill' ? 'first_blood.tooltip.first_kill' : 'first_blood.tooltip.first_death', {
         player: v.player,
-        match: v.matchId,
+        map: v.map || NO_VALUE,
+        mode: v.mode || NO_VALUE,
+        date: formatDate(v.startTime, locale),
         time: v.time,
       }),
     medianEvent: (kind, v) =>
@@ -160,6 +216,8 @@ function makeLabels(locale: Locale): FirstBloodLanesLabels {
         total: v.total,
       }),
     gap: (gap) => t('first_blood.tooltip.gap', { gap }),
+    legendKill: t('first_blood.legend.first_kill'),
+    legendDeath: t('first_blood.legend.first_death'),
   }
 }
 
@@ -175,6 +233,11 @@ interface CloudPoint {
   value: [number, number]
   player: string
   matchId: string
+  /** Carte/mode/date du match — dégradent en NO_VALUE / omis côté tooltip
+   *  si absents (DEC-4, jamais l'uuid). */
+  mapUI?: string
+  modeUI?: string
+  startTime?: string
 }
 
 /** Marqueur de médiane (tooltip item : temps + couverture n/total). */
@@ -205,8 +268,8 @@ export function buildFirstBloodLanesOption(
   if (lanes.length === 0) return { backgroundColor: CHART_BG }
 
   const tc = getEChartsThemeColors()
-  const killColor = resolveToken('outcome-win')
-  const deathColor = resolveToken('outcome-loss')
+  const killColor = resolveToken('stat-kills')
+  const deathColor = resolveToken('stat-deaths')
 
   const bars: GapBar[] = lanes.flatMap((l, i) =>
     l.medianKillSec == null || l.medianDeathSec == null || l.gapSec == null
@@ -222,13 +285,20 @@ export function buildFirstBloodLanesOption(
   )
 
   const cloud = (kind: 'kill' | 'death'): CloudPoint[] =>
-    lanes.flatMap((l, i) =>
-      (kind === 'kill' ? l.kills : l.deaths).map((p) => ({
+    lanes.flatMap((l, i) => {
+      // Sous MIN_MATCHES_FOR_CLOUD, la lane n'a pas de distribution à montrer
+      // (médianes et barre d'avance restent dessinées, cf. buildGapSeries /
+      // buildMedianSeries — seul LE NUAGE est concerné par ce seuil).
+      if (l.totalMatches < MIN_MATCHES_FOR_CLOUD) return []
+      return (kind === 'kill' ? l.kills : l.deaths).map((p) => ({
         value: [p.sec, i] as [number, number],
         player: l.player,
         matchId: p.matchId,
-      })),
-    )
+        mapUI: p.mapUI,
+        modeUI: p.modeUI,
+        startTime: p.startTime,
+      }))
+    })
 
   const medians = (kind: 'kill' | 'death'): MedianPoint[] =>
     lanes.flatMap((l, i) => {
@@ -246,7 +316,20 @@ export function buildFirstBloodLanesOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: GRID_TOP, bottom: GRID_BOTTOM, left: LABEL_WIDTH + 8, right: 16 },
+    // `bottom` élargi de la hauteur de la LÉGENDE (2026-09-19) : elle se pose au ras du
+    // bas, centrée, comme sur tous les autres graphes du dépôt.
+    grid: { top: GRID_TOP, bottom: GRID_BOTTOM + LEGEND_HEIGHT, left: LABEL_WIDTH + 8, right: 16 },
+    // LÉGENDE À DEUX ENTRÉES, sans interrupteur : rien ne disait ce que les deux couleurs
+    // de point désignent — le lecteur devait le deviner des libellés d'axe.
+    legend: {
+      ...getLegendBase(tc),
+      left: 'center',
+      selectedMode: false,
+      data: legendEntries([
+        { name: labels.legendKill, color: killColor },
+        { name: labels.legendDeath, color: deathColor },
+      ]),
+    },
     tooltip: { ...getTooltipBase(tc), trigger: 'item' },
     xAxis: {
       type: 'value',
@@ -355,7 +438,7 @@ function buildGapSeries(bars: GapBar[], c: SeriesColors) {
           height: GAP_BAR_HEIGHT,
           r: GAP_BAR_HEIGHT / 2,
         },
-        style: { fill: bar.positive ? c.killColor : c.deathColor, opacity: 0.32 },
+        style: { fill: bar.positive ? c.killColor : c.deathColor, opacity: GAP_BAR_OPACITY },
       }
     },
     tooltip: {
@@ -368,24 +451,33 @@ function buildGapSeries(bars: GapBar[], c: SeriesColors) {
   }
 }
 
-/** Nuages de fond : 1 point par match, décalés de ±14 px autour de la ligne. */
+/**
+ * Nuages de fond : 1 point par match, décalés de ±14 px autour de la ligne.
+ * Supprimé lane par lane sous MIN_MATCHES_FOR_CLOUD (cf. `cloud()` dans
+ * buildFirstBloodLanesOption) ; taille/opacité relevées (8 px/0.55) pour que
+ * les points restants se distinguent plutôt que de faire tache.
+ */
 function buildCloudSeries(cloud: (kind: 'kill' | 'death') => CloudPoint[], c: SeriesColors) {
   const one = (kind: 'kill' | 'death') => ({
     type: 'scatter' as const,
     z: 2,
     symbolSize: CLOUD_SYMBOL_SIZE,
     symbolOffset: [0, kind === 'kill' ? -POINT_OFFSET : POINT_OFFSET] as [number, number],
-    itemStyle: { color: kind === 'kill' ? c.killColor : c.deathColor, opacity: 0.4 },
+    itemStyle: { color: kind === 'kill' ? c.killColor : c.deathColor, opacity: CLOUD_OPACITY },
     data: cloud(kind),
     tooltip: {
       formatter: (p: unknown) => {
         const d = (p as { data?: CloudPoint }).data
         if (!d) return ''
-        // Échappement des SEULES données non constantes (pseudo, id de match) —
-        // le gabarit i18n, lui, doit garder ses apostrophes intactes.
+        // Échappement des données non constantes (pseudo, carte, mode — des
+        // libellés résolus serveur, pas des constantes) — le gabarit i18n,
+        // lui, doit garder ses apostrophes intactes. DEC-4 : plus jamais
+        // l'identifiant de match dans le tooltip.
         return c.labels.matchEvent(kind, {
           player: escapeHtml(d.player),
-          matchId: escapeHtml(d.matchId),
+          map: escapeHtml(d.mapUI ?? ''),
+          mode: escapeHtml(d.modeUI ?? ''),
+          startTime: d.startTime ?? '',
           time: formatLaneSeconds(d.value[0]),
         })
       },

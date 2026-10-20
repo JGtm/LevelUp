@@ -277,9 +277,6 @@ func TestMultiUserTokenStore_RejectsPathTraversal(t *testing.T) {
 			if err := s.UpdateOAuthRefreshToken(xuid, "rt"); err == nil {
 				t.Errorf("UpdateOAuth xuid=%q devrait être refusé", xuid)
 			}
-			if err := s.UpdateMSALCache(xuid, "cache"); err == nil {
-				t.Errorf("UpdateMSAL xuid=%q devrait être refusé", xuid)
-			}
 		})
 	}
 }
@@ -373,7 +370,6 @@ func TestMultiUserTokenStore_AllFieldsRoundtrip(t *testing.T) {
 		AccessToken:       "access-token",
 		OAuthExpiresAt:    time.Date(2026, 6, 1, 13, 0, 0, 0, time.UTC),
 		OAuthRefreshToken: "rt-value",
-		MSALCacheJSON:     `{"cached":"data"}`,
 	}
 	if err := s.Upsert(original); err != nil {
 		t.Fatal(err)
@@ -407,9 +403,6 @@ func TestMultiUserTokenStore_AllFieldsRoundtrip(t *testing.T) {
 	}
 	if loaded.OAuthRefreshToken != original.OAuthRefreshToken {
 		t.Errorf("OAuthRefreshToken = %q", loaded.OAuthRefreshToken)
-	}
-	if loaded.MSALCacheJSON != original.MSALCacheJSON {
-		t.Errorf("MSALCacheJSON = %q", loaded.MSALCacheJSON)
 	}
 }
 

@@ -1,0 +1,83 @@
+2026/10/08 20:34:16 INFO mappings_loaded title_slug=halo_infinite kind=fields fields_count=66 schema_version=1
+2026/10/08 20:34:16 INFO mappings_loaded title_slug=halo_infinite kind=assets kinds_count=8 schema_version=1
+2026/10/08 20:34:16 INFO mappings_loaded title_slug=halo_infinite kind=outcomes outcomes_count=4 schema_version=1
+2026/10/08 20:34:16 INFO mappings_loaded title_slug=halo_infinite kind=capabilities capabilities_count=28 schema_version=1
+2026/10/08 20:34:16 INFO mappings_loaded title_slug=halo_infinite kind=regulation variants_count=9 schema_version=8
+2026/10/08 20:34:16 INFO endpoints_loaded title=halo_infinite count=8 schema_version=1
+2026/10/08 20:34:16 INFO replay-corpus-gate: racines resolues reference=base source=C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-grammaire-arrets-vue-b-2 parc=C:\Users\GUILLA~1\AppData\Local\Temp\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8\scratchpad\parc verrou=C:\Users\GUILLA~1\AppData\Local\Temp\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8\scratchpad\parc\data\cache travail=C:/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8/scratchpad/gc/w1 manifeste=C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-grammaire-arrets-vue-b-2\config\replay_corpus.toml temoins=1
+2026/10/08 20:34:57 INFO replay-corpus-gate: registre des replis de la base lu replis=108
+2026/10/08 20:34:57 INFO replay-corpus-gate: base resolue revision=a4515e66c sha=a4515e66ca9968d97fd5914ced154e712b45e9c5 worktree=C:\Users\GUILLA~1\AppData\Local\Temp\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8\scratchpad\gc\w1\base-worktree go=go1.26.5 cache=C:\Users\GUILLA~1\AppData\Local\Temp\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8\scratchpad\parc\data\cache\replay_corpus_gate_base sansCache=false
+2026/10/08 20:35:04 INFO verrou de decodage pris outil=replay-corpus-gate match_id=bcb6d393-8f5e-40e3-806b-e3cb35bfc9b0 verrou=C:\Users\GUILLA~1\AppData\Local\Temp\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8\scratchpad\parc\data\cache\film_decode.lock.json
+2026/10/08 20:35:04 INFO priorite CPU abaissee pour ce decodage outil=replay-corpus-gate classe=below_normal
+2026/10/08 20:35:09 INFO replay-corpus-gate: base absente du cache — cuisson temoin=bcb6d393 base=a4515e66ca9968d97fd5914ced154e712b45e9c5
+2026/10/08 20:35:09 INFO verrou de decodage pris outil=replay-corpus-gate match_id=bcb6d393-8f5e-40e3-806b-e3cb35bfc9b0 verrou=C:\Users\GUILLA~1\AppData\Local\Temp\claude\c--Users-Guillaume-Downloads-Scripts-LevelUp\bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8\scratchpad\parc\data\cache\film_decode.lock.json
+2026/10/08 20:35:09 INFO priorite CPU abaissee pour ce decodage outil=replay-corpus-gate classe=below_normal
+temoin       famille          base(a4515e66c)   HEAD    gains   pertes   chang.      duree base   cache  statut
+bcb6d393     ctf_mono_manche      89     89       28        7        4      5.06s cuite  A+F    PERTE
+
+BANC DE VERITE (1 temoin(s)) — le verdict du gate :
+
+BANC DE VERITE — bcb6d393 : ok
+  [gain] P-1 paquets fermes au bit pres : 19086 -> 20399
+  [info] R-1 repli repli_ancrage_bipede_apres_la_marche : 2588 -> 2168
+  [info] R-1 repli repli_ancre_sans_vie_delta_ecartee : 320 -> 323
+  [info] R-1 repli repli_chaine_evenement_code_non_modelise : 103 -> 35
+  [info] R-1 repli repli_creations_du_monde_apres_la_marche : 41 -> 25
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 2 -> 1
+  [info] R-1 repli repli_liaison_par_anticipation : 16 -> 35
+  [info] R-1 repli repli_localisation_largeur_libre : 69 -> 25
+  [info] R-1 repli repli_pistes_du_monde_apres_la_marche : 8572 -> 4194
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 39 / FP 0 / FN 10
+    O-K2 morts (statborg)                    VP 37 / FP 0 / FN 13
+    O-K3 assistances (statborg)              VP 9 / FP 0 / FN 2
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S2 actions de marque par camp          VP 3 / FP 0 / FN 0
+    O-S3 score personnel                     VP 5185 / FP 405 / FN 1540
+    O-T1 equipes du roster                   VP 11 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 44 / FP 0 / FN 6
+    O-V2 fins de vie (sans identite)         VP 50 / FP 3 / FN 0
+    P-1 paquets fermes au bit pres           20399
+    P-2 preuves contradictoires (image-cle)  2
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    2
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 2
+    V-8 mort sans fin de vie                 3
+  [FILET] autres:stances stances/duree-totale : 6865 -> 6838 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/524 : 219 -> 192 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/530 : 442 -> 431 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesKind : 65 -> 66 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.groundWeapons.accepted : 197 -> 195 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.groundWeapons.powerupAccepted : 173 -> 172 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.placements.lives : 147 -> 126 (aucune mesure du banc ne couvre ce bloc)
+
+DETAIL DES PERTES (1 temoin(s)) :
+
+  [bcb6d393] ctf_mono_manche (schema 89 -> 89)
+    perte     autres:stances   stances/duree-totale                                     6865 -> 6838      
+    perte     autres:stances   stances/duree-totale/par-slot/524                         219 -> 192       
+    perte     autres:stances   stances/duree-totale/par-slot/530                         442 -> 431       
+    perte     couverture       coverage.continuousFire.holesKind                          65 -> 66        
+    perte     couverture       coverage.groundWeapons.accepted                           197 -> 195       
+    perte     couverture       coverage.groundWeapons.powerupAccepted                    173 -> 172       
+    perte     couverture       coverage.placements.lives                                 147 -> 126       
+
+DETAIL DES CHANGEMENTS (1 temoin(s)) :
+
+  [bcb6d393] ctf_mono_manche (schema 89 -> 89)
+    changement couverture       coverage.groundWeapons.anchors                            201 -> 199       
+    changement couverture       coverage.groundWeapons.rejected                            38 -> 36        
+    changement couverture       coverage.stances.byKind.sprint                            362 -> 364       
+    changement couverture       coverage.stances.jumpEpisodes                            1226 -> 1228      
+
+TELEMETRIE (2 valeur(s) — affichee, jamais comptee au verdict) :
+    coverage.decoder.grammarRev                            grammar-2026-10-08 -> grammar-2026-10-08.13       1 temoin(s)
+    coverage.decoder.killsourceRev                    killsource-2026-10-07.2 -> killsource-2026-10-08       1 temoin(s)

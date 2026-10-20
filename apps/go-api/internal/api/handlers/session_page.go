@@ -63,7 +63,7 @@ func (h *SessionPageHandler) GetPage(ctx context.Context, in *sessionPageInput) 
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
 		slog.WarnContext(ctx, "session page: joueur introuvable", "player_slug", slug, "err", err)
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.SessionPageRequest
@@ -75,7 +75,7 @@ func (h *SessionPageHandler) GetPage(ctx context.Context, in *sessionPageInput) 
 	}
 	if err := req.Validate(); err != nil {
 		slog.WarnContext(ctx, "session page: requête invalide", "player_slug", slug, "err", err)
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 
 	slog.DebugContext(ctx, "session page: calcul",
@@ -94,8 +94,7 @@ func (h *SessionPageHandler) GetPage(ctx context.Context, in *sessionPageInput) 
 				"player_slug", slug, "session_label", derefReqString(req.SessionLabel))
 			return nil, humacore.NewError(http.StatusNotFound, "session_not_found", apiErr.Message)
 		}
-		slog.ErrorContext(ctx, "session page: erreur service", "player_slug", slug, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "session_page_error", err.Error())
+		return nil, mapServiceError(ctx, err, "session_page_error")
 	}
 
 	slog.InfoContext(ctx, "session page: générée",

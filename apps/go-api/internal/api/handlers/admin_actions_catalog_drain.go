@@ -123,7 +123,7 @@ func (h *AdminCatalogDrainHandler) runDrain(ctx context.Context, jobID, titleSlu
 		slog.ErrorContext(ctx, "admin_actions: drain UGC échoué",
 			"module", "monitoring", "job_id", jobID, "title", titleSlug, "err", err)
 		h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
-			j.Error = &domain.JobErrorDetail{Code: "catalog_drain_failed", Message: err.Error(), Retryable: true}
+			j.Error = domain.NewJobError("catalog_drain_failed", true)
 		})
 		h.jobs.SetStatus(jobID, domain.JobStatusFailed, nil)
 		return

@@ -5,8 +5,8 @@
 // par l'UI + 'LUSR_V2' audit) pour chaque match, via Stratégie C (ADR 0024).
 //
 // Différence avec cmd/lusr_v2_replay : ce backfill passe la DB JOUEUR (RW) à
-// RunLUSRV2Shadow (playerDB ≠ nil) + pose LEVELUP_LUSR_CANONICAL=LUSR_V2, donc
-// writeCanonicalLUSRRow écrit match_skill_rank. Le replay restait shadow-only.
+// RunLUSRV2Shadow (playerDB ≠ nil), donc writeCanonicalLUSRRow écrit match_skill_rank
+// et les composantes de performance. Le replay restait shadow-only (playerDB nil).
 //
 // match_skill_rank est APPEND-ONLY : le backfill AJOUTE des lignes v2 (la vue
 // _latest les fait gagner par written_at) ; les lignes v1 restent intactes →
@@ -21,7 +21,7 @@
 // Reset PAR JOUEUR (DELETE WHERE xuid=?) + persist OWNER-ONLY : chaque joueur
 // reprocesse tous ses matchs et écrit ses lignes SANS écraser l'état v2 des
 // autres → couverture complète pour TOUS (corrige le couplage cross-joueur du
-// backfill séquentiel, cf. .ai/thought_log 2026-06-07).
+// backfill séquentiel, cf. .ai/archive/thought_log_2026-Q2.md, 2026-06-07).
 package main
 
 import (
@@ -35,7 +35,9 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/titleseams"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	lusync "levelup/go-api/internal/sync"
 )
 
@@ -50,9 +52,15 @@ func playerDBPath(root, gamertag string) string {
 }
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	// MT-15 : câble le classifier LUSR (fail-loud). CRITIQUE — ce binaire ÉCRIT
 	// match_skill_rank.playlist_group via GetLUSRChain.
-	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
+	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif).
 
 	commit := flag.Bool("commit", false, "écrit match_skill_rank (canonical). Défaut: dry-run shadow-only (compte).")
 	dataRoot := flag.String("data-root", ".", "racine du repo (depuis apps/go-api : ../..)")
@@ -64,19 +72,9 @@ func main() {
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
-	if err := os.Setenv("LEVELUP_LUSR_V2_ENABLED", "1"); err != nil {
-		slog.Error("setenv ENABLED", "err", err)
-		os.Exit(1)
-	}
-	if *commit {
-		if err := os.Setenv("LEVELUP_LUSR_CANONICAL", "LUSR_V2"); err != nil {
-			slog.Error("setenv CANONICAL", "err", err)
-			os.Exit(1)
-		}
-	}
-
-	shared := openDB(sharedDBPath(*dataRoot))
-	defer shared.Close()
+	metadataPath := titlePkg.NewPathResolver(*dataRoot).MetadataDBPath(titlePkg.DefaultSlug)
+	shared, closeShared := openDB(sharedDBPath(*dataRoot))
+	defer closeShared()
 
 	ctx := context.Background()
 	mode := "DRY-RUN (shadow-only, aucune écriture match_skill_rank)"
@@ -103,14 +101,14 @@ func main() {
 		}
 
 		var playerDB *sql.DB
+		closePlayer := func() {}
 		if *commit {
-			playerDB = openDB(playerDBPath(*dataRoot, gt))
+			playerDB, closePlayer = openDB(playerDBPath(*dataRoot, gt))
 		}
 
-		processed, err := lusync.RunLUSRV2ShadowOwnerOnly(ctx, playerDB, lusync.NewPinnedSharedAccess(shared), xuid)
-		if playerDB != nil {
-			playerDB.Close()
-		}
+		processed, err := lusync.RunLUSRV2ShadowOwnerOnly(ctx, playerDB, lusync.NewPinnedSharedAccess(shared), xuid,
+			lusync.MedalExploitOption(metadataPath, xuid))
+		closePlayer()
 		if err != nil {
 			slog.Warn("RunLUSRV2ShadowOwnerOnly", "gamertag", gt, "err", err)
 			continue
@@ -128,13 +126,20 @@ func main() {
 	}
 }
 
-func openDB(path string) *sql.DB {
-	db, err := sql.Open("duckdb", path)
+// openDB ouvre en écriture par la porte unique de platform/duckdb : une base joueur y a ses
+// séquences alignées sur le max de leurs colonnes avant toute écriture (physical_open.go).
+// Le closer rend le handle au cache.
+func openDB(path string) (*sql.DB, func()) {
+	h, err := duckdbpkg.OpenReadWriteShared(path)
 	if err != nil {
 		slog.Error("open", "err", err, "path", path)
 		os.Exit(1)
 	}
-	return db
+	return h.SQLDb(), func() {
+		if err := h.Close(); err != nil {
+			slog.Warn("fermeture", "err", err, "path", path)
+		}
+	}
 }
 
 // resolveXUID résout le xuid d'un gamertag via v_gamertag_lookup (shared).

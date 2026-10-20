@@ -2,7 +2,7 @@
 
 ---
 
-## 🔄 Aucune tâche en cours
+## 🔄 Aucune tâche en cours (plan `.ai/PLAN_BACKLOG_2026-10-16.md` clos le 2026-10-18 ; fusion dans `feat/v75` = geste du user)
 
 ---
 
@@ -10,21 +10,106 @@
 
 ---
 
-### [ops/demo] Hermétisme FICHIERS du mode démo — racine démo autonome
+### [rejeu/identité] 15 vies sans nom restantes dans les rejeux cuits
 
-Noté le 2026-08-05 (vague 2, chantier fixture démo). Le mode démo est hermétique côté
-RÉSEAU (`internal/platform/netguard`, ratchet de couverture) et côté ENTREPÔTS (bascule
-inconditionnelle des 4 DB vers la fixture, `cmd/server/demo_paths.go` + ratchet). Restent
-des fuites périphériques sur le `repoRoot` réel :
+Reste du lot film E8.4 (plan `.ai/PLAN_BACKLOG_2026-10-16.md`) : sur les 36 films en cause (449 vies
+sans nom), 15 vies restent sans nom, aucune lecture du film ne les nomme : `72c48587` (7 vies, table
+d'identité refusée pour siège vacant intercalé, aucune lecture d'index dans les chunks), `5da6fd30`
+(6 vies, film de 38 s, trois bots que BOT_METADATA ne déclare jamais), `7aa132d1` (2 vies, pistes
+parasites hors plage des bipèdes, slots 36 et 292). Règle du user : aucune vie anonyme. Reprise : une
+mesure par film des enregistrements de création qui nomment ces pistes ; arrêt si aucune lecture n'en
+sort. Hors périmètre, déjà décidé : les 5 films de build inconnu (abandonnés par le user le
+2026-10-15) et les 2 films Firefight. **Effort : S.**
 
-- cache d'assets écrit sous `{repoRoot}/data/cache/` (au lieu de la racine démo) ;
-- fichiers de session HTTP sous `{repoRoot}/data/sessions/` ;
-- lecture du `data/auth/` réel (tokens inutilisés depuis netguard, mais lus).
+---
 
-**Cible** : une racine démo totalement autonome — tout chemin d'écriture/lecture dérivé
-de la racine fixture quand `LEVELUP_DEMO_MODE=true`. S'appuyer sur l'audit des chemins
-qui existera pour la migration AppData Tauri (même besoin d'inventaire exhaustif).
-**Risque actuel : faible** (écritures anodines, aucune donnée métier). **Effort : S-M.**
+### [rejeu] Découvertes du lot film (E8) non traitées
+
+Relevées par E8.1, E8.3 et E8.4 (détail : section « Découvertes » du plan, hors périmètre de leur
+lot) : l'entame (`kill_openings`) ne lit pas le bord, donc un côté sans échantillon à l'instant décalé
+reste sans position alors que la tenue le placerait ; `siegesDe` donne un second corps vivant à 83 m
+à une victime (`4f77afc1`) et la mort perd son lieu ; des lectures d'occupation attachent un bipède à un
+parent qui n'est ni un véhicule échantillonné ni un bipède (`5676a9ba`) ; le châssis de véhicule
+`b857fb95` (`e449a696`, `99b8ba5c`) n'est pas dans la table des familles (marqueur neutre). **Effort : S
+chacune, à instruire une par une.**
+
+---
+
+### [ui] Indicateur « Analyse en cours » (tuile + vue match) — maquette validée le 2026-10-16
+
+Maquette validée par l'utilisateur le 2026-10-16 (artefact Claude Design, canvas Main / MatchView / Tile),
+lot jamais inscrit au backlog jusqu'ici (découverte E0 du plan `.ai/PLAN_BACKLOG_2026-10-16.md`). Retenu :
+pastille « Analyse en cours » sur l'image de carte de la tuile, emplacements en attente (frags assistés,
+citations, rejeu), bandeau INFO dans la vue match ; état donné par le SERVEUR, rechargement auto ~1 min
+tant que l'analyse court, disparition au-delà de 24 h ; libellés « d'ici quelques instants » ; FR + EN,
+tokens de couleur. **Effort : M.**
+
+---
+
+### [dette/backlog-2026-10-16] Découvertes non traitées du plan du 2026-10-16
+
+Section « Découvertes » de `.ai/PLAN_BACKLOG_2026-10-16.md` (détail, `fichier:ligne` et origine par
+étape). Les principales, à trier :
+- **LUSR** : un match exclu reste tracé dans le graphe de carrière avec sa note d'avant (Q8
+  `queries_career.go`, `profile/queries.go` sans filtre `is_excluded`) ; `skippedWriteFailed` laisse
+  `RunLUSRV2Shadow` rendre `nil` (une exclusion dont une écriture canonique échoue répond « terminé ») ;
+  la lecture du précédent par la vue coûte ~5 ms de plus par match noté (index en mémoire possible) ;
+  la fixture `psa_index_repro_msr_fixture_test.go` recopie les anciennes requêtes. **S chacune.**
+- **Multi-titre** : `auto_sync_engine.go` et `sync_handler.go` passent le provider d'Infinite aux moteurs
+  d'autres titres ; passes `--csr`/`--shared-csr` aux chemins fixés sur le titre par défaut (le titre
+  de test `synthetic_title_b` déclare la capability) ; ratchet `no_slug_comparison_test.go` sans `cmd/` ;
+  `cmd/levelup` n'installe pas les étapes de migration par titre ; `RunForDB` reste dans 3 outils ;
+  la route des sessions parcourt les profils `auth_only`. **S à M.**
+- **CI / outillage** : `scripts/gate-push.ps1` joue une seule suite en série ; le filtre de chemins ne voit
+  pas tous les tests Go qui lisent `apps/web/src` (rattrapé par la CI complète de `feat/v75`) ; le corpus
+  `-tags=gamefiles` n'est pas vert sur le poste (dépôt `.ai/re_dump/mapvar` absent, banc Cliffhanger
+  64,4 % contre 64,7 %). **S.**
+- **Citations** : échec de `LoadCitationMappings` avalé (page vide) ; la barre de filtres de la page est
+  sans effet (corps ignoré) ; noms de tuiles tronqués (« Maîtrise de la … » indiscernables) ; le serveur
+  ne rejoue jamais le seed des citations sur une metadata existante. **S chacune.**
+- **Divers** : `StepDeviceCode.tsx` garde l'effet de récupération sans garde (sondage déjà arrêté) ;
+  premières vérifications de participation soumises au budget de lecture ; `cmd_reset_bitmasks.go`
+  recopie d'autres constantes ; deux `continue` silencieux dans `weapon_resolver.go` ; démo sans
+  `match_bomb_stats` ; coût de `/tactical/maps` (une résolution de fond par carte) à mesurer ;
+  instruments `research` de `film/replay` en `filepath.Join(depot, "data", ...)` (~31 fichiers, motif ancien). **S.**
+
+---
+
+### [replay/sons] Fins de partie multi-équipes par couleur — écran + annonceur
+
+Noté le 2026-08-27 (chantier rejeu 2D, plan `.ai/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md`,
+branche `wt/replay-cadrage-victoire`). L'écran de victoire et les sons de fin (lots B/C)
+couvrent les matchs à 2 équipes + le FFA gagné ; les modes MULTI-ÉQUIPES (3+) n'ont ni
+écran (décision D-B1) ni son. Or le jeu porte une famille complète d'annonces dédiées,
+identifiée par transcription locale des packs annonceur :
+
+- **8 répliques FR** « Partie terminée, l'équipe X est déclarée vainqueur » — bleue
+  `1070034924`, rouge `808622693`, cyan `83592248`, mauve `186794961`, verte `265309140`,
+  citron `784566745`, jaune `868146650`, orange `399957729` (ids `.wem` du pack
+  `French(France)/sb_001_vo_ai_mp_announcer.pck`) ;
+- **8 jumelles EN** « Game over — <color> team wins » — red `1005389916`, blue `101785491`,
+  green `1010879786`, purple `100056384`, yellow `927455187`, orange `564119611`,
+  lime `92374`, cyan `256805823` (pack `English(US)/…`).
+
+**BLOQUÉ FAUTE DE DONNÉE (plan backlog du 2026-09-26, lot A5, statué `[!]` le 2026-09-27).**
+Le plan d'exécution est prêt dans `.ai/PLAN_BACKLOG_2026-09-26.md`, section A5 : pièces, items
+A5.0 à A5.7, et décision D-9. D-9 garde l'écran du joueur regardé, ajoute « Victoire de l'équipe
+<Nom> » en défaite, et fait jouer la réplique de la couleur du gagnant pour tous. Deux faits établis
+en lisant les données le 2026-09-26 bloquent le lot :
+- **aucun match multi-équipes jouable** : il n'y a qu'un seul match à 3 équipes ou plus, de 2
+  joueurs ou plus chacune, dans toute la base partagée locale (2025-08-13, aucun joueur suivi).
+  Aucun des 111 artefacts de rejeu ne porte d'équipe au-delà de 1 ;
+- **la table équipe → couleur annoncée n'existe nulle part** : les couleurs de `teamNames.ts`
+  ne correspondent pas aux 8 couleurs de l'annonceur (magenta, doublon orange-rouge).
+
+**Condition de reprise** : l'utilisateur joue une partie à 3 équipes ou plus (matchmaking ou
+partie personnalisée), la synchronise, et note la couleur annoncée pour l'équipe gagnante. Le lot
+peut alors partir, en commençant par la recherche hors ligne de la table dans les fichiers du jeu
+installé (A5.0). Les 16 répliques sont déjà extraites et converties sous
+`Desktop/Halo Infinite - Sons armes/_fin_partie/annonceur_{fr,en}_wav/` (non normalisées ; les
+copies de `livraison/` y sont restées en 4 canaux). **Effort : M.**
+**Constat du user le 2026-10-09 : aucun mode à plus de deux équipes (hors FFA) n'est disponible en
+jeu actuellement.** Le lot reste en attente d'un tel mode.
 
 ---
 
@@ -41,7 +126,7 @@ manque de donnée, établi sur payloads réels (P0, 10 matchs interrogés) :
 - `InfectionStats` : « Survive The Undead 3.0 » est un Firefight UGC (catégorie 41), pas
   un Infection. Aucun mode Infection en base.
 
-**Déblocage** : jouer une partie matchmaking de chacun de ces modes, puis la synchroniser.
+**Déblocage** : jouer une partie matchmaking de chacun de ces modes, puis la synchroniser. **Constat du user le 2026-10-09 : ni Élimination ni Infection ne sont disponibles en jeu actuellement.**
 Le patron existe alors en triple exemplaire — **effort : S par bloc**. Interdiction
 explicite d'inventer le schéma par analogie.
 
@@ -78,33 +163,10 @@ resolver) — elle ne suit pas le sort du maillon de nom. **Effort : S** (le rel
 
 ---
 
-### [ops/deps] Bump `echarts` 5.6.0 → 6.1.0 (alerte Dependabot moderate, CVE-2026-45249, XSS) — REPORTÉ
-
-Noté le 2026-07-25. Dependabot signale une alerte moderate (CVE-2026-45249, XSS) sur `echarts`
-5.6.0 (`apps/web/package.json`), corrigée en 6.1.0. **Non traité en v7.2.1** : bump MAJEUR du
-moteur de tous les graphes de l'app (11 wrappers `apps/web/src/components/charts/` + pages
-timeseries) — l'utilisateur a explicitement refusé le risque d'instabilité à ce stade.
-
-**Reporté (décision utilisateur 26/07) — à re-planifier** (n'a PAS été pris dans le lot v7.3).
-**Critère de go mesurable** : `make test-web` vert (suite charts/timeseries) +
-`make check-types` vert + tournée visuelle des pages les plus denses en graphes (Timeseries,
-Compare, Synthesis, Match view). **Effort : S-M** (bump + vérif, selon l'ampleur des breaking
-changes 6.x).
-
----
-
-### [POST-V7] Housekeeping post-cutover (optionnel, non bloquant)
-
-> Le cutover Go (la branche Go est devenue `main`) est **terminé** — cf. archive « Récemment complété ».
-> Reste 2 micro-tâches optionnelles, non bloquantes :
-- [ ] Documenter le default async ON dans le README utilisateur
-- [ ] Tuning du janitor (24h → 12h ?) si la latence WAL le justifie en prod
-
----
-
-### [Migration] Cible desktop Tauri web-first, sans réécriture Rust métier — ⏸️ GARDÉ DE CÔTÉ
+### [Migration] Cible desktop Tauri web-first, sans réécriture Rust métier — V9 POTENTIELLE
 
 > ⏸️ **Gardé de côté** (2026-06-09) : conservé pour distribution desktop néophyte future. Note : le cutover Go étant fait, le « backend Python local packagé » ci-dessous doit se lire **backend Go local** — à re-cadrer si réactivé.
+> **Décision du user (2026-10-09)** : gardé comme chantier potentiel de la V9 ; rien à faire avant.
 
 **Noté le** : 2026-04-12 | **Priorité** : Moyenne (distribution simplifiée, non bloquante pour les slices MVP)
 
@@ -134,31 +196,7 @@ changes 6.x).
    - **Flux SISU natif** : POST vers `sisu.xboxlive.com/authorize` (AccessToken + AppId + DeviceToken + SessionId) — utilisé par les apps Xbox/mobiles natives, potentiellement plus rapide/fluide (moins d'allers-retours navigateur), mais suppose un contexte natif (device token, app registrée côté Xbox) plus contraignant à mettre en place que l'OAuth desktop classique.
    - Point technique à noter : **WAM (Web Account Manager)**, le broker d'auth Windows utilisé par MSAL pour du SSO silencieux avec le compte Windows courant, n'est **pas disponible pour Xbox** — donc pas de raccourci via WAM, il faudra creuser SISU directement ou rester sur l'OAuth desktop existant amélioré (moins d'allers-retours navigateur, SSO local dans la coque Tauri).
    - À trancher au moment venu : est-ce que le gain (fluidité) justifie l'effort d'implémentation SISU vs. optimiser l'OAuth desktop actuel dans la coque Tauri.
-3. **Stockage local — migration vers AppData** : tout ce qui est aujourd'hui stocké sur disque à côté de l'app (DuckDB `data/titles/`, `data/auth/`, `data/global/`, `data/sessions/`, config `db_profiles.json`/`app_settings.json`/`.env.local`) ne peut pas rester dans le bundle applicatif Tauri — l'app doit pouvoir être mise à jour/réinstallée sans perdre ces données. Il faut cadrer un chemin utilisateur type `%APPDATA%/LevelUp/` (Windows) et équivalents autres OS, cohérent avec `PathResolver`, sans hardcoder de chemin machine. **À ce moment-là : faire un audit exhaustif de tout ce qui est écrit sur disque** (pas seulement `data/` — logs, caches, fichiers temporaires, médias indexés, tout chemin actuellement dérivé de `REPO_ROOT`) pour ne rien oublier dans la bascule vers AppData.
-
----
-
-### Kills environnementaux — catégorie dédiée (v8++)
-
-> ⚠️ **Spec à re-écrire pour Go (2026-06-09)** : les étapes ci-dessous référencent le code Python supprimé au cutover (`constants.py`, `_weapon_kills_repo.py`, `ParticipantBits`, `GRENADE_MEDALS`). L'idée reste valable mais doit être re-spécifiée côté Go (`apps/go-api`) avant toute implémentation. Priorité très basse (barrel kills extrêmement rares).
-
-**Contexte** : La médaille **Kong** (kill via baril projeté) est actuellement comptée dans `GRENADE_MEDALS` faute d'une meilleure catégorie. Ce classement est approximatif — il est impossible de savoir avec certitude si l'API inclut ces kills dans `GrenadeKills` ou non.
-
-**Idée** : Créer une catégorie `environmental_kills` (ou `environmental`) pour regrouper les kills causés par l'environnement sans arme tenue :
-- Baril projeté (médaille **Kong**)
-- Potentiellement : chutes provoquées, explosions de véhicules, etc.
-
-**Ce que ça impliquerait** :
-1. Nouvelle colonne `environmental_kills` dans `match_participants` (migration DuckDB)
-2. Nouveau bit `ParticipantBits.ENVIRONMENTAL_KILLS` dans `constants.py`
-3. Retirer `Kong` de `GRENADE_MEDALS` → nouvel ensemble `ENVIRONMENTAL_MEDALS`
-4. Logique de réconciliation filmshell dédiée dans `_weapon_kills_repo.py`
-5. Backfill pour l'historique existant
-6. Affichage UI éventuel
-
-**Complexité estimée** : Moyenne (surtout le backfill + validation que l'API expose bien des compteurs séparés)
-
-**Priorité** : Basse — les barrel kills sont extrêmement rares, l'impact sur les stats est négligeable. À faire uniquement si on veut une exhaustivité totale des catégories de kills.
+3. **Stockage local — migration vers AppData** : tout ce qui est aujourd'hui stocké sur disque à côté de l'app (DuckDB `data/titles/`, `data/auth/`, `data/global/`, `data/sessions/`, config `db_profiles.json`/`app_settings.json`/`.env.local`) ne peut pas rester dans le bundle applicatif Tauri — l'app doit pouvoir être mise à jour/réinstallée sans perdre ces données. Il faut cadrer un chemin utilisateur type `%APPDATA%/LevelUp/` (Windows) et équivalents autres OS, cohérent avec `PathResolver`, sans hardcoder de chemin machine. **À ce moment-là : faire un audit exhaustif de tout ce qui est écrit sur disque** (pas seulement `data/` — logs, caches, fichiers temporaires, médias indexés, tout chemin actuellement dérivé de `REPO_ROOT`) pour ne rien oublier dans la bascule vers AppData. **Précision (2026-09-27, plan backlog du 2026-09-26)** : l'inventaire des chemins d'état existe désormais (journal du lot B5 du plan, et `config.LoadServer` / `RuntimePaths`). `PathResolver` n'a qu'une racine, qui sert à la fois la configuration versionnée et les données d'exécution. Une racine de données distincte (environ 70 fichiers, 121 appels de `NewPathResolver`) est le préalable technique de cette bascule.
 
 ---
 
@@ -185,6 +223,22 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-10-18 | **[données] Indicateur « données de compétence » des 157 matchs synchronisés du 25 au 30 mai** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, après E10, sur décision du user) : la donnée était en base (MMR d'équipe présent ; joueurs suivis concernés : JGtm 137 matchs, Chocoboflor 87, Madina97294 75, XxDaemonGamerxX 10, joués de nov. 2021 à mai 2026), seul le bit skill (4) manquait. `levelup reset-bitmasks` serveur arrêté, base sauvegardée avant (`data/backups/avant_reset_bitmasks_2026-10-18/`) : 157 lignes `match_registry` et 1 302 lignes `match_participants`, dry-run rejoué = 0, `levelup healthcheck` tout OK. Les bases locales étant copiées vers le VPS à la release, rien à faire en prod. |
+| 2026-10-18 | **[déploiement] Recalcul des dérivés Halo 5, LUSR v2 de tous les joueurs, séquence d'après déploiement** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E9, branche `feat/backlog-2026-10-16`) : (1) `levelup backfill --title <slug>` est honoré par `--engagement-scores`, `--citations`, `--citations-recompute-all`, `--composite-only`, `--lusr` (v2), `--perf`, `--assists-model` et `--compare-formulas` (un pilote et une table de passes remplacent six paires de boucles recopiées ; `--all` prend les profils du titre, `--csr`/`--shared-csr` refusent un autre titre, migrations de la base DU titre) ; sur Halo 5 les passes de citations répondent « non supporte » par la capability `citations.engine`, sans rien ouvrir ; `POST /backfill/start` prend un champ `title` (404 si le joueur n'est pas suivi sur ce titre), construit le moteur et le provider shared DU titre (`config.SharedProviderForTitle`, aussi utilisé par le replay LUSR de l'admin, qui passait le provider d'Infinite à un joueur Halo 5). (2) `POST /settings/sessions/recalculate` recalculait CHAQUE profil sur les bases du titre par défaut (titre vide) : un profil Halo 5 n'était jamais recalculé ; corrigé par profil, test rouge avant. (3) « Dates de paliers » : source `cmd/backfill_milestone_dates` (hors image de prod, décision au runbook). (4) Runbook : section « Post-deploy recomputes (v7.5) » (R1 à R10 : 157 matchs, dérivés Halo 5, LUSR v2 des deux titres, séquence film, sessions, accords du pool, re-seed de la démo), commandes et routes exactes. Rien n'est exécuté : geste du user. |
+| 2026-10-18 | **[rejeu] Lot film : positions du coup fatal, score KOTH Lattice, Harvest, vies sans nom** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E8, branche `feat/backlog-2026-10-16`) : (1) positions : la passe lit le journal fusionné par xuid (joueurs renommés), tient la dernière position dans la même vie, lit le siège du véhicule et place le tueur déjà mort à sa mort ; le contexte de mort lit la victime par la même lecture que `kill_positions` (source unique, tolérance de 0,5 m retirée) : tueurs sans position 1 476 -> 78 et victimes 1 028 -> 85 sur 233 films (22 535 frags), 2 contextes de mort sur 23 326 non placés contre 148 gagnés. (2) vies sans nom : 449 -> 15 sur les 36 films en cause (index des chunks hors table, chaîne de contradictions, corps de bot arrivé avant sa première déclaration), aucune vie nommée perdue sur les 2 660 films comparés. (3) score KOTH Lattice : une émission hors domaine (canal B non nul d'un slot d'équipe) remplaçait le point réel par 0 et le seuil de garde retenait un intervalle fusionné : `7de0b91d` rend 40 sans contradiction, `26602661` sans descente, 6 films changent de série, les autres KOTH inchangés. (4) Harvest : carte Forge, canevas `fo11_blank` prouvé par le level_id de la variante (426470249, unicité 1/1), catalogues à 85 cartes (bornes) et 131 (objectifs), `e449a696` et `99b8ba5c` cuisent (158 et 144 pistes, 0 vie sans nom). Révisions montées une fois : `objectives-2026-10-17`, `isolement-2026-10-17-positions`, schéma 99, `placement-2026-10-17`, `grammar-2026-10-18`, `killsource-2026-10-18`. Gate : `replay-corpus-gate` 19/19, 0 perte. Reste après la fusion (serveur arrêté, puis prod, le user prévenu) : `backfill-replay --only-existing`, `backfill-killsource`, usage-summary, `backfill-pad-tiers --force` ; contrôle visuel du user en lecture sur `7de0b91d` et `e449a696`. |
+| 2026-10-17 | **[perf/tactique] Chargement de la page Tactique : de 96 requêtes à 5 hors images** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E7, branche `feat/backlog-2026-10-16`) : le chargement coûtait 2 requêtes par carte ouvrable (le calage `GET /tactical/{map}/background`, puis l'image `background.png`) en plus de 4 requêtes fixes, soit 96 pour 46 cartes. `/tactical/maps` porte désormais le calage du fond de chaque carte ouvrable (`calage_fond`, absent pour une carte sans fond figé ; même source que la route par carte ; panne journalisée sans arrêter la grille) ; la vignette lit le cadre du fond dans la carte (plus aucune requête de calage par vignette) et ne demande son image qu'une fois entrée dans le champ de vision, et seulement si la carte a un calage (hook `useVisibleUneFois`, même clé de cache que le plan principal). Repli de D-10 : pas de `<img loading="lazy">`, car un `<img>` n'emporte pas `X-LevelUp-Title` et l'API résoudrait le titre de la session. Restent 5 requêtes de données (4 fixes + le calage de la carte du plan) puis les images des vignettes visibles. Mesure établie par le code et un test à 46 cartes ; la mesure en navigateur (onglet Réseau, temps d'affichage) reste au contrôle visuel. |
+| 2026-10-17 | **[dette/citations] Premiers frags du profil, capability des citations, maîtrise Carabine à impulsion** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E6, branche `feat/backlog-2026-10-16`) : (1) `computeFKFD` lisait des colonnes absentes de `highlight_events` et avalait l'erreur : premiers frags et premières morts à 0 pour tous les titres ; il passe par le chargeur unifié des événements (repli sur le journal des frags pour Halo 5), `analysis.FirstBlood` et le nouveau `analysis.FirstDeath`, sur les matchs du joueur, Campagne exclue, erreur journalisée ; tests Infinite et Halo 5 rouges avant, verts après. (2) `citations.engine` passe à `supported` pour Infinite (TOML, repli de l'adapter, parité verte ; seul lecteur : la matrice des fonctionnalités admin). (3) Diagnostic de la maîtrise Carabine à impulsion absente de la page Citations : aucun défaut de code (ligne présente et active au seed et dans les copies à froid de la metadata, chaîne service/page rejouée sur copie, image suivie par git, les 32 maîtrises `weapon_kills:` du seed se résolvent) ; reste à lire l'état de la metadata de l'instance regardée (requête au journal du plan) et, au besoin, `levelup seed citation-mappings`. Storm : aucune citation ajoutée (l'équivalent Infinite est la Carabine à impulsion). |
+| 2026-10-17 | **[dette] Dettes Go du plan du 2026-10-15** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E5, branche `feat/backlog-2026-10-16`) : code mort supprimé avec ses tests et lignes de baseline (`FindMatchesMissingParticipantBits`, `loadAwardsForScoreboard`, `WithAwardsRepo`, `CachedHighlightEventsRepo`, `BatchBuilder.AddLUSRComponents`, paramètre `titleSlug` de `SquadUsualContexts` remplacé par `prestige.Deps.TitleSlug`, 14 réexportations de constantes) ; erreurs avalées journalisées avant la dégradation (libellés d'armes, image de carte, modes connus, nom de paire, assistances attendues) et `ApplyResolutionViews` remonte l'échec de `v_match_full` ; DDL de `v_match_full` en source unique `migration.VMatchFullViewSQL` + garde-rail archlint ; une requête abandonnée ne bascule plus en lecture live ni ne compte ni n'écrit d'ERROR sur la vue match ; garde de la Campagne étendu au registre lu sur fenêtre de temps (2 dispenses d'outils opérateur) ; `reset-bitmasks` sur `matchflags.BackfillParticipants`, mapper OpenSpartan honnête sur les médailles (`EventsLoaded` supprimé), `--title` sur 3 CLI et passage du slug à `backfill-killsource` ; `match_bomb_stats` exporté dans le snapshot (un cut ancien reste lisible) ; un ami suivi sans player DB est une absence et non plus une panne des extras. Reste : le bit skill de 157 matchs (geste de déploiement, runbook). |
+| 2026-10-17 | **[data/LUSR] Le recalcul après exclusion d'un match utilisait encore LUSR v1** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E4, branche `feat/backlog-2026-10-16`) : la v1 du LUSR est supprimée (batch, étape de post-sync, aperçu `levelup backfill --lusr --dry-run`, interrupteurs `LEVELUP_LUSR_V2_ENABLED` et `LEVELUP_LUSR_CANONICAL`, `RecomputeAfterARTRebuild`, tests v1). L'exclusion d'un match rejoue la chaîne v2 du joueur (sentinelle de reset puis rejeu ; l'écrivain partagé est pris par rafales courtes, jamais en continu) et la v2 saute les matchs `is_excluded`. Les 8 composantes (`lusr_component_history`, lues par Prestige, le profil et l'escouade), écrites jusque-là par la seule v1 donc figées depuis la bascule canonique, sont écrites par la v2 : même calcul, parité vérifiée valeur à valeur (275 valeurs identiques à 1e-12). Constat corrigé : la vue `match_skill_rank_latest` ne laissait pas la v1 masquer la v2 (`start_time` avant `written_at`), mais le graphe d'évolution (`match_skill_rank_latest_by_type`) servait bien les lignes v1. Mesure sur une copie à froid de JGtm (sauvegarde du 16/10) : composantes 7 137 lignes pour 1 028 matchs, dernière ligne du 18/07, 125 matchs notés sans composantes, puis après rejeu 8 011 lignes pour 1 153 matchs et 0 note sans composantes (rejeu complet 47 s en 24 rafales). Reste : le simulateur de formules `levelup backfill --compare-formulas` (TrueSkill v1, n'écrit rien) est conservé. |
+| 2026-10-17 | **[ops/arrêt] Séquence d'arrêt du serveur bornée sous le délai de Docker** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E3, branche `feat/backlog-2026-10-16`) : `stop_grace_period: 45s` sur `levelup` et `levelup-demo` ; budget global de 40 s depuis la demande d'arrêt (5 s gardés pour la fermeture des bases), chaque phase d'attente prend la plus petite de sa borne et du budget restant, y compris `watcherDaemon.Stop`, `BatchQueue.Close`, `workerWG.Wait` et le gate (jusque-là non bornés ou hors chronomètre) ; `slog.WarnContext` nommant la phase qui dépasse ; `duckdb.CloseAll` toujours atteint. Séquence extraite de `main()` dans `cmd/server/shutdown.go` + `shutdown_budget.go`. Tests : budget sous la grâce lue dans `docker-compose.yml` (rouge prouvé sans la clé), phases bloquées, ordre HTTP, recalculs, écrivains, fermeture. Commentaire périmé (`stop_timeout=20s`) supprimé. |
+| 2026-10-17 | **[sécurité/suites] Code Xbox redemandé après une connexion réussie, et vérification de participation en 503** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E2, branche `feat/backlog-2026-10-16`) : (1) `XboxLoginPage` ne relance plus `start` sur `attempt_not_found` une fois la tentative autorisée (la rotation de session au succès rend l'ancienne tentative introuvable) et le sondage `useDeviceFlowStatus` s'arrête dès `authorized`/`provisioned` (prédicat `isDeviceFlowSucceeded`, `setup/queries.ts`) ; test Vitest rouge avant le correctif (5 sondages au lieu de 1). (2) `RequireMatchParticipation` : cache borné (4 096 entrées, le plus ancien sort) des participations CONFIRMÉES seulement, clé titre + xuid + match, ni `false` ni erreur mémorisés, 503 fermé conservé sur échec non caché (`api/wire/participation_cache.go`, câblé dans `MatchParticipation`) ; tests : 2 appels = 1 requête, clé, borne, bout en bout avec le middleware. La première vérification d'un couple reste soumise au budget de lecture. |
+| 2026-10-17 | **[ci/durée] CI raccourcie de 49 à ~16 min, mêmes tests** (plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E1, branche `feat/backlog-2026-10-16`) : suite Go de couverture en 6 lots sur 6 machines, chacun en `-p 1` (définition unique `.github/ci/go-shards.txt`, dernier lot = complément calculé, `grammar` coupé en deux par une liste nommée de tests lourds `-run`/`-skip`), job de fusion (contrôle 356 paquets sur 356, gate baseline, profils additionnés, ratchet de couverture : 81,0 % identique) ; second passage `internal/sync` supprimé ; Vitest en 3 lots fusionnés ; `concurrency` (runs périmés annulés sur les branches de travail, groupe propre au run sur `main`/`feat/v75`) ; filtre de chemins sur les branches de travail (base `feat/v75`) ; `-timeout` revenu à 600 s ; `make gate-push` à deux voies (film sans DuckDB en parallèle). Garde-rails archlint : lots et partition, contournement du filtre, concurrency, voie film sans DuckDB. Run de preuve 38979844734 : 15 min 39 s. |
+| 2026-10-16 | **[sécurité] Durcissement de la surface exposée + restes de la démo** — audit adversarial (9 axes, 12 P0 / 17 P1 / 36 P2, `.ai/AUDIT_SECURITE_SURFACE_EXPOSEE_2026-10-15.md`) puis plan `.ai/PLAN_SECURITE_2026-10-15.md` (lots L0-L11, deux rondes de revue adversariale, recette, E2E) ; fusionné dans `feat/v75` (c6a72cf02). nginx de prod durci le 2026-10-15/16. Reste au déploiement de la v7.5 : V-3 (`data/demo_films/`), V-5 (unité de l'ouvrier), V-6 (limites mémoire après mesure). |
+| 2026-10-16 | **[lot backlog du 2026-10-15] Campagne dans les lecteurs, vue match « lecture en échec », intégrité du registre** (branche `feat/backlog-2026-10-15`, plan `.ai/PLAN_BACKLOG_2026-10-15.md`, E1 à E6) : lecteurs de la Campagne de `sync`/`ops`/`cmd` statués et garde étendu (E2), dettes Go (temps canonique, `GET /squads`) (E3), raisons `<source>_unavailable` distinctes de `<source>_empty` (E4), colonnes d'intégrité de `match_registry` (E5), deux rondes de revue adversariale corrigées (E6.2a, E6.2b). Reste : fusion dans `feat/v75` (geste du user) et les entrées ci-dessus. |
+| 2026-09-27 | **[lot backlog du 2026-09-26, fusion 3] Dérogations mortes du lint inter-features, musique d'intro du rejeu, niveau des fanfares de fin** (branche `feat/backlog-2026-09-26`, plan `.ai/PLAN_BACKLOG_2026-09-26.md`, lots A3 et A4). **Lint (5)** : 16 dérogations mortes retirées ; le script échoue désormais sur toute dérogation qui ne sert plus ; README des graphes corrigé (12 wrappers, `FirstBloodLanes` dans `components/charts/`) ; lint ajouté au job web de la CI (`1ea900034`). **Musique d'intro (7)** : les 3 dernières secondes de la montée de la piste `402178411`, résolution R = 3,19 s calée sur le coup d'envoi, −18 LUFS, jouée au clic sur « Lecture » ou « Recommencer » depuis le préambule, jamais à la reprise, au saut ni dans l'export. Au premier « Lecture » après un rechargement, l'intro attend son décodage et part avec un décalage borné par la durée du préambule (`6bac387b8`, `eb57ec3c2`). **Niveau des fanfares (suite de l'item 11)** : les trois fanfares de fin mesuraient −25 LUFS au lieu des −18 prévus (réduction stéréo du 28/08 faite après la normalisation). Remises à −18 LUFS par un gain linéaire, avec un garde-rail de niveau sur les échantillons PCM (`e93c19ed9`). Fins multi-équipes (6) : `[!]`, faute de donnée (entrée ci-dessus). Écoutes de l'utilisateur après la fusion. |
+| 2026-09-27 | **[lot backlog du 2026-09-26] Musique de fin et son du rejeu, classement mondial, découpeur SQL, index ART de `match_skill_rank`, garde-rail d'exclusion de la campagne, mode démo hermétique** (branche `feat/backlog-2026-09-26`, plan `.ai/PLAN_BACKLOG_2026-09-26.md`, un exécutant Opus à la fois, deux relectures adversariales puis une ronde 2 sur les corrections : 8 constats en ronde 1, dont 2 P1, et 0 P1 en ronde 2). **Musique de fin (11)** : la conclusion échappe au plafond de 8 voix dans la page, comme dans l'export (`soundOccupiesVoice`, `a373539d9`). **Son au rechargement (12)** : le lecteur s'ouvre au premier clic ou à la première touche, ou dès l'affichage si le document a déjà reçu un geste (`useAudioUnlock`, `89f311191`) ; la cause était la lecture automatique. **Classement mondial (1)** : `ErrDrainTimeout`, 3 essais espacés de 30 s sans nouveau scrape, premier tir à +2 min (`cd47936fc`). **Découpeur SQL (3)** : cœur unique `migration.ExecScriptContext`, 3 copies supprimées, garde-rail AST (`edd0054d5`). **Index de `match_skill_rank` (2)** : les trois `idx_msr_*` sont retirés par une migration et par un soin convergent rejoué à chaque ouverture (MSR et PSA) ; ratchet étendu à `sync/schema.go` ; sonde, `repair_msr_index` et `indexcheck` supprimés ; critère D-4 amendé (relatif, `EXPLAIN ANALYZE`) ; copies réelles vérifiées (`7e9ef7c15`, `0b6c11f73`). **Exclusion de la campagne (4)** : garde AST multi-racines (83 lecteurs, 21 dispenses datées), 12 lecteurs corrigés ; les chiffres Halo 5 qui comptaient la campagne changent (`a9e2192ac`, `c61c60761`). **Mode démo (8)** : tâches de fond coupées et chemins d'état redirigés par le SEUL serveur démo (`config.LoadServer`), 4 mutations en 403 `demo_mode_forbidden`. La preuve de bout en bout sur le vrai checkout donne 0 écriture (`3de419efe`, corrections B-C1 à B-C10). Écoutes de l'utilisateur (11, 12) faites après la fusion. Découvertes versées en 6 entrées ci-dessus. |
+| 2026-09-19 | **[hygiène] Lot compare / armes / frontières** (branche `feat/hygiene-compare-armes`, 4 commits `e4238dea6`→`aa1a8dc2c`, exécuté par Opus sous pilotage) — **A** champ `filters` de `CompareRequest` retiré (Go + `types.ts` ; le fragment OpenAPI manuel ne le déclarait déjà pas, `FilterContextInput` conservé : 7 autres consommateurs). **B** repli « échantillon croisé » SUPPRIMÉ — mais la prémisse du backlog était fausse : la branche n'était pas morte, elle était FAUTIVE. `GetCrossMatchSample` n'excluait pas la campagne alors que `GetLocalStats` le fait ; mesuré sur copie du shared Halo 5 : pour un B présent uniquement en coop campagne, `GetLocalStats` rend 0 ligne et l'échantillon croisé rend 1 match (stats de campagne servies sous un service record matchmade). Exclusion alignée ⇒ branche morte par construction ⇒ retrait complet (service, repo, port + noop, `domain.CrossMatchSample`, `IsLocalSample`/`is_local_sample` régénéré par Huma, 2 tests, 8 lignes de baseline). **C** `buildTopWeapons` des séries temporelles délègue à `topWeaponKillRows` (départage sur le libellé) ; garde-rail étendu au motif `WeaponID <` sans propriétaire ; changement assumé : une arme sans libellé résolu n'est plus publiée (barre anonyme avant). **D** `SynthesisCards` → `components/ui/section-primitives.tsx`, `SynthesisWeaponAccuracyChart` → `components/charts/WeaponAccuracyChart.tsx` ; DEUX dérogations retirées (`timeseries=>synthesis` et `session-detail=>synthesis`) ; le ratchet du script compte les violations non déclarées (7/7, inchangé), pas les dérogations. Gates : Go build/vet/test 22 paquets, openapi-gen -check, types frais, tsc -b (cache purgé), eslint 0 erreur, lint inter-features, vitest 7984 tests — tous verts, rejoués par le pilote. Découvertes → 2 items backlog ci-dessus. |
+| 2026-08-03 | **[ops/deps] Bump `echarts` 5.6.0 → 6.1.0** (CVE-2026-45249, XSS) — livré par `545b870de` (lot B4 echarts6, diff visuel joint). L'entrée « REPORTÉ » du backlog était restée après la livraison ; retirée le 2026-09-19. |
 | 2026-07-26 | **[ops/prod] Écritures `app_settings.json` dans le conteneur (bind-mount fichier → rename EBUSY)** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — point d'écriture unique `internal/platform/atomicfile.WriteFile` : atomique (temp + rename) d'abord, repli **in-place** (truncate + un seul Write + fsync) quand le rename répond EBUSY ou que le répertoire parent refuse le temporaire. Toute AUTRE erreur de rename reste remontée (le repli couvre une contrainte d'environnement connue, pas un diagnostic manquant). Audit des écritures runtime de settings : **3 call sites**, tous migrés — `settings.Store.Save` (chemin de TOUS les toggles admin `PATCH /settings`, qui faisait un `os.WriteFile` nu, donc jamais atomique), `settings.Store.SaveTitleOverlay`, `notify.writeLastNotifiedVersion` (le bug d'origine : notif Discord « nouvelle version » rejouée à chaque redémarrage). Limite ASSUMÉE et documentée : le repli n'est pas atomique — risque borné (contenu déjà sérialisé en mémoire, un seul Write, fsync, fichiers reconstructibles). Garde-rail `archlint/no_bare_settings_write_test.go` (interdit `os.WriteFile`/`os.Rename` nus dans les packages writers de settings). Tests : rename EBUSY → repli, rename ENOSPC → erreur non masquée, temporaire impossible → repli, troncature, création. |
 | 2026-07-26 | **[ops/notifs] Bruit WARN `app_release: emit` pour les comptes auth_only** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — filtre pur `appReleaseTargets` dans `internal/api/wire/notifications_boot.go` : les profils `auth_only` de `db_profiles.json` (5 en prod, `db_path` vide — ils n'existent que pour le pool de tokens) sont écartés AVANT toute résolution, avec une trace `DebugContext` groupée au lieu de 5 WARN par redémarrage. Découverte au passage, corrigée dans le même filtre : `LoadPlayers()` sans filtre de titre renvoie une entrée par (titre, joueur) alors que la notification est per-JOUEUR → un joueur déclaré sur 2 titres était traité deux fois ; déduplication par slug + ordre d'émission stable. 5 tests unitaires. |
 | 2026-07-26 | **[archi/contrat] Reliquats V72-01 — clos** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — (a) **`securitySchemes`** : le contrat ne déclarait AUCUN mécanisme d'auth ; `sessionCookie` (apiKey/cookie) est désormais posé côté Go (`internal/api/openapi_security.go`) en lisant le nom du cookie à sa source unique `session.CookieName` — aucune exigence `security` par opération n'est ajoutée (une part de la surface est publique par conception ; l'inventaire route→garde reste le ratchet `bare_routes`, qui est exécutable). (b) **UI `/docs`** : `internal/api/openapi_docs.go`, montée sur le routeur RACINE (le `DocsPath` de Huma aurait enregistré la route une fois par sous-routeur, sous son préfixe) et gatée sur `IsProduction() **OU** DemoMode` — la démo est publique et ne pose pas `LEVELUP_ENV`, la gater sur la seule production l'aurait exposée. Sert le document VIVANT (`/docs/openapi.{json,yaml}`), CSP dédiée. (c) **`ApiError.details`** : `huma.SchemaTransformer` sur `humacore.apiError` restaure `oneOf: [object(additionalProperties true), array]`, perdu par le type Go `any` — corps runtime inchangé. **Statués `[!]`, non traités et pourquoi** : validation automatique des inputs + résolveurs cross-champs = CLOS par décision produit (contrat `RawBody`/400 CONSERVÉ, pas de bascule 422) ; les **7 descriptions de schéma racine** restent au fragment manuel — les rapatrier exigerait un `SchemaTransformer` sur 7 types de `internal/domain`, donc d'y importer `huma` alors que ce package n'a **aucune** dépendance externe aujourd'hui : coût architectural disproportionné pour 7 chaînes déjà présentes au contrat publié. |

@@ -5,12 +5,16 @@
  * La NavL2 (bandeau contextuel Stats/Escouade) et la KPIBar sont gérées
  * au niveau du layout joueur ($playerSlug.tsx).
  */
-import { Outlet } from '@tanstack/react-router'
+import { Outlet, useMatches } from '@tanstack/react-router'
 import { Toaster } from 'sonner'
 import { NavL1 } from './NavL1'
 import { ReauthBanner } from './ReauthBanner'
+import { OAuthRefusalBanner } from './OAuthRefusalBanner'
+import { PoolSharingBanner } from './PoolSharingBanner'
 import { TopProgressBar } from './TopProgressBar'
 import { ErrorBoundary } from './ErrorBoundary'
+import { AppFooter } from './AppFooter'
+import { piedDePageAffiche } from './piedDePage'
 import { NotificationsToastBridge } from '@/features/notifications/toastBridge'
 import { AssetDrawer } from '@/features/asset-drawer'
 import { FeedbackDrawer } from '@/features/feedback-drawer'
@@ -19,6 +23,8 @@ import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 export function AppShell() {
   // Lie le thème Sonner au thème app pour que les toasts respectent dark/light.
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
+  // Une vue « cockpit » (onglet Tactique) tient dans l'écran : pas de pied de page sous elle.
+  const avecPiedDePage = useMatches({ select: (matches) => piedDePageAffiche(matches) })
   return (
     <div className="flex h-screen flex-col gap-3 overflow-hidden bg-background text-foreground sm:gap-4">
       {/* Barre de navigation L1 (fixe en haut) */}
@@ -26,6 +32,10 @@ export function AppShell() {
         <NavL1 />
         {/* Bannière reconnexion Xbox (refresh_token mort) — PR-B */}
         <ReauthBanner />
+        {/* Motif du refus d'une reconnexion Xbox (retour de /login?oauth_error=) */}
+        <OAuthRefusalBanner />
+        {/* Question de consentement : mise en commun du jeton (première connexion Xbox) */}
+        <PoolSharingBanner />
       </div>
 
       {/* Barre de progression — flottante, hors du flux, collée sous NavL1 */}
@@ -59,8 +69,20 @@ export function AppShell() {
       {/* Contenu principal scrollable — protégé contre les crashs de composants */}
       <ErrorBoundary>
         <main className="flex-1 overflow-y-auto">
-          <div className="app-shell-width mx-auto w-full">
-            <Outlet />
+          {/* Colonne pleine hauteur : le contenu prend au MINIMUM la hauteur visible
+              (`flex-1`), ce qui pousse le pied de page sous la ligne de flottaison.
+              Sans cela (retour utilisateur 2026-09-09), une page dont le contenu se
+              charge encore ne rend qu'un placeholder d'une ligne : le pied de page
+              remontait alors en haut de l'écran, seul visible, puis se faisait
+              repousser à l'arrivée des données — un saut de mise en page à chaque
+              navigation. */}
+          <div className="app-shell-width mx-auto flex min-h-full w-full flex-col">
+            <div className="flex-1">
+              <Outlet />
+            </div>
+            {/* Pied de page — dans le flux scrollable, jamais fixé : la hauteur
+                verticale est comptée pour les tableaux denses. */}
+            {avecPiedDePage && <AppFooter />}
           </div>
         </main>
       </ErrorBoundary>

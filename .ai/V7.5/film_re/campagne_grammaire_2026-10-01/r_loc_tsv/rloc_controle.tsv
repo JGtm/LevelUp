@@ -1,0 +1,180 @@
+film	build	cle	paquets
+0797ce72	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	150
+0797ce72	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	2
+0797ce72	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	3
+0797ce72	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	29
+0797ce72	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme contredit	1
+0797ce72	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	115
+084a804d	HI_1_10_0	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	7
+084a804d	HI_1_10_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	5
+084a804d	HI_1_10_0	aucun depart ne ferme jusqu a la signature · ref non ferme	109
+084a804d	HI_1_10_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	11
+084a804d	HI_1_10_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	1
+084a804d	HI_1_10_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	15
+084a804d	HI_1_10_0	le premier depart qui ferme EST la signature · ref ferme sain	152
+111fa685	HI_1_10_0	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	1
+111fa685	HI_1_10_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	9
+111fa685	HI_1_10_0	aucun depart ne ferme jusqu a la signature · ref non ferme	170
+111fa685	HI_1_10_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	3
+111fa685	HI_1_10_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	3
+111fa685	HI_1_10_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	11
+111fa685	HI_1_10_0	depart anterieur, chaine coherente jusqu a la signature (4-10 records) · ref ferme sain	1
+111fa685	HI_1_10_0	le premier depart qui ferme EST la signature · ref ferme sain	102
+11de8353	HI_1_9_0	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	3
+11de8353	HI_1_9_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	1
+11de8353	HI_1_9_0	aucun depart ne ferme jusqu a la signature · ref non ferme	110
+11de8353	HI_1_9_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	4
+11de8353	HI_1_9_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	1
+11de8353	HI_1_9_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	11
+11de8353	HI_1_9_0	depart anterieur, chaine coherente jusqu a la signature (4-10 records) · ref ferme sain	1
+11de8353	HI_1_9_0	le premier depart qui ferme EST la signature · ref ferme sain	169
+1c4c63c2	HI_1_10_0	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	11
+1c4c63c2	HI_1_10_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	1
+1c4c63c2	HI_1_10_0	aucun depart ne ferme jusqu a la signature · ref non ferme	29
+1c4c63c2	HI_1_10_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	19
+1c4c63c2	HI_1_10_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	2
+1c4c63c2	HI_1_10_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	32
+1c4c63c2	HI_1_10_0	le premier depart qui ferme EST la signature · ref ferme sain	206
+396cfc92	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	1
+396cfc92	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	48
+396cfc92	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	9
+396cfc92	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	40
+396cfc92	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	202
+4f77afc1	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	4
+4f77afc1	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	4
+4f77afc1	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	123
+4f77afc1	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	13
+4f77afc1	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	2
+4f77afc1	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	25
+4f77afc1	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	129
+50247b26	version-31	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	1
+50247b26	version-31	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	11
+50247b26	version-31	aucun depart ne ferme jusqu a la signature · ref non ferme	283
+50247b26	version-31	le premier depart qui ferme EST la signature · ref ferme sain	5
+51ebbc0f	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	1
+51ebbc0f	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	184
+51ebbc0f	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	1
+51ebbc0f	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	15
+51ebbc0f	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	99
+60ae07c4	HI_1_8_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	2
+60ae07c4	HI_1_8_0	aucun depart ne ferme jusqu a la signature · ref non ferme	205
+60ae07c4	HI_1_8_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	6
+60ae07c4	HI_1_8_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	2
+60ae07c4	HI_1_8_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme contredit	1
+60ae07c4	HI_1_8_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	15
+60ae07c4	HI_1_8_0	depart anterieur, chaine coherente jusqu a la signature (4-10 records) · ref ferme sain	1
+60ae07c4	HI_1_8_0	le premier depart qui ferme EST la signature · ref ferme sain	68
+6b0e6f0f	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	1
+6b0e6f0f	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	86
+6b0e6f0f	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	10
+6b0e6f0f	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	22
+6b0e6f0f	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	181
+72b0a25e	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	182
+72b0a25e	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	16
+72b0a25e	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	2
+72b0a25e	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	16
+72b0a25e	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	84
+81c02726	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	1
+81c02726	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	1
+81c02726	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	45
+81c02726	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	13
+81c02726	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	36
+81c02726	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	204
+8f7f5806	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	122
+8f7f5806	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	6
+8f7f5806	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	4
+8f7f5806	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	44
+8f7f5806	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	124
+9c0ec856	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	1
+9c0ec856	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	157
+9c0ec856	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	5
+9c0ec856	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	3
+9c0ec856	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	25
+9c0ec856	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	109
+a349fea8	version-33	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	5
+a349fea8	version-33	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	13
+a349fea8	version-33	aucun depart ne ferme jusqu a la signature · ref non ferme	275
+a349fea8	version-33	le premier depart qui ferme EST la signature · ref ferme sain	7
+a521164d	HI_1_4_1	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	1
+a521164d	HI_1_4_1	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	17
+a521164d	HI_1_4_1	aucun depart ne ferme jusqu a la signature · ref non ferme	243
+a521164d	HI_1_4_1	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	1
+a521164d	HI_1_4_1	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	2
+a521164d	HI_1_4_1	le premier depart qui ferme EST la signature · ref ferme sain	36
+a765f61d	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	1
+a765f61d	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	147
+a765f61d	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	4
+a765f61d	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	2
+a765f61d	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	41
+a765f61d	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme contredit	1
+a765f61d	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	104
+af3af607	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	34
+af3af607	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	7
+af3af607	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	59
+af3af607	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	200
+bcb6d393	HI_1_12_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	1
+bcb6d393	HI_1_12_0	aucun depart ne ferme jusqu a la signature · ref non ferme	156
+bcb6d393	HI_1_12_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	9
+bcb6d393	HI_1_12_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	2
+bcb6d393	HI_1_12_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	30
+bcb6d393	HI_1_12_0	le premier depart qui ferme EST la signature · ref ferme sain	102
+bf15f7ab	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	1
+bf15f7ab	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	43
+bf15f7ab	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	8
+bf15f7ab	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	28
+bf15f7ab	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	220
+bfecd02b	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	1
+bfecd02b	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	1
+bfecd02b	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	115
+bfecd02b	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	8
+bfecd02b	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	2
+bfecd02b	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	23
+bfecd02b	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	150
+c46ef9d1	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	101
+c46ef9d1	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	1
+c46ef9d1	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	44
+c46ef9d1	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	154
+c75f33b8	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	1
+c75f33b8	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	15
+c75f33b8	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	5
+c75f33b8	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	1
+c75f33b8	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	40
+c75f33b8	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (> 10 records) · ref ferme sain	1
+c75f33b8	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	237
+d1a18847	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	1
+d1a18847	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	133
+d1a18847	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	4
+d1a18847	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	2
+d1a18847	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	43
+d1a18847	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme contredit	1
+d1a18847	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	116
+d9781168	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	82
+d9781168	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	7
+d9781168	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	56
+d9781168	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	155
+e5adf7b2	HI_1_11_0	aucun depart ne ferme (plafond d essais atteint) · ref ferme sain	4
+e5adf7b2	HI_1_11_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	5
+e5adf7b2	HI_1_11_0	aucun depart ne ferme jusqu a la signature · ref non ferme	150
+e5adf7b2	HI_1_11_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	2
+e5adf7b2	HI_1_11_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	5
+e5adf7b2	HI_1_11_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	7
+e5adf7b2	HI_1_11_0	le premier depart qui ferme EST la signature · ref ferme sain	127
+e60aaf06	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	3
+e60aaf06	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	146
+e60aaf06	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	12
+e60aaf06	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	1
+e60aaf06	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	31
+e60aaf06	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (4-10 records) · ref ferme sain	1
+e60aaf06	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	106
+f75e7053	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	37
+f75e7053	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	8
+f75e7053	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	1
+f75e7053	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	28
+f75e7053	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (4-10 records) · ref ferme sain	1
+f75e7053	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	225
+fb1a1a72	HI_1_13_0	aucun depart ne ferme (plafond d essais atteint) · ref non ferme	1
+fb1a1a72	HI_1_13_0	aucun depart ne ferme jusqu a la signature · ref non ferme	91
+fb1a1a72	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref ferme sain	9
+fb1a1a72	HI_1_13_0	depart anterieur, chaine NON coherente avec la signature · ref non ferme	4
+fb1a1a72	HI_1_13_0	depart anterieur, chaine coherente jusqu a la signature (1-3 records) · ref ferme sain	35
+fb1a1a72	HI_1_13_0	le premier depart qui ferme EST la signature · ref ferme sain	160

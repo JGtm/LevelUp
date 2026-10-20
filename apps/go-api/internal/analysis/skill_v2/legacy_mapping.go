@@ -4,8 +4,7 @@ package skill_v2
 // legacy (échelle LUSR v1 [1000..2000]) pour la Stratégie C (write-through
 // aliasing).
 //
-// Quand LUSR v2 devient canonical (LEVELUP_LUSR_CANONICAL=LUSR_V2), le
-// shadow runner écrit dans `match_skill_rank` avec `rating_type='LUSR'`
+// Le LUSR v2 est le seul modèle (ADR 0024) : le shadow runner écrit dans `match_skill_rank` avec `rating_type='LUSR'`
 // (slot historique) en utilisant cette fonction de mapping. Les readers
 // UI continuent de lire `rating_type='LUSR'` sans aucune modification.
 //

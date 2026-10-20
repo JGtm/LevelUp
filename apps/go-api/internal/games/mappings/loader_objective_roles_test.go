@@ -1,0 +1,266 @@
+package mappings
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/testutil"
+)
+
+const objectiveRolesValide = `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+
+[[modes]]
+match = ["CTF", "Neutral Flag"]
+roles = ["flag_spawn", "flag_delivery"]
+
+[[modes]]
+match = ["Strongholds"]
+roles = ["strongholds_zone"]
+neutral = true
+`
+
+func TestObjectiveRoles_ChargementValide(t *testing.T) {
+	set, err := LoadObjectiveRolesFromBytes("test.toml", []byte(objectiveRolesValide))
+	if err != nil {
+		t.Fatalf("chargement: %v", err)
+	}
+	if set.TitleSlug() != "halo_infinite" || set.SchemaVersion() != 1 {
+		t.Errorf("meta: slug=%q v=%d", set.TitleSlug(), set.SchemaVersion())
+	}
+	modes := set.Modes()
+	if len(modes) != 2 {
+		t.Fatalf("modes = %d, attendu 2", len(modes))
+	}
+	ctf := modes[0]
+	if len(ctf.Match) != 2 || ctf.Match[0] != "CTF" || ctf.Neutral {
+		t.Errorf("entrée CTF inattendue: %+v", ctf)
+	}
+	if len(ctf.Roles) != 2 || ctf.Roles[0] != mapvar.RoleFlagSpawn || ctf.Roles[1] != mapvar.RoleFlagDelivery {
+		t.Errorf("rôles CTF inattendus: %v", ctf.Roles)
+	}
+	// L'ordre du fichier est conservé, et le drapeau neutral est porté par l'entrée.
+	if sh := modes[1]; !sh.Neutral || len(sh.Roles) != 1 || sh.Roles[0] != mapvar.RoleStrongholdZone {
+		t.Errorf("entrée Strongholds inattendue: %+v", sh)
+	}
+}
+
+// TestObjectiveRoles_ValidationStricte — chaque configuration fautive est REFUSÉE : un
+// silence servirait un rejeu sans objectifs indistinguable d'un mode sans objectifs.
+func TestObjectiveRoles_ValidationStricte(t *testing.T) {
+	cas := []struct {
+		nom     string
+		toml    string
+		fragmnt string
+	}{
+		{"role inconnu", `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+[[modes]]
+match = ["CTF"]
+roles = ["koth_hill"]
+`, "inconnu du décodeur"},
+		{"match vide", `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+[[modes]]
+roles = ["flag_spawn"]
+`, "match vide"},
+		{"roles vide", `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+[[modes]]
+match = ["CTF"]
+`, "roles vide"},
+		{"aucune entree", `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+`, "aucune entrée"},
+		{"meta absente", `
+[[modes]]
+match = ["CTF"]
+roles = ["flag_spawn"]
+`, "title_slug manquant"},
+		// LE GARDE-FOU DU CORRECTIF DU 2026-08-26 : `points_only` sur un rôle SURFACIQUE
+		// effacerait les bases de la carte en les réduisant à des marqueurs — une régression
+		// majeure en une ligne de configuration, et parfaitement crédible à l'écran.
+		{"points_only sur un role surfacique", `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+[[modes]]
+match = ["Strongholds"]
+roles = ["strongholds_zone"]
+points_only = true
+`, "points_only interdit sur le rôle surfacique"},
+		{"points_only sur la colline", `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+[[modes]]
+match = ["KOTH"]
+roles = ["hill"]
+points_only = true
+`, "points_only interdit sur le rôle surfacique"},
+		// Le rôle ponctuel d'un mode mixte ne sauve pas l'entrée : c'est le rôle SURFACIQUE
+		// qui la fait refuser, où qu'il soit dans la liste.
+		{"points_only sur un mode mixte", `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+[[modes]]
+match = ["Bizarre"]
+roles = ["flag_spawn", "extraction_zone"]
+points_only = true
+`, "points_only interdit sur le rôle surfacique"},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			_, err := LoadObjectiveRolesFromBytes("test.toml", []byte(c.toml))
+			if err == nil || !strings.Contains(err.Error(), c.fragmnt) {
+				t.Errorf("err = %v, attendu contenant %q", err, c.fragmnt)
+			}
+		})
+	}
+}
+
+// TestObjectiveRoles_FichierAbsentRemonteTelQuel — l'absence est un cas de l'appelant
+// (titre sans objectifs statiques) : elle doit rester reconnaissable par os.IsNotExist.
+func TestObjectiveRoles_FichierAbsentRemonteTelQuel(t *testing.T) {
+	_, err := LoadObjectiveRolesFromFile(filepath.Join(t.TempDir(), "objective_roles.toml"))
+	if err == nil {
+		t.Fatal("attendu une erreur pour fichier absent")
+	}
+	if !os.IsNotExist(errUnwrapAll(err)) {
+		t.Errorf("l'absence doit rester détectable (os.IsNotExist), reçu: %v", err)
+	}
+}
+
+// errUnwrapAll déroule la chaîne d'enveloppes jusqu'à l'erreur d'origine.
+func errUnwrapAll(err error) error {
+	type unwrapper interface{ Unwrap() error }
+	for {
+		u, ok := err.(unwrapper)
+		if !ok {
+			return err
+		}
+		next := u.Unwrap()
+		if next == nil {
+			return err
+		}
+		err = next
+	}
+}
+
+// TestObjectiveRoles_FichierDuDepot — le TOML VERSIONNÉ du titre par défaut charge, et
+// porte les huit modes du plan : CTF, Strongholds, Oddball, Stockpile, Extraction, Assaut,
+// King of the Hill (lot C-ter volet 2) et Total Control (lot catalogue, 2026-08-25).
+//
+// `firefight_objective` est un rôle du décodeur qu'AUCUNE entrée ne sert : le fichier
+// l'admet, le catalogue le porte, et la décision de le servir attend une mesure (en-tête du
+// TOML). Ce test ne l'exige donc pas — mais il exige que le compte reste explicite, pour
+// qu'une entrée ajoutée sans intention le fasse rougir.
+func TestObjectiveRoles_FichierDuDepot(t *testing.T) {
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du dépôt introuvable : %v", err)
+	}
+	path := filepath.Join(root, "config", "titles", "halo_infinite", "mappings", "objective_roles.toml")
+	set, err := LoadObjectiveRolesFromFile(path)
+	if err != nil {
+		t.Fatalf("le fichier versionné doit charger: %v", err)
+	}
+	modes := set.Modes()
+	if len(modes) != 8 {
+		t.Fatalf("modes = %d, attendu 8 (CTF, Strongholds, Oddball, Stockpile, Extraction, "+
+			"Assaut, KOTH, Land Grab — ce dernier cable au lot C catalogues le 2026-08-27) ; "+
+			"Total Control est RETIRE depuis le 2026-08-27", len(modes))
+	}
+	// La règle produit du lot 4 : Bastion et Extraction s'affichent NEUTRES (possession
+	// dynamique non décodée) ; le drapeau, lui, garde ses couleurs d'équipe.
+	neutres := map[mapvar.Role]bool{}
+	servis := map[mapvar.Role]bool{}
+	for _, m := range modes {
+		for _, r := range m.Roles {
+			servis[r] = true
+			if m.Neutral {
+				neutres[r] = true
+			}
+		}
+	}
+	if !neutres[mapvar.RoleStrongholdZone] || !neutres[mapvar.RoleExtractionZone] || !neutres[mapvar.RoleHill] {
+		t.Errorf("strongholds_zone, extraction_zone et hill doivent être neutres, reçu: %v", neutres)
+	}
+	// LAND GRAB EST SERVI ET NEUTRE depuis le 2026-08-27 (lot C catalogues, ex-lot L) : la
+	// possession d'une zone est dynamique (une zone capturée disparaît), même règle que
+	// Bastion et la colline. L'entrée soldera l'incohérence « hashs landgrab_zone dans le
+	// fichier de carte sans rôle ni entrée » au premier match FUTUR (aucun film n'existe).
+	if !servis[mapvar.RoleLandGrabZone] || !neutres[mapvar.RoleLandGrabZone] {
+		t.Errorf("landgrab_zone doit être servi ET neutre (lot C catalogues 2026-08-27), reçu servis=%v neutres=%v",
+			servis[mapvar.RoleLandGrabZone], neutres[mapvar.RoleLandGrabZone])
+	}
+	if neutres[mapvar.RoleFlagSpawn] || neutres[mapvar.RoleFlagDelivery] {
+		t.Errorf("les rôles drapeau ne doivent PAS être neutres: %v", neutres)
+	}
+	// TOTAL CONTROL N'EST PLUS SERVI — L'ASSERTION EST INVERSÉE LE 2026-08-27, et c'est une
+	// DÉCISION UTILISATEUR (option (a)), pas un effet de bord.
+	//
+	// Le fichier déclarait un VIVIER de 13 à 18 zones par carte quand une manche n'en active
+	// que 3, en pariant que l'état vivant viendrait combler l'écart. Il ne viendra pas en
+	// v7.5 : le canal du désignateur ne survit pas aux films BTB (jusqu'à 77 désignations
+	// simultanées sur un mode à trois zones, phases D3/D3-bis/D3-ter du plan). Plutôt que de
+	// servir 13 à 18 formes que le joueur lit comme « les zones du match », on ne sert RIEN —
+	// une absence propre.
+	//
+	// CE TEST EST LE GARDE-FOU DE CETTE DÉCISION : il rougit le jour où quelqu'un remet le rôle
+	// sans avoir levé le verrou d'ancrage. La condition de reprise est écrite dans le TOML, à
+	// l'endroit exact du retrait.
+	if servis[mapvar.RoleTotalControlZone] {
+		t.Error("totalcontrol_zone ne doit PLUS être servi : le vivier de 13 à 18 formes est " +
+			"retiré (décision utilisateur du 2026-08-27). Le remettre exige d'abord un ancrage " +
+			"ti=13 fiable sur BTB — cf. objective_roles.toml, bloc « TOTAL CONTROL — ENTREE " +
+			"RETIREE »")
+	}
+	// LE DRAPEAU `points_only` DU FICHIER VERSIONNÉ (correctif du 2026-08-26). Les quatre
+	// modes dont l'objectif se TOUCHE le portent ; les quatre dont l'objectif se TIENT ne
+	// doivent SURTOUT pas l'avoir — c'est la même liste, prise par ses deux bouts.
+	ponctuels := map[mapvar.Role]bool{}
+	for _, m := range modes {
+		for _, r := range m.Roles {
+			if m.PointsOnly {
+				ponctuels[r] = true
+			}
+		}
+	}
+	for _, r := range []mapvar.Role{
+		mapvar.RoleFlagSpawn, mapvar.RoleFlagDelivery, mapvar.RoleOddballSpawn,
+		mapvar.RoleStockpileSocket, mapvar.RoleStockpileNavpoint, mapvar.RoleAssaultBomb,
+	} {
+		if !ponctuels[r] {
+			t.Errorf("%s doit être points_only : son objectif se touche, il ne se tient pas — "+
+				"sans ce drapeau, une forme au catalogue redeviendrait une base dessinée", r)
+		}
+	}
+	for _, r := range []mapvar.Role{
+		mapvar.RoleStrongholdZone, mapvar.RoleExtractionZone, mapvar.RoleHill,
+		mapvar.RoleTotalControlZone,
+	} {
+		if ponctuels[r] {
+			t.Errorf("%s ne doit JAMAIS être points_only : c'est une aire qu'on tient", r)
+		}
+	}
+}
+
+// reposRootDepuisTests SUPPRIMÉ (revue ronde 1, R1-1) : la remontée depuis le répertoire
+// courant était le troisième mécanisme maison de localisation de la racine. Le mécanisme
+// canonique est testutil.RepoRoot() (déduit de l'arbre source), gardé par
+// internal/archlint.

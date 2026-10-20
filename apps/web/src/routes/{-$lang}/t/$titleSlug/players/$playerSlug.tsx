@@ -4,13 +4,13 @@
  * Rend un <Outlet /> pour les sous-routes.
  * Vérifie que le playerSlug existe dans les joueurs disponibles.
  */
-import { createFileRoute, Navigate, Outlet, redirect } from '@tanstack/react-router'
+import { createFileRoute, Navigate, Outlet, redirect, useRouterState } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useEffect, useRef } from 'react'
 import { NavL2 } from '@/components/shell/NavL2'
-import { resolvePlayerFallback } from '@/components/shell/shellNavigation'
+import { resolvePlayerFallback, routeShowsSoloFilters } from '@/components/shell/shellNavigation'
 import { useFiltersResolve, useFollowLatestSession } from '@/features/filters/queries'
 import { queryKeys } from '@/lib/query/keys'
 
@@ -66,17 +66,6 @@ function PlayerLayout() {
     if (player) setCurrentPlayer(player)
   }, [playerSlug, availablePlayers, currentPlayer, setCurrentPlayer])
 
-  // Résolution du filterContext SOLO côté backend → alimente le store solo
-  // (consommé par NavL2/FilterOmnibar/PeriodSessionRail). Le store squad est
-  // résolu séparément depuis SquadLayout (qui appelle aussi useFiltersResolve).
-  useFiltersResolve(playerSlug, useSoloFilterStore)
-
-  // Atterrissage sur la dernière session SOLO : piloté par l'état (resolvedContext),
-  // tant que rien n'est épinglé manuellement. C'est le SEUL montage du hook dans
-  // l'app : côté escouade, l'ancrage est piloté par la composition (effet de
-  // ré-ancrage de SquadLayout), pas par ce hook. Cf. useFollowLatestSession.
-  useFollowLatestSession(playerSlug, useSoloFilterStore, 'solo')
-
   // À la fin d'un sync (transition activeSyncJobId string → null), invalider la
   // résolution de filtres pour rafraîchir `resolvedContext` (rien d'autre ne
   // l'invalide — useJobToasts n'émet que des toasts). Le snap proprement dit est
@@ -115,6 +104,7 @@ function PlayerLayout() {
 
   return (
     <div className="flex flex-col">
+      <SoloFiltersSync playerSlug={playerSlug} />
       {/* NavL2 = onglets Stats + FilterOmnibar (Stats/Squad uniquement). Le rail
           de navigation période/session est rendu DANS NavL2 (Stats) et DANS
           SquadLayout (Squad), juste après leurs filtres respectifs, pour
@@ -123,4 +113,33 @@ function PlayerLayout() {
       <Outlet />
     </div>
   )
+}
+
+/**
+ * Résolution du filterContext SOLO côté backend → alimente le store solo (consommé
+ * par NavL2/FilterOmnibar/PeriodSessionRail) — SEULEMENT sous la barre solo (même
+ * règle que NavL2, D4.4), et atterrissage sur la dernière session SOLO, piloté par
+ * l'état (resolvedContext) tant que rien n'est épinglé manuellement. C'est le SEUL
+ * montage de useFollowLatestSession dans l'app : côté escouade, l'ancrage est piloté
+ * par la composition (effet de ré-ancrage de SquadLayout). Le store squad est résolu
+ * depuis SquadLayout.
+ *
+ * Composant ENFANT, monté seulement une fois le slug validé (jamais dans la branche
+ * `<Navigate>` de PlayerLayout) : il s'abonne au routeur (`useRouterState`), et un
+ * composant abonné au routeur qui rend `<Navigate params={{...}}>` re-navigue à
+ * CHAQUE rendu — Navigate compare l'identité de ses props, et l'objet `params` est
+ * neuf à chaque rendu — pendant que la navigation qu'il déclenche le re-rend :
+ * boucle, onglet figé (CI E2E du 2026-09-23 sur un slug inconnu de la démo, après le
+ * lot perf L4a qui avait ajouté l'abonnement dans PlayerLayout).
+ */
+function SoloFiltersSync({ playerSlug }: { playerSlug: string }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const soloFiltersShown = routeShowsSoloFilters(pathname)
+  const soloResolve = useFiltersResolve(playerSlug, useSoloFilterStore, { enabled: soloFiltersShown })
+  const soloResolvedContext = useSoloFilterStore((s) => s.resolvedContext)
+  // Mêmes pages, et le résolu de la requête COURANTE seulement (pas un résolu périmé).
+  useFollowLatestSession(playerSlug, useSoloFilterStore, 'solo', {
+    enabled: soloFiltersShown && soloResolvedContext === soloResolve.data,
+  })
+  return null
 }

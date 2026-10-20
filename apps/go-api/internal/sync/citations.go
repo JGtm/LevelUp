@@ -20,121 +20,52 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/citationsfilm"
+	"levelup/go-api/internal/sync/debrief"
 )
 
 // BackfillMatchCitations calcule et persiste les citations pour une liste de matchs.
 //
 // metadataDB : connexion à metadata.duckdb (lecture citation_mappings, weapon_labels).
-// sharedDB   : connexion à shared_matches_v2.duckdb (medals, stats, events, weapon_kills).
+// sharedDB   : connexion à shared_matches_v2.duckdb (medals, stats, events, weapon_kills), tenue par l'appelant tout le lot (le post-sync passe par backfillCitationsLot).
 // playerDB   : connexion à stats.duckdb du joueur (awards en lecture, match_citations en écriture).
-// pveDB      : connexion RO à shared_pve.duckdb (stats Firefight, type de citation pve_stat).
+// pve        : lecteur auto-réparant sur shared_pve.duckdb (stats Firefight, type
 //
-//	Nil accepté (titre sans Firefight / DB absente) → dégradation gracieuse :
-//	les citations pve_stat restent à 0, aucune erreur (cf. loadPveStats).
+//	de citation pve_stat). RecoveringReader et NON *sql.DB : la boucle ci-dessous
+//	dure le temps du batch et le handle peut être fermé sous ses pieds par un
+//	post-sync concurrent (cf. OpenPveReadForCitations). Nil accepté (titre sans
+//	Firefight / DB absente) → dégradation gracieuse : citations pve_stat à 0.
 //
 // xuid       : identifiant Xbox du joueur.
 // matchIDs   : liste des match_id à traiter (triés en interne par start_time ASC).
 func BackfillMatchCitations(
 	ctx context.Context,
-	metadataDB, sharedDB, playerDB, pveDB *sql.DB,
+	metadataDB, sharedDB, playerDB *sql.DB,
+	pve *duckdbpkg.RecoveringReader,
 	xuid string,
 	matchIDs []string,
+	// killSource : le traducteur « source de degat -> cle du registre » du titre, quand il
+	// en a un. VARIADIQUE et OPTIONNEL a dessein : la signature portait deja sept
+	// parametres et huit sites d appel, dont cinq de test qui n ont aucune source de degat
+	// a fournir. Absent ou nil = voie historique, byte-identique.
+	killSource ...CitationWeaponSource,
 ) error {
-	if len(matchIDs) == 0 {
-		return nil
-	}
-
-	mappings, err := loadFullCitationMappings(ctx, metadataDB)
-	if err != nil {
-		return fmt.Errorf("BackfillMatchCitations: mappings: %w", err)
-	}
-	if len(mappings) == 0 {
-		slog.InfoContext(ctx, "BackfillMatchCitations: aucun mapping — skip")
-		return nil
-	}
-
-	weaponNames, err := loadWeaponNames(ctx, metadataDB)
-	if err != nil {
-		slog.WarnContext(ctx, "BackfillMatchCitations: weapon_names non chargés", "err", err)
-		weaponNames = map[uint64]string{}
-	}
-
-	// Tri chrono pour que le cumulPre soit correct entre les matchs du batch.
-	sorted, err := sortMatchIDsChrono(ctx, sharedDB, matchIDs)
-	if err != nil {
-		slog.WarnContext(ctx, "BackfillMatchCitations: sort chrono failed, ordre non garanti", "err", err)
-		sorted = matchIDs
-	}
-
-	// Baseline : somme cumulée des citations pour les matchs hors du batch courant.
-	// Pour un sync incrémental (nouveaux matchs), ces matchs sont antérieurs → correct.
-	// Pour un recompute total (all matchIDs), la baseline est {} (tout est exclu).
-	cumulPre, err := loadCumulExcluding(ctx, playerDB, matchIDs)
-	if err != nil {
-		return fmt.Errorf("BackfillMatchCitations: cumulPre baseline: %w", err)
-	}
-
-	slog.InfoContext(ctx, "citations: traitement batch",
-		"xuid", xuid, "match_count", len(sorted), "baseline_citations", len(cumulPre))
-
-	written, skipped := 0, 0
-	for _, matchID := range sorted {
-		citCtx, err := buildCitationContext(ctx, sharedDB, playerDB, pveDB, weaponNames, xuid, matchID)
-		if err != nil {
-			slog.WarnContext(ctx, "BackfillMatchCitations: context", "match_id", matchID, "err", err)
-			skipped++
-			continue
-		}
-
-		deltas := analysis.ComputeFullMatchCitations(analysis.CitationProgressInput{
-			Ctx:      citCtx,
-			CumulPre: cumulPre,
-		}, mappings)
-
-		// Append-only #23046 (Phase 2) : plus de DELETE avant réécriture. La
-		// réécriture (writeCitations) alloue une nouvelle génération qui supersède
-		// la précédente via la vue match_citations_latest (recompute soustractif
-		// préservé : la nouvelle génération porte EXACTEMENT le nouvel ensemble).
-
-		// Phase 4 (fix recompute citations) : NE PAS poser le sentinel "_processed"
-		// si 0 delta provient d'events pas encore chargés (film retardé). Sinon le
-		// match entre dans match_citations et sort définitivement de
-		// selectMatchesForCitations(force=false) (LEFT JOIN IS NULL) → jamais
-		// recalculé quand les events arrivent → citations vides en permanence
-		// (cause racine onglet Détails). On laisse le match candidat : le events
-		// heal (post-sync, avant citations) charge les events, et le prochain cycle
-		// citations recalcule. events_loaded distingue "vraiment 0 citation"
-		// (events présents) de "0 par manque d'events" (film pas encore là).
-		if len(deltas) == 0 && !isEventsLoaded(ctx, sharedDB, matchID) {
-			slog.DebugContext(ctx, "citations: 0 delta + events non chargés → skip sentinel (match reste candidat)",
-				"match_id", matchID)
-			skipped++
-			continue
-		}
-
-		if err := writeCitations(ctx, playerDB, matchID, deltas); err != nil {
-			slog.WarnContext(ctx, "BackfillMatchCitations: write", "match_id", matchID, "err", err)
-			skipped++
-			continue
-		}
-
-		written++
-		// Mise à jour incrémentale du cumulPre pour le match suivant dans le batch.
-		for _, d := range deltas {
-			cumulPre[d.NameNorm] += d.Value
-		}
-	}
-	slog.InfoContext(ctx, "citations: batch terminé",
-		"xuid", xuid, "written", written, "skipped", skipped)
-	return nil
+	return backfillCitationsLot(ctx, lotCitations{
+		metadataDB: metadataDB, playerDB: playerDB, shared: lireSharedTenu(sharedDB),
+		pve: pve, xuid: xuid, matchIDs: matchIDs, killSource: killSource,
+	})
 }
 
 // buildCitationContext charge toutes les données du match pour le moteur.
 func buildCitationContext(
 	ctx context.Context,
-	sharedDB, playerDB, pveDB *sql.DB,
+	sharedDB, playerDB *sql.DB,
+	pve *duckdbpkg.RecoveringReader,
 	weaponNames map[uint64]string,
+	source citationWeaponSource,
 	xuid, matchID string,
 ) (domain.CitationContext, error) {
 	medals, err := loadMedalsForMatch(ctx, sharedDB, matchID, xuid)
@@ -148,9 +79,16 @@ func buildCitationContext(
 		return domain.CitationContext{}, fmt.Errorf("stats: %w", err)
 	}
 
-	weaponKills, err := loadWeaponKills(ctx, sharedDB, weaponNames, matchID, xuid)
+	// Titre a decodeur de film : les frags par arme viennent de la SOURCE DU DEGAT, celle
+	// qui voit l epee et le marteau (bascule du 2026-09-01). Sinon, voie historique.
+	var weaponKills map[string]int
+	if source.actif() {
+		weaponKills, err = loadWeaponKillsFromSource(ctx, sharedDB, source, matchID, xuid)
+	} else {
+		weaponKills, err = loadWeaponKills(ctx, sharedDB, weaponNames, matchID, xuid)
+	}
 	if err != nil {
-		slog.WarnContext(ctx, "BackfillMatchCitations: weapon_kills", "match_id", matchID, "err", err)
+		slog.WarnContext(ctx, "BackfillMatchCitations: frags par arme", "match_id", matchID, "err", err)
 	}
 	for k, v := range weaponKills {
 		stats["weapon_kills:"+k] = float64(v)
@@ -160,9 +98,9 @@ func buildCitationContext(
 	// les citations de type pve_stat (grunt_kills, elite_kills, boss_kills,
 	// total_enemy_kills, ...) restaient toujours à 0. On les injecte ici dans le
 	// même map Stats que le moteur consulte (dispatchFull, cas pve_stat).
-	// Dégradation gracieuse : pveDB nil / match non-Firefight / DB périmée →
+	// Dégradation gracieuse : pve nil / match non-Firefight / DB périmée →
 	// pveStats vide, WARN best-effort, aucune erreur fatale.
-	pveStats, err := loadPveStats(ctx, pveDB, matchID, xuid)
+	pveStats, err := loadPveStats(ctx, pve, matchID, xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "BackfillMatchCitations: pve_stats", "match_id", matchID, "err", err)
 	}
@@ -177,6 +115,10 @@ func buildCitationContext(
 	// via Stats (dispatchFull, cas objective_stat). Best-effort intégral : match
 	// non-objectif (Slayer) / vue absente → aucune stat, aucune erreur (cf. loadObjectiveStats).
 	for k, v := range loadObjectiveStats(ctx, sharedDB, matchID, xuid) {
+		stats[k] = v
+	}
+	// Résumé d'usage du film (armes prises sur socle, frags sans bouclier) : même patron.
+	for k, v := range citationsfilm.LoadFilmStats(ctx, sharedDB, matchID, xuid) {
 		stats[k] = v
 	}
 
@@ -373,12 +315,16 @@ LIMIT 1`
 // total_kills (nom réel côté shared_pve).
 //
 // Dégradation gracieuse (BUG A, I7) :
-//   - pveDB nil (titre sans Firefight / DB absente) → (nil, nil) ;
+//   - pve nil (titre sans Firefight / DB absente) → (nil, nil) ;
 //   - match non-Firefight (aucune ligne PvE) → (nil, nil), cas normal ;
 //   - vue absente / autre erreur SQL → (nil, err) : le caller logge WARN et
 //     poursuit (les citations pve_stat restent à 0, pas d'échec du pipeline).
-func loadPveStats(ctx context.Context, pveDB *sql.DB, matchID, xuid string) (map[string]float64, error) {
-	if pveDB == nil {
+//
+// Lecture via RecoveringReader.Do et NON via un `*sql.DB` capturé au début du
+// batch : cause racine des WARN « pve_stats: sql: database is closed » d'août
+// 2026, détaillée dans OpenPveReadForCitations (citations_backfill.go).
+func loadPveStats(ctx context.Context, pve *duckdbpkg.RecoveringReader, matchID, xuid string) (map[string]float64, error) {
+	if pve == nil {
 		return nil, nil
 	}
 	const q = `
@@ -398,10 +344,12 @@ WHERE match_id = ? AND xuid = ?
 LIMIT 1`
 
 	var grunt, elite, jackal, hunter, brute, skimmer, sentinel, marine, boss, total int
-	err := pveDB.QueryRowContext(ctx, q, matchID, xuid).Scan(
-		&grunt, &elite, &jackal, &hunter, &brute,
-		&skimmer, &sentinel, &marine, &boss, &total,
-	)
+	err := pve.Do(ctx, func(db *sql.DB) error {
+		return db.QueryRowContext(ctx, q, matchID, xuid).Scan(
+			&grunt, &elite, &jackal, &hunter, &brute,
+			&skimmer, &sentinel, &marine, &boss, &total,
+		)
+	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil // match non-Firefight : aucune ligne PvE, comportement normal
 	}
@@ -578,7 +526,9 @@ ORDER BY time_ms ASC`
 // lecture (table absente en tests minimaux, match inconnu) → true pour préserver
 // le comportement legacy (poser le sentinel). Sert à décider, en Phase 4, si un
 // match à 0 citation peut recevoir le sentinel "_processed" (events présents) ou
-// doit rester candidat (events pas encore chargés — film retardé).
+// doit rester candidat (events pas encore chargés — film retardé). Depuis l'état
+// terminal (2026-08-25), « rester candidat » cesse quand le pipeline events rend
+// son verdict : cf. isEventsEmptyDefinitive ci-dessous.
 func isEventsLoaded(ctx context.Context, sharedDB *sql.DB, matchID string) bool {
 	if sharedDB == nil {
 		return true
@@ -592,14 +542,96 @@ func isEventsLoaded(ctx context.Context, sharedDB *sql.DB, matchID string) bool 
 	return loaded.Valid && loaded.Bool
 }
 
+// ─── État terminal : le VERDICT du pipeline events, pas une devinette d'âge ──
+//
+// Contexte (constaté en prod le 2026-08-25) : la règle Phase 4 ci-dessus laisse
+// candidat tout match à 0 citation dont les events ne sont pas chargés, au motif
+// qu'ils finiront par arriver. Pour un match ANNULÉ par les serveurs, ils
+// n'arrivent jamais — le film est une coquille (chunk récupéré et parsé sans
+// erreur, mais 0 event exploitable) — et le match était re-sélectionné, recalculé
+// puis re-rejeté à chaque cycle de sync, indéfiniment, avec ses WARN collatéraux :
+// une boucle perpétuelle de plus par nouveau match annulé.
+//
+// La question « les events arriveront-ils encore ? » a DÉJÀ un propriétaire : le
+// pipeline events. Y répondre ici par un seuil d'âge local produirait deux
+// politiques concurrentes — et la nôtre serait la mauvaise, puisque
+// defaultFilmRetryWindow vaut 30 JOURS (engine_highlight_events.go, révisé après
+// les incidents RC-A/RC-E où 48 h avaient marqué définitivement absents des films
+// encore disponibles), fenêtre qu'un opérateur peut même RALLONGER via
+// LEVELUP_FILM_RETRY_WINDOW_HOURS. Tout seuil local plus court jetonnerait des
+// matchs que le pipeline events retente encore — régression Phase 4 rouverte, en
+// masse pendant une panne, et silencieuse (un jeton est indistinguable après coup).
+//
+// On lit donc le verdict au lieu de le deviner : match_registry.events_empty,
+// posé par persist.MarkEventsEmptyDefinitive UNIQUEMENT sous isNoFilmDefinitive
+// (donc au-delà de la fenêtre de retry, par construction). Les trois états du
+// pipeline events sont alors couverts sans recouvrement :
+//   - film définitivement absent (404 hors fenêtre) → MarkNoFilmDefinitive pose
+//     events_loaded=TRUE → chemin sentinel EXISTANT, inchangé ;
+//   - film-coquille (chunk lu, 0 event) → events_empty=TRUE → cette branche ;
+//   - film encore attendu → aucun marqueur → le match reste candidat, retenté.
+//
+// Latence assumée : un match annulé boucle au pire le temps de la fenêtre de
+// retry (~30 j, BORNÉ, contre l'infini d'avant), puis est jetonné au cycle
+// citations suivant le verdict. Les deux pipelines ne se contredisent jamais.
+//
+// Ce bloc vit dans citations.go, et non dans un fichier dédié, parce que le
+// ratchet K3c (archlint/sync_root_freeze_test.go, ADR 0027) gèle le nombre de
+// fichiers à la racine du god-package sync/ : le neuf ne peut y ajouter aucun
+// fichier. La longueur de citations.go est de la dette gelée antérieure.
+
+// readEventsEmpty lit match_registry.events_empty pour un match. Retourne une
+// ERREUR — jamais un défaut silencieux — quand le verdict est ILLISIBLE :
+// sharedDB nil, colonne absente (DB non migrée, titre au schéma minimal), match
+// hors registre. NULL n'est pas une erreur : c'est l'absence de verdict (le
+// pipeline events n'a pas conclu), qui se lit false.
+func readEventsEmpty(ctx context.Context, sharedDB *sql.DB, matchID string) (bool, error) {
+	if sharedDB == nil {
+		return false, errors.New("sharedDB nil")
+	}
+	var empty sql.NullBool
+	if err := sharedDB.QueryRowContext(ctx,
+		`SELECT events_empty FROM match_registry WHERE match_id = ?`, matchID).Scan(&empty); err != nil {
+		return false, err
+	}
+	return empty.Valid && empty.Bool, nil
+}
+
+// isEventsEmptyDefinitive décide si un match à 0 citation dont les events ne sont
+// PAS chargés doit malgré tout recevoir le jeton "_processed".
+//
+// Appelée UNIQUEMENT dans la branche rare (0 delta ET events absents), par
+// court-circuit du && côté BackfillMatchCitations : le chemin chaud ne paie
+// aucune requête supplémentaire.
+//
+// Tempérament symétrique de isEventsLoaded, mais d'échec sûr INVERSE :
+// isEventsLoaded répond true quand elle ne sait pas (poser le jeton = legacy) ;
+// ici, ne pas savoir doit laisser le match candidat — un cycle de plus coûte
+// infiniment moins qu'un match jetonné à tort, dont les citations resteraient
+// vides jusqu'au prochain recompute force=true. Tout verdict illisible est donc
+// logué en WARN et retourne false. Effet de bord voulu : sur un titre dont le
+// schéma ne porte pas events_empty, la branche est inerte et le comportement
+// Phase 4 reste exactement celui d'avant.
+func isEventsEmptyDefinitive(ctx context.Context, sharedDB *sql.DB, matchID string) bool {
+	empty, err := readEventsEmpty(ctx, sharedDB, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "citations: verdict events_empty illisible — match laissé candidat (0 delta, events absents)",
+			"match_id", matchID, "err", err)
+		return false
+	}
+	return empty
+}
+
 // writeCitations écrit les deltas dans match_citations (idempotent).
 // Quand deltas est vide (match sans citation active), une row sentinel
 // "_processed" est insérée : cela sort le match du pool de
 // selectMatchesForCitations et évite de le retraiter à chaque sync.
 // NB Phase 4 : ce sentinel n'est posé (cas 0 delta) que si les events sont
-// chargés — décision prise par le caller BackfillMatchCitations via isEventsLoaded.
+// chargés (isEventsLoaded) OU si le pipeline events a rendu son verdict terminal
+// sur le film (isEventsEmptyDefinitive) — décision prise par le caller
+// BackfillMatchCitations.
 func writeCitations(ctx context.Context, db *sql.DB, matchID string, deltas []domain.CitationMatchDelta) error {
-	// Append-only #23046 (Phase 2) : plus de PK composite ni ON CONFLICT ni DELETE
+	// Append-only #23645 (Phase 2) : plus de PK composite ni ON CONFLICT ni DELETE
 	// préalable. Chaque réécriture d'un match alloue UNE génération
 	// (match_citations_generation_seq), partagée par toutes ses rows ; la vue
 	// match_citations_latest ne lit que la génération MAX par match_id. La
@@ -697,4 +729,250 @@ func loadCumulExcluding(ctx context.Context, db *sql.DB, matchIDs []string) (map
 		result[name] = total
 	}
 	return result, rows.Err()
+}
+
+// ── Lot de citations : lecture de la base partagée par segments ──────────────────────────────
+//
+// Le calcul des citations d'un lot lit la base partagée PAR SEGMENTS : un pour le tri
+// chronologique, puis un par match. Entre deux matchs la base est rendue : un lecteur en vol empêche
+// toute prise d'écriture (le provider attend son relâchement, au plus son délai de vidange, puis
+// abandonne — ADR 0016), et un lot se compte en centaines de matchs après une recuisson des films.
+
+// lotCitations : les entrées du calcul des citations d'un lot de matchs d'un joueur.
+type lotCitations struct {
+	metadataDB, playerDB *sql.DB
+	shared               lireShared
+	pve                  *duckdbpkg.RecoveringReader
+	xuid                 string
+	matchIDs             []string
+	killSource           []CitationWeaponSource
+}
+
+// reglesCitations : ce que le calcul lit dans la metadata, une fois par lot.
+type reglesCitations struct {
+	mappings    []domain.CitationFullMapping
+	weaponNames map[uint64]string
+	source      citationWeaponSource
+}
+
+// chargerReglesCitations lit les règles du lot. nil sans erreur : aucun mapping, rien à calculer.
+func chargerReglesCitations(ctx context.Context, metadataDB *sql.DB, killSource []CitationWeaponSource) (*reglesCitations, error) {
+	mappings, err := loadFullCitationMappings(ctx, metadataDB)
+	if err != nil {
+		return nil, fmt.Errorf("BackfillMatchCitations: mappings: %w", err)
+	}
+	if len(mappings) == 0 {
+		slog.InfoContext(ctx, "BackfillMatchCitations: aucun mapping — skip")
+		return nil, nil
+	}
+	weaponNames, err := loadWeaponNames(ctx, metadataDB)
+	if err != nil {
+		slog.WarnContext(ctx, "BackfillMatchCitations: weapon_names non chargés", "err", err)
+		weaponNames = map[uint64]string{}
+	}
+	// Source de degat : armee seulement si le titre fournit un traducteur ET que la
+	// metadata porte les noms canoniques par cle. Sans l un des deux, la voie historique
+	// reste servie — degradation silencieuse ET reversible, jamais une mesure vide.
+	r := &reglesCitations{mappings: mappings, weaponNames: weaponNames}
+	if len(killSource) > 0 && killSource[0].Classifier != nil {
+		names, nerr := loadWeaponKeyNames(ctx, metadataDB, killSource[0].TitleSlug)
+		if nerr != nil {
+			slog.WarnContext(ctx, "BackfillMatchCitations: noms par cle de registre non charges",
+				"title", killSource[0].TitleSlug, "err", nerr)
+		} else {
+			r.source = citationWeaponSource{classifier: killSource[0].Classifier, keyNames: names}
+		}
+	}
+	return r, nil
+}
+
+// trierLot rend les matchs du lot en ordre chronologique (cumulPre correct d'un match au
+// suivant), dans un segment de lecture à lui. Tri impossible : ordre reçu, journalisé.
+func (l lotCitations) trierLot(ctx context.Context) []string {
+	var sorted []string
+	err := l.shared(func(sharedDB *sql.DB) error {
+		var serr error
+		sorted, serr = sortMatchIDsChrono(ctx, sharedDB, l.matchIDs)
+		return serr
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "BackfillMatchCitations: sort chrono failed, ordre non garanti", "err", err)
+		return l.matchIDs
+	}
+	return sorted
+}
+
+// backfillCitationsLot calcule et persiste les citations du lot (contrat : BackfillMatchCitations).
+// Un segment de lecture qui ne s'ouvre pas interrompt le lot : les matchs restants restent
+// candidats et reviennent au cycle suivant, ceux déjà écrits le sont pour de bon.
+func backfillCitationsLot(ctx context.Context, l lotCitations) error {
+	if len(l.matchIDs) == 0 {
+		return nil
+	}
+	regles, err := chargerReglesCitations(ctx, l.metadataDB, l.killSource)
+	if err != nil || regles == nil {
+		return err
+	}
+	sorted := l.trierLot(ctx)
+	// Baseline : somme cumulée des citations pour les matchs hors du batch courant.
+	// Pour un sync incrémental (nouveaux matchs), ces matchs sont antérieurs → correct.
+	// Pour un recompute total (all matchIDs), la baseline est {} (tout est exclu).
+	cumulPre, err := loadCumulExcluding(ctx, l.playerDB, l.matchIDs)
+	if err != nil {
+		return fmt.Errorf("BackfillMatchCitations: cumulPre baseline: %w", err)
+	}
+	slog.InfoContext(ctx, "citations: traitement batch",
+		"xuid", l.xuid, "match_count", len(sorted), "baseline_citations", len(cumulPre))
+
+	written, skipped := 0, 0
+	for _, matchID := range sorted {
+		var m matchCitations
+		if err := l.shared(func(sharedDB *sql.DB) error {
+			m = l.calculerMatch(ctx, sharedDB, regles, cumulPre, matchID)
+			return nil
+		}); err != nil {
+			slog.WarnContext(ctx, "citations: base partagée indisponible — lot interrompu, matchs restants repris au cycle suivant",
+				"xuid", l.xuid, "written", written, "remaining", len(sorted)-written-skipped, "err", err)
+			return fmt.Errorf("BackfillMatchCitations: lecture shared: %w", err)
+		}
+		if !m.aEcrire {
+			skipped++
+			continue
+		}
+		if err := l.ecrireMatch(ctx, matchID, m, cumulPre); err != nil {
+			slog.WarnContext(ctx, "BackfillMatchCitations: write", "match_id", matchID, "err", err)
+			skipped++
+			continue
+		}
+		written++
+	}
+	slog.InfoContext(ctx, "citations: batch terminé",
+		"xuid", l.xuid, "written", written, "skipped", skipped)
+	return nil
+}
+
+// matchCitations : le résultat de la lecture d'un match. aEcrire=false : le match reste
+// candidat (contexte illisible, ou 0 delta en attendant son film).
+type matchCitations struct {
+	deltas           []domain.CitationMatchDelta
+	terminalNoEvents bool
+	aEcrire          bool
+}
+
+// calculerMatch lit le match dans la base partagée (segment de l'appelant) et calcule ses deltas.
+func (l lotCitations) calculerMatch(
+	ctx context.Context, sharedDB *sql.DB, r *reglesCitations, cumulPre map[string]int, matchID string,
+) matchCitations {
+	citCtx, err := buildCitationContext(ctx, sharedDB, l.playerDB, l.pve, r.weaponNames, r.source, l.xuid, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "BackfillMatchCitations: context", "match_id", matchID, "err", err)
+		return matchCitations{}
+	}
+	deltas := analysis.ComputeFullMatchCitations(analysis.CitationProgressInput{
+		Ctx:      citCtx,
+		CumulPre: cumulPre,
+	}, r.mappings)
+
+	// Append-only #23645 : pas de DELETE avant réécriture ; writeCitations alloue une génération
+	// qui supersède la précédente via match_citations_latest (recompute soustractif préservé).
+	//
+	// Le sentinel "_processed" n'est PAS posé si 0 delta vient d'events pas encore chargés (film
+	// retardé) : le match resterait sinon hors de selectMatchesForCitations(force=false) à vie,
+	// citations vides en permanence. ÉTAT TERMINAL : un match annulé par les serveurs (film réduit
+	// à une coquille, 0 event exploitable) n'aura jamais ses events ; le VERDICT du pipeline events
+	// (match_registry.events_empty, isEventsEmptyDefinitive) lève alors la condition et le jeton
+	// est posé. Le jeton n'est pas une impasse : force=true sélectionne tous les matchs sans
+	// consulter match_citations, un match jetonné reste rattrapable par un recompute.
+	m := matchCitations{deltas: deltas, aEcrire: true}
+	if len(deltas) == 0 && !isEventsLoaded(ctx, sharedDB, matchID) {
+		m.terminalNoEvents = isEventsEmptyDefinitive(ctx, sharedDB, matchID)
+		if !m.terminalNoEvents {
+			slog.DebugContext(ctx, "citations: 0 delta + events non chargés → skip sentinel (match reste candidat)",
+				"match_id", matchID)
+			return matchCitations{}
+		}
+	}
+	return m
+}
+
+// ecrireMatch persiste les citations du match (base joueur, hors segment de lecture partagée) et
+// avance cumulPre pour le match suivant du lot.
+func (l lotCitations) ecrireMatch(ctx context.Context, matchID string, m matchCitations, cumulPre map[string]int) error {
+	if err := writeCitations(ctx, l.playerDB, matchID, m.deltas); err != nil {
+		return err
+	}
+	// Logué APRÈS l'écriture, jamais avant : un log posé dans la décision affirmerait un jeton
+	// que writeCitations peut avoir échoué à poser (player DB read-only, disque plein).
+	if m.terminalNoEvents {
+		slog.InfoContext(ctx, "citations: état terminal — jeton _processed posé",
+			"match_id", matchID,
+			"raison", "events_empty — film récupéré, aucun event exploitable")
+	}
+	debrief.ReportCitations(ctxkeys.TitleSlug(ctx), l.xuid, matchID)
+	for _, d := range m.deltas {
+		cumulPre[d.NameNorm] += d.Value
+	}
+	return nil
+}
+
+// runPostSyncCitations branche les citations dans le pipeline post-sync : base joueur tenue par
+// runPostSyncPipeline, base partagée lue par segments courts (sélection, tri, un par match).
+// Best-effort : retourne (0, nil) si metadata.duckdb absent ou citation_mappings vide.
+func (e *SyncEngine) runPostSyncCitations(ctx context.Context, playerDB *sql.DB, shared lireShared) (int, error) {
+	// Emprunte la connexion metadata déjà ouverte dans le cache process (RW par
+	// le pool serveur). OpenReadOnly échoue si une connexion RW existe déjà sur
+	// le même fichier ("Can't open a connection with a different configuration").
+	// LookupCachedDB retourne RW en priorité, RO sinon — sans incrémenter le
+	// refCount, donc pas de Close() ici.
+	var metaDB *sql.DB
+	if e.metaDB != nil {
+		metaDB = e.metaDB
+	} else if cached, ok := duckdbpkg.LookupCachedDB(e.metadataDBPath); ok {
+		metaDB = cached.SQLDb()
+	} else {
+		slog.WarnContext(ctx, "citations post-sync: metadata DB non disponible — skip", "player", e.gamertag)
+		return 0, nil
+	}
+
+	matchIDs, err := selectMatchesForCitations(ctx, playerDB, false)
+	if err != nil {
+		return 0, fmt.Errorf("select: %w", err)
+	}
+	// Les matchs dont le film a été dérivé APRÈS leurs citations : recalcul complet.
+	var filmPlusRecent []string
+	var errFilm error
+	if err := shared(func(sharedDB *sql.DB) error {
+		filmPlusRecent, errFilm = citationsfilm.SelectMatchesFilmPlusRecent(ctx, playerDB, sharedDB)
+		return nil
+	}); err != nil {
+		return 0, fmt.Errorf("lecture shared: %w", err)
+	}
+	if errFilm != nil {
+		slog.WarnContext(ctx, "citations post-sync: dérivations du film illisibles, citations du film non recalculées",
+			"player", e.gamertag, "err", errFilm)
+	}
+	if len(filmPlusRecent) > 0 {
+		slog.InfoContext(ctx, "citations post-sync: film dérivé après les citations, recalcul",
+			"player", e.gamertag, "count", len(filmPlusRecent))
+	}
+	matchIDs = citationsfilm.UnionMatchIDs(matchIDs, filmPlusRecent)
+	if len(matchIDs) == 0 {
+		slog.DebugContext(ctx, "citations post-sync: aucun nouveau match", "player", e.gamertag)
+		return 0, nil
+	}
+	slog.InfoContext(ctx, "citations post-sync: nouveaux matchs détectés",
+		"player", e.gamertag, "count", len(matchIDs))
+
+	// shared_pve en lecture RO (BUG A / I7) : le reader réutilise le handle
+	// process s'il est déjà tenu. Dégradation gracieuse si absent.
+	pve := OpenPveReadForCitations(ctx, e.pveDBPath)
+	defer pve.Close()
+
+	if err := backfillCitationsLot(ctx, lotCitations{
+		metadataDB: metaDB, playerDB: playerDB, shared: shared,
+		pve: pve, xuid: e.xuid, matchIDs: matchIDs, killSource: e.citationWeaponSourceDuMoteur(ctx),
+	}); err != nil {
+		return 0, fmt.Errorf("backfill: %w", err)
+	}
+	return len(matchIDs), nil
 }

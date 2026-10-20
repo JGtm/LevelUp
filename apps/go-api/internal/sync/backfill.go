@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+
+	"levelup/go-api/internal/domain/title"
 )
 
 // FindMatchesMissingData trouve les matchs avec des données manquantes via shared DB.
@@ -32,17 +34,11 @@ func FindMatchesMissingData(
 		return nil, fmt.Errorf("FindMatchesMissingData: scope is nil")
 	}
 
-	// --force-no-film implique --weapons
-	if scope.ForceNoFilm {
-		scope.Weapons = true
-		scope.ForceWeapons = true
-	}
-
 	// Détecter le type de flags demandés
 	localRequested := scope.Medals || scope.Events || scope.Skill ||
 		scope.PersonalScores || scope.PerformanceScores || scope.Accuracy ||
 		scope.Shots || scope.EnemyMMR || scope.Assets || scope.Participants ||
-		scope.PVEStats || scope.Weapons
+		scope.PVEStats
 	participantsRequested := scope.ParticipantsScores || scope.ParticipantsKDA ||
 		scope.ParticipantsShots || scope.ParticipantsDamage || scope.ParticipantsAvgLife
 
@@ -83,54 +79,6 @@ func FindMatchesMissingData(
 	}
 
 	return localMatchIDs, nil
-}
-
-// FindMatchesMissingParticipantBits trouve les matchs où un joueur a des bits
-// backfill_bits manquants (bitmask granulaire).
-//
-// Portage de find_matches_missing_participant_bits() (detection.py).
-func FindMatchesMissingParticipantBits(
-	ctx context.Context,
-	sharedDB *sql.DB,
-	xuid string,
-	bitsRequired int,
-	force bool,
-	maxMatches int,
-) ([]string, error) {
-	var condition string
-	if force {
-		condition = "1=1"
-	} else {
-		condition = fmt.Sprintf("(COALESCE(mp.backfill_bits, 0) & %d) != %d", bitsRequired, bitsRequired)
-	}
-
-	mrSrc := getMatchSource(ctx, sharedDB)
-	query := fmt.Sprintf(`
-		SELECT mp.match_id
-		FROM match_participants mp
-		JOIN %s mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ? AND %s
-		ORDER BY mr.start_time DESC
-	`, mrSrc, condition)
-	if maxMatches > 0 {
-		query += fmt.Sprintf(" LIMIT %d", maxMatches)
-	}
-
-	rows, err := sharedDB.QueryContext(ctx, query, xuid)
-	if err != nil {
-		return nil, fmt.Errorf("FindMatchesMissingParticipantBits: %w", err)
-	}
-	defer rows.Close()
-
-	var result []string
-	for rows.Next() {
-		var matchID string
-		if err := rows.Scan(&matchID); err != nil {
-			return nil, err
-		}
-		result = append(result, matchID)
-	}
-	return result, rows.Err()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -223,14 +171,14 @@ func playerDoneGuard(ctx context.Context, playerDB *sql.DB, table string, column
 	var safePlaceholders []string
 	var rejected []string
 	for _, id := range doneIDs {
-		if isValidMatchID(id) {
+		if title.IsValidMatchID(id) {
 			safePlaceholders = append(safePlaceholders, "'"+id+"'")
 		} else {
 			rejected = append(rejected, id)
 		}
 	}
 	if len(rejected) > 0 {
-		slog.WarnContext(ctx, "playerDoneGuard: malformed match_id(s) rejected by isValidMatchID — guard will treat affected matches as not done",
+		slog.WarnContext(ctx, "playerDoneGuard: malformed match_id(s) rejected by title.IsValidMatchID — guard will treat affected matches as not done",
 			"table", table, "rejected_count", len(rejected),
 			"total_count", len(doneIDs), "sample", rejected[:min(3, len(rejected))])
 	}
@@ -370,18 +318,9 @@ func findMatchesInSharedAll(
 		}
 	}
 
-	// Weapon kills
-	if scope.Weapons {
-		wkBit := MBitWeaponKills
-		noFilmBit := MBitWeaponKillsNoFilm
-		if scope.ForceWeapons {
-			conditions = append(conditions, "1=1")
-		} else {
-			conditions = append(conditions,
-				fmt.Sprintf("(COALESCE(mr.backfill_completed, 0) & %d) = 0"+
-					" AND (COALESCE(mr.backfill_completed, 0) & %d) = 0", wkBit, noFilmBit))
-		}
-	}
+	// Weapon kills : condition RETIRÉE le 2026-09-01 avec l'axe scope.Weapons — son
+	// exécuteur (étape 1.55) n'existe plus. Cf. l'en-tête du bloc « Weapon kills »
+	// de scope.go.
 
 	// Playable duration
 	if scope.PlayableDuration {
@@ -526,18 +465,4 @@ func findMatchesInSharedDB(
 		result = append(result, matchID)
 	}
 	return result, rows.Err()
-}
-
-// isValidMatchID vérifie qu'un match_id est un UUID Halo valide (hex + tirets).
-// Empêche toute injection SQL via des IDs corrompus.
-func isValidMatchID(id string) bool {
-	if len(id) == 0 || len(id) > 64 {
-		return false
-	}
-	for _, c := range id {
-		if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') && c != '-' {
-			return false
-		}
-	}
-	return true
 }

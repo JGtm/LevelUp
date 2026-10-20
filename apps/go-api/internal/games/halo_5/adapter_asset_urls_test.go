@@ -17,8 +17,9 @@ func newTestAdapter() *AssetURLAdapter {
 			{ID: "guid-noimg", NameEN: "NoImage", ImageURL: ""},
 		}).
 		WithWeapons([]canonical.AssetMeta{
-			{ID: "w1", NameEN: "Battle Rifle", ImageURL: "https://cdn/weapons/br.png"},
-			{ID: "w2", NameEN: "NoIconWeapon", ImageURL: ""},
+			{ID: "11", NameEN: "Battle Rifle", ImageURL: "https://cdn/weapons/br.png"},
+			{ID: "12", NameEN: "NoIconWeapon", ImageURL: ""},
+			{ID: "pas-un-entier", NameEN: "Broken ID", ImageURL: "https://cdn/weapons/x.png"},
 		}).
 		WithCSRResolver(func(designation string, subTier int) string {
 			switch {
@@ -65,17 +66,17 @@ func TestAssetURLAdapter_MapImageURL(t *testing.T) {
 
 func TestAssetURLAdapter_WeaponImageURL(t *testing.T) {
 	a := newTestAdapter()
-	if got := a.WeaponImageURL("Battle Rifle"); got != "https://cdn/weapons/br.png" {
-		t.Errorf("WeaponImageURL(Battle Rifle) = %q, want https://cdn/weapons/br.png", got)
+	if got := a.WeaponImageURL(11); got != "https://cdn/weapons/br.png" {
+		t.Errorf("WeaponImageURL(11) = %q, want https://cdn/weapons/br.png", got)
 	}
-	if got := a.WeaponImageURL("Unknown"); got != "" {
-		t.Errorf("WeaponImageURL(Unknown) = %q, want \"\"", got)
+	if got := a.WeaponImageURL(999); got != "" {
+		t.Errorf("WeaponImageURL(999) = %q, want \"\" (id inconnu)", got)
 	}
-	if got := a.WeaponImageURL(""); got != "" {
-		t.Errorf("WeaponImageURL(\"\") = %q, want \"\"", got)
+	if got := a.WeaponImageURL(0); got != "" {
+		t.Errorf("WeaponImageURL(0) = %q, want \"\" (aucune sentinelle Halo 5)", got)
 	}
-	if got := a.WeaponImageURL("NoIconWeapon"); got != "" {
-		t.Errorf("WeaponImageURL(NoIconWeapon) = %q, want \"\" (icon_url vide ignorée)", got)
+	if got := a.WeaponImageURL(12); got != "" {
+		t.Errorf("WeaponImageURL(12) = %q, want \"\" (icon_url vide ignorée)", got)
 	}
 }
 

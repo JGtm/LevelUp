@@ -30,10 +30,6 @@ import (
 // paramètres préparés. Limite 64 chars (cf. plan Phase 2b §5).
 var playlistOrSessionPattern = regexp.MustCompile(`^[A-Za-z0-9 _:.\-]{1,64}$`)
 
-// xuidPattern : XUID Halo = entier décimal (jusqu'à 32 chars). Phase 2c
-// (with_player). Mêmes contraintes que côté front (parseFilterSpecFromSearch).
-var xuidPattern = regexp.MustCompile(`^\d{1,32}$`)
-
 // parseNeighborsFilterSpec : extrait MatchFilterSpec depuis r.URL.Query().
 // Tout filtre invalide est silencieusement ignoré + log warning. Jamais 400.
 //
@@ -89,7 +85,10 @@ func parseNeighborsFilterSpec(r *http.Request) *domain.MatchFilterSpec {
 		}
 	}
 	if v := strings.TrimSpace(q.Get("with_player")); v != "" {
-		if xuidPattern.MatchString(v) {
+		// `domain.XUIDValide` est LA definition du motif XUID du dépôt (unification
+		// 2026-09-06) : le même prédicat garde la composition de l'onglet Tactique.
+		// Contraintes inchangées côté front (parseFilterSpecFromSearch).
+		if domain.XUIDValide(v) {
 			spec.WithPlayerXuid = &v
 		} else {
 			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
@@ -193,7 +192,13 @@ func (in *matchNeighborsInput) Resolve(ctx huma.Context) []error {
 	return nil
 }
 
-type matchViewOutput struct{ Body domain.MatchViewResponse }
+// matchViewOutput : CacheControl n'est posé (no-store) que sur une vue construite avec une
+// source en échec (D-9) : cette réponse dégradée est transitoire, aucun cache HTTP ne doit
+// la rejouer une fois la panne passée. Vide (en-tête absent) sur une vue complète.
+type matchViewOutput struct {
+	CacheControl string `header:"Cache-Control"`
+	Body         domain.MatchViewResponse
+}
 type matchNeighborsOutput struct{ Body domain.MatchNeighbors }
 
 // ─── Endpoints ───────────────────────────────────────────────────────────────
@@ -221,16 +226,27 @@ func (h *MatchViewHandler) handleGetMatchView(ctx context.Context, in *matchView
 		if errors.As(err, &apiErr) && apiErr.Code == "not_found" {
 			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", apiErr.Message)
 		}
-		if strings.Contains(err.Error(), "no rows") || strings.Contains(err.Error(), "no rows in result set") {
-			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", "match introuvable : "+matchID)
+		if isClientClosed(ctx) {
+			// Requête abandonnée (le service rend l'erreur de contexte, E6.2a-F3) : 499, pas une panne.
+			return nil, mapServiceError(ctx, err, "match_view_error")
 		}
-		return nil, humacore.NewError(http.StatusInternalServerError, "match_view_error", err.Error())
+		// PAS DE RENIFLAGE DE CHAÎNE « no rows » ICI (retiré le 2026-08-29) : l'absence
+		// est désormais TYPÉE par le service (domain.ErrNotFound, branche ci-dessus).
+		// Cette branche textuelle était la dernière échappatoire par laquelle une panne
+		// technique dont le message contenait « no rows » se déguisait en 404.
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "match_view_error", err)
 	}
 	// Onglet médias : réécrire les chemins bruts en URLs servables (même
 	// transformation que la galerie /pages/media). Sans ça les vignettes webp
 	// et le média dans le lecteur tombent en 404 (chemins relatifs bruts).
 	h.transformMatchMediaURLs(in.PlayerSlug, resp.MediaTab.MediaItems)
-	return &matchViewOutput{Body: resp}, nil
+	out := &matchViewOutput{Body: resp}
+	// Vue en panne partielle (D-9) OU analyse du film en cours : réponses transitoires, aucun
+	// cache HTTP ne doit les rejouer une fois la panne passée / l'analyse finie.
+	if resp.HasUnavailableSource() || resp.Header.AnalysisPending {
+		out.CacheControl = noStoreCacheControl
+	}
+	return out, nil
 }
 
 // transformMatchMediaURLs réécrit file_path + thumbnail_url de chaque média en
@@ -272,7 +288,7 @@ func (h *MatchViewHandler) handleGetMatchNeighbors(ctx context.Context, in *matc
 		resp, err = svc.GetMatchNeighbors(ctx, matchID)
 	}
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "neighbors_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "neighbors_error", err)
 	}
 	return &matchNeighborsOutput{Body: resp}, nil
 }
@@ -282,7 +298,7 @@ func (h *MatchViewHandler) handleGetMatchNeighbors(ctx context.Context, in *matc
 func (h *MatchViewHandler) resolve(ctx context.Context, slug string) (port.MatchViewService, error) {
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return svc, nil
 }

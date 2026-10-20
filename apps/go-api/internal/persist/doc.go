@@ -100,6 +100,6 @@
 //     PATCH /players/{slug}/matches/{id}/exclusion. Pas de relation avec
 //     le sync. Écrit par `match_exclusion_repo.go`.
 //
-// Cf. `.ai/REFACTOR_COLLECT_PERSIST.md` pour le design complet,
+// Cf. `.ai/archive/V7/REFACTOR_COLLECT_PERSIST.md` pour le design complet,
 // `.ai/ENRICHMENTS_CATALOG.md` pour l'inventaire exhaustif des données.
 package persist

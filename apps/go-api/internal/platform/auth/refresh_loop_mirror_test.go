@@ -21,7 +21,6 @@ func TestRefreshLoop_MultiUserMirror_XSTS(t *testing.T) {
 	// Seed legacy store avec un tracker initial (XSTS valide + xuid).
 	initial := &StoredTokens{
 		AccessToken:    "access_initial",
-		RefreshToken:   "refresh_initial",
 		OAuthExpiresAt: time.Now().Add(1 * time.Hour),
 		XSTSToken:      "xsts_initial",
 		XSTSUserHash:   "uhs_initial",
@@ -72,7 +71,7 @@ func TestRefreshLoop_MultiUserMirror_XSTS(t *testing.T) {
 }
 
 // TestRefreshLoop_MultiUserMirror_PreservesRefreshToken : le mirror NE doit PAS
-// faire disparaître le refresh_token / MSAL cache déjà dans le multi-user store
+// faire disparaître le refresh_token déjà dans le multi-user store
 // (ex. RT e1cb35ab frais semé par le callback SSO). Régression incident 2026-06-13 :
 // Upsert d'un UserTokens neuf (sans RT) écrasait le RT à vide → migration boot le
 // re-remplissait avec le RT env périmé (39829f7a) → AADSTS70000 en boucle.
@@ -87,7 +86,6 @@ func TestRefreshLoop_MultiUserMirror_PreservesRefreshToken(t *testing.T) {
 		XUID:              xuid,
 		Gamertag:          "JGtm",
 		OAuthRefreshToken: "rt_frais_e1cb35ab",
-		MSALCacheJSON:     `{"cache":"frais"}`,
 	}); err != nil {
 		t.Fatalf("seed multi: %v", err)
 	}
@@ -95,7 +93,6 @@ func TestRefreshLoop_MultiUserMirror_PreservesRefreshToken(t *testing.T) {
 	// Tracker legacy avec un RT DIFFÉRENT (périmé) + un XSTS à mirrorer.
 	initial := &StoredTokens{
 		AccessToken:    "access_tracker",
-		RefreshToken:   "rt_tracker_perime",
 		OAuthExpiresAt: time.Now().Add(1 * time.Hour),
 		XSTSToken:      "xsts_old",
 		XSTSUserHash:   "uhs_old",
@@ -126,9 +123,6 @@ func TestRefreshLoop_MultiUserMirror_PreservesRefreshToken(t *testing.T) {
 	if got.OAuthRefreshToken != "rt_frais_e1cb35ab" {
 		t.Errorf("RT écrasé par le mirror = %q, want rt_frais_e1cb35ab (préservé)", got.OAuthRefreshToken)
 	}
-	if got.MSALCacheJSON != `{"cache":"frais"}` {
-		t.Errorf("MSAL cache écrasé = %q, want préservé", got.MSALCacheJSON)
-	}
 	// Champs XSTS bien mis à jour par le mirror.
 	if got.XSTSToken != "xsts_refreshed" {
 		t.Errorf("XSTSToken = %q, want xsts_refreshed (mis à jour)", got.XSTSToken)
@@ -143,7 +137,6 @@ func TestRefreshLoop_MultiUserMirror_NilMirror_NoOp(t *testing.T) {
 
 	initial := &StoredTokens{
 		AccessToken:    "access",
-		RefreshToken:   "refresh",
 		OAuthExpiresAt: time.Now().Add(1 * time.Hour),
 		XSTSToken:      "xsts",
 		XSTSUserHash:   "uhs",
@@ -185,7 +178,6 @@ func TestRefreshLoop_MultiUserMirror_EmptyXUID_Skip(t *testing.T) {
 
 	initial := &StoredTokens{
 		AccessToken:    "access",
-		RefreshToken:   "refresh",
 		OAuthExpiresAt: time.Now().Add(1 * time.Hour),
 		XSTSToken:      "xsts",
 		XSTSUserHash:   "uhs",

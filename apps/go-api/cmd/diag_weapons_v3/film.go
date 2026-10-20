@@ -3,14 +3,12 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 // matchRef relie le préfixe cache (8-char, clé de film_chunks/ + film_manifests/)
@@ -18,56 +16,6 @@ import (
 type matchRef struct {
 	short string // préfixe cache (nom du dossier chunks + manifest)
 	full  string // match_id complet (registre / participants)
-}
-
-// diskFilmSource implémente objectiveevents.FilmSource sur le cache disque :
-// film_manifests/<short>.json + film_chunks/<short>/chunk_NN.bin (chunks BRUTS).
-type diskFilmSource struct {
-	cacheDir string
-	short    string
-	chunks   []objectiveevents.ChunkMeta
-}
-
-type manifestJSON struct {
-	Chunks []struct {
-		Index     int `json:"index"`
-		ChunkType int `json:"chunk_type"`
-		StartMS   int `json:"start_ms"`
-	} `json:"chunks"`
-}
-
-// newDiskFilmSource charge le manifest d'un film. (nil,false,nil) si absent.
-func newDiskFilmSource(cacheDir, short string) (*diskFilmSource, bool, error) {
-	mfPath := filepath.Join(cacheDir, "film_manifests", short+".json")
-	raw, err := os.ReadFile(mfPath)
-	if os.IsNotExist(err) {
-		return nil, false, nil
-	}
-	if err != nil {
-		return nil, false, fmt.Errorf("read manifest %s: %w", short, err)
-	}
-	var mf manifestJSON
-	if err := json.Unmarshal(raw, &mf); err != nil {
-		return nil, false, fmt.Errorf("unmarshal manifest %s: %w", short, err)
-	}
-	src := &diskFilmSource{cacheDir: cacheDir, short: short}
-	for _, c := range mf.Chunks {
-		src.chunks = append(src.chunks, objectiveevents.ChunkMeta{
-			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS,
-		})
-	}
-	return src, true, nil
-}
-
-func (d *diskFilmSource) Chunks() []objectiveevents.ChunkMeta { return d.chunks }
-
-func (d *diskFilmSource) ChunkData(index int) ([]byte, bool) {
-	p := filepath.Join(d.cacheDir, "film_chunks", d.short, fmt.Sprintf("chunk_%02d.bin", index))
-	raw, err := os.ReadFile(p)
-	if err != nil {
-		return nil, false
-	}
-	return raw, true
 }
 
 // resolveMatchIDs construit la liste des matchs à traiter selon cfg :
@@ -105,7 +53,7 @@ func resolveMatchArgs(ctx context.Context, db *sql.DB, arg string) ([]matchRef, 
 // cachedMatchRefs énumère les films cachés (dossiers film_chunks/<short>/) et ne
 // garde que ceux ayant un manifest ET une ligne match_registry correspondante.
 func cachedMatchRefs(ctx context.Context, db *sql.DB, cacheDir string) ([]matchRef, error) {
-	entries, err := os.ReadDir(filepath.Join(cacheDir, "film_chunks"))
+	entries, err := os.ReadDir(filmcache.ChunksRoot(cacheDir))
 	if err != nil {
 		return nil, fmt.Errorf("read film_chunks dir: %w", err)
 	}
@@ -115,8 +63,7 @@ func cachedMatchRefs(ctx context.Context, db *sql.DB, cacheDir string) ([]matchR
 			continue
 		}
 		short := e.Name()
-		mfPath := filepath.Join(cacheDir, "film_manifests", short+".json")
-		if _, err := os.Stat(mfPath); err != nil {
+		if _, err := os.Stat(filmcache.ManifestPath(cacheDir, short)); err != nil {
 			continue // pas de manifest -> on saute (dégradation gracieuse)
 		}
 		full, ok, err := resolveFullMatchID(ctx, db, short)

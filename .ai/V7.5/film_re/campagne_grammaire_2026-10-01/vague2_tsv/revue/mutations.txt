@@ -1,0 +1,15 @@
+== M10
+--- FAIL: TestLaMarcheDesMortsDObjetSuitLOrdreDesMarches (0.33s)
+FAIL
+FAIL	levelup/go-api/internal/games/halo_infinite/film/internal/grammar	0.406s
+FAIL
+== M6
+--- FAIL: TestUneChaineHorsDeLOrdreDeLaVueBNeProuveRien (0.00s)
+FAIL
+FAIL	levelup/go-api/internal/games/halo_infinite/film/internal/grammar	0.509s
+FAIL
+== M3
+--- FAIL: TestLaLargeurDeSignatureSuitLeCadre (0.00s)
+FAIL
+FAIL	levelup/go-api/internal/games/halo_infinite/film/internal/grammar	0.506s
+FAIL

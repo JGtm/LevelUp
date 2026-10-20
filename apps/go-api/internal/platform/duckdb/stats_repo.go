@@ -1,4 +1,4 @@
-// Package duckdb â€” StatsRepo : chargement des mÃ©triques pour le performance score et le LUSR.
+// Package duckdb — StatsRepo : chargement des métriques pour le performance score et le LUSR.
 package duckdb
 
 import (
@@ -11,12 +11,12 @@ import (
 	"levelup/go-api/internal/legacymatch"
 )
 
-// StatsRepo charge les donnÃ©es analytics (Q23-Q25) depuis le PlayerDB.
+// StatsRepo charge les données analytics (Q23-Q25) depuis le PlayerDB.
 type StatsRepo struct {
 	pdb *PlayerDB
 }
 
-// NewStatsRepo crÃ©e un StatsRepo depuis un PlayerDB.
+// NewStatsRepo crée un StatsRepo depuis un PlayerDB.
 func NewStatsRepo(pdb *PlayerDB) *StatsRepo {
 	return &StatsRepo{pdb: pdb}
 }

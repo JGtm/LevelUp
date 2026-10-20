@@ -1,0 +1,303 @@
+film	build	sortie_vueB	paquet	etat_bloc_type1	naissance	paquets	utiles_en_jeu
+bcb6d393	HI_1_12_0	rejet hors datum	hors cadre	vide	naissance non lue	2010	12319
+bcb6d393	HI_1_12_0	rejet hors datum	hors cadre	trace	naissance non lue	1054	6203
+bcb6d393	HI_1_12_0	rejet hors datum	hors cadre	vide	aucune allocation	134	6
+bcb6d393	HI_1_12_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	61	8
+bcb6d393	HI_1_12_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	7	1
+bcb6d393	HI_1_12_0	rejet hors datum	ferme	vide	aucune allocation	2	0
+bcb6d393	HI_1_12_0	rejet hors datum	hors cadre	trace	aucune allocation	1	0
+bcb6d393	HI_1_12_0	rejet hors datum	hors cadre	vide	realloue sous une autre generation	1	0
+fb1a1a72	HI_1_13_0	rejet hors datum	hors cadre	trace	naissance non lue	10418	4846
+fb1a1a72	HI_1_13_0	rejet hors datum	hors cadre	vide	naissance non lue	7464	10180
+fb1a1a72	HI_1_13_0	rejet hors datum	hors cadre	trace	realloue sous une autre generation	4748	95
+fb1a1a72	HI_1_13_0	rejet hors datum	hors cadre	vide	non mesurable	410	17
+fb1a1a72	HI_1_13_0	rejet hors datum	hors cadre	vide	aucune allocation	172	113
+fb1a1a72	HI_1_13_0	rejet hors datum	hors cadre	vivant	vivant au bloc du chunk	140	0
+fb1a1a72	HI_1_13_0	rejet hors datum	hors cadre	trace	non mesurable	81	313
+fb1a1a72	HI_1_13_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	42	17
+fb1a1a72	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	32	10
+fb1a1a72	HI_1_13_0	rejet hors datum	ferme	vide	aucune allocation	13	0
+fb1a1a72	HI_1_13_0	rejet hors datum	hors cadre	trace	aucune allocation	9	13
+fb1a1a72	HI_1_13_0	rejet hors datum	hors cadre	trace	libere avant le chunk (meme generation)	8	16
+fb1a1a72	HI_1_13_0	rejet hors datum	vue C : kind non porte	trace	aucune allocation	3	4
+fb1a1a72	HI_1_13_0	rejet hors datum	hors cadre	vide	NEW lu dans le chunk	2	0
+fb1a1a72	HI_1_13_0	rejet hors datum	hors cadre	vivant	NEW lu dans le chunk	2	0
+fb1a1a72	HI_1_13_0	rejet hors datum	ferme	trace	aucune allocation	1	0
+fb1a1a72	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	NEW lu dans le chunk	1	0
+fb1a1a72	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	non mesurable	1	0
+fb1a1a72	HI_1_13_0	rejet hors datum	vue C : kind non porte	vivant	NEW lu dans le chunk	1	0
+fb1a1a72	HI_1_13_0	rejet hors datum	vue C : kind non porte	vivant	aucune allocation	1	0
+d9781168	HI_1_13_0	rejet hors datum	hors cadre	vide	naissance non lue	8363	50550
+d9781168	HI_1_13_0	rejet hors datum	hors cadre	trace	naissance non lue	2513	13599
+d9781168	HI_1_13_0	rejet hors datum	hors cadre	vide	non mesurable	174	129
+d9781168	HI_1_13_0	rejet hors datum	ferme	vide	aucune allocation	87	0
+d9781168	HI_1_13_0	rejet hors datum	hors cadre	vide	aucune allocation	10	6
+d9781168	HI_1_13_0	rejet hors datum	ferme	trace	aucune allocation	8	0
+d9781168	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	1	0
+c75f33b8	HI_1_13_0	rejet hors datum	hors cadre	vide	naissance non lue	2280	10201
+c75f33b8	HI_1_13_0	rejet hors datum	ferme	vide	aucune allocation	22	0
+c75f33b8	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	11	0
+c75f33b8	HI_1_13_0	rejet hors datum	hors cadre	vide	aucune allocation	3	28
+c75f33b8	HI_1_13_0	rejet hors datum	ferme	trace	aucune allocation	1	0
+bf15f7ab	HI_1_13_0	rejet hors datum	hors cadre	vide	naissance non lue	625	4544
+bf15f7ab	HI_1_13_0	rejet hors datum	hors cadre	trace	naissance non lue	476	3005
+bf15f7ab	HI_1_13_0	rejet hors datum	hors cadre	vide	non mesurable	336	764
+bf15f7ab	HI_1_13_0	rejet hors datum	hors cadre	vide	aucune allocation	184	1268
+bf15f7ab	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	135	931
+bf15f7ab	HI_1_13_0	rejet hors datum	ferme	vide	aucune allocation	3	0
+bf15f7ab	HI_1_13_0	rejet hors datum	vue C : kind non porte	trace	aucune allocation	1	6
+51ebbc0f	HI_1_13_0	rejet hors datum	hors cadre	trace	naissance non lue	9261	11723
+51ebbc0f	HI_1_13_0	rejet hors datum	hors cadre	vide	naissance non lue	6668	16767
+51ebbc0f	HI_1_13_0	rejet hors datum	hors cadre	trace	non mesurable	259	56
+51ebbc0f	HI_1_13_0	rejet hors datum	hors cadre	vide	non mesurable	257	708
+51ebbc0f	HI_1_13_0	rejet hors datum	hors cadre	vide	aucune allocation	124	89
+51ebbc0f	HI_1_13_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	34	1
+51ebbc0f	HI_1_13_0	rejet hors datum	ferme	vide	aucune allocation	17	0
+51ebbc0f	HI_1_13_0	rejet hors datum	hors cadre	trace	aucune allocation	15	24
+51ebbc0f	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	15	26
+51ebbc0f	HI_1_13_0	rejet hors datum	hors cadre	vivant	NEW lu dans le chunk	6	0
+51ebbc0f	HI_1_13_0	rejet hors datum	hors cadre	vide	NEW lu dans le chunk	4	0
+51ebbc0f	HI_1_13_0	rejet hors datum	ferme	trace	aucune allocation	3	0
+51ebbc0f	HI_1_13_0	rejet hors datum	hors cadre	vivant	aucune allocation	2	0
+51ebbc0f	HI_1_13_0	rejet hors datum	vue C : kind non porte	trace	aucune allocation	2	0
+51ebbc0f	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	non mesurable	2	0
+51ebbc0f	HI_1_13_0	rejet hors datum	ferme	vide	non mesurable	1	0
+51ebbc0f	HI_1_13_0	rejet hors datum	hors cadre	trace	realloue sous une autre generation	1	0
+51ebbc0f	HI_1_13_0	rejet hors datum	hors cadre	vide	realloue sous une autre generation	1	0
+084a804d	HI_1_10_0	rejet hors datum	hors cadre	trace	naissance non lue	11756	201701
+084a804d	HI_1_10_0	rejet hors datum	hors cadre	vide	naissance non lue	8780	204826
+084a804d	HI_1_10_0	rejet hors datum	hors cadre	trace	realloue sous une autre generation	1208	29375
+084a804d	HI_1_10_0	rejet hors datum	hors cadre	vivant	vivant au bloc du chunk	1104	3482
+084a804d	HI_1_10_0	rejet hors datum	ferme	vide	aucune allocation	158	0
+084a804d	HI_1_10_0	rejet hors datum	hors cadre	vide	aucune allocation	49	140
+084a804d	HI_1_10_0	rejet hors datum	hors cadre	trace	aucune allocation	37	93
+084a804d	HI_1_10_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	21	75
+084a804d	HI_1_10_0	rejet hors datum	vue C : kind non porte	trace	aucune allocation	19	43
+084a804d	HI_1_10_0	rejet hors datum	ferme	trace	aucune allocation	14	0
+084a804d	HI_1_10_0	rejet hors datum	hors cadre	trace	libere avant le chunk (meme generation)	5	24
+084a804d	HI_1_10_0	rejet hors datum	ferme	trace	libere avant le chunk (meme generation)	4	0
+084a804d	HI_1_10_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	4	17
+084a804d	HI_1_10_0	rejet hors datum	vue C : kind non porte	trace	libere avant le chunk (meme generation)	3	1
+084a804d	HI_1_10_0	rejet hors datum	hors cadre	vide	realloue sous une autre generation	2	11
+084a804d	HI_1_10_0	rejet hors datum	ferme	vide	realloue sous une autre generation	1	0
+084a804d	HI_1_10_0	rejet hors datum	vue C : bloc 0xbc non porte	trace	aucune allocation	1	11
+084a804d	HI_1_10_0	rejet hors datum	vue C : bloc 0xbc non porte	trace	libere avant le chunk (meme generation)	1	20
+084a804d	HI_1_10_0	rejet hors datum	vue C : kind non porte	trace	naissance non lue	1	1
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	vide	aucune allocation	1809	11481
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	trace	naissance non lue	1293	8917
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	vide	naissance non lue	692	5114
+0797ce72	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	647	3791
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	vivant	vivant au bloc du chunk	230	1745
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	vide	non mesurable	211	68
+0797ce72	HI_1_13_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	158	1106
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	trace	realloue sous une autre generation	124	707
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	trace	aucune allocation	97	673
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	trace	libere avant le chunk (meme generation)	52	333
+0797ce72	HI_1_13_0	rejet hors datum	vue C : kind non porte	trace	aucune allocation	23	170
+0797ce72	HI_1_13_0	rejet hors datum	ferme	vide	aucune allocation	21	0
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	vide	NEW lu dans le chunk	19	28
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	vide	realloue sous une autre generation	9	81
+0797ce72	HI_1_13_0	rejet hors datum	vue C : debordement	vide	aucune allocation	9	62
+0797ce72	HI_1_13_0	rejet hors datum	vue C : kind non porte	trace	libere avant le chunk (meme generation)	6	32
+0797ce72	HI_1_13_0	rejet hors datum	ferme	trace	aucune allocation	4	0
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	trace	NEW lu dans le chunk	4	28
+0797ce72	HI_1_13_0	rejet hors datum	vue C : bloc 0xbc non porte	trace	aucune allocation	4	34
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	vivant	aucune allocation	3	19
+0797ce72	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	realloue sous une autre generation	3	16
+0797ce72	HI_1_13_0	rejet hors datum	hors cadre	vivant	realloue sous une autre generation	1	6
+111fa685	HI_1_10_0	rejet hors datum	hors cadre	vide	naissance non lue	5022	95859
+111fa685	HI_1_10_0	rejet hors datum	hors cadre	trace	naissance non lue	2829	54661
+111fa685	HI_1_10_0	rejet hors datum	hors cadre	trace	realloue sous une autre generation	1342	27229
+111fa685	HI_1_10_0	rejet hors datum	hors cadre	vide	aucune allocation	399	3867
+111fa685	HI_1_10_0	rejet hors datum	hors cadre	vivant	vivant au bloc du chunk	346	6249
+111fa685	HI_1_10_0	rejet hors datum	hors cadre	trace	non mesurable	214	3906
+111fa685	HI_1_10_0	rejet hors datum	hors cadre	vide	non mesurable	185	1669
+111fa685	HI_1_10_0	rejet hors datum	hors cadre	trace	aucune allocation	156	1651
+111fa685	HI_1_10_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	69	562
+111fa685	HI_1_10_0	rejet hors datum	ferme	vide	aucune allocation	55	0
+111fa685	HI_1_10_0	rejet hors datum	hors cadre	trace	libere avant le chunk (meme generation)	46	515
+111fa685	HI_1_10_0	rejet hors datum	vue C : kind non porte	trace	aucune allocation	17	102
+111fa685	HI_1_10_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	7	54
+111fa685	HI_1_10_0	rejet hors datum	ferme	trace	aucune allocation	4	0
+111fa685	HI_1_10_0	rejet hors datum	hors cadre	vide	realloue sous une autre generation	4	42
+111fa685	HI_1_10_0	rejet hors datum	vue C : kind non porte	trace	libere avant le chunk (meme generation)	3	18
+111fa685	HI_1_10_0	rejet hors datum	vue C : kind non porte	vide	non mesurable	3	7
+111fa685	HI_1_10_0	rejet hors datum	vue C : bloc 0xbc non porte	trace	aucune allocation	2	17
+111fa685	HI_1_10_0	rejet hors datum	ferme	vide	non mesurable	1	0
+111fa685	HI_1_10_0	rejet hors datum	vue C : bloc 0xbc non porte	trace	libere avant le chunk (meme generation)	1	0
+111fa685	HI_1_10_0	rejet hors datum	vue C : kind non porte	trace	naissance non lue	1	8
+e5adf7b2	HI_1_11_0	rejet hors datum	hors cadre	vide	naissance non lue	5045	106555
+e5adf7b2	HI_1_11_0	rejet hors datum	hors cadre	trace	naissance non lue	3407	70816
+e5adf7b2	HI_1_11_0	rejet hors datum	hors cadre	trace	realloue sous une autre generation	1020	20990
+e5adf7b2	HI_1_11_0	rejet hors datum	hors cadre	vide	aucune allocation	340	2002
+e5adf7b2	HI_1_11_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	105	1032
+e5adf7b2	HI_1_11_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	79	222
+e5adf7b2	HI_1_11_0	rejet hors datum	ferme	vide	aucune allocation	58	0
+e5adf7b2	HI_1_11_0	rejet hors datum	hors cadre	vivant	vivant au bloc du chunk	55	1174
+e5adf7b2	HI_1_11_0	rejet hors datum	vue C : debordement	vide	aucune allocation	37	0
+e5adf7b2	HI_1_11_0	rejet hors datum	hors cadre	trace	aucune allocation	26	191
+e5adf7b2	HI_1_11_0	rejet hors datum	vue C : kind non porte	trace	libere avant le chunk (meme generation)	16	71
+e5adf7b2	HI_1_11_0	rejet hors datum	vue C : kind non porte	trace	aucune allocation	11	111
+e5adf7b2	HI_1_11_0	rejet hors datum	hors cadre	trace	libere avant le chunk (meme generation)	9	23
+e5adf7b2	HI_1_11_0	rejet hors datum	hors cadre	vide	realloue sous une autre generation	8	105
+e5adf7b2	HI_1_11_0	rejet hors datum	vue C : bloc 0xbc non porte	trace	libere avant le chunk (meme generation)	3	12
+e5adf7b2	HI_1_11_0	rejet hors datum	ferme	trace	aucune allocation	2	0
+e5adf7b2	HI_1_11_0	rejet hors datum	vue C : kind non porte	trace	realloue sous une autre generation	2	16
+e5adf7b2	HI_1_11_0	rejet hors datum	vue C : kind non porte	vide	realloue sous une autre generation	2	18
+e5adf7b2	HI_1_11_0	rejet hors datum	ferme	vide	realloue sous une autre generation	1	0
+e5adf7b2	HI_1_11_0	rejet hors datum	vue C : bloc 0xbc non porte	trace	aucune allocation	1	0
+e5adf7b2	HI_1_11_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	naissance non lue	1	22
+e5adf7b2	HI_1_11_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	realloue sous une autre generation	1	15
+60ae07c4	HI_1_8_0	rejet hors datum	hors cadre	vide	naissance non lue	17547	98836
+60ae07c4	HI_1_8_0	rejet hors datum	hors cadre	trace	naissance non lue	8266	52523
+60ae07c4	HI_1_8_0	rejet hors datum	hors cadre	vide	aucune allocation	1493	9051
+60ae07c4	HI_1_8_0	rejet hors datum	hors cadre	trace	realloue sous une autre generation	1485	8733
+60ae07c4	HI_1_8_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	466	2652
+60ae07c4	HI_1_8_0	rejet hors datum	hors cadre	vide	non mesurable	204	201
+60ae07c4	HI_1_8_0	rejet hors datum	hors cadre	vivant	vivant au bloc du chunk	196	1128
+60ae07c4	HI_1_8_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	110	715
+60ae07c4	HI_1_8_0	rejet hors datum	ferme	vide	aucune allocation	94	0
+60ae07c4	HI_1_8_0	rejet hors datum	hors cadre	trace	aucune allocation	58	303
+60ae07c4	HI_1_8_0	rejet hors datum	hors cadre	vide	NEW lu dans le chunk	19	28
+60ae07c4	HI_1_8_0	rejet hors datum	vue C : kind non porte	trace	aucune allocation	17	107
+60ae07c4	HI_1_8_0	rejet hors datum	hors cadre	trace	libere avant le chunk (meme generation)	12	76
+60ae07c4	HI_1_8_0	rejet hors datum	vue C : debordement	vide	aucune allocation	9	14
+60ae07c4	HI_1_8_0	rejet hors datum	vue C : bloc 0xbc non porte	trace	aucune allocation	6	32
+60ae07c4	HI_1_8_0	rejet hors datum	hors cadre	vivant	aucune allocation	5	35
+60ae07c4	HI_1_8_0	rejet hors datum	ferme	trace	aucune allocation	4	0
+60ae07c4	HI_1_8_0	rejet hors datum	hors cadre	vide	realloue sous une autre generation	2	12
+60ae07c4	HI_1_8_0	rejet hors datum	hors cadre	vivant	realloue sous une autre generation	2	14
+60ae07c4	HI_1_8_0	rejet hors datum	vue C : kind non porte	trace	libere avant le chunk (meme generation)	2	16
+a349fea8	version-33	rejet hors datum	hors cadre	vide	naissance non lue	8785	215516
+a349fea8	version-33	rejet hors datum	hors cadre	trace	naissance non lue	8075	146001
+a349fea8	version-33	rejet hors datum	hors cadre	vivant	vivant au bloc du chunk	1457	2650
+a349fea8	version-33	rejet hors datum	hors cadre	trace	realloue sous une autre generation	636	15321
+a349fea8	version-33	rejet hors datum	hors cadre	vide	aucune allocation	236	518
+a349fea8	version-33	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	73	40
+a349fea8	version-33	rejet hors datum	vue C : kind non porte	vide	aucune allocation	54	53
+a349fea8	version-33	rejet hors datum	hors cadre	trace	aucune allocation	43	295
+a349fea8	version-33	rejet hors datum	ferme	vide	aucune allocation	18	0
+a349fea8	version-33	rejet hors datum	vue C : kind non porte	trace	libere avant le chunk (meme generation)	13	38
+a349fea8	version-33	rejet hors datum	vue C : kind non porte	trace	aucune allocation	8	45
+a349fea8	version-33	rejet hors datum	vue C : debordement	vide	aucune allocation	7	0
+a349fea8	version-33	rejet hors datum	hors cadre	trace	libere avant le chunk (meme generation)	6	28
+a349fea8	version-33	rejet hors datum	ferme	trace	aucune allocation	5	0
+a349fea8	version-33	rejet hors datum	hors cadre	vide	non mesurable	4	5
+a349fea8	version-33	rejet hors datum	hors cadre	vide	realloue sous une autre generation	2	8
+a349fea8	version-33	rejet hors datum	vue C : bloc 0xbc non porte	trace	aucune allocation	2	14
+a349fea8	version-33	rejet hors datum	vue C : kind non porte	trace	naissance non lue	2	2
+a349fea8	version-33	rejet hors datum	hors cadre	absent	aucune allocation	1	0
+a349fea8	version-33	rejet hors datum	vue C : bloc 0xbc non porte	trace	libere avant le chunk (meme generation)	1	28
+a521164d	HI_1_4_1	rejet hors datum	hors cadre	vide	naissance non lue	5207	115202
+a521164d	HI_1_4_1	rejet hors datum	hors cadre	trace	naissance non lue	600	13970
+a521164d	HI_1_4_1	rejet hors datum	hors cadre	vide	non mesurable	260	1956
+a521164d	HI_1_4_1	rejet hors datum	hors cadre	vide	aucune allocation	202	202
+a521164d	HI_1_4_1	rejet hors datum	hors cadre	trace	non mesurable	70	1178
+a521164d	HI_1_4_1	rejet hors datum	vue C : kind non porte	vide	aucune allocation	59	63
+a521164d	HI_1_4_1	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	49	57
+a521164d	HI_1_4_1	rejet hors datum	vue C : debordement	vide	aucune allocation	38	0
+a521164d	HI_1_4_1	rejet hors datum	hors cadre	trace	aucune allocation	15	48
+a521164d	HI_1_4_1	rejet hors datum	ferme	vide	aucune allocation	7	0
+a521164d	HI_1_4_1	rejet hors datum	hors cadre	trace	libere avant le chunk (meme generation)	6	26
+a521164d	HI_1_4_1	rejet hors datum	vue C : kind non porte	trace	aucune allocation	6	14
+a521164d	HI_1_4_1	rejet hors datum	hors cadre	vide	realloue sous une autre generation	2	0
+a521164d	HI_1_4_1	rejet hors datum	vue C : kind non porte	trace	libere avant le chunk (meme generation)	2	6
+a521164d	HI_1_4_1	rejet hors datum	vue C : kind non porte	vide	realloue sous une autre generation	2	0
+a521164d	HI_1_4_1	rejet hors datum	vue C : bloc 0xbc non porte	trace	libere avant le chunk (meme generation)	1	0
+11de8353	HI_1_9_0	rejet hors datum	hors cadre	vide	naissance non lue	4709	91722
+11de8353	HI_1_9_0	rejet hors datum	hors cadre	trace	naissance non lue	2965	55378
+11de8353	HI_1_9_0	rejet hors datum	hors cadre	trace	realloue sous une autre generation	1112	20003
+11de8353	HI_1_9_0	rejet hors datum	hors cadre	vide	aucune allocation	393	5119
+11de8353	HI_1_9_0	rejet hors datum	hors cadre	vide	non mesurable	124	28
+11de8353	HI_1_9_0	rejet hors datum	hors cadre	trace	aucune allocation	116	1491
+11de8353	HI_1_9_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	88	1108
+11de8353	HI_1_9_0	rejet hors datum	hors cadre	vivant	vivant au bloc du chunk	71	1533
+11de8353	HI_1_9_0	rejet hors datum	hors cadre	vivant	non mesurable	64	184
+11de8353	HI_1_9_0	rejet hors datum	ferme	vide	aucune allocation	49	0
+11de8353	HI_1_9_0	rejet hors datum	vue C : kind non porte	trace	aucune allocation	35	485
+11de8353	HI_1_9_0	rejet hors datum	vue C : kind non porte	trace	libere avant le chunk (meme generation)	32	519
+11de8353	HI_1_9_0	rejet hors datum	hors cadre	trace	libere avant le chunk (meme generation)	11	162
+11de8353	HI_1_9_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	9	89
+11de8353	HI_1_9_0	rejet hors datum	ferme	trace	aucune allocation	2	0
+11de8353	HI_1_9_0	rejet hors datum	vue C : kind non porte	vide	non mesurable	2	2
+11de8353	HI_1_9_0	rejet hors datum	ferme	vide	realloue sous une autre generation	1	0
+11de8353	HI_1_9_0	rejet hors datum	ferme	vivant	vivant au bloc du chunk	1	0
+11de8353	HI_1_9_0	rejet hors datum	hors cadre	trace	non mesurable	1	0
+11de8353	HI_1_9_0	rejet hors datum	hors cadre	vide	realloue sous une autre generation	1	0
+11de8353	HI_1_9_0	rejet hors datum	vue C : bloc 0xbc non porte	trace	aucune allocation	1	19
+11de8353	HI_1_9_0	rejet hors datum	vue C : bloc 0xbc non porte	vivant	aucune allocation	1	0
+50247b26	version-31	rejet hors datum	hors cadre	vide	naissance non lue	6710	150339
+50247b26	version-31	rejet hors datum	hors cadre	trace	naissance non lue	3435	80780
+50247b26	version-31	rejet hors datum	hors cadre	vide	non mesurable	456	3946
+50247b26	version-31	rejet hors datum	hors cadre	vide	aucune allocation	39	260
+50247b26	version-31	rejet hors datum	hors cadre	trace	non mesurable	30	677
+50247b26	version-31	rejet hors datum	hors cadre	trace	aucune allocation	11	79
+50247b26	version-31	rejet hors datum	vue C : kind non porte	vide	aucune allocation	10	94
+50247b26	version-31	rejet hors datum	ferme	vide	aucune allocation	7	0
+50247b26	version-31	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	4	68
+50247b26	version-31	rejet hors datum	hors cadre	trace	libere avant le chunk (meme generation)	2	44
+50247b26	version-31	rejet hors datum	ferme	trace	libere avant le chunk (meme generation)	1	0
+50247b26	version-31	rejet hors datum	hors cadre	vivant	realloue sous une autre generation	1	27
+50247b26	version-31	rejet hors datum	vue C : kind non porte	trace	aucune allocation	1	17
+50247b26	version-31	rejet hors datum	vue C : kind non porte	trace	libere avant le chunk (meme generation)	1	0
+bfecd02b	HI_1_13_0	rejet hors datum	hors cadre	vide	naissance non lue	1981	13750
+bfecd02b	HI_1_13_0	rejet hors datum	hors cadre	trace	naissance non lue	1162	9474
+bfecd02b	HI_1_13_0	rejet hors datum	ferme	vide	aucune allocation	7	0
+bfecd02b	HI_1_13_0	rejet hors datum	hors cadre	vide	aucune allocation	2	15
+bfecd02b	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	2	0
+4f77afc1	HI_1_13_0	rejet hors datum	hors cadre	trace	naissance non lue	3541	71062
+4f77afc1	HI_1_13_0	rejet hors datum	hors cadre	vide	naissance non lue	3157	75818
+4f77afc1	HI_1_13_0	rejet hors datum	hors cadre	vivant	vivant au bloc du chunk	1874	9202
+4f77afc1	HI_1_13_0	rejet hors datum	hors cadre	trace	realloue sous une autre generation	878	21588
+4f77afc1	HI_1_13_0	rejet hors datum	ferme	vide	aucune allocation	347	0
+4f77afc1	HI_1_13_0	rejet hors datum	ferme	trace	aucune allocation	40	0
+4f77afc1	HI_1_13_0	rejet hors datum	hors cadre	vide	aucune allocation	17	341
+4f77afc1	HI_1_13_0	rejet hors datum	hors cadre	trace	aucune allocation	13	209
+4f77afc1	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	6	93
+4f77afc1	HI_1_13_0	rejet hors datum	ferme	trace	libere avant le chunk (meme generation)	4	0
+4f77afc1	HI_1_13_0	rejet hors datum	vue C : kind non porte	trace	aucune allocation	3	46
+4f77afc1	HI_1_13_0	rejet hors datum	ferme	trace	realloue sous une autre generation	2	0
+4f77afc1	HI_1_13_0	rejet hors datum	ferme	vide	realloue sous une autre generation	2	0
+4f77afc1	HI_1_13_0	rejet hors datum	hors cadre	trace	libere avant le chunk (meme generation)	2	48
+4f77afc1	HI_1_13_0	rejet hors datum	ferme	vivant	realloue sous une autre generation	1	0
+4f77afc1	HI_1_13_0	rejet hors datum	hors cadre	vide	realloue sous une autre generation	1	26
+4f77afc1	HI_1_13_0	rejet hors datum	vue C : bloc 0xbc non porte	trace	aucune allocation	1	1
+4f77afc1	HI_1_13_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	1	4
+396cfc92	HI_1_13_0	rejet hors datum	hors cadre	vide	naissance non lue	5686	42557
+396cfc92	HI_1_13_0	rejet hors datum	hors cadre	trace	naissance non lue	2066	13249
+396cfc92	HI_1_13_0	rejet hors datum	hors cadre	vide	non mesurable	592	947
+396cfc92	HI_1_13_0	rejet hors datum	hors cadre	vide	aucune allocation	6	38
+396cfc92	HI_1_13_0	rejet hors datum	ferme	vide	aucune allocation	4	0
+396cfc92	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	1	0
+f75e7053	HI_1_13_0	rejet hors datum	hors cadre	vide	naissance non lue	3645	24481
+f75e7053	HI_1_13_0	rejet hors datum	hors cadre	vide	non mesurable	641	1950
+f75e7053	HI_1_13_0	rejet hors datum	ferme	vide	aucune allocation	2	0
+f75e7053	HI_1_13_0	rejet hors datum	hors cadre	trace	naissance non lue	1	8
+f75e7053	HI_1_13_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	1	0
+1c4c63c2	HI_1_10_0	rejet hors datum	hors cadre	trace	naissance non lue	22091	303129
+1c4c63c2	HI_1_10_0	rejet hors datum	hors cadre	vide	naissance non lue	13448	276509
+1c4c63c2	HI_1_10_0	rejet hors datum	hors cadre	vivant	vivant au bloc du chunk	9250	8891
+1c4c63c2	HI_1_10_0	rejet hors datum	ferme	vide	aucune allocation	2074	0
+1c4c63c2	HI_1_10_0	rejet hors datum	ferme	trace	aucune allocation	1173	0
+1c4c63c2	HI_1_10_0	rejet hors datum	hors cadre	trace	non mesurable	345	588
+1c4c63c2	HI_1_10_0	rejet hors datum	hors cadre	trace	realloue sous une autre generation	312	5752
+1c4c63c2	HI_1_10_0	rejet hors datum	hors cadre	vide	aucune allocation	161	761
+1c4c63c2	HI_1_10_0	rejet hors datum	ferme	trace	libere avant le chunk (meme generation)	129	0
+1c4c63c2	HI_1_10_0	rejet hors datum	ferme	vide	realloue sous une autre generation	92	0
+1c4c63c2	HI_1_10_0	rejet hors datum	hors cadre	trace	aucune allocation	70	113
+1c4c63c2	HI_1_10_0	rejet hors datum	vue C : kind non porte	vide	aucune allocation	52	188
+1c4c63c2	HI_1_10_0	rejet hors datum	ferme	trace	non mesurable	36	0
+1c4c63c2	HI_1_10_0	rejet hors datum	hors cadre	trace	libere avant le chunk (meme generation)	14	8
+1c4c63c2	HI_1_10_0	rejet hors datum	vue C : kind non porte	trace	libere avant le chunk (meme generation)	13	8
+1c4c63c2	HI_1_10_0	rejet hors datum	ferme	trace	realloue sous une autre generation	11	0
+1c4c63c2	HI_1_10_0	rejet hors datum	vue C : kind non porte	trace	aucune allocation	11	8
+1c4c63c2	HI_1_10_0	rejet hors datum	vue C : bloc 0xbc non porte	vide	aucune allocation	7	84
+1c4c63c2	HI_1_10_0	rejet hors datum	vue C : kind non porte	vide	realloue sous une autre generation	4	16
+1c4c63c2	HI_1_10_0	rejet hors datum	hors cadre	vide	realloue sous une autre generation	3	6
+1c4c63c2	HI_1_10_0	rejet hors datum	vue C : bloc 0xbc non porte	trace	aucune allocation	3	15
+1c4c63c2	HI_1_10_0	rejet hors datum	vue C : kind non porte	trace	realloue sous une autre generation	3	12
+1c4c63c2	HI_1_10_0	rejet hors datum	ferme	vide	naissance non lue	2	0
+1c4c63c2	HI_1_10_0	rejet hors datum	hors cadre	vide	non mesurable	2	0
+1c4c63c2	HI_1_10_0	rejet hors datum	vue C : bloc 0xbc non porte	trace	libere avant le chunk (meme generation)	2	28
+1c4c63c2	HI_1_10_0	rejet hors datum	ferme	vivant	realloue sous une autre generation	1	0
+1c4c63c2	HI_1_10_0	rejet hors datum	ferme	vivant	vivant au bloc du chunk	1	0

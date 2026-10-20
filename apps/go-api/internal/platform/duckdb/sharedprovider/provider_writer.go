@@ -24,8 +24,11 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		return nil, ErrProviderClosed
 	}
 
-	slog.InfoContext(ctx, "provider: AcquireWriter démarré",
-		"path", p.path, "label", ctxkeys.DBWriterLabel(ctx))
+	// Début d'acquisition : aucune durée à qualifier, donc DEBUG inconditionnel
+	// (cf. logSwapPhase). Le label est reporté sur les logs de fin de phase et
+	// sur le WARN de drain timeout — aucune anomalie ne perd son attribution.
+	label := ctxkeys.DBWriterLabel(ctx)
+	slog.DebugContext(ctx, "provider: AcquireWriter démarré", "path", p.path, "label", label)
 	lease, err := dblease.AcquireWriterCtx(ctx, nil, p.path, dblease.KindSharedMatches)
 	if err != nil {
 		swapFailuresTotal.Add(failReasonAcquireWriter, 1)
@@ -44,36 +47,42 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 	if err := p.waitForDrain(ctx); err != nil {
 		// Drain expiré : rollback vers RO. Les readers en vol terminent OK
 		// (handle pas fermé), les nouveaux Get reprennent. Le sync engine
-		// retentera au prochain cycle.
+		// retentera au prochain cycle. Les lecteurs qui ont tenu le drain sont nommés.
+		enVol := p.decrireLecteursEnVol()
 		p.rollbackFromDraining()
 		lease.Release()
 		swapFailuresTotal.Add(failReasonDrainTimeout, 1)
 		slog.WarnContext(ctx, "provider: drain timeout, rollback vers RO",
-			"path", p.path, "drain_ms", time.Since(drainStart).Milliseconds(), "err", err)
+			"path", p.path, "label", label,
+			"drain_ms", time.Since(drainStart).Milliseconds(), "lecteurs_en_vol", enVol, "err", err)
+		if ctx.Err() == nil {
+			// La borne PROPRE au drain a expiré, pas le contexte de l'appelant :
+			// erreur transitoire typée (sentinelle + cause), retentable par errors.Is.
+			return nil, fmt.Errorf("sharedprovider: drain inflight readers: %w: %w", ErrDrainTimeout, err)
+		}
 		return nil, fmt.Errorf("sharedprovider: drain inflight readers: %w", err)
 	}
-	drainMs := time.Since(drainStart).Milliseconds()
-	getWaitMsTotal.Add(drainMs)
-	slog.InfoContext(ctx, "provider: readers drainés", "path", p.path, "drain_ms", drainMs)
+	drainDur := time.Since(drainStart)
+	getWaitMsTotal.Add(drainDur.Milliseconds())
+	p.logSwapPhase(ctx, "provider: readers drainés", drainDur,
+		"path", p.path, "label", label, "drain_ms", drainDur.Milliseconds())
 
 	rwHandle, err := p.swapToRW(ctx, swapStart)
 	if err != nil {
 		lease.Release()
 		return nil, err
 	}
-	slog.InfoContext(ctx, "provider: swap RO→RW terminé",
-		"path", p.path, "total_ms", time.Since(swapStart).Milliseconds())
+	acquireDur := time.Since(swapStart)
+	p.logSwapPhase(ctx, "provider: swap RO→RW terminé", acquireDur,
+		"path", p.path, "label", label, "total_ms", acquireDur.Milliseconds())
 
 	// WriterHandle construit via closure (refacto commit 8b) — la struct
 	// ne référence plus *providerImpl directement, ce qui permet à
 	// inMemoryProvider de construire ses propres WriterHandle avec une
 	// stratégie de release no-op.
 	//
-	// Sprint B1 commit 19 : capture event_id du ctx caller pour propagation
-	// au callback Subscriber lors du Release (RW→RO). Permet de tracer le
-	// timeline complet d'un swap : caller (sync.RunDelta) → Provider AcquireWriter
-	// → notify PreSwap (pool DETACH) → write → Release → notify RWToRO
-	// (pool re-attach) — tout sous le même event_id.
+	// event_id du ctx caller capturé pour les journaux du Release (RW→RO) et de
+	// sa reprise éventuelle : tout le cycle du swap reste sous le même event_id.
 	capturedEventID := ctxkeys.EventID(ctx)
 	return &WriterHandle{
 		db: rwHandle.SQLDb(),
@@ -89,9 +98,8 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 				lease.Release()
 			}()
 
-			// Reconstruit un ctx avec l'event_id capturé pour propagation aux
-			// Subscribers via notifyAfterSwap. context.Background() comme parent
-			// car le ctx caller peut être annulé au moment du Release.
+			// Reconstruit un ctx avec l'event_id capturé. context.Background()
+			// comme parent car le ctx caller peut être annulé au moment du Release.
 			releaseCtx := context.Background()
 			if capturedEventID != "" {
 				releaseCtx = ctxkeys.WithEventID(releaseCtx, capturedEventID)
@@ -99,6 +107,23 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 			p.releaseWriter(releaseCtx, rwHandle)
 		},
 	}, nil
+}
+
+// logSwapPhase journalise une phase du cycle B-swap au niveau que sa durée
+// mérite : DEBUG tant qu'elle est nominale (le cycle sain tourne ~40 fois par
+// minute en prod et saturait provider.log — cf. defaultSlowSwapThreshold), INFO
+// dès qu'elle atteint p.slowSwapThreshold, avec sa durée et threshold_ms pour
+// que l'anomalie soit lisible SANS réactiver le niveau debug.
+//
+// Ne couvre que le nominal : les WARN/ERROR du même cycle (drain timeout, échec
+// d'open RW, reopen RO échoué, watchdog de détention) sont émis directement et
+// restent inconditionnels.
+func (p *providerImpl) logSwapPhase(ctx context.Context, msg string, d time.Duration, attrs ...any) {
+	if threshold := p.slowSwapThreshold; threshold > 0 && d >= threshold {
+		slog.InfoContext(ctx, msg, append(attrs, "threshold_ms", threshold.Milliseconds())...)
+		return
+	}
+	slog.DebugContext(ctx, msg, attrs...)
 }
 
 // gateToDraining transitionne l'état RO → Draining sous p.mu pour gater
@@ -119,10 +144,9 @@ func (p *providerImpl) gateToDraining() error {
 	return nil
 }
 
-// swapToRW exécute la transition Draining → RW sous p.mu : close handle RO,
-// notifie les Subscribers (sous mu — voir notifyAfterSwapLocked), ouvre le
-// handle RW. Sur échec de l'OpenReadWrite : transition vers StateError +
-// retryReopenLoop async. Phase 3 de AcquireWriter.
+// swapToRW exécute la transition Draining → RW sous p.mu : close handle RO, ouvre
+// le handle RW. Sur échec de l'OpenReadWrite : transition vers StateError +
+// retryReopenLoop async (refusOuvertureRWLocked). Phase 3 de AcquireWriter.
 func (p *providerImpl) swapToRW(ctx context.Context, swapStart time.Time) (*duckdbpkg.DB, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -140,36 +164,9 @@ func (p *providerImpl) swapToRW(ctx context.Context, swapStart time.Time) (*duck
 		p.handle = nil
 	}
 
-	// PHASE 3.5 (commit 8e, repositionné commit 8f) : notif PreSwapToRW
-	// SYNCHRONE entre la fermeture du handle Provider et l'OpenReadWrite.
-	//
-	// Pourquoi ce timing précis ?
-	//   - DuckDB-Go fait de l'auto-attach : si shared est ouvert quelque part
-	//     dans le process, toute nouvelle conn DuckDB l'auto-attache. Si
-	//     les Subscribers (pool) faisaient Reopen pendant que Provider.handle
-	//     est encore ouvert, la nouvelle conn player auto-attacherait shared
-	//     et bloquerait l'OpenReadWrite suivant ("Unique file handle conflict").
-	//   - En émettant la notif APRÈS Close handle et AVANT OpenReadWrite,
-	//     le fichier shared est totalement libéré côté Provider. Les
-	//     Subscribers peuvent fermer leurs propres handles RO et Reopen leurs
-	//     conns player sans auto-attach.
-	//
-	// Notification SYNCHRONE sous p.mu — d'où l'appel à notifyAfterSwapLocked
-	// (variante explicite qui documente ce contract). Les Subscribers NE
-	// DOIVENT PAS appeler Get/AcquireWriter pendant ce callback (deadlock garanti).
-	p.notifyAfterSwapLocked(ctx, DirectionPreSwapToRW, StateDraining, StateDraining)
-
 	rwHandle, err := duckdbpkg.OpenReadWrite(p.path, p.timezone)
 	if err != nil {
-		// Catastrophique : RO fermé, RW refuse. State → Error.
-		p.state.Store(int32(StateError))
-		recordStateTransition(StateDraining, StateError)
-		swapFailuresTotal.Add(failReasonAcquireWriter, 1)
-		close(p.ready)
-		// Sprint B1 commit 19 : propage event_id du caller dans la goroutine
-		// de retry async pour traçabilité de la recovery.
-		go p.retryReopenLoop(ctxkeys.EventID(ctx))
-		return nil, fmt.Errorf("sharedprovider: open RW after RO close: %w", err)
+		return nil, p.refusOuvertureRWLocked(ctx, err)
 	}
 
 	p.state.Store(int32(StateRW))
@@ -186,6 +183,24 @@ func (p *providerImpl) swapToRW(ctx context.Context, swapStart time.Time) (*duck
 	swapTotal.Add(swapDirRoToRw, 1)
 	swapDurationMsTotal.Add(swapDirRoToRw, time.Since(swapStart).Milliseconds())
 	return rwHandle, nil
+}
+
+// refusOuvertureRWLocked traite le refus de l'OpenReadWrite du swap (p.mu tenu, handle RO
+// déjà fermé) : StateError, réveil des Get en attente, reprise RO asynchrone. Le refus est
+// journalisé en ERROR avec le nombre de références RO que le processus tient ENCORE sur le
+// fichier : le provider vient de rendre la sienne, donc toute référence restante est tenue
+// hors de lui et fera refuser chaque tentative suivante tant qu'elle n'est pas rendue.
+func (p *providerImpl) refusOuvertureRWLocked(ctx context.Context, err error) error {
+	p.state.Store(int32(StateError))
+	recordStateTransition(StateDraining, StateError)
+	swapFailuresTotal.Add(failReasonOpenRW, 1)
+	close(p.ready)
+	slog.ErrorContext(ctx, "sharedprovider: écriture refusée par DuckDB — cause habituelle : un autre handle du processus tient encore le fichier",
+		"path", p.path, "label", ctxkeys.DBWriterLabel(ctx),
+		"references_lecture_hors_provider", duckdbpkg.CachedReadOnlyRefs(p.path), "err", err)
+	// event_id du caller propagé à la reprise asynchrone (traçabilité).
+	go p.retryReopenLoop(ctxkeys.EventID(ctx))
+	return fmt.Errorf("sharedprovider: open RW after RO close: %w", err)
 }
 
 // armRWWatchdogLocked arme le timer de surveillance de détention du writer.
@@ -221,20 +236,20 @@ func (p *providerImpl) disarmRWWatchdogLocked() string {
 
 // waitForDrain attend que tous les readers en vol fassent leur release().
 // Borné par p.drainTimeout ou ctx.Done(), la première échéance gagne.
+//
+// Sur expiration, le drain est ABANDONNÉ explicitement (abandonDrain) : rien ne
+// survit à cet appel qui pourrait réveiller ou faire paniquer le drain suivant
+// — c'était la cause des deux crashs du 2026-09-16 (cf. reader_drain.go).
 func (p *providerImpl) waitForDrain(parentCtx context.Context) error {
 	ctx, cancel := context.WithTimeout(parentCtx, p.drainTimeout)
 	defer cancel()
 
-	done := make(chan struct{})
-	go func() {
-		p.readersWG.Wait()
-		close(done)
-	}()
-
+	done := p.beginDrain()
 	select {
 	case <-done:
 		return nil
 	case <-ctx.Done():
+		p.abandonDrain(done)
 		return ctx.Err()
 	}
 }
@@ -260,9 +275,8 @@ func (p *providerImpl) rollbackFromDraining() {
 
 // releaseWriter est appelé par WriterHandle.Release.
 //
-// Sprint B1 commit 19 : ctx contient l'event_id capturé au moment d'AcquireWriter
-// pour propagation aux Subscribers via notifyAfterSwap. Permet de tracer le
-// cycle de vie complet d'un swap RW dans logs/{sync,provider,duckdb}.log.
+// ctx porte l'event_id capturé au moment d'AcquireWriter : le cycle de vie
+// complet d'un swap RW se trace dans logs/{sync,provider,duckdb}.log.
 func (p *providerImpl) releaseWriter(ctx context.Context, rwHandle *duckdbpkg.DB) {
 	swapStart := time.Now()
 	p.mu.Lock()
@@ -313,23 +327,10 @@ func (p *providerImpl) releaseWriter(ctx context.Context, rwHandle *duckdbpkg.DB
 		}
 		close(p.ready)
 		p.mu.Unlock()
-		slog.InfoContext(ctx, "provider: swap RW→RO terminé",
+		releaseDur := time.Since(swapStart)
+		p.logSwapPhase(ctx, "provider: swap RW→RO terminé", releaseDur,
 			"path", p.path, "label", holderLabel,
-			"total_ms", time.Since(swapStart).Milliseconds())
-		// IMPORTANT : notify HORS du lock — les Subscribers peuvent appeler
-		// Get/AcquireWriter (qui prennent p.mu) sans deadlock.
-		//
-		// Race documentée (constatée commit 12a) : entre l'unlock ci-dessus
-		// et l'exécution du callback Subscriber, un Get() concurrent peut
-		// succeed (state == StateRO). Le Subscriber est alors en train de
-		// reopen son propre handle RO en parallèle. Aucun conflit : DuckDB-Go
-		// tolère N ouvertures RO simultanées sur le même fichier (mode RO
-		// uniforme, pas de file lock exclusif). Cette tolérance est testée
-		// par TestProvider_HTTPReadersWaitDuringSync_integration.
-		// Si une future version de DuckDB durcissait ce contrat, il faudrait
-		// notifier sous mu (cf. notifyAfterSwapLocked) — moyennant un
-		// refactor du callback pool (pool_swap_hook.go).
-		p.notifyAfterSwap(ctx, DirectionRWToRO, StateRW, StateRO)
+			"total_ms", releaseDur.Milliseconds())
 		return
 	}
 
@@ -362,10 +363,8 @@ func (p *providerImpl) tryReopenROLocked() bool {
 
 // retryReopenLoop tente de récupérer après un échec de reopen RO.
 //
-// Sprint B1 commit 19 : capturedEventID (event_id du caller initial du swap)
-// est restauré dans un ctx pour propagation aux Subscribers via notifyAfterSwap.
-// Permet de tracer la recovery DirectionErrorToRO sous le même event_id que
-// le swap échoué qui l'a déclenchée.
+// capturedEventID (event_id du caller initial du swap) est restauré dans un ctx :
+// la reprise se trace sous le même event_id que le swap échoué qui l'a déclenchée.
 func (p *providerImpl) retryReopenLoop(capturedEventID string) {
 	ctx := context.Background()
 	if capturedEventID != "" {
@@ -389,7 +388,6 @@ func (p *providerImpl) retryReopenLoop(capturedEventID string) {
 			p.state.Store(int32(StateRO))
 			recordStateTransition(StateError, StateRO)
 			p.mu.Unlock()
-			p.notifyAfterSwap(ctx, DirectionErrorToRO, StateError, StateRO)
 			slog.InfoContext(ctx, "sharedprovider: recovered from StateError",
 				"path", p.path, "attempt", attempt+1)
 			return

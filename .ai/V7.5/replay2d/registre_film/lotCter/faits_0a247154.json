@@ -1,0 +1,15 @@
+{
+  "gameVariantName": "Ranked:King of the Hill",
+  "mapId": "4a5e5612-2b2e-4375-a0b3-9335a68815f3",
+  "teamScores": [4, 2],
+  "players": [
+    {"xuid":"2533274858283686","kills":16,"deaths":22,"assists":15,"teamId":0},
+    {"xuid":"2535406399121492","kills":23,"deaths":21,"assists":9,"teamId":0},
+    {"xuid":"2535455023454167","kills":24,"deaths":15,"assists":13,"teamId":0},
+    {"xuid":"2535470442430325","kills":18,"deaths":20,"assists":9,"teamId":0},
+    {"xuid":"2533274846684310","kills":18,"deaths":21,"assists":5,"teamId":1},
+    {"xuid":"2533274870240621","kills":17,"deaths":20,"assists":13,"teamId":1},
+    {"xuid":"2533274969598328","kills":21,"deaths":20,"assists":16,"teamId":1},
+    {"xuid":"2535420289574892","kills":22,"deaths":20,"assists":14,"teamId":1}
+  ]
+}

@@ -1,5 +1,5 @@
 // Package handlers — admin_appearance_diag.go : endpoint admin du diagnostic
-// apparence Spartan ID (volet 2 du plan .ai/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md,
+// apparence Spartan ID (volet 2 du plan .ai/archive/V7.1/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md,
 // Lot F).
 //
 // GET /admin/diag/appearance/{player_slug} → verdict par composant (bannière,

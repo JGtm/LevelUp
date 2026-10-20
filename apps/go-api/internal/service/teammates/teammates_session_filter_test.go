@@ -7,7 +7,10 @@ package teammates
 //  2. Session sélectionnée → seuls les matchs de la session dans mapBreakdown.
 //  3. Session sélectionnée mais aucun match commun dans la session → mapBreakdown vide.
 //  4. Plusieurs coéquipiers, session partielle → chaque coéquipier filtré indépendamment.
-//  5. filteredMatches vide + session sélectionnée → mapBreakdown vide (session sans matchs).
+//  5. filteredMatches vide + session sélectionnée → mapBreakdown vide (session sans matchs) —
+//     TestGetPage_SessionFilter_SessionSansMatch (lot perf L9-go : l'ensemble vide était lu
+//     « pas de filtre »).
+//  6. filters.sessions.picked_sessions porte un session_id → même population que son libellé.
 
 import (
 	"context"
@@ -241,5 +244,125 @@ func TestGetPage_SessionFilter_MultipleTeammates(t *testing.T) {
 	// m1 (Bazaar) + m2 (Aquarius) → 2 cartes, Recharge exclu
 	if len(resp.MapBreakdown) != 2 {
 		t.Errorf("expected 2 map entries, got %d", len(resp.MapBreakdown))
+	}
+}
+
+// TestGetPage_SessionFilter_ParFiltersSessions (D2.5, lot perf L2) : une session piquée par
+// `filters.sessions.picked_sessions` SEUL restreint la population escouade exactement comme
+// `picked_squad_session_labels` — jusque-là, cette requête (l'intermédiaire du ré-ancrage
+// front) calculait toutes les sections sur tout l'historique de la composition.
+func TestGetPage_SessionFilter_ParFiltersSessions(t *testing.T) {
+	const sessionLabel = "2026-04-21 19h"
+	synthRows := []legacymatch.SynthesisMatchRow{
+		makeSynthRow("m1", sessionLabel),
+		makeSynthRow("m2", sessionLabel),
+		makeSynthRow("m3", "2026-04-22 20h"),
+	}
+	repo := &mockSquadRepo{
+		topRows: []domain.TopTeammateRow{{XUID: "tm1", Gamertag: "Ally", GamesTogether: 3}},
+		squadRows: []domain.SquadMatchRow{
+			makeSquadRow("m1", "Bazaar", domain.OutcomeWin),
+			makeSquadRow("m2", "Aquarius", domain.OutcomeWin),
+			makeSquadRow("m3", "Recharge", domain.OutcomeLoss), // autre session
+		},
+		synthRows: synthRows,
+	}
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(
+		newSynthMockFromRows(synthRows, nil), "halo_infinite", "Test",
+	)
+	parFiltres, err := svc.GetPage(context.Background(), "px", domain.TeammatesQueryRequest{
+		SelectedGamertags: []string{"Ally"},
+		Filters: &domain.FilterContextInput{
+			FilterMode: "sessions",
+			Sessions:   domain.SessionsFilter{PickedSessions: []string{sessionLabel}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("GetPage (filters.sessions) : %v", err)
+	}
+	parLabels, err := svc.GetPage(context.Background(), "px", domain.TeammatesQueryRequest{
+		SelectedGamertags:   []string{"Ally"},
+		PickedSquadSessions: []string{sessionLabel},
+	})
+	if err != nil {
+		t.Fatalf("GetPage (picked_squad_session_labels) : %v", err)
+	}
+	if n := parFiltres.Teammates[0].WithKPIs.MatchCount; n != 2 {
+		t.Errorf("matchs avec Ally = %d, attendu 2 (la session seule, pas m3)", n)
+	}
+	if len(parFiltres.MapBreakdown) != 2 || len(parFiltres.MatchHistory) != 2 {
+		t.Errorf("cartes %d, historique %d : attendu 2 et 2 (m1, m2)", len(parFiltres.MapBreakdown), len(parFiltres.MatchHistory))
+	}
+	if parFiltres.Teammates[0].WithKPIs.MatchCount != parLabels.Teammates[0].WithKPIs.MatchCount ||
+		len(parFiltres.MatchHistory) != len(parLabels.MatchHistory) {
+		t.Error("les deux chemins de piquage d'une session doivent restreindre la même population")
+	}
+}
+
+// servicePiquage : trois matchs du joueur (m1, m2 dans une session, m3 dans une autre), tous
+// joués avec Ally ; sessionIDs porte l'identifiant de session des lignes canoniques.
+func servicePiquage(sessionIDs map[string]string) *TeammatesService {
+	synthRows := []legacymatch.SynthesisMatchRow{
+		makeSynthRow("m1", "2026-04-21 19h"),
+		makeSynthRow("m2", "2026-04-21 19h"),
+		makeSynthRow("m3", "2026-04-22 20h"),
+	}
+	repo := &mockSquadRepo{
+		topRows: []domain.TopTeammateRow{{XUID: "tm1", Gamertag: "Ally", GamesTogether: 3}},
+		squadRows: []domain.SquadMatchRow{
+			makeSquadRow("m1", "Bazaar", domain.OutcomeWin),
+			makeSquadRow("m2", "Aquarius", domain.OutcomeWin),
+			makeSquadRow("m3", "Recharge", domain.OutcomeLoss),
+		},
+		synthRows: synthRows,
+	}
+	synth := newSynthMockFromRows(synthRows, nil)
+	synth.sessionIDs = sessionIDs
+	return NewTeammatesService(repo, nil).WithPlayerMatchesRepo(synth, "halo_infinite", "Test")
+}
+
+// TestGetPage_SessionFilter_SessionSansMatch — SCÉNARIO 5 de l'en-tête (lot perf L9-go, revue
+// adversariale D, TestRevD_SessionPiqueeSansMatch) : une session piquée qui ne retient AUCUN
+// match du joueur (libellé inconnu ou périmé, session_id sans match) rend une page vide — jamais
+// tout l'historique de la composition (l'ensemble vide était lu « pas de filtre »).
+func TestGetPage_SessionFilter_SessionSansMatch(t *testing.T) {
+	svc := servicePiquage(map[string]string{"m1": "7", "m2": "7", "m3": "8"})
+	for nom, req := range map[string]domain.TeammatesQueryRequest{
+		"filters.sessions, session_id sans match": {SelectedGamertags: []string{"Ally"},
+			Filters: &domain.FilterContextInput{FilterMode: "sessions",
+				Sessions: domain.SessionsFilter{PickedSessions: []string{"12"}}}},
+		"filters.sessions, libellé inconnu": {SelectedGamertags: []string{"Ally"},
+			Filters: &domain.FilterContextInput{FilterMode: "sessions",
+				Sessions: domain.SessionsFilter{PickedSessions: []string{"2026-01-01 00h"}}}},
+		"picked_squad_session_labels inconnu": {SelectedGamertags: []string{"Ally"},
+			PickedSquadSessions: []string{"2026-01-01 00h"}},
+	} {
+		resp, err := svc.GetPage(context.Background(), "px", req)
+		if err != nil {
+			t.Fatalf("%s : %v", nom, err)
+		}
+		if resp.TotalMatches != 0 || len(resp.MapBreakdown) != 0 || len(resp.MatchHistory) != 0 ||
+			len(resp.Teammates) != 1 || resp.Teammates[0].WithKPIs.MatchCount != 0 {
+			t.Errorf("%s : total %d, cartes %d, historique %d, matchs avec Ally %v — want une page vide",
+				nom, resp.TotalMatches, len(resp.MapBreakdown), len(resp.MatchHistory), resp.Teammates)
+		}
+	}
+}
+
+// TestGetPage_SessionFilter_ParSessionID : filters.sessions.picked_sessions accepte aussi un
+// session_id (FilterOmnibar SessionPill), comme applySessionFilter des filtres — jusque-là
+// seul le libellé était reconnu, et l'identifiant ne retenait rien.
+func TestGetPage_SessionFilter_ParSessionID(t *testing.T) {
+	svc := servicePiquage(map[string]string{"m1": "12", "m2": "12", "m3": "13"})
+	resp, err := svc.GetPage(context.Background(), "px", domain.TeammatesQueryRequest{
+		SelectedGamertags: []string{"Ally"},
+		Filters: &domain.FilterContextInput{FilterMode: "sessions",
+			Sessions: domain.SessionsFilter{PickedSessions: []string{"12"}}},
+	})
+	if err != nil {
+		t.Fatalf("GetPage : %v", err)
+	}
+	if n := resp.Teammates[0].WithKPIs.MatchCount; n != 2 || len(resp.MatchHistory) != 2 {
+		t.Errorf("session_id 12 : %d matchs avec Ally, historique %d — want 2 et 2 (m1, m2)", n, len(resp.MatchHistory))
 	}
 }

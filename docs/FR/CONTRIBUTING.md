@@ -109,6 +109,10 @@ Ne jamais utiliser `.env.local` ou `sync_meta` comme source de credentials (fall
 5. Ajouter une entrée `.ai/thought_log.md` (voir [Workflow Agent](#workflow-agent-thought_log--skills)).
 6. Ouvrir une Pull Request en suivant Conventional Commits.
 
+En ouvrant une Pull Request, vous acceptez que votre contribution soit publiée sous la licence
+du projet (AGPL-3.0, documentation sous CC BY 4.0 — voir [NOTICE](../../NOTICE)). Ne soumettez
+ni fichiers du jeu, ni assets extraits, ni code du jeu décompilé : ils ne sont pas à vous.
+
 ---
 
 ## Stratégie de Branches
@@ -129,6 +133,7 @@ Règles d'application :
 - Créer une nouvelle branche pour chaque feature/fix depuis la branche courante (`git checkout -b <type>/<nom>`).
 - Ne pas changer de branche si un travail différent est déjà en cours sur la branche courante.
 - Pousser `main` déclenche un déploiement de production automatique — merger vers `main` délibérément.
+- **Les merges vers `main` se font uniquement en squash** (imposé dans GitHub : seul « Squash and merge » est activé). Une branche = un commit sur `main` ; le titre du squash suit Conventional Commits et résume la tâche. La branche est supprimée après le merge. Ne jamais faire de `git merge` local vers `main`.
 
 Format des messages de commit (Conventional Commits) :
 

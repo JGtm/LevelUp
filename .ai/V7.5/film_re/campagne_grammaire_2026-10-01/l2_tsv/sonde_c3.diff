@@ -1,0 +1,82 @@
+--- r_comb2_research_test.go	2026-10-02 21:39:18.490731500 +0200
++++ r_comb2_research_test.go	2026-10-03 11:07:54.161929900 +0200
+@@ -33,6 +33,8 @@
+ // (flock-position seul), L1a-ref (condition calculee sur la marche de reference, forme de R_NAIS).
+ 
+ import (
++	"fmt"
++	"os"
+ 	"strconv"
+ 	"strings"
+ 
+@@ -222,6 +224,7 @@
+ func (o *rc2Obs) finDeFilm() {}
+ 
+ func (o *rc2Obs) paquet(c int, p *cmPaquet, _ *World) {
++	defer c3Noter(o, c, p)
+ 	if bis2C3 != nil {
+ 		bis2C3.evenements = bis2C3.evenements[:0]
+ 	}
+@@ -346,3 +349,35 @@
+ 		}
+ 	}
+ }
++
++// ---- SONDE C3 (controle de L2) : une ligne par paquet de la configuration jouee.
++var c3Lignes []string
++
++func c3Noter(o *rc2Obs, c int, p *cmPaquet) {
++	if os.Getenv("C3_DUMP") == "" {
++		return
++	}
++	st := o.st[len(o.st)-1]
++	tete := "-"
++	if p.debut >= 0 {
++		if slot, ti, ok := enteteNeufEn(p.pay, p.debut); ok {
++			tete = fmt.Sprintf("NEW slot=%d ti=%d", slot, ti)
++		} else {
++			tete = "delta"
++		}
++	}
++	c3Lignes = append(c3Lignes, fmt.Sprintf("%d\t%d\t%d\t%d\t%d\t%d\t%v\t%v\t%s\t%s\t%s", c, p.pk.Index, st,
++		o.ut[len(o.ut)-1], p.debut, p.strict, p.d.ListeLocalisee, p.d.FermeeAuBit, p.d.Invariant, p.d.Cause, tete)+"	"+c3Records(c, p))
++}
++
++// c3Records : les en-tetes lus d un paquet des chunks 50 a 56 (enquete sur les paquets perdus).
++func c3Records(c int, p *cmPaquet) string {
++	if c < 50 || c > 56 {
++		return "-"
++	}
++	var b strings.Builder
++	for _, r := range p.recs {
++		fmt.Fprintf(&b, "%d:%d:%d:%d ", r.Type, r.Slot, r.TypeIndex, r.DesyncAt)
++	}
++	return b.String()
++}
+--- r_comb2_configs_research_test.go	2026-10-02 21:39:18.489727700 +0200
++++ r_comb2_configs_research_test.go	2026-10-03 11:07:54.199235400 +0200
+@@ -114,7 +114,11 @@
+ 		}
+ 		oracle = x.oracles[b]
+ 	}
++	c3Lignes = c3Lignes[:0]
+ 	r, d := x.marcher(e, oracle, base && !e.l9)
++	if dir := os.Getenv("C3_DUMP"); dir != "" {
++		_ = os.WriteFile(dir+"/"+x.f.id+"."+nom+".tsv", []byte(strings.Join(c3Lignes, "\n")+"\n"), 0o600)
++	}
+ 	if d != nil {
+ 		x.oracles[e] = d.imageCle
+ 	}
+@@ -134,6 +138,12 @@
+ 		return r
+ 	}
+ 	ref := add(rc2L{}, "reference", true)
++	if os.Getenv("C3_SEUL") != "" {
++		t := rc2Tous().sans("L7")
++		add(t.sans("L2").sans("L9"), "full-L2-L9", true)
++		add(t.sans("L2"), "full-L2", false)
++		return res
++	}
+ 	x.refActifs = map[int]bool{}
+ 	acc := [2]int{}
+ 	for _, c := range x.f.fc.ChunkNumbers() {

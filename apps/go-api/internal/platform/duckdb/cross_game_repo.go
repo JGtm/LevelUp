@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -21,13 +22,18 @@ const crossGameTimeout = 10 * time.Second
 //
 // %s = placeholders de l'ensemble candidat (clause IN). Args (dans l'ordre) :
 // me.xuid, puis chaque opp_xuid, puis le seuil (HAVING).
+//
+// Campagne exclue (D-5, backlog B4) : campaignExclusionToken est résolu par
+// CountCrossTitleCooccurrences en clause TITLE-AGNOSTIC (excludeAllCampaignByMatchID), car
+// le lecteur ne connaît pas le titre du shared qu'on lui passe. Résolu AVANT Sprintf : le
+// fragment ne contient aucun %.
 const q31CrossGameCooccurrenceTpl = `
 SELECT opp.xuid AS opp_xuid, COUNT(DISTINCT opp.match_id) AS together
 FROM match_participants me
 JOIN match_participants opp
   ON opp.match_id = me.match_id
  AND opp.xuid <> me.xuid
-WHERE me.xuid = ?
+WHERE me.xuid = ?` + campaignExclusionToken + `
   AND opp.xuid IN (%s)
   AND opp.xuid NOT LIKE 'bid(%%'
 GROUP BY opp.xuid
@@ -53,7 +59,8 @@ func CountCrossTitleCooccurrences(
 	ctx, cancel := context.WithTimeout(ctx, crossGameTimeout)
 	defer cancel()
 
-	sqlText := fmt.Sprintf(q31CrossGameCooccurrenceTpl, Placeholders(len(oppXUIDs)))
+	tpl := strings.Replace(q31CrossGameCooccurrenceTpl, campaignExclusionToken, excludeAllCampaignByMatchID("me.match_id"), 1)
+	sqlText := fmt.Sprintf(tpl, Placeholders(len(oppXUIDs)))
 	args := make([]any, 0, 2+len(oppXUIDs))
 	args = append(args, myXUID)
 	args = append(args, ToAnySlice(oppXUIDs)...)

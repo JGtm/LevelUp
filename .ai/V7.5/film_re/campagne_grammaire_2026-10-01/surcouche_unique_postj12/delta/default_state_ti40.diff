@@ -1,0 +1,25 @@
+--- a/apps/go-api/internal/games/halo_infinite/film/internal/grammar/default_state_ti40.go (post-J12, df228c24c)
++++ b/surcouche_unique_postj12/default_state_ti40.go
+@@ -84,6 +84,13 @@
+ // travers et rendent `DesyncAt == -1` — la boucle de composants ne tourne pas, ce qui est
+ // exactement le faux « aucun bloquant » que le golden 0.A.3 portait sur `ti=40`.
+ func consumeVehicleMediaFrame(br *Lecteur) {
++	if rvehPorteeEtat {
++		// SURCOUCHE R-VEH : FUN_142e2bfd0 pose DAT_144e61ea0 = 1 autour de vtable[0x60] (@142e2c46f) ;
++		// FUN_14076f91c rend vrai, FUN_14076e494 lit R(96) (FUN_1411b259c).
++		br.ReadBits(rawVec3Bits)
++		consume140c1e79c(br)
++		return
++	}
+ 	lireE494(br, niveauPosition) // FUN_14076e494
+ 	consume140c1e79c(br)         // FUN_140c1e79c
+ }
+@@ -97,3 +104,8 @@
+ // la prediction du plancher que l'histogramme des distances doit retrouver (portes ouvertes = pic
+ // au-dessus).
+ const VehicleDefaultStateMinBits = 79
++
++// ---- SURCOUCHE DE RECHERCHE R-VEH (2026-10-02) ------------------------------------------------
++// Copie substituee par `go test -overlay` a `default_state_ti40.go` pour la seule mesure. Ajout :
++// [rvehPorteeEtat], la feuille 4 lue en R(96) (portee de l etat par defaut). Faux = production.
++var rvehPorteeEtat bool

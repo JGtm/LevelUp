@@ -201,13 +201,13 @@ func TestLoadAppSettings_InvalidJSON(t *testing.T) {
 func TestLoadEnvLocal_SetsVars(t *testing.T) {
 	tmpDir := t.TempDir()
 	envFile := tmpDir + "/.env.local"
-	content := "SPNKR_OAUTH_REFRESH_TOKEN_TESTGT=my_token\nLEVELUP_DEMO_MODE=false\n"
+	content := "LEVELUP_TEST_ENVLOCAL_SET=my_token\nLEVELUP_DEMO_MODE=false\n"
 	if err := os.WriteFile(envFile, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_ = os.Unsetenv("SPNKR_OAUTH_REFRESH_TOKEN_TESTGT")
+	_ = os.Unsetenv("LEVELUP_TEST_ENVLOCAL_SET")
 	loadEnvLocal(envFile)
-	if got := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_TESTGT"); got != "my_token" {
+	if got := os.Getenv("LEVELUP_TEST_ENVLOCAL_SET"); got != "my_token" {
 		t.Errorf("expected my_token, got %q", got)
 	}
 }
@@ -215,13 +215,13 @@ func TestLoadEnvLocal_SetsVars(t *testing.T) {
 func TestLoadEnvLocal_DoesNotOverwrite(t *testing.T) {
 	tmpDir := t.TempDir()
 	envFile := tmpDir + "/.env.local"
-	content := "SPNKR_OAUTH_REFRESH_TOKEN_OVER=from_file\n"
+	content := "LEVELUP_TEST_ENVLOCAL_OVER=from_file\n"
 	if err := os.WriteFile(envFile, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_OVER", "from_env")
+	t.Setenv("LEVELUP_TEST_ENVLOCAL_OVER", "from_env")
 	loadEnvLocal(envFile)
-	if got := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_OVER"); got != "from_env" {
+	if got := os.Getenv("LEVELUP_TEST_ENVLOCAL_OVER"); got != "from_env" {
 		t.Errorf("env var existante ne doit pas être écrasée, got %q", got)
 	}
 }
@@ -234,13 +234,13 @@ func TestLoadEnvLocal_FileMissing(t *testing.T) {
 func TestLoadEnvLocal_QuotedValue(t *testing.T) {
 	tmpDir := t.TempDir()
 	envFile := tmpDir + "/.env.local"
-	content := "SPNKR_OAUTH_REFRESH_TOKEN_QUOTED=\"quoted_token\"\n"
+	content := "LEVELUP_TEST_ENVLOCAL_QUOTED=\"quoted_token\"\n"
 	if err := os.WriteFile(envFile, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_ = os.Unsetenv("SPNKR_OAUTH_REFRESH_TOKEN_QUOTED")
+	_ = os.Unsetenv("LEVELUP_TEST_ENVLOCAL_QUOTED")
 	loadEnvLocal(envFile)
-	if got := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_QUOTED"); got != "quoted_token" {
+	if got := os.Getenv("LEVELUP_TEST_ENVLOCAL_QUOTED"); got != "quoted_token" {
 		t.Errorf("expected quoted_token, got %q", got)
 	}
 }

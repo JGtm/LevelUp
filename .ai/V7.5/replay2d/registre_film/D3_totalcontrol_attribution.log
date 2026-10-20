@@ -1,0 +1,47 @@
+# D3 — TOTAL CONTROL, attribution des prises aux zones (2026-08-27)
+# Executeur borne : 1 film = 1 processus, plafond 2 Gio, priorite basse.
+
+########## FILM 1/7 — d2c64f8c (Fortitude) ##########
+  issue=ok code=0 duree=13m43.147s pic=0.22 Gio
+########## FILM 2/7 — 0862dce4 (Highpower) ##########
+  issue=ok code=0 duree=11m22.006s pic=0.18 Gio
+########## FILM 3/7 — 66aa5f0b (Command) ##########
+  issue=ok code=0 duree=1m57.267s pic=0.07 Gio
+########## FILM 4/7 — 2f05dc98 (Refuge) ##########
+  issue=ok code=0 duree=8m15.379s pic=0.17 Gio
+########## FILM 5/7 — bf831a6b (Command) ##########
+  issue=ok code=0 duree=3m23.904s pic=0.10 Gio
+########## FILM 6/7 — a521164d (Fragmentation Heavies) ##########
+  issue=ok code=0 duree=4m30.275s pic=0.09 Gio
+########## FILM 7/7 — a349fea8 (Fragmentation Heavies) ##########
+  issue=memoire code=13 duree=3.592s pic=3.17 Gio
+
+# ATTRIBUTION (ident posees dedans dehors sansPos ambig) puis temoin
+d2c64f8c  Fortitude           66      50      10      11      16      13
+d2c64f8c  Fortitude          42867     50     10     50     10      11      16   20.0%   20.0%
+  temoin temporel APRES correction : 10.0%  (rapport reel/temoin 2.0)
+d2c64f8c  Fortitude             1        1   100.0%        1        0     0.0%
+0862dce4  Highpower           44      44      16       3      25       0
+0862dce4  Highpower          14445     44     16     44     16       3      25   36.4%   36.4%
+  temoin temporel APRES correction : 6.8%  (rapport reel/temoin 5.3)
+0862dce4  Highpower             1        1   100.0%        0        0        -
+66aa5f0b  Command             13      11       7       1       3       0
+66aa5f0b  Command            43688     11      7     11      7       1       3   63.6%   63.6%
+  temoin temporel APRES correction : 18.2%  (rapport reel/temoin 3.5)
+66aa5f0b  Command               1        1   100.0%        0        0        -
+2f05dc98  Refuge              39      27      13       8       5       1
+2f05dc98  Refuge             30006     27     13     27     13       8       5   48.1%   48.1%
+  temoin temporel APRES correction : 18.5%  (rapport reel/temoin 2.6)
+2f05dc98  Refuge                0        0        -        0        0        -
+bf831a6b  Command             12      12       9       1       2       0
+bf831a6b  Command            21816     12      9     12      9       1       2   75.0%   75.0%
+  temoin temporel APRES correction : 16.7%  (rapport reel/temoin 4.5)
+bf831a6b  Command               2        2   100.0%        0        0        -
+a521164d  Fragmentation Heavies       0       0       0       0       0       0
+a521164d  Fragmentation Heavies     27811      0      0      0      0       0       0    0.0%    0.0%
+  temoin temporel APRES correction : 0.0%  (rapport reel/temoin inf)
+a521164d  Fragmentation Heavies        0        0        -        0        0        -
+PASSE — 7 film(s)
+  ok           6
+  memoire      1
+  ATTENTION : 1 film(s) n'ont PAS ete mesures — le corpus de la mesure est incomplet, et un taux calcule dessus ne porte pas sur ce qu'il annonce

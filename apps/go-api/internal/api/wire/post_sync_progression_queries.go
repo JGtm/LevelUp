@@ -157,7 +157,8 @@ func loadProgressionSharedMatches(ctx context.Context, pdb *duckdb.PlayerDB, sin
 			COALESCE(mp.damage_taken, 0) AS damage_taken
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ? AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?
+		WHERE mp.xuid = ? AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?`+
+		analysis.SQLExcludeCampaignVariants(pdb.TitleSlug, "mr")+`
 		ORDER BY start_time ASC
 	`, pdb.XUID, since.UTC())
 	if err != nil {
@@ -308,6 +309,10 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 	// raw_code différent. Slug explicite (pdb.TitleSlug) car le ctx post-sync
 	// détaché ne porte pas forcément le titleSlug.
 	winExpr := duckdb.OutcomeSQLEqSlug(pdb.TitleSlug, "outcome", canonical.OutcomeWin, "outcome = 2")
+	// Campagne exclue des trois agrégats (D-5, backlog B4 ; no-op pour un titre sans
+	// variante de Campagne) : sous-requête par match_id là où le registre n'est pas joint.
+	campagneExclue := analysis.SQLExcludeCampaignByMatchID(pdb.TitleSlug, "match_id")
+	campagneExclueMR := analysis.SQLExcludeCampaignVariants(pdb.TitleSlug, "mr")
 	statsQuery := `
 		SELECT
 			COUNT(*),
@@ -316,7 +321,7 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 			COALESCE(SUM(headshot_kills), 0),
 			COALESCE(SUM(assists), 0)
 		FROM match_participants
-		WHERE xuid = ?
+		WHERE xuid = ?` + campagneExclue + `
 	`
 	if err := sharedDB.QueryRowContext(ctx, statsQuery, pdb.XUID).Scan(&matchesPlayed, &wins, &kills, &headshots, &assists); err != nil {
 		return out, fmt.Errorf("aggregate stats: %w", err)
@@ -331,7 +336,7 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 		SELECT COUNT(DISTINCT CAST(`+analysis.SQLStartTimeCanonical("mr")+` AS DATE))
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ? AND mp.accuracy >= ?
+		WHERE mp.xuid = ? AND mp.accuracy >= ?`+campagneExclueMR+`
 	`, pdb.XUID, AccuracyThresholdForDays).Scan(&accuracyDays); err != nil {
 		return out, fmt.Errorf("aggregate accuracy days: %w", err)
 	}
@@ -371,8 +376,8 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 				AND %[1]g * (COALESCE(kills,0) + COALESCE(assists,0)/3.0) / damage_dealt >= ?
 				AND damage_taken / (%[1]g * deaths) >= ? THEN 1 END)
 		FROM match_participants
-		WHERE xuid = ?
-	`, hp)
+		WHERE xuid = ?%[2]s
+	`, hp, campagneExclue)
 	var precisionMatches, enduranceMatches, excellenceMatches int64
 	if err := sharedDB.QueryRowContext(ctx, combatMetricsQuery,
 		ocMilestoneThreshold, drMilestoneThreshold, ocMilestoneThreshold, drMilestoneThreshold,
@@ -423,7 +428,8 @@ func loadComebackContext(ctx context.Context, pdb *duckdb.PlayerDB, now time.Tim
 		SELECT `+analysis.SQLStartTimeCanonical("mr")+` AS start_time
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ? AND `+analysis.SQLStartTimeCanonical("mr")+` IS NOT NULL
+		WHERE mp.xuid = ? AND `+analysis.SQLStartTimeCanonical("mr")+` IS NOT NULL`+
+		analysis.SQLExcludeCampaignVariants(pdb.TitleSlug, "mr")+`
 		ORDER BY start_time DESC
 		LIMIT 2
 	`, pdb.XUID)

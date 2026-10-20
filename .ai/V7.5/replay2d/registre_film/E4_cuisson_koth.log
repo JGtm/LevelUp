@@ -1,0 +1,451 @@
+=== E4 cuisson KOTH — 2026-08-30 14:50 — 3 recents + 4 deja cuits ===
+--- 21ece4d8 : debut
+2026/08/30 14:50:27 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 14:50:27 WARN backfill-replay (enfant): match absent du registre — identite de carte non resolue (passer --map-name) err="sql: no rows in result set" match_id=21ece4d8
+  21ece4d8 : carte hors catalogue ([]) — echec voulu
+__levelup_pic_octets__=6746112
+--- 21ece4d8 : code de sortie 10
+--- 7f1bbf06 : debut
+2026/08/30 14:50:27 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 14:50:27 WARN backfill-replay (enfant): match absent du registre — identite de carte non resolue (passer --map-name) err="sql: no rows in result set" match_id=7f1bbf06
+  7f1bbf06 : carte hors catalogue ([]) — echec voulu
+__levelup_pic_octets__=6066176
+--- 7f1bbf06 : code de sortie 10
+--- a36c8bed : debut
+2026/08/30 14:50:27 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 14:50:27 WARN backfill-replay (enfant): match absent du registre — identite de carte non resolue (passer --map-name) err="sql: no rows in result set" match_id=a36c8bed
+  a36c8bed : carte hors catalogue ([]) — echec voulu
+__levelup_pic_octets__=6189056
+--- a36c8bed : code de sortie 10
+--- 01e1f945 : debut
+2026/08/30 14:50:27 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 14:50:27 WARN backfill-replay (enfant): match absent du registre — identite de carte non resolue (passer --map-name) err="sql: no rows in result set" match_id=01e1f945
+  01e1f945 : carte hors catalogue ([]) — echec voulu
+__levelup_pic_octets__=5787648
+--- 01e1f945 : code de sortie 10
+--- 0a247154 : debut
+2026/08/30 14:50:27 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 14:50:27 WARN backfill-replay (enfant): match absent du registre — identite de carte non resolue (passer --map-name) err="sql: no rows in result set" match_id=0a247154
+  0a247154 : carte hors catalogue ([]) — echec voulu
+__levelup_pic_octets__=5984256
+--- 0a247154 : code de sortie 10
+--- 606d9844 : debut
+2026/08/30 14:50:27 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 14:50:27 WARN backfill-replay (enfant): match absent du registre — identite de carte non resolue (passer --map-name) err="sql: no rows in result set" match_id=606d9844
+  606d9844 : carte hors catalogue ([]) — echec voulu
+__levelup_pic_octets__=6467584
+--- 606d9844 : code de sortie 10
+--- 8076f97f : debut
+2026/08/30 14:50:27 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 14:50:27 WARN backfill-replay (enfant): match absent du registre — identite de carte non resolue (passer --map-name) err="sql: no rows in result set" match_id=8076f97f
+  8076f97f : carte hors catalogue ([]) — echec voulu
+__levelup_pic_octets__=5722112
+--- 8076f97f : code de sortie 10
+=== FIN cuisson ===
+=== E4 cuisson KOTH (id COMPLETS) — 2026-08-30 14:51 ===
+--- 21ece4d8 : debut
+2026/08/30 14:51:48 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 14:51:55 INFO replaybuild: morts sans revendication typées match_id=21ece4d8-5715-4e2c-8c9b-937440ee564f publiees=1 orphelines=1
+2026/08/30 14:52:10 INFO inventaire : lectures de keyframe chunks=25 chunksIllisibles=0 imagesCles=24 records=174 grenadesParAncre=0 grenadesParPosition=110
+2026/08/30 14:52:16 INFO inventaire delta : lectures recordsDelta=128581 masqueAvecI22=214 i22Lues=214 i22Implausibles=0 masqueAvecI47=96 i47Lues=96 accord=91 accordVerifies=91 canalMunitionsRefuse=true
+2026/08/30 14:52:22 INFO capacites : lectures d i48 recordsDelta=128581 masqueAvecI48=24 lues=24 illisibles=0 sansIdentite=1
+2026/08/30 14:52:28 INFO camouflage : lectures d i28 queue[1] recordsDelta=128581 masqueAvecI28=599 lues=599 illisibles=0 sansVoie=274
+2026/08/30 14:52:34 INFO grappin : lectures d i59 tag==3 recordsDelta=128581 masqueAvecI59=551 lues=551 illisibles=0 tag3=0 corpsCasses=0
+2026/08/30 14:52:45 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=17 ancres=3929 acceptes=228 confirmes=27 poses=27
+2026/08/30 14:52:50 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=678 ancres=5267 acceptees=294 imagesCles=24 viesRecensees=192 pistesDelta=508
+2026/08/30 14:52:56 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=698 ancres=3929 acceptees=228 imagesCles=24 viesRecensees=205 pistesDelta=225
+2026/08/30 14:53:01 INFO rejeu : proprietes ti=13 balayees match_id=21ece4d8-5715-4e2c-8c9b-937440ee564f slots=52 records=11377 marches=5251 cassees=6126 chainees=2443 lectures=8164
+2026/08/30 14:53:38 INFO pont slot->joueur slots=94 viesNommees=89 viesTotal=102 lecturesIndex=24 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 14:53:38 INFO rejeu : courbe de score match_id=21ece4d8-5715-4e2c-8c9b-937440ee564f identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=918
+2026/08/30 14:53:38 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/30 14:53:38 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=27 nommees=27 autres=0 avecPoseur=0 avecCap=0 deployees=0 lachees=0 origineInconnue=27
+2026/08/30 14:53:38 INFO rejeu : socles d'arme au sol balaye=true ancres=5267 acceptees=294 retenues=239 ecartees=55 objetsDObjectif=0 lachees=0 apparues=239 auRepos=26 grappes=8 socles=7 occupations=25 datees=0 sansPassage=25 jamaisVidees=0 cyclesEtablis=0
+2026/08/30 14:53:38 INFO rejeu : socles de power-up balaye=true acceptees=228 retenues=0 socles=0
+2026/08/30 14:53:38 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 14:53:38 INFO rejeu : etat des zones match_id=21ece4d8-5715-4e2c-8c9b-937440ee564f methode=designator+geometry catalogue=5 slots=21 apparies=3 nonApparies=0 sansProprietaire=0 intervalles=52 periodesColline=4 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 14:53:38 INFO rejeu : episodes d'equipement actif viesPubliees=95 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/30 14:53:38 INFO rejeu : couverture inventaire decodees=174 ecarteesAvantOrigine=0 ecarteesSansPiste=3 publiees=171
+2026/08/30 14:53:38 INFO rejeu : lectures d'inventaire vides lectures=171 vides=61 morts=44 inexpliquees=17
+2026/08/30 14:53:38 INFO rejeu : couverture des grenades portees imagesCles=110 delta=214 ecarteesSansPiste=0 canalMunitionsRefuse=true
+2026/08/30 14:53:38 INFO rejeu : palette de capacites palette=famille_a lectures=23 rangsNommes=2
+2026/08/30 14:53:38 INFO rejeu : couverture par calque tirsRattaches=2418 tirsDisponibles=2484 tirsSansSlot=66 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=156 grenadesDisponibles=156 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+  21ece4d8-5715-4e2c-8c9b-937440ee564f : 95 tracks, 1455904 octets (sgh_interlock)
+__levelup_pic_octets__=118190080
+--- 21ece4d8 : code de sortie 0
+--- 7f1bbf06 : debut
+2026/08/30 14:53:38 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 14:53:52 INFO inventaire : lectures de keyframe chunks=18 chunksIllisibles=0 imagesCles=17 records=113 grenadesParAncre=0 grenadesParPosition=92
+2026/08/30 14:53:55 INFO inventaire delta : lectures recordsDelta=98674 masqueAvecI22=142 i22Lues=142 i22Implausibles=0 masqueAvecI47=63 i47Lues=63 accord=61 accordVerifies=61 canalMunitionsRefuse=false
+2026/08/30 14:53:59 INFO capacites : lectures d i48 recordsDelta=98674 masqueAvecI48=15 lues=15 illisibles=0 sansIdentite=1
+2026/08/30 14:54:03 INFO camouflage : lectures d i28 queue[1] recordsDelta=98674 masqueAvecI28=615 lues=615 illisibles=0 sansVoie=293
+2026/08/30 14:54:07 INFO grappin : lectures d i59 tag==3 recordsDelta=98674 masqueAvecI59=582 lues=582 illisibles=0 tag3=0 corpsCasses=0
+2026/08/30 14:54:13 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=14 ancres=1999 acceptes=130 confirmes=80 poses=80
+2026/08/30 14:54:16 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=514 ancres=3446 acceptees=210 imagesCles=17 viesRecensees=140 pistesDelta=288
+2026/08/30 14:54:19 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=507 ancres=1999 acceptees=130 imagesCles=17 viesRecensees=124 pistesDelta=140
+2026/08/30 14:54:22 INFO rejeu : proprietes ti=13 balayees match_id=7f1bbf06-d54d-4434-ad80-923fcabe8b1b slots=52 records=11209 marches=5011 cassees=6198 chainees=2385 lectures=7334
+2026/08/30 14:54:48 INFO pont slot->joueur slots=67 viesNommees=60 viesTotal=71 lecturesIndex=17 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 14:54:48 INFO rejeu : courbe de score match_id=7f1bbf06-d54d-4434-ad80-923fcabe8b1b identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=614
+2026/08/30 14:54:48 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/30 14:54:48 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=80 nommees=80 autres=0 avecPoseur=80 avecCap=74 deployees=7 lachees=73 origineInconnue=0
+2026/08/30 14:54:48 INFO rejeu : socles d'arme au sol balaye=true ancres=3446 acceptees=210 retenues=166 ecartees=44 objetsDObjectif=0 lachees=116 apparues=50 auRepos=25 grappes=9 socles=6 occupations=22 datees=18 sansPassage=0 jamaisVidees=4 cyclesEtablis=5
+2026/08/30 14:54:48 INFO rejeu : socles de power-up balaye=true acceptees=130 retenues=0 socles=0
+2026/08/30 14:54:48 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 14:54:48 INFO rejeu : etat des zones match_id=7f1bbf06-d54d-4434-ad80-923fcabe8b1b methode=designator+geometry catalogue=5 slots=37 apparies=3 nonApparies=0 sansProprietaire=0 intervalles=44 periodesColline=3 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 14:54:48 INFO rejeu : episodes d'equipement actif viesPubliees=68 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/30 14:54:48 INFO rejeu : couverture inventaire decodees=113 ecarteesAvantOrigine=0 ecarteesSansPiste=0 publiees=113
+2026/08/30 14:54:48 INFO rejeu : lectures d'inventaire vides lectures=113 vides=21 morts=15 inexpliquees=6
+2026/08/30 14:54:48 INFO rejeu : couverture des grenades portees imagesCles=92 delta=142 ecarteesSansPiste=0 canalMunitionsRefuse=false
+2026/08/30 14:54:48 INFO rejeu : palette de capacites palette=famille_a lectures=14 rangsNommes=1
+2026/08/30 14:54:48 INFO rejeu : couverture par calque tirsRattaches=1595 tirsDisponibles=1606 tirsSansSlot=11 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=103 grenadesDisponibles=106 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+  7f1bbf06-d54d-4434-ad80-923fcabe8b1b : 68 tracks, 1795863 octets (sgh_streets)
+__levelup_pic_octets__=94007296
+--- 7f1bbf06 : code de sortie 0
+--- a36c8bed : debut
+2026/08/30 14:54:48 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 14:55:17 INFO inventaire : lectures de keyframe chunks=22 chunksIllisibles=0 imagesCles=21 records=161 grenadesParAncre=0 grenadesParPosition=118
+2026/08/30 14:55:24 INFO inventaire delta : lectures recordsDelta=113179 masqueAvecI22=130 i22Lues=130 i22Implausibles=0 masqueAvecI47=64 i47Lues=64 accord=57 accordVerifies=57 canalMunitionsRefuse=true
+2026/08/30 14:55:32 INFO capacites : lectures d i48 recordsDelta=113179 masqueAvecI48=14 lues=14 illisibles=0 sansIdentite=1
+2026/08/30 14:55:40 INFO camouflage : lectures d i28 queue[1] recordsDelta=113179 masqueAvecI28=933 lues=933 illisibles=0 sansVoie=433
+2026/08/30 14:55:47 INFO grappin : lectures d i59 tag==3 recordsDelta=113179 masqueAvecI59=854 lues=854 illisibles=0 tag3=0 corpsCasses=0
+2026/08/30 14:56:01 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=18 ancres=4421 acceptes=251 confirmes=123 poses=123
+2026/08/30 14:56:08 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=736 ancres=4059 acceptees=302 imagesCles=21 viesRecensees=204 pistesDelta=361
+2026/08/30 14:56:17 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=710 ancres=4421 acceptees=251 imagesCles=21 viesRecensees=172 pistesDelta=248
+2026/08/30 14:56:26 INFO rejeu : proprietes ti=13 balayees match_id=a36c8bed-e6a0-4ba2-be69-916074e8df6f slots=57 records=6908 marches=4266 cassees=2642 chainees=2303 lectures=6834
+2026/08/30 14:57:20 INFO pont slot->joueur slots=61 viesNommees=60 viesTotal=84 lecturesIndex=21 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 14:57:20 WARN rejeu : rejets au-dessus du seuil calque=tirs cause=slotIntrouvable rejetes=188 disponibles=1623 rattaches=1427
+2026/08/30 14:57:20 INFO rejeu : courbe de score match_id=a36c8bed-e6a0-4ba2-be69-916074e8df6f identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=674
+2026/08/30 14:57:20 WARN rejeu : lectures camo NON BINAIRES ignorees — l'interrupteur mesure ne connait que 0 et 4095 lectures=3
+2026/08/30 14:57:20 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/30 14:57:20 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=123 nommees=123 autres=0 avecPoseur=115 avecCap=81 deployees=2 lachees=113 origineInconnue=8
+2026/08/30 14:57:20 INFO rejeu : socles d'arme au sol balaye=true ancres=4059 acceptees=302 retenues=253 ecartees=49 objetsDObjectif=0 lachees=126 apparues=127 auRepos=73 grappes=27 socles=19 occupations=65 datees=49 sansPassage=2 jamaisVidees=14 cyclesEtablis=9
+2026/08/30 14:57:20 INFO rejeu : socles de power-up balaye=true acceptees=251 retenues=0 socles=0
+2026/08/30 14:57:20 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 14:57:20 INFO rejeu : etat des zones match_id=a36c8bed-e6a0-4ba2-be69-916074e8df6f methode=designator+geometry catalogue=5 slots=31 apparies=4 nonApparies=0 sansProprietaire=0 intervalles=40 periodesColline=4 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 14:57:20 INFO rejeu : episodes d'equipement actif viesPubliees=75 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/30 14:57:20 INFO rejeu : couverture inventaire decodees=161 ecarteesAvantOrigine=0 ecarteesSansPiste=0 publiees=161
+2026/08/30 14:57:20 INFO rejeu : lectures d'inventaire vides lectures=161 vides=43 morts=24 inexpliquees=19
+2026/08/30 14:57:20 INFO rejeu : couverture des grenades portees imagesCles=118 delta=130 ecarteesSansPiste=0 canalMunitionsRefuse=true
+2026/08/30 14:57:20 INFO rejeu : palette de capacites palette=famille_a lectures=13 rangsNommes=2
+2026/08/30 14:57:20 INFO rejeu : couverture par calque tirsRattaches=1427 tirsDisponibles=1623 tirsSansSlot=188 tirsAmbigus=8 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=85 grenadesDisponibles=86 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+  a36c8bed-e6a0-4ba2-be69-916074e8df6f : 75 tracks, 1344832 octets (fo08_wetland)
+__levelup_pic_octets__=99807232
+--- a36c8bed : code de sortie 0
+--- 01e1f945 : debut
+2026/08/30 14:57:20 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 14:57:55 INFO inventaire : lectures de keyframe chunks=29 chunksIllisibles=0 imagesCles=28 records=215 grenadesParAncre=0 grenadesParPosition=168
+2026/08/30 14:58:03 INFO inventaire delta : lectures recordsDelta=173040 masqueAvecI22=175 i22Lues=175 i22Implausibles=2 masqueAvecI47=80 i47Lues=80 accord=77 accordVerifies=77 canalMunitionsRefuse=true
+2026/08/30 14:58:13 INFO capacites : lectures d i48 recordsDelta=173040 masqueAvecI48=34 lues=34 illisibles=0 sansIdentite=5
+2026/08/30 14:58:22 INFO camouflage : lectures d i28 queue[1] recordsDelta=173040 masqueAvecI28=1565 lues=1565 illisibles=0 sansVoie=712
+2026/08/30 14:58:31 INFO grappin : lectures d i59 tag==3 recordsDelta=173040 masqueAvecI59=1424 lues=1418 illisibles=6 tag3=12 corpsCasses=1
+2026/08/30 14:58:48 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=13 ancres=5492 acceptes=283 confirmes=151 poses=151
+2026/08/30 14:58:56 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=911 ancres=7953 acceptees=405 imagesCles=28 viesRecensees=227 pistesDelta=646
+2026/08/30 14:59:05 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=912 ancres=5492 acceptees=283 imagesCles=28 viesRecensees=225 pistesDelta=374
+2026/08/30 14:59:14 INFO rejeu : proprietes ti=13 balayees match_id=01e1f945-7cd0-428e-ade5-759c810b1224 slots=52 records=10575 marches=6867 cassees=3708 chainees=4193 lectures=10239
+2026/08/30 15:00:20 INFO pont slot->joueur slots=100 viesNommees=97 viesTotal=113 lecturesIndex=28 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 15:00:20 WARN rejeu : rejets au-dessus du seuil calque=tirs cause=slotIntrouvable rejetes=222 disponibles=2154 rattaches=1921
+2026/08/30 15:00:20 INFO rejeu : courbe de score match_id=01e1f945-7cd0-428e-ade5-759c810b1224 identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=964
+2026/08/30 15:00:20 INFO rejeu : tractions de grappin tirs=6 accroches=5 tractions=5 vies=5 rates=1 corpsCasses=0
+2026/08/30 15:00:20 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=151 nommees=151 autres=0 avecPoseur=151 avecCap=130 deployees=7 lachees=144 origineInconnue=0
+2026/08/30 15:00:20 INFO rejeu : socles d'arme au sol balaye=true ancres=7953 acceptees=405 retenues=291 ecartees=114 objetsDObjectif=0 lachees=203 apparues=88 auRepos=40 grappes=10 socles=10 occupations=49 datees=38 sansPassage=8 jamaisVidees=3 cyclesEtablis=5
+2026/08/30 15:00:20 INFO rejeu : socles de power-up balaye=true acceptees=283 retenues=10 socles=1
+2026/08/30 15:00:20 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 15:00:20 INFO rejeu : etat des zones match_id=01e1f945-7cd0-428e-ade5-759c810b1224 methode=designator+geometry catalogue=6 slots=28 apparies=4 nonApparies=0 sansProprietaire=0 intervalles=100 periodesColline=5 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 15:00:20 INFO rejeu : episodes d'equipement actif viesPubliees=113 viesCamo=0 episodesCamo=0 viesSurbouclier=5 episodesSurbouclier=5
+2026/08/30 15:00:20 INFO rejeu : couverture inventaire decodees=215 ecarteesAvantOrigine=0 ecarteesSansPiste=0 publiees=215
+2026/08/30 15:00:20 INFO rejeu : lectures d'inventaire vides lectures=215 vides=47 morts=31 inexpliquees=16
+2026/08/30 15:00:20 INFO rejeu : couverture des grenades portees imagesCles=168 delta=173 ecarteesSansPiste=0 canalMunitionsRefuse=true
+2026/08/30 15:00:20 INFO rejeu : palette de capacites palette=famille_a lectures=29 rangsNommes=3
+2026/08/30 15:00:20 INFO rejeu : couverture par calque tirsRattaches=1921 tirsDisponibles=2154 tirsSansSlot=222 tirsAmbigus=11 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=130 grenadesDisponibles=132 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+  01e1f945-7cd0-428e-ade5-759c810b1224 : 113 tracks, 1841498 octets (catalyst)
+__levelup_pic_octets__=140668928
+--- 01e1f945 : code de sortie 0
+--- 0a247154 : debut
+2026/08/30 15:00:20 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 15:00:22 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=2988684478930051889 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+2026/08/30 15:01:03 INFO inventaire : lectures de keyframe chunks=41 chunksIllisibles=0 imagesCles=40 records=298 grenadesParAncre=0 grenadesParPosition=219
+2026/08/30 15:01:15 INFO inventaire delta : lectures recordsDelta=261299 masqueAvecI22=391 i22Lues=391 i22Implausibles=0 masqueAvecI47=198 i47Lues=198 accord=190 accordVerifies=190 canalMunitionsRefuse=false
+2026/08/30 15:01:26 INFO capacites : lectures d i48 recordsDelta=261299 masqueAvecI48=29 lues=29 illisibles=0 sansIdentite=5
+2026/08/30 15:01:37 INFO camouflage : lectures d i28 queue[1] recordsDelta=261299 masqueAvecI28=2625 lues=2625 illisibles=0 sansVoie=1101
+2026/08/30 15:01:48 INFO grappin : lectures d i59 tag==3 recordsDelta=261299 masqueAvecI59=2186 lues=2185 illisibles=1 tag3=1 corpsCasses=1
+2026/08/30 15:02:08 INFO poses d'equipement : records de creation ti=37 decoupage=8/3 accords=18 ancres=8553 acceptes=354 confirmes=144 poses=144
+2026/08/30 15:02:20 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=1014 ancres=11714 acceptees=295 imagesCles=40 viesRecensees=154 pistesDelta=527
+2026/08/30 15:02:32 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=1165 ancres=8553 acceptees=354 imagesCles=40 viesRecensees=301 pistesDelta=443
+2026/08/30 15:02:42 INFO rejeu : proprietes ti=13 balayees match_id=0a247154-c9f8-462a-b363-794e1a3ee6b1 slots=44 records=6709 marches=3676 cassees=3033 chainees=1096 lectures=7742
+2026/08/30 15:04:16 INFO pont slot->joueur slots=159 viesNommees=158 viesTotal=169 lecturesIndex=40 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 15:04:16 INFO rejeu : courbe de score match_id=0a247154-c9f8-462a-b363-794e1a3ee6b1 identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=1556
+2026/08/30 15:04:16 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/30 15:04:16 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=8/3 poses=144 nommees=144 autres=0 avecPoseur=144 avecCap=136 deployees=0 lachees=144 origineInconnue=0
+2026/08/30 15:04:16 INFO rejeu : socles d'arme au sol balaye=true ancres=11714 acceptees=295 retenues=199 ecartees=96 objetsDObjectif=0 lachees=173 apparues=26 auRepos=25 grappes=6 socles=6 occupations=38 datees=26 sansPassage=9 jamaisVidees=3 cyclesEtablis=2
+2026/08/30 15:04:16 INFO rejeu : socles de power-up balaye=true acceptees=354 retenues=15 socles=1
+2026/08/30 15:04:16 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 15:04:16 INFO rejeu : etat des zones match_id=0a247154-c9f8-462a-b363-794e1a3ee6b1 methode=designator+geometry catalogue=5 slots=26 apparies=5 nonApparies=0 sansProprietaire=0 intervalles=209 periodesColline=6 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 15:04:16 INFO rejeu : episodes d'equipement actif viesPubliees=161 viesCamo=7 episodesCamo=10 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/30 15:04:16 INFO rejeu : couverture inventaire decodees=298 ecarteesAvantOrigine=0 ecarteesSansPiste=0 publiees=298
+2026/08/30 15:04:16 INFO rejeu : lectures d'inventaire vides lectures=298 vides=79 morts=69 inexpliquees=10
+2026/08/30 15:04:16 INFO rejeu : couverture des grenades portees imagesCles=219 delta=391 ecarteesSansPiste=0 canalMunitionsRefuse=false
+2026/08/30 15:04:16 INFO rejeu : palette de capacites palette=famille_a lectures=24 rangsNommes=3
+2026/08/30 15:04:16 INFO rejeu : couverture par calque tirsRattaches=1950 tirsDisponibles=2085 tirsSansSlot=101 tirsAmbigus=34 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs=nominal verdictGrenades="aucune donnée" verdictPont=nominal
+  0a247154-c9f8-462a-b363-794e1a3ee6b1 : 161 tracks, 3013557 octets (fo11_blank)
+__levelup_pic_octets__=191221760
+--- 0a247154 : code de sortie 0
+--- 606d9844 : debut
+2026/08/30 15:04:16 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 15:04:20 INFO replaybuild: morts sans revendication typées match_id=606d9844-4f22-42c1-8fb6-e9d541e5ff4c publiees=2 orphelines=2
+2026/08/30 15:04:28 INFO inventaire : lectures de keyframe chunks=14 chunksIllisibles=0 imagesCles=13 records=88 grenadesParAncre=0 grenadesParPosition=70
+2026/08/30 15:04:33 INFO inventaire delta : lectures recordsDelta=63903 masqueAvecI22=81 i22Lues=81 i22Implausibles=0 masqueAvecI47=35 i47Lues=35 accord=31 accordVerifies=31 canalMunitionsRefuse=true
+2026/08/30 15:04:37 INFO capacites : lectures d i48 recordsDelta=63903 masqueAvecI48=6 lues=6 illisibles=0 sansIdentite=3
+2026/08/30 15:04:41 INFO camouflage : lectures d i28 queue[1] recordsDelta=63903 masqueAvecI28=357 lues=357 illisibles=0 sansVoie=166
+2026/08/30 15:04:46 INFO grappin : lectures d i59 tag==3 recordsDelta=63903 masqueAvecI59=336 lues=331 illisibles=5 tag3=9 corpsCasses=1
+2026/08/30 15:04:52 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=17 ancres=693 acceptes=116 confirmes=67 poses=67
+2026/08/30 15:04:55 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=366 ancres=999 acceptees=138 imagesCles=13 viesRecensees=99 pistesDelta=180
+2026/08/30 15:04:58 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=364 ancres=693 acceptees=116 imagesCles=13 viesRecensees=96 pistesDelta=133
+2026/08/30 15:05:01 INFO rejeu : proprietes ti=13 balayees match_id=606d9844-4f22-42c1-8fb6-e9d541e5ff4c slots=52 records=2485 marches=1574 cassees=911 chainees=602 lectures=3059
+2026/08/30 15:05:30 INFO pont slot->joueur slots=38 viesNommees=35 viesTotal=56 lecturesIndex=13 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 15:05:30 WARN rejeu : rejets au-dessus du seuil calque=tirs cause=slotIntrouvable rejetes=103 disponibles=642 rattaches=539
+2026/08/30 15:05:30 INFO rejeu : courbe de score match_id=606d9844-4f22-42c1-8fb6-e9d541e5ff4c identiteEquipes=b manches=1 modePorte=true equipes=1 joueurs=8 points=354
+2026/08/30 15:05:30 INFO rejeu : tractions de grappin tirs=5 accroches=3 tractions=3 vies=2 rates=2 corpsCasses=0
+2026/08/30 15:05:30 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=67 nommees=67 autres=0 avecPoseur=65 avecCap=51 deployees=3 lachees=62 origineInconnue=2
+2026/08/30 15:05:30 INFO rejeu : socles d'arme au sol balaye=true ancres=999 acceptees=138 retenues=123 ecartees=15 objetsDObjectif=0 lachees=76 apparues=47 auRepos=27 grappes=13 socles=7 occupations=25 datees=15 sansPassage=2 jamaisVidees=8 cyclesEtablis=4
+2026/08/30 15:05:30 INFO rejeu : socles de power-up balaye=true acceptees=116 retenues=4 socles=1
+2026/08/30 15:05:30 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 15:05:30 INFO rejeu : etat des zones match_id=606d9844-4f22-42c1-8fb6-e9d541e5ff4c methode=designator+geometry catalogue=5 slots=21 apparies=3 nonApparies=0 sansProprietaire=0 intervalles=14 periodesColline=3 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 15:05:30 INFO rejeu : episodes d'equipement actif viesPubliees=42 viesCamo=2 episodesCamo=2 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/30 15:05:30 INFO rejeu : couverture inventaire decodees=88 ecarteesAvantOrigine=0 ecarteesSansPiste=0 publiees=88
+2026/08/30 15:05:30 INFO rejeu : lectures d'inventaire vides lectures=88 vides=18 morts=11 inexpliquees=7
+2026/08/30 15:05:30 INFO rejeu : couverture des grenades portees imagesCles=70 delta=81 ecarteesSansPiste=0 canalMunitionsRefuse=true
+2026/08/30 15:05:30 INFO rejeu : palette de capacites palette="non classee" lectures=3 rangsNommes=0
+2026/08/30 15:05:30 INFO rejeu : couverture par calque tirsRattaches=539 tirsDisponibles=642 tirsSansSlot=103 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=47 grenadesDisponibles=48 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+  606d9844-4f22-42c1-8fb6-e9d541e5ff4c : 42 tracks, 727691 octets (chasm)
+__levelup_pic_octets__=60583936
+--- 606d9844 : code de sortie 0
+--- 8076f97f : debut
+2026/08/30 15:05:30 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 15:05:31 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
+2026/08/30 15:05:52 INFO inventaire : lectures de keyframe chunks=20 chunksIllisibles=0 imagesCles=19 records=134 grenadesParAncre=0 grenadesParPosition=98
+2026/08/30 15:05:59 INFO inventaire delta : lectures recordsDelta=102212 masqueAvecI22=167 i22Lues=167 i22Implausibles=0 masqueAvecI47=68 i47Lues=68 accord=64 accordVerifies=64 canalMunitionsRefuse=true
+2026/08/30 15:06:05 INFO capacites : lectures d i48 recordsDelta=102212 masqueAvecI48=21 lues=21 illisibles=0 sansIdentite=3
+2026/08/30 15:06:12 INFO camouflage : lectures d i28 queue[1] recordsDelta=102212 masqueAvecI28=814 lues=814 illisibles=0 sansVoie=391
+2026/08/30 15:06:19 INFO grappin : lectures d i59 tag==3 recordsDelta=102212 masqueAvecI59=776 lues=776 illisibles=0 tag3=0 corpsCasses=0
+2026/08/30 15:06:30 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=17 ancres=1985 acceptes=181 confirmes=108 poses=108
+2026/08/30 15:06:36 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=617 ancres=3713 acceptees=247 imagesCles=19 viesRecensees=174 pistesDelta=540
+2026/08/30 15:06:42 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=605 ancres=1985 acceptees=181 imagesCles=19 viesRecensees=158 pistesDelta=252
+2026/08/30 15:06:47 INFO rejeu : proprietes ti=13 balayees match_id=8076f97f-b8aa-4949-ab51-6be5221d41e8 slots=52 records=10793 marches=5503 cassees=5290 chainees=1728 lectures=8957
+2026/08/30 15:07:30 INFO pont slot->joueur slots=74 viesNommees=69 viesTotal=87 lecturesIndex=19 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 15:07:30 WARN rejeu : rejets au-dessus du seuil calque=tirs cause=slotIntrouvable rejetes=192 disponibles=1411 rattaches=1204
+2026/08/30 15:07:30 INFO rejeu : courbe de score match_id=8076f97f-b8aa-4949-ab51-6be5221d41e8 identiteEquipes=b manches=1 modePorte=true equipes=1 joueurs=8 points=700
+2026/08/30 15:07:30 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/30 15:07:30 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=108 nommees=108 autres=0 avecPoseur=104 avecCap=89 deployees=20 lachees=84 origineInconnue=4
+2026/08/30 15:07:30 INFO rejeu : socles d'arme au sol balaye=true ancres=3713 acceptees=247 retenues=214 ecartees=33 objetsDObjectif=0 lachees=144 apparues=70 auRepos=30 grappes=12 socles=8 occupations=31 datees=23 sansPassage=8 jamaisVidees=0 cyclesEtablis=2
+2026/08/30 15:07:30 INFO rejeu : socles de power-up balaye=true acceptees=181 retenues=6 socles=1
+2026/08/30 15:07:30 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 15:07:30 INFO rejeu : etat des zones match_id=8076f97f-b8aa-4949-ab51-6be5221d41e8 methode=designator+geometry catalogue=5 slots=25 apparies=3 nonApparies=0 sansProprietaire=0 intervalles=36 periodesColline=3 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 15:07:30 INFO rejeu : episodes d'equipement actif viesPubliees=77 viesCamo=0 episodesCamo=0 viesSurbouclier=3 episodesSurbouclier=3
+2026/08/30 15:07:30 INFO rejeu : couverture inventaire decodees=134 ecarteesAvantOrigine=0 ecarteesSansPiste=0 publiees=134
+2026/08/30 15:07:30 INFO rejeu : lectures d'inventaire vides lectures=134 vides=36 morts=23 inexpliquees=13
+2026/08/30 15:07:30 INFO rejeu : couverture des grenades portees imagesCles=98 delta=167 ecarteesSansPiste=0 canalMunitionsRefuse=true
+2026/08/30 15:07:30 INFO rejeu : palette de capacites palette=famille_a lectures=18 rangsNommes=3
+2026/08/30 15:07:30 INFO rejeu : couverture par calque tirsRattaches=1204 tirsDisponibles=1411 tirsSansSlot=192 tirsAmbigus=15 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=116 grenadesDisponibles=118 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+  8076f97f-b8aa-4949-ab51-6be5221d41e8 : 77 tracks, 1188408 octets (fo11_blank)
+__levelup_pic_octets__=77508608
+--- 8076f97f : code de sortie 0
+=== FIN cuisson ===
+=== E4-bis cuisson KOTH (source TICS) — 2026-08-30 15:49 ===
+2026/08/30 15:49:31 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 15:49:39 INFO replaybuild: morts sans revendication typées match_id=21ece4d8-5715-4e2c-8c9b-937440ee564f publiees=1 orphelines=1
+2026/08/30 15:49:54 INFO inventaire : lectures de keyframe chunks=25 chunksIllisibles=0 imagesCles=24 records=174 grenadesParAncre=0 grenadesParPosition=110
+2026/08/30 15:50:00 INFO inventaire delta : lectures recordsDelta=128581 masqueAvecI22=214 i22Lues=214 i22Implausibles=0 masqueAvecI47=96 i47Lues=96 accord=91 accordVerifies=91 canalMunitionsRefuse=true
+2026/08/30 15:50:07 INFO capacites : lectures d i48 recordsDelta=128581 masqueAvecI48=24 lues=24 illisibles=0 sansIdentite=1
+2026/08/30 15:50:13 INFO camouflage : lectures d i28 queue[1] recordsDelta=128581 masqueAvecI28=599 lues=599 illisibles=0 sansVoie=274
+2026/08/30 15:50:19 INFO grappin : lectures d i59 tag==3 recordsDelta=128581 masqueAvecI59=551 lues=551 illisibles=0 tag3=0 corpsCasses=0
+2026/08/30 15:50:29 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=17 ancres=3929 acceptes=228 confirmes=27 poses=27
+2026/08/30 15:50:35 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=678 ancres=5267 acceptees=294 imagesCles=24 viesRecensees=192 pistesDelta=508
+2026/08/30 15:50:41 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=698 ancres=3929 acceptees=228 imagesCles=24 viesRecensees=205 pistesDelta=225
+2026/08/30 15:50:46 INFO rejeu : proprietes ti=13 balayees match_id=21ece4d8-5715-4e2c-8c9b-937440ee564f slots=52 records=11377 marches=5251 cassees=6126 chainees=2443 lectures=8164
+2026/08/30 15:51:25 INFO pont slot->joueur slots=94 viesNommees=89 viesTotal=102 lecturesIndex=24 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 15:51:25 INFO rejeu : courbe de score match_id=21ece4d8-5715-4e2c-8c9b-937440ee564f identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=918
+2026/08/30 15:51:25 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/30 15:51:25 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=27 nommees=27 autres=0 avecPoseur=0 avecCap=0 deployees=0 lachees=0 origineInconnue=27
+2026/08/30 15:51:25 INFO rejeu : socles d'arme au sol balaye=true ancres=5267 acceptees=294 retenues=239 ecartees=55 objetsDObjectif=0 lachees=0 apparues=239 auRepos=26 grappes=8 socles=7 occupations=25 datees=0 sansPassage=25 jamaisVidees=0 cyclesEtablis=0
+2026/08/30 15:51:25 INFO rejeu : socles de power-up balaye=true acceptees=228 retenues=0 socles=0
+2026/08/30 15:51:25 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 15:51:25 INFO rejeu : etat des zones match_id=21ece4d8-5715-4e2c-8c9b-937440ee564f methode=designator+geometry catalogue=5 slots=21 apparies=3 nonApparies=0 sansProprietaire=0 intervalles=52 periodesColline=4 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 15:51:25 INFO rejeu : episodes d'equipement actif viesPubliees=95 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/30 15:51:25 INFO rejeu : couverture inventaire decodees=174 ecarteesAvantOrigine=0 ecarteesSansPiste=3 publiees=171
+2026/08/30 15:51:25 INFO rejeu : lectures d'inventaire vides lectures=171 vides=61 morts=44 inexpliquees=17
+2026/08/30 15:51:25 INFO rejeu : couverture des grenades portees imagesCles=110 delta=214 ecarteesSansPiste=0 canalMunitionsRefuse=true
+2026/08/30 15:51:25 INFO rejeu : palette de capacites palette=famille_a lectures=23 rangsNommes=2
+2026/08/30 15:51:25 INFO rejeu : couverture par calque tirsRattaches=2418 tirsDisponibles=2484 tirsSansSlot=66 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=156 grenadesDisponibles=156 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+  21ece4d8-5715-4e2c-8c9b-937440ee564f : 95 tracks, 1459680 octets (sgh_interlock)
+__levelup_pic_octets__=101199872
+--- 21ece4d8 : code 0
+2026/08/30 15:51:25 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 15:51:39 INFO inventaire : lectures de keyframe chunks=18 chunksIllisibles=0 imagesCles=17 records=113 grenadesParAncre=0 grenadesParPosition=92
+2026/08/30 15:51:43 INFO inventaire delta : lectures recordsDelta=98674 masqueAvecI22=142 i22Lues=142 i22Implausibles=0 masqueAvecI47=63 i47Lues=63 accord=61 accordVerifies=61 canalMunitionsRefuse=false
+2026/08/30 15:51:47 INFO capacites : lectures d i48 recordsDelta=98674 masqueAvecI48=15 lues=15 illisibles=0 sansIdentite=1
+2026/08/30 15:51:51 INFO camouflage : lectures d i28 queue[1] recordsDelta=98674 masqueAvecI28=615 lues=615 illisibles=0 sansVoie=293
+2026/08/30 15:51:55 INFO grappin : lectures d i59 tag==3 recordsDelta=98674 masqueAvecI59=582 lues=582 illisibles=0 tag3=0 corpsCasses=0
+2026/08/30 15:52:02 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=14 ancres=1999 acceptes=130 confirmes=80 poses=80
+2026/08/30 15:52:05 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=514 ancres=3446 acceptees=210 imagesCles=17 viesRecensees=140 pistesDelta=288
+2026/08/30 15:52:09 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=507 ancres=1999 acceptees=130 imagesCles=17 viesRecensees=124 pistesDelta=140
+2026/08/30 15:52:12 INFO rejeu : proprietes ti=13 balayees match_id=7f1bbf06-d54d-4434-ad80-923fcabe8b1b slots=52 records=11209 marches=5011 cassees=6198 chainees=2385 lectures=7334
+2026/08/30 15:52:40 INFO pont slot->joueur slots=67 viesNommees=60 viesTotal=71 lecturesIndex=17 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 15:52:40 INFO rejeu : courbe de score match_id=7f1bbf06-d54d-4434-ad80-923fcabe8b1b identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=614
+2026/08/30 15:52:40 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/30 15:52:40 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=80 nommees=80 autres=0 avecPoseur=80 avecCap=74 deployees=7 lachees=73 origineInconnue=0
+2026/08/30 15:52:40 INFO rejeu : socles d'arme au sol balaye=true ancres=3446 acceptees=210 retenues=166 ecartees=44 objetsDObjectif=0 lachees=116 apparues=50 auRepos=25 grappes=9 socles=6 occupations=22 datees=18 sansPassage=0 jamaisVidees=4 cyclesEtablis=5
+2026/08/30 15:52:40 INFO rejeu : socles de power-up balaye=true acceptees=130 retenues=0 socles=0
+2026/08/30 15:52:40 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 15:52:40 INFO rejeu : etat des zones match_id=7f1bbf06-d54d-4434-ad80-923fcabe8b1b methode=designator+geometry catalogue=5 slots=37 apparies=3 nonApparies=0 sansProprietaire=0 intervalles=44 periodesColline=3 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 15:52:40 INFO rejeu : episodes d'equipement actif viesPubliees=68 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/30 15:52:40 INFO rejeu : couverture inventaire decodees=113 ecarteesAvantOrigine=0 ecarteesSansPiste=0 publiees=113
+2026/08/30 15:52:40 INFO rejeu : lectures d'inventaire vides lectures=113 vides=21 morts=15 inexpliquees=6
+2026/08/30 15:52:40 INFO rejeu : couverture des grenades portees imagesCles=92 delta=142 ecarteesSansPiste=0 canalMunitionsRefuse=false
+2026/08/30 15:52:40 INFO rejeu : palette de capacites palette=famille_a lectures=14 rangsNommes=1
+2026/08/30 15:52:40 INFO rejeu : couverture par calque tirsRattaches=1595 tirsDisponibles=1606 tirsSansSlot=11 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=103 grenadesDisponibles=106 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+  7f1bbf06-d54d-4434-ad80-923fcabe8b1b : 68 tracks, 1798257 octets (sgh_streets)
+__levelup_pic_octets__=91717632
+--- 7f1bbf06 : code 0
+2026/08/30 15:52:40 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 15:53:09 INFO inventaire : lectures de keyframe chunks=22 chunksIllisibles=0 imagesCles=21 records=161 grenadesParAncre=0 grenadesParPosition=118
+2026/08/30 15:53:17 INFO inventaire delta : lectures recordsDelta=113179 masqueAvecI22=130 i22Lues=130 i22Implausibles=0 masqueAvecI47=64 i47Lues=64 accord=57 accordVerifies=57 canalMunitionsRefuse=true
+2026/08/30 15:53:25 INFO capacites : lectures d i48 recordsDelta=113179 masqueAvecI48=14 lues=14 illisibles=0 sansIdentite=1
+2026/08/30 15:53:33 INFO camouflage : lectures d i28 queue[1] recordsDelta=113179 masqueAvecI28=933 lues=933 illisibles=0 sansVoie=433
+2026/08/30 15:53:41 INFO grappin : lectures d i59 tag==3 recordsDelta=113179 masqueAvecI59=854 lues=854 illisibles=0 tag3=0 corpsCasses=0
+2026/08/30 15:53:54 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=18 ancres=4421 acceptes=251 confirmes=123 poses=123
+2026/08/30 15:54:01 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=736 ancres=4059 acceptees=302 imagesCles=21 viesRecensees=204 pistesDelta=361
+2026/08/30 15:54:09 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=710 ancres=4421 acceptees=251 imagesCles=21 viesRecensees=172 pistesDelta=248
+2026/08/30 15:54:16 INFO rejeu : proprietes ti=13 balayees match_id=a36c8bed-e6a0-4ba2-be69-916074e8df6f slots=57 records=6908 marches=4266 cassees=2642 chainees=2303 lectures=6834
+2026/08/30 15:54:56 INFO pont slot->joueur slots=61 viesNommees=60 viesTotal=84 lecturesIndex=21 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 15:54:56 WARN rejeu : rejets au-dessus du seuil calque=tirs cause=slotIntrouvable rejetes=188 disponibles=1623 rattaches=1427
+2026/08/30 15:54:56 INFO rejeu : courbe de score match_id=a36c8bed-e6a0-4ba2-be69-916074e8df6f identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=674
+2026/08/30 15:54:56 WARN rejeu : lectures camo NON BINAIRES ignorees — l'interrupteur mesure ne connait que 0 et 4095 lectures=3
+2026/08/30 15:54:56 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/30 15:54:56 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=123 nommees=123 autres=0 avecPoseur=115 avecCap=81 deployees=2 lachees=113 origineInconnue=8
+2026/08/30 15:54:56 INFO rejeu : socles d'arme au sol balaye=true ancres=4059 acceptees=302 retenues=253 ecartees=49 objetsDObjectif=0 lachees=126 apparues=127 auRepos=73 grappes=27 socles=19 occupations=65 datees=49 sansPassage=2 jamaisVidees=14 cyclesEtablis=9
+2026/08/30 15:54:56 INFO rejeu : socles de power-up balaye=true acceptees=251 retenues=0 socles=0
+2026/08/30 15:54:56 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 15:54:56 INFO rejeu : etat des zones match_id=a36c8bed-e6a0-4ba2-be69-916074e8df6f methode=designator+geometry catalogue=5 slots=31 apparies=4 nonApparies=0 sansProprietaire=0 intervalles=40 periodesColline=4 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 15:54:56 INFO rejeu : episodes d'equipement actif viesPubliees=75 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/30 15:54:56 INFO rejeu : couverture inventaire decodees=161 ecarteesAvantOrigine=0 ecarteesSansPiste=0 publiees=161
+2026/08/30 15:54:56 INFO rejeu : lectures d'inventaire vides lectures=161 vides=43 morts=24 inexpliquees=19
+2026/08/30 15:54:56 INFO rejeu : couverture des grenades portees imagesCles=118 delta=130 ecarteesSansPiste=0 canalMunitionsRefuse=true
+2026/08/30 15:54:56 INFO rejeu : palette de capacites palette=famille_a lectures=13 rangsNommes=2
+2026/08/30 15:54:56 INFO rejeu : couverture par calque tirsRattaches=1427 tirsDisponibles=1623 tirsSansSlot=188 tirsAmbigus=8 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=85 grenadesDisponibles=86 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+  a36c8bed-e6a0-4ba2-be69-916074e8df6f : 75 tracks, 1347916 octets (fo08_wetland)
+__levelup_pic_octets__=93868032
+--- a36c8bed : code 0
+2026/08/30 15:54:56 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 15:55:24 INFO inventaire : lectures de keyframe chunks=29 chunksIllisibles=0 imagesCles=28 records=215 grenadesParAncre=0 grenadesParPosition=168
+2026/08/30 15:55:31 INFO inventaire delta : lectures recordsDelta=173040 masqueAvecI22=175 i22Lues=175 i22Implausibles=2 masqueAvecI47=80 i47Lues=80 accord=77 accordVerifies=77 canalMunitionsRefuse=true
+2026/08/30 15:55:38 INFO capacites : lectures d i48 recordsDelta=173040 masqueAvecI48=34 lues=34 illisibles=0 sansIdentite=5
+2026/08/30 15:55:44 INFO camouflage : lectures d i28 queue[1] recordsDelta=173040 masqueAvecI28=1565 lues=1565 illisibles=0 sansVoie=712
+2026/08/30 15:55:51 INFO grappin : lectures d i59 tag==3 recordsDelta=173040 masqueAvecI59=1424 lues=1418 illisibles=6 tag3=12 corpsCasses=1
+2026/08/30 15:56:03 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=13 ancres=5492 acceptes=283 confirmes=151 poses=151
+2026/08/30 15:56:10 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=911 ancres=7953 acceptees=405 imagesCles=28 viesRecensees=227 pistesDelta=646
+2026/08/30 15:56:16 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=912 ancres=5492 acceptees=283 imagesCles=28 viesRecensees=225 pistesDelta=374
+2026/08/30 15:56:23 INFO rejeu : proprietes ti=13 balayees match_id=01e1f945-7cd0-428e-ade5-759c810b1224 slots=52 records=10575 marches=6867 cassees=3708 chainees=4193 lectures=10239
+2026/08/30 15:57:08 INFO pont slot->joueur slots=100 viesNommees=97 viesTotal=113 lecturesIndex=28 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 15:57:08 WARN rejeu : rejets au-dessus du seuil calque=tirs cause=slotIntrouvable rejetes=222 disponibles=2154 rattaches=1921
+2026/08/30 15:57:08 INFO rejeu : courbe de score match_id=01e1f945-7cd0-428e-ade5-759c810b1224 identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=964
+2026/08/30 15:57:08 INFO rejeu : tractions de grappin tirs=6 accroches=5 tractions=5 vies=5 rates=1 corpsCasses=0
+2026/08/30 15:57:08 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=151 nommees=151 autres=0 avecPoseur=151 avecCap=130 deployees=7 lachees=144 origineInconnue=0
+2026/08/30 15:57:08 INFO rejeu : socles d'arme au sol balaye=true ancres=7953 acceptees=405 retenues=291 ecartees=114 objetsDObjectif=0 lachees=203 apparues=88 auRepos=40 grappes=10 socles=10 occupations=49 datees=38 sansPassage=8 jamaisVidees=3 cyclesEtablis=5
+2026/08/30 15:57:08 INFO rejeu : socles de power-up balaye=true acceptees=283 retenues=10 socles=1
+2026/08/30 15:57:08 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 15:57:08 INFO rejeu : etat des zones match_id=01e1f945-7cd0-428e-ade5-759c810b1224 methode=designator+geometry catalogue=6 slots=28 apparies=4 nonApparies=0 sansProprietaire=0 intervalles=100 periodesColline=5 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 15:57:08 INFO rejeu : episodes d'equipement actif viesPubliees=113 viesCamo=0 episodesCamo=0 viesSurbouclier=5 episodesSurbouclier=5
+2026/08/30 15:57:08 INFO rejeu : couverture inventaire decodees=215 ecarteesAvantOrigine=0 ecarteesSansPiste=0 publiees=215
+2026/08/30 15:57:08 INFO rejeu : lectures d'inventaire vides lectures=215 vides=47 morts=31 inexpliquees=16
+2026/08/30 15:57:08 INFO rejeu : couverture des grenades portees imagesCles=168 delta=173 ecarteesSansPiste=0 canalMunitionsRefuse=true
+2026/08/30 15:57:08 INFO rejeu : palette de capacites palette=famille_a lectures=29 rangsNommes=3
+2026/08/30 15:57:08 INFO rejeu : couverture par calque tirsRattaches=1921 tirsDisponibles=2154 tirsSansSlot=222 tirsAmbigus=11 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=130 grenadesDisponibles=132 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+  01e1f945-7cd0-428e-ade5-759c810b1224 : 113 tracks, 1845542 octets (catalyst)
+__levelup_pic_octets__=125620224
+--- 01e1f945 : code 0
+2026/08/30 15:57:08 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 15:57:09 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=2988684478930051889 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+2026/08/30 15:57:42 INFO inventaire : lectures de keyframe chunks=41 chunksIllisibles=0 imagesCles=40 records=298 grenadesParAncre=0 grenadesParPosition=219
+2026/08/30 15:57:51 INFO inventaire delta : lectures recordsDelta=261299 masqueAvecI22=391 i22Lues=391 i22Implausibles=0 masqueAvecI47=198 i47Lues=198 accord=190 accordVerifies=190 canalMunitionsRefuse=false
+2026/08/30 15:57:59 INFO capacites : lectures d i48 recordsDelta=261299 masqueAvecI48=29 lues=29 illisibles=0 sansIdentite=5
+2026/08/30 15:58:08 INFO camouflage : lectures d i28 queue[1] recordsDelta=261299 masqueAvecI28=2625 lues=2625 illisibles=0 sansVoie=1101
+2026/08/30 15:58:16 INFO grappin : lectures d i59 tag==3 recordsDelta=261299 masqueAvecI59=2186 lues=2185 illisibles=1 tag3=1 corpsCasses=1
+2026/08/30 15:58:32 INFO poses d'equipement : records de creation ti=37 decoupage=8/3 accords=18 ancres=8553 acceptes=354 confirmes=144 poses=144
+2026/08/30 15:58:40 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=1014 ancres=11714 acceptees=295 imagesCles=40 viesRecensees=154 pistesDelta=527
+2026/08/30 15:58:48 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=1165 ancres=8553 acceptees=354 imagesCles=40 viesRecensees=301 pistesDelta=443
+2026/08/30 15:58:56 INFO rejeu : proprietes ti=13 balayees match_id=0a247154-c9f8-462a-b363-794e1a3ee6b1 slots=44 records=6709 marches=3676 cassees=3033 chainees=1096 lectures=7742
+2026/08/30 16:00:14 INFO pont slot->joueur slots=159 viesNommees=158 viesTotal=169 lecturesIndex=40 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 16:00:14 INFO rejeu : courbe de score match_id=0a247154-c9f8-462a-b363-794e1a3ee6b1 identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=1556
+2026/08/30 16:00:14 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/30 16:00:14 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=8/3 poses=144 nommees=144 autres=0 avecPoseur=144 avecCap=136 deployees=0 lachees=144 origineInconnue=0
+2026/08/30 16:00:14 INFO rejeu : socles d'arme au sol balaye=true ancres=11714 acceptees=295 retenues=199 ecartees=96 objetsDObjectif=0 lachees=173 apparues=26 auRepos=25 grappes=6 socles=6 occupations=38 datees=26 sansPassage=9 jamaisVidees=3 cyclesEtablis=2
+2026/08/30 16:00:14 INFO rejeu : socles de power-up balaye=true acceptees=354 retenues=15 socles=1
+2026/08/30 16:00:14 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 16:00:14 INFO rejeu : etat des zones match_id=0a247154-c9f8-462a-b363-794e1a3ee6b1 methode=designator+geometry catalogue=5 slots=26 apparies=5 nonApparies=0 sansProprietaire=0 intervalles=209 periodesColline=6 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 16:00:14 INFO rejeu : episodes d'equipement actif viesPubliees=161 viesCamo=7 episodesCamo=10 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/30 16:00:14 INFO rejeu : couverture inventaire decodees=298 ecarteesAvantOrigine=0 ecarteesSansPiste=0 publiees=298
+2026/08/30 16:00:14 INFO rejeu : lectures d'inventaire vides lectures=298 vides=79 morts=69 inexpliquees=10
+2026/08/30 16:00:14 INFO rejeu : couverture des grenades portees imagesCles=219 delta=391 ecarteesSansPiste=0 canalMunitionsRefuse=false
+2026/08/30 16:00:14 INFO rejeu : palette de capacites palette=famille_a lectures=24 rangsNommes=3
+2026/08/30 16:00:14 INFO rejeu : couverture par calque tirsRattaches=1950 tirsDisponibles=2085 tirsSansSlot=101 tirsAmbigus=34 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs=nominal verdictGrenades="aucune donnée" verdictPont=nominal
+  0a247154-c9f8-462a-b363-794e1a3ee6b1 : 161 tracks, 3013557 octets (fo11_blank)
+__levelup_pic_octets__=194400256
+--- 0a247154 : code 0
+2026/08/30 16:00:14 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 16:00:17 INFO replaybuild: morts sans revendication typées match_id=606d9844-4f22-42c1-8fb6-e9d541e5ff4c publiees=2 orphelines=2
+2026/08/30 16:00:26 INFO inventaire : lectures de keyframe chunks=14 chunksIllisibles=0 imagesCles=13 records=88 grenadesParAncre=0 grenadesParPosition=70
+2026/08/30 16:00:30 INFO inventaire delta : lectures recordsDelta=63903 masqueAvecI22=81 i22Lues=81 i22Implausibles=0 masqueAvecI47=35 i47Lues=35 accord=31 accordVerifies=31 canalMunitionsRefuse=true
+2026/08/30 16:00:35 INFO capacites : lectures d i48 recordsDelta=63903 masqueAvecI48=6 lues=6 illisibles=0 sansIdentite=3
+2026/08/30 16:00:40 INFO camouflage : lectures d i28 queue[1] recordsDelta=63903 masqueAvecI28=357 lues=357 illisibles=0 sansVoie=166
+2026/08/30 16:00:44 INFO grappin : lectures d i59 tag==3 recordsDelta=63903 masqueAvecI59=336 lues=331 illisibles=5 tag3=9 corpsCasses=1
+2026/08/30 16:00:50 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=17 ancres=693 acceptes=116 confirmes=67 poses=67
+2026/08/30 16:00:53 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=366 ancres=999 acceptees=138 imagesCles=13 viesRecensees=99 pistesDelta=180
+2026/08/30 16:00:55 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=364 ancres=693 acceptees=116 imagesCles=13 viesRecensees=96 pistesDelta=133
+2026/08/30 16:00:58 INFO rejeu : proprietes ti=13 balayees match_id=606d9844-4f22-42c1-8fb6-e9d541e5ff4c slots=52 records=2485 marches=1574 cassees=911 chainees=602 lectures=3059
+2026/08/30 16:01:18 INFO pont slot->joueur slots=38 viesNommees=35 viesTotal=56 lecturesIndex=13 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 16:01:18 WARN rejeu : rejets au-dessus du seuil calque=tirs cause=slotIntrouvable rejetes=103 disponibles=642 rattaches=539
+2026/08/30 16:01:18 INFO rejeu : courbe de score match_id=606d9844-4f22-42c1-8fb6-e9d541e5ff4c identiteEquipes=b manches=1 modePorte=true equipes=1 joueurs=8 points=354
+2026/08/30 16:01:18 INFO rejeu : tractions de grappin tirs=5 accroches=3 tractions=3 vies=2 rates=2 corpsCasses=0
+2026/08/30 16:01:18 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=67 nommees=67 autres=0 avecPoseur=65 avecCap=51 deployees=3 lachees=62 origineInconnue=2
+2026/08/30 16:01:18 INFO rejeu : socles d'arme au sol balaye=true ancres=999 acceptees=138 retenues=123 ecartees=15 objetsDObjectif=0 lachees=76 apparues=47 auRepos=27 grappes=13 socles=7 occupations=25 datees=15 sansPassage=2 jamaisVidees=8 cyclesEtablis=4
+2026/08/30 16:01:18 INFO rejeu : socles de power-up balaye=true acceptees=116 retenues=4 socles=1
+2026/08/30 16:01:18 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 16:01:18 INFO rejeu : etat des zones match_id=606d9844-4f22-42c1-8fb6-e9d541e5ff4c methode=designator+geometry catalogue=5 slots=21 apparies=3 nonApparies=0 sansProprietaire=0 intervalles=14 periodesColline=3 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 16:01:18 INFO rejeu : episodes d'equipement actif viesPubliees=42 viesCamo=2 episodesCamo=2 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/30 16:01:18 INFO rejeu : couverture inventaire decodees=88 ecarteesAvantOrigine=0 ecarteesSansPiste=0 publiees=88
+2026/08/30 16:01:18 INFO rejeu : lectures d'inventaire vides lectures=88 vides=18 morts=11 inexpliquees=7
+2026/08/30 16:01:18 INFO rejeu : couverture des grenades portees imagesCles=70 delta=81 ecarteesSansPiste=0 canalMunitionsRefuse=true
+2026/08/30 16:01:18 INFO rejeu : palette de capacites palette="non classee" lectures=3 rangsNommes=0
+2026/08/30 16:01:18 INFO rejeu : couverture par calque tirsRattaches=539 tirsDisponibles=642 tirsSansSlot=103 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=47 grenadesDisponibles=48 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+  606d9844-4f22-42c1-8fb6-e9d541e5ff4c : 42 tracks, 729713 octets (chasm)
+__levelup_pic_octets__=54317056
+--- 606d9844 : code 0
+2026/08/30 16:01:18 INFO plafond memoire arme souple_gib=3 dur_octets=4026531840
+2026/08/30 16:01:18 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
+2026/08/30 16:01:36 INFO inventaire : lectures de keyframe chunks=20 chunksIllisibles=0 imagesCles=19 records=134 grenadesParAncre=0 grenadesParPosition=98
+2026/08/30 16:01:42 INFO inventaire delta : lectures recordsDelta=102212 masqueAvecI22=167 i22Lues=167 i22Implausibles=0 masqueAvecI47=68 i47Lues=68 accord=64 accordVerifies=64 canalMunitionsRefuse=true
+2026/08/30 16:01:47 INFO capacites : lectures d i48 recordsDelta=102212 masqueAvecI48=21 lues=21 illisibles=0 sansIdentite=3
+2026/08/30 16:01:52 INFO camouflage : lectures d i28 queue[1] recordsDelta=102212 masqueAvecI28=814 lues=814 illisibles=0 sansVoie=391
+2026/08/30 16:01:57 INFO grappin : lectures d i59 tag==3 recordsDelta=102212 masqueAvecI59=776 lues=776 illisibles=0 tag3=0 corpsCasses=0
+2026/08/30 16:02:06 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=17 ancres=1985 acceptes=181 confirmes=108 poses=108
+2026/08/30 16:02:12 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=617 ancres=3713 acceptees=247 imagesCles=19 viesRecensees=174 pistesDelta=540
+2026/08/30 16:02:18 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=605 ancres=1985 acceptees=181 imagesCles=19 viesRecensees=158 pistesDelta=252
+2026/08/30 16:02:24 INFO rejeu : proprietes ti=13 balayees match_id=8076f97f-b8aa-4949-ab51-6be5221d41e8 slots=52 records=10793 marches=5503 cassees=5290 chainees=1728 lectures=8957
+2026/08/30 16:02:55 INFO pont slot->joueur slots=74 viesNommees=69 viesTotal=87 lecturesIndex=19 desaccordsIndex=0 collisionsSlot=0
+2026/08/30 16:02:55 WARN rejeu : rejets au-dessus du seuil calque=tirs cause=slotIntrouvable rejetes=192 disponibles=1411 rattaches=1204
+2026/08/30 16:02:55 INFO rejeu : courbe de score match_id=8076f97f-b8aa-4949-ab51-6be5221d41e8 identiteEquipes=b manches=1 modePorte=true equipes=1 joueurs=8 points=700
+2026/08/30 16:02:55 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/30 16:02:55 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=108 nommees=108 autres=0 avecPoseur=104 avecCap=89 deployees=20 lachees=84 origineInconnue=4
+2026/08/30 16:02:55 INFO rejeu : socles d'arme au sol balaye=true ancres=3713 acceptees=247 retenues=214 ecartees=33 objetsDObjectif=0 lachees=144 apparues=70 auRepos=30 grappes=12 socles=8 occupations=31 datees=23 sansPassage=8 jamaisVidees=0 cyclesEtablis=2
+2026/08/30 16:02:55 INFO rejeu : socles de power-up balaye=true acceptees=181 retenues=6 socles=1
+2026/08/30 16:02:55 INFO rejeu : objets d objectif libres balaye=true declares=1 vies=0 points=0 immobiles=0 horsAxe=0
+2026/08/30 16:02:55 INFO rejeu : etat des zones match_id=8076f97f-b8aa-4949-ab51-6be5221d41e8 methode=designator+geometry catalogue=5 slots=25 apparies=3 nonApparies=0 sansProprietaire=0 intervalles=36 periodesColline=3 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/30 16:02:55 INFO rejeu : episodes d'equipement actif viesPubliees=77 viesCamo=0 episodesCamo=0 viesSurbouclier=3 episodesSurbouclier=3
+2026/08/30 16:02:55 INFO rejeu : couverture inventaire decodees=134 ecarteesAvantOrigine=0 ecarteesSansPiste=0 publiees=134
+2026/08/30 16:02:55 INFO rejeu : lectures d'inventaire vides lectures=134 vides=36 morts=23 inexpliquees=13
+2026/08/30 16:02:55 INFO rejeu : couverture des grenades portees imagesCles=98 delta=167 ecarteesSansPiste=0 canalMunitionsRefuse=true
+2026/08/30 16:02:55 INFO rejeu : palette de capacites palette=famille_a lectures=18 rangsNommes=3
+2026/08/30 16:02:55 INFO rejeu : couverture par calque tirsRattaches=1204 tirsDisponibles=1411 tirsSansSlot=192 tirsAmbigus=15 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=116 grenadesDisponibles=118 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+  8076f97f-b8aa-4949-ab51-6be5221d41e8 : 77 tracks, 1191694 octets (fo11_blank)
+__levelup_pic_octets__=91959296
+--- 8076f97f : code 0
+=== FIN ===

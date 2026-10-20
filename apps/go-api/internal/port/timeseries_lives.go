@@ -1,0 +1,28 @@
+package port
+
+import (
+	"context"
+
+	"levelup/go-api/internal/domain"
+)
+
+// SoloLivesRepository — les vies, morts situées et frags d'UN joueur sur une fenêtre de matchs
+// (carte « Mes vies : près d'un coéquipier ou seul » des Séries temporelles) : UN chargement par
+// requête, borné par les matchs de la fenêtre sur le `match_id` de chaque vue `_latest` et par le
+// joueur après la fenêtre (ADR 0036 I2) — `match_lives_latest`, `match_death_context_latest`,
+// `match_kill_events_latest`, plus les camps (`match_participants`) et la variante de chaque match
+// (`match_registry.game_variant_name`, la clé de la portée du radar).
+//
+// Implémenté par internal/platform/duckdb.SoloLivesRepo, câblé sous `film.kill_positions` (la porte
+// des vies et du contexte des morts au sync). Table absente : games.ErrCapabilityNotSupported.
+type SoloLivesRepository interface {
+	LoadLivesNearTeammate(ctx context.Context, matchIDs []string, xuid string) (domain.ViesLues, error)
+}
+
+// CampLivesRepository — la même lecture pour PLUSIEURS joueurs à la fois (Vue match : « Isolement »
+// de chaque joueur de l'équipe), en UNE lecture (ADR 0036 I4). Une entrée par joueur demandé, vide
+// s'il n'a aucune ligne ; le journal non publiable et les variantes, communs, sont sur chaque entrée.
+// Implémenté par la même internal/platform/duckdb.SoloLivesRepo, sous la même porte.
+type CampLivesRepository interface {
+	LoadLivesNearTeammateForPlayers(ctx context.Context, matchIDs, xuids []string) (map[string]domain.ViesLues, error)
+}

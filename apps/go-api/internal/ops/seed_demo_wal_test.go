@@ -104,6 +104,23 @@ var allowedBareOsRemove = map[string][]string{
 		// removeDuckDBForFreshWrite (2026-07-26).
 		"if err := os.Remove(path); err != nil && !os.IsNotExist(err) {",
 	},
+	// Génération démo écrite à part (seed_demo_publish.go) : on retire des DOSSIERS entiers —
+	// la génération non publiée, les éléments remplacés, un titre en échec —, bases ET WAL
+	// ensemble ; aucun WAL orphelin ne peut survivre à un RemoveAll de son dossier (2026-10-09).
+	"seed_demo_publish.go": {
+		"if err := os.RemoveAll(gen); err != nil {",
+		"if err := os.RemoveAll(gen); err != nil {",
+		"if err := os.RemoveAll(prev); err != nil {",
+		"if err := os.RemoveAll(prev); err != nil {",
+	},
+	"seed_demo_multititle.go": {
+		"if err := os.RemoveAll(titlePkg.NewDemoLayout(genDir).TitleDir(slug)); err != nil {",
+	},
+	"seed_demo_replays.go": {
+		// removeLogged : élagage des rejeux figés hors manifeste — artefacts JSON et films
+		// (chunks + manifeste), jamais une base DuckDB (2026-10-09).
+		"if err := os.RemoveAll(path); err != nil {",
+	},
 }
 
 func TestSeedDemoNoBareOsRemove(t *testing.T) {
@@ -147,8 +164,12 @@ func TestSeedDemoNoBareOsRemove(t *testing.T) {
 	if scanned < 5 {
 		t.Fatalf("seuls %d fichiers seed_demo*.go scannés — scan cassé ou fichiers renommés", scanned)
 	}
-	if allowlistHits != len(allowedBareOsRemove["seed_demo.go"]) {
+	attendu := 0
+	for _, frags := range allowedBareOsRemove {
+		attendu += len(frags)
+	}
+	if allowlistHits != attendu {
 		t.Errorf("allowlist matchée %d fois, attendu %d — entrée périmée (code déplacé/réécrit) : la nettoyer",
-			allowlistHits, len(allowedBareOsRemove["seed_demo.go"]))
+			allowlistHits, attendu)
 	}
 }

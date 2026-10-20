@@ -1,5 +1,5 @@
 // Package domain — admin_invariants.go : payloads du dashboard admin
-// « Intégrité des données » (Phase 4 du plan .ai/PLAN_SYNC_INVARIANTS_GATE.md).
+// « Intégrité des données » (Phase 4 du plan .ai/archive/V7/PLAN_SYNC_INVARIANTS_GATE.md).
 //
 // Miroir JSON des Violations du package internal/sync/invariants — le domain
 // ne dépend pas du package invariants (sens de dépendance : api → invariants,

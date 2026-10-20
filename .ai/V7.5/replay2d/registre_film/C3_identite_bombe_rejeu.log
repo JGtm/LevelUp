@@ -1,0 +1,46 @@
+# C3 — REJEU DU GATE A1 (lot C catalogues, 2026-08-27)
+# Le gate C2.3 (controle spatial) est NON TENU : les sites assault_bomb ne sont PAS entres
+# au catalogue. La precondition du rejeu (« seul le catalogue a change ») n'est pas remplie :
+# assaut_a1_identite_test.go lit les sites du catalogue, inchange pour ces cartes — le
+# resultat est determine par construction (jambe du site vide, 0 candidat, identique au
+# lot A). UN film echantillon est rejoue ci-dessous en CONFIRMATION (pas une campagne).
+
+=== RUN   TestAssautA1Identite
+2026/08/27 17:33:47 INFO plafond memoire arme pour ce decodage outil=a1-assaut souple_gib=2 dur_octets=2684354560
+2026/08/27 17:33:54 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=1872162450444512260 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    assaut_a1_identite_test.go:87: 35b75a31 : denominateurs du balayage — 20399 ancres, 775 acceptees, 425 RESOLUES au catalogue d'armes, 350 ecartees, 272 mots distincts parmi les ecartees ; 0 site(s) `assault_bomb`
+    assaut_a1_identite_test.go:102: 35b75a31 : 3 debut(s) de manche brute, 3 explosion(s) datee(s), origine d'horloge 8892226764 us
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x3FEE4FCF — 62 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 4074 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x9000420C — 4 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 14503 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x00C28000 — 3 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 13798 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x4000F5E8 — 3 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 30136 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x5DD7BF80 — 3 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 74109 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0xC0B15FD4 — 3 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 4542 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x00420C42 — 2 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 107514 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x0139E220 — 2 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 35217 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x02800032 — 2 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 35424 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x1A151502 — 2 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 9397 ms
+    assaut_a1_identite_test.go:106: GATE A1.3 35b75a31 : 0 candidat(s) (site ET coincidence). Rappel du protocole §1 : 0 site `assault_bomb` au catalogue pour cette carte — un zero ici chiffre l'ancrage manquant, il ne refute pas l'objet.
+    assaut_a1_identite_test.go:73: 35b75a31 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA1Identite (7.71s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	8.181s
+
+# ============================================================================
+# VERDICT C3 (fige le 2026-08-27)
+#
+# GATE A1 NON REJOUABLE UTILEMENT : la reparation du catalogue de sites d'Assaut n'a pas
+# eu lieu (gate C2.3 non tenu — temoin spatial insaturable, cf. C2_sites_controle.log).
+# Le rejeu echantillon ci-dessus (35b75a31) confirme l'identite au lot A : 0 site
+# `assault_bomb` au catalogue, jambe du site vide par construction, 0 candidat
+# (GATE A1.3 : 0 candidat, comme au lot A sur 7/7 films). La bombe reste [!] par ANCRAGE
+# ABSENT — le zero chiffre toujours le catalogue manquant, il ne refute pas l'objet.
+# A2 (publication des vies libres) TOMBE : sans mot MPP, pas d'id au manifeste.
+#
+# CE QUE CE LOT AJOUTE A LA CONDITION DE REPRISE DU LOT A : les sites candidats existent
+# desormais, FIGES et localises (C2_sites_candidats.json — motif centre/bases sous hashs
+# -1537427652/-1843278509, stables sur les 5 cartes, 25/25 explosions avec activite au
+# site) ; il ne manque que l'arbitrage sur le temoin d'entree au catalogue (ou la
+# validation par le gate A1 lui-meme, joue avec les candidats en entree d'instrument —
+# jambe temporelle independante + selectivite interne, non circulaire).
+# ============================================================================

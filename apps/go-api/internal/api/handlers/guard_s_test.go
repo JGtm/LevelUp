@@ -30,7 +30,7 @@ func TestLotS_GuardedRoutes_AnonymousUnauthorized(t *testing.T) {
 	const demo = false
 	const mode = "password"
 	auth := middleware.RequireAuth(demo, mode)
-	admin := middleware.RequireAdmin(demo, mode)
+	admin := middleware.RequireAdmin(demo, mode, nil)
 
 	newSettings := func(r chi.Router) { NewSettingsHandler(&config.AppConfig{}, nil, nil).Mount(r) }
 
@@ -73,12 +73,12 @@ func TestLotS_GuardedRoutes_AnonymousUnauthorized(t *testing.T) {
 		// S8 — /setup écrit db_profiles.json (RequireAuth).
 		{
 			"S8 POST /setup/players", http.MethodPost, "/setup/players",
-			func(r chi.Router) { NewSetupHandler(&config.AppConfig{}, nil, nil, nil, nil).Mount(r) },
+			func(r chi.Router) { NewSetupHandler(&config.AppConfig{}, nil, nil, nil).Mount(r) },
 			[]func(http.Handler) http.Handler{auth},
 		},
 		{
 			"S8 POST /setup/smoke-test", http.MethodPost, "/setup/smoke-test",
-			func(r chi.Router) { NewSetupHandler(&config.AppConfig{}, nil, nil, nil, nil).Mount(r) },
+			func(r chi.Router) { NewSetupHandler(&config.AppConfig{}, nil, nil, nil).Mount(r) },
 			[]func(http.Handler) http.Handler{auth},
 		},
 		// S3 — trouvé par la revue exhaustive : import mutant sur `r` nu (RequireAuth).

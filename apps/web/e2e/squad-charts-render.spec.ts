@@ -10,31 +10,42 @@
  * commune". Les tests Vitest mockent useSquadContext et n'ont jamais
  * exercé le pipeline complet front → API → DB → response → render.
  *
- * Prérequis : `make dev` (Vite :5173 + Go :8000) avec données réelles
- * pour le joueur JGtm + Madina97294 + Chocoboflor.
+ * Prérequis : `make dev` avec la fixture démo synthétique (joueur demo-player +
+ * coéquipiers DemoPlayer2/DemoPlayer3, 36 matchs communs) ou, via E2E_PLAYER_SLUG et
+ * E2E_TEAMMATES, un jeu de données réel.
  */
 import { test, expect } from '@playwright/test'
-import { skipIfNoDemoData, skipRequiresRealPlayer } from './_helpers/demoData'
+import {
+  skipIfNoDemoData,
+  E2E_API_BASE,
+  E2E_PLAYER_SLUG,
+  E2E_TEAMMATES,
+} from './_helpers/demoData'
 import { playerPath } from './_helpers/routes'
 
-// Vise JGtm + coéquipiers NOMMÉS (Madina97294, Chocoboflor) avec synergies calculées
-// sur matchs communs réels — non reproductible par une fixture synthétique (le radar
-// de synergie et les libellés « Avec <coéquipier> » dépendent de vraies relations).
-// Contre une démo réelle, la spec s'exécute.
 test.beforeEach(async () => {
-  skipRequiresRealPlayer('escouade JGtm + coéquipiers nommés (Madina97294/Chocoboflor) et synergies réelles')
   await skipIfNoDemoData()
 })
 
-const PLAYER_SLUG = 'JGtm'
-const TEAMMATES = ['Madina97294', 'Chocoboflor']
+const PLAYER_SLUG = E2E_PLAYER_SLUG
+const TEAMMATES = E2E_TEAMMATES
+
+/** Pré-set la composition dans localStorage : évite la saisie dans le combobox. */
+async function presetTeammates(page: import('@playwright/test').Page) {
+  await page.addInitScript(
+    ({ slug, gamertags }) => {
+      localStorage.setItem(`squad-teammates-${slug}`, JSON.stringify(gamertags))
+    },
+    { slug: PLAYER_SLUG, gamertags: TEAMMATES },
+  )
+}
 
 test.describe('Escouade — graphes rendus pour des coéquipiers existants', () => {
   test('POST /pages/teammates retourne au moins une row pour des amis avec matchs communs', async ({
     request,
   }) => {
     const resp = await request.post(
-      `http://localhost:8000/api/v1/players/${PLAYER_SLUG}/pages/teammates`,
+      `${E2E_API_BASE}/api/v1/players/${PLAYER_SLUG}/pages/teammates`,
       {
         headers: {
           'Content-Type': 'application/json',
@@ -46,7 +57,7 @@ test.describe('Escouade — graphes rendus pour des coéquipiers existants', () 
     expect(resp.status()).toBe(200)
     const body = await resp.json()
     expect(body.teammates).toBeDefined()
-    // Les deux teammates ont des matchs communs avec JGtm — au moins une
+    // Les coéquipiers ont des matchs communs avec le joueur — au moins une
     // row doit revenir, sinon Q30 ou la résolution XUID est cassée.
     expect(body.teammates.length).toBeGreaterThanOrEqual(1)
     for (const row of body.teammates) {
@@ -57,20 +68,10 @@ test.describe('Escouade — graphes rendus pour des coéquipiers existants', () 
     }
   })
 
-  test('la page Escouade affiche le KPI block + un PlotlyChart pour les coéquipiers sélectionnés', async ({
+  test('la page Synergies affiche le briefing de session + des graphes pour les coéquipiers sélectionnés', async ({
     page,
   }) => {
-    // Pré-set localStorage avec la sélection — évite la friction de
-    // saisie combobox (déjà testée par d'autres tests).
-    await page.addInitScript(
-      ({ slug, gamertags }) => {
-        localStorage.setItem(
-          `squad-teammates-${slug}`,
-          JSON.stringify(gamertags),
-        )
-      },
-      { slug: PLAYER_SLUG, gamertags: TEAMMATES },
-    )
+    await presetTeammates(page)
 
     // Capture les erreurs JS pour faire échouer le test en cas de stack
     // trace pendant le rendu (TypeError dans un chart builder, etc.).
@@ -80,56 +81,45 @@ test.describe('Escouade — graphes rendus pour des coéquipiers existants', () 
     await page.goto(playerPath(PLAYER_SLUG, 'squad/synergies'))
     await page.waitForLoadState('networkidle')
 
-    // 1. Le KPI block "Synergies avec les coéquipiers sélectionnés"
-    //    apparaît seulement si selectedRows.length > 0.
-    await expect(
-      page.getByText('Synergies avec les coéquipiers sélectionnés'),
-    ).toBeVisible({ timeout: 10_000 })
+    // 1. Le briefing de session nomme chaque coéquipier sélectionné.
+    for (const teammate of TEAMMATES) {
+      await expect(
+        page.getByText(teammate, { exact: true }).filter({ visible: true }).first(),
+      ).toBeVisible({
+        timeout: 10_000,
+      })
+    }
 
-    // 2. Au moins un teammate sélectionné apparaît avec son label "Avec X"
-    //    dans le KPI block (le même libellé apparaît aussi dans la legend
-    //    Plotly — qu'on adresse séparément en assertion #3).
-    await expect(
-      page.getByRole('heading', { name: `Avec ${TEAMMATES[0]}` }),
-    ).toBeVisible()
+    // 2. Au moins un graphe ECharts (canvas) est rendu. Si la sélection est
+    //    vide ou si le chart builder échoue, aucun canvas n'est monté.
+    await expect(page.locator('canvas').first()).toBeVisible({ timeout: 10_000 })
 
-    // 3. Le graphe Plotly est rendu — on cible le conteneur interne
-    //    `.js-plotly-plot` que react-plotly.js monte une fois le chart
-    //    construit. Si selectedRows = 0 ou chart = null, il n'existe pas.
-    await expect(page.locator('.js-plotly-plot').first()).toBeVisible({
-      timeout: 10_000,
-    })
-
-    // 4. L'empty state "Aucune donnée commune" (invalid_selection) NE
+    // 3. L'empty state "Aucune donnée commune" (invalid_selection) NE
     //    doit PAS être visible — c'est le symptôme du bug Q30 perfect_kills
     //    qui faisait silencieusement passer dans cette branche.
     await expect(page.getByText('Aucune donnée commune')).not.toBeVisible()
 
-    // 5. Pas d'erreur JS pendant le rendu.
+    // 4. Pas d'erreur JS pendant le rendu.
     expect(
       errors.filter((e) => !e.includes('ResizeObserver')),
     ).toHaveLength(0)
   })
 
-  test("la table 'Tous les coéquipiers' est visible avec des lignes", async ({
+  test("le tableau « Impact des coéquipiers » est visible avec une ligne par coéquipier", async ({
     page,
   }) => {
-    await page.addInitScript(
-      ({ slug, gamertags }) => {
-        localStorage.setItem(
-          `squad-teammates-${slug}`,
-          JSON.stringify(gamertags),
-        )
-      },
-      { slug: PLAYER_SLUG, gamertags: TEAMMATES },
-    )
-    await page.goto(playerPath(PLAYER_SLUG, 'squad/synergies'))
+    await presetTeammates(page)
+    await page.goto(playerPath(PLAYER_SLUG, 'squad/contributions'))
     await page.waitForLoadState('networkidle')
 
-    await expect(page.getByText('Tous les coéquipiers')).toBeVisible()
-    // Au moins une row de teammate dans la table — visible via le gamertag.
-    await expect(
-      page.locator('table').getByText(TEAMMATES[0], { exact: true }),
-    ).toBeVisible()
+    await expect(page.getByText('Impact des coéquipiers')).toBeVisible({
+      timeout: 10_000,
+    })
+    // Une row par coéquipier de la composition — visible via le gamertag.
+    for (const teammate of TEAMMATES) {
+      await expect(
+        page.locator('table').getByText(teammate, { exact: true }),
+      ).toBeVisible()
+    }
   })
 })

@@ -2,7 +2,7 @@
 
 French version: [FR/CITATIONS_REFERENCE.md](FR/CITATIONS_REFERENCE.md)
 
-This document is the **human-readable mirror** of the authoritative Go seed `internal/ops/seed_citation_data.go` (`defaultCitationMappings`). That function is the single source of truth — if this table and the seed ever disagree, the seed wins. The seed defines **98 commendations** (the `enabled = false` ones are listed but not computed): 88 from the original port + 10 objective-based commendations added in v7.2.1 (see "PvP — Game mode" below).
+This document is the **human-readable mirror** of the authoritative Go seed `internal/ops/seed_citation_data.go` (`defaultCitationMappings`). That function is the single source of truth — if this table and the seed ever disagree, the seed wins. The seed defines **110 commendations** (the `enabled = false` ones are listed but not computed): 88 from the original port, 10 objective-based commendations added in v7.2.1 (see "PvP — Game mode" below), 8 vehicle "gunner" commendations (2026-09-10) and 4 Halo 5 commendations ported on 2026-10-16 (`tick_tick_boom`, `wonderful_toys`, `first_strike`, `almost_doesnt_count` — see "Film-derived sources" below).
 
 > v7.2 note: `charge`, `got_you`, `stakeholder`, and `flag_carrier_hunter` used to be `award` type (matched against `personal_score_awards` event names). They now run on `objective_stat` (columns of `match_objective_stats_latest`), the same mechanism as the 10 commendations added in v7.2.1 — more reliable than the award feed. Any retouch to these tiers requires a `--citations-recompute-all` backfill (progression is recomputed from history).
 
@@ -63,7 +63,7 @@ There is **no runtime normalization function** any more (the old Python `_normal
 
 Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 
-### PvP — Game mode (21)
+### PvP — Game mode (23)
 
 `objective_stat` sources are columns of `match_objective_stats_latest` (read the `_latest` view only — append-only table, ADR 0026).
 
@@ -80,10 +80,12 @@ Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 | `flag_victory` | Victoire au drapeau | custom | `compute_wins_ctf` | 5,10,15,25,**50** |
 | `slayer_victory` | Victoire en assassin | custom | `compute_wins_slayer` | 5,10,15,25,**50** |
 | `strongholds_victory` | Victoire en bases | custom | `compute_wins_strongholds` | 5,10,15,25,**50** |
+| `tick_tick_boom` | Tick Tick Boom | custom | `compute_wins_assault` (game variant `assault`/`bomb`, never the playlist) | 5,10,15,25,**50** |
+| `wonderful_toys` | Jouets éducatifs | custom | `compute_wonderful_toys` (Slayer match with `pad_pickups >= 3`, film) | 5,10,20,35,**60** |
 | `flag_captures` | Capture du drapeau | objective_stat | `flag_captures` | 10,25,50,75,**125** |
 | `flag_secures` | Sécurisation du drapeau | objective_stat | `flag_secures` | 50,100,200,350,**600** |
-| `flag_steals` | Vol du drapeau | objective_stat | `flag_steals` | 25,50,100,175,**300** |
-| `returner_takedown` | Chasse au rapatrieur | objective_stat | `flag_returners_killed` | 5,10,20,35,**60** |
+| `flag_steals` | Vol du drapeau | objective_stat | `flag_steals` — **disabled** (user decision 2026-09-10) | 25,50,100,175,**300** |
+| `returner_takedown` | Chasse au rapatrieur | objective_stat | `flag_returners_killed` — **disabled** (user decision 2026-09-19) | 5,10,20,35,**60** |
 | `unstoppable_carrier` | Porteur imparable | objective_stat | `kills_as_flag_carrier` | 1,2,3,5,**10** |
 | `aggressive_return` | Rapatriement agressif | objective_stat | `kills_as_flag_returner` | 5,10,20,30,**50** |
 | `zone_defense` | Défense de zone | objective_stat | `zone_defensive_kills` | 25,50,100,200,**350** |
@@ -91,7 +93,9 @@ Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 | `skull_carrier_takedown` | Chasse au porteur | objective_stat | `skull_carriers_killed` | 2,5,10,20,**40** |
 | `skull_grabs` | Prise du crâne | objective_stat | `skull_grabs` | 2,5,10,20,**40** |
 
-`flag_captures`…`skull_grabs` (10 rows) were added in v7.2.1 (V721-03). Tiers are calibrated on real v7.2.1 data (304-match reference player), not the generic tier-target families used elsewhere in this document — see the tier-target comment block in `seed.go` before retouching them.
+`flag_captures`…`skull_grabs` (10 rows) were added in v7.2.1 (V721-03); 8 are active since `flag_steals` (2026-09-10) and `returner_takedown` (2026-09-19) were disabled. Tiers are calibrated on real v7.2.1 data (304-match reference player), not the generic tier-target families used elsewhere in this document — see the tier-target comment block in `seed.go` before retouching them.
+
+Both v7.2.1 placeholder SVGs are gone (2026-09-10): `flag_captures` now serves the final user-supplied PNG (`static/commendations/halo_infinite/HI_citation_Capture_du_drapeau.png`, 100x100 like every other commendation visual), and `flag_steals` carries no `image_path` at all now that it is disabled. The "do not ship the SVGs to prod" blocker from V721-03 is therefore lifted. Visual fixes of 2026-09-19: the `flag_captures` PNG had a transparency checkerboard baked into its pixels (it rendered on a white/grey square) — background stripped, real alpha; `untouchable_carrier` pointed at a Halo 5 **weapon** visual (`H5G_citation_Éradicateur.png`) by mistake, and since Halo 5 has no Oddball commendation at all, it now serves a user-supplied skull silhouette, squared to 100x100 with a 2.5 px black outline (`static/commendations/halo_infinite/HI_citation_Crane_intouchable.png`).
 
 ### PvP — Vehicle / Grenade (4)
 
@@ -102,7 +106,7 @@ Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 | `frag_grenade` | Grenade à fragmentation | medal | `2648272972` | 5,10,15,25,**50** | Grenade |
 | `plasma_grenade` | Grenade à plasma | medal | `3655682764` | 2,4,6,10,**20** | Grenade |
 
-### PvP — Multiplayer (10)
+### PvP — Multiplayer (12)
 
 | Norm | Display | Type | Source | Tiers |
 |------|---------|------|--------|-------|
@@ -116,6 +120,10 @@ Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 | `spartan_killer` | Tueur de Spartans | stat | `kills` | 20,40,60,100,**200** |
 | `eagle_eye` | Œil de lynx | medal | `1512363953` | 10,20,30,50,**100** |
 | `avenger` | Vengeur | medal | `9000000001` (custom medal) | 5,15,30,55,**105** |
+| `first_strike` | Premier coup | custom | `compute_first_strike` (first kill of the match, `analysis.FirstBlood` on highlight events) | 10,25,50,100,**250** |
+| `almost_doesnt_count` | Presque, ça ne compte pas | stat | `shieldless_kills` (film) | 50,100,150,250,**500** |
+
+
 
 ### PvP — Spartan Companies (15)
 
@@ -264,6 +272,8 @@ The seed ships these with `Enabled: false` (listed, not computed):
 | `skimmer_slayer` | Enemy type not present in Halo 5 (no image). |
 | `marine_slayer` | Allies — not a meaningful positive commendation. |
 | `flag_defender` | No unambiguous own-flag-defense ingestion award (`carrier_killed` = enemy-carrier kill = `flag_carrier_hunter`). Future candidate: `carrier_stopped`. |
+| `flag_steals` | User decision 2026-09-10 ("I do not want it any more"). No `image_path` (its only visual was a deleted placeholder SVG). |
+| `returner_takedown` | User decision 2026-09-19: an in-house commendation (name and definition invented on 2026-07-25, only the column is native) judged confusing and not worth tracking. No `image_path` (the H5 "Not so fast" visual is free again). |
 
 ---
 
@@ -284,4 +294,4 @@ Several commendations share the same source with very different tier targets:
 
 ## Custom functions — all bound
 
-Every custom function registered in `citations_custom.go` (`DispatchCustom`) is now referenced by a commendation. `compute_wins_firefight` was bound to `player_vs_everything` in I7 (Firefight wins), removing the last unbound rule.
+Every custom function registered in `citations_custom.go` (`customFunctions`, routed by `DispatchCustom`) is now referenced by a commendation. Mode predicates (Slayer, CTF, Strongholds, Firefight, Assault) live in `citations_custom_modes.go` only (guard `TestCitationsCustom_ModesParPredicat`). `compute_wins_firefight` was bound to `player_vs_everything` in I7 (Firefight wins), removing the last unbound rule.

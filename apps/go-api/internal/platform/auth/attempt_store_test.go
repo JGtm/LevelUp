@@ -10,7 +10,7 @@ import (
 
 func TestAttemptStore_GetOrCreate_New(t *testing.T) {
 	store := auth.NewAttemptStore()
-	attempt, isNew := store.GetOrCreate("session-1")
+	attempt, isNew, _ := store.GetOrCreate("session-1", "")
 
 	if attempt == nil {
 		t.Fatal("expected attempt, got nil")
@@ -28,8 +28,8 @@ func TestAttemptStore_GetOrCreate_New(t *testing.T) {
 
 func TestAttemptStore_GetOrCreate_Existing(t *testing.T) {
 	store := auth.NewAttemptStore()
-	a1, _ := store.GetOrCreate("session-1")
-	a2, isNew := store.GetOrCreate("session-1")
+	a1, _, _ := store.GetOrCreate("session-1", "")
+	a2, isNew, _ := store.GetOrCreate("session-1", "")
 
 	if isNew {
 		t.Error("expected isNew=false for second call")
@@ -41,7 +41,7 @@ func TestAttemptStore_GetOrCreate_Existing(t *testing.T) {
 
 func TestAttemptStore_Get_Found(t *testing.T) {
 	store := auth.NewAttemptStore()
-	attempt, _ := store.GetOrCreate("session-2")
+	attempt, _, _ := store.GetOrCreate("session-2", "")
 
 	found := store.Get(attempt.AttemptID, "session-2")
 	if found == nil {
@@ -51,7 +51,7 @@ func TestAttemptStore_Get_Found(t *testing.T) {
 
 func TestAttemptStore_Get_WrongSession(t *testing.T) {
 	store := auth.NewAttemptStore()
-	attempt, _ := store.GetOrCreate("session-3")
+	attempt, _, _ := store.GetOrCreate("session-3", "")
 
 	// Tenter de récupérer avec un autre session_id → nil
 	found := store.Get(attempt.AttemptID, "other-session")
@@ -70,7 +70,7 @@ func TestAttemptStore_Get_NotFound(t *testing.T) {
 
 func TestAttemptStore_Update(t *testing.T) {
 	store := auth.NewAttemptStore()
-	attempt, _ := store.GetOrCreate("session-4")
+	attempt, _, _ := store.GetOrCreate("session-4", "")
 
 	store.Update(attempt.AttemptID, func(a *auth.Attempt) {
 		a.Status = auth.AttemptStatusAuthorized
@@ -99,8 +99,8 @@ func TestAttemptStore_Snapshot_NotFound(t *testing.T) {
 
 func TestAttemptStore_DifferentSessions_Isolated(t *testing.T) {
 	store := auth.NewAttemptStore()
-	a1, _ := store.GetOrCreate("session-A")
-	a2, _ := store.GetOrCreate("session-B")
+	a1, _, _ := store.GetOrCreate("session-A", "")
+	a2, _, _ := store.GetOrCreate("session-B", "")
 
 	if a1.AttemptID == a2.AttemptID {
 		t.Error("different sessions should have different attempt IDs")
@@ -111,7 +111,7 @@ func TestAttemptStore_DifferentSessions_Isolated(t *testing.T) {
 // TTL sont balayées (bornage mémoire — fix onboarding 2026-06-08).
 func TestAttemptStore_PurgeExpired(t *testing.T) {
 	store := auth.NewAttemptStoreWithTTL(20 * time.Millisecond)
-	a, _ := store.GetOrCreate("session-ttl")
+	a, _, _ := store.GetOrCreate("session-ttl", "")
 
 	// Avant expiration : la tentative est toujours là.
 	if store.Snapshot(a.AttemptID) == nil {
@@ -132,11 +132,11 @@ func TestAttemptStore_PurgeExpired(t *testing.T) {
 // purge en lazy et recrée une tentative neuve pour la même session.
 func TestAttemptStore_GetOrCreate_PurgesAndRecreates(t *testing.T) {
 	store := auth.NewAttemptStoreWithTTL(20 * time.Millisecond)
-	a1, _ := store.GetOrCreate("session-recreate")
+	a1, _, _ := store.GetOrCreate("session-recreate", "")
 
 	time.Sleep(40 * time.Millisecond)
 
-	a2, isNew := store.GetOrCreate("session-recreate")
+	a2, isNew, _ := store.GetOrCreate("session-recreate", "")
 	if !isNew {
 		t.Error("attendu isNew=true après expiration de la tentative précédente")
 	}
@@ -148,7 +148,7 @@ func TestAttemptStore_GetOrCreate_PurgesAndRecreates(t *testing.T) {
 // TestAttemptStore_PurgeKeepsFresh : une tentative récente n'est pas balayée.
 func TestAttemptStore_PurgeKeepsFresh(t *testing.T) {
 	store := auth.NewAttemptStoreWithTTL(time.Hour)
-	a, _ := store.GetOrCreate("session-fresh")
+	a, _, _ := store.GetOrCreate("session-fresh", "")
 	if n := store.PurgeExpired(); n != 0 {
 		t.Errorf("PurgeExpired = %d, attendu 0 (tentative récente)", n)
 	}

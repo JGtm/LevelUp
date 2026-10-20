@@ -50,6 +50,7 @@ function renderTable() {
       locale="fr"
       onPlayerClick={vi.fn()}
       emptyMessage="vide"
+      assistsLabel="Assistances"
     />,
   )
 }
@@ -98,7 +99,7 @@ describe('RelationsTable — tri client', () => {
       mk({ gamertag: 'beta' }),
     ]
     const { container } = render(
-      <RelationsTable rows={mixed} labels={labels} locale="fr" onPlayerClick={vi.fn()} emptyMessage="vide" />,
+      <RelationsTable rows={mixed} labels={labels} locale="fr" onPlayerClick={vi.fn()} emptyMessage="vide" assistsLabel="Assistances" />,
     )
     fireEvent.click(screen.getByRole('button', { name: 'Joueur' }))
     // Alpha, beta, zeta — insensible à la casse (asc au premier clic pour l'alpha).
@@ -111,7 +112,7 @@ describe('RelationsTable — tri client', () => {
       mk({ gamertag: `P${String(i).padStart(2, '0')}`, total_matches: i }),
     )
     render(
-      <RelationsTable rows={many} labels={labels} locale="fr" onPlayerClick={vi.fn()} emptyMessage="vide" />,
+      <RelationsTable rows={many} labels={labels} locale="fr" onPlayerClick={vi.fn()} emptyMessage="vide" assistsLabel="Assistances" />,
     )
     // Aller en page 2.
     fireEvent.click(screen.getByRole('button', { name: 'Suivant' }))

@@ -1,0 +1,348 @@
+=== RUN   TestBombeB2Assaut
+2026/09/01 16:35:24 INFO plafond memoire arme pour ce decodage outil=TestBombeB2Assaut souple_gib=2 dur_octets=2684354560
+    bombe_b2_chronologie_test.go:219: 1c01e34f : 37 transitions bombe/crane, pont slot->xuid : 102 slots nommés (vies=112)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 519 xuid 2533274823110022 : 46276 -> 57853 ms
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 515 xuid 2533274930168166 : 61825 -> 62925 ms
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 526 xuid 2535406537212173 : 72952 -> 77126 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 533 xuid 2535406537212173 : 90403 -> 95024 ms
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 533 xuid 2535406537212173 : 101614 -> 103266 ms
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 537 xuid 2533274823110022 : 117263 -> 121704 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 540 xuid 2535455283639988 : 123687 -> 124459 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 546 xuid 2535440516585340 : 135916 -> 139890 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 545 xuid 2533274823110022 : 141955 -> 145559 ms
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 556 xuid 2535448712239570 : 170883 -> 171421 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 555 xuid 2533274823110022 : 175238 -> 177106 ms
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 558 xuid 2535448712239570 : 180393 -> 184567 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 562 xuid 2533274930168166 : 188902 -> 192656 ms
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 562 xuid 2533274930168166 : 200430 -> 204355 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 566 xuid 2533274970340030 : 223803 -> 235619 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 572 xuid 2535455283639988 : 238868 -> 243377 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 574 xuid 2533274823110022 : 245159 -> 245297 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 576 xuid 2535406537212173 : 257771 -> 268983 ms
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 588 xuid 2535406537212173 : 293239 -> 298950 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 591 xuid 2535455283639988 : 301331 -> 309113 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 600 xuid 2535455283639988 : 327447 -> 330851 ms
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 604 xuid 2535455283639988 : 346299 -> 349406 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 608 xuid 2533274823110022 : 362215 -> 364834 ms
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 609 xuid 2535455283639988 : 368655 -> 369894 ms (mort)
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 611 xuid 2535406537212173 : 380100 -> 384221 ms
+    bombe_b2_chronologie_test.go:222:   1c01e34f : portage slot 611 xuid 2535406537212173 : 391144 -> 400106 ms (mort)
+    bombe_b2_chronologie_test.go:224:   1c01e34f explosion 150546 : ACCORD — poseur = détonateur (xuid 2533274823110022, portage 141955->145559, prises V2=0)
+    bombe_b2_chronologie_test.go:224:   1c01e34f explosion 273787 : ACCORD — poseur = détonateur (xuid 2535406537212173, portage 257771->268983, prises V2=0)
+    bombe_b2_chronologie_test.go:224:   1c01e34f explosion 335637 : ACCORD — poseur = détonateur (xuid 2535455283639988, portage 327447->330851, prises V2=0)
+    bombe_b2_chronologie_test.go:224:   1c01e34f explosion 400853 : DÉSACCORD — porteur 2535406537212173, détonateur 2533274823110022 (portage 391144->400106)
+2026/09/01 16:36:26 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11463600112565967046 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    bombe_b2_chronologie_test.go:219: 34bb3bc8 : 62 transitions bombe/crane, pont slot->xuid : 219 slots nommés (vies=303)
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 530 xuid 2535432076449668 : 75442 -> 76881 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 513 xuid 2535421086206217 : 127107 -> 128809 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 513 xuid 2535421086206217 : 129894 -> 130561 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 513 xuid 2535421086206217 : 131863 -> 133397 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 513 xuid 2535421086206217 : 134149 -> 134832 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 513 xuid 2535421086206217 : 135700 -> 136884 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 513 xuid 2535421086206217 : 137652 -> 138319 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 551 xuid 2535432076449668 : 166831 -> 201070 ms (mort)
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 569 xuid 2535468448516403 : 204753 -> 214495 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 571 xuid 2533274859915433 : 219719 -> 220056 ms (mort)
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 553 xuid 2535423888969891 : 225525 -> 229945 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 579 xuid 2535443286668413 : 231398 -> 237557 ms (mort)
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 585 xuid 2533274859915433 : 246245 -> 281664 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 585 xuid 2533274859915433 : 284585 -> 290940 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 601 xuid 2533274986640146 : 302386 -> 303119 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 601 xuid 2533274986640146 : 303954 -> 305254 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 601 xuid 2533274986640146 : 305756 -> 329617 ms (mort)
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 603 xuid 2533274858283686 : 338289 -> 368903 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 603 xuid 2533274858283686 : 373258 -> 384156 ms (mort)
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 627 xuid 2535443286668413 : 386756 -> 443146 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 627 xuid 2535443286668413 : 443146 -> 449772 ms (mort)
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 642 xuid 2535459376902757 : 451204 -> 474743 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 642 xuid 2535459376902757 : 476529 -> 480653 ms (mort)
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 655 xuid 2535420637871292 : 485288 -> 488458 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 651 xuid 2535468448516403 : 492880 -> 494347 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 651 xuid 2535468448516403 : 499205 -> 503590 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 656 xuid 2533274986640146 : 511798 -> 512531 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 668 xuid 2533274858283686 : 519307 -> 520607 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 660 xuid 2533274800142775 : 524011 -> 537709 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 674 xuid 2535443286668413 : 554477 -> 585106 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 697 xuid 2533274858283686 : 604499 -> 606783 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 697 xuid 2533274858283686 : 614893 -> 619267 ms (mort)
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 714 xuid 2533274858283686 : 667328 -> 680959 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 714 xuid 2533274858283686 : 682527 -> 684849 ms (mort)
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 733 xuid 0 : 708119 -> 741703 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 731 xuid 0 : 741703 -> 748360 ms
+    bombe_b2_chronologie_test.go:222:   34bb3bc8 : portage slot 731 xuid 0 : 754532 -> fin de film ms
+    bombe_b2_chronologie_test.go:224:   34bb3bc8 explosion 427120 : ACCORD — poseur = détonateur (xuid 2535443286668413, portage 386756->443146, prises V2=0)
+2026/09/01 16:39:20 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=1872162450444512260 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    bombe_b2_chronologie_test.go:219: 35b75a31 : 95 transitions bombe/crane, pont slot->xuid : 157 slots nommés (vies=174)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 514 xuid 2535406578258524 : 72745 -> 88167 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 513 xuid 2535434638359191 : 90394 -> 91439 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 523 xuid 2533274797735697 : 94682 -> 96316 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 522 xuid 2533274824432629 : 105078 -> 115753 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 520 xuid 2535460750735339 : 125663 -> 128131 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 528 xuid 2533274858283686 : 149053 -> 156343 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 534 xuid 2535420196688895 : 174295 -> 175195 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 535 xuid 2535445743480343 : 182486 -> 184533 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 536 xuid 2535460750735339 : 187343 -> 198011 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 539 xuid 2535434638359191 : 200573 -> 208880 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 549 xuid 2535460750735339 : 214437 -> 244343 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 547 xuid 2533274858283686 : 246201 -> 247269 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 546 xuid 2533274824432629 : 249538 -> 252018 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 555 xuid 2535434638359191 : 254561 -> 255628 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 555 xuid 2535434638359191 : 256262 -> 262413 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 558 xuid 2535460750735339 : 263605 -> 270509 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 557 xuid 2535420196688895 : 277533 -> 278084 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 557 xuid 2535420196688895 : 284674 -> 285041 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 563 xuid 2535460750735339 : 290079 -> 308258 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 565 xuid 2535406578258524 : 313786 -> 335317 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 568 xuid 2535434638359191 : 337693 -> 342926 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 571 xuid 2533274824432629 : 345635 -> 359468 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 575 xuid 2535441223342887 : 363939 -> 365200 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 571 xuid 2533274824432629 : 367142 -> 369026 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 571 xuid 2533274824432629 : 371563 -> 376652 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 578 xuid 2535420196688895 : 380422 -> 381174 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 581 xuid 2535406578258524 : 385228 -> 385337 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 587 xuid 2535406578258524 : 422013 -> 429003 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 587 xuid 2535406578258524 : 431456 -> 432734 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 589 xuid 2535460750735339 : 434008 -> 434269 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 593 xuid 2533274858283686 : 435743 -> 440064 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 596 xuid 2535441223342887 : 459468 -> 471514 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 597 xuid 2535406578258524 : 476353 -> 476720 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 597 xuid 2535406578258524 : 477754 -> 479983 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 606 xuid 2535420196688895 : 485495 -> 485978 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 606 xuid 2535420196688895 : 487613 -> 488063 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 606 xuid 2535420196688895 : 489433 -> 489982 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 612 xuid 2535406578258524 : 503196 -> 522931 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 612 xuid 2535406578258524 : 525001 -> 531767 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 610 xuid 2533274824432629 : 535210 -> 536461 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 621 xuid 2533274858283686 : 549241 -> 569853 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 628 xuid 2535420196688895 : 574349 -> 574716 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 628 xuid 2535420196688895 : 577419 -> 577969 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 628 xuid 2535420196688895 : 578754 -> 579855 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 628 xuid 2535420196688895 : 587163 -> 587797 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 626 xuid 2535434638359191 : 602579 -> 634671 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 644 xuid 2535420196688895 : 638665 -> 639149 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 644 xuid 2535420196688895 : 640568 -> 641067 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 636 xuid 2535406578258524 : 654050 -> 662866 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 642 xuid 2535445743480343 : 664475 -> 679540 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 653 xuid 2535406578258524 : 690268 -> 705576 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 657 xuid 2535460750735339 : 710321 -> 728739 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 664 xuid 2535441223342887 : 736030 -> 746315 ms (mort)
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 667 xuid 2535420196688895 : 757152 -> 758169 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 667 xuid 2535420196688895 : 758903 -> 759387 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 667 xuid 2535420196688895 : 760355 -> 760788 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 667 xuid 2535420196688895 : 762290 -> 762774 ms
+    bombe_b2_chronologie_test.go:222:   35b75a31 : portage slot 665 xuid 0 : 767195 -> 782311 ms
+    bombe_b2_chronologie_test.go:224:   35b75a31 explosion 304013 : ACCORD — poseur = détonateur (xuid 2535460750735339, portage 290079->308258, prises V2=0)
+    bombe_b2_chronologie_test.go:224:   35b75a31 explosion 541270 : ACCORD — poseur = détonateur (xuid 2533274824432629, portage 535210->536461, prises V2=0)
+    bombe_b2_chronologie_test.go:224:   35b75a31 explosion 787051 : porteur slot 665 NON ponté — hors dénominateur V1
+    bombe_b2_chronologie_test.go:219: 3d58eb37 : 28 transitions bombe/crane, pont slot->xuid : 62 slots nommés (vies=82)
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 513 xuid 2535460369498191 : 52089 -> 52705 ms
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 523 xuid 2535411368239592 : 77806 -> 83228 ms
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 513 xuid 2535460369498191 : 90488 -> 91121 ms
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 527 xuid 2535452615389938 : 102222 -> 106586 ms (mort)
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 534 xuid 2533274823110022 : 134688 -> 152177 ms
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 538 xuid 2535452615389938 : 163824 -> 198327 ms
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 549 xuid 2639833174450086 : 210771 -> 237204 ms (mort)
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 553 xuid 2533274882553342 : 239685 -> 274897 ms (mort)
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 555 xuid 2535411368239592 : 281105 -> 322997 ms
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 555 xuid 2535411368239592 : 327686 -> 337458 ms
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 569 xuid 2535460369498191 : 349748 -> 350967 ms
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 572 xuid 2535452615389938 : 356194 -> 357628 ms
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 575 xuid 2535448390985976 : 359399 -> 359587 ms (mort)
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 569 xuid 2535460369498191 : 364492 -> 365108 ms
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 578 xuid 2533274823110022 : 371784 -> 373472 ms
+    bombe_b2_chronologie_test.go:222:   3d58eb37 : portage slot 569 xuid 2535460369498191 : 375175 -> 381432 ms
+    bombe_b2_chronologie_test.go:224:   3d58eb37 explosion 203065 : DÉSACCORD — porteur 2535452615389938, détonateur 2533274882553342 (portage 163824->198327)
+    bombe_b2_chronologie_test.go:224:   3d58eb37 explosion 342196 : ACCORD — poseur = détonateur (xuid 2535411368239592, portage 327686->337458, prises V2=0)
+    bombe_b2_chronologie_test.go:224:   3d58eb37 explosion 386280 : ACCORD — poseur = détonateur (xuid 2535460369498191, portage 375175->381432, prises V2=0)
+    bombe_b2_chronologie_test.go:219: 69b16f5d : 45 transitions bombe/crane, pont slot->xuid : 42 slots nommés (vies=58)
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 515 xuid 2812739231567214 : 84056 -> 95989 ms (mort)
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 520 xuid 2535441080025979 : 97570 -> 117272 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 520 xuid 2535441080025979 : 119959 -> 120314 ms (mort)
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 527 xuid 2533274896131112 : 122245 -> 122946 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 527 xuid 2533274896131112 : 124163 -> 124797 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 527 xuid 2533274896131112 : 126682 -> 127300 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 527 xuid 2533274896131112 : 128768 -> 129484 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 527 xuid 2533274896131112 : 130769 -> 131404 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 527 xuid 2533274896131112 : 132423 -> 133121 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 525 xuid 2812739231567214 : 137593 -> 149673 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 532 xuid 2533274896131112 : 164971 -> 165605 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 532 xuid 2533274896131112 : 167040 -> 167657 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 532 xuid 2533274896131112 : 168658 -> 178517 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 535 xuid 2533275020663662 : 194118 -> 201143 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 535 xuid 2533275020663662 : 202277 -> 221046 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 546 xuid 2533274896131112 : 223513 -> 225849 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 546 xuid 2533274896131112 : 227434 -> 228135 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 549 xuid 2812739231567214 : 256130 -> 256846 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 549 xuid 2812739231567214 : 258665 -> 259783 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 549 xuid 2812739231567214 : 262670 -> 286509 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 549 xuid 2812739231567214 : 286509 -> 287277 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 549 xuid 2812739231567214 : 288328 -> 288979 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 549 xuid 2812739231567214 : 292533 -> 295619 ms
+    bombe_b2_chronologie_test.go:222:   69b16f5d : portage slot 549 xuid 2812739231567214 : 297887 -> 305530 ms
+    bombe_b2_chronologie_test.go:224:   69b16f5d explosion 154305 : ACCORD — poseur = détonateur (xuid 2812739231567214, portage 137593->149673, prises V2=0)
+    bombe_b2_chronologie_test.go:224:   69b16f5d explosion 278617 : DÉSACCORD — porteur 2812739231567214, détonateur 2533274896131112 (portage 262670->286509)
+    bombe_b2_chronologie_test.go:224:   69b16f5d explosion 310215 : DÉSACCORD — porteur 2812739231567214, détonateur 2533274896131112 (portage 297887->305530)
+    bombe_b2_chronologie_test.go:219: 9f57c612 : 19 transitions bombe/crane, pont slot->xuid : 81 slots nommés (vies=98)
+    bombe_b2_chronologie_test.go:222:   9f57c612 : portage slot 518 xuid 0 : 39528 -> 65387 ms
+    bombe_b2_chronologie_test.go:222:   9f57c612 : portage slot 524 xuid 2535470127489792 : 96433 -> 98369 ms
+    bombe_b2_chronologie_test.go:222:   9f57c612 : portage slot 524 xuid 2535470127489792 : 99087 -> 100905 ms
+    bombe_b2_chronologie_test.go:222:   9f57c612 : portage slot 524 xuid 2535470127489792 : 101473 -> 102424 ms
+    bombe_b2_chronologie_test.go:222:   9f57c612 : portage slot 524 xuid 2535470127489792 : 102991 -> 106679 ms
+    bombe_b2_chronologie_test.go:222:   9f57c612 : portage slot 539 xuid 2535470823750470 : 186908 -> 190151 ms (mort)
+    bombe_b2_chronologie_test.go:222:   9f57c612 : portage slot 554 xuid 2535470823750470 : 257230 -> 270695 ms
+    bombe_b2_chronologie_test.go:222:   9f57c612 : portage slot 554 xuid 2535470823750470 : 272263 -> 279353 ms
+    bombe_b2_chronologie_test.go:222:   9f57c612 : portage slot 571 xuid 2535419279251362 : 311470 -> 335443 ms
+    bombe_b2_chronologie_test.go:222:   9f57c612 : portage slot 585 xuid 2535470823750470 : 366642 -> 388702 ms (mort)
+    bombe_b2_chronologie_test.go:222:   9f57c612 : portage slot 592 xuid 2533274796620553 : 406099 -> 421120 ms (mort)
+    bombe_b2_chronologie_test.go:224:   9f57c612 explosion 83322 : détonateur NON identifié (pont par manche) — hors dénominateur V1
+    bombe_b2_chronologie_test.go:224:   9f57c612 explosion 298489 : ACCORD — poseur = détonateur (xuid 2535470823750470, portage 272263->279353, prises V2=0)
+    bombe_b2_chronologie_test.go:224:   9f57c612 explosion 353160 : détonateur NON identifié (pont par manche) — hors dénominateur V1
+    bombe_b2_chronologie_test.go:224:   9f57c612 explosion 469057 : ACCORD — poseur = détonateur (xuid 2533274796620553, portage 406099->421120, prises V2=0)
+    bombe_b2_chronologie_test.go:219: c75f33b8 : 14 transitions bombe/crane, pont slot->xuid : 62 slots nommés (vies=88)
+    bombe_b2_chronologie_test.go:222:   c75f33b8 : portage slot 516 xuid 2535425645549407 : 71049 -> 92590 ms
+    bombe_b2_chronologie_test.go:222:   c75f33b8 : portage slot 526 xuid 2533274977810162 : 127159 -> 142330 ms (mort)
+    bombe_b2_chronologie_test.go:222:   c75f33b8 : portage slot 547 xuid 2535429774532623 : 225857 -> 247614 ms
+    bombe_b2_chronologie_test.go:222:   c75f33b8 : portage slot 547 xuid 2535429774532623 : 249983 -> 252420 ms
+    bombe_b2_chronologie_test.go:222:   c75f33b8 : portage slot 556 xuid 2533274977810162 : 267685 -> 271476 ms (mort)
+    bombe_b2_chronologie_test.go:222:   c75f33b8 : portage slot 558 xuid 2535428057106471 : 294961 -> 307324 ms
+    bombe_b2_chronologie_test.go:222:   c75f33b8 : portage slot 566 xuid 2535428057106471 : 363965 -> 371928 ms (mort)
+    bombe_b2_chronologie_test.go:222:   c75f33b8 : portage slot 575 xuid 0 : 391626 -> 398265 ms
+    bombe_b2_chronologie_test.go:222:   c75f33b8 : portage slot 581 xuid 0 : 408464 -> fin de film ms
+    bombe_b2_chronologie_test.go:224:   c75f33b8 explosion 109549 : détonateur NON identifié (pont par manche) — hors dénominateur V1
+    bombe_b2_chronologie_test.go:224:   c75f33b8 explosion 395724 : V2 — 1 prise(s) dans ]pose, explosion[
+    bombe_b2_chronologie_test.go:224:   c75f33b8 explosion 395724 : détonateur NON identifié (pont par manche) — hors dénominateur V1
+    bombe_b2_chronologie_test.go:224:   c75f33b8 explosion 450833 : détonateur NON identifié (pont par manche) — hors dénominateur V1
+    bombe_b2_chronologie_test.go:219: ce083875 : 106 transitions bombe/crane, pont slot->xuid : 19 slots nommés (vies=190)
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 517 xuid 0 : 119091 -> 121243 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 517 xuid 0 : 122044 -> 126281 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 517 xuid 0 : 133923 -> 146954 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 523 xuid 0 : 146954 -> 150507 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 525 xuid 0 : 150507 -> 167474 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 531 xuid 0 : 167474 -> 185191 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 534 xuid 0 : 192333 -> 193333 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 532 xuid 2533274834055193 : 200491 -> 213876 ms (mort)
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 542 xuid 0 : 235527 -> 236128 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 542 xuid 0 : 248323 -> 253662 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 542 xuid 0 : 257850 -> 259218 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 548 xuid 0 : 261821 -> 262387 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 548 xuid 0 : 266175 -> 268894 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 549 xuid 0 : 282141 -> 289114 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 555 xuid 0 : 306316 -> 314590 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 560 xuid 0 : 314590 -> 315475 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 559 xuid 0 : 327220 -> 345389 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 568 xuid 0 : 345389 -> 350110 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 566 xuid 2535411528542505 : 350110 -> 351110 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 564 xuid 0 : 368662 -> 375619 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 572 xuid 0 : 375619 -> 377069 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 575 xuid 0 : 384111 -> 386763 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 575 xuid 0 : 397291 -> 397775 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 575 xuid 0 : 401094 -> 402679 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 578 xuid 0 : 446607 -> 450743 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 578 xuid 0 : 454231 -> 463957 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 578 xuid 0 : 479724 -> 486547 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 578 xuid 0 : 492420 -> 504932 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 599 xuid 0 : 504932 -> 507819 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 603 xuid 2533274823110022 : 520048 -> 520998 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 605 xuid 0 : 528923 -> 531058 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 605 xuid 0 : 532260 -> 533445 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 605 xuid 0 : 534613 -> 538066 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 605 xuid 0 : 538901 -> 541019 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 613 xuid 0 : 561774 -> 580943 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 617 xuid 0 : 580943 -> 591157 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 612 xuid 0 : 598528 -> 618115 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 626 xuid 0 : 618115 -> 618766 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 626 xuid 0 : 621902 -> 622403 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 626 xuid 0 : 631695 -> 632445 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 628 xuid 0 : 655854 -> 679160 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 629 xuid 0 : 679160 -> 681797 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 643 xuid 0 : 708741 -> 711460 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 646 xuid 0 : 715699 -> 716315 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 647 xuid 0 : 725608 -> 732982 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 642 xuid 0 : 750950 -> 775326 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 651 xuid 0 : 775326 -> 778061 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 651 xuid 0 : 796914 -> 812981 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 662 xuid 0 : 812981 -> 815800 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 664 xuid 0 : 822974 -> 823374 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 665 xuid 0 : 834320 -> 836705 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 665 xuid 0 : 840459 -> 842277 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 671 xuid 0 : 850853 -> 851603 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 671 xuid 0 : 857259 -> 872342 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 671 xuid 0 : 874310 -> 875695 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 677 xuid 0 : 884155 -> 885355 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 677 xuid 0 : 892128 -> 896283 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 676 xuid 0 : 902506 -> 921509 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 682 xuid 0 : 921509 -> 923427 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 682 xuid 0 : 929901 -> 934572 ms
+    bombe_b2_chronologie_test.go:222:   ce083875 : portage slot 682 xuid 0 : 934572 -> 942864 ms
+    bombe_b2_chronologie_test.go:224:   ce083875 explosion 512505 : porteur slot 599 NON ponté — hors dénominateur V1
+    bombe_b2_chronologie_test.go:224:   ce083875 explosion 686401 : porteur slot 629 NON ponté — hors dénominateur V1
+    bombe_b2_chronologie_test.go:224:   ce083875 explosion 947537 : porteur slot 682 NON ponté — hors dénominateur V1
+    bombe_b2_chronologie_test.go:219: df8fcbef : 40 transitions bombe/crane, pont slot->xuid : 131 slots nommés (vies=156)
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 517 xuid 2533274873490304 : 30598 -> 57362 ms (mort)
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 524 xuid 2535409894989079 : 82700 -> 99354 ms (mort)
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 532 xuid 2533274873490304 : 132167 -> 143112 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 532 xuid 2533274873490304 : 151853 -> 168871 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 546 xuid 2535426290102159 : 213594 -> 231078 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 546 xuid 2535426290102159 : 233681 -> 255254 ms (mort)
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 558 xuid 2535472176311605 : 268396 -> 293607 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 570 xuid 2533274873490304 : 322663 -> 334379 ms (mort)
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 586 xuid 2535409894989079 : 404512 -> 419244 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 586 xuid 2535409894989079 : 436995 -> 446921 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 586 xuid 2535409894989079 : 459868 -> 469327 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 610 xuid 2535472176311605 : 498523 -> 526217 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 610 xuid 2535472176311605 : 526217 -> 527618 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 620 xuid 2535472176311605 : 552776 -> 586227 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 620 xuid 2535472176311605 : 590914 -> 595569 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 633 xuid 2533274823110022 : 633541 -> 639997 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 633 xuid 2533274823110022 : 645886 -> 648955 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 633 xuid 2533274823110022 : 653178 -> 662820 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 633 xuid 2533274823110022 : 666074 -> 670248 ms (mort)
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 648 xuid 2533274823110022 : 711902 -> 719877 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 648 xuid 2533274823110022 : 723798 -> 728669 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 647 xuid 2535472176311605 : 733240 -> 745336 ms
+    bombe_b2_chronologie_test.go:222:   df8fcbef : portage slot 660 xuid 0 : 770963 -> 780353 ms
+    bombe_b2_chronologie_test.go:224:   df8fcbef explosion 255767 : ACCORD — poseur = détonateur (xuid 2535426290102159, portage 233681->255254, prises V2=0)
+    bombe_b2_chronologie_test.go:224:   df8fcbef explosion 309284 : détonateur NON identifié (pont par manche) — hors dénominateur V1
+    bombe_b2_chronologie_test.go:224:   df8fcbef explosion 485860 : ACCORD — poseur = détonateur (xuid 2535409894989079, portage 459868->469327, prises V2=0)
+    bombe_b2_chronologie_test.go:224:   df8fcbef explosion 778033 : détonateur NON identifié (pont par manche) — hors dénominateur V1
+    bombe_b2_chronologie_test.go:232: délai fin de portage -> explosion : min 513, p25 4685, médiane 4804, p75 16959, max 47937 ms (n=23)
+    bombe_b2_chronologie_test.go:236: V1 : 13/17 accords (76.5 %) sur les explosions résolues des deux côtés
+    bombe_b2_chronologie_test.go:238: V2 : 27/28 intervalles [pose, explosion] sans prise (96.4 %)
+    assaut_manches_research_test.go:652: pic memoire observe : 0.34 Gio (plafond souple 2 Gio)
+--- PASS: TestBombeB2Assaut (670.52s)
+=== RUN   TestBombeB2TemoinOddball
+2026/09/01 16:46:35 INFO plafond memoire arme pour ce decodage outil=TestBombeB2TemoinOddball souple_gib=2 dur_octets=2684354560
+    bombe_b2_chronologie_test.go:386: 43716616 : 18 transitions bombe/crane, pont slot->xuid : 65 slots nommés (vies=80)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 519 xuid 2535434388039469 : 57191 -> 62382 ms (mort=true ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 518 xuid 2533274978052136 : 67884 -> 130285 ms (mort=true ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 529 xuid 2535467430415114 : 133102 -> 137259 ms (mort=true ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 532 xuid 2535427924595944 : 139307 -> 142248 ms (mort=true ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 533 xuid 0 : 143997 -> 161796 ms (mort=false ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 546 xuid 2535467430415114 : 178009 -> 182117 ms (mort=true ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 544 xuid 2535462017472349 : 189822 -> 227052 ms (mort=false ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 556 xuid 2535434388039469 : 231659 -> 244257 ms (mort=true ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 562 xuid 2535462017472349 : 248757 -> 252215 ms (mort=true ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 563 xuid 2535427924595944 : 254063 -> 257404 ms (mort=true ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 561 xuid 2535419789750421 : 258668 -> 278459 ms (mort=true ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 566 xuid 2535462017472349 : 279939 -> 300643 ms (mort=false ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 572 xuid 2535434388039469 : 301880 -> 311657 ms (mort=true ouverte=false)
+    bombe_b2_chronologie_test.go:389:   portage crâne slot 576 xuid 2535462017472349 : 318011 -> 337713 ms (mort=false ouverte=false)
+    bombe_b2_chronologie_test.go:408:   th10 62387 ms (xuid 2533274978052136) : TUEUR DU PORTEUR (skull_carriers_killed) — hors heartbeats
+    bombe_b2_chronologie_test.go:408:   th10 130288 ms (xuid 2535469190789936) : TUEUR DU PORTEUR (skull_carriers_killed) — hors heartbeats
+    bombe_b2_chronologie_test.go:408:   th10 137262 ms (xuid 2535427924595944) : TUEUR DU PORTEUR (skull_carriers_killed) — hors heartbeats
+    bombe_b2_chronologie_test.go:408:   th10 142252 ms (xuid 2535434388039469) : TUEUR DU PORTEUR (skull_carriers_killed) — hors heartbeats
+    bombe_b2_chronologie_test.go:429:   skull_carry 144001 ms (xuid 2535462017472349) : couvert par une période NON pontée (slot 533)
+    bombe_b2_chronologie_test.go:429:   skull_carry 149021 ms (xuid 2535462017472349) : couvert par une période NON pontée (slot 533)
+    bombe_b2_chronologie_test.go:429:   skull_carry 154027 ms (xuid 2535462017472349) : couvert par une période NON pontée (slot 533)
+    bombe_b2_chronologie_test.go:429:   skull_carry 159032 ms (xuid 2535462017472349) : couvert par une période NON pontée (slot 533)
+    bombe_b2_chronologie_test.go:408:   th10 182120 ms (xuid 2535453125155425) : TUEUR DU PORTEUR (skull_carriers_killed) — hors heartbeats
+    bombe_b2_chronologie_test.go:408:   th10 244260 ms (xuid 2533274978052136) : TUEUR DU PORTEUR (skull_carriers_killed) — hors heartbeats
+    bombe_b2_chronologie_test.go:408:   th10 252218 ms (xuid 2535469190789936) : TUEUR DU PORTEUR (skull_carriers_killed) — hors heartbeats
+    bombe_b2_chronologie_test.go:408:   th10 257407 ms (xuid 2535469190789936) : TUEUR DU PORTEUR (skull_carriers_killed) — hors heartbeats
+    bombe_b2_chronologie_test.go:408:   th10 278462 ms (xuid 2535453125155425) : TUEUR DU PORTEUR (skull_carriers_killed) — hors heartbeats
+    bombe_b2_chronologie_test.go:408:   th10 311661 ms (xuid 2533274978052136) : TUEUR DU PORTEUR (skull_carriers_killed) — hors heartbeats
+    bombe_b2_chronologie_test.go:440: V3 : 60 th10 ; 10 tueurs-du-porteur requalifiés ; 4 couverts sans identité de pont ; 46 heartbeats comparés ; 46 accords (100.0 % des comparés)
+    assaut_manches_research_test.go:652: pic memoire observe : 0.11 Gio (plafond souple 2 Gio)
+--- PASS: TestBombeB2TemoinOddball (41.74s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	712.708s

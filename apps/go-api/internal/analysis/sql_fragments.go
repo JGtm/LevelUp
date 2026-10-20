@@ -15,6 +15,8 @@
 //     fmt.Sprintf (lisibilité + audit grep).
 package analysis
 
+import "time"
+
 // SQLIsBotCol construit le prédicat SQL « colonne = xuid de bot » pour la colonne
 // donnée (préfixe d'alias inclus : "xuid", "mp.xuid", "opp.xuid"…). Source unique
 // du prédicat bot (préfixe bid(*), aligné sur analysis.IsBot côté Go). Le garde-rail
@@ -73,4 +75,130 @@ func SQLStartTimeCanonical(alias string) string {
 		prefix = alias + "."
 	}
 	return "COALESCE(" + prefix + "start_time_utc, " + prefix + "start_time AT TIME ZONE 'UTC')"
+}
+
+// SQLRealStartOffsetMs rend l'expression SQL de l'écart, en millisecondes, entre le coup d'envoi
+// du registre (`real_start_time`) et le début canonique du match. Elle suppose `real_start_time`
+// non NULL : l'appelant gère le cas NULL (`SQLT0Ms` rend NULL, un calcul de durée prend 0).
+// SOURCE UNIQUE : ratchet `archlint/no_raw_real_start_offset_test.go`.
+func SQLRealStartOffsetMs(alias string) string {
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+	return "epoch_ms(" + prefix + "real_start_time AT TIME ZONE 'UTC') - epoch_ms(" + SQLStartTimeCanonical(alias) + ")"
+}
+
+// SQLT0Ms rend le T0 d'un match en millisecondes (countdown d'avant-match) : l'écart entre le
+// coup d'envoi du registre et le début canonique, NULL quand `real_start_time` est absent (le
+// consommateur retombe alors sur T0 = 0 à l'exécution).
+func SQLT0Ms(alias string) string {
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+	return "CASE WHEN " + prefix + "real_start_time IS NOT NULL THEN " + SQLRealStartOffsetMs(alias) + " END"
+}
+
+// SQLDansFenetreRetention rend le predicat « ce match est DANS la fenetre de retention des
+// artefacts de rejeu », a comparer a la borne rendue par [BorneRetention].
+//
+// IL NE SUFFIT PAS A DIRE QU'UN MATCH SERA CUIT : la file en exige davantage (cf.
+// [SQLEligibleALaCuisson]). Il ne s'emploie seul que pour repondre a « ce match est-il
+// encore dans la fenetre », jamais a « la file le reprendra ».
+//
+// L'horodatage passe par le fragment canonique (regle n 8) : `start_time` brut trierait et
+// filtrerait faux. ATTENTION, LE PREDICAT PEUT VALOIR NULL : les deux horodatages du
+// registre sont nullables, et `NULL >= x` vaut NULL. Ne jamais le scanner seul dans un
+// `bool` — [SQLEligibleALaCuisson] le protege par un `IS NOT NULL` en amont du AND.
+func SQLDansFenetreRetention(alias string) string {
+	return SQLStartTimeCanonical(alias) + " >= ?"
+}
+
+// SQLModeNonGere rend le predicat « le rejeu 2D ne gere pas le mode de ce match » : le
+// match est du PvE Firefight, que l'application ne rejoue pas (decision du 2026-10-15). C'est
+// le drapeau du REGISTRE (`match_registry.is_firefight`), pose a la synchronisation — jamais
+// un nom de mode ni un slug.
+//
+// UNE SEULE FORMULATION, pour tout ce qui fabrique ou sert un rejeu : la file post-sync
+// ([SQLEligibleALaCuisson]), `backfill-replay`, l'action admin, le service de rejeu, le choix
+// des rejeux de la demo. Le garde-rail `archlint/no_replay_firefight_literal_test.go` interdit
+// le litteral `is_firefight` dans ces fichiers. Vaut FALSE (jamais NULL) pour une ligne sans
+// drapeau.
+func SQLModeNonGere(alias string) string {
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+	return "COALESCE(" + prefix + "is_firefight, FALSE)"
+}
+
+// SQLEligibleALaCuisson rend le predicat « la file de cuisson des artefacts de rejeu
+// reprendra ce match », avec ses parametres DANS L'ORDRE.
+//
+// # UNE SEULE DEFINITION, PARCE QUE DEUX PROMESSES CONTRADICTOIRES SONT PIRES QU'AUCUNE
+//
+// Deux composants repondent a cette question : la FILE
+// (`sync/replayartifacts.requeteQueueRecente`), qui decide ce qu'elle cuit, et la LECTURE
+// TACTIQUE, qui annonce a l'utilisateur ce qui va l'etre (`matchs_en_attente` contre
+// `matchs_non_cuisables`). Si la seconde est plus large que la premiere, la page promet une
+// cuisson que rien ne fera — et l'utilisateur attend indefiniment un ecran qui ne se
+// remplira pas. C'est arrive : la premiere version comptait « en attente » les matchs dont
+// le FILM EST DEFINITIVEMENT PERDU. Le garde-rail
+// `internal/archlint/no_retention_window_inline_test.go` interdit toute autre formulation.
+//
+// # LES QUATRE CONDITIONS
+//
+//	FILM PAS PERDU      `backfill_completed & bitFilmAbsent = 0`. Le marqueur est TERMINAL :
+//	                    l'etape 1.57 le pose quand le film rend 404 ou 0 chunk, et il vaut
+//	                    pour ~29 % du parc. Un match marque ne sera jamais cuit.
+//	MODE GERE           `NOT` [SQLModeNonGere] : le Firefight n'est ni cuit ni compte « en
+//	                    attente ».
+//	DATABLE             les deux horodatages du registre sont nullables. Un match sans date
+//	                    ne peut ni etre ordonne par recence ni etre situe dans la fenetre :
+//	                    la file ne le prend pas.
+//	DANS LA FENETRE     seulement si la retention est bornee (`mois > 0`).
+//
+// # LE PREDICAT NE VAUT JAMAIS NULL, ET C'EST DELIBERE
+//
+// `IS NOT NULL` precede la comparaison de fenetre : en logique ternaire SQL,
+// `FALSE AND NULL` vaut FALSE. Le resultat se scanne donc sans risque dans un `bool` nu.
+// Sans cet ordre, un match a horodatages NULL faisait echouer le scan
+// (`converting NULL to bool`) et rendait 500 sur TOUTE la lecture de la carte.
+func SQLEligibleALaCuisson(alias string, mois int, bitFilmAbsent int64) (string, []any) {
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+	sql := "COALESCE(" + prefix + "backfill_completed, 0) & ? = 0" +
+		" AND NOT " + SQLModeNonGere(alias) +
+		" AND " + SQLStartTimeCanonical(alias) + " IS NOT NULL"
+	args := []any{bitFilmAbsent}
+	if borne, bornee := BorneRetention(mois); bornee {
+		sql += " AND " + SQLDansFenetreRetention(alias)
+		args = append(args, borne)
+	}
+	return sql, args
+}
+
+// BorneRetention rend l'instant a partir duquel un match est DANS la fenetre, et `true` si
+// la fenetre est bornee.
+//
+// `mois <= 0` VEUT DIRE ILLIMITEE, jamais « zero mois » : c'est le reglage par defaut
+// (`ReplayRetentionMonths`), et un match n'en sort alors jamais.
+func BorneRetention(mois int) (time.Time, bool) {
+	return BorneRetentionDepuis(time.Now().UTC(), mois)
+}
+
+// BorneRetentionDepuis est [BorneRetention] avec un instant de reference explicite.
+//
+// ELLE EXISTE POUR L'HORLOGE INJECTEE du cron de purge, qui doit pouvoir se placer a une
+// date choisie dans ses tests. Le calcul reste ICI : c'est lui, et non l'appel a
+// `time.Now`, qui doit rester unique — un `AddDate` recopie chez l'appelant est exactement
+// la divergence que le garde-rail `no_retention_window_inline_test` interdit.
+func BorneRetentionDepuis(now time.Time, mois int) (time.Time, bool) {
+	if mois <= 0 {
+		return time.Time{}, false
+	}
+	return now.AddDate(0, -mois, 0), true
 }

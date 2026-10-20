@@ -1,7 +1,7 @@
 // Package service — builders pour l'onglet Combat de la Match View.
 //
 // Extrait de match_view_service.go (audit #1 god files). Couvre :
-//   - buildCombatTabFull : assemblage de l'onglet (weapon kills, events, tug,
+//   - buildCombatTabFull : assemblage de l'onglet (events, tug,
 //     impact badges, KD timeline, killer/victim pairs, cadence, roles).
 //   - buildKillerVictimPairs : agrégation kvPairs -> chart antagonistes.
 //   - buildTugEvents / buildImpactInput / buildKDEvents : adapters vers la
@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
@@ -24,7 +25,6 @@ import (
 
 func buildCombatTabFull(
 	matchID string,
-	bulkWeapons []domain.BulkWeaponKillRaw,
 	events []domain.EventRaw,
 	canonicalEvents []canonical.HighlightEvent,
 	kvPairs []domain.KVPairRaw,
@@ -32,27 +32,6 @@ func buildCombatTabFull(
 	myXUID string,
 	durationMS int64,
 ) domain.MatchCombatTab {
-	wkList := make([]domain.MatchWeaponKill, 0)
-	for _, w := range bulkWeapons {
-		if w.XUID != myXUID {
-			continue
-		}
-		// Breakdown par-ARME = outils de destruction identifiables seulement : on écarte
-		// les buckets non-combat (environnement / autre / non attribué), qui n'ont aucun
-		// engin à nommer et restent absorbés par « Non attribué » dans le sunburst.
-		// Véhicules et tourelles NE sont plus écartés (V73-3.2) : le registre les nomme
-		// par engin, ils apparaissent donc au breakdown comme au sunburst.
-		if domain.IsNonCombatFragClass(w.Class) {
-			continue
-		}
-		wkList = append(wkList, domain.MatchWeaponKill{
-			WeaponID:    w.WeaponID,
-			WeaponLabel: w.WeaponLabel,
-			KillCount:   w.Kills,
-			Class:       w.Class,
-		})
-	}
-
 	events, canonicalEvents = applyKVSynthesisIfNeeded(events, canonicalEvents, kvPairs, matchID)
 
 	evtList := make([]domain.MatchHighlightEvent, 0, len(events))
@@ -64,12 +43,18 @@ func buildCombatTabFull(
 		if e.TimeMS != nil && *e.TimeMS < 0 {
 			continue
 		}
-		evtList = append(evtList, domain.MatchHighlightEvent{
+		ev := domain.MatchHighlightEvent{
 			EventType:     e.EventType,
 			EventTimeMS:   e.TimeMS,
 			ActorXUID:     e.XUID,
 			ActorGamertag: e.Gamertag,
-		})
+		}
+		// Le nom brut de la médaille voyage avec l'event ; sa résolution (label,
+		// visuel) est une décoration posée après l'assemblage (decorateMedalEvents).
+		if e.MedalName != nil {
+			ev.MedalName = *e.MedalName
+		}
+		evtList = append(evtList, ev)
 	}
 
 	// Tug-of-war
@@ -110,7 +95,6 @@ func buildCombatTabFull(
 	killerVictim := buildKillerVictimPairs(kvPairs, scoreboard)
 
 	return domain.MatchCombatTab{
-		WeaponKills:     wkList,
 		HighlightEvents: evtList,
 		TugOfWar:        tugDomain,
 		ImpactBadges:    badgesDomain,
@@ -211,14 +195,24 @@ func buildKillerVictimPairs(
 	return pairs
 }
 
+// buildTugEvents convertit les paires en events de Dominance (tug-of-war).
+//
+// D2 — LES BOTS N'ENTRENT PAS DANS LA DOMINANCE. Une paire dont un des deux xuid est vide
+// désigne un acteur SANS identité (cf. doctrine domain.KVPairRaw). La Dominance oppose
+// DEUX CAMPS : un bot n'appartient ni à l'un ni à l'autre, et le compter le verserait
+// mécaniquement au camp adverse (isAlly est faux par défaut). C'est la sémantique
+// d'avant la bascule du 2026-08-03, où l'ancienne table ne portait aucune ligne de bot.
 func buildTugEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.TugOfWarEvent {
 	events := make([]analysis.TugOfWarEvent, 0, len(kvPairs))
 	for _, kv := range kvPairs {
+		if kv.KillerXUID == "" || kv.VictimXUID == "" {
+			continue
+		}
 		isAlly := kv.KillerXUID == myXUID
 		events = append(events, analysis.TugOfWarEvent{
 			TimeMS:    kv.TimeMS,
 			IsAlly:    isAlly,
-			EventType: analysis.EventTypeKill,
+			EventType: highlightevent.EventTypeKill,
 		})
 	}
 	return events
@@ -248,7 +242,7 @@ func buildImpactInput(events []domain.EventRaw, scoreboard []domain.ScoreboardRa
 			continue
 		}
 		et := ev.EventType
-		if et != analysis.EventTypeKill && et != analysis.EventTypeDeath {
+		if et != highlightevent.EventTypeKill && et != highlightevent.EventTypeDeath {
 			continue
 		}
 		impactEvents = append(impactEvents, analysis.ImpactEvent{
@@ -285,9 +279,18 @@ func buildImpactInput(events []domain.EventRaw, scoreboard []domain.ScoreboardRa
 	}
 }
 
+// buildKDEvents dérive la courbe K/D du viewer depuis les paires.
+//
+// D2 — MÊME GARDE QUE LA DOMINANCE, et elle n'est PAS redondante avec la comparaison à
+// myXUID : une mort infligée par un bot porte un KillerXUID vide et un VictimXUID égal au
+// viewer, donc elle passerait le test `kv.VictimXUID == myXUID` et creuserait la courbe.
+// Les agrégats restent humains seulement (sémantique d'avant le 2026-08-03).
 func buildKDEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.KDEvent {
 	events := make([]analysis.KDEvent, 0, len(kvPairs)*2)
 	for _, kv := range kvPairs {
+		if kv.KillerXUID == "" || kv.VictimXUID == "" {
+			continue
+		}
 		if kv.KillerXUID == myXUID {
 			events = append(events, analysis.KDEvent{
 				TimeMS:    kv.TimeMS,
@@ -311,7 +314,7 @@ func buildKDEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.KDEvent
 // (titres dont highlight_events ne porte que des médailles, ex. Halo 5).
 func eventsHaveKillOrDeath(events []domain.EventRaw) bool {
 	for _, e := range events {
-		if e.EventType == analysis.EventTypeKill || e.EventType == analysis.EventTypeDeath {
+		if e.EventType == highlightevent.EventTypeKill || e.EventType == highlightevent.EventTypeDeath {
 			return true
 		}
 	}
@@ -391,6 +394,9 @@ func buildViewerFragDistribution(
 		rows = append(rows, port.WeaponKillRow{
 			Label: w.WeaponLabel, Kills: w.Kills, Class: w.Class, Role: w.Role,
 			Family: w.Family, WeaponKey: w.WeaponKey, MechanicKills: w.MechanicKills,
+			// La provenance VOYAGE (lot 4.5) : sans elle fragdist ecarte equipement et
+			// environnement, et une chute mesuree au film retombe en « non attribue ».
+			FromDamageSource: w.FromDamageSource,
 		})
 	}
 	counts := domain.FragKillTypeCounts{

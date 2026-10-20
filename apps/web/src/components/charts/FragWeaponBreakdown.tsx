@@ -22,7 +22,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
 import { ChartLegend, type ChartLegendItem } from './ChartLegend'
-import { CHART_BG, escapeHtml, getEChartsThemeColors } from './_utils'
+import { CHART_BG, escapeHtml, getEChartsThemeColors, getTooltipBase } from './_utils'
 
 /** Libellés injectés (builder pur, testable sans i18n). */
 export interface FragWeaponLabels {
@@ -39,6 +39,9 @@ const DIM_OPACITY = 0.28
  * `hoveredClass` (survol lié) : quand renseignée, les armes des AUTRES classes
  * sont estompées ; les armes de la classe survolée restent en pleine opacité.
  */
+/** Largeur maximale d'un nom d'arme sur l'axe (px) — au-delà, ellipse (cf. ). */
+const AXIS_LABEL_MAX_PX = 96
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildFragWeaponBreakdownOption(
   weapons: SynthesisWeaponKillEntry[],
@@ -63,9 +66,7 @@ export function buildFragWeaponBreakdownOption(
     animation: false,
     grid: { top: 8, bottom: 8, left: 8, right: 80, containLabel: true },
     tooltip: {
-      backgroundColor: tc.tooltipBg,
-      borderColor: tc.tooltipBorder,
-      textStyle: { color: tc.text, fontSize: 11 },
+      ...getTooltipBase(tc),
       trigger: 'item',
       formatter: ((p: { name?: string; value?: number; data?: { className?: string } }) => {
         const value = typeof p.value === 'number' ? p.value : 0
@@ -77,7 +78,11 @@ export function buildFragWeaponBreakdownOption(
     yAxis: {
       type: 'category',
       data: ordered.map((w) => w.label),
-      axisLabel: { color: tc.axisLabel, fontSize: 11 },
+      // NOMS TRONQUÉS (2026-09-13, demande utilisateur). `containLabel` réserve à la colonne
+      // des noms la largeur du PLUS LONG : « Marteau antigravité » rognait d'un tiers la place
+      // des barres dans une carte de tiers de rangée. Le nom complet reste dans l'infobulle,
+      // qui l'écrit déjà en tête (`p.name`).
+      axisLabel: { color: tc.axisLabel, fontSize: 11, width: AXIS_LABEL_MAX_PX, overflow: 'truncate', ellipsis: '…' },
       axisTick: { show: false },
       axisLine: { show: false },
     },
@@ -114,8 +119,8 @@ export interface FragWeaponBreakdownProps {
   /**
    * Mode fluide : la card s'étire pour remplir sa cellule (CSS Grid `stretch`) —
    * le tracé prend `flex-1`, la légende de pied reste `flex-none`. À utiliser quand
-   * la card doit s'aligner sur la hauteur d'une card voisine fixe (ex. SessionFragCard
-   * côte à côte avec le sunburst) SANS que le pied de légende casse la parité de hauteur.
+   * la card doit s'aligner sur la hauteur d'une card voisine fixe (ex. Synthèse, à côté
+   * du sunburst) SANS que le pied de légende casse la parité de hauteur.
    * `height` devient alors le minimum garanti.
    */
   fluid?: boolean

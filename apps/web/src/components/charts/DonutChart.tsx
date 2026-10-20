@@ -18,8 +18,20 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
+import { barLabel } from './barLabel'
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesColor } from './_utils'
+import { CHART_BG, escapeHtml, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesColor } from './_utils'
+import { tipNumber, tipNumberAuto } from './tipNumber'
+
+/** Paramètre d'une tranche tel qu'ECharts le fournit (`percent` : part de la tranche, 0 à 100). */
+interface SliceParam {
+  name?: string
+  value?: number
+  percent?: number
+}
+
+/** La part d'une tranche à la langue de l'application : « 33 % » (le gabarit `{d}%` d'ECharts sort « 33.33% »). */
+const slicePercent = (p: SliceParam) => `${tipNumber(p.percent ?? 0, 0)} %`
 
 export interface ChartPointDonut {
   name: string
@@ -75,8 +87,26 @@ export function DonutChart({
 }: DonutChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointDonut>[]) =>
-      buildDonutOption(s, { sliceColors, innerRadius, outerRadius, showPercent, showLegend, compact, centerValue, centerLabel }),
-    [sliceColors, innerRadius, outerRadius, showPercent, showLegend, compact, centerValue, centerLabel],
+      buildDonutOption(s, {
+        sliceColors,
+        innerRadius,
+        outerRadius,
+        showPercent,
+        showLegend,
+        compact,
+        centerValue,
+        centerLabel,
+      }),
+    [
+      sliceColors,
+      innerRadius,
+      outerRadius,
+      showPercent,
+      showLegend,
+      compact,
+      centerValue,
+      centerLabel,
+    ],
   )
 
   return (
@@ -138,6 +168,8 @@ export function buildDonutOption(
       name: p.name,
       value: p.value,
       itemStyle: { color },
+      // Compact : le % est DANS la tranche, à l'encre qui contraste avec elle.
+      ...(compact ? { label: barLabel({ fontSize: 11, formatter: slicePercent }) } : {}),
     }
   })
 
@@ -191,7 +223,9 @@ export function buildDonutOption(
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'item',
-      formatter: '{b} : <b>{c}</b> ({d}%)',
+      // Le compte et la part à la langue de l'application (« 1 234 » et « 33,3 % »), jamais le gabarit brut.
+      formatter: (p: SliceParam) =>
+        `${escapeHtml(p.name ?? '')} : <b>${tipNumberAuto(p.value ?? 0)}</b> (${tipNumber(p.percent ?? 0, 1)} %)`,
     },
     // Légende désactivée quand un texte central est affiché (les labels de tranche
     // suffisent et libèrent le canvas pour le `graphic` centré) ou quand
@@ -205,8 +239,14 @@ export function buildDonutOption(
         // Compact : % DANS le donut, pas d'étiquette externe ni de connecteur (sinon ils
         // débordent et se font clipper en colonne étroite). Sinon : étiquette externe.
         label: compact
-          ? { show: true, position: 'inside', color: tc.text, fontSize: 11, formatter: '{d}%' }
-          : { show: showPercent, color: tc.text, fontSize: 11, formatter: showPercent ? '{b}\n{d}%' : '{b}' },
+          ? // barLabel-allow: la couleur vient de chaque tranche (data[].label = barLabel).
+            { show: true, position: 'inside', fontSize: 11, formatter: slicePercent }
+          : {
+              show: showPercent,
+              color: tc.text,
+              fontSize: 11,
+              formatter: showPercent ? (p: SliceParam) => `${p.name ?? ''}\n${slicePercent(p)}` : '{b}',
+            },
         labelLine: compact ? { show: false } : { length: 8, length2: 6 },
         data,
       },

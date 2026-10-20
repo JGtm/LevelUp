@@ -43,6 +43,7 @@ import (
 	"levelup/go-api/internal/ops"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
@@ -64,6 +65,18 @@ import (
 // toujours au chemin routé (chantier V72-01 / H1).
 const apiV1BasePath = "/api/v1"
 
+// apiV1InternalSegment / apiV1InternalBasePath — le préfixe du PROTOCOLE OUVRIER,
+// écrit UNE fois. Trois consommateurs doivent parler du même chemin, sinon la
+// panne est silencieuse : (a) le montage chi (r.Route ci-dessous), (b) le préfixe
+// du document OpenAPI partagé, et (c) l'exemption CSRF ciblée du routeur racine
+// (server.go, applyTransverseMiddlewares). Un littéral dupliqué qui dérive sur (c)
+// re-produirait exactement le défaut du 2026-08-25 : 403 csrf_rejected sur tout le
+// protocole, avant même le contrôle de jeton.
+const (
+	apiV1InternalSegment  = "/internal"
+	apiV1InternalBasePath = apiV1BasePath + apiV1InternalSegment
+)
+
 // server_apiv1.go — montage des routes /api/v1, extrait de NewRouter (K2a) pour
 // dé-goder la fonction d'assemblage DI. Le bloc construit ses ~55 handlers en
 // interne et les monte ; les dépendances de la portée NewRouter sont regroupées
@@ -81,6 +94,7 @@ type apiV1Deps struct {
 	sessionStore          *session_platform.Store
 	tokenProvider         auth_platform.TokenProvider
 	groupStore            *groupstore.GroupStore
+	friendStore           *friendstore.FriendStore
 	settingsStore         *settings_platform.Store
 	assetHandler          *handlers.AssetHandler
 	assetMetaHandler      *handlers.AssetMetadataHandler
@@ -93,6 +107,8 @@ type apiV1Deps struct {
 	jobStore              *jobs_platform.Store
 	titleRegistry         *titlePkg.Registry
 	backupScheduler       *duckdbbackup.Scheduler
+	// healthHandler : sonde publique (racine) ET détail admin (/admin/health).
+	healthHandler *handlers.HealthHandler
 	// humaSharedConfig : LE document OpenAPI PARTAGÉ (V72-01 / H1). Toutes les routes
 	// Huma s'y enregistrent via WithSharedDoc, sous leur préfixe de montage absolu.
 	humaSharedConfig huma.Config
@@ -112,6 +128,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	sessionStore := d.sessionStore
 	tokenProvider := d.tokenProvider
 	groupStore := d.groupStore
+	friendStore := d.friendStore
 	settingsStore := d.settingsStore
 	assetHandler := d.assetHandler
 	assetMetaHandler := d.assetMetaHandler
@@ -128,8 +145,11 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// tous les groupes player-scoped : /players/{slug}, /profiles/.../titles et les
 	// diagnostics par joueur (lot S — csr-coverage, progression). Transparente en
 	// démo / auth non activée. Source unique (règle ≤2 copies) : ne pas ré-inliner.
-	ownershipMW := middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode,
+	// La décision (lecture : propriétaire, co-membre, admin ; écriture : propriétaire,
+	// admin) est partagée avec la garde d'acteur Prestige et POST /session/context.
+	playerAccess := middleware.NewPlayerAccess(cfg.DemoMode, cfg.AuthMode,
 		playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(groupStore, users))
+	ownershipMW := middleware.RequirePlayerOwnership(playerAccess)
 	var xboxOAuthRoot *handlers.XboxOAuthHandler
 	// V72-01 / H1 : option de document PARTAGÉ pour toutes les routes Huma montées
 	// directement sous /api/v1 (r nu, r.With(mw), r.Group(mw) — préfixe de path
@@ -143,7 +163,29 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	humaAPI := newHumaAPI(r, apiOpt)
 	registerChangelogHuma(humaAPI, handlers.NewChangelogHandler(cfg.RepoRoot))
 
+	// Verrou « instance fermée » (lockdown) : RÉSOLVEUR UNIQUE de l'instance
+	// (ADR 0035 D5). Effectif = env (LEVELUP_INSTANCE_LOCKED, verrou forcé au boot)
+	// OU app_settings.instance_locked (mutable à chaud via PATCH /settings admin).
+	// Résolu live à chaque appel pour refléter une bascule runtime. Construit ICI et
+	// injecté partout — aucun consommateur ne relit la clé (garde-rail
+	// internal/archlint/no_bare_instance_lock_read_test.go). La décision sur erreur de
+	// lecture (verrouillé en propriété appliquée) vit dans authz.InstanceLocked.
+	instanceLockedFn := func() bool {
+		return authz.InstanceLocked(cfg.InstanceLocked, authz.Enforced(cfg.DemoMode, cfg.AuthMode), func() (bool, error) {
+			s, err := settingsStore.Load()
+			if err != nil {
+				return false, err
+			}
+			return s.InstanceLocked, nil
+		})
+	}
+
 	// Endpoints P0 : bootstrap + liste joueurs
+	// Le bootstrap expose le verrou au front (bandeau « instance fermée ») : il le
+	// prend au résolveur, jamais en relisant cfg/settings de son côté.
+	if bootSvc != nil {
+		bootSvc.WithInstanceLock(instanceLockedFn)
+	}
 	handlers.NewBootstrapHandler(bootSvc).Mount(r, apiOpt)
 	handlers.NewPlayersHandler(bootSvc).Mount(r, apiOpt)
 
@@ -151,11 +193,21 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// CSR/LUSR, playlists récentes, arme favorite) et renvoie 503 si une
 	// section est vide sans raison. Pensé pour CI post-backfill et alerte
 	// dev. Cf. handlers/health_home.go.
-	// S6 (sécurité, lot S) : /healthz/home construit la home du joueur de la
-	// session (banner, peaks CSR/LUSR, arme favorite = révélateur d'identité) →
-	// RequireAuth. Pas de {player_slug} : la propriété est implicite (session). No-op
-	// en démo / auth non activée (probe CI/dev inchangée).
+	// Réservé à l'admin (décision D-C du 2026-10-15) : la sonde construit la home du
+	// joueur désigné par `?player=` (un joueur quelconque, pas celui de la session),
+	// ce qui lit ses données et rafraîchit sa carrière avec son jeton. RequireAuth +
+	// RequireAdmin : inertes sans auth ; en démo, cette lecture est nommée dans
+	// middleware.demoAdminReads (e2e, harnais démo), le reste des routes gardées est refusé.
 	handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Mount(
+		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode),
+			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users)), apiOpt)
+
+	// Présence en jeu (point Notion 4) : qui joue en ce moment parmi les joueurs
+	// de l'utilisateur, et combien d'AMIS — les joueurs inscrits que l'utilisateur
+	// voit sans les posséder (ADR 0029) — sont en jeu. RequireAuth SANS
+	// RequireAdmin, contrairement à /watcher/status qui expose l'état interne du
+	// daemon. NoStore : la donnée est vraie une trentaine de secondes.
+	handlers.NewPresenceHandler(buildPresenceService(bootSvc, daemon)).Mount(
 		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)), apiOpt)
 
 	// Phase 9 du plan pipeline CSR : diagnostic coverage CSR pour un joueur.
@@ -190,7 +242,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// des données → RequireAuth + RequireAdmin (admin = accès à tous les joueurs).
 	handlers.NewProgressionBackfillHandler(reg.ProgressionBackfillProvider).Mount(
 		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode),
-			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode)), apiOpt)
+			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users),
+			middleware.RequirePlayerSlugParam("player_slug")), apiOpt)
 
 	// Phase A multi-titres : exposition des field mappings TOML.
 	//
@@ -277,34 +330,29 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// P8.10 : la logique git + parsing markdown vit dans
 	// service.ReleaseNotesService ; le handler ne fait que cache + I/O HTTP.
 	releaseBuilder := service.NewReleaseNotesService(cfg.RepoRoot)
-	help := handlers.NewHelpHandler(releaseBuilder, titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir())
+	help := handlers.NewHelpHandler(releaseBuilder, cfg.RuntimePaths().CacheRootDir())
 	help.Mount(r, apiOpt)
 
 	// Sprint 14 : contexte de session
-	sessionHandler := handlers.NewSessionHandler(sessionStore)
+	// Le joueur courant ne désigne qu'un profil que la session peut LIRE (sien,
+	// d'un co-membre de groupe, tout profil pour un admin) : sinon 403.
+	sessionHandler := handlers.NewSessionHandler(sessionStore).
+		WithPlayerAccess(func(ctx context.Context, slug string) bool {
+			granted, _ := playerAccess.Allows(ctx, middleware.GetSession(ctx), slug, false)
+			return granted
+		})
 	sessionHandler.Mount(r, apiOpt)
-
-	// Verrou « instance fermée » (lockdown) : effectif = env (LEVELUP_INSTANCE_LOCKED,
-	// verrou forcé au boot) OU app_settings.instance_locked (mutable à chaud via
-	// PATCH /settings admin). Résolu live pour refléter une bascule runtime.
-	instanceLockedFn := func() bool {
-		if cfg.InstanceLocked {
-			return true
-		}
-		s, err := settingsStore.Load()
-		return err == nil && s.InstanceLocked
-	}
 
 	// Sprint 15 : Device Code Flow + authentification Halo
 	// D3 cohabitation (cf. SPRINT_XBOX_SSO §0bis) : en mode "xbox", la LinkStrategy
 	// est XboxSSOLinkStrategy (login direct via XUID + création user si nouveau).
 	// Hors mode xbox, c'est PasswordLinkStrategy (LinkIdentity sur user déjà connecté).
-	authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, cfg.DemoMode, tokenProvider)
+	authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, tokenProvider)
 	var xboxLinkStrategy auth_platform.LinkStrategy
 	if cfg.AuthMode == "xbox" {
 		// PR 2.5a : injection du MultiUserTokenStore pour persister les tokens RTA
 		// après login (data/auth/watcher_tokens/{xuid}.json).
-		watcherTokensDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+		watcherTokensDir := cfg.WatcherTokensDir()
 		multiUserTokens := auth_platform.NewMultiUserTokenStore(watcherTokensDir)
 
 		// PR 2.5b : daemonGetter retourne le daemon courant (capturé par closure).
@@ -316,10 +364,23 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			}
 			return daemon
 		}
+		// Porte « profil suivi » (ADR 0035 D3) : le login SSO crée le compte et
+		// persiste les tokens, mais ne met le joueur sous surveillance que s'il a
+		// un profil déclaré. Erreur de lecture ⇒ refus journalisé.
+		ssoProfileGate := func(gctx context.Context, titleSlug, xuid string) bool {
+			ok, err := cfg.HasTrackedProfile(titleSlug, xuid)
+			if err != nil {
+				slog.ErrorContext(gctx, "xbox_sso: lecture de db_profiles.json échouée — watcher non notifié",
+					"err", err, "title_slug", titleSlug, "xuid", xuid)
+				return false
+			}
+			return ok
+		}
 		xboxLinkStrategy = service.NewXboxSSOLinkStrategy(users).
 			WithTokenStore(multiUserTokens).
 			WithDaemonGetter(daemonGetter).
 			WithInstanceLock(instanceLockedFn).
+			WithProfileGate(ssoProfileGate).
 			WithInviteStore(invites).
 			WithGroupStore(groupStore)
 		authHandler.WithLinkStrategy(xboxLinkStrategy)
@@ -357,20 +418,43 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// (consommé via le login Xbox SSO, cf. XboxSSOLinkStrategy). RequireAuth seul
 	// (pas RequireAdmin) : c'est de la fonction utilisateur, pas de l'ops.
 	groupsHandler := handlers.NewGroupsHandler(groupStore, invites, users)
+	// Mise en commun du jeton du user connecté (pool de synchro) : décision personnelle,
+	// RequireAuth seul. nil-safe : sans scheduler, la décision est seulement persistée.
+	var poolApplier handlers.PoolSharingApplier
+	if autoSyncScheduler != nil {
+		poolApplier = autoSyncScheduler
+	}
+	poolSharingHandler := handlers.NewPoolSharingHandler(authStore, poolApplier, users)
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		groupsHandler.Mount(r, apiOpt) // 7 routes /groups migrées vers Huma (V72-01 / H5)
+		poolSharingHandler.Mount(r, apiOpt)
+	})
+
+	// ProfileService PARTAGÉ : writer UNIQUE de db_profiles.json. Le store
+	// porte un verrou process par-instance → toutes les écritures (onboarding
+	// setup ET réglages titre B.5) DOIVENT passer par la MÊME instance, sinon
+	// deux read-modify-write concurrents pourraient s'écraser (lost update).
+	profileService := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot).
+		WithDBEvictor(func(playerDBPath string) { platform_duckdb.EvictAndCloseCached(playerDBPath) })
+	// Annuaire des joueurs (ADR 0035) : UNE instance pour la lecture admin
+	// (GET /admin/identities) ET l'écriture (POST /setup/players → Onboard,
+	// D4). Construite ici parce que les deux points de montage en dépendent et
+	// que le créateur de profil qu'elle porte est le writer unique ci-dessus.
+	playerDirectory := buildPlayerDirectory(playerDirectoryDeps{
+		cfg: cfg, users: users, tokens: authStore, groups: groupStore, daemon: daemon,
+		profiles: profileService,
 	})
 
 	// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
-	adminHandler := handlers.NewAdminHandler(users, invites)
+	adminHandler := handlers.NewAdminHandler(users, invites).WithSessions(sessionStore)
 	r.Route("/admin", func(r chi.Router) {
 		adminOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/admin")
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 		adminHandler.Mount(r, adminOpt) // users/invites (Huma, sous RequireAuth+RequireAdmin)
 		// Intégrité des données : invariants du pipeline sync par joueur
-		// (Phase 4 du plan .ai/PLAN_SYNC_INVARIANTS_GATE.md). NoStore : le
+		// (Phase 4 du plan .ai/archive/V7/PLAN_SYNC_INVARIANTS_GATE.md). NoStore : le
 		// résultat reflète l'état courant des DBs, jamais de cache.
 		invariantsHandler := handlers.NewAdminInvariantsHandler(reg.RunDataInvariants)
 		invariantsHandler.Mount(r.With(middleware.NoStore), adminOpt)
@@ -379,10 +463,19 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// métriques expvar du sharedprovider. NoStore : état courant.
 		contentionHandler := handlers.NewAdminDBContentionHandler(reg.DBContention)
 		contentionHandler.Mount(r.With(middleware.NoStore), adminOpt)
-		// Santé des tokens auth (MSAL / XSTS / Refresh) par joueur. Lecture
+		// Santé des tokens auth (Accès / XSTS / Refresh) par joueur. Lecture
 		// seule du MultiUserTokenStore (ADR 0023), sans refresh réseau.
 		tokenHealthHandler := handlers.NewAdminTokenHealthHandler(reg.TokenHealth)
 		tokenHealthHandler.Mount(r.With(middleware.NoStore), adminOpt)
+		// Détail de santé du service (versions, compteurs, outillage) : /health
+		// public ne rend que {status}.
+		d.healthHandler.MountAdmin(r.With(middleware.NoStore), adminOpt)
+		// Annuaire des joueurs (ADR 0035 D7) : les quatre registres d'identité
+		// (compte, profil, credentials, suivi live) lus ENSEMBLE par xuid, plus le
+		// témoin disque. NoStore : l'anomalie qu'on vient de corriger doit
+		// disparaître au rafraîchissement suivant, pas au bout d'un cache.
+		identitiesHandler := handlers.NewAdminIdentitiesHandler(playerDirectory)
+		identitiesHandler.Mount(r.With(middleware.NoStore), adminOpt)
 		// Dashboard monitoring admin : overview/scheduler/convergence/jobs
 		// + actions correctives (data-health run, cycle auto-sync forcé).
 		// Cf. server_admin_monitoring.go.
@@ -407,7 +500,19 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// verdict par composant (bannière/emblème/backdrop/service tag) d'un joueur
 		// suivi, à la demande. Read-only, AUCUNE écriture DB, NoStore (état courant).
 		appearanceDiagHandler := handlers.NewAdminAppearanceDiagHandler(reg.DiagnoseAppearance)
-		appearanceDiagHandler.Mount(r.With(middleware.NoStore), adminOpt)
+		appearanceDiagHandler.Mount(r.With(middleware.NoStore, middleware.RequirePlayerSlugParam("player_slug")), adminOpt)
+	})
+
+	// Protocole ouvrier de la file de construction (piste F). HORS du groupe
+	// /admin : un ouvrier n'a ni session ni compte, il présente un jeton dédié qui
+	// n'ouvre QUE ces quatre routes. Sans jeton configuré, elles répondent 503.
+	// Cf. server_build_worker.go.
+	// Le contrôle CSRF-par-origine est levé sur ce préfixe (et sur lui seul) par
+	// applyTransverseMiddlewares : un ouvrier n'envoie pas d'Origin et n'a pas de
+	// cookie à protéger. Le RESTE de la pile transverse s'applique normalement.
+	r.Route(apiV1InternalSegment, func(r chi.Router) {
+		wire.MountBuildWorkerRoutes(r, reg,
+			humacore.WithSharedDoc(d.humaSharedConfig, apiV1InternalBasePath))
 	})
 
 	// Diagnostic — loopback (127.0.0.1) uniquement, ET admin (S5, lot S :
@@ -428,47 +533,46 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			autoSyncOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/_diag/auto-sync")
 			r.Use(middleware.LoopbackOnly)
 			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 			autoSyncH.Mount(r, autoSyncOpt) // /snapshot, /run, /probe (loopback + admin)
 		})
 	}
 
 	// Sprint 16 : Settings + Setup joueur
-	// §4 plan Squad/Sessions : orchestrator recompute is_with_friends, déclenché
-	// async sur diff friend_gamertags lors d'un PATCH /settings.
-	friendsOrchestrator := service.NewFriendsOrchestratorService(cfg, func() ([]string, error) {
-		s, err := settingsStore.Load()
-		if err != nil {
-			return nil, err
-		}
-		return s.FriendGamertags, nil
-	}).WithNotifier(reg.NotificationsEmitter)
+	// Orchestrateur du recompute is_with_friends : déclenché par le PUT de la
+	// liste d'amis d'un joueur (handlers/friends.go), avec SA liste.
+	friendsOrchestrator := service.NewFriendsOrchestratorService(cfg, friendStore.Get).
+		WithNotifier(reg.NotificationsEmitter)
 	settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore).
-		WithFriendsOrchestrator(friendsOrchestrator).
-		WithNotificationsEmitter(reg.NotificationsEmitter).
-		WithBackupScheduler(backupScheduler)
+		WithFriendStore(friendStore).
+		WithBackupScheduler(backupScheduler).
+		WithUserLookup(users)
 	// Fraîcheur A4.2 : le runner monitoring lit l'âge du dernier backup depuis
 	// le même scheduler (manifest duckdbbackup) — nil toléré (section absente).
 	reg.WithBackupScheduler(backupScheduler)
 	// S1 (sécurité, lot S) : /settings mute la config (PATCH + POST media/sessions/backup)
-	// → RequireAuth + RequireAdmin. No-op en démo/single-user (cfg.DemoMode court-circuite
-	// le middleware), donc le mode public/démo reste inchangé.
+	// → RequireAuth + RequireAdmin. No-op en single-user ; en démo, seul GET /settings est
+	// servi (middleware.demoAdminReads), PATCH et POST sont refusés.
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 		settingsHandler.Mount(r, apiOpt) // /settings + /settings/{media,sessions,backup}/...
 	})
 
-	// ProfileService PARTAGÉ : writer UNIQUE de db_profiles.json. Le store
-	// porte un verrou process par-instance → toutes les écritures (onboarding
-	// setup ET réglages titre B.5) DOIVENT passer par la MÊME instance, sinon
-	// deux read-modify-write concurrents pourraient s'écraser (lost update).
-	profileService := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot).
-		WithDBEvictor(func(playerDBPath string) { platform_duckdb.EvictAndCloseCached(playerDBPath) })
-	setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, profileService)
+	// Le SetupHandler n'écrit plus db_profiles.json lui-même : il passe par
+	// l'annuaire (Onboard), seul chemin de création de profil (ADR 0035 D4). Le
+	// ProfileService PARTAGÉ (writer unique du fichier, construit plus haut) est
+	// derrière l'annuaire. WithProvisionGrant : un invité porteur d'un droit de
+	// provisioning passe le verrou pour SON premier profil (plan amis/invitations
+	// D3) — même lookup que l'exemption admin.
+	setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore).
+		WithDirectory(playerDirectory).
+		WithInstanceLock(instanceLockedFn).
+		WithUserLookup(users).
+		WithProvisionGrant(users, users)
 	// S8 (sécurité, lot S) : /setup/players (écrit db_profiles.json) et
 	// /setup/smoke-test → RequireAuth par cohérence (gardes internes conservées).
-	// No-op en démo / auth non activée.
+	// No-op sans auth ; refusé en démo (demo_guarded_reads.go).
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		setupHandler.Mount(r, apiOpt) // /setup/players, /setup/smoke-test
@@ -478,13 +582,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// GET /jobs/{job_id} migré vers Huma (Phase 3b, shape path-param).
 	// V3 (sécurité) : le statut de job expose PlayerSlug + type + messages d'erreur
 	// (révélateur d'identité) → RequireAuth. Tous les jobs sont créés depuis des flux
-	// déjà authentifiés → no-op en démo/single-user (cfg.DemoMode court-circuite le
-	// middleware). L'API Huma est adossée à un sous-routeur gardé (humachi hérite du
+	// déjà authentifiés → no-op en single-user ; refusé en démo (aucun flux authentifié n'y
+	// crée de job). L'API Huma est adossée à un sous-routeur gardé (humachi hérite du
 	// middleware du sous-groupe, cf. registerGamertagHuma/Mount des handlers gardés).
 	registerJobsHuma(
 		newHumaAPI(r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)), apiOpt),
 		handlers.NewJobsHandler(jobStore))
-	syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider)
+	syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider).
+		WithFriendStore(friendStore)
 	// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
 	if prestigeBundle != nil {
 		syncH = syncH.WithPrestigeHook(prestigeBundle.RunPostSync)
@@ -493,6 +598,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	syncH = syncH.WithNotificationsEmitterFactory(reg.NotificationsEmitter)
 	// Branche le hook delta-detection post-sync (season_pass_level / objective_completed / challenge_completed).
 	syncH = syncH.WithPostSyncDeltaHook(wire.BuildPostSyncDeltaHook(reg))
+	// Branche la mise en file des rejeux (placement « worker ») sur le moteur legacy
+	// du handler : sans elle, un sync HTTP tombant sur ce chemin n'enfilerait rien
+	// alors que l'auto-sync le fait — un trou que rien ne signalerait.
+	syncH = syncH.WithReplayEnqueuer(reg.EnqueueReplayBuildJob)
 	// Dédup cross-source (unification 2026-06-02) : le gate provient du
 	// Coordinator partagé du watcher, exposé via le scheduler (main.go a injecté
 	// autoScheduler.SyncGate). Si le watcher est désactivé, Gate() renvoie le
@@ -518,12 +627,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// préservé) ; en multi-user, seul un admin peut déclencher.
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 		syncH.MountInitialAndAll(r, apiOpt) // POST /sync/initial, /sync/all (Huma)
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types).
 		// Audit ownership 2026-06-08 (PR-A) : backfill lit player_slug dans le BODY
 		// (hors chokepoint /players/{slug}) → opération lourde sur un joueur arbitraire.
-		// Aligné sur /sync/* : admin-gated (no-op en demo/single-user).
+		// Aligné sur /sync/* : admin-gated (no-op en single-user ; refusé en démo).
 		handlers.NewBackfillHandler(cfg, jobStore).Mount(r, apiOpt) // POST /backfill/start
 	})
 
@@ -544,7 +653,6 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			PostImportService: osPostImportSvc,
 			JobStore:          jobStore,
 			StashDir:          filepath.Join(cfg.RepoRoot, "data", "players"),
-			DemoMode:          cfg.DemoMode,
 		}
 		// Trigger de convergence events immédiat post-import (réutilise le pool
 		// d'auth du scheduler). Conditionnel : éviter un typed-nil dans l'interface
@@ -591,9 +699,33 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// non sur le header (anti-bypass).
 	r.Route("/profiles/{player_slug}/titles/{slug}", func(r chi.Router) {
 		titleOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/profiles/{player_slug}/titles/{slug}")
-		r.Use(middleware.TitleSlugFromPath("slug"))
+		r.Use(middleware.TitleSlugFromPath(titleRegistry, "slug"))
 		r.Use(ownershipMW)
-		handlers.NewTitleSyncHandler(profileService).Mount(r, titleOpt)
+		// Le suivi live suit le profil : pause/purge retirent le couple du watcher,
+		// réactivation le remet (revue adversariale du 2026-09-16, P1).
+		handlers.NewTitleSyncHandler(profileService).
+			WithWatcher(func() handlers.TitleWatcher {
+				// DaemonController ne porte pas RemovePlayerTitle : même assertion
+				// que buildPlayerDirectory pour WatchedReader. nil si pas de daemon.
+				if tw, ok := daemon.(handlers.TitleWatcher); ok {
+					return tw
+				}
+				return nil
+			}).
+			WithPlayerLookup(func(titleSlug, playerSlug string) (domain.PlayerSummary, bool) {
+				players, err := cfg.LoadPlayers(titleSlug)
+				if err != nil {
+					slog.Warn("title sync: profils illisibles pour aligner le suivi live", "err", err, "titleSlug", titleSlug)
+					return domain.PlayerSummary{}, false
+				}
+				for _, p := range players {
+					if p.PlayerSlug == playerSlug {
+						return p, true
+					}
+				}
+				return domain.PlayerSummary{}, false
+			}).
+			Mount(r, titleOpt)
 	})
 
 	// Endpoints P1 : pages par joueur (Sprint 37 — DI via wire.ServiceRegistry)
@@ -629,8 +761,22 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// DOIT rester montée sous ce groupe pour être protégée.
 		r.Use(ownershipMW)
 
+		// Couche B (ADR 0029) sur les routes d'un match : 404 match_not_participant
+		// quand le joueur du chemin n'a pas joué le match (middleware de ROUTE, r.With).
+		participated := middleware.RequireMatchParticipation(reg.MatchParticipation)
+
 		filters := handlers.NewFiltersHandler(reg.Filters)
 		filters.Mount(r, playerOpt)
+
+		// Amis du joueur (liste par profil, D1/D4) : lecture pour qui accède au
+		// profil, écriture pour le propriétaire direct ou un admin. Le recompute
+		// is_with_friends du joueur suit chaque écriture.
+		friendsHandler := handlers.NewFriendsHandler(friendStore, users,
+			handlers.PlayerXUIDResolver(playerOwnershipXUIDResolver(cfg)),
+			playerGamertagResolver(cfg), cfg.DemoMode, cfg.AuthMode).
+			WithRecomputer(friendsOrchestrator).
+			WithNotifications(reg.NotificationsEmitter, cfg.AppSettingsPath)
+		friendsHandler.Mount(r, playerOpt)
 
 		mh := handlers.NewMatchHistoryHandler(reg.MatchHistoryCtx)
 		mh.Mount(r, playerOpt) // POST /pages/match-history/query (export CSV reste chi, plus bas)
@@ -656,20 +802,51 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// URLs servables, comme la galerie (settingsStore + repoRoot déjà en portée).
 		mv := handlers.NewMatchViewHandler(reg.MatchView).
 			WithMediaURLs(settingsStore, cfg.RepoRoot)
-		mv.Mount(r, playerOpt)
+		mv.Mount(r.With(participated), playerOpt)
 
 		// Rejeu 2D (vue du dessus) — artefact pré-construit servi tel quel ; 404 si
-		// absent. Hors sous-groupe capability : la disponibilité EST la présence
-		// d'artefact, pas une déclaration de titre. Le garde local est un middleware
-		// (cf. handlers/replay_local_gate.go, qui porte sa date de retrait).
+		// absent POUR CE MATCH. DEUX PORTES, et elles disent deux choses différentes
+		// (décision utilisateur du 2026-09-05, registre D1/L2) :
+		//   - CapReplay : « ce TITRE a-t-il un rejeu ? » — un titre sans décodeur de
+		//     film ne produit aucun artefact, donc ses quatre routes /replay* rendent
+		//     un 503 capability_unavailable, jamais un 404 qui se lirait « ce match-là
+		//     n'en a pas » ;
+		//   - la présence d'artefact : « CE MATCH en a-t-il un ? » — 404, inchangé.
+		// La porte de PRODUCTION est sa jumelle data-level `film.replay_artifact`
+		// (capabilities.toml) : pas de clé, pas de cuisson (sync/replayartifacts).
+		// Le garde local reste un middleware de transport (cf. handlers/replay_local_gate.go,
+		// qui porte sa date de retrait) ; en démo, il cède à la liste des rejeux figés.
 		r.Group(func(r chi.Router) {
-			r.Use(handlers.LocalOnlyReplay)
-			handlers.NewReplayHandler(reg.Replay).Mount(r, playerOpt)
+			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapReplay))
+			r.Use(handlers.ReplayGate(demoReplayGate(reg)))
+			handlers.NewReplayHandler(reg.Replay).Mount(r.With(participated), playerOpt)
+			// La SEQUENCE D UNE MORT (onglet Tactique, vue D) lit les memes trajectoires : elle vit sous
+			// les MEMES gardes que le rejeu, pour qu activer le rejeu en production l active aussi.
+			handlers.NewTacticalSequenceHandler(reg.Tactical).Mount(r, playerOpt)
 		})
 
 		// Canonical MatchEvents (Phase 3) : GET .../matches/{match_id}/events —
 		// timeline d'events on-demand (kill-feed/timeline), capability-gated.
-		handlers.NewMatchEventsHandler(reg.MatchEvents).Mount(r, playerOpt)
+		handlers.NewMatchEventsHandler(reg.MatchEvents).Mount(r.With(participated), playerOpt)
+
+		// Onglet Tactique : POST .../tactical/maps + POST .../tactical/{map_id}/raster
+		// (les deux LECTURES, en POST depuis le 2026-09-06 : leur périmètre est une
+		// LISTE de match_id, qui ne tient pas dans une query string)
+		// + GET .../tactical/{map_id}/background{,.png} (le fond de carte de la grille,
+		// servi par reg.Replay — la seule cascade carte -> fond du dépôt).
+		//
+		// LES DEUX POST SONT DES LECTURES, ET C'EST DÉCLARÉ AILLEURS : ils sont exemptés
+		// de la garde d'écriture du groupe par le préfixe `/tactical/` de
+		// `middleware.readOnlyPostPrefixes` (comme `/pages/` et `/filters/`). Sans cette
+		// entrée, un visiteur anonyme recevrait un 401 sur une simple lecture. L'ownership
+		// joueur (ADR 0029) et la protection CSRF du groupe, eux, s'appliquent inchangés :
+		// c'est bien la seule garde « écriture » qui est levée, pas l'accès.
+		// Hors sous-groupe capability de TITRE : le gating est DATA-LEVEL
+		// (film.kill_positions / film.kill_source, lues par le service sur la
+		// CapabilityMap de l'adapter) — un titre sans positions mesurées reçoit un
+		// 503 propre, et la grille des cartes reste servie. Côté web l'onglet est
+		// gated par la capability de titre `replay` (FeatureGate / RouteCapabilityGate).
+		handlers.NewTacticalHandler(reg.Tactical, reg.Replay).Mount(r, playerOpt)
 
 		// Phase 4 plan engagement : score + courbe par match + profil + timeseries + squad
 		// + admin recompute. Toutes les routes sont gated par CapEngagement
@@ -679,7 +856,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		eng := handlers.NewEngagementHandler(reg.Engagement)
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapEngagement))
-			eng.Mount(r, playerOpt)
+			eng.Mount(r.With(participated), playerOpt)
+			// Recalcul forcé : administration seulement.
+			eng.MountAdmin(r.With(
+				middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode),
+				middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users),
+			), playerOpt)
 		})
 
 		explorer := handlers.NewExplorerHandler(reg.ExplorerCtxWithAuth, reg.MatchHistoryCtx)
@@ -722,8 +904,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		synthesis := handlers.NewSynthesisHandler(reg.SynthesisCtx)
 		synthesis.Mount(r, playerOpt)
 
-		// Sprint 13 → Sprint 32 : Citations + Commendations + Médias → POST
-		citations := handlers.NewCitationsHandler(reg.CitationsCtx)
+		// Sprint 13 → Sprint 32 : Citations + Commendations + Médias → POST.
+		// /pages/citations (moteur de citations CALCULÉES) est gardée par CapCitations :
+		// 503 capability_unavailable pour un titre qui sert des commendations natives
+		// (Halo 5). /pages/commendations reste ouverte à tous les titres.
+		citations := handlers.NewCitationsHandler(reg.CitationsCtx,
+			middleware.RequireCapability(titleRegistry, titlePkg.CapCitations))
 		citations.Mount(r, playerOpt)
 
 		// Page Médailles : catalogue complet du titre + compteur obtenu par joueur
@@ -739,11 +925,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// P6.3 : guard de capability — media routes nécessitent CapMedia.
 		media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot).
 			WithSettingsStore(settingsStore).
-			WithDemoMode(cfg.DemoMode).
 			WithProduction(cfg.IsProduction()).
 			// Multi-user authentifié : un like sans joueur courant en session est
 			// refusé (401) au lieu d'être écrit comme like anonyme non attribuable.
 			WithAuthEnforced(authz.Enforced(cfg.DemoMode, cfg.AuthMode)).
+			// Demandeur des écritures (suppression, like, association) : le profil possédé
+			// par l'utilisateur de la session, jamais son joueur courant (C4-1).
+			WithRequester(requesterPlayerSlugResolver(cfg, users)).
+			WithUserLookup(users).
 			WithAuthorsContext(reg.MediaPlayerCtx, func(_ context.Context, titleSlug string) ([]domain.PlayerSummary, error) {
 				return cfg.LoadPlayers(titleSlug)
 			}).
@@ -773,18 +962,24 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		timeseries := handlers.NewTimeseriesHandler(reg.Timeseries)
 		timeseries.Mount(r, playerOpt)
 
+		// Tendances : évolution du joueur par horizon (vues Solo et Escouade)
+		trends := handlers.NewTrendsHandler(reg.Trends, reg.SquadTrendsCtx)
+		trends.Mount(r, playerOpt)
+
 		// Exclusion manuelle de matchs non pertinents
 		// NOTE : GET /match-exclusions supprimé en revue 2026-04-29 P0.2 Q6
 		// (orphelin côté front, vue admin jamais implémentée).
 		excl := handlers.NewMatchExclusionHandler(reg.MatchExclusion)
-		excl.Mount(r, playerOpt)
+		excl.Mount(r.With(participated), playerOpt)
 
-		// Système de notifications in-app (per-player).
+		// Système de notifications in-app (per-player). Données privées du profil : la
+		// garde de route RequirePlayerOwner les réserve au propriétaire (ou à l'admin),
+		// lecture comprise ; un co-membre de groupe n'y accède pas (ADR 0029).
 		notifH := handlers.NewNotificationsHandler(reg.Notifications)
-		notifH.Mount(r, playerOpt)
+		notifH.Mount(r.With(middleware.RequirePlayerOwner(playerAccess)), playerOpt)
 
 		// Couche progression V2 (Ascension) — streaks / records / milestones.
-		// Cf. .ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
+		// Cf. .ai/archive/V7/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
 		progressionResolve := func(ctx context.Context, slug string) (*platform_duckdb.PlayerDB, error) {
 			return reg.Resolve()(ctx, slug)
 		}
@@ -852,7 +1047,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 		// Match favoris (shared_social.duckdb)
 		fav := handlers.NewMatchFavoriteHandler(reg.Social)
-		fav.Mount(r, playerOpt) // PATCH /matches/{match_id}/favorite
+		fav.Mount(r.With(participated), playerOpt) // PATCH /matches/{match_id}/favorite
 
 		// Module Prestige — routes derrière feature flag PRESTIGE_ENABLED.
 		// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
@@ -874,27 +1069,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			}
 			// Garde d'autorisation acteur (ADR 0029 étendu aux routes squad
 			// top-level) : created_by/requested_by/user_id doivent désigner un
-			// profil possédé par la session. Réutilise les primitives de
-			// RequirePlayerOwnership. Transparent en demo / auth désactivée.
-			squadXUIDResolve := playerOwnershipXUIDResolver(cfg)
-			squadFamilyResolve := familyXUIDResolver(groupStore, users)
+			// profil que la session peut LIRE pour une lecture, ÉCRIRE pour une
+			// écriture (classification posée par la garde de propriété du groupe).
+			// Même décision que RequirePlayerOwnership. Transparent en demo / auth
+			// désactivée.
 			squadActorGuard := func(ctx context.Context, actorSlug string) bool {
-				if !authz.Enforced(cfg.DemoMode, cfg.AuthMode) {
-					return true
-				}
-				sess := middleware.GetSession(ctx)
-				if sess == nil {
-					return false
-				}
-				xuid, found := squadXUIDResolve(ctx, actorSlug)
-				if !found {
-					return false
-				}
-				var fam map[string]bool
-				if squadFamilyResolve != nil {
-					fam = squadFamilyResolve(ctx)
-				}
-				return authz.CanAccessPlayer(true, authz.CurrentUser(sess, users), xuid, fam)
+				granted, _ := playerAccess.Allows(ctx, middleware.GetSession(ctx), actorSlug,
+					middleware.RequestWrites(ctx))
+				return granted
 			}
 			// Migré vers Huma (Phase 3b) : 26 routes (challenges/arcs/prestige/
 			// templates/squads/squad-challenges/pilot-mode) via ph.Mount.
@@ -931,7 +1113,9 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// Endpoints P1 : répertoire gamertags
 	// Sprint 49 : route inconditionnelle — retourne 503 si shared DB absente.
 	// Migré vers Huma (Phase 3b, shape query-param ?q=).
-	registerGamertagHuma(humaAPI, handlers.NewGamertagHandler(gamertagSvc))
+	registerGamertagHuma(humaAPI, handlers.NewGamertagHandler(gamertagSvc), func(ctx context.Context) bool {
+		return middleware.IsAuthenticatedCtx(ctx, cfg.DemoMode, cfg.AuthMode)
+	})
 
 	// Watcher présence Xbox RTA — RequireAuth + RequireAdmin.
 	watcherAttempts := auth_platform.NewWatcherAttemptStore()
@@ -939,7 +1123,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	r.Route("/watcher", func(r chi.Router) {
 		watcherOpt := humacore.WithSharedDoc(d.humaSharedConfig, apiV1BasePath+"/watcher")
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 		// status/auth-status/subscriptions/auth-start migrés vers Huma (watcherHandler.Mount).
 		watcherHandler.Mount(r, watcherOpt)
 	})
@@ -957,6 +1141,7 @@ type apiV1Inputs struct {
 	autoSyncScheduler *scheduler.AutoSyncScheduler
 	backupScheduler   *duckdbbackup.Scheduler
 	groupStore        *groupstore.GroupStore
+	friendStore       *friendstore.FriendStore
 	sessionStore      *session_platform.Store
 	attemptStore      *auth_platform.AttemptStore
 	settingsStore     *settings_platform.Store
@@ -978,6 +1163,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	autoSyncScheduler := in.autoSyncScheduler
 	backupScheduler := in.backupScheduler
 	groupStore := in.groupStore
+	friendStore := in.friendStore
 	sessionStore := in.sessionStore
 	attemptStore := in.attemptStore
 	settingsStore := in.settingsStore
@@ -1071,14 +1257,53 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		}
 	}
 
+	// Variantes dont le RÉSULTAT se lit en manches (même regulation.toml) → l'app affiche
+	// « 2 - 1 » plutôt que le cumul de points, qui peut donner la victoire au perdant
+	// (mesure du 2026-08-29). Titre sans déclaration → absent → tout reste en points.
+	roundsDecide := make(map[string]map[string]bool)
+	for _, slug := range multiTitleSlugs {
+		if rset, ok := fieldMappingsRegistry.GetRegulation(slug); ok {
+			roundsDecide[slug] = rset.RoundsDecideMap()
+		}
+	}
+
+	// Portée du RADAR par variante (même regulation.toml, table [radar_range_m]) → borne la
+	// lecture « où je meurs isolé » de l'onglet Tactique. Titre sans déclaration → absent →
+	// aucune lecture d'isolement pour ce titre, et le compte des matchs écartés le dit (jamais
+	// un rayon deviné).
+	radarRange := make(map[string]map[string]int)
+	for _, slug := range multiTitleSlugs {
+		if rset, ok := fieldMappingsRegistry.GetRegulation(slug); ok {
+			radarRange[slug] = rset.RadarRangeMap()
+		}
+	}
+
+	// Lecture du bloc « Score dans le temps » PAR TITRE (même regulation.toml, table
+	// [score_timeline]) → l'en-tête de la vue match dit au client s'il doit masquer le
+	// bloc (Slayer), poser des barres aux instants de marque (drapeau, colline, bombe) ou
+	// garder la courbe. C'est la MÉTHODE du jeu de règles qui voyage, pas une copie de la
+	// table : l'appariement se fait par jeton de mode, jamais par clé exacte. Titre sans
+	// déclaration → absent → le client garde la courbe.
+	scoreTimelineKind := make(map[string]func(string) string)
+	for _, slug := range multiTitleSlugs {
+		if rset, ok := fieldMappingsRegistry.GetRegulation(slug); ok {
+			scoreTimelineKind[slug] = rset.ScoreTimelineKind
+		}
+	}
+
 	reg := wire.NewServiceRegistry(cfg, tokenProvider).
+		WithViewerResolver(requesterPlayerSlugResolver(cfg, users)).
 		WithTitleResolver(titleResolver).
 		WithCapabilities(hiCaps).
 		WithSettingsStore(settingsStore).
+		WithFriendStore(friendStore).
 		WithRankCatalog(hiRanks).
 		WithRankImageURLsByTitle(rankImageURLsByTitle).
 		WithPlaylistLabelOverrides(playlistLabelOverrides).
-		WithRegulationSeconds(regulationSeconds)
+		WithRegulationSeconds(regulationSeconds).
+		WithRoundsDecide(roundsDecide).
+		WithRadarRange(radarRange).
+		WithScoreTimelineKind(scoreTimelineKind)
 
 	// V72-27 : câble le résolveur de libellé de rang FR consommé par les
 	// notifications post-sync (career_rank) — même RankCatalog HI que
@@ -1149,11 +1374,12 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// matching catalogue reste fonctionnel).
 	reg.WithCoachAdvisorBundle(wire.NewCoachAdvisorBundle(cfg.RepoRoot))
 
-	// MultiUserTokenStore (ADR 0023) — source unique des tokens auth (RT + MSAL).
-	// refreshTokensFromDB le lit AVANT de tomber sur les fallbacks legacy
-	// (sync_meta DuckDB + env var). Idempotent : peut être re-créé à chaque boot
-	// (pointe sur le même répertoire `data/auth/watcher_tokens/`).
-	authStore := auth_platform.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	// MultiUserTokenStore (ADR 0023) — SEULE source des tokens auth (refresh token)
+	// depuis la Phase 5 (2026-08-25) : refreshTokensFromDB n'a plus aucun fallback
+	// derrière (ni sync_meta DuckDB, ni env var, ni store mono-user). Idempotent :
+	// peut être re-créé à chaque boot (pointe sur le même répertoire
+	// `data/auth/watcher_tokens/`).
+	authStore := auth_platform.NewMultiUserTokenStore(cfg.WatcherTokensDir())
 	reg.WithAuthStore(authStore)
 
 	// Transcoding média HLS asynchrone : le registry partage le jobStore process-wide
@@ -1193,10 +1419,19 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// Le resolver est créé ici pour accéder à reg.AnyPlayerTokens.
 	// Il est aussi passé au wire.ServiceRegistry pour que les HaloProviders délèguent
 	// le cache/fetch des définitions BP/challenges au resolver (P4/P5).
+	// Fournisseur des images de carte : UNE instance pour la vie du process. Son limiteur
+	// sortant est partagé par tous les clones (WithTokens), jamais recréé par requête.
+	mapImageProvider := halo.NewHaloProvider()
 	assetCfg := assets.AssetConfig{
 		CacheRootDir:  titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir(),
 		MetaDBPath:    metadataDBPathFor(cfg),
 		TokenProvider: reg.AnyPlayerTokens,
+		TitleKnown:    titleRegistry.Exists,
+		// Versions de carte jouées : lues dans la base partagée du titre demandé (lecteur
+		// du provider), elles rendent l'image de carte d'un vrai match récupérable par tous.
+		PlayedMapVersions: func(ctx context.Context, titleID string, visit func(mapID, versionID string)) error {
+			return platform_duckdb.ForEachPlayedMapVersion(ctx, cfg.SharedReaderForTitle(titleID), visit)
+		},
 		// Résolution d'image de carte inconnue (KindMapImage) via DiscoveryUGC.
 		// Injectée ici (et non dans internal/assets) pour éviter le cycle
 		// assets→halo : réutilise halo.FetchAsset (→ DiscoveryAsset.ImageURL).
@@ -1207,7 +1442,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 			if terr != nil {
 				return "", terr
 			}
-			a, ferr := halo.NewHaloProvider().WithTokens(tokens).FetchAsset(
+			a, ferr := mapImageProvider.WithTokens(tokens).FetchAsset(
 				ctx, halo.AssetTypeMap, titleID, mapID, versionID, "en-US")
 			if ferr != nil {
 				return "", ferr
@@ -1223,7 +1458,10 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		slog.ErrorContext(serverCtx, "assets resolver non disponible — arrêt du serveur", "err", err)
 		os.Exit(1)
 	}
-	assetHandler := handlers.NewAssetHandler(assetResolver)
+	// Porte HTTP : seule une référence reconnue par le catalogue local peut déclencher un
+	// appel sortant ; un kind sans catalogue n'est récupéré que pour un appelant connecté.
+	assetHandler := handlers.NewAssetHandler(assetResolver.Gate()).
+		WithTrust(func(r *http.Request) bool { return middleware.IsAuthenticated(r, cfg.DemoMode, cfg.AuthMode) })
 	reg.WithAssetResolver(assetResolver)
 
 	// V2 saisons — résolveur unifié (TOML + DB live + lazy fetch via Waypoint).
@@ -1301,12 +1539,8 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// officiel ET de la référence wiki communautaire.
 	service.RegisterGhostMedalIDs(halo5.TitleSlug, halo5.GhostMedalIDs)
 
-	// Fichiers statiques (images maps, médailles, armes…)
-	staticDir := filepath.Join(cfg.RepoRoot, "static")
-	// Handler spécial pour /static/commendations/* : fallback vers noms URL-encodés
-	// pour les fichiers dont le nom décodé contient des caractères interdits Windows (ex: ?).
-	r.Handle("/static/commendations/*", newCommendationHandler(staticDir))
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
+	// Fichiers statiques (images maps, médailles, armes…), sans listing de dossier.
+	registerStaticRoutes(r, filepath.Join(cfg.RepoRoot, "static"))
 
 	// Health check (pas de préfixe /api/v1 — sondage infrastructurel).
 	//
@@ -1345,7 +1579,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	observability.PublishDuckDBBudgets(func() any { return platform_duckdb.BudgetsSnapshot() })
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 		r.Mount("/debug/vars", http.DefaultServeMux)
 	})
 
@@ -1362,6 +1596,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		sessionStore:          sessionStore,
 		tokenProvider:         tokenProvider,
 		groupStore:            groupStore,
+		friendStore:           friendStore,
 		settingsStore:         settingsStore,
 		assetHandler:          assetHandler,
 		assetMetaHandler:      assetMetaHandler,
@@ -1374,6 +1609,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		jobStore:              jobStore,
 		titleRegistry:         titleRegistry,
 		backupScheduler:       backupScheduler,
+		healthHandler:         healthH,
 		humaSharedConfig:      in.humaSharedConfig,
 	}
 }
@@ -1424,35 +1660,20 @@ func serveStaticFile(w http.ResponseWriter, req *http.Request, fileServer http.H
 	fileServer.ServeHTTP(w, req)
 }
 
-// mountSPA sert le build Vite (LEVELUP_WEB_DIST) en catch-all /* : un fichier du
-// dist servi tel quel ; un chemin a extension statique absent du dist → 404 franc
-// (cf. middleware.IsStaticAssetPath) ; sinon index.html (route client-side React) avec injection
-// Open Graph. Les routes /api/v1 sont montees AVANT (r.Route dans server.go) : un
-// chemin /api/v1/* inconnu tombe sur le NotFound du sous-routeur, jamais ici.
-// Inactif si WebDistDir vide ou index.html absent. Extrait de NewRouter (K2a).
+// mountSPA sert le build Vite (LEVELUP_WEB_DIST) en catch-all /* (cf. newSPAHandler), avec
+// injection Open Graph sur index.html. Les routes /api/v1 sont montees AVANT (r.Route dans
+// server.go) : un chemin /api/v1/* inconnu tombe sur le NotFound du sous-routeur, jamais
+// ici. Inactif si WebDistDir vide ou index.html absent. Extrait de NewRouter (K2a).
 func mountSPA(r chi.Router, serverCtx context.Context, cfg *config.AppConfig, reg *wire.ServiceRegistry) {
-	if dist := cfg.WebDistDir; dist != "" {
-		indexPath := filepath.Join(dist, "index.html")
-		if _, statErr := os.Stat(indexPath); statErr == nil {
-			fileServer := http.FileServer(http.Dir(dist))
-			r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
-				if fi, err := os.Stat(filepath.Join(dist, filepath.Clean(req.URL.Path))); err == nil && !fi.IsDir() {
-					serveStaticFile(w, req, fileServer)
-					return
-				}
-				if middleware.IsStaticAssetPath(req.URL.Path) {
-					// Log volontairement non throttle : c'est le silence de
-					// l'ancien fallback (200 text/html sur tout asset absent)
-					// qui rendait ce genre de manque invisible en prod.
-					slog.WarnContext(req.Context(), "static asset not found", "path", req.URL.Path)
-					http.NotFound(w, req)
-					return
-				}
-				reg.ServeIndexWithOG(w, req, indexPath)
-			})
-			slog.InfoContext(serverCtx, "SPA: front React servi depuis le dist", "dir", dist)
-		} else {
-			slog.WarnContext(serverCtx, "LEVELUP_WEB_DIST défini mais index.html introuvable — SPA non montée", "dir", dist)
-		}
+	dist := cfg.WebDistDir
+	if dist == "" {
+		return
 	}
+	spa, ok := newSPAHandler(dist, reg.ServeIndexWithOG)
+	if !ok {
+		slog.WarnContext(serverCtx, "LEVELUP_WEB_DIST défini mais index.html introuvable — SPA non montée", "dir", dist)
+		return
+	}
+	r.Get("/*", spa)
+	slog.InfoContext(serverCtx, "SPA: front React servi depuis le dist", "dir", dist)
 }

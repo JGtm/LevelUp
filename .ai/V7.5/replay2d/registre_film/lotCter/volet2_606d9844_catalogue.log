@@ -1,0 +1,49 @@
+=== RUN   TestHillShapesMeasure
+2026/08/19 00:38:42 INFO pont slot->joueur slots=38 viesNommees=35 viesTotal=56 lecturesIndex=13 desaccordsIndex=0 collisionsSlot=0
+2026/08/19 00:38:42 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/19 00:38:42 INFO rejeu : poses d'equipement balaye=false calibre=false decoupage="" poses=0 nommees=0 autres=0 avecPoseur=0 avecCap=0 deployees=0 lachees=0 origineInconnue=0
+2026/08/19 00:38:42 INFO rejeu : socles d'arme au sol balaye=false ancres=0 acceptees=0 retenues=0 ecartees=0 objetsDObjectif=0 lachees=0 apparues=0 auRepos=0 grappes=0 socles=0 occupations=0 datees=0 sansPassage=0 jamaisVidees=0 cyclesEtablis=0
+2026/08/19 00:38:42 WARN rejeu : appariements ECARTES — zones absentes de l'etat publie match_id=606d9844 methode=positions+geometry nonApparies=2 apparies=3 captures=0 attribuees=0
+2026/08/19 00:38:42 INFO rejeu : etat des zones match_id=606d9844 methode=positions+geometry catalogue=5 slots=21 apparies=3 nonApparies=2 sansProprietaire=0 intervalles=5 periodesColline=5 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/19 00:38:42 INFO rejeu : episodes d'equipement actif viesPubliees=42 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/19 00:38:42 INFO rejeu : palette de capacites palette="non classee" lectures=0 rangsNommes=0
+2026/08/19 00:38:42 INFO rejeu : couverture par calque tirsRattaches=0 tirsDisponibles=0 tirsSansSlot=0 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs="aucune donnée" verdictGrenades="aucune donnée" verdictPont=nominal
+    hill_shapes_measure_test.go:401: FILM 606d9844 (KOTH, chasm) — 5 formes de colline depuis catalogue (role hill) ; 42 trajectoires, 2342 frames de 100 ms
+    hill_shapes_measure_test.go:405:   forme 0 : boite 1.65 x 4.00 (h +4.00/-0.00) centre (-73.62 ; -53.97 ; -136.43) idx 129 inst 0 team -1
+    hill_shapes_measure_test.go:405:   forme 1 : cylindre r=0.80 (h +2.10/-0.00) centre (-67.20 ; -62.20 ; -133.97) idx 132 inst 0 team -1
+    hill_shapes_measure_test.go:405:   forme 2 : cylindre r=3.00 (h +1.80/-0.00) centre (-67.18 ; -62.20 ; -138.70) idx 133 inst 0 team -1
+    hill_shapes_measure_test.go:405:   forme 3 : boite 5.25 x 1.50 (h +1.80/-0.00) centre (-54.40 ; -70.19 ; -138.83) idx 130 inst 0 team -1
+    hill_shapes_measure_test.go:405:   forme 4 : boite 2.50 x 1.90 (h +1.90/-0.00) centre (-50.68 ; -54.05 ; -138.83) idx 131 inst 0 team -1
+    hill_shapes_measure_test.go:415:   POSITIONS : 10915 points bruts, 14047 positions tenues ; ecart entre deux points d'une vie p50 1, p90 1, p99 2, max 297 frames
+    hill_shapes_measure_test.go:419:   RAMPES : 7 (premiere a la frame 379 = 37.9 s ; 3 slots de jauge)
+    hill_shapes_measure_test.go:422:     rampe  0 slot 1501 [  37.9 s ;   38.7 s] -> forme  2 votes   18 · emissions   8 occupees 100.0 % · frames 100.0 % (stricte 100.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe  1 slot 1501 [  44.9 s ;   50.2 s] -> forme  0 votes   26 · emissions  10 occupees 100.0 % · frames  42.6 % (stricte  38.9 %) dedans
+    hill_shapes_measure_test.go:422:     rampe  2 slot 1501 [  87.1 s ;   88.0 s] -> forme -1 votes    0 · emissions   0 occupees   0.0 % · frames   0.0 % (stricte   0.0 %) NON APPARIEE
+    hill_shapes_measure_test.go:422:     rampe  3 slot 1501 [  92.1 s ;   93.0 s] -> forme  2 votes   10 · emissions   9 occupees 100.0 % · frames 100.0 % (stricte 100.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe  4 slot 1501 [  93.1 s ;  110.9 s] -> forme  2 votes  228 · emissions  11 occupees 100.0 % · frames 100.0 % (stricte 100.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe  5 slot 1501 [ 112.1 s ;  165.7 s] -> forme  3 votes 1098 · emissions  10 occupees   0.0 % · frames  86.4 % (stricte  86.0 %) HORS
+    hill_shapes_measure_test.go:422:     rampe  6 slot 1501 [ 166.8 s ;  190.7 s] -> forme  0 votes  198 · emissions  10 occupees   0.0 % · frames  74.2 % (stricte  60.4 %) HORS
+    hill_shapes_measure_test.go:422:     forme -1 : 1 rampe(s)
+    hill_shapes_measure_test.go:422:     forme  0 : 2 rampe(s)
+    hill_shapes_measure_test.go:422:     forme  2 : 3 rampe(s)
+    hill_shapes_measure_test.go:422:     forme  3 : 1 rampe(s)
+    hill_shapes_measure_test.go:428:   MESURE (D4, seuil 90 %) : appariees 6/7, DEDANS (emissions croissantes) 4/7 = 57.1 %, dedans (frames) 5/7 = 71.4 %
+    hill_shapes_measure_test.go:429:   TEMOIN formes permutees   : appariees 7/7, DEDANS (emissions croissantes) 5/7 = 71.4 %, dedans (frames) 3/7 = 42.9 %
+    hill_shapes_measure_test.go:430:   TEMOIN periodes +20 s     : appariees 7/7, DEDANS (emissions croissantes) 6/7 = 85.7 %, dedans (frames) 6/7 = 85.7 %
+    hill_shapes_measure_test.go:432:   TEMOIN formes deplacees   : appariees 6/7, DEDANS (emissions croissantes) 3/7 = 42.9 %, dedans (frames) 1/7 = 14.3 % (deplacement +6 m ; +6 m)
+    hill_shapes_measure_test.go:433:   HASARD : une colline occupee sur 81.9 % des frames du match (permutees : 71.1 %, deplacees : 12.4 %)
+    hill_shapes_measure_test.go:436:   MANQUES (D3 emissions) : 1 non appariees (duree mediane 1.0 s), 2 appariees a une forme occupee >= 30 % des frames mais VIDE a chaque emission croissante, 0 autres
+    hill_shapes_measure_test.go:438:   PRODUCTION (buildHillStates sur 5 formes) : methode positions+geometry · periodes 5 · zones 3 · non appariees 2 · frames actives 1963/2342 = 83.8 %
+    hill_shapes_measure_test.go:439:   AVANT (Bastion+Extraction, 8 formes) : 5 periodes, 4 zones, 0 rampes non appariees
+    hill_shapes_measure_test.go:439:   APRES (collines, 5 formes)            : 5 periodes, 3 zones, 2 rampes non appariees
+    hill_shapes_measure_test.go:439:     periode  0 [  379 ;   448] AVANT zone 5 extraction_zone (-67.2 ; -62.2) -> colline 2 (-67.2 ; -62.2) a 0.0 m de la forme AVANT — confondue
+    hill_shapes_measure_test.go:439:     periode  1 [  449 ;   920] AVANT zone 3 extraction_zone (-80.0 ; -54.1) -> colline 2 (-67.2 ; -62.2) a 9.8 m de la forme AVANT — DISTINCTE
+    hill_shapes_measure_test.go:439:     periode  2 [  921 ;  1120] AVANT zone 5 extraction_zone (-67.2 ; -62.2) -> colline 2 (-67.2 ; -62.2) a 0.0 m de la forme AVANT — confondue
+    hill_shapes_measure_test.go:439:     periode  3 [ 1121 ;  1667] AVANT zone 6 extraction_zone (-60.8 ; -71.8) -> colline 3 (-54.4 ; -70.2) a 3.2 m de la forme AVANT — DISTINCTE
+    hill_shapes_measure_test.go:439:     periode  4 [ 1668 ;  2341] AVANT zone 1 strongholds_zone (-70.4 ; -54.0) -> colline 1 (-67.2 ; -62.2) a 7.2 m de la forme AVANT — DISTINCTE
+    hill_shapes_measure_test.go:439:   AVANT/APRES : 5 periodes AVANT, 3 dont la colline est DISTINCTE de la forme AVANT
+    hill_shapes_measure_test.go:444:   GATE 2 (ce film) : NON TENU
+--- PASS: TestHillShapesMeasure (66.94s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	68.641s
+EXIT=0

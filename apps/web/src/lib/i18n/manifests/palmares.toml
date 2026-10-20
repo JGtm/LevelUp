@@ -423,14 +423,6 @@ en = "{count} seen this week"
 fr = "Derniers matchs"
 en = "Recent matches"
 
-[palmares.relations.core.show_others]
-fr = "voir les {count} autres"
-en = "show {count} more"
-
-[palmares.relations.core.collapse]
-fr = "réduire"
-en = "collapse"
-
 # ─── Relations - Donut de taux de victoire (hero cards) ────────────────────
 # Légende à droite du donut : victoires / défaites de la relation + repère de la
 # moyenne perso historique. Delta signé au centre (unité « pts »).
@@ -481,10 +473,6 @@ en = "Moments and rivalries could not be loaded."
 [palmares.relations.moments.heatmap_empty]
 fr = "Pas encore assez de rencontres pour dresser une carte horaire."
 en = "Not enough encounters yet to build a time-of-day map."
-
-[palmares.relations.moments.heatmap_legend]
-fr = "Matchs communs"
-en = "Shared matches"
 
 # Tooltip d'une cellule du heatmap : joueur / creneau ou jour / nombre de matchs.
 [palmares.relations.moments.tooltip_player]
@@ -736,6 +724,23 @@ en = "No description is available for this pass."
 [palmares.season_pass.freshness_last_sync]
 fr = "Dernière synchronisation réussie le {date}"
 en = "Last successful synchronization on {date}"
+
+# ─── Season pass - Carrousel de récompenses (BattlePassRewardCarousel) ──────
+# Bilan fork ChaseWoodhams 2026-09-11, point 6 : ces libellés étaient en dur
+# (valeurs par défaut des props du composant), donc figés en FR quel que soit
+# la locale — HomeBattlePassPanel ne les passait même pas.
+
+[palmares.season_pass.carousel.prev_aria_label]
+fr = "Paliers précédents"
+en = "Previous tiers"
+
+[palmares.season_pass.carousel.next_aria_label]
+fr = "Paliers suivants"
+en = "Next tiers"
+
+[palmares.season_pass.carousel.view_detail_aria_label]
+fr = "Voir le détail de {title}"
+en = "View details for {title}"
 
 # ─── Season pass - Contenu du pass ───────────────────────────────────────────
 

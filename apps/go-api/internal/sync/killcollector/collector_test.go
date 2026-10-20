@@ -22,6 +22,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -68,11 +69,9 @@ type fakeRoster map[string]string
 func (r fakeRoster) IdentitiesForMatch(_ context.Context, _ string) (MatchIdentities, error) {
 	out := MatchIdentities{
 		ParNom:     map[string]string(r),
-		ParXUID:    make(map[string]string, len(r)),
 		ShotsFired: map[string]int{},
 	}
-	for nom, xuid := range r {
-		out.ParXUID[xuid] = nom
+	for _, xuid := range r {
 		out.XUIDs = append(out.XUIDs, xuid)
 	}
 	sort.Strings(out.XUIDs)
@@ -153,7 +152,7 @@ func TestKillSourceCollecteFilmReelEtRelitParLaVue(t *testing.T) {
 
 	db := openSharedTestDB(t)
 	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}}
-	col := NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0)
+	col := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0), carteDe9b191a7f)
 
 	outcome, _, err := col.CollectMatch(context.Background(), film)
 	if err != nil {
@@ -266,7 +265,7 @@ func TestTirsParArmeSuiventLeurPropreCapability(t *testing.T) {
 	compterTirs := func(t *testing.T, caps games.CapabilityMap) (morts, tirs int) {
 		t.Helper()
 		db := openSharedTestDB(t)
-		col := NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), caps, 0)
+		col := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), caps, 0), carteDe9b191a7f)
 		if _, _, err := col.CollectMatch(context.Background(), film); err != nil {
 			t.Fatalf("CollectMatch: %v", err)
 		}
@@ -314,7 +313,7 @@ func TestKillSourceRosterResoutLesXuid(t *testing.T) {
 	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}}
 
 	// On lit d abord les noms du film pour fabriquer un roster credible.
-	col := NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0)
+	col := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0), carteDe9b191a7f)
 	if _, _, err := col.CollectMatch(context.Background(), film); err != nil {
 		t.Fatalf("passe de reconnaissance: %v", err)
 	}
@@ -325,8 +324,7 @@ func TestKillSourceRosterResoutLesXuid(t *testing.T) {
 	}
 
 	db2 := openSharedTestDB(t)
-	col2 := NewKillSourceCollector(client, fakeRoster{victime: "xuid(2533274792395366)"},
-		sharedWriter(db2), capsAvecFilm(), 0)
+	col2 := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{victime: "xuid(2533274792395366)"}, sharedWriter(db2), capsAvecFilm(), 0), carteDe9b191a7f)
 	if _, _, err := col2.CollectMatch(context.Background(), film); err != nil {
 		t.Fatalf("passe avec roster: %v", err)
 	}
@@ -394,6 +392,66 @@ func TestKillSourcePasseMultiMatchsCompteToutSansSArreter(t *testing.T) {
 	}
 }
 
+// TestKillSourceBlobExpirePartiellementEstDefinitif — bilan fork ChaseWoodhams 2026-09-11
+// point 4b : un manifeste vivant dont un chunk (blob CDN pre-signe) rend 404/410 est une
+// EXPIRATION PARTIELLE, indiscernable d une panne transitoire pour qui ne regarde que
+// "err != nil". Sans classification, marquerFilmParOutcome ne pose jamais MBitFilmAbsent
+// (le film garde son outcome interne a OutcomeNoFilm mais l erreur non-nil fait sortir
+// CollectMatches par la branche Errors AVANT d atteindre le marquage) : le match reste
+// candidat a VIE aux passes `--online` suivantes (jamais exclu par le filtre
+// `MBitFilmAbsent`). Avec `haloclient.IsFilmGoneErr`, ce cas se classe desormais comme
+// OutcomeNoFilm SANS erreur — memes consequences qu un manifeste 404, y compris le
+// marquage terminal.
+func TestKillSourceBlobExpirePartiellementEstDefinitif(t *testing.T) {
+	blobGoneErr := fmt.Errorf("GetFilmChunks chunk 3(m1): %w",
+		&haloclient.BlobHTTPError{StatusCode: 404, URL: "u", Attempts: 1})
+	client := &fakeFilmClient{err: blobGoneErr}
+	col := NewKillSourceCollector(client, fakeRoster{}, nil, capsAvecFilm(), 0)
+
+	outcome, deaths, err := col.CollectMatch(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("CollectMatch: erreur rendue %v, attendu nil (film definitivement perdu = etat, pas panne)", err)
+	}
+	if outcome != OutcomeNoFilm {
+		t.Errorf("outcome = %q, attendu %q", outcome, OutcomeNoFilm)
+	}
+	if deaths != 0 {
+		t.Errorf("deaths = %d, attendu 0", deaths)
+	}
+
+	// La passe multi-matchs doit compter ceci en NoFilm, PAS en Errors — sinon le match
+	// n est jamais marque MBitFilmAbsent et reste candidat a vie.
+	sum := col.CollectMatches(context.Background(), []string{"m1", "m2"})
+	if sum.NoFilm != 2 {
+		t.Errorf("NoFilm = %d, attendu 2", sum.NoFilm)
+	}
+	if sum.Errors != 0 {
+		t.Errorf("Errors = %d, attendu 0 — une expiration partielle definitive n est pas une panne", sum.Errors)
+	}
+}
+
+// TestKillSourceErreurTransitoireResteUneErreur — un blob 503 (rate-limit, panne CDN
+// passagere) doit rester classe en erreur : seul le lien DEFINITIVEMENT mort (404/410,
+// manifeste ou blob) se reclasse en OutcomeNoFilm. Sans ce garde, une vraie panne
+// serait marquee MBitFilmAbsent et perdrait le match pour toujours.
+func TestKillSourceErreurTransitoireResteUneErreur(t *testing.T) {
+	transitoire := fmt.Errorf("GetFilmChunks chunk 3(m1): %w",
+		&haloclient.BlobHTTPError{StatusCode: 503, URL: "u", Attempts: 3})
+	client := &fakeFilmClient{err: transitoire}
+	col := NewKillSourceCollector(client, fakeRoster{}, nil, capsAvecFilm(), 0)
+
+	outcome, _, err := col.CollectMatch(context.Background(), "m1")
+	if err == nil {
+		t.Fatal("CollectMatch: erreur attendue pour un 503 transitoire, err = nil")
+	}
+	if outcome != OutcomeNoFilm {
+		// La valeur de outcome n a pas d importance cote appelant tant que err != nil
+		// (CollectMatches l ignore et compte Errors), mais on la fige pour eviter une
+		// derive silencieuse.
+		t.Errorf("outcome = %q, attendu %q", outcome, OutcomeNoFilm)
+	}
+}
+
 // TestKillSourcePasseSArreteSurAnnulation — l arret demande par l appelant rend la synthese de
 // ce qui a ete fait, pas une erreur.
 func TestKillSourcePasseSArreteSurAnnulation(t *testing.T) {
@@ -435,21 +493,20 @@ func TestPontAssembleLaSequenceCompleteAvecTrous(t *testing.T) {
 			{Index: 5, ChunkType: 3, Data: []byte("killfeed")},
 		},
 	}}
-	src, found, err := ChunkSourceForMatch(context.Background(), client, "m1")
+	film, found, err := FilmForMatch(context.Background(), client, "m1")
 	if err != nil || !found {
-		t.Fatalf("ChunkSourceForMatch: found=%v err=%v", found, err)
+		t.Fatalf("FilmForMatch: found=%v err=%v", found, err)
 	}
-	if got := src.NumChunks(); got != 6 {
+	if got := film.NumChunks(); got != 6 {
 		t.Fatalf("NumChunks = %d, attendu 6 (dimensionne sur l index MAX, pas sur le compte)", got)
 	}
 	for idx, attendu := range map[int]string{0: "entete", 2: "replication", 5: "killfeed"} {
-		b, cErr := src.Chunk(idx)
-		if cErr != nil || string(b) != attendu {
-			t.Errorf("chunk %d = %q (%v), attendu %q", idx, b, cErr, attendu)
+		if b := film.Chunk(idx); string(b) != attendu {
+			t.Errorf("chunk %d = %q, attendu %q", idx, b, attendu)
 		}
 	}
 	for _, vide := range []int{1, 3, 4} {
-		if b, _ := src.Chunk(vide); len(b) != 0 {
+		if b := film.Chunk(vide); len(b) != 0 {
 			t.Errorf("chunk %d = %q, attendu vide (le trou du manifeste)", vide, b)
 		}
 	}

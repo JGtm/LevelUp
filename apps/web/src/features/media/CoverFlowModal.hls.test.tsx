@@ -246,38 +246,120 @@ describe('CoverFlowModal — persistance du mute "deux OFF" au recentrage', () =
   })
 })
 
+/**
+ * Garde-rail du correctif 2026-09-17 (« les voisins HLS ne lisent jamais »).
+ *
+ * hls.js expose stopLoad() sur TOUS ses networkControllers, PlaylistLoader en
+ * tête : appeler stopLoad() sur une instance qui vient d'appeler loadSource()
+ * avorte la requête du manifest encore en vol. Au recentrage, startLoad() ne
+ * trouve aucun level et reste STOPPED sans jamais relancer MANIFEST_LOADING.
+ * C'est exactement ce que faisait l'effet de centrage (stopLoad inconditionnel
+ * au montage d'un voisin). Retirer le garde startedRef du composant doit faire
+ * ROUGIR les deux premiers tests ci-dessous.
+ */
 describe('CoverFlowModal — chargement HLS réservé au clip centré', () => {
   beforeEach(() => {
     instances.length = 0
   })
 
-  it('startLoad pour le clip centré seulement, stopLoad au décentrage', () => {
+  // Trois clips HLS, le clip du milieu centré : les 3 slots tiennent dans la
+  // fenêtre de proximité (±2) → instances[0]=A (voisin gauche), [1]=B (centre),
+  // [2]=C (voisin droit), dans l'ordre de montage.
+  function renderTrio() {
+    const items = [
+      makeClip('/x/A/master.m3u8'),
+      makeClip('/x/B/master.m3u8'),
+      makeClip('/x/C/master.m3u8'),
+    ]
+    const { container } = renderWithProviders(
+      <CoverFlowModal items={items} startIndex={1} onClose={vi.fn()} onToggleLike={vi.fn()} />,
+    )
+    return { items, container }
+  }
+
+  // Le bouton « suivant » n'a pas de libellé accessible : on le repère par le
+  // chevron droit qu'il contient (même chemin SVG que dans le composant).
+  function clickNext(container: HTMLElement) {
+    const btn = Array.from(container.querySelectorAll('button')).find((b) =>
+      b.querySelector('path[d="M9 5l7 7-7 7"]'),
+    )
+    expect(btn).toBeDefined()
+    act(() => {
+      fireEvent.click(btn as HTMLButtonElement)
+    })
+    act(() => {
+      vi.advanceTimersByTime(500) // ANIM_MS : libère animatingRef
+    })
+  }
+
+  it('un voisin monté charge son manifest et ne reçoit jamais stopLoad', () => {
+    const { items } = renderTrio()
+    // Chaque slot demande son manifest (loadSource), qui est lu et conservé. Les
+    // pistes audio, elles, n'arrivent qu'au premier startLoad() (hls.js n'émet
+    // AUDIO_TRACKS_UPDATED que depuis switchLevel, sur LEVEL_LOADING /
+    // LEVEL_SWITCHING) : un voisin n'a donc pas encore son sélecteur, il l'obtient
+    // au recentrage — seul moment où il est affiché.
+    expect(instances).toHaveLength(3)
+    expect(instances[0].loadSource).toHaveBeenCalledWith(items[0].file_path)
+    expect(instances[1].loadSource).toHaveBeenCalledWith(items[1].file_path)
+    expect(instances[2].loadSource).toHaveBeenCalledWith(items[2].file_path)
+
+    // Seul le centre charge des segments.
+    expect(instances[1].startLoad).toHaveBeenCalledTimes(1)
+    expect(instances[0].startLoad).not.toHaveBeenCalled()
+    expect(instances[2].startLoad).not.toHaveBeenCalled()
+
+    // Et surtout : aucun stopLoad sur un voisin jamais démarré (sinon son
+    // master.m3u8 est avorté et le clip ne lira plus jamais).
+    expect(instances[0].stopLoad).not.toHaveBeenCalled()
+    expect(instances[2].stopLoad).not.toHaveBeenCalled()
+    expect(instances[1].stopLoad).not.toHaveBeenCalled()
+  })
+
+  it('passer au suivant démarre le voisin sans avoir coupé son manifest', () => {
     vi.useFakeTimers()
     try {
-      const items = [
-        makeClip('/x/A/master.m3u8'),
-        makeClip('/x/B/master.m3u8'),
-      ]
-      renderWithProviders(
-        <CoverFlowModal items={items} startIndex={0} onClose={vi.fn()} onToggleLike={vi.fn()} />,
-      )
-      // A centré (instances[0]) → startLoad. B voisin (instances[1]) → jamais
-      // startLoad (segments non préchargés), explicitement stoppé.
-      expect(instances[0].startLoad).toHaveBeenCalled()
-      expect(instances[0].stopLoad).not.toHaveBeenCalled()
-      expect(instances[1].startLoad).not.toHaveBeenCalled()
-      expect(instances[1].stopLoad).toHaveBeenCalled()
+      const { container } = renderTrio()
+      clickNext(container)
 
-      // Naviguer vers B : A quitte le centre → stopLoad ; B centré → startLoad.
+      // C (ex-voisin droit) devient le centre : il démarre, et son compteur
+      // stopLoad est resté à 0 — son manifest n'a donc jamais été avorté.
+      expect(instances[2].startLoad).toHaveBeenCalledTimes(1)
+      expect(instances[2].stopLoad).not.toHaveBeenCalled()
+
+      // B (ex-centre, démarré) quitte le centre : stopLoad exactement une fois,
+      // seul cas où couper est utile (arrêt de ses téléchargements de segments).
+      expect(instances[1].stopLoad).toHaveBeenCalledTimes(1)
+
+      // A reste un voisin jamais démarré : toujours aucun stopLoad.
+      expect(instances[0].startLoad).not.toHaveBeenCalled()
+      expect(instances[0].stopLoad).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('revenir sur un clip déjà lu le redémarre', () => {
+    vi.useFakeTimers()
+    try {
+      renderTrio()
       act(() => {
         fireEvent.keyDown(window, { key: 'ArrowRight' })
       })
       act(() => {
         vi.advanceTimersByTime(500)
       })
+      expect(instances[1].stopLoad).toHaveBeenCalledTimes(1)
 
-      expect(instances[0].stopLoad).toHaveBeenCalled()
-      expect(instances[1].startLoad).toHaveBeenCalled()
+      // Retour sur B : l'instance persiste (fenêtre ±2) et doit redémarrer.
+      act(() => {
+        fireEvent.keyDown(window, { key: 'ArrowLeft' })
+      })
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+      expect(instances[1].startLoad).toHaveBeenCalledTimes(2)
+      expect(instances[2].stopLoad).toHaveBeenCalledTimes(1)
     } finally {
       vi.useRealTimers()
     }

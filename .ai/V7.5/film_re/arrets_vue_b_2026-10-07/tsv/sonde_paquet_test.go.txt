@@ -1,0 +1,26 @@
+package grammar
+
+import (
+	"fmt"
+	"os"
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
+func TestSondePaquet(t *testing.T) {
+	film, err := source.LoadDir(os.Getenv("SONDE_FILM"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fc := NewFilmContext(film)
+	lu, err := fc.lecturesBipedes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range lu.records {
+		if r.Packet.TimestampUS == 10131559824 || r.Packet.TimestampUS == 9793745857 {
+			fmt.Printf("SONDE chunk=%d paquet=%d ts=%d slot=%d gen=%d recupere=%v\n", r.Chunk, r.Packet.Index, r.Packet.TimestampUS, r.Slot, r.Gen, r.Recupere)
+		}
+	}
+}

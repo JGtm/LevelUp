@@ -18,6 +18,8 @@ func TestResolveDominanceBadge_KnownFlags(t *testing.T) {
 		{canonical.DominanceRemontada, "narrative.dominance.remontada", "narrative.dominance.win.comeback"},
 		{canonical.DominanceDebandade, "narrative.dominance.debandade", "narrative.dominance.loss.collapse"},
 		{canonical.DominanceContreRem, "narrative.dominance.contre_remontada", "narrative.dominance.win.counter"},
+		{canonical.DominanceSabordage, "narrative.dominance.sabordage", "narrative.dominance.loss.scuttled"},
+		{canonical.DominanceAbnegation, "narrative.dominance.abnegation", "narrative.dominance.win.selfless"},
 	}
 	for _, c := range cases {
 		c := c

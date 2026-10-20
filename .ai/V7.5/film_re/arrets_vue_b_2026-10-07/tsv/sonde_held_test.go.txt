@@ -1,0 +1,26 @@
+package grammar
+
+import (
+	"fmt"
+	"os"
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
+func TestSondeHeld(t *testing.T) {
+	film, err := source.LoadDir(bobineFamilles, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fc := NewFilmContext(film)
+	held, _, err := ScanHeldWeaponChanges(fc, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, _ := os.Create(os.Getenv("SONDE_OUT"))
+	defer f.Close()
+	for _, h := range held {
+		fmt.Fprintf(f, "%+v\n", h)
+	}
+}

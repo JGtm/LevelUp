@@ -10,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // GetRelationsHeatmap retourne, pour les TOP-N relations (les plus de matchs
@@ -33,6 +34,34 @@ func (r *CareerRepo) GetRelationsHeatmap(ctx context.Context, scope []string, to
 	}
 	defer release()
 
+	stop := timing.FromContext(ctx).Section("relations_heatmap")
+	out, err := lireHeatmap(ctx, db, sqlText, args)
+	stop()
+	if err != nil {
+		return nil, err
+	}
+	// Noms : l'annuaire en portée base (lot A, plus de jointure sur la vue des noms), sur le
+	// périmètre scopé ou l'historique du joueur — comme GetRelations.
+	stop = timing.FromContext(ctx).Section("relations_heatmap_annuaire")
+	defer stop()
+	if len(out) == 0 {
+		return out, nil
+	}
+	matchs, err := r.matchsDuPerimetre(ctx, db, scope)
+	if err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetRelationsHeatmap: %w", err)
+	}
+	if err := nommerLignesPorteeBase(ctx, db, matchs, out, accesLigne[domain.RelationHeatmapRawRow]{
+		xuid:   func(l domain.RelationHeatmapRawRow) string { return l.XUID },
+		nommer: func(l *domain.RelationHeatmapRawRow, gt string) { l.Gamertag = gt },
+	}); err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetRelationsHeatmap: %w", err)
+	}
+	return out, nil
+}
+
+// lireHeatmap exécute Q29 : lignes sans nom.
+func lireHeatmap(ctx context.Context, db *sql.DB, sqlText string, args []any) ([]domain.RelationHeatmapRawRow, error) {
 	rows, err := db.QueryContext(ctx, sqlText, args...)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetRelationsHeatmap: %w", err)
@@ -42,7 +71,7 @@ func (r *CareerRepo) GetRelationsHeatmap(ctx context.Context, scope []string, to
 	var out []domain.RelationHeatmapRawRow
 	for rows.Next() {
 		var row domain.RelationHeatmapRawRow
-		if err := rows.Scan(&row.XUID, &row.Gamertag, &row.Hour, &row.Dow, &row.Count); err != nil {
+		if err := rows.Scan(&row.XUID, &row.Hour, &row.Dow, &row.Count); err != nil {
 			return nil, fmt.Errorf("CareerRepo.GetRelationsHeatmap scan: %w", err)
 		}
 		out = append(out, row)

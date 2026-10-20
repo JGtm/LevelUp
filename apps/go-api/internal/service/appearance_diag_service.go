@@ -1,6 +1,6 @@
 // Package service — appearance_diag_service.go : diagnostic apparence Spartan ID
 // à la demande, par joueur suivi (volet 2 du plan
-// .ai/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md, Lot F).
+// .ai/archive/V7.1/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md, Lot F).
 //
 // Pour un player_slug de db_profiles.json, produit le verdict des 4 composants du
 // Spartan ID (bannière, emblème, backdrop, service tag) en combinant :

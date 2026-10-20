@@ -22,6 +22,7 @@ import { CoachProposalsCard } from '@/features/coach/CoachProposalsCard'
 import { getCoachStrings } from '@/features/coach/i18n'
 import type { AxisKind } from '@/lib/playerProfile'
 import { CoachFocusCard } from './CoachFocusCard'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { CampaignTracker } from './campaign/CampaignTracker'
 import { StartCampaignModal } from './campaign/StartCampaignModal'
 import { ProgressionSection } from './profile/ProgressionSection'
@@ -44,6 +45,8 @@ export function AscensionCoachingTab() {
 
   const { data: activeCampaign } = useActiveCampaign(playerSlug)
   const hasActiveCampaign = !!activeCampaign && activeCampaign.status === 'active'
+  // Profil d'un ami (lecture seule) : campagne affichée sans action, aucune à lancer.
+  const readOnly = !useCanWritePlayer(playerSlug)
 
   const [campaignModal, setCampaignModal] = useState<{ open: boolean; axis: string; axisKind: AxisKind }>(
     { open: false, axis: '', axisKind: 'lusr_component' },
@@ -67,10 +70,10 @@ export function AscensionCoachingTab() {
         <div id="coach-proposals">
           <CoachProposalsCard playerSlug={playerSlug} proactiveEnabled={proactiveEnabled} t={coachT} />
         </div>
-        {hasActiveCampaign && <CampaignTracker playerSlug={playerSlug} campaign={activeCampaign} />}
+        {hasActiveCampaign && <CampaignTracker playerSlug={playerSlug} campaign={activeCampaign} readOnly={readOnly} />}
         <ProgressionLeadsSection
           playerSlug={playerSlug}
-          onStartCampaign={hasActiveCampaign ? undefined : openStartCampaign}
+          onStartCampaign={hasActiveCampaign || readOnly ? undefined : openStartCampaign}
         />
         <CalibratedLeversSection playerSlug={playerSlug} t={t} />
       </LayerSection>

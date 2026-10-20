@@ -30,6 +30,25 @@ func TestIsFileLockError(t *testing.T) {
 		{"linux_could_not_set_lock", errors.New("IO Error: Could not set lock on file"), true},
 		{"conflicting_lock", errors.New("Conflicting lock is held in /proc/..."), true},
 		{"different_configuration", errors.New("database is already opened with a different configuration than existing connections"), true},
+		{
+			// Libellé OS Windows EN, SANS le marqueur "File is already open in" : DuckDB
+			// n'ajoute ce marqueur que lorsqu'il identifie le détenteur via son propre
+			// protocole de verrou ; un détenteur étranger (antivirus, sauvegarde, autre
+			// outil hors DuckDB) ne laisse que le message IO Error brut de l'OS. Poste
+			// Windows en locale EN (ou prod hors locale FR) — cf. bilan fork 2026-09-11 pt 4a.
+			name: "windows_english_os_message_without_duckdb_marker",
+			err: errors.New(`duckdb.OpenReadWrite(C:\...\stats.duckdb): database/sql/driver: ` +
+				`could not connect to database: IO Error: Cannot open file "...stats.duckdb": ` +
+				`The process cannot access the file because it is being used by another process.`),
+			want: true,
+		},
+		{
+			// Casse mixte : le message OS Windows peut varier en capitalisation selon le
+			// canal qui le remonte (comparaison insensible à la casse exigée).
+			name: "windows_english_os_message_mixed_case",
+			err:  errors.New(`IO Error: PROCESS CANNOT ACCESS THE FILE BECAUSE IT IS BEING USED BY ANOTHER PROCESS.`),
+			want: true,
+		},
 		{"not_found_is_not_a_lock", errors.New(`IO Error: Cannot open file "x.duckdb": No such file or directory`), false},
 		{"unrelated", errors.New("Catalog Error: Table with name foo does not exist"), false},
 	}

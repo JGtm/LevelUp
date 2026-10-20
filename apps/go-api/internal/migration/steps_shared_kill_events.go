@@ -108,7 +108,7 @@ package migration
 // (0,004 %)** ; aucune ligne au-dela de 1. Le declencheur litteral est donc franchi, et pourtant
 // l hypothese de schema TIENT — parce que ce que ce compteur mesure n est pas « une mort porte
 // deux assistants » mais « DEUX KILL-EVENTS ATTACHES a la meme mort nomment des assistants
-// differents » (cf. `killsource.Assist.Extra`, qui delimite lui-meme cette portee). Un seuil a
+// differents » (cf. `types.Assist.Extra`, qui delimite lui-meme cette portee). Un seuil a
 // zero sur une quantite d appariement, et non sur une cardinalite du format, ne pouvait rester
 // vrai indefiniment.
 //
@@ -222,7 +222,7 @@ func init() {
 //
 // Relocation : ce step appartient fonctionnellement a Halo Infinite (les films Halo 5 ont un
 // autre format) et rejoindra `internal/games/halo_infinite/migrations/` avec le lot de la voie B
-// (ADR 0025), comme `weapon_kills_v3` — l autre table derivee du film. Consequence assumee : la
+// (ADR 0025). Consequence assumee : la
 // table est creee VIDE dans le shared des autres titres. Le nom reste dans `canonicalOrder` le
 // jour de la relocation.
 func applyMatchKillEvents(db *sql.DB) error {

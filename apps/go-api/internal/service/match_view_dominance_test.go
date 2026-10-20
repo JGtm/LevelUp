@@ -164,6 +164,12 @@ type stubAssetURL struct {
 	mapImg     string
 	csrPattern string
 	onyxImg    string
+	// medalImg : URL fixe rendue par MedalImageURL pour tout id. "" = titre sans
+	// visuels de médaille (défaut, préserve les assertions existantes).
+	medalImg string
+	// killIcons : icônes de source de dégât par tag `jpt!`. Nil = titre sans atlas de
+	// kill feed (le cas d'Halo 5), ce qui doit rester un chemin nominal.
+	killIcons map[uint32]canonical.KillSourceIcon
 }
 
 func (s *stubAssetURL) TitleSlug() string { return "halo_infinite" }
@@ -173,15 +179,20 @@ func (s *stubAssetURL) MapImageURL(name string) string {
 	}
 	return s.mapImg
 }
-func (s *stubAssetURL) MedalImageURL(_ uint64) string { return "" }
+func (s *stubAssetURL) MedalImageURL(_ uint64) string { return s.medalImg }
 func (s *stubAssetURL) CSRRankImageURL(tier string, subTier int) string {
 	if tier == "" {
 		return ""
 	}
 	return s.csrPattern + tier + ":" + itoa(subTier)
 }
-func (s *stubAssetURL) CSRRankImageURLOnyx() string          { return s.onyxImg }
-func (s *stubAssetURL) WeaponImageURL(_ string) string       { return "" }
+func (s *stubAssetURL) CSRRankImageURLOnyx() string      { return s.onyxImg }
+func (s *stubAssetURL) WeaponImageURL(_ int64) string    { return "" }
+func (s *stubAssetURL) WeaponImageIsTinted(_ int64) bool { return false }
+func (s *stubAssetURL) KillSourceIcon(tag uint32) (canonical.KillSourceIcon, bool) {
+	ic, ok := s.killIcons[tag]
+	return ic, ok
+}
 func (s *stubAssetURL) MatchWebURL(_ string) string          { return "" }
 func (s *stubAssetURL) PlayerMatchWebURL(_, _ string) string { return "" }
 
@@ -325,9 +336,13 @@ func (s *stubAssetURLNameAware) MapImageURL(name string) string {
 func (s *stubAssetURLNameAware) MedalImageURL(_ uint64) string          { return "" }
 func (s *stubAssetURLNameAware) CSRRankImageURL(_ string, _ int) string { return "" }
 func (s *stubAssetURLNameAware) CSRRankImageURLOnyx() string            { return "" }
-func (s *stubAssetURLNameAware) WeaponImageURL(_ string) string         { return "" }
-func (s *stubAssetURLNameAware) MatchWebURL(_ string) string            { return "" }
-func (s *stubAssetURLNameAware) PlayerMatchWebURL(_, _ string) string   { return "" }
+func (s *stubAssetURLNameAware) WeaponImageURL(_ int64) string          { return "" }
+func (s *stubAssetURLNameAware) WeaponImageIsTinted(_ int64) bool       { return false }
+func (s *stubAssetURLNameAware) KillSourceIcon(_ uint32) (canonical.KillSourceIcon, bool) {
+	return canonical.KillSourceIcon{}, false
+}
+func (s *stubAssetURLNameAware) MatchWebURL(_ string) string          { return "" }
+func (s *stubAssetURLNameAware) PlayerMatchWebURL(_, _ string) string { return "" }
 
 // TestBuildMatchHeader_MapImageRegistry vérifie que meta.MapImageURL (registry)
 // a la priorité sur l'adapter name-based, et que l'adapter sert de fallback.

@@ -6,6 +6,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -16,23 +17,28 @@ import (
 )
 
 // GetMatchNeighbors retourne les matchs précédent/suivant pour la navigation (Q25).
-// Exécutée sur SharedReader (ADR 0016).
+// Exécutée sur SharedReader (ADR 0016). Un match absent du scope (`sql.ErrNoRows`) rend des
+// voisins vides : c'est une absence constatée ; un lecteur indisponible ou une requête en échec
+// remonte.
 func (r *MatchViewRepo) GetMatchNeighbors(ctx context.Context, xuid, matchID string) (*domain.MatchNeighbors, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		return &domain.MatchNeighbors{TotalMatches: 0}, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchNeighbors: shared reader: %w", err)
 	}
 	defer release()
 	q := resolveCampaignExclusion(Q25NeighborMatches, r.pdb.TitleSlug, "mr")
 	row := sharedDB.QueryRowContext(ctx, q, xuid, matchID)
 	var nextID, prevID *string
 	var currentIdx, total int
-	if err := row.Scan(&nextID, &prevID, &currentIdx, &total); err != nil {
-		// Match introuvable dans le scope → voisins vides
+	scanErr := row.Scan(&nextID, &prevID, &currentIdx, &total)
+	if errors.Is(scanErr, sql.ErrNoRows) {
 		return &domain.MatchNeighbors{TotalMatches: 0}, nil
+	}
+	if scanErr != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchNeighbors: Q25: %w", scanErr)
 	}
 	return &domain.MatchNeighbors{
 		PreviousMatchID: prevID,
@@ -78,16 +84,20 @@ func (r *MatchViewRepo) GetMatchNeighborsFiltered(
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		return &domain.MatchNeighbors{TotalMatches: 0}, nil
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchNeighborsFiltered: shared reader: %w", err)
 	}
 	defer release()
 	row := sharedDB.QueryRowContext(ctx, query, args...)
 	var nextID, prevID *string
 	var currentIdx, total int
-	if err := row.Scan(&nextID, &prevID, &currentIdx, &total); err != nil {
+	scanErr := row.Scan(&nextID, &prevID, &currentIdx, &total)
+	if errors.Is(scanErr, sql.ErrNoRows) {
 		// Match hors scope filtré → voisins vides (cas normal : utilisateur
 		// arrivé sur un match qui ne matche plus les filtres).
 		return &domain.MatchNeighbors{TotalMatches: 0}, nil
+	}
+	if scanErr != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchNeighborsFiltered: Q25: %w", scanErr)
 	}
 	return &domain.MatchNeighbors{
 		PreviousMatchID: prevID,
@@ -104,6 +114,10 @@ func (r *MatchViewRepo) GetMatchNeighborsFiltered(
 // rating_type via match_registry sur SharedReader (Q22b — is_ranked +
 // playlist_name + pair_name). Le calcul CASE/STRPOS qui était inline dans
 // Q22 est réimplémenté en Go pour respecter la séparation des connexions.
+//
+// Un match sans ligne de rang (match non classé ou sans donnée de skill : `sql.ErrNoRows`) est une
+// ABSENCE constatée : nil. Toute autre défaillance (Reopen impossible, vue absente, ligne illisible,
+// registre illisible) remonte : afficher un rang d'un type incertain serait pire que le dire.
 func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (*domain.SkillRankRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -114,9 +128,11 @@ func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (
 		ratingTypeRaw string
 	)
 	rrows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, Q22aMatchSkillRankPlayer, matchID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
-		// Absent pour les matchs non-ranked ou sans donnée skill (ou Reopen concurrent) → nil sans erreur
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchSkillRank: Q22a: %w", err)
 	}
 	defer rrows.Close()
 	if err := rrows.Scan(
@@ -129,12 +145,15 @@ func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (
 		&row.SubTier,
 		&row.ExpectedWinProb,
 	); err != nil {
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchSkillRank scan: %w", err)
 	}
 
-	// Phase B — shared.match_registry (best-effort : si la lecture échoue
-	// ou si le match n'est pas dans le registry, on retombe sur ratingTypeRaw).
-	row.RatingType = resolveMatchRatingType(ctx, r.sharedRead(), matchID, ratingTypeRaw)
+	// Phase B — shared.match_registry.
+	ratingType, err := resolveMatchRatingType(ctx, r.sharedRead(), matchID, ratingTypeRaw)
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchSkillRank: %w", err)
+	}
+	row.RatingType = ratingType
 	return &row, nil
 }
 
@@ -143,50 +162,70 @@ func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (
 //     contient "ranked" (case-insensitive), sinon LUSR.
 //   - sinon : fallback sur le rating_type_raw stocké dans match_skill_rank
 //     ("CSR" si égal après TRIM/UPPER, sinon LUSR).
-func resolveMatchRatingType(ctx context.Context, sr SharedReader, matchID, ratingTypeRaw string) string {
+//
+// « Sinon » ne vise que l'ABSENCE du match dans le registre (`sql.ErrNoRows`) ou l'absence de
+// lecteur configuré. Un lecteur indisponible ou une requête en échec remonte en erreur.
+func resolveMatchRatingType(ctx context.Context, sr SharedReader, matchID, ratingTypeRaw string) (string, error) {
 	if sr != nil {
 		db, release, err := sr.Get(ctx)
-		if err == nil {
-			defer release()
-			var (
-				isRanked     bool
-				playlistName string
-				pairName     string
-			)
-			scanErr := db.QueryRowContext(ctx, Q22bMatchRegistryRankedFlag, matchID).
-				Scan(&isRanked, &playlistName, &pairName)
-			if scanErr == nil {
-				if isRanked ||
-					strings.Contains(strings.ToLower(playlistName), "ranked") ||
-					strings.Contains(strings.ToLower(pairName), "ranked") {
-					return ratingTypeCSR
-				}
-				return ratingTypeLUSR
+		if err != nil {
+			return "", fmt.Errorf("registre du match: shared reader: %w", err)
+		}
+		defer release()
+		var (
+			isRanked     bool
+			playlistName string
+			pairName     string
+		)
+		scanErr := db.QueryRowContext(ctx, Q22bMatchRegistryRankedFlag, matchID).
+			Scan(&isRanked, &playlistName, &pairName)
+		switch {
+		case scanErr == nil:
+			if isRanked ||
+				strings.Contains(strings.ToLower(playlistName), "ranked") ||
+				strings.Contains(strings.ToLower(pairName), "ranked") {
+				return ratingTypeCSR, nil
 			}
+			return ratingTypeLUSR, nil
+		case !errors.Is(scanErr, sql.ErrNoRows):
+			return "", fmt.Errorf("registre du match: Q22b: %w", scanErr)
 		}
 	}
 	if strings.EqualFold(strings.TrimSpace(ratingTypeRaw), ratingTypeCSR) {
-		return ratingTypeCSR
+		return ratingTypeCSR, nil
 	}
-	return ratingTypeLUSR
+	return ratingTypeLUSR, nil
 }
 
 // GetMatchSharedCSRs retourne le CSR de tous les participants d'un match ranked
 // depuis shared.match_csrs_latest (Q30). Map xuid → SkillRankRaw.
-// Dégradation gracieuse : nil sans erreur si table absente ou aucune donnée.
+//
+// Nil sans erreur = absence constatée : la vue `match_csrs_latest` n'existe pas dans ce lecteur
+// (sonde du catalogue, `relationExists`) ou le match n'a aucune ligne (match non classé). Tout
+// autre échec (lecteur, sonde, requête, lecture) remonte.
 func (r *MatchViewRepo) GetMatchSharedCSRs(ctx context.Context, matchID string) (map[string]*domain.SkillRankRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchSharedCSRs: shared reader: %w", err)
 	}
 	defer release()
 
+	present, err := relationExists(ctx, sharedDB, "match_csrs_latest")
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchSharedCSRs: %w", err)
+	}
+	if !present {
+		slog.DebugContext(ctx, "match_view: match_csrs_latest absente de ce lecteur, aucun CSR partagé",
+			"match_id", matchID)
+		return nil, nil
+	}
+
 	rows, err := sharedDB.QueryContext(ctx, Q30SharedMatchCSRs, matchID)
 	if err != nil {
-		return nil, nil //nolint:nilerr — table absente : match non-ranked ou avant migration
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchSharedCSRs: Q30: %w", err)
 	}
 	defer rows.Close()
 

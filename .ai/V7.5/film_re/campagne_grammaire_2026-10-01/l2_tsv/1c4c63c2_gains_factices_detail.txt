@@ -1,0 +1,48 @@
+1c4c63c2 5:720 debut=5260 strict=-1 ferme_au_bit=true regles=0x222 sortie=rejet hors datum fin_vue_b=5423 bits=6120
+  #0 NEW slot=6805 eid=0x80001a95 ti=43 n=41 masque=0x200040000 ecrivain : masque epars non croissant fin=5405 desync=-1
+1c4c63c2 7:358 debut=12627 strict=-1 ferme_au_bit=true regles=0x8 sortie=terminateur fin_vue_b=13696 bits=13864
+  #0 NEW slot=6260 eid=0x1874 ti=13 n=34 masque=0xdb72b293634946 ecrivain : masque au-dela de l archetype fin=13061 desync=-1
+  #1 NEW slot=6445 eid=0xc000192d ti=29 n=32 masque=0x7f99f29087100df9 ecrivain : masque au-dela de l archetype fin=13644 desync=-1
+  #2 DELTA slot=3072 eid=0x40000c00 ti=43 n=41 masque=0x8000000000400000 ecrivain : masque au-dela de l archetype fin=13693 desync=-1
+1c4c63c2 8:440 debut=3756 strict=-1 ferme_au_bit=true regles=0xa sortie=rejet hors datum fin_vue_b=5161 bits=5168
+  #0 NEW slot=4044 eid=0xc0000fcc ti=43 n=41 masque=0xbc914910078b7df6 ecrivain : masque au-dela de l archetype fin=5145 desync=-1
+1c4c63c2 8:734 debut=2657 strict=-1 ferme_au_bit=true regles=0x8 sortie=terminateur fin_vue_b=4479 bits=5256
+  #0 NEW slot=3192 eid=0xc0000c78 ti=43 n=41 masque=0x20bf1d827b5db27c ecrivain : masque au-dela de l archetype fin=4476 desync=-1
+1c4c63c2 8:2292 debut=3857 strict=-1 ferme_au_bit=true regles=0x20 sortie=terminateur fin_vue_b=4400 bits=5056
+  #0 NEW slot=7599 eid=0x80001daf ti=43 n=41 masque=0x500000201 ecrivain : masque epars non croissant fin=4397 desync=-1
+1c4c63c2 9:202 debut=3398 strict=-1 ferme_au_bit=true regles=0xa sortie=rejet hors datum fin_vue_b=5367 bits=5664
+  #0 NEW slot=4415 eid=0xc000113f ti=43 n=41 masque=0x836419172dea6b7 ecrivain : masque au-dela de l archetype fin=5351 desync=-1
+1c4c63c2 9:676 debut=3169 strict=-1 ferme_au_bit=true regles=0xa sortie=rejet hors datum fin_vue_b=4744 bits=4752
+  #0 NEW slot=6763 eid=0x40001a6b ti=43 n=41 masque=0x40bcd38c0934f76e ecrivain : masque au-dela de l archetype fin=4728 desync=-1
+1c4c63c2 10:168 debut=5085 strict=-1 ferme_au_bit=true regles=0xa sortie=rejet hors datum fin_vue_b=5394 bits=5960
+  #0 NEW slot=2426 eid=0x97a ti=43 n=41 masque=0x800000000000000 ecrivain : masque au-dela de l archetype fin=5258 desync=-1
+  #1 DELTA slot=1536 eid=0x600 ti=43 n=41 masque=0x8000400100000001 ecrivain : masque au-dela de l archetype fin=5378 desync=-1
+1c4c63c2 11:574 debut=3526 strict=-1 ferme_au_bit=true regles=0xe sortie=rejet hors datum fin_vue_b=4854 bits=4856
+  #0 NEW slot=7165 eid=0x1bfd ti=43 n=41 masque=0x3755ff5fd9221a4e ecrivain : masque au-dela de l archetype fin=4680 desync=-1
+  #1 NEW slot=3427 eid=0xc0000d63 ti=32 n=1 masque=0x13df9004537e8c11 ecrivain : masque au-dela de l archetype fin=4836 desync=-1
+1c4c63c2 12:1028 debut=3839 strict=-1 ferme_au_bit=true regles=0x20 sortie=terminateur fin_vue_b=4451 bits=4888
+  #0 NEW slot=3834 eid=0x40000efa ti=43 n=41 masque=0x120005 ecrivain : masque epars non croissant fin=4448 desync=-1
+1c4c63c2 12:1038 debut=4312 strict=-1 ferme_au_bit=true regles=0x8 sortie=terminateur fin_vue_b=5278 bits=5344
+  #0 NEW slot=3834 eid=0xc0000efa ti=43 n=41 masque=0x1004000500400a00 ecrivain : masque au-dela de l archetype fin=5275 desync=-1
+1c4c63c2 13:232 debut=2 strict=-2 ferme_au_bit=true regles=0xc sortie=terminateur fin_vue_b=3699 bits=3912
+  #0 DELTA slot=123 eid=0x4000007b ti=4 n=1 masque=0x1 aucun fin=37 desync=-1
+  #1 DELTA slot=526 eid=0x4000020e ti=35 n=64 masque=0x2200003 aucun fin=202 desync=-1
+  #2 DELTA slot=539 eid=0x4000021b ti=35 n=64 masque=0x20 aucun fin=258 desync=-1
+  #3 DELTA slot=542 eid=0x4000021e ti=35 n=64 masque=0x2200003 aucun fin=423 desync=-1
+  #4 DELTA slot=552 eid=0x40000228 ti=35 n=64 masque=0x2200003 aucun fin=588 desync=-1
+  #5 DELTA slot=554 eid=0x4000022a ti=35 n=64 masque=0x2200000 aucun fin=656 desync=-1
+  #6 DELTA slot=562 eid=0x40000232 ti=35 n=64 masque=0x2200000 aucun fin=724 desync=-1
+  #7 DELTA slot=565 eid=0x40000235 ti=35 n=64 masque=0x2200023 aucun fin=924 desync=-1
+  #8 DELTA slot=568 eid=0x40000238 ti=35 n=64 masque=0x2000021 aucun fin=1056 desync=-1
+  #9 DELTA slot=570 eid=0x4000023a ti=35 n=64 masque=0x2000023 aucun fin=1225 desync=-1
+  #10 DELTA slot=571 eid=0x4000023b ti=35 n=64 masque=0x2000003 aucun fin=1359 desync=-1
+  #11 DELTA slot=579 eid=0x40000243 ti=35 n=64 masque=0x2200003 aucun fin=1524 desync=-1
+  #12 DELTA slot=581 eid=0x40000245 ti=35 n=64 masque=0x2000003 aucun fin=1658 desync=-1
+  #13 DELTA slot=583 eid=0x40000247 ti=35 n=64 masque=0x2000003 aucun fin=1792 desync=-1
+  #14 DELTA slot=584 eid=0x40000248 ti=35 n=64 masque=0x2200003 aucun fin=1957 desync=-1
+  #15 DELTA slot=586 eid=0x4000024a ti=35 n=64 masque=0x2000001 aucun fin=2054 desync=-1
+  #16 DELTA slot=587 eid=0x4000024b ti=35 n=64 masque=0x2000003 aucun fin=2188 desync=-1
+  #17 DELTA slot=588 eid=0x4000024c ti=35 n=64 masque=0x12000003 aucun fin=2363 desync=-1
+  #18 DELTA slot=589 eid=0x4000024d ti=35 n=64 masque=0x2200001 aucun fin=2491 desync=-1
+  #19 DELTA slot=591 eid=0x4000024f ti=20 n=3 masque=0x2000003 ecrivain : masque au-dela de l archetype fin=2548 desync=-1
+  #20 NEW slot=2647 eid=0x40000a57 ti=43 n=41 masque=0x4212dc45b1d33485 ecrivain : masque au-dela de l archetype fin=3696 desync=-1

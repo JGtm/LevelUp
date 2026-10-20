@@ -1,9 +1,7 @@
 // Package auth — oauth_refresh.go : échange d'un OAuth v2 refresh_token contre un access_token.
 //
-// Certains joueurs (ex : JGtm) n'ont pas de cache MSAL dans sync_meta.
-// Leur refresh_token Microsoft est stocké soit dans .env.local
-// (SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>), soit dans sync_meta sous la clé
-// "oauth_refresh_token".
+// Le refresh_token Microsoft de chaque joueur vit dans le MultiUserTokenStore
+// (data/auth/watcher_tokens/{xuid}.json) — source unique depuis ADR 0023.
 //
 // Ce module implémente le leg OAuth v2 :
 //
@@ -64,7 +62,7 @@ func ExchangeRefreshToken(ctx context.Context, refreshToken string) (string, err
 // ExchangeRefreshTokenWithRotation échange un refresh_token et retourne aussi
 // le nouveau refresh_token retourné par Microsoft (qui rotate à chaque appel
 // pour la sécurité). Le caller doit persister `rotatedRefreshToken` quelque
-// part (sync_meta.oauth_refresh_token typiquement) sinon le prochain appel
+// part (MultiUserTokenStore, ADR 0023) sinon le prochain appel
 // échouera avec un token révoqué.
 //
 // Retourne aussi `clientFamily` (AU4/F12) : la famille de client OAuth qui a

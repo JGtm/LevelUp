@@ -1,0 +1,15 @@
+# carte v2 (20 films) : tete corrigee (grammar-2026-10-03.2) contre tete integree a552c43f5
+IDENTIQUE	fermeture_archetypes.tsv
+IDENTIQUE	fermeture_bloquants.tsv
+IDENTIQUE	fermeture_borne.tsv
+IDENTIQUE	fermeture_chunk3.tsv
+IDENTIQUE	fermeture_denominateurs.tsv
+IDENTIQUE	fermeture_ecrivain.tsv
+IDENTIQUE	fermeture_entrees.tsv
+DIFFERENT	fermeture_films.tsv	(colonnes pic_octets et duree_ms seulement)
+IDENTIQUE	fermeture_hors_cadre.tsv
+IDENTIQUE	fermeture_hors_cadre_dernier.tsv
+IDENTIQUE	fermeture_paquets.tsv
+IDENTIQUE	fermeture_rejets.tsv
+IDENTIQUE	fermeture_sorties_vueB.tsv
+IDENTIQUE	fermeture_temoins_decales.tsv

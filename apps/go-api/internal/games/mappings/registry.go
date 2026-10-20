@@ -160,7 +160,7 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 		// regulation.toml — optionnel : temps réglementaire par game_variant_name
 		// (socle du flag « Prolongation »). Fichier absent → aucun set → aucun
 		// flag pour ce titre (dégradation sûre, jamais d'erreur).
-		regulationPath := filepath.Join(mappingsDir, "regulation.toml")
+		regulationPath := RegulationPath(repoRoot, slug)
 		if rset, loadErr := loadRegulationIfExists(regulationPath); loadErr != nil {
 			logger.Error("mappings_validation_failed", "title_slug", slug, "path", regulationPath, "err", loadErr)
 			errs = append(errs, fmt.Errorf("load regulation %s: %w", slug, loadErr))
@@ -237,6 +237,23 @@ func loadRegulationIfExists(path string) (*RegulationSet, error) {
 		return nil, nil
 	}
 	return LoadRegulationFromFile(path)
+}
+
+// RegulationPath rend le chemin du regulation.toml d'un titre, celui que [Registry.LoadFromConfigDir]
+// lit.
+func RegulationPath(repoRoot, slug string) string {
+	return filepath.Join(repoRoot, "config", "titles", slug, "mappings", "regulation.toml")
+}
+
+// LoadRegulationForTitle charge le regulation.toml d'UN titre par LE chargeur du registre (meme
+// chemin, meme validation, meme absence silencieuse : fichier absent -> (nil, nil)).
+//
+// POUR UN PROCESSUS QUI N'A PAS LE REGISTRE EN MAIN : l'ecriture du placement des vies au sync
+// (`killcollector.CaptureDepuisCatalogue`, plan Emprise vies lot V2b) lit la portee du radar
+// dans la MEME table que la lecture (`server_apiv1` -> `LoadFromConfigDir` -> `GetRegulation`),
+// sans charger les autres manifestes du titre.
+func LoadRegulationForTitle(repoRoot, slug string) (*RegulationSet, error) {
+	return loadRegulationIfExists(RegulationPath(repoRoot, slug))
 }
 
 // Get retourne le FieldMappingSet d'un titre s'il a été chargé.

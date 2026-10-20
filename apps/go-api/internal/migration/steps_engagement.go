@@ -10,7 +10,7 @@ package migration
 // racines globales ; engagement_coefficients create+repair = paire atomique). Les noms
 // restent dans internal/migration/order.go (canonicalOrder).
 //
-// Éradication ART (#23046) alignée sur la campagne append-only : les index ART sur
+// Éradication ART (#23645) alignée sur la campagne append-only : les index ART sur
 // player_match_enrichment (idx_pme_engagement_history/_paces, colonnes mutées par l'étage
 // engagement) et engagement_coefficients (idx_xuid redondant) ne sont PLUS créés par les
 // migrations title-owned ; ils sont retirés des DB existantes par

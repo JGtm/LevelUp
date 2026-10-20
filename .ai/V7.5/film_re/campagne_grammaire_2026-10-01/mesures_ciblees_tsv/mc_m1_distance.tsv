@@ -1,0 +1,262 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : false	13	17	9	1	118
+0797ce72	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : true	29	230	219	0	1593
+0797ce72	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : false	33	38	27	0	264
+0797ce72	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : true	45	276	264	0	1428
+0797ce72	HI_1_13_0	rejete · paquet precedent · region non lue : false	22	41	25	0	283
+0797ce72	HI_1_13_0	rejete · paquet precedent · region non lue : true	79	1803	1780	1	11907
+0797ce72	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : false	652	824	572	11	5631
+0797ce72	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : true	558	961	750	8	6082
+0797ce72	HI_1_13_0	temoin · 2-3 paquets avant · region non lue : false	4	0	0	0	0
+0797ce72	HI_1_13_0	temoin · 2-3 paquets avant · region non lue : true	8	0	0	0	0
+0797ce72	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : false	20	0	0	0	0
+0797ce72	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : true	8	0	0	0	0
+0797ce72	HI_1_13_0	temoin · paquet precedent · region non lue : false	2	0	0	0	0
+0797ce72	HI_1_13_0	temoin · paquet precedent · region non lue : true	3	0	0	0	0
+0797ce72	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : false	700	0	0	0	0
+0797ce72	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : true	507	0	0	0	0
+084a804d	HI_1_10_0	rejete · 2-3 paquets avant · region non lue : false	2	2	1	1	25
+084a804d	HI_1_10_0	rejete · 2-3 paquets avant · region non lue : true	152	5145	5140	4	87124
+084a804d	HI_1_10_0	rejete · 4-10 paquets avant · region non lue : false	4	4	0	2	17
+084a804d	HI_1_10_0	rejete · 4-10 paquets avant · region non lue : true	141	3559	3537	20	75774
+084a804d	HI_1_10_0	rejete · paquet precedent · region non lue : false	5	26	25	1	475
+084a804d	HI_1_10_0	rejete · paquet precedent · region non lue : true	392	11822	11816	6	246283
+084a804d	HI_1_10_0	rejete · plus de 10 paquets avant · region non lue : false	37	39	15	16	130
+084a804d	HI_1_10_0	rejete · plus de 10 paquets avant · region non lue : true	243	1427	1305	99	26893
+084a804d	HI_1_10_0	temoin · 2-3 paquets avant · region non lue : false	8	0	0	0	0
+084a804d	HI_1_10_0	temoin · 2-3 paquets avant · region non lue : true	11	0	0	0	0
+084a804d	HI_1_10_0	temoin · 4-10 paquets avant · region non lue : false	18	0	0	0	0
+084a804d	HI_1_10_0	temoin · 4-10 paquets avant · region non lue : true	29	0	0	0	0
+084a804d	HI_1_10_0	temoin · paquet precedent · region non lue : false	1	0	0	0	0
+084a804d	HI_1_10_0	temoin · paquet precedent · region non lue : true	11	0	0	0	0
+084a804d	HI_1_10_0	temoin · plus de 10 paquets avant · region non lue : false	268	0	0	0	0
+084a804d	HI_1_10_0	temoin · plus de 10 paquets avant · region non lue : true	438	0	0	0	0
+111fa685	HI_1_10_0	rejete · 2-3 paquets avant · region non lue : false	2	2	1	1	9
+111fa685	HI_1_10_0	rejete · 2-3 paquets avant · region non lue : true	54	734	731	2	13247
+111fa685	HI_1_10_0	rejete · 4-10 paquets avant · region non lue : false	10	10	8	1	126
+111fa685	HI_1_10_0	rejete · 4-10 paquets avant · region non lue : true	110	1544	1533	6	29419
+111fa685	HI_1_10_0	rejete · paquet precedent · region non lue : false	5	7	7	0	142
+111fa685	HI_1_10_0	rejete · paquet precedent · region non lue : true	319	6391	6390	0	123415
+111fa685	HI_1_10_0	rejete · plus de 10 paquets avant · region non lue : false	141	156	131	8	1695
+111fa685	HI_1_10_0	rejete · plus de 10 paquets avant · region non lue : true	423	1486	1400	33	22939
+111fa685	HI_1_10_0	temoin · 2-3 paquets avant · region non lue : true	15	0	0	0	0
+111fa685	HI_1_10_0	temoin · 4-10 paquets avant · region non lue : false	11	0	0	0	0
+111fa685	HI_1_10_0	temoin · 4-10 paquets avant · region non lue : true	28	0	0	0	0
+111fa685	HI_1_10_0	temoin · paquet precedent · region non lue : false	3	0	0	0	0
+111fa685	HI_1_10_0	temoin · paquet precedent · region non lue : true	8	0	0	0	0
+111fa685	HI_1_10_0	temoin · plus de 10 paquets avant · region non lue : false	238	0	0	0	0
+111fa685	HI_1_10_0	temoin · plus de 10 paquets avant · region non lue : true	566	0	0	0	0
+11de8353	HI_1_9_0	rejete · 2-3 paquets avant · region non lue : false	1	1	0	1	0
+11de8353	HI_1_9_0	rejete · 2-3 paquets avant · region non lue : true	84	1227	1225	2	22631
+11de8353	HI_1_9_0	rejete · 4-10 paquets avant · region non lue : false	4	9	8	0	133
+11de8353	HI_1_9_0	rejete · 4-10 paquets avant · region non lue : true	98	2036	2027	4	37003
+11de8353	HI_1_9_0	rejete · paquet precedent · region non lue : false	6	7	7	0	91
+11de8353	HI_1_9_0	rejete · paquet precedent · region non lue : true	251	4669	4660	5	87654
+11de8353	HI_1_9_0	rejete · plus de 10 paquets avant · region non lue : false	167	247	199	3	3702
+11de8353	HI_1_9_0	rejete · plus de 10 paquets avant · region non lue : true	314	1344	1241	27	23488
+11de8353	HI_1_9_0	temoin · 2-3 paquets avant · region non lue : false	5	0	0	0	0
+11de8353	HI_1_9_0	temoin · 2-3 paquets avant · region non lue : true	6	0	0	0	0
+11de8353	HI_1_9_0	temoin · 4-10 paquets avant · region non lue : false	14	0	0	0	0
+11de8353	HI_1_9_0	temoin · 4-10 paquets avant · region non lue : true	25	0	0	0	0
+11de8353	HI_1_9_0	temoin · paquet precedent · region non lue : false	1	0	0	0	0
+11de8353	HI_1_9_0	temoin · paquet precedent · region non lue : true	7	0	0	0	0
+11de8353	HI_1_9_0	temoin · plus de 10 paquets avant · region non lue : false	283	0	0	0	0
+11de8353	HI_1_9_0	temoin · plus de 10 paquets avant · region non lue : true	423	0	0	0	0
+1c4c63c2	HI_1_10_0	rejete · 2-3 paquets avant · region non lue : false	1	1	0	1	0
+1c4c63c2	HI_1_10_0	rejete · 2-3 paquets avant · region non lue : true	178	9634	9470	164	135690
+1c4c63c2	HI_1_10_0	rejete · 4-10 paquets avant · region non lue : false	10	10	2	7	13
+1c4c63c2	HI_1_10_0	rejete · 4-10 paquets avant · region non lue : true	183	4390	4180	205	64171
+1c4c63c2	HI_1_10_0	rejete · paquet precedent · region non lue : true	317	20687	20570	116	315929
+1c4c63c2	HI_1_10_0	rejete · plus de 10 paquets avant · region non lue : false	162	261	28	223	225
+1c4c63c2	HI_1_10_0	rejete · plus de 10 paquets avant · region non lue : true	1510	6884	4679	2150	77354
+1c4c63c2	HI_1_10_0	temoin · 2-3 paquets avant · region non lue : false	8	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · 2-3 paquets avant · region non lue : true	36	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · 4-10 paquets avant · region non lue : false	9	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · 4-10 paquets avant · region non lue : true	102	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · paquet precedent · region non lue : false	4	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · paquet precedent · region non lue : true	31	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · plus de 10 paquets avant · region non lue : false	225	0	0	0	0
+1c4c63c2	HI_1_10_0	temoin · plus de 10 paquets avant · region non lue : true	1922	0	0	0	0
+396cfc92	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : true	7	455	455	0	2916
+396cfc92	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : false	1	1	1	0	4
+396cfc92	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : true	11	501	500	1	4020
+396cfc92	HI_1_13_0	rejete · paquet precedent · region non lue : true	115	5924	5924	0	41673
+396cfc92	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : false	2	2	1	1	7
+396cfc92	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : true	30	1467	1466	1	8149
+396cfc92	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : false	2	0	0	0	0
+396cfc92	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : true	1	0	0	0	0
+396cfc92	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : false	59	0	0	0	0
+396cfc92	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : true	23	0	0	0	0
+4f77afc1	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : false	3	3	1	2	29
+4f77afc1	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : true	54	1450	1447	3	25444
+4f77afc1	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : false	6	11	5	5	137
+4f77afc1	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : true	54	923	892	31	21593
+4f77afc1	HI_1_13_0	rejete · paquet precedent · region non lue : false	3	48	46	1	1237
+4f77afc1	HI_1_13_0	rejete · paquet precedent · region non lue : true	141	3932	3927	5	92182
+4f77afc1	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : false	77	105	7	96	205
+4f77afc1	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : true	243	1912	1710	196	32198
+4f77afc1	HI_1_13_0	temoin · 2-3 paquets avant · region non lue : false	2	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · 2-3 paquets avant · region non lue : true	6	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : false	13	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : true	17	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · paquet precedent · region non lue : false	1	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · paquet precedent · region non lue : true	4	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : false	184	0	0	0	0
+4f77afc1	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : true	305	0	0	0	0
+50247b26	version-31	rejete · 2-3 paquets avant · region non lue : false	2	8	8	0	137
+50247b26	version-31	rejete · 2-3 paquets avant · region non lue : true	59	1723	1723	0	38503
+50247b26	version-31	rejete · 4-10 paquets avant · region non lue : true	63	1616	1613	2	36135
+50247b26	version-31	rejete · paquet precedent · region non lue : true	210	5964	5964	0	132512
+50247b26	version-31	rejete · plus de 10 paquets avant · region non lue : false	6	6	4	1	73
+50247b26	version-31	rejete · plus de 10 paquets avant · region non lue : true	106	1389	1372	5	28951
+50247b26	version-31	temoin · 2-3 paquets avant · region non lue : false	1	0	0	0	0
+50247b26	version-31	temoin · 2-3 paquets avant · region non lue : true	3	0	0	0	0
+50247b26	version-31	temoin · 4-10 paquets avant · region non lue : false	6	0	0	0	0
+50247b26	version-31	temoin · 4-10 paquets avant · region non lue : true	9	0	0	0	0
+50247b26	version-31	temoin · paquet precedent · region non lue : false	1	0	0	0	0
+50247b26	version-31	temoin · paquet precedent · region non lue : true	7	0	0	0	0
+50247b26	version-31	temoin · plus de 10 paquets avant · region non lue : false	72	0	0	0	0
+50247b26	version-31	temoin · plus de 10 paquets avant · region non lue : true	245	0	0	0	0
+51ebbc0f	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : true	351	8414	8408	0	7190
+51ebbc0f	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : false	4	7	5	0	0
+51ebbc0f	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : true	50	870	849	0	1369
+51ebbc0f	HI_1_13_0	rejete · paquet precedent · region non lue : false	1	3	3	0	0
+51ebbc0f	HI_1_13_0	rejete · paquet precedent · region non lue : true	74	2975	2974	0	18383
+51ebbc0f	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : false	6	6	5	1	18
+51ebbc0f	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : true	222	4336	4313	18	2368
+51ebbc0f	HI_1_13_0	temoin · 2-3 paquets avant · region non lue : false	1	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · 2-3 paquets avant · region non lue : true	6	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : false	1	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : true	5	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : false	80	0	0	0	0
+51ebbc0f	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : true	252	0	0	0	0
+60ae07c4	HI_1_8_0	rejete · 2-3 paquets avant · region non lue : false	11	15	12	0	101
+60ae07c4	HI_1_8_0	rejete · 2-3 paquets avant · region non lue : true	87	3610	3600	2	20093
+60ae07c4	HI_1_8_0	rejete · 4-10 paquets avant · region non lue : false	20	31	21	0	203
+60ae07c4	HI_1_8_0	rejete · 4-10 paquets avant · region non lue : true	108	4616	4592	7	24152
+60ae07c4	HI_1_8_0	rejete · paquet precedent · region non lue : false	26	44	37	0	270
+60ae07c4	HI_1_8_0	rejete · paquet precedent · region non lue : true	273	17656	17648	2	107140
+60ae07c4	HI_1_8_0	rejete · plus de 10 paquets avant · region non lue : false	435	577	385	19	3328
+60ae07c4	HI_1_8_0	rejete · plus de 10 paquets avant · region non lue : true	488	2477	2277	40	13963
+60ae07c4	HI_1_8_0	temoin · 2-3 paquets avant · region non lue : false	5	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · 2-3 paquets avant · region non lue : true	3	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · 4-10 paquets avant · region non lue : false	18	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · 4-10 paquets avant · region non lue : true	13	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · paquet precedent · region non lue : false	2	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · paquet precedent · region non lue : true	3	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · plus de 10 paquets avant · region non lue : false	566	0	0	0	0
+60ae07c4	HI_1_8_0	temoin · plus de 10 paquets avant · region non lue : true	508	0	0	0	0
+a349fea8	version-33	rejete · 2-3 paquets avant · region non lue : true	138	3583	3580	1	78810
+a349fea8	version-33	rejete · 4-10 paquets avant · region non lue : false	3	3	1	0	7
+a349fea8	version-33	rejete · 4-10 paquets avant · region non lue : true	106	1856	1849	2	45967
+a349fea8	version-33	rejete · paquet precedent · region non lue : false	2	2	2	0	43
+a349fea8	version-33	rejete · paquet precedent · region non lue : true	321	9743	9743	0	193767
+a349fea8	version-33	rejete · plus de 10 paquets avant · region non lue : false	46	47	27	2	99
+a349fea8	version-33	rejete · plus de 10 paquets avant · region non lue : true	332	2807	2750	13	59117
+a349fea8	version-33	temoin · 2-3 paquets avant · region non lue : false	2	0	0	0	0
+a349fea8	version-33	temoin · 2-3 paquets avant · region non lue : true	13	0	0	0	0
+a349fea8	version-33	temoin · 4-10 paquets avant · region non lue : false	9	0	0	0	0
+a349fea8	version-33	temoin · 4-10 paquets avant · region non lue : true	36	0	0	0	0
+a349fea8	version-33	temoin · paquet precedent · region non lue : true	17	0	0	0	0
+a349fea8	version-33	temoin · plus de 10 paquets avant · region non lue : false	122	0	0	0	0
+a349fea8	version-33	temoin · plus de 10 paquets avant · region non lue : true	614	0	0	0	0
+a521164d	HI_1_4_1	rejete · 2-3 paquets avant · region non lue : true	57	1375	1371	0	31345
+a521164d	HI_1_4_1	rejete · 4-10 paquets avant · region non lue : false	4	4	3	0	0
+a521164d	HI_1_4_1	rejete · 4-10 paquets avant · region non lue : true	50	880	876	0	19798
+a521164d	HI_1_4_1	rejete · paquet precedent · region non lue : false	1	1	1	0	1
+a521164d	HI_1_4_1	rejete · paquet precedent · region non lue : true	146	3288	3284	0	69190
+a521164d	HI_1_4_1	rejete · plus de 10 paquets avant · region non lue : false	45	45	36	0	23
+a521164d	HI_1_4_1	rejete · plus de 10 paquets avant · region non lue : true	192	789	741	2	12343
+a521164d	HI_1_4_1	temoin · 2-3 paquets avant · region non lue : false	2	0	0	0	0
+a521164d	HI_1_4_1	temoin · 2-3 paquets avant · region non lue : true	4	0	0	0	0
+a521164d	HI_1_4_1	temoin · 4-10 paquets avant · region non lue : false	6	0	0	0	0
+a521164d	HI_1_4_1	temoin · 4-10 paquets avant · region non lue : true	11	0	0	0	0
+a521164d	HI_1_4_1	temoin · paquet precedent · region non lue : true	8	0	0	0	0
+a521164d	HI_1_4_1	temoin · plus de 10 paquets avant · region non lue : false	95	0	0	0	0
+a521164d	HI_1_4_1	temoin · plus de 10 paquets avant · region non lue : true	308	0	0	0	0
+bcb6d393	HI_1_12_0	rejete · 2-3 paquets avant · region non lue : true	5	405	405	0	2314
+bcb6d393	HI_1_12_0	rejete · 4-10 paquets avant · region non lue : true	2	33	33	0	251
+bcb6d393	HI_1_12_0	rejete · paquet precedent · region non lue : true	42	2587	2587	0	15725
+bcb6d393	HI_1_12_0	rejete · plus de 10 paquets avant · region non lue : false	70	72	49	0	3
+bcb6d393	HI_1_12_0	rejete · plus de 10 paquets avant · region non lue : true	41	77	66	1	232
+bcb6d393	HI_1_12_0	temoin · 2-3 paquets avant · region non lue : false	1	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · 4-10 paquets avant · region non lue : false	4	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · 4-10 paquets avant · region non lue : true	2	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · paquet precedent · region non lue : true	1	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · plus de 10 paquets avant · region non lue : false	68	0	0	0	0
+bcb6d393	HI_1_12_0	temoin · plus de 10 paquets avant · region non lue : true	66	0	0	0	0
+bf15f7ab	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : true	3	241	240	0	1742
+bf15f7ab	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : false	1	3	1	0	21
+bf15f7ab	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : true	11	388	388	0	1362
+bf15f7ab	HI_1_13_0	rejete · paquet precedent · region non lue : false	1	107	107	0	837
+bf15f7ab	HI_1_13_0	rejete · paquet precedent · region non lue : true	14	668	668	0	4435
+bf15f7ab	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : false	119	192	103	2	1320
+bf15f7ab	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : true	45	108	81	0	463
+bf15f7ab	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : false	1	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : false	110	0	0	0	0
+bf15f7ab	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : true	17	0	0	0	0
+bfecd02b	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : true	10	723	723	0	5674
+bfecd02b	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : true	4	147	147	0	1151
+bfecd02b	HI_1_13_0	rejete · paquet precedent · region non lue : true	21	2272	2272	0	16390
+bfecd02b	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : false	2	2	1	1	7
+bfecd02b	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : true	4	4	1	3	9
+bfecd02b	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : false	2	0	0	0	0
+bfecd02b	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : false	15	0	0	0	0
+bfecd02b	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : true	12	0	0	0	0
+c75f33b8	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : true	11	439	439	0	1826
+c75f33b8	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : false	1	1	0	1	0
+c75f33b8	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : true	5	240	239	1	1208
+c75f33b8	HI_1_13_0	rejete · paquet precedent · region non lue : true	18	1213	1213	0	5492
+c75f33b8	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : false	6	6	0	6	0
+c75f33b8	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : true	24	400	391	9	1695
+c75f33b8	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : false	1	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : true	1	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · paquet precedent · region non lue : true	1	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : false	20	0	0	0	0
+c75f33b8	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : true	11	0	0	0	0
+d9781168	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : true	30	1739	1738	1	11596
+d9781168	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : true	26	1718	1712	6	8827
+d9781168	HI_1_13_0	rejete · paquet precedent · region non lue : true	103	6962	6959	3	40824
+d9781168	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : false	15	19	1	18	6
+d9781168	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : true	58	684	641	43	3031
+d9781168	HI_1_13_0	temoin · 2-3 paquets avant · region non lue : true	1	0	0	0	0
+d9781168	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : false	1	0	0	0	0
+d9781168	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : true	1	0	0	0	0
+d9781168	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : false	54	0	0	0	0
+d9781168	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : true	92	0	0	0	0
+e5adf7b2	HI_1_11_0	rejete · 2-3 paquets avant · region non lue : false	1	1	1	0	0
+e5adf7b2	HI_1_11_0	rejete · 2-3 paquets avant · region non lue : true	79	1587	1586	1	33220
+e5adf7b2	HI_1_11_0	rejete · 4-10 paquets avant · region non lue : false	10	10	5	2	59
+e5adf7b2	HI_1_11_0	rejete · 4-10 paquets avant · region non lue : true	100	1827	1816	3	38700
+e5adf7b2	HI_1_11_0	rejete · paquet precedent · region non lue : false	5	6	6	0	110
+e5adf7b2	HI_1_11_0	rejete · paquet precedent · region non lue : true	295	5198	5192	3	108345
+e5adf7b2	HI_1_11_0	rejete · plus de 10 paquets avant · region non lue : false	115	118	82	10	464
+e5adf7b2	HI_1_11_0	rejete · plus de 10 paquets avant · region non lue : true	345	1226	1097	34	21548
+e5adf7b2	HI_1_11_0	temoin · 2-3 paquets avant · region non lue : false	4	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · 2-3 paquets avant · region non lue : true	14	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · 4-10 paquets avant · region non lue : false	14	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · 4-10 paquets avant · region non lue : true	19	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · paquet precedent · region non lue : false	5	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · paquet precedent · region non lue : true	9	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · plus de 10 paquets avant · region non lue : false	233	0	0	0	0
+e5adf7b2	HI_1_11_0	temoin · plus de 10 paquets avant · region non lue : true	494	0	0	0	0
+f75e7053	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : true	6	169	169	0	271
+f75e7053	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : true	3	111	111	0	124
+f75e7053	HI_1_13_0	rejete · paquet precedent · region non lue : true	44	3879	3879	0	25148
+f75e7053	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : true	4	129	128	1	896
+f75e7053	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : true	1	0	0	0	0
+f75e7053	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : false	22	0	0	0	0
+f75e7053	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : true	3	0	0	0	0
+fb1a1a72	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : false	3	22	22	0	0
+fb1a1a72	HI_1_13_0	rejete · 2-3 paquets avant · region non lue : true	556	13642	13642	0	4466
+fb1a1a72	HI_1_13_0	rejete · 4-10 paquets avant · region non lue : true	38	793	788	1	1240
+fb1a1a72	HI_1_13_0	rejete · paquet precedent · region non lue : false	8	69	46	0	271
+fb1a1a72	HI_1_13_0	rejete · paquet precedent · region non lue : true	45	1271	1263	0	7519
+fb1a1a72	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : false	9	9	6	2	4
+fb1a1a72	HI_1_13_0	rejete · plus de 10 paquets avant · region non lue : true	334	7532	7503	11	2050
+fb1a1a72	HI_1_13_0	temoin · 2-3 paquets avant · region non lue : true	2	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : false	5	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · 4-10 paquets avant · region non lue : true	3	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · paquet precedent · region non lue : true	1	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : false	123	0	0	0	0
+fb1a1a72	HI_1_13_0	temoin · plus de 10 paquets avant · region non lue : true	320	0	0	0	0

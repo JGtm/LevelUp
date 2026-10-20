@@ -105,7 +105,7 @@ describe('useJobToasts', () => {
     expect(toast.success).not.toHaveBeenCalled()
   })
 
-  it("fire toast.error sur failed avec le message d'erreur", () => {
+  it("fire toast.error sur failed : le message du serveur ne s'affiche jamais", () => {
     const { rerender } = renderHook(
       ({ js }: { js: AsyncJobStatus | undefined }) => useJobToasts(js, LABELS),
       { initialProps: { js: undefined as AsyncJobStatus | undefined } },
@@ -114,8 +114,21 @@ describe('useJobToasts', () => {
     rerender({ js: job('failed', { error: { code: 'db_error', message: 'connexion perdue', retryable: false } }) })
     expect(toast.error).toHaveBeenCalledOnce()
     expect(toast.error).toHaveBeenCalledWith('Échoué', expect.objectContaining({
-      description: 'connexion perdue',
+      description: undefined,
       duration: Infinity,
+    }))
+  })
+
+  it('fire toast.error sur failed : description traduite pour un code connu des libellés', () => {
+    const labels: JobToastLabels = { ...LABELS, errorByCode: { db_busy: 'Une autre synchronisation est en cours.' } }
+    const { rerender } = renderHook(
+      ({ js }: { js: AsyncJobStatus | undefined }) => useJobToasts(js, labels),
+      { initialProps: { js: undefined as AsyncJobStatus | undefined } },
+    )
+    rerender({ js: job('running') })
+    rerender({ js: job('failed', { error: { code: 'db_busy', message: 'db busy', retryable: true } }) })
+    expect(toast.error).toHaveBeenCalledWith('Échoué', expect.objectContaining({
+      description: 'Une autre synchronisation est en cours.',
     }))
   })
 

@@ -61,12 +61,11 @@ export function SessionOutcomeDonut({ title, matches, height = 260, compact }: P
     return { series: s, sliceColors: colors, winRate: wr, hasData: total > 0 }
   }, [matches, fieldMappings])
 
-  if (!hasData) return null
-
+  // Aucun match à compter : la carte garde son titre et son état vide (ChartCard) au lieu de disparaître.
   return (
     <DonutChart
       title={title}
-      series={series}
+      series={hasData ? series : []}
       sliceColors={sliceColors}
       height={height}
       compact={compact}

@@ -1,0 +1,94 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	NEW lu dans le chunk	3	23	23	0	56
+0797ce72	HI_1_13_0	aucune allocation	1985	2775	1909	25	17336
+0797ce72	HI_1_13_0	libere avant le chunk	29	58	52	0	365
+0797ce72	HI_1_13_0	naissance non lue	41	1985	1985	0	14031
+0797ce72	HI_1_13_0	non mesurable	11	211	211	0	68
+0797ce72	HI_1_13_0	realloue sous une autre generation	23	137	134	0	810
+0797ce72	HI_1_13_0	vivant au bloc du chunk	4	230	230	0	1745
+084a804d	HI_1_10_0	aucune allocation	279	303	86	172	379
+084a804d	HI_1_10_0	libere avant le chunk	12	13	5	4	45
+084a804d	HI_1_10_0	naissance non lue	653	20537	20536	0	406528
+084a804d	HI_1_10_0	realloue sous une autre generation	80	1211	1210	1	29386
+084a804d	HI_1_10_0	vivant au bloc du chunk	13	1104	1104	0	3482
+111fa685	HI_1_10_0	aucune allocation	640	709	555	59	6253
+111fa685	HI_1_10_0	libere avant le chunk	43	50	46	0	533
+111fa685	HI_1_10_0	naissance non lue	385	7852	7851	0	150528
+111fa685	HI_1_10_0	non mesurable	52	403	399	1	5582
+111fa685	HI_1_10_0	realloue sous une autre generation	73	1346	1346	0	27271
+111fa685	HI_1_10_0	vivant au bloc du chunk	4	346	346	0	6249
+11de8353	HI_1_9_0	aucune allocation	557	694	509	51	8311
+11de8353	HI_1_9_0	libere avant le chunk	36	43	11	0	681
+11de8353	HI_1_9_0	naissance non lue	384	7674	7674	0	147100
+11de8353	HI_1_9_0	non mesurable	15	191	189	0	214
+11de8353	HI_1_9_0	realloue sous une autre generation	64	1114	1113	1	20003
+11de8353	HI_1_9_0	vivant au bloc du chunk	2	72	71	1	1533
+1c4c63c2	HI_1_10_0	aucune allocation	2035	3551	231	3247	1169
+1c4c63c2	HI_1_10_0	libere avant le chunk	61	158	14	129	44
+1c4c63c2	HI_1_10_0	naissance non lue	499	35541	35539	2	579638
+1c4c63c2	HI_1_10_0	non mesurable	27	383	347	36	588
+1c4c63c2	HI_1_10_0	realloue sous une autre generation	64	426	315	104	5786
+1c4c63c2	HI_1_10_0	vivant au bloc du chunk	22	9251	9250	1	8891
+396cfc92	HI_1_13_0	aucune allocation	11	11	6	4	38
+396cfc92	HI_1_13_0	naissance non lue	155	7752	7752	0	55806
+396cfc92	HI_1_13_0	non mesurable	5	592	592	0	947
+4f77afc1	HI_1_13_0	aucune allocation	337	428	30	387	694
+4f77afc1	HI_1_13_0	libere avant le chunk	6	6	2	4	48
+4f77afc1	HI_1_13_0	naissance non lue	223	6698	6698	0	146880
+4f77afc1	HI_1_13_0	realloue sous une autre generation	51	884	879	5	21614
+4f77afc1	HI_1_13_0	vivant au bloc du chunk	21	1874	1874	0	9202
+50247b26	version-31	aucune allocation	70	72	50	7	518
+50247b26	version-31	libere avant le chunk	4	4	2	1	44
+50247b26	version-31	naissance non lue	362	10145	10145	0	231119
+50247b26	version-31	non mesurable	11	486	486	0	4623
+50247b26	version-31	realloue sous une autre generation	1	1	1	0	27
+51ebbc0f	HI_1_13_0	NEW lu dans le chunk	3	10	10	0	0
+51ebbc0f	HI_1_13_0	aucune allocation	119	212	141	20	140
+51ebbc0f	HI_1_13_0	naissance non lue	605	15929	15929	0	28490
+51ebbc0f	HI_1_13_0	non mesurable	27	519	516	1	764
+51ebbc0f	HI_1_13_0	realloue sous une autre generation	2	2	2	0	0
+60ae07c4	HI_1_8_0	NEW lu dans le chunk	1	19	19	0	28
+60ae07c4	HI_1_8_0	aucune allocation	1655	2262	1556	98	12909
+60ae07c4	HI_1_8_0	libere avant le chunk	9	14	12	0	92
+60ae07c4	HI_1_8_0	naissance non lue	382	25813	25813	0	151359
+60ae07c4	HI_1_8_0	non mesurable	2	204	204	0	201
+60ae07c4	HI_1_8_0	realloue sous une autre generation	28	1489	1489	0	8759
+60ae07c4	HI_1_8_0	vivant au bloc du chunk	5	196	196	0	1128
+a349fea8	version-33	aucune allocation	427	447	280	23	965
+a349fea8	version-33	libere avant le chunk	19	20	6	0	94
+a349fea8	version-33	naissance non lue	631	16862	16860	0	361519
+a349fea8	version-33	non mesurable	1	4	4	0	5
+a349fea8	version-33	realloue sous une autre generation	35	638	638	0	15329
+a349fea8	version-33	vivant au bloc du chunk	8	1457	1457	0	2650
+a521164d	HI_1_4_1	aucune allocation	366	376	217	7	384
+a521164d	HI_1_4_1	libere avant le chunk	9	9	6	0	32
+a521164d	HI_1_4_1	naissance non lue	247	5807	5807	0	129172
+a521164d	HI_1_4_1	non mesurable	11	330	330	0	3134
+a521164d	HI_1_4_1	realloue sous une autre generation	4	4	2	0	0
+bcb6d393	HI_1_12_0	aucune allocation	194	205	135	2	15
+bcb6d393	HI_1_12_0	naissance non lue	52	3064	3064	0	18522
+bcb6d393	HI_1_12_0	realloue sous une autre generation	1	1	1	0	0
+bf15f7ab	HI_1_13_0	aucune allocation	204	323	184	3	2205
+bf15f7ab	HI_1_13_0	naissance non lue	13	1101	1101	0	7549
+bf15f7ab	HI_1_13_0	non mesurable	16	336	336	0	764
+bfecd02b	HI_1_13_0	aucune allocation	11	11	2	7	15
+bfecd02b	HI_1_13_0	naissance non lue	36	3143	3143	0	23224
+c75f33b8	HI_1_13_0	aucune allocation	34	37	3	23	28
+c75f33b8	HI_1_13_0	naissance non lue	46	2280	2280	0	10201
+d9781168	HI_1_13_0	aucune allocation	84	106	10	95	6
+d9781168	HI_1_13_0	naissance non lue	164	10876	10876	0	64149
+d9781168	HI_1_13_0	non mesurable	5	174	174	0	129
+e5adf7b2	HI_1_11_0	aucune allocation	637	659	366	60	3558
+e5adf7b2	HI_1_11_0	libere avant le chunk	28	28	9	0	106
+e5adf7b2	HI_1_11_0	naissance non lue	404	8453	8452	0	177393
+e5adf7b2	HI_1_11_0	realloue sous une autre generation	97	1034	1028	1	21144
+e5adf7b2	HI_1_11_0	vivant au bloc du chunk	4	55	55	0	1174
+f75e7053	HI_1_13_0	aucune allocation	3	3	0	2	0
+f75e7053	HI_1_13_0	naissance non lue	45	3646	3646	0	24489
+f75e7053	HI_1_13_0	non mesurable	11	641	641	0	1950
+fb1a1a72	HI_1_13_0	aucune allocation	134	279	185	14	157
+fb1a1a72	HI_1_13_0	libere avant le chunk	8	8	8	0	16
+fb1a1a72	HI_1_13_0	naissance non lue	706	17882	17882	0	15026
+fb1a1a72	HI_1_13_0	non mesurable	21	492	491	0	330
+fb1a1a72	HI_1_13_0	realloue sous une autre generation	182	4748	4748	0	95
+fb1a1a72	HI_1_13_0	vivant au bloc du chunk	8	140	140	0	0

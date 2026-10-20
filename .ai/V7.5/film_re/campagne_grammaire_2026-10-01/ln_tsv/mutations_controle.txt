@@ -1,0 +1,11 @@
+SUITE DE BASE : VERTE
+c1_domaine_genre0 : ROUGE (--- FAIL: TestLaTableDesGenresCouvreLesCentVingtTroisGenres )
+c2_impact_objet_queue : ROUGE (--- FAIL: TestLesChargesLisentLesLargeursDuJeu )
+c3_effet_ia_positions : ROUGE (--- FAIL: TestLesChargesLisentLesLargeursDuJeu )
+c4_chaine_sans_nul : ROUGE (--- FAIL: TestUneChaineSansNulEstRefusee )
+c5_cycle_ia : ROUGE (--- FAIL: TestLesChargesLisentLesLargeursDuJeu )
+c7_degats_drapeaux : ROUGE (--- FAIL: TestLesDegatsLisentLaPorteInverseeDuJeu )
+c8_queue_equipe : ROUGE (--- FAIL: TestLesChargesLisentLesLargeursDuJeu )
+c9_poussee : ROUGE (--- FAIL: TestLesChargesLisentLesLargeursDuJeu )
+c10_ramassage : ROUGE (--- FAIL: TestLesChargesLisentLesLargeursDuJeu )
+c6_bit_configuration : ROUGE (--- FAIL: TestLeBitDeConfigurationAZeroArreteLaVueA )

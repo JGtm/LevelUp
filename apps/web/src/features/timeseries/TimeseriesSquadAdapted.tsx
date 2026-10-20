@@ -18,11 +18,14 @@ import {
   getEChartsThemeColors,
   getLegendBase,
   getTooltipBase,
+  LEGEND_ITEM_WIDTH_LINE,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber, tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { effectiveDmgPerFrag, formatNumberFixed, intlLocale } from '@/lib/formatters'
+import { effectiveDmgPerFrag, intlLocale } from '@/lib/formatters'
 import { ChartFromOption } from './ChartFromOption'
 import type {
   TimeseriesMatchRow,
@@ -32,6 +35,7 @@ import type {
 import {
   buildSquadIntensityProfileOption,
   intensityAxisLabels,
+  type IntensityOverlay,
 } from '@/features/squad/charts/squadIntensityProfileChart'
 import {
   ONE_LIFE_RATE_BOUNDS,
@@ -39,6 +43,7 @@ import {
   damagePerDeath,
   oneLifeDefensiveRatePct,
   oneLifeOffensiveRatePct,
+  oneLifeWindowBoundsForData,
   oneLifeZonesMarkArea,
 } from '@/lib/charts/oneLifeWindow'
 import { useEffectiveHpToKill, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
@@ -132,8 +137,18 @@ export function TimeseriesSessionPerformance({
       // Marge droite élargie quand l'axe MMR est présent : il est décalé de 48 px
       // de l'axe des pourcentages (B5), il faut la place pour ses étiquettes.
       grid: { top: 24, right: showMmr ? 116 : 60, bottom: 64, left: 56, containLabel: true },
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
-      legend: { ...getLegendBase(tc), bottom: 0 },
+      tooltip: {
+        ...getTooltipBase(tc),
+        trigger: 'axis',
+        // Le taux de victoire est en pourcentage (une décimale), la performance et le MMR sans unité.
+        formatter: axisTooltipFormatter({
+          value: (r) => (r.name === winRateLabel ? `${tipNumber(r.value, 1)} %` : tipNumberAuto(r.value)),
+        }),
+      },
+      // Pastille élargie : la courbe « MMR équipe » est tiretée, et à 12 px son icône
+      // n'affiche qu'un seul tiret — impossible de deviner qu'elle nomme la courbe en
+      // pointillé (retour utilisateur 2026-09-09).
+      legend: { ...getLegendBase(tc), bottom: 0, itemWidth: LEGEND_ITEM_WIDTH_LINE },
       xAxis: {
         ...getAxisBase(tc),
         type: 'category',
@@ -246,9 +261,11 @@ export function TimeseriesSessionPerformance({
 //
 // Conséquence : les deux courbes se lisent « plus haut = mieux », donc une SEULE
 // polarité — zones communes (vert au-dessus du repère, rouge en dessous), repère
-// « 1 vie » à 100 % et fenêtre FIXE 50…200 %. La courbe pleine est le rendement,
-// la pointillée la résistance ; le jugement est porté par les zones (l'ancien
-// dégradé de trait, ancré sur la boîte de série et non sur l'axe, a été retiré).
+// « 1 vie » à 100 % et fenêtre 50…200 % élargie sans jamais rétrécir quand un
+// point en sort (DEC-5, cf. `oneLifeWindowBoundsForData`). La courbe pleine est
+// le rendement, la pointillée la résistance ; le jugement est porté par les
+// zones (l'ancien dégradé de trait, ancré sur la boîte de série et non sur
+// l'axe, a été retiré).
 
 export interface TimeseriesEfficiencyProps {
   rows: TimeseriesMatchRow[]
@@ -277,22 +294,44 @@ type RateDatum = { value: number; perEvent: number | null } | null
 
 export interface TimeseriesIntensityProfileProps {
   rows: IntensityMatchRow[]
+  /** Les frags de l'ÉQUIPE ALLIÉE du joueur, par match — courbe de référence. */
+  teamRows?: IntensityMatchRow[]
+  /** Les frags de TOUT le lobby, par match — seconde courbe de référence. */
+  lobbyRows?: IntensityMatchRow[]
   height?: number
   title?: ReactNode
   emptyMessage?: string
   medianLabel: string
   envelopeLabel: string
   refLabel: string
+  /** Les trois entrées de la légende : le joueur, son équipe, le lobby. */
+  playerLabel: string
+  teamLabel: string
+  lobbyLabel: string
 }
 
+/**
+ * TimeseriesIntensityProfile — le profil d'intensité SOLO, avec ses deux courbes de
+ * référence depuis le 2026-09-19 : l'ÉQUIPE alliée et le LOBBY entier (item 1.G du plan
+ * PLAN_AJUSTEMENTS_PRE_V75). Même modèle que `SquadIntensityProfileChart` et MÊME builder :
+ * une courbe seule ne dit pas si le match était intense en général.
+ *
+ * Une courbe de référence absente du contrat (titre sans participants publiés, scope sans
+ * frag) n'est tout simplement pas montée — jamais une courbe plate.
+ */
 export function TimeseriesIntensityProfile({
   rows,
+  teamRows,
+  lobbyRows,
   height = 340,
   title,
   emptyMessage,
   medianLabel,
   envelopeLabel,
   refLabel,
+  playerLabel,
+  teamLabel,
+  lobbyLabel,
 }: TimeseriesIntensityProfileProps) {
   const themeVersion = useThemeVersion()
   const locale = useAppShellStore((s) => s.locale)
@@ -300,19 +339,42 @@ export function TimeseriesIntensityProfile({
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
     const color = resolveToken('chart-series-2')
+    const overlays: IntensityOverlay[] = []
+    if (teamRows && teamRows.length > 0) {
+      overlays.push({ key: 'team', label: teamLabel, rows: teamRows })
+    }
+    if (lobbyRows && lobbyRows.length > 0) {
+      overlays.push({ key: 'lobby', label: lobbyLabel, rows: lobbyRows })
+    }
     const opt = buildSquadIntensityProfileOption({
       panels: [
-        { key: 'solo', label: '', color, rows: rows as Array<{ phases: number[] | null }> },
+        { key: 'solo', label: playerLabel, color, rows: rows as Array<{ phases: number[] | null }> },
       ],
       medianLabel,
       envelopeLabel,
       refLabel,
       axisLabels: intensityAxisLabels(locale),
+      overlays,
+      // Panneau unique : « Joueur » est déjà une entrée de légende, le titre de
+      // panneau le répétait (retour utilisateur du 2026-09-21).
+      showPanelTitles: false,
     })
     // Pas de manche exploitable (aucun frag) → le builder omet `series` : vide.
     return (opt as { series?: unknown }).series ? opt : null
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, medianLabel, envelopeLabel, refLabel, themeVersion, locale])
+  }, [
+    rows,
+    teamRows,
+    lobbyRows,
+    medianLabel,
+    envelopeLabel,
+    refLabel,
+    playerLabel,
+    teamLabel,
+    lobbyLabel,
+    themeVersion,
+    locale,
+  ])
   return (
     <ChartRender
       option={option}
@@ -360,9 +422,9 @@ function efficiencyTooltip(unitByName: Record<string, string>, refLabel: string)
       const d = it.data as NonNullable<RateDatum>
       const unit = unitByName[it.seriesName ?? ''] ?? ''
       const raw =
-        d.perEvent == null ? '' : ` · ${formatNumberFixed(d.perEvent, 0)} ${escapeHtml(unit)}`
+        d.perEvent == null ? '' : ` · ${tipNumber(d.perEvent, 0)} ${escapeHtml(unit)}`
       const name = escapeHtml(it.seriesName ?? '')
-      return `${it.marker ?? ''}${name} : <b>${formatNumberFixed(d.value, 0)} %</b>${raw}`
+      return `${it.marker ?? ''}${name} : <b>${tipNumber(d.value, 0)} %</b>${raw}`
     })
     // Le pivot est rappelé : c'est la clé de lecture commune aux deux courbes.
     return [
@@ -408,7 +470,17 @@ export function TimeseriesEfficiency({
     const colDefensive = resolveToken('chart-series-3')
 
     const categories = buildMatchCategories(rows)
-    const bounds = ONE_LIFE_RATE_BOUNDS
+    // Calculées une seule fois : réutilisées par les séries ET par l'extent
+    // d'axe ci-dessous (jamais recalculées séparément, source unique).
+    const offensive = offensiveRates(rows, hp)
+    const defensive = providesDamageTaken ? defensiveRates(rows, hp) : []
+    // Fenêtre 50…200 % élargie si un point dépasse, jamais rétrécie (DEC-5) :
+    // la fenêtre de comparabilité reste le plancher, une session courte pousse
+    // l'axe plus loin plutôt que d'écrêter la courbe.
+    const allRates = [...offensive, ...defensive]
+      .filter((d): d is NonNullable<RateDatum> => d != null)
+      .map((d) => d.value)
+    const bounds = oneLifeWindowBoundsForData(allRates, ONE_LIFE_RATE_BOUNDS)
 
     return {
       backgroundColor: CHART_BG,
@@ -431,10 +503,10 @@ export function TimeseriesEfficiency({
         data: categories,
         axisLabel: { ...getAxisBase(tc).axisLabel, interval: 0, fontSize: 9 },
       },
-      // Fenêtre FIXE 50…200 % — bornes CONSTANTES, jamais dérivées de la session :
-      // une même valeur tombe au même endroit, et prend donc la même couleur,
-      // d'une session à l'autre. Un point hors fenêtre est écrêté par l'axe ; le
-      // survol en garde la valeur vraie.
+      // Fenêtre 50…200 % par défaut — une même valeur tombe au même endroit, et
+      // prend donc la même couleur, d'une session à l'autre — mais ÉLARGIE
+      // (jamais rétrécie, DEC-5) quand un point en sort : plus jamais de courbe
+      // écrêtée par l'axe sur une session courte. Le survol garde la valeur vraie.
       yAxis: {
         ...getAxisBase(tc),
         type: 'value',
@@ -447,7 +519,7 @@ export function TimeseriesEfficiency({
         {
           type: 'line',
           name: rendementLabel,
-          data: offensiveRates(rows, hp),
+          data: offensive,
           showSymbol: false,
           smooth: false,
           connectNulls: true,
@@ -456,7 +528,9 @@ export function TimeseriesEfficiency({
           // en coordonnées d'axe : vert au-dessus du repère, rouge en dessous.
           // Les deux courbes étant des taux « plus haut = mieux », les zones
           // valent pour l'ensemble de la grille — elles sont donc portées par la
-          // première série et rendues une seule fois.
+          // première série et rendues une seule fois. `bounds` (potentiellement
+          // élargi) plutôt que la fenêtre de base : la zone ne doit jamais
+          // s'arrêter avant le bord réel de l'axe.
           markArea: oneLifeZonesMarkArea(ONE_LIFE_RATE_PCT, bounds),
           markLine: oneLifeMarkLine(refLabel, colRef),
         },
@@ -467,7 +541,7 @@ export function TimeseriesEfficiency({
               {
                 type: 'line' as const,
                 name: resistanceLabel,
-                data: defensiveRates(rows, hp),
+                data: defensive,
                 showSymbol: false,
                 smooth: false,
                 connectNulls: true,

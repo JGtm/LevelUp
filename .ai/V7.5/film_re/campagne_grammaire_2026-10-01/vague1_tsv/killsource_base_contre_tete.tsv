@@ -1,0 +1,19 @@
+0797ce72	[["calibration"],"LU axisW=[12 12 11] indexW_plage=2 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=24 [PROFIL PLAT (score 87, mediane 78)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 880, mediane 880]"] 
+084a804d	identique
+111fa685	[["sante","taux_inexpliques"],0.15859030837004406] [["sante","compteurs_expvar",0,"valeur"],227] [["sante","compteurs_expvar",2,"valeur"],25] [["sante","gate_par_voie","sequentielle","population"],206] [["sante","gate_par_voie","sequentielle","taux"],0.883495145631068] 
+11de8353	identique
+396cfc92	[["calibration"],"LU axisW=[18 18 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=9 [PROFIL PLAT (score 337, mediane 323)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 2132, mediane 2132]"] 
+4f77afc1	identique
+50247b26	identique
+51ebbc0f	[["calibration"],"LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=26 [PROFIL PLAT (score 19, mediane 16)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 225, mediane 225]"] 
+60ae07c4	identique
+a349fea8	[["calibration"],"LU axisW=[17 17 15] indexW_plage=1 [CARTE] controle_corruption=INVARIANT (section d identification absente) | ORACLE axisW=26 [PROFIL PLAT (score 138, mediane 112)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 243, mediane 243]"] 
+a521164d	identique
+bcb6d393	[["calibration"],"LU axisW=[13 13 14] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=23 [PROFIL PLAT (score 34, mediane 21)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 179, mediane 179]"] 
+bf15f7ab	[["calibration"],"LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=11 [PROFIL PLAT (score 79, mediane 73)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 400, mediane 400]"] 
+bfecd02b	[["calibration"],"LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=11 [PROFIL PLAT (score 204, mediane 198)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 604, mediane 604]"] 
+c75f33b8	[["calibration"],"LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=19 [PROFIL PLAT (score 78, mediane 75)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 335, mediane 335]"] 
+d9781168	[["calibration"],"LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=19 [PROFIL PLAT (score 113, mediane 108)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 497, mediane 497]"] 
+e5adf7b2	[["calibration"],"LU axisW=[17 17 15] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=26 [PROFIL PLAT (score 524, mediane 461)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 6311, mediane 6311]"] 
+f75e7053	[["calibration"],"LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=13 [PROFIL PLAT (score 13, mediane 11)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 110, mediane 110]"] 
+fb1a1a72	[["calibration"],"LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=11 [PROFIL PLAT (score 126, mediane 107)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 632, mediane 632]"] 

@@ -1,0 +1,166 @@
+# CARTE DE FERMETURE DES TRAMES DELTA — golden du lot J4.0 (plan de suite de l audit du decodeur).
+# Colonnes : film, mesure, fermes, total, bloquant le plus frequent, detail.
+#   paquets : paquets delta fermes au bit pres / marches ; bloquant = premiere cause d arret la plus frequente.
+#   vue=A|B|C : paquets ou la vue se termine ET le paquet ferme / paquets ou la vue est atteinte.
+#   utiles : records de la vue B dont le masque annonce un composant a usage produit
+#     (colonne product_use de ecs_table.tsv), fermes / lus.
+#   ti=N : records NEW + DELTA de l archetype, fermes / lus ; ti=-1 = archetype non resolu.
+# Un record ne ferme que si son paquet ferme : la fin du paquet (vue C, reste de 0 a 7 bits nuls)
+# est le seul oracle independant d une trame lue en sequence.
+# Le ratchet rougit sur une BAISSE de `fermes`. Regeneration :
+#   go test ./internal/games/halo_infinite/film/internal/grammar/ -run FrameClosureRatchet -update-frame-closure
+#
+# HISTORIQUE DES REGENERATIONS — une ligne par lot, avec CE QUI MONTE ET POURQUOI.
+#
+#   2026-09-26 lot J4.0 : creation, DIX bobines. Les huit mini-bobines du rejeu que le plan
+#     designait ne portent AUCUNE trame delta sous un registre (sept par build : images-cles
+#     seules, 0 paquet ; 000d5950 : pas de chunk_00, non marchee) ; les deux bobines contigues
+#     de killsource (ks_) sont les seules du depot qui en portent — ecart declare au plan.
+#     Premier apercu, contexte d instrument :
+#       ks_000d5950 paquets 1 823/5 957 (30,6 %), records utiles 5 889/30 428 (19,4 %),
+#         vue C fermee 1 823/3 485 atteintes ; premier bloquant
+#         `ti=43 i35 device-animation-layer-state-component` (2 365 paquets arretes en vue B).
+#       ks_e5adf7b2 paquets 371/584 (63,5 %), records utiles 0/1 ; premier bloquant
+#         `vue C : terminateur hors cadre` (160 paquets).
+#     Mutation jouee : `Block64` d object-shield-vitality lu sur 17 bits au lieu de 16 ->
+#     sept lignes de ks_000d5950 en BAISSE et une disparue : le ratchet rougit.
+#   2026-09-27 lot J6.3 : portage unique de `FUN_14076e524`. AUCUN compte `fermes` ne bouge.
+#     ks_000d5950 vue=C : 3 485 -> 3 483 paquets atteints ; deux paquets de plus s arretent en
+#     vue B (`fin de payload` 6 -> 7, `ti=23 i1 selectable-zone-data` 0 -> 1). Ligne NEUVE :
+#     ks_000d5950 `ti=23` 0/1 (un record de l archetype des zones atteint). Le flock-position,
+#     dont la lecture du jeu faisait monter ks_000d5950 mais baisser ks_e5adf7b2, reste en
+#     exception datee (`lecteur_position_exceptions.go`). 0 ligne `fermes` ne descend.
+#   2026-09-28 lot J6-bis : quatre exceptions datees de plus (flock-destination, tacmap-poiicon,
+#     player-desired-respawn-location, etat par defaut de ti=13 dans un record NEW). AUCUN compte
+#     `fermes` ne bouge. ks_000d5950 retrouve ses comptes d avant J6.3 en vue B (3 485 terminees,
+#     plus d arret `ti=23 i1 selectable-zone-data`) et en vue C (3 485 atteintes, 3 388
+#     terminees contre 3 387 avant J6.3) ; la ligne `ti=23` 0/1 que J6.3 avait fait naitre
+#     disparait (0 ferme). 0 ligne `fermes` ne descend.
+#   2026-09-29 lot R3 : cinq exceptions datees de plus (tacmap-displayasset, tacmap-areaofinterest,
+#     tacmap-cooptetherarea, crew-order, precHigh = 1 de l i0 absolu du bipede). AUCUN compte
+#     `fermes` ne bouge. ks_000d5950 vue=C : 3 388 -> 3 387 terminees, son compte d avant J6.3
+#     (un paquet non ferme s arrete sur le bloc 0xbc et non sur le terminateur). 0 ligne `fermes`
+#     ne descend.
+#   2026-10-01 campagne de grammaire phase 1, item 1.4 : colonne product_use de ecs_table.tsv
+#     CORRIGEE SUR PIECES (36 -> 73 lignes utiles, chacune cite son canal de production). ENTRENT :
+#     ti=35 i1/i29/i54/i57/i62 (etats de mouvement), i10 (occupation), ti=9 i0 (equipe),
+#     ti=40 i0/i1/i2/i11 (vehicules), ti=13 i1..i33 (zones), ti=12 i14 (armement),
+#     ti=42 i0/i20 (socles). SORTENT, faute d appelant de production : ti=11 i0/i3/i5/i12/i13/i14
+#     (ScanObjectives) et ti=37 i20/i21/i23/i24 (ScanEquipmentState). AUCUN compte de paquet ni de
+#     record ne bouge ; seuls les UTILES : ks_000d5950 5 889/30 428 -> 6 608/31 200,
+#     ks_e5adf7b2 0/1 -> 0/23. 0 ligne `fermes` ne descend.
+#   2026-10-02 lot L0 de la campagne de grammaire (decision D2) : FERME = FERME AU BIT PRES ET
+#     AUCUNE REGLE DE L ECRIVAIN CONTREDITE (`ecrivain_invariants.go`). Ligne NEUVE par film :
+#     `paquets_au_bit` (fermes au bit pres, regles contredites ou non). ks_e5adf7b2 : un paquet
+#     ferme au bit pres apres une sortie de vue B par rejet n est plus ferme (paquets 371 -> 370 ;
+#     vues A, B, C, ti=4 et ti=21 un de moins) : la BAISSE est une fermeture factice retiree,
+#     l exception de la decision D2. ks_000d5950 : aucun compte `fermes` ne bouge. Causes
+#     renommees : `vue B : sortie par rejet` (avant les causes de la vue C) et
+#     `vue C : bloc 0xbc (desalignement)` ; une regle de l ecrivain contredite est une cause nommee.
+#   2026-10-02 lot L3a de la campagne de grammaire : fin du moteur de partie (`ti=0/1/2` i11 a i17)
+#     portee depuis le jeu (`components_moteur_de_partie.go`). ks_000d5950 : paquets 1 823 -> 1 825,
+#     utiles 6 608/31 200 -> 6 609/31 202, ti=2 20/163 -> 23/164 ; les causes `ti=0/2 i11..i17`
+#     disparaissent (la suivante, `ti=0 i18 forge-engine-player-roles`, apparait : 1 paquet).
+#     ks_e5adf7b2 : aucune ligne ne bouge. 0 ligne `fermes` ne descend.
+a521164d	paquets	0	0		listes_non_localisees=0
+a521164d	paquets_au_bit	0	0		utiles_fermes_au_bit=0
+a521164d	vue=A	0	0		terminees=0 arrets=
+a521164d	vue=B	0	0		terminees=0 arrets=
+a521164d	vue=C	0	0		terminees=0 arrets=
+a521164d	utiles	0	0		entrees_controle_fermees=0
+60ae07c4	paquets	0	0		listes_non_localisees=0
+60ae07c4	paquets_au_bit	0	0		utiles_fermes_au_bit=0
+60ae07c4	vue=A	0	0		terminees=0 arrets=
+60ae07c4	vue=B	0	0		terminees=0 arrets=
+60ae07c4	vue=C	0	0		terminees=0 arrets=
+60ae07c4	utiles	0	0		entrees_controle_fermees=0
+11de8353	paquets	0	0		listes_non_localisees=0
+11de8353	paquets_au_bit	0	0		utiles_fermes_au_bit=0
+11de8353	vue=A	0	0		terminees=0 arrets=
+11de8353	vue=B	0	0		terminees=0 arrets=
+11de8353	vue=C	0	0		terminees=0 arrets=
+11de8353	utiles	0	0		entrees_controle_fermees=0
+111fa685	paquets	0	0		listes_non_localisees=0
+111fa685	paquets_au_bit	0	0		utiles_fermes_au_bit=0
+111fa685	vue=A	0	0		terminees=0 arrets=
+111fa685	vue=B	0	0		terminees=0 arrets=
+111fa685	vue=C	0	0		terminees=0 arrets=
+111fa685	utiles	0	0		entrees_controle_fermees=0
+e5adf7b2	paquets	0	0		listes_non_localisees=0
+e5adf7b2	paquets_au_bit	0	0		utiles_fermes_au_bit=0
+e5adf7b2	vue=A	0	0		terminees=0 arrets=
+e5adf7b2	vue=B	0	0		terminees=0 arrets=
+e5adf7b2	vue=C	0	0		terminees=0 arrets=
+e5adf7b2	utiles	0	0		entrees_controle_fermees=0
+bcb6d393	paquets	0	0		listes_non_localisees=0
+bcb6d393	paquets_au_bit	0	0		utiles_fermes_au_bit=0
+bcb6d393	vue=A	0	0		terminees=0 arrets=
+bcb6d393	vue=B	0	0		terminees=0 arrets=
+bcb6d393	vue=C	0	0		terminees=0 arrets=
+bcb6d393	utiles	0	0		entrees_controle_fermees=0
+fb1a1a72	paquets	0	0		listes_non_localisees=0
+fb1a1a72	paquets_au_bit	0	0		utiles_fermes_au_bit=0
+fb1a1a72	vue=A	0	0		terminees=0 arrets=
+fb1a1a72	vue=B	0	0		terminees=0 arrets=
+fb1a1a72	vue=C	0	0		terminees=0 arrets=
+fb1a1a72	utiles	0	0		entrees_controle_fermees=0
+000d5950	marche	0	0	sans registre (pas de chunk_00)	
+ks_000d5950	paquets	1825	5957	ti=43 i35 device-animation-layer-state-component	listes_non_localisees=27
+ks_000d5950	paquets_au_bit	1825	5957		utiles_fermes_au_bit=6609
+ks_000d5950	vue=A	1702	5484		terminees=5484 arrets=
+ks_000d5950	vue=B	1825	5930	ti=43 i35 device-animation-layer-state-component	terminees=1888 arrets=ti=0 i18 forge-engine-player-roles-component:1;ti=10 i2 managed-object-navpoint-component:2;ti=10 i3 managed-object-navpoint-component:1;ti=10 i6 managed-object-navpoint-component:1;ti=11 i4 managed-objective-interaction-filter-component:1;ti=18 i1 effect-state-data-component:4;ti=18 i2 effect-state-data-component:2;ti=19 i1 sound-placement-state-data-component:1;ti=19 i4 sound-placement-state-data-component:1;ti=26 i0 supply-lines-blocked-status-component:2;ti=34 i10 tacmap-mapdismissallock:3;ti=34 i12 tacmap-backmenulocked-state:6;ti=35 i59 biped-spartan-ability-non-predicted-state:4;ti=43 i34 device-animation-layer-settings-component:2;ti=43 i35 device-animation-layer-state-component:2366;ti=43 i39 device-machine-flags-component:1;ti=45 i0 matchflow-sequence-data-component:1;ti=45 i1 matchflow-focus-data-component:1;ti=5 i10 player-primary-respawn-object-component:1;ti=50 archetype hors registre:5;ti=51 archetype hors registre:1;ti=52 archetype hors registre:1;ti=58 archetype hors registre:9;ti=59 archetype hors registre:4;ti=60 archetype hors registre:7;ti=61 archetype hors registre:1;vue B : fin de payload:10;vue B : sortie par rejet:1603
+ks_000d5950	vue=C	1825	1888	vue C : terminateur hors cadre	terminees=1879 arrets=vue C : bloc 0xbc (desalignement):3;vue C : debordement:1;vue C : kind non porte:5;vue C : terminateur hors cadre:54
+ks_000d5950	utiles	6609	31202		entrees_controle_fermees=11751
+ks_000d5950	ti=0	0	2	ti=0 i18 forge-engine-player-roles-component	neufs=0/2 deltas=0/0 utiles=0/0
+ks_000d5950	ti=1	0	1	vue B : sortie par rejet	neufs=0/1 deltas=0/0 utiles=0/0
+ks_000d5950	ti=2	23	164	ti=43 i35 device-animation-layer-state-component	neufs=0/14 deltas=23/150 utiles=0/0
+ks_000d5950	ti=4	1777	5874	ti=43 i35 device-animation-layer-state-component	neufs=0/3 deltas=1777/5871 utiles=0/0
+ks_000d5950	ti=5	46	184	ti=43 i35 device-animation-layer-state-component	neufs=0/1 deltas=46/183 utiles=0/0
+ks_000d5950	ti=6	16	60	ti=43 i35 device-animation-layer-state-component	neufs=0/1 deltas=16/59 utiles=0/0
+ks_000d5950	ti=8	0	1	vue B : sortie par rejet	neufs=0/1 deltas=0/0 utiles=0/0
+ks_000d5950	ti=9	0	8	ti=43 i39 device-machine-flags-component	neufs=0/8 deltas=0/0 utiles=0/8
+ks_000d5950	ti=10	0	7	vue C : terminateur hors cadre	neufs=0/7 deltas=0/0 utiles=0/0
+ks_000d5950	ti=11	0	1	ti=11 i4 managed-objective-interaction-filter-component	neufs=0/1 deltas=0/0 utiles=0/0
+ks_000d5950	ti=13	8	8		neufs=0/0 deltas=8/8 utiles=8/8
+ks_000d5950	ti=14	0	2	vue B : sortie par rejet	neufs=0/0 deltas=0/2 utiles=0/0
+ks_000d5950	ti=16	0	2	vue B : fin de payload	neufs=0/2 deltas=0/0 utiles=0/0
+ks_000d5950	ti=17	0	1	ti=5 i10 player-primary-respawn-object-component	neufs=0/0 deltas=0/1 utiles=0/0
+ks_000d5950	ti=18	0	6	ti=18 i1 effect-state-data-component	neufs=0/6 deltas=0/0 utiles=0/0
+ks_000d5950	ti=19	0	2	ti=19 i1 sound-placement-state-data-component	neufs=0/2 deltas=0/0 utiles=0/0
+ks_000d5950	ti=21	44	490	vue B : sortie par rejet	neufs=0/8 deltas=44/482 utiles=0/0
+ks_000d5950	ti=22	0	2	vue B : sortie par rejet	neufs=0/2 deltas=0/0 utiles=0/0
+ks_000d5950	ti=25	0	1	vue C : terminateur hors cadre	neufs=0/1 deltas=0/0 utiles=0/0
+ks_000d5950	ti=26	0	2	ti=26 i0 supply-lines-blocked-status-component	neufs=0/2 deltas=0/0 utiles=0/0
+ks_000d5950	ti=34	0	9	ti=34 i12 tacmap-backmenulocked-state	neufs=0/9 deltas=0/0 utiles=0/0
+ks_000d5950	ti=35	3550	27009	ti=43 i35 device-animation-layer-state-component	neufs=8/22 deltas=3542/26987 utiles=3543/26988
+ks_000d5950	ti=37	1930	1976	ti=43 i35 device-animation-layer-state-component	neufs=23/61 deltas=1907/1915 utiles=1374/1403
+ks_000d5950	ti=38	5	23	vue B : sortie par rejet	neufs=5/20 deltas=0/3 utiles=0/0
+ks_000d5950	ti=41	988	2139	ti=43 i35 device-animation-layer-state-component	neufs=21/166 deltas=967/1973 utiles=985/2069
+ks_000d5950	ti=42	803	831	ti=43 i35 device-animation-layer-state-component	neufs=6/31 deltas=797/800 utiles=699/726
+ks_000d5950	ti=43	35	2405	ti=43 i35 device-animation-layer-state-component	neufs=0/1 deltas=35/2404 utiles=0/0
+ks_000d5950	ti=45	0	2	ti=45 i0 matchflow-sequence-data-component	neufs=0/2 deltas=0/0 utiles=0/0
+ks_000d5950	ti=47	48	49	vue B : fin de payload	neufs=0/1 deltas=48/48 utiles=0/0
+ks_000d5950	ti=50	0	5	ti=50 archetype hors registre	neufs=0/5 deltas=0/0 utiles=0/0
+ks_000d5950	ti=51	0	1	ti=51 archetype hors registre	neufs=0/1 deltas=0/0 utiles=0/0
+ks_000d5950	ti=52	0	1	ti=52 archetype hors registre	neufs=0/1 deltas=0/0 utiles=0/0
+ks_000d5950	ti=58	0	9	ti=58 archetype hors registre	neufs=0/9 deltas=0/0 utiles=0/0
+ks_000d5950	ti=59	0	4	ti=59 archetype hors registre	neufs=0/4 deltas=0/0 utiles=0/0
+ks_000d5950	ti=60	0	7	ti=60 archetype hors registre	neufs=0/7 deltas=0/0 utiles=0/0
+ks_000d5950	ti=61	0	1	ti=61 archetype hors registre	neufs=0/1 deltas=0/0 utiles=0/0
+ks_e5adf7b2	paquets	370	584	vue B : sortie par rejet	listes_non_localisees=2
+ks_e5adf7b2	paquets_au_bit	371	584		utiles_fermes_au_bit=0
+ks_e5adf7b2	vue=A	358	530		terminees=530 arrets=
+ks_e5adf7b2	vue=B	370	582	vue B : sortie par rejet	terminees=384 arrets=ti=10 i2 managed-object-navpoint-component:1;ti=35 i60 simulation-state-component:1;ti=43 i22 device-power-component:1;vue B : sortie par rejet:195
+ks_e5adf7b2	vue=C	370	384	vue C : terminateur hors cadre	terminees=381 arrets=vue C : debordement:1;vue C : kind non porte:2;vue C : terminateur hors cadre:11
+ks_e5adf7b2	utiles	0	23		entrees_controle_fermees=0
+ks_e5adf7b2	ti=4	239	441	vue B : sortie par rejet	neufs=0/1 deltas=239/440 utiles=0/0
+ks_e5adf7b2	ti=10	0	1	ti=10 i2 managed-object-navpoint-component	neufs=0/1 deltas=0/0 utiles=0/0
+ks_e5adf7b2	ti=21	0	60	vue B : sortie par rejet	neufs=0/4 deltas=0/56 utiles=0/0
+ks_e5adf7b2	ti=22	0	1	vue B : sortie par rejet	neufs=0/1 deltas=0/0 utiles=0/0
+ks_e5adf7b2	ti=35	0	2	ti=35 i60 simulation-state-component	neufs=0/2 deltas=0/0 utiles=0/1
+ks_e5adf7b2	ti=37	0	1	vue C : terminateur hors cadre	neufs=0/1 deltas=0/0 utiles=0/0
+ks_e5adf7b2	ti=38	0	15	vue B : sortie par rejet	neufs=0/1 deltas=0/14 utiles=0/0
+ks_e5adf7b2	ti=40	0	2	vue B : sortie par rejet	neufs=0/0 deltas=0/2 utiles=0/0
+ks_e5adf7b2	ti=42	18	42	vue B : sortie par rejet	neufs=0/0 deltas=18/42 utiles=0/22
+ks_e5adf7b2	ti=43	0	1	ti=43 i22 device-power-component	neufs=0/0 deltas=0/1 utiles=0/0
+ks_e5adf7b2	ti=47	0	161	vue B : sortie par rejet	neufs=0/0 deltas=0/161 utiles=0/0

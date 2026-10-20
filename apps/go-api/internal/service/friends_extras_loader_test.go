@@ -9,6 +9,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -54,7 +55,7 @@ func TestLoadOneFriendExtras_PopulatesPerformanceScore(t *testing.T) {
 	repo := &mockFriendRepo{
 		enrichResult: &domain.MatchEnrichmentRaw{PerformanceScore: &score},
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
+	res, _ := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
 	if res == nil {
 		t.Fatal("expected non-nil extras when enrichment present")
 	}
@@ -79,7 +80,7 @@ func TestLoadOneFriendExtras_PopulatesSkillRank(t *testing.T) {
 			RatingDelta: &delta,
 		},
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
+	res, _ := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
 	if res == nil {
 		t.Fatal("expected non-nil extras when skill_rank present")
 	}
@@ -102,7 +103,7 @@ func TestLoadOneFriendExtras_BothSourcesEmpty_ReturnsNil(t *testing.T) {
 		enrichResult: &domain.MatchEnrichmentRaw{}, // PerformanceScore nil
 		rankResult:   nil,
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
+	res, _ := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
 	if res != nil {
 		t.Errorf("expected nil when no usable data, got %+v", res)
 	}
@@ -117,7 +118,10 @@ func TestLoadOneFriendExtras_EnrichErrorDoesntBlockRank(t *testing.T) {
 		enrichErr:  errors.New("db locked"),
 		rankResult: &domain.SkillRankRaw{RatingType: "CSR", TierLabel: &tier},
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
+	res, err := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
+	if err == nil || !errors.Is(err, repo.enrichErr) {
+		t.Errorf("la panne de l'enrichissement doit REMONTER avec les données lues, err = %v", err)
+	}
 	if res == nil {
 		t.Fatal("expected non-nil extras (skill rank present)")
 	}
@@ -135,7 +139,10 @@ func TestLoadOneFriendExtras_BothErrors_ReturnsNil(t *testing.T) {
 		enrichErr: errors.New("enrich db locked"),
 		rankErr:   errors.New("rank db locked"),
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
+	res, err := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
+	if !errors.Is(err, repo.enrichErr) || !errors.Is(err, repo.rankErr) {
+		t.Errorf("les deux pannes doivent remonter, err = %v", err)
+	}
 	if res != nil {
 		t.Errorf("expected nil when both sources error, got %+v", res)
 	}
@@ -167,7 +174,7 @@ func TestNewFriendsExtrasResolver_LookupsFriendByXUID(t *testing.T) {
 	}
 	resolver := NewFriendsExtrasResolver(friends, opener, nil)
 
-	out := resolver(context.Background(), "match-1", "", []string{"friend-xuid-1"})
+	out, _ := resolver(context.Background(), "match-1", "", []string{"friend-xuid-1"})
 
 	if openerCalls != 1 {
 		t.Errorf("opener calls want 1, got %d", openerCalls)
@@ -194,7 +201,7 @@ func TestNewFriendsExtrasResolver_SkipsUnknownXUIDs(t *testing.T) {
 	resolver := NewFriendsExtrasResolver(friends, opener, nil)
 
 	// Demande un xuid non configuré dans friends → opener jamais appelé.
-	out := resolver(context.Background(), "match-1", "", []string{"unknown-xuid", "another-unknown"})
+	out, _ := resolver(context.Background(), "match-1", "", []string{"unknown-xuid", "another-unknown"})
 
 	if openerCalls != 0 {
 		t.Errorf("opener should not be called for unknown xuids, got %d calls", openerCalls)
@@ -204,7 +211,9 @@ func TestNewFriendsExtrasResolver_SkipsUnknownXUIDs(t *testing.T) {
 	}
 }
 
-func TestNewFriendsExtrasResolver_OpenerErrorIsSilenced(t *testing.T) {
+// Une player DB d'ami qui ne s'ouvre pas est une PANNE : elle remonte (le service la dit
+// `section_unavailable`), elle ne passe pas pour un ami sans donnée.
+func TestNewFriendsExtrasResolver_OpenerErrorRemonte(t *testing.T) {
 	t.Parallel()
 	opener := func(_ context.Context, _, _ string) (FriendMatchExtrasRepo, error) {
 		return nil, errors.New("db corrupted")
@@ -214,13 +223,28 @@ func TestNewFriendsExtrasResolver_OpenerErrorIsSilenced(t *testing.T) {
 	}
 	resolver := NewFriendsExtrasResolver(friends, opener, nil)
 
-	out := resolver(context.Background(), "match-1", "", []string{"friend-1"})
+	out, err := resolver(context.Background(), "match-1", "", []string{"friend-1"})
 
-	if _, ok := out["friend-1"]; ok {
-		t.Errorf("friend-1 should not appear in result when opener errors")
+	if err == nil {
+		t.Fatal("l'échec d'ouverture de la player DB d'un ami doit remonter en erreur")
 	}
 	if len(out) != 0 {
 		t.Errorf("expected empty result, got %+v", out)
+	}
+}
+
+// Un ami sans ligne sur ce match (absence : le repo rend nil, nil) n'est PAS une panne.
+func TestNewFriendsExtrasResolver_AbsenceNEstPasUnePanne(t *testing.T) {
+	t.Parallel()
+	opener := func(_ context.Context, _, _ string) (FriendMatchExtrasRepo, error) {
+		return &mockFriendRepo{enrichResult: &domain.MatchEnrichmentRaw{}}, nil
+	}
+	friends := map[string]FriendProfile{
+		"friend-1": {XUID: "friend-1", Gamertag: "Friend1", TitleSlug: "halo_infinite"},
+	}
+	out, err := NewFriendsExtrasResolver(friends, opener, nil)(context.Background(), "match-1", "mode", []string{"friend-1"})
+	if err != nil || len(out) != 0 {
+		t.Fatalf("absence : attendu (vide, nil), obtenu (%+v, %v)", out, err)
 	}
 }
 
@@ -240,8 +264,11 @@ func TestNewFriendsExtrasResolver_PartialResults(t *testing.T) {
 	}
 	resolver := NewFriendsExtrasResolver(friends, opener, nil)
 
-	out := resolver(context.Background(), "match-1", "", []string{"xuid-1", "xuid-2"})
+	out, err := resolver(context.Background(), "match-1", "", []string{"xuid-1", "xuid-2"})
 
+	if err == nil {
+		t.Errorf("l'ouverture ratée de xuid-2 doit remonter, même avec un résultat partiel")
+	}
 	if len(out) != 1 {
 		t.Errorf("want 1 result (Friend1 only), got %d", len(out))
 	}
@@ -255,3 +282,49 @@ func TestNewFriendsExtrasResolver_PartialResults(t *testing.T) {
 
 // Garantit que le type port.FriendsExtrasResolver est bien satisfait.
 var _ port.FriendsExtrasResolver = NewFriendsExtrasResolver(nil, nil, nil)
+
+// ---------------------------------------------------------------------------
+// Ami sans player DB : une absence, pas une panne
+// ---------------------------------------------------------------------------
+
+// E5.9 : un profil suivi jamais synchronisé n'a pas de player DB (l'ouverture par le pool échoue
+// quand son dossier manque). L'opener le dit par ErrFriendWithoutPlayerDB : le résolveur ne rend
+// aucune erreur (donc aucune raison `section_unavailable`), ne journalise aucun ERROR, et lit
+// quand même les autres amis.
+func TestFriendsExtrasResolver_AmiSansPlayerDB_EstUneAbsence(t *testing.T) {
+	logs := logsNiveau(t)
+	score := 61.0
+	lu := &mockFriendRepo{enrichResult: &domain.MatchEnrichmentRaw{PerformanceScore: &score}}
+	opener := func(_ context.Context, _, gamertag string) (FriendMatchExtrasRepo, error) {
+		if gamertag == "Jamais" {
+			return nil, fmt.Errorf("ouverture de %s: %w", gamertag, ErrFriendWithoutPlayerDB)
+		}
+		return lu, nil
+	}
+	resolve := NewFriendsExtrasResolver(map[string]FriendProfile{
+		"x-jamais": {XUID: "x-jamais", Gamertag: "Jamais", TitleSlug: "halo_infinite"},
+		"x-sync":   {XUID: "x-sync", Gamertag: "Synchro", TitleSlug: "halo_infinite"},
+	}, opener, nil)
+
+	extras, err := resolve(context.Background(), "m1", "", []string{"x-jamais", "x-sync"})
+	if err != nil {
+		t.Fatalf("un ami sans player DB ne doit pas produire d'erreur, obtenu : %v", err)
+	}
+	if _, ok := extras["x-jamais"]; ok {
+		t.Error("aucun extra attendu pour l'ami sans player DB")
+	}
+	if got := extras["x-sync"]; got.PerformanceScore == nil || *got.PerformanceScore != 61.0 {
+		t.Errorf("l'ami synchronisé doit rester lu, obtenu %+v", got)
+	}
+	assertAucuneErreurJournalisee(t, logs)
+
+	// Contrôle : toute autre panne d'ouverture reste une panne remontée.
+	panne := NewFriendsExtrasResolver(map[string]FriendProfile{
+		"x-jamais": {XUID: "x-jamais", Gamertag: "Jamais", TitleSlug: "halo_infinite"},
+	}, func(context.Context, string, string) (FriendMatchExtrasRepo, error) {
+		return nil, errors.New("database is locked")
+	}, nil)
+	if _, err := panne(context.Background(), "m1", "", []string{"x-jamais"}); err == nil {
+		t.Error("une ouverture en échec autre que l'absence doit rester une panne remontée")
+	}
+}

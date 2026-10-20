@@ -2,20 +2,18 @@ package skill
 
 // skill_v2_shadow.go — LUSR v2 shadow runner (Phase 1c du chantier).
 //
-// Tourne après le calcul LUSR v1 dans la pipeline post-sync, en parallèle :
-// les écritures vont dans player_skill_state_v2 / lusr_hyperparams_v2 (tables
-// dédiées). Aucune lecture par l'UI à ce stade — c'est uniquement de la
-// production de données pour valider le modèle sur des cas réels (Phase 1d).
+// Historique : tournait d'abord en parallèle de la v1, dans des tables dédiées
+// (player_skill_state_v2 / lusr_hyperparams_v2), sans lecture par l'UI. C'est
+// aujourd'hui le seul chemin LUSR.
 //
-// Gating : LEVELUP_LUSR_V2_ENABLED=1. Off → no-op silencieux, 0 latence.
+// Aucun drapeau d'environnement : le LUSR v2 est le seul modèle et tourne toujours (ADR 0024,
+// amendement du 2026-10-17). Un titre sans la capability LUSR reste un no-op silencieux.
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -24,21 +22,6 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
-
-// lusrV2EnvFlag est le nom de la variable d'environnement qui active le shadow.
-// Lecture déférée (pas en init()) pour permettre l'override en test.
-const lusrV2EnvFlag = "LEVELUP_LUSR_V2_ENABLED"
-
-// IsLUSRV2Enabled retourne true si le shadow runner doit s'exécuter.
-// "1", "true", "yes" (case-insensitive) activent ; tout le reste désactive.
-//
-// Les deux autres flags (`IsLUSRV2Canonical`, `IsLUSRV2ModeCouplingEnabled`)
-// sont définis dans `skill_v2_canonical.go` / `skill_v2_cross_mode.go`
-// respectivement, à côté du code qu'ils gardent.
-func IsLUSRV2Enabled() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv(lusrV2EnvFlag)))
-	return v == "1" || v == "true" || v == "yes"
-}
 
 // shadowMatch est une vue dégroupée de match_participants utilisée par le runner.
 type shadowMatch struct {
@@ -53,25 +36,18 @@ type shadowMatch struct {
 	gameplayDurMs int64
 }
 
-// shadowParticipant : un participant brut, pour construire les rosters par équipe.
-type shadowParticipant struct {
-	xuid    string
-	teamID  int
-	hasTeam bool
-}
-
 // RunLUSRV2Shadow calcule les états LUSR v2 pour tous les matchs du joueur qui
 // n'ont pas encore été vus (filtre incrémental sur last_match_at par groupe).
 // Retourne le nombre de matchs traités. Best-effort : les erreurs sur un match
 // n'arrêtent pas la boucle (loggées warn).
 //
-// Si LEVELUP_LUSR_CANONICAL=LUSR_V2 et `playerDB` non nil, écrit aussi le
-// résultat dans `match_skill_rank` du player DB (slot `rating_type='LUSR'`)
-// via le mapping v2 → legacy. C'est la Stratégie C (write-through aliasing,
-// ADR 0024).
+// Si `playerDB` est non nil, écrit aussi le résultat dans `match_skill_rank` du
+// player DB (slot `rating_type='LUSR'`) via le mapping v2 → legacy, et les 8
+// composantes de performance dans `lusr_component_history`. C'est la Stratégie C
+// (write-through aliasing, ADR 0024).
 //
-// Si `playerDB` nil ou flag non canonical : v2 reste en pur shadow (écrit
-// uniquement dans `player_skill_state_v2_latest` côté shared).
+// Si `playerDB` est nil : v2 reste en pur shadow (écrit uniquement dans
+// `player_skill_state_v2_latest` côté shared).
 //
 // Limites Phase 1 : ne traite que les matchs avec exactement 2 teams humaines
 // distinctes. Matchs FFA, 3+ teams, ou outcomes incohérents sont skippés.
@@ -79,8 +55,8 @@ type shadowParticipant struct {
 // Variante "persist des 2 équipes" (avance le watermark de TOUS les participants).
 // N'est PLUS utilisée par le live (cf. RunLUSRV2ShadowOwnerOnly, fix 2026-06-08,
 // couplage cross-joueur) — conservée pour cmd/lusr_v2_replay et les tests.
-func RunLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccessor, xuid string) (int, error) {
-	return runLUSRV2Shadow(ctx, playerDB, shared, xuid, false)
+func RunLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccessor, xuid string, opts ...ShadowOption) (int, error) {
+	return runLUSRV2Shadow(ctx, playerDB, shared, xuid, buildShadowOptions(false, opts))
 }
 
 // RunLUSRV2ShadowOwnerOnly : persiste UNIQUEMENT l'état v2 du joueur traité (pas
@@ -98,14 +74,11 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccesso
 // Compromis assumé : l'EP du joueur lit l'état COURANT de ses coéquipiers (pas
 // forcément leur état pré-match) — approximation inhérente au modèle per-joueur,
 // identique entre live et backfill (résultats cohérents).
-func RunLUSRV2ShadowOwnerOnly(ctx context.Context, playerDB *sql.DB, shared SharedAccessor, xuid string) (int, error) {
-	return runLUSRV2Shadow(ctx, playerDB, shared, xuid, true)
+func RunLUSRV2ShadowOwnerOnly(ctx context.Context, playerDB *sql.DB, shared SharedAccessor, xuid string, opts ...ShadowOption) (int, error) {
+	return runLUSRV2Shadow(ctx, playerDB, shared, xuid, buildShadowOptions(true, opts))
 }
 
-func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccessor, xuid string, ownerOnlyPersist bool) (int, error) {
-	if !IsLUSRV2Enabled() {
-		return 0, nil
-	}
+func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccessor, xuid string, cfg shadowOptions) (int, error) {
 	// Sprint 3.C : gate capability (pas de couplage slug). Titre sans CapLUSR →
 	// no-op silencieux. CLI (context.Background) → "halo_infinite" → CapLUSR OK.
 	if skipIfNoLUSRCapability(ctx, "RunLUSRV2Shadow") {
@@ -114,91 +87,79 @@ func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccesso
 	if shared == nil {
 		return 0, fmt.Errorf("RunLUSRV2Shadow: shared nil")
 	}
-	canonical := IsLUSRV2Canonical()
-	if canonical && playerDB == nil {
-		// Demandé canonical mais pas de playerDB → on log mais on continue
-		// en shadow pour ne pas perdre l'occasion de mettre à jour l'état v2.
-		slog.WarnContext(ctx, "LUSR v2 canonical demandé mais playerDB nil — fallback shadow",
-			"xuid", xuid)
-		canonical = false
-	}
+	// Canonique dès qu'une base joueur est fournie ; sans elle (replay d'étude), l'état v2 seul
+	// est mis à jour (shadow-only).
+	canonical := playerDB != nil
 
-	// Sélection sous segment LECTURE, release IMMÉDIAT (pur SELECT). Le Read est
-	// relâché AVANT tout burst Write (garde anti-deadlock). Régression 2026-07-03 :
-	// le persist per-match ne doit JAMAIS passer par ce handle de lecture (RO en
-	// mode burst) — il passe par des bursts Write (RW) ci-dessous.
-	matches, err := loadShadowMatchesUnderRead(ctx, shared, xuid)
+	// Sélection, filigrane et éligibilité sous segment LECTURE, relâché AVANT toute
+	// rafale Write (garde anti-deadlock) : ce qui est nouveau se décide sur le
+	// lecteur, jamais en prenant l'écrivain (lot perf L6, skill_v2_watermark.go).
+	// Régression 2026-07-03 : le persist ne passe JAMAIS par ce handle (RO en mode
+	// rafales).
+	excluded, err := loadShadowExclusions(ctx, playerDB)
 	if err != nil {
-		return 0, fmt.Errorf("RunLUSRV2Shadow.loadShadowMatches: %w", err)
+		return 0, err
 	}
-	if len(matches) == 0 {
-		return 0, nil // cas stationnaire dominant : AUCUN burst Write acquis
+	var s shadowRunStats
+	sel := shadowSelection{excluded: excluded}
+	if canonical {
+		sel.medals = cfg.medalExploit
 	}
+	work, err := selectShadowWorkUnderRead(ctx, shared, xuid, sel, &s)
+	if err != nil {
+		return 0, fmt.Errorf("RunLUSRV2Shadow.selectShadowWork: %w", err)
+	}
+	if !work.scorable {
+		// Régime stationnaire : rien au-dessus du filigrane qui s'écrira → AUCUNE
+		// acquisition d'écrivain.
+		logShadowIdle(ctx, xuid, work, s)
+		return 0, nil
+	}
+	// Des rafales d'écrivain BORNÉES (au plus 50 matchs ou 2 s chacune, lot perf L9-go)
+	// pour tous les candidats en attente : la dépendance séquentielle des états EP
+	// impose de persister au fil de l'eau, dans l'ordre chronologique, rafale après
+	// rafale, dans ce même cycle.
+	base := newShadowRunContext(playerDB, xuid, canonical, cfg.ownerOnly)
+	base.excluded = excluded
+	base.components.medals = work.medals
+	bursts, err := runWriterBursts(ctx, shared, base, work, &s)
+	logShadowBurstDone(ctx, xuid, work, s, bursts)
+	if err != nil {
+		return s.processed, fmt.Errorf("RunLUSRV2Shadow: %w", err)
+	}
+	return s.processed, nil
+}
 
-	ctxRun := shadowRunContext{
-		// repo / squadRepo / sharedDB sont câblés PAR CHUNK sur le handle du burst
-		// Write courant (cf. processShadowChunk) — jamais sur le handle de lecture.
+// loadShadowExclusions rend les matchs is_excluded du joueur. Sans base joueur (replay
+// shadow-only), rien n'est exclu : l'exclusion est un état de la base joueur.
+func loadShadowExclusions(ctx context.Context, playerDB *sql.DB) (map[string]bool, error) {
+	if playerDB == nil {
+		return nil, nil
+	}
+	excluded, err := LoadExcludedMatchIDs(ctx, playerDB)
+	if err != nil {
+		return nil, fmt.Errorf("RunLUSRV2Shadow.loadExclusions: %w", err)
+	}
+	return excluded, nil
+}
+
+// newShadowRunContext construit les dépendances stables d'une exécution shadow.
+// repo / squadRepo / sharedDB restent vides : ils sont câblés sur le handle de la
+// rafale Write (cf. processShadowBurst) — jamais sur le handle de lecture.
+func newShadowRunContext(playerDB *sql.DB, xuid string, canonical, ownerOnlyPersist bool) shadowRunContext {
+	return shadowRunContext{
 		playerDB:         playerDB,
 		priors:           skillv2.DefaultPriors(),
 		tierBoundaries:   skillv2.DefaultTierBoundaries(), // Phase 5 batch écrira override
 		xuid:             xuid,
 		canonical:        canonical,
 		ownerOnlyPersist: ownerOnlyPersist,
+		squadEnabled:     IsLUSRV2SquadOffsetEnabled(),
 		priorsCache:      make(map[string]skillv2.Priors),
 		countHypCache:    make(map[string]map[skillv2.CountType]skillv2.CountHyperparams),
+		burst:            defaultLUSRBurstLimits,
+		components:       newComponentTracker(nil),
 	}
-	ctxRun.squadEnabled = IsLUSRV2SquadOffsetEnabled()
-	var s shadowRunStats
-	// heldGroups : groupes dont un match a échoué son écriture canonical ce run.
-	// Les matchs plus RÉCENTS de ces groupes sont sautés pour ne pas avancer le
-	// watermark de groupe par-dessus un match non écrit (anti-gap, fix 2026-06-07).
-	// Partagé entre chunks (l'ordre chrono ASC est préservé par le découpage).
-	heldGroups := make(map[string]bool)
-	// Observabilité TS2 : nb de matchs ayant une durée gameplay connue (wᵢ alimenté).
-	// Comptabilisé une fois sur l'ensemble (indépendant du découpage en chunks).
-	withGameplayDur := 0
-	for _, m := range matches {
-		if m.gameplayDurMs > 0 {
-			withGameplayDur++
-		}
-	}
-
-	// Persistance per-match sous bursts Write("lusr") COURTS et chunkés : la
-	// fenêtre RW est bornée par postsyncLUSRBurstChunk, les lecteurs passent entre
-	// les chunks. La dépendance séquentielle des états EP impose de persister au fil
-	// de l'eau — le chunk borne la fenêtre RW sans casser l'ordre.
-	for start := 0; start < len(matches); start += postsyncLUSRBurstChunk {
-		end := min(start+postsyncLUSRBurstChunk, len(matches))
-		burstDB, release, werr := shared.Write(ctx, "lusr")
-		if werr != nil {
-			// Shared indisponible / read-only (probe burst) → dégradation propre :
-			// on reporte le reste au prochain cycle (watermark non avancé, retry).
-			slog.WarnContext(ctx, "LUSR v2 shadow: burst write shared indisponible — reste reporté au prochain cycle",
-				"xuid", xuid, "remaining", len(matches)-start, "err", werr)
-			break
-		}
-		if burstDB == nil {
-			release()
-			slog.WarnContext(ctx, "LUSR v2 shadow: burst write handle nil — reste reporté", "xuid", xuid)
-			break
-		}
-		processShadowChunk(ctx, ctxRun, burstDB, matches[start:end], &s, heldGroups)
-		release()
-	}
-	slog.InfoContext(ctx, "LUSR v2 shadow terminé",
-		"xuid", xuid, "processed", s.processed,
-		"skipped_chain", s.skippedChain,
-		"skipped_already_seen", s.skippedAlready,
-		"skipped_non_two_team", s.skippedNonTwoTeam,
-		"skipped_imbalance", s.skippedImbalance,
-		"skipped_write_failed", s.skippedWriteFailed,
-		"skipped_group_held", s.skippedGroupHeld,
-		"total_candidates", len(matches),
-		// Observabilité TS2 : nb de matchs où wᵢ=time_played/durée_gameplay est
-		// alimenté (durée gameplay connue). 0 → pondération inactive (fallback wᵢ=1).
-		"with_gameplay_duration", withGameplayDur,
-	)
-	return s.processed, nil
 }
 
 // shadowRunContext regroupe les dépendances stables d'une exécution shadow,
@@ -220,11 +181,19 @@ type shadowRunContext struct {
 	// ownerOnlyPersist : recovery backfill — ne persiste que l'état du joueur
 	// traité (pas les coéquipiers). Voir RunLUSRV2ShadowOwnerOnly.
 	ownerOnlyPersist bool
-	// squadEnabled : LEVELUP_LUSR_V2_SQUAD_OFFSET actif → squadRepo câblé par chunk.
-	// Porté ici (pas en paramètre) pour borner le nb d'arguments de processShadowChunk.
+	// squadEnabled : LEVELUP_LUSR_V2_SQUAD_OFFSET actif → squadRepo câblé sur la rafale.
+	// Porté ici (pas en paramètre) pour borner le nb d'arguments de processShadowBurst.
 	squadEnabled  bool
 	priorsCache   map[string]skillv2.Priors
 	countHypCache map[string]map[skillv2.CountType]skillv2.CountHyperparams
+	// burst : bornes d'une rafale d'écrivain (skill_v2_shared_access.go).
+	burst lusrBurstLimits
+	// excluded : matchs is_excluded du joueur, que le chaînage des notes ne prend jamais
+	// pour « match précédent » (nil sans base joueur).
+	excluded map[string]bool
+	// components : calcul des 8 composantes de performance des matchs notés (référence
+	// partagée : les fenêtres glissantes survivent aux copies par valeur du contexte).
+	components *componentTracker
 }
 
 // shadowRunStats compte les buckets de skip pour le log de fin de run.
@@ -234,6 +203,8 @@ type shadowRunStats struct {
 	skippedAlready    int
 	skippedNonTwoTeam int
 	skippedImbalance  int
+	// skippedExcluded : matchs is_excluded du joueur, ni notés ni comptés dans l'état v2.
+	skippedExcluded int
 	// skippedWriteFailed : matchs dont l'écriture canonical a échoué → watermark
 	// VOLONTAIREMENT tenu (état v2 non persisté) pour retry au prochain cycle
 	// (fix désync 2026-06-07). Distinct de skippedImbalance (skip pré-compute).
@@ -267,15 +238,16 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		s.skippedGroupHeld++
 		return
 	}
-	// Watermark : un match dont start_time ≤ last_match_at du groupe a déjà
-	// été traité pour ce joueur.
+	// Filigrane relu SOUS l'écrivain, autoritatif (le pré-filtre sous lecteur de
+	// skill_v2_watermark.go n'est qu'une optimisation) : start_time ≤ last_match_at
+	// du groupe = déjà traité pour ce joueur (prédicat unique lusrWatermarkCovers).
 	st, err := c.repo.LoadState(ctx, c.xuid, group)
 	if err != nil {
 		slog.WarnContext(ctx, "LUSR v2 shadow: LoadState échoué",
 			"xuid", c.xuid, "group", group, "err", err)
 		return
 	}
-	if st != nil && st.LastMatchAt != nil && !m.startTime.After(*st.LastMatchAt) {
+	if st != nil && lusrWatermarkCovers(st.LastMatchAt, m.startTime) {
 		s.skippedAlready++
 		return
 	}
@@ -335,8 +307,12 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 			if !c.canonical {
 				return nil // shadow-only : pas d'écriture canonical durable
 			}
-			return writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *computed.ownerNew,
-				computed.expectedWinProb, m.startTime, c.tierBoundaries)
+			if err := writeCanonicalLUSRRow(ctx, c, m.matchID, *computed.ownerNew,
+				computed.expectedWinProb, m.startTime); err != nil {
+				return err
+			}
+			c.writeMatchComponents(ctx, m.matchID, group)
+			return nil
 		},
 		AdvanceProgress: func(ctx context.Context) error {
 			return persistComputedMatchSkillV2(ctx, c.repo, computed, m.matchID, group,
@@ -448,7 +424,7 @@ func concurrentTeamSize(team []rosterMember) int {
 }
 
 // loadShadowMatches : matchs LUSR-éligibles du joueur, ordre chrono. Mêmes
-// filtres que loadLUSRMatchData (LUSR v1) pour cohérence.
+// filtres que queryLUSRMatchData (composantes, simulateur) pour cohérence.
 func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]shadowMatch, error) {
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT mr.match_id,
@@ -459,8 +435,7 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 		       -- vraie durée gameplay en ms (countdown retranché via real_start_time)
 		       GREATEST(0, COALESCE(mr.duration_seconds, 0) * 1000 - CASE
 		           WHEN mr.real_start_time IS NOT NULL THEN
-		               epoch_ms(mr.real_start_time AT TIME ZONE 'UTC')
-		               - epoch_ms(`+analysis.SQLStartTimeCanonical("mr")+`)
+		               `+analysis.SQLRealStartOffsetMs("mr")+`
 		           ELSE 0 END) AS gameplay_dur_ms
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
@@ -470,7 +445,7 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 		  -- title-generic : les titres canoniques (Halo 5) renseignent start_time_utc
 		  -- et laissent start_time (legacy) NULL ; filtrer sur le COALESCE comme le SELECT.
 		  AND COALESCE(mr.start_time_utc, mr.start_time) IS NOT NULL
-		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)
+		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)`+analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
 		ORDER BY ts ASC`, xuid)
 	if err != nil {
 		return nil, err

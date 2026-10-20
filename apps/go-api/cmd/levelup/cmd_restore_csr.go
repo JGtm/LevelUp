@@ -1,136 +1,246 @@
 // cmd_restore_csr.go — sous-commande restore-csr.
 //
-// Restaure les valeurs CSR par-match depuis un backup DuckDB legacy
-// (typiquement `shared_matches_v2.duckdb` extrait d'une archive). One-shot,
-// idempotent, conçu pour le cas où les CSR ont été écrasés par LUSR avant
-// que le garde-fou SQL ne soit en place.
+// Ajoute à match_skill_rank les CSR par match d'un backup DuckDB legacy (typiquement
+// `shared_matches_v2.duckdb` extrait d'une archive) que la base joueur n'a pas encore.
+// match_skill_rank est append-only (ADR 0026) : la commande n'efface ni ne modifie aucune
+// ligne, elle INSÈRE par persist.AppendOnlyLUSRPersister. Un LUSR présent sur le même match
+// reste en place : la vue match_skill_rank_latest fait gagner le CSR (priorité CSR > LUSR par
+// match_id). Idempotente : un match qui a déjà une ligne CSR n'est pas réécrit.
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
-
-	_ "github.com/duckdb/duckdb-go/v2"
+	"time"
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
-func runRestoreCSR(cfg *config.AppConfig, args []string) error {
+// restoreCSRLeaseTimeout — attente maximale du bail d'écriture de la base joueur.
+const restoreCSRLeaseTimeout = 30 * time.Second
+
+type restoreCSROptions struct {
+	gamertag  string
+	titleSlug string
+	backup    string
+	dryRun    bool
+}
+
+func parseRestoreCSRFlags(args []string) (restoreCSROptions, error) {
 	fs := flag.NewFlagSet("restore-csr", flag.ExitOnError)
-	gamertag := fs.String("gamertag", "", "Gamertag du joueur (obligatoire)")
-	titleSlug := fs.String("title", titlePkg.DefaultSlug, "Slug du titre (ex: halo_infinite)")
-	backup := fs.String("backup", "", "Path vers le .duckdb extrait du backup (obligatoire)")
-	dryRun := fs.Bool("dry-run", false, "Inspecter le schéma et compter sans écrire")
-	mode := fs.String("mode", "overwrite",
-		"preserve|overwrite — overwrite supprime les LUSR fautifs sur les matchs à restaurer")
+	var o restoreCSROptions
+	fs.StringVar(&o.gamertag, "gamertag", "", "Gamertag du joueur (obligatoire)")
+	fs.StringVar(&o.titleSlug, "title", titlePkg.DefaultSlug, "Slug du titre (ex: halo_infinite)")
+	fs.StringVar(&o.backup, "backup", "", "Path vers le .duckdb extrait du backup (obligatoire)")
+	fs.BoolVar(&o.dryRun, "dry-run", false, "Inspecter le schéma et compter sans écrire")
 	if err := fs.Parse(args); err != nil {
+		return o, err
+	}
+	if o.gamertag == "" || o.backup == "" {
+		return o, fmt.Errorf("--gamertag et --backup sont obligatoires")
+	}
+	if _, err := os.Stat(o.backup); err != nil {
+		return o, fmt.Errorf("backup introuvable %s: %w", o.backup, err)
+	}
+	return o, nil
+}
+
+func runRestoreCSR(cfg *config.AppConfig, args []string) error {
+	ctx := context.Background()
+	o, err := parseRestoreCSRFlags(args)
+	if err != nil {
 		return err
 	}
-	if *gamertag == "" || *backup == "" {
-		return fmt.Errorf("--gamertag et --backup sont obligatoires")
-	}
-	if *mode != "preserve" && *mode != "overwrite" {
-		return fmt.Errorf("--mode doit valoir 'preserve' ou 'overwrite' (got %q)", *mode)
-	}
-	if _, err := os.Stat(*backup); err != nil {
-		return fmt.Errorf("backup introuvable %s: %w", *backup, err)
-	}
-
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
-	playerDBPath := pr.PlayerDBPath(*titleSlug, *gamertag)
+	playerDBPath := titlePkg.NewPathResolver(cfg.RepoRoot).PlayerDBPath(o.titleSlug, o.gamertag)
 	if _, err := os.Stat(playerDBPath); err != nil {
 		return fmt.Errorf("player DB introuvable %s: %w", playerDBPath, err)
 	}
 	fmt.Printf("Player DB    : %s\n", playerDBPath)
-	fmt.Printf("Backup legacy: %s\n", *backup)
-	fmt.Printf("Mode         : %s (dry-run=%t)\n", *mode, *dryRun)
+	fmt.Printf("Backup legacy: %s\n", o.backup)
+	fmt.Printf("dry-run      : %t\n", o.dryRun)
 
-	if !*dryRun {
+	if !o.dryRun {
 		if err := applyMigrationsOnDB(playerDBPath, migration.TargetPlayer); err != nil {
 			return fmt.Errorf("migrations player: %w", err)
 		}
 	}
 
-	db, err := sql.Open("duckdb", playerDBPath)
+	// Porte unique des ouvertures en écriture : une base joueur y a ses séquences alignées
+	// avant toute écriture (internal/platform/duckdb/physical_open.go).
+	handle, err := duckdbpkg.OpenReadWrite(playerDBPath)
 	if err != nil {
-		return fmt.Errorf("ouverture player DB: %w", err)
+		return fmt.Errorf("ouverture player DB (serveur LevelUp arrêté ?): %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = handle.Close() }()
+	db := handle.SQLDb()
 
-	backupEsc := strings.ReplaceAll(*backup, "'", "''")
-	if _, err := db.Exec(fmt.Sprintf("ATTACH '%s' AS legacy (READ_ONLY)", backupEsc)); err != nil {
-		return fmt.Errorf("ATTACH backup: %w", err)
+	if err := attachLegacyBackup(ctx, db, o.backup); err != nil {
+		return err
 	}
-	defer func() { _, _ = db.Exec("DETACH legacy") }()
+	defer detachLegacyBackup(ctx, db)
 
-	sourceTable, nCSR, err := findLegacyCSRTable(db)
+	sourceTable, nCSR, err := inspectLegacyBackup(db)
 	if err != nil {
-		return fmt.Errorf("inspection backup: %w", err)
+		return err
 	}
-	if sourceTable == "" {
-		fmt.Println("Aucun candidat n'a fourni de CSR. Listing complet du schéma legacy :")
-		if listErr := listLegacyTables(db); listErr != nil {
-			return fmt.Errorf("list tables: %w", listErr)
-		}
-		fmt.Println()
-		fmt.Println("Inspection des colonnes 'csr*' / 'rank*' / 'skill*' dans toutes les tables :")
-		if scanErr := scanLegacyForCSRColumns(db); scanErr != nil {
-			return fmt.Errorf("scan colonnes: %w", scanErr)
-		}
-		return fmt.Errorf("aucune table CSR trouvée (essais: match_skill_rank, match_stats, match_csr_snapshots)")
-	}
-	fmt.Printf("Source CSR   : legacy.%s (%d lignes 'CSR')\n", sourceTable, nCSR)
-
-	if err := describeLegacyTable(db, sourceTable); err != nil {
-		return fmt.Errorf("describe legacy.%s: %w", sourceTable, err)
-	}
-
-	if *dryRun {
+	if o.dryRun {
 		fmt.Println("[dry-run] aucune écriture")
 		return nil
 	}
 
-	var deleted int64
-	if *mode == "overwrite" {
-		res, err := db.Exec(fmt.Sprintf(`
-			DELETE FROM match_skill_rank
-			WHERE rating_type = 'LUSR'
-			  AND match_id IN (SELECT match_id FROM legacy.%s WHERE rating_type='CSR')`,
-			sourceTable))
-		if err != nil {
-			return fmt.Errorf("DELETE LUSR fautifs: %w", err)
-		}
-		deleted, _ = res.RowsAffected()
+	w, err := dblease.AcquireWriter(db, playerDBPath, dblease.KindPlayer, restoreCSRLeaseTimeout)
+	if err != nil {
+		return fmt.Errorf("bail d'écriture %s: %w", playerDBPath, err)
 	}
+	defer w.Release()
+	inserted, err := restoreLegacyCSR(ctx, db, w, sourceTable)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Restauration terminée")
+	fmt.Printf("   CSR legacy lus         : %d\n", nCSR)
+	fmt.Printf("   CSR insérés            : %d\n", inserted)
+	fmt.Printf("   CSR déjà présents      : %d\n", nCSR-inserted)
+	return nil
+}
 
-	res, err := db.Exec(fmt.Sprintf(`
-		INSERT INTO match_skill_rank
-			(match_id, rating_type, rating_value, rating_deviation,
-			 tier, tier_fr, sub_tier, tier_label,
-			 rating_delta, playlist_group, start_time, created_at, updated_at)
-		SELECT
-			l.match_id, 'CSR', l.rating_value, l.rating_deviation,
-			l.tier, NULL, COALESCE(l.sub_tier, 0), l.tier_label,
-			l.rating_delta, COALESCE(l.playlist_group, 'ranked'),
-			l.start_time, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+// attachLegacyBackup attache le backup en LECTURE sous l'alias `legacy`.
+func attachLegacyBackup(ctx context.Context, db *sql.DB, backup string) error {
+	backupEsc := strings.ReplaceAll(backup, "'", "''")
+	if _, err := db.ExecContext(ctx, fmt.Sprintf("ATTACH '%s' AS legacy (READ_ONLY)", backupEsc)); err != nil {
+		return fmt.Errorf("ATTACH backup: %w", err)
+	}
+	return nil
+}
+
+func detachLegacyBackup(ctx context.Context, db *sql.DB) {
+	if _, err := db.ExecContext(ctx, "DETACH legacy"); err != nil {
+		slog.WarnContext(ctx, "restore-csr: DETACH legacy", "err", err)
+	}
+}
+
+// inspectLegacyBackup trouve la table CSR du backup attaché et en imprime le schéma ; sans
+// table CSR, imprime le schéma complet du backup et rend une erreur.
+func inspectLegacyBackup(db *sql.DB) (string, int, error) {
+	sourceTable, nCSR, err := findLegacyCSRTable(db)
+	if err != nil {
+		return "", 0, fmt.Errorf("inspection backup: %w", err)
+	}
+	if sourceTable == "" {
+		fmt.Println("Aucun candidat n'a fourni de CSR. Listing complet du schéma legacy :")
+		if listErr := listLegacyTables(db); listErr != nil {
+			return "", 0, fmt.Errorf("list tables: %w", listErr)
+		}
+		fmt.Println()
+		fmt.Println("Inspection des colonnes 'csr*' / 'rank*' / 'skill*' dans toutes les tables :")
+		if scanErr := scanLegacyForCSRColumns(db); scanErr != nil {
+			return "", 0, fmt.Errorf("scan colonnes: %w", scanErr)
+		}
+		return "", 0, fmt.Errorf("aucune table CSR trouvée (essais: match_skill_rank, match_stats, match_csr_snapshots)")
+	}
+	fmt.Printf("Source CSR   : legacy.%s (%d lignes 'CSR')\n", sourceTable, nCSR)
+	if err := describeLegacyTable(db, sourceTable); err != nil {
+		return "", 0, fmt.Errorf("describe legacy.%s: %w", sourceTable, err)
+	}
+	return sourceTable, nCSR, nil
+}
+
+// restoreLegacyCSR insère, pour chaque match de legacy.<sourceTable> porteur d'un CSR et sans
+// ligne CSR dans match_skill_rank, une ligne CSR (une seule par match : un doublon du backup
+// est départagé par la valeur la plus haute, choix déterministe). Lecture sur db, écriture INSERT pure par le persisteur append-only sous le bail w.
+// Rend le nombre de lignes insérées.
+func restoreLegacyCSR(ctx context.Context, db *sql.DB, w *dblease.LeasedWriter, sourceTable string) (int, error) {
+	rows, err := loadMissingLegacyCSR(ctx, db, sourceTable)
+	if err != nil {
+		return 0, err
+	}
+	if err := persist.NewAppendOnlyLUSRPersister(w).Persist(ctx, rows); err != nil {
+		return 0, fmt.Errorf("INSERT CSR: %w", err)
+	}
+	return len(rows), nil
+}
+
+// loadMissingLegacyCSR lit les CSR du backup absents de match_skill_rank (rating_type CSR).
+func loadMissingLegacyCSR(ctx context.Context, db *sql.DB, sourceTable string) ([]persist.LUSRRatingInsert, error) {
+	q := fmt.Sprintf(`
+		SELECT l.match_id, l.rating_value, l.rating_deviation, l.tier, l.sub_tier,
+		       l.tier_label, l.rating_delta, l.playlist_group, l.start_time
 		FROM legacy.%s l
 		WHERE l.rating_type = 'CSR'
-		ON CONFLICT (match_id) DO NOTHING`, sourceTable))
+		  AND NOT EXISTS (
+			SELECT 1 FROM match_skill_rank m
+			WHERE m.match_id = l.match_id AND m.rating_type = 'CSR')
+		QUALIFY ROW_NUMBER() OVER (
+			PARTITION BY l.match_id ORDER BY l.rating_value DESC NULLS LAST, l.rating_deviation) = 1
+		ORDER BY l.match_id`, sourceTable)
+	rs, err := db.QueryContext(ctx, q)
 	if err != nil {
-		return fmt.Errorf("INSERT CSR: %w", err)
+		return nil, fmt.Errorf("lecture CSR legacy.%s: %w", sourceTable, err)
 	}
-	inserted, _ := res.RowsAffected()
+	defer func() { _ = rs.Close() }()
+	var out []persist.LUSRRatingInsert
+	for rs.Next() {
+		r, err := scanLegacyCSRRow(rs)
+		if err != nil {
+			return nil, fmt.Errorf("scan CSR legacy.%s: %w", sourceTable, err)
+		}
+		out = append(out, r)
+	}
+	return out, rs.Err()
+}
 
-	fmt.Printf("✅ Restauration terminée\n")
-	fmt.Printf("   LUSR fautifs supprimés : %d\n", deleted)
-	fmt.Printf("   CSR insérés            : %d\n", inserted)
-	fmt.Printf("   CSR skippés (conflit)  : %d\n", int64(nCSR)-inserted)
-	return nil
+// scanLegacyCSRRow convertit une ligne CSR du backup ; sub_tier absent vaut 0 et
+// playlist_group absent vaut « ranked », comme à l'écriture d'origine.
+func scanLegacyCSRRow(rs *sql.Rows) (persist.LUSRRatingInsert, error) {
+	var (
+		matchID            string
+		value, deviation   sql.NullFloat64
+		tier, label, group sql.NullString
+		subTier            sql.NullInt64
+		delta              sql.NullFloat64
+		startTime          sql.NullTime
+	)
+	if err := rs.Scan(&matchID, &value, &deviation, &tier, &subTier, &label, &delta, &group, &startTime); err != nil {
+		return persist.LUSRRatingInsert{}, err
+	}
+	sub := 0
+	if subTier.Valid {
+		sub = int(subTier.Int64)
+	}
+	r := persist.LUSRRatingInsert{
+		MatchID:         matchID,
+		RatingType:      "CSR",
+		RatingValue:     value.Float64,
+		RatingDeviation: deviation.Float64,
+		SubTier:         &sub,
+		PlaylistGroup:   "ranked",
+	}
+	if tier.Valid {
+		r.Tier = &tier.String
+	}
+	if label.Valid {
+		r.TierLabel = &label.String
+	}
+	if delta.Valid {
+		r.RatingDelta = &delta.Float64
+	}
+	if group.Valid && group.String != "" {
+		r.PlaylistGroup = group.String
+	}
+	if startTime.Valid {
+		r.StartTime = &startTime.Time
+	}
+	return r, nil
 }
 
 // findLegacyCSRTable cherche la table contenant les CSR dans la base attachée

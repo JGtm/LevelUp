@@ -21,7 +21,6 @@ func init() {
 		}
 		out.CitationsComputed = res.CitationsComputed
 		out.DominanceFlagsComputed = res.DominanceFlagsComputed
-		out.WeaponKillsHealed = res.WeaponKillsProcessed
 		if res.AchievementsSynced {
 			out.AchievementsSynced = 1
 		}

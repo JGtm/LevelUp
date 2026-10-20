@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/migration"
 )
 
 // seedFidelityShared monte une DB shared LIVE au schéma RÉALISTE (toutes les colonnes
@@ -17,6 +18,13 @@ import (
 // Hand-rollé (et non via le runner de migrations multi-titre) pour rester en package ops
 // sans cycle d'import sync. OpenSnapshotShared recrée ensuite TOUTES les vues shared.
 func seedFidelityShared(t *testing.T) *sql.DB {
+	t.Helper()
+	return seedFidelitySharedAvecColonnes(t, "")
+}
+
+// seedFidelitySharedAvecColonnes : seedFidelityShared dont match_registry porte en plus
+// `colonnes` (fragment `, nom TYPE ...`), pour reproduire la forme d'une base plus ancienne.
+func seedFidelitySharedAvecColonnes(t *testing.T, colonnes string) *sql.DB {
 	t.Helper()
 	db := snapOpenMem(t)
 	// match_registry : toutes les colonnes lues par mv_player_matches.
@@ -29,8 +37,8 @@ func seedFidelityShared(t *testing.T) *sql.DB {
 		game_variant_id VARCHAR, game_variant_name VARCHAR, mode_category VARCHAR,
 		is_ranked BOOLEAN, is_firefight BOOLEAN,
 		duration_seconds INTEGER, playable_duration_seconds INTEGER,
-		team_0_score INTEGER, team_1_score INTEGER, team_0_ps_score INTEGER, team_1_ps_score INTEGER,
-		player_count INTEGER)`)
+		team_0_score INTEGER, team_1_score INTEGER, team_0_ps_score INTEGER, team_1_ps_score INTEGER`+
+		colonnes+`)`)
 	// match_participants : toutes les colonnes lues par mv_player_matches + v_gamertag_lookup.
 	snapExecT(t, db, `CREATE TABLE match_participants (
 		match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR, team_id INTEGER, outcome INTEGER,
@@ -54,6 +62,11 @@ func seedFidelityShared(t *testing.T) *sql.DB {
 	// match_objective_stats RAW (colonnes lues par match_objective_stats_latest :
 	// written_at, id) — jointe par Q12 (scoreboard MatchView) depuis v7.2.
 	snapExecT(t, db, `CREATE TABLE match_objective_stats (id BIGINT, match_id VARCHAR, xuid VARCHAR, flag_captures INTEGER, written_at TIMESTAMP)`)
+	// match_kill_events : par la fonction canonique (schéma complet + vue _latest) — la
+	// table est exportée RAW depuis le 2026-08-12 (Q21b/Q21c la lisent au kill feed).
+	if err := migration.EnsureMatchKillEvents(db); err != nil {
+		t.Fatalf("EnsureMatchKillEvents (fixture): %v", err)
+	}
 
 	// Données. m1 = ready ; m2 = not-ready. Gamertag participants/kv ≠ alias → exerce
 	// la priorité de v_gamertag_lookup (alias > participant > kv).
@@ -176,6 +189,59 @@ func TestOpenSnapshotShared_Fidelity_integration(t *testing.T) {
 	}
 }
 
+// TestOpenSnapshotShared_CutAncienAvecColonnesRetirees_integration : un cut produit AVANT le
+// retrait de match_registry.player_count et participants_loaded porte encore ces colonnes. Le
+// lecteur doit le servir tel quel : les vues reconstruites ne les citent plus, une colonne en
+// trop dans la table matérialisée ne gêne aucune lecture.
+func TestOpenSnapshotShared_CutAncienAvecColonnesRetirees_integration(t *testing.T) {
+	ctx := context.Background()
+	paths := title.NewPathResolver(t.TempDir(), nil)
+	slug := title.DefaultSlug
+
+	shared := seedFidelitySharedAvecColonnes(t, ", player_count INTEGER, participants_loaded BOOLEAN")
+	player := seedPlayerDB(t, []string{"m1"}, []string{"m2"})
+	res, err := ProduceSnapshot(ctx, SnapshotOptions{
+		TitleSlug:    slug,
+		Paths:        paths,
+		Shared:       fakeSharedOpener{db: shared},
+		PlayerOpener: fakePlayerOpener{byGT: map[string]*sql.DB{"Solo": player}},
+		Players:      []string{"Solo"},
+		Now:          time.Date(2026, 6, 25, 9, 0, 0, 0, time.UTC),
+	})
+	if err != nil || !res.Produced {
+		t.Fatalf("produce: res=%+v err=%v", res, err)
+	}
+
+	q, err := OpenSnapshotShared(ctx, paths, slug)
+	if err != nil {
+		t.Fatalf("OpenSnapshotShared sur un cut ancien : %v", err)
+	}
+	defer q.Close()
+
+	compte := func(query string) int {
+		t.Helper()
+		var n int
+		if err := q.DB.QueryRowContext(ctx, query).Scan(&n); err != nil {
+			t.Fatalf("query %q: %v", query, err)
+		}
+		return n
+	}
+	if n := compte(`SELECT COUNT(*) FROM duckdb_columns() WHERE table_name = 'match_registry'
+		AND column_name IN ('player_count', 'participants_loaded')`); n != 2 {
+		t.Fatalf("le cut doit porter les deux colonnes retirées (cut ancien), trouvé %d", n)
+	}
+	if n := compte(`SELECT COUNT(*) FROM mv_player_matches WHERE match_id = 'm1'`); n != 2 {
+		t.Errorf("mv_player_matches m1 = %d, attendu 2", n)
+	}
+	if n := compte(`SELECT COUNT(*) FROM v_match_full WHERE match_id = 'm1'`); n != 1 {
+		t.Errorf("v_match_full m1 = %d, attendu 1", n)
+	}
+	if n := compte(`SELECT COUNT(*) FROM duckdb_columns() WHERE table_name = 'mv_player_matches'
+		AND column_name = 'player_count'`); n != 0 {
+		t.Errorf("mv_player_matches expose encore player_count")
+	}
+}
+
 // TestOpenSnapshotShared_Incomplete_integration : si une relation requise manque du
 // snapshot (ici xuid_aliases jamais seedée), OpenSnapshotShared retourne
 // ErrSnapshotIncomplete (le caller dégrade vers live).
@@ -245,11 +311,15 @@ func TestOpenSnapshotShared_SchemaContract_integration(t *testing.T) {
 		// Tables de base matérialisées (sharedSnapshotTables + MatchKeyedRaw + Global).
 		"match_registry", "match_participants", "medals_earned", "highlight_events",
 		"killer_victim_pairs", "weapon_kills", "match_csrs", "match_objective_stats",
-		"xuid_aliases",
+		"match_kill_events", "xuid_aliases",
 		// Vues reconstruites aux noms live. v_killer_victim_full n'y figure plus : supprimée
 		// le 2026-08-02 (ses deux LEFT JOIN étaient du travail mort), Q20 lit la table.
+		// match_kill_events_latest ajoutée le 2026-08-12 (Q21b arme + Q21c assistant du
+		// kill feed) : son absence rendait ces lectures VIDES sur tout MatchView servi du
+		// snapshot, sans erreur — 0 icône, 0 assistant, indiscernable d'un match non décodé.
 		"v_gamertag_lookup", "v_match_full", "v_weapon_kills",
-		"match_csrs_latest", "match_objective_stats_latest", "mv_player_matches",
+		"match_csrs_latest", "match_objective_stats_latest", "match_kill_events_latest",
+		"mv_player_matches",
 	}
 	for _, rel := range expected {
 		var n int
@@ -259,6 +329,58 @@ func TestOpenSnapshotShared_SchemaContract_integration(t *testing.T) {
 		}
 		if n == 0 {
 			t.Errorf("relation %q absente du schéma snapshot reconstruit (contrat lectures shared/MatchView)", rel)
+		}
+	}
+}
+
+// TestOpenSnapshotShared_TitreSansWeaponKills_integration : un titre dont la base partagée ne
+// porte pas `weapon_kills` (titre à décodeur de film, table retirée par sa migration
+// title-owned) a un snapshot LISIBLE — sans la table ni sa vue, comme son live. L'exiger
+// rendait toutes les versions de ce titre ErrSnapshotIncomplete (repli live permanent).
+func TestOpenSnapshotShared_TitreSansWeaponKills_integration(t *testing.T) {
+	ctx := context.Background()
+	paths := title.NewPathResolver(t.TempDir(), nil)
+	slug := title.DefaultSlug
+
+	shared := seedFidelityShared(t)
+	snapExecT(t, shared, `DROP TABLE weapon_kills`)
+	player := seedPlayerDB(t, []string{"m1"}, nil)
+
+	res, err := ProduceSnapshot(ctx, SnapshotOptions{
+		TitleSlug:    slug,
+		Paths:        paths,
+		Shared:       fakeSharedOpener{db: shared},
+		PlayerOpener: fakePlayerOpener{byGT: map[string]*sql.DB{"Solo": player}},
+		Players:      []string{"Solo"},
+		Now:          time.Date(2026, 6, 25, 9, 0, 0, 0, time.UTC),
+	})
+	if err != nil || !res.Produced {
+		t.Fatalf("produce: res=%+v err=%v", res, err)
+	}
+
+	q, err := OpenSnapshotShared(ctx, paths, slug)
+	if err != nil {
+		t.Fatalf("OpenSnapshotShared sans weapon_kills: %v (attendu un schéma lisible)", err)
+	}
+	defer q.Close()
+
+	compter := func(rel string) int {
+		t.Helper()
+		var n int
+		if err := q.DB.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?`, rel).Scan(&n); err != nil {
+			t.Fatalf("information_schema %s: %v", rel, err)
+		}
+		return n
+	}
+	for _, absente := range []string{"weapon_kills", "v_weapon_kills"} {
+		if compter(absente) != 0 {
+			t.Errorf("relation %q présente alors que la base du titre ne la porte pas", absente)
+		}
+	}
+	for _, requise := range []string{"match_kill_events_latest", "match_csrs_latest", "mv_player_matches"} {
+		if compter(requise) == 0 {
+			t.Errorf("relation %q absente du schéma reconstruit", requise)
 		}
 	}
 }

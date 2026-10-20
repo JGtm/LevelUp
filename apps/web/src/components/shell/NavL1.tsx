@@ -16,12 +16,14 @@ import { resolvePlayerSwitch } from './shellNavigation'
 import { HelpSplitButton } from './HelpSplitButton'
 import { LogoutButton } from './LogoutButton'
 import { NavL1MobileMenu } from './NavL1MobileMenu'
+import { PlayerSwitcher } from './PlayerSwitcher'
 import { NavL1MobileActions, type SettingsTabItem } from './NavL1MobileActions'
 import { L1_SECTIONS, type L1Section, type L1Tab } from './navL1Sections'
 import { useTitleCapabilities, hasCapabilityIn } from '@/lib/capabilities/capabilities'
 import { useSettings } from '@/features/settings/queries'
 import { getSettingsText } from '@/features/settings/i18n'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -255,6 +257,8 @@ export function NavL1() {
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
   const playerSlug = currentPlayer?.player_slug ?? ''
+  // Joueur courant = profil d'un ami : ses notifications ne sont pas celles de la session, pas de cloche.
+  const canWriteCurrent = useCanWritePlayer(playerSlug)
 
   // Gating multi-titre (Phase 5) : on masque les sections / onglets dont la
   // capability n'est pas déclarée par le titre courant. Fail-open (titleCaps null
@@ -269,13 +273,12 @@ export function NavL1() {
     .filter(sectionVisible)
     .map((s) => {
       if (!s.tabs) return s
-      // h5 : « Citations » (moteur dérivé d'Infinite) → « Commendations » natif —
-      // cohérent avec NavL2. Le slug est le seul signal front (aucune capability
-      // coarse ne distingue h5, cf. CAREER_TABS_H5).
+      // Titre sans citations calculées (Halo 5) : « Citations » (moteur dérivé) →
+      // « Commendations » natif — cohérent avec NavL2. Signal : capability `citations`.
       const tabs = s.tabs.filter(tabVisible).map((tab): L1Tab =>
-        currentTitleSlug === 'halo_5' && tab.key === 'citations'
+        !hasCapabilityIn(titleCaps, 'citations') && tab.key === 'citations'
           ? {
-              // Halo 5 : commendations natives. On conserve la clé i18n d'origine
+              // Commendations natives. On conserve la clé i18n d'origine
               // (`tab_citations` = FR « Citations » / EN « Commendations », terme
               // officiel Halo) et on ne change QUE la clé de tab + le chemin.
               ...tab,
@@ -407,32 +410,19 @@ export function NavL1() {
       {/* ── Spacer ──────────────────────────────────────────────────────── */}
       <div className="flex-1" />
 
-      {/* ── Gamertag / sélecteur joueur (visible mobile, tronqué si large) ── */}
-      {availablePlayers.length > 1 ? (
-        <div className="flex min-w-0 items-center gap-1.5">
-          <select
-            value={playerSlug}
-            onChange={(e) => handlePlayerChange(e.target.value)}
-            className="max-w-[32vw] truncate rounded-md border border-sidebar-border bg-sidebar-accent px-2 py-1 text-sm text-sidebar-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30 sm:max-w-none"
-            aria-label={t('common.shell.player_select')}
-          >
-            {availablePlayers.map((p) => (
-              <option key={p.player_slug} value={p.player_slug}>
-                {p.gamertag}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : (
-        currentPlayer && (
-          <span className="max-w-[32vw] truncate text-sm font-medium text-sidebar-foreground/70 sm:max-w-none">
-            {currentPlayer.gamertag}
-          </span>
-        )
-      )}
+      {/* ── Gamertag / sélecteur joueur (visible mobile, tronqué si large) ──
+          Dropdown maison et non `<select>` natif : une `<option>` ne peut porter
+          ni la manette « en jeu » ni le compteur d'amis (point Notion 4). La
+          bascule reste handlePlayerChange, inchangée. */}
+      <PlayerSwitcher
+        players={availablePlayers}
+        currentPlayer={currentPlayer}
+        locale={locale}
+        onPlayerChange={handlePlayerChange}
+      />
 
       {/* ── Cloche notifications (per-player) ────────────────────────────── */}
-      {currentPlayer && <NotificationsBell playerSlug={currentPlayer.player_slug} />}
+      {currentPlayer && canWriteCurrent && <NotificationsBell playerSlug={currentPlayer.player_slug} />}
 
       {/* ── Cluster droit desktop (≥ md) : aide · paramètres (déconnexion dans le menu) ── */}
       <div className="hidden items-center gap-0.5 md:flex">

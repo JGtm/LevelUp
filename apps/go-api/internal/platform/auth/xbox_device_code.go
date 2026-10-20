@@ -2,7 +2,7 @@
 //
 // RFC 8628 pur — aucune dépendance externe (pas de MSAL).
 // Utilisé par SISUProvider pour obtenir l'access_token + refresh_token Microsoft
-// avant de compléter le flow SISU.
+// avant l'échange XBL (sisuDeviceFlow.ExchangeFlow).
 //
 // Endpoints :
 //   - POST https://login.live.com/oauth20_connect.srf  (start)
@@ -19,6 +19,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/platform/netguard"
 )
 
 const (
@@ -29,6 +31,12 @@ const (
 	// 2026-07-13, vérifié par POST direct : .srf → 200 + device_code, /device → 404).
 	xboxDeviceCodeURL = "https://login.live.com/oauth20_connect.srf"
 	xboxTokenURL      = "https://login.live.com/oauth20_token.srf"
+	// sisuMSAScope est le scope MSA natif demandé avec le client Xbox natif : le
+	// ticket rendu (famille MSA) s'échange en User Token XBL avec le préfixe
+	// RpsTicket « t= ». Les scopes Azure AD (Xboxlive.signin …) produiraient un JWT
+	// AAD hors de cette famille. Sert aussi au refresh MSA natif
+	// (postMSATokenExchange).
+	sisuMSAScope = "service::user.auth.xboxlive.com::MBI_SSL"
 	// pollSlowDownIncrement est l'augmentation d'intervalle sur slow_down (RFC 8628 §3.5).
 	pollSlowDownIncrement = 5
 	// pollMaxInterval est le plafond d'intervalle de polling en secondes.
@@ -62,11 +70,10 @@ func startXboxDeviceCodeWithURL(ctx context.Context, client *http.Client, client
 	form := url.Values{
 		oauthFieldClientID: {clientID},
 		// Scope MSA natif (sisuMSAScope) et NON les scopes Azure AD (xboxScopes) :
-		// l'access_token issu de ce flow est présenté à sisu.xboxlive.com/authorize
-		// en "t=<ticket>" (famille MSA). Avec Xboxlive.signin, login.live.com
-		// émettait un JWT AAD → SISU répondait 401 à la complétion (cause racine
-		// du bug 2026-07-15 ; cross-référencé sur XAL/OpenXbox : scope MBI_SSL,
-		// client_id = AppId Xbox).
+		// l'access_token issu de ce flow est présenté à user.auth.xboxlive.com en
+		// RpsTicket "t=<ticket>" (famille MSA). Avec Xboxlive.signin, login.live.com
+		// émettrait un JWT AAD hors de cette famille (cross-référencé sur
+		// XAL/OpenXbox : scope MBI_SSL, client_id = AppId Xbox).
 		oauthFieldScope: {sisuMSAScope},
 		"response_type": {oauthFieldDeviceCode},
 	}
@@ -79,6 +86,11 @@ func startXboxDeviceCodeWithURL(ctx context.Context, client *http.Client, client
 
 	if client == nil {
 		client = &http.Client{Timeout: 20 * time.Second}
+	}
+	// Mode démo : aucune sortie tierce (le flux est démarrable depuis le web, pas seulement
+	// depuis la CLI). Défense en profondeur : la garde démo en écriture refuse déjà les routes.
+	if gErr := netguard.Check(ctx, "xbox_device_code.start"); gErr != nil {
+		return nil, fmt.Errorf("xbox_device_code: start: %w", gErr)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -166,6 +178,9 @@ func pollXboxDeviceCodeWithURL(
 		}
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
+		if gErr := netguard.Check(ctx, "xbox_device_code.poll"); gErr != nil {
+			return "", "", fmt.Errorf("xbox_device_code: poll: %w", gErr)
+		}
 		resp, err := client.Do(req)
 		if err != nil {
 			return "", "", fmt.Errorf("xbox_device_code: POST poll: %w", err)

@@ -13,6 +13,7 @@ package v2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -135,7 +136,9 @@ func TestSoak_V2_CycleStability(t *testing.T) {
 			cycleMS := time.Since(cycleStart).Milliseconds()
 
 			cycleCount.Add(1)
-			if err != nil && err != context.Canceled && err != context.DeadlineExceeded {
+			// Un cycle coupé par l'échéance du soak lui-même n'est pas un échec du pipeline : l'erreur
+			// peut arriver ENVELOPPÉE (lecture de l'ensemble connu interrompue), d'où errors.Is.
+			if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 				errorCount.Add(1)
 				t.Logf("soak cycle %d err: %v", cycleCount.Load(), err)
 			}

@@ -1,0 +1,418 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	NEW lu dans le chunk · (iii') apres l arret de la vue B : rejet hors datum	1	19	19	0	28
+0797ce72	HI_1_13_0	NEW lu dans le chunk · dans un record lu (faux positif probable)	2	4	4	0	28
+0797ce72	HI_1_13_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	43	56	30	1	392
+0797ce72	HI_1_13_0	aucune allocation · (ii) paquet a evenements non localise	83	93	72	0	665
+0797ce72	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	33	39	31	3	211
+0797ce72	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	474	639	442	5	4140
+0797ce72	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	60	77	40	2	530
+0797ce72	HI_1_13_0	aucune allocation · (v) introuvable	655	1067	737	4	5911
+0797ce72	HI_1_13_0	aucune allocation · dans un record lu (faux positif probable)	637	804	557	10	5487
+0797ce72	HI_1_13_0	libere avant le chunk · (i) tete d un paquet a evenements, avant le debut	2	5	5	0	24
+0797ce72	HI_1_13_0	libere avant le chunk · (ii) paquet a evenements non localise	1	1	1	0	6
+0797ce72	HI_1_13_0	libere avant le chunk · (iii') apres l arret de la vue B : rejet hors datum	8	19	17	0	111
+0797ce72	HI_1_13_0	libere avant le chunk · (v) introuvable	4	5	4	0	31
+0797ce72	HI_1_13_0	libere avant le chunk · dans un record lu (faux positif probable)	14	28	25	0	193
+0797ce72	HI_1_13_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	23	1515	1515	0	10752
+0797ce72	HI_1_13_0	naissance non lue · (ii) paquet a evenements non localise	1	3	3	0	18
+0797ce72	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	12	462	462	0	3220
+0797ce72	HI_1_13_0	naissance non lue · (v) introuvable	1	1	1	0	9
+0797ce72	HI_1_13_0	naissance non lue · dans un record lu (faux positif probable)	4	4	4	0	32
+0797ce72	HI_1_13_0	non mesurable · (i) tete d un paquet a evenements, avant le debut	1	94	94	0	54
+0797ce72	HI_1_13_0	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	10	117	117	0	14
+0797ce72	HI_1_13_0	realloue sous une autre generation · (i) tete d un paquet a evenements, avant le debut	4	113	113	0	602
+0797ce72	HI_1_13_0	realloue sous une autre generation · (ii) paquet a evenements non localise	9	12	12	0	111
+0797ce72	HI_1_13_0	realloue sous une autre generation · (iii') apres l arret de la vue B : rejet hors datum	5	6	3	0	43
+0797ce72	HI_1_13_0	realloue sous une autre generation · (v) introuvable	2	3	3	0	28
+0797ce72	HI_1_13_0	realloue sous une autre generation · dans un record lu (faux positif probable)	3	3	3	0	26
+0797ce72	HI_1_13_0	vivant au bloc du chunk · (iii') apres l arret de la vue B : rejet hors datum	1	77	77	0	619
+0797ce72	HI_1_13_0	vivant au bloc du chunk · (v) introuvable	3	153	153	0	1126
+084a804d	HI_1_10_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	47	52	9	39	52
+084a804d	HI_1_10_0	aucune allocation · (ii) paquet a evenements non localise	59	65	16	44	38
+084a804d	HI_1_10_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	5	5	0	3	6
+084a804d	HI_1_10_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	84	87	33	40	70
+084a804d	HI_1_10_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	2	2	0	2	0
+084a804d	HI_1_10_0	aucune allocation · (v) introuvable	45	53	15	26	88
+084a804d	HI_1_10_0	aucune allocation · dans un record lu (faux positif probable)	37	39	13	18	125
+084a804d	HI_1_10_0	libere avant le chunk · (i) tete d un paquet a evenements, avant le debut	1	1	1	0	21
+084a804d	HI_1_10_0	libere avant le chunk · (ii) paquet a evenements non localise	2	2	1	1	1
+084a804d	HI_1_10_0	libere avant le chunk · (iii') apres l arret de la vue B : rejet hors datum	2	2	0	1	0
+084a804d	HI_1_10_0	libere avant le chunk · (v) introuvable	4	5	2	2	1
+084a804d	HI_1_10_0	libere avant le chunk · dans un record lu (faux positif probable)	3	3	1	0	22
+084a804d	HI_1_10_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	169	8459	8459	0	148626
+084a804d	HI_1_10_0	naissance non lue · (ii) paquet a evenements non localise	231	5939	5939	0	121893
+084a804d	HI_1_10_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	13	360	360	0	8091
+084a804d	HI_1_10_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	233	5751	5751	0	127417
+084a804d	HI_1_10_0	naissance non lue · (v) introuvable	1	1	0	0	1
+084a804d	HI_1_10_0	naissance non lue · dans un record lu (faux positif probable)	6	27	27	0	500
+084a804d	HI_1_10_0	realloue sous une autre generation · (i) tete d un paquet a evenements, avant le debut	20	337	337	0	8004
+084a804d	HI_1_10_0	realloue sous une autre generation · (ii) paquet a evenements non localise	37	645	645	0	15894
+084a804d	HI_1_10_0	realloue sous une autre generation · (iii') apres l arret de la vue B : ouverte	2	7	7	0	144
+084a804d	HI_1_10_0	realloue sous une autre generation · (iii') apres l arret de la vue B : rejet hors datum	20	221	220	1	5344
+084a804d	HI_1_10_0	realloue sous une autre generation · (v) introuvable	1	1	1	0	0
+084a804d	HI_1_10_0	vivant au bloc du chunk · (iii') apres l arret de la vue B : rejet hors datum	3	20	20	0	473
+084a804d	HI_1_10_0	vivant au bloc du chunk · (v) introuvable	10	1084	1084	0	3009
+111fa685	HI_1_10_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	56	57	40	12	284
+111fa685	HI_1_10_0	aucune allocation · (ii) paquet a evenements non localise	133	145	112	13	1091
+111fa685	HI_1_10_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	6	6	6	0	53
+111fa685	HI_1_10_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	190	216	172	15	1947
+111fa685	HI_1_10_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	24	33	30	1	289
+111fa685	HI_1_10_0	aucune allocation · (v) introuvable	120	135	102	9	1288
+111fa685	HI_1_10_0	aucune allocation · dans un record lu (faux positif probable)	111	117	93	9	1301
+111fa685	HI_1_10_0	libere avant le chunk · (i) tete d un paquet a evenements, avant le debut	1	1	1	0	8
+111fa685	HI_1_10_0	libere avant le chunk · (ii) paquet a evenements non localise	5	9	7	0	55
+111fa685	HI_1_10_0	libere avant le chunk · (iii') apres l arret de la vue B : rejet hors datum	16	19	19	0	175
+111fa685	HI_1_10_0	libere avant le chunk · (iii') apres l arret de la vue B : terminateur	3	3	3	0	31
+111fa685	HI_1_10_0	libere avant le chunk · (v) introuvable	7	7	6	0	108
+111fa685	HI_1_10_0	libere avant le chunk · dans un record lu (faux positif probable)	11	11	10	0	156
+111fa685	HI_1_10_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	96	1933	1932	0	36885
+111fa685	HI_1_10_0	naissance non lue · (ii) paquet a evenements non localise	166	3245	3245	0	61727
+111fa685	HI_1_10_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	5	96	96	0	1936
+111fa685	HI_1_10_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	113	2571	2571	0	49838
+111fa685	HI_1_10_0	naissance non lue · (iii') apres l arret de la vue B : terminateur	2	3	3	0	54
+111fa685	HI_1_10_0	naissance non lue · dans un record lu (faux positif probable)	3	4	4	0	88
+111fa685	HI_1_10_0	non mesurable · (i) tete d un paquet a evenements, avant le debut	9	25	23	0	516
+111fa685	HI_1_10_0	non mesurable · (ii) paquet a evenements non localise	23	188	187	0	2341
+111fa685	HI_1_10_0	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	17	187	186	1	2694
+111fa685	HI_1_10_0	non mesurable · (v) introuvable	2	2	2	0	8
+111fa685	HI_1_10_0	non mesurable · dans un record lu (faux positif probable)	1	1	1	0	23
+111fa685	HI_1_10_0	realloue sous une autre generation · (i) tete d un paquet a evenements, avant le debut	8	190	190	0	3906
+111fa685	HI_1_10_0	realloue sous une autre generation · (ii) paquet a evenements non localise	41	908	908	0	18418
+111fa685	HI_1_10_0	realloue sous une autre generation · (iii') apres l arret de la vue B : ouverte	3	38	38	0	797
+111fa685	HI_1_10_0	realloue sous une autre generation · (iii') apres l arret de la vue B : rejet hors datum	15	204	204	0	4094
+111fa685	HI_1_10_0	realloue sous une autre generation · (iii') apres l arret de la vue B : terminateur	1	1	1	0	13
+111fa685	HI_1_10_0	realloue sous une autre generation · (v) introuvable	3	3	3	0	26
+111fa685	HI_1_10_0	realloue sous une autre generation · dans un record lu (faux positif probable)	2	2	2	0	17
+111fa685	HI_1_10_0	vivant au bloc du chunk · (ii) paquet a evenements non localise	3	117	117	0	2255
+111fa685	HI_1_10_0	vivant au bloc du chunk · (v) introuvable	1	229	229	0	3994
+11de8353	HI_1_9_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	45	51	34	10	383
+11de8353	HI_1_9_0	aucune allocation · (ii) paquet a evenements non localise	84	88	53	9	756
+11de8353	HI_1_9_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	5	5	1	1	46
+11de8353	HI_1_9_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	147	186	135	17	2257
+11de8353	HI_1_9_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	2	2	1	0	32
+11de8353	HI_1_9_0	aucune allocation · (iii) NEW lu desynchronise	1	1	0	0	16
+11de8353	HI_1_9_0	aucune allocation · (v) introuvable	113	145	111	10	1821
+11de8353	HI_1_9_0	aucune allocation · dans un record lu (faux positif probable)	160	216	174	4	3000
+11de8353	HI_1_9_0	libere avant le chunk · (i) tete d un paquet a evenements, avant le debut	3	3	0	0	51
+11de8353	HI_1_9_0	libere avant le chunk · (ii) paquet a evenements non localise	2	2	1	0	18
+11de8353	HI_1_9_0	libere avant le chunk · (iii') apres l arret de la vue B : ouverte	1	1	0	0	16
+11de8353	HI_1_9_0	libere avant le chunk · (iii') apres l arret de la vue B : rejet hors datum	8	8	0	0	129
+11de8353	HI_1_9_0	libere avant le chunk · (v) introuvable	11	17	5	0	266
+11de8353	HI_1_9_0	libere avant le chunk · dans un record lu (faux positif probable)	11	12	5	0	201
+11de8353	HI_1_9_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	94	1475	1475	0	29257
+11de8353	HI_1_9_0	naissance non lue · (ii) paquet a evenements non localise	166	3434	3434	0	65510
+11de8353	HI_1_9_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	2	2	2	0	42
+11de8353	HI_1_9_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	118	2730	2730	0	51598
+11de8353	HI_1_9_0	naissance non lue · dans un record lu (faux positif probable)	4	33	33	0	693
+11de8353	HI_1_9_0	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	8	146	145	0	28
+11de8353	HI_1_9_0	non mesurable · (v) introuvable	7	45	44	0	186
+11de8353	HI_1_9_0	realloue sous une autre generation · (i) tete d un paquet a evenements, avant le debut	9	106	106	0	1605
+11de8353	HI_1_9_0	realloue sous une autre generation · (ii) paquet a evenements non localise	28	626	626	0	11626
+11de8353	HI_1_9_0	realloue sous une autre generation · (iii') apres l arret de la vue B : ouverte	1	13	13	0	316
+11de8353	HI_1_9_0	realloue sous une autre generation · (iii') apres l arret de la vue B : rejet hors datum	24	367	366	1	6441
+11de8353	HI_1_9_0	realloue sous une autre generation · (v) introuvable	1	1	1	0	15
+11de8353	HI_1_9_0	realloue sous une autre generation · dans un record lu (faux positif probable)	1	1	1	0	0
+11de8353	HI_1_9_0	vivant au bloc du chunk · (ii) paquet a evenements non localise	1	32	32	0	681
+11de8353	HI_1_9_0	vivant au bloc du chunk · (v) introuvable	1	40	39	1	852
+1c4c63c2	HI_1_10_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	356	679	24	645	104
+1c4c63c2	HI_1_10_0	aucune allocation · (ii) paquet a evenements non localise	567	946	41	891	240
+1c4c63c2	HI_1_10_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	29	43	4	38	13
+1c4c63c2	HI_1_10_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	601	895	52	823	169
+1c4c63c2	HI_1_10_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	20	37	7	29	29
+1c4c63c2	HI_1_10_0	aucune allocation · (v) introuvable	317	731	82	631	406
+1c4c63c2	HI_1_10_0	aucune allocation · dans un record lu (faux positif probable)	145	220	21	190	208
+1c4c63c2	HI_1_10_0	libere avant le chunk · (i) tete d un paquet a evenements, avant le debut	10	10	1	4	4
+1c4c63c2	HI_1_10_0	libere avant le chunk · (ii) paquet a evenements non localise	15	18	6	11	6
+1c4c63c2	HI_1_10_0	libere avant le chunk · (iii') apres l arret de la vue B : ouverte	1	1	0	0	1
+1c4c63c2	HI_1_10_0	libere avant le chunk · (iii') apres l arret de la vue B : rejet hors datum	29	123	3	113	32
+1c4c63c2	HI_1_10_0	libere avant le chunk · (iii') apres l arret de la vue B : terminateur	1	1	1	0	1
+1c4c63c2	HI_1_10_0	libere avant le chunk · (v) introuvable	3	3	2	1	0
+1c4c63c2	HI_1_10_0	libere avant le chunk · dans un record lu (faux positif probable)	2	2	1	0	0
+1c4c63c2	HI_1_10_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	179	15316	15316	0	240595
+1c4c63c2	HI_1_10_0	naissance non lue · (ii) paquet a evenements non localise	176	12881	12880	1	193988
+1c4c63c2	HI_1_10_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	4	192	192	0	3847
+1c4c63c2	HI_1_10_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	139	7041	7040	1	139329
+1c4c63c2	HI_1_10_0	naissance non lue · (v) introuvable	1	111	111	0	1879
+1c4c63c2	HI_1_10_0	non mesurable · (i) tete d un paquet a evenements, avant le debut	6	10	2	8	0
+1c4c63c2	HI_1_10_0	non mesurable · (ii) paquet a evenements non localise	5	6	0	6	0
+1c4c63c2	HI_1_10_0	non mesurable · (iii') apres l arret de la vue B : ouverte	7	37	32	5	112
+1c4c63c2	HI_1_10_0	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	2	313	313	0	476
+1c4c63c2	HI_1_10_0	non mesurable · (v) introuvable	6	16	0	16	0
+1c4c63c2	HI_1_10_0	non mesurable · dans un record lu (faux positif probable)	1	1	0	1	0
+1c4c63c2	HI_1_10_0	realloue sous une autre generation · (i) tete d un paquet a evenements, avant le debut	9	55	47	7	963
+1c4c63c2	HI_1_10_0	realloue sous une autre generation · (ii) paquet a evenements non localise	23	197	143	53	2276
+1c4c63c2	HI_1_10_0	realloue sous une autre generation · (iii') apres l arret de la vue B : rejet hors datum	20	153	125	28	2530
+1c4c63c2	HI_1_10_0	realloue sous une autre generation · (v) introuvable	8	10	0	5	17
+1c4c63c2	HI_1_10_0	realloue sous une autre generation · dans un record lu (faux positif probable)	4	11	0	11	0
+1c4c63c2	HI_1_10_0	vivant au bloc du chunk · (i) tete d un paquet a evenements, avant le debut	3	1596	1596	0	5440
+1c4c63c2	HI_1_10_0	vivant au bloc du chunk · (ii) paquet a evenements non localise	3	909	909	0	3019
+1c4c63c2	HI_1_10_0	vivant au bloc du chunk · (iii') apres l arret de la vue B : rejet hors datum	4	174	173	1	0
+1c4c63c2	HI_1_10_0	vivant au bloc du chunk · (v) introuvable	12	6572	6572	0	432
+396cfc92	HI_1_13_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	1	1	0	1	0
+396cfc92	HI_1_13_0	aucune allocation · (ii) paquet a evenements non localise	1	1	0	1	0
+396cfc92	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	1	1	1	0	5
+396cfc92	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	1	1	1	0	7
+396cfc92	HI_1_13_0	aucune allocation · (v) introuvable	5	5	3	1	22
+396cfc92	HI_1_13_0	aucune allocation · dans un record lu (faux positif probable)	2	2	1	1	4
+396cfc92	HI_1_13_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	110	5690	5690	0	41123
+396cfc92	HI_1_13_0	naissance non lue · (ii) paquet a evenements non localise	18	705	705	0	5105
+396cfc92	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	1	3	3	0	19
+396cfc92	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	26	1354	1354	0	9559
+396cfc92	HI_1_13_0	non mesurable · (i) tete d un paquet a evenements, avant le debut	1	51	51	0	316
+396cfc92	HI_1_13_0	non mesurable · (ii) paquet a evenements non localise	1	58	58	0	4
+396cfc92	HI_1_13_0	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	3	483	483	0	627
+4f77afc1	HI_1_13_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	62	73	7	65	159
+4f77afc1	HI_1_13_0	aucune allocation · (ii) paquet a evenements non localise	73	85	10	72	247
+4f77afc1	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	19	21	0	21	0
+4f77afc1	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	56	75	3	70	68
+4f77afc1	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	7	20	0	20	0
+4f77afc1	HI_1_13_0	aucune allocation · (v) introuvable	43	61	4	56	9
+4f77afc1	HI_1_13_0	aucune allocation · dans un record lu (faux positif probable)	77	93	6	83	211
+4f77afc1	HI_1_13_0	libere avant le chunk · (i) tete d un paquet a evenements, avant le debut	1	1	1	0	24
+4f77afc1	HI_1_13_0	libere avant le chunk · (ii) paquet a evenements non localise	1	1	0	1	0
+4f77afc1	HI_1_13_0	libere avant le chunk · (iii') apres l arret de la vue B : rejet hors datum	1	1	0	1	0
+4f77afc1	HI_1_13_0	libere avant le chunk · (v) introuvable	1	1	0	1	0
+4f77afc1	HI_1_13_0	libere avant le chunk · dans un record lu (faux positif probable)	2	2	1	1	24
+4f77afc1	HI_1_13_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	51	1942	1942	0	37195
+4f77afc1	HI_1_13_0	naissance non lue · (ii) paquet a evenements non localise	81	2478	2478	0	59407
+4f77afc1	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	4	170	170	0	3803
+4f77afc1	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	84	2054	2054	0	45027
+4f77afc1	HI_1_13_0	naissance non lue · (iii) NEW lu desynchronise	2	8	8	0	212
+4f77afc1	HI_1_13_0	naissance non lue · dans un record lu (faux positif probable)	1	46	46	0	1236
+4f77afc1	HI_1_13_0	realloue sous une autre generation · (i) tete d un paquet a evenements, avant le debut	16	341	340	1	8419
+4f77afc1	HI_1_13_0	realloue sous une autre generation · (ii) paquet a evenements non localise	15	221	220	1	5447
+4f77afc1	HI_1_13_0	realloue sous une autre generation · (iii') apres l arret de la vue B : ouverte	1	1	0	1	0
+4f77afc1	HI_1_13_0	realloue sous une autre generation · (iii') apres l arret de la vue B : rejet hors datum	19	321	319	2	7748
+4f77afc1	HI_1_13_0	vivant au bloc du chunk · (ii) paquet a evenements non localise	3	368	368	0	2730
+4f77afc1	HI_1_13_0	vivant au bloc du chunk · (iii') apres l arret de la vue B : rejet hors datum	3	56	56	0	931
+4f77afc1	HI_1_13_0	vivant au bloc du chunk · (v) introuvable	13	1444	1444	0	5404
+4f77afc1	HI_1_13_0	vivant au bloc du chunk · dans un record lu (faux positif probable)	2	6	6	0	137
+50247b26	version-31	aucune allocation · (i) tete d un paquet a evenements, avant le debut	4	4	4	0	18
+50247b26	version-31	aucune allocation · (ii) paquet a evenements non localise	28	29	22	3	196
+50247b26	version-31	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	30	31	20	3	230
+50247b26	version-31	aucune allocation · (v) introuvable	2	2	0	0	20
+50247b26	version-31	aucune allocation · dans un record lu (faux positif probable)	6	6	4	1	54
+50247b26	version-31	libere avant le chunk · (ii) paquet a evenements non localise	2	2	1	1	25
+50247b26	version-31	libere avant le chunk · (iii') apres l arret de la vue B : rejet hors datum	1	1	0	0	0
+50247b26	version-31	libere avant le chunk · dans un record lu (faux positif probable)	1	1	1	0	19
+50247b26	version-31	naissance non lue · (i) tete d un paquet a evenements, avant le debut	87	2410	2410	0	54718
+50247b26	version-31	naissance non lue · (ii) paquet a evenements non localise	139	3936	3936	0	90363
+50247b26	version-31	naissance non lue · (iii') apres l arret de la vue B : ouverte	8	244	244	0	6476
+50247b26	version-31	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	127	3548	3548	0	79425
+50247b26	version-31	naissance non lue · (iii') apres l arret de la vue B : terminateur	1	7	7	0	137
+50247b26	version-31	non mesurable · (i) tete d un paquet a evenements, avant le debut	1	277	277	0	3361
+50247b26	version-31	non mesurable · (ii) paquet a evenements non localise	1	30	30	0	677
+50247b26	version-31	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	9	179	179	0	585
+50247b26	version-31	realloue sous une autre generation · (i) tete d un paquet a evenements, avant le debut	1	1	1	0	27
+51ebbc0f	HI_1_13_0	NEW lu dans le chunk · (iii') apres l arret de la vue B : rejet hors datum	2	6	6	0	0
+51ebbc0f	HI_1_13_0	NEW lu dans le chunk · (iv) NEW lu refuse	1	4	4	0	0
+51ebbc0f	HI_1_13_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	2	2	1	1	8
+51ebbc0f	HI_1_13_0	aucune allocation · (ii) paquet a evenements non localise	17	47	9	9	12
+51ebbc0f	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	1	1	0	1	0
+51ebbc0f	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	45	89	79	6	36
+51ebbc0f	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	2	5	4	0	0
+51ebbc0f	HI_1_13_0	aucune allocation · (iii) NEW lu desynchronise	1	2	2	0	0
+51ebbc0f	HI_1_13_0	aucune allocation · (v) introuvable	43	56	37	2	66
+51ebbc0f	HI_1_13_0	aucune allocation · dans un record lu (faux positif probable)	8	10	9	1	18
+51ebbc0f	HI_1_13_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	35	1082	1082	0	3286
+51ebbc0f	HI_1_13_0	naissance non lue · (ii) paquet a evenements non localise	140	3594	3594	0	12705
+51ebbc0f	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	15	546	546	0	1319
+51ebbc0f	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	241	6171	6171	0	11067
+51ebbc0f	HI_1_13_0	naissance non lue · (iii) NEW lu desynchronise	174	4536	4536	0	113
+51ebbc0f	HI_1_13_0	non mesurable · (ii) paquet a evenements non localise	4	50	50	0	195
+51ebbc0f	HI_1_13_0	non mesurable · (iii') apres l arret de la vue B : ouverte	2	54	54	0	35
+51ebbc0f	HI_1_13_0	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	13	305	304	1	534
+51ebbc0f	HI_1_13_0	non mesurable · (iii) NEW lu desynchronise	4	106	106	0	0
+51ebbc0f	HI_1_13_0	non mesurable · (v) introuvable	3	3	2	0	0
+51ebbc0f	HI_1_13_0	non mesurable · dans un record lu (faux positif probable)	1	1	0	0	0
+51ebbc0f	HI_1_13_0	realloue sous une autre generation · (v) introuvable	2	2	2	0	0
+60ae07c4	HI_1_8_0	NEW lu dans le chunk · (iii') apres l arret de la vue B : terminateur	1	19	19	0	28
+60ae07c4	HI_1_8_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	67	86	54	9	459
+60ae07c4	HI_1_8_0	aucune allocation · (ii) paquet a evenements non localise	85	111	76	20	518
+60ae07c4	HI_1_8_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	75	106	72	3	680
+60ae07c4	HI_1_8_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	316	471	330	19	2882
+60ae07c4	HI_1_8_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	31	45	30	0	240
+60ae07c4	HI_1_8_0	aucune allocation · (iii) NEW lu desynchronise	3	7	7	0	20
+60ae07c4	HI_1_8_0	aucune allocation · (v) introuvable	624	843	591	28	4546
+60ae07c4	HI_1_8_0	aucune allocation · dans un record lu (faux positif probable)	454	593	396	19	3564
+60ae07c4	HI_1_8_0	libere avant le chunk · (iii') apres l arret de la vue B : ouverte	1	1	1	0	6
+60ae07c4	HI_1_8_0	libere avant le chunk · (v) introuvable	6	11	9	0	73
+60ae07c4	HI_1_8_0	libere avant le chunk · dans un record lu (faux positif probable)	2	2	2	0	13
+60ae07c4	HI_1_8_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	96	7099	7099	0	43365
+60ae07c4	HI_1_8_0	naissance non lue · (ii) paquet a evenements non localise	143	10428	10428	0	62237
+60ae07c4	HI_1_8_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	4	260	260	0	1574
+60ae07c4	HI_1_8_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	134	8011	8011	0	44097
+60ae07c4	HI_1_8_0	naissance non lue · (iii') apres l arret de la vue B : terminateur	4	8	8	0	57
+60ae07c4	HI_1_8_0	naissance non lue · (v) introuvable	1	7	7	0	29
+60ae07c4	HI_1_8_0	non mesurable · (ii) paquet a evenements non localise	1	71	71	0	165
+60ae07c4	HI_1_8_0	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	1	133	133	0	36
+60ae07c4	HI_1_8_0	realloue sous une autre generation · (i) tete d un paquet a evenements, avant le debut	2	230	230	0	1513
+60ae07c4	HI_1_8_0	realloue sous une autre generation · (ii) paquet a evenements non localise	22	1237	1237	0	7094
+60ae07c4	HI_1_8_0	realloue sous une autre generation · (iii') apres l arret de la vue B : ouverte	1	1	1	0	6
+60ae07c4	HI_1_8_0	realloue sous une autre generation · (iii') apres l arret de la vue B : rejet hors datum	3	21	21	0	146
+60ae07c4	HI_1_8_0	vivant au bloc du chunk · (iii') apres l arret de la vue B : rejet hors datum	2	86	86	0	550
+60ae07c4	HI_1_8_0	vivant au bloc du chunk · (v) introuvable	3	110	110	0	578
+a349fea8	version-33	aucune allocation · (i) tete d un paquet a evenements, avant le debut	18	19	14	0	98
+a349fea8	version-33	aucune allocation · (ii) paquet a evenements non localise	69	71	60	6	247
+a349fea8	version-33	aucune allocation · (iii') apres l arret de la vue B : ouverte	8	11	9	0	94
+a349fea8	version-33	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	117	121	87	10	319
+a349fea8	version-33	aucune allocation · (iii') apres l arret de la vue B : terminateur	13	14	7	2	35
+a349fea8	version-33	aucune allocation · (v) introuvable	166	175	81	5	102
+a349fea8	version-33	aucune allocation · dans un record lu (faux positif probable)	36	36	22	0	70
+a349fea8	version-33	libere avant le chunk · (i) tete d un paquet a evenements, avant le debut	3	3	2	0	2
+a349fea8	version-33	libere avant le chunk · (ii) paquet a evenements non localise	8	9	3	0	76
+a349fea8	version-33	libere avant le chunk · (iii') apres l arret de la vue B : ouverte	1	1	1	0	0
+a349fea8	version-33	libere avant le chunk · (iii') apres l arret de la vue B : rejet hors datum	6	6	0	0	4
+a349fea8	version-33	libere avant le chunk · dans un record lu (faux positif probable)	1	1	0	0	12
+a349fea8	version-33	naissance non lue · (i) tete d un paquet a evenements, avant le debut	189	6259	6259	0	122233
+a349fea8	version-33	naissance non lue · (ii) paquet a evenements non localise	237	6147	6147	0	136125
+a349fea8	version-33	naissance non lue · (iii') apres l arret de la vue B : ouverte	16	241	241	0	5732
+a349fea8	version-33	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	188	4214	4212	0	97397
+a349fea8	version-33	naissance non lue · dans un record lu (faux positif probable)	1	1	1	0	32
+a349fea8	version-33	non mesurable · (ii) paquet a evenements non localise	1	4	4	0	5
+a349fea8	version-33	realloue sous une autre generation · (i) tete d un paquet a evenements, avant le debut	9	149	149	0	3550
+a349fea8	version-33	realloue sous une autre generation · (ii) paquet a evenements non localise	14	213	213	0	5679
+a349fea8	version-33	realloue sous une autre generation · (iii') apres l arret de la vue B : rejet hors datum	12	276	276	0	6100
+a349fea8	version-33	vivant au bloc du chunk · (iii') apres l arret de la vue B : rejet hors datum	1	245	245	0	0
+a349fea8	version-33	vivant au bloc du chunk · (v) introuvable	7	1212	1212	0	2650
+a521164d	HI_1_4_1	aucune allocation · (i) tete d un paquet a evenements, avant le debut	10	10	5	0	2
+a521164d	HI_1_4_1	aucune allocation · (ii) paquet a evenements non localise	50	51	37	1	103
+a521164d	HI_1_4_1	aucune allocation · (iii') apres l arret de la vue B : ouverte	9	10	6	0	42
+a521164d	HI_1_4_1	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	111	117	85	1	197
+a521164d	HI_1_4_1	aucune allocation · (iii') apres l arret de la vue B : terminateur	11	11	10	0	3
+a521164d	HI_1_4_1	aucune allocation · (v) introuvable	139	141	47	5	22
+a521164d	HI_1_4_1	aucune allocation · dans un record lu (faux positif probable)	36	36	27	0	15
+a521164d	HI_1_4_1	libere avant le chunk · (ii) paquet a evenements non localise	1	1	1	0	20
+a521164d	HI_1_4_1	libere avant le chunk · (iii') apres l arret de la vue B : ouverte	2	2	1	0	0
+a521164d	HI_1_4_1	libere avant le chunk · (iii') apres l arret de la vue B : rejet hors datum	2	2	0	0	6
+a521164d	HI_1_4_1	libere avant le chunk · (v) introuvable	2	2	2	0	0
+a521164d	HI_1_4_1	libere avant le chunk · dans un record lu (faux positif probable)	2	2	2	0	6
+a521164d	HI_1_4_1	naissance non lue · (i) tete d un paquet a evenements, avant le debut	74	1704	1704	0	37624
+a521164d	HI_1_4_1	naissance non lue · (ii) paquet a evenements non localise	91	2059	2059	0	44295
+a521164d	HI_1_4_1	naissance non lue · (iii') apres l arret de la vue B : ouverte	7	163	163	0	3725
+a521164d	HI_1_4_1	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	75	1881	1881	0	43528
+a521164d	HI_1_4_1	non mesurable · (i) tete d un paquet a evenements, avant le debut	2	15	15	0	371
+a521164d	HI_1_4_1	non mesurable · (ii) paquet a evenements non localise	6	135	135	0	2282
+a521164d	HI_1_4_1	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	3	180	180	0	481
+a521164d	HI_1_4_1	realloue sous une autre generation · (ii) paquet a evenements non localise	2	2	0	0	0
+a521164d	HI_1_4_1	realloue sous une autre generation · (v) introuvable	1	1	1	0	0
+a521164d	HI_1_4_1	realloue sous une autre generation · dans un record lu (faux positif probable)	1	1	1	0	0
+bcb6d393	HI_1_12_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	3	3	1	1	0
+bcb6d393	HI_1_12_0	aucune allocation · (ii) paquet a evenements non localise	2	2	1	0	0
+bcb6d393	HI_1_12_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	12	12	9	0	0
+bcb6d393	HI_1_12_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	21	21	16	0	0
+bcb6d393	HI_1_12_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	1	1	0	0	0
+bcb6d393	HI_1_12_0	aucune allocation · (v) introuvable	86	95	59	1	12
+bcb6d393	HI_1_12_0	aucune allocation · dans un record lu (faux positif probable)	69	71	49	0	3
+bcb6d393	HI_1_12_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	21	1481	1481	0	9100
+bcb6d393	HI_1_12_0	naissance non lue · (ii) paquet a evenements non localise	15	694	694	0	4167
+bcb6d393	HI_1_12_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	5	256	256	0	1589
+bcb6d393	HI_1_12_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	10	622	622	0	3544
+bcb6d393	HI_1_12_0	naissance non lue · (iii) NEW lu desynchronise	1	11	11	0	122
+bcb6d393	HI_1_12_0	realloue sous une autre generation · (v) introuvable	1	1	1	0	0
+bf15f7ab	HI_1_13_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	5	11	5	0	77
+bf15f7ab	HI_1_13_0	aucune allocation · (ii) paquet a evenements non localise	9	11	4	0	77
+bf15f7ab	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	14	22	17	0	154
+bf15f7ab	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	17	31	21	0	218
+bf15f7ab	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	6	8	5	1	49
+bf15f7ab	HI_1_13_0	aucune allocation · (v) introuvable	39	53	33	1	338
+bf15f7ab	HI_1_13_0	aucune allocation · dans un record lu (faux positif probable)	114	187	99	1	1292
+bf15f7ab	HI_1_13_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	6	548	548	0	3731
+bf15f7ab	HI_1_13_0	naissance non lue · (ii) paquet a evenements non localise	1	1	1	0	7
+bf15f7ab	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	5	445	445	0	2974
+bf15f7ab	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : terminateur	1	107	107	0	837
+bf15f7ab	HI_1_13_0	non mesurable · (i) tete d un paquet a evenements, avant le debut	3	240	240	0	713
+bf15f7ab	HI_1_13_0	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	13	96	96	0	51
+bfecd02b	HI_1_13_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	1	1	0	1	0
+bfecd02b	HI_1_13_0	aucune allocation · (ii) paquet a evenements non localise	1	1	0	1	0
+bfecd02b	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	1	1	0	1	0
+bfecd02b	HI_1_13_0	aucune allocation · (v) introuvable	6	6	1	3	8
+bfecd02b	HI_1_13_0	aucune allocation · dans un record lu (faux positif probable)	2	2	1	1	7
+bfecd02b	HI_1_13_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	20	2028	2028	0	15288
+bfecd02b	HI_1_13_0	naissance non lue · (ii) paquet a evenements non localise	7	435	435	0	2777
+bfecd02b	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	9	680	680	0	5159
+c75f33b8	HI_1_13_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	2	2	1	1	11
+c75f33b8	HI_1_13_0	aucune allocation · (ii) paquet a evenements non localise	5	5	1	4	9
+c75f33b8	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	1	1	0	1	0
+c75f33b8	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	4	4	0	4	0
+c75f33b8	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	3	3	0	3	0
+c75f33b8	HI_1_13_0	aucune allocation · (v) introuvable	15	18	1	6	8
+c75f33b8	HI_1_13_0	aucune allocation · dans un record lu (faux positif probable)	4	4	0	4	0
+c75f33b8	HI_1_13_0	naissance non lue · (ii) paquet a evenements non localise	33	1637	1637	0	7588
+c75f33b8	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	1	23	23	0	0
+c75f33b8	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	8	509	509	0	2613
+c75f33b8	HI_1_13_0	naissance non lue · (iii) NEW lu desynchronise	4	111	111	0	0
+d9781168	HI_1_13_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	2	3	0	3	0
+d9781168	HI_1_13_0	aucune allocation · (ii) paquet a evenements non localise	37	40	0	40	0
+d9781168	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	9	10	0	10	0
+d9781168	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	1	1	0	1	0
+d9781168	HI_1_13_0	aucune allocation · (v) introuvable	21	34	9	24	0
+d9781168	HI_1_13_0	aucune allocation · dans un record lu (faux positif probable)	14	18	1	17	6
+d9781168	HI_1_13_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	14	944	944	0	6010
+d9781168	HI_1_13_0	naissance non lue · (ii) paquet a evenements non localise	100	6843	6843	0	40342
+d9781168	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	1	136	136	0	769
+d9781168	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	49	2953	2953	0	17028
+d9781168	HI_1_13_0	non mesurable · (ii) paquet a evenements non localise	1	47	47	0	123
+d9781168	HI_1_13_0	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	4	127	127	0	6
+e5adf7b2	HI_1_11_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	50	56	24	17	319
+e5adf7b2	HI_1_11_0	aucune allocation · (ii) paquet a evenements non localise	94	99	63	9	890
+e5adf7b2	HI_1_11_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	8	9	5	0	69
+e5adf7b2	HI_1_11_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	166	171	108	14	1610
+e5adf7b2	HI_1_11_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	12	14	11	0	119
+e5adf7b2	HI_1_11_0	aucune allocation · (v) introuvable	205	207	83	8	218
+e5adf7b2	HI_1_11_0	aucune allocation · dans un record lu (faux positif probable)	102	103	72	12	333
+e5adf7b2	HI_1_11_0	libere avant le chunk · (ii) paquet a evenements non localise	7	7	1	0	35
+e5adf7b2	HI_1_11_0	libere avant le chunk · (iii') apres l arret de la vue B : ouverte	1	1	0	0	0
+e5adf7b2	HI_1_11_0	libere avant le chunk · (iii') apres l arret de la vue B : rejet hors datum	2	2	2	0	16
+e5adf7b2	HI_1_11_0	libere avant le chunk · (v) introuvable	9	9	3	0	17
+e5adf7b2	HI_1_11_0	libere avant le chunk · dans un record lu (faux positif probable)	9	9	3	0	38
+e5adf7b2	HI_1_11_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	84	1765	1765	0	38247
+e5adf7b2	HI_1_11_0	naissance non lue · (ii) paquet a evenements non localise	160	2862	2862	0	59225
+e5adf7b2	HI_1_11_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	2	5	5	0	108
+e5adf7b2	HI_1_11_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	153	3815	3815	0	79697
+e5adf7b2	HI_1_11_0	naissance non lue · (v) introuvable	1	1	1	0	0
+e5adf7b2	HI_1_11_0	naissance non lue · dans un record lu (faux positif probable)	4	5	4	0	116
+e5adf7b2	HI_1_11_0	realloue sous une autre generation · (i) tete d un paquet a evenements, avant le debut	16	226	225	0	4513
+e5adf7b2	HI_1_11_0	realloue sous une autre generation · (ii) paquet a evenements non localise	50	528	528	0	11073
+e5adf7b2	HI_1_11_0	realloue sous une autre generation · (iii') apres l arret de la vue B : ouverte	1	49	49	0	1025
+e5adf7b2	HI_1_11_0	realloue sous une autre generation · (iii') apres l arret de la vue B : rejet hors datum	24	225	221	1	4506
+e5adf7b2	HI_1_11_0	realloue sous une autre generation · (v) introuvable	2	2	1	0	0
+e5adf7b2	HI_1_11_0	realloue sous une autre generation · dans un record lu (faux positif probable)	4	4	4	0	27
+e5adf7b2	HI_1_11_0	vivant au bloc du chunk · (iii') apres l arret de la vue B : rejet hors datum	1	18	18	0	480
+e5adf7b2	HI_1_11_0	vivant au bloc du chunk · (v) introuvable	3	37	37	0	694
+f75e7053	HI_1_13_0	aucune allocation · (ii) paquet a evenements non localise	1	1	0	1	0
+f75e7053	HI_1_13_0	aucune allocation · (v) introuvable	2	2	0	1	0
+f75e7053	HI_1_13_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	32	1948	1948	0	13277
+f75e7053	HI_1_13_0	naissance non lue · (ii) paquet a evenements non localise	12	1594	1594	0	10756
+f75e7053	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	1	104	104	0	456
+f75e7053	HI_1_13_0	non mesurable · (i) tete d un paquet a evenements, avant le debut	2	411	411	0	1826
+f75e7053	HI_1_13_0	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	9	230	230	0	124
+fb1a1a72	HI_1_13_0	aucune allocation · (i) tete d un paquet a evenements, avant le debut	7	7	2	4	12
+fb1a1a72	HI_1_13_0	aucune allocation · (ii) paquet a evenements non localise	2	2	1	0	11
+fb1a1a72	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : ouverte	5	12	7	2	4
+fb1a1a72	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : rejet hors datum	47	100	71	6	66
+fb1a1a72	HI_1_13_0	aucune allocation · (iii') apres l arret de la vue B : terminateur	5	20	16	0	0
+fb1a1a72	HI_1_13_0	aucune allocation · (iii) NEW lu desynchronise	2	5	3	0	0
+fb1a1a72	HI_1_13_0	aucune allocation · (v) introuvable	52	92	66	0	60
+fb1a1a72	HI_1_13_0	aucune allocation · dans un record lu (faux positif probable)	14	41	19	2	4
+fb1a1a72	HI_1_13_0	libere avant le chunk · (i) tete d un paquet a evenements, avant le debut	1	1	1	0	0
+fb1a1a72	HI_1_13_0	libere avant le chunk · (iii') apres l arret de la vue B : rejet hors datum	2	2	2	0	2
+fb1a1a72	HI_1_13_0	libere avant le chunk · (v) introuvable	5	5	5	0	14
+fb1a1a72	HI_1_13_0	naissance non lue · (i) tete d un paquet a evenements, avant le debut	78	2347	2347	0	5351
+fb1a1a72	HI_1_13_0	naissance non lue · (ii) paquet a evenements non localise	35	848	848	0	2394
+fb1a1a72	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : ouverte	21	661	661	0	2407
+fb1a1a72	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : rejet hors datum	298	6499	6499	0	4189
+fb1a1a72	HI_1_13_0	naissance non lue · (iii') apres l arret de la vue B : terminateur	1	39	39	0	271
+fb1a1a72	HI_1_13_0	naissance non lue · (iii) NEW lu desynchronise	273	7488	7488	0	414
+fb1a1a72	HI_1_13_0	non mesurable · (i) tete d un paquet a evenements, avant le debut	1	81	81	0	313
+fb1a1a72	HI_1_13_0	non mesurable · (ii) paquet a evenements non localise	1	68	68	0	13
+fb1a1a72	HI_1_13_0	non mesurable · (iii') apres l arret de la vue B : rejet hors datum	8	112	112	0	3
+fb1a1a72	HI_1_13_0	non mesurable · (iii) NEW lu desynchronise	9	229	229	0	1
+fb1a1a72	HI_1_13_0	non mesurable · (v) introuvable	2	2	1	0	0
+fb1a1a72	HI_1_13_0	realloue sous une autre generation · (i) tete d un paquet a evenements, avant le debut	20	564	564	0	7
+fb1a1a72	HI_1_13_0	realloue sous une autre generation · (ii) paquet a evenements non localise	4	107	107	0	3
+fb1a1a72	HI_1_13_0	realloue sous une autre generation · (iii') apres l arret de la vue B : ouverte	8	216	216	0	9
+fb1a1a72	HI_1_13_0	realloue sous une autre generation · (iii') apres l arret de la vue B : rejet hors datum	77	1813	1813	0	44
+fb1a1a72	HI_1_13_0	realloue sous une autre generation · (iii) NEW lu desynchronise	73	2048	2048	0	32
+fb1a1a72	HI_1_13_0	vivant au bloc du chunk · (iii) NEW lu desynchronise	1	28	28	0	0
+fb1a1a72	HI_1_13_0	vivant au bloc du chunk · (v) introuvable	7	112	112	0	0

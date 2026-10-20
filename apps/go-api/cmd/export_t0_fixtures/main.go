@@ -98,10 +98,7 @@ func main() {
 		// (player_matches_repo / Q13). NULL si real_start_time absent.
 		var t0 sql.NullInt64
 		_ = db.QueryRow(`
-			SELECT CASE WHEN real_start_time IS NOT NULL THEN
-				epoch_ms(real_start_time AT TIME ZONE 'UTC')
-				- epoch_ms(`+analysis.SQLStartTimeCanonical("")+`)
-			END
+			SELECT `+analysis.SQLT0Ms("")+`
 			FROM match_registry WHERE match_id = ?`, id).Scan(&t0)
 		var topKiller sql.NullString
 		_ = db.QueryRow(`

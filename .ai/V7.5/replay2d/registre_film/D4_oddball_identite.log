@@ -1,0 +1,97 @@
+===== FILM 24dbb67d =====
+=== RUN   TestEtatVivantOddballIdentite
+2026/08/27 02:19:11 INFO plafond memoire arme pour ce decodage outil=d4-oddball souple_gib=2 dur_octets=2684354560
+2026/08/27 02:19:15 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    oddball_crane_d4_test.go:135: 24dbb67d : denominateurs du balayage — 7051 ancres, 269 acceptees, 136 RESOLUES au catalogue d'armes, 133 ecartees, 69 mots distincts parmi les ecartees ; 1 socle(s) `oddball_spawn`
+    oddball_crane_d4_test.go:151: 24dbb67d : 87 evenement(s) `th=10` de crane, origine d'horloge 1346531701 us
+    oddball_crane_d4_test.go:159: 24dbb67d :   mot 0x0017592C — 23 creation(s), 3 au socle (<= 3 m ; min 0.0 m), ecart min a un evenement de crane 6 ms  <== CANDIDAT
+    oddball_crane_d4_test.go:159: 24dbb67d :   mot 0xCBA072DC — 1 creation(s), 1 au socle (<= 3 m ; min 1.7 m), ecart min a un evenement de crane 177 ms  <== CANDIDAT
+    oddball_crane_d4_test.go:159: 24dbb67d :   mot 0x4781F088 — 37 creation(s), 0 au socle (<= 3 m ; min 1635.2 m), ecart min a un evenement de crane 1777 ms
+    oddball_crane_d4_test.go:159: 24dbb67d :   mot 0xB541FFC2 — 4 creation(s), 0 au socle (<= 3 m ; min 667.9 m), ecart min a un evenement de crane 110 ms
+    oddball_crane_d4_test.go:159: 24dbb67d :   mot 0xC943253C — 3 creation(s), 0 au socle (<= 3 m ; min 1665.0 m), ecart min a un evenement de crane 2010 ms
+    oddball_crane_d4_test.go:159: 24dbb67d :   mot 0x42508439 — 2 creation(s), 0 au socle (<= 3 m ; min 1646.8 m), ecart min a un evenement de crane 242 ms
+    oddball_crane_d4_test.go:159: 24dbb67d :   mot 0x00420C2F — 1 creation(s), 0 au socle (<= 3 m ; min 1649.4 m), ecart min a un evenement de crane 909 ms
+    oddball_crane_d4_test.go:159: 24dbb67d :   mot 0x005F6E9F — 1 creation(s), 0 au socle (<= 3 m ; min 1536.7 m), ecart min a un evenement de crane 3564 ms
+    oddball_crane_d4_test.go:159: 24dbb67d :   mot 0x010005C8 — 1 creation(s), 0 au socle (<= 3 m ; min 1672.2 m), ecart min a un evenement de crane 12153 ms
+    oddball_crane_d4_test.go:159: 24dbb67d :   mot 0x010830C0 — 1 creation(s), 0 au socle (<= 3 m ; min 794.9 m), ecart min a un evenement de crane 790 ms
+    oddball_crane_d4_test.go:159: 24dbb67d :   mot 0x0295966E — 1 creation(s), 0 au socle (<= 3 m ; min 606.3 m), ecart min a un evenement de crane 1995 ms
+    oddball_crane_d4_test.go:159: 24dbb67d :   mot 0x0419108C — 1 creation(s), 0 au socle (<= 3 m ; min 1273.6 m), ecart min a un evenement de crane 1910 ms
+    oddball_crane_d4_test.go:159: 24dbb67d :   ... 57 autre(s) mot(s) ecarte(s), aucun retenu
+    oddball_crane_d4_test.go:159: SIGNAL 24dbb67d : 2 mot(s) reunissant les DEUX conditions (naissance au socle ET coincidence <= 1000 ms) sur 69 mot(s) ecarte(s)
+    oddball_crane_d4_test.go:159: VERDICT 24dbb67d : 2 candidats — le temoin de SELECTIVITE est REFUTE sur ce film (le protocole en exige exactement un).
+    oddball_crane_d4_test.go:112: 24dbb67d : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestEtatVivantOddballIdentite (3.55s)
+PASS
+EXIT_24dbb67d=0
+===== FILM 43716616 =====
+=== RUN   TestEtatVivantOddballIdentite
+2026/08/27 02:19:15 INFO plafond memoire arme pour ce decodage outil=d4-oddball souple_gib=2 dur_octets=2684354560
+    oddball_crane_d4_test.go:135: 43716616 : denominateurs du balayage — 6943 ancres, 332 acceptees, 195 RESOLUES au catalogue d'armes, 137 ecartees, 107 mots distincts parmi les ecartees ; 1 socle(s) `oddball_spawn`
+    oddball_crane_d4_test.go:151: 43716616 : 60 evenement(s) `th=10` de crane, origine d'horloge 388832252 us
+    oddball_crane_d4_test.go:159: 43716616 :   mot 0x0017592C — 16 creation(s), 4 au socle (<= 3 m ; min 0.0 m), ecart min a un evenement de crane 3 ms  <== CANDIDAT
+    oddball_crane_d4_test.go:159: 43716616 :   mot 0xE9E7FF79 — 12 creation(s), 0 au socle (<= 3 m ; min 5.4 m), ecart min a un evenement de crane 221 ms
+    oddball_crane_d4_test.go:159: 43716616 :   mot 0x3F0C4C69 — 2 creation(s), 0 au socle (<= 3 m ; min 275.3 m), ecart min a un evenement de crane 8780 ms
+    oddball_crane_d4_test.go:159: 43716616 :   mot 0x523B4648 — 2 creation(s), 0 au socle (<= 3 m ; min 45.4 m), ecart min a un evenement de crane 8781 ms
+    oddball_crane_d4_test.go:159: 43716616 :   mot 0x73DC3816 — 2 creation(s), 0 au socle (<= 3 m ; min 284.9 m), ecart min a un evenement de crane 8780 ms
+    oddball_crane_d4_test.go:159: 43716616 :   mot 0x81A15150 — 2 creation(s), 0 au socle (<= 3 m ; min 16.2 m), ecart min a un evenement de crane 429 ms
+    oddball_crane_d4_test.go:159: 43716616 :   mot 0x00001FED — 1 creation(s), 0 au socle (<= 3 m ; min 317.3 m), ecart min a un evenement de crane 1209 ms
+    oddball_crane_d4_test.go:159: 43716616 :   mot 0x0000F418 — 1 creation(s), 0 au socle (<= 3 m ; min 163.4 m), ecart min a un evenement de crane 2057 ms
+    oddball_crane_d4_test.go:159: 43716616 :   mot 0x001A01AE — 1 creation(s), 0 au socle (<= 3 m ; min 18.1 m), ecart min a un evenement de crane 8780 ms
+    oddball_crane_d4_test.go:159: 43716616 :   mot 0x00420C51 — 1 creation(s), 0 au socle (<= 3 m ; min 50.9 m), ecart min a un evenement de crane 510 ms
+    oddball_crane_d4_test.go:159: 43716616 :   mot 0x004534BA — 1 creation(s), 0 au socle (<= 3 m ; min 321.2 m), ecart min a un evenement de crane 1022 ms
+    oddball_crane_d4_test.go:159: 43716616 :   mot 0x00F5E821 — 1 creation(s), 0 au socle (<= 3 m ; min 300.7 m), ecart min a un evenement de crane 462 ms
+    oddball_crane_d4_test.go:159: 43716616 :   ... 95 autre(s) mot(s) ecarte(s), aucun retenu
+    oddball_crane_d4_test.go:159: SIGNAL 43716616 : 1 mot(s) reunissant les DEUX conditions (naissance au socle ET coincidence <= 1000 ms) sur 107 mot(s) ecarte(s)
+    oddball_crane_d4_test.go:159: VERDICT 43716616 : UN SEUL candidat — mot 0x0017592C. Temoin de selectivite TENU sur ce film (0 autre). Le seuil (1) exige le MEME mot sur >= 2 films : verdict de corpus, pas de film.
+    oddball_crane_d4_test.go:112: 43716616 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestEtatVivantOddballIdentite (3.97s)
+PASS
+EXIT_43716616=0
+===== FILM 51ebbc0f =====
+=== RUN   TestEtatVivantOddballIdentite
+2026/08/27 02:19:19 INFO plafond memoire arme pour ce decodage outil=d4-oddball souple_gib=2 dur_octets=2684354560
+    oddball_crane_d4_test.go:135: 51ebbc0f : denominateurs du balayage — 6582 ancres, 350 acceptees, 206 RESOLUES au catalogue d'armes, 144 ecartees, 82 mots distincts parmi les ecartees ; 1 socle(s) `oddball_spawn`
+    oddball_crane_d4_test.go:151: 51ebbc0f : 75 evenement(s) `th=10` de crane, origine d'horloge 2813006233 us
+    oddball_crane_d4_test.go:159: 51ebbc0f :   mot 0x0017592C — 21 creation(s), 4 au socle (<= 3 m ; min 0.0 m), ecart min a un evenement de crane 3 ms  <== CANDIDAT
+    oddball_crane_d4_test.go:159: 51ebbc0f :   mot 0xE9E7FF79 — 33 creation(s), 0 au socle (<= 3 m ; min 3.6 m), ecart min a un evenement de crane 4 ms
+    oddball_crane_d4_test.go:159: 51ebbc0f :   mot 0x010830E8 — 6 creation(s), 0 au socle (<= 3 m ; min 290.6 m), ecart min a un evenement de crane 505 ms
+    oddball_crane_d4_test.go:159: 51ebbc0f :   mot 0x00430180 — 2 creation(s), 0 au socle (<= 3 m ; min 11.7 m), ecart min a un evenement de crane 1980 ms
+    oddball_crane_d4_test.go:159: 51ebbc0f :   mot 0x0064803D — 2 creation(s), 0 au socle (<= 3 m ; min 218.7 m), ecart min a un evenement de crane 8769 ms
+    oddball_crane_d4_test.go:159: 51ebbc0f :   mot 0x0420C3A3 — 2 creation(s), 0 au socle (<= 3 m ; min 168.2 m), ecart min a un evenement de crane 246 ms
+    oddball_crane_d4_test.go:159: 51ebbc0f :   mot 0x42A2A040 — 2 creation(s), 0 au socle (<= 3 m ; min 162.3 m), ecart min a un evenement de crane 661 ms
+    oddball_crane_d4_test.go:159: 51ebbc0f :   mot 0xA4001559 — 2 creation(s), 0 au socle (<= 3 m ; min 109.8 m), ecart min a un evenement de crane 421 ms
+    oddball_crane_d4_test.go:159: 51ebbc0f :   mot 0x009FF6D1 — 1 creation(s), 0 au socle (<= 3 m ; min 11.7 m), ecart min a un evenement de crane 4198 ms
+    oddball_crane_d4_test.go:159: 51ebbc0f :   mot 0x02381848 — 1 creation(s), 0 au socle (<= 3 m ; min 43.4 m), ecart min a un evenement de crane 3642 ms
+    oddball_crane_d4_test.go:159: 51ebbc0f :   mot 0x0420C3BB — 1 creation(s), 0 au socle (<= 3 m ; min 302.7 m), ecart min a un evenement de crane 558 ms
+    oddball_crane_d4_test.go:159: 51ebbc0f :   mot 0x07F33B2F — 1 creation(s), 0 au socle (<= 3 m ; min 213.5 m), ecart min a un evenement de crane 1172 ms
+    oddball_crane_d4_test.go:159: 51ebbc0f :   ... 70 autre(s) mot(s) ecarte(s), aucun retenu
+    oddball_crane_d4_test.go:159: SIGNAL 51ebbc0f : 1 mot(s) reunissant les DEUX conditions (naissance au socle ET coincidence <= 1000 ms) sur 82 mot(s) ecarte(s)
+    oddball_crane_d4_test.go:159: VERDICT 51ebbc0f : UN SEUL candidat — mot 0x0017592C. Temoin de selectivite TENU sur ce film (0 autre). Le seuil (1) exige le MEME mot sur >= 2 films : verdict de corpus, pas de film.
+    oddball_crane_d4_test.go:112: 51ebbc0f : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestEtatVivantOddballIdentite (4.93s)
+PASS
+EXIT_51ebbc0f=0
+===== FILM d9781168 =====
+=== RUN   TestEtatVivantOddballIdentite
+2026/08/27 02:19:24 INFO plafond memoire arme pour ce decodage outil=d4-oddball souple_gib=2 dur_octets=2684354560
+    oddball_crane_d4_test.go:135: d9781168 : denominateurs du balayage — 15016 ancres, 665 acceptees, 409 RESOLUES au catalogue d'armes, 256 ecartees, 199 mots distincts parmi les ecartees ; 1 socle(s) `oddball_spawn`
+    oddball_crane_d4_test.go:151: d9781168 : 124 evenement(s) `th=10` de crane, origine d'horloge 7906096464 us
+    oddball_crane_d4_test.go:159: d9781168 :   mot 0x0017592C — 47 creation(s), 13 au socle (<= 3 m ; min 0.0 m), ecart min a un evenement de crane 5 ms  <== CANDIDAT
+    oddball_crane_d4_test.go:159: d9781168 :   mot 0x042100A6 — 1 creation(s), 1 au socle (<= 3 m ; min 2.9 m), ecart min a un evenement de crane 157 ms  <== CANDIDAT
+    oddball_crane_d4_test.go:159: d9781168 :   mot 0x18D4CED1 — 3 creation(s), 0 au socle (<= 3 m ; min 95.0 m), ecart min a un evenement de crane 6444 ms
+    oddball_crane_d4_test.go:159: d9781168 :   mot 0x24E3C712 — 3 creation(s), 0 au socle (<= 3 m ; min 223.0 m), ecart min a un evenement de crane 9762 ms
+    oddball_crane_d4_test.go:159: d9781168 :   mot 0x00210620 — 2 creation(s), 0 au socle (<= 3 m ; min 84.8 m), ecart min a un evenement de crane 1862 ms
+    oddball_crane_d4_test.go:159: d9781168 :   mot 0x00420C40 — 2 creation(s), 0 au socle (<= 3 m ; min 114.6 m), ecart min a un evenement de crane 1042 ms
+    oddball_crane_d4_test.go:159: d9781168 :   mot 0x187DFFDD — 2 creation(s), 0 au socle (<= 3 m ; min 180.5 m), ecart min a un evenement de crane 1106 ms
+    oddball_crane_d4_test.go:159: d9781168 :   mot 0x23001640 — 2 creation(s), 0 au socle (<= 3 m ; min 3.8 m), ecart min a un evenement de crane 507 ms
+    oddball_crane_d4_test.go:159: d9781168 :   mot 0x24001559 — 2 creation(s), 0 au socle (<= 3 m ; min 34.9 m), ecart min a un evenement de crane 94 ms
+    oddball_crane_d4_test.go:159: d9781168 :   mot 0x41876410 — 2 creation(s), 0 au socle (<= 3 m ; min 16.9 m), ecart min a un evenement de crane 1842 ms
+    oddball_crane_d4_test.go:159: d9781168 :   mot 0xAB26000B — 2 creation(s), 0 au socle (<= 3 m ; min 289.8 m), ecart min a un evenement de crane 12285 ms
+    oddball_crane_d4_test.go:159: d9781168 :   mot 0x00084188 — 1 creation(s), 0 au socle (<= 3 m ; min 169.7 m), ecart min a un evenement de crane 940 ms
+    oddball_crane_d4_test.go:159: d9781168 :   ... 187 autre(s) mot(s) ecarte(s), aucun retenu
+    oddball_crane_d4_test.go:159: SIGNAL d9781168 : 2 mot(s) reunissant les DEUX conditions (naissance au socle ET coincidence <= 1000 ms) sur 199 mot(s) ecarte(s)
+    oddball_crane_d4_test.go:159: VERDICT d9781168 : 2 candidats — le temoin de SELECTIVITE est REFUTE sur ce film (le protocole en exige exactement un).
+    oddball_crane_d4_test.go:112: d9781168 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestEtatVivantOddballIdentite (6.15s)
+PASS
+EXIT_d9781168=0

@@ -76,7 +76,7 @@ type SeedDemoOptions struct {
 	// sous-répertoire de sortie : le titre par défaut écrit au layout PLAT legacy
 	// (OutDir/warehouse, OutDir/players/DEMO — byte-identique à la démo mono-titre) ;
 	// un titre additionnel écrit sous OutDir/titles/{slug}/ (miroir du PathResolver
-	// prod). Cf. demoTitleSubdir.
+	// prod). Cf. title.DemoLayout.
 	TitleSlug string
 	// SkipConfigs : ne pas écrire db_profiles.json/app_settings.json à la fin (true
 	// quand l'orchestrateur multi-titre les écrit une seule fois, en v3, après tous
@@ -86,6 +86,14 @@ type SeedDemoOptions struct {
 	// (config/demo/<gamertag>/<slug>.json). Faux (défaut) → manifeste auto-détecté et
 	// utilisé s'il est présent (corpus reproductible).
 	IgnoreManifest bool
+	// CacheRepoRoot : racine du dépôt dont le cache (`data/cache`) fournit les films et les
+	// artefacts de rejeu sources des rejeux figés. Vide → RepoRoot. Son cache porte aussi le
+	// verrou de décodage de la machine.
+	CacheRepoRoot string
+	// PreviousOutDir : la démo PUBLIÉE quand OutDir est une génération écrite à part
+	// (SeedDemoMulti, seed_demo_publish.go) — ses rejeux à jour y sont repris. Vide : le seed
+	// écrit en place, OutDir est aussi la démo précédente.
+	PreviousOutDir string
 }
 
 // SeedDemoResult résume l'exécution.
@@ -97,8 +105,10 @@ type SeedDemoResult struct {
 	PlayerRows     map[string]int
 	// PrestigeRows : lignes Prestige/Progression générées (player DB + shared_social),
 	// par table. Vide si le corpus démo ne contient aucun match du joueur démo.
-	PrestigeRows   map[string]int
-	MediaCopied    int
+	PrestigeRows map[string]int
+	MediaCopied  int
+	// Replays : bilan des rejeux figés (issue par match, films embarqués).
+	Replays        DemoReplaysReport
 	ConfigsWritten bool
 	Frozen         bool // true si le corpus vient d'un manifeste figé (vs sélection dynamique)
 	Duration       time.Duration
@@ -120,12 +130,21 @@ const (
 // par match_ids. Factorisé pour éviter la duplication (9 occurrences dans les tables maps).
 const matchIDInClause = "match_id IN (%s)"
 
-// Table player principale, référencée aussi par anonymizeXUIDInTables (4 occurrences).
+// Table player principale (extraction et tests).
 const playerEnrichmentTable = "player_match_enrichment"
+
+// Colonnes d'identité les plus courantes des tables extraites (champ `identity`).
+const (
+	colXUID       = "xuid"
+	colGamertag   = "gamertag"
+	colKillerXUID = "killer_xuid"
+	colVictimXUID = "victim_xuid"
+)
 
 // Tables shared/player référencées plus de 3 fois dans seed_demo + tests.
 const (
 	tableMatchRegistry     = "match_registry"
+	tableXUIDAliases       = "xuid_aliases"
 	tableMatchParticipants = "match_participants"
 )
 
@@ -137,10 +156,23 @@ const (
 // vue _latest à jour — sinon la migration skip (check `id` déjà présent) et la
 // vue n'est jamais créée dans la DB démo (cf. incident 2026-06-05 : home 500
 // sur match_csrs.written_at / player_csr_snapshots_latest).
+//
+// Les colonnes d'IDENTITÉ de la table sont remappées vers le roster démo PENDANT la copie
+// (cf. anonymizedSelect, seed_demo_anonymize.go). Toute table extraite qui porte un xuid ou
+// un gamertag réel les déclare ici : c'est la SEULE liste d'anonymisation du seed, et le
+// contrôle des valeurs de fin de seed (verifyDemoAnonymization) en vérifie l'effet.
+//   - identity     : {colonne xuid, colonne gamertag appariée ou ""} ;
+//   - gamertagOnly : un gamertag SANS xuid à côté (remappé par le nom ; inconnu → NULL) ;
+//   - xuidLists    : une liste de xuid séparés par des virgules (inconnus retirés) ;
+//   - jsonIdentity : un document JSON portant `$.xuid` et `$.gamertag`.
 type extractTable struct {
-	name       string
-	where      string
-	appendOnly bool
+	name         string
+	where        string
+	appendOnly   bool
+	identity     [][2]string
+	gamertagOnly []string
+	xuidLists    []string
+	jsonIdentity []string
 }
 
 // Tables shared à extraire avec leur clause WHERE (les ? sont les match_ids
@@ -149,12 +181,15 @@ type extractTable struct {
 //
 // xuid_aliases : SELECT * WHERE xuid IN (xuids des match_participants).
 var sharedTablesWhere = []extractTable{
-	{name: tableMatchRegistry, where: matchIDInClause},
-	{name: tableMatchParticipants, where: matchIDInClause},
-	{name: "medals_earned", where: matchIDInClause},
-	{name: "highlight_events", where: matchIDInClause},
-	{name: "weapon_kills", where: matchIDInClause},
-	{name: "killer_victim_pairs", where: matchIDInClause},
+	// first_sync_by : gamertag du joueur suivi qui a synchronisé le match.
+	{name: tableMatchRegistry, where: matchIDInClause, gamertagOnly: []string{"first_sync_by"}},
+	{name: tableMatchParticipants, where: matchIDInClause, identity: [][2]string{{colXUID, colGamertag}}},
+	{name: "medals_earned", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
+	// raw_json porte AUSSI le xuid et le gamertag du joueur ({"xuid": …, "gamertag": …}).
+	{name: "highlight_events", where: matchIDInClause, identity: [][2]string{{colXUID, ""}},
+		jsonIdentity: []string{"raw_json"}},
+	{name: "killer_victim_pairs", where: matchIDInClause, identity: [][2]string{
+		{colKillerXUID, "killer_gamertag"}, {colVictimXUID, "victim_gamertag"}}},
 	// match_kill_events : le kill-feed canonique, écrit en parallèle de la table ci-dessus
 	// depuis le 2026-08-02 (double écriture datée). L'omettre livrerait une démo dont les
 	// surfaces bâties sur la table canonique sont vides — panne silencieuse, visible seulement
@@ -163,9 +198,17 @@ var sharedTablesWhere = []extractTable{
 	// appendOnly:FALSE, pour la raison de match_objective_stats plus bas : la table est créée
 	// DIRECTEMENT en forme append-only (jamais convertie par ApplyAppendOnlyRebuild), donc
 	// ses colonnes techniques doivent voyager — la vue _latest trie sur written_at et id.
-	{name: "match_kill_events", where: matchIDInClause},
-	{name: "xuid_aliases", where: "xuid IN (SELECT DISTINCT xuid FROM match_participants WHERE match_id IN (%s))"},
-	{name: "match_csrs", where: matchIDInClause, appendOnly: true},
+	//
+	// TROIS paires d'identité : le tueur, la victime et l'ASSISTANT (absent de
+	// killer_victim_pairs, qui n'a jamais su le représenter).
+	{name: "match_kill_events", where: matchIDInClause, identity: [][2]string{
+		{"feed_killer_xuid", "feed_killer_gamertag"}, {colVictimXUID, "victim_gamertag"},
+		{"assist_xuid", "assist_gamertag"}}},
+	// La sous-requête vise la table SOURCE (src.) : la copie démo de match_participants,
+	// déjà créée, porte des xuid ANONYMISÉS qui ne filtreraient plus rien.
+	{name: tableXUIDAliases, where: "xuid IN (SELECT DISTINCT xuid FROM src.match_participants WHERE match_id IN (%s))",
+		identity: [][2]string{{colXUID, colGamertag}}},
+	{name: "match_csrs", where: matchIDInClause, appendOnly: true, identity: [][2]string{{colXUID, ""}}},
 	// match_objective_stats : stats objectifs par joueur/match (CTF, Zones, Oddball,
 	// Stockpile, Extraction, VIP). Sans elle, toutes les surfaces « objectifs » de la
 	// démo sont vides (scoreboard MatchView Q12 LEFT JOIN match_objective_stats_latest).
@@ -181,29 +224,39 @@ var sharedTablesWhere = []extractTable{
 	// `written_at DESC, id DESC`, échouerait au binder et ferait échouer tout le seed.
 	// On copie donc la table TELLE QUELLE (id + written_at inclus) : la vue _latest
 	// recréée par applyMigrationsOnPath déduplique alors exactement comme en prod.
-	{name: "match_objective_stats", where: matchIDInClause},
-	// Tables Halo 5-spécifiques (absentes côté Infinite → extraction best-effort, la
-	// table source manquante est ignorée par extractSharedTables). Toutes filtrées
-	// par match_id et non append-only (cf. probe schéma 2026-06-27).
-	{name: "match_commendations", where: matchIDInClause}, // commendations natives par match (xuid)
-	{name: "kill_positions", where: matchIDInClause},      // positions monde du kill (killer_xuid)
-	{name: "weapon_accuracy", where: matchIDInClause},     // précision par arme par match (xuid)
+	{name: "match_objective_stats", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
+	// Tables présentes selon le titre : table source absente → ignorée par
+	// extractSharedTables. match_commendations et weapon_accuracy sont propres à Halo 5.
+	{name: "match_commendations", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
+	// kill_positions (positions monde du kill) est APPEND-ONLY PAR PASSE (id + decode_pass +
+	// written_at, vue kill_positions_latest), comme match_objective_stats : copiée telle quelle,
+	// colonnes techniques comprises, et son killer_xuid est remappé À LA COPIE — jamais par un
+	// UPDATE après coup (garde-rail TestNoMutationOnAppendOnlyTablesInOps).
+	{name: "kill_positions", where: matchIDInClause, identity: [][2]string{{colKillerXUID, ""}}},
+	{name: "weapon_accuracy", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
 }
 
 // Tables player à extraire. sessions/career_progression/player_csr_snapshots
 // copiés intégralement (pas filtrés par match_id car données globales joueur).
 var playerTablesWhere = []extractTable{
-	{name: playerEnrichmentTable, where: matchIDInClause},
+	// friends_xuids / teammates_signature : listes de xuid séparés par des virgules (amis
+	// présents, signature TRIÉE des coéquipiers — la réécriture garde l'ordre trié).
+	{name: playerEnrichmentTable, where: matchIDInClause, xuidLists: []string{"friends_xuids", "teammates_signature"}},
 	{name: "match_citations", where: matchIDInClause},
 	{name: "sessions", where: "1=1"},
-	{name: "career_progression", where: "1=1"},
+	{name: "career_progression", where: "1=1", identity: [][2]string{{colXUID, ""}}},
 	// sync_meta : liste d'INCLUSION (défaut-refus) — aucun credential ne peut
 	// traverser, pas même une clé credential future. Politique + justification de
 	// chaque clé retenue : seed_demo_sync_meta.go.
 	{name: "sync_meta", where: demoSyncMetaWhere()},
 	{name: "match_skill_rank", where: matchIDInClause, appendOnly: true},
 	{name: "player_csr_snapshots", where: "1=1", appendOnly: true},
-	{name: "battlepass_snapshots", where: "1=1"},
+	{name: "battlepass_snapshots", where: "1=1", identity: [][2]string{{colXUID, ""}}},
+	// personal_score_awards : append-only par GÉNÉRATION (generation_id, written_at, is_tombstone),
+	// copiée telle quelle ; sa vue _latest (score d'objectif du tableau, radar de la vue match) est
+	// recréée par la migration. player_assists_model : coefficients par mode, sans identité.
+	{name: "personal_score_awards", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
+	{name: "player_assists_model", where: "1=1"},
 }
 
 // extractSelectExpr retourne l'expression SELECT pour une table extraite.
@@ -265,29 +318,30 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		return res, fmt.Errorf("seed-demo: %w", err)
 	}
 
-	// titleOut : sous-répertoire de sortie title-scopé. Titre par défaut → OutDir
+	// Disposition de l'arbre démo (title.DemoLayout, source unique) : titre par défaut → OutDir
 	// plat (byte-identique mono-titre) ; titre additionnel → OutDir/titles/{slug}/.
-	titleOut := demoTitleSubdir(opts.OutDir, opts.TitleSlug)
+	layout := titlePkg.NewDemoLayout(opts.OutDir)
 
 	slog.InfoContext(ctx, "seed-demo: démarrage",
 		"title_slug", opts.TitleSlug,
 		"source_gamertag", opts.SourceLabel,
 		"source_xuid", opts.SourceXUID,
 		"max_matches", opts.MaxMatches,
-		"out_dir", titleOut,
+		"out_dir", layout.TitleDir(opts.TitleSlug),
 		"include_media", opts.IncludeMedia,
 	)
 
 	// Phases 0+1+1b : corpus (figé via manifeste ou dynamique) + roster démo.
-	matchIDs, roster, frozen, err := resolveDemoCorpusAndRoster(ctx, opts)
-	res.Frozen = frozen
+	sel, err := resolveDemoCorpusAndRoster(ctx, opts)
+	res.Frozen = sel.frozen
 	if err != nil {
 		return res, err
 	}
+	matchIDs, roster := sel.matchIDs, sel.roster
 	res.MatchIDs = matchIDs
 
 	// Phases 2-4 : warehouse démo (metadata copiée + shared extrait + anonymisé + migré).
-	metaCopied, sharedRows, err := buildDemoWarehouse(ctx, opts, titleOut, matchIDs, roster)
+	metaCopied, sharedRows, err := buildDemoWarehouse(ctx, opts, layout, matchIDs, roster)
 	res.MetadataCopied = metaCopied
 	if err != nil {
 		return res, err
@@ -295,7 +349,7 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	res.SharedRows = sharedRows
 
 	// 5. Player DB du roster (DemoPlayer principal + coéquipiers principaux).
-	seeded, playerRows, err := seedDemoPlayerDBs(ctx, opts, titleOut, matchIDs, roster)
+	seeded, playerRows, err := seedDemoPlayerDBs(ctx, opts, layout, matchIDs, roster)
 	if err != nil {
 		return res, err
 	}
@@ -305,14 +359,14 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	// 5b. shared_social démo : reconstruite AVANT les phases qui y écrivent (médias
 	// puis Prestige). Un seul propriétaire du cycle de vie du fichier → un reseed ne
 	// peut pas empiler deux générations de lignes.
-	outSocial := filepath.Join(titleOut, "warehouse", "shared_social.duckdb")
+	outSocial := layout.SharedSocialDBPath(opts.TitleSlug)
 	if err := rebuildDemoSharedSocial(ctx, outSocial); err != nil {
 		return res, fmt.Errorf("seed-demo: %w", err)
 	}
 
 	// 6. Médias (DemoPlayer principal).
 	if opts.IncludeMedia {
-		mediaCount, mediaErr := seedDemoMediaFiles(ctx, opts, titleOut, matchIDs)
+		mediaCount, mediaErr := seedDemoMediaFiles(ctx, opts, layout, matchIDs)
 		if mediaErr != nil {
 			slog.WarnContext(ctx, "seed-demo: extraction média partielle", "err", mediaErr, "copied", mediaCount)
 		}
@@ -322,11 +376,20 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	// 6b. Échantillons Prestige (arcs, objectifs, points de progression, séries,
 	// records, jalons, escouade) dérivés du corpus démo. Sans cette phase les pages
 	// Prestige/Ascension sont accessibles (prestige_enabled=true) mais vides.
-	prestigeRows, prestigeErr := seedDemoPrestige(ctx, titleOut, opts.TitleSlug, matchIDs)
+	prestigeRows, prestigeErr := seedDemoPrestige(ctx, layout, opts.TitleSlug, matchIDs)
 	if prestigeErr != nil {
 		return res, fmt.Errorf("seed-demo: %w", prestigeErr)
 	}
 	res.PrestigeRows = prestigeRows
+
+	// 6c. Rejeux figés (un par mode, manifeste) : films embarqués, artefacts au dernier schéma.
+	res.Replays = seedDemoReplays(ctx, opts, layout, sel.replays, roster)
+
+	// 6d. Contrôle des VALEURS : aucune identité réelle ne doit subsister dans les bases
+	// générées (seed_demo_anonymize_check.go). Une fuite fait échouer le seed.
+	if err := verifyDemoAnonymization(ctx, opts, layout, seeded, roster); err != nil {
+		return res, fmt.Errorf("seed-demo: %w", err)
+	}
 
 	// 7. Configs (db_profiles avec les 3 profils démo + app_settings). SKIP quand
 	// l'orchestrateur multi-titre les écrira une fois (v3) après tous les titres.
@@ -347,82 +410,72 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	return res, nil
 }
 
+// demoCorpusSelection : le corpus retenu, son roster démo, frozen=true si un manifeste figé
+// a été utilisé, et les rejeux figés de ce manifeste.
+type demoCorpusSelection struct {
+	matchIDs []string
+	roster   []demoRosterEntry
+	frozen   bool
+	replays  []DemoReplayPick
+}
+
 // resolveDemoCorpusAndRoster sélectionne le corpus (figé via manifeste ou dynamique
 // « N récents ») puis construit le roster démo (source + coéquipiers principaux + autres
 // participants → identités démo stables, anti-fuite). Phases 0+1+1b de SeedDemo (K2d).
-// frozen=true si un manifeste figé a été utilisé.
-func resolveDemoCorpusAndRoster(ctx context.Context, opts SeedDemoOptions) (matchIDs []string, roster []demoRosterEntry, frozen bool, err error) {
-	// 0. Manifeste figé (optionnel) : config/demo/<gamertag>/<slug>.json → corpus reproductible.
-	var manifest *DemoManifest
-	if !opts.IgnoreManifest && opts.RepoRoot != "" && opts.SourceLabel != "" {
-		mp := titlePkg.NewPathResolver(opts.RepoRoot).DemoManifestPath(opts.SourceLabel, opts.TitleSlug)
-		m, found, mErr := LoadDemoManifest(mp)
-		if mErr != nil {
-			return nil, nil, false, fmt.Errorf("seed-demo: %w", mErr)
-		}
-		if found {
-			manifest = m
-			frozen = true
-			slog.InfoContext(ctx, "seed-demo: manifeste figé chargé", "path", mp, "corpus", len(m.CorpusMatchIDs()))
-		}
+func resolveDemoCorpusAndRoster(ctx context.Context, opts SeedDemoOptions) (sel demoCorpusSelection, err error) {
+	// 0+1. Corpus (manifeste figé ou sélection dynamique), Campagne exclue.
+	dc, manifest, err := resolveDemoCorpus(ctx, opts)
+	if err != nil {
+		return sel, err
 	}
-
-	// 1. Corpus = solo ∪ squad ∪ ranked ∪ media (ordre solo→squad→ranked→media, dédupliqué).
-	var dc dynamicCorpus
 	if manifest != nil {
-		dc = dynamicCorpus{
-			solo:   manifest.Corpus.SoloMatchIDs,
-			squad:  manifest.Corpus.SquadMatchIDs,
-			ranked: manifest.Corpus.RankedMatchIDs,
-			media:  manifest.Corpus.MediaMatchIDs,
-		}
-	} else {
-		dc = selectDynamicCorpus(ctx, opts)
+		sel.frozen = true
+		sel.replays = manifest.Corpus.ReplayMatches
 	}
-	matchIDs = unionMatchIDs(dc.solo, dc.squad, dc.ranked, dc.media)
-	if len(matchIDs) == 0 {
-		return nil, nil, frozen, fmt.Errorf("seed-demo: aucun match trouvé pour xuid=%s dans %s",
+	// Les matchs des rejeux figés entrent dans le corpus : vue match, roster et anonymisation
+	// les couvrent comme les autres.
+	sel.matchIDs = unionMatchIDs(dc.solo, dc.squad, dc.ranked, dc.media, replayPickMatchIDs(sel.replays))
+	if len(sel.matchIDs) == 0 {
+		return sel, fmt.Errorf("seed-demo: aucun match trouvé pour xuid=%s dans %s",
 			opts.SourceXUID, opts.SourceSharedDB)
 	}
 	slog.InfoContext(ctx, "seed-demo: corpus sélectionné",
-		"frozen", manifest != nil, "total", len(matchIDs),
-		"solo", len(dc.solo), "squad", len(dc.squad), "ranked", len(dc.ranked), "media", len(dc.media))
+		"frozen", manifest != nil, "total", len(sel.matchIDs),
+		"solo", len(dc.solo), "squad", len(dc.squad), "ranked", len(dc.ranked), "media", len(dc.media),
+		"replays", len(sel.replays))
 
 	// 1b. Roster démo (dérivé du corpus : figé ⇒ déterministe + couverture xuids réels).
-	roster, err = buildDemoRoster(ctx, opts.SourceSharedDB, dc.squad, matchIDs, opts.SourceXUID, 2)
+	sel.roster, err = buildDemoRoster(ctx, opts.SourceSharedDB, dc.squad, sel.matchIDs, opts.SourceXUID, 2)
 	if err != nil {
-		return nil, nil, frozen, fmt.Errorf("seed-demo: build roster: %w", err)
+		return sel, fmt.Errorf("seed-demo: build roster: %w", err)
 	}
-	slog.InfoContext(ctx, "seed-demo: roster démo construit", "participants", len(roster))
-	return matchIDs, roster, frozen, nil
+	slog.InfoContext(ctx, "seed-demo: roster démo construit", "participants", len(sel.roster))
+	return sel, nil
 }
 
 // buildDemoWarehouse copie la metadata, extrait le shared filtré sur le corpus, anonymise
 // universellement (xuid+gamertag → identités démo, aucun vrai gamertag ne fuite) puis migre
 // le shared (append-only + vues _latest, idempotent). Phases 2-4 de SeedDemo (K2d).
 // metaCopied=true dès que la copie metadata a réussi (préservé même si une phase suivante échoue).
-func buildDemoWarehouse(ctx context.Context, opts SeedDemoOptions, titleOut string,
+func buildDemoWarehouse(ctx context.Context, opts SeedDemoOptions, layout titlePkg.DemoLayout,
 	matchIDs []string, roster []demoRosterEntry) (metaCopied bool, sharedRows map[string]int, err error) {
 	// 2. Copie metadata.duckdb.
-	outMeta := filepath.Join(titleOut, "warehouse", "metadata.duckdb")
+	outMeta := layout.MetadataDBPath(opts.TitleSlug)
 	if err = copyMetadataFile(opts.SourceMetaDB, outMeta); err != nil {
 		return false, nil, fmt.Errorf("seed-demo: copy metadata: %w", err)
 	}
 	slog.InfoContext(ctx, "seed-demo: metadata copiée", "out", outMeta)
 
-	// 3. Extraction shared.
-	outShared := filepath.Join(titleOut, "warehouse", "shared_matches_v2.duckdb")
-	sharedRows, err = extractSharedTables(ctx, opts.SourceSharedDB, outShared, matchIDs, opts.SourceXUID, opts.DemoXUID)
+	outShared := layout.SharedDBPath(opts.TitleSlug)
+	// 3. Extraction shared, ANONYMISÉE À LA COPIE (xuid+gamertag → identités démo du roster :
+	// Escouade, kill-feed, Face-à-face — aucune fuite ; cf. seed_demo_anonymize.go).
+	sharedRows, err = extractSharedTables(ctx,
+		sharedExtraction{srcPath: opts.SourceSharedDB, dstPath: outShared, titleSlug: opts.TitleSlug}, matchIDs, roster)
 	if err != nil {
 		return true, nil, fmt.Errorf("seed-demo: extract shared: %w", err)
 	}
-	slog.InfoContext(ctx, "seed-demo: shared extraite", "out", outShared, "rows", sharedRows)
-
-	// 3b. Anonymisation universelle (Escouade, kill-feed, Face-à-face — aucune fuite).
-	if err = anonymizeSharedUniversal(ctx, outShared, roster); err != nil {
-		return true, sharedRows, fmt.Errorf("seed-demo: anonymisation universelle: %w", err)
-	}
-	slog.InfoContext(ctx, "seed-demo: anonymisation universelle appliquée", "mapped", len(roster))
+	slog.InfoContext(ctx, "seed-demo: shared extraite et anonymisée", "out", outShared,
+		"rows", sharedRows, "mapped", len(roster))
 
 	// 4. Migration shared (reconstruit tables append-only + vues _latest, idempotent).
 	if err = applyMigrationsOnPath(outShared, migration.TargetShared); err != nil {
@@ -436,7 +489,7 @@ func buildDemoWarehouse(ctx context.Context, opts SeedDemoOptions, titleOut stri
 // chacune filtrée sur le corpus + anonymisée vers son xuid démo + migrée. Identité Spartan
 // empruntée pour le principal (le source n'a pas de customization propre). Phase 5 (K2d).
 // playerRows = compteurs du DemoPlayer principal (i==0).
-func seedDemoPlayerDBs(ctx context.Context, opts SeedDemoOptions, titleOut string,
+func seedDemoPlayerDBs(ctx context.Context, opts SeedDemoOptions, layout titlePkg.DemoLayout,
 	matchIDs []string, roster []demoRosterEntry) (seeded []seededDemoPlayer, playerRows map[string]int, err error) {
 	mains := rosterMains(roster)
 	for i, m := range mains {
@@ -453,8 +506,8 @@ func seedDemoPlayerDBs(ctx context.Context, opts SeedDemoOptions, titleOut strin
 			srcPlayerDB = filepath.Join(opts.RepoRoot, rel)
 		}
 		demoDir := demoDirForIndex(i)
-		outP := filepath.Join(titleOut, "players", demoDir, "stats.duckdb")
-		rows, perr := extractPlayerTables(ctx, srcPlayerDB, outP, matchIDs, m.SourceXUID, m.DemoXUID)
+		outP := layout.PlayerDBPath(opts.TitleSlug, demoDir)
+		rows, perr := extractPlayerTables(ctx, srcPlayerDB, outP, matchIDs, roster)
 		if perr != nil {
 			if i == 0 {
 				return seeded, playerRows, fmt.Errorf("seed-demo: extract player principal: %w", perr)
@@ -483,9 +536,9 @@ func seedDemoPlayerDBs(ctx context.Context, opts SeedDemoOptions, titleOut strin
 // seedDemoMediaFiles extrait les médias du DemoPlayer principal (fichiers → dir média PLAT
 // servi par ServeMediaFile ; shared_social title-scopé). Infinite : flux HLS + attribution
 // par carte ; titre additionnel : clips mp4 + association réelle indexée. Phase 6 (K2d).
-func seedDemoMediaFiles(ctx context.Context, opts SeedDemoOptions, titleOut string, matchIDs []string) (int, error) {
-	flatMediaDir := filepath.Join(opts.OutDir, "players", DefaultDemoGamertag, "media")
-	outSocial := filepath.Join(titleOut, "warehouse", "shared_social.duckdb")
+func seedDemoMediaFiles(ctx context.Context, opts SeedDemoOptions, layout titlePkg.DemoLayout, matchIDs []string) (int, error) {
+	flatMediaDir := filepath.Join(layout.PlayerDir(titlePkg.DefaultSlug, DefaultDemoGamertag), "media")
+	outSocial := layout.SharedSocialDBPath(opts.TitleSlug)
 	// shared_social SOURCE (prod) : même dossier warehouse que shared_matches_v2.
 	srcSocialDB := filepath.Join(filepath.Dir(opts.SourceSharedDB), "shared_social.duckdb")
 	if opts.TitleSlug == titlePkg.DefaultSlug {
@@ -597,8 +650,9 @@ func ResolveSourceXUIDFromProfiles(profilesPath, gamertag string) (xuid, playerD
 	return p.XUID, p.DBPath, nil
 }
 
-// selectRecentMatchIDs retourne les N match_ids les plus récents du joueur dans shared.
-func selectRecentMatchIDs(ctx context.Context, sharedDBPath, xuid string, limit int) ([]string, error) {
+// selectRecentMatchIDs retourne les N match_ids les plus récents du joueur dans shared, hors
+// Campagne du titre (le corpus démo ne porte que des matchs que l'app affiche).
+func selectRecentMatchIDs(ctx context.Context, sharedDBPath, xuid, titleSlug string, limit int) ([]string, error) {
 	db, err := sql.Open("duckdb", sharedDBPath+"?access_mode=READ_ONLY")
 	if err != nil {
 		return nil, fmt.Errorf("open shared: %w", err)
@@ -609,7 +663,7 @@ func selectRecentMatchIDs(ctx context.Context, sharedDBPath, xuid string, limit 
 		SELECT mr.match_id
 		FROM match_registry mr
 		JOIN match_participants mp ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ?
+		WHERE mp.xuid = ?`+analysis.SQLExcludeCampaignVariants(titleSlug, "mr")+`
 		ORDER BY mr.start_time DESC
 		LIMIT ?`, xuid, limit)
 	if err != nil {
@@ -625,43 +679,6 @@ func selectRecentMatchIDs(ctx context.Context, sharedDBPath, xuid string, limit 
 		out = append(out, id)
 	}
 	return out, rows.Err()
-}
-
-// dynamicCorpus regroupe les 4 sous-listes de la sélection démo (solo/squad/ranked/
-// media), avant union. Partagé par SeedDemo (chemin dynamique) et EmitDemoManifest.
-type dynamicCorpus struct {
-	solo, squad, ranked, media []string
-}
-
-// selectDynamicCorpus exécute la sélection dynamique « N plus récents » (comportement
-// historique). Chaque source est best-effort : un échec logge un warn et laisse la
-// sous-liste vide (l'union reste exploitable tant qu'au moins une source répond).
-func selectDynamicCorpus(ctx context.Context, opts SeedDemoOptions) dynamicCorpus {
-	var dc dynamicCorpus
-	if r, err := selectRecentMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, opts.MaxMatches); err != nil {
-		slog.WarnContext(ctx, "seed-demo: matchs récents indisponibles", "err", err)
-	} else {
-		dc.solo = r
-	}
-	if s, err := selectSquadSessionCorpus(ctx, opts.SourcePlayerDB, DefaultSquadSessions); err != nil {
-		slog.WarnContext(ctx, "seed-demo: corpus squad indisponible", "err", err)
-	} else {
-		dc.squad = s
-	}
-	if rk, err := selectRecentRankedMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, DefaultRankedMatches); err != nil {
-		slog.WarnContext(ctx, "seed-demo: matchs classés indisponibles", "err", err)
-	} else {
-		dc.ranked = rk
-	}
-	if opts.IncludeMedia {
-		srcSocialDB := filepath.Join(filepath.Dir(opts.SourceSharedDB), "shared_social.duckdb")
-		if mm, err := selectMediaAnchoredMatchIDs(ctx, srcSocialDB, opts.MaxMedia); err != nil {
-			slog.WarnContext(ctx, "seed-demo: corpus média-ancré indisponible", "err", err)
-		} else {
-			dc.media = mm
-		}
-	}
-	return dc
 }
 
 // copyMetadataFile installe une copie bit-à-bit de src en dst en REMPLAÇANT L'INODE
@@ -816,15 +833,16 @@ func formatIDsLiteral(ids []string) string {
 	return strings.Join(quoted, ", ")
 }
 
-// extractSharedTables crée out_shared en ATTACHant src_shared et en copiant
-// les 7 tables filtrées sur match_ids. Anonymise sourceXUID → demoXUID dans
-// match_participants et xuid_aliases. Recrée les vues V6 à la fin.
+// extractSharedTables crée out_shared en ATTACHant src_shared et en copiant les tables de
+// sharedTablesFor(titre) filtrées sur match_ids, ANONYMISÉES À LA COPIE par le roster démo
+// (copyAnonymizedTables). Recrée les vues V6 à la fin.
 func extractSharedTables(
 	ctx context.Context,
-	srcPath, dstPath string,
+	ex sharedExtraction,
 	matchIDs []string,
-	sourceXUID, demoXUID string,
+	roster []demoRosterEntry,
 ) (map[string]int, error) {
+	srcPath, dstPath := ex.srcPath, ex.dstPath
 	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 		return nil, fmt.Errorf("mkdir: %w", err)
 	}
@@ -846,38 +864,13 @@ func extractSharedTables(
 	}
 	defer func() { _, _ = dst.ExecContext(ctx, "DETACH src") }()
 
-	idsLit := formatIDsLiteral(matchIDs)
-	counts := make(map[string]int, len(sharedTablesWhere))
-	for _, t := range sharedTablesWhere {
-		where := fmt.Sprintf(t.where, idsLit)
-		stmt := fmt.Sprintf(`CREATE TABLE %s AS SELECT %s FROM src.%s WHERE %s`,
-			t.name, extractSelectExpr(t.appendOnly), t.name, where)
-		if _, err := dst.ExecContext(ctx, stmt); err != nil {
-			// Table source absente (ex. match_csrs sur une DB sans données CSR, ou
-			// fixture de test minimal) : best-effort comme les corpus squad/ranked.
-			// Les tables append-only sont de toute façon (re)créées vides + vue
-			// _latest par les migrations canoniques (applyMigrationsOnPath) → on
-			// n'avorte pas le seed pour ça.
-			if strings.Contains(err.Error(), "does not exist") {
-				slog.WarnContext(ctx, "seed-demo: table source absente, ignorée", "table", t.name, "err", err)
-				counts[t.name] = 0
-				continue
-			}
-			return counts, fmt.Errorf("extract %s: %w", t.name, err)
-		}
-		var n int
-		if err := dst.QueryRowContext(ctx, fmt.Sprintf("SELECT COUNT(*) FROM %s", t.name)).Scan(&n); err != nil {
-			return counts, fmt.Errorf("count %s: %w", t.name, err)
-		}
-		counts[t.name] = n
+	// Tables append-only absentes de la source : (re)créées vides avec leur vue _latest par
+	// les migrations canoniques (applyMigrationsOnPath), le seed n'avorte pas pour ça.
+	counts, err := copyAnonymizedTables(ctx, dst, sharedTablesFor(ex.titleSlug), formatIDsLiteral(matchIDs),
+		rosterRemaps(roster), false)
+	if err != nil {
+		return counts, err
 	}
-
-	// NB : l'anonymisation des xuid/gamertag (source + coéquipiers + autres) est
-	// faite par applyUniversalAnonymization() côté SeedDemo, après extraction, via
-	// le roster démo — pas ici. (sourceXUID/demoXUID restent dans la signature pour
-	// compat appelants/tests, mais ne sont plus utilisés ici.)
-	_ = sourceXUID
-	_ = demoXUID
 
 	// Recréer les vues V6 (v_gamertag_lookup, v_match_full, v_weapon_kills).
 	if err := recreateSharedViews(ctx, dst); err != nil {
@@ -888,13 +881,14 @@ func extractSharedTables(
 }
 
 // extractPlayerTables extrait les tables enrichment/citations/sessions/career/sync_meta/skill_rank
-// et anonymise sourceXUID → demoXUID. La table sync_meta est filtrée par la liste
-// d'INCLUSION de seed_demo_sync_meta.go : elle ne porte plus de xuid à réécrire.
+// et les anonymise par le roster démo (le joueur lui-même ET les amis cités par
+// friends_xuids). La table sync_meta est filtrée par la liste d'INCLUSION de
+// seed_demo_sync_meta.go : elle ne porte plus de xuid à réécrire.
 func extractPlayerTables(
 	ctx context.Context,
 	srcPath, dstPath string,
 	matchIDs []string,
-	sourceXUID, demoXUID string,
+	roster []demoRosterEntry,
 ) (map[string]int, error) {
 	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 		return nil, fmt.Errorf("mkdir: %w", err)
@@ -914,61 +908,19 @@ func extractPlayerTables(
 	}
 	defer func() { _, _ = dst.ExecContext(ctx, "DETACH src") }()
 
-	idsLit := formatIDsLiteral(matchIDs)
-	counts := make(map[string]int, len(playerTablesWhere))
-	for _, t := range playerTablesWhere {
-		where := t.where
-		if strings.Contains(where, "%s") {
-			where = fmt.Sprintf(where, idsLit)
-		}
-		stmt := fmt.Sprintf(`CREATE TABLE %s AS SELECT %s FROM src.%s WHERE %s`,
-			t.name, extractSelectExpr(t.appendOnly), t.name, where)
-		if _, err := dst.ExecContext(ctx, stmt); err != nil {
-			// Tolérant : certaines tables peuvent ne pas exister (ex : match_skill_rank
-			// sur DB legacy). Log et continue.
-			slog.WarnContext(ctx, "seed-demo: extract player table partielle",
-				"table", t.name, "err", err)
-			counts[t.name] = 0
-			continue
-		}
-		var n int
-		if err := dst.QueryRowContext(ctx, fmt.Sprintf("SELECT COUNT(*) FROM %s", t.name)).Scan(&n); err != nil {
-			return counts, fmt.Errorf("count %s: %w", t.name, err)
-		}
-		counts[t.name] = n
-	}
-
-	// Anonymisation : sourceXUID → demoXUID dans tables avec colonne xuid.
-	// Schéma player_match_enrichment / match_skill_rank / match_citations : PAS de xuid
-	// (player DB mono-joueur, xuid implicite via path /data/players/{gamertag}/).
-	// Seule career_progression a une colonne xuid à anonymiser (cf. steps_player.go:36-51).
-	if err := anonymizeXUIDInTables(ctx, dst, sourceXUID, demoXUID,
-		[]string{"career_progression", "battlepass_snapshots"}); err != nil {
-		// Non bloquant
-		slog.WarnContext(ctx, "seed-demo: anonymize player partielle", "err", err)
+	// Identités d'une player DB : le joueur lui-même (career_progression,
+	// battlepass_snapshots) et ses amis (player_match_enrichment.friends_xuids).
+	// Tolérant : une base legacy peut manquer une table ou ses colonnes techniques.
+	counts, err := copyAnonymizedTables(ctx, dst, playerTablesWhere, formatIDsLiteral(matchIDs),
+		rosterRemaps(roster), true)
+	if err != nil {
+		return counts, err
 	}
 	// Pas de réécriture de sync_meta.xuid : la clé ne traverse plus (liste d'inclusion,
 	// seed_demo_sync_meta.go). L'UPDATE qui vivait ici était conditionné à une égalité
 	// de valeur (`WHERE key='xuid' AND value=?`) sans contrôle des lignes touchées : sur
 	// deux sources divergentes il n'anonymisait rien et publiait le xuid RÉEL en silence.
 	return counts, nil
-}
-
-// anonymizeXUIDInTables exécute UPDATE ... SET xuid = ? WHERE xuid = ? sur les
-// tables fournies. Tolérant : les tables sans colonne xuid sont skip avec warn.
-func anonymizeXUIDInTables(
-	ctx context.Context,
-	db *sql.DB,
-	sourceXUID, demoXUID string,
-	tables []string,
-) error {
-	for _, t := range tables {
-		stmt := fmt.Sprintf(`UPDATE %s SET xuid = ? WHERE xuid = ?`, t)
-		if _, err := db.ExecContext(ctx, stmt, demoXUID, sourceXUID); err != nil {
-			return fmt.Errorf("update %s: %w", t, err)
-		}
-	}
-	return nil
 }
 
 // recreateSharedViews recrée v_gamertag_lookup, v_match_full, v_weapon_kills
@@ -979,20 +931,31 @@ func recreateSharedViews(ctx context.Context, db *sql.DB) error {
 	if _, err := db.ExecContext(ctx, analysis.GamertagLookupViewSQL()); err != nil {
 		return fmt.Errorf("v_gamertag_lookup: %w", err)
 	}
-	if _, err := db.ExecContext(ctx, `
-		CREATE OR REPLACE VIEW v_match_full AS SELECT mr.* FROM match_registry mr`); err != nil {
+	if _, err := db.ExecContext(ctx, migration.VMatchFullViewSQL); err != nil {
 		return fmt.Errorf("v_match_full: %w", err)
 	}
-	// v_weapon_kills : tolère table absente. Append-only #23046 (Phase 2) : la vue
-	// ne retourne que la dernière génération par (match_id,xuid) — comme la migration
-	// shared_append_only_weapon_kills_v1 (le demo copie prod qui porte generation_id).
-	_, _ = db.ExecContext(ctx, `
+	// v_weapon_kills : seulement quand la table existe (titre sans décodeur de film, cf.
+	// seed_demo_shared_tables.go) ; son échec de création est RENVOYÉ, jamais avalé.
+	// Append-only #23645 (Phase 2) : la vue ne retourne que la dernière génération par
+	// (match_id,xuid) — comme la migration shared_append_only_weapon_kills_v1 (le demo copie
+	// prod qui porte generation_id).
+	has, err := tableExistsInDB(ctx, db, tableWeaponKills)
+	if err != nil {
+		return fmt.Errorf("v_weapon_kills: %w", err)
+	}
+	if !has {
+		slog.DebugContext(ctx, "seed-demo: v_weapon_kills non créée, table weapon_kills absente (titre à décodeur de film)")
+		return nil
+	}
+	if _, err := db.ExecContext(ctx, `
 		CREATE OR REPLACE VIEW v_weapon_kills AS
 		SELECT * EXCLUDE (rk) FROM (
 			SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id,
 			       DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
 			FROM weapon_kills)
-		WHERE rk = 1`)
+		WHERE rk = 1`); err != nil {
+		return fmt.Errorf("v_weapon_kills: %w", err)
+	}
 	return nil
 }
 

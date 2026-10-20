@@ -1,0 +1,81 @@
+film	build	mesure	valeur
+0797ce72	HI_1_13_0	IDLowBits du cadre des instruments	13
+0797ce72	HI_1_13_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (145 localises / 150 evenements), dauphin 10 (32)
+0797ce72	HI_1_13_0	cardinal des blocs de type 1	8191 entrees x 23 blocs (largeur 13)
+0797ce72	HI_1_13_0	plafond (plus grand slot alloue d un bloc)	2567
+084a804d	HI_1_10_0	IDLowBits du cadre des instruments	13
+084a804d	HI_1_10_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (143 localises / 150 evenements), dauphin 10 (32)
+084a804d	HI_1_10_0	cardinal des blocs de type 1	8191 entrees x 55 blocs (largeur 13)
+084a804d	HI_1_10_0	plafond (plus grand slot alloue d un bloc)	7583
+111fa685	HI_1_10_0	IDLowBits du cadre des instruments	13
+111fa685	HI_1_10_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (141 localises / 150 evenements), dauphin 10 (34)
+111fa685	HI_1_10_0	cardinal des blocs de type 1	8191 entrees x 29 blocs (largeur 13)
+111fa685	HI_1_10_0	plafond (plus grand slot alloue d un bloc)	4250
+11de8353	HI_1_9_0	IDLowBits du cadre des instruments	13
+11de8353	HI_1_9_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (137 localises / 150 evenements), dauphin 10 (20)
+11de8353	HI_1_9_0	cardinal des blocs de type 1	8191 entrees x 31 blocs (largeur 13)
+11de8353	HI_1_9_0	plafond (plus grand slot alloue d un bloc)	3927
+1c4c63c2	HI_1_10_0	IDLowBits du cadre des instruments	13
+1c4c63c2	HI_1_10_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (115 localises / 118 evenements), dauphin 10 (7)
+1c4c63c2	HI_1_10_0	cardinal des blocs de type 1	8191 entrees x 67 blocs (largeur 13)
+1c4c63c2	HI_1_10_0	plafond (plus grand slot alloue d un bloc)	8190
+396cfc92	HI_1_13_0	IDLowBits du cadre des instruments	13
+396cfc92	HI_1_13_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (135 localises / 150 evenements), dauphin 10 (16)
+396cfc92	HI_1_13_0	cardinal des blocs de type 1	8191 entrees x 27 blocs (largeur 13)
+396cfc92	HI_1_13_0	plafond (plus grand slot alloue d un bloc)	2703
+4f77afc1	HI_1_13_0	IDLowBits du cadre des instruments	13
+4f77afc1	HI_1_13_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (135 localises / 146 evenements), dauphin 10 (50)
+4f77afc1	HI_1_13_0	cardinal des blocs de type 1	8191 entrees x 61 blocs (largeur 13)
+4f77afc1	HI_1_13_0	plafond (plus grand slot alloue d un bloc)	7174
+50247b26	version-31	IDLowBits du cadre des instruments	13
+50247b26	version-31	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (123 localises / 150 evenements), dauphin 10 (47)
+50247b26	version-31	cardinal des blocs de type 1	8191 entrees x 30 blocs (largeur 13)
+50247b26	version-31	plafond (plus grand slot alloue d un bloc)	4473
+51ebbc0f	HI_1_13_0	IDLowBits du cadre des instruments	13
+51ebbc0f	HI_1_13_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (50 localises / 51 evenements), dauphin 12 (17)
+51ebbc0f	HI_1_13_0	cardinal des blocs de type 1	8191 entrees x 26 blocs (largeur 13)
+51ebbc0f	HI_1_13_0	plafond (plus grand slot alloue d un bloc)	3036
+60ae07c4	HI_1_8_0	IDLowBits du cadre des instruments	13
+60ae07c4	HI_1_8_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (146 localises / 150 evenements), dauphin 10 (27)
+60ae07c4	HI_1_8_0	cardinal des blocs de type 1	8191 entrees x 42 blocs (largeur 13)
+60ae07c4	HI_1_8_0	plafond (plus grand slot alloue d un bloc)	3007
+a349fea8	version-33	IDLowBits du cadre des instruments	13
+a349fea8	version-33	calibrage ScanMarchFacts	retenu 13 (profil plat : true) ; meilleur 13 (124 localises / 150 evenements), dauphin 11 (116)
+a349fea8	version-33	cardinal des blocs de type 1	8191 entrees x 49 blocs (largeur 13)
+a349fea8	version-33	plafond (plus grand slot alloue d un bloc)	7059
+a521164d	HI_1_4_1	IDLowBits du cadre des instruments	13
+a521164d	HI_1_4_1	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (123 localises / 150 evenements), dauphin 11 (60)
+a521164d	HI_1_4_1	cardinal des blocs de type 1	8191 entrees x 19 blocs (largeur 13)
+a521164d	HI_1_4_1	plafond (plus grand slot alloue d un bloc)	3790
+bcb6d393	HI_1_12_0	IDLowBits du cadre des instruments	13
+bcb6d393	HI_1_12_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (109 localises / 112 evenements), dauphin 10 (19)
+bcb6d393	HI_1_12_0	cardinal des blocs de type 1	8191 entrees x 19 blocs (largeur 13)
+bcb6d393	HI_1_12_0	plafond (plus grand slot alloue d un bloc)	2312
+bf15f7ab	HI_1_13_0	IDLowBits du cadre des instruments	13
+bf15f7ab	HI_1_13_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (56 localises / 59 evenements), dauphin 12 (2)
+bf15f7ab	HI_1_13_0	cardinal des blocs de type 1	8191 entrees x 26 blocs (largeur 13)
+bf15f7ab	HI_1_13_0	plafond (plus grand slot alloue d un bloc)	2479
+bfecd02b	HI_1_13_0	IDLowBits du cadre des instruments	13
+bfecd02b	HI_1_13_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (144 localises / 150 evenements), dauphin 10 (27)
+bfecd02b	HI_1_13_0	cardinal des blocs de type 1	8191 entrees x 27 blocs (largeur 13)
+bfecd02b	HI_1_13_0	plafond (plus grand slot alloue d un bloc)	2644
+c75f33b8	HI_1_13_0	IDLowBits du cadre des instruments	13
+c75f33b8	HI_1_13_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (44 localises / 46 evenements), dauphin 10 (2)
+c75f33b8	HI_1_13_0	cardinal des blocs de type 1	8191 entrees x 24 blocs (largeur 13)
+c75f33b8	HI_1_13_0	plafond (plus grand slot alloue d un bloc)	2784
+d9781168	HI_1_13_0	IDLowBits du cadre des instruments	13
+d9781168	HI_1_13_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (87 localises / 94 evenements), dauphin 11 (15)
+d9781168	HI_1_13_0	cardinal des blocs de type 1	8191 entrees x 37 blocs (largeur 13)
+d9781168	HI_1_13_0	plafond (plus grand slot alloue d un bloc)	3743
+e5adf7b2	HI_1_11_0	IDLowBits du cadre des instruments	13
+e5adf7b2	HI_1_11_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (144 localises / 150 evenements), dauphin 10 (34)
+e5adf7b2	HI_1_11_0	cardinal des blocs de type 1	8191 entrees x 29 blocs (largeur 13)
+e5adf7b2	HI_1_11_0	plafond (plus grand slot alloue d un bloc)	4661
+f75e7053	HI_1_13_0	IDLowBits du cadre des instruments	13
+f75e7053	HI_1_13_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (145 localises / 150 evenements), dauphin 10 (32)
+f75e7053	HI_1_13_0	cardinal des blocs de type 1	8191 entrees x 24 blocs (largeur 13)
+f75e7053	HI_1_13_0	plafond (plus grand slot alloue d un bloc)	2318
+fb1a1a72	HI_1_13_0	IDLowBits du cadre des instruments	13
+fb1a1a72	HI_1_13_0	calibrage ScanMarchFacts	retenu 13 (profil plat : false) ; meilleur 13 (51 localises / 55 evenements), dauphin 12 (15)
+fb1a1a72	HI_1_13_0	cardinal des blocs de type 1	8191 entrees x 41 blocs (largeur 13)
+fb1a1a72	HI_1_13_0	plafond (plus grand slot alloue d un bloc)	3686

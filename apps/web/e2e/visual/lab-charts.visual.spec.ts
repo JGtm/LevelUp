@@ -18,20 +18,24 @@ import { test, expect } from '@playwright/test'
 import { expectCanvasesMatch, gotoSettled, prepareVisualPage } from '../_helpers/visual'
 
 /**
- * Nombre de CANVAS de la vitrine — supérieur au nombre de wrappers (11) car un
- * chart peut être rendu sur plusieurs couches zrender.
+ * Nombre de CANVAS de la vitrine — différent du nombre de wrappers (11) : un chart peut
+ * être rendu sur plusieurs couches zrender, et un wrapper peut ne rendre aucun canvas.
  *
- * 13 depuis `echarts` 6.1.0 : `Heatmap2DChart` y est rendu sur 3 canvas
- * superposés (une seule instance ECharts, trois couches) là où la 5.6.0
- * n'en produisait qu'un. Constaté au bump, cf. e2e/visual/README.md — c'est un
- * changement de STRUCTURE de rendu, pas un changement d'apparence : les captures
- * de canvas isolés qui suivent la heatmap sont décalées de +2 en conséquence.
+ *   - `Heatmap2DChart` : 3 canvas superposés (une seule instance ECharts, trois couches)
+ *     depuis `echarts` 6.1.0, là où la 5.6.0 n'en produisait qu'un — les captures de
+ *     canvas qui suivent la heatmap sont décalées de +2 (cf. e2e/visual/README.md) ;
+ *   - `FirstBloodLanes` : rendu en SVG (« un bitmap figé ne peut pas être net »,
+ *     `ChartCard renderer="svg"`) — aucun canvas, donc -1 et les captures qui le suivent
+ *     sont décalées de -1.
+ *
+ * Total : 8 wrappers à 1 canvas + heatmap (3) + `FirstBloodLanes` (0) + 1 canvas monté hors
+ * `chart-card` (wrapper qui instancie ECharts sans ChartCard) = 12.
  *
  * Volontairement EN DUR : ajouter un wrapper à la page sans ajouter sa baseline
  * ferait passer le harnais à côté du nouveau composant. L'échec attendu ici est
  * un rappel, pas une gêne.
  */
-const SHOWCASE_CANVAS_COUNT = 13
+const SHOWCASE_CANVAS_COUNT = 12
 
 test.describe('Régression visuelle — vitrine des wrappers ECharts', () => {
   test.beforeEach(async ({ page }) => {

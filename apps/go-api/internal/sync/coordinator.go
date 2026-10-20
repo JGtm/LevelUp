@@ -43,6 +43,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
@@ -54,6 +55,10 @@ const (
 	metricGateGranted   = "sync_gate_claims_granted_total"   // claims auto/HTTP accordés
 	metricGateCoalesced = "sync_gate_claims_coalesced_total" // claims auto/HTTP cédés (double-fetch évité)
 	metricGateInflight  = "sync_gate_inflight"               // jauge claims gate en cours (une valeur figée = fuite)
+	// metricRefusedNoProfile compte les requêtes refusées faute de profil suivi
+	// (ADR 0035 D3). Une valeur qui grimpe = une identité qui frappe à la porte
+	// sans être déclarée : c'est le signal qu'on n'avait pas le 2026-07-23.
+	metricRefusedNoProfile = "sync_refused_no_profile"
 )
 
 // staleClaimThreshold : au-delà, un claim est considéré potentiellement FUITÉ
@@ -184,6 +189,10 @@ type Coordinator struct {
 	// gate-claimés finissent avant duckdb.CloseAll(). gateWG.Add n'a lieu que sous
 	// inFlightMu ET tant que !closing → jamais concurrent à gateWG.Wait.
 	gateWG sync.WaitGroup
+	// profileGate : porte « profil suivi » (ADR 0035 D3). nil = porte ouverte —
+	// c'est le seam des tests et des montages sans config (le câblage réel la pose
+	// dans cmd/server/main.go via watcher.Daemon.WithProfileGate).
+	profileGate domain.ProfileGate
 }
 
 // NewCoordinator crée un coordinateur avec limite de syncs parallèles.
@@ -205,6 +214,18 @@ func (c *Coordinator) SetOnComplete(fn func(gamertag string, err error)) {
 	c.onComplete = fn
 }
 
+// WithProfileGate pose la porte « profil suivi » sur Submit (ADR 0035 D3) : une
+// requête pour un joueur qui n'a pas de profil suivi pour ce titre est refusée,
+// journalisée en WARN et comptée (sync_refused_no_profile) — aucun fetch API,
+// aucune player DB créée, aucune écriture dans l'entrepôt partagé.
+//
+// Gate nil = porte ouverte (comportement historique) : c'est volontaire pour les
+// tests et les montages sans config, mais le serveur la pose TOUJOURS.
+func (c *Coordinator) WithProfileGate(g domain.ProfileGate) *Coordinator {
+	c.profileGate = g
+	return c
+}
+
 // Submit soumet une requête de sync.
 // Retourne immédiatement — le sync est exécuté en goroutine.
 // Retourne false si le joueur a déjà un sync en cours.
@@ -214,6 +235,27 @@ func (c *Coordinator) Submit(ctx context.Context, req CoordinatorRequest) bool {
 	// (sync.RunDelta dans c.runner.RunSync). Permet de répondre "pourquoi
 	// cette requête a-t-elle été dédupée ?".
 	ctx, evID := logging.WithEvent(ctx, "coordinator.submit:"+req.Gamertag)
+
+	// Porte « profil suivi » (ADR 0035 D3) — AVANT le claim in-flight : un joueur
+	// sans profil ne doit occuper ni slot de dédup, ni sémaphore, ni goroutine.
+	// Le titre est normalisé comme le fait gateKey juste après : un titre vide
+	// (mono-titre historique) serait sinon lu « tous les titres » par le chargeur
+	// de profils, et le profil d'un AUTRE jeu ouvrirait ce sync-ci.
+	gateTitle := req.TitleSlug
+	if gateTitle == "" {
+		gateTitle = titlePkg.DefaultSlug
+	}
+	if c.profileGate != nil && !c.profileGate(ctx, gateTitle, req.XUID) {
+		observability.IncCounter(metricRefusedNoProfile)
+		slog.WarnContext(ctx, "coordinator: requête refusée — joueur sans profil suivi",
+			"gamertag", req.Gamertag,
+			"xuid", req.XUID,
+			"title_slug", gateTitle,
+			"match_count", len(req.MatchIDs),
+			"event", evID,
+		)
+		return false
+	}
 
 	// Le watcher est PRIORITAIRE : son claim ne dédoublonne QUE contre un autre
 	// sync watcher du même joueur (jamais contre auto/HTTP). Il n'est donc jamais

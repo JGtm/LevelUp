@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "module": "forest",
+  "mapNames": [
+    "forest",
+    "forest_-_ranked_map",
+    "forest_map"
+  ],
+  "image": "forest.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-12T22:59:40.332021Z",
+  "style": "jeu",
+  "calibration": {
+    "metersPerPixel": 0.092,
+    "originX": -79.5,
+    "originY": 73.88809156799317,
+    "widthPx": 1423,
+    "heightPx": 1562,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 18,
+    "anchorsInFrame": 18,
+    "anchorsWithGround": 14,
+    "anchorMedianGapM": -0.2964311824878676,
+    "instancesDrawn": 6880,
+    "instancesScenery": 286,
+    "playLevelZ": 1.8945884323120117,
+    "boundaryApplied": true,
+    "boundaryPlanes": 12,
+    "boundaryCellsCleared": 1876097,
+    "waterVolumes": 51,
+    "waterCells": 34703,
+    "coveredShare": 0.21031069070981986,
+    "covered": false
+  }
+}

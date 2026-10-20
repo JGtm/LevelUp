@@ -1,0 +1,1731 @@
+film	build	variante	cause	paquets
+0797ce72	HI_1_13_0	grammaire-ti43-T7	liste d evenements non localisee	309
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=0 i11 game-engine-soft-ceilings-component	9
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=0 i13 game-engine-disabled-kill-volume-flags-component	4
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=0 i15 managed-engine-timers-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=0 i16 scenario-intro-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=0 i17 matchflow-isplaying-flags-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=0 i18 forge-engine-player-roles-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=0 i19 forge-engine-total-budget-component	6
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=0 i22 forge-engine-monitor-noclip-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=0 i23 forge-engine-ugc-status-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=1 i11 game-engine-soft-ceilings-component	3
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=1 i13 game-engine-disabled-kill-volume-flags-component	3
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=10 i4 managed-object-navpoint-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=10 i5 managed-object-navpoint-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=11 i4 managed-objective-interaction-filter-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=12 i13 managed-navpoint-top-progress	4
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=12 i15 managed-navpoint-bottom-progress	3
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=12 i2 managed-navpoint-visibility-distance-filters-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=12 i4 managed-navpoint-can-be-occluded-filters-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=14 i1 crew-marked-objects-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=15 i1 nav-cutscene-flag-component	3
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=18 i0 effect-state-data-component	6
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=18 i1 effect-state-data-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=18 i12 effect-state-data-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=18 i2 effect-state-data-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=18 i28 effect-state-data-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=18 i3 effect-state-data-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=18 i4 effect-state-data-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=18 i7 effect-state-data-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=18 i8 effect-state-data-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=18 i9 effect-state-data-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=19 i0 sound-placement-state-data-component	6
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=19 i2 sound-placement-state-data-component	3
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=19 i4 sound-placement-state-data-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=19 i8 sound-placement-state-data-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=19 i9 sound-placement-state-data-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=2 i11 game-engine-soft-ceilings-component	15
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=2 i13 game-engine-disabled-kill-volume-flags-component	8
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	6
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=20 i2 spawn-filter-filters-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=23 i0 selectable-zone-data-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=24 i0 state-checksum-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=24 i14 persistence-state-bucket-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=24 i3 persistence-state-bucket-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=24 i5 persistence-state-bucket-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=25 i0 powerframe-player-selection-data-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=26 i0 supply-lines-blocked-status-component	3
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=26 i1 supply-lines-blocked-status-component	3
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=26 i29 supply-lines-blocked-status-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=26 i4 supply-lines-blocked-status-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=27 i10 supply-lines-item-unlocked-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=27 i3 supply-lines-item-unlocked-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=28 i0 narrative-moment-beat-activation-component	4
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=31 i1 tacmap-mission	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=31 i8 tacmap-objectives	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=34 i10 tacmap-mapdismissallock	4
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=34 i12 tacmap-backmenulocked-state	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=34 i14 tacmap-playercontrol	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=34 i15 tacmap-tooltip-state	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=35 i59 biped-spartan-ability-non-predicted-state	26
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=40 i30 vehicle-auto-turret-triggers-component	3
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=40 i31 vehicle-auto-turret-aiming-vector-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=40 i32 vehicle-transformed-or-desired-open-state-changed-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=40 i33 vehicle-type-state-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=40 i36 vehicle-sentry-state-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=40 i38 vehicle-weapon-set-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=45 i0 matchflow-sequence-data-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=46 i0 state-broker-state-changed-data-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=46 i1 state-broker-state-changed-data-component	2
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=46 i23 state-broker-state-changed-data-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=46 i4 state-broker-state-changed-data-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=48 i0 forge-player-data-edited-objects-ids-component	7
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=48 i1 forge-player-data-editing-graphs-component	3
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=49 i0 managed-radialmenu-title-component	4
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=49 i4 managed-radialmenu-title-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=49 i7 managed-radialmenu-title-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=49 i8 managed-radialmenu-description-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=5 i10 player-primary-respawn-object-component	5
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=50 archetype hors registre	13
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=51 archetype hors registre	10
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=52 archetype hors registre	8
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=53 archetype hors registre	7
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=54 archetype hors registre	5
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=55 archetype hors registre	6
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=56 archetype hors registre	37
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=57 archetype hors registre	7
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=58 archetype hors registre	7
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=59 archetype hors registre	17
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=60 archetype hors registre	12
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=61 archetype hors registre	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=62 archetype hors registre	12
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=63 archetype hors registre	4
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=7 i0 forge-sim-generic-component	3
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=7 i2 forge-sim-generic-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=7 i22 forge-sim-generic-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=7 i3 forge-sim-generic-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	ti=7 i4 forge-sim-generic-component	1
+0797ce72	HI_1_13_0	grammaire-ti43-T7	vue B : fin de payload	220
+0797ce72	HI_1_13_0	grammaire-ti43-T7	vue C : bloc 0xbc non porte	196
+0797ce72	HI_1_13_0	grammaire-ti43-T7	vue C : debordement	21
+0797ce72	HI_1_13_0	grammaire-ti43-T7	vue C : kind non porte	915
+0797ce72	HI_1_13_0	grammaire-ti43-T7	vue C : terminateur hors cadre	5511
+0797ce72	HI_1_13_0	reference	liste d evenements non localisee	309
+0797ce72	HI_1_13_0	reference	ti=0 i11 game-engine-soft-ceilings-component	9
+0797ce72	HI_1_13_0	reference	ti=0 i13 game-engine-disabled-kill-volume-flags-component	4
+0797ce72	HI_1_13_0	reference	ti=0 i15 managed-engine-timers-component	2
+0797ce72	HI_1_13_0	reference	ti=0 i16 scenario-intro-component	2
+0797ce72	HI_1_13_0	reference	ti=0 i17 matchflow-isplaying-flags-component	1
+0797ce72	HI_1_13_0	reference	ti=0 i18 forge-engine-player-roles-component	2
+0797ce72	HI_1_13_0	reference	ti=0 i19 forge-engine-total-budget-component	6
+0797ce72	HI_1_13_0	reference	ti=0 i22 forge-engine-monitor-noclip-component	1
+0797ce72	HI_1_13_0	reference	ti=0 i23 forge-engine-ugc-status-component	1
+0797ce72	HI_1_13_0	reference	ti=1 i11 game-engine-soft-ceilings-component	3
+0797ce72	HI_1_13_0	reference	ti=1 i13 game-engine-disabled-kill-volume-flags-component	3
+0797ce72	HI_1_13_0	reference	ti=10 i4 managed-object-navpoint-component	1
+0797ce72	HI_1_13_0	reference	ti=10 i5 managed-object-navpoint-component	1
+0797ce72	HI_1_13_0	reference	ti=11 i4 managed-objective-interaction-filter-component	2
+0797ce72	HI_1_13_0	reference	ti=12 i13 managed-navpoint-top-progress	4
+0797ce72	HI_1_13_0	reference	ti=12 i15 managed-navpoint-bottom-progress	3
+0797ce72	HI_1_13_0	reference	ti=12 i2 managed-navpoint-visibility-distance-filters-component	1
+0797ce72	HI_1_13_0	reference	ti=12 i4 managed-navpoint-can-be-occluded-filters-component	1
+0797ce72	HI_1_13_0	reference	ti=14 i1 crew-marked-objects-component	2
+0797ce72	HI_1_13_0	reference	ti=15 i1 nav-cutscene-flag-component	3
+0797ce72	HI_1_13_0	reference	ti=18 i0 effect-state-data-component	6
+0797ce72	HI_1_13_0	reference	ti=18 i1 effect-state-data-component	1
+0797ce72	HI_1_13_0	reference	ti=18 i12 effect-state-data-component	2
+0797ce72	HI_1_13_0	reference	ti=18 i2 effect-state-data-component	2
+0797ce72	HI_1_13_0	reference	ti=18 i28 effect-state-data-component	1
+0797ce72	HI_1_13_0	reference	ti=18 i3 effect-state-data-component	1
+0797ce72	HI_1_13_0	reference	ti=18 i4 effect-state-data-component	1
+0797ce72	HI_1_13_0	reference	ti=18 i7 effect-state-data-component	2
+0797ce72	HI_1_13_0	reference	ti=18 i8 effect-state-data-component	1
+0797ce72	HI_1_13_0	reference	ti=18 i9 effect-state-data-component	1
+0797ce72	HI_1_13_0	reference	ti=19 i0 sound-placement-state-data-component	6
+0797ce72	HI_1_13_0	reference	ti=19 i2 sound-placement-state-data-component	3
+0797ce72	HI_1_13_0	reference	ti=19 i4 sound-placement-state-data-component	2
+0797ce72	HI_1_13_0	reference	ti=19 i8 sound-placement-state-data-component	1
+0797ce72	HI_1_13_0	reference	ti=19 i9 sound-placement-state-data-component	1
+0797ce72	HI_1_13_0	reference	ti=2 i11 game-engine-soft-ceilings-component	15
+0797ce72	HI_1_13_0	reference	ti=2 i13 game-engine-disabled-kill-volume-flags-component	8
+0797ce72	HI_1_13_0	reference	ti=2 i15 managed-engine-timers-component	1
+0797ce72	HI_1_13_0	reference	ti=2 i17 matchflow-isplaying-flags-component	6
+0797ce72	HI_1_13_0	reference	ti=20 i2 spawn-filter-filters-component	1
+0797ce72	HI_1_13_0	reference	ti=23 i0 selectable-zone-data-component	2
+0797ce72	HI_1_13_0	reference	ti=24 i0 state-checksum-component	1
+0797ce72	HI_1_13_0	reference	ti=24 i14 persistence-state-bucket-component	1
+0797ce72	HI_1_13_0	reference	ti=24 i3 persistence-state-bucket-component	2
+0797ce72	HI_1_13_0	reference	ti=24 i5 persistence-state-bucket-component	1
+0797ce72	HI_1_13_0	reference	ti=25 i0 powerframe-player-selection-data-component	1
+0797ce72	HI_1_13_0	reference	ti=26 i0 supply-lines-blocked-status-component	3
+0797ce72	HI_1_13_0	reference	ti=26 i1 supply-lines-blocked-status-component	3
+0797ce72	HI_1_13_0	reference	ti=26 i29 supply-lines-blocked-status-component	1
+0797ce72	HI_1_13_0	reference	ti=26 i4 supply-lines-blocked-status-component	1
+0797ce72	HI_1_13_0	reference	ti=27 i10 supply-lines-item-unlocked-component	1
+0797ce72	HI_1_13_0	reference	ti=27 i3 supply-lines-item-unlocked-component	1
+0797ce72	HI_1_13_0	reference	ti=28 i0 narrative-moment-beat-activation-component	4
+0797ce72	HI_1_13_0	reference	ti=31 i1 tacmap-mission	1
+0797ce72	HI_1_13_0	reference	ti=31 i8 tacmap-objectives	1
+0797ce72	HI_1_13_0	reference	ti=34 i10 tacmap-mapdismissallock	4
+0797ce72	HI_1_13_0	reference	ti=34 i12 tacmap-backmenulocked-state	1
+0797ce72	HI_1_13_0	reference	ti=34 i14 tacmap-playercontrol	1
+0797ce72	HI_1_13_0	reference	ti=34 i15 tacmap-tooltip-state	1
+0797ce72	HI_1_13_0	reference	ti=35 i59 biped-spartan-ability-non-predicted-state	26
+0797ce72	HI_1_13_0	reference	ti=40 i30 vehicle-auto-turret-triggers-component	3
+0797ce72	HI_1_13_0	reference	ti=40 i31 vehicle-auto-turret-aiming-vector-component	2
+0797ce72	HI_1_13_0	reference	ti=40 i32 vehicle-transformed-or-desired-open-state-changed-component	1
+0797ce72	HI_1_13_0	reference	ti=40 i33 vehicle-type-state-component	1
+0797ce72	HI_1_13_0	reference	ti=40 i36 vehicle-sentry-state-component	2
+0797ce72	HI_1_13_0	reference	ti=40 i38 vehicle-weapon-set-component	1
+0797ce72	HI_1_13_0	reference	ti=43 i21 device-position-group-component	1
+0797ce72	HI_1_13_0	reference	ti=43 i23 device-power-group-component	2
+0797ce72	HI_1_13_0	reference	ti=43 i27 device-health-station-charges-component	1
+0797ce72	HI_1_13_0	reference	ti=43 i28 device-health-station-in-use-component	1
+0797ce72	HI_1_13_0	reference	ti=45 i0 matchflow-sequence-data-component	2
+0797ce72	HI_1_13_0	reference	ti=46 i0 state-broker-state-changed-data-component	1
+0797ce72	HI_1_13_0	reference	ti=46 i1 state-broker-state-changed-data-component	2
+0797ce72	HI_1_13_0	reference	ti=46 i23 state-broker-state-changed-data-component	1
+0797ce72	HI_1_13_0	reference	ti=46 i4 state-broker-state-changed-data-component	1
+0797ce72	HI_1_13_0	reference	ti=48 i0 forge-player-data-edited-objects-ids-component	7
+0797ce72	HI_1_13_0	reference	ti=48 i1 forge-player-data-editing-graphs-component	3
+0797ce72	HI_1_13_0	reference	ti=49 i0 managed-radialmenu-title-component	4
+0797ce72	HI_1_13_0	reference	ti=49 i4 managed-radialmenu-title-component	1
+0797ce72	HI_1_13_0	reference	ti=49 i7 managed-radialmenu-title-component	1
+0797ce72	HI_1_13_0	reference	ti=49 i8 managed-radialmenu-description-component	1
+0797ce72	HI_1_13_0	reference	ti=5 i10 player-primary-respawn-object-component	5
+0797ce72	HI_1_13_0	reference	ti=50 archetype hors registre	13
+0797ce72	HI_1_13_0	reference	ti=51 archetype hors registre	10
+0797ce72	HI_1_13_0	reference	ti=52 archetype hors registre	8
+0797ce72	HI_1_13_0	reference	ti=53 archetype hors registre	7
+0797ce72	HI_1_13_0	reference	ti=54 archetype hors registre	5
+0797ce72	HI_1_13_0	reference	ti=55 archetype hors registre	6
+0797ce72	HI_1_13_0	reference	ti=56 archetype hors registre	37
+0797ce72	HI_1_13_0	reference	ti=57 archetype hors registre	7
+0797ce72	HI_1_13_0	reference	ti=58 archetype hors registre	7
+0797ce72	HI_1_13_0	reference	ti=59 archetype hors registre	17
+0797ce72	HI_1_13_0	reference	ti=60 archetype hors registre	12
+0797ce72	HI_1_13_0	reference	ti=61 archetype hors registre	1
+0797ce72	HI_1_13_0	reference	ti=62 archetype hors registre	12
+0797ce72	HI_1_13_0	reference	ti=63 archetype hors registre	4
+0797ce72	HI_1_13_0	reference	ti=7 i0 forge-sim-generic-component	3
+0797ce72	HI_1_13_0	reference	ti=7 i2 forge-sim-generic-component	1
+0797ce72	HI_1_13_0	reference	ti=7 i22 forge-sim-generic-component	1
+0797ce72	HI_1_13_0	reference	ti=7 i3 forge-sim-generic-component	1
+0797ce72	HI_1_13_0	reference	ti=7 i4 forge-sim-generic-component	1
+0797ce72	HI_1_13_0	reference	vue B : fin de payload	217
+0797ce72	HI_1_13_0	reference	vue C : bloc 0xbc non porte	196
+0797ce72	HI_1_13_0	reference	vue C : debordement	21
+0797ce72	HI_1_13_0	reference	vue C : kind non porte	914
+0797ce72	HI_1_13_0	reference	vue C : terminateur hors cadre	5510
+084a804d	HI_1_10_0	grammaire-ti43-T7	liste d evenements non localisee	3376
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=0 i11 game-engine-soft-ceilings-component	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=0 i13 game-engine-disabled-kill-volume-flags-component	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=0 i15 managed-engine-timers-component	3
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=10 i15 managed-object-navpoint-component	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	39
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=10 i21 managed-object-networked-property-component	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=10 i3 managed-object-navpoint-component	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=10 i4 managed-object-navpoint-component	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=10 i6 managed-object-navpoint-component	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=11 i4 managed-objective-interaction-filter-component	4
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	2
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	34
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	29
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=12 i23 managed-navpoint-visual-state-groups-component-3	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=18 i0 effect-state-data-component	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=18 i1 effect-state-data-component	2
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=18 i6 effect-state-data-component	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=2 i11 game-engine-soft-ceilings-component	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=2 i14 GameEngineComposerLetterboxComponent	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	227
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=24 i4 persistence-state-bucket-component	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=31 i2 tacmap-visiblity	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=34 i10 tacmap-mapdismissallock	2
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=34 i12 tacmap-backmenulocked-state	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=34 i14 tacmap-playercontrol	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=35 i59 biped-spartan-ability-non-predicted-state	84
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=40 i33 vehicle-type-state-component	5
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=40 i38 vehicle-weapon-set-component	164
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=40 i47 vehicle-low-frequency-component	8
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=49 archetype hors registre	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=50 archetype hors registre	4
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=51 archetype hors registre	3
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=52 archetype hors registre	2
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=54 archetype hors registre	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=55 archetype hors registre	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=57 archetype hors registre	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=58 archetype hors registre	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=60 archetype hors registre	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=61 archetype hors registre	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=62 archetype hors registre	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	ti=63 archetype hors registre	4
+084a804d	HI_1_10_0	grammaire-ti43-T7	vue B : fin de payload	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	vue C : bloc 0xbc non porte	14
+084a804d	HI_1_10_0	grammaire-ti43-T7	vue C : debordement	1
+084a804d	HI_1_10_0	grammaire-ti43-T7	vue C : kind non porte	68
+084a804d	HI_1_10_0	grammaire-ti43-T7	vue C : terminateur hors cadre	23082
+084a804d	HI_1_10_0	reference	liste d evenements non localisee	3414
+084a804d	HI_1_10_0	reference	ti=0 i11 game-engine-soft-ceilings-component	1
+084a804d	HI_1_10_0	reference	ti=0 i13 game-engine-disabled-kill-volume-flags-component	1
+084a804d	HI_1_10_0	reference	ti=0 i15 managed-engine-timers-component	3
+084a804d	HI_1_10_0	reference	ti=10 i15 managed-object-navpoint-component	1
+084a804d	HI_1_10_0	reference	ti=10 i2 managed-object-navpoint-component	39
+084a804d	HI_1_10_0	reference	ti=10 i21 managed-object-networked-property-component	1
+084a804d	HI_1_10_0	reference	ti=10 i3 managed-object-navpoint-component	1
+084a804d	HI_1_10_0	reference	ti=10 i4 managed-object-navpoint-component	1
+084a804d	HI_1_10_0	reference	ti=10 i6 managed-object-navpoint-component	1
+084a804d	HI_1_10_0	reference	ti=11 i4 managed-objective-interaction-filter-component	4
+084a804d	HI_1_10_0	reference	ti=12 i16 managed-navpoint-override-flags	2
+084a804d	HI_1_10_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	34
+084a804d	HI_1_10_0	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	29
+084a804d	HI_1_10_0	reference	ti=12 i23 managed-navpoint-visual-state-groups-component-3	1
+084a804d	HI_1_10_0	reference	ti=18 i0 effect-state-data-component	1
+084a804d	HI_1_10_0	reference	ti=18 i1 effect-state-data-component	2
+084a804d	HI_1_10_0	reference	ti=18 i6 effect-state-data-component	1
+084a804d	HI_1_10_0	reference	ti=2 i11 game-engine-soft-ceilings-component	1
+084a804d	HI_1_10_0	reference	ti=2 i14 GameEngineComposerLetterboxComponent	1
+084a804d	HI_1_10_0	reference	ti=2 i15 managed-engine-timers-component	227
+084a804d	HI_1_10_0	reference	ti=2 i17 matchflow-isplaying-flags-component	1
+084a804d	HI_1_10_0	reference	ti=24 i4 persistence-state-bucket-component	1
+084a804d	HI_1_10_0	reference	ti=31 i2 tacmap-visiblity	1
+084a804d	HI_1_10_0	reference	ti=34 i10 tacmap-mapdismissallock	2
+084a804d	HI_1_10_0	reference	ti=34 i12 tacmap-backmenulocked-state	1
+084a804d	HI_1_10_0	reference	ti=34 i14 tacmap-playercontrol	1
+084a804d	HI_1_10_0	reference	ti=35 i59 biped-spartan-ability-non-predicted-state	84
+084a804d	HI_1_10_0	reference	ti=40 i33 vehicle-type-state-component	5
+084a804d	HI_1_10_0	reference	ti=40 i38 vehicle-weapon-set-component	164
+084a804d	HI_1_10_0	reference	ti=40 i47 vehicle-low-frequency-component	8
+084a804d	HI_1_10_0	reference	ti=43 i22 device-power-component	1
+084a804d	HI_1_10_0	reference	ti=49 archetype hors registre	1
+084a804d	HI_1_10_0	reference	ti=50 archetype hors registre	4
+084a804d	HI_1_10_0	reference	ti=51 archetype hors registre	3
+084a804d	HI_1_10_0	reference	ti=52 archetype hors registre	2
+084a804d	HI_1_10_0	reference	ti=54 archetype hors registre	1
+084a804d	HI_1_10_0	reference	ti=55 archetype hors registre	1
+084a804d	HI_1_10_0	reference	ti=57 archetype hors registre	1
+084a804d	HI_1_10_0	reference	ti=58 archetype hors registre	1
+084a804d	HI_1_10_0	reference	ti=60 archetype hors registre	1
+084a804d	HI_1_10_0	reference	ti=61 archetype hors registre	1
+084a804d	HI_1_10_0	reference	ti=62 archetype hors registre	1
+084a804d	HI_1_10_0	reference	ti=63 archetype hors registre	4
+084a804d	HI_1_10_0	reference	vue B : fin de payload	1
+084a804d	HI_1_10_0	reference	vue C : bloc 0xbc non porte	14
+084a804d	HI_1_10_0	reference	vue C : debordement	1
+084a804d	HI_1_10_0	reference	vue C : kind non porte	68
+084a804d	HI_1_10_0	reference	vue C : terminateur hors cadre	23082
+111fa685	HI_1_10_0	grammaire-ti43-T7	liste d evenements non localisee	1887
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=0 i14 GameEngineComposerLetterboxComponent	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=0 i15 managed-engine-timers-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=0 i16 scenario-intro-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=0 i17 matchflow-isplaying-flags-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=1 i14 GameEngineComposerLetterboxComponent	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	13
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=10 i22 managed-object-interaction-filter-component	2
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=12 i15 managed-navpoint-bottom-progress	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	17
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=12 i23 managed-navpoint-visual-state-groups-component-3	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=18 i0 effect-state-data-component	3
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=18 i1 effect-state-data-component	3
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=18 i2 effect-state-data-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=18 i23 effect-state-data-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=18 i4 effect-state-data-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=18 i7 effect-state-data-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=19 i6 sound-placement-state-data-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=19 i8 sound-placement-state-data-component	2
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	17
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=2 i16 scenario-intro-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	2
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=24 i0 state-checksum-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=24 i10 persistence-state-bucket-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=25 i0 powerframe-player-selection-data-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=26 i0 supply-lines-blocked-status-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=26 i8 supply-lines-blocked-status-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=28 i0 narrative-moment-beat-activation-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=3 i0 low-frequency	2
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=31 i5 tacmap-description	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=35 i59 biped-spartan-ability-non-predicted-state	16
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=40 i30 vehicle-auto-turret-triggers-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=40 i33 vehicle-type-state-component	4
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=40 i36 vehicle-sentry-state-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=40 i38 vehicle-weapon-set-component	24
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=40 i47 vehicle-low-frequency-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=46 i1 state-broker-state-changed-data-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=48 i1 forge-player-data-editing-graphs-component	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=49 archetype hors registre	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=50 archetype hors registre	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=51 archetype hors registre	6
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=52 archetype hors registre	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=53 archetype hors registre	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=54 archetype hors registre	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=55 archetype hors registre	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=56 archetype hors registre	4
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=58 archetype hors registre	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=59 archetype hors registre	3
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=60 archetype hors registre	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=62 archetype hors registre	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	ti=63 archetype hors registre	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	vue B : fin de payload	5
+111fa685	HI_1_10_0	grammaire-ti43-T7	vue C : bloc 0xbc non porte	45
+111fa685	HI_1_10_0	grammaire-ti43-T7	vue C : debordement	1
+111fa685	HI_1_10_0	grammaire-ti43-T7	vue C : kind non porte	170
+111fa685	HI_1_10_0	grammaire-ti43-T7	vue C : terminateur hors cadre	10944
+111fa685	HI_1_10_0	reference	liste d evenements non localisee	1892
+111fa685	HI_1_10_0	reference	ti=0 i14 GameEngineComposerLetterboxComponent	1
+111fa685	HI_1_10_0	reference	ti=0 i15 managed-engine-timers-component	1
+111fa685	HI_1_10_0	reference	ti=0 i16 scenario-intro-component	1
+111fa685	HI_1_10_0	reference	ti=0 i17 matchflow-isplaying-flags-component	1
+111fa685	HI_1_10_0	reference	ti=1 i14 GameEngineComposerLetterboxComponent	1
+111fa685	HI_1_10_0	reference	ti=10 i2 managed-object-navpoint-component	13
+111fa685	HI_1_10_0	reference	ti=10 i22 managed-object-interaction-filter-component	2
+111fa685	HI_1_10_0	reference	ti=12 i15 managed-navpoint-bottom-progress	1
+111fa685	HI_1_10_0	reference	ti=12 i16 managed-navpoint-override-flags	17
+111fa685	HI_1_10_0	reference	ti=12 i23 managed-navpoint-visual-state-groups-component-3	1
+111fa685	HI_1_10_0	reference	ti=18 i0 effect-state-data-component	3
+111fa685	HI_1_10_0	reference	ti=18 i1 effect-state-data-component	3
+111fa685	HI_1_10_0	reference	ti=18 i2 effect-state-data-component	1
+111fa685	HI_1_10_0	reference	ti=18 i23 effect-state-data-component	1
+111fa685	HI_1_10_0	reference	ti=18 i4 effect-state-data-component	1
+111fa685	HI_1_10_0	reference	ti=18 i7 effect-state-data-component	1
+111fa685	HI_1_10_0	reference	ti=19 i6 sound-placement-state-data-component	1
+111fa685	HI_1_10_0	reference	ti=19 i8 sound-placement-state-data-component	2
+111fa685	HI_1_10_0	reference	ti=2 i15 managed-engine-timers-component	17
+111fa685	HI_1_10_0	reference	ti=2 i16 scenario-intro-component	1
+111fa685	HI_1_10_0	reference	ti=2 i17 matchflow-isplaying-flags-component	2
+111fa685	HI_1_10_0	reference	ti=24 i0 state-checksum-component	1
+111fa685	HI_1_10_0	reference	ti=24 i10 persistence-state-bucket-component	1
+111fa685	HI_1_10_0	reference	ti=25 i0 powerframe-player-selection-data-component	1
+111fa685	HI_1_10_0	reference	ti=26 i0 supply-lines-blocked-status-component	1
+111fa685	HI_1_10_0	reference	ti=26 i8 supply-lines-blocked-status-component	1
+111fa685	HI_1_10_0	reference	ti=28 i0 narrative-moment-beat-activation-component	1
+111fa685	HI_1_10_0	reference	ti=3 i0 low-frequency	2
+111fa685	HI_1_10_0	reference	ti=31 i5 tacmap-description	1
+111fa685	HI_1_10_0	reference	ti=35 i59 biped-spartan-ability-non-predicted-state	16
+111fa685	HI_1_10_0	reference	ti=40 i30 vehicle-auto-turret-triggers-component	1
+111fa685	HI_1_10_0	reference	ti=40 i33 vehicle-type-state-component	4
+111fa685	HI_1_10_0	reference	ti=40 i36 vehicle-sentry-state-component	1
+111fa685	HI_1_10_0	reference	ti=40 i38 vehicle-weapon-set-component	24
+111fa685	HI_1_10_0	reference	ti=40 i47 vehicle-low-frequency-component	1
+111fa685	HI_1_10_0	reference	ti=43 i19 device-position-animation-name-component	1
+111fa685	HI_1_10_0	reference	ti=43 i20 device-position-animation-control-component	1
+111fa685	HI_1_10_0	reference	ti=46 i1 state-broker-state-changed-data-component	1
+111fa685	HI_1_10_0	reference	ti=48 i1 forge-player-data-editing-graphs-component	1
+111fa685	HI_1_10_0	reference	ti=49 archetype hors registre	1
+111fa685	HI_1_10_0	reference	ti=50 archetype hors registre	1
+111fa685	HI_1_10_0	reference	ti=51 archetype hors registre	6
+111fa685	HI_1_10_0	reference	ti=52 archetype hors registre	1
+111fa685	HI_1_10_0	reference	ti=53 archetype hors registre	1
+111fa685	HI_1_10_0	reference	ti=54 archetype hors registre	1
+111fa685	HI_1_10_0	reference	ti=55 archetype hors registre	1
+111fa685	HI_1_10_0	reference	ti=56 archetype hors registre	4
+111fa685	HI_1_10_0	reference	ti=58 archetype hors registre	1
+111fa685	HI_1_10_0	reference	ti=59 archetype hors registre	3
+111fa685	HI_1_10_0	reference	ti=60 archetype hors registre	1
+111fa685	HI_1_10_0	reference	ti=62 archetype hors registre	1
+111fa685	HI_1_10_0	reference	ti=63 archetype hors registre	1
+111fa685	HI_1_10_0	reference	vue B : fin de payload	4
+111fa685	HI_1_10_0	reference	vue C : bloc 0xbc non porte	45
+111fa685	HI_1_10_0	reference	vue C : debordement	1
+111fa685	HI_1_10_0	reference	vue C : kind non porte	169
+111fa685	HI_1_10_0	reference	vue C : terminateur hors cadre	10944
+11de8353	HI_1_9_0	grammaire-ti43-T7	liste d evenements non localisee	1612
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=0 i11 game-engine-soft-ceilings-component	3
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=0 i20 forge-engine-map-properties-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=0 i21 forge-engine-forge-mode-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=1 i13 game-engine-disabled-kill-volume-flags-component	2
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	4
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=10 i21 managed-object-networked-property-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=10 i22 managed-object-interaction-filter-component	7
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=10 i3 managed-object-navpoint-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=10 i4 managed-object-navpoint-component	3
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=10 i8 managed-object-navpoint-component	2
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=12 i15 managed-navpoint-bottom-progress	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	3
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=18 i0 effect-state-data-component	4
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=18 i1 effect-state-data-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=18 i4 effect-state-data-component	2
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=19 i3 sound-placement-state-data-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=2 i11 game-engine-soft-ceilings-component	13
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=2 i13 game-engine-disabled-kill-volume-flags-component	3
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=2 i14 GameEngineComposerLetterboxComponent	25
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	28
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=2 i16 scenario-intro-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=23 i2 selectable-zone-data-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=23 i3 selectable-zone-data-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=26 i1 supply-lines-blocked-status-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=3 i0 low-frequency	5
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=31 i7 tacmap-valor	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=35 i59 biped-spartan-ability-non-predicted-state	9
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=40 i30 vehicle-auto-turret-triggers-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=40 i31 vehicle-auto-turret-aiming-vector-component	4
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=40 i33 vehicle-type-state-component	4
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=40 i38 vehicle-weapon-set-component	30
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=40 i47 vehicle-low-frequency-component	3
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=43 i31 device-dispenser-monitors-changed-component	7
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=46 i0 state-broker-state-changed-data-component	2
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=46 i13 state-broker-state-changed-data-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=49 archetype hors registre	2
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=5 i10 player-primary-respawn-object-component	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=51 archetype hors registre	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=52 archetype hors registre	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=53 archetype hors registre	4
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=55 archetype hors registre	3
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=57 archetype hors registre	2
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=58 archetype hors registre	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=59 archetype hors registre	6
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=61 archetype hors registre	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=62 archetype hors registre	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	ti=63 archetype hors registre	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	vue B : fin de payload	13
+11de8353	HI_1_9_0	grammaire-ti43-T7	vue C : bloc 0xbc non porte	21
+11de8353	HI_1_9_0	grammaire-ti43-T7	vue C : debordement	1
+11de8353	HI_1_9_0	grammaire-ti43-T7	vue C : kind non porte	189
+11de8353	HI_1_9_0	grammaire-ti43-T7	vue C : terminateur hors cadre	9821
+11de8353	HI_1_9_0	reference	liste d evenements non localisee	1641
+11de8353	HI_1_9_0	reference	ti=0 i11 game-engine-soft-ceilings-component	3
+11de8353	HI_1_9_0	reference	ti=0 i20 forge-engine-map-properties-component	1
+11de8353	HI_1_9_0	reference	ti=0 i21 forge-engine-forge-mode-component	1
+11de8353	HI_1_9_0	reference	ti=1 i13 game-engine-disabled-kill-volume-flags-component	2
+11de8353	HI_1_9_0	reference	ti=10 i2 managed-object-navpoint-component	4
+11de8353	HI_1_9_0	reference	ti=10 i21 managed-object-networked-property-component	1
+11de8353	HI_1_9_0	reference	ti=10 i22 managed-object-interaction-filter-component	7
+11de8353	HI_1_9_0	reference	ti=10 i3 managed-object-navpoint-component	1
+11de8353	HI_1_9_0	reference	ti=10 i4 managed-object-navpoint-component	3
+11de8353	HI_1_9_0	reference	ti=10 i8 managed-object-navpoint-component	2
+11de8353	HI_1_9_0	reference	ti=12 i15 managed-navpoint-bottom-progress	1
+11de8353	HI_1_9_0	reference	ti=12 i16 managed-navpoint-override-flags	3
+11de8353	HI_1_9_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	1
+11de8353	HI_1_9_0	reference	ti=18 i0 effect-state-data-component	4
+11de8353	HI_1_9_0	reference	ti=18 i1 effect-state-data-component	1
+11de8353	HI_1_9_0	reference	ti=18 i4 effect-state-data-component	2
+11de8353	HI_1_9_0	reference	ti=19 i3 sound-placement-state-data-component	1
+11de8353	HI_1_9_0	reference	ti=2 i11 game-engine-soft-ceilings-component	13
+11de8353	HI_1_9_0	reference	ti=2 i13 game-engine-disabled-kill-volume-flags-component	3
+11de8353	HI_1_9_0	reference	ti=2 i14 GameEngineComposerLetterboxComponent	25
+11de8353	HI_1_9_0	reference	ti=2 i15 managed-engine-timers-component	28
+11de8353	HI_1_9_0	reference	ti=2 i17 matchflow-isplaying-flags-component	1
+11de8353	HI_1_9_0	reference	ti=23 i2 selectable-zone-data-component	1
+11de8353	HI_1_9_0	reference	ti=23 i3 selectable-zone-data-component	1
+11de8353	HI_1_9_0	reference	ti=26 i1 supply-lines-blocked-status-component	1
+11de8353	HI_1_9_0	reference	ti=3 i0 low-frequency	5
+11de8353	HI_1_9_0	reference	ti=35 i59 biped-spartan-ability-non-predicted-state	9
+11de8353	HI_1_9_0	reference	ti=40 i30 vehicle-auto-turret-triggers-component	1
+11de8353	HI_1_9_0	reference	ti=40 i31 vehicle-auto-turret-aiming-vector-component	4
+11de8353	HI_1_9_0	reference	ti=40 i33 vehicle-type-state-component	4
+11de8353	HI_1_9_0	reference	ti=40 i38 vehicle-weapon-set-component	30
+11de8353	HI_1_9_0	reference	ti=40 i47 vehicle-low-frequency-component	3
+11de8353	HI_1_9_0	reference	ti=43 i19 device-position-animation-name-component	16
+11de8353	HI_1_9_0	reference	ti=43 i20 device-position-animation-control-component	8
+11de8353	HI_1_9_0	reference	ti=43 i21 device-position-group-component	6
+11de8353	HI_1_9_0	reference	ti=43 i22 device-power-component	2
+11de8353	HI_1_9_0	reference	ti=43 i23 device-power-group-component	3
+11de8353	HI_1_9_0	reference	ti=43 i25 device-interaction-hold-time-component	3
+11de8353	HI_1_9_0	reference	ti=43 i26 device-control-action-string-override-component	1
+11de8353	HI_1_9_0	reference	ti=43 i27 device-health-station-charges-component	1
+11de8353	HI_1_9_0	reference	ti=43 i29 device-exclusive-user-component	1
+11de8353	HI_1_9_0	reference	ti=43 i32 device-dispenser-state-flags-component	1
+11de8353	HI_1_9_0	reference	ti=43 i34 device-animation-layer-settings-component	1
+11de8353	HI_1_9_0	reference	ti=43 i36 device-dispenser-state-component	5
+11de8353	HI_1_9_0	reference	ti=43 i38 device-position-transition-velocity-component	1
+11de8353	HI_1_9_0	reference	ti=46 i0 state-broker-state-changed-data-component	2
+11de8353	HI_1_9_0	reference	ti=46 i13 state-broker-state-changed-data-component	1
+11de8353	HI_1_9_0	reference	ti=49 archetype hors registre	2
+11de8353	HI_1_9_0	reference	ti=5 i10 player-primary-respawn-object-component	1
+11de8353	HI_1_9_0	reference	ti=51 archetype hors registre	1
+11de8353	HI_1_9_0	reference	ti=52 archetype hors registre	1
+11de8353	HI_1_9_0	reference	ti=53 archetype hors registre	4
+11de8353	HI_1_9_0	reference	ti=55 archetype hors registre	3
+11de8353	HI_1_9_0	reference	ti=57 archetype hors registre	2
+11de8353	HI_1_9_0	reference	ti=58 archetype hors registre	1
+11de8353	HI_1_9_0	reference	ti=59 archetype hors registre	6
+11de8353	HI_1_9_0	reference	ti=61 archetype hors registre	1
+11de8353	HI_1_9_0	reference	ti=62 archetype hors registre	1
+11de8353	HI_1_9_0	reference	ti=63 archetype hors registre	1
+11de8353	HI_1_9_0	reference	vue B : fin de payload	6
+11de8353	HI_1_9_0	reference	vue C : bloc 0xbc non porte	18
+11de8353	HI_1_9_0	reference	vue C : debordement	1
+11de8353	HI_1_9_0	reference	vue C : kind non porte	189
+11de8353	HI_1_9_0	reference	vue C : terminateur hors cadre	9792
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	liste d evenements non localisee	12481
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=0 i13 game-engine-disabled-kill-volume-flags-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=0 i14 GameEngineComposerLetterboxComponent	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=0 i15 managed-engine-timers-component	2
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=10 i16 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=10 i17 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	18
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=10 i21 managed-object-networked-property-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=10 i3 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=10 i4 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=10 i5 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=10 i6 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	22
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	4
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	7
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	5
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=12 i24 managed-navpoint-visual-state-groups-component-4	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=12 i25 managed-navpoint-visual-state-groups-component-5	2
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=18 i1 effect-state-data-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=18 i19 effect-state-data-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=2 i11 game-engine-soft-ceilings-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	166
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	9
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=20 i2 spawn-filter-filters-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=24 i0 state-checksum-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=27 i8 supply-lines-item-unlocked-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=34 i10 tacmap-mapdismissallock	3
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=35 i59 biped-spartan-ability-non-predicted-state	25
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=40 i30 vehicle-auto-turret-triggers-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=40 i31 vehicle-auto-turret-aiming-vector-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=40 i32 vehicle-transformed-or-desired-open-state-changed-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=40 i38 vehicle-weapon-set-component	51
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=43 i31 device-dispenser-monitors-changed-component	3
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=48 i0 forge-player-data-edited-objects-ids-component	910
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=5 i10 player-primary-respawn-object-component	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=52 archetype hors registre	2
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=53 archetype hors registre	2
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=54 archetype hors registre	5
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	ti=58 archetype hors registre	2
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	vue B : fin de payload	9
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	vue C : bloc 0xbc non porte	26
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	vue C : debordement	1
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	vue C : kind non porte	134
+1c4c63c2	HI_1_10_0	grammaire-ti43-T7	vue C : terminateur hors cadre	45941
+1c4c63c2	HI_1_10_0	reference	liste d evenements non localisee	12825
+1c4c63c2	HI_1_10_0	reference	ti=0 i13 game-engine-disabled-kill-volume-flags-component	1
+1c4c63c2	HI_1_10_0	reference	ti=0 i14 GameEngineComposerLetterboxComponent	1
+1c4c63c2	HI_1_10_0	reference	ti=0 i15 managed-engine-timers-component	1
+1c4c63c2	HI_1_10_0	reference	ti=10 i13 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	reference	ti=10 i16 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	reference	ti=10 i17 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	reference	ti=10 i2 managed-object-navpoint-component	18
+1c4c63c2	HI_1_10_0	reference	ti=10 i3 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	reference	ti=10 i4 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	reference	ti=10 i5 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	reference	ti=10 i6 managed-object-navpoint-component	1
+1c4c63c2	HI_1_10_0	reference	ti=12 i16 managed-navpoint-override-flags	22
+1c4c63c2	HI_1_10_0	reference	ti=12 i18 managed-navpoint-position-offset	4
+1c4c63c2	HI_1_10_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	7
+1c4c63c2	HI_1_10_0	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	5
+1c4c63c2	HI_1_10_0	reference	ti=12 i24 managed-navpoint-visual-state-groups-component-4	1
+1c4c63c2	HI_1_10_0	reference	ti=12 i25 managed-navpoint-visual-state-groups-component-5	2
+1c4c63c2	HI_1_10_0	reference	ti=18 i1 effect-state-data-component	1
+1c4c63c2	HI_1_10_0	reference	ti=18 i19 effect-state-data-component	1
+1c4c63c2	HI_1_10_0	reference	ti=2 i11 game-engine-soft-ceilings-component	1
+1c4c63c2	HI_1_10_0	reference	ti=2 i15 managed-engine-timers-component	166
+1c4c63c2	HI_1_10_0	reference	ti=2 i17 matchflow-isplaying-flags-component	9
+1c4c63c2	HI_1_10_0	reference	ti=20 i2 spawn-filter-filters-component	1
+1c4c63c2	HI_1_10_0	reference	ti=24 i0 state-checksum-component	1
+1c4c63c2	HI_1_10_0	reference	ti=27 i8 supply-lines-item-unlocked-component	1
+1c4c63c2	HI_1_10_0	reference	ti=34 i10 tacmap-mapdismissallock	3
+1c4c63c2	HI_1_10_0	reference	ti=35 i59 biped-spartan-ability-non-predicted-state	25
+1c4c63c2	HI_1_10_0	reference	ti=40 i30 vehicle-auto-turret-triggers-component	1
+1c4c63c2	HI_1_10_0	reference	ti=40 i31 vehicle-auto-turret-aiming-vector-component	1
+1c4c63c2	HI_1_10_0	reference	ti=40 i32 vehicle-transformed-or-desired-open-state-changed-component	1
+1c4c63c2	HI_1_10_0	reference	ti=40 i38 vehicle-weapon-set-component	51
+1c4c63c2	HI_1_10_0	reference	ti=43 i19 device-position-animation-name-component	5
+1c4c63c2	HI_1_10_0	reference	ti=43 i20 device-position-animation-control-component	3
+1c4c63c2	HI_1_10_0	reference	ti=43 i21 device-position-group-component	4
+1c4c63c2	HI_1_10_0	reference	ti=43 i22 device-power-component	2
+1c4c63c2	HI_1_10_0	reference	ti=43 i23 device-power-group-component	1
+1c4c63c2	HI_1_10_0	reference	ti=43 i24 device-interaction-in-progress-component	1
+1c4c63c2	HI_1_10_0	reference	ti=43 i27 device-health-station-charges-component	1
+1c4c63c2	HI_1_10_0	reference	ti=43 i29 device-exclusive-user-component	1
+1c4c63c2	HI_1_10_0	reference	ti=43 i30 device-in-primary-mode-component	1
+1c4c63c2	HI_1_10_0	reference	ti=43 i32 device-dispenser-state-flags-component	6
+1c4c63c2	HI_1_10_0	reference	ti=43 i35 device-animation-layer-state-component	1
+1c4c63c2	HI_1_10_0	reference	ti=43 i36 device-dispenser-state-component	1
+1c4c63c2	HI_1_10_0	reference	ti=43 i39 device-machine-flags-component	3
+1c4c63c2	HI_1_10_0	reference	ti=43 i40 device-interaction-start-time-override-component	1
+1c4c63c2	HI_1_10_0	reference	ti=48 i0 forge-player-data-edited-objects-ids-component	910
+1c4c63c2	HI_1_10_0	reference	ti=5 i10 player-primary-respawn-object-component	1
+1c4c63c2	HI_1_10_0	reference	ti=52 archetype hors registre	2
+1c4c63c2	HI_1_10_0	reference	ti=53 archetype hors registre	2
+1c4c63c2	HI_1_10_0	reference	ti=54 archetype hors registre	5
+1c4c63c2	HI_1_10_0	reference	ti=58 archetype hors registre	2
+1c4c63c2	HI_1_10_0	reference	vue B : fin de payload	7
+1c4c63c2	HI_1_10_0	reference	vue C : bloc 0xbc non porte	21
+1c4c63c2	HI_1_10_0	reference	vue C : debordement	1
+1c4c63c2	HI_1_10_0	reference	vue C : kind non porte	119
+1c4c63c2	HI_1_10_0	reference	vue C : terminateur hors cadre	45938
+396cfc92	HI_1_13_0	grammaire-ti43-T7	liste d evenements non localisee	462
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	6
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	3
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	2
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=12 i20 managed-navpoint-visual-state-groups-component-0	25
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	59
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	66
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	176
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	5
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=40 i38 vehicle-weapon-set-component	1
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=48 i1 forge-player-data-editing-graphs-component	2
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=51 archetype hors registre	2
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=55 archetype hors registre	2
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=56 archetype hors registre	1
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=59 archetype hors registre	1
+396cfc92	HI_1_13_0	grammaire-ti43-T7	ti=63 archetype hors registre	2
+396cfc92	HI_1_13_0	grammaire-ti43-T7	vue C : debordement	1
+396cfc92	HI_1_13_0	grammaire-ti43-T7	vue C : kind non porte	1
+396cfc92	HI_1_13_0	grammaire-ti43-T7	vue C : terminateur hors cadre	4320
+396cfc92	HI_1_13_0	reference	liste d evenements non localisee	480
+396cfc92	HI_1_13_0	reference	ti=10 i2 managed-object-navpoint-component	5
+396cfc92	HI_1_13_0	reference	ti=12 i16 managed-navpoint-override-flags	3
+396cfc92	HI_1_13_0	reference	ti=12 i18 managed-navpoint-position-offset	1
+396cfc92	HI_1_13_0	reference	ti=12 i20 managed-navpoint-visual-state-groups-component-0	25
+396cfc92	HI_1_13_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	59
+396cfc92	HI_1_13_0	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	66
+396cfc92	HI_1_13_0	reference	ti=2 i15 managed-engine-timers-component	176
+396cfc92	HI_1_13_0	reference	ti=2 i17 matchflow-isplaying-flags-component	5
+396cfc92	HI_1_13_0	reference	ti=40 i38 vehicle-weapon-set-component	1
+396cfc92	HI_1_13_0	reference	ti=43 i22 device-power-component	1
+396cfc92	HI_1_13_0	reference	ti=43 i39 device-machine-flags-component	28
+396cfc92	HI_1_13_0	reference	ti=48 i1 forge-player-data-editing-graphs-component	2
+396cfc92	HI_1_13_0	reference	ti=51 archetype hors registre	2
+396cfc92	HI_1_13_0	reference	ti=55 archetype hors registre	2
+396cfc92	HI_1_13_0	reference	ti=56 archetype hors registre	1
+396cfc92	HI_1_13_0	reference	ti=59 archetype hors registre	1
+396cfc92	HI_1_13_0	reference	ti=63 archetype hors registre	2
+396cfc92	HI_1_13_0	reference	vue C : debordement	1
+396cfc92	HI_1_13_0	reference	vue C : kind non porte	1
+396cfc92	HI_1_13_0	reference	vue C : terminateur hors cadre	8362
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	liste d evenements non localisee	2225
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=1 i11 game-engine-soft-ceilings-component	1
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	57
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=10 i22 managed-object-interaction-filter-component	11
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=10 i3 managed-object-navpoint-component	2
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=10 i4 managed-object-navpoint-component	1
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=11 i4 managed-objective-interaction-filter-component	10
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	4
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	1
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	46
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	32
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=12 i24 managed-navpoint-visual-state-groups-component-4	2
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	207
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	1
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=31 i3 tacmap-rawlocation	1
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=35 i59 biped-spartan-ability-non-predicted-state	32
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=40 i33 vehicle-type-state-component	66
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=40 i38 vehicle-weapon-set-component	68
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=40 i47 vehicle-low-frequency-component	3
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=52 archetype hors registre	1
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=54 archetype hors registre	1
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=56 archetype hors registre	2
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=57 archetype hors registre	1
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=59 archetype hors registre	1
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	ti=63 archetype hors registre	1
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	vue B : fin de payload	1
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	vue C : bloc 0xbc non porte	3
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	vue C : debordement	1
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	vue C : kind non porte	16
+4f77afc1	HI_1_13_0	grammaire-ti43-T7	vue C : terminateur hors cadre	9290
+4f77afc1	HI_1_13_0	reference	liste d evenements non localisee	2277
+4f77afc1	HI_1_13_0	reference	ti=1 i11 game-engine-soft-ceilings-component	1
+4f77afc1	HI_1_13_0	reference	ti=10 i2 managed-object-navpoint-component	57
+4f77afc1	HI_1_13_0	reference	ti=10 i22 managed-object-interaction-filter-component	3
+4f77afc1	HI_1_13_0	reference	ti=10 i3 managed-object-navpoint-component	2
+4f77afc1	HI_1_13_0	reference	ti=10 i4 managed-object-navpoint-component	1
+4f77afc1	HI_1_13_0	reference	ti=11 i4 managed-objective-interaction-filter-component	10
+4f77afc1	HI_1_13_0	reference	ti=12 i16 managed-navpoint-override-flags	4
+4f77afc1	HI_1_13_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	42
+4f77afc1	HI_1_13_0	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	27
+4f77afc1	HI_1_13_0	reference	ti=12 i24 managed-navpoint-visual-state-groups-component-4	2
+4f77afc1	HI_1_13_0	reference	ti=2 i15 managed-engine-timers-component	207
+4f77afc1	HI_1_13_0	reference	ti=2 i17 matchflow-isplaying-flags-component	1
+4f77afc1	HI_1_13_0	reference	ti=31 i3 tacmap-rawlocation	1
+4f77afc1	HI_1_13_0	reference	ti=35 i59 biped-spartan-ability-non-predicted-state	32
+4f77afc1	HI_1_13_0	reference	ti=40 i33 vehicle-type-state-component	66
+4f77afc1	HI_1_13_0	reference	ti=40 i38 vehicle-weapon-set-component	68
+4f77afc1	HI_1_13_0	reference	ti=40 i47 vehicle-low-frequency-component	3
+4f77afc1	HI_1_13_0	reference	ti=43 i19 device-position-animation-name-component	8
+4f77afc1	HI_1_13_0	reference	ti=43 i21 device-position-group-component	203
+4f77afc1	HI_1_13_0	reference	ti=43 i22 device-power-component	1
+4f77afc1	HI_1_13_0	reference	ti=43 i39 device-machine-flags-component	10
+4f77afc1	HI_1_13_0	reference	ti=52 archetype hors registre	1
+4f77afc1	HI_1_13_0	reference	ti=54 archetype hors registre	1
+4f77afc1	HI_1_13_0	reference	ti=56 archetype hors registre	2
+4f77afc1	HI_1_13_0	reference	ti=57 archetype hors registre	1
+4f77afc1	HI_1_13_0	reference	ti=59 archetype hors registre	1
+4f77afc1	HI_1_13_0	reference	ti=63 archetype hors registre	1
+4f77afc1	HI_1_13_0	reference	vue B : fin de payload	1
+4f77afc1	HI_1_13_0	reference	vue C : bloc 0xbc non porte	3
+4f77afc1	HI_1_13_0	reference	vue C : debordement	1
+4f77afc1	HI_1_13_0	reference	vue C : kind non porte	16
+4f77afc1	HI_1_13_0	reference	vue C : terminateur hors cadre	9535
+50247b26	version-31	grammaire-ti43-T7	liste d evenements non localisee	2257
+50247b26	version-31	grammaire-ti43-T7	ti=0 i11 game-engine-soft-ceilings-component	6
+50247b26	version-31	grammaire-ti43-T7	ti=0 i16 scenario-intro-component	2
+50247b26	version-31	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	24
+50247b26	version-31	grammaire-ti43-T7	ti=10 i3 managed-object-navpoint-component	1
+50247b26	version-31	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	2
+50247b26	version-31	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	1
+50247b26	version-31	grammaire-ti43-T7	ti=18 i22 effect-state-data-component	1
+50247b26	version-31	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	44
+50247b26	version-31	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	2
+50247b26	version-31	grammaire-ti43-T7	ti=35 i58 biped-spartan-ability-non-predicted-state	1
+50247b26	version-31	grammaire-ti43-T7	ti=37 i27 equipment-charges-used-component	3
+50247b26	version-31	grammaire-ti43-T7	ti=40 i32 vehicle-type-state-component	2
+50247b26	version-31	grammaire-ti43-T7	ti=40 i37 vehicle-weapon-set-component	60
+50247b26	version-31	grammaire-ti43-T7	ti=40 i44 air-drop-flight-component	13
+50247b26	version-31	grammaire-ti43-T7	ti=40 i45 warp-component	8
+50247b26	version-31	grammaire-ti43-T7	ti=40 i46 vehicle-low-frequency-component	3
+50247b26	version-31	grammaire-ti43-T7	ti=52 archetype hors registre	1
+50247b26	version-31	grammaire-ti43-T7	ti=59 archetype hors registre	1
+50247b26	version-31	grammaire-ti43-T7	vue B : fin de payload	2
+50247b26	version-31	grammaire-ti43-T7	vue C : bloc 0xbc non porte	556
+50247b26	version-31	grammaire-ti43-T7	vue C : debordement	1
+50247b26	version-31	grammaire-ti43-T7	vue C : kind non porte	918
+50247b26	version-31	grammaire-ti43-T7	vue C : terminateur hors cadre	13856
+50247b26	version-31	reference	liste d evenements non localisee	2257
+50247b26	version-31	reference	ti=0 i11 game-engine-soft-ceilings-component	6
+50247b26	version-31	reference	ti=0 i16 scenario-intro-component	2
+50247b26	version-31	reference	ti=10 i2 managed-object-navpoint-component	24
+50247b26	version-31	reference	ti=10 i3 managed-object-navpoint-component	1
+50247b26	version-31	reference	ti=12 i16 managed-navpoint-override-flags	2
+50247b26	version-31	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	1
+50247b26	version-31	reference	ti=18 i22 effect-state-data-component	1
+50247b26	version-31	reference	ti=2 i15 managed-engine-timers-component	44
+50247b26	version-31	reference	ti=2 i17 matchflow-isplaying-flags-component	2
+50247b26	version-31	reference	ti=35 i58 biped-spartan-ability-non-predicted-state	1
+50247b26	version-31	reference	ti=37 i27 equipment-charges-used-component	3
+50247b26	version-31	reference	ti=40 i32 vehicle-type-state-component	2
+50247b26	version-31	reference	ti=40 i37 vehicle-weapon-set-component	60
+50247b26	version-31	reference	ti=40 i44 air-drop-flight-component	13
+50247b26	version-31	reference	ti=40 i45 warp-component	8
+50247b26	version-31	reference	ti=40 i46 vehicle-low-frequency-component	3
+50247b26	version-31	reference	ti=43 i21 device-position-group-component	97
+50247b26	version-31	reference	ti=43 i26 device-control-action-string-override-component	1
+50247b26	version-31	reference	ti=43 i39 device-machine-flags-component	5
+50247b26	version-31	reference	ti=52 archetype hors registre	1
+50247b26	version-31	reference	ti=59 archetype hors registre	1
+50247b26	version-31	reference	vue B : fin de payload	2
+50247b26	version-31	reference	vue C : bloc 0xbc non porte	552
+50247b26	version-31	reference	vue C : debordement	1
+50247b26	version-31	reference	vue C : kind non porte	896
+50247b26	version-31	reference	vue C : terminateur hors cadre	13780
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	liste d evenements non localisee	2893
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=0 i16 scenario-intro-component	6
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=0 i17 matchflow-isplaying-flags-component	13
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=1 i13 game-engine-disabled-kill-volume-flags-component	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	2
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=10 i22 managed-object-interaction-filter-component	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=10 i3 managed-object-navpoint-component	2
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=11 i4 managed-objective-interaction-filter-component	5
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=12 i13 managed-navpoint-top-progress	2
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=12 i20 managed-navpoint-visual-state-groups-component-0	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	3
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=12 i3 managed-navpoint-visible-offscreen-filters-component	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=15 i2 nav-cutscene-flag-component	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=18 i7 effect-state-data-component	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=19 i13 sound-placement-state-data-component	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	327
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	6
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=23 i13 selectable-zone-data-component	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=27 i0 supply-lines-item-unlocked-component	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=27 i12 supply-lines-item-unlocked-component	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=27 i13 supply-lines-item-unlocked-component	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=3 i0 low-frequency	434
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=51 archetype hors registre	2
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=54 archetype hors registre	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=56 archetype hors registre	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=61 archetype hors registre	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=62 archetype hors registre	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=7 i0 forge-sim-generic-component	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	ti=7 i16 forge-sim-generic-component	4
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	vue B : fin de payload	6
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	vue C : bloc 0xbc non porte	39
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	vue C : debordement	1
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	vue C : kind non porte	97
+51ebbc0f	HI_1_13_0	grammaire-ti43-T7	vue C : terminateur hors cadre	16932
+51ebbc0f	HI_1_13_0	reference	liste d evenements non localisee	2893
+51ebbc0f	HI_1_13_0	reference	ti=0 i16 scenario-intro-component	6
+51ebbc0f	HI_1_13_0	reference	ti=0 i17 matchflow-isplaying-flags-component	13
+51ebbc0f	HI_1_13_0	reference	ti=1 i13 game-engine-disabled-kill-volume-flags-component	1
+51ebbc0f	HI_1_13_0	reference	ti=10 i2 managed-object-navpoint-component	2
+51ebbc0f	HI_1_13_0	reference	ti=10 i22 managed-object-interaction-filter-component	1
+51ebbc0f	HI_1_13_0	reference	ti=10 i3 managed-object-navpoint-component	2
+51ebbc0f	HI_1_13_0	reference	ti=11 i4 managed-objective-interaction-filter-component	5
+51ebbc0f	HI_1_13_0	reference	ti=12 i13 managed-navpoint-top-progress	2
+51ebbc0f	HI_1_13_0	reference	ti=12 i16 managed-navpoint-override-flags	1
+51ebbc0f	HI_1_13_0	reference	ti=12 i20 managed-navpoint-visual-state-groups-component-0	1
+51ebbc0f	HI_1_13_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	3
+51ebbc0f	HI_1_13_0	reference	ti=12 i3 managed-navpoint-visible-offscreen-filters-component	1
+51ebbc0f	HI_1_13_0	reference	ti=15 i2 nav-cutscene-flag-component	1
+51ebbc0f	HI_1_13_0	reference	ti=18 i7 effect-state-data-component	1
+51ebbc0f	HI_1_13_0	reference	ti=19 i13 sound-placement-state-data-component	1
+51ebbc0f	HI_1_13_0	reference	ti=2 i15 managed-engine-timers-component	327
+51ebbc0f	HI_1_13_0	reference	ti=2 i17 matchflow-isplaying-flags-component	6
+51ebbc0f	HI_1_13_0	reference	ti=23 i13 selectable-zone-data-component	1
+51ebbc0f	HI_1_13_0	reference	ti=27 i0 supply-lines-item-unlocked-component	1
+51ebbc0f	HI_1_13_0	reference	ti=27 i12 supply-lines-item-unlocked-component	1
+51ebbc0f	HI_1_13_0	reference	ti=27 i13 supply-lines-item-unlocked-component	1
+51ebbc0f	HI_1_13_0	reference	ti=3 i0 low-frequency	434
+51ebbc0f	HI_1_13_0	reference	ti=43 i19 device-position-animation-name-component	1
+51ebbc0f	HI_1_13_0	reference	ti=43 i21 device-position-group-component	29
+51ebbc0f	HI_1_13_0	reference	ti=43 i22 device-power-component	1
+51ebbc0f	HI_1_13_0	reference	ti=43 i39 device-machine-flags-component	1
+51ebbc0f	HI_1_13_0	reference	ti=51 archetype hors registre	2
+51ebbc0f	HI_1_13_0	reference	ti=54 archetype hors registre	1
+51ebbc0f	HI_1_13_0	reference	ti=56 archetype hors registre	1
+51ebbc0f	HI_1_13_0	reference	ti=61 archetype hors registre	1
+51ebbc0f	HI_1_13_0	reference	ti=62 archetype hors registre	1
+51ebbc0f	HI_1_13_0	reference	ti=7 i0 forge-sim-generic-component	1
+51ebbc0f	HI_1_13_0	reference	ti=7 i16 forge-sim-generic-component	4
+51ebbc0f	HI_1_13_0	reference	vue B : fin de payload	6
+51ebbc0f	HI_1_13_0	reference	vue C : bloc 0xbc non porte	39
+51ebbc0f	HI_1_13_0	reference	vue C : debordement	1
+51ebbc0f	HI_1_13_0	reference	vue C : kind non porte	96
+51ebbc0f	HI_1_13_0	reference	vue C : terminateur hors cadre	16929
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	liste d evenements non localisee	3259
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=0 i11 game-engine-soft-ceilings-component	13
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=0 i13 game-engine-disabled-kill-volume-flags-component	21
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=0 i14 GameEngineComposerLetterboxComponent	4
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=0 i15 managed-engine-timers-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=0 i16 scenario-intro-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=0 i19 forge-engine-total-budget-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=0 i22 forge-engine-monitor-noclip-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=1 i11 game-engine-soft-ceilings-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=1 i13 game-engine-disabled-kill-volume-flags-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=1 i14 GameEngineComposerLetterboxComponent	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=10 i17 managed-object-navpoint-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	14
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=10 i22 managed-object-interaction-filter-component	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=10 i3 managed-object-navpoint-component	3
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=10 i4 managed-object-navpoint-component	3
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=10 i5 managed-object-navpoint-component	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=10 i7 managed-object-navpoint-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=10 i8 managed-object-navpoint-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=11 i4 managed-objective-interaction-filter-component	18
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=12 i13 managed-navpoint-top-progress	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=12 i17 managed-navpoint-object-marker	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=12 i2 managed-navpoint-visibility-distance-filters-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	11
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=12 i23 managed-navpoint-visual-state-groups-component-3	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=12 i24 managed-navpoint-visual-state-groups-component-4	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=15 i2 nav-cutscene-flag-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=18 i13 effect-state-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=18 i2 effect-state-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=18 i31 effect-state-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=18 i4 effect-state-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=19 i0 sound-placement-state-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=19 i1 sound-placement-state-data-component	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=19 i18 sound-placement-state-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=19 i31 sound-placement-state-data-component	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=19 i9 sound-placement-state-data-component	9
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=2 i11 game-engine-soft-ceilings-component	28
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=2 i13 game-engine-disabled-kill-volume-flags-component	3
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=2 i14 GameEngineComposerLetterboxComponent	11
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	544
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=2 i16 scenario-intro-component	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	7
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=23 i16 selectable-zone-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=23 i17 selectable-zone-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=23 i3 selectable-zone-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=24 i0 state-checksum-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=25 i0 powerframe-player-selection-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=26 i0 supply-lines-blocked-status-component	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=27 i0 supply-lines-item-unlocked-component	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=27 i1 supply-lines-item-unlocked-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=27 i3 supply-lines-item-unlocked-component	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=3 i0 low-frequency	4
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=31 i0 tacmap-category	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=40 i32 vehicle-transformed-or-desired-open-state-changed-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=43 i31 device-dispenser-monitors-changed-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=45 i0 matchflow-sequence-data-component	3
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=46 i23 state-broker-state-changed-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=46 i31 state-broker-state-changed-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=46 i35 state-broker-state-changed-data-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=46 i5 state-broker-state-changed-data-component	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=48 i0 forge-player-data-edited-objects-ids-component	10
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=48 i1 forge-player-data-editing-graphs-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=5 i10 player-primary-respawn-object-component	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=5 i7 player-desired-respawn-seat-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=50 archetype hors registre	8
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=51 archetype hors registre	22
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=52 archetype hors registre	8
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=53 archetype hors registre	8
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=54 archetype hors registre	8
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=55 archetype hors registre	11
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=56 archetype hors registre	73
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=57 archetype hors registre	4
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=58 archetype hors registre	4
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=59 archetype hors registre	16
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=60 archetype hors registre	5
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=61 archetype hors registre	3
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=62 archetype hors registre	4
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=63 archetype hors registre	5
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=7 i0 forge-sim-generic-component	2
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=7 i1 forge-sim-generic-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=7 i31 forge-sim-generic-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=7 i42 forge-sim-generic-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	ti=7 i8 forge-sim-generic-component	1
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	vue B : fin de payload	331
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	vue C : bloc 0xbc non porte	146
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	vue C : debordement	26
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	vue C : kind non porte	729
+60ae07c4	HI_1_8_0	grammaire-ti43-T7	vue C : terminateur hors cadre	30282
+60ae07c4	HI_1_8_0	reference	liste d evenements non localisee	3260
+60ae07c4	HI_1_8_0	reference	ti=0 i11 game-engine-soft-ceilings-component	13
+60ae07c4	HI_1_8_0	reference	ti=0 i13 game-engine-disabled-kill-volume-flags-component	21
+60ae07c4	HI_1_8_0	reference	ti=0 i14 GameEngineComposerLetterboxComponent	4
+60ae07c4	HI_1_8_0	reference	ti=0 i15 managed-engine-timers-component	1
+60ae07c4	HI_1_8_0	reference	ti=0 i16 scenario-intro-component	1
+60ae07c4	HI_1_8_0	reference	ti=0 i19 forge-engine-total-budget-component	1
+60ae07c4	HI_1_8_0	reference	ti=0 i22 forge-engine-monitor-noclip-component	1
+60ae07c4	HI_1_8_0	reference	ti=1 i11 game-engine-soft-ceilings-component	1
+60ae07c4	HI_1_8_0	reference	ti=1 i13 game-engine-disabled-kill-volume-flags-component	1
+60ae07c4	HI_1_8_0	reference	ti=1 i14 GameEngineComposerLetterboxComponent	1
+60ae07c4	HI_1_8_0	reference	ti=10 i17 managed-object-navpoint-component	1
+60ae07c4	HI_1_8_0	reference	ti=10 i2 managed-object-navpoint-component	14
+60ae07c4	HI_1_8_0	reference	ti=10 i22 managed-object-interaction-filter-component	2
+60ae07c4	HI_1_8_0	reference	ti=10 i3 managed-object-navpoint-component	3
+60ae07c4	HI_1_8_0	reference	ti=10 i4 managed-object-navpoint-component	3
+60ae07c4	HI_1_8_0	reference	ti=10 i5 managed-object-navpoint-component	2
+60ae07c4	HI_1_8_0	reference	ti=10 i7 managed-object-navpoint-component	1
+60ae07c4	HI_1_8_0	reference	ti=10 i8 managed-object-navpoint-component	1
+60ae07c4	HI_1_8_0	reference	ti=11 i4 managed-objective-interaction-filter-component	18
+60ae07c4	HI_1_8_0	reference	ti=12 i13 managed-navpoint-top-progress	1
+60ae07c4	HI_1_8_0	reference	ti=12 i16 managed-navpoint-override-flags	2
+60ae07c4	HI_1_8_0	reference	ti=12 i17 managed-navpoint-object-marker	2
+60ae07c4	HI_1_8_0	reference	ti=12 i2 managed-navpoint-visibility-distance-filters-component	1
+60ae07c4	HI_1_8_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	11
+60ae07c4	HI_1_8_0	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	1
+60ae07c4	HI_1_8_0	reference	ti=12 i23 managed-navpoint-visual-state-groups-component-3	1
+60ae07c4	HI_1_8_0	reference	ti=12 i24 managed-navpoint-visual-state-groups-component-4	1
+60ae07c4	HI_1_8_0	reference	ti=15 i2 nav-cutscene-flag-component	1
+60ae07c4	HI_1_8_0	reference	ti=18 i13 effect-state-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=18 i2 effect-state-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=18 i31 effect-state-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=18 i4 effect-state-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=19 i0 sound-placement-state-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=19 i1 sound-placement-state-data-component	2
+60ae07c4	HI_1_8_0	reference	ti=19 i18 sound-placement-state-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=19 i31 sound-placement-state-data-component	2
+60ae07c4	HI_1_8_0	reference	ti=19 i9 sound-placement-state-data-component	9
+60ae07c4	HI_1_8_0	reference	ti=2 i11 game-engine-soft-ceilings-component	28
+60ae07c4	HI_1_8_0	reference	ti=2 i13 game-engine-disabled-kill-volume-flags-component	3
+60ae07c4	HI_1_8_0	reference	ti=2 i14 GameEngineComposerLetterboxComponent	11
+60ae07c4	HI_1_8_0	reference	ti=2 i15 managed-engine-timers-component	544
+60ae07c4	HI_1_8_0	reference	ti=2 i16 scenario-intro-component	2
+60ae07c4	HI_1_8_0	reference	ti=2 i17 matchflow-isplaying-flags-component	7
+60ae07c4	HI_1_8_0	reference	ti=23 i16 selectable-zone-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=23 i17 selectable-zone-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=23 i3 selectable-zone-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=24 i0 state-checksum-component	1
+60ae07c4	HI_1_8_0	reference	ti=25 i0 powerframe-player-selection-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=26 i0 supply-lines-blocked-status-component	2
+60ae07c4	HI_1_8_0	reference	ti=27 i0 supply-lines-item-unlocked-component	2
+60ae07c4	HI_1_8_0	reference	ti=27 i1 supply-lines-item-unlocked-component	1
+60ae07c4	HI_1_8_0	reference	ti=27 i3 supply-lines-item-unlocked-component	2
+60ae07c4	HI_1_8_0	reference	ti=3 i0 low-frequency	4
+60ae07c4	HI_1_8_0	reference	ti=31 i0 tacmap-category	2
+60ae07c4	HI_1_8_0	reference	ti=40 i32 vehicle-transformed-or-desired-open-state-changed-component	1
+60ae07c4	HI_1_8_0	reference	ti=43 i20 device-position-animation-control-component	1
+60ae07c4	HI_1_8_0	reference	ti=43 i22 device-power-component	1
+60ae07c4	HI_1_8_0	reference	ti=43 i31 device-dispenser-monitors-changed-component	1
+60ae07c4	HI_1_8_0	reference	ti=43 i35 device-animation-layer-state-component	1
+60ae07c4	HI_1_8_0	reference	ti=45 i0 matchflow-sequence-data-component	3
+60ae07c4	HI_1_8_0	reference	ti=46 i23 state-broker-state-changed-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=46 i31 state-broker-state-changed-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=46 i35 state-broker-state-changed-data-component	1
+60ae07c4	HI_1_8_0	reference	ti=46 i5 state-broker-state-changed-data-component	2
+60ae07c4	HI_1_8_0	reference	ti=48 i0 forge-player-data-edited-objects-ids-component	10
+60ae07c4	HI_1_8_0	reference	ti=48 i1 forge-player-data-editing-graphs-component	1
+60ae07c4	HI_1_8_0	reference	ti=5 i10 player-primary-respawn-object-component	2
+60ae07c4	HI_1_8_0	reference	ti=5 i7 player-desired-respawn-seat-component	1
+60ae07c4	HI_1_8_0	reference	ti=50 archetype hors registre	8
+60ae07c4	HI_1_8_0	reference	ti=51 archetype hors registre	22
+60ae07c4	HI_1_8_0	reference	ti=52 archetype hors registre	8
+60ae07c4	HI_1_8_0	reference	ti=53 archetype hors registre	8
+60ae07c4	HI_1_8_0	reference	ti=54 archetype hors registre	8
+60ae07c4	HI_1_8_0	reference	ti=55 archetype hors registre	11
+60ae07c4	HI_1_8_0	reference	ti=56 archetype hors registre	73
+60ae07c4	HI_1_8_0	reference	ti=57 archetype hors registre	4
+60ae07c4	HI_1_8_0	reference	ti=58 archetype hors registre	4
+60ae07c4	HI_1_8_0	reference	ti=59 archetype hors registre	16
+60ae07c4	HI_1_8_0	reference	ti=60 archetype hors registre	5
+60ae07c4	HI_1_8_0	reference	ti=61 archetype hors registre	3
+60ae07c4	HI_1_8_0	reference	ti=62 archetype hors registre	4
+60ae07c4	HI_1_8_0	reference	ti=63 archetype hors registre	5
+60ae07c4	HI_1_8_0	reference	ti=7 i0 forge-sim-generic-component	2
+60ae07c4	HI_1_8_0	reference	ti=7 i1 forge-sim-generic-component	1
+60ae07c4	HI_1_8_0	reference	ti=7 i31 forge-sim-generic-component	1
+60ae07c4	HI_1_8_0	reference	ti=7 i42 forge-sim-generic-component	1
+60ae07c4	HI_1_8_0	reference	ti=7 i8 forge-sim-generic-component	1
+60ae07c4	HI_1_8_0	reference	vue B : fin de payload	329
+60ae07c4	HI_1_8_0	reference	vue C : bloc 0xbc non porte	145
+60ae07c4	HI_1_8_0	reference	vue C : debordement	26
+60ae07c4	HI_1_8_0	reference	vue C : kind non porte	729
+60ae07c4	HI_1_8_0	reference	vue C : terminateur hors cadre	30283
+81c02726	HI_1_13_0	grammaire-ti43-T7	liste d evenements non localisee	293
+81c02726	HI_1_13_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	4
+81c02726	HI_1_13_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	4
+81c02726	HI_1_13_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	2
+81c02726	HI_1_13_0	grammaire-ti43-T7	ti=12 i20 managed-navpoint-visual-state-groups-component-0	19
+81c02726	HI_1_13_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	46
+81c02726	HI_1_13_0	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	38
+81c02726	HI_1_13_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	146
+81c02726	HI_1_13_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	5
+81c02726	HI_1_13_0	grammaire-ti43-T7	ti=40 i38 vehicle-weapon-set-component	4
+81c02726	HI_1_13_0	grammaire-ti43-T7	ti=40 i47 vehicle-low-frequency-component	1
+81c02726	HI_1_13_0	grammaire-ti43-T7	ti=51 archetype hors registre	1
+81c02726	HI_1_13_0	grammaire-ti43-T7	vue C : debordement	1
+81c02726	HI_1_13_0	grammaire-ti43-T7	vue C : kind non porte	1
+81c02726	HI_1_13_0	grammaire-ti43-T7	vue C : terminateur hors cadre	597
+81c02726	HI_1_13_0	reference	liste d evenements non localisee	309
+81c02726	HI_1_13_0	reference	ti=10 i2 managed-object-navpoint-component	4
+81c02726	HI_1_13_0	reference	ti=12 i16 managed-navpoint-override-flags	4
+81c02726	HI_1_13_0	reference	ti=12 i18 managed-navpoint-position-offset	1
+81c02726	HI_1_13_0	reference	ti=12 i20 managed-navpoint-visual-state-groups-component-0	19
+81c02726	HI_1_13_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	46
+81c02726	HI_1_13_0	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	36
+81c02726	HI_1_13_0	reference	ti=2 i15 managed-engine-timers-component	146
+81c02726	HI_1_13_0	reference	ti=2 i17 matchflow-isplaying-flags-component	5
+81c02726	HI_1_13_0	reference	ti=40 i38 vehicle-weapon-set-component	4
+81c02726	HI_1_13_0	reference	ti=40 i47 vehicle-low-frequency-component	1
+81c02726	HI_1_13_0	reference	ti=43 i22 device-power-component	1
+81c02726	HI_1_13_0	reference	ti=43 i39 device-machine-flags-component	13
+81c02726	HI_1_13_0	reference	ti=51 archetype hors registre	1
+81c02726	HI_1_13_0	reference	vue C : debordement	1
+81c02726	HI_1_13_0	reference	vue C : kind non porte	1
+81c02726	HI_1_13_0	reference	vue C : terminateur hors cadre	4150
+a349fea8	version-33	grammaire-ti43-T7	liste d evenements non localisee	4041
+a349fea8	version-33	grammaire-ti43-T7	ti=0 i11 game-engine-soft-ceilings-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=0 i13 game-engine-disabled-kill-volume-flags-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=0 i21 forge-engine-forge-mode-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=10 i10 managed-object-navpoint-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=10 i15 managed-object-navpoint-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	13
+a349fea8	version-33	grammaire-ti43-T7	ti=10 i22 managed-object-interaction-filter-component	14
+a349fea8	version-33	grammaire-ti43-T7	ti=10 i3 managed-object-navpoint-component	3
+a349fea8	version-33	grammaire-ti43-T7	ti=10 i4 managed-object-navpoint-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=12 i13 managed-navpoint-top-progress	1
+a349fea8	version-33	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	6
+a349fea8	version-33	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	2
+a349fea8	version-33	grammaire-ti43-T7	ti=12 i20 managed-navpoint-visual-state-groups-component-0	16
+a349fea8	version-33	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	37
+a349fea8	version-33	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	70
+a349fea8	version-33	grammaire-ti43-T7	ti=15 i2 nav-cutscene-flag-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	499
+a349fea8	version-33	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=27 i3 supply-lines-item-unlocked-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=31 i2 tacmap-visiblity	1
+a349fea8	version-33	grammaire-ti43-T7	ti=34 i14 tacmap-playercontrol	1
+a349fea8	version-33	grammaire-ti43-T7	ti=35 i59 biped-spartan-ability-non-predicted-state	11
+a349fea8	version-33	grammaire-ti43-T7	ti=40 i30 vehicle-auto-turret-triggers-component	11
+a349fea8	version-33	grammaire-ti43-T7	ti=40 i31 vehicle-auto-turret-aiming-vector-component	5
+a349fea8	version-33	grammaire-ti43-T7	ti=40 i36 vehicle-sentry-state-component	2
+a349fea8	version-33	grammaire-ti43-T7	ti=40 i38 vehicle-weapon-set-component	80
+a349fea8	version-33	grammaire-ti43-T7	ti=40 i40 vehicle-equipment-turret-parent-component	4
+a349fea8	version-33	grammaire-ti43-T7	ti=40 i45 air-drop-flight-component	20
+a349fea8	version-33	grammaire-ti43-T7	ti=40 i46 warp-component	10
+a349fea8	version-33	grammaire-ti43-T7	ti=40 i47 vehicle-low-frequency-component	15
+a349fea8	version-33	grammaire-ti43-T7	ti=43 i31 device-dispenser-monitors-changed-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=46 i0 state-broker-state-changed-data-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=46 i1 state-broker-state-changed-data-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=48 i0 forge-player-data-edited-objects-ids-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=48 i1 forge-player-data-editing-graphs-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=49 archetype hors registre	2
+a349fea8	version-33	grammaire-ti43-T7	ti=5 i10 player-primary-respawn-object-component	1
+a349fea8	version-33	grammaire-ti43-T7	ti=50 archetype hors registre	2
+a349fea8	version-33	grammaire-ti43-T7	ti=52 archetype hors registre	2
+a349fea8	version-33	grammaire-ti43-T7	ti=54 archetype hors registre	1
+a349fea8	version-33	grammaire-ti43-T7	ti=56 archetype hors registre	1
+a349fea8	version-33	grammaire-ti43-T7	ti=58 archetype hors registre	1
+a349fea8	version-33	grammaire-ti43-T7	ti=59 archetype hors registre	1
+a349fea8	version-33	grammaire-ti43-T7	ti=61 archetype hors registre	1
+a349fea8	version-33	grammaire-ti43-T7	ti=7 i0 forge-sim-generic-component	1
+a349fea8	version-33	grammaire-ti43-T7	vue B : fin de payload	7
+a349fea8	version-33	grammaire-ti43-T7	vue C : bloc 0xbc non porte	152
+a349fea8	version-33	grammaire-ti43-T7	vue C : debordement	8
+a349fea8	version-33	grammaire-ti43-T7	vue C : kind non porte	946
+a349fea8	version-33	grammaire-ti43-T7	vue C : terminateur hors cadre	22286
+a349fea8	version-33	reference	liste d evenements non localisee	4041
+a349fea8	version-33	reference	ti=0 i11 game-engine-soft-ceilings-component	1
+a349fea8	version-33	reference	ti=0 i13 game-engine-disabled-kill-volume-flags-component	1
+a349fea8	version-33	reference	ti=0 i21 forge-engine-forge-mode-component	1
+a349fea8	version-33	reference	ti=10 i10 managed-object-navpoint-component	1
+a349fea8	version-33	reference	ti=10 i15 managed-object-navpoint-component	1
+a349fea8	version-33	reference	ti=10 i2 managed-object-navpoint-component	13
+a349fea8	version-33	reference	ti=10 i22 managed-object-interaction-filter-component	10
+a349fea8	version-33	reference	ti=10 i3 managed-object-navpoint-component	3
+a349fea8	version-33	reference	ti=10 i4 managed-object-navpoint-component	1
+a349fea8	version-33	reference	ti=12 i13 managed-navpoint-top-progress	1
+a349fea8	version-33	reference	ti=12 i16 managed-navpoint-override-flags	5
+a349fea8	version-33	reference	ti=12 i18 managed-navpoint-position-offset	2
+a349fea8	version-33	reference	ti=12 i20 managed-navpoint-visual-state-groups-component-0	16
+a349fea8	version-33	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	37
+a349fea8	version-33	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	70
+a349fea8	version-33	reference	ti=15 i2 nav-cutscene-flag-component	1
+a349fea8	version-33	reference	ti=2 i15 managed-engine-timers-component	499
+a349fea8	version-33	reference	ti=2 i17 matchflow-isplaying-flags-component	1
+a349fea8	version-33	reference	ti=27 i3 supply-lines-item-unlocked-component	1
+a349fea8	version-33	reference	ti=34 i14 tacmap-playercontrol	1
+a349fea8	version-33	reference	ti=35 i59 biped-spartan-ability-non-predicted-state	11
+a349fea8	version-33	reference	ti=40 i30 vehicle-auto-turret-triggers-component	10
+a349fea8	version-33	reference	ti=40 i31 vehicle-auto-turret-aiming-vector-component	5
+a349fea8	version-33	reference	ti=40 i36 vehicle-sentry-state-component	2
+a349fea8	version-33	reference	ti=40 i38 vehicle-weapon-set-component	80
+a349fea8	version-33	reference	ti=40 i40 vehicle-equipment-turret-parent-component	4
+a349fea8	version-33	reference	ti=40 i45 air-drop-flight-component	20
+a349fea8	version-33	reference	ti=40 i46 warp-component	10
+a349fea8	version-33	reference	ti=40 i47 vehicle-low-frequency-component	15
+a349fea8	version-33	reference	ti=43 i19 device-position-animation-name-component	3
+a349fea8	version-33	reference	ti=43 i20 device-position-animation-control-component	1
+a349fea8	version-33	reference	ti=43 i21 device-position-group-component	84
+a349fea8	version-33	reference	ti=43 i22 device-power-component	1
+a349fea8	version-33	reference	ti=43 i23 device-power-group-component	2
+a349fea8	version-33	reference	ti=43 i24 device-interaction-in-progress-component	2
+a349fea8	version-33	reference	ti=43 i30 device-in-primary-mode-component	1
+a349fea8	version-33	reference	ti=43 i34 device-animation-layer-settings-component	1
+a349fea8	version-33	reference	ti=43 i39 device-machine-flags-component	12
+a349fea8	version-33	reference	ti=46 i0 state-broker-state-changed-data-component	1
+a349fea8	version-33	reference	ti=46 i1 state-broker-state-changed-data-component	1
+a349fea8	version-33	reference	ti=48 i0 forge-player-data-edited-objects-ids-component	1
+a349fea8	version-33	reference	ti=48 i1 forge-player-data-editing-graphs-component	1
+a349fea8	version-33	reference	ti=49 archetype hors registre	2
+a349fea8	version-33	reference	ti=5 i10 player-primary-respawn-object-component	1
+a349fea8	version-33	reference	ti=50 archetype hors registre	2
+a349fea8	version-33	reference	ti=52 archetype hors registre	2
+a349fea8	version-33	reference	ti=54 archetype hors registre	1
+a349fea8	version-33	reference	ti=56 archetype hors registre	1
+a349fea8	version-33	reference	ti=58 archetype hors registre	1
+a349fea8	version-33	reference	ti=59 archetype hors registre	1
+a349fea8	version-33	reference	ti=61 archetype hors registre	1
+a349fea8	version-33	reference	ti=7 i0 forge-sim-generic-component	1
+a349fea8	version-33	reference	vue B : fin de payload	7
+a349fea8	version-33	reference	vue C : bloc 0xbc non porte	152
+a349fea8	version-33	reference	vue C : debordement	8
+a349fea8	version-33	reference	vue C : kind non porte	927
+a349fea8	version-33	reference	vue C : terminateur hors cadre	22206
+a521164d	HI_1_4_1	grammaire-ti43-T7	liste d evenements non localisee	1291
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=0 i16 scenario-intro-component	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=10 i11 managed-object-navpoint-component	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=10 i15 managed-object-navpoint-component	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	17
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=10 i22 managed-object-interaction-filter-component	8
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=10 i3 managed-object-navpoint-component	2
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=10 i4 managed-object-navpoint-component	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	4
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=12 i20 managed-navpoint-visual-state-groups-component-0	5
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	11
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	25
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	127
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=25 i0 powerframe-player-selection-data-component	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=34 i10 tacmap-mapdismissallock	2
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=34 i12 tacmap-backmenulocked-state	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=34 i14 tacmap-playercontrol	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=35 i59 biped-spartan-ability-non-predicted-state	3
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=40 i30 vehicle-auto-turret-triggers-component	9
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=40 i31 vehicle-auto-turret-aiming-vector-component	2
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=40 i38 vehicle-weapon-set-component	43
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=40 i45 air-drop-flight-component	10
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=40 i46 warp-component	6
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=40 i47 vehicle-low-frequency-component	6
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=43 i31 device-dispenser-monitors-changed-component	3
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=45 i0 matchflow-sequence-data-component	2
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=45 i1 matchflow-focus-data-component	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=46 i1 state-broker-state-changed-data-component	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=46 i5 state-broker-state-changed-data-component	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=48 i0 forge-player-data-edited-objects-ids-component	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=50 archetype hors registre	2
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=51 archetype hors registre	2
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=52 archetype hors registre	2
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=54 archetype hors registre	2
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=55 archetype hors registre	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=56 archetype hors registre	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=59 archetype hors registre	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=60 archetype hors registre	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	ti=7 i3 forge-sim-generic-component	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	vue B : fin de payload	1
+a521164d	HI_1_4_1	grammaire-ti43-T7	vue C : bloc 0xbc non porte	141
+a521164d	HI_1_4_1	grammaire-ti43-T7	vue C : debordement	39
+a521164d	HI_1_4_1	grammaire-ti43-T7	vue C : kind non porte	255
+a521164d	HI_1_4_1	grammaire-ti43-T7	vue C : terminateur hors cadre	8391
+a521164d	HI_1_4_1	reference	liste d evenements non localisee	1291
+a521164d	HI_1_4_1	reference	ti=0 i16 scenario-intro-component	1
+a521164d	HI_1_4_1	reference	ti=10 i11 managed-object-navpoint-component	1
+a521164d	HI_1_4_1	reference	ti=10 i15 managed-object-navpoint-component	1
+a521164d	HI_1_4_1	reference	ti=10 i2 managed-object-navpoint-component	17
+a521164d	HI_1_4_1	reference	ti=10 i22 managed-object-interaction-filter-component	6
+a521164d	HI_1_4_1	reference	ti=10 i3 managed-object-navpoint-component	2
+a521164d	HI_1_4_1	reference	ti=10 i4 managed-object-navpoint-component	1
+a521164d	HI_1_4_1	reference	ti=12 i16 managed-navpoint-override-flags	4
+a521164d	HI_1_4_1	reference	ti=12 i18 managed-navpoint-position-offset	1
+a521164d	HI_1_4_1	reference	ti=12 i20 managed-navpoint-visual-state-groups-component-0	5
+a521164d	HI_1_4_1	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	10
+a521164d	HI_1_4_1	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	25
+a521164d	HI_1_4_1	reference	ti=2 i15 managed-engine-timers-component	127
+a521164d	HI_1_4_1	reference	ti=2 i17 matchflow-isplaying-flags-component	1
+a521164d	HI_1_4_1	reference	ti=25 i0 powerframe-player-selection-data-component	1
+a521164d	HI_1_4_1	reference	ti=34 i10 tacmap-mapdismissallock	2
+a521164d	HI_1_4_1	reference	ti=34 i12 tacmap-backmenulocked-state	1
+a521164d	HI_1_4_1	reference	ti=34 i14 tacmap-playercontrol	1
+a521164d	HI_1_4_1	reference	ti=35 i59 biped-spartan-ability-non-predicted-state	3
+a521164d	HI_1_4_1	reference	ti=40 i30 vehicle-auto-turret-triggers-component	9
+a521164d	HI_1_4_1	reference	ti=40 i31 vehicle-auto-turret-aiming-vector-component	2
+a521164d	HI_1_4_1	reference	ti=40 i38 vehicle-weapon-set-component	43
+a521164d	HI_1_4_1	reference	ti=40 i45 air-drop-flight-component	10
+a521164d	HI_1_4_1	reference	ti=40 i46 warp-component	6
+a521164d	HI_1_4_1	reference	ti=40 i47 vehicle-low-frequency-component	6
+a521164d	HI_1_4_1	reference	ti=43 i19 device-position-animation-name-component	3
+a521164d	HI_1_4_1	reference	ti=43 i20 device-position-animation-control-component	1
+a521164d	HI_1_4_1	reference	ti=43 i21 device-position-group-component	24
+a521164d	HI_1_4_1	reference	ti=43 i23 device-power-group-component	1
+a521164d	HI_1_4_1	reference	ti=43 i24 device-interaction-in-progress-component	2
+a521164d	HI_1_4_1	reference	ti=43 i25 device-interaction-hold-time-component	1
+a521164d	HI_1_4_1	reference	ti=43 i29 device-exclusive-user-component	1
+a521164d	HI_1_4_1	reference	ti=43 i39 device-machine-flags-component	3
+a521164d	HI_1_4_1	reference	ti=45 i0 matchflow-sequence-data-component	2
+a521164d	HI_1_4_1	reference	ti=45 i1 matchflow-focus-data-component	1
+a521164d	HI_1_4_1	reference	ti=46 i1 state-broker-state-changed-data-component	1
+a521164d	HI_1_4_1	reference	ti=46 i5 state-broker-state-changed-data-component	1
+a521164d	HI_1_4_1	reference	ti=48 i0 forge-player-data-edited-objects-ids-component	1
+a521164d	HI_1_4_1	reference	ti=50 archetype hors registre	2
+a521164d	HI_1_4_1	reference	ti=51 archetype hors registre	2
+a521164d	HI_1_4_1	reference	ti=52 archetype hors registre	2
+a521164d	HI_1_4_1	reference	ti=54 archetype hors registre	2
+a521164d	HI_1_4_1	reference	ti=55 archetype hors registre	1
+a521164d	HI_1_4_1	reference	ti=56 archetype hors registre	1
+a521164d	HI_1_4_1	reference	ti=59 archetype hors registre	1
+a521164d	HI_1_4_1	reference	ti=60 archetype hors registre	1
+a521164d	HI_1_4_1	reference	ti=7 i3 forge-sim-generic-component	1
+a521164d	HI_1_4_1	reference	vue B : fin de payload	1
+a521164d	HI_1_4_1	reference	vue C : bloc 0xbc non porte	139
+a521164d	HI_1_4_1	reference	vue C : debordement	39
+a521164d	HI_1_4_1	reference	vue C : kind non porte	254
+a521164d	HI_1_4_1	reference	vue C : terminateur hors cadre	8364
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	liste d evenements non localisee	262
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=0 i15 managed-engine-timers-component	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=10 i12 managed-object-navpoint-component	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=10 i16 managed-object-navpoint-component	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	19
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=10 i4 managed-object-navpoint-component	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=11 i4 managed-objective-interaction-filter-component	3
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	58
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	43
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=12 i23 managed-navpoint-visual-state-groups-component-3	2
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=18 i0 effect-state-data-component	3
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=18 i1 effect-state-data-component	4
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=18 i2 effect-state-data-component	2
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=18 i3 effect-state-data-component	2
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=18 i8 effect-state-data-component	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=19 i0 sound-placement-state-data-component	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=2 i11 game-engine-soft-ceilings-component	9
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=2 i14 GameEngineComposerLetterboxComponent	5
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	161
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	6
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=26 i0 supply-lines-blocked-status-component	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=26 i1 supply-lines-blocked-status-component	4
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=26 i2 supply-lines-blocked-status-component	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=27 i0 supply-lines-item-unlocked-component	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=34 i12 tacmap-backmenulocked-state	7
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=34 i14 tacmap-playercontrol	4
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=35 i59 biped-spartan-ability-non-predicted-state	2
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=40 i35 vehicle-auto-turret-target-component	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=50 archetype hors registre	8
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=57 archetype hors registre	2
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	ti=58 archetype hors registre	12
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	vue B : fin de payload	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	vue C : bloc 0xbc non porte	8
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	vue C : debordement	1
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	vue C : kind non porte	63
+bcb6d393	HI_1_12_0	grammaire-ti43-T7	vue C : terminateur hors cadre	4029
+bcb6d393	HI_1_12_0	reference	liste d evenements non localisee	283
+bcb6d393	HI_1_12_0	reference	ti=0 i15 managed-engine-timers-component	1
+bcb6d393	HI_1_12_0	reference	ti=10 i12 managed-object-navpoint-component	1
+bcb6d393	HI_1_12_0	reference	ti=10 i16 managed-object-navpoint-component	1
+bcb6d393	HI_1_12_0	reference	ti=10 i2 managed-object-navpoint-component	17
+bcb6d393	HI_1_12_0	reference	ti=10 i4 managed-object-navpoint-component	1
+bcb6d393	HI_1_12_0	reference	ti=11 i4 managed-objective-interaction-filter-component	2
+bcb6d393	HI_1_12_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	18
+bcb6d393	HI_1_12_0	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	17
+bcb6d393	HI_1_12_0	reference	ti=12 i23 managed-navpoint-visual-state-groups-component-3	2
+bcb6d393	HI_1_12_0	reference	ti=18 i0 effect-state-data-component	3
+bcb6d393	HI_1_12_0	reference	ti=18 i1 effect-state-data-component	4
+bcb6d393	HI_1_12_0	reference	ti=18 i2 effect-state-data-component	2
+bcb6d393	HI_1_12_0	reference	ti=18 i3 effect-state-data-component	2
+bcb6d393	HI_1_12_0	reference	ti=18 i8 effect-state-data-component	1
+bcb6d393	HI_1_12_0	reference	ti=19 i0 sound-placement-state-data-component	1
+bcb6d393	HI_1_12_0	reference	ti=2 i11 game-engine-soft-ceilings-component	9
+bcb6d393	HI_1_12_0	reference	ti=2 i14 GameEngineComposerLetterboxComponent	5
+bcb6d393	HI_1_12_0	reference	ti=2 i15 managed-engine-timers-component	161
+bcb6d393	HI_1_12_0	reference	ti=2 i17 matchflow-isplaying-flags-component	6
+bcb6d393	HI_1_12_0	reference	ti=26 i0 supply-lines-blocked-status-component	1
+bcb6d393	HI_1_12_0	reference	ti=26 i1 supply-lines-blocked-status-component	4
+bcb6d393	HI_1_12_0	reference	ti=26 i2 supply-lines-blocked-status-component	1
+bcb6d393	HI_1_12_0	reference	ti=27 i0 supply-lines-item-unlocked-component	1
+bcb6d393	HI_1_12_0	reference	ti=34 i12 tacmap-backmenulocked-state	7
+bcb6d393	HI_1_12_0	reference	ti=34 i14 tacmap-playercontrol	4
+bcb6d393	HI_1_12_0	reference	ti=35 i59 biped-spartan-ability-non-predicted-state	2
+bcb6d393	HI_1_12_0	reference	ti=40 i35 vehicle-auto-turret-target-component	1
+bcb6d393	HI_1_12_0	reference	ti=43 i21 device-position-group-component	3
+bcb6d393	HI_1_12_0	reference	ti=43 i22 device-power-component	1
+bcb6d393	HI_1_12_0	reference	ti=43 i34 device-animation-layer-settings-component	10
+bcb6d393	HI_1_12_0	reference	ti=43 i35 device-animation-layer-state-component	12112
+bcb6d393	HI_1_12_0	reference	ti=43 i39 device-machine-flags-component	1
+bcb6d393	HI_1_12_0	reference	ti=50 archetype hors registre	8
+bcb6d393	HI_1_12_0	reference	ti=57 archetype hors registre	2
+bcb6d393	HI_1_12_0	reference	ti=58 archetype hors registre	12
+bcb6d393	HI_1_12_0	reference	vue B : fin de payload	1
+bcb6d393	HI_1_12_0	reference	vue C : bloc 0xbc non porte	8
+bcb6d393	HI_1_12_0	reference	vue C : debordement	1
+bcb6d393	HI_1_12_0	reference	vue C : kind non porte	63
+bcb6d393	HI_1_12_0	reference	vue C : terminateur hors cadre	3249
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	liste d evenements non localisee	362
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	1
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	2
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	1
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	7
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=19 i0 sound-placement-state-data-component	1
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=19 i3 sound-placement-state-data-component	4
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	147
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	5
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=26 i3 supply-lines-blocked-status-component	4
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=27 i3 supply-lines-item-unlocked-component	2
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=43 i31 device-dispenser-monitors-changed-component	1
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=52 archetype hors registre	1
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=55 archetype hors registre	1
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=56 archetype hors registre	109
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	ti=62 archetype hors registre	1
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	vue B : fin de payload	17
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	vue C : bloc 0xbc non porte	106
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	vue C : debordement	1
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	vue C : kind non porte	145
+bf15f7ab	HI_1_13_0	grammaire-ti43-T7	vue C : terminateur hors cadre	1658
+bf15f7ab	HI_1_13_0	reference	liste d evenements non localisee	362
+bf15f7ab	HI_1_13_0	reference	ti=10 i2 managed-object-navpoint-component	1
+bf15f7ab	HI_1_13_0	reference	ti=12 i16 managed-navpoint-override-flags	2
+bf15f7ab	HI_1_13_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	7
+bf15f7ab	HI_1_13_0	reference	ti=19 i0 sound-placement-state-data-component	1
+bf15f7ab	HI_1_13_0	reference	ti=19 i3 sound-placement-state-data-component	4
+bf15f7ab	HI_1_13_0	reference	ti=2 i15 managed-engine-timers-component	147
+bf15f7ab	HI_1_13_0	reference	ti=2 i17 matchflow-isplaying-flags-component	5
+bf15f7ab	HI_1_13_0	reference	ti=26 i3 supply-lines-blocked-status-component	4
+bf15f7ab	HI_1_13_0	reference	ti=27 i3 supply-lines-item-unlocked-component	2
+bf15f7ab	HI_1_13_0	reference	ti=43 i19 device-position-animation-name-component	2
+bf15f7ab	HI_1_13_0	reference	ti=43 i20 device-position-animation-control-component	2
+bf15f7ab	HI_1_13_0	reference	ti=43 i21 device-position-group-component	2
+bf15f7ab	HI_1_13_0	reference	ti=43 i22 device-power-component	1
+bf15f7ab	HI_1_13_0	reference	ti=52 archetype hors registre	1
+bf15f7ab	HI_1_13_0	reference	ti=55 archetype hors registre	1
+bf15f7ab	HI_1_13_0	reference	ti=56 archetype hors registre	109
+bf15f7ab	HI_1_13_0	reference	ti=62 archetype hors registre	1
+bf15f7ab	HI_1_13_0	reference	vue B : fin de payload	13
+bf15f7ab	HI_1_13_0	reference	vue C : bloc 0xbc non porte	106
+bf15f7ab	HI_1_13_0	reference	vue C : debordement	1
+bf15f7ab	HI_1_13_0	reference	vue C : kind non porte	145
+bf15f7ab	HI_1_13_0	reference	vue C : terminateur hors cadre	1658
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	liste d evenements non localisee	526
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	2
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	2
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	1
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	17
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	9
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	ti=12 i23 managed-navpoint-visual-state-groups-component-3	2
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	318
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	5
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	ti=40 i30 vehicle-auto-turret-triggers-component	1
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	ti=40 i31 vehicle-auto-turret-aiming-vector-component	787
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	ti=40 i38 vehicle-weapon-set-component	2
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	vue C : debordement	1
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	vue C : kind non porte	2
+bfecd02b	HI_1_13_0	grammaire-ti43-T7	vue C : terminateur hors cadre	3154
+bfecd02b	HI_1_13_0	reference	liste d evenements non localisee	526
+bfecd02b	HI_1_13_0	reference	ti=10 i2 managed-object-navpoint-component	2
+bfecd02b	HI_1_13_0	reference	ti=12 i16 managed-navpoint-override-flags	2
+bfecd02b	HI_1_13_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	17
+bfecd02b	HI_1_13_0	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	9
+bfecd02b	HI_1_13_0	reference	ti=12 i23 managed-navpoint-visual-state-groups-component-3	2
+bfecd02b	HI_1_13_0	reference	ti=2 i15 managed-engine-timers-component	318
+bfecd02b	HI_1_13_0	reference	ti=2 i17 matchflow-isplaying-flags-component	5
+bfecd02b	HI_1_13_0	reference	ti=40 i30 vehicle-auto-turret-triggers-component	1
+bfecd02b	HI_1_13_0	reference	ti=40 i31 vehicle-auto-turret-aiming-vector-component	787
+bfecd02b	HI_1_13_0	reference	ti=40 i38 vehicle-weapon-set-component	2
+bfecd02b	HI_1_13_0	reference	ti=43 i22 device-power-component	1
+bfecd02b	HI_1_13_0	reference	vue C : debordement	1
+bfecd02b	HI_1_13_0	reference	vue C : kind non porte	2
+bfecd02b	HI_1_13_0	reference	vue C : terminateur hors cadre	3154
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	liste d evenements non localisee	2332
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=0 i18 forge-engine-player-roles-component	1
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	4
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=10 i22 managed-object-interaction-filter-component	5
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=11 i4 managed-objective-interaction-filter-component	24
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	3
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	9
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=12 i20 managed-navpoint-visual-state-groups-component-0	14
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	20
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	115
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	7
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=3 i0 low-frequency	7
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=34 i12 tacmap-backmenulocked-state	1
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	ti=48 i1 forge-player-data-editing-graphs-component	1
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	vue C : debordement	1
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	vue C : kind non porte	15
+c75f33b8	HI_1_13_0	grammaire-ti43-T7	vue C : terminateur hors cadre	2296
+c75f33b8	HI_1_13_0	reference	liste d evenements non localisee	2332
+c75f33b8	HI_1_13_0	reference	ti=0 i18 forge-engine-player-roles-component	1
+c75f33b8	HI_1_13_0	reference	ti=10 i2 managed-object-navpoint-component	4
+c75f33b8	HI_1_13_0	reference	ti=10 i22 managed-object-interaction-filter-component	5
+c75f33b8	HI_1_13_0	reference	ti=11 i4 managed-objective-interaction-filter-component	24
+c75f33b8	HI_1_13_0	reference	ti=12 i16 managed-navpoint-override-flags	3
+c75f33b8	HI_1_13_0	reference	ti=12 i18 managed-navpoint-position-offset	8
+c75f33b8	HI_1_13_0	reference	ti=12 i20 managed-navpoint-visual-state-groups-component-0	14
+c75f33b8	HI_1_13_0	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	20
+c75f33b8	HI_1_13_0	reference	ti=2 i15 managed-engine-timers-component	115
+c75f33b8	HI_1_13_0	reference	ti=2 i17 matchflow-isplaying-flags-component	7
+c75f33b8	HI_1_13_0	reference	ti=3 i0 low-frequency	7
+c75f33b8	HI_1_13_0	reference	ti=34 i12 tacmap-backmenulocked-state	1
+c75f33b8	HI_1_13_0	reference	ti=43 i22 device-power-component	1
+c75f33b8	HI_1_13_0	reference	ti=43 i39 device-machine-flags-component	1
+c75f33b8	HI_1_13_0	reference	ti=48 i1 forge-player-data-editing-graphs-component	1
+c75f33b8	HI_1_13_0	reference	vue C : debordement	1
+c75f33b8	HI_1_13_0	reference	vue C : kind non porte	15
+c75f33b8	HI_1_13_0	reference	vue C : terminateur hors cadre	2296
+d9781168	HI_1_13_0	grammaire-ti43-T7	liste d evenements non localisee	5736
+d9781168	HI_1_13_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	8
+d9781168	HI_1_13_0	grammaire-ti43-T7	ti=10 i22 managed-object-interaction-filter-component	3
+d9781168	HI_1_13_0	grammaire-ti43-T7	ti=11 i4 managed-objective-interaction-filter-component	11
+d9781168	HI_1_13_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	1
+d9781168	HI_1_13_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	1
+d9781168	HI_1_13_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	5
+d9781168	HI_1_13_0	grammaire-ti43-T7	ti=12 i24 managed-navpoint-visual-state-groups-component-4	2
+d9781168	HI_1_13_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	146
+d9781168	HI_1_13_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	8
+d9781168	HI_1_13_0	grammaire-ti43-T7	ti=51 archetype hors registre	2
+d9781168	HI_1_13_0	grammaire-ti43-T7	vue B : fin de payload	1
+d9781168	HI_1_13_0	grammaire-ti43-T7	vue C : debordement	1
+d9781168	HI_1_13_0	grammaire-ti43-T7	vue C : kind non porte	1
+d9781168	HI_1_13_0	grammaire-ti43-T7	vue C : terminateur hors cadre	11249
+d9781168	HI_1_13_0	reference	liste d evenements non localisee	5741
+d9781168	HI_1_13_0	reference	ti=10 i2 managed-object-navpoint-component	8
+d9781168	HI_1_13_0	reference	ti=10 i22 managed-object-interaction-filter-component	3
+d9781168	HI_1_13_0	reference	ti=11 i4 managed-objective-interaction-filter-component	11
+d9781168	HI_1_13_0	reference	ti=12 i16 managed-navpoint-override-flags	1
+d9781168	HI_1_13_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	5
+d9781168	HI_1_13_0	reference	ti=12 i24 managed-navpoint-visual-state-groups-component-4	2
+d9781168	HI_1_13_0	reference	ti=2 i15 managed-engine-timers-component	146
+d9781168	HI_1_13_0	reference	ti=2 i17 matchflow-isplaying-flags-component	8
+d9781168	HI_1_13_0	reference	ti=43 i22 device-power-component	1
+d9781168	HI_1_13_0	reference	ti=43 i39 device-machine-flags-component	1
+d9781168	HI_1_13_0	reference	ti=51 archetype hors registre	2
+d9781168	HI_1_13_0	reference	vue B : fin de payload	1
+d9781168	HI_1_13_0	reference	vue C : debordement	1
+d9781168	HI_1_13_0	reference	vue C : kind non porte	1
+d9781168	HI_1_13_0	reference	vue C : terminateur hors cadre	11249
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	liste d evenements non localisee	1716
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=0 i16 scenario-intro-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=0 i25 forge-engine-baking-data-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=10 i18 managed-object-networked-property-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	17
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=10 i22 managed-object-interaction-filter-component	15
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=10 i3 managed-object-navpoint-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=10 i4 managed-object-navpoint-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	14
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=12 i2 managed-navpoint-visibility-distance-filters-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=18 i0 effect-state-data-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=18 i1 effect-state-data-component	3
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=18 i10 effect-state-data-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=2 i13 game-engine-disabled-kill-volume-flags-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=20 i2 spawn-filter-filters-component	4
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=23 i0 selectable-zone-data-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=24 i2 persistence-state-bucket-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=27 i0 supply-lines-item-unlocked-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=28 i0 narrative-moment-beat-activation-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=34 i12 tacmap-backmenulocked-state	2
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=34 i14 tacmap-playercontrol	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=35 i59 biped-spartan-ability-non-predicted-state	31
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=40 i30 vehicle-auto-turret-triggers-component	2
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=40 i31 vehicle-auto-turret-aiming-vector-component	7
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=40 i33 vehicle-type-state-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=40 i38 vehicle-weapon-set-component	66
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=40 i40 vehicle-equipment-turret-parent-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=40 i45 air-drop-flight-component	16
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=40 i46 warp-component	12
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=40 i47 vehicle-low-frequency-component	9
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=45 i0 matchflow-sequence-data-component	2
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=46 i0 state-broker-state-changed-data-component	2
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=48 i0 forge-player-data-edited-objects-ids-component	3
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=49 archetype hors registre	3
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=5 i7 player-desired-respawn-seat-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=50 archetype hors registre	2
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=51 archetype hors registre	6
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=52 archetype hors registre	5
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=53 archetype hors registre	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=54 archetype hors registre	3
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=55 archetype hors registre	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=56 archetype hors registre	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=57 archetype hors registre	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=58 archetype hors registre	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=59 archetype hors registre	4
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=60 archetype hors registre	2
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=61 archetype hors registre	2
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=7 i0 forge-sim-generic-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	ti=7 i15 forge-sim-generic-component	1
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	vue B : fin de payload	3
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	vue C : bloc 0xbc non porte	88
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	vue C : debordement	38
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	vue C : kind non porte	224
+e5adf7b2	HI_1_11_0	grammaire-ti43-T7	vue C : terminateur hors cadre	10202
+e5adf7b2	HI_1_11_0	reference	liste d evenements non localisee	1727
+e5adf7b2	HI_1_11_0	reference	ti=0 i16 scenario-intro-component	1
+e5adf7b2	HI_1_11_0	reference	ti=0 i25 forge-engine-baking-data-component	1
+e5adf7b2	HI_1_11_0	reference	ti=10 i18 managed-object-networked-property-component	1
+e5adf7b2	HI_1_11_0	reference	ti=10 i2 managed-object-navpoint-component	17
+e5adf7b2	HI_1_11_0	reference	ti=10 i22 managed-object-interaction-filter-component	15
+e5adf7b2	HI_1_11_0	reference	ti=10 i3 managed-object-navpoint-component	1
+e5adf7b2	HI_1_11_0	reference	ti=10 i4 managed-object-navpoint-component	1
+e5adf7b2	HI_1_11_0	reference	ti=12 i16 managed-navpoint-override-flags	13
+e5adf7b2	HI_1_11_0	reference	ti=12 i2 managed-navpoint-visibility-distance-filters-component	1
+e5adf7b2	HI_1_11_0	reference	ti=18 i0 effect-state-data-component	1
+e5adf7b2	HI_1_11_0	reference	ti=18 i1 effect-state-data-component	3
+e5adf7b2	HI_1_11_0	reference	ti=18 i10 effect-state-data-component	1
+e5adf7b2	HI_1_11_0	reference	ti=2 i13 game-engine-disabled-kill-volume-flags-component	1
+e5adf7b2	HI_1_11_0	reference	ti=2 i17 matchflow-isplaying-flags-component	1
+e5adf7b2	HI_1_11_0	reference	ti=20 i2 spawn-filter-filters-component	4
+e5adf7b2	HI_1_11_0	reference	ti=23 i0 selectable-zone-data-component	1
+e5adf7b2	HI_1_11_0	reference	ti=24 i2 persistence-state-bucket-component	1
+e5adf7b2	HI_1_11_0	reference	ti=27 i0 supply-lines-item-unlocked-component	1
+e5adf7b2	HI_1_11_0	reference	ti=28 i0 narrative-moment-beat-activation-component	1
+e5adf7b2	HI_1_11_0	reference	ti=34 i12 tacmap-backmenulocked-state	2
+e5adf7b2	HI_1_11_0	reference	ti=34 i14 tacmap-playercontrol	1
+e5adf7b2	HI_1_11_0	reference	ti=35 i59 biped-spartan-ability-non-predicted-state	31
+e5adf7b2	HI_1_11_0	reference	ti=40 i30 vehicle-auto-turret-triggers-component	2
+e5adf7b2	HI_1_11_0	reference	ti=40 i31 vehicle-auto-turret-aiming-vector-component	7
+e5adf7b2	HI_1_11_0	reference	ti=40 i33 vehicle-type-state-component	1
+e5adf7b2	HI_1_11_0	reference	ti=40 i38 vehicle-weapon-set-component	66
+e5adf7b2	HI_1_11_0	reference	ti=40 i40 vehicle-equipment-turret-parent-component	1
+e5adf7b2	HI_1_11_0	reference	ti=40 i45 air-drop-flight-component	16
+e5adf7b2	HI_1_11_0	reference	ti=40 i46 warp-component	12
+e5adf7b2	HI_1_11_0	reference	ti=40 i47 vehicle-low-frequency-component	9
+e5adf7b2	HI_1_11_0	reference	ti=43 i19 device-position-animation-name-component	3
+e5adf7b2	HI_1_11_0	reference	ti=43 i20 device-position-animation-control-component	1
+e5adf7b2	HI_1_11_0	reference	ti=43 i21 device-position-group-component	3
+e5adf7b2	HI_1_11_0	reference	ti=43 i22 device-power-component	1
+e5adf7b2	HI_1_11_0	reference	ti=43 i23 device-power-group-component	1
+e5adf7b2	HI_1_11_0	reference	ti=43 i27 device-health-station-charges-component	1
+e5adf7b2	HI_1_11_0	reference	ti=45 i0 matchflow-sequence-data-component	2
+e5adf7b2	HI_1_11_0	reference	ti=46 i0 state-broker-state-changed-data-component	2
+e5adf7b2	HI_1_11_0	reference	ti=48 i0 forge-player-data-edited-objects-ids-component	2
+e5adf7b2	HI_1_11_0	reference	ti=49 archetype hors registre	3
+e5adf7b2	HI_1_11_0	reference	ti=5 i7 player-desired-respawn-seat-component	1
+e5adf7b2	HI_1_11_0	reference	ti=50 archetype hors registre	2
+e5adf7b2	HI_1_11_0	reference	ti=51 archetype hors registre	6
+e5adf7b2	HI_1_11_0	reference	ti=52 archetype hors registre	5
+e5adf7b2	HI_1_11_0	reference	ti=53 archetype hors registre	1
+e5adf7b2	HI_1_11_0	reference	ti=54 archetype hors registre	3
+e5adf7b2	HI_1_11_0	reference	ti=55 archetype hors registre	1
+e5adf7b2	HI_1_11_0	reference	ti=56 archetype hors registre	1
+e5adf7b2	HI_1_11_0	reference	ti=57 archetype hors registre	1
+e5adf7b2	HI_1_11_0	reference	ti=59 archetype hors registre	4
+e5adf7b2	HI_1_11_0	reference	ti=60 archetype hors registre	1
+e5adf7b2	HI_1_11_0	reference	ti=61 archetype hors registre	2
+e5adf7b2	HI_1_11_0	reference	ti=7 i0 forge-sim-generic-component	1
+e5adf7b2	HI_1_11_0	reference	ti=7 i15 forge-sim-generic-component	1
+e5adf7b2	HI_1_11_0	reference	vue B : fin de payload	3
+e5adf7b2	HI_1_11_0	reference	vue C : bloc 0xbc non porte	88
+e5adf7b2	HI_1_11_0	reference	vue C : debordement	38
+e5adf7b2	HI_1_11_0	reference	vue C : kind non porte	222
+e5adf7b2	HI_1_11_0	reference	vue C : terminateur hors cadre	10198
+f75e7053	HI_1_13_0	grammaire-ti43-T7	liste d evenements non localisee	474
+f75e7053	HI_1_13_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	12
+f75e7053	HI_1_13_0	grammaire-ti43-T7	ti=12 i16 managed-navpoint-override-flags	2
+f75e7053	HI_1_13_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	1
+f75e7053	HI_1_13_0	grammaire-ti43-T7	ti=12 i20 managed-navpoint-visual-state-groups-component-0	54
+f75e7053	HI_1_13_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	5
+f75e7053	HI_1_13_0	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	16
+f75e7053	HI_1_13_0	grammaire-ti43-T7	ti=12 i23 managed-navpoint-visual-state-groups-component-3	1
+f75e7053	HI_1_13_0	grammaire-ti43-T7	ti=12 i25 managed-navpoint-visual-state-groups-component-5	4
+f75e7053	HI_1_13_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	195
+f75e7053	HI_1_13_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	6
+f75e7053	HI_1_13_0	grammaire-ti43-T7	vue C : debordement	1
+f75e7053	HI_1_13_0	grammaire-ti43-T7	vue C : kind non porte	1
+f75e7053	HI_1_13_0	grammaire-ti43-T7	vue C : terminateur hors cadre	2684
+f75e7053	HI_1_13_0	reference	liste d evenements non localisee	477
+f75e7053	HI_1_13_0	reference	ti=10 i2 managed-object-navpoint-component	12
+f75e7053	HI_1_13_0	reference	ti=12 i16 managed-navpoint-override-flags	2
+f75e7053	HI_1_13_0	reference	ti=12 i20 managed-navpoint-visual-state-groups-component-0	54
+f75e7053	HI_1_13_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	5
+f75e7053	HI_1_13_0	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	16
+f75e7053	HI_1_13_0	reference	ti=12 i23 managed-navpoint-visual-state-groups-component-3	1
+f75e7053	HI_1_13_0	reference	ti=12 i25 managed-navpoint-visual-state-groups-component-5	4
+f75e7053	HI_1_13_0	reference	ti=2 i15 managed-engine-timers-component	195
+f75e7053	HI_1_13_0	reference	ti=2 i17 matchflow-isplaying-flags-component	6
+f75e7053	HI_1_13_0	reference	ti=43 i22 device-power-component	1
+f75e7053	HI_1_13_0	reference	ti=43 i39 device-machine-flags-component	17
+f75e7053	HI_1_13_0	reference	vue C : debordement	1
+f75e7053	HI_1_13_0	reference	vue C : kind non porte	1
+f75e7053	HI_1_13_0	reference	vue C : terminateur hors cadre	4287
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	liste d evenements non localisee	692
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=0 i11 game-engine-soft-ceilings-component	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=1 i13 game-engine-disabled-kill-volume-flags-component	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=10 i2 managed-object-navpoint-component	24
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=10 i22 managed-object-interaction-filter-component	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=10 i3 managed-object-navpoint-component	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=11 i4 managed-objective-interaction-filter-component	7
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=12 i13 managed-navpoint-top-progress	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=12 i18 managed-navpoint-position-offset	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=12 i21 managed-navpoint-visual-state-groups-component-1	84
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=12 i22 managed-navpoint-visual-state-groups-component-2	64
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=12 i24 managed-navpoint-visual-state-groups-component-4	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=18 i0 effect-state-data-component	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=18 i2 effect-state-data-component	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=19 i0 sound-placement-state-data-component	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=2 i15 managed-engine-timers-component	551
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=2 i17 matchflow-isplaying-flags-component	5
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=27 i24 supply-lines-item-unlocked-component	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=27 i8 supply-lines-item-unlocked-component	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=3 i0 low-frequency	735
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=50 archetype hors registre	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=52 archetype hors registre	2
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=53 archetype hors registre	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=55 archetype hors registre	2
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=56 archetype hors registre	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=59 archetype hors registre	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=62 archetype hors registre	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	ti=63 archetype hors registre	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	vue B : fin de payload	6
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	vue C : bloc 0xbc non porte	44
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	vue C : debordement	1
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	vue C : kind non porte	145
+fb1a1a72	HI_1_13_0	grammaire-ti43-T7	vue C : terminateur hors cadre	23955
+fb1a1a72	HI_1_13_0	reference	liste d evenements non localisee	692
+fb1a1a72	HI_1_13_0	reference	ti=0 i11 game-engine-soft-ceilings-component	1
+fb1a1a72	HI_1_13_0	reference	ti=1 i13 game-engine-disabled-kill-volume-flags-component	1
+fb1a1a72	HI_1_13_0	reference	ti=10 i2 managed-object-navpoint-component	24
+fb1a1a72	HI_1_13_0	reference	ti=10 i22 managed-object-interaction-filter-component	1
+fb1a1a72	HI_1_13_0	reference	ti=10 i3 managed-object-navpoint-component	1
+fb1a1a72	HI_1_13_0	reference	ti=11 i4 managed-objective-interaction-filter-component	7
+fb1a1a72	HI_1_13_0	reference	ti=12 i13 managed-navpoint-top-progress	1
+fb1a1a72	HI_1_13_0	reference	ti=12 i21 managed-navpoint-visual-state-groups-component-1	77
+fb1a1a72	HI_1_13_0	reference	ti=12 i22 managed-navpoint-visual-state-groups-component-2	55
+fb1a1a72	HI_1_13_0	reference	ti=12 i24 managed-navpoint-visual-state-groups-component-4	1
+fb1a1a72	HI_1_13_0	reference	ti=18 i0 effect-state-data-component	1
+fb1a1a72	HI_1_13_0	reference	ti=18 i2 effect-state-data-component	1
+fb1a1a72	HI_1_13_0	reference	ti=19 i0 sound-placement-state-data-component	1
+fb1a1a72	HI_1_13_0	reference	ti=2 i15 managed-engine-timers-component	551
+fb1a1a72	HI_1_13_0	reference	ti=2 i17 matchflow-isplaying-flags-component	5
+fb1a1a72	HI_1_13_0	reference	ti=27 i24 supply-lines-item-unlocked-component	1
+fb1a1a72	HI_1_13_0	reference	ti=27 i8 supply-lines-item-unlocked-component	1
+fb1a1a72	HI_1_13_0	reference	ti=3 i0 low-frequency	735
+fb1a1a72	HI_1_13_0	reference	ti=43 i21 device-position-group-component	147
+fb1a1a72	HI_1_13_0	reference	ti=43 i22 device-power-component	1
+fb1a1a72	HI_1_13_0	reference	ti=43 i30 device-in-primary-mode-component	1
+fb1a1a72	HI_1_13_0	reference	ti=43 i32 device-dispenser-state-flags-component	1
+fb1a1a72	HI_1_13_0	reference	ti=43 i39 device-machine-flags-component	1
+fb1a1a72	HI_1_13_0	reference	ti=50 archetype hors registre	1
+fb1a1a72	HI_1_13_0	reference	ti=52 archetype hors registre	2
+fb1a1a72	HI_1_13_0	reference	ti=53 archetype hors registre	1
+fb1a1a72	HI_1_13_0	reference	ti=55 archetype hors registre	2
+fb1a1a72	HI_1_13_0	reference	ti=56 archetype hors registre	1
+fb1a1a72	HI_1_13_0	reference	ti=59 archetype hors registre	1
+fb1a1a72	HI_1_13_0	reference	ti=62 archetype hors registre	1
+fb1a1a72	HI_1_13_0	reference	ti=63 archetype hors registre	1
+fb1a1a72	HI_1_13_0	reference	vue B : fin de payload	5
+fb1a1a72	HI_1_13_0	reference	vue C : bloc 0xbc non porte	44
+fb1a1a72	HI_1_13_0	reference	vue C : debordement	1
+fb1a1a72	HI_1_13_0	reference	vue C : kind non porte	144
+fb1a1a72	HI_1_13_0	reference	vue C : terminateur hors cadre	23941

@@ -74,11 +74,11 @@ func (h *DiagProgressionHandler) handleGetDiag(ctx context.Context, in *diagProg
 	}
 	provider, err := h.newProvider(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	diag, err := provider.GetProgressionDiag(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "diag_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "diag_error", err)
 	}
 	return &diagProgressionOutput{Body: diag}, nil
 }

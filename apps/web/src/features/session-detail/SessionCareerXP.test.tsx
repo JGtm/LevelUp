@@ -3,16 +3,19 @@
  *
  * - `buildSessionCareerXpOption` (pur) : barres XP/match (axe secondaire) +
  *   ligne XP cumulée (axe primaire), MIROIR de TimeseriesCareerXP.
- * - `SessionCareerXP` (composant) : auto-gate DATA-DRIVEN — masqué (null) sans
- *   aucune estimation sur la session, rendu sinon.
+ * - `SessionCareerXP` (composant) : le titre sans la capability analytics.career_xp_estimate n'a pas la
+ *   carte ; le titre qui l'a garde la carte (titre et état vide) même sans estimation sur la session.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { SessionCareerXP, buildSessionCareerXpOption } from './SessionCareerXP'
+
+const capability = vi.hoisted(() => ({ supported: false }))
+vi.mock('@/lib/capabilities/dataCapabilities', () => ({ useDataCapability: () => capability.supported }))
 
 vi.mock('echarts-for-react', () => ({
   default: () => <div data-testid="echarts-mock" />,
@@ -102,11 +105,24 @@ describe('buildSessionCareerXpOption', () => {
   })
 })
 
-describe('SessionCareerXP — auto-gate data-driven', () => {
-  it('aucune estimation sur la session → non rendu (null)', () => {
+describe('SessionCareerXP — capability du titre', () => {
+  beforeEach(() => {
+    capability.supported = false
+  })
+
+  it('titre sans la capability et aucune estimation → non rendu (null)', () => {
     const matches = [match(undefined, '2025-01-01T10:00:00Z'), match(undefined, '2025-01-01T11:00:00Z')]
     const { container } = render(<SessionCareerXP title="XP de carrière (estimée)" matches={matches} />)
     expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByTestId('echarts-mock')).toBeNull()
+  })
+
+  it('titre avec la capability mais aucune estimation (Firefight seul) → la carte reste : titre et état vide', async () => {
+    capability.supported = true
+    const matches = [match(undefined, '2025-01-01T10:00:00Z')]
+    render(<SessionCareerXP title="XP de carrière (estimée)" matches={matches} />)
+    expect(await screen.findByText('XP de carrière (estimée)')).toBeInTheDocument()
+    expect(screen.getByTestId('chart-card-empty').querySelector('.border-dashed')).not.toBeNull()
     expect(screen.queryByTestId('echarts-mock')).toBeNull()
   })
 

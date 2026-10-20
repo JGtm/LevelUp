@@ -1,11 +1,11 @@
 // cross-feature-allow: bloc Progression Prestige de la tab Réalisations —
-// consomme queryKeys.prestige (lib/query) et useSettings (friend_gamertags)
-// depuis features/settings.
+// consomme queryKeys.prestige (lib/query) et usePlayerFriends (liste d'amis du
+// joueur) depuis features/friends.
 /**
  * PrestigeSquadProgress — bloc "Progression Prestige" de la tab Réalisations.
  *
  * Affiche la barre de progression Prestige du joueur courant + celles des amis
- * de l'escouade (Settings → friend_gamertags), triées par PP décroissant.
+ * de l'escouade (amis du joueur courant), triées par PP décroissant.
  *
  * Rendu calqué sur la barre de rang de carrière / Prestige de la home :
  * CompositeProgressBar + grille [valeur courante | barre | cible]. Légende
@@ -21,7 +21,7 @@ import { useQueries } from '@tanstack/react-query'
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
-import { useSettings } from '@/features/settings/queries'
+import { useFriendGamertags } from '@/features/friends/queries'
 import { queryKeys } from '@/lib/query/keys'
 import { getAscensionText } from './i18n'
 import { interpolate } from './format'
@@ -44,7 +44,7 @@ interface RowData {
  */
 function resolveSquadSlugs(
   meSlug: string,
-  friendGts: string[],
+  friendGts: readonly string[],
   players: PlayerSummary[],
 ): string[] {
   const seen = new Set<string>()
@@ -68,12 +68,10 @@ export function PrestigeSquadProgress() {
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const locale = useAppShellStore((s) => s.locale)
-  const { data: settings } = useSettings()
-
   const meSlug = currentPlayer?.player_slug ?? ''
-  const friendGts = settings?.friend_gamertags
+  const friendGts = useFriendGamertags(meSlug)
   const slugs = useMemo(
-    () => resolveSquadSlugs(meSlug, friendGts ?? [], availablePlayers),
+    () => resolveSquadSlugs(meSlug, friendGts, availablePlayers),
     [meSlug, friendGts, availablePlayers],
   )
 

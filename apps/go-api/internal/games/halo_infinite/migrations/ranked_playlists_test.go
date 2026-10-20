@@ -80,17 +80,18 @@ func TestApplyRankedPlaylistSeeds_SeedsActiveAndFR(t *testing.T) {
 	}
 
 	for _, p := range rankedplaylists.Active() {
-		if p.NameFR == "" {
+		nameFR := p.NameFR()
+		if nameFR == "" {
 			continue
 		}
 		var fr string
 		if err := db.QueryRow(`SELECT name FROM asset_translations
 			WHERE asset_id = ? AND asset_type = 'playlist' AND lang = 'fr-FR'`, p.AssetID).Scan(&fr); err != nil {
-			t.Errorf("FR manquant pour %s (%s): %v", p.NameEN, p.AssetID, err)
+			t.Errorf("FR manquant pour %s (%s): %v", p.NameEN(), p.AssetID, err)
 			continue
 		}
-		if fr != p.NameFR {
-			t.Errorf("FR %s = %q, attendu %q", p.AssetID, fr, p.NameFR)
+		if fr != nameFR {
+			t.Errorf("FR %s = %q, attendu %q", p.AssetID, fr, nameFR)
 		}
 	}
 }

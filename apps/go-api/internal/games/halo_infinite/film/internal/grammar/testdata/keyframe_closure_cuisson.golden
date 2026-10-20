@@ -1,0 +1,268 @@
+# FERMETURE DES RECORDS D'IMAGE-CLE PAR ARCHETYPE, EN CONTEXTE DE CUISSON.
+# Contexte : carte des faits d'equivalence au catalogue de bornes, puis le contexte de carte
+# de la cuisson (FilmContext.PoserLaCarteEtLeDecoupage). Colonnes : film, archetype, fermes,
+# total, bloquant le plus frequent. Le ratchet rougit sur une BAISSE de `fermes`. Regeneration :
+#   go test ./internal/games/halo_infinite/film/internal/grammar/ -run KeyframeClosureCuissonRatchet -update-keyframe-closure-cuisson
+#
+# HISTORIQUE DES REGENERATIONS — une ligne par lot, avec CE QUI MONTE ET POURQUOI.
+#
+#   2026-10-08 plan LK (LK.2.4) : creation, 7 bobines, 215 lignes ; ti=35 ferme 53 records
+#     sur 1 368 (la reference du plan, R-7 : lignes « cuisson base » de la mesure 2).
+#   2026-10-08 plan LK (LK.3) : la portee DAT_144e61ea0 posee par la marche d etat complet,
+#     branche absolue d i0 de l ecrivain sous elle. ti=35 ferme 53 -> 666 records sur 1 368.
+#     UNE BAISSE, ADJUGEE : 60ae07c4 ti=35 2 -> 1, le record du slot 539 au bit 200 424, qui
+#     fermait par hasard a la base (plan LK, §2 « Adjudication »).
+#   2026-10-08 plan LK (LK.5.2) : queue de FUN_14076e3e4 fidele sous la portee (handle par
+#     FUN_1408f0ac4(.., 0), 13 bits ; puis le mot de region). Aucune ligne ne bouge.
+#   2026-10-08 plan LK (LK.5.4.2) : ti=5 i12 player-desired-respawn-location sous la portee
+#     (porte, R(96), R(19)). Aucune ligne ne bouge.
+#   2026-10-08 plan LK (LK.5.4.3) : ti=14 i0 crew-order sous la portee (R(3), porte, R(96)).
+#     Aucune ligne ne bouge.
+#   2026-10-08 plan LK (LK.5.4.4) : ti=30 i0 tacmap-poiicon sous la portee (le vecteur R(96)).
+#     Aucune ligne ne bouge.
+#   2026-10-08 plan LK (LK.5.4.5) : ti=32 i0 tacmap-areaofinterest sous la portee (R(32), R(3),
+#     R(96), R(12)). Aucune ligne ne bouge.
+#   2026-10-08 plan LK (LK.5.4.6) : ti=33 i0 tacmap-displayasset sous la portee (la position
+#     R(96)). Aucune ligne ne bouge.
+#   2026-10-08 plan LK (LK.5.4.7) : ti=34 i11 tacmap-cooptetherarea sous la portee (R(96), R(12),
+#     R(12)). Aucune ligne ne bouge.
+#   2026-10-08 plan LK (LK.5.4.8) : ti=34 i7 tacmap-waypointstate sous la portee (R(1), R(32),
+#     R(96), R(1) au-dela du niveau 1). Aucune ligne ne bouge.
+#   2026-10-08 plan LK (LK.5.4.10) : ti=21 i2..i11 flock-destination sous la portee (R(1), R(96),
+#     R(2) au-dela du niveau 1). ti=21 MONTE, 0 -> 285 sur 357 : bcb6d393 0 -> 126, 60ae07c4
+#     0 -> 66, e5adf7b2 0 -> 40, a521164d 0 -> 40, 11de8353 0 -> 13 ; aucune baisse.
+#   2026-10-08 plan LK, fusion de feat/v75 (2761162de, lot des arrets de la vue B suite : composants
+#     ti=10, 11, 12, 43, 45 lus ; world-object i0 hors portee, porte posee, a la table DEFAUT) :
+#     42 lignes MONTENT (ti=10, 11, 38, 42, 43, 45 sur les sept bobines) ; aucune baisse.
+#   2026-10-14 plan residu (R1.2, avant Rslot) : DERIVE DU BLOQUANT figee, aucun compte ne bouge.
+#     a521164d ti=35 nomme l arret jeu_d_armes_refuse (correction 2 de la revue D1.4.6 du
+#     2026-10-09, qui n avait pas regenere ce golden : le comparateur ne rougit que sur une baisse).
+#   2026-10-14 plan residu (R1.2) : FERMETURE SOUS RSLOT — la table d image-cle compte une
+#     entree par slot (FUN_1408be074, 0x1fff) ; entre deux ancres de slots s et t, la fermeture
+#     lit les t - s - 1 entrees intercalees comme FUN_142e2bfd0 (108 bits sans archetype, l etat
+#     complet sinon). MONTENT : ti=35 666 -> 918, ti=10 1 506 -> 2 296, ti=42 336 -> 601, ti=4 72 -> 103,
+#     ti=38 3 264 -> 3 333, ti=21 285 -> 357, ti=43 1 215 -> 1 272, ti=47 1 450 -> 1 516, ti=11
+#     278 -> 322, ti=37 16 -> 38, ti=45 97 -> 113, ti=41 34 -> 45, ti=29 105 -> 113, ti=13
+#     1 501 -> 1 510 ; aucune baisse sur les sept bobines.
+#   2026-10-14 plan residu (R2) : le bloc malleable du bipede (i53, FUN_1407efc5c) sans son
+#     drapeau final quand le film declare la version majeure 0x25 (decision de l utilisateur du
+#     2026-10-15, option b). MONTE : 60ae07c4 ti=35 1 -> 232 / 236 ;
+#     aucune baisse, aucune autre ligne ne bouge.
+#   2026-10-15 plan residu (R3.1) : world-object i0 sous la garde lu comme le jeu (FUN_14076e29c,
+#     decision de l utilisateur du 2026-10-15, option a). MONTENT : ti=38 3 333 -> 12 554,
+#     ti=42 601 -> 2 105, ti=43 1 272 -> 4 204 (100 % sur les sept bobines) ; aucune baisse.
+a521164d	ti=2	0	11	
+a521164d	ti=4	10	10	
+a521164d	ti=5	352	352	
+a521164d	ti=6	0	528	
+a521164d	ti=9	262	262	
+a521164d	ti=10	573	573	
+a521164d	ti=11	10	18	
+a521164d	ti=12	0	298	i19 managed-navpoint-visual-states-component
+a521164d	ti=13	220	220	
+a521164d	ti=14	352	352	
+a521164d	ti=15	11	11	
+a521164d	ti=17	363	363	
+a521164d	ti=18	11	11	
+a521164d	ti=19	0	11	i0 sound-placement-state-data-component
+a521164d	ti=21	50	50	
+a521164d	ti=22	11	11	
+a521164d	ti=25	0	11	i0 powerframe-player-selection-data-component
+a521164d	ti=26	0	11	i0 supply-lines-blocked-status-component
+a521164d	ti=27	0	11	i0 supply-lines-item-unlocked-component
+a521164d	ti=29	11	11	
+a521164d	ti=34	0	11	i10 tacmap-mapdismissallock
+a521164d	ti=35	2	209	i42 biped-desired-weapon-set (arret jeu_d_armes_refuse)
+a521164d	ti=37	4	762	
+a521164d	ti=38	1303	1303	
+a521164d	ti=40	0	335	i30 vehicle-auto-turret-triggers-component
+a521164d	ti=41	25	35	
+a521164d	ti=42	698	698	
+a521164d	ti=43	1559	1559	
+a521164d	ti=45	11	11	
+a521164d	ti=47	262	262	
+60ae07c4	ti=1	0	1	
+60ae07c4	ti=2	30	30	
+60ae07c4	ti=4	29	29	
+60ae07c4	ti=5	960	960	
+60ae07c4	ti=6	1438	1439	
+60ae07c4	ti=9	240	240	
+60ae07c4	ti=10	376	376	
+60ae07c4	ti=11	135	135	
+60ae07c4	ti=12	0	204	i19 managed-navpoint-visual-states-component
+60ae07c4	ti=13	454	454	
+60ae07c4	ti=14	960	960	
+60ae07c4	ti=15	30	30	
+60ae07c4	ti=17	990	990	
+60ae07c4	ti=18	30	30	
+60ae07c4	ti=19	0	30	i0 sound-placement-state-data-component
+60ae07c4	ti=20	0	2	
+60ae07c4	ti=21	87	87	
+60ae07c4	ti=22	30	30	
+60ae07c4	ti=25	0	30	i0 powerframe-player-selection-data-component
+60ae07c4	ti=26	0	30	i0 supply-lines-blocked-status-component
+60ae07c4	ti=27	0	30	i0 supply-lines-item-unlocked-component
+60ae07c4	ti=29	30	30	
+60ae07c4	ti=34	0	30	i10 tacmap-mapdismissallock
+60ae07c4	ti=35	232	236	
+60ae07c4	ti=37	5	425	
+60ae07c4	ti=38	2099	2099	
+60ae07c4	ti=40	0	32	i30 vehicle-auto-turret-triggers-component
+60ae07c4	ti=41	2	19	
+60ae07c4	ti=42	253	253	
+60ae07c4	ti=43	569	569	
+60ae07c4	ti=45	30	30	
+60ae07c4	ti=47	16	240	
+11de8353	ti=2	16	16	
+11de8353	ti=4	14	14	
+11de8353	ti=5	512	512	
+11de8353	ti=6	764	766	
+11de8353	ti=8	0	2	
+11de8353	ti=9	393	393	
+11de8353	ti=10	95	95	
+11de8353	ti=11	14	14	
+11de8353	ti=12	0	31	i19 managed-navpoint-visual-states-component
+11de8353	ti=13	112	112	
+11de8353	ti=14	512	512	
+11de8353	ti=15	16	16	
+11de8353	ti=17	528	528	
+11de8353	ti=18	16	16	
+11de8353	ti=19	0	16	i0 sound-placement-state-data-component
+11de8353	ti=20	0	1	
+11de8353	ti=21	26	26	
+11de8353	ti=22	16	16	
+11de8353	ti=25	0	16	i0 powerframe-player-selection-data-component
+11de8353	ti=26	0	16	i0 supply-lines-blocked-status-component
+11de8353	ti=27	0	16	i0 supply-lines-item-unlocked-component
+11de8353	ti=29	16	16	
+11de8353	ti=34	0	16	i10 tacmap-mapdismissallock
+11de8353	ti=35	254	255	
+11de8353	ti=37	5	514	
+11de8353	ti=38	2262	2262	
+11de8353	ti=40	0	220	i30 vehicle-auto-turret-triggers-component
+11de8353	ti=41	8	19	
+11de8353	ti=42	155	155	
+11de8353	ti=43	380	380	
+11de8353	ti=45	16	16	
+11de8353	ti=47	393	393	
+111fa685	ti=2	14	14	
+111fa685	ti=4	13	13	
+111fa685	ti=5	448	448	
+111fa685	ti=6	670	671	
+111fa685	ti=9	336	337	
+111fa685	ti=10	103	103	
+111fa685	ti=11	13	13	
+111fa685	ti=12	1	15	i19 managed-navpoint-visual-states-component
+111fa685	ti=13	104	104	
+111fa685	ti=14	448	448	
+111fa685	ti=15	14	14	
+111fa685	ti=17	462	462	
+111fa685	ti=18	14	14	
+111fa685	ti=19	0	14	i0 sound-placement-state-data-component
+111fa685	ti=20	0	13	i2 spawn-filter-filters-component
+111fa685	ti=22	14	14	
+111fa685	ti=25	0	14	i0 powerframe-player-selection-data-component
+111fa685	ti=26	0	14	i0 supply-lines-blocked-status-component
+111fa685	ti=27	0	14	i0 supply-lines-item-unlocked-component
+111fa685	ti=29	14	14	
+111fa685	ti=34	0	14	i10 tacmap-mapdismissallock
+111fa685	ti=35	210	214	
+111fa685	ti=37	4	569	
+111fa685	ti=38	1366	1366	
+111fa685	ti=40	0	58	i30 vehicle-auto-turret-triggers-component
+111fa685	ti=41	7	20	
+111fa685	ti=42	141	141	
+111fa685	ti=43	260	260	
+111fa685	ti=45	14	14	
+111fa685	ti=47	336	336	
+e5adf7b2	ti=2	11	11	
+e5adf7b2	ti=4	10	10	
+e5adf7b2	ti=5	352	352	
+e5adf7b2	ti=6	528	528	
+e5adf7b2	ti=9	261	261	
+e5adf7b2	ti=10	262	262	
+e5adf7b2	ti=11	10	10	
+e5adf7b2	ti=12	0	60	i19 managed-navpoint-visual-states-component
+e5adf7b2	ti=13	80	80	
+e5adf7b2	ti=14	352	352	
+e5adf7b2	ti=15	11	11	
+e5adf7b2	ti=17	363	363	
+e5adf7b2	ti=18	11	11	
+e5adf7b2	ti=19	0	11	i0 sound-placement-state-data-component
+e5adf7b2	ti=20	0	12	i2 spawn-filter-filters-component
+e5adf7b2	ti=21	50	50	
+e5adf7b2	ti=22	11	11	
+e5adf7b2	ti=25	0	11	i0 powerframe-player-selection-data-component
+e5adf7b2	ti=26	0	11	i0 supply-lines-blocked-status-component
+e5adf7b2	ti=27	0	11	i0 supply-lines-item-unlocked-component
+e5adf7b2	ti=29	11	11	
+e5adf7b2	ti=34	0	11	i10 tacmap-mapdismissallock
+e5adf7b2	ti=35	235	237	
+e5adf7b2	ti=37	2	489	
+e5adf7b2	ti=38	1046	1046	
+e5adf7b2	ti=40	0	132	i30 vehicle-auto-turret-triggers-component
+e5adf7b2	ti=41	1	6	
+e5adf7b2	ti=42	187	187	
+e5adf7b2	ti=43	414	414	
+e5adf7b2	ti=45	11	11	
+e5adf7b2	ti=47	261	261	
+bcb6d393	ti=2	19	19	
+bcb6d393	ti=3	0	1	i0 low-frequency
+bcb6d393	ti=4	18	18	
+bcb6d393	ti=5	608	608	
+bcb6d393	ti=6	910	911	
+bcb6d393	ti=9	152	152	
+bcb6d393	ti=10	427	428	
+bcb6d393	ti=11	85	85	
+bcb6d393	ti=12	4	160	i19 managed-navpoint-visual-states-component
+bcb6d393	ti=13	331	331	
+bcb6d393	ti=14	608	608	
+bcb6d393	ti=15	19	19	
+bcb6d393	ti=17	627	627	
+bcb6d393	ti=18	19	19	
+bcb6d393	ti=19	0	19	i0 sound-placement-state-data-component
+bcb6d393	ti=21	144	144	
+bcb6d393	ti=22	19	19	
+bcb6d393	ti=25	0	19	i0 powerframe-player-selection-data-component
+bcb6d393	ti=26	0	19	i0 supply-lines-blocked-status-component
+bcb6d393	ti=27	0	19	i0 supply-lines-item-unlocked-component
+bcb6d393	ti=29	19	19	
+bcb6d393	ti=34	0	19	i10 tacmap-mapdismissallock
+bcb6d393	ti=35	136	137	
+bcb6d393	ti=37	18	367	
+bcb6d393	ti=38	1894	1894	
+bcb6d393	ti=41	0	5	
+bcb6d393	ti=42	445	445	
+bcb6d393	ti=43	626	626	
+bcb6d393	ti=45	19	19	
+bcb6d393	ti=47	152	152	
+fb1a1a72	ti=1	0	1	
+fb1a1a72	ti=2	12	12	
+fb1a1a72	ti=3	0	26	i0 low-frequency
+fb1a1a72	ti=4	9	11	
+fb1a1a72	ti=5	384	384	
+fb1a1a72	ti=6	574	575	
+fb1a1a72	ti=9	96	96	
+fb1a1a72	ti=10	460	461	
+fb1a1a72	ti=11	55	55	
+fb1a1a72	ti=12	0	122	i19 managed-navpoint-visual-states-component
+fb1a1a72	ti=13	209	209	
+fb1a1a72	ti=14	384	384	
+fb1a1a72	ti=15	12	12	
+fb1a1a72	ti=17	396	396	
+fb1a1a72	ti=18	12	12	
+fb1a1a72	ti=19	0	12	i0 sound-placement-state-data-component
+fb1a1a72	ti=22	12	12	
+fb1a1a72	ti=25	0	12	i0 powerframe-player-selection-data-component
+fb1a1a72	ti=26	0	12	i0 supply-lines-blocked-status-component
+fb1a1a72	ti=27	0	12	i0 supply-lines-item-unlocked-component
+fb1a1a72	ti=29	12	12	
+fb1a1a72	ti=34	0	12	i10 tacmap-mapdismissallock
+fb1a1a72	ti=35	80	80	
+fb1a1a72	ti=37	0	220	
+fb1a1a72	ti=38	2584	2584	
+fb1a1a72	ti=41	2	6	
+fb1a1a72	ti=42	226	226	
+fb1a1a72	ti=43	396	396	
+fb1a1a72	ti=45	12	12	
+fb1a1a72	ti=47	96	96	

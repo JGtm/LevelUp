@@ -1,10 +1,13 @@
 // Package sync — engine_acquire.go : helpers d'acquisition writer lease+open.
 //
 // Extrait de engine.go (refactor 2026-05-21). Regroupe les helpers package-level
-// AcquireSharedWriterStandalone / AcquireMetadataWriterStandalone /
-// AcquirePlayerWriterStandalone + la méthode proxy e.acquireSharedWriter qui
-// centralisent la prise du dblease applicatif et l'ouverture RW des trois DBs
-// principales (shared, metadata, player). Comportement INCHANGÉ — pur déplacement.
+// AcquireSharedWriterStandalone / AcquireMetadataWriterStandalone + la méthode
+// proxy e.acquireSharedWriter, qui centralisent la prise du dblease applicatif
+// et l'ouverture RW des DBs shared et metadata.
+//
+// Contient aussi deux petits gardes de contexte du moteur : pinTitle (titre du moteur posé sur le
+// ctx des lecteurs de sync) et requireTokensUnlessCustomClient (client Halo exigé par les passes
+// qui appellent l'API).
 //
 // Voir engine.go (struct SyncEngine) pour le contexte.
 package sync
@@ -14,6 +17,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -77,6 +81,32 @@ func AcquireSharedWriterStandalone(
 	}, nil
 }
 
+// acquireSharedReaderStandalone retourne un *sql.DB en LECTURE sur shared + sa fonction
+// release (à appeler via defer). C'est le chemin des calculs qui lisent la base partagée
+// et n'écrivent qu'en base joueur : aucune bascule en écriture, aucun lease writer.
+//
+//   - provider != nil : Provider.Get (lecteur en vol, coordonné avec les swaps du sync) ;
+//   - provider == nil : OpenReadForQuery, qui réutilise le handle déjà tenu par le process
+//     ou ouvre en lecture seule (jamais un OpenReadOnly forcé sur un fichier tenu en RW).
+func acquireSharedReaderStandalone(
+	ctx context.Context,
+	provider sharedprovider.Provider,
+	sharedDBPath string,
+) (*sql.DB, func(), error) {
+	if provider != nil {
+		db, release, err := provider.Get(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("acquireSharedReaderStandalone via Provider: %w", err)
+		}
+		return db, release, nil
+	}
+	db, release, err := duckdbpkg.OpenReadForQuery(sharedDBPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("acquireSharedReaderStandalone legacy open: %w", err)
+	}
+	return db, release, nil
+}
+
 // AcquireMetadataWriterStandalone est la variante package-level pour metadata.duckdb.
 // Prend le lease applicatif (Kind=Metadata) + ouvre via le pool process-level
 // (OpenReadWriteShared). Utilisée par les services qui n'ont pas accès à un
@@ -103,25 +133,27 @@ func AcquireMetadataWriterStandalone(ctx context.Context, metadataPath string) (
 	}, nil
 }
 
-// AcquirePlayerWriterStandalone est la variante package-level pour stats.duckdb
-// d'un joueur. Prend le lease applicatif (Kind=Player) + ouvre via le pool.
-// Retourne (*duckdbpkg.DB, releaseFunc, error) pour les callers qui consomment
-// l'API ref-comptée (queries_auth.WriteOAuthRefreshToken et co).
-//
-// Sprint chore/ci-stabilization 2026-05-20 : respecte ADR 0013 (pas d'OpenReadWrite
-// direct depuis service/handlers).
-func AcquirePlayerWriterStandalone(ctx context.Context, playerDBPath string) (*duckdbpkg.DB, func(), error) {
-	lease, err := dblease.AcquireWriterCtx(ctx, nil, playerDBPath, dblease.KindPlayer)
-	if err != nil {
-		return nil, nil, fmt.Errorf("AcquirePlayerWriterStandalone lease: %w", err)
+// requireTokensUnlessCustomClient : les passes qui appellent l API Halo ont besoin SOIT du
+// client personnalisé posé par SetCustomClient (client poolé : les tokens vivent dans le
+// pool), SOIT des tokens Halo du joueur. Exiger les tokens du joueur alors qu un client
+// poolé est posé cassait `backfill --csr` / `--shared-csr` pour TOUS les joueurs depuis que
+// la CLI construit ses moteurs par le pool (revue adversariale du 2026-09-16, P0). Le
+// message ne parle plus de « re-login » : un token absent ne se répare pas par une
+// re-capture (ADR 0023).
+func (e *SyncEngine) requireTokensUnlessCustomClient(op string) error {
+	if e.customClient != nil {
+		return nil
 	}
-	handle, err := duckdbpkg.OpenReadWriteShared(playerDBPath)
-	if err != nil {
-		lease.Release()
-		return nil, nil, fmt.Errorf("AcquirePlayerWriterStandalone open: %w", err)
+	if e.tokens == nil || e.tokens.SpartanToken == "" {
+		return fmt.Errorf("%s: aucun client Halo — ni client poolé (SetCustomClient), ni tokens du joueur", op)
 	}
-	return handle, func() {
-		_ = handle.Close()
-		lease.Release()
-	}, nil
+	return nil
+}
+
+// pinTitle pose sur le ctx le titre du MOTEUR (celui de ses bases ouvertes), jamais celui d'un ctx
+// entrant : les lecteurs de sync qui excluent la Campagne le lisent (analysis.SQLExcludeCampaign
+// ByMatchIDCtx), et un ctx sans titre, ou portant un autre titre (onglet admin, header
+// X-LevelUp-Title), ne doit pas décider de ce qui s'exclut d'une base d'un autre titre.
+func (e *SyncEngine) pinTitle(ctx context.Context) context.Context {
+	return ctxkeys.WithTitleSlug(ctx, e.titleSlug)
 }

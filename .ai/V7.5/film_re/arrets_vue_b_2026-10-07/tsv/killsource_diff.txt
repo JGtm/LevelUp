@@ -1,0 +1,12 @@
+3c3
+<   "calibration": "LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=10 [PROFIL PLAT (score 445, mediane 406)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 6988, mediane 6988]",
+---
+>   "calibration": "LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=10 [PROFIL PLAT (score 445, mediane 408)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 6988, mediane 6988]",
+3c3
+<   "calibration": "LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=26 [PROFIL PLAT (score 451, mediane 403)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 7282, mediane 7282]",
+---
+>   "calibration": "LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=26 [PROFIL PLAT (score 451, mediane 404)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 7282, mediane 7282]",
+3c3
+<   "calibration": "LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=19 [PROFIL PLAT (score 78, mediane 74)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 335, mediane 335]",
+---
+>   "calibration": "LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=19 [PROFIL PLAT (score 79, mediane 75)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 339, mediane 339]",

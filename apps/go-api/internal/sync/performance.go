@@ -49,6 +49,13 @@ type historyRow struct {
 	OffensiveConversion float64
 	DefensiveResistance float64
 	MedalExploitScore   float64
+	// ObjectiveScore : points d'awards de catégorie `objective` du match, source
+	// personal_score_awards (playerDB) — enrichi après chargement SQL, comme
+	// MedalExploitScore. Le POINTEUR porte la sémantique de COUVERTURE (D-J) :
+	// nil = aucune donnée PSA pour ce match (métrique ospm absente, son poids est
+	// redistribué) ; 0 = match couvert dont le joueur n'a fait aucune action
+	// d'objectif (valeur légitime, qui doit être classée par percentile).
+	ObjectiveScore *float64
 	// Chain est la chaîne de score de performance dérivée via GetPerformanceChain
 	// (pair_name + flags is_ranked/is_firefight). Toujours non vide.
 	Chain string
@@ -71,6 +78,8 @@ type matchMetrics struct {
 	OffensiveConversion *float64
 	DefensiveResistance *float64
 	MedalExploit        *float64
+	// OSPM : points d'objectif par minute. nil = match sans couverture PSA.
+	OSPM *float64
 }
 
 // ── Extraction des métriques ────────────────────────────────────────────────
@@ -144,6 +153,13 @@ func extractMatchMetrics(row *historyRow) *matchMetrics {
 		v := row.MedalExploitScore
 		m.MedalExploit = &v
 	}
+	// ospm : présent SSI le match a une couverture personal_score_awards. Le test
+	// porte sur le POINTEUR, pas sur `> 0` comme les métriques ci-dessus : un match
+	// couvert à 0 point d'objectif est une valeur à classer, pas une absence (D-J).
+	if row.ObjectiveScore != nil {
+		v := *row.ObjectiveScore / minutes
+		m.OSPM = &v
+	}
 	return m
 }
 
@@ -179,9 +195,28 @@ func percentileRankInverse(value float64, series []float64) float64 {
 
 // ── Calcul du score de performance relatif ──────────────────────────────────
 
+// standardPerfMetrics — métriques « plus = mieux » du score relatif, classées par
+// percentile direct. Deux métriques ont un traitement propre et ne figurent pas
+// ici : dpm_deaths (percentile inversé) et rank_perf (dérivée des MMR).
+//
+// La liste est le SUPERSET de toutes les chaînes ; c'est le profil de poids de la
+// chaîne (WeightsForChain) qui décide lesquelles comptent réellement — ospm n'est
+// au profil que des chaînes de famille objectif.
+var standardPerfMetrics = []string{
+	MetricKeyKPM, MetricKeyAPM, MetricKeyKDA, MetricKeyAccuracy, MetricKeyPSPM, MetricKeyDPMDamage,
+	MetricKeyKillsVsExpected, MetricKeyDeathsVsExpected,
+	MetricKeyOffensiveConv, MetricKeyDefensiveResist, MetricKeyMedalExploit,
+	MetricKeyObjectiveParticipation,
+}
+
 // computeRelativePerformanceScore calcule le score 0-100 d'un match
 // par rapport à l'historique du joueur.
-func computeRelativePerformanceScore(current *historyRow, history []historyRow) *float64 {
+//
+// `weights` est le profil de poids de la CHAÎNE du match (WeightsForChain) : une
+// métrique hors profil n'est ni calculée ni comptée dans la renormalisation par la
+// somme des poids retenus. C'est ce mécanisme — et non un test de chaîne dans le
+// calcul — qui réserve ospm aux chaînes de famille objectif.
+func computeRelativePerformanceScore(current *historyRow, history []historyRow, weights map[string]float64) *float64 {
 	if len(history) < MinMatchesForRelative {
 		return nil
 	}
@@ -194,43 +229,7 @@ func computeRelativePerformanceScore(current *historyRow, history []historyRow) 
 	// Préparer les séries historiques par métrique.
 	histMetrics := prepareHistoryMetrics(history)
 
-	percentiles := make(map[string]float64)
-	weightsUsed := make(map[string]float64)
-
-	// Métriques standard (plus = mieux)
-	standardMetrics := []string{
-		MetricKeyKPM, MetricKeyAPM, MetricKeyKDA, MetricKeyAccuracy, MetricKeyPSPM, MetricKeyDPMDamage,
-		MetricKeyKillsVsExpected, MetricKeyDeathsVsExpected,
-		MetricKeyOffensiveConv, MetricKeyDefensiveResist, MetricKeyMedalExploit,
-	}
-	for _, key := range standardMetrics {
-		val, ok := getMetricValue(metrics, key)
-		if !ok {
-			continue
-		}
-		series, ok2 := histMetrics[key]
-		if !ok2 || len(series) == 0 {
-			continue
-		}
-		percentiles[key] = percentileRank(val, series)
-		weightsUsed[key] = RelativeWeights[key]
-	}
-
-	// Métrique inversée : dpm_deaths (moins = mieux)
-	if series, ok := histMetrics[MetricKeyDPMDeaths]; ok && len(series) > 0 {
-		percentiles[MetricKeyDPMDeaths] = percentileRankInverse(metrics.DPMDeaths, series)
-		weightsUsed[MetricKeyDPMDeaths] = RelativeWeights[MetricKeyDPMDeaths]
-	}
-
-	// Rank performance (optionnel)
-	if metrics.Rank != nil && metrics.TeamMMR != nil && metrics.EnemyMMR != nil {
-		rankPerf := computeRankPerformance(*metrics.Rank, *metrics.TeamMMR, *metrics.EnemyMMR, histMetrics)
-		if rankPerf != nil {
-			percentiles[MetricKeyRankPerf] = *rankPerf
-			weightsUsed[MetricKeyRankPerf] = RelativeWeights[MetricKeyRankPerf]
-		}
-	}
-
+	percentiles, weightsUsed := collectWeightedPercentiles(metrics, histMetrics, weights)
 	if len(percentiles) == 0 {
 		return nil
 	}
@@ -252,9 +251,67 @@ func computeRelativePerformanceScore(current *historyRow, history []historyRow) 
 	return &score
 }
 
+// collectWeightedPercentiles classe le match dans son historique, métrique par
+// métrique, en ne retenant que celles du profil de poids de sa chaîne. Rend les
+// percentiles retenus et les poids correspondants (la renormalisation par leur
+// somme est faite par l'appelant).
+func collectWeightedPercentiles(m *matchMetrics, hist map[string][]float64, weights map[string]float64) (map[string]float64, map[string]float64) {
+	percentiles := make(map[string]float64, len(weights))
+	weightsUsed := make(map[string]float64, len(weights))
+
+	// Métriques standard (plus = mieux).
+	for _, key := range standardPerfMetrics {
+		if w, inProfile := profileWeight(weights, key); inProfile {
+			addStandardPercentile(m, hist, key, w, percentiles, weightsUsed)
+		}
+	}
+
+	// Métrique inversée : dpm_deaths (moins = mieux).
+	if w, inProfile := profileWeight(weights, MetricKeyDPMDeaths); inProfile {
+		if series := hist[MetricKeyDPMDeaths]; len(series) > 0 {
+			percentiles[MetricKeyDPMDeaths] = percentileRankInverse(m.DPMDeaths, series)
+			weightsUsed[MetricKeyDPMDeaths] = w
+		}
+	}
+
+	// Rank performance (optionnel).
+	if w, inProfile := profileWeight(weights, MetricKeyRankPerf); inProfile {
+		addRankPercentile(m, hist, w, percentiles, weightsUsed)
+	}
+	return percentiles, weightsUsed
+}
+
+// profileWeight rend le poids d'une métrique dans le profil de la chaîne courante.
+// inProfile=false quand la métrique n'y figure pas (cas d'ospm hors famille
+// objectif) ou qu'elle y porte un poids nul : elle n'est alors ni calculée ni
+// comptée dans la renormalisation.
+func profileWeight(weights map[string]float64, key string) (float64, bool) {
+	w, inProfile := weights[key]
+	return w, inProfile && w != 0
+}
+
 // computeRankPerformance calcule le percentile de rank_perf_diff.
 func BatchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string, force bool) (int, error) {
 	return batchComputePerformanceScores(ctx, playerDB, sharedDB, xuid, nil, force)
+}
+
+// RecomputePerformanceScoresWithMedals recalcule les notes en incluant le bonus
+// médailles — la variante que RunBackfillPerf (engine_backfills.go:352) applique
+// au backfill, exposée SANS SyncEngine pour les binaires de recompute hors
+// serveur (lot 4 du plan PERF_NOTE_OBJECTIFS).
+//
+// À préférer à BatchComputePerformanceScores pour tout recompute RÉEL : cette
+// dernière passe medalExploit nil, donc la métrique medal_exploit y vaut 0 pour
+// tous les matchs et les notes stockées divergeraient de celles que produit le
+// post-sync (écart mesuré ~1,2-2,2 pt).
+//
+// metadataDBPath vide ou illisible → dégradation gracieuse (map nil, cf.
+// loadMedalExploitMap). playerDB doit être ouvert en RW ; sharedDB est lu.
+func RecomputePerformanceScoresWithMedals(ctx context.Context, playerDB, sharedDB *sql.DB,
+	metadataDBPath, xuid string, force bool,
+) (int, error) {
+	medalMap := loadMedalExploitMap(ctx, metadataDBPath, sharedDB, xuid)
+	return batchComputePerformanceScores(ctx, playerDB, sharedDB, xuid, medalMap, force)
 }
 
 func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string, medalExploitByMatch map[string]float64, force bool) (int, error) {
@@ -263,6 +320,8 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		return 0, err
 	}
 	if len(allMatches) == 0 {
+		// Univers vide : toute note stockée est orpheline par construction (D-E).
+		cleanupAllScoredAsOrphans(ctx, playerDB, xuid, nil)
 		return 0, nil
 	}
 
@@ -285,57 +344,22 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		slog.DebugContext(ctx, "batchComputePerformanceScores: matchs exclus filtrés",
 			"xuid", xuid, "filtered", before-len(allMatches), "remaining", len(allMatches))
 		if len(allMatches) == 0 {
+			// Tous les matchs exclus : idem, plus rien ne qualifie (D-E).
+			cleanupAllScoredAsOrphans(ctx, playerDB, xuid, excluded)
 			return 0, nil
 		}
 	}
 
-	// Enrichir avec les scores médailles
-	for i := range allMatches {
-		if score, ok := medalExploitByMatch[allMatches[i].MatchID]; ok {
-			allMatches[i].MedalExploitScore = score
-		}
-	}
+	// Enrichir avec ce que la shared DB ne porte pas : médailles + objectif.
+	applyPerfEnrichments(ctx, playerDB, xuid, allMatches, medalExploitByMatch)
 
-	// Charger les matchs qui ont déjà un score ET la chaîne stockée (ignoré en mode force).
-	// On skippe uniquement si la chaîne déjà stockée correspond à la chaîne actuelle calculée.
-	// Si la classification a changé rétroactivement (cas rare), on recompute.
-	existingChain := make(map[string]string)
-	if !force {
-		existRows, queryErr := playerDB.QueryContext(ctx,
-			`SELECT match_id, performance_chain
-			   FROM player_match_enrichment_latest
-			  WHERE performance_score IS NOT NULL`)
-		if queryErr != nil {
-			// Non bloquant : on continue en recompute-tout, mais on signale.
-			slog.WarnContext(ctx, "batchComputePerformanceScores: query existing scores failed — fallback recompute-all",
-				"xuid", xuid, "err", queryErr)
-		} else {
-			defer existRows.Close()
-			scanErrors := 0
-			for existRows.Next() {
-				var mid string
-				var chain sql.NullString
-				if err := existRows.Scan(&mid, &chain); err != nil {
-					scanErrors++
-					continue
-				}
-				if chain.Valid {
-					existingChain[mid] = chain.String
-				} else {
-					// Score legacy sans chaîne stockée → recompute pour peupler.
-					existingChain[mid] = ""
-				}
-			}
-			if err := existRows.Err(); err != nil {
-				slog.WarnContext(ctx, "batchComputePerformanceScores: existing rows iteration error",
-					"xuid", xuid, "err", err)
-			}
-			if scanErrors > 0 {
-				slog.WarnContext(ctx, "batchComputePerformanceScores: scan errors on existing scores",
-					"xuid", xuid, "scan_errors", scanErrors)
-			}
-		}
-	}
+	// Charger les matchs qui ont déjà un score ET la chaîne stockée.
+	// En mode !force, on skippe si la chaîne stockée correspond à la chaîne
+	// actuelle calculée ; si la classification a changé rétroactivement (cas rare),
+	// on recompute. Le chargement a lieu dans les DEUX modes (D-E) : la passe de
+	// nettoyage des notes orphelines a besoin de l'ensemble des notes stockées à
+	// chaque run, force compris.
+	existingChain := loadScoredPerfChains(ctx, playerDB, xuid)
 
 	const windowSize = 50
 
@@ -362,6 +386,10 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		skippedExist   int // matchs déjà scorés avec la bonne chaîne (mode !force)
 		updatedByChain = make(map[string]int)
 		totalByChain   = make(map[string]int)
+		// Ensembles de la passe de nettoyage (D-D/D-E) : les matchs qui qualifient
+		// au terme de ce run, et ceux écartés par le seuil de leur chaîne (cause).
+		qualified    = make(map[string]struct{})
+		belowMatches = make(map[string]struct{})
 	)
 
 	for _, match := range allMatches {
@@ -369,20 +397,29 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		totalByChain[chain]++
 		history := chainHistory[chain]
 
+		// Le SEUIL prime sur le skip : un match sous le seuil de sa chaîne ne
+		// qualifie plus, même s'il porte déjà une note dans la BONNE chaîne — la
+		// population de référence a pu rétrécir (exclusion, DNF, reclassification
+		// de famille). Il tombe alors dans `belowMatches` et sa note stockée est
+		// NULLée par la passe de nettoyage (D-D).
+		belowThreshold := len(history) < MinMatchesPerChainForRelative
+
 		// Skip si déjà calculé pour la MÊME chaîne (mode !force).
 		shouldSkip := false
-		if !force {
+		if !force && !belowThreshold {
 			if stored, ok := existingChain[match.MatchID]; ok && stored == chain {
 				shouldSkip = true
 				skippedExist++
+				qualified[match.MatchID] = struct{}{}
 			}
 		}
 
 		switch {
 		case shouldSkip:
-			// nothing to do
-		case len(history) < MinMatchesPerChainForRelative:
+			// nothing to do : la note stockée est à jour (chaîne inchangée).
+		case belowThreshold:
 			skippedBelow++
+			belowMatches[match.MatchID] = struct{}{}
 		default:
 			// On ne calcule un score qu'après MinMatchesPerChainForRelative matchs dans la chaîne.
 			start := len(history) - windowSize
@@ -391,13 +428,16 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 			}
 			window := history[start:]
 
-			score := computeRelativePerformanceScore(&match, window)
+			// Le profil de poids suit la CHAÎNE du match : les chaînes de famille
+			// objectif intègrent ospm, les autres gardent le profil historique.
+			score := computeRelativePerformanceScore(&match, window, WeightsForChain(chain))
 			if score != nil {
 				// Accumuler en RAM, flush via PostSyncEnrichmentPersister
 				// (1 UPDATE multi-row en fin de boucle).
 				pendingUpdates = append(pendingUpdates, perfUpdate{
 					MatchID: match.MatchID, Score: *score, Chain: chain,
 				})
+				qualified[match.MatchID] = struct{}{}
 				updated++
 				updatedByChain[chain]++
 				chainHistory[chain] = append(history, match)
@@ -430,6 +470,11 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		}
 	}
 
+	// Passe auto-nettoyante (D-E) — cf. runPerfCleanupPass.
+	cleaned := runPerfCleanupPass(ctx, playerDB, xuid, execErrors, perfCleanupSets{
+		scored: existingChain, qualified: qualified, below: belowMatches, excluded: excluded,
+	})
+
 	// Résumé final : observabilité de la distribution réelle.
 	if updated > 0 || execErrors > 0 || len(totalByChain) > 0 {
 		slog.InfoContext(ctx, "batchComputePerformanceScores: batch terminé",
@@ -441,6 +486,7 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 			"total_by_chain", totalByChain,
 			"skipped_below_threshold", skippedBelow,
 			"skipped_existing", skippedExist,
+			"cleaned", cleaned,
 			"exec_errors", execErrors,
 			"min_per_chain_threshold", MinMatchesPerChainForRelative)
 	}

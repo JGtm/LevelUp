@@ -11,6 +11,14 @@ import { PalmaresRelationsPage } from './PalmaresRelationsPage'
 
 const EMPTY_RELATIONS = { overview: { distinct_players: 0, allies_count: 0, rivals_count: 0, core_count: 0, top_ally: null, top_nemesis: null }, relations: [] }
 
+// ECharts est charge PARESSEUSEMENT (React.lazy) par les graphes de la page : sans ce stub, l'import
+// reel (plusieurs centaines de Ko a transformer) se resout pendant un test ulterieur et bloque la
+// boucle d'evenements — sous charge, les waitFor (1 s) de ce test-la expirent. Le stub rend
+// l'import immediat ; aucun test de ce fichier n'eprouve le rendu d'un graphe.
+vi.mock('echarts-for-react', () => ({
+  default: () => <div data-testid="echarts-stub" />,
+}))
+
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return {
@@ -158,6 +166,71 @@ describe('PalmaresRelationsPage', () => {
     expect(screen.queryByRole('button', { name: 'Multi-jeux' })).not.toBeInTheDocument()
     // Garde-fou : le filtre 'cross' persisté est neutralisé → la relation reste visible.
     expect(screen.getAllByText('SoloOnly').length).toBeGreaterThan(0)
+  })
+
+  it('assistances : papillon du binôme, rangées du noyau dur, « — » pour un fidèle non mesuré', async () => {
+    const base = {
+      total_matches: 20,
+      teammate_matches: 20,
+      teammate_wins: 12,
+      teammate_win_rate: 0.6,
+      enemy_matches: 0,
+      enemy_wins: 0,
+      enemy_win_rate: null,
+      avg_kda_with: 1,
+      avg_kda_against: null,
+      kills_dealt: 0,
+      deaths_suffered: 0,
+      duel_ratio: null,
+      first_seen_at: '2026-01-01T00:00:00Z',
+      last_seen_at: '2026-06-01T00:00:00Z',
+      category: 'ally',
+      is_core: true,
+      badges: [],
+    }
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/palmares/relations', () =>
+        HttpResponse.json({
+          overview: {
+            distinct_players: 2,
+            allies_count: 2,
+            rivals_count: 0,
+            core_count: 2,
+            top_ally: { gamertag: 'Passeur', win_rate: 0.6, matches: 20 },
+            top_nemesis: null,
+          },
+          relations: [
+            {
+              ...base,
+              xuid: '1',
+              gamertag: 'Passeur',
+              assists: {
+                my_frags: 100,
+                partner_frags: 80,
+                received: { total: 31, low: 5, mid: 16, high: 10 },
+                given: { total: 12, low: 2, mid: 6, high: 4 },
+              },
+            },
+            { ...base, xuid: '2', gamertag: 'SansFilm' },
+          ],
+        }),
+      ),
+    )
+
+    renderWithProviders(<PalmaresRelationsPage />)
+
+    const binome = await screen.findByTestId('binome-assists')
+    expect(binome).toHaveTextContent("Il t'a assisté")
+    expect(binome).toHaveTextContent("Tu l'as assisté")
+    expect(binome).toHaveTextContent('31 · 31 %')
+    expect(binome).toHaveTextContent('15 % · 12')
+
+    const core = screen.getByTestId('core-ranking')
+    // Un papillon pour le fidèle mesuré, « — » pour l'autre, légende sous les barres.
+    expect(core.querySelectorAll('[data-testid="assist-butterfly"]').length).toBe(1)
+    expect(core).toHaveTextContent('—')
+    expect(core).toHaveTextContent('◀ t’appuie')
+    expect(core).toHaveTextContent('tu l’appuies ▶')
   })
 
   it('toggle « coéquipiers » : défaut masqué + bascule du libellé', async () => {

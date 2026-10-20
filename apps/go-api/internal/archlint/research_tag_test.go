@@ -1,0 +1,156 @@
+package archlint
+
+// research_tag_test.go — LE GARDE-RAIL DU TAG `research`, SUR TOUT LE MODULE (J12.7, DU-5 a,
+// 2026-09-30).
+//
+// CE QUE LE TAG PAIE. Les instruments de recherche (rebalayage des bobines, sondes de grammaire,
+// outils de rétro-ingénierie) ne sont pas des tests de non-régression : ils tournent à la
+// demande (`go test -tags research ...`), jamais dans le build par défaut. Sans tag, 383
+// fichiers `*_research_test.go` dont 220 non tagués allongeaient chaque `go test` et
+// alimentaient la baseline de présence. La CI les COMPILE (`go vet -tags=research ./...`) : un
+// tag sans vet est un fichier qui pourrit en silence.
+//
+// DEUX SENS, comme `gamefiles_tag_test.go` :
+//   - tout `*_research_test.go` porte `//go:build research` en ligne 1 (ou une contrainte
+//     combinée `//go:build research && X`) ;
+//   - tout fichier qui porte le tag est bien un instrument : un `_test.go` (les `*_research_test.go`
+//     et leurs COMPAGNONS — mesures et helpers qui ne compilent qu en leur compagnie, tagués par
+//     fermeture au J12.7 ; une garde réelle qui partage un helper est extraite, pas taguée), ou un
+//     fichier sous un dossier d instruments (`film/research/`, `tools/film_re/`). Sans ce sens,
+//     du code de production pourrait se cacher derrière le tag et sortir du build par défaut.
+//
+// TROISIÈME CONTRÔLE (J12.7 bis, 2026-09-30) : le tag cache les INSTRUMENTS, jamais une garde.
+// Le J12.7 avait tagué « par fermeture » des gardes (`bombe_portage_gate_test.go`,
+// `visee_zoom_gate_test.go`...) : elles ne tournaient plus ni en CI ni dans les gates locaux.
+// Un fichier dont le NOM se déclare garde (`_gate_test.go`, `_gates_test.go`, `_garde_test.go`,
+// `_ratchet_test.go`, `_oracle_test.go`, `_temoin_test.go`, `_temoins_test.go` — suffixes
+// exacts : un `*_gate_research_test.go` reste un instrument) ne porte jamais le tag ; les
+// symboles de recherche qu'il utilise se DÉPLACENT dans un helper non tagué.
+//
+// Mutation qui doit le faire rougir : retirer la première ligne d'un `*_research_test.go`
+// (sens 1), poser `//go:build research` sur un fichier de production (sens 2), ou sur un
+// `*_gate_test.go` (troisième contrôle).
+
+import (
+	"os"
+	"strings"
+	"testing"
+)
+
+// tagResearch : la ligne exacte attendue en tête de chaque instrument.
+const tagResearch = "//go:build research"
+
+// instrumentsResearchPlancher : le corpus mesuré le 2026-09-30 (383 `*_research_test.go`).
+// Un balayage qui rend moins ne garde plus rien.
+const instrumentsResearchPlancher = 383
+
+// dossiersInstruments : sous ces préfixes (chemins relatifs à `apps/go-api`, en slash), tout
+// fichier tagué est un instrument par construction.
+var dossiersInstruments = []string{
+	"internal/games/halo_infinite/film/research/",
+	"tools/film_re/",
+}
+
+// contrainteResearch rend vrai si la première ligne est `//go:build` et cite `research`
+// comme terme d'une conjonction (`research` seul ou `research && X`).
+func contrainteResearch(texte string) bool {
+	ligne, _, _ := strings.Cut(texte, "\n")
+	ligne = strings.TrimSpace(ligne)
+	if ligne == tagResearch {
+		return true
+	}
+	if !strings.HasPrefix(ligne, "//go:build ") || strings.Contains(ligne, "||") {
+		return false
+	}
+	for _, terme := range strings.Split(strings.TrimPrefix(ligne, "//go:build "), "&&") {
+		if strings.TrimSpace(terme) == "research" {
+			return true
+		}
+	}
+	return false
+}
+
+// balayerGoTexte appelle `visiter` pour CHAQUE `.go` du module, avec son contenu. S appuie sur
+// `balayerGo` (doc_chemins_ai_test.go) : un seul parcours.
+func balayerGoTexte(t *testing.T, visiter func(rel, texte string)) {
+	t.Helper()
+	goAPI, _ := racinesDuModule(t)
+	balayerGo(t, goAPI, func(rel, chemin string) {
+		buf, err := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
+		if err != nil {
+			t.Fatalf("lecture de %s : %v", rel, err)
+		}
+		visiter(rel, string(buf))
+	})
+}
+
+// TestInstrumentsResearchSontTagues — chaque `*_research_test.go` du MODULE porte le tag.
+func TestInstrumentsResearchSontTagues(t *testing.T) {
+	vus := 0
+	balayerGoTexte(t, func(rel, texte string) {
+		if !strings.HasSuffix(rel, "_research_test.go") {
+			return
+		}
+		vus++
+		if !contrainteResearch(texte) {
+			t.Errorf("%s ne commence pas par %q (ni une conjonction `research && X`) — sans ce tag "+
+				"l'instrument tourne dans le build par défaut", rel, tagResearch)
+		}
+	})
+	if vus < instrumentsResearchPlancher {
+		t.Errorf("%d fichier(s) *_research_test.go balayé(s), plancher %d (mesure du 2026-09-30) "+
+			"— le garde-rail ne garde plus le corpus entier", vus, instrumentsResearchPlancher)
+	}
+}
+
+// TestFichierTagueResearchEstUnInstrument — l'autre sens : le tag ne cache pas de production.
+func TestFichierTagueResearchEstUnInstrument(t *testing.T) {
+	balayerGoTexte(t, func(rel, texte string) {
+		if !contrainteResearch(texte) || strings.HasSuffix(rel, "_test.go") {
+			return
+		}
+		for _, dossier := range dossiersInstruments {
+			if strings.HasPrefix(rel, dossier) {
+				return
+			}
+		}
+		t.Errorf("%s porte %q sans être un instrument (un _test.go, ou un dossier %v"+
+			") — du code de production sortirait du build par défaut",
+			rel, tagResearch, dossiersInstruments)
+	})
+}
+
+// suffixesGarde : les fins de nom par lesquelles un fichier de test se DÉCLARE garde. Suffixes
+// exacts, pour ne pas prendre `ground_weapon_pads_aggregate_test.go` (« aggre-GATE ») ni un
+// instrument `*_gate_research_test.go` pour une garde.
+var suffixesGarde = []string{
+	"_gate_test.go", "_gates_test.go", "_garde_test.go", "_ratchet_test.go",
+	"_oracle_test.go", "_temoin_test.go", "_temoins_test.go",
+}
+
+// gardesPlancher : 47 fichiers de garde mesurés le 2026-09-30 (18 gate, 14 ratchet, 10 oracle,
+// 5 temoin/temoins). Un balayage qui en rend nettement moins ne garde plus rien.
+const gardesPlancher = 40
+
+// TestGardeNeCachePasDerriereResearch — une garde ne sort jamais du build par défaut.
+func TestGardeNeCachePasDerriereResearch(t *testing.T) {
+	vus := 0
+	balayerGoTexte(t, func(rel, texte string) {
+		for _, suffixe := range suffixesGarde {
+			if !strings.HasSuffix(rel, suffixe) {
+				continue
+			}
+			vus++
+			if contrainteResearch(texte) {
+				t.Errorf("%s porte %q : c'est une GARDE (suffixe %s), elle doit tourner dans le "+
+					"build par défaut — déplacer les symboles de recherche qu'elle utilise dans un "+
+					"helper non tagué du paquet, pas taguer la garde", rel, tagResearch, suffixe)
+			}
+			return
+		}
+	})
+	if vus < gardesPlancher {
+		t.Errorf("%d fichier(s) de garde balayé(s), plancher %d (mesure du 2026-09-30) — le "+
+			"garde-rail ne voit plus les gardes", vus, gardesPlancher)
+	}
+}

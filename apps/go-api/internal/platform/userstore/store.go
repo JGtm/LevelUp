@@ -123,6 +123,12 @@ func (s *Store) IsEmpty() (bool, error) {
 
 // Create crée un nouvel utilisateur. Retourne ErrUserAlreadyExists si le slug existe.
 func (s *Store) Create(username, password string, role domain.UserRole) (*domain.User, error) {
+	return s.create(username, password, role, false)
+}
+
+// create valide, hache, puis insère sous le verrou d'écriture. onlyIfEmpty : refus
+// (ErrNotFirstAccount) si un compte existe déjà, vérifié sous ce même verrou.
+func (s *Store) create(username, password string, role domain.UserRole, onlyIfEmpty bool) (*domain.User, error) {
 	if err := validateUsername(username); err != nil {
 		return nil, err
 	}
@@ -144,6 +150,9 @@ func (s *Store) Create(username, password string, role domain.UserRole) (*domain
 	f, err := s.load()
 	if err != nil {
 		return nil, err
+	}
+	if onlyIfEmpty && len(f.Users) > 0 {
+		return nil, ErrNotFirstAccount
 	}
 
 	slug := slugify(username)
@@ -223,6 +232,7 @@ func (s *Store) List() ([]domain.AdminUserSummary, error) {
 			Username:    u.Username,
 			Role:        u.Role,
 			Gamertag:    u.Gamertag,
+			XUID:        u.XUID,
 			CreatedAt:   u.CreatedAt,
 			LastLoginAt: u.LastLoginAt,
 		})
@@ -309,8 +319,12 @@ func (s *Store) ResetPassword(username, newPassword string) error {
 	return s.save(f)
 }
 
-// SetRole change le rôle d'un utilisateur.
-func (s *Store) SetRole(username string, role domain.UserRole) error {
+// SetProvisionGrant pose (ou efface, avec une chaîne vide) le droit à usage
+// unique de créer son profil joueur sur instance verrouillée (D3, ADR 0029).
+// Écrire "" après la création réussie du profil est ce qui rend le droit
+// NON rejouable : sans cet effacement, l'invité pourrait recréer un profil à
+// chaque passage sur le Setup.
+func (s *Store) SetProvisionGrant(username, code string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -325,28 +339,9 @@ func (s *Store) SetRole(username string, role domain.UserRole) error {
 		return ErrUserNotFound
 	}
 
-	user.Role = role
+	user.ProvisionGrant = code
 	f.Users[slug] = user
 
-	return s.save(f)
-}
-
-// Delete supprime un utilisateur.
-func (s *Store) Delete(username string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	f, err := s.load()
-	if err != nil {
-		return err
-	}
-
-	slug := slugify(username)
-	if _, exists := f.Users[slug]; !exists {
-		return ErrUserNotFound
-	}
-
-	delete(f.Users, slug)
 	return s.save(f)
 }
 

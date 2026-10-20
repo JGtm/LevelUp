@@ -1,0 +1,280 @@
+// Package objectives — extract.go : orchestration de l'extraction des
+// events objectif d'un match vers []objectiveevent.Event.
+//
+// Frontière PURE/IO : Extract() prend un `*source.Film` DÉJÀ CHARGÉ (chunks décompressés,
+// paquets découpés, métadonnées du manifeste portées par le film) et un Roster (xuid->team_id,
+// résolu en amont depuis match_participants), et ne fait AUCUN accès DB ni FS lui-même —
+// l'appelant charge le film une fois pour toute sa chaîne (`filmcache.LoadFilm`,
+// `source.LoadDir`). Les événements du pied et les rafales de capture sont LUS PAR LA GRAMMAIRE
+// ([signaux.FooterEvents], [signaux.CaptureBurstTimes]) ; ce fichier les compose. Le dispatch de
+// mode se fait sur match_registry.game_variant_name (cf. PLAN §10).
+package objectives
+
+import (
+	"cmp"
+	"slices"
+	"strings"
+
+	"levelup/go-api/internal/domain/objectiveevent"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/signaux"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
+// Valeurs de objectiveevent.Event.ObjectiveType (parent mode-agnostique).
+const (
+	ObjectiveTypeFlag  = "flag"  // CTF
+	ObjectiveTypeZone  = "zone"  // Strongholds / Land Grab / Total Control
+	ObjectiveTypeHill  = "hill"  // King of the Hill
+	ObjectiveTypeSkull = "skull" // Oddball
+	ObjectiveTypeVip   = "vip"   // VIP (statborg-only : le film ne porte pas le bit VIP)
+	ObjectiveTypeBomb  = "bomb"  // Assaut (One Bomb / Neutral Bomb) — statborg-only
+)
+
+// Valeurs de objectiveevent.Event.EventType (action).
+const (
+	EventTypeCapture     = "capture"      // CTF : drapeau capturé (burst tiers==6)
+	EventTypeZoneCapture = "zone_capture" // Strongholds : interaction de zone
+	EventTypeHillCapture = "hill_capture" // KOTH : interaction de colline
+	EventTypeSkullCarry  = "skull_carry"  // Oddball : heartbeat de possession
+)
+
+// Valeurs de objectiveevent.Event.Source (provenance du décodage).
+const (
+	SourceBurst = "burst" // CTF : FRAME re-transmettant la table 6-tiers
+	SourceTh10  = "th10"  // event footer type_hint==10
+)
+
+// Valeurs de objectiveevent.Event.Confidence (précision temporelle).
+const (
+	ConfidenceExact  = "exact"  // ms-précis (CTF burst)
+	ConfidenceApprox = "approx" // ~5-20s (heartbeat / inflexion th10)
+)
+
+// Rôles de objectiveevent.Player.Role.
+const (
+	RoleScorer      = "scorer"      // l'acteur de la capture (max-t du cluster)
+	RoleContributor = "contributor" // co-participant à l'interaction objectif
+)
+
+// captureClusterWindowMS = fenêtre de coïncidence entre un burst de capture CTF
+// (ms via FRAME) et les events th=10 du footer : la capture reset les drapeaux
+// -> cluster d'events th=10 simultanés. L'équipe = l'event de t MAX du cluster
+// (ancre validée 53ce4390 : burst 656554 <-> th10 656558, ~4ms). On élargit à
+// 2s pour absorber le décalage horloge FRAME/footer entre deux ancres.
+const captureClusterWindowMS = 2000
+
+// Roster résout xuid -> team_id (depuis match_participants).
+//
+// IL N'EST PLUS LA SOURCE DE `TeamID`, IL EN EST LE CONTRÔLE (lot 1.7.3, 2026-09-14). L'équipe
+// d'un événement vient du PIED, à l'octet 37 de son bloc ([signaux.FooterEvent.Team], 665/665 sur
+// quatorze films) ; ce roster-ci dit ce que la feuille de match en aurait dit, et [TeamControl]
+// compte les accords, les contradictions et les silences. Une contradiction ne se corrige pas en
+// silence : le film fait foi, l'écart se compte.
+//
+// La phrase d'origine de ce commentaire — « le champ team du film étant non fiable » — visait
+// l'octet 55, qui vaut 0 partout. Elle est RÉFUTÉE depuis le 2026-09-13.
+type Roster interface {
+	// TeamOf renvoie (team_id, true) si le xuid est un participant connu.
+	TeamOf(xuid string) (int, bool)
+}
+
+// MapRoster est un Roster simple basé sur une map (pratique pour le CLI/test).
+type MapRoster map[string]int
+
+// TeamOf implémente Roster.
+func (m MapRoster) TeamOf(xuid string) (int, bool) {
+	t, ok := m[xuid]
+	return t, ok
+}
+
+// TeamControl est ce que la feuille de match dit de l'équipe que LE PIED écrit (lot 1.7.3).
+//
+// ELLE NE POSE AUCUNE VALEUR : `team_id` vient du film, et ces trois compteurs disent ce qu'une
+// source extérieure en pense. Sans eux, un basculement de source serait une affirmation ; avec
+// eux, c'est une mesure.
+type TeamControl struct {
+	// Film : les événements dont l'équipe vient du pied. C'est le dénominateur.
+	Film int
+	// Accord / Contradiction : la feuille dit la même équipe, ou une autre. Une contradiction ne
+	// corrige rien — le film fait foi et l'écart se compte.
+	Accord, Contradiction int
+	// Silence : la feuille ne porte pas ce xuid (match absent de la base, bot, arrivant).
+	Silence int
+}
+
+// note compte un événement contre ce que la feuille de match en dit.
+func (c *TeamControl) note(roster Roster, xuid string, lue int) {
+	c.Film++
+	switch base, connu := roster.TeamOf(xuid); {
+	case !connu:
+		c.Silence++
+	case base == lue:
+		c.Accord++
+	default:
+		c.Contradiction++
+	}
+}
+
+// Extract décode les events objectif d'un match. game_variant_name pilote le
+// mode (CTF -> bursts ; Strongholds/KOTH/Oddball -> events th=10 du footer). Les
+// modes non-objectif (Slayer, etc.) renvoient nil (no-op, pas d'erreur).
+// objective_id toujours NULL (zone/colline non récupérable).
+//
+// `team_id` VIENT DU FILM (octet 37 du bloc de pied) depuis le lot 1.7.3 ; le roster passé en
+// paramètre n'en est que le CONTRÔLE, rendu dans [TeamControl].
+//
+// Renvoie les events ordonnés par time_ms avec un Seq dense 0..N-1.
+func Extract(matchID, gameVariantName string, film *source.Film,
+	roster Roster) ([]objectiveevent.Event, TeamControl) {
+	var ctl TeamControl
+	switch classifyObjectiveMode(gameVariantName) {
+	case ObjectiveTypeFlag:
+		return finalize(matchID, extractCTF(matchID, film, roster, &ctl)), ctl
+	case ObjectiveTypeZone:
+		return finalize(matchID, extractFromTh10(matchID, film, roster, &ctl,
+			ObjectiveTypeZone, EventTypeZoneCapture)), ctl
+	case ObjectiveTypeHill:
+		return finalize(matchID, extractFromTh10(matchID, film, roster, &ctl,
+			ObjectiveTypeHill, EventTypeHillCapture)), ctl
+	case ObjectiveTypeSkull:
+		return finalize(matchID, extractFromTh10(matchID, film, roster, &ctl,
+			ObjectiveTypeSkull, EventTypeSkullCarry)), ctl
+	default:
+		return nil, ctl
+	}
+}
+
+// ObjectiveTypeOf classe un game_variant_name vers une famille d'objectif
+// exportée ("flag"|"zone"|"hill"|"skull") ou "" pour un mode non-objectif.
+// Wrapper exporté de classifyObjectiveMode : permet au package sync de classer
+// un match sans dupliquer le keyword-scan.
+func ObjectiveTypeOf(gameVariantName string) string {
+	return classifyObjectiveMode(gameVariantName)
+}
+
+// classifyObjectiveMode mappe un game_variant_name vers une famille d'objectif,
+// ou "" pour un mode non-objectif. Robuste aux variations de formatage du nom
+// ("CTF:Arena", "Arena:CTF", "Ranked:CTF", "Husky Raid:CTF", "Strongholds:Arena",
+// "Arena:King of the Hill", "KOTH:Arena", "Oddball:Arena", "Ranked:Oddball"…) :
+// scan par mots-clés sur le nom complet en minuscules.
+func classifyObjectiveMode(gameVariantName string) string {
+	n := strings.ToLower(gameVariantName)
+	switch {
+	case strings.Contains(n, "ctf") || strings.Contains(n, "flag"):
+		return ObjectiveTypeFlag
+	case strings.Contains(n, "stronghold") || strings.Contains(n, "land grab") ||
+		strings.Contains(n, "total control"):
+		return ObjectiveTypeZone
+	case strings.Contains(n, "king of the hill") || strings.Contains(n, "koth"):
+		return ObjectiveTypeHill
+	case strings.Contains(n, "oddball"):
+		return ObjectiveTypeSkull
+	case strings.Contains(n, "assault") || strings.Contains(n, "bomb"):
+		// Assaut : « Assault:One Bomb », « Assault:Neutral Bomb », « Assault:Neutral Bomb
+		// Squad », « Husky Raid:Assault » — les 4 formes du registre. Le mot-clef `bomb`
+		// double `assault` parce que le second manque a trois d'entre elles ; aucune variante
+		// Halo non-Assaut ne porte l'un ou l'autre (releve `match_registry` du 2026-08-31).
+		//
+		// PLACE DANS LE SWITCH : apres le drapeau, qui gagne — une hypothetique variante
+		// nommant les deux resterait un CTF, mode dont les emplacements sont mesures.
+		return ObjectiveTypeBomb
+	default:
+		return ""
+	}
+}
+
+// extractCTF décode les captures CTF : pour chaque burst (tiers==6, ms via FRAME
+// sur les chunks gameplay), l'acteur est l'event th=10 de t MAX dans le cluster coïncident du
+// footer, et son ÉQUIPE est celle que ce même événement porte à l'octet 37.
+// players=[{scorer xuid}].
+func extractCTF(matchID string, film *source.Film, roster Roster,
+	ctl *TeamControl) []objectiveevent.Event {
+	bursts := signaux.CaptureBurstTimes(film)
+	th10 := signaux.FooterEvents(film)
+	// Capacité EXACTE : un événement par burst, sans continue dans la boucle. Le nil
+	// éventuel n'est pas perdu — finalize() ramène une tranche vide à nil.
+	out := make([]objectiveevent.Event, 0, len(bursts))
+	for _, ms := range bursts {
+		ev := objectiveevent.Event{
+			MatchID:       matchID,
+			TimeMS:        new(ms),
+			ObjectiveType: ObjectiveTypeFlag,
+			EventType:     EventTypeCapture,
+			Value:         new(1), // +1 capture
+			Source:        SourceBurst,
+			Confidence:    ConfidenceExact,
+			Details:       "{}",
+		}
+		if scorer, ok := captureScorer(th10, ms); ok {
+			xuid := formatXUID(scorer.XUID)
+			ev.Players = []objectiveevent.Player{{XUID: xuid, Role: RoleScorer}}
+			ev.TeamID = new(scorer.Team)
+			ctl.note(roster, xuid, scorer.Team)
+		}
+		out = append(out, ev)
+	}
+	return out
+}
+
+// captureScorer renvoie l'event th=10 de t MAX dans la fenêtre de coïncidence du
+// burst (la capture reset les drapeaux -> cluster ; le dernier event = l'acteur
+// de la capture). ok=false si aucun event coïncident (footer absent/partiel).
+func captureScorer(th10 []signaux.FooterEvent, burstMS int) (signaux.FooterEvent, bool) {
+	best := signaux.FooterEvent{TimeMS: -1}
+	found := false
+	for _, e := range th10 {
+		if abs(e.TimeMS-burstMS) > captureClusterWindowMS {
+			continue
+		}
+		if !found || e.TimeMS > best.TimeMS {
+			best = e
+			found = true
+		}
+	}
+	return best, found
+}
+
+// extractFromTh10 décode Strongholds/KOTH/Oddball depuis les events th=10 du
+// footer : un objective-event par event th=10 (zone_capture/hill_capture/
+// skull_carry), ÉQUIPE LUE À L'OCTET 37 DU MÊME BLOC (lot 1.7.3 — le roster n'en est plus que le
+// contrôle), source=th10, confidence=approx (~5-20s). objective_id NULL. value laissée nil
+// (score per-event non décodé ici ; le score-over-time est une couche séparée).
+// Footer absent -> nil.
+func extractFromTh10(
+	matchID string, film *source.Film, roster Roster, ctl *TeamControl, objType, evType string,
+) []objectiveevent.Event {
+	var out []objectiveevent.Event //nolint:prealloc // nil contractuel, cf. ci-dessus
+	for _, e := range signaux.FooterEvents(film) {
+		xuid := formatXUID(e.XUID)
+		ev := objectiveevent.Event{
+			MatchID:       matchID,
+			TimeMS:        new(e.TimeMS),
+			ObjectiveType: objType,
+			EventType:     evType,
+			Source:        SourceTh10,
+			Confidence:    ConfidenceApprox,
+			Details:       "{}",
+			Players:       []objectiveevent.Player{{XUID: xuid, Role: RoleScorer}},
+			TeamID:        new(e.Team),
+		}
+		ctl.note(roster, xuid, e.Team)
+		out = append(out, ev)
+	}
+	return out
+}
+
+// finalize ordonne les events par time_ms (nil en tête) et assigne un Seq dense
+// 0..N-1. Renvoie nil pour une liste vide (no-op côté repo WriteMatch).
+func finalize(matchID string, events []objectiveevent.Event) []objectiveevent.Event {
+	if len(events) == 0 {
+		return nil
+	}
+	slices.SortStableFunc(events, func(a, b objectiveevent.Event) int {
+		return cmp.Compare(timeOrNeg(a.TimeMS), timeOrNeg(b.TimeMS))
+	})
+	for i := range events {
+		events[i].Seq = i
+		events[i].MatchID = matchID
+	}
+	return events
+}

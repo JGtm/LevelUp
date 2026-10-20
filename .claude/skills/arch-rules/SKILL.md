@@ -98,6 +98,15 @@ log.Printf("...")          // ancien package log
 
 Clés standard du projet : `"err"`, `"match_id"`, `"player"`, `"titleSlug"`, `"duration"`.
 
+## Erreurs HTTP — le texte d'une erreur ne part pas au client
+
+Un refus qui vient d'une erreur (`err`) se construit par `humacore.NewErrorFrom(ctx, status, code, err)`
+(Huma) ou `writeErrorFrom(ctx, w, status, code, err)` (handlers chi) : la cause va au journal, le client
+reçoit le message FIXE du code (`humacore.FixedMessage` : « internal error » en 5xx, sinon le code lu avec
+des espaces). `NewError` / `writeError` restent pour un message écrit à la main. Le front écrit lui-même le
+texte (FR + EN) à partir du `code`, jamais d'`ApiError.message`. Un job porte `domain.NewJobError(code, retryable)`.
+Garde-rails : `archlint/err_error_response_test.go` et `archlint/job_error_fixed_message_test.go` (allowlist vide).
+
 ## Modularité
 
 | Unité | Seuil | Action |
@@ -107,6 +116,27 @@ Clés standard du projet : `"err"`, `"match_id"`, `"player"`, `"titleSlug"`, `"d
 | Paramètres | 5 | Regrouper en struct |
 
 Nommage : `1 verbe + 1 complément`. `computeKD` + `renderKD`, jamais `computeAndRenderKD`.
+
+## Commentaires — le code porte le contrat, l'histoire va ailleurs
+
+Décision DU-5 b du plan `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md` (2026-09-25).
+
+- **Le commentaire dit le contrat** de ce qu'il documente : ce que fait la déclaration, ses
+  invariants, ses unités, ses cas limites, et POURQUOI (la contrainte qui l'impose). Il reste
+  vrai tant que le code ne change pas.
+- **L'histoire va dans l'ADR, la chronique ou le journal** : mesures datées, numéros de lot,
+  « avant, ce code faisait X », comptes du jour. Décision → ADR ; montée de révision ou de
+  schéma → chronique (`rev_chronique*.go`, chronique du document) ; déroulé → plan et
+  `.ai/thought_log.md`. Un compte qui bouge se lit dans le ratchet qui le tient : citer le
+  ratchet, pas le nombre.
+- **Affirmation d'état** (« seul », « aucun », « jamais », « toujours ») : seulement si un
+  garde-rail ou le compilateur la tient, et on le nomme.
+- **Doc comment collé** : `// Nom ...` juste au-dessus de `Nom`. Insérer une déclaration entre
+  un doc comment et sa cible le décolle — déplacer le commentaire avec.
+- **Références vivantes** : un chemin `.ai/…` cité existe (ratchet
+  `archlint/doc_chemins_ai_test.go`) ; une commande `go test` citée vise un paquet existant.
+- **Portée** : code neuf, et toute affirmation fausse rencontrée (corrigée dans le commit où on
+  la voit). Pas de réécriture de masse des commentaires existants.
 
 ## Multi-titres — règles
 

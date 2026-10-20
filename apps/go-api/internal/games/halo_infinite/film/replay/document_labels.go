@@ -1,0 +1,155 @@
+package replay
+
+// document_labels.go — LES LIBELLES que l artefact embarque : le nom bilingue d une arme, d une
+// grenade ou d une capacite, et ce qui se dessine avec.
+//
+// Extrait de `document.go` au correctif de revue du 2026-08-17, pour la meme raison que
+// `document_ground_weapons.go` : le lot des socles avait pousse ce fichier de 631 a 673 lignes,
+// au-dessus d un seuil deja gele par la baseline. AUCUNE ligne de ces deux types n a change —
+// c est un deplacement, verifie par le golden d assemblage qui fige les libelles servis.
+
+// Label est un libellé affichable dans les deux langues du produit.
+//
+// POURQUOI DEUX LANGUES DANS L'ARTEFACT, et pas une résolution au service : l'artefact
+// est construit UNE FOIS, hors ligne, et servi tel quel — la locale, elle, change à
+// chaque requête. Y figer une seule langue reviendrait à choisir la langue du lecteur au
+// moment du décodage d'un film.
+type Label struct {
+	En string `json:"en"`
+	Fr string `json:"fr"`
+	// Img est l'URL de la vignette du HUD du jeu (grenades, capacités des fiches joueur).
+	// Vide = pas de visuel : le client garde le libellé, jamais la vignette d'un voisin.
+	// Tinted dit si le visuel est un masque à teindre (même contrat que WeaponLabel).
+	Img    string `json:"img,omitempty"`
+	Tinted bool   `json:"tinted,omitempty"`
+	// Family est l'IDENTITÉ STABLE de la chose nommée, dans le vocabulaire des familles
+	// d'équipement du titre (`wall`, `sensor`, `powerup_camo`...) — la table
+	// `[ability_palettes.ranks].family` du manifeste, telle quelle (schéma 51, lot 4.3).
+	//
+	// POURQUOI ELLE VOYAGE DANS LE DOCUMENT. Le rang d'une capacité n'est pas une identité :
+	// le propulseur vaut 5 en famille A et 21 en famille B. Tout lecteur du document CUIT —
+	// au premier rang `BuildUsageSummary`, fonction PURE du document que le backfill rejoue
+	// sans re-décoder un film — devait donc reconstruire la famille depuis la RACINE du
+	// libellé. Deux copies de la même table (Go et web) : le plafond de la règle n°6 du dépôt.
+	// Publier la table du manifeste supprime la copie Go.
+	//
+	// VIDE = LE MANIFESTE NE CLASSE PAS CE RANG, et le lecteur ne le classe pas non plus.
+	// C'est une réponse, pas un trou : un rang nommé sans famille est NOMMÉ (il ne compte pas
+	// dans la réserve des rangs muets) et il reste hors de tout bilan par famille.
+	Family string `json:"family,omitempty"`
+}
+
+// WeaponLabel est le libellé d'une arme, plus l'EFFET de rendu de ses tirs.
+//
+// L'effet vit à côté du nom parce qu'il se résout au même endroit et à partir de la même
+// clé (le weapon_key du titre). Le publier ici est ce qui a permis de retirer du code web
+// le catalogue des 22 noms d'armes Halo : le client dessine ce que le document dit, il
+// n'a plus à savoir ce qu'est un Ravager.
+type WeaponLabel struct {
+	En string `json:"en"`
+	Fr string `json:"fr"`
+	// Fx est la famille de RENDU du tir (ballistic, plasma, light, shock, explosive,
+	// bomb, melee, needles). Vide = arme non catégorisée : le client dessine le trait neutre,
+	// jamais l'effet d'une arme voisine.
+	Fx string `json:"fx,omitempty"`
+	// Key est le weapon_key du titre (clé canonique du registre d'armes).
+	//
+	// POURQUOI IL EST PUBLIÉ : c'est le SEUL vocabulaire commun entre un tir du film
+	// (qui porte un identifiant d'arme 64 bits) et les tables que le client tient par
+	// weapon_key — la banque de sons du rejeu au premier chef. Sans lui, un tir ne peut
+	// pas sonner l'arme qui l'a produit, et lui faire emprunter le son d'une voisine
+	// serait un mensonge sonore. `killEffects` publie déjà ce même vocabulaire pour les
+	// morts : la clé n'est pas un identifiant interne qui fuite, c'est la jointure.
+	//
+	// IL N'EST PAS ÉCRIT DANS L'ARTEFACT : il est rempli À LA REQUÊTE par le service
+	// (replay_weapon_keys.go), comme `mapObjectives`. La raison est mesurée — figer la
+	// clé au build laisserait muets les artefacts déjà cuits (23 en local, tous ceux de
+	// la production) jusqu'à une re-cuisson complète, et une résolution qui peut
+	// s'améliorer ne se stocke pas. Vide = le titre n'a pas de catalogue lisible, ou
+	// l'arme n'est pas au registre : silence propre, jamais un son approchant.
+	Key string `json:"key,omitempty"`
+	// Role est la FONCTION DE COMBAT de l'arme (automatic, precision, sniper, power,
+	// special, shotgun, sidearm, melee, grenade...), telle que le registre canonique
+	// d'armes la classe (`internal/games/weapons.RolesByKey`).
+	//
+	// POURQUOI IL EST PUBLIÉ (lot armes au sol, 2026-09-10) : c'est le critère du filtre
+	// « armes spéciales seulement » du calque des armes au sol (rôles sniper/power/special —
+	// cf. `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`, §1). Interdit au client de tenir une
+	// table d'armes en dur pour la même décision.
+	//
+	// IL N'EST PAS ÉCRIT DANS L'ARTEFACT : posé À LA REQUÊTE par le service
+	// (replay_weapon_labels.go), exactement comme Key et Tint, et pour la même raison — une
+	// résolution qui peut s'améliorer (le registre grandit) ne se stocke pas, et cuire le
+	// rôle laisserait muets tous les artefacts déjà cuits. Vide = arme hors registre : elle
+	// reste visible quand le filtre est éteint, et EN EST EXCLUE quand il est allumé — un
+	// rôle manquant ne s'affirme jamais spécial.
+	Role string `json:"role,omitempty"`
+	// Tint est la NATURE DE LA DÉCHARGE (kinetic, plasma_cool, plasma_hot, forerunner,
+	// electric, needle, blast) : ce qui sort du canon, jamais une couleur ni un camp.
+	// C'est elle qui teinte l'éclair de bouche côté client — la COULEUR, elle, est un
+	// token du thème, et c'est ce qui lui permet de valoir deux valeurs selon le thème.
+	//
+	// DISTINCTE DE Fx, et les deux ne se recouvrent pas : la forme suit la mécanique du
+	// projectile, la teinte sa nature énergétique. Source : `[shot_tints]` du titre,
+	// posée à la requête comme Key. Vide = arme non teintée (mêlée, hors table) : teinte
+	// neutre du thème, jamais celle d'une voisine.
+	Tint string `json:"tint,omitempty"`
+	// Img est l'URL de l'icône EXTRAITE DU JEU (fiches joueur du rejeu). Vide = pas de
+	// visuel : le client affiche le libellé, jamais l'icône d'une arme voisine. Tinted
+	// dit si le visuel est un masque à teindre (même contrat que le kill feed).
+	Img    string `json:"img,omitempty"`
+	Tinted bool   `json:"tinted,omitempty"`
+}
+
+// VehicleFamilyInfo est ce que le TITRE dit d une famille de chassis qui n est PAS un vehicule
+// (lot 1.9.9, 2026-09-16). Lue du manifeste du titre, jamais ecrite en Go : les libelles
+// viennent de `config/titles/{slug}/mappings/replay_labels.toml`, section `[[vehicle_families]]`.
+type VehicleFamilyInfo struct {
+	// En / Fr : le libelle affichable de la famille.
+	En, Fr string
+	// Kind est la NATURE publiee (`map_element` : un objet de la carte, pas un vehicule de la
+	// partie). Liste fermee, tenue par le loader du manifeste.
+	Kind string
+	// Sprite dit qu un asset est servi pour cette famille. A faux, le service ne compose AUCUNE
+	// URL : une URL morte ferait un 404 par match, et le client ne pourrait pas distinguer
+	// « pas encore charge » de « aucun asset a ce jour ».
+	Sprite bool
+}
+
+// VehicleLabel est ce qu il faut pour DESSINER une famille de chassis : sa vignette, le fait
+// qu elle se teigne, et — depuis le lot 1.9.9 — ce qu elle EST quand ce n est pas un vehicule.
+//
+// SES `En`/`Fr` SONT PRESQUE TOUJOURS VIDES, ET C EST LA REGLE. Le nom d un vehicule est un NOM
+// PROPRE du jeu (Warthog, Banshee, Mongoose) : il ne se traduit pas, et la CLE de la table EST
+// deja ce nom. Les deux champs ne se remplissent que pour les familles que le TITRE qualifie dans
+// son manifeste, c est-a-dire celles dont le nom est une DESCRIPTION et non un nom propre — la
+// tourelle automatique bannie et la tourelle fixe (lot M6.2). Aucun libelle n est ecrit en Go (regle 1 du
+// depot) : ils viennent de `replay_labels.toml`.
+//
+// IL N EST PAS ECRIT DANS L ARTEFACT : il est rempli A LA REQUETE par le service
+// (`replay_vehicle_labels.go`), comme `WeaponLabel.Key` et `mapObjectives`. Meme raison, et elle
+// est mesuree — figer une URL d asset au build laisserait muets tous les artefacts deja cuits
+// jusqu a une re-cuisson complete, et une resolution qui peut s ameliorer ne se stocke pas.
+type VehicleLabel struct {
+	// Img est l URL du sprite vu de dessus, EXTRAIT DU JEU (cf. `static/vehicles-assets`). Vide =
+	// aucun sprite servi pour cette famille : le client dessine le pictogramme de sa NATURE
+	// (`Kind`) si elle en a une, sinon un marqueur neutre — jamais le sprite d un voisin.
+	Img string `json:"img,omitempty"`
+	// Tinted dit que le visuel se teint a la couleur de l equipe qui l occupe. Les sprites de
+	// vehicule sont des silhouettes claires a traits noirs : ils se teignent en `multiply`, la ou
+	// les icones de HUD sont des masques — meme contrat de champ que `WeaponLabel.Tinted`, autre
+	// mode de composition (decision de cadrage du plan, cote client).
+	Tinted bool `json:"tinted,omitempty"`
+	// Kind est la NATURE de la famille quand elle n est pas un vehicule ORDINAIRE —
+	// `map_element` pour un objet de la carte, `fixed_turret` pour une tourelle fixe OCCUPABLE (lot
+	// M6.2, 2026-09-24 : pictogramme de tourelle, occupant embarque). VIDE = un vehicule, le regime
+	// de presque toutes les familles.
+	//
+	// C EST CE CHAMP, ET LUI SEUL, QUI DIT AU CLIENT DE NE PAS TRAITER UN ELEMENT DE CARTE COMME UN
+	// VEHICULE : aucun occupant ne lui est attribue cote serveur (cf. `vehicleFamillesNonPilotables`),
+	// et le calque lui reserve un pictogramme dedie plutot que le marqueur neutre.
+	Kind string `json:"kind,omitempty"`
+	// En / Fr : le libelle de la famille, vide pour un nom propre du jeu (cf. l en-tete).
+	En string `json:"en,omitempty"`
+	Fr string `json:"fr,omitempty"`
+}

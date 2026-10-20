@@ -140,34 +140,3 @@ func TestFromInMemoryDB_CloseDoesNotCloseUnderlyingDB(t *testing.T) {
 		t.Errorf("Close #2 doit être no-op : %v", err)
 	}
 }
-
-// TestFromInMemoryDB_SubscribeNoEvents vérifie que Subscribe est fonctionnel
-// (pas de panic, unsubscribe idempotent) mais qu'aucun event n'est jamais
-// émis — l'adaptateur n'a pas de transitions d'état observables.
-func TestFromInMemoryDB_SubscribeNoEvents(t *testing.T) {
-	db := openInMemoryDB(t)
-	p := sharedprovider.FromInMemoryDB(db, "memory://test")
-	defer func() { _ = p.Close() }()
-
-	called := false
-	unsubscribe := p.Subscribe(func(_ context.Context, _ sharedprovider.SwapEvent) {
-		called = true
-	})
-
-	// Faire un cycle AcquireWriter/Release — devrait être no-op et NE PAS
-	// déclencher de Subscribers (l'adaptateur n'émet jamais).
-	ctx := context.Background()
-	w, err := p.AcquireWriter(ctx)
-	if err != nil {
-		t.Fatalf("AcquireWriter: %v", err)
-	}
-	w.Release()
-
-	if called {
-		t.Error("Subscriber appelé alors qu'aucun event n'est attendu pour FromInMemoryDB")
-	}
-
-	// Unsubscribe + idempotence.
-	unsubscribe()
-	unsubscribe()
-}

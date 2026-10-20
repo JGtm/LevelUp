@@ -1,26 +1,26 @@
-// Package analysis â€” home.go : faÃ§ade minimale du package home.
+// Package analysis — home.go : façade minimale du package home.
 //
-// Ce fichier centralise les helpers math/agrÃ©gation transverses utilisÃ©s par
+// Ce fichier centralise les helpers math/agrégation transverses utilisés par
 // l'ensemble des sous-modules home (home_kpis, home_highlights, home_recent,
-// home_sessions, home_canonical_*) ainsi que la projection des mÃ©dias rÃ©cents
-// (BuildRecentMedia), qui n'a pas de dÃ©pendance forte avec un sous-module.
+// home_sessions, home_canonical_*) ainsi que la projection des médias récents
+// (BuildRecentMedia), qui n'a pas de dépendance forte avec un sous-module.
 //
-// Les autres responsabilitÃ©s ont Ã©tÃ© extraites :
+// Les autres responsabilités ont été extraites :
 //   - home_locale.go     : constantes outcome/color/tone, helpers locale, labels,
 //     narrative badges, score label, normalizeHomeModeLabel,
 //     regex UUID, copyOptionalString, optionalStringValue.
 //   - home_kpis.go       : ComputeKPIs, ComputeTrend, BuildHeroCard,
 //     BuildSpartanIdentity + helpers de rank/skill peak.
 //   - home_highlights.go : selectHighlightWindow, BuildHighlights, tuiles
-//     MaÃ®trise/PerMinute/SÃ©rie + helpers de couleur/sÃ©lection.
+//     Maîtrise/PerMinute/Série + helpers de couleur/sélection.
 //   - home_recent.go     : BuildRecentMatches*, mapImageURLFromRegistry,
 //     mmrDelta, float64PtrVal, intPtrIfPos.
 //   - home_sessions.go   : BuildSessionSummaries, BuildSessionSummary,
 //     distinctSessionLabels, latestSessionLabel,
 //     earliestStartTime, latestEndTime.
 //
-// Fonctions stateless : entrÃ©e = slices de domain rows, sortie = blocs JSON.
-// Aucun accÃ¨s DB, aucun import Streamlit.
+// Fonctions stateless : entrée = slices de domain rows, sortie = blocs JSON.
+// Aucun accès DB, aucun import Streamlit.
 package analysis
 
 import (
@@ -31,10 +31,10 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// BuildRecentMedia â€” mÃ©dias rÃ©cents
+// BuildRecentMedia — médias récents
 // ---------------------------------------------------------------------------
 
-// BuildRecentMedia transforme les lignes DuckDB en items de mÃ©dias rÃ©cents.
+// BuildRecentMedia transforme les lignes DuckDB en items de médias récents.
 func BuildRecentMedia(media []domain.HomeMediaRow, limit int) []domain.RecentMediaItem {
 	if len(media) == 0 {
 		return nil
@@ -57,7 +57,7 @@ func BuildRecentMedia(media []domain.HomeMediaRow, limit int) []domain.RecentMed
 }
 
 // ---------------------------------------------------------------------------
-// Helpers math transverses (utilisÃ©s par home_kpis, home_sessions et tests)
+// Helpers math transverses (utilisés par home_kpis, home_sessions et tests)
 // ---------------------------------------------------------------------------
 
 func round1(v float64) float64 { return math.Round(v*10) / 10 }

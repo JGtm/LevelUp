@@ -8,7 +8,7 @@ package migrations
 // (player DB legacy), rebuild career_progression (défait corruption ART). Tous
 // consommateurs de tables créées par le god-file player (RACINE globale). repair_pme
 // réutilise migration.RebuildPlayerMatchEnrichmentART (util runtime resté dans le
-// package migration, appelé aussi par cmd/force_rebuild_art). Helpers
+// package migration, appelé aussi par cmd/rebuild_pme_art). Helpers
 // migration.LoadTableColumns + migration.FirstWords (b13). col* inlinés.
 
 import (
@@ -28,7 +28,7 @@ func playerRepairSteps() []migration.Migration {
 		{
 			Name:        "repair_player_match_enrichment_primary_key",
 			TargetDB:    migration.TargetPlayer,
-			Description: "Garantit player_match_enrichment append-only (id PK + vue) sur player DB legacy (no-op si déjà id ; jamais de PK match_id — append-only #23046)",
+			Description: "Garantit player_match_enrichment append-only (id PK + vue) sur player DB legacy (no-op si déjà id ; jamais de PK match_id — append-only #23645)",
 			ApplySchema: repairPlayerMatchEnrichmentPK,
 		},
 		{
@@ -47,7 +47,7 @@ func playerRepairSteps() []migration.Migration {
 }
 
 // repairPlayerMatchEnrichmentPK garantit que player_match_enrichment est
-// append-only. Append-only #23046 : on ne pose JAMAIS de PK(match_id). Si la
+// append-only. Append-only #23645 : on ne pose JAMAIS de PK(match_id). Si la
 // table porte déjà la PK technique `id`, elle est append-only → no-op. Sinon
 // (legacy sans schéma append-only), on délègue à la conversion idempotente
 // (RebuildPlayerMatchEnrichmentART → applyAppendOnlyMatchEnrichment).
@@ -78,7 +78,7 @@ func repairMatchCitationsPK(db *sql.DB) error {
 	if !exists {
 		return nil
 	}
-	// Append-only #23046 (Phase 2) : si match_citations est en append-only
+	// Append-only #23645 (Phase 2) : si match_citations est en append-only
 	// (generation_id présent), la PK composite (match_id, citation_name_norm) n'a
 	// plus de sens (multiples générations par clé) — no-op. La PK technique id est
 	// déjà posée par la conversion append-only.

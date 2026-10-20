@@ -1,0 +1,240 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	11	19	14	0	123
+0797ce72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	62	1764	1743	1	11701
+0797ce72	HI_1_13_0	(ii) paquet a evenements non localise · traversee non propre	12	13	10	0	95
+0797ce72	HI_1_13_0	(ii) paquet a evenements non localise · traversee propre	82	96	78	0	705
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · traversee non propre	9	10	7	0	54
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · traversee propre	24	29	24	3	157
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	130	170	115	1	1148
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	381	1169	1022	4	7027
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · traversee non propre	16	17	9	1	101
+0797ce72	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · traversee propre	44	60	31	1	429
+0797ce72	HI_1_13_0	(v) introuvable	665	1229	898	4	7105
+0797ce72	HI_1_13_0	dans un record lu (faux positif probable) · traversee non propre	146	195	147	0	1277
+0797ce72	HI_1_13_0	dans un record lu (faux positif probable) · traversee propre	514	648	446	10	4489
+084a804d	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	2	21	20	1	453
+084a804d	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	235	8828	8786	38	156250
+084a804d	HI_1_10_0	(ii) paquet a evenements non localise · traversee non propre	8	35	30	5	655
+084a804d	HI_1_10_0	(ii) paquet a evenements non localise · traversee propre	321	6616	6571	40	137171
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · traversee non propre	1	1	0	1	0
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · traversee propre	19	371	367	2	8241
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	10	10	5	1	16
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	332	6071	6019	41	133288
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : terminateur · traversee non propre	1	1	0	1	0
+084a804d	HI_1_10_0	(iii') apres l arret de la vue B : terminateur · traversee propre	1	1	0	1	0
+084a804d	HI_1_10_0	(v) introuvable	61	1144	1102	28	3099
+084a804d	HI_1_10_0	dans un record lu (faux positif probable) · traversee non propre	13	14	8	4	52
+084a804d	HI_1_10_0	dans un record lu (faux positif probable) · traversee propre	33	55	33	14	595
+111fa685	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	6	6	5	0	57
+111fa685	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	164	2200	2181	12	41542
+111fa685	HI_1_10_0	(ii) paquet a evenements non localise · traversee non propre	35	41	33	4	422
+111fa685	HI_1_10_0	(ii) paquet a evenements non localise · traversee propre	336	4571	4543	9	85465
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · traversee non propre	2	2	2	0	25
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · traversee propre	12	138	138	0	2761
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	36	38	32	1	425
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	315	3159	3120	15	58323
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : terminateur · traversee non propre	7	10	9	0	87
+111fa685	HI_1_10_0	(iii') apres l arret de la vue B : terminateur · traversee propre	23	30	28	1	300
+111fa685	HI_1_10_0	(v) introuvable	133	376	342	9	5424
+111fa685	HI_1_10_0	dans un record lu (faux positif probable) · traversee non propre	21	22	20	0	319
+111fa685	HI_1_10_0	dans un record lu (faux positif probable) · traversee propre	107	113	90	9	1266
+11de8353	HI_1_9_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	4	7	6	0	95
+11de8353	HI_1_9_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	147	1628	1609	10	31201
+11de8353	HI_1_9_0	(ii) paquet a evenements non localise · traversee non propre	20	24	15	2	265
+11de8353	HI_1_9_0	(ii) paquet a evenements non localise · traversee propre	261	4158	4131	7	78326
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : ouverte · traversee non propre	1	1	0	1	0
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : ouverte · traversee propre	8	20	16	0	420
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	25	40	31	1	557
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	280	3397	3345	17	59896
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : terminateur · traversee non propre	1	1	0	0	15
+11de8353	HI_1_9_0	(iii') apres l arret de la vue B : terminateur · traversee propre	1	1	1	0	17
+11de8353	HI_1_9_0	(iii) NEW lu desynchronise · traversee non propre	1	1	0	0	16
+11de8353	HI_1_9_0	(v) introuvable	133	248	200	11	3140
+11de8353	HI_1_9_0	dans un record lu (faux positif probable) · traversee non propre	39	50	42	1	733
+11de8353	HI_1_9_0	dans un record lu (faux positif probable) · traversee propre	137	212	171	3	3161
+1c4c63c2	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	39	978	886	88	7891
+1c4c63c2	HI_1_10_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	524	16688	16100	576	239215
+1c4c63c2	HI_1_10_0	(ii) paquet a evenements non localise · traversee non propre	55	134	63	67	1238
+1c4c63c2	HI_1_10_0	(ii) paquet a evenements non localise · traversee propre	734	14823	13916	895	198291
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · traversee non propre	7	9	2	6	8
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : ouverte · traversee propre	34	264	226	37	3965
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	76	115	17	89	62
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	719	8584	7689	877	142474
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : terminateur · traversee non propre	11	16	5	10	19
+1c4c63c2	HI_1_10_0	(iii') apres l arret de la vue B : terminateur · traversee propre	10	22	3	19	11
+1c4c63c2	HI_1_10_0	(v) introuvable	347	7443	6767	653	2734
+1c4c63c2	HI_1_10_0	dans un record lu (faux positif probable) · traversee non propre	36	59	6	52	31
+1c4c63c2	HI_1_10_0	dans un record lu (faux positif probable) · traversee propre	116	175	16	150	177
+396cfc92	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	60	3266	3266	0	25707
+396cfc92	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	52	2476	2475	1	15732
+396cfc92	HI_1_13_0	(ii) paquet a evenements non localise · traversee non propre	3	134	134	0	711
+396cfc92	HI_1_13_0	(ii) paquet a evenements non localise · traversee propre	17	630	629	1	4398
+396cfc92	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · traversee propre	1	3	3	0	19
+396cfc92	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	5	145	145	0	873
+396cfc92	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	25	1693	1693	0	9318
+396cfc92	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · traversee propre	1	1	1	0	7
+396cfc92	HI_1_13_0	(v) introuvable	5	5	3	1	22
+396cfc92	HI_1_13_0	dans un record lu (faux positif probable) · traversee propre	2	2	1	1	4
+4f77afc1	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	14	134	122	12	3379
+4f77afc1	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	116	2223	2168	54	42418
+4f77afc1	HI_1_13_0	(ii) paquet a evenements non localise · traversee non propre	12	148	138	10	3606
+4f77afc1	HI_1_13_0	(ii) paquet a evenements non localise · traversee propre	161	3005	2938	64	64225
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · traversee non propre	1	1	0	1	0
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · traversee propre	23	191	170	21	3803
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	4	4	1	3	3
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	159	2503	2431	70	53771
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · traversee non propre	1	1	0	1	0
+4f77afc1	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · traversee propre	6	19	0	19	0
+4f77afc1	HI_1_13_0	(iii) NEW lu desynchronise · traversee non propre	2	8	8	0	212
+4f77afc1	HI_1_13_0	(v) introuvable	57	1506	1448	57	5413
+4f77afc1	HI_1_13_0	dans un record lu (faux positif probable) · traversee non propre	11	19	0	19	0
+4f77afc1	HI_1_13_0	dans un record lu (faux positif probable) · traversee propre	71	128	59	65	1608
+50247b26	version-31	(i) tete d un paquet a evenements, avant le debut · traversee non propre	2	144	144	0	2842
+50247b26	version-31	(i) tete d un paquet a evenements, avant le debut · traversee propre	91	2548	2548	0	55282
+50247b26	version-31	(ii) paquet a evenements non localise · traversee propre	170	3997	3989	4	91261
+50247b26	version-31	(iii') apres l arret de la vue B : ouverte · traversee propre	8	244	244	0	6476
+50247b26	version-31	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	2	2	0	0	17
+50247b26	version-31	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	165	3757	3747	3	80223
+50247b26	version-31	(iii') apres l arret de la vue B : terminateur · traversee propre	1	7	7	0	137
+50247b26	version-31	(v) introuvable	2	2	0	0	20
+50247b26	version-31	dans un record lu (faux positif probable) · traversee propre	7	7	5	1	73
+51ebbc0f	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	12	304	304	0	15
+51ebbc0f	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	25	780	779	1	3279
+51ebbc0f	HI_1_13_0	(ii) paquet a evenements non localise · traversee non propre	15	282	282	0	22
+51ebbc0f	HI_1_13_0	(ii) paquet a evenements non localise · traversee propre	146	3409	3371	9	12890
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · traversee propre	18	601	600	1	1354
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	2	2	1	1	9
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	299	6569	6559	6	11628
+51ebbc0f	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · traversee propre	2	5	4	0	0
+51ebbc0f	HI_1_13_0	(iii) NEW lu desynchronise · traversee non propre	176	4585	4585	0	112
+51ebbc0f	HI_1_13_0	(iii) NEW lu desynchronise · traversee propre	3	59	59	0	1
+51ebbc0f	HI_1_13_0	(iv) NEW lu refuse · traversee propre	1	4	4	0	0
+51ebbc0f	HI_1_13_0	(v) introuvable	48	61	41	2	66
+51ebbc0f	HI_1_13_0	dans un record lu (faux positif probable) · traversee non propre	3	5	5	0	6
+51ebbc0f	HI_1_13_0	dans un record lu (faux positif probable) · traversee propre	6	6	4	1	12
+60ae07c4	HI_1_8_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	4	4	3	0	25
+60ae07c4	HI_1_8_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	161	7411	7380	9	45312
+60ae07c4	HI_1_8_0	(ii) paquet a evenements non localise · traversee non propre	16	31	24	3	184
+60ae07c4	HI_1_8_0	(ii) paquet a evenements non localise · traversee propre	235	11816	11788	17	69830
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : ouverte · traversee non propre	23	33	29	0	211
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : ouverte · traversee propre	58	335	305	3	2055
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	80	97	72	4	557
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	376	8625	8509	15	47154
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : terminateur · traversee non propre	10	15	11	0	76
+60ae07c4	HI_1_8_0	(iii') apres l arret de la vue B : terminateur · traversee propre	26	57	46	0	249
+60ae07c4	HI_1_8_0	(iii) NEW lu desynchronise · traversee non propre	3	7	7	0	20
+60ae07c4	HI_1_8_0	(v) introuvable	634	971	717	28	5226
+60ae07c4	HI_1_8_0	dans un record lu (faux positif probable) · traversee non propre	91	118	75	3	678
+60ae07c4	HI_1_8_0	dans un record lu (faux positif probable) · traversee propre	365	477	323	16	2899
+a349fea8	version-33	(i) tete d un paquet a evenements, avant le debut · traversee non propre	3	53	53	0	1499
+a349fea8	version-33	(i) tete d un paquet a evenements, avant le debut · traversee propre	216	6377	6371	0	124384
+a349fea8	version-33	(ii) paquet a evenements non localise · traversee non propre	8	22	21	0	338
+a349fea8	version-33	(ii) paquet a evenements non localise · traversee propre	321	6422	6406	6	141794
+a349fea8	version-33	(iii') apres l arret de la vue B : ouverte · traversee non propre	1	1	0	0	16
+a349fea8	version-33	(iii') apres l arret de la vue B : ouverte · traversee propre	24	252	251	0	5810
+a349fea8	version-33	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	22	24	14	1	90
+a349fea8	version-33	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	302	4838	4806	9	103730
+a349fea8	version-33	(iii') apres l arret de la vue B : terminateur · traversee non propre	4	4	1	0	0
+a349fea8	version-33	(iii') apres l arret de la vue B : terminateur · traversee propre	9	10	6	2	35
+a349fea8	version-33	(v) introuvable	173	1387	1293	5	2752
+a349fea8	version-33	dans un record lu (faux positif probable) · traversee non propre	7	7	2	0	23
+a349fea8	version-33	dans un record lu (faux positif probable) · traversee propre	31	31	21	0	91
+a521164d	HI_1_4_1	(i) tete d un paquet a evenements, avant le debut · traversee non propre	2	120	120	0	2797
+a521164d	HI_1_4_1	(i) tete d un paquet a evenements, avant le debut · traversee propre	84	1609	1604	0	35200
+a521164d	HI_1_4_1	(ii) paquet a evenements non localise · traversee non propre	6	6	5	0	5
+a521164d	HI_1_4_1	(ii) paquet a evenements non localise · traversee propre	144	2242	2227	1	46695
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : ouverte · traversee non propre	1	1	1	0	0
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : ouverte · traversee propre	17	174	169	0	3767
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	15	15	12	0	14
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	176	2165	2134	1	44198
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : terminateur · traversee non propre	3	3	3	0	3
+a521164d	HI_1_4_1	(iii') apres l arret de la vue B : terminateur · traversee propre	8	8	7	0	0
+a521164d	HI_1_4_1	(v) introuvable	142	144	50	5	22
+a521164d	HI_1_4_1	dans un record lu (faux positif probable) · traversee non propre	8	8	6	0	0
+a521164d	HI_1_4_1	dans un record lu (faux positif probable) · traversee propre	31	31	24	0	21
+bcb6d393	HI_1_12_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	2	11	10	0	82
+bcb6d393	HI_1_12_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	22	1473	1472	1	9018
+bcb6d393	HI_1_12_0	(ii) paquet a evenements non localise · traversee non propre	1	1	1	0	0
+bcb6d393	HI_1_12_0	(ii) paquet a evenements non localise · traversee propre	16	695	694	0	4167
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : ouverte · traversee non propre	4	4	3	0	0
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : ouverte · traversee propre	13	264	262	0	1589
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	5	5	2	0	0
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	26	638	636	0	3544
+bcb6d393	HI_1_12_0	(iii') apres l arret de la vue B : terminateur · traversee non propre	1	1	0	0	0
+bcb6d393	HI_1_12_0	(iii) NEW lu desynchronise · traversee non propre	1	11	11	0	122
+bcb6d393	HI_1_12_0	(v) introuvable	87	96	60	1	12
+bcb6d393	HI_1_12_0	dans un record lu (faux positif probable) · traversee non propre	14	15	12	0	0
+bcb6d393	HI_1_12_0	dans un record lu (faux positif probable) · traversee propre	55	56	37	0	3
+bf15f7ab	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	1	1	0	0	7
+bf15f7ab	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	13	798	793	0	4514
+bf15f7ab	HI_1_13_0	(ii) paquet a evenements non localise · traversee non propre	1	1	1	0	7
+bf15f7ab	HI_1_13_0	(ii) paquet a evenements non localise · traversee propre	9	11	4	0	77
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · traversee non propre	3	6	4	0	42
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · traversee propre	11	16	13	0	112
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	8	9	5	0	64
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	27	563	557	0	3179
+bf15f7ab	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · traversee propre	7	115	112	1	886
+bf15f7ab	HI_1_13_0	(v) introuvable	39	53	33	1	338
+bf15f7ab	HI_1_13_0	dans un record lu (faux positif probable) · traversee non propre	22	37	15	0	258
+bf15f7ab	HI_1_13_0	dans un record lu (faux positif probable) · traversee propre	92	150	84	1	1034
+bfecd02b	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	21	2029	2028	1	15288
+bfecd02b	HI_1_13_0	(ii) paquet a evenements non localise · traversee propre	8	436	435	1	2777
+bfecd02b	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · traversee propre	1	1	0	1	0
+bfecd02b	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	9	680	680	0	5159
+bfecd02b	HI_1_13_0	(v) introuvable	6	6	1	3	8
+bfecd02b	HI_1_13_0	dans un record lu (faux positif probable) · traversee non propre	1	1	1	0	7
+bfecd02b	HI_1_13_0	dans un record lu (faux positif probable) · traversee propre	1	1	0	1	0
+c75f33b8	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	2	2	1	1	11
+c75f33b8	HI_1_13_0	(ii) paquet a evenements non localise · traversee non propre	4	57	56	1	9
+c75f33b8	HI_1_13_0	(ii) paquet a evenements non localise · traversee propre	34	1585	1582	3	7588
+c75f33b8	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · traversee propre	2	24	23	1	0
+c75f33b8	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	2	2	0	2	0
+c75f33b8	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	10	511	509	2	2613
+c75f33b8	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · traversee non propre	1	1	0	1	0
+c75f33b8	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · traversee propre	2	2	0	2	0
+c75f33b8	HI_1_13_0	(iii) NEW lu desynchronise · traversee non propre	4	111	111	0	0
+c75f33b8	HI_1_13_0	(v) introuvable	15	18	1	6	8
+c75f33b8	HI_1_13_0	dans un record lu (faux positif probable) · traversee non propre	2	2	0	2	0
+c75f33b8	HI_1_13_0	dans un record lu (faux positif probable) · traversee propre	2	2	0	2	0
+d9781168	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	16	947	944	3	6010
+d9781168	HI_1_13_0	(ii) paquet a evenements non localise · traversee non propre	3	3	0	3	0
+d9781168	HI_1_13_0	(ii) paquet a evenements non localise · traversee propre	135	6927	6890	37	40465
+d9781168	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · traversee propre	1	136	136	0	769
+d9781168	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	2	3	0	3	0
+d9781168	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	60	3087	3080	7	17034
+d9781168	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · traversee propre	1	1	0	1	0
+d9781168	HI_1_13_0	(v) introuvable	21	34	9	24	0
+d9781168	HI_1_13_0	dans un record lu (faux positif probable) · traversee non propre	3	4	0	4	0
+d9781168	HI_1_13_0	dans un record lu (faux positif probable) · traversee propre	11	14	1	13	6
+e5adf7b2	HI_1_11_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	8	9	4	1	104
+e5adf7b2	HI_1_11_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	142	2038	2010	16	42975
+e5adf7b2	HI_1_11_0	(ii) paquet a evenements non localise · traversee non propre	13	13	7	1	132
+e5adf7b2	HI_1_11_0	(ii) paquet a evenements non localise · traversee propre	298	3483	3447	8	71091
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : ouverte · traversee propre	12	64	59	0	1202
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	26	92	82	1	1962
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	320	4139	4082	14	84347
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : terminateur · traversee non propre	1	1	0	0	21
+e5adf7b2	HI_1_11_0	(iii') apres l arret de la vue B : terminateur · traversee propre	11	13	11	0	98
+e5adf7b2	HI_1_11_0	(v) introuvable	220	256	125	8	929
+e5adf7b2	HI_1_11_0	dans un record lu (faux positif probable) · traversee non propre	17	18	9	5	38
+e5adf7b2	HI_1_11_0	dans un record lu (faux positif probable) · traversee propre	102	103	74	7	476
+f75e7053	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	26	1569	1569	0	10872
+f75e7053	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	8	790	790	0	4231
+f75e7053	HI_1_13_0	(ii) paquet a evenements non localise · traversee non propre	5	1199	1199	0	8290
+f75e7053	HI_1_13_0	(ii) paquet a evenements non localise · traversee propre	8	396	395	1	2466
+f75e7053	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	10	334	334	0	580
+f75e7053	HI_1_13_0	(v) introuvable	2	2	0	1	0
+fb1a1a72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee non propre	53	1425	1424	1	39
+fb1a1a72	HI_1_13_0	(i) tete d un paquet a evenements, avant le debut · traversee propre	54	1575	1571	3	5644
+fb1a1a72	HI_1_13_0	(ii) paquet a evenements non localise · traversee non propre	7	182	182	0	4
+fb1a1a72	HI_1_13_0	(ii) paquet a evenements non localise · traversee propre	35	843	842	0	2417
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : ouverte · traversee propre	34	889	884	2	2420
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee non propre	12	89	89	0	366
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : rejet hors datum · traversee propre	420	8437	8408	6	3938
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · traversee non propre	2	2	2	0	0
+fb1a1a72	HI_1_13_0	(iii') apres l arret de la vue B : terminateur · traversee propre	4	57	53	0	271
+fb1a1a72	HI_1_13_0	(iii) NEW lu desynchronise · traversee non propre	348	9562	9562	0	440
+fb1a1a72	HI_1_13_0	(iii) NEW lu desynchronise · traversee propre	10	236	234	0	7
+fb1a1a72	HI_1_13_0	(v) introuvable	66	211	184	0	74
+fb1a1a72	HI_1_13_0	dans un record lu (faux positif probable) · traversee non propre	5	5	5	0	0
+fb1a1a72	HI_1_13_0	dans un record lu (faux positif probable) · traversee propre	9	36	14	2	4

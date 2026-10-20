@@ -1,0 +1,57 @@
+film	0edb8512	candidats_retenus	6
+# 0edb8512 — meilleurs candidats par correlation
+cand	bit	77	largeur	3	decale	false	couverts	8	hors_roster	0.0000	corr	0.7551	retenu	true
+cand	bit	77	largeur	4	decale	true	couverts	8	hors_roster	0.0000	corr	0.7551	retenu	true
+cand	bit	30	largeur	4	decale	false	couverts	6	hors_roster	0.5303	corr	0.7020	retenu	false
+cand	bit	30	largeur	5	decale	true	couverts	6	hors_roster	0.5303	corr	0.7020	retenu	false
+cand	bit	28	largeur	6	decale	false	couverts	4	hors_roster	0.8184	corr	0.7009	retenu	false
+cand	bit	29	largeur	6	decale	true	couverts	4	hors_roster	0.8184	corr	0.7009	retenu	false
+cand	bit	29	largeur	5	decale	false	couverts	4	hors_roster	0.8184	corr	0.7009	retenu	false
+cand	bit	31	largeur	3	decale	false	couverts	6	hors_roster	0.0000	corr	0.6592	retenu	false
+
+film	64e8adfa	candidats_retenus	25
+# 64e8adfa — meilleurs candidats par correlation
+cand	bit	64	largeur	6	decale	true	couverts	7	hors_roster	0.7171	corr	0.8244	retenu	false
+cand	bit	64	largeur	5	decale	false	couverts	7	hors_roster	0.7171	corr	0.8244	retenu	false
+cand	bit	65	largeur	4	decale	false	couverts	8	hors_roster	0.4864	corr	0.7728	retenu	false
+cand	bit	65	largeur	5	decale	true	couverts	8	hors_roster	0.4864	corr	0.7728	retenu	false
+cand	bit	45	largeur	6	decale	false	couverts	7	hors_roster	0.9244	corr	0.7544	retenu	false
+cand	bit	16	largeur	4	decale	false	couverts	2	hors_roster	0.4845	corr	0.7478	retenu	false
+cand	bit	16	largeur	5	decale	true	couverts	2	hors_roster	0.4845	corr	0.7478	retenu	false
+cand	bit	17	largeur	4	decale	true	couverts	2	hors_roster	0.0000	corr	0.7476	retenu	false
+
+film	9aeca4b3	candidats_retenus	26
+# 9aeca4b3 — meilleurs candidats par correlation
+cand	bit	59	largeur	6	decale	false	couverts	8	hors_roster	0.7554	corr	0.7721	retenu	false
+cand	bit	62	largeur	4	decale	true	couverts	8	hors_roster	0.0000	corr	0.7367	retenu	true
+cand	bit	62	largeur	3	decale	false	couverts	8	hors_roster	0.0000	corr	0.7367	retenu	true
+cand	bit	67	largeur	3	decale	false	couverts	8	hors_roster	0.0000	corr	0.6741	retenu	true
+cand	bit	67	largeur	4	decale	true	couverts	8	hors_roster	0.0000	corr	0.6741	retenu	true
+cand	bit	155	largeur	3	decale	false	couverts	8	hors_roster	0.0000	corr	0.6709	retenu	true
+cand	bit	155	largeur	4	decale	true	couverts	8	hors_roster	0.0000	corr	0.6709	retenu	true
+cand	bit	149	largeur	4	decale	true	couverts	8	hors_roster	0.0000	corr	0.6612	retenu	true
+
+film	000d5950	candidats_retenus	4
+# 000d5950 — meilleurs candidats par correlation
+cand	bit	42	largeur	6	decale	true	couverts	7	hors_roster	0.8594	corr	0.7830	retenu	false
+cand	bit	42	largeur	5	decale	false	couverts	7	hors_roster	0.8594	corr	0.7830	retenu	false
+cand	bit	41	largeur	6	decale	false	couverts	7	hors_roster	0.8722	corr	0.7609	retenu	false
+cand	bit	244	largeur	6	decale	true	couverts	8	hors_roster	0.7316	corr	0.7461	retenu	false
+cand	bit	244	largeur	5	decale	false	couverts	8	hors_roster	0.7316	corr	0.7461	retenu	false
+cand	bit	11	largeur	5	decale	false	couverts	8	hors_roster	0.7476	corr	0.6918	retenu	false
+cand	bit	11	largeur	6	decale	true	couverts	8	hors_roster	0.7476	corr	0.6918	retenu	false
+cand	bit	10	largeur	6	decale	false	couverts	8	hors_roster	0.7476	corr	0.6918	retenu	false
+
+# candidats retenus sur les 4 films (critere 4 : reproductibilite)
+offset	110/3/false	films	1/4	
+offset	155/3/false	films	1/4	
+offset	27/5/false	films	1/4	
+offset	67/4/true	films	1/4	
+offset	132/4/true	films	1/4	
+offset	147/3/false	films	1/4	
+offset	77/3/false	films	1/4	
+offset	102/4/true	films	1/4	
+offset	234/3/false	films	1/4	
+offset	104/4/true	films	1/4	
+offset	75/4/true	films	1/4	
+offset	28/5/true	films	1/4	

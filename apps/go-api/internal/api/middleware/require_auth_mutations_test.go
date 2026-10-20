@@ -57,9 +57,12 @@ var mutatingPlayerRoutes = []routeCase{
 	{http.MethodPost, "/pilot-mode/disable"},
 	{http.MethodPost, "/pilot-mode/enable"},
 	{http.MethodPost, "/prestige/challenges"},
+	// Le motif de lecture `suggest-next` ne couvre qu'UN segment d'identifiant : ni un sous-chemin
+	// plus profond, ni l'absence d'identifiant.
+	{http.MethodPost, "/prestige/challenges/ch1/autre/suggest-next"},
+	{http.MethodPost, "/prestige/challenges/suggest-next"},
 	{http.MethodDelete, "/prestige/challenges/ch1"},
 	{http.MethodPatch, "/prestige/challenges/ch1"},
-	{http.MethodPost, "/prestige/challenges/ch1/suggest-next"},
 	{http.MethodDelete, "/squad-challenges/sc1"},
 	{http.MethodPost, "/squad-challenges/sc1/evaluate"},
 	{http.MethodPost, "/squad-challenges/sc1/join"},
@@ -90,6 +93,14 @@ var readPlayerRoutes = []routeCase{
 	{http.MethodPost, "/filters/resolve"},
 	{http.MethodPost, "/filters/match-ids"},
 	{http.MethodPost, "/engagement/timeseries"},
+	// Onglet Tactique (2026-09-06) : deux lectures passées en POST parce que leur
+	// périmètre est une LISTE de match_id. Un visiteur anonyme doit continuer de les
+	// obtenir — l'ownership, lui, filtre toujours les profils.
+	{http.MethodPost, "/tactical/maps"},
+	{http.MethodPost, "/tactical/streets/raster"},
+	{http.MethodPost, "/tactical/streets/sequence"},
+	// Suggestion du défi suivant (2026-10-16) : lit le défi et le catalogue de gabarits, n'écrit rien.
+	{http.MethodPost, "/prestige/challenges/ch1/suggest-next"},
 }
 
 const testPlayerSlug = "JGtm"
@@ -214,12 +225,20 @@ func TestIsMutatingRequest_ClassifiesPostQueriesAsReads(t *testing.T) {
 		{routeCase{http.MethodOptions, "/media"}, false},
 		{routeCase{http.MethodPost, "/pages/media"}, false},
 		{routeCase{http.MethodPost, "/filters/resolve"}, false},
+		{routeCase{http.MethodPost, "/tactical/maps"}, false},
+		{routeCase{http.MethodPost, "/tactical/streets/raster"}, false},
+		{routeCase{http.MethodPost, "/tactical/streets/sequence"}, false},
 		{routeCase{http.MethodPost, "/engagement/timeseries"}, false},
 		{routeCase{http.MethodPost, "/engagement/recompute_coefficients"}, true},
 		{routeCase{http.MethodPost, "/sync"}, true},
 		{routeCase{http.MethodPatch, "/media/likes"}, true},
 		{routeCase{http.MethodPut, "/media/audio-config"}, true},
 		{routeCase{http.MethodDelete, "/media"}, true},
+		// Revue R1 (P1-2) : aucun chemin ne devient « lecture » par nettoyage — un « .. » en
+		// clair ou encodé reste une écriture, hors démo comme en démo.
+		{routeCase{http.MethodPost, "/coach/proposals/../../pages/dismiss"}, true},
+		{routeCase{http.MethodPost, "/coach/proposals/..%2F..%2Fpages/dismiss"}, true},
+		{routeCase{http.MethodPost, "/pages/./media"}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.c.method+tc.c.path, func(t *testing.T) {
@@ -235,5 +254,20 @@ func TestIsMutatingRequest_ClassifiesPostQueriesAsReads(t *testing.T) {
 				t.Errorf("IsMutatingRequest = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestRequireAuthForMutations_TraversalStaysAWrite — revue R1 (P1-2) : hors démo, un chemin
+// qui ne se lit pas comme il se route (« .. » en clair, ou encodé) reste une ÉCRITURE et
+// exige une session ; aucun nettoyage ne le transforme en lecture de page.
+func TestRequireAuthForMutations_TraversalStaysAWrite(t *testing.T) {
+	h := playerRouterWithGuard(false, "password", &domain.SessionData{})
+	for _, path := range []string{
+		"/coach/proposals/../../pages/dismiss",
+		"/coach/proposals/..%2F..%2Fpages/dismiss",
+	} {
+		if rr := doRequest(h, routeCase{http.MethodPost, path}); rr.Code != http.StatusUnauthorized {
+			t.Errorf("%s : statut %d, attendu 401 (écriture sans session)", path, rr.Code)
+		}
 	}
 }

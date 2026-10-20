@@ -26,7 +26,7 @@ function entry(): MedalDigestEntry {
 describe('MedalDigest (correction #9 — symbole ×)', () => {
   it('affiche le compteur de médaille préfixé par × (×9, pas 9 nu)', () => {
     renderWithProviders(
-      <MedalDigest entries={[entry()]} mainPlayer="P1" t={getSquadText('fr').medals} />,
+      <MedalDigest entries={[entry()]} inkOf={() => 'var(--muted-foreground)'} t={getSquadText('fr').medals} />,
     )
     // Le badge de compteur rend « ×9 » (MedalChip). On tolère le caractère × Unicode.
     const matches = screen.getAllByText((_t, node) => node?.textContent === '×9')

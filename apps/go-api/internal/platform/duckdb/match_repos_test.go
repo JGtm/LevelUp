@@ -83,18 +83,6 @@ func TestFiltersRepo_GetAvailablePlaylists(t *testing.T) {
 	}
 }
 
-func TestFiltersRepo_GetAvailableMaps(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	repo := NewFiltersRepo(pdb)
-	maps, err := repo.GetAvailableMaps(context.Background())
-	if err != nil {
-		t.Fatalf("GetAvailableMaps: %v", err)
-	}
-	if len(maps) != 1 {
-		t.Errorf("attendu 1 carte, obtenu %d", len(maps))
-	}
-}
-
 // ---------------------------------------------------------------------------
 // MatchHistoryRepo
 // ---------------------------------------------------------------------------
@@ -122,18 +110,6 @@ func TestMatchHistoryRepo_LoadAll_WithData(t *testing.T) {
 	}
 	if len(rows) != 1 {
 		t.Errorf("attendu 1, obtenu %d", len(rows))
-	}
-}
-
-func TestMatchHistoryRepo_LoadMapWinRates(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	repo := NewMatchHistoryRepo(pdb)
-	rates, err := repo.LoadMapWinRates(context.Background())
-	if err != nil {
-		t.Fatalf("LoadMapWinRates: %v", err)
-	}
-	if len(rates) != 1 {
-		t.Errorf("attendu 1 carte, obtenu %d", len(rates))
 	}
 }
 

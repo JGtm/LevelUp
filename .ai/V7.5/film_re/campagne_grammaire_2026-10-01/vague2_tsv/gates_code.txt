@@ -1,0 +1,7 @@
+gofmt -l ./internal ./cmd : vide
+go vet ./... : rc 0
+go vet -tags=research ./internal/games/halo_infinite/film/... : rc 0
+ok  	levelup/go-api/internal/archlint	38.799s
+0 issues.
+golangci-lint --build-tags=research (grammar):
+0 issues.

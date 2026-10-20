@@ -5,7 +5,7 @@
 // EXISTANT, donc les routes chi non migrées et les routes Huma cohabitent sur le
 // même routeur (humachi enregistre via chiMux.MethodFunc → routes visibles à
 // chi.Walk, donc internal/api/contract_test.go reste valide pour toutes les
-// routes, migrées ou non). Cf. .ai/PLAN_TITLE_AGNOSTIC_REFACTORING.md §Phase 3b.
+// routes, migrées ou non). Cf. .ai/archive/V7/PLAN_TITLE_AGNOSTIC_REFACTORING.md §Phase 3b.
 //
 // Le socle réutilisable (factory, modèle d'erreur, format byte-identique writeJSON,
 // sanitisation NaN) vit dans internal/api/humacore — partagé avec le package

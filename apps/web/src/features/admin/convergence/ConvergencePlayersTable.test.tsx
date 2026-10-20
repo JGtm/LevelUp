@@ -21,7 +21,6 @@ function makePlayer(overrides: Partial<PlayerConvergenceReport>): PlayerConverge
     missing_enrichment: 0,
     missing_psa: 0,
     missing_events: 0,
-    missing_weapons: 0,
     ...overrides,
   }
 }
@@ -32,7 +31,7 @@ function makeReport(players: PlayerConvergenceReport[]): AdminConvergenceReport 
     horizon: 100,
     players,
     title_slug: 'halo_infinite',
-    totals_since_boot: { aliases_upserted: 0, events_processed: 0, psa_processed: 0, weapons_processed: 0 },
+    totals_since_boot: { aliases_upserted: 0, events_processed: 0, psa_processed: 0 },
   }
 }
 

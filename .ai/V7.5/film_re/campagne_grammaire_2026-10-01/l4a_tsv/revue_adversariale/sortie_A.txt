@@ -1,0 +1,27 @@
+## Verdict
+
+**Aucun défaut recevable trouvé.**
+
+J'ai énoncé les préconditions de chaque changement puis je suis allé les vérifier dans le code au commit `9e02dabbb` (pas dans le seul diff). Toutes tiennent.
+
+### Conditions vérifiées qui tiennent : 14
+
+1. **`Lecteur.etatComplet` ne peut pas fuir.** Le seul écrivain de production est `keyframe_fullstate_loop.go:111`, et le lecteur y est créé localement (`br := LecteurSur(pay)`, ligne 81) et jamais rendu à l'appelant. `LecteurSur` est l'unique constructeur ; aucun `*Lecteur` de production n'est réutilisé d'un record à l'autre par un chemin qui aurait posé le drapeau. L'absence de remise à faux est donc sans effet.
+2. **Aucun autre chemin de production ne lit sans masque.** `Mask = ^uint64(0)` n'apparaît qu'à `keyframe_fullstate_loop.go:110` (grep sur tout `grammar/` hors tests). Les six autres appelants de `traverseComponentLoop(From)` (`traverse.go:140`, `frame_records.go:212`, `frame_harvest.go:273`, `frame_chain_infer.go:138`, `ground_weapon_ammo.go:115`, `equipment_creation.go` via `readMaskIndices:402`) prennent tous leur masque du flux.
+3. **`consumeFullStateDefaultBlock` n'appelle pas `consumeByName`** (`keyframe_record_walk.go:324` → `consumeBipedDefaultState` ou `defaultStateDeserByTI`), donc poser le drapeau après le bloc d'état par défaut ne laisse aucun composant se lire avant lui.
+4. **La marche d'image-clé `ti=40` est strictement inchangée.** Avant, `i30` tombait dans le `default` → `ported=false` → `DesyncAt=30`. Après, il tombe dans le maillon `ti=40` → `br.etatComplet` → `ported=false` → même `DesyncAt`. `i34` et `i37`, seuls portés avant, sont derrière `i30` dans le registre : jamais atteints.
+5. **Chaîne de dispatch correcte.** `defaultChainTarget` (`ecs_table_scan_test.go:95`) suit le premier `switch` du corps ; le `default` de `consumeComposantsVueBM4b` est bien `return consumeComposantsVehiculeTi40(...)`, et le `default` de ce dernier rend un littéral → fin de chaîne, pas de cycle, `links >= 2`.
+6. **Les statuts G1 s'accordent.** `caseKinds` classe `porte` quand tous les `return` du case rendent le littéral `true` : `i37` → `porte`, `i33/i34` et le gros case → `partiel` (ils portent un `return …, false`). C'est exactement ce que le TSV déclare lignes 877-891.
+7. **`checkCodeSource`** : `composants_vehicule_ti40.go:178/181/191` tombent précisément sur les trois lignes de `case` (vérifié par numérotation du fichier).
+8. **Comptes G4 cohérents.** `BitsTyp = -1` dès que `strconv.Atoi` échoue (`ecs_table_guard_test.go:88`), donc les intervalles `2-8`, `1-17`, `5-9`, `1-16`, `2-18`, `1-6` sortent des **deux** comptes : `gardees` reste 66. Les 8 largeurs fixes mesurées sur `0x00/0xFF/0xAA` valent bien 3/19/9/4/2/16/16/24 ⇒ 123 + 8 = 131.
+9. **Les 16 noms sont exclusifs à `ti=40`** (balayage du TSV) : aucun autre archétype ne change de comportement, ni en masque ni en état complet.
+10. **Les deux listes du maillon sont complètes et identiques** : les 13 noms du gros `case` (l.191-194) sont exactement les 13 traités par `lireComposantStatiqueTi40` — pas de nom qui rendrait `ported=true` à 0 bit.
+11. **`lireJeuDArmes` : bipède `i42` strictement inchangé.** `R(3)` + 2 × `consumeID2`, `sel` rendu et passé au même crochet, mêmes bits, même ordre.
+12. **Compteur renommé : même place, même encodage.** `filmfacts_encode.go:303` / `filmfacts_decode.go:326` gardent la position positionnelle entre `EventPacketsNewRecordStart` et `LiaisonsOubliees` ; `MovementStateStats` n'a aucun tag JSON et n'est publié dans aucun champ du document (grep complet) — le blob reste relisible et la sortie servie ne change pas de clé.
+13. **Retrait du repli complet et cohérent.** Plus aucune référence vivante (`noms.go`, `registre_filmdec_marche.go`, site `DeclencheN` de `film_scan_mouvement.go:50` retirés ensemble) ; les 5 occurrences restantes sont des entrées de chronique datées. `plancherEntrees=60`, `plancherTranches=13` et `famillesAttendues` (la famille `filmdec/marche` garde 3 entrées) ne mordent pas ; les trois directions de `archlint/no_unregistered_fallback_test.go` restent satisfaites (aucun identifiant du fichier neuf ne porte `repli`/`fallback`).
+14. **Seuils et hygiène** : fichier neuf 215 L, `composants_vue_b_m4b.go` 116 L, `lecteur.go` 152 L, `rev_chronique.go` 469 L ; fonctions neuves 31 et 35 L ; aucun `slog` ni import nouveau dans `grammar` (le périmètre d'empreinte `grammar_perimetre.golden` n'avait donc pas à bouger) ; `consume1408f0ac4` appelé en instruction ne jette aucune erreur (retours `(bool, uint64)`, pas d'`error`).
+
+### Deux points pesés et écartés (non recevables)
+
+- `lireJeuDArmes` ne migre pas la copie en ligne de `FUN_1406d01fc` restée dans `consumeWeaponStateTail` (`components_object.go:330-333`). Ça fait **deux** copies, pas trois : la règle 6 n'est pas franchie, et la conséquence ne serait qu'hypothétique (« si un jour la grammaire est corrigée d'un seul côté »).
+- Les notes du TSV pour `i41`/`i42` juxtaposent « NE PAS PORTER » (lot 5.5) et le portage de L4a. C'est la convention de cette colonne (journal daté, la note récente supersède), pas une doc inversée.

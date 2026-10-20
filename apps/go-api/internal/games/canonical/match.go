@@ -41,6 +41,11 @@ type MatchSummary struct {
 	// retombent sur T0=0 (chronologie brute, comportement pré-Phase 3).
 	// Champ additif (politique d'évolution canonical, cf. ADR 0005).
 	T0Ms *int64
+
+	// RoundsTotal : nombre de manches JOUÉES (max des deux camps, ADR 0032). Grandeur du
+	// MATCH, pas d'un camp — c'est pourquoi elle vit ici et non dans TeamSnapshot. Nil =
+	// inconnu → l'affichage garde les points. Champ additif (ADR 0005).
+	RoundsTotal *int
 }
 
 // GameplayDurationSeconds retourne la VRAIE durée de gameplay (countdown
@@ -265,8 +270,13 @@ type ImpactBadge struct {
 
 // TeamSnapshot est la vue légère d'une équipe d'un match.
 type TeamSnapshot struct {
-	TeamID            int
-	Score             *int
+	TeamID int
+	Score  *int
+	// RoundsWon : manches gagnées par ce camp (ADR 0032). Sur une variante déclarée dans
+	// regulation.toml [rounds_decide], c'est CETTE grandeur qui dit le résultat — Score y
+	// est un cumul de points sur toutes les manches, qui peut donner la victoire au camp
+	// qui en a le moins. Nil = inconnu (titre sans la donnée, ligne antérieure au backfill).
+	RoundsWon         *int
 	MMR               *float64
 	ParticipantsXUIDs []string
 }

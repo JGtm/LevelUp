@@ -1,0 +1,87 @@
+===== FILM 60ae07c4 =====
+=== RUN   TestOddballSommeilD8
+2026/08/27 14:40:02 INFO plafond memoire arme pour ce decodage outil=d8-sommeil souple_gib=2 dur_octets=2684354560
+    oddball_sommeil_d8_test.go:61: 60ae07c4 : carte "Live Fire - Ranked" absente du catalogue de bornes (filmdec: bornes de quantification inconnues pour cette carte : "Live Fire - Ranked")
+    oddball_sommeil_d8_test.go:61: NON EXPLOITABLE 60ae07c4 : bornes de quantification indisponibles. NI POUR NI CONTRE.
+    oddball_sommeil_d8_test.go:58: 60ae07c4 : pic memoire observe 0.00 Gio
+--- PASS: TestOddballSommeilD8 (0.01s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	0.428s
+EXIT_60ae07c4=0
+===== FILM 92f18088 =====
+=== RUN   TestOddballSommeilD8
+2026/08/27 14:40:03 INFO plafond memoire arme pour ce decodage outil=d8-sommeil souple_gib=2 dur_octets=2684354560
+2026/08/27 14:40:08 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
+    oddball_sommeil_d8_test.go:61: 92f18088 : 5342 ancres, 265 creations acceptees, 369 pistes delta ; 35 vie(s) du mot elu
+    oddball_sommeil_d8_test.go:61: 92f18088 : carte 1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48 absente du catalogue d'objectifs (replay: carte absente du catalogue d'objectifs : "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48")
+    oddball_sommeil_d8_test.go:61: 92f18088 : 35 vie(s) libre(s), 0 socle(s), pont 106/117 slot(s) nomme(s) = 90.6 % (plancher 50 %)
+    oddball_sommeil_d8_test.go:65: D8.1 92f18088 : 35 naissance(s) — AU SOCLE 0/35 = 0.0 % · AUX PIEDS D UN JOUEUR 25/35 = 71.4 % · AU LIEU DU SILENCE 3/35 = 8.6 % · AUCUN des trois 9/35 = 25.7 %
+    oddball_sommeil_d8_test.go:65: D8.1 92f18088 : RECOUVREMENTS (ce que l ordre de priorite de D7 masquait) — socle ET joueur 0 ; lieu du silence ET joueur 2
+    oddball_sommeil_d8_test.go:65:   92f18088 : distance naissance -> silence precedent — n=34, min 0.35, q25 2.02, MEDIANE 3.54, q75 8.94, q90 12.46, max 25.74
+    oddball_sommeil_d8_test.go:66: D8.2 92f18088 : 29/34 = 85.3 % trou(s) TRAVERSE(s) pendant leur duree (seuil 70 %) ; delai silence -> premiere traversee : mediane 0.20 s (seuil >= 1.0 s)
+    oddball_sommeil_d8_test.go:66:   92f18088 : delai silence -> premiere traversee (s) — n=29, min 0.00, q25 0.00, MEDIANE 0.20, q75 4.40, q90 6.10, max 16.20
+    oddball_sommeil_d8_test.go:66: VERDICT 92f18088 : traversees OUI, delai NON — SOMMEIL NON ETABLI
+    oddball_sommeil_d8_test.go:58: 92f18088 : pic memoire observe 0.18 Gio
+--- PASS: TestOddballSommeilD8 (57.09s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	57.511s
+EXIT_92f18088=0
+===== FILM 24dbb67d =====
+=== RUN   TestOddballSommeilD8
+2026/08/27 14:41:01 INFO plafond memoire arme pour ce decodage outil=d8-sommeil souple_gib=2 dur_octets=2684354560
+2026/08/27 14:41:04 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    oddball_sommeil_d8_test.go:61: 24dbb67d : 7051 ancres, 269 creations acceptees, 248 pistes delta ; 23 vie(s) du mot elu
+    oddball_sommeil_d8_test.go:61: 24dbb67d : 23 vie(s) libre(s), 1 socle(s), pont 87/97 slot(s) nomme(s) = 89.7 % (plancher 50 %)
+    oddball_sommeil_d8_test.go:65: D8.1 24dbb67d : 23 naissance(s) — AU SOCLE 3/23 = 13.0 % · AUX PIEDS D UN JOUEUR 18/23 = 78.3 % · AU LIEU DU SILENCE 2/23 = 8.7 % · AUCUN des trois 3/23 = 13.0 %
+    oddball_sommeil_d8_test.go:65: D8.1 24dbb67d : RECOUVREMENTS (ce que l ordre de priorite de D7 masquait) — socle ET joueur 1 ; lieu du silence ET joueur 2
+    oddball_sommeil_d8_test.go:65:   24dbb67d : distance naissance -> silence precedent — n=22, min 0.44, q25 2.80, MEDIANE 3.95, q75 6.68, q90 9.44, max 17.36
+    oddball_sommeil_d8_test.go:66: D8.2 24dbb67d : 20/22 = 90.9 % trou(s) TRAVERSE(s) pendant leur duree (seuil 70 %) ; delai silence -> premiere traversee : mediane 0.20 s (seuil >= 1.0 s)
+    oddball_sommeil_d8_test.go:66:   24dbb67d : delai silence -> premiere traversee (s) — n=20, min 0.00, q25 0.00, MEDIANE 0.00, q75 2.70, q90 7.90, max 22.60
+    oddball_sommeil_d8_test.go:66: VERDICT 24dbb67d : traversees OUI, delai NON — SOMMEIL NON ETABLI
+    oddball_sommeil_d8_test.go:58: 24dbb67d : pic memoire observe 0.16 Gio
+--- PASS: TestOddballSommeilD8 (45.44s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	45.855s
+EXIT_24dbb67d=0
+===== FILM 43716616 =====
+=== RUN   TestOddballSommeilD8
+2026/08/27 14:41:48 INFO plafond memoire arme pour ce decodage outil=d8-sommeil souple_gib=2 dur_octets=2684354560
+    oddball_sommeil_d8_test.go:61: 43716616 : 6943 ancres, 332 creations acceptees, 376 pistes delta ; 16 vie(s) du mot elu
+    oddball_sommeil_d8_test.go:61: 43716616 : 16 vie(s) libre(s), 1 socle(s), pont 62/72 slot(s) nomme(s) = 86.1 % (plancher 50 %)
+    oddball_sommeil_d8_test.go:65: D8.1 43716616 : 16 naissance(s) — AU SOCLE 4/16 = 25.0 % · AUX PIEDS D UN JOUEUR 12/16 = 75.0 % · AU LIEU DU SILENCE 1/16 = 6.2 % · AUCUN des trois 2/16 = 12.5 %
+    oddball_sommeil_d8_test.go:65: D8.1 43716616 : RECOUVREMENTS (ce que l ordre de priorite de D7 masquait) — socle ET joueur 2 ; lieu du silence ET joueur 1
+    oddball_sommeil_d8_test.go:65:   43716616 : distance naissance -> silence precedent — n=15, min 0.83, q25 3.22, MEDIANE 7.42, q75 9.46, q90 11.99, max 16.86
+    oddball_sommeil_d8_test.go:66: D8.2 43716616 : 14/15 = 93.3 % trou(s) TRAVERSE(s) pendant leur duree (seuil 70 %) ; delai silence -> premiere traversee : mediane 0.00 s (seuil >= 1.0 s)
+    oddball_sommeil_d8_test.go:66:   43716616 : delai silence -> premiere traversee (s) — n=14, min 0.00, q25 0.00, MEDIANE 0.00, q75 2.20, q90 3.40, max 6.90
+    oddball_sommeil_d8_test.go:66: VERDICT 43716616 : traversees OUI, delai NON — SOMMEIL NON ETABLI
+    oddball_sommeil_d8_test.go:58: 43716616 : pic memoire observe 0.09 Gio
+--- PASS: TestOddballSommeilD8 (38.60s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	39.006s
+EXIT_43716616=0
+===== FILM c88ec007 =====
+=== RUN   TestOddballSommeilD8
+2026/08/27 14:42:27 INFO plafond memoire arme pour ce decodage outil=d8-sommeil souple_gib=2 dur_octets=2684354560
+    oddball_sommeil_d8_test.go:61: c88ec007 : carte "Live Fire" absente du catalogue de bornes (filmdec: bornes de quantification inconnues pour cette carte : "Live Fire")
+    oddball_sommeil_d8_test.go:61: NON EXPLOITABLE c88ec007 : bornes de quantification indisponibles. NI POUR NI CONTRE.
+    oddball_sommeil_d8_test.go:58: c88ec007 : pic memoire observe 0.00 Gio
+--- PASS: TestOddballSommeilD8 (0.01s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	0.426s
+EXIT_c88ec007=0
+===== FILM d9781168 =====
+=== RUN   TestOddballSommeilD8
+2026/08/27 14:42:29 INFO plafond memoire arme pour ce decodage outil=d8-sommeil souple_gib=2 dur_octets=2684354560
+    oddball_sommeil_d8_test.go:61: d9781168 : 15016 ancres, 665 creations acceptees, 945 pistes delta ; 47 vie(s) du mot elu
+    oddball_sommeil_d8_test.go:61: d9781168 : 47 vie(s) libre(s), 1 socle(s), pont 140/160 slot(s) nomme(s) = 87.5 % (plancher 50 %)
+    oddball_sommeil_d8_test.go:65: D8.1 d9781168 : 47 naissance(s) — AU SOCLE 13/47 = 27.7 % · AUX PIEDS D UN JOUEUR 34/47 = 72.3 % · AU LIEU DU SILENCE 0/47 = 0.0 % · AUCUN des trois 5/47 = 10.6 %
+    oddball_sommeil_d8_test.go:65: D8.1 d9781168 : RECOUVREMENTS (ce que l ordre de priorite de D7 masquait) — socle ET joueur 5 ; lieu du silence ET joueur 0
+    oddball_sommeil_d8_test.go:65:   d9781168 : distance naissance -> silence precedent — n=46, min 1.40, q25 3.37, MEDIANE 9.35, q75 20.11, q90 26.45, max 29.40
+    oddball_sommeil_d8_test.go:66: D8.2 d9781168 : 39/46 = 84.8 % trou(s) TRAVERSE(s) pendant leur duree (seuil 70 %) ; delai silence -> premiere traversee : mediane 0.00 s (seuil >= 1.0 s)
+    oddball_sommeil_d8_test.go:66:   d9781168 : delai silence -> premiere traversee (s) — n=39, min 0.00, q25 0.00, MEDIANE 0.00, q75 3.60, q90 6.00, max 18.50
+    oddball_sommeil_d8_test.go:66: VERDICT d9781168 : traversees OUI, delai NON — SOMMEIL NON ETABLI
+    oddball_sommeil_d8_test.go:58: d9781168 : pic memoire observe 0.19 Gio
+--- PASS: TestOddballSommeilD8 (68.12s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	68.527s
+EXIT_d9781168=0

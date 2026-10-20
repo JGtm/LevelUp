@@ -1,0 +1,28 @@
+--- a/apps/go-api/internal/games/halo_infinite/film/internal/grammar/traverse.go (post-J12, df228c24c)
++++ b/surcouche_unique_postj12/traverse.go
+@@ -92,6 +92,14 @@
+ // (the residue deser is not yet identified — see the note above consumeBipedDefaultState's
+ // call site). For other archetypes the legacy fixed Skip(defaultStateBits) is kept.
+ func TraverseEntity(br *Lecteur, reg *Registry, defaultStateBits int) EntityTrace {
++	if rvehPorteeNeuf {
++		// SURCOUCHE R-VEH : FUN_142e309b4 / FUN_142e31a0c posent DAT_144e61ea0 = 1 pour TOUT le
++		// record NEW (@142e309e5, @142e31a31) : positions brutes, chemin absolu d i0 de l ecrivain.
++		sauve := br.p.Grammaire
++		br.p.Grammaire.PorteeBaseline = true
++		br.p.Grammaire.GrammaireEcrivainI0 = true
++		defer func() { br.p.Grammaire = sauve }()
++	}
+ 	t := EntityTrace{DesyncAt: -1, DefaultBits: defaultStateBits}
+ 	t.TypeIndex = uint32(br.ReadBits(6))
+ 	if t.TypeIndex >= objectArchetypeCount {
+@@ -304,3 +312,10 @@
+ 	}
+ 	return br.ReadBits(64)
+ }
++
++// ---- SURCOUCHE DE RECHERCHE R-VEH (2026-10-02) ------------------------------------------------
++// Ce fichier n est PAS le fichier de production : c est une copie que `go test -overlay` substitue
++// a `traverse.go` pour la seule duree d une mesure. Ajout : la bascule [rvehPorteeNeuf], qui lit
++// un record NEW sous la portee DAT_144e61ea0 (positions brutes) et le chemin absolu d i0 de
++// l ecrivain. Faux = la lecture de production.
++var rvehPorteeNeuf bool

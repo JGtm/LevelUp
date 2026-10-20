@@ -18,11 +18,18 @@ import (
 	"fmt"
 	"os"
 
+	"levelup/go-api/internal/games/titleseams"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/service"
 )
 
 func main() {
+	// Seams title-owned : ce binaire embarque le moteur de sync TRANSITIVEMENT (ratchet
+	// titleseams_wired_test.go, 2026-09-16). Sans ce câblage, tout chemin qui atteindrait un
+	// classifier ou une étape de migration title-owned partirait en panic fail-loud MT-15 ou
+	// en scores muets.
+	titleseams.RegisterAll("")
+
 	if len(os.Args) < 2 || os.Args[1] != "diagnose" {
 		fmt.Fprintln(os.Stderr, "usage: levelup-titles diagnose --slug <slug> [--format text|json] [--repo-root <path>]")
 		os.Exit(2)

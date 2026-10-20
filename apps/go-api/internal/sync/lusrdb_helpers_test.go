@@ -32,7 +32,8 @@ func openLUSRDB(t *testing.T) *sql.DB {
 			pair_name VARCHAR,
 			is_ranked BOOLEAN DEFAULT FALSE,
 			is_firefight BOOLEAN DEFAULT FALSE,
-			duration_seconds INTEGER
+			duration_seconds INTEGER,
+			game_variant_id VARCHAR
 		);
 		CREATE TABLE match_participants (
 			match_id VARCHAR,
@@ -63,7 +64,6 @@ func openLUSRDB(t *testing.T) *sql.DB {
 			created_at       TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			updated_at       TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
-		CREATE INDEX idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at);
 		CREATE OR REPLACE VIEW match_skill_rank_latest AS
 			SELECT * FROM match_skill_rank
 			QUALIFY ROW_NUMBER() OVER (

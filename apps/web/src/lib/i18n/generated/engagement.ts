@@ -19,7 +19,7 @@ export const engagementManifest = {
   "engagement.empty.no_curve": { fr: "Pas assez d'events pour tracer la courbe", en: "Not enough events to draw the curve" },
   "engagement.empty.no_score": { fr: "Aucun engagement calcule pour ce match", en: "No engagement computed for this match" },
   "engagement.error.match_unavailable": { fr: "Engagement indisponible pour ce match (trop court ou peu d'action)", en: "Engagement unavailable for this match (too short or little action)" },
-  "engagement.error.pve_not_supported": { fr: "L'engagement n'est pas calcule sur les matchs Firefight (couverture v2)", en: "Engagement is not computed on Firefight matches (v2 coverage)" },
+  "engagement.error.pve_not_supported": { fr: "L'engagement ne se calcule pas sur les matchs Firefight", en: "Engagement is not computed on Firefight matches" },
   "engagement.error.temporary": { fr: "Engagement momentanement indisponible, reessayez", en: "Engagement temporarily unavailable, please retry" },
   "engagement.error.unavailable": { fr: "La metrique Engagement n'est pas encore disponible (migration en cours)", en: "The Engagement metric is not yet available (migration pending)" },
   "engagement.expected.bin_calme": { fr: "attendu : reponse habituelle aux matchs calmes", en: "expected: usual response in calm matches" },

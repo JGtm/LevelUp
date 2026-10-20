@@ -388,6 +388,11 @@ en = "Chaos"
 fr = "Arène"
 en = "Arena"
 
+# CSR : chaîne unique "ranked" (sync/csr_writes.go) — libellé de la série CSR du graphe d'évolution.
+[career.lusr.chain.ranked]
+fr = "Classé"
+en = "Ranked"
+
 # ─── Progression tab ──────────────────────────────────────────────────────
 
 [career.empty.progression_unavailable]

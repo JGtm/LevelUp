@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : hors perimetre du lot D (modele web du rejeu) : l'exemption DATE la dette, elle ne l'absout pas — le decoupage revient au lot qui touchera ce fichier. */
 /**
  * MatchScoreboard — tableau de score du match.
  *
@@ -19,6 +20,8 @@ import {
 } from '@tanstack/react-table'
 import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
 import { ariaSortOf, sortSuffixOf } from './sortHeader'
+import { teamTintStyles } from './teamColor'
+import { teamTokenCssVar } from './teamSeriesColor'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -31,20 +34,15 @@ import type {
   MatchViewRank,
 } from '@/lib/api/types'
 import { formatDurationMMSS } from '@/lib/formatters'
-import { tokenCssVar } from '@/lib/accessibility'
+import { displayPlayerName } from '@/lib/players/displayName'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import type { MatchViewText } from './i18n'
 import { MatchObjectivesSection } from './MatchObjectivesSection'
 import { displayTierLabel } from './MatchHeader.utils'
 import { localizeTierLabel } from '@/lib/skillTiers'
 import { useAppShellStore } from '@/stores/appShellStore'
-import {
-  labelHasTeamWord,
-  parseTeamSideID,
-  resolveTeamColorFromID,
-  resolveTeamName,
-  teamLogoPath,
-} from '@/lib/halo/teamNames'
+import { resolveTeamLabel } from '@/lib/halo/teamLabel'
+import { parseTeamSideID, teamLogoPath } from '@/lib/halo/teamNames'
 import {
   cellState,
   cellStyle,
@@ -113,8 +111,15 @@ function buildHighlightCols(
     { key: 'damage_dealt', label: t.sbColDamageDealt, inverted: false, fmt: (v) => v.toFixed(0) },
     { key: 'damage_taken', label: t.sbColDamageTaken, inverted: true, fmt: (v) => v.toFixed(0) },
     { key: 'avg_life_seconds', label: t.sbColAvgLife, inverted: false, fmt: (v) => formatDurationMMSS(v, '—'), tooltip: t.sbColAvgLifeTooltip },
-    { key: 'offensive_conversion', label: offensiveLabel, inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%`, tooltip: t.sbColOffensiveTooltip },
-    { key: 'defensive_resistance', label: defensiveLabel, inverted: false, fmt: (v) => v < 0 ? '∞' : `${((v - 1) * 100).toFixed(0)}%`, tooltip: t.sbColDefensiveTooltip },
+    // EN-TÊTES COURTS (2026-09-13, demande utilisateur) : « Rend. » / « Résist. » au lieu de
+    // « Rendement » / « Résistance », qui élargissaient deux colonnes de chiffres à deux
+    // caractères. Le libellé CANONIQUE (celui du registre, servi par le backend) n'est pas
+    // réécrit : il ouvre l'infobulle d'en-tête, devant l'explication de la mesure. Aucun
+    // dictionnaire de `FieldKey` n'est créé ici — ces deux abréviations vivent dans le
+    // dictionnaire UI de la feature (`i18n.ts`), pas dans une seconde table de libellés
+    // canoniques (garde-rail `no-field-label-dictionary.test.ts`).
+    { key: 'offensive_conversion', label: t.sbColOffensiveShort, inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%`, tooltip: `${offensiveLabel} — ${t.sbColOffensiveTooltip}` },
+    { key: 'defensive_resistance', label: t.sbColDefensiveShort, inverted: false, fmt: (v) => v < 0 ? '∞' : `${((v - 1) * 100).toFixed(0)}%`, tooltip: `${defensiveLabel} — ${t.sbColDefensiveTooltip}` },
   ]
 }
 
@@ -408,7 +413,9 @@ function TeamScoreboard({
           // Pas de lien vers Explorer pour les bots : ils n'existent pas hors
           // de ce match (leur xuid 'bid(N.0)' n'a aucun historique cross-match).
           const linkable = !r.is_me && !r.is_bot && playerSlug
-          const displayGamertag = r.gamertag
+          // Le suffixe « [bot] » est un marqueur de DONNÉES (killsource) : l'écran ne le
+          // répète pas, le badge Bot ci-dessous le dit déjà (chokepoint displayName.ts).
+          const displayGamertag = displayPlayerName(r.gamertag, r.xuid)
           return (
             <span className="whitespace-nowrap">
               <span className="mr-1 text-muted-foreground">{isExpanded ? '▾' : '▸'}</span>
@@ -470,7 +477,17 @@ function TeamScoreboard({
         sortDescFirst: false,
         cell: (ctx) => {
           const lbl = ctx.row.original.top_weapon_label
-          return <span className="text-muted-foreground">{lbl ?? '—'}</span>
+          // TRONQUÉE (2026-09-13) : « Marteau antigravité » décalait toute la table vers la
+          // droite et chassait les colonnes de fin hors de l'écran. Le nom complet reste au
+          // survol (`title`) — on rogne l'affichage, jamais la donnée.
+          return (
+            <span
+              className="block max-w-[14ch] truncate text-muted-foreground"
+              title={lbl ?? undefined}
+            >
+              {lbl ?? '—'}
+            </span>
+          )
         },
       },
       hlDef('max_killing_spree'),
@@ -514,40 +531,29 @@ function TeamScoreboard({
     getSortedRowModel: getSortedRowModel(),
   })
 
-  // Résolution du nom d'équipe. Priorité au libellé fourni par le backend (Halo 5 :
-  // « Rouge/Bleu » depuis team_colors, déjà localisé côté serveur via team_name) ; à
-  // défaut, résolution front des noms officiels Halo Infinite (Eagle / Cobra / ...).
-  // Fallback : "Équipe N" si team_id connu mais hors map, "Équipe inconnue" si
-  // team_side malformé.
-  const backendTeamName = rows.find((r) => r.team_name)?.team_name ?? null
-  const officialName = backendTeamName ?? resolveTeamName(teamSide)
+  // Libellé d'équipe : cascade UNIQUE du dépôt (`lib/halo/teamLabel.ts` — backend, puis
+  // nom officiel préfixé, puis « Équipe N », puis inconnue).
+  const teamLabel = resolveTeamLabel(rows, teamSide, t)
   const teamID = parseTeamSideID(teamSide)
-  // Un libellé backend déjà complet (Halo 5 : « Équipe Cobra » depuis team_colors
-  // localisé) ne doit PAS être re-préfixé par teamLabelFmt, sinon on double le mot
-  // (« Équipe Équipe Cobra »). Les noms officiels résolus côté front (Eagle/Cobra)
-  // sont nus et attendent le préfixe. Décision sur la DONNÉE, pas sur le slug.
-  const teamLabel = officialName
-    ? labelHasTeamWord(officialName)
-      ? officialName
-      : t.teamLabelFmt(officialName)
-    : teamID != null
-      ? t.teamNumberedFmt(teamID)
-      : t.teamUnknown
-  // Couleur d'IDENTITÉ de l'équipe, data-driven (jamais slug==) : couleur fournie par
-  // le backend (row.team_color, Halo 5 depuis team_colors) en priorité, sinon la map de
-  // couleurs officielles par team_id (Halo Infinite : Eagle bleu, Cobra rouge, ...),
-  // sinon repli sur le token sémantique ally/enemy existant (overridable par les réglages
-  // d'accessibilité). Chaque équipe obtient ainsi sa couleur distincte (> 2 équipes =
-  // > 2 couleurs), là où l'ancien schéma ally/enemy n'en offrait que deux.
-  const backendTeamColor = rows.find((r) => r.team_color)?.team_color ?? null
-  const identityColor = backendTeamColor ?? resolveTeamColorFromID(teamID)
-  const teamColorVar = identityColor ?? (isMyTeam ? tokenCssVar('team-ally') : tokenCssVar('team-enemy'))
+  // LA TEINTE DE L'EN-TÊTE SUIT LE RÉGLAGE D'ACCESSIBILITÉ DE L'UTILISATEUR, et pas la
+  // couleur officielle du jeu. RÉGRESSION CORRIGÉE le 2026-09-13 : jusqu'au commit 3f116dfe6
+  // (2026-07-23, « couleur d'identite + logos d'equipe »), cet en-tête prenait
+  // `tokenCssVar('team-ally' | 'team-enemy')` — donc les couleurs réglées dans Accessibilité.
+  // Ce commit a mis devant la cascade d'IDENTITÉ (`teamColorResolver` : `team_color` du
+  // backend, puis couleur officielle par `team_id`) ; or sur Halo Infinite le `team_id` est
+  // TOUJOURS présent, si bien que la cascade n'atteignait jamais le jeton et que le réglage
+  // utilisateur n'avait plus AUCUN effet (« avant ça marchait très bien »). Le choix explicite
+  // de l'utilisateur passe devant la convention du jeu — c'est la même frontière que
+  // `teamSeriesColor.ts` tient déjà pour les graphes. Le LOGO et le NOM officiels restent :
+  // l'identité de l'équipe se lit là, la couleur sert l'accessibilité.
+  //
   // Accent lisible : fond subtil + soulignement + bordure gauche marquée. Le TEXTE reste
-  // en `var(--foreground)` (jamais teinté par une couleur d'identité potentiellement vive
-  // comme le jaune Valor) pour garantir le contraste.
-  const teamHeaderBg = `color-mix(in oklab, ${teamColorVar} 22%, transparent)`
-  const teamHeaderBorder = `2px solid color-mix(in oklab, ${teamColorVar} 55%, transparent)`
-  const teamHeaderLeftBorder = `4px solid ${teamColorVar}`
+  // en `var(--foreground)` pour garantir le contraste. La RECETTE (22 % / 55 % / plein) est
+  // celle du dépôt — `teamTintStyles`, partagée avec l'écran de victoire du rejeu ; seules
+  // les ÉPAISSEURS restent ici, parce qu'elles disent le rôle de chaque trait.
+  const tint = teamTintStyles(teamTokenCssVar(isMyTeam))
+  const teamHeaderBorder = `2px solid ${tint.border}`
+  const teamHeaderLeftBorder = `4px solid ${tint.accent}`
   // Logo d'équipe : `/titles/{slug}/teams/{id}.png`. null si slug/team_id absent → pas de
   // logo ; onError masque proprement les team_id sans asset.
   const teamLogoSrc = teamLogoPath(slug, teamID)
@@ -562,7 +568,7 @@ function TeamScoreboard({
               colSpan={columns.length}
               className="border border-border px-3 py-2 text-left text-sm font-bold uppercase tracking-wider"
               style={{
-                background: teamHeaderBg,
+                background: tint.background,
                 borderBottom: teamHeaderBorder,
                 borderLeft: teamHeaderLeftBorder,
               }}

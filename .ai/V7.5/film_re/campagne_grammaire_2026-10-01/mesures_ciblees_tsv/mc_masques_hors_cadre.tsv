@@ -1,0 +1,105 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	rejet hors datum · aucune violation relue	4340	4340	4340	0	28143
+0797ce72	HI_1_13_0	rejet hors datum · violation au dernier record	181	181	181	0	902
+0797ce72	HI_1_13_0	rejet hors datum · violation avant le dernier record	23	23	23	0	155
+0797ce72	HI_1_13_0	terminateur · aucune violation relue	903	903	903	0	5462
+0797ce72	HI_1_13_0	terminateur · violation au dernier record	52	52	52	0	370
+0797ce72	HI_1_13_0	terminateur · violation avant le dernier record	11	11	11	0	76
+084a804d	HI_1_10_0	rejet hors datum · aucune violation relue	22834	22834	22834	0	438741
+084a804d	HI_1_10_0	rejet hors datum · violation au dernier record	43	43	43	0	27
+084a804d	HI_1_10_0	rejet hors datum · violation avant le dernier record	64	64	64	0	884
+084a804d	HI_1_10_0	terminateur · aucune violation relue	64	64	64	0	137
+084a804d	HI_1_10_0	terminateur · violation au dernier record	55	55	55	0	30
+084a804d	HI_1_10_0	terminateur · violation avant le dernier record	22	22	22	0	9
+111fa685	HI_1_10_0	rejet hors datum · aucune violation relue	9953	9953	9953	0	189786
+111fa685	HI_1_10_0	rejet hors datum · violation au dernier record	438	438	438	0	4340
+111fa685	HI_1_10_0	rejet hors datum · violation avant le dernier record	152	152	152	0	1522
+111fa685	HI_1_10_0	terminateur · aucune violation relue	45	45	45	0	332
+111fa685	HI_1_10_0	terminateur · violation au dernier record	280	280	280	0	2435
+111fa685	HI_1_10_0	terminateur · violation avant le dernier record	76	76	76	0	660
+11de8353	HI_1_9_0	rejet hors datum · aucune violation relue	9061	9061	9061	0	168833
+11de8353	HI_1_9_0	rejet hors datum · violation au dernier record	461	461	461	0	6203
+11de8353	HI_1_9_0	rejet hors datum · violation avant le dernier record	45	45	45	0	584
+11de8353	HI_1_9_0	terminateur · aucune violation relue	51	51	51	0	384
+11de8353	HI_1_9_0	terminateur · violation au dernier record	112	112	112	0	775
+11de8353	HI_1_9_0	terminateur · violation avant le dernier record	62	62	62	0	676
+1c4c63c2	HI_1_10_0	rejet hors datum · aucune violation relue	45475	45475	45475	0	594860
+1c4c63c2	HI_1_10_0	rejet hors datum · violation au dernier record	167	167	167	0	540
+1c4c63c2	HI_1_10_0	rejet hors datum · violation avant le dernier record	54	54	54	0	357
+1c4c63c2	HI_1_10_0	terminateur · aucune violation relue	81	81	81	0	114
+1c4c63c2	HI_1_10_0	terminateur · violation au dernier record	121	121	121	0	599
+1c4c63c2	HI_1_10_0	terminateur · violation avant le dernier record	40	40	40	0	91
+396cfc92	HI_1_13_0	rejet hors datum · aucune violation relue	8348	8348	8348	0	56778
+396cfc92	HI_1_13_0	rejet hors datum · violation au dernier record	1	1	1	0	5
+396cfc92	HI_1_13_0	rejet hors datum · violation avant le dernier record	1	1	1	0	8
+396cfc92	HI_1_13_0	terminateur · aucune violation relue	12	12	12	0	95
+4f77afc1	HI_1_13_0	rejet hors datum · aucune violation relue	9460	9460	9460	0	177851
+4f77afc1	HI_1_13_0	rejet hors datum · violation au dernier record	7	7	7	0	148
+4f77afc1	HI_1_13_0	rejet hors datum · violation avant le dernier record	16	16	16	0	295
+4f77afc1	HI_1_13_0	terminateur · aucune violation relue	49	49	49	0	1275
+4f77afc1	HI_1_13_0	terminateur · violation au dernier record	3	3	3	0	19
+50247b26	version-31	rejet hors datum · aucune violation relue	10665	10665	10665	0	235991
+50247b26	version-31	rejet hors datum · violation au dernier record	10	10	10	0	47
+50247b26	version-31	rejet hors datum · violation avant le dernier record	9	9	9	0	114
+50247b26	version-31	terminateur · aucune violation relue	3081	3081	3081	0	40723
+50247b26	version-31	terminateur · violation au dernier record	11	11	11	0	60
+50247b26	version-31	terminateur · violation avant le dernier record	4	4	4	0	2
+51ebbc0f	HI_1_13_0	rejet hors datum · aucune violation relue	16509	16509	16509	0	29253
+51ebbc0f	HI_1_13_0	rejet hors datum · violation au dernier record	70	70	70	0	94
+51ebbc0f	HI_1_13_0	rejet hors datum · violation avant le dernier record	19	19	19	0	20
+51ebbc0f	HI_1_13_0	terminateur · aucune violation relue	173	173	173	0	10
+51ebbc0f	HI_1_13_0	terminateur · violation au dernier record	121	121	121	0	9
+51ebbc0f	HI_1_13_0	terminateur · violation avant le dernier record	37	37	37	0	13
+60ae07c4	HI_1_8_0	rejet hors datum · aucune violation relue	29159	29159	29159	0	170356
+60ae07c4	HI_1_8_0	rejet hors datum · violation au dernier record	111	111	111	0	456
+60ae07c4	HI_1_8_0	rejet hors datum · violation avant le dernier record	19	19	19	0	128
+60ae07c4	HI_1_8_0	terminateur · aucune violation relue	922	922	922	0	5023
+60ae07c4	HI_1_8_0	terminateur · violation au dernier record	65	65	65	0	238
+60ae07c4	HI_1_8_0	terminateur · violation avant le dernier record	7	7	7	0	40
+a349fea8	version-33	rejet hors datum · aucune violation relue	19181	19181	19181	0	379984
+a349fea8	version-33	rejet hors datum · violation au dernier record	38	38	38	0	35
+a349fea8	version-33	rejet hors datum · violation avant le dernier record	26	26	26	0	323
+a349fea8	version-33	terminateur · aucune violation relue	2901	2901	2901	0	53084
+a349fea8	version-33	terminateur · violation au dernier record	40	40	40	0	18
+a349fea8	version-33	terminateur · violation avant le dernier record	20	20	20	0	32
+a521164d	HI_1_4_1	rejet hors datum · aucune violation relue	6321	6321	6321	0	132453
+a521164d	HI_1_4_1	rejet hors datum · violation au dernier record	27	27	27	0	49
+a521164d	HI_1_4_1	rejet hors datum · violation avant le dernier record	14	14	14	0	80
+a521164d	HI_1_4_1	terminateur · aucune violation relue	1969	1969	1969	0	38386
+a521164d	HI_1_4_1	terminateur · violation au dernier record	24	24	24	0	56
+a521164d	HI_1_4_1	terminateur · violation avant le dernier record	9	9	9	0	3
+bcb6d393	HI_1_12_0	rejet hors datum · aucune violation relue	3191	3191	3191	0	18517
+bcb6d393	HI_1_12_0	rejet hors datum · violation au dernier record	5	5	5	0	1
+bcb6d393	HI_1_12_0	rejet hors datum · violation avant le dernier record	4	4	4	0	10
+bcb6d393	HI_1_12_0	terminateur · aucune violation relue	41	41	41	0	0
+bcb6d393	HI_1_12_0	terminateur · violation au dernier record	6	6	6	0	1
+bcb6d393	HI_1_12_0	terminateur · violation avant le dernier record	2	2	2	0	0
+bf15f7ab	HI_1_13_0	rejet hors datum · aucune violation relue	1440	1440	1440	0	8315
+bf15f7ab	HI_1_13_0	rejet hors datum · violation au dernier record	173	173	173	0	1210
+bf15f7ab	HI_1_13_0	rejet hors datum · violation avant le dernier record	8	8	8	0	56
+bf15f7ab	HI_1_13_0	terminateur · aucune violation relue	2	2	2	0	5
+bf15f7ab	HI_1_13_0	terminateur · violation au dernier record	32	32	32	0	223
+bf15f7ab	HI_1_13_0	terminateur · violation avant le dernier record	3	3	3	0	22
+bfecd02b	HI_1_13_0	rejet hors datum · aucune violation relue	3145	3145	3145	0	23239
+bfecd02b	HI_1_13_0	terminateur · aucune violation relue	9	9	9	0	81
+c75f33b8	HI_1_13_0	rejet hors datum · aucune violation relue	2282	2282	2282	0	10220
+c75f33b8	HI_1_13_0	rejet hors datum · violation au dernier record	1	1	1	0	9
+c75f33b8	HI_1_13_0	terminateur · aucune violation relue	12	12	12	0	16
+c75f33b8	HI_1_13_0	terminateur · violation avant le dernier record	1	1	1	0	0
+d9781168	HI_1_13_0	rejet hors datum · aucune violation relue	11059	11059	11059	0	64276
+d9781168	HI_1_13_0	rejet hors datum · violation avant le dernier record	1	1	1	0	8
+d9781168	HI_1_13_0	terminateur · aucune violation relue	3	3	3	0	21
+d9781168	HI_1_13_0	terminateur · violation au dernier record	186	186	186	0	0
+e5adf7b2	HI_1_11_0	rejet hors datum · aucune violation relue	9705	9705	9705	0	199645
+e5adf7b2	HI_1_11_0	rejet hors datum · violation au dernier record	140	140	140	0	1319
+e5adf7b2	HI_1_11_0	rejet hors datum · violation avant le dernier record	65	65	65	0	892
+e5adf7b2	HI_1_11_0	terminateur · aucune violation relue	172	172	172	0	279
+e5adf7b2	HI_1_11_0	terminateur · violation au dernier record	74	74	74	0	374
+e5adf7b2	HI_1_11_0	terminateur · violation avant le dernier record	42	42	42	0	389
+f75e7053	HI_1_13_0	rejet hors datum · aucune violation relue	4287	4287	4287	0	26439
+fb1a1a72	HI_1_13_0	rejet hors datum · aucune violation relue	23333	23333	23333	0	15486
+fb1a1a72	HI_1_13_0	rejet hors datum · violation au dernier record	78	78	78	0	80
+fb1a1a72	HI_1_13_0	rejet hors datum · violation avant le dernier record	43	43	43	0	27
+fb1a1a72	HI_1_13_0	terminateur · aucune violation relue	236	236	236	0	36
+fb1a1a72	HI_1_13_0	terminateur · violation au dernier record	150	150	150	0	39
+fb1a1a72	HI_1_13_0	terminateur · violation avant le dernier record	101	101	101	0	14

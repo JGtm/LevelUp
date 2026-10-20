@@ -1,5 +1,5 @@
 // Package handlers — admin_token_health.go : dashboard admin « Santé des tokens »
-// (MSAL / XSTS / Refresh par joueur).
+// (Accès / XSTS / Refresh par joueur).
 //
 // GET /admin/token-health?title={slug} → statuts token par joueur suivi, lus
 // depuis le MultiUserTokenStore (ADR 0023) SANS refresh réseau.
@@ -41,7 +41,7 @@ func NewAdminTokenHealthHandler(run TokenHealthRunner) *AdminTokenHealthHandler 
 // middleware RequireAuth/RequireAdmin/NoStore hérités).
 func (h *AdminTokenHealthHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
-	huma.Get(api, "/token-health", h.handleGet, humacore.Op("getAdminTokenHealth", "Santé des tokens auth (MSAL / XSTS / Refresh) par joueur (auth admin requis)", "admin"))
+	huma.Get(api, "/token-health", h.handleGet, humacore.Op("getAdminTokenHealth", "Santé des tokens auth (Accès / XSTS / Refresh) par joueur (auth admin requis)", "admin"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────

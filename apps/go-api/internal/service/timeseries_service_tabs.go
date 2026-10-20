@@ -55,7 +55,7 @@ func buildCumulTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesCumulTa
 			Index: i, StartTime: m.StartTime, Value: float64(cumulNetVal),
 		})
 
-		// Rolling K/D sur fenÃªtre glissante.
+		// Rolling K/D sur fenêtre glissante.
 		start := i - rollingWindow + 1
 		if start < 0 {
 			start = 0
@@ -82,10 +82,10 @@ func buildCumulTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesCumulTa
 }
 
 // ---------------------------------------------------------------------------
-// Onglet IntensitÃ© (Sprint 42)
+// Onglet Intensité (Sprint 42)
 // ---------------------------------------------------------------------------
 
-// buildIntensityTab construit la heatmap jourÃ—heure et le score/min.
+// buildIntensityTab construit la heatmap jour×heure et le score/min.
 func buildIntensityTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesIntensityTab {
 	if len(matches) == 0 {
 		return domain.TimeseriesIntensityTab{
@@ -94,7 +94,7 @@ func buildIntensityTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesInt
 		}
 	}
 
-	// Heatmap jour Ã— heure.
+	// Heatmap jour × heure.
 	type cell struct {
 		kills, deaths, count int
 	}
@@ -104,7 +104,7 @@ func buildIntensityTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesInt
 
 	for i, m := range matches {
 		day := int(m.StartTime.Weekday())
-		// Convertir Sunday=0 â†’ Monday=0..Sunday=6
+		// Convertir Sunday=0 → Monday=0..Sunday=6
 		day = (day + 6) % 7
 		hour := m.StartTime.Hour()
 		key := [2]int{day, hour}
@@ -152,7 +152,7 @@ func buildIntensityTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesInt
 // Onglet Distributions (Sprint 42)
 // ---------------------------------------------------------------------------
 
-// buildDistributionsTab construit les histogrammes KDA/kills et les corrÃ©lations.
+// buildDistributionsTab construit les histogrammes KDA/kills et les corrélations.
 //
 // provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5) →
 // MaxKillingSpreeBuckets reste vide (l'histogramme « Folie meurtrière » est masqué)
@@ -272,7 +272,7 @@ func buildKDABuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionB
 	return buckets
 }
 
-// buildKillsBuckets crÃ©e des buckets pour la distribution des kills par match.
+// buildKillsBuckets crée des buckets pour la distribution des kills par match.
 func buildKillsBuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionBucket {
 	const binWidth = 5.0
 	maxKills := 0
@@ -318,7 +318,7 @@ func buildKillsBuckets(matches []legacymatch.StatsMatchRow) []domain.Distributio
 
 // buildMatchRows convertit StatsMatchRow en TimeseriesMatchRow (1 ligne = 1 match).
 //
-// KDA et KDRatio sont calcules par P2.5 (revue 2026-04-29 ADR 0006) â€” debloque
+// KDA et KDRatio sont calcules par P2.5 (revue 2026-04-29 ADR 0006) — debloque
 // la suppression du recompute K/D cote front (TimeseriesKdaBars.tsx:78, B3).
 // provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5)
 // → MaxKillingSpree reste nil par ligne (la série « Folie meurtrière max » est
@@ -396,7 +396,7 @@ func estimateMatchCareerXP(m legacymatch.StatsMatchRow, eras []mappings.CareerXP
 }
 
 // ---------------------------------------------------------------------------
-// Histogrammes supplÃ©mentaires (PrÃ©cision, Score/min, Win Rate glissant)
+// Histogrammes supplémentaires (Précision, Score/min, Win Rate glissant)
 // ---------------------------------------------------------------------------
 
 // buildAccuracyBuckets crée des buckets de 5 % pour la distribution de précision.

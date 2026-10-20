@@ -11,9 +11,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
+	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
@@ -21,9 +22,9 @@ import (
 type mockMatchViewService struct {
 	resp        domain.MatchViewResponse
 	err         error
-	objEvents   []domain.ObjectiveEvent
+	objEvents   []objectiveevent.Event
 	objEventErr error
-	positions   []positions.PlayerPosition
+	positions   []playerposition.PlayerPosition
 	posErr      error
 }
 
@@ -39,11 +40,11 @@ func (m *mockMatchViewService) GetMatchNeighborsFiltered(_ context.Context, _ st
 	return domain.MatchNeighbors{}, nil
 }
 
-func (m *mockMatchViewService) GetObjectiveEvents(_ context.Context, _ string) ([]domain.ObjectiveEvent, error) {
+func (m *mockMatchViewService) GetObjectiveEvents(_ context.Context, _ string) ([]objectiveevent.Event, error) {
 	return m.objEvents, m.objEventErr
 }
 
-func (m *mockMatchViewService) GetMatchPositions(_ context.Context, _ string) ([]positions.PlayerPosition, error) {
+func (m *mockMatchViewService) GetMatchPositions(_ context.Context, _ string) ([]playerposition.PlayerPosition, error) {
 	return m.positions, m.posErr
 }
 
@@ -283,12 +284,12 @@ func newObjectiveEventsRouter(factory handlers.ServiceFactory[port.MatchViewServ
 func TestMatchViewHandler_ObjectiveEvents_OK(t *testing.T) {
 	tms := 12000
 	team := 0
-	events := []domain.ObjectiveEvent{
+	events := []objectiveevent.Event{
 		{
 			MatchID: "abc123", Seq: 0, TimeMS: &tms,
 			ObjectiveType: "flag", EventType: "capture", TeamID: &team,
 			Source: "ctf", Confidence: "high",
-			Players: []domain.ObjectiveEventPlayer{{XUID: "2535", Role: "capturer"}},
+			Players: []objectiveevent.Player{{XUID: "2535", Role: "capturer"}},
 		},
 		{
 			MatchID: "abc123", Seq: 1,
@@ -375,9 +376,9 @@ func newPositionsRouter(factory handlers.ServiceFactory[port.MatchViewService]) 
 // TestMatchViewHandler_Positions_OK : le service renvoie 2 positions → 200 +
 // JSON décodable avec des clés camelCase (timeMs, x, y, z, team).
 func TestMatchViewHandler_Positions_OK(t *testing.T) {
-	pos := []positions.PlayerPosition{
+	pos := []playerposition.PlayerPosition{
 		{TimeMS: 0, X: 25.6, Y: 10.4, Z: 1.2, Team: 0},
-		{TimeMS: 20000, X: 34.8, Y: 13.5, Z: 0.5, Team: positions.TeamUnknown},
+		{TimeMS: 20000, X: 34.8, Y: 13.5, Z: 0.5, Team: playerposition.TeamUnknown},
 	}
 	factory := func(_ context.Context, slug string) (port.MatchViewService, error) {
 		if slug != testPlayerSlug {
@@ -437,5 +438,75 @@ func TestMatchViewHandler_Positions_CapabilityUnsupported(t *testing.T) {
 	}
 	if body["code"] != "capability_not_supported" {
 		t.Errorf("code = %v, want capability_not_supported", body["code"])
+	}
+}
+
+// E4 / D-9 : une vue construite avec une source en échec est transitoire — réponse 200
+// partielle, mais Cache-Control: no-store pour qu'aucun cache HTTP ne la rejoue quand le
+// chargeur est rétabli. Une vue complète, ou partielle seulement parce qu'une source est
+// vide (`<source>_empty`, sens inchangé), ne porte PAS cet en-tête.
+func TestMatchViewHandler_CacheControl_VueEnEchec(t *testing.T) {
+	cas := []struct {
+		nom       string
+		raisons   []string
+		noStore   bool
+		partielle bool
+	}{
+		{"complete", nil, false, false},
+		{"source vide", []string{"scoreboard_empty", "medals_empty"}, false, true},
+		{"source en echec", []string{"scoreboard_unavailable"}, true, true},
+		{"echec et vide", []string{"events_unavailable", "medals_empty"}, true, true},
+		{"section generique en echec", []string{"section_unavailable"}, true, true},
+		{"code inconnu", []string{"autre_code"}, false, true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			resp := domain.MatchViewResponse{
+				Header:         domain.MatchViewHeader{MatchID: "abc123"},
+				IsPartial:      c.partielle,
+				PartialReasons: c.raisons,
+			}
+			factory := func(_ context.Context, _ string) (port.MatchViewService, error) {
+				return &mockMatchViewService{resp: resp}, nil
+			}
+			req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/abc123", nil)
+			w := httptest.NewRecorder()
+			newMatchViewRouter(factory).ServeHTTP(w, req)
+
+			if w.Code != http.StatusOK {
+				t.Fatalf("200 attendu (dégradation gracieuse), obtenu %d : %s", w.Code, w.Body.String())
+			}
+			got := w.Header().Get("Cache-Control")
+			if c.noStore && got != "no-store" {
+				t.Errorf("Cache-Control = %q, no-store attendu", got)
+			}
+			if !c.noStore && got != "" {
+				t.Errorf("Cache-Control = %q, aucun en-tête de cache attendu", got)
+			}
+		})
+	}
+}
+
+// Une vue dont l'analyse du film est en cours change d'ici quelques instants : no-store,
+// comme une vue en panne partielle. Une vue complète n'en porte pas.
+func TestMatchViewHandler_CacheControl_AnalyseEnCours(t *testing.T) {
+	for _, pending := range []bool{true, false} {
+		resp := domain.MatchViewResponse{Header: domain.MatchViewHeader{MatchID: "abc123", AnalysisPending: pending}}
+		factory := func(_ context.Context, _ string) (port.MatchViewService, error) {
+			return &mockMatchViewService{resp: resp}, nil
+		}
+		req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/abc123", nil)
+		w := httptest.NewRecorder()
+		newMatchViewRouter(factory).ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("200 attendu, obtenu %d : %s", w.Code, w.Body.String())
+		}
+		got := w.Header().Get("Cache-Control")
+		if pending && got != "no-store" {
+			t.Errorf("analysis_pending=true : Cache-Control = %q, no-store attendu", got)
+		}
+		if !pending && got != "" {
+			t.Errorf("analysis_pending=false : Cache-Control = %q, aucun en-tête attendu", got)
+		}
 	}
 }

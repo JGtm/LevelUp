@@ -7,7 +7,6 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api/handlers"
-	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/dblease"
@@ -17,12 +16,14 @@ import (
 )
 
 // haloInfiniteModeTaxonomy est la taxonomie de classification des modes injectée dans
-// MediaRepo (F1) et MatchViewRepo (F15-2, filtrage neighbors). Le couplage
-// games/halo_infinite vit désormais au niveau composition (registry = racine DI,
-// autorisée à importer games) et NON plus dans platform/duckdb. Actuellement Halo
-// Infinite (seul titre avec ces surfaces en prod ; comportement byte-identique au code
-// d'avant F1/F15-2). FOLLOW-UP per-titre : quand un 2e titre exposera média/neighbors
-// filtrés, résoudre la taxonomie via le title resolver (comme assetURLFor).
+// MediaRepo (F1), MatchViewRepo (F15-2, filtrage neighbors) et MatchViewService
+// (MatchViewHeader.ModeCategory — corrélation Fiesta du rejeu 2D, 2026-08-20). Le
+// couplage games/halo_infinite vit désormais au niveau composition (registry = racine
+// DI, autorisée à importer games) et NON plus dans platform/duckdb ni service.
+// Actuellement Halo Infinite (seul titre avec ces surfaces en prod ; comportement
+// byte-identique au code d'avant F1/F15-2). FOLLOW-UP per-titre : quand un 2e titre
+// exposera média/neighbors/header filtrés, résoudre la taxonomie via le title
+// resolver (comme assetURLFor).
 func haloInfiniteModeTaxonomy() analysis.ModeTaxonomy {
 	return analysis.ModeTaxonomy{
 		InferCategory: halo_infinite.InferModeCategoryFromPairName,
@@ -37,14 +38,26 @@ func haloInfiniteModeTaxonomy() analysis.ModeTaxonomy {
 //
 // SOURCE UNIQUE de cette résolution côté lecture — les deux surfaces qui servent
 // un cœur (galerie médias, onglet Médias d'un match) doivent répondre pareil,
-// sinon le même clip apparaît liké sur une page et vide sur l'autre.
+// sinon le même clip apparaît liké sur une page et vide sur l'autre. Le résolveur
+// est celui du demandeur des écritures (WithViewerResolver, câblé par le routeur) :
+// le cœur affiché est celui que le like écrit.
 //
 // C'est le point de composition qui la fait : platform/duckdb n'a pas (et ne
-// doit pas avoir) accès à la session HTTP. Retourne "" quand aucun joueur n'est
-// courant en session — les repos replient alors sur le propriétaire de la page
+// doit pas avoir) accès à la session HTTP. Retourne "" sans résolveur ou sans
+// demandeur — les repos replient alors sur le propriétaire de la page
 // (cf. MediaRepo.viewer, seul endroit où ce repli est décidé et justifié).
-func viewerSlugFor(ctx context.Context) string {
-	return middleware.SessionPlayerSlug(ctx)
+func (r *ServiceRegistry) viewerSlugFor(ctx context.Context) string {
+	if r.viewer == nil {
+		return ""
+	}
+	return r.viewer(ctx)
+}
+
+// WithViewerResolver câble la résolution du viewer des galeries (le demandeur des
+// écritures de médias).
+func (r *ServiceRegistry) WithViewerResolver(resolve func(context.Context) string) *ServiceRegistry {
+	r.viewer = resolve
+	return r
 }
 
 // mediaWriterAcquirerFor construit l'acquéreur shared_social pour un PlayerDB.
@@ -69,7 +82,7 @@ func (r *ServiceRegistry) Media(ctx context.Context, slug string) (port.MediaSer
 	}
 	repo := duckdb.NewMediaRepo(pdb).
 		WithModeTaxonomy(haloInfiniteModeTaxonomy()).
-		WithViewer(viewerSlugFor(ctx))
+		WithViewer(r.viewerSlugFor(ctx))
 	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
 		repo = repo.WithAssetURL(a)
 	}
@@ -106,7 +119,7 @@ func (r *ServiceRegistry) MediaUpload(ctx context.Context, slug string) (
 	}
 	repo := duckdb.NewMediaRepo(pdb).
 		WithModeTaxonomy(haloInfiniteModeTaxonomy()).
-		WithViewer(viewerSlugFor(ctx))
+		WithViewer(r.viewerSlugFor(ctx))
 	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
 		repo = repo.WithAssetURL(a)
 	}
@@ -121,11 +134,9 @@ func (r *ServiceRegistry) MediaUpload(ctx context.Context, slug string) (
 	if pdb.SharedSocial != nil {
 		sharedSocialPath = pdb.SharedSocial.Path()
 	}
-	sharedMatchesPath := ""
-	if pdb.Shared != nil {
-		sharedMatchesPath = pdb.Shared.Path()
-	}
-	return svc, pdb.Gamertag, pdb.TitleSlug, pdb.Player.Path(), sharedSocialPath, sharedMatchesPath, nil
+	// Chemin du fichier, pas d'un handle : en mode B-swap le PlayerDB n'en tient aucun sur
+	// la base partagée (pdb.Shared nil), l'association des médias lit par le cache process.
+	return svc, pdb.Gamertag, pdb.TitleSlug, pdb.Player.Path(), sharedSocialPath, pdb.SharedDBPath(), nil
 }
 
 // MediaPlayerCtx résout slug → (titleSlug, gamertag) sans construire de service.

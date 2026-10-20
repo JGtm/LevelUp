@@ -5,13 +5,14 @@ package duckdb
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/migration"
 )
 
-// ── FanoutRepo ───────────────────────────────────────────────────────────────
+// ── Enrichissements joueur (fixture partagée) ─────────────────────────────────
 
 func seedPlayerEnrichment(t *testing.T, db *DB) {
 	t.Helper()
@@ -27,153 +28,10 @@ func seedPlayerEnrichment(t *testing.T, db *DB) {
 	if _, err := db.Exec(ctx, ddl); err != nil {
 		t.Fatalf("seedPlayerEnrichment: %v", err)
 	}
-	// Append-only #23046 : convertit player_match_enrichment (id PK + stage +
+	// Append-only #23645 : convertit player_match_enrichment (id PK + stage +
 	// written_at) et crée la vue player_match_enrichment_latest (lue par les repos).
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
-	}
-}
-
-func TestFanoutRepo_InsertStubEnrichments(t *testing.T) {
-	db := openMemDB(t)
-	seedPlayerEnrichment(t, db)
-
-	pdb := &PlayerDB{Player: db, Shared: db}
-	repo := NewFanoutRepo(pdb)
-
-	inserted, err := repo.InsertStubEnrichments(context.Background(), "xuid001", []string{"m1", "m2", "m3"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if inserted != 3 {
-		t.Fatalf("expected 3 inserted, got %d", inserted)
-	}
-}
-
-func TestFanoutRepo_InsertStubEnrichments_Empty(t *testing.T) {
-	db := openMemDB(t)
-	seedPlayerEnrichment(t, db)
-
-	pdb := &PlayerDB{Player: db, Shared: db}
-	repo := NewFanoutRepo(pdb)
-
-	inserted, err := repo.InsertStubEnrichments(context.Background(), "xuid001", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if inserted != 0 {
-		t.Fatalf("expected 0 inserted, got %d", inserted)
-	}
-}
-
-func TestFanoutRepo_InsertStubEnrichments_Idempotent(t *testing.T) {
-	db := openMemDB(t)
-	seedPlayerEnrichment(t, db)
-
-	pdb := &PlayerDB{Player: db, Shared: db}
-	repo := NewFanoutRepo(pdb)
-	ctx := context.Background()
-
-	// 1er appel : m1, m2 → 2 rows insérées.
-	first, err := repo.InsertStubEnrichments(ctx, "xuid001", []string{"m1", "m2"})
-	if err != nil {
-		t.Fatalf("1er insert: %v", err)
-	}
-	if first != 2 {
-		t.Errorf("1er insert count = %d, want 2", first)
-	}
-
-	// 2e appel : m1, m2 (déjà présents), m3 → INSERT OR IGNORE n'erreure pas
-	// sur les duplicates, donc le compteur retourne 3 (toutes les iterations
-	// du loop "réussissent" côté SQL).
-	second, err := repo.InsertStubEnrichments(ctx, "xuid001", []string{"m1", "m2", "m3"})
-	if err != nil {
-		t.Fatalf("2e insert: %v", err)
-	}
-	if second != 3 {
-		t.Errorf("2e insert count = %d, want 3 (loop count, pas affected rows)", second)
-	}
-
-	// Vraie vérification de l'idempotence : 3 lignes logiques au total
-	// (m1, m2, m3), pas 5 (qui prouverait des doublons logiques). Append-only
-	// #23046 : la table brute accumule désormais 1 row par INSERT stage='live'
-	// (5 rows physiques) ; l'invariant « 1 ligne logique par match » se lit sur
-	// la vue merge-on-read player_match_enrichment_latest.
-	var count int
-	if err := db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM player_match_enrichment_latest WHERE match_id IN ('m1','m2','m3')`).Scan(&count); err != nil {
-		t.Fatalf("count rows: %v", err)
-	}
-	if count != 3 {
-		t.Errorf("lignes logiques = %d, want 3 (idempotence cassée)", count)
-	}
-}
-
-func TestFanoutRepo_LoadExistingEnrichments_Subset(t *testing.T) {
-	db := openMemDB(t)
-	seedPlayerEnrichment(t, db)
-	ctx := context.Background()
-
-	if _, err := db.Exec(ctx, `INSERT INTO player_match_enrichment (match_id) VALUES ('m1'), ('m3')`); err != nil {
-		t.Fatal(err)
-	}
-
-	pdb := &PlayerDB{Player: db, Shared: db}
-	repo := NewFanoutRepo(pdb)
-
-	existing, err := repo.LoadExistingEnrichments(ctx, []string{"m1", "m2", "m3"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !existing["m1"] || existing["m2"] || !existing["m3"] {
-		t.Fatalf("unexpected existing: %v", existing)
-	}
-}
-
-func TestFanoutRepo_LoadExistingEnrichments_EmptyInput(t *testing.T) {
-	db := openMemDB(t)
-	seedPlayerEnrichment(t, db)
-
-	pdb := &PlayerDB{Player: db, Shared: db}
-	repo := NewFanoutRepo(pdb)
-
-	existing, err := repo.LoadExistingEnrichments(context.Background(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(existing) != 0 {
-		t.Fatalf("expected empty, got %v", existing)
-	}
-}
-
-func TestFanoutRepo_CountCommonMatchesForXUID(t *testing.T) {
-	db := openMemDB(t)
-	seedShared(t, db)
-
-	pdb := &PlayerDB{Player: db, Shared: db}
-	repo := NewFanoutRepo(pdb)
-
-	count, err := repo.CountCommonMatchesForXUID(context.Background(), "xuid001", []string{"m1", "m2", "m3"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 { // xuid001 is in m1, m2
-		t.Fatalf("expected 2, got %d", count)
-	}
-}
-
-func TestFanoutRepo_CountCommonMatchesForXUID_Empty(t *testing.T) {
-	db := openMemDB(t)
-
-	pdb := &PlayerDB{Player: db, Shared: db}
-	repo := NewFanoutRepo(pdb)
-
-	count, err := repo.CountCommonMatchesForXUID(context.Background(), "xuid001", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 0 {
-		t.Fatalf("expected 0, got %d", count)
 	}
 }
 
@@ -265,6 +123,42 @@ func TestMatchExclusionRepo_ListExcluded_WithData(t *testing.T) {
 	}
 	if results[0].MatchID != "m1" {
 		t.Fatalf("expected m1, got %s", results[0].MatchID)
+	}
+}
+
+// SetExclusion décide sur le DERNIER état du flag (vue _latest), lu sous le verrou
+// d'écriture de la base joueur : il n'écrit que si l'état change, et le dit.
+func TestMatchExclusionRepo_SetExclusion_DecidesOnLatestState(t *testing.T) {
+	db, err := OpenReadWrite(filepath.Join(t.TempDir(), "stats.duckdb"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	seedPlayerEnrichment(t, db)
+	ctx := context.Background()
+	repo := NewMatchExclusionRepo(&PlayerDB{Player: db, Shared: db})
+
+	for i, step := range []struct{ excluded, wantChanged bool }{
+		{false, false}, // match sans ligne : déjà non exclu
+		{true, true},
+		{true, false},
+		{false, true},
+		{false, false},
+	} {
+		changed, err := repo.SetExclusion(ctx, "m1", step.excluded)
+		if err != nil {
+			t.Fatalf("étape %d : %v", i, err)
+		}
+		if changed != step.wantChanged {
+			t.Fatalf("étape %d (exclu=%v) : changed=%v, attendu %v", i, step.excluded, changed, step.wantChanged)
+		}
+	}
+	var rows int
+	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM player_match_enrichment WHERE stage = 'exclusion'`).Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+	if rows != 2 {
+		t.Fatalf("%d ligne(s) d'exclusion écrites, attendu 2 (un changement d'état par écriture)", rows)
 	}
 }
 

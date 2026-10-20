@@ -39,7 +39,7 @@ export function useAdminDBContention() {
 }
 
 /**
- * GET /admin/token-health : santé des tokens auth (MSAL / XSTS / Refresh) par
+ * GET /admin/token-health : santé des tokens auth (Accès / XSTS / Refresh) par
  * joueur, lue depuis le MultiUserTokenStore (ADR 0023) sans refresh réseau.
  */
 export function useAdminTokenHealth() {

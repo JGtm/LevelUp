@@ -1,0 +1,1353 @@
+<title>Refonte de l'onglet Usages</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Jetons de l'app (apps/web/src/styles/globals.css + lib/accessibility/palettes/default.ts),
+     repris a l'identique. */
+  :root {
+    --background: oklch(0.985 0.004 255); --foreground: oklch(0.255 0.02 255);
+    --card: oklch(0.995 0.002 255); --border: oklch(0.9 0.01 255); --muted: oklch(0.96 0.008 255);
+    --muted-foreground: oklch(0.52 0.015 255); --popover: oklch(0.995 0.002 255);
+    --warning: #F59E0B; --pos: #22C55E; --neg: #EF4444; --ally: #3B82F6; --info: #3B82F6;
+    --win: #10B981; --loss: #EF4444;
+    --p1: #2563EB; --p2: #D97706; --p3: #DB2777;
+    --radius: 0.5rem;
+    --hatch: repeating-linear-gradient(45deg, transparent 0 4px, color-mix(in oklab, var(--muted-foreground) 70%, transparent) 4px 6px);
+    --rest: color-mix(in oklab, var(--ally) 55%, var(--muted));
+    --enemy: #EF4444;
+    --dom-1: #00DC82; --dom-2: #7C3AED; --dom-3: #0072B2; --dom-4: #D55E00; --dom-5: #33D6FF; --dom-6: #BE185D; --dom-7: #A3E635;
+    --res-bonus: #0D9488; --res-power: #7C3AED; --res-vehicle: #D55E00; --res-rack: #0072B2;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0); color-scheme: dark;
+    --res-bonus: #0FA697; --res-power: #8B5CF6; --res-vehicle: #DD5F14; --res-rack: #3B8FD0;
+  } }
+  :root[data-theme="dark"] {
+    --res-bonus: #0FA697; --res-power: #8B5CF6; --res-vehicle: #DD5F14; --res-rack: #3B8FD0;
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+    --border: oklch(0.275 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+    --popover: oklch(0.269 0 0); color-scheme: dark;
+  }
+  body { background: var(--background); color: var(--foreground); font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 1180px; margin: 0 auto; padding: 24px 20px 80px; box-sizing: border-box; }
+  .crumb { font-size: 12px; color: var(--muted-foreground); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .toolbar { margin-left: auto; display: flex; gap: 6px; }
+  button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); cursor: pointer; }
+  button[aria-pressed="true"] { border-color: var(--foreground); }
+  button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+  h1 { font-size: 22px; margin: 16px 0 6px; text-wrap: balance; }
+  p.lede { margin: 0; font-size: 13.5px; color: var(--muted-foreground); max-width: 92ch; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  nav.toc a { font-size: 12px; text-decoration: none; color: var(--muted-foreground); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; }
+  nav.toc a:hover { color: var(--foreground); }
+  section.block { display: flex; flex-direction: column; gap: 12px; margin-top: 40px; scroll-margin-top: 12px; }
+  section.block > header h2 { margin: 0; font-size: 18px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 6px; text-wrap: balance; }
+  section.block > header p { margin: 6px 0 0; font-size: 13px; color: var(--muted-foreground); max-width: 92ch; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-weight: 500; color: var(--muted-foreground); font-size: 11px; letter-spacing: .03em; text-transform: uppercase; }
+  table.matrix th.q { text-align: center; text-transform: none; letter-spacing: 0; font-size: 11px; line-height: 1.25; min-width: 74px; }
+  table.matrix td.q { text-align: center; font-size: 15px; line-height: 1; }
+  table.matrix td.num { color: var(--muted-foreground); font-variant-numeric: tabular-nums; width: 22px; }
+  table.matrix tr.group td { background: var(--muted); font-weight: 500; font-size: 11.5px; color: var(--muted-foreground); padding: 5px 10px; }
+  table.matrix td.fate { white-space: nowrap; }
+  .dot-full { color: var(--foreground); }
+  .dot-part { color: var(--muted-foreground); }
+  .qcol-empty { background: color-mix(in oklab, var(--neg) 7%, transparent); }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 9px; font-size: 11px; border: 1px solid var(--border); color: var(--muted-foreground); white-space: nowrap; }
+  .chip.keep { border-color: var(--pos); color: var(--foreground); }
+  .chip.move { border-color: var(--info); color: var(--foreground); }
+  .chip.drop { border-style: dashed; }
+  .chip.q { border-color: var(--foreground); color: var(--foreground); }
+  .chip.cost1 { border-color: var(--pos); color: var(--foreground); }
+  .chip.cost2 { border-color: var(--warning); color: var(--foreground); }
+  .chip.cost3 { border-color: var(--neg); color: var(--foreground); }
+  ul.findings { margin: 4px 0 0; padding-left: 18px; font-size: 13px; max-width: 96ch; display: flex; flex-direction: column; gap: 5px; }
+  ul.findings b { font-weight: 500; }
+  .legend-dots { font-size: 12px; color: var(--muted-foreground); display: flex; gap: 14px; flex-wrap: wrap; }
+
+  /* ----- Maquette de l'onglet ----- */
+  .appframe { border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px); background: var(--background); padding: 0 18px 22px; }
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin: 0 -18px 4px; padding: 0 18px; overflow-x: auto; }
+  .tabs span { padding: 9px 16px; font-size: 13.5px; font-weight: 500; color: var(--muted-foreground); border-bottom: 2px solid transparent; white-space: nowrap; }
+  .tabs span.on { color: var(--foreground); border-bottom-color: var(--foreground); }
+  .tabs em { font-style: normal; font-size: 11px; color: var(--muted-foreground); margin-left: 6px; }
+  h3.st { margin: 26px 0 8px; font-size: 16px; font-weight: 600; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  h3.st .answers { font-size: 11px; font-weight: 400; color: var(--muted-foreground); display: inline-flex; gap: 6px; flex-wrap: wrap; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); min-width: 0; display: flex; flex-direction: column; }
+  .card > h4 { margin: 0; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .card .body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+  @media (max-width: 860px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+  .info { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--muted-foreground); color: var(--muted-foreground); font-size: 10px; font-weight: 700; cursor: help; font-style: normal; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11.5px; color: var(--muted-foreground); }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+  .legend i.hatch { background-color: var(--muted); background-image: var(--hatch); }
+  .legend i.parity { width: 2px; height: 12px; border-radius: 0; background: repeating-linear-gradient(to bottom, var(--warning) 0 3px, transparent 3px 5px); }
+
+  /* Piste 100 */
+  .prow { display: grid; grid-template-columns: 170px minmax(0, 1fr) 132px; gap: 12px; align-items: center; }
+  @media (max-width: 640px) { .prow { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+  .plabel { font-size: 12.5px; line-height: 1.25; }
+  .plabel small { display: block; color: var(--muted-foreground); font-size: 11px; }
+  .prow.wide { grid-template-columns: 170px minmax(0, 1fr); }
+  @media (max-width: 640px) { .prow.wide { grid-template-columns: minmax(0, 1fr); } }
+  .pbar { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+  /* La soirée face aux précédentes */
+  .htrack { position: relative; height: 24px; }
+  .htrack::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--border); }
+  .hband { position: absolute; top: 3px; bottom: 3px; background: color-mix(in oklab, var(--muted-foreground) 24%, transparent); border-radius: 3px; }
+  .htick { position: absolute; top: 5px; bottom: 5px; width: 0; border-left: 2px solid color-mix(in oklab, var(--muted-foreground) 75%, transparent); transform: translateX(-1px); }
+  .hdot { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--ally); box-shadow: 0 0 0 2px var(--card); }
+  .hempty { font-size: 11.5px; color: var(--muted-foreground); }
+  .legend i.dot-tonight { border-radius: 50%; background: var(--ally); }
+  .legend i.tick-past { width: 2px; border-radius: 0; background: var(--muted-foreground); }
+  .legend i.band-usual { background: color-mix(in oklab, var(--muted-foreground) 24%, transparent); }
+  .pcamps { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+  .pcamps b { color: var(--foreground); font-weight: 700; font-size: 13px; }
+  .track { position: relative; height: 16px; border-radius: 3px; background: var(--muted); }
+  .track.tall { height: 22px; }
+  .seg { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; overflow: hidden; }
+  .seg + .seg { box-shadow: -2px 0 0 var(--card); }
+  .seg.hatch { background-color: var(--muted); background-image: var(--hatch); }
+  .sl { font-size: 11.5px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+  .sl.on-ink { color: #fff; }
+  .sl.on-light { color: var(--foreground); }
+  .sl.on-hatch { color: var(--foreground); background: var(--card); padding: 2px 5px; border-radius: 3px; }
+  .parity { position: absolute; top: -3px; bottom: -3px; left: 50%; width: 0; border-left: 2px dashed var(--warning); }
+  .pval { font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .pval b { font-weight: 700; font-size: 14px; }
+  .pval small { display: block; color: var(--muted-foreground); font-size: 11px; }
+  .track.pending { background: transparent; border: 1px dashed var(--muted-foreground); display: grid; place-items: center; font-size: 11px; color: var(--muted-foreground); height: 18px; }
+  .axis { position: relative; height: 14px; font-size: 10.5px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .axis span { position: absolute; transform: translateX(-50%); }
+
+  /* Bande match par match */
+  .band { display: grid; gap: 4px; align-items: stretch; min-width: 640px; }
+  .bandwrap { overflow-x: auto; }
+  .bh { font-size: 11px; line-height: 1.25; color: var(--muted-foreground); text-align: center; padding-bottom: 3px; }
+  .bh b { display: block; color: var(--foreground); font-weight: 500; font-size: 12px; }
+  .res { display: inline-block; margin-top: 3px; font-size: 10.5px; font-weight: 700; padding: 0 7px; border-radius: 999px; color: #fff; }
+  .res.V { background: var(--win); }
+  .res.D { background: var(--loss); }
+  .bl { font-size: 12.5px; display: flex; flex-direction: column; justify-content: center; line-height: 1.2; }
+  .bl small { color: var(--muted-foreground); font-size: 11px; }
+  .cell { border-radius: 3px; display: grid; place-items: center; font-size: 12.5px; font-variant-numeric: tabular-nums; min-height: 34px; cursor: default; }
+  .cell.none { background: var(--muted); color: var(--muted-foreground); }
+  .rolewrap { overflow-x: auto; }
+  .roles { display: grid; grid-template-columns: 180px repeat(4, minmax(84px, 1fr)) minmax(84px, 1fr); gap: 4px; min-width: 640px; }
+  .rh { font-size: 11.5px; color: var(--muted-foreground); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; padding-bottom: 2px; }
+  .rh i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .rh b { color: var(--foreground); font-weight: 500; font-size: 12px; }
+  .rl { font-size: 12.5px; display: flex; flex-direction: column; justify-content: center; line-height: 1.2; }
+  .rl small { color: var(--muted-foreground); font-size: 11px; }
+  .rl.item { padding-left: 14px; font-size: 12px; }
+  .rc { border-radius: 3px; display: grid; place-items: center; font-size: 12.5px; font-variant-numeric: tabular-nums; min-height: 24px; color: var(--foreground); }
+  .rc.grp { min-height: 32px; font-weight: 700; }
+  .rc.zero { color: var(--muted-foreground); }
+  .rc.total { background: var(--muted); }
+  .rsep { grid-column: 1 / -1; border-top: 1px solid var(--border); margin: 4px 0 2px; }
+  .takes { position: absolute; top: -5px; bottom: -5px; width: 0; border-left: 2px solid var(--foreground); transform: translateX(-1px); }
+  .legend i.takes { width: 2px; border-radius: 0; background: var(--foreground); }
+  .optlabel { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); margin-top: 4px; }
+  .rolecards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+  .rcard { border: 1px solid var(--border); border-top: 3px solid var(--ink); border-radius: var(--radius); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 5px; background: color-mix(in oklab, var(--ink) 5%, var(--card)); }
+  .rcard-h { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin-bottom: 2px; }
+  .rcard-h i { width: 9px; height: 9px; border-radius: 50%; background: var(--ink); display: inline-block; }
+  .rcard-h b { font-weight: 600; font-size: 13.5px; }
+  .rcard-h span { font-size: 11px; color: var(--muted-foreground); margin-left: auto; }
+  .rcard-g { font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); margin-top: 4px; }
+  .rcard-i { display: grid; grid-template-columns: minmax(0, 1fr) auto 18px; gap: 8px; align-items: center; font-size: 12.5px; min-height: 20px; }
+  .rcard-i.none { color: var(--muted-foreground); }
+  .rcard-i.none .rcard-n { font-weight: 400; }
+  .udot.empty { width: 11px; height: 0; border-radius: 0; background: none; border-top: 1px dashed var(--muted-foreground); }
+  .rcard-l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rcard-d { display: flex; gap: 3px; flex-wrap: nowrap; justify-content: flex-end; align-items: center; }
+  .rcard-n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .rcard-none { font-size: 12px; color: var(--muted-foreground); }
+  .udot { width: 11px; height: 11px; border-radius: 50%; background: var(--ink); display: inline-block; }
+  .udot.hollow { background: transparent; box-shadow: inset 0 0 0 2px var(--ink); }
+  .losses { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted-foreground); padding: 6px 10px; border-radius: var(--radius); background: var(--muted); }
+  .losses b { color: var(--foreground); font-weight: 600; }
+  .unitrows { display: flex; flex-direction: column; gap: 5px; }
+  .urow { display: grid; grid-template-columns: 170px minmax(0, 1fr) 28px; gap: 10px; align-items: center; font-size: 12.5px; }
+  .urow.grp { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); font-weight: 500; }
+  .urow .ul small { display: block; color: var(--muted-foreground); font-size: 11px; font-weight: 400; }
+  .urow:not(.grp) .ul { padding-left: 14px; }
+  .ud { display: flex; gap: 3px; flex-wrap: wrap; }
+  .un { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .track.thin { height: 8px; }
+  .pexpo { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .prow.wide.narrow { grid-template-columns: 118px minmax(0, 1fr); }
+  .zero { position: absolute; top: -3px; bottom: -3px; left: 50%; width: 0; border-left: 2px solid var(--muted-foreground); transform: translateX(-1px); }
+  #filsession svg { width: 100%; height: auto; display: block; overflow: visible; }
+  #filsession .fs-bg { fill: color-mix(in oklab, var(--muted) 55%, transparent); }
+  #filsession .fs-par { stroke: var(--warning); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  #filsession .fs-l { font-size: 12.5px; fill: var(--foreground); }
+  #filsession .fs-s { font-size: 10.5px; fill: var(--muted-foreground); }
+  #filsession .fs-m { font-size: 10.5px; fill: var(--foreground); }
+  #filsession .fs-res.V { fill: var(--win); }
+  #filsession .fs-res.D { fill: var(--loss); }
+  #filsession .fs-v { font-size: 12px; font-weight: 700; fill: var(--foreground); }
+  #filsession .fs-cum { fill: none; stroke-width: 2.5; stroke-linejoin: round; }
+  #filsession .fs-mdot { opacity: .45; stroke: var(--card); stroke-width: 1; }
+  #filsession .fs-end { stroke: var(--card); stroke-width: 2; }
+  #filsession .fs-grd { stroke: var(--border); stroke-width: 1; }
+  #filmatch svg { width: 100%; height: auto; display: block; overflow: visible; }
+  #filmatch .phase0 { fill: color-mix(in oklab, var(--muted) 70%, transparent); }
+  #filmatch .phase1 { fill: transparent; }
+  #filmatch .ph-l { font-size: 11px; fill: var(--muted-foreground); letter-spacing: .04em; text-transform: uppercase; }
+  #filmatch .ph-v { font-size: 12px; font-weight: 700; fill: var(--foreground); }
+  #filmatch .grd { stroke: var(--border); stroke-width: 1; }
+  #filmatch .par { stroke: var(--warning); stroke-width: 2; stroke-dasharray: 4 3; }
+  #filmatch .ax { font-size: 10.5px; fill: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  #filmatch .fil { fill: none; stroke: var(--ally); stroke-width: 2; }
+  #filmatch .fdot { fill: var(--ally); stroke: var(--card); stroke-width: 2; cursor: default; }
+  .rdot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: 0; background: var(--rc); }
+  .swatches { display: inline-flex; gap: 12px; flex-wrap: wrap; margin-left: 4px; }
+  .swatches span { display: inline-flex; align-items: center; }
+  .sl.in-left { justify-self: start; margin-left: 7px; }
+  .sl.in-right { justify-self: end; margin-right: 7px; }
+  .sl b { font-weight: 800; }
+  .seg > .sl { font-weight: 500; font-size: 12px; }
+  .pcamps.fallback { display: none; }
+  .pcamps.fallback.show { display: flex; }
+  .tiplab { position: absolute; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 700; color: var(--foreground); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .rawlab { position: absolute; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--muted-foreground); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .csw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+  .dom { display: inline-block; margin-top: 3px; font-size: 10.5px; font-weight: 600; padding: 0 7px; border-radius: 999px; color: var(--foreground); background: color-mix(in oklab, var(--dc) 22%, var(--card)); box-shadow: inset 0 0 0 1.5px var(--dc); }
+  #nuage svg, #habPrises svg, #habGroupe svg { width: 100%; height: auto; display: block; overflow: visible; }
+  #nuage .nz-grp { fill: color-mix(in oklab, var(--ally) 7%, transparent); }
+  #nuage .nz-band { fill: color-mix(in oklab, var(--muted) 80%, transparent); }
+  #nuage .nz-grd { stroke: var(--border); stroke-width: 1; }
+  #nuage .nz-five { stroke: var(--foreground); stroke-width: 1.2; stroke-dasharray: 5 4; }
+  #nuage .nz-radar { stroke: var(--foreground); stroke-width: 1.5; }
+  #nuage .nz-ax { font-size: 10.5px; fill: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  #nuage .nz-zt { font-size: 12px; font-weight: 600; fill: var(--foreground); }
+  #nuage .nz-zv { font-size: 12px; fill: var(--foreground); font-variant-numeric: tabular-nums; }
+  #nuage .nz-pt { stroke: var(--card); stroke-width: 0.8; }
+  #nuage .nz-med { fill: none; stroke-width: 3; }
+  .legend i.ringlg { background: none; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--foreground); }
+  #habPrises .fs-grd, #habGroupe .fs-grd { stroke: var(--border); stroke-width: 1; }
+  #habPrises .fs-par, #habGroupe .fs-par { stroke: var(--warning); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  #habPrises .fs-s, #habGroupe .fs-s { font-size: 10.5px; fill: var(--muted-foreground); }
+  #habPrises .fs-m, #habGroupe .fs-m { font-size: 10.5px; font-weight: 700; fill: var(--foreground); }
+  #habPrises .fs-v, #habGroupe .fs-v { font-size: 12px; font-weight: 700; }
+  #habPrises .fs-cum, #habGroupe .fs-cum { fill: none; stroke-width: 2.5; stroke-linejoin: round; }
+  #habPrises .fs-end, #habGroupe .fs-end { stroke: var(--card); stroke-width: 2; }
+  .hb-dot { stroke: var(--card); stroke-width: 1; }
+  .hb-med { stroke-width: 1; stroke-dasharray: 2 3; opacity: .9; }
+  .hb-now { fill: color-mix(in oklab, var(--muted) 70%, transparent); }
+  .brow { display: contents; }
+  .brow.item .cell { min-height: 24px; font-size: 11.5px; }
+  .brow.item .cell.none { background: transparent; border: 1px dashed var(--border); }
+  .bl.item { padding-left: 14px; font-size: 12px; justify-content: center; }
+  .bsep { grid-column: 1 / -1; border-top: 1px solid var(--border); margin: 5px 0 2px; }
+  .btoggle { all: unset; cursor: pointer; font-size: 12.5px; color: var(--foreground); line-height: 1.2; }
+  .btoggle small { color: var(--muted-foreground); font-size: 11px; }
+  .btoggle:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; border-radius: 3px; }
+  .cell.nofilm { background-color: var(--muted); background-image: repeating-linear-gradient(45deg, transparent 0 3px, color-mix(in oklab, var(--muted-foreground) 30%, transparent) 3px 4px); color: var(--muted-foreground); font-size: 11px; }
+
+  /* Barres d'issues */
+  .orow { display: grid; grid-template-columns: 170px 54px minmax(0, 1fr) 150px; gap: 10px; align-items: center; }
+  @media (max-width: 640px) { .orow { grid-template-columns: 1fr 44px; } .orow .otrack, .orow .oval { grid-column: 1 / -1; } }
+  .ogroup { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; border-bottom: 1px dashed var(--border); }
+  .ogroup:last-child { border-bottom: 0; padding-bottom: 0; }
+  .otrack { position: relative; height: 20px; }
+  .ofill { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; overflow: hidden; }
+  .sl.on-grey { color: var(--card); }
+  .oside { font-size: 12px; color: var(--muted-foreground); }
+  .oval { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+  .oval b { color: var(--foreground); font-weight: 500; }
+  .ghost { border: 1px dashed var(--muted-foreground); border-radius: 3px; height: 16px; display: grid; place-items: center; font-size: 11px; color: var(--muted-foreground); }
+
+  /* Jauges groupes / riposte */
+  .grow { display: grid; grid-template-columns: 58px minmax(0, 1fr) 104px; gap: 10px; align-items: center; }
+  .gtrack { position: relative; height: 14px; border-radius: 3px; background: var(--muted); }
+  .gfill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; }
+  .pdot { position: absolute; top: 50%; width: 11px; height: 11px; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px var(--card); }
+  .gsub { font-size: 12.5px; font-weight: 500; margin-top: 4px; }
+  .gsub small { font-weight: 400; color: var(--muted-foreground); }
+
+  .mnote { border: 1px dashed var(--info); border-radius: var(--radius); padding: 8px 12px; font-size: 12px; color: var(--muted-foreground); background: color-mix(in oklab, var(--info) 5%, transparent); }
+  .mnote b { color: var(--foreground); font-weight: 500; }
+  ol.decisions { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; max-width: 96ch; }
+  ol.decisions b { font-weight: 500; }
+  #tip { position: fixed; z-index: 10; pointer-events: none; display: none; background: var(--popover); color: var(--foreground); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.25); max-width: 320px; line-height: 1.4; }
+  /* Légendes en bas et centrées ; graphe centré verticalement dans sa carte. */
+  .card > .body { flex: 1; }
+  .card .cmain { display: flex; flex-direction: column; gap: 10px; margin-block: auto; }
+  .card .body > .legend { justify-content: center; padding-top: 4px; }
+  /* Isolement à la mort : zones, du plus proche au plus loin. */
+  :root { --z-grp: color-mix(in oklab, var(--foreground) 72%, var(--card)); --z-iso: color-mix(in oklab, var(--foreground) 40%, var(--card)); --z-hv: color-mix(in oklab, var(--foreground) 16%, var(--card)); }
+  /* Fiches : style des fiches de médailles de l'Escouade (MedalDigest.tsx). */
+  .mfiches { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 1000px) { .mfiches { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .mfiches { grid-template-columns: minmax(0, 1fr); } }
+  .mcard { display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--border); border-left: 4px solid var(--ink); border-radius: var(--radius); background: var(--card); padding: 16px; min-width: 0; }
+  .mf-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .mf-who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .mf-av { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; font-weight: 700; color: #fff; }
+  .mf-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mf-dom { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+  .mf-cap { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-foreground); line-height: 1.2; }
+  .mf-pill { font-size: 12px; font-weight: 600; margin-top: 2px; border-radius: 4px; padding: 2px 6px; }
+  .mf-foot { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted-foreground); border-top: 1px solid var(--border); padding-top: 8px; margin-top: auto; }
+  .mf-foot b { font-weight: 500; color: var(--foreground); }
+  @media (prefers-reduced-motion: no-preference) { .seg, .gfill, .ofill { transition: opacity .15s; } }
+</style>
+
+<div class="page">
+  <div class="crumb">
+    <span>Escouade · onglet Usages · maquette du 26/09/2026</span>
+    <span class="toolbar" role="group" aria-label="Thème">
+      <button type="button" data-theme-set="auto" aria-pressed="true">Auto</button>
+      <button type="button" data-theme-set="light" aria-pressed="false">Clair</button>
+      <button type="button" data-theme-set="dark" aria-pressed="false">Sombre</button>
+    </span>
+  </div>
+  <h1>L'onglet Usages, remis dans l'ordre de tes questions</h1>
+  <p class="lede">Dix-huit cartes aujourd'hui, montées en trois fois, qui répondent surtout à deux des sept questions et le font plusieurs fois chacune. Proposition : six blocs et neuf cartes, du bilan au détail, une seule carte par réponse. Les chiffres sont ceux de ta soirée du 22/09 (JGtm, Chocoboflor, Madina97294, sept matchs), relevés dans la base pour la maquette.</p>
+  <nav class="toc" aria-label="Sommaire">
+    <a href="#aujourdhui">Aujourd'hui</a>
+    <a href="#proposition">Proposition</a>
+    <a href="#deplacements">Ce qui part</a>
+    <a href="#donnees">Données manquantes</a>
+    <a href="#valider">À valider</a>
+  </nav>
+
+  <section class="block" id="aujourdhui">
+    <header>
+      <h2>Aujourd'hui : dix-huit cartes, et qui répond à quoi</h2>
+      <p>Une ligne par carte, dans l'ordre de l'écran. ● répond à la question ; ◐ y répond en partie (un seul joueur, familles mélangées, pas d'adversaire). Les colonnes rosées n'ont aucune réponse dans l'onglet.</p>
+    </header>
+    <div class="tablewrap"><table class="matrix" id="matrix"></table></div>
+    <ul class="findings">
+      <li><b>Trois questions sans réponse</b> dans l'onglet : jouer groupés, riposter quand on est groupés, se comparer à d'habitude. Les véhicules n'apparaissent nulle part.</li>
+      <li><b>La même part se lit six fois.</b> Les armes spéciales occupent six cartes, l'équipement six, sur quatre dénominateurs : le lobby, notre camp, l'escouade seule, les occupations de socle.</li>
+      <li><b>Deux titres se répètent.</b> « Usages d'équipement » et « Contrôle des armes spéciales » ouvrent chacun deux blocs qui ne comptent pas la même chose : des objets pris d'un côté, des gestes et des prises nommées de l'autre.</li>
+      <li><b>Deux populations de matchs dans le même onglet.</b> L'équipement et les formes retenues lisent tous tes matchs du filtre, avec ou sans tes coéquipiers ; les frags et la riposte ne lisent que les matchs de la composition. Sur une session où tu as aussi joué sans eux, les cartes ne parlent pas des mêmes parties.</li>
+      <li><b>Cinq cartes hors sujet</b> : trois parlent de frags et deux d'objectif, aucune des sept questions ne les appelle.</li>
+      <li><b>Les « armes spéciales » comptent les râteliers.</b> Le 22/09, BR75, VK78 Commando, Déchiqueteur et MK50 Sidekick font 25 des 95 prises de socle.</li>
+    </ul>
+  </section>
+
+  <section class="block" id="proposition">
+    <header>
+      <h2>Proposition : six blocs, dans l'ordre d'un débrief</h2>
+      <p>Le bilan d'abord, camp contre camp, puis les rôles chez nous, le détail par carte, ce qu'on fait de ce qu'on prend, le jeu groupé, et pour finir la comparaison à d'habitude. Chaque forme est déjà en service dans l'app (piste du lobby, bande match par match, barres d'issues, jauges avec étendue) : aucune n'est inventée. Seul le calcul de l'habitude est neuf.</p>
+    </header>
+
+    <div class="appframe">
+      <div class="tabs" aria-hidden="true">
+        <span>Synergies</span><span>Contributions</span><span>Dynamique</span><span class="on">Emprise<em>(ex-Usages)</em></span>
+      </div>
+
+      <h3 class="st">Bilan de la soirée <span class="answers" data-answers="q3,q6"></span></h3>
+      <div class="grid2">
+      <div class="card">
+        <h4>Contrôle des ressources <i class="info" tabindex="0" data-tip="La part de chaque ressource prise par notre camp face à l'adversaire, sur les matchs de la soirée. Les nombres sont des comptes ; le trait orange marque 50 %, autant que l'adversaire. Les bonus sans ramasseur connu ne comptent dans aucun camp.">i</i></h4>
+        <div class="body">
+          <div class="legend" id="legendA"></div>
+          <div id="pistes" style="display:flex;flex-direction:column;gap:14px;margin-top:8px"></div>
+          <div class="prow wide narrow" aria-hidden="true"><span></span><div class="axis" id="axisA"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h4>Contrôle des ressources au fil de la session <i class="info" tabindex="0" data-tip="Notre part des prises de chaque ressource, cumulée depuis le premier match de la soirée. Les petits points sont la part de chaque match, leur taille son volume. Un match sans la ressource laisse la courbe filer jusqu'au suivant.">i</i></h4>
+        <div class="body">
+          <div class="legend">
+            <span><i style="background:var(--res-bonus)"></i>Bonus</span>
+            <span><i style="background:var(--res-power)"></i>Armes spéciales</span>
+            <span><i style="background:var(--res-vehicle);opacity:.45"></i>Véhicules (à brancher)</span>
+            <span><i style="background:var(--win)"></i><i style="background:var(--loss);margin-left:-3px"></i>Victoire, défaite</span>
+            <span><i style="width:3px;background:var(--dom-1)"></i>Drapeau de dominance</span>
+            <span><i class="parity"></i>50 % : autant que l'adversaire</span>
+          </div>
+          <div id="filsession"></div>
+        </div>
+      </div>
+      </div>
+
+      <h3 class="st">Rôles dans l'escouade <span class="answers">vu de l'intérieur, sans verdict</span></h3>
+      <div class="card">
+        <h4>Répartition des prises dans l’escouade <i class="info" tabindex="0" data-tip="Qui, dans notre camp, a pris chaque bonus et chaque arme spéciale de la soirée, une pastille par prise. Pour un bonus, une pastille vide est une prise perdue : gardée sans être activée, ou lâchée en mourant. L'usage d'une arme spéciale n'est pas mesuré par prise : ses pastilles sont toutes pleines.">i</i></h4>
+        <div class="body">
+          <div class="legend">
+            <span><i class="udot" style="--ink:var(--foreground)"></i>Prise</span>
+            <span><i class="udot hollow" style="--ink:var(--foreground)"></i>Bonus pris puis perdu</span>
+            <span><i class="udot" style="--ink:var(--rest)"></i>Reste du camp</span>
+          </div>
+          <div class="losses" id="losses"></div>
+          <div class="rolecards" id="rolecards"></div>
+        </div>
+      </div>
+
+      <h3 class="st">Carte par carte <span class="answers" data-answers="q5"></span></h3>
+      <div class="card">
+        <h4>Contrôle des ressources, match par match <i class="info" tabindex="0" data-tip="Une colonne par match, dans l'ordre de la soirée, avec son résultat. La couleur dit si notre camp a pris plus ou moins que l'adversaire, et sature à trente points d'écart. Le survol d'une case détaille les armes.">i</i></h4>
+        <div class="body">
+          <div class="legend">
+            <span><i style="background:color-mix(in oklab, var(--pos) 80%, var(--muted))"></i>Plus que l'adversaire</span>
+            <span><i style="background:color-mix(in oklab, var(--neg) 80%, var(--muted))"></i>Moins</span>
+            <span><i style="background:var(--muted)"></i>Rien à prendre</span>
+            <span><i class="hatch"></i>Sans film</span>
+          </div>
+          <div class="bandwrap"><div class="band" id="band"></div></div>
+          <div class="mnote"><b>Note de maquette.</b> Le partage entre armes spéciales et armes de râtelier est posé à la main pour la maquette. En production il vient du niveau du socle (l'emplacement de la carte), une fois sa projection réparée : la même arme peut être spéciale sur une carte et de râtelier sur une autre.</div>
+        </div>
+      </div>
+
+      <h3 class="st">Prendre, et s'en servir <span class="answers" data-answers="q4"></span></h3>
+      <div class="grid2">
+      <div class="card">
+        <h4>Frags obtenus avec les ressources <i class="info" tabindex="0" data-tip="La barre épaisse partage les frags obtenus grâce à la ressource, la barre fine partage ce qui les a permis : temps d'effet pour un bonus, prises pour une arme spéciale. Si la coupure de la barre épaisse est à gauche de celle de la fine, on a moins produit qu'on n'a eu.">i</i></h4>
+        <div class="body">
+          <div class="legend">
+            <span><i style="background:var(--ally)"></i>Notre camp</span>
+            <span><i style="background:var(--enemy)"></i>Adversaire</span>
+            <span><i class="parity"></i>50 % : autant que l'adversaire</span>
+            <span><i style="height:4px;background:var(--ally)"></i>Barre fine : temps d'effet ou prises</span>
+          </div>
+          <div id="productivite" style="display:flex;flex-direction:column;gap:14px;margin-top:8px"></div>
+          <div class="prow wide" aria-hidden="true"><span></span><div class="axis" id="axisP"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h4>Rendement face à l'adversaire <i class="info" tabindex="0" data-tip="Combien notre camp produit de plus ou de moins que l'adversaire pour la même exposition : par minute d'effet d'un bonus, par prise d'arme spéciale. Zéro veut dire autant que lui. Les deux rendements bruts sont écrits sous la valeur.">i</i></h4>
+        <div class="body">
+          <div class="legend">
+            <span><i style="background:color-mix(in oklab, var(--pos) 80%, var(--muted))"></i>Plus productifs que l'adversaire</span>
+            <span><i style="background:color-mix(in oklab, var(--neg) 80%, var(--muted))"></i>Moins</span>
+          </div>
+          <div id="rendement" style="display:flex;flex-direction:column;gap:16px;margin-top:8px"></div>
+          <div class="prow wide" aria-hidden="true"><span></span><div class="axis" id="axisR"></div></div>
+        </div>
+      </div>
+      </div>
+
+      <h3 class="st">Groupés ou isolés <span class="answers" data-answers="q1"></span></h3>
+      <div class="card">
+        <h4>Isolement à la mort <i class="info" tabindex="0" data-tip="Un point par mort de l'escouade. De gauche à droite : la distance au coéquipier visible le plus proche, le trait marquant la portée du radar (18 m en arène). De haut en bas : combien de coéquipiers venaient de tomber dans les cinq secondes. Les nombres comptent les morts de chaque zone.">i</i></h4>
+        <div class="body">
+          <div class="legend" id="legendIso"></div>
+          <div id="isoNuage"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h4>Isolement à la mort, par joueur <i class="info" tabindex="0" data-tip="La part des morts de chaque joueur selon le coéquipier visible le plus proche au moment de la mort. Un fait, pas un classement.">i</i></h4>
+        <div class="body">
+          <div class="legend">
+            <span><i style="background:var(--z-grp)"></i>Groupé : coéquipier à portée de radar</span>
+            <span><i style="background:var(--z-iso)"></i>Isolé : coéquipier visible plus loin</span>
+            <span><i style="background:var(--z-hv)"></i>Aucun coéquipier visible</span>
+          </div>
+          <div id="isoJoueurs" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+      </div>
+      <div class="mnote" style="margin-top:14px"><b>Deux changements par rapport aux versions précédentes.</b> La riposte sort de ce bloc (trop dépendante du contexte pour juger le jeu groupé ; elle reste sur Synergies). Et les chiffres sont corrigés : le nuage et ses variantes comptaient les 38 morts de Detachment, match sans film, comme « aucun coéquipier en vue ». Ici : 220 morts sur les 6 matchs filmés, dont 2 seulement sans coéquipier visible.</div>
+
+      <h3 class="st">Par rapport à d'habitude <span class="answers" data-answers="q7"></span></h3>
+      <div class="grid2">
+        <div class="card">
+          <h4>Contrôle des ressources, soirée après soirée <i class="info" tabindex="0" data-tip="Notre part des prises sur chaque soirée comparable de la composition (mêmes familles de mode que ce soir), la dernière à droite. Le trait fin pointillé de chaque couleur est la médiane des soirées précédentes.">i</i></h4>
+          <div class="body">
+            <div class="legend">
+              <span><i style="background:var(--res-bonus)"></i>Bonus</span>
+              <span><i style="background:var(--res-power)"></i>Armes spéciales</span>
+              <span><i class="parity"></i>50 % : autant que l'adversaire</span>
+            </div>
+            <div id="habPrises"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h4>Isolement, soirée après soirée <i class="info" tabindex="0" data-tip="Sur chaque soirée comparable : la part de nos morts avec un coéquipier à portée de radar. Le trait fin pointillé est la médiane des soirées précédentes.">i</i></h4>
+          <div class="body">
+            <div class="legend">
+              <span><i style="background:var(--ally)"></i>Morts à portée d'un coéquipier</span>
+            </div>
+            <div id="habGroupe"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mnote"><b>Note de maquette.</b> Les chiffres sont relevés dans la base (lecture seule) avec des requêtes écrites pour cette maquette ; l'implémentation passera par les calculs existants (bloc Coordination, résumé d'usage), qui peuvent différer d'un point. « Par rapport à d'habitude » compare aux dix soirées précédentes de la même composition, sur les familles de mode jouées ce soir-là (Assassin et Drapeau) : neuf soirées comparables pour les frags, les morts et la riposte, cinq pour ce qui vient du film tant que le rattrapage des résumés d'usage n'a pas tourné.</div>
+  </section>
+
+  <section class="block" id="deplacements">
+    <header>
+      <h2>Ce qui quitte l'onglet, et où ça va</h2>
+      <p>Ce qui ne répond à aucune des sept questions rejoint l'onglet dont c'est le sujet. Le reste est absorbé par les neuf cartes, ou retiré quand une autre carte dit déjà la même chose.</p>
+    </header>
+    <div class="tablewrap"><table id="moves"></table></div>
+  </section>
+
+  <section class="block" id="donnees">
+    <header>
+      <h2>Ce que les données ne disent pas encore</h2>
+      <p>Relevé dans le code et dans la base locale le 26/09. Pastille verte : quelques lignes ou un rattrapage ; orange : un calcul serveur sur des données déjà stockées ; rouge : une nouvelle mesure du film, à stocker puis à rattraper sur l'historique. Les six premières lignes suffisent aux neuf cartes pour les bonus, les socles, les morts groupées et l'habitude.</p>
+    </header>
+    <div class="tablewrap"><table id="gaps"></table></div>
+  </section>
+
+  <section class="block" id="valider">
+    <header>
+      <h2>Ce que j'ai tranché, à valider</h2>
+      <p>Un « ok » sur cette liste suffit pour que j'écrive le plan et pilote l'implémentation dans un worktree dédié.</p>
+    </header>
+    <ol class="decisions" id="decisions"></ol>
+  </section>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  // ---------- Code couleur des ressources (proposition pour toute l'app) ----------
+  var RES_INK = { 'Bonus': '--res-bonus', 'Armes spéciales': '--res-power', 'Véhicules': '--res-vehicle', 'Armes de râtelier': '--res-rack' };
+  function resDot(label) {
+    var k = RES_INK[label];
+    return k ? '<i class="rdot" style="--rc:var(' + k + ')"></i>' : '';
+  }
+
+  // Drapeaux de dominance : mêmes libellés et mêmes jetons que l'Explorateur et la bande de résultats.
+  var DOMINANCE = {
+    1: ['Domination', '--dom-1'], 2: ['Humiliation', '--dom-2'], 3: ['Remontada', '--dom-3'], 4: ['Débandade', '--dom-4'],
+    5: ['Contre-remontada', '--dom-5'], 6: ['Sabordage', '--dom-6'], 7: ['Abnégation', '--dom-7']
+  };
+  function resultTip(m) {
+    return (m.res === 'V' ? 'Victoire' : 'Défaite') + ' ' + m.score + (m.dom ? ' · ' + DOMINANCE[m.dom][0] : '');
+  }
+
+  // ---------- Questions ----------
+  var Q = {
+    q1: 'Groupés ?',
+    q2: 'Riposte en groupe',
+    q3: 'Qui tient la carte',
+    q4: 'Pris, puis utilisés ?',
+    q5: 'Carte par carte',
+    q6: 'Bilan de soirée',
+    q7: "Par rapport à d'habitude"
+  };
+  var QK = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'];
+
+  // ---------- Aujourd'hui ----------
+  // f = répond, p = en partie
+  var TODAY = [
+    { g: 'Frags et armes' },
+    { t: 'Écart cumulé au FDA attendu', a: {}, fate: ['move', 'Dynamique'] },
+    { t: 'Répartition des frags', a: {}, fate: ['move', 'Contributions'] },
+    { t: 'Outils de destruction', a: {}, fate: ['move', 'Contributions'] },
+    { g: 'Équipement et armes de socle' },
+    { t: "Usages d'équipement", a: { q4: 'p' }, fate: ['keep', 'Rendement + pastilles vides des rôles'] },
+    { t: "Notre part de l'équipement du lobby", a: { q3: 'p', q6: 'p' }, fate: ['drop', 'Retirée (bilan)'] },
+    { t: 'Contrôle des armes spéciales', a: { q3: 'p' }, fate: ['keep', 'Devient « Répartition des prises dans l’escouade »'] },
+    { t: 'Notre part des armes spéciales du lobby', a: { q3: 'f', q6: 'f' }, fate: ['drop', 'Retirée (bilan)'] },
+    { t: 'Contrôle des armes par niveau', a: { q3: 'p' }, fate: ['keep', 'Fondue : spéciales / râteliers'] },
+    { g: 'Formes retenues · Usages d’équipements' },
+    { t: 'Régularité match par match', a: { q5: 'p' }, fate: ['keep', 'Devient « Contrôle des ressources, match par match »'] },
+    { t: 'Part de mon camp', a: { q3: 'f', q6: 'f' }, fate: ['keep', 'Devient « Contrôle des ressources »'] },
+    { t: 'Cadence de chacun sur la période', a: {}, fate: ['drop', 'Retirée'] },
+    { t: "Qui porte quel usage dans l'escouade", a: {}, fate: ['keep', 'Devient « Répartition des prises dans l’escouade »'] },
+    { g: 'Formes retenues · Contrôle des armes spéciales' },
+    { t: "Écart à la parité, par famille d'arme", a: { q3: 'f', q6: 'f' }, fate: ['drop', 'Retirée (bilan)'] },
+    { t: "Détail des prises d'armes spéciales", a: { q3: 'f', q5: 'f' }, fate: ['drop', 'Retirée (bilan + match par match)'] },
+    { t: "Emprise de l'escouade, match par match", a: { q5: 'f' }, fate: ['drop', 'Retirée (match par match)'] },
+    { t: 'Taux de rafle de chaque coéquipier', a: { q3: 'p' }, fate: ['keep', 'Devient « Répartition des prises dans l’escouade »'] },
+    { g: 'Formes retenues · Objectifs' },
+    { t: 'Rapport de force par famille de mode', a: {}, fate: ['move', 'Contributions'] },
+    { t: "Ce que mon camp prend de l'objectif", a: {}, fate: ['move', 'Contributions'] }
+  ];
+
+  function el(tag, attrs, html) {
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      if (k === 'style') e.style.cssText = attrs[k];
+      else if (k === 'class') e.className = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+
+  (function renderMatrix() {
+    var t = document.getElementById('matrix');
+    var answered = {};
+    TODAY.forEach(function (r) { if (r.a) for (var k in r.a) answered[k] = true; });
+    var head = '<thead><tr><th style="width:22px"></th><th>Carte</th>';
+    QK.forEach(function (k) { head += '<th class="q' + (answered[k] ? '' : ' qcol-empty') + '">' + Q[k] + '</th>'; });
+    head += '<th>Devient</th></tr></thead>';
+    var body = '<tbody>';
+    var n = 0;
+    TODAY.forEach(function (r) {
+      if (r.g) { body += '<tr class="group"><td colspan="' + (QK.length + 3) + '">' + r.g + '</td></tr>'; return; }
+      n += 1;
+      body += '<tr><td class="num">' + n + '</td><td>' + r.t + '</td>';
+      QK.forEach(function (k) {
+        var v = r.a[k];
+        var cls = 'q' + (answered[k] ? '' : ' qcol-empty');
+        body += '<td class="' + cls + '">' + (v === 'f' ? '<span class="dot-full" title="Répond">●</span>' : v === 'p' ? '<span class="dot-part" title="En partie">◐</span>' : '') + '</td>';
+      });
+      body += '<td class="fate"><span class="chip ' + r.fate[0] + '">' + r.fate[1] + '</span></td></tr>';
+    });
+    body += '</tbody>';
+    t.innerHTML = head + body;
+  })();
+
+  document.querySelectorAll('[data-answers]').forEach(function (s) {
+    s.innerHTML = 'Répond à : ' + s.getAttribute('data-answers').split(',').map(function (k) {
+      return '<span class="chip q">' + Q[k] + '</span>';
+    }).join('');
+  });
+
+  // ---------- Données réelles, soirée du 22/09 ----------
+  var SQUAD = [
+    { k: 'jgtm', label: 'JGtm', ink: 'var(--p1)' },
+    { k: 'choco', label: 'Chocoboflor', ink: 'var(--p2)' },
+    { k: 'madina', label: 'Madina97294', ink: 'var(--p3)' }
+  ];
+
+  // Contrôle des ressources : notre camp contre l'adversaire, rien d'autre. La répartition chez
+  // nous vit dans « Répartition des prises dans l’escouade ».
+  var PISTES = [
+    { label: 'Bonus', sub: 'prises · camouflage, surbouclier', us: 12, them: 8 },
+    { label: 'Armes spéciales', sub: 'prises sur les socles', us: 23, them: 29 },
+    { label: 'Véhicules', sub: 'prises (montées)', pending: "À brancher côté adversaire ; ligne masquée quand aucune carte n'en porte" }
+  ];
+
+  var fmt = function (v) { return v.toLocaleString('fr-FR', { maximumFractionDigits: 1, minimumFractionDigits: 0 }); };
+  var pct = function (v) { return fmt(Math.round(v * 10) / 10) + ' %'; };
+
+  // Écrit la valeur de chaque camp dans son segment : à gauche pour nous, à droite pour eux.
+  // Si un segment est trop étroit, fitLabels() rend visible la ligne de repli au-dessus.
+  function campInside(track, usHtml, themHtml) {
+    var segs = track.querySelectorAll('.seg');
+    segs[0].appendChild(el('span', { class: 'sl on-ink in-left' }, usHtml));
+    segs[1].appendChild(el('span', { class: 'sl on-ink in-right' }, themHtml));
+  }
+
+  (function renderPistes() {
+    document.getElementById('legendA').innerHTML =
+      '<span><i style="background:var(--ally)"></i>Notre camp</span>' +
+      '<span><i style="background:var(--enemy)"></i>Adversaire</span>' +
+      '<span><i class="parity"></i>50 % : autant que l’adversaire</span>';
+    var host = document.getElementById('pistes');
+    PISTES.forEach(function (r) {
+      var row = el('div', { class: 'prow wide narrow' });
+      row.appendChild(el('div', { class: 'plabel' }, resDot(r.label) + r.label + '<small>' + r.sub + '</small>'));
+      if (r.pending) {
+        row.appendChild(el('div', { class: 'track pending' }, r.pending));
+        host.appendChild(row);
+        return;
+      }
+      var total = r.us + r.them;
+      var share = r.us / total * 100;
+      // Au-dessus de la barre : le rapport de force, camp contre camp, en comptes et en part.
+      var bar = el('div', { class: 'pbar' });
+      bar.appendChild(el('div', { class: 'pcamps fallback' },
+        '<span><i class="csw" style="background:var(--ally)"></i><b>' + r.us + '</b> · ' + pct(share) + '</span>' +
+        '<span><i class="csw" style="background:var(--enemy)"></i><b>' + r.them + '</b> · ' + pct(100 - share) + '</span>'));
+      var track = el('div', { class: 'track tall' });
+      track.appendChild(el('div', {
+        class: 'seg', style: 'left:0;width:' + share + '%;background:var(--ally);border-radius:3px 0 0 3px',
+        'data-tip': '<b>Notre camp</b> · ' + r.label + ' (' + r.sub + ')<br>' + r.us + ' sur ' + total + ' (' + pct(share) + ')'
+      }));
+      track.appendChild(el('div', {
+        class: 'seg', style: 'left:' + share + '%;width:' + (100 - share) + '%;background:var(--enemy);border-radius:0 3px 3px 0',
+        'data-tip': '<b>Adversaire</b> · ' + r.label + ' (' + r.sub + ')<br>' + r.them + ' sur ' + total + ' (' + pct(100 - share) + ')'
+      }));
+      track.appendChild(el('div', { class: 'parity' }));
+      campInside(track, '<b>' + r.us + '</b> · ' + pct(share), pct(100 - share) + ' · <b>' + r.them + '</b>');
+      bar.appendChild(track);
+      row.appendChild(bar);
+      host.appendChild(row);
+    });
+    var ax = document.getElementById('axisA');
+    [0, 25, 50, 75, 100].forEach(function (v) {
+      ax.appendChild(el('span', { style: 'left:' + v + '%' }, v + (v === 100 ? ' %' : '')));
+    });
+  })();
+
+  // Au fil de la session : une petite courbe par ressource, les matchs de la soirée en abscisse.
+  // Point = part du match (null = rien à prendre sur la carte, ou sans film) ; courbe = cumul.
+  var FIL_MATCHES = [
+    { h: '21:23', map: 'Starboard', res: 'V', score: '3–0', dom: 1 }, { h: '21:36', map: 'Curfew', res: 'V', score: '50–48' },
+    { h: '21:46', map: 'Origin', res: 'D', score: '1–3' }, { h: '21:59', map: 'Solution', res: 'V', score: '50–17', dom: 1 },
+    { h: '22:08', map: 'Detachment', res: 'D', score: '45–50' }, { h: '22:19', map: 'Shogun', res: 'D', score: '37–50' },
+    { h: '22:29', map: 'Catalyst', res: 'D', score: '33–50' }
+  ];
+  var FIL_SERIES = [
+    { label: 'Bonus', sub: 'prises', v: [[5, 2], [4, 0], null, null, null, [2, 3], [1, 3]] },
+    { label: 'Armes spéciales', sub: 'prises sur les socles', v: [[2, 4], [6, 2], [5, 7], [2, 0], null, [3, 5], [5, 11]] },
+    { label: 'Véhicules', sub: 'prises', pending: true }
+  ];
+
+  (function renderFilSession() {
+    var host = document.getElementById('filsession');
+    var W = 520, H = 246, L = 36, R = 44, T = 10, B = 50, n = FIL_MATCHES.length;
+    var xOf = function (i) { return L + (i + 0.5) * (W - L - R) / n; };
+    var yOf = function (p) { return T + (1 - p / 100) * (H - T - B); };
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Notre part des prises, cumulée au fil de la soirée">';
+    [0, 25, 50, 75, 100].forEach(function (p) {
+      svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yOf(p) + '" y2="' + yOf(p) + '" class="' + (p === 50 ? 'fs-par' : 'fs-grd') + '"/>';
+      svg += '<text x="' + (L - 6) + '" y="' + (yOf(p) + 3.5) + '" text-anchor="end" class="fs-s">' + p + (p === 100 ? ' %' : '') + '</text>';
+    });
+    var ends = [];
+    FIL_SERIES.forEach(function (sr) {
+      if (sr.pending) return;
+      var ink = 'var(' + RES_INK[sr.label] + ')';
+      var cu = 0, ct = 0, line = [];
+      sr.v.forEach(function (v, i) {
+        if (!v) return;
+        cu += v[0]; ct += v[0] + v[1];
+        line.push([xOf(i), yOf(cu / ct * 100)]);
+        var tot = v[0] + v[1], m = FIL_MATCHES[i];
+        svg += '<circle cx="' + xOf(i) + '" cy="' + yOf(v[0] / tot * 100) + '" r="' + (1.8 + Math.sqrt(tot) * 1.1).toFixed(1) + '" class="fs-mdot" style="fill:' + ink + '" data-tip="<b>' + m.h + ' · ' + m.map + '</b> (' + (m.res === 'V' ? 'victoire' : 'défaite') + ')<br>' + sr.label + ' : ' + v[0] + ' pour nous, ' + v[1] + ' pour eux (' + pct(v[0] / tot * 100) + ')<br>Cumul : ' + cu + ' sur ' + ct + ' (' + pct(cu / ct * 100) + ')"/>';
+      });
+      svg += '<polyline points="' + line.map(function (p) { return p[0] + ',' + p[1]; }).join(' ') + '" class="fs-cum" style="stroke:' + ink + '"/>';
+      var last = line[line.length - 1];
+      svg += '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="4.5" class="fs-end" style="fill:' + ink + '"/>';
+      ends.push({ y: last[1], x: last[0], txt: Math.round(cu / ct * 100) + ' %', ink: ink });
+    });
+    // Étiquettes de fin : écartées si elles se chevauchent.
+    ends.sort(function (a, b) { return a.y - b.y; });
+    for (var k = 1; k < ends.length; k++) if (ends[k].y - ends[k - 1].y < 14) ends[k].y = ends[k - 1].y + 14;
+    ends.forEach(function (e) { svg += '<text x="' + (e.x + 9) + '" y="' + (e.y + 4) + '" class="fs-v" style="fill:' + e.ink + '">' + e.txt + '</text>'; });
+    FIL_MATCHES.forEach(function (m, i) {
+      svg += '<text x="' + xOf(i) + '" y="' + (H - B + 14) + '" text-anchor="middle" class="fs-s">' + m.h + '</text>';
+      svg += '<text x="' + xOf(i) + '" y="' + (H - B + 27) + '" text-anchor="middle" class="fs-m">' + m.map + '</text>';
+      // Une case de la bande de résultats : la couleur du résultat, l'encoche si le match porte un drapeau.
+      var cw = (W - L - R) / n - 3, cx = xOf(i) - cw / 2, cy = H - B + 33;
+      svg += '<rect x="' + cx + '" y="' + cy + '" width="' + cw + '" height="10" rx="2" class="fs-res ' + m.res + '" data-tip="<b>' + m.h + ' · ' + m.map + '</b><br>' + resultTip(m) + '"/>';
+      if (m.dom) svg += '<rect x="' + (xOf(i) - 2) + '" y="' + (cy - 3) + '" width="4" height="16" rx="1" style="fill:var(' + DOMINANCE[m.dom][1] + ');stroke:var(--card);stroke-width:1.5" data-tip="<b>' + DOMINANCE[m.dom][0] + '</b><br>' + m.h + ' · ' + m.map + ', ' + resultTip(m) + '"/>';
+    });
+    host.innerHTML = svg + '</svg>';
+  })();
+
+  // Répartition des prises dans l’escouade : les prises de notre camp, objet par objet, par joueur.
+  // Ni parité ni couleur de verdict : l'encre de chaque colonne est celle du joueur.
+  var ROLE_COLS = [
+    { k: 'jgtm', label: 'JGtm', ink: 'var(--p1)' },
+    { k: 'choco', label: 'Chocoboflor', ink: 'var(--p2)' },
+    { k: 'madina', label: 'Madina97294', ink: 'var(--p3)' },
+    { k: 'rest', label: 'Reste du camp', ink: 'var(--rest)' }
+  ];
+  var ROLES = [
+    { group: true, label: 'Bonus', sub: 'prises', v: [3, 3, 5, 1] },
+    { label: 'Surbouclier', v: [2, 2, 1, 1], lost: [0, 0, 0, 0] },
+    { label: 'Camouflage', v: [1, 1, 4, 0], lost: [0, 1, 1, 0], lostHow: ['', 'gardé sans l\u2019activer', 'lâché en mourant', ''] },
+    { group: true, label: 'Armes spéciales', sub: 'prises sur les socles', v: [9, 3, 3, 8] },
+    { label: 'M41 SPNKr', v: [5, 2, 0, 2] },
+    { label: 'S7 Sniper', v: [2, 0, 3, 0] },
+    { label: 'Épée à énergie', v: [1, 0, 0, 1] },
+    { label: 'Rayon de Sentinelle', v: [0, 1, 0, 1] },
+    { label: 'Fusil électrique', v: [0, 0, 0, 2] },
+    { label: 'Empaleur', v: [0, 0, 0, 2] },
+    { label: 'Needler', v: [1, 0, 0, 0] }
+  ];
+
+  // Chaque joueur, ses prises de la soirée : une pastille par prise, à sa couleur.
+  function dots(n, ink, lost) {
+    var h = '';
+    for (var i = 0; i < n; i++) h += '<i class="udot' + (i >= n - (lost || 0) ? ' hollow' : '') + '" style="--ink:' + ink + '"></i>';
+    return h;
+  }
+
+  document.getElementById('losses').innerHTML =
+    '<span><b>Bonus perdus</b></span><span>nous <b>2 sur 12</b> (17 %)</span><span>eux <b>2 sur 8</b> (25 %)</span>';
+
+  // Répartition des prises dans l'escouade : style des fiches de médailles de l'Escouade
+  // (liseré gauche, emblème, pastille « dominante », étiquettes en capitales, pied de fiche) ;
+  // contenu inchangé : mêmes lignes, une pastille par prise, pastille vide = bonus perdu.
+  (function renderRoleCards() {
+    var host = document.getElementById('rolecards');
+    host.className = 'mfiches';
+    var groups = [];
+    ROLES.forEach(function (r) {
+      if (r.group) { groups.push({ label: r.label, v: r.v, items: [] }); return; }
+      groups[groups.length - 1].items.push(r);
+    });
+    var sum = function (a) { return a.reduce(function (x, y) { return x + y; }, 0); };
+    groups.forEach(function (g) { g.items.sort(function (a, b) { return sum(b.v) - sum(a.v) || a.label.localeCompare(b.label); }); });
+    ROLE_COLS.forEach(function (c, ci) {
+      // Ressource dominante : celle où le joueur pèse le plus dans les prises de notre camp.
+      var shares = groups.map(function (g) { return g.v[ci] / sum(g.v); });
+      var dom = groups[shares.indexOf(Math.max.apply(null, shares))].label;
+      var initial = c.k === 'rest' ? '+' : c.label.charAt(0).toUpperCase();
+      var h = '<div class="mf-head"><div class="mf-who"><span class="mf-av" style="background:' + c.ink + '">' + initial + '</span><span class="mf-name">' + c.label + '</span></div>' +
+        '<div class="mf-dom"><span class="mf-cap">Ressource dominante</span><span class="mf-pill" style="background:color-mix(in oklab, ' + c.ink + ' 14%, transparent);color:' + c.ink + '">' + dom + '</span></div></div>';
+      groups.forEach(function (g) {
+        h += '<div><p class="mf-cap" style="margin:0 0 6px">' + resDot(g.label) + g.label + '</p>' + g.items.map(function (r) {
+          var n = r.v[ci], lost = r.lost ? r.lost[ci] : 0, how = r.lostHow ? r.lostHow[ci] : '';
+          var tip = '<b>' + c.label + '</b> · ' + r.label + '<br>' + n + ' des ' + sum(r.v) + ' prises de notre camp' + (lost ? '<br>' + lost + ' perdue : ' + how : '');
+          return '<div class="rcard-i' + (n === 0 ? ' none' : '') + '" data-tip="' + tip + '">' +
+            '<span class="rcard-l">' + r.label + '</span><span class="rcard-d">' + (n === 0 ? '<i class="udot empty"></i>' : dots(n, c.ink, lost)) + '</span><span class="rcard-n">' + n + '</span></div>';
+        }).join('') + '</div>';
+      });
+      h += '<div class="mf-foot">' + groups.map(function (g) { return '<span><b>' + g.v[ci] + '</b> ' + g.label.toLowerCase() + '</span>'; }).join('') + '</div>';
+      host.appendChild(el('div', { class: 'mcard', style: '--ink:' + c.ink }, h));
+    });
+  })();
+
+  // Match par match. Colonnes = les matchs de la soirée ; lignes = une ressource (ligne de
+  // synthèse) puis chaque objet de la carte (bonus, arme spéciale, arme de râtelier).
+  // Une cellule [nous, eux, qui chez nous] ; absente = l'objet n'était pas sur cette carte.
+  var MATCHES = [
+    { h: '21:23', map: 'Starboard', mode: 'Drapeau', res: 'V', score: '3–0', pwk: [0, 4], dom: 1 },
+    { h: '21:36', map: 'Curfew', mode: 'Assassin', res: 'V', score: '50–48', pwk: [12, 4] },
+    { h: '21:46', map: 'Origin', mode: 'Drapeau', res: 'D', score: '1–3', pwk: [8, 11] },
+    { h: '21:59', map: 'Solution', mode: 'Assassin', res: 'V', score: '50–17', pwk: [5, 0], dom: 1 },
+    { h: '22:08', map: 'Detachment', mode: 'Assassin', res: 'D', score: '45–50', pwk: [9, 13], nofilm: true },
+    { h: '22:19', map: 'Shogun', mode: 'Assassin', res: 'D', score: '37–50', pwk: [4, 10] },
+    { h: '22:29', map: 'Catalyst', mode: 'Assassin', res: 'D', score: '33–50', pwk: [9, 12] }
+  ];
+  // Objets par groupe : { nom: { '21:23': [nous, eux, 'qui chez nous', vidages?] } }.
+  var ITEMS = {
+    bonus: [
+      ['Surbouclier', { '21:23': [5, 2, 'Chocoboflor 2, JGtm 2, Madina97294 1', 10], '22:29': [1, 3, 'reste du camp 1', 8] }],
+      ['Camouflage', { '21:36': [4, 0, 'Madina97294 3, JGtm 1', 7], '22:19': [2, 3, 'Chocoboflor 1, Madina97294 1', 8] }]
+    ],
+    power: [
+      ['M41 SPNKr', { '21:36': [3, 0, 'Chocoboflor 1, JGtm 1, reste du camp 1'], '21:46': [2, 6, 'JGtm 2'], '22:19': [1, 3, 'reste du camp 1'], '22:29': [3, 4, 'JGtm 2, Chocoboflor 1'] }],
+      ['S7 Sniper', { '21:46': [3, 1, 'JGtm 2, Madina97294 1'], '21:59': [2, 0, 'Madina97294 2'], '22:29': [0, 2, ''] }],
+      ['Épée à énergie', { '21:23': [0, 2, ''], '22:19': [1, 2, 'reste du camp 1'], '22:29': [1, 1, 'JGtm 1'] }],
+      ['Needler', { '22:29': [1, 4, 'JGtm 1'] }],
+      ['Rayon de Sentinelle', { '21:36': [1, 2, 'reste du camp 1'], '22:19': [1, 0, 'Chocoboflor 1'] }],
+      ['Fusil électrique', { '21:23': [2, 2, 'reste du camp 2'] }],
+      ['Empaleur', { '21:36': [2, 0, 'reste du camp 2'] }]
+    ],
+    racks: [
+      ['Déchiqueteur', { '21:36': [2, 1, 'Madina97294 2'], '21:59': [4, 1, 'Chocoboflor 2, Madina97294 2'], '22:19': [1, 0, 'Chocoboflor 1'] }],
+      ['BR75', { '21:46': [0, 7, ''] }],
+      ['VK78 Commando', { '21:23': [2, 0, 'JGtm 1, reste du camp 1'], '21:36': [3, 0, 'reste du camp 3'], '22:19': [0, 1, ''] }],
+      ['Carabine à impulsion', { '21:36': [1, 3, 'reste du camp 1'], '22:19': [2, 0, 'reste du camp 2'] }],
+      ['Carabine Vestige', { '21:36': [1, 1, 'JGtm 1'], '22:29': [0, 1, ''] }],
+      ['MK50 Sidekick', { '21:46': [2, 0, 'JGtm 2'], '22:29': [1, 0, 'Madina97294 1'] }],
+      ['Ravageur', { '21:59': [0, 1, ''], '22:19': [0, 1, ''] }],
+      ['Calcineur', { '22:19': [1, 1, 'reste du camp 1'] }],
+      ['CQS48 Bulldog', { '21:23': [0, 1, ''] }],
+      ['Bandit EVO', { '21:59': [1, 0, 'reste du camp 1'] }],
+      ['Disrupteur', { '21:59': [0, 1, ''] }],
+      ['Fusil traqueur', { '22:19': [0, 1, ''] }],
+      ['MA5K Avenger', { '22:19': [0, 1, ''] }]
+    ]
+  };
+
+  function cellInk(share) {
+    var gap = share - 50;
+    var intensity = Math.min(1, Math.abs(gap) / 30);
+    var ink = gap >= 0 ? 'var(--pos)' : 'var(--neg)';
+    return 'color-mix(in oklab, ' + ink + ' ' + Math.round(28 + intensity * 72) + '%, var(--muted))';
+  }
+
+  // La somme d'un groupe sur un match, ou null quand le groupe n'a rien sur cette carte.
+  function groupSum(group, h) {
+    var us = 0, them = 0, seen = false;
+    ITEMS[group].forEach(function (it) {
+      var v = it[1][h];
+      if (v) { us += v[0]; them += v[1]; seen = true; }
+    });
+    return seen ? [us, them] : null;
+  }
+
+  (function renderBand() {
+    var band = document.getElementById('band');
+    band.style.gridTemplateColumns = '170px repeat(' + MATCHES.length + ', minmax(72px, 1fr))';
+    band.appendChild(el('div'));
+    MATCHES.forEach(function (m) {
+      band.appendChild(el('div', { class: 'bh' }, m.h + '<b>' + m.map + '</b>' + m.mode + '<br><span class="res ' + m.res + '" data-tip="' + resultTip(m) + '">' + (m.res === 'V' ? 'Victoire' : 'Défaite') + ' ' + m.score + '</span>' +
+        (m.dom ? '<br><span class="dom" style="--dc:var(' + DOMINANCE[m.dom][1] + ')" data-tip="<b>' + DOMINANCE[m.dom][0] + '</b><br>Drapeau de dominance du match">' + DOMINANCE[m.dom][0] + '</span>' : '')));
+    });
+
+    function head(m) {
+      return '<b>' + m.h + ' · ' + m.map + '</b> (' + m.mode + ', ' + (m.res === 'V' ? 'victoire' : 'défaite') + ' ' + m.score + ')<br>';
+    }
+    // Une ligne de la grille : un enveloppeur `display: contents`, pour pouvoir la replier.
+    function addRow(opts) {
+      var row = el('div', { class: 'brow' + (opts.item ? ' item' : ''), 'data-group': opts.group || '' });
+      if (opts.hidden) row.hidden = true;
+      row.appendChild(opts.labelEl);
+      MATCHES.forEach(function (m) {
+        var v = opts.value(m);
+        if (m.nofilm && opts.film) {
+          row.appendChild(el('div', { class: 'cell nofilm', 'data-tip': head(m) + 'Film non décodé : rien à lire pour cette ligne.' }, 'sans film'));
+          return;
+        }
+        if (v == null || v[0] + v[1] === 0) {
+          row.appendChild(el('div', { class: 'cell none', 'data-tip': head(m) + opts.absent }, '—'));
+          return;
+        }
+        var share = v[0] / (v[0] + v[1]) * 100;
+        var tip = head(m) + opts.name + ' : ' + v[0] + ' pour nous, ' + v[1] + ' pour eux (' + pct(share) + ')' +
+          (v[2] ? '<br>Chez nous : ' + v[2] : '') + (v[3] ? '<br>' + v[3] + ' socles vidés, ' + (v[0] + v[1]) + ' prises attribuées' : '');
+        row.appendChild(el('div', { class: 'cell', style: 'background:' + cellInk(share), 'data-tip': tip }, v[0] + '–' + v[1]));
+      });
+      band.appendChild(row);
+    }
+    function summaryLabel(label, sub) { return el('div', { class: 'bl' }, '<span>' + resDot(label) + label + '</span><small>' + sub + '</small>'); }
+    function itemLabel(label) { return el('div', { class: 'bl item' }, label); }
+
+    // Bonus : la ligne de synthèse, puis chaque bonus de la carte.
+    addRow({ labelEl: summaryLabel('Bonus', 'prises'), film: true, name: 'Bonus', absent: 'Aucun bonus sur cette carte.',
+      value: function (m) { return groupSum('bonus', m.h); } });
+    ITEMS.bonus.forEach(function (it) {
+      addRow({ item: true, group: 'bonus', labelEl: itemLabel(it[0]), film: true, name: it[0], absent: it[0] + ' : pas sur cette carte.',
+        value: function (m) { return it[1][m.h] || null; } });
+    });
+    // Armes spéciales : prises sur les socles, détail par arme, puis les frags obtenus avec.
+    band.appendChild(el('div', { class: 'bsep' }));
+    addRow({ labelEl: summaryLabel('Armes spéciales', 'prises sur les socles'), film: true, name: 'Armes spéciales', absent: 'Aucune arme spéciale prise.',
+      value: function (m) { return groupSum('power', m.h); } });
+    ITEMS.power.forEach(function (it) {
+      addRow({ item: true, group: 'power', labelEl: itemLabel(it[0]), film: true, name: it[0], absent: it[0] + ' : aucune prise sur cette carte.',
+        value: function (m) { return it[1][m.h] || null; } });
+    });
+    addRow({ labelEl: summaryLabel('Armes spéciales', 'frags obtenus avec'), film: false, name: 'Frags aux armes spéciales', absent: 'Aucun frag à l’arme spéciale.',
+      value: function (m) { return m.pwk; } });
+    // Armes de râtelier : repliées, un bouton les ouvre.
+    band.appendChild(el('div', { class: 'bsep' }));
+    var toggle = el('button', { type: 'button', class: 'btoggle', 'aria-expanded': 'false' }, '▸ Armes de râtelier <small>(' + ITEMS.racks.length + ', prises)</small>');
+    var rackLabel = el('div', { class: 'bl' });
+    rackLabel.appendChild(toggle);
+    addRow({ labelEl: rackLabel, film: true, name: 'Armes de râtelier', absent: 'Aucune arme de râtelier prise.',
+      value: function (m) { return groupSum('racks', m.h); } });
+    ITEMS.racks.forEach(function (it) {
+      addRow({ item: true, group: 'racks', hidden: true, labelEl: itemLabel(it[0]), film: true, name: it[0], absent: it[0] + ' : aucune prise sur cette carte.',
+        value: function (m) { return it[1][m.h] || null; } });
+    });
+    toggle.addEventListener('click', function () {
+      var open = toggle.getAttribute('aria-expanded') !== 'true';
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.innerHTML = (open ? '▾' : '▸') + ' Armes de râtelier <small>(' + ITEMS.racks.length + ', prises)</small>';
+      band.querySelectorAll('.brow[data-group="racks"]').forEach(function (r) { r.hidden = !open; });
+    });
+    // Véhicules : la ligne est réservée, la donnée n'est pas servie.
+    band.appendChild(el('div', { class: 'bsep' }));
+    var vrow = el('div', { class: 'brow' });
+    vrow.appendChild(summaryLabel('Véhicules', 'lesquels, qui les prend'));
+    vrow.appendChild(el('div', { class: 'ghost', style: 'grid-column: span ' + MATCHES.length + ';height:auto;min-height:30px' }, 'À brancher : quels véhicules étaient sur la carte, qui les a pris, qui les a perdus'));
+    band.appendChild(vrow);
+  })();
+
+  // Frags obtenus avec les ressources : les frags (barre épaisse) sur ce qui les a permis (barre fine).
+  var PRODUCTIVITE = [
+    { label: 'Bonus', sub: 'frags pendant l\u2019effet', us: 8, them: 5,
+      expo: { us: 159, them: 113, fmt: function (v) { return Math.floor(v / 60) + ' min ' + String(v % 60).padStart(2, '0'); }, name: 'temps d\u2019effet' },
+      right: '<b>3,0</b> frags par minute d\u2019effet<small>eux 2,7</small>' },
+    { label: 'Armes spéciales', sub: 'frags obtenus avec', us: 47, them: 54,
+      expo: { us: 23, them: 29, fmt: function (v) { return v + ' prises'; }, name: 'prises sur les socles' },
+      right: '<b>2,0</b> frags par prise<small>eux 1,9</small>' },
+    { label: 'Véhicules', sub: 'frags depuis un véhicule', pending: 'À brancher : frags de l\u2019adversaire, et temps à bord pour la barre fine' }
+  ];
+
+  (function renderProductivite() {
+    var host = document.getElementById('productivite');
+    PRODUCTIVITE.forEach(function (r) {
+      var row = el('div', { class: 'prow wide narrow' });
+      row.appendChild(el('div', { class: 'plabel' }, resDot(r.label) + r.label + '<small>' + r.sub + '</small>'));
+      if (r.pending) {
+        row.appendChild(el('div', { class: 'track pending' }, r.pending));
+        host.appendChild(row);
+        return;
+      }
+      var total = r.us + r.them;
+      var share = r.us / total * 100;
+      var eTotal = r.expo.us + r.expo.them;
+      var eShare = r.expo.us / eTotal * 100;
+      var bar = el('div', { class: 'pbar' });
+      bar.appendChild(el('div', { class: 'pcamps fallback' },
+        '<span><i class="csw" style="background:var(--ally)"></i><b>' + r.us + '</b> · ' + pct(share) + '</span>' +
+        '<span><i class="csw" style="background:var(--enemy)"></i><b>' + r.them + '</b> · ' + pct(100 - share) + '</span>'));
+      function track(cls, sh, tipUs, tipThem) {
+        var t = el('div', { class: 'track ' + cls });
+        t.appendChild(el('div', { class: 'seg', style: 'left:0;width:' + sh + '%;background:var(--ally);border-radius:3px 0 0 3px', 'data-tip': tipUs }));
+        t.appendChild(el('div', { class: 'seg', style: 'left:' + sh + '%;width:' + (100 - sh) + '%;background:var(--enemy);border-radius:0 3px 3px 0', 'data-tip': tipThem }));
+        t.appendChild(el('div', { class: 'parity' }));
+        return t;
+      }
+      var thick = track('tall', share,
+        '<b>Notre camp</b> · ' + r.sub + '<br>' + r.us + ' sur ' + total + ' (' + pct(share) + ')',
+        '<b>Adversaire</b> · ' + r.sub + '<br>' + r.them + ' sur ' + total + ' (' + pct(100 - share) + ')');
+      campInside(thick, '<b>' + r.us + '</b> · ' + pct(share), pct(100 - share) + ' · <b>' + r.them + '</b>');
+      bar.appendChild(thick);
+      bar.appendChild(track('thin', eShare,
+        '<b>Notre camp</b> · ' + r.expo.name + '<br>' + r.expo.fmt(r.expo.us) + ' (' + pct(eShare) + ')',
+        '<b>Adversaire</b> · ' + r.expo.name + '<br>' + r.expo.fmt(r.expo.them) + ' (' + pct(100 - eShare) + ')'));
+      bar.appendChild(el('div', { class: 'pexpo' },
+        '<span>' + r.expo.name + ' : ' + r.expo.fmt(r.expo.us) + ' · ' + pct(eShare) + '</span><span>' + r.expo.fmt(r.expo.them) + '</span>'));
+      row.appendChild(bar);
+      host.appendChild(row);
+    });
+    var ax = document.getElementById('axisP');
+    [0, 25, 50, 75, 100].forEach(function (v) {
+      ax.appendChild(el('span', { style: 'left:' + v + '%' }, v + (v === 100 ? ' %' : '')));
+    });
+  })();
+
+  // Rendement face à l'adversaire : (notre rendement / le sien) - 1, sur un axe commun.
+  var RENDEMENT = [
+    { label: 'Bonus', sub: 'frags par minute d\u2019effet', us: 8 / (159 / 60), them: 5 / (113 / 60) },
+    { label: 'Armes spéciales', sub: 'frags par prise', us: 47 / 23, them: 54 / 29 },
+    { label: 'Véhicules', sub: 'frags par minute à bord', pending: 'À brancher' }
+  ];
+  var RMAX = 50;
+
+  (function renderRendement() {
+    var host = document.getElementById('rendement');
+    var f1 = function (v) { return v.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); };
+    RENDEMENT.forEach(function (r) {
+      var row = el('div', { class: 'prow wide narrow' });
+      row.appendChild(el('div', { class: 'plabel' }, resDot(r.label) + r.label + '<small>' + r.sub + '</small>'));
+      if (r.pending) {
+        row.appendChild(el('div', { class: 'track pending' }, r.pending));
+        host.appendChild(row);
+        return;
+      }
+      var gap = (r.us / r.them - 1) * 100;
+      var g = Math.max(-RMAX, Math.min(RMAX, gap));
+      var x = 50 + g / RMAX * 50;
+      var bar = el('div', { class: 'pbar' });
+      var t = el('div', { class: 'track tall' });
+      var left = Math.min(50, x), width = Math.abs(x - 50);
+      t.appendChild(el('div', {
+        class: 'seg', style: 'left:' + left + '%;width:' + width + '%;background:' + (gap >= 0 ? 'color-mix(in oklab, var(--pos) 80%, var(--muted))' : 'color-mix(in oklab, var(--neg) 80%, var(--muted))'),
+        'data-tip': '<b>' + r.label + '</b> · ' + r.sub + '<br>Nous ' + f1(r.us) + ', eux ' + f1(r.them) + ' : ' + (gap >= 0 ? '+' : '−') + Math.round(Math.abs(gap)) + ' %'
+      }));
+      t.appendChild(el('div', { class: 'zero' }));
+      var sign = (gap >= 0 ? '+' : '−') + Math.round(Math.abs(gap)) + ' %';
+      t.appendChild(el('span', { class: 'tiplab', style: gap >= 0 ? 'left:calc(' + x + '% + 6px)' : 'right:calc(' + (100 - x) + '% + 6px)' }, sign));
+      t.appendChild(el('span', { class: 'rawlab', style: gap >= 0 ? 'right:calc(50% + 8px)' : 'left:calc(50% + 8px)' }, f1(r.us) + ' contre ' + f1(r.them)));
+      bar.appendChild(t);
+      row.appendChild(bar);
+      host.appendChild(row);
+    });
+    var ax = document.getElementById('axisR');
+    [[-50, '−50 %'], [-25, '−25'], [0, 'autant'], [25, '+25'], [50, '+50 %']].forEach(function (p) {
+      ax.appendChild(el('span', { style: 'left:' + (50 + p[0]) + '%' }, p[1]));
+    });
+  })();
+
+  // Groupés ou isolés : un point par mort de l'escouade, soirée du 22/09.
+  // [joueur (0 JGtm, 1 Chocoboflor, 2 Madina97294), distance au coéquipier le plus proche en m (null = hors de vue), délai de riposte en ms (null = jamais, sous 60 s)]
+  var NUAGE = [[1,17.3,24242],[0,4.2,22524],[1,1.5,57242],[0,20.6,8009],[0,8.9,2620],[1,6.4,8775],[1,13,11510],[1,1.7,1100],[2,23.4,3],[2,5.5,9793],[1,6.4,10908],[1,11,33433],[1,19.8,1],[2,16.4,26727],[2,18.9,14565],[0,22.2,43930],[2,9.1,11461],[1,2.6,4520],[1,3,3086],[0,18.8,131],[2,8.7,44862],[0,4.2,null],[2,12.3,null],[1,8.7,null],[1,7.5,null],[0,12.2,11095],[0,6.7,18954],[2,17.8,36918],[2,10.1,9377],[1,18,16766],[2,4.2,34617],[2,12,22038],[0,1.8,15148],[0,23.1,37036],[0,3.8,2986],[0,8,4854],[2,11.8,19653],[0,2.1,817],[2,4.3,1352],[0,5.9,2603],[1,8.5,4020],[1,17.6,43393],[1,11.9,6473],[1,8.9,8892],[1,5.5,13197],[0,5.1,934],[0,7.2,null],[2,0.8,null],[0,7.6,null],[0,10.3,55572],[0,4.8,25074],[2,8.1,43659],[2,6.7,1],[0,2.6,24043],[1,7,18169],[0,9.8,1284],[1,3.8,10395],[2,3.4,14649],[2,16.4,15583],[2,4,2719],[2,3.5,42060],[2,1.1,519],[2,7.3,43812],[0,7,3],[0,12,1769],[2,4.1,13047],[1,2.2,1367],[0,6.6,24909],[0,19.5,18419],[2,4.4,3570],[2,3.7,1001],[2,4.1,21723],[1,7.5,3589],[0,15.1,22723],[0,4.4,7557],[0,4.9,216],[2,14,46614],[1,20.5,null],[0,19.1,null],[2,3.9,null],[1,3.1,2120],[0,20.6,21274],[0,2.6,6406],[2,22.2,31265],[0,8.3,7841],[1,4.2,3970],[1,3.5,9729],[0,0.6,8740],[0,10.6,2188],[1,4,1787],[2,2.1,5287],[2,14.4,5739],[2,11.9,3335],[2,24,12263],[2,6.8,9209],[1,2.7,51219],[1,30.1,41125],[1,17.2,8726],[2,24.5,49734],[1,9,584],[2,14.6,21489],[1,0.7,11363],[2,14.8,47012],[0,18.7,4472],[2,17.1,30946],[2,5.3,4470],[0,1.7,11294],[2,13.9,24775],[2,15.5,24224],[1,12.1,42343],[1,16.2,26992],[1,15.7,31049],[2,14.8,20955],[0,18,32381],[2,1.3,null],[0,18.7,null],[0,11.4,null],[1,10.3,3487],[2,9.9,13769],[0,2.1,3589],[1,28.3,35171],[2,2.3,1168],[1,14.4,13513],[2,11.1,3671],[2,27.2,23257],[1,8.7,1503],[0,20.6,40640],[0,14,21640],[1,21.3,33666],[0,17.7,8108],[0,24.4,3269],[0,9.3,5137],[1,4.3,5455],[1,0.9,2],[1,5.5,36487],[0,3.6,2853],[1,5.4,18218],[0,16.2,11479],[2,1.2,59661],[1,19.5,null],[0,41.7,null],[2,1.6,null],[0,13.3,null],[0,33.8,null],[2,6.1,null],[2,8,59743],[2,1.5,57240],[0,8.4,37153],[1,8.5,2],[0,7.6,2569],[2,13.9,7790],[0,18,5971],[2,8,47480],[2,2.4,249],[2,19,1854],[1,7.8,1],[0,3.3,44812],[1,null,9594],[0,5.3,34466],[0,16.3,24495],[0,5.7,4336],[0,15.2,44910],[1,8.9,42274],[1,13.5,12879],[1,2.3,7390],[2,4.6,3236],[2,6.1,618],[1,33.5,31030],[1,13.3,10727],[0,10.5,null],[0,null,13281],[2,null,48581],[1,null,26679],[1,null,734],[1,null,20004],[0,null,31713],[0,null,6691],[2,null,35520],[1,null,8939],[1,null,32182],[0,null,20425],[1,null,3536],[2,null,15682],[0,null,52258],[1,null,1001],[2,null,46946],[0,null,3121],[1,null,12561],[2,null,4887],[2,null,10011],[2,null,3562],[2,null,3588],[0,null,43477],[0,null,27127],[0,null,4088],[2,null,18888],[2,null,37121],[2,null,5389],[1,null,null],[1,null,null],[1,null,null],[2,null,null],[1,null,null],[0,null,null],[1,null,null],[1,null,null],[1,null,null],[1,null,null],[2,null,null],[1,12.6,19119],[2,12.1,3936],[0,2.9,14716],[1,3,450],[0,2.8,14963],[1,10.1,2386],[2,0.4,12930],[2,13.2,16433],[0,11.2,10426],[2,3.8,24706],[1,9,5672],[2,9.2,31265],[1,4.2,4772],[2,4.9,3121],[1,8,1551],[2,9.7,3185],[2,3,8643],[0,31.7,20755],[2,null,6907],[2,15.3,38841],[0,17.5,4038],[2,4.1,2],[2,11.7,32533],[1,15.8,null],[1,24.3,null],[2,7.7,null],[1,4,null],[1,5.9,null],[0,18.6,383],[0,22.9,22956],[0,12.6,6373],[0,0.5,1552],[1,5.1,31348],[1,12.7,1934],[2,4.1,3970],[1,1.4,4555],[2,15.2,45581],[0,2.6,2102],[2,8.3,9309],[0,10.2,52252],[0,2.9,34],[0,4.9,12479],[0,11.8,9776],[1,4.6,9626],[1,17,6738],[0,1.4,32952],[0,21.1,20053],[1,1.7,null],[2,18.4,null],[0,3.6,null]];
+  var NUAGE_INK = ['var(--p1)', 'var(--p2)', 'var(--p3)'];
+  var NUAGE_NOM = ['JGtm', 'Chocoboflor', 'Madina97294'];
+  var RADAR = 18;
+
+  var MORTS_22_09 = [[0,2.91,0],[2,12.25,0],[2,0.83,0],[1,15.77,0],[2,1.31,1],[0,20.63,0],[2,8.06,0],[0,10.49,1],[1,12.63,0],[2,6.67,0],[0,18.64,1],[1,17.27,0],[2,8.03,0],[0,10.27,1],[1,19.54,1],[2,22.2,0],[1,24.32,0],[0,8.39,1],[1,1.47,2],[2,1.47,2],[0,2.56,0],[0,4.77,0],[0,4.24,0],[1,2.96,0],[2,12.13,1],[0,22.88,0],[2,1.58,0],[1,10.25,1],[0,7.19,1],[0,12.62,0],[1,3.14,0],[0,4.2,1],[2,7.71,0],[1,1.66,1],[2,9.94,2],[0,41.65,0],[0,3.8,0],[2,9.06,1],[1,8.85,0],[2,11.83,0],[0,11.95,0],[2,4.07,0],[1,8.99,0],[2,3.76,0],[1,21.26,0],[2,8.25,0],[0,7.99,0],[1,13.54,0],[1,2.16,0],[0,17.97,0],[1,7.52,0],[0,1.43,0],[1,5.48,0],[2,13.98,1],[1,5.41,0],[0,15.08,1],[1,7.54,0],[0,5.1,0],[2,4.1,0],[1,33.49,1],[0,21.06,0],[0,4.39,0],[2,11.67,0],[1,5.5,0],[0,17.48,0],[0,3.62,0],[0,16.2,0],[2,1.23,0],[1,13.32,1],[0,4.94,0],[2,8.74,1],[2,14.75,0],[0,33.76,1],[1,16.24,0],[0,3.64,1],[2,null,0],[2,3.72,0],[1,17.03,0],[0,18.78,0],[2,6.08,0],[2,15.25,0],[1,15.71,0],[2,4.11,0],[0,31.74,1],[1,2.99,0],[2,6.08,1],[0,2.11,0],[1,8.47,0],[2,9.21,0],[0,19.11,0],[1,5.9,0],[2,18.4,1],[1,4.62,0],[0,10.23,1],[2,13.92,0],[1,17.55,1],[0,17.66,0],[2,4.61,0],[1,4.25,0],[0,24.44,1],[1,0.86,0],[0,6.61,0],[2,15.53,0],[1,12.08,2],[2,4.87,0],[0,1.65,1],[1,11.85,1],[2,4.38,0],[2,9.68,0],[1,2.55,0],[2,2.99,0],[0,5.88,0],[1,2.32,1],[0,19.52,1],[1,4.24,0],[0,2.85,0],[1,8.85,0],[0,9.26,1],[2,4.3,0],[0,4.86,1],[2,3.85,0],[0,11.82,0],[1,7.95,0],[0,12.18,0],[2,2.1,0],[1,4.17,1],[2,0.4,0],[0,2.64,0],[2,13.87,0],[1,20.45,1],[1,4.04,0],[0,7.56,1],[2,8.02,2],[1,5.06,0],[1,28.25,0],[0,6.74,1],[2,2.41,0],[0,8.34,1],[1,12.7,0],[2,17.82,0],[1,14.42,1],[0,0.61,1],[2,14.38,0],[1,3.51,1],[0,9.84,0],[2,23.41,1],[2,2.28,0],[1,7.03,0],[2,4.14,1],[1,6.41,0],[0,7.6,1],[2,5.53,0],[0,2.1,0],[1,8.46,1],[2,18.96,0],[0,18.04,0],[2,3.36,0],[1,3.82,1],[0,20.64,1],[2,11.9,0],[0,8.86,0],[1,13.02,0],[2,11.07,0],[1,3.98,0],[0,0.53,0],[2,24.04,0],[1,10.1,0],[2,16.37,0],[0,10.62,0],[2,6.82,0],[0,2.84,0],[1,1.72,0],[2,4.02,0],[0,1.81,0],[1,6.43,1],[1,8.69,1],[0,3.31,0],[2,16.35,0],[1,1.36,0],[0,11.2,0],[1,2.73,0],[2,24.49,1],[0,20.61,0],[2,3.53,0],[1,10.96,0],[0,14.04,1],[2,14.59,0],[0,6.99,1],[1,7.79,1],[2,14.81,0],[0,23.08,0],[2,17.07,0],[0,13.3,0],[1,17.95,1],[2,1.14,1],[0,5.34,0],[2,7.28,0],[1,30.14,1],[2,10.08,0],[1,19.8,0],[0,22.22,1],[2,15.15,0],[0,16.28,0],[2,13.17,1],[1,17.23,0],[2,4.22,0],[0,5.67,1],[2,5.34,0],[0,2.55,0],[1,9,1],[2,27.23,0],[0,18.71,0],[1,0.66,0],[0,18.72,0],[2,12.04,2],[1,null,2],[0,15.15,1],[1,8.74,0],[2,18.88,1],[0,11.44,1]];
+  // Isolement à la mort : un point par mort des 6 matchs filmés du 22/09 (contexte de mort du film).
+  // [joueur (0 JGtm, 1 Chocoboflor, 2 Madina97294), distance au coéquipier visible le plus proche en m
+  //  (null = aucun visible), coéquipiers tombés dans les 5 s précédentes (2 = deux ou plus)].
+  var MORTS = MORTS_22_09;
+  (function renderIsolement() {
+    var ZINK = ['var(--z-grp)', 'var(--z-iso)', 'var(--z-hv)'];
+    document.getElementById('legendIso').innerHTML = SQUAD.map(function (p) { return '<span><i style="background:' + p.ink + ';border-radius:50%"></i>' + p.label + '</span>'; }).join('') +
+      '<span><i style="width:2px;border-radius:0;background:var(--foreground)"></i>Portée du radar (18 m)</span>';
+    var ROWS = ['Aucun coéquipier tombé', 'Un coéquipier tombé', 'Deux ou plus'];
+    var ROWSUB = ['dans les 5 s', 'dans les 5 s', 'dans les 5 s'];
+    var W = 760, L = 150, R = 14, T = 8, rowH = 74, XMAX = 45, XHV0 = 48, XHV1 = 56;
+    var n = ROWS.length, H = T + n * rowH + 30;
+    var xOf = function (m) { return L + (m / XHV1) * (W - L - R); };
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;overflow:visible" role="img" aria-label="Nos morts selon la distance au coéquipier visible le plus proche et le nombre de coéquipiers tombés juste avant">';
+    // Zone groupée (à portée de radar) et bande « aucun visible ».
+    s += '<rect x="' + L + '" y="' + T + '" width="' + (xOf(RADAR) - L) + '" height="' + (n * rowH) + '" style="fill:color-mix(in oklab, var(--ally) 7%, transparent)"/>';
+    s += '<rect x="' + xOf(XHV0) + '" y="' + T + '" width="' + (xOf(XHV1) - xOf(XHV0)) + '" height="' + (n * rowH) + '" style="fill:color-mix(in oklab, var(--muted) 80%, transparent)"/>';
+    [0, 9, 18, 27, 36, 45].forEach(function (m) {
+      s += '<line x1="' + xOf(m) + '" x2="' + xOf(m) + '" y1="' + T + '" y2="' + (T + n * rowH) + '" style="stroke:var(--border)"/>';
+      s += '<text x="' + xOf(m) + '" y="' + (T + n * rowH + 16) + '" text-anchor="middle" style="font-size:10.5px;fill:var(--muted-foreground)">' + m + (m === 45 ? ' m' : '') + '</text>';
+    });
+    s += '<text x="' + ((xOf(XHV0) + xOf(XHV1)) / 2) + '" y="' + (T + n * rowH + 16) + '" text-anchor="middle" style="font-size:10.5px;fill:var(--muted-foreground)">aucun visible</text>';
+    s += '<line x1="' + xOf(RADAR) + '" x2="' + xOf(RADAR) + '" y1="' + T + '" y2="' + (T + n * rowH) + '" style="stroke:var(--foreground);stroke-width:1.5"/>';
+    ROWS.forEach(function (r, ri) {
+      var y0 = T + ri * rowH;
+      if (ri) s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y0 + '" y2="' + y0 + '" style="stroke:var(--border)"/>';
+      var ds = MORTS.filter(function (d) { return d[2] === ri; });
+      var g = ds.filter(function (d) { return d[1] !== null && d[1] <= RADAR; }).length;
+      var i = ds.filter(function (d) { return d[1] !== null && d[1] > RADAR; }).length;
+      var h = ds.length - g - i;
+      s += '<text x="0" y="' + (y0 + rowH / 2 - 3) + '" style="font-size:12.5px;fill:var(--foreground)">' + r + '</text>';
+      s += '<text x="0" y="' + (y0 + rowH / 2 + 12) + '" style="font-size:11px;fill:var(--muted-foreground)">' + ROWSUB[ri] + ' · ' + ds.length + ' morts</text>';
+      // Comptes de chaque zone, écrits dans le graphe.
+      [[g, (L + xOf(RADAR)) / 2], [i, (xOf(RADAR) + xOf(XMAX)) / 2], [h, (xOf(XHV0) + xOf(XHV1)) / 2]].forEach(function (z) {
+        s += '<text x="' + z[1] + '" y="' + (y0 + 14) + '" text-anchor="middle" style="font-size:12px;font-weight:700;fill:var(--foreground);opacity:.75">' + z[0] + '</text>';
+      });
+      ds.forEach(function (d, k) {
+        var jy = y0 + 24 + (((k * 53) % 97) / 97) * (rowH - 34);
+        var x = d[1] === null ? xOf(XHV0 + 1 + ((k * 37) % 100) / 100 * 6) : xOf(Math.min(XMAX, d[1]));
+        s += '<circle cx="' + x.toFixed(1) + '" cy="' + jy.toFixed(1) + '" r="3.6" style="fill:' + SQUAD[d[0]].ink + ';stroke:var(--card);stroke-width:0.8" data-tip="<b>' + SQUAD[d[0]].label + '</b><br>' +
+          (d[1] === null ? 'Aucun coéquipier visible' : 'Coéquipier visible le plus proche : ' + String(d[1]).replace('.', ',') + ' m') + '<br>' + ROWS[ri] + ' ' + ROWSUB[ri] + '"/>';
+      });
+    });
+    document.getElementById('isoNuage').innerHTML = s + '</svg>';
+
+    // Par joueur : groupé / isolé / aucun visible, en part de ses morts.
+    var hostP = document.getElementById('isoJoueurs');
+    var ZN = ['Groupé', 'Isolé', 'Aucun coéquipier visible'];
+    var zoneOf = function (d) { return d[1] === null ? 2 : (d[1] <= RADAR ? 0 : 1); };
+    var rows = SQUAD.map(function (p, pi) { var c = [0, 0, 0]; MORTS.forEach(function (d) { if (d[0] === pi) c[zoneOf(d)]++; }); return [p.label, p.ink, c]; });
+    var tot = [0, 0, 0]; MORTS.forEach(function (d) { tot[zoneOf(d)]++; });
+    rows.push(['Escouade', 'var(--foreground)', tot]);
+    rows.forEach(function (r, ri) {
+      var n2 = r[2][0] + r[2][1] + r[2][2];
+      var row = el('div', { class: 'prow wide narrow', style: ri === rows.length - 1 ? 'margin-top:6px;padding-top:8px;border-top:1px solid var(--border)' : '' });
+      row.appendChild(el('div', { class: 'plabel' }, '<i class="rdot" style="--rc:' + r[1] + ';border-radius:50%"></i>' + r[0] + '<small>' + n2 + ' morts</small>'));
+      var t = el('div', { class: 'track tall' }), x = 0;
+      r[2].forEach(function (v, zi) {
+        if (!v) return;
+        var w = v / n2 * 100;
+        t.appendChild(el('div', { class: 'seg', style: 'left:' + x + '%;width:' + w + '%;background:' + ZINK[zi] + ';' + (x === 0 ? 'border-radius:3px 0 0 3px' : ''),
+          'data-tip': '<b>' + r[0] + '</b> · ' + ZN[zi] + '<br>' + v + ' morts sur ' + n2 + ' (' + Math.round(w) + ' %)' },
+          '<span class="sl ' + (zi === 0 ? 'on-ink' : 'on-light') + '">' + v + ' · ' + Math.round(w) + ' %</span>'));
+        x += w;
+      });
+      row.appendChild(t);
+      hostP.appendChild(row);
+    });
+  })();
+
+  // Par rapport à d'habitude : les soirées comparables (mêmes familles de mode), la dernière = ce soir.
+  function renderHabChart(hostId, dates, series) {
+    var W = 520, H = 220, L = 36, R = 58, T = 12, B = 30, n = dates.length;
+    var xOf = function (i) { return L + (i + 0.5) * (W - L - R) / n; };
+    var yOf = function (p) { return T + (1 - p / 100) * (H - T - B); };
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img">';
+    svg += '<rect x="' + xOf(n - 1.5) + '" y="' + T + '" width="' + (xOf(n - 0.5) - xOf(n - 1.5)) + '" height="' + (H - T - B) + '" class="hb-now"/>';
+    [0, 25, 50, 75, 100].forEach(function (p) {
+      svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yOf(p) + '" y2="' + yOf(p) + '" class="' + (p === 50 && series.parity ? 'fs-par' : 'fs-grd') + '"/>';
+      svg += '<text x="' + (L - 6) + '" y="' + (yOf(p) + 3.5) + '" text-anchor="end" class="fs-s">' + p + (p === 100 ? ' %' : '') + '</text>';
+    });
+    dates.forEach(function (d, i) {
+      svg += '<text x="' + xOf(i) + '" y="' + (H - B + 16) + '" text-anchor="middle" class="' + (i === n - 1 ? 'fs-m' : 'fs-s') + '">' + (i === n - 1 ? 'ce soir' : d) + '</text>';
+    });
+    var ends = [];
+    series.lines.forEach(function (sr) {
+      var pts = [], past = [];
+      sr.v.forEach(function (v, i) { if (v == null) return; pts.push([xOf(i), yOf(v), v, i]); if (i < n - 1) past.push(v); });
+      var med = past.slice().sort(function (a, b) { return a - b; });
+      var mm = (med[Math.floor((med.length - 1) / 2)] + med[Math.ceil((med.length - 1) / 2)]) / 2;
+      svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yOf(mm) + '" y2="' + yOf(mm) + '" style="stroke:' + sr.ink + '" class="hb-med"/>';
+      svg += '<polyline points="' + pts.map(function (p) { return p[0] + ',' + p[1]; }).join(' ') + '" class="fs-cum" style="stroke:' + sr.ink + '"/>';
+      pts.forEach(function (p, k) {
+        var now = k === pts.length - 1;
+        svg += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + (now ? 5.5 : 3) + '" class="' + (now ? 'fs-end' : 'hb-dot') + '" style="fill:' + sr.ink + '" data-tip="<b>' + sr.label + '</b><br>' + (now ? 'Ce soir' : 'Soirée du ' + dates[p[3]]) + ' : ' + pct(p[2]) + '<br>Médiane des soirées précédentes : ' + pct(mm) + '"/>';
+      });
+      var last = pts[pts.length - 1];
+      ends.push({ x: last[0], y: last[1], txt: Math.round(last[2]) + ' %', ink: sr.ink });
+    });
+    ends.sort(function (a, b) { return a.y - b.y; });
+    for (var k = 1; k < ends.length; k++) if (ends[k].y - ends[k - 1].y < 14) ends[k].y = ends[k - 1].y + 14;
+    ends.forEach(function (e) { svg += '<text x="' + (e.x + 10) + '" y="' + (e.y + 4) + '" class="fs-v" style="fill:' + e.ink + '">' + e.txt + '</text>'; });
+    document.getElementById(hostId).innerHTML = svg + '</svg>';
+  }
+
+  // Prises : soirées avec film (5 précédentes + ce soir), familles Assassin + Drapeau.
+  renderHabChart('habPrises', ['28/07', '31/07', '27/08', '01/09', '07/09', '22/09'], {
+    parity: true,
+    lines: [
+      { label: 'Bonus', ink: 'var(--res-bonus)', v: [58.3, 65.1, 75.0, 54.2, 60.0, 60.0] },
+      { label: 'Armes spéciales', ink: 'var(--res-power)', v: [50.0, 54.1, 47.8, 57.5, 48.8, 44.2] }
+    ]
+  });
+  // Jeu groupé : 9 soirées précédentes + ce soir.
+  renderHabChart('habGroupe', ['09/06', '03/07', '07/07', '23/07', '28/07', '31/07', '27/08', '01/09', '07/09', '22/09'], {
+    parity: false,
+    lines: [
+      { label: 'Morts à portée d\u2019un coéquipier', ink: 'var(--ally)', v: [87.2, 85.2, 86.5, 89.7, 88.6, 89.0, 89.0, 84.9, 84.4, 85.5] }
+    ]
+  });
+
+  // ---------- Ce qui part ----------
+  var MOVES = [
+    ['Écart cumulé au FDA attendu', 'Dynamique', "C'est un écart cumulé dans le temps, comme la balance des dégâts et l'écart d'engagement qui y vivent déjà."],
+    ['Répartition des frags · Outils de destruction (et Précision par rôle sur Halo 5)', 'Contributions', "Ils disent qui frague et avec quoi. Ils y étaient jusqu'au 22/09."],
+    ["Rapport de force par famille de mode · Ce que mon camp prend de l'objectif", 'Contributions', "L'objectif n'est dans aucune des sept questions ; la part de chacun dans l'objectif est une contribution."],
+    ["Part de mon camp · Notre part (équipement, armes spéciales) · Écart à la parité · Détail des prises", '« Contrôle des ressources »', 'Une barre par ressource : notre camp contre l\u2019adversaire, sans découpe par joueur.'],
+    ["Régularité match par match · Emprise de l'escouade", '« Contrôle des ressources, match par match »', 'Une bande par ressource avec le résultat du match, puis une ligne par objet de la carte : chaque bonus, chaque arme spéciale, les armes de râtelier repliées. Qui l’a pris chez nous passe au survol.'],
+    ["Usages d'équipement (par joueur, toutes familles)", '« Frags obtenus avec les ressources » et les pastilles vides des rôles', 'L\u2019usage devient un rendement camp contre camp ; la perte d\u2019un bonus devient une pastille vide sur la fiche de celui qui l\u2019a pris.'],
+    ["Contrôle des armes spéciales · Qui porte quel usage dans l'escouade · Taux de rafle de chaque coéquipier", '« Répartition des prises dans l’escouade »', 'La répartition dans notre camp, objet par objet, sans parité ni couleur de verdict : les rôles, pas un classement.'],
+    ['Cadence de chacun sur la période', 'Retirée', 'Elle compte des gestes d\u2019équipement (mur, grappin) qui quittent l\u2019onglet ; les pages solo les gardent.'],
+    ['Contrôle des armes par niveau', 'Bilan et « Contrôle des ressources, match par match »', "Le niveau du socle sépare les armes spéciales des armes de râtelier, au bilan comme au détail ; absent le 22/09 (voir données)."],
+    ['Grappin, mur, capteur et autres équipements', 'Synthèse et Séries temporelles', 'Ils ne font pas partie des ressources disputées de la carte ; les pages solo les gardent.']
+  ];
+  (function renderMoves() {
+    var t = document.getElementById('moves');
+    var h = '<thead><tr><th>Aujourd’hui dans l’onglet</th><th>Va vers</th><th>Pourquoi</th></tr></thead><tbody>';
+    MOVES.forEach(function (m) { h += '<tr><td>' + m[0] + '</td><td style="white-space:nowrap"><span class="chip move">' + m[1] + '</span></td><td>' + m[2] + '</td></tr>'; });
+    t.innerHTML = h + '</tbody>';
+  })();
+
+  // ---------- Données manquantes ----------
+  // Du plus léger au plus lourd. Les six premières lignes suffisent à livrer les neuf cartes
+  // sur les bonus et les socles ; les trois dernières ouvrent les lignes « à brancher ».
+  var GAPS = [
+    ['Une seule population de matchs',
+     'Équipement et formes lisent tes matchs filtrés ; frags et riposte, ceux de la composition.',
+     'Passer les blocs d’usage sur les matchs de la composition, comme le reste de la page.',
+     'cost1', 'Go, petit'],
+    ['Résultat et carte de chaque match',
+     'Les matchs des formes portent un libellé de carte, sans identifiant ni résultat. Les deux sont déjà chargés par la page.',
+     'Les transmettre au bloc.',
+     'cost1', 'Go, minime'],
+    ['Résultat de chaque match dans les courbes de la session',
+     'Déjà chargé par la page ; il manque au bloc d\u2019usage, comme la carte.',
+     'Le transmettre avec la carte (ligne « Résultat et carte » ci-dessus).',
+     'cost1', 'Go, minime'],
+    ['Bonus : frags pendant l\u2019effet et temps d\u2019effet',
+     'Stockés pour tous les joueurs du lobby, par match, mais jamais lus par aucune page.',
+     'Les agréger par camp dans le bloc d\u2019usage.',
+     'cost1', 'Go, minime'],
+    ['Bonus : lequel était sur la carte, combien de fois vidé',
+     "Le nombre de socles de bonus vidés par match est lu par l'Escouade mais pas transmis ; seules les Sessions le projettent.",
+     'Le transmettre au bloc, par match et par type de bonus.',
+     'cost1', 'Go, minime'],
+    ['Bonus : pris, utilisés, gardés, lâchés, par camp',
+     "Le calcul produit déjà ces comptes par camp mais n'en publie que des taux ; l'écran mêle les bonus au grappin et au mur.",
+     'Publier les comptes par ressource et par camp.',
+     'cost2', 'Agrégat Go'],
+    ["Repère « d'habitude »",
+     'Servi pour la riposte seulement, sur tout l’historique et tous modes confondus. Rien pour les bonus, les socles, les armes spéciales ou les morts groupées.',
+     "Calculer chaque mesure pour chacune des dix soirées précédentes de la composition, sur les familles de mode de la soirée affichée, comme la riposte le fait déjà par soirée.",
+     'cost2', 'Agrégat Go'],
+    ["Le camp entier et l'adversaire, pour les morts groupées et la riposte",
+     "Le nuage ne porte que tes morts et celles des coéquipiers sélectionnés. Le contexte des morts couvre pourtant tout le lobby.",
+     'Agréger par camp, pour les deux camps.',
+     'cost2', 'Agrégat Go'],
+    ['Niveau du socle (arme spéciale ou râtelier)',
+     "La projection au fil de l'eau n'écrit rien : 30 avertissements « identités de match illisibles, lot non projeté » du 17 au 19/09, et aucune ligne pour les matchs synchronisés après le dernier rattrapage (22/09, 13 h 08), soirée du 22/09 comprise.",
+     'Réparer la lecture des identités, puis rejouer le rattrapage des niveaux.',
+     'cost2', 'Correctif Go + rattrapage'],
+    ["Historique mesuré par le film",
+     "Résumés d'usage sur 152 matchs de la base, soit 13 soirées de la composition sur 46. Les frags aux armes spéciales et le contexte des morts couvrent 44 à 46 soirées.",
+     "Rejouer le rattrapage des résumés d'usage (déjà prévu à la release).",
+     'cost1', 'Rattrapage seul'],
+    ['Véhicules : frags depuis un véhicule, côté adversaire',
+     "Servis pour l'escouade seule (frags par classe et par engin).",
+     'Étendre au lobby la lecture des sources de frag.',
+     'cost2', 'Agrégat Go'],
+    ['Armes spéciales : prise, puis frag ou lâchée',
+     "Le film le sait (prises, tirs, changements d'arme) ; le résumé d'usage ne garde que le compte des prises. Les tirs décodés par arme se relient aux prises, mais l'Épée à énergie et le Rayon de Sentinelle n'y tirent jamais.",
+     "Une règle de plus dans le résumé d'usage, rejouée depuis les rejeux déjà rangés, sans redécoder les films.",
+     'cost3', 'Nouvelle mesure + rattrapage'],
+    ['Véhicules : lesquels étaient sur la carte, montées, pertes',
+     "Seulement dans le document de rejeu. Les compteurs officiels (véhicules détruits, vols, aide au pilotage) sont déclarés dans l'import mais jamais extraits.",
+     "Une projection du rejeu par match ; ou extraire les compteurs officiels et recharger les matchs depuis l'API.",
+     'cost3', 'Nouvelle mesure + rattrapage'],
+    ['Groupés dans la durée, pas seulement à la mort',
+     'Aucune mesure : les positions stockées par match sont une carte de chaleur sans joueur.',
+     'Une projection des positions du rejeu : part du temps passé à portée d’un coéquipier. Le bloc tient sans elle.',
+     'cost3', 'Nouvelle mesure + rattrapage'],
+    ['Bonus sans ramasseur',
+     'Le 22/09 : 33 socles de bonus vidés, dont 20 prises attribuées à un joueur.',
+     "Rien : la part porte sur les prises attribuées, l'infobulle le dit.",
+     'cost1', 'Texte']
+  ];
+  (function renderGaps() {
+    var t = document.getElementById('gaps');
+    var h = '<thead><tr><th>Ce qui manque</th><th>Constaté</th><th>Ce qu’il faut</th><th>Coût</th></tr></thead><tbody>';
+    GAPS.forEach(function (g) {
+      h += '<tr><td><b style="font-weight:500">' + g[0] + '</b></td><td>' + g[1] + '</td><td>' + g[2] + '</td><td style="white-space:nowrap"><span class="chip ' + g[3] + '">' + g[4] + '</span></td></tr>';
+    });
+    t.innerHTML = h + '</tbody>';
+  })();
+
+  // ---------- À valider ----------
+  var DECISIONS = [
+    "<b>L'onglet s'appelle « Emprise ».</b> Il répond à des questions de jeu, plus seulement d'usage ; « Tactique » est déjà le nom d'une page.",
+    '<b>Six blocs, neuf cartes, dans cet ordre</b> : bilan, rôles, carte par carte, prises et rendement, groupés, habitude. Le bilan répond à « comment on s\u2019en est sortis », le reste le détaille.',
+    '<b>Un code couleur des ressources pour toute l\u2019app</b>, en jetons sémantiques : <span class="swatches"><span><i class="rdot" style="--rc:var(--res-bonus)"></i>bonus</span><span><i class="rdot" style="--rc:var(--res-power)"></i>armes spéciales</span><span><i class="rdot" style="--rc:var(--res-vehicle)"></i>véhicules</span><span><i class="rdot" style="--rc:var(--res-rack)"></i>armes de râtelier</span></span>. Validé au contrôle de palette (daltonismes, contraste) en clair et en sombre. Le violet reprend celui des armes lourdes dans « Répartition des frags » ; le camouflage et le surbouclier, aujourd\u2019hui violets sur Sessions et Synthèse, passent au bonus.',
+    '<b>Les valeurs s\u2019écrivent dans les barres.</b> Barres camp contre camp (bilan, frags) : notre compte et notre part dans notre segment, ceux de l\u2019adversaire dans le sien ; la ligne au-dessus ne revient que si un segment est trop étroit. Barre fine d\u2019exposition : trop mince pour du texte, sa ligne reste dessous. Rendement : l\u2019écart au bout de la barre, les rendements bruts de l\u2019autre côté du zéro.',
+    '<b>Résultat et dominance.</b> Le résultat reste sur chaque match (la dominance n\u2019en remplace pas la lecture : 82 % des matchs n\u2019ont aucun drapeau) ; le drapeau s\u2019ajoute quand il existe. « Contrôle des ressources au fil de la session » reprend la bande de résultats de l\u2019app (case colorée, encoche de dominance) ; « Contrôle des ressources, match par match » garde « Victoire 3–0 » et ajoute le badge « Domination ».',
+    '<b>Groupés ou isolés = l’isolement seul.</b> « Isolement à la mort » : un point par mort, la distance au coéquipier visible le plus proche en abscisse, le nombre de coéquipiers tombés dans les cinq secondes en ordonnée, pour séparer l’isolement de placement de celui qui suit la chute des autres ; « Isolement à la mort, par joueur » en barres. La riposte sort du bloc (trop dépendante du contexte) et reste sur Synergies.',
+    '<b>L\u2019habitude en deux graphes</b> : les prises (bonus, armes spéciales) et le jeu groupé (morts à portée, riposte en groupe), soirée après soirée, ce soir à droite ; la médiane des soirées précédentes en pointillé fin de la couleur de chaque courbe, la valeur de ce soir au bout de la courbe.',
+    '<b>« Parité » disparaît de l\u2019onglet.</b> Le trait à 50 % se nomme « autant que l\u2019adversaire » : ce n\u2019est pas une moyenne, c\u2019est le point où les deux camps ont pris autant.',
+    '<b>Le bilan a un angle de lecture : la tendance de la soirée.</b> À côté de « Contrôle des ressources », « Contrôle des ressources au fil de la session » trace sur un seul graphe une courbe par ressource (bonus, armes spéciales, véhicules) : notre part cumulée depuis le premier match, un petit point par match. « Contrôle des ressources, match par match » reste le détail objet par objet ; la tendance d\u2019une soirée à l\u2019autre reste dans « Par rapport à d\u2019habitude ».',
+    '<b>Les prises perdues vivent dans « Répartition des prises dans l’escouade ».</b> Pour un bonus, une pastille pleine est un bonus activé, une pastille vide un bonus perdu (gardé ou lâché en mourant) ; la ligne « Bonus perdus : nous 2 sur 12, eux 2 sur 8 » garde la comparaison entre camps. Les armes spéciales et les véhicules n\u2019ont pas de perte mesurable par prise : leurs pastilles restent pleines, leur usage se lit dans le rendement.',
+    '<b>Prendre et produire sont deux lectures.</b> « Contrôle des ressources » ne compte que les prises ; « Frags obtenus avec les ressources » et, sur la même rangée, « Rendement face à l\u2019adversaire » (écart de rendement en %, zéro = autant que lui) comptent les frags (pendant l\u2019effet d\u2019un bonus, avec une arme spéciale, depuis un véhicule) et le temps d\u2019effet, avec un trait qui rappelle notre part des prises : prendre plus sans produire plus se voit d\u2019un coup d\u2019œil.',
+    '<b>Tout l’onglet porte sur les matchs de la composition</b>, comme le reste de la page. Un match joué sans tes coéquipiers n’y entre plus.',
+    '<b>Les ressources disputées sont les bonus, les armes spéciales et les véhicules.</b> Grappin, mur, capteur et autres équipements quittent l’Escouade ; Synthèse et Séries temporelles les gardent.',
+    '<b>Armes spéciales = armes des socles de puissance, mesurées deux fois</b> : les prises (film) et les frags obtenus avec (feuille de match, les deux camps, tout l’historique). Les armes de râtelier sont à part, repliées ; c’est le niveau du socle qui les sépare, une fois sa projection réparée.',
+    '<b>« Contrôle des ressources, match par match » détaille les objets de chaque carte</b> : une ligne par bonus, par arme spéciale et par véhicule, vide quand l’objet n’y était pas, et qui l’a pris chez nous au survol.',
+    "<b>« D'habitude » = les dix soirées précédentes de la même composition, sur les familles de mode jouées ce soir-là</b>, chaque soirée comptée à part. La bande couvre leur moitié centrale ; sous trois soirées comparables, pas de bande. L'habitude a son propre bloc : les autres cartes ne montrent que la soirée.",
+    '<b>Trois lectures, sans redite.</b> « Contrôle des ressources » : notre camp contre l\u2019adversaire, en prises. « Répartition des prises dans l’escouade » : qui a pris quoi, et quel bonus a été perdu. « Frags obtenus avec les ressources » et « Rendement face à l\u2019adversaire » : ce que chaque camp en a produit. L\u2019adversaire est compté, jamais nommé ni coloré (règle en place).',
+    '<b>Les valeurs s\u2019écrivent sur les graphes</b> : « Nous 12 · 60 % » et « Eux 8 · 40 % » au-dessus de chaque barre du bilan, les comptes dans les cases des rôles et dans les barres d\u2019issues. Un compte qui ne tient pas passe au survol, jamais tronqué.',
+    '<b>Frags et armes vont sur Contributions, l’écart cumulé au FDA attendu sur Dynamique, les deux cartes d’objectif sur Contributions.</b>',
+    '<b>Halo 5</b> : sans film, l’onglet ne garde que ce que la feuille de match sait (frags aux armes spéciales) ; sans rien, il se masque.'
+  ];
+  document.getElementById('decisions').innerHTML = DECISIONS.map(function (d) { return '<li>' + d + '</li>'; }).join('');
+
+  // ---------- Mise en page des cartes ----------
+  // Légendes toujours en bas du bloc et centrées ; le graphe centré verticalement dans le bloc.
+  document.querySelectorAll('.card > .body').forEach(function (body) {
+    var legends = Array.prototype.filter.call(body.children, function (c) { return c.classList.contains('legend'); });
+    var main = el('div', { class: 'cmain' });
+    Array.prototype.slice.call(body.children).forEach(function (c) { if (legends.indexOf(c) < 0) main.appendChild(c); });
+    body.appendChild(main);
+    legends.forEach(function (l) { body.appendChild(l); });
+  });
+
+  // ---------- Étiquettes dans les barres ----------
+  // Un compte s'écrit dans son segment s'il y tient ; sinon il ne s'écrit pas (jamais tronqué)
+  // et reste au survol. Recalculé quand la largeur change.
+  function fitLabels() {
+    document.querySelectorAll('.pcamps.fallback').forEach(function (p) { p.classList.remove('show'); });
+    document.querySelectorAll('.seg > .sl, .ofill > .sl').forEach(function (s) {
+      s.style.visibility = 'visible';
+      var box = s.parentElement.getBoundingClientRect();
+      var lab = s.getBoundingClientRect();
+      if (lab.width > box.width - 10) {
+        s.style.visibility = 'hidden';
+        var pbar = s.closest('.pbar');
+        var fb = pbar && pbar.querySelector('.pcamps.fallback');
+        if (fb) fb.classList.add('show');
+      }
+    });
+  }
+  fitLabels();
+  var fitPending = false;
+  window.addEventListener('resize', function () {
+    if (fitPending) return;
+    fitPending = true;
+    requestAnimationFrame(function () { fitPending = false; fitLabels(); });
+  });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitLabels);
+
+  // ---------- Infobulle ----------
+  var tip = document.getElementById('tip');
+  function show(target, x, y) {
+    tip.innerHTML = target.getAttribute('data-tip');
+    tip.style.display = 'block';
+    var r = tip.getBoundingClientRect();
+    var left = Math.min(x + 14, window.innerWidth - r.width - 8);
+    var top = y + 14 + r.height > window.innerHeight ? y - r.height - 10 : y + 14;
+    tip.style.left = Math.max(8, left) + 'px';
+    tip.style.top = Math.max(8, top) + 'px';
+  }
+  document.addEventListener('mousemove', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-tip]') : null;
+    if (t) show(t, e.clientX, e.clientY); else tip.style.display = 'none';
+  });
+  document.addEventListener('focusin', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-tip]') : null;
+    if (!t) return;
+    var r = t.getBoundingClientRect();
+    show(t, r.left, r.bottom);
+  });
+  document.addEventListener('focusout', function () { tip.style.display = 'none'; });
+
+  // ---------- Thème ----------
+  document.querySelectorAll('[data-theme-set]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var v = b.getAttribute('data-theme-set');
+      if (v === 'auto') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', v);
+      document.querySelectorAll('[data-theme-set]').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+    });
+  });
+})();
+</script>

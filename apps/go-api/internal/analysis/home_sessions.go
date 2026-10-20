@@ -1,4 +1,4 @@
-// Package analysis â€” home_sessions.go : rÃ©sumÃ©s de sessions (BuildSessionSummaries
+// Package analysis — home_sessions.go : résumés de sessions (BuildSessionSummaries
 // et BuildSessionSummary) + helpers de tri par label/temps.
 package analysis
 
@@ -11,7 +11,7 @@ import (
 
 // ---------------------------------------------------------------------------
 
-// distinctSessionLabels retourne les labels distincts triÃ©s par start_time DESC.
+// distinctSessionLabels retourne les labels distincts triés par start_time DESC.
 func distinctSessionLabels(sessions []legacymatch.HomeSessionRow) []string {
 	// Calculer le start_time max par label.
 	labelTimes := make(map[string]time.Time)
@@ -72,7 +72,7 @@ func earliestStartTime(matches []legacymatch.HomeMatchRow) *time.Time {
 	return earliest
 }
 
-// latestEndTime retourne l'heure de fin estimÃ©e du dernier match de la session.
+// latestEndTime retourne l'heure de fin estimée du dernier match de la session.
 func latestEndTime(matches []legacymatch.HomeMatchRow) *time.Time {
 	var latest *legacymatch.HomeMatchRow
 	for i := range matches {

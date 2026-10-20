@@ -13,29 +13,21 @@ import (
 	"levelup/go-api/internal/assets"
 )
 
-// stubResolver implements assets.Resolver for tests.
+// stubResolver implements handlers.AssetSource for tests.
 type stubResolver struct {
-	result assets.Resolved
-	err    error
-	gotRef assets.Ref
+	result     assets.Resolved
+	err        error
+	gotRef     assets.Ref
+	gotTrusted bool
 }
 
-func (s *stubResolver) Get(_ context.Context, ref assets.Ref) (assets.Resolved, error) {
+func (s *stubResolver) Get(_ context.Context, ref assets.Ref, trusted bool) (assets.Resolved, error) {
 	s.gotRef = ref
+	s.gotTrusted = trusted
 	return s.result, s.err
 }
 
-func (s *stubResolver) Refresh(_ context.Context, ref assets.Ref) (assets.Resolved, error) {
-	return s.result, s.err
-}
-
-func (s *stubResolver) Warm(_ context.Context, _ ...assets.Ref) {}
-func (s *stubResolver) RegisterLocalFile(_ context.Context, _ assets.Ref, _ string) error {
-	return nil
-}
-func (s *stubResolver) Close(_ context.Context) error { return nil }
-
-var _ assets.Resolver = (*stubResolver)(nil)
+var _ handlers.AssetSource = (*stubResolver)(nil)
 var _ = errors.Is(nil, assets.ErrNotFound)
 
 func newMedalTestRouter(h *handlers.AssetHandler) *chi.Mux {

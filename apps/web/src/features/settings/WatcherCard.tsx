@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCopyToClipboard } from '@/lib/clipboard/useCopyToClipboard'
 import { ToggleRow } from '@/features/settings/_settingsShared'
 import type { SettingsText } from '@/features/settings/i18n'
 import { formatLastSeen, resolveTitleDisplayName } from '@/features/settings/watcherPresence'
@@ -106,9 +107,13 @@ function AuthFlow({
     return () => clearInterval(timer)
   }, [secondsLeft])
 
-  const copyCode = useCallback(() => {
-    navigator.clipboard.writeText(userCode).catch(() => {})
-  }, [userCode])
+  // Mécanique « copier + coche transitoire » partagée (lib/clipboard), MÊME motif que
+  // `features/auth/CopyCodeButton.tsx` : ce bouton-ci porte un LIBELLÉ visible (et non une
+  // icône seule), il ne peut donc pas réutiliser ce composant tel quel. La copie n'avait
+  // aucun retour et avalait son échec (`catch(() => {})`) ; le hook journalise l'échec et
+  // ne montre alors AUCUNE confirmation — le code reste sélectionnable à la main.
+  const { copy, copied } = useCopyToClipboard()
+  const copyCode = useCallback(() => void copy(userCode), [copy, userCode])
 
   if (pollData?.status === 'authorized') {
     return <p className="text-xs text-success">✅ {t.watcherAuthSuccess}</p>
@@ -126,7 +131,9 @@ function AuthFlow({
         <code className="rounded bg-muted px-2 py-0.5 text-base font-mono font-bold tracking-widest">
           {userCode}
         </code>
-        <Button variant="ghost" size="sm" onClick={copyCode}>{t.watcherAuthCopyCode}</Button>
+        <Button variant="ghost" size="sm" onClick={copyCode}>
+          {copied ? `✓ ${t.watcherAuthCodeCopied}` : t.watcherAuthCopyCode}
+        </Button>
         <a href={verificationUrl} target="_blank" rel="noopener noreferrer">
           <Button variant="ghost" size="sm">{t.watcherAuthOpenLink}</Button>
         </a>

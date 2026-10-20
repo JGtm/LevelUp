@@ -3,7 +3,6 @@ package sharedprovider
 import (
 	"context"
 	"database/sql"
-	"sync"
 	"sync/atomic"
 )
 
@@ -25,8 +24,6 @@ import (
 //   - State retourne StateRO (ou StateClosed après Close)
 //   - Path retourne le `path` fourni (utilisé pour étiqueter les logs/metrics)
 //   - Close marque comme fermé mais NE FERME PAS le db (le caller le possède)
-//   - Subscribe est fonctionnel mais aucune notification n'est jamais émise
-//     (pas de transition d'état)
 //
 // Cette implémentation est TRÈS minimaliste et ne respecte PAS toutes les
 // invariants du vrai providerImpl (notamment : pas de drain WG, pas de
@@ -42,10 +39,6 @@ type inMemoryProvider struct {
 	path string
 
 	closed atomic.Bool
-
-	subsMu    sync.Mutex
-	subs      map[int64]Subscriber
-	nextSubID int64
 }
 
 // Get implémente Provider.Get. Retourne immédiatement le db sous-jacent
@@ -93,23 +86,4 @@ func (p *inMemoryProvider) Path() string {
 func (p *inMemoryProvider) Close() error {
 	p.closed.Store(true)
 	return nil
-}
-
-// Subscribe enregistre un callback. Conforme à l'API publique mais aucune
-// notification n'est jamais émise (le provider n'a pas de transitions
-// observables).
-func (p *inMemoryProvider) Subscribe(fn Subscriber) func() {
-	p.subsMu.Lock()
-	defer p.subsMu.Unlock()
-	if p.subs == nil {
-		p.subs = make(map[int64]Subscriber)
-	}
-	id := p.nextSubID
-	p.nextSubID++
-	p.subs[id] = fn
-	return sync.OnceFunc(func() {
-		p.subsMu.Lock()
-		defer p.subsMu.Unlock()
-		delete(p.subs, id)
-	})
 }

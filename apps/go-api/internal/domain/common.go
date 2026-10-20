@@ -1,7 +1,10 @@
 // Package domain — types communs d'erreur et de pagination.
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // APIError représente une erreur structurée retournée par les endpoints.
 type APIError struct {
@@ -12,6 +15,16 @@ type APIError struct {
 }
 
 func (e *APIError) Error() string { return e.Code + ": " + e.Message }
+
+// ErrorMessageForCode rend le message FIXE d'un code d'erreur (snake_case) : le code lu
+// avec des espaces ("player_not_found" -> "player not found"). Le texte d'une erreur
+// interne ne part jamais au client ; le détail va au journal.
+func ErrorMessageForCode(code string) string {
+	if code == "" {
+		return "error"
+	}
+	return strings.ReplaceAll(code, "_", " ")
+}
 
 // ErrNotFound crée une erreur 404 standard.
 func ErrNotFound(resource, id string) *APIError {
@@ -40,7 +53,7 @@ func ErrInternal(msg string) *APIError {
 }
 
 // MediaToolingStatus reflète la disponibilité de l'outillage média (ffmpeg/ffprobe)
-// telle que sondée UNE FOIS au boot. Exposée dans /health pour rendre l'info
+// telle que sondée UNE FOIS au boot. Exposée dans /admin/health pour rendre l'info
 // observable en prod même quand LEVELUP_LOG_LEVEL=warn masque la ligne INFO
 // « media tooling: ffmpeg/ffprobe disponibles » émise au démarrage.
 type MediaToolingStatus struct {
@@ -49,7 +62,13 @@ type MediaToolingStatus struct {
 	FFmpegVersion string `json:"ffmpeg_version,omitempty"`
 }
 
-// HealthResponse est la réponse de GET /health.
+// PublicHealthResponse est la réponse de GET /health, sonde publique : l'état et rien
+// d'autre (aucune version, aucun compteur).
+type PublicHealthResponse struct {
+	Status string `json:"status"`
+}
+
+// HealthResponse est la réponse de GET /admin/health : le détail du service.
 type HealthResponse struct {
 	Status     string `json:"status"`
 	MatchCount int    `json:"match_count"`

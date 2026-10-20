@@ -1,0 +1,158 @@
+// Commande weapon-icons-table — DERIVE la table `tag weap -> fichier d'icone` depuis
+// index.json et l'ecrit en Go.
+//
+// POURQUOI UNE COMMANDE SEPAREE DE `weapon-icons-build`. L'extraction a besoin des
+// archives du jeu installe (cgo, ~80 Go). La table, elle, ne depend que d'`index.json`,
+// qui est VERSIONNE. La regenerer doit donc etre possible sur n'importe quelle machine
+// et en CI — sinon la seule facon de verifier que la table est a jour serait de
+// reinstaller le jeu, et la table divergerait en silence (defaut deja vecu sur les
+// tables de la page de nommage, cf. cmd/weapon-icons-build/page.go).
+//
+// LA CLE EST LE TAG `weap`, pas un nom. Les 32 bits HAUTS d'un identifiant filmshell
+// sont le global tag id du `weap` (etat de l'art §1.1). Cette cle couvre les armes du
+// registre, leurs VARIANTES, et celles qui n'y sont pas — ce que ni `name_en` ni
+// `weapon_key` ne couvraient ensemble.
+//
+// SEUL L'ATLAS `contour` EST LU. `index.json` porte `tags_weap` sur les TROIS styles,
+// mais ce champ est indexe par `sprite index`, qui n'a de sens que pour les deux atlas
+// d'armes (`contour` / `silhouette`) : l'atlas du kill feed a sa propre numerotation,
+// sans rapport (cf. cmd/weapon-icons-build/main.go, branche `at.ID == sandboxAtlasTag`).
+// Lire `tags_weap` sur une entree `killfeed` rendrait une icone FAUSSE.
+//
+//	go run ./cmd/weapon-icons-table
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"go/format"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+// atlasStyle est le seul style d'atlas dont `tags_weap` est exploitable (cf. en-tete).
+const atlasStyle = "contour"
+
+// iconEntry ne declare que les champs consommes ici : la source porte une quinzaine de
+// colonnes de tracabilite d'extraction qui ne regardent pas la table.
+type iconEntry struct {
+	Index    int      `json:"index"`
+	Style    string   `json:"style"`
+	File     string   `json:"file"`
+	WeapTags []string `json:"tags_weap"`
+}
+
+func main() {
+	src := flag.String("src",
+		filepath.Join("..", "..", "static", "weapons-assets", "halo_infinite", "jeu", "index.json"),
+		"index.json de l'ensemble d'icones extrait")
+	out := flag.String("out",
+		filepath.Join("internal", "games", "halo_infinite", "weapon_icons_table.go"),
+		"fichier Go genere")
+	flag.Parse()
+
+	entries, err := loadEntries(*src)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "lecture:", err)
+		os.Exit(1)
+	}
+	table, err := BuildTable(entries)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "table:", err)
+		os.Exit(1)
+	}
+	src2 := Render(table)
+	formatted, err := format.Source(src2)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "gofmt:", err)
+		os.Exit(1)
+	}
+	if err := os.WriteFile(*out, formatted, 0o600); err != nil {
+		fmt.Fprintln(os.Stderr, "ecriture:", err)
+		os.Exit(1)
+	}
+	fmt.Printf("%d tags -> %s\n", len(table), *out)
+}
+
+func loadEntries(path string) ([]iconEntry, error) {
+	blob, err := os.ReadFile(path) //nolint:gosec // chemin d'outillage, passe en flag
+	if err != nil {
+		return nil, err
+	}
+	var entries []iconEntry
+	if err := json.Unmarshal(blob, &entries); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("%s: aucune entree", path)
+	}
+	return entries, nil
+}
+
+// TagFile associe un tag `weap` au fichier PNG qui le represente.
+type TagFile struct {
+	Tag  uint32
+	File string // stem sans extension, ex. "contour-01"
+}
+
+// BuildTable derive la table depuis les entrees d'index.json. Echoue si deux index
+// revendiquent le meme tag : ce serait une ambiguite, pas un detail — la resoudre par
+// un arbitrage arbitraire donnerait une icone fausse avec l'apparence d'une certitude.
+func BuildTable(entries []iconEntry) ([]TagFile, error) {
+	seen := map[uint32]string{}
+	var out []TagFile
+	for _, e := range entries {
+		if e.Style != atlasStyle {
+			continue
+		}
+		stem := strings.TrimSuffix(e.File, ".png")
+		for _, raw := range e.WeapTags {
+			tag64, err := strconv.ParseUint(raw, 16, 32)
+			if err != nil {
+				return nil, fmt.Errorf("index %d: tag %q illisible: %w", e.Index, raw, err)
+			}
+			tag := uint32(tag64)
+			if prev, dup := seen[tag]; dup && prev != stem {
+				return nil, fmt.Errorf("tag %08x revendique par %s ET %s", tag, prev, stem)
+			}
+			seen[tag] = stem
+			out = append(out, TagFile{Tag: tag, File: stem})
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("aucun tag dans l'atlas %q", atlasStyle)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Tag < out[j].Tag })
+	return out, nil
+}
+
+// Render rend le source Go de la table. Exporte pour que le test de fraicheur puisse
+// comparer octet a octet ce que la commande produirait au fichier en place — c'est ce
+// test, et non la discipline, qui empeche la table de vieillir en silence.
+func Render(table []TagFile) []byte {
+	var b bytes.Buffer
+	b.WriteString(header)
+	for _, tf := range table {
+		fmt.Fprintf(&b, "\t0x%08x: %q,\n", tf.Tag, tf.File)
+	}
+	b.WriteString("}\n")
+	return b.Bytes()
+}
+
+const header = `// Code generated by cmd/weapon-icons-table; DO NOT EDIT.
+//
+// Source : static/weapons-assets/halo_infinite/jeu/index.json, atlas ` + "`contour`" + `.
+// Cle : le tag ` + "`weap`" + ` = les 32 bits HAUTS d'un identifiant filmshell.
+// Regeneration : cd apps/go-api && go run ./cmd/weapon-icons-table
+
+package halo_infinite
+
+// weaponIconFileByTag associe un tag ` + "`weap`" + ` au stem du PNG qui le represente,
+// sous static/weapons-assets/halo_infinite/jeu/.
+var weaponIconFileByTag = map[uint32]string{
+`

@@ -7,7 +7,8 @@
 // à chaque boot), fatal sur toute DB FRAÎCHE ou reconstruite.
 //
 // CE QUE FAIT CE PACKAGE. Il photographie le schéma AVANT et APRÈS le soin et journalise
-// en WARN (`schema_drift_healed`) chaque objet RÉELLEMENT créé — jamais les no-ops. Une
+// en WARN (`schema_drift_healed`) chaque objet RÉELLEMENT créé, et chaque index RÉELLEMENT
+// retiré (lot B-C5, 2026-09-27) — jamais les no-ops. Une
 // player DB à jour n'émet donc RIEN ; une DB en retard sur la chaîne de migrations se
 // signale bruyamment à chaque ouverture, avec l'objet exact qui manquait.
 //
@@ -42,9 +43,12 @@ var catalogQueries = []string{
 	`SELECT 'table', table_name, table_name FROM duckdb_tables() WHERE schema_name = 'main'`,
 	`SELECT 'view', view_name, view_name FROM duckdb_views() WHERE schema_name = 'main' AND NOT internal`,
 	`SELECT 'index', table_name, index_name FROM duckdb_indexes() WHERE schema_name = 'main'`,
-	`SELECT 'sequence', '', sequence_name FROM duckdb_sequences() WHERE schema_name = 'main'`,
+	sequenceCatalogQuery,
 	`SELECT 'column', table_name, column_name FROM duckdb_columns() WHERE schema_name = 'main'`,
 }
+
+// sequenceCatalogQuery — famille « séquence » du catalogue, lue aussi seule par SequenceCreated.
+const sequenceCatalogQuery = `SELECT 'sequence', '', sequence_name FROM duckdb_sequences() WHERE schema_name = 'main'`
 
 // Snapshot photographie les objets de schéma de la DB. Retourne nil si l'introspection
 // échoue — la détection de dérive est alors DÉSACTIVÉE pour cet appel (jamais bloquante :
@@ -80,7 +84,8 @@ func collect(ctx context.Context, db *sql.DB, query string, out map[Object]struc
 }
 
 // Report compare l'état APRÈS le soin à l'état `before` et journalise en WARN
-// `schema_drift_healed` chaque objet réellement créé. No-op si `before` est nil
+// `schema_drift_healed` chaque objet réellement créé (action=created) et chaque index
+// réellement retiré (action=dropped). No-op si `before` est nil
 // (introspection indisponible, déjà journalisée) ou si rien n'a changé — cas NOMINAL
 // d'une DB à jour. `healedBy` nomme le soin responsable (ex. "sync.EnsurePlayerSchema").
 //
@@ -103,14 +108,40 @@ func Report(ctx context.Context, db *sql.DB, before map[Object]struct{}, healedB
 		if obj.Kind == "column" && !tableExistedBefore(before, obj.Table) {
 			continue // table entièrement créée : déjà signalée comme telle
 		}
-		slog.WarnContext(ctx, "schema_drift_healed",
-			"object_kind", obj.Kind,
-			"table", obj.Table,
-			"object", obj.Name,
-			"db", dbPath,
-			"authority", "migrations",
-			"healed_by", healedBy)
+		warnHealed(ctx, obj, "created", dbPath, healedBy)
 	}
+	reportRetiredIndexes(ctx, before, after, dbPath, healedBy)
+}
+
+// reportRetiredIndexes journalise chaque index présent AVANT le soin et absent APRÈS : le
+// soin retire les index ART retirés (MSR, PSA — convergence D-4 du plan backlog 2026-09-26)
+// qu'un binaire plus ancien aurait recréés. Ce retrait est une action réelle : il se
+// journalise comme une création (lot B-C5), jamais sur une base à jour. Seuls les INDEX
+// sont comparés dans ce sens : c'est la suppression que porte le DDL de soin (DROP INDEX IF
+// EXISTS). Une conversion append-only d'une table legacy, qui la reconstruit, y apparaît
+// aussi, à raison : c'est une action réelle.
+func reportRetiredIndexes(ctx context.Context, before, after map[Object]struct{}, dbPath, healedBy string) {
+	for obj := range before {
+		if obj.Kind != "index" {
+			continue
+		}
+		if _, stillThere := after[obj]; stillThere {
+			continue
+		}
+		warnHealed(ctx, obj, "dropped", dbPath, healedBy)
+	}
+}
+
+// warnHealed émet le WARN schema_drift_healed d'un objet créé ou retiré par le soin.
+func warnHealed(ctx context.Context, obj Object, action, dbPath, healedBy string) {
+	slog.WarnContext(ctx, "schema_drift_healed",
+		"action", action,
+		"object_kind", obj.Kind,
+		"table", obj.Table,
+		"object", obj.Name,
+		"db", dbPath,
+		"authority", "migrations",
+		"healed_by", healedBy)
 }
 
 // tableExistedBefore indique si la table portait déjà des objets avant le soin.
@@ -131,4 +162,27 @@ func currentDatabasePath(ctx context.Context, db *sql.DB) string {
 		return ""
 	}
 	return path
+}
+
+// SequenceCreated dit si une séquence absente de `before` existe maintenant : le soin vient
+// d'en créer une (CREATE SEQUENCE … START 1, conversion append-only), qui peut rendre un id
+// déjà posé dans la colonne qu'elle alimente. Prudente : rend true quand `before` manque
+// (introspection indisponible, déjà journalisée) ou que le catalogue ne répond pas (échec
+// journalisé ici) — l'appelant réaligne alors plutôt que de laisser une séquence en retard.
+func SequenceCreated(ctx context.Context, db *sql.DB, before map[Object]struct{}) bool {
+	if before == nil {
+		return true
+	}
+	now := make(map[Object]struct{}, 32)
+	if err := collect(ctx, db, sequenceCatalogQuery, now); err != nil {
+		slog.ErrorContext(ctx, "schemadrift.SequenceCreated: catalogue des séquences illisible — réalignement par prudence",
+			"err", err)
+		return true
+	}
+	for obj := range now {
+		if _, existed := before[obj]; !existed {
+			return true
+		}
+	}
+	return false
 }

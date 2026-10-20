@@ -17,7 +17,7 @@ func TestAdminTokenHealthHandler_Get_OK(t *testing.T) {
 	want := domain.TokenHealthResponse{
 		GeneratedAt: "2026-06-10T00:00:00Z",
 		Players: []domain.PlayerTokenHealth{
-			{Gamertag: "GT", Refresh: "ok", MSAL: "expiring", XSTS: "ok"},
+			{Gamertag: "GT", Refresh: "ok", Access: "expiring", XSTS: "ok"},
 		},
 	}
 	h := NewAdminTokenHealthHandler(func(_ context.Context, _ string) (domain.TokenHealthResponse, error) {
@@ -36,7 +36,7 @@ func TestAdminTokenHealthHandler_Get_OK(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(got.Players) != 1 || got.Players[0].MSAL != "expiring" {
+	if len(got.Players) != 1 || got.Players[0].Access != "expiring" {
 		t.Fatalf("got %+v", got)
 	}
 }

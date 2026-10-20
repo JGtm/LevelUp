@@ -35,6 +35,19 @@ func (db *DB) Close() error {
 	return db.loadSQL().Close()
 }
 
+// CachedReadOnlyRefs rend le nombre de références que le processus tient sur le
+// handle lecture seule (OpenReadOnly) de path : 0 si aucun. Diagnostic du swap
+// RO→RW d'un provider (ADR 0016) : une fois son propre handle rendu, toute
+// référence restante est tenue ailleurs et fait refuser l'ouverture RW.
+func CachedReadOnlyRefs(path string) int {
+	openDBsMu.Lock()
+	defer openDBsMu.Unlock()
+	if cached, ok := openDBs[roCacheKeyPrefix+path]; ok {
+		return cached.refCount
+	}
+	return 0
+}
+
 // QueryRow exécute une requête qui retourne exactement une ligne.
 // L'erreur réelle de la requête est différée jusqu'à Scan ; on ne peut donc pas
 // la logger ici. Les call sites critiques doivent capturer err sur Scan eux-mêmes.

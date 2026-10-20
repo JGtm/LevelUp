@@ -2,7 +2,7 @@
 
 // Package sync — shared_rw_guard_test.go : garde-fou anti-régression du fail-fast
 // "shared en read-only". Verrouille la détection qui a manqué pendant l'incident
-// 31h (cf. .ai/HANDOFF_sync_combat_completion.md).
+// 31h (cf. .ai/archive/V7/HANDOFF_sync_combat_completion.md).
 package sync
 
 import (

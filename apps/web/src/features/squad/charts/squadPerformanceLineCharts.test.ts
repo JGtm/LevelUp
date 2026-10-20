@@ -151,6 +151,66 @@ describe('buildKillsDeathsButterflyOption', () => {
     expect(series[1].itemStyle.color).toBe(hexComplement('#aaa'))
     expect(series[1].itemStyle.opacity).toBeUndefined()
   })
+
+  describe('échelle Y stable, indépendante des toggles (item 5, DEC-5)', () => {
+    type AxisOpt = { min: number; max: number }
+
+    it('yAxis.min/max identiques AVEC et SANS la série Bonus visible (extent sur le jeu complet)', () => {
+      const rows = { Me: [pt(0, { kills: 12, deaths: 4, assists: 9 })] } // bonus = 9/3 = 3
+      const withoutBonus = buildKillsDeathsButterflyOption(rows, {
+        colorByPlayer: COLORS,
+        playerOrder: ['Me'],
+        killsLabel: 'Frags',
+        deathsLabel: 'Morts',
+        hiddenTypes: new Set(['Bonus']),
+      })
+      const withBonus = buildKillsDeathsButterflyOption(rows, {
+        colorByPlayer: COLORS,
+        playerOrder: ['Me'],
+        killsLabel: 'Frags',
+        deathsLabel: 'Morts',
+        hiddenTypes: new Set(), // Bonus visible
+      })
+      const yWithout = withoutBonus.yAxis as unknown as AxisOpt
+      const yWith = withBonus.yAxis as unknown as AxisOpt
+      expect(yWith.min).toBe(yWithout.min)
+      expect(yWith.max).toBe(yWithout.max)
+      // Valeurs exactes : max = kills(12) + bonus(3) = 15 → dizaine sup. 20.
+      // min = -deaths(4) = -4 → dizaine inf. -10. Le bonus compte MÊME masqué.
+      expect(yWith.max).toBe(20)
+      expect(yWith.min).toBe(-10)
+    })
+
+    it('masquer un joueur ne change pas non plus l\'échelle (même cause : extent sur TOUS les joueurs)', () => {
+      const rows = {
+        Me: [pt(0, { kills: 12, deaths: 4, assists: 0 })],
+        F1: [pt(0, { kills: 30, deaths: 2, assists: 0 })],
+      }
+      const shown = buildKillsDeathsButterflyOption(rows, {
+        colorByPlayer: COLORS,
+        playerOrder: ['Me', 'F1'],
+        killsLabel: 'Frags',
+        deathsLabel: 'Morts',
+        hiddenTypes: new Set(['Bonus']),
+      })
+      const f1Hidden = buildKillsDeathsButterflyOption(rows, {
+        colorByPlayer: COLORS,
+        playerOrder: ['Me', 'F1'],
+        killsLabel: 'Frags',
+        deathsLabel: 'Morts',
+        hiddenTypes: new Set(['Bonus']),
+        hiddenPlayers: new Set(['F1']),
+      })
+      const yShown = shown.yAxis as unknown as AxisOpt
+      const yHidden = f1Hidden.yAxis as unknown as AxisOpt
+      expect(yHidden.min).toBe(yShown.min)
+      expect(yHidden.max).toBe(yShown.max)
+      // max = plus grand total positif (F1 : 30 + 0) → dizaine sup. 30.
+      // min = plus grand total négatif (Me : -4) → dizaine inf. -10.
+      expect(yShown.max).toBe(30)
+      expect(yShown.min).toBe(-10)
+    })
+  })
 })
 
 describe('buildHsPerfectOption', () => {
@@ -197,5 +257,47 @@ describe('buildHsPerfectOption', () => {
     const series = opt.series as Array<{ data: Array<number | null> }>
     expect(series[0].data).toEqual([3]) // HS
     expect(series[1].data).toEqual([null]) // Perfect undefined → null
+  })
+})
+
+describe('infobulles : lignes lisibles (retours 2026-10-17)', () => {
+  const formatterOf = (opt: object) =>
+    (opt as { tooltip: { formatter: (p: unknown) => string } }).tooltip.formatter
+
+  it('frags / bonus / morts : bonus arrondi, morts en valeur absolue, ordre des barres du haut vers le bas', () => {
+    const opt = buildKillsDeathsButterflyOption(
+      { Me: [pt(0, { kills: 10, deaths: 5, assists: 4 })] },
+      { colorByPlayer: COLORS, playerOrder: ['Me'], killsLabel: 'Frags', deathsLabel: 'Morts' },
+    )
+    const series = opt.series as unknown as Array<{ name: string; data: Array<number | null> }>
+    const params = series.map((s, i) => ({
+      seriesIndex: i,
+      seriesName: s.name,
+      value: s.data[0],
+      color: 'c',
+      axisValueLabel: '#1',
+    }))
+    const html = formatterOf(opt)(params)
+    const names = [...html.matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1])
+    expect(names).toEqual(['Me — Bonus', 'Me — Frags', 'Me — Morts'])
+    expect(html).toContain('1,3')
+    expect(html).not.toContain('1,3333')
+    expect(html).toContain('>5<')
+    expect(html).not.toContain('−5')
+  })
+
+  it('courbes : la plus haute d abord, un joueur sans valeur n a pas de ligne', () => {
+    const opt = buildPerformanceLineOption(
+      { Me: [pt(0)], F1: [pt(0)] },
+      { colorByPlayer: COLORS, playerOrder: ORDER, metric: 'kda', unitSuffix: ' %' },
+    )
+    const html = formatterOf(opt)([
+      { seriesIndex: 0, seriesName: 'Me', value: 1.5, color: 'c0', axisValueLabel: '#1' },
+      { seriesIndex: 1, seriesName: 'F1', value: 2.5, color: 'c1', axisValueLabel: '#1' },
+      { seriesIndex: 2, seriesName: 'X', value: null, color: 'c2', axisValueLabel: '#1' },
+    ])
+    expect(html.indexOf('F1')).toBeLessThan(html.indexOf('Me'))
+    expect(html).toContain('2,5 %')
+    expect(html).not.toContain('>X<')
   })
 })

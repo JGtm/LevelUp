@@ -33,7 +33,7 @@ func main() {
 	dataDir := fs.String("data-dir", defaultDataDir(), "Répertoire data/auth")
 	_ = fs.Parse(os.Args[2:])
 
-	usersPath := filepath.Join(*dataDir, "users.json")
+	usersPath := userstore.FilePathIn(*dataDir)
 	store := userstore.NewStore(usersPath)
 
 	switch subcmd {

@@ -13,7 +13,7 @@
 //     diagnostics auto-sync) ;
 //   - routes dont le nom de PARAMÈTRE diffère du yaml (Go fait foi : {username}
 //     vs {user_id}, {id} vs {notification_id}, {attempt_id} vs {provider}).
-// Ces divergences sont documentées dans .ai/V7/PLAN_V72_HUMA_OPENAPI.md (H2).
+// Ces divergences sont documentées dans .ai/archive/V7.2/PLAN_V72_HUMA_OPENAPI.md (H2).
 
 package api_test
 

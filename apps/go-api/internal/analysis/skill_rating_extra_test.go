@@ -36,10 +36,10 @@ func TestComputeMatchKEStats_WithValues(t *testing.T) {
 	}
 	avg, sd := computeMatchKEStats(parts)
 	if math.Abs(avg-15.0) > 0.01 {
-		t.Errorf("expected avgâ‰ˆ15, got %f", avg)
+		t.Errorf("expected avg≈15, got %f", avg)
 	}
 	if sd < 4.9 || sd > 5.1 {
-		t.Errorf("expected sdâ‰ˆ5, got %f", sd)
+		t.Errorf("expected sd≈5, got %f", sd)
 	}
 }
 
@@ -106,20 +106,20 @@ func TestComputeEnemyStrength_Empty(t *testing.T) {
 func TestComputeEnemyStrength_HighKE(t *testing.T) {
 	ke := 20.0
 	enemies := []domain.ParticipantRow{{KillsExpected: &ke}}
-	// avgKE=10 â†’ ratio=2.0 â†’ clamped to 2.0 â†’ muOpp = 1500*2 = 3000
+	// avgKE=10 → ratio=2.0 → clamped to 2.0 → muOpp = 1500*2 = 3000
 	mu, _ := computeEnemyStrength(enemies, 10.0, 1500.0)
 	if math.Abs(mu-3000.0) > 0.01 {
-		t.Errorf("expected muâ‰ˆ3000, got %f", mu)
+		t.Errorf("expected mu≈3000, got %f", mu)
 	}
 }
 
 func TestComputeEnemyStrength_LowKE(t *testing.T) {
 	ke := 2.0
 	enemies := []domain.ParticipantRow{{KillsExpected: &ke}}
-	// avgKE=10 â†’ ratio=0.2 â†’ clamped to 0.5 â†’ muOpp = 1500*0.5 = 750
+	// avgKE=10 → ratio=0.2 → clamped to 0.5 → muOpp = 1500*0.5 = 750
 	mu, _ := computeEnemyStrength(enemies, 10.0, 1500.0)
 	if math.Abs(mu-750.0) > 0.01 {
-		t.Errorf("expected muâ‰ˆ750, got %f", mu)
+		t.Errorf("expected mu≈750, got %f", mu)
 	}
 }
 

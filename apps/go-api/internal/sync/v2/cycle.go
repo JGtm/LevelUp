@@ -13,12 +13,14 @@ package v2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/sync/knownset"
 )
 
 // CycleConfig regroupe les paramètres tunables de l'orchestrator.
@@ -174,6 +176,10 @@ func (o *CycleOrchestratorImpl) Run(
 	for slug, errVal := range disc.Errors {
 		o.markFailed(res.PerPlayer, slug, playerBySlug, "discovery", errVal)
 	}
+	if err := o.abortOnSharedUnreadable(ctx, &res, disc, playerBySlug); err != nil {
+		res.Duration = time.Since(start)
+		return res, err
+	}
 
 	// ─── Phase 2 — Dedup ────────────────────────────────────────────────
 	dedup := RunDedup(disc)
@@ -327,6 +333,36 @@ func (o *CycleOrchestratorImpl) Run(
 		"matches_persisted", persistRes.MatchesPersisted,
 	)
 	return res, nil
+}
+
+// abortOnSharedUnreadable arrête le cycle quand l'ensemble connu d'un joueur n'a pas pu être
+// établi faute de base partagée lisible (knownset.ErrSharedUnreadable). La base partagée est
+// commune à tous les joueurs : aucun fetch, aucune persistance, aucun post-sync ne part sur un
+// état qu'on ne sait pas lire. Tous les joueurs passent en échec ; le cycle suivant retente.
+// Rend nil si aucune erreur de discovery n'est de cette nature.
+func (o *CycleOrchestratorImpl) abortOnSharedUnreadable(
+	ctx context.Context,
+	res *CycleResult,
+	disc DiscoveryResult,
+	playerBySlug map[string]PlayerProfile,
+) error {
+	var cause error
+	for _, errVal := range disc.Errors {
+		if errors.Is(errVal, knownset.ErrSharedUnreadable) {
+			cause = errVal
+			break
+		}
+	}
+	if cause == nil {
+		return nil
+	}
+	slog.ErrorContext(ctx, "sync.v2: base partagée illisible — cycle arrêté avant toute récupération",
+		"event", "sync.v2.cycle.shared_unreadable", "err", cause)
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "sync_v2_cycle_error_discovery")
+	for slug := range playerBySlug {
+		o.markFailed(res.PerPlayer, slug, playerBySlug, "discovery", cause)
+	}
+	return fmt.Errorf("phase discovery: %w", cause)
 }
 
 // markFailed positionne PerPlayer[slug] en status failed avec FirstError.

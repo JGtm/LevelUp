@@ -3,7 +3,8 @@
 //
 // Prouve que les endpoints re-gardés dans server.go rejettent une requête anonyme
 // (401) une fois montés sous le middleware d'auth utilisé par server.go, que le
-// mode demo/single-user reste transparent (no-op), et que le probe auto-sync ne
+// mode single-user reste transparent (no-op) et que la démo les refuse (403, lot L8-1 du plan
+// sécurité du 2026-10-15), et que le probe auto-sync ne
 // sérialise plus aucun fragment de refresh token.
 package handlers
 
@@ -30,7 +31,7 @@ func lotSRouter(mount func(chi.Router), admin, demoMode bool) http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireAuth(demoMode, "password"))
 			if admin {
-				r.Use(middleware.RequireAdmin(demoMode, "password"))
+				r.Use(middleware.RequireAdmin(demoMode, "password", gateAccounts))
 			}
 			mount(r)
 		})
@@ -69,7 +70,7 @@ func TestLotS_Settings_RequireAuthAdmin(t *testing.T) {
 }
 
 // --- S2 (audit B2) : POST /_admin/progression/backfill/{slug} → 401 anonyme,
-// admin et demo passent (no-op) ---
+// admin passe, la démo refuse (403 : hors de la surface d'un visiteur) ---
 
 func TestLotS_ProgressionBackfill_RequireAuthAdmin(t *testing.T) {
 	factory := func(_ context.Context, _ string) (ProgressionBackfiller, error) {
@@ -94,11 +95,11 @@ func TestLotS_ProgressionBackfill_RequireAuthAdmin(t *testing.T) {
 		t.Fatalf("admin: status = %d, ne doit pas être 401/403", rrAdmin.Code)
 	}
 
-	// Demo → middlewares transparents (invariant single-user).
+	// Demo → refus 403 (les middlewares ne sont plus transparents en démo, L8-1).
 	rrDemo := httptest.NewRecorder()
 	lotSRouter(mount, true, true).ServeHTTP(rrDemo, httptest.NewRequest(http.MethodPost, path, nil))
-	if rrDemo.Code == http.StatusUnauthorized || rrDemo.Code == http.StatusForbidden {
-		t.Fatalf("demo no-op: status = %d, ne doit pas être 401/403", rrDemo.Code)
+	if rrDemo.Code != http.StatusForbidden {
+		t.Fatalf("demo: status = %d, want 403", rrDemo.Code)
 	}
 }
 
@@ -129,7 +130,7 @@ func TestLotS_Diagnostics_RequireAuthAdmin(t *testing.T) {
 // (RequireAuth seul, self-provision autorisé) ---
 
 func TestLotS_Setup_RequireAuth(t *testing.T) {
-	h := NewSetupHandler(&config.AppConfig{}, nil, nil, nil, nil)
+	h := NewSetupHandler(&config.AppConfig{}, nil, nil, nil)
 	srv := lotSRouter(func(r chi.Router) { h.Mount(r) }, false, false)
 	for _, path := range []string{"/api/v1/setup/players", "/api/v1/setup/smoke-test"} {
 		req := httptest.NewRequest(http.MethodPost, path, nil)

@@ -190,12 +190,14 @@ func (h *WatcherHandler) handleStartAuth(ctx context.Context, _ *struct{}) (*wat
 
 	flow, err := h.tokenProvider.InitDeviceFlow(ctx)
 	if err != nil {
+		// La tentative ne garde que le code ; la cause va au journal.
+		slog.ErrorContext(ctx, "watcher_handler: démarrage du Device Code Flow watcher échoué",
+			"attempt_id", attempt.AttemptID, "err", err)
 		h.attempts.Update(attempt.AttemptID, func(a *auth_platform.WatcherAttempt) {
 			a.Status = auth_platform.AttemptStatusFailed
-			a.ErrorCode = "msal_init_error"
-			a.ErrorDetail = err.Error()
+			a.ErrorCode = "device_flow_init_error"
 		})
-		return nil, humacore.NewError(http.StatusInternalServerError, "msal_init_error", "impossible de démarrer le Device Code Flow")
+		return nil, humacore.NewError(http.StatusInternalServerError, "device_flow_init_error", "impossible de démarrer le Device Code Flow")
 	}
 
 	h.attempts.Update(attempt.AttemptID, func(a *auth_platform.WatcherAttempt) {
@@ -237,6 +239,8 @@ func (h *WatcherHandler) handleGetAuthStatus(ctx context.Context, in *watcherAut
 
 // handlePatchSubscriptions met à jour les joueurs surveillés.
 // PATCH /api/v1/watcher/subscriptions
+//
+// Refusée en démo par la garde générale (middleware/demo_read_only.go).
 func (h *WatcherHandler) handlePatchSubscriptions(ctx context.Context, in *watcherSubscriptionsInput) (*watcherSubscriptionsOutput, error) {
 	var req watcherSubscriptionsRequest
 	// Body OPTIONNEL (MarkRequestBodyOptional) : corps absent → req zéro (défaut
@@ -289,8 +293,7 @@ func (h *WatcherHandler) pollWatcherAuth(attemptID string, flow auth_platform.De
 	if err != nil {
 		h.attempts.Update(attemptID, func(a *auth_platform.WatcherAttempt) {
 			a.Status = auth_platform.AttemptStatusFailed
-			a.ErrorCode = errCodeMSALAcquire
-			a.ErrorDetail = err.Error()
+			a.ErrorCode = errCodeDeviceFlowAcquire
 		})
 		slog.Warn("watcher_handler: Device Code Flow échoué", "attempt_id", attemptID, "err", err)
 		return
@@ -304,7 +307,6 @@ func (h *WatcherHandler) pollWatcherAuth(attemptID string, flow auth_platform.De
 		h.attempts.Update(attemptID, func(a *auth_platform.WatcherAttempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "xsts_error"
-			a.ErrorDetail = err.Error()
 		})
 		slog.Warn("watcher_handler: XSTS acquisition échouée", "attempt_id", attemptID, "err", err)
 		return

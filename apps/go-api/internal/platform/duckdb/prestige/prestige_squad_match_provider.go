@@ -77,7 +77,7 @@ var _ prestige.SquadMatchProvider = (*PrestigeSquadMatchProvider)(nil)
 // joué (start_time >= since), chacun avec ses participants (Xuids) + la métrique
 // par membre (Values). since borne le bas (created_at du défi + fenêtre) — un
 // since zéro désactive la borne.
-func (p *PrestigeSquadMatchProvider) SquadMatchMetrics(ctx context.Context, rosterXUIDs []string, _ string, metric string, limit int, since time.Time) ([]prestige.SquadMatchMetric, error) {
+func (p *PrestigeSquadMatchProvider) SquadMatchMetrics(ctx context.Context, rosterXUIDs []string, titleSlug, metric string, limit int, since time.Time) ([]prestige.SquadMatchMetric, error) {
 	if len(rosterXUIDs) == 0 {
 		return nil, nil
 	}
@@ -98,7 +98,9 @@ func (p *PrestigeSquadMatchProvider) SquadMatchMetrics(ctx context.Context, rost
 	}
 	defer release()
 
-	candidates, err := p.candidateMatches(ctx, db, rosterXUIDs, limit, since)
+	candidates, err := p.candidateMatches(ctx, db, candidateQuery{
+		roster: rosterXUIDs, titleSlug: titleSlug, limit: limit, since: since,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -108,16 +110,26 @@ func (p *PrestigeSquadMatchProvider) SquadMatchMetrics(ctx context.Context, rost
 	return p.participantsWithMetric(ctx, db, candidates, col)
 }
 
+// candidateQuery : paramètres de candidateMatches (au plus 5 paramètres, CLAUDE.md n°5).
+type candidateQuery struct {
+	roster    []string
+	titleSlug string
+	limit     int
+	since     time.Time
+}
+
 // candidateMatches retourne les match_id (les plus récents) où TOUT le roster a
 // joué : COUNT(DISTINCT xuid parmi le roster) == taille du roster. Si since est
 // non nul, seuls les matchs dont le start_time canonique est >= since sont
-// retenus (borne basse Lot 4 — pas de complétion rétroactive).
-func (p *PrestigeSquadMatchProvider) candidateMatches(ctx context.Context, db *sql.DB, roster []string, limit int, since time.Time) ([]string, error) {
+// retenus (borne basse Lot 4 — pas de complétion rétroactive). La Campagne du titre est
+// exclue (D-5, backlog B4 ; no-op pour un titre sans variante de Campagne).
+func (p *PrestigeSquadMatchProvider) candidateMatches(ctx context.Context, db *sql.DB, cq candidateQuery) ([]string, error) {
+	roster, limit := cq.roster, cq.limit
 	args := toAnyArgs(roster)
-	sinceClause := ""
-	if !since.IsZero() {
-		sinceClause = " AND " + duckdb.StartTimeCanonicalSQL("mr") + " >= ?"
-		args = append(args, since)
+	sinceClause := analysis.SQLExcludeCampaignVariants(cq.titleSlug, "mr")
+	if !cq.since.IsZero() {
+		sinceClause += " AND " + duckdb.StartTimeCanonicalSQL("mr") + " >= ?"
+		args = append(args, cq.since)
 	}
 	q := fmt.Sprintf(`
 		SELECT mp.match_id
@@ -194,8 +206,9 @@ var uuidLabelRE = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[
 
 // SquadUsualContexts retourne les playlists/modes dominants (top 2) parmi les
 // `limit` derniers matchs où TOUT le roster a joué ensemble. Labels résolus FR
-// via v_match_full ; vides et UUID non résolus écartés. Lecture seule.
-func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, rosterXUIDs []string, _ string, limit int) (playlists, modes []string, err error) {
+// via v_match_full ; vides et UUID non résolus écartés. Lecture seule. La Campagne du titre
+// est exclue (D-5, backlog B4 ; no-op pour un titre sans variante de Campagne).
+func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, rosterXUIDs []string, titleSlug string, limit int) (playlists, modes []string, err error) {
 	if len(rosterXUIDs) == 0 {
 		return nil, nil, nil
 	}
@@ -219,7 +232,7 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 			       MAX(`+duckdb.StartTimeCanonicalSQL("mr")+`) AS st
 			FROM match_participants mp
 			JOIN match_registry mr ON mr.match_id = mp.match_id
-			WHERE mp.xuid IN (%s)
+			WHERE mp.xuid IN (%s)%s
 			GROUP BY mp.match_id
 			HAVING COUNT(DISTINCT mp.xuid) = %d
 			ORDER BY st DESC
@@ -231,7 +244,7 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 			COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name, '')         AS mode
 		FROM cm
 		JOIN v_match_full r ON r.match_id = cm.match_id
-	`, sqlInPlaceholders(len(rosterXUIDs)), len(rosterXUIDs), limit)
+	`, sqlInPlaceholders(len(rosterXUIDs)), analysis.SQLExcludeCampaignVariants(titleSlug, "mr"), len(rosterXUIDs), limit)
 
 	rows, err := db.QueryContext(ctx, q, toAnyArgs(rosterXUIDs)...)
 	if err != nil {

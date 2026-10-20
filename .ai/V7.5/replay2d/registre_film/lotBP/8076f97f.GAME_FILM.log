@@ -1,0 +1,140 @@
+=== RUN   TestGameEntitiesPhase0
+2026/08/18 01:00:00 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
+    game_state_measure_test.go:63: FILM 8076f97f · chunks 20 · paquets delta 21495 · horloge film 3540985691 us · delta [3540986845 , 3901843673] us (360.9 s)
+    game_state_measure_test.go:63: BANDES · ti=0 1 slots [5952] · ti=5 32 slots [52 .. 83] · ti=4 1 slots [123] · controle voisin 33 · controle vide 33 · slots ambigus ecartes 0 · comblement NON applique (aurait ajoute 0 slots)
+    game_state_measure_test.go:63: SONDE ti=4 high-frequency : 21176 annonces recues par le hook pendant ce balayage
+    game_state_measure_test.go:63: RECENSEMENT DES IMAGES-CLES (slots distincts par archetype) : ti=0:1 ti=1:1 ti=2:1 ti=4:1 ti=5:32 ti=6:48 ti=9:10 ti=10:38 ti=11:1 ti=12:7 ti=13:20 ti=14:32 ti=15:1 ti=17:33 ti=18:1 ti=19:1 ti=20:7 ti=22:1 ti=25:1 ti=26:1 ti=27:1 ti=29:1 ti=34:1 ti=35:74 ti=37:158 ti=38:118 ti=41:8 ti=42:174 ti=43:38 ti=45:1 ti=47:10
+    game_state_measure_test.go:63: PREMIERS SLOTS DES IMAGES-CLES : 0->[22] 1->[34] 2->[2] 3->[6] 4->[6] 5->[6] 6->[6] 7->[6] 8->[6] 9->[6] 10->[6] 11->[6] 12->[6] 13->[6] 14->[6] 15->[6] 16->[6] 17->[6] 18->[6] 19->[6] 20->[6] 21->[6] 22->[6] 23->[6]
+    game_state_measure_test.go:64: ti=0 moteur de partie · bande 1 slots · peuples 1 · records 204 (204/slot) · DANS LA GRAMMAIRE 73 · avec un composant vise 47 · marche ABOUTIE 46 · CASSEE 1 · purete 35.78 % (hors grammaire 131 / 27 composants) · plancher de bruit 2.0
+    game_state_measure_test.go:64:     i61                                                      annonces      35  x17.5 du plancher
+    game_state_measure_test.go:64:     i1  game-engine-shared-team-lives-component              annonces      28  x14.0 du plancher
+    game_state_measure_test.go:64:     i59                                                      annonces      28  x14.0 du plancher
+    game_state_measure_test.go:64:     i13 game-engine-disabled-kill-volume-flags-component     annonces      22  x11.0 du plancher
+    game_state_measure_test.go:64:     i0  game-engine-team-mapping-component                   annonces      18  x9.0 du plancher
+    game_state_measure_test.go:64:     i6  game-engine-sudden-death-time-left-component         annonces      13  x6.5 du plancher
+    game_state_measure_test.go:64:     i29                                                      annonces      11  x5.5 du plancher
+    game_state_measure_test.go:64:     i8  game-engine-round-condition-flags-component          annonces      11  x5.5 du plancher
+    game_state_measure_test.go:64:     i2  game-engine-current-state-component                  annonces       9  x4.5 du plancher
+    game_state_measure_test.go:64:     i50                                                      annonces       8  x4.0 du plancher
+    game_state_measure_test.go:64:     i4  game-engine-current-round-component                  annonces       8  x4.0 du plancher
+    game_state_measure_test.go:64:     i53                                                      annonces       7  x3.5 du plancher
+    game_state_measure_test.go:64:     i10 game-engine-alliance-component                       annonces       6  x3.0 du plancher
+    game_state_measure_test.go:64:     i14 GameEngineComposerLetterboxComponent                 annonces       6  x3.0 du plancher
+    game_state_measure_test.go:64:     i45                                                      annonces       6  x3.0 du plancher
+    game_state_measure_test.go:64:     i60                                                      annonces       5  x2.5 du plancher
+    game_state_measure_test.go:64:     i40                                                      annonces       5  x2.5 du plancher
+    game_state_measure_test.go:64:     i3  game-engine-game-finished-component                  annonces       5  x2.5 du plancher
+    game_state_measure_test.go:64:     i36                                                      annonces       4  x2.0 du plancher
+    game_state_measure_test.go:64:     i5  game-engine-round-timer-component                    annonces       4  x2.0 du plancher
+    game_state_measure_test.go:65: ti=5 joueur · bande 32 slots · peuples 32 · records 7122 (223/slot) · DANS LA GRAMMAIRE 3643 · avec un composant vise 2492 · marche ABOUTIE 2478 · CASSEE 14 · purete 51.15 % (hors grammaire 3479 / 27 composants) · plancher de bruit 98.0
+    game_state_measure_test.go:65:     i0  player-waypoint-component                            annonces    1083  x11.1 du plancher
+    game_state_measure_test.go:65:     i1  player-respawn-timer-component                       annonces     976  x10.0 du plancher
+    game_state_measure_test.go:65:     i60                                                      annonces     808  x8.2 du plancher
+    game_state_measure_test.go:65:     i20 player-malleable-properties-simulation-component     annonces     555  x5.7 du plancher
+    game_state_measure_test.go:65:     i4  player-unsafe-respawn-timer-component                annonces     476  x4.9 du plancher
+    game_state_measure_test.go:65:     i55                                                      annonces     365  x3.7 du plancher
+    game_state_measure_test.go:65:     i57                                                      annonces     364  x3.7 du plancher
+    game_state_measure_test.go:65:     i59                                                      annonces     306  x3.1 du plancher
+    game_state_measure_test.go:65:     i5  player-respawn-safety-component                      annonces     282  x2.9 du plancher
+    game_state_measure_test.go:65:     i27                                                      annonces     232  x2.4 du plancher
+    game_state_measure_test.go:65:     i8  player-early-respawn-requested-component             annonces     227  x2.3 du plancher
+    game_state_measure_test.go:65:     i17 player-control-aiming-component                      annonces     197  x2.0 du plancher
+    game_state_measure_test.go:65:     i36                                                      annonces     162  x1.7 du plancher
+    game_state_measure_test.go:65:     i58                                                      annonces     161  x1.6 du plancher
+    game_state_measure_test.go:65:     i52                                                      annonces     153  x1.6 du plancher
+    game_state_measure_test.go:65:     i22 player-aim-assist-component                          annonces     152  x1.6 du plancher
+    game_state_measure_test.go:65:     i2  player-soft-kill-timer-component                     annonces     149  x1.5 du plancher
+    game_state_measure_test.go:65:     i16 player-vehicle-entrance-ban-component                annonces     148  x1.5 du plancher
+    game_state_measure_test.go:65:     i32                                                      annonces     145  x1.5 du plancher
+    game_state_measure_test.go:65:     i18 player-active-in-game-component                      annonces     139  x1.4 du plancher
+    game_state_measure_test.go:66: ti=4 temoin d'ancrage · bande 1 slots · peuples 1 · records 21249 (21249/slot) · DANS LA GRAMMAIRE 21160 · avec un composant vise 21176 · marche ABOUTIE 21176 · CASSEE 0 · purete 99.58 % (hors grammaire 89 / 1 composants) · plancher de bruit 1.0
+    game_state_measure_test.go:66:     i0  high-frequency                                       annonces   21176  x21176.0 du plancher
+    game_state_measure_test.go:66:     i60                                                      annonces      21  x21.0 du plancher
+    game_state_measure_test.go:66:     i4                                                       annonces      13  x13.0 du plancher
+    game_state_measure_test.go:66:     i55                                                      annonces       7  x7.0 du plancher
+    game_state_measure_test.go:66:     i5                                                       annonces       7  x7.0 du plancher
+    game_state_measure_test.go:66:     i50                                                      annonces       6  x6.0 du plancher
+    game_state_measure_test.go:66:     i54                                                      annonces       5  x5.0 du plancher
+    game_state_measure_test.go:66:     i33                                                      annonces       5  x5.0 du plancher
+    game_state_measure_test.go:66:     i6                                                       annonces       4  x4.0 du plancher
+    game_state_measure_test.go:66:     i53                                                      annonces       4  x4.0 du plancher
+    game_state_measure_test.go:66:     i24                                                      annonces       4  x4.0 du plancher
+    game_state_measure_test.go:66:     i56                                                      annonces       4  x4.0 du plancher
+    game_state_measure_test.go:66:     i8                                                       annonces       3  x3.0 du plancher
+    game_state_measure_test.go:66:     i52                                                      annonces       3  x3.0 du plancher
+    game_state_measure_test.go:66:     i15                                                      annonces       3  x3.0 du plancher
+    game_state_measure_test.go:66:     i17                                                      annonces       3  x3.0 du plancher
+    game_state_measure_test.go:66:     i22                                                      annonces       3  x3.0 du plancher
+    game_state_measure_test.go:66:     i32                                                      annonces       2  x2.0 du plancher
+    game_state_measure_test.go:66:     i42                                                      annonces       2  x2.0 du plancher
+    game_state_measure_test.go:66:     i11                                                      annonces       2  x2.0 du plancher
+    game_state_measure_test.go:67: CONTROLE voisinage · bande 33 slots · peuples 33 · records 5060 (153/slot) · DANS LA GRAMMAIRE ti=5 1668 (51/slot) · avec un composant vise 1180 (36/slot) · plancher 107.5
+    game_state_measure_test.go:67: CONTROLE vide (haut de l'espace) · bande 33 slots · peuples 33 · records 3260 (99/slot) · DANS LA GRAMMAIRE ti=5 1357 (41/slot) · avec un composant vise 282 (9/slot) · plancher 23.5
+    game_state_measure_test.go:67: RAPPORT REEL/FANTOME ti=0 · EN-TETES BRUTS 204/slot contre 153 (voisinage) et 99 (vide) -> x1.33 et x2.07
+    game_state_measure_test.go:67: RAPPORT REEL/FANTOME ti=0 · COMPOSANT VISE 47.0/slot contre 35.8 (voisinage) et 8.5 (vide) -> x1.31 et x5.50
+    game_state_measure_test.go:67: RAPPORT REEL/FANTOME ti=5 · EN-TETES BRUTS 223/slot contre 153 (voisinage) et 99 (vide) -> x1.45 et x2.25
+    game_state_measure_test.go:67: RAPPORT REEL/FANTOME ti=5 · COMPOSANT VISE 77.9/slot contre 35.8 (voisinage) et 8.5 (vide) -> x2.18 et x9.11
+    game_state_measure_test.go:67: RAPPORT REEL/FANTOME ti=4 · EN-TETES BRUTS 21249/slot contre 153 (voisinage) et 99 (vide) -> x138.58 et x215.10
+    game_state_measure_test.go:67: RAPPORT REEL/FANTOME ti=4 · COMPOSANT VISE 21176.0/slot contre 35.8 (voisinage) et 8.5 (vide) -> x592.21 et x2478.04
+    game_state_measure_test.go:68: ti=0 CHAMPS (records dont la marche a abouti : 46)
+    game_state_measure_test.go:68:     game-engine-current-state-component              masque      9 · LU      9 · porte fermee      0
+    game_state_measure_test.go:68:     game-engine-current-round-component              masque      8 · LU      8 · porte fermee      0
+    game_state_measure_test.go:68:     game-engine-sudden-death-time-left-component     masque     13 · LU     12 · porte fermee      0
+    game_state_measure_test.go:68:     game-engine-grace-period-time-left-component     masque      2 · LU      2 · porte fermee      0
+    game_state_measure_test.go:68:     game-engine-round-condition-flags-component      masque     11 · LU     11 · porte fermee      0
+    game_state_measure_test.go:68:     game-engine-round-timer-component                CAPTURE : 4 records portent une horloge de manche
+    game_state_measure_test.go:69: ti=5 CHAMPS (records dont la marche a abouti : 2478)
+    game_state_measure_test.go:69:     player-soft-kill-timer-component                 masque    149 · LU    149 · porte fermee      0
+    game_state_measure_test.go:69:     player-target-tracking-detection-component       masque    109 · LU    109 · porte fermee      0
+    game_state_measure_test.go:69:     player-desired-respawn-player-component          masque     98 · LU     91 · porte fermee      0
+    game_state_measure_test.go:69:     player-engine-loadout-component                  masque     60 · LU     58 · porte fermee      0
+    game_state_measure_test.go:69:     player-desired-respawn-location-component        masque    112 · LU    112 · porte fermee     93
+    game_state_measure_test.go:69:     player-lives-remaining-component                 masque     74 · LU     74 · porte fermee      0
+    game_state_measure_test.go:69:     player-last-betrayer-component                   masque     74 · LU     73 · porte fermee      0
+    game_state_measure_test.go:69:     player-control-aiming-component                  masque    197 · LU    195 · porte fermee      0
+    game_state_measure_test.go:69:     player-active-in-game-component                  masque    139 · LU    138 · porte fermee      0
+    game_state_measure_test.go:69:     player-pending-join-in-progress-spawn-component  masque     54 · LU     53 · porte fermee      0
+    game_state_measure_test.go:69:     player-malleable-properties-simulation-component masque    555 · LU    555 · porte fermee      0
+    game_state_measure_test.go:69:     player-respawn-timer-component                   CAPTURE : 976 records portent un compte a rebours
+    game_state_measure_test.go:70: ti=5 VENTILATION PAR SLOT (32 slots ont rendu une lecture) : 57:230 56:209 58:200 55:190 59:180 68:169 54:168 53:162 52:150 72:102 62:85 64:71 66:56 67:50 74:46 81:45
+    game_state_measure_test.go:70: ti=5 DEBIT DES 8 SLOTS LES PLUS BAVARDS : 188.5 lectures/slot contre 35.8 (voisinage) et 8.5 (vide) -> x5.27 et x22.06
+    game_state_measure_test.go:71: ti=5 DISTRIBUTION DES VALEURS (P.0.5)
+    game_state_measure_test.go:71:     player-soft-kill-timer-component                 lectures   149 · porte fermee     0 · valeurs distinctes   61 · 2,0,30(47) 2,1,14(15) 2,0,6(10) 31,31,1(8) 2,2,1(5) 1,24,20(3)
+    game_state_measure_test.go:71:     player-target-tracking-detection-component       lectures   109 · porte fermee     0 · valeurs distinctes    4 · 0,0(48) 1,1(25) 0,1(19) 1,0(17)
+    game_state_measure_test.go:71:     player-desired-respawn-player-component          lectures    91 · porte fermee     0 · valeurs distinctes   56 · 4221(25) 32768(8) 58657(5) 13633(1) 14632(1) 14657(1)
+    game_state_measure_test.go:71:     player-engine-loadout-component                  lectures    58 · porte fermee     0 · valeurs distinctes   51 · 0,255,255,255,255,255,255,255(8) 101,190,63,120,216,6,135,140(1) 101,190,63,130,8,4,135,140(1) 101,192,63,111,176,14,134,27(1) 101,192,63,111,176,6,135,103(1) 101,192,63,120,248,14,134,64(1)
+    game_state_measure_test.go:71:     player-desired-respawn-location-component        lectures   112 · porte fermee    93 · valeurs distinctes   19 · 0,10,86,132948,1(1) 0,8,86,132839,1(1) 0,8,86,132859,1(1) 11,98,77,335177,1(1) 116,104,106,183368,1(1) 120,0,0,161919,1(1)
+    game_state_measure_test.go:71:     player-lives-remaining-component                 lectures    74 · porte fermee     0 · valeurs distinctes   37 · 1(24) 0(9) 112(2) 115(2) 123(2) 2(2)
+    game_state_measure_test.go:71:     player-last-betrayer-component                   lectures    73 · porte fermee     0 · valeurs distinctes   25 · 34(15) 32(8) 63(7) 25(6) 9(6) 24(4)
+    game_state_measure_test.go:71:     player-control-aiming-component                  lectures   195 · porte fermee     0 · valeurs distinctes  140 · 262233(18) 5696(8) 262210(7) 1600(4) 87616(4) 262489(3)
+    game_state_measure_test.go:71:     player-active-in-game-component                  lectures   138 · porte fermee     0 · valeurs distinctes    2 · 0(98) 1(40)
+    game_state_measure_test.go:71:     player-pending-join-in-progress-spawn-component  lectures    53 · porte fermee     0 · valeurs distinctes    2 · 0(27) 1(26)
+    game_state_measure_test.go:71:     player-malleable-properties-simulation-component lectures   555 · porte fermee     0 · valeurs distinctes  132 · 1,1,1,1,478,1,797,1,1434,1,1106,1,1106,0...(210) 1,1,1,1,478,1,797,1,1434,1,1106,1,1106,0...(208) 0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,...(3) 0,0,0,1,45,0,0,1,3844,0,0,0,0,0,0,1,0,0,...(2) 0,0,0,1,45,0,0,1,3864,0,0,0,0,0,0,1,0,0,...(2) 0,0,0,1,45,1,3760,0,0,0,0,0,0,0,0,1,0,0,...(2)
+    game_state_measure_test.go:72: CHAINE SEQUENTIELLE · paquets 21495 dont PROPRES 9084 (42.3 %) · records 51975 dont ABOUTIS 34460 (66.3 %) · ti=0 0 · ti=5 773
+    game_state_measure_test.go:72: CHAINE · VENTILATION DES RECORDS ABOUTIS PAR ARCHETYPE : ti=4:17599 ti=35:13032 ti=6:1027 ti=8:887 ti=5:822 ti=2:306 ti=16:253 ti=37:169 ti=38:80 ti=17:61 ti=32:31 ti=1:28 ti=42:25 ti=9:21 ti=22:19 ti=0:15 ti=14:13 ti=48:10 ti=33:7 ti=43:7 ti=36:7 ti=44:7 ti=3:6 ti=47:6 ti=13:4 ti=41:3 ti=25:3 ti=39:3 ti=34:2 ti=20:2 ti=45:2 ti=29:1 ti=21:1 ti=10:1
+    game_state_measure_test.go:72: CHAINE · LES MEMES, LIAISON CONFIRMEE PAR UNE IMAGE-CLE : ti=4:16685 ti=35:13030 ti=6:800 ti=5:773 ti=2:305 ti=37:167 ti=38:77 ti=17:58 ti=42:17 ti=9:9 ti=22:15 ti=14:13 ti=43:7 ti=47:5 ti=13:4 ti=25:1 ti=34:1 ti=45:2 ti=10:1
+    game_state_measure_test.go:72: CHAINE · ti=5 PAR SLOT (23 slots) : 57:144 59:103 55:102 56:86 53:82 52:78 58:75 54:75 79:4 60:3 64:3 80:3 68:3 72:2 65:2 83:1 62:1 81:1 77:1 74:1 78:1 71:1 61:1
+    game_state_measure_test.go:72: CHAINE · ti=0 CHAMPS
+    game_state_measure_test.go:72:     game-engine-current-state-component              lectures     0 · porte fermee     0 · distinctes    0 · 
+    game_state_measure_test.go:72:     game-engine-current-round-component              lectures     0 · porte fermee     0 · distinctes    0 · 
+    game_state_measure_test.go:72:     game-engine-sudden-death-time-left-component     lectures     0 · porte fermee     0 · distinctes    0 · 
+    game_state_measure_test.go:72:     game-engine-grace-period-time-left-component     lectures     0 · porte fermee     0 · distinctes    0 · 
+    game_state_measure_test.go:72:     game-engine-round-condition-flags-component      lectures     0 · porte fermee     0 · distinctes    0 · 
+    game_state_measure_test.go:72:     game-engine-round-timer-component                CAPTURE : 0 lectures certaines
+    game_state_measure_test.go:72: CHAINE · ti=5 CHAMPS
+    game_state_measure_test.go:72:     player-soft-kill-timer-component                 lectures     4 · porte fermee     0 · distinctes    4 · 10,21,19(1) 15,23,24(1) 16,7,6(1) 20,12,26(1)
+    game_state_measure_test.go:72:     player-target-tracking-detection-component       lectures     5 · porte fermee     0 · distinctes    2 · 0,0(4) 0,1(1)
+    game_state_measure_test.go:72:     player-desired-respawn-player-component          lectures     6 · porte fermee     0 · distinctes    4 · 2540(3) 22787(1) 63488(1) 8874(1)
+    game_state_measure_test.go:72:     player-engine-loadout-component                  lectures     4 · porte fermee     0 · distinctes    4 · 118,111,160,51,125,206,200,202(1) 126,144,0,0,0,0,0,0(1) 246,51,68,179,147,236,116,74(1) 251,47,112,28,1,218,16,125(1)
+    game_state_measure_test.go:72:     player-desired-respawn-location-component        lectures     5 · porte fermee     4 · distinctes    1 · 34,1,18,262213,1(1)
+    game_state_measure_test.go:72:     player-lives-remaining-component                 lectures     4 · porte fermee     0 · distinctes    4 · 0(1) 102(1) 42(1) 61(1)
+    game_state_measure_test.go:72:     player-last-betrayer-component                   lectures     1 · porte fermee     0 · distinctes    1 · 53(1)
+    game_state_measure_test.go:72:     player-control-aiming-component                  lectures     7 · porte fermee     0 · distinctes    7 · 134573(1) 200914(1) 2875(1) 295386(1) 317877(1) 409822(1)
+    game_state_measure_test.go:72:     player-active-in-game-component                  lectures     3 · porte fermee     0 · distinctes    2 · 0(2) 1(1)
+    game_state_measure_test.go:72:     player-pending-join-in-progress-spawn-component  lectures     0 · porte fermee     0 · distinctes    0 · 
+    game_state_measure_test.go:72:     player-malleable-properties-simulation-component lectures   269 · porte fermee     0 · distinctes    4 · 1,1,1,1,478,1,797,1,1434,1,1106,1,1106,0...(136) 1,1,1,1,478,1,797,1,1434,1,1106,1,1106,0...(131) 0,1,0,1,1380,0,0,0,0,0,0,0,0,1,2803,1,1,...(1) 0,1,0,1,3380,0,0,1,18,0,0,0,0,1,12,1,0,0...(1)
+    game_state_measure_test.go:72:     player-respawn-timer-component                   CAPTURE : 308 lectures certaines dont ACTIF 9 · distinctes 23 · false/4/10(49) false/9/10(48) false/5/10(47) false/6/10(46) false/7/10(42) false/8/10(38)
+    game_state_measure_test.go:74: TSV deposes dans C:\Users\Guillaume\Projects\LevelUp-wt-joueur-moteur\.ai\V7.5\replay2d\registre_film\lotBP
+--- PASS: TestGameEntitiesPhase0 (10.51s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	11.606s

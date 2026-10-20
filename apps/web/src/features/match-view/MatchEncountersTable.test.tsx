@@ -18,6 +18,12 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
 }))
 
+// Libellé title-aware de la colonne « Assistances » : sans mappings chargés le
+// hook rend la clé brute, on le fixe pour pouvoir chercher l'en-tête par texte.
+vi.mock('@/lib/i18n/fieldMappings', () => ({
+  useFieldLabel: (key: string) => (key === 'assists' ? 'Assistances' : key),
+}))
+
 function renderTable(ui: ReactNode) {
   const qc = createTestQueryClient()
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>)
@@ -77,5 +83,28 @@ describe('MatchEncountersTable — tri CLIENT par en-têtes (I16)', () => {
     const header = screen.getByText('Joueur').closest('th') as HTMLElement
     fireEvent.click(header)
     expect(rowOrder(names)).toEqual(['Alpha', 'Bravo', 'Charlie'])
+  })
+})
+
+describe('MatchEncountersTable — colonne « Assistances » pilotée par showAssists', () => {
+  function rows(): MatchEncounterRow[] {
+    return [makeRow({ xuid: 'x1', gamertag: 'Alpha', count_together: 5 })]
+  }
+
+  it('par défaut (vue match) : l’en-tête « Assistances » est construit', () => {
+    renderTable(<MatchEncountersTable rows={rows()} hideCardWrapper />)
+    expect(screen.getByText('Assistances').closest('th')).not.toBeNull()
+  })
+
+  it('même sans aucune ligne mesurée, le défaut garde la colonne (« — » attendus)', () => {
+    renderTable(<MatchEncountersTable rows={rows()} hideCardWrapper />)
+    // Aucune ligne de `rows()` ne porte de bloc `assists` : la colonne reste
+    // présente — la présence ne se déduit PAS des données.
+    expect(screen.queryByText('Assistances')).not.toBeNull()
+  })
+
+  it('showAssists={false} (page Carrière) : aucun en-tête « Assistances »', () => {
+    renderTable(<MatchEncountersTable rows={rows()} hideCardWrapper showAssists={false} />)
+    expect(screen.queryByText('Assistances')).toBeNull()
   })
 })

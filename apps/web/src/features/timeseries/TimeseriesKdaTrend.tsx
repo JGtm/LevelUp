@@ -13,7 +13,10 @@ import {
   getEChartsThemeColors,
   getLegendBase,
   getTooltipBase,
+  stackedAxisExtent,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter, stackTopFirstOrder } from '@/components/charts/axisTooltip'
+import { tipNumberAuto } from '@/components/charts/tipNumber'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
@@ -57,14 +60,47 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
-    const colKills = resolveToken('chart-series-1')
-    const colDeaths = resolveToken('outcome-loss')
-    const colBonus = resolveToken('bonus') // bonus assistances — violet, distinct du bleu frags / rouge morts
+    const colKills = resolveToken('stat-kills')
+    const colDeaths = resolveToken('stat-deaths')
+    const colBonus = resolveToken('stat-assists') // bonus = assistances / 3 : la couleur des assistances
 
     const categories = buildMatchCategories(rows)
     const kills = rows.map((r) => r.kills)
     const deaths = rows.map((r) => r.deaths)
     const bonus = rows.map((r) => r.assists / 3)
+    // Étendue d'axe calculée sur le JEU COMPLET (bonus toujours inclus, qu'il
+    // soit affiché ou masqué via la légende) — item 5, DEC-5 : sans ça, ECharts
+    // recalcule l'axe sur les séries visibles à chaque render et le toggle
+    // « Bonus » fait bouger toute l'échelle. Kills+bonus empilés (positif) ;
+    // morts jamais négatives ici (pas de `stack`) → min fixé à 0.
+    const { min: yMin, max: yMax } = stackedAxisExtent([[kills, bonus], [deaths]])
+
+    const series = [
+      {
+        name: labels.kills,
+        type: 'bar',
+        stack: 'kills',
+        data: kills,
+        itemStyle: { color: colKills, opacity: 0.85 },
+        barGap: 0,
+        barMaxWidth: 14,
+      },
+      {
+        name: labels.bonus,
+        type: 'bar',
+        stack: 'kills',
+        data: bonus,
+        itemStyle: { color: colBonus, opacity: 0.85 },
+        barMaxWidth: 14,
+      },
+      {
+        name: labels.deaths,
+        type: 'bar',
+        data: deaths,
+        itemStyle: { color: colDeaths, opacity: 0.85 },
+        barMaxWidth: 14,
+      },
+    ]
 
     return {
       backgroundColor: CHART_BG,
@@ -73,6 +109,12 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
         ...getTooltipBase(tc),
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
+        // Frags et bonus (assistances / 3) sont empilés, les morts sont à côté : la ligne du haut est la barre
+        // du haut. Le bonus garde ses décimales (au plus deux), frags et morts sont des entiers.
+        formatter: axisTooltipFormatter({
+          value: (r) => tipNumberAuto(r.value),
+          order: stackTopFirstOrder(series),
+        }),
       },
       legend: {
         ...getLegendBase(tc),
@@ -95,34 +137,11 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
         type: 'value',
         name: labels.yAxis,
         nameTextStyle: { color: tc.axisLabel, fontSize: 11 },
+        min: yMin,
+        max: yMax,
         minInterval: 1,
       },
-      series: [
-        {
-          name: labels.kills,
-          type: 'bar',
-          stack: 'kills',
-          data: kills,
-          itemStyle: { color: colKills, opacity: 0.85 },
-          barGap: 0,
-          barMaxWidth: 14,
-        },
-        {
-          name: labels.bonus,
-          type: 'bar',
-          stack: 'kills',
-          data: bonus,
-          itemStyle: { color: colBonus, opacity: 0.85 },
-          barMaxWidth: 14,
-        },
-        {
-          name: labels.deaths,
-          type: 'bar',
-          data: deaths,
-          itemStyle: { color: colDeaths, opacity: 0.85 },
-          barMaxWidth: 14,
-        },
-      ],
+      series,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, labels, themeVersion, showBonus])

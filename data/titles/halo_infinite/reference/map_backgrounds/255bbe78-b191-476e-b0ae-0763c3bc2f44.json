@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "255bbe78-b191-476e-b0ae-0763c3bc2f44",
+  "mapNames": [
+    "Opulence",
+    "opulence_map"
+  ],
+  "image": "255bbe78-b191-476e-b0ae-0763c3bc2f44.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T22:23:10.7730799Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04683729108174642,
+    "originX": -19.16844280115763,
+    "originY": 61.63981044896444,
+    "widthPx": 1331,
+    "heightPx": 1063,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 13,
+    "anchorsInFrame": 13,
+    "anchorsWithGround": 13,
+    "anchorMedianGapM": -0.2871894321515853,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 59.04879089355469,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.9164345403899722,
+    "covered": true,
+    "cellsSubstituted": 355383,
+    "forgeObjects": 3613,
+    "forgeObjectsDrawn": 3564,
+    "forgeObjectsWithoutModel": 32,
+    "forgeDeathVolumes": 17
+  }
+}

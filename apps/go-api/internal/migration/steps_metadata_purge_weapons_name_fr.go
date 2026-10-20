@@ -24,7 +24,7 @@ package migration
 // et rebuild_catalog_fetch_queue_drop_art_indexes
 // (steps_metadata_rebuild_catalog_fetch_queue_no_art.go) — DuckDB ne sait pas DROP une
 // colonne indexée via ALTER, donc on recrée la table sans elle. `weapons` est un
-// référentiel STATIQUE explicitement HORS périmètre du bug ART #23046 (zéro writer
+// référentiel STATIQUE explicitement HORS périmètre du bug ART #23645 (zéro writer
 // concurrent, zéro écriture per-match — cf. tête de games/weapons/registry.go) : ce n'est PAS
 // une table append-only, donc PAS de vue `_latest` ni de `written_at` ici — juste la PK
 // composite recréée à l'identique.

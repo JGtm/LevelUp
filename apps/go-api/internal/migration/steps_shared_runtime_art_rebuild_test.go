@@ -1,7 +1,7 @@
 //go:build integration
 
 // Tests TDD pour la fonction runtime RebuildMatchParticipantsART (Phase 4.1
-// du plan stabilisation 2026-05-22). Cf. .ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md §4.1.
+// du plan stabilisation 2026-05-22). Cf. .ai/archive/V7/PLAN_SYNC_CONCURRENCY_STABILIZATION.md §4.1.
 //
 // Contrat de la fonction runtime (≠ migration applyRebuildMatchParticipants) :
 //   - Pas de sentinel sync_meta : la fonction est IDEMPOTENTE PAR DESIGN

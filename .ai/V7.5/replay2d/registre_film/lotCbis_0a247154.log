@@ -1,0 +1,263 @@
+=== RUN   TestTi13ChainageLotCbis
+    ti13_chainage_test.go:148: FILM 0a247154 — ti=13 : 20 slots · FANTOME : 141 slots · ti=4 (temoin positif) : 1 slots
+    ti13_chainage_test.go:154: 
+    ti13_chainage_test.go:154: === REELLE · hypothese i2..i33 = mode B (element #k, index < 0x20) — 1962 records dans la grammaire
+    ti13_chainage_test.go:154:   CHAINES (un en-tete valide commence au bit de fin) : 1056 = 53.8 %
+    ti13_chainage_test.go:154:   temoin DECALE (+3 bits, niveau du hasard de l'en-tete) : 23 = 1.2 %
+    ti13_chainage_test.go:154:   cardinalite du masque : 1:820 (41.8 %) 2:281 (14.3 %) 3:46 (2.3 %) 4:815 (41.5 %)
+    ti13_chainage_test.go:154:   chainage PAR COMPOSANT annonce : i4:404/496 (81 %) i9:401/465 (86 %) i5:401/463 (87 %) i8:404/450 (90 %) i3:403/430 (94 %) i7:401/423 (95 %)
+    ti13_chainage_test.go:155: 
+    ti13_chainage_test.go:155: === FANTOME · hypothese i2..i33 = mode B (element #k, index < 0x20) — 16435 records dans la grammaire
+    ti13_chainage_test.go:155:   CHAINES (un en-tete valide commence au bit de fin) : 574 = 3.5 %
+    ti13_chainage_test.go:155:   temoin DECALE (+3 bits, niveau du hasard de l'en-tete) : 198 = 1.2 %
+    ti13_chainage_test.go:155:   cardinalite du masque : 1:14746 (89.7 %) 2:1530 (9.3 %) 3:106 (0.6 %) 4:47 (0.3 %) 5:6 (0.0 %)
+    ti13_chainage_test.go:154: 
+    ti13_chainage_test.go:154: === REELLE · hypothese i2..i33 = mode A (scalaire, index hors bornes) — 1962 records dans la grammaire
+    ti13_chainage_test.go:154:   CHAINES (un en-tete valide commence au bit de fin) : 273 = 13.9 %
+    ti13_chainage_test.go:154:   temoin DECALE (+3 bits, niveau du hasard de l'en-tete) : 59 = 3.0 %
+    ti13_chainage_test.go:154:   cardinalite du masque : 1:820 (41.8 %) 2:281 (14.3 %) 3:46 (2.3 %) 4:815 (41.5 %)
+    ti13_chainage_test.go:154:   chainage PAR COMPOSANT annonce : i4:9/496 (2 %) i9:9/465 (2 %) i5:9/463 (2 %) i8:11/450 (2 %) i3:12/430 (3 %) i7:8/423 (2 %)
+    ti13_chainage_test.go:155: 
+    ti13_chainage_test.go:155: === FANTOME · hypothese i2..i33 = mode A (scalaire, index hors bornes) — 16443 records dans la grammaire
+    ti13_chainage_test.go:155:   CHAINES (un en-tete valide commence au bit de fin) : 1064 = 6.5 %
+    ti13_chainage_test.go:155:   temoin DECALE (+3 bits, niveau du hasard de l'en-tete) : 211 = 1.3 %
+    ti13_chainage_test.go:155:   cardinalite du masque : 1:14754 (89.7 %) 2:1530 (9.3 %) 3:106 (0.6 %) 4:47 (0.3 %) 5:6 (0.0 %)
+    ti13_chainage_test.go:157: 
+    ti13_chainage_test.go:157: === TEMOIN POSITIF ti=4 `high-frequency` (R(8), 1 composant) — 47722 records
+    ti13_chainage_test.go:157:   CHAINES : 46049 = 96.5 %  ·  temoin DECALE (+3) : 0 = 0.0 %
+    ti13_chainage_test.go:158:   ecrit : C:\Users\Guillaume\Projects\LevelUp-wt-zones-ti13\.ai\V7.5\replay2d\registre_film\lotC\0a247154_ti13_chainage.tsv (385 octets)
+--- PASS: TestTi13ChainageLotCbis (25.73s)
+=== RUN   TestTi13VariantLotCbis
+    ti13_variant_test.go:218: FILM 0a247154 — bande ti=13 : 20 slots ; bande FANTOME (temoin) : 141 slots
+    ti13_variant_test.go:229: 
+    ti13_variant_test.go:229: === ti=13 i1 managed-object-property-component (mode A/scalaire) — 235 records singleton (REELLE) / 197 (FANTOME)
+    ti13_variant_test.go:229:   tags REELLE  : t4:214 (91.1 %) t5:8 (3.4 %) t9:4 (1.7 %) t0:3 (1.3 %) t1:2 (0.9 %) t2:1 (0.4 %) t3:1 (0.4 %) t8:1 (0.4 %) (+1 autres)
+    ti13_variant_test.go:229:   tags FANTOME : t0:38 (19.3 %) t1:25 (12.7 %) t2:18 (9.1 %) t10:17 (8.6 %) t13:12 (6.1 %) t11:12 (6.1 %) t8:11 (5.6 %) t12:9 (4.6 %) (+8 autres)
+    ti13_variant_test.go:229:   concentration du tag dominant : REELLE 91.1 % · FANTOME 19.3 %  (uniforme = 6,3 %)
+    ti13_variant_test.go:229:   coherence du tag PAR SLOT (>= 5 records) : REELLE mediane 100.0 % sur 2 slots · FANTOME mediane 30.0 % sur 10 slots
+    ti13_variant_test.go:229:   64 bits bruts DISTINCTS / records (motif litteral si ~0) : REELLE 67/235 = 0.29 · FANTOME 196/197 = 0.99
+    ti13_variant_test.go:229:   VECTEUR i1 tag 0 [non chaine] : chunk 7 · paquet 1924 · bit 33 · slot 1553 gen 1 · bruts 0x0E2D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i1 tag 0 [non chaine] : chunk 7 · paquet 2176 · bit 33 · slot 1557 gen 1 · bruts 0x002D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i1 tag 0 [non chaine] : chunk 36 · paquet 1512 · bit 1889 · slot 1566 gen 2 · bruts 0x00DFBE0407418C10 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i1 tag 1 [non chaine] : chunk 19 · paquet 1502 · bit 620 · slot 1555 gen 2 · bruts 0x139B2C806DBA2464 · charge 4 bits = 3
+    ti13_variant_test.go:229:   VECTEUR i1 tag 1 [CHAINE] : chunk 19 · paquet 1712 · bit 626 · slot 1555 gen 2 · bruts 0x12A6000E50D973F6 · charge 4 bits = 2
+    ti13_variant_test.go:229:   VECTEUR i1 tag 2 [non chaine] : chunk 34 · paquet 2334 · bit 2056 · slot 1624 gen 0 · bruts 0x2734434020C1C257 · charge 1 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i1 tag 3 [non chaine] : chunk 15 · paquet 808 · bit 1037 · slot 1558 gen 1 · bruts 0x37E80105D7DF041B · charge 24 bits = 8290320
+    ti13_variant_test.go:229:   VECTEUR i1 tag 4 [CHAINE] : chunk 3 · paquet 238 · bit 2605 · slot 1623 gen 1 · bruts 0x40000000099750B5 · charge 32 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i1 tag 4 [CHAINE] : chunk 3 · paquet 280 · bit 4503 · slot 1623 gen 1 · bruts 0x4FFFFFFFF998918C · charge 32 bits = 4294967295
+    ti13_variant_test.go:229:   VECTEUR i1 tag 4 [CHAINE] : chunk 3 · paquet 988 · bit 1639 · slot 1623 gen 1 · bruts 0x400000001998918C · charge 32 bits = 1
+    ti13_variant_test.go:229:   VECTEUR i1 tag 5 [CHAINE] : chunk 11 · paquet 132 · bit 1156 · slot 1622 gen 1 · bruts 0x578F81557995D082 · charge 32 bits = 2029524311
+    ti13_variant_test.go:229:   VECTEUR i1 tag 5 [CHAINE] : chunk 13 · paquet 1416 · bit 2339 · slot 1622 gen 1 · bruts 0x58727C0FF995D082 · charge 32 bits = 2267529471
+    ti13_variant_test.go:229:   VECTEUR i1 tag 5 [CHAINE] : chunk 20 · paquet 554 · bit 1726 · slot 1622 gen 1 · bruts 0x528B76E9D995D082 · charge 32 bits = 683110045
+    ti13_variant_test.go:229:   VECTEUR i1 tag 8 [non chaine] : chunk 16 · paquet 1610 · bit 345 · slot 1566 gen 1 · bruts 0x800350222D065DE4 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i1 tag 9 [non chaine] : chunk 2 · paquet 1960 · bit 851 · slot 1558 gen 2 · bruts 0x9D7A3C7D8FDA2054 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i1 tag 9 [non chaine] : chunk 4 · paquet 1282 · bit 1067 · slot 1567 gen 0 · bruts 0x920723001083C347 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i1 tag 9 [non chaine] : chunk 6 · paquet 542 · bit 1516 · slot 1559 gen 3 · bruts 0x96E751DA62205BF5 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i1 tag 14 [non chaine] : chunk 26 · paquet 700 · bit 149 · slot 1561 gen 2 · bruts 0xED058004E40F6840 · charge 0 bits = 0
+    ti13_variant_test.go:229: 
+    ti13_variant_test.go:229: === ti=13 i3 player-masked-property (i3) (mode B/par-joueur) — 24 records singleton (REELLE) / 140 (FANTOME)
+    ti13_variant_test.go:229:   tags REELLE  : t0:4 (16.7 %) t7:4 (16.7 %) t13:3 (12.5 %) t1:2 (8.3 %) t15:2 (8.3 %) t11:2 (8.3 %) t8:1 (4.2 %) t10:1 (4.2 %) (+5 autres)
+    ti13_variant_test.go:229:   tags FANTOME : t12:52 (37.1 %) t0:12 (8.6 %) t7:11 (7.9 %) t9:11 (7.9 %) t2:8 (5.7 %) t11:7 (5.0 %) t1:7 (5.0 %) t15:6 (4.3 %) (+8 autres)
+    ti13_variant_test.go:229:   concentration du tag dominant : REELLE 16.7 % · FANTOME 37.1 %  (uniforme = 6,3 %)
+    ti13_variant_test.go:229:   coherence du tag PAR SLOT (>= 5 records) : REELLE mediane 80.0 % sur 1 slots · FANTOME mediane 60.0 % sur 6 slots
+    ti13_variant_test.go:229:   64 bits bruts DISTINCTS / records (motif litteral si ~0) : REELLE 24/24 = 1.00 · FANTOME 136/140 = 0.97
+    ti13_variant_test.go:229:   VECTEUR i3 tag 0 [non chaine] : chunk 7 · paquet 2018 · bit 207 · slot 1553 gen 1 · bruts 0x0E2D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i3 tag 0 [non chaine] : chunk 7 · paquet 2268 · bit 33 · slot 1557 gen 1 · bruts 0x002D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i3 tag 0 [non chaine] : chunk 8 · paquet 1484 · bit 33 · slot 1563 gen 1 · bruts 0x062D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i3 tag 1 [non chaine] : chunk 32 · paquet 1730 · bit 799 · slot 1566 gen 2 · bruts 0x113EA400115903BE · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i3 tag 1 [non chaine] : chunk 37 · paquet 1090 · bit 742 · slot 1559 gen 3 · bruts 0x1F3C1175C9BA2934 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i3 tag 4 [CHAINE] : chunk 20 · paquet 2266 · bit 183 · slot 1558 gen 1 · bruts 0x4A79112524001559 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i3 tag 5 [non chaine] : chunk 29 · paquet 1246 · bit 331 · slot 1567 gen 2 · bruts 0x5134A400155903E4 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i3 tag 6 [non chaine] : chunk 13 · paquet 306 · bit 1375 · slot 1554 gen 0 · bruts 0x6749BC8C00420F6F · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i3 tag 7 [CHAINE] : chunk 3 · paquet 98 · bit 1727 · slot 1559 gen 2 · bruts 0x728A068EB8A21C86 · charge 24 bits = 2662504
+    ti13_variant_test.go:229:   VECTEUR i3 tag 7 [non chaine] : chunk 3 · paquet 100 · bit 1622 · slot 1559 gen 2 · bruts 0x728C068E209E1CA7 · charge 24 bits = 2670696
+    ti13_variant_test.go:229:   VECTEUR i3 tag 7 [non chaine] : chunk 3 · paquet 102 · bit 1681 · slot 1559 gen 2 · bruts 0x728E068D909A1CC8 · charge 24 bits = 2678888
+    ti13_variant_test.go:229:   VECTEUR i3 tag 8 [non chaine] : chunk 12 · paquet 1044 · bit 183 · slot 1558 gen 3 · bruts 0x8A41D11524001559 · charge 32 bits = 2753368402
+    ti13_variant_test.go:229:   VECTEUR i3 tag 10 [non chaine] : chunk 4 · paquet 1918 · bit 383 · slot 1557 gen 2 · bruts 0xA951110425001155 · charge 1 bits = 1
+    ti13_variant_test.go:229:   VECTEUR i3 tag 11 [non chaine] : chunk 6 · paquet 882 · bit 293 · slot 1555 gen 3 · bruts 0xB93D041FE65E0000 · charge 4 bits = 9
+    ti13_variant_test.go:229:   VECTEUR i3 tag 11 [non chaine] : chunk 13 · paquet 1934 · bit 948 · slot 1622 gen 1 · bruts 0xB95CD40A213BAE81 · charge 4 bits = 9
+    ti13_variant_test.go:229:   VECTEUR i3 tag 12 [non chaine] : chunk 6 · paquet 1926 · bit 247 · slot 1621 gen 3 · bruts 0xCB699107A5001155 · charge 4 bits = 11
+    ti13_variant_test.go:229:   VECTEUR i3 tag 13 [non chaine] : chunk 26 · paquet 2300 · bit 234 · slot 1566 gen 2 · bruts 0xD1312400155903DA · charge 4 bits = 1
+    ti13_variant_test.go:229:   VECTEUR i3 tag 13 [non chaine] : chunk 27 · paquet 1662 · bit 510 · slot 1555 gen 0 · bruts 0xD7C380312A033539 · charge 4 bits = 7
+    ti13_variant_test.go:229:   VECTEUR i3 tag 13 [non chaine] : chunk 27 · paquet 1670 · bit 149 · slot 1554 gen 0 · bruts 0xD94480316103DA10 · charge 4 bits = 9
+    ti13_variant_test.go:229:   VECTEUR i3 tag 14 [non chaine] : chunk 10 · paquet 416 · bit 1360 · slot 1553 gen 0 · bruts 0xE79A480021061F91 · charge 4 bits = 7
+    ti13_variant_test.go:229:   VECTEUR i3 tag 15 [non chaine] : chunk 23 · paquet 180 · bit 183 · slot 1565 gen 1 · bruts 0xF977912925001155 · charge 4 bits = 9
+    ti13_variant_test.go:229:   VECTEUR i3 tag 15 [non chaine] : chunk 26 · paquet 1476 · bit 1632 · slot 1555 gen 0 · bruts 0xFE9D94274B53B888 · charge 4 bits = 14
+    ti13_variant_test.go:229: 
+    ti13_variant_test.go:229: === ti=13 i4 player-masked-property (i4) (mode B/par-joueur) — 42 records singleton (REELLE) / 1188 (FANTOME)
+    ti13_variant_test.go:229:   tags REELLE  : t0:11 (26.2 %) t10:7 (16.7 %) t6:4 (9.5 %) t8:4 (9.5 %) t5:3 (7.1 %) t4:2 (4.8 %) t9:2 (4.8 %) t12:2 (4.8 %) (+6 autres)
+    ti13_variant_test.go:229:   tags FANTOME : t6:132 (11.1 %) t8:122 (10.3 %) t7:109 (9.2 %) t2:100 (8.4 %) t13:87 (7.3 %) t15:81 (6.8 %) t10:70 (5.9 %) t12:65 (5.5 %) (+8 autres)
+    ti13_variant_test.go:229:   concentration du tag dominant : REELLE 26.2 % · FANTOME 11.1 %  (uniforme = 6,3 %)
+    ti13_variant_test.go:229:   coherence du tag PAR SLOT (>= 5 records) : REELLE mediane 40.0 % sur 3 slots · FANTOME mediane 16.7 % sur 39 slots
+    ti13_variant_test.go:229:   64 bits bruts DISTINCTS / records (motif litteral si ~0) : REELLE 42/42 = 1.00 · FANTOME 1166/1188 = 0.98
+    ti13_variant_test.go:229:   VECTEUR i4 tag 0 [non chaine] : chunk 2 · paquet 1758 · bit 1566 · slot 1625 gen 1 · bruts 0x0E900055640FC91B · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 0 [non chaine] : chunk 4 · paquet 510 · bit 160 · slot 1553 gen 1 · bruts 0x0C8C005903D4D743 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 0 [non chaine] : chunk 4 · paquet 1058 · bit 160 · slot 1625 gen 1 · bruts 0x0C900055640FBF1D · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 1 [non chaine] : chunk 34 · paquet 940 · bit 769 · slot 1558 gen 2 · bruts 0x14BB60750EFA2844 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 4 [non chaine] : chunk 34 · paquet 1310 · bit 554 · slot 1553 gen 1 · bruts 0x40320768EE173735 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 4 [non chaine] : chunk 34 · paquet 1822 · bit 574 · slot 1553 gen 1 · bruts 0x40320766EE8B374B · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 5 [non chaine] : chunk 6 · paquet 692 · bit 1445 · slot 1567 gen 2 · bruts 0x5437101DF83040B7 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 5 [non chaine] : chunk 11 · paquet 2132 · bit 376 · slot 1563 gen 3 · bruts 0x56980055679EC0F6 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 5 [non chaine] : chunk 25 · paquet 2142 · bit 162 · slot 1566 gen 3 · bruts 0x51302400165C03C5 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 6 [non chaine] : chunk 2 · paquet 1762 · bit 1032 · slot 1553 gen 0 · bruts 0x6002C820143CB9DD · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 6 [non chaine] : chunk 14 · paquet 698 · bit 506 · slot 1565 gen 3 · bruts 0x6A900055641041DE · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 6 [non chaine] : chunk 14 · paquet 1178 · bit 869 · slot 1565 gen 1 · bruts 0x6E900055640F5A1F · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 7 [non chaine] : chunk 18 · paquet 1888 · bit 445 · slot 1566 gen 1 · bruts 0x7A940045676040E3 · charge 24 bits = 11091972
+    ti13_variant_test.go:229:   VECTEUR i4 tag 8 [non chaine] : chunk 19 · paquet 452 · bit 149 · slot 1564 gen 0 · bruts 0x8418F22B07DAA447 · charge 32 bits = 1099899568
+    ti13_variant_test.go:229:   VECTEUR i4 tag 8 [non chaine] : chunk 19 · paquet 1948 · bit 628 · slot 1624 gen 0 · bruts 0x8E940045559041E1 · charge 32 bits = 3913286741
+    ti13_variant_test.go:229:   VECTEUR i4 tag 8 [non chaine] : chunk 34 · paquet 798 · bit 1086 · slot 1553 gen 1 · bruts 0x8002AB207878DA1B · charge 32 bits = 2798087
+    ti13_variant_test.go:229:   VECTEUR i4 tag 9 [non chaine] : chunk 8 · paquet 930 · bit 801 · slot 1567 gen 3 · bruts 0x928A210900001CDE · charge 32 bits = 681709712
+    ti13_variant_test.go:229:   VECTEUR i4 tag 9 [CHAINE] : chunk 40 · paquet 426 · bit 1598 · slot 1558 gen 1 · bruts 0x94B1D747DC0FF103 · charge 32 bits = 1260221565
+    ti13_variant_test.go:229:   VECTEUR i4 tag 10 [CHAINE] : chunk 22 · paquet 2398 · bit 259 · slot 1553 gen 1 · bruts 0xA494004555903B72 · charge 1 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i4 tag 10 [CHAINE] : chunk 23 · paquet 1320 · bit 413 · slot 1560 gen 3 · bruts 0xAE94004555903ED3 · charge 1 bits = 1
+    ti13_variant_test.go:229:   VECTEUR i4 tag 10 [non chaine] : chunk 22 · paquet 1542 · bit 782 · slot 1566 gen 3 · bruts 0xA8900055640FE39B · charge 1 bits = 1
+    ti13_variant_test.go:229:   VECTEUR i4 tag 11 [non chaine] : chunk 24 · paquet 1186 · bit 705 · slot 1553 gen 1 · bruts 0xB8900055640F391D · charge 4 bits = 8
+    ti13_variant_test.go:229:   VECTEUR i4 tag 12 [non chaine] : chunk 26 · paquet 974 · bit 382 · slot 1563 gen 3 · bruts 0xC28C005903E8E6E9 · charge 4 bits = 2
+    ti13_variant_test.go:229:   VECTEUR i4 tag 12 [non chaine] : chunk 28 · paquet 722 · bit 213 · slot 1562 gen 3 · bruts 0xC8900055640ECC5E · charge 4 bits = 8
+    ti13_variant_test.go:229:   VECTEUR i4 tag 13 [non chaine] : chunk 33 · paquet 882 · bit 388 · slot 1564 gen 1 · bruts 0xD13D25001155640F · charge 4 bits = 1
+    ti13_variant_test.go:229:   VECTEUR i4 tag 14 [non chaine] : chunk 31 · paquet 784 · bit 1169 · slot 1553 gen 1 · bruts 0xEE900055640F825F · charge 4 bits = 14
+    ti13_variant_test.go:229:   VECTEUR i4 tag 15 [non chaine] : chunk 24 · paquet 276 · bit 736 · slot 1565 gen 0 · bruts 0xFCCC006F512CA301 · charge 4 bits = 12
+    ti13_variant_test.go:229:   VECTEUR i4 tag 15 [non chaine] : chunk 33 · paquet 588 · bit 444 · slot 1564 gen 0 · bruts 0xF694004555903C54 · charge 4 bits = 6
+    ti13_variant_test.go:229: 
+    ti13_variant_test.go:229: === ti=13 i5 player-masked-property (i5) (mode B/par-joueur) — 21 records singleton (REELLE) / 1069 (FANTOME)
+    ti13_variant_test.go:229:   tags REELLE  : t5:8 (38.1 %) t0:5 (23.8 %) t1:2 (9.5 %) t2:2 (9.5 %) t3:2 (9.5 %) t6:1 (4.8 %) t10:1 (4.8 %)
+    ti13_variant_test.go:229:   tags FANTOME : t4:786 (73.5 %) t0:68 (6.4 %) t1:50 (4.7 %) t8:45 (4.2 %) t2:43 (4.0 %) t3:34 (3.2 %) t14:10 (0.9 %) t11:9 (0.8 %) (+6 autres)
+    ti13_variant_test.go:229:   concentration du tag dominant : REELLE 38.1 % · FANTOME 73.5 %  (uniforme = 6,3 %)
+    ti13_variant_test.go:229:   coherence du tag PAR SLOT (>= 5 records) : REELLE mediane 88.9 % sur 1 slots · FANTOME mediane 50.0 % sur 27 slots
+    ti13_variant_test.go:229:   64 bits bruts DISTINCTS / records (motif litteral si ~0) : REELLE 21/21 = 1.00 · FANTOME 294/1069 = 0.28
+    ti13_variant_test.go:229:   VECTEUR i5 tag 0 [non chaine] : chunk 8 · paquet 1146 · bit 33 · slot 1564 gen 1 · bruts 0x0E2D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 0 [non chaine] : chunk 8 · paquet 1578 · bit 33 · slot 1563 gen 1 · bruts 0x062D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 0 [non chaine] : chunk 8 · paquet 2196 · bit 33 · slot 1565 gen 1 · bruts 0x002D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 1 [non chaine] : chunk 14 · paquet 1394 · bit 1201 · slot 1564 gen 3 · bruts 0x1202C30010842557 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 1 [non chaine] : chunk 17 · paquet 366 · bit 1343 · slot 1554 gen 1 · bruts 0x101D052040B66AC1 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 2 [non chaine] : chunk 36 · paquet 26 · bit 1305 · slot 1621 gen 2 · bruts 0x2B3A480021061FE9 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 2 [non chaine] : chunk 37 · paquet 1792 · bit 566 · slot 1625 gen 1 · bruts 0x26900055640F339E · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 3 [non chaine] : chunk 20 · paquet 1862 · bit 1561 · slot 1559 gen 1 · bruts 0x3EDAE42F86002108 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 3 [non chaine] : chunk 39 · paquet 536 · bit 316 · slot 1564 gen 0 · bruts 0x3494004555903DE3 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 5 [non chaine] : chunk 39 · paquet 60 · bit 367 · slot 1554 gen 2 · bruts 0x559D930009104A7D · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 5 [non chaine] : chunk 39 · paquet 380 · bit 449 · slot 1554 gen 0 · bruts 0x559480016012316D · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 5 [non chaine] : chunk 39 · paquet 382 · bit 270 · slot 1554 gen 0 · bruts 0x559480015E12306D · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 6 [non chaine] : chunk 39 · paquet 330 · bit 270 · slot 1553 gen 2 · bruts 0x65200064846514CA · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i5 tag 10 [non chaine] : chunk 16 · paquet 1886 · bit 230 · slot 1558 gen 0 · bruts 0xA111DA400155903C · charge 1 bits = 0
+    ti13_variant_test.go:229: 
+    ti13_variant_test.go:229: === ti=13 i9 player-masked-property (i9) (mode B/par-joueur) — 23 records singleton (REELLE) / 211 (FANTOME)
+    ti13_variant_test.go:229:   tags REELLE  : t12:4 (17.4 %) t0:3 (13.0 %) t1:3 (13.0 %) t9:3 (13.0 %) t4:2 (8.7 %) t5:2 (8.7 %) t2:1 (4.3 %) t3:1 (4.3 %) (+4 autres)
+    ti13_variant_test.go:229:   tags FANTOME : t0:65 (30.8 %) t11:27 (12.8 %) t12:24 (11.4 %) t5:15 (7.1 %) t7:14 (6.6 %) t3:10 (4.7 %) t2:8 (3.8 %) t8:7 (3.3 %) (+8 autres)
+    ti13_variant_test.go:229:   concentration du tag dominant : REELLE 17.4 % · FANTOME 30.8 %  (uniforme = 6,3 %)
+    ti13_variant_test.go:229:   coherence du tag PAR SLOT (>= 5 records) : REELLE (aucun slot a >= 5 records) · FANTOME mediane 66.7 % sur 4 slots
+    ti13_variant_test.go:229:   64 bits bruts DISTINCTS / records (motif litteral si ~0) : REELLE 22/23 = 0.96 · FANTOME 157/211 = 0.74
+    ti13_variant_test.go:229:   VECTEUR i9 tag 0 [non chaine] : chunk 8 · paquet 1792 · bit 33 · slot 1563 gen 1 · bruts 0x062D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i9 tag 0 [non chaine] : chunk 8 · paquet 2046 · bit 33 · slot 1564 gen 1 · bruts 0x0E2D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i9 tag 0 [non chaine] : chunk 22 · paquet 2216 · bit 1448 · slot 1565 gen 2 · bruts 0x00A9F344039F0010 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i9 tag 1 [non chaine] : chunk 21 · paquet 2044 · bit 199 · slot 1567 gen 0 · bruts 0x1127A400155903F0 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i9 tag 1 [non chaine] : chunk 29 · paquet 1734 · bit 1216 · slot 1556 gen 1 · bruts 0x17F62ABE49286002 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i9 tag 1 [non chaine] : chunk 31 · paquet 1454 · bit 729 · slot 1558 gen 0 · bruts 0x118964C086002107 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i9 tag 2 [non chaine] : chunk 11 · paquet 576 · bit 837 · slot 1555 gen 0 · bruts 0x2DC88B12000AAC81 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i9 tag 3 [non chaine] : chunk 11 · paquet 586 · bit 843 · slot 1555 gen 0 · bruts 0x30EEED5734458900 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i9 tag 4 [non chaine] : chunk 4 · paquet 2164 · bit 349 · slot 1624 gen 0 · bruts 0x4335B0F4F19BF441 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i9 tag 4 [non chaine] : chunk 29 · paquet 1740 · bit 1216 · slot 1556 gen 0 · bruts 0x40B878B649286002 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i9 tag 5 [non chaine] : chunk 16 · paquet 728 · bit 933 · slot 1565 gen 3 · bruts 0x511EA40015590414 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i9 tag 5 [non chaine] : chunk 24 · paquet 2020 · bit 399 · slot 1566 gen 2 · bruts 0x512DA5001155640F · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i9 tag 8 [non chaine] : chunk 31 · paquet 340 · bit 675 · slot 1554 gen 1 · bruts 0x8002042509161A64 · charge 32 bits = 2114128
+    ti13_variant_test.go:229:   VECTEUR i9 tag 9 [non chaine] : chunk 15 · paquet 78 · bit 645 · slot 1556 gen 0 · bruts 0x9ED31446E9000456 · charge 32 bits = 3979428974
+    ti13_variant_test.go:229:   VECTEUR i9 tag 9 [non chaine] : chunk 19 · paquet 1694 · bit 738 · slot 1562 gen 1 · bruts 0x9986000EE0D95BF7 · charge 32 bits = 2556428526
+    ti13_variant_test.go:229:   VECTEUR i9 tag 9 [non chaine] : chunk 29 · paquet 1674 · bit 1088 · slot 1558 gen 2 · bruts 0x99576282A2042782 · charge 32 bits = 2507548714
+    ti13_variant_test.go:229:   VECTEUR i9 tag 10 [non chaine] : chunk 12 · paquet 536 · bit 670 · slot 1561 gen 2 · bruts 0xAB5AD3909281118A · charge 1 bits = 1
+    ti13_variant_test.go:229:   VECTEUR i9 tag 12 [non chaine] : chunk 1 · paquet 8 · bit 154234 · slot 1567 gen 0 · bruts 0xC2D2828C01310285 · charge 4 bits = 2
+    ti13_variant_test.go:229:   VECTEUR i9 tag 12 [non chaine] : chunk 1 · paquet 8 · bit 164807 · slot 1561 gen 2 · bruts 0xC2D2828C01310285 · charge 4 bits = 2
+    ti13_variant_test.go:229:   VECTEUR i9 tag 12 [non chaine] : chunk 7 · paquet 2274 · bit 1818 · slot 1560 gen 2 · bruts 0xCA91801061FF73B8 · charge 4 bits = 10
+    ti13_variant_test.go:229:   VECTEUR i9 tag 13 [non chaine] : chunk 2 · paquet 2342 · bit 1125 · slot 1559 gen 3 · bruts 0xD2FA2B374881D200 · charge 4 bits = 2
+    ti13_variant_test.go:229:   VECTEUR i9 tag 14 [non chaine] : chunk 17 · paquet 710 · bit 635 · slot 1624 gen 2 · bruts 0xE8BD3731120A4001 · charge 4 bits = 8
+    ti13_variant_test.go:229: 
+    ti13_variant_test.go:229: === ti=13 i12 player-masked-property (i12) (mode B/par-joueur) — 23 records singleton (REELLE) / 276 (FANTOME)
+    ti13_variant_test.go:229:   tags REELLE  : t0:13 (56.5 %) t2:2 (8.7 %) t4:2 (8.7 %) t6:1 (4.3 %) t8:1 (4.3 %) t10:1 (4.3 %) t11:1 (4.3 %) t13:1 (4.3 %) (+1 autres)
+    ti13_variant_test.go:229:   tags FANTOME : t4:122 (44.2 %) t0:57 (20.7 %) t12:41 (14.9 %) t1:14 (5.1 %) t2:7 (2.5 %) t13:6 (2.2 %) t14:5 (1.8 %) t10:4 (1.4 %) (+8 autres)
+    ti13_variant_test.go:229:   concentration du tag dominant : REELLE 56.5 % · FANTOME 44.2 %  (uniforme = 6,3 %)
+    ti13_variant_test.go:229:   coherence du tag PAR SLOT (>= 5 records) : REELLE mediane 100.0 % sur 1 slots · FANTOME mediane 75.0 % sur 3 slots
+    ti13_variant_test.go:229:   64 bits bruts DISTINCTS / records (motif litteral si ~0) : REELLE 23/23 = 1.00 · FANTOME 234/276 = 0.85
+    ti13_variant_test.go:229:   VECTEUR i12 tag 0 [non chaine] : chunk 5 · paquet 1514 · bit 1239 · slot 1564 gen 2 · bruts 0x004A536C220010F6 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i12 tag 0 [non chaine] : chunk 8 · paquet 1930 · bit 57 · slot 1563 gen 1 · bruts 0x062D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i12 tag 0 [non chaine] : chunk 9 · paquet 26 · bit 33 · slot 1564 gen 1 · bruts 0x0E2D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i12 tag 2 [non chaine] : chunk 3 · paquet 614 · bit 1856 · slot 1624 gen 0 · bruts 0x2855880EB0090903 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i12 tag 2 [non chaine] : chunk 4 · paquet 328 · bit 1801 · slot 1564 gen 0 · bruts 0x227A4D4A880043EC · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i12 tag 4 [non chaine] : chunk 30 · paquet 2272 · bit 149 · slot 1555 gen 1 · bruts 0x41868000640F6840 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i12 tag 4 [non chaine] : chunk 37 · paquet 2288 · bit 232 · slot 1562 gen 2 · bruts 0x4D428004A40F6840 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i12 tag 6 [non chaine] : chunk 11 · paquet 564 · bit 458 · slot 1555 gen 0 · bruts 0x6D088B11800B2077 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i12 tag 8 [non chaine] : chunk 31 · paquet 936 · bit 1332 · slot 1622 gen 3 · bruts 0x8AD4FE8C00420EF7 · charge 32 bits = 2907695296
+    ti13_variant_test.go:229:   VECTEUR i12 tag 10 [non chaine] : chunk 11 · paquet 1096 · bit 304 · slot 1557 gen 0 · bruts 0xA55F0AE488AD2000 · charge 1 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i12 tag 11 [non chaine] : chunk 28 · paquet 136 · bit 747 · slot 1553 gen 1 · bruts 0xB836A030C84600F6 · charge 4 bits = 8
+    ti13_variant_test.go:229:   VECTEUR i12 tag 13 [non chaine] : chunk 26 · paquet 1322 · bit 1866 · slot 1558 gen 3 · bruts 0xD01091A7F8816FD2 · charge 4 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i12 tag 15 [non chaine] : chunk 26 · paquet 2186 · bit 1773 · slot 1624 gen 1 · bruts 0xFC05C201BF3E080E · charge 4 bits = 12
+    ti13_variant_test.go:229: 
+    ti13_variant_test.go:229: === ti=13 i20 player-masked-property (i20) (mode B/par-joueur) — 26 records singleton (REELLE) / 118 (FANTOME)
+    ti13_variant_test.go:229:   tags REELLE  : t1:4 (15.4 %) t8:4 (15.4 %) t10:4 (15.4 %) t6:3 (11.5 %) t5:2 (7.7 %) t11:2 (7.7 %) t13:2 (7.7 %) t4:1 (3.8 %) (+4 autres)
+    ti13_variant_test.go:229:   tags FANTOME : t0:50 (42.4 %) t8:14 (11.9 %) t3:9 (7.6 %) t10:7 (5.9 %) t2:7 (5.9 %) t1:6 (5.1 %) t14:6 (5.1 %) t6:5 (4.2 %) (+7 autres)
+    ti13_variant_test.go:229:   concentration du tag dominant : REELLE 15.4 % · FANTOME 42.4 %  (uniforme = 6,3 %)
+    ti13_variant_test.go:229:   coherence du tag PAR SLOT (>= 5 records) : REELLE mediane 50.0 % sur 1 slots · FANTOME mediane 55.6 % sur 4 slots
+    ti13_variant_test.go:229:   64 bits bruts DISTINCTS / records (motif litteral si ~0) : REELLE 26/26 = 1.00 · FANTOME 117/118 = 0.99
+    ti13_variant_test.go:229:   VECTEUR i20 tag 1 [non chaine] : chunk 29 · paquet 188 · bit 1244 · slot 1564 gen 3 · bruts 0x117F1245C3001083 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i20 tag 1 [non chaine] : chunk 30 · paquet 2288 · bit 1125 · slot 1567 gen 3 · bruts 0x1D70726A2E2A2744 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i20 tag 1 [non chaine] : chunk 37 · paquet 1520 · bit 798 · slot 1559 gen 2 · bruts 0x16439149A4001559 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i20 tag 4 [non chaine] : chunk 15 · paquet 1782 · bit 777 · slot 1557 gen 1 · bruts 0x480021061FAB3B7B · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i20 tag 5 [non chaine] : chunk 12 · paquet 1636 · bit 1438 · slot 1557 gen 0 · bruts 0x5E3743C262142D03 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i20 tag 5 [non chaine] : chunk 38 · paquet 1408 · bit 403 · slot 1560 gen 3 · bruts 0x52C900045640F6E9 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i20 tag 6 [non chaine] : chunk 2 · paquet 2382 · bit 1411 · slot 1554 gen 0 · bruts 0x6002107FDEE41F75 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i20 tag 6 [non chaine] : chunk 12 · paquet 146 · bit 432 · slot 1560 gen 1 · bruts 0x6445694004555903 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i20 tag 6 [non chaine] : chunk 19 · paquet 370 · bit 207 · slot 1564 gen 0 · bruts 0x6823F0288F51802B · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i20 tag 8 [non chaine] : chunk 2 · paquet 1762 · bit 1166 · slot 1553 gen 0 · bruts 0x8002AB207870DAEB · charge 32 bits = 2798087
+    ti13_variant_test.go:229:   VECTEUR i20 tag 8 [non chaine] : chunk 34 · paquet 1310 · bit 651 · slot 1553 gen 1 · bruts 0x8002AB2079A6D5C3 · charge 32 bits = 2798087
+    ti13_variant_test.go:229:   VECTEUR i20 tag 8 [non chaine] : chunk 34 · paquet 1822 · bit 671 · slot 1553 gen 1 · bruts 0x8002AB207DA4DF2B · charge 32 bits = 2798087
+    ti13_variant_test.go:229:   VECTEUR i20 tag 9 [non chaine] : chunk 12 · paquet 1608 · bit 1426 · slot 1557 gen 3 · bruts 0x9D79BC4A00201BF3 · charge 32 bits = 3617309856
+    ti13_variant_test.go:229:   VECTEUR i20 tag 10 [non chaine] : chunk 2 · paquet 2274 · bit 1292 · slot 1553 gen 0 · bruts 0xA0022AAC81E0738E · charge 1 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i20 tag 10 [non chaine] : chunk 3 · paquet 388 · bit 789 · slot 1553 gen 0 · bruts 0xA0022AAC81E89BB8 · charge 1 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i20 tag 10 [non chaine] : chunk 35 · paquet 448 · bit 220 · slot 1553 gen 1 · bruts 0xA0022AAC81F903AC · charge 1 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i20 tag 11 [non chaine] : chunk 25 · paquet 1178 · bit 879 · slot 1625 gen 0 · bruts 0xB690074BF7B0DA9A · charge 4 bits = 6
+    ti13_variant_test.go:229:   VECTEUR i20 tag 11 [non chaine] : chunk 25 · paquet 1210 · bit 807 · slot 1625 gen 0 · bruts 0xBA928C8BF319569A · charge 4 bits = 10
+    ti13_variant_test.go:229:   VECTEUR i20 tag 12 [non chaine] : chunk 32 · paquet 1488 · bit 393 · slot 1621 gen 0 · bruts 0xC382CC9A27C48002 · charge 4 bits = 3
+    ti13_variant_test.go:229:   VECTEUR i20 tag 13 [non chaine] : chunk 12 · paquet 1654 · bit 1509 · slot 1556 gen 2 · bruts 0xD45D409A02201BF0 · charge 4 bits = 4
+    ti13_variant_test.go:229:   VECTEUR i20 tag 13 [non chaine] : chunk 39 · paquet 1534 · bit 37 · slot 1555 gen 1 · bruts 0xD984D0903DA101CE · charge 4 bits = 9
+    ti13_variant_test.go:229:   VECTEUR i20 tag 14 [non chaine] : chunk 25 · paquet 688 · bit 964 · slot 1558 gen 0 · bruts 0xE912FA5001155640 · charge 4 bits = 9
+    ti13_variant_test.go:229:   VECTEUR i20 tag 15 [non chaine] : chunk 6 · paquet 1206 · bit 1075 · slot 1562 gen 0 · bruts 0xF910A2400155903C · charge 4 bits = 9
+    ti13_variant_test.go:229: 
+    ti13_variant_test.go:229: === ti=13 i29 player-masked-property (i29) (mode B/par-joueur) — 35 records singleton (REELLE) / 847 (FANTOME)
+    ti13_variant_test.go:229:   tags REELLE  : t13:8 (22.9 %) t12:5 (14.3 %) t14:3 (8.6 %) t4:3 (8.6 %) t1:2 (5.7 %) t0:2 (5.7 %) t5:2 (5.7 %) t6:2 (5.7 %) (+7 autres)
+    ti13_variant_test.go:229:   tags FANTOME : t15:507 (59.9 %) t7:157 (18.5 %) t0:95 (11.2 %) t4:41 (4.8 %) t13:14 (1.7 %) t12:10 (1.2 %) t11:9 (1.1 %) t10:6 (0.7 %) (+5 autres)
+    ti13_variant_test.go:229:   concentration du tag dominant : REELLE 22.9 % · FANTOME 59.9 %  (uniforme = 6,3 %)
+    ti13_variant_test.go:229:   coherence du tag PAR SLOT (>= 5 records) : REELLE mediane 33.3 % sur 2 slots · FANTOME mediane 84.8 % sur 4 slots
+    ti13_variant_test.go:229:   64 bits bruts DISTINCTS / records (motif litteral si ~0) : REELLE 35/35 = 1.00 · FANTOME 458/847 = 0.54
+    ti13_variant_test.go:229:   VECTEUR i29 tag 0 [non chaine] : chunk 22 · paquet 2358 · bit 33 · slot 1621 gen 1 · bruts 0x022D59B889A8592C · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 0 [non chaine] : chunk 25 · paquet 694 · bit 947 · slot 1559 gen 3 · bruts 0x000043472AF0093D · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 1 [non chaine] : chunk 19 · paquet 856 · bit 399 · slot 1566 gen 3 · bruts 0x111FA50011556410 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 1 [non chaine] : chunk 30 · paquet 78 · bit 234 · slot 1566 gen 2 · bruts 0x1135A5001155640E · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 2 [non chaine] : chunk 26 · paquet 2194 · bit 979 · slot 1625 gen 3 · bruts 0x23EC3001083BBA6E · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 3 [non chaine] : chunk 14 · paquet 2264 · bit 1068 · slot 1559 gen 0 · bruts 0x30007787911F7B8E · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 4 [non chaine] : chunk 5 · paquet 2302 · bit 149 · slot 1553 gen 3 · bruts 0x4D890000C40F6840 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 4 [non chaine] : chunk 16 · paquet 196 · bit 1727 · slot 1559 gen 1 · bruts 0x42782414007AFFFF · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 4 [non chaine] : chunk 38 · paquet 1490 · bit 1092 · slot 1553 gen 2 · bruts 0x4877329021090000 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 5 [non chaine] : chunk 19 · paquet 858 · bit 399 · slot 1566 gen 3 · bruts 0x511FA50011556410 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 5 [non chaine] : chunk 30 · paquet 2010 · bit 149 · slot 1561 gen 2 · bruts 0x5A068001840F6840 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 6 [CHAINE] : chunk 40 · paquet 170 · bit 1861 · slot 1560 gen 0 · bruts 0x6BB100804149EBC6 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 6 [non chaine] : chunk 40 · paquet 172 · bit 1170 · slot 1560 gen 0 · bruts 0x62850080414AABC6 · charge 0 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 8 [non chaine] : chunk 25 · paquet 706 · bit 1023 · slot 1559 gen 3 · bruts 0x800041C72B6FF943 · charge 32 bits = 269426
+    ti13_variant_test.go:229:   VECTEUR i29 tag 8 [non chaine] : chunk 33 · paquet 2034 · bit 172 · slot 1559 gen 3 · bruts 0x88003E0227EFB553 · charge 32 bits = 2147737634
+    ti13_variant_test.go:229:   VECTEUR i29 tag 9 [non chaine] : chunk 8 · paquet 488 · bit 170 · slot 1555 gen 1 · bruts 0x9EDDCA6A88612800 · charge 32 bits = 3990660776
+    ti13_variant_test.go:229:   VECTEUR i29 tag 10 [CHAINE] : chunk 28 · paquet 2006 · bit 1022 · slot 1559 gen 3 · bruts 0xA44DC900055640F0 · charge 1 bits = 0
+    ti13_variant_test.go:229:   VECTEUR i29 tag 11 [non chaine] : chunk 39 · paquet 232 · bit 586 · slot 1555 gen 2 · bruts 0xBAC704E62E7D4AB9 · charge 4 bits = 10
+    ti13_variant_test.go:229:   VECTEUR i29 tag 12 [non chaine] : chunk 10 · paquet 1484 · bit 667 · slot 1563 gen 3 · bruts 0xCD4820CD02FA78CF · charge 4 bits = 13
+    ti13_variant_test.go:229:   VECTEUR i29 tag 12 [non chaine] : chunk 35 · paquet 1620 · bit 1086 · slot 1567 gen 2 · bruts 0xC9E865042353CDD1 · charge 4 bits = 9
+    ti13_variant_test.go:229:   VECTEUR i29 tag 12 [non chaine] : chunk 37 · paquet 1530 · bit 127 · slot 1563 gen 2 · bruts 0xCD382A53E2842C01 · charge 4 bits = 13
+    ti13_variant_test.go:229:   VECTEUR i29 tag 13 [non chaine] : chunk 4 · paquet 1508 · bit 1261 · slot 1567 gen 3 · bruts 0xD34FA30420E199B7 · charge 4 bits = 3
+    ti13_variant_test.go:229:   VECTEUR i29 tag 13 [non chaine] : chunk 13 · paquet 2150 · bit 127 · slot 1564 gen 3 · bruts 0xD2D024F1D3A83800 · charge 4 bits = 2
+    ti13_variant_test.go:229:   VECTEUR i29 tag 13 [non chaine] : chunk 15 · paquet 958 · bit 741 · slot 1562 gen 2 · bruts 0xD16E0C19ABA104DF · charge 4 bits = 1
+    ti13_variant_test.go:229:   VECTEUR i29 tag 14 [non chaine] : chunk 6 · paquet 1234 · bit 642 · slot 1564 gen 0 · bruts 0xE33FA98884928008 · charge 4 bits = 3
+    ti13_variant_test.go:229:   VECTEUR i29 tag 14 [non chaine] : chunk 17 · paquet 2008 · bit 1164 · slot 1559 gen 3 · bruts 0xE4A1BFAAA8911180 · charge 4 bits = 4
+    ti13_variant_test.go:229:   VECTEUR i29 tag 14 [non chaine] : chunk 36 · paquet 2358 · bit 597 · slot 1559 gen 3 · bruts 0xE5A5F1A048A41200 · charge 4 bits = 5
+    ti13_variant_test.go:229:   VECTEUR i29 tag 15 [non chaine] : chunk 8 · paquet 1364 · bit 680 · slot 1559 gen 3 · bruts 0xFAD10EA300164105 · charge 4 bits = 10
+    ti13_variant_test.go:230: 
+    ti13_variant_test.go:230: === ti=13 i0 managed-object-property-name (R(32), porte) — 62 emissions (REELLE) / 524 (FANTOME)
+    ti13_variant_test.go:230:   valeurs distinctes : REELLE 58 (ratio 0.94) · FANTOME 390 (ratio 0.74)
+    ti13_variant_test.go:230:   valeurs les plus frequentes (REELLE) : 0x000001A4:3 (4.8 %) 0x000000D2:2 (3.2 %) 0x37EF8101:2 (3.2 %) 0x022E18EF:1 (1.6 %) 0x1006C069:1 (1.6 %)
+    ti13_variant_test.go:230:   valeurs les plus frequentes (FANTOME): 0x37E7C101:37 (7.1 %) 0x39FF8102:13 (2.5 %) 0x37E00101:12 (2.3 %) 0x35F00101:10 (1.9 %) 0x37EF8101:9 (1.7 %)
+    ti13_variant_test.go:231:   ecrit : C:\Users\Guillaume\Projects\LevelUp-wt-zones-ti13\.ai\V7.5\replay2d\registre_film\lotC\0a247154_ti13_variant.tsv (16168 octets)
+--- PASS: TestTi13VariantLotCbis (16.33s)
+PASS

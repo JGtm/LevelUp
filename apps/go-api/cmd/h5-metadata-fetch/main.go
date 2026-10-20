@@ -1,7 +1,7 @@
 // Outil ops : peuple la metadata.duckdb Halo 5 (médailles, cartes, désignations CSR)
 // depuis l'API Metadata OFFICIELLE Halo 5 (www.haloapi.com). Ces référentiels
 // canoniques ne sont PAS sur les endpoints internes SpartanToken (cf.
-// .ai/PLAN_H5_ASSETS.md) — seule l'API officielle les expose. Auth = clé
+// .ai/archive/V7/PLAN_H5_ASSETS.md) — seule l'API officielle les expose. Auth = clé
 // d'abonnement Azure APIM (Ocp-Apim-Subscription-Key), lue dans l'env
 // LEVELUP_HALOAPI_KEY — JAMAIS committée. Données Halo 5 figées → seed one-shot
 // idempotent (INSERT OR REPLACE).

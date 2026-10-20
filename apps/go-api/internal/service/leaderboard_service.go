@@ -44,6 +44,7 @@ func (s *LeaderboardService) GetPage(ctx context.Context, req domain.Leaderboard
 	if limit <= 0 {
 		limit = defaultLeaderboardLimit
 	}
+	limit = min(limit, domain.MaxLeaderboardLimit)
 
 	// Slug effectif (fallback défaut). Gating capability (PMT-7) : un titre sans
 	// world.leaderboard dégrade en vide + 200 (jamais 500), via le registre — pas

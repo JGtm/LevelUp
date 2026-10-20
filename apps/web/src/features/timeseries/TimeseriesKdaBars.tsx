@@ -9,6 +9,7 @@ import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { resolveToken } from '@/lib/accessibility'
 import { outcomeScale } from '@/lib/accessibility/scales'
@@ -20,7 +21,11 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
+import { formatDateTime, intlLocale } from '@/lib/formatters'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 const OUTCOME_INT_KEY: Record<number, string> = {
   2: 'win',
@@ -100,7 +105,11 @@ export function TimeseriesKdaBars({
 
   if (rows.length === 0) {
     return (
-      <EmptyStateNotice title={labels.emptyTitle} description={labels.emptyDescription} />
+      <Card>
+        <CardContent className="pt-4">
+          <EmptyStateNotice title={labels.emptyTitle} description={labels.emptyDescription} />
+        </CardContent>
+      </Card>
     )
   }
 
@@ -108,6 +117,9 @@ export function TimeseriesKdaBars({
     <ChartCard series={series} buildOption={buildOption} height={height} />
   )
 }
+
+/** Rang de la série du rapport K/D (courbe de l'axe de droite) dans le tableau de séries. */
+const KD_RATIO_SERIES_INDEX = 2
 
 interface BuildLabels {
   killsLabel: string
@@ -147,7 +159,16 @@ export function buildKdaBarsOption(
   return {
     backgroundColor: CHART_BG,
     grid: { top: 16, bottom: 56, left: 56, right: 56 },
-    tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'axis',
+      // La catégorie est l'horodatage ISO du match : la bulle l'écrit à la langue de l'application.
+      // Les morts sont tracées sous l'axe (négatives) : valeur absolue ; le rapport a deux décimales.
+      formatter: axisTooltipFormatter({
+        title: (p) => formatDateTime(String(p.axisValue ?? ''), intlLocale(useAppShellStore.getState().locale)),
+        value: (r) => tipNumber(Math.abs(r.value), r.seriesIndex === KD_RATIO_SERIES_INDEX ? 2 : 0),
+      }),
+    },
     legend: {
       ...getLegendBase(tc),
       data: [labels.killsLabel, labels.deathsLabel, labels.kdRatioLabel],

@@ -24,9 +24,11 @@ import (
 //     à un autre joueur n'est pas dans ce DB → 404. Le slug du chemin étant
 //     ownership-gardé, l'utilisateur ne peut cibler que son propre player DB.
 //
-// Les défis d'ESCOUADE (DB sociale partagée tous joueurs, non isolés par player DB) ne sont PAS
-// couverts par cette isolation : ils sont gardés séparément par assertMemberUser
-// (cf. prestige.Service.ListSquadChallenges).
+// Les escouades et leurs défis (DB sociale partagée tous joueurs, non isolés par player
+// DB) ne sont PAS couverts par cette isolation : chaque méthode du service qui reçoit un
+// identifiant d'escouade vérifie que l'acteur en est membre (assertMemberUser ou
+// membersIfMember) — garde-rail internal/prestige/squad_member_guard_test.go, qui date
+// ses exceptions.
 func prestigePlayerSlugCtx(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		slug := chi.URLParam(req, "player_slug")

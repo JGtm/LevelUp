@@ -88,6 +88,12 @@ type NotifyConfig struct {
 	// seuils ops A5.3 — lot ops 2026-07-13, suite incident disque-plein VPS).
 	// Défaut : true.
 	NotifyDisk bool
+	// NotifyReplay active la notification GROUPÉE « rejeux 2D prêts » (lot B v7.5) :
+	// un message par fenêtre de groupement, jamais un par artefact. Défaut : true.
+	// Ce n'est PAS un kill-switch au sens de CLAUDE.md n°11 (la feature est livrée
+	// ACTIVE) : c'est la préférence de catégorie qui permet de couper CE flux sans
+	// couper Discord — la réponse au « attention au spam » du besoin produit.
+	NotifyReplay bool
 	// NotifyCoach active le relais externe des notifications coach (proposals les
 	// plus fortes) vers le webhook. Défaut : FALSE — contrairement aux autres
 	// toggles (défaut true une fois discord_notifications_enabled actif), le relais
@@ -175,6 +181,7 @@ func notifyConfigFromMap(settingsPath string, s map[string]any) NotifyConfig {
 	cfg.NotifyVersion = boolValDefault(s, "discord_notify_new_version", true)
 	cfg.NotifyReauth = boolValDefault(s, "discord_notify_reauth", true)
 	cfg.NotifyDisk = boolValDefault(s, "discord_notify_disk", true)
+	cfg.NotifyReplay = boolValDefault(s, "discord_notify_replay", true)
 	// Opt-in strict : défaut false (cf. NotifyCoach). Le relais coach reste inactif
 	// tant que l'utilisateur ne l'active pas explicitement, même Discord globalement ON.
 	cfg.NotifyCoach = boolValDefault(s, "discord_notify_coach", false)
@@ -340,6 +347,20 @@ var discordStrings = map[string]map[string]string{
 	"discord_coach_category": {"fr": "Catégorie", "en": "Category"},
 	"discord_coach_details":  {"fr": "Détails", "en": "Details"},
 	"discord_coach_link":     {"fr": "Ouvrir dans LevelUp", "en": "Open in LevelUp"},
+
+	// Rejeu 2D groupé (lot B v7.5). Sans pictogramme : ces quatre libellés sont ceux
+	// validés au plan B0, et le texte FR reste sans anglicisme (« rejeu », jamais
+	// « replay »).
+	"discord_replay_ready_title": {"fr": "Rejeux 2D prêts", "en": "2D replays ready"},
+	"discord_replay_ready_desc_one": {
+		"fr": "**1 rejeu** est prêt à être visionné.",
+		"en": "**1 replay** is ready to watch.",
+	},
+	"discord_replay_ready_desc_many": {
+		"fr": "**{count} rejeux** sont prêts à être visionnés.",
+		"en": "**{count} replays** are ready to watch.",
+	},
+	"discord_replay_ready_more": {"fr": "… et {count} autre(s)", "en": "… and {count} more"},
 
 	"discord_reauth_title": {"fr": "🔑  Reconnexion Xbox requise", "en": "🔑  Xbox reconnection required"},
 	"discord_reauth_desc": {

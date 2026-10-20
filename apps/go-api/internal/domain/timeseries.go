@@ -297,6 +297,13 @@ type TimeseriesPageResponse struct {
 	// IntensityRows : 1 ligne par match × 10 phases normalisées (0..1) — frags
 	// du joueur sur la timeline du match, source highlight_events.
 	IntensityRows []IntensityMatchRow `json:"intensity_rows,omitempty"`
+	// IntensityRowsTeam / IntensityRowsLobby : les deux COURBES DE RÉFÉRENCE du même
+	// profil (2026-09-19) — les frags de l'ÉQUIPE ALLIÉE du joueur, et ceux de TOUT le
+	// lobby. Même forme, même normalisation, même producteur que `IntensityRows` : seule
+	// la population de tueurs retenue change. `IntensityRowsTeam` est absent quand le
+	// titre ne publie pas ses participants — la courbe manque alors, jamais à plat.
+	IntensityRowsTeam  []IntensityMatchRow `json:"intensity_rows_team,omitempty"`
+	IntensityRowsLobby []IntensityMatchRow `json:"intensity_rows_lobby,omitempty"`
 	// SoloSessionPerf : agrégat par session/semaine/mois sur la population
 	// solo complète (ignore filtres period/sessions/cascade). Alimente
 	// "Performance solo par session" sur l'onglet Synthèse. Granularité
@@ -316,4 +323,51 @@ type TimeseriesPageResponse struct {
 	// (Infinite → nil → le front retombe sur « Outils de destruction »). MÊME builder
 	// partagé que Synthesis/Sessions (buildWeaponAccuracy). Nil si aucune arme valide.
 	WeaponAccuracy []SynthesisWeaponAccuracyEntry `json:"weapon_accuracy,omitempty"`
+	// WeaponRange : portée et dénivelé des engagements (mes frags ET mes morts, par arme),
+	// sur le MÊME scope filtré que le reste de la page. Section déplacée de la Synthèse vers
+	// l'onglet Résumé le 2026-09-13 ; même producteur, même contrat de dégradation :
+	// nil (champ omis) pour un titre sans positions par kill, un scope non décodé ou une
+	// lecture en échec — jamais une section vide. Gated côté front par la capability
+	// produit `weapon_range`. Cf. service/synthesis_weapon_range.go.
+	WeaponRange *SynthesisWeaponRange `json:"weapon_range,omitempty"`
+	// RangeProfiles : le nuage des RÔLES DE PORTÉE du joueur consulté (lot U, décision
+	// D23-a) — un profil par match de la fenêtre filtrée, portant la médiane du joueur et
+	// celle du LOBBY ENTIER du match, qui en est le référentiel.
+	//
+	// AUTRE QUESTION QUE `WeaponRange`, qui l'accompagne : celle-ci donne des mètres PAR
+	// ARME, celui-là une position relative DANS LE TEMPS (« quel joueur suis-je devenu sur
+	// cette période »). MÊME producteur et MÊME DTO que la page Sessions et l'Escouade —
+	// les trois pages se lisent avec la même grammaire (service/match_range_block.go).
+	//
+	// Nil (champ omis) pour un titre sans décodeur de film, un scope non décodé ou une
+	// lecture en échec — jamais un bloc vide.
+	RangeProfiles *MatchRangeBlock `json:"range_profiles,omitempty"`
+	// Emprise : l'onglet « Usages » — l'Emprise appliquée aux matchs solo de la fenêtre
+	// (solo_emprise.go). Nil quand la fenêtre n'a aucun match ; sans film, seule la feuille de
+	// match (frags aux armes spéciales) y est servie et FilmUnavailable dit pourquoi.
+	Emprise *SoloEmpriseBlock `json:"emprise,omitempty"`
+	// PlayerEmblemURL : l'emblème du joueur consulté (fiche « Ma part à l'objectif ») ; vide quand
+	// il n'est pas connu — le web pose alors l'initiale.
+	PlayerEmblemURL string `json:"player_emblem_url,omitempty"`
+	// LivesNearTeammate : « Mes vies : près d'un coéquipier ou seul » (timeseries_lives.go). Nil sans
+	// `film.kill_positions`, sur lecture en échec ou sans aucune vie du joueur sur la fenêtre.
+	LivesNearTeammate *TimeseriesLivesNearTeammate `json:"lives_near_teammate,omitempty"`
+	// Coordination : le bloc « Appui reçu » DANS LE TEMPS (lot N1, décisions D22) — les
+	// mêmes grandeurs que la page Sessions, groupées PAR SOIRÉE (`sessions`), sur le MÊME
+	// scope filtré que le reste de la page.
+	//
+	// LA SOIRÉE, PAS LE MATCH : à l'échelle d'un match, les dénominateurs des parts d'appui
+	// (frags du joueur, assistances de l'équipe) comptent quelques unités — une part bouge de
+	// plusieurs points pour un seul événement, et la frise par match dessinerait le bruit.
+	//
+	// MÊME producteur que la page Sessions (service/coordination_block.go), même contrat
+	// de dégradation : nil sans match, Available=false avec raison machine sinon.
+	Coordination *CoordinationBlock `json:"coordination,omitempty"`
+
+	// SquadFormes : bloc « Les formes retenues » — la matière des cartes d'objectif de l'onglet
+	// « Usages » (rapport de force par famille de mode, ma part à l'objectif). MÊME producteur que
+	// l'Escouade (`squadagg.BuildSquadFormesBlock`) et MÊME scope que le reste de la page —
+	// aucune seconde doctrine de périmètre. nil quand le scope est
+	// vide ; Available=false avec raison machine pour un titre sans film.usage_summary.
+	SquadFormes *SquadFormesBlock `json:"formes_retenues,omitempty"`
 }

@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"levelup/go-api/internal/platform/verrous"
 )
 
 const (
@@ -36,21 +38,12 @@ const (
 	pollInterval = 5 * time.Millisecond
 )
 
-var (
-	leasesMu sync.Mutex
-	leases   = map[string]*sync.Mutex{}
-)
+// leases porte un mutex par chemin DB (registre partagé du dépôt, `platform/verrous`).
+var leases verrous.Registre
 
 // leaseMutex retourne (et crée si absent) le mutex associé à un chemin DB.
 func leaseMutex(path string) *sync.Mutex {
-	leasesMu.Lock()
-	defer leasesMu.Unlock()
-	if mu, ok := leases[path]; ok {
-		return mu
-	}
-	mu := &sync.Mutex{}
-	leases[path] = mu
-	return mu
+	return leases.De(path)
 }
 
 // AcquireLease tente d'acquérir le verrou d'écriture pour un chemin DB.

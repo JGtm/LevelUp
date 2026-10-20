@@ -1,0 +1,481 @@
+film	build	mesure	regle	paquets	utiles
+bcb6d393	HI_1_12_0	paquets	fermes au bit	5835	35158
+bcb6d393	HI_1_12_0	paquets	fermes	5835	35158
+bcb6d393	HI_1_12_0	fermes au bit portant	vue B : sortie par rejet	2	-
+bcb6d393	HI_1_12_0	non fermes portant	vue B : sortie par rejet	3268	-
+bcb6d393	HI_1_12_0	fermes au bit portant	ecrivain : ordre de la vue B	1	-
+bcb6d393	HI_1_12_0	non fermes portant	ecrivain : ordre de la vue B	106	-
+bcb6d393	HI_1_12_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	4	-
+bcb6d393	HI_1_12_0	non fermes portant	ecrivain : masque au-dela de l archetype	73	-
+bcb6d393	HI_1_12_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+bcb6d393	HI_1_12_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+bcb6d393	HI_1_12_0	fermes au bit portant	ecrivain : masque epars non croissant	0	-
+bcb6d393	HI_1_12_0	non fermes portant	ecrivain : masque epars non croissant	7	-
+bcb6d393	HI_1_12_0	fermes au bit portant	ecrivain : vue C kind non nul	0	-
+bcb6d393	HI_1_12_0	non fermes portant	ecrivain : vue C kind non nul	102	-
+bcb6d393	HI_1_12_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+bcb6d393	HI_1_12_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+bcb6d393	HI_1_12_0	fermes au bit portant	ecrivain : vue C index non croissants	0	-
+bcb6d393	HI_1_12_0	non fermes portant	ecrivain : vue C index non croissants	1	-
+bcb6d393	HI_1_12_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	0	-
+bcb6d393	HI_1_12_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	12	-
+bcb6d393	HI_1_12_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+bcb6d393	HI_1_12_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+bcb6d393	HI_1_12_0	listes d evenements	localisees	2447	-
+bcb6d393	HI_1_12_0	listes d evenements	non localisees	283	-
+fb1a1a72	HI_1_13_0	paquets	fermes au bit	22318	161678
+fb1a1a72	HI_1_13_0	paquets	fermes	22318	161678
+fb1a1a72	HI_1_13_0	fermes au bit portant	vue B : sortie par rejet	14	-
+fb1a1a72	HI_1_13_0	non fermes portant	vue B : sortie par rejet	23535	-
+fb1a1a72	HI_1_13_0	fermes au bit portant	ecrivain : ordre de la vue B	6	-
+fb1a1a72	HI_1_13_0	non fermes portant	ecrivain : ordre de la vue B	447	-
+fb1a1a72	HI_1_13_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	39	-
+fb1a1a72	HI_1_13_0	non fermes portant	ecrivain : masque au-dela de l archetype	489	-
+fb1a1a72	HI_1_13_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+fb1a1a72	HI_1_13_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+fb1a1a72	HI_1_13_0	fermes au bit portant	ecrivain : masque epars non croissant	0	-
+fb1a1a72	HI_1_13_0	non fermes portant	ecrivain : masque epars non croissant	6	-
+fb1a1a72	HI_1_13_0	fermes au bit portant	ecrivain : vue C kind non nul	0	-
+fb1a1a72	HI_1_13_0	non fermes portant	ecrivain : vue C kind non nul	202	-
+fb1a1a72	HI_1_13_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+fb1a1a72	HI_1_13_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+fb1a1a72	HI_1_13_0	fermes au bit portant	ecrivain : vue C index non croissants	0	-
+fb1a1a72	HI_1_13_0	non fermes portant	ecrivain : vue C index non croissants	7	-
+fb1a1a72	HI_1_13_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	0	-
+fb1a1a72	HI_1_13_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	57	-
+fb1a1a72	HI_1_13_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+fb1a1a72	HI_1_13_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+fb1a1a72	HI_1_13_0	listes d evenements	localisees	7158	-
+fb1a1a72	HI_1_13_0	listes d evenements	non localisees	692	-
+d9781168	HI_1_13_0	paquets	fermes au bit	26464	180366
+d9781168	HI_1_13_0	paquets	fermes	26464	180366
+d9781168	HI_1_13_0	fermes au bit portant	vue B : sortie par rejet	95	-
+d9781168	HI_1_13_0	non fermes portant	vue B : sortie par rejet	11061	-
+d9781168	HI_1_13_0	fermes au bit portant	ecrivain : ordre de la vue B	26	-
+d9781168	HI_1_13_0	non fermes portant	ecrivain : ordre de la vue B	4	-
+d9781168	HI_1_13_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	231	-
+d9781168	HI_1_13_0	non fermes portant	ecrivain : masque au-dela de l archetype	189	-
+d9781168	HI_1_13_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+d9781168	HI_1_13_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+d9781168	HI_1_13_0	fermes au bit portant	ecrivain : masque epars non croissant	15	-
+d9781168	HI_1_13_0	non fermes portant	ecrivain : masque epars non croissant	0	-
+d9781168	HI_1_13_0	fermes au bit portant	ecrivain : vue C kind non nul	1	-
+d9781168	HI_1_13_0	non fermes portant	ecrivain : vue C kind non nul	1	-
+d9781168	HI_1_13_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+d9781168	HI_1_13_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+d9781168	HI_1_13_0	fermes au bit portant	ecrivain : vue C index non croissants	3	-
+d9781168	HI_1_13_0	non fermes portant	ecrivain : vue C index non croissants	0	-
+d9781168	HI_1_13_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	4	-
+d9781168	HI_1_13_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	0	-
+d9781168	HI_1_13_0	fermes au bit portant	ecrivain : vue C code analogique 63	1	-
+d9781168	HI_1_13_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+d9781168	HI_1_13_0	listes d evenements	localisees	2996	-
+d9781168	HI_1_13_0	listes d evenements	non localisees	5741	-
+c75f33b8	HI_1_13_0	paquets	fermes au bit	22944	144577
+c75f33b8	HI_1_13_0	paquets	fermes	22944	144577
+c75f33b8	HI_1_13_0	fermes au bit portant	vue B : sortie par rejet	23	-
+c75f33b8	HI_1_13_0	non fermes portant	vue B : sortie par rejet	2294	-
+c75f33b8	HI_1_13_0	fermes au bit portant	ecrivain : ordre de la vue B	10	-
+c75f33b8	HI_1_13_0	non fermes portant	ecrivain : ordre de la vue B	17	-
+c75f33b8	HI_1_13_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	84	-
+c75f33b8	HI_1_13_0	non fermes portant	ecrivain : masque au-dela de l archetype	16	-
+c75f33b8	HI_1_13_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+c75f33b8	HI_1_13_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+c75f33b8	HI_1_13_0	fermes au bit portant	ecrivain : masque epars non croissant	4	-
+c75f33b8	HI_1_13_0	non fermes portant	ecrivain : masque epars non croissant	0	-
+c75f33b8	HI_1_13_0	fermes au bit portant	ecrivain : vue C kind non nul	0	-
+c75f33b8	HI_1_13_0	non fermes portant	ecrivain : vue C kind non nul	16	-
+c75f33b8	HI_1_13_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+c75f33b8	HI_1_13_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+c75f33b8	HI_1_13_0	fermes au bit portant	ecrivain : vue C index non croissants	0	-
+c75f33b8	HI_1_13_0	non fermes portant	ecrivain : vue C index non croissants	0	-
+c75f33b8	HI_1_13_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	0	-
+c75f33b8	HI_1_13_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	1	-
+c75f33b8	HI_1_13_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+c75f33b8	HI_1_13_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+c75f33b8	HI_1_13_0	listes d evenements	localisees	734	-
+c75f33b8	HI_1_13_0	listes d evenements	non localisees	2332	-
+bf15f7ab	HI_1_13_0	paquets	fermes au bit	28476	214998
+bf15f7ab	HI_1_13_0	paquets	fermes	28476	214998
+bf15f7ab	HI_1_13_0	fermes au bit portant	vue B : sortie par rejet	3	-
+bf15f7ab	HI_1_13_0	non fermes portant	vue B : sortie par rejet	1757	-
+bf15f7ab	HI_1_13_0	fermes au bit portant	ecrivain : ordre de la vue B	2	-
+bf15f7ab	HI_1_13_0	non fermes portant	ecrivain : ordre de la vue B	140	-
+bf15f7ab	HI_1_13_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	11	-
+bf15f7ab	HI_1_13_0	non fermes portant	ecrivain : masque au-dela de l archetype	605	-
+bf15f7ab	HI_1_13_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+bf15f7ab	HI_1_13_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+bf15f7ab	HI_1_13_0	fermes au bit portant	ecrivain : masque epars non croissant	0	-
+bf15f7ab	HI_1_13_0	non fermes portant	ecrivain : masque epars non croissant	0	-
+bf15f7ab	HI_1_13_0	fermes au bit portant	ecrivain : vue C kind non nul	0	-
+bf15f7ab	HI_1_13_0	non fermes portant	ecrivain : vue C kind non nul	244	-
+bf15f7ab	HI_1_13_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+bf15f7ab	HI_1_13_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+bf15f7ab	HI_1_13_0	fermes au bit portant	ecrivain : vue C index non croissants	0	-
+bf15f7ab	HI_1_13_0	non fermes portant	ecrivain : vue C index non croissants	0	-
+bf15f7ab	HI_1_13_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	0	-
+bf15f7ab	HI_1_13_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	3	-
+bf15f7ab	HI_1_13_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+bf15f7ab	HI_1_13_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+bf15f7ab	HI_1_13_0	listes d evenements	localisees	3978	-
+bf15f7ab	HI_1_13_0	listes d evenements	non localisees	362	-
+51ebbc0f	HI_1_13_0	paquets	fermes au bit	9847	58750
+51ebbc0f	HI_1_13_0	paquets	fermes	9847	58750
+51ebbc0f	HI_1_13_0	fermes au bit portant	vue B : sortie par rejet	21	-
+51ebbc0f	HI_1_13_0	non fermes portant	vue B : sortie par rejet	16651	-
+51ebbc0f	HI_1_13_0	fermes au bit portant	ecrivain : ordre de la vue B	19	-
+51ebbc0f	HI_1_13_0	non fermes portant	ecrivain : ordre de la vue B	359	-
+51ebbc0f	HI_1_13_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	81	-
+51ebbc0f	HI_1_13_0	non fermes portant	ecrivain : masque au-dela de l archetype	362	-
+51ebbc0f	HI_1_13_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+51ebbc0f	HI_1_13_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+51ebbc0f	HI_1_13_0	fermes au bit portant	ecrivain : masque epars non croissant	4	-
+51ebbc0f	HI_1_13_0	non fermes portant	ecrivain : masque epars non croissant	9	-
+51ebbc0f	HI_1_13_0	fermes au bit portant	ecrivain : vue C kind non nul	1	-
+51ebbc0f	HI_1_13_0	non fermes portant	ecrivain : vue C kind non nul	152	-
+51ebbc0f	HI_1_13_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+51ebbc0f	HI_1_13_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+51ebbc0f	HI_1_13_0	fermes au bit portant	ecrivain : vue C index non croissants	0	-
+51ebbc0f	HI_1_13_0	non fermes portant	ecrivain : vue C index non croissants	3	-
+51ebbc0f	HI_1_13_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	1	-
+51ebbc0f	HI_1_13_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	44	-
+51ebbc0f	HI_1_13_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+51ebbc0f	HI_1_13_0	non fermes portant	ecrivain : vue C code analogique 63	2	-
+51ebbc0f	HI_1_13_0	listes d evenements	localisees	1975	-
+51ebbc0f	HI_1_13_0	listes d evenements	non localisees	2893	-
+084a804d	HI_1_10_0	paquets	fermes au bit	5235	89145
+084a804d	HI_1_10_0	paquets	fermes	5235	89145
+084a804d	HI_1_10_0	fermes au bit portant	vue B : sortie par rejet	177	-
+084a804d	HI_1_10_0	non fermes portant	vue B : sortie par rejet	22991	-
+084a804d	HI_1_10_0	fermes au bit portant	ecrivain : ordre de la vue B	67	-
+084a804d	HI_1_10_0	non fermes portant	ecrivain : ordre de la vue B	64	-
+084a804d	HI_1_10_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	437	-
+084a804d	HI_1_10_0	non fermes portant	ecrivain : masque au-dela de l archetype	261	-
+084a804d	HI_1_10_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+084a804d	HI_1_10_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+084a804d	HI_1_10_0	fermes au bit portant	ecrivain : masque epars non croissant	22	-
+084a804d	HI_1_10_0	non fermes portant	ecrivain : masque epars non croissant	8	-
+084a804d	HI_1_10_0	fermes au bit portant	ecrivain : vue C kind non nul	7	-
+084a804d	HI_1_10_0	non fermes portant	ecrivain : vue C kind non nul	79	-
+084a804d	HI_1_10_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+084a804d	HI_1_10_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+084a804d	HI_1_10_0	fermes au bit portant	ecrivain : vue C index non croissants	10	-
+084a804d	HI_1_10_0	non fermes portant	ecrivain : vue C index non croissants	1	-
+084a804d	HI_1_10_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	7	-
+084a804d	HI_1_10_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	9	-
+084a804d	HI_1_10_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+084a804d	HI_1_10_0	non fermes portant	ecrivain : vue C code analogique 63	2	-
+084a804d	HI_1_10_0	listes d evenements	localisees	13735	-
+084a804d	HI_1_10_0	listes d evenements	non localisees	3414	-
+0797ce72	HI_1_13_0	paquets	fermes au bit	19205	160230
+0797ce72	HI_1_13_0	paquets	fermes	19205	160230
+0797ce72	HI_1_13_0	fermes au bit portant	vue B : sortie par rejet	25	-
+0797ce72	HI_1_13_0	non fermes portant	vue B : sortie par rejet	5394	-
+0797ce72	HI_1_13_0	fermes au bit portant	ecrivain : ordre de la vue B	22	-
+0797ce72	HI_1_13_0	non fermes portant	ecrivain : ordre de la vue B	973	-
+0797ce72	HI_1_13_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	27	-
+0797ce72	HI_1_13_0	non fermes portant	ecrivain : masque au-dela de l archetype	661	-
+0797ce72	HI_1_13_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+0797ce72	HI_1_13_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+0797ce72	HI_1_13_0	fermes au bit portant	ecrivain : masque epars non croissant	1	-
+0797ce72	HI_1_13_0	non fermes portant	ecrivain : masque epars non croissant	26	-
+0797ce72	HI_1_13_0	fermes au bit portant	ecrivain : vue C kind non nul	1	-
+0797ce72	HI_1_13_0	non fermes portant	ecrivain : vue C kind non nul	1182	-
+0797ce72	HI_1_13_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+0797ce72	HI_1_13_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+0797ce72	HI_1_13_0	fermes au bit portant	ecrivain : vue C index non croissants	3	-
+0797ce72	HI_1_13_0	non fermes portant	ecrivain : vue C index non croissants	90	-
+0797ce72	HI_1_13_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	2	-
+0797ce72	HI_1_13_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	327	-
+0797ce72	HI_1_13_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+0797ce72	HI_1_13_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+0797ce72	HI_1_13_0	listes d evenements	localisees	3640	-
+0797ce72	HI_1_13_0	listes d evenements	non localisees	309	-
+111fa685	HI_1_10_0	paquets	fermes au bit	4152	42832
+111fa685	HI_1_10_0	paquets	fermes	4152	42832
+111fa685	HI_1_10_0	fermes au bit portant	vue B : sortie par rejet	60	-
+111fa685	HI_1_10_0	non fermes portant	vue B : sortie par rejet	10646	-
+111fa685	HI_1_10_0	fermes au bit portant	ecrivain : ordre de la vue B	12	-
+111fa685	HI_1_10_0	non fermes portant	ecrivain : ordre de la vue B	150	-
+111fa685	HI_1_10_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	128	-
+111fa685	HI_1_10_0	non fermes portant	ecrivain : masque au-dela de l archetype	1193	-
+111fa685	HI_1_10_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+111fa685	HI_1_10_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+111fa685	HI_1_10_0	fermes au bit portant	ecrivain : masque epars non croissant	8	-
+111fa685	HI_1_10_0	non fermes portant	ecrivain : masque epars non croissant	14	-
+111fa685	HI_1_10_0	fermes au bit portant	ecrivain : vue C kind non nul	1	-
+111fa685	HI_1_10_0	non fermes portant	ecrivain : vue C kind non nul	571	-
+111fa685	HI_1_10_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+111fa685	HI_1_10_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+111fa685	HI_1_10_0	fermes au bit portant	ecrivain : vue C index non croissants	4	-
+111fa685	HI_1_10_0	non fermes portant	ecrivain : vue C index non croissants	19	-
+111fa685	HI_1_10_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	3	-
+111fa685	HI_1_10_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	44	-
+111fa685	HI_1_10_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+111fa685	HI_1_10_0	non fermes portant	ecrivain : vue C code analogique 63	1	-
+111fa685	HI_1_10_0	listes d evenements	localisees	6059	-
+111fa685	HI_1_10_0	listes d evenements	non localisees	1892	-
+e5adf7b2	HI_1_11_0	paquets	fermes au bit	4285	80032
+e5adf7b2	HI_1_11_0	paquets	fermes	4285	80032
+e5adf7b2	HI_1_11_0	fermes au bit portant	vue B : sortie par rejet	61	-
+e5adf7b2	HI_1_11_0	non fermes portant	vue B : sortie par rejet	10168	-
+e5adf7b2	HI_1_11_0	fermes au bit portant	ecrivain : ordre de la vue B	16	-
+e5adf7b2	HI_1_11_0	non fermes portant	ecrivain : ordre de la vue B	192	-
+e5adf7b2	HI_1_11_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	158	-
+e5adf7b2	HI_1_11_0	non fermes portant	ecrivain : masque au-dela de l archetype	508	-
+e5adf7b2	HI_1_11_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+e5adf7b2	HI_1_11_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+e5adf7b2	HI_1_11_0	fermes au bit portant	ecrivain : masque epars non croissant	4	-
+e5adf7b2	HI_1_11_0	non fermes portant	ecrivain : masque epars non croissant	34	-
+e5adf7b2	HI_1_11_0	fermes au bit portant	ecrivain : vue C kind non nul	2	-
+e5adf7b2	HI_1_11_0	non fermes portant	ecrivain : vue C kind non nul	274	-
+e5adf7b2	HI_1_11_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+e5adf7b2	HI_1_11_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+e5adf7b2	HI_1_11_0	fermes au bit portant	ecrivain : vue C index non croissants	1	-
+e5adf7b2	HI_1_11_0	non fermes portant	ecrivain : vue C index non croissants	5	-
+e5adf7b2	HI_1_11_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	1	-
+e5adf7b2	HI_1_11_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	93	-
+e5adf7b2	HI_1_11_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+e5adf7b2	HI_1_11_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+e5adf7b2	HI_1_11_0	listes d evenements	localisees	6024	-
+e5adf7b2	HI_1_11_0	listes d evenements	non localisees	1727	-
+60ae07c4	HI_1_8_0	paquets	fermes au bit	13969	83225
+60ae07c4	HI_1_8_0	paquets	fermes	13969	83225
+60ae07c4	HI_1_8_0	fermes au bit portant	vue B : sortie par rejet	98	-
+60ae07c4	HI_1_8_0	non fermes portant	vue B : sortie par rejet	29899	-
+60ae07c4	HI_1_8_0	fermes au bit portant	ecrivain : ordre de la vue B	46	-
+60ae07c4	HI_1_8_0	non fermes portant	ecrivain : ordre de la vue B	755	-
+60ae07c4	HI_1_8_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	125	-
+60ae07c4	HI_1_8_0	non fermes portant	ecrivain : masque au-dela de l archetype	522	-
+60ae07c4	HI_1_8_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+60ae07c4	HI_1_8_0	non fermes portant	ecrivain : masque dense de sept composants au plus	3	-
+60ae07c4	HI_1_8_0	fermes au bit portant	ecrivain : masque epars non croissant	5	-
+60ae07c4	HI_1_8_0	non fermes portant	ecrivain : masque epars non croissant	16	-
+60ae07c4	HI_1_8_0	fermes au bit portant	ecrivain : vue C kind non nul	4	-
+60ae07c4	HI_1_8_0	non fermes portant	ecrivain : vue C kind non nul	962	-
+60ae07c4	HI_1_8_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+60ae07c4	HI_1_8_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+60ae07c4	HI_1_8_0	fermes au bit portant	ecrivain : vue C index non croissants	5	-
+60ae07c4	HI_1_8_0	non fermes portant	ecrivain : vue C index non croissants	23	-
+60ae07c4	HI_1_8_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	3	-
+60ae07c4	HI_1_8_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	243	-
+60ae07c4	HI_1_8_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+60ae07c4	HI_1_8_0	non fermes portant	ecrivain : vue C code analogique 63	2	-
+60ae07c4	HI_1_8_0	listes d evenements	localisees	2796	-
+60ae07c4	HI_1_8_0	listes d evenements	non localisees	3260	-
+a349fea8	version-33	paquets	fermes au bit	463	3602
+a349fea8	version-33	paquets	fermes	463	3602
+a349fea8	version-33	fermes au bit portant	vue B : sortie par rejet	23	-
+a349fea8	version-33	non fermes portant	vue B : sortie par rejet	19405	-
+a349fea8	version-33	fermes au bit portant	ecrivain : ordre de la vue B	2	-
+a349fea8	version-33	non fermes portant	ecrivain : ordre de la vue B	136	-
+a349fea8	version-33	fermes au bit portant	ecrivain : masque au-dela de l archetype	34	-
+a349fea8	version-33	non fermes portant	ecrivain : masque au-dela de l archetype	202	-
+a349fea8	version-33	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+a349fea8	version-33	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+a349fea8	version-33	fermes au bit portant	ecrivain : masque epars non croissant	2	-
+a349fea8	version-33	non fermes portant	ecrivain : masque epars non croissant	24	-
+a349fea8	version-33	fermes au bit portant	ecrivain : vue C kind non nul	0	-
+a349fea8	version-33	non fermes portant	ecrivain : vue C kind non nul	995	-
+a349fea8	version-33	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+a349fea8	version-33	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+a349fea8	version-33	fermes au bit portant	ecrivain : vue C index non croissants	0	-
+a349fea8	version-33	non fermes portant	ecrivain : vue C index non croissants	20	-
+a349fea8	version-33	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	3	-
+a349fea8	version-33	non fermes portant	ecrivain : vue C en-tete cdc04 pose	81	-
+a349fea8	version-33	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+a349fea8	version-33	non fermes portant	ecrivain : vue C code analogique 63	0	-
+a349fea8	version-33	listes d evenements	localisees	10451	-
+a349fea8	version-33	listes d evenements	non localisees	4041	-
+a521164d	HI_1_4_1	paquets	fermes au bit	701	80
+a521164d	HI_1_4_1	paquets	fermes	701	80
+a521164d	HI_1_4_1	fermes au bit portant	vue B : sortie par rejet	7	-
+a521164d	HI_1_4_1	non fermes portant	vue B : sortie par rejet	6519	-
+a521164d	HI_1_4_1	fermes au bit portant	ecrivain : ordre de la vue B	0	-
+a521164d	HI_1_4_1	non fermes portant	ecrivain : ordre de la vue B	133	-
+a521164d	HI_1_4_1	fermes au bit portant	ecrivain : masque au-dela de l archetype	3	-
+a521164d	HI_1_4_1	non fermes portant	ecrivain : masque au-dela de l archetype	134	-
+a521164d	HI_1_4_1	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+a521164d	HI_1_4_1	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+a521164d	HI_1_4_1	fermes au bit portant	ecrivain : masque epars non croissant	1	-
+a521164d	HI_1_4_1	non fermes portant	ecrivain : masque epars non croissant	16	-
+a521164d	HI_1_4_1	fermes au bit portant	ecrivain : vue C kind non nul	1	-
+a521164d	HI_1_4_1	non fermes portant	ecrivain : vue C kind non nul	295	-
+a521164d	HI_1_4_1	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+a521164d	HI_1_4_1	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+a521164d	HI_1_4_1	fermes au bit portant	ecrivain : vue C index non croissants	0	-
+a521164d	HI_1_4_1	non fermes portant	ecrivain : vue C index non croissants	9	-
+a521164d	HI_1_4_1	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	4	-
+a521164d	HI_1_4_1	non fermes portant	ecrivain : vue C en-tete cdc04 pose	89	-
+a521164d	HI_1_4_1	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+a521164d	HI_1_4_1	non fermes portant	ecrivain : vue C code analogique 63	0	-
+a521164d	HI_1_4_1	listes d evenements	localisees	3665	-
+a521164d	HI_1_4_1	listes d evenements	non localisees	1291	-
+11de8353	HI_1_9_0	paquets	fermes au bit	5739	65452
+11de8353	HI_1_9_0	paquets	fermes	5739	65452
+11de8353	HI_1_9_0	fermes au bit portant	vue B : sortie par rejet	53	-
+11de8353	HI_1_9_0	non fermes portant	vue B : sortie par rejet	9735	-
+11de8353	HI_1_9_0	fermes au bit portant	ecrivain : ordre de la vue B	7	-
+11de8353	HI_1_9_0	non fermes portant	ecrivain : ordre de la vue B	236	-
+11de8353	HI_1_9_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	123	-
+11de8353	HI_1_9_0	non fermes portant	ecrivain : masque au-dela de l archetype	1010	-
+11de8353	HI_1_9_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+11de8353	HI_1_9_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+11de8353	HI_1_9_0	fermes au bit portant	ecrivain : masque epars non croissant	4	-
+11de8353	HI_1_9_0	non fermes portant	ecrivain : masque epars non croissant	27	-
+11de8353	HI_1_9_0	fermes au bit portant	ecrivain : vue C kind non nul	0	-
+11de8353	HI_1_9_0	non fermes portant	ecrivain : vue C kind non nul	269	-
+11de8353	HI_1_9_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+11de8353	HI_1_9_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+11de8353	HI_1_9_0	fermes au bit portant	ecrivain : vue C index non croissants	0	-
+11de8353	HI_1_9_0	non fermes portant	ecrivain : vue C index non croissants	1	-
+11de8353	HI_1_9_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	0	-
+11de8353	HI_1_9_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	10	-
+11de8353	HI_1_9_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+11de8353	HI_1_9_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+11de8353	HI_1_9_0	listes d evenements	localisees	5684	-
+11de8353	HI_1_9_0	listes d evenements	non localisees	1641	-
+50247b26	version-31	paquets	fermes au bit	153	277
+50247b26	version-31	paquets	fermes	153	277
+50247b26	version-31	fermes au bit portant	vue B : sortie par rejet	8	-
+50247b26	version-31	non fermes portant	vue B : sortie par rejet	10700	-
+50247b26	version-31	fermes au bit portant	ecrivain : ordre de la vue B	0	-
+50247b26	version-31	non fermes portant	ecrivain : ordre de la vue B	26	-
+50247b26	version-31	fermes au bit portant	ecrivain : masque au-dela de l archetype	7	-
+50247b26	version-31	non fermes portant	ecrivain : masque au-dela de l archetype	61	-
+50247b26	version-31	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+50247b26	version-31	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+50247b26	version-31	fermes au bit portant	ecrivain : masque epars non croissant	2	-
+50247b26	version-31	non fermes portant	ecrivain : masque epars non croissant	3	-
+50247b26	version-31	fermes au bit portant	ecrivain : vue C kind non nul	1	-
+50247b26	version-31	non fermes portant	ecrivain : vue C kind non nul	972	-
+50247b26	version-31	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+50247b26	version-31	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+50247b26	version-31	fermes au bit portant	ecrivain : vue C index non croissants	0	-
+50247b26	version-31	non fermes portant	ecrivain : vue C index non croissants	0	-
+50247b26	version-31	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	1	-
+50247b26	version-31	non fermes portant	ecrivain : vue C en-tete cdc04 pose	90	-
+50247b26	version-31	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+50247b26	version-31	non fermes portant	ecrivain : vue C code analogique 63	3	-
+50247b26	version-31	listes d evenements	localisees	5522	-
+50247b26	version-31	listes d evenements	non localisees	2257	-
+bfecd02b	HI_1_13_0	paquets	fermes au bit	26403	226580
+bfecd02b	HI_1_13_0	paquets	fermes	26403	226580
+bfecd02b	HI_1_13_0	fermes au bit portant	vue B : sortie par rejet	7	-
+bfecd02b	HI_1_13_0	non fermes portant	vue B : sortie par rejet	3147	-
+bfecd02b	HI_1_13_0	fermes au bit portant	ecrivain : ordre de la vue B	4	-
+bfecd02b	HI_1_13_0	non fermes portant	ecrivain : ordre de la vue B	2	-
+bfecd02b	HI_1_13_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	21	-
+bfecd02b	HI_1_13_0	non fermes portant	ecrivain : masque au-dela de l archetype	1	-
+bfecd02b	HI_1_13_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+bfecd02b	HI_1_13_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+bfecd02b	HI_1_13_0	fermes au bit portant	ecrivain : masque epars non croissant	2	-
+bfecd02b	HI_1_13_0	non fermes portant	ecrivain : masque epars non croissant	0	-
+bfecd02b	HI_1_13_0	fermes au bit portant	ecrivain : vue C kind non nul	0	-
+bfecd02b	HI_1_13_0	non fermes portant	ecrivain : vue C kind non nul	2	-
+bfecd02b	HI_1_13_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+bfecd02b	HI_1_13_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+bfecd02b	HI_1_13_0	fermes au bit portant	ecrivain : vue C index non croissants	0	-
+bfecd02b	HI_1_13_0	non fermes portant	ecrivain : vue C index non croissants	0	-
+bfecd02b	HI_1_13_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	0	-
+bfecd02b	HI_1_13_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	0	-
+bfecd02b	HI_1_13_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+bfecd02b	HI_1_13_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+bfecd02b	HI_1_13_0	listes d evenements	localisees	4748	-
+bfecd02b	HI_1_13_0	listes d evenements	non localisees	526	-
+4f77afc1	HI_1_13_0	paquets	fermes au bit	22910	543450
+4f77afc1	HI_1_13_0	paquets	fermes	22910	543450
+4f77afc1	HI_1_13_0	fermes au bit portant	vue B : sortie par rejet	396	-
+4f77afc1	HI_1_13_0	non fermes portant	vue B : sortie par rejet	9494	-
+4f77afc1	HI_1_13_0	fermes au bit portant	ecrivain : ordre de la vue B	174	-
+4f77afc1	HI_1_13_0	non fermes portant	ecrivain : ordre de la vue B	44	-
+4f77afc1	HI_1_13_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	884	-
+4f77afc1	HI_1_13_0	non fermes portant	ecrivain : masque au-dela de l archetype	36	-
+4f77afc1	HI_1_13_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+4f77afc1	HI_1_13_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+4f77afc1	HI_1_13_0	fermes au bit portant	ecrivain : masque epars non croissant	30	-
+4f77afc1	HI_1_13_0	non fermes portant	ecrivain : masque epars non croissant	1	-
+4f77afc1	HI_1_13_0	fermes au bit portant	ecrivain : vue C kind non nul	2	-
+4f77afc1	HI_1_13_0	non fermes portant	ecrivain : vue C kind non nul	19	-
+4f77afc1	HI_1_13_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+4f77afc1	HI_1_13_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+4f77afc1	HI_1_13_0	fermes au bit portant	ecrivain : vue C index non croissants	9	-
+4f77afc1	HI_1_13_0	non fermes portant	ecrivain : vue C index non croissants	0	-
+4f77afc1	HI_1_13_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	4	-
+4f77afc1	HI_1_13_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	0	-
+4f77afc1	HI_1_13_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+4f77afc1	HI_1_13_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+4f77afc1	HI_1_13_0	listes d evenements	localisees	15164	-
+4f77afc1	HI_1_13_0	listes d evenements	non localisees	2277	-
+396cfc92	HI_1_13_0	paquets	fermes au bit	22828	166999
+396cfc92	HI_1_13_0	paquets	fermes	22828	166999
+396cfc92	HI_1_13_0	fermes au bit portant	vue B : sortie par rejet	4	-
+396cfc92	HI_1_13_0	non fermes portant	vue B : sortie par rejet	8351	-
+396cfc92	HI_1_13_0	fermes au bit portant	ecrivain : ordre de la vue B	2	-
+396cfc92	HI_1_13_0	non fermes portant	ecrivain : ordre de la vue B	12	-
+396cfc92	HI_1_13_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	9	-
+396cfc92	HI_1_13_0	non fermes portant	ecrivain : masque au-dela de l archetype	5	-
+396cfc92	HI_1_13_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+396cfc92	HI_1_13_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+396cfc92	HI_1_13_0	fermes au bit portant	ecrivain : masque epars non croissant	0	-
+396cfc92	HI_1_13_0	non fermes portant	ecrivain : masque epars non croissant	0	-
+396cfc92	HI_1_13_0	fermes au bit portant	ecrivain : vue C kind non nul	0	-
+396cfc92	HI_1_13_0	non fermes portant	ecrivain : vue C kind non nul	1	-
+396cfc92	HI_1_13_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+396cfc92	HI_1_13_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+396cfc92	HI_1_13_0	fermes au bit portant	ecrivain : vue C index non croissants	0	-
+396cfc92	HI_1_13_0	non fermes portant	ecrivain : vue C index non croissants	0	-
+396cfc92	HI_1_13_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	0	-
+396cfc92	HI_1_13_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	1	-
+396cfc92	HI_1_13_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+396cfc92	HI_1_13_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+396cfc92	HI_1_13_0	listes d evenements	localisees	4629	-
+396cfc92	HI_1_13_0	listes d evenements	non localisees	480	-
+f75e7053	HI_1_13_0	paquets	fermes au bit	23423	160051
+f75e7053	HI_1_13_0	paquets	fermes	23423	160051
+f75e7053	HI_1_13_0	fermes au bit portant	vue B : sortie par rejet	2	-
+f75e7053	HI_1_13_0	non fermes portant	vue B : sortie par rejet	4288	-
+f75e7053	HI_1_13_0	fermes au bit portant	ecrivain : ordre de la vue B	1	-
+f75e7053	HI_1_13_0	non fermes portant	ecrivain : ordre de la vue B	0	-
+f75e7053	HI_1_13_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	7	-
+f75e7053	HI_1_13_0	non fermes portant	ecrivain : masque au-dela de l archetype	1	-
+f75e7053	HI_1_13_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+f75e7053	HI_1_13_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+f75e7053	HI_1_13_0	fermes au bit portant	ecrivain : masque epars non croissant	0	-
+f75e7053	HI_1_13_0	non fermes portant	ecrivain : masque epars non croissant	0	-
+f75e7053	HI_1_13_0	fermes au bit portant	ecrivain : vue C kind non nul	0	-
+f75e7053	HI_1_13_0	non fermes portant	ecrivain : vue C kind non nul	1	-
+f75e7053	HI_1_13_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+f75e7053	HI_1_13_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+f75e7053	HI_1_13_0	fermes au bit portant	ecrivain : vue C index non croissants	0	-
+f75e7053	HI_1_13_0	non fermes portant	ecrivain : vue C index non croissants	0	-
+f75e7053	HI_1_13_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	0	-
+f75e7053	HI_1_13_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	0	-
+f75e7053	HI_1_13_0	fermes au bit portant	ecrivain : vue C code analogique 63	0	-
+f75e7053	HI_1_13_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+f75e7053	HI_1_13_0	listes d evenements	localisees	3786	-
+f75e7053	HI_1_13_0	listes d evenements	non localisees	477	-
+1c4c63c2	HI_1_10_0	paquets	fermes au bit	19354	170685
+1c4c63c2	HI_1_10_0	paquets	fermes	19354	170685
+1c4c63c2	HI_1_10_0	fermes au bit portant	vue B : sortie par rejet	3519	-
+1c4c63c2	HI_1_10_0	non fermes portant	vue B : sortie par rejet	45791	-
+1c4c63c2	HI_1_10_0	fermes au bit portant	ecrivain : ordre de la vue B	655	-
+1c4c63c2	HI_1_10_0	non fermes portant	ecrivain : ordre de la vue B	130	-
+1c4c63c2	HI_1_10_0	fermes au bit portant	ecrivain : masque au-dela de l archetype	5575	-
+1c4c63c2	HI_1_10_0	non fermes portant	ecrivain : masque au-dela de l archetype	1431	-
+1c4c63c2	HI_1_10_0	fermes au bit portant	ecrivain : masque dense de sept composants au plus	0	-
+1c4c63c2	HI_1_10_0	non fermes portant	ecrivain : masque dense de sept composants au plus	0	-
+1c4c63c2	HI_1_10_0	fermes au bit portant	ecrivain : masque epars non croissant	120	-
+1c4c63c2	HI_1_10_0	non fermes portant	ecrivain : masque epars non croissant	58	-
+1c4c63c2	HI_1_10_0	fermes au bit portant	ecrivain : vue C kind non nul	131	-
+1c4c63c2	HI_1_10_0	non fermes portant	ecrivain : vue C kind non nul	179	-
+1c4c63c2	HI_1_10_0	fermes au bit portant	ecrivain : vue C au-dela de 32 entrees	0	-
+1c4c63c2	HI_1_10_0	non fermes portant	ecrivain : vue C au-dela de 32 entrees	0	-
+1c4c63c2	HI_1_10_0	fermes au bit portant	ecrivain : vue C index non croissants	184	-
+1c4c63c2	HI_1_10_0	non fermes portant	ecrivain : vue C index non croissants	2	-
+1c4c63c2	HI_1_10_0	fermes au bit portant	ecrivain : vue C en-tete cdc04 pose	172	-
+1c4c63c2	HI_1_10_0	non fermes portant	ecrivain : vue C en-tete cdc04 pose	16	-
+1c4c63c2	HI_1_10_0	fermes au bit portant	ecrivain : vue C code analogique 63	12	-
+1c4c63c2	HI_1_10_0	non fermes portant	ecrivain : vue C code analogique 63	0	-
+1c4c63c2	HI_1_10_0	listes d evenements	localisees	12172	-
+1c4c63c2	HI_1_10_0	listes d evenements	non localisees	12825	-

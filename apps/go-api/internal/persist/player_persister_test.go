@@ -4,7 +4,7 @@
 //
 // Contrat à valider :
 //
-//  1. Persist d'un PlayerBatch avec Enrichment + SkillRank + LUSRComponents
+//  1. Persist d'un PlayerBatch avec Enrichment + SkillRank
 //     + Citations + PersonalScoreAwards + CareerProgression → toutes les
 //     tables peuplées en 1 transaction.
 //  2. Partial enrichment : SEULEMENT certains champs pointer non-nil → INSERT
@@ -141,10 +141,6 @@ func helperPlayerBatch(matchID string) *MatchBatch {
 		TierLabel:   strPtr("Onyx I"),
 		RatingDelta: float64Ptr(+0.32),
 	})
-	b.AddLUSRComponents([]LUSRComponentInsert{
-		{MatchID: matchID, ComponentName: "kills_vs_expected", Value: 0.45, Weight: 0.31},
-		{MatchID: matchID, ComponentName: "deaths_vs_expected", Value: -0.12, Weight: 0.28},
-	})
 	b.AddCitations([]CitationInsert{
 		{MatchID: matchID, CitationNameNorm: "killing_spree", Value: 3},
 	})
@@ -177,7 +173,6 @@ func TestPlayerPersister_FullBatch_InsertsAllTables(t *testing.T) {
 	}{
 		{"player_match_enrichment", "match_id = ?", []any{"pm_full_001"}, 1},
 		{"match_skill_rank", "match_id = ?", []any{"pm_full_001"}, 1},
-		{"lusr_component_history", "match_id = ?", []any{"pm_full_001"}, 2},
 		{"match_citations", "match_id = ?", []any{"pm_full_001"}, 1},
 		{"personal_score_awards", "match_id = ?", []any{"pm_full_001"}, 1},
 	}
@@ -285,7 +280,7 @@ func TestPlayerPersister_AtomicityOnFailure_RollsBackAll(t *testing.T) {
 	db := openPlayerTestDB(t)
 	p := NewPlayerPersister(db)
 
-	// Append-only #23046 (Phase 2) : enrichment, skill_rank, lusr_component_history,
+	// Append-only #23645 (Phase 2) : enrichment, skill_rank,
 	// citations sont TOUS append-only (PK techniques séquentielles → plus aucun
 	// conflit de PK exploitable). On injecte donc l'échec mid-batch de façon
 	// append-only-proof : une citation de value=NaN → conversion NaN→INTEGER rejetée
@@ -301,10 +296,6 @@ func TestPlayerPersister_AtomicityOnFailure_RollsBackAll(t *testing.T) {
 	builder.SetSkillRank(&SkillRankInsert{
 		MatchID: "pm_atomic_001", RatingType: "LUSR",
 	})
-	builder.AddLUSRComponents([]LUSRComponentInsert{
-		{MatchID: "pm_atomic_001", ComponentName: "X", Value: 0.5, Weight: 0.5},
-		{MatchID: "pm_atomic_001", ComponentName: "Y", Value: 0.6, Weight: 0.5},
-	})
 	builder.AddCitations([]CitationInsert{
 		{MatchID: "pm_atomic_001", CitationNameNorm: "ok", Value: 1},
 		{MatchID: "pm_atomic_001", CitationNameNorm: "boom", Value: math.NaN()}, // NaN→INTEGER → rollback
@@ -318,7 +309,6 @@ func TestPlayerPersister_AtomicityOnFailure_RollsBackAll(t *testing.T) {
 	tables := []string{
 		"player_match_enrichment",
 		"match_skill_rank",
-		"lusr_component_history",
 		"match_citations",
 	}
 	for _, tbl := range tables {

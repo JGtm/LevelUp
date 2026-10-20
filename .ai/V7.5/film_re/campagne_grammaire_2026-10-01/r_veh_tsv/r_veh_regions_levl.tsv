@@ -1,0 +1,70 @@
+ligne	module	champs
+PORTEURS	10 modules	4 tags sbsp
+TAG	btb_fragmentation-rtx-new.module	69d4b9ed	local	-1136.274,-702.297,-250.000,543.441,784.080,250.000	[17 17 15]
+ORDRE_UNION	btb_fragmentation-rtx-new.module	0:69d4b9ed
+BLOC	btb_fragmentation-rtx-new.module	levl#1	bloc 2083	taille 220	69d4b9ed@+8,69d4b9ed@+12
+BLOC	btb_fragmentation-rtx-new.module	levl#1	bloc 2097	taille 68	69d4b9ed@+8,69d4b9ed@+12
+TAG	ctf_illusion-rtx-new.module	ab9f24c0	local	-1233.902,-1130.173,-250.000,1233.902,1130.173,1015.484	[18 18 17]
+ORDRE_UNION	ctf_illusion-rtx-new.module	0:ab9f24c0
+BLOC	ctf_illusion-rtx-new.module	levl#1	bloc 3670	taille 220	ab9f24c0@+8,ab9f24c0@+12
+BLOC	ctf_illusion-rtx-new.module	levl#1	bloc 3684	taille 68	ab9f24c0@+8,ab9f24c0@+12
+TAG	fo05_desert-rtx-new.module	6fb93109	local	-1929.558,-1838.300,-946.215,1937.230,1823.785,1717.299	[18 18 18]
+TAG	fo05_desert-rtx-new.module	49a5d986	local	-231.001,-227.082,-946.215,231.635,226.349,242.327	[15 15 17]
+ORDRE_UNION	fo05_desert-rtx-new.module	0:49a5d986,1:6fb93109
+ORDRE_LOCAUX	fo05_desert-rtx-new.module	0:49a5d986,1:6fb93109
+BLOC	fo05_desert-rtx-new.module	levl#1	bloc 66	taille 440	49a5d986@+8,49a5d986@+12,6fb93109@+228,6fb93109@+232
+BLOC	fo05_desert-rtx-new.module	levl#1	bloc 85	taille 136	49a5d986@+8,49a5d986@+12,6fb93109@+76,6fb93109@+80
+TAG	ridgeline-rtx-new.module	5f388668	local	-41.103,-56.607,-84.371,72.109,57.212,53.180	[13 13 14]
+TAG	ridgeline-rtx-new.module	86a62795	local	-3309.509,-5235.792,-195.476,3309.509,5235.792,502.071	[19 20 16]
+ORDRE_UNION	ridgeline-rtx-new.module	0:5f388668,1:86a62795
+ORDRE_LOCAUX	ridgeline-rtx-new.module	0:5f388668,1:86a62795
+BLOC	ridgeline-rtx-new.module	levl#1	bloc 1905	taille 18144	86a62795@+204,86a62795@+208
+BLOC	ridgeline-rtx-new.module	levl#1	bloc 2035	taille 440	5f388668@+8,5f388668@+12,86a62795@+228,86a62795@+232
+BLOC	ridgeline-rtx-new.module	levl#1	bloc 2056	taille 136	5f388668@+8,5f388668@+12,86a62795@+76,86a62795@+80
+TAG	fo09_academy-rtx-new.module	1add591b	local	-231.001,-227.082,-946.215,231.635,226.349,242.327	[15 15 17]
+TAG	fo09_academy-rtx-new.module	ab9beae6	local	-1929.558,-1838.300,-946.215,1937.230,1823.785,1717.299	[18 18 18]
+ORDRE_UNION	fo09_academy-rtx-new.module	0:1add591b,1:ab9beae6
+ORDRE_LOCAUX	fo09_academy-rtx-new.module	0:1add591b,1:ab9beae6
+BLOC	fo09_academy-rtx-new.module	levl#1	bloc 97	taille 440	1add591b@+8,1add591b@+12,ab9beae6@+228,ab9beae6@+232
+BLOC	fo09_academy-rtx-new.module	levl#1	bloc 116	taille 136	1add591b@+8,1add591b@+12,ab9beae6@+76,ab9beae6@+80
+TAG	fo11_blank-rtx-new.module	16b0b72f	local	-1929.558,-1838.300,-946.215,1937.230,1823.785,1717.299	[18 18 18]
+TAG	fo11_blank-rtx-new.module	41e70245	local	-231.001,-227.082,-946.215,231.635,226.349,242.327	[15 15 17]
+ORDRE_UNION	fo11_blank-rtx-new.module	0:41e70245,1:16b0b72f
+ORDRE_LOCAUX	fo11_blank-rtx-new.module	0:41e70245,1:16b0b72f
+BLOC	fo11_blank-rtx-new.module	levl#1	bloc 63	taille 440	41e70245@+8,41e70245@+12,16b0b72f@+228,16b0b72f@+232
+BLOC	fo11_blank-rtx-new.module	levl#1	bloc 82	taille 136	41e70245@+8,41e70245@+12,16b0b72f@+76,16b0b72f@+80
+TAG	fo06_deepsea-rtx-new.module	b80810d0	local	-1929.558,-1838.300,-946.215,1937.230,1823.785,1717.299	[18 18 18]
+TAG	fo06_deepsea-rtx-new.module	e4475b1e	local	-231.001,-227.082,-946.215,231.635,226.349,242.327	[15 15 17]
+ORDRE_UNION	fo06_deepsea-rtx-new.module	0:e4475b1e,1:b80810d0
+ORDRE_LOCAUX	fo06_deepsea-rtx-new.module	0:e4475b1e,1:b80810d0
+BLOC	fo06_deepsea-rtx-new.module	levl#1	bloc 137	taille 440	e4475b1e@+8,e4475b1e@+12,b80810d0@+228,b80810d0@+232
+BLOC	fo06_deepsea-rtx-new.module	levl#1	bloc 156	taille 136	e4475b1e@+8,e4475b1e@+12,b80810d0@+76,b80810d0@+80
+TAG	btb_exiled-rtx-new.module	1a48c67a	local	-191.436,-151.628,-78.362,146.813,140.495,112.805	[15 15 14]
+TAG	btb_exiled-rtx-new.module	b5a2d747	local	-1190.171,-1872.331,-351.331,2019.533,1957.325,610.073	[18 18 16]
+ORDRE_UNION	btb_exiled-rtx-new.module	0:1a48c67a,1:b5a2d747
+ORDRE_LOCAUX	btb_exiled-rtx-new.module	0:1a48c67a,1:b5a2d747
+BLOC	btb_exiled-rtx-new.module	levl#1	bloc 4677	taille 440	1a48c67a@+8,1a48c67a@+12,b5a2d747@+228,b5a2d747@+232
+BLOC	btb_exiled-rtx-new.module	levl#1	bloc 4696	taille 136	1a48c67a@+8,1a48c67a@+12,b5a2d747@+76,b5a2d747@+80
+TAG	fo08_wetland-rtx-new.module	c4788676	local	-231.001,-227.082,-946.215,231.635,226.349,242.327	[15 15 17]
+TAG	fo08_wetland-rtx-new.module	cc2c2cc8	local	-1929.558,-1838.300,-946.215,1937.230,1823.785,1717.299	[18 18 18]
+ORDRE_UNION	fo08_wetland-rtx-new.module	0:c4788676,1:cc2c2cc8
+ORDRE_LOCAUX	fo08_wetland-rtx-new.module	0:c4788676,1:cc2c2cc8
+BLOC	fo08_wetland-rtx-new.module	levl#1	bloc 82	taille 440	c4788676@+8,c4788676@+12,cc2c2cc8@+228,cc2c2cc8@+232
+BLOC	fo08_wetland-rtx-new.module	levl#1	bloc 101	taille 136	c4788676@+8,c4788676@+12,cc2c2cc8@+76,cc2c2cc8@+80
+TAG	fo13_frost-rtx-new.module	3fa2b9b1	local	-1929.558,-1838.300,-946.215,1937.230,1823.785,1717.299	[18 18 18]
+TAG	fo13_frost-rtx-new.module	ad6e0e9b	local	-231.001,-227.082,-946.215,231.635,226.349,242.327	[15 15 17]
+ORDRE_UNION	fo13_frost-rtx-new.module	0:ad6e0e9b,1:3fa2b9b1
+ORDRE_LOCAUX	fo13_frost-rtx-new.module	0:ad6e0e9b,1:3fa2b9b1
+BLOC	fo13_frost-rtx-new.module	levl#1	bloc 60	taille 440	ad6e0e9b@+8,ad6e0e9b@+12,3fa2b9b1@+228,3fa2b9b1@+232
+BLOC	fo13_frost-rtx-new.module	levl#1	bloc 78	taille 136	ad6e0e9b@+8,ad6e0e9b@+12,3fa2b9b1@+76,3fa2b9b1@+80
+LOCAUX	sgh_interlock-rtx-new.module	0	himap: aucun tag sbsp dans D:/SteamLibrary/steamapps/common/Halo Infinite/deploy/ds/levels/multi/sgh_interlock/sgh_interlock-rtx-new.module
+TAG	sgh_interlock-rtx-new.module	91c336c1	externe:common-rtx-new.module	-3500.450,-3412.616,-9.331,4389.525,4362.877,880.165	[19 19 16]
+TAG	sgh_interlock-rtx-new.module	a59f5052	externe:common-rtx-new.module	27.834,23.467,-9.331,101.838,106.171,78.573	[13 13 13]
+TAG	sgh_interlock-rtx-new.module	d88e1d88	externe:common-rtx-new.module	-16.719,-10.103,-9.331,46.514,53.672,13.568	[12 12 11]
+TAG	sgh_interlock-rtx-new.module	7047b96f	externe:common-rtx-new.module	0.267,51.033,-9.331,55.210,106.171,78.573	[12 12 13]
+ORDRE_UNION	sgh_interlock-rtx-new.module	0:7047b96f,1:d88e1d88,2:a59f5052,3:91c336c1
+BLOC	sgh_interlock-rtx-new.module	levl#1	bloc 283	taille 15840	d88e1d88@+1184,d88e1d88@+1188
+BLOC	sgh_interlock-rtx-new.module	levl#1	bloc 1073	taille 242760	91c336c1@+225044,91c336c1@+225048,91c336c1@+225724,91c336c1@+225728,91c336c1@+226404,91c336c1@+226408,91c336c1@+227084,91c336c1@+227088
+BLOC	sgh_interlock-rtx-new.module	levl#1	bloc 2942	taille 28800	d88e1d88@+18060,d88e1d88@+18064,d88e1d88@+20076,d88e1d88@+20080,d88e1d88@+20364,d88e1d88@+20368,d88e1d88@+20940,d88e1d88@+20944
+BLOC	sgh_interlock-rtx-new.module	levl#1	bloc 3146	taille 880	7047b96f@+8,7047b96f@+12,d88e1d88@+228,d88e1d88@+232,a59f5052@+448,a59f5052@+452,91c336c1@+668,91c336c1@+672
+BLOC	sgh_interlock-rtx-new.module	levl#1	bloc 3201	taille 272	7047b96f@+8,7047b96f@+12,d88e1d88@+76,d88e1d88@+80,a59f5052@+144,a59f5052@+148,91c336c1@+212,91c336c1@+216

@@ -1,0 +1,300 @@
+{
+ "_doc": "Sites CANDIDATS assault_bomb (lot C catalogues, C2, figes AVANT le controle spatial du 2026-08-27). Hashs de position NON RESOLUS (chasse murmur3 2173 candidats sans nom, patron KOTH) : -1537427652 = position CENTRALE neutre, -1843278509 = positions de BASE par equipe. Motif stable sur les 5 cartes du corpus Assaut (map.mvar du 2026-08-27). Le controle spatial (explosions datees <= 10 m, temoin +12 m <= 25 %) decide de leur entree au catalogue.",
+ "maps": {
+  "b302eb62-da9a-480b-a409-3c89df8c1a04": {
+   "name": "origin",
+   "sites": [
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": 20,
+     "y": 0,
+     "z": 61.512,
+     "team": 1,
+     "type_id": 848694842,
+     "object_index": 5256
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": 20,
+     "y": 0,
+     "z": 61.7163,
+     "team": 1,
+     "type_id": -721267272,
+     "object_index": 5257
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -20,
+     "y": 0,
+     "z": 61.5217,
+     "team": 0,
+     "type_id": 848694842,
+     "object_index": 5261
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -20,
+     "y": 0,
+     "z": 61.7217,
+     "team": 0,
+     "type_id": -721267272,
+     "object_index": 5262
+    },
+    {
+     "kind": "centre",
+     "hash": -1537427652,
+     "x": 0.0023,
+     "y": -5.9954,
+     "z": 58.1842,
+     "team": -1,
+     "type_id": -721267272,
+     "object_index": 5263
+    },
+    {
+     "kind": "centre",
+     "hash": -1537427652,
+     "x": 0.0023,
+     "y": -5.9954,
+     "z": 57.9842,
+     "team": -1,
+     "type_id": 848694842,
+     "object_index": 5264
+    }
+   ]
+  },
+  "78da545f-a168-4a5e-9c8d-dd379067c352": {
+   "name": "absolution",
+   "sites": [
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -6.5089,
+     "y": 49.7106,
+     "z": 83.8811,
+     "team": 1,
+     "type_id": 848694842,
+     "object_index": 4623
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -6.5089,
+     "y": 49.7106,
+     "z": 84.0811,
+     "team": 1,
+     "type_id": -721267272,
+     "object_index": 4633
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -31.4189,
+     "y": 15.7395,
+     "z": 83.8813,
+     "team": 0,
+     "type_id": 848694842,
+     "object_index": 4645
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -31.4189,
+     "y": 15.7395,
+     "z": 84.0813,
+     "team": 0,
+     "type_id": -721267272,
+     "object_index": 4646
+    },
+    {
+     "kind": "centre",
+     "hash": -1537427652,
+     "x": -18.9313,
+     "y": 32.7333,
+     "z": 86.6847,
+     "team": -1,
+     "type_id": -721267272,
+     "object_index": 4647
+    },
+    {
+     "kind": "centre",
+     "hash": -1537427652,
+     "x": -18.9313,
+     "y": 32.7333,
+     "z": 86.4847,
+     "team": -1,
+     "type_id": 848694842,
+     "object_index": 4707
+    }
+   ]
+  },
+  "133c0185-24ed-4bc2-b834-62db5c936257": {
+   "name": "ratsnest",
+   "sites": [
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -97.6,
+     "y": -7.4,
+     "z": 165.0344,
+     "team": 1,
+     "type_id": 848694842,
+     "object_index": 939
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -97.6,
+     "y": -7.4,
+     "z": 165.2344,
+     "team": 0,
+     "type_id": -721267272,
+     "object_index": 940
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -97.6,
+     "y": 28.8,
+     "z": 165.0311,
+     "team": 1,
+     "type_id": 848694842,
+     "object_index": 1811
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -97.6,
+     "y": 28.8,
+     "z": 165.2312,
+     "team": 1,
+     "type_id": -721267272,
+     "object_index": 2637
+    },
+    {
+     "kind": "centre",
+     "hash": -1537427652,
+     "x": -116.4517,
+     "y": 10.7168,
+     "z": 166.7269,
+     "team": -1,
+     "type_id": -721267272,
+     "object_index": 2639
+    },
+    {
+     "kind": "centre",
+     "hash": -1537427652,
+     "x": -116.4517,
+     "y": 10.7168,
+     "z": 166.5269,
+     "team": -1,
+     "type_id": 848694842,
+     "object_index": 4878
+    }
+   ]
+  },
+  "63d634be-0319-489d-8c21-9c4e012f664f": {
+   "name": "curfew",
+   "sites": [
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -34.1424,
+     "y": 22.1921,
+     "z": 105.8804,
+     "team": 1,
+     "type_id": 848694842,
+     "object_index": 4551
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -34.1424,
+     "y": 22.1921,
+     "z": 106.0804,
+     "team": 0,
+     "type_id": -721267272,
+     "object_index": 4552
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -3.3652,
+     "y": 7.7318,
+     "z": 106.7894,
+     "team": 1,
+     "type_id": 848694842,
+     "object_index": 4560
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": -3.3652,
+     "y": 7.7318,
+     "z": 106.9894,
+     "team": 1,
+     "type_id": -721267272,
+     "object_index": 4561
+    },
+    {
+     "kind": "centre",
+     "hash": -1537427652,
+     "x": -17.6638,
+     "y": 10.3051,
+     "z": 103.3827,
+     "team": -1,
+     "type_id": -721267272,
+     "object_index": 4562
+    },
+    {
+     "kind": "centre",
+     "hash": -1537427652,
+     "x": -17.6638,
+     "y": 10.3051,
+     "z": 103.1827,
+     "team": -1,
+     "type_id": 848694842,
+     "object_index": 4563
+    }
+   ]
+  },
+  "be848f91-3d87-4b80-8eb9-df3b52cb8d10": {
+   "name": "urbanraid",
+   "sites": [
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": 3.7,
+     "y": -16,
+     "z": 54.84,
+     "team": 1,
+     "type_id": 848694842,
+     "object_index": 2209
+    },
+    {
+     "kind": "base",
+     "hash": -1843278509,
+     "x": 3.7,
+     "y": 10.7,
+     "z": 54.84,
+     "team": 0,
+     "type_id": 848694842,
+     "object_index": 5601
+    },
+    {
+     "kind": "centre",
+     "hash": -1537427652,
+     "x": 3.7,
+     "y": -2.55,
+     "z": 54.8467,
+     "team": -1,
+     "type_id": 848694842,
+     "object_index": 5602
+    }
+   ]
+  }
+ }
+}
