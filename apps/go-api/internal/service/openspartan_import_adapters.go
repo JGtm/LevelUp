@@ -3,9 +3,11 @@ package service
 import (
 	"strconv"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/modelabel"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/openspartan/mapper"
 	"levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/matchflags"
 )
 
 // toSyncRegistry converts a mapper.MatchRegistryRow (PR 2 pivot type) into
@@ -13,7 +15,12 @@ import (
 // (persist.BatchBuilder.SetMatch in openspartan_import_service.go). Required
 // because the sync types predate the mapper and use slightly different
 // nullability conventions.
-func toSyncRegistry(m mapper.MatchRegistryRow) sync.MatchRegistryRow {
+//
+// hasParticipants : the batch carries the match roster. backfill_completed then gets the
+// participants bit (matchflags.BackfillParticipants) at insertion, as the sync engine does
+// (sync.applyCompletionBitsToBatch) : the shared row is INSERT-only, nothing sets it later,
+// and a missing bit makes the admin backfill re-select the match on every run.
+func toSyncRegistry(m mapper.MatchRegistryRow, hasParticipants bool) sync.MatchRegistryRow {
 	durSec := m.DurationSeconds
 	playableSec := m.PlayableDurationSeconds
 
@@ -27,9 +34,19 @@ func toSyncRegistry(m mapper.MatchRegistryRow) sync.MatchRegistryRow {
 		team1 = &v
 	}
 
-	modeCategory := "Other"
-	if m.ModeCategory != nil && *m.ModeCategory != "" {
+	// Catégorie explicite, sinon celle de la règle canonique sur le nom de paire connu, sinon
+	// Other : elle se recalcule avec le nom quand le recompute post-import le résout.
+	modeCategory := modelabel.CategoryOther
+	switch {
+	case m.ModeCategory != nil && *m.ModeCategory != "":
 		modeCategory = *m.ModeCategory
+	case m.PairName != nil:
+		modeCategory = modelabel.InferCategory(*m.PairName)
+	}
+
+	var completed int64
+	if hasParticipants {
+		completed |= matchflags.BackfillParticipants
 	}
 
 	return sync.MatchRegistryRow{
@@ -60,6 +77,7 @@ func toSyncRegistry(m mapper.MatchRegistryRow) sync.MatchRegistryRow {
 		Team1PSScore:            m.Team1PsScore,
 		FirstSyncBy:             m.FirstSyncBy,
 		SeasonID:                m.SeasonID, // Phase 9.5 — propage le SeasonID OpenSpartan vers le sync writer
+		BackfillCompleted:       &completed,
 	}
 }
 
@@ -152,11 +170,11 @@ func toSyncMedals(medals []mapper.MedalEarnedRow) []sync.MedalRow {
 }
 
 // toAnalysisEvent adapts a mapper.HighlightEventRow into the
-// analysis.HighlightEvent shape that sync.InsertHighlightEvents expects.
+// highlightevent.HighlightEvent shape that sync.InsertHighlightEvents expects.
 // Missing fields default to zero — preserved further via RawJSON storage at
 // the SQL layer.
-func toAnalysisEvent(h mapper.HighlightEventRow) analysis.HighlightEvent {
-	e := analysis.HighlightEvent{EventType: h.EventType}
+func toAnalysisEvent(h mapper.HighlightEventRow) highlightevent.HighlightEvent {
+	e := highlightevent.HighlightEvent{EventType: h.EventType}
 	if h.XUID != nil {
 		if u, err := strconv.ParseUint(*h.XUID, 10, 64); err == nil {
 			e.XUID = u

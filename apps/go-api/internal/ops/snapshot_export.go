@@ -27,20 +27,44 @@ var sharedSnapshotTables = []string{
 }
 
 // sharedSnapshotMatchKeyedRaw : tables shared append-only exportées RAW (toutes
-// générations des matchs ready) — leurs vues (v_weapon_kills DENSE_RANK,
-// match_csrs_latest / match_objective_stats_latest QUALIFY) sont reconstruites à la
-// LECTURE par les DDL canoniques. Exporter le raw (et non le collapsed) permet aussi
-// les lectures directes de ces tables hors vue. match_objective_stats ajoutée le
-// 2026-07-26 : Q12 (scoreboard MatchView) LEFT JOIN match_objective_stats_latest
-// depuis v7.2 — sans l'export, la vue manquait du schéma snapshot et TOUT match du
-// cut sortait scoreboard_empty (bandeau « match partiel »).
-// match_kill_events N'Y FIGURE PAS ENCORE, et c'est délibéré (2026-08-02). Toute table de
-// cette liste est REQUISE à la lecture (createParquetViewStrict / materializeParquetTable) :
-// l'y ajouter rendrait ILLISIBLE tout snapshot exporté avant ce jour — le lecteur ne dégrade
-// pas sur la table manquante, il refuse le snapshot entier et retombe en live. La table entre
-// ici le jour où un lecteur du snapshot en a besoin, dans le même commit que la ré-exportation.
-// D'ici là, le kill-feed du snapshot vient de killer_victim_pairs, exportée juste au-dessus.
-var sharedSnapshotMatchKeyedRaw = []string{"weapon_kills", "match_csrs", "match_objective_stats"}
+// générations des matchs ready) — leurs vues (match_csrs_latest /
+// match_objective_stats_latest QUALIFY, match_kill_events_latest)
+// sont reconstruites à la LECTURE par les DDL canoniques. Exporter le raw (et non le
+// collapsed) permet aussi les lectures directes de ces tables hors vue.
+// match_objective_stats ajoutée le 2026-07-26 : Q12 (scoreboard MatchView) LEFT JOIN
+// match_objective_stats_latest depuis v7.2 — sans l'export, la vue manquait du schéma
+// snapshot et TOUT match du cut sortait scoreboard_empty (bandeau « match partiel »).
+// match_kill_events ajoutée le 2026-08-12 : le jour prévu par la note du 2026-08-02 est
+// arrivé — Q21b (arme du kill feed) et Q21c (assistant + parts de dégâts) la lisent
+// depuis le lot portage POC, et MatchView servi du snapshot rendait ces deux lectures
+// STRUCTURELLEMENT vides (0 icône, 0 assistant), sans erreur ni log, alors que le live
+// portait tout. Toute table de cette liste étant REQUISE à la lecture, les snapshots
+// antérieurs sont refusés (ErrSnapshotIncomplete) → fallback LIVE global, comportement
+// prévu — jusqu'au prochain cut qui ré-exporte complet.
+var sharedSnapshotMatchKeyedRaw = []string{
+	"match_csrs", "match_objective_stats", "match_kill_events",
+}
+
+// sharedSnapshotTitleOwnedRaw : tables shared append-only exportées RAW que le schéma d'un
+// titre peut ne pas porter ; aucune n'est REQUISE à la lecture.
+//   - `weapon_kills` n'existe que dans le fichier des titres sans décodeur de film (migration
+//     title-owned games/halo_infinite/migrations/steps_shared_drop_weapon_kills.go).
+//   - `match_bomb_stats` (statistiques d'Assaut reconstruites du film) n'existe que dans la base
+//     des titres à décodeur de film, et seulement si la migration l'y a posée.
+//
+// L'export emporte la table quand la base la porte, la lecture la reconstruit (avec sa vue
+// `_latest` : vuesDesTablesDuTitre) quand le Parquet est là, et sinon sert le schéma du titre tel
+// quel — comme le live, qui n'a alors ni la table ni la vue. Un snapshot coupé avant l'ajout
+// d'une table à cette liste reste donc lisible : la vue match reçoit, de ce lecteur, les colonnes
+// concernées absentes (loadMatchBombStats le journalise), jusqu'au prochain cut.
+var sharedSnapshotTitleOwnedRaw = []string{tableWeaponKills, tableMatchBombStats}
+
+// tableWeaponKills : la table shared que seul le schema des titres sans decodeur de film porte.
+const tableWeaponKills = "weapon_kills"
+
+// tableMatchBombStats : la table des statistiques d'Assaut du film (migration
+// steps_shared_bomb_stats.go) ; sa seule lecture est la vue match_bomb_stats_latest.
+const tableMatchBombStats = "match_bomb_stats"
 
 // sharedSnapshotGlobalTables : relations shared NON match-keyed (clé xuid) exportées en
 // ENTIER (petites, globales) — requises par v_gamertag_lookup au moment de la lecture.
@@ -157,6 +181,7 @@ func exportSharedFacts(ctx context.Context, opener SharedReadOpener, versionDir 
 	var parts []PartitionInfo
 	// Tables de base + append-only raw : match-keyed, filtrées au set ready.
 	matchKeyed := append(append([]string{}, sharedSnapshotTables...), sharedSnapshotMatchKeyedRaw...)
+	matchKeyed = append(matchKeyed, sharedSnapshotTitleOwnedRaw...)
 	for _, tbl := range matchKeyed {
 		if !relationExists(ctx, conn, tbl) {
 			continue // relation absente (schéma partiel) → la lecture dégradera vers live

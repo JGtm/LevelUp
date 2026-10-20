@@ -4,6 +4,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { assetDrawerManifest } from '@/lib/i18n/generated/asset_drawer'
 import { useAssetDrawerStore } from './assetDrawer.store'
 import { useAssetMaps, useAssetWeapons, useAssetMedals } from './useAssetDrawer'
+import { dedupeAssetsById } from './assetDrawerLogic'
 import { AssetSearch } from './AssetSearch'
 import { AssetGrid } from './AssetGrid'
 
@@ -16,9 +17,10 @@ export function AssetDrawer() {
 
   const t = (key: keyof typeof assetDrawerManifest) => formatMessage(assetDrawerManifest, key, locale)
 
-  const mapsQuery = useAssetMaps(titleSlug, activeTab === 'maps' ? search : '')
-  const weaponsQuery = useAssetWeapons(titleSlug, activeTab === 'weapons' ? search : '')
-  const medalsQuery = useAssetMedals(titleSlug, activeTab === 'medals' ? search : '')
+  // Tiroir fermé : aucune requête (il est monté sur toutes les pages).
+  const mapsQuery = useAssetMaps(titleSlug, activeTab === 'maps' ? search : '', isOpen)
+  const weaponsQuery = useAssetWeapons(titleSlug, activeTab === 'weapons' ? search : '', isOpen)
+  const medalsQuery = useAssetMedals(titleSlug, activeTab === 'medals' ? search : '', isOpen)
 
   // Phase 3 — fermeture au clavier Escape
   useEffect(() => {
@@ -32,7 +34,11 @@ export function AssetDrawer() {
 
   const currentQuery =
     activeTab === 'maps' ? mapsQuery : activeTab === 'weapons' ? weaponsQuery : medalsQuery
-  const items = currentQuery.data ?? []
+  // dedupeAssetsById — dernier rempart avant rendu (cf. assetDrawerLogic.ts) : un
+  // catalogue avec deux libellés pour le même `id` fait crier React sur `key={asset.id}`
+  // dans `AssetGrid` (constat 2026-09-10, page de rejeu). Le tri serveur est déterministe,
+  // donc le dédoublonnage l'est aussi.
+  const items = dedupeAssetsById(currentQuery.data ?? [])
   const emptyKey =
     activeTab === 'maps'
       ? 'asset_drawer.empty.maps'

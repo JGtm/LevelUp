@@ -14,7 +14,9 @@ import { buildOwnerColorMap } from './mediaOwnerColors'
 import { MediaToolbar } from './MediaToolbar'
 import { MediaMatchPicker } from './MediaMatchPicker'
 import { useMediaPicker } from './useMediaPicker'
+import { usePlayerGamertag } from './usePlayerGamertag'
 import { UploadButton } from './UploadButton'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { getMediaText, type MediaText } from './i18n'
 import { useDeleteMedia, useMediaAuthors, useMediaPage, useToggleMediaLike, useFeedVersion } from './queries'
 import { useQueryClient } from '@tanstack/react-query'
@@ -162,9 +164,7 @@ function buildGroups(items: MediaItemRow[], groupBy: string, text: MediaText, lo
 export function MediaPage() {
   const { playerSlug } = useParams({ from: '/{-$lang}/t/$titleSlug/players/$playerSlug/media' })
   const locale = useAppShellStore((state) => state.locale)
-  const currentPlayerGamertag = useAppShellStore(
-    (s) => s.currentPlayer?.gamertag ?? s.availablePlayers.find((p) => p.player_slug === playerSlug)?.gamertag,
-  )
+  const currentPlayerGamertag = usePlayerGamertag(playerSlug)
   const text = getMediaText(locale)
   const [page, setPage] = useState(1)
   const [kindFilter, setKindFilter] = useState('')
@@ -200,6 +200,10 @@ export function MediaPage() {
   const authors = authorsData?.authors ?? []
   const toggleMediaLike = useToggleMediaLike(playerSlug)
   const deleteMedia = useDeleteMedia(playerSlug)
+  // Profil d'ami (lecture seule) : ni envoi, ni suppression, ni association. Le cœur reste
+  // actif : le like est l'action du visiteur, attribuée à son propre profil (ADR 0029).
+  const canWrite = useCanWritePlayer(playerSlug)
+  const likeDisabled = toggleMediaLike.isPending
   // Mémoïsé pour stabiliser les useMemo/useCallback consommateurs (indexByPath,
   // groups, handleOpenMatch) — sinon `[] ?? data` change de référence à chaque render.
   const mediaItems = useMemo<MediaItemRow[]>(() => data?.items?.items ?? [], [data])
@@ -317,18 +321,18 @@ export function MediaPage() {
           onToggleLike={(item) => toggleMediaLike.mutate({ file_path: item.file_path, liked: !item.liked })}
           startIndex={lightboxIdx}
           onClose={() => setLightboxIdx(null)}
-          likeDisabled={toggleMediaLike.isPending}
+          likeDisabled={likeDisabled}
           hasNextPage={page < totalPages}
           onLoadNextPage={() => setPage((current) => current + 1)}
           globalIndexOffset={(page - 1) * PAGE_SIZE}
           globalTotal={pagination?.total ?? mediaItems.length}
-          onReassociate={picker.openFor}
+          onReassociate={canWrite ? picker.openFor : undefined}
           currentPlayerGamertag={currentPlayerGamertag}
           playerSlug={playerSlug}
           onOpenMatch={handleOpenMatch}
           autoChain={autoChain}
           onToggleAutoChain={() => setAutoChain((prev) => !prev)}
-          onDelete={(item) => deleteMedia.mutate(item.file_path)}
+          onDelete={canWrite ? (item) => deleteMedia.mutate(item.file_path) : undefined}
           deleteBusy={deleteMedia.isPending}
         />
       )}
@@ -343,7 +347,7 @@ export function MediaPage() {
       )}
 
       {/* Zone d'upload pleine largeur (vient en premier pour rapprocher les filtres de la grille) */}
-      <UploadButton playerSlug={playerSlug} fullWidth />
+      {canWrite && <UploadButton playerSlug={playerSlug} fullWidth />}
 
       <div className="px-6">
         <MediaToolbar
@@ -405,11 +409,11 @@ export function MediaPage() {
                           })
                         }}
                         onOpen={() => setLightboxIdx(flatIndex)}
-                        likeDisabled={toggleMediaLike.isPending}
+                        likeDisabled={likeDisabled}
                         playerSlug={playerSlug}
                         currentPlayerGamertag={currentPlayerGamertag}
                         playerColorMap={playerColorMap}
-                        onAssociate={picker.openFor}
+                        onAssociate={canWrite ? picker.openFor : undefined}
                         onOpenMatch={handleOpenMatch}
                       />
                     )

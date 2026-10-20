@@ -1,0 +1,26 @@
+BANC DE VERITE — 1c4c63c2 : MANQUE
+  [MANQUE] P-1 paquets fermes au bit pres : 19354 -> 13333
+  [info] R-1 repli repli_liaison_par_anticipation : 1440 -> 1414
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 100 / FP 0 / FN 394
+    O-K2 morts (statborg)                    VP 172 / FP 0 / FN 323
+    O-K3 assistances (statborg)              VP 58 / FP 0 / FN 200
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S2 actions de marque par camp          VP 0 / FP 0 / FN 5
+    O-T1 equipes du roster                   VP 24 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 495 / FP 68 / FN 0
+    O-V2 fins de vie (sans identite)         VP 495 / FP 81 / FN 0
+    P-1 paquets fermes au bit pres           13333
+    P-2 preuves contradictoires (image-cle)  143
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    1
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   8
+    V-3 action hors vie                      46
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              12
+    V-7 identite discordante                 21
+    V-8 mort sans fin de vie                 14

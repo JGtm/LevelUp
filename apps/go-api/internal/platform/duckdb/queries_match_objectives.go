@@ -43,3 +43,27 @@ SELECT
     o.max_killing_spree_as_vip, o.time_as_vip_seconds, o.longest_time_as_vip_seconds
 FROM match_objective_stats_latest o
 WHERE o.match_id = ?`
+
+// Q12cBombStats : LES CINQ STATISTIQUES D'ASSAUT d'un match par joueur, lues dans une TABLE
+// DÉDIÉE — pas dans `match_objective_stats`. Paramètre : ?1 = match_id. Exécutée sur
+// SharedReader (ADR 0016) — pas de préfixe `shared.`.
+//
+// POURQUOI UNE TABLE À PART, et c'est une décision de schéma du chantier d'Assaut (décision 1
+// du PLAN_ASSAUT_STATS_2026-09-04) : la vue `match_objective_stats_latest` ne garde qu'UNE
+// ligne par (match_id, xuid). Deux producteurs — le sync API et le décodeur de film — s'y
+// écraseraient l'un l'autre, et un re-sync API effacerait les colonnes de bombe.
+//
+// LECTURE PAR LA VUE `_latest` UNIQUEMENT (règle ART n°2, ADR 0026) : la table est append-only,
+// une lecture brute servirait les lignes des passes de décodage précédentes.
+//
+// Requête DÉGRADABLE, comme Q12b : la vue peut manquer sur une DB non (encore) migrée. Le
+// caller (`loadMatchBombStats`) logge un WARN et sert le scoreboard SANS les colonnes d'Assaut.
+//
+// Colonnes dans l'ordre du bloc Assaut de domain.ObjectiveRaw. NULL = NON MESURÉ, jamais zéro.
+const Q12cBombStats = `
+SELECT
+    b.xuid,
+    b.bomb_detonations, b.bomb_arms, b.bomb_grabs,
+    b.time_as_bomb_carrier_seconds, b.bomb_carriers_killed
+FROM match_bomb_stats_latest b
+WHERE b.match_id = ?`

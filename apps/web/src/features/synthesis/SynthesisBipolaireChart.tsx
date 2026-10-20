@@ -16,8 +16,13 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import type { ComparisonMetricItem } from '@/lib/api/types'
+import { formatClockMShort } from '@/lib/formatters'
+import { formatMessage } from '@/lib/i18n/format'
+import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
   metrics: ComparisonMetricItem[]
@@ -32,24 +37,36 @@ function formatMetricValue(key: string, value: number): string {
   switch (key) {
     case 'win_rate':
       // 0-1 côté API (ADR 0006) → multiplier par 100 pour afficher %
-      return `${(value * 100).toFixed(1)}%`
+      return `${tipNumber(value * 100, 1)} %`
     case 'accuracy':
       // 0-100 nativement dans canonical.PlayerSelf (échelle API Halo) → pas de ×100
-      return `${value.toFixed(1)}%`
+      return `${tipNumber(value, 1)} %`
     case 'offensive_conversion':
-      return `${Math.round(value * 100)}%`
+      return `${tipNumber(value * 100, 0)} %`
     case 'defensive_resistance':
-      return `${Math.round((value - 1) * 100)}%`
+      return `${tipNumber((value - 1) * 100, 0)} %`
     case 'performance_score':
     case 'match_count':
     case 'ranked_match_count':
     case 'avg_damage_dealt':
     case 'avg_damage_taken':
-      return value.toFixed(0)
+      return tipNumber(value, 0)
     case 'avg_life_seconds': {
-      const m = Math.floor(value / 60)
-      const s = Math.round(value % 60)
-      return m > 0 ? `${m}m${String(s).padStart(2, '0')}s` : `${s}s`
+      // SOUS LA MINUTE, LA MOYENNE SE LIT « 37 s » : le « 0m » d'un format M m SS s
+      // n'apporterait rien sur une durée de vie moyenne, et cette décision-là reste ici.
+      // L'ÉCRITURE du format, elle, vient de `lib/formatters` (registre 2026-09-05, N3) ;
+      // l'arrondi précède la conversion, sans quoi 119,6 s se lirait « 1m60s ».
+      //
+      // CE QUE L'ARRONDI D'ABORD CHANGE, MESURÉ (2026-09-06, revue R1, constat C7 — sixième
+      // exception du lot v2 D) : sur un pas de 0,1 s entre 0 et 400 s, 30 valeurs changent de
+      // libellé, réparties en SIX fenêtres d'une demi-seconde — [59,5;60), [119,5;120),
+      // [179,5;180), [239,5;240), [299,5;300), [359,5;360). Dans la première, « 60s » devient
+      // « 1m00s » : un changement de FORME, pas la correction d'une sortie invalide. Dans les
+      // cinq autres, c'est bien une invalidité qui disparaît (« 1m60s », « 2m60s »…).
+      // Décision du superviseur : accepté, une durée juste sous la minute vaut mieux écrite
+      // « 1m00s » que d'imposer deux règles d'arrondi au même libellé.
+      const arrondi = Math.round(value)
+      return arrondi < 60 ? `${arrondi}s` : formatClockMShort(arrondi * 1000)
     }
     case 'time_played_seconds': {
       const d = Math.floor(value / 86400)
@@ -62,7 +79,7 @@ function formatMetricValue(key: string, value: number): string {
       return parts.join(' ')
     }
     default:
-      return value.toFixed(2)
+      return tipNumber(value, 2)
   }
 }
 
@@ -87,9 +104,16 @@ function soloBarValue(solo: number, squad: number): number {
   return raw                                        // deux positifs : formule standard
 }
 
+/** Les noms des deux séries (et des lignes de l'infobulle), à la langue de l'application. */
+interface BipolaireNames {
+  solo: string
+  squad: string
+}
+
 function buildBipolaireOption(
   metrics: ComparisonMetricItem[],
   fieldLabels: string[],
+  names: BipolaireNames,
 ): EChartsCoreOption {
   if (metrics.length === 0) return { backgroundColor: CHART_BG }
   const tc = getEChartsThemeColors()
@@ -128,8 +152,8 @@ function buildBipolaireOption(
         const squad = squadTexts[idx] ?? ''
         return [
           `<div style="font-weight:600;margin-bottom:4px">${title}</div>`,
-          `<div>${dot(soloColors[idx])}Solo : <b>${solo}</b></div>`,
-          `<div>${dot(squadColors[idx])}Escouade : <b>${squad}</b></div>`,
+          `<div>${dot(soloColors[idx])}${escapeHtml(names.solo)} : <b>${solo}</b></div>`,
+          `<div>${dot(squadColors[idx])}${escapeHtml(names.squad)} : <b>${squad}</b></div>`,
         ].join('')
       },
     },
@@ -152,7 +176,7 @@ function buildBipolaireOption(
     barCategoryGap: '30%',
     series: [
       {
-        name: 'Solo',
+        name: names.solo,
         type: 'bar',
         data: soloVals.map((v, i) => ({
           value: v,
@@ -176,7 +200,7 @@ function buildBipolaireOption(
         },
       },
       {
-        name: 'Escouade',
+        name: names.squad,
         type: 'bar',
         data: squadVals.map((v, i) => ({
           value: v,
@@ -199,6 +223,7 @@ function buildBipolaireOption(
 }
 
 export function SynthesisBipolaireChart({ metrics, fieldLabels, title, children, height }: Props) {
+  const locale = useAppShellStore((st) => st.locale)
   const resolvedLabels = fieldLabels ?? metrics.map((m) => m.label)
   const series: ChartSeries<ComparisonMetricItem>[] = metrics.length > 0
     ? [{ key: 'bipolaire', datapoints: metrics }]
@@ -208,9 +233,13 @@ export function SynthesisBipolaireChart({ metrics, fieldLabels, title, children,
   const metricsKey = JSON.stringify(metrics)
   const labelsKey = JSON.stringify(resolvedLabels)
   const buildOption = useCallback(
-    () => buildBipolaireOption(metrics, resolvedLabels),
+    () =>
+      buildBipolaireOption(metrics, resolvedLabels, {
+        solo: formatMessage(synthesisManifest, 'synthesis.scope.solo_label', locale),
+        squad: formatMessage(synthesisManifest, 'synthesis.scope.squad_label', locale),
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [metricsKey, labelsKey],
+    [metricsKey, labelsKey, locale],
   )
 
   return (

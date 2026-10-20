@@ -20,6 +20,13 @@ en = "Kills by weapon"
 fr = "Outils de destruction"
 en = "Tools of destruction"
 
+# Tranche de REGROUPEMENT de l'anneau externe du sunburst (seuil OUTER_RING_MIN_SHARE,
+# fragSunburstModel.ts) : les rôles trop petits pour porter une étiquette lisible sont fondus
+# en une tranche par classe, qui les NOMME au survol. Le nombre est celui des tranches fondues.
+[frags.charts.others_slice]
+fr = "Autres ({n, plural, one {# arme} other {# armes}})"
+en = "Others ({n, plural, one {# weapon} other {# weapons}})"
+
 [frags.charts.center_total_label]
 fr = "Frags"
 en = "Kills"
@@ -84,6 +91,18 @@ en = "Vehicle"
 [frags.class.turret]
 fr = "Tourelle"
 en = "Turret"
+
+# Equipement et environnement (lot « kills hors arme a feu », 2026-08-29) : servis par la
+# SOURCE DE DEGAT du film, pas par le registre d armes. Leur niveau 2 est un OBJET
+# (« Bobine a plasma », « Repulseur ») dont le libelle vient du TOML du titre, comme les
+# engins ci-dessus — rien a recopier ici.
+[frags.class.equipment]
+fr = "Équipement"
+en = "Equipment"
+
+[frags.class.environmental]
+fr = "Environnement"
+en = "Environment"
 
 [frags.class.unattributed]
 fr = "Non attribué"
@@ -158,3 +177,12 @@ en = "Splinter"
 [frags.role.grenade_other]
 fr = "Autre grenade"
 en = "Other grenade"
+
+# ── Repli générique (V2.1, D3, 2026-08-29) ─────────────────────────────────────
+# Niveau 2 par OBJET (véhicule/tourelle/équipement/environnement) sans AUCUN libellé
+# servi par l'API (label et label_en vides — objet jamais seedé dans le TOML du titre)
+# ET sans clé canonique ici (ce n'est justement pas un rôle canonique). Dernier repli
+# de fragRoleDisplayLabel (fragRoleLabel.ts) : jamais une clé i18n brute à l'écran.
+[frags.role.generic_object]
+fr = "Objet"
+en = "Object"

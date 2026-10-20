@@ -55,11 +55,11 @@ func (cfg *AppConfig) sharedReaderForTitle(titleSlug string) duckdb.SharedReader
 	}
 	// Démo : titre par défaut = provider boot (shared démo plat, byte-identique) ;
 	// titre additionnel = provider du shared démo title-scopé.
-	if cfg.DemoMode {
+	if cfg.demoState() {
 		if title.IsDefaultSlug(titleSlug) {
 			return cfg.SharedProvider
 		}
-		return cfg.sharedProviderForPath(titleSlug, demoSharedDBPath(cfg, titleSlug))
+		return cfg.sharedProviderForPath(titleSlug, cfg.DemoLayout().SharedDBPath(titleSlug))
 	}
 	return cfg.sharedProviderForPath(titleSlug, title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug))
 }
@@ -76,30 +76,6 @@ func (cfg *AppConfig) sharedProviderForPath(titleSlug, path string) duckdb.Share
 	return provider
 }
 
-// demoTitleDir retourne le sous-répertoire démo d'un titre. Titre par défaut (ou
-// slug vide) → fixturesDir plat (byte-identique mono-titre) ; titre additionnel →
-// fixturesDir/titles/{slug}/ (miroir du PathResolver prod, cf. ops.demoTitleSubdir).
-func demoTitleDir(fixturesDir, titleSlug string) string {
-	if title.IsDefaultSlug(titleSlug) {
-		return fixturesDir
-	}
-	return filepath.Join(fixturesDir, "titles", titleSlug)
-}
-
-// demoSharedDBPath / demoMetaDBPath / demoSharedSocialPath : chemins title-scopés des
-// DB démo d'un titre (cf. demoTitleDir).
-func demoSharedDBPath(cfg *AppConfig, titleSlug string) string {
-	return filepath.Join(demoTitleDir(cfg.DemoFixturesDir, titleSlug), "warehouse", "shared_matches_v2.duckdb")
-}
-
-func demoMetaDBPath(cfg *AppConfig, titleSlug string) string {
-	return filepath.Join(demoTitleDir(cfg.DemoFixturesDir, titleSlug), "warehouse", "metadata.duckdb")
-}
-
-func demoSharedSocialPath(cfg *AppConfig, titleSlug string) string {
-	return filepath.Join(demoTitleDir(cfg.DemoFixturesDir, titleSlug), "warehouse", "shared_social.duckdb")
-}
-
 // PrestigeBundleDBPaths retourne les chemins des DEUX bases ouvertes au boot par le
 // module Prestige (shared_social + metadata) pour le titre par défaut — les seules
 // que le bundle épingle (cf. wire.NewPrestigeBundleAt).
@@ -110,8 +86,8 @@ func demoSharedSocialPath(cfg *AppConfig, titleSlug string) string {
 // base reste vide. Repli sur le layout prod si DemoFixturesDir n'est pas renseigné.
 func (cfg *AppConfig) PrestigeBundleDBPaths() (sharedSocialPath, metadataPath string) {
 	slug := title.DefaultSlug
-	if cfg.DemoMode && cfg.DemoFixturesDir != "" {
-		return demoSharedSocialPath(cfg, slug), demoMetaDBPath(cfg, slug)
+	if cfg.demoState() && cfg.DemoFixturesDir != "" {
+		return cfg.DemoLayout().SharedSocialDBPath(slug), cfg.DemoLayout().MetadataDBPath(slug)
 	}
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	return pr.SharedSocialDBPath(slug), pr.MetadataDBPath(slug)
@@ -119,12 +95,13 @@ func (cfg *AppConfig) PrestigeBundleDBPaths() (sharedSocialPath, metadataPath st
 
 // ResolvePlayer traduit un slug joueur en PlayerDB prêt à l'emploi.
 // titleSlug est le titre courant (ex: "halo_infinite"). Si vide, DefaultSlug est utilisé.
-// En mode démo, les fixtures de test sont utilisées (slug ignoré).
+// Sur le serveur démo (demoState), les fixtures du roster démo sont utilisées ; un binaire
+// opérateur chargé par Load() résout toujours un vrai profil, même sous LEVELUP_DEMO_MODE=true.
 func ResolvePlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug string) (*duckdb.PlayerDB, error) {
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
-	if cfg.DemoMode {
+	if cfg.demoState() {
 		return resolveDemoPlayer(ctx, cfg, slug, titleSlug)
 	}
 	return resolveRealPlayer(ctx, cfg, slug, titleSlug)
@@ -175,15 +152,13 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 		titleSlug = title.DefaultSlug
 	}
 	dir := cfg.DemoFixturesDir
-	// titleDir : sous-arbre démo du titre (default → plat ; additionnel → titles/{slug}/).
-	titleDir := demoTitleDir(dir, titleSlug)
 	def := demoDefForSlug(slug) // DemoPlayer (main) ou un coéquipier DemoPlayer2/3
 
 	// Résolution du chemin stats.duckdb : structure seed-demo (par joueur du
 	// roster, title-scopée) d'abord, plate (fixtures legacy, main only) ensuite.
-	statsPath := filepath.Join(titleDir, "players", def.Dir, "stats.duckdb")
-	sharedPath := demoSharedDBPath(cfg, titleSlug)
-	metaPath := demoMetaDBPath(cfg, titleSlug)
+	statsPath := cfg.DemoLayout().PlayerDBPath(titleSlug, def.Dir)
+	sharedPath := cfg.DemoLayout().SharedDBPath(titleSlug)
+	metaPath := cfg.DemoLayout().MetadataDBPath(titleSlug)
 	xuidBytes := def.XUID
 	gamertag := def.Gamertag
 
@@ -213,7 +188,7 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 	// schéma canonique (migrations TargetSharedSocial). Le pipeline média EXIGE un
 	// SharedSocial non-nil (sinon 0 média, pas de fallback Player DB — cf.
 	// media_repo_q37_pipeline.go). Vide si la fixture est absente (titre sans média).
-	sharedSocialPath := demoSharedSocialPath(cfg, titleSlug)
+	sharedSocialPath := cfg.DemoLayout().SharedSocialDBPath(titleSlug)
 	if _, err := os.Stat(sharedSocialPath); os.IsNotExist(err) {
 		sharedSocialPath = ""
 	}
@@ -282,8 +257,8 @@ func SharedDBPath(cfg *AppConfig, titleSlug string) string {
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
-	if cfg.DemoMode {
-		return demoSharedDBPath(cfg, titleSlug)
+	if cfg.demoState() {
+		return cfg.DemoLayout().SharedDBPath(titleSlug)
 	}
 	return title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug)
 }
@@ -294,8 +269,8 @@ func MetadataDBPath(cfg *AppConfig, titleSlug string) string {
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
-	if cfg.DemoMode && cfg.DemoFixturesDir != "" {
-		return demoMetaDBPath(cfg, titleSlug)
+	if cfg.demoState() && cfg.DemoFixturesDir != "" {
+		return cfg.DemoLayout().MetadataDBPath(titleSlug)
 	}
 	return title.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titleSlug)
 }
@@ -320,4 +295,21 @@ func readXUIDFile(path string) (string, error) {
 		return "", fmt.Errorf("xuid.txt vide : %s", path)
 	}
 	return xuid, nil
+}
+
+// PlayerDBFileExists dit si la player DB d'un profil suivi est déjà sur disque pour ce titre.
+//
+// Pour les chemins de LECTURE qui visitent la base d'un autre joueur (extras des amis d'un
+// match) : ouvrir par le pool une base qui n'existe pas échoue quand son dossier est absent
+// (ami onboardé, jamais synchronisé), et ce n'est pas une panne. Le dossier et la base sont créés
+// par la première synchronisation du joueur (OpenPlayerDB), jamais par une lecture.
+//
+// En démo, ResolvePlayer lit des fixtures et dit lui-même leur absence, et LoadPlayers ne rend
+// que les joueurs dont la base a été seedée : la fonction rend true.
+func PlayerDBFileExists(cfg *AppConfig, titleSlug, gamertag string) bool {
+	if cfg.demoState() {
+		return true
+	}
+	info, err := os.Stat(PlayerDBPath(cfg, titleSlug, gamertag))
+	return err == nil && !info.IsDir()
 }

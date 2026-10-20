@@ -11,17 +11,24 @@ import (
 
 // PlayerPresenceStatus représente l'état de présence d'un joueur exposé à l'API.
 type PlayerPresenceStatus struct {
-	Gamertag       string          `json:"gamertag"`
-	XUID           string          `json:"xuid"`
-	State          string          `json:"state"`                    // "Idle", "Watching", "Syncing", "Cooling"
-	PresenceState  string          `json:"presence_state,omitempty"` // "Online" / "Away" / "Offline" (état Xbox brut)
-	InGame         bool            `json:"in_game"`                  // présence active
-	StateSince     string          `json:"state_since"`              // ISO 8601
-	StateDuration  string          `json:"state_duration"`           // durée lisible
-	CooldownLeft   string          `json:"cooldown_left,omitempty"`
-	SubscribeError string          `json:"subscribe_error,omitempty"` // erreur d'abonnement REST, vide si OK
-	LastSeen       *LastSeenStatus `json:"last_seen,omitempty"`       // dernière activité connue Xbox (snapshot Offline)
-	LastEventAt    string          `json:"last_event_at,omitempty"`   // RFC3339 UTC du dernier event présence reçu (vivacité du poll)
+	Gamertag       string `json:"gamertag"`
+	XUID           string `json:"xuid"`
+	State          string `json:"state"`                    // "Idle", "Watching", "Syncing", "Cooling"
+	PresenceState  string `json:"presence_state,omitempty"` // "Online" / "Away" / "Offline" (état Xbox brut)
+	InGame         bool   `json:"in_game"`                  // présence active
+	StateSince     string `json:"state_since"`              // ISO 8601
+	StateDuration  string `json:"state_duration"`           // durée lisible
+	CooldownLeft   string `json:"cooldown_left,omitempty"`
+	SubscribeError string `json:"subscribe_error,omitempty"` // erreur d'abonnement REST, vide si OK
+	// TitleSlug / TitleName : titre TRACKÉ sur lequel le joueur est vu en ce
+	// moment, quel que soit le titre suivi par ce watcher. Vides s'il n'est sur
+	// aucun titre du registre. `InGame` ci-dessus reste la sémantique watcher
+	// (« joue-t-il au titre que CE watcher suit ? ») : les deux diffèrent quand
+	// un joueur lance un autre titre tracké (cf. PlayerWatcher.currentTitleSlug).
+	TitleSlug   string          `json:"title_slug,omitempty"`
+	TitleName   string          `json:"title_name,omitempty"`
+	LastSeen    *LastSeenStatus `json:"last_seen,omitempty"`     // dernière activité connue Xbox (snapshot Offline)
+	LastEventAt string          `json:"last_event_at,omitempty"` // RFC3339 UTC du dernier event présence reçu (vivacité du poll)
 }
 
 // LastSeenStatus expose la dernière activité connue d'un joueur via l'API.
@@ -111,6 +118,8 @@ func (p *StateProvider) GetStatus() WatcherStatus {
 		pw.mu.Lock()
 		ps.InGame = pw.inGame
 		ps.PresenceState = pw.lastPresenceState
+		ps.TitleSlug = pw.currentTitleSlug
+		ps.TitleName = pw.currentTitleName
 		if pw.subscribeError != nil {
 			ps.SubscribeError = pw.subscribeError.Error()
 		}

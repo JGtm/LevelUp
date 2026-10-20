@@ -28,10 +28,8 @@ interface CalendarChartText {
   hourAxis: string
   dayAxis: string
   winRate: string
-  wins: string
   matches: string
   commonMatches: string
-  noCommonMatch: string
 }
 
 const CALENDAR_CHART_TEXT: Record<ManifestLocale, CalendarChartText> = {
@@ -39,19 +37,15 @@ const CALENDAR_CHART_TEXT: Record<ManifestLocale, CalendarChartText> = {
     hourAxis: 'Heure',
     dayAxis: 'Jour',
     winRate: 'Taux de victoire',
-    wins: 'Victoires',
     matches: 'Matchs',
     commonMatches: 'Matchs communs',
-    noCommonMatch: 'Aucun match commun',
   },
   en: {
     hourAxis: 'Hour',
     dayAxis: 'Day',
     winRate: 'Win rate',
-    wins: 'Wins',
     matches: 'Matches',
     commonMatches: 'Common matches',
-    noCommonMatch: 'No common match',
   },
 }
 

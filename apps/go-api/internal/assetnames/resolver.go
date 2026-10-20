@@ -27,11 +27,6 @@ import (
 // suffit et borne le coût réseau hot-path.
 var DefaultLangs = []string{"fr-FR", "en-US"}
 
-// defaultMaxAssets : cap dur d'assets résolus par appel (garde-fou cold-start :
-// 1er cycle après un déploiement où beaucoup d'assets sont neufs). Les assets
-// écartés restent absents → repris au cycle suivant (convergent).
-const defaultMaxAssets = 64
-
 // AssetRef identifie un asset à résoudre. VersionID peut être "" → l'API prend
 // la dernière version.
 type AssetRef struct {
@@ -62,7 +57,7 @@ type Store interface {
 type Config struct {
 	TitleID   string   // titleID DiscoveryUGC (ex "hi" pour Halo Infinite) — fourni par le titre
 	Langs     []string // défaut DefaultLangs
-	MaxAssets int      // défaut defaultMaxAssets
+	MaxAssets int      // plafond d'assets traités par appel ; 0 = aucun plafond
 }
 
 // Result agrège les compteurs d'une résolution (logging + expvar).
@@ -87,14 +82,10 @@ func Resolve(ctx context.Context, f Fetcher, s Store, refs []AssetRef, cfg Confi
 	if len(langs) == 0 {
 		langs = DefaultLangs
 	}
-	maxAssets := cfg.MaxAssets
-	if maxAssets <= 0 {
-		maxAssets = defaultMaxAssets
-	}
 
 	deduped := dedup(refs)
 	res.Requested = len(deduped)
-	kept, capped := applyCap(deduped, maxAssets)
+	kept, capped := applyCap(deduped, cfg.MaxAssets)
 	res.Capped = capped
 
 	for _, ref := range kept {
@@ -134,9 +125,10 @@ func dedup(refs []AssetRef) []AssetRef {
 	return out
 }
 
-// applyCap borne le nombre d'assets traités. Retourne (gardés, nombre écarté).
+// applyCap borne le nombre d'assets traités. Retourne (gardés, nombre écarté). max <= 0 :
+// aucun plafond.
 func applyCap(refs []AssetRef, max int) ([]AssetRef, int) {
-	if len(refs) <= max {
+	if max <= 0 || len(refs) <= max {
 		return refs, 0
 	}
 	return refs[:max], len(refs) - max

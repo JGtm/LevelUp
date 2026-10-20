@@ -1,0 +1,24 @@
+### 01e1f945
+01e1f945 : designateur slot 1471, 4 bascule(s), premier contact frame 368 ; canal de propriete slot 1472, 99 emission(s) ; axe 5343 frames a 100 ms
+01e1f945 : score de mode — slot 6 : 3 point(s), final 3 ; slot 8 : 2 point(s), final 2
+SIGNAL   01e1f945 : 2/2 = 100.0 % (intervalles 50, deux marquent 0, aucun 48, 0->slot6, 1->slot8)
+TEMOIN a 01e1f945 : permutation, pire des 5 autres canaux (slot 1387) : 1/1 = 100.0 % (intervalles 1, deux marquent 0, aucun 0, valeur unique 538592340 — bijection DEGENEREE)
+TEMOIN b 01e1f945 : decalage +20 s : 2/3 = 66.7 % (intervalles 49, deux marquent 0, aucun 46, 0->slot6, 1->slot8)
+
+### 0a247154
+0a247154 : designateur slot 1622, 5 bascule(s), premier contact frame 327 ; canal de propriete slot 1623, 213 emission(s) ; axe 7838 frames a 100 ms
+0a247154 : score de mode — slot 6 : 4 point(s), final 4 ; slot 8 : 3 point(s), final 2
+SIGNAL   0a247154 : 1/1 = 100.0 % (intervalles 87, deux marquent 0, aucun 86, valeur unique 0 — bijection DEGENEREE)
+TEMOIN a 0a247154 : permutation, pire des 6 autres canaux (slot 1565) : 1/1 = 100.0 % (intervalles 2, deux marquent 1, aucun 0, valeur unique 2674078792 — bijection DEGENEREE)
+TEMOIN b 0a247154 : decalage +20 s : 2/3 = 66.7 % (intervalles 86, deux marquent 0, aucun 83, 0->slot6, 1->slot8)
+
+### 606d9844
+606d9844 : designateur slot 1498, 2 bascule(s), premier contact frame 379 ; canal de propriete slot 1499, 13 emission(s) ; axe 2342 frames a 100 ms
+606d9844 : oracle — slots STRICTS [8], slots BRUTS [8]
+NEGATIF  606d9844 : 1 slot(s) d'equipe seulement au score de mode — l'oracle ne peut rien trancher sur ce film, la mesure s'arrete ici (ce n'est PAS un verdict sur le canal)
+
+### 8076f97f
+8076f97f : designateur slot 1540, 2 bascule(s), premier contact frame 400 ; canal de propriete slot 1541, 35 emission(s) ; axe 3398 frames a 100 ms
+8076f97f : oracle — slots STRICTS [6], slots BRUTS [6]
+NEGATIF  8076f97f : 1 slot(s) d'equipe seulement au score de mode — l'oracle ne peut rien trancher sur ce film, la mesure s'arrete ici (ce n'est PAS un verdict sur le canal)
+

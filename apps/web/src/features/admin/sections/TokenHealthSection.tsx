@@ -1,6 +1,10 @@
 /**
- * TokenHealthSection — Santé des tokens (MSAL / XSTS / Refresh par joueur,
+ * TokenHealthSection — Santé des tokens (Accès / XSTS / Refresh par joueur,
  * ADR 0023). Extraction 1:1 depuis l'ancienne AdminPage.
+ *
+ * La famille « Accès » s'appelait « MSAL » avant ADR 0023 Phase 5 (2026-08-25) :
+ * elle mesure l'expiration de l'access_token Microsoft persisté, pas un cache
+ * MSAL — lequel n'existe plus depuis le retrait de MSAL (2026-07-15).
  */
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -45,7 +49,10 @@ function TokenBadge({ kind, status, t }: { kind: string; status: TokenStatus; t:
   )
 }
 
-/** Source de credentials du dernier scan — toute source hors store canonique = dette ADR-0023 (warning). */
+/**
+ * Source de credentials du dernier scan. Depuis ADR 0023 Phase 5, seul « store »
+ * est possible ; toute autre valeur signale une régression (affichée en warning).
+ */
 function CredentialSourceChip({ source, t }: { source?: string; t: T }) {
   if (!source) return null
   const unknown = source === 'unknown'
@@ -105,7 +112,7 @@ export function TokenHealthSection() {
                       <>
                         <CredentialSourceChip source={p.credential_source} t={t} />
                         <TokenBadge kind={t('common.admin.token_refresh')} status={p.refresh as TokenStatus} t={t} />
-                        <TokenBadge kind={t('common.admin.token_msal')} status={p.msal as TokenStatus} t={t} />
+                        <TokenBadge kind={t('common.admin.token_access')} status={p.access as TokenStatus} t={t} />
                         <TokenBadge kind={t('common.admin.token_xsts')} status={p.xsts as TokenStatus} t={t} />
                       </>
                     )}

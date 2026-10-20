@@ -84,7 +84,36 @@ export interface GamertagComboboxProps {
    * chaîne CSS prête à l'emploi (ex. tokenCssVar('compare-a')).
    */
   leadingPill?: { label: string; color: string }
+  /**
+   * Sources de suggestion PROPOSÉES. Par défaut : les quatre.
+   *
+   * Un appelant qui ne sait pas TRADUIRE toutes les sources doit pouvoir n'offrir que
+   * celles qu'il traite : l'onglet Tactique envoie au serveur des XUIDs qu'il ne connaît
+   * que pour ses coéquipiers fréquents, et proposer un joueur de l'annuaire l'aurait
+   * conduit à refuser ensuite ce qu'il venait d'accepter. Accepter puis refuser est
+   * toujours pire que ne pas proposer.
+   *
+   * Rétro-compatible : omettre la prop garde le comportement complet (SquadLayout,
+   * Compare, Settings, Admin sont inchangés).
+   */
+  sources?: readonly GamertagSuggestionSource[]
+  /**
+   * Demande d'ouverture venue de l'extérieur : chaque NOUVELLE valeur non nulle donne le focus
+   * au champ, ce qui ouvre le popover (même chemin qu'un clic dans le champ). Sert à un appelant
+   * qui doit amener l'utilisateur au sélecteur depuis un autre contrôle de la page.
+   */
+  openRequest?: number
 }
+
+/** Les quatre sources du popover, dans leur ordre d'affichage. */
+export type GamertagSuggestionSource = 'configured' | 'frequent' | 'remote' | 'live'
+
+const TOUTES_SOURCES: readonly GamertagSuggestionSource[] = [
+  'configured',
+  'frequent',
+  'remote',
+  'live',
+]
 
 // ─── Composant ──────────────────────────────────────────────────────────────────
 
@@ -97,6 +126,7 @@ export function GamertagCombobox({
   excludeGamertag,
   placeholder = 'Rechercher un gamertag…',
   allowFreeInput = true,
+  sources,
   onAddAsFriend,
   compact = false,
   presetGroups,
@@ -104,6 +134,7 @@ export function GamertagCombobox({
   footer,
   onClose,
   leadingPill,
+  openRequest = 0,
 }: GamertagComboboxProps) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -136,24 +167,52 @@ export function GamertagCombobox({
     prevOpenRef.current = isOpen
   }, [isOpen])
 
+  // Le focus ouvre le popover par `onFocus` : aucun état écrit ici, l'effet ne fait que
+  // déplacer le focus quand la demande change.
+  useEffect(() => {
+    if (openRequest > 0) inputRef.current?.focus()
+  }, [openRequest])
+
   // ─── Suggestions via hook partagé ───────────────────────────────────────────
 
   const isAtMax = max != null && selected.length >= max
   const excludeGamertags = excludeGamertag ? [...selected, excludeGamertag] : selected
 
   const {
-    configured,
-    frequent,
-    remote,
-    isRemoteLoading,
-    hasAnyResult,
+    configured: configuredTous,
+    frequent: frequentTous,
+    remote: remoteTous,
+    isRemoteLoading: isRemoteLoadingBrut,
+    hasAnyResult: hasAnyResultBrut,
     remoteAttempted,
-    liveResults,
+    liveResults: liveResultsTous,
     isLiveLoading,
     liveAttempted,
-    liveEmpty,
+    liveEmpty: liveEmptyBrut,
     triggerLiveSearch,
-  } = useGamertagSuggestions({ query, frequentOptions, excludeGamertags })
+  } = useGamertagSuggestions({
+    query,
+    frequentOptions,
+    excludeGamertags,
+    // La requête distante n'est même pas ÉMISE quand la source n'est pas proposée :
+    // filtrer le résultat laissait partir un appel par frappe pour une réponse jetée.
+    rechercheDistante: (sources ?? TOUTES_SOURCES).includes('remote'),
+  })
+
+  // Filtrage par SOURCE : une source non proposée n'apparaît pas, ne compte pas dans
+  // « a-t-on trouvé quelque chose », et ne déclenche ni le repli Xbox ni ses messages.
+  const sourcesActives = sources ?? TOUTES_SOURCES
+  const configured = sourcesActives.includes('configured') ? configuredTous : []
+  const frequent = sourcesActives.includes('frequent') ? frequentTous : []
+  const remote = sourcesActives.includes('remote') ? remoteTous : []
+  const liveResults = sourcesActives.includes('live') ? liveResultsTous : []
+  const rechercheServeurProposee = sourcesActives.includes('remote')
+  const repliXboxPropose = sourcesActives.includes('live')
+  const isRemoteLoading = rechercheServeurProposee && isRemoteLoadingBrut
+  const liveEmpty = repliXboxPropose && liveEmptyBrut
+  const hasAnyResult = rechercheServeurProposee
+    ? hasAnyResultBrut
+    : configured.length > 0 || frequent.length > 0
 
   const trimmed = query.trim()
   const allSuggestedGts = new Set([
@@ -175,11 +234,15 @@ export function GamertagCombobox({
     !allSuggestedGts.has(trimmed)
 
   const showEmptyMessage =
-    trimmed.length > 0 && remoteAttempted && !isRemoteLoading && !hasAnyResult
+    trimmed.length > 0 &&
+    (rechercheServeurProposee ? remoteAttempted : true) &&
+    !isRemoteLoading &&
+    !hasAnyResult
 
   // Bouton « Rechercher sur Xbox » (V72-24) : proposé quand la recherche locale a
   // répondu sans surfacer le joueur tapé, tant que le repli live n'a pas été lancé.
   const canSearchLive =
+    repliXboxPropose &&
     trimmed.length > 0 &&
     !selected.includes(trimmed) &&
     !allSuggestedGts.has(trimmed) &&
@@ -249,6 +312,9 @@ export function GamertagCombobox({
     }
   }
 
+  // Mode compact : pastilles et champ de saisie à la même taille de texte, pour tenir sur une ligne.
+  const tailleTexte = compact ? 'text-xs' : 'text-sm'
+
   // ─── Rendu ──────────────────────────────────────────────────────────────────
 
   return (
@@ -265,7 +331,7 @@ export function GamertagCombobox({
           <span
             title={leadingPill.label}
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-sm font-medium"
+            className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 ${tailleTexte} font-medium`}
             style={{ backgroundColor: leadingPill.color, color: '#fff', border: 'none' }} // color-allow: blanc structurel pour contraste sur fond coloré du pill
           >
             <span className="max-w-[7rem] truncate">{leadingPill.label}</span>
@@ -277,7 +343,7 @@ export function GamertagCombobox({
             <span
               key={gt}
               title={gt}
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium"
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 ${tailleTexte} font-medium`}
               style={
                 color
                   ? { backgroundColor: color, color: '#fff', border: 'none' } // color-allow: blanc structurel pour contraste sur fond coloré du pill
@@ -286,7 +352,7 @@ export function GamertagCombobox({
               data-pill={!color ? 'neutral' : undefined}
             >
               {!color && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-0.5 text-sm text-foreground">
+                <span className={`inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-0.5 ${tailleTexte} text-foreground`}>
                   <span className="max-w-[7rem] truncate">{gt}</span>
                   <button
                     type="button"
@@ -324,7 +390,7 @@ export function GamertagCombobox({
           onKeyDown={handleKeyDown}
           placeholder={selected.length === 0 ? placeholder : ''}
           disabled={isAtMax}
-          className={`flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 ${compact ? 'min-w-[80px]' : 'min-w-[120px]'} ${max != null && !compact ? 'pr-8' : ''}`}
+          className={`flex-1 bg-transparent ${tailleTexte} outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 ${compact ? 'min-w-[80px]' : 'min-w-[120px]'} ${max != null && !compact ? 'pr-8' : ''}`}
         />
 
         {max != null && !compact && (

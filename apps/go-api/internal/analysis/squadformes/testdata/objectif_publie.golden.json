@@ -1,0 +1,163 @@
+{
+  "available": true,
+  "matches_total": 3,
+  "matches_measured": 1,
+  "main_xuid": "moi",
+  "squad": [
+    {
+      "xuid": "moi",
+      "gamertag": "JGtm"
+    },
+    {
+      "xuid": "cop",
+      "gamertag": "Madina97294"
+    }
+  ],
+  "matches": [
+    {
+      "match_id": "m1",
+      "start_time": "2026-07-31T19:22:00Z",
+      "mode_label": "Bastion",
+      "map_label": "Perilous",
+      "player_team": 0,
+      "objective": {
+        "family": "zones_strongholds",
+        "columns": [
+          {
+            "key": "zone_captures",
+            "role": "take"
+          },
+          {
+            "key": "zone_secures",
+            "role": "defend"
+          },
+          {
+            "key": "time_in_zones_seconds",
+            "role": "hold",
+            "duration": true
+          }
+        ],
+        "players": [
+          {
+            "xuid": "adv",
+            "values": {
+              "time_in_zones_seconds": 61,
+              "zone_captures": 4,
+              "zone_secures": 1
+            }
+          },
+          {
+            "xuid": "moi",
+            "values": {
+              "time_in_zones_seconds": 42.5,
+              "zone_captures": 1,
+              "zone_secures": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "match_id": "m2",
+      "start_time": "2026-07-31T19:32:00Z",
+      "mode_label": "Assassin",
+      "map_label": "Curfew",
+      "player_team": 0,
+      "objective": {
+        "family": "ctf",
+        "columns": [
+          {
+            "key": "flag_captures",
+            "role": "take"
+          },
+          {
+            "key": "flag_grabs_net",
+            "role": "take",
+            "optional": true
+          },
+          {
+            "key": "flag_returns",
+            "role": "defend"
+          },
+          {
+            "key": "time_as_flag_carrier_seconds",
+            "role": "hold",
+            "duration": true
+          }
+        ],
+        "players": [
+          {
+            "xuid": "adv",
+            "team_id": 1,
+            "values": {
+              "flag_captures": 2,
+              "flag_grabs_net": 5,
+              "flag_returns": 1,
+              "time_as_flag_carrier_seconds": 33
+            }
+          },
+          {
+            "xuid": "cop",
+            "team_id": 0,
+            "values": {
+              "flag_captures": 0,
+              "flag_returns": 0,
+              "time_as_flag_carrier_seconds": 7.25
+            }
+          },
+          {
+            "xuid": "moi",
+            "team_id": 0,
+            "values": {
+              "flag_captures": 1,
+              "flag_grabs_net": 3,
+              "flag_returns": 2,
+              "time_as_flag_carrier_seconds": 20
+            }
+          }
+        ],
+        "flag_juggle_window_seconds": 1.5
+      }
+    },
+    {
+      "match_id": "obj-seul",
+      "start_time": "2026-07-31T18:10:00Z",
+      "mode_label": "Drapeau neutre",
+      "map_label": "Aquarius",
+      "objective": {
+        "family": "ctf",
+        "columns": [
+          {
+            "key": "flag_captures",
+            "role": "take"
+          },
+          {
+            "key": "flag_grabs_net",
+            "role": "take",
+            "optional": true
+          },
+          {
+            "key": "flag_returns",
+            "role": "defend"
+          },
+          {
+            "key": "time_as_flag_carrier_seconds",
+            "role": "hold",
+            "duration": true
+          }
+        ],
+        "players": [
+          {
+            "xuid": "moi",
+            "values": {
+              "flag_captures": 0,
+              "flag_returns": 4,
+              "time_as_flag_carrier_seconds": 0
+            }
+          }
+        ],
+        "excluded_from_balance": true
+      }
+    }
+  ]
+}

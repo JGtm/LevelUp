@@ -297,6 +297,11 @@ type CSRRankSnapshot struct {
 	Tier                        string
 	SubTier                     int
 	MeasurementMatchesRemaining int
+	// InitialMeasurementMatches : nombre de matchs de placement de la saison pour la
+	// file concernée. > 0 sur tout match classé, 0 sur un match social (RankRecap
+	// présent mais à zéro). C'est le critère unique de classement d'un match
+	// (decision D-10 ; voir sync.SkillShowsRankedMatch).
+	InitialMeasurementMatches int
 }
 
 // PlayerPlaylistCSR regroupe les classements d'un joueur pour une playlist ranked.
@@ -333,6 +338,7 @@ type csrRankRaw struct {
 	MeasurementMatchesRemaining int     `json:"MeasurementMatchesRemaining"`
 	Tier                        string  `json:"Tier"`
 	SubTier                     int     `json:"SubTier"`
+	InitialMeasurementMatches   int     `json:"InitialMeasurementMatches"`
 }
 
 func rawToCSRSnapshot(r csrRankRaw) CSRRankSnapshot {
@@ -341,6 +347,7 @@ func rawToCSRSnapshot(r csrRankRaw) CSRRankSnapshot {
 		Tier:                        r.Tier,
 		SubTier:                     r.SubTier,
 		MeasurementMatchesRemaining: r.MeasurementMatchesRemaining,
+		InitialMeasurementMatches:   r.InitialMeasurementMatches,
 	}
 }
 

@@ -1,0 +1,212 @@
+package main
+
+// orchestrate.go — TRAITER UN TEMOIN : STAGER SES CHUNKS, LE CUIRE (UNE FOIS EN MODE PARC, DEUX
+// FOIS EN MODE BASE), COMPARER.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io/fs"
+	"log/slog"
+	"os"
+	"path/filepath"
+
+	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replaybuild"
+	"levelup/go-api/internal/replayverite"
+)
+
+// errAbsentDuParc marque un temoin dont l'artefact de reference (mode parc) n'existe pas au
+// parc local — un avertissement pour l'appelant, jamais une erreur de cuisson.
+var errAbsentDuParc = errors.New("absent du parc")
+
+// temoinContexte regroupe tout ce qu'un traitement de temoin a besoin de connaitre — une
+// signature a plus de 5 parametres serait une violation directe (CLAUDE.md n°5).
+type temoinContexte struct {
+	ParcRoot     string
+	WorkRoot     string // racine de cuisson HEAD
+	WorkRootBase string // racine de cuisson BASE ; vide si Reference == "parc"
+	BinHead      string // binaire replay-build compile au HEAD
+	BinBase      string // binaire replay-build compile a la base ; vide si Reference == "parc"
+	LockRoot     string
+	TitleSlug    string
+	FactsDir     string
+	// MemGiB : le plafond souple transmis a `replay-build`, LE MEME des deux cotes (D6).
+	MemGiB    int
+	Reference string // "base" (defaut) ou "parc"
+	// Cache de la base (basecache.go) : BaseSHA et BaseGoVersion sont resolus par
+	// preparerReferenceBase ; CacheBase.Racine vide = cache desactive ; SansCacheBase force la
+	// recuisson (et rafraichit l'entree).
+	BaseSHA, BaseGoVersion string
+	CacheBase              baseCache
+	SansCacheBase          bool
+	// RegistreBase : le registre des replis de la BASE, produit par l'outil du banc compile a la
+	// base (verite_registre.go) ; nil = inconnu (mode parc, ou base sans l'outil) — tout repli
+	// nouveau est alors un FAUX.
+	RegistreBase replayverite.RegistreReplis
+}
+
+// traiterTemoin cuit et compare UN temoin ; ne rend JAMAIS d'erreur — un temoin absent ou en
+// echec produit une ligne qui le dit, pour que les autres temoins du manifeste soient traites
+// quand meme (CLAUDE.md : un rapport partiel muet vaut moins qu'un rapport complet nomme).
+// `ctx` borne l'attente du verrou partage (bake.go) — jamais consulte ailleurs ici.
+func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRapport {
+	base := ligneRapport{Temoin: t}
+
+	if err := stageFilm(tc.ParcRoot, tc.WorkRoot, t.ID); err != nil {
+		slog.WarnContext(ctx, "replay-corpus-gate: temoin absent du parc local — ignore, pas un echec",
+			"temoin", t.ID, "famille", t.Famille, "err", err)
+		base.Absent, base.AbsentCause = true, err.Error()
+		return base
+	}
+	if tc.Reference == referenceBase {
+		if err := stageFilm(tc.ParcRoot, tc.WorkRootBase, t.ID); err != nil {
+			slog.WarnContext(ctx, "replay-corpus-gate: temoin absent du parc local (racine base) — ignore",
+				"temoin", t.ID, "famille", t.Famille, "err", err)
+			base.Absent, base.AbsentCause = true, err.Error()
+			return base
+		}
+	}
+
+	// Les faits sont exportes PAR TEMOIN (facts.go, CORPUS-R1 C4) : un id inconnu du registre
+	// de la base partagee laisse simplement CE fichier absent, sans empecher l'export des
+	// autres temoins. Un fichier absent est donc un temoin ABSENT (avertissement), jamais une
+	// ERREUR — distinction verifiee AVANT ReadFactsFile pour ne pas confondre les deux cas.
+	factsPath := filepath.Join(tc.FactsDir, t.ID+".facts.json")
+	if _, err := os.Stat(factsPath); err != nil {
+		slog.WarnContext(ctx, "replay-corpus-gate: faits du match introuvables (absent du registre de la base "+
+			"partagee, ou export non demande) — temoin ignore, pas un echec des autres",
+			"temoin", t.ID, "famille", t.Famille, "err", err)
+		base.Absent, base.AbsentCause = true, fmt.Sprintf("faits non exportes : %v", err)
+		return base
+	}
+	facts, err := replaybuild.ReadFactsFile(factsPath)
+	if err != nil {
+		base.Erreur = fmt.Errorf("faits du match : %w", err)
+		return base
+	}
+
+	cuissonHead, err := tc.cuissonDuHead(ctx, facts, bakeTemoin)
+	if err != nil {
+		base.Erreur = fmt.Errorf("cuisson HEAD : %w", err)
+		return base
+	}
+	base.Duree = cuissonHead.Duree
+
+	ref, err := tc.resoudreReference(ctx, t, facts)
+	base.BaseDuCache, base.BaseArtefactEnCache, base.BaseFaitsEnCache = ref.DuCache, ref.ArtefactEnCache, ref.FaitsEnCache
+	refPath := ref.Artefact
+	if err != nil {
+		if errors.Is(err, errAbsentDuParc) {
+			slog.WarnContext(ctx, "replay-corpus-gate: aucun artefact de reference — temoin ignore",
+				"temoin", t.ID, "err", err)
+			base.Absent, base.AbsentCause = true, err.Error()
+			return base
+		}
+		base.Erreur = fmt.Errorf("cuisson reference : %w", err)
+		return base
+	}
+
+	rap, err := compareTemoin(refPath, cuissonHead.ArtifactPath)
+	if err != nil {
+		base.Erreur = fmt.Errorf("comparaison : %w", err)
+		return base
+	}
+	// LE BANC AVANT LE BILAN : les filets de `remplirBilan` dependent des mesures que le banc a
+	// reellement notees (verite.go).
+	base.Verite, err = juger(jugement{
+		Reference: refPath, HEAD: cuissonHead.ArtifactPath, Faits: facts.MatchFacts,
+		Oracle: lireOracleDuTemoin(ctx, tc.FactsDir, t.ID), RegistreAvant: tc.RegistreBase,
+	})
+	if err != nil {
+		base.Erreur = err
+		return base
+	}
+	base.remplirBilan(rap)
+	return base
+}
+
+// resoudreReference rend le chemin de l'artefact de REFERENCE — celui deja cuit dans le parc
+// (mode parc, lecture seule) ou la base (mode base : relue du cache si sa cle est capturable et
+// valide, sinon cuite fraiche puis rangee, cf. basecache.go). Le booleen dit si la base vient du
+// cache.
+func (tc temoinContexte) resoudreReference(ctx context.Context, t Temoin, facts replaybuild.FactsFile) (baseResolue, error) {
+	if tc.Reference == referenceParc {
+		refPath := referenceArtifactPath(tc.ParcRoot, tc.TitleSlug, facts.MatchID)
+		if _, err := os.Stat(refPath); err != nil {
+			return baseResolue{}, fmt.Errorf("%w : %s (%v)", errAbsentDuParc, refPath, err)
+		}
+		return baseResolue{Artefact: refPath}, nil
+	}
+	cuire := tc.cuissonDeLaBase(ctx, facts, bakeTemoin)
+	if !tc.CacheBase.actif() {
+		return cuireSansCache(cuire)
+	}
+	cle, err := tc.cleCacheBase(t, facts)
+	if err != nil {
+		slog.WarnContext(ctx, "replay-corpus-gate: cle de cache de la base non capturable — "+
+			"cuisson sans cache", "temoin", t.ID, "err", err)
+		return cuireSansCache(cuire)
+	}
+	return resoudreAvecCache(ctx, tc.CacheBase, cle, tc.SansCacheBase, cuire)
+}
+
+// cuireSansCache cuit la base sans passer par le cache (cache desactive ou cle non capturable).
+func cuireSansCache(cuire cuissonBaseFn) (baseResolue, error) {
+	artefact, _, err := cuire()
+	return baseResolue{Artefact: artefact}, err
+}
+
+// bakeFn : la signature de [bakeTemoin], injectable pour que le test de [cuissonDeLaBase] observe
+// la racine de travail au moment de la cuisson sans binaire.
+type bakeFn func(context.Context, cuissonParams, replaybuild.FactsFile) (resultatCuisson, error)
+
+// cuissonDeLaBase rend la cuisson de la base du temoin, par `bake` (bakeTemoin en production).
+//
+// ELLE PART SANS FAITS PERSISTES POUR CE FILM (revue finale P1-c, 2026-10-02). Avec `--work-root`
+// explicite reutilise entre deux `--base`, la racine de travail de la base garde les faits ecrits par
+// le binaire d une AUTRE base ; a revisions constantes, `replay-build` les jugerait frais et
+// republierait depuis eux au lieu de decoder avec le code de CETTE base. Les retirer force le
+// decodage : les faits que la cuisson laisse sont alors les siens (et [resoudreAvecCache] ne range
+// que des faits ecrits apres son debut).
+func (tc temoinContexte) cuissonDeLaBase(ctx context.Context, facts replaybuild.FactsFile, bake bakeFn) cuissonBaseFn {
+	return func() (string, string, error) {
+		if err := retirerLesFaitsPerimes(tc.WorkRootBase, tc.TitleSlug, facts.MatchID); err != nil {
+			return "", "", err
+		}
+		cuissonBase, err := bake(ctx, cuissonParams{
+			BinPath: tc.BinBase, WorkRoot: tc.WorkRootBase, LockRoot: tc.LockRoot, TitleSlug: tc.TitleSlug,
+			MemGiB: tc.MemGiB,
+		}, facts)
+		if err != nil {
+			return "", "", err
+		}
+		return cuissonBase.ArtifactPath, cuissonBase.FaitsPath, nil
+	}
+}
+
+// cuissonDuHead cuit le temoin au HEAD, par `bake` (bakeTemoin en production). ELLE PART SANS FAITS
+// PERSISTES POUR CE FILM, comme celle de la base (revue finale, 2026-10-02) : avec `--work-root`
+// reutilise, ceux d un HEAD precedent seraient juges frais a revisions constantes et republies au lieu
+// d un decodage par le code de CE HEAD.
+func (tc temoinContexte) cuissonDuHead(ctx context.Context, facts replaybuild.FactsFile, bake bakeFn) (resultatCuisson, error) {
+	if err := retirerLesFaitsPerimes(tc.WorkRoot, tc.TitleSlug, facts.MatchID); err != nil {
+		return resultatCuisson{}, err
+	}
+	return bake(ctx, cuissonParams{
+		BinPath: tc.BinHead, WorkRoot: tc.WorkRoot, LockRoot: tc.LockRoot, TitleSlug: tc.TitleSlug,
+		MemGiB: tc.MemGiB,
+	}, facts)
+}
+
+// retirerLesFaitsPerimes supprime, sous la racine de travail `workRoot`, les faits persistes du film
+// `matchID` qu une cuisson precedente y a laisses (revue finale P1-c et D3) : la cuisson qui suit
+// decode, au lieu de republier depuis des faits ecrits par un autre binaire. Absents : rien a faire.
+func retirerLesFaitsPerimes(workRoot, titleSlug, matchID string) error {
+	perimes := title.NewPathResolver(workRoot).FilmFactsPath(titleSlug, matchID)
+	if err := os.Remove(perimes); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("faits du film d une cuisson precedente (%s) : %w", perimes, err)
+	}
+	return nil
+}

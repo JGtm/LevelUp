@@ -43,7 +43,15 @@ type CareerProgressionPartial = domain.CareerProgressionPartial
 // Retourne :
 //   - (true, nil) : ligne insérée
 //   - (false, nil) : partial vide OU strictement identique à la dernière connue
-//   - (false, err) : erreur DB
+//   - (false, err) : erreur DB, ou verrou d'écrivain non obtenu avant la fin de ctx
+//     (l'erreur enveloppe alors dblease.ErrDBLocked)
+//
+// La comparaison à la dernière ligne et l'INSERT se font sous le verrou d'écrivain
+// de la player DB (KindPlayer), attendu au plus jusqu'à la fin de ctx : aucune
+// autre écriture du process sur cette base ne s'intercale entre les deux. L'appelant
+// ne tient pas ce verrou : il n'est pas réentrant, et le tenir ferait échouer
+// l'écriture à la fin de ctx (TestPersistAppearance_DelaiCourt fixe ce contrat pour
+// le chemin Halo 5).
 //
 // Cette méthode remplace InsertCareerProgressionIfChanged pour les chemins
 // post-refactor V2. Le legacy reste pour compat tests existants.
@@ -67,6 +75,12 @@ func (r *CareerLiveRepo) InsertCareerProgressionPartial(
 	if partial.IsEmpty() && partial.LastFetchStatus == nil {
 		return false, nil
 	}
+
+	w, err := r.pdb.AcquirePlayerWriter(ctx)
+	if err != nil {
+		return false, fmt.Errorf("InsertCareerProgressionPartial lease: %w", err)
+	}
+	defer w.Release()
 
 	last, err := r.LoadLastCareerRank(ctx, xuid)
 	if err != nil {

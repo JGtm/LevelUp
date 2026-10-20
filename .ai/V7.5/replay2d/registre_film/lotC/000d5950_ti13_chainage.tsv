@@ -1,0 +1,6 @@
+film	bande	hypothese	records	chaines	taux	decale	taux_decale
+000d5950	REELLE	B (element #k, index < 0x20)	267	9	3.4	11	4.1
+000d5950	FANTOME	B (element #k, index < 0x20)	4691	349	7.4	248	5.3
+000d5950	REELLE	A (scalaire, index hors bornes)	267	8	3.0	13	4.9
+000d5950	FANTOME	A (scalaire, index hors bornes)	4691	303	6.5	342	7.3
+000d5950	TEMOIN_ti4	R(8)	30374	29255	96.3	0	0.0

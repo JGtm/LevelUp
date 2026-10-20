@@ -1,0 +1,153 @@
+/**
+ * PisteCampsForm.test.tsx — la piste camp contre camp (lot L5.3) : adversaire en `team-enemy`
+ * PLEIN (plus de hachure), « compte · part » dans chaque segment (le nôtre à gauche, le sien à
+ * droite), valeur écrite À CÔTÉ de la barre, du côté de son camp, quand elle ne tient pas (mesure au pixel), trait
+ * 50 % pointillé `warning`, axe 0-100 %.
+ */
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+
+import { PisteCampsForm, type PisteCampsRow } from './PisteCampsForm'
+import { EMPRISE_TEXT } from './empriseStrings'
+
+const T = EMPRISE_TEXT.fr
+
+const ROW: PisteCampsRow = {
+  key: 'power_weapon',
+  label: 'Armes spéciales',
+  sublabel: 'prises sur les socles',
+  dot: 'var(--ac-resource-power-weapon)',
+  us: 23,
+  them: 29,
+  usTip: 'Notre camp',
+  themTip: 'Adversaire',
+}
+
+/** Largeurs simulées : notre segment large, celui de l'adversaire étroit, étiquettes de 60 px. */
+function mockWidths(us: number, them: number) {
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const key = this.dataset.fitKey
+    const width = key?.endsWith('|us') ? us : key?.endsWith('|them') ? them : this.hasAttribute('data-fit-label') ? 60 : 0
+    return { width, height: 22, top: 0, left: 0, right: width, bottom: 22, x: 0, y: 0, toJSON: () => ({}) } as DOMRect
+  })
+}
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+function mount(rows: PisteCampsRow[] = [ROW]) {
+  return render(<PisteCampsForm rows={rows} pctFmt={T.pctFmt} axisMaxLabel={T.pctIntFmt(100)} />)
+}
+
+describe('PisteCampsForm', () => {
+  it('les deux valeurs tiennent : écrites dans leur segment, aucun repli', () => {
+    mockWidths(300, 300)
+    mount()
+    const labels = document.querySelectorAll<HTMLElement>('[data-fit-label]')
+    expect(labels[0].textContent).toBe('23 · 44,2 %')
+    expect(labels[1].textContent).toBe('55,8 % · 29')
+    expect([...labels].map((l) => l.style.visibility)).toEqual(['visible', 'visible'])
+    expect(screen.queryByTestId('piste-camps-repli-power_weapon')).toBeNull()
+  })
+
+  it('la valeur qui ne tient pas (6 px de marge) s’écrit à côté de la barre, du côté de son camp, jamais au-dessus', () => {
+    mockWidths(300, 70)
+    mount()
+    const labels = document.querySelectorAll<HTMLElement>('[data-fit-label]')
+    expect(labels[0].style.visibility).toBe('visible')
+    expect(labels[1].style.visibility).toBe('hidden')
+    expect(screen.queryByTestId('piste-camps-repli-power_weapon')).toBeNull()
+    // L'étiquette masquée reste dans le DOM (remesure au redimensionnement), dans son segment...
+    expect(labels[1].closest('[data-fit-key]')).not.toBeNull()
+    // ...et la valeur se lit à droite de la barre (camp adverse), jamais à gauche ; le camp qui tient n'y écrit rien.
+    const side = screen.getByTestId('piste-camps-side-them-power_weapon')
+    expect(side.textContent).toBe('55,8 % · 29')
+    expect(side.closest('[data-side]')!.getAttribute('data-side')).toBe('right')
+    expect(screen.queryByTestId('piste-camps-side-us-power_weapon')).toBeNull()
+  })
+
+  it('adversaire en aplat `team-enemy` (plus de hachure), notre camp en `team-ally`, trait 50 % pointillé `warning`', () => {
+    mockWidths(300, 300)
+    const { container } = mount()
+    const segs = container.querySelectorAll<HTMLElement>('[data-fit-key]')
+    expect(segs[0].style.backgroundColor).toBe('var(--ac-team-ally)')
+    expect(segs[1].style.backgroundColor).toBe('var(--ac-team-enemy)')
+    expect(segs[1].style.backgroundImage).toBe('')
+    expect(segs[0].style.width).toBe(`${(23 / 52) * 100}%`)
+    const parity = container.querySelector<HTMLElement>('.border-dashed')!
+    expect(parity.style.borderColor).toBe('var(--ac-warning)')
+    expect(parity.className).toContain('left-1/2')
+  })
+
+  it('un camp à zéro : un seul segment plein, sa valeur s’écrit à côté de la barre', () => {
+    mockWidths(300, 300)
+    mount([{ ...ROW, key: 'powerup', us: 4, them: 0 }])
+    expect(document.querySelectorAll('[data-fit-key]')).toHaveLength(1)
+    expect(screen.queryByTestId('piste-camps-repli-powerup')).toBeNull()
+    expect(screen.getByTestId('piste-camps-side-them-powerup').closest('[data-side]')!.getAttribute('data-side')).toBe('right')
+  })
+
+  it('parts seules (vue compacte de Sessions) : la part dans le segment, à côté de la barre sinon, le compte en infobulle', () => {
+    mockWidths(300, 70)
+    render(<PisteCampsForm rows={[ROW]} pctFmt={T.pctIntFmt} axisMaxLabel={T.pctIntFmt(100)} pctOnly />)
+    const labels = document.querySelectorAll<HTMLElement>('[data-fit-label]')
+    expect(labels[0].textContent).toBe('44 %')
+    expect(labels[1].style.visibility).toBe('hidden')
+    expect(screen.queryByTestId('piste-camps-repli-power_weapon')).toBeNull()
+    expect(screen.getByTestId('piste-camps-side-them-power_weapon').textContent).toBe('56 %')
+  })
+
+  it('nom précédé de la pastille de ressource (S8), sous-libellé, axe 0-100 %', () => {
+    mockWidths(300, 300)
+    mount()
+    const row = screen.getByTestId('piste-camps-row-power_weapon')
+    expect(row.textContent).toContain('Armes spéciales')
+    expect(row.textContent).toContain('prises sur les socles')
+    expect(row.querySelector<HTMLElement>('[aria-hidden]')!.style.backgroundColor).toBe('var(--ac-resource-power-weapon)')
+    expect(screen.getByText('100 %')).toBeInTheDocument()
+    expect(screen.getByText('50')).toBeInTheDocument()
+  })
+})
+
+describe('PisteCampsForm — lignes de la Vue match (props optionnelles)', () => {
+  it('`indent` : le nom de l’objet en retrait sous sa ressource ; sans `indent`, aucun retrait', () => {
+    mockWidths(300, 300)
+    mount([ROW, { ...ROW, key: 'power_weapon|s7', label: 'S7 Sniper', dot: undefined, indent: true }])
+    const objet = screen.getByTestId('piste-camps-row-power_weapon|s7').firstElementChild as HTMLElement
+    expect(objet.dataset.indent).toBe('true')
+    expect(objet.className).toContain('pl-4')
+    const ressource = screen.getByTestId('piste-camps-row-power_weapon').firstElementChild as HTMLElement
+    expect(ressource.dataset.indent).toBeUndefined()
+    expect(ressource.className).not.toContain('pl-4')
+  })
+
+  it('`labelNode` : rendu à la place du nom (bouton de repli), sous-libellé gardé', () => {
+    mockWidths(300, 300)
+    mount([{ ...ROW, labelNode: <button type="button">Armes de râtelier</button> }])
+    const row = screen.getByTestId('piste-camps-row-power_weapon')
+    expect(row.querySelector('button')?.textContent).toBe('Armes de râtelier')
+    expect(row.textContent).not.toContain('Armes spéciales')
+    expect(row.textContent).toContain('prises sur les socles')
+  })
+
+  it('`pending` : le texte atténué à la place de la barre, aucun segment, `below` conservé', () => {
+    mockWidths(300, 300)
+    mount([{ ...ROW, pending: 'Non mesuré', below: <span data-testid="sous-la-barre" /> }])
+    expect(screen.getByTestId('piste-camps-pending-power_weapon').textContent).toBe('Non mesuré')
+    expect(document.querySelectorAll('[data-fit-key]')).toHaveLength(0)
+    expect(screen.getByTestId('sous-la-barre')).toBeInTheDocument()
+  })
+})
+
+describe('TrackAxis — les étiquettes restent dans la carte', () => {
+  it('graduations centrées, sauf celle du bout droit, calée à droite (elle mordait sur le cadre)', () => {
+    mount()
+    const labels = Array.from(document.querySelectorAll('[aria-hidden] span.absolute'))
+    const fin = labels.find((l) => l.textContent === T.pctIntFmt(100))
+    const milieu = labels.find((l) => l.textContent === '50')
+    expect(fin?.className).toContain('-translate-x-full')
+    expect(fin?.className).not.toContain('-translate-x-1/2')
+    expect(milieu?.className).toContain('-translate-x-1/2')
+  })
+})

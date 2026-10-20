@@ -42,18 +42,37 @@ func ApplyLabels(db *sql.DB) error {
 	if err := EnsureLabelsTable(db); err != nil {
 		return err
 	}
-
-	// Sentinels + confirmed weapons (portage de WEAPON_INT_TO_NAME + WEAPON_NAME_FR)
-	//
-	// Contrainte driver : database/sql ne supporte pas uint64 avec bit63=1.
-	// Contournement : injecter weapon_id comme littéral décimal (valeur constante),
-	// les noms restent paramétrisés.
-	type label struct {
-		id uint64
-		en string
-		fr string
+	for _, l := range weaponLabelSeeds() {
+		// Contournement driver : database/sql ne supporte pas uint64 avec bit63=1.
+		// weapon_id est une constante interne (pas user input) → littéral décimal sûr.
+		q := fmt.Sprintf( //nolint:gosec
+			"INSERT OR IGNORE INTO weapon_labels (weapon_id, name_en, name_fr) VALUES (%d, ?, ?)",
+			l.id,
+		)
+		if _, err := db.ExecContext(migration.BootCtx(), q, l.en, l.fr); err != nil {
+			return err
+		}
 	}
-	labels := []label{
+	return nil
+}
+
+// weaponLabelSeed — une ligne du seed de weapon_labels (identifiant d'arme du film, noms
+// EN/FR). Type nommé au niveau du paquet, et non local à [ApplyLabels], pour que le seed
+// soit LISIBLE SANS BASE : c'est la seule source des identifiants d'arme connus du titre,
+// et le garde-rail qui vérifie que chacun a bien son entrée au registre filmshell
+// (`TestFilmshellCouvreLeSeedDeLabels`, 2026-09-13) doit pouvoir la parcourir sans DuckDB.
+type weaponLabelSeed struct {
+	id uint64
+	en string
+	fr string
+}
+
+// weaponLabelSeeds rend le seed des identifiants Halo Infinite connus. Fonction PURE :
+// aucune lecture de base, aucune API — le portage de WEAPON_INT_TO_NAME + WEAPON_NAME_FR.
+// Les trois premières lignes sont des SENTINELLES (grenade, corps à corps, véhicule), pas
+// des armes : elles n'ont ni identifiant filmshell ni entrée au registre.
+func weaponLabelSeeds() []weaponLabelSeed {
+	return []weaponLabelSeed{
 		{0, "Grenade", "Grenade"},
 		{1, "Melee", "Corps à corps"},
 		{2, "Vehicle", "Véhicule"},
@@ -97,17 +116,4 @@ func ApplyLabels(db *sql.DB) error {
 		{0xc1e1bab042c9679f, "Plasma Grenade", "Grenade plasma"},
 		{0x3ad55da442c9679f, "Dynamo Grenade", "Grenade dynamo"},
 	}
-
-	for _, l := range labels {
-		// Contournement driver : database/sql ne supporte pas uint64 avec bit63=1.
-		// weapon_id est une constante interne (pas user input) → littéral décimal sûr.
-		q := fmt.Sprintf( //nolint:gosec
-			"INSERT OR IGNORE INTO weapon_labels (weapon_id, name_en, name_fr) VALUES (%d, ?, ?)",
-			l.id,
-		)
-		if _, err := db.ExecContext(migration.BootCtx(), q, l.en, l.fr); err != nil {
-			return err
-		}
-	}
-	return nil
 }

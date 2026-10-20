@@ -25,6 +25,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useProvidesDamageTaken, useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
+import { useCapability } from '@/lib/capabilities'
 import { MatchVsStatCard } from './MatchVsStatCard'
 
 // Tooltip "Vie moy." : MatchSummaryKpis n'expose la vie moyenne qu'en chaîne M:SS
@@ -309,6 +310,7 @@ export function MatchSummaryCardsSection({
   // MMR équipe/adverse → no_team_mmr). On masque entièrement la card MMR pour
   // les titres sans la capability (au lieu d'afficher une card vide/à tiret).
   const providesTeamMmr = useProvidesTeamMmr()
+  const hasExpectedWinProb = useCapability('expected_win_prob')
 
   // Dégâts/frag (Rendement) et dégâts/mort (Résistance), arrondis comme l'Explorer
   // et la hero KPI de l'accueil. Affichés en sous-valeur sous le pourcentage.
@@ -388,7 +390,7 @@ export function MatchSummaryCardsSection({
         lowerIsBetter={false}
         precision={0}
       />
-      {expected_win_prob != null && Number.isFinite(expected_win_prob) && (
+      {hasExpectedWinProb && expected_win_prob != null && Number.isFinite(expected_win_prob) && (
         <MatchWinProbCard winProb={expected_win_prob} />
       )}
       <MatchVsStatCard
@@ -397,11 +399,15 @@ export function MatchSummaryCardsSection({
         primaryTitle={avgLifeTitle(kpis.average_life)}
         fixedAccent="divergent-neutral"
       />
+      {/* Aide ⓘ : un pourcentage rapporté à une vie de Spartan ne se lit pas sans sa
+          définition. MÊME texte que les cartes Escouade, moins la mention des zones de
+          fond — il n'y en a pas sur une tuile KPI. */}
       <MatchVsStatCard
         label={t('match_view.cards.rendement')}
         primary={formatOffensiveConversion(offensiveConversion)}
         primaryLabel={dmgPerKillLabel}
         fixedAccent={combatYieldToken(offensiveConversion, null)}
+        help={t('match_view.cards.rendement_help')}
       />
       {providesDamageTaken && (
         <MatchVsStatCard
@@ -409,6 +415,7 @@ export function MatchSummaryCardsSection({
           primary={formatDefensiveResistance(defensiveResistance)}
           primaryLabel={dmgPerDeathLabel}
           fixedAccent={combatYieldToken(null, defensiveResistance)}
+          help={t('match_view.cards.resistance_help')}
         />
       )}
       </div>

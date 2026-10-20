@@ -1,5 +1,5 @@
 // Package haloclient — spartan_nameplate_diagnosis_test.go : tests du diagnostic
-// structuré d'apparence (Lot E, plan .ai/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md).
+// structuré d'apparence (Lot E, plan .ai/archive/V7.1/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md).
 //
 // Cadenasse le mapping verdict/detail par branche du resolver ET le cas
 // canonique upstream_missing (emblème 3806589-SpartanEmblem, thought_log

@@ -1,0 +1,17 @@
+base	rc=0
+V1	ROUGE	E1 : mots R(31)	components_arrets_vue_b_test.go:84: V20b (managed-navpoint-visual-state-groups-component-0) : 111 bits consommes, l ecrivain en a ecrit 70 (
+V2	ROUGE	E1 : v = 0	components_arrets_vue_b_test.go:84: V20b (managed-navpoint-visual-state-groups-component-0) : 101 bits consommes, l ecrivain en a ecrit 70 (
+V3	ROUGE	E1 : mots par filtre omis	components_arrets_vue_b_test.go:84: V21 (managed-navpoint-visual-state-groups-component-1) : 119 bits consommes, l ecrivain en a ecrit 183 (
+I1	ROUGE	E2 : v = 2 < param_4	components_arrets_vue_b_test.go:84: I22a (managed-object-interaction-filter-component) : 36 bits consommes, l ecrivain en a ecrit 5 (0000 1)
+A1	ROUGE	E3 : drapeaux R(7)	i59_etiquette_loi_test.go:102: brut 0 (etiquette 1) : 54 bits consommes, l ecrivain en pose 61
+A2	ROUGE	E3 : categorie 0 au lieu de 5	i59_etiquette_loi_test.go:102: brut 1 (etiquette 2) : 77 bits consommes, l ecrivain en pose 64
+A3	ROUGE	E3 : etiquette 5 sans charge	i59_etiquette_loi_test.go:102: brut 4 (etiquette 5) : 52 bits consommes, l ecrivain en pose 175
+O4	ROUGE	E4 : v = 2 < param_4	components_arrets_vue_b_test.go:84: O4a (managed-objective-interaction-filter-component) : 36 bits consommes, l ecrivain en a ecrit 5 (0000 
+F1	ROUGE	E5a : R(3)	components_arrets_vue_b_test.go:84: O23a (managed-object-flags-component) : 3 bits consommes, l ecrivain en a ecrit 2 (10)
+K1	ROUGE	E5b : R(31)	components_arrets_vue_b_test.go:84: N17a (managed-navpoint-object-marker) : 31 bits consommes, l ecrivain en a ecrit 32 (0000000000000000000
+N1	ROUGE	E5c : R(31)	components_arrets_vue_b_test.go:84: O18a (managed-object-networked-property-component) : 31 bits consommes, l ecrivain en a ecrit 32 (100000
+S1	ROUGE	E5d : R(5)	components_arrets_vue_b_test.go:84: S1a (matchflow-focus-data-component) : 11 bits consommes, l ecrivain en a ecrit 10 (111110 | 0011)
+B1	ROUGE	E5e/f : R(7)	components_arrets_vue_b_test.go:84: N13a (managed-navpoint-top-progress) : 7 bits consommes, l ecrivain en a ecrit 8 (10000000)
+W1	ROUGE	P2 : porte posee aux largeurs de la carte	lecteur_position_sites_test.go:309: world-object i0 precHigh=0 idx=-1 : 44 bits lus, l ecrivain du jeu en pose 70
+Q1	ROUGE	P3 : condition de preuve inversee	neufs_prouves_test.go:29: prouvee des 0 : slot 553 -> ti 20 (lie true), attendu le NEW (ti 35)
+Q2	ROUGE	P3 : NEW prouve non lie	neufs_prouves_test.go:29: prouvee des 0 : slot 553 -> ti 20 (lie true), attendu le NEW (ti 35)

@@ -1,0 +1,5 @@
+film	build	variante	paquets	fermes	hors_cadre	rejets_hors_datum	gagnes	perdus	gagnes_contredits
+0797ce72	HI_1_13_0	production	26740	19124	5557	5480	0	0	0
+0797ce72	HI_1_13_0	production+lecture-par-index	26740	22390	3720	3716	3269	3	3
+60ae07c4	HI_1_8_0	production	49696	13965	30282	29995	0	0	0
+60ae07c4	HI_1_8_0	production+lecture-par-index	49696	15722	29937	29920	1806	49	4

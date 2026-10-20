@@ -47,7 +47,7 @@ export function buildLusrSeries(
 ): ChartSeries<[string, number]>[] {
   // Une courbe par (rating_type, playlist_group). 4 groupes max : arena/btb/fun/ranked.
   // Le calcul LUSR maintient un état mu/sigma par playlist_group (cf.
-  // skill_rating_loaders.go::loadExistingLUSRStates) — afficher par groupe
+  // player_skill_state_v2) — afficher par groupe
   // reflète exactement la sémantique du calcul.
   //
   // Filtre : checkpoints dont playlist_name est un UUID brut (pas de résolution

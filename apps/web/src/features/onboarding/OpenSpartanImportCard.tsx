@@ -26,6 +26,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
+import { apiErrorCode } from '@/lib/api/client'
+
 import { useStartOpenSpartanImport, type OpenSpartanImportResult } from './queries'
 
 const MAX_FILE_SIZE_BYTES = 1 << 30 // 1 GiB
@@ -74,7 +76,7 @@ export function OpenSpartanImportCard() {
       const resp = await startMutation.mutateAsync(selectedFile)
       setJobId(resp.job_id)
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : t('common.onboarding.import_start_failed'))
+      setUploadError(startFailureMessage(err, t))
     }
   }
 
@@ -347,9 +349,19 @@ function FailureStage({
 }
 
 /**
+ * startFailureMessage : message d'un démarrage d'import refusé. Un import déjà en cours
+ * pour le compte (409) a son propre texte ; jamais le message brut du serveur.
+ */
+function startFailureMessage(err: unknown, t: (key: CommonManifestKey) => string): string {
+  if (apiErrorCode(err) === 'import_already_active') return t('common.onboarding.import_err_already_active')
+  return err instanceof Error ? err.message : t('common.onboarding.import_start_failed')
+}
+
+/**
  * failureMessageFromCode maps the typed Error.Code returned by the backend
  * service to a localised, user-facing sentence via the injected translator.
- * Falls back to the raw message when the code is unknown.
+ * An unknown code gets the generic message: the server text is a fixed English phrase per
+ * code, never shown on screen.
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function failureMessageFromCode(
@@ -366,11 +378,13 @@ export function failureMessageFromCode(
       return t('common.onboarding.import_err_not_openspartan')
     case 'upload_too_large':
       return t('common.onboarding.import_too_large', { max: 1 })
-    case 'demo_mode':
+    case 'demo_mode_forbidden':
       return t('common.onboarding.import_err_demo')
     case 'halo_auth_required':
       return t('common.onboarding.import_err_auth_required')
+    case 'import_already_active':
+      return t('common.onboarding.import_err_already_active')
     default:
-      return err.message || t('common.onboarding.import_err_unknown')
+      return t('common.onboarding.import_err_unknown')
   }
 }

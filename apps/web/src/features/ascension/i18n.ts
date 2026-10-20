@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : table de donnees (une entree par cle, aucun embranchement) : la decouper repartirait la meme table sur plusieurs fichiers a tenir en phase, sans retirer une seule decision au lecteur. */
 /**
  * i18n FR/EN de la feature Ascension (V2 progression).
  *
@@ -16,6 +17,8 @@ export interface AscensionText {
   tabObjectives: string
   tabCoaching: string
   tabRealisations: string
+  /** Onglet « Tactique » (5e rang, 2026-09-06) — masqué pour un titre sans rejeu. */
+  tabTactical: string
   tipsTickerAriaLabel: string
   profilLayerTitle: string
   profilLayerDescription: string
@@ -78,6 +81,7 @@ export interface AscensionText {
   activityCalendarTitle: string
   activityCalendarAria: string
   activityCalendarEmpty: string
+  activityCalendarUnavailable: string
   activityCalendarLegendLess: string
   activityCalendarLegendMore: string
 
@@ -189,6 +193,7 @@ const FR: AscensionText = {
   tabObjectives: 'Objectifs',
   tabCoaching: 'Entraînement',
   tabRealisations: 'Réalisations',
+  tabTactical: 'Tactique',
   tipsTickerAriaLabel: 'Astuces de jeu pour progresser',
   profilLayerTitle: 'Profil de jeu',
   profilLayerDescription:
@@ -250,6 +255,7 @@ const FR: AscensionText = {
   activityCalendarAria:
     "Calendrier des jours joués sur les 90 derniers jours : une case remplie par jour joué, l'intensité reflète le nombre de matchs.",
   activityCalendarEmpty: 'Aucun match sur les 90 derniers jours.',
+  activityCalendarUnavailable: "Calendrier d'activité indisponible.",
   activityCalendarLegendLess: 'Moins',
   activityCalendarLegendMore: 'Plus',
   streaksSectionTitle: 'Mes séries',
@@ -423,6 +429,7 @@ const EN: AscensionText = {
   tabObjectives: 'Objectives',
   tabCoaching: 'Training',
   tabRealisations: 'Achievements',
+  tabTactical: 'Tactics',
   tipsTickerAriaLabel: 'Gameplay tips to improve',
   profilLayerTitle: 'Play profile',
   profilLayerDescription:
@@ -484,6 +491,7 @@ const EN: AscensionText = {
   activityCalendarAria:
     'Calendar of days played over the last 90 days: one filled cell per day played, intensity reflects the number of matches.',
   activityCalendarEmpty: 'No match over the last 90 days.',
+  activityCalendarUnavailable: 'Activity calendar unavailable.',
   activityCalendarLegendLess: 'Less',
   activityCalendarLegendMore: 'More',
   streaksSectionTitle: 'My streaks',

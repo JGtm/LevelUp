@@ -1,0 +1,633 @@
+film	build	table	cle	n
+0797ce72	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste > 64	2
+0797ce72	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	2
+0797ce72	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	3
+0797ce72	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	2
+0797ce72	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, sain au juge · aucun debut anterieur qui ferme · reste > 64	2
+0797ce72	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	3
+0797ce72	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste > 64	11
+0797ce72	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	2
+0797ce72	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	7
+0797ce72	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · aucun debut anterieur qui ferme · aucune allocation	2
+0797ce72	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · aucune allocation	14
+0797ce72	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	246
+0797ce72	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	29
+0797ce72	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	1
+0797ce72	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	40
+0797ce72	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	194344
+0797ce72	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	1922
+0797ce72	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	227
+0797ce72	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque epars non croissant	12
+0797ce72	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	54735
+0797ce72	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	482
+0797ce72	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	15
+0797ce72	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	1722
+0797ce72	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	16
+0797ce72	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	19
+0797ce72	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	9
+0797ce72	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	1936
+0797ce72	HI_1_13_0	l0_8_dels	non ferme au bit · DEL a mot non nul	850
+0797ce72	HI_1_13_0	l0_8_dels	non ferme au bit · DEL lus	850
+0797ce72	HI_1_13_0	l0_accord_juge_production	masque · juge false · production false	19177
+0797ce72	HI_1_13_0	l0_accord_juge_production	masque · juge true · production true	28
+0797ce72	HI_1_13_0	l0_accord_juge_production	ordre · juge false · production false	19183
+0797ce72	HI_1_13_0	l0_accord_juge_production	ordre · juge true · production true	22
+0797ce72	HI_1_13_0	l0_accord_juge_production	vue C · juge false · production false	19200
+0797ce72	HI_1_13_0	l0_accord_juge_production	vue C · juge true · production true	5
+084a804d	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste > 64	10
+084a804d	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	9
+084a804d	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	25
+084a804d	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	120
+084a804d	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	1
+084a804d	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste > 64	12
+084a804d	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	9
+084a804d	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · libere avant le chunk	1
+084a804d	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	151
+084a804d	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · libere avant le chunk	3
+084a804d	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · aucune allocation	12
+084a804d	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · realloue sous une autre generation	1
+084a804d	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	42
+084a804d	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque epars non croissant	2
+084a804d	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	1400
+084a804d	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	460
+084a804d	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	20
+084a804d	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	533
+084a804d	HI_1_10_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	104292
+084a804d	HI_1_10_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	120
+084a804d	HI_1_10_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	32
+084a804d	HI_1_10_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	499568
+084a804d	HI_1_10_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	268
+084a804d	HI_1_10_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	8
+084a804d	HI_1_10_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	535
+084a804d	HI_1_10_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	71
+084a804d	HI_1_10_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	92
+084a804d	HI_1_10_0	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	15
+084a804d	HI_1_10_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	616
+084a804d	HI_1_10_0	l0_8_dels	non ferme au bit · DEL a mot non nul	84
+084a804d	HI_1_10_0	l0_8_dels	non ferme au bit · DEL lus	85
+084a804d	HI_1_10_0	l0_accord_juge_production	masque · juge false · production false	4781
+084a804d	HI_1_10_0	l0_accord_juge_production	masque · juge true · production true	454
+084a804d	HI_1_10_0	l0_accord_juge_production	ordre · juge false · production false	5168
+084a804d	HI_1_10_0	l0_accord_juge_production	ordre · juge true · production true	67
+084a804d	HI_1_10_0	l0_accord_juge_production	vue C · juge false · production false	5221
+084a804d	HI_1_10_0	l0_accord_juge_production	vue C · juge true · production true	14
+111fa685	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste > 64	2
+111fa685	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	1
+111fa685	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	11
+111fa685	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	39
+111fa685	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, sain au juge · aucun debut anterieur qui ferme · reste > 64	1
+111fa685	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste > 64	6
+111fa685	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	2
+111fa685	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	50
+111fa685	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · non mesurable	1
+111fa685	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · aucun debut anterieur qui ferme · aucune allocation	1
+111fa685	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · aucune allocation	6
+111fa685	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	11
+111fa685	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	229
+111fa685	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	132
+111fa685	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	8
+111fa685	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	155
+111fa685	HI_1_10_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	50225
+111fa685	HI_1_10_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	46
+111fa685	HI_1_10_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	993
+111fa685	HI_1_10_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque epars non croissant	5
+111fa685	HI_1_10_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	219400
+111fa685	HI_1_10_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	355
+111fa685	HI_1_10_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	9
+111fa685	HI_1_10_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	516
+111fa685	HI_1_10_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	22
+111fa685	HI_1_10_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	33
+111fa685	HI_1_10_0	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	5
+111fa685	HI_1_10_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	667
+111fa685	HI_1_10_0	l0_8_dels	non ferme au bit · DEL a mot non nul	331
+111fa685	HI_1_10_0	l0_8_dels	non ferme au bit · DEL lus	331
+111fa685	HI_1_10_0	l0_accord_juge_production	masque · juge false · production false	4019
+111fa685	HI_1_10_0	l0_accord_juge_production	masque · juge true · production true	133
+111fa685	HI_1_10_0	l0_accord_juge_production	ordre · juge false · production false	4140
+111fa685	HI_1_10_0	l0_accord_juge_production	ordre · juge true · production true	12
+111fa685	HI_1_10_0	l0_accord_juge_production	vue C · juge false · production false	4148
+111fa685	HI_1_10_0	l0_accord_juge_production	vue C · juge true · production true	4
+11de8353	HI_1_9_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste > 64	1
+11de8353	HI_1_9_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	2
+11de8353	HI_1_9_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	6
+11de8353	HI_1_9_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	42
+11de8353	HI_1_9_0	l0_6_rejets_fermes	ferme au bit, sain au juge · aucun debut anterieur qui ferme · reste > 64	1
+11de8353	HI_1_9_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	1
+11de8353	HI_1_9_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	1
+11de8353	HI_1_9_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	48
+11de8353	HI_1_9_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · realloue sous une autre generation	1
+11de8353	HI_1_9_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · vivant au bloc du chunk	1
+11de8353	HI_1_9_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · aucun debut anterieur qui ferme · aucune allocation	1
+11de8353	HI_1_9_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · aucune allocation	1
+11de8353	HI_1_9_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	6
+11de8353	HI_1_9_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque epars non croissant	2
+11de8353	HI_1_9_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	233
+11de8353	HI_1_9_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	124
+11de8353	HI_1_9_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	2
+11de8353	HI_1_9_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	135
+11de8353	HI_1_9_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	74282
+11de8353	HI_1_9_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	32
+11de8353	HI_1_9_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	779
+11de8353	HI_1_9_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque epars non croissant	12
+11de8353	HI_1_9_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	199830
+11de8353	HI_1_9_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	438
+11de8353	HI_1_9_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	15
+11de8353	HI_1_9_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	581
+11de8353	HI_1_9_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	6
+11de8353	HI_1_9_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	7
+11de8353	HI_1_9_0	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	4
+11de8353	HI_1_9_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	746
+11de8353	HI_1_9_0	l0_8_dels	non ferme au bit · DEL a mot non nul	72
+11de8353	HI_1_9_0	l0_8_dels	non ferme au bit · DEL lus	72
+11de8353	HI_1_9_0	l0_accord_juge_production	masque · juge false · production false	5614
+11de8353	HI_1_9_0	l0_accord_juge_production	masque · juge true · production true	125
+11de8353	HI_1_9_0	l0_accord_juge_production	ordre · juge false · production false	5732
+11de8353	HI_1_9_0	l0_accord_juge_production	ordre · juge true · production true	7
+11de8353	HI_1_9_0	l0_accord_juge_production	vue C · juge false · production false	5739
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste 9-64	2
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	3
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste > 64	92
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	59
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	195
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	2398
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, sain au juge · aucun debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	8
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, sain au juge · aucun debut anterieur qui ferme · reste > 64	3
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste 9-64	386
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	133
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste > 64	240
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	92
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · libere avant le chunk	4
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · vivant au bloc du chunk	1
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	2423
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · libere avant le chunk	115
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · naissance non lue, generation 0	1
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · non mesurable	27
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · realloue sous une autre generation	86
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · aucun debut anterieur qui ferme · aucune allocation	10
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · aucun debut anterieur qui ferme · libere avant le chunk	1
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · aucune allocation	722
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · libere avant le chunk	9
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · naissance non lue	2
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · non mesurable	9
+1c4c63c2	HI_1_10_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · realloue sous une autre generation	17
+1c4c63c2	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	723
+1c4c63c2	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque epars non croissant	18
+1c4c63c2	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	7647
+1c4c63c2	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	5586
+1c4c63c2	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	102
+1c4c63c2	HI_1_10_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	6515
+1c4c63c2	HI_1_10_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	213496
+1c4c63c2	HI_1_10_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	2401
+1c4c63c2	HI_1_10_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	1200
+1c4c63c2	HI_1_10_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque epars non croissant	9
+1c4c63c2	HI_1_10_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	688278
+1c4c63c2	HI_1_10_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	348
+1c4c63c2	HI_1_10_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	49
+1c4c63c2	HI_1_10_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	714
+1c4c63c2	HI_1_10_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	612
+1c4c63c2	HI_1_10_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	861
+1c4c63c2	HI_1_10_0	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	45
+1c4c63c2	HI_1_10_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	338
+1c4c63c2	HI_1_10_0	l0_8_dels	non ferme au bit · DEL a mot non nul	63
+1c4c63c2	HI_1_10_0	l0_8_dels	non ferme au bit · DEL lus	63
+1c4c63c2	HI_1_10_0	l0_accord_juge_production	masque · juge false · production false	13701
+1c4c63c2	HI_1_10_0	l0_accord_juge_production	masque · juge true · production true	5653
+1c4c63c2	HI_1_10_0	l0_accord_juge_production	ordre · juge false · production false	18699
+1c4c63c2	HI_1_10_0	l0_accord_juge_production	ordre · juge true · production true	655
+1c4c63c2	HI_1_10_0	l0_accord_juge_production	vue C · juge false · production false	19138
+1c4c63c2	HI_1_10_0	l0_accord_juge_production	vue C · juge true · production true	216
+396cfc92	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste 9-64	1
+396cfc92	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	1
+396cfc92	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	2
+396cfc92	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	1
+396cfc92	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	3
+396cfc92	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	1
+396cfc92	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	24
+396cfc92	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	9
+396cfc92	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	10
+396cfc92	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	321684
+396cfc92	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	666
+396cfc92	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	99075
+396cfc92	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	5
+396cfc92	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	474
+396cfc92	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	2
+396cfc92	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	2
+396cfc92	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	891
+396cfc92	HI_1_13_0	l0_8_dels	non ferme au bit · DEL a mot non nul	3
+396cfc92	HI_1_13_0	l0_8_dels	non ferme au bit · DEL lus	3
+396cfc92	HI_1_13_0	l0_accord_juge_production	masque · juge false · production false	22819
+396cfc92	HI_1_13_0	l0_accord_juge_production	masque · juge true · production true	9
+396cfc92	HI_1_13_0	l0_accord_juge_production	ordre · juge false · production false	22826
+396cfc92	HI_1_13_0	l0_accord_juge_production	ordre · juge true · production true	2
+396cfc92	HI_1_13_0	l0_accord_juge_production	vue C · juge false · production false	22828
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	1
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste > 64	10
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	8
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	27
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	197
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, sain au juge · aucun debut anterieur qui ferme · reste > 64	4
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste 9-64	56
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	64
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste > 64	29
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	10
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · realloue sous une autre generation	1
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	226
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · libere avant le chunk	3
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · realloue sous une autre generation	3
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · aucun debut anterieur qui ferme · aucune allocation	3
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · aucun debut anterieur qui ferme · libere avant le chunk	1
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · aucune allocation	148
+4f77afc1	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · realloue sous une autre generation	1
+4f77afc1	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	48
+4f77afc1	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque epars non croissant	3
+4f77afc1	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	6498
+4f77afc1	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	936
+4f77afc1	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	28
+4f77afc1	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	1072
+4f77afc1	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	618343
+4f77afc1	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	3474
+4f77afc1	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	4
+4f77afc1	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	208873
+4f77afc1	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	36
+4f77afc1	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	1
+4f77afc1	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	1770
+4f77afc1	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	175
+4f77afc1	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	305
+4f77afc1	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	12
+4f77afc1	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	3409
+4f77afc1	HI_1_13_0	l0_8_dels	non ferme au bit · DEL a mot non nul	20
+4f77afc1	HI_1_13_0	l0_8_dels	non ferme au bit · DEL lus	20
+4f77afc1	HI_1_13_0	l0_accord_juge_production	masque · juge false · production false	22001
+4f77afc1	HI_1_13_0	l0_accord_juge_production	masque · juge true · production true	909
+4f77afc1	HI_1_13_0	l0_accord_juge_production	ordre · juge false · production false	22736
+4f77afc1	HI_1_13_0	l0_accord_juge_production	ordre · juge true · production true	174
+4f77afc1	HI_1_13_0	l0_accord_juge_production	vue C · juge false · production false	22899
+4f77afc1	HI_1_13_0	l0_accord_juge_production	vue C · juge true · production true	11
+50247b26	version-31	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste 9-64	1
+50247b26	version-31	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	3
+50247b26	version-31	l0_6_rejets_fermes	ferme au bit, sain au juge · aucun debut anterieur qui ferme · reste 9-64	1
+50247b26	version-31	l0_6_rejets_fermes	ferme au bit, sain au juge · aucun debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	3
+50247b26	version-31	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	3
+50247b26	version-31	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · libere avant le chunk	1
+50247b26	version-31	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · aucun debut anterieur qui ferme · aucune allocation	4
+50247b26	version-31	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	7
+50247b26	version-31	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	2
+50247b26	version-31	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	10
+50247b26	version-31	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	763
+50247b26	version-31	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	7
+50247b26	version-31	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	11
+50247b26	version-31	l0_7_masques	non ferme au bit · DELTA · records a masque lu	541446
+50247b26	version-31	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	56
+50247b26	version-31	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	3
+50247b26	version-31	l0_7_masques	non ferme au bit · NEW · records a masque lu	213
+50247b26	version-31	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	1
+50247b26	version-31	l0_8_dels	ferme au bit, sain au juge · DEL lus	1
+50247b26	version-31	l0_8_dels	non ferme au bit · DEL a mot non nul	26
+50247b26	version-31	l0_8_dels	non ferme au bit · DEL lus	396
+50247b26	version-31	l0_accord_juge_production	masque · juge false · production false	144
+50247b26	version-31	l0_accord_juge_production	masque · juge true · production true	9
+50247b26	version-31	l0_accord_juge_production	ordre · juge false · production false	153
+50247b26	version-31	l0_accord_juge_production	vue C · juge false · production false	151
+50247b26	version-31	l0_accord_juge_production	vue C · juge true · production true	2
+51ebbc0f	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste > 64	5
+51ebbc0f	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	3
+51ebbc0f	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	7
+51ebbc0f	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	6
+51ebbc0f	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	5
+51ebbc0f	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	15
+51ebbc0f	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · non mesurable	1
+51ebbc0f	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	7
+51ebbc0f	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	294
+51ebbc0f	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	80
+51ebbc0f	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	4
+51ebbc0f	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	96
+51ebbc0f	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	94550
+51ebbc0f	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	331
+51ebbc0f	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	48
+51ebbc0f	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque epars non croissant	5
+51ebbc0f	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	53509
+51ebbc0f	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	354
+51ebbc0f	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	4
+51ebbc0f	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	1279
+51ebbc0f	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	10
+51ebbc0f	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	15
+51ebbc0f	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	1
+51ebbc0f	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	624
+51ebbc0f	HI_1_13_0	l0_8_dels	non ferme au bit · DEL a mot non nul	77
+51ebbc0f	HI_1_13_0	l0_8_dels	non ferme au bit · DEL lus	77
+51ebbc0f	HI_1_13_0	l0_accord_juge_production	masque · juge false · production false	9763
+51ebbc0f	HI_1_13_0	l0_accord_juge_production	masque · juge true · production true	84
+51ebbc0f	HI_1_13_0	l0_accord_juge_production	ordre · juge false · production false	9828
+51ebbc0f	HI_1_13_0	l0_accord_juge_production	ordre · juge true · production true	19
+51ebbc0f	HI_1_13_0	l0_accord_juge_production	vue C · juge false · production false	9845
+51ebbc0f	HI_1_13_0	l0_accord_juge_production	vue C · juge true · production true	2
+60ae07c4	HI_1_8_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste > 64	7
+60ae07c4	HI_1_8_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	17
+60ae07c4	HI_1_8_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	26
+60ae07c4	HI_1_8_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	21
+60ae07c4	HI_1_8_0	l0_6_rejets_fermes	ferme au bit, sain au juge · aucun debut anterieur qui ferme · reste > 64	2
+60ae07c4	HI_1_8_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste 9-64	2
+60ae07c4	HI_1_8_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	21
+60ae07c4	HI_1_8_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste > 64	2
+60ae07c4	HI_1_8_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	7
+60ae07c4	HI_1_8_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	64
+60ae07c4	HI_1_8_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · aucun debut anterieur qui ferme · aucune allocation	2
+60ae07c4	HI_1_8_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · aucune allocation	25
+60ae07c4	HI_1_8_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	13
+60ae07c4	HI_1_8_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque epars non croissant	2
+60ae07c4	HI_1_8_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	385
+60ae07c4	HI_1_8_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	126
+60ae07c4	HI_1_8_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	3
+60ae07c4	HI_1_8_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	164
+60ae07c4	HI_1_8_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	106492
+60ae07c4	HI_1_8_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	36
+60ae07c4	HI_1_8_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	193
+60ae07c4	HI_1_8_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque epars non croissant	7
+60ae07c4	HI_1_8_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	229259
+60ae07c4	HI_1_8_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	355
+60ae07c4	HI_1_8_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque dense de sept composants au plus	3
+60ae07c4	HI_1_8_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	10
+60ae07c4	HI_1_8_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	857
+60ae07c4	HI_1_8_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	26
+60ae07c4	HI_1_8_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	30
+60ae07c4	HI_1_8_0	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	6
+60ae07c4	HI_1_8_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	414
+60ae07c4	HI_1_8_0	l0_8_dels	non ferme au bit · DEL a mot non nul	615
+60ae07c4	HI_1_8_0	l0_8_dels	non ferme au bit · DEL lus	615
+60ae07c4	HI_1_8_0	l0_accord_juge_production	masque · juge false · production false	13840
+60ae07c4	HI_1_8_0	l0_accord_juge_production	masque · juge true · production true	129
+60ae07c4	HI_1_8_0	l0_accord_juge_production	ordre · juge false · production false	13923
+60ae07c4	HI_1_8_0	l0_accord_juge_production	ordre · juge true · production true	46
+60ae07c4	HI_1_8_0	l0_accord_juge_production	vue C · juge false · production false	13960
+60ae07c4	HI_1_8_0	l0_accord_juge_production	vue C · juge true · production true	9
+a349fea8	version-33	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste 9-64	2
+a349fea8	version-33	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	11
+a349fea8	version-33	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	3
+a349fea8	version-33	l0_6_rejets_fermes	ferme au bit, sain au juge · aucun debut anterieur qui ferme · reste 9-64	1
+a349fea8	version-33	l0_6_rejets_fermes	ferme au bit, sain au juge · aucun debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	5
+a349fea8	version-33	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	1
+a349fea8	version-33	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	13
+a349fea8	version-33	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	3
+a349fea8	version-33	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · aucun debut anterieur qui ferme · aucune allocation	6
+a349fea8	version-33	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · aucune allocation	1
+a349fea8	version-33	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	3
+a349fea8	version-33	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	3
+a349fea8	version-33	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	36
+a349fea8	version-33	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	2
+a349fea8	version-33	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	40
+a349fea8	version-33	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	4812
+a349fea8	version-33	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	13
+a349fea8	version-33	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	72
+a349fea8	version-33	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque epars non croissant	9
+a349fea8	version-33	l0_7_masques	non ferme au bit · DELTA · records a masque lu	547364
+a349fea8	version-33	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	159
+a349fea8	version-33	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	15
+a349fea8	version-33	l0_7_masques	non ferme au bit · NEW · records a masque lu	398
+a349fea8	version-33	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	1
+a349fea8	version-33	l0_8_dels	ferme au bit, contredit au juge · DEL lus	1
+a349fea8	version-33	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	1
+a349fea8	version-33	l0_8_dels	ferme au bit, sain au juge · DEL lus	47
+a349fea8	version-33	l0_8_dels	non ferme au bit · DEL a mot non nul	101
+a349fea8	version-33	l0_8_dels	non ferme au bit · DEL lus	533
+a349fea8	version-33	l0_accord_juge_production	masque · juge false · production false	427
+a349fea8	version-33	l0_accord_juge_production	masque · juge true · production true	36
+a349fea8	version-33	l0_accord_juge_production	ordre · juge false · production false	461
+a349fea8	version-33	l0_accord_juge_production	ordre · juge true · production true	2
+a349fea8	version-33	l0_accord_juge_production	vue C · juge false · production false	460
+a349fea8	version-33	l0_accord_juge_production	vue C · juge true · production true	3
+a521164d	HI_1_4_1	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste 9-64	4
+a521164d	HI_1_4_1	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	2
+a521164d	HI_1_4_1	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	1
+a521164d	HI_1_4_1	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	6
+a521164d	HI_1_4_1	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	1
+a521164d	HI_1_4_1	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	10
+a521164d	HI_1_4_1	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	3
+a521164d	HI_1_4_1	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	1
+a521164d	HI_1_4_1	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	5
+a521164d	HI_1_4_1	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	649
+a521164d	HI_1_4_1	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	1
+a521164d	HI_1_4_1	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	33
+a521164d	HI_1_4_1	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque epars non croissant	9
+a521164d	HI_1_4_1	l0_7_masques	non ferme au bit · DELTA · records a masque lu	225109
+a521164d	HI_1_4_1	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	117
+a521164d	HI_1_4_1	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	7
+a521164d	HI_1_4_1	l0_7_masques	non ferme au bit · NEW · records a masque lu	258
+a521164d	HI_1_4_1	l0_8_dels	non ferme au bit · DEL a mot non nul	123
+a521164d	HI_1_4_1	l0_8_dels	non ferme au bit · DEL lus	353
+a521164d	HI_1_4_1	l0_accord_juge_production	masque · juge false · production false	697
+a521164d	HI_1_4_1	l0_accord_juge_production	masque · juge true · production true	4
+a521164d	HI_1_4_1	l0_accord_juge_production	ordre · juge false · production false	701
+a521164d	HI_1_4_1	l0_accord_juge_production	vue C · juge false · production false	696
+a521164d	HI_1_4_1	l0_accord_juge_production	vue C · juge true · production true	5
+bcb6d393	HI_1_12_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	1
+bcb6d393	HI_1_12_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	1
+bcb6d393	HI_1_12_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	2
+bcb6d393	HI_1_12_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	14
+bcb6d393	HI_1_12_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	4
+bcb6d393	HI_1_12_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	7
+bcb6d393	HI_1_12_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	49108
+bcb6d393	HI_1_12_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	198
+bcb6d393	HI_1_12_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	8
+bcb6d393	HI_1_12_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	117961
+bcb6d393	HI_1_12_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	74
+bcb6d393	HI_1_12_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	7
+bcb6d393	HI_1_12_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	673
+bcb6d393	HI_1_12_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	169
+bcb6d393	HI_1_12_0	l0_8_dels	non ferme au bit · DEL a mot non nul	27
+bcb6d393	HI_1_12_0	l0_8_dels	non ferme au bit · DEL lus	27
+bcb6d393	HI_1_12_0	l0_accord_juge_production	masque · juge false · production false	5831
+bcb6d393	HI_1_12_0	l0_accord_juge_production	masque · juge true · production true	4
+bcb6d393	HI_1_12_0	l0_accord_juge_production	ordre · juge false · production false	5834
+bcb6d393	HI_1_12_0	l0_accord_juge_production	ordre · juge true · production true	1
+bcb6d393	HI_1_12_0	l0_accord_juge_production	vue C · juge false · production false	5835
+bf15f7ab	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	1
+bf15f7ab	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	2
+bf15f7ab	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	3
+bf15f7ab	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	3
+bf15f7ab	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	30
+bf15f7ab	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	10
+bf15f7ab	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	11
+bf15f7ab	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	266354
+bf15f7ab	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	1182
+bf15f7ab	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	645
+bf15f7ab	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	15982
+bf15f7ab	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	4
+bf15f7ab	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	242
+bf15f7ab	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	3
+bf15f7ab	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	3
+bf15f7ab	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	1153
+bf15f7ab	HI_1_13_0	l0_8_dels	non ferme au bit · DEL a mot non nul	3
+bf15f7ab	HI_1_13_0	l0_8_dels	non ferme au bit · DEL lus	3
+bf15f7ab	HI_1_13_0	l0_accord_juge_production	masque · juge false · production false	28465
+bf15f7ab	HI_1_13_0	l0_accord_juge_production	masque · juge true · production true	11
+bf15f7ab	HI_1_13_0	l0_accord_juge_production	ordre · juge false · production false	28474
+bf15f7ab	HI_1_13_0	l0_accord_juge_production	ordre · juge true · production true	2
+bf15f7ab	HI_1_13_0	l0_accord_juge_production	vue C · juge false · production false	28476
+bfecd02b	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	1
+bfecd02b	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	3
+bfecd02b	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	3
+bfecd02b	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	7
+bfecd02b	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	2
+bfecd02b	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	59
+bfecd02b	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	22
+bfecd02b	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	2
+bfecd02b	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	25
+bfecd02b	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	274086
+bfecd02b	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	764
+bfecd02b	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	34089
+bfecd02b	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	1
+bfecd02b	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	163
+bfecd02b	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	5
+bfecd02b	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	5
+bfecd02b	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	786
+bfecd02b	HI_1_13_0	l0_8_dels	non ferme au bit · DEL a mot non nul	2
+bfecd02b	HI_1_13_0	l0_8_dels	non ferme au bit · DEL lus	2
+bfecd02b	HI_1_13_0	l0_accord_juge_production	masque · juge false · production false	26380
+bfecd02b	HI_1_13_0	l0_accord_juge_production	masque · juge true · production true	23
+bfecd02b	HI_1_13_0	l0_accord_juge_production	ordre · juge false · production false	26399
+bfecd02b	HI_1_13_0	l0_accord_juge_production	ordre · juge true · production true	4
+bfecd02b	HI_1_13_0	l0_accord_juge_production	vue C · juge false · production false	26403
+c75f33b8	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	5
+c75f33b8	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	11
+c75f33b8	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	6
+c75f33b8	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	1
+c75f33b8	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	22
+c75f33b8	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · aucune allocation	1
+c75f33b8	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	7
+c75f33b8	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	184
+c75f33b8	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	90
+c75f33b8	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	4
+c75f33b8	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	103
+c75f33b8	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	204779
+c75f33b8	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	643
+c75f33b8	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	14482
+c75f33b8	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	16
+c75f33b8	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	86
+c75f33b8	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	10
+c75f33b8	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	11
+c75f33b8	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	1
+c75f33b8	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	487
+c75f33b8	HI_1_13_0	l0_8_dels	non ferme au bit · DEL a mot non nul	5
+c75f33b8	HI_1_13_0	l0_8_dels	non ferme au bit · DEL lus	5
+c75f33b8	HI_1_13_0	l0_accord_juge_production	masque · juge false · production false	22856
+c75f33b8	HI_1_13_0	l0_accord_juge_production	masque · juge true · production true	88
+c75f33b8	HI_1_13_0	l0_accord_juge_production	ordre · juge false · production false	22934
+c75f33b8	HI_1_13_0	l0_accord_juge_production	ordre · juge true · production true	10
+c75f33b8	HI_1_13_0	l0_accord_juge_production	vue C · juge false · production false	22944
+d9781168	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste > 64	3
+d9781168	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	11
+d9781168	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	44
+d9781168	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	33
+d9781168	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, sain au juge · aucun debut anterieur qui ferme · reste > 64	1
+d9781168	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste 9-64	1
+d9781168	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	2
+d9781168	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	3
+d9781168	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	88
+d9781168	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · aucun debut anterieur qui ferme · aucune allocation	1
+d9781168	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · aucune allocation	3
+d9781168	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	14
+d9781168	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	344
+d9781168	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	237
+d9781168	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	15
+d9781168	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	289
+d9781168	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	247386
+d9781168	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	1009
+d9781168	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	187
+d9781168	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	83736
+d9781168	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	3
+d9781168	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	151
+d9781168	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	32
+d9781168	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	39
+d9781168	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	5
+d9781168	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	843
+d9781168	HI_1_13_0	l0_8_dels	non ferme au bit · DEL a mot non nul	1
+d9781168	HI_1_13_0	l0_8_dels	non ferme au bit · DEL lus	1
+d9781168	HI_1_13_0	l0_accord_juge_production	masque · juge false · production false	26219
+d9781168	HI_1_13_0	l0_accord_juge_production	masque · juge true · production true	245
+d9781168	HI_1_13_0	l0_accord_juge_production	ordre · juge false · production false	26438
+d9781168	HI_1_13_0	l0_accord_juge_production	ordre · juge true · production true	26
+d9781168	HI_1_13_0	l0_accord_juge_production	vue C · juge false · production false	26459
+d9781168	HI_1_13_0	l0_accord_juge_production	vue C · juge true · production true	5
+e5adf7b2	HI_1_11_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste 9-64	1
+e5adf7b2	HI_1_11_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · reste > 64	1
+e5adf7b2	HI_1_11_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	1
+e5adf7b2	HI_1_11_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	10
+e5adf7b2	HI_1_11_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	47
+e5adf7b2	HI_1_11_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste > 64	1
+e5adf7b2	HI_1_11_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · aucun debut anterieur qui ferme · aucune allocation	2
+e5adf7b2	HI_1_11_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	57
+e5adf7b2	HI_1_11_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · realloue sous une autre generation	1
+e5adf7b2	HI_1_11_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · aucune allocation	1
+e5adf7b2	HI_1_11_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	5
+e5adf7b2	HI_1_11_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque epars non croissant	1
+e5adf7b2	HI_1_11_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	683
+e5adf7b2	HI_1_11_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	167
+e5adf7b2	HI_1_11_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque epars non croissant	3
+e5adf7b2	HI_1_11_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	180
+e5adf7b2	HI_1_11_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	89910
+e5adf7b2	HI_1_11_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	36
+e5adf7b2	HI_1_11_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	336
+e5adf7b2	HI_1_11_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque epars non croissant	3
+e5adf7b2	HI_1_11_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	231749
+e5adf7b2	HI_1_11_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	253
+e5adf7b2	HI_1_11_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	31
+e5adf7b2	HI_1_11_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	467
+e5adf7b2	HI_1_11_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	18
+e5adf7b2	HI_1_11_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	21
+e5adf7b2	HI_1_11_0	l0_8_dels	ferme au bit, sain au juge · DEL a mot non nul	1
+e5adf7b2	HI_1_11_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	671
+e5adf7b2	HI_1_11_0	l0_8_dels	non ferme au bit · DEL a mot non nul	146
+e5adf7b2	HI_1_11_0	l0_8_dels	non ferme au bit · DEL lus	146
+e5adf7b2	HI_1_11_0	l0_accord_juge_production	masque · juge false · production false	4125
+e5adf7b2	HI_1_11_0	l0_accord_juge_production	masque · juge true · production true	160
+e5adf7b2	HI_1_11_0	l0_accord_juge_production	ordre · juge false · production false	4269
+e5adf7b2	HI_1_11_0	l0_accord_juge_production	ordre · juge true · production true	16
+e5adf7b2	HI_1_11_0	l0_accord_juge_production	vue C · juge false · production false	4282
+e5adf7b2	HI_1_11_0	l0_accord_juge_production	vue C · juge true · production true	3
+f75e7053	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	1
+f75e7053	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	1
+f75e7053	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	2
+f75e7053	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	7
+f75e7053	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	7
+f75e7053	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	8
+f75e7053	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	201735
+f75e7053	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	580
+f75e7053	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	34583
+f75e7053	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	1
+f75e7053	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	219
+f75e7053	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	1
+f75e7053	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	1
+f75e7053	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	702
+f75e7053	HI_1_13_0	l0_accord_juge_production	masque · juge false · production false	23416
+f75e7053	HI_1_13_0	l0_accord_juge_production	masque · juge true · production true	7
+f75e7053	HI_1_13_0	l0_accord_juge_production	ordre · juge false · production false	23422
+f75e7053	HI_1_13_0	l0_accord_juge_production	ordre · juge true · production true	1
+f75e7053	HI_1_13_0	l0_accord_juge_production	vue C · juge false · production false	23423
+fb1a1a72	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste 9-64	1
+fb1a1a72	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	7
+fb1a1a72	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, contredit au juge · debut anterieur qui ferme · reste > 64	3
+fb1a1a72	HI_1_13_0	l0_6_rejets_fermes	ferme au bit, sain au juge · debut anterieur qui ferme · reste < 9 (aucun DELTA reel ne tient)	3
+fb1a1a72	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, contredit au juge · debut anterieur qui ferme · aucune allocation	11
+fb1a1a72	HI_1_13_0	l0_6_rejets_fermes_classe	ferme au bit, sain au juge · debut anterieur qui ferme · aucune allocation	3
+fb1a1a72	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · ecrivain : masque au-dela de l archetype	4
+fb1a1a72	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · DELTA · records a masque lu	154
+fb1a1a72	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · ecrivain : masque au-dela de l archetype	41
+fb1a1a72	HI_1_13_0	l0_7_masques	ferme au bit, contredit au juge · NEW · records a masque lu	45
+fb1a1a72	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · DELTA · records a masque lu	241342
+fb1a1a72	HI_1_13_0	l0_7_masques	ferme au bit, sain au juge · NEW · records a masque lu	880
+fb1a1a72	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque au-dela de l archetype	113
+fb1a1a72	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · ecrivain : masque epars non croissant	2
+fb1a1a72	HI_1_13_0	l0_7_masques	non ferme au bit · DELTA · records a masque lu	48363
+fb1a1a72	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque au-dela de l archetype	413
+fb1a1a72	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · ecrivain : masque epars non croissant	4
+fb1a1a72	HI_1_13_0	l0_7_masques	non ferme au bit · NEW · records a masque lu	2259
+fb1a1a72	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL a mot non nul	7
+fb1a1a72	HI_1_13_0	l0_8_dels	ferme au bit, contredit au juge · DEL lus	9
+fb1a1a72	HI_1_13_0	l0_8_dels	ferme au bit, sain au juge · DEL lus	1462
+fb1a1a72	HI_1_13_0	l0_8_dels	non ferme au bit · DEL a mot non nul	133
+fb1a1a72	HI_1_13_0	l0_8_dels	non ferme au bit · DEL lus	133
+fb1a1a72	HI_1_13_0	l0_accord_juge_production	masque · juge false · production false	22279
+fb1a1a72	HI_1_13_0	l0_accord_juge_production	masque · juge true · production true	39
+fb1a1a72	HI_1_13_0	l0_accord_juge_production	ordre · juge false · production false	22312
+fb1a1a72	HI_1_13_0	l0_accord_juge_production	ordre · juge true · production true	6
+fb1a1a72	HI_1_13_0	l0_accord_juge_production	vue C · juge false · production false	22318

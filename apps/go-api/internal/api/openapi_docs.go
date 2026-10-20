@@ -40,9 +40,9 @@ const (
 	docsYAMLPath = "/docs/openapi.yaml"
 )
 
-// docsCSP — Content-Security-Policy de la SEULE page /docs (le reste de l'app n'en
-// a pas, cf. middleware.SecurityHeaders). Autorise strictement les deux ressources
-// Stoplight Elements épinglées par version, rien d'autre.
+// docsCSP — Content-Security-Policy de la SEULE page /docs : elle remplace la politique
+// minimale de middleware.SecurityHeaders (le reste de l'app n'a que celle-là). Autorise
+// strictement les deux ressources Stoplight Elements épinglées par version, rien d'autre.
 var docsCSP = strings.Join([]string{
 	"default-src 'none'",
 	"base-uri 'none'",

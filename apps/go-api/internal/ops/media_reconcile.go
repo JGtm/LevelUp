@@ -101,7 +101,7 @@ func ReconcileOrphanedMediaFiles(ctx context.Context, db *sql.DB, playerSlug str
 
 // findFilesByStem scanne dir et retourne les chemins absolus des fichiers dont
 // le nom (sans extension) correspond exactement à stem ET dont l'extension est
-// dans supportedExtensions. Ne descend pas récursivement.
+// un format indexé (mediaKindOf). Ne descend pas récursivement.
 func findFilesByStem(dir, stem string) ([]string, error) {
 	dirEntries, err := os.ReadDir(dir)
 	if err != nil {
@@ -114,7 +114,7 @@ func findFilesByStem(dir, stem string) ([]string, error) {
 		}
 		name := de.Name()
 		ext := strings.ToLower(filepath.Ext(name))
-		if _, ok := supportedExtensions[ext]; !ok {
+		if mediaKindOf(ext) == "" {
 			continue
 		}
 		nameStem := strings.TrimSuffix(name, filepath.Ext(name))

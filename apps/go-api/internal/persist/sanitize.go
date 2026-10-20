@@ -39,7 +39,7 @@ import (
 // Strategie par type de champ :
 //   - *float64 (nullable, ex: KDA, Accuracy) → nil si NaN/Inf (semantique
 //     "non calculable") via analysis.SanitizeNullableFloat.
-//   - float64 (non-nullable, ex: LUSRComponent.Value) → 0.0 si NaN/Inf via
+//   - float64 (non-nullable) → 0.0 si NaN/Inf via
 //     analysis.SanitizeFloat (l'absence de valeur n'est pas representable,
 //     donc on tombe sur le neutre).
 //
@@ -80,14 +80,6 @@ func SanitizeBatch(batch *MatchBatch) {
 		batch.PlayerData.SkillRank.RatingValue = analysis.SanitizeNullableFloat(batch.PlayerData.SkillRank.RatingValue)
 		batch.PlayerData.SkillRank.RatingDeviation = analysis.SanitizeNullableFloat(batch.PlayerData.SkillRank.RatingDeviation)
 		batch.PlayerData.SkillRank.RatingDelta = analysis.SanitizeNullableFloat(batch.PlayerData.SkillRank.RatingDelta)
-	}
-
-	// PlayerData.LUSRComponents : Value + Weight (float64 directs).
-	// NaN dans une composante LUSR signifie qu'elle n'a pas contribue —
-	// on ramene a 0 (neutre additif).
-	for i := range batch.PlayerData.LUSRComponents {
-		batch.PlayerData.LUSRComponents[i].Value = analysis.SanitizeFloat(batch.PlayerData.LUSRComponents[i].Value)
-		batch.PlayerData.LUSRComponents[i].Weight = analysis.SanitizeFloat(batch.PlayerData.LUSRComponents[i].Weight)
 	}
 }
 

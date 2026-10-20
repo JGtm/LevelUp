@@ -1,5 +1,138 @@
 ## What's new
 
+**v8.0 — 2D replay, the Theater film decoded & a Tactics tab**
+
+The biggest release so far. Halo records a film of every match; until now the app never opened it. It does now — and a match can be watched again from above, second by second, with everything the film knows written around it: who killed whom with what, at what range, who held the flag, who took the power weapon, who wasted the equipment they were carrying when they died.
+
+**Watch your match again, in 2D**
+- **A replay page for every match** — all the players move on the real map background, under their own names, from kickoff to the final whistle; play, pause, jump 10 seconds back or forward, and pick a speed
+- **A playback bar with tracks** — You, Allies, Dominance and Media on one timeline, with round pills and the score of the round in progress above the field
+- **The kill feed follows the cursor** — killer, weapon, victim, medal, and the assist with its damage share whenever the film measures it; a death nobody is credited for says so instead of inventing a killer
+- **One card per player** — weapons carried, grenades, shield, active camo and overshield, grappling hook, time spent dead, and a watermark while the player is carrying an objective
+- **Layers you switch on and off** — aim cone, trail, shot and kill effects, heat map (time spent or eliminations), weapon spots, weapons left on the ground, deployed equipment, dropped objects, vehicles, named zones, and the live objectives: flag, skull, hill, strongholds A/B/C, bomb, VIP crown
+- **The game's own sound** — 177 sounds taken from the game, muted by default, filtered by category
+- **Zoom and framing** — wheel, keyboard or a directional pad; the canvas takes the whole block and zooming never crops the map
+- **Capture and record** — a PNG in one click, or a video of the replay with its soundtrack, encoded away from real time so the file is clean whatever your machine was doing
+- **You get in from everywhere** — the match view, the home tiles, the Explorer and the Tactics tab
+- **The Spartan's movement, at the instant** — the player card says when a Spartan is crouched, sliding, clambering or sprinting, read from the film itself; the jump, which the film does not write, is shown as derived and labelled so
+- **Vehicles, seat by seat** — who sits where is read from the film, a vehicle points where it is actually heading, a turret shot goes where its gunner aims, and the map shows when a vehicle comes back at its spot
+- **Captures in the right colour** — a zone fills with the colour of the side actually pushing, neutral bases included, and a flag on the ground shows its return gauge ("Return N %")
+- **Busy matches read more completely** — on the densest matches the replay now follows far more of the film, so movement that used to be lost shows up
+- **A clearer field** — mode objectives stand on their floor like the players, with a "Mode objectives" switch and its help; vehicles are larger, with redrawn sprites and weapon flashes of their own; markers keep a readable size at every zoom level; base sounds follow the action, and the score tick keeps time with the game clock
+- **Video export in standard formats** — 1080p or 720p, with the framing of your choice when the map is zoomed
+
+**What the film knows, and the API never said**
+- **The weapon behind every elimination** — read from the damage source in the film instead of being guessed from the scoreboard, including the deaths with no firearm at all: repulsor, fall, the environment
+- **Where people die** — kill and death positions on the map, and "Where it plays out" on the match view
+- **Engagement range** — low range (p10), median and high range (p90) per weapon, plus the signed height difference: the gun you win with up close is not the one you win with across the map
+- **Weapon levels** — pad pickups split into starting weapons, map weapons, power weapons and power-up pads. What a spot is worth comes from the map, never from the weapon's name: the same Hydra is a map weapon on one map and a power weapon on another
+- **Net flag grabs** — juggling folded into a 1.5-second window, so picking your own flag back up twice in a second counts once
+- **Assault** — bomb plants, defuses, carriers killed and the rest of the mode's statistics
+- **Rounds are counted as rounds** — on modes decided by rounds, the score shown is the number of rounds won and lost; the API's point score is kept alongside because on those modes it can hand the advantage to the side that lost
+- **Support** — the assists between teammates, on the Squad, on the Sessions and over time on the Timeseries
+- **Range against your lobby** — your kill range, read against the whole lobby of each match rather than against the playlist: range roles
+- **Distance records by weapon** — your longest measured kill with each weapon, on the Synthesis
+- **Starting weapons read right** — a weapon picked up in the first seconds of a life no longer counts as a starting weapon
+
+**Equipment: used, kept or wasted**
+- **The three outcomes of every piece of equipment** — used, kept without ever using it, or dropped when you died, family by family
+- **On the Sessions and the Timeseries** — your items against the rest of your side, family by family
+- **Charges are visible** — a deployable shows how much of it is left before the first use
+
+**A Tactics tab**
+- **One screen** — the maps you play on the left, the map plan in the centre, the zone you pick on the right; the map you play most opens on its own
+- **Seven readings on the map plan** — where you die, where you kill, your kills − deaths balance, where the wins and the losses part ways, where you spend your time, the routes you take after respawning, and where you die alone
+- **Zones with their in-game names** — the hottest one is picked for you, and its mini-tiles say what happened, with which weapon, alone or near a teammate, and how the match ended
+- **Straight to the replay** — every mini-tile opens the replay at the exact second, and the match view's "Ground occupancy" opens the tab on that match's map
+
+**Squad, sessions and progression**
+- **The shapes you keep** — the objective cards: the balance of power by mode family, and each player's share of their side's objective
+- **Per-match cadence** — every usage number is now a number per measured match, not per minute
+- **The exchange in six cards** — assists as stacked bars, player-by-map with a single legend, medals last
+- **First kill / first death, ranges and usages** on the Timeseries page, objectives trimmed down to what the mode actually offered
+- **New badges** — "Thief" (the most kills stolen from a friend) in the Squad impact matrix, "Scuttled" and "Selfless" on objective modes when the score and the kills tell opposite stories, and "Lackey / Boss" roles on the assist charts
+- **Assists exchanged with each relation** — a column in Relations, a "Duo partner" card and an "Inner circle" card
+- **The Timeseries "Usage" tab becomes your Map control** — the Squad's Map control read over your solo matches: what your side took (power-ups, special weapons, rack weapons), how it moved over the period, map by map, your share of the pickups, what they were worth against the opponent, whether you die near a teammate or alone, your share of the objective, and what you did with the equipment you picked up; the Payback card and the engagement height leave the page, and the cumulative damage balance is on the Timeseries Summary
+- **A "Map control" tab on the Squad** — who took what on the map, camp against camp: the camouflage and overshield bonuses, the special weapons of the power pads and the rack weapons. You see the balance of the evening and how it moved over the session, who in the squad took what, match by match, what your kills owe to those resources, how well you fare against the opponent with them, and how tonight compares with your usual evenings. It replaces the old Squad "Usage" tab (old links land on it), and the cards it used to hold moved to Contributions and Dynamics.
+- **"Grouped or isolated"** — in the Map control tab, one dot per life: how far you were from the nearest living teammate (in radar ranges) and how many kills that life brought, split into four quarters so that the isolated lives that cost you are easy to spot, plus the share of your lives by placement. Measured for each match as it is synced. The "Unanswered kills" cloud leaves the Synergies tab; the Payback card stays.
+- **Sessions in four sections**, and a side-by-side comparison in shared rows that stays readable when the drawer opens
+- **The Sessions page becomes the Map control of your evening** — your kills and tools, what your side took and how it moved over the session, match by match, what those resources were worth against the opponent, whether you die near a teammate or alone, your share of the objective and what you did with your equipment; in the comparison drawer every card sits on the same row on both sides, in a compact view in percentages. The Payback card leaves the page; on Halo 5, Support received is now shown
+- **Squad intensity against your real team and the lobby**, and a filter bar that no longer replays every chart's animation on each click
+- **Explorer and Head-to-head** — the briefing shows the favourite weapon of the selection and the kill range of the player you scout; the Head-to-head gets a weapon profile: kill share by weapon class, range by role, top 3 weapons
+- **The home match tile** shows how many of your kills a teammate assisted
+- **Much shorter loading times** — the first opening of the Squad page drops from 194 seconds to 2.6; the Synthesis, Sessions, Timeseries, Career and Home pages load faster too, and a long request is no longer cut off and replayed
+
+**Match view**
+- **One card template for the whole page** — the three tables that were hard to compare became charts
+- **Score over time, per mode** — a round-based mode no longer draws a points curve that contradicts its own result
+- **Distance per weapon** (melee left out) and frag distribution in two levels, next to the tools you killed with
+- **A "Weapons and terrain" tab that reads the Map control of the match** — what your team took and what the opponent took, item by item, who in your team took what, what those resources were worth in kills and against the opponent (and why a line is not measured when it is not), what each player did with the equipment, whether each teammate died near someone or alone, and a larger field occupation map you can zoom
+
+**Maps, medals and media**
+- **109 map backgrounds**, converted losslessly and served whatever the format, with Forge zones named 100 %
+- **Named zones** — the official callouts of the map under the replay
+- **The VIP medal "Clash of Kings" has a name and an image again**, and medal images are refreshed from the game's own catalog
+- **Likes are per viewer** — your like is yours, not the account's
+- **Media in the replay** — your screenshots and clips sit on their own track, at the second they were captured
+- **Mode names read right** — playlists whose internal name is written the other way round now show their real mode
+- **Clips play one after another** — opening the next clip in the viewer no longer breaks its neighbours
+
+**A faster debrief, and an "Analysis in progress" that says what is missing**
+- **The match you just played is analysed first** — it goes ahead of the history in the queue
+- **"Analysis in progress" names the part** — on the home tiles and the match view, a match still being analysed says so, and says which part is being worked on or is waiting: the weapon behind each kill, the commendations or the replay
+- **Commendations updated when the film arrives** — no more waiting for the next sync
+- **Empty blocks say why** — when no match of your selection concerns a block, it stays on the page with its title and a sentence instead of vanishing; a block that cannot exist on a title is still left out
+- **Numbers and tooltips in your language**, and tooltips that never leave the window
+
+**Four new commendations, three of them read from the film**
+- **"Tick Tick Boom"** — win Assault matches
+- **"First Strike"** — earn the first kill of a match
+- **"Wonderful Toys"** — pick up three or more weapons from weapon pads in a single Slayer match
+- **"Almost Doesn't Count"** — kill an enemy Spartan with no shield left, and survive; the film tells the shield state at the instant of the kill, and the tiers run from 50 to 500. It is measured on the matches played since September 2025 whose film has been read
+- **Recomputed when the film arrives** — a match whose film is read later gets its commendations updated automatically
+- **Visuals in their place** — "Flag Secures" now uses Halo 5's "Defender of the Flag" emblem, "Skull Carrier Takedown" a skull in a ring, and the new commendations have their white version
+- **The Commendations page follows the title** — Halo Infinite shows the commendations computed by LevelUp, Halo 5 the game's own
+
+**Your tokens, your choice**
+- **Token pooling is now a choice, player by player** — your sign-in is shared with the other players of the instance only if you say yes; without an answer it serves only you, and you can withdraw at any time in Settings > Synchronization
+- **Terms of use** — a bilingual page, and a corrected privacy text
+- **A free licence** — the code is now under the GNU AGPL-3.0 and the documentation under CC BY 4.0; versions published before 16 October 2026 remain under MIT
+- **A security audit** — 29 findings closed: who can see or change what, sessions and sign-in, limits on uploads and costly requests, files and paths
+
+**The replay, the Tactics tab and the demo**
+- **Carried equipment, further** — a rift appears when it is laid, with its remaining uses and its sounds; the repair field plays its end sound again
+- **The VIPs from the first second** — the first VIP of each team is shown from the start with a redrawn crown in the colours of its side, and the "Watch the Throne" medal has its name and image
+- **Starting weapons dropped on the ground are hidden** — an option in the drawer shows them again
+- **Named zones on 78 more maps**, Harvest included
+- **Tactics: put the zone aside** — click it again, click on an empty spot or press Escape to clear the selection; every death shows its state and its sequence plays by itself; the tab opens with far fewer requests (96 down to 5)
+- **No replay for Firefight** — the mode is not handled, so no replay is built or served for it
+- **A richer demo** — a replay for every mode, plus a 4v4 match with several vehicles; what is added to the demo is kept from one release to the next
+
+**Repairs**
+- **The World ranking page works again** (shipped as v7.3.1) — the source pages it reads had moved, and the page was serving a stale ranking instead of saying so; it can no longer degrade in silence, and an empty ranking and a failed fetch are no longer shown the same way
+- **LUSR** — a corrupted Halo 5 arena rating is fixed at the source, the reader corrected, and a purge tool added
+- **The match view no longer dies for everybody** when a snapshot lags behind the query
+- **A replay that cannot be read says so** — a film that has expired on Microsoft's side is filed as missing instead of being retried forever
+- **Halo 5 and Halo Infinite no longer block each other's writes** — a write on one title could leave the other unwritable until the next restart, and writes stalled for minutes after a start while the catalogue refreshed
+- **The sessions recompute says when it failed** — a Halo 5 profile was never recomputed; a failing player now makes the job fail, by name
+- **Your first kills and first deaths on the profile** read 0 for everyone; they now count
+- **Halo 5 figures no longer count the Campaign** — engagement, performance score, assists model, rating and sessions
+- **A failed read is said on the match view** instead of being shown as "no data"
+- **The Xbox sign-in asks for its code once**
+- **A more complete replay** — the position of nearly every kill is found (killers without a position 1 476 down to 78), lives without a name go from 449 to 15, the King of the Hill score on Lattice is right, and arena matches are no longer "vehicles not measured"
+- **A single rating path** — the old LUSR version is gone, and excluding a match no longer pushes the rating back
+
+**The project**
+- **A project footer** — the source, the licence, the feedback issues and a support button, with the non-affiliation notice
+- **A bilingual privacy page**
+- **The public demo carries no credential at all** — the seed switched from excluding known secrets to publishing only an explicit list of harmless fields
+- **Friends belong to a player**, invitations work without a group, and an admin can close the instance and see every identity in one place
+- **Copy the Xbox sign-in code in one click**
+- **An empty block says why** — every chart card and usage block names the reason when it has nothing to show
+- **Backups include the friend lists and Xbox aliases**
+
+**Halo 5** — everything read from a film is Halo Infinite only: Halo 5 keeps its own pages and never borrows another title's data. Where a feature cannot exist there, the app says so instead of showing an empty tab.
+
 **v7.3 — Overtime, first kill / first death & a repaired Achievements page**
 
 **Overtime on your matches**
@@ -46,8 +179,8 @@
 - **VIP** — VIPs killed, times you were selected as VIP, kills while being the VIP, total VIP time and your longest run as VIP
 - **Where you read them** — the "Objectives" section of the match view, exactly like Capture the Flag, Strongholds, King of the Hill and Oddball: one column per stat of the mode played, with a "Team total" line
 
-**Ten new objective citations**
-- **Flag play** — Flag Captures, Flag Secures, Flag Steals, Returner Takedown, Unstoppable Carrier and Aggressive Return
+**Eight new objective citations**
+- **Flag play** — Flag Captures, Flag Secures, Unstoppable Carrier and Aggressive Return
 - **Zones and Oddball** — Zone Defense, Untouchable Carrier, Skull Carrier Takedown and Skull Grabs
 - **Tiers set on real play** — every ladder is calibrated on actual match data instead of a generic scale, so the rare feats (killing while carrying the flag or the skull) stay within reach
 

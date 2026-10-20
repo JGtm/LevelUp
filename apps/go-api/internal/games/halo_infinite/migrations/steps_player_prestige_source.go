@@ -16,7 +16,7 @@ import (
 //     télémétrie (created + transitions), pour agréger
 //     taux d'acceptation/complétion par origine.
 //
-// Anti-ART (#23046) : les deux colonnes sont non indexées et non mutées —
+// Anti-ART (#23645) : les deux colonnes sont non indexées et non mutées —
 // challenge.source est figée à l'INSERT (comme title_slug/metric), prestige_telemetry
 // est une table append-only INSERT-only (pas de vue _latest : chaque événement est une
 // ligne distincte, il n'y a pas de re-INSERT d'une même ligne logique). Aucune surface

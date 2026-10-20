@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/canonical"
 )
 
 // MatchHistoryRepo implémente port.MatchHistoryRepository.
@@ -71,10 +70,15 @@ func (r *MatchHistoryRepo) LoadAll(ctx context.Context) ([]domain.MatchHistoryRa
 }
 
 // teamScorePair retient les scores bruts par équipe d'un match pour le calcul
-// my/enemy en Go.
+// my/enemy en Go — les points ET les manches, lus ensemble parce qu'ils se
+// permutent ensemble (même team_id).
 type teamScorePair struct {
 	team0 *int
 	team1 *int
+	// rounds0 / rounds1 : manches gagnées par camp ; total : manches jouées.
+	rounds0 *int
+	rounds1 *int
+	total   *int
 }
 
 // loadSharedHistory exécute l'étape 1 du split LoadAll (SharedReader).
@@ -104,10 +108,13 @@ func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.Matc
 	)
 	for rows.Next() {
 		var (
-			m      domain.MatchHistoryRawRow
-			teamID *int
-			team0  *int
-			team1  *int
+			m       domain.MatchHistoryRawRow
+			teamID  *int
+			team0   *int
+			team1   *int
+			rounds0 *int
+			rounds1 *int
+			total   *int
 		)
 		if err := rows.Scan(
 			&m.MatchID,
@@ -138,6 +145,9 @@ func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.Matc
 			&teamID,
 			&team0,
 			&team1,
+			&rounds0,
+			&rounds1,
+			&total,
 			&m.GameVariantID,
 			&m.GameVariantName,
 			&m.DurationSeconds,
@@ -146,7 +156,9 @@ func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.Matc
 		}
 		results = append(results, m)
 		teamIDs = append(teamIDs, teamID)
-		teamScores = append(teamScores, teamScorePair{team0: team0, team1: team1})
+		teamScores = append(teamScores, teamScorePair{
+			team0: team0, team1: team1, rounds0: rounds0, rounds1: rounds1, total: total,
+		})
 	}
 	return results, teamIDs, teamScores, rows.Err()
 }
@@ -269,60 +281,23 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 	return nil
 }
 
-// applyTeamScore calcule MyTeamScore/EnemyTeamScore depuis team_id et les
-// scores team_0/team_1. Reproduit la sémantique CASE WHEN p.team_id = 0 du SQL.
+// applyTeamScore calcule MyTeamScore/EnemyTeamScore ET les manches my/enemy depuis team_id.
+// Reproduit la sémantique CASE WHEN p.team_id = 0 du SQL. Points et manches se permutent
+// ENSEMBLE : les dissocier ferait afficher les manches d'un camp à côté des points de
+// l'autre. `RoundsTotal` ne se permute pas — c'est une grandeur du match.
 func applyTeamScore(row *domain.MatchHistoryRawRow, teamID *int, scores teamScorePair) {
-	if teamID == nil {
-		row.MyTeamScore = scores.team0
-		row.EnemyTeamScore = scores.team1
+	row.RoundsTotal = scores.total
+	// LA FORME EST CELLE DU SQL, À LA BRANCHE PRÈS : `CASE WHEN team_id = 0 THEN … ELSE …`.
+	// Ce n'est pas un détail de style — un `team_id >= 2` (FFA : Halo Infinite numérote un
+	// camp par joueur) tombe dans le ELSE, et le chemin jumeau de l'escouade
+	// (queries_squad.go, le même CASE en SQL) doit lui répondre la même chose. Tester
+	// `== 1` au lieu de `!= 0` inverserait ces lignes-là et ferait diverger les deux
+	// surfaces sur les mêmes matchs.
+	if teamID == nil || *teamID == 0 {
+		row.MyTeamScore, row.EnemyTeamScore = scores.team0, scores.team1
+		row.MyRoundsWon, row.EnemyRoundsWon = scores.rounds0, scores.rounds1
 		return
 	}
-	if *teamID == 0 {
-		row.MyTeamScore = scores.team0
-		row.EnemyTeamScore = scores.team1
-	} else {
-		row.MyTeamScore = scores.team1
-		row.EnemyTeamScore = scores.team0
-	}
-}
-
-// LoadMapWinRates calcule le win_rate historique par carte (sur tous les matchs).
-// Retourne map[map_name] -> {wins, total}.
-func (r *MatchHistoryRepo) LoadMapWinRates(ctx context.Context) (map[string][2]int, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	// PMT-5 : win title-aware (fallback "p.outcome = 2" byte-identique Halo).
-	winExpr := outcomeSQLEq(ctx, "p.outcome", canonical.OutcomeWin, "p.outcome = 2")
-	q := `
-	SELECT r.map_name,
-	       SUM(CASE WHEN ` + winExpr + ` THEN 1 ELSE 0 END) AS wins,
-	       COUNT(*) AS total
-	FROM match_registry r
-	JOIN match_participants p ON r.match_id = p.match_id
-	WHERE p.xuid = ?` + excludeCampaignClause(r.pdb.TitleSlug, "r") + ` AND r.map_name IS NOT NULL
-	GROUP BY r.map_name`
-
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("LoadMapWinRates: %w", err)
-	}
-	defer release()
-
-	rows, err := db.QueryContext(ctx, q, r.pdb.XUID)
-	if err != nil {
-		return nil, fmt.Errorf("LoadMapWinRates: %w", err)
-	}
-	defer rows.Close()
-
-	result := make(map[string][2]int)
-	for rows.Next() {
-		var mapName string
-		var wins, total int
-		if err := rows.Scan(&mapName, &wins, &total); err != nil {
-			return nil, err
-		}
-		result[mapName] = [2]int{wins, total}
-	}
-	return result, rows.Err()
+	row.MyTeamScore, row.EnemyTeamScore = scores.team1, scores.team0
+	row.MyRoundsWon, row.EnemyRoundsWon = scores.rounds1, scores.rounds0
 }

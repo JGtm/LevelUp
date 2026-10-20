@@ -1,0 +1,273 @@
+Niveau,Icône,Grade,Score/EXP requis,Score/EXP total,Élément débloqué,Tier
+0,Fichier:HINF Recruit.png,Recrue (Recruit),0,0,N/A,Bronze
+1,Fichier:HINF Bronze Cadet 1.png,Cadet 1 (Cadet 1),100,100,N/A,Bronze
+2,Fichier:HINF Bronze Cadet 2.png,Cadet 2 (Cadet 2),1 000,1 100,N/A,Bronze
+3,Fichier:HINF Bronze Cadet 3.png,Cadet 3 (Cadet 3),1 250,2 350,N/A,Bronze
+4,Fichier:HINF Bronze Private 1.png,Soldat 1 (Soldat 1),1 500,3 850,N/A,Bronze
+5,Fichier:HINF Bronze Private 2.png,Soldat 2 (Private 2),1 000,4 850,N/A,Bronze
+6,Fichier:HINF Bronze Private 3.png,Soldat 3 (Private 3),1 250,6 100,N/A,Bronze
+7,Fichier:HINF Bronze Lance Corporal 1.png,Caporal suppléant 1 (Lance Corporal 1),1 750,7 850,N/A,Bronze
+8,Fichier:HINF Bronze Lance Corporal 2.png,Caporal suppléant 2 (Lance Corporal 2),1 250,9 100,N/A,Bronze
+9,Fichier:HINF Bronze Lance Corporal 3.png,Caporal suppléant 3 (Lance Corporal 3),1 500,10 600,N/A,Bronze
+10,Fichier:HINF Bronze Corporal 1.png,Caporal 1 (Corporal 1),1 750,12 350,Emblème Caporal de bronze,Bronze
+11,Fichier:HINF Bronze Corporal 2.png,Caporal 2 (Corporal 2),1 250,13 600,N/A,Bronze
+12,Fichier:HINF Bronze Corporal 3.png,Caporal 3 (Corporal 3),1 500,15 100,N/A,Bronze
+13,Fichier:HINF Bronze Sergeant 1.png,Sergent 1 (Sergeant 1),2 000,17 100,N/A,Bronze
+14,Fichier:HINF Bronze Sergeant 2.png,Sergent 2 (Sergeant 2),1 500,18 600,N/A,Bronze
+15,Fichier:HINF Bronze Sergeant 3.png,Sergent 3 (Sergeant 3),1 750,20 350,N/A,Bronze
+16,Fichier:HINF Bronze Staff Sergeant 1.png,Sergent-chef 1 (Staff Sergeant 1),2 250,22 600,N/A,Bronze
+17,Fichier:HINF Bronze Staff Sergeant 2.png,Sergent-chef 2 (Staff Sergeant 2),1 500,24 100,N/A,Bronze
+18,Fichier:HINF Bronze Staff Sergeant 3.png,Sergent-chef 3 (Staff Sergeant 3),1 750,25 850,N/A,Bronze
+19,Fichier:HINF Bronze Gunnery Sergeant 1.png,Sergent d'artillerie 1 (Gunnery Sergeant 1),2 500,28 350,N/A,Bronze
+20,Fichier:HINF Bronze Gunnery Sergeant 2.png,Sergent d'artillerie 2 (Gunnery Sergeant 2),1 750,30 100,N/A,Bronze
+21,Fichier:HINF Bronze Gunnery Sergeant 3.png,Sergent d'artillerie 3 (Gunnery Sergeant 3),2 000,32 100,N/A,Bronze
+22,Fichier:HINF Bronze Master Sergeant 1.png,Adjudant 1 (Master Sergeant 1),2 750,34 850,Emblème Adjudant de bronze,Bronze
+23,Fichier:HINF Bronze Master Sergeant 2.png,Adjudant 2 (Master Sergeant 2),1 750,36 600,N/A,Bronze
+24,Fichier:HINF Bronze Master Sergeant 3.png,Adjudant 3 (Master Sergeant 3),2 250,38 850,N/A,Bronze
+25,Fichier:HINF Bronze Lieutenant 1.png,Lieutenant 1 (Lieutenant 1),3 000,41 850,N/A,Bronze
+26,Fichier:HINF Bronze Lieutenant 2.png,Lieutenant 2 (Lieutenant 2),2 000,43 850,N/A,Bronze
+27,Fichier:HINF Bronze Lieutenant 3.png,Lieutenant 3 (Lieutenant 3),2 500,46 350,N/A,Bronze
+28,Fichier:HINF Bronze Captain 1.png,Capitaine 1 (Captain 1),3 250,49 600,N/A,Bronze
+29,Fichier:HINF Bronze Captain 2.png,Capitaine 2 (Captain 2),2 250,51 850,N/A,Bronze
+30,Fichier:HINF Bronze Captain 3.png,Capitaine 3 (Captain 3),2 750,54 600,N/A,Bronze
+31,Fichier:HINF Bronze Major 1.png,Lieutenant-major 1 (Major 1),3 500,58 100,Emblème Lieutenant-major de bronze,Bronze
+32,Fichier:HINF Bronze Major 2.png,Lieutenant-major 2 (Major 2),2 500,60 600,N/A,Bronze
+33,Fichier:HINF Bronze Major 3.png,Lieutenant-major 3 (Major 3),3 000,63 600,N/A,Bronze
+34,Fichier:HINF Bronze Lieutenant Colonel 1.png,Lieutenant-colonel 1 (Lieutenant Colonel 1),3 750,67 350,N/A,Bronze
+35,Fichier:HINF Bronze Lieutenant Colonel 2.png,Lieutenant-colonel 2 (Lieutenant Colonel 2),2 750,70 100,N/A,Bronze
+36,Fichier:HINF Bronze Lieutenant Colonel 3.png,Lieutenant-colonel 3 (Lieutenant Colonel 3),3 250,73 350,N/A,Bronze
+37,Fichier:HINF Bronze Colonel 1.png,Colonel 1 (Colonel 1),4 000,77 350,Emblème Colonel de bronze,Bronze
+38,Fichier:HINF Bronze Colonel 2.png,Colonel 2 (Colonel 2),3 000,80 350,N/A,Bronze
+39,Fichier:HINF Bronze Colonel 3.png,Colonel 3 (Colonel 3),3 500,83 850,N/A,Bronze
+40,Fichier:HINF Bronze Brigadier General 1.png,Général de brigade 1 (Brigadier General 1),4 500,88 350,N/A,Bronze
+41,Fichier:HINF Bronze Brigadier General 2.png,Général de brigade 2 (Brigadier General 2),3 250,91 600,N/A,Bronze
+42,Fichier:HINF Bronze Brigadier General 3.png,Général de brigade 3 (Brigadier General 3),3 750,95 350,Emblème Général de bronze,Bronze
+43,Fichier:HINF Bronze General 1.png,Général 1 (General 1),5 000,100 350,N/A,Bronze
+44,Fichier:HINF Bronze General 2.png,Général 2 (General 2),3 500,103 850,N/A,Bronze
+45,Fichier:HINF Bronze General 3.png,Général 3 (General 3),4 000,107 850,N/A,Bronze
+46,Fichier:HINF Silver Cadet 1.png,Cadet 1 (Cadet 1),5 250,113 100,N/A,Argent
+47,Fichier:HINF Silver Cadet 2.png,Cadet 2 (Cadet 2),2 500,115 350,N/A,Argent
+48,Fichier:HINF Silver Cadet 3.png,Cadet 3 (Cadet 3),3 250,117 850,N/A,Argent
+49,Fichier:HINF Silver Private 1.png,Soldat 1 (Private 1),2 250,121 100,N/A,Argent
+50,Fichier:HINF Silver Private 2.png,Soldat 2 (Private 2),2 750,123 350,N/A,Argent
+51,Fichier:HINF Silver Private 3.png,Soldat 3 (Private 3),3 750,126 100,N/A,Argent
+52,Fichier:HINF Silver Lance Corporal 1.png,Caporal suppléant 1 (Lance Corporal 1),2 500,129 850,N/A,Argent
+53,Fichier:HINF Silver Lance Corporal 1.png,Caporal suppléant 2 (Lance Corporal 2),3 000,132 350,N/A,Argent
+54,Fichier:HINF Silver Lance Corporal 1.png,Caporal suppléant 3 (Lance Corporal 3),4 000,135 350,N/A,Argent
+55,Fichier:HINF Silver Corporal 1.png,Caporal 1 (Corporal 1),2 750,139 350,Emblème Caporal d'argent,Argent
+56,Fichier:HINF Silver Corporal 2.png,Caporal 2 (Corporal 2),3 250,142 100,N/A,Argent
+57,Fichier:HINF Silver Corporal 3.png,Caporal 3 (Corporal 3),4 250,145 350,N/A,Argent
+58,Fichier:HINF Silver Sergeant 1.png,Sergent 1 (Sergeant 1),3 000,149 600,N/A,Argent
+59,Fichier:HINF Silver Sergeant 2.png,Sergent 2 (Sergeant 2),3 750,152 600,N/A,Argent
+60,Fichier:HINF Silver Sergeant 3.png,Sergent 3 (Sergeant 3),4 750,156 350,N/A,Argent
+61,Fichier:HINF Silver Staff Sergeant 1.png,Sergent-chef 1 (Staff Sergeant 1),3 250,161 100,N/A,Argent
+62,Fichier:HINF Silver Staff Sergeant 2.png,Sergent-chef 2 (Staff Sergeant 2),4 000,164 350,N/A,Argent
+63,Fichier:HINF Silver Staff Sergeant 3.png,Sergent-chef 3 (Staff Sergeant 3),5 250,168 350,N/A,Argent
+64,Fichier:HINF Silver Gunnery Sergeant 1.png,Sergent d'artillerie 1 (Gunnery Sergeant 1),3 750,173 600,N/A,Argent
+65,Fichier:HINF Silver Gunnery Sergeant 2.png,Sergent d'artillerie 2 (Gunnery Sergeant 2),4 250,177 350,N/A,Argent
+66,Fichier:HINF Silver Gunnery Sergeant 3.png,Sergent d'artillerie 3 (Gunnery Sergeant 3),5 750,181 600,Emblème Sergent-chef d'argent,Argent
+67,Fichier:HINF Silver Master Sergeant 1.png,Adjudant 1 (Master Sergeant 1),4 000,187 350,N/A,Argent
+68,Fichier:HINF Silver Master Sergeant 2.png,Adjudant 2 (Master Sergeant 2),4 750,191 350,N/A,Argent
+69,Fichier:HINF Silver Master Sergeant 3.png,Adjudant 3 (Master Sergeant 3),6 250,196 100,N/A,Argent
+70,Fichier:HINF Silver Lieutenant 1.png,Lieutenant 1 (Lieutenant 1),4 250,202 350,N/A,Argent
+71,Fichier:HINF Silver Lieutenant 2.png,Lieutenant 2 (Lieutenant 2),5 250,206 600,N/A,Argent
+72,Fichier:HINF Silver Lieutenant 3.png,Lieutenant 3 (Lieutenant 3),6 750,211 850,N/A,Argent
+73,Fichier:HINF Silver Captain 1.png,Capitaine 1 (Captain 1),4 750,218 600,N/A,Argent
+74,Fichier:HINF Silver Captain 2.png,Capitaine 2 (Captain 2),5 750,223 350,N/A,Argent
+75,Fichier:HINF Silver Captain 3.png,Capitaine 3 (Captain 3),7 250,229 100,N/A,Argent
+76,Fichier:HINF Silver Major 1.png,Lieutenant-major 1 (Major 1),5 250,236 350,Emblème Lieutenant-major d'argent,Argent
+77,Fichier:HINF Silver Major 2.png,Lieutenant-major 2 (Major 2),6 250,241 600,N/A,Argent
+78,Fichier:HINF Silver Major 3.png,Lieutenant-major 3 (Major 3),8 000,247 850,N/A,Argent
+79,Fichier:HINF Silver Lieutenant Colonel 1.png,Lieutenant-colonel 1 (Lieutenant Colonel 1),5 750,255 850,N/A,Argent
+80,Fichier:HINF Silver Lieutenant Colonel 2.png,Lieutenant-colonel 2 (Lieutenant Colonel 2),6 750,261 600,N/A,Argent
+81,Fichier:HINF Silver Lieutenant Colonel 3.png,Lieutenant-colonel 3 (Lieutenant Colonel 3),8 750,268 350,N/A,Argent
+82,Fichier:HINF Silver Colonel 1.png,Colonel 1 (Colonel 1),6 250,277 100,Emblème Colonel d'argent,Argent
+83,Fichier:HINF Silver Colonel 2.png,Colonel 2 (Colonel 2),7 500,283 350,N/A,Argent
+84,Fichier:HINF Silver Colonel 3.png,Colonel 3 (Colonel 3),9 500,290 850,N/A,Argent
+85,Fichier:HINF Silver Brigadier General 1.png,Général de brigade 1 (Brigadier General 1),6 750,300 350,N/A,Argent
+86,Fichier:HINF Silver Brigadier General 2.png,Général de brigade 2 (Brigadier General 2),8 000,307 100,N/A,Argent
+87,Fichier:HINF Silver Brigadier General 3.png,Général de brigade 3 (Brigadier General 3),10 000,315 100,N/A,Argent
+88,Fichier:HINF Silver General 1.png,Général 1 (General 1),7 250,325 100,Emblème Général d'argent,Argent
+89,Fichier:HINF Silver General 2.png,Général 2 (General 2),8 750,332 350,N/A,Argent
+90,Fichier:HINF Silver General 3.png,Général 3 (General 3),12 500,341 100,N/A,Argent
+91,Fichier:HINF Gold Cadet 1.png,Cadet 1 (Cadet 1),4 500,353 600,N/A,Or
+92,Fichier:HINF Gold Cadet 2.png,Cadet 2 (Cadet 2),5 500,358 100,N/A,Or
+93,Fichier:HINF Gold Cadet 3.png,Cadet 3 (Cadet 3),7 250,363 600,N/A,Or
+94,Fichier:HINF Gold Private 1.png,Soldat 1 (Private 1),5 000,370 850,N/A,Or
+95,Fichier:HINF Gold Private 2.png,Soldat 2 (Private 2),6 000,375 850,N/A,Or
+96,Fichier:HINF Gold Private 3.png,Soldat 3 (Private 3),7 750,381 850,N/A,Or
+97,Fichier:HINF Gold Lance Corporal 1.png,Caporal suppléant 1 (Lance Corporal 1),5 500,389 600,N/A,Or
+98,Fichier:HINF Gold Lance Corporal 1.png,Caporal suppléant 2 (Lance Corporal 2),6 500,395 100,N/A,Or
+99,Fichier:HINF Gold Lance Corporal 1.png,Caporal suppléant 3 (Lance Corporal 3),8 500,401 600,N/A,Or
+100,Fichier:HINF Gold Corporal 1.png,Caporal 1 (Corporal 1),6 000,410 100,Emblème Caporal d'or,Or
+101,Fichier:HINF Gold Corporal 2.png,Caporal 2 (Corporal 2),7 250,416 100,N/A,Or
+102,Fichier:HINF Gold Corporal 3.png,Caporal 3 (Corporal 3),9 250,423 350,N/A,Or
+103,Fichier:HINF Gold Sergeant 1.png,Sergent 1 (Sergeant 1),6 500,432 600,N/A,Or
+104,Fichier:HINF Gold Sergeant 2.png,Sergent 2 (Sergeant 2),7 750,439 100,N/A,Or
+105,Fichier:HINF Gold Sergeant 2.png,Sergent 3 (Sergeant 3),10 000,446 850,N/A,Or
+106,Fichier:HINF Gold Staff Sergeant 1.png,Sergent-chef 1 (Staff Sergeant 1),7 000,456 850,N/A,Or
+107,Fichier:HINF Gold Staff Sergeant 2.png,Sergent-chef 2 (Staff Sergeant 2),8 500,463 850,N/A,Or
+108,Fichier:HINF Gold Staff Sergeant 3.png,Sergent-chef 3 (Staff Sergeant 3),10 000,472 350,N/A,Or
+109,Fichier:HINF Gold Gunnery Sergeant 1.png,Sergent d'artillerie 1 (Gunnery Sergeant 1),7 750,482 350,N/A,Or
+110,Fichier:HINF Gold Gunnery Sergeant 2.png,Sergent d'artillerie 2 (Gunnery Sergeant 2),9 250,490 100,N/A,Or
+111,Fichier:HINF Gold Gunnery Sergeant 3.png,Sergent d'artillerie 3 (Gunnery Sergeant 3),12 500,499 350,Emblème Adjudant d'or,Or
+112,Fichier:HINF Gold Master Sergeant 1.png,Adjudant 1 (Master Sergeant 1),8 500,511 850,N/A,Or
+113,Fichier:HINF Gold Master Sergeant 2.png,Adjudant 2 (Master Sergeant 2),10 000,520 350,N/A,Or
+114,Fichier:HINF Gold Master Sergeant 3.png,Adjudant 3 (Master Sergeant 3),12 500,530 350,N/A,Or
+115,Fichier:HINF Gold Lieutenant 1.png,Lieutenant 1 (Lieutenant 1),9 250,542 850,N/A,Or
+116,Fichier:HINF Gold Lieutenant 2.png,Lieutenant 2 (Lieutenant 2),10 000,552 100,N/A,Or
+117,Fichier:HINF Gold Lieutenant 3.png,Lieutenant 3 (Lieutenant 3),15 000,562 100,N/A,Or
+118,Fichier:HINF Gold Captain 1.png,Capitaine 1 (Captain 1),10 000,577 100,N/A,Or
+119,Fichier:HINF Gold Captain 2.png,Capitaine 2 (Captain 2),12 500,587 100,N/A,Or
+120,Fichier:HINF Gold Captain 3.png,Capitaine 3 (Captain 3),15 000,599 600,Emblème Lieutenant-major d'or,Or
+121,Fichier:HINF Gold Major 1.png,Lieutenant-major 1 (Major 1),10 000,614 600,N/A,Or
+122,Fichier:HINF Gold Major 2.png,Lieutenant-major 2 (Major 2),12 500,624 600,N/A,Or
+123,Fichier:HINF Gold Major 3.png,Lieutenant-major 3 (Major 3),17 500,637 100,N/A,Or
+124,Fichier:HINF Gold Lieutenant Colonel 1.png,Lieutenant-colonel 1 (Lieutenant Colonel 1),12 500,654 600,N/A,Or
+125,Fichier:HINF Gold Lieutenant Colonel 2.png,Lieutenant-colonel 2 (Lieutenant Colonel 2),15 000,667 100,N/A,Or
+126,Fichier:HINF Gold Lieutenant Colonel 3.png,Lieutenant-colonel 3 (Lieutenant Colonel 3),20 000,682 100,Emblème Colonel d'or,Or
+127,Fichier:HINF Gold Colonel 1.png,Colonel 1 (Colonel 1),12 500,702 100,N/A,Or
+128,Fichier:HINF Gold Colonel 2.png,Colonel 2 (Colonel 2),15 000,714 600,N/A,Or
+129,Fichier:HINF Gold Colonel 3.png,Colonel 3 (Colonel 3),20 000,729 600,N/A,Or
+130,Fichier:HINF Gold Brigadier General 1.png,Général de brigade 1 (Brigadier General 1),15 000,749 600,N/A,Or
+131,Fichier:HINF Gold Brigadier General 2.png,Général de brigade 2 (Brigadier General 2),17 500,764 600,N/A,Or
+132,Fichier:HINF Gold Brigadier General 3.png,Général de brigade 3 (Brigadier General 3),22 500,782 100,Emblème Général d'or,Or
+133,Fichier:HINF Gold General 1.png,Général 1 (General 1),15 000,804 600,N/A,Or
+134,Fichier:HINF Gold General 2.png,Général 2 (General 2),20 000,819 600,N/A,Or
+135,Fichier:HINF Gold General 3.png,Général 3 (General 3),25 000,839 600,N/A,Or
+136,Fichier:HINF Platinum Cadet 1.png,Cadet 1 (Cadet 1),9 750,864 600,N/A,Platine
+137,Fichier:HINF Platinum Cadet 2.png,Cadet 2 (Cadet 2),12 500,874 350,N/A,Platine
+138,Fichier:HINF Platinum Cadet 3.png,Cadet 3 (Cadet 3),15 000,886 850,N/A,Platine
+139,Fichier:HINF Platinum Private 1.png,Soldat 1 (Private 1),10 000,901 850,N/A,Platine
+140,Fichier:HINF Platinum Private 2.png,Soldat 2 (Private 2),12 500,911 850,N/A,Platine
+141,Fichier:HINF Platinum Private 3.png,Soldat 3 (Private 3),17 500,924 350,N/A,Platine
+142,Fichier:HINF Platinum Lance Corporal 1.png,Caporal suppléant 1 (Lance Corporal 1),12 500,941 850,N/A,Platine
+143,Fichier:HINF Platinum Lance Corporal 1.png,Caporal suppléant 2 (Lance Corporal 2),15 000,954 350,N/A,Platine
+144,Fichier:HINF Platinum Lance Corporal 1.png,Caporal suppléant 3 (Lance Corporal 3),17 500,969 350,N/A,Platine
+145,Fichier:HINF Platinum Corporal 1.png,Caporal 1 (Corporal 1),12 500,986 850,Emblème Caporal de platine,Platine
+146,Fichier:HINF Platinum Corporal 2.png,Caporal 2 (Corporal 2),15 000,999 350,N/A,Platine
+147,Fichier:HINF Platinum Corporal 3.png,Caporal 3 (Corporal 3),20 000,1 014 350,N/A,Platine
+148,Fichier:HINF Platinum Sergeant 1.png,Sergent 1 (Sergeant 1),15 000,1 034 350,N/A,Platine
+149,Fichier:HINF Platinum Sergeant 2.png,Sergent 2 (Sergeant 2),17 500,1 049 350,N/A,Platine
+150,Fichier:HINF Platinum Sergeant 2.png,Sergent 3 (Sergeant 3),22 500,1 014 350,N/A,Platine
+151,Fichier:HINF Platinum Staff Sergeant 1.png,Sergent-chef 1 (Staff Sergeant 1),15 000,1 034 350,N/A,Platine
+152,Fichier:HINF Platinum Staff Sergeant 2.png,Sergent-chef 2 (Staff Sergeant 2),17 500,1 049 350,N/A,Platine
+153,Fichier:HINF Platinum Staff Sergeant 3.png,Sergent-chef 3 (Staff Sergeant 3),22 500,1 121 850,N/A,Platine
+154,Fichier:HINF Platinum Gunnery Sergeant 1.png,Sergent d'artillerie 1 (Gunnery Sergeant 1),17 500,1 144 350,N/A,Platine
+155,Fichier:HINF Platinum Gunnery Sergeant 2.png,Sergent d'artillerie 2 (Gunnery Sergeant 2),20 000,1 161 850,N/A,Platine
+156,Fichier:HINF Platinum Gunnery Sergeant 3.png,Sergent d'artillerie 3 (Gunnery Sergeant 3),25 000,1 181 850,Emblème Sergent d'artillerie de platine,Platine
+157,Fichier:HINF Platinum Master Sergeant 1.png,Adjudant 1 (Master Sergeant 1),17 500,1 144 350,N/A,Platine
+158,Fichier:HINF Platinum Master Sergeant 2.png,Adjudant 2 (Master Sergeant 2),22 500,1 161 850,N/A,Platine
+159,Fichier:HINF Platinum Master Sergeant 3.png,Adjudant 3 (Master Sergeant 3),27 500,1 246 850,N/A,Platine
+160,Fichier:HINF Platinum Lieutenant 1.png,Lieutenant 1 (Lieutenant 1),20 000,1 274 350,N/A,Platine
+161,Fichier:HINF Platinum Lieutenant 2.png,Lieutenant 2 (Lieutenant 2),25 000,1 294 350,N/A,Platine
+162,Fichier:HINF Platinum Lieutenant 3.png,Lieutenant 3 (Lieutenant 3),30 000,1 319 350,N/A,Platine
+163,Fichier:HINF Platinum Captain 1.png,Capitaine 1 (Captain 1),22 500,1 349 350,N/A,Platine
+164,Fichier:HINF Platinum Captain 2.png,Capitaine 2 (Captain 2),25 000,1 371 850,N/A,Platine
+165,Fichier:HINF Platinum Captain 3.png,Capitaine 3 (Captain 3),32 500,1 396 850,Emblème Capitaine de platine,Platine
+166,Fichier:HINF Platinum Major 1.png,Lieutenant-major 1 (Major 1),22 500,1 429 350,N/A,Platine
+167,Fichier:HINF Platinum Major 2.png,Lieutenant-major 2 (Major 2),27 500,1 451 850,N/A,Platine
+168,Fichier:HINF Platinum Major 3.png,Lieutenant-major 3 (Major 3),37 500,1 479 350,Emblème Lieutenant-major de platine,Platine
+169,Fichier:HINF Platinum Lieutenant Colonel 1.png,Lieutenant-colonel 1 (Lieutenant Colonel 1),25 000,1 516 850,N/A,Platine
+170,Fichier:HINF Platinum Lieutenant Colonel 2.png,Lieutenant-colonel 2 (Lieutenant Colonel 2),30 000,1 541 850,N/A,Platine
+171,Fichier:HINF Platinum Lieutenant Colonel 3.png,Lieutenant-colonel 3 (Lieutenant Colonel 3),40 000,1 571 850,N/A,Platine
+172,Fichier:HINF Platinum Colonel 1.png,Colonel 1 (Colonel 1),27 500,1 611 850,N/A,Platine
+173,Fichier:HINF Platinum Colonel 2.png,Colonel 2 (Colonel 2),35 000,1 639 350,N/A,Platine
+174,Fichier:HINF Platinum Colonel 3.png,Colonel 3 (Colonel 3),45 000,1 674 350,N/A,Platine
+175,Fichier:HINF Platinum Brigadier General 1.png,Général de brigade 1 (Brigadier General 1),30 000,1 719 350,N/A,Platine
+176,Fichier:HINF Platinum Brigadier General 2.png,Général de brigade 2 (Brigadier General 2),37 500,1 749 350,N/A,Platine
+177,Fichier:HINF Platinum Brigadier General 3.png,Général de brigade 3 (Brigadier General 3),47 500,1 786 850,Emblème Général de brigade de platine,Platine
+178,Fichier:HINF Platinum General 1.png,Général 1 (General 1),32 500,1 834 350,N/A,Platine
+179,Fichier:HINF Platinum General 2.png,Général 2 (General 2),40 000,1 866 850,N/A,Platine
+180,Fichier:HINF Platinum General 3.png,Général 3 (General 3),52 500,1 906 850,N/A,Platine
+181,Fichier:HINF Diamond Cadet 1.png,Cadet 1 (Cadet 1),20 000,1 959 350,N/A,Diamant
+182,Fichier:HINF Diamond Cadet 2.png,Cadet 2 (Cadet 2),25 000,1 979 350,N/A,Diamant
+183,Fichier:HINF Diamond Cadet 3.png,Cadet 3 (Cadet 3),32 500,2 004 350,N/A,Diamant
+184,Fichier:HINF Diamond Private 1.png,Soldat 1 (Private 1),22 500,2 036 850,N/A,Diamant
+185,Fichier:HINF Diamond Private 2.png,Soldat 2 (Private 2),27 500,2 059 350,N/A,Diamant
+186,Fichier:HINF Diamond Private 3.png,Soldat 3 (Private 3),35 000,2 086 850,N/A,Diamant
+187,Fichier:HINF Diamond Lance Corporal 1.png,Caporal suppléant 1 (Lance Corporal 1),25 000,2 121 850,N/A,Diamant
+188,Fichier:HINF Diamond Lance Corporal 1.png,Caporal suppléant 2 (Lance Corporal 2),30 000,2 146 850,N/A,Diamant
+189,Fichier:HINF Diamond Lance Corporal 1.png,Caporal suppléant 3 (Lance Corporal 3),40 000,2 176 850,,Diamant
+190,Fichier:HINF Diamond Corporal 1.png,Caporal 1 (Corporal 1),27 500,2 216 850,Emblème Caporal de platine,Diamant
+191,Fichier:HINF Diamond Corporal 2.png,Caporal 2 (Corporal 2),32 500,2 244 850,N/A,Diamant
+192,Fichier:HINF Diamond Corporal 3.png,Caporal 3 (Corporal 3),42 500,2 276 850,N/A,Diamant
+193,Fichier:HINF Diamond Sergeant 1.png,Sergent 1 (Sergeant 1),30 000,2 319 350,N/A,Diamant
+194,Fichier:HINF Diamond Sergeant 2.png,Sergent 2 (Sergeant 2),35 000,2 349 350,N/A,Diamant
+195,Fichier:HINF Diamond Sergeant 3.png,Sergent 3 (Sergeant 3),47 500,2 384 350,N/A,Diamant
+196,Fichier:HINF Diamond Staff Sergeant 1.png,Sergent-chef 1 (Staff Sergeant 1),32 500,2 431 850,N/A,Diamant
+197,Fichier:HINF Diamond Staff Sergeant 2.png,Sergent-chef 2 (Staff Sergeant 2),40 000,2 464 350,N/A,Diamant
+198,Fichier:HINF Diamond Staff Sergeant 3.png,Sergent-chef 3 (Staff Sergeant 3),50 000,2 504 350,N/A,Diamant
+199,Fichier:HINF Diamond Gunnery Sergeant 1.png,Sergent d'artillerie 1 (Gunnery Sergeant 1),35 000,2 554 350,N/A,Diamant
+200,Fichier:HINF Diamond Gunnery Sergeant 2.png,Sergent d'artillerie 2 (Gunnery Sergeant 2),42 500,2 589 350,N/A,Diamant
+201,Fichier:HINF Diamond Gunnery Sergeant 3.png,Sergent d'artillerie 3 (Gunnery Sergeant 3),55 000,2 631 850,Emblème Adjudant de platine,Diamant
+202,Fichier:HINF Diamond Master Sergeant 1.png,Adjudant 1 (Master Sergeant 1),40 000,2 686 850,N/A,Diamant
+203,Fichier:HINF Diamond Master Sergeant 2.png,Adjudant 2 (Master Sergeant 2),47 500,2 726 850,N/A,Diamant
+204,Fichier:HINF Diamond Master Sergeant 3.png,Adjudant 3 (Master Sergeant 3),60 000,2 774 350,N/A,Diamant
+205,Fichier:HINF Diamond Lieutenant 1.png,Lieutenant 1 (Lieutenant 1),42 500,2 834 350,N/A,Diamant
+206,Fichier:HINF Diamond Lieutenant 2.png,Lieutenant 2 (Lieutenant 2),50 000,2 876 850,N/A,Diamant
+207,Fichier:HINF Diamond Lieutenant 3.png,Lieutenant 3 (Lieutenant 3),65 000,2 926 850,N/A,Diamant
+208,Fichier:HINF Diamond Captain 1.png,Capitaine 1 (Captain 1),47 500,2 991 850,N/A,Diamant
+209,Fichier:HINF Diamond Captain 2.png,Capitaine 2 (Captain 2),55 000,3 039 350,N/A,Diamant
+210,Fichier:HINF Diamond Captain 3.png,Capitaine 3 (Captain 3),72 500,3 094 350,N/A,Diamant
+211,Fichier:HINF Diamond Major 1.png,Lieutenant-major 1 (Major 1),50 000,3 166 850,N/A,Diamant
+212,Fichier:HINF Diamond Major 2.png,Lieutenant-major 2 (Major 2),60 000,3 216 850,N/A,Diamant
+213,Fichier:HINF Diamond Major 3.png,Lieutenant-major 3 (Major 3),80 000,3 276 850,N/A,Diamant
+214,Fichier:HINF Diamond Lieutenant Colonel 1.png,Lieutenant-colonel 1 (Lieutenant Colonel 1),55 000,3 356 850,N/A,Diamant
+215,Fichier:HINF Diamond Lieutenant Colonel 2.png,Lieutenant-colonel 2 (Lieutenant Colonel 2),65 000,3 411 850,N/A,Diamant
+216,Fichier:HINF Diamond Lieutenant Colonel 3.png,Lieutenant-colonel 3 (Lieutenant Colonel 3),85 000,3 694 350,Emblème Colonel de platine,Diamant
+217,Fichier:HINF Diamond Colonel 1.png,Colonel 1 (Colonel 1),60 000,3 561 850,N/A,Diamant
+218,Fichier:HINF Diamond Colonel 2.png,Colonel 2 (Colonel 2),72 500,3 621 850,N/A,Diamant
+219,Fichier:HINF Diamond Colonel 3.png,Colonel 3 (Colonel 3),95 000,3 694 350,N/A,Diamant
+220,Fichier:HINF Diamond Brigadier General 1.png,Général de brigade 1 (Brigadier General 1),65 000,3 789 350,N/A,Diamant
+221,Fichier:HINF Diamond Brigadier General 2.png,Général de brigade 2 (Brigadier General 2),80 000,3 854 350,N/A,Diamant
+222,Fichier:HINF Diamond Brigadier General 3.png,Général de brigade 3 (Brigadier General 3),100 000,3 934 350,Emblème Général de platine,Diamant
+223,Fichier:HINF Diamond General 1.png,Général 1 (General 1),72 500,4 034 350,N/A,Diamant
+224,Fichier:HINF Diamond General 2.png,Général 2 (General 2),85 000,4 106 850,N/A,Diamant
+225,Fichier:HINF Diamond General 3.png,Général 3 (General 3),100 000,4 191 850,N/A,Diamant
+226,Fichier:HINF Onyx Cadet 1.png,Cadet 1 (Cadet 1),45 000,4 291 850,Emblème Cadet d'onyx,Onyx
+227,Fichier:HINF Onyx Cadet 2.png,Cadet 2 (Cadet 2),55 000,4 336 850,N/A,Onyx
+228,Fichier:HINF Onyx Cadet 3.png,Cadet 3 (Cadet 3),70 000,4 391 850,N/A,Onyx
+229,Fichier:HINF Onyx Private 1.png,Soldat 1 (Private 1),50 000,4 461 850,Emblème Soldat d'onyx,Onyx
+230,Fichier:HINF Onyx Private 2.png,Soldat 2 (Private 2),"57, 500",4 511 850,N/A,Onyx
+231,Fichier:HINF Onyx Private 3.png,Soldat 3 (Private 3),77 500,4 569 350,N/A,Onyx
+232,Fichier:HINF Onyx Lance Corporal 1.png,Caporal suppléant 1 (Lance Corporal 1),52 500,4 646 850,Emblème Caporal suppléant d'onyx,Onyx
+233,Fichier:HINF Onyx Lance Corporal 1.png,Caporal suppléant 2 (Lance Corporal 2),65 000,4 699 350,N/A,Onyx
+234,Fichier:HINF Onyx Lance Corporal 1.png,Caporal suppléant 3 (Lance Corporal 3),82 500,4 764 350,N/A,Onyx
+235,Fichier:HINF Onyx Corporal 1.png,Caporal 1 (Corporal 1),57 500,4 846 850,Emblème Caporal d'onyx,Onyx
+236,Fichier:HINF Onyx Corporal 2.png,Caporal 2 (Corporal 2),70 000,4 904 350,N/A,Onyx
+237,Fichier:HINF Onyx Corporal 3.png,Caporal 3 (Corporal 3),90 000,4 974 350,N/A,Onyx
+238,Fichier:HINF Onyx Sergeant 1.png,Sergent 1 (Sergeant 1),62 500,5 064 350,Emblème Sergent d'onyx,Onyx
+239,Fichier:HINF Onyx Sergeant 2.png,Sergent 2 (Sergeant 2),77 500,5 126 850,N/A,Onyx
+240,Fichier:HINF Onyx Sergeant 2.png,Sergent 3 (Sergeant 3),100 000,5 204 350,N/A,Onyx
+241,Fichier:HINF Onyx Staff Sergeant 1.png,Sergent-chef 1 (Staff Sergeant 1),70 000,5 304 350,Emblème Sergent-chef d'onyx,Onyx
+242,Fichier:HINF Onyx Staff Sergeant 2.png,Sergent-chef 2 (Staff Sergeant 2),82 500,5 374 350,N/A,Onyx
+243,Fichier:HINF Onyx Staff Sergeant 3.png,Sergent-chef 3 (Staff Sergeant 3),100 000,5 456 850,N/A,Onyx
+244,Fichier:HINF Onyx Gunnery Sergeant 1.png,Sergent d'artillerie 1 (Gunnery Sergeant 1),75 000,5 556 850,Emblème Sergent d'artillerie d'onyx,Onyx
+245,Fichier:HINF Onyx Gunnery Sergeant 2.png,Sergent d'artillerie 2 (Gunnery Sergeant 2),90 000,5 631 850,N/A,Onyx
+246,Fichier:HINF Onyx Gunnery Sergeant 3.png,Sergent d'artillerie 3 (Gunnery Sergeant 3),125 000,5 721 850,N/A,Onyx
+247,Fichier:HINF Onyx Master Sergeant 1.png,Adjudant 1 (Master Sergeant 1),82 500,5 846 850,Emblème Adjudant d'onyx,Onyx
+248,Fichier:HINF Onyx Master Sergeant 2.png,Adjudant 2 (Master Sergeant 2),100 000,5 929 350,N/A,Onyx
+249,Fichier:HINF Onyx Master Sergeant 3.png,Adjudant 3 (Master Sergeant 3),125 000,6 029 350,N/A,Onyx
+250,Fichier:HINF Onyx Lieutenant 1.png,Lieutenant 1 (Lieutenant 1),90 000,6 154 350,Emblème Lieutenant d'onyx,Onyx
+251,Fichier:HINF Onyx Lieutenant 2.png,Lieutenant 2 (Lieutenant 2),100 000,6 244 350,N/A,Onyx
+252,Fichier:HINF Onyx Lieutenant 3.png,Lieutenant 3 (Lieutenant 3),150 000,6 344 350,N/A,Onyx
+253,Fichier:HINF Onyx Captain 1.png,Capitaine 1 (Captain 1),100 000,6 494 350,Emblème Capitaine d'onyx,Onyx
+254,Fichier:HINF Onyx Captain 2.png,Capitaine 2 (Captain 2),125 000,6 594 350,N/A,Onyx
+255,Fichier:HINF Onyx Captain 3.png,Capitaine 3 (Captain 3),150 000,6 719 350,N/A,Onyx
+256,Fichier:HINF Onyx Major 1.png,Lieutenant-major 1 (Major 1),100 000,6 869 350,Emblème Lieutenant-major d'onyx,Onyx
+257,Fichier:HINF Onyx Major 2.png,Lieutenant-major 2 (Major 2),125 000,6 969 350,N/A,Onyx
+258,Fichier:HINF Onyx Major 3.png,Lieutenant-major 3 (Major 3),175 000,7 094 350,N/A,Onyx
+259,Fichier:HINF Onyx Lieutenant Colonel 1.png,Lieutenant-colonel 1 (Lieutenant Colonel 1),125 000,7 269 350,Emblème Lieutenant-colonel d'onyx,Onyx
+260,Fichier:HINF Onyx Lieutenant Colonel 2.png,Lieutenant-colonel 2 (Lieutenant Colonel 2),150 000,7 394 350,N/A,Onyx
+261,Fichier:HINF Onyx Lieutenant Colonel 3.png,Lieutenant-colonel 3 (Lieutenant Colonel 3),175 000,7 544 350,N/A,Onyx
+262,Fichier:HINF Onyx Colonel 1.png,Colonel 1 (Colonel 1),125 000,7 719 350,Emblème Colonel d'onyx,Onyx
+263,Fichier:HINF Onyx Colonel 2.png,Colonel 2 (Colonel 2),150 000,7 844 350,N/A,Onyx
+264,Fichier:HINF Onyx Colonel 3.png,Colonel 3 (Colonel 3),200 000,7 994 350,N/A,Onyx
+265,Fichier:HINF Onyx Brigadier General 1.png,Général de brigade 1 (Brigadier General 1),150 000,8 194 350,Emblème Général de brigade d'onyx,Onyx
+266,Fichier:HINF Onyx Brigadier General 2.png,Général de brigade 2 (Brigadier General 2),175 000,8 344 350,N/A,Onyx
+267,Fichier:HINF Onyx Brigadier General 3.png,Général de brigade 3 (Brigadier General 3),225 000,8 519 350,N/A,Onyx
+268,Fichier:HINF Onyx General 1.png,Général 1 (General 1),150 000,8 744 350,Emblème Général d'onyx,Onyx
+269,Fichier:HINF Onyx General 2.png,Général 2 (General 2),175 000,8 894 350,N/A,Onyx
+270,Fichier:HINF Onyx General 3.png,Général 3 (General 3),250 000,9 069 350,N/A,Onyx
+271,Fichier:HINF Hero.png,Héros (Hero),N/A,9 319 350,"Emblème Héros, Textures d'armures Campaign Season et Midway Emerald, Kits Infinite Mark VI",Onyx

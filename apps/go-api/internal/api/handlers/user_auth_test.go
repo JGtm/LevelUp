@@ -28,7 +28,7 @@ func newUserAuthRouter(t *testing.T, authMode string) (*chi.Mux, *userstore.Stor
 	t.Helper()
 	dir := t.TempDir()
 	users := userstore.NewStore(filepath.Join(dir, "users.json"))
-	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), users)
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
 
 	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open").WithAuthMode(authMode)
@@ -44,7 +44,7 @@ func newLockedUserAuthRouter(t *testing.T, authMode string) (*chi.Mux, *userstor
 	t.Helper()
 	dir := t.TempDir()
 	users := userstore.NewStore(filepath.Join(dir, "users.json"))
-	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), users)
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
 
 	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open").
@@ -137,7 +137,7 @@ func TestUserAuth_XboxMode_LoginWithPasswordAllowed(t *testing.T) {
 func TestUserAuth_SetPassword_OptIn(t *testing.T) {
 	dir := t.TempDir()
 	users := userstore.NewStore(filepath.Join(dir, "users.json"))
-	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), users)
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
 	u, _ := users.CreateFromXbox("Spartan", "xuid-1") // compte SSO sans mot de passe
 
@@ -165,7 +165,7 @@ func TestUserAuth_SetPassword_OptIn(t *testing.T) {
 func TestUserAuth_SetPassword_TooLong(t *testing.T) {
 	dir := t.TempDir()
 	users := userstore.NewStore(filepath.Join(dir, "users.json"))
-	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), users)
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
 	u, _ := users.CreateFromXbox("Spartan", "xuid-1")
 	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open")
@@ -192,7 +192,7 @@ func TestUserAuth_SetPassword_TooLong(t *testing.T) {
 func TestUserAuth_SetPassword_NoSession(t *testing.T) {
 	dir := t.TempDir()
 	users := userstore.NewStore(filepath.Join(dir, "users.json"))
-	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"), users)
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
 	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open")
 	r := chi.NewRouter()

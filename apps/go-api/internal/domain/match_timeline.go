@@ -7,7 +7,7 @@
 // film. CorrectEventTime() les ramène au début du gameplay (T0 = 0 dans le
 // référentiel gameplay).
 //
-// Cf. .ai/PLAN_MATCH_TIMELINE_T0.md §4 et docs/adr/0024-match-timeline-t0.md.
+// Cf. .ai/archive/V7/PLAN_MATCH_TIMELINE_T0.md §4 et docs/adr/0024-match-timeline-t0.md.
 package domain
 
 import "time"

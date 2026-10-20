@@ -1,0 +1,29 @@
+film	000d5950
+records_105	832
+longs	519	courts	313	part_courts	0.3762
+
+# index d'attaquant lu au MEME offset — courts contre longs
+index	0	courts	185	longs	49
+index	1	courts	0	longs	71
+index	2	courts	3	longs	81
+index	3	courts	0	longs	58
+index	4	courts	3	longs	82
+index	5	courts	0	longs	27
+index	6	courts	120	longs	59
+index	7	courts	0	longs	92
+index	9	courts	2	longs	0
+index_distincts_courts	5	index_distincts_longs	8
+
+# taille du payload des COURTS (bits) — top 8
+bits	1784	n	8
+bits	1680	n	6
+bits	1536	n	6
+bits	1608	n	6
+bits	1720	n	5
+bits	1656	n	5
+bits	1488	n	5
+bits	2040	n	4
+
+# ecart court -> long precedent du MEME index (ms)
+n	296	orphelins	17	p10	1301	p25	7757	mediane	32495	p75	75015	p90	147531
+part_sous_50ms	0.0135

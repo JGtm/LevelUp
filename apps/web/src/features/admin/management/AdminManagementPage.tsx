@@ -7,7 +7,9 @@
  */
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useAdminT } from '../useAdminText'
+import { IdentitiesSection } from '../sections/IdentitiesSection'
 import { UsersSection } from '../sections/UsersSection'
+import { InvitesSection } from '../sections/InvitesSection'
 import { AdminTitlesPage } from '../titles/AdminTitlesPage'
 
 export function AdminManagementPage() {
@@ -15,11 +17,28 @@ export function AdminManagementPage() {
   const tA = useAdminT()
   return (
     <div className="space-y-10">
+      {/* Identités AVANT les comptes : c'est la vue d'ensemble (les quatre
+          registres réunis par xuid, ADR 0035), dont les comptes ne sont qu'un
+          sous-ensemble — et c'est là que se voit ce qui manque. */}
+      <section className="space-y-4">
+        <h2 className="border-b pb-2 text-base font-semibold text-foreground">
+          {tA('admin.identities.section')}
+        </h2>
+        <IdentitiesSection />
+      </section>
+
       <section className="space-y-4">
         <h2 className="border-b pb-2 text-base font-semibold text-foreground">
           {tA('admin.management.section_users')}
         </h2>
         <UsersSection currentUsername={currentUsername} />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="border-b pb-2 text-base font-semibold text-foreground">
+          {tA('admin.management.section_invites')}
+        </h2>
+        <InvitesSection />
       </section>
 
       <section className="space-y-4">

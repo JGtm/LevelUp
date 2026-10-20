@@ -20,6 +20,8 @@ func (h *SettingsHandler) handleGetBackupStatus(ctx context.Context, _ *struct{}
 // handlePostBackupRun déclenche un cycle de sauvegarde immédiat et attend son résultat.
 // POST /settings/backup/run
 // Synchrone avec timeout de 10 minutes — adapté à un usage admin occasionnel.
+//
+// Refusée en démo par la garde générale (middleware/demo_read_only.go).
 func (h *SettingsHandler) handlePostBackupRun(ctx context.Context, _ *struct{}) (*settingsJSONOutput, error) {
 	if h.backupSched == nil {
 		return nil, humacore.NewError(http.StatusServiceUnavailable, "backup_scheduler_unavailable", "backup scheduler non initialisé")
@@ -29,7 +31,7 @@ func (h *SettingsHandler) handlePostBackupRun(ctx context.Context, _ *struct{}) 
 
 	result, err := h.backupSched.RunOnce(runCtx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "backup_run_failed", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "backup_run_failed", err)
 	}
 	return &settingsJSONOutput{Body: result}, nil
 }

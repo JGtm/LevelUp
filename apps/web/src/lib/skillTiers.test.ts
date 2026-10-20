@@ -139,6 +139,13 @@ describe('localizeTierLabel', () => {
     expect(localizeTierLabel(undefined, 'fr')).toBeUndefined()
     expect(localizeTierLabel('', 'en')).toBe('')
   })
+  // Clé canonique 'unranked' servie par CompareService.csrUnrankedLabel (Go, lot
+  // M5 L5, 2026-09-07) : le Go ne sert plus le mot FR "Non classé" en dur, le web
+  // localise cette clé au même titre qu'un nom de palier.
+  it('clé canonique « unranked » (CSR récupéré mais non classé)', () => {
+    expect(localizeTierLabel('unranked', 'fr')).toBe('Non classé')
+    expect(localizeTierLabel('unranked', 'en')).toBe('Unranked')
+  })
 })
 
 describe('skillTierSortValue (tri colonne Rang)', () => {

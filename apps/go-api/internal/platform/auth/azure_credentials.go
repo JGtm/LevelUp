@@ -3,7 +3,7 @@
 //
 // Seam introduit pour centraliser des lectures d'environnement auparavant
 // DUPLIQUÉES dans auth_code.go (Authorization Code Flow SSO) et oauth_refresh.go
-// (refresh token). Cf. .ai/PLAN_AUTH_HARDENING_OPTIONAL.md.
+// (refresh token). Cf. .ai/archive/V7/PLAN_AUTH_HARDENING_OPTIONAL.md.
 //
 // Phase 3 (uniformisation) : SSO + refresh + token-capture sont consolidés sur
 // l'app canonique e1cb35ab (« LevelUp Halo ») via LEVELUP_OAUTH_CLIENT_ID. Son

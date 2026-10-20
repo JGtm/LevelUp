@@ -1,0 +1,19 @@
+ordre	etat_arbre	commande	resultat	duree_mesuree	preuve
+1	fe18bf67c (HEAD detachee)	git merge --no-commit --no-ff origin/feat/suite-audit-decodeur-j12 (bc0e2511a)	1 conflit : grammar/testdata/grammar_rev.golden (ligne .3 : campagne 3cbd64ac... contre J12 558380db...) ; auto-fusion de cmd_fermeture/main.go et gb1_research_test.go sans conflit	-	sortie git
+2	fusion brute	git checkout --theirs grammar_rev.golden puis LEVELUP_UPDATE_GRAMMAR_REV=1 go test -count=1 ./internal/games/halo_infinite/film/internal/grammar/ -run TestGrammarRevSuitLaGrammaire -update-grammar-rev	FAIL voulu (la porte ne rend jamais ok) : 1 reference reecrite, revision grammar-2026-09-27.3, empreinte 14b3a79d506b27abd3b002dd3577981f01f18f3fc420e7e8aa21719a36dfba44	0,07 s	rev_test.go:162
+3	fusion + golden regenere	go test -count=1 ./internal/games/halo_infinite/film/internal/grammar/ -run 'TestGrammarRev|TestChronique'	ok	0,106 s	-
+4	fusion + golden regenere	gofmt -l ./internal/games/halo_infinite/film/ ./internal/himodule/	vide	-	-
+5	fusion + golden regenere	go vet ./internal/games/halo_infinite/film/...	exit 0, aucune sortie	-	-
+6	fusion + golden regenere (SANS patch)	go vet -tags=research ./internal/games/halo_infinite/film/... ./internal/himodule/	exit 1 : 4 erreurs de type, paquet grammar.test (cannot use &wr (value of type *func() profile.Vec3Range) as *profile.Vec3Range)	-	r_fusion_violations.tsv
+7	fusion brute (SANS patch)	go test -count=1 ./internal/archlint/	FAIL : TestNoExpiredTODO seul (handlers/json_huma_coverage_test.go:34, TODO(expiry:2026-10-01) echu le 2026-10-01) ; fichier identique dans fe18bf67c, bc0e2511a et origin/feat/v75 : echeance calendaire, ni campagne ni J12	69,96 s	-
+8	fusion + patch r_fusion_ratchets_j12.patch	go vet -tags=research ./internal/games/halo_infinite/film/... ./internal/himodule/	exit 0, aucune sortie	-	-
+9	fusion + patch	go test -count=1 -timeout 40m ./internal/games/halo_infinite/film/...	exit 0 : 17 paquets ok, 3 sans test, 0 FAIL (grammar 28,8 s, replay 25,8 s)	30 s mur	-
+10	fusion + patch	go test -count=1 ./internal/archlint/	FAIL : TestNoExpiredTODO seul (meme cause que 7)	28,9 s	-
+11	fusion + patch	go test -count=1 -skip TestNoExpiredTODO ./internal/archlint/	ok	29,7 s	-
+12	fusion + patch	go test -count=1 -v -run <11 ratchets J12> ./internal/archlint/	11 PASS (research_tag x3, doc_chemins_ai x2, slog contexte, no slog in layers, os.Is, exported vars, tri total x2)	3,0 s	-
+13	fusion + patch	go vet -tags=research ./... (le pas CI elargi par J12.7)	exit 0, aucune sortie	50 s mur	-
+14	fusion + patch	go test -race -count=1 -run TestDeuxFilmsEnParallele ./internal/games/halo_infinite/film/internal/grammar/ (job film-race de J12.6)	ok	4,2 s	-
+15	fusion + patch	golangci-lint run --new-from-merge-base=origin/main ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/research/... (v2.12.2)	0 issues	40 s mur	-
+16	fusion + patch	go vet -tags=research,campagne_overlay -overlay=<r_fusion_overlay_postj12/overlay.json> ./internal/games/halo_infinite/film/internal/grammar/	exit 0, aucune sortie	-	-
+17	fusion + patch (temoin)	go vet -tags=research,campagne_overlay -overlay=<ancienne surcouche mesures_bis2_overlay, chemins de ce worktree>	exit 0 : l ancienne surcouche compile aussi, mais elle defait 6 boucles go fix de J12	-	r_fusion_overlay.tsv
+18	fusion + patch	gofmt -l r_fusion_overlay_postj12/*.go	vide	-	-

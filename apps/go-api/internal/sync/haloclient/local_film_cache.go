@@ -16,14 +16,16 @@
 package haloclient
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 // LocalFilmCache lit les manifestes et chunks du cache disque hérité du
@@ -41,11 +43,25 @@ func NewLocalFilmCache(rootDir string) *LocalFilmCache {
 	if rootDir == "" {
 		return nil
 	}
-	manifests := filepath.Join(rootDir, "film_manifests")
+	manifests := filmcache.ManifestsRoot(rootDir)
 	if info, err := os.Stat(manifests); err != nil || !info.IsDir() {
 		return nil
 	}
 	return &LocalFilmCache{rootDir: rootDir}
+}
+
+// RootDir rend la racine de ce cache.
+//
+// Elle est exposée pour qu'un producteur ARCHIVE dans la racine qu'il LIT. Sans cela, un
+// appelant qui reçoit ce cache (résolu par LEVELUP_LEGACY_FILM_CACHE_DIR) mais archive dans
+// la racine par défaut du dépôt écrit dans un répertoire que sa propre lecture ne consulte
+// jamais : le repli disque ne prend plus et chaque passe repaie le réseau intégralement.
+// Rend "" sur un cache nil — le comportement d'une machine sans cache.
+func (c *LocalFilmCache) RootDir() string {
+	if c == nil {
+		return ""
+	}
+	return c.rootDir
 }
 
 // CachedManifest est un manifest film tel que stocké par Python.
@@ -82,7 +98,7 @@ func (c *LocalFilmCache) LoadManifest(matchID string) (*CachedManifest, error) {
 	if c == nil {
 		return nil, nil
 	}
-	path := filepath.Join(c.rootDir, "film_manifests", shortID(matchID)+".json")
+	path := filmcache.ManifestPath(c.rootDir, shortID(matchID))
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -99,17 +115,34 @@ func (c *LocalFilmCache) LoadManifest(matchID string) (*CachedManifest, error) {
 
 // LoadChunk renvoie les bytes d'un chunk caché à l'index donné, ou (nil, nil)
 // si absent. L'index correspond au champ Index du manifest (pas le ChunkType).
+//
+// LA LECTURE PASSE PAR `filmcache.LireChunk` (J2.3, 2026-09-26) : le nom du fichier et la
+// validation par la taille du manifeste n'existent qu'une fois. Un chunk dont le fichier n'a
+// pas la taille déclarée rend `*filmcache.ErrChunkTronque` — l'appelant en ligne le traite
+// comme un chunk absent du disque et le retélécharge.
 func (c *LocalFilmCache) LoadChunk(matchID string, index int) ([]byte, error) {
 	if c == nil {
 		return nil, nil
 	}
-	path := filepath.Join(c.rootDir, "film_chunks", shortID(matchID), fmt.Sprintf("chunk_%02d.bin", index))
-	data, err := os.ReadFile(path)
+	data, err := filmcache.LireChunk(c.rootDir, shortID(matchID), index)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("LoadChunk(%s/%d): %w", matchID, index, err)
 	}
 	return data, nil
+}
+
+// chunkDuCache rend les octets d'un chunk du cache disque, ou nil quand il faut le télécharger :
+// absent, ou inutilisable (chunk tronqué — `*filmcache.ErrChunkTronque` —, fichier illisible).
+// L'inutilisable n'est pas avalé : il est journalisé avant le repli réseau.
+func (c *HaloAPIClient) chunkDuCache(ctx context.Context, matchID string, index int) []byte {
+	cached, err := c.localFilmCache.LoadChunk(matchID, index)
+	if err != nil {
+		slog.WarnContext(ctx, "film: chunk du cache inutilisable, retéléchargé",
+			"match_id", matchID, "chunk", index, "err", err)
+		return nil
+	}
+	return cached
 }

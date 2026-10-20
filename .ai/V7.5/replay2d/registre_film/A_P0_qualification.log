@@ -1,0 +1,172 @@
+=== FILM 35b75a31 ===
+=== RUN   TestAssautA0Qualification
+2026/08/27 15:43:29 INFO plafond memoire arme pour ce decodage outil=a0-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a0_qualification_test.go:81: 35b75a31 : 0 site(s) `assault_bomb` au catalogue d'objectifs pour cette carte
+    assaut_a0_qualification_test.go:101: 35b75a31 : pont 155/163 slot(s) nomme(s) = 95.1 % (plancher 50 %)
+    assaut_a0_qualification_test.go:105: 35b75a31 : 1 manche(s) reelle(s) [0]
+    assaut_a0_qualification_test.go:105: 35b75a31 : manche 0 — premier enregistrement a 4075 ms
+    assaut_a0_qualification_test.go:105: 35b75a31 : SCOREMODE slot=6 manche=0 t=304013 ms valeur=1
+    assaut_a0_qualification_test.go:105: 35b75a31 : SCOREMODE slot=6 manche=0 t=541270 ms valeur=2
+    assaut_a0_qualification_test.go:105: 35b75a31 : SCOREMODE slot=6 manche=0 t=787051 ms valeur=3
+    assaut_a0_qualification_test.go:105: 35b75a31 : SCOREMODE slot=6 cumule : 3 emission(s), final=3
+    assaut_a0_qualification_test.go:105: 35b75a31 : SCOREMODE-BRUT slot=6 manche=0 t=304013 ms valeur=1
+    assaut_a0_qualification_test.go:105: 35b75a31 : SCOREMODE-BRUT slot=6 manche=0 t=541270 ms valeur=2
+    assaut_a0_qualification_test.go:105: 35b75a31 : SCOREMODE-BRUT slot=6 manche=0 t=787051 ms valeur=3
+    assaut_a0_qualification_test.go:112: VERDICT 35b75a31 : bornes OK, pont 95.1 % OK, 0 site(s) assault_bomb
+    assaut_a0_qualification_test.go:62: 35b75a31 : pic memoire observe 0.24 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA0Qualification (78.13s)
+PASS
+EXIT_35b75a31=0
+=== FILM ce083875 ===
+=== RUN   TestAssautA0Qualification
+2026/08/27 15:44:47 INFO plafond memoire arme pour ce decodage outil=a0-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a0_qualification_test.go:81: ce083875 : 0 site(s) `assault_bomb` au catalogue d'objectifs pour cette carte
+    assaut_a0_qualification_test.go:101: ce083875 : pont 19/180 slot(s) nomme(s) = 10.6 % (plancher 50 %)
+    assaut_a0_qualification_test.go:105: ce083875 : 1 manche(s) reelle(s) [0]
+    assaut_a0_qualification_test.go:105: ce083875 : manche 0 — premier enregistrement a 54033 ms
+    assaut_a0_qualification_test.go:105: ce083875 : SCOREMODE slot=6 manche=0 t=686401 ms valeur=1
+    assaut_a0_qualification_test.go:105: ce083875 : SCOREMODE slot=8 manche=0 t=512505 ms valeur=1
+    assaut_a0_qualification_test.go:105: ce083875 : SCOREMODE slot=8 manche=0 t=947537 ms valeur=2
+    assaut_a0_qualification_test.go:105: ce083875 : SCOREMODE slot=6 cumule : 1 emission(s), final=1
+    assaut_a0_qualification_test.go:105: ce083875 : SCOREMODE slot=8 cumule : 2 emission(s), final=2
+    assaut_a0_qualification_test.go:105: ce083875 : SCOREMODE-BRUT slot=8 manche=0 t=273547 ms valeur=127
+    assaut_a0_qualification_test.go:105: ce083875 : SCOREMODE-BRUT slot=8 manche=0 t=512505 ms valeur=1
+    assaut_a0_qualification_test.go:105: ce083875 : SCOREMODE-BRUT slot=6 manche=0 t=686401 ms valeur=1
+    assaut_a0_qualification_test.go:105: ce083875 : SCOREMODE-BRUT slot=8 manche=0 t=947537 ms valeur=2
+    assaut_a0_qualification_test.go:108: VERDICT ce083875 : EXCLU — pont 10.6 % sous le plancher de 50 %
+    assaut_a0_qualification_test.go:62: ce083875 : pic memoire observe 0.31 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA0Qualification (79.07s)
+PASS
+EXIT_ce083875=0
+=== FILM 69b16f5d ===
+=== RUN   TestAssautA0Qualification
+2026/08/27 15:46:07 INFO plafond memoire arme pour ce decodage outil=a0-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a0_qualification_test.go:81: 69b16f5d : 0 site(s) `assault_bomb` au catalogue d'objectifs pour cette carte
+    assaut_a0_qualification_test.go:101: 69b16f5d : pont 39/48 slot(s) nomme(s) = 81.2 % (plancher 50 %)
+    assaut_a0_qualification_test.go:105: 69b16f5d : 1 manche(s) reelle(s) [0]
+    assaut_a0_qualification_test.go:105: 69b16f5d : manche 0 — premier enregistrement a 2727 ms
+    assaut_a0_qualification_test.go:105: 69b16f5d : SCOREMODE slot=6 manche=0 t=154305 ms valeur=1
+    assaut_a0_qualification_test.go:105: 69b16f5d : SCOREMODE slot=6 manche=0 t=278617 ms valeur=2
+    assaut_a0_qualification_test.go:105: 69b16f5d : SCOREMODE slot=6 manche=0 t=310215 ms valeur=3
+    assaut_a0_qualification_test.go:105: 69b16f5d : SCOREMODE slot=6 cumule : 3 emission(s), final=3
+    assaut_a0_qualification_test.go:105: 69b16f5d : SCOREMODE-BRUT slot=6 manche=0 t=154305 ms valeur=1
+    assaut_a0_qualification_test.go:105: 69b16f5d : SCOREMODE-BRUT slot=6 manche=0 t=278617 ms valeur=2
+    assaut_a0_qualification_test.go:105: 69b16f5d : SCOREMODE-BRUT slot=6 manche=0 t=310215 ms valeur=3
+    assaut_a0_qualification_test.go:112: VERDICT 69b16f5d : bornes OK, pont 81.2 % OK, 0 site(s) assault_bomb
+    assaut_a0_qualification_test.go:62: 69b16f5d : pic memoire observe 0.08 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA0Qualification (27.95s)
+PASS
+EXIT_69b16f5d=0
+=== FILM 3d58eb37 ===
+=== RUN   TestAssautA0Qualification
+2026/08/27 15:46:34 INFO plafond memoire arme pour ce decodage outil=a0-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a0_qualification_test.go:81: 3d58eb37 : 0 site(s) `assault_bomb` au catalogue d'objectifs pour cette carte
+    assaut_a0_qualification_test.go:101: 3d58eb37 : pont 61/73 slot(s) nomme(s) = 83.6 % (plancher 50 %)
+    assaut_a0_qualification_test.go:105: 3d58eb37 : 1 manche(s) reelle(s) [0]
+    assaut_a0_qualification_test.go:105: 3d58eb37 : manche 0 — premier enregistrement a 3666 ms
+    assaut_a0_qualification_test.go:105: 3d58eb37 : SCOREMODE slot=6 manche=0 t=203065 ms valeur=1
+    assaut_a0_qualification_test.go:105: 3d58eb37 : SCOREMODE slot=6 manche=0 t=342196 ms valeur=2
+    assaut_a0_qualification_test.go:105: 3d58eb37 : SCOREMODE slot=6 manche=0 t=386280 ms valeur=3
+    assaut_a0_qualification_test.go:105: 3d58eb37 : SCOREMODE slot=6 cumule : 3 emission(s), final=3
+    assaut_a0_qualification_test.go:105: 3d58eb37 : SCOREMODE-BRUT slot=6 manche=0 t=203065 ms valeur=1
+    assaut_a0_qualification_test.go:105: 3d58eb37 : SCOREMODE-BRUT slot=6 manche=0 t=342196 ms valeur=2
+    assaut_a0_qualification_test.go:105: 3d58eb37 : SCOREMODE-BRUT slot=6 manche=0 t=386280 ms valeur=3
+    assaut_a0_qualification_test.go:112: VERDICT 3d58eb37 : bornes OK, pont 83.6 % OK, 0 site(s) assault_bomb
+    assaut_a0_qualification_test.go:62: 3d58eb37 : pic memoire observe 0.12 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA0Qualification (37.18s)
+PASS
+EXIT_3d58eb37=0
+=== FILM 34bb3bc8 ===
+=== RUN   TestAssautA0Qualification
+2026/08/27 15:47:12 INFO plafond memoire arme pour ce decodage outil=a0-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a0_qualification_test.go:80: 34bb3bc8 : carte 133c0185-24ed-4bc2-b834-62db5c936257 absente du catalogue d'objectifs (replay: carte absente du catalogue d'objectifs : "133c0185-24ed-4bc2-b834-62db5c936257")
+    assaut_a0_qualification_test.go:81: 34bb3bc8 : 0 site(s) `assault_bomb` au catalogue d'objectifs pour cette carte
+    assaut_a0_qualification_test.go:101: 34bb3bc8 : pont 215/247 slot(s) nomme(s) = 87.0 % (plancher 50 %)
+    assaut_a0_qualification_test.go:105: 34bb3bc8 : 1 manche(s) reelle(s) [0]
+    assaut_a0_qualification_test.go:105: 34bb3bc8 : manche 0 — premier enregistrement a 3411 ms
+    assaut_a0_qualification_test.go:105: 34bb3bc8 : SCOREMODE slot=8 manche=0 t=427120 ms valeur=1
+    assaut_a0_qualification_test.go:105: 34bb3bc8 : SCOREMODE slot=8 cumule : 1 emission(s), final=1
+    assaut_a0_qualification_test.go:105: 34bb3bc8 : SCOREMODE-BRUT slot=8 manche=0 t=427120 ms valeur=1
+    assaut_a0_qualification_test.go:112: VERDICT 34bb3bc8 : bornes OK, pont 87.0 % OK, 0 site(s) assault_bomb
+    assaut_a0_qualification_test.go:62: 34bb3bc8 : pic memoire observe 0.46 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA0Qualification (157.89s)
+PASS
+EXIT_34bb3bc8=0
+=== FILM df8fcbef ===
+=== RUN   TestAssautA0Qualification
+2026/08/27 15:49:50 INFO plafond memoire arme pour ce decodage outil=a0-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a0_qualification_test.go:81: df8fcbef : 0 site(s) `assault_bomb` au catalogue d'objectifs pour cette carte
+    assaut_a0_qualification_test.go:101: df8fcbef : pont 129/150 slot(s) nomme(s) = 86.0 % (plancher 50 %)
+    assaut_a0_qualification_test.go:105: df8fcbef : 1 manche(s) reelle(s) [0]
+    assaut_a0_qualification_test.go:105: df8fcbef : manche 0 — premier enregistrement a 1458 ms
+    assaut_a0_qualification_test.go:105: df8fcbef : SCOREMODE slot=8 manche=0 t=255767 ms valeur=1
+    assaut_a0_qualification_test.go:105: df8fcbef : SCOREMODE slot=8 cumule : 1 emission(s), final=1
+    assaut_a0_qualification_test.go:105: df8fcbef : SCOREMODE-BRUT slot=8 manche=0 t=255767 ms valeur=1
+    assaut_a0_qualification_test.go:105: df8fcbef : SCOREMODE-BRUT slot=6 manche=1 t=309284 ms valeur=1 (manche REFUSEE par RealRounds)
+    assaut_a0_qualification_test.go:105: df8fcbef : SCOREMODE-BRUT slot=8 manche=2 t=485860 ms valeur=1 (manche REFUSEE par RealRounds)
+    assaut_a0_qualification_test.go:105: df8fcbef : SCOREMODE-BRUT slot=8 manche=3 t=778033 ms valeur=1 (manche REFUSEE par RealRounds)
+    assaut_a0_qualification_test.go:112: VERDICT df8fcbef : bornes OK, pont 86.0 % OK, 0 site(s) assault_bomb
+    assaut_a0_qualification_test.go:62: df8fcbef : pic memoire observe 0.21 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA0Qualification (61.96s)
+PASS
+EXIT_df8fcbef=0
+=== FILM c75f33b8 ===
+=== RUN   TestAssautA0Qualification
+2026/08/27 15:50:52 INFO plafond memoire arme pour ce decodage outil=a0-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a0_qualification_test.go:81: c75f33b8 : 0 site(s) `assault_bomb` au catalogue d'objectifs pour cette carte
+    assaut_a0_qualification_test.go:101: c75f33b8 : pont 60/80 slot(s) nomme(s) = 75.0 % (plancher 50 %)
+    assaut_a0_qualification_test.go:105: c75f33b8 : 1 manche(s) reelle(s) [0]
+    assaut_a0_qualification_test.go:105: c75f33b8 : manche 0 — premier enregistrement a 25436 ms
+    assaut_a0_qualification_test.go:105: c75f33b8 : SCOREMODE slot=6 manche=0 t=109549 ms valeur=1
+    assaut_a0_qualification_test.go:105: c75f33b8 : SCOREMODE slot=6 cumule : 1 emission(s), final=1
+    assaut_a0_qualification_test.go:105: c75f33b8 : SCOREMODE-BRUT slot=6 manche=0 t=109549 ms valeur=1
+    assaut_a0_qualification_test.go:105: c75f33b8 : SCOREMODE-BRUT slot=6 manche=1 t=395724 ms valeur=1 (manche REFUSEE par RealRounds)
+    assaut_a0_qualification_test.go:105: c75f33b8 : SCOREMODE-BRUT slot=6 manche=2 t=450833 ms valeur=1 (manche REFUSEE par RealRounds)
+    assaut_a0_qualification_test.go:112: VERDICT c75f33b8 : bornes OK, pont 75.0 % OK, 0 site(s) assault_bomb
+    assaut_a0_qualification_test.go:62: c75f33b8 : pic memoire observe 0.12 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA0Qualification (50.32s)
+PASS
+EXIT_c75f33b8=0
+=== FILM 9f57c612 ===
+=== RUN   TestAssautA0Qualification
+2026/08/27 15:51:42 INFO plafond memoire arme pour ce decodage outil=a0-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a0_qualification_test.go:81: 9f57c612 : 0 site(s) `assault_bomb` au catalogue d'objectifs pour cette carte
+    assaut_a0_qualification_test.go:101: 9f57c612 : pont 75/92 slot(s) nomme(s) = 81.5 % (plancher 50 %)
+    assaut_a0_qualification_test.go:105: 9f57c612 : 1 manche(s) reelle(s) [0]
+    assaut_a0_qualification_test.go:105: 9f57c612 : manche 0 — premier enregistrement a 3198 ms
+    assaut_a0_qualification_test.go:105: 9f57c612 : SCOREMODE slot=8 manche=0 t=83322 ms valeur=1
+    assaut_a0_qualification_test.go:105: 9f57c612 : SCOREMODE slot=8 cumule : 1 emission(s), final=1
+    assaut_a0_qualification_test.go:105: 9f57c612 : SCOREMODE-BRUT slot=8 manche=0 t=83322 ms valeur=1
+    assaut_a0_qualification_test.go:105: 9f57c612 : SCOREMODE-BRUT slot=6 manche=1 t=298489 ms valeur=1 (manche REFUSEE par RealRounds)
+    assaut_a0_qualification_test.go:105: 9f57c612 : SCOREMODE-BRUT slot=8 manche=2 t=353160 ms valeur=1 (manche REFUSEE par RealRounds)
+    assaut_a0_qualification_test.go:105: 9f57c612 : SCOREMODE-BRUT slot=6 manche=3 t=469057 ms valeur=1 (manche REFUSEE par RealRounds)
+    assaut_a0_qualification_test.go:112: VERDICT 9f57c612 : bornes OK, pont 81.5 % OK, 0 site(s) assault_bomb
+    assaut_a0_qualification_test.go:62: 9f57c612 : pic memoire observe 0.12 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA0Qualification (52.80s)
+PASS
+EXIT_9f57c612=0
+=== FILM 1c01e34f ===
+=== RUN   TestAssautA0Qualification
+2026/08/27 15:52:35 INFO plafond memoire arme pour ce decodage outil=a0-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a0_qualification_test.go:80: 1c01e34f : carte be848f91-3d87-4b80-8eb9-df3b52cb8d10 absente du catalogue d'objectifs (replay: carte absente du catalogue d'objectifs : "be848f91-3d87-4b80-8eb9-df3b52cb8d10")
+    assaut_a0_qualification_test.go:81: 1c01e34f : 0 site(s) `assault_bomb` au catalogue d'objectifs pour cette carte
+    assaut_a0_qualification_test.go:101: 1c01e34f : pont 100/107 slot(s) nomme(s) = 93.5 % (plancher 50 %)
+    assaut_a0_qualification_test.go:105: 1c01e34f : 1 manche(s) reelle(s) [0]
+    assaut_a0_qualification_test.go:105: 1c01e34f : manche 0 — premier enregistrement a 2586 ms
+    assaut_a0_qualification_test.go:105: 1c01e34f : SCOREMODE slot=6 manche=0 t=57035 ms valeur=0
+    assaut_a0_qualification_test.go:105: 1c01e34f : SCOREMODE slot=6 manche=0 t=150546 ms valeur=1
+    assaut_a0_qualification_test.go:105: 1c01e34f : SCOREMODE slot=6 manche=0 t=273787 ms valeur=2
+    assaut_a0_qualification_test.go:105: 1c01e34f : SCOREMODE slot=6 manche=0 t=400853 ms valeur=3
+    assaut_a0_qualification_test.go:105: 1c01e34f : SCOREMODE slot=8 manche=0 t=335637 ms valeur=1
+    assaut_a0_qualification_test.go:105: 1c01e34f : SCOREMODE slot=6 cumule : 4 emission(s), final=3
+    assaut_a0_qualification_test.go:105: 1c01e34f : SCOREMODE slot=8 cumule : 1 emission(s), final=1
+    assaut_a0_qualification_test.go:105: 1c01e34f : SCOREMODE-BRUT slot=6 manche=0 t=57035 ms valeur=0
+    assaut_a0_qualification_test.go:105: 1c01e34f : SCOREMODE-BRUT slot=6 manche=0 t=150546 ms valeur=1
+    assaut_a0_qualification_test.go:105: 1c01e34f : SCOREMODE-BRUT slot=6 manche=0 t=273787 ms valeur=2
+    assaut_a0_qualification_test.go:105: 1c01e34f : SCOREMODE-BRUT slot=8 manche=0 t=335637 ms valeur=1
+    assaut_a0_qualification_test.go:105: 1c01e34f : SCOREMODE-BRUT slot=6 manche=0 t=400853 ms valeur=3
+    assaut_a0_qualification_test.go:112: VERDICT 1c01e34f : bornes OK, pont 93.5 % OK, 0 site(s) assault_bomb
+    assaut_a0_qualification_test.go:62: 1c01e34f : pic memoire observe 0.13 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA0Qualification (36.46s)
+PASS
+EXIT_1c01e34f=0

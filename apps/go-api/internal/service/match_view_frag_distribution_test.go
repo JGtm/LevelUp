@@ -207,45 +207,44 @@ func TestBuildViewerFragDistribution_GrenadeSubLevel(t *testing.T) {
 	}
 }
 
-// TestBuildCombatTabFull_ExcludesNonCombatFromWeaponBreakdown : le breakdown par-ARME
-// (combat_tab.weapon_kills) ne contient que des OUTILS DE DESTRUCTION IDENTIFIABLES.
-// Sont écartés les seuls buckets sans engin à nommer — non attribué, environnement,
-// autre — dont les kills restent comptés dans les classes du sunburst.
+// TestBuildViewerFragDistribution_ChuteMesureeAuFilm_ServieEnEnvironnement : une mort
+// dont la SOURCE DE DEGAT a ete lue dans le film (chute, tag `DEGAT_GLOBAL` -> registre
+// `hinf_environment`) doit sortir dans la classe « environnement » du sunburst par match,
+// pas dans le residu « non attribue ».
 //
-// V73-3.2 : véhicule et tourelle ne sont PLUS écartés. Le registre les nomme par engin
-// (« Warthog », « Tourelle Gauss »), ils ont donc leur place au breakdown comme au
-// sunburst. Ce test figeait auparavant l'exclusion inverse (want 1).
-func TestBuildCombatTabFull_ExcludesNonCombatFromWeaponBreakdown(t *testing.T) {
-	const myXUID = "me"
+// Temoin reel (lot 4.5 du plan maitre, 2026-09-10) : match `1eedd3c8`, Nemesis, Theater
+// 02:04, EIcRriizz tue par JGtm par chute (`match_kill_events_latest` : source_tag
+// 0x00403594, lecture « source-victime »). La vue match servait sidearm 9 / melee 4 /
+// non attribue 1 : la ligne « environnement » existait en base, elle etait perdue ICI —
+// `buildViewerFragDistribution` ne recopiait pas la provenance film, et `fragdist` ne sert
+// equipement/environnement QUE mesures au film (verrou Halo 5, `fragdist_halo5_golden_test`).
+//
+// La ligne SANS provenance (`FromDamageSource=false`, cas Halo 5 `h5_environmental`)
+// reste ecartee : c'est le second cas, inchange.
+func TestBuildViewerFragDistribution_ChuteMesureeAuFilm_ServieEnEnvironnement(t *testing.T) {
+	me := &domain.MatchScoreboardRow{
+		XUID: "me", IsMe: true, Kills: ptrInt(14), MeleeKills: ptrInt(4),
+	}
 	bulk := []domain.BulkWeaponKillRaw{
-		{XUID: "me", WeaponID: 1, WeaponLabel: "BR75", Kills: 5, Class: "shoulder"},
-		{XUID: "me", WeaponID: 2, WeaponLabel: "Spartan", Kills: 9, Class: "unattributed"},
-		{XUID: "me", WeaponID: 3, WeaponLabel: "Warthog", Kills: 2, Class: "vehicle"},
-		{XUID: "me", WeaponID: 4, WeaponLabel: "Turret", Kills: 1, Class: "turret"},
-		{XUID: "me", WeaponID: 5, WeaponLabel: "Explosifs", Kills: 4, Class: "environmental"},
-		{XUID: "me", WeaponID: 6, WeaponLabel: "Autre", Kills: 3, Class: "other"},
-		{XUID: "other", WeaponID: 1, WeaponLabel: "BR75", Kills: 99, Class: "shoulder"}, // pas is_me
+		{XUID: "me", WeaponID: 1, Kills: 9, Class: "sidearm", Role: "sidearm", WeaponKey: "hinf_sidekick"},
+		{XUID: "me", WeaponID: 0, Kills: 1, Class: "environmental", Role: "environmental",
+			WeaponKey: "hinf_environment", FromDamageSource: true},
 	}
-	tab := buildCombatTabFull("m1", bulk, nil, nil, nil, nil, myXUID, 60000)
+	got := fragClassKills(buildViewerFragDistribution(me, bulk, false))
+	if got[domain.FragClassEnvironmental] != 1 {
+		t.Errorf("environnement = %d, want 1 (chute mesuree au film) ; classes = %+v",
+			got[domain.FragClassEnvironmental], got)
+	}
+	if got[domain.FragClassUnattributed] != 0 {
+		t.Errorf("non attribue = %d, want 0 (la chute est classee) ; classes = %+v",
+			got[domain.FragClassUnattributed], got)
+	}
 
-	got := make(map[string]string, len(tab.WeaponKills)) // label → classe
-	for _, w := range tab.WeaponKills {
-		got[w.WeaponLabel] = w.Class
-	}
-	want := map[string]string{"BR75": "shoulder", "Warthog": "vehicle", "Turret": "turret"}
-	if len(got) != len(want) {
-		t.Fatalf("WeaponKills = %d entrées, want %d (outils identifiables) : %+v",
-			len(got), len(want), tab.WeaponKills)
-	}
-	for label, class := range want {
-		if got[label] != class {
-			t.Errorf("WeaponKills[%q] classe = %q, want %q", label, got[label], class)
-		}
-	}
-	// Les buckets sans engin identifiable restent écartés (leur volume passe par le résidu).
-	for _, label := range []string{"Spartan", "Explosifs", "Autre"} {
-		if _, present := got[label]; present {
-			t.Errorf("bucket non identifiable %q présent au breakdown par-arme", label)
-		}
+	// Meme ligne SANS provenance film : ecartee, le kill retombe au residu.
+	bulk[1].FromDamageSource = false
+	got = fragClassKills(buildViewerFragDistribution(me, bulk, false))
+	if got[domain.FragClassEnvironmental] != 0 || got[domain.FragClassUnattributed] != 1 {
+		t.Errorf("sans provenance : environnement = %d / non attribue = %d, want 0 / 1",
+			got[domain.FragClassEnvironmental], got[domain.FragClassUnattributed])
 	}
 }

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : hors perimetre du lot D (modele web du rejeu) : l'exemption DATE la dette, elle ne l'absout pas — le decoupage revient au lot qui touchera ce fichier. */
 /**
  * TimeseriesFormCharts — wrappers locaux pour les charts du tab Forme.
  *
@@ -17,9 +18,11 @@ import {
   getGridBase,
   getLegendBase,
   getTooltipBase,
+  legendEntries,
   CHART_BG,
-  escapeHtml,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber, tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import { perfScale } from '@/lib/accessibility/scales'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
@@ -51,6 +54,22 @@ function rollingMean(values: (number | null | undefined)[], window: number): (nu
   }
   return out
 }
+
+/**
+ * Seuil de lecture du FDA : autant de frags + assistances/3 que de morts (ADR 0006).
+ * En dessous le match coûte plus qu'il ne rapporte — c'est ce seuil qui coupe les barres
+ * du graphe FDA en deux séries (verte au-dessus, rouge en dessous) et qui porte la ligne
+ * de référence.
+ */
+const FDA_THRESHOLD = 1
+
+/**
+ * Infobulles d'axe du dossier : UNE ligne par série qui a une valeur au point survolé (le FDA d'un
+ * match est au-dessus OU en dessous du seuil, l'autre série ne porte pas de « — » qui se lirait
+ * comme une donnée manquante), nombres à la langue de l'application (`tipNumber`).
+ */
+const AXIS_TIP = axisTooltipFormatter({ value: (r) => tipNumberAuto(r.value) })
+const FDA_TIP = axisTooltipFormatter({ value: (r) => tipNumber(r.value, 2) })
 
 interface CommonRenderProps {
   height: number
@@ -102,24 +121,50 @@ export function TimeseriesKdaValueTrend({
     const colPositive = resolveToken('outcome-win')
     const smoothColor = resolveToken('chart-series-1')
     const categories = buildMatchCategories(rows)
-    const bars = rows.map((r) => {
-      if (r.kda == null || !Number.isFinite(r.kda)) return { value: null }
-      const v = Math.round(r.kda * 100) / 100
-      return {
-        value: v,
-        itemStyle: { color: v < 1 ? colNegative : colPositive, opacity: 0.85 },
-      }
-    })
-    const rawValues = rows.map((r) =>
-      r.kda != null && Number.isFinite(r.kda) ? r.kda : null,
+    const values = rows.map((r) =>
+      r.kda == null || !Number.isFinite(r.kda) ? null : Math.round(r.kda * 100) / 100,
     )
-    const smooth = rollingMean(rawValues, 5)
+    // DEUX SÉRIES PLUTÔT QU'UNE SÉRIE BICOLORE (décision utilisateur 2026-09-09) : une
+    // pastille de légende unique ne peut pas annoncer deux couleurs, et une série colorée
+    // au POINT ne donne aucune couleur de série à ECharts — sa légende retombait alors sur
+    // la palette par défaut du moteur, absente du graphe. Une série par côté du seuil :
+    // chaque pastille dit sa couleur, et chaque côté se masque d'un clic. `barGap: -100%`
+    // superpose les deux séries sur la même colonne — elles sont exclusives par
+    // construction (une valeur est d'un seul côté du seuil), donc jamais côte à côte.
+    const above = values.map((v) => (v == null || v < FDA_THRESHOLD ? null : v))
+    const below = values.map((v) => (v == null || v >= FDA_THRESHOLD ? null : v))
+    const smooth = rollingMean(
+      rows.map((r) => (r.kda != null && Number.isFinite(r.kda) ? r.kda : null)),
+      5,
+    )
     const smoothValues = smooth.map((v) => (v == null ? null : Math.round(v * 100) / 100))
+    const aboveLabel = `${fdaLabel} ≥ ${FDA_THRESHOLD}`
+    const belowLabel = `${fdaLabel} < ${FDA_THRESHOLD}`
+    const bar = (name: string, data: (number | null)[], color: string) => ({
+      type: 'bar' as const,
+      name,
+      data,
+      barMaxWidth: 14,
+      barGap: '-100%',
+      itemStyle: { color, opacity: 0.85 },
+    })
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase(),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
-      legend: { ...getLegendBase(tc), bottom: 0 },
+      tooltip: {
+        ...getTooltipBase(tc),
+        trigger: 'axis',
+        formatter: FDA_TIP,
+      },
+      legend: {
+        ...getLegendBase(tc),
+        bottom: 0,
+        data: legendEntries([
+          { name: aboveLabel, color: colPositive },
+          { name: belowLabel, color: colNegative },
+          { name: smoothingLabel, color: smoothColor },
+        ]),
+      },
       xAxis: {
         ...getAxisBase(tc),
         type: 'category',
@@ -129,18 +174,16 @@ export function TimeseriesKdaValueTrend({
       yAxis: { ...getAxisBase(tc), type: 'value' },
       series: [
         {
-          type: 'bar',
-          name: fdaLabel,
-          data: bars,
-          barMaxWidth: 14,
+          ...bar(aboveLabel, above, colPositive),
           markLine: {
             silent: true,
             symbol: 'none',
             // Seuil FDA = 1 : autant de frags+assists que de morts. Barre rouge gras.
             lineStyle: { color: colNegative, width: 2, type: 'solid' },
-            data: [{ yAxis: 1 }],
+            data: [{ yAxis: FDA_THRESHOLD }],
           },
         },
+        bar(belowLabel, below, colNegative),
         {
           type: 'line',
           name: smoothingLabel,
@@ -204,7 +247,7 @@ export function TimeseriesPerformanceTrend({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase(),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),
@@ -270,7 +313,7 @@ export function TimeseriesAssistsTrend({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase(),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),
@@ -332,9 +375,9 @@ export function TimeseriesPerMinuteTrend({
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
-    const colKills = resolveToken('chart-series-1')
-    const colDeaths = resolveToken('outcome-loss')
-    const colAssists = resolveToken('chart-series-3')
+    const colKills = resolveToken('stat-kills')
+    const colDeaths = resolveToken('stat-deaths')
+    const colAssists = resolveToken('stat-assists')
 
     // Étiquettes X au format `#N\nMap` (style SquadPerformanceCharts).
     const categories = buildMatchCategories(rows)
@@ -344,10 +387,6 @@ export function TimeseriesPerMinuteTrend({
       return v / (sec / 60)
     }
     const round2 = (v: number | null) => (v == null ? null : Math.round(v * 100) / 100)
-    const fmt = (v: unknown) => {
-      const n = typeof v === 'number' ? v : 0
-      return Math.abs(n).toFixed(2)
-    }
 
     const kills = rows.map((r) => round2(perMin(r.kills, r.time_played_seconds)))
     const deaths = rows.map((r) => {
@@ -363,16 +402,10 @@ export function TimeseriesPerMinuteTrend({
         ...getTooltipBase(tc),
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        formatter: (params: unknown) => {
-          const arr = Array.isArray(params) ? params : []
-          if (arr.length === 0) return ''
-          const cat = escapeHtml((arr[0] as { name?: string }).name?.replace(/\n/g, ' ') ?? '')
-          const lines = arr.map((p) => {
-            const point = p as { seriesName: string; value: number; color: string }
-            return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${point.color};margin-right:6px"></span>${escapeHtml(point.seriesName ?? '')}: ${fmt(point.value)}${perMinuteSuffix}`
-          })
-          return `<strong>${cat}</strong><br/>${lines.join('<br/>')}`
-        },
+        // Les morts sont tracées sous l'axe (négatives) : la bulle écrit leur valeur absolue.
+        formatter: axisTooltipFormatter({
+          value: (r) => `${tipNumber(Math.abs(r.value), 2)}${perMinuteSuffix}`,
+        }),
       },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -391,7 +424,7 @@ export function TimeseriesPerMinuteTrend({
         type: 'value',
         axisLabel: {
           ...getAxisBase(tc).axisLabel,
-          formatter: (v: number) => Math.abs(v).toFixed(1),
+          formatter: (v: number) => tipNumber(Math.abs(v), 1),
         },
       },
       series: [
@@ -437,7 +470,11 @@ export function TimeseriesAvgLifeTrend({
   rows,
   title,
   emptyMessage,
-  height = 240,
+  // 320 et non 240 : cette carte partage sa rangée avec « Assistances » (320), et une
+  // grille CSS étire les deux cartes à la même hauteur. À 240 le graphe restait collé en
+  // haut d'une carte trop grande, avec un vide sous lui (retour utilisateur 2026-09-09 :
+  // « le graphe est juste ancré en haut, ça fait bizarre »).
+  height = 320,
   lifeLabel,
 }: TimeseriesAvgLifeTrendProps) {
   const themeVersion = useThemeVersion()
@@ -456,7 +493,7 @@ export function TimeseriesAvgLifeTrend({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase({ bottom: 48 }),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       xAxis: {
         ...getAxisBase(tc),
         type: 'category',
@@ -528,7 +565,7 @@ export function TimeseriesSpreeHeadshots({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase(),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),
@@ -608,7 +645,7 @@ export function TimeseriesSkillRankPerformance({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase({ right: 56, left: 56 }),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),
@@ -709,7 +746,7 @@ export function TimeseriesRankScore({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase({ right: 56, left: 56 }),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),
@@ -800,7 +837,7 @@ export function TimeseriesCareerXP({
     return {
       backgroundColor: CHART_BG,
       grid: getGridBase({ right: 64, left: 64 }),
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      tooltip: { ...getTooltipBase(tc), trigger: 'axis', formatter: AXIS_TIP },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),

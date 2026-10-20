@@ -1,5 +1,5 @@
 // Package temporal — engagement_response_bins.go : bins de reponse d'engagement
-// (modele lobby-anchored v2, cf. .ai/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md).
+// (modele lobby-anchored v2, cf. .ai/archive/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md).
 //
 // Concept : l'attendu du joueur n'est pas une part relative a son equipe mais
 // « sa reponse habituelle a un match d'intensite similaire ». On classe les

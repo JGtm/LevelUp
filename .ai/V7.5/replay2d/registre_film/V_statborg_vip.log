@@ -1,0 +1,54 @@
+=== LOT RESOLUTION — R2 VIP — LOG FIGE (V_statborg_vip.log) ===
+Protocole: PROTOCOLE_RESOLUTION_VIP_ASSAUT.md (R2) + PROTOCOLE_REMESURE_ODDBALL_VIP.md §3.
+Corpus FIGE: 00761d27 (Bazaar), 9903b1c5 (Bazaar), 99553e4a (Catalyst). Oracle: V_oracle_vipstats.json.
+
+--- V0 QUALIFICATION (bornes + pont bipede >= 50 %) ---
+00761d27 : bornes OK ; pont 67/72 = 93.1 % : ADMIS
+9903b1c5 : bornes OK ; pont 56/62 = 90.3 % : ADMIS
+99553e4a : bornes OK ; pont 65/68 = 95.6 % : ADMIS
+Corpus VIP = 3 films ADMIS.
+
+--- BALAYAGE STATBORG (slots_nommes par film, pont SlotIdentityByDeaths) ---
+IDENTITE	00761d27	slots_nommes=8	enregistrements=12202	tronque=false
+IDENTITE	9903b1c5	slots_nommes=8	enregistrements=9269	tronque=false
+IDENTITE	99553e4a	slots_nommes=8	enregistrements=10018	tronque=false
+(8/8 slots nommes sur chaque film : corpus pleinement ponte, 24 paires joueur.)
+
+--- CONFRONTATION (par-joueur + somme-film) ---
+CONFRONTATION VIP : films [00761d27 9903b1c5 99553e4a] · seuils accord >= 90 % sur >= 2/3, stabilite 3/3, temoin permute <= 20 %, >= 3 paires non nulles/film
+COLONNE TimesSelectedAsVip : candidat comp 22 A — 3/3 film(s) au seuil, accord moyen 100.0 %
+   00761d27 : signal 8/8 = 100.0 % (8 paire(s) non nulle(s)) ; temoin permute 1/8 = 12.5 % (8 paire(s) non nulle(s))
+   9903b1c5 : signal 8/8 = 100.0 % (8 paire(s) non nulle(s)) ; temoin permute 2/8 = 25.0 % (8 paire(s) non nulle(s))
+   99553e4a : signal 8/8 = 100.0 % (8 paire(s) non nulle(s)) ; temoin permute 4/8 = 50.0 % (8 paire(s) non nulle(s))
+VERDICT TimesSelectedAsVip : le statborg NE REPLIQUE PAS TimesSelectedAsVip — comp 22 A ; 3/3 au seuil, stabilite 3/3 true, temoin OK false
+COLONNE KillsAsVip : candidat comp 21 B — 3/3 film(s) au seuil, accord moyen 100.0 %
+   00761d27 : signal 8/8 = 100.0 % (6 paire(s) non nulle(s)) ; temoin permute 1/8 = 12.5 % (6 paire(s) non nulle(s))
+   9903b1c5 : signal 8/8 = 100.0 % (7 paire(s) non nulle(s)) ; temoin permute 2/8 = 25.0 % (7 paire(s) non nulle(s))
+   99553e4a : signal 8/8 = 100.0 % (6 paire(s) non nulle(s)) ; temoin permute 0/8 = 0.0 % (6 paire(s) non nulle(s))
+VERDICT KillsAsVip : le statborg NE REPLIQUE PAS KillsAsVip — comp 21 B ; 3/3 au seuil, stabilite 3/3 true, temoin OK false
+   (KillsAsVip : cible SECONDAIRE — anti-aliasing a verifier a la main : comp distinct de 2 A/3 A et valeur par slot <= comp generique)
+COLONNE VipKills : candidat comp 0 A — 3/3 film(s) au seuil, accord moyen 100.0 %
+   00761d27 : signal 8/8 = 100.0 % (6 paire(s) non nulle(s)) ; temoin permute 3/8 = 37.5 % (6 paire(s) non nulle(s))
+   9903b1c5 : signal 8/8 = 100.0 % (6 paire(s) non nulle(s)) ; temoin permute 1/8 = 12.5 % (6 paire(s) non nulle(s))
+   99553e4a : signal 8/8 = 100.0 % (8 paire(s) non nulle(s)) ; temoin permute 5/8 = 62.5 % (8 paire(s) non nulle(s))
+VERDICT VipKills : le statborg NE REPLIQUE PAS VipKills — comp 0 A ; 3/3 au seuil, stabilite 3/3 true, temoin OK false
+   (VipKills : cible SECONDAIRE — anti-aliasing a verifier a la main : comp distinct de 2 A/3 A et valeur par slot <= comp generique)
+SOMME-FILM TimesSelectedAsVip : totaux map[00761d27:15 9903b1c5:17 99553e4a:18]
+SOMME-FILM TimesSelectedAsVip : candidat comp 22 A — signal 3/3 film(s), temoin decale 0 (exige 0)
+
+--- VERDICT NOMME ---
+SIGNAL: comp 22 A reproduit TimesSelectedAsVip EXACTEMENT par joueur (100 % sur 3/3 films)
+  ET somme au total-film exact (15/17/18, 3/3) avec temoin decale = 0. Comp 22 A EST le
+  compteur de selection VIP au statborg — l'evidence de signal est ecrasante.
+GATE PAR-JOUEUR (frozen §3.5): NON TENU. La clause TEMOIN (permutation cyclique <= 20 %
+  sur CHACUN des 3 films) echoue: 12.5 % / 25.0 % / 50.0 %. CAUSE MESUREE (non un reglage):
+  TimesSelectedAsVip est un compteur a FAIBLE variance (film 99553e4a: six joueurs a 2 sur
+  huit), donc la self-similarite sous permutation vaut sum(p_v^2) ~ 50-62 %. Le temoin
+  permute NE PEUT PAS s'effondrer sous 20 % quelle que soit la justesse du comp — il mesure
+  la self-similarite de la donnee, pas la discrimination du comp, quand le signal est parfait.
+SEUIL NON ABAISSE, TEMOIN NON CHANGE APRES COUP: le gate frozen n'est pas tenu, on ne publie
+  pas la couronne. Verdict [!] chiffre.
+CONDITION DE REPRISE (registre): re-mesurer avec un temoin ADAPTE aux compteurs a faible
+  variance (p.ex. accord attendu sous permutation aleatoire = sum(p_v^2) comme plancher de
+  reference, et exiger signal - plancher >> 0), PRE-ENREGISTRE avant re-mesure. Le signal
+  (comp 22 A, 100 % x3 + somme-film exact + decale 0) est deja au log, il ne se re-mesure pas.

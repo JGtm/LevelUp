@@ -10,13 +10,17 @@
  *
  * Couvre aussi la structure de l'onglet Général : le bloc Médias est SORTI de la
  * grille Médailles/Citations — dernier bloc, seul sur sa rangée, pleine largeur
- * (règle produit : aucun bloc jamais seul à largeur partielle). Les enfants lourds
- * (charts ECharts, header) sont mockés — seule la structure des rangées est testée.
+ * (règle produit : aucun bloc jamais seul à largeur partielle). Depuis le 2026-09-22 il
+ * porte le gabarit de titre commun (`DetailSection`) au lieu de son bandeau de carte
+ * inline, et la grille Médailles/Citations vit sous la section « Récompenses ». Les
+ * enfants lourds (charts ECharts, header) sont mockés — seule la structure des rangées
+ * est testée.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { MatchViewPage } from './MatchViewPage'
+import { MATCH_VIEW_TEXT } from './i18n'
 
 const hoisted = vi.hoisted(() => ({
   matchView: {
@@ -47,8 +51,8 @@ vi.mock('./queries', () => ({
   useMatchPositions: () => ({ data: undefined }),
 }))
 
-vi.mock('@/features/settings/queries', () => ({
-  useSettings: () => ({ data: { friend_gamertags: [] } }),
+vi.mock('@/features/friends/queries', () => ({
+  useFriendGamertags: () => [],
 }))
 
 // availableTitles vide → useCapability (FeatureGate) fail-open : le bloc Médias est rendu.
@@ -72,14 +76,12 @@ vi.mock('./MatchSummaryCharts', () => ({
   MatchSpreeChart: () => <div data-testid="chart-spree" />,
   MatchSummaryRadarChart: () => <div data-testid="chart-radar" />,
 }))
-vi.mock('./MatchFragCard', () => ({
-  MatchFragCard: () => <div data-testid="frag-card" />,
-}))
 vi.mock('./MatchSummaryMedalsAndCitations', () => ({
   MatchMedalsSection: () => <div data-testid="medals" />,
   MatchCitationsSection: () => <div data-testid="citations" />,
   MatchNativeCommendationsSection: () => <div data-testid="native-commendations" />,
 }))
+// Le bloc Médias est monté sous la seule capability `media` (état vide inclus, 2026-10-14).
 vi.mock('./MatchMediaTab', () => ({
   MatchMediaTab: () => <div data-testid="media-tab" />,
 }))
@@ -91,20 +93,20 @@ describe('MatchViewPage — match_not_found (pas encore synchronisé)', () => {
 
     expect(screen.getByText('Match pas encore synchronisé')).toBeInTheDocument()
     expect(
-      screen.getByText(/n'est pas encore présent dans la base locale/),
+      screen.getByText(/n'est pas encore dans la base locale/),
     ).toBeInTheDocument()
     // Pas l'écran d'erreur générique (pageErrorTitle) ni le bouton Réessayer.
     expect(screen.queryByText('Match introuvable ou erreur de chargement.')).not.toBeInTheDocument()
     expect(screen.queryByText('Réessayer')).not.toBeInTheDocument()
   })
 
-  it('propose des actions de navigation (Accueil / Précédent / Mes matchs)', () => {
+  it('propose des actions de navigation (Accueil / Précédent / Matchs)', () => {
     hoisted.matchView.error = { code: 'match_not_found', message: 'match introuvable : m1' }
     renderWithProviders(<MatchViewPage />)
 
     expect(screen.getByRole('button', { name: 'Accueil' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Précédent' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Mes matchs' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Matchs' })).toBeInTheDocument()
   })
 
   it('conserve la branche existante match_not_participant (ADR 0029, non régressée)', () => {
@@ -126,7 +128,8 @@ describe('MatchViewPage — onglet Général : structure des rangées', () => {
       summary_tab: { kpis: {}, expected_stats: null, medals: [], citations: [] },
       combat_tab: {},
       team_tab: {},
-      media_tab: { media_items: [] },
+      // Le bloc Médias est monté même sans capture (état vide dans le bloc).
+      media_tab: { media_items: [{ file_path: 'c1.png' }] },
       citations_tab: { native_commendations: [] },
       radar: null,
     }
@@ -141,11 +144,132 @@ describe('MatchViewPage — onglet Général : structure des rangées', () => {
     // Le bloc Médias n'est PAS dans cette grille…
     const mediaTab = screen.getByTestId('media-tab')
     expect(grid.contains(mediaTab)).toBe(false)
-    // …c'est le DERNIER bloc de la pile summary, frère direct de la grille (pleine largeur).
-    const summaryStack = grid.parentElement as HTMLElement
-    const mediaCard = mediaTab.closest('.rounded-lg') as HTMLElement
-    expect(mediaCard.parentElement).toBe(summaryStack)
-    expect(summaryStack.lastElementChild).toBe(mediaCard)
+    // …c'est le DERNIER bloc de la pile summary, sa propre section titrée, frère de la
+    // section « Récompenses » qui porte la grille (pleine largeur).
+    const rewardsSection = grid.closest('section') as HTMLElement
+    const summaryStack = rewardsSection.parentElement as HTMLElement
+    const mediaSection = mediaTab.closest('section') as HTMLElement
+    expect(mediaSection.parentElement).toBe(summaryStack)
+    expect(summaryStack.lastElementChild).toBe(mediaSection)
     expect(screen.getByText('Médias')).toBeInTheDocument()
+    expect(screen.getByText('Récompenses')).toBeInTheDocument()
+  })
+})
+
+describe('MatchViewPage — zone de messages unique', () => {
+  const vue = (over: Record<string, unknown> = {}, header: Record<string, unknown> = {}) => {
+    hoisted.matchView.isError = false
+    hoisted.matchView.error = null
+    hoisted.matchView.data = {
+      header: { map_ui: 'Forest', mode_ui: 'Slayer', start_time_label: null, ...header },
+      rank: null,
+      summary_tab: { kpis: {}, expected_stats: null, medals: [], citations: [] },
+      combat_tab: {},
+      team_tab: {},
+      media_tab: { media_items: [] },
+      citations_tab: { native_commendations: [] },
+      radar: null,
+      ...over,
+    }
+  }
+  const INDISPONIBLE = "Une partie de ce match n'a pas pu être lue."
+  const ABSENTES = 'Données absentes pour ce match :'
+
+  it('la zone se place sous l\'en-tête et avant la barre d\'onglets, et il n\'y en a qu\'une', () => {
+    vue({ is_partial: true, partial_reasons: ['scoreboard_unavailable'] }, { analysis_pending: true })
+    renderWithProviders(<MatchViewPage />)
+
+    const zones = screen.getAllByTestId('match-notices')
+    expect(zones).toHaveLength(1)
+    const header = screen.getByTestId('header-card')
+    const navbar = screen.getByTestId('navbar')
+    const onglets = screen.getByRole('button', { name: MATCH_VIEW_TEXT.fr.tabGeneral })
+    expect(header.compareDocumentPosition(zones[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(zones[0].compareDocumentPosition(onglets) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Plus rien au-dessus de la barre de navigation.
+    expect(navbar.compareDocumentPosition(zones[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('source en panne : message d\'erreur factuel, avec le nouvel essai automatique, sans « réessayez plus tard »', () => {
+    vue({ is_partial: true, partial_reasons: ['scoreboard_unavailable'] })
+    renderWithProviders(<MatchViewPage />)
+
+    const message = screen.getByTestId('match-notice-unavailable')
+    expect(message).toHaveAttribute('role', 'status')
+    expect(message.className).toContain('border-destructive')
+    expect(message).toHaveTextContent(INDISPONIBLE)
+    expect(message).toHaveTextContent('Nouvel essai automatique')
+    expect(screen.queryByText(/réessayez plus tard/i)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('match-notice-partial')).not.toBeInTheDocument()
+  })
+
+  it('chargeur sans raison dédiée en panne (section_unavailable) : même message', () => {
+    vue({ is_partial: true, partial_reasons: ['section_unavailable'] })
+    renderWithProviders(<MatchViewPage />)
+    expect(screen.getByText(INDISPONIBLE)).toBeInTheDocument()
+  })
+
+  it('panne ET source vide : l\'erreur prime, le message « données absentes » disparaît', () => {
+    vue({ is_partial: true, partial_reasons: ['scoreboard_unavailable', 'events_empty'] })
+    renderWithProviders(<MatchViewPage />)
+
+    expect(screen.getByText(INDISPONIBLE)).toBeInTheDocument()
+    expect(screen.queryByText(ABSENTES)).not.toBeInTheDocument()
+  })
+
+  it('source vide seule : « Données absentes pour ce match : » et la liste, pas d\'erreur', () => {
+    vue({ is_partial: true, partial_reasons: ['scoreboard_empty'] })
+    renderWithProviders(<MatchViewPage />)
+
+    const message = screen.getByTestId('match-notice-partial')
+    expect(message.className).toContain('border-warning')
+    expect(message).toHaveTextContent(ABSENTES)
+    expect(
+      screen.getByText('Le tableau des scores et les stats individuelles sont indisponibles'),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('match-notice-unavailable')).not.toBeInTheDocument()
+  })
+
+  it('analyse : « en cours » seulement quand un décodage porte sur ce match, sinon « en attente »', () => {
+    vue({}, { analysis_pending: true, analysis_state: 'in_progress', analysis_pending_parts: ['kill_source', 'replay'] })
+    const { unmount } = renderWithProviders(<MatchViewPage />)
+    let message = screen.getByTestId('match-notice-analysis')
+    expect(message.className).toContain('border-info')
+    expect(message).toHaveTextContent('Analyse du film en cours')
+    expect(message).toHaveTextContent('Frags assistés, arme de chaque frag · Rejeu 2D')
+    expect(message).not.toHaveTextContent('Citations')
+    expect(message).toHaveTextContent('Mise à jour automatique')
+    unmount()
+
+    vue({}, { analysis_pending: true, analysis_state: 'queued', analysis_pending_parts: ['citations'] })
+    renderWithProviders(<MatchViewPage />)
+    message = screen.getByTestId('match-notice-analysis')
+    expect(message).toHaveTextContent('Analyse du film en attente')
+    expect(message).not.toHaveTextContent('en cours')
+    expect(message).toHaveTextContent('Citations')
+  })
+
+  it('analyse finie ou signal absent : aucune zone', () => {
+    for (const flag of [false, undefined]) {
+      vue({}, { analysis_pending: flag })
+      const { unmount } = renderWithProviders(<MatchViewPage />)
+      expect(screen.queryByTestId('match-notices')).not.toBeInTheDocument()
+      unmount()
+    }
+  })
+
+  it('confidentialité : garde sa sémantique (alerte), dans la même zone, après les autres messages', () => {
+    vue(
+      { privacy_warning: { level: 'partial', message: 'Profil partiellement privé.' } },
+      { analysis_pending: true, analysis_state: 'queued', analysis_pending_parts: ['replay'] },
+    )
+    renderWithProviders(<MatchViewPage />)
+
+    const zone = screen.getByTestId('match-notices')
+    const alerte = screen.getByRole('alert')
+    expect(zone.contains(alerte)).toBe(true)
+    expect(alerte).toHaveTextContent('Profil partiellement privé.')
+    const analyse = screen.getByTestId('match-notice-analysis')
+    expect(analyse.compareDocumentPosition(alerte) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })

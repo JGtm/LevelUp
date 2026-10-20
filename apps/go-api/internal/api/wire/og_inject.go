@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/ogmeta"
 	"levelup/go-api/internal/port"
 )
@@ -28,7 +29,8 @@ const ogInjectTimeout = 3 * time.Second
 // reelles sont ownership-gated (un non-proprietaire voit "Indisponible"), donc
 // exposer leurs KPIs a un crawler anonyme serait a la fois une fuite et un
 // apercu trompeur. Filet de securite : toute erreur → carte generique, jamais
-// d'echec de page.
+// d'echec de page. Registre nil (page servie pendant le demarrage) → carte
+// generique : reg n'est jamais dereference sans test prealable.
 func (reg *ServiceRegistry) serveIndexWithOG(w http.ResponseWriter, req *http.Request, indexPath string) {
 	// no-cache : l'index ne doit pas masquer un nouveau build apres redeploiement.
 	w.Header().Set("Cache-Control", "no-cache")
@@ -83,10 +85,13 @@ func firstToken(s string) string {
 }
 
 // playerSlugFromPath extrait le slug de "/players/{slug}[/...]". false si le
-// chemin n'est pas une route joueur.
+// chemin n'est pas une route joueur ou si le slug n'a pas la forme d'un gamertag
+// (domain.IsValidPlayerSlug) : p est le chemin DÉCODÉ d'une page du SPA (un `%2F`
+// ou un `%5C` y est déjà un séparateur) et aucune garde de route ne le contrôle
+// avant la résolution du joueur.
 func playerSlugFromPath(p string) (string, bool) {
 	segs := strings.Split(strings.TrimPrefix(p, "/"), "/")
-	if len(segs) < 2 || segs[0] != "players" || segs[1] == "" {
+	if len(segs) < 2 || segs[0] != "players" || !domain.IsValidPlayerSlug(segs[1]) {
 		return "", false
 	}
 	return segs[1], true

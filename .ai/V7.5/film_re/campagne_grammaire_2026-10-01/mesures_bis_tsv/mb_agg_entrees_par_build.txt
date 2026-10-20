@@ -1,0 +1,60 @@
+HI_1_10_0	paquets=129369 fermes=28741 entrees=420684 utiles=420612 horsSieges=44
+  D sieges = 3104856  part = 13.5 %
+  D sieges U vus = 3823532  part = 11.0 %
+  D ti9 au debut du chunk = 3098764  part = 13.6 %
+  D index vus dans le chunk = 3040389  part = 13.8 %
+  estimateur CARTE = 1893258 part = 22.2 %
+corpus	paquets=629142 fermes=284704 entrees=2301194 utiles=2301082 horsSieges=2567
+  D sieges = 8010168  part = 28.7 %
+  D sieges U vus = 9515586  part = 24.2 %
+  D ti9 au debut du chunk = 9161574  part = 25.1 %
+  D index vus dans le chunk = 7413599  part = 31.0 %
+  estimateur CARTE = 5084956 part = 45.3 %
+HI_1_13_0	paquets=335960 fermes=224818 entrees=1619514 utiles=1619501 horsSieges=12
+  D sieges = 3255664  part = 49.7 %
+  D sieges U vus = 3600535  part = 45.0 %
+  D ti9 au debut du chunk = 3286860  part = 49.3 %
+  D index vus dans le chunk = 3110701  part = 52.1 %
+  estimateur CARTE = 2420124 part = 66.9 %
+HI_1_8_0	paquets=49696 fermes=13969 entrees=79294 utiles=79279 horsSieges=6
+  D sieges = 397568  part = 19.9 %
+  D sieges U vus = 596352  part = 13.3 %
+  D ti9 au debut du chunk = 397568  part = 19.9 %
+  D index vus dans le chunk = 397733  part = 19.9 %
+  estimateur CARTE = 282042 part = 28.1 %
+HI_1_11_0	paquets=16824 fermes=4285 entrees=76224 utiles=76222 horsSieges=2496
+  D sieges = 386952  part = 19.7 %
+  D sieges U vus = 403776  part = 18.9 %
+  D ti9 au debut du chunk = 399510  part = 19.1 %
+  D index vus dans le chunk = 390208  part = 19.5 %
+  estimateur CARTE = 299266 part = 25.5 %
+version-31	paquets=17919 fermes=153 entrees=3 utiles=2 horsSieges=3
+  D sieges = 0  part = -
+  D sieges U vus = 53757  part = 0.0 %
+  D ti9 au debut du chunk = 421096  part = 0.0 %
+  D index vus dans le chunk = 1800  part = 0.1 %
+  estimateur CARTE = 234 part = 0.9 %
+version-33	paquets=28751 fermes=463 entrees=6 utiles=3 horsSieges=6
+  D sieges = 0  part = -
+  D sieges U vus = 172506  part = 0.0 %
+  D ti9 au debut du chunk = 690024  part = 0.0 %
+  D index vus dans le chunk = 3476  part = 0.1 %
+  estimateur CARTE = 186 part = 1.6 %
+HI_1_9_0	paquets=17629 fermes=5739 entrees=75327 utiles=75327 horsSieges=0
+  D sieges = 423096  part = 17.8 %
+  D sieges U vus = 423096  part = 17.8 %
+  D ti9 au debut du chunk = 429498  part = 17.5 %
+  D index vus dans le chunk = 351600  part = 21.4 %
+  estimateur CARTE = 231388 part = 32.6 %
+HI_1_12_0	paquets=21864 fermes=5835 entrees=30137 utiles=30136 horsSieges=0
+  D sieges = 174912  part = 17.2 %
+  D sieges U vus = 174912  part = 17.2 %
+  D ti9 au debut du chunk = 174912  part = 17.2 %
+  D index vus dans le chunk = 114760  part = 26.3 %
+  estimateur CARTE = 112920 part = 26.7 %
+HI_1_4_1	paquets=11130 fermes=701 entrees=5 utiles=0 horsSieges=0
+  D sieges = 267120  part = 0.0 %
+  D sieges U vus = 267120  part = 0.0 %
+  D ti9 au debut du chunk = 263342  part = 0.0 %
+  D index vus dans le chunk = 2932  part = 0.0 %
+  estimateur CARTE = 0 part = -

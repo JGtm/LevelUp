@@ -36,13 +36,45 @@ func AddColumnIfMissing(db *sql.DB, table, column, colType string) error {
 	return addColumnIfMissing(db, table, column, colType)
 }
 
+// ColumnDataType rend le type déclaré d'une colonne (vide si table/colonne absente).
+func ColumnDataType(db *sql.DB, table, column string) (string, error) {
+	return columnDataType(db, table, column)
+}
+
+// AlterColumnTypeIfNeeded porte une colonne au type voulu si son type courant en diffère
+// (idempotent). Rend true quand un ALTER a été exécuté. Exposé pour les migrations
+// title-owned qui réparent une dérive de schéma (cf. widen_match_registry_team_scores).
+func AlterColumnTypeIfNeeded(db *sql.DB, table, column, wanted string) (bool, error) {
+	return alterColumnTypeIfNeeded(db, table, column, wanted)
+}
+
 // CreateIndexSafe exécute un CREATE INDEX en tolérant l'existence préalable.
 func CreateIndexSafe(db *sql.DB, ddl string) error { return createIndexSafe(db, ddl) }
 
-// ExecScript exécute un script multi-statements (split sur `;`).
+// ExecScript exécute un script multi-statements (découpé par SplitSQL) sous le
+// contexte de boot. Délègue à ExecScriptContext.
 func ExecScript(db *sql.DB, script string) error { return execScript(db, script) }
 
-// SplitSQL découpe un script en statements individuels.
+// ExecScriptContext exécute un script multi-statements (découpé par SplitSQL) sous le
+// contexte de l'appelant. C'est l'exécuteur de script UNIQUE du module (backlog B2,
+// 2026-09-26) : aucune copie locale (garde-rail archlint/no_local_sql_splitter_test.go).
+func ExecScriptContext(ctx context.Context, db *sql.DB, script string) error {
+	return execScriptContext(ctx, db, script)
+}
+
+// SplitSQL découpe un script en instructions individuelles : c'est le découpeur UNIQUE
+// du module (garde-rail archlint/no_local_sql_splitter_test.go).
+//
+// Ce qu'il sait : un `;` dans un commentaire de ligne `--` ne sépare pas ; un fragment
+// fait seulement de commentaires `--` et d'espaces est ignoré (DuckDB le refuse en
+// « empty query ») ; les fragments vides (`;;`) aussi.
+//
+// LIMITES (écrites, pas corrigées — backlog 2026-09-26, D-3) : le découpage ne connaît
+// NI les chaînes `'…'` NI les commentaires de bloc `/* … */`. Un `;` dans une chaîne ou
+// dans un `/* */` coupe l'instruction en deux, et un `--` dans une chaîne est pris pour
+// un début de commentaire (un `;` qui le suit sur la même ligne ne sépare plus). Les
+// scripts du dépôt n'en contiennent pas ; un script qui en aurait besoin s'exécute
+// instruction par instruction.
 func SplitSQL(script string) []string { return splitSQL(script) }
 
 // LoadTableColumns retourne la liste ordonnée des colonnes d'une table. Exposé

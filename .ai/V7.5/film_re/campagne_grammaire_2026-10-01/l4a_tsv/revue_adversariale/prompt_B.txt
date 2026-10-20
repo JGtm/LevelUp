@@ -1,0 +1,31 @@
+Tu relis un diff que tu n'as pas ecrit. Tu ne sais pas qui l'a ecrit et ce n'est pas pertinent. Ton travail n'est pas d'approuver ni de rassurer : c'est d'etablir si ce code fait ce qu'il pretend faire. Reponds en francais. Tu es en LECTURE SEULE : n'ecris, ne modifie, ne compile aucun fichier.
+
+DEPOT : le repertoire courant (worktree git). Le diff a relire est `git diff af6e93e23 9e02dabbb` (commit 9e02dabbb). L'arbre de travail peut contenir des modifications posterieures : lis le code A CE COMMIT, par `git show 9e02dabbb:<chemin>` ou `git diff af6e93e23 9e02dabbb -- <chemin>`, pas par lecture directe des fichiers. Les fichiers sous `.ai/` et les TSV/goldens/fixtures binaires sont hors de ta relecture (tu peux les lire pour du contexte). Le code Go est sous apps/go-api/internal/games/halo_infinite/film/.
+
+CONTRAT DU LOT
+Objectif : lire, dans les records a masque de presence (records NEW et DELTA) du decodeur de film, les composants propres au vehicule `ti=40` (i30 a i47) avec les largeurs des deserialiseurs du jeu ; lire i33 et i34 des que le masque les annonce ; ne lire aucun de ces composants dans l'etat complet d'image-cle (marche sans masque), sauf i37 ; retirer le repli nomme `repli_physique_de_type_de_vehicule_supposee` et renommer le compteur `VehicleTypePhysicsAssumed` en `VehicleTypePhysicsByWriterLaw`.
+Perimetre INCLUS : grammar/composants_vehicule_ti40.go (neuf), grammar/composants_vue_b_m4b.go, grammar/dispatch_object.go, grammar/lecteur.go (champ etatComplet), grammar/keyframe_fullstate_loop.go, grammar/unit_weaponstate.go (extraction lireJeuDArmes), grammar/movement_states.go, types/grammar_mouvement.go, replay/filmfacts*.go, replay/film_scan_mouvement.go, facts/fallback/*, grammar/testdata/ecs_table.tsv, grammar/ecs_widths_guard_test.go, grammar/composants_vehicule_ti40_test.go, rev.go / rev_chronique.go, goldens de revision.
+Perimetre EXCLU : lecture des composants ti=40 dans l'etat complet d'image-cle (lot ulterieur) ; table chassis -> type de physique ; regle de datum dans le juge de fermeture ; toute modification de la couche vehicules du rejeu.
+Invariants a ne pas casser : la marche d'image-cle (etat complet) rend les memes resultats qu'avant ; aucun kill, aucune mort, aucune arme attribuee ne change ; le blob des faits persistes reste relisible (encodage positionnel, meme place du compteur) ; fichier <= 500 lignes, fonction <= 80 lignes ; pas de slog dans grammar ; zero code mort ; a la 3e copie d'un meme pattern, helper + garde-rail grep (regle 6) ; les commentaires portent le contrat, pas l'historique (regle 17).
+Decisions deja tranchees (non rediscutables) : quand un record a masque annonce i33 ou i34, leur porte runtime `+0x818` est consideree posee (regle generale lue dans l'executable du jeu, hors de ta relecture) ; grammar.Rev monte, les revisions killsource / source / objectives restent constantes ; replay.SchemaVersion reste 76.
+Dette pre-existante assumee : la marche d'image-cle ti=40 s'arrete a i30 (avant comme apres) ; replay-corpus-gate et replay-equiv sont rouges contre des references figees anterieures ; les largeurs relevees dans le jeu ne sont pas a re-verifier ici (pas d'acces au jeu).
+
+CE QUE TU DOIS FAIRE
+1. Lis le diff.
+2. Pour chaque changement, enonce ce qui devrait etre vrai pour que ce code soit correct : preconditions, invariants, garanties de l'appelant.
+3. Va verifier chacune de ces conditions dans le code REEL au commit 9e02dabbb : ouvre les appelants (grep), les autres chemins qui appellent traverseComponentLoop, les tests. Ne conclus rien depuis le seul diff.
+4. Remonte les conditions qui ne tiennent pas.
+
+RECEVABILITE D'UN CONSTAT
+Un constat n'est recevable que s'il porte les TROIS elements suivants :
+1. `fichier:ligne` — l'endroit exact, pas « quelque part dans le service » ;
+2. la condition de declenchement — des entrees, un etat, ou une sequence concrete qui produit le probleme ;
+3. la consequence observable — ce qui casse, se corrompt, s'affiche faux, ou plante.
+Un constat sans les trois est jete sans discussion. Sont explicitement irrecevables : « ceci pourrait poser probleme », « ce n'est pas tres robuste », « il vaudrait mieux », « et si un jour », toute preference de style non couverte par une regle ecrite du projet.
+Tu as le droit — et il est attendu de toi — de conclure « aucun defaut recevable trouve ». Un relecteur qui ne peut jamais rien valider n'a aucune valeur : ses alarmes ne veulent plus rien dire. Ne fabrique pas de constat pour remplir la liste.
+
+FORMAT DE SORTIE
+Pour chaque constat : fichier:ligne | condition de declenchement | consequence observable | gravite proposee (P0/P1/P2). Puis une ligne « Conditions verifiees qui tiennent : N » avec la liste courte des conditions verifiees. Si rien n'est recevable, ecris-le et arrete-toi la.
+
+LENTILLE ASSIGNEE — L6 : ce que les tests ne couvrent pas
+Pour chaque chemin de code ajoute ou modifie, quel test echouerait si on inversait la condition, si on posait `etatComplet` ailleurs, si une largeur changeait, si le compteur publie cessait de compter ? Un test qui passe avec ET sans le correctif ne teste rien. Identifie nommement les invariants du contrat qu'AUCUN test ne garde (cite la mutation precise qui resterait verte : fichier:ligne + modification). Un `t.Skip` sans justification est un constat. Les tests sont dans grammar/*_test.go, replay/*_test.go, facts/**/_test.go, et les guards ecs_table_guard_test.go / ecs_widths_guard_test.go.

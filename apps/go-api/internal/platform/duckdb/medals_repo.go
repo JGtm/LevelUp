@@ -89,7 +89,7 @@ func (r *MedalsRepo) LoadMedalTotals(ctx context.Context, xuid string) ([]domain
 	}
 	defer release()
 
-	rows, err := db.QueryContext(ctx, Q36aMedalTotals, xuid)
+	rows, err := db.QueryContext(ctx, resolveCampaignExclusionByMatchID(Q36aMedalTotals, pdbTitleSlug(r.pdb), "match_id"), xuid)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMedalTotals: %w", err)
 	}

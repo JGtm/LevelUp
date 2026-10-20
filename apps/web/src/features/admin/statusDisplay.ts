@@ -131,6 +131,7 @@ const JOB_TYPE_LABELS: Record<string, { fr: string; en: string }> = {
   forced_sync_cycle: { fr: 'Cycle de sync forcé', en: 'Forced sync cycle' },
   player_convergence: { fr: 'Convergence joueur', en: 'Player convergence' },
   catalog_refresh: { fr: 'Refresh catalogue', en: 'Catalog refresh' },
+  replay_build: { fr: 'Construction du rejeu 2D', en: '2D replay build' },
 }
 
 export function jobTypeLabel(jobType: string, locale: AdminLocale): string {

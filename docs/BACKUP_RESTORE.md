@@ -185,21 +185,19 @@ go run ./cmd/levelup restore-csr \
   --backup /path/to/legacy/shared_matches_v2.duckdb \
   --dry-run
 
-# Apply (overwrite removes the faulty LUSR rows on the affected matches)
+# Apply (adds the missing CSR, deletes nothing; LevelUp server stopped)
 go run ./cmd/levelup restore-csr \
   --gamertag YourGamertag \
-  --backup /path/to/legacy/shared_matches_v2.duckdb \
-  --mode overwrite
+  --backup /path/to/legacy/shared_matches_v2.duckdb
 ```
 
 | Flag | Effect |
 |------|--------|
 | `--title` | Target title slug (default `halo_infinite`) |
 | `--backup` | Path to the legacy `.duckdb` (attached read-only) |
-| `--mode preserve\|overwrite` | `overwrite` deletes faulty LUSR rows on matches to restore; `preserve` keeps them |
 | `--dry-run` | Inspect schema and counts only |
 
-The command attaches the backup read-only, locates the CSR source table, and re-inserts CSR into `match_skill_rank` with `ON CONFLICT DO NOTHING`.
+The command attaches the backup read-only, locates the CSR source table, and appends to `match_skill_rank` (append-only, ADR 0026: INSERT only) one CSR row for each match that has none yet. A LUSR row on the same match stays in place: the `match_skill_rank_latest` view ranks CSR first. A second run inserts nothing.
 
 ---
 

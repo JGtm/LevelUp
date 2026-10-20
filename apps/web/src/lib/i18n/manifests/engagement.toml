@@ -280,5 +280,5 @@ fr = "Engagement momentanement indisponible, reessayez"
 en = "Engagement temporarily unavailable, please retry"
 
 [engagement.error.pve_not_supported]
-fr = "L'engagement n'est pas calcule sur les matchs Firefight (couverture v2)"
-en = "Engagement is not computed on Firefight matches (v2 coverage)"
+fr = "L'engagement ne se calcule pas sur les matchs Firefight"
+en = "Engagement is not computed on Firefight matches"

@@ -36,7 +36,9 @@ import {
   CHART_BG,
   escapeHtml,
   hoverRevealSymbol,
+  LEGEND_ITEM_WIDTH_LINE,
 } from '@/components/charts/_utils'
+import { tipNumberUpTo } from '@/components/charts/tipNumber'
 import { cumulativeFdaGap, meanFdaGap } from '@/lib/charts/cumulativeFdaGap'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -63,7 +65,7 @@ export interface FdaGapCumulativeLabels {
 /** Formate un écart : « — » si absent, préfixe « + » si signé positif. */
 function fmtGap(v: number | null, signed = false): string {
   if (v == null) return '—'
-  return signed && v >= 0 ? `+${v}` : `${v}`
+  return tipNumberUpTo(v, 1, signed)
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -108,8 +110,13 @@ export function buildFdaGapCumulativeOption(
         )
       },
     },
+    // Pastille élargie : à 12 px le pointillé du FDA attendu n'affiche qu'un tiret et ne
+    // se distingue pas du trait plein de l'aire cumulée. Les COULEURS, elles, ne sont pas
+    // reprises en main ici : les deux séries portent déjà leur `lineStyle.color` (dégradé
+    // divergent pour l'aire, encre de série pour l'attendu) et la légende les suit.
     legend: {
       ...getLegendBase(tc),
+      itemWidth: LEGEND_ITEM_WIDTH_LINE,
       data: [labels.series, labels.expected],
     },
     xAxis: {
@@ -149,7 +156,10 @@ export function buildFdaGapCumulativeOption(
         data: expectedValues,
         ...hoverRevealSymbol(expectedColor, 6),
         connectNulls: false,
-        lineStyle: { width: 1, color: expectedColor, type: 'dashed' },
+        // Épaisseur 2 (et non 1) : à 1 px sous un pointillé, la courbe disparaissait sous
+        // l'aire cumulée (retour utilisateur 2026-09-09 : « la courbe en pointillé est trop
+        // fine »). Même valeur que l'aire, la distinction reste portée par le tireté.
+        lineStyle: { width: 2, color: expectedColor, type: 'dashed' },
       },
     ],
   }

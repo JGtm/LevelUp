@@ -52,13 +52,13 @@ type filtersInput struct {
 
 // decodeFiltersBody décode le corps brut en FilterContextInput (json.Unmarshal
 // accepte les null que le schéma Huma rejetterait) puis applique la validation métier.
-func decodeFiltersBody(raw []byte) (domain.FilterContextInput, error) {
+func decodeFiltersBody(ctx context.Context, raw []byte) (domain.FilterContextInput, error) {
 	var body domain.FilterContextInput
 	if err := json.Unmarshal(raw, &body); err != nil {
-		return body, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return body, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if err := body.Validate(); err != nil {
-		return body, humacore.NewError(http.StatusBadRequest, "invalid_filters", err.Error())
+		return body, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_filters", err)
 	}
 	return body, nil
 }
@@ -75,14 +75,14 @@ func (h *FiltersHandler) Resolve(ctx context.Context, in *filtersInput) (*filter
 		return nil, err
 	}
 
-	body, err := decodeFiltersBody(in.RawBody)
+	body, err := decodeFiltersBody(ctx, in.RawBody)
 	if err != nil {
 		return nil, err
 	}
 
 	result, err := svc.Resolve(ctx, body)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "filters_error", err.Error())
+		return nil, mapServiceError(ctx, err, "filters_error")
 	}
 	return &filtersResolveOutput{Body: result}, nil
 }
@@ -97,14 +97,14 @@ func (h *FiltersHandler) MatchIDs(ctx context.Context, in *filtersInput) (*filte
 		return nil, err
 	}
 
-	body, err := decodeFiltersBody(in.RawBody)
+	body, err := decodeFiltersBody(ctx, in.RawBody)
 	if err != nil {
 		return nil, err
 	}
 
 	ids, err := svc.ResolveMatchIDs(ctx, body)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "filters_error", err.Error())
+		return nil, mapServiceError(ctx, err, "filters_error")
 	}
 	// Slice jamais nil : un slice Go nil sérialise en JSON `null`, ce qui casse
 	// `.length`/`.map` côté front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
@@ -119,7 +119,7 @@ func (h *FiltersHandler) MatchIDs(ctx context.Context, in *filtersInput) (*filte
 func (h *FiltersHandler) resolve(ctx context.Context, slug string) (port.FiltersService, error) {
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return svc, nil
 }

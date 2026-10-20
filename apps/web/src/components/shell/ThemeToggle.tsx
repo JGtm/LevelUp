@@ -1,4 +1,7 @@
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 interface ThemeToggleProps {
   className?: string
@@ -41,8 +44,10 @@ function SunIcon() {
 export function ThemeToggle({ className = '', variant = 'sidebar' }: ThemeToggleProps) {
   const theme = useSettingsDraftStore((state) => state.localUiPrefs.theme)
   const toggleTheme = useSettingsDraftStore((state) => state.toggleTheme)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const isDark = theme === 'dark'
-  const label = isDark ? 'Passer au thème clair' : 'Passer au thème sombre'
+  const label = isDark ? t('common.shell.theme_toggle_to_light') : t('common.shell.theme_toggle_to_dark')
 
   const trackClass =
     variant === 'menu'
@@ -72,7 +77,7 @@ export function ThemeToggle({ className = '', variant = 'sidebar' }: ThemeToggle
         className,
       ].join(' ')}
     >
-      <span className="sr-only">Thème</span>
+      <span className="sr-only">{t('common.shell.nav_theme')}</span>
       <span
         className={[
           'flex h-5 w-5 items-center justify-center rounded-full transition-transform duration-200',

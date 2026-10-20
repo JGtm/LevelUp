@@ -1,0 +1,131 @@
+{
+  "matchIdFull": "c0a82e88-7b3b-419c-a984-13385af99259",
+  "shortId": "c0a82e88",
+  "mapNames": [
+    "Corpo"
+  ],
+  "facts": {
+    "gameVariantName": "Husky Raid:CTF",
+    "teamScores": [
+      3,
+      0
+    ],
+    "mapId": "8be179f7-8940-4868-b881-44cad1ca8711",
+    "players": [
+      {
+        "xuid": "2533274823110022",
+        "kills": 2,
+        "deaths": 3,
+        "assists": 1,
+        "teamId": 1
+      },
+      {
+        "xuid": "2533275001554469",
+        "kills": 1,
+        "deaths": 4,
+        "assists": 2,
+        "teamId": 1
+      },
+      {
+        "xuid": "2535429692041611",
+        "kills": 1,
+        "deaths": 3,
+        "assists": 0,
+        "teamId": 1
+      },
+      {
+        "xuid": "2535432531943478",
+        "kills": 2,
+        "deaths": 4,
+        "assists": 0,
+        "teamId": 1
+      },
+      {
+        "xuid": "2535458702376288",
+        "kills": 5,
+        "deaths": 0,
+        "assists": 0,
+        "teamId": 0
+      },
+      {
+        "xuid": "2535463878425995",
+        "kills": 7,
+        "deaths": 2,
+        "assists": 1,
+        "teamId": 0
+      },
+      {
+        "xuid": "2535465632069522",
+        "kills": 0,
+        "deaths": 1,
+        "assists": 1,
+        "teamId": 0
+      },
+      {
+        "xuid": "2535465779546251",
+        "kills": 2,
+        "deaths": 3,
+        "assists": 1,
+        "teamId": 0
+      }
+    ]
+  },
+  "chunks": [
+    {
+      "index": 0,
+      "chunkType": 1,
+      "startMs": 0,
+      "durationMs": 12,
+      "file": "chunk_00.bin"
+    },
+    {
+      "index": 1,
+      "chunkType": 2,
+      "startMs": 0,
+      "durationMs": 19996,
+      "file": "chunk_01.bin"
+    },
+    {
+      "index": 2,
+      "chunkType": 2,
+      "startMs": 19997,
+      "durationMs": 20004,
+      "file": "chunk_02.bin"
+    },
+    {
+      "index": 3,
+      "chunkType": 2,
+      "startMs": 40001,
+      "durationMs": 20003,
+      "file": "chunk_03.bin"
+    },
+    {
+      "index": 4,
+      "chunkType": 2,
+      "startMs": 60005,
+      "durationMs": 20002,
+      "file": "chunk_04.bin"
+    },
+    {
+      "index": 5,
+      "chunkType": 2,
+      "startMs": 80008,
+      "durationMs": 20003,
+      "file": "chunk_05.bin"
+    },
+    {
+      "index": 6,
+      "chunkType": 2,
+      "startMs": 100012,
+      "durationMs": 19142,
+      "file": "chunk_06.bin"
+    },
+    {
+      "index": 7,
+      "chunkType": 3,
+      "startMs": 119155,
+      "durationMs": 1,
+      "file": "chunk_07.bin"
+    }
+  ]
+}

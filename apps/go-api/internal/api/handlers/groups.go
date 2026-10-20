@@ -142,7 +142,7 @@ func (h *GroupsHandler) handleListMyGroups(ctx context.Context, _ *struct{}) (*g
 // handleCreateGroup crée un groupe avec le user courant comme propriétaire.
 // POST /groups
 func (h *GroupsHandler) handleCreateGroup(ctx context.Context, in *groupBodyInput) (*groupCreatedOutput, error) {
-	user, err := h.currentUser(ctx)
+	user, err := h.currentAccount(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (h *GroupsHandler) handleDeleteGroup(ctx context.Context, in *groupIDInput)
 // handleGenerateInvite crée une invitation "rejoindre le groupe" (membre only).
 // POST /groups/{id}/invites — corps optionnel {expires_in_days?}.
 func (h *GroupsHandler) handleGenerateInvite(ctx context.Context, in *groupIDBodyInput) (*inviteCreatedOutput, error) {
-	user, err := h.currentUser(ctx)
+	user, err := h.currentAccount(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -220,11 +220,12 @@ func (h *GroupsHandler) handleGenerateInvite(ctx context.Context, in *groupIDBod
 	}
 	_ = json.Unmarshal(in.RawBody, &body) // corps optionnel (absent → défaut du store)
 
-	invite, err := h.invites.Generate(user.Gamertag, body.ExpiresInDays, g.ID)
+	// Émetteur = le nom du compte : l'invitation ne vaut que tant qu'il existe.
+	invite, err := h.invites.Generate(user.Username, body.ExpiresInDays, g.ID)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "invite_generate_error", "Impossible de générer l'invitation.")
 	}
-	slog.InfoContext(ctx, "groups: invitation générée", "code", invite.Code, "group_id", g.ID, "by", user.Gamertag)
+	slog.InfoContext(ctx, "groups: invitation générée", "group_id", g.ID, "by", user.Gamertag)
 	return &inviteCreatedOutput{Body: invite}, nil
 }
 
@@ -289,6 +290,24 @@ func (h *GroupsHandler) currentUser(ctx context.Context) (*domain.User, error) {
 			"Une identité Halo liée est requise pour gérer des groupes.")
 	}
 	return user, nil
+}
+
+// currentAccount résout le COMPTE (persisté dans le magasin d'utilisateurs) lié à
+// une identité Halo. Créer un groupe ou émettre une invitation l'exige : une
+// identité Halo en session sans compte (utilisateur synthétisé) ne délivre aucun
+// accès à autrui. 401 sans identité, 403 sans compte.
+func (h *GroupsHandler) currentAccount(ctx context.Context) (*domain.User, error) {
+	user, err := h.currentUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	account := authz.CurrentAccount(getSessionFromContext(ctx), h.users)
+	if account == nil || account.XUID != user.XUID {
+		slog.WarnContext(ctx, "groups: action refusée, identité sans compte", "xuid", user.XUID)
+		return nil, humacore.NewError(http.StatusForbidden, "account_required",
+			"An existing account is required to create a group or issue an invitation.")
+	}
+	return account, nil
 }
 
 // loadGroup charge le groupe {id}. Retourne une erreur 404 si absent.

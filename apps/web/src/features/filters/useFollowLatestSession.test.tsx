@@ -136,6 +136,21 @@ describe('useFollowLatestSession', () => {
     expect(store.getState().lastKnownLatestSessionId).toBe('sq2')
   })
 
+  it('enabled false (hors pages Stats, lot perf L4a D4.4) : aucun snap, même état vierge', () => {
+    const store = makeStore()
+    store.getState().setResolvedContext(resolved([session({ session_id: 's2', label: '06/04 (5)', is_squad: false })]))
+    const { rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useFollowLatestSession('madina', store, 'solo', { enabled }),
+      { initialProps: { enabled: false } },
+    )
+    expect(store.getState().filterContext.sessions?.picked_sessions ?? []).toEqual([])
+    expect(store.getState().isAutoSnappingToLatest).toBe(false)
+
+    // Réactivé (retour sur une page Stats) : le suivi reprend sur le résolu courant.
+    rerender({ enabled: true })
+    expect(store.getState().filterContext.sessions?.picked_sessions).toEqual(['06/04 (5)'])
+  })
+
   it('no-op si pas de resolvedContext', () => {
     const store = makeStore()
     renderHook(() => useFollowLatestSession('madina', store, 'solo'))

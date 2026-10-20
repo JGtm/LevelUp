@@ -1,0 +1,16 @@
+< bcb6d393	11	148	localisee	terminateur	true	false	ecrivain : ordre de la vue B	ecrivain : ordre de la vue B	ecrivain : ordre de la vue B	10	-1	false
+> bcb6d393	11	148	localisee	terminateur	true	true	aucun	-	-	10	-1	false
+< 084a804d	36	372	localisee	rejet hors datum	false	false	vue B : sortie par rejet	vue B : sortie par rejet + ecrivain : ordre de la vue B	vue B : sortie par rejet	25	1466	false
+> 084a804d	36	372	localisee	rejet hors datum	false	false	vue B : sortie par rejet	vue B : sortie par rejet	vue B : sortie par rejet	25	1466	false
+< 084a804d	47	674	localisee	rejet hors datum	false	false	vue B : sortie par rejet	vue B : sortie par rejet + ecrivain : ordre de la vue B	vue B : sortie par rejet	15	3576	false
+> 084a804d	47	674	localisee	rejet hors datum	false	false	vue B : sortie par rejet	vue B : sortie par rejet	vue B : sortie par rejet	15	3576	false
+< 111fa685	16	210	localisee	rejet hors datum	false	false	vue B : sortie par rejet	vue B : sortie par rejet + ecrivain : ordre de la vue B	vue B : sortie par rejet	19	1815	false
+> 111fa685	16	210	localisee	rejet hors datum	false	false	vue B : sortie par rejet	vue B : sortie par rejet	vue B : sortie par rejet	19	1815	false
+< 50247b26	27	778	localisee	rejet hors datum	false	false	vue B : sortie par rejet	vue B : sortie par rejet + ecrivain : ordre de la vue B	vue B : sortie par rejet	27	4750	false
+> 50247b26	27	778	localisee	rejet hors datum	false	false	vue B : sortie par rejet	vue B : sortie par rejet	vue B : sortie par rejet	27	4750	false
+< 4f77afc1	27	1144	localisee	terminateur	true	false	ecrivain : ordre de la vue B	ecrivain : ordre de la vue B	ecrivain : ordre de la vue B	29	-1	false
+> 4f77afc1	27	1144	localisee	terminateur	true	true	aucun	-	-	29	-1	false
+< 4f77afc1	38	872	localisee	terminateur	true	false	ecrivain : ordre de la vue B	ecrivain : ordre de la vue B	ecrivain : ordre de la vue B	25	-1	false
+> 4f77afc1	38	872	localisee	terminateur	true	true	aucun	-	-	25	-1	false
+< 1c4c63c2	5	1716	localisee	rejet hors datum	false	false	vue B : sortie par rejet	vue B : sortie par rejet + ecrivain : ordre de la vue B	vue B : sortie par rejet	21	864	false
+> 1c4c63c2	5	1716	localisee	rejet hors datum	false	false	vue B : sortie par rejet	vue B : sortie par rejet	vue B : sortie par rejet	21	864	false

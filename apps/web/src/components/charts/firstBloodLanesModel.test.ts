@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import {
   GRID_BOTTOM,
   GRID_TOP,
+  LEGEND_HEIGHT,
   LANE_HEIGHT,
   buildFirstBloodLanes,
   firstBloodLanesHeight,
@@ -102,6 +103,37 @@ describe('buildFirstBloodLanes', () => {
     expect(lane.medianDeathSec).toBe(80)
   })
 
+  it('propage carte/mode/date de FirstBloodMatch vers chaque FirstBloodEventPoint (DEC-4)', () => {
+    const lanes = buildFirstBloodLanes([
+      {
+        player: 'Madina',
+        matches: [
+          {
+            matchId: 'a',
+            firstKillSec: 10,
+            firstDeathSec: 20,
+            mapUI: 'Aquarius',
+            modeUI: 'Slayer',
+            startTime: '2026-04-19T12:00:00Z',
+          },
+        ],
+      },
+    ])
+    const [kill] = lanes[0].kills
+    const [death] = lanes[0].deaths
+    expect(kill).toMatchObject({ mapUI: 'Aquarius', modeUI: 'Slayer', startTime: '2026-04-19T12:00:00Z' })
+    expect(death).toMatchObject({ mapUI: 'Aquarius', modeUI: 'Slayer', startTime: '2026-04-19T12:00:00Z' })
+  })
+
+  it('tolère carte/mode/date absents (dégradation, jamais de crash)', () => {
+    const lanes = buildFirstBloodLanes([
+      { player: 'Ghost', matches: [{ matchId: 'a', firstKillSec: 10, firstDeathSec: 20 }] },
+    ])
+    expect(lanes[0].kills[0].mapUI).toBeUndefined()
+    expect(lanes[0].kills[0].modeUI).toBeUndefined()
+    expect(lanes[0].kills[0].startTime).toBeUndefined()
+  })
+
   it('gère un joueur sans aucun événement exploitable', () => {
     const lanes = buildFirstBloodLanes([
       { player: 'Ghost', matches: [{ matchId: 'a', firstKillSec: null, firstDeathSec: null }] },
@@ -156,8 +188,8 @@ describe('formats', () => {
 
 describe('firstBloodLanesHeight', () => {
   it('dérive la hauteur du nombre de lanes (marges du grid incluses)', () => {
-    expect(firstBloodLanesHeight(4)).toBe(4 * LANE_HEIGHT + GRID_TOP + GRID_BOTTOM)
+    expect(firstBloodLanesHeight(4)).toBe(4 * LANE_HEIGHT + GRID_TOP + GRID_BOTTOM + LEGEND_HEIGHT)
     // Aucune lane → une hauteur de bande minimale (état vide lisible).
-    expect(firstBloodLanesHeight(0)).toBe(LANE_HEIGHT + GRID_TOP + GRID_BOTTOM)
+    expect(firstBloodLanesHeight(0)).toBe(LANE_HEIGHT + GRID_TOP + GRID_BOTTOM + LEGEND_HEIGHT)
   })
 })

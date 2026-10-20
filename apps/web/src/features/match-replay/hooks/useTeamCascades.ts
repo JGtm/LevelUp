@@ -1,0 +1,58 @@
+/**
+ * useTeamCascades — DE QUEL CÔTÉ EST UN CAMP, ET COMMENT IL S'APPELLE.
+ *
+ * POURQUOI UN FICHIER À PART. `ReplayCanvas` porte un seuil de taille
+ * (`max-lines` eslint, R5) dont la règle est écrite noir sur blanc : « le franchir
+ * se corrige en extrayant, pas en relevant le nombre ». Ces deux dérivations appartiennent
+ * aux équipes, pas au dessin de la carte — et un hook exporté depuis un fichier de
+ * composant coûte un avertissement `react-refresh`, d'où ce module (même convention que
+ * useSlotIdentity.ts).
+ *
+ * IL S'APPELAIT `useLeadMarks` JUSQU'AU 2026-08-28, et il rendait alors une troisième
+ * sortie : les RETOURNEMENTS lus du calque de score (`leadChanges`). La piste DOMINANCE ne
+ * lit plus ce calque — elle compte les FRAGS du fil (`buildFragDominance`, demande
+ * utilisateur du même jour) — et ces retournements n'avaient donc plus de lecteur. On ne
+ * garde pas une sortie « au cas où » : git a l'historique, et `leadChanges` vit toujours
+ * dans `lib/replay/scoreTimeline` pour la courbe de score de la vue match, son seul
+ * consommateur restant. Le nom suit la fonction : ce hook ne sait plus rien des meneurs, il
+ * sait nommer et colorer une équipe.
+ *
+ * Les lectures employées sont celles du dépôt, sans troisième copie : l'allégeance du FILM pour le
+ * camp (`FilmAllegiance.ofTeam`, la même que les pions et les colonnes) et `campLabel` pour le
+ * nom (celle des colonnes de fiches, du menu de point de vue et du scoreboard, au plancher
+ * « Équipe N » — jamais « sans équipe »).
+ */
+import { useCallback, useMemo } from 'react'
+
+import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
+import { campLabel } from '@/lib/replay/replayCamps'
+
+import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+
+/**
+ * Ce que la piste DOMINANCE reçoit sur les équipes : de quel côté est un camp, et son nom.
+ * Le camp y est un désignateur d'équipe du film (le camp d'un tueur du fil, une série du calque
+ * de score) ; la feuille le nomme.
+ */
+export interface ReplayTeamCascades {
+  /** Camp du meneur, vu du joueur regardé (`null` = allégeance inconnue). */
+  allyOf: (teamId: number) => boolean | null
+  /** Libellé de l'équipe qui passe devant, tel que la colonne l'écrit. */
+  labelOf: (teamId: number) => string
+}
+
+export function useTeamCascades(
+  scoreboard: MatchScoreboardRow[] | undefined,
+  allegiance: FilmAllegiance,
+  locale: ReplayLocale,
+): ReplayTeamCascades {
+  const t = REPLAY_TEXT[locale]
+  const board = useMemo(() => scoreboard ?? [], [scoreboard])
+  const allyOf = allegiance.ofTeam
+  const labelOf = useCallback(
+    (teamId: number) => campLabel({ team: teamId, side: `t${teamId}` }, board, t),
+    [board, t],
+  )
+  return { allyOf, labelOf }
+}

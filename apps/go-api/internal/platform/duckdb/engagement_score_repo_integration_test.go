@@ -76,7 +76,7 @@ func setupEngagementDB(t *testing.T) *ddb.PlayerDB {
 		}
 	}
 
-	// Append-only #23046 : convertit player_match_enrichment (id PK + stage +
+	// Append-only #23645 : convertit player_match_enrichment (id PK + stage +
 	// written_at) et crée la vue player_match_enrichment_latest (lue par le repo).
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)

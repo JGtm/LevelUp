@@ -80,9 +80,11 @@ func main() { //nolint:funlen
 		SELECT
 			COUNT(*) AS n,
 			ROUND(corr(p.assists, r.duration_seconds), 4) AS r_duration,
-			ROUND(corr(p.assists, r.player_count),     4) AS r_player_count
+			ROUND(corr(p.assists, n.joueurs),          4) AS r_joueurs
 		FROM match_participants p
 		JOIN match_registry r ON r.match_id = p.match_id
+		JOIN (SELECT match_id, COUNT(*) AS joueurs FROM match_participants GROUP BY match_id) n
+			ON n.match_id = p.match_id
 		WHERE p.kills >= 0 AND p.time_played_seconds > 0
 	`)
 

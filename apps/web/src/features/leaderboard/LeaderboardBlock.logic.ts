@@ -9,7 +9,7 @@
  *  1. Couverture d'enrichissement — les colonnes détaillées (FDA, frags, morts,
  *     précision…) viennent d'un backfill par joueur. Quand une poignée seulement
  *     des joueurs affichés est enrichie, montrer les colonnes produit un mur de
- *     tirets ; on ne les montre qu'au-delà d'un seuil, et on dit ce qui manque.
+ *     tirets ; on ne les montre qu'au-delà d'un seuil.
  *  2. Couplage saison ↔ playlist — toutes les saisons n'ont pas été relevées sur
  *     toutes les playlists. Le catalogue donne les couples réels (playlist_ids
  *     par saison) : le sélecteur de playlist ne propose que ceux-là, sinon
@@ -23,51 +23,20 @@
  */
 export const ENRICHED_COLUMNS_MIN_RATIO = 0.25
 
-/**
- * Part au-dessus de laquelle la couverture est considérée COMPLÈTE (pas de
- * bandeau). Entre les deux seuils : colonnes affichées ET bandeau « partielles »,
- * pour que les cellules vides soient expliquées plutôt que subies.
- */
-export const ENRICHED_FULL_RATIO = 0.8
-
-/** Ligne du classement, réduite à ce dont la couverture a besoin. */
+/** Ligne du classement, réduite à ce dont la décision d'affichage a besoin. */
 export interface EnrichableEntry {
   match_count?: number | null
 }
 
-/** Verdict de couverture : ce que la table montre, et ce qu'elle doit annoncer. */
-export interface EnrichmentCoverage {
-  /** Nombre de lignes affichées portant des stats détaillées. */
-  enriched: number
-  /** Nombre de lignes affichées. */
-  total: number
-  /** Part enrichie (0..1) ; 0 si aucune ligne. */
-  ratio: number
-  /** Afficher les colonnes détaillées ? */
-  showColumns: boolean
-  /** Bandeau « indisponibles » (sous le seuil, avec au moins une ligne affichée). */
-  showUnavailableNote: boolean
-  /** Bandeau « partielles » (colonnes affichées mais couverture incomplète). */
-  showPartialNote: boolean
-}
-
 /**
- * enrichmentCoverage mesure la part de lignes enrichies et en déduit l'affichage.
- * Table vide → aucune colonne, aucun bandeau (l'état vide parle déjà).
+ * showEnrichedColumns — les colonnes détaillées s'affichent-elles ? Oui dès que la part des lignes
+ * enrichies atteint `ENRICHED_COLUMNS_MIN_RATIO` ; une ligne sans stats détaillées garde alors des
+ * tirets neutres. Aucun bandeau ne dit la part des lignes enrichies (aucun inconnu à l'écran).
  */
-export function enrichmentCoverage(entries: readonly EnrichableEntry[]): EnrichmentCoverage {
-  const total = entries.length
+export function showEnrichedColumns(entries: readonly EnrichableEntry[]): boolean {
+  if (entries.length === 0) return false
   const enriched = entries.reduce((n, e) => (e.match_count != null ? n + 1 : n), 0)
-  const ratio = total > 0 ? enriched / total : 0
-  const showColumns = total > 0 && ratio >= ENRICHED_COLUMNS_MIN_RATIO
-  return {
-    enriched,
-    total,
-    ratio,
-    showColumns,
-    showUnavailableNote: total > 0 && !showColumns,
-    showPartialNote: showColumns && ratio < ENRICHED_FULL_RATIO,
-  }
+  return enriched / entries.length >= ENRICHED_COLUMNS_MIN_RATIO
 }
 
 /**

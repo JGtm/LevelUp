@@ -1,0 +1,17 @@
+PAYLOAD D UN PAQUET DELTA REEL — film bcb6d393 (Cliffhanger, CTF:Arena, build HI_1_12_0), chunk de
+replication 1, paquet 204 (type 0), 5 501 octets, OCTET POUR OCTET (lot VA de la campagne de grammaire,
+etape V1, 2026-10-05).
+
+Il sert de vecteur a `vue_a_execution_test.go` : sa vue A est quarante messages Script (genre 15) dont
+le prefixe R(15) compte de 0 a 39, puis le terminateur ; la fin de la vue A est au bit 5 605 (recherche
+R2 du 2026-10-04, `va-r2/R2_GENRES.md` §5.3), la ou la recherche par fermeture localisait la liste au
+bit 36 772.
+
+Il se REGENERE, il ne s edite pas (instrument `va_v1_research_test.go`, film lu en place, lecture
+seule) :
+
+    CAMPAGNE_RACINE=<repo>/data/cache/film_chunks CAMPAGNE_SORTIE=<dir hors data> VA_PAQUET=bcb6d393:1:204 \
+      go test -tags=research -count=1 -run '^TestVAV1Extraire$' \
+      ./internal/games/halo_infinite/film/internal/grammar/
+
+sha256 : cb8a49584d333ada6d0ac13bb22cdc941fbba7ab315b7754b23571cb247ec2fb

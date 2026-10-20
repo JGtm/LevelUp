@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -26,11 +28,27 @@ type mockMatchViewRepo struct {
 	events    []domain.EventRaw
 	eventsErr error
 	kvPairs   []domain.KVPairRaw
+	// killSources : sources de dégât par mort (Q21b), pour l'arme du kill feed.
+	killSources []domain.KillSourceRaw
+	// killAssists : assistances par mort (Q21c), pour l'assistant du kill feed.
+	killAssists []domain.KillAssistRaw
+	assistPairs []domain.MatchAssistPairRaw
+	assistScope domain.MatchAssistScopeRaw
+	// assistErr : échec de la lecture Q21d (portée des morts, journal des morts publiable).
+	assistErr error
 	kvErr     error
+	// objErr / killSrcErr / killAstErr : échecs des lectures du score d'objectif et du kill feed (E4.8a).
+	objErr, killSrcErr, killAstErr error
 	// notParticipant : si true, IsParticipant renvoie false (gating ADR 0029).
 	// Défaut false → "a participé" → comportement inchangé pour les tests existants.
 	notParticipant bool
 	participantErr error
+	// medalMetasByName : réponse de LookupMedalMetaByName (résolution des médailles
+	// du feed). Nil = référentiel indisponible → les events medal gardent le nom brut.
+	medalMetasByName map[string]domain.MedalNameMeta
+	// errs : échec d'une lecture par NOM de méthode (E4.8b : rang, CSR partagés, médias, stats
+	// attendues, médailles/armes de tous les joueurs, historique). Absent = la lecture réussit à vide.
+	errs map[string]error
 }
 
 func (m *mockMatchViewRepo) GetMatchMeta(_ context.Context, _ string) (*domain.MatchMetaRaw, error) {
@@ -49,13 +67,25 @@ func (m *mockMatchViewRepo) GetMatchScoreboard(_ context.Context, _ string) ([]d
 	return m.board, m.boardErr
 }
 func (m *mockMatchViewRepo) GetMatchObjectiveScore(_ context.Context, _, _ string) (int, error) {
-	return 0, nil
+	return 0, m.objErr
 }
 func (m *mockMatchViewRepo) GetMatchMedals(_ context.Context, _, _ string) ([]domain.MedalRaw, error) {
 	return m.medals, m.medalsErr
 }
 func (m *mockMatchViewRepo) GetMatchEvents(_ context.Context, _ string) ([]domain.EventRaw, error) {
 	return m.events, m.eventsErr
+}
+func (m *mockMatchViewRepo) LookupMedalMetaByName(_ context.Context, _ []string) (map[string]domain.MedalNameMeta, error) {
+	return m.medalMetasByName, m.errs["LookupMedalMetaByName"]
+}
+func (m *mockMatchViewRepo) GetMatchKillSources(_ context.Context, _ string) ([]domain.KillSourceRaw, error) {
+	return m.killSources, m.killSrcErr
+}
+func (m *mockMatchViewRepo) GetMatchKillAssists(_ context.Context, _ string) ([]domain.KillAssistRaw, error) {
+	return m.killAssists, m.killAstErr
+}
+func (m *mockMatchViewRepo) GetMatchAssistPairs(_ context.Context, _ string) ([]domain.MatchAssistPairRaw, domain.MatchAssistScopeRaw, error) {
+	return m.assistPairs, m.assistScope, m.assistErr
 }
 func (m *mockMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]domain.KVPairRaw, error) {
 	return m.kvPairs, m.kvErr
@@ -72,32 +102,35 @@ func (m *mockMatchViewRepo) GetMatchEncounters(_ context.Context, _, _ string) (
 func (m *mockMatchViewRepo) GetMatchEncounterStats(_ context.Context, _, _ string) ([]domain.EncounterStatsRaw, error) {
 	return nil, nil
 }
-func (m *mockMatchViewRepo) GetMatchSkillRank(_ context.Context, _ string) (*domain.SkillRankRaw, error) {
+func (m *mockMatchViewRepo) GetMatchEncounterAssists(_ context.Context, _, _ string) (map[string]domain.RelationAssists, error) {
 	return nil, nil
+}
+func (m *mockMatchViewRepo) GetMatchSkillRank(_ context.Context, _ string) (*domain.SkillRankRaw, error) {
+	return nil, m.errs["GetMatchSkillRank"]
 }
 func (m *mockMatchViewRepo) GetMatchMedia(_ context.Context, _ string) ([]domain.MediaAssocRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchMedia"]
 }
 func (m *mockMatchViewRepo) GetMatchExpectedStats(_ context.Context, _, _ string) (*domain.ExpectedStatsRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchExpectedStats"]
 }
 func (m *mockMatchViewRepo) GetMatchBulkMedals(_ context.Context, _ string) ([]domain.BulkMedalRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchBulkMedals"]
 }
 func (m *mockMatchViewRepo) GetMatchBulkWeaponKills(_ context.Context, _ string) ([]domain.BulkWeaponKillRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchBulkWeaponKills"]
 }
 func (m *mockMatchViewRepo) GetHistoryForAvg(_ context.Context, _ string) ([]domain.MatchHistAvgRow, error) {
-	return nil, nil
+	return nil, m.errs["GetHistoryForAvg"]
 }
 func (m *mockMatchViewRepo) GetHistoryForAvgBulk(_ context.Context, _ []string) (map[string][]domain.MatchHistAvgRow, error) {
-	return nil, nil
+	return nil, m.errs["GetHistoryForAvgBulk"]
 }
 func (m *mockMatchViewRepo) GetPlayerAssistsModel(_ context.Context, _ string) (*domain.PlayerAssistsModel, error) {
-	return nil, nil
+	return nil, m.errs["GetPlayerAssistsModel"]
 }
 func (m *mockMatchViewRepo) GetMatchSharedCSRs(_ context.Context, _ string) (map[string]*domain.SkillRankRaw, error) {
-	return nil, nil
+	return nil, m.errs["GetMatchSharedCSRs"]
 }
 
 // --- tests localisation FR ---
@@ -238,13 +271,21 @@ func TestMatchViewService_GetMatchView_OK(t *testing.T) {
 // "Retirer le fallback LIVE du Match view"). MatchViewService n'expose plus aucun
 // hook DataAdapter/viewer gamertag : il est structurellement impossible qu'un
 // appel API live parte de ce service.
-func TestMatchViewService_GetMatchView_MetaError(t *testing.T) {
-	repo := &mockMatchViewRepo{metaErr: errors.New("no rows in result set")}
+// L'ABSENCE ET LA PANNE NE SONT PAS LE MÊME 404 (correctif 2026-08-29).
+//
+// L'ancien test de ce nom fabriquait `errors.New("no rows in result set")` — une erreur qui
+// N'EST PAS sql.ErrNoRows — et exigeait un not_found : il VERROUILLAIT le masquage qui a
+// transformé une panne totale (Binder Error sur snapshot au schéma en retard) en « match pas
+// encore synchronisé » sur tous les matchs, sans une trace en Error. Même patron que le test
+// de triggerDownload qui exigeait la révocation synchrone : un test vert qui protège le bug.
+func TestMatchViewService_GetMatchView_MetaAbsent(t *testing.T) {
+	// L'ABSENCE se signale par sql.ErrNoRows, wrappé comme le fait le vrai repo (%w).
+	repo := &mockMatchViewRepo{metaErr: fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", sql.ErrNoRows)}
 	svc := NewMatchViewService(repo, "xuid1")
 
 	_, err := svc.GetMatchView(context.Background(), "m1")
 	if err == nil {
-		t.Fatal("expected error when meta fails")
+		t.Fatal("expected error when match is absent")
 	}
 	var apiErr *domain.APIError
 	if !errors.As(err, &apiErr) {
@@ -255,6 +296,27 @@ func TestMatchViewService_GetMatchView_MetaError(t *testing.T) {
 	}
 	if !strings.Contains(apiErr.Message, "m1") {
 		t.Errorf("Message = %q, doit citer le match_id demandé", apiErr.Message)
+	}
+}
+
+func TestMatchViewService_GetMatchView_MetaTechnicalErrorIsNot404(t *testing.T) {
+	// UNE PANNE (schéma en retard, timeout, verrou) ne doit JAMAIS devenir un not_found :
+	// le front afficherait « pas encore synchronisé » et personne ne saurait que ça brûle.
+	// Le message contient même « no rows » pour prouver que le reniflage de chaîne du
+	// handler, retiré le même jour, n'a plus de raison d'exister.
+	repo := &mockMatchViewRepo{metaErr: errors.New(`Binder Error: no rows... column "team_0_rounds_won" not found`)}
+	svc := NewMatchViewService(repo, "xuid1")
+
+	_, err := svc.GetMatchView(context.Background(), "m1")
+	if err == nil {
+		t.Fatal("expected error when meta read fails")
+	}
+	var apiErr *domain.APIError
+	if errors.As(err, &apiErr) && apiErr.Code == "not_found" {
+		t.Fatalf("une panne technique est mappée en not_found — le masquage est revenu: %v", err)
+	}
+	if !strings.Contains(err.Error(), "m1") {
+		t.Errorf("err = %q, doit citer le match_id", err.Error())
 	}
 }
 

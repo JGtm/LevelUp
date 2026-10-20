@@ -392,7 +392,7 @@ func TestUploadHandler_OK(t *testing.T) {
 		makeUploadFactory(mock),
 	)
 	req := buildMultipartRequest(t, "/players/test-player/media/upload", map[string][]byte{
-		"clip.mp4": []byte("fake video"),
+		"clip.mp4": uploadHeadMP4,
 	})
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -416,7 +416,7 @@ func TestUploadHandler_ServiceError(t *testing.T) {
 		makeUploadFactory(mock),
 	)
 	req := buildMultipartRequest(t, "/players/test-player/media/upload", map[string][]byte{
-		"clip.mp4": []byte("fake"),
+		"clip.mp4": uploadHeadMP4,
 	})
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -646,7 +646,7 @@ func TestUploadHandler_WithCaptureTimes_OK(t *testing.T) {
 	)
 	// Envoyer capture_times JSON valide aligné sur files
 	req := buildMultipartRequestWithCaptureTimes(t, "/players/test-player/media/upload",
-		map[string][]byte{"clip.mp4": []byte("fake")},
+		map[string][]byte{"clip.mp4": uploadHeadMP4},
 		`[1700000000]`,
 	)
 	w := httptest.NewRecorder()
@@ -665,7 +665,7 @@ func TestUploadHandler_WithCaptureTimes_InvalidJSON_Ignored(t *testing.T) {
 		makeUploadFactory(mock),
 	)
 	req := buildMultipartRequestWithCaptureTimes(t, "/players/test-player/media/upload",
-		map[string][]byte{"clip.mp4": []byte("fake")},
+		map[string][]byte{"clip.mp4": uploadHeadMP4},
 		`not-json`,
 	)
 	w := httptest.NewRecorder()
@@ -890,21 +890,21 @@ func TestMediaHandler_PatchMediaLike_NoAuthEnforced_NoSession_FallsBackToPageOwn
 	}
 }
 
-// TestMediaHandler_PatchMediaLike_SessionOverridesBodyLiker : le liker vient de la
-// SESSION, jamais du corps de la requête.
+// TestMediaHandler_PatchMediaLike_SessionOverridesBodyLiker : le liker vient du
+// DEMANDEUR (profil possédé par l'utilisateur de la session), jamais du corps de la
+// requête.
 //
 // Depuis que le cœur est par-viewer, `liker_slug` n'est plus un champ décoratif :
 // il décide de QUI verra ce like allumé et de quel nom s'affiche dans « ♥ Alice
 // et Bob ». Un client qui choisirait ces valeurs pourrait liker à la place d'un
-// tiers. Le serveur écrase donc les deux champs dès qu'une session porte un
-// joueur courant.
+// tiers. Le serveur écrase donc les deux champs dès qu'un demandeur est résolu.
 func TestMediaHandler_PatchMediaLike_SessionOverridesBodyLiker(t *testing.T) {
 	spy := &spyLikeService{}
 	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
 
 	sessionSlug := "Chocoboflor"
 	r := chi.NewRouter()
-	h := handlers.NewMediaHandler(factory, nil, "")
+	h := handlers.NewMediaHandler(factory, nil, "").WithRequester(sessionPlayerAsOwnedProfile)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -934,7 +934,7 @@ func TestMediaHandler_PatchMediaLike_SessionOverridesBodyLiker(t *testing.T) {
 		t.Fatal("SetMediaLike not called")
 	}
 	if spy.capturedReq.LikerSlug != sessionSlug {
-		t.Errorf("LikerSlug = %q, want %q (la session fait foi, pas le corps)",
+		t.Errorf("LikerSlug = %q, want %q (le demandeur fait foi, pas le corps)",
 			spy.capturedReq.LikerSlug, sessionSlug)
 	}
 	if spy.capturedReq.LikerGamertag == "Quelqu'un d'autre" {

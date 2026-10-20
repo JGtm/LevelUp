@@ -1,0 +1,25 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+084a804d	HI_1_10_0	ti=10 i2 managed-object-navpoint-component	1	38	38	0	939
+11de8353	HI_1_9_0	ti=43 i19 device-position-animation-name-component	1	1	0	0	16
+1c4c63c2	HI_1_10_0	ti=35 i59 biped-spartan-ability-non-predicted-state	1	6	6	0	3
+1c4c63c2	HI_1_10_0	ti=43 i19 device-position-animation-name-component	1	1	0	0	4
+4f77afc1	HI_1_13_0	ti=10 i2 managed-object-navpoint-component	1	4	4	0	97
+4f77afc1	HI_1_13_0	ti=43 i19 device-position-animation-name-component	1	4	4	0	115
+51ebbc0f	HI_1_13_0	ti=3 i0 low-frequency	417	9744	9744	0	164
+51ebbc0f	HI_1_13_0	ti=7 i16 forge-sim-generic-component	2	4	4	0	0
+60ae07c4	HI_1_8_0	ti=0 i11 game-engine-soft-ceilings-component	1	1	1	0	8
+60ae07c4	HI_1_8_0	ti=0 i13 game-engine-disabled-kill-volume-flags-component	1	1	1	0	9
+60ae07c4	HI_1_8_0	ti=19 i1 sound-placement-state-data-component	1	5	5	0	7
+60ae07c4	HI_1_8_0	ti=2 i14 GameEngineComposerLetterboxComponent	1	1	1	0	5
+60ae07c4	HI_1_8_0	ti=51 avant les composants	1	1	0	0	6
+60ae07c4	HI_1_8_0	ti=55 avant les composants	1	3	0	0	19
+60ae07c4	HI_1_8_0	ti=59 avant les composants	1	4	4	0	24
+60ae07c4	HI_1_8_0	ti=61 avant les composants	1	1	0	0	6
+bcb6d393	HI_1_12_0	ti=10 i2 managed-object-navpoint-component	2	27	27	0	213
+bf15f7ab	HI_1_13_0	ti=56 avant les composants	9	11	11	0	77
+c75f33b8	HI_1_13_0	ti=3 i0 low-frequency	6	160	160	0	0
+fb1a1a72	HI_1_13_0	ti=10 i2 managed-object-navpoint-component	8	133	133	0	1069
+fb1a1a72	HI_1_13_0	ti=12 i24 managed-navpoint-visual-state-groups-component-4	1	1	1	0	0
+fb1a1a72	HI_1_13_0	ti=3 i0 low-frequency	711	17859	17859	0	555
+fb1a1a72	HI_1_13_0	ti=43 i30 device-in-primary-mode-component	1	4	2	0	0
+fb1a1a72	HI_1_13_0	ti=43 i32 device-dispenser-state-flags-component	1	4	2	0	0

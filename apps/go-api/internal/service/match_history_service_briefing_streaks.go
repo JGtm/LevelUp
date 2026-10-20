@@ -46,7 +46,7 @@ func buildBriefingStreaks(scope []domain.MatchHistoryRawRow) *domain.ExplorerBri
 	}
 }
 
-// buildBriefingDominance compte les DominanceFlag 1..5 du scope (P-9). Retourne
+// buildBriefingDominance compte les DominanceFlag 1..7 du scope (P-9). Retourne
 // nil si tous les compteurs sont à zéro (dégradation par omission). Constantes
 // nommées analysis.DominanceFlag* (pas de magic number, CLAUDE.md §6).
 func buildBriefingDominance(scope []domain.MatchHistoryRawRow) *domain.ExplorerBriefingDominance {
@@ -63,10 +63,15 @@ func buildBriefingDominance(scope []domain.MatchHistoryRawRow) *domain.ExplorerB
 			d.Debandades++
 		case analysis.DominanceFlagContreRemontada:
 			d.ContreRemontadas++
+		case analysis.DominanceFlagSabordage:
+			d.Sabordages++
+		case analysis.DominanceFlagAbnegation:
+			d.Abnegations++
 		}
 	}
 	if d.Dominations == 0 && d.Humiliations == 0 && d.Remontadas == 0 &&
-		d.Debandades == 0 && d.ContreRemontadas == 0 {
+		d.Debandades == 0 && d.ContreRemontadas == 0 &&
+		d.Sabordages == 0 && d.Abnegations == 0 {
 		return nil
 	}
 	return &d

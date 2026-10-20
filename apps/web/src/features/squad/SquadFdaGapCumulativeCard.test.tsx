@@ -1,8 +1,10 @@
 /**
- * SquadFdaGapCumulativeCard.test.tsx — Lot C (D3/D4).
+ * SquadFdaGapCumulativeCard.test.tsx — Lot C (D3/D4), forme revue par le lot L1
+ * (PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26).
  *
- * Masquage par capability `expected_stats` (self-gate, retour null) + rendu des
- * pastilles KPI « écart moyen par match » (format signé + suffixe i18n).
+ * Masquage par capability `expected_stats` (self-gate, retour null) ; rendu du
+ * graphe SEUL (aucune pastille « écart moyen par match » sous le graphe) ; valeur de
+ * fin au bout des courbes formatée dans la locale de l'interface (« +0,1 » en FR).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -13,8 +15,13 @@ import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { SquadFdaGapCumulativeCard } from './SquadFdaGapCumulativeCard'
 import { getSquadText } from './i18n'
 
+const options: Array<{ series?: Array<{ endLabel?: { formatter: (p: { value?: unknown }) => string } }> }> =
+  []
 vi.mock('echarts-for-react', () => ({
-  default: () => <div data-testid="echarts-mock" />,
+  default: (props: { option: (typeof options)[number] }) => {
+    options.push(props.option)
+    return <div data-testid="echarts-mock" />
+  },
 }))
 
 const T = getSquadText('fr')
@@ -37,8 +44,8 @@ function pt(
 }
 
 const ROWS: Record<string, SquadPerformanceSeriesPoint[]> = {
-  Me: [pt(0, 1.6, 1.0), pt(1, 1.4, 1.0)], // écart moyen +0,5
-  F1: [pt(0, 0.5, 1.0), pt(1, 0.5, 1.0)], // écart moyen -0,5
+  Me: [pt(0, 1.6, 1.0), pt(1, 1.4, 1.0)], // cumul final +1,0
+  F1: [pt(0, 0.5, 1.0), pt(1, 0.5, 1.0)], // cumul final -1,0
 }
 const ORDER = ['Me', 'F1']
 const COLORS = { Me: '#aaa', F1: '#bbb' }
@@ -66,23 +73,35 @@ function setTitleCaps(caps: string[]) {
 
 afterEach(() => {
   useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
+  options.length = 0
   vi.restoreAllMocks()
 })
 
 describe('SquadFdaGapCumulativeCard', () => {
-  it('capability expected_stats présente → chart + pastilles KPI rendus', async () => {
+  it('capability expected_stats présente → titre + graphe, aucune pastille sous le graphe', async () => {
     setTitleCaps(['expected_stats'])
     render(
       <SquadFdaGapCumulativeCard rowsByPlayer={ROWS} playerOrder={ORDER} colorByPlayer={COLORS} t={T} />,
     )
     expect(await screen.findByTestId('echarts-mock')).toBeInTheDocument()
-    expect(screen.getByTestId('fda-gap-kpis')).toBeInTheDocument()
-    expect(screen.getByText(T.fdaGap.averageCaption)).toBeInTheDocument()
-    expect(screen.getByText('Me')).toBeInTheDocument()
-    expect(screen.getByText('F1')).toBeInTheDocument()
-    // Pastille signée + suffixe i18n (« /match »), séparateur décimal FR ou EN.
-    expect(screen.getByText(/\+0[.,]5\/match/)).toBeInTheDocument()
-    expect(screen.getByText(/-0[.,]5\/match/)).toBeInTheDocument()
+    expect(screen.getByText(T.fdaGap.title)).toBeInTheDocument()
+    // L1.2 : plus de rangée « écart moyen par match » ni de valeur « /match ».
+    expect(screen.queryByTestId('fda-gap-kpis')).toBeNull()
+    expect(screen.queryByText(/\/match/)).toBeNull()
+    expect(screen.queryByText('Me')).toBeNull()
+  })
+
+  it('valeur de fin au bout des courbes, dans la locale de l’interface (FR)', async () => {
+    setTitleCaps(['expected_stats'])
+    render(
+      <SquadFdaGapCumulativeCard rowsByPlayer={ROWS} playerOrder={ORDER} colorByPlayer={COLORS} t={T} />,
+    )
+    await screen.findByTestId('echarts-mock')
+    const series = options.at(-1)?.series ?? []
+    expect(series).toHaveLength(2)
+    // Cumul final Me : (1,6−1) + (1,4−1) = +1,0 ; F1 : −0,5 − 0,5 = −1,0.
+    expect(series[0].endLabel?.formatter({ value: 1.0 })).toBe('+1,0')
+    expect(series[1].endLabel?.formatter({ value: -1.0 })).toMatch(/^[-−]1,0$/)
   })
 
   it('capability expected_stats absente → non rendu (null)', () => {
@@ -92,20 +111,5 @@ describe('SquadFdaGapCumulativeCard', () => {
     )
     expect(container).toBeEmptyDOMElement()
     expect(screen.queryByTestId('echarts-mock')).toBeNull()
-  })
-
-  it('pastille « — » pour un joueur sans match avec attendu (D5)', () => {
-    setTitleCaps(['expected_stats'])
-    const rows = { Me: [pt(0, 1.0, undefined), pt(1, 2.0, undefined)] }
-    render(
-      <SquadFdaGapCumulativeCard
-        rowsByPlayer={rows}
-        playerOrder={['Me']}
-        colorByPlayer={{ Me: '#aaa' }}
-        t={T}
-      />,
-    )
-    expect(screen.getByTestId('fda-gap-kpis')).toBeInTheDocument()
-    expect(screen.getByText('—')).toBeInTheDocument()
   })
 })

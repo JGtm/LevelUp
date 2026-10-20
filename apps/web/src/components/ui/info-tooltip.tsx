@@ -173,3 +173,25 @@ export function InfoTooltip({ content, iconClass = 'w-4 h-4', trigger, triggerFo
     </span>
   )
 }
+
+/**
+ * TooltipParagraphs — LE CONTENU D'UNE INFOBULLE QUI PORTE PLUSIEURS PHRASES.
+ *
+ * Ajoute le 2026-09-21 : les notes de pied, les reserves d'echantillon et les legendes de
+ * portee des cartes ont quitte le corps des cartes pour l'infobulle (i) de leur titre. Une
+ * carte n'a qu'une infobulle : ses textes s'y empilent en paragraphes, dans l'ordre de
+ * lecture. Des `<span>` et non des `<p>` : le panneau est monte dans un contexte ou le
+ * declencheur est deja un element en ligne.
+ */
+export function TooltipParagraphs({ items }: { items: ReactNode[] }) {
+  const kept = items.filter((n) => n != null && n !== '' && n !== false)
+  return (
+    <span className="block space-y-1.5">
+      {kept.map((node, i) => (
+        <span key={i} className="block">
+          {node}
+        </span>
+      ))}
+    </span>
+  )
+}

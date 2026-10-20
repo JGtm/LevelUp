@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	lusync "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/skill"
 )
 
 // replayRow capture l'état d'un match pendant le replay TrueSkill (un joueur, un mode).
@@ -51,7 +52,7 @@ type playerState struct {
 }
 
 func newPlayerState() *playerState {
-	return &playerState{mu: lusync.InitialMU, sigma: lusync.InitialSigma}
+	return &playerState{mu: skill.InitialMU, sigma: skill.InitialSigma}
 }
 
 // replay rejoue séquentiellement le LUSR sur tous les matchs du joueur.
@@ -283,18 +284,18 @@ func rollingAvg(h []float64) *float64 {
 
 func appendHist(h *[]float64, v float64) {
 	*h = append(*h, v)
-	if len(*h) > lusync.AccuracyHistorySize {
-		*h = (*h)[len(*h)-lusync.AccuracyHistorySize:]
+	if len(*h) > skill.AccuracyHistorySize {
+		*h = (*h)[len(*h)-skill.AccuracyHistorySize:]
 	}
 }
 
 func applyInactivityDecay(sigma, days float64) float64 {
-	capped := math.Min(days, float64(lusync.MaxInactivityDays))
-	if capped <= lusync.InactivityThresholdDay {
+	capped := math.Min(days, float64(skill.MaxInactivityDays))
+	if capped <= skill.InactivityThresholdDay {
 		return sigma
 	}
-	added := lusync.InactivitySigmaPerDay * (capped - lusync.InactivityThresholdDay)
-	return clampF(sigma+added, lusync.MinSigma, lusync.MaxSigma)
+	added := skill.InactivitySigmaPerDay * (capped - skill.InactivityThresholdDay)
+	return clampF(sigma+added, skill.MinSigma, skill.MaxSigma)
 }
 
 func computeMatchKEStats(parts []participantData) (avg, stdDev float64) {
@@ -344,7 +345,7 @@ func splitKEs(playerTeamID *int, parts []participantData) (teammates, enemies []
 
 func computeEnemyStrength(enemyKEs []float64, matchAvgKE, matchStdKE, playerMU float64) (float64, float64) {
 	if len(enemyKEs) == 0 {
-		return playerMU, lusync.DefaultOpponentSigma
+		return playerMU, skill.DefaultOpponentSigma
 	}
 	estimates := make([]float64, 0, len(enemyKEs))
 	for _, ke := range enemyKEs {
@@ -352,7 +353,7 @@ func computeEnemyStrength(enemyKEs []float64, matchAvgKE, matchStdKE, playerMU f
 		if matchStdKE >= 1e-6 {
 			z = (ke - matchAvgKE) / matchStdKE
 		}
-		estimates = append(estimates, playerMU+lusync.IndividualMUAlpha*z)
+		estimates = append(estimates, playerMU+skill.IndividualMUAlpha*z)
 	}
 	avg := 0.0
 	for _, m := range estimates {
@@ -360,29 +361,29 @@ func computeEnemyStrength(enemyKEs []float64, matchAvgKE, matchStdKE, playerMU f
 	}
 	avg /= float64(len(estimates))
 	if len(estimates) <= 1 {
-		return avg, lusync.DefaultOpponentSigma
+		return avg, skill.DefaultOpponentSigma
 	}
 	v := 0.0
 	for _, m := range estimates {
 		v += (m - avg) * (m - avg)
 	}
 	v /= float64(len(estimates))
-	sig := clampF(math.Sqrt(v)+lusync.MinSigma, lusync.MinSigma, lusync.DefaultOpponentSigma)
+	sig := clampF(math.Sqrt(v)+skill.MinSigma, skill.MinSigma, skill.DefaultOpponentSigma)
 	return avg, sig
 }
 
 // ── TrueSkill maths (copie locale, équivalent du package sync) ──────────────
 
 func trueskillUpdate(mu, sigma, _, sigmaOpp, score, wf float64) (float64, float64) {
-	deltaMU := lusync.KElo * (score - 0.5) * wf
-	newMU := math.Max(lusync.MinRating, mu+deltaMU)
-	c2 := 2.0*lusync.Beta*lusync.Beta + sigma*sigma + sigmaOpp*sigmaOpp
+	deltaMU := skill.KElo * (score - 0.5) * wf
+	newMU := math.Max(skill.MinRating, mu+deltaMU)
+	c2 := 2.0*skill.Beta*skill.Beta + sigma*sigma + sigmaOpp*sigmaOpp
 	c := math.Sqrt(c2)
-	eps := drawMargin(lusync.Beta)
+	eps := drawMargin(skill.Beta)
 	w := wWin(0.0, eps/c)
 	deltaSig2 := sigma * sigma * (sigma * sigma / c2) * w * wf
-	newSig := math.Sqrt(math.Max(lusync.MinSigma*lusync.MinSigma, sigma*sigma-deltaSig2))
-	newSig = math.Min(math.Sqrt(newSig*newSig+lusync.Tau*lusync.Tau), lusync.MaxSigma)
+	newSig := math.Sqrt(math.Max(skill.MinSigma*skill.MinSigma, sigma*sigma-deltaSig2))
+	newSig = math.Min(math.Sqrt(newSig*newSig+skill.Tau*skill.Tau), skill.MaxSigma)
 	return newMU, newSig
 }
 

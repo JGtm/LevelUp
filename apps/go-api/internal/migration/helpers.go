@@ -3,6 +3,7 @@ package migration
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -95,6 +96,118 @@ func addColumnIfMissing(db *sql.DB, table, column, colType string) error {
 	return nil
 }
 
+// columnDataType rend le type declare d'une colonne (chaine vide si la table ou la
+// colonne n'existe pas). Source : information_schema.columns, le meme catalogue que
+// columnExists — donc la meme verite que ce que DuckDB applique aux INSERT.
+func columnDataType(db *sql.DB, table, column string) (string, error) {
+	var declare sql.NullString
+	err := db.QueryRowContext(
+		bootCtx(),
+		"SELECT data_type FROM information_schema.columns WHERE table_schema = 'main' AND table_name = ? AND column_name = ?",
+		table, column,
+	).Scan(&declare)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return declare.String, nil
+}
+
+// alterColumnTypeIfNeeded porte une colonne au type `wanted` SI son type courant en
+// differe. Rend true quand un ALTER a reellement ete execute (rejoue : no-op).
+//
+// POURQUOI CE HELPER (2026-09-16). Une DDL peut deriver de la base reelle : la DDL de
+// match_registry declarait team_{0,1}_score INTEGER alors que les bases de production,
+// creees par une DDL anterieure, portaient SMALLINT. Deux matchs a gros score d'equipe
+// (Bapteme du feu, > 32 767) ont ete REJETES a l'INSERT — perdus pour tous les joueurs.
+// `CREATE TABLE IF NOT EXISTS` ne repare jamais ce genre d'ecart : il faut un ALTER.
+func alterColumnTypeIfNeeded(db *sql.DB, table, column, wanted string) (bool, error) {
+	actuel, err := columnDataType(db, table, column)
+	if err != nil {
+		return false, fmt.Errorf("alterColumnTypeIfNeeded lecture %s.%s: %w", table, column, err)
+	}
+	if actuel == "" {
+		return false, nil // table ou colonne absente : rien a elargir
+	}
+	if strings.EqualFold(strings.TrimSpace(actuel), strings.TrimSpace(wanted)) {
+		return false, nil
+	}
+	// DuckDB 1.5.5 refuse l'ALTER COLUMN des qu'un index SECONDAIRE existe sur la table,
+	// meme sur une autre colonne (« Cannot alter entry ... there are entries that depend
+	// on it »). On depose les index de la table (DDL relevee dans duckdb_indexes()), on
+	// elargit, on les recree — dans UNE transaction : un arret entre la depose et la
+	// recreation laisserait la colonne elargie et les index perdus pour toujours (leurs
+	// etapes de creation sont deja enregistrees et ne rejouent jamais). Un index sans DDL
+	// relisible fait echouer la migration plutot que d'etre depose a l'aveugle (revue
+	// adversariale du 2026-09-16, P0 puis P2).
+	indexes, err := tableSecondaryIndexes(db, table)
+	if err != nil {
+		return false, fmt.Errorf("alterColumnTypeIfNeeded index de %s: %w", table, err)
+	}
+	tx, err := db.BeginTx(bootCtx(), nil)
+	if err != nil {
+		return false, fmt.Errorf("alterColumnTypeIfNeeded begin: %w", err)
+	}
+	if err := alterColumnTypeInTx(tx, table, column, wanted, indexes); err != nil {
+		if rbErr := tx.Rollback(); rbErr != nil {
+			return false, fmt.Errorf("%w (rollback: %v)", err, rbErr)
+		}
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("alterColumnTypeIfNeeded commit %s.%s: %w", table, column, err)
+	}
+	return true, nil
+}
+
+// alterColumnTypeInTx : depose des index secondaires, ALTER, recreation — le tout dans la
+// transaction fournie (l'appelant commit ou rollback).
+func alterColumnTypeInTx(tx *sql.Tx, table, column, wanted string, indexes []tableIndex) error {
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(bootCtx(), "DROP INDEX IF EXISTS "+idx.name); err != nil {
+			return fmt.Errorf("alterColumnTypeIfNeeded DROP INDEX %s: %w", idx.name, err)
+		}
+	}
+	if _, err := tx.ExecContext(bootCtx(),
+		fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DATA TYPE %s", table, column, wanted)); err != nil {
+		return fmt.Errorf("alterColumnTypeIfNeeded ALTER %s.%s -> %s: %w", table, column, wanted, err)
+	}
+	for _, idx := range indexes {
+		if _, err := tx.ExecContext(bootCtx(), idx.ddl); err != nil {
+			return fmt.Errorf("alterColumnTypeIfNeeded recreation index %s: %w", idx.name, err)
+		}
+	}
+	return nil
+}
+
+// tableIndex : un index secondaire et la DDL qui le recree (duckdb_indexes().sql).
+type tableIndex struct{ name, ddl string }
+
+// tableSecondaryIndexes releve les index secondaires d'une table (la PK n'y figure pas).
+func tableSecondaryIndexes(db *sql.DB, table string) ([]tableIndex, error) {
+	rows, err := db.QueryContext(bootCtx(),
+		"SELECT index_name, sql FROM duckdb_indexes() WHERE table_name = ?", table)
+	if err != nil {
+		return nil, fmt.Errorf("duckdb_indexes(): %w", err)
+	}
+	defer rows.Close()
+	var out []tableIndex
+	for rows.Next() {
+		var name string
+		var ddl sql.NullString
+		if err := rows.Scan(&name, &ddl); err != nil {
+			return nil, fmt.Errorf("scan index: %w", err)
+		}
+		if !ddl.Valid || strings.TrimSpace(ddl.String) == "" {
+			return nil, fmt.Errorf("index %s sans DDL dans duckdb_indexes() — refus de le deposer a l'aveugle", name)
+		}
+		out = append(out, tableIndex{name: name, ddl: ddl.String})
+	}
+	return out, rows.Err()
+}
+
 // createIndexSafe cree un index en ignorant les erreurs "already exists".
 func createIndexSafe(db *sql.DB, ddl string) error {
 	_, err := db.ExecContext(bootCtx(), ddl)
@@ -106,10 +219,18 @@ func createIndexSafe(db *sql.DB, ddl string) error {
 	return err
 }
 
-// execScript execute un script SQL multi-statements.
+// execScript execute un script SQL multi-statements sous le contexte de boot.
 func execScript(db *sql.DB, script string) error {
+	return execScriptContext(bootCtx(), db, script)
+}
+
+// execScriptContext est l'UNIQUE exécuteur de script SQL du module (backlog B2,
+// 2026-09-26) : découpage par splitSQL, une instruction à la fois, sous le contexte de
+// l'appelant. sync.execScript et migration.ExecScript lui délèguent ; le garde-rail
+// archlint/no_local_sql_splitter_test.go interdit toute copie.
+func execScriptContext(ctx context.Context, db *sql.DB, script string) error {
 	for _, stmt := range splitSQL(script) {
-		if _, err := db.ExecContext(bootCtx(), stmt); err != nil {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("execScript: %w (stmt=%.80s)", err, stmt)
 		}
 	}
@@ -124,6 +245,7 @@ func execScript(db *sql.DB, script string) error {
 // que des commentaires `--` et/ou des espaces (typiquement la note qui suit le
 // dernier `;` d'un CREATE) sont ignorés : un commentaire-seul n'est pas une
 // instruction exécutable (DuckDB la rejette en "empty query").
+// Limites (ni chaînes `'…'` ni commentaires `/* */`) : godoc de SplitSQL.
 func splitSQL(script string) []string {
 	var stmts []string
 	var cur strings.Builder

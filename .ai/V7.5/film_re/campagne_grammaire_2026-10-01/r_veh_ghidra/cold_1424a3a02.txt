@@ -1,0 +1,14 @@
+   1424a3a02:	8a 44 24 70          	mov    al,BYTE PTR [rsp+0x70]
+   1424a3a06:	48 8d 55 64          	lea    rdx,[rbp+0x64]
+   1424a3a0a:	48 83 64 24 28 00    	and    QWORD PTR [rsp+0x28],0x0
+   1424a3a10:	45 33 c9             	xor    r9d,r9d
+   1424a3a13:	48 8b ce             	mov    rcx,rsi
+   1424a3a16:	88 44 24 20          	mov    BYTE PTR [rsp+0x20],al
+   1424a3a1a:	45 8d 41 10          	lea    r8d,[r9+0x10]
+   1424a3a1e:	e8 71 aa 2c fe       	call   0x14076e494
+   1424a3a23:	4c 8d 4d 7c          	lea    r9,[rbp+0x7c]
+   1424a3a27:	48 8b ce             	mov    rcx,rsi
+   1424a3a2a:	4c 8d 45 70          	lea    r8,[rbp+0x70]
+   1424a3a2e:	e8 69 ad 77 fe       	call   0x140c1e79c
+   1424a3a33:	90                   	nop
+   1424a3a34:	e9 d6 20 c0 fe       	jmp    0x1410a5b0f

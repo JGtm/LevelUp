@@ -81,6 +81,11 @@ const (
 	DominanceRemontada   DominanceFlag = 3
 	DominanceDebandade   DominanceFlag = 4
 	DominanceContreRem   DominanceFlag = 5
+	// DominanceSabordage : défaite au score d'un mode à objectifs malgré une
+	// nette domination aux frags. DominanceAbnegation : l'inverse (victoire au
+	// score en ayant été écrasé aux frags). Cf. analysis.ComputeFragContrastDominance.
+	DominanceSabordage  DominanceFlag = 6
+	DominanceAbnegation DominanceFlag = 7
 )
 
 // IsKnownDominanceFlag retourne true si la valeur est l'une des constantes
@@ -88,7 +93,8 @@ const (
 func IsKnownDominanceFlag(d DominanceFlag) bool {
 	switch d {
 	case DominanceNone, DominanceDomination, DominanceHumiliation,
-		DominanceRemontada, DominanceDebandade, DominanceContreRem:
+		DominanceRemontada, DominanceDebandade, DominanceContreRem,
+		DominanceSabordage, DominanceAbnegation:
 		return true
 	}
 	return false
@@ -104,6 +110,8 @@ func AllDominanceFlags() []DominanceFlag {
 		DominanceRemontada,
 		DominanceDebandade,
 		DominanceContreRem,
+		DominanceSabordage,
+		DominanceAbnegation,
 	}
 }
 

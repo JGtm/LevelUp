@@ -101,7 +101,7 @@ type Service interface {
 	DeleteSquad(ctx context.Context, squadID, requestedBy string) error
 	// SquadUsualContexts dérive les playlists/modes dominants des matchs communs
 	// du roster (indice d'affichage du sélecteur, jamais stocké). Lecture seule.
-	SquadUsualContexts(ctx context.Context, rosterXUIDs []string, titleSlug string) (playlists, modes []string, err error)
+	SquadUsualContexts(ctx context.Context, rosterXUIDs []string) (playlists, modes []string, err error)
 	// EvaluateSquadChallenge recalcule la progression de chaque membre d'un défi
 	// d'escouade (no-overlap + agrégation cumulative) et la persiste. requestedBy
 	// (player_slug) doit être membre-user de l'escouade.
@@ -221,6 +221,10 @@ type EvaluationOutcome struct {
 
 // Deps regroupe les dépendances du service.
 type Deps struct {
+	// TitleSlug : titre du PlayerDB pour lequel le service est bâti. Il remplace tout titre d'appelant
+	// pour les lectures de la base partagée (SquadUsualContexts) : même principe que BaselineProvider :
+	// l'identité ne traverse pas la frontière.
+	TitleSlug        string
 	Tuning           Tuning
 	Challenges       ChallengeRepo
 	Arcs             ArcRepo

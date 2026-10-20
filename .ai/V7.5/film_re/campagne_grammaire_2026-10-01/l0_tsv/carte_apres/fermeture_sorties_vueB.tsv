@@ -1,0 +1,61 @@
+film	build	sortie_vueB	paquets	fermes	hors_cadre	autres_causes	utiles_en_jeu_hors_cadre
+bcb6d393	HI_1_12_0	ouverte	12425	0	0	12425	0
+bcb6d393	HI_1_12_0	rejet hors datum	3270	0	0	3270	0
+bcb6d393	HI_1_12_0	terminateur	5886	5830	49	7	1
+fb1a1a72	HI_1_13_0	ouverte	1631	0	0	1631	0
+fb1a1a72	HI_1_13_0	rejet hors datum	23549	0	0	23549	0
+fb1a1a72	HI_1_13_0	terminateur	22899	22276	487	136	89
+d9781168	HI_1_13_0	ouverte	189	0	0	189	0
+d9781168	HI_1_13_0	rejet hors datum	11156	0	0	11156	0
+d9781168	HI_1_13_0	terminateur	26559	26210	189	160	21
+c75f33b8	HI_1_13_0	ouverte	212	0	0	212	0
+c75f33b8	HI_1_13_0	rejet hors datum	2317	0	0	2317	0
+c75f33b8	HI_1_13_0	terminateur	22939	22854	13	72	16
+bf15f7ab	HI_1_13_0	ouverte	305	0	0	305	0
+bf15f7ab	HI_1_13_0	rejet hors datum	1760	0	0	1760	0
+bf15f7ab	HI_1_13_0	terminateur	28626	28465	37	124	250
+51ebbc0f	HI_1_13_0	ouverte	861	0	0	861	0
+51ebbc0f	HI_1_13_0	rejet hors datum	16672	0	0	16672	0
+51ebbc0f	HI_1_13_0	terminateur	10240	9759	331	150	32
+084a804d	HI_1_10_0	ouverte	643	0	0	643	0
+084a804d	HI_1_10_0	rejet hors datum	23168	0	0	23168	0
+084a804d	HI_1_10_0	terminateur	5232	4773	141	318	176
+0797ce72	HI_1_13_0	ouverte	585	0	0	585	0
+0797ce72	HI_1_13_0	rejet hors datum	5419	0	0	5419	0
+0797ce72	HI_1_13_0	terminateur	20427	19152	966	309	5908
+111fa685	HI_1_10_0	ouverte	159	0	0	159	0
+111fa685	HI_1_10_0	rejet hors datum	10706	0	0	10706	0
+111fa685	HI_1_10_0	terminateur	4605	4012	401	192	3427
+e5adf7b2	HI_1_11_0	ouverte	266	0	0	266	0
+e5adf7b2	HI_1_11_0	rejet hors datum	10228	0	0	10228	0
+e5adf7b2	HI_1_11_0	terminateur	4603	4123	288	192	1042
+60ae07c4	HI_1_8_0	ouverte	1284	0	0	1284	0
+60ae07c4	HI_1_8_0	rejet hors datum	29997	0	0	29997	0
+60ae07c4	HI_1_8_0	terminateur	15155	13802	994	359	5301
+a349fea8	version-33	ouverte	954	0	0	954	0
+a349fea8	version-33	rejet hors datum	19428	0	0	19428	0
+a349fea8	version-33	terminateur	4328	420	2961	947	53134
+a521164d	HI_1_4_1	ouverte	342	0	0	342	0
+a521164d	HI_1_4_1	rejet hors datum	6526	0	0	6526	0
+a521164d	HI_1_4_1	terminateur	2971	692	2002	277	38445
+11de8353	HI_1_9_0	ouverte	249	0	0	249	0
+11de8353	HI_1_9_0	rejet hors datum	9787	0	0	9787	0
+11de8353	HI_1_9_0	terminateur	5952	5612	225	115	1835
+50247b26	version-31	ouverte	280	0	0	280	0
+50247b26	version-31	rejet hors datum	10708	0	0	10708	0
+50247b26	version-31	terminateur	4674	139	3096	1439	40785
+bfecd02b	HI_1_13_0	ouverte	1146	0	0	1146	0
+bfecd02b	HI_1_13_0	rejet hors datum	3154	0	0	3154	0
+bfecd02b	HI_1_13_0	terminateur	26406	26380	9	17	81
+4f77afc1	HI_1_13_0	ouverte	757	0	0	757	0
+4f77afc1	HI_1_13_0	rejet hors datum	9537	0	0	9537	0
+4f77afc1	HI_1_13_0	terminateur	22955	22260	52	643	1294
+396cfc92	HI_1_13_0	ouverte	380	0	0	380	0
+396cfc92	HI_1_13_0	rejet hors datum	8355	0	0	8355	0
+396cfc92	HI_1_13_0	terminateur	22837	22819	12	6	95
+f75e7053	HI_1_13_0	ouverte	313	0	0	313	0
+f75e7053	HI_1_13_0	rejet hors datum	4290	0	0	4290	0
+f75e7053	HI_1_13_0	terminateur	23422	23416	0	6	0
+1c4c63c2	HI_1_10_0	ouverte	1292	0	0	1292	0
+1c4c63c2	HI_1_10_0	rejet hors datum	49061	0	0	49061	0
+1c4c63c2	HI_1_10_0	terminateur	16377	13333	228	2816	516

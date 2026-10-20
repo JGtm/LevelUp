@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -34,6 +35,21 @@ import (
 // SessionHandler gère les endpoints de session.
 type SessionHandler struct {
 	store *session.Store
+	// canSelectPlayer dit si la session peut LIRE le profil du slug demandé comme
+	// joueur courant (même décision que la garde de propriété du groupe
+	// /players/{player_slug}). nil : non câblé (mono-utilisateur, tests), tout slug
+	// de forme valide est accepté.
+	canSelectPlayer PlayerSelectionCheck
+}
+
+// PlayerSelectionCheck dit si la session de ctx peut choisir le profil `slug`
+// comme joueur courant.
+type PlayerSelectionCheck func(ctx context.Context, slug string) bool
+
+// WithPlayerAccess câble le contrôle d'accès du joueur courant.
+func (h *SessionHandler) WithPlayerAccess(check PlayerSelectionCheck) *SessionHandler {
+	h.canSelectPlayer = check
+	return h
 }
 
 // NewSessionHandler crée un SessionHandler.
@@ -75,6 +91,19 @@ func (h *SessionHandler) handlePostContext(ctx context.Context, in *sessionConte
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps JSON invalide")
 	}
+	// Validation AVANT toute mutation : WithSession persiste la session de la
+	// requête (Touch) même quand le handler répond en erreur.
+	if err := validateSessionContextRequest(&req); err != nil {
+		return nil, err
+	}
+	// Contrôle d'accès AVANT toute mutation, pour la même raison : le joueur
+	// courant ne désigne qu'un profil que la session peut lire.
+	if req.PlayerSlug != nil && h.canSelectPlayer != nil && !h.canSelectPlayer(ctx, *req.PlayerSlug) {
+		slog.WarnContext(ctx, "session_context: joueur courant refusé — profil non accessible",
+			"slug", *req.PlayerSlug)
+		return nil, humacore.NewError(http.StatusForbidden, "player_forbidden",
+			"Access to this player is not allowed.")
+	}
 
 	if req.PlayerSlug != nil {
 		sess.CurrentPlayerSlug = req.PlayerSlug
@@ -96,7 +125,7 @@ func (h *SessionHandler) handlePostContext(ctx context.Context, in *sessionConte
 	}
 
 	if err := h.store.Save(sess); err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "session_save_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "session_save_error", err)
 	}
 
 	return &sessionContextOutput{Body: domain.SessionContextResponse{

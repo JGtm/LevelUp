@@ -115,7 +115,7 @@ func (r *MedalDefinitionsRepo) LookupByIDs(
 			missing = append(missing, id)
 		}
 	}
-	for id, label := range lookupMedalCitationLabels(ctx, r.pdb.Metadata, missing) {
+	for id, label := range citationLabelsOrLog(ctx, r.pdb.Metadata, missing, "medal_definitions") {
 		result[id] = port.MedalDefinitionRow{MedalID: id, Label: label, Difficulty: "Normal"}
 	}
 	return result, nil

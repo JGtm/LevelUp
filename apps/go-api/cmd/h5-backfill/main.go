@@ -23,6 +23,7 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
@@ -30,6 +31,12 @@ import (
 )
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	gt := "JGtm"
 	if len(os.Args) > 1 {
 		gt = os.Args[1]
@@ -78,7 +85,7 @@ func main() {
 	// Token store-first (identique à h5-sync/probe-h5) → ctx (l'adapter h5 lit le token
 	// du ctx). On refresh le token du COMPTE D'AUTH (authGT/authXUID), pas de la cible.
 	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT, auth.LegacyAuthInputs{})
+	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT)
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens %s (auth_as=%s): err=%v", gt, authGT, err)
 	}

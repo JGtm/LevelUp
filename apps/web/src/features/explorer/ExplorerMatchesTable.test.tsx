@@ -5,8 +5,35 @@
  * SANS expander (retiré — redondant avec la pagination, cf. retour user).
  * Mode legacy (defaultPageSize undefined) : PAGE_SIZE=20 par page.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+
+// TanStack Router : <Link> exige un RouterProvider, absent en test unitaire. On le
+// remplace par un <a> qui INTERPOLE les params dans le template de route — ce que le
+// test veut vérifier (la route ciblée et ses params), pas le rendu du routeur.
+// Patron : features/synthesis/SynthesisHighlightsSection.test.tsx.
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  type LinkStubProps = {
+    children?: React.ReactNode
+    to: string
+    params?: Record<string, string>
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>
+  return {
+    ...actual,
+    Link: ({ children, to, params, ...rest }: LinkStubProps) => {
+      let href = to
+      for (const [key, value] of Object.entries(params ?? {})) {
+        href = href.replace(`$${key}`, value)
+      }
+      return (
+        <a href={href} {...rest}>
+          {children}
+        </a>
+      )
+    },
+  }
+})
 
 import { renderWithProviders } from '@/test/render-utils'
 import type { ExplorerMatchRow } from '@/lib/api/types'
@@ -58,7 +85,7 @@ function makeRow(i: number, overrides: Partial<ExplorerMatchRow> = {}): Explorer
     map_ui: `Map${i}`,
     mode_ui: 'Slayer',
     playlist_label: 'Quick Play',
-    outcome_label: 'Victoire',
+    outcome: 'win',
     outcome_code: 2,
     score_label: '50-30',
     is_with_friends: false,
@@ -358,6 +385,93 @@ describe('ExplorerMatchesTable — colonne « Ouvrir sur Halo Waypoint » (I19)'
       />,
     )
     expect(screen.queryByRole('link', { name: WAYPOINT_LABEL })).not.toBeInTheDocument()
+  })
+})
+
+describe('ExplorerMatchesTable — colonne « Rejeu »', () => {
+  const REPLAY_LABEL = 'Ouvrir le rejeu 2D du match'
+
+  it('rend un lien interne vers la page de rejeu quand has_replay est vrai', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: true })]} playerSlug="Chocoboflor" />,
+    )
+    const link = screen.getByRole('link', { name: REPLAY_LABEL })
+    // Lien INTERNE (route de l'app), pas une URL externe.
+    expect(link.getAttribute('href')).toContain('/matches/match-1/replay')
+  })
+
+  it('ne rend RIEN quand has_replay est faux ou absent', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: false }), makeRow(2)]} playerSlug="me" />,
+    )
+    expect(screen.queryByRole('link', { name: REPLAY_LABEL })).not.toBeInTheDocument()
+  })
+
+  // PORTE DE TITRE (2026-09-05, registre L5) : un titre sans décodeur de film n'aura
+  // jamais d'artefact — la colonne entière disparaît, pas seulement ses icônes. Sa
+  // voisine Waypoint était gatée depuis le 2026-07-24 ; celle-ci ne l'était pas.
+  // LA COLONNE, PAS SEULEMENT LE LIEN (revue C-R1, constat C2). Asserter l'absence du lien
+  // ne prouve rien : `MatchReplayLink` le masque deja tout seul, donc les deux portes se
+  // couvraient mutuellement et aucune n'etait testee. On compte les colonnes : sans la
+  // capability, le tableau en a UNE de moins — plus d'en-tete fantome ni de cellules vides.
+  it("masquée quand le titre courant ne déclare pas la capability replay", () => {
+    // Les deux rendus ne different QUE par `replay` : sinon `team_mmr` et
+    // `waypoint_match_url` feraient varier le compte pour une autre raison.
+    setTitleCaps(['team_mmr', 'waypoint_match_url', 'replay'])
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: true })]} playerSlug="me" />,
+    )
+    const avecColonne = screen.getAllByRole('columnheader').length
+    const cellulesAvec = screen.getAllByRole('row')[1].querySelectorAll('td').length
+    cleanup()
+
+    setTitleCaps(['team_mmr', 'waypoint_match_url'])
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: true })]} playerSlug="me" />,
+    )
+    expect(screen.queryByRole('link', { name: REPLAY_LABEL })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('columnheader')).toHaveLength(avecColonne - 1)
+    expect(screen.getAllByRole('row')[1].querySelectorAll('td')).toHaveLength(cellulesAvec - 1)
+  })
+
+  it('rendue quand le titre déclare `replay` ET que la ligne porte un artefact', () => {
+    setTitleCaps(['replay'])
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: true })]} playerSlug="me" />,
+    )
+    expect(screen.getByRole('link', { name: REPLAY_LABEL })).toBeInTheDocument()
+  })
+
+  it('un seul lien par ligne portant un artefact', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable
+        rows={[makeRow(1, { has_replay: true }), makeRow(2), makeRow(3, { has_replay: true })]}
+        playerSlug="me"
+      />,
+    )
+    expect(screen.getAllByRole('link', { name: REPLAY_LABEL })).toHaveLength(2)
+  })
+
+  // En mode triable, une colonne d'ICÔNE (en-tête vide, aucune valeur d'accès) ne doit
+  // porter AUCUN contrôle de tri : le bouton serait focalisable sans nom accessible, et
+  // le clic n'ordonnerait rien. Le test porte sur l'invariant plutôt que sur la colonne
+  // rejeu seule — il couvre du même coup sa voisine Waypoint.
+  it('aucun en-tête vide ne porte de contrôle de tri en mode triable', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable
+        rows={[makeRow(1, { has_replay: true }), makeRow(2, { has_replay: true })]}
+        playerSlug="me"
+        sortable
+      />,
+    )
+    const emptyHeaders = screen
+      .getAllByRole('columnheader')
+      .filter((th) => (th.textContent ?? '').trim() === '')
+    expect(emptyHeaders.length).toBeGreaterThan(0)
+    for (const th of emptyHeaders) {
+      expect(within(th).queryByRole('button')).toBeNull()
+      expect(th.getAttribute('aria-sort')).toBeNull()
+    }
   })
 })
 

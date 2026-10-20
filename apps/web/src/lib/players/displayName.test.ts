@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { displayPlayerName, isXuidLike, maskedPlayerLabel } from './displayName'
+import { displayPlayerName, isXuidLike, maskedPlayerLabel, stripBotSuffix } from './displayName'
 
 describe('isXuidLike', () => {
   it('détecte le format xuid(...)', () => {
@@ -63,5 +63,33 @@ describe('displayPlayerName', () => {
     for (const [gt, xu] of cases) {
       expect(isXuidLike(displayPlayerName(gt, xu))).toBe(false)
     }
+  })
+
+  describe('suffixe " [bot]" (marqueur de donnée killsource / schéma 36)', () => {
+    it('retire le suffixe final', () => {
+      expect(displayPlayerName('343 Razzle [bot]', 'bid(3.0)')).toBe('343 Razzle')
+    })
+    it('laisse un gamertag SANS suffixe inchangé', () => {
+      expect(displayPlayerName('JGtm', '2533274800000001')).toBe('JGtm')
+    })
+    it('ne touche pas un suffixe en PLEIN MILIEU du nom', () => {
+      expect(displayPlayerName('343 [bot] Razzle', '2533274800000001')).toBe('343 [bot] Razzle')
+    })
+    it('ne retire que la casse EXACTE " [bot]" (différente = inchangée)', () => {
+      expect(displayPlayerName('343 Razzle [BOT]', '2533274800000001')).toBe('343 Razzle [BOT]')
+      expect(displayPlayerName('343 Razzle [Bot]', '2533274800000001')).toBe('343 Razzle [Bot]')
+    })
+  })
+})
+
+describe('stripBotSuffix', () => {
+  it('retire le suffixe final ` [bot]`', () => {
+    expect(stripBotSuffix('343 Razzle [bot]')).toBe('343 Razzle')
+  })
+  it('laisse une chaîne sans suffixe inchangée', () => {
+    expect(stripBotSuffix('343 Razzle')).toBe('343 Razzle')
+  })
+  it('ne touche pas une occurrence en plein milieu', () => {
+    expect(stripBotSuffix('343 [bot] Razzle')).toBe('343 [bot] Razzle')
   })
 })

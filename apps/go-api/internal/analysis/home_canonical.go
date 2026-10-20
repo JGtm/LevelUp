@@ -1,4 +1,4 @@
-// Package analysis â€” home_canonical.go : entry-points canonical-aware pour la
+// Package analysis — home_canonical.go : entry-points canonical-aware pour la
 // page Home (P4.3b, ADR 0011).
 //
 // Les *FromCanonical sont les entry-points de la page Home : ils operent
@@ -16,17 +16,17 @@
 //     distinctSessionLabels...) tant que port.HomeRepository.LoadHomeMatches
 //     retourne du legacy et que des callers paralleles (squad/teammates) les consomment.
 //
-// **DÃ©coupage thÃ©matique** (split god-file 2026-05) :
-//   - home_canonical_converters.go : conversion canonical â†’ legacy.
+// **Découpage thématique** (split god-file 2026-05) :
+//   - home_canonical_converters.go : conversion canonical → legacy.
 //   - home_canonical_kpis.go       : KPIs, tendance, hero card.
 //   - home_canonical_highlights.go : 8 tuiles highlights.
 //   - home_canonical_recent.go     : BuildRecentMatchesWithFavorites + score label.
 //   - home_canonical_sessions.go   : BuildSessionSummary[ies].
 //   - home_canonical_skill.go      : InferHomeSkillHistory + badge CSR.
 //
-// Ce fichier conserve uniquement les helpers transverses utilisÃ©s par plusieurs
+// Ce fichier conserve uniquement les helpers transverses utilisés par plusieurs
 // sous-modules (deref, conversion outcome, extraction de labels d'assets,
-// rÃ©duction par frÃ©quence).
+// réduction par fréquence).
 package analysis
 
 import (
@@ -44,7 +44,7 @@ func derefIntZero(p *int) int {
 	return *p
 }
 
-// canonicalOutcomeToInt convertit canonical.Outcome â†’ int Halo.
+// canonicalOutcomeToInt convertit canonical.Outcome → int Halo.
 func canonicalOutcomeToInt(o canonical.Outcome) int {
 	switch o {
 	case canonical.OutcomeWin:

@@ -1,0 +1,97 @@
+film	build	variante	arret	records
+0797ce72	HI_1_13_0	levee	sous	15
+0797ce72	HI_1_13_0	levee	sur	3
+0797ce72	HI_1_13_0	posee	sous	15
+0797ce72	HI_1_13_0	posee	sur	3
+0797ce72	HI_1_13_0	reference	i30 vehicle-auto-turret-triggers-component	18
+084a804d	HI_1_10_0	levee	(fermee)	20
+084a804d	HI_1_10_0	levee	sous	722
+084a804d	HI_1_10_0	levee	sur	317
+084a804d	HI_1_10_0	posee	(fermee)	4
+084a804d	HI_1_10_0	posee	sous	693
+084a804d	HI_1_10_0	posee	sur	362
+084a804d	HI_1_10_0	reference	i30 vehicle-auto-turret-triggers-component	441
+084a804d	HI_1_10_0	reference	sous	618
+111fa685	HI_1_10_0	levee	sous	109
+111fa685	HI_1_10_0	levee	sur	68
+111fa685	HI_1_10_0	posee	(fermee)	2
+111fa685	HI_1_10_0	posee	sous	110
+111fa685	HI_1_10_0	posee	sur	65
+111fa685	HI_1_10_0	reference	i30 vehicle-auto-turret-triggers-component	121
+111fa685	HI_1_10_0	reference	sous	56
+11de8353	HI_1_9_0	levee	(fermee)	4
+11de8353	HI_1_9_0	levee	sous	281
+11de8353	HI_1_9_0	levee	sur	124
+11de8353	HI_1_9_0	posee	sous	278
+11de8353	HI_1_9_0	posee	sur	131
+11de8353	HI_1_9_0	reference	i30 vehicle-auto-turret-triggers-component	172
+11de8353	HI_1_9_0	reference	sous	237
+1c4c63c2	HI_1_10_0	levee	(fermee)	4
+1c4c63c2	HI_1_10_0	levee	sous	297
+1c4c63c2	HI_1_10_0	levee	sur	52
+1c4c63c2	HI_1_10_0	posee	(fermee)	1
+1c4c63c2	HI_1_10_0	posee	sous	296
+1c4c63c2	HI_1_10_0	posee	sur	56
+1c4c63c2	HI_1_10_0	reference	(fermee)	1
+1c4c63c2	HI_1_10_0	reference	i30 vehicle-auto-turret-triggers-component	100
+1c4c63c2	HI_1_10_0	reference	sous	252
+396cfc92	HI_1_13_0	levee	(fermee)	25
+396cfc92	HI_1_13_0	levee	sous	25
+396cfc92	HI_1_13_0	levee	sur	125
+396cfc92	HI_1_13_0	posee	sous	25
+396cfc92	HI_1_13_0	posee	sur	150
+396cfc92	HI_1_13_0	reference	i30 vehicle-auto-turret-triggers-component	175
+4f77afc1	HI_1_13_0	levee	(fermee)	69
+4f77afc1	HI_1_13_0	levee	sous	277
+4f77afc1	HI_1_13_0	levee	sur	794
+4f77afc1	HI_1_13_0	posee	(fermee)	8
+4f77afc1	HI_1_13_0	posee	sous	252
+4f77afc1	HI_1_13_0	posee	sur	880
+4f77afc1	HI_1_13_0	reference	(fermee)	5
+4f77afc1	HI_1_13_0	reference	i30 vehicle-auto-turret-triggers-component	1131
+4f77afc1	HI_1_13_0	reference	sous	4
+50247b26	version-31	levee	sous	321
+50247b26	version-31	levee	sur	128
+50247b26	version-31	posee	sous	308
+50247b26	version-31	posee	sur	141
+50247b26	version-31	reference	i29 vehicle-auto-turret-triggers-component	182
+50247b26	version-31	reference	sous	267
+60ae07c4	HI_1_8_0	levee	sous	34
+60ae07c4	HI_1_8_0	levee	sur	22
+60ae07c4	HI_1_8_0	posee	sous	34
+60ae07c4	HI_1_8_0	posee	sur	22
+60ae07c4	HI_1_8_0	reference	i30 vehicle-auto-turret-triggers-component	56
+81c02726	HI_1_13_0	levee	sous	16
+81c02726	HI_1_13_0	levee	sur	28
+81c02726	HI_1_13_0	posee	sous	16
+81c02726	HI_1_13_0	posee	sur	28
+81c02726	HI_1_13_0	reference	i30 vehicle-auto-turret-triggers-component	43
+81c02726	HI_1_13_0	reference	sous	1
+a349fea8	version-33	levee	sous	1472
+a349fea8	version-33	levee	sur	304
+a349fea8	version-33	posee	(fermee)	1
+a349fea8	version-33	posee	sous	1437
+a349fea8	version-33	posee	sur	338
+a349fea8	version-33	reference	i30 vehicle-auto-turret-triggers-component	454
+a349fea8	version-33	reference	sous	1322
+a521164d	HI_1_4_1	levee	sous	509
+a521164d	HI_1_4_1	levee	sur	136
+a521164d	HI_1_4_1	posee	(fermee)	1
+a521164d	HI_1_4_1	posee	sous	507
+a521164d	HI_1_4_1	posee	sur	137
+a521164d	HI_1_4_1	reference	i30 vehicle-auto-turret-triggers-component	167
+a521164d	HI_1_4_1	reference	sous	478
+bfecd02b	HI_1_13_0	levee	sous	27
+bfecd02b	HI_1_13_0	levee	sur	238
+bfecd02b	HI_1_13_0	posee	sous	27
+bfecd02b	HI_1_13_0	posee	sur	238
+bfecd02b	HI_1_13_0	reference	i30 vehicle-auto-turret-triggers-component	265
+e5adf7b2	HI_1_11_0	levee	(fermee)	14
+e5adf7b2	HI_1_11_0	levee	sous	374
+e5adf7b2	HI_1_11_0	levee	sur	105
+e5adf7b2	HI_1_11_0	posee	(fermee)	9
+e5adf7b2	HI_1_11_0	posee	sous	369
+e5adf7b2	HI_1_11_0	posee	sur	115
+e5adf7b2	HI_1_11_0	reference	(fermee)	8
+e5adf7b2	HI_1_11_0	reference	i30 vehicle-auto-turret-triggers-component	188
+e5adf7b2	HI_1_11_0	reference	sous	297

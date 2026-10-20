@@ -184,4 +184,138 @@ describe('NavL1', () => {
     expect(screen.getByRole('link', { name: 'Carrière' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Médias' })).toBeInTheDocument()
   })
+
+  // ─── Citations calculées vs Commendations natives ─────────────────────────
+  // Le choix de l'onglet suit la capability `citations`, JAMAIS le slug du titre
+  // (règle title-agnostic) : le slug 'partial' sert ici de preuve que seul le
+  // contenu de `capabilities` décide.
+
+  function openCareerMenu() {
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Carrière' }))
+  }
+
+  it('propose Citations (moteur calculé) quand le titre déclare la capability citations', () => {
+    setPartialTitle(['career', 'citations'])
+
+    renderWithProviders(<NavL1 />)
+    openCareerMenu()
+
+    expect(screen.getByRole('menuitem', { name: 'Citations' })).toHaveAttribute(
+      'href',
+      '/t/partial/players/test-player/career/citations',
+    )
+  })
+
+  it('bascule sur les commendations natives quand le titre ne déclare pas citations', () => {
+    setPartialTitle(['career'])
+
+    renderWithProviders(<NavL1 />)
+    openCareerMenu()
+
+    expect(screen.getByRole('menuitem', { name: 'Citations' })).toHaveAttribute(
+      'href',
+      '/t/partial/players/test-player/commendations',
+    )
+  })
+
+  it('ne se fie pas au slug : halo_5 avec la capability citations garde Citations', () => {
+    useAppShellStore.setState({
+      currentTitleSlug: 'halo_5',
+      availableTitles: [
+        { slug: 'halo_5', name: 'Halo 5', status: 'active', capabilities: ['career', 'citations'], is_default: false, effective_hp_to_kill: 225 },
+      ] as unknown as ReturnType<typeof useAppShellStore.getState>['availableTitles'],
+    })
+
+    renderWithProviders(<NavL1 />)
+    openCareerMenu()
+
+    expect(screen.getByRole('menuitem', { name: 'Citations' })).toHaveAttribute(
+      'href',
+      '/t/halo_5/players/test-player/career/citations',
+    )
+  })
+
+  // ─── Onglet Tactique (2026-09-08) ─────────────────────────────────────────
+  // La page portait ses cinq onglets en L2 depuis le 2026-09-06 pendant que le dropdown L1 en
+  // comptait quatre : la page existait sans qu'aucun menu du bandeau n'y mène. Ces deux tests
+  // fixent le miroir — la présence ET la porte — pour que les deux listes ne redivergent pas.
+
+  it('expose Tactique en DERNIER dans la dropdown Ascension', () => {
+    renderWithProviders(<NavL1 />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Ascension' }))
+
+    const realisations = screen.getByRole('menuitem', { name: 'Réalisations' })
+    const tactique = screen.getByRole('menuitem', { name: 'Tactique' })
+    expect(tactique).toHaveAttribute(
+      'href',
+      '/t/halo_infinite/players/test-player/ascension/tactique',
+    )
+    expect(
+      realisations.compareDocumentPosition(tactique) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  // ─── Onglet Tendances : sous Solo, juste après Synthèse, sans porte de capacité propre.
+  it('expose Tendances dans la dropdown Solo, juste apres Synthese', () => {
+    renderWithProviders(<NavL1 />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Solo' }))
+
+    const items = screen.getAllByRole('menuitem').map((n) => n.textContent)
+    expect(items.indexOf('Tendances')).toBe(items.indexOf('Synthèse') + 1)
+    expect(screen.getByRole('menuitem', { name: 'Tendances' })).toHaveAttribute(
+      'href',
+      '/t/halo_infinite/players/test-player/stats/tendances',
+    )
+  })
+
+  it('ne propose plus Tendances dans la dropdown Ascension', () => {
+    renderWithProviders(<NavL1 />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Ascension' }))
+
+    expect(screen.queryByRole('menuitem', { name: 'Tendances' })).not.toBeInTheDocument()
+  })
+
+  it('garde Tendances pour un titre sans capability replay', () => {
+    setPartialTitle(['matchmaking', 'lusr'])
+
+    renderWithProviders(<NavL1 />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Solo' }))
+
+    expect(screen.getByRole('menuitem', { name: 'Tendances' })).toBeInTheDocument()
+  })
+
+  it('masque Tactique pour un titre sans capability replay, sans masquer Ascension', () => {
+    setPartialTitle(['matchmaking', 'lusr'])
+
+    renderWithProviders(<NavL1 />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Ascension' }))
+
+    expect(screen.queryByRole('menuitem', { name: 'Tactique' })).not.toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Profil' })).toBeInTheDocument()
+  })
+
+  it("profil d'un ami : aucune cloche de notifications (réservées au propriétaire)", () => {
+    useAppShellStore.setState({ writablePlayerSlugs: ['mon-compte'] })
+    try {
+      renderWithProviders(<NavL1 />)
+      expect(screen.queryByRole('button', { name: /notification/i })).not.toBeInTheDocument()
+    } finally {
+      useAppShellStore.setState({ writablePlayerSlugs: null })
+    }
+  })
+
+  it('son propre profil : la cloche de notifications est présente', () => {
+    useAppShellStore.setState({ writablePlayerSlugs: ['test-player'] })
+    try {
+      renderWithProviders(<NavL1 />)
+      expect(screen.getByRole('button', { name: /notification/i })).toBeInTheDocument()
+    } finally {
+      useAppShellStore.setState({ writablePlayerSlugs: null })
+    }
+  })
 })

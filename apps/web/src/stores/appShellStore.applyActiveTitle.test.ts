@@ -87,7 +87,7 @@ const BOOTSTRAP_H5 = {
   },
   settings_excerpt: { lang: 'fr', user_timezone: 'UTC', show_records: true, normalize_mode_labels: true },
   auth_mode: 'none', registration_mode: 'closed', is_admin: false, first_launch: false,
-  instance_locked: false, reauth_required: false, has_password: false, current_username: null,
+  instance_locked: false, reauth_required: false, pool_sharing: 'unavailable', has_password: false, current_username: null,
   oauth_code_flow_enabled: false, demo_mode: false,
 } as const
 

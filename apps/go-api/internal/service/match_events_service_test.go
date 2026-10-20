@@ -25,10 +25,30 @@ func (f fakeEventsAdapter) LoadMatchEvents(context.Context, string, canonical.Ma
 type fakeGTResolver struct {
 	m   map[string]string
 	err error
+	// match : si non nil, reçoit le match passé au résolveur.
+	match *string
 }
 
-func (f fakeGTResolver) ResolveGamertags(context.Context, []string) (map[string]string, error) {
+func (f fakeGTResolver) ResolveGamertags(_ context.Context, matchID string, _ []string) (map[string]string, error) {
+	if f.match != nil {
+		*f.match = matchID
+	}
 	return f.m, f.err
+}
+
+// TestGetMatchEvents_ResolveurRecoitLeMatch : le résolveur lit l'annuaire du match de la
+// timeline (lot A du plan perf « lectures par périmètre », DA.5) — sans le match, sa jambe
+// kill-feed ne saurait où chercher.
+func TestGetMatchEvents_ResolveurRecoitLeMatch(t *testing.T) {
+	var vu string
+	resolver := fakeGTResolver{m: map[string]string{"xK": "KillerGT"}, match: &vu}
+	svc := NewMatchEventsService(fakeEventsAdapter{tl: xuidOnlyTimeline()}, resolver)
+	if _, err := svc.GetMatchEvents(context.Background(), "m1", canonical.MatchEventOptions{}); err != nil {
+		t.Fatalf("GetMatchEvents : %v", err)
+	}
+	if vu != "m1" {
+		t.Errorf("le résolveur a reçu le match %q, attendu %q (tl.MatchID)", vu, "m1")
+	}
 }
 
 func xuidOnlyTimeline() *canonical.MatchEventTimeline {

@@ -2,10 +2,14 @@
  * CareerTopEncountersSection — "Joueurs les plus croisés (hors amis)".
  *
  * Réutilise MatchEncountersTable (même tableau que Match View > "Historique
- * de rencontre") avec deux overrides :
+ * de rencontre") avec trois overrides :
  *  - hideCardWrapper : pas de barre de titre dupliquée (le h2 de section suffit)
  *  - onPlayerClick : navigation vers Explorer mode joueur (au lieu du
  *    fallback navigation interne qui n'a pas de sens hors match-view)
+ *  - showAssists={false} : le chargeur de cette section
+ *    (`CareerService.GetTopEncounters`, côté Go) ne pose JAMAIS le bloc
+ *    `assists` sur ses lignes — la colonne n'afficherait que des « — », avec
+ *    une infobulle d'en-tête et un tri sans objet.
  *
  * Limit 10 résultats, amis configurés (FriendGamertags) exclus côté backend.
  */
@@ -54,6 +58,7 @@ export function CareerTopEncountersSection() {
           locale={locale === 'en' ? 'en' : 'fr'}
           onPlayerClick={handlePlayerClick}
           hideCardWrapper
+          showAssists={false}
         />
       )}
     </section>

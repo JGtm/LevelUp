@@ -1,9 +1,9 @@
-// Package analysis â€” home_canonical_highlights.go : BuildHighlights canonical
+// Package analysis — home_canonical_highlights.go : BuildHighlights canonical
 // (P4.3 finale). 8 tuiles : perf moyenne, delta rang, best underdog win,
-// pic KDA, MaÃ®trise, Per-minute, Volume, SÃ©rie.
+// pic KDA, Maîtrise, Per-minute, Volume, Série.
 //
-// Les sous-tuiles composites (MaÃ®trise / Per-minute / SÃ©rie) et leurs slides
-// associÃ©es vivent dans home_canonical_highlights_tiles.go.
+// Les sous-tuiles composites (Maîtrise / Per-minute / Série) et leurs slides
+// associées vivent dans home_canonical_highlights_tiles.go.
 package analysis
 
 import (
@@ -17,7 +17,7 @@ import (
 
 // BuildHighlightsFromCanonical : full canonical (P4.3 finale).
 // 8 highlights (perf moyenne, delta rang, best underdog win, KDA peak,
-// MaÃ®trise tile, Per-minute tile, Volume, SÃ©rie tile).
+// Maîtrise tile, Per-minute tile, Volume, Série tile).
 //
 // `locale` ("fr"/"en") sélectionne les libellés de carte/mode composés dans les
 // champs Detail/Value (GH2-B5 : sans elle, labelFR forçait le FR sous UI EN).
@@ -136,7 +136,7 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow, locale string
 		}
 	}
 
-	// Highlight 5 : MaÃ®trise.
+	// Highlight 5 : Maîtrise.
 	if maitrise := buildMaitriseHighlightCanonical(window); maitrise != nil {
 		highlights = append(highlights, *maitrise)
 	}
@@ -174,7 +174,7 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow, locale string
 		})
 	}
 
-	// Highlight 8 : SÃ©rie.
+	// Highlight 8 : Série.
 	if serie := buildSerieHighlightCanonical(window, locale); serie != nil {
 		highlights = append(highlights, *serie)
 	}
@@ -182,8 +182,8 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow, locale string
 	return highlights
 }
 
-// selectHighlightWindowCanonical : sÃ©lection des matchs pour la fenÃªtre
-// (derniÃ¨re session + 4 similaires : mÃªme IsWithFriends + mÃªme playlistGroup).
+// selectHighlightWindowCanonical : sélection des matchs pour la fenêtre
+// (dernière session + 4 similaires : même IsWithFriends + même playlistGroup).
 func selectHighlightWindowCanonical(rows []canonical.PlayerMatchRow) []canonical.PlayerMatchRow {
 	if len(rows) == 0 {
 		return nil
@@ -264,7 +264,7 @@ func selectHighlightWindowCanonical(rows []canonical.PlayerMatchRow) []canonical
 	return window
 }
 
-// bestKDAMatchCanonical : retourne le row avec le KDA le plus Ã©levÃ©.
+// bestKDAMatchCanonical : retourne le row avec le KDA le plus élevé.
 func bestKDAMatchCanonical(rows []canonical.PlayerMatchRow) *canonical.PlayerMatchRow {
 	var best *canonical.PlayerMatchRow
 	for i := range rows {
@@ -279,7 +279,7 @@ func bestKDAMatchCanonical(rows []canonical.PlayerMatchRow) *canonical.PlayerMat
 }
 
 // bestMMRUnderdogWinCanonical : retourne la victoire avec le plus grand
-// dÃ©savantage MMR (enemy_mmr - team_mmr maximal).
+// désavantage MMR (enemy_mmr - team_mmr maximal).
 func bestMMRUnderdogWinCanonical(rows []canonical.PlayerMatchRow) *canonical.PlayerMatchRow {
 	var best *canonical.PlayerMatchRow
 	bestDelta := 0.0

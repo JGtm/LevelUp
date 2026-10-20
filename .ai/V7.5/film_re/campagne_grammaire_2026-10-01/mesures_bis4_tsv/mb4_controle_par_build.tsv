@@ -1,0 +1,1050 @@
+build	mesure	valeur
+HI_1_10_0	absences entre deux presences	4175
+HI_1_10_0	absences entre deux presences, trou < 0,1 s	3992
+HI_1_10_0	absences entre deux presences, vue C vide	1184
+HI_1_10_0	ecart d horodatage 000 ms	1903
+HI_1_10_0	ecart d horodatage 001 ms	74
+HI_1_10_0	ecart d horodatage 002 ms	37
+HI_1_10_0	ecart d horodatage 003 ms	58
+HI_1_10_0	ecart d horodatage 004 ms	86
+HI_1_10_0	ecart d horodatage 005 ms	77
+HI_1_10_0	ecart d horodatage 006 ms	31
+HI_1_10_0	ecart d horodatage 007 ms	5
+HI_1_10_0	ecart d horodatage 008 ms	6
+HI_1_10_0	ecart d horodatage 009 ms	7
+HI_1_10_0	ecart d horodatage 010 ms	40
+HI_1_10_0	ecart d horodatage 011 ms	175
+HI_1_10_0	ecart d horodatage 012 ms	233
+HI_1_10_0	ecart d horodatage 013 ms	379
+HI_1_10_0	ecart d horodatage 014 ms	921
+HI_1_10_0	ecart d horodatage 015 ms	3748
+HI_1_10_0	ecart d horodatage 016 ms	23017
+HI_1_10_0	ecart d horodatage 017 ms	36676
+HI_1_10_0	ecart d horodatage 018 ms	7099
+HI_1_10_0	ecart d horodatage 019 ms	1663
+HI_1_10_0	ecart d horodatage 020 ms	640
+HI_1_10_0	ecart d horodatage 021 ms	385
+HI_1_10_0	ecart d horodatage 022 ms	239
+HI_1_10_0	ecart d horodatage 023 ms	146
+HI_1_10_0	ecart d horodatage 024 ms	72
+HI_1_10_0	ecart d horodatage 025 ms	58
+HI_1_10_0	ecart d horodatage 026 ms	91
+HI_1_10_0	ecart d horodatage 027 ms	156
+HI_1_10_0	ecart d horodatage 028 ms	235
+HI_1_10_0	ecart d horodatage 029 ms	482
+HI_1_10_0	ecart d horodatage 030 ms	499
+HI_1_10_0	ecart d horodatage 031 ms	983
+HI_1_10_0	ecart d horodatage 032 ms	5355
+HI_1_10_0	ecart d horodatage 033 ms	22146
+HI_1_10_0	ecart d horodatage 034 ms	15855
+HI_1_10_0	ecart d horodatage 035 ms	3176
+HI_1_10_0	ecart d horodatage 036 ms	759
+HI_1_10_0	ecart d horodatage 037 ms	444
+HI_1_10_0	ecart d horodatage 038 ms	426
+HI_1_10_0	ecart d horodatage 039 ms	259
+HI_1_10_0	ecart d horodatage 040 ms	134
+HI_1_10_0	ecart d horodatage 041 ms	102
+HI_1_10_0	ecart d horodatage 042 ms	32
+HI_1_10_0	ecart d horodatage 043 ms	15
+HI_1_10_0	ecart d horodatage 044 ms	14
+HI_1_10_0	ecart d horodatage 045 ms	11
+HI_1_10_0	ecart d horodatage 046 ms	9
+HI_1_10_0	ecart d horodatage 047 ms	11
+HI_1_10_0	ecart d horodatage 048 ms	10
+HI_1_10_0	ecart d horodatage 049 ms	19
+HI_1_10_0	ecart d horodatage 050 ms	19
+HI_1_10_0	ecart d horodatage 051 ms	28
+HI_1_10_0	ecart d horodatage 052 ms	14
+HI_1_10_0	ecart d horodatage 053 ms	15
+HI_1_10_0	ecart d horodatage 054 ms	15
+HI_1_10_0	ecart d horodatage 055 ms	10
+HI_1_10_0	ecart d horodatage 056 ms	9
+HI_1_10_0	ecart d horodatage 057 ms	8
+HI_1_10_0	ecart d horodatage 058 ms	5
+HI_1_10_0	ecart d horodatage 059 ms	4
+HI_1_10_0	ecart d horodatage 060 ms	3
+HI_1_10_0	ecart d horodatage 061 ms	2
+HI_1_10_0	ecart d horodatage 062 ms	4
+HI_1_10_0	ecart d horodatage 063 ms	3
+HI_1_10_0	ecart d horodatage 064 ms	3
+HI_1_10_0	ecart d horodatage 065 ms	4
+HI_1_10_0	ecart d horodatage 066 ms	2
+HI_1_10_0	ecart d horodatage 067 ms	3
+HI_1_10_0	ecart d horodatage 068 ms	4
+HI_1_10_0	ecart d horodatage 069 ms	6
+HI_1_10_0	ecart d horodatage 070 ms	3
+HI_1_10_0	ecart d horodatage 071 ms	5
+HI_1_10_0	ecart d horodatage 073 ms	2
+HI_1_10_0	ecart d horodatage 074 ms	1
+HI_1_10_0	ecart d horodatage 076 ms	4
+HI_1_10_0	ecart d horodatage 077 ms	2
+HI_1_10_0	ecart d horodatage 078 ms	1
+HI_1_10_0	ecart d horodatage 081 ms	1
+HI_1_10_0	ecart d horodatage 082 ms	1
+HI_1_10_0	ecart d horodatage 084 ms	1
+HI_1_10_0	ecart d horodatage 088 ms	4
+HI_1_10_0	ecart d horodatage 089 ms	1
+HI_1_10_0	ecart d horodatage 090 ms	1
+HI_1_10_0	ecart d horodatage 092 ms	1
+HI_1_10_0	ecart d horodatage 095 ms	1
+HI_1_10_0	ecart d horodatage 098 ms	1
+HI_1_10_0	ecart d horodatage 100 ms	3
+HI_1_10_0	ecart d horodatage 101 ms	3
+HI_1_10_0	ecart d horodatage 102 ms	1
+HI_1_10_0	ecart d horodatage 112 ms	1
+HI_1_10_0	ecart d horodatage 114 ms	1
+HI_1_10_0	ecart d horodatage 116 ms	1
+HI_1_10_0	ecart d horodatage 118 ms	1
+HI_1_10_0	ecart d horodatage 121 ms	1
+HI_1_10_0	ecart d horodatage 122 ms	1
+HI_1_10_0	ecart d horodatage 132 ms	1
+HI_1_10_0	ecart d horodatage 133 ms	6
+HI_1_10_0	ecart d horodatage 134 ms	2
+HI_1_10_0	ecart d horodatage 135 ms	1
+HI_1_10_0	ecart d horodatage 153 ms	1
+HI_1_10_0	ecart d horodatage 157 ms	1
+HI_1_10_0	ecart d horodatage 199 ms	1
+HI_1_10_0	ecart d horodatage > 200 ms	3
+HI_1_10_0	entrees en double	149
+HI_1_10_0	entrees fermees	420684
+HI_1_10_0	entrees utiles fermees	420612
+HI_1_10_0	paquets delta	129369
+HI_1_10_0	paquets fermes	28741
+HI_1_10_0	paquets fermes a vue C vide	5961
+HI_1_10_0	paquets fermes sains	22331
+HI_1_10_0	paquets fermes sains a vue C vide	5406
+HI_1_10_0	presences dans les suites fermees	420535
+HI_1_10_0	sains par ecart au precedent : a < 12 ms, vue C non vide	379
+HI_1_10_0	sains par ecart au precedent : a < 12 ms, vue C vide	39
+HI_1_10_0	sains par ecart au precedent : b 12-20 ms, vue C non vide	9651
+HI_1_10_0	sains par ecart au precedent : b 12-20 ms, vue C vide	2991
+HI_1_10_0	sains par ecart au precedent : c 20-40 ms, vue C non vide	6740
+HI_1_10_0	sains par ecart au precedent : c 20-40 ms, vue C vide	2348
+HI_1_10_0	sains par ecart au precedent : d >= 40 ms, vue C non vide	65
+HI_1_10_0	sains par ecart au precedent : d >= 40 ms, vue C vide	21
+HI_1_10_0	sains par ecart au precedent : premier du chunk, vue C non vide	90
+HI_1_10_0	sains par ecart au precedent : premier du chunk, vue C vide	7
+HI_1_10_0	transitoire (fermes) : absent de p, vue C de p non vide	2139
+HI_1_10_0	transitoire (fermes) : absent de p, vue C de p vide	1026
+HI_1_10_0	transitoire (fermes) : present dans p-1, p, p+1	283455
+HI_1_10_0	transitoire (sains) : absent de p, vue C de p non vide	424
+HI_1_10_0	transitoire (sains) : absent de p, vue C de p non vide, ecart a < 12 ms	13
+HI_1_10_0	transitoire (sains) : absent de p, vue C de p non vide, ecart b 12-20 ms	333
+HI_1_10_0	transitoire (sains) : absent de p, vue C de p non vide, ecart c 20-40 ms	78
+HI_1_10_0	transitoire (sains) : absent de p, vue C de p vide	458
+HI_1_10_0	transitoire (sains) : absent de p, vue C de p vide, ecart b 12-20 ms	434
+HI_1_10_0	transitoire (sains) : absent de p, vue C de p vide, ecart c 20-40 ms	24
+HI_1_10_0	transitoire (sains) : present dans p-1, p, p+1	262519
+HI_1_10_0	trous (duree) a < 0,1 s	3490
+HI_1_10_0	trous (duree) b 0,1-1 s	30
+HI_1_10_0	trous (paquets) 1	3165
+HI_1_10_0	trous (paquets) 2	188
+HI_1_10_0	trous (paquets) 3-5	151
+HI_1_10_0	trous (paquets) 6-29	16
+HI_1_11_0	absences entre deux presences	90
+HI_1_11_0	absences entre deux presences, trou < 0,1 s	90
+HI_1_11_0	ecart d horodatage 000 ms	4
+HI_1_11_0	ecart d horodatage 003 ms	1
+HI_1_11_0	ecart d horodatage 004 ms	1
+HI_1_11_0	ecart d horodatage 005 ms	1
+HI_1_11_0	ecart d horodatage 011 ms	1
+HI_1_11_0	ecart d horodatage 012 ms	1
+HI_1_11_0	ecart d horodatage 013 ms	1
+HI_1_11_0	ecart d horodatage 016 ms	2
+HI_1_11_0	ecart d horodatage 017 ms	4
+HI_1_11_0	ecart d horodatage 018 ms	6
+HI_1_11_0	ecart d horodatage 019 ms	10
+HI_1_11_0	ecart d horodatage 020 ms	2
+HI_1_11_0	ecart d horodatage 021 ms	2
+HI_1_11_0	ecart d horodatage 023 ms	6
+HI_1_11_0	ecart d horodatage 024 ms	18
+HI_1_11_0	ecart d horodatage 025 ms	49
+HI_1_11_0	ecart d horodatage 026 ms	75
+HI_1_11_0	ecart d horodatage 027 ms	50
+HI_1_11_0	ecart d horodatage 028 ms	50
+HI_1_11_0	ecart d horodatage 029 ms	89
+HI_1_11_0	ecart d horodatage 030 ms	94
+HI_1_11_0	ecart d horodatage 031 ms	161
+HI_1_11_0	ecart d horodatage 032 ms	1122
+HI_1_11_0	ecart d horodatage 033 ms	8573
+HI_1_11_0	ecart d horodatage 034 ms	5331
+HI_1_11_0	ecart d horodatage 035 ms	580
+HI_1_11_0	ecart d horodatage 036 ms	108
+HI_1_11_0	ecart d horodatage 037 ms	81
+HI_1_11_0	ecart d horodatage 038 ms	99
+HI_1_11_0	ecart d horodatage 039 ms	43
+HI_1_11_0	ecart d horodatage 040 ms	44
+HI_1_11_0	ecart d horodatage 041 ms	90
+HI_1_11_0	ecart d horodatage 042 ms	57
+HI_1_11_0	ecart d horodatage 043 ms	18
+HI_1_11_0	ecart d horodatage 044 ms	7
+HI_1_11_0	ecart d horodatage 045 ms	1
+HI_1_11_0	ecart d horodatage 047 ms	1
+HI_1_11_0	ecart d horodatage 048 ms	1
+HI_1_11_0	ecart d horodatage 050 ms	1
+HI_1_11_0	ecart d horodatage 055 ms	1
+HI_1_11_0	ecart d horodatage 067 ms	1
+HI_1_11_0	ecart d horodatage 073 ms	1
+HI_1_11_0	ecart d horodatage 077 ms	1
+HI_1_11_0	ecart d horodatage 101 ms	1
+HI_1_11_0	ecart d horodatage 120 ms	1
+HI_1_11_0	ecart d horodatage 122 ms	1
+HI_1_11_0	ecart d horodatage 131 ms	1
+HI_1_11_0	ecart d horodatage 133 ms	2
+HI_1_11_0	entrees en double	1
+HI_1_11_0	entrees fermees	76224
+HI_1_11_0	entrees utiles fermees	76222
+HI_1_11_0	paquets delta	16824
+HI_1_11_0	paquets fermes	4285
+HI_1_11_0	paquets fermes a vue C vide	589
+HI_1_11_0	paquets fermes sains	4121
+HI_1_11_0	paquets fermes sains a vue C vide	562
+HI_1_11_0	presences dans les suites fermees	76223
+HI_1_11_0	sains par ecart au precedent : a < 12 ms, vue C non vide	4
+HI_1_11_0	sains par ecart au precedent : b 12-20 ms, vue C non vide	18
+HI_1_11_0	sains par ecart au precedent : b 12-20 ms, vue C vide	1
+HI_1_11_0	sains par ecart au precedent : c 20-40 ms, vue C non vide	3473
+HI_1_11_0	sains par ecart au precedent : c 20-40 ms, vue C vide	556
+HI_1_11_0	sains par ecart au precedent : d >= 40 ms, vue C non vide	47
+HI_1_11_0	sains par ecart au precedent : d >= 40 ms, vue C vide	4
+HI_1_11_0	sains par ecart au precedent : premier du chunk, vue C non vide	17
+HI_1_11_0	sains par ecart au precedent : premier du chunk, vue C vide	1
+HI_1_11_0	transitoire (fermes) : absent de p, vue C de p non vide	88
+HI_1_11_0	transitoire (fermes) : present dans p-1, p, p+1	52195
+HI_1_11_0	transitoire (sains) : present dans p-1, p, p+1	50943
+HI_1_11_0	trous (duree) a < 0,1 s	89
+HI_1_11_0	trous (paquets) 1	88
+HI_1_11_0	trous (paquets) 2	1
+HI_1_12_0	absences entre deux presences	6
+HI_1_12_0	absences entre deux presences, trou < 0,1 s	6
+HI_1_12_0	absences entre deux presences, vue C vide	6
+HI_1_12_0	ecart d horodatage 000 ms	8
+HI_1_12_0	ecart d horodatage 001 ms	6
+HI_1_12_0	ecart d horodatage 002 ms	5
+HI_1_12_0	ecart d horodatage 006 ms	2
+HI_1_12_0	ecart d horodatage 007 ms	1
+HI_1_12_0	ecart d horodatage 009 ms	3
+HI_1_12_0	ecart d horodatage 011 ms	8
+HI_1_12_0	ecart d horodatage 012 ms	22
+HI_1_12_0	ecart d horodatage 013 ms	81
+HI_1_12_0	ecart d horodatage 014 ms	71
+HI_1_12_0	ecart d horodatage 015 ms	125
+HI_1_12_0	ecart d horodatage 016 ms	5741
+HI_1_12_0	ecart d horodatage 017 ms	15131
+HI_1_12_0	ecart d horodatage 018 ms	443
+HI_1_12_0	ecart d horodatage 019 ms	59
+HI_1_12_0	ecart d horodatage 020 ms	75
+HI_1_12_0	ecart d horodatage 021 ms	43
+HI_1_12_0	ecart d horodatage 022 ms	11
+HI_1_12_0	ecart d horodatage 023 ms	1
+HI_1_12_0	ecart d horodatage 031 ms	1
+HI_1_12_0	ecart d horodatage 056 ms	1
+HI_1_12_0	ecart d horodatage 107 ms	1
+HI_1_12_0	ecart d horodatage 116 ms	2
+HI_1_12_0	ecart d horodatage 117 ms	4
+HI_1_12_0	entrees fermees	30137
+HI_1_12_0	entrees utiles fermees	30136
+HI_1_12_0	paquets delta	21864
+HI_1_12_0	paquets fermes	5835
+HI_1_12_0	paquets fermes a vue C vide	718
+HI_1_12_0	paquets fermes sains	5830
+HI_1_12_0	paquets fermes sains a vue C vide	716
+HI_1_12_0	presences dans les suites fermees	30137
+HI_1_12_0	sains par ecart au precedent : a < 12 ms, vue C non vide	13
+HI_1_12_0	sains par ecart au precedent : a < 12 ms, vue C vide	2
+HI_1_12_0	sains par ecart au precedent : b 12-20 ms, vue C non vide	5072
+HI_1_12_0	sains par ecart au precedent : b 12-20 ms, vue C vide	709
+HI_1_12_0	sains par ecart au precedent : c 20-40 ms, vue C non vide	23
+HI_1_12_0	sains par ecart au precedent : c 20-40 ms, vue C vide	1
+HI_1_12_0	sains par ecart au precedent : d >= 40 ms, vue C vide	4
+HI_1_12_0	sains par ecart au precedent : premier du chunk, vue C non vide	6
+HI_1_12_0	transitoire (fermes) : absent de p, vue C de p vide	6
+HI_1_12_0	transitoire (fermes) : present dans p-1, p, p+1	26881
+HI_1_12_0	transitoire (sains) : present dans p-1, p, p+1	26848
+HI_1_12_0	trous (duree) a < 0,1 s	6
+HI_1_12_0	trous (paquets) 1	6
+HI_1_13_0	absences entre deux presences	5559
+HI_1_13_0	absences entre deux presences, trou < 0,1 s	4601
+HI_1_13_0	absences entre deux presences, vue C vide	2113
+HI_1_13_0	ecart d horodatage 000 ms	96
+HI_1_13_0	ecart d horodatage 001 ms	22
+HI_1_13_0	ecart d horodatage 002 ms	14
+HI_1_13_0	ecart d horodatage 003 ms	7
+HI_1_13_0	ecart d horodatage 004 ms	7
+HI_1_13_0	ecart d horodatage 005 ms	5
+HI_1_13_0	ecart d horodatage 006 ms	29
+HI_1_13_0	ecart d horodatage 007 ms	98
+HI_1_13_0	ecart d horodatage 008 ms	70
+HI_1_13_0	ecart d horodatage 009 ms	26
+HI_1_13_0	ecart d horodatage 010 ms	42
+HI_1_13_0	ecart d horodatage 011 ms	97
+HI_1_13_0	ecart d horodatage 012 ms	226
+HI_1_13_0	ecart d horodatage 013 ms	823
+HI_1_13_0	ecart d horodatage 014 ms	1143
+HI_1_13_0	ecart d horodatage 015 ms	1497
+HI_1_13_0	ecart d horodatage 016 ms	74922
+HI_1_13_0	ecart d horodatage 017 ms	212458
+HI_1_13_0	ecart d horodatage 018 ms	5913
+HI_1_13_0	ecart d horodatage 019 ms	918
+HI_1_13_0	ecart d horodatage 020 ms	1092
+HI_1_13_0	ecart d horodatage 021 ms	433
+HI_1_13_0	ecart d horodatage 022 ms	167
+HI_1_13_0	ecart d horodatage 023 ms	85
+HI_1_13_0	ecart d horodatage 024 ms	78
+HI_1_13_0	ecart d horodatage 025 ms	64
+HI_1_13_0	ecart d horodatage 026 ms	71
+HI_1_13_0	ecart d horodatage 027 ms	93
+HI_1_13_0	ecart d horodatage 028 ms	117
+HI_1_13_0	ecart d horodatage 029 ms	178
+HI_1_13_0	ecart d horodatage 030 ms	273
+HI_1_13_0	ecart d horodatage 031 ms	1192
+HI_1_13_0	ecart d horodatage 032 ms	5219
+HI_1_13_0	ecart d horodatage 033 ms	12945
+HI_1_13_0	ecart d horodatage 034 ms	9818
+HI_1_13_0	ecart d horodatage 035 ms	3268
+HI_1_13_0	ecart d horodatage 036 ms	924
+HI_1_13_0	ecart d horodatage 037 ms	282
+HI_1_13_0	ecart d horodatage 038 ms	167
+HI_1_13_0	ecart d horodatage 039 ms	125
+HI_1_13_0	ecart d horodatage 040 ms	107
+HI_1_13_0	ecart d horodatage 041 ms	53
+HI_1_13_0	ecart d horodatage 042 ms	46
+HI_1_13_0	ecart d horodatage 043 ms	46
+HI_1_13_0	ecart d horodatage 044 ms	27
+HI_1_13_0	ecart d horodatage 045 ms	15
+HI_1_13_0	ecart d horodatage 046 ms	6
+HI_1_13_0	ecart d horodatage 047 ms	4
+HI_1_13_0	ecart d horodatage 048 ms	4
+HI_1_13_0	ecart d horodatage 049 ms	1
+HI_1_13_0	ecart d horodatage 050 ms	2
+HI_1_13_0	ecart d horodatage 053 ms	2
+HI_1_13_0	ecart d horodatage 055 ms	5
+HI_1_13_0	ecart d horodatage 056 ms	9
+HI_1_13_0	ecart d horodatage 057 ms	6
+HI_1_13_0	ecart d horodatage 058 ms	8
+HI_1_13_0	ecart d horodatage 059 ms	5
+HI_1_13_0	ecart d horodatage 060 ms	10
+HI_1_13_0	ecart d horodatage 061 ms	3
+HI_1_13_0	ecart d horodatage 062 ms	2
+HI_1_13_0	ecart d horodatage 063 ms	2
+HI_1_13_0	ecart d horodatage 064 ms	1
+HI_1_13_0	ecart d horodatage 066 ms	2
+HI_1_13_0	ecart d horodatage 067 ms	1
+HI_1_13_0	ecart d horodatage 068 ms	2
+HI_1_13_0	ecart d horodatage 071 ms	2
+HI_1_13_0	ecart d horodatage 072 ms	1
+HI_1_13_0	ecart d horodatage 073 ms	2
+HI_1_13_0	ecart d horodatage 075 ms	1
+HI_1_13_0	ecart d horodatage 076 ms	1
+HI_1_13_0	ecart d horodatage 078 ms	1
+HI_1_13_0	ecart d horodatage 080 ms	1
+HI_1_13_0	ecart d horodatage 086 ms	2
+HI_1_13_0	ecart d horodatage 092 ms	1
+HI_1_13_0	ecart d horodatage 094 ms	1
+HI_1_13_0	ecart d horodatage 096 ms	1
+HI_1_13_0	ecart d horodatage 097 ms	1
+HI_1_13_0	ecart d horodatage 098 ms	1
+HI_1_13_0	ecart d horodatage 099 ms	1
+HI_1_13_0	ecart d horodatage 100 ms	22
+HI_1_13_0	ecart d horodatage 101 ms	5
+HI_1_13_0	ecart d horodatage 103 ms	2
+HI_1_13_0	ecart d horodatage 104 ms	1
+HI_1_13_0	ecart d horodatage 105 ms	1
+HI_1_13_0	ecart d horodatage 106 ms	1
+HI_1_13_0	ecart d horodatage 107 ms	1
+HI_1_13_0	ecart d horodatage 108 ms	1
+HI_1_13_0	ecart d horodatage 116 ms	9
+HI_1_13_0	ecart d horodatage 117 ms	27
+HI_1_13_0	ecart d horodatage 118 ms	3
+HI_1_13_0	ecart d horodatage 122 ms	1
+HI_1_13_0	ecart d horodatage 124 ms	1
+HI_1_13_0	ecart d horodatage 132 ms	2
+HI_1_13_0	ecart d horodatage 133 ms	109
+HI_1_13_0	ecart d horodatage 134 ms	58
+HI_1_13_0	ecart d horodatage 135 ms	2
+HI_1_13_0	ecart d horodatage 147 ms	1
+HI_1_13_0	ecart d horodatage > 200 ms	7
+HI_1_13_0	entrees en double	6
+HI_1_13_0	entrees fermees	1619514
+HI_1_13_0	entrees utiles fermees	1619501
+HI_1_13_0	paquets delta	335960
+HI_1_13_0	paquets fermes	224818
+HI_1_13_0	paquets fermes a vue C vide	13704
+HI_1_13_0	paquets fermes sains	223331
+HI_1_13_0	paquets fermes sains a vue C vide	13439
+HI_1_13_0	presences dans les suites fermees	1619508
+HI_1_13_0	sains par ecart au precedent : a < 12 ms, vue C non vide	401
+HI_1_13_0	sains par ecart au precedent : a < 12 ms, vue C vide	24
+HI_1_13_0	sains par ecart au precedent : b 12-20 ms, vue C non vide	188864
+HI_1_13_0	sains par ecart au precedent : b 12-20 ms, vue C vide	11153
+HI_1_13_0	sains par ecart au precedent : c 20-40 ms, vue C non vide	20225
+HI_1_13_0	sains par ecart au precedent : c 20-40 ms, vue C vide	2022
+HI_1_13_0	sains par ecart au precedent : d >= 40 ms, vue C non vide	178
+HI_1_13_0	sains par ecart au precedent : d >= 40 ms, vue C vide	228
+HI_1_13_0	sains par ecart au precedent : premier du chunk, vue C non vide	224
+HI_1_13_0	sains par ecart au precedent : premier du chunk, vue C vide	12
+HI_1_13_0	transitoire (fermes) : absent de p, vue C de p non vide	2619
+HI_1_13_0	transitoire (fermes) : absent de p, vue C de p vide	1938
+HI_1_13_0	transitoire (fermes) : present dans p-1, p, p+1	1306705
+HI_1_13_0	transitoire (sains) : absent de p, vue C de p non vide	1036
+HI_1_13_0	transitoire (sains) : absent de p, vue C de p non vide, ecart b 12-20 ms	22
+HI_1_13_0	transitoire (sains) : absent de p, vue C de p non vide, ecart c 20-40 ms	1002
+HI_1_13_0	transitoire (sains) : absent de p, vue C de p non vide, ecart d >= 40 ms	12
+HI_1_13_0	transitoire (sains) : absent de p, vue C de p vide	666
+HI_1_13_0	transitoire (sains) : absent de p, vue C de p vide, ecart b 12-20 ms	79
+HI_1_13_0	transitoire (sains) : absent de p, vue C de p vide, ecart c 20-40 ms	587
+HI_1_13_0	transitoire (sains) : present dans p-1, p, p+1	1282748
+HI_1_13_0	trous (duree) a < 0,1 s	4579
+HI_1_13_0	trous (duree) b 0,1-1 s	116
+HI_1_13_0	trous (duree) c 1-3 s	4
+HI_1_13_0	trous (duree) d >= 3 s	1
+HI_1_13_0	trous (paquets) 1	4557
+HI_1_13_0	trous (paquets) 2	135
+HI_1_13_0	trous (paquets) 30-299	4
+HI_1_13_0	trous (paquets) 6-29	3
+HI_1_13_0	trous (paquets) >=300	1
+HI_1_4_1	ecart d horodatage 000 ms	72
+HI_1_4_1	ecart d horodatage 001 ms	24
+HI_1_4_1	ecart d horodatage 002 ms	9
+HI_1_4_1	ecart d horodatage 003 ms	5
+HI_1_4_1	ecart d horodatage 004 ms	7
+HI_1_4_1	ecart d horodatage 005 ms	9
+HI_1_4_1	ecart d horodatage 006 ms	7
+HI_1_4_1	ecart d horodatage 007 ms	13
+HI_1_4_1	ecart d horodatage 008 ms	9
+HI_1_4_1	ecart d horodatage 009 ms	4
+HI_1_4_1	ecart d horodatage 010 ms	3
+HI_1_4_1	ecart d horodatage 011 ms	3
+HI_1_4_1	ecart d horodatage 014 ms	2
+HI_1_4_1	ecart d horodatage 015 ms	2
+HI_1_4_1	ecart d horodatage 017 ms	3
+HI_1_4_1	ecart d horodatage 018 ms	3
+HI_1_4_1	ecart d horodatage 019 ms	4
+HI_1_4_1	ecart d horodatage 020 ms	1
+HI_1_4_1	ecart d horodatage 022 ms	4
+HI_1_4_1	ecart d horodatage 023 ms	4
+HI_1_4_1	ecart d horodatage 024 ms	11
+HI_1_4_1	ecart d horodatage 025 ms	16
+HI_1_4_1	ecart d horodatage 026 ms	23
+HI_1_4_1	ecart d horodatage 027 ms	23
+HI_1_4_1	ecart d horodatage 028 ms	39
+HI_1_4_1	ecart d horodatage 029 ms	74
+HI_1_4_1	ecart d horodatage 030 ms	149
+HI_1_4_1	ecart d horodatage 031 ms	547
+HI_1_4_1	ecart d horodatage 032 ms	1755
+HI_1_4_1	ecart d horodatage 033 ms	3315
+HI_1_4_1	ecart d horodatage 034 ms	2850
+HI_1_4_1	ecart d horodatage 035 ms	1280
+HI_1_4_1	ecart d horodatage 036 ms	371
+HI_1_4_1	ecart d horodatage 037 ms	128
+HI_1_4_1	ecart d horodatage 038 ms	44
+HI_1_4_1	ecart d horodatage 039 ms	32
+HI_1_4_1	ecart d horodatage 040 ms	36
+HI_1_4_1	ecart d horodatage 041 ms	18
+HI_1_4_1	ecart d horodatage 042 ms	17
+HI_1_4_1	ecart d horodatage 043 ms	12
+HI_1_4_1	ecart d horodatage 044 ms	10
+HI_1_4_1	ecart d horodatage 046 ms	5
+HI_1_4_1	ecart d horodatage 047 ms	1
+HI_1_4_1	ecart d horodatage 048 ms	4
+HI_1_4_1	ecart d horodatage 049 ms	1
+HI_1_4_1	ecart d horodatage 050 ms	1
+HI_1_4_1	ecart d horodatage 051 ms	2
+HI_1_4_1	ecart d horodatage 052 ms	3
+HI_1_4_1	ecart d horodatage 053 ms	3
+HI_1_4_1	ecart d horodatage 055 ms	2
+HI_1_4_1	ecart d horodatage 056 ms	3
+HI_1_4_1	ecart d horodatage 057 ms	5
+HI_1_4_1	ecart d horodatage 058 ms	4
+HI_1_4_1	ecart d horodatage 059 ms	2
+HI_1_4_1	ecart d horodatage 060 ms	6
+HI_1_4_1	ecart d horodatage 061 ms	8
+HI_1_4_1	ecart d horodatage 062 ms	6
+HI_1_4_1	ecart d horodatage 063 ms	8
+HI_1_4_1	ecart d horodatage 064 ms	7
+HI_1_4_1	ecart d horodatage 065 ms	5
+HI_1_4_1	ecart d horodatage 066 ms	14
+HI_1_4_1	ecart d horodatage 067 ms	19
+HI_1_4_1	ecart d horodatage 068 ms	8
+HI_1_4_1	ecart d horodatage 069 ms	10
+HI_1_4_1	ecart d horodatage 070 ms	6
+HI_1_4_1	ecart d horodatage 071 ms	4
+HI_1_4_1	ecart d horodatage 072 ms	5
+HI_1_4_1	ecart d horodatage 073 ms	1
+HI_1_4_1	ecart d horodatage 077 ms	1
+HI_1_4_1	ecart d horodatage 082 ms	1
+HI_1_4_1	ecart d horodatage 085 ms	1
+HI_1_4_1	ecart d horodatage 091 ms	1
+HI_1_4_1	ecart d horodatage 094 ms	1
+HI_1_4_1	ecart d horodatage 099 ms	1
+HI_1_4_1	ecart d horodatage 100 ms	1
+HI_1_4_1	ecart d horodatage 101 ms	3
+HI_1_4_1	ecart d horodatage 102 ms	2
+HI_1_4_1	ecart d horodatage 106 ms	1
+HI_1_4_1	ecart d horodatage 107 ms	1
+HI_1_4_1	ecart d horodatage 111 ms	1
+HI_1_4_1	ecart d horodatage 131 ms	1
+HI_1_4_1	ecart d horodatage 132 ms	3
+HI_1_4_1	ecart d horodatage 133 ms	3
+HI_1_4_1	ecart d horodatage 134 ms	3
+HI_1_4_1	ecart d horodatage 135 ms	2
+HI_1_4_1	ecart d horodatage 136 ms	1
+HI_1_4_1	ecart d horodatage 137 ms	1
+HI_1_4_1	ecart d horodatage 140 ms	1
+HI_1_4_1	entrees fermees	5
+HI_1_4_1	paquets delta	11130
+HI_1_4_1	paquets fermes	701
+HI_1_4_1	paquets fermes a vue C vide	696
+HI_1_4_1	paquets fermes sains	692
+HI_1_4_1	paquets fermes sains a vue C vide	692
+HI_1_4_1	presences dans les suites fermees	5
+HI_1_4_1	sains par ecart au precedent : a < 12 ms, vue C vide	1
+HI_1_4_1	sains par ecart au precedent : c 20-40 ms, vue C vide	679
+HI_1_4_1	sains par ecart au precedent : d >= 40 ms, vue C vide	11
+HI_1_4_1	sains par ecart au precedent : premier du chunk, vue C vide	1
+HI_1_8_0	absences entre deux presences	105
+HI_1_8_0	absences entre deux presences, trou < 0,1 s	105
+HI_1_8_0	absences entre deux presences, vue C vide	68
+HI_1_8_0	ecart d horodatage 000 ms	3
+HI_1_8_0	ecart d horodatage 001 ms	2
+HI_1_8_0	ecart d horodatage 004 ms	2
+HI_1_8_0	ecart d horodatage 005 ms	2
+HI_1_8_0	ecart d horodatage 006 ms	5
+HI_1_8_0	ecart d horodatage 007 ms	29
+HI_1_8_0	ecart d horodatage 008 ms	4
+HI_1_8_0	ecart d horodatage 009 ms	1
+HI_1_8_0	ecart d horodatage 010 ms	3
+HI_1_8_0	ecart d horodatage 011 ms	5
+HI_1_8_0	ecart d horodatage 012 ms	17
+HI_1_8_0	ecart d horodatage 013 ms	107
+HI_1_8_0	ecart d horodatage 014 ms	243
+HI_1_8_0	ecart d horodatage 015 ms	194
+HI_1_8_0	ecart d horodatage 016 ms	12535
+HI_1_8_0	ecart d horodatage 017 ms	35337
+HI_1_8_0	ecart d horodatage 018 ms	735
+HI_1_8_0	ecart d horodatage 019 ms	182
+HI_1_8_0	ecart d horodatage 020 ms	196
+HI_1_8_0	ecart d horodatage 021 ms	28
+HI_1_8_0	ecart d horodatage 022 ms	8
+HI_1_8_0	ecart d horodatage 023 ms	3
+HI_1_8_0	ecart d horodatage 027 ms	1
+HI_1_8_0	ecart d horodatage 028 ms	1
+HI_1_8_0	ecart d horodatage 029 ms	2
+HI_1_8_0	ecart d horodatage 032 ms	1
+HI_1_8_0	ecart d horodatage 035 ms	1
+HI_1_8_0	ecart d horodatage 036 ms	1
+HI_1_8_0	ecart d horodatage 061 ms	1
+HI_1_8_0	ecart d horodatage 100 ms	1
+HI_1_8_0	ecart d horodatage 102 ms	1
+HI_1_8_0	ecart d horodatage 116 ms	1
+HI_1_8_0	ecart d horodatage 117 ms	2
+HI_1_8_0	entrees fermees	79294
+HI_1_8_0	entrees utiles fermees	79279
+HI_1_8_0	paquets delta	49696
+HI_1_8_0	paquets fermes	13969
+HI_1_8_0	paquets fermes a vue C vide	833
+HI_1_8_0	paquets fermes sains	13828
+HI_1_8_0	paquets fermes sains a vue C vide	777
+HI_1_8_0	presences dans les suites fermees	79294
+HI_1_8_0	sains par ecart au precedent : a < 12 ms, vue C non vide	39
+HI_1_8_0	sains par ecart au precedent : a < 12 ms, vue C vide	2
+HI_1_8_0	sains par ecart au precedent : b 12-20 ms, vue C non vide	12968
+HI_1_8_0	sains par ecart au precedent : b 12-20 ms, vue C vide	771
+HI_1_8_0	sains par ecart au precedent : c 20-40 ms, vue C non vide	17
+HI_1_8_0	sains par ecart au precedent : c 20-40 ms, vue C vide	1
+HI_1_8_0	sains par ecart au precedent : d >= 40 ms, vue C vide	3
+HI_1_8_0	sains par ecart au precedent : premier du chunk, vue C non vide	27
+HI_1_8_0	transitoire (fermes) : absent de p, vue C de p non vide	37
+HI_1_8_0	transitoire (fermes) : absent de p, vue C de p vide	68
+HI_1_8_0	transitoire (fermes) : present dans p-1, p, p+1	67164
+HI_1_8_0	transitoire (sains) : absent de p, vue C de p non vide	2
+HI_1_8_0	transitoire (sains) : absent de p, vue C de p non vide, ecart b 12-20 ms	2
+HI_1_8_0	transitoire (sains) : present dans p-1, p, p+1	66945
+HI_1_8_0	trous (duree) a < 0,1 s	105
+HI_1_8_0	trous (paquets) 1	105
+HI_1_9_0	absences entre deux presences	114
+HI_1_9_0	absences entre deux presences, trou < 0,1 s	92
+HI_1_9_0	absences entre deux presences, vue C vide	62
+HI_1_9_0	ecart d horodatage 000 ms	1
+HI_1_9_0	ecart d horodatage 003 ms	1
+HI_1_9_0	ecart d horodatage 016 ms	1
+HI_1_9_0	ecart d horodatage 017 ms	1
+HI_1_9_0	ecart d horodatage 018 ms	2
+HI_1_9_0	ecart d horodatage 019 ms	3
+HI_1_9_0	ecart d horodatage 020 ms	1
+HI_1_9_0	ecart d horodatage 021 ms	4
+HI_1_9_0	ecart d horodatage 022 ms	20
+HI_1_9_0	ecart d horodatage 023 ms	25
+HI_1_9_0	ecart d horodatage 024 ms	39
+HI_1_9_0	ecart d horodatage 025 ms	63
+HI_1_9_0	ecart d horodatage 026 ms	20
+HI_1_9_0	ecart d horodatage 027 ms	22
+HI_1_9_0	ecart d horodatage 028 ms	33
+HI_1_9_0	ecart d horodatage 029 ms	78
+HI_1_9_0	ecart d horodatage 030 ms	121
+HI_1_9_0	ecart d horodatage 031 ms	315
+HI_1_9_0	ecart d horodatage 032 ms	1811
+HI_1_9_0	ecart d horodatage 033 ms	7928
+HI_1_9_0	ecart d horodatage 034 ms	5113
+HI_1_9_0	ecart d horodatage 035 ms	1161
+HI_1_9_0	ecart d horodatage 036 ms	231
+HI_1_9_0	ecart d horodatage 037 ms	94
+HI_1_9_0	ecart d horodatage 038 ms	85
+HI_1_9_0	ecart d horodatage 039 ms	46
+HI_1_9_0	ecart d horodatage 040 ms	25
+HI_1_9_0	ecart d horodatage 041 ms	35
+HI_1_9_0	ecart d horodatage 042 ms	52
+HI_1_9_0	ecart d horodatage 043 ms	33
+HI_1_9_0	ecart d horodatage 044 ms	21
+HI_1_9_0	ecart d horodatage 045 ms	6
+HI_1_9_0	ecart d horodatage 046 ms	2
+HI_1_9_0	ecart d horodatage 047 ms	2
+HI_1_9_0	ecart d horodatage 048 ms	3
+HI_1_9_0	ecart d horodatage 049 ms	1
+HI_1_9_0	ecart d horodatage 062 ms	1
+HI_1_9_0	ecart d horodatage 100 ms	24
+HI_1_9_0	ecart d horodatage 101 ms	4
+HI_1_9_0	ecart d horodatage 122 ms	1
+HI_1_9_0	ecart d horodatage 132 ms	1
+HI_1_9_0	ecart d horodatage 133 ms	108
+HI_1_9_0	ecart d horodatage 134 ms	57
+HI_1_9_0	ecart d horodatage 135 ms	1
+HI_1_9_0	ecart d horodatage 157 ms	1
+HI_1_9_0	ecart d horodatage > 200 ms	1
+HI_1_9_0	entrees fermees	75327
+HI_1_9_0	entrees utiles fermees	75327
+HI_1_9_0	paquets delta	17629
+HI_1_9_0	paquets fermes	5739
+HI_1_9_0	paquets fermes a vue C vide	2049
+HI_1_9_0	paquets fermes sains	5613
+HI_1_9_0	paquets fermes sains a vue C vide	2027
+HI_1_9_0	presences dans les suites fermees	75327
+HI_1_9_0	sains par ecart au precedent : b 12-20 ms, vue C vide	1
+HI_1_9_0	sains par ecart au precedent : c 20-40 ms, vue C non vide	3543
+HI_1_9_0	sains par ecart au precedent : c 20-40 ms, vue C vide	1827
+HI_1_9_0	sains par ecart au precedent : d >= 40 ms, vue C non vide	24
+HI_1_9_0	sains par ecart au precedent : d >= 40 ms, vue C vide	195
+HI_1_9_0	sains par ecart au precedent : premier du chunk, vue C non vide	19
+HI_1_9_0	sains par ecart au precedent : premier du chunk, vue C vide	4
+HI_1_9_0	transitoire (fermes) : absent de p, vue C de p non vide	41
+HI_1_9_0	transitoire (fermes) : absent de p, vue C de p vide	51
+HI_1_9_0	transitoire (fermes) : present dans p-1, p, p+1	59812
+HI_1_9_0	transitoire (sains) : present dans p-1, p, p+1	58760
+HI_1_9_0	trous (duree) a < 0,1 s	92
+HI_1_9_0	trous (duree) b 0,1-1 s	11
+HI_1_9_0	trous (paquets) 1	92
+HI_1_9_0	trous (paquets) 2	11
+corpus	absences entre deux presences	10049
+corpus	absences entre deux presences, trou < 0,1 s	8886
+corpus	absences entre deux presences, vue C vide	3433
+corpus	ecart d horodatage 000 ms	2346
+corpus	ecart d horodatage 001 ms	177
+corpus	ecart d horodatage 002 ms	91
+corpus	ecart d horodatage 003 ms	80
+corpus	ecart d horodatage 004 ms	119
+corpus	ecart d horodatage 005 ms	111
+corpus	ecart d horodatage 006 ms	95
+corpus	ecart d horodatage 007 ms	167
+corpus	ecart d horodatage 008 ms	93
+corpus	ecart d horodatage 009 ms	44
+corpus	ecart d horodatage 010 ms	89
+corpus	ecart d horodatage 011 ms	291
+corpus	ecart d horodatage 012 ms	505
+corpus	ecart d horodatage 013 ms	1397
+corpus	ecart d horodatage 014 ms	2384
+corpus	ecart d horodatage 015 ms	5575
+corpus	ecart d horodatage 016 ms	116225
+corpus	ecart d horodatage 017 ms	299624
+corpus	ecart d horodatage 018 ms	14207
+corpus	ecart d horodatage 019 ms	2842
+corpus	ecart d horodatage 020 ms	2009
+corpus	ecart d horodatage 021 ms	903
+corpus	ecart d horodatage 022 ms	456
+corpus	ecart d horodatage 023 ms	282
+corpus	ecart d horodatage 024 ms	240
+corpus	ecart d horodatage 025 ms	327
+corpus	ecart d horodatage 026 ms	391
+corpus	ecart d horodatage 027 ms	453
+corpus	ecart d horodatage 028 ms	636
+corpus	ecart d horodatage 029 ms	1114
+corpus	ecart d horodatage 030 ms	1495
+corpus	ecart d horodatage 031 ms	4503
+corpus	ecart d horodatage 032 ms	21511
+corpus	ecart d horodatage 033 ms	72298
+corpus	ecart d horodatage 034 ms	52939
+corpus	ecart d horodatage 035 ms	13358
+corpus	ecart d horodatage 036 ms	3293
+corpus	ecart d horodatage 037 ms	1312
+corpus	ecart d horodatage 038 ms	1025
+corpus	ecart d horodatage 039 ms	640
+corpus	ecart d horodatage 040 ms	489
+corpus	ecart d horodatage 041 ms	402
+corpus	ecart d horodatage 042 ms	267
+corpus	ecart d horodatage 043 ms	143
+corpus	ecart d horodatage 044 ms	84
+corpus	ecart d horodatage 045 ms	40
+corpus	ecart d horodatage 046 ms	24
+corpus	ecart d horodatage 047 ms	22
+corpus	ecart d horodatage 048 ms	28
+corpus	ecart d horodatage 049 ms	25
+corpus	ecart d horodatage 050 ms	28
+corpus	ecart d horodatage 051 ms	40
+corpus	ecart d horodatage 052 ms	22
+corpus	ecart d horodatage 053 ms	25
+corpus	ecart d horodatage 054 ms	19
+corpus	ecart d horodatage 055 ms	19
+corpus	ecart d horodatage 056 ms	23
+corpus	ecart d horodatage 057 ms	20
+corpus	ecart d horodatage 058 ms	18
+corpus	ecart d horodatage 059 ms	19
+corpus	ecart d horodatage 060 ms	22
+corpus	ecart d horodatage 061 ms	22
+corpus	ecart d horodatage 062 ms	23
+corpus	ecart d horodatage 063 ms	22
+corpus	ecart d horodatage 064 ms	21
+corpus	ecart d horodatage 065 ms	23
+corpus	ecart d horodatage 066 ms	49
+corpus	ecart d horodatage 067 ms	71
+corpus	ecart d horodatage 068 ms	37
+corpus	ecart d horodatage 069 ms	30
+corpus	ecart d horodatage 070 ms	15
+corpus	ecart d horodatage 071 ms	13
+corpus	ecart d horodatage 072 ms	11
+corpus	ecart d horodatage 073 ms	6
+corpus	ecart d horodatage 074 ms	1
+corpus	ecart d horodatage 075 ms	4
+corpus	ecart d horodatage 076 ms	8
+corpus	ecart d horodatage 077 ms	6
+corpus	ecart d horodatage 078 ms	2
+corpus	ecart d horodatage 079 ms	1
+corpus	ecart d horodatage 080 ms	1
+corpus	ecart d horodatage 081 ms	1
+corpus	ecart d horodatage 082 ms	5
+corpus	ecart d horodatage 083 ms	1
+corpus	ecart d horodatage 084 ms	2
+corpus	ecart d horodatage 085 ms	1
+corpus	ecart d horodatage 086 ms	3
+corpus	ecart d horodatage 088 ms	6
+corpus	ecart d horodatage 089 ms	1
+corpus	ecart d horodatage 090 ms	2
+corpus	ecart d horodatage 091 ms	2
+corpus	ecart d horodatage 092 ms	4
+corpus	ecart d horodatage 093 ms	3
+corpus	ecart d horodatage 094 ms	2
+corpus	ecart d horodatage 095 ms	2
+corpus	ecart d horodatage 096 ms	1
+corpus	ecart d horodatage 097 ms	3
+corpus	ecart d horodatage 098 ms	3
+corpus	ecart d horodatage 099 ms	6
+corpus	ecart d horodatage 100 ms	54
+corpus	ecart d horodatage 101 ms	19
+corpus	ecart d horodatage 102 ms	9
+corpus	ecart d horodatage 103 ms	3
+corpus	ecart d horodatage 104 ms	2
+corpus	ecart d horodatage 105 ms	3
+corpus	ecart d horodatage 106 ms	3
+corpus	ecart d horodatage 107 ms	4
+corpus	ecart d horodatage 108 ms	2
+corpus	ecart d horodatage 109 ms	2
+corpus	ecart d horodatage 111 ms	2
+corpus	ecart d horodatage 112 ms	4
+corpus	ecart d horodatage 114 ms	3
+corpus	ecart d horodatage 115 ms	2
+corpus	ecart d horodatage 116 ms	13
+corpus	ecart d horodatage 117 ms	34
+corpus	ecart d horodatage 118 ms	5
+corpus	ecart d horodatage 120 ms	2
+corpus	ecart d horodatage 121 ms	1
+corpus	ecart d horodatage 122 ms	5
+corpus	ecart d horodatage 124 ms	1
+corpus	ecart d horodatage 125 ms	1
+corpus	ecart d horodatage 126 ms	2
+corpus	ecart d horodatage 127 ms	1
+corpus	ecart d horodatage 129 ms	1
+corpus	ecart d horodatage 131 ms	4
+corpus	ecart d horodatage 132 ms	9
+corpus	ecart d horodatage 133 ms	241
+corpus	ecart d horodatage 134 ms	124
+corpus	ecart d horodatage 135 ms	9
+corpus	ecart d horodatage 136 ms	2
+corpus	ecart d horodatage 137 ms	1
+corpus	ecart d horodatage 140 ms	3
+corpus	ecart d horodatage 141 ms	1
+corpus	ecart d horodatage 145 ms	1
+corpus	ecart d horodatage 146 ms	1
+corpus	ecart d horodatage 147 ms	2
+corpus	ecart d horodatage 148 ms	1
+corpus	ecart d horodatage 153 ms	1
+corpus	ecart d horodatage 154 ms	1
+corpus	ecart d horodatage 157 ms	2
+corpus	ecart d horodatage 164 ms	1
+corpus	ecart d horodatage 166 ms	1
+corpus	ecart d horodatage 168 ms	1
+corpus	ecart d horodatage 177 ms	1
+corpus	ecart d horodatage 179 ms	1
+corpus	ecart d horodatage 182 ms	2
+corpus	ecart d horodatage 183 ms	1
+corpus	ecart d horodatage 185 ms	1
+corpus	ecart d horodatage 199 ms	2
+corpus	ecart d horodatage > 200 ms	24
+corpus	entrees en double	156
+corpus	entrees fermees	2301194
+corpus	entrees utiles fermees	2301082
+corpus	paquets delta	629142
+corpus	paquets fermes	284704
+corpus	paquets fermes a vue C vide	25158
+corpus	paquets fermes sains	276316
+corpus	paquets fermes sains a vue C vide	24187
+corpus	presences dans les suites fermees	2301038
+corpus	sains par ecart au precedent : a < 12 ms, vue C non vide	836
+corpus	sains par ecart au precedent : a < 12 ms, vue C vide	72
+corpus	sains par ecart au precedent : b 12-20 ms, vue C non vide	216573
+corpus	sains par ecart au precedent : b 12-20 ms, vue C vide	15628
+corpus	sains par ecart au precedent : c 20-40 ms, vue C non vide	34023
+corpus	sains par ecart au precedent : c 20-40 ms, vue C vide	7975
+corpus	sains par ecart au precedent : d >= 40 ms, vue C non vide	314
+corpus	sains par ecart au precedent : d >= 40 ms, vue C vide	486
+corpus	sains par ecart au precedent : premier du chunk, vue C non vide	383
+corpus	sains par ecart au precedent : premier du chunk, vue C vide	26
+corpus	transitoire (fermes) : absent de p, vue C de p non vide	4924
+corpus	transitoire (fermes) : absent de p, vue C de p vide	3089
+corpus	transitoire (fermes) : present dans p-1, p, p+1	1796212
+corpus	transitoire (sains) : absent de p, vue C de p non vide	1462
+corpus	transitoire (sains) : absent de p, vue C de p non vide, ecart a < 12 ms	13
+corpus	transitoire (sains) : absent de p, vue C de p non vide, ecart b 12-20 ms	357
+corpus	transitoire (sains) : absent de p, vue C de p non vide, ecart c 20-40 ms	1080
+corpus	transitoire (sains) : absent de p, vue C de p non vide, ecart d >= 40 ms	12
+corpus	transitoire (sains) : absent de p, vue C de p vide	1124
+corpus	transitoire (sains) : absent de p, vue C de p vide, ecart b 12-20 ms	513
+corpus	transitoire (sains) : absent de p, vue C de p vide, ecart c 20-40 ms	611
+corpus	transitoire (sains) : present dans p-1, p, p+1	1748763
+corpus	trous (duree) a < 0,1 s	8361
+corpus	trous (duree) b 0,1-1 s	157
+corpus	trous (duree) c 1-3 s	4
+corpus	trous (duree) d >= 3 s	1
+corpus	trous (paquets) 1	8013
+corpus	trous (paquets) 2	335
+corpus	trous (paquets) 3-5	151
+corpus	trous (paquets) 30-299	4
+corpus	trous (paquets) 6-29	19
+corpus	trous (paquets) >=300	1
+version-31	ecart d horodatage 000 ms	28
+version-31	ecart d horodatage 001 ms	4
+version-31	ecart d horodatage 002 ms	7
+version-31	ecart d horodatage 003 ms	1
+version-31	ecart d horodatage 004 ms	3
+version-31	ecart d horodatage 005 ms	2
+version-31	ecart d horodatage 006 ms	1
+version-31	ecart d horodatage 007 ms	2
+version-31	ecart d horodatage 008 ms	1
+version-31	ecart d horodatage 009 ms	2
+version-31	ecart d horodatage 012 ms	2
+version-31	ecart d horodatage 017 ms	1
+version-31	ecart d horodatage 018 ms	1
+version-31	ecart d horodatage 019 ms	1
+version-31	ecart d horodatage 020 ms	1
+version-31	ecart d horodatage 021 ms	3
+version-31	ecart d horodatage 022 ms	5
+version-31	ecart d horodatage 023 ms	3
+version-31	ecart d horodatage 024 ms	3
+version-31	ecart d horodatage 025 ms	21
+version-31	ecart d horodatage 026 ms	37
+version-31	ecart d horodatage 027 ms	59
+version-31	ecart d horodatage 028 ms	86
+version-31	ecart d horodatage 029 ms	88
+version-31	ecart d horodatage 030 ms	115
+version-31	ecart d horodatage 031 ms	397
+version-31	ecart d horodatage 032 ms	2153
+version-31	ecart d horodatage 033 ms	7242
+version-31	ecart d horodatage 034 ms	5641
+version-31	ecart d horodatage 035 ms	1302
+version-31	ecart d horodatage 036 ms	251
+version-31	ecart d horodatage 037 ms	98
+version-31	ecart d horodatage 038 ms	78
+version-31	ecart d horodatage 039 ms	70
+version-31	ecart d horodatage 040 ms	63
+version-31	ecart d horodatage 041 ms	36
+version-31	ecart d horodatage 042 ms	22
+version-31	ecart d horodatage 043 ms	9
+version-31	ecart d horodatage 045 ms	2
+version-31	ecart d horodatage 051 ms	1
+version-31	ecart d horodatage 052 ms	1
+version-31	ecart d horodatage 053 ms	1
+version-31	ecart d horodatage 060 ms	1
+version-31	ecart d horodatage 062 ms	1
+version-31	ecart d horodatage 063 ms	1
+version-31	ecart d horodatage 064 ms	2
+version-31	ecart d horodatage 065 ms	1
+version-31	ecart d horodatage 066 ms	5
+version-31	ecart d horodatage 067 ms	11
+version-31	ecart d horodatage 068 ms	5
+version-31	ecart d horodatage 079 ms	1
+version-31	ecart d horodatage 082 ms	1
+version-31	ecart d horodatage 086 ms	1
+version-31	ecart d horodatage 099 ms	1
+version-31	ecart d horodatage 100 ms	1
+version-31	ecart d horodatage 102 ms	1
+version-31	ecart d horodatage 104 ms	1
+version-31	ecart d horodatage 125 ms	1
+version-31	ecart d horodatage 127 ms	1
+version-31	ecart d horodatage 131 ms	1
+version-31	ecart d horodatage 133 ms	5
+version-31	ecart d horodatage 134 ms	1
+version-31	ecart d horodatage 135 ms	2
+version-31	entrees fermees	3
+version-31	entrees utiles fermees	2
+version-31	paquets delta	17919
+version-31	paquets fermes	153
+version-31	paquets fermes a vue C vide	150
+version-31	paquets fermes sains	143
+version-31	paquets fermes sains a vue C vide	142
+version-31	presences dans les suites fermees	3
+version-31	sains par ecart au precedent : a < 12 ms, vue C vide	2
+version-31	sains par ecart au precedent : b 12-20 ms, vue C vide	1
+version-31	sains par ecart au precedent : c 20-40 ms, vue C non vide	1
+version-31	sains par ecart au precedent : c 20-40 ms, vue C vide	127
+version-31	sains par ecart au precedent : d >= 40 ms, vue C vide	12
+version-33	ecart d horodatage 000 ms	231
+version-33	ecart d horodatage 001 ms	45
+version-33	ecart d horodatage 002 ms	19
+version-33	ecart d horodatage 003 ms	7
+version-33	ecart d horodatage 004 ms	13
+version-33	ecart d horodatage 005 ms	15
+version-33	ecart d horodatage 006 ms	20
+version-33	ecart d horodatage 007 ms	19
+version-33	ecart d horodatage 008 ms	3
+version-33	ecart d horodatage 009 ms	1
+version-33	ecart d horodatage 010 ms	1
+version-33	ecart d horodatage 011 ms	2
+version-33	ecart d horodatage 012 ms	4
+version-33	ecart d horodatage 013 ms	6
+version-33	ecart d horodatage 014 ms	4
+version-33	ecart d horodatage 015 ms	9
+version-33	ecart d horodatage 016 ms	7
+version-33	ecart d horodatage 017 ms	13
+version-33	ecart d horodatage 018 ms	5
+version-33	ecart d horodatage 019 ms	2
+version-33	ecart d horodatage 020 ms	1
+version-33	ecart d horodatage 021 ms	5
+version-33	ecart d horodatage 022 ms	2
+version-33	ecart d horodatage 023 ms	9
+version-33	ecart d horodatage 024 ms	19
+version-33	ecart d horodatage 025 ms	56
+version-33	ecart d horodatage 026 ms	74
+version-33	ecart d horodatage 027 ms	49
+version-33	ecart d horodatage 028 ms	75
+version-33	ecart d horodatage 029 ms	123
+version-33	ecart d horodatage 030 ms	244
+version-33	ecart d horodatage 031 ms	907
+version-33	ecart d horodatage 032 ms	4095
+version-33	ecart d horodatage 033 ms	10149
+version-33	ecart d horodatage 034 ms	8331
+version-33	ecart d horodatage 035 ms	2590
+version-33	ecart d horodatage 036 ms	648
+version-33	ecart d horodatage 037 ms	185
+version-33	ecart d horodatage 038 ms	126
+version-33	ecart d horodatage 039 ms	65
+version-33	ecart d horodatage 040 ms	80
+version-33	ecart d horodatage 041 ms	68
+version-33	ecart d horodatage 042 ms	41
+version-33	ecart d horodatage 043 ms	10
+version-33	ecart d horodatage 044 ms	5
+version-33	ecart d horodatage 045 ms	5
+version-33	ecart d horodatage 046 ms	2
+version-33	ecart d horodatage 047 ms	3
+version-33	ecart d horodatage 048 ms	6
+version-33	ecart d horodatage 049 ms	3
+version-33	ecart d horodatage 050 ms	5
+version-33	ecart d horodatage 051 ms	9
+version-33	ecart d horodatage 052 ms	4
+version-33	ecart d horodatage 053 ms	4
+version-33	ecart d horodatage 054 ms	4
+version-33	ecart d horodatage 055 ms	1
+version-33	ecart d horodatage 056 ms	1
+version-33	ecart d horodatage 057 ms	1
+version-33	ecart d horodatage 058 ms	1
+version-33	ecart d horodatage 059 ms	8
+version-33	ecart d horodatage 060 ms	2
+version-33	ecart d horodatage 061 ms	8
+version-33	ecart d horodatage 062 ms	9
+version-33	ecart d horodatage 063 ms	8
+version-33	ecart d horodatage 064 ms	8
+version-33	ecart d horodatage 065 ms	13
+version-33	ecart d horodatage 066 ms	26
+version-33	ecart d horodatage 067 ms	36
+version-33	ecart d horodatage 068 ms	18
+version-33	ecart d horodatage 069 ms	14
+version-33	ecart d horodatage 070 ms	6
+version-33	ecart d horodatage 071 ms	2
+version-33	ecart d horodatage 072 ms	5
+version-33	ecart d horodatage 075 ms	3
+version-33	ecart d horodatage 076 ms	3
+version-33	ecart d horodatage 077 ms	2
+version-33	ecart d horodatage 082 ms	2
+version-33	ecart d horodatage 083 ms	1
+version-33	ecart d horodatage 084 ms	1
+version-33	ecart d horodatage 088 ms	2
+version-33	ecart d horodatage 090 ms	1
+version-33	ecart d horodatage 091 ms	1
+version-33	ecart d horodatage 092 ms	2
+version-33	ecart d horodatage 093 ms	3
+version-33	ecart d horodatage 095 ms	1
+version-33	ecart d horodatage 097 ms	2
+version-33	ecart d horodatage 098 ms	1
+version-33	ecart d horodatage 099 ms	3
+version-33	ecart d horodatage 100 ms	2
+version-33	ecart d horodatage 101 ms	3
+version-33	ecart d horodatage 102 ms	4
+version-33	ecart d horodatage 103 ms	1
+version-33	ecart d horodatage 105 ms	2
+version-33	ecart d horodatage 106 ms	1
+version-33	ecart d horodatage 107 ms	1
+version-33	ecart d horodatage 108 ms	1
+version-33	ecart d horodatage 109 ms	2
+version-33	ecart d horodatage 111 ms	1
+version-33	ecart d horodatage 112 ms	3
+version-33	ecart d horodatage 114 ms	2
+version-33	ecart d horodatage 115 ms	2
+version-33	ecart d horodatage 117 ms	1
+version-33	ecart d horodatage 118 ms	1
+version-33	ecart d horodatage 120 ms	1
+version-33	ecart d horodatage 122 ms	1
+version-33	ecart d horodatage 126 ms	2
+version-33	ecart d horodatage 129 ms	1
+version-33	ecart d horodatage 131 ms	1
+version-33	ecart d horodatage 132 ms	2
+version-33	ecart d horodatage 133 ms	8
+version-33	ecart d horodatage 134 ms	3
+version-33	ecart d horodatage 135 ms	1
+version-33	ecart d horodatage 136 ms	1
+version-33	ecart d horodatage 140 ms	2
+version-33	ecart d horodatage 141 ms	1
+version-33	ecart d horodatage 145 ms	1
+version-33	ecart d horodatage 146 ms	1
+version-33	ecart d horodatage 147 ms	1
+version-33	ecart d horodatage 148 ms	1
+version-33	ecart d horodatage 154 ms	1
+version-33	ecart d horodatage 164 ms	1
+version-33	ecart d horodatage 166 ms	1
+version-33	ecart d horodatage 168 ms	1
+version-33	ecart d horodatage 177 ms	1
+version-33	ecart d horodatage 179 ms	1
+version-33	ecart d horodatage 182 ms	2
+version-33	ecart d horodatage 183 ms	1
+version-33	ecart d horodatage 185 ms	1
+version-33	ecart d horodatage 199 ms	1
+version-33	ecart d horodatage > 200 ms	13
+version-33	entrees fermees	6
+version-33	entrees utiles fermees	3
+version-33	paquets delta	28751
+version-33	paquets fermes	463
+version-33	paquets fermes a vue C vide	458
+version-33	paquets fermes sains	427
+version-33	paquets fermes sains a vue C vide	426
+version-33	presences dans les suites fermees	6
+version-33	sains par ecart au precedent : a < 12 ms, vue C vide	2
+version-33	sains par ecart au precedent : b 12-20 ms, vue C vide	1
+version-33	sains par ecart au precedent : c 20-40 ms, vue C non vide	1
+version-33	sains par ecart au precedent : c 20-40 ms, vue C vide	414
+version-33	sains par ecart au precedent : d >= 40 ms, vue C vide	8
+version-33	sains par ecart au precedent : premier du chunk, vue C vide	1

@@ -70,6 +70,44 @@ export async function skipIfNoDemoData(): Promise<void> {
   )
 }
 
+let cachedServerIsDemo: boolean | undefined
+
+/**
+ * Sonde `GET /api/v1/bootstrap` : le serveur tourne-t-il en mode démo (`feature_flags.demo_mode`) ?
+ * Mémoïsé comme la sonde des fixtures ; une erreur réseau n'est pas mise en cache.
+ */
+async function probeServerIsDemo(): Promise<boolean> {
+  if (cachedServerIsDemo !== undefined) return cachedServerIsDemo
+  const ctx = await pwRequest.newContext({
+    baseURL: API_BASE,
+    extraHTTPHeaders: { Origin: 'http://localhost:5173' },
+  })
+  try {
+    const resp = await ctx.get('/api/v1/bootstrap')
+    if (!resp.ok()) return false
+    const body = (await resp.json()) as { feature_flags?: { demo_mode?: boolean } }
+    cachedServerIsDemo = body.feature_flags?.demo_mode === true
+    return cachedServerIsDemo
+  } catch {
+    return false
+  } finally {
+    await ctx.dispose()
+  }
+}
+
+/**
+ * Skip un test qui ÉCRIT (like, envoi, association…) quand le serveur est en démo : la démo
+ * publique est en lecture seule, toute écriture y répond 403 `demo_mode_forbidden`
+ * (middleware.DemoReadOnly). Le test s'exécute contre une instance non démo.
+ */
+export async function skipIfServerReadOnlyDemo(reason: string): Promise<void> {
+  const demo = await probeServerIsDemo()
+  test.skip(
+    demo,
+    `Serveur en démo (lecture seule : les écritures répondent 403 demo_mode_forbidden) — ${reason}`,
+  )
+}
+
 /**
  * Skip une spec devenue OBSOLÈTE (drift) : la fixture démo synthétique a rendu la
  * spec exécutable et révélé qu'elle vise une route / un endpoint / une structure UI
@@ -82,15 +120,20 @@ export function skipObsoleteSpec(reason: string): void {
 }
 
 /**
- * Skip une spec qui exige les données d'un JOUEUR RÉEL spécifique (gamertags réels
- * codés en dur, coéquipiers nommés + synergies, backfill engagement, médias réels)
- * — non reproductibles par une fixture SYNTHÉTIQUE. Skip UNIQUEMENT quand la démo est
- * synthétique (E2E_SYNTHETIC_DEMO=1, posé par la CI) ; contre une démo réelle
- * (`seed-demo` sur l'hôte de prod), la spec s'exécute normalement.
+ * Identités ciblées par les specs « joueur riche » (carrière, engagement, escouade) : le
+ * joueur démo de la fixture synthétique (`levelup seed-demo --synthetic`) et ses deux
+ * coéquipiers, qui partagent 36 matchs avec lui. Contre un jeu de données réel, surcharger
+ * `E2E_PLAYER_SLUG` et `E2E_TEAMMATES` (gamertags séparés par des virgules).
  */
-export function skipRequiresRealPlayer(reason: string): void {
-  test.skip(
-    process.env.E2E_SYNTHETIC_DEMO === '1',
-    `Nécessite un joueur réel (non synthétisable) : ${reason}`,
-  )
-}
+export const E2E_PLAYER_SLUG = process.env.E2E_PLAYER_SLUG ?? 'demo-player'
+export const E2E_TEAMMATES = (process.env.E2E_TEAMMATES ?? 'DemoPlayer2,DemoPlayer3')
+  .split(',')
+  .map((g) => g.trim())
+  .filter((g) => g !== '')
+
+/**
+ * Racine des URLs d'API (sans `/api/v1`) : `E2E_API_URL` quand il est posé (même variable
+ * que la sonde ci-dessus), sinon le serveur de dev local. Les specs qui appellent l'API
+ * directement s'en servent plutôt que de recopier le port.
+ */
+export const E2E_API_BASE = API_BASE

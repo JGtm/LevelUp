@@ -1,0 +1,78 @@
+{
+  "players": [
+    {
+      "xuid": "2533274795950878",
+      "kills": 19,
+      "deaths": 19,
+      "assists": 2,
+      "teamId": 1,
+      "joinMatchMs": 13
+    },
+    {
+      "xuid": "2533274823110022",
+      "kills": 18,
+      "deaths": 17,
+      "assists": 8,
+      "teamId": 1,
+      "joinMatchMs": 13
+    },
+    {
+      "xuid": "2535408981717353",
+      "kills": 9,
+      "deaths": 19,
+      "assists": 5,
+      "teamId": 1,
+      "joinMatchMs": 13
+    },
+    {
+      "xuid": "2535417580715145",
+      "kills": 16,
+      "deaths": 17,
+      "assists": 4,
+      "teamId": 0,
+      "joinMatchMs": 13
+    },
+    {
+      "xuid": "2535425179403277",
+      "kills": 16,
+      "deaths": 17,
+      "assists": 9,
+      "teamId": 0,
+      "joinMatchMs": 14
+    },
+    {
+      "xuid": "2535450323793545",
+      "kills": 14,
+      "deaths": 19,
+      "assists": 5,
+      "teamId": 0,
+      "joinMatchMs": 14
+    },
+    {
+      "xuid": "2535469190789936",
+      "kills": 24,
+      "deaths": 15,
+      "assists": 3,
+      "teamId": 1,
+      "joinMatchMs": 0
+    },
+    {
+      "xuid": "2535473461033821",
+      "kills": 24,
+      "deaths": 18,
+      "assists": 11,
+      "teamId": 0,
+      "joinMatchMs": 13
+    }
+  ],
+  "teamScores": [
+    0,
+    1
+  ],
+  "gameVariantName": "CTF:Arena",
+  "mapId": "9ad226d8-8947-4c5b-95bc-d220187698c1",
+  "matchId": "fb1a1a72-4937-4795-9d78-8e18ab47584f",
+  "mapNames": [
+    "Banished Narrows"
+  ]
+}

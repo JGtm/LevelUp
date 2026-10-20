@@ -3,16 +3,22 @@
  *
  * Panneau unique réutilisant le builder P1 en N=1. Vérifie : rendu quand au
  * moins une manche a des frags, état vide (message dans le bloc titré) quand
- * aucune manche exploitable ou liste vide. echarts-for-react mocké (canvas jsdom).
+ * aucune manche exploitable ou liste vide, et — depuis le 2026-09-19 — les deux
+ * COURBES DE RÉFÉRENCE (équipe alliée, lobby entier) avec leur légende.
+ * echarts-for-react mocké (canvas jsdom).
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import type { IntensityMatchRow } from '@/lib/api/types'
 import { TimeseriesIntensityProfile } from './TimeseriesSquadAdapted'
 
+const captured: Array<Record<string, unknown>> = []
 vi.mock('echarts-for-react', () => ({
-  default: () => <div data-testid="echarts-mock" />,
+  default: (props: Record<string, unknown>) => {
+    captured.push(props)
+    return <div data-testid="echarts-mock" />
+  },
 }))
 
 function row(phases: number[] | null, id = 'm1', label = 'Aquarius — 30/04'): IntensityMatchRow {
@@ -28,8 +34,18 @@ function exploitableRows(n: number): IntensityMatchRow[] {
   })
 }
 
-const LABELS = { medianLabel: 'Médiane', envelopeLabel: 'Enveloppe P25–P75', refLabel: '10 %' }
+const LABELS = {
+  medianLabel: 'Médiane',
+  envelopeLabel: 'Enveloppe P25–P75',
+  refLabel: '10 %',
+  playerLabel: 'Joueur',
+  teamLabel: 'Équipe',
+  lobbyLabel: 'Lobby',
+}
 
+beforeEach(() => {
+  captured.length = 0
+})
 afterEach(() => vi.clearAllMocks())
 
 describe('TimeseriesIntensityProfile', () => {
@@ -43,7 +59,11 @@ describe('TimeseriesIntensityProfile', () => {
   it('liste vide → état vide (message dans le bloc titré)', () => {
     render(<TimeseriesIntensityProfile rows={[]} title="Intensité" emptyMessage="Aucune donnée" {...LABELS} />)
     expect(screen.getByTestId('chart-card-empty')).toBeInTheDocument()
-    expect(screen.getByText('Aucune donnée')).toBeInTheDocument()
+    // Assertion PORTÉE SUR LE BLOC : depuis l'alignement de l'état vide des cartes de
+    // graphe sur `EmptyStateNotice` (2026-09-22), le bloc porte un titre par défaut
+    // (« Aucune donnée ») en plus de la description — ici la fixture emploie le même
+    // libellé, et un `getByText` global y trouverait deux nœuds.
+    expect(screen.getByTestId('chart-card-empty')).toHaveTextContent('Aucune donnée')
     expect(screen.queryByTestId('echarts-mock')).toBeNull()
   })
 
@@ -59,5 +79,43 @@ describe('TimeseriesIntensityProfile', () => {
     )
     expect(screen.getByTestId('chart-card-empty')).toBeInTheDocument()
     expect(screen.queryByTestId('echarts-mock')).toBeNull()
+  })
+
+  // 2026-09-19 (item 1.G) : les deux courbes de référence et la légende à trois entrées.
+  it('monte les courbes ÉQUIPE et LOBBY servies, et les nomme dans la légende', async () => {
+    render(
+      <TimeseriesIntensityProfile
+        rows={exploitableRows(5)}
+        teamRows={exploitableRows(5)}
+        lobbyRows={exploitableRows(5)}
+        title="Intensité"
+        emptyMessage="vide"
+        {...LABELS}
+      />,
+    )
+    await screen.findByTestId('echarts-mock')
+    const option = captured[captured.length - 1].option as {
+      legend: { data: Array<{ name: string }> }
+      series: Array<{ name?: string }>
+    }
+    expect(option.legend.data.map((e) => e.name)).toEqual(['Joueur', 'Équipe', 'Lobby'])
+    expect(option.series.some((s) => s.name === 'Équipe')).toBe(true)
+    expect(option.series.some((s) => s.name === 'Lobby')).toBe(true)
+  })
+
+  it('une courbe de référence ABSENTE du contrat n’est pas montée (jamais une courbe plate)', async () => {
+    render(
+      <TimeseriesIntensityProfile
+        rows={exploitableRows(5)}
+        title="Intensité"
+        emptyMessage="vide"
+        {...LABELS}
+      />,
+    )
+    await screen.findByTestId('echarts-mock')
+    const option = captured[captured.length - 1].option as {
+      legend: { data: Array<{ name: string }> }
+    }
+    expect(option.legend.data.map((e) => e.name)).toEqual(['Joueur'])
   })
 })

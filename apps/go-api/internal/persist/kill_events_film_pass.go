@@ -44,13 +44,13 @@ const filmPassColumns = `
 	source_tag, source_category, killer_damage_pct, assist_damage_pct,
 	diverges, read_path, read_origin`
 
-// FilmPassForMatch rend, sous forme de [KillSourceBatch], les lignes de FILM de la passe courante
-// du match. Batch vide (aucune mort) quand le match n en porte aucune — le cas majoritaire.
+// filmPassQuery : LA requete de la lecture par match, et ses arguments.
 //
-// La passe rendue n est PAS ecrivable telle quelle : elle sert d ENTREE a [MergeCreditAndFilm],
-// qui la pose sur une base credit. Son `CreditBaseCount` reste donc a zero, et c est correct :
-// elle ne porte aucune base.
-func FilmPassForMatch(ctx context.Context, q rowQuerier, matchID string) (KillSourceBatch, error) {
+// EXTRAITE DE [FilmPassForMatch] LE 2026-09-21 (lot 5.12) pour une raison de mesure : le banc de
+// cout (`kill_events_film_pass_cost_integration_test.go`) doit coller le plan `EXPLAIN` de la
+// requete QUE LA PRODUCTION EXECUTE, pas d une copie qui pourrait deriver d un caractere. Une
+// seule definition, deux lecteurs.
+func filmPassQuery(matchID string) (string, []any) {
 	marques := make([]string, 0, len(FilmReadPaths))
 	args := make([]any, 0, len(FilmReadPaths)+1)
 	args = append(args, matchID)
@@ -58,11 +58,22 @@ func FilmPassForMatch(ctx context.Context, q rowQuerier, matchID string) (KillSo
 		marques = append(marques, "?")
 		args = append(args, p)
 	}
-
-	rows, err := q.QueryContext(ctx, fmt.Sprintf(`
+	return fmt.Sprintf(`
 		SELECT %s FROM match_kill_events_latest
 		WHERE match_id = ? AND read_path IN (%s)
-		ORDER BY time_ms, id`, filmPassColumns, strings.Join(marques, ", ")), args...)
+		ORDER BY time_ms, id`, filmPassColumns, strings.Join(marques, ", ")), args
+}
+
+// FilmPassForMatch rend, sous forme de [KillSourceBatch], les lignes de FILM de la passe courante
+// du match. Batch vide (aucune mort) quand le match n en porte aucune — le cas majoritaire.
+//
+// La passe rendue n est PAS ecrivable telle quelle : elle sert d ENTREE a [MergeCreditAndFilm],
+// qui la pose sur une base credit. Son `CreditBaseCount` reste donc a zero, et c est correct :
+// elle ne porte aucune base.
+func FilmPassForMatch(ctx context.Context, q rowQuerier, matchID string) (KillSourceBatch, error) {
+	requete, args := filmPassQuery(matchID)
+
+	rows, err := q.QueryContext(ctx, requete, args...)
 	if err != nil {
 		return KillSourceBatch{}, fmt.Errorf("persist: passe film %s: %w", matchID, err)
 	}

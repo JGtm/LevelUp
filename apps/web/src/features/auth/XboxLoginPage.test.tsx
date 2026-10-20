@@ -5,10 +5,11 @@
  * Couvre aussi le toggle "Connexion admin (mot de passe)".
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { StrictMode, type ComponentPropsWithoutRef } from 'react'
 import { screen, waitFor, fireEvent, render } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { renderWithProviders } from '@/test/render-utils'
+import { renderWithProviders, createTestQueryClient } from '@/test/render-utils'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
@@ -24,6 +25,13 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    // Le pied de page minimal de l'écran de connexion renvoie vers /privacy :
+    // sans routeur monté, le vrai `Link` lève. On le réduit à une ancre.
+    Link: ({ children, to, ...props }: ComponentPropsWithoutRef<'a'> & { to: string }) => (
+      <a href={to} {...props}>
+        {children}
+      </a>
+    ),
   }
 })
 
@@ -51,6 +59,19 @@ describe('XboxLoginPage', () => {
     renderWithProviders(<XboxLoginPage />)
     await waitFor(() => {
       expect(screen.getByText(/ABCD-1234/i)).toBeInTheDocument()
+    })
+  })
+
+  it('copie le user_code via le bouton icône', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    renderWithProviders(<XboxLoginPage />)
+    const button = await screen.findByRole('button', { name: /copier le code|copy code/i })
+    expect(button).not.toHaveTextContent(/\S/)
+    fireEvent.click(button)
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('ABCD-1234')
+      expect(screen.getByRole('button', { name: /code copié|code copied/i })).toBeInTheDocument()
     })
   })
 
@@ -90,13 +111,33 @@ describe('XboxLoginPage', () => {
     expect(screen.getByLabelText(/Mot de passe/i)).toBeInTheDocument()
   })
 
+  it('connexion admin refusée en 429 : message clair, pas le texte brut du serveur', async () => {
+    server.use(
+      http.post('/api/v1/auth/login', () =>
+        new HttpResponse('<html><body><h1>429 Too Many Requests</h1></body></html>', {
+          status: 429,
+          headers: { 'Content-Type': 'text/html' },
+        }),
+      ),
+    )
+    renderWithProviders(<XboxLoginPage />)
+    fireEvent.click(await screen.findByText(/Connexion admin/i))
+    fireEvent.change(await screen.findByLabelText(/Identifiant/i), { target: { value: 'admin' } })
+    fireEvent.change(screen.getByLabelText(/Mot de passe/i), { target: { value: 'mauvais-mot-de-passe' } })
+    fireEvent.click(screen.getByRole('button', { name: /Se connecter/i }))
+    expect(
+      await screen.findByText('Trop de tentatives de connexion. Réessayez dans 15 minutes.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Erreur HTTP 429/)).not.toBeInTheDocument()
+  })
+
   it('affiche une erreur + bouton Réessayer quand le start échoue (500)', async () => {
     // Garde-rail anti-régression (Lot A) : un start en 500 ne doit jamais
     // laisser le spinner « préparation » tourner indéfiniment.
     server.use(
       http.post('/api/v1/auth/device-flow/start', () =>
         HttpResponse.json(
-          { code: 'msal_init_error', message: 'impossible de démarrer le Device Code Flow', retryable: false },
+          { code: 'device_flow_init_error', message: 'impossible de démarrer le Device Code Flow', retryable: false },
           { status: 500 },
         ),
       ),
@@ -109,6 +150,70 @@ describe('XboxLoginPage', () => {
     })
     // Pas de code affiché : le flow n'a pas démarré.
     expect(screen.queryByText(/ABCD-1234/i)).not.toBeInTheDocument()
+  })
+
+  it('démarrage refusé en 429 (plafond de connexions en cours) : message clair FR, pas le texte du serveur', async () => {
+    server.use(
+      http.post('/api/v1/auth/device-flow/start', () =>
+        HttpResponse.json(
+          { code: 'too_many_device_flows', message: 'too many sign-in attempts in progress, try again shortly' },
+          { status: 429, headers: { 'Retry-After': '60' } },
+        ),
+      ),
+    )
+    renderWithProviders(<XboxLoginPage />)
+    expect(
+      await screen.findByText('Trop de connexions en cours. Réessaie dans une minute.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/too many sign-in attempts/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Réessayer/i })).toBeInTheDocument()
+  })
+
+  it('démarrage refusé en 429 : message en anglais quand la langue est EN', async () => {
+    useAppShellStore.setState({ locale: 'en' })
+    try {
+      server.use(
+        http.post('/api/v1/auth/device-flow/start', () =>
+          HttpResponse.json(
+            { code: 'too_many_device_flows', message: 'too many sign-in attempts in progress, try again shortly' },
+            { status: 429 },
+          ),
+        ),
+      )
+      renderWithProviders(<XboxLoginPage />)
+      expect(
+        await screen.findByText('Too many sign-ins in progress. Try again in a minute.'),
+      ).toBeInTheDocument()
+    } finally {
+      useAppShellStore.setState({ locale: 'fr' })
+    }
+  })
+
+  it('un seul démarrage du flow au montage, même en StrictMode', async () => {
+    // En StrictMode à la racine (comme main.tsx, dev) l'effet de montage s'exécute
+    // deux fois : sans garde, deux tentatives étaient ouvertes côté serveur pour une
+    // seule connexion. StrictMode doit envelopper la racine : imbriqué sous le
+    // wrapper de test, React ne rejoue pas les effets de montage.
+    let startCount = 0
+    server.use(
+      http.post('/api/v1/auth/device-flow/start', () => {
+        startCount += 1
+        return HttpResponse.json({ attempt_id: 'attempt-1', user_code: 'ABCD-1234', verification_uri: 'https://microsoft.com/link', expires_in: 900, poll_interval_sec: 5 })
+      }),
+    )
+
+    render(
+      <StrictMode>
+        <QueryClientProvider client={createTestQueryClient()}>
+          <XboxLoginPage />
+        </QueryClientProvider>
+      </StrictMode>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText(/ABCD-1234/i)).toBeInTheDocument()
+    })
+    expect(startCount).toBe(1)
   })
 
   it('relance automatiquement le flow sur attempt_not_found (récupération gracieuse)', async () => {
@@ -137,6 +242,117 @@ describe('XboxLoginPage', () => {
       expect(screen.getByText(/WXYZ-9999/i)).toBeInTheDocument()
     })
     expect(startCount).toBeGreaterThanOrEqual(2)
+  })
+
+  it('une fois autorisé : ni nouveau start ni nouveau sondage quand l\'ancienne tentative répond 404', async () => {
+    // Le serveur fait tourner la session au succès : l'ancien sondage (cookie périmé) reçoit
+    // alors 404 attempt_not_found. Sans garde, l'effet de récupération relançait `start`
+    // (jusqu'à 3 fois), ce qui consommait le plafond de tentatives simultanées par IP.
+    let startCount = 0
+    let pollCount = 0
+    server.use(
+      http.post('/api/v1/auth/device-flow/start', () => {
+        startCount += 1
+        return HttpResponse.json({ attempt_id: `attempt-${startCount}`, user_code: 'ABCD-1234', verification_uri: 'https://microsoft.com/link', expires_in: 900, poll_interval_sec: 5 })
+      }),
+      http.get('/api/v1/auth/device-flow/:attemptId', () => {
+        pollCount += 1
+        if (pollCount === 1) {
+          return HttpResponse.json({ attempt_id: 'attempt-1', status: 'authorized', gamertag: 'TestPlayer', xuid: '0000000000000001', error: null })
+        }
+        return HttpResponse.json({ code: 'attempt_not_found', message: 'tentative introuvable', retryable: false }, { status: 404 })
+      }),
+    )
+
+    renderWithProviders(<XboxLoginPage />)
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/' })
+    })
+
+    // Laisse passer un intervalle de sondage complet (5 s) : un second sondage, s'il
+    // existait, aurait reçu le 404 et relancé le flow.
+    await new Promise((resolve) => setTimeout(resolve, 5_600))
+
+    expect(pollCount).toBe(1)
+    expect(startCount).toBe(1)
+  }, 15_000)
+
+  it('compte inconnu refusé par le verrou d\'instance : message clair, aucune redirection', async () => {
+    server.use(
+      http.get('/api/v1/auth/device-flow/:attemptId', () =>
+        HttpResponse.json({ attempt_id: 'att-1', status: 'failed', error_code: 'instance_locked' }),
+      ),
+    )
+    renderWithProviders(<XboxLoginPage />)
+    expect(
+      await screen.findByText('Cette instance est fermée aux nouvelles inscriptions.', {}, { timeout: 8000 }),
+    ).toBeInTheDocument()
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it("invitation périmée refusée par le verrou d'instance : message de l'invitation", async () => {
+    server.use(
+      http.get('/api/v1/auth/device-flow/:attemptId', () =>
+        HttpResponse.json({ attempt_id: 'att-1', status: 'failed', error_code: 'invite_invalid' }),
+      ),
+    )
+    renderWithProviders(<XboxLoginPage />)
+    expect(
+      await screen.findByText(
+        "Cette invitation n'est plus valable. Demande un nouveau lien à la personne qui t'a invité.",
+        {},
+        { timeout: 8000 },
+      ),
+    ).toBeInTheDocument()
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  // L9-3 : le serveur ne renvoie plus `error_detail` ; l'écran traduit le code (FR + EN) et
+  // n'affiche jamais un texte venu du serveur.
+  describe('échec du device-flow : message traduit par le code', () => {
+    const failWith = (body: Record<string, unknown>) =>
+      server.use(
+        http.get('/api/v1/auth/device-flow/:attemptId', () =>
+          HttpResponse.json({ attempt_id: 'att-1', ...body }),
+        ),
+      )
+
+    it('halo_exchange_error : message FR, error_detail ignoré', async () => {
+      failWith({ status: 'failed', error_code: 'halo_exchange_error', error_detail: 'jeton=abc123' })
+      renderWithProviders(<XboxLoginPage />)
+      expect(
+        await screen.findByText("Impossible d'obtenir un accès Halo. Veuillez réessayer.", {}, { timeout: 8000 }),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/abc123/)).not.toBeInTheDocument()
+    })
+
+    it('code inconnu : message générique FR', async () => {
+      failWith({ status: 'failed', error_code: 'code_inconnu', error_detail: 'jeton=abc123' })
+      renderWithProviders(<XboxLoginPage />)
+      expect(await screen.findByText("Échec de l'authentification.", {}, { timeout: 8000 })).toBeInTheDocument()
+      expect(screen.queryByText(/abc123/)).not.toBeInTheDocument()
+    })
+
+    it('code expiré : message FR', async () => {
+      failWith({ status: 'expired' })
+      renderWithProviders(<XboxLoginPage />)
+      expect(await screen.findByText('Le code a expiré.', {}, { timeout: 8000 })).toBeInTheDocument()
+    })
+
+    it('messages en anglais quand la langue est EN', async () => {
+      useAppShellStore.setState({ locale: 'en' })
+      try {
+        failWith({ status: 'failed', error_code: 'code_inconnu' })
+        const { unmount } = renderWithProviders(<XboxLoginPage />)
+        expect(await screen.findByText('Authentication failed.', {}, { timeout: 8000 })).toBeInTheDocument()
+        unmount()
+        failWith({ status: 'expired' })
+        renderWithProviders(<XboxLoginPage />)
+        expect(await screen.findByText('The code expired.', {}, { timeout: 8000 })).toBeInTheDocument()
+      } finally {
+        useAppShellStore.setState({ locale: 'fr' })
+      }
+    })
   })
 
   it('toggle "Retour à la connexion Xbox" depuis le panel admin', async () => {

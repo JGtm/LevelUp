@@ -25,10 +25,12 @@ export function useSessionDetailPage(
       enableCompare,
       locale,
     ),
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.post<SessionPageResponse>(
         `/players/${playerSlug}/pages/sessions/detail`,
         request,
+        undefined,
+        { signal },
       ),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,

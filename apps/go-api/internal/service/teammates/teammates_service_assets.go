@@ -7,7 +7,6 @@ package teammates
 import (
 	"cmp"
 	"context"
-	"fmt"
 	"log/slog"
 	"slices"
 	"sort"
@@ -17,10 +16,12 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
 func enrichSquadMatchAssets(ctx context.Context, repo port.SquadRepository, rows []domain.SquadMatchRow) {
+	defer timing.FromContext(ctx).Section("enrich_assets")()
 	mapIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.MapID })
 	playlistIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.PlaylistID })
 	pairIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.PairID })
@@ -220,6 +221,34 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 	return result
 }
 
+// squadMapWinRate rend le taux de victoire historique du joueur principal sur la carte de la
+// ligne, et le nombre de matchs qui le fondent.
+//
+// DEUX NIL VEULENT DIRE « PAS DE MESURE », et la cellule front affiche « — ». Jamais un zéro,
+// qui se lirait « jamais gagné ici » : la carte peut simplement n'avoir aucun historique, ou
+// n'être identifiée par aucune clé (`MapID` vide ET `MapName` vide). Extrait de
+// buildSquadMatchHistory le 2026-08-30 pour repasser sous le seuil de 80 lignes (funlen) —
+// le calcul est autonome, il ne lit que la ligne et la table.
+func squadMapWinRate(m domain.SquadMatchRow, mapWR map[string][2]int) (*float64, *int) {
+	if mapWR == nil {
+		return nil, nil
+	}
+	key := m.MapID
+	if key == "" {
+		key = m.MapName
+	}
+	if key == "" {
+		return nil, nil
+	}
+	entry, ok := mapWR[key]
+	if !ok || entry[1] <= 0 {
+		return nil, nil
+	}
+	v := round2(float64(entry[0]) / float64(entry[1]))
+	total := entry[1]
+	return &v, &total
+}
+
 // buildSquadMatchHistory construit la table historique pour teammates.11 :
 // une ligne par match unique, triée par StartTime DESC. Pas de cap serveur —
 // la pagination (20/page) est gérée côté client (TanStack Table).
@@ -231,7 +260,15 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 // titleSlug : titre courant. Quand le titre ne fournit pas de MMR d'équipe
 // (games.ProvidesTeamMMR=false, ex. Halo 5), TeamMMRAvg reste nil (la colonne MMR
 // est masquée côté front) au lieu d'afficher un 0 trompeur.
-func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]int, titleSlug string) []domain.SquadMatchHistoryRow {
+//
+// replays : ensemble des matchs ayant un artefact de rejeu 2D, résolu UNE FOIS par
+// requête (nil = aucun rejeu publié sur les lignes).
+// roundsDecide : table `game_variant_name -> le resultat se lit en MANCHES` (ADR 0032).
+// Nil -> lecture en points, le comportement d'avant le 2026-08-29.
+func buildSquadMatchHistory(
+	matches []domain.SquadMatchRow, mapWR map[string][2]int, titleSlug string,
+	replays port.ReplayAvailability, roundsDecide map[string]bool,
+) []domain.SquadMatchHistoryRow {
 	provideTeamMMR := games.ProvidesTeamMMR(titleSlug)
 	seen := make(map[string]struct{}, len(matches))
 	rows := make([]domain.SquadMatchHistoryRow, 0, len(matches))
@@ -256,26 +293,20 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]
 				deltaMMR = &d
 			}
 		}
-		var scoreLabel string
-		if m.MyTeamScore != nil && m.EnemyTeamScore != nil {
-			scoreLabel = fmt.Sprintf("%d - %d", *m.MyTeamScore, *m.EnemyTeamScore)
+		// Score de la ligne : points ou MANCHES, tranché par la source unique
+		// (analysis.ReadTeamScore) — la MÊME que la vue match et l'historique, pour que les
+		// trois surfaces ne puissent pas afficher trois nombres différents du même match.
+		scoreLabel, scoreKind := "", ""
+		if d, ok := analysis.ReadTeamScore(analysis.TeamScoreInput{
+			MyPoints: m.MyTeamScore, EnemyPoints: m.EnemyTeamScore,
+			MyRoundsWon: m.MyRoundsWon, EnemyRoundsWon: m.EnemyRoundsWon,
+			RoundsTotal:  m.RoundsTotal,
+			RoundsDecide: roundsDecide[strings.TrimSpace(m.GameVariantName)],
+		}); ok {
+			scoreLabel = analysis.FormatTeamScoreLabel(d)
+			scoreKind = string(d.Kind)
 		}
-		var winRate *float64
-		var winRateTotal *int
-		if mapWR != nil {
-			key := m.MapID
-			if key == "" {
-				key = m.MapName
-			}
-			if key != "" {
-				if entry, ok := mapWR[key]; ok && entry[1] > 0 {
-					v := round2(float64(entry[0]) / float64(entry[1]))
-					winRate = &v
-					total := entry[1]
-					winRateTotal = &total
-				}
-			}
-		}
+		winRate, winRateTotal := squadMapWinRate(m, mapWR)
 		modeUI := squadModeUI(m)
 		rows = append(rows, domain.SquadMatchHistoryRow{
 			MatchID:      m.MatchID,
@@ -296,6 +327,8 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]
 			EnemyMMRAvg:             enemyMMR,
 			DeltaMMR:                deltaMMR,
 			ScoreLabel:              scoreLabel,
+			ScoreKind:               scoreKind,
+			HasReplay:               replays.Has(m.MatchID),
 			DurationSeconds:         m.DurationSeconds,
 			GameplayDurationSeconds: m.GameplayDurationSeconds,
 			WinRateHist:             winRate,
@@ -311,7 +344,7 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]
 	return rows
 }
 
-// buildMatchSeries construit la sÃƒÂ©rie temporelle des matchs pour un coÃƒÂ©quipier.
+// buildMatchSeries construit la série temporelle des matchs pour un coéquipier.
 func buildMatchSeries(matches []domain.SquadMatchRow) []domain.SquadMatchSeriesPoint {
 	series := make([]domain.SquadMatchSeriesPoint, 0, len(matches))
 	for _, m := range matches {

@@ -12,7 +12,7 @@
 
 ## Context
 
-The DuckDB ART index bug (#23046, `Failed to delete all rows from index`) FATAL-invalidated
+The DuckDB ART index bug (#23645, `Failed to delete all rows from index`) FATAL-invalidated
 production databases (incident 2026-05-24 on `match_skill_rank`). Two ADRs eradicated it:
 
 - **ADR 0019** moved per-match writes onto a Collect -> Persist path: `persist.BatchBuilder`

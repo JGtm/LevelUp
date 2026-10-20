@@ -2,10 +2,11 @@ package testfixtures
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 // ExternalFilmDataDir retourne le chemin du dataset 942 matchs si la
@@ -58,7 +59,7 @@ func LoadExternalChunk(t *testing.T, shortID string, chunkIdx int) []byte {
 	if dir == "" {
 		t.Skip("LEVELUP_TEST_FILM_DATA_DIR non defini — skip test external dataset")
 	}
-	path := filepath.Join(dir, shortID, fmt.Sprintf("chunk_%02d.bin", chunkIdx))
+	path := filmcache.CheminDuChunk(filepath.Join(dir, shortID), chunkIdx)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Skipf("chunk %s absent : %v", path, err)

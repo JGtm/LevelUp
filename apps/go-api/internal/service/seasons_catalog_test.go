@@ -20,6 +20,7 @@ type fakeMetadataRepo struct {
 	listErr     error
 	upserted    []domain.SeasonCalendar
 	upsertErr   error
+	coefErr     error // erreur rendue par GetAssistsCoef
 }
 
 func (f *fakeMetadataRepo) GetCurrentSeason(_ context.Context, _ string) (*domain.SeasonCalendar, error) {
@@ -63,7 +64,7 @@ func (f *fakeMetadataRepo) GetSnapshot(_ context.Context, _, _ string) (*domain.
 	return nil, nil
 }
 func (f *fakeMetadataRepo) GetAssistsCoef(_ context.Context, _ string) (float64, float64, error) {
-	return 0, 0, nil
+	return 0, 0, f.coefErr
 }
 
 type fakeSeasonProvider struct {

@@ -28,14 +28,12 @@ type mockSquadRepo struct {
 	impactErr           error
 	kvPairs             []domain.KVPairRaw
 	kvErr               error
-	heatmapRows         []domain.SynthesisHeatmapRow
-	heatmapErr          error
 	synthRows           []legacymatch.SynthesisMatchRow
 	synthErr            error
 	allyRows            []domain.AllyParticipant
 	allyErr             error
-	// LookupXUIDByGamertag : lookup attendu (gamertag normalisÃ© en lowercase â†’ xuid).
-	// Si vide, retourne ("", false, nil) â€” comportement par dÃ©faut.
+	// LookupXUIDByGamertag : lookup attendu (gamertag normalisé en lowercase → xuid).
+	// Si vide, retourne ("", false, nil) — comportement par défaut.
 	lookupAliases map[string]string
 	lookupErr     error
 	// assetFR : traductions FR par type d'asset ("map"|"playlist"|"pair") →
@@ -72,14 +70,20 @@ func (m *mockSquadRepo) LoadTeammateMatches(_ context.Context, _, _ string) ([]d
 func (m *mockSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domain.ImpactEventRow, error) {
 	return m.impactRows, m.impactErr
 }
+func (m *mockSquadRepo) LoadImpactEventsParGroupes(ctx context.Context, _ [][]string) ([]domain.ImpactEventRow, error) {
+	return m.LoadImpactEvents(ctx, nil)
+}
 func (m *mockSquadRepo) LoadKVPairs(_ context.Context, _ []string) ([]domain.KVPairRaw, error) {
 	return m.kvPairs, m.kvErr
 }
+func (m *mockSquadRepo) LoadSquadAssistPairs(_ context.Context, _, _ []string) ([]domain.SquadAssistPairRaw, int, error) {
+	return nil, 0, nil
+}
+func (m *mockSquadRepo) LoadSquadKillLog(_ context.Context, _, _ []string) ([]domain.SquadKillLogRow, error) {
+	return nil, nil
+}
 func (m *mockSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
 	return m.allyRows, m.allyErr
-}
-func (m *mockSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
-	return m.heatmapRows, m.heatmapErr
 }
 func (m *mockSquadRepo) LoadAssetTranslationsFR(_ context.Context, assetType string, _ []string) (map[string]string, error) {
 	if m.assetFR == nil {

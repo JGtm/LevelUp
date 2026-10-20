@@ -75,9 +75,13 @@ func (s *stubAssetURL) MapImageURL(_ string) string            { return "" }
 func (s *stubAssetURL) MedalImageURL(_ uint64) string          { return "" }
 func (s *stubAssetURL) CSRRankImageURL(_ string, _ int) string { return "" }
 func (s *stubAssetURL) CSRRankImageURLOnyx() string            { return "" }
-func (s *stubAssetURL) WeaponImageURL(_ string) string         { return "" }
-func (s *stubAssetURL) MatchWebURL(_ string) string            { return "" }
-func (s *stubAssetURL) PlayerMatchWebURL(_, _ string) string   { return "" }
+func (s *stubAssetURL) WeaponImageURL(_ int64) string          { return "" }
+func (s *stubAssetURL) WeaponImageIsTinted(_ int64) bool       { return false }
+func (s *stubAssetURL) KillSourceIcon(_ uint32) (canonical.KillSourceIcon, bool) {
+	return canonical.KillSourceIcon{}, false
+}
+func (s *stubAssetURL) MatchWebURL(_ string) string          { return "" }
+func (s *stubAssetURL) PlayerMatchWebURL(_, _ string) string { return "" }
 
 // stubCatalog implémente TitleCatalogAdapter pour les tests resolver.
 type stubCatalog struct{ slug string }

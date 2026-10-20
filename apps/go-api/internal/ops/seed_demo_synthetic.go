@@ -66,8 +66,22 @@ type SyntheticDemoResult struct {
 type synthMap struct{ en, fr string }
 type synthMode struct{ en, fr string }
 
-// synthPlaylist décrit une playlist synthétique. group = groupe canonique de
-// skill_rating (arena / big_team_battle / ...) ; ranked → matchs classés (CSR).
+// Valeurs de match_skill_rank.playlist_group du corpus. DUPLIQUÉES de sync/skill
+// (PerfChainRanked, LUSRChain*) : ops ne peut pas importer le moteur de sync — tout
+// binaire qui importe ops devrait alors câbler les seams title-owned (archlint
+// TestBinairesSyncCablentLesSeams). Le test seed_demo_synthetic_forms_test.go verrouille
+// l'égalité avec les constantes de sync/skill.
+const (
+	synthGroupRanked      = "ranked"
+	synthGroupArenaSlayer = "arena_slayer"
+	synthGroupBTB         = "btb"
+	synthGroupChaos       = "chaos"
+)
+
+// synthPlaylist décrit une playlist synthétique. group = valeur écrite dans
+// match_skill_rank.playlist_group : synthGroupRanked pour une playlist classée
+// (CSR, chaîne unique) sinon la chaîne LUSR du mode (synthGroup*), comme le sync
+// réel ; ranked → matchs classés (CSR).
 type synthPlaylist struct {
 	id, en, fr, group string
 	ranked            bool
@@ -87,10 +101,10 @@ var synthModes = []synthMode{
 }
 
 var synthPlaylists = []synthPlaylist{
-	{"demo-ranked-arena", "Arène classée", "Arène classée", "arena", true},
-	{"demo-quick-play", "Partie rapide", "Partie rapide", "arena", false},
-	{"demo-btb", "Grand combat", "Grand combat", "big_team_battle", false},
-	{"demo-fiesta", "Fiesta : Super", "Fiesta : Super", "arena", false},
+	{"demo-ranked-arena", "Arène classée", "Arène classée", synthGroupRanked, true},
+	{"demo-quick-play", "Partie rapide", "Partie rapide", synthGroupArenaSlayer, false},
+	{"demo-btb", "Grand combat", "Grand combat", synthGroupBTB, false},
+	{"demo-fiesta", "Fiesta : Super", "Fiesta : Super", synthGroupChaos, false},
 }
 
 // synthSession décrit une session de jeu (bloc de matchs rapprochés).
@@ -140,23 +154,56 @@ type synthMatch struct {
 	csrTier, csrTierFR  string
 	csrSubTier          int
 	csrDelta            float64
-	// arme favorite (weapon_id présent dans weapon_labels seedé)
-	favWeaponID    uint64
-	favWeaponKills int
 	// médailles (medal_name_id présents dans medal_definitions synthétiques)
 	medals []int64
 }
 
-// Armes favorites synthétiques : weapon_id < 2^63 (passables en paramètre SQL) et
-// présents dans le seed weapon_labels (games/weapons/labels.go). BR75 + MA40 AR.
-const (
-	weaponBR75   uint64 = 0x2b1824d542c9679f
-	weaponMA40   uint64 = 0x48c19d2d42c9679f
-	weaponBandit uint64 = 0x2fb21c8742c9679f
-)
-
 // Médailles synthétiques (medal_name_id) — insérées dans medal_definitions.
 var synthMedalIDs = []int64{500000001, 500000002, 500000003, 500000004}
+
+// ─── SOURCES DE DÉGÂT DU CORPUS (l'« arme favorite » de l'Accueil) ──────────────────────
+//
+// L'ARME D'UN KILL EST SA SOURCE DE DÉGÂT depuis le 2026-09-01 : `weapon_kills` n'existe
+// plus côté Halo Infinite, et l'encart « arme favorite » compte les
+// `match_kill_events.source_tag` crédités au joueur (`favoriteWeaponFromSource`). Le
+// corpus a perdu son arme favorite ce jour-là, son seeder écrivant dans la table
+// supprimée ; ces trois tags la lui rendent PAR LA VOIE COURANTE.
+//
+// CE SONT DES IDENTIFIANTS `jpt!` RÉELS, relevés dans la table embarquée du titre
+// (`games/halo_infinite/film/damagetag/data/labels.tsv`) — pas des valeurs inventées : la
+// lecture les fait traverser le MÊME classificateur qu'en production, et un tag que la
+// table ne connaît pas ne résout rien du tout. Le garde-rail
+// `TestDemoSourceTagsResolventAuRegistre` vérifie qu'ils rendent les trois clés attendues :
+// si la table embarquée change, c'est le test qui tombe, pas la démo en silence.
+const (
+	demoSourceTagBR75   uint32 = 0x0000b29c // -> hinf_br75
+	demoSourceTagMA40   uint32 = 0x0000b238 // -> hinf_ma40_ar
+	demoSourceTagBandit uint32 = 0xf3c1f9a8 // -> hinf_bandit
+)
+
+// demoSourceTagPour rend la source de dégât d'une mort du corpus. Second retour faux =
+// mort NON ATTRIBUÉE (aucune source mesurée).
+//
+// POURQUOI UNE PART NON ATTRIBUÉE. En production la portée est PAR LIGNE : une passe de
+// film n'éclaire pas toutes les morts (film expiré, mort non appariée), et le produit
+// affiche cette part telle quelle. Une démo où 100 % des morts portent une source
+// montrerait une surface que le produit n'a jamais.
+//
+// RÉPARTITION DÉTERMINISTE sur dix seaux, indexée par le rang de la mort — jamais un
+// tirage : une démo qui change d'arme favorite d'une génération à l'autre n'est pas une
+// démo. Le BR75 sort gagnant (5 seaux sur 10) devant le MA40 (3) et le Bandit (1).
+func demoSourceTagPour(matchIdx, killIdx int) (uint32, bool) {
+	switch (matchIdx + killIdx) % 10 {
+	case 0, 1, 2, 3, 4:
+		return demoSourceTagBR75, true
+	case 5, 6, 7:
+		return demoSourceTagMA40, true
+	case 8:
+		return demoSourceTagBandit, true
+	default:
+		return 0, false
+	}
+}
 
 // Libellés de paliers EN réutilisés (>3 occurrences dans le package → constantes,
 // garde-rail goconst).
@@ -186,6 +233,14 @@ func buildSynthPlan() []synthMatch {
 		}
 	}
 	return plan
+}
+
+// synthMatchID : identifiant de match de forme UUID (hexadécimal et tirets seuls). Les
+// routes /matches/{id}/... refusent en 404 tout identifiant hors de cette forme
+// (title.IsValidMatchID) : un « demo-match-0001 » rendrait toutes les vues de match
+// injoignables sur la démo. Préfixe fixe, indice en suffixe → déterministe.
+func synthMatchID(idx int) string {
+	return fmt.Sprintf("de0c0000-0000-4000-8000-%012x", idx)
 }
 
 // buildSynthMatch génère un match déterministe. csr est muté (progression continue).
@@ -218,13 +273,6 @@ func buildSynthMatch(rng *rand.Rand, idx int, s synthSession, pl synthPlaylist, 
 		*csr = 1499
 	}
 	tier, tierFR, subTier := csrTierFor(*csr)
-	favWeapon := weaponBR75
-	switch idx % 3 {
-	case 1:
-		favWeapon = weaponMA40
-	case 2:
-		favWeapon = weaponBandit
-	}
 	// Médailles : 0 à 3 par match (déterministe).
 	var medals []int64
 	nMed := rng.Intn(4)
@@ -232,42 +280,40 @@ func buildSynthMatch(rng *rand.Rand, idx int, s synthSession, pl synthPlaylist, 
 		medals = append(medals, synthMedalIDs[(idx+i)%len(synthMedalIDs)])
 	}
 	return synthMatch{
-		idx:            idx,
-		matchID:        fmt.Sprintf("demo-match-%04d", idx),
-		start:          start,
-		end:            start.Add(time.Duration(dur) * time.Second),
-		sessionID:      fmt.Sprintf("demo-session-%d", s.order),
-		sessionLabel:   fmt.Sprintf("Session %d", s.order),
-		sessionOrder:   s.order,
-		m:              mp,
-		mode:           mode,
-		pl:             pl,
-		squad:          s.squad,
-		kills:          kills,
-		deaths:         deaths,
-		assists:        assists,
-		score:          kills*100 + assists*40,
-		outcome:        outcome,
-		accuracy:       acc,
-		shotsFired:     shotsFired,
-		shotsHit:       int(float64(shotsFired) * acc),
-		damageDealt:    float64(kills)*140 + rng.Float64()*300,
-		damageTaken:    float64(deaths)*120 + rng.Float64()*250,
-		headshots:      rng.Intn(kills/2 + 1),
-		meleeKills:     rng.Intn(3),
-		maxSpree:       3 + rng.Intn(6),
-		perfScore:      50 + rng.Float64()*45,
-		team0Score:     t0,
-		team1Score:     t1,
-		csrValue:       *csr,
-		csrTier:        tier,
-		csrTierFR:      tierFR,
-		csrSubTier:     subTier,
-		csrDelta:       delta,
-		lusrValue:      1000 + (*csr-1150)*0.9 + rng.Float64()*20,
-		favWeaponID:    favWeapon,
-		favWeaponKills: 3 + rng.Intn(6),
-		medals:         medals,
+		idx:          idx,
+		matchID:      synthMatchID(idx),
+		start:        start,
+		end:          start.Add(time.Duration(dur) * time.Second),
+		sessionID:    fmt.Sprintf("demo-session-%d", s.order),
+		sessionLabel: fmt.Sprintf("Session %d", s.order),
+		sessionOrder: s.order,
+		m:            mp,
+		mode:         mode,
+		pl:           pl,
+		squad:        s.squad,
+		kills:        kills,
+		deaths:       deaths,
+		assists:      assists,
+		score:        kills*100 + assists*40,
+		outcome:      outcome,
+		accuracy:     acc,
+		shotsFired:   shotsFired,
+		shotsHit:     int(float64(shotsFired) * acc),
+		damageDealt:  float64(kills)*140 + rng.Float64()*300,
+		damageTaken:  float64(deaths)*120 + rng.Float64()*250,
+		headshots:    rng.Intn(kills/2 + 1),
+		meleeKills:   rng.Intn(3),
+		maxSpree:     3 + rng.Intn(6),
+		perfScore:    50 + rng.Float64()*45,
+		team0Score:   t0,
+		team1Score:   t1,
+		csrValue:     *csr,
+		csrTier:      tier,
+		csrTierFR:    tierFR,
+		csrSubTier:   subTier,
+		csrDelta:     delta,
+		lusrValue:    1000 + (*csr-1150)*0.9 + rng.Float64()*20,
+		medals:       medals,
 	}
 }
 
@@ -302,7 +348,7 @@ func SeedDemoSynthetic(ctx context.Context, opts SyntheticDemoOptions) (Syntheti
 
 	slog.InfoContext(ctx, "seed-demo synthetic: démarrage", "out", opts.OutDir, "matches", len(plan), "sessions", len(synthSessions))
 
-	warehouse := filepath.Join(opts.OutDir, "warehouse")
+	warehouse := titlePkg.NewDemoLayout(opts.OutDir).WarehouseDir(titlePkg.DefaultSlug)
 	if err := os.MkdirAll(warehouse, 0o755); err != nil {
 		return res, fmt.Errorf("seed-demo synthetic: mkdir warehouse: %w", err)
 	}
@@ -326,7 +372,7 @@ func SeedDemoSynthetic(ctx context.Context, opts SyntheticDemoOptions) (Syntheti
 	}
 
 	// 4. Player DBs (DemoPlayer principal + 2 coéquipiers).
-	nPlayers, err := writeSyntheticPlayers(ctx, opts.OutDir, plan)
+	nPlayers, err := writeSyntheticPlayers(ctx, titlePkg.NewDemoLayout(opts.OutDir), plan)
 	if err != nil {
 		return res, fmt.Errorf("seed-demo synthetic: players: %w", err)
 	}
@@ -336,7 +382,7 @@ func SeedDemoSynthetic(ctx context.Context, opts SyntheticDemoOptions) (Syntheti
 	// records, jalons, escouade) — même générateur que la démo réelle, dérivé du
 	// corpus synthétique. Sans eux, app_settings pose prestige_enabled=true et les
 	// pages Ascension/Prestige de la fixture CI seraient vides.
-	prestigeRows, err := seedDemoPrestige(ctx, opts.OutDir, titlePkg.DefaultSlug, nil)
+	prestigeRows, err := seedDemoPrestige(ctx, titlePkg.NewDemoLayout(opts.OutDir), titlePkg.DefaultSlug, nil)
 	if err != nil {
 		return res, fmt.Errorf("seed-demo synthetic: prestige: %w", err)
 	}

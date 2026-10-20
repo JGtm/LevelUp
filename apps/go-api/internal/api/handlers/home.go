@@ -118,30 +118,7 @@ func (h *HomeHandler) handleGetHomePage(ctx context.Context, in *homePageInput) 
 
 	page, err := svc.GetHomePage(sctx, gamertag, h.resolveLocaleFromHeader(ctx, in.Locale))
 	if err != nil {
-		slog.ErrorContext(sctx, "home: GetHomePage error", "err", err, "gamertag", gamertag)
-		// Phase 5 ART : distinguer FATAL DB (recovery en cours, retry possible)
-		// d'une erreur métier permanente. Pour le scénario du crash home
-		// 2026-05-24 20:41:04 (player DB invalidée par crash ART sur autre table),
-		// le caller peut re-tenter quelques secondes plus tard une fois le
-		// Reopen() effectué côté provider.
-		if isHandleClosedOrInvalidated(err) {
-			return nil, huma.ErrorWithHeaders(
-				humacore.NewError(http.StatusServiceUnavailable, "home_page_db_recovering",
-					"page d'accueil temporairement indisponible — connexion DB en cours de récupération"),
-				http.Header{headerRetryAfter: []string{"5"}},
-			)
-		}
-		// Contention de swap : le shared reader n'a pas pu être obtenu dans le budget
-		// user-facing (un sync tient le writer RW). 503 Retry-After court plutôt qu'un
-		// 500 opaque — la lecture est idempotente et repassera dès le retour en RO.
-		if isSharedSwapContention(err) {
-			return nil, huma.ErrorWithHeaders(
-				humacore.NewError(http.StatusServiceUnavailable, "home_page_db_busy",
-					"page d'accueil temporairement indisponible — base occupée par une synchronisation"),
-				http.Header{headerRetryAfter: []string{"2"}},
-			)
-		}
-		return nil, humacore.NewError(http.StatusInternalServerError, "home_page_error", "erreur chargement page d'accueil")
+		return nil, homePageError(sctx, err, gamertag)
 	}
 
 	// Sérialisation byte-exacte de writeJSONCached : sanitize → json.Marshal → ETag
@@ -169,6 +146,38 @@ func (h *HomeHandler) handleGetHomePage(ctx context.Context, in *homePageInput) 
 	}, nil
 }
 
+// homePageError trie l'erreur du service Accueil (plan perf du 2026-09-23, D3.2). Le
+// client parti (499) et le repli (verrou d'écriture : 503 `db_busy` ; sinon 500
+// `home_page_error`) passent par mapServiceError, comme les autres pages ; la page garde
+// ses deux 503 historiques, testés avant le repli.
+func homePageError(ctx context.Context, err error, gamertag string) error {
+	recovering := isHandleClosedOrInvalidated(err)
+	if isClientClosed(ctx) || (!recovering && !isSharedSwapContention(err)) {
+		return mapServiceError(ctx, err, "home_page_error")
+	}
+	slog.ErrorContext(ctx, "home: GetHomePage error", "err", err, "gamertag", gamertag)
+	// Phase 5 ART : distinguer FATAL DB (recovery en cours, retry possible)
+	// d'une erreur métier permanente. Pour le scénario du crash home
+	// 2026-05-24 20:41:04 (player DB invalidée par crash ART sur autre table),
+	// le caller peut re-tenter quelques secondes plus tard une fois le
+	// Reopen() effectué côté provider.
+	if recovering {
+		return huma.ErrorWithHeaders(
+			humacore.NewError(http.StatusServiceUnavailable, "home_page_db_recovering",
+				"page d'accueil temporairement indisponible — connexion DB en cours de récupération"),
+			http.Header{headerRetryAfter: []string{"5"}},
+		)
+	}
+	// Contention de swap : le shared reader n'a pas pu être obtenu dans le budget
+	// user-facing (un sync tient le writer RW). 503 Retry-After court plutôt qu'un
+	// 500 opaque — la lecture est idempotente et repassera dès le retour en RO.
+	return huma.ErrorWithHeaders(
+		humacore.NewError(http.StatusServiceUnavailable, "home_page_db_busy",
+			"page d'accueil temporairement indisponible — base occupée par une synchronisation"),
+		http.Header{headerRetryAfter: []string{"2"}},
+	)
+}
+
 // isHandleClosedOrInvalidated reconnaît les erreurs DuckDB qui justifient
 // un 503 + Retry-After au lieu d'un 500. Couvre :
 //   - `sql: database is closed` (handle fermée mais reopen possible)
@@ -189,6 +198,8 @@ func isHandleClosedOrInvalidated(err error) bool {
 // la base partagée est momentanément indisponible car un sync tient le writer RW
 // (swap en cours ou provider en récupération). Elles justifient un 503 + Retry-After
 // court : la lecture est idempotente et repassera dès le retour en steady state RO.
+// Seul prédicat de contention du paquet : isDBBusy (helpers.go) le réutilise pour les
+// autres pages, qui répondent alors le 503 générique `db_busy` (plan perf 2026-09-23).
 func isSharedSwapContention(err error) bool {
 	return errors.Is(err, sharedprovider.ErrSwapTimeout) ||
 		errors.Is(err, sharedprovider.ErrSwapFailed) ||

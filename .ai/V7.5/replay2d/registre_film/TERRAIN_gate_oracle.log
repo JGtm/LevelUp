@@ -1,0 +1,78 @@
+=== GATE ORACLE : recouvrement du temps de portage (emplacement des tics = comp 0 A) ===
+Reconstruction = duree cumulee des trains de tics par joueur (toutes manches).
+
+FILM 24dbb67d (tronque=false) :
+  2533274815819321 reconstruit= 28.0s  oracle= 29.0s  recouvrement= 97%
+  2533274822068549 reconstruit= 77.1s  oracle= 79.5s  recouvrement= 97%
+  2533274823110022 reconstruit= 72.1s  oracle= 74.8s  recouvrement= 96%
+  2533274858283686 reconstruit=  9.0s  oracle= 10.3s  recouvrement= 87%
+  2535425305181079 reconstruit= 51.1s  oracle= 53.6s  recouvrement= 95%
+  2535463185952034 reconstruit= 31.0s  oracle= 43.9s  recouvrement= 71%
+  2535463284114517 reconstruit=  3.0s  oracle=  6.6s  recouvrement= 46%
+  2535469190789936 reconstruit= 30.0s  oracle= 33.5s  recouvrement= 90%
+  porteur principal : reconstruit=2533274822068549 (77.1s) oracle=2533274822068549 (79.5s) -> OK
+
+FILM 43716616 (tronque=false) :
+  meltdown1260     reconstruit=  0.0s  oracle= 62.3s  recouvrement=  0%
+  KernelPanic10    reconstruit= 18.0s  oracle= 19.7s  recouvrement= 91%
+  Teespawn27       reconstruit=  3.0s  oracle=  6.2s  recouvrement= 48%
+  rwellsr          reconstruit= 23.0s  oracle= 27.3s  recouvrement= 84%
+  UltNintend0      reconstruit= 73.1s  oracle= 94.1s  recouvrement= 78%
+  bwellsb          reconstruit=  6.0s  oracle=  8.1s  recouvrement= 74%
+  porteur principal : reconstruit=UltNintend0 (73.1s) oracle=UltNintend0 (94.1s) -> OK
+
+FILM 51ebbc0f (tronque=false) :
+  Foggiest Lizard  reconstruit= 42.0s  oracle= 43.9s  recouvrement= 96%
+  Fingtitt         reconstruit= 44.0s  oracle= 51.0s  recouvrement= 86%
+  MajinChief306    reconstruit= 70.1s  oracle= 75.7s  recouvrement= 93%
+  Chocoboflor      reconstruit= 49.0s  oracle= 53.7s  recouvrement= 91%
+  Alejandro51500   reconstruit=  2.0s  oracle=  4.5s  recouvrement= 45%
+  Slowpoke6743     reconstruit= 29.0s  oracle= 37.0s  recouvrement= 78%
+  porteur principal : reconstruit=MajinChief306 (70.1s) oracle=MajinChief306 (75.7s) -> OK
+
+FILM 60ae07c4 (tronque=false) :
+  MarcooN1414      reconstruit= 28.0s  oracle= 42.1s  recouvrement= 67%
+  xToo Frosty      reconstruit= 31.2s  oracle= 38.4s  recouvrement= 81%
+  STCYYR           reconstruit=  6.0s  oracle=  7.8s  recouvrement= 77%
+  Madina97294      reconstruit= 85.3s  oracle=100.4s  recouvrement= 85%
+  DavidSuomi       reconstruit= 54.1s  oracle= 64.5s  recouvrement= 84%
+  Noddy1314        reconstruit= 56.8s  oracle= 68.8s  recouvrement= 83%
+  Matyus89         reconstruit= 37.0s  oracle= 44.1s  recouvrement= 84%
+  Mims5268         reconstruit= 33.0s  oracle= 39.3s  recouvrement= 84%
+  porteur principal : reconstruit=Madina97294 (85.3s) oracle=Madina97294 (100.4s) -> OK
+
+FILM 92f18088 (tronque=false) :
+  2533274823110022 reconstruit= 48.0s  oracle= 53.3s  recouvrement= 90%
+  2533274858283686 reconstruit=140.9s  oracle=148.3s  recouvrement= 95%
+  2533274898411924 reconstruit= 15.7s  oracle= 17.0s  recouvrement= 92%
+  2533274952689662 reconstruit= 14.0s  oracle= 19.3s  recouvrement= 73%
+  2533274975343060 reconstruit= 13.0s  oracle= 14.2s  recouvrement= 92%
+  2535463185952034 reconstruit= 57.1s  oracle= 69.0s  recouvrement= 83%
+  2535469190789936 reconstruit=  4.0s  oracle=  5.0s  recouvrement= 80%
+  porteur principal : reconstruit=2533274858283686 (140.9s) oracle=2533274858283686 (148.3s) -> OK
+
+FILM c88ec007 (tronque=false) :
+  RIMADON          reconstruit=  1.0s  oracle=  2.5s  recouvrement= 40%
+  KingOfTheHillll  reconstruit= 31.0s  oracle= 33.6s  recouvrement= 92%
+  Ratsolla         reconstruit=106.1s  oracle=116.8s  recouvrement= 91%
+  Isaacshark1053   reconstruit= 53.1s  oracle= 58.9s  recouvrement= 90%
+  xXBystanderXx    reconstruit=  1.0s  oracle=  2.6s  recouvrement= 38%
+  DonKhaled420     reconstruit= 15.0s  oracle= 40.8s  recouvrement= 37%
+  DireBounce       reconstruit= 53.1s  oracle= 60.8s  recouvrement= 87%
+  Chocoboflor      reconstruit= 39.0s  oracle= 45.8s  recouvrement= 85%
+  porteur principal : reconstruit=Ratsolla (106.1s) oracle=Ratsolla (116.8s) -> OK
+
+FILM d9781168 (tronque=false) :
+  JGtm             reconstruit= 29.0s  oracle= 37.1s  recouvrement= 78%
+  scuderiasven     reconstruit=107.1s  oracle=116.1s  recouvrement= 92%
+  DinoR00          reconstruit= 25.0s  oracle= 51.1s  recouvrement= 49%
+  OFB4203689       reconstruit=  5.0s  oracle=  9.7s  recouvrement= 52%
+  SHROOM GOD3261   reconstruit= 39.0s  oracle= 49.1s  recouvrement= 80%
+  LadyJezz         reconstruit= 19.0s  oracle= 25.5s  recouvrement= 75%
+  L0UDEN13         reconstruit= 95.1s  oracle=105.0s  recouvrement= 91%
+  EvilestSmile946  reconstruit=  8.0s  oracle= 10.1s  recouvrement= 79%
+  porteur principal : reconstruit=scuderiasven (107.1s) oracle=scuderiasven (116.1s) -> OK
+
+=== BILAN GATE ORACLE ===
+porteur principal correct : 7/7 films (seuil >= 3/5)
+recouvrements dans [80%,125%] : 31/51 couples (film,joueur) porteurs

@@ -9,9 +9,8 @@ package migration
 // idempotente (PAS un step de registre) : filet M2/M3 de la revue 2026-07-17. Une player DB
 // legacy (backup restauré pré-2026-05-24) porte encore l'ANCIEN schéma player_csr_snapshots
 // (PK(playlist_id, season_id), sans colonnes `id`/`written_at`). Sur cette DB,
-// EnsurePlayerSchema (sync/schema.go) crée ensuite l'index idx_pcs_lookup(... written_at) et la
-// vue player_csr_snapshots_latest (QUALIFY ... written_at, id) : leur BIND échoue sur l'ancien
-// schéma → OpenPlayerDB en échec PERMANENT (la player DB devient inouvrable, aucun step de
+// EnsurePlayerSchema (sync/schema.go) crée ensuite la vue player_csr_snapshots_latest
+// (QUALIFY ... written_at, id) : son BIND échoue sur l'ancien schéma → OpenPlayerDB en échec PERMANENT (la player DB devient inouvrable, aucun step de
 // migration restant ne répare puisque la conversion a été squashée).
 //
 // Décision D3 : la réparation est déclenchée par INTROSPECTION des colonnes (présence de `id`),
@@ -35,8 +34,9 @@ import (
 //
 // ViewSQL laissé VIDE À DESSEIN : la vue player_csr_snapshots_latest reste possédée par
 // playerSchemaSQL (sync/schema.go) — source unique, pas de duplication. La réparation garantit
-// seulement les colonnes id/written_at + l'index, pour que l'index et la vue de playerSchemaSQL
-// (exécutés juste après, dans le même EnsurePlayerSchema) bindent au lieu d'échouer.
+// seulement les colonnes id/written_at, pour que la vue de playerSchemaSQL (exécutée juste
+// après, dans le même EnsurePlayerSchema) binde au lieu d'échouer. Aucun index secondaire
+// (PlayerRetiredSecondaryIndexesDropSQL).
 //
 // Exposé pour EnsurePlayerSchema (sync) et les fixtures de test.
 func EnsurePlayerCSRSnapshotsAppendOnly(db *sql.DB) error {
@@ -46,7 +46,6 @@ func EnsurePlayerCSRSnapshotsAppendOnly(db *sql.DB) error {
 		SyntheticCols: synthWrittenAt,
 		PostSwap: []string{
 			`ALTER TABLE player_csr_snapshots ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
-			`CREATE INDEX IF NOT EXISTS idx_pcs_lookup ON player_csr_snapshots(playlist_id, season_id, written_at)`,
 		},
 	})
 }

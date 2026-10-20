@@ -1,19 +1,28 @@
-// Package atomicfile — écriture de fichier « atomique d'abord, in-place en repli ».
+// Package atomicfile — écriture de fichier atomique, stricte ou avec repli in-place.
 //
-// POURQUOI (constat deploy v7.2.0, 2026-07-25). Le pattern canonique d'écriture
-// atomique (fichier temporaire dans le même répertoire puis os.Rename) échoue
-// SYSTÉMATIQUEMENT quand la cible est bind-montée FICHIER dans un conteneur : le
-// montage épingle l'inode, et rename(2) répond EBUSY (« device or resource busy »).
-// app_settings.json est exactement dans ce cas en production — toute écriture
-// runtime de settings (last_notified_version, toggles admin) échouait, d'où la
-// notification Discord « nouvelle version » rejouée à chaque redémarrage.
+// DEUX ENTRÉES, UNE SEULE IMPLÉMENTATION DE L'ÉCRITURE ATOMIQUE :
+//   - WriteFileStrict : atomique OU erreur. Aucun repli. C'est l'entrée de tout
+//     fichier dont la troncature serait une PERTE IRRÉVERSIBLE (chunks de film,
+//     description d'un détenteur de verrou…).
+//   - WriteFile : WriteFileStrict d'abord ; si l'environnement INTERDIT l'atomique
+//     (EBUSY au rename, temporaire impossible), repli in-place. Réservé aux
+//     fichiers RECONSTRUCTIBLES (settings JSON).
 //
-// STRATÉGIE. Tenter l'écriture atomique ; si l'environnement l'INTERDIT (EBUSY au
-// rename, ou répertoire parent non inscriptible pour le temporaire), replier sur
-// une écriture in-place (truncate + write + fsync) qui réutilise l'inode existant
-// — la seule qui traverse un bind-mount fichier. Toute autre erreur est remontée
-// telle quelle : le repli couvre une contrainte d'environnement connue, pas un
-// diagnostic manquant.
+// POURQUOI LE REPLI (constat deploy v7.2.0, 2026-07-25). Le pattern canonique
+// d'écriture atomique (fichier temporaire dans le même répertoire puis os.Rename)
+// échoue SYSTÉMATIQUEMENT quand la cible est bind-montée FICHIER dans un
+// conteneur : le montage épingle l'inode, et rename(2) répond EBUSY (« device or
+// resource busy »). app_settings.json est exactement dans ce cas en production —
+// toute écriture runtime de settings (last_notified_version, toggles admin)
+// échouait, d'où la notification Discord « nouvelle version » rejouée à chaque
+// redémarrage.
+//
+// STRATÉGIE DE WriteFile. Tenter l'écriture stricte ; si l'environnement l'INTERDIT
+// (EBUSY au rename, ou répertoire parent non inscriptible pour le temporaire),
+// replier sur une écriture in-place (truncate + write + fsync) qui réutilise
+// l'inode existant — la seule qui traverse un bind-mount fichier. Toute autre
+// erreur est remontée telle quelle : le repli couvre une contrainte
+// d'environnement connue, pas un diagnostic manquant.
 //
 // LIMITE ASSUMÉE DU REPLI : l'écriture in-place N'EST PAS atomique. Entre le
 // truncate et la fin du write, un crash process/machine laisse un fichier tronqué
@@ -24,9 +33,9 @@
 //   - fsync avant fermeture : au retour de WriteFile le contenu est sur disque.
 //
 // Reste la fenêtre truncate→write (de l'ordre de la microseconde). Les fichiers
-// visés (settings JSON) sont RECONSTRUCTIBLES : un fichier vide relit les défauts,
-// aucune donnée métier n'est perdue. Ne PAS utiliser ce package pour un fichier
-// dont la troncature serait une perte irréversible.
+// visés par WriteFile (settings JSON) sont RECONSTRUCTIBLES : un fichier vide
+// relit les défauts, aucune donnée métier n'est perdue. Pour un fichier dont la
+// troncature serait une perte irréversible : WriteFileStrict.
 package atomicfile
 
 import (
@@ -41,6 +50,11 @@ import (
 // tmpPattern — préfixe des temporaires créés dans le répertoire de la cible.
 const tmpPattern = ".levelup-atomic-*"
 
+// errTemporaireImpossible — le temporaire n'a pas pu être créé dans le
+// répertoire de la cible (répertoire parent non inscriptible). Seul WriteFile
+// l'interprète, pour décider du repli in-place.
+var errTemporaireImpossible = errors.New("atomicfile: temporaire impossible")
+
 // Points d'injection pour les tests (simulation d'un rename EBUSY et d'un
 // répertoire parent non inscriptible). JAMAIS réassignés en production.
 var (
@@ -48,19 +62,16 @@ var (
 	createTemp = os.CreateTemp
 )
 
-// WriteFile écrit `data` dans `path`, atomiquement quand l'environnement le
-// permet, sinon in-place (cf. LIMITE ASSUMÉE en tête de package).
+// WriteFileStrict écrit `data` dans `path` ATOMIQUEMENT (temporaire du même
+// répertoire, fsync, rename) ou rend une erreur : aucun repli in-place, la cible
+// est soit l'ancien contenu entier, soit le nouveau entier. Aucun temporaire ne
+// survit à un échec.
 //
-// `perm` ne s'applique qu'à la CRÉATION : sur un fichier existant (cas du
-// bind-mount) le mode d'origine est conservé — on ne chmod jamais l'inode monté.
-func WriteFile(path string, data []byte, perm os.FileMode) error {
+// `perm` est le mode du fichier écrit (le rename remplace l'inode).
+func WriteFileStrict(path string, data []byte, perm os.FileMode) error {
 	tmp, err := createTemp(filepath.Dir(path), tmpPattern)
 	if err != nil {
-		// Répertoire parent non inscriptible : le temporaire est impossible, mais
-		// l'inode cible peut rester ouvrable en écriture (bind-mount fichier).
-		slog.Warn("atomicfile: temporaire impossible, repli in-place NON ATOMIQUE",
-			"path", path, "err", err)
-		return writeInPlace(path, data, perm)
+		return fmt.Errorf("%w pour %s: %w", errTemporaireImpossible, path, err)
 	}
 	tmpName := tmp.Name()
 	if err := finalizeTemp(tmp, data, perm); err != nil {
@@ -69,14 +80,33 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 	}
 	if err := renameFile(tmpName, path); err != nil {
 		_ = os.Remove(tmpName)
-		if !isBusy(err) {
-			return fmt.Errorf("atomicfile: rename %s → %s: %w", tmpName, path, err)
-		}
-		slog.Warn("atomicfile: rename EBUSY (cible bind-montée fichier), repli in-place NON ATOMIQUE",
-			"path", path, "err", err)
-		return writeInPlace(path, data, perm)
+		return fmt.Errorf("atomicfile: rename %s → %s: %w", tmpName, path, err)
 	}
 	return nil
+}
+
+// WriteFile écrit `data` dans `path`, atomiquement quand l'environnement le
+// permet (WriteFileStrict), sinon in-place (cf. LIMITE ASSUMÉE en tête de package).
+//
+// `perm` ne s'applique qu'à la CRÉATION en repli : sur un fichier existant (cas du
+// bind-mount) le mode d'origine est conservé — on ne chmod jamais l'inode monté.
+func WriteFile(path string, data []byte, perm os.FileMode) error {
+	err := WriteFileStrict(path, data, perm)
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, errTemporaireImpossible):
+		// Répertoire parent non inscriptible : le temporaire est impossible, mais
+		// l'inode cible peut rester ouvrable en écriture (bind-mount fichier).
+		slog.Warn("atomicfile: temporaire impossible, repli in-place NON ATOMIQUE",
+			"path", path, "err", err)
+	case isBusy(err):
+		slog.Warn("atomicfile: rename EBUSY (cible bind-montée fichier), repli in-place NON ATOMIQUE",
+			"path", path, "err", err)
+	default:
+		return err
+	}
+	return writeInPlace(path, data, perm)
 }
 
 // finalizeTemp écrit le contenu dans le temporaire, aligne son mode et le ferme.

@@ -1,0 +1,180 @@
+# Lot 5 v7.5 — Catalyst et Vagabond au catalogue, et l'oracle du containment
+
+> Branche `feat/v75`, 2026-08-08. Repond a la piste B du `PLAN_MASTER_FILM_KILLFEED_REJEU.md`
+> (etapes 5.2 et 5.3 : « c'est ici que Catalyst et Vagabond obtiennent leur fond de carte »)
+> et aux items « Fragmentation Heavies » / « Highpower » du `REGISTRE_REPORTS.md`.
+>
+> Ce document dit ce qui est ENTRE au catalogue, ce qui a ete REFUSE et sur quelle mesure.
+> Le gate humain de la piste B n'est PAS declare passe ici : il attend une validation
+> ecrite de l'utilisateur, carte par carte, depuis l'artefact de revue (§6).
+
+## 1. Le resultat en une page
+
+| item | statut | ce qui est entre |
+|---|---|---|
+| L5a Catalyst | partiel | zones et bornes verifiees ; une 2e variante d'asset ajoutee ; **fond de carte refuse** |
+| L5b Vagabond | fait | **3 zones de Bastion reelles** au catalogue — l'oracle du containment est disponible ; fond de carte refuse |
+| L5c alias Heavies | fait | `NormalizeMapName` retire le suffixe ; **+43 matchs** retrouvent leurs bornes |
+| L5d zones de Bastion sur Highpower | non traite, prouve absent | la donnee n'existe dans aucune des deux variantes de la carte |
+| L5e artefact de revue | fait | page HTML autonome, en attente de validation |
+
+Et un **defaut corrige au passage, decouvert en verifiant L5b** : le choix de la variante
+`.mvar` d'une carte publiait le rack du canevas Forge au lieu de la carte jouee (§3).
+
+## 2. Ce qui existait deja, et qu'il ne fallait pas refaire
+
+Verifie sur pieces avant de coder :
+
+- **Catalyst avait deja ses bornes** (`map_quant_bounds.json`, cle `catalyst`) **et ses
+  zones** (`map_objectives.json`, `catalyst_map` : 3 zones de Bastion, 5 zones
+  d'Extraction). Ce qui lui manquait est le FOND DE CARTE, et lui seul.
+- **Vagabond avait ses bornes** (`fo08_wetland`) mais **aucune entree** au catalogue
+  d'objectifs. C'etait le vrai manque, et c'est celui qui bloquait l'oracle.
+- La chaine `.module -> triangles` n'existe **qu'en Python jetable, sur Cliffhanger seule**
+  (`cartes/HANDOFF_GEOMETRIE_TRIANGLES.md`). Son portage en Go est le chantier
+  `PLAN_BELLE_CARTE_TRIANGLES` — hors perimetre de ce lot, qui devait utiliser les outils
+  existants.
+
+## 3. Le rack du canevas — le defaut trouve en cherchant les zones de Vagabond
+
+`cmd/mapobj-build` retenait, parmi les `.mvar` d'un asset, **celui qui declare le plus
+d'objectifs**. Sur les cartes baties dans Forge, ce critere se retourne :
+
+| fichier | objets | objectifs | emprise des objectifs | verdict |
+|---|---:|---:|---|---|
+| `fo08_wetland.mvar` | 100 | 20 | **8,2 m**, tous a z = 50,50 exactement | canevas livre avec le jeu : le RACK des objets de mode, un exemplaire de chaque, range hors terrain |
+| `map.mvar` | 4 709 | 4 | 22,3 m | la carte reellement batie |
+
+L'ancien critere retenait le rack. Le catalogue a donc porte, pendant la duree de ce lot,
+**trois « zones de Bastion » de 1 m de rayon posees a 2 m l'une de l'autre** — un objectif
+au mauvais endroit, exactement ce que l'en-tete de `fetch.go` dit vouloir eviter.
+
+**Correction** (`cmd/mapobj-build/variant.go`) : une variante dont les objectifs tiennent
+dans moins de **5 %** de l'emprise de ses propres objets est ecartee. Calibration sur les
+37 cartes du catalogue : le rack est a 2,3 %, la carte la plus basse ensuite est
+`corpo_map` a 15,8 %, puis 44,4 % — le seuil est entre les deux avec un facteur ~2 de
+marge des deux cotes. Si TOUTES les variantes sont ecartees, la carte n'entre pas au
+catalogue et l'echec est logue : une carte absente vaut mieux qu'une zone fausse.
+
+Trois temoins de test, dont deux tournent en CI :
+`vagabond_fo08_wetland.mvar` doit etre ecarte, les deux `.mvar` de Cliffhanger ne doivent
+pas l'etre, et `vagabond_map.mvar` (hors depot, 882 Ko) doit rendre ses 3 zones. Les deux
+mutations du seuil (0,0 et 0,9) ont ete jouees et vues rouges.
+
+**Effet de bord traite** : deux cartes exposent desormais un fichier nomme `map.mvar`
+(Vagabond et une variante de Highpower). Le mode hors ligne `--refresh-from` lisait a plat,
+donc leur aurait servi le MEME fichier — les zones d'une carte publiees sous le nom d'une
+autre, sans un mot. `--save-mvar` depose maintenant dans un sous-dossier par `map_id`, et
+le repli a plat est REFUSE quand le nom est partage.
+
+## 4. Les fonds de carte : non publies — et la premiere justification etait FAUSSE
+
+> **CORRECTION DU 2026-08-08, apres remarque de l'utilisateur.** Ce paragraphe refusait
+> Catalyst sur une couverture de 8,6 % contre 51 a 77 % pour les cartes publiees. **Ces
+> nombres ne sont pas comparables entre cartes** : `coveragePct` divise par les bornes
+> monde du BSP, qui valent **297 × 408 m** sur Catalyst (elles englobent la skybox) contre
+> **113 × 114 m** sur ridgeline. Le denominateur de Catalyst est 40 fois la zone de jeu.
+> Remesure a perimetre egal — boite des objectifs + 15 m, meme rasterisation :
+>
+> | carte | couverture brute | sans les boites > 200 m² |
+> |---|---:|---:|
+> | ridgeline (Cliffhanger) — *publiee* | 100 % | **83,1 %** |
+> | catalyst | 94,9 % | **79,0 %** |
+>
+> La structure instanciee de Catalyst est donc aussi complete que celle de Cliffhanger. Le
+> « fond troue » n'existe pas. **Lecon : `coveragePct` n'est un indicateur QUE pour une
+> carte dont les bornes monde epousent la zone de jeu ; l'utiliser en comparaison entre
+> cartes est un piege.**
+
+Le refus tient malgre tout, pour une raison qui n'a rien a voir avec la couverture :
+**`mapstruct-build` ne publie que des AABB**, et la belle carte de Cliffhanger validee le
+2026-07-26 n'a jamais ete produite par ce chemin. Elle vient de la chaine des TRIANGLES
+(instances -> `rtgo` -> LOD render data -> tampons de sommets `u16` -> dequantification),
+`cartes/HANDOFF_GEOMETRIE_TRIANGLES.md`, qui n'existe qu'en Python jetable sur ridgeline.
+Publier des boites, c'est publier l'etage d'en dessous : le critere « aucun rectangle » du
+gate le dit deja.
+
+**Sur Vagabond, la vraie difference n'est pas « Forge ou pas »** — Cliffhanger aussi a ete
+concue dans Forge. C'est que 343 a **cuit** Cliffhanger dans un module dedie, et pas
+Vagabond :
+
+| module | instances de geometrie | objets Forge du `.mvar` | ou vit la carte |
+|---|---:|---:|---|
+| ridgeline (Cliffhanger) | 10 223 | 443 | dans le MODULE |
+| catalyst | 11 178 | 357 | dans le MODULE |
+| fo08_wetland (Vagabond) | 788 | 4 709 | dans le `.mvar` |
+
+Consequence pour le portage : l'etape 1 (instances -> triangles) rend Catalyst comme elle
+rend Cliffhanger. Pour Vagabond elle ne rend que la toile ; il faut une etape 2 —
+resoudre `type_id -> tag de modele` puis poser les triangles du modele par la transformation
+de chaque objet. C'est du travail en plus, **pas une impasse** : dire que Vagabond resterait
+a sa carte d'altitude etait une erreur de plus, corrigee ici.
+
+Aucun fichier n'a ete ajoute a `reference/map_structure/`.
+
+## 5. Highpower : la donnee n'est pas la, et c'est mesure
+
+Les deux assets de Highpower ont ete telecharges et parses ; leurs quatre variantes
+declarent **zero** `strongholds_zone` :
+
+| asset | fichier | objets | objectifs | zones de Bastion |
+|---|---|---:|---:|---:|
+| `c494ef7c` (84 matchs) | `btb_highpower.mvar` | 605 | 26 | 0 |
+| `33c6505d` (13 matchs, AJOUTE au catalogue) | `map.mvar` | 638 | 28 | 0 |
+
+Ce n'est pas un defaut d'extraction : une recherche murmur3 sur 45 noms de mode croises
+avec 26 suffixes, plus 40 candidats explicites (`total_control_zone`, `land_grab_zone`,
+`koth_hill`, `hill_include`...), ne fait retomber **aucun** hash non resolu de Highpower
+sur un label de zone. Or la carte EST jouee en mode a zones : 25 matchs de Total Control
+au registre. Les zones de Total Control ne sont donc pas dans la variante de CARTE. Piste
+suivante, non ouverte : la variante de MODE (game variant). Consigne au registre.
+
+Sous-produit de la recherche : 7 labels jusque-la inconnus retombent proprement
+(`oddball_exclude`, `extraction_exclude`, `slayer_include`, `firefight_exclude`,
+`firefight_objective`, `minigame_exclude`, `forge_exclude`). Aucun n'est un role — les
+ajouter a `labelNames` ne changerait aucune zone, seulement le compte des non resolus.
+Hors perimetre, consigne au registre.
+
+## 6. L'artefact de revue — le gate n'est pas passe
+
+Page autonome, generee hors depot :
+
+	C:\Users\GUILLA~1\AppData\Local\Temp\claude\c--Users-Guillaume-Projects-LevelUp\
+	  1d8d44ec-6f37-47fb-b05b-a7d238cb6ffd\scratchpad\revue_cartes_lot5.html
+
+Elle porte, par carte : la vue du dessus (structure mesuree en gris, objectifs avec leur
+forme et leur ORIENTATION reelles), la barre d'echelle de 10 m, la couverture publiee, le
+detail metrique des zones de Bastion (position, taille pleine, hauteur au-dessus et
+au-dessous, distances mutuelles) et les criteres generaux.
+
+**Les temoins ont ete donnes par l'utilisateur le 2026-08-08**, apres le rendu et sans que
+la session en propose aucun — c'est la regle du gate. Verdicts mesures sur la donnee :
+
+| carte | temoin (utilisateur) | verdict |
+|---|---|---|
+| Catalyst | carte symetrique | **CONFIRME** — 68,3 % des 11 178 emprises ont leur miroir exact par rapport au plan y = 0. L'hypothese concurrente (symetrie par ROTATION de 180°) ne rend que 15,5 % au meilleur centre : la symetrie est EN MIROIR |
+| Catalyst | un pont en hauteur relie deux zones, aligne avec B2 et B3 | **COMPATIBLE** — B2 et B3 sont exactement alignes (tous deux a x = 0,00) et une structure continue court au-dessus d'eux vers z = 41 m, sans trou de y = -18 a +18. Mais des boites englobantes ne distinguent pas un tablier d'un plafond |
+| Catalyst | une passerelle perpendiculaire ~10 m sous ce pont | **NON TESTABLE** — matiere perpendiculaire presente vers z = 30-34, mais un fond troue a 91 % ne dit pas si elle est continue |
+| Vagabond | carte de type urbaine | **COMPATIBLE** — 4 292 des 4 709 objets Forge dans 53 × 50 m, sol etage sur ~20 m. Sans table `type_id -> nom`, « immeuble » ne se distingue pas de « rocher » |
+| Vagabond | a gauche de B3, une zone en contrebas ; une pente remonte a droite, en oblique | **COMPATIBLE** — relief mesure autour de B3 : poche a **-2,3 a -2,9 m** cote -X sur ~25 m, palier a -0,1 m, puis remontee a +0,9 puis **+2,6 m** vers +X/+Y — une pente OBLIQUE. Deux reserves : le sens gauche/droite depend de l'orientation de la vue, que la donnee ne fixe pas ; l'emplacement d'arme n'est pas verifiable |
+
+Le fond de Vagabond a du etre refait pour cette revue : le canevas BSP ne montrait rien.
+La page porte desormais une **carte d'altitude batie sur les 4 709 objets Forge** (sol
+approche par le 10e centile des altitudes par cellule de 2 m — la mediane melangerait le
+sol et les batiments, dont la position est le CENTRE). C'est ce fond qui a permis de
+mesurer le relief autour de B3, donc de statuer le temoin. Il est produit **pour la revue
+seulement** : rien de tout cela n'entre dans `reference/map_structure/`.
+
+Rappel du plan maitre : l'anneau du fer a cheval et les deux ponts sont les temoins de
+**Cliffhanger uniquement**, ils ne se reutilisent pas.
+
+## 7. Ce que ce lot debloque
+
+- **L'oracle du containment est disponible** : Vagabond porte ses 3 zones reelles, et le
+  releve terrain du 2026-08-02 devient rejouable par le code du lot 4. Corpus : 3 matchs
+  Strongholds sur Vagabond au registre.
+- **+43 matchs** retrouvent leurs bornes de dequantification par l'alias Heavies
+  (22 Fragmentation, 11 Highpower, 10 Breaker), sur les 45 que le lot 4 comptait sans
+  bornes. **+13 matchs** Highpower gagnent une entree de formes (sans zone de Bastion).
+- Le catalogue d'objectifs passe de **34 a 37 cartes**. Aucune entree preexistante n'a ete
+  modifiee (verifie par comparaison entree par entree avant/apres).

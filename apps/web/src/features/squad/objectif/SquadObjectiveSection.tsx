@@ -1,0 +1,120 @@
+/**
+ * SquadObjectiveSection — l'objectif dans l'onglet Emprise de l'Escouade (arrivé de Contributions
+ * le 2026-10-07 ; cartes du lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, maquette
+ * C3EW). Deux sections, dans l'ordre d'un débrief :
+ *
+ *   1. « Objectif » (aide du rapport de force sur l'intertitre) : les cadres « Rapport de force »
+ *      par famille de mode, posés à même la section, légende dessous | « Rapport de force au fil
+ *      de la session », côte à côte (« Rapport de force, soirée après soirée » est dans la section
+ *      « Soirées précédentes », `SquadPreviousSessionsSection`) ;
+ *   2. « Répartition de l'objectif dans l'escouade » (aide sur l'intertitre) : une fiche par
+ *      joueur de l'escouade, à même la section comme les médailles. Pas de fiche du reste du camp.
+ *
+ * AUCUNE REQUÊTE NEUVE : le bloc `formes_retenues` (périmètre D2) et l'historique de matchs de la
+ * page (résultat, score, dominance, L3.2) arrivent avec la réponse de `useTeammates`. Sans match à objectif dans le périmètre, les deux
+ * sections gardent leur intertitre et disent « Aucun match à objectif sur ce périmètre » dans un bloc parent
+ * (`ScopeEmptyCard`) ; une lecture en échec le dit à part (« Objectif indisponible pour ce périmètre ») ; elles ne se
+ * retirent que si le titre ne mesure pas l'objectif (`objectiveGap` nul).
+ */
+import { useCallback, useMemo } from 'react'
+
+import { SectionTitle } from '@/components/ui/detail-section'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { ScopeEmptyCard } from '@/components/ui/scope-empty'
+import type { MedalDigestEntry, SquadFormesBlock, SquadMatchHistoryRow } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
+import { dominanceLabels } from '@/lib/narrative/dominance'
+
+import { FORMES_CARDS_TEXT } from '../formes/cardsI18n'
+import { FORMES_TEXT } from '../formes/i18n'
+import { useSquadPlayerPalette } from '../useSquadPlayerPalette'
+import {
+  buildObjectiveBalance,
+  buildObjectiveSheets,
+  buildSessionFil,
+  hasSquadObjective,
+  objectiveGap,
+  squadSheetsOnly,
+} from './objectif.logic'
+import { ObjectiveBalanceCard } from './ObjectiveBalanceCard'
+import { ObjectiveSessionFilCard } from './ObjectiveSessionFilCard'
+import { ObjectiveSheetsCard, type SheetIdentity } from './ObjectiveSheetsCard'
+import { OBJECTIF_TEXT } from './objectifStrings'
+
+interface Props {
+  block: SquadFormesBlock | null | undefined
+  matchHistory: SquadMatchHistoryRow[]
+  /** Les emblèmes des joueurs (fiches de médailles), par gamertag. */
+  medalDigest: MedalDigestEntry[]
+  /** Le nom du joueur de la page (`main_player`), dernier repli de son libellé. */
+  mainPlayerLabel: string
+  locale: Locale
+}
+
+const EMPTY_BLOCK: SquadFormesBlock = { available: false, matches_measured: 0, matches_total: 0 }
+
+export function SquadObjectiveSection({
+  block,
+  matchHistory,
+  medalDigest,
+  mainPlayerLabel,
+  locale,
+}: Props) {
+  const t = OBJECTIF_TEXT[locale]
+  const columns = FORMES_TEXT[locale].columns
+  const families = FORMES_CARDS_TEXT[locale].families
+  const familyLabel = useCallback((f: string) => families[f] ?? f, [families])
+  const b = block ?? EMPTY_BLOCK
+  const balance = useMemo(() => buildObjectiveBalance(b), [b])
+  const fil = useMemo(() => buildSessionFil(b, matchHistory), [b, matchHistory])
+  const sheets = useMemo(() => squadSheetsOnly(buildObjectiveSheets(b)), [b])
+  const dominance = useMemo(() => dominanceLabels(locale), [locale])
+  const { inkOf } = useSquadPlayerPalette()
+  const identities = useMemo<SheetIdentity[]>(() => {
+    const emblems = new Map(medalDigest.map((e) => [e.player.toLowerCase(), e.emblem_url]))
+    return (b.squad ?? []).map((p) => {
+      const label = p.gamertag || (p.xuid === b.main_xuid ? mainPlayerLabel : '') || p.xuid
+      return { label, color: inkOf(label), emblemUrl: emblems.get(label.toLowerCase()) ?? undefined }
+    })
+  }, [b, medalDigest, mainPlayerLabel, inkOf])
+
+  const measured = hasSquadObjective(b)
+  const gap = objectiveGap(block)
+  if (!measured && gap == null) return null
+
+  return (
+    <>
+      <section className="space-y-2" data-testid="squad-objective-section">
+        <SectionTitle className="flex items-center gap-1.5">
+          {t.sectionTitle}
+          <InfoTooltip content={t.balance.info} />
+        </SectionTitle>
+        {measured ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ObjectiveBalanceCard families={balance} familyLabel={familyLabel} columns={columns} t={t} bare />
+            <ObjectiveSessionFilCard
+              matches={fil}
+              familyLabel={familyLabel}
+              dominanceLabels={dominance}
+              locale={locale}
+              t={t}
+            />
+          </div>
+        ) : (
+          gap && <ScopeEmptyCard kind={gap} locale={locale} testId="squad-objective-empty" />
+        )}
+      </section>
+      <section className="space-y-2" data-testid="squad-objective-sheets-section">
+        <SectionTitle className="flex items-center gap-1.5">
+          {t.sheets.title}
+          <InfoTooltip content={t.sheets.info} />
+        </SectionTitle>
+        {measured ? (
+          <ObjectiveSheetsCard sheets={sheets} identities={identities} familyLabel={familyLabel} columns={columns} t={t} />
+        ) : (
+          gap && <ScopeEmptyCard kind={gap} locale={locale} testId="squad-objective-sheets-empty" />
+        )}
+      </section>
+    </>
+  )
+}

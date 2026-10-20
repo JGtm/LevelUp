@@ -10,7 +10,7 @@
 // ─── Politique de cycle-out des migrations (N4) — APPLIQUÉE le 2026-07-12 ───────
 //
 // 1re application : baseline PLAYER v1 (registre player, cible du 1er squash — cf.
-// plan `.ai/PLAN_MIGRATION_SQUASH_BASELINE_2026-07.md` M3-M5). Politique confirmée par
+// plan `.ai/archive/V7/PLAN_MIGRATION_SQUASH_BASELINE_2026-07.md` M3-M5). Politique confirmée par
 // l'opérateur (GO 2026-07-12). Le registre accumulait ~une centaine de steps appliqués
 // au boot ; un squash contrôlé réduit le coût de boot et la charge cognitive. Le squash
 // est DESTRUCTIF sur l'historique de schéma actif → chaque invariant ci-dessous est

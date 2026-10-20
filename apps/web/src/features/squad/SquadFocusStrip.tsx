@@ -26,6 +26,7 @@ import type { Squad, SquadWithMembers } from '@/lib/prestige'
 import { findSquadByRoster } from './squadRoster'
 import { getSquadFocusText, type SquadFocusText } from './squadFocusStrings'
 import { SquadObjectivesPanel } from './SquadObjectivesPanel'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 
 export function SquadFocusStrip() {
   const { selectedRows, playerSlug, currentPlayerXuid } = useSquadContext()
@@ -40,6 +41,8 @@ export function SquadFocusStrip() {
 
   const { data: mySquads } = useMySquads(playerSlug)
   const createSquad = useCreateSquad(playerSlug)
+  // Profil d'un ami (lecture seule) : une escouade enregistrée se consulte, rien ne s'enregistre.
+  const readOnly = !useCanWritePlayer(playerSlug)
 
   // Match : escouade dont le roster hors joueur courant == sélection (exact).
   // Helper partagé avec useSquadPresets (source unique du matching de roster).
@@ -50,7 +53,7 @@ export function SquadFocusStrip() {
   )
 
   // Pas de composition exploitable → rien à afficher.
-  if (selectionXuids.length === 0) return null
+  if (selectionXuids.length === 0 || (readOnly && !matched)) return null
 
   const onSave = () => {
     if (matched) return // garde anti-doublon (tables shared_social append-only)
@@ -154,6 +157,7 @@ function SquadManageActions({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(squad.name)
   const [confirming, setConfirming] = useState(false)
+  const readOnly = !useCanWritePlayer(playerSlug)
 
   const commitRename = () => {
     const name = draft.trim()
@@ -190,6 +194,8 @@ function SquadManageActions({
     )
     setConfirming(false)
   }
+
+  if (readOnly) return null
 
   return (
     <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">

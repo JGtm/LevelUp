@@ -31,14 +31,6 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// Outcomes mappés selon les codes Halo Infinite.
-var outcomeLabels = map[int]string{
-	1: "Égalité",
-	2: "Victoire",
-	3: "Défaite",
-	4: "Abandon",
-}
-
 // Labels de scope/contexte partagés entre filters, tri, options Explorer.
 // Externalisés pour goconst (utilisés à plusieurs endroits + côté tests).
 const (
@@ -95,8 +87,8 @@ type MatchHistoryService struct {
 	// sans page publique → pas de lien (dégradation gracieuse, F3).
 	assetURL games.TitleAssetURLAdapter
 	// semantic (optionnel) : adapter sémantique du titre, utilisé pour résoudre les
-	// libellés d'outcome depuis outcomes.toml (source de vérité) plutôt qu'en dur
-	// (F4). nil → fallback FR canonique via outcomeLabel().
+	// libellés d'outcome depuis outcomes.toml (source de vérité) plutôt qu'en dur (F4),
+	// DANS LA LOCALE DE LA REQUÊTE depuis le 2026-09-07. nil → repli FR (outcome_label.go).
 	semantic games.TitleSemanticAdapter
 	// rankedCapable indique si le titre expose la capability match.skill.snapshot
 	// (gate du module classé du briefing Explorer, DEC-7). Injecté par le wiring
@@ -112,19 +104,26 @@ type MatchHistoryService struct {
 	// du flag « Prolongation » des lignes Explorer/historique. Nil/vide → aucun
 	// flag (titre sans mesure). Jamais de comparaison de slug : la table EST le titre.
 	regulationSeconds map[string]int
+	// roundsDecide : game_variant_name → le RÉSULTAT se lit en MANCHES (même
+	// regulation.toml, table [rounds_decide]). Nil/vide → tout reste en points, le
+	// comportement d'avant le 2026-08-29. Jamais de comparaison de slug : la table EST le titre.
+	roundsDecide map[string]bool
 	// skillBadgeResolver : résolveur d'URL d'image de badge de palier du TITRE
 	// courant, injecté par le wiring (jamais dérivé d'un slug ici — ADR 0025).
 	// Nil → colonne « Rang » en texte localisé, comme avant (H5, titre sans badge).
 	skillBadgeResolver func(tierEN string, subTier int) string
-}
-
-// outcomeCodeToKey mappe le code outcome Halo (domain.Outcome*) vers la clé
-// canonique outcomes.toml (win/loss/tie/dnf). "" si code inconnu.
-var outcomeCodeToKey = map[int]string{
-	domain.OutcomeDraw: "tie",
-	domain.OutcomeWin:  duelLabelWin,
-	domain.OutcomeLoss: duelLabelLoss,
-	domain.OutcomeDNF:  "dnf",
+	// weaponKillsRepo / weaponKillsXUID (optionnels) : lecteur des frags par arme du
+	// titre et identité du joueur pour qui les lire, injectés ENSEMBLE par le wiring
+	// (WithWeaponKillsRepo). Alimentent le module « arme favorite » du briefing
+	// Explorer. Le xuid voyage avec le repo parce que le filtre du port se pose sur la
+	// colonne xuid des deux lecteurs — jamais sur le gamertag, qui passe par une
+	// jointure d'alias. Non câblé → module omis (dégradation propre).
+	weaponKillsRepo port.WeaponKillsRepository
+	weaponKillsXUID string
+	// replaySvc (optionnel) : service de rejeu 2D, appelé UNE FOIS par requête pour
+	// lister les matchs ayant un artefact (colonne « Rejeu » + filtre replay_scope).
+	// Nil → aucune ligne ne porte de rejeu (titre sans film cuit, dégradation propre).
+	replaySvc port.ReplayService
 }
 
 // NewMatchHistoryService crée un MatchHistoryService.
@@ -162,6 +161,14 @@ func (s *MatchHistoryService) WithRegulation(regulationSeconds map[string]int) *
 	return s
 }
 
+// WithRoundsDecide injecte la table `game_variant_name → le résultat se lit en MANCHES`
+// (regulation.toml [rounds_decide]). Sans injection, les lignes affichent le score de
+// l'API — jamais une régression.
+func (s *MatchHistoryService) WithRoundsDecide(roundsDecide map[string]bool) *MatchHistoryService {
+	s.roundsDecide = roundsDecide
+	return s
+}
+
 // WithSkillBadgeResolver injecte le résolveur d'URL d'image de badge de palier du
 // titre courant — même résolveur title-aware que la home (RecentMatchItem.
 // skill_rank_image_url). Sans injection : aucune image, la colonne « Rang » reste
@@ -171,35 +178,72 @@ func (s *MatchHistoryService) WithSkillBadgeResolver(f func(tierEN string, subTi
 	return s
 }
 
+// WithReplay injecte le service de rejeu 2D — MÊME service que l'endpoint /replay et
+// que la Match View (une seule résolution de chemin dans le dépôt). Seul AvailableSet
+// est appelé ici : un listing de dossier par requête, jamais un accès disque par ligne.
+// Sans injection : has_replay reste faux partout et le filtre replay_scope ne garde
+// rien en mode « avec rejeu » (état d'un titre sans artefact — dégradation gracieuse).
+func (s *MatchHistoryService) WithReplay(svc port.ReplayService) *MatchHistoryService {
+	s.replaySvc = svc
+	return s
+}
+
+// replayAvailability liste les matchs ayant un artefact de rejeu — UN listing de
+// dossier par requête. Service non câblé ou listing en échec (déjà journalisé par le
+// service de rejeu) : ensemble vide, la page se sert sans la colonne plutôt qu'en 500.
+func (s *MatchHistoryService) replayAvailability(ctx context.Context) port.ReplayAvailability {
+	if s.replaySvc == nil {
+		return nil
+	}
+	set, err := s.replaySvc.AvailableSet(ctx)
+	if err != nil {
+		return nil
+	}
+	return set
+}
+
 // rowFormatters construit les résolveurs title-agnostic injectés dans
 // l'enrichissement d'une ligne : URL de page publique du match (F3, via l'adapter
-// d'assets + gamertag) et libellé d'outcome (F4, via l'adapter sémantique). Champs
+// d'assets + gamertag) et CLÉ canonique d'outcome (F4, via l'adapter sémantique). Champs
 // nil si l'adapter correspondant n'est pas câblé → dégradation gracieuse.
-func (s *MatchHistoryService) rowFormatters() rowFormatters {
-	f := rowFormatters{}
+//
+// replays : ensemble des matchs ayant un artefact de rejeu, résolu une fois par
+// requête par l'appelant (nil = aucun rejeu publié sur les lignes).
+func (s *MatchHistoryService) rowFormatters(replays port.ReplayAvailability) rowFormatters {
+	f := rowFormatters{replays: replays}
 	// Libellé de playlist résolu via le chokepoint unique (strip + override) —
 	// même « Super Fiesta » que la Match View / les tuiles home.
 	cfg := s.playlistDisplay
 	f.playlistLabel = func(rawFR string) string { return cfg.Display(rawFR) }
 	f.regulation = s.regulationSeconds
+	f.roundsDecide = s.roundsDecide
 	f.skillBadgeURL = s.skillBadgeResolver
 	if s.assetURL != nil {
 		gt := s.waypointPlayer
 		f.matchURL = func(matchID string) string { return s.assetURL.PlayerMatchWebURL(gt, matchID) }
 	}
-	if s.semantic != nil {
-		f.outcomeLabel = func(code int) string {
-			if oc := s.semantic.Outcomes(); oc != nil {
-				if m, ok := oc.Get(outcomeCodeToKey[code]); ok {
-					if lbl, _ := m.Label("fr"); lbl != "" {
-						return lbl
-					}
-				}
-			}
-			return outcomeLabel(code) // failsafe FR canonique
+	// Clé d'issue : traduite depuis le raw_code du TITRE (outcomes.toml), via le chokepoint
+	// unique du dépôt. Le jeu d'outcomes est résolu UNE FOIS ici, pas par ligne. Adapter
+	// absent ou code non mappé par le titre → repli Halo-only (le code brut reste
+	// exploitable ; ce n'est pas un mot fabriqué, juste la MÊME clé qu'un titre Halo aurait
+	// mappée).
+	outcomes := outcomesOf(s.semantic)
+	f.outcomeKey = func(code int) string {
+		if key := outcomeKey(outcomes, code); key != "" {
+			return key
 		}
+		return outcomeKeyFromHaloCode(code)
 	}
 	return f
+}
+
+// OutcomeText résout le TEXTE de l'issue depuis le titre, dans la LOCALE de la requête —
+// SEULE surface qui a besoin d'un texte rendu côté serveur : l'export CSV
+// (handlers/match_history.go, Export) est un fichier direct, sans JS pour localiser. Le
+// JSON de l'API sert la clé (MatchHistoryRow.Outcome) ; ici seulement, pour la même raison
+// que rowFormatters, le mot vient de outcomes.toml — jamais une map Go (D5, 2026-09-07).
+func (s *MatchHistoryService) OutcomeText(ctx context.Context, code int) string {
+	return outcomeText(outcomesOf(s.semantic), ctxkeys.Locale(ctx), code)
 }
 
 // WithDataAdapter injecte le DataAdapter multi-titres pour activer une
@@ -235,6 +279,16 @@ func (s *MatchHistoryService) WithRankedCapable(capable bool) *MatchHistoryServi
 	return s
 }
 
+// WithWeaponKillsRepo injecte le lecteur des frags par arme ET l'identité du joueur
+// pour qui les lire (module « arme favorite » du briefing Explorer). Les deux voyagent
+// ensemble comme dans WithPlayerMatchesRepo : un repo sans xuid ne sait rien filtrer.
+// Sans appel : module omis.
+func (s *MatchHistoryService) WithWeaponKillsRepo(repo port.WeaponKillsRepository, xuid string) *MatchHistoryService {
+	s.weaponKillsRepo = repo
+	s.weaponKillsXUID = xuid
+	return s
+}
+
 // GetPage charge tous les matchs, applique filtres+pagination et retourne la réponse.
 func (s *MatchHistoryService) GetPage(
 	ctx context.Context,
@@ -245,6 +299,11 @@ func (s *MatchHistoryService) GetPage(
 		return domain.MatchHistoryPageResponse{}, fmt.Errorf("MatchHistoryService.GetPage: %w", err)
 	}
 	totalUnfiltered := len(rawRows)
+
+	// Rejeu 2D : la présence d'artefact est résolue UNE FOIS pour toute la requête
+	// (un listing de dossier), puis consultée en O(1) — par le filtre replay_scope
+	// comme par la colonne « Rejeu » de chaque ligne.
+	replays := s.replayAvailability(ctx)
 
 	// Placement (X/Y) calculé sur l'ensemble brut AVANT filtrage : la
 	// stratégie LUSR (10 plus anciens par chaîne) a besoin de l'ordre
@@ -283,14 +342,14 @@ func (s *MatchHistoryService) GetPage(
 	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
 	// d'une dimension, AND entre dimensions). Calculées sur baseForExplorerOptions
 	// pour que chaque dimension reflète "ce qu'on aurait si on cochait X".
-	availOutcomes := computeAvailableOutcomes(baseForExplorerOptions, req)
-	availPerfTiers := computeAvailablePerfTiers(baseForExplorerOptions, req)
-	availSkillTiers := computeAvailableSkillTiers(baseForExplorerOptions, req)
-	availRankedCtxs := computeAvailableRankedContexts(baseForExplorerOptions, req)
-	availSquadScopes := computeAvailableSquadScopes(baseForExplorerOptions, req)
+	availOutcomes := computeAvailableOutcomes(baseForExplorerOptions, req, replays)
+	availPerfTiers := computeAvailablePerfTiers(baseForExplorerOptions, req, replays)
+	availSkillTiers := computeAvailableSkillTiers(baseForExplorerOptions, req, replays)
+	availRankedCtxs := computeAvailableRankedContexts(baseForExplorerOptions, req, replays)
+	availSquadScopes := computeAvailableSquadScopes(baseForExplorerOptions, req, replays)
 
 	// Filtres Explorer additionnels (date, experience, playlist, carte, mode, squad, match ID).
-	filtered = applyExplorerMatchFilters(filtered, req)
+	filtered = applyExplorerMatchFilters(filtered, req, replays)
 
 	totalScoped := len(filtered)
 
@@ -298,7 +357,7 @@ func (s *MatchHistoryService) GetPage(
 	mapWinRates := computeMapWinRates(rawRows)
 
 	// Enrichissement
-	items := enrichRows(filtered, mapWinRates, s.rowFormatters())
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters(replays))
 
 	// Tri
 	sortItems(items, req.SortField, req.SortDir)

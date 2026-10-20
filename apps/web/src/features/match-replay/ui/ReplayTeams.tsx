@@ -1,0 +1,261 @@
+/**
+ * ReplayTeams — LA COLONNE DES FICHES, à CÔTÉ de la carte et jamais dessus.
+ *
+ * CE QUE CETTE COLONNE APPORTE, et que la carte ne peut pas dire : qui est qui. La carte
+ * montre des traces ; les fiches montrent des gens, avec leur état à l'instant lu — vivant
+ * ou mort, bouclier, armes portées, temps avant le retour. Ce fichier ne garde que ce qui est
+ * PROPRE À LA COLONNE : les camps et leurs sièges, la scène des effets construite une fois
+ * par document, et la grille dans laquelle les tuiles se rangent. Les tuiles elles-mêmes — la
+ * fiche, la place libre, l'occupant pas encore apparu, dans un même squelette — vivent dans
+ * `ReplayPlayerCard.tsx`, leurs lectures dans `model/playerCardReadings.ts` (extraction du
+ * 2026-09-06, plan fiches compactes ; squelette partagé le 2026-10-06).
+ *
+ * DEUX GABARITS, UN SEUL JEU DE COMPOSANTS (2026-09-06, décision D1 de l'utilisateur : « les
+ * matchs de type 4v4 on touche pas »). La densité se lit sur le TYPE DE MATCH — la catégorie
+ * de mode de l'en-tête (`header.mode_category === 'BTB'`, `model/cardDensity.ts`) — et sur
+ * RIEN d'autre : ni le nombre de sièges, ni de joueurs, ni de lignes du tableau. Une Grande
+ * équipe range ses sièges en deux colonnes de tuiles de 115 × 62 ; tout autre match garde la
+ * colonne de tuiles de 235 px, nœud DOM pour nœud DOM (fixation
+ * `__fixtures__/replayTeams.4v4.html`). Il n'y a NI réglage NI drapeau : les deux gabarits sont
+ * atteints par des matchs réels. Historique : la variante longue (zone du joueur, deux rangées
+ * d'inventaire) a été supprimée avec son réglage le 2026-08-24 (« fiches compactes va devenir
+ * la seule et unique option ») ; ce qui revient ici n'est pas cette option mais un second jeu
+ * de COTES (`model/cardGabarit.ts`), et les composants ne reçoivent que des nombres et des
+ * booléens — jamais le mot « compacte ».
+ *
+ * TROIS RÈGLES QUI NE SE NÉGOCIENT PAS ICI :
+ *   1. Une valeur non lue s'affiche comme une lacune, jamais comme un zéro ni une moyenne.
+ *   2. Une lecture ancienne PÂLIT et dit son âge — l'inventaire ne se lit qu'aux images-clés,
+ *      une toutes les ~20 s, et le faire passer pour l'instant courant était un défaut réel.
+ *   3. Aucun littéral de couleur : les rôles passent par des tokens sémantiques.
+ */
+import { useMemo } from 'react'
+
+import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
+import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
+
+import { ReplayPlayerCard, ReplaySeatWaiting } from './ReplayPlayerCard'
+import { ReplayTeamHeader } from './ReplayTeamHeader'
+import { cardDensity } from '../model/cardDensity'
+import { teleportMoments } from '../model/placementTeleport'
+import type { CardFxScene } from '../model/playerCardReadings'
+import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
+import type { PresenceHeader } from '../model/presenceFeed'
+import {
+  buildSeats,
+  groupSeatsByTeam,
+  seatTileAt,
+  type ReplaySeatGroup,
+} from '../model/seatLogic'
+import { campLabel } from '../../../lib/replay/replayCamps'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import {
+  buildPlayers,
+  buildSlotOwnership,
+  campResolver,
+  vitalityPresence,
+} from '../../../lib/replay/rosterLogic'
+
+/**
+ * Estompage COMPLET d'une lecture de vitalité à 6 s : la même graduation que le bouclier
+ * sur la carte. Le REPORT, lui, n'a pas de limite dans une vie — le flux est différentiel,
+ * non retransmis veut dire inchangé — et les points appartiennent à la vie, donc il ne
+ * franchit jamais une mort. Ce qui vieillit pâlit ; ce qui n'a jamais été mesuré reste
+ * une lacune dite.
+ */
+const VITALITY_FADE_MS = 6_000
+/**
+ * Au-delà, une lecture d'inventaire est au plancher d'opacité. 20 s est l'écart médian entre
+ * deux images-clés du film : c'est donc l'âge maximal ordinaire d'une lecture.
+ */
+const READING_FULL_MS = 20_000
+/**
+ * Durée des éclats d'événement (coup fatal, réapparition, translocation), en temps réel —
+ * assez pour être vus sans être subis, calée sur la rémanence des lancers. L'état de mort,
+ * lui, est porté en continu par le fond de la fiche. LA COMPOSITION DES EFFETS (éclats,
+ * verre du camouflage, encadrés, voile de l'écran occultant) vit dans `playerCardFx.ts`
+ * depuis le 2026-08-27 : la colonne ne fait plus que donner les âges.
+ */
+const FLASH_MS = 1_400
+
+/**
+ * Les sièges d'un camp : une colonne simple (gabarit normal — la chaîne d'aujourd'hui, à
+ * l'octet), ou une grille à remplissage automatique de tuiles de 115 px minimum (gabarit
+ * compact). ÉCRITES EN CLASSES SANS ESPACE : une valeur arbitraire Tailwind qui contient un
+ * espace ou un `calc(` ne produit aucune règle, en silence (`rosterHeight.guard.test.ts`).
+ *
+ * `overflow-x-hidden` N'EST PAS DÉCORATIF : `overflow-y-auto` passe AUSSI l'axe horizontal en
+ * `auto`, et tout ce qui dépasse le bord d'une tuile ouvrait une barre de défilement
+ * horizontale dans une colonne à largeur fixe — le filigrane de porteur d'objectif, posé à
+ * 6 px au-delà de la tuile (`ReplayObjectiveMark`), suffisait (235 px visibles, 240 de
+ * contenu). La colonne ne défile que verticalement.
+ */
+const SEATS_COLUMN_CLASS = 'flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden'
+const SEATS_GRID_CLASS =
+  'grid min-h-0 flex-1 auto-rows-max grid-cols-[repeat(auto-fill,minmax(115px,1fr))] gap-1 overflow-y-auto overflow-x-hidden'
+
+interface ReplayTeamsProps {
+  doc: ReplayDocumentReady
+  scoreboard: MatchScoreboardRow[]
+  frame: number
+  locale: ReplayLocale
+  /**
+   * L'allégeance lue dans le film, vue du joueur regardé (`model.allegiance`) : elle donne sa
+   * couleur au titre de chaque colonne (allié / adverse, neutre quand elle est inconnue).
+   */
+  allegiance: FilmAllegiance
+  /**
+   * En-tête du match : la catégorie de mode (le gabarit des fiches, cf. cardDensity). Absent =
+   * gabarit normal. Les relais de place, eux, viennent du document (`roster[].presence`).
+   */
+  header?: PresenceHeader | null
+}
+
+export function ReplayTeams({
+  doc, scoreboard, frame, locale, allegiance, header,
+}: ReplayTeamsProps) {
+  const t = REPLAY_TEXT[locale]
+  const players = useMemo(() => buildPlayers(doc, scoreboard), [doc, scoreboard])
+  // LA FICHE EST UNE PLACE, PAS UN JOUEUR (retour user 2026-09-02, règle des places du
+  // 2026-09-23) : un partant libère sa place pour son remplaçant — un 4v4 garde huit places,
+  // quel que soit le nombre de relais. LA PLACE ET LA PRÉSENCE VIENNENT DU DOCUMENT
+  // (`roster[].seat`, `roster[].presence`, schéma 69) : le web ne les déduit pas.
+  const seats = useMemo(() => buildSeats(players, doc), [players, doc])
+  // LES COLONNES SONT LES CAMPS DU FILM (décision du 2026-10-06) : un camp par désignateur, et
+  // jamais une colonne « sans équipe » — une entrée dont le film tait l'équipe n'a pas de place.
+  const groups = useMemo(() => groupSeatsByTeam(seats), [seats])
+  // LE NOM D'UNE COLONNE, une fois par document : la feuille de TOUS ses occupants le donne
+  // (`campLabel`), et un camp qu'elle ne nomme pas garde « Équipe N » de son désignateur.
+  const labels = useMemo(() => groups.map((g) => campLabel(g, sheetRowsOf(g), t)), [groups, t])
+  // LE GABARIT DU MATCH, un seul pour toute la colonne (D1) : il ne dépend que de l'en-tête.
+  const gabarit = cardDensity(header)
+  const vitalityFade = useMemo(() => msToFrames(VITALITY_FADE_MS, doc), [doc])
+  const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
+  const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
+  const presence = useMemo(() => vitalityPresence(doc), [doc])
+  // LA SCÈNE DES EFFETS D'ÉQUIPEMENT : les camps par vie (le capteur adverse en a besoin,
+  // même contrat que le calque), l'axe de temps des fenêtres de pose, et les instants de
+  // translocation — une lecture de document, donc UNE FOIS par document et jamais par image
+  // (le canvas lit le même calque de son côté, par son propre besoin : lui veut les POSITIONS,
+  // la fiche ne veut que les INSTANTS).
+  // LE CAMP D'UNE VIE PAR SLOT ET PAR IMAGE (résolveur frame-aware) : un slot de biped est
+  // réattribué entre manches, le camp doit suivre l'occupant. Le capteur adverse le lit à
+  // l'image du joueur interrogé / à la pose du capteur (cf. equipmentZones).
+  const campOfSlot = useMemo(() => campResolver(buildSlotOwnership(players)), [players])
+  // L'ÉCLAT DE TRANSLOCATION EST DATÉ PAR L'ÉVÉNEMENT DU FILM (schéma 38, 2026-09-03) :
+  // `translocations[]` porte l'instant EXACT de chaque usage — plus jamais le `spent`, qui date
+  // la FIN de l'équipement avec jusqu'à 16,5 s de retard mesuré, ni l'heuristique spatiale
+  // supprimée le même jour. Sur un artefact antérieur au schéma 38, `teleportMoments` retombe
+  // sur le repli daté du `spent` (kill-switch dans `placementTeleport.ts`). La fiche ne
+  // consomme que (slot, frame) : une translocation sans position l'allume comme les autres.
+  const teleports = useMemo(() => teleportMoments(doc), [doc])
+  const fxScene = useMemo<CardFxScene>(
+    () => ({
+      zones: {
+        placements: doc.equipmentPlacements,
+        campOfSlot,
+      },
+      time: { frameMs: frameToMs(1, doc), frames: doc.frameCount },
+      teleports,
+    }),
+    [doc, campOfSlot, teleports],
+  )
+  // LE CALQUE DE SCORE PASSE PAR SA GARDE D'HORLOGE, une seule fois pour toute la colonne :
+  // absent = artefact antérieur au schéma 12, mode sans compteur, ou origine non recalée
+  // (cf. lib/replay/scoreTimeline.filmClockTrusted). Les fiches et les en-têtes n'ont alors
+  // de plus à dire qu'avant — aucune ligne ne se vide, aucun zéro n'apparaît.
+  const scoreTimeline = useMemo(() => scoreTimelineOf(doc), [doc])
+
+  if (groups.length === 0) {
+    // LE DIAGNOSTIC DU PONT S'AFFICHE AVEC LE CONSTAT (coverage.bridge, consommé depuis le
+    // 2026-09-02) : « aucune vie rattachée » sans ses dénominateurs se lisait comme un bug
+    // muet — avec eux, on voit si le film n'a rien nommé (0/N) ou si la table d'index est
+    // tombée (collisions).
+    const bridge = doc.coverage?.bridge
+    return (
+      <div className="rounded-lg border border-border bg-card p-3">
+        <p className="text-xs text-muted-foreground">{t.rosterEmpty}</p>
+        {bridge && (
+          <p className="mt-1 text-3xs text-muted-foreground">
+            {t.bridgeDiag(bridge.livesNamed, bridge.livesTotal, bridge.slotCollisions)}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    // LA HAUTEUR VIENT DE LA RANGÉE, JAMAIS DES FICHES (technique du POC) : `h-full min-h-0`
+    // laisse la colonne se rétrécir, et le défilement vit À L'INTÉRIEUR de chaque colonne.
+    // Sous `xl`, la page borne la pile à 60 vh (`replay.tsx`) : la colonne défile dans cette
+    // borne.
+    //
+    // PLUS DE CARTE DE COLONNE (option 2a du handoff 2026-08-27) : chaque fiche est une
+    // TUILE autonome, le bandeau d'équipe est posé AU-DESSUS de la pile — la boîte qui les
+    // enfermait ne disait rien de plus. Gaps de la maquette : 10 px entre colonnes, 6 px
+    // sous le bandeau, 4 px entre tuiles. LES COLONNES D'ÉQUIPE NE CHANGENT PAS avec le
+    // gabarit (`repeat(groups.length, minmax(0, 1fr))`) : c'est À L'INTÉRIEUR d'un camp que les
+    // sièges passent en grille. Une colonne par camp du film, et AUCUNE « sans équipe » (D2,
+    // tenue par construction : `groupSeatsByTeam`).
+    //
+    // `minmax(0, 1fr)` ET PAS `1fr`, ET CE N'EST PAS COSMÉTIQUE (retour utilisateur du
+    // 2026-09-08 : « les fiches toujours rognées à cause des longs gamertags »). `1fr` vaut
+    // `minmax(auto, 1fr)`, et le minimum `auto` d'une piste est son MIN-CONTENT — que le nom du
+    // joueur fixe au texte ENTIER, puisque `truncate` pose `white-space: nowrap`. La grille
+    // dépassait donc son conteneur, et le `overflow-hidden` du parent rognait la différence EN
+    // SILENCE : 563 px de colonnes dans 480 px de place, mesurés sur un 4v4 aux gamertags longs.
+    // Le zéro explicite rend aux pistes le droit de descendre sous leur min-content, et c'est
+    // alors le `truncate` qui fait son travail — celui pour lequel il est là.
+    <div
+      className="grid h-full min-h-0 gap-2.5"
+      style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))` }}
+    >
+      {groups.map((group, gi) => (
+        <div
+          key={`camp:${group.team}`}
+          className="flex h-full min-h-0 flex-col gap-1.5"
+        >
+          <ReplayTeamHeader label={labels[gi]} ally={allegiance.ofTeam(group.team)} />
+          <div className={gabarit.seatGrid ? SEATS_GRID_CLASS : SEATS_COLUMN_CLASS}>
+            {/* UNE TUILE PAR PLACE, À CHAQUE IMAGE (règle des places, 2026-09-23) : son
+                occupant à l'instant lu, « pas encore apparu » s'il n'a pas encore de corps
+                (Q21), ou la place VIDE (Q20) — jamais un joueur parti, et jamais plus de
+                tuiles que de places. Une place qui ne rend RIEN à cette image (`seatTileAt` :
+                document sans présence publiée, avant le premier occupant) ne produit aucune
+                tuile. */}
+            {group.seats.map((seat) => {
+              const lu = seatTileAt(seat, frame)
+              if (lu === null) return null
+              if (lu.kind !== 'present' || lu.player === null) {
+                return <ReplaySeatWaiting key={seat.key} occupant={lu.player} gabarit={gabarit} locale={locale} />
+              }
+              return (
+                <ReplayPlayerCard
+                  key={seat.key}
+                  player={lu.player}
+                  doc={doc}
+                  frame={frame}
+                  presence={presence}
+                  vitalityFade={vitalityFade}
+                  readingFull={readingFull}
+                  flashFrames={flashFrames}
+                  locale={locale}
+                  scoreTimeline={scoreTimeline}
+                  fxScene={fxScene}
+                  gabarit={gabarit}
+                />
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Les lignes de feuille de TOUS les occupants d'un camp, sur tout le match : ce qui le nomme. */
+function sheetRowsOf(group: ReplaySeatGroup) {
+  return group.seats.flatMap((s) => s.occupants.map((o) => o.player.board))
+}

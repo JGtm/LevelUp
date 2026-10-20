@@ -1,5 +1,10 @@
 /**
- * GroupsPage — gestion end-user des groupes/familles (accès mutuel aux données).
+ * GroupsPage — page « Amis et groupes » : les amis DU JOUEUR ACTIF, puis la
+ * gestion end-user des groupes/familles (accès mutuel aux données).
+ *
+ * Deux notions voisines et distinctes, réunies ici parce que l'utilisateur les
+ * cherche au même endroit : les AMIS marquent les parties en escouade du profil
+ * consulté ; un GROUPE partage l'accès mutuel aux données entre comptes.
  *
  * Liste les groupes du user, permet de créer/renommer/supprimer, voir les membres,
  * et générer une invitation "rejoindre le groupe" (lien copiable → /join?invite=).
@@ -13,6 +18,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import type { Group } from '@/lib/api/types'
+import { PlayerFriendsSection } from '@/features/friends/PlayerFriendsSection'
 import {
   useMyGroups,
   useCreateGroup,
@@ -42,7 +48,13 @@ export function GroupsPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 p-6">
       <div>
-        <h1 className="text-xl font-semibold text-foreground">{t('common.groups.title')}</h1>
+        <h1 className="text-xl font-semibold text-foreground">{t('common.friends.page_title')}</h1>
+      </div>
+
+      <PlayerFriendsSection />
+
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">{t('common.groups.title')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t('common.groups.intro')}</p>
       </div>
 

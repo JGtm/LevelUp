@@ -1,0 +1,24 @@
+--- /c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/f46f71fc-4042-4343-b5c8-623c9fca58c2/scratchpad/v2-integ/rev/ls_loc.go	2026-10-04 16:49:25.973913800 +0200
++++ mut/localisateur_v1.go	2026-10-04 16:05:34.732133300 +0200
+@@ -145,7 +145,8 @@
+ 	hauteFrequence := -1
+ 	nb := len(pay) * 8
+ 	for s := 2; s+marchSignatureBits < nb; s++ {
+-		if source.BitAt(pay, s-1) != 0 {
++		bitNul := source.BitAt(pay, s-1) == 0
++		if !bitNul && hauteFrequence >= 0 {
+ 			continue
+ 		}
+ 		rec, fin, ok := TryDeltaAt(pay, s, w, cfg)
+@@ -153,7 +154,10 @@
+ 			continue
+ 		}
+ 		if rec.Slot == marchSignatureSlot {
+-			return s, -1
++			if bitNul {
++				return s, -1
++			}
++			continue
+ 		}
+ 		if hauteFrequence < 0 && signeLaHauteFrequence(rec, w, cfg) {
+ 			hauteFrequence = s

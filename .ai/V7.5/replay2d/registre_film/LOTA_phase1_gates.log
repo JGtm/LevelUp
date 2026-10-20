@@ -1,0 +1,152 @@
+﻿=== LOT A PHASE 1 — GATES (2026-08-18 01:57) ===
+EXIT_BUILD=0
+EXIT_VET=0
+
+ok  	levelup/go-api/internal/analysis	21.544s
+ok  	levelup/go-api/internal/analysis/breakdown	1.293s
+ok  	levelup/go-api/internal/analysis/filmdec	2.575s
+ok  	levelup/go-api/internal/analysis/narrative	1.226s
+ok  	levelup/go-api/internal/analysis/objectiveevents	1.547s
+ok  	levelup/go-api/internal/analysis/patterns	1.228s
+ok  	levelup/go-api/internal/analysis/positions	1.292s
+ok  	levelup/go-api/internal/analysis/prestigetuning	1.303s
+ok  	levelup/go-api/internal/analysis/relations	1.399s
+ok  	levelup/go-api/internal/analysis/replay	26.435s
+ok  	levelup/go-api/internal/analysis/replay/mapvar	1.307s
+ok  	levelup/go-api/internal/analysis/skill_v2	1.285s
+ok  	levelup/go-api/internal/analysis/skill_v2/ep	1.260s
+ok  	levelup/go-api/internal/analysis/temporal	1.248s
+ok  	levelup/go-api/internal/analysis/timeline	1.161s
+ok  	levelup/go-api/internal/analysis/weaponv3	1.051s
+
+
+EXIT_TEST_ANALYSIS=0
+
+ok  	levelup/go-api/internal/replaybuild	1.447s
+ok  	levelup/go-api/internal/games/halo_infinite/film/damagetag	0.886s
+--- FAIL: TestUneSeuleSourceDisqueDeFilm (0.25s)
+FAIL
+FAIL	levelup/go-api/internal/games/halo_infinite/film/filmcache	1.302s
+ok  	levelup/go-api/internal/games/halo_infinite/film/killicon	0.946s
+ok  	levelup/go-api/internal/games/halo_infinite/film/killsource	2.205s
+ok  	levelup/go-api/contracttest	1.226s
+FAIL
+
+
+EXIT_TEST_BUILDCHAIN=1
+
+ok  	levelup/go-api/internal/replaybuild	1.453s
+ok  	levelup/go-api/internal/games/halo_infinite/film/damagetag	0.888s
+ok  	levelup/go-api/internal/games/halo_infinite/film/filmcache	1.195s
+ok  	levelup/go-api/internal/games/halo_infinite/film/killicon	0.957s
+ok  	levelup/go-api/internal/games/halo_infinite/film/killsource	2.027s
+ok  	levelup/go-api/contracttest	1.189s
+
+
+EXIT_TEST_BUILDCHAIN=0
+
+ok  	levelup/go-api/internal/platform/duckdb	0.194s
+
+
+EXIT_TEST_DUCKDB_LECTEUR=0
+
+ok  	levelup/go-api/internal/api	17.701s
+ok  	levelup/go-api/internal/api/handlers	10.577s
+ok  	levelup/go-api/internal/api/humacore	1.013s
+ok  	levelup/go-api/internal/api/middleware	0.173s
+ok  	levelup/go-api/internal/api/wire	1.470s
+ok  	levelup/go-api/internal/sync/replayartifacts	0.138s
+
+
+EXIT_TEST_API=0
+golangci-lint : level=warning msg="[runner/nolint_filter] Found unknown linters in //nolint directives: gosec — 
+limit/placeholders maîtrisés, plr0913 — coordinator function"
+Au caractère Ligne:3 : 1
++ golangci-lint run --new-from-merge-base=origin/main ./... 2>&1 | Sele ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (level=warning m...nator function":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+internal\api\wire\registry_replay_build.go:143:97: replayMatchFacts - result 1 (error) is always nil (unparam)
+func replayMatchFacts(ctx context.Context, sharedSQL *sql.DB, matchID string) (port.MatchFacts, error) {
+                                                                                                ^
+1 issues:
+* unparam: 1
+EXIT_LINT=1
+golangci-lint : level=warning msg="[runner/nolint_filter] Found unknown linters in //nolint directives: gosec — 
+limit/placeholders maîtrisés, plr0913 — coordinator function"
+Au caractère Ligne:3 : 1
++ golangci-lint run --new-from-merge-base=origin/main ./... 2>&1 | Sele ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (level=warning m...nator function":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+0 issues.
+EXIT_LINT=0
+--- rejeu apres correctif unparam ---
+EXIT_BUILD=0
+EXIT_VET=0
+
+ok  	levelup/go-api/internal/api/wire	1.346s
+
+
+EXIT_TEST_WIRE=0
+EXIT_TSC=0
+
+ Test Files  47 passed (47)
+      Tests  657 passed (657)
+   Duration  45.27s (transform 9.81s, setup 66.93s, import 15.62s, tests 5.07s, environment 174.39s)
+
+
+EXIT_VITEST_REPLAY=0
+=== RONDE 1 DE REVUE — GATES (2026-08-18 03:06) ===
+EXIT_BUILD=0
+EXIT_VET=0
+
+ok  	levelup/go-api/internal/analysis	5.677s
+ok  	levelup/go-api/internal/analysis/breakdown	1.594s
+ok  	levelup/go-api/internal/analysis/filmdec	3.077s
+ok  	levelup/go-api/internal/analysis/narrative	1.529s
+ok  	levelup/go-api/internal/analysis/objectiveevents	1.877s
+ok  	levelup/go-api/internal/analysis/patterns	1.503s
+ok  	levelup/go-api/internal/analysis/positions	1.553s
+ok  	levelup/go-api/internal/analysis/prestigetuning	1.554s
+ok  	levelup/go-api/internal/analysis/relations	1.462s
+ok  	levelup/go-api/internal/analysis/replay	27.749s
+ok  	levelup/go-api/internal/analysis/replay/mapvar	1.338s
+ok  	levelup/go-api/internal/analysis/skill_v2	1.244s
+ok  	levelup/go-api/internal/analysis/skill_v2/ep	1.201s
+ok  	levelup/go-api/internal/analysis/temporal	0.829s
+ok  	levelup/go-api/internal/analysis/timeline	0.832s
+ok  	levelup/go-api/internal/analysis/weaponv3	0.869s
+
+
+EXIT_TEST_ANALYSIS=0
+
+ok  	levelup/go-api/internal/replaybuild	2.122s
+ok  	levelup/go-api/contracttest	1.930s
+ok  	levelup/go-api/internal/api/wire	2.286s
+ok  	levelup/go-api/internal/games/halo_infinite/film/damagetag	1.008s
+ok  	levelup/go-api/internal/games/halo_infinite/film/filmcache	1.830s
+ok  	levelup/go-api/internal/games/halo_infinite/film/killicon	1.080s
+ok  	levelup/go-api/internal/games/halo_infinite/film/killsource	3.062s
+ok  	levelup/go-api/internal/sync/replayartifacts	0.296s
+
+
+EXIT_TEST_CHAINE=0
+
+ok  	levelup/go-api/internal/platform/duckdb	0.214s
+
+
+EXIT_TEST_DUCKDB_LECTEUR=0
+golangci-lint : level=warning msg="[runner/nolint_filter] Found unknown linters in //nolint directives: gosec — 
+limit/placeholders maîtrisés, plr0913 — coordinator function"
+Au caractère Ligne:3 : 1
++ golangci-lint run --new-from-merge-base=origin/main ./... 2>&1 | Sele ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (level=warning m...nator function":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+0 issues.
+EXIT_LINT=0
+EXIT_TSC=0

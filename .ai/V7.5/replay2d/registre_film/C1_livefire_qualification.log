@@ -1,0 +1,68 @@
+# C1 — QUALIFICATION DES 2 FILMS ODDBALL LIVE FIRE (gate C1.3, lot C catalogues, 2026-08-27)
+# Instrument : TestOddballSommeilD8 rejoue TEL QUEL (le meme que O0.2, log D10_P0_pont.log) — un film par processus.
+# Catalogue de bornes : worktree (ATT_REF), entree live fire region=1 regionIndexBits=2 W=12/12/11 ; films : cache du depot principal.
+# Critere de qualification : pont bipede >= 50 % de slots nommes (inchange).
+
+=== RUN   TestOddballSommeilD8
+2026/08/27 16:52:45 INFO plafond memoire arme pour ce decodage outil=d8-sommeil souple_gib=2 dur_octets=2684354560
+2026/08/27 16:52:51 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=5686524277687893529 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1033
+    oddball_sommeil_d8_test.go:61: 60ae07c4 : 13430 ancres, 146 creations acceptees, 502 pistes delta ; 0 vie(s) du mot elu
+    oddball_sommeil_d8_test.go:61: NON EXPLOITABLE 60ae07c4 : 0 vie(s) libre(s) — sans deux vies il n'y a aucun trou. NI POUR NI CONTRE.
+    oddball_sommeil_d8_test.go:58: 60ae07c4 : pic memoire observe 0.02 Gio
+--- PASS: TestOddballSommeilD8 (8.02s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	8.427s
+=== RUN   TestOddballSommeilD8
+2026/08/27 16:53:17 INFO plafond memoire arme pour ce decodage outil=d8-sommeil souple_gib=2 dur_octets=2684354560
+    oddball_sommeil_d8_test.go:61: c88ec007 : 16290 ancres, 549 creations acceptees, 727 pistes delta ; 34 vie(s) du mot elu
+    oddball_sommeil_d8_test.go:61: c88ec007 : 34 vie(s) libre(s), 1 socle(s), pont 124/147 slot(s) nomme(s) = 84.4 % (plancher 50 %)
+    oddball_sommeil_d8_test.go:65: D8.1 c88ec007 : 34 naissance(s) — AU SOCLE 0/34 = 0.0 % · AUX PIEDS D UN JOUEUR 0/34 = 0.0 % · AU LIEU DU SILENCE 1/34 = 2.9 % · AUCUN des trois 33/34 = 97.1 %
+    oddball_sommeil_d8_test.go:65: D8.1 c88ec007 : RECOUVREMENTS (ce que l ordre de priorite de D7 masquait) — socle ET joueur 0 ; lieu du silence ET joueur 0
+    oddball_sommeil_d8_test.go:65:   c88ec007 : distance naissance -> silence precedent — n=33, min 0.95, q25 3.55, MEDIANE 29.27, q75 31.98, q90 33.93, max 36.33
+    oddball_sommeil_d8_test.go:66: D8.2 c88ec007 : 0/33 = 0.0 % trou(s) TRAVERSE(s) pendant leur duree (seuil 70 %) ; delai silence -> premiere traversee : mediane 0.00 s (seuil >= 1.0 s)
+    oddball_sommeil_d8_test.go:66:   c88ec007 : delai silence -> premiere traversee (s) — aucune mesure
+    oddball_sommeil_d8_test.go:66: VERDICT c88ec007 : traversees NON, delai NON — SOMMEIL NON ETABLI
+    oddball_sommeil_d8_test.go:58: c88ec007 : pic memoire observe 0.20 Gio
+--- PASS: TestOddballSommeilD8 (69.46s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	69.907s
+
+# Controle standard du catalogue (TestControleBornesFilms) sur les 2 films :
+=== RUN   TestControleBornesFilms
+    map_quant_control_test.go:66: CONTRÔLE : 2 couples (film, carte) · catalogue C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-catalogues/data/titles/halo_infinite/reference/map_quant_bounds.json · 79 cartes catalogué(es)
+    map_quant_control_test.go:105: Live Fire                              attendu [13 12 11] · accord 1/1 · illisible 0 · lectures [13 12 11]x1 -> ACCORD
+    map_quant_control_test.go:105: Live Fire - Ranked                     attendu [13 12 11] · accord 1/1 · illisible 0 · lectures [13 12 11]x1 -> ACCORD
+    map_quant_control_test.go:105: TOTAL : 2 couples · 2 cartes · 2 vertes · accord 2 · désaccord 0 · illisible 0
+--- PASS: TestControleBornesFilms (1.51s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	1.900s
+
+# ============================================================================
+# VERDICT C1.3 (fige le 2026-08-27)
+#
+# Cause de l'absence (C1.1) : module sgh_interlock (preuve level_id 1253388187, unicite
+# 1/1) SANS aucun tag sbsp — les 4 regions de compression de Live Fire sont portees par
+# ds/globals/common et referencees par GlobalID depuis le levl de sgh_interlock (deux blocs
+# du levl donnent le meme ordre : 7047b96f, d88e1d88, a59f5052, 91c336c1). La region JOUEE
+# est la 1 (d88e1d88, X[-16.72;46.51] Y[-10.10;53.67] Z[-9.33;13.57], W=12/12/11) : les 48
+# ancres d'objectifs du catalogue tombent toutes dedans (plus petite region englobante), et
+# les 2 films portent l'index de region 01 sur 59 376/59 377 records i0. L'index d'i0 fait
+# 2 bits ici (4 regions) : premiere carte du catalogue dans ce cas — le decodeur supposait
+# 1 bit partout, d'ou l'extension region/regionIndexBits du catalogue et de la chaine.
+#
+# Entree produite par cmd/mapquant-build (meme chaine que les 78 autres entrees, resolution
+# himap.RegionsBSPExternes, preuve statique rejouee par himap.TestPreuveRegionsLiveFire).
+# Controle standard du catalogue (ci-dessus) : ACCORD 2/2.
+#
+# QUALIFICATION (critere 50 % inchange, instrument TestOddballSommeilD8 tel quel) :
+#   60ae07c4 (Live Fire - Ranked, 2024-10) -> DECODE en monde (13 430 ancres, 146 creations
+#     acceptees, 502 pistes delta) mais 0 vie du mot elu du crane : empreinte ECS du film
+#     INCONNUE (version de film anterieure) — l'instrument s'arrete proprement AVANT le
+#     pont. EXCLU, raison : version de film (plus le catalogue). NI POUR NI CONTRE.
+#   c88ec007 (Live Fire) -> pont 124/147 slots nommes = 84,4 % >= 50 % : ADMIS.
+#     34 vies libres du crane, 1 socle oddball_spawn.
+#
+# Le corpus Oddball mesurable passe de 4 a 5 films (consigne pour une reprise future —
+# AUCUNE remesure D4-D10 ici ; les sorties diagnostiques D8.x ci-dessus sont la sortie de
+# l'instrument rejoue, elles n'amendent aucun verdict de campagne).
+# ============================================================================

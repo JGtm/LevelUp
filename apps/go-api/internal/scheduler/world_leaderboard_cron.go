@@ -20,6 +20,9 @@
 //   - Le writer n'est acquis que pour les INSERT (quelques dizaines de ms), pour
 //     ne pas tenir la shared DB en mode RW pendant le scrape (sinon les handlers
 //     HTTP lecteurs seraient bloqués / 503 tout du long).
+//   - Une vidange expirée des lecteurs (sharedprovider.ErrDrainTimeout) est retentée
+//     2 fois à 30 s, le scrape gardé en mémoire (world_leaderboard_persist_retry.go) ;
+//     le premier cycle part 2 min après le boot (bootDelay).
 package scheduler
 
 import (
@@ -30,7 +33,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
@@ -113,6 +115,9 @@ type WorldLeaderboardCron struct {
 	// (cf. world_leaderboard_quality.go). Process-local, remis à zéro dès qu'un lot
 	// de la playlist est accepté.
 	batchRefusals refusalStreaks
+	// bootDelay : délai avant le premier cycle de Run (worldLeaderboardBootDelay,
+	// 0 en test).
+	bootDelay time.Duration
 }
 
 // WithStatsEnricher branche l'enrichissement Phase C (agrégateur multi-tokens).
@@ -146,6 +151,7 @@ func NewWorldLeaderboardCron(
 		freshness:  defaultWorldLeaderboardFreshness,
 		limit:      defaultWorldLeaderboardLimit,
 		minEntries: defaultWorldLeaderboardMinEntries,
+		bootDelay:  worldLeaderboardBootDelay,
 	}
 }
 
@@ -159,8 +165,9 @@ func activeRankedPlaylistIDs() []string {
 	return out
 }
 
-// Run lance le cron : un premier tick immédiat (peuple la prod au boot sans manip
-// manuelle), puis toutes les `interval`. Bloque jusqu'à ctx.Done().
+// Run lance le cron : un premier tick après bootDelay (2 min — peuple la prod au boot
+// sans manip manuelle, une fois passée la rafale de lectures du démarrage qui faisait
+// expirer la vidange du writer), puis toutes les `interval`. Bloque jusqu'à ctx.Done().
 func (c *WorldLeaderboardCron) Run(ctx context.Context) {
 	if c == nil || c.provider == nil || c.scraper == nil {
 		slog.WarnContext(ctx, "world_leaderboard_cron: noop (provider/scraper nil)",
@@ -168,9 +175,14 @@ func (c *WorldLeaderboardCron) Run(ctx context.Context) {
 		return
 	}
 	slog.InfoContext(ctx, "world_leaderboard_cron: started",
-		"module", logging.ModuleLeaderboard, "interval", c.interval)
+		"module", logging.ModuleLeaderboard, "interval", c.interval, "boot_delay", c.bootDelay)
 
-	c.RunOnce(ctx)
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(c.bootDelay):
+		c.RunOnce(ctx)
+	}
 
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
@@ -233,7 +245,8 @@ func (c *WorldLeaderboardCron) RunOnce(ctx context.Context) {
 // les skips nominaux (playlists absentes, saison indécouvrable, snapshot frais,
 // scrape vide — dégradations déjà loguées WARN/INFO, escaladées en ERROR si elles
 // durent : une saison indécouvrable N'EST PAS auto-résolutive, cf. discoverActiveSeason), la
-// cause pour un échec DUR (persistance du snapshot). L'enrichissement Phase C reste
+// cause pour un échec DUR (persistance du snapshot, après les nouvelles tentatives sur
+// vidange expirée — cf. acquireWriterRetry). L'enrichissement Phase C reste
 // best-effort interne (n'échoue pas le cycle : le classement est déjà persisté). Une
 // erreur ici n'interrompt pas l'itération sur les autres titres (agrégée par RunOnce).
 func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug string) error {
@@ -370,9 +383,10 @@ func (c *WorldLeaderboardCron) seasonPlayers(ctx context.Context, season string)
 	return duckdb.WorldSeasonPlayers(ctx, db, season, duckdb.WorldLeaderboardTopN)
 }
 
-// persistStats acquiert le writer shared et insère les stats agrégées (append-only).
+// persistStats acquiert le writer shared (acquireWriterRetry, comme persist) et insère
+// les stats agrégées (append-only).
 func (c *WorldLeaderboardCron) persistStats(ctx context.Context, stats []domain.WorldPlayerSeasonStats) (int, error) {
-	wh, err := c.provider.AcquireWriter(ctxkeys.WithDBWriterLabel(ctx, "world_enrich_stats"))
+	wh, err := c.acquireWriterRetry(ctx, "world_enrich_stats")
 	if err != nil {
 		return 0, err
 	}
@@ -439,13 +453,14 @@ func (c *WorldLeaderboardCron) scrapeAll(ctx context.Context, titleSlug, season 
 	return all, total
 }
 
-// persist acquiert le writer shared et insère les entrées en append-only sous le
+// persist acquiert le writer shared (acquireWriterRetry : vidange expirée retentée,
+// entries gardées en mémoire) et insère les entrées en append-only sous le
 // slug du titre courant (PMT-7 write-path : capability-gated par l'appelant
 // runOnceForTitle — seuls les titres déclarant CapWorldLeaderboard arrivent ici).
 // Upsert aussi season_catalog (C2) dans la MÊME fenêtre writer — best-effort : un
 // échec de l'upsert saisons est loggé mais ne fait pas échouer le snapshot CSR.
 func (c *WorldLeaderboardCron) persist(ctx context.Context, titleSlug string, entries []domain.LeaderboardEntry, seasons []domain.WorldSeasonRef) (int, error) {
-	wh, err := c.provider.AcquireWriter(ctxkeys.WithDBWriterLabel(ctx, "world_leaderboard_snapshot"))
+	wh, err := c.acquireWriterRetry(ctx, "world_leaderboard_snapshot")
 	if err != nil {
 		return 0, err
 	}

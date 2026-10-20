@@ -269,14 +269,16 @@ fi
 # healthcheck ; faire échouer le déploiement pour un libellé de version serait
 # disproportionné. Le message doit en revanche être impossible à rater dans les logs.
 if [[ "$LEVELUP_APP_VERSION" != "dev" ]]; then
-    # Clé exacte du payload : "app_version" (domain.HealthResponse, json:"app_version").
-    _served_version="$(curl -sf "http://127.0.0.1:${APP_PORT}/health" 2>/dev/null \
-        | grep -o '"app_version"[[:space:]]*:[[:space:]]*"[^"]*"' \
-        | head -1 | sed 's/.*"\([^"]*\)"$/\1/')"
+    # /health public ne porte plus la version (réduit à {status}, lot L9-1). La version
+    # servie est celle que le processus lit dans son environnement : on lit
+    # l'environnement du conteneur en marche (LEVELUP_APP_VERSION, source unique).
+    _served_version="$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' \
+        "$(docker compose ps -q levelup 2>/dev/null | head -1)" 2>/dev/null \
+        | sed -n 's/^LEVELUP_APP_VERSION=//p' | head -1)"
     if [[ -z "$_served_version" ]]; then
-        echo "[deploy] ⚠️  Version servie illisible depuis /health — contrôle ignoré"
+        echo "[deploy] ⚠️  Version servie illisible depuis l'environnement du conteneur — contrôle ignoré"
     elif [[ "$_served_version" != "$LEVELUP_APP_VERSION" ]]; then
-        echo "[deploy] ❌ VERSION SERVIE INCOHÉRENTE : /health annonce '$_served_version'," \
+        echo "[deploy] ❌ VERSION SERVIE INCOHÉRENTE : le conteneur annonce '$_served_version'," \
              "attendu '$LEVELUP_APP_VERSION'."
         echo "[deploy]    Cause probable : .env perdu ou conteneur recréé sans LEVELUP_APP_VERSION."
         echo "[deploy]    Conséquence : les notifications « nouvelle version » ne partiront PAS."

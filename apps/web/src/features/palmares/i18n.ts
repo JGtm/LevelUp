@@ -111,8 +111,6 @@ export interface PalmaresText {
       liftTooltip: string
       seenThisWeek: (count: string) => string
       recentForm: string
-      showOthers: (count: string) => string
-      collapse: string
     }
     donut: {
       wins: string
@@ -128,7 +126,6 @@ export interface PalmaresText {
       toggleHide: string
       unavailable: string
       heatmapEmpty: string
-      heatmapLegend: string
       heatmapByHour: string
       heatmapByDay: string
       tooltipPlayer: string
@@ -178,6 +175,11 @@ export interface PalmaresText {
     activeTierProgress: string
     activeTierFallback: string
     freshnessLastSync: (date: string) => string
+    carousel: {
+      prevAriaLabel: string
+      nextAriaLabel: string
+      viewDetailAriaLabel: (title: string) => string
+    }
     obtained: string
     upcoming: string
     otherPassesTitle: string
@@ -325,9 +327,6 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         seenThisWeek: (count: string) =>
           formatMessage(palmaresManifest, 'palmares.relations.core.seen_this_week', loc, { count }),
         recentForm: t(loc, 'palmares.relations.core.recent_form'),
-        showOthers: (count: string) =>
-          formatMessage(palmaresManifest, 'palmares.relations.core.show_others', loc, { count }),
-        collapse: t(loc, 'palmares.relations.core.collapse'),
       },
       donut: {
         wins: t(loc, 'palmares.relations.donut.wins'),
@@ -343,7 +342,6 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         toggleHide: t(loc, 'palmares.relations.moments.toggle_hide'),
         unavailable: t(loc, 'palmares.relations.moments.unavailable'),
         heatmapEmpty: t(loc, 'palmares.relations.moments.heatmap_empty'),
-        heatmapLegend: t(loc, 'palmares.relations.moments.heatmap_legend'),
         heatmapByHour: t(loc, 'palmares.relations.moments.heatmap_by_hour'),
         heatmapByDay: t(loc, 'palmares.relations.moments.heatmap_by_day'),
         tooltipPlayer: t(loc, 'palmares.relations.moments.tooltip_player'),
@@ -403,6 +401,14 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
       activeTierFallback: t(loc, 'palmares.season_pass.active_tier_fallback'),
       freshnessLastSync: (date: string) =>
         formatMessage(palmaresManifest, 'palmares.season_pass.freshness_last_sync', loc, { date }),
+      carousel: {
+        prevAriaLabel: t(loc, 'palmares.season_pass.carousel.prev_aria_label'),
+        nextAriaLabel: t(loc, 'palmares.season_pass.carousel.next_aria_label'),
+        viewDetailAriaLabel: (title: string) =>
+          formatMessage(palmaresManifest, 'palmares.season_pass.carousel.view_detail_aria_label', loc, {
+            title,
+          }),
+      },
       obtained: t(loc, 'palmares.season_pass.obtained'),
       upcoming: t(loc, 'palmares.season_pass.upcoming'),
       otherPassesTitle: t(loc, 'palmares.season_pass.other_passes_title'),

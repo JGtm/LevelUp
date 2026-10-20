@@ -55,7 +55,6 @@ func TestSkipIfNoLUSRCapability(t *testing.T) {
 // titre sans CapLUSR fait un no-op (0, nil). Le gate capability passe AVANT le
 // check sharedDB==nil, donc passer nil ne déclenche aucune erreur.
 func TestRunLUSRV2Shadow_SkipsIfNoLUSRCapability(t *testing.T) {
-	t.Setenv(lusrV2EnvFlag, "1")
 	ctx := ctxkeys.WithTitleSlug(context.Background(), "some_future_title")
 
 	var nilShared *sql.DB

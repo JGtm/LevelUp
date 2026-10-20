@@ -31,7 +31,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -431,12 +430,12 @@ func escapeAttr(s string) string {
 // ffprobe, avec codec, canaux et tags language/title. Utilisé par le service
 // pour décider NeedsHLS puis par BuildHLS pour planifier.
 func ProbeStreamsDetailed(ctx context.Context, absPath string) ([]AVStreamDetail, error) {
-	out, err := exec.CommandContext(ctx, "ffprobe",
+	out, err := RunFFprobe(ctx,
 		"-v", "error",
 		"-print_format", "json",
 		"-show_streams",
 		absPath,
-	).Output()
+	)
 	if err != nil {
 		return nil, fmt.Errorf("ffprobe: %w", err)
 	}
@@ -512,8 +511,19 @@ func VerifyHLSPlayable(ctx context.Context, masterPath string, expectedAudioTrac
 // sous-playlists + segments). Copy par défaut, réencode ciblé selon planHLS.
 // Réécrit les NAME du master avec les titres de piste, puis valide la sortie.
 //
-// ffmpeg/ffprobe doivent être dans le PATH. outDir est créé si absent.
+// ffmpeg/ffprobe doivent être dans le PATH. outDir est créé si absent. Un seul transcodage
+// à la fois pour tout le process (withFFmpegSlot), borné par ffmpegMaxDuration.
 func BuildHLS(ctx context.Context, srcPath, outDir string, opts HLSOptions) (HLSResult, error) {
+	var res HLSResult
+	err := withFFmpegSlot(ctx, func(ctx context.Context) error {
+		var buildErr error
+		res, buildErr = buildHLS(ctx, srcPath, outDir, opts)
+		return buildErr
+	})
+	return res, err
+}
+
+func buildHLS(ctx context.Context, srcPath, outDir string, opts HLSOptions) (HLSResult, error) {
 	streams, err := ProbeStreamsDetailed(ctx, srcPath)
 	if err != nil {
 		return HLSResult{}, err
@@ -536,10 +546,8 @@ func BuildHLS(ctx context.Context, srcPath, outDir string, opts HLSOptions) (HLS
 	}
 
 	args := buildHLSArgs(plan, srcPath, outDir, segDur)
-	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
 	stderr := &bytes.Buffer{}
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
+	if err := RunFFmpeg(ctx, FFmpegJob{Args: args, Stderr: stderr}); err != nil {
 		slog.ErrorContext(ctx, "BuildHLS ffmpeg failed",
 			"src", srcPath, "out_dir", outDir, "stderr", stderr.String(), "err", err)
 		return HLSResult{}, fmt.Errorf("ffmpeg hls: %w (stderr: %s)", err, stderr.String())

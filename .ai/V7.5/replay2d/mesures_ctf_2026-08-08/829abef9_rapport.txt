@@ -1,0 +1,60 @@
+film	829abef9
+carte	Behemoth
+duree_s	618.0
+tirs_disponibles	2614
+rattaches	2084	ambigus	99	sans_slot	431
+taux_rattachement	0.7972
+taux_sans_slot	0.1649
+vies	110	nommees	85	non_nommees	25	slots_pont	85
+echantillons_position	198084
+pas_median_ms	16.7
+pas_p90_ms	17.5
+part_pas_sup_120ms	0.0029
+
+# ventilation des rejets sans-slot
+cause	trou de position	35	0.0134
+cause	vie non nommee	396	0.1515
+
+# ecart au plus proche echantillon du tireur (rejets sans-slot, joueur au pont)
+ecart_max_ms	120	0
+ecart_max_ms	250	14
+ecart_max_ms	500	12
+ecart_max_ms	1000	6
+ecart_max_ms	2000	1
+ecart_max_ms	5000	11
+ecart_max_ms	15000	65
+ecart_max_ms	infini	322
+
+# repartition temporelle (deciles du film)
+decile	1	disponibles	84	sans_slot	3	taux	0.0357
+decile	2	disponibles	326	sans_slot	88	taux	0.2699
+decile	3	disponibles	351	sans_slot	70	taux	0.1994
+decile	4	disponibles	259	sans_slot	8	taux	0.0309
+decile	5	disponibles	230	sans_slot	36	taux	0.1565
+decile	6	disponibles	280	sans_slot	16	taux	0.0571
+decile	7	disponibles	214	sans_slot	0	taux	0.0000
+decile	8	disponibles	381	sans_slot	2	taux	0.0052
+decile	9	disponibles	300	sans_slot	68	taux	0.2267
+decile	10	disponibles	189	sans_slot	140	taux	0.7407
+
+# par index de joueur du film
+joueur	0	slots	15	disponibles	410	sans_slot	10	taux	0.0244
+joueur	1	slots	7	disponibles	258	sans_slot	35	taux	0.1357
+joueur	2	slots	6	disponibles	262	sans_slot	118	taux	0.4504
+joueur	3	slots	15	disponibles	335	sans_slot	22	taux	0.0657
+joueur	4	slots	12	disponibles	379	sans_slot	90	taux	0.2375
+joueur	5	slots	14	disponibles	268	sans_slot	5	taux	0.0187
+joueur	6	slots	10	disponibles	315	sans_slot	97	taux	0.3079
+joueur	7	slots	6	disponibles	387	sans_slot	54	taux	0.1395
+
+# par arme (identifiant brut du film)
+arme	0x48C19D2D42C9679F	disponibles	1745	sans_slot	284	taux	0.1628
+arme	0xF408190F42C9679F	disponibles	497	sans_slot	93	taux	0.1871
+arme	0x3E07021742C9679F	disponibles	107	sans_slot	9	taux	0.0841
+arme	0xF5C335DFE7232C0B	disponibles	100	sans_slot	0	taux	0.0000
+arme	0x2FB21C8742C9679F	disponibles	42	sans_slot	0	taux	0.0000
+arme	0x0A1992BC42C9679F	disponibles	40	sans_slot	16	taux	0.4000
+arme	0xC7D5091200000000	disponibles	29	sans_slot	29	taux	1.0000
+arme	0x2B1824D542C9679F	disponibles	27	sans_slot	0	taux	0.0000
+arme	0x767DB96D42C9679F	disponibles	22	sans_slot	0	taux	0.0000
+arme	0x80977BA542C9679F	disponibles	5	sans_slot	0	taux	0.0000

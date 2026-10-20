@@ -21,36 +21,13 @@ type compositeMatchRow struct {
 	DefensiveResistance float64 // damage_taken/(225*deaths), 0 si absent
 }
 
-// computeCompositeScore calcule le score composite [0,1] d'un match. Wrapper
-// rétro-compatible autour de computeCompositeScoreWithBreakdown qui ne retourne
-// que le composite (utilisé par les tests existants).
-//
-// Les composantes manquantes (valeur 0 ou avg nil) sont ignorées et les poids
-// renormalisés. 4 params réservés pour futures composantes du score composite
-// (enemyAvgKE = carry adjustment vs adversaires ; avgMedalExploit = bonus exploit ;
-// avgOffConv = offensive conversion ; avgDefRes = defensive resistance).
-//
-//nolint:unparam // signature stable pour formule PerfTier roadmap, callers passent nil aujourd'hui.
-func computeCompositeScore(
-	row *compositeMatchRow,
-	avgAccuracy *float64,
-	enemyAvgKE *float64,
-	avgDamageEff *float64,
-	avgMedalExploit *float64,
-	avgOffConv *float64,
-	avgDefRes *float64,
-) float64 {
-	composite, _ := computeCompositeScoreWithBreakdown(row, avgAccuracy, enemyAvgKE, avgDamageEff, avgMedalExploit, avgOffConv, avgDefRes)
-	return composite
-}
-
 // computeCompositeScoreWithBreakdown calcule composite + breakdown détaillé.
 // Le breakdown contient les valeurs des composantes effectivement calculées
 // (clés = noms canoniques de CompositeWeights). Les composantes absentes du
 // match (donnée manquante, poids 0) ne figurent pas dans la map — leur lecture
 // retourne 0 côté Go, ce qui simplifie l'INSERT en batch.
 //
-// Utilisé par computeSkillRatingsBatch (commit V2-1) pour persister
+// Utilisé par matchComponents (skill_v2_components.go) pour persister
 // `lusr_component_history` en plus de `match_skill_rank`.
 func computeCompositeScoreWithBreakdown(
 	row *compositeMatchRow,
@@ -212,14 +189,3 @@ func computeEnemyStrength(enemyKEs []float64, matchAvgKE, matchStdKE, playerMU f
 	sigma := ClampF(math.Sqrt(variance)+MinSigma, MinSigma, DefaultOpponentSigma)
 	return avgMU, sigma
 }
-
-// ── Batch compute LUSR ──────────────────────────────────────────────────────
-// Structs LusrMatchData, lusrParticipant, lusrResult et loaders SQL → skill_rating_loaders.go.
-// Constante LUSRMaxDelta → skill_config.go.
-
-// BatchComputeLUSR est le wrapper public de BatchComputeLUSRWithMedals. Utilisé par
-// RecomputeAfterARTRebuild (phase 4.4) et tout caller hors-package qui doit
-// recompute la cascade LUSR (typiquement après un rebuild ART, un changement
-// de formule, ou un backfill manuel). medal exploit map laissée nil — les
-// callers qui veulent l'override exploit-aware (sync engine) utilisent encore
-// le helper privé BatchComputeLUSRWithMedals.

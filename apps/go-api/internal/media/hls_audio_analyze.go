@@ -26,7 +26,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"os/exec"
 	"sort"
 	"strings"
 )
@@ -164,11 +163,9 @@ func rmsFramesDB(raw []byte, frameSamples int) []float64 {
 // filterComplex vide → map direct (ex. "0:a:0") ; sinon le filtre produit mapSpec
 // (ex. "[mix]"). Décode au plus envMaxAnalysisSeconds (garde mémoire). IO ffmpeg.
 func audioEnvelope(ctx context.Context, src, filterComplex, mapSpec string) ([]float64, error) {
-	cmd := exec.CommandContext(ctx, "ffmpeg", buildEnvelopeArgs(src, filterComplex, mapSpec)...)
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	job := FFmpegJob{Args: buildEnvelopeArgs(src, filterComplex, mapSpec), Stdout: &stdout, Stderr: &stderr}
+	if err := RunFFmpeg(ctx, job); err != nil {
 		return nil, fmt.Errorf("ffmpeg pcm: %w (stderr: %s)", err, stderr.String())
 	}
 	return rmsFramesDB(stdout.Bytes(), envFrameSamples), nil

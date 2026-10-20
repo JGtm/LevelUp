@@ -420,3 +420,41 @@ func TestBuild_VehicleWithoutWeaponKey_StaysLeaf(t *testing.T) {
 		t.Errorf("ventilation partielle interdite : Roles = %+v, want nil (feuille)", veh.Roles)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// V2.1 (D2+D3, 2026-08-29) — LabelEN posé sur le chemin REGISTRE (véhicule/tourelle)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestBuild_VehicleLabelENPropagates verrouille le chemin REGISTRE : LabelEN suit
+// EXACTEMENT le même trajet que Label (WeaponKillRow.LabelEN -> registryAcc.labelsEN ->
+// perWeaponRoles -> FragRoleEntry.LabelEN), sans jamais se substituer à Label ni
+// dépendre de lui — un engin peut porter les deux, l'un des deux, ou aucun.
+func TestBuild_VehicleLabelENPropagates(t *testing.T) {
+	rows := []port.WeaponKillRow{
+		{WeaponID: 4028516791, Kills: 6, Class: "vehicle", Role: "vehicle",
+			WeaponKey: "h5_vehicle_warthog", Label: "Warthog", LabelEN: "Warthog"},
+		// EN seedé mais pas FR (weapon_names.toml partiellement traduit) : Label reste
+		// vide, LabelEN NE retombe PAS dessus — c'est le web (fragRoleLabel.ts), pas Go,
+		// qui fait le repli croisé entre les deux locales.
+		{WeaponID: 3010146366, Kills: 4, Class: "vehicle", Role: "vehicle",
+			WeaponKey: "h5_vehicle_ghost", Label: "", LabelEN: "Ghost"},
+	}
+	fd := Build(rows, domain.FragKillTypeCounts{Total: 10}, true)
+	assertFragInvariants(t, fd)
+	veh, ok := findFragClass(fd, domain.FragClassVehicle)
+	if !ok || len(veh.Roles) != 2 {
+		t.Fatalf("classe vehicle = %+v, want 2 rôles", veh)
+	}
+	byRole := map[string]domain.FragRoleEntry{}
+	for _, r := range veh.Roles {
+		byRole[r.Role] = r
+	}
+	warthog, ok := byRole["h5_vehicle_warthog"]
+	if !ok || warthog.Label != "Warthog" || warthog.LabelEN != "Warthog" {
+		t.Errorf("warthog = %+v, want Label=LabelEN=Warthog", warthog)
+	}
+	ghost, ok := byRole["h5_vehicle_ghost"]
+	if !ok || ghost.Label != "" || ghost.LabelEN != "Ghost" {
+		t.Errorf("ghost = %+v, want Label vide / LabelEN=Ghost (pas de repli côté Go)", ghost)
+	}
+}

@@ -77,14 +77,14 @@ func (h *SynthesisHandler) handleGetSynthesisPage(ctx context.Context, in *synth
 	svc, xuid, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "synthesis: joueur introuvable", "player_slug", in.PlayerSlug, "err", err)
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.SynthesisRequest
 	if len(in.RawBody) > 0 {
 		if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
 			slog.WarnContext(ctx, "synthesis: corps de requête invalide", "player_slug", in.PlayerSlug, "err", err)
-			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 		}
 	}
 
@@ -92,8 +92,7 @@ func (h *SynthesisHandler) handleGetSynthesisPage(ctx context.Context, in *synth
 
 	page, err := svc.GetSynthesisPage(ctx, xuid, req)
 	if err != nil {
-		slog.ErrorContext(ctx, "synthesis: erreur service", "player_slug", in.PlayerSlug, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "synthesis_page_error", err.Error())
+		return nil, mapServiceError(ctx, err, "synthesis_page_error")
 	}
 
 	slog.InfoContext(ctx, "synthesis: page générée",

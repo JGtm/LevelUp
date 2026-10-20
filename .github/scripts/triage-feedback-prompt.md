@@ -42,7 +42,7 @@ Les URLs des requêtes échouées sont déjà strippées de leurs query params c
 ```json
 {
   "severity_refined": "low|medium|high|critical",
-  "area_refined": "synthesis|explorer|squad|sessions|timeseries|match_history|match_view|palmares|player_home|media|career|notifications|objectifs|citations|settings|meta|general",
+  "area_refined": "synthesis|explorer|squad|sessions|timeseries|tendances|match_history|match_view|palmares|player_home|media|career|notifications|objectifs|citations|settings|meta|general",
   "title_normalized": "court, factuel, max 80 chars",
   "summary_one_liner": "résumé en 1 phrase de ce qui ne va pas",
   "probable_cause": "hypothèse technique courte (peut citer un module / une route)",

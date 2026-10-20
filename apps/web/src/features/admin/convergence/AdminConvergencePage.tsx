@@ -39,7 +39,7 @@ export function AdminConvergencePage() {
   }
 
   const totals = sumBacklog(data)
-  const allGreen = totals.enrichment + totals.psa + totals.events + totals.weapons === 0
+  const allGreen = totals.enrichment + totals.psa + totals.events === 0
 
   return (
     <div className="space-y-8">
@@ -54,7 +54,6 @@ export function AdminConvergencePage() {
           <AdminKpi label={tA('admin.convergence.kpi_enrichment')} value={totals.enrichment} accent={totals.enrichment > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'enrichment', totals.enrichment)} />
           <AdminKpi label={tA('admin.convergence.kpi_psa')} value={totals.psa} valueSuffix={totals.psaCapped ? '+' : ''} accent={totals.psa > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'psa', totals.psa)} />
           <AdminKpi label={tA('admin.convergence.kpi_events')} value={totals.events} valueSuffix={totals.eventsCapped ? '+' : ''} accent={totals.events > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'events', totals.events)} />
-          <AdminKpi label={tA('admin.convergence.kpi_weapons')} value={totals.weapons} valueSuffix={totals.weaponsCapped ? '+' : ''} accent={totals.weapons > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'weapons', totals.weapons)} />
         </div>
       </section>
 
@@ -127,12 +126,10 @@ function CaughtUpPanel({
 }) {
   const lastEvents = players.reduce((acc, p) => acc + (p.post_sync?.converged_events ?? 0), 0)
   const lastPSA = players.reduce((acc, p) => acc + (p.post_sync?.converged_psa ?? 0), 0)
-  const lastWeapons = players.reduce((acc, p) => acc + (p.post_sync?.weapon_kills_processed ?? 0), 0)
   const boot = data.totals_since_boot
 
   const rows: Array<{ label: string; last: number; sinceBoot: number }> = [
     { label: tA('admin.convergence.caught_events'), last: lastEvents, sinceBoot: boot.events_processed },
-    { label: tA('admin.convergence.caught_weapons'), last: lastWeapons, sinceBoot: boot.weapons_processed },
     { label: tA('admin.convergence.caught_psa'), last: lastPSA, sinceBoot: boot.psa_processed },
     { label: tA('admin.convergence.caught_aliases'), last: -1, sinceBoot: boot.aliases_upserted },
   ]
@@ -167,24 +164,20 @@ function sumBacklog(data: AdminConvergenceReport) {
     enrichment: 0,
     psa: 0,
     events: 0,
-    weapons: 0,
     psaCapped: false,
     eventsCapped: false,
-    weaponsCapped: false,
   }
   for (const p of data.players ?? []) {
     totals.enrichment += p.missing_enrichment
     totals.psa += p.missing_psa
     totals.events += p.missing_events
-    totals.weapons += p.missing_weapons
     if (p.missing_psa >= data.horizon) totals.psaCapped = true
     if (p.missing_events >= data.horizon) totals.eventsCapped = true
-    if (p.missing_weapons >= data.horizon) totals.weaponsCapped = true
   }
   return totals
 }
 
 function buildConvergenceSnapshot(data: AdminConvergenceReport): CountersSnapshot {
   const t = sumBacklog(data)
-  return { enrichment: t.enrichment, psa: t.psa, events: t.events, weapons: t.weapons }
+  return { enrichment: t.enrichment, psa: t.psa, events: t.events }
 }

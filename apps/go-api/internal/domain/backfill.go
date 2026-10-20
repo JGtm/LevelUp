@@ -6,6 +6,11 @@ type BackfillStartRequest struct {
 	// PlayerSlug identifie le joueur dans db_profiles.json.
 	PlayerSlug string `json:"player_slug"`
 
+	// Title est le slug du titre à recalculer (ex. "halo_5"). Vide = le titre par défaut, résolu avant
+	// la recherche du joueur. Le joueur doit être suivi dans CE titre (404 sinon, y compris au titre
+	// par défaut) : le moteur lit et écrit les bases de ce titre.
+	Title string `json:"title,omitempty"`
+
 	// Scope : données à inclure dans le backfill.
 	// Si tous les champs sont false (défaut), AllData est implicitement true.
 	Medals            bool `json:"medals"`
@@ -14,7 +19,6 @@ type BackfillStartRequest struct {
 	PersonalScores    bool `json:"personal_scores"`
 	PerformanceScores bool `json:"performance_scores"`
 	Aliases           bool `json:"aliases"`
-	Weapons           bool `json:"weapons"`
 	LUSR              bool `json:"lusr"`
 	// CSR : re-fetch les CSR par-match via GetMatchSkill (RankRecap) pour
 	// les matchs ranked déjà en DB sans row CSR. Idempotent : skip ceux qui

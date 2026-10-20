@@ -15,3 +15,8 @@ var ErrUnsupportedKind = errors.New("assets: unsupported kind")
 // ErrPersistFailed est retourné quand l'écriture FS échoue (espace disque…).
 // C'est une erreur bloquante : l'asset ne peut pas être mis en cache.
 var ErrPersistFailed = errors.New("assets: persist failed")
+
+// ErrInvalidRef est retourné quand un composant d'une Ref (titre, identifiant, variante)
+// ne peut pas désigner un fichier sous la racine du stock (Ref.Validate). Aucune lecture,
+// écriture ni source distante n'est sollicitée pour elle.
+var ErrInvalidRef = errors.New("assets: invalid reference")

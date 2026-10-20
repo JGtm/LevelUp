@@ -20,6 +20,7 @@ import type { getKPIText } from './kpi.i18n'
 import { KpiCard } from '@/components/cards/KpiCard'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { Tooltip } from '@/components/ui/tooltip'
 
 interface HomeHeroKPIGridProps {
@@ -184,7 +185,12 @@ export function HomeHeroKPIGrid({
       {/* 7 — Rendement / Résistance (accent fixe : la barre composite porte son signal) */}
       <KpiCard accent="chart-series-4" className="flex h-full flex-col">
         <div className={`${KPI_CONTENT_CLS} px-4`}>
-          <p className={`${KPI_LABEL_CLS} mb-1.5`}>{kpiText.labels.offDef}</p>
+          {/* Aide ⓘ COMBINÉE : cette tuile porte les deux indicateurs, elle porte donc
+              leurs deux définitions — mêmes phrases que les cartes Escouade et Match. */}
+          <p className={`${KPI_LABEL_CLS} mb-1.5 flex items-center justify-center gap-1`}>
+            {kpiText.labels.offDef}
+            <InfoTooltip content={kpiText.labels.offDefHelp} iconClass="w-3 h-3" />
+          </p>
           <CombatYieldDisplay
             className="w-full"
             offensiveConversion={kpis.avg_offensive_conversion}

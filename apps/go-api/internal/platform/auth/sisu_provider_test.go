@@ -60,19 +60,6 @@ func TestNewSISUProvider_DefaultIDs(t *testing.T) {
 	}
 }
 
-// ─── TrySilentRefresh ─────────────────────────────────────────────────────────
-
-func TestSISUProvider_TrySilentRefresh_AlwaysEmpty(t *testing.T) {
-	p := NewSISUProvider()
-	token, err := p.TrySilentRefresh(context.Background(), "some-cache-json")
-	if err != nil {
-		t.Fatalf("TrySilentRefresh erreur inattendue : %v", err)
-	}
-	if token != "" {
-		t.Errorf("TrySilentRefresh retourne %q, want vide", token)
-	}
-}
-
 // ─── TryOAuthRefresh ──────────────────────────────────────────────────────────
 
 func TestSISUProvider_TryOAuthRefresh_EmptyToken(t *testing.T) {
@@ -115,62 +102,48 @@ func TestSISUProvider_ExchangeWithoutInit(t *testing.T) {
 	}
 }
 
-// ─── InitDeviceFlow happy path (URLs mockées) ─────────────────────────────────
+// ─── InitDeviceFlow (endpoint mocké) ──────────────────────────────────────────
 
-// deviceTokenResponse retourne un corps JSON minimal pour le Device Token endpoint.
-func deviceTokenResponseBody(token string) []byte {
-	b, _ := json.Marshal(map[string]any{"Token": token})
-	return b
-}
-
-// TestSISUProvider_InitDeviceFlowWithURLs_HappyPath vérifie le flow complet
-// InitDeviceFlow avec trois serveurs HTTP de test.
-func TestSISUProvider_InitDeviceFlowWithURLs_HappyPath(t *testing.T) {
-	// 1. Serveur Device Token Xbox
-	srvDeviceToken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+// xboxDeviceCodeServer simule login.live.com/oauth20_connect.srf et compte les appels.
+func xboxDeviceCodeServer(t *testing.T, userCode string, calls *int) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		*calls++
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(deviceTokenResponseBody("device-token-test")) //nolint:errcheck
-	}))
-	defer srvDeviceToken.Close()
-
-	// 2. Serveur Xbox Device Code (login.live.com mock)
-	srvXboxDeviceCode := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		resp := map[string]any{
+		b, _ := json.Marshal(map[string]any{
 			"device_code":      "dc-opaque",
-			"user_code":        "TEST99",
+			"user_code":        userCode,
 			"verification_uri": "https://microsoft.com/link",
 			"expires_in":       900,
 			"interval":         5,
-		}
-		b, _ := json.Marshal(resp)
+		})
 		w.Write(b) //nolint:errcheck
 	}))
-	defer srvXboxDeviceCode.Close()
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// TestSISUProvider_InitDeviceFlowWithURL_HappyPath : InitDeviceFlow n'appelle que
+// le démarrage du Device Code Flow (aucun device token, aucune paire PoP) et rend
+// un flow autonome.
+func TestSISUProvider_InitDeviceFlowWithURL_HappyPath(t *testing.T) {
+	calls := 0
+	srv := xboxDeviceCodeServer(t, "TEST99", &calls)
 
 	p := NewSISUProviderWithIDs("000000004c20a908", "144209987")
-	urls := sisuProviderURLs{
-		deviceAuth: srvDeviceToken.URL,
-		xboxDevice: srvXboxDeviceCode.URL,
-	}
-
-	flow, err := p.initDeviceFlowWithURLs(context.Background(), urls)
+	flow, err := p.initDeviceFlowWithURL(context.Background(), srv.URL)
 	if err != nil {
-		t.Fatalf("initDeviceFlowWithURLs erreur inattendue : %v", err)
+		t.Fatalf("initDeviceFlowWithURL erreur inattendue : %v", err)
 	}
-	if flow == nil {
-		t.Fatal("flow est nil")
+	if calls != 1 {
+		t.Errorf("appels au démarrage du device-flow = %d, attendu 1", calls)
 	}
-
-	// Vérification des champs du flow retourné.
 	if got := flow.GetUserCode(); got != "TEST99" {
 		t.Errorf("GetUserCode = %q, want TEST99", got)
 	}
-	// La verification URL doit être celle du DEVICE flow (page de saisie du code),
-	// PAS le MsaOauthRedirect SISU (URL d'authorize PKCE qui ne demande jamais le
-	// code) — incohérence UX corrigée le 2026-07-13.
+	// La verification URL est celle du DEVICE flow (page de saisie du code).
 	if got := flow.GetVerificationURL(); got != "https://microsoft.com/link" {
-		t.Errorf("GetVerificationURL = %q, want https://microsoft.com/link (page de saisie du code, pas l'authorize SISU)", got)
+		t.Errorf("GetVerificationURL = %q, want https://microsoft.com/link", got)
 	}
 	if got := flow.GetFlowType(); got != "sisu" {
 		t.Errorf("GetFlowType = %q, want sisu", got)
@@ -178,119 +151,25 @@ func TestSISUProvider_InitDeviceFlowWithURLs_HappyPath(t *testing.T) {
 	if got := flow.GetExpiresIn(); got != 900 {
 		t.Errorf("GetExpiresIn = %d, want 900", got)
 	}
-
-	// Vérification que le contexte SISU a bien été stocké DANS LE FLOW (per-flow,
-	// pas un slot partagé sur le provider — cf. suppression de p.current).
 	sf, ok := flow.(*sisuDeviceFlow)
 	if !ok {
 		t.Fatalf("flow n'est pas un *sisuDeviceFlow : %T", flow)
 	}
-	if sf.flowCtx == nil {
-		t.Fatal("sisuFlowContext non stocké dans le flow après InitDeviceFlow")
-	}
-	if sf.flowCtx.deviceToken != "device-token-test" {
-		t.Errorf("deviceToken = %q, want device-token-test", sf.flowCtx.deviceToken)
-	}
-	if sf.flowCtx.kp == nil {
-		t.Error("paire PoP absente du contexte de flow (requise pour signer /authorize)")
-	}
-}
-
-// TestSISUProvider_PerFlowContextIsolation : deux InitDeviceFlow concurrents portent
-// chacun LEUR propre contexte SISU. Régression du slot global p.current (revue
-// adversariale 2026-07-15) : avant le fix, le 2e InitDeviceFlow écrasait le contexte
-// du 1er, et un Exchange stateless (pool auto-sync) consommait le contexte du
-// device-flow interactif. Ici chaque flow reste indépendant.
-func TestSISUProvider_PerFlowContextIsolation(t *testing.T) {
-	newSISUServers := func(id string) (urls sisuProviderURLs, closeAll func()) {
-		srvDeviceToken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(deviceTokenResponseBody("dt-" + id)) //nolint:errcheck
-		}))
-		srvXbox := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			b, _ := json.Marshal(map[string]any{
-				"device_code": "dc-" + id, "user_code": "UC-" + id,
-				"verification_uri": "https://microsoft.com/link", "expires_in": 900, "interval": 5,
-			})
-			w.Write(b) //nolint:errcheck
-		}))
-		return sisuProviderURLs{deviceAuth: srvDeviceToken.URL, xboxDevice: srvXbox.URL},
-			func() { srvDeviceToken.Close(); srvXbox.Close() }
-	}
-
-	p := NewSISUProvider()
-
-	urlsA, closeA := newSISUServers("flow-A")
-	defer closeA()
-	flowA, err := p.initDeviceFlowWithURLs(context.Background(), urlsA)
-	if err != nil {
-		t.Fatalf("flowA init: %v", err)
-	}
-
-	urlsB, closeB := newSISUServers("flow-B")
-	defer closeB()
-	flowB, err := p.initDeviceFlowWithURLs(context.Background(), urlsB)
-	if err != nil {
-		t.Fatalf("flowB init: %v", err)
-	}
-
-	sfA := flowA.(*sisuDeviceFlow)
-	sfB := flowB.(*sisuDeviceFlow)
-
-	// Le 2e init NE DOIT PAS avoir écrasé le contexte du 1er.
-	if sfA.flowCtx == nil || sfB.flowCtx == nil {
-		t.Fatal("un des deux flows a un contexte nil")
-	}
-	if sfA.flowCtx == sfB.flowCtx {
-		t.Fatal("les deux flows partagent le MÊME contexte (slot global non éliminé)")
-	}
-	if sfA.flowCtx.deviceToken != "dt-flow-A" || sfB.flowCtx.deviceToken != "dt-flow-B" {
-		t.Errorf("device tokens croisés : A=%q B=%q", sfA.flowCtx.deviceToken, sfB.flowCtx.deviceToken)
-	}
-	if sfA.flowCtx.kp == sfB.flowCtx.kp {
-		t.Error("les deux flows partagent la MÊME paire PoP")
-	}
-}
-
-// TestSISUProvider_InitDeviceFlow_DeviceTokenError vérifie la propagation d'erreur
-// si le Device Token endpoint retourne une erreur.
-func TestSISUProvider_InitDeviceFlow_DeviceTokenError(t *testing.T) {
-	srvFail := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-	}))
-	defer srvFail.Close()
-
-	p := NewSISUProvider()
-	_, err := p.initDeviceFlowWithURLs(context.Background(), sisuProviderURLs{
-		deviceAuth: srvFail.URL,
-		xboxDevice: "http://unused",
-	})
-	if err == nil {
-		t.Fatal("erreur attendue quand Device Token endpoint renvoie 500")
+	if sf.appID != "000000004c20a908" || sf.deviceCode != "dc-opaque" {
+		t.Errorf("flow mal initialisé : appID=%q deviceCode=%q", sf.appID, sf.deviceCode)
 	}
 }
 
 // TestSISUProvider_InitDeviceFlow_XboxDeviceCodeError vérifie la propagation d'erreur
 // si le Xbox Device Code endpoint retourne une erreur.
 func TestSISUProvider_InitDeviceFlow_XboxDeviceCodeError(t *testing.T) {
-	srvDeviceToken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(deviceTokenResponseBody("tok")) //nolint:errcheck
-	}))
-	defer srvDeviceToken.Close()
-
 	srvFail := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "bad", http.StatusBadRequest)
 	}))
 	defer srvFail.Close()
 
 	p := NewSISUProvider()
-	_, err := p.initDeviceFlowWithURLs(context.Background(), sisuProviderURLs{
-		deviceAuth: srvDeviceToken.URL,
-		xboxDevice: srvFail.URL,
-	})
-	if err == nil {
+	if _, err := p.initDeviceFlowWithURL(context.Background(), srvFail.URL); err == nil {
 		t.Fatal("erreur attendue quand XboxDeviceCode endpoint renvoie 400")
 	}
 }

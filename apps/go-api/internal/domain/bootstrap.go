@@ -124,11 +124,17 @@ type TitleSummary struct {
 // BootstrapResponse est la réponse de GET /api/v1/bootstrap.
 // Contient tout ce dont le shell React a besoin pour s'initialiser.
 type BootstrapResponse struct {
-	SetupRequired       bool                 `json:"setup_required"`
-	AuthState           string               `json:"auth_state" enum:"missing,partial,ready"`
-	SetupState          string               `json:"setup_state" enum:"no_halo_link,halo_linked_no_profile,profile_ready_no_sync,ready"`
-	CurrentPlayer       *PlayerSummary       `json:"current_player"`
-	AvailablePlayers    []PlayerSummary      `json:"available_players"`
+	SetupRequired    bool            `json:"setup_required"`
+	AuthState        string          `json:"auth_state" enum:"missing,partial,ready"`
+	SetupState       string          `json:"setup_state" enum:"no_halo_link,halo_linked_no_profile,profile_ready_no_sync,ready"`
+	CurrentPlayer    *PlayerSummary  `json:"current_player"`
+	AvailablePlayers []PlayerSummary `json:"available_players"`
+	// WritablePlayerSlugs : les profils de available_players sur lesquels la session
+	// peut ÉCRIRE (les siens, tous pour un admin ; tous quand la propriété n'est pas
+	// appliquée). Un profil d'ami, lisible par appartenance à un groupe, n'y figure
+	// pas : le front masque ses actions d'écriture (ADR 0029, accès famille en lecture
+	// seule).
+	WritablePlayerSlugs []string             `json:"writable_player_slugs" doc:"Profils de available_players sur lesquels la session peut écrire."`
 	CurrentTitleSlug    string               `json:"current_title_slug" doc:"Sprint 44 : slug du titre courant de la session."`
 	AvailableTitles     []TitleSummary       `json:"available_titles" doc:"Sprint 44 : titres disponibles (title switcher) : active + coming_soon."`
 	Locale              string               `json:"locale" default:"fr"`
@@ -151,6 +157,10 @@ type BootstrapResponse struct {
 	// (refresh silencieux définitivement KO). Le front affiche une bannière
 	// « reconnecte ton compte Xbox ». Remis à false après une ré-auth réussie.
 	ReauthRequired bool `json:"reauth_required"`
+	// PoolSharing : où en est le user connecté sur la mise en commun de son jeton avec le
+	// pool qui sert la synchro des autres joueurs. « undecided » déclenche la question au
+	// front ; « unavailable » = pas de jeton (compte password sans Xbox) ou pas de résolveur.
+	PoolSharing string `json:"pool_sharing" enum:"granted,declined,undecided,unavailable"`
 	// HasPassword : l'utilisateur connecté a défini un mot de passe (opt-in PR-C).
 	// Le front l'utilise pour proposer « définir » vs « changer » et masquer la
 	// proposition en onboarding une fois faite.
@@ -172,3 +182,11 @@ type PlayersListResponse struct {
 	Items             []PlayerSummary `json:"items"`
 	DefaultPlayerSlug *string         `json:"default_player_slug"`
 }
+
+// États de la mise en commun du jeton d'un joueur (BootstrapResponse.PoolSharing).
+const (
+	PoolSharingGranted     = "granted"
+	PoolSharingDeclined    = "declined"
+	PoolSharingUndecided   = "undecided"
+	PoolSharingUnavailable = "unavailable" // pas de jeton : rien à mettre en commun
+)

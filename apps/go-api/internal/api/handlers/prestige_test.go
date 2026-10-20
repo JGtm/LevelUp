@@ -208,7 +208,7 @@ func (m *mockPrestigeService) DeleteSquad(ctx context.Context, squadID, requeste
 	m.lastDeleteSquadReqBy = requestedBy
 	return m.deleteSquadErr
 }
-func (m *mockPrestigeService) SquadUsualContexts(ctx context.Context, _ []string, _ string) ([]string, []string, error) {
+func (m *mockPrestigeService) SquadUsualContexts(ctx context.Context, _ []string) ([]string, []string, error) {
 	return m.usualPlaylistsResp, m.usualModesResp, nil
 }
 func (m *mockPrestigeService) EvaluateSquadChallenge(ctx context.Context, squadChallengeID, requestedBy string) ([]prestige.SquadParticipantProgress, error) {

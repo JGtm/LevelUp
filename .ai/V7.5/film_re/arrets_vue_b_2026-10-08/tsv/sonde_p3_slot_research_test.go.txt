@@ -1,0 +1,54 @@
+//go:build research
+
+package grammar
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"testing"
+)
+
+type zzSlot struct {
+	slot    uint32
+	c0, c1  int
+	dernier string
+}
+
+func (z *zzSlot) debutDeChunk(int, []byte, []FilmPacket, *World) {}
+func (z *zzSlot) finDeFilm()                                     {}
+func (z *zzSlot) paquet(c int, p *cmPaquet, w *World) {
+	if c < z.c0 || c > z.c1 {
+		return
+	}
+	for _, r := range p.recs {
+		if r.Slot == z.slot {
+			fmt.Printf("SL\t%d:%d ts %d ferme %v cause %q : record type %d id %08x ti %d desync %d liaison %v debut %d\n", c, p.pk.Index, p.pk.TimestampUS, p.d.Fermee, p.d.Cause, r.Type, r.ID, r.TypeIndex, r.DesyncAt, r.Liaison, p.debut)
+		}
+	}
+	for _, n := range p.refuses {
+		fmt.Printf("SL\t%d:%d refus %+v\n", c, p.pk.Index, n)
+	}
+	s, ok := w.slots[z.slot]
+	etat := "non lie"
+	if ok {
+		etat = fmt.Sprintf("ti %d id %08x soft %v liaison %v", s.TypeIndex, s.FullID, s.Soft, s.Liaison)
+	}
+	if etat != z.dernier {
+		fmt.Printf("SL\t%d:%d ts %d monde slot %d -> %s\n", c, p.pk.Index, p.pk.TimestampUS, z.slot, etat)
+		z.dernier = etat
+	}
+}
+
+func TestZZSlot(t *testing.T) {
+	racine := os.Getenv("CAMPAGNE_RACINE")
+	f, ok := cmOuvrir(t, racine, os.Getenv("SONDE_ID"), cmUtiles(t))
+	if !ok {
+		return
+	}
+	sl, _ := strconv.Atoi(os.Getenv("SONDE_SLOT"))
+	c0, _ := strconv.Atoi(os.Getenv("SONDE_C0"))
+	c1, _ := strconv.Atoi(os.Getenv("SONDE_C1"))
+	z := &zzSlot{slot: uint32(sl), c0: c0, c1: c1}
+	cmMarcher(f, cmVariante{}, z)
+}

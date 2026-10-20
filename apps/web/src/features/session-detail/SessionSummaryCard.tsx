@@ -13,6 +13,7 @@
  */
 import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 import { KpiCard } from '@/components/cards/KpiCard'
+import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { accuracyScale, kdScale, lifespanScale, perfScale } from '@/lib/accessibility/scales'
@@ -48,11 +49,16 @@ export function SessionSummaryCard({ entry, compact = false }: Props) {
   const providesDamageTaken = useProvidesDamageTaken()
 
   if (!entry) {
+    // Bloc parent + pointillé DEDANS (convention de l'application) : jamais le pointillé nu en tête de colonne.
     return (
-      <EmptyStateNotice
-        title={t('session.detail.summary_unavailable_title')}
-        description={t('session.detail.summary_unavailable_description')}
-      />
+      <Card data-testid="session-summary-unavailable">
+        <CardContent className="pt-4">
+          <EmptyStateNotice
+            title={t('session.detail.summary_unavailable_title')}
+            description={t('session.detail.summary_unavailable_description')}
+          />
+        </CardContent>
+      </Card>
     )
   }
 

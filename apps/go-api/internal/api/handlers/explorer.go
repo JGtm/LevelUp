@@ -82,12 +82,12 @@ type explorerMatchesQueryOutput struct {
 func (h *ExplorerHandler) handleQueryPlayer(ctx context.Context, in *explorerQueryInput) (*explorerPlayerQueryOutput, error) {
 	svc, enrichedCtx, _, _, err := h.newExplorerSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.ExplorerPlayerQueryRequest
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 	if req.TargetGamertag == "" && req.TargetXUID == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_target", "target_gamertag ou target_xuid est requis")
@@ -95,7 +95,7 @@ func (h *ExplorerHandler) handleQueryPlayer(ctx context.Context, in *explorerQue
 
 	resp, err := svc.GetCommonMatches(enrichedCtx, req.TargetGamertag, req.TargetXUID, req.Page)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "explorer_error", err.Error())
+		return nil, mapServiceError(ctx, err, "explorer_error")
 	}
 	return &explorerPlayerQueryOutput{Body: resp}, nil
 }
@@ -106,12 +106,12 @@ func (h *ExplorerHandler) handleQueryPlayer(ctx context.Context, in *explorerQue
 func (h *ExplorerHandler) handleQueryMatches(ctx context.Context, in *explorerQueryInput) (*explorerMatchesQueryOutput, error) {
 	mhSvc, _, _, err := h.newMatchHistSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.ExplorerMatchesQueryRequest
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 	}
 
 	// Délégation au service match-history avec les mêmes filtres/tri/pagination.
@@ -132,6 +132,7 @@ func (h *ExplorerHandler) handleQueryMatches(ctx context.Context, in *explorerQu
 		MapNames:          req.MapNames,
 		ModeNames:         req.ModeNames,
 		SquadScope:        req.SquadScope,
+		ReplayScope:       req.ReplayScope,
 		MatchIDSearch:     req.MatchIDSearch,
 		MatchIDs:          req.MatchIDs,
 		// Opt-in du bandeau de briefing étendu (mode Matchs). L'Explorer l'envoie
@@ -141,7 +142,7 @@ func (h *ExplorerHandler) handleQueryMatches(ctx context.Context, in *explorerQu
 
 	mhResp, err := mhSvc.GetPage(ctx, mhReq)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "explorer_matches_error", err.Error())
+		return nil, mapServiceError(ctx, err, "explorer_matches_error")
 	}
 
 	// Génération du token d'export si demandé (même mécanisme que MatchHistoryHandler.Query).

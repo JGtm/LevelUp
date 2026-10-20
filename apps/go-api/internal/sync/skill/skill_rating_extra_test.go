@@ -1,6 +1,6 @@
 // Package sync — skill_rating_extra_test.go : tests unitaires des fonctions LUSR pures.
 //
-// Couvre applyInactivityDecay, computeCompositeScore, estimateIndividualMU,
+// Couvre computeCompositeScore, estimateIndividualMU,
 // computeEnemyStrength, GetLUSRChain (dispatcher), GetTierForRating,
 // FormatTierLabel, ClampF, sigmoidRatio.
 package skill
@@ -9,54 +9,6 @@ import (
 	"math"
 	"testing"
 )
-
-// ─────────────────────────────────────────────────────────────────────────────
-// applyInactivityDecay
-// ─────────────────────────────────────────────────────────────────────────────
-
-func TestApplyInactivityDecay_BelowThreshold(t *testing.T) {
-	sigma := 100.0
-	got := applyInactivityDecay(sigma, 0.5)
-	if got != sigma {
-		t.Errorf("below threshold: got %v, want %v (unchanged)", got, sigma)
-	}
-}
-
-func TestApplyInactivityDecay_AtThreshold(t *testing.T) {
-	sigma := 100.0
-	got := applyInactivityDecay(sigma, InactivityThresholdDay)
-	if got != sigma {
-		t.Errorf("at threshold: got %v, want %v", got, sigma)
-	}
-}
-
-func TestApplyInactivityDecay_AboveThreshold(t *testing.T) {
-	sigma := 100.0
-	got := applyInactivityDecay(sigma, 5.0)
-	expected := sigma + InactivitySigmaPerDay*(5.0-InactivityThresholdDay)
-	if math.Abs(got-expected) > 0.01 {
-		t.Errorf("5 days: got %v, want %v", got, expected)
-	}
-}
-
-func TestApplyInactivityDecay_MaxDays(t *testing.T) {
-	sigma := 100.0
-	got := applyInactivityDecay(sigma, 100.0) // bien au-delà du max
-	maxExpected := sigma + InactivitySigmaPerDay*(float64(MaxInactivityDays)-InactivityThresholdDay)
-	if got > MaxSigma {
-		t.Errorf("should be capped at MaxSigma (%v), got %v", MaxSigma, got)
-	}
-	if math.Abs(got-maxExpected) > 0.01 {
-		t.Errorf("capped at max: got %v, want %v", got, maxExpected)
-	}
-}
-
-func TestApplyInactivityDecay_NeverBelowMinSigma(t *testing.T) {
-	got := applyInactivityDecay(MinSigma, 0)
-	if got < MinSigma {
-		t.Errorf("got %v < MinSigma %v", got, MinSigma)
-	}
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // computeCompositeScore

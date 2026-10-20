@@ -59,10 +59,12 @@ const BOOTSTRAP_READY = {
   first_launch: false,
   instance_locked: false,
   reauth_required: false,
+  pool_sharing: 'unavailable' as const,
   has_password: false,
   current_username: null,
   oauth_code_flow_enabled: false,
   demo_mode: false,
+  writable_player_slugs: null,
 }
 
 describe('AppShellStore', () => {
@@ -111,6 +113,13 @@ describe('AppShellStore', () => {
     const s = useAppShellStore.getState()
     expect(s.setupRequired).toBe(true)
     expect(s.currentPlayer).toBeNull()
+  })
+
+  it('hydrate depuis bootstrap — profils inscriptibles (accès famille en lecture seule)', () => {
+    useAppShellStore.getState().hydrateFromBootstrap({ ...BOOTSTRAP_READY, writable_player_slugs: ['test-player'] })
+    expect(useAppShellStore.getState().writablePlayerSlugs).toEqual(['test-player'])
+    useAppShellStore.getState().hydrateFromBootstrap(BOOTSTRAP_READY)
+    expect(useAppShellStore.getState().writablePlayerSlugs).toBeNull()
   })
 
   it('setCurrentPlayer met à jour le joueur courant', () => {

@@ -140,9 +140,9 @@ func PersistRefreshToken(store *auth.MultiUserTokenStore, xuid, gamertag, refres
 
 // ResolveXUIDForRotation résout le xuid pour un gamertag dans le contexte du
 // callback onRotated (Pool/Resolver). Priorité ADR 0023 :
-//  1. Store via LoadByGamertag — l'entrée a été créée par Discovery ou la
-//     migration boot-time. Plus rapide qu'un scan de la liste (O(log n) FS
-//     vs O(n) linear scan).
+//  1. Store via LoadByGamertag — l'entrée a été créée par Discovery ou à
+//     l'onboarding (SSO Xbox, token-capture, token-import). Plus rapide qu'un
+//     scan de la liste (O(log n) FS vs O(n) linear scan).
 //  2. players (depuis cfg.LoadPlayers fourni par le caller) — fallback pour
 //     les cas exceptionnels (joueur ajouté post-boot sans token-capture, ou
 //     store vide).

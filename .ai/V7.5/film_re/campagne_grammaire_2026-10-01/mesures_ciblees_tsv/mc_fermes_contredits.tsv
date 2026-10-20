@@ -1,0 +1,215 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	aucun invariant contredit · 0 record(s)	78	78	0	78	0
+0797ce72	HI_1_13_0	aucun invariant contredit · 1 record(s)	625	625	0	625	0
+0797ce72	HI_1_13_0	aucun invariant contredit · 2 record(s)	153	153	0	153	0
+0797ce72	HI_1_13_0	aucun invariant contredit · 3 record(s)	18312	18312	0	18312	0
+0797ce72	HI_1_13_0	contredit : masque + vue C · 1 record(s)	1	1	0	1	0
+0797ce72	HI_1_13_0	contredit : masque · 1 record(s)	4	4	0	4	0
+0797ce72	HI_1_13_0	contredit : masque · 2 record(s)	4	4	0	4	0
+0797ce72	HI_1_13_0	contredit : masque · 3 record(s)	4	4	0	4	0
+0797ce72	HI_1_13_0	contredit : ordre + masque + vue C · 3 record(s)	2	2	0	2	0
+0797ce72	HI_1_13_0	contredit : ordre + masque · 3 record(s)	13	13	0	13	0
+0797ce72	HI_1_13_0	contredit : ordre · 3 record(s)	7	7	0	7	0
+0797ce72	HI_1_13_0	contredit : vue C · 3 record(s)	2	2	0	2	0
+084a804d	HI_1_10_0	aucun invariant contredit · 0 record(s)	160	160	0	160	0
+084a804d	HI_1_10_0	aucun invariant contredit · 1 record(s)	1000	1000	0	1000	0
+084a804d	HI_1_10_0	aucun invariant contredit · 2 record(s)	72	72	0	72	0
+084a804d	HI_1_10_0	aucun invariant contredit · 3 record(s)	3542	3542	0	3542	0
+084a804d	HI_1_10_0	contredit : masque + vue C · 1 record(s)	8	8	0	8	0
+084a804d	HI_1_10_0	contredit : masque + vue C · 2 record(s)	3	3	0	3	0
+084a804d	HI_1_10_0	contredit : masque · 1 record(s)	237	237	0	237	0
+084a804d	HI_1_10_0	contredit : masque · 2 record(s)	78	78	0	78	0
+084a804d	HI_1_10_0	contredit : masque · 3 record(s)	65	65	0	65	0
+084a804d	HI_1_10_0	contredit : ordre + masque · 2 record(s)	21	21	0	21	0
+084a804d	HI_1_10_0	contredit : ordre + masque · 3 record(s)	42	42	0	42	0
+084a804d	HI_1_10_0	contredit : ordre · 2 record(s)	3	3	0	3	0
+084a804d	HI_1_10_0	contredit : ordre · 3 record(s)	1	1	0	1	0
+084a804d	HI_1_10_0	contredit : vue C · 1 record(s)	3	3	0	3	0
+111fa685	HI_1_10_0	aucun invariant contredit · 0 record(s)	195	195	0	195	0
+111fa685	HI_1_10_0	aucun invariant contredit · 1 record(s)	1812	1812	0	1812	0
+111fa685	HI_1_10_0	aucun invariant contredit · 2 record(s)	33	33	0	33	0
+111fa685	HI_1_10_0	aucun invariant contredit · 3 record(s)	1977	1977	0	1977	0
+111fa685	HI_1_10_0	contredit : masque + vue C · 1 record(s)	2	2	0	2	0
+111fa685	HI_1_10_0	contredit : masque · 1 record(s)	79	79	0	79	0
+111fa685	HI_1_10_0	contredit : masque · 2 record(s)	22	22	0	22	0
+111fa685	HI_1_10_0	contredit : masque · 3 record(s)	18	18	0	18	0
+111fa685	HI_1_10_0	contredit : ordre + masque · 2 record(s)	4	4	0	4	0
+111fa685	HI_1_10_0	contredit : ordre + masque · 3 record(s)	8	8	0	8	0
+111fa685	HI_1_10_0	contredit : vue C · 1 record(s)	1	1	0	1	0
+111fa685	HI_1_10_0	contredit : vue C · 2 record(s)	1	1	0	1	0
+11de8353	HI_1_9_0	aucun invariant contredit · 0 record(s)	993	993	0	993	0
+11de8353	HI_1_9_0	aucun invariant contredit · 1 record(s)	1474	1474	0	1474	0
+11de8353	HI_1_9_0	aucun invariant contredit · 2 record(s)	52	52	0	52	0
+11de8353	HI_1_9_0	aucun invariant contredit · 3 record(s)	3094	3094	0	3094	0
+11de8353	HI_1_9_0	contredit : masque · 1 record(s)	83	83	0	83	0
+11de8353	HI_1_9_0	contredit : masque · 2 record(s)	14	14	0	14	0
+11de8353	HI_1_9_0	contredit : masque · 3 record(s)	22	22	0	22	0
+11de8353	HI_1_9_0	contredit : ordre + masque · 2 record(s)	4	4	0	4	0
+11de8353	HI_1_9_0	contredit : ordre + masque · 3 record(s)	2	2	0	2	0
+11de8353	HI_1_9_0	contredit : ordre · 2 record(s)	1	1	0	1	0
+1c4c63c2	HI_1_10_0	aucun invariant contredit · 0 record(s)	511	511	0	511	0
+1c4c63c2	HI_1_10_0	aucun invariant contredit · 1 record(s)	4739	4739	0	4739	0
+1c4c63c2	HI_1_10_0	aucun invariant contredit · 2 record(s)	392	392	0	392	0
+1c4c63c2	HI_1_10_0	aucun invariant contredit · 3 record(s)	7898	7898	0	7898	0
+1c4c63c2	HI_1_10_0	contredit : masque + vue C · 1 record(s)	60	60	0	60	0
+1c4c63c2	HI_1_10_0	contredit : masque + vue C · 2 record(s)	22	22	0	22	0
+1c4c63c2	HI_1_10_0	contredit : masque + vue C · 3 record(s)	3	3	0	3	0
+1c4c63c2	HI_1_10_0	contredit : masque · 1 record(s)	3293	3293	0	3293	0
+1c4c63c2	HI_1_10_0	contredit : masque · 2 record(s)	917	917	0	917	0
+1c4c63c2	HI_1_10_0	contredit : masque · 3 record(s)	747	747	0	747	0
+1c4c63c2	HI_1_10_0	contredit : ordre + masque + vue C · 2 record(s)	10	10	0	10	0
+1c4c63c2	HI_1_10_0	contredit : ordre + masque + vue C · 3 record(s)	4	4	0	4	0
+1c4c63c2	HI_1_10_0	contredit : ordre + masque · 2 record(s)	178	178	0	178	0
+1c4c63c2	HI_1_10_0	contredit : ordre + masque · 3 record(s)	419	419	0	419	0
+1c4c63c2	HI_1_10_0	contredit : ordre · 2 record(s)	14	14	0	14	0
+1c4c63c2	HI_1_10_0	contredit : ordre · 3 record(s)	30	30	0	30	0
+1c4c63c2	HI_1_10_0	contredit : vue C · 1 record(s)	113	113	0	113	0
+1c4c63c2	HI_1_10_0	contredit : vue C · 2 record(s)	4	4	0	4	0
+396cfc92	HI_1_13_0	aucun invariant contredit · 0 record(s)	76	76	0	76	0
+396cfc92	HI_1_13_0	aucun invariant contredit · 1 record(s)	2	2	0	2	0
+396cfc92	HI_1_13_0	aucun invariant contredit · 2 record(s)	1	1	0	1	0
+396cfc92	HI_1_13_0	aucun invariant contredit · 3 record(s)	22740	22740	0	22740	0
+396cfc92	HI_1_13_0	contredit : masque · 1 record(s)	4	4	0	4	0
+396cfc92	HI_1_13_0	contredit : masque · 2 record(s)	1	1	0	1	0
+396cfc92	HI_1_13_0	contredit : masque · 3 record(s)	2	2	0	2	0
+396cfc92	HI_1_13_0	contredit : ordre + masque · 3 record(s)	2	2	0	2	0
+4f77afc1	HI_1_13_0	aucun invariant contredit · 0 record(s)	985	985	0	985	0
+4f77afc1	HI_1_13_0	aucun invariant contredit · 1 record(s)	1346	1346	0	1346	0
+4f77afc1	HI_1_13_0	aucun invariant contredit · 2 record(s)	33	33	0	33	0
+4f77afc1	HI_1_13_0	aucun invariant contredit · 3 record(s)	19612	19612	0	19612	0
+4f77afc1	HI_1_13_0	contredit : masque + vue C · 1 record(s)	6	6	0	6	0
+4f77afc1	HI_1_13_0	contredit : masque + vue C · 2 record(s)	2	2	0	2	0
+4f77afc1	HI_1_13_0	contredit : masque · 1 record(s)	406	406	0	406	0
+4f77afc1	HI_1_13_0	contredit : masque · 2 record(s)	85	85	0	85	0
+4f77afc1	HI_1_13_0	contredit : masque · 3 record(s)	259	259	0	259	0
+4f77afc1	HI_1_13_0	contredit : ordre + masque + vue C · 2 record(s)	1	1	0	1	0
+4f77afc1	HI_1_13_0	contredit : ordre + masque · 2 record(s)	25	25	0	25	0
+4f77afc1	HI_1_13_0	contredit : ordre + masque · 3 record(s)	125	125	0	125	0
+4f77afc1	HI_1_13_0	contredit : ordre · 3 record(s)	23	23	0	23	0
+4f77afc1	HI_1_13_0	contredit : vue C · 1 record(s)	1	1	0	1	0
+4f77afc1	HI_1_13_0	contredit : vue C · 2 record(s)	1	1	0	1	0
+50247b26	version-31	aucun invariant contredit · 0 record(s)	92	92	0	92	0
+50247b26	version-31	aucun invariant contredit · 1 record(s)	5	5	0	5	0
+50247b26	version-31	aucun invariant contredit · 2 record(s)	1	1	0	1	0
+50247b26	version-31	aucun invariant contredit · 3 record(s)	45	45	0	45	0
+50247b26	version-31	contredit : masque + vue C · 1 record(s)	1	1	0	1	0
+50247b26	version-31	contredit : masque · 1 record(s)	8	8	0	8	0
+50247b26	version-31	contredit : vue C · 1 record(s)	1	1	0	1	0
+51ebbc0f	HI_1_13_0	aucun invariant contredit · 0 record(s)	284	284	0	284	0
+51ebbc0f	HI_1_13_0	aucun invariant contredit · 1 record(s)	1024	1024	0	1024	0
+51ebbc0f	HI_1_13_0	aucun invariant contredit · 2 record(s)	4	4	0	4	0
+51ebbc0f	HI_1_13_0	aucun invariant contredit · 3 record(s)	8447	8447	0	8447	0
+51ebbc0f	HI_1_13_0	contredit : masque + vue C · 1 record(s)	2	2	0	2	0
+51ebbc0f	HI_1_13_0	contredit : masque · 1 record(s)	39	39	0	39	0
+51ebbc0f	HI_1_13_0	contredit : masque · 2 record(s)	11	11	0	11	0
+51ebbc0f	HI_1_13_0	contredit : masque · 3 record(s)	17	17	0	17	0
+51ebbc0f	HI_1_13_0	contredit : ordre + masque · 3 record(s)	15	15	0	15	0
+51ebbc0f	HI_1_13_0	contredit : ordre · 2 record(s)	2	2	0	2	0
+51ebbc0f	HI_1_13_0	contredit : ordre · 3 record(s)	2	2	0	2	0
+60ae07c4	HI_1_8_0	aucun invariant contredit · 0 record(s)	109	109	0	109	0
+60ae07c4	HI_1_8_0	aucun invariant contredit · 1 record(s)	1217	1217	0	1217	0
+60ae07c4	HI_1_8_0	aucun invariant contredit · 2 record(s)	169	169	0	169	0
+60ae07c4	HI_1_8_0	aucun invariant contredit · 3 record(s)	12333	12333	0	12333	0
+60ae07c4	HI_1_8_0	contredit : masque + vue C · 1 record(s)	2	2	0	2	0
+60ae07c4	HI_1_8_0	contredit : masque · 1 record(s)	67	67	0	67	0
+60ae07c4	HI_1_8_0	contredit : masque · 2 record(s)	14	14	0	14	0
+60ae07c4	HI_1_8_0	contredit : masque · 3 record(s)	7	7	0	7	0
+60ae07c4	HI_1_8_0	contredit : ordre + masque + vue C · 3 record(s)	1	1	0	1	0
+60ae07c4	HI_1_8_0	contredit : ordre + masque · 2 record(s)	1	1	0	1	0
+60ae07c4	HI_1_8_0	contredit : ordre + masque · 3 record(s)	37	37	0	37	0
+60ae07c4	HI_1_8_0	contredit : ordre + vue C · 3 record(s)	1	1	0	1	0
+60ae07c4	HI_1_8_0	contredit : ordre · 3 record(s)	6	6	0	6	0
+60ae07c4	HI_1_8_0	contredit : vue C · 1 record(s)	2	2	0	2	0
+60ae07c4	HI_1_8_0	contredit : vue C · 2 record(s)	2	2	0	2	0
+60ae07c4	HI_1_8_0	contredit : vue C · 3 record(s)	1	1	0	1	0
+a349fea8	version-33	aucun invariant contredit · 0 record(s)	194	194	0	194	0
+a349fea8	version-33	aucun invariant contredit · 1 record(s)	42	42	0	42	0
+a349fea8	version-33	aucun invariant contredit · 2 record(s)	10	10	0	10	0
+a349fea8	version-33	aucun invariant contredit · 3 record(s)	181	181	0	181	0
+a349fea8	version-33	contredit : masque + vue C · 1 record(s)	3	3	0	3	0
+a349fea8	version-33	contredit : masque · 1 record(s)	26	26	0	26	0
+a349fea8	version-33	contredit : masque · 2 record(s)	4	4	0	4	0
+a349fea8	version-33	contredit : masque · 3 record(s)	1	1	0	1	0
+a349fea8	version-33	contredit : ordre + masque · 2 record(s)	2	2	0	2	0
+a521164d	HI_1_4_1	aucun invariant contredit · 0 record(s)	348	348	0	348	0
+a521164d	HI_1_4_1	aucun invariant contredit · 1 record(s)	313	313	0	313	0
+a521164d	HI_1_4_1	aucun invariant contredit · 2 record(s)	6	6	0	6	0
+a521164d	HI_1_4_1	aucun invariant contredit · 3 record(s)	25	25	0	25	0
+a521164d	HI_1_4_1	contredit : masque · 1 record(s)	3	3	0	3	0
+a521164d	HI_1_4_1	contredit : masque · 2 record(s)	1	1	0	1	0
+a521164d	HI_1_4_1	contredit : vue C · 2 record(s)	5	5	0	5	0
+bcb6d393	HI_1_12_0	aucun invariant contredit · 0 record(s)	99	99	0	99	0
+bcb6d393	HI_1_12_0	aucun invariant contredit · 1 record(s)	841	841	0	841	0
+bcb6d393	HI_1_12_0	aucun invariant contredit · 2 record(s)	162	162	0	162	0
+bcb6d393	HI_1_12_0	aucun invariant contredit · 3 record(s)	4728	4728	0	4728	0
+bcb6d393	HI_1_12_0	contredit : masque · 1 record(s)	3	3	0	3	0
+bcb6d393	HI_1_12_0	contredit : masque · 3 record(s)	1	1	0	1	0
+bcb6d393	HI_1_12_0	contredit : ordre · 3 record(s)	1	1	0	1	0
+bf15f7ab	HI_1_13_0	aucun invariant contredit · 0 record(s)	222	222	0	222	0
+bf15f7ab	HI_1_13_0	aucun invariant contredit · 1 record(s)	2612	2612	0	2612	0
+bf15f7ab	HI_1_13_0	aucun invariant contredit · 2 record(s)	14	14	0	14	0
+bf15f7ab	HI_1_13_0	aucun invariant contredit · 3 record(s)	25617	25617	0	25617	0
+bf15f7ab	HI_1_13_0	contredit : masque · 1 record(s)	5	5	0	5	0
+bf15f7ab	HI_1_13_0	contredit : masque · 2 record(s)	1	1	0	1	0
+bf15f7ab	HI_1_13_0	contredit : masque · 3 record(s)	3	3	0	3	0
+bf15f7ab	HI_1_13_0	contredit : ordre + masque · 3 record(s)	2	2	0	2	0
+bfecd02b	HI_1_13_0	aucun invariant contredit · 0 record(s)	139	139	0	139	0
+bfecd02b	HI_1_13_0	aucun invariant contredit · 1 record(s)	1672	1672	0	1672	0
+bfecd02b	HI_1_13_0	aucun invariant contredit · 2 record(s)	205	205	0	205	0
+bfecd02b	HI_1_13_0	aucun invariant contredit · 3 record(s)	24364	24364	0	24364	0
+bfecd02b	HI_1_13_0	contredit : masque · 1 record(s)	11	11	0	11	0
+bfecd02b	HI_1_13_0	contredit : masque · 2 record(s)	2	2	0	2	0
+bfecd02b	HI_1_13_0	contredit : masque · 3 record(s)	6	6	0	6	0
+bfecd02b	HI_1_13_0	contredit : ordre + masque · 2 record(s)	1	1	0	1	0
+bfecd02b	HI_1_13_0	contredit : ordre + masque · 3 record(s)	3	3	0	3	0
+c75f33b8	HI_1_13_0	aucun invariant contredit · 0 record(s)	1771	1771	0	1771	0
+c75f33b8	HI_1_13_0	aucun invariant contredit · 1 record(s)	3012	3012	0	3012	0
+c75f33b8	HI_1_13_0	aucun invariant contredit · 2 record(s)	23	23	0	23	0
+c75f33b8	HI_1_13_0	aucun invariant contredit · 3 record(s)	18049	18049	0	18049	0
+c75f33b8	HI_1_13_0	contredit : masque · 1 record(s)	40	40	0	40	0
+c75f33b8	HI_1_13_0	contredit : masque · 2 record(s)	14	14	0	14	0
+c75f33b8	HI_1_13_0	contredit : masque · 3 record(s)	25	25	0	25	0
+c75f33b8	HI_1_13_0	contredit : ordre + masque · 2 record(s)	1	1	0	1	0
+c75f33b8	HI_1_13_0	contredit : ordre + masque · 3 record(s)	8	8	0	8	0
+c75f33b8	HI_1_13_0	contredit : ordre · 3 record(s)	1	1	0	1	0
+d9781168	HI_1_13_0	aucun invariant contredit · 0 record(s)	132	132	0	132	0
+d9781168	HI_1_13_0	aucun invariant contredit · 1 record(s)	1936	1936	0	1936	0
+d9781168	HI_1_13_0	aucun invariant contredit · 2 record(s)	775	775	0	775	0
+d9781168	HI_1_13_0	aucun invariant contredit · 3 record(s)	23371	23371	0	23371	0
+d9781168	HI_1_13_0	contredit : masque + vue C · 1 record(s)	2	2	0	2	0
+d9781168	HI_1_13_0	contredit : masque · 1 record(s)	135	135	0	135	0
+d9781168	HI_1_13_0	contredit : masque · 2 record(s)	34	34	0	34	0
+d9781168	HI_1_13_0	contredit : masque · 3 record(s)	50	50	0	50	0
+d9781168	HI_1_13_0	contredit : ordre + masque · 2 record(s)	5	5	0	5	0
+d9781168	HI_1_13_0	contredit : ordre + masque · 3 record(s)	19	19	0	19	0
+d9781168	HI_1_13_0	contredit : ordre · 2 record(s)	1	1	0	1	0
+d9781168	HI_1_13_0	contredit : ordre · 3 record(s)	1	1	0	1	0
+d9781168	HI_1_13_0	contredit : vue C · 1 record(s)	3	3	0	3	0
+e5adf7b2	HI_1_11_0	aucun invariant contredit · 0 record(s)	131	131	0	131	0
+e5adf7b2	HI_1_11_0	aucun invariant contredit · 1 record(s)	305	305	0	305	0
+e5adf7b2	HI_1_11_0	aucun invariant contredit · 2 record(s)	139	139	0	139	0
+e5adf7b2	HI_1_11_0	aucun invariant contredit · 3 record(s)	3546	3546	0	3546	0
+e5adf7b2	HI_1_11_0	contredit : masque + vue C · 1 record(s)	2	2	0	2	0
+e5adf7b2	HI_1_11_0	contredit : masque · 1 record(s)	91	91	0	91	0
+e5adf7b2	HI_1_11_0	contredit : masque · 2 record(s)	21	21	0	21	0
+e5adf7b2	HI_1_11_0	contredit : masque · 3 record(s)	33	33	0	33	0
+e5adf7b2	HI_1_11_0	contredit : ordre + masque · 2 record(s)	5	5	0	5	0
+e5adf7b2	HI_1_11_0	contredit : ordre + masque · 3 record(s)	8	8	0	8	0
+e5adf7b2	HI_1_11_0	contredit : ordre · 2 record(s)	2	2	0	2	0
+e5adf7b2	HI_1_11_0	contredit : ordre · 3 record(s)	1	1	0	1	0
+e5adf7b2	HI_1_11_0	contredit : vue C · 2 record(s)	1	1	0	1	0
+f75e7053	HI_1_13_0	aucun invariant contredit · 0 record(s)	93	93	0	93	0
+f75e7053	HI_1_13_0	aucun invariant contredit · 1 record(s)	1977	1977	0	1977	0
+f75e7053	HI_1_13_0	aucun invariant contredit · 2 record(s)	38	38	0	38	0
+f75e7053	HI_1_13_0	aucun invariant contredit · 3 record(s)	21308	21308	0	21308	0
+f75e7053	HI_1_13_0	contredit : masque · 1 record(s)	5	5	0	5	0
+f75e7053	HI_1_13_0	contredit : masque · 3 record(s)	1	1	0	1	0
+f75e7053	HI_1_13_0	contredit : ordre + masque · 3 record(s)	1	1	0	1	0
+fb1a1a72	HI_1_13_0	aucun invariant contredit · 0 record(s)	152	152	0	152	0
+fb1a1a72	HI_1_13_0	aucun invariant contredit · 1 record(s)	994	994	0	994	0
+fb1a1a72	HI_1_13_0	aucun invariant contredit · 2 record(s)	18	18	0	18	0
+fb1a1a72	HI_1_13_0	aucun invariant contredit · 3 record(s)	21115	21115	0	21115	0
+fb1a1a72	HI_1_13_0	contredit : masque · 1 record(s)	14	14	0	14	0
+fb1a1a72	HI_1_13_0	contredit : masque · 2 record(s)	3	3	0	3	0
+fb1a1a72	HI_1_13_0	contredit : masque · 3 record(s)	16	16	0	16	0
+fb1a1a72	HI_1_13_0	contredit : ordre + masque · 3 record(s)	6	6	0	6	0

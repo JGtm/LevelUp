@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -46,7 +47,8 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 			COALESCE(mp.personal_score, 0),
 			COALESCE(mp.kills, 0),
 			COALESCE(mp.assists, 0),
-			COALESCE(mr.map_name_fr, mr.map_name),
+			COALESCE(mr.map_name_fr, ''),
+			COALESCE(mr.map_name, ''),
 			mr.map_id
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
@@ -54,6 +56,7 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 	`
 	var mctx port.MatchEngagementContext
 	var mapID sql.NullString
+	var registreFR, registreEN string
 	err = sharedDB.QueryRowContext(ctx, q, matchID, xuid).Scan(
 		&mctx.MatchID,
 		&mctx.StartTimeMS,
@@ -64,7 +67,8 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 		&mctx.PersonalScore,
 		&mctx.Kills,
 		&mctx.Assists,
-		&mctx.MapName,
+		&registreFR,
+		&registreEN,
 		&mapID,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -74,13 +78,13 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 		return nil, fmt.Errorf("LoadMatchEngagementContext: %w", err)
 	}
 
-	// map_name_fr de match_registry est systematiquement NULL -> le COALESCE
-	// retombe sur l'EN. On resout le nom FR via metadata.asset_translations
-	// (meme source canonique que applyMapFRTranslations). Best-effort.
-	if mapID.Valid && mapID.String != "" {
-		if fr, ok := r.resolveMapNameFR(ctx, mapID.String); ok {
-			mctx.MapName = &fr
-		}
+	// LE LIBELLÉ CANONIQUE de la carte (libelleDeCarte, map_labels.go), le même que l'Explorateur.
+	var traduction string
+	if mapID.Valid && mapID.String != "" && r.pdb != nil {
+		traduction = traductionsDeCartes(ctx, r.pdb.Metadata, []string{mapID.String})[mapID.String]
+	}
+	if libelle := libelleDeCarte(registreFR, registreEN, traduction); libelle != "" {
+		mctx.MapName = &libelle
 	}
 
 	// Charger NTeam et NHumansLobby separement (bots = xuid LIKE 'bid(%').
@@ -91,41 +95,16 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 		FROM match_participants WHERE match_id = ?
 	`
 	var nTeam, nLobby sql.NullInt64
-	_ = sharedDB.QueryRowContext(ctx, sizeQ, mctx.TargetTeamID, matchID).Scan(&nTeam, &nLobby)
+	if err := sharedDB.QueryRowContext(ctx, sizeQ, mctx.TargetTeamID, matchID).Scan(&nTeam, &nLobby); err != nil {
+		// Best-effort : effectifs à 0 (mode non collectif), mais la panne est visible.
+		slog.WarnContext(ctx, "engagement: effectifs d'équipe illisibles, repli sur 0",
+			"match_id", matchID, "err", err)
+	}
 	mctx.NTeam = int(nTeam.Int64)
 	mctx.NHumansLobby = int(nLobby.Int64)
 	mctx.IsTeamMode = mctx.NTeam > 1
 
 	return &mctx, nil
-}
-
-// resolveMapNameFR resout le nom FR d'une map depuis metadata.asset_translations
-// par asset_id (= map_id). match_registry.map_name_fr etant toujours NULL, c'est
-// la seule source FR fiable (cf. reference_asset_translations_fr + filters_repo
-// applyMapFRTranslations). Best-effort : ("", false) si Metadata absent, pas de
-// ligne FR ou erreur — l'appelant garde alors le nom EN.
-func (r *EngagementScoreRepo) resolveMapNameFR(ctx context.Context, mapID string) (string, bool) {
-	if r.pdb == nil || r.pdb.Metadata == nil {
-		return "", false
-	}
-	const q = `
-		SELECT name FROM asset_translations
-		WHERE asset_type = 'map' AND asset_id = ? AND lang IN ('fr-FR', 'fr')
-		ORDER BY CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END
-		LIMIT 1
-	`
-	rows, err := r.pdb.Metadata.QueryRecovered(ctx, q, mapID)
-	if err != nil {
-		return "", false
-	}
-	defer rows.Close()
-	if rows.Next() {
-		var name string
-		if rows.Scan(&name) == nil && name != "" {
-			return name, true
-		}
-	}
-	return "", false
 }
 
 // LoadEventsForMatch charge tous les events highlight_events d'un match.
@@ -162,7 +141,7 @@ func (r *EngagementScoreRepo) LoadEventsForMatch(
 	for rows.Next() {
 		var ev canonical.HighlightEvent
 		if err := rows.Scan(&ev.MatchID, &ev.EventType, &ev.TimeMS, &ev.XUID); err != nil {
-			continue
+			return nil, fmt.Errorf("LoadEventsForMatch: lecture d'une ligne de highlight_events (match %s): %w", matchID, err)
 		}
 		out = append(out, ev)
 	}
@@ -178,6 +157,11 @@ func (r *EngagementScoreRepo) LoadEventsForMatch(
 	// (kills dans highlight_events) ce chemin n'est jamais pris.
 	if !analysis.HasCanonicalKillOrDeath(out) {
 		synth, serr := r.loadSyntheticKillEvents(ctx, sharedDB, matchID)
+		if serr != nil {
+			// Best-effort : la courbe retombe sur les médailles seules, mais la panne est visible.
+			slog.WarnContext(ctx, "engagement: kills synthétiques indisponibles, courbe sur médailles seules",
+				"match_id", matchID, "err", serr)
+		}
 		if serr == nil && len(synth) > 0 {
 			out = analysis.MergeAndSortCanonicalEvents(out, synth)
 		}
@@ -214,7 +198,7 @@ func (r *EngagementScoreRepo) loadSyntheticKillEvents(
 	for rows.Next() {
 		var in analysis.KVSyntheticInput
 		if err := rows.Scan(&in.KillerXUID, &in.VictimXUID, &in.TimeMS); err != nil {
-			continue
+			return nil, fmt.Errorf("loadSyntheticKillEvents: lecture d'une ligne de %s: %w", KillEventsCanonicalTable, err)
 		}
 		inputs = append(inputs, in)
 	}
@@ -256,9 +240,10 @@ func (r *EngagementScoreRepo) LoadTeamXUIDs(
 	out := make(map[string]bool)
 	for rows.Next() {
 		var x string
-		if err := rows.Scan(&x); err == nil {
-			out[x] = true
+		if err := rows.Scan(&x); err != nil {
+			return nil, fmt.Errorf("LoadTeamXUIDs: lecture d'une ligne: %w", err)
 		}
+		out[x] = true
 	}
 	return out, rows.Err()
 }
@@ -300,7 +285,7 @@ func (r *EngagementScoreRepo) LoadAllCoefficients(
 			&c.XUID, &c.ModeCategory, &c.CoefLobbyShare,
 			&c.NMatches, &c.LastUpdated,
 		); err != nil {
-			continue
+			return nil, fmt.Errorf("LoadAllCoefficients: lecture d'une ligne: %w", err)
 		}
 		out = append(out, c)
 	}
@@ -309,6 +294,7 @@ func (r *EngagementScoreRepo) LoadAllCoefficients(
 
 // ListRecentPvPMatchIDs liste les match_ids PvP du joueur, ordre chronologique
 // croissant. Utilise par le service Timeseries (Mock 11).
+// Campagne exclue (D-5, backlog B4) : titre = celui de la base partagée lue.
 func (r *EngagementScoreRepo) ListRecentPvPMatchIDs(
 	ctx context.Context,
 	xuid string,
@@ -326,14 +312,16 @@ func (r *EngagementScoreRepo) ListRecentPvPMatchIDs(
 	}
 	defer release()
 
+	ts := StartTimeCanonicalSQL("mr")
 	q := `
 		SELECT mr.match_id
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
-		  AND mr.start_time IS NOT NULL
+		  AND ` + ts + ` IS NOT NULL
 		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-		ORDER BY mr.start_time DESC
+		` + excludeCampaignClause(pdbTitleSlug(r.pdb), "mr") + `
+		ORDER BY ` + ts + ` DESC
 		LIMIT ?
 	`
 	rows, err := sharedDB.QueryContext(ctx, q, xuid, limit)
@@ -345,9 +333,10 @@ func (r *EngagementScoreRepo) ListRecentPvPMatchIDs(
 	out := make([]string, 0, limit)
 	for rows.Next() {
 		var id string
-		if err := rows.Scan(&id); err == nil {
-			out = append(out, id)
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("ListRecentPvPMatchIDs: lecture d'une ligne: %w", err)
 		}
+		out = append(out, id)
 	}
 	// Inverser pour ordre chronologique croissant (oldest first).
 	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {

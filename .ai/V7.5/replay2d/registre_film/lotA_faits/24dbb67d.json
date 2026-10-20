@@ -1,0 +1,14 @@
+{
+  "gameVariantName": "Ranked:Oddball",
+  "teamScores": [200, 121],
+  "players": [
+    {"xuid":"2533274815819321","kills":9,"deaths":10,"assists":4,"teamId":0},
+    {"xuid":"2533274822068549","kills":7,"deaths":11,"assists":12,"teamId":0},
+    {"xuid":"2535425305181079","kills":15,"deaths":12,"assists":4,"teamId":0},
+    {"xuid":"2535463185952034","kills":14,"deaths":10,"assists":6,"teamId":0},
+    {"xuid":"2533274823110022","kills":5,"deaths":12,"assists":5,"teamId":1},
+    {"xuid":"2533274858283686","kills":20,"deaths":11,"assists":3,"teamId":1},
+    {"xuid":"2535463284114517","kills":10,"deaths":12,"assists":0,"teamId":1},
+    {"xuid":"2535469190789936","kills":8,"deaths":10,"assists":5,"teamId":1}
+  ]
+}

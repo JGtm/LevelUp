@@ -46,9 +46,35 @@ type ExplorerBriefing struct {
 	// de défaites), calculées sur TOUT le scope filtré (P-9). Nil si non pertinent
 	// (low sample, ou aucune row datée). Un segment à zéro est omis côté front.
 	Streaks *ExplorerBriefingStreaks `json:"streaks,omitempty"`
-	// Dominance : compteurs de moments forts (DominanceFlag 1..5) du scope. Nil si
+	// Dominance : compteurs de moments forts (DominanceFlag 1..7) du scope. Nil si
 	// non pertinent (low sample, ou tous les compteurs à zéro).
 	Dominance *ExplorerBriefingDominance `json:"dominance,omitempty"`
+	// Weapons : arme(s) ayant produit le plus de frags du joueur sur le scope. Nil
+	// si aucun frag n'a pu être rattaché à une arme nommée (module non émis).
+	Weapons *ExplorerBriefingWeapons `json:"weapons,omitempty"`
+}
+
+// ExplorerBriefingWeapons porte l'arme favorite du scope : l'arme (ou les deux
+// armes) qui a produit le plus de FRAGS CRÉDITÉS au joueur. Ce n'est ni l'arme la
+// plus tenue ni la plus tirée : la source est la source de dégât du film sur les
+// titres qui l'exposent, l'arme native du kill sinon.
+//
+// Le dénominateur s'exprime en FRAGS, pas en matchs : l'agrégat par arme ne dit pas
+// combien de matchs ont contribué. MeasuredKills compte ce qu'on sait NOMMER (mêmes
+// lignes retenues que le classement, avant troncature aux deux premières) ;
+// ScopeKills est le total de frags des matchs du scope. Le front n'affiche la note
+// de couverture que si MeasuredKills < ScopeKills — une source de dégât peut
+// créditer autant ou plus que l'API du titre.
+type ExplorerBriefingWeapons struct {
+	// Entries : deux entrées au plus, triées frags décroissants (départage par
+	// libellé). Jamais vide quand le bloc est émis.
+	Entries []SynthesisWeaponKillEntry `json:"entries"`
+	// MeasuredKills : frags rattachés à une arme nommée sur le scope. Le bloc est
+	// omis quand il vaut zéro.
+	MeasuredKills int `json:"measured_kills"`
+	// ScopeKills : frags totaux des matchs du scope (raw rows), dénominateur de la
+	// note de couverture.
+	ScopeKills int `json:"scope_kills"`
 }
 
 // ExplorerBriefingScope porte les agrégats socle du sous-ensemble filtré,
@@ -215,7 +241,7 @@ type ExplorerBriefingStreaks struct {
 	WorstLossStreak int `json:"worst_loss_streak,omitempty"`
 }
 
-// ExplorerBriefingDominance compte les moments forts (DominanceFlag 1..5,
+// ExplorerBriefingDominance compte les moments forts (DominanceFlag 1..7,
 // cf. analysis.DominanceFlag*) du scope. Émis hors low_sample ; nil si tous les
 // compteurs sont à zéro (dégradation par omission). Les catégories à zéro sont
 // omises côté front (les libellés réutilisent narrative.dominance.*).
@@ -225,4 +251,6 @@ type ExplorerBriefingDominance struct {
 	Remontadas       int `json:"remontadas,omitempty"`
 	Debandades       int `json:"debandades,omitempty"`
 	ContreRemontadas int `json:"contre_remontadas,omitempty"`
+	Sabordages       int `json:"sabordages,omitempty"`
+	Abnegations      int `json:"abnegations,omitempty"`
 }

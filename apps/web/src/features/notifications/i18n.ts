@@ -43,6 +43,8 @@ export interface NotificationsText {
   pageBulkDismiss: string
   pageLoadMore: string
   pageEmpty: string
+  /** Profil d'un ami : ses notifications ne sont ni lues ni affichées. */
+  privateToOwner: string
 
   // Settings tab
   settingsTitle: string
@@ -117,6 +119,7 @@ const FR: NotificationsText = {
   pageBulkDismiss: 'Ignorer ({count})',
   pageLoadMore: 'Charger plus',
   pageEmpty: 'Aucune notification pour le moment',
+  privateToOwner: "Les notifications d'un profil ne sont visibles que par son propriétaire.",
 
   settingsTitle: 'Notifications',
   settingsDescription:
@@ -249,7 +252,7 @@ const FR: NotificationsText = {
     'notif.season_pass_level.title': 'Niveau {level} atteint',
     'notif.season_pass_level.body': 'Tu progresses sur le passe saisonnier.',
     'notif.sync_error.title': 'Erreur de synchronisation',
-    'notif.sync_error.body': '{message}',
+    'notif.sync_error.body': 'La synchronisation a échoué. Relance-la depuis les réglages.',
     'notif.personal_record.title': 'Record personnel',
     'notif.personal_record.body': 'Nouveau record sur {metric_label} : {value}.',
     'notif.threshold_crossed.title': 'Palier franchi',
@@ -332,6 +335,7 @@ const EN: NotificationsText = {
   pageBulkDismiss: 'Dismiss ({count})',
   pageLoadMore: 'Load more',
   pageEmpty: 'No notifications yet',
+  privateToOwner: "A profile's notifications are visible to its owner only.",
 
   settingsTitle: 'Notifications',
   settingsDescription:
@@ -459,7 +463,7 @@ const EN: NotificationsText = {
     'notif.season_pass_level.title': 'Level {level} reached',
     'notif.season_pass_level.body': 'You progress on the season pass.',
     'notif.sync_error.title': 'Sync error',
-    'notif.sync_error.body': '{message}',
+    'notif.sync_error.body': 'The sync failed. Restart it from the settings.',
     'notif.personal_record.title': 'Personal record',
     'notif.personal_record.body': 'New record on {metric_label}: {value}.',
     'notif.threshold_crossed.title': 'Threshold crossed',

@@ -20,11 +20,11 @@ interface OptionShape {
     type?: string
     radius?: [string, string]
     data?: Array<{ name: string; value: number; itemStyle?: { color?: string } }>
-    label?: { show?: boolean; formatter?: string }
+    label?: { show?: boolean; formatter?: string | ((p: { name?: string; percent?: number }) => string) }
   }>
   legend?: { data?: string[] }
   backgroundColor?: string
-  tooltip?: { formatter?: string }
+  tooltip?: { formatter?: (p: { name?: string; value?: number; percent?: number }) => string }
 }
 
 describe('buildDonutOption', () => {
@@ -87,7 +87,9 @@ describe('buildDonutOption', () => {
   it('affiche les pourcentages par défaut', () => {
     const opt = buildDonutOption(makeSeries([{ name: 'a', value: 1 }])) as OptionShape
     expect(opt.series?.[0].label?.show).toBe(true)
-    expect(opt.series?.[0].label?.formatter).toBe('{b}\n{d}%')
+    // Le nom puis la part à la langue (« 33 % »), jamais le gabarit brut `{d}%` d'ECharts (« 33.33% »).
+    const fmt = opt.series?.[0].label?.formatter as (p: { name?: string; percent?: number }) => string
+    expect(fmt({ name: 'a', percent: 100 / 3 })).toBe('a\n33 %')
   })
 
   it('chaque slice a un itemStyle.color résolu', () => {
@@ -99,5 +101,17 @@ describe('buildDonutOption', () => {
     ) as OptionShape
     expect(opt.series?.[0].data?.[0].itemStyle?.color).toBeDefined()
     expect(opt.series?.[0].data?.[1].itemStyle?.color).toBeDefined()
+  })
+
+  it('étiquette d’arc par défaut : le nom et le pourcentage', () => {
+    const opt = buildDonutOption(makeSeries([{ name: 'a', value: 1 }])) as OptionShape
+    const fmt = opt.series?.[0].label?.formatter as (p: { name?: string; percent?: number }) => string
+    expect(fmt({ name: 'a', percent: 50 })).toBe('a\n50 %')
+  })
+
+  it('l’infobulle écrit le compte et la part à la langue de l’application, le nom échappé', () => {
+    const opt = buildDonutOption(makeSeries([{ name: 'a<b', value: 1234 }])) as OptionShape
+    const html = opt.tooltip!.formatter!({ name: 'a<b', value: 1234, percent: 100 / 3 }).normalize('NFKC')
+    expect(html).toBe('a&lt;b : <b>1 234</b> (33,3 %)')
   })
 })

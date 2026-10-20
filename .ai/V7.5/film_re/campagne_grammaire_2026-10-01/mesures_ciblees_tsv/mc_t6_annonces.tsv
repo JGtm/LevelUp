@@ -1,0 +1,59 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	i30 auto-turret-triggers · DELTA · chassis inconnu · masque partiel	2	2	0	0	13
+0797ce72	HI_1_13_0	i30 auto-turret-triggers · NEW · a4001083 · masque partiel	1	1	0	0	8
+0797ce72	HI_1_13_0	i33 type-state · DELTA · chassis inconnu · masque partiel	3	3	0	0	22
+0797ce72	HI_1_13_0	i33 type-state · NEW · a4001083 · masque partiel	1	1	0	0	8
+0797ce72	HI_1_13_0	i34 type-physics · DELTA · chassis inconnu · masque partiel	2	2	0	0	11
+084a804d	HI_1_10_0	i33 type-state · DELTA · 77ef810a · masque partiel	1	1	0	0	25
+084a804d	HI_1_10_0	i33 type-state · DELTA · chassis inconnu · masque partiel	4	4	0	0	94
+084a804d	HI_1_10_0	i34 type-physics · DELTA · 4118381d · masque partiel	373	373	306	65	7383
+084a804d	HI_1_10_0	i34 type-physics · DELTA · 77ef810a · masque partiel	457	457	428	26	10922
+084a804d	HI_1_10_0	i34 type-physics · DELTA · chassis inconnu · masque partiel	8087	8087	6841	1138	165384
+111fa685	HI_1_10_0	i30 auto-turret-triggers · NEW · 50000810 · masque partiel	1	1	0	0	1
+111fa685	HI_1_10_0	i33 type-state · DELTA · chassis inconnu · masque partiel	3	3	0	0	67
+111fa685	HI_1_10_0	i33 type-state · NEW · 50000810 · masque partiel	1	1	0	0	1
+111fa685	HI_1_10_0	i33 type-state · NEW · e22cc631 · masque partiel	1	1	0	0	15
+111fa685	HI_1_10_0	i34 type-physics · DELTA · chassis inconnu · masque partiel	1942	1942	1350	571	28155
+11de8353	HI_1_9_0	i30 auto-turret-triggers · NEW · 90000810 · masque partiel	1	1	0	0	0
+11de8353	HI_1_9_0	i33 type-state · DELTA · chassis inconnu · masque partiel	4	4	0	0	79
+11de8353	HI_1_9_0	i33 type-state · NEW · 0001aa00 · masque partiel	1	1	0	0	1
+11de8353	HI_1_9_0	i33 type-state · NEW · baff2205 · masque partiel	2	2	0	0	2
+11de8353	HI_1_9_0	i33 type-state · NEW · ce00e25a · masque partiel	1	1	0	0	1
+11de8353	HI_1_9_0	i34 type-physics · DELTA · chassis inconnu · masque partiel	328	328	304	20	6276
+1c4c63c2	HI_1_10_0	i30 auto-turret-triggers · NEW · e288bd20 · masque partiel	1	1	0	0	1
+1c4c63c2	HI_1_10_0	i33 type-state · NEW · b232b15e · masque partiel	1	1	0	0	1
+1c4c63c2	HI_1_10_0	i33 type-state · NEW · baff2205 · masque partiel	1	1	0	0	1
+1c4c63c2	HI_1_10_0	i33 type-state · NEW · e288bd20 · masque partiel	1	1	0	0	1
+4f77afc1	HI_1_13_0	i33 type-state · DELTA · 0000254b · masque partiel	66	66	0	0	1444
+4f77afc1	HI_1_13_0	i34 type-physics · DELTA · 0000254b · masque partiel	14171	14171	2465	11421	68065
+4f77afc1	HI_1_13_0	i34 type-physics · NEW · b6b5051c · masque partiel	1	1	0	1	0
+50247b26	version-31	i33 type-state · DELTA · chassis inconnu · masque partiel	2	2	0	0	33
+50247b26	version-31	i34 type-physics · DELTA · chassis inconnu · masque partiel	2852	2852	2394	0	71584
+50247b26	version-31	i34 type-physics · DELTA · d0b40d0a · masque partiel	2523	2523	2210	0	64323
+50247b26	version-31	i34 type-physics · NEW · 11f004dc · masque partiel	1	1	0	1	0
+a349fea8	version-33	i30 auto-turret-triggers · NEW · 46790efb · masque partiel	1	1	0	0	1
+a349fea8	version-33	i30 auto-turret-triggers · NEW · 70aff72a · masque partiel	4	4	0	0	0
+a349fea8	version-33	i30 auto-turret-triggers · NEW · 79f70a5f · masque partiel	4	4	0	0	4
+a349fea8	version-33	i30 auto-turret-triggers · NEW · baff2205 · masque partiel	1	1	0	0	1
+a349fea8	version-33	i33 type-state · NEW · 70aff72a · masque partiel	4	4	0	0	0
+a349fea8	version-33	i34 type-physics · DELTA · chassis inconnu · masque partiel	22	22	20	0	612
+a349fea8	version-33	i34 type-physics · NEW · 46790efb · masque partiel	1	1	0	0	1
+a349fea8	version-33	i34 type-physics · NEW · 70aff72a · masque partiel	4	4	0	0	0
+a349fea8	version-33	i34 type-physics · NEW · 79f70a5f · masque partiel	4	4	0	0	4
+a349fea8	version-33	i34 type-physics · NEW · baff2205 · masque partiel	4	4	0	0	4
+a521164d	HI_1_4_1	i30 auto-turret-triggers · NEW · 40089567 · masque partiel	1	1	0	0	1
+a521164d	HI_1_4_1	i30 auto-turret-triggers · NEW · 46790efb · masque partiel	2	2	0	0	2
+a521164d	HI_1_4_1	i30 auto-turret-triggers · NEW · 70aff72a · masque partiel	4	4	0	0	0
+a521164d	HI_1_4_1	i30 auto-turret-triggers · NEW · 79f70a5f · masque partiel	1	1	0	0	1
+a521164d	HI_1_4_1	i30 auto-turret-triggers · NEW · baff2205 · masque partiel	1	1	0	0	1
+a521164d	HI_1_4_1	i33 type-state · NEW · 70aff72a · masque partiel	4	4	0	0	0
+a521164d	HI_1_4_1	i34 type-physics · NEW · 46790efb · masque partiel	2	2	0	0	2
+a521164d	HI_1_4_1	i34 type-physics · NEW · 70aff72a · masque partiel	4	4	0	0	0
+a521164d	HI_1_4_1	i34 type-physics · NEW · 79f70a5f · masque partiel	1	1	0	0	1
+a521164d	HI_1_4_1	i34 type-physics · NEW · baff2205 · masque partiel	1	1	0	0	1
+bfecd02b	HI_1_13_0	i30 auto-turret-triggers · DELTA · 038df01a · masque partiel	1	1	0	0	8
+e5adf7b2	HI_1_11_0	i30 auto-turret-triggers · DELTA · chassis inconnu · masque partiel	1	1	0	0	22
+e5adf7b2	HI_1_11_0	i30 auto-turret-triggers · NEW · 79f70a5f · masque partiel	1	1	0	0	1
+e5adf7b2	HI_1_11_0	i33 type-state · DELTA · chassis inconnu · masque partiel	1	1	0	0	23
+e5adf7b2	HI_1_11_0	i34 type-physics · DELTA · chassis inconnu · masque partiel	2504	2504	2039	431	42193
+e5adf7b2	HI_1_11_0	i34 type-physics · NEW · 79f70a5f · masque partiel	2	2	0	0	2

@@ -1,34 +1,48 @@
 /**
- * SquadWeaponKillsChart — wrapper teammates.09.
+ * SquadWeaponKillsChart — wrapper des barres groupées par joueur (Outils de destruction,
+ * Mécaniques de frag).
  *
- * Hauteur dynamique : `max(350, n_weapons * 38)` (cf. spec).
+ * Hauteur dynamique : `max(350, n_lignes * 38)` — SANS plafond depuis le lot L2 du plan
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : les Outils de destruction n'ont plus de
+ * « Autres armes », chaque ligne garde sa hauteur de lecture.
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import type { SquadWeaponKills, SquadWeaponBar } from '@/lib/api/types'
 import {
   buildSquadWeaponKillsOption,
+  type SquadBarRow,
+  type SquadBarRows,
   type SquadWeaponKillsOpts,
 } from './charts/squadWeaponKillsChart'
 
 interface SquadWeaponKillsChartProps extends SquadWeaponKillsOpts {
-  title?: string
+  title?: ReactNode
   emptyMessage?: string
-  data: SquadWeaponKills | null | undefined
+  data: SquadBarRows | null | undefined
+  /** Légende hors canvas (pied de carte). */
+  legend?: ReactNode
 }
 
-export function SquadWeaponKillsChart({ data, title, emptyMessage, ...opts }: SquadWeaponKillsChartProps) {
-  const series = useMemo<ChartSeries<SquadWeaponBar>[]>(() => {
-    const bars = data?.bars ?? []
-    return bars.length > 0 ? [{ key: 'weapon-kills', datapoints: bars }] : []
+export function SquadWeaponKillsChart({ data, title, emptyMessage, legend, ...opts }: SquadWeaponKillsChartProps) {
+  const series = useMemo<ChartSeries<SquadBarRow>[]>(() => {
+    const rows = data?.rows ?? []
+    return rows.length > 0 ? [{ key: 'weapon-kills', datapoints: rows }] : []
   }, [data])
   const buildOption = useCallback(
     () => buildSquadWeaponKillsOption(data, opts),
-    [data, opts],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, opts.colorByPlayer, opts.valueLabel, opts.valueText, opts.shareTotals, opts.minLabelShare, opts.soloByClass],
   )
-  const n = data?.bars?.length ?? 0
-  const height = Math.max(350, Math.min(800, n * 38))
+  const n = data?.rows?.length ?? 0
+  const height = Math.max(350, n * 38)
   return (
-    <ChartCard title={title} series={series} buildOption={buildOption} height={height} emptyMessage={emptyMessage} />
+    <ChartCard
+      title={title}
+      series={series}
+      buildOption={buildOption}
+      height={height}
+      emptyMessage={emptyMessage}
+      legend={legend}
+    />
   )
 }

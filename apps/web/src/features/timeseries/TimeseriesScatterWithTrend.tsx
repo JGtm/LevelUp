@@ -15,6 +15,8 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { tipRowHtml, tipTitleHtml } from '@/components/charts/axisTooltip'
+import { tipNumberAuto } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { CorrelationDataPair } from '@/lib/api/types'
@@ -182,6 +184,17 @@ export function TimeseriesScatterWithTrend({
       tooltip: {
         ...getTooltipBase(tc),
         trigger: 'item',
+        // Un point = un match : la bulle nomme la série (issue) puis chaque grandeur avec son libellé
+        // (le rendu par défaut écrit « 12.3456, 4 » sans dire laquelle est laquelle).
+        formatter: (p: { seriesName?: string; value?: unknown }) => {
+          if (!Array.isArray(p.value) || p.value.length < 2) return ''
+          const [x, y] = p.value as [number, number]
+          return (
+            tipTitleHtml(p.seriesName ?? '') +
+            tipRowHtml(xAxisLabel, '', tipNumberAuto(x)) +
+            tipRowHtml(yAxisLabel, '', tipNumberAuto(y))
+          )
+        },
       },
       legend: {
         ...getLegendBase(tc),

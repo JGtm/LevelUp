@@ -786,14 +786,17 @@ func TestCareerService_GetTopEncounters_AppliesFriendExclusion(t *testing.T) {
 	}
 	svc := NewCareerService(repo).
 		WithFriendGamertagsResolver(func(_ context.Context) []string { return []string{"BestFriend", "OtherFriend"} }).
-		WithFriendXUIDResolver(func(_ context.Context, gt string) (string, error) {
-			switch gt {
-			case "BestFriend":
-				return "xuid-friend-1", nil
-			case "OtherFriend":
-				return "xuid-friend-2", nil
+		WithFriendXUIDSources(nil, func(_ context.Context, gts []string) (map[string]string, error) {
+			out := map[string]string{}
+			for _, gt := range gts {
+				switch gt {
+				case "BestFriend":
+					out[gt] = "xuid-friend-1"
+				case "OtherFriend":
+					out[gt] = "xuid-friend-2"
+				}
 			}
-			return "", errors.New("not found")
+			return out, nil
 		})
 
 	_, err := svc.GetTopEncounters(context.Background())

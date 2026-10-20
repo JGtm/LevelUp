@@ -51,7 +51,12 @@ func (p *HaloProvider) FetchSeasonCalendar(ctx context.Context, titleID string) 
 	}
 
 	url := p.hostFor(ctx, games.EndpointGameCMS, p.gameCMSBaseURL, defaultGameCMSHost) + "/" + p.gamePrefix(ctx) + seasonCalendarPathSuffix
-	body, err := p.doGet(ctx, url, tokens)
+	// Filet 401/403 : un jeton jugé valide par son expiry peut avoir été périmé par une rotation
+	// juste avant l'appel (jeton de session de la requête). Un seul nouvel essai, avec le jeton
+	// rafraîchi par le store (jamais de recapture) ; sans xuid dans le contexte, pas d'essai.
+	body, err := retryOnAuth(ctx, func(c context.Context) ([]byte, error) {
+		return p.doGet(c, url, ctxkeys.HaloTokens(c))
+	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("FetchSeasonCalendar: %w", err)
 	}

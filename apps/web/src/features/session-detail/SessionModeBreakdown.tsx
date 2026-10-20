@@ -9,6 +9,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase, seriesColor } from '@/components/charts/_utils'
+import { tipNumberAuto } from '@/components/charts/tipNumber'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { useSessionT } from './_shared'
@@ -42,7 +43,7 @@ export function buildSessionModeBreakdownOption(
         const arr = Array.isArray(params) ? params : []
         if (arr.length === 0) return ''
         const p = arr[0] as { name: string; value: number }
-        return `${escapeHtml(p.name)}: <b>${p.value}</b> ${opts.countLabel}`
+        return `${escapeHtml(p.name)}: <b>${tipNumberAuto(p.value)}</b> ${escapeHtml(opts.countLabel)}`
       },
     },
     xAxis: {
@@ -58,7 +59,7 @@ export function buildSessionModeBreakdownOption(
         type: 'bar',
         data: points.map((p, i) => ({ value: p.count, itemStyle: { color: seriesColor(i) } })),
         barMaxWidth: 48,
-        label: { show: true, position: 'top', color: tc.text, formatter: (p: { value: number }) => String(p.value) },
+        label: { show: true, position: 'top', color: tc.text, formatter: (p: { value: number }) => tipNumberAuto(p.value) },
       },
     ],
   }

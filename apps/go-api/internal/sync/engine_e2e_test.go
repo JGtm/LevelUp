@@ -1,6 +1,6 @@
 // Package sync — engine_e2e_test.go : tests E2E du moteur de sync avec DuckDB in-memory.
 //
-// Couvrent la déduplication (loadKnownMatchIDs), les garde-fous RunDelta
+// Couvrent les garde-fous RunDelta
 // (historique vide / erreur réseau), sync_meta, la validation des SyncOptions et
 // le pipeline post-sync (writer RW nul en régime stationnaire, découplage carrière).
 //
@@ -31,7 +31,7 @@ func newInMemoryDBs(t *testing.T) (*sql.DB, *sql.DB) {
 	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
 		t.Fatalf("EnsurePlayerSchema: %v", err)
 	}
-	// Append-only #23046 : EnsurePlayerSchema crée la table append-only (id+stage) ;
+	// Append-only #23645 : EnsurePlayerSchema crée la table append-only (id+stage) ;
 	// cet appel crée la vue player_match_enrichment_latest (lue par le post-sync).
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerDB); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
@@ -138,42 +138,6 @@ func makeHistory(matchIDs ...string) []MatchHistoryEntry {
 	return entries
 }
 
-// ── Deduplication ────────────────────────────────────────────────────────────
-
-func TestLoadKnownMatchIDs_Deduplication(t *testing.T) {
-	playerDB := openMemDB(t)
-	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
-		t.Fatalf("schema: %v", err)
-	}
-	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerDB); err != nil {
-		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
-	}
-
-	// Insert some known matches
-	for _, id := range []string{"match-old-1", "match-old-2", "match-old-3"} {
-		if err := UpsertPlayerEnrichment(t.Context(), playerDB, id, ""); err != nil {
-			t.Fatalf("UpsertPlayerEnrichment: %v", err)
-		}
-	}
-
-	known, err := loadKnownMatchIDs(t.Context(), playerDB, nil, "")
-	if err != nil {
-		t.Fatalf("loadKnownMatchIDs: %v", err)
-	}
-
-	if len(known) != 3 {
-		t.Errorf("attendu 3 match_ids connus, obtenu %d", len(known))
-	}
-	for _, id := range []string{"match-old-1", "match-old-2", "match-old-3"} {
-		if !known[id] {
-			t.Errorf("match_id %s manquant dans known map", id)
-		}
-	}
-	if known["match-new"] {
-		t.Error("match-new ne devrait pas être dans la map")
-	}
-}
-
 // ── RunDelta garde-fous ──────────────────────────────────────────────────────
 
 func TestRunDelta_EmptyHistory(t *testing.T) {
@@ -223,12 +187,12 @@ func TestSetSyncMeta_ReadBack(t *testing.T) {
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	if err := SetSyncMeta(t.Context(), playerDB, "last_delta_sync", now); err != nil {
+	if err := SetSyncMeta(t.Context(), playerDB, "cle_de_test", now); err != nil {
 		t.Fatalf("SetSyncMeta: %v", err)
 	}
 
 	var val string
-	err := playerDB.QueryRow("SELECT value FROM sync_meta WHERE key = 'last_delta_sync'").Scan(&val)
+	err := playerDB.QueryRow("SELECT value FROM sync_meta WHERE key = 'cle_de_test'").Scan(&val)
 	if err != nil {
 		t.Fatalf("QueryRow: %v", err)
 	}

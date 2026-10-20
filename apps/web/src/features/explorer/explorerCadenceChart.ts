@@ -44,9 +44,9 @@ export function buildCadenceBarsOption(
 ): EChartsCoreOption {
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
-  const fragsColor = resolveToken('chart-series-1')
-  const deathsColor = resolveToken('outcome-loss')
-  const assistsColor = resolveToken('chart-series-3')
+  const fragsColor = resolveToken('stat-kills')
+  const deathsColor = resolveToken('stat-deaths')
+  const assistsColor = resolveToken('stat-assists')
   const fmt = (v: number) => v.toFixed(fractionDigits)
 
   return {

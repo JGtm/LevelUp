@@ -43,7 +43,7 @@ type CombatYield struct {
 }
 
 // Repère de normalisation des barres OC/DR — frontière élite mondiale (cf.
-// .ai/PLAN_COMBAT_PROFILE_RECALIBRATION.md). Sert UNIQUEMENT à NormalizeForBar
+// .ai/archive/V7/PLAN_COMBAT_PROFILE_RECALIBRATION.md). Sert UNIQUEMENT à NormalizeForBar
 // (échelle visuelle des jauges) ; distinct des bandes de classification.
 const (
 	OffensiveConversionP80 = 0.90
@@ -179,7 +179,7 @@ type bandThreshold struct {
 
 // Bornes de classification — 5 bandes par axe, calibrées sur la distribution des
 // world leaders (top-100 mondial, table world_player_season_stats) + validation
-// terrain (cf. .ai/PLAN_COMBAT_PROFILE_RECALIBRATION.md). DISTINCTES des
+// terrain (cf. .ai/archive/V7/PLAN_COMBAT_PROFILE_RECALIBRATION.md). DISTINCTES des
 // constantes P80 ci-dessus, qui ne servent qu'à la normalisation visuelle des
 // barres (NormalizeForBar).
 var (

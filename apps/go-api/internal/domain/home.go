@@ -238,15 +238,26 @@ type HighlightSlide struct {
 
 // RecentMatchItem représente un match récent dans la timeline.
 type RecentMatchItem struct {
-	MatchID         string     `json:"match_id"`
-	Title           string     `json:"title"`
-	Detail          string     `json:"detail"`
-	StartedAt       *time.Time `json:"started_at,omitempty"`
-	OutcomeLabel    string     `json:"outcome_label"`
-	OutcomeTone     string     `json:"outcome_tone"`
-	ScoreLabel      *string    `json:"score_label,omitempty"`
-	NarrativeBadges []string   `json:"narrative_badges,omitempty"`
-	IsFavorite      bool       `json:"is_favorite"`
+	MatchID   string     `json:"match_id"`
+	Detail    string     `json:"detail"`
+	StartedAt *time.Time `json:"started_at,omitempty"`
+	// OutcomeLabel supprimé le 2026-09-07 (D4/D5, lot Q4) : 0 lecteur dans
+	// apps/web/src/features/home (grep vérifié) — le mot FR/EN venait de deux maps Go
+	// (home_locale.go), la 3e source du même mot avec match_history et l'accueil legacy.
+	// git garde l'historique si un lecteur apparaît un jour ; alors passer par la clé
+	// canonique OutcomeTone (win|loss|tie|dnf) + useOutcomeLabel côté web.
+	//
+	// Title (composite Go "<mot d'issue> · <carte>") supprimé le 2026-09-07 (lot M5,
+	// L2) : seul lecteur web (MatchCard.buildMatchHeading) ne l'utilisait qu'en
+	// DERNIER repli, quand map_ui ET mode_ui manquaient tous les deux — un cas où le
+	// mot d'issue résolu côté Go n'apportait rien de plus qu'un texte de repli
+	// générique. Le web compose désormais le repli depuis les clés déjà servies
+	// (OutcomeTone est la clé canonique win|loss|tie|dnf, cf. outcomes.toml) : plus
+	// besoin d'un texte pré-assemblé côté serveur pour ce DTO. git garde l'historique.
+	OutcomeTone     string   `json:"outcome_tone"`
+	ScoreLabel      *string  `json:"score_label,omitempty"`
+	NarrativeBadges []string `json:"narrative_badges,omitempty"`
+	IsFavorite      bool     `json:"is_favorite"`
 	// S56 — champs enrichis pour MatchCard
 	MapUI                    *string `json:"map_ui,omitempty"`
 	ModeUI                   *string `json:"mode_ui,omitempty"`
@@ -294,6 +305,29 @@ type RecentMatchItem struct {
 	// IsRanked : true si la playlist est classée (CSR officiel).
 	// Source : canonical.MatchSummary.IsRanked (issu de match_registry.is_ranked).
 	IsRanked bool `json:"is_ranked,omitempty"`
+	// HasReplay : un artefact de rejeu 2D existe pour ce match — la tuile peut donc
+	// porter un lien vers la page de rejeu. Résolu en UN listing de dossier par requête
+	// (port.ReplayAvailability), jamais un accès disque par tuile. Faux/absent quand le
+	// titre n'a pas de rejeu construit : le front n'affiche alors rien (pas de lien mort).
+	HasReplay bool `json:"has_replay,omitempty"`
+	// AssistedFrags : frags du joueur assistés par un coéquipier sur ce match, par tranche
+	// de part de dégâts, rapportés aux frags officiels (Kills), règle des bases de
+	// relation_assists.go. Nil quand le film du match ne porte pas l'assistance (film non
+	// décodé, titre sans décodeur) : la tuile n'affiche alors rien.
+	AssistedFrags *MatchAssistedFrags `json:"assisted_frags,omitempty"`
+	// AnalysisPending : le match est synchronisé mais l'analyse de son film n'est pas finie
+	// (frags assistés, citations ou rejeu 2D encore à venir) ; la tuile le dit au lieu d'afficher
+	// des trous. Règle : analysis.IsAnalysisPending. Faux/absent hors du titre qui analyse des
+	// films, et au-delà de analysis.AnalysisPendingWindow après la synchro.
+	AnalysisPending bool `json:"analysis_pending,omitempty"`
+	// AnalysisPendingParts : les causes de AnalysisPending (`AnalysisPart*`, ordre stable
+	// kill_source, citations, replay), pour que chaque emplacement de la tuile regarde la
+	// sienne. Invariant : AnalysisPending == (len(AnalysisPendingParts) > 0).
+	AnalysisPendingParts []string `json:"analysis_pending_parts,omitempty"`
+	// AnalysisState : `in_progress` si un décodage de film tient le verrou machine pour ce match,
+	// `queued` sinon (`AnalysisState*`). Posé seulement quand AnalysisPending est vrai. Règle :
+	// analysis.AnalysisStateOf.
+	AnalysisState string `json:"analysis_state,omitempty"`
 }
 
 // RecentMatchMedal est une médaille compacte pour l'affichage dans MatchCard.

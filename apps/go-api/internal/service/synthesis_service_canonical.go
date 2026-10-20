@@ -271,4 +271,4 @@ func applyBestRefsToOverview(ov *domain.SynthesisOverview, refs synthesisBestRef
 }
 
 // buildHighlightsPreviewCanonical est la variante canonical de
-// buildHighlightsPreview. Top/pire matchs sur les mÃªmes critÃ¨res
+// buildHighlightsPreview. Top/pire matchs sur les mêmes critères

@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/analysis/modelabel"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 )
@@ -61,7 +62,7 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	row := &MatchRegistryRow{
 		MatchID:      matchID,
 		StartTime:    startTime,
-		ModeCategory: modeCategoryOther,
+		ModeCategory: modelabel.CategoryOther,
 		FirstSyncBy:  syncBy,
 	}
 
@@ -85,8 +86,8 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	row.PairName = coalesceStrPtr(row.PairName, row.PairID)
 	row.GameVariantName = coalesceStrPtr(row.GameVariantName, row.GameVariantID)
 
-	// Flags
-	row.IsRanked = isRankedPlaylist(matchInfo)
+	// Flags. is_ranked n'est PAS décidé ici : le payload stats ne dit rien du classement. Il est
+	// posé par la règle unique (SkillShowsRankedMatch, csr_writes.go) quand le payload skill est lu.
 	row.IsFirefight = isFirefightMatch(matchInfo)
 
 	// SeasonID lu depuis le payload Halo (matchInfo["SeasonId"]). Pivote vers le
@@ -98,7 +99,7 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 		row.SeasonID = strPtrNonEmpty(sid)
 	}
 	if row.PairName != nil {
-		row.ModeCategory = determineModeCategory(*row.PairName)
+		row.ModeCategory = modelabel.InferCategory(*row.PairName)
 	}
 
 	// Durées
@@ -125,9 +126,16 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	}
 
 	// Team scores (depuis Teams[].Stats.CoreStats.Score)
-	t0, t1 := extractTeamScoresByID(matchJSON)
+	t0, t1 := ExtractTeamScoresByID(matchJSON)
 	row.Team0Score = t0
 	row.Team1Score = t1
+
+	// Manches (depuis Teams[].Stats.CoreStats.RoundsWon/Lost/Tied) — la seule grandeur qui
+	// dise le résultat quand le mode se décide aux manches (cf. ExtractTeamRoundsByID).
+	rw0, rw1, rTotal := ExtractTeamRoundsByID(matchJSON)
+	row.Team0RoundsWon = rw0
+	row.Team1RoundsWon = rw1
+	row.RoundsTotal = rTotal
 
 	// Team PersonalScore aggregates (somme par équipe sur Players[].PersonalScore).
 	// L'API ne fournit pas d'agrégat — on le calcule depuis les participants.

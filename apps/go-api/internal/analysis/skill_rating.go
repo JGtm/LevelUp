@@ -37,7 +37,7 @@ var compositeWeights = map[string]float64{
 	"medal_exploit":        0.04,
 	"offensive_conversion": 0.16,
 	"defensive_resistance": 0.06,
-	// Î£ = 1.02 â†’ renormalisÃ© automatiquement dans computeCompositeScore
+	// Σ = 1.02 → renormalisé automatiquement dans computeCompositeScore
 }
 
 var winFactors = map[int]float64{
@@ -168,7 +168,7 @@ func ComputeSkillRatingsBatch(
 }
 
 // trueskillUpdate met a jour mu/sigma apres un match.
-func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float64) (float64, float64) { //nolint:unparam // muOpp rÃ©servÃ© pour TrueSkill 2 complet
+func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float64) (float64, float64) { //nolint:unparam // muOpp réservé pour TrueSkill 2 complet
 	deltaMu := kElo * (actualScore - 0.5) * weightFactor
 	newMu := math.Max(minSigma, mu+deltaMu)
 
@@ -417,7 +417,7 @@ func splitParticipants(
 func computeEnemyStrength(
 	enemies []domain.ParticipantRow,
 	avgKE, playerMu float64,
-) (muOpp, sigmaOpp float64) { //nolint:unparam // sigmaOpp actuellement fixe Ã  defaultOpponentSigma, extensible
+) (muOpp, sigmaOpp float64) { //nolint:unparam // sigmaOpp actuellement fixe à defaultOpponentSigma, extensible
 	if len(enemies) == 0 {
 		return playerMu, defaultOpponentSigma
 	}

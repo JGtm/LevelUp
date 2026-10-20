@@ -1,0 +1,115 @@
+temoin       famille          base(2393d7db7)   HEAD    gains   pertes   chang.      duree base   cache  statut
+bcb6d393     ctf_mono_manche      77     77       22       14        3      9.11s cuite  A+F    PERTE
+fb1a1a72     ctf_multi_manche     77     77       39       19        3     22.96s cuite  A+F    PERTE
+d9781168     oddball              77     77       61       62        3     39.89s cuite  A+F    PERTE
+c75f33b8     assaut_bombe         77     77       41       37        4     11.24s cuite  A+F    PERTE
+bf15f7ab     slayer               77     77       24       18        3     16.31s cuite  A+F    PERTE
+51ebbc0f     deux_manches         77     77       39       28        3     16.75s cuite  A+F    PERTE
+084a804d     vehicules            77     77      111      105        6    1m36.5s cuite  A+F    PERTE
+0797ce72     region_index_2_bits     77     77       29        9        3     14.01s cuite  A+F    PERTE
+111fa685     version_39           77     77       85       76        6      31.7s cuite  A+F    PERTE
+e5adf7b2     version_40_build_1_11     77     77      109       65        6     38.24s cuite  A+F    PERTE
+60ae07c4     version_37           77     77        0        0        0     30.03s cuite  A+F    ok
+a349fea8     version_33_sans_identification     77     77        0        0        0   1m56.08s cuite  A+F    ok
+a521164d     version_33_build_1_4_1     77     77        0        0        0     32.94s cuite  A+F    ok
+11de8353     version_38_build_1_9_0     77     77       96       65        7     30.18s cuite  A+F    PERTE
+50247b26     version_31_sans_identification     77     77        0        0        0    1m7.51s cuite  A+F    ok
+bfecd02b     vehicules_v41_utilisateur     77     77       43       22        3     16.98s cuite  A+F    PERTE
+4f77afc1     equipement_origine_utilisateur     77     77      138       88       10   1m30.85s cuite  A+F    PERTE
+396cfc92     strongholds_zones     77     77       27        9        3     19.21s cuite  A+F    PERTE
+f75e7053     koth_collines        77     77       32       12        2     11.59s cuite  A+F    PERTE
+
+BANC DE VERITE (19 temoin(s)) — le verdict du gate :
+BANC DE VERITE — bcb6d393 : ok
+BANC DE VERITE — fb1a1a72 : ok
+BANC DE VERITE — d9781168 : ok
+BANC DE VERITE — c75f33b8 : ok
+BANC DE VERITE — bf15f7ab : ok
+BANC DE VERITE — 51ebbc0f : ok
+BANC DE VERITE — 084a804d : ok
+BANC DE VERITE — 0797ce72 : ok
+BANC DE VERITE — 111fa685 : ok
+BANC DE VERITE — e5adf7b2 : ok
+BANC DE VERITE — 60ae07c4 : ok
+BANC DE VERITE — a349fea8 : ok
+BANC DE VERITE — a521164d : ok
+BANC DE VERITE — 11de8353 : ok
+BANC DE VERITE — 50247b26 : ok
+BANC DE VERITE — bfecd02b : ok
+BANC DE VERITE — 4f77afc1 : ok
+BANC DE VERITE — 396cfc92 : ok
+BANC DE VERITE — f75e7053 : ok
+
+# filets en perte (tous temoins), par metrique (par-slot regroupes)
+    495 stances/duree-totale/par-slot/*
+     15 stances/duree-totale
+     15 coverage.continuousFire.holesOpenViewB
+      8 bursts/duree-totale/par-slot/*
+      7 coverage.continuousFire.holesKind
+      6 coverage.continuousFire.holesBlockBC
+      5 coverage.stances.forgottenBindings
+      5 coverage.stances.dropped
+      5 coverage.continuousFire.innerHoles
+      4 coverage.stances.refusedNews
+      4 coverage.stances.refusedNewFalseReads
+      4 coverage.continuousFire.noTrack
+      4 coverage.continuousFire.holeRuns
+      4 coverage.continuousFire.burstsWithHole
+      4 bursts.holes/total
+      4 bursts.holes/n
+      4 bursts.holes.t1/presents
+      4 bursts.holes.t0/presents
+      3 coverage.stances.desyncs
+      3 coverage.continuousFire.holesNotClosing
+      3 bursts.holes/duree-totale
+      2 coverage.stances.refusedNewUndecided
+      2 bursts/duree-totale
+      1 stances/par-kind/jumpDerived
+      1 coverage.stances.jumpsDerived
+      1 coverage.continuousFire.reached
+      1 coverage.continuousFire.published
+      1 coverage.continuousFire.ambiguous
+      1 bursts/n
+      1 bursts.w/presents
+      1 bursts.t1/presents
+      1 bursts.t0/presents
+      1 bursts.slot/presents
+      1 bursts.rate/presents
+      1 bursts.b1/presents
+      1 bursts.b0/presents
+
+# stances/duree-totale par temoin
+bcb6d393	7141	6889
+fb1a1a72	16482	16173
+d9781168	19523	16846
+c75f33b8	11986	8253
+bf15f7ab	9248	8447
+51ebbc0f	12213	10196
+084a804d	79797	75286
+0797ce72	7965	7874
+111fa685	42943	41581
+e5adf7b2	40506	37691
+11de8353	33194	32551
+bfecd02b	9687	9385
+4f77afc1	71282	67050
+396cfc92	10516	9881
+f75e7053	9269	8819
+# coverage.continuousFire.holesOpenViewB par temoin
+bcb6d393	12336	12730
+fb1a1a72	576	615
+d9781168	36	62
+c75f33b8	92	146
+bf15f7ab	157	165
+51ebbc0f	83	129
+084a804d	236	510
+0797ce72	577	591
+111fa685	104	238
+e5adf7b2	150	235
+11de8353	165	242
+bfecd02b	34	54
+4f77afc1	441	683
+396cfc92	200	232
+f75e7053	113	199
+TELEMETRIE (1 valeur(s) — affichee, jamais comptee au verdict) :
+    coverage.decoder.grammarRev                          grammar-2026-10-03.2 -> grammar-2026-10-04          19 temoin(s)
+rc=1

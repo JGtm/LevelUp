@@ -12,6 +12,14 @@
 // Sûr : en --commit, les UPDATE sont séquentiels single-connection (aucune
 // pression concurrente → pas de risque ART). Les rejets (negative,
 // suspicious_high, no_data) n'écrivent que t0_quality, real_start_time reste NULL.
+//
+// ⚠ CE T0 EST ESTIMÉ, ET IL NE PRIME PLUS. Depuis le 2026-09-02 le coup d'envoi peut
+// être MESURÉ dans le film (`cmd/backfill_t0_film`, t0_quality = `film_movement`), et la
+// mesure bat l'estimation : écart-type 9 752 ms contre 12 764 ms sur les 49 matchs au
+// T0-API sain, aucune valeur invraisemblable côté film, là où l'API rend ~0 ms sur 10-15 %
+// des matchs. Les lignes déjà marquées `film_movement` sont donc ÉCARTÉES du commit —
+// sans quoi une passe de rattrapage de ce binaire ANNULERAIT silencieusement la réparation
+// (décision D2 du plan T0-film).
 package main
 
 import (
@@ -68,12 +76,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	type result struct {
-		matchID string
-		startMS int64
-		t0      int64
-		quality timeline.T0Quality
-	}
 	results := make([]result, 0, len(starts))
 	dist := map[timeline.T0Quality]int{}
 	var computedT0s []int64
@@ -89,51 +91,122 @@ func main() {
 
 	printDistribution(len(starts), dist, computedT0s)
 
+	// LA GARDE : un T0 MESURÉ dans le film ne se laisse pas écraser par une estimation.
+	films, err := loadFilmT0Matches(db)
+	if err != nil {
+		fmt.Println("load t0_quality film_movement:", err)
+		os.Exit(1)
+	}
+	results, proteges := ecarterLesFilms(results, films)
+	fmt.Printf("  protégés par le film (t0_quality=%s, non réécrits) : %d\n",
+		timeline.T0QualityFilmMovement, proteges)
+
 	if !*commit {
 		fmt.Println("\n[DRY-RUN] aucune écriture. Relancer avec --commit pour persister.")
 		return
 	}
+	written, err := commitResults(db, results)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Printf("\n[COMMIT] %d lignes mises à jour.\n", written)
+}
 
-	// --- COMMIT : UPDATE séquentiels dans une transaction ---
+// result : le T0 estimé d'un match et sa qualité, prêts à écrire.
+type result struct {
+	matchID string
+	startMS int64
+	t0      int64
+	quality timeline.T0Quality
+}
+
+// commitResults écrit les résultats : UPDATE séquentiels dans une transaction.
+func commitResults(db *sql.DB, results []result) (int, error) {
 	tx, err := db.Begin()
 	if err != nil {
-		fmt.Println("begin tx:", err)
-		os.Exit(1)
+		return 0, fmt.Errorf("begin tx: %w", err)
 	}
 	updComputed, err := tx.Prepare(`UPDATE match_registry SET real_start_time = ?, t0_quality = ? WHERE match_id = ?`)
 	if err != nil {
-		fmt.Println("prepare computed:", err)
-		os.Exit(1)
+		_ = tx.Rollback()
+		return 0, fmt.Errorf("prepare computed: %w", err)
 	}
 	updRejected, err := tx.Prepare(`UPDATE match_registry SET t0_quality = ? WHERE match_id = ?`)
 	if err != nil {
-		fmt.Println("prepare rejected:", err)
-		os.Exit(1)
+		_ = tx.Rollback()
+		return 0, fmt.Errorf("prepare rejected: %w", err)
 	}
-
 	written := 0
 	for _, r := range results {
+		var execErr error
 		if r.quality.Computed() {
 			gameplayStartUTC := time.UnixMilli(r.startMS + r.t0).UTC()
-			if _, err := updComputed.Exec(gameplayStartUTC, string(r.quality), r.matchID); err != nil {
-				_ = tx.Rollback()
-				fmt.Printf("update computed %s: %v\n", r.matchID, err)
-				os.Exit(1)
-			}
+			_, execErr = updComputed.Exec(gameplayStartUTC, string(r.quality), r.matchID)
 		} else {
-			if _, err := updRejected.Exec(string(r.quality), r.matchID); err != nil {
-				_ = tx.Rollback()
-				fmt.Printf("update rejected %s: %v\n", r.matchID, err)
-				os.Exit(1)
-			}
+			_, execErr = updRejected.Exec(string(r.quality), r.matchID)
+		}
+		if execErr != nil {
+			_ = tx.Rollback()
+			return 0, fmt.Errorf("update %s: %w", r.matchID, execErr)
 		}
 		written++
 	}
 	if err := tx.Commit(); err != nil {
-		fmt.Println("commit tx:", err)
-		os.Exit(1)
+		return 0, fmt.Errorf("commit tx: %w", err)
 	}
-	fmt.Printf("\n[COMMIT] %d lignes mises à jour.\n", written)
+	return written, nil
+}
+
+// ecarterLesFilms retire les matchs dont le T0 vient DÉJÀ du film. Rend la liste gardée et
+// le nombre d'écartés.
+//
+// L'ORDRE DES MATCHS RESTANTS EST PRÉSERVÉ : deux passages écrivent dans le même ordre.
+func ecarterLesFilms(results []result, films map[string]bool) ([]result, int) {
+	if len(films) == 0 {
+		return results, 0
+	}
+	gardes := make([]result, 0, len(results))
+	for _, r := range results {
+		if films[r.matchID] {
+			continue
+		}
+		gardes = append(gardes, r)
+	}
+	return gardes, len(results) - len(gardes)
+}
+
+// loadFilmT0Matches rend les matchs dont `t0_quality` vaut déjà `film_movement`.
+//
+// LA COLONNE PEUT NE PAS EXISTER sur une base antérieure à la migration
+// `shared_add_t0_quality` : aucune ligne ne peut alors être marquée, et l'ensemble VIDE est
+// la réponse exacte — pas une dégradation. Toute autre erreur remonte : une garde qui
+// s'éteint en silence ne garde rien.
+func loadFilmT0Matches(db *sql.DB) (map[string]bool, error) {
+	var cols int
+	if err := db.QueryRow(`
+		SELECT COUNT(*) FROM information_schema.columns
+		WHERE table_name = 'match_registry' AND column_name = 't0_quality'`).Scan(&cols); err != nil {
+		return nil, err
+	}
+	out := map[string]bool{}
+	if cols == 0 {
+		return out, nil
+	}
+	rows, err := db.Query(`SELECT match_id FROM match_registry WHERE t0_quality = ?`,
+		string(timeline.T0QualityFilmMovement))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out[id] = true
+	}
+	return out, rows.Err()
 }
 
 // loadMatchStarts charge le start UTC canonique de chaque match.

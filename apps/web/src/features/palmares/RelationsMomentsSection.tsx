@@ -109,7 +109,6 @@ export function RelationsMomentsSection({ playerSlug, filterContext, filterHash,
             <RelationsMomentsHeatmap
               cells={cells}
               bucketLabels={bucketLabels}
-              legendLabel={text.heatmapLegend}
               emptyMessage={text.heatmapEmpty}
               tooltipText={tooltipText}
             />

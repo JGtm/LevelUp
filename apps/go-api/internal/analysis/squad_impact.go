@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 // =============================================================================
@@ -34,9 +35,9 @@ func ComputeImpactSummary(
 			byMatch[e.MatchID] = &matchEvents{}
 		}
 		switch e.EventType {
-		case EventTypeKill:
+		case highlightevent.EventTypeKill:
 			byMatch[e.MatchID].kills = append(byMatch[e.MatchID].kills, e)
-		case EventTypeDeath:
+		case highlightevent.EventTypeDeath:
 			byMatch[e.MatchID].deaths = append(byMatch[e.MatchID].deaths, e)
 		}
 	}

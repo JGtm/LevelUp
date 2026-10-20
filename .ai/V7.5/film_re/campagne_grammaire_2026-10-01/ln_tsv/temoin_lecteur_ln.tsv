@@ -1,0 +1,1793 @@
+film	build	table	cle	n
+0797ce72	HI_1_13_0	arret	localise · non porte 15	109
+0797ce72	HI_1_13_0	arret	localise · non porte 39	91
+0797ce72	HI_1_13_0	arret	localise · non porte 5	805
+0797ce72	HI_1_13_0	arret	localise · non porte 6	102
+0797ce72	HI_1_13_0	arret	localise · non porte 85	72
+0797ce72	HI_1_13_0	arret	non localise · non porte 12	1
+0797ce72	HI_1_13_0	arret	non localise · non porte 15	6
+0797ce72	HI_1_13_0	arret	non localise · non porte 39	4
+0797ce72	HI_1_13_0	arret	non localise · non porte 5	72
+0797ce72	HI_1_13_0	arret	non localise · non porte 6	12
+0797ce72	HI_1_13_0	gain	ferme	141
+0797ce72	HI_1_13_0	gain	non ferme	69
+0797ce72	HI_1_13_0	genre_accord	0	441
+0797ce72	HI_1_13_0	genre_accord	1	118
+0797ce72	HI_1_13_0	genre_accord	103	41
+0797ce72	HI_1_13_0	genre_accord	11	9
+0797ce72	HI_1_13_0	genre_accord	21	139
+0797ce72	HI_1_13_0	genre_accord	36	653
+0797ce72	HI_1_13_0	genre_accord	38	428
+0797ce72	HI_1_13_0	genre_accord	4	1
+0797ce72	HI_1_13_0	genre_accord	40	47
+0797ce72	HI_1_13_0	genre_accord	7	129
+0797ce72	HI_1_13_0	genre_accord	75	170
+0797ce72	HI_1_13_0	genre_accord	76	151
+0797ce72	HI_1_13_0	genre_accord	82	395
+0797ce72	HI_1_13_0	genre_accord	9	105
+0797ce72	HI_1_13_0	genre_accord par chaine	0	32
+0797ce72	HI_1_13_0	genre_accord par chaine	1	6
+0797ce72	HI_1_13_0	genre_accord par chaine	103	3
+0797ce72	HI_1_13_0	genre_accord par chaine	11	4
+0797ce72	HI_1_13_0	genre_accord par chaine	21	12
+0797ce72	HI_1_13_0	genre_accord par chaine	36	61
+0797ce72	HI_1_13_0	genre_accord par chaine	38	39
+0797ce72	HI_1_13_0	genre_accord par chaine	40	5
+0797ce72	HI_1_13_0	genre_accord par chaine	7	10
+0797ce72	HI_1_13_0	genre_accord par chaine	75	13
+0797ce72	HI_1_13_0	genre_accord par chaine	76	9
+0797ce72	HI_1_13_0	genre_accord par chaine	82	359
+0797ce72	HI_1_13_0	genre_accord par chaine	9	12
+0797ce72	HI_1_13_0	genre_desaccord	0	16
+0797ce72	HI_1_13_0	genre_desaccord	1	1
+0797ce72	HI_1_13_0	genre_desaccord	36	5
+0797ce72	HI_1_13_0	genre_desaccord	7	1
+0797ce72	HI_1_13_0	genre_desaccord	75	2
+0797ce72	HI_1_13_0	genre_desaccord	82	99
+0797ce72	HI_1_13_0	temoin	accord	1980
+0797ce72	HI_1_13_0	temoin	accord par chaine	460
+0797ce72	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	3
+0797ce72	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	9
+0797ce72	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	3
+0797ce72	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	5
+0797ce72	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	3
+0797ce72	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	1
+0797ce72	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+0797ce72	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	9
+0797ce72	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	5
+0797ce72	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+0797ce72	HI_1_13_0	temoin_par_debut	fermeture · accord	27
+0797ce72	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	1
+0797ce72	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E > S · depuis E ferme · depuis S ferme	1
+0797ce72	HI_1_13_0	temoin_par_debut	signature · accord	1953
+0797ce72	HI_1_13_0	temoin_par_debut	signature · accord par chaine	460
+0797ce72	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E ferme · depuis S ferme	2
+0797ce72	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	3
+0797ce72	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	3
+084a804d	HI_1_10_0	arret	localise · hors genre	102
+084a804d	HI_1_10_0	arret	localise · non porte 10	10
+084a804d	HI_1_10_0	arret	localise · non porte 101	9
+084a804d	HI_1_10_0	arret	localise · non porte 102	2
+084a804d	HI_1_10_0	arret	localise · non porte 106	9
+084a804d	HI_1_10_0	arret	localise · non porte 107	4
+084a804d	HI_1_10_0	arret	localise · non porte 110	9
+084a804d	HI_1_10_0	arret	localise · non porte 111	7
+084a804d	HI_1_10_0	arret	localise · non porte 112	11
+084a804d	HI_1_10_0	arret	localise · non porte 113	10
+084a804d	HI_1_10_0	arret	localise · non porte 114	13
+084a804d	HI_1_10_0	arret	localise · non porte 115	14
+084a804d	HI_1_10_0	arret	localise · non porte 116	12
+084a804d	HI_1_10_0	arret	localise · non porte 117	14
+084a804d	HI_1_10_0	arret	localise · non porte 12	18
+084a804d	HI_1_10_0	arret	localise · non porte 13	8
+084a804d	HI_1_10_0	arret	localise · non porte 14	13
+084a804d	HI_1_10_0	arret	localise · non porte 15	2155
+084a804d	HI_1_10_0	arret	localise · non porte 17	31
+084a804d	HI_1_10_0	arret	localise · non porte 18	8
+084a804d	HI_1_10_0	arret	localise · non porte 19	3
+084a804d	HI_1_10_0	arret	localise · non porte 20	16
+084a804d	HI_1_10_0	arret	localise · non porte 27	8
+084a804d	HI_1_10_0	arret	localise · non porte 28	11
+084a804d	HI_1_10_0	arret	localise · non porte 29	6
+084a804d	HI_1_10_0	arret	localise · non porte 30	10
+084a804d	HI_1_10_0	arret	localise · non porte 32	11
+084a804d	HI_1_10_0	arret	localise · non porte 34	5
+084a804d	HI_1_10_0	arret	localise · non porte 35	15
+084a804d	HI_1_10_0	arret	localise · non porte 39	253
+084a804d	HI_1_10_0	arret	localise · non porte 43	3
+084a804d	HI_1_10_0	arret	localise · non porte 5	828
+084a804d	HI_1_10_0	arret	localise · non porte 50	7
+084a804d	HI_1_10_0	arret	localise · non porte 51	4
+084a804d	HI_1_10_0	arret	localise · non porte 52	9
+084a804d	HI_1_10_0	arret	localise · non porte 55	9
+084a804d	HI_1_10_0	arret	localise · non porte 56	3
+084a804d	HI_1_10_0	arret	localise · non porte 6	353
+084a804d	HI_1_10_0	arret	localise · non porte 60	2
+084a804d	HI_1_10_0	arret	localise · non porte 61	1
+084a804d	HI_1_10_0	arret	localise · non porte 62	2
+084a804d	HI_1_10_0	arret	localise · non porte 64	4
+084a804d	HI_1_10_0	arret	localise · non porte 65	6
+084a804d	HI_1_10_0	arret	localise · non porte 66	9
+084a804d	HI_1_10_0	arret	localise · non porte 67	4
+084a804d	HI_1_10_0	arret	localise · non porte 68	6
+084a804d	HI_1_10_0	arret	localise · non porte 69	4
+084a804d	HI_1_10_0	arret	localise · non porte 70	8
+084a804d	HI_1_10_0	arret	localise · non porte 71	6
+084a804d	HI_1_10_0	arret	localise · non porte 72	10
+084a804d	HI_1_10_0	arret	localise · non porte 73	12
+084a804d	HI_1_10_0	arret	localise · non porte 74	24
+084a804d	HI_1_10_0	arret	localise · non porte 77	7
+084a804d	HI_1_10_0	arret	localise · non porte 78	13
+084a804d	HI_1_10_0	arret	localise · non porte 79	9
+084a804d	HI_1_10_0	arret	localise · non porte 81	1
+084a804d	HI_1_10_0	arret	localise · non porte 83	3
+084a804d	HI_1_10_0	arret	localise · non porte 85	134
+084a804d	HI_1_10_0	arret	localise · non porte 87	3
+084a804d	HI_1_10_0	arret	localise · non porte 89	1
+084a804d	HI_1_10_0	arret	localise · non porte 90	7
+084a804d	HI_1_10_0	arret	localise · non porte 91	6
+084a804d	HI_1_10_0	arret	localise · non porte 93	11
+084a804d	HI_1_10_0	arret	localise · non porte 94	5
+084a804d	HI_1_10_0	arret	localise · non porte 95	2
+084a804d	HI_1_10_0	arret	localise · non porte 96	6
+084a804d	HI_1_10_0	arret	localise · non porte 97	10
+084a804d	HI_1_10_0	arret	localise · non porte 99	11
+084a804d	HI_1_10_0	arret	non localise · hors genre	27
+084a804d	HI_1_10_0	arret	non localise · non porte 10	1
+084a804d	HI_1_10_0	arret	non localise · non porte 101	1
+084a804d	HI_1_10_0	arret	non localise · non porte 102	1
+084a804d	HI_1_10_0	arret	non localise · non porte 106	1
+084a804d	HI_1_10_0	arret	non localise · non porte 110	10
+084a804d	HI_1_10_0	arret	non localise · non porte 111	5
+084a804d	HI_1_10_0	arret	non localise · non porte 112	4
+084a804d	HI_1_10_0	arret	non localise · non porte 113	4
+084a804d	HI_1_10_0	arret	non localise · non porte 114	2
+084a804d	HI_1_10_0	arret	non localise · non porte 115	4
+084a804d	HI_1_10_0	arret	non localise · non porte 116	1
+084a804d	HI_1_10_0	arret	non localise · non porte 117	7
+084a804d	HI_1_10_0	arret	non localise · non porte 12	7
+084a804d	HI_1_10_0	arret	non localise · non porte 13	3
+084a804d	HI_1_10_0	arret	non localise · non porte 14	4
+084a804d	HI_1_10_0	arret	non localise · non porte 15	662
+084a804d	HI_1_10_0	arret	non localise · non porte 17	10
+084a804d	HI_1_10_0	arret	non localise · non porte 18	4
+084a804d	HI_1_10_0	arret	non localise · non porte 19	3
+084a804d	HI_1_10_0	arret	non localise · non porte 20	5
+084a804d	HI_1_10_0	arret	non localise · non porte 27	3
+084a804d	HI_1_10_0	arret	non localise · non porte 28	4
+084a804d	HI_1_10_0	arret	non localise · non porte 29	6
+084a804d	HI_1_10_0	arret	non localise · non porte 32	4
+084a804d	HI_1_10_0	arret	non localise · non porte 34	1
+084a804d	HI_1_10_0	arret	non localise · non porte 35	2
+084a804d	HI_1_10_0	arret	non localise · non porte 39	45
+084a804d	HI_1_10_0	arret	non localise · non porte 43	1
+084a804d	HI_1_10_0	arret	non localise · non porte 5	238
+084a804d	HI_1_10_0	arret	non localise · non porte 50	2
+084a804d	HI_1_10_0	arret	non localise · non porte 51	1
+084a804d	HI_1_10_0	arret	non localise · non porte 52	3
+084a804d	HI_1_10_0	arret	non localise · non porte 56	1
+084a804d	HI_1_10_0	arret	non localise · non porte 6	79
+084a804d	HI_1_10_0	arret	non localise · non porte 60	1
+084a804d	HI_1_10_0	arret	non localise · non porte 61	3
+084a804d	HI_1_10_0	arret	non localise · non porte 62	2
+084a804d	HI_1_10_0	arret	non localise · non porte 64	2
+084a804d	HI_1_10_0	arret	non localise · non porte 65	2
+084a804d	HI_1_10_0	arret	non localise · non porte 66	3
+084a804d	HI_1_10_0	arret	non localise · non porte 67	4
+084a804d	HI_1_10_0	arret	non localise · non porte 68	1
+084a804d	HI_1_10_0	arret	non localise · non porte 70	2
+084a804d	HI_1_10_0	arret	non localise · non porte 71	3
+084a804d	HI_1_10_0	arret	non localise · non porte 72	7
+084a804d	HI_1_10_0	arret	non localise · non porte 73	2
+084a804d	HI_1_10_0	arret	non localise · non porte 74	5
+084a804d	HI_1_10_0	arret	non localise · non porte 77	2
+084a804d	HI_1_10_0	arret	non localise · non porte 78	5
+084a804d	HI_1_10_0	arret	non localise · non porte 79	1
+084a804d	HI_1_10_0	arret	non localise · non porte 85	11
+084a804d	HI_1_10_0	arret	non localise · non porte 87	6
+084a804d	HI_1_10_0	arret	non localise · non porte 89	2
+084a804d	HI_1_10_0	arret	non localise · non porte 90	1
+084a804d	HI_1_10_0	arret	non localise · non porte 91	4
+084a804d	HI_1_10_0	arret	non localise · non porte 93	2
+084a804d	HI_1_10_0	arret	non localise · non porte 94	2
+084a804d	HI_1_10_0	arret	non localise · non porte 95	1
+084a804d	HI_1_10_0	arret	non localise · non porte 96	1
+084a804d	HI_1_10_0	arret	non localise · non porte 97	2
+084a804d	HI_1_10_0	gain	ferme	104
+084a804d	HI_1_10_0	gain	non ferme	2043
+084a804d	HI_1_10_0	genre_accord	0	1990
+084a804d	HI_1_10_0	genre_accord	1	197
+084a804d	HI_1_10_0	genre_accord	100	9
+084a804d	HI_1_10_0	genre_accord	103	15
+084a804d	HI_1_10_0	genre_accord	11	11
+084a804d	HI_1_10_0	genre_accord	118	4
+084a804d	HI_1_10_0	genre_accord	2	12
+084a804d	HI_1_10_0	genre_accord	21	638
+084a804d	HI_1_10_0	genre_accord	22	35
+084a804d	HI_1_10_0	genre_accord	23	29
+084a804d	HI_1_10_0	genre_accord	36	2495
+084a804d	HI_1_10_0	genre_accord	38	690
+084a804d	HI_1_10_0	genre_accord	4	4
+084a804d	HI_1_10_0	genre_accord	40	34
+084a804d	HI_1_10_0	genre_accord	41	1
+084a804d	HI_1_10_0	genre_accord	47	15
+084a804d	HI_1_10_0	genre_accord	57	1
+084a804d	HI_1_10_0	genre_accord	59	1
+084a804d	HI_1_10_0	genre_accord	7	84
+084a804d	HI_1_10_0	genre_accord	75	301
+084a804d	HI_1_10_0	genre_accord	76	696
+084a804d	HI_1_10_0	genre_accord	82	2863
+084a804d	HI_1_10_0	genre_accord	9	222
+084a804d	HI_1_10_0	genre_accord par chaine	0	661
+084a804d	HI_1_10_0	genre_accord par chaine	1	88
+084a804d	HI_1_10_0	genre_accord par chaine	100	2
+084a804d	HI_1_10_0	genre_accord par chaine	103	4
+084a804d	HI_1_10_0	genre_accord par chaine	11	4
+084a804d	HI_1_10_0	genre_accord par chaine	118	1
+084a804d	HI_1_10_0	genre_accord par chaine	2	9
+084a804d	HI_1_10_0	genre_accord par chaine	21	181
+084a804d	HI_1_10_0	genre_accord par chaine	22	11
+084a804d	HI_1_10_0	genre_accord par chaine	23	10
+084a804d	HI_1_10_0	genre_accord par chaine	36	761
+084a804d	HI_1_10_0	genre_accord par chaine	38	181
+084a804d	HI_1_10_0	genre_accord par chaine	4	3
+084a804d	HI_1_10_0	genre_accord par chaine	40	11
+084a804d	HI_1_10_0	genre_accord par chaine	41	4
+084a804d	HI_1_10_0	genre_accord par chaine	44	1
+084a804d	HI_1_10_0	genre_accord par chaine	47	4
+084a804d	HI_1_10_0	genre_accord par chaine	58	1
+084a804d	HI_1_10_0	genre_accord par chaine	59	1
+084a804d	HI_1_10_0	genre_accord par chaine	7	26
+084a804d	HI_1_10_0	genre_accord par chaine	75	78
+084a804d	HI_1_10_0	genre_accord par chaine	76	176
+084a804d	HI_1_10_0	genre_accord par chaine	8	7
+084a804d	HI_1_10_0	genre_accord par chaine	82	1888
+084a804d	HI_1_10_0	genre_accord par chaine	9	69
+084a804d	HI_1_10_0	genre_desaccord	0	406
+084a804d	HI_1_10_0	genre_desaccord	1	60
+084a804d	HI_1_10_0	genre_desaccord	100	6
+084a804d	HI_1_10_0	genre_desaccord	103	12
+084a804d	HI_1_10_0	genre_desaccord	104	3
+084a804d	HI_1_10_0	genre_desaccord	105	10
+084a804d	HI_1_10_0	genre_desaccord	108	5
+084a804d	HI_1_10_0	genre_desaccord	109	14
+084a804d	HI_1_10_0	genre_desaccord	11	10
+084a804d	HI_1_10_0	genre_desaccord	118	7
+084a804d	HI_1_10_0	genre_desaccord	119	13
+084a804d	HI_1_10_0	genre_desaccord	120	9
+084a804d	HI_1_10_0	genre_desaccord	16	54
+084a804d	HI_1_10_0	genre_desaccord	2	10
+084a804d	HI_1_10_0	genre_desaccord	21	152
+084a804d	HI_1_10_0	genre_desaccord	22	9
+084a804d	HI_1_10_0	genre_desaccord	23	3
+084a804d	HI_1_10_0	genre_desaccord	24	11
+084a804d	HI_1_10_0	genre_desaccord	25	5
+084a804d	HI_1_10_0	genre_desaccord	26	11
+084a804d	HI_1_10_0	genre_desaccord	3	3
+084a804d	HI_1_10_0	genre_desaccord	31	1
+084a804d	HI_1_10_0	genre_desaccord	33	7
+084a804d	HI_1_10_0	genre_desaccord	36	2651
+084a804d	HI_1_10_0	genre_desaccord	37	8
+084a804d	HI_1_10_0	genre_desaccord	38	178
+084a804d	HI_1_10_0	genre_desaccord	4	16
+084a804d	HI_1_10_0	genre_desaccord	40	20
+084a804d	HI_1_10_0	genre_desaccord	41	2
+084a804d	HI_1_10_0	genre_desaccord	42	5
+084a804d	HI_1_10_0	genre_desaccord	44	3
+084a804d	HI_1_10_0	genre_desaccord	45	12
+084a804d	HI_1_10_0	genre_desaccord	46	2
+084a804d	HI_1_10_0	genre_desaccord	47	3
+084a804d	HI_1_10_0	genre_desaccord	48	10
+084a804d	HI_1_10_0	genre_desaccord	49	6
+084a804d	HI_1_10_0	genre_desaccord	5	2
+084a804d	HI_1_10_0	genre_desaccord	53	3
+084a804d	HI_1_10_0	genre_desaccord	54	1
+084a804d	HI_1_10_0	genre_desaccord	57	3
+084a804d	HI_1_10_0	genre_desaccord	58	8
+084a804d	HI_1_10_0	genre_desaccord	59	10
+084a804d	HI_1_10_0	genre_desaccord	6	3
+084a804d	HI_1_10_0	genre_desaccord	63	2
+084a804d	HI_1_10_0	genre_desaccord	7	37
+084a804d	HI_1_10_0	genre_desaccord	75	79
+084a804d	HI_1_10_0	genre_desaccord	76	300
+084a804d	HI_1_10_0	genre_desaccord	8	3
+084a804d	HI_1_10_0	genre_desaccord	80	9
+084a804d	HI_1_10_0	genre_desaccord	81	1
+084a804d	HI_1_10_0	genre_desaccord	82	1562
+084a804d	HI_1_10_0	genre_desaccord	83	4
+084a804d	HI_1_10_0	genre_desaccord	84	7
+084a804d	HI_1_10_0	genre_desaccord	86	8
+084a804d	HI_1_10_0	genre_desaccord	88	3
+084a804d	HI_1_10_0	genre_desaccord	9	88
+084a804d	HI_1_10_0	genre_desaccord	92	13
+084a804d	HI_1_10_0	genre_desaccord	98	12
+084a804d	HI_1_10_0	temoin	accord	4776
+084a804d	HI_1_10_0	temoin	accord par chaine	1958
+084a804d	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme au bit · depuis S non ferme	1
+084a804d	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	7
+084a804d	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	36
+084a804d	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	353
+084a804d	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	266
+084a804d	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	1873
+084a804d	HI_1_10_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	7
+084a804d	HI_1_10_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+084a804d	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	10
+084a804d	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme au bit	4
+084a804d	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	137
+084a804d	HI_1_10_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	36
+084a804d	HI_1_10_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	265
+084a804d	HI_1_10_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+084a804d	HI_1_10_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E non ferme · depuis S ferme au bit	3
+084a804d	HI_1_10_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	6
+084a804d	HI_1_10_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E non ferme · depuis S ferme	38
+084a804d	HI_1_10_0	temoin_par_debut	fermeture · desaccord · E > S · depuis E ferme · depuis S ferme	3
+084a804d	HI_1_10_0	temoin_par_debut	signature · accord	4776
+084a804d	HI_1_10_0	temoin_par_debut	signature · accord par chaine	1958
+084a804d	HI_1_10_0	temoin_par_debut	signature · desaccord · E < S · depuis E ferme au bit · depuis S non ferme	1
+084a804d	HI_1_10_0	temoin_par_debut	signature · desaccord · E < S · depuis E ferme · depuis S ferme	1
+084a804d	HI_1_10_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	315
+084a804d	HI_1_10_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	1
+084a804d	HI_1_10_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	1873
+084a804d	HI_1_10_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme	4
+084a804d	HI_1_10_0	temoin_par_debut	signature · desaccord · E > S · depuis E non ferme · depuis S ferme	10
+084a804d	HI_1_10_0	temoin_par_debut	signature · desaccord · E > S · depuis E non ferme · depuis S ferme au bit	1
+084a804d	HI_1_10_0	temoin_par_debut	signature · desaccord · E > S · depuis E non ferme · depuis S non ferme	137
+111fa685	HI_1_10_0	arret	localise · hors genre	8
+111fa685	HI_1_10_0	arret	localise · non porte 10	4
+111fa685	HI_1_10_0	arret	localise · non porte 101	1
+111fa685	HI_1_10_0	arret	localise · non porte 102	1
+111fa685	HI_1_10_0	arret	localise · non porte 106	1
+111fa685	HI_1_10_0	arret	localise · non porte 107	4
+111fa685	HI_1_10_0	arret	localise · non porte 110	1
+111fa685	HI_1_10_0	arret	localise · non porte 111	1
+111fa685	HI_1_10_0	arret	localise · non porte 112	1
+111fa685	HI_1_10_0	arret	localise · non porte 113	1
+111fa685	HI_1_10_0	arret	localise · non porte 115	2
+111fa685	HI_1_10_0	arret	localise · non porte 116	2
+111fa685	HI_1_10_0	arret	localise · non porte 117	2
+111fa685	HI_1_10_0	arret	localise · non porte 12	2
+111fa685	HI_1_10_0	arret	localise · non porte 13	2
+111fa685	HI_1_10_0	arret	localise · non porte 14	2
+111fa685	HI_1_10_0	arret	localise · non porte 15	127
+111fa685	HI_1_10_0	arret	localise · non porte 17	1
+111fa685	HI_1_10_0	arret	localise · non porte 18	5
+111fa685	HI_1_10_0	arret	localise · non porte 19	4
+111fa685	HI_1_10_0	arret	localise · non porte 20	4
+111fa685	HI_1_10_0	arret	localise · non porte 27	2
+111fa685	HI_1_10_0	arret	localise · non porte 28	3
+111fa685	HI_1_10_0	arret	localise · non porte 32	2
+111fa685	HI_1_10_0	arret	localise · non porte 34	4
+111fa685	HI_1_10_0	arret	localise · non porte 39	112
+111fa685	HI_1_10_0	arret	localise · non porte 43	4
+111fa685	HI_1_10_0	arret	localise · non porte 5	877
+111fa685	HI_1_10_0	arret	localise · non porte 50	1
+111fa685	HI_1_10_0	arret	localise · non porte 51	1
+111fa685	HI_1_10_0	arret	localise · non porte 52	3
+111fa685	HI_1_10_0	arret	localise · non porte 56	1
+111fa685	HI_1_10_0	arret	localise · non porte 6	296
+111fa685	HI_1_10_0	arret	localise · non porte 60	1
+111fa685	HI_1_10_0	arret	localise · non porte 64	4
+111fa685	HI_1_10_0	arret	localise · non porte 67	4
+111fa685	HI_1_10_0	arret	localise · non porte 68	1
+111fa685	HI_1_10_0	arret	localise · non porte 70	1
+111fa685	HI_1_10_0	arret	localise · non porte 72	2
+111fa685	HI_1_10_0	arret	localise · non porte 73	4
+111fa685	HI_1_10_0	arret	localise · non porte 74	2
+111fa685	HI_1_10_0	arret	localise · non porte 78	1
+111fa685	HI_1_10_0	arret	localise · non porte 79	1
+111fa685	HI_1_10_0	arret	localise · non porte 82	1
+111fa685	HI_1_10_0	arret	localise · non porte 85	80
+111fa685	HI_1_10_0	arret	localise · non porte 89	1
+111fa685	HI_1_10_0	arret	localise · non porte 91	5
+111fa685	HI_1_10_0	arret	localise · non porte 95	1
+111fa685	HI_1_10_0	arret	localise · non porte 96	2
+111fa685	HI_1_10_0	arret	localise · non porte 99	1
+111fa685	HI_1_10_0	arret	non localise · hors genre	7
+111fa685	HI_1_10_0	arret	non localise · non porte 10	3
+111fa685	HI_1_10_0	arret	non localise · non porte 101	2
+111fa685	HI_1_10_0	arret	non localise · non porte 102	1
+111fa685	HI_1_10_0	arret	non localise · non porte 112	1
+111fa685	HI_1_10_0	arret	non localise · non porte 113	1
+111fa685	HI_1_10_0	arret	non localise · non porte 115	2
+111fa685	HI_1_10_0	arret	non localise · non porte 13	1
+111fa685	HI_1_10_0	arret	non localise · non porte 14	1
+111fa685	HI_1_10_0	arret	non localise · non porte 15	110
+111fa685	HI_1_10_0	arret	non localise · non porte 18	3
+111fa685	HI_1_10_0	arret	non localise · non porte 19	4
+111fa685	HI_1_10_0	arret	non localise · non porte 20	3
+111fa685	HI_1_10_0	arret	non localise · non porte 27	1
+111fa685	HI_1_10_0	arret	non localise · non porte 29	3
+111fa685	HI_1_10_0	arret	non localise · non porte 32	1
+111fa685	HI_1_10_0	arret	non localise · non porte 34	2
+111fa685	HI_1_10_0	arret	non localise · non porte 39	27
+111fa685	HI_1_10_0	arret	non localise · non porte 43	1
+111fa685	HI_1_10_0	arret	non localise · non porte 5	363
+111fa685	HI_1_10_0	arret	non localise · non porte 50	1
+111fa685	HI_1_10_0	arret	non localise · non porte 52	2
+111fa685	HI_1_10_0	arret	non localise · non porte 56	2
+111fa685	HI_1_10_0	arret	non localise · non porte 6	96
+111fa685	HI_1_10_0	arret	non localise · non porte 60	1
+111fa685	HI_1_10_0	arret	non localise · non porte 67	7
+111fa685	HI_1_10_0	arret	non localise · non porte 68	1
+111fa685	HI_1_10_0	arret	non localise · non porte 69	1
+111fa685	HI_1_10_0	arret	non localise · non porte 70	1
+111fa685	HI_1_10_0	arret	non localise · non porte 74	1
+111fa685	HI_1_10_0	arret	non localise · non porte 85	4
+111fa685	HI_1_10_0	arret	non localise · non porte 89	1
+111fa685	HI_1_10_0	arret	non localise · non porte 91	1
+111fa685	HI_1_10_0	arret	non localise · non porte 93	1
+111fa685	HI_1_10_0	arret	non localise · non porte 94	2
+111fa685	HI_1_10_0	arret	non localise · non porte 95	1
+111fa685	HI_1_10_0	arret	non localise · non porte 97	1
+111fa685	HI_1_10_0	arret	non localise · non porte 99	1
+111fa685	HI_1_10_0	gain	ferme	100
+111fa685	HI_1_10_0	gain	non ferme	1111
+111fa685	HI_1_10_0	genre_accord	0	1144
+111fa685	HI_1_10_0	genre_accord	1	32
+111fa685	HI_1_10_0	genre_accord	103	51
+111fa685	HI_1_10_0	genre_accord	11	14
+111fa685	HI_1_10_0	genre_accord	118	1
+111fa685	HI_1_10_0	genre_accord	21	488
+111fa685	HI_1_10_0	genre_accord	22	1
+111fa685	HI_1_10_0	genre_accord	36	1012
+111fa685	HI_1_10_0	genre_accord	38	655
+111fa685	HI_1_10_0	genre_accord	40	52
+111fa685	HI_1_10_0	genre_accord	7	91
+111fa685	HI_1_10_0	genre_accord	75	139
+111fa685	HI_1_10_0	genre_accord	76	128
+111fa685	HI_1_10_0	genre_accord	82	1101
+111fa685	HI_1_10_0	genre_accord	9	83
+111fa685	HI_1_10_0	genre_accord par chaine	0	351
+111fa685	HI_1_10_0	genre_accord par chaine	1	18
+111fa685	HI_1_10_0	genre_accord par chaine	103	8
+111fa685	HI_1_10_0	genre_accord par chaine	11	7
+111fa685	HI_1_10_0	genre_accord par chaine	21	142
+111fa685	HI_1_10_0	genre_accord par chaine	36	340
+111fa685	HI_1_10_0	genre_accord par chaine	38	197
+111fa685	HI_1_10_0	genre_accord par chaine	40	10
+111fa685	HI_1_10_0	genre_accord par chaine	7	38
+111fa685	HI_1_10_0	genre_accord par chaine	75	54
+111fa685	HI_1_10_0	genre_accord par chaine	76	50
+111fa685	HI_1_10_0	genre_accord par chaine	82	581
+111fa685	HI_1_10_0	genre_accord par chaine	9	29
+111fa685	HI_1_10_0	genre_desaccord	0	200
+111fa685	HI_1_10_0	genre_desaccord	1	15
+111fa685	HI_1_10_0	genre_desaccord	100	1
+111fa685	HI_1_10_0	genre_desaccord	103	7
+111fa685	HI_1_10_0	genre_desaccord	104	2
+111fa685	HI_1_10_0	genre_desaccord	108	4
+111fa685	HI_1_10_0	genre_desaccord	11	6
+111fa685	HI_1_10_0	genre_desaccord	120	2
+111fa685	HI_1_10_0	genre_desaccord	16	3
+111fa685	HI_1_10_0	genre_desaccord	2	1
+111fa685	HI_1_10_0	genre_desaccord	21	74
+111fa685	HI_1_10_0	genre_desaccord	22	3
+111fa685	HI_1_10_0	genre_desaccord	23	2
+111fa685	HI_1_10_0	genre_desaccord	24	1
+111fa685	HI_1_10_0	genre_desaccord	25	3
+111fa685	HI_1_10_0	genre_desaccord	26	3
+111fa685	HI_1_10_0	genre_desaccord	3	2
+111fa685	HI_1_10_0	genre_desaccord	31	2
+111fa685	HI_1_10_0	genre_desaccord	33	3
+111fa685	HI_1_10_0	genre_desaccord	36	616
+111fa685	HI_1_10_0	genre_desaccord	38	103
+111fa685	HI_1_10_0	genre_desaccord	4	3
+111fa685	HI_1_10_0	genre_desaccord	40	9
+111fa685	HI_1_10_0	genre_desaccord	41	2
+111fa685	HI_1_10_0	genre_desaccord	42	6
+111fa685	HI_1_10_0	genre_desaccord	44	4
+111fa685	HI_1_10_0	genre_desaccord	45	2
+111fa685	HI_1_10_0	genre_desaccord	46	2
+111fa685	HI_1_10_0	genre_desaccord	47	3
+111fa685	HI_1_10_0	genre_desaccord	48	2
+111fa685	HI_1_10_0	genre_desaccord	49	1
+111fa685	HI_1_10_0	genre_desaccord	5	2
+111fa685	HI_1_10_0	genre_desaccord	54	1
+111fa685	HI_1_10_0	genre_desaccord	59	2
+111fa685	HI_1_10_0	genre_desaccord	7	33
+111fa685	HI_1_10_0	genre_desaccord	75	40
+111fa685	HI_1_10_0	genre_desaccord	76	12
+111fa685	HI_1_10_0	genre_desaccord	8	4
+111fa685	HI_1_10_0	genre_desaccord	80	3
+111fa685	HI_1_10_0	genre_desaccord	81	1
+111fa685	HI_1_10_0	genre_desaccord	82	580
+111fa685	HI_1_10_0	genre_desaccord	83	1
+111fa685	HI_1_10_0	genre_desaccord	84	1
+111fa685	HI_1_10_0	genre_desaccord	9	89
+111fa685	HI_1_10_0	genre_desaccord	92	1
+111fa685	HI_1_10_0	genre_desaccord	98	2
+111fa685	HI_1_10_0	temoin	accord	2547
+111fa685	HI_1_10_0	temoin	accord par chaine	1067
+111fa685	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	3
+111fa685	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	9
+111fa685	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	176
+111fa685	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	82
+111fa685	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	583
+111fa685	HI_1_10_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	2
+111fa685	HI_1_10_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+111fa685	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	3
+111fa685	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	11
+111fa685	HI_1_10_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	9
+111fa685	HI_1_10_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	82
+111fa685	HI_1_10_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+111fa685	HI_1_10_0	temoin_par_debut	fermeture · accord	2
+111fa685	HI_1_10_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	2
+111fa685	HI_1_10_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E non ferme · depuis S ferme	28
+111fa685	HI_1_10_0	temoin_par_debut	fermeture · desaccord · E > S · depuis E ferme · depuis S ferme	1
+111fa685	HI_1_10_0	temoin_par_debut	signature · accord	2545
+111fa685	HI_1_10_0	temoin_par_debut	signature · accord par chaine	1067
+111fa685	HI_1_10_0	temoin_par_debut	signature · desaccord · E < S · depuis E ferme · depuis S ferme	1
+111fa685	HI_1_10_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	148
+111fa685	HI_1_10_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	583
+111fa685	HI_1_10_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme	1
+111fa685	HI_1_10_0	temoin_par_debut	signature · desaccord · E > S · depuis E non ferme · depuis S ferme	3
+111fa685	HI_1_10_0	temoin_par_debut	signature · desaccord · E > S · depuis E non ferme · depuis S non ferme	11
+11de8353	HI_1_9_0	arret	localise · hors genre	7
+11de8353	HI_1_9_0	arret	localise · non porte 10	4
+11de8353	HI_1_9_0	arret	localise · non porte 101	4
+11de8353	HI_1_9_0	arret	localise · non porte 102	1
+11de8353	HI_1_9_0	arret	localise · non porte 106	1
+11de8353	HI_1_9_0	arret	localise · non porte 112	1
+11de8353	HI_1_9_0	arret	localise · non porte 113	2
+11de8353	HI_1_9_0	arret	localise · non porte 114	1
+11de8353	HI_1_9_0	arret	localise · non porte 116	7
+11de8353	HI_1_9_0	arret	localise · non porte 117	1
+11de8353	HI_1_9_0	arret	localise · non porte 12	3
+11de8353	HI_1_9_0	arret	localise · non porte 13	12
+11de8353	HI_1_9_0	arret	localise · non porte 14	2
+11de8353	HI_1_9_0	arret	localise · non porte 15	254
+11de8353	HI_1_9_0	arret	localise · non porte 17	1
+11de8353	HI_1_9_0	arret	localise · non porte 19	1
+11de8353	HI_1_9_0	arret	localise · non porte 20	4
+11de8353	HI_1_9_0	arret	localise · non porte 28	5
+11de8353	HI_1_9_0	arret	localise · non porte 29	2
+11de8353	HI_1_9_0	arret	localise · non porte 30	2
+11de8353	HI_1_9_0	arret	localise · non porte 32	1
+11de8353	HI_1_9_0	arret	localise · non porte 34	5
+11de8353	HI_1_9_0	arret	localise · non porte 35	3
+11de8353	HI_1_9_0	arret	localise · non porte 39	113
+11de8353	HI_1_9_0	arret	localise · non porte 43	1
+11de8353	HI_1_9_0	arret	localise · non porte 5	749
+11de8353	HI_1_9_0	arret	localise · non porte 50	1
+11de8353	HI_1_9_0	arret	localise · non porte 51	2
+11de8353	HI_1_9_0	arret	localise · non porte 55	1
+11de8353	HI_1_9_0	arret	localise · non porte 56	1
+11de8353	HI_1_9_0	arret	localise · non porte 6	182
+11de8353	HI_1_9_0	arret	localise · non porte 61	5
+11de8353	HI_1_9_0	arret	localise · non porte 64	3
+11de8353	HI_1_9_0	arret	localise · non porte 65	2
+11de8353	HI_1_9_0	arret	localise · non porte 66	2
+11de8353	HI_1_9_0	arret	localise · non porte 67	2
+11de8353	HI_1_9_0	arret	localise · non porte 68	6
+11de8353	HI_1_9_0	arret	localise · non porte 69	4
+11de8353	HI_1_9_0	arret	localise · non porte 70	3
+11de8353	HI_1_9_0	arret	localise · non porte 71	2
+11de8353	HI_1_9_0	arret	localise · non porte 72	6
+11de8353	HI_1_9_0	arret	localise · non porte 73	5
+11de8353	HI_1_9_0	arret	localise · non porte 74	10
+11de8353	HI_1_9_0	arret	localise · non porte 77	6
+11de8353	HI_1_9_0	arret	localise · non porte 78	4
+11de8353	HI_1_9_0	arret	localise · non porte 83	1
+11de8353	HI_1_9_0	arret	localise · non porte 85	66
+11de8353	HI_1_9_0	arret	localise · non porte 87	2
+11de8353	HI_1_9_0	arret	localise · non porte 89	1
+11de8353	HI_1_9_0	arret	localise · non porte 90	3
+11de8353	HI_1_9_0	arret	localise · non porte 91	5
+11de8353	HI_1_9_0	arret	localise · non porte 93	4
+11de8353	HI_1_9_0	arret	localise · non porte 94	1
+11de8353	HI_1_9_0	arret	localise · non porte 96	1
+11de8353	HI_1_9_0	arret	localise · non porte 97	1
+11de8353	HI_1_9_0	arret	localise · non porte 99	1
+11de8353	HI_1_9_0	arret	non localise · hors genre	7
+11de8353	HI_1_9_0	arret	non localise · non porte 101	2
+11de8353	HI_1_9_0	arret	non localise · non porte 107	1
+11de8353	HI_1_9_0	arret	non localise · non porte 111	1
+11de8353	HI_1_9_0	arret	non localise · non porte 112	3
+11de8353	HI_1_9_0	arret	non localise · non porte 113	1
+11de8353	HI_1_9_0	arret	non localise · non porte 116	1
+11de8353	HI_1_9_0	arret	non localise · non porte 117	2
+11de8353	HI_1_9_0	arret	non localise · non porte 12	7
+11de8353	HI_1_9_0	arret	non localise · non porte 13	1
+11de8353	HI_1_9_0	arret	non localise · non porte 14	1
+11de8353	HI_1_9_0	arret	non localise · non porte 15	157
+11de8353	HI_1_9_0	arret	non localise · non porte 17	1
+11de8353	HI_1_9_0	arret	non localise · non porte 18	1
+11de8353	HI_1_9_0	arret	non localise · non porte 20	1
+11de8353	HI_1_9_0	arret	non localise · non porte 28	1
+11de8353	HI_1_9_0	arret	non localise · non porte 29	1
+11de8353	HI_1_9_0	arret	non localise · non porte 30	1
+11de8353	HI_1_9_0	arret	non localise · non porte 32	1
+11de8353	HI_1_9_0	arret	non localise · non porte 39	18
+11de8353	HI_1_9_0	arret	non localise · non porte 5	288
+11de8353	HI_1_9_0	arret	non localise · non porte 50	1
+11de8353	HI_1_9_0	arret	non localise · non porte 55	1
+11de8353	HI_1_9_0	arret	non localise · non porte 56	1
+11de8353	HI_1_9_0	arret	non localise · non porte 6	46
+11de8353	HI_1_9_0	arret	non localise · non porte 61	4
+11de8353	HI_1_9_0	arret	non localise · non porte 64	2
+11de8353	HI_1_9_0	arret	non localise · non porte 65	1
+11de8353	HI_1_9_0	arret	non localise · non porte 66	1
+11de8353	HI_1_9_0	arret	non localise · non porte 67	1
+11de8353	HI_1_9_0	arret	non localise · non porte 68	2
+11de8353	HI_1_9_0	arret	non localise · non porte 69	1
+11de8353	HI_1_9_0	arret	non localise · non porte 70	2
+11de8353	HI_1_9_0	arret	non localise · non porte 71	1
+11de8353	HI_1_9_0	arret	non localise · non porte 72	3
+11de8353	HI_1_9_0	arret	non localise · non porte 74	2
+11de8353	HI_1_9_0	arret	non localise · non porte 78	1
+11de8353	HI_1_9_0	arret	non localise · non porte 79	1
+11de8353	HI_1_9_0	arret	non localise · non porte 81	1
+11de8353	HI_1_9_0	arret	non localise · non porte 83	1
+11de8353	HI_1_9_0	arret	non localise · non porte 85	3
+11de8353	HI_1_9_0	arret	non localise · non porte 87	2
+11de8353	HI_1_9_0	arret	non localise · non porte 89	1
+11de8353	HI_1_9_0	arret	non localise · non porte 90	4
+11de8353	HI_1_9_0	arret	non localise · non porte 94	2
+11de8353	HI_1_9_0	arret	non localise · non porte 95	1
+11de8353	HI_1_9_0	gain	ferme	165
+11de8353	HI_1_9_0	gain	ferme au bit	1
+11de8353	HI_1_9_0	gain	non ferme	871
+11de8353	HI_1_9_0	genre_accord	0	1185
+11de8353	HI_1_9_0	genre_accord	1	94
+11de8353	HI_1_9_0	genre_accord	103	36
+11de8353	HI_1_9_0	genre_accord	11	56
+11de8353	HI_1_9_0	genre_accord	118	3
+11de8353	HI_1_9_0	genre_accord	2	9
+11de8353	HI_1_9_0	genre_accord	21	430
+11de8353	HI_1_9_0	genre_accord	22	12
+11de8353	HI_1_9_0	genre_accord	23	24
+11de8353	HI_1_9_0	genre_accord	36	1019
+11de8353	HI_1_9_0	genre_accord	38	606
+11de8353	HI_1_9_0	genre_accord	40	49
+11de8353	HI_1_9_0	genre_accord	41	2
+11de8353	HI_1_9_0	genre_accord	7	53
+11de8353	HI_1_9_0	genre_accord	75	176
+11de8353	HI_1_9_0	genre_accord	76	134
+11de8353	HI_1_9_0	genre_accord	82	1293
+11de8353	HI_1_9_0	genre_accord	9	50
+11de8353	HI_1_9_0	genre_accord par chaine	0	363
+11de8353	HI_1_9_0	genre_accord par chaine	1	17
+11de8353	HI_1_9_0	genre_accord par chaine	103	6
+11de8353	HI_1_9_0	genre_accord par chaine	11	20
+11de8353	HI_1_9_0	genre_accord par chaine	118	4
+11de8353	HI_1_9_0	genre_accord par chaine	21	120
+11de8353	HI_1_9_0	genre_accord par chaine	22	2
+11de8353	HI_1_9_0	genre_accord par chaine	23	4
+11de8353	HI_1_9_0	genre_accord par chaine	36	323
+11de8353	HI_1_9_0	genre_accord par chaine	38	167
+11de8353	HI_1_9_0	genre_accord par chaine	40	17
+11de8353	HI_1_9_0	genre_accord par chaine	47	1
+11de8353	HI_1_9_0	genre_accord par chaine	7	13
+11de8353	HI_1_9_0	genre_accord par chaine	75	67
+11de8353	HI_1_9_0	genre_accord par chaine	76	15
+11de8353	HI_1_9_0	genre_accord par chaine	82	527
+11de8353	HI_1_9_0	genre_accord par chaine	9	21
+11de8353	HI_1_9_0	genre_desaccord	0	139
+11de8353	HI_1_9_0	genre_desaccord	1	21
+11de8353	HI_1_9_0	genre_desaccord	103	3
+11de8353	HI_1_9_0	genre_desaccord	104	1
+11de8353	HI_1_9_0	genre_desaccord	105	1
+11de8353	HI_1_9_0	genre_desaccord	109	1
+11de8353	HI_1_9_0	genre_desaccord	11	3
+11de8353	HI_1_9_0	genre_desaccord	118	1
+11de8353	HI_1_9_0	genre_desaccord	16	5
+11de8353	HI_1_9_0	genre_desaccord	21	62
+11de8353	HI_1_9_0	genre_desaccord	22	6
+11de8353	HI_1_9_0	genre_desaccord	23	6
+11de8353	HI_1_9_0	genre_desaccord	24	1
+11de8353	HI_1_9_0	genre_desaccord	25	2
+11de8353	HI_1_9_0	genre_desaccord	26	1
+11de8353	HI_1_9_0	genre_desaccord	33	2
+11de8353	HI_1_9_0	genre_desaccord	36	503
+11de8353	HI_1_9_0	genre_desaccord	38	64
+11de8353	HI_1_9_0	genre_desaccord	4	1
+11de8353	HI_1_9_0	genre_desaccord	40	8
+11de8353	HI_1_9_0	genre_desaccord	41	3
+11de8353	HI_1_9_0	genre_desaccord	42	4
+11de8353	HI_1_9_0	genre_desaccord	44	1
+11de8353	HI_1_9_0	genre_desaccord	46	6
+11de8353	HI_1_9_0	genre_desaccord	48	2
+11de8353	HI_1_9_0	genre_desaccord	49	2
+11de8353	HI_1_9_0	genre_desaccord	5	2
+11de8353	HI_1_9_0	genre_desaccord	53	2
+11de8353	HI_1_9_0	genre_desaccord	59	2
+11de8353	HI_1_9_0	genre_desaccord	7	6
+11de8353	HI_1_9_0	genre_desaccord	75	31
+11de8353	HI_1_9_0	genre_desaccord	76	40
+11de8353	HI_1_9_0	genre_desaccord	8	2
+11de8353	HI_1_9_0	genre_desaccord	80	2
+11de8353	HI_1_9_0	genre_desaccord	81	1
+11de8353	HI_1_9_0	genre_desaccord	82	586
+11de8353	HI_1_9_0	genre_desaccord	83	2
+11de8353	HI_1_9_0	genre_desaccord	84	3
+11de8353	HI_1_9_0	genre_desaccord	86	2
+11de8353	HI_1_9_0	genre_desaccord	88	3
+11de8353	HI_1_9_0	genre_desaccord	9	56
+11de8353	HI_1_9_0	genre_desaccord	98	3
+11de8353	HI_1_9_0	temoin	accord	2509
+11de8353	HI_1_9_0	temoin	accord par chaine	971
+11de8353	HI_1_9_0	temoin	desaccord · E < S · depuis E ferme au bit · depuis S ferme	1
+11de8353	HI_1_9_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	3
+11de8353	HI_1_9_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	18
+11de8353	HI_1_9_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	178
+11de8353	HI_1_9_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	66
+11de8353	HI_1_9_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	421
+11de8353	HI_1_9_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	4
+11de8353	HI_1_9_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	6
+11de8353	HI_1_9_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	8
+11de8353	HI_1_9_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	18
+11de8353	HI_1_9_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	65
+11de8353	HI_1_9_0	temoin_par_debut	fermeture · accord	4
+11de8353	HI_1_9_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	2
+11de8353	HI_1_9_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E non ferme · depuis S ferme	14
+11de8353	HI_1_9_0	temoin_par_debut	signature · accord	2505
+11de8353	HI_1_9_0	temoin_par_debut	signature · accord par chaine	971
+11de8353	HI_1_9_0	temoin_par_debut	signature · desaccord · E < S · depuis E ferme au bit · depuis S ferme	1
+11de8353	HI_1_9_0	temoin_par_debut	signature · desaccord · E < S · depuis E ferme · depuis S ferme	1
+11de8353	HI_1_9_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	164
+11de8353	HI_1_9_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	1
+11de8353	HI_1_9_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	421
+11de8353	HI_1_9_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme au bit	4
+11de8353	HI_1_9_0	temoin_par_debut	signature · desaccord · E > S · depuis E non ferme · depuis S ferme	6
+11de8353	HI_1_9_0	temoin_par_debut	signature · desaccord · E > S · depuis E non ferme · depuis S non ferme	8
+1c4c63c2	HI_1_10_0	arret	localise · hors genre	70
+1c4c63c2	HI_1_10_0	arret	localise · non porte 10	8
+1c4c63c2	HI_1_10_0	arret	localise · non porte 101	6
+1c4c63c2	HI_1_10_0	arret	localise · non porte 102	14
+1c4c63c2	HI_1_10_0	arret	localise · non porte 106	5
+1c4c63c2	HI_1_10_0	arret	localise · non porte 107	8
+1c4c63c2	HI_1_10_0	arret	localise · non porte 110	8
+1c4c63c2	HI_1_10_0	arret	localise · non porte 111	4
+1c4c63c2	HI_1_10_0	arret	localise · non porte 112	12
+1c4c63c2	HI_1_10_0	arret	localise · non porte 113	7
+1c4c63c2	HI_1_10_0	arret	localise · non porte 114	3
+1c4c63c2	HI_1_10_0	arret	localise · non porte 115	4
+1c4c63c2	HI_1_10_0	arret	localise · non porte 116	6
+1c4c63c2	HI_1_10_0	arret	localise · non porte 117	5
+1c4c63c2	HI_1_10_0	arret	localise · non porte 12	5
+1c4c63c2	HI_1_10_0	arret	localise · non porte 13	9
+1c4c63c2	HI_1_10_0	arret	localise · non porte 14	6
+1c4c63c2	HI_1_10_0	arret	localise · non porte 15	1456
+1c4c63c2	HI_1_10_0	arret	localise · non porte 17	14
+1c4c63c2	HI_1_10_0	arret	localise · non porte 18	3
+1c4c63c2	HI_1_10_0	arret	localise · non porte 19	6
+1c4c63c2	HI_1_10_0	arret	localise · non porte 20	2
+1c4c63c2	HI_1_10_0	arret	localise · non porte 27	3
+1c4c63c2	HI_1_10_0	arret	localise · non porte 28	1
+1c4c63c2	HI_1_10_0	arret	localise · non porte 29	9
+1c4c63c2	HI_1_10_0	arret	localise · non porte 30	4
+1c4c63c2	HI_1_10_0	arret	localise · non porte 32	10
+1c4c63c2	HI_1_10_0	arret	localise · non porte 34	8
+1c4c63c2	HI_1_10_0	arret	localise · non porte 35	3
+1c4c63c2	HI_1_10_0	arret	localise · non porte 39	284
+1c4c63c2	HI_1_10_0	arret	localise · non porte 43	5
+1c4c63c2	HI_1_10_0	arret	localise · non porte 5	516
+1c4c63c2	HI_1_10_0	arret	localise · non porte 50	6
+1c4c63c2	HI_1_10_0	arret	localise · non porte 51	5
+1c4c63c2	HI_1_10_0	arret	localise · non porte 52	9
+1c4c63c2	HI_1_10_0	arret	localise · non porte 55	18
+1c4c63c2	HI_1_10_0	arret	localise · non porte 56	10
+1c4c63c2	HI_1_10_0	arret	localise · non porte 6	92
+1c4c63c2	HI_1_10_0	arret	localise · non porte 60	3
+1c4c63c2	HI_1_10_0	arret	localise · non porte 61	17
+1c4c63c2	HI_1_10_0	arret	localise · non porte 62	7
+1c4c63c2	HI_1_10_0	arret	localise · non porte 64	19
+1c4c63c2	HI_1_10_0	arret	localise · non porte 65	16
+1c4c63c2	HI_1_10_0	arret	localise · non porte 66	22
+1c4c63c2	HI_1_10_0	arret	localise · non porte 67	9
+1c4c63c2	HI_1_10_0	arret	localise · non porte 68	5
+1c4c63c2	HI_1_10_0	arret	localise · non porte 69	10
+1c4c63c2	HI_1_10_0	arret	localise · non porte 70	9
+1c4c63c2	HI_1_10_0	arret	localise · non porte 71	7
+1c4c63c2	HI_1_10_0	arret	localise · non porte 72	12
+1c4c63c2	HI_1_10_0	arret	localise · non porte 73	16
+1c4c63c2	HI_1_10_0	arret	localise · non porte 74	12
+1c4c63c2	HI_1_10_0	arret	localise · non porte 77	15
+1c4c63c2	HI_1_10_0	arret	localise · non porte 78	7
+1c4c63c2	HI_1_10_0	arret	localise · non porte 79	10
+1c4c63c2	HI_1_10_0	arret	localise · non porte 81	3
+1c4c63c2	HI_1_10_0	arret	localise · non porte 82	1
+1c4c63c2	HI_1_10_0	arret	localise · non porte 85	93
+1c4c63c2	HI_1_10_0	arret	localise · non porte 87	10
+1c4c63c2	HI_1_10_0	arret	localise · non porte 89	13
+1c4c63c2	HI_1_10_0	arret	localise · non porte 90	7
+1c4c63c2	HI_1_10_0	arret	localise · non porte 91	14
+1c4c63c2	HI_1_10_0	arret	localise · non porte 93	17
+1c4c63c2	HI_1_10_0	arret	localise · non porte 94	12
+1c4c63c2	HI_1_10_0	arret	localise · non porte 95	7
+1c4c63c2	HI_1_10_0	arret	localise · non porte 96	14
+1c4c63c2	HI_1_10_0	arret	localise · non porte 97	2
+1c4c63c2	HI_1_10_0	arret	localise · non porte 99	5
+1c4c63c2	HI_1_10_0	arret	non localise · hors genre	78
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 10	5
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 101	8
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 102	7
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 106	2
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 107	1
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 110	11
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 111	3
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 112	9
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 113	2
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 114	5
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 115	11
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 116	3
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 117	8
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 12	5
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 13	14
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 14	11
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 15	1310
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 17	7
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 18	3
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 19	2
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 20	3
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 27	7
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 28	3
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 29	6
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 32	11
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 34	5
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 35	5
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 39	261
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 43	8
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 5	513
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 50	17
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 51	7
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 52	13
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 55	18
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 56	7
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 6	94
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 60	8
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 61	7
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 62	6
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 64	14
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 65	13
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 66	15
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 67	13
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 68	7
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 69	10
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 70	10
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 71	12
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 72	15
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 73	12
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 74	7
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 77	19
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 78	7
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 79	4
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 81	1
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 82	1
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 85	108
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 87	19
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 89	18
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 90	11
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 91	12
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 93	19
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 94	14
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 95	8
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 96	7
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 97	4
+1c4c63c2	HI_1_10_0	arret	non localise · non porte 99	6
+1c4c63c2	HI_1_10_0	gain	ferme	875
+1c4c63c2	HI_1_10_0	gain	ferme au bit	1
+1c4c63c2	HI_1_10_0	gain	non ferme	8518
+1c4c63c2	HI_1_10_0	genre_accord	0	579
+1c4c63c2	HI_1_10_0	genre_accord	1	76
+1c4c63c2	HI_1_10_0	genre_accord	103	9
+1c4c63c2	HI_1_10_0	genre_accord	21	229
+1c4c63c2	HI_1_10_0	genre_accord	22	7
+1c4c63c2	HI_1_10_0	genre_accord	36	746
+1c4c63c2	HI_1_10_0	genre_accord	38	244
+1c4c63c2	HI_1_10_0	genre_accord	40	19
+1c4c63c2	HI_1_10_0	genre_accord	47	3
+1c4c63c2	HI_1_10_0	genre_accord	7	34
+1c4c63c2	HI_1_10_0	genre_accord	75	128
+1c4c63c2	HI_1_10_0	genre_accord	76	161
+1c4c63c2	HI_1_10_0	genre_accord	82	924
+1c4c63c2	HI_1_10_0	genre_accord	9	91
+1c4c63c2	HI_1_10_0	genre_accord par chaine	0	84
+1c4c63c2	HI_1_10_0	genre_accord par chaine	1	11
+1c4c63c2	HI_1_10_0	genre_accord par chaine	11	1
+1c4c63c2	HI_1_10_0	genre_accord par chaine	21	39
+1c4c63c2	HI_1_10_0	genre_accord par chaine	36	129
+1c4c63c2	HI_1_10_0	genre_accord par chaine	38	37
+1c4c63c2	HI_1_10_0	genre_accord par chaine	40	2
+1c4c63c2	HI_1_10_0	genre_accord par chaine	7	2
+1c4c63c2	HI_1_10_0	genre_accord par chaine	75	24
+1c4c63c2	HI_1_10_0	genre_accord par chaine	76	10
+1c4c63c2	HI_1_10_0	genre_accord par chaine	8	1
+1c4c63c2	HI_1_10_0	genre_accord par chaine	82	417
+1c4c63c2	HI_1_10_0	genre_accord par chaine	9	18
+1c4c63c2	HI_1_10_0	genre_desaccord	0	1454
+1c4c63c2	HI_1_10_0	genre_desaccord	1	172
+1c4c63c2	HI_1_10_0	genre_desaccord	100	9
+1c4c63c2	HI_1_10_0	genre_desaccord	103	17
+1c4c63c2	HI_1_10_0	genre_desaccord	104	3
+1c4c63c2	HI_1_10_0	genre_desaccord	105	1
+1c4c63c2	HI_1_10_0	genre_desaccord	108	1
+1c4c63c2	HI_1_10_0	genre_desaccord	109	12
+1c4c63c2	HI_1_10_0	genre_desaccord	11	17
+1c4c63c2	HI_1_10_0	genre_desaccord	118	6
+1c4c63c2	HI_1_10_0	genre_desaccord	119	15
+1c4c63c2	HI_1_10_0	genre_desaccord	120	4
+1c4c63c2	HI_1_10_0	genre_desaccord	16	19
+1c4c63c2	HI_1_10_0	genre_desaccord	2	9
+1c4c63c2	HI_1_10_0	genre_desaccord	21	537
+1c4c63c2	HI_1_10_0	genre_desaccord	22	65
+1c4c63c2	HI_1_10_0	genre_desaccord	23	18
+1c4c63c2	HI_1_10_0	genre_desaccord	24	23
+1c4c63c2	HI_1_10_0	genre_desaccord	25	10
+1c4c63c2	HI_1_10_0	genre_desaccord	26	6
+1c4c63c2	HI_1_10_0	genre_desaccord	3	3
+1c4c63c2	HI_1_10_0	genre_desaccord	31	1
+1c4c63c2	HI_1_10_0	genre_desaccord	33	5
+1c4c63c2	HI_1_10_0	genre_desaccord	36	4118
+1c4c63c2	HI_1_10_0	genre_desaccord	37	13
+1c4c63c2	HI_1_10_0	genre_desaccord	38	714
+1c4c63c2	HI_1_10_0	genre_desaccord	4	16
+1c4c63c2	HI_1_10_0	genre_desaccord	40	80
+1c4c63c2	HI_1_10_0	genre_desaccord	41	10
+1c4c63c2	HI_1_10_0	genre_desaccord	42	8
+1c4c63c2	HI_1_10_0	genre_desaccord	44	4
+1c4c63c2	HI_1_10_0	genre_desaccord	45	4
+1c4c63c2	HI_1_10_0	genre_desaccord	46	8
+1c4c63c2	HI_1_10_0	genre_desaccord	47	7
+1c4c63c2	HI_1_10_0	genre_desaccord	48	6
+1c4c63c2	HI_1_10_0	genre_desaccord	49	4
+1c4c63c2	HI_1_10_0	genre_desaccord	53	11
+1c4c63c2	HI_1_10_0	genre_desaccord	54	16
+1c4c63c2	HI_1_10_0	genre_desaccord	57	12
+1c4c63c2	HI_1_10_0	genre_desaccord	58	8
+1c4c63c2	HI_1_10_0	genre_desaccord	59	2
+1c4c63c2	HI_1_10_0	genre_desaccord	63	2
+1c4c63c2	HI_1_10_0	genre_desaccord	7	46
+1c4c63c2	HI_1_10_0	genre_desaccord	75	383
+1c4c63c2	HI_1_10_0	genre_desaccord	76	460
+1c4c63c2	HI_1_10_0	genre_desaccord	8	8
+1c4c63c2	HI_1_10_0	genre_desaccord	80	9
+1c4c63c2	HI_1_10_0	genre_desaccord	81	6
+1c4c63c2	HI_1_10_0	genre_desaccord	82	4417
+1c4c63c2	HI_1_10_0	genre_desaccord	83	5
+1c4c63c2	HI_1_10_0	genre_desaccord	84	2
+1c4c63c2	HI_1_10_0	genre_desaccord	86	5
+1c4c63c2	HI_1_10_0	genre_desaccord	88	5
+1c4c63c2	HI_1_10_0	genre_desaccord	9	327
+1c4c63c2	HI_1_10_0	genre_desaccord	92	6
+1c4c63c2	HI_1_10_0	genre_desaccord	98	5
+1c4c63c2	HI_1_10_0	temoin	accord	1900
+1c4c63c2	HI_1_10_0	temoin	accord par chaine	499
+1c4c63c2	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	270
+1c4c63c2	HI_1_10_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	765
+1c4c63c2	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	1581
+1c4c63c2	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	4052
+1c4c63c2	HI_1_10_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	527
+1c4c63c2	HI_1_10_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	5
+1c4c63c2	HI_1_10_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	18
+1c4c63c2	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme	13
+1c4c63c2	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme au bit	9
+1c4c63c2	HI_1_10_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	36
+1c4c63c2	HI_1_10_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	765
+1c4c63c2	HI_1_10_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	4052
+1c4c63c2	HI_1_10_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	18
+1c4c63c2	HI_1_10_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E non ferme · depuis S ferme au bit	9
+1c4c63c2	HI_1_10_0	temoin_par_debut	fermeture · accord	2
+1c4c63c2	HI_1_10_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	270
+1c4c63c2	HI_1_10_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E non ferme · depuis S ferme	1470
+1c4c63c2	HI_1_10_0	temoin_par_debut	fermeture · desaccord · E > S · depuis E ferme · depuis S ferme	2
+1c4c63c2	HI_1_10_0	temoin_par_debut	fermeture · desaccord · E > S · depuis E non ferme · depuis S ferme	3
+1c4c63c2	HI_1_10_0	temoin_par_debut	signature · accord	1898
+1c4c63c2	HI_1_10_0	temoin_par_debut	signature · accord par chaine	499
+1c4c63c2	HI_1_10_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	111
+1c4c63c2	HI_1_10_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	527
+1c4c63c2	HI_1_10_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme	3
+1c4c63c2	HI_1_10_0	temoin_par_debut	signature · desaccord · E > S · depuis E non ferme · depuis S ferme	10
+1c4c63c2	HI_1_10_0	temoin_par_debut	signature · desaccord · E > S · depuis E non ferme · depuis S non ferme	36
+396cfc92	HI_1_13_0	arret	localise · non porte 12	1
+396cfc92	HI_1_13_0	arret	localise · non porte 15	414
+396cfc92	HI_1_13_0	arret	localise · non porte 39	88
+396cfc92	HI_1_13_0	arret	localise · non porte 5	316
+396cfc92	HI_1_13_0	arret	localise · non porte 6	23
+396cfc92	HI_1_13_0	arret	localise · non porte 85	60
+396cfc92	HI_1_13_0	arret	non localise · non porte 12	1
+396cfc92	HI_1_13_0	arret	non localise · non porte 15	42
+396cfc92	HI_1_13_0	arret	non localise · non porte 39	8
+396cfc92	HI_1_13_0	arret	non localise · non porte 5	43
+396cfc92	HI_1_13_0	arret	non localise · non porte 6	1
+396cfc92	HI_1_13_0	arret	non localise · non porte 85	2
+396cfc92	HI_1_13_0	gain	ferme	257
+396cfc92	HI_1_13_0	gain	non ferme	125
+396cfc92	HI_1_13_0	genre_accord	0	633
+396cfc92	HI_1_13_0	genre_accord	1	52
+396cfc92	HI_1_13_0	genre_accord	103	9
+396cfc92	HI_1_13_0	genre_accord	109	187
+396cfc92	HI_1_13_0	genre_accord	11	6
+396cfc92	HI_1_13_0	genre_accord	21	293
+396cfc92	HI_1_13_0	genre_accord	36	1626
+396cfc92	HI_1_13_0	genre_accord	38	284
+396cfc92	HI_1_13_0	genre_accord	4	2
+396cfc92	HI_1_13_0	genre_accord	40	27
+396cfc92	HI_1_13_0	genre_accord	7	59
+396cfc92	HI_1_13_0	genre_accord	75	161
+396cfc92	HI_1_13_0	genre_accord	76	373
+396cfc92	HI_1_13_0	genre_accord	82	1393
+396cfc92	HI_1_13_0	genre_accord	9	102
+396cfc92	HI_1_13_0	genre_accord par chaine	0	69
+396cfc92	HI_1_13_0	genre_accord par chaine	1	7
+396cfc92	HI_1_13_0	genre_accord par chaine	109	12
+396cfc92	HI_1_13_0	genre_accord par chaine	21	18
+396cfc92	HI_1_13_0	genre_accord par chaine	36	117
+396cfc92	HI_1_13_0	genre_accord par chaine	38	32
+396cfc92	HI_1_13_0	genre_accord par chaine	40	3
+396cfc92	HI_1_13_0	genre_accord par chaine	7	4
+396cfc92	HI_1_13_0	genre_accord par chaine	75	9
+396cfc92	HI_1_13_0	genre_accord par chaine	76	12
+396cfc92	HI_1_13_0	genre_accord par chaine	82	4327
+396cfc92	HI_1_13_0	genre_accord par chaine	9	7
+396cfc92	HI_1_13_0	genre_desaccord	0	9
+396cfc92	HI_1_13_0	genre_desaccord	109	113
+396cfc92	HI_1_13_0	genre_desaccord	21	2
+396cfc92	HI_1_13_0	genre_desaccord	36	19
+396cfc92	HI_1_13_0	genre_desaccord	38	5
+396cfc92	HI_1_13_0	genre_desaccord	75	2
+396cfc92	HI_1_13_0	genre_desaccord	76	2
+396cfc92	HI_1_13_0	genre_desaccord	82	146
+396cfc92	HI_1_13_0	genre_desaccord	9	2
+396cfc92	HI_1_13_0	temoin	accord	2830
+396cfc92	HI_1_13_0	temoin	accord par chaine	771
+396cfc92	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	6
+396cfc92	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	4
+396cfc92	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	93
+396cfc92	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	2
+396cfc92	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	21
+396cfc92	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+396cfc92	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	4
+396cfc92	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	2
+396cfc92	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+396cfc92	HI_1_13_0	temoin_par_debut	fermeture · accord	19
+396cfc92	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	6
+396cfc92	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E non ferme · depuis S ferme	1
+396cfc92	HI_1_13_0	temoin_par_debut	signature · accord	2811
+396cfc92	HI_1_13_0	temoin_par_debut	signature · accord par chaine	771
+396cfc92	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	92
+396cfc92	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	21
+4f77afc1	HI_1_13_0	arret	localise · non porte 15	2717
+4f77afc1	HI_1_13_0	arret	localise · non porte 39	188
+4f77afc1	HI_1_13_0	arret	localise · non porte 5	774
+4f77afc1	HI_1_13_0	arret	localise · non porte 6	600
+4f77afc1	HI_1_13_0	arret	localise · non porte 85	190
+4f77afc1	HI_1_13_0	arret	non localise · non porte 12	1
+4f77afc1	HI_1_13_0	arret	non localise · non porte 15	399
+4f77afc1	HI_1_13_0	arret	non localise · non porte 39	19
+4f77afc1	HI_1_13_0	arret	non localise · non porte 5	136
+4f77afc1	HI_1_13_0	arret	non localise · non porte 6	83
+4f77afc1	HI_1_13_0	arret	non localise · non porte 85	4
+4f77afc1	HI_1_13_0	gain	ferme	843
+4f77afc1	HI_1_13_0	gain	non ferme	443
+4f77afc1	HI_1_13_0	genre_accord	0	6520
+4f77afc1	HI_1_13_0	genre_accord	1	525
+4f77afc1	HI_1_13_0	genre_accord	100	5
+4f77afc1	HI_1_13_0	genre_accord	103	11
+4f77afc1	HI_1_13_0	genre_accord	104	1
+4f77afc1	HI_1_13_0	genre_accord	105	2
+4f77afc1	HI_1_13_0	genre_accord	11	25
+4f77afc1	HI_1_13_0	genre_accord	21	942
+4f77afc1	HI_1_13_0	genre_accord	22	59
+4f77afc1	HI_1_13_0	genre_accord	36	4476
+4f77afc1	HI_1_13_0	genre_accord	38	754
+4f77afc1	HI_1_13_0	genre_accord	4	10
+4f77afc1	HI_1_13_0	genre_accord	40	41
+4f77afc1	HI_1_13_0	genre_accord	47	13
+4f77afc1	HI_1_13_0	genre_accord	7	42
+4f77afc1	HI_1_13_0	genre_accord	75	456
+4f77afc1	HI_1_13_0	genre_accord	76	744
+4f77afc1	HI_1_13_0	genre_accord	8	1
+4f77afc1	HI_1_13_0	genre_accord	82	3970
+4f77afc1	HI_1_13_0	genre_accord	9	215
+4f77afc1	HI_1_13_0	genre_accord par chaine	0	1585
+4f77afc1	HI_1_13_0	genre_accord par chaine	1	130
+4f77afc1	HI_1_13_0	genre_accord par chaine	100	2
+4f77afc1	HI_1_13_0	genre_accord par chaine	103	3
+4f77afc1	HI_1_13_0	genre_accord par chaine	11	3
+4f77afc1	HI_1_13_0	genre_accord par chaine	21	230
+4f77afc1	HI_1_13_0	genre_accord par chaine	22	12
+4f77afc1	HI_1_13_0	genre_accord par chaine	36	889
+4f77afc1	HI_1_13_0	genre_accord par chaine	38	183
+4f77afc1	HI_1_13_0	genre_accord par chaine	4	1
+4f77afc1	HI_1_13_0	genre_accord par chaine	40	12
+4f77afc1	HI_1_13_0	genre_accord par chaine	47	1
+4f77afc1	HI_1_13_0	genre_accord par chaine	7	12
+4f77afc1	HI_1_13_0	genre_accord par chaine	75	93
+4f77afc1	HI_1_13_0	genre_accord par chaine	76	119
+4f77afc1	HI_1_13_0	genre_accord par chaine	8	2
+4f77afc1	HI_1_13_0	genre_accord par chaine	82	2077
+4f77afc1	HI_1_13_0	genre_accord par chaine	9	40
+4f77afc1	HI_1_13_0	genre_desaccord	0	1071
+4f77afc1	HI_1_13_0	genre_desaccord	1	153
+4f77afc1	HI_1_13_0	genre_desaccord	103	4
+4f77afc1	HI_1_13_0	genre_desaccord	11	3
+4f77afc1	HI_1_13_0	genre_desaccord	21	103
+4f77afc1	HI_1_13_0	genre_desaccord	22	4
+4f77afc1	HI_1_13_0	genre_desaccord	36	657
+4f77afc1	HI_1_13_0	genre_desaccord	38	106
+4f77afc1	HI_1_13_0	genre_desaccord	4	5
+4f77afc1	HI_1_13_0	genre_desaccord	40	5
+4f77afc1	HI_1_13_0	genre_desaccord	47	1
+4f77afc1	HI_1_13_0	genre_desaccord	7	12
+4f77afc1	HI_1_13_0	genre_desaccord	75	55
+4f77afc1	HI_1_13_0	genre_desaccord	76	112
+4f77afc1	HI_1_13_0	genre_desaccord	82	1509
+4f77afc1	HI_1_13_0	genre_desaccord	9	21
+4f77afc1	HI_1_13_0	temoin	accord	7821
+4f77afc1	HI_1_13_0	temoin	accord par chaine	2167
+4f77afc1	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	192
+4f77afc1	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	506
+4f77afc1	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S non ferme	1
+4f77afc1	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	83
+4f77afc1	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	188
+4f77afc1	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	12
+4f77afc1	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	26
+4f77afc1	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	37
+4f77afc1	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S non ferme	1
+4f77afc1	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme au bit	2
+4f77afc1	HI_1_13_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	8
+4f77afc1	HI_1_13_0	temoin_par_debut	fermeture au bit · accord	1
+4f77afc1	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	506
+4f77afc1	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	188
+4f77afc1	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	19
+4f77afc1	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E non ferme · depuis S ferme au bit	2
+4f77afc1	HI_1_13_0	temoin_par_debut	fermeture · accord	810
+4f77afc1	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	192
+4f77afc1	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E non ferme · depuis S ferme	59
+4f77afc1	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E > S · depuis E ferme · depuis S ferme	9
+4f77afc1	HI_1_13_0	temoin_par_debut	signature · accord	7010
+4f77afc1	HI_1_13_0	temoin_par_debut	signature · accord par chaine	2167
+4f77afc1	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E ferme · depuis S non ferme	1
+4f77afc1	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	24
+4f77afc1	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	12
+4f77afc1	HI_1_13_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme	17
+4f77afc1	HI_1_13_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme au bit	18
+4f77afc1	HI_1_13_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S non ferme	1
+4f77afc1	HI_1_13_0	temoin_par_debut	signature · desaccord · E > S · depuis E non ferme · depuis S non ferme	8
+50247b26	version-31	arret	localise · hors genre	5522
+50247b26	version-31	arret	non localise · hors genre	2257
+51ebbc0f	HI_1_13_0	arret	localise · non porte 15	449
+51ebbc0f	HI_1_13_0	arret	localise · non porte 39	66
+51ebbc0f	HI_1_13_0	arret	localise · non porte 5	90
+51ebbc0f	HI_1_13_0	arret	localise · non porte 6	13
+51ebbc0f	HI_1_13_0	arret	localise · non porte 85	53
+51ebbc0f	HI_1_13_0	arret	non localise · non porte 15	387
+51ebbc0f	HI_1_13_0	arret	non localise · non porte 39	69
+51ebbc0f	HI_1_13_0	arret	non localise · non porte 5	119
+51ebbc0f	HI_1_13_0	arret	non localise · non porte 6	13
+51ebbc0f	HI_1_13_0	arret	non localise · non porte 85	15
+51ebbc0f	HI_1_13_0	gain	ferme	1645
+51ebbc0f	HI_1_13_0	gain	non ferme	438
+51ebbc0f	HI_1_13_0	genre_accord	0	356
+51ebbc0f	HI_1_13_0	genre_accord	1	19
+51ebbc0f	HI_1_13_0	genre_accord	100	4
+51ebbc0f	HI_1_13_0	genre_accord	104	2
+51ebbc0f	HI_1_13_0	genre_accord	105	5
+51ebbc0f	HI_1_13_0	genre_accord	11	2
+51ebbc0f	HI_1_13_0	genre_accord	21	98
+51ebbc0f	HI_1_13_0	genre_accord	36	551
+51ebbc0f	HI_1_13_0	genre_accord	38	81
+51ebbc0f	HI_1_13_0	genre_accord	40	10
+51ebbc0f	HI_1_13_0	genre_accord	47	5
+51ebbc0f	HI_1_13_0	genre_accord	7	1
+51ebbc0f	HI_1_13_0	genre_accord	75	60
+51ebbc0f	HI_1_13_0	genre_accord	76	125
+51ebbc0f	HI_1_13_0	genre_accord	82	295
+51ebbc0f	HI_1_13_0	genre_accord	9	71
+51ebbc0f	HI_1_13_0	genre_accord par chaine	0	82
+51ebbc0f	HI_1_13_0	genre_accord par chaine	1	2
+51ebbc0f	HI_1_13_0	genre_accord par chaine	11	1
+51ebbc0f	HI_1_13_0	genre_accord par chaine	21	17
+51ebbc0f	HI_1_13_0	genre_accord par chaine	36	109
+51ebbc0f	HI_1_13_0	genre_accord par chaine	38	20
+51ebbc0f	HI_1_13_0	genre_accord par chaine	40	1
+51ebbc0f	HI_1_13_0	genre_accord par chaine	75	11
+51ebbc0f	HI_1_13_0	genre_accord par chaine	76	30
+51ebbc0f	HI_1_13_0	genre_accord par chaine	82	178
+51ebbc0f	HI_1_13_0	genre_accord par chaine	9	10
+51ebbc0f	HI_1_13_0	genre_desaccord	0	37
+51ebbc0f	HI_1_13_0	genre_desaccord	1	9
+51ebbc0f	HI_1_13_0	genre_desaccord	21	6
+51ebbc0f	HI_1_13_0	genre_desaccord	23	2
+51ebbc0f	HI_1_13_0	genre_desaccord	36	74
+51ebbc0f	HI_1_13_0	genre_desaccord	38	2
+51ebbc0f	HI_1_13_0	genre_desaccord	4	1
+51ebbc0f	HI_1_13_0	genre_desaccord	75	4
+51ebbc0f	HI_1_13_0	genre_desaccord	76	18
+51ebbc0f	HI_1_13_0	genre_desaccord	82	63
+51ebbc0f	HI_1_13_0	genre_desaccord	9	2
+51ebbc0f	HI_1_13_0	temoin	accord	1099
+51ebbc0f	HI_1_13_0	temoin	accord par chaine	308
+51ebbc0f	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	16
+51ebbc0f	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	69
+51ebbc0f	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	5
+51ebbc0f	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	10
+51ebbc0f	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	1
+51ebbc0f	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	2
+51ebbc0f	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+51ebbc0f	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	69
+51ebbc0f	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	10
+51ebbc0f	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+51ebbc0f	HI_1_13_0	temoin_par_debut	fermeture · accord	111
+51ebbc0f	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	15
+51ebbc0f	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E non ferme · depuis S ferme	2
+51ebbc0f	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E > S · depuis E ferme · depuis S ferme	2
+51ebbc0f	HI_1_13_0	temoin_par_debut	signature · accord	988
+51ebbc0f	HI_1_13_0	temoin_par_debut	signature · accord par chaine	308
+51ebbc0f	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E ferme · depuis S ferme	1
+51ebbc0f	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	3
+51ebbc0f	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	1
+60ae07c4	HI_1_8_0	arret	localise · hors genre	2797
+60ae07c4	HI_1_8_0	arret	non localise · hors genre	3259
+a349fea8	version-33	arret	localise · hors genre	10453
+a349fea8	version-33	arret	non localise · hors genre	4039
+a521164d	HI_1_4_1	arret	localise · hors genre	3666
+a521164d	HI_1_4_1	arret	non localise · hors genre	1290
+bcb6d393	HI_1_12_0	arret	localise · non porte 15	344
+bcb6d393	HI_1_12_0	arret	localise · non porte 39	53
+bcb6d393	HI_1_12_0	arret	localise · non porte 5	163
+bcb6d393	HI_1_12_0	arret	localise · non porte 6	8
+bcb6d393	HI_1_12_0	arret	localise · non porte 85	47
+bcb6d393	HI_1_12_0	arret	non localise · non porte 12	1
+bcb6d393	HI_1_12_0	arret	non localise · non porte 15	50
+bcb6d393	HI_1_12_0	arret	non localise · non porte 39	1
+bcb6d393	HI_1_12_0	arret	non localise · non porte 5	14
+bcb6d393	HI_1_12_0	arret	non localise · non porte 85	1
+bcb6d393	HI_1_12_0	gain	ferme	44
+bcb6d393	HI_1_12_0	gain	non ferme	170
+bcb6d393	HI_1_12_0	genre_accord	0	457
+bcb6d393	HI_1_12_0	genre_accord	1	45
+bcb6d393	HI_1_12_0	genre_accord	100	3
+bcb6d393	HI_1_12_0	genre_accord	11	4
+bcb6d393	HI_1_12_0	genre_accord	21	86
+bcb6d393	HI_1_12_0	genre_accord	36	910
+bcb6d393	HI_1_12_0	genre_accord	38	163
+bcb6d393	HI_1_12_0	genre_accord	4	3
+bcb6d393	HI_1_12_0	genre_accord	40	18
+bcb6d393	HI_1_12_0	genre_accord	47	1
+bcb6d393	HI_1_12_0	genre_accord	7	21
+bcb6d393	HI_1_12_0	genre_accord	75	114
+bcb6d393	HI_1_12_0	genre_accord	76	190
+bcb6d393	HI_1_12_0	genre_accord	82	324
+bcb6d393	HI_1_12_0	genre_accord	9	62
+bcb6d393	HI_1_12_0	genre_accord par chaine	0	43
+bcb6d393	HI_1_12_0	genre_accord par chaine	1	7
+bcb6d393	HI_1_12_0	genre_accord par chaine	104	1
+bcb6d393	HI_1_12_0	genre_accord par chaine	105	3
+bcb6d393	HI_1_12_0	genre_accord par chaine	21	9
+bcb6d393	HI_1_12_0	genre_accord par chaine	36	85
+bcb6d393	HI_1_12_0	genre_accord par chaine	38	15
+bcb6d393	HI_1_12_0	genre_accord par chaine	4	1
+bcb6d393	HI_1_12_0	genre_accord par chaine	40	1
+bcb6d393	HI_1_12_0	genre_accord par chaine	7	6
+bcb6d393	HI_1_12_0	genre_accord par chaine	75	9
+bcb6d393	HI_1_12_0	genre_accord par chaine	76	4
+bcb6d393	HI_1_12_0	genre_accord par chaine	82	489
+bcb6d393	HI_1_12_0	genre_accord par chaine	9	5
+bcb6d393	HI_1_12_0	genre_desaccord	0	6
+bcb6d393	HI_1_12_0	genre_desaccord	1	1
+bcb6d393	HI_1_12_0	genre_desaccord	36	8
+bcb6d393	HI_1_12_0	genre_desaccord	75	2
+bcb6d393	HI_1_12_0	genre_desaccord	76	1
+bcb6d393	HI_1_12_0	genre_desaccord	82	52
+bcb6d393	HI_1_12_0	temoin	accord	1470
+bcb6d393	HI_1_12_0	temoin	accord par chaine	346
+bcb6d393	HI_1_12_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	1
+bcb6d393	HI_1_12_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	3
+bcb6d393	HI_1_12_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	2
+bcb6d393	HI_1_12_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	8
+bcb6d393	HI_1_12_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	2
+bcb6d393	HI_1_12_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	2
+bcb6d393	HI_1_12_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	1
+bcb6d393	HI_1_12_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	2
+bcb6d393	HI_1_12_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+bcb6d393	HI_1_12_0	temoin_par_debut	fermeture · accord	7
+bcb6d393	HI_1_12_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E non ferme · depuis S ferme	1
+bcb6d393	HI_1_12_0	temoin_par_debut	signature · accord	1463
+bcb6d393	HI_1_12_0	temoin_par_debut	signature · accord par chaine	346
+bcb6d393	HI_1_12_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	2
+bcb6d393	HI_1_12_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	8
+bcb6d393	HI_1_12_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme au bit	1
+bcb6d393	HI_1_12_0	temoin_par_debut	signature · desaccord · E > S · depuis E non ferme · depuis S non ferme	2
+bf15f7ab	HI_1_13_0	arret	localise · non porte 15	444
+bf15f7ab	HI_1_13_0	arret	localise · non porte 39	132
+bf15f7ab	HI_1_13_0	arret	localise · non porte 5	288
+bf15f7ab	HI_1_13_0	arret	localise · non porte 6	19
+bf15f7ab	HI_1_13_0	arret	localise · non porte 85	59
+bf15f7ab	HI_1_13_0	arret	non localise · non porte 106	1
+bf15f7ab	HI_1_13_0	arret	non localise · non porte 12	2
+bf15f7ab	HI_1_13_0	arret	non localise · non porte 15	50
+bf15f7ab	HI_1_13_0	arret	non localise · non porte 39	2
+bf15f7ab	HI_1_13_0	arret	non localise · non porte 5	39
+bf15f7ab	HI_1_13_0	arret	non localise · non porte 6	4
+bf15f7ab	HI_1_13_0	gain	ferme	240
+bf15f7ab	HI_1_13_0	gain	non ferme	24
+bf15f7ab	HI_1_13_0	genre_accord	0	924
+bf15f7ab	HI_1_13_0	genre_accord	1	34
+bf15f7ab	HI_1_13_0	genre_accord	104	4
+bf15f7ab	HI_1_13_0	genre_accord	105	12
+bf15f7ab	HI_1_13_0	genre_accord	11	7
+bf15f7ab	HI_1_13_0	genre_accord	21	149
+bf15f7ab	HI_1_13_0	genre_accord	36	1462
+bf15f7ab	HI_1_13_0	genre_accord	38	308
+bf15f7ab	HI_1_13_0	genre_accord	40	58
+bf15f7ab	HI_1_13_0	genre_accord	7	96
+bf15f7ab	HI_1_13_0	genre_accord	75	158
+bf15f7ab	HI_1_13_0	genre_accord	76	134
+bf15f7ab	HI_1_13_0	genre_accord	82	421
+bf15f7ab	HI_1_13_0	genre_accord	9	162
+bf15f7ab	HI_1_13_0	genre_accord par chaine	0	62
+bf15f7ab	HI_1_13_0	genre_accord par chaine	1	1
+bf15f7ab	HI_1_13_0	genre_accord par chaine	21	5
+bf15f7ab	HI_1_13_0	genre_accord par chaine	36	105
+bf15f7ab	HI_1_13_0	genre_accord par chaine	38	15
+bf15f7ab	HI_1_13_0	genre_accord par chaine	40	2
+bf15f7ab	HI_1_13_0	genre_accord par chaine	7	13
+bf15f7ab	HI_1_13_0	genre_accord par chaine	75	3
+bf15f7ab	HI_1_13_0	genre_accord par chaine	76	9
+bf15f7ab	HI_1_13_0	genre_accord par chaine	82	362
+bf15f7ab	HI_1_13_0	genre_accord par chaine	9	7
+bf15f7ab	HI_1_13_0	genre_desaccord	0	8
+bf15f7ab	HI_1_13_0	genre_desaccord	1	1
+bf15f7ab	HI_1_13_0	genre_desaccord	36	7
+bf15f7ab	HI_1_13_0	genre_desaccord	38	2
+bf15f7ab	HI_1_13_0	genre_desaccord	7	1
+bf15f7ab	HI_1_13_0	genre_desaccord	75	1
+bf15f7ab	HI_1_13_0	genre_desaccord	82	10
+bf15f7ab	HI_1_13_0	genre_desaccord	9	1
+bf15f7ab	HI_1_13_0	temoin	accord	2599
+bf15f7ab	HI_1_13_0	temoin	accord par chaine	426
+bf15f7ab	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	1
+bf15f7ab	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	8
+bf15f7ab	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	1
+bf15f7ab	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S non ferme	1
+bf15f7ab	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	8
+bf15f7ab	HI_1_13_0	temoin_par_debut	fermeture · accord	23
+bf15f7ab	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	1
+bf15f7ab	HI_1_13_0	temoin_par_debut	signature · accord	2576
+bf15f7ab	HI_1_13_0	temoin_par_debut	signature · accord par chaine	426
+bf15f7ab	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	1
+bf15f7ab	HI_1_13_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S non ferme	1
+bfecd02b	HI_1_13_0	arret	localise · non porte 15	470
+bfecd02b	HI_1_13_0	arret	localise · non porte 39	86
+bfecd02b	HI_1_13_0	arret	localise · non porte 5	168
+bfecd02b	HI_1_13_0	arret	localise · non porte 6	35
+bfecd02b	HI_1_13_0	arret	localise · non porte 85	83
+bfecd02b	HI_1_13_0	arret	non localise · non porte 15	64
+bfecd02b	HI_1_13_0	arret	non localise · non porte 39	6
+bfecd02b	HI_1_13_0	arret	non localise · non porte 5	24
+bfecd02b	HI_1_13_0	arret	non localise · non porte 6	5
+bfecd02b	HI_1_13_0	arret	non localise · non porte 85	1
+bfecd02b	HI_1_13_0	gain	ferme	357
+bfecd02b	HI_1_13_0	gain	non ferme	64
+bfecd02b	HI_1_13_0	genre_accord	0	1133
+bfecd02b	HI_1_13_0	genre_accord	1	162
+bfecd02b	HI_1_13_0	genre_accord	100	4
+bfecd02b	HI_1_13_0	genre_accord	103	4
+bfecd02b	HI_1_13_0	genre_accord	11	7
+bfecd02b	HI_1_13_0	genre_accord	21	263
+bfecd02b	HI_1_13_0	genre_accord	22	2
+bfecd02b	HI_1_13_0	genre_accord	36	2382
+bfecd02b	HI_1_13_0	genre_accord	38	281
+bfecd02b	HI_1_13_0	genre_accord	4	15
+bfecd02b	HI_1_13_0	genre_accord	40	10
+bfecd02b	HI_1_13_0	genre_accord	47	14
+bfecd02b	HI_1_13_0	genre_accord	7	33
+bfecd02b	HI_1_13_0	genre_accord	75	207
+bfecd02b	HI_1_13_0	genre_accord	76	268
+bfecd02b	HI_1_13_0	genre_accord	82	455
+bfecd02b	HI_1_13_0	genre_accord	9	83
+bfecd02b	HI_1_13_0	genre_accord par chaine	0	85
+bfecd02b	HI_1_13_0	genre_accord par chaine	1	11
+bfecd02b	HI_1_13_0	genre_accord par chaine	11	1
+bfecd02b	HI_1_13_0	genre_accord par chaine	21	26
+bfecd02b	HI_1_13_0	genre_accord par chaine	36	187
+bfecd02b	HI_1_13_0	genre_accord par chaine	38	27
+bfecd02b	HI_1_13_0	genre_accord par chaine	4	1
+bfecd02b	HI_1_13_0	genre_accord par chaine	7	3
+bfecd02b	HI_1_13_0	genre_accord par chaine	75	15
+bfecd02b	HI_1_13_0	genre_accord par chaine	76	37
+bfecd02b	HI_1_13_0	genre_accord par chaine	82	415
+bfecd02b	HI_1_13_0	genre_accord par chaine	9	4
+bfecd02b	HI_1_13_0	genre_desaccord	0	20
+bfecd02b	HI_1_13_0	genre_desaccord	1	1
+bfecd02b	HI_1_13_0	genre_desaccord	21	1
+bfecd02b	HI_1_13_0	genre_desaccord	36	25
+bfecd02b	HI_1_13_0	genre_desaccord	38	1
+bfecd02b	HI_1_13_0	genre_desaccord	7	1
+bfecd02b	HI_1_13_0	genre_desaccord	75	2
+bfecd02b	HI_1_13_0	genre_desaccord	76	2
+bfecd02b	HI_1_13_0	genre_desaccord	82	57
+bfecd02b	HI_1_13_0	temoin	accord	3298
+bfecd02b	HI_1_13_0	temoin	accord par chaine	578
+bfecd02b	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	2
+bfecd02b	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	18
+bfecd02b	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	7
+bfecd02b	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	3
+bfecd02b	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	1
+bfecd02b	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	2
+bfecd02b	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	2
+bfecd02b	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	18
+bfecd02b	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	3
+bfecd02b	HI_1_13_0	temoin_par_debut	fermeture · accord	41
+bfecd02b	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	2
+bfecd02b	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E non ferme · depuis S ferme	1
+bfecd02b	HI_1_13_0	temoin_par_debut	signature · accord	3257
+bfecd02b	HI_1_13_0	temoin_par_debut	signature · accord par chaine	578
+bfecd02b	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	6
+bfecd02b	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	1
+bfecd02b	HI_1_13_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme	2
+bfecd02b	HI_1_13_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme au bit	2
+c75f33b8	HI_1_13_0	arret	localise · non porte 15	165
+c75f33b8	HI_1_13_0	arret	localise · non porte 39	5
+c75f33b8	HI_1_13_0	arret	localise · non porte 5	14
+c75f33b8	HI_1_13_0	arret	localise · non porte 6	10
+c75f33b8	HI_1_13_0	arret	localise · non porte 85	44
+c75f33b8	HI_1_13_0	arret	non localise · non porte 106	1
+c75f33b8	HI_1_13_0	arret	non localise · non porte 12	1
+c75f33b8	HI_1_13_0	arret	non localise · non porte 15	205
+c75f33b8	HI_1_13_0	arret	non localise · non porte 39	63
+c75f33b8	HI_1_13_0	arret	non localise · non porte 5	63
+c75f33b8	HI_1_13_0	arret	non localise · non porte 6	14
+c75f33b8	HI_1_13_0	arret	non localise · non porte 85	2
+c75f33b8	HI_1_13_0	gain	ferme	1829
+c75f33b8	HI_1_13_0	gain	non ferme	119
+c75f33b8	HI_1_13_0	genre_accord	0	67
+c75f33b8	HI_1_13_0	genre_accord	1	7
+c75f33b8	HI_1_13_0	genre_accord	100	1
+c75f33b8	HI_1_13_0	genre_accord	104	1
+c75f33b8	HI_1_13_0	genre_accord	105	3
+c75f33b8	HI_1_13_0	genre_accord	11	1
+c75f33b8	HI_1_13_0	genre_accord	21	11
+c75f33b8	HI_1_13_0	genre_accord	36	192
+c75f33b8	HI_1_13_0	genre_accord	38	31
+c75f33b8	HI_1_13_0	genre_accord	40	6
+c75f33b8	HI_1_13_0	genre_accord	47	2
+c75f33b8	HI_1_13_0	genre_accord	75	15
+c75f33b8	HI_1_13_0	genre_accord	76	32
+c75f33b8	HI_1_13_0	genre_accord	82	414
+c75f33b8	HI_1_13_0	genre_accord	9	32
+c75f33b8	HI_1_13_0	genre_accord par chaine	0	2
+c75f33b8	HI_1_13_0	genre_accord par chaine	1	1
+c75f33b8	HI_1_13_0	genre_accord par chaine	36	5
+c75f33b8	HI_1_13_0	genre_accord par chaine	75	1
+c75f33b8	HI_1_13_0	genre_accord par chaine	76	1
+c75f33b8	HI_1_13_0	genre_accord par chaine	82	44
+c75f33b8	HI_1_13_0	genre_desaccord	0	39
+c75f33b8	HI_1_13_0	genre_desaccord	1	5
+c75f33b8	HI_1_13_0	genre_desaccord	100	1
+c75f33b8	HI_1_13_0	genre_desaccord	21	3
+c75f33b8	HI_1_13_0	genre_desaccord	36	76
+c75f33b8	HI_1_13_0	genre_desaccord	38	13
+c75f33b8	HI_1_13_0	genre_desaccord	40	2
+c75f33b8	HI_1_13_0	genre_desaccord	75	3
+c75f33b8	HI_1_13_0	genre_desaccord	76	3
+c75f33b8	HI_1_13_0	genre_desaccord	82	35
+c75f33b8	HI_1_13_0	genre_desaccord	9	7
+c75f33b8	HI_1_13_0	temoin	accord	402
+c75f33b8	HI_1_13_0	temoin	accord par chaine	24
+c75f33b8	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	17
+c75f33b8	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	79
+c75f33b8	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	2
+c75f33b8	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	3
+c75f33b8	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	2
+c75f33b8	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	2
+c75f33b8	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	79
+c75f33b8	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	3
+c75f33b8	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	2
+c75f33b8	HI_1_13_0	temoin_par_debut	fermeture · accord	142
+c75f33b8	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	17
+c75f33b8	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E > S · depuis E ferme · depuis S ferme	2
+c75f33b8	HI_1_13_0	temoin_par_debut	signature · accord	260
+c75f33b8	HI_1_13_0	temoin_par_debut	signature · accord par chaine	24
+c75f33b8	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	2
+d9781168	HI_1_13_0	arret	localise · non porte 106	1
+d9781168	HI_1_13_0	arret	localise · non porte 116	11
+d9781168	HI_1_13_0	arret	localise · non porte 15	550
+d9781168	HI_1_13_0	arret	localise · non porte 39	49
+d9781168	HI_1_13_0	arret	localise · non porte 5	80
+d9781168	HI_1_13_0	arret	localise · non porte 6	8
+d9781168	HI_1_13_0	arret	localise · non porte 85	91
+d9781168	HI_1_13_0	arret	non localise · non porte 116	12
+d9781168	HI_1_13_0	arret	non localise · non porte 12	3
+d9781168	HI_1_13_0	arret	non localise · non porte 15	676
+d9781168	HI_1_13_0	arret	non localise · non porte 39	121
+d9781168	HI_1_13_0	arret	non localise · non porte 5	223
+d9781168	HI_1_13_0	arret	non localise · non porte 6	65
+d9781168	HI_1_13_0	arret	non localise · non porte 85	39
+d9781168	HI_1_13_0	gain	ferme	3279
+d9781168	HI_1_13_0	gain	non ferme	1262
+d9781168	HI_1_13_0	genre_accord	0	757
+d9781168	HI_1_13_0	genre_accord	1	37
+d9781168	HI_1_13_0	genre_accord	104	1
+d9781168	HI_1_13_0	genre_accord	105	1
+d9781168	HI_1_13_0	genre_accord	11	3
+d9781168	HI_1_13_0	genre_accord	21	65
+d9781168	HI_1_13_0	genre_accord	36	915
+d9781168	HI_1_13_0	genre_accord	38	141
+d9781168	HI_1_13_0	genre_accord	4	2
+d9781168	HI_1_13_0	genre_accord	40	29
+d9781168	HI_1_13_0	genre_accord	7	2
+d9781168	HI_1_13_0	genre_accord	75	81
+d9781168	HI_1_13_0	genre_accord	76	139
+d9781168	HI_1_13_0	genre_accord	82	447
+d9781168	HI_1_13_0	genre_accord	9	95
+d9781168	HI_1_13_0	genre_accord par chaine	0	165
+d9781168	HI_1_13_0	genre_accord par chaine	1	2
+d9781168	HI_1_13_0	genre_accord par chaine	11	1
+d9781168	HI_1_13_0	genre_accord par chaine	21	12
+d9781168	HI_1_13_0	genre_accord par chaine	36	141
+d9781168	HI_1_13_0	genre_accord par chaine	38	6
+d9781168	HI_1_13_0	genre_accord par chaine	40	1
+d9781168	HI_1_13_0	genre_accord par chaine	7	1
+d9781168	HI_1_13_0	genre_accord par chaine	75	11
+d9781168	HI_1_13_0	genre_accord par chaine	76	11
+d9781168	HI_1_13_0	genre_accord par chaine	82	177
+d9781168	HI_1_13_0	genre_accord par chaine	9	11
+d9781168	HI_1_13_0	genre_desaccord	0	153
+d9781168	HI_1_13_0	genre_desaccord	1	9
+d9781168	HI_1_13_0	genre_desaccord	11	3
+d9781168	HI_1_13_0	genre_desaccord	21	5
+d9781168	HI_1_13_0	genre_desaccord	36	212
+d9781168	HI_1_13_0	genre_desaccord	38	27
+d9781168	HI_1_13_0	genre_desaccord	40	8
+d9781168	HI_1_13_0	genre_desaccord	7	5
+d9781168	HI_1_13_0	genre_desaccord	75	14
+d9781168	HI_1_13_0	genre_desaccord	76	36
+d9781168	HI_1_13_0	genre_desaccord	82	69
+d9781168	HI_1_13_0	genre_desaccord	9	15
+d9781168	HI_1_13_0	temoin	accord	1602
+d9781168	HI_1_13_0	temoin	accord par chaine	360
+d9781168	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	26
+d9781168	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	160
+d9781168	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	38
+d9781168	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	42
+d9781168	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	25
+d9781168	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	2
+d9781168	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	12
+d9781168	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	160
+d9781168	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	42
+d9781168	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	12
+d9781168	HI_1_13_0	temoin_par_debut	fermeture · accord	215
+d9781168	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	26
+d9781168	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E non ferme · depuis S ferme	7
+d9781168	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E > S · depuis E ferme · depuis S ferme	2
+d9781168	HI_1_13_0	temoin_par_debut	signature · accord	1387
+d9781168	HI_1_13_0	temoin_par_debut	signature · accord par chaine	360
+d9781168	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	31
+d9781168	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	25
+e5adf7b2	HI_1_11_0	arret	localise · non porte 106	1
+e5adf7b2	HI_1_11_0	arret	localise · non porte 12	1
+e5adf7b2	HI_1_11_0	arret	localise · non porte 15	230
+e5adf7b2	HI_1_11_0	arret	localise · non porte 39	108
+e5adf7b2	HI_1_11_0	arret	localise · non porte 5	710
+e5adf7b2	HI_1_11_0	arret	localise · non porte 6	276
+e5adf7b2	HI_1_11_0	arret	localise · non porte 85	122
+e5adf7b2	HI_1_11_0	arret	non localise · non porte 106	1
+e5adf7b2	HI_1_11_0	arret	non localise · non porte 12	1
+e5adf7b2	HI_1_11_0	arret	non localise · non porte 15	167
+e5adf7b2	HI_1_11_0	arret	non localise · non porte 39	21
+e5adf7b2	HI_1_11_0	arret	non localise · non porte 5	239
+e5adf7b2	HI_1_11_0	arret	non localise · non porte 6	91
+e5adf7b2	HI_1_11_0	arret	non localise · non porte 85	9
+e5adf7b2	HI_1_11_0	gain	ferme	186
+e5adf7b2	HI_1_11_0	gain	non ferme	999
+e5adf7b2	HI_1_11_0	genre_accord	0	1924
+e5adf7b2	HI_1_11_0	genre_accord	1	117
+e5adf7b2	HI_1_11_0	genre_accord	103	30
+e5adf7b2	HI_1_11_0	genre_accord	11	7
+e5adf7b2	HI_1_11_0	genre_accord	118	4
+e5adf7b2	HI_1_11_0	genre_accord	21	494
+e5adf7b2	HI_1_11_0	genre_accord	22	16
+e5adf7b2	HI_1_11_0	genre_accord	3	2
+e5adf7b2	HI_1_11_0	genre_accord	36	1133
+e5adf7b2	HI_1_11_0	genre_accord	38	505
+e5adf7b2	HI_1_11_0	genre_accord	4	1
+e5adf7b2	HI_1_11_0	genre_accord	40	37
+e5adf7b2	HI_1_11_0	genre_accord	47	11
+e5adf7b2	HI_1_11_0	genre_accord	7	64
+e5adf7b2	HI_1_11_0	genre_accord	75	212
+e5adf7b2	HI_1_11_0	genre_accord	76	180
+e5adf7b2	HI_1_11_0	genre_accord	82	1509
+e5adf7b2	HI_1_11_0	genre_accord	9	97
+e5adf7b2	HI_1_11_0	genre_accord par chaine	0	555
+e5adf7b2	HI_1_11_0	genre_accord par chaine	1	33
+e5adf7b2	HI_1_11_0	genre_accord par chaine	103	8
+e5adf7b2	HI_1_11_0	genre_accord par chaine	11	3
+e5adf7b2	HI_1_11_0	genre_accord par chaine	118	1
+e5adf7b2	HI_1_11_0	genre_accord par chaine	21	142
+e5adf7b2	HI_1_11_0	genre_accord par chaine	22	4
+e5adf7b2	HI_1_11_0	genre_accord par chaine	36	351
+e5adf7b2	HI_1_11_0	genre_accord par chaine	38	180
+e5adf7b2	HI_1_11_0	genre_accord par chaine	40	24
+e5adf7b2	HI_1_11_0	genre_accord par chaine	47	3
+e5adf7b2	HI_1_11_0	genre_accord par chaine	7	39
+e5adf7b2	HI_1_11_0	genre_accord par chaine	75	53
+e5adf7b2	HI_1_11_0	genre_accord par chaine	76	26
+e5adf7b2	HI_1_11_0	genre_accord par chaine	8	2
+e5adf7b2	HI_1_11_0	genre_accord par chaine	82	649
+e5adf7b2	HI_1_11_0	genre_accord par chaine	9	32
+e5adf7b2	HI_1_11_0	genre_desaccord	0	297
+e5adf7b2	HI_1_11_0	genre_desaccord	1	117
+e5adf7b2	HI_1_11_0	genre_desaccord	103	4
+e5adf7b2	HI_1_11_0	genre_desaccord	11	2
+e5adf7b2	HI_1_11_0	genre_desaccord	21	56
+e5adf7b2	HI_1_11_0	genre_desaccord	36	302
+e5adf7b2	HI_1_11_0	genre_desaccord	38	72
+e5adf7b2	HI_1_11_0	genre_desaccord	4	8
+e5adf7b2	HI_1_11_0	genre_desaccord	40	5
+e5adf7b2	HI_1_11_0	genre_desaccord	7	12
+e5adf7b2	HI_1_11_0	genre_desaccord	75	32
+e5adf7b2	HI_1_11_0	genre_desaccord	76	66
+e5adf7b2	HI_1_11_0	genre_desaccord	82	751
+e5adf7b2	HI_1_11_0	genre_desaccord	9	80
+e5adf7b2	HI_1_11_0	temoin	accord	2814
+e5adf7b2	HI_1_11_0	temoin	accord par chaine	1160
+e5adf7b2	HI_1_11_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	7
+e5adf7b2	HI_1_11_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	26
+e5adf7b2	HI_1_11_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	139
+e5adf7b2	HI_1_11_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	94
+e5adf7b2	HI_1_11_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	336
+e5adf7b2	HI_1_11_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	4
+e5adf7b2	HI_1_11_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	4
+e5adf7b2	HI_1_11_0	temoin	desaccord · E > S · depuis E non ferme · depuis S ferme au bit	1
+e5adf7b2	HI_1_11_0	temoin	desaccord · E > S · depuis E non ferme · depuis S non ferme	4
+e5adf7b2	HI_1_11_0	temoin_par_debut	fermeture au bit · accord	1
+e5adf7b2	HI_1_11_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	26
+e5adf7b2	HI_1_11_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	94
+e5adf7b2	HI_1_11_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	2
+e5adf7b2	HI_1_11_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E non ferme · depuis S ferme au bit	1
+e5adf7b2	HI_1_11_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	7
+e5adf7b2	HI_1_11_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E non ferme · depuis S ferme	16
+e5adf7b2	HI_1_11_0	temoin_par_debut	fermeture · desaccord · E > S · depuis E ferme · depuis S ferme	1
+e5adf7b2	HI_1_11_0	temoin_par_debut	signature · accord	2813
+e5adf7b2	HI_1_11_0	temoin_par_debut	signature · accord par chaine	1160
+e5adf7b2	HI_1_11_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	123
+e5adf7b2	HI_1_11_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	336
+e5adf7b2	HI_1_11_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme	3
+e5adf7b2	HI_1_11_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme au bit	2
+e5adf7b2	HI_1_11_0	temoin_par_debut	signature · desaccord · E > S · depuis E non ferme · depuis S non ferme	4
+f75e7053	HI_1_13_0	arret	localise · non porte 12	1
+f75e7053	HI_1_13_0	arret	localise · non porte 15	299
+f75e7053	HI_1_13_0	arret	localise · non porte 39	132
+f75e7053	HI_1_13_0	arret	localise · non porte 5	135
+f75e7053	HI_1_13_0	arret	localise · non porte 85	80
+f75e7053	HI_1_13_0	arret	non localise · non porte 15	19
+f75e7053	HI_1_13_0	arret	non localise · non porte 39	4
+f75e7053	HI_1_13_0	arret	non localise · non porte 5	28
+f75e7053	HI_1_13_0	arret	non localise · non porte 85	2
+f75e7053	HI_1_13_0	gain	ferme	293
+f75e7053	HI_1_13_0	gain	non ferme	129
+f75e7053	HI_1_13_0	genre_accord	0	736
+f75e7053	HI_1_13_0	genre_accord	1	77
+f75e7053	HI_1_13_0	genre_accord	100	2
+f75e7053	HI_1_13_0	genre_accord	105	1
+f75e7053	HI_1_13_0	genre_accord	109	38
+f75e7053	HI_1_13_0	genre_accord	11	1
+f75e7053	HI_1_13_0	genre_accord	21	583
+f75e7053	HI_1_13_0	genre_accord	36	889
+f75e7053	HI_1_13_0	genre_accord	38	287
+f75e7053	HI_1_13_0	genre_accord	40	32
+f75e7053	HI_1_13_0	genre_accord	7	1
+f75e7053	HI_1_13_0	genre_accord	75	221
+f75e7053	HI_1_13_0	genre_accord	76	298
+f75e7053	HI_1_13_0	genre_accord	82	530
+f75e7053	HI_1_13_0	genre_accord	9	64
+f75e7053	HI_1_13_0	genre_accord par chaine	0	68
+f75e7053	HI_1_13_0	genre_accord par chaine	1	7
+f75e7053	HI_1_13_0	genre_accord par chaine	109	35
+f75e7053	HI_1_13_0	genre_accord par chaine	21	33
+f75e7053	HI_1_13_0	genre_accord par chaine	36	85
+f75e7053	HI_1_13_0	genre_accord par chaine	38	21
+f75e7053	HI_1_13_0	genre_accord par chaine	40	2
+f75e7053	HI_1_13_0	genre_accord par chaine	75	20
+f75e7053	HI_1_13_0	genre_accord par chaine	76	12
+f75e7053	HI_1_13_0	genre_accord par chaine	82	872
+f75e7053	HI_1_13_0	genre_accord par chaine	9	4
+f75e7053	HI_1_13_0	genre_desaccord	0	8
+f75e7053	HI_1_13_0	genre_desaccord	109	45
+f75e7053	HI_1_13_0	genre_desaccord	21	3
+f75e7053	HI_1_13_0	genre_desaccord	36	12
+f75e7053	HI_1_13_0	genre_desaccord	82	202
+f75e7053	HI_1_13_0	genre_desaccord	9	2
+f75e7053	HI_1_13_0	temoin	accord	2542
+f75e7053	HI_1_13_0	temoin	accord par chaine	531
+f75e7053	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	3
+f75e7053	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	58
+f75e7053	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	3
+f75e7053	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	2
+f75e7053	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	2
+f75e7053	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	3
+f75e7053	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	3
+f75e7053	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	2
+f75e7053	HI_1_13_0	temoin_par_debut	fermeture · accord	8
+f75e7053	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E non ferme · depuis S ferme	1
+f75e7053	HI_1_13_0	temoin_par_debut	signature · accord	2534
+f75e7053	HI_1_13_0	temoin_par_debut	signature · accord par chaine	531
+f75e7053	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	57
+f75e7053	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	2
+fb1a1a72	HI_1_13_0	arret	localise · non porte 12	1
+fb1a1a72	HI_1_13_0	arret	localise · non porte 15	967
+fb1a1a72	HI_1_13_0	arret	localise · non porte 39	156
+fb1a1a72	HI_1_13_0	arret	localise · non porte 5	215
+fb1a1a72	HI_1_13_0	arret	localise · non porte 6	61
+fb1a1a72	HI_1_13_0	arret	localise · non porte 85	116
+fb1a1a72	HI_1_13_0	arret	non localise · non porte 106	2
+fb1a1a72	HI_1_13_0	arret	non localise · non porte 12	1
+fb1a1a72	HI_1_13_0	arret	non localise · non porte 15	68
+fb1a1a72	HI_1_13_0	arret	non localise · non porte 39	6
+fb1a1a72	HI_1_13_0	arret	non localise · non porte 5	29
+fb1a1a72	HI_1_13_0	arret	non localise · non porte 6	9
+fb1a1a72	HI_1_13_0	arret	non localise · non porte 85	1
+fb1a1a72	HI_1_13_0	gain	ferme	442
+fb1a1a72	HI_1_13_0	gain	non ferme	89
+fb1a1a72	HI_1_13_0	genre_accord	0	1814
+fb1a1a72	HI_1_13_0	genre_accord	1	113
+fb1a1a72	HI_1_13_0	genre_accord	100	12
+fb1a1a72	HI_1_13_0	genre_accord	104	2
+fb1a1a72	HI_1_13_0	genre_accord	105	10
+fb1a1a72	HI_1_13_0	genre_accord	11	9
+fb1a1a72	HI_1_13_0	genre_accord	21	210
+fb1a1a72	HI_1_13_0	genre_accord	23	44
+fb1a1a72	HI_1_13_0	genre_accord	3	2
+fb1a1a72	HI_1_13_0	genre_accord	36	2931
+fb1a1a72	HI_1_13_0	genre_accord	38	418
+fb1a1a72	HI_1_13_0	genre_accord	4	3
+fb1a1a72	HI_1_13_0	genre_accord	40	62
+fb1a1a72	HI_1_13_0	genre_accord	47	15
+fb1a1a72	HI_1_13_0	genre_accord	75	298
+fb1a1a72	HI_1_13_0	genre_accord	76	465
+fb1a1a72	HI_1_13_0	genre_accord	82	929
+fb1a1a72	HI_1_13_0	genre_accord	9	277
+fb1a1a72	HI_1_13_0	genre_accord par chaine	0	137
+fb1a1a72	HI_1_13_0	genre_accord par chaine	1	15
+fb1a1a72	HI_1_13_0	genre_accord par chaine	105	2
+fb1a1a72	HI_1_13_0	genre_accord par chaine	11	4
+fb1a1a72	HI_1_13_0	genre_accord par chaine	21	25
+fb1a1a72	HI_1_13_0	genre_accord par chaine	23	6
+fb1a1a72	HI_1_13_0	genre_accord par chaine	36	229
+fb1a1a72	HI_1_13_0	genre_accord par chaine	38	35
+fb1a1a72	HI_1_13_0	genre_accord par chaine	4	1
+fb1a1a72	HI_1_13_0	genre_accord par chaine	40	7
+fb1a1a72	HI_1_13_0	genre_accord par chaine	47	2
+fb1a1a72	HI_1_13_0	genre_accord par chaine	7	1
+fb1a1a72	HI_1_13_0	genre_accord par chaine	75	25
+fb1a1a72	HI_1_13_0	genre_accord par chaine	76	30
+fb1a1a72	HI_1_13_0	genre_accord par chaine	82	850
+fb1a1a72	HI_1_13_0	genre_accord par chaine	9	23
+fb1a1a72	HI_1_13_0	genre_desaccord	0	34
+fb1a1a72	HI_1_13_0	genre_desaccord	1	4
+fb1a1a72	HI_1_13_0	genre_desaccord	11	1
+fb1a1a72	HI_1_13_0	genre_desaccord	21	1
+fb1a1a72	HI_1_13_0	genre_desaccord	36	34
+fb1a1a72	HI_1_13_0	genre_desaccord	75	8
+fb1a1a72	HI_1_13_0	genre_desaccord	76	4
+fb1a1a72	HI_1_13_0	genre_desaccord	82	52
+fb1a1a72	HI_1_13_0	genre_desaccord	9	3
+fb1a1a72	HI_1_13_0	temoin	accord	4818
+fb1a1a72	HI_1_13_0	temoin	accord par chaine	815
+fb1a1a72	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme	6
+fb1a1a72	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S ferme au bit	25
+fb1a1a72	HI_1_13_0	temoin	desaccord · E < S · depuis E ferme · depuis S non ferme	1
+fb1a1a72	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme	3
+fb1a1a72	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S ferme au bit	1
+fb1a1a72	HI_1_13_0	temoin	desaccord · E < S · depuis E non ferme · depuis S non ferme	1
+fb1a1a72	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme	5
+fb1a1a72	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S ferme au bit	10
+fb1a1a72	HI_1_13_0	temoin	desaccord · E > S · depuis E ferme · depuis S non ferme	2
+fb1a1a72	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E ferme · depuis S ferme au bit	25
+fb1a1a72	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E < S · depuis E non ferme · depuis S ferme au bit	1
+fb1a1a72	HI_1_13_0	temoin_par_debut	fermeture au bit · desaccord · E > S · depuis E ferme · depuis S ferme au bit	5
+fb1a1a72	HI_1_13_0	temoin_par_debut	fermeture · accord	26
+fb1a1a72	HI_1_13_0	temoin_par_debut	fermeture · accord par chaine	1
+fb1a1a72	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E < S · depuis E ferme · depuis S ferme	6
+fb1a1a72	HI_1_13_0	temoin_par_debut	fermeture · desaccord · E > S · depuis E ferme · depuis S ferme	3
+fb1a1a72	HI_1_13_0	temoin_par_debut	signature · accord	4792
+fb1a1a72	HI_1_13_0	temoin_par_debut	signature · accord par chaine	814
+fb1a1a72	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E ferme · depuis S non ferme	1
+fb1a1a72	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S ferme	3
+fb1a1a72	HI_1_13_0	temoin_par_debut	signature · desaccord · E < S · depuis E non ferme · depuis S non ferme	1
+fb1a1a72	HI_1_13_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme	2
+fb1a1a72	HI_1_13_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S ferme au bit	5
+fb1a1a72	HI_1_13_0	temoin_par_debut	signature · desaccord · E > S · depuis E ferme · depuis S non ferme	2

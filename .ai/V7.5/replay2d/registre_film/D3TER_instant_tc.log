@@ -1,0 +1,175 @@
+===== TC 66aa5f0b =====
+=== RUN   TestTotalControlInstantCardinal
+2026/08/27 11:09:02 INFO plafond memoire arme pour ce decodage outil=d3ter-instant souple_gib=2 dur_octets=2684354560
+2026/08/27 11:09:07 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=6352105362972388787 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    totalcontrol_instant_d3ter_test.go:96: 66aa5f0b : 4 emission(s) de tag 5 chainees sur 4 slot(s) ; serie [110378 ; 268436] ms sur un match de 262360 ms — couverture 60.2 %
+    totalcontrol_instant_d3ter_test.go:106: 66aa5f0b : 3 point(s) de changement, 1 segment(s) hors fenetre de rotation (+/- 2000 ms) ; temps exploitable 151664 ms sur un match de 262360 ms
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 1 : 151664 ms (151664/151664 = 100.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106: SIGNAL 66aa5f0b : cardinal 3 pendant 0/151664 = 0.0 % du temps exploitable (seuil 80 %) — SOUS LE SEUIL
+    totalcontrol_instant_d3ter_test.go:89: 66aa5f0b : pic memoire observe 0.02 Gio
+--- PASS: TestTotalControlInstantCardinal (4.90s)
+PASS
+EXIT_66aa5f0b=0
+===== TC bf831a6b =====
+=== RUN   TestTotalControlInstantCardinal
+2026/08/27 11:09:07 INFO plafond memoire arme pour ce decodage outil=d3ter-instant souple_gib=2 dur_octets=2684354560
+2026/08/27 11:09:16 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11463600112565967046 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    totalcontrol_instant_d3ter_test.go:96: bf831a6b : 3 emission(s) de tag 5 chainees sur 3 slot(s) ; serie [142394 ; 334933] ms sur un match de 329474 ms — couverture 58.4 %
+    totalcontrol_instant_d3ter_test.go:106: bf831a6b : 2 point(s) de changement, 1 segment(s) hors fenetre de rotation (+/- 2000 ms) ; temps exploitable 188539 ms sur un match de 329474 ms
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 1 : 188539 ms (188539/188539 = 100.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106: SIGNAL bf831a6b : cardinal 3 pendant 0/188539 = 0.0 % du temps exploitable (seuil 80 %) — SOUS LE SEUIL
+    totalcontrol_instant_d3ter_test.go:89: bf831a6b : pic memoire observe 0.03 Gio
+--- PASS: TestTotalControlInstantCardinal (9.41s)
+PASS
+EXIT_bf831a6b=0
+===== TC a521164d =====
+=== RUN   TestTotalControlInstantCardinal
+2026/08/27 11:09:17 INFO plafond memoire arme pour ce decodage outil=d3ter-instant souple_gib=2 dur_octets=2684354560
+2026/08/27 11:09:29 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11315796556169222424 empreinte_connue=7053924395561516366 blocs=117 slots_non_vides=1034
+    totalcontrol_instant_d3ter_test.go:96: a521164d : 59 emission(s) de tag 5 chainees sur 40 slot(s) ; serie [51910 ; 361270] ms sur un match de 358603 ms — couverture 86.3 %
+    totalcontrol_instant_d3ter_test.go:106: a521164d : 56 point(s) de changement, 23 segment(s) hors fenetre de rotation (+/- 2000 ms) ; temps exploitable 186742 ms sur un match de 358603 ms
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 1 : 6145 ms (6145/186742 = 3.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 2 : 5417 ms (5417/186742 = 2.9 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 6 : 2673 ms (2673/186742 = 1.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 7 : 7798 ms (7798/186742 = 4.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 9 : 1217 ms (1217/186742 = 0.7 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 10 : 1143 ms (1143/186742 = 0.6 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 11 : 4901 ms (4901/186742 = 2.6 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 17 : 804 ms (804/186742 = 0.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 18 : 1983 ms (1983/186742 = 1.1 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 19 : 2174 ms (2174/186742 = 1.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 21 : 16256 ms (16256/186742 = 8.7 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 23 : 8958 ms (8958/186742 = 4.8 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 25 : 83 ms (83/186742 = 0.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 26 : 15540 ms (15540/186742 = 8.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 28 : 5358 ms (5358/186742 = 2.9 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 30 : 4073 ms (4073/186742 = 2.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 31 : 13392 ms (13392/186742 = 7.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 32 : 4485 ms (4485/186742 = 2.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 33 : 2447 ms (2447/186742 = 1.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 34 : 1645 ms (1645/186742 = 0.9 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 36 : 80250 ms (80250/186742 = 43.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106: SIGNAL a521164d : cardinal 3 pendant 0/186742 = 0.0 % du temps exploitable (seuil 80 %) — SOUS LE SEUIL
+    totalcontrol_instant_d3ter_test.go:89: a521164d : pic memoire observe 0.08 Gio
+--- PASS: TestTotalControlInstantCardinal (13.84s)
+PASS
+EXIT_a521164d=0
+===== TC 2f05dc98 =====
+=== RUN   TestTotalControlInstantCardinal
+2026/08/27 11:09:31 INFO plafond memoire arme pour ce decodage outil=d3ter-instant souple_gib=2 dur_octets=2684354560
+2026/08/27 11:09:54 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=6352105362972388787 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    totalcontrol_instant_d3ter_test.go:96: 2f05dc98 : 22 emission(s) de tag 5 chainees sur 18 slot(s) ; serie [60237 ; 769384] ms sur un match de 761645 ms — couverture 93.1 %
+    totalcontrol_instant_d3ter_test.go:106: 2f05dc98 : 20 point(s) de changement, 14 segment(s) hors fenetre de rotation (+/- 2000 ms) ; temps exploitable 649481 ms sur un match de 761645 ms
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 1 : 29061 ms (29061/649481 = 4.5 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 3 : 180450 ms (180450/649481 = 27.8 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 4 : 97743 ms (97743/649481 = 15.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 5 : 52961 ms (52961/649481 = 8.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 6 : 22163 ms (22163/649481 = 3.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 8 : 7411 ms (7411/649481 = 1.1 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 9 : 12484 ms (12484/649481 = 1.9 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 10 : 10581 ms (10581/649481 = 1.6 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 11 : 30771 ms (30771/649481 = 4.7 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 12 : 58130 ms (58130/649481 = 9.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 13 : 27368 ms (27368/649481 = 4.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 14 : 91503 ms (91503/649481 = 14.1 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 15 : 8215 ms (8215/649481 = 1.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 16 : 20640 ms (20640/649481 = 3.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106: SIGNAL 2f05dc98 : cardinal 3 pendant 180450/649481 = 27.8 % du temps exploitable (seuil 80 %) — SOUS LE SEUIL
+    totalcontrol_instant_d3ter_test.go:89: 2f05dc98 : pic memoire observe 0.22 Gio
+--- PASS: TestTotalControlInstantCardinal (24.41s)
+PASS
+EXIT_2f05dc98=0
+===== TC 0862dce4 =====
+=== RUN   TestTotalControlInstantCardinal
+2026/08/27 11:09:55 INFO plafond memoire arme pour ce decodage outil=d3ter-instant souple_gib=2 dur_octets=2684354560
+2026/08/27 11:10:27 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=15801484465025523539 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1033
+    totalcontrol_instant_d3ter_test.go:96: 0862dce4 : 168 emission(s) de tag 5 chainees sur 79 slot(s) ; serie [62075 ; 945989] ms sur un match de 934652 ms — couverture 94.6 %
+    totalcontrol_instant_d3ter_test.go:106: 0862dce4 : 130 point(s) de changement, 52 segment(s) hors fenetre de rotation (+/- 2000 ms) ; temps exploitable 623979 ms sur un match de 934652 ms
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 2 : 4243 ms (4243/623979 = 0.7 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 3 : 1539 ms (1539/623979 = 0.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 4 : 3774 ms (3774/623979 = 0.6 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 5 : 2044 ms (2044/623979 = 0.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 6 : 11316 ms (11316/623979 = 1.8 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 9 : 60800 ms (60800/623979 = 9.7 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 11 : 4408 ms (4408/623979 = 0.7 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 12 : 2940 ms (2940/623979 = 0.5 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 15 : 10280 ms (10280/623979 = 1.6 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 16 : 844 ms (844/623979 = 0.1 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 17 : 12078 ms (12078/623979 = 1.9 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 18 : 12417 ms (12417/623979 = 2.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 19 : 5 ms (5/623979 = 0.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 21 : 27666 ms (27666/623979 = 4.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 23 : 2139 ms (2139/623979 = 0.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 24 : 16022 ms (16022/623979 = 2.6 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 26 : 7078 ms (7078/623979 = 1.1 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 30 : 5010 ms (5010/623979 = 0.8 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 31 : 50923 ms (50923/623979 = 8.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 35 : 45483 ms (45483/623979 = 7.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 38 : 72 ms (72/623979 = 0.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 39 : 15886 ms (15886/623979 = 2.5 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 40 : 1471 ms (1471/623979 = 0.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 43 : 4310 ms (4310/623979 = 0.7 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 44 : 2706 ms (2706/623979 = 0.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 45 : 3881 ms (3881/623979 = 0.6 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 46 : 9006 ms (9006/623979 = 1.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 47 : 4848 ms (4848/623979 = 0.8 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 49 : 18224 ms (18224/623979 = 2.9 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 50 : 70 ms (70/623979 = 0.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 51 : 1672 ms (1672/623979 = 0.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 52 : 14353 ms (14353/623979 = 2.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 53 : 38 ms (38/623979 = 0.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 54 : 1874 ms (1874/623979 = 0.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 55 : 9276 ms (9276/623979 = 1.5 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 56 : 9017 ms (9017/623979 = 1.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 58 : 20462 ms (20462/623979 = 3.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 59 : 7240 ms (7240/623979 = 1.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 60 : 12783 ms (12783/623979 = 2.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 61 : 841 ms (841/623979 = 0.1 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 63 : 29604 ms (29604/623979 = 4.7 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 66 : 2339 ms (2339/623979 = 0.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 67 : 2272 ms (2272/623979 = 0.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 68 : 3007 ms (3007/623979 = 0.5 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 69 : 13451 ms (13451/623979 = 2.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 70 : 539 ms (539/623979 = 0.1 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 71 : 54926 ms (54926/623979 = 8.8 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 72 : 25096 ms (25096/623979 = 4.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 73 : 1372 ms (1372/623979 = 0.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 74 : 17152 ms (17152/623979 = 2.7 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 75 : 51050 ms (51050/623979 = 8.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 77 : 4132 ms (4132/623979 = 0.7 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106: SIGNAL 0862dce4 : cardinal 3 pendant 1539/623979 = 0.2 % du temps exploitable (seuil 80 %) — SOUS LE SEUIL
+    totalcontrol_instant_d3ter_test.go:89: 0862dce4 : pic memoire observe 0.30 Gio
+--- PASS: TestTotalControlInstantCardinal (34.19s)
+PASS
+EXIT_0862dce4=0
+===== TC d2c64f8c =====
+=== RUN   TestTotalControlInstantCardinal
+2026/08/27 11:10:29 INFO plafond memoire arme pour ce decodage outil=d3ter-instant souple_gib=2 dur_octets=2684354560
+2026/08/27 11:11:07 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=3664712342311588768 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1032
+    totalcontrol_instant_d3ter_test.go:96: d2c64f8c : 27 emission(s) de tag 5 chainees sur 24 slot(s) ; serie [67910 ; 1121027] ms sur un match de 1120981 ms — couverture 93.9 %
+    totalcontrol_instant_d3ter_test.go:106: d2c64f8c : 24 point(s) de changement, 20 segment(s) hors fenetre de rotation (+/- 2000 ms) ; temps exploitable 967077 ms sur un match de 1120981 ms
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 1 : 76183 ms (76183/967077 = 7.9 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 2 : 102773 ms (102773/967077 = 10.6 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 3 : 38175 ms (38175/967077 = 3.9 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 4 : 83255 ms (83255/967077 = 8.6 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 5 : 60031 ms (60031/967077 = 6.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 6 : 79351 ms (79351/967077 = 8.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 7 : 16620 ms (16620/967077 = 1.7 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 9 : 50053 ms (50053/967077 = 5.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 10 : 3045 ms (3045/967077 = 0.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 11 : 9610 ms (9610/967077 = 1.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 12 : 4009 ms (4009/967077 = 0.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 13 : 81588 ms (81588/967077 = 8.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 14 : 99207 ms (99207/967077 = 10.3 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 15 : 34619 ms (34619/967077 = 3.6 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 16 : 13352 ms (13352/967077 = 1.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 17 : 1105 ms (1105/967077 = 0.1 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 18 : 22993 ms (22993/967077 = 2.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 19 : 2039 ms (2039/967077 = 0.2 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 21 : 163393 ms (163393/967077 = 16.9 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 22 : 25676 ms (25676/967077 = 2.7 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106: SIGNAL d2c64f8c : cardinal 3 pendant 38175/967077 = 3.9 % du temps exploitable (seuil 80 %) — SOUS LE SEUIL
+    totalcontrol_instant_d3ter_test.go:89: d2c64f8c : pic memoire observe 0.28 Gio
+--- PASS: TestTotalControlInstantCardinal (40.81s)
+PASS
+EXIT_d2c64f8c=0

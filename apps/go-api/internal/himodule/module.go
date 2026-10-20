@@ -23,7 +23,6 @@ package himodule
 import (
 	"encoding/binary"
 	"fmt"
-	"os"
 
 	"levelup/go-api/internal/ooz"
 )
@@ -61,6 +60,11 @@ type Module struct {
 	// personne n'avait jamais ouvert.
 	hd1     []byte
 	hd1Base int
+	// projData / projHd1 : les projections qui portent `data` et `hd1`. Elles ne sont pas
+	// fusionnees avec les tranches parce qu'une projection se RELACHE (cf. Close) alors
+	// qu'une tranche ne fait que la designer.
+	projData *projection
+	projHd1  *projection
 }
 
 // File décrit une entrée fichier (tag ou ressource).
@@ -99,27 +103,53 @@ func fourCC(v uint32) string {
 	return string(b)
 }
 
-// Open lit et indexe un .module.
+// Open indexe un .module. L'archive est PROJETEE en memoire, pas copiee dans le tas
+// (cf. projection.go) : le lecteur n'en touche que les tables et les blocs demandes.
 func Open(path string) (*Module, error) {
-	data, err := os.ReadFile(path)
+	proj, err := projette(path)
 	if err != nil {
 		return nil, err
 	}
+	data := proj.octets
 	if len(data) < headerSize || string(data[:4]) != "mohd" {
+		_ = proj.ferme()
 		return nil, fmt.Errorf("himodule: magic mohd absent (%s)", path)
 	}
 	m := &Module{
 		data:      data,
+		projData:  proj,
 		fileCount: int(u32(data, 0x10)),
 		numBlocks: int(u32(data, 0x2C)),
 	}
 	m.dataBase = dataBase(data, m.fileCount, m.numBlocks)
 	m.blockOff = lockBlockTable(data, m.numBlocks, m.dataBase, headerSize+m.fileCount*entryStride)
 	if m.blockOff < 0 {
+		_ = m.Close()
 		return nil, fmt.Errorf("himodule: table des blocs introuvable")
 	}
 	m.loadHd1(path)
 	return m, nil
+}
+
+// Close relache les projections de l'archive et de son compagnon.
+//
+// APPELER Close EST SUR PARCE QU'AUCUN OCTET RENDU N'ALIASE LA PROJECTION : `Extract`
+// decompresse dans un tampon neuf ou fait `copy`, `ResourceBlob` concatene par `append`,
+// `Files`/`fourCC` rendent des valeurs. Un module ferme ne doit plus etre lu — c'est la
+// SEULE regle nouvelle, et elle ne concerne que les appelants qui ferment.
+//
+// Ne pas fermer n'est pas une fuite de memoire vive : une projection en lecture seule est
+// adossee au fichier, le systeme en reprend les pages quand il en a besoin, et tout est
+// relache a la fin du processus. Fermer sert aux boucles qui ouvrent beaucoup d'archives —
+// c'est le cas de `himap.ModuleIndex`, une par carte.
+func (m *Module) Close() error {
+	errData := m.projData.ferme()
+	errHd1 := m.projHd1.ferme()
+	m.data, m.hd1 = nil, nil
+	if errData != nil {
+		return errData
+	}
+	return errHd1
 }
 
 // loadHd1 ouvre le compagnon `.module_hd1` et CALIBRE sa base de donnees.
@@ -130,12 +160,18 @@ func Open(path string) (*Module, error) {
 // donc le critere separe nettement -- et s'il ne separe pas, on n'active PAS le compagnon
 // plutot que de servir des octets pris au hasard.
 func (m *Module) loadHd1(path string) {
-	raw, err := os.ReadFile(path + "_hd1")
-	if err != nil || len(raw) == 0 {
+	proj, err := projette(path + "_hd1")
+	if err != nil {
+		return
+	}
+	raw := proj.octets
+	if len(raw) == 0 {
+		_ = proj.ferme()
 		return
 	}
 	ents := m.hd1Probes()
 	if len(ents) == 0 {
+		_ = proj.ferme()
 		return
 	}
 	best, bestN := -1, 0
@@ -144,10 +180,13 @@ func (m *Module) loadHd1(path string) {
 			bestN, best = n, base
 		}
 	}
-	// Seuil : la moitie des entrees testees. En dessous, la base n'est pas etablie.
+	// Seuil : la moitie des entrees testees. En dessous, la base n'est pas etablie — et la
+	// projection est relachee tout de suite plutot que gardee pour rien.
 	if best >= 0 && bestN*2 >= len(ents) {
-		m.hd1, m.hd1Base = raw, best
+		m.hd1, m.hd1Base, m.projHd1 = raw, best, proj
+		return
 	}
+	_ = proj.ferme()
 }
 
 // hd1Probes rend l'echantillon d'entrees qui sert de temoin a la calibration : les entrees

@@ -22,7 +22,7 @@ import { StatsGlobales } from '@/features/prestige/components/StatsGlobales'
 import { MomentCard } from '@/features/prestige/components/MomentCard'
 import type { Challenge } from '@/lib/prestige'
 import { StreakDashboard } from './StreakDashboard'
-import { ActivityCalendarChart } from './ActivityCalendarChart'
+import { ActivityCalendarChart, ActivityCalendarUnavailable } from './ActivityCalendarChart'
 import { useActivityCalendar } from './queries'
 import { RecordsTimeline } from './RecordsTimeline'
 import { MilestonesGrid } from './MilestonesGrid'
@@ -49,7 +49,7 @@ export function AscensionRealisationsTab() {
   const { data: activeData } = useChallenges(playerSlug, titleSlug)
   const { data: historyData } = useChallengeHistory(playerSlug, titleSlug)
   // Calendrier d'activité 90 j (DEC-5/D3), adossé au bloc séries.
-  const { data: activity } = useActivityCalendar(playerSlug)
+  const { data: activity, isError: activityFailed } = useActivityCalendar(playerSlug)
 
   if (!playerSlug) {
     return (
@@ -71,12 +71,16 @@ export function AscensionRealisationsTab() {
       <PrestigeSquadProgress />
 
       <StreakDashboard playerSlug={playerSlug} />
-      {activity && (
+      {/* Chargé : le calendrier (état vide dans son bloc si aucun jour joué). Lecture en échec : le bloc
+          reste et le dit. En cours de chargement : rien (la requête tourne, aucun état à annoncer). */}
+      {activity ? (
         <ActivityCalendarChart
           since={activity.since}
           until={activity.until}
           days={activity.days}
         />
+      ) : (
+        activityFailed && <ActivityCalendarUnavailable />
       )}
       <RecordsTimeline playerSlug={playerSlug} />
       <MilestonesGrid playerSlug={playerSlug} />

@@ -30,7 +30,14 @@ var (
 	ErrInviteNotFound = errors.New("code d'invitation introuvable")
 	ErrInviteExpired  = errors.New("code d'invitation expiré")
 	ErrInviteUsed     = errors.New("code d'invitation déjà utilisé")
+	// ErrInviteIssuerGone : le compte qui a émis l'invitation n'existe plus.
+	ErrInviteIssuerGone = errors.New("invite issuer account no longer exists")
 )
+
+// IssuerLookup retrouve un compte par son nom d'utilisateur. Satisfait par *Store.
+type IssuerLookup interface {
+	Get(username string) (*domain.User, error)
+}
 
 // invitesFile représente le format JSON du fichier invites.json.
 type invitesFile struct {
@@ -40,13 +47,17 @@ type invitesFile struct {
 
 // InviteStore gère la persistance des codes d'invitation.
 type InviteStore struct {
-	mu   sync.RWMutex
-	path string
+	mu      sync.RWMutex
+	path    string
+	issuers IssuerLookup
 }
 
-// NewInviteStore crée un InviteStore pointant vers le fichier JSON donné.
-func NewInviteStore(path string) *InviteStore {
-	return &InviteStore{path: path}
+// NewInviteStore crée un InviteStore pointant vers le fichier JSON donné. issuers
+// retrouve le compte émetteur d'une invitation (CreatedBy = son nom d'utilisateur) :
+// une invitation n'est valable que si ce compte existe encore. issuers nil : aucune
+// invitation n'est valable.
+func NewInviteStore(path string, issuers IssuerLookup) *InviteStore {
+	return &InviteStore{path: path, issuers: issuers}
 }
 
 // load lit le fichier JSON.
@@ -88,9 +99,10 @@ func (s *InviteStore) save(f *invitesFile) error {
 	return nil
 }
 
-// Generate crée un nouveau code d'invitation. groupID (optionnel) désigne le
-// groupe que l'invité rejoint via le flow "rejoindre un groupe" (login Xbox SSO) ;
-// vide = invitation d'inscription legacy (mode password, sans groupe).
+// Generate crée un nouveau code d'invitation. createdBy est le nom d'utilisateur du
+// compte émetteur (clé vérifiée par Validate et Consume). groupID (optionnel) désigne
+// le groupe que l'invité rejoint via le flow "rejoindre un groupe" (login Xbox SSO) ;
+// vide = invitation sans groupe.
 func (s *InviteStore) Generate(createdBy string, expiresInDays int, groupID string) (*domain.InviteCode, error) {
 	if expiresInDays <= 0 {
 		expiresInDays = 7
@@ -125,7 +137,8 @@ func (s *InviteStore) Generate(createdBy string, expiresInDays int, groupID stri
 	return &invite, nil
 }
 
-// Validate vérifie qu'un code est valide (existe, non utilisé, non expiré).
+// Validate vérifie qu'un code est valide (existe, non utilisé, non expiré, émetteur
+// encore existant). Lecture seule : seul Consume réserve le code.
 func (s *InviteStore) Validate(code string) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -134,56 +147,52 @@ func (s *InviteStore) Validate(code string) error {
 	if err != nil {
 		return err
 	}
+	_, err = s.usable(f, code)
+	return err
+}
 
+// usable rend l'invitation code si elle peut encore servir. L'appelant tient s.mu.
+func (s *InviteStore) usable(f *invitesFile, code string) (domain.InviteCode, error) {
 	invite, exists := f.Invites[code]
 	if !exists {
-		return ErrInviteNotFound
+		return invite, ErrInviteNotFound
 	}
 	if invite.IsUsed() {
-		return ErrInviteUsed
+		return invite, ErrInviteUsed
 	}
 	if invite.IsExpired() {
-		return ErrInviteExpired
+		return invite, ErrInviteExpired
 	}
-	return nil
+	if !s.issuerExists(invite.CreatedBy) {
+		return invite, ErrInviteIssuerGone
+	}
+	return invite, nil
 }
 
-// Get retourne le code d'invitation (sans vérifier sa validité). Utile pour lire
-// le GroupID associé. ErrInviteNotFound si le code n'existe pas.
-func (s *InviteStore) Get(code string) (*domain.InviteCode, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	f, err := s.load()
-	if err != nil {
-		return nil, err
+// issuerExists dit si le compte émetteur existe encore.
+func (s *InviteStore) issuerExists(username string) bool {
+	if s.issuers == nil || username == "" {
+		return false
 	}
-	invite, exists := f.Invites[code]
-	if !exists {
-		return nil, ErrInviteNotFound
-	}
-	return &invite, nil
+	u, err := s.issuers.Get(username)
+	return err == nil && u != nil
 }
 
-// Consume marque un code comme utilisé.
-func (s *InviteStore) Consume(code, usedBy string) error {
+// Consume réserve le code pour usedBy, de façon atomique (vérification et marquage
+// sous le même verrou exclusif) : de deux consommations concurrentes, une seule
+// réussit. À appeler AVANT de créer le compte ; si la création échoue, Release rend
+// le code. Rend l'invitation consommée.
+func (s *InviteStore) Consume(code, usedBy string) (*domain.InviteCode, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	f, err := s.load()
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	invite, exists := f.Invites[code]
-	if !exists {
-		return ErrInviteNotFound
-	}
-	if invite.IsUsed() {
-		return ErrInviteUsed
-	}
-	if invite.IsExpired() {
-		return ErrInviteExpired
+	invite, err := s.usable(f, code)
+	if err != nil {
+		return nil, err
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -191,6 +200,32 @@ func (s *InviteStore) Consume(code, usedBy string) error {
 	invite.UsedAt = &now
 	f.Invites[code] = invite
 
+	if err := s.save(f); err != nil {
+		return nil, err
+	}
+	return &invite, nil
+}
+
+// Release rend un code consommé par usedBy (compensation d'une création de compte
+// échouée après Consume). Sans effet si le code a été consommé par quelqu'un d'autre.
+func (s *InviteStore) Release(code, usedBy string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	f, err := s.load()
+	if err != nil {
+		return err
+	}
+	invite, exists := f.Invites[code]
+	if !exists {
+		return ErrInviteNotFound
+	}
+	if invite.UsedBy == nil || *invite.UsedBy != usedBy {
+		return nil
+	}
+	invite.UsedBy = nil
+	invite.UsedAt = nil
+	f.Invites[code] = invite
 	return s.save(f)
 }
 
@@ -213,7 +248,7 @@ func (s *InviteStore) List() ([]domain.AdminInviteSummary, error) {
 			ExpiresAt: inv.ExpiresAt,
 			UsedBy:    inv.UsedBy,
 			UsedAt:    inv.UsedAt,
-			Valid:     inv.IsValid(),
+			Valid:     inv.IsValid() && s.issuerExists(inv.CreatedBy),
 		})
 	}
 	return result, nil

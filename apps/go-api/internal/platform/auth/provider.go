@@ -1,9 +1,8 @@
 // Package auth — provider.go : interface TokenProvider, DeviceFlow, et implémentations.
 //
 // TokenProvider abstrait l'acquisition de tokens Halo Infinite.
-// Depuis le retrait de MSAL (2026-07-15, SISU validé bout-en-bout), le seul
-// provider réel est SISUProvider (SISU/PoP natif Xbox, zéro app Azure) ; le
-// stub reste pour les tests.
+// Le seul provider réel est SISUProvider (device-flow Xbox natif puis chaîne XBL
+// classique, zéro app Azure) ; le stub reste pour les tests.
 package auth
 
 import (
@@ -25,12 +24,12 @@ type DeviceFlow interface {
 	AcquireToken(ctx context.Context) (string, error)
 }
 
-// FlowExchanger est un DeviceFlow qui complète LUI-MÊME l'échange en tokens Halo,
-// en portant son propre contexte éphémère (flow SISU : kp/deviceToken). Il
-// n'existe alors AUCUN slot partagé sur le provider — deux onboardings
-// concurrents ou un refresh stateless du pool ne peuvent plus se
-// consommer/écraser mutuellement. Un flow qui n'implémente pas FlowExchanger
-// (stub) retombe sur TokenProvider.Exchange (échange stateless standard).
+// FlowExchanger est un DeviceFlow qui complète LUI-MÊME l'échange en tokens Halo
+// avec ce qu'il sait de son ticket (provenance du client émetteur → préfixe
+// RpsTicket). Aucun état n'est partagé sur le provider : deux onboardings
+// concurrents ou un refresh stateless du pool ne peuvent pas se gêner. Un flow
+// qui n'implémente pas FlowExchanger (stub) retombe sur TokenProvider.Exchange
+// (échange stateless standard).
 type FlowExchanger interface {
 	ExchangeFlow(ctx context.Context, accessToken string) (*ExchangeResult, error)
 }
@@ -74,16 +73,8 @@ type TokenProvider interface {
 	// Le DeviceFlow retourné expose les accesseurs UI et AcquireToken.
 	InitDeviceFlow(ctx context.Context) (DeviceFlow, error)
 
-	// TrySilentRefresh tente un refresh non-interactif depuis un cache persisté.
-	// VOIE MORTE depuis le retrait de MSAL (2026-07-15) : SISUProvider répond
-	// toujours ("", nil) et les callers (resolver/pool/cli_refresh) tombent sur
-	// la voie refresh_token. Retrait de la méthode + des call sites + des champs
-	// MSALCacheJSON planifié avec le lot D2 de purge legacy (armable ≥ 2026-07-20,
-	// critère : telemetrie legacy_source_used muette). Ne pas réimplémenter.
-	TrySilentRefresh(ctx context.Context, cacheJSON string) (string, error)
-
 	// TryOAuthRefresh tente d'obtenir un access_token via OAuth v2 refresh_token.
-	// refreshToken : valeur brute du refresh token (env var ou sync_meta DuckDB).
+	// refreshToken : valeur brute du refresh token (MultiUserTokenStore, ADR 0023).
 	// Retourne ("", nil) si le token est vide ou si le refresh échoue proprement.
 	//
 	// DEPRECATED : préférer TryOAuthRefreshWithRotation qui expose le RT

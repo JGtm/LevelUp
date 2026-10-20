@@ -44,7 +44,7 @@ func (h *BootstrapHandler) handleBootstrap(ctx context.Context, _ *struct{}) (*b
 	sess := middleware.GetSession(ctx)
 	resp, err := h.svc.Build(ctx, sess)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "bootstrap_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "bootstrap_error", err)
 	}
 	return &bootstrapOutput{Body: resp}, nil
 }
@@ -77,7 +77,7 @@ func (h *PlayersHandler) handlePlayers(ctx context.Context, _ *struct{}) (*playe
 	sess := middleware.GetSession(ctx)
 	resp, err := h.svc.BuildPlayersList(ctx, sess)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "players_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "players_error", err)
 	}
 	return &playersOutput{Body: resp}, nil
 }

@@ -1,0 +1,5 @@
+# Morceaux de film du fixture E2E : flux zlib BRUT. Forcés binaires pour que git ne tente
+# JAMAIS de normalisation d'eol (CRLF->LF) — elle corromprait le flux compressé et l'ouvrier
+# échouerait à le décompresser sur un checkout CI (Linux). Sans cette règle, `* text=auto`
+# pourrait les mal détecter.
+*.bin binary

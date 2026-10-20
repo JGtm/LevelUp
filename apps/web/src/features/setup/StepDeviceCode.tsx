@@ -15,6 +15,11 @@ import { apiErrorCode, type ApiError } from '@/lib/api/client'
 import { verificationLinkLabel } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { isDemoRefusal } from '@/lib/api/demoReadOnly'
+import { deviceFlowFailureKey } from '@/features/auth/loginError'
+
+/** Statut d'un démarrage refusé par le plafond de connexions en cours (serveur ou nginx). */
+const HTTP_TOO_MANY_REQUESTS = 429
 
 // Nombre max de relances AUTOMATIQUES sur attempt_not_found (tentative balayée /
 // backend redémarré). Au-delà, on bascule sur un retry manuel pour éviter une
@@ -39,6 +44,10 @@ export function StepDeviceCode() {
 
   // Récupération gracieuse : compteur de relances auto + bascule manuelle.
   const recoveryCountRef = useRef(0)
+  // Un seul démarrage au montage : en StrictMode (dev) l'effet de montage s'exécute
+  // deux fois, ce qui ouvrait deux tentatives côté serveur (deux codes, dont un sondé
+  // pour rien jusqu'à expiration).
+  const mountStartedRef = useRef(false)
   const [recoveryExhausted, setRecoveryExhausted] = useState(false)
 
   // Échec du démarrage du flow (POST /device-flow/start en 500/503) : sans état
@@ -63,9 +72,11 @@ export function StepDeviceCode() {
       onError: (err) => {
         const apiErr = err as unknown as ApiError
         setStartError(
-          apiErr.code === 'demo_mode'
+          isDemoRefusal(apiErr)
             ? t('common.xbox_login.err_demo')
-            : t('common.setup.device_start_failed'),
+            : apiErr.status === HTTP_TOO_MANY_REQUESTS
+              ? t('common.xbox_login.err_busy')
+              : t('common.setup.device_start_failed'),
         )
       },
     })
@@ -87,6 +98,8 @@ export function StepDeviceCode() {
 
   // Démarrer le flow au montage si pas encore en cours
   useEffect(() => {
+    if (mountStartedRef.current) return
+    mountStartedRef.current = true
     if (!currentAttemptId) {
       startDeviceFlow()
     }
@@ -136,24 +149,17 @@ export function StepDeviceCode() {
     return <Spinner label={t('common.setup.device_starting')} />
   }
 
-  // Codes d'erreur structurés
+  // Code d'échec posé par le serveur sur la tentative (table unique : deviceFlowFailureKey).
   const errorCode = status?.status === 'failed' ? status.error_code ?? null : null
 
   // recoveryExhausted : tentative balayée en boucle (backend instable) → on
   // route vers la même UI d'erreur + bouton « Réessayer » que les autres échecs.
   if (status?.status === 'failed' || status?.status === 'expired' || (secondsLeft !== null && secondsLeft <= 0) || recoveryExhausted) {
-    const errorMessage: Record<string, string> = {
-      device_flow_denied: t('common.device_code.err_denied'),
-      device_flow_error: t('common.device_code.err_ms'),
-      halo_exchange_failed: t('common.device_code.err_halo'),
-      identity_resolution_failed: t('common.device_code.err_identity'),
-    }
+    const expired = status?.status === 'expired' || (secondsLeft !== null && secondsLeft <= 0)
     return (
       <div className="space-y-3">
         <p className="text-destructive font-medium">
-          {status?.status === 'expired' || (secondsLeft !== null && secondsLeft <= 0)
-            ? t('common.device_code.err_expired')
-            : (errorCode && errorMessage[errorCode]) ?? t('common.device_code.err_generic')}
+          {t(deviceFlowFailureKey(expired ? 'expired' : 'failed', errorCode))}
         </p>
         <Button onClick={handleRetry}>{t('common.xbox_login.retry')}</Button>
       </div>

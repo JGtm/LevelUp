@@ -1,0 +1,14 @@
+import fs from 'fs';
+const id = process.argv[2];
+const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+console.log('roster', JSON.stringify(doc.roster));
+console.log('identity.bipedSlots', JSON.stringify(doc.identity.bipedSlots).slice(0,3000));
+console.log('identity.players', JSON.stringify(doc.identity.players).slice(0,2000));
+console.log('identity.coverage', JSON.stringify(doc.identity.coverage));
+console.log('coverage.inventory', JSON.stringify(doc.coverage.inventory));
+console.log('coverage.weaponChanges', JSON.stringify(doc.coverage.weaponChanges));
+console.log('coverage.pickups', JSON.stringify(doc.coverage.pickups));
+console.log('coverage.grenadeReads', JSON.stringify(doc.coverage.grenadeReads));
+console.log('coverage keys', Object.keys(doc.coverage).join(','));
+for (const k of Object.keys(doc.coverage)) if (!['inventory','weaponChanges','pickups','grenadeReads'].includes(k)) console.log('  cov.'+k, JSON.stringify(doc.coverage[k]).slice(0,400));
+console.log('layers', JSON.stringify(doc.layers));

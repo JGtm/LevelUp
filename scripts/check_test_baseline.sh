@@ -6,10 +6,87 @@
 #
 # Garanties vérifiées (mode tests) — dans cet ordre :
 #   1. PRÉSENCE : tout test de la baseline existe encore dans le run courant.
+#      Le bilan d'absence est rendu PAR PACKAGE (cf. report_missing_par_paquet) :
+#      « tous absents » sur un package = compilation impossible, un compte partiel
+#      = tests renommés ou supprimés. Deux causes, deux remèdes.
 #   2. VERDICT TEST : aucun test du run courant n'est en échec ("Action":"fail" + "Test").
 #   3. VERDICT PACKAGE : aucun package en échec sans test en échec (compilation,
 #      panic hors test, TestMain non-zéro).
-#   4. Coverage par package ne baisse pas de plus de 1 point (mode coverage).
+#   4. COUVERTURE (mode coverage) : le total ne baisse pas de plus de 1 point, ET
+#      aucun package pris isolément ne baisse de plus de 1 point.
+#
+# LE CONTRÔLE 4 ÉTAIT UNE DOC INVERSÉE JUSQU'AU 2026-09-05 : il annonçait « par
+# package » et ne lisait que la ligne `^total:` de `go tool cover -func`, un seul
+# chiffre global — qui absorbe, à l'échelle du module, l'effondrement de la
+# couverture d'un package entier (registre d'audit 2026-09-05, constat G3, verdict
+# V-GO-C2). La comparaison par package est désormais faite (cf.
+# compare_coverage_par_paquet, qui documente aussi ce que la mesure ne vaut pas).
+#
+# CE QUE LA BASELINE DE PRÉSENCE COUVRE. `tests_pre_migration.jsonl` a été capturée
+# le 2026-06-26 ; elle ignorait donc tout le chantier v7.5 du rejeu. Les entrées des
+# packages `games/halo_infinite/film/replay` (+ `replay/mapvar`), `replaybuild`, `sync/replayartifacts`,
+# `sync/killcollector` et `analysis/objectiveevents` ont été AJOUTÉES le 2026-09-05
+# (1 209 tests, events pass/skip terminaux d'un run réel `-tags=integration`), sans
+# rejouer la capture entière — la baseline est un CUMUL, pas un instantané. Supprimer
+# ou renommer un test de ces packages fait désormais rougir le gate : c'est voulu, et
+# le remède est d'ajouter les nouvelles entrées dans le même commit.
+#
+# RETRAIT DU 2026-09-13 (lot B.2 des finitions v7.5) : 23 tests ont été RETIRÉS de la
+# baseline — 17 de `internal/platform/auth` (TestMigrateLegacyTokens_*,
+# TestEnvRefreshTokenForGamertag_*) et 6 de `cmd/server`
+# (TestMigrateLegacyAuthTokensAtBoot_*). Leur code de production a été supprimé avec la
+# clôture de la Phase 5 de l'ADR 0023 (migration one-shot des jetons legacy, critère tenu
+# en prod) : les tests d'une fonction qui n'existe plus ne peuvent pas rester exigés. Seules
+# ces 23 entrées ont bougé (120 lignes JSONL), vérifié par différence des paires
+# (Package, Test) avant/après. C'est le remède que ce script prescrit lui-même pour un
+# compte PARTIEL d'absences volontaires — jamais une re-capture complète, qui absorberait
+# en silence toute autre dérive.
+#
+# RETRAIT DU 2026-09-13 (lot G.1 des finitions v7.5) : 3 lignes package-level du
+# package `cmd/force_rebuild_art` (start / output « no test files » / skip) ont été
+# retirées avec la suppression du CLI. Elles ne portaient AUCUN champ `Test` : le
+# contrôle de présence ne les voyait pas, leur retrait ne relâche donc rien — il
+# garde seulement la baseline en phase avec l'arbre.
+#
+# RETRAIT DU 2026-09-16 (lot annuaire des joueurs, ADR 0035, commit 53d19824c) : 3 tests de
+# `internal/api/handlers` retirés — TestFileExists_Exists, TestFileExists_NotExists et
+# TestSetupHandler_CreatePlayer_ProfileServiceError. Le lot a fait d Onboard le SEUL chemin de
+# création de profil : le mockProfileService et le test d erreur du ProfileService côté
+# handler n ont plus d objet (remplacés par TestSetupHandler_CreatePlayer_ViaAnnuaire /
+# _SansAnnuaire, présents dans le run courant), et les deux TestFileExists suivaient le
+# helper supprimé. 13 lignes JSONL, exactement 3 paires (Package, Test), vérifié par
+# différence avant/après. Compte PARTIEL d absences volontaires → remède prescrit ici même.
+#
+# RETRAIT DU 2026-09-16 (lots amis/invitations et sync par le pool) : 2 tests RENOMMÉS parce que
+# leur assertion s est inversée — `internal/service::TestXboxSSOLinkStrategy_LegacyInviteNoGroup_Locked_Rejected`
+# (une invitation sans groupe LÈVE désormais le verrou d instance : remplacé par
+# `..._InviteWithoutGroup_Locked_CreatesUserAndGrant`) et
+# `internal/scheduler::TestRunOnce_PlayerNotInPool_Skipped` (un joueur hors pool est désormais
+# synchronisé par le pool : remplacé par `TestPreconditions_JoueurHorsPoolAccepte`). Les deux
+# remplaçants sont dans le run courant. Exactement 2 paires (Package, Test), vérifié par
+# différence avant/après.
+#
+# RETRAIT DU 2026-09-16 (lot robustesse du sync, etape 3, D4) : 2 tests RENOMMES de
+# `internal/sync` — TestPooledHaloClientGetCareerRank_PinnedToken et
+# TestPooledHaloClientGetCareerRank_NoPinnedToken. La mesure du 2026-09-16 (trois preteurs sur
+# un xuid TIERS rendent le meme rang et la meme XP que le proprietaire) a fait passer
+# GetCareerRank en PolicyAnyPublic : il n y a plus de token « epingle », donc plus de branche a
+# tester. Remplaces par TestPooledHaloClientGetCareerRank_AcquiertEnPublic, present dans le run
+# courant. 8 lignes JSONL, exactement 2 paires (Package, Test), verifie par difference
+# avant/apres. Compte PARTIEL d absences volontaires -> remede prescrit ici meme.
+#
+# RETRAIT DU 2026-09-23 (campagne perf, lot L5b commit 7cd64d664, constate par la CI de
+# cloture) : 8 tests de `internal/platform/duckdb` retires — TestCachedPlayerMatchesRepo_
+# {Coalescence, DistinctFiltersDifferentKeys, ErrorNotCached, FIFOEviction, HitMiss,
+# Invalidate, TTLExpiration} et TestTTLCache_LenAndInvalidateAll. Le lot a reecrit
+# `player_matches_cache.go` (cache FIFO/TTL jamais instancie) sur le cache generique
+# `player_read_cache.go` (singleflight, generation d invalidation, copies) : les tests du
+# cache FIFO/TTL n ont plus d objet, remplaces par TestCachedPlayerMatchesRepo_
+# {HitPerFilters, ReturnsCopies, ConcurrentReEnrichment, ConcurrentMissesCoalesce,
+# LobbySizesDelegates, InvalidatePlayer, PanneMetadataNonMiseEnCache,
+# KeyCoversAllFilterFields}, presents dans le run courant. 80 lignes JSONL, exactement
+# 8 paires (Package, Test), verifie par difference avant/apres. Compte PARTIEL d absences
+# volontaires -> remede prescrit ici meme.
 #
 # Le contrôle 2 a été ajouté le 2026-07-26 : le `|| true` sur le `go test -json`
 # (nécessaire pour pouvoir analyser le JSONL même quand la suite échoue) rendait
@@ -24,12 +101,168 @@
 # aveugle) et un échec de compilation n'émet pas d'event fail test-level
 # (contrôle 2 aveugle). Le seul signal restant est l'event fail PACKAGE-level.
 #
+# RETRAIT DU 2026-09-30 (jalon J12.7 du PLAN_SUITE_AUDIT_DECODEUR_FILM, DU-5 a) : 159 tests
+# retirés (12 de `film/internal/facts/objectives`, 5 de `film/internal/grammar`, 134 de
+# `film/replay`, 8 de `film/replay/mapvar`). Leurs fichiers (`*_research_test.go` et les
+# compagnons qui ne compilent qu'avec eux) sont passés sous `//go:build research` : ils ne
+# tournent plus dans le build par défaut, donc plus dans le run CI. 159 lignes JSONL, 159 paires
+# (Package, Test), vérifié par différence avant/après — compte PARTIEL d'absences volontaires,
+# remède prescrit ici même. La CI les COMPILE toujours (`go vet -tags=research ./...`).
+#
+# CORRECTION DU MÊME JOUR (J12.7 bis) : le tag « par fermeture » avait sorti des GARDES du build
+# par défaut (`*_gate_test.go`, `ground_weapon_pads_cluster_test.go`, `visee_zoom_cablage_test.go`,
+# `inventory_delta_corpus_test.go`, `powerup_socle_oracle/temoin_test.go`...). Détaguées, leurs
+# symboles de recherche déplacés dans des helpers non tagués (`instruments_partages*_test.go`) :
+# 24 tests REMIS à leur place d'origine (3 de `film/internal/grammar`, 21 de `film/replay`).
+# Restent retirés 135 tests (12 de `film/internal/facts/objectives`, 2 de `film/internal/grammar`,
+# 113 de `film/replay`, 8 de `film/replay/mapvar`), tous définis dans un fichier tagué `research` ;
+# ratchet `archlint/research_tag_test.go` (TestGardeNeCachePasDerriereResearch).
+#
+# RETRAIT DU 2026-10-02 (retrait des replis nuls, décision DU-7, règle 4 de D-10 de l'ADR 0034 :
+# un repli supprimé l'est avec ses tests) : 5 tests retirés — `film/replay` ::
+# TestZoneStatesSansRosterAccepteLesDeuxCampsMesures (remplacé par
+# TestZoneStatesSansRosterNeDevineAucunCamp) ; `replaybuild` :: TestResolveKillIdentity_ReplixuidPrefixe,
+# TestResolveKillIdentity_ReplixuidNonDecimalRefuse (la forme `xuid:<N>` n'existe plus),
+# TestGamertagXUIDIndex_PremierGagneEnCasDeDoublon (remplacé par TestGamertagXUIDIndex_DoublonNeResoutRien) ;
+# `sync/killcollector` :: TestRosterResoutLesDeuxFormesDeNom (remplacé par
+# TestRosterResoutParLaVueCanonique). Les remplaçants sont dans le run courant. 5 lignes JSONL,
+# 5 paires (Package, Test), vérifié par différence avant/après.
+#
+# RELOCALISATION DU 2026-10-03 (lot 2.6 de la représentation intermédiaire : la lecture du statborg
+# descend de `film/internal/facts/objectives` dans `film/internal/grammar/signaux`, avec ses tests) :
+# 9 lignes changent de PAQUET, rien d'autre — TestDecodeComponentsRefuseUnCoupleDepareille,
+# TestDecodeComponentsRefuseUneMancheHorsBorne, TestStatRecordsPlafond, TestStatborgListeDenseLue,
+# TestStatborgManche2RejeteeParLAncienneGrammaire, TestStatborgVectorsReels et ses trois sous-tests.
+# Mêmes noms, même code, désormais dans `grammar/signaux` ; vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-06 (lot « Sessions aux formes de l'Emprise », S1 commit 65e82cbb4, constaté
+# par la revue adversariale, S8) : 8 tests RENOMMÉS de `internal/analysis` —
+# TestBuildScoreLabelCanonical_{NegativeScore, NilScore, NoTeams, OnlyOneTeam,
+# TeamIDNilDefaultsZero, TeamOneSwap, TeamZeroNotSwap, ZeroScores}. La fonction testée
+# `BuildScoreLabelCanonical` est devenue `ScoreLabelCanonical` (score canonique partagé par
+# l'accueil et la page Sessions) ; mêmes cas, remplacés par TestScoreLabelCanonical_<même
+# suffixe>, présents dans le run courant. 64 lignes JSONL, exactement 8 paires (Package, Test),
+# vérifié par différence avant/après ; diff complet baseline ↔ fonctions de test de l'arbre :
+# aucune autre absence introduite par le lot.
+#
+# RETRAIT DU 2026-10-07 (plan Tactique v2, lot L13, F1 : une seule résolution du libellé de carte) :
+# 1 test RETIRÉ de `internal/platform/duckdb` — TestFiltersRepo_GetAvailableMaps. La méthode
+# `FiltersRepo.GetAvailableMaps` n'avait aucun appelant de production (port, double et ce test
+# seulement) et portait une seconde résolution du libellé de carte ; elle est supprimée avec son
+# test. 5 lignes JSONL, exactement 1 paire (Package, Test), vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-08 (règle unique des matchs connus de la sync, `internal/sync/knownset` :
+# connu seulement si présent au registre partagé pour le joueur ; base partagée illisible =
+# arrêt) : 10 tests retirés. `internal/sync` :: TestLoadKnownMatchIDs_{Deduplication,
+# EmptyTable, WithMatches, MissingTable, UnionWithSharedParticipants, NilSharedFallsBackToPlayer}
+# — la fonction `loadKnownMatchIDs` est supprimée (remplacée par `knownset.Load`), et ces tests
+# figeaient l'ancienne union enrichissements ∪ participants, enrichissement seul compris ;
+# remplacés par les tests de `internal/sync/knownset` et TestKnownSetV1_* (delta, full,
+# régime normal, arrêt). `internal/sync/v2` :: TestKnownLoaderV2_{PlayerSourceOnly,
+# PlayerAndSharedUnion, EmptyXUIDSkipsSharedSource, NilSharedDBSkipsSource2} — ils exigeaient
+# un ensemble sans base partagée ou sans xuid, désormais une erreur ; remplacés par
+# TestKnownLoaderV2_{ConnuSeulementSiAuRegistre, BasePartageeAbsenteEstFatale, XUIDVideEstFatal}.
+# 44 lignes JSONL, exactement 10 paires (Package, Test), vérifié par différence avant/après ;
+# diff complet baseline ↔ fonctions de test des paquets touchés : aucune autre absence
+# introduite par le lot.
+#
+# RETRAIT DU 2026-10-08 (connexion Xbox du device-flow : échange par la chaîne XBL classique,
+# l'appel sisu.xboxlive.com/authorize — 400 corps vide — est supprimé avec la paire PoP et le
+# device token qui ne servaient qu'à lui) : 20 tests retirés de `internal/platform/auth` —
+# TestDERtoP1363_{WellFormed,SmallRS,InvalidDER}, TestGeneratePoPKeyPair{,_CurveIsP256},
+# TestSignRequest_{Base64Standard,TimestampEncoded,VerifiableSignature}, TestWindowsFILETIME,
+# TestExtractPathAndQuery, TestProofKey_IndependentInstances (pop_signing.go supprimé),
+# TestCompleteSISUFlow_{ExtractsXSTSFields,MissingToken,MissingAuthorizationToken}
+# (sisu_client.go supprimé), TestRequestDeviceToken_{Success,HTTPError,MissingTokenField,
+# DeviceIDFormat} (device_token.go supprimé), TestSISUProvider_InitDeviceFlow_DeviceTokenError
+# (plus de device token à l'initialisation) et TestSISUProvider_InitDeviceFlowWithURLs_HappyPath
+# (renommé TestSISUProvider_InitDeviceFlowWithURL_HappyPath, présent dans le run courant). La
+# complétion est couverte par TestSISUDeviceFlow_ExchangeFlow_{ClassicChain,PropagatesXboxError}.
+# 89 lignes JSONL, exactement 20 paires (Package, Test), vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-09 (lot E « hygiène » des recommandations du registre, item E1 : code mort
+# supprimé avec ses tests, règle 7 de CLAUDE.md) : 18 tests retirés. `service.FanoutService` n'avait
+# aucun appelant de production ; il est supprimé avec toute sa chaîne (port.FanoutRepository,
+# config.FanoutFactory, duckdb.FanoutRepo, domain.Fanout*). `internal/service` ::
+# TestFanoutBuildPlan_{EmptyMatchIDs,EmptySlice}, TestFanoutExecute_{NilPlan,EmptyPlan,
+# TargetWithResolveError}, TestFanoutPlan_Empty, TestFanoutResult_NoErrors ;
+# `internal/platform/duckdb` :: TestFanoutRepo_{InsertStubEnrichments,InsertStubEnrichments_Empty,
+# InsertStubEnrichments_Idempotent,LoadExistingEnrichments,LoadExistingEnrichments_Empty,
+# LoadExistingEnrichments_EmptyInput,LoadExistingEnrichments_Subset,CountCommonMatches,
+# CountCommonMatches_Empty,CountCommonMatchesForXUID,CountCommonMatchesForXUID_Empty}. 79 lignes
+# JSONL, exactement 18 paires (Package, Test), vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-09 (lot F des recommandations, catégorie de mode : une seule règle) : 16 tests
+# de premier niveau retirés — 15 de `internal/games/halo_infinite` (TestStripMapSuffix_*, TestNormalizeModeCase_*,
+# TestAllKnownPairNamePrefixes_*, TestPairNamePrefixesForCategory{,_*}, TestInferModeCategoryFromPairName),
+# DÉPLACÉS avec la règle dans `internal/analysis/modelabel` (category_test.go : TestInferCategory,
+# TestPrefixesForCategory{,_*}, TestKnownPrefixes_*, TestNormalizeModeCase_*, TestStripMapSuffix_*),
+# et TestDetermineModeCategoryTable de `internal/sync` (le classifieur par sous-chaînes qu'il
+# figeait est supprimé ; remplacé par TestExtractRegistry_CategorieSuitLeNomDeLaPaire et
+# TestModeCategoryRuleIsSingle). 320 lignes JSONL, exactement 67 paires (Package, Test) dont les
+# sous-tests, vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-09 (lot recos-d, D1 : garde générale « démo en lecture seule »,
+# middleware/demo_read_only.go) : 3 tests retirés de `internal/api/handlers` —
+# TestStartImport_DemoModeReturns503, TestAuthHandler_StartDeviceFlow_DemoMode et
+# TestSettingsHandler_PatchSettings_DemoMode_422. Les refus démo PAR HANDLER (503 `demo_mode`,
+# 422 `demo_mode`, 422 `demo_mode_unsupported`) sont supprimés : la garde refuse toute écriture
+# avant le handler, en un seul contrat 403 `demo_mode_forbidden`, couvert par
+# TestDemoReadOnly_* (middleware) et TestDemoReadOnlyRatchet (internal/api). 13 lignes JSONL,
+# exactement 3 paires (Package, Test), vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-14 (lot aj14-a, règle unique de classement d'un match, décision D-10) : 6 tests
+# retirés de `internal/sync`. `isRankedPlaylist` (décision de classement par nom de playlist) est
+# supprimé avec ses tests, règle 7 de CLAUDE.md : TestIsRankedPlaylist_{ByName,ByTag,NoPlaylist,
+# CaseInsensitive,UnrankedPlaylist}. TestExtractRegistry_RankedMatch est RENOMMÉ
+# TestExtractRegistry_PlaylistNameDoesNotDecideRanked (le nom de playlist ne pose plus is_ranked).
+# 24 lignes JSONL, exactement 6 paires (Package, Test), vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-16 (lot backlog-2026-10-15, E4.8b : les lectures de la vue match remontent leurs
+# erreurs) : 1 test retiré de `internal/service`. TestNewFriendsExtrasResolver_OpenerErrorIsSilenced est
+# RENOMMÉ TestNewFriendsExtrasResolver_OpenerErrorRemonte (assertion inversée : l'erreur d'ouverture
+# d'une player DB d'ami remonte au lieu d'être tue). 8 lignes JSONL, exactement 1 paire (Package, Test),
+# vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-16 (chantier sécurité, lot L8-1, démo : lectures d'administration fermées) : 2 tests
+# de `internal/api/middleware` dont le contrat est volontairement INVERSÉ (RequireAuth et RequireAdmin ne
+# sont plus transparents en démo) : TestRequireAuth_DemoMode_PassThrough devient
+# TestRequireAuth_DemoMode_RefusesExceptNamedReads, TestRequireAdmin_DemoMode_200 devient
+# TestRequireAdmin_DemoMode_RefusesExceptNamedReads. 8 lignes JSONL, exactement 2 paires (Package, Test),
+# vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-17 (lot backlog-2026-10-16, E4, D-6 : suppression du LUSR v1) : 7 tests de
+# `internal/sync` dont le code testé est supprimé — TestE2E_ARTPipeline_BatchComputeLUSR_ProducesWrites
+# (cascade v1), TestPipelineFixture_LUSRRatings et TestPipelineFixture_LUSRRatings_RankedExcluded (étape
+# LUSR v1 de la fixture de pipeline), et les quatre TestRecomputeAfterARTRebuild_* (orchestrateur sans
+# appelant de production, qui rejouait la v1). Le LUSR v2 est couvert par
+# TestMatchRecomputer_ExclusionServeLaNoteV2SansLeMatchExclu, TestPostSyncLUSRV2_WritesTheEightComponents
+# et les tests de `internal/sync/skill`. 40 lignes JSONL, exactement 7 paires (Package, Test), vérifié par
+# différence avant/après.
+#
+# RETRAIT DU 2026-10-17 (lot backlog-2026-10-16, E5.1 : code mort supprimé) : 18 tests dont le code
+# testé est supprimé (règle n°7) — `FindMatchesMissingParticipantBits` (3 tests de `internal/sync`),
+# `loadAwardsForScoreboard` (4 tests de `internal/service`), `CachedHighlightEventsRepo` et son cache
+# (10 tests de `internal/platform/duckdb`, dont TestHighlightEventsCacheKey_* et TestTTLCacheHE_*) et le
+# assainissement des composantes LUSR du lot d'ingestion (`PlayerBatch.LUSRComponents`, sans appelant de production
+# depuis E4 : TestSanitizeBatch_LUSRComponentsNaN_BecomesZero de `internal/persist`). 128 lignes JSONL,
+# exactement 18 paires (Package, Test), vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-19 (release v8, D-15 : le pool ne s'abonne plus aux bascules du provider,
+# ADR 0016 amendée) : 8 tests dont le code testé est supprimé (règle n°7) — le crochet du pool
+# (`PrepareForSharedSwap` / `RestoreSharedAfterSwap` : TestPool_PrepareAndRestoreSharedSwap_integration,
+# TestPool_PrepareForSharedSwap_NoopWithoutSharedReader_integration de `internal/platform/duckdb`) et
+# `Provider.Subscribe` (TestProvider_Subscribe_* ×5, TestFromInMemoryDB_SubscribeNoEvents de
+# `internal/platform/duckdb/sharedprovider`). 207 lignes JSONL, exactement 8 paires (Package, Test),
+# vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.
 #   - CONSOMMATEUR (`--from-jsonl <fichier>`) : la suite a DÉJÀ tourné en amont,
-#     le script ne fait que vérifier son JSONL. C'est le mode de la CI : le job
-#     `go-coverage` produit `-json` + `-coverprofile` en UNE exécution, au lieu
+#     le script ne fait que vérifier son JSONL. C'est le mode de la CI : les lots du job
+#     `go-coverage` produisent `-json` + `-coverprofile` en UNE exécution (JSONL concaténés
+#     par `go-coverage-merge`, qui lance ce script), au lieu
 #     des deux runs complets (~22 min chacun) de l'ancien couple de jobs
 #     go-baseline-tests / go-coverage (dédup 2026-07-26).
 #
@@ -41,7 +274,7 @@
 #
 # Diagnostic : en mode autonome le JSONL du run courant est conservé (NON supprimé
 # à la sortie) dans apps/go-api/baseline_current.jsonl — ignoré par git, uploadé en
-# artefact par la CI (job go-coverage, step « Upload JSONL du run courant »,
+# artefact par la CI (job go-coverage-merge, step « Upload JSONL du run courant »,
 # if: failure()). En cas d'échec, les lignes de sortie humaine des tests fautifs
 # sont extraites du JSONL et affichées : sous `-json` le log de la CI ne contient
 # plus aucune sortie lisible, il ne faut pas avoir à télécharger l'artefact pour
@@ -59,7 +292,6 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BASELINE_DIR="$REPO_ROOT/.ai/baselines"
 BASELINE_TESTS="$BASELINE_DIR/tests_pre_migration.jsonl"
 BASELINE_COV_TXT="$BASELINE_DIR/coverage_pre_migration.txt"
-BASELINE_COV_RAW="$BASELINE_DIR/coverage_pre_migration.raw"
 
 # JSONL du run courant (mode autonome) — chemin STABLE (pas un mktemp détruit à la
 # sortie) : sans lui, un échec du gate en CI n'était pas diagnosticable (aucune
@@ -70,7 +302,7 @@ CURRENT_TESTS_JSONL="$REPO_ROOT/apps/go-api/baseline_current.jsonl"
 usage() {
   echo "Usage: $0 [tests|coverage|all] [--from-jsonl <fichier>]"
   echo "  tests                    présence + verdict de la suite (baseline de non-régression)"
-  echo "  coverage                 couverture globale vs baseline"
+  echo "  coverage                 couverture totale ET par package vs baseline"
   echo "  all (défaut)             les deux"
   echo "  --from-jsonl <fichier>   mode consommateur : ne relance PAS la suite, vérifie"
   echo "                           le JSONL 'go test -json' fourni (mode tests uniquement)"
@@ -253,12 +485,25 @@ print_failure_output() {
   ' "$file" "$file"
 }
 
+# VOIES du mode AUTONOME (b1016, E1.7) : la suite se joue en DEUX processus `go test`
+# parallèles, dont les JSONL sont concaténés avant l'analyse (verify_tests_jsonl lit des
+# événements par paquet, l'ordre d'un fichier concaténé n'a aucune importance) :
+#   - la voie film (FILM_LANE_PATTERN) : aucun paquet ne dépend du driver DuckDB, tests
+#     compris — garde-rail archlint/film_lane_duckdb_free_test.go, qui juge CE motif ;
+#   - la voie DuckDB : tout le reste (`go list` moins la voie film), en `-p 1`
+#     (driver mono-process, ADR 0013).
+# Le parallélisme ne partage donc aucune base. Il partage le cache de build Go : sur ce poste,
+# deux commandes `go` concurrentes ont déjà corrompu le cache Windows ; un échec de compilation
+# inexplicable en gate-push se rejoue avec un GOCACHE neuf avant de conclure.
+FILM_LANE_PATTERN='./internal/games/halo_infinite/film/...'
+
 # run_current_suite — mode AUTONOME : exécute la suite complète et écrit le JSONL.
 # `-timeout=300s` : budget par package d'un run NON instrumenté. La CI, elle,
 # instrumente la couverture dans la même exécution et utilise 600s (cf. ci.yml).
 run_current_suite() {
   local out="$1"
-  echo "  Lancement de la suite courante (peut prendre plusieurs minutes)..."
+  local out_film="${out}.film" out_duckdb="${out}.duckdb"
+  echo "  Lancement de la suite courante : voie film et voie DuckDB en parallèle (plusieurs minutes)..."
   (
     cd "$REPO_ROOT/apps/go-api"
     # Sur Windows local, utiliser le gcc fourni par msys64 via le PATH. Sur
@@ -272,9 +517,71 @@ run_current_suite() {
       export PATH="/c/msys64/ucrt64/bin:$PATH"
       export CC=gcc
     fi
-    CGO_ENABLED=1 \
-      go test -tags=integration -count=1 -timeout=300s -p 1 -json ./... > "$out" 2>&1
+    export CGO_ENABLED=1
+
+    local all film duckdb
+    mapfile -t all < <(go list -tags=integration ./... | tr -d '\r' | sort)
+    mapfile -t film < <(go list -tags=integration "$FILM_LANE_PATTERN" | tr -d '\r' | sort)
+    mapfile -t duckdb < <(comm -23 <(printf '%s\n' "${all[@]}") <(printf '%s\n' "${film[@]}"))
+    if [[ ${#film[@]} -eq 0 || ${#duckdb[@]} -eq 0 ]]; then
+      echo "[ECHEC] énumération des voies impossible (film=${#film[@]}, DuckDB=${#duckdb[@]} paquet(s))" > "$out"
+      exit 1
+    fi
+    echo "  voie film : ${#film[@]} paquet(s), voie DuckDB : ${#duckdb[@]} paquet(s)"
+
+    (
+      start=$SECONDS
+      go test -tags=integration -count=1 -timeout=300s -p 1 -json "${film[@]}" > "$out_film" 2>&1
+      echo "  [voie film] terminée en $((SECONDS - start)) s"
+    ) &
+    pid_film=$!
+    (
+      start=$SECONDS
+      go test -tags=integration -count=1 -timeout=300s -p 1 -json "${duckdb[@]}" > "$out_duckdb" 2>&1
+      echo "  [voie DuckDB] terminée en $((SECONDS - start)) s"
+    ) &
+    pid_duckdb=$!
+    # Les codes retour ne comptent pas : le verdict vient de l'analyse du JSONL.
+    wait "$pid_film" || true
+    wait "$pid_duckdb" || true
+    cat "$out_film" "$out_duckdb" > "$out"
+    rm -f "$out_film" "$out_duckdb"
   ) || true # verdict rendu par l'ANALYSE du JSONL (présence + échecs), pas par ce code retour
+}
+
+# report_missing_par_paquet — le bilan de PRÉSENCE, PACKAGE PAR PACKAGE.
+#
+# POURQUOI PAR PACKAGE, et pas la liste à plat d'avant : les deux causes d'absence
+# n'ont ni le même diagnostic ni le même remède, et seul le COMPTE PAR PACKAGE les
+# distingue. Un package qui ne compile plus rend TOUS ses tests absents d'un coup
+# (aucun event n'est émis) ; un test renommé ou supprimé en fait manquer un ou deux
+# sur des dizaines. La liste à plat mélangeait les deux et, sur un package de 300
+# tests, noyait le signal (l'ancienne sortie imprimait les 300 lignes sans dire que
+# c'était un package entier).
+#
+# $1 = les entrées manquantes (« package::test », une par ligne), $2 = la baseline,
+# $3 = le run courant, tous trois au format de extract_test_names.
+report_missing_par_paquet() {
+  local missing="$1" baseline="$2" current="$3"
+  local pkg manquants total presents
+  # Packages touchés, du plus atteint au moins atteint.
+  while read -r pkg manquants; do
+    [[ -z "$pkg" ]] && continue
+    total=$(printf '%s\n' "$baseline" | grep -c "^${pkg}::" || true)
+    presents=$(printf '%s\n' "$current" | grep -c "^${pkg}::" || true)
+    if [[ "$presents" -eq 0 ]]; then
+      echo "    $pkg : $manquants/$total absents — AUCUN test du package n'a rendu de verdict"
+    else
+      echo "    $pkg : $manquants/$total absents ($presents présents)"
+    fi
+    # Les noms, plafonnés : le compte ci-dessus porte le diagnostic, les noms
+    # servent à retrouver le test — dix suffisent, le reste est dans le JSONL.
+    printf '%s\n' "$missing" | grep "^${pkg}::" | head -10 | sed 's/^/        /'
+    local reste=$((manquants - 10))
+    if [[ "$reste" -gt 0 ]]; then
+      echo "        ... ($reste autres)"
+    fi
+  done < <(printf '%s\n' "$missing" | sed 's/::.*//' | sort | uniq -c | sort -rn | awk '{print $2, $1}')
 }
 
 # verify_tests_jsonl — CŒUR DE VÉRIFICATION, partagé par les deux modes (autonome
@@ -304,14 +611,15 @@ verify_tests_jsonl() {
 
   if [[ -n "$missing" ]]; then
     echo ""
-    echo "❌ Tests baseline absents du run courant :"
-    printf '%s\n' "$missing" | sed 's/^/    /'
+    echo "❌ Tests baseline absents du run courant, PAR PACKAGE :"
+    report_missing_par_paquet "$missing" "$baseline_tests" "$current_tests"
     echo ""
-    echo "  CAUSE LA PLUS FRÉQUENTE : un package qui ne COMPILE pas rend TOUS ses"
-    echo "  tests absents (aucun event pass/fail/skip n'est émis) — vérifier d'abord"
-    echo "  la sortie de compilation dans $current_jsonl (lignes \"Action\":\"output\")."
-    echo "  Sinon : si ces tests ont été renommés/supprimés volontairement,"
-    echo "  documenter la raison dans le commit message."
+    echo "  LIRE LE BILAN CI-DESSUS D'ABORD : « tous absents » sur un package entier"
+    echo "  est la signature d'une COMPILATION IMPOSSIBLE (aucun event pass/fail/skip"
+    echo "  n'est émis) — vérifier la sortie de compilation dans $current_jsonl"
+    echo "  (lignes \"Action\":\"output\" et \"build-output\"). Un compte PARTIEL désigne"
+    echo "  au contraire des tests renommés ou supprimés : si c'est volontaire,"
+    echo "  documenter la raison dans le commit message ET rejouer la baseline."
     return 1
   fi
 
@@ -388,7 +696,7 @@ check_tests() {
 }
 
 # check_tests_from_jsonl — mode CONSOMMATEUR : aucune exécution, on vérifie le
-# JSONL produit en amont (job CI go-coverage).
+# JSONL produit en amont (lots du job CI go-coverage, concaténés par go-coverage-merge).
 check_tests_from_jsonl() {
   local current_jsonl="$1"
   require_baseline_tests || return $?
@@ -396,7 +704,7 @@ check_tests_from_jsonl() {
   if [[ ! -f "$current_jsonl" ]]; then
     echo "[ECHEC] JSONL du run courant introuvable : $current_jsonl"
     echo "   Mode consommateur : le fichier doit avoir été produit en amont par un"
-    echo "   « go test -json » (CI : job go-coverage, step « go test avec couverture »)."
+    echo "   « go test -json » (CI : job go-coverage, step « go test du lot avec couverture »)."
     return 2
   fi
   if [[ ! -s "$current_jsonl" ]]; then
@@ -448,17 +756,87 @@ check_coverage() {
   baseline_pct=$(awk '/^total:/ { gsub("%",""); print $3 }' "$BASELINE_COV_TXT")
   current_pct=$(awk '/^total:/ { gsub("%",""); print $3 }' "$current_txt")
 
-  echo "  Baseline : ${baseline_pct}%"
-  echo "  Courant  : ${current_pct}%"
+  echo "  Total baseline : ${baseline_pct}%"
+  echo "  Total courant  : ${current_pct}%"
 
   awk -v c="$current_pct" -v b="$baseline_pct" 'BEGIN {
     if (c + 1.0 < b) {
-      printf "❌ Coverage %.1f%% < baseline %.1f%% - 1.0 (régression > 1 point)\n", c, b
+      printf "❌ Coverage TOTAL %.1f%% < baseline %.1f%% - 1.0 (régression > 1 point)\n", c, b
       exit 1
     }
-    printf "✅ Coverage %.1f%% >= baseline %.1f%% - 1.0\n", c, b
+    printf "✅ Coverage TOTAL %.1f%% >= baseline %.1f%% - 1.0\n", c, b
     exit 0
-  }'
+  }' || return 1
+
+  compare_coverage_par_paquet "$BASELINE_COV_TXT" "$current_txt"
+}
+
+# compare_coverage_par_paquet — LE CONTRÔLE 4, PACKAGE PAR PACKAGE.
+#
+# CE QUI ÉTAIT FAUX AVANT LE 2026-09-05 (doc inversée, registre d'audit G3, verdict
+# V-GO-C2) : l'en-tête annonçait « Coverage par package ne baisse pas de plus de
+# 1 point » et le code ne lisait QUE la ligne `^total:` de `go tool cover -func`,
+# c'est-à-dire UN SEUL chiffre global. À l'échelle du module, un chiffre global
+# absorbe la disparition de la couverture d'un package entier.
+#
+# CE QUE LA MESURE VAUT, ET CE QU'ELLE NE VAUT PAS. `go tool cover -func` ne publie
+# PAS le nombre d'instructions par fonction : le pourcentage d'un package est donc
+# la MOYENNE NON PONDÉRÉE des pourcentages de ses fonctions, calculée à l'identique
+# des deux côtés. Ce n'est pas la couverture d'instructions du package (qui
+# exigerait le profil brut, `coverage_pre_migration.raw`, non versionné). Une
+# moyenne non pondérée sous-estime le poids des grosses fonctions ; elle suffit à
+# attraper ce que ce contrôle vise — un package dont la couverture s'effondre.
+#
+# LES PACKAGES ABSENTS D'UN CÔTÉ NE SONT PAS JUGÉS, ils sont COMPTÉS et nommés :
+# un package neuf n'a rien à comparer, un package disparu n'est pas une régression
+# de couverture (sa disparition relève des contrôles 1 à 3).
+compare_coverage_par_paquet() {
+  local baseline_txt="$1" current_txt="$2"
+  echo "  Comparaison PAR PACKAGE (tolérance 1,0 point) :"
+  awk -v tol=1.0 '
+    # pct_par_paquet : "<fichier>:<ligne>:\t<fonction>\t<pct>%" -> moyenne par répertoire.
+    function paquet(chemin,   i) {
+      i = length(chemin)
+      while (i > 0 && substr(chemin, i, 1) != "/") i--
+      return substr(chemin, 1, i - 1)
+    }
+    $1 ~ /^total:/ { next }
+    {
+      # Le pourcentage est le DERNIER champ ; le chemin est le premier, "fichier.go:ligne:".
+      pct = $NF
+      if (pct !~ /%$/) next
+      sub(/%$/, "", pct)
+      split($1, morceaux, ":")
+      p = paquet(morceaux[1])
+      if (p == "") next
+      somme[FILENAME "\x1c" p] += pct
+      compte[FILENAME "\x1c" p] += 1
+      if (FILENAME == ARGV[1]) vus_base[p] = 1; else vus_cour[p] = 1
+    }
+    END {
+      base = ARGV[1]; cour = ARGV[2]
+      regressions = 0; compares = 0; neufs = 0; disparus = 0
+      for (p in vus_base) {
+        if (!(p in vus_cour)) { disparus++; continue }
+        b = somme[base "\x1c" p] / compte[base "\x1c" p]
+        c = somme[cour "\x1c" p] / compte[cour "\x1c" p]
+        compares++
+        if (c + tol < b) {
+          printf "    [ECHEC] %s : %.1f%% -> %.1f%% (-%.1f pt)\n", p, b, c, b - c
+          regressions++
+        }
+      }
+      for (p in vus_cour) if (!(p in vus_base)) neufs++
+      printf "    %d package(s) comparé(s), %d neuf(s) non jugé(s), %d disparu(s) (contrôles 1-3)\n",
+        compares, neufs, disparus
+      if (regressions > 0) {
+        printf "[ECHEC] %d package(s) en regression de couverture de plus de %.1f point\n", regressions, tol
+        exit 1
+      }
+      printf "[OK] Aucun package en regression de couverture de plus de %.1f point\n", tol
+      exit 0
+    }
+  ' "$baseline_txt" "$current_txt"
 }
 
 case "$MODE" in

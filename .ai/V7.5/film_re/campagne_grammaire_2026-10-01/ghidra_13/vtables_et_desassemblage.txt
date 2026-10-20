@@ -1,0 +1,61 @@
+Extraits Ghidra (HaloInfinite.exe, base 0x140000000), lecture seule, 2026-10-02.
+Lus par GET /read_memory, /get_xrefs_to, /search_instructions (serveur 127.0.0.1:8089).
+
+1. Vtable de la vue C (controle) : 0x1436a8770 (construite par FUN_140b8771c, xref 140b87730/140b87737)
+   +0x00 0x142f22f4c
+   +0x08 0x14076c250   (non definie en fonction ; desassemblee a la main, point 3)
+   +0x10 0x1405f4478   collecte des candidats (FUN_1405f4478.c)
+   +0x18 0x14076b0e8   ecrivain d entree (FUN_14076b0e8.c) ; seules references : DATA 0x1436a8788 (+ .pdata 1453f693c, 143ed8e4c)
+   +0x20 0x14076b944   vidage des kinds 1/2 (reseau)
+   +0x28 0x14076bc30
+   +0x30 0x14117b4a0
+   +0x38 0x14076b02c
+   +0x40 0x1406cf548   lecteur
+   +0x48 0x14076b838
+   +0x50 0x142f2f490
+   +0x58 0x140862678
+   +0x60 0x142f28e94
+
+2. Vtable du canal de simulation : 0x1436a86b8 (construite par FUN_140b87664, xref 140b8767b/140b87682)
+   +0x28 = 0x1436a86e0 -> 0x14076aca4   ordonnanceur des vues (FUN_14076aca4.c)
+   Appelant : FUN_1405167fc, instruction 140516b81 CALL qword ptr [RAX + 0x28]
+     140516b7e MOV RCX, R10            (le canal)
+     140516b76 MOV EDX, [RSP + 0x40]   (numero de paquet)
+     140516b59 MOV R8, RDI             (l ecrivain de bits ; [RDI+0x2c] lu avant et apres = bits ecrits)
+     140516b7a MOV [RSP + 0x20], ECX   (param_5)
+     140516b71 MOV [RSP + 0x28], RDX   (param_6 = &RBP+0x5b8, bits rendus)
+   (search_ins_FUN_1405167fc.json)
+
+3. Slot +0x08 de la vue C (0x14076c250), octets lus :
+   33c0384119741a3981441f0000751038816425000075083981502500007403b001c339815825000074f7ebf3
+   14076c250 33 c0              XOR EAX,EAX
+   14076c252 38 41 19           CMP byte [RCX+0x19],AL
+   14076c255 74 1a              JZ  14076c271 (rend 0)
+   14076c257 39 81 44 1f 00 00  CMP dword [RCX+0x1f44],EAX
+   14076c25d 75 10              JNZ 14076c26f (rend 1)
+   14076c25f 38 81 64 25 00 00  CMP byte [RCX+0x2564],AL
+   14076c265 75 08              JNZ 14076c26f
+   14076c267 39 81 50 25 00 00  CMP dword [RCX+0x2550],EAX
+   14076c26d 74 03              JZ  14076c272
+   14076c26f b0 01              MOV AL,1
+   14076c271 c3                 RET
+   14076c272 39 81 58 25 00 00  CMP dword [RCX+0x2558],EAX
+   14076c278 74 f7              JZ  14076c271 (rend 0)
+   14076c27a eb f3              JMP 14076c26f (rend 1)
+   => « la vue C a quelque chose a ecrire » = vue+0x19 && (0x1f44 | 0x2564 | 0x2550 | 0x2558) != 0.
+
+4. Ecritures des masques en attente (search_instructions, operandes "+0x2550]", "+0x2558]", "+0x1f44]") :
+   +0x2550 pose  : FUN_14076ac14 (relais serveur, appele par FUN_141f85a84),
+                   FUN_14076a2f4 (entree locale, 14076a42c/14076a435 : [RBX+0x2550] = lVar4+0x1de58),
+                   FUN_142f2a40c, FUN_142f2abb8 (autre mode, FUN_14048ee34() vrai)
+   +0x2550 efface : FUN_14076b0e8 (14076b27a/14076b284), apres une ecriture qui tient dans le budget
+   +0x2558 pose  : FUN_14076d11c (appele seulement par FUN_14076a2f4, 14076a47a), FUN_142f2a40c, FUN_142f2abb8
+   +0x2558 efface : FUN_14076b0e8
+   lu            : FUN_1405f4478 (AND), FUN_140769f90 / FUN_14076a064 (bits a / b de l entree)
+
+5. Constantes (read_memory) : DAT_14498bdb0/bdb4/bdac/bdb8/bdbc/bdc0/bdc4/bdd8 = 0 dans l image
+   (posees a l execution : defauts FUN_140a9fd64, DAT_14498bdb0 = 1000 ; puis FUN_140be7310 les
+   remplace depuis une configuration chargee, FUN_140be60d0 / FUN_140be7aac) ;
+   DAT_144989f60 (delai de maintien d une entree, FUN_1406b09c0) = 0 dans l image, pose par FUN_140a9d678 ;
+   DAT_1447061ac = 0x00000a00 (2 560 candidats au plus) ; DAT_143cd9720 = 1023.0f.
+   DAT_144de4c10 = reglage nomme "PrebuildOutgoingReplicationRequests" (FUN_141123e24).

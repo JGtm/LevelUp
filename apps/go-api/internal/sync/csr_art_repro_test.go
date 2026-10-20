@@ -1,7 +1,7 @@
 //go:build art_repro
 
 // Package sync — csr_art_repro_test.go : Phase 1 du plan d'éradication ART
-// (cf. .ai/PLAN_LUSR_ART_HOME_CRASH.md) — volet CSR.
+// (cf. .ai/archive/V7/PLAN_LUSR_ART_HOME_CRASH.md) — volet CSR.
 //
 // **Cible** : les deux chemins CSR qui utilisent `INSERT ... ON CONFLICT
 // DO UPDATE` (pattern A du test art_upsert_patterns_test.go, identifié
@@ -42,8 +42,10 @@ const (
 	csrReproIterations  = 5
 )
 
-// openCSRPlayerFileDB ouvre une DuckDB persistante sur fichier avec le
-// schéma `match_skill_rank` réel (cf. steps_player.go:302).
+// openCSRPlayerFileDB ouvre une DuckDB persistante sur fichier avec le schéma
+// `match_skill_rank` d'AVANT l'append-only (PK match_id + idx_msr_*), celui sur lequel ce
+// harnais reproduit le bug ART : les index en font partie. Le schéma courant n'a plus
+// d'index secondaire (drop_msr_secondary_art_indexes_v1).
 func openCSRPlayerFileDB(t *testing.T) *sql.DB {
 	t.Helper()
 	dir := t.TempDir()

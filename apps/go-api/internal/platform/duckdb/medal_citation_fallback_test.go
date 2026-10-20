@@ -37,7 +37,10 @@ func TestLookupMedalCitationLabels_Helper(t *testing.T) {
 	seedMedalFallbackData(t, db)
 	ctx := context.Background()
 
-	got := lookupMedalCitationLabels(ctx, db, []int64{200, 999})
+	got, err := lookupMedalCitationLabels(ctx, db, []int64{200, 999})
+	if err != nil {
+		t.Fatalf("helper: %v", err)
+	}
 	if got[200] != "Perfection" {
 		t.Errorf("helper: medal 200 = %q, want Perfection", got[200])
 	}
@@ -46,11 +49,11 @@ func TestLookupMedalCitationLabels_Helper(t *testing.T) {
 	}
 
 	// Robustesse du contrat : jamais nil, même en entrée dégénérée.
-	if m := lookupMedalCitationLabels(ctx, nil, []int64{1}); m == nil {
-		t.Error("helper: db nil doit retourner une map vide (pas nil)")
+	if m, err := lookupMedalCitationLabels(ctx, nil, []int64{1}); m == nil || err != nil {
+		t.Errorf("helper: db nil doit retourner une map vide sans erreur, obtenu (%v, %v)", m, err)
 	}
-	if m := lookupMedalCitationLabels(ctx, db, nil); m == nil {
-		t.Error("helper: ids vide doit retourner une map vide (pas nil)")
+	if m, err := lookupMedalCitationLabels(ctx, db, nil); m == nil || err != nil {
+		t.Errorf("helper: ids vide doit retourner une map vide sans erreur, obtenu (%v, %v)", m, err)
 	}
 }
 
@@ -111,7 +114,10 @@ func TestLookupMedalMeta_CitationFallback(t *testing.T) {
 	ctx := context.Background()
 
 	repo := NewMatchViewRepo(&PlayerDB{Metadata: db}, pTestXUID)
-	got := repo.lookupMedalMeta(ctx, []int64{100, 200})
+	got, err := repo.lookupMedalMeta(ctx, []int64{100, 200})
+	if err != nil {
+		t.Fatalf("lookupMedalMeta: %v", err)
+	}
 	if got[100].label != "Killjoy" {
 		t.Errorf("match-view: medal 100 = %q, want Killjoy (medal_definitions)", got[100].label)
 	}

@@ -1,0 +1,25 @@
+ok  	levelup/go-api/internal/games/halo_infinite/film/damagetag	0.403s
+?   	levelup/go-api/internal/games/halo_infinite/film/decfilm	[no test files]
+ok  	levelup/go-api/internal/games/halo_infinite/film/filmcache	1.108s
+?   	levelup/go-api/internal/games/halo_infinite/film/finalise	[no test files]
+?   	levelup/go-api/internal/games/halo_infinite/film/internal/constat	[no test files]
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback	0.400s
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource	6.350s
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives	0.724s
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/grammar	68.455s
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture	0.332s
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/grammar/positions	0.343s
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/grammar/signaux	0.425s
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponscan	0.307s
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3	0.326s
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/profile	0.206s
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/source	6.869s
+ok  	levelup/go-api/internal/games/halo_infinite/film/killicon	0.469s
+ok  	levelup/go-api/internal/games/halo_infinite/film/medalname	0.314s
+ok  	levelup/go-api/internal/games/halo_infinite/film/replay	35.196s
+ok  	levelup/go-api/internal/games/halo_infinite/film/replay/mapvar	0.502s
+ok  	levelup/go-api/internal/games/halo_infinite/film/revision	1.587s
+ok  	levelup/go-api/internal/games/halo_infinite/film/types	0.324s
+ok  	levelup/go-api/internal/replaybuild	3.264s
+ok  	levelup/go-api/internal/sync/killcollector	1.834s
+rc=0

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  buildOption,
+  buildBucketPoints,
   formatHeatmapTooltip,
   type HeatmapBucketCell,
   type HeatmapTooltipText,
@@ -16,7 +16,10 @@ const TOOLTIP_FR: HeatmapTooltipText = {
 
 // Garde-rail : la heatmap « Rythme des rencontres » ne montre JAMAIS plus de 12
 // relations sur l'axe Y (les 12 les plus actives, par total décroissant).
-describe('RelationsMomentsHeatmap buildOption', () => {
+describe('RelationsMomentsHeatmap buildBucketPoints', () => {
+  /** Les relations rendues, dans l'ordre où elles occupent l'axe Y. */
+  const lignes = (points: { y: string }[]) => [...new Set(points.map((p) => p.y))]
+
   it('tronque l’axe Y à 12 relations quand il y en a plus', () => {
     // 20 relations, 1 cellule chacune (bucket 0), total = i+1 → tri déterministe.
     const cells: HeatmapBucketCell[] = Array.from({ length: 20 }, (_, i) => ({
@@ -26,14 +29,12 @@ describe('RelationsMomentsHeatmap buildOption', () => {
       count: i + 1,
     }))
 
-    const opt = buildOption(cells, ['00h'], 'Matchs', TOOLTIP_FR) as {
-      yAxis: { data: string[] }
-    }
+    const y = lignes(buildBucketPoints(cells, ['00h']))
 
     // Exactement 12 lignes, et ce sont les 12 plus actives (counts 20..9).
-    expect(opt.yAxis.data).toHaveLength(12)
-    expect(opt.yAxis.data[0]).toBe('Player19') // total le plus élevé (20)
-    expect(opt.yAxis.data).not.toContain('Player0') // total le plus faible, écarté
+    expect(y).toHaveLength(12)
+    expect(y[0]).toBe('Player19') // total le plus élevé (20)
+    expect(y).not.toContain('Player0') // total le plus faible, écarté
   })
 
   it('n’ajoute pas de lignes vides quand il y a moins de 12 relations', () => {
@@ -43,10 +44,20 @@ describe('RelationsMomentsHeatmap buildOption', () => {
       bucket: 0,
       count: 1,
     }))
-    const opt = buildOption(cells, ['00h'], 'Matchs', TOOLTIP_FR) as {
-      yAxis: { data: string[] }
-    }
-    expect(opt.yAxis.data).toHaveLength(5)
+    expect(lignes(buildBucketPoints(cells, ['00h']))).toHaveLength(5)
+  })
+
+  // Les axes du wrapper canonique sont DÉDUITS de l'ordre d'apparition des points :
+  // omettre une case sans rencontre décalerait les catégories d'un cran.
+  it('émet toutes les cases du produit relation × créneau, une case sans rencontre valant null', () => {
+    const cells: HeatmapBucketCell[] = [
+      { xuid: 'x0', gamertag: 'P0', bucket: 0, count: 3 },
+      { xuid: 'x1', gamertag: 'P1', bucket: 1, count: 2 },
+    ]
+    const points = buildBucketPoints(cells, ['00h', '01h'])
+    expect(points).toHaveLength(4)
+    expect(points.find((p) => p.y === 'P0' && p.x === '00h')?.value).toBe(3)
+    expect(points.find((p) => p.y === 'P0' && p.x === '01h')?.value).toBeNull()
   })
 })
 

@@ -1,20 +1,25 @@
 /**
- * RelationsMomentsHeatmap — heatmap agrégé « Quand tu les croises » (Phase 3a).
+ * RelationsMomentsHeatmap — grille « Rythme des rencontres » (relation × créneau).
  *
- * Générique : relation × bucket (heure 0..23 OU jour de semaine selon le
- * toggle du parent, #8). La couleur reflète le `count` (matchs communs) via la
- * rampe NEUTRE de fréquence heatmap-freq-low → heatmap-freq-high (mono-teinte,
- * sans connotation bien/mal — c'est de l'intensité de rencontre). Axe X =
- * buckets (labels fournis), axe Y = top-N relations. Strings via palmares.toml
- * (FR/EN).
+ * Générique : relation × bucket (heure 0..23 OU jour de semaine selon le toggle du
+ * parent). La couleur reflète le `count` (matchs communs) via la rampe NEUTRE de
+ * fréquence — un nombre de rencontres n'est ni bon ni mauvais.
+ *
+ * RENDU CANONIQUE (2026-09-20, lot 3 des ajustements pré-v7.5) : ce fichier n'écrit plus
+ * son option ECharts. Il ne fait que RANGER ses cellules en points, et
+ * `components/charts/Heatmap2DChart` les rend — mêmes cases aérées, mêmes titres d'axes et
+ * même infobulle que « Activité par jour et heure », qui est le rendu de référence. Une
+ * grille de plus qui écrivait sa propre option, c'était une grille de plus qui divergeait
+ * au premier réglage.
+ *
+ * La barre de dégradé est partie avec la migration : chaque case porte son nombre, et
+ * l'infobulle nomme la relation, le créneau et le compte.
  */
-import { useCallback, useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import { useMemo } from 'react'
 
-import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { heatmapRampTokens } from '@/components/charts/heatmapColors'
-import { CHART_BG, escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
-import { resolveToken } from '@/lib/accessibility'
+import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import type { ChartSeries } from '@/components/charts/ChartCard'
+import { escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
 
 /** Cellule générique : bucket = index de tranche horaire OU de jour de semaine. */
 export interface HeatmapBucketCell {
@@ -42,7 +47,6 @@ interface Props {
   cells: HeatmapBucketCell[]
   bucketLabels: string[] // index = bucket (tranche horaire ou jour)
   title?: string
-  legendLabel: string
   emptyMessage: string
   tooltipText: HeatmapTooltipText
   height?: number
@@ -52,10 +56,19 @@ interface Props {
 // l'axe Y — au-delà, la heatmap devient illisible (choix produit 2026-07-18).
 const MAX_HEATMAP_ROWS = 12
 
+// Hauteur du tracé : les cases étaient écrasées (retour utilisateur du 2026-09-21).
+// Elle se CALCULE désormais sur le nombre de rangées réellement affichées, au lieu
+// des 320 px fixes qui se partageaient entre 1 et 12 relations : CHROME_HEIGHT_PX
+// couvre le titre, les libellés et les titres d'axes, et chaque rangée reçoit
+// ROW_HEIGHT_PX = 32 px, soit 1,6 x les 20 px qu'elle obtenait à plein effectif
+// ((320 - 80) / 12). Le liseré des cases reste celui, partagé, de heatmap2DOption.
+const CHROME_HEIGHT_PX = 80
+const ROW_HEIGHT_PX = 32
+
 /**
  * formatHeatmapTooltip — contenu du tooltip d'une cellule, en trois lignes
  * étiquetées (joueur / créneau ou jour / matchs communs) au lieu de l'ancien
- * « Joueur · 14h » suivi d'un compteur sans contexte. Le gamertag est échappé
+ * « AllyPlayer · 14h » suivi d'un compteur sans contexte. Le gamertag est échappé
  * (donnée joueur) ; les libellés viennent du manifeste i18n.
  * Exporté pour test unitaire sans monter ECharts.
  */
@@ -76,18 +89,21 @@ export function formatHeatmapTooltip(
   return `${head}<br>${slot}<br>${escapeHtml(t.matchesLabel)} : ${count}`
 }
 
-// Exporté pour tester le cap sans monter le React tree (garde-rail des 12 lignes).
+/**
+ * buildBucketPoints — les cellules rangées en points de la grille canonique.
+ *
+ * L'axe Y garde les MAX_HEATMAP_ROWS relations les plus actives (total décroissant) ; les
+ * autres ne sont pas rendues. Toutes les cases du produit (relation × bucket) sont émises,
+ * une sans rencontre valant `null` : les axes du wrapper sont déduits de l'ordre
+ * d'apparition des points, en omettre une décalerait les catégories.
+ *
+ * Exporté pour tester le cap sans monter le React tree.
+ */
 // eslint-disable-next-line react-refresh/only-export-components
-export function buildOption(
+export function buildBucketPoints(
   cells: HeatmapBucketCell[],
   bucketLabels: string[],
-  legendLabel: string,
-  tooltipText: HeatmapTooltipText,
-): EChartsCoreOption {
-  const tc = getEChartsThemeColors()
-
-  // Ordre Y : relations triées par total décroissant (les plus actives en haut),
-  // tronquées aux MAX_HEATMAP_ROWS premières.
+): ChartPointHeatmap[] {
   const totals = new Map<string, number>()
   for (const c of cells) {
     totals.set(c.xuid, (totals.get(c.xuid) ?? 0) + c.count)
@@ -98,133 +114,76 @@ export function buildOption(
     .map(([xuid]) => xuid)
   const rowSet = new Set(rowOrder)
   const xuidToGamertag = new Map(cells.map((c) => [c.xuid, c.gamertag]))
-  const rowLabels = rowOrder.map((x) => xuidToGamertag.get(x) ?? '')
-  const rowIndex = new Map(rowOrder.map((x, i) => [x, i]))
 
-  // lookup + max sur les seules lignes retenues (l'échelle de couleur suit l'affiché).
   const lookup = new Map<string, number>()
-  let maxCount = 0
   for (const c of cells) {
     if (!rowSet.has(c.xuid)) continue
     lookup.set(`${c.xuid}-${c.bucket}`, c.count)
-    if (c.count > maxCount) maxCount = c.count
   }
 
-  const data: { value: [number, number, number | null] }[] = []
+  const points: ChartPointHeatmap[] = []
   for (let b = 0; b < bucketLabels.length; b++) {
     for (const xuid of rowOrder) {
       const count = lookup.get(`${xuid}-${b}`)
-      data.push({ value: [b, rowIndex.get(xuid) ?? 0, count != null && count > 0 ? count : null] })
+      points.push({
+        x: bucketLabels[b],
+        y: xuidToGamertag.get(xuid) ?? '',
+        value: count != null && count > 0 ? count : null,
+        detail: { count: count ?? 0 },
+      })
     }
   }
-
-  const hasData = maxCount > 0
-
-  return {
-    backgroundColor: CHART_BG,
-    grid: { left: 110, right: 20, top: 30, bottom: 40, containLabel: false },
-    tooltip: {
-      trigger: 'item',
-      backgroundColor: tc.tooltipBg,
-      borderColor: tc.tooltipBorder,
-      textStyle: { color: tc.text },
-      formatter: (params: { data: { value: [number, number, number | null] } }) => {
-        const [b, row, count] = params.data.value
-        return formatHeatmapTooltip(rowLabels[row] ?? '', bucketLabels[b] ?? '', count, tooltipText)
-      },
-    },
-    legend: false as unknown as undefined,
-    xAxis: {
-      type: 'category',
-      data: bucketLabels,
-      splitLine: { show: true, lineStyle: { color: tc.splitLine } },
-      axisLabel: { color: tc.axisLabel, fontSize: 11 },
-    },
-    yAxis: {
-      type: 'category',
-      inverse: true,
-      data: rowLabels,
-      splitLine: { show: true, lineStyle: { color: tc.splitLine } },
-      axisLabel: { color: tc.axisLabel, fontSize: 11 },
-    },
-    visualMap: hasData
-      ? {
-          min: 0,
-          max: maxCount,
-          calculable: false,
-          show: false,
-          orient: 'vertical',
-          right: 30,
-          top: 'center',
-          itemWidth: 12,
-          itemHeight: 140,
-          // Rampe NEUTRE de fréquence (mono-teinte, luminance monotone, CVD-safe) :
-          // ce heatmap mesure l'intensité de rencontre, pas une perf → pas de
-          // rouge « mauvais ». Rampe centralisée (cf. components/charts/heatmapColors).
-          inRange: { color: heatmapRampTokens('frequency').map(resolveToken) },
-          formatter: (val: number) => `${Math.round(val)}`,
-          text: [legendLabel, ''],
-          textStyle: { color: tc.axisLabel, fontSize: 10 },
-        }
-      : undefined,
-    series: [
-      {
-        type: 'heatmap',
-        data,
-        label: {
-          show: true,
-          fontSize: 11,
-          color: tc.text,
-          formatter: (params: { data: { value: [number, number, number | null] } }) => {
-            const count = params.data.value[2]
-            return count != null && count > 0 ? String(count) : ''
-          },
-        },
-        emphasis: { itemStyle: { shadowBlur: 8 } },
-      },
-    ],
-  }
+  return points
 }
-
-type Pt = { xuid: string; bucket: number }
 
 export function RelationsMomentsHeatmap({
   cells,
   bucketLabels,
   title,
-  legendLabel,
   emptyMessage,
   tooltipText,
   height,
 }: Props) {
-  const series: ChartSeries<Pt>[] =
-    cells.length > 0
-      ? [{ key: 'heatmap', datapoints: cells.map((c) => ({ xuid: c.xuid, bucket: c.bucket })) }]
-      : []
+  const points = useMemo(() => buildBucketPoints(cells, bucketLabels), [cells, bucketLabels])
+  // Rangées effectivement tracées (relations retenues, cap MAX_HEATMAP_ROWS inclus).
+  const rowCount = useMemo(() => new Set(points.map((pt) => pt.y)).size, [points])
+  const series: ChartSeries<ChartPointHeatmap>[] =
+    points.length > 0 ? [{ key: 'heatmap', datapoints: points }] : []
 
-  const cellsKey = useMemo(() => JSON.stringify(cells), [cells])
-  const bucketsKey = useMemo(() => bucketLabels.join('|'), [bucketLabels])
   // Clé stable des libellés : le parent peut recréer l'objet à chaque rendu sans
   // provoquer de rebuild inutile de l'option ECharts.
-  const tooltipKey = useMemo(
-    () =>
-      [tooltipText.playerLabel, tooltipText.bucketTypeLabel, tooltipText.matchesLabel, tooltipText.emptyCell].join('|'),
-    [tooltipText.playerLabel, tooltipText.bucketTypeLabel, tooltipText.matchesLabel, tooltipText.emptyCell],
-  )
-  const build = useCallback(
-    () => buildOption(cells, bucketLabels, legendLabel, tooltipText),
-    // cells/bucketLabels/tooltipText capturés via clés stables.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cellsKey, bucketsKey, legendLabel, tooltipKey],
+  const { playerLabel, bucketTypeLabel, matchesLabel, emptyCell } = tooltipText
+  const formatTooltip = useMemo(
+    () => (point: ChartPointHeatmap) =>
+      formatHeatmapTooltip(point.y, point.x, point.value, {
+        playerLabel,
+        bucketTypeLabel,
+        matchesLabel,
+        emptyCell,
+      }),
+    [playerLabel, bucketTypeLabel, matchesLabel, emptyCell],
   )
 
+  // La rampe de fréquence part d'un bleu très sombre : l'encre du nombre écrit dans la
+  // case vient du thème, jamais du défaut gris d'ECharts, qui y disparaît.
+  const cellLabelColor = getEChartsThemeColors().text
+
   return (
-    <ChartCard
+    <Heatmap2DChart
       title={title}
       series={series}
-      buildOption={build as (s: ChartSeries<Pt>[]) => EChartsCoreOption}
       emptyMessage={emptyMessage}
-      height={height ?? 320}
+      height={height ?? CHROME_HEIGHT_PX + Math.max(rowCount, 1) * ROW_HEIGHT_PX}
+      paletteMode="frequency"
+      // La réglette est masquée, mais son ORIENTATION décide aussi des marges du tracé :
+      // celles de la verticale logent les titres d'axes, que l'horizontale écraserait.
+      visualMapOrient="vertical"
+      showVisualMap={false}
+      cellLabelColor={cellLabelColor}
+      formatTooltip={formatTooltip}
+      yAxisInverse
+      axisNames={{ x: bucketTypeLabel, y: playerLabel }}
+      emptyCells="hidden"
     />
   )
 }

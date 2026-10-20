@@ -1,0 +1,7 @@
+film	famille	mode	carte	duree_s	schema	frames	manches	flagCarries_calque	flagFilm	flag_openings	flag_carries	flag_noBridge	zoneStates	zones_captures	zones_attributed	skullCarries	bombCarries	obj_available	obj_attached	obj_noSlot	obj_outOfWindow	oracle_lignes
+01e1f945	KOTH	KOTH:Arena	Catalyst	540	51	5343	1	non	false	0	0	0	4	0	0	0	0	0	0	0	0	9
+21ece4d8	KOTH	KOTH:Arena	Live Fire	453	51	4272	1	non	false	0	0	0	3	0	0	0	0	0	0	0	0	8
+606d9844	KOTH	KOTH:Arena	Chasm	235	51	2342	1	non	false	0	0	0	3	0	0	0	0	0	0	0	0	9
+7f1bbf06	KOTH	KOTH:Arena	Streets	318	51	3194	1	non	false	0	0	0	3	0	0	0	0	0	0	0	0	8
+8076f97f	KOTH	KOTH:Arena	Shogun	349	51	3398	1	non	false	0	0	0	3	0	0	0	0	0	0	0	0	10
+a36c8bed	KOTH	KOTH:Arena	Isolation	402	51	3936	1	non	false	0	0	0	4	0	0	0	0	0	0	0	0	9

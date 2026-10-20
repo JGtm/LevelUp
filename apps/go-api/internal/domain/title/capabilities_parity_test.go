@@ -13,7 +13,7 @@ import (
 // NE COUVRE PAS les capabilities DATA-LEVEL (games.CapabilityKey, clés pointées
 // "match.objective.stats", déclarées en capabilities.toml) : deux systèmes distincts
 // qui partagent des noms de constantes (games.CapWeaponAccuracy vs CapWeaponAccuracy) —
-// cf. .ai/DIAG_WAYPOINT_COLUMN_INFINITE.md §4.4.
+// cf. .ai/archive/V7.2.1/DIAG_WAYPOINT_COLUMN_INFINITE.md §4.4.
 //
 // Topologie RÉELLE des listes maintenues à la main (mesurée le 2026-07-26) :
 //
@@ -135,9 +135,19 @@ func TestCapabilityLiteralsInFrontAreDeclaredInGo(t *testing.T) {
 
 // orphanCapabilityAllowlist — capabilities Go volontairement NON déclarées par un
 // titre public, ou NON consommées. Chaque entrée est datée + justifiée (règle
-// CLAUDE.md n°11). VIDE au 2026-07-26 : les 21 capabilities sont toutes déclarées
-// par Halo Infinite ou Halo 5, et toutes lues par au moins un consommateur.
-var orphanCapabilityAllowlist = map[string]string{}
+// CLAUDE.md n°11). VIDE au 2026-09-06 : les capabilities déclarées sont toutes
+// accordées par Halo Infinite ou Halo 5, et toutes lues par au moins un consommateur.
+// L'allowlist est DÉCROISSANTE : `TestOrphanCapabilityAllowlistIsCurrent` fait échouer
+// la suite dès qu'une entrée n'a plus lieu d'être.
+var orphanCapabilityAllowlist = map[string]string{
+	// 2026-09-07 — la probabilité de victoire attendue (LUSR TrueSkill 2) est REMISÉE :
+	// le modèle n'est pas assez fiable sur certaines compositions/modes pour être exposé.
+	// Les données restent calculées et stockées ; la capability sera accordée quand le
+	// modèle sera recalibré. Consommateurs front : useCapability('expected_win_prob')
+	// dans MatchStatCards, TimeseriesPage.progression, SquadSynergyHistoryTable.
+	// Retrait cible : quand la prédiction est jugée fiable → accorder à halo_infinite.
+	"expected_win_prob": "2026-09-07 remisée — prédiction LUSR pas assez fiable, données stockées, reprise au recalibrage",
+}
 
 // TestCapabilitiesGrantedByAPublicTitle — toute capability déclarée côté Go doit
 // être accordée par AU MOINS UN titre public (built-in Infinite ou config/titles/

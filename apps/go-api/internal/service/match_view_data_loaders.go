@@ -9,7 +9,7 @@ package service
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -17,7 +17,6 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/port"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -40,9 +39,30 @@ type matchViewData struct {
 	// via Q23b. Permet narrative.ComputeEncounterBadges (ally_plus +
 	// tough_enemy). Optionnel — degradation gracieuse vers badge ordinal
 	// seul si la repo retourne nil.
-	encounterStats []domain.EncounterStatsRaw
-	kvPairs        []domain.KVPairRaw
-	skillRank      *domain.SkillRankRaw
+	encounterStats   []domain.EncounterStatsRaw
+	encounterAssists map[string]domain.RelationAssists // colonne « Assistances » (cf. match_view_encounter_assists.go)
+	// killSources : source de dégât par (tueur, instant), pour l'arme du kill feed
+	// (Q21b). Vide si le titre n'a pas de décodeur de film ou si le match n'y est pas
+	// passé — le feed s'affiche alors sans icône d'arme.
+	killSources []domain.KillSourceRaw
+	// killAssists : assistance par (tueur, instant), pour l'assistant du kill feed
+	// (Q21c). Une mort absente de la tranche reste « on ne sait pas » — jamais
+	// « pas d'assistant ».
+	killAssists []domain.KillAssistRaw
+	// assistPairs / assistScope : agrégat (assistant → tueur assisté) du match et la
+	// PORTÉE de sa lecture (Q21d). assistScope.MatchDeaths à 0 = aucune ligne de film :
+	// le builder n'émet alors aucun bloc. Sans clé temporelle — donc jamais recalé T0
+	// (cf. correctMatchViewEventsT0, qui ne le touche pas).
+	assistPairs []domain.MatchAssistPairRaw
+	assistScope domain.MatchAssistScopeRaw
+	// assistScopeFailed : la lecture Q21d a échoué — sa portée à zéro n'est pas une mesure.
+	assistScopeFailed bool
+	kvPairs           []domain.KVPairRaw
+	// kvPairsFeed : COPIE des paires killer→victim corrigée T0, réservée à la
+	// décoration du kill feed (clé exacte tueur+instant contre les events corrigés).
+	// kvPairs reste sur l'horloge brute : tug-of-war et KD timeline en dépendent.
+	kvPairsFeed []domain.KVPairRaw
+	skillRank   *domain.SkillRankRaw
 	// sharedCSRs : CSR de tous les participants depuis shared.match_csrs_latest.
 	// Nil si match non-ranked ou table absente. Utilisé comme fallback pour les
 	// joueurs non-trackés dans buildTeamTabFull.
@@ -55,7 +75,13 @@ type matchViewData struct {
 	matchCitations []domain.CitationMatchViewRow
 	richCitations  []domain.HomeMatchCitationRaw
 	histRows       []domain.MatchHistAvgRow
+	// killDistances : POC (LOT G.3, plan retours-utilisateur §3bis DEC-8) —
+	// distance mesurée par (xuid, weapon_key) pour CE match, tous les joueurs
+	// (pas seulement le viewer). Nil si le titre n'a pas de killDistanceRepo
+	// câblé, ou si aucun kill n'a de position mesurée.
+	killDistances  []domain.MatchKillDistancePlayer
 	objectiveScore int
+	failures       *sourceFailures // sources dont la lecture a échoué : « en panne » ≠ « vide » (E4)
 }
 
 // loadMatchViewDataParallel lance en parallèle (errgroup) tous les chargements
@@ -66,26 +92,26 @@ type matchViewData struct {
 //
 //nolint:funlen,cyclop // routage errgroup linéaire ~20 chargements concurrents — découper davantage ne réduit pas la complexité réelle.
 func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchID string) (matchViewData, error) {
-	var d matchViewData
+	d := matchViewData{failures: newSourceFailures()}
 
 	g, gctx := errgroup.WithContext(ctx)
 
-	goLoad(gctx, g, matchID, "stats", func() error {
+	d.failures.goLoad(gctx, g, matchID, srcPlayerStats, func() error {
 		var e error
 		d.stats, e = s.repo.GetPlayerMatchStats(gctx, s.xuid, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "enrichment", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "enrichment", func() error {
 		var e error
 		d.enrich, e = s.repo.GetMatchEnrichment(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "scoreboard", func() error {
+	d.failures.goLoad(gctx, g, matchID, srcScoreboard, func() error {
 		var e error
 		d.scoreboard, e = s.repo.GetMatchScoreboard(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "objective score", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "objective score", func() error {
 		var e error
 		// Score PSA catégorie 'objective' pour le joueur courant — consommé
 		// UNIQUEMENT par le résiduel de l'axe Score du radar (décision 1, plan
@@ -94,103 +120,105 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.objectiveScore, e = s.repo.GetMatchObjectiveScore(gctx, s.xuid, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "medals", func() error {
+	d.failures.goLoad(gctx, g, matchID, srcMedals, func() error {
 		var e error
 		d.medals, e = s.repo.GetMatchMedals(gctx, s.xuid, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "events", func() error {
+	d.failures.goLoad(gctx, g, matchID, srcEvents, func() error {
 		var e error
 		d.events, e = s.repo.GetMatchEvents(gctx, matchID)
 		return e
 	})
-	// MV4.A : chargement parallèle des events via le loader unifié si câblé.
-	// Si l'eventsRepo n'est pas injecté, canonicalEvents reste nil et les
-	// builders narrative retomberont sur la conversion à la volée (chunk MV2).
-	if s.eventsRepo != nil {
-		g.Go(func() error {
-			filters := port.HighlightEventFilters{MatchIDs: []string{matchID}}
-			if e := filters.Validate(); e != nil {
-				slog.WarnContext(gctx, "match_view: HighlightEventFilters invalides",
-					"match_id", matchID, "err", e)
-				return nil
-			}
-			canonicalEv, e := s.eventsRepo.Load(gctx, filters)
-			if e != nil {
-				if !errors.Is(e, games.ErrCapabilityNotSupported) {
-					slog.WarnContext(gctx, "match_view: Load highlight events echec",
-						"match_id", matchID, "err", e)
-				}
-				return nil
-			}
-			d.canonicalEvents = canonicalEv
-			return nil
-		})
-	}
-
-	// MV4.B' : awards chargés après l'errgroup principal car ils dépendent du
-	// scoreboard (xuids). Voir l'appel `s.loadAwardsForScoreboard(...)` plus
-	// bas, après `g.Wait()`.
-	goLoad(gctx, g, matchID, "kv_pairs", func() error {
+	// MV4.A : events canoniques via le loader unifié (match_view_source_failures.go).
+	s.loadCanonicalEvents(gctx, g, matchID, &d)
+	d.failures.goLoadSection(gctx, g, matchID, "kill_sources", func() error {
+		var e error
+		d.killSources, e = s.repo.GetMatchKillSources(gctx, matchID)
+		return e
+	})
+	d.failures.goLoadSection(gctx, g, matchID, "kill_assists", func() error {
+		var e error
+		d.killAssists, e = s.repo.GetMatchKillAssists(gctx, matchID)
+		return e
+	})
+	d.failures.goLoadSection(gctx, g, matchID, "assist_pairs", func() error {
+		var e error
+		d.assistPairs, d.assistScope, e = s.repo.GetMatchAssistPairs(gctx, matchID)
+		d.assistScopeFailed = e != nil
+		return e
+	})
+	d.failures.goLoadSection(gctx, g, matchID, "kv_pairs", func() error {
 		var e error
 		d.kvPairs, e = s.repo.GetMatchKVPairs(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "skill_rank", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "skill_rank", func() error {
 		var e error
 		d.skillRank, e = s.repo.GetMatchSkillRank(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "shared_csrs", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "shared_csrs", func() error {
 		var e error
 		d.sharedCSRs, e = s.repo.GetMatchSharedCSRs(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "encounters", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "encounters", func() error {
 		var e error
 		d.encounters, e = s.repo.GetMatchEncounters(gctx, matchID, s.xuid)
 		return e
 	})
 	// MV4.C' : chargement parallele des stats encounter riches (Q23b).
-	goLoad(gctx, g, matchID, "encounter_stats", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "encounter_stats", func() error {
 		var e error
 		d.encounterStats, e = s.repo.GetMatchEncounterStats(gctx, matchID, s.xuid)
 		return e
 	})
-	goLoad(gctx, g, matchID, "media", func() error {
+	s.loadEncounterAssists(gctx, g, matchID, &d)
+	d.failures.goLoadSection(gctx, g, matchID, "media", func() error {
 		var e error
 		// Q24 retourne tous les auteurs (cross-joueur) : un coéquipier peut
 		// avoir uploadé un media pour ce match.
 		d.media, e = s.repo.GetMatchMedia(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "expected_stats", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "expected_stats", func() error {
 		var e error
 		d.expected, e = s.repo.GetMatchExpectedStats(gctx, matchID, s.xuid)
 		return e
 	})
-	goLoad(gctx, g, matchID, "bulk_medals", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "bulk_medals", func() error {
 		var e error
 		d.bulkMedals, e = s.repo.GetMatchBulkMedals(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "bulk_weapons", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "bulk_weapons", func() error {
 		var e error
 		d.bulkWeapons, e = s.repo.GetMatchBulkWeaponKills(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "hist_avg", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "hist_avg", func() error {
 		var e error
 		d.histRows, e = s.repo.GetHistoryForAvg(gctx, s.xuid)
 		return e
 	})
+	// Le GATE de capability est posé au CÂBLAGE (wire.killDistanceRepoFor) : un repo
+	// posé au câblage (wire.killDistanceRepoFor) — un repo non nil veut dire que
+	// le titre a film.kill_source. Zéro comparaison de slug.
+	if s.killDistanceRepo != nil {
+		d.failures.goLoadSection(gctx, g, matchID, "kill_distances", func() error {
+			var e error
+			d.killDistances, e = s.killDistanceRepo.LoadMatch(gctx, matchID)
+			return e
+		})
+	}
 	if s.citationsRepo != nil {
-		goLoad(gctx, g, matchID, "citations", func() error {
+		d.failures.goLoadSection(gctx, g, matchID, "citations", func() error {
 			var e error
 			d.matchCitations, e = s.citationsRepo.LoadMatchCitationsForView(gctx, matchID)
 			return e
 		})
-		goLoad(gctx, g, matchID, "rich citations", func() error {
+		d.failures.goLoadSection(gctx, g, matchID, "rich citations", func() error {
 			var e error
 			d.richCitations, e = s.citationsRepo.LoadMatchCitationsRich(gctx, matchID)
 			return e
@@ -200,19 +228,13 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	if err := g.Wait(); err != nil {
 		return matchViewData{}, err
 	}
+	// Requête abandonnée pendant le chargement : les lectures coupées ne sont pas des pannes
+	// (WARN, cf. reportLoadFailure). Construire la vue sur ce contexte mort la parsèmerait de
+	// raisons `_unavailable` fausses et rouvrirait des lectures ; on rend l'erreur de contexte.
+	if cerr := ctx.Err(); cerr != nil {
+		return matchViewData{}, fmt.Errorf("match_view: requête interrompue pour %s: %w", matchID, cerr)
+	}
 	return d, nil
-}
-
-// goLoad lance un chargement best-effort dans l'errgroup g : exécute load(), logge
-// un WARN "match_view: <label> indisponible" sur erreur (jamais fatal) puis retourne
-// nil. Centralise ~18 blocs g.Go copiés (K2e, CR §5) et passe à slog.WarnContext.
-func goLoad(gctx context.Context, g *errgroup.Group, matchID, label string, load func() error) {
-	g.Go(func() error {
-		if err := load(); err != nil {
-			slog.WarnContext(gctx, "match_view: "+label+" indisponible", "match_id", matchID, "err", err)
-		}
-		return nil
-	})
 }
 
 // tugDurationMS retourne la durée (ms) servant à binner la Dominance (tug-of-war).
@@ -302,16 +324,37 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// portée par le service, pas par le builder — buildMatchHeader est déjà à la
 	// limite de paramètres). Titre sans table → no-op.
 	applyMatchHeaderOvertime(&header, meta, s.regulationSeconds)
+	// Jeu d'outcomes du titre, résolu UNE FOIS et réutilisé pour l'en-tête, le résumé et le
+	// scoreboard (2026-09-07, décision D5) : la CLÉ canonique de l'issue (win|loss|tie|dnf),
+	// jamais un texte — le web localise via useOutcomeLabel.
+	outcomes := outcomesOf(s.semantic)
+	// LA CLÉ DE L'ISSUE. Ici et pas dans le builder, pour la même raison que la ligne
+	// au-dessus : le jeu d'outcomes vient de l'adapter sémantique, porté par le service.
+	applyMatchHeaderOutcomeKey(&header, outcomes)
+	// Score de l'en-tête : points ou MANCHES. Ici et pas dans le builder, pour la même
+	// raison que la ligne au-dessus — la table `[rounds_decide]` est portée par le
+	// service. Table absente → lecture en points, comportement d'avant le 2026-08-29.
+	applyMatchHeaderScore(&header, meta, d.stats, s.roundsDecide)
+	// Lecture du bloc « Score dans le temps » (rien / barres d'instants / courbe) : même
+	// raison d'être ici que les deux lignes au-dessus — la règle est portée par le service.
+	// Règle absente → champ vide → le client garde la courbe.
+	applyMatchHeaderScoreTimeline(&header, meta, s.scoreTimelineKind)
 	// Présence de l'artefact de rejeu 2D : un os.Stat, jamais une lecture. Même
 	// raison d'être ici que le flag « Prolongation » — la dépendance est portée par
 	// le service, pas par le builder.
 	applyMatchHeaderReplay(ctx, &header, matchID, s.replaySvc)
+	// Indicateur « analyse du film en cours » : lit ReplayAvailable posé juste au-dessus.
+	s.applyHeaderAnalysisPending(ctx, &header)
+	// ModeCategory : catégorie custom résolue depuis pair_name (taxonomie injectée,
+	// WithModeTaxonomy) — pour que la garde Fiesta du rejeu 2D corrèle sur la
+	// résolution de mode de l'app plutôt que deviner sur ModeUI/PlaylistLabel.
+	applyMatchHeaderModeCategory(&header, meta, s.modeTaxonomy)
 	rank := buildRankBlock(d.skillRank, s.assetURL)
 	curDurSec := 0
 	if meta != nil && meta.DurationSeconds != nil {
 		curDurSec = int(*meta.DurationSeconds)
 	}
-	summary := buildSummaryTabFull(d.stats, d.medals, d.expected, d.histRows, meta, s.titleSlug, d.richCitations, curDurSec)
+	summary := buildSummaryTabFull(d.stats, d.medals, d.expected, d.histRows, meta, s.titleSlug, d.richCitations, curDurSec, outcomes)
 	// Proba de victoire pré-match (LUSR v2) → card « Résultat attendu ». Source :
 	// match_skill_rank_latest.expected_win_prob via d.skillRank (même lecture que le
 	// player-matches scan). Best-effort : nil pour les matchs pré-v2 / sans donnée.
@@ -332,79 +375,32 @@ func (s *MatchViewService) buildMatchViewFromData(
 			}
 		}
 	}
-	combat := buildCombatTabFull(matchID, d.bulkWeapons, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
-	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
-	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
-	// → map vide (section "Local" inactive sauf pour `is_me`).
-	var friendsExtras map[string]port.FriendMatchExtras
-	if s.friendsExtras != nil {
-		xuids := make([]string, 0, len(d.scoreboard))
-		for _, sb := range d.scoreboard {
-			if sb.XUID != "" && sb.XUID != s.xuid {
-				xuids = append(xuids, sb.XUID)
-			}
-		}
-		if len(xuids) > 0 {
-			gvn := ""
-			if meta != nil && meta.GameVariantName != nil {
-				gvn = *meta.GameVariantName
-			}
-			friendsExtras = s.friendsExtras(ctx, matchID, gvn, xuids)
-		}
-	}
-	// Même modèle local (count∝durée) pour les AMIS TRACKÉS : leur historique
-	// complet est dans shared (joueur synchronisé), chargeable par xuid. On le
-	// charge et on pose l'expected K/D sur leur ligne → le drawer affiche attendu
-	// vs réel pour eux aussi (cohérent avec is_me). Limité aux xuids présents dans
-	// friendsExtras (synchronisés ; l'historique d'un non-tracké ne contiendrait
-	// que les matchs communs avec l'escouade → échantillon biaisé). Skip si l'API
-	// a déjà fourni les K/D (Infinite).
-	if curDurSec > 60 && len(friendsExtras) > 0 {
-		// J3 : collecter les xuids amis éligibles, charger tout leur historique en
-		// UN seul appel (GetHistoryForAvgBulk) au lieu de ~8 GetHistoryForAvg
-		// séquentiels, puis réappliquer le même filtre d'éligibilité pour écrire
-		// l'expected K/D. Best-effort : bulk en échec → map vide → aucun expected
-		// (dégradation identique à la voie unitaire).
-		var needXUIDs []string
-		seen := make(map[string]bool)
-		eligible := func(i int) bool {
-			xuid := d.scoreboard[i].XUID
-			if xuid == s.xuid || d.scoreboard[i].KillsExpected != nil {
-				return false
-			}
-			_, tracked := friendsExtras[xuid]
-			return tracked
-		}
-		for i := range d.scoreboard {
-			if !eligible(i) {
-				continue
-			}
-			if xuid := d.scoreboard[i].XUID; !seen[xuid] {
-				seen[xuid] = true
-				needXUIDs = append(needXUIDs, xuid)
-			}
-		}
-		if len(needXUIDs) > 0 {
-			histByXUID, err := s.repo.GetHistoryForAvgBulk(ctx, needXUIDs)
-			if err == nil {
-				for i := range d.scoreboard {
-					if !eligible(i) {
-						continue
-					}
-					fh := histByXUID[d.scoreboard[i].XUID]
-					if len(fh) == 0 {
-						continue
-					}
-					if ek, ed, ok := localExpectedKD(fh, meta, curDurSec); ok {
-						d.scoreboard[i].KillsExpected = ek
-						d.scoreboard[i].DeathsExpected = ed
-						d.scoreboard[i].LocallyEstimated = true
-					}
-				}
-			}
-		}
-	}
-	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL)
+	combat := buildCombatTabFull(matchID, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
+	// L'arme du kill et l'équipe du tueur se posent APRÈS l'assemblage : ce sont des
+	// décorations du feed, pas des entrées du calcul de dominance (les bins, les vagues
+	// et les cumuls ne dépendent d'aucune des deux). Les séparer garde buildCombatTabFull
+	// à sa responsabilité et rend la décoration testable seule.
+	decorateKillFeed(ctx, combat.HighlightEvents, killFeedInputs{
+		sources:    d.killSources,
+		assists:    d.killAssists,
+		victims:    d.kvPairsFeed,
+		scoreboard: d.scoreboard,
+		assetURL:   s.assetURL,
+	})
+	// L'identité des médailles se pose par le même modèle : une décoration du feed,
+	// résolue contre le référentiel du titre (best-effort).
+	decorateMedalEvents(ctx, combat.HighlightEvents, s.repo, s.assetURL)
+	// Les paires d'assistance sont un AGRÉGAT PAR MATCH, pas une décoration du feed :
+	// elles sortent déjà comptées de Q21d et n'ont besoin que du scoreboard pour nommer
+	// le tueur. Posées ici pour la même raison que FragDistribution — hors de
+	// buildCombatTabFull, dont la signature est déjà à la limite de paramètres.
+	combat.AssistPairs = buildAssistPairs(ctx, d.assistPairs, d.assistScope, d.scoreboard)
+	// Extras per-friend (panneau d'expander scoreboard) et expected K/D local des amis
+	// trackés : voir match_view_friends_extras.go. Une panne de lecture y est dite, pas tue.
+	friendsExtras := s.loadFriendsExtras(ctx, matchID, meta, d)
+	s.applyFriendsLocalExpected(ctx, matchID, meta, d, friendsExtras, curDurSec)
+	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL, outcomes)
+	attachEncounterAssists(team.Encounters, d.encounterAssists)
 	// Halo 5 persisté : libellés d'équipe « Rouge/Bleu » depuis team_colors (no-op HINF
 	// et si le référentiel est vide → le front garde son libellé existant).
 	s.applyTeamNames(ctx, team.Scoreboard)
@@ -412,11 +408,17 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// scoreboard (compteurs natifs melee/grenade/spartan de la ligne is_me) + les bulk
 	// weapon kills du viewer (classes gun). hasMechanics via capability (jamais slug==).
 	combat.FragDistribution = buildViewerFragDistribution(
-		findViewerScoreboardRow(team.Scoreboard), d.bulkWeapons, titleHasNativeKillMechanics(s.titleSlug),
+		findViewerScoreboardRow(team.Scoreboard), d.bulkWeapons,
+		titleHasNativeKillMechanics(s.titleSlug),
 	)
 	if combat.FragDistribution != nil {
 		logFragDistribution(ctx, "match view", s.titleSlug, s.xuid, *combat.FragDistribution)
 	}
+	combat.WeaponTools = s.matchWeaponTools(ctx, matchID, d.bulkWeapons, findViewerScoreboardRow(team.Scoreboard))
+	// KillDistanceByWeapon (POC LOT G.3) : déjà agrégé par (xuid, weapon_key) côté
+	// repo (kill_positions_latest × match_kill_events_latest) — assemblage direct,
+	// contrairement à FragDistribution qui doit croiser scoreboard+bulkWeapons.
+	combat.KillDistanceByWeapon = d.killDistances
 	mediaTab := buildMediaTab(d.media)
 
 	// MV4.B' : radar calculé depuis le scoreboard (kills/HS/PK/assists/accuracy/
@@ -436,19 +438,20 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// court-circuité plus haut), mais une ou plusieurs sources secondaires sont
 	// vides. Le front peut afficher un bandeau dégradé au lieu de l'écran
 	// "Match introuvable ou erreur de chargement" full-page.
-	partialReasons := detectPartialMatchData(d.stats, d.scoreboard, d.events, d.medals)
+	partialReasons := matchPartialReasons(d)
 
 	return domain.MatchViewResponse{
-		Header:         header,
-		Rank:           rank,
-		SummaryTab:     summary,
-		CombatTab:      combat,
-		TeamTab:        team,
-		MediaTab:       mediaTab,
-		CitationsTab:   buildCitationsTab(d.matchCitations, d.medals, s.titleSlug),
-		Radar:          radar,
-		IsPartial:      len(partialReasons) > 0,
-		PartialReasons: partialReasons,
+		Header:                 header,
+		Rank:                   rank,
+		SummaryTab:             summary,
+		CombatTab:              combat,
+		TeamTab:                team,
+		MediaTab:               mediaTab,
+		CitationsTab:           buildCitationsTab(d.matchCitations, d.medals, s.titleSlug),
+		Radar:                  radar,
+		IsPartial:              len(partialReasons) > 0,
+		PartialReasons:         partialReasons,
+		MatchViewEmpriseFields: s.matchEmpriseFields(ctx, matchID, meta, d, friendsExtras),
 	}
 }
 
@@ -469,51 +472,15 @@ func correctMatchViewEventsT0(d *matchViewData, matchID string, tl domain.MatchT
 		)
 	}
 	d.events = timeline.CorrectEventRaws(d.events, tl)
-}
-
-// loadAwardsForScoreboard charge les awards pour tous les xuids du scoreboard
-// (chunk MV4.B'). Sérialisé après l'errgroup principal — la liste des xuids
-// dépend du scoreboard chargé en parallèle. Dégradation gracieuse :
-//
-//	awardsRepo nil       -> retourne nil
-//	scoreboard vide      -> retourne nil
-//	capability absente   -> retourne nil (silencieux)
-//	autre erreur         -> log warn + retourne nil
-//
-// tests utilisent toujours "m1" — la signature reste configurable et le caller prod
-// passe le vrai matchID variable.
-//
-//nolint:unparam // matchID paramétré (caller passe le matchID courant), bien que les
-func (s *MatchViewService) loadAwardsForScoreboard(
-	ctx context.Context,
-	matchID string,
-	scoreboard []domain.ScoreboardRaw,
-) []port.PersonalScoreAwardRow {
-	if s.awardsRepo == nil || len(scoreboard) == 0 {
-		return nil
-	}
-	xuids := extractMatchSquadXUIDs(scoreboard)
-	if len(xuids) == 0 {
-		return nil
-	}
-	filters := port.PersonalScoreAwardsFilters{
-		MatchIDs: []string{matchID},
-		XUIDs:    xuids,
-	}
-	if err := filters.Validate(); err != nil {
-		slog.WarnContext(ctx, "match_view: PersonalScoreAwardsFilters invalides",
-			"match_id", matchID, "err", err)
-		return nil
-	}
-	rows, err := s.awardsRepo.LoadPersonalScoreAwards(ctx, s.titleSlug, filters)
-	if err != nil {
-		if !errors.Is(err, games.ErrCapabilityNotSupported) {
-			slog.WarnContext(ctx, "match_view: LoadPersonalScoreAwards echec",
-				"match_id", matchID, "err", err)
-		}
-		return nil
-	}
-	return rows
+	// Q21b/Q21c s'apparient aux events par clé EXACTE (xuid, time_ms) dans
+	// decorateKillFeed : ils DOIVENT subir la même correction que d.events.
+	// Sans ça, sur tout match à T0 non nul, aucun kill ne recevait son arme ni
+	// son assistance (décalage constant de T0 ms entre les clés — 2026-08-12).
+	d.killSources = timeline.CorrectKillSourceRaws(d.killSources, tl)
+	d.killAssists = timeline.CorrectKillAssistRaws(d.killAssists, tl)
+	// La VICTIME s'apparie par la même clé exacte : copie corrigée, kvPairs intact
+	// (tug-of-war et KD timeline restent sur l'horloge brute).
+	d.kvPairsFeed = timeline.CorrectKVPairRaws(d.kvPairs, tl)
 }
 
 // matchModeFamilyFromMeta résout la mode family pour le calcul des seuils
@@ -555,6 +522,8 @@ const pBitMedals = 1 << 9
 //   - "medals_empty"         → Q14 a renvoyé 0 médailles ET le bit PBitMedals
 //     n'est pas positionné (médailles jamais fetchées). Si le bit est positionné,
 //     0 médaille est un résultat légitime (certains modes n'en attribuent pas).
+//
+// Une lecture EN ÉCHEC n'est pas un vide : matchPartialReasons la dit `<source>_unavailable`.
 func detectPartialMatchData(
 	stats *domain.PlayerMatchStatsRaw,
 	scoreboard []domain.ScoreboardRaw,
@@ -563,18 +532,18 @@ func detectPartialMatchData(
 ) []string {
 	var reasons []string
 	if len(scoreboard) == 0 {
-		reasons = append(reasons, "scoreboard_empty")
+		reasons = append(reasons, domain.PartialReasonScoreboardEmpty)
 	}
 	if len(events) == 0 {
-		reasons = append(reasons, "events_empty")
+		reasons = append(reasons, domain.PartialReasonEventsEmpty)
 	}
 	if stats == nil || stats.OutcomeCode == 0 {
-		reasons = append(reasons, "player_stats_empty")
+		reasons = append(reasons, domain.PartialReasonPlayerStatsEmpty)
 	}
 	if len(medals) == 0 {
 		medalsFetched := stats != nil && stats.BackfillBits != nil && (*stats.BackfillBits&pBitMedals) != 0
 		if !medalsFetched {
-			reasons = append(reasons, "medals_empty")
+			reasons = append(reasons, domain.PartialReasonMedalsEmpty)
 		}
 	}
 	return reasons

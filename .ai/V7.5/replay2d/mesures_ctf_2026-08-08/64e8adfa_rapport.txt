@@ -1,0 +1,55 @@
+film	64e8adfa
+carte	Catalyst
+duree_s	833.7
+tirs_disponibles	2879
+rattaches	2312	ambigus	3	sans_slot	564
+taux_rattachement	0.8031
+taux_sans_slot	0.1959
+vies	141	nommees	122	non_nommees	19	slots_pont	122
+echantillons_position	293811
+pas_median_ms	16.7
+pas_p90_ms	17.3
+part_pas_sup_120ms	0.0021
+
+# ventilation des rejets sans-slot
+cause	trou de position	55	0.0191
+cause	vie non nommee	509	0.1768
+
+# ecart au plus proche echantillon du tireur (rejets sans-slot, joueur au pont)
+ecart_max_ms	120	0
+ecart_max_ms	250	4
+ecart_max_ms	500	1
+ecart_max_ms	1000	0
+ecart_max_ms	2000	0
+ecart_max_ms	5000	1
+ecart_max_ms	15000	56
+ecart_max_ms	infini	502
+
+# repartition temporelle (deciles du film)
+decile	1	disponibles	168	sans_slot	1	taux	0.0060
+decile	2	disponibles	250	sans_slot	1	taux	0.0040
+decile	3	disponibles	296	sans_slot	0	taux	0.0000
+decile	4	disponibles	207	sans_slot	0	taux	0.0000
+decile	5	disponibles	325	sans_slot	7	taux	0.0215
+decile	6	disponibles	434	sans_slot	53	taux	0.1221
+decile	7	disponibles	350	sans_slot	63	taux	0.1800
+decile	8	disponibles	290	sans_slot	106	taux	0.3655
+decile	9	disponibles	294	sans_slot	168	taux	0.5714
+decile	10	disponibles	265	sans_slot	165	taux	0.6226
+
+# par index de joueur du film
+joueur	0	slots	12	disponibles	296	sans_slot	126	taux	0.4257
+joueur	1	slots	15	disponibles	513	sans_slot	104	taux	0.2027
+joueur	2	slots	19	disponibles	245	sans_slot	36	taux	0.1469
+joueur	3	slots	12	disponibles	479	sans_slot	0	taux	0.0000
+joueur	4	slots	19	disponibles	246	sans_slot	4	taux	0.0163
+joueur	5	slots	9	disponibles	526	sans_slot	238	taux	0.4525
+joueur	6	slots	15	disponibles	202	sans_slot	23	taux	0.1139
+joueur	7	slots	21	disponibles	372	sans_slot	33	taux	0.0887
+
+# par arme (identifiant brut du film)
+arme	0x48C19D2D42C9679F	disponibles	1897	sans_slot	427	taux	0.2251
+arme	0xF408190F42C9679F	disponibles	825	sans_slot	93	taux	0.1127
+arme	0x3E07021742C9679F	disponibles	108	sans_slot	24	taux	0.2222
+arme	0x0A1992BC42C9679F	disponibles	28	sans_slot	14	taux	0.5000
+arme	0x71AB0A2C42C9679F	disponibles	21	sans_slot	6	taux	0.2857

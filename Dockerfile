@@ -48,7 +48,12 @@ RUN node scripts/verify-public-in-dist.mjs
 # ============================================================================
 # Stage 2 — Build Go (CGo activé pour DuckDB bindings)
 # ============================================================================
-FROM golang:1.26-bookworm AS go-builder
+# Image épinglée sur le correctif exact (pas la branche flottante `1.26`) :
+# `scripts/deploy.sh` construit sans `--pull`, donc un tag flottant resterait sur la
+# version déjà présente sur l'hôte. Même version que la ligne `go` de
+# apps/go-api/go.mod ; les monter ensemble (garde-rail :
+# internal/archlint/dockerfile_go_version_test.go).
+FROM golang:1.26.9-bookworm AS go-builder
 
 WORKDIR /build/go
 
@@ -139,6 +144,16 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     -o /build/backfill_objective_stats \
     ./cmd/backfill_objective_stats/
 
+# CLI backfill_milestone_dates — dates de franchissement des jalons (`earned_at`) recalculées en
+# rejouant les matchs du joueur, Campagne exclue (`ops.BackfillMilestoneDates`). Serveur ARRÊTÉ
+# (écrit les player DB). Binaire dédié hors CLI levelup, comme backfill_objective_stats.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags "-s -w -extldflags '-static'" \
+    -o /build/backfill_milestone_dates \
+    ./cmd/backfill_milestone_dates/
+
 # ============================================================================
 # Stage 3 — Runtime minimal (Debian slim)
 # ============================================================================
@@ -165,6 +180,8 @@ COPY --from=go-builder /build/levelup-server /app/levelup-server
 COPY --from=go-builder /build/levelup        /usr/local/bin/levelup
 # Backfill objectifs (ops post-deploy v7.2, serveur arrêté pendant l'opération).
 COPY --from=go-builder /build/backfill_objective_stats /usr/local/bin/backfill_objective_stats
+# Dates des jalons (ops post-deploy v7.5, serveur arrêté pendant l'opération).
+COPY --from=go-builder /build/backfill_milestone_dates /usr/local/bin/backfill_milestone_dates
 COPY --from=web-builder /build/web/dist       /app/apps/web/dist
 
 # Scripts d'exploitation (backfill, seed, etc.)

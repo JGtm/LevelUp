@@ -26,9 +26,11 @@ const MIN_MATCHES_FOR_TREND = 20
 interface CampaignTrackerProps {
   playerSlug: string
   campaign: ImprovementCampaign
+  /** Profil d'un ami : la campagne se lit, sans pause, reprise, clôture ni abandon. */
+  readOnly?: boolean
 }
 
-export function CampaignTracker({ playerSlug, campaign }: CampaignTrackerProps) {
+export function CampaignTracker({ playerSlug, campaign, readOnly = false }: CampaignTrackerProps) {
   const { t, locale } = useProfileI18n()
   const muts = useCampaignMutations(playerSlug)
   const [confirmClose, setConfirmClose] = useState(false)
@@ -90,7 +92,7 @@ export function CampaignTracker({ playerSlug, campaign }: CampaignTrackerProps) 
           : t('campaign.tracker.linked_none')}
       </p>
 
-      <div className="flex flex-wrap gap-2">
+      <div className={readOnly ? 'hidden' : 'flex flex-wrap gap-2'}>
         {campaign.status === 'active' ? (
           <Button
             size="sm"

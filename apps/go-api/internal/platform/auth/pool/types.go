@@ -16,23 +16,37 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// CredentialSource décrit une source de credentials (MSAL cache ou refresh token).
-// Obtenue par scan env + DuckDB, sans aucune validation réseau.
+// CredentialSource décrit une source de credentials (refresh token OAuth v2).
+// Obtenue par scan du MultiUserTokenStore, sans aucune validation réseau.
 type CredentialSource struct {
 	Gamertag     string // "Bob", "Alice", etc.
 	TitleSlug    string // "halo_infinite" — titre propriétaire du token (Phase 1.6 : clé pool (titleSlug,gamertag))
 	XUID         string // "1234567890", numérique sans "xuid()"
 	PlayerDBPath string // data/titles/halo_infinite/players/Bob/stats.duckdb (pour logs/debuggage)
-	MSALCache    string // JSON sérialisé du cache MSAL (sync_meta.msal_token_cache), "" si absent
-	RefreshToken string // refresh token OAuth v2 (sync_meta.oauth_refresh_token ou env), "" si absent
-	Source       string // "duckdb_msal" | "duckdb_oauth" | "env_oauth" — pour logs
+	RefreshToken string // refresh token OAuth v2 (MultiUserTokenStore), "" si absent
+	Source       string // "watcher_oauth" (source unique ADR 0023) — pour logs
+
+	// TokenClientFamily : provenance MESURÉE au dernier échange XBL user-token
+	// (auth.TokenFamilyAzure → RpsTicket "d=", auth.TokenFamilyXboxNative → "t=").
+	// Lue du MultiUserTokenStore au scan, posée en ctx avant l'échange, ré-écrite
+	// par le Resolver quand la mesure change. "" = provenance inconnue (ordre
+	// historique, avec le filet du retry 401).
+	TokenClientFamily string
+
+	// PoolExcluded : le propriétaire n'a pas consenti à la mise en commun de son jeton
+	// (auth.UserTokens.SharesWithPool() faux). Le slot existe, mais le round-robin public
+	// ne le sert jamais : il reste joignable en PolicyPinnedPlayer, pour son propriétaire.
+	// Discovery est le seul producteur en production et pose true par défaut ; la valeur
+	// zéro (partagé) n'existe que pour les sources construites à la main.
+	PoolExcluded bool
 }
 
 // Discovery scanne les sources de credentials disponibles.
-// Aucune validation réseau — juste le scan env + DuckDB pour découvrir quels joueurs ont un token.
+// Aucune validation réseau — juste le scan du MultiUserTokenStore pour découvrir
+// quels joueurs ont un refresh token.
 type Discovery interface {
 	// Scan retourne la liste des CredentialSource découvertes.
-	// Exclut automatiquement les joueurs sans MSAL cache ET sans refresh token.
+	// Exclut automatiquement les joueurs sans refresh token.
 	Scan(ctx context.Context) ([]CredentialSource, error)
 }
 
@@ -42,11 +56,13 @@ type ResolvedTokens struct {
 	XUID      string             // xuid numérique
 	Tokens    *domain.HaloTokens // Spartan + Clearance
 	ExpiresAt time.Time          // expiration estimée du Spartan token (best-effort ~4h)
-	Source    string             // "duckdb_msal" | "duckdb_oauth" | "env_oauth"
+	Source    string             // "watcher_oauth" (source unique ADR 0023)
 }
 
 // Resolver échange CredentialSource → ResolvedTokens frais.
 // Mémoïse les tokens pendant leur durée de vie (~3h30).
+// Sûr pour des appels concurrents : NewPool résout plusieurs comptes en parallèle (jamais
+// deux sources au même refresh token à la fois, cf. runBootResolutions).
 type Resolver interface {
 	// Resolve échange une CredentialSource en tokens Halo frais.
 	// Cache internalisé — appels répétés pour le même gamertag rendent le cached résultat jusqu'à expiration.
@@ -82,18 +98,29 @@ type ReauthCallback func(ctx context.Context, gamertag, xuid string, required bo
 // Best-effort, non bloquant. msg ne contient jamais de token/secret.
 type AuthErrorCallback func(ctx context.Context, gamertag, xuid, class, msg string)
 
+// TokenFamilyCallback est invoqué par le Resolver quand l'échange XBL user-token
+// a MESURÉ une provenance différente de celle portée par la CredentialSource. Le
+// caller la persiste (MultiUserTokenStore) pour que l'échange suivant commence par
+// le bon préfixe RpsTicket au lieu d'encaisser un 401 puis de retenter.
+//
+// Best-effort comme TokenRotationCallback : une erreur n'interrompt pas le Resolve
+// (les tokens Halo sont déjà obtenus) mais elle est loguée par le Resolver.
+type TokenFamilyCallback func(ctx context.Context, gamertag, xuid, family string) error
+
 // ResolverCallbacks regroupe les callbacks optionnels du Resolver (tous nullables).
 type ResolverCallbacks struct {
-	OnRotated   TokenRotationCallback
-	OnReauth    ReauthCallback
-	OnAuthError AuthErrorCallback
+	OnRotated        TokenRotationCallback
+	OnReauth         ReauthCallback
+	OnAuthError      AuthErrorCallback
+	OnFamilyObserved TokenFamilyCallback
 }
 
 // AcquirePolicy détermine comment le pool sélectionne un token.
 type AcquirePolicy int
 
 const (
-	// PolicyAnyPublic : round-robin parmi tous les tokens actifs.
+	// PolicyAnyPublic : round-robin parmi tous les tokens actifs ET partagés (consentement
+	// du propriétaire, cf. CredentialSource.PoolExcluded).
 	// Utilisé pour les endpoints publics (GetMatchHistory, GetMatchStats, etc.)
 	// qui acceptent n'importe quel gamertag/matchID en paramètre.
 	PolicyAnyPublic AcquirePolicy = iota
@@ -134,6 +161,17 @@ type Pool interface {
 	// silencieusement les joueurs qui n'ont pas de token dans le pool, sans
 	// passer par un Acquire/Release qui retournerait juste une erreur.
 	HasPlayer(gamertag string) bool
+
+	// IsWithheld retourne true si le slot de ce gamertag existe ET que son propriétaire n'a
+	// pas consenti à la mise en commun : son jeton ne sert alors que lui. Faux pour un
+	// gamertag sans slot, qui n'a rien retenu.
+	IsWithheld(gamertag string) bool
+
+	// SetShared applique tout de suite un changement de consentement au slot du xuid, sans
+	// attendre le prochain scan : un retrait cesse de servir les autres joueurs à l'instant.
+	// Clé = xuid (ADR 0035 : seule clé d'identité ; le gamertag du compte peut différer de
+	// celui du profil). Retourne false si aucun slot ne porte ce xuid.
+	SetShared(xuid string, shared bool) bool
 
 	// MarkUnhealthy invalide un token (sur 401/403) et déclenche un Resolver.Refresh asynchrone.
 	// Logs informatif (pas d'erreur — les appels concurrents tolèrent l'exclusion temporaire).
@@ -178,7 +216,11 @@ type Pool interface {
 
 // PoolOptions configure le comportement du pool.
 type PoolOptions struct {
-	// MaxSize limite le nombre de tokens dans le pool (0 = tous les sources découverts).
+	// MaxSize est le nombre maximal de slots SAINS du pool (0 = tous les slots sains
+	// que les sources découvertes permettent de créer). Le plafond porte sur les slots
+	// RÉSOLUS, pas sur les sources TENTÉES (D2, plan robustesse 2026-09-16) : le scan
+	// est parcouru en entier, dans l'ordre alphabétique des gamertags, et une source
+	// dont le refresh token ne se résout pas ne consomme pas le quota.
 	MaxSize int
 
 	// PerTokenRPS est le nombre de requêtes par seconde **par token**.

@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,14 +21,14 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	// Récupérer l'id du média (match flexible : file_path exact OU basename).
-	basename := filepath.Base(filePath)
+	// Récupérer l'id du média par son chemin STOCKÉ complet ({owner_slug}/{rel}) : un
+	// nom de fichier seul pourrait désigner le média homonyme d'un autre joueur.
 	var mediaID int64
 	if err := r.socialDB().QueryRow(ctx,
 		`SELECT id FROM media_files
-		 WHERE (file_path = ? OR file_name = ?) AND `+MediaVisiblePredicate("")+`
+		 WHERE file_path = ? AND `+MediaVisiblePredicate("")+`
 		 LIMIT 1`,
-		filePath, basename,
+		filePath,
 	).Scan(&mediaID); err != nil {
 		return nil, nil, fmt.Errorf("SetMediaMatchAssociation: media not found: %w", err)
 	}

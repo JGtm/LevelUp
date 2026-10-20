@@ -69,8 +69,12 @@ func TestGolden_HealthOK_Structure(t *testing.T) {
 	m := loadGolden(t, "health_ok.json")
 	assertKeyExists(t, m, "status")
 	assertStringField(t, m, "status", "ok")
-	assertKeyExists(t, m, "match_count")
-	assertKeyExists(t, m, "player_count")
+	// /health est public : le détail (compteurs, versions) est réservé à /admin/health.
+	for _, detail := range []string{"match_count", "player_count", "db_version", "app_version", "go_version"} {
+		if _, present := m[detail]; present {
+			t.Errorf("health_ok.json porte %q : le corps public se limite à {status}", detail)
+		}
+	}
 }
 
 func TestGolden_BootstrapNoAuth_Structure(t *testing.T) {

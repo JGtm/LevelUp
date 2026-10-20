@@ -62,3 +62,17 @@ func DefaultStatus(status int) func(o *huma.Operation) {
 		o.DefaultStatus = status
 	}
 }
+
+// MaxBody fixe le plafond de taille du CORPS de la requête, en octets —
+// modificateur composable, à passer à côté de Op.
+//
+// À poser quand une route reçoit un corps plus gros que DefaultMaxBodyBytes (1 Mio,
+// posé sur toute opération sans MaxBody) : sans lui, la lecture est refusée en 413
+// dès que ce plafond est atteint, ce qui est un refus systématique pour un artefact
+// de rejeu (~2 Mo). Le plafond n'est jamais « désactivé » : il est DÉCLARÉ, fini, et
+// lu depuis la constante du domaine qui le justifie.
+func MaxBody(bytes int64) func(o *huma.Operation) {
+	return func(o *huma.Operation) {
+		o.MaxBodyBytes = bytes
+	}
+}

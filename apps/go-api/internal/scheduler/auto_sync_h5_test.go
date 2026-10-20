@@ -198,3 +198,6 @@ func TestRunOnceTrigger_V2_RoutesH5ToLiveRunner_NotOrchestrator(t *testing.T) {
 		t.Errorf("liveRunner non appelé pour Halo 5, liveSlugs=%v", liveSlugs)
 	}
 }
+
+func (p *h5FakePool) IsWithheld(string) bool      { return false }
+func (p *h5FakePool) SetShared(string, bool) bool { return true }

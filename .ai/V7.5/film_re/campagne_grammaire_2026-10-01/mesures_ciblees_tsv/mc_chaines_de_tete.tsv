@@ -1,0 +1,82 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	NEW apres DELTA · autre non ferme	1	1	0	0	15
+0797ce72	HI_1_13_0	ordre respecte · autre non ferme	30	30	0	0	299
+0797ce72	HI_1_13_0	ordre respecte · ferme	506	506	0	506	0
+0797ce72	HI_1_13_0	ordre respecte · hors cadre	156	156	156	0	1475
+084a804d	HI_1_10_0	DEL dans la chaine de tete · ferme	1	1	0	1	0
+084a804d	HI_1_10_0	DEL dans la chaine de tete · hors cadre	6	6	6	0	111
+084a804d	HI_1_10_0	ordre respecte · autre non ferme	7	7	0	0	166
+084a804d	HI_1_10_0	ordre respecte · ferme	13	13	0	13	0
+084a804d	HI_1_10_0	ordre respecte · hors cadre	110	110	110	0	2141
+084a804d	HI_1_10_0	slot non croissant (DELTA) · hors cadre	1	1	1	0	8
+084a804d	HI_1_10_0	slot non croissant (NEW) · ferme	1	1	0	1	0
+084a804d	HI_1_10_0	slot non croissant (NEW) · hors cadre	1	1	1	0	28
+111fa685	HI_1_10_0	DEL dans la chaine de tete · hors cadre	1	1	1	0	24
+111fa685	HI_1_10_0	ordre respecte · hors cadre	12	12	12	0	217
+111fa685	HI_1_10_0	slot non croissant (DELTA) · hors cadre	1	1	1	0	19
+11de8353	HI_1_9_0	DEL dans la chaine de tete · hors cadre	1	1	1	0	20
+11de8353	HI_1_9_0	ordre respecte · autre non ferme	1	1	0	0	23
+11de8353	HI_1_9_0	ordre respecte · ferme	3	3	0	3	0
+11de8353	HI_1_9_0	ordre respecte · hors cadre	7	7	7	0	126
+1c4c63c2	HI_1_10_0	DEL dans la chaine de tete · hors cadre	1	1	1	0	21
+1c4c63c2	HI_1_10_0	NEW apres DELTA · hors cadre	2	2	2	0	33
+1c4c63c2	HI_1_10_0	ordre respecte · autre non ferme	1	1	0	0	20
+1c4c63c2	HI_1_10_0	ordre respecte · ferme	6	6	0	6	0
+1c4c63c2	HI_1_10_0	ordre respecte · hors cadre	17	17	17	0	339
+1c4c63c2	HI_1_10_0	slot non croissant (NEW) · hors cadre	1	1	1	0	20
+396cfc92	HI_1_13_0	ordre respecte · autre non ferme	19	19	0	0	203
+396cfc92	HI_1_13_0	ordre respecte · ferme	279	279	0	279	0
+396cfc92	HI_1_13_0	ordre respecte · hors cadre	102	102	102	0	904
+4f77afc1	HI_1_13_0	DEL dans la chaine de tete · ferme	4	4	0	4	0
+4f77afc1	HI_1_13_0	DEL dans la chaine de tete · hors cadre	3	3	3	0	80
+4f77afc1	HI_1_13_0	ordre respecte · autre non ferme	79	79	0	0	2181
+4f77afc1	HI_1_13_0	ordre respecte · ferme	795	795	0	795	0
+4f77afc1	HI_1_13_0	ordre respecte · hors cadre	497	497	497	0	9905
+4f77afc1	HI_1_13_0	slot non croissant (NEW) · ferme	2	2	0	2	0
+4f77afc1	HI_1_13_0	slot non croissant (NEW) · hors cadre	1	1	1	0	24
+50247b26	version-31	ordre respecte · autre non ferme	4	4	0	0	93
+50247b26	version-31	ordre respecte · hors cadre	21	21	21	0	508
+50247b26	version-31	slot non croissant (NEW) · hors cadre	1	1	1	0	27
+51ebbc0f	HI_1_13_0	DEL dans la chaine de tete · ferme	1	1	0	1	0
+51ebbc0f	HI_1_13_0	ordre respecte · autre non ferme	7	7	0	0	52
+51ebbc0f	HI_1_13_0	ordre respecte · ferme	64	64	0	64	0
+51ebbc0f	HI_1_13_0	ordre respecte · hors cadre	99	99	99	0	278
+60ae07c4	HI_1_8_0	ordre respecte · autre non ferme	1	1	0	0	7
+60ae07c4	HI_1_8_0	ordre respecte · ferme	4	4	0	4	0
+60ae07c4	HI_1_8_0	ordre respecte · hors cadre	5	5	5	0	34
+a349fea8	version-33	DEL dans la chaine de tete · autre non ferme	1	1	0	0	30
+a349fea8	version-33	DEL dans la chaine de tete · hors cadre	5	5	5	0	135
+a349fea8	version-33	ordre respecte · autre non ferme	4	4	0	0	82
+a349fea8	version-33	ordre respecte · hors cadre	46	46	46	0	950
+a521164d	HI_1_4_1	DEL dans la chaine de tete · hors cadre	1	1	1	0	20
+a521164d	HI_1_4_1	ordre respecte · autre non ferme	6	6	0	0	143
+a521164d	HI_1_4_1	ordre respecte · hors cadre	16	16	16	0	356
+bcb6d393	HI_1_12_0	DEL dans la chaine de tete · autre non ferme	1	1	0	0	5
+bcb6d393	HI_1_12_0	ordre respecte · autre non ferme	157	157	0	0	1228
+bcb6d393	HI_1_12_0	ordre respecte · ferme	63	63	0	63	0
+bcb6d393	HI_1_12_0	ordre respecte · hors cadre	30	30	30	0	225
+bcb6d393	HI_1_12_0	slot non croissant (NEW) · ferme	1	1	0	1	0
+bf15f7ab	HI_1_13_0	ordre respecte · autre non ferme	12	12	0	0	97
+bf15f7ab	HI_1_13_0	ordre respecte · ferme	455	455	0	455	0
+bf15f7ab	HI_1_13_0	ordre respecte · hors cadre	15	15	15	0	143
+bfecd02b	HI_1_13_0	ordre respecte · autre non ferme	22	22	0	0	176
+bfecd02b	HI_1_13_0	ordre respecte · ferme	376	376	0	376	0
+bfecd02b	HI_1_13_0	ordre respecte · hors cadre	44	44	44	0	430
+c75f33b8	HI_1_13_0	ordre respecte · autre non ferme	3	3	0	0	19
+c75f33b8	HI_1_13_0	ordre respecte · ferme	30	30	0	30	0
+d9781168	HI_1_13_0	ordre respecte · autre non ferme	8	8	0	0	79
+d9781168	HI_1_13_0	ordre respecte · ferme	132	132	0	132	0
+d9781168	HI_1_13_0	ordre respecte · hors cadre	37	37	37	0	253
+e5adf7b2	HI_1_11_0	DEL dans la chaine de tete · ferme	1	1	0	1	0
+e5adf7b2	HI_1_11_0	DEL dans la chaine de tete · hors cadre	2	2	2	0	39
+e5adf7b2	HI_1_11_0	ordre respecte · autre non ferme	4	4	0	0	82
+e5adf7b2	HI_1_11_0	ordre respecte · ferme	5	5	0	5	0
+e5adf7b2	HI_1_11_0	ordre respecte · hors cadre	8	8	8	0	162
+f75e7053	HI_1_13_0	ordre respecte · autre non ferme	16	16	0	0	134
+f75e7053	HI_1_13_0	ordre respecte · ferme	333	333	0	333	0
+f75e7053	HI_1_13_0	ordre respecte · hors cadre	63	63	63	0	525
+fb1a1a72	HI_1_13_0	DEL dans la chaine de tete · ferme	1	1	0	1	0
+fb1a1a72	HI_1_13_0	DEL dans la chaine de tete · hors cadre	2	2	2	0	0
+fb1a1a72	HI_1_13_0	ordre respecte · autre non ferme	35	35	0	0	238
+fb1a1a72	HI_1_13_0	ordre respecte · ferme	377	377	0	377	0
+fb1a1a72	HI_1_13_0	ordre respecte · hors cadre	400	400	400	0	955

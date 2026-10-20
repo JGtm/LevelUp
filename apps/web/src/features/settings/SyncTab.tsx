@@ -7,7 +7,6 @@ import { useEffect } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { apiErrorMessage } from '@/lib/api/client'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useStartSyncAll, useJobStatus } from '@/features/setup/queries'
@@ -15,16 +14,13 @@ import { useJobToasts } from '@/features/settings/useJobToasts'
 import { WatcherSection } from '@/features/settings/WatcherCard'
 import { ToggleRow, type TabProps } from './_settingsShared'
 import { BackfillCard } from './BackfillCard'
-import { formatMessage } from '@/lib/i18n/format'
-import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { PoolSharingCard } from './PoolSharingCard'
 
 export function SyncTab({ merged, handleChange, t, frozen }: TabProps) {
   const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
   const setActiveSyncJobId = useAppShellStore((s) => s.setActiveSyncJobId)
   const startSyncAll = useStartSyncAll()
   const { data: jobStatus } = useJobStatus(activeSyncJobId ?? '', !!activeSyncJobId)
-  const locale = useAppShellStore((s) => s.locale)
-  const tc = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const syncRunning =
     !!activeSyncJobId &&
@@ -49,6 +45,7 @@ export function SyncTab({ merged, handleChange, t, frozen }: TabProps) {
     succeeded: t.syncToastSucceeded,
     succeededWithWarnings: t.syncToastSucceededWithWarnings,
     failed: t.syncToastFailed,
+    errorByCode: { db_busy: t.syncToastBusy },
     cancelled: t.syncToastCancelled,
   })
 
@@ -146,26 +143,12 @@ export function SyncTab({ merged, handleChange, t, frozen }: TabProps) {
         </CardContent>
       </Card>
 
+      {/* Mise en commun du jeton avec le pool de synchro (décision personnelle) */}
+      <PoolSharingCard />
+
       {/* Backfill — Recalcul rétroactif */}
       <BackfillCard t={t} />
 
-      {/* Escouade — amis par défaut */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{tc('common.settings.my_squad_default')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-3">
-            {tc('common.settings.squad_intro')}
-          </p>
-          <GamertagCombobox
-            selected={(merged.friend_gamertags as string[] | undefined) ?? []}
-            onChange={(v) => handleChange('friend_gamertags', v)}
-            allowFreeInput={true}
-            placeholder={tc('common.settings.gamertag_search_placeholder')}
-          />
-        </CardContent>
-      </Card>
     </fieldset>
   )
 }

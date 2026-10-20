@@ -1,7 +1,7 @@
 // Package sync — shared_rw_guard.go : garde-fou fail-fast contre l'écriture sur
 // une connexion shared_matches_v2 ouverte en read-only.
 //
-// Contexte (incident mai 2026, cf. .ai/HANDOFF_sync_combat_completion.md) : la
+// Contexte (incident mai 2026, cf. .ai/archive/V7/HANDOFF_sync_combat_completion.md) : la
 // complétion post-sync (events / killer_victim / skill) écrivait sur un handle
 // shared qui pouvait être read-only (suite à une corruption ART → cascade FATAL
 // `database invalidated`). Chaque INSERT échouait, mais l'échec était avalé et

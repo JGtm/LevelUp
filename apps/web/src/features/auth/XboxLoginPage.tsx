@@ -3,7 +3,7 @@
  *
  * Affichée par LoginPage quand auth_mode='xbox'. Permet à un user de se connecter
  * via son compte Xbox Live (login.live.com/devicelogin). Côté backend, la session
- * est créée par XboxSSOLinkStrategy (PR 2) après l'échange MSAL.
+ * est créée par XboxSSOLinkStrategy (PR 2) après l'échange OAuth.
  *
  * En mode xbox, le login password est réservé aux admins (PR 1, D3). Cette page
  * propose un toggle "Connexion admin (mot de passe)" pour le fallback.
@@ -12,24 +12,34 @@ import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
+import { AppFooter } from '@/components/shell/AppFooter'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import { useStartDeviceFlow, useDeviceFlowStatus } from '@/features/setup/queries'
+import { useStartDeviceFlow, useDeviceFlowStatus, isDeviceFlowSucceeded } from '@/features/setup/queries'
 import { useLogin } from '@/features/auth/queries'
 import { storePasswordCredential } from '@/features/auth/credentials'
+import { deviceFlowFailureKey, isTooManyLoginAttempts } from '@/features/auth/loginError'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
 import { api, API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client'
 import type { BootstrapResponse } from '@/lib/api/types'
 import { postLoginDestination } from '@/features/auth/postLoginDestination'
 import { verificationLinkLabel } from '@/lib/formatters'
+import { CopyCodeButton } from '@/features/auth/CopyCodeButton'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { isDemoRefusal } from '@/lib/api/demoReadOnly'
+import { OAuthErrorNotice } from '@/features/auth/OAuthErrorNotice'
 
 // Relances AUTO max sur attempt_not_found avant bascule sur retry manuel.
 const MAX_AUTO_RECOVERY = 3
 
-export function XboxLoginPage() {
+interface XboxLoginPageProps {
+  /** Code de refus du callback de connexion Xbox (?oauth_error=), affiché en message localisé. */
+  oauthError?: unknown
+}
+
+export function XboxLoginPage({ oauthError }: XboxLoginPageProps = {}) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const oauthCodeFlowEnabled = useAppShellStore((s) => s.oauthCodeFlowEnabled)
@@ -55,6 +65,7 @@ export function XboxLoginPage() {
 
         <Card>
           <CardContent className="pt-6">
+            <OAuthErrorNotice code={oauthError} />
             {useRedirectFlow ? (
               <RedirectFlowPanel onUseDeviceCode={() => setForceDeviceCode(true)} />
             ) : (
@@ -98,6 +109,8 @@ export function XboxLoginPage() {
             </p>
           </CardContent>
         </Card>
+
+        <AppFooter variant="minimal" />
       </div>
     </div>
   )
@@ -162,12 +175,18 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
   const [startError, setStartError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recoveryCountRef = useRef(0)
+  // Un seul démarrage au montage : en StrictMode (dev) l'effet de montage s'exécute
+  // deux fois avant que `isPending` ne reflète le premier appel, ce qui ouvrait deux
+  // tentatives côté serveur (deux codes, dont un sondé pour rien jusqu'à expiration).
+  const mountStartedRef = useRef(false)
 
   const startFlow = useStartDeviceFlow()
   const { data: status, error } = useDeviceFlowStatus(attemptId ?? '', !!attemptId)
 
   // Démarrer le flow au montage.
   useEffect(() => {
+    if (mountStartedRef.current) return
+    mountStartedRef.current = true
     if (!attemptId && !startFlow.isPending && !startError) {
       startFlow.mutate(undefined, {
         onSuccess: (data) => {
@@ -178,8 +197,10 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
         },
         onError: (err) => {
           const apiErr = err as unknown as ApiError
-          if (apiErr.code === 'demo_mode') {
+          if (isDemoRefusal(apiErr)) {
             setStartError(t('common.xbox_login.err_demo'))
+          } else if (isTooManyLoginAttempts(apiErr)) {
+            setStartError(t('common.xbox_login.err_busy'))
           } else {
             setStartError(apiErr.message ?? t('common.xbox_login.err_start'))
           }
@@ -204,15 +225,18 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
 
   // Redirect quand authorized.
   useEffect(() => {
-    if (status?.status === 'authorized' || status?.status === 'provisioned') {
+    if (isDeviceFlowSucceeded(status?.status)) {
       void onAuthorized()
     }
   }, [status?.status, onAuthorized])
 
   // Récupération : attempt_not_found (tentative balayée / backend redémarré) →
-  // relancer un nouveau flow plutôt que de rester bloqué.
+  // relancer un nouveau flow plutôt que de rester bloqué. Jamais une fois la tentative
+  // aboutie : la rotation de session au succès rend l'ancienne tentative introuvable, et
+  // chaque relance consommerait une des tentatives simultanées autorisées par IP.
   useEffect(() => {
     if (!attemptId || apiErrorCode(error) !== 'attempt_not_found') return
+    if (isDeviceFlowSucceeded(status?.status)) return
     if (recoveryCountRef.current >= MAX_AUTO_RECOVERY) {
       setStartError(t('common.xbox_login.err_interrupted'))
       return
@@ -232,7 +256,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       },
       onError: (err) => {
         const apiErr = err as unknown as ApiError
-        setStartError(apiErr.message ?? t('common.xbox_login.err_restart'))
+        setStartError(isTooManyLoginAttempts(apiErr) ? t('common.xbox_login.err_busy') : apiErr.message ?? t('common.xbox_login.err_restart'))
       },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -255,7 +279,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       },
       onError: (err) => {
         const apiErr = err as unknown as ApiError
-        setStartError(apiErr.message ?? t('common.xbox_login.err_restart'))
+        setStartError(isTooManyLoginAttempts(apiErr) ? t('common.xbox_login.err_busy') : apiErr.message ?? t('common.xbox_login.err_restart'))
       },
     })
   }
@@ -279,14 +303,14 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
     return (
       <div className="space-y-3 text-center">
         <p className="text-destructive font-medium">
-          {expired ? 'Le code a expiré.' : status?.error_detail ?? 'Échec de l\'authentification.'}
+          {t(deviceFlowFailureKey(expired ? 'expired' : 'failed', status?.error_code))}
         </p>
         <Button onClick={handleRetry}>{t('common.xbox_login.retry')}</Button>
       </div>
     )
   }
 
-  if (status?.status === 'authorized' || status?.status === 'provisioned') {
+  if (status && isDeviceFlowSucceeded(status.status)) {
     return (
       <div className="space-y-3 text-center">
         <p className="text-success font-semibold">{t('common.auth.xbox_auth_success')}</p>
@@ -325,9 +349,12 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       </p>
       <div className="rounded-lg bg-card border px-6 py-4 text-center">
         <p className="mb-2 text-xs text-muted-foreground">{t('common.auth.xbox_code_to_enter')}</p>
-        <span className="text-3xl font-mono font-bold tracking-widest text-foreground select-all">
-          {userCode}
-        </span>
+        <div className="flex items-center justify-center gap-3">
+          <span className="text-3xl font-mono font-bold tracking-widest text-foreground select-all">
+            {userCode}
+          </span>
+          <CopyCodeButton code={userCode} />
+        </div>
       </div>
       {secondsLeft != null && secondsLeft > 0 && (
         <p className="text-center text-xs text-muted-foreground">
@@ -381,13 +408,15 @@ function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
         },
         onError: (err) => {
           const apiErr = err as unknown as ApiError
-          if (apiErr.code === 'invalid_credentials') {
-            setError('Identifiants incorrects.')
+          if (isTooManyLoginAttempts(apiErr)) {
+            setError(t('common.auth.too_many_attempts'))
+          } else if (apiErr.code === 'invalid_credentials') {
+            setError(t('common.auth.xbox_error_invalid_credentials'))
           } else if (apiErr.code === 'password_login_admin_only') {
             // D3 : utilisateur valide mais pas admin en mode xbox.
-            setError('En mode SSO Xbox, le login par mot de passe est réservé aux administrateurs. Utilisez la connexion Xbox.')
+            setError(t('common.auth.xbox_error_password_admin_only'))
           } else {
-            setError(apiErr.message ?? 'Erreur de connexion.')
+            setError(apiErr.message ?? t('common.auth.xbox_error_generic'))
           }
         },
       },

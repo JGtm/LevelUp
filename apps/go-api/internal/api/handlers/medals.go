@@ -54,19 +54,19 @@ type medalsPageOutput struct{ Body *domain.MedalsPageResponse }
 func (h *MedalsHandler) handleGetMedals(ctx context.Context, in *medalsInput) (*medalsPageOutput, error) {
 	svc, xuid, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	var req domain.MedalsPageRequest
 	if len(in.RawBody) > 0 {
 		if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
-			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 		}
 	}
 
 	page, err := svc.GetMedalsPage(ctx, xuid)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "medals_page_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "medals_page_error", err)
 	}
 
 	if req.Category != "" {

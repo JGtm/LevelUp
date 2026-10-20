@@ -18,6 +18,7 @@ export type FeedbackArea =
   | 'squad'
   | 'sessions'
   | 'timeseries'
+  | 'tendances'
   | 'match_view'
   | 'palmares'
   | 'player_home'
@@ -103,6 +104,9 @@ const AREA_PATTERNS: Array<[RegExp, FeedbackArea]> = [
   [/\/players\/[^/]+\/squad(\/|$|\?)/, 'squad'],
   [/\/players\/[^/]+\/stats\/sessions(\/|$|\?)/, 'sessions'],
   [/\/players\/[^/]+\/stats\/timeseries(\/|$|\?)/, 'timeseries'],
+  // Tendances vit sous Solo (`/stats/tendances`) ; l'ancienne adresse sous Ascension redirige
+  // vers elle, et reste classée ici (avant la règle d'Ascension).
+  [/\/players\/[^/]+\/(stats|ascension)\/tendances(\/|$|\?)/, 'tendances'],
   [/\/players\/[^/]+\/matches\/[^/]+/, 'match_view'],
   [/\/players\/[^/]+\/(community|palmares)/, 'palmares'],
   [/\/players\/[^/]+\/home(\/|$|\?)/, 'player_home'],

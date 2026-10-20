@@ -44,23 +44,20 @@ type lusrParticipant struct {
 	DamageDealt   float64
 }
 
-// lusrResult contient le résultat du calcul LUSR pour un match.
-//
-// Components : breakdown des 8 composantes calculées pour ce match (clés =
-// noms canoniques de CompositeWeights). Vide si le match a été seed (pas
-// assez de matchs) ou si toutes les composantes étaient absentes.
-// Persistée par upsertLUSRRatings dans `lusr_component_history` (V2 commit-1).
-type lusrResult struct {
-	MatchID         string
-	RatingValue     float64
-	RatingDeviation float64
-	PlaylistGroup   string
-	Components      map[string]float64
-}
-
 // ── Chargeurs SQL ────────────────────────────────────────────────────────────
 
 func loadLUSRMatchData(ctx context.Context, sharedDB *sql.DB, xuid string) ([]LusrMatchData, error) {
+	return queryLUSRMatchData(ctx, sharedDB, xuid, "")
+}
+
+// queryLUSRMatchData charge les matchs LUSR-éligibles du joueur, en ordre chronologique ;
+// matchID non vide restreint à ce match (zéro ou une ligne). Une seule définition de
+// l'éligibilité SQL pour le simulateur et les composantes du LUSR v2.
+func queryLUSRMatchData(ctx context.Context, sharedDB *sql.DB, xuid, matchID string) ([]LusrMatchData, error) {
+	filter, args := "", []any{xuid}
+	if matchID != "" {
+		filter, args = " AND mr.match_id = ?", append(args, matchID)
+	}
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT
 			mr.match_id, mr.start_time, mr.playlist_name, mr.pair_name,
@@ -76,8 +73,9 @@ func loadLUSRMatchData(ctx context.Context, sharedDB *sql.DB, xuid string) ([]Lu
 		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
 		  -- title-generic : titres canoniques (Halo 5) → start_time_utc, start_time NULL.
 		  AND COALESCE(mr.start_time_utc, mr.start_time) IS NOT NULL
-		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)
-		ORDER BY `+analysis.SQLStartTimeCanonical("mr")+` ASC`, xuid)
+		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)`+filter+
+		analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
+		ORDER BY `+analysis.SQLStartTimeCanonical("mr")+` ASC`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("loadLUSRMatchData: %w", err)
 	}
@@ -177,87 +175,6 @@ func LoadExistingRatingIDs(ctx context.Context, playerDB *sql.DB, ratingType str
 		return nil, fmt.Errorf("LoadExistingRatingIDs(%s) rows: %w", ratingType, err)
 	}
 	return result, nil
-}
-
-func loadExistingLUSRStates(ctx context.Context, playerDB *sql.DB) map[string]*PlayerState {
-	states := make(map[string]*PlayerState)
-	rows, err := playerDB.QueryContext(ctx, `
-		SELECT msr.playlist_group, msr.rating_value, msr.rating_deviation
-		FROM match_skill_rank msr
-		JOIN (
-			SELECT playlist_group, MAX(start_time) AS max_st
-			FROM match_skill_rank
-			WHERE rating_type = 'LUSR'
-			GROUP BY playlist_group
-		) last ON msr.playlist_group = last.playlist_group
-		       AND msr.start_time = last.max_st
-		WHERE msr.rating_type = 'LUSR'`)
-	if err != nil {
-		return states
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var pg string
-		var rv, rd sql.NullFloat64
-		if rows.Scan(&pg, &rv, &rd) != nil {
-			continue
-		}
-		s := NewPlayerState()
-		if rv.Valid {
-			s.MU = rv.Float64
-		}
-		if rd.Valid {
-			s.Sigma = rd.Float64
-		}
-		states[pg] = s
-	}
-	return states
-}
-
-func upsertLUSRRatings(
-	ctx context.Context,
-	playerDB *sql.DB,
-	results []lusrResult,
-	existingCSR, existingLUSR map[string]bool,
-	seedRatings map[string]float64,
-) (int, error) {
-	// Phase 3 du refactor ART : seul le batch path est conservé.
-	// Le chemin legacy row-by-row (qui était INSERT pur depuis Phase 2.E
-	// mais moins efficace) est désormais inaccessible en prod.
-	// upsertLUSRRatingsBatch route via AppendOnlyLUSRPersister.Persist
-	// (INSERT pur, bug ART impossible par construction).
-	return upsertLUSRRatingsBatch(ctx, playerDB, results, existingCSR, existingLUSR, seedRatings)
-}
-
-// writeLUSRComponentHistory persiste les 8 composantes d'un match dans
-// lusr_component_history en append-only (INSERT pur, jamais d'ON CONFLICT).
-//
-// La table est append-only (phase ART #23046) : N versions par
-// (match_id, component_name) ; la lecture courante passe par la vue
-// lusr_component_history_latest. Le mode force (recalcul) écrit simplement une
-// nouvelle version plus récente (computed_at) — la vue la priorise. L'ancien
-// ON CONFLICT DO UPDATE (delete+insert interne sur l'index ART) est éliminé.
-//
-// Best-effort : un échec sur 1 composante ne stoppe pas les autres.
-func writeLUSRComponentHistory(
-	ctx context.Context,
-	playerDB *sql.DB,
-	matchID string,
-	components map[string]float64,
-	now time.Time,
-) error {
-	weights := CompositeWeights
-	for name, value := range components {
-		weight := weights[name]
-		_, err := playerDB.ExecContext(ctx, `
-			INSERT INTO lusr_component_history (match_id, component_name, value, weight, computed_at)
-			VALUES (?, ?, ?, ?, ?)
-		`, matchID, name, value, weight, now)
-		if err != nil {
-			return fmt.Errorf("insert %s/%s: %w", matchID, name, err)
-		}
-	}
-	return nil
 }
 
 // ── Helpers stats participants ────────────────────────────────────────────────

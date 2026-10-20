@@ -13,6 +13,7 @@
  * Module placé dans `lib/halo/` (et non `features/match-view/`) pour pouvoir
  * être consommé par plusieurs features sans couplage cross-feature.
  */
+import { sansAccents } from '@/lib/text/sansAccents'
 
 const TEAM_NAMES_HALO_INFINITE: Record<number, string> = {
   0: 'Eagle',
@@ -24,29 +25,6 @@ const TEAM_NAMES_HALO_INFINITE: Record<number, string> = {
   6: 'Valor',
   7: 'Hazard',
   8: 'Observer',
-}
-
-/**
- * Couleur d'identité (hex #RRGGBB) par team_id Halo Infinite — thème officiel
- * Arrowhead / SpartanRecord, fixe par 343 Industries (indépendant du match).
- *
- * Ces littéraux hex vivent ici (lib/halo/), PAS dans features/ : la règle
- * color-tokens interdit les hex dans features/components, mais un référentiel de
- * couleurs d'identité de jeu (au même titre que rarity.ts) est un cas légitime —
- * ce sont des données de domaine Halo, pas des choix de design UI. Le backend fournit
- * la couleur H5 par la donnée (team_color) ; Infinite n'a pas de référentiel serveur,
- * d'où cette map cliente.
- */
-const TEAM_COLORS_HALO_INFINITE: Record<number, string> = {
-  0: '#3B9DFF',
-  1: '#FE3939',
-  2: '#C43AAC',
-  3: '#8D3AC4',
-  4: '#49B8FE',
-  5: '#DA3A04',
-  6: '#FFEA00',
-  7: '#DC5839',
-  8: '#8AFFBE',
 }
 
 /**
@@ -81,17 +59,6 @@ export function resolveTeamNameFromID(teamID: number | null | undefined): string
 }
 
 /**
- * Résout la couleur d'identité (hex #RRGGBB) d'une équipe Halo Infinite par team_id.
- * Retourne null si team_id absent de la map (équipe non standard) ou nul → le caller
- * dégrade sur son accent d'équipe existant. La couleur H5, elle, arrive par la DONNÉE
- * (row.team_color) et n'a pas besoin de cette map.
- */
-export function resolveTeamColorFromID(teamID: number | null | undefined): string | null {
-  if (teamID == null) return null
-  return TEAM_COLORS_HALO_INFINITE[teamID] ?? null
-}
-
-/**
  * Chemin de l'asset logo d'une équipe : `/titles/{slug}/teams/{teamId}.png`.
  * Résolution d'asset uniforme title-agnostic (le slug paramètre le chemin, ce n'est
  * pas une branche de comportement). Retourne null si l'un des deux est absent →
@@ -118,9 +85,6 @@ export function teamLogoPath(
  * donc le test ne produit pas de faux positif sur les noms nus.
  */
 export function labelHasTeamWord(name: string): boolean {
-  const normalized = name
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
+  const normalized = sansAccents(name).toLowerCase()
   return /\b(equipe|team)\b/.test(normalized)
 }

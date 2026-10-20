@@ -21,7 +21,7 @@
 //
 // Limite : ne détecte pas les ATTACH via abstractions (interfaces, méthodes
 // nommées différemment, sql.Tx obtenu via shared_social puis tx.Exec). Pour
-// ces cas, recourir à l'audit manuel (cf. .ai/audit_shared_social_writes_2026-05-27.md).
+// ces cas, recourir à l'audit manuel (cf. .ai/archive/V7/audit_shared_social_writes_2026-05-27.md).
 
 package duckdb
 
@@ -262,6 +262,8 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"cmd/wal_forensic_compare/main.go":                                                      "outil one-shot forensique WAL (ADR 0021 Gap 2)",
 	"cmd/duckdb_7659_repro/main.go":                                                         "outil one-shot repro bug DuckDB upstream (ADR 0021 Bonus 13)",
 	"cmd/server/main.go":                                                                    "boot serveur : pool init + CHECKPOINT scheduler",
+	"cmd/server/background_tasks.go":                                                        "boot serveur (2026-09-27, backlog lot B5.3) : CHECKPOINT périodique de shared_social déplacé de main.go, sur le handle du pool process-wide (LookupCachedDB) — aucun ATTACH ni écriture de données",
+	"cmd/server/shutdown.go":                                                                "arrêt serveur (2026-10-17, backlog lot E3) : CHECKPOINT final de shared_social déplacé de main.go lors de l'extraction de la séquence d'arrêt — aucun ATTACH ni écriture de données",
 	"internal/api/wire/registry_media.go":                                                   "factory MediaService + acquéreur leased writer (wire, ex-internal/api, K3)",
 	"internal/domain/media_delete.go":                                                       "suppression de média (v7.3 lot 2, item 3.1) : la mention 'shared_social' est DOCUMENTAIRE — le fichier justifie le soft-delete de media_files et le zéro-écriture sur les tables append-only. Package domain : types purs, aucune connexion ni SQL",
 	"internal/platform/duckdb/media_repo_delete.go":                                         "suppression de média (item 3.1) : mention 'shared_social' dans le commentaire justifiant l'interdiction du DELETE (invalidation ART emporterait médias+likes+followers). L'UPDATE status s'exécute dans la TX du LeasedWriter fournie par le service — aucun ATTACH, aucun handle ouvert ici",
@@ -271,6 +273,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/api/wire/post_sync_progression.go":                                            "post-sync prestige/records (path Persister) (wire, ex-internal/api, K3)",
 	"internal/api/wire/prestige_setup.go":                                                   "init prestige (path Persister) (wire, ex-internal/api, K3)",
 	"internal/api/wire/prestige_lazy_service.go":                                            "lazy init prestige (wire, ex-internal/api, K3)",
+	"internal/api/wire/prestige_lazy_service_squad.go":                                      "méthodes escouade du service prestige paresseux, scindées de prestige_lazy_service.go (2026-10-09, seuil des 500 lignes) : la mention 'shared_social' est le commentaire du writer pris par AbandonSquadChallenge (acquireSharedSocialWriter, LeasedWriter) — aucun ATTACH ni écriture directe",
 	"internal/api/server_apiv1.go":                                                          "montage routes /api/v1 : commentaires shared_social (match favoris, init coach/prestige) — ex-server.go, split K2a",
 	"internal/games/halo_infinite/migrations/steps_shared_social.go":                        "migrations shared_social CONSOMMATRICES title-owned (Phase 1.5 b19, voie B)",
 	"internal/games/halo_infinite/migrations/steps_shared_social_media_files_drop_liked.go": "migration retrait media_files.liked/liked_at (booléen de like GLOBAL remplacé par media_likes_history par liker, 2026-08-04)",
@@ -309,6 +312,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/ops/media_store.go":                                                           "ensureMediaTables : crée le substrat append-only media_match_associations_history + vue (réconciliation migration shared_social)",
 	"internal/ops/media_hls.go":                                                             "transcoding HLS média : commentaire sur DBPath = shared_social.duckdb (cible UPDATE media_files)",
 	"internal/ops/seed_demo.go":                                                             "seed démo : construit le chemin + copie/recrée data/demo/warehouse/shared_social.duckdb (fichier + path, pas d'ATTACH sur RW)",
+	"internal/ops/seed_demo_corpus.go":                                                      "seed démo (2026-10-16, déplacé de seed_demo.go) : selectDynamicCorpus construit le chemin du shared_social SOURCE (prod) et le passe à selectMediaAnchoredMatchIDs, en lecture seule — pas d'ATTACH/INSERT sur RW",
 	"internal/ops/seed_demo_media.go":                                                       "seed démo média : recrée le shared_social démo et lit la SOURCE prod pour les media_files (pas d'ATTACH sur RW)",
 	"internal/ops/seed_demo_prestige.go":                                                    "seed démo Prestige (2026-07-26) : construit le chemin du shared_social DÉMO et orchestre son volet ; le seul ATTACH est la metadata DÉMO en READ_ONLY (dérivation des jalons du vrai catalogue) — aucun ATTACH ni écriture sur une base de prod",
 	"internal/ops/seed_demo_prestige_plan.go":                                               "seed démo Prestige (2026-07-26) : plan PUR (aucun accès DB) ; la mention shared_social n'est qu'un commentaire de renvoi vers le volet social",
@@ -316,6 +320,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/ops/seed_demo_synthetic.go":                                                   "seed démo synthétique : construit le chemin data/demo/warehouse/shared_social.duckdb (path + création, pas d'ATTACH sur RW)",
 	"internal/ops/seed_demo_synthetic_shared.go":                                            "seed démo synthétique : crée shared_social.duckdb migré (vide) via RunForTitleDB, aucun INSERT/ATTACH sur RW",
 	"internal/config/player_resolver.go":                                                    "résolution du chemin data/demo/warehouse/shared_social.duckdb en mode démo (construction de path, pas d'accès DB)",
+	"internal/domain/title/demo_layout.go":                                                  "disposition de l'arbre démo (2026-09-27, backlog lot B5.1) : construit le chemin <démo>/warehouse/shared_social.duckdb (path seul, aucun accès DB)",
 	"internal/persist/shared_social_persister.go":                                           "SocialPersister canonique (CHECKPOINT garanti)",
 	"internal/persist/shared_social_rows.go":                                                "types batch SocialPersister",
 	"internal/platform/dblease/kind.go":                                                     "type Kind=SharedSocial pour lease tracking",

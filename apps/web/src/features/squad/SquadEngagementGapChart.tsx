@@ -7,7 +7,7 @@
  * (dédup par le cache TanStack Query — pas de second fetch). Monté sous le
  * FeatureGate `engagement` du parent (pas de self-gate).
  */
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -48,6 +48,14 @@ export function SquadEngagementGapChart({
     [session],
   )
 
+  // `buildOption` fait partie des dépendances du useMemo de ChartCard : une
+  // lambda écrite dans le JSX est neuve à chaque rendu, donc l'option ECharts
+  // est rebâtie et l'animation d'entrée REJOUÉE même à donnée inchangée.
+  const buildOption = useCallback(
+    () => (session ? buildSquadEngagementGapOption(session, { colorByPlayer }) : {}),
+    [session, colorByPlayer],
+  )
+
   return (
     <ChartCard
       title={
@@ -59,9 +67,7 @@ export function SquadEngagementGapChart({
       series={series}
       height={height}
       emptyMessage={emptyMessage}
-      buildOption={() =>
-        session ? buildSquadEngagementGapOption(session, { colorByPlayer }) : {}
-      }
+      buildOption={buildOption}
     />
   )
 }

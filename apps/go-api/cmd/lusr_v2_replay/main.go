@@ -3,8 +3,8 @@
 // lusr_v2_replay — Phase 1d : replay du LUSR v2 sur l'historique complet
 // des joueurs trackés et comparaison aux cibles validées.
 //
-// Le cmd configure l'env LEVELUP_LUSR_V2_ENABLED=1 puis appelle le shadow
-// runner (sync.RunLUSRV2Shadow) sur chaque joueur. Le shadow est idempotent
+// Le cmd appelle le shadow runner (sync.RunLUSRV2Shadow, sans base joueur :
+// shadow-only) sur chaque joueur. Le shadow est idempotent
 // (watermark via last_match_at), donc pour avoir une trace propre on offre
 // l'option --reset qui truncate player_skill_state_v2 avant le run.
 //
@@ -30,6 +30,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
+	"levelup/go-api/internal/games/titleseams"
 	lusync "levelup/go-api/internal/sync"
 )
 
@@ -49,6 +50,12 @@ var targets = map[string]string{
 }
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	dbPath := flag.String("db", sharedDBPath, "chemin vers shared_matches_v2.duckdb")
 	reset := flag.Bool("reset", false, "truncate player_skill_state_v2 avant le replay (état frais depuis priors)")
 	flag.Parse()
@@ -58,12 +65,6 @@ func main() {
 	}
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
-
-	// Active le flag shadow programatiquement — le cmd EST le caller.
-	if err := os.Setenv("LEVELUP_LUSR_V2_ENABLED", "1"); err != nil {
-		slog.Error("setenv LEVELUP_LUSR_V2_ENABLED", "err", err)
-		os.Exit(1)
-	}
 
 	db := openShared(*dbPath)
 	defer db.Close()

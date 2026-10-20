@@ -11,6 +11,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
@@ -37,7 +38,6 @@ func NewBackfillOrchestrator(engine *go_sync.SyncEngine, jobStore *jobs.Store,
 // backfillCounts agrège les compteurs de chaque phase pour le résumé final.
 type backfillCounts struct {
 	total                  int
-	weaponsInserted        int
 	psaMatchesUpdated      int
 	psaRowsInserted        int
 	engagementComputed     int
@@ -77,10 +77,10 @@ func (o *BackfillOrchestrator) Run(jobID string) {
 	// ── Phase 1 : détection ──────────────────────────────────────────
 	missing, err := o.engine.RunBackfill(context.Background(), o.scope)
 	if err != nil {
-		errMsg := err.Error()
+		slog.Error("backfill: détection échouée", "job_id", jobID, "err", err)
 		o.jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
 			j.Status = domain.JobStatusFailed
-			j.Error = &domain.JobErrorDetail{Code: "detection_error", Message: errMsg}
+			j.Error = domain.NewJobError("detection_error", false)
 		})
 		return
 	}
@@ -109,7 +109,7 @@ func (o *BackfillOrchestrator) Run(jobID string) {
 		return
 	}
 
-	o.runWeaponsEngagement(jobID, missing, &c)
+	o.runEngagement(jobID, &c)
 	o.runEventsLusr(jobID, missing, &c)
 	o.runCsrPerfPsa(jobID, missing, &c)
 
@@ -117,8 +117,8 @@ func (o *BackfillOrchestrator) Run(jobID string) {
 	o.warnUnimplemented(jobID)
 
 	done := fmt.Sprintf(
-		"Backfill terminé — matchs: %d, weapon kills insérés: %d, psa: %d match(s)/%d rows, engagement: %d, events healed: %d (%d events insérés), lusr: %d, csr: %d (skipped: %d), perf: %d, citations: %d, comeback: %d",
-		c.total, c.weaponsInserted, c.psaMatchesUpdated, c.psaRowsInserted, c.engagementComputed, c.eventsHealed, c.eventsTotal, c.lusrUpdated, c.csrInserted, c.csrSkipped, c.perfUpdated, c.citationsUpdated, c.comebackUpdated,
+		"Backfill terminé — matchs: %d, psa: %d match(s)/%d rows, engagement: %d, events healed: %d (%d events insérés), lusr: %d, csr: %d (skipped: %d), perf: %d, citations: %d, comeback: %d",
+		c.total, c.psaMatchesUpdated, c.psaRowsInserted, c.engagementComputed, c.eventsHealed, c.eventsTotal, c.lusrUpdated, c.csrInserted, c.csrSkipped, c.perfUpdated, c.citationsUpdated, c.comebackUpdated,
 	)
 	pct100 := 100
 	matchesDone := c.total
@@ -134,7 +134,7 @@ func (o *BackfillOrchestrator) Run(jobID string) {
 // du `missing` de la détection ; tournent avant l'early-return pour couvrir les joueurs
 // à jour en données mais avec citations/dominance_flag manquants.
 func (o *BackfillOrchestrator) runCitationsComeback(jobID string, c *backfillCounts) {
-	if o.scope.Citations && !o.dryRun {
+	if o.scope.Citations && !o.dryRun && o.citationsServed(jobID) {
 		o.setStep(jobID, "Backfill citations")
 		n, citErr := o.engine.RunBackfillCitations(context.Background(), o.scope.ForceCitations)
 		if citErr != nil {
@@ -152,21 +152,30 @@ func (o *BackfillOrchestrator) runCitationsComeback(jobID string, c *backfillCou
 	}
 }
 
-// runWeaponsEngagement : Phases 2 (weapon kills, tokens requis), 2.5 (scores
-// d'engagement, local) et 2.6 (coefficients seuls si scores non demandés).
-func (o *BackfillOrchestrator) runWeaponsEngagement(jobID string, missing []string, c *backfillCounts) {
-	if o.scope.Weapons {
-		if o.tokens == nil {
-			o.warn(jobID, "WARN: weapon kills ignorés — tokens Halo absents")
-		} else {
-			o.setStep(jobID, "Backfill weapon kills")
-			inserted, _, wkErr := o.engine.BackfillWeaponKillsForMatches(context.Background(), missing)
-			if wkErr != nil {
-				o.warn(jobID, "WARN weapon kills: %v", wkErr)
-			}
-			c.weaponsInserted = inserted
-		}
+// citationsServed dit si la passe citations s'applique au titre du moteur. Le titre qui ne
+// déclare pas citations.engine (Halo 5 : citations natives) n'est pas servi : le job le dit en
+// avertissement (code `citations_ignorees`, sans accent : ratchet des libellés en dur) et ne lance rien, y compris sous le scope « tout » (AllData l'inclut). Un
+// manifeste illisible est un avertissement aussi, et la passe n'a pas lieu.
+func (o *BackfillOrchestrator) citationsServed(jobID string) bool {
+	ok, err := o.engine.CitationsEngineSupported()
+	if err != nil {
+		o.warn(jobID, "citations_ignorees: capabilities du titre illisibles (%v)", err)
+		return false
 	}
+	if !ok {
+		o.warn(jobID, "citations_ignorees: non supporte pour ce titre (capability citations.engine absente)")
+	}
+	return ok
+}
+
+// runEngagement : Phases 2.5 (scores d'engagement, local) et 2.6 (coefficients
+// seuls si scores non demandés).
+//
+// LA PHASE 2 (weapon kills) A ÉTÉ RETIRÉE le 2026-09-01 : son exécuteur
+// (`BackfillWeaponKillsForMatches`, étape 1.55) est supprimé avec le producteur de
+// corrélation. Sur Halo Infinite le détail par arme vient désormais de la source de
+// dégât ; son rattrapage se lance par `levelup backfill-killsource`, pas par ce job.
+func (o *BackfillOrchestrator) runEngagement(jobID string, c *backfillCounts) {
 	if o.scope.EngagementScores {
 		o.setStep(jobID, "Calcul scores d'engagement")
 		n, esErr := o.engine.RunBackfillEngagementScores(context.Background(), o.scope.ForceEngagementScores)

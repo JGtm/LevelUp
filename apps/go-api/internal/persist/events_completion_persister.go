@@ -15,7 +15,7 @@
 // FromEvents + sync.MarkEventsLoaded/MarkKillerVictimLoaded), 3 opérations NON
 // atomiques. Ici tout passe en UNE transaction sur le writer RW (cf. règle
 // absolue : zéro écriture shared hors package persist ; cf. ADR 0019 +
-// .ai/HANDOFF_sync_combat_completion.md).
+// .ai/archive/V7/HANDOFF_sync_combat_completion.md).
 //
 // Schéma killer_victim_pairs : on écrit la forme **par-kill** (1 row par kill,
 // avec gamertags + time_ms) — c'est ce que lit le match-view (tug-of-war, KD
@@ -39,9 +39,12 @@
 //     table ART-indexée est le trigger exact du bug `Failed to delete all rows
 //     from index`, cf. ADR 0019). La non-duplication est garantie en amont par
 //     le gate events_loaded (un match déjà complété ne repasse pas par ici).
-//   - killer_victim_pairs n'a aucun index/PK → DELETE-then-INSERT par match_id
-//     est sûr (rien à corrompre) et rend la réécriture idempotente (c'est déjà
-//     ce que faisait la complétion legacy, writes.go).
+//   - killer_victim_pairs n'a ni PK ni index : les trois index ART hérités des
+//     bases anciennes (idx_kv_match, idx_kv_killer, idx_kv_victim) sont retirés par
+//     la migration shared_killer_victim_pairs_drop_legacy_indexes_v1, et aucun ne
+//     peut revenir (garde-rail internal/sync/no_art_killer_victim_pairs_test.go).
+//     DELETE-then-INSERT par match_id y est donc sûr et rend la réécriture
+//     idempotente ; ce fichier est le seul à la réécrire par DELETE.
 // L'UPDATE match_registry sur backfill_completed/events_loaded suit le pattern
 // bitmask existant (sync.MarkEventsLoaded).
 
@@ -57,14 +60,24 @@ import (
 
 // HLEventCompletion — une row highlight_events pour la complétion.
 //
-// Mappe sur (match_id, event_type, time_ms, xuid, type_hint). match_id est porté
-// par l'input (commun à toutes les rows). XUID est déjà sérialisé en décimal par
-// le caller (strconv.FormatUint), conformément au schéma VARCHAR de la colonne.
+// Mappe sur (match_id, event_type, time_ms, xuid, type_hint, raw_json). match_id
+// est porté par l'input (commun à toutes les rows). XUID est déjà sérialisé en
+// décimal par le caller (strconv.FormatUint), conformément au schéma VARCHAR de
+// la colonne.
+//
+// RawJSON porte l'identité de la médaille (`{"medal_name":"..."}`) sur les events
+// `medal`, nil partout ailleurs. Il existe parce que cette voie est le SECOND
+// écrivain vivant de la table : le flux primaire (collect→persist) n'est pas seul,
+// la complétion/convergence réécrit les events des matchs dont le film n'était pas
+// publié au sync primaire, ou qui étaient déjà en registry via un coéquipier. Tant
+// que ce chemin n'écrivait pas `raw_json`, chaque cycle rouvrait le trou que le
+// flux primaire venait de fermer (revue adversariale du 2026-09-02).
 type HLEventCompletion struct {
 	XUID      string
 	EventType string
 	TimeMS    int
 	TypeHint  int
+	RawJSON   *string
 }
 
 // KVPairCompletion — une row killer_victim_pairs (forme par-kill).
@@ -110,7 +123,7 @@ func NewEventsCompletionPersister(db txBeginner) *EventsCompletionPersister {
 
 // Persist écrit la complétion en 1 transaction :
 //
-//	(1) si len(Events) > 0  : DELETE highlight_events WHERE match_id + INSERT × N
+//	(1) si len(Events) > 0  : INSERT × N dans highlight_events (jamais de DELETE, cf. en-tête)
 //	(2) si len(Pairs)  > 0  : DELETE killer_victim_pairs WHERE match_id + INSERT × N
 //	(3) UPDATE match_registry : backfill_completed |= mask, events_loaded |= flag
 //
@@ -225,8 +238,8 @@ func insertCompletionHighlightEvents(ctx context.Context, tx *sql.Tx, matchID st
 		return 0, nil
 	}
 	stmt, err := tx.PrepareContext(ctx, `
-		INSERT OR IGNORE INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint)
-		VALUES (?, ?, ?, ?, ?)`)
+		INSERT OR IGNORE INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint, raw_json)
+		VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return 0, fmt.Errorf("persist: EventsCompletion prepare highlight_events %s: %w", matchID, err)
 	}
@@ -234,7 +247,7 @@ func insertCompletionHighlightEvents(ctx context.Context, tx *sql.Tx, matchID st
 
 	inserted := 0
 	for _, e := range events {
-		res, execErr := stmt.ExecContext(ctx, matchID, e.EventType, e.TimeMS, e.XUID, e.TypeHint)
+		res, execErr := stmt.ExecContext(ctx, matchID, e.EventType, e.TimeMS, e.XUID, e.TypeHint, e.RawJSON)
 		if execErr != nil {
 			return 0, fmt.Errorf("persist: EventsCompletion insert highlight_events %s: %w", matchID, execErr)
 		}

@@ -48,7 +48,7 @@ func TestServiceE2E_Emit_DefaultEnabled_PersistsViaRepo(t *testing.T) {
 		Params: map[string]any{
 			"warnings_total": 3,
 			"uuids_raw":      2,
-			"hint":           "rerun cmd/repair_data_consistency",
+			"hint":           "reset lying bits from the admin page",
 		},
 		TargetRoute: "/admin/data-health",
 		Source:      "data_health_scheduler",
@@ -91,7 +91,7 @@ func TestServiceE2E_Emit_DefaultEnabled_PersistsViaRepo(t *testing.T) {
 	if v, _ := decoded["warnings_total"].(float64); v != 3 {
 		t.Errorf("params.warnings_total: attendu 3, obtenu %v", decoded["warnings_total"])
 	}
-	if v, _ := decoded["hint"].(string); v != "rerun cmd/repair_data_consistency" {
+	if v, _ := decoded["hint"].(string); v != "reset lying bits from the admin page" {
 		t.Errorf("params.hint: %s", decoded["hint"])
 	}
 }

@@ -7,6 +7,11 @@
  *   profile_ready_no_sync   → StepInitialSync
  *   ready                   → redirect vers /
  *
+ * ADR 0035 D3 (2026-09-15) : ces états décrivent l'INSTANCE. Un utilisateur
+ * connecté qui n'a AUCUN profil à lui sur une instance déjà peuplée passe avant
+ * eux — il va à l'étape « profil » et ne sort pas du wizard tant qu'il n'en a pas
+ * déclaré un. La décision est pure et vit dans setupRouting.ts.
+ *
  * P8.4 (revue 2026-04-29) : les 3 Step* ont été extraits dans des fichiers
  * dédiés ; ce fichier ne porte plus que l'orchestrateur (~50L vs ~484L).
  */
@@ -19,6 +24,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { StepDeviceCode } from './StepDeviceCode'
 import { StepPlayer } from './StepPlayer'
 import { StepInitialSync } from './StepInitialSync'
+import { needsOwnProfile, resolveSetupStep, shouldLeaveSetup } from './setupRouting'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -31,13 +37,27 @@ export function SetupPage() {
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const setupRequired = useAppShellStore((s) => s.setupRequired)
+  const authMode = useAppShellStore((s) => s.authMode)
+  const currentUsername = useAppShellStore((s) => s.currentUsername)
+  const isAdmin = useAppShellStore((s) => s.isAdmin)
+  const availablePlayers = useAppShellStore((s) => s.availablePlayers)
+  const linkedHaloIdentity = useAppShellStore((s) => s.linkedHaloIdentity)
 
-  // Rediriger vers l'accueil si le setup n'est pas requis ou est terminé
+  const needsOwn = needsOwnProfile({
+    authMode,
+    currentUsername,
+    isAdmin,
+    availablePlayerCount: availablePlayers.length,
+  })
+  const step = resolveSetupStep(setupState, needsOwn, !!linkedHaloIdentity)
+
+  // Rediriger vers l'accueil si le setup n'est pas requis ou est terminé — sauf
+  // pour un utilisateur sans profil à lui, qui n'a rien à voir ailleurs.
   useEffect(() => {
-    if (isBootstrapped && (setupState === 'ready' || !setupRequired)) {
+    if (isBootstrapped && shouldLeaveSetup(setupState, setupRequired, needsOwn)) {
       navigate({ to: '/' })
     }
-  }, [isBootstrapped, setupState, setupRequired, navigate])
+  }, [isBootstrapped, setupState, setupRequired, needsOwn, navigate])
 
   if (!isBootstrapped) {
     return (
@@ -57,16 +77,16 @@ export function SetupPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {setupState === 'no_halo_link' && <StepDeviceCode />}
-          {setupState === 'halo_linked_no_profile' && <StepPlayer />}
-          {setupState === 'profile_ready_no_sync' && currentPlayer && (
+          {step === 'device_code' && <StepDeviceCode />}
+          {step === 'player' && <StepPlayer />}
+          {step === 'initial_sync' && currentPlayer && (
             <StepInitialSync playerSlug={currentPlayer.player_slug} />
           )}
-          {setupState === 'profile_ready_no_sync' && !currentPlayer && (
+          {step === 'initial_sync' && !currentPlayer && (
             /* Joueur pas encore connu localement mais provisioning en cours */
             <Spinner label={t('common.setup.profile_loading')} />
           )}
-          {setupState === 'ready' && (
+          {step === 'done' && (
             <div className="space-y-4">
               <p className="text-success font-semibold">{t('common.setup.config_done')}</p>
               <Button onClick={() => navigate({ to: '/' })}>{t('common.setup.access_app')}</Button>

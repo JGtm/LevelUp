@@ -114,6 +114,13 @@ type HomeRepository interface {
 	// de la MatchCard pour les titres sans moteur de citations dérivé.
 	LoadMatchCommendations(ctx context.Context, matchIDs []string) (map[string][]domain.HomeMatchCommendationRaw, error)
 
+	// LoadMatchAssistedFrags charge, pour un lot de matchs, les frags du joueur assistés
+	// par un coéquipier (match_kill_events_latest, règle des bases et tranches de
+	// relation_assists.go). Un match dont le film ne porte pas l'assistance, ou sans frag
+	// lu pour le joueur, est ABSENT de la map (jamais « 0 »).
+	// Erreur propagée : c'est l'appelant qui journalise et dégrade.
+	LoadMatchAssistedFrags(ctx context.Context, matchIDs []string) (map[string]domain.MatchAssistedFrags, error)
+
 	// LoadFavoriteWeapon retourne le nom localisé et les kills totaux de l'arme favorite (Q26k).
 	// Dégradation silencieuse : retourne ("", 0, nil) si aucune donnée.
 	LoadFavoriteWeapon(ctx context.Context, locale string) (string, int, error)
@@ -153,6 +160,10 @@ func (n *noopHomeRepo) LoadMatchCitations(_ context.Context, _ []string) (map[st
 
 func (n *noopHomeRepo) LoadMatchCommendations(_ context.Context, _ []string) (map[string][]domain.HomeMatchCommendationRaw, error) {
 	return map[string][]domain.HomeMatchCommendationRaw{}, nil
+}
+
+func (n *noopHomeRepo) LoadMatchAssistedFrags(_ context.Context, _ []string) (map[string]domain.MatchAssistedFrags, error) {
+	return map[string]domain.MatchAssistedFrags{}, nil
 }
 
 func (n *noopHomeRepo) LoadFavoriteWeapon(_ context.Context, _ string) (string, int, error) {

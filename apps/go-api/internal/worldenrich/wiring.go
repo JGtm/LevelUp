@@ -18,38 +18,19 @@ import (
 	"levelup/go-api/internal/config"
 	title "levelup/go-api/internal/domain/title"
 	auth "levelup/go-api/internal/platform/auth"
-	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/ratebudget"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
-// loadLegacyInputs lit le couple (refresh_token, msal_cache) du sync_meta de la
-// player DB — fallback canonique ADR 0023 quand le watcher store ne couvre pas le
-// joueur (cf. cmd/backfill-csr-history). Best-effort (vide si DB/clé absente).
-func loadLegacyInputs(cfg *config.AppConfig, gamertag string) auth.LegacyAuthInputs {
-	path := title.NewPathResolver(cfg.RepoRoot).PlayerDBPath(title.DefaultSlug, gamertag)
-	// OpenReadForQuery (jamais sql.Open RO nu) : réutilise un handle en cache si la
-	// player DB est déjà tenue RW dans le process (évite l'erreur DuckDB « different
-	// configuration ») — E6, ADR 0016. Lecture sync_meta via les helpers canoniques.
-	db, release, err := duckdb.OpenReadForQuery(path)
-	if err != nil {
-		return auth.LegacyAuthInputs{}
-	}
-	defer release()
-	rt, _ := duckdb.ReadOAuthRefreshTokenFromSQL(context.Background(), db)
-	msal, _ := duckdb.ReadMSALCacheJSONFromSQL(context.Background(), db)
-	return auth.LegacyAuthInputs{OAuthRT: rt, MSALCache: msal, Source: "player_db.sync_meta"}
-}
-
-// resolveAccessToken obtient un access_token Microsoft frais pour xuid : store
-// watcher_tokens d'abord (canonique ADR 0023), puis legacy sync_meta. Délègue à
-// auth.ResolveMSAccessTokenStoreFirst (source UNIQUE de l'ordre de résolution,
-// partagée avec le post-sync achievements — cf. arch-rules « ≤ 2 copies »).
+// resolveAccessToken obtient un access_token Microsoft frais pour xuid depuis le
+// MultiUserTokenStore (source unique ADR 0023). Délègue à
+// auth.ResolveMSAccessTokenStoreFirst (source UNIQUE de la résolution, partagée
+// avec le post-sync achievements — cf. arch-rules « ≤ 2 copies »).
 // Adapte le contrat historique du caller : un ("", nil) du helper (aucun credential
 // exploitable, sans erreur) devient une erreur explicite ici.
-func resolveAccessToken(ctx context.Context, provider auth.TokenProvider, store *auth.MultiUserTokenStore, xuid string, legacy auth.LegacyAuthInputs) (string, error) {
-	at, err := auth.ResolveMSAccessTokenStoreFirst(ctx, provider, store, xuid, "", legacy)
+func resolveAccessToken(ctx context.Context, provider auth.TokenProvider, store *auth.MultiUserTokenStore, xuid string) (string, error) {
+	at, err := auth.ResolveMSAccessTokenStoreFirst(ctx, provider, store, xuid, "")
 	if err != nil {
 		return "", err
 	}
@@ -112,12 +93,12 @@ func BuildHaloSource(cfg *config.AppConfig, gamertag string, rps int, eager bool
 	}
 	provider := auth.NewSISUProvider()
 	store := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	legacy := loadLegacyInputs(cfg, gamertag)
+
 	src := &refreshingHaloSource{
 		ttl: 3 * time.Hour, // Spartan ~4h, marge
 		now: time.Now,
 		resolve: func(ctx context.Context) (*syncpkg.HaloAPIClient, error) {
-			at, e := resolveAccessToken(ctx, provider, store, xuid, legacy)
+			at, e := resolveAccessToken(ctx, provider, store, xuid)
 			if e != nil {
 				return nil, e
 			}
@@ -147,7 +128,7 @@ func BuildHaloSource(cfg *config.AppConfig, gamertag string, rps int, eager bool
 }
 
 // multiHaloSource round-robine le fetch sur N clients single-token (un par compte
-// résolu). Chaque sous-source est résolue par le chemin prouvé (store-first + legacy)
+// résolu). Chaque sous-source est résolue par le chemin canonique (MultiUserTokenStore)
 // et s'auto-rafraîchit. NB : Halo limitant ~par IP, le gain est borné par le plafond
 // IP, pas multiplié par N.
 type multiHaloSource struct {
@@ -204,9 +185,9 @@ func BuildResolver(cfg *config.AppConfig, tokenGamertag string) (XUIDResolver, e
 	}
 	provider := auth.NewSISUProvider()
 	store := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	legacy := loadLegacyInputs(cfg, tokenGamertag)
+
 	hp := auth.NewCachedHeaderProvider(0, func(ctx context.Context) (string, error) {
-		at, e := resolveAccessToken(ctx, provider, store, xuid, legacy)
+		at, e := resolveAccessToken(ctx, provider, store, xuid)
 		if e != nil {
 			return "", e
 		}

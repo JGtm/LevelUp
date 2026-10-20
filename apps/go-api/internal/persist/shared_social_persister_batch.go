@@ -94,7 +94,7 @@ func (p *SharedSocialPersister) persistMediaFiles(ctx context.Context, tx *sql.T
 		return nil
 	}
 	// Dédup applicative file_path : l'ex-contrainte UNIQUE(file_path) a été retirée
-	// pour éradiquer le bug ART DuckDB #23046 (cf. media_files_drop_filepath_unique_v1).
+	// pour éradiquer le bug ART DuckDB #23645 (cf. media_files_drop_filepath_unique_v1).
 	// SELECT-then-INSERT — skip si le file_path est déjà indexé (re-upload même contenu).
 	sel, err := tx.PrepareContext(ctx, `SELECT 1 FROM media_files WHERE file_path = ? LIMIT 1`)
 	if err != nil {

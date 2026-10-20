@@ -37,12 +37,15 @@ func (e *SyncEngine) RunCitationPostComputeChecks(ctx context.Context) ([]Citati
 	defer playerHandle.Close()
 
 	// Phase 2 : cache duckdbpkg (DSN aligne).
-	metaHandle, err := duckdbpkg.OpenReadOnly(e.metadataDBPath)
+	// OpenReadForQuery reutilise le handle deja tenu par le process (le serveur tient metadata
+	// en rw: depuis le boot ; l orchestrateur de backfill de l admin passe ici) et n ouvre en
+	// lecture seule qu a defaut. Un OpenReadOnly direct echouait sous handle rw (« different
+	// configuration ») : le backfill citations lance depuis l admin echouait (2026-09-17).
+	metaDB, releaseMeta, err := duckdbpkg.OpenReadForQuery(e.metadataDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("RunCitationPostComputeChecks open metadata: %w", err)
 	}
-	defer metaHandle.Close()
-	metaDB := metaHandle.SQLDb()
+	defer releaseMeta()
 
 	mappings, err := loadFullCitationMappings(ctx, metaDB)
 	if err != nil {

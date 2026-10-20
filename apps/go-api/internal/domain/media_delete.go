@@ -54,7 +54,7 @@ type MediaDeleteRequest struct {
 	// déjà converti depuis l'URL servable par mediaServableURLToStoredPath.
 	FilePath string `json:"file_path"`
 
-	// RequesterSlug est le player_slug courant en session (vide si aucune session).
+	// RequesterSlug est le profil possédé par l'utilisateur de la session (vide sinon).
 	RequesterSlug string `json:"-"`
 
 	// RequesterIsAdmin reflète le rôle de session ("admin").
@@ -121,16 +121,23 @@ func (t MediaDeletionTarget) StoredPaths() []string {
 // du média — media_files.player_slug — et non sur le player_slug de la route,
 // puisqu'une galerie agrège les médias de plusieurs auteurs.
 func CanDeleteMedia(ownerSlug string, req MediaDeleteRequest) bool {
+	return CanModifyMedia(ownerSlug, req.RequesterSlug, req.RequesterIsAdmin, req.AuthEnforced)
+}
+
+// CanModifyMedia est la règle d'écriture sur un média existant (suppression,
+// association à un match) : son PROPRIÉTAIRE (media_files.player_slug) ou un admin.
+// requesterSlug est le profil possédé par l'utilisateur de la session.
+func CanModifyMedia(ownerSlug, requesterSlug string, requesterIsAdmin, authEnforced bool) bool {
 	// Mono-utilisateur / démo : aucune identité à opposer, comportement aligné
 	// sur les autres routes joueur (authz.Enforced == false ⇒ gardes inertes).
-	if !req.AuthEnforced {
+	if !authEnforced {
 		return true
 	}
-	if req.RequesterIsAdmin {
+	if requesterIsAdmin {
 		return true
 	}
-	if req.RequesterSlug == "" || ownerSlug == "" {
+	if requesterSlug == "" || ownerSlug == "" {
 		return false
 	}
-	return strings.EqualFold(req.RequesterSlug, ownerSlug)
+	return strings.EqualFold(requesterSlug, ownerSlug)
 }

@@ -1,5 +1,5 @@
 // Package duckdb — player_db_recovery_routing_test.go : garde-rail anti-régression
-// du sweep recovery des lectures player-DB (Lot D — .ai/PLAN_PLAYER_DB_RECOVERY_SWEEP_2026-07.md).
+// du sweep recovery des lectures player-DB (Lot D — .ai/archive/V7/PLAN_PLAYER_DB_RECOVERY_SWEEP_2026-07.md).
 //
 // **Contexte.** `pdb.Player` est l'UNIQUE handle RW du `stats.duckdb` joueur (renvoyé
 // aussi par `pdb.ReadDB()`), partagé par tous les repos player. Un writer concurrent

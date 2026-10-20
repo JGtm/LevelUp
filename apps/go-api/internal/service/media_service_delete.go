@@ -138,3 +138,29 @@ func (s *MediaService) markMediaDeleted(
 	}
 	return nil
 }
+
+// authorizeMediaAssociation applique à l'association média -> match la règle de la
+// suppression (domain.CanModifyMedia : propriétaire ou admin), jugée sur le
+// propriétaire réel du média (media_files.player_slug) chargé par son chemin COMPLET.
+// Sans cette vérification, n'importe quel joueur déplaçait le clip d'autrui vers un
+// autre match, pour tout le monde (l'association manuelle prime dans la vue _latest).
+func (s *MediaService) authorizeMediaAssociation(ctx context.Context, req domain.MediaAssociateRequest) error {
+	if !req.AuthEnforced {
+		return nil
+	}
+	deleter, ok := s.repo.(port.MediaDeleter)
+	if !ok {
+		return domain.ErrInternal("media association not supported by this repository")
+	}
+	target, err := deleter.LoadMediaForDeletion(ctx, req.FilePath)
+	if err != nil {
+		return err
+	}
+	if !domain.CanModifyMedia(target.OwnerSlug, req.RequesterSlug, req.RequesterIsAdmin, req.AuthEnforced) {
+		slog.WarnContext(ctx, "media_associate refusé: ni propriétaire ni admin",
+			"file_path", req.FilePath, "owner", target.OwnerSlug,
+			"requester", req.RequesterSlug, "is_admin", req.RequesterIsAdmin)
+		return domain.ErrForbidden("Only the owner of this media or an administrator can associate it with a match.")
+	}
+	return nil
+}

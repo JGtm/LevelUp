@@ -5,5 +5,5 @@ package migration
 // voie B). Le nom reste dans internal/migration/order.go (canonicalOrder).
 //
 // La purge LUSR y est faite via rebuild CTAS append-only (PAS de DELETE indexé,
-// éradication ART #23046) — la logique ART-safe (fonction lusrChainRework) est portée
+// éradication ART #23645) — la logique ART-safe (fonction lusrChainRework) est portée
 // dans le fichier title-owned, pas par un DELETE brut.

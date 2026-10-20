@@ -2,7 +2,7 @@
 //
 // Délimite la frontière entre la math pure (internal/analysis/skill_v2) et la
 // persistance (internal/platform/duckdb/SkillV2Repo). Le caller (typiquement
-// le pipeline sync gated par LEVELUP_LUSR_V2_ENABLED) appelle UpdateAfterMatch
+// le pipeline sync) appelle UpdateAfterMatch
 // pour chaque match observé, en ordre chronologique.
 package service
 

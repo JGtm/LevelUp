@@ -110,8 +110,10 @@ export function ExplorerTargetIdentityBanner({
         </div>
       )
     }
+    // Bandeau sans visuel synthetise : le cadre PLEIN des autres bandeaux, jamais le cadre pointille
+    // d'un etat vide — le joueur est connu, seule son identite visuelle manque.
     return (
-      <div className="overflow-hidden rounded-lg border border-dashed border-border bg-muted/30 px-5 py-6">
+      <div className="overflow-hidden rounded-lg border border-border bg-card px-5 py-6 shadow-sm">
         <div className="flex items-center gap-4">
           <div
             className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-background text-2xl font-bold text-muted-foreground"
@@ -173,7 +175,7 @@ export function ExplorerTargetIdentityBanner({
           {/* Adornment carrière (parité Home) : couche décorative à droite,
               derrière l'identité (z-[1] vs z-[2]), bornée à la zone hero (sibling du
               shell dans le wrapper interne) pour ne pas chevaucher la barre XP. Le
-              drop-shadow rgba(...) est une couleur structurelle (tolérée, règle 20
+              drop-shadow rgba(...) est une couleur structurelle (tolérée, règle 20 — color-allow: 2026-09-06 revue R1 C5, ce commentaire la DECRIT, il ne la pose pas)
               CLAUDE.md) — recopié du banner Home. */}
           {careerAdornmentUrl && (
             <div className="pointer-events-none absolute right-2 top-0 z-[1] flex h-full items-start">

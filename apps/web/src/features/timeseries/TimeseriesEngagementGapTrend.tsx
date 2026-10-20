@@ -22,6 +22,7 @@ import {
   CHART_BG,
   escapeHtml,
 } from '@/components/charts/_utils'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
 import { engagementGapEvents } from '@/lib/charts/engagementGap'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
@@ -63,7 +64,7 @@ function buildEngagementGapOption(
   const axis = getAxisBase(tc)
   const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
   const gradient = divergentZeroGradient(values)
-  const fmt = (v: number) => (v >= 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
+  const fmt = (v: number) => tipNumber(v, 0, true)
 
   return {
     backgroundColor: CHART_BG,

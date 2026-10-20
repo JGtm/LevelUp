@@ -17,9 +17,11 @@
 //   - xuids orphelins (informatif uniquement)
 //   - banner garbage URLs (`/Waypoint/file/images/`) résiduelles
 //
-// Aucune action de repair automatique : l'admin déclenche manuellement
-// `cmd/repair_data_consistency` ou `cmd/diag_db_health` si besoin
-// d'investiguer un compteur qui bouge.
+// Aucune action de repair automatique : l'admin déclenche manuellement les
+// actions correctives de la page Qualité des données (POST
+// /admin/actions/lying-bits/reset pour les bits menteurs, POST
+// /admin/actions/registry-names/backfill pour les noms du registre), ou
+// `cmd/diag_db_health` pour investiguer un compteur qui bouge.
 package scheduler
 
 import (
@@ -64,7 +66,11 @@ type DataHealthCheckResult struct {
 	// sain »). Distinct de ProbeErrors : une player DB tenue RW est transitoire/normale,
 	// elle ne fait pas échouer le cron mais gèle la jauge le temps du sync.
 	LUSRPlayersUnmeasured int
-	Duration              time.Duration
+	// Les gardes « index ART désynchronisé » ont été RETIRÉES avec les index qu'elles
+	// surveillaient : personal_score_awards le 2026-09-20 (step
+	// drop_psa_secondary_art_indexes_v1), match_skill_rank le 2026-09-27 (step
+	// drop_msr_secondary_art_indexes_v1) — plus d'index, plus rien à surveiller.
+	Duration time.Duration
 }
 
 // HealthScheduler orchestre l'audit santé DB périodique. N'émet pas de
@@ -193,7 +199,8 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 		return res
 	}
 
-	res.WarningsTotal = res.UUIDsRawCount + res.LyingBitsEvents + res.LyingBitsWeaponKills + res.GarbageBannerURLs
+	res.WarningsTotal = res.UUIDsRawCount + res.LyingBitsEvents + res.LyingBitsWeaponKills +
+		res.GarbageBannerURLs
 	res.Duration = time.Since(start)
 
 	// Publie la jauge expvar des trous LUSR (dernier scan complet uniquement). Les
@@ -214,11 +221,12 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	// loggué en WARN — il n'a pas pu tout mesurer et ne doit pas passer pour « sain ».
 	// Idem si des joueurs LUSR n'ont pas pu être mesurés (scan partiel, jauge gelée) :
 	// « unmeasured ≠ sain ».
+	unmeasured := res.LUSRPlayersUnmeasured
 	logHealth := slog.InfoContext
-	if res.ProbeErrors > 0 || res.LUSRPlayersUnmeasured > 0 {
+	if res.ProbeErrors > 0 || unmeasured > 0 {
 		logHealth = slog.WarnContext
 	}
-	if res.WarningsTotal == 0 && res.ProbeErrors == 0 && res.LUSRPlayersUnmeasured == 0 {
+	if res.WarningsTotal == 0 && res.ProbeErrors == 0 && unmeasured == 0 {
 		slog.InfoContext(ctx, "data_health: cycle terminé",
 			"warnings_total", 0,
 			"probe_errors", 0,
@@ -292,11 +300,16 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
 		  AND NOT EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = r.match_id)
 	`, mbitEvents), &res.ProbeErrors)
-	res.LyingBitsWeaponKills += scanCount(ctx, db, slug, "lying_bits_weapons", fmt.Sprintf(`
+	// La PREUVE du detail des armes change de table selon le titre : `weapon_kills` la
+	// porte encore la ou l arme est native de l API, `match_kill_events_latest` la porte
+	// la ou elle vient du film. On sonde celle que la base CONTIENT, jamais un slug.
+	if evidence := analysis.WeaponEvidenceTable(ctx, db.SQLDb()); evidence != "" {
+		res.LyingBitsWeaponKills += scanCount(ctx, db, slug, "lying_bits_weapons", fmt.Sprintf(`
 		SELECT COUNT(*) FROM match_registry r
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM weapon_kills w WHERE w.match_id = r.match_id)
-	`, mbitWeaponKills), &res.ProbeErrors)
+		  AND NOT EXISTS (SELECT 1 FROM %s w WHERE w.match_id = r.match_id)
+	`, mbitWeaponKills, evidence), &res.ProbeErrors)
+	}
 
 	// 3. xuids orphelins (alias absent shared)
 	res.OrphanXUIDs += scanCount(ctx, db, slug, "orphan_xuids", `

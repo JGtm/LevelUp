@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"sync"
 	"time"
 
@@ -72,6 +73,9 @@ type slot struct {
 	// lastAttempt : dernière tentative de refresh (réactive ou proactive), pour
 	// throttler le refresh proactif near-expiry.
 	lastAttempt time.Time
+	// excluded : le propriétaire n'a pas consenti à la mise en commun (cf. pool_sharing.go).
+	// Le slot n'est alors jamais servi par PolicyAnyPublic.
+	excluded bool
 }
 
 // leaseData retourne, sous UN SEUL RLock, si le slot est acquérable MAINTENANT
@@ -111,7 +115,11 @@ func poolTitleOf(sources []CredentialSource) string {
 }
 
 // NewPool crée un Pool à partir d'une liste de CredentialSources découvertes.
-// opts.MaxSize = 0 → utiliser tous les sources. opts.PerTokenRPS = 0 → défaut 1 RPS.
+// opts.MaxSize = nombre maximal de slots SAINS (0 = tous ceux que les sources permettent) ;
+// les sources sont prises dans l'ordre alphabétique des gamertags, et une résolution en
+// échec ne consomme pas le quota. Les comptes sont résolus en parallèle : le Resolver doit
+// accepter des appels concurrents pour des comptes distincts (cf. resolveBootSources).
+// opts.PerTokenRPS = 0 → défaut 1 RPS.
 //
 // Constructeur : câblage cohésif des dépendances du pool (sources, rate limiter,
 // refresher, cooldown) ; découper fragmenterait l'assemblage DI (K3f, exemption).
@@ -123,7 +131,11 @@ func NewPool(
 	sources []CredentialSource,
 	opts PoolOptions,
 ) (Pool, error) {
-	// Appliquer les valeurs par défaut.
+	// Appliquer les valeurs par défaut. Un plafond négatif (`--token-pool-size -1`) veut
+	// dire « sans plafond », comme 0 : seul point de normalisation de MaxSize.
+	if opts.MaxSize < 0 {
+		opts.MaxSize = 0
+	}
 	if opts.PerTokenRPS == 0 {
 		opts.PerTokenRPS = 1
 	}
@@ -134,49 +146,48 @@ func NewPool(
 		opts.GlobalCooldown = 30 * time.Second
 	}
 
-	// Limiter à MaxSize.
-	poolSize := len(sources)
-	if opts.MaxSize > 0 && poolSize > opts.MaxSize {
-		poolSize = opts.MaxSize
-	}
-
-	if poolSize == 0 {
+	if len(sources) == 0 {
 		return nil, fmt.Errorf("pool: aucune source de credential pour créer un pool")
 	}
 
 	// Titre propriétaire du pool (Phase 1.6) — compose la clé des slots.
 	poolTitle := poolTitleOf(sources)
 
-	// Créer les slots. Une source en échec est SKIPPÉE et on passe à la
-	// SUIVANTE (fix 2026-06-11 : l'ancienne boucle `i--` + `poolSize--`
-	// retentait le même index en boucle et abandonnait silencieusement toutes
-	// les sources situées après la première en échec — cf. burst de 7
-	// tentatives DankerGlue au boot, .ai/PLAN_AUTH_WARNING_NOISE.md).
-	slots := make([]*slot, 0, poolSize)
+	// MaxSize plafonne les slots SAINS, pas les sources TENTÉES (D2, plan robustesse
+	// 2026-09-16). L'ancienne troncature `sources[:MaxSize]` coupait AVANT de résoudre :
+	// avec `--token-pool-size 1`, la première source du scan (Chocoboflor, dont le refresh
+	// token est révoqué) était la seule tentée et le pool échouait sur « aucun slot créé ».
+	// Le scan vient d'une map : son ordre change d'une exécution à l'autre, d'où le tri par
+	// gamertag — un plafond doit donner le MÊME parc à chaque passe.
+	sorted := make([]CredentialSource, len(sources))
+	copy(sorted, sources)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Gamertag < sorted[j].Gamertag })
+
+	// Créer les slots. Une source en échec est SKIPPÉE et on passe à la SUIVANTE. Les
+	// comptes sont résolus en parallèle (cf. resolveBootSources : même parc, même ordre
+	// qu'une résolution en série, durée du plus lent au lieu de la somme).
+	resolveStart := time.Now()
+	resolvedSources := resolveBootSources(ctx, resolver, sorted, opts.MaxSize)
+	resolveDuration := time.Since(resolveStart)
+
+	slots := make([]*slot, 0, len(resolvedSources))
 	slotsByKey := make(map[string]int)
-
-	for _, src := range sources[:poolSize] {
-		resolved, err := resolver.Resolve(ctx, src)
-		if err != nil {
-			slog.WarnContext(ctx, "pool: impossible de résoudre token au boot, skip slot",
-				"gamertag", src.Gamertag, "err", err)
-			continue
-		}
-
-		slotsByKey[gtKey(poolTitle, src.Gamertag)] = len(slots)
+	for _, rs := range resolvedSources {
+		slotsByKey[gtKey(poolTitle, rs.src.Gamertag)] = len(slots)
 		slots = append(slots, &slot{
-			gamertag: src.Gamertag,
-			xuid:     src.XUID,
-			resolved: resolved,
+			gamertag: rs.src.Gamertag,
+			xuid:     rs.src.XUID,
+			resolved: rs.resolved,
 			// Budget PAR COMPTE partagé process-wide (sujet 2 T1) : tous les
 			// consommateurs du même xuid (pool, career_live, worldenrich)
 			// attendent sur le MÊME token bucket — le pool voit la vraie pression.
-			limiter:     ratebudget.ForXUID(src.XUID, float64(opts.PerTokenRPS)),
+			limiter:     ratebudget.ForXUID(rs.src.XUID, float64(opts.PerTokenRPS)),
 			healthy:     true,
 			lastRefresh: time.Now(),
+			excluded:    rs.src.PoolExcluded,
 		})
 	}
-	poolSize = len(slots)
+	poolSize := len(slots)
 
 	if poolSize == 0 {
 		return nil, fmt.Errorf("pool: aucun slot créé (toutes les résolutions ont échoué)")
@@ -206,7 +217,8 @@ func NewPool(
 	}
 
 	slog.InfoContext(ctx, "pool: créé",
-		"size", len(p.slots), "perTokenRPS", opts.PerTokenRPS)
+		"size", len(p.slots), "perTokenRPS", opts.PerTokenRPS,
+		"sources", len(sorted), "resolve_ms", resolveDuration.Milliseconds())
 
 	// Lancer le refresher en arrière-plan (ne pas attendre).
 	go p.refresherLoop(context.Background())
@@ -226,6 +238,14 @@ func (p *poolImpl) Acquire(ctx context.Context, policy AcquirePolicy, pinnedGame
 	}
 }
 
+// ErrNoHealthySlot — aucun slot sain n'est disponible pour PolicyAnyPublic : tous les
+// tokens du parc sont soit malsains (401/403 en attente de refresh), soit en cooldown
+// AIMD après un 429. Sentinelle typée (et non message nu) parce que l'appelant en tire
+// une DÉCISION : la pagination d'historique attend le cooldown puis rejoue la page au
+// lieu d'abandonner la passe (D1, plan robustesse 2026-09-16). Le texte est inchangé :
+// des tests et des journaux le citent.
+var ErrNoHealthySlot = errors.New("pool: aucun slot sain disponible (PolicyAnyPublic)")
+
 // acquireAnyPublic : round-robin parmi les slots sains.
 func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 	maxRetries := len(p.slots) // Éviter boucle infinie si tous les slots sont malsains.
@@ -242,8 +262,11 @@ func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 			// Sain ET hors cooldown 429 ? Sinon remettre dans le canal et tenter
 			// le suivant. Un slot rate-limité (429 sur SON token) est skippé sans
 			// pénaliser les autres — fini le scorched-earth d'un 429 isolé. La
-			// capture des tokens/limiter est cohérente (sous un seul RLock).
-			resolved, gamertag, limiter, ok := slot.leaseData(time.Now())
+			// capture des tokens/limiter est cohérente (sous un seul RLock). Un slot dont
+			// le propriétaire n'a pas consenti à la mise en commun n'est jamais servi ici :
+			// le test partage le verrou des autres conditions, donc un retrait prend effet
+			// à la requête suivante.
+			resolved, gamertag, limiter, ok := slot.sharedLeaseData(time.Now())
 			if !ok {
 				p.anyPublicChan <- slotIdx
 				continue
@@ -266,7 +289,7 @@ func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 	}
 
 	// Tous les slots essayés sont malsains.
-	return nil, fmt.Errorf("pool: aucun slot sain disponible (PolicyAnyPublic)")
+	return nil, ErrNoHealthySlot
 }
 
 // acquirePinnedPlayer : lookup par gamertag, retourne ErrNoTokenForPlayer si absent ou malsain.
@@ -357,6 +380,7 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 		s.xuid = src.XUID
 		s.healthy = true
 		s.lastRefresh = time.Now()
+		s.excluded = src.PoolExcluded
 		s.mu.Unlock()
 		slog.InfoContext(ctx, "pool: slot updated",
 			"gamertag", src.Gamertag, "source", src.Source)
@@ -376,6 +400,7 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 		limiter:     ratebudget.ForXUID(src.XUID, float64(p.perTokenRPS)),
 		healthy:     true,
 		lastRefresh: time.Now(),
+		excluded:    src.PoolExcluded,
 	}
 	newIdx := len(p.slots)
 	p.slots = append(p.slots, newSlot)

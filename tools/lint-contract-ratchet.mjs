@@ -71,7 +71,6 @@ const BASELINE_COLLISIONS = new Set([
   'MatchScoreboardRow',
   'MatchTeamTab',
   'MatchViewResponse',
-  'MatchWeaponKill',
   'MediaItemRow',
   // 2026-08-04 (merge post-lot2) : MediaLikeRequest/MediaLikeResponse retirés —
   // shimés en ré-exports du contrat (les manuels divergeaient : total_likers
@@ -88,7 +87,6 @@ const BASELINE_COLLISIONS = new Set([
   'SettingsResponse',
   'SquadIntensityProfile',
   'SquadTimeseriesPoint',
-  'SquadWeaponBar',
   'TeammateKPIs',
   'TeammatesPageResponse',
   // 2026-08-05 (R2) : TeammatesQueryRequest RETIRÉ — re-shimé. La collision venait de

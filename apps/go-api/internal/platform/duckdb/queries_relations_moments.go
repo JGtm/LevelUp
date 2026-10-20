@@ -2,7 +2,8 @@ package duckdb
 
 // queries_relations_moments.go — SQL du sous-endpoint « Moments & Rivalités »
 // (Phase 3a). Lecture seule sur le catalogue shared (match_participants +
-// match_registry + killer_victim_pairs + v_gamertag_lookup) via SharedReader.
+// match_registry + kill-feed) via SharedReader. AUCUN GAMERTAG EN SQL (lot A, 2026-09-26,
+// ADR 0036 I1) : GetRelationsHeatmap nomme ses lignes par l'annuaire en portée base.
 //
 // Deux requêtes :
 //   - Q29RelationsHeatmap : top-N relations (par matchs communs) × heure en
@@ -37,7 +38,8 @@ package duckdb
 //	?  encounters JOIN p.xuid <> ?
 //	?  topN (LIMIT)
 //
-// Colonnes SELECT (5) : xuid, gamertag, hour (0..23 local), dow (0=dimanche…6=samedi local), count.
+// Colonnes SELECT (4) : xuid, hour (0..23 local), dow (0=dimanche…6=samedi local), count ; le
+// nom est posé en Go (annuaire en portée base, sur l'historique ou le périmètre scopé).
 var Q29RelationsHeatmapTpl = `
 WITH my_history AS (
     SELECT match_id, team_id
@@ -67,15 +69,13 @@ top_xuids AS (
 )
 SELECT
     e.xuid,
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(e.xuid, 4))) AS gamertag,
     e.hour_local AS hour,
     e.dow_local AS dow,
     COUNT(DISTINCT e.match_id) AS cnt
 FROM encounters e
 JOIN top_xuids t ON t.xuid = e.xuid
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = e.xuid
 WHERE e.hour_local IS NOT NULL
-GROUP BY e.xuid, gamertag, e.hour_local, e.dow_local
+GROUP BY e.xuid, e.hour_local, e.dow_local
 ORDER BY e.xuid ASC, e.hour_local ASC`
 
 // Q30RivalTimelineTpl : timeline d'un rival (matchs communs joués EN ENNEMI),

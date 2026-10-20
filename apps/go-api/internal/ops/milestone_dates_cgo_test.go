@@ -4,10 +4,14 @@ package ops
 
 import (
 	"context"
+	"database/sql"
+	"path/filepath"
 	"testing"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/analysis"
 )
 
 func day(y int, mo time.Month, d, h int) time.Time {
@@ -187,5 +191,91 @@ func TestBackfillMilestoneDates_DryRunThenApply(t *testing.T) {
 	}
 	if nullCount != 1 {
 		t.Errorf("unknown devrait avoir earned_at NULL, got count=%d", nullCount)
+	}
+}
+
+// ─── Exclusion de la Campagne (E2 du plan .ai/PLAN_BACKLOG_2026-10-15.md, DB-27) ───
+//
+// Un match d'arène (arena1, 01/09) et un match de Campagne PLUS RÉCENT (camp1, 02/09), joués par
+// le même joueur, lus par les chargeurs d'ops qui nourrissent une donnée servie à l'UI (dates de
+// paliers, corpus de la démo). Halo 5 : la Campagne disparaît ; Halo Infinite (aucune variante
+// masquée) : le résolveur est neutre, les deux matchs restent.
+
+const campagneOpsXUID = "2533274800000001"
+
+var campagneOpsTitres = []struct {
+	slug    string
+	masquee bool
+}{{"halo_5", true}, {"halo_infinite", false}}
+
+// seedCampagneOps crée un shared fichier (arène + Campagne) et le ferme : les lecteurs d'ops le
+// rouvrent par leur chemin.
+func seedCampagneOps(t *testing.T) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "shared.duckdb")
+	db, err := sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatalf("open shared: %v", err)
+	}
+	camp := analysis.CampaignExcludedVariantIDs("halo_5")[0]
+	for _, s := range []string{
+		`CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP,
+			start_time_utc TIMESTAMPTZ, game_variant_id VARCHAR)`,
+		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, outcome INTEGER, kills INTEGER,
+			headshot_kills INTEGER, assists INTEGER, deaths INTEGER, accuracy DOUBLE, damage_dealt DOUBLE,
+			damage_taken DOUBLE)`,
+		`INSERT INTO match_registry VALUES
+			('arena1', '2026-09-01 10:00:00', '2026-09-01 10:00:00+00', 'aaaaaaaa-0000-0000-0000-000000000001'),
+			('camp1', '2026-09-02 10:00:00', '2026-09-02 10:00:00+00', '` + camp + `')`,
+		`INSERT INTO match_participants VALUES
+			('arena1', '` + campagneOpsXUID + `', 2, 5, 1, 2, 1, 0.5, 500, 100),
+			('camp1', '` + campagneOpsXUID + `', 2, 50, 5, 9, 0, 0.9, 5000, 100)`,
+	} {
+		if _, err := db.Exec(s); err != nil {
+			t.Fatalf("fixture Campagne : %v\n%s", err, s)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close shared: %v", err)
+	}
+	return path
+}
+
+func campagneOpsNombre(masquee bool) int {
+	if masquee {
+		return 1
+	}
+	return 2
+}
+
+// E2.6 — dates de paliers : le franchissement se lit sur les matchs que l'app affiche.
+func TestCampaignExclusion_LoadCrossingMatches(t *testing.T) {
+	for _, tc := range campagneOpsTitres {
+		path := seedCampagneOps(t)
+		db, err := sql.Open("duckdb", path+"?access_mode=read_only")
+		if err != nil {
+			t.Fatalf("%s : open : %v", tc.slug, err)
+		}
+		got, err := loadCrossingMatches(context.Background(), db, campagneOpsXUID, tc.slug)
+		_ = db.Close()
+		if err != nil {
+			t.Fatalf("%s : %v", tc.slug, err)
+		}
+		if len(got) != campagneOpsNombre(tc.masquee) {
+			t.Errorf("%s : %d matchs de franchissement, attendu %d", tc.slug, len(got), campagneOpsNombre(tc.masquee))
+		}
+	}
+}
+
+// E2.6 — corpus de la démo : les N matchs récents ne portent pas la Campagne.
+func TestCampaignExclusion_SelectRecentMatchIDs(t *testing.T) {
+	for _, tc := range campagneOpsTitres {
+		got, err := selectRecentMatchIDs(context.Background(), seedCampagneOps(t), campagneOpsXUID, tc.slug, 10)
+		if err != nil {
+			t.Fatalf("%s : %v", tc.slug, err)
+		}
+		if len(got) != campagneOpsNombre(tc.masquee) {
+			t.Errorf("%s : matchs récents %v, attendu %d", tc.slug, got, campagneOpsNombre(tc.masquee))
+		}
 	}
 }

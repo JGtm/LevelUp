@@ -62,6 +62,13 @@ func (h *EngagementHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	// required" (régression vs l'ancien Body pointeur tolérant).
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/engagement/timeseries")
 	huma.Get(api, "/pages/squad/v2/engagement", h.handleSquadEngagementSession, humacore.Op("getSquadEngagementSession", "Engagement squad pour la session courante", "squad"))
+}
+
+// MountAdmin enregistre l'opération d'administration (recalcul forcé des coefficients). Le
+// montage la place derrière RequireAuth et RequireAdmin (garde-rail : le test chi.Walk
+// recompute_coefficients_admin_test.go).
+func (h *EngagementHandler) MountAdmin(r chi.Router, opts ...humacore.MountOption) {
+	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/engagement/recompute_coefficients", h.handleRecomputeCoefficients, humacore.Op("postRecomputeEngagementCoefficients", "Force le recalcul des coefficients d'engagement (admin)", "career"))
 }
 
@@ -97,15 +104,15 @@ type engTimeseriesInput struct {
 // rejetterait en 422 (cf. decodeFiltersBody). Body absent/vide → requête zéro
 // (filters vide, limit 0 → défaut côté handler). Applique la validation métier
 // des filtres (400 invalid_filters le cas échéant).
-func decodeEngagementTimeseriesBody(raw []byte) (domain.EngagementTimeseriesRequest, error) {
+func decodeEngagementTimeseriesBody(ctx context.Context, raw []byte) (domain.EngagementTimeseriesRequest, error) {
 	var req domain.EngagementTimeseriesRequest
 	if len(raw) > 0 {
 		if err := json.Unmarshal(raw, &req); err != nil {
-			return req, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+			return req, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_body", err)
 		}
 	}
 	if err := req.Filters.Validate(); err != nil {
-		return req, humacore.NewError(http.StatusBadRequest, "invalid_filters", err.Error())
+		return req, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_filters", err)
 	}
 	return req, nil
 }
@@ -178,7 +185,7 @@ func (h *EngagementHandler) handleMatchEngagement(ctx context.Context, in *engMa
 		case errors.Is(err, port.ErrEngagementUnavailable):
 			return nil, humacore.NewError(http.StatusServiceUnavailable, "engagement_unavailable", "migration EngagementScore non appliquee")
 		default:
-			return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "engagement_error", err)
 		}
 	}
 
@@ -205,7 +212,7 @@ func (h *EngagementHandler) handleEngagementTimeseries(ctx context.Context, in *
 		return nil, err
 	}
 
-	req, err := decodeEngagementTimeseriesBody(in.RawBody)
+	req, err := decodeEngagementTimeseriesBody(ctx, in.RawBody)
 	if err != nil {
 		// Observabilité : le 422 historique (period.start_date null rejeté par la
 		// validation Huma du body typé) était SILENCIEUX — visible seulement dans
@@ -227,7 +234,7 @@ func (h *EngagementHandler) handleEngagementTimeseries(ctx context.Context, in *
 	if err != nil {
 		slog.ErrorContext(ctx, "engagement_timeseries: GetTimeseries a échoué",
 			"player", in.PlayerSlug, "limit", limit, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "engagement_error", err)
 	}
 	return &engTimeseriesOutput{Body: out}, nil
 }
@@ -256,7 +263,7 @@ func (h *EngagementHandler) handleSquadEngagementSession(ctx context.Context, in
 	if len(matchIDs) == 0 {
 		recent, err := svc.GetTimeseries(ctx, domain.FilterContextInput{}, 15)
 		if err != nil {
-			return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "engagement_error", err)
 		}
 		matchIDs = make([]string, 0, len(recent.Points))
 		for _, m := range recent.Points {
@@ -283,7 +290,7 @@ func (h *EngagementHandler) handleSquadEngagementSession(ctx context.Context, in
 
 	session, err := svc.GetSquadSession(ctx, matchIDs, teammates)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "engagement_error", err)
 	}
 	return &engSquadOutput{Body: session}, nil
 }
@@ -338,7 +345,7 @@ func (h *EngagementHandler) handleRecomputeCoefficients(ctx context.Context, in 
 		case errors.Is(err, dblease.ErrDBLocked):
 			return nil, errDBBusy()
 		default:
-			return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
+			return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "engagement_error", err)
 		}
 	}
 	return &engRecomputeOutput{Body: report}, nil
@@ -366,7 +373,7 @@ func (h *EngagementHandler) handleEngagementProfile(ctx context.Context, in *eng
 
 	coefs, err := svc.GetEngagementProfile(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "engagement_error", err)
 	}
 	return &engProfileOutput{Body: coefs}, nil
 }
@@ -375,7 +382,7 @@ func (h *EngagementHandler) handleEngagementProfile(ctx context.Context, in *eng
 func (h *EngagementHandler) resolve(ctx context.Context, slug string) (*service.PlayerEngagementService, error) {
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 	return svc, nil
 }

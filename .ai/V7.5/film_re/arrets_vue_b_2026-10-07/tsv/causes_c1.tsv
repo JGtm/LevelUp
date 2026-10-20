@@ -1,0 +1,25 @@
+110329	vue B : sortie par rejet
+23871	liste d evenements non localisee
+11592	vue C : terminateur hors cadre
+2840	vue C : kind non porte
+2221	ecrivain : masque au-dela de l archetype
+987	vue C : bloc 0xbc (desalignement)
+682	vue B : fin de payload
+644	ti=10 i2 managed-object-navpoint-component
+606	ti=12 i21 managed-navpoint-visual-state-groups-component-1
+527	ti=12 i22 managed-navpoint-visual-state-groups-component-2
+457	ti=12 i16 managed-navpoint-override-flags
+248	ti=35 i59 biped-spartan-ability-non-predicted-state
+237	ti=56 archetype hors registre
+157	ecrivain : ordre de la vue B
+135	ti=12 i20 managed-navpoint-visual-state-groups-component-0
+122	ti=11 i4 managed-objective-interaction-filter-component
+108	ti=51 archetype hors registre
+105	ti=10 i22 managed-object-interaction-filter-component
+86	ti=59 archetype hors registre
+74	ecrivain : masque epars non croissant
+68	ti=45 i0 matchflow-sequence-data-component
+63	ti=12 i18 managed-navpoint-position-offset
+54	ti=42 archetype hors registre
+52	ti=0 i18 forge-engine-player-roles-component
+50	ti=50 archetype hors registre

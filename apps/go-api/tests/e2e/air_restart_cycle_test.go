@@ -63,11 +63,6 @@ func (p *rotationProvider) InitDeviceFlow(_ context.Context) (auth.DeviceFlow, e
 	return nil, errors.New("not used in air restart test")
 }
 
-func (p *rotationProvider) TrySilentRefresh(_ context.Context, _ string) (string, error) {
-	// Pas de cache MSAL dans ce test — Pool tombe sur OAuth refresh.
-	return "", nil
-}
-
 func (p *rotationProvider) TryOAuthRefresh(ctx context.Context, refreshToken string) (string, error) {
 	at, _, err := p.TryOAuthRefreshWithRotation(ctx, refreshToken)
 	return at, err

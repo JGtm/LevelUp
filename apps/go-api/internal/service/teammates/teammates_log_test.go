@@ -7,6 +7,8 @@ package teammates
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -201,5 +203,33 @@ func TestTeammatesService_AliasFallback_StillNotFound(t *testing.T) {
 
 	if !strings.Contains(logs, "teammates_gamertag_not_found") {
 		t.Errorf("expected silent-drop log when gamertag truly unknown, got:\n%s", logs)
+	}
+}
+
+// TestDataIssues_NiveauSelonLaRequete (lot perf L9-go, revue adversariale B) : la
+// dégradation d'une requête vivante est journalisée en ERROR ; celle d'une requête
+// terminée (client parti, annulation), en DEBUG — elle n'est pas une panne du serveur.
+func TestDataIssues_NiveauSelonLaRequete(t *testing.T) {
+	annulee, cancel := context.WithCancel(context.Background())
+	cancel()
+	cas := []struct {
+		nom    string
+		ctx    context.Context
+		err    error
+		niveau string
+	}{
+		{"requête vivante", context.Background(), errors.New("database is locked"), `"level":"ERROR"`},
+		{"requête terminée", annulee, errors.New("database is locked"), `"level":"DEBUG"`},
+		{"annulation remontée d'une lecture", context.Background(), fmt.Errorf("q30: %w", context.Canceled), `"level":"DEBUG"`},
+	}
+	for _, c := range cas {
+		issues := &dataIssues{}
+		logs := withCapturedLogs(t, func() { issues.add(c.ctx, domain.DataIssueMapStats, "", c.err) })
+		if !strings.Contains(logs, "teammates.data_issue") || !strings.Contains(logs, c.niveau) {
+			t.Errorf("%s : journal %q, want teammates.data_issue au niveau %s", c.nom, logs, c.niveau)
+		}
+		if len(issues.list()) != 1 {
+			t.Errorf("%s : %d dégradation(s) mémorisée(s), want 1", c.nom, len(issues.list()))
+		}
 	}
 }

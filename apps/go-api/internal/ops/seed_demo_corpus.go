@@ -15,6 +15,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
+
+	titlePkg "levelup/go-api/internal/domain/title"
 )
 
 // DefaultSquadSessions : nombre de sessions en escouade retenues pour le corpus.
@@ -308,94 +311,6 @@ func demoXUIDForIndex(i int) string {
 	return fmt.Sprintf("%016d", i)
 }
 
-// applyUniversalAnonymization remappe TOUS les xuid + gamertag du shared démo via
-// le roster, dans une table temporaire _xuid_map jointe à chaque table cible.
-// Couvre : match_participants(xuid,gamertag), medals_earned(xuid),
-// weapon_kills(xuid), highlight_events(xuid), killer_victim_pairs(killer/victim
-// xuid+gamertag), xuid_aliases(xuid,gamertag).
-func applyUniversalAnonymization(ctx context.Context, dst *sql.DB, roster []demoRosterEntry) error {
-	if _, err := dst.ExecContext(ctx, `DROP TABLE IF EXISTS _xuid_map`); err != nil {
-		return fmt.Errorf("drop map: %w", err)
-	}
-	if _, err := dst.ExecContext(ctx,
-		`CREATE TABLE _xuid_map (old_xuid VARCHAR, new_xuid VARCHAR, new_gamertag VARCHAR)`); err != nil {
-		return fmt.Errorf("create map: %w", err)
-	}
-	for _, e := range roster {
-		if _, err := dst.ExecContext(ctx,
-			`INSERT INTO _xuid_map VALUES (?, ?, ?)`,
-			e.SourceXUID, e.DemoXUID, e.DemoGamertag); err != nil {
-			return fmt.Errorf("insert map %s: %w", e.SourceXUID, err)
-		}
-	}
-
-	// (table, [(xuidCol, gamertagCol)]) — gamertagCol vide = pas de colonne nom.
-	type remap struct {
-		table string
-		pairs [][2]string // {xuidCol, gamertagCol}
-	}
-	targets := []remap{
-		{"match_participants", [][2]string{{"xuid", "gamertag"}}},
-		{"xuid_aliases", [][2]string{{"xuid", "gamertag"}}},
-		{"medals_earned", [][2]string{{"xuid", ""}}},
-		{"weapon_kills", [][2]string{{"xuid", ""}}},
-		{"highlight_events", [][2]string{{"xuid", ""}}},
-		{"killer_victim_pairs", [][2]string{{"killer_xuid", "killer_gamertag"}, {"victim_xuid", "victim_gamertag"}}},
-		// match_kill_events porte TROIS paires d'identité, pas deux : le tueur, la victime et
-		// l'ASSISTANT. Oublier la troisième ferait fuiter des xuid et des gamertags réels dans
-		// une démo publique — la colonne n'existait pas sur killer_victim_pairs, qui n'a jamais
-		// su représenter l'assistant.
-		{"match_kill_events", [][2]string{
-			{"feed_killer_xuid", "feed_killer_gamertag"},
-			{"victim_xuid", "victim_gamertag"},
-			{"assist_xuid", "assist_gamertag"},
-		}},
-		// match_objective_stats : extraite depuis le 2026-07-26 et porteuse d'une
-		// colonne xuid — l'omettre ici ferait fuiter les xuid RÉELS du corpus dans
-		// une démo publique. Toute table ajoutée à sharedTablesWhere avec une
-		// colonne d'identité doit apparaître ici dans le même commit.
-		{"match_objective_stats", [][2]string{{"xuid", ""}}},
-		// Tables Halo 5-spécifiques (absentes côté Infinite → tolérées : table
-		// inexistante = skip, cf. errIsMissingTable). Anonymise leur(s) colonne(s)
-		// d'identité pour qu'aucun vrai xuid ne fuite.
-		{"match_commendations", [][2]string{{"xuid", ""}}},
-		{"kill_positions", [][2]string{{"killer_xuid", ""}}},
-		{"weapon_accuracy", [][2]string{{"xuid", ""}}},
-	}
-	for _, t := range targets {
-		for _, p := range t.pairs {
-			xuidCol, gtCol := p[0], p[1]
-			set := fmt.Sprintf("%s = m.new_xuid", xuidCol)
-			if gtCol != "" {
-				set += fmt.Sprintf(", %s = m.new_gamertag", gtCol)
-			}
-			stmt := fmt.Sprintf(
-				`UPDATE %s SET %s FROM _xuid_map m WHERE %s.%s = m.old_xuid`,
-				t.table, set, t.table, xuidCol)
-			if _, err := dst.ExecContext(ctx, stmt); err != nil {
-				if errIsMissingTable(err) {
-					// Table H5-spécifique absente de cette démo (titre Infinite) → skip.
-					continue
-				}
-				return fmt.Errorf("anonymize %s.%s: %w", t.table, xuidCol, err)
-			}
-		}
-	}
-	_, _ = dst.ExecContext(ctx, `DROP TABLE IF EXISTS _xuid_map`)
-	return nil
-}
-
-// anonymizeSharedUniversal ouvre la DB shared démo à dbPath et applique le
-// remapping universel du roster.
-func anonymizeSharedUniversal(ctx context.Context, dbPath string, roster []demoRosterEntry) error {
-	db, err := sql.Open("duckdb", dbPath)
-	if err != nil {
-		return fmt.Errorf("open shared %s: %w", dbPath, err)
-	}
-	defer db.Close()
-	return applyUniversalAnonymization(ctx, db, roster)
-}
-
 // rosterMains retourne les entrées principales (source + 2 coéquipiers les plus
 // fréquents) — celles qui auront leur propre player DB démo seedée.
 func rosterMains(roster []demoRosterEntry) []demoRosterEntry {
@@ -449,4 +364,71 @@ func resolvePlayerDBByXUID(profilesPath, xuid string) (dbRelPath string, found b
 		}
 	}
 	return "", false, nil
+}
+
+// dynamicCorpus regroupe les 4 sous-listes de la sélection démo (solo/squad/ranked/
+// media), avant union. Partagé par SeedDemo (chemin dynamique) et EmitDemoManifest.
+type dynamicCorpus struct {
+	solo, squad, ranked, media []string
+}
+
+// selectDynamicCorpus exécute la sélection dynamique « N plus récents » (comportement
+// historique). Chaque source est best-effort : un échec logge un warn et laisse la
+// sous-liste vide (l'union reste exploitable tant qu'au moins une source répond).
+func selectDynamicCorpus(ctx context.Context, opts SeedDemoOptions) dynamicCorpus {
+	var dc dynamicCorpus
+	if r, err := selectRecentMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, opts.TitleSlug, opts.MaxMatches); err != nil {
+		slog.WarnContext(ctx, "seed-demo: matchs récents indisponibles", "err", err)
+	} else {
+		dc.solo = r
+	}
+	if s, err := selectSquadSessionCorpus(ctx, opts.SourcePlayerDB, DefaultSquadSessions); err != nil {
+		slog.WarnContext(ctx, "seed-demo: corpus squad indisponible", "err", err)
+	} else {
+		dc.squad = s
+	}
+	if rk, err := selectRecentRankedMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, DefaultRankedMatches); err != nil {
+		slog.WarnContext(ctx, "seed-demo: matchs classés indisponibles", "err", err)
+	} else {
+		dc.ranked = rk
+	}
+	if opts.IncludeMedia {
+		srcSocialDB := filepath.Join(filepath.Dir(opts.SourceSharedDB), "shared_social.duckdb")
+		if mm, err := selectMediaAnchoredMatchIDs(ctx, srcSocialDB, opts.MaxMedia); err != nil {
+			slog.WarnContext(ctx, "seed-demo: corpus média-ancré indisponible", "err", err)
+		} else {
+			dc.media = mm
+		}
+	}
+	return dc
+}
+
+// resolveDemoCorpus rend le corpus démo : celui du manifeste figé config/demo/<gamertag>/<slug>.json
+// s'il existe (manifest non nil), sinon la sélection dynamique « N récents ». UNIQUE point où la
+// Campagne du titre est exclue de l'ensemble final, pour les deux chemins et toutes les voies
+// (solo, escouade, classé, média) : un manifeste curé avant la règle peut en porter.
+func resolveDemoCorpus(ctx context.Context, opts SeedDemoOptions) (dc dynamicCorpus, manifest *DemoManifest, err error) {
+	if !opts.IgnoreManifest && opts.RepoRoot != "" && opts.SourceLabel != "" {
+		mp := titlePkg.NewPathResolver(opts.RepoRoot).DemoManifestPath(opts.SourceLabel, opts.TitleSlug)
+		m, found, mErr := LoadDemoManifest(mp)
+		if mErr != nil {
+			return dc, nil, fmt.Errorf("seed-demo: %w", mErr)
+		}
+		if found {
+			manifest = m
+			slog.InfoContext(ctx, "seed-demo: manifeste figé chargé", "path", mp, "corpus", len(m.CorpusMatchIDs()))
+		}
+	}
+	if manifest != nil {
+		dc = dynamicCorpus{
+			solo:   manifest.Corpus.SoloMatchIDs,
+			squad:  manifest.Corpus.SquadMatchIDs,
+			ranked: manifest.Corpus.RankedMatchIDs,
+			media:  manifest.Corpus.MediaMatchIDs,
+		}
+	} else {
+		dc = selectDynamicCorpus(ctx, opts)
+	}
+	dc.excludeCampaign(ctx, opts.SourceSharedDB, opts.TitleSlug)
+	return dc, manifest, nil
 }

@@ -3,8 +3,10 @@
 package sync
 
 // sync_pipeline_fixture_test.go — fixture complète simulant un pipeline de sync
-// du début à la fin : highlights → weapon_kills → perf_score → LUSR →
-// sessions → citations → engagement_score.
+// du début à la fin : highlights → weapon_kills → perf_score →
+// sessions → citations → engagement_score. L'étape LUSR n'y figure plus : la v1 est
+// supprimée, le LUSR v2 est couvert par match_recomputer_lusr_v2_integration_test.go
+// et lusr_components_v2_test.go (bases migrées, état v2 côté shared).
 //
 // Ce fichier est la source de vérité pour la non-régression de l'ensemble
 // des calculs locaux. Si une formule change, les assertions ici doivent être
@@ -59,11 +61,11 @@ func buildPipelineFixture(t *testing.T) *pipelineFixture {
 
 	shared := openFixtureDB(t, buildSharedDDL())
 	player := openFixtureDB(t, buildPlayerDDL())
-	// Append-only #23046 : convertit player_match_enrichment + crée la vue _latest.
+	// Append-only #23645 : convertit player_match_enrichment + crée la vue _latest.
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(player); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
-	// Append-only #23046 (Phase 2) : convertit match_citations (generation_id) +
+	// Append-only #23645 (Phase 2) : convertit match_citations (generation_id) +
 	// crée la vue match_citations_latest + les séquences.
 	if err := migration.EnsureMatchCitationsAppendOnly(player); err != nil {
 		t.Fatalf("EnsureMatchCitationsAppendOnly: %v", err)
@@ -110,7 +112,7 @@ CREATE TABLE match_registry (
     is_ranked           BOOLEAN DEFAULT FALSE,
     is_firefight        BOOLEAN DEFAULT FALSE,
     duration_seconds    INTEGER,
-    backfill_completed  INTEGER DEFAULT 0
+    backfill_completed  INTEGER DEFAULT 0, game_variant_id VARCHAR
 );
 
 CREATE TABLE match_participants (
@@ -653,89 +655,6 @@ func TestPipelineFixture_MetadataInserted(t *testing.T) {
 	}
 }
 
-// TestPipelineFixture_WeaponKills_FilmPresent simule BackfillWeaponKillsForMatchAll
-// sur m1 avec un film "présent mais vide" (chunks binaires vides → 0 fire events).
-// Vérifie que MBitWeaponKills est set et que le pipeline termine proprement.
-func TestPipelineFixture_WeaponKills_FilmPresent(t *testing.T) {
-	f := buildPipelineFixture(t)
-
-	client := &weaponTestClient{
-		filmPresent: true,
-		filmChunks: map[int]FilmChunkData{
-			0: {Data: []byte{}, StartMS: 0, DurationMS: 60000},
-		},
-	}
-
-	found, err := BackfillWeaponKillsForMatchAll(context.Background(), client, f.shared, fixM1)
-	if err != nil {
-		t.Fatalf("BackfillWeaponKillsForMatchAll m1: %v", err)
-	}
-	if !found {
-		t.Fatal("expected found=true (film présent)")
-	}
-
-	var bits int
-	f.shared.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id=?", fixM1).Scan(&bits)
-	if bits&int(MBitWeaponKills) == 0 {
-		t.Fatalf("MBitWeaponKills non set après film présent (bits=%d)", bits)
-	}
-}
-
-// TestPipelineFixture_WeaponKills_NoFilm vérifie que MBitWeaponKillsNoFilm est
-// posé quand GetMatchFilm retourne filmPresent=false.
-func TestPipelineFixture_WeaponKills_NoFilm(t *testing.T) {
-	f := buildPipelineFixture(t)
-
-	client := &weaponTestClient{filmPresent: false}
-
-	found, err := BackfillWeaponKillsForMatchAll(context.Background(), client, f.shared, fixM2)
-	if err != nil {
-		t.Fatalf("BackfillWeaponKillsForMatchAll m2: %v", err)
-	}
-	if found {
-		t.Fatal("expected found=false (film absent)")
-	}
-
-	var bits int
-	f.shared.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id=?", fixM2).Scan(&bits)
-	if bits&int(MBitWeaponKillsNoFilm) == 0 {
-		t.Fatalf("MBitWeaponKillsNoFilm non set (bits=%d)", bits)
-	}
-}
-
-// TestPipelineFixture_WeaponKills_IdempotentRerun vérifie qu'un deuxième appel
-// BackfillWeaponKillsForMatchAll ne crée pas de doublons dans weapon_kills.
-func TestPipelineFixture_WeaponKills_IdempotentRerun(t *testing.T) {
-	f := buildPipelineFixture(t)
-
-	// Insérer des kill events dans highlight_events qui seront reconnus par le pipeline
-	// (chunks vides → corrélation ne produit rien, mais le pipeline tourne)
-	client := &weaponTestClient{
-		filmPresent: true,
-		filmChunks:  map[int]FilmChunkData{0: {Data: []byte{}, StartMS: 0, DurationMS: 60000}},
-	}
-
-	for i := 0; i < 2; i++ {
-		_, err := BackfillWeaponKillsForMatchAll(context.Background(), client, f.shared, fixM1)
-		if err != nil {
-			t.Fatalf("run %d: %v", i+1, err)
-		}
-	}
-
-	// weapon_kills doit contenir exactement le même nombre de rows après 2 runs
-	var count1, count2 int
-	// Append-only #23046 (Phase 2) : idempotence LOGIQUE via v_weapon_kills (dernière
-	// génération). Le physique croît à chaque run (nouvelle génération), mais la vue
-	// reste stable → count1 == count2.
-	f.shared.QueryRow("SELECT COUNT(*) FROM v_weapon_kills WHERE match_id=?", fixM1).Scan(&count1)
-	BackfillWeaponKillsForMatchAll(context.Background(), client, f.shared, fixM1)
-	f.shared.QueryRow("SELECT COUNT(*) FROM v_weapon_kills WHERE match_id=?", fixM1).Scan(&count2)
-
-	if count1 != count2 {
-		t.Fatalf("doublons logiques détectés (v_weapon_kills) : %d → %d rows après re-run", count1, count2)
-	}
-}
-
 // TestPipelineFixture_PerformanceScore vérifie que batchComputePerformanceScores
 // calcule des scores pour les matchs qui ont suffisamment d'historique.
 // Avec 12 matchs seed + 3 matchs fixture = 15 matchs, les 5 derniers doivent
@@ -787,51 +706,6 @@ func TestPipelineFixture_PerformanceScore_Idempotent(t *testing.T) {
 	}
 	if n3 < n1 {
 		t.Fatalf("force=true a mis à jour %d matchs, attendu ≥%d", n3, n1)
-	}
-}
-
-// TestPipelineFixture_LUSRRatings vérifie que batchComputeLUSR produit des
-// ratings pour les matchs sociaux (is_ranked=false).
-// m1 est ranked donc exclu. m2, m3 et les seed-matches sont sociaux.
-func TestPipelineFixture_LUSRRatings(t *testing.T) {
-	f := buildPipelineFixture(t)
-
-	n, err := batchComputeLUSR(t.Context(), f.player, f.shared, fixXUID, nil, false)
-	if err != nil {
-		t.Fatalf("batchComputeLUSR: %v", err)
-	}
-	if n == 0 {
-		t.Fatal("expected >0 LUSR ratings calculés (matchs sociaux présents)")
-	}
-
-	var rated int
-	f.player.QueryRow(`
-		SELECT COUNT(*) FROM match_skill_rank
-		WHERE rating_type = 'LUSR'
-		  AND match_id IN (?, ?)`, fixM2, fixM3,
-	).Scan(&rated)
-	if rated == 0 {
-		t.Fatal("aucun LUSR pour m2/m3")
-	}
-}
-
-// TestPipelineFixture_LUSRRatings_RankedExcluded vérifie que m1 (ranked) n'a
-// pas de rating LUSR (LUSR est réservé aux matchs non-ranked).
-func TestPipelineFixture_LUSRRatings_RankedExcluded(t *testing.T) {
-	f := buildPipelineFixture(t)
-
-	_, err := batchComputeLUSR(t.Context(), f.player, f.shared, fixXUID, nil, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var hasM1 bool
-	f.player.QueryRow(`
-		SELECT COUNT(*) > 0 FROM match_skill_rank
-		WHERE match_id = ? AND rating_type = 'LUSR'`, fixM1,
-	).Scan(&hasM1)
-	if hasM1 {
-		t.Fatal("m1 (ranked) ne devrait pas avoir de rating LUSR")
 	}
 }
 
@@ -969,7 +843,7 @@ func TestPipelineFixture_Citations_Idempotent(t *testing.T) {
 	runCitations()
 	n2, phys2 := latestCount(), physCount()
 
-	// Append-only #23046 — idempotence LOGIQUE : match_citations_latest stable
+	// Append-only #23645 — idempotence LOGIQUE : match_citations_latest stable
 	// (zéro doublon visible) entre les deux runs.
 	if n2 != n1 {
 		t.Fatalf("doublon logique (match_citations_latest) : run1=%d run2=%d", n1, n2)
@@ -1071,7 +945,7 @@ func TestPipelineFixture_EngagementScore_Idempotent(t *testing.T) {
 	var rows1 int
 	f.player.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment WHERE stage = 'engagement'`).Scan(&rows1)
 
-	// Append-only #23046 — IDEMPOTENCE STRICTE : le 2e run (force=false) doit skiper
+	// Append-only #23645 — IDEMPOTENCE STRICTE : le 2e run (force=false) doit skiper
 	// TOUS les matchs déjà tentés, Y COMPRIS m1 (ranked, score=NULL insufficient_history).
 	// Sans cela, m1 serait ré-INSÉRÉ à chaque cycle → croissance non bornée (bug audit
 	// 2026-06-21). n2 == 0 ET la table ne grossit PAS.
@@ -1147,31 +1021,9 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 	f := buildPipelineFixture(t)
 	ctx := context.Background()
 
-	// Étape 1 — weapon_kills (film présent pour m1)
-	weaponClient := &weaponTestClient{
-		filmPresent: true,
-		filmChunks:  map[int]FilmChunkData{0: {Data: []byte{}, StartMS: 0, DurationMS: 60000}},
-	}
-	_, err := BackfillWeaponKillsForMatchAll(ctx, weaponClient, f.shared, fixM1)
-	if err != nil {
-		t.Fatalf("[étape 1] weapon_kills m1: %v", err)
-	}
-	// m2 et m3 sans film
-	noFilmClient := &weaponTestClient{filmPresent: false}
-	for _, mid := range []string{fixM2, fixM3} {
-		if _, err := BackfillWeaponKillsForMatchAll(ctx, noFilmClient, f.shared, mid); err != nil {
-			t.Fatalf("[étape 1] weapon_kills %s: %v", mid, err)
-		}
-	}
-
 	// Étape 2 — performance_score
 	if _, err := batchComputePerformanceScores(t.Context(), f.player, f.shared, fixXUID, nil, false); err != nil {
 		t.Fatalf("[étape 2] performance_score: %v", err)
-	}
-
-	// Étape 3 — LUSR ratings
-	if _, err := batchComputeLUSR(t.Context(), f.player, f.shared, fixXUID, nil, false); err != nil {
-		t.Fatalf("[étape 3] LUSR: %v", err)
 	}
 
 	// Étape 4 — sessions
@@ -1197,20 +1049,6 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 
 	// ── Assertions finales ────────────────────────────────────────────────────
 
-	// m1 : MBitWeaponKills set
-	var bitsM1 int
-	f.shared.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id=?", fixM1).Scan(&bitsM1)
-	if bitsM1&int(MBitWeaponKills) == 0 {
-		t.Error("[full] MBitWeaponKills non set pour m1")
-	}
-
-	// m2 : MBitWeaponKillsNoFilm set
-	var bitsM2 int
-	f.shared.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id=?", fixM2).Scan(&bitsM2)
-	if bitsM2&int(MBitWeaponKillsNoFilm) == 0 {
-		t.Error("[full] MBitWeaponKillsNoFilm non set pour m2")
-	}
-
 	// sessions : m1 et m2 dans la même session
 	var sid1, sid2 sql.NullString
 	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM1).Scan(&sid1)
@@ -1224,13 +1062,6 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 	f.player.QueryRow("SELECT COUNT(*) FROM match_citations_latest WHERE match_id=?", fixM1).Scan(&nCit)
 	if nCit == 0 {
 		t.Error("[full] aucune citation pour m1")
-	}
-
-	// LUSR : au moins un rating calculé
-	var nLUSR int
-	f.player.QueryRow("SELECT COUNT(*) FROM match_skill_rank WHERE rating_type='LUSR'").Scan(&nLUSR)
-	if nLUSR == 0 {
-		t.Error("[full] aucun rating LUSR")
 	}
 
 	// engagement_score_brut : toujours posé (score percentile dépend de l'historique)

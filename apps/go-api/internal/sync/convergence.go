@@ -27,11 +27,14 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/sync/killcollector"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // convergenceHorizon borne le nombre de matchs incomplets repris par cycle
@@ -96,28 +99,20 @@ func filterEventsStillMissing(ctx context.Context, sharedDB *sql.DB, ids []strin
 	return out
 }
 
-// selectMatchesMissingWeapons : idem pour weapon_kills (bits MBitWeaponKills /
-// MBitWeaponKillsNoFilm non posés). À appeler APRÈS convergeEvents.
-func selectMatchesMissingWeapons(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) []string {
-	scope := &SyncScope{Weapons: true, MaxMatches: convergenceHorizon, DetectionMode: "or"}
-	scope.Resolve()
-	ids, err := FindMatchesMissingData(ctx, playerDB, sharedDB, xuid, scope)
-	if err != nil {
-		slog.WarnContext(ctx, "convergence: sélection weapons incomplets échouée", "xuid", xuid, "err", err)
-		return nil
-	}
-	return ids
-}
-
 // hasConvergenceBacklog indique s'il reste des matchs à converger (enrichment
-// manquant, PSA non tentés, events OU weapons incomplets). Sert à déclencher le
-// post-sync même quand aucun nouveau match n'a été inséré : le sync n'a pas
-// "fini" tant que tout n'est pas enrichi.
+// manquant, PSA non tentés, events incomplets). Sert à déclencher le post-sync
+// même quand aucun nouveau match n'a été inséré : le sync n'a pas "fini" tant
+// que tout n'est pas enrichi.
+//
+// LE RETARD « WEAPONS » N'Y FIGURE PLUS (2026-09-01, étape A3 du lot arme-source-unique).
+// L'étape 1.55 qui le consommait est supprimée avec son producteur ; le retard de film
+// est désormais celui de l'étape 1.57, qui porte sa PROPRE sélection et sa propre jauge
+// (`killcollector.backlogAJour` / `killsource_postsync_backlog_restant`). Le rappeler ici
+// relancerait un post-sync pour une étape qui n'existe plus.
 func hasConvergenceBacklog(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) bool {
 	return countSharedMatchesMissingEnrichment(ctx, playerDB, sharedDB, xuid) > 0 ||
 		len(selectMatchesMissingPSA(ctx, playerDB)) > 0 ||
-		len(selectMatchesMissingEvents(ctx, playerDB, sharedDB, xuid)) > 0 ||
-		len(selectMatchesMissingWeapons(ctx, playerDB, sharedDB, xuid)) > 0
+		len(selectMatchesMissingEvents(ctx, playerDB, sharedDB, xuid)) > 0
 }
 
 // selectMatchesMissingPSA retourne les matchs enrichis dont les
@@ -136,7 +131,7 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 	// les matchs récents d'abord, aligné sur le contrat convergenceHorizon.
 	rows, err := playerDB.QueryContext(ctx, `
 		SELECT e.match_id
-		-- Append-only #23046 : _latest. psa_checked_at vit sur le stage 'psa' ; sur la
+		-- Append-only #23645 : _latest. psa_checked_at vit sur le stage 'psa' ; sur la
 		-- table brute les rows des autres stages ont psa_checked_at NULL → ce filtre
 		-- retournerait TOUS les matchs même déjà checkés → re-fetch PSA infini.
 		FROM player_match_enrichment_latest e
@@ -213,7 +208,7 @@ func convergePSACollect(ctx context.Context, playerDB *sql.DB, client HaloClient
 				continue
 			}
 		}
-		// Append-only #23046 : INSERT pur stage='psa' (marqueur terminal). La vue
+		// Append-only #23645 : INSERT pur stage='psa' (marqueur terminal). La vue
 		// merge expose psa_checked_at par match ; selectMatchesMissingPSA lit _latest.
 		if _, err := playerDB.ExecContext(ctx,
 			`INSERT INTO player_match_enrichment (match_id, psa_checked_at, stage) VALUES (?, now(), 'psa')`, mid); err != nil {
@@ -292,7 +287,7 @@ func extractAliasPairsFromMatchJSON(matchJSON map[string]any) []aliasPair {
 //
 // Cas couvert (gate 2026-06-10) : cycle « pur skip » — tous les matchs du
 // joueur ont été insérés en shared par le watcher d'un coéquipier (delta-skip
-// via loadKnownMatchIDs source 2), donc matchesInserted=0 pour ce joueur. Si
+// via la règle knownset : participants du xuid au registre), donc matchesInserted=0 pour ce joueur. Si
 // par ailleurs ses scores existants sont complets et events/weapons chargés,
 // AUCUN déclencheur ne lançait le pipeline → ensurePlayerEnrichmentRows ne
 // tournait jamais → enrichment manquant à durée indéterminée (la convergence
@@ -306,7 +301,7 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 	if playerDB == nil || sharedDB == nil || xuid == "" {
 		return 0
 	}
-	known := make(map[string]struct{}, 512)
+	enriched := make(map[string]struct{}, 512)
 	rows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment_latest`)
 	if err != nil {
 		slog.WarnContext(ctx, "convergence: lecture player_match_enrichment échouée", "xuid", xuid, "err", err)
@@ -315,17 +310,17 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 	for rows.Next() {
 		var id string
 		if scanErr := rows.Scan(&id); scanErr == nil {
-			known[id] = struct{}{}
+			enriched[id] = struct{}{}
 		}
 	}
 	if iterErr := rows.Err(); iterErr != nil {
-		// Itération tronquée = known partiel = sur-déclenchement possible du
+		// Itération tronquée = ensemble enrichi partiel = sur-déclenchement possible du
 		// pipeline (bénin, le heal est idempotent) — mais on le trace.
 		slog.WarnContext(ctx, "convergence: itération enrichment interrompue", "xuid", xuid, "err", iterErr)
 	}
 	_ = rows.Close()
 
-	// Cast défensif xuid || '' aligné sur loadKnownMatchIDs ET sur
+	// Cast défensif xuid || '' aligné sur knownset.Load ET sur
 	// ensurePlayerEnrichmentRows (le repareur) — même prédicat partout, sinon
 	// un drift de type ferait diverger déclencheur et réparateur (re-trigger
 	// infini sans convergence).
@@ -342,7 +337,7 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 		if scanErr := shared.Scan(&id); scanErr != nil {
 			continue
 		}
-		if _, ok := known[id]; !ok {
+		if _, ok := enriched[id]; !ok {
 			missing++
 		}
 	}
@@ -533,72 +528,135 @@ func (s postSyncFilmSteps) runEventsConvergence(ctx context.Context) {
 		"gamertag", e.gamertag, "selected", len(eventsWork), "processed", total)
 }
 
-// runWeaponKills — étape 1.55 : pipeline film weapon kills. Convergent : nouveaux
-// matchs (insertedIDs) ∪ backlog incomplet (bits weapon non posés), bornés. La
-// sélection weapons se fait APRÈS la convergence events pour que highlight_events
-// soit peuplé. Best-effort : films absents (404/410) normaux pour les vieux
-// matchs. Garde bit-honnête préservée (MBitWeaponKills posé seulement si ≥1 ligne
-// insérée, cf. flushWeaponKillsForMatch).
-func (s postSyncFilmSteps) runWeaponKills(ctx context.Context, insertedIDs []string) {
+// runKillSource — étape 1.57 : la SOURCE DU KILL des matchs insérés, puis le backlog.
+//
+// POURQUOI ICI, ET PAS DANS UN OUTIL SÉPARÉ. Cette donnée n'avait qu'un producteur : une
+// sous-commande manuelle qui ne lisait que les films déjà en cache. Le cache a cessé d'être
+// alimenté le 2026-04-07 et personne ne l'a vu pendant cinq mois — `assist_known` est resté
+// FALSE sur tout match synchronisé depuis, et deux blocs de l'app se sont retirés sans un log
+// (`.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Une donnée qui ne se remplit que si
+// quelqu'un lance une commande finit toujours par ne plus se remplir.
+//
+// Elle vient APRÈS la convergence events, pour la même raison que l'étape 1.55 (weapon
+// kills, supprimée le 2026-09-01) y venait : le film du match est disponible et récent, et
+// le roster que le décodage doit joindre (`v_gamertag_lookup`) est à jour. Depuis cette
+// suppression, elle est la SEULE étape du post-sync qui télécharge un film — c'est donc
+// elle qui porte les marqueurs de registre du film (cf. killcollector/registry_flags.go).
+//
+// TOUTE la logique vit dans internal/sync/killcollector (ratchet K3c : le neuf n'entre pas à
+// la racine du god-package) ; ici on ne fait que câbler les dépendances du moteur.
+func (s postSyncFilmSteps) runKillSource(ctx context.Context, insertedIDs []string) int {
 	e := s.engine
-	var weaponBacklog []string
-	s.withRead(ctx, "weapons_select", func(sharedDB *sql.DB) {
-		weaponBacklog = selectMatchesMissingWeapons(ctx, s.playerDB, sharedDB, e.xuid)
-	})
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_pending_total", int64(len(weaponBacklog)))
-	weaponWork := mergeUniqMatchIDs(insertedIDs, weaponBacklog)
-	if len(weaponWork) == 0 {
+	if e.killSource == nil {
+		return 0
+	}
+	// GetFilmChunks est une capacité OPTIONNELLE du client (assertion, pas extension de
+	// HaloClient : les mocks des autres étapes n'ont pas à la porter).
+	//
+	// ⚠ SON ABSENCE SE JOURNALISE ET SE COMPTE, ELLE NE SE TAIT PAS. Une première version
+	// faisait un `return` nu : les deux clients de production ne portaient pas la méthode,
+	// l'étape ne s'exécutait nulle part, et RIEN ne le disait — le défaut même que cette
+	// étape corrige, reproduit dans son propre câblage. Les clients réels sont désormais
+	// vérifiés à la COMPILATION (kill_source_wiring_test.go) ; ce compteur couvre le cas
+	// qu'aucune assertion statique ne peut couvrir : un client injecté à l'exécution.
+	fetcher, ok := s.client.(killcollector.FilmChunkFetcher)
+	if !ok {
+		observability.IncCounter(killcollector.CompteurPostSyncClientSansFilm)
+		slog.WarnContext(ctx, "post-sync: kill source désarmée — le client ne porte pas GetFilmChunks",
+			"gamertag", e.gamertag, "client", fmt.Sprintf("%T", s.client),
+			"consequence", "assist_known restera FALSE sur les matchs de ce cycle")
+		return 0
+	}
+	return killcollector.RunPostSync(ctx, e.killSource, killcollector.PostSyncDeps{
+		// LA CAPTURE DES POSITIONS, ENFIN CABLEE AU SYNC (correction P0-1, 2026-09-07). Sans
+		// elle, `collectPositions` sortait en Debug et NI `kill_positions` NI les faits
+		// d'isolement n'etaient jamais produits au fil de l'eau — seul le backfill hors ligne
+		// les ecrivait. LES METADONNEES SONT EMPRUNTEES, JAMAIS OUVERTES (2026-09-27) : le
+		// processus les tient deja (ADR 0013/0016) ; cf. killcollector/resolveur_de_carte.go.
+		MapNames:   killcollector.ResolveurDeCartePostSync(sharedLecteur{acces: s.shared}, e.metadataDBPath),
+		Fetcher:    fetcher,
+		LocalCache: e.localFilmCache,
+		WithRead:   s.withRead,
+		// Le writer est acquis PAR MATCH et relâché aussitôt (burst court) : le collecteur
+		// résout son roster en lecture AVANT, donc les deux segments ne se chevauchent
+		// jamais — même garde anti-deadlock que le burst weapons.
+		AcquireWriter: func(c context.Context) (*sql.DB, func(), error) {
+			return s.shared.Write(c, "killsource")
+		},
+		TitleSlug: e.titleSlug,
+		Gamertag:  e.gamertag,
+	}, insertedIDs)
+}
+
+// sharedLecteur adapte le segment shared du cycle en `duckdb.SharedReader`.
+//
+// Le resolveur de carte lit `match_registry` ; il lui faut un segment de LECTURE, jamais le
+// writer. `SharedAccess.Read` en pose un court et rend son releaseur.
+type sharedLecteur struct{ acces *SharedAccess }
+
+func (l sharedLecteur) Get(ctx context.Context) (*sql.DB, func(), error) {
+	return l.acces.Read(ctx)
+}
+
+// runReplayArtifacts — étape 1.58 : pont disque film + artefacts de rejeu 2D. TOUTE la
+// logique vit dans internal/sync/replayartifacts (ratchet K3c : le neuf n'entre pas à la
+// racine du god-package) ; ici on ne fait que câbler les dépendances du moteur sur son API.
+// Étape absente si le wiring n'a pas installé le hook.
+//
+// LES MATCHS INSÉRÉS SONT UNE PRIORITÉ, PAS UN PÉRIMÈTRE : le tri du travail appartient à
+// `replayartifacts.Run`, qui décide seul de ce que le cycle traite. Le câblage ne filtre donc
+// plus sur « le cycle a-t-il inséré quelque chose » — c'est ce filtre-là qui interdisait tout
+// rattrapage.
+func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs []string) {
+	e := s.engine
+	if e.replayArtifacts == nil {
 		return
 	}
-	totalDone, totalNoFilm := 0, 0
-	for start := 0; start < len(weaponWork); start += postsyncWeaponsBurstChunk {
-		end := min(start+postsyncWeaponsBurstChunk, len(weaponWork))
-		// COLLECT : download film + corrélation. Les lectures shared dont dépend
-		// la corrélation (highlight_events, match_participants) passent par un
-		// segment de LECTURE — jamais par le writer. Le segment est relâché AVANT
-		// le burst (garde anti-deadlock de SharedAccess.Write).
-		var collected []collectedWeaponKills
-		readOK := false
-		s.withRead(ctx, "weapons_collect", func(roDB *sql.DB) {
-			readOK = true
-			collected = collectWeaponKillsChunk(ctx, roDB, s.client, e.xuid, weaponWork[start:end])
-		})
-		if !readOK {
-			// Lecture shared indisponible (déjà loggée + trackFatalErr par withRead) :
-			// inutile de réessayer lot après lot, on reporte le reste du backlog.
-			break
-		}
-		if len(collected) == 0 {
-			continue // tout le lot a échoué au fetch film → rien à écrire, pas de burst
-		}
-		// FLUSH : burst writer court, écritures seules.
-		wdb, releaseW, werr := s.shared.Write(ctx, "weapons")
-		if werr != nil {
-			slog.WarnContext(ctx, "post-sync: burst weapons indisponible — reste du backlog reporté",
-				"gamertag", e.gamertag, "remaining", len(weaponWork)-start, "err", werr)
-			trackFatalErr(s.result, "weapons burst", werr)
-			break
-		}
-		var done, noFilm int
-		func() {
-			defer releaseW()
-			done, noFilm = flushWeaponKillsChunk(ctx, wdb, collected)
-		}()
-		totalDone += done
-		totalNoFilm += noFilm
-		if ctx.Err() != nil {
-			// Annulation en cours de cycle : on arrête proprement (le reste du
-			// backlog est repris au cycle suivant — étapes idempotentes).
-			slog.WarnContext(ctx, "post-sync: weapon kills interrompu", "gamertag", e.gamertag, "err", ctx.Err())
-			trackFatalErr(s.result, "weapon kills", ctx.Err())
-			break
-		}
+	placement := e.replayArtifacts.Placement(ctx)
+	// GetFilmChunks est une capacité OPTIONNELLE du client (assertion, pas extension de
+	// HaloClient — les mocks des autres étapes n'ont pas à la porter). Son absence
+	// n'interdit QUE la construction locale : mettre en file ne télécharge aucun film
+	// (c'est l'ouvrier qui le fera), donc ce chemin-là reste ouvert.
+	//
+	// ⚠ SON ABSENCE SE JOURNALISE ET SE COMPTE, ELLE NE SE TAIT PAS. Cette assertion jetait
+	// son résultat (`fetcher, _ := ...`) : un client sans la capacité désarmait l'étape en
+	// silence, exactement comme l'étape 1.57 avant son garde-rail. Les clients réels sont
+	// désormais vérifiés à la COMPILATION (replay_artifacts_wiring_test.go) ; ce signal-ci
+	// couvre le cas qu'aucune assertion statique ne peut couvrir : un client injecté à
+	// l'exécution.
+	fetcher, ok := s.client.(replayartifacts.ChunksFetcher)
+	if !ok {
+		replayartifacts.SignalerClientSansChunks(ctx, placement, e.gamertag, fmt.Sprintf("%T", s.client))
 	}
-	s.result.WeaponKillsProcessed = totalDone
-	s.result.WeaponKillsNoFilm = totalNoFilm
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_processed_total", int64(totalDone))
-	if totalDone > 0 || totalNoFilm > 0 {
-		slog.InfoContext(ctx, "post-sync: weapon kills",
-			"gamertag", e.gamertag, "done", totalDone, "no_film", totalNoFilm)
+	// MEME MOTIF QUE `ChunksFetcher` — Y COMPRIS L'EXAMEN DU BOOLEEN, et il a fallu se le faire
+	// dire deux fois. Le premier jet ecrivait `mvarFetcher, _ := ...`, une ligne sous le
+	// commentaire ci-dessus qui explique precisement pourquoi cette forme est interdite :
+	// l'assertion echouait sur les DEUX wrappers de production, et le rattrapage sortait sans
+	// un mot. Les wrappers exposent desormais la methode (verifie a la COMPILATION par
+	// replay_artifacts_wiring_test.go) ; ce signal-ci couvre le cas qu'aucune assertion
+	// statique ne peut couvrir : un client injecte a l'execution.
+	mvarFetcher, okMvar := s.client.(replayartifacts.MvarFetcher)
+	if !okMvar {
+		replayartifacts.SignalerClientSansMvar(ctx, e.gamertag, fmt.Sprintf("%T", s.client))
 	}
+	replayartifacts.Run(ctx, replayartifacts.Deps{
+		BuildOne:    e.replayArtifacts.BuildOne,
+		Fetcher:     fetcher,
+		MvarFetcher: mvarFetcher,
+		WithRead:    s.withRead,
+		// Le writer est acquis APRÈS toute cuisson et relâché aussitôt (burst court) : le
+		// segment de lecture de la sélection est rendu depuis longtemps, donc les deux ne se
+		// chevauchent jamais — même garde anti-deadlock que le burst de la kill source.
+		AcquireWriter: func(c context.Context) (*sql.DB, func(), error) {
+			return s.shared.Write(c, "replay_t0_film")
+		},
+		MetaDB:          e.metaDB,
+		RepoRoot:        e.repoRoot,
+		TitleSlug:       e.titleSlug,
+		Gamertag:        e.gamertag,
+		CacheRoot:       e.replayArtifacts.CacheRoot,
+		RetentionMonths: e.replayArtifacts.Months(),
+		Placement:       placement,
+		Enqueue:         e.replayArtifacts.Enqueue,
+	}, insertedIDs)
 }

@@ -9,6 +9,11 @@ export interface JobToastLabels {
   succeededWithWarnings: string
   failed: string
   cancelled: string
+  /**
+   * Texte traduit par code d'erreur du job. Le message du serveur (fixe, en anglais) ne
+   * s'affiche jamais : un code absent de la table n'a pas de description.
+   */
+  errorByCode?: Readonly<Record<string, string>>
 }
 
 /**
@@ -57,7 +62,7 @@ export function useJobToasts(
         break
       case 'failed':
         toast.error(l.failed, {
-          description: js.error?.message ?? undefined,
+          description: js.error?.code ? l.errorByCode?.[js.error.code] : undefined,
           duration: Infinity,
         })
         break

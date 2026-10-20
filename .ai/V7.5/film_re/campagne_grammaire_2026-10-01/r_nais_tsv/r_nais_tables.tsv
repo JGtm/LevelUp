@@ -1,0 +1,835 @@
+film	build	table	cle	n	paquets	hors_cadre	fermes
+0797ce72	HI_1_13_0	a_liaisons	DEL lu · X aucune allocation · Q ne se ferme pas depuis l occurrence	5	7	5	0
+0797ce72	HI_1_13_0	a_liaisons	DEL lu · X aucune allocation · Q se ferme, contredit, depuis l occurrence	1	3	0	0
+0797ce72	HI_1_13_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	52	87	60	1
+0797ce72	HI_1_13_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q se ferme, sain, depuis l occurrence	1	1	0	0
+0797ce72	HI_1_13_0	a_liaisons	NEW* DELTA+ · X libere avant le chunk · Q ne se ferme pas depuis l occurrence	2	3	2	0
+0797ce72	HI_1_13_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	6	238	238	0
+0797ce72	HI_1_13_0	a_liaisons	NEW* DELTA+ · X vivant au bloc du chunk · Q ne se ferme pas depuis l occurrence	1	77	77	0
+0797ce72	HI_1_13_0	a_liaisons_classe_x	X aucune allocation	59	98	65	1
+0797ce72	HI_1_13_0	a_liaisons_classe_x	X libere avant le chunk	2	3	2	0
+0797ce72	HI_1_13_0	a_liaisons_classe_x	X naissance non lue	6	238	238	0
+0797ce72	HI_1_13_0	a_liaisons_classe_x	X vivant au bloc du chunk	1	77	77	0
+0797ce72	HI_1_13_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	66	412	382	1
+0797ce72	HI_1_13_0	a_liaisons_ferme	Q se ferme, contredit, depuis l occurrence	1	3	0	0
+0797ce72	HI_1_13_0	a_liaisons_ferme	Q se ferme, sain, depuis l occurrence	1	1	0	0
+0797ce72	HI_1_13_0	a_liaisons_lu	DEL lu	6	10	5	0
+0797ce72	HI_1_13_0	a_liaisons_lu	NEW* DELTA+	62	406	377	1
+0797ce72	HI_1_13_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	68	416	382	1
+0797ce72	HI_1_13_0	a_occurrences_iii_rejet	rejete · ferme contredit	2	0	0	0
+0797ce72	HI_1_13_0	a_occurrences_iii_rejet	rejete · ferme sain	1	0	0	0
+0797ce72	HI_1_13_0	a_occurrences_iii_rejet	rejete · non ferme	120	0	0	0
+0797ce72	HI_1_13_0	a_occurrences_iii_rejet	temoin · non ferme	8	0	0	0
+0797ce72	HI_1_13_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+0797ce72	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	2	0	0	0
+0797ce72	HI_1_13_0	b_pied	ordre+masque · NEW* DELTA+ · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+0797ce72	HI_1_13_0	b_pied	ordre+masque · NEW* DELTA+ · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+0797ce72	HI_1_13_0	b_pied	ordre+masque · NEW* DELTA+ · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+0797ce72	HI_1_13_0	b_pied	ordre+masque+vue C · DEL lu · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+0797ce72	HI_1_13_0	b_pied	ordre+masque+vue C · DEL lu · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+0797ce72	HI_1_13_0	b_pied	sain · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+0797ce72	HI_1_13_0	b_pied	sain · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	5	0	0	0
+0797ce72	HI_1_13_0	b_pied	sain · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+0797ce72	HI_1_13_0	b_pied	sain · NEW* DELTA+ · dernier DELTA · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+0797ce72	HI_1_13_0	b_pied	sain · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	8	0	0	0
+0797ce72	HI_1_13_0	b_pied	vue C · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+0797ce72	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : false	54	0	0	0
+0797ce72	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	1	0	0	0
+0797ce72	HI_1_13_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : false	3	0	0	0
+0797ce72	HI_1_13_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : true	1	0	0	0
+0797ce72	HI_1_13_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : false	9	0	0	0
+0797ce72	HI_1_13_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	6	0	0	0
+0797ce72	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	5328	0	0	0
+0797ce72	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	17	0	0	0
+0797ce72	HI_1_13_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	18	127	125	0
+0797ce72	HI_1_13_0	p6_temoin	P6-ferme · plus de 10 paquets avant · temoin	4	0	0	0
+0797ce72	HI_1_13_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	10	117	117	0
+0797ce72	HI_1_13_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · rejete	13	121	121	0
+0797ce72	HI_1_13_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · temoin	1	0	0	0
+0797ce72	HI_1_13_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · rejete	10	117	117	0
+0797ce72	HI_1_13_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	8	10	8	0
+0797ce72	HI_1_13_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · temoin	4	0	0	0
+0797ce72	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	4	132	132	0
+0797ce72	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	13	193	193	0
+0797ce72	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · temoin	1	0	0	0
+0797ce72	HI_1_13_0	p6_temoin	cibles non liees avec temoin	1978	0	0	0
+084a804d	HI_1_10_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	1	1	1	0
+084a804d	HI_1_10_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	110	2541	2538	3
+084a804d	HI_1_10_0	a_liaisons	NEW* DELTA+ · X realloue sous une autre generation · Q ne se ferme pas depuis l occurrence	16	282	281	1
+084a804d	HI_1_10_0	a_liaisons	NEW* DELTA+ · X vivant au bloc du chunk · Q ne se ferme pas depuis l occurrence	7	43	41	2
+084a804d	HI_1_10_0	a_liaisons_classe_x	X aucune allocation	1	1	1	0
+084a804d	HI_1_10_0	a_liaisons_classe_x	X naissance non lue	110	2541	2538	3
+084a804d	HI_1_10_0	a_liaisons_classe_x	X realloue sous une autre generation	16	282	281	1
+084a804d	HI_1_10_0	a_liaisons_classe_x	X vivant au bloc du chunk	7	43	41	2
+084a804d	HI_1_10_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	134	2867	2861	6
+084a804d	HI_1_10_0	a_liaisons_lu	NEW* DELTA+	134	2867	2861	6
+084a804d	HI_1_10_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	134	2867	2861	6
+084a804d	HI_1_10_0	a_occurrences_iii_rejet	rejete · ferme contredit	1	0	0	0
+084a804d	HI_1_10_0	a_occurrences_iii_rejet	rejete · non ferme	233	0	0	0
+084a804d	HI_1_10_0	a_occurrences_iii_rejet	temoin · non ferme	11	0	0	0
+084a804d	HI_1_10_0	b_pied	masque · DEL lu · dernier DEL · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+084a804d	HI_1_10_0	b_pied	masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+084a804d	HI_1_10_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	25	0	0	0
+084a804d	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	2	0	0	0
+084a804d	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	3	0	0	0
+084a804d	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	22	0	0	0
+084a804d	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	80	0	0	0
+084a804d	HI_1_10_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	9	0	0	0
+084a804d	HI_1_10_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+084a804d	HI_1_10_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	2	0	0	0
+084a804d	HI_1_10_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+084a804d	HI_1_10_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · libere avant le chunk	3	0	0	0
+084a804d	HI_1_10_0	b_pied	ordre+masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+084a804d	HI_1_10_0	b_pied	ordre+masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	4	0	0	0
+084a804d	HI_1_10_0	b_pied	ordre+masque · DEL lu · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+084a804d	HI_1_10_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+084a804d	HI_1_10_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+084a804d	HI_1_10_0	b_pied	ordre+masque · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+084a804d	HI_1_10_0	b_pied	sain · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+084a804d	HI_1_10_0	b_pied	sain · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	9	0	0	0
+084a804d	HI_1_10_0	b_pied	sain · DEL lu · dernier DEL · reste > 64 · eid nul : false · realloue sous une autre generation	1	0	0	0
+084a804d	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+084a804d	HI_1_10_0	b_pied	vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+084a804d	HI_1_10_0	b_pied	vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · libere avant le chunk	1	0	0	0
+084a804d	HI_1_10_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	4	0	0	0
+084a804d	HI_1_10_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : true	5	0	0	0
+084a804d	HI_1_10_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	26	0	0	0
+084a804d	HI_1_10_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	22991	0	0	0
+084a804d	HI_1_10_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	142	0	0	0
+084a804d	HI_1_10_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	3	100	99	0
+084a804d	HI_1_10_0	p6_temoin	P6-ferme · plus de 10 paquets avant · temoin	1	0	0	0
+084a804d	HI_1_10_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	2	99	99	0
+084a804d	HI_1_10_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · temoin	1	0	0	0
+084a804d	HI_1_10_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · temoin	1	0	0	0
+084a804d	HI_1_10_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	3	100	99	0
+084a804d	HI_1_10_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · temoin	1	0	0	0
+084a804d	HI_1_10_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	13	342	342	0
+084a804d	HI_1_10_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	61	1516	1516	0
+084a804d	HI_1_10_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · temoin	1	0	0	0
+084a804d	HI_1_10_0	p6_temoin	cibles non liees avec temoin	493	0	0	0
+111fa685	HI_1_10_0	a_liaisons	DEL lu · X aucune allocation · Q ne se ferme pas depuis l occurrence	2	2	2	0
+111fa685	HI_1_10_0	a_liaisons	NEW seulement · X aucune allocation · Q ne se ferme pas depuis l occurrence	3	43	43	0
+111fa685	HI_1_10_0	a_liaisons	NEW seulement · X non mesurable · Q ne se ferme pas depuis l occurrence	1	2	2	0
+111fa685	HI_1_10_0	a_liaisons	NEW seulement · X realloue sous une autre generation · Q ne se ferme pas depuis l occurrence	1	21	21	0
+111fa685	HI_1_10_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	5	5	3	0
+111fa685	HI_1_10_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	52	911	910	1
+111fa685	HI_1_10_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q se ferme, contredit, depuis l occurrence	1	4	4	0
+111fa685	HI_1_10_0	a_liaisons	NEW* DELTA+ · X non mesurable · Q ne se ferme pas depuis l occurrence	2	18	18	0
+111fa685	HI_1_10_0	a_liaisons	NEW* DELTA+ · X realloue sous une autre generation · Q ne se ferme pas depuis l occurrence	7	67	67	0
+111fa685	HI_1_10_0	a_liaisons_classe_x	X aucune allocation	10	50	48	0
+111fa685	HI_1_10_0	a_liaisons_classe_x	X naissance non lue	53	915	914	1
+111fa685	HI_1_10_0	a_liaisons_classe_x	X non mesurable	3	20	20	0
+111fa685	HI_1_10_0	a_liaisons_classe_x	X realloue sous une autre generation	8	88	88	0
+111fa685	HI_1_10_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	73	1069	1066	1
+111fa685	HI_1_10_0	a_liaisons_ferme	Q se ferme, contredit, depuis l occurrence	1	4	4	0
+111fa685	HI_1_10_0	a_liaisons_lu	DEL lu	2	2	2	0
+111fa685	HI_1_10_0	a_liaisons_lu	NEW seulement	5	66	66	0
+111fa685	HI_1_10_0	a_liaisons_lu	NEW* DELTA+	67	1005	1002	1
+111fa685	HI_1_10_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	74	1073	1070	1
+111fa685	HI_1_10_0	a_occurrences_iii_rejet	rejete · ferme contredit	1	0	0	0
+111fa685	HI_1_10_0	a_occurrences_iii_rejet	rejete · non ferme	153	0	0	0
+111fa685	HI_1_10_0	a_occurrences_iii_rejet	temoin · non ferme	15	0	0	0
+111fa685	HI_1_10_0	b_pied	masque · DEL lu · dernier DEL · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+111fa685	HI_1_10_0	b_pied	masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	3	0	0	0
+111fa685	HI_1_10_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	7	0	0	0
+111fa685	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	6	0	0	0
+111fa685	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	25	0	0	0
+111fa685	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · non mesurable	1	0	0	0
+111fa685	HI_1_10_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+111fa685	HI_1_10_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	3	0	0	0
+111fa685	HI_1_10_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+111fa685	HI_1_10_0	b_pied	ordre+masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+111fa685	HI_1_10_0	b_pied	ordre+masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+111fa685	HI_1_10_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+111fa685	HI_1_10_0	b_pied	sain · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	5	0	0	0
+111fa685	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+111fa685	HI_1_10_0	b_pied	sain · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+111fa685	HI_1_10_0	b_pied	vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+111fa685	HI_1_10_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	1	0	0	0
+111fa685	HI_1_10_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	11	0	0	0
+111fa685	HI_1_10_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	10646	0	0	0
+111fa685	HI_1_10_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	48	0	0	0
+111fa685	HI_1_10_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	3	6	5	0
+111fa685	HI_1_10_0	p6_temoin	P6-ferme · plus de 10 paquets avant · temoin	4	0	0	0
+111fa685	HI_1_10_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	2	5	4	0
+111fa685	HI_1_10_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · rejete	1	1	0	0
+111fa685	HI_1_10_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · temoin	1	0	0	0
+111fa685	HI_1_10_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	2	5	5	0
+111fa685	HI_1_10_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · temoin	3	0	0	0
+111fa685	HI_1_10_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	3	84	84	0
+111fa685	HI_1_10_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	27	470	469	0
+111fa685	HI_1_10_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · temoin	1	0	0	0
+111fa685	HI_1_10_0	p6_temoin	cibles non liees avec temoin	796	0	0	0
+11de8353	HI_1_9_0	a_liaisons	DEL lu · X aucune allocation · Q ne se ferme pas depuis l occurrence	1	1	1	0
+11de8353	HI_1_9_0	a_liaisons	NEW seulement · X non mesurable · Q ne se ferme pas depuis l occurrence	1	1	1	0
+11de8353	HI_1_9_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	4	5	4	0
+11de8353	HI_1_9_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	49	891	887	4
+11de8353	HI_1_9_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q se ferme, contredit, depuis l occurrence	1	1	0	1
+11de8353	HI_1_9_0	a_liaisons	NEW* DELTA+ · X non mesurable · Q ne se ferme pas depuis l occurrence	3	100	100	0
+11de8353	HI_1_9_0	a_liaisons	NEW* DELTA+ · X realloue sous une autre generation · Q ne se ferme pas depuis l occurrence	15	184	183	0
+11de8353	HI_1_9_0	a_liaisons_classe_x	X aucune allocation	5	6	5	0
+11de8353	HI_1_9_0	a_liaisons_classe_x	X naissance non lue	50	892	887	5
+11de8353	HI_1_9_0	a_liaisons_classe_x	X non mesurable	4	101	101	0
+11de8353	HI_1_9_0	a_liaisons_classe_x	X realloue sous une autre generation	15	184	183	0
+11de8353	HI_1_9_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	73	1182	1176	4
+11de8353	HI_1_9_0	a_liaisons_ferme	Q se ferme, contredit, depuis l occurrence	1	1	0	1
+11de8353	HI_1_9_0	a_liaisons_lu	DEL lu	1	1	1	0
+11de8353	HI_1_9_0	a_liaisons_lu	NEW seulement	1	1	1	0
+11de8353	HI_1_9_0	a_liaisons_lu	NEW* DELTA+	72	1181	1174	5
+11de8353	HI_1_9_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	74	1183	1176	5
+11de8353	HI_1_9_0	a_occurrences_iii_rejet	rejete · ferme contredit	1	0	0	0
+11de8353	HI_1_9_0	a_occurrences_iii_rejet	rejete · ferme sain	1	0	0	0
+11de8353	HI_1_9_0	a_occurrences_iii_rejet	rejete · non ferme	136	0	0	0
+11de8353	HI_1_9_0	a_occurrences_iii_rejet	temoin · ferme sain	1	0	0	0
+11de8353	HI_1_9_0	a_occurrences_iii_rejet	temoin · non ferme	6	0	0	0
+11de8353	HI_1_9_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	4	0	0	0
+11de8353	HI_1_9_0	b_pied	masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	2	0	0	0
+11de8353	HI_1_9_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	6	0	0	0
+11de8353	HI_1_9_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	33	0	0	0
+11de8353	HI_1_9_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · realloue sous une autre generation	1	0	0	0
+11de8353	HI_1_9_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · vivant au bloc du chunk	1	0	0	0
+11de8353	HI_1_9_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	3	0	0	0
+11de8353	HI_1_9_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+11de8353	HI_1_9_0	b_pied	sain · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+11de8353	HI_1_9_0	b_pied	sain · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+11de8353	HI_1_9_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	2	0	0	0
+11de8353	HI_1_9_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	7	0	0	0
+11de8353	HI_1_9_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	9735	0	0	0
+11de8353	HI_1_9_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	44	0	0	0
+11de8353	HI_1_9_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	4	16	16	0
+11de8353	HI_1_9_0	p6_temoin	P6-ferme · plus de 10 paquets avant · temoin	6	0	0	0
+11de8353	HI_1_9_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	2	14	14	0
+11de8353	HI_1_9_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · rejete	1	2	2	0
+11de8353	HI_1_9_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · temoin	1	0	0	0
+11de8353	HI_1_9_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	4	16	16	0
+11de8353	HI_1_9_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · temoin	6	0	0	0
+11de8353	HI_1_9_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	6	69	69	0
+11de8353	HI_1_9_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	27	739	739	0
+11de8353	HI_1_9_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · temoin	1	0	0	0
+11de8353	HI_1_9_0	p6_temoin	cibles non liees avec temoin	712	0	0	0
+1c4c63c2	HI_1_10_0	a_liaisons	DEL lu · X aucune allocation · Q ne se ferme pas depuis l occurrence	1	4	0	4
+1c4c63c2	HI_1_10_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	2	2	1	0
+1c4c63c2	HI_1_10_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	83	2782	2744	38
+1c4c63c2	HI_1_10_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q se ferme, contredit, depuis l occurrence	9	11	0	11
+1c4c63c2	HI_1_10_0	a_liaisons	NEW* DELTA+ · X vivant au bloc du chunk · Q ne se ferme pas depuis l occurrence	29	595	484	111
+1c4c63c2	HI_1_10_0	a_liaisons	NEW* DELTA+ · X vivant au bloc du chunk · Q se ferme, contredit, depuis l occurrence	3	3	0	3
+1c4c63c2	HI_1_10_0	a_liaisons_classe_x	X aucune allocation	3	6	1	4
+1c4c63c2	HI_1_10_0	a_liaisons_classe_x	X naissance non lue	92	2793	2744	49
+1c4c63c2	HI_1_10_0	a_liaisons_classe_x	X vivant au bloc du chunk	32	598	484	114
+1c4c63c2	HI_1_10_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	115	3383	3229	153
+1c4c63c2	HI_1_10_0	a_liaisons_ferme	Q se ferme, contredit, depuis l occurrence	12	14	0	14
+1c4c63c2	HI_1_10_0	a_liaisons_lu	DEL lu	1	4	0	4
+1c4c63c2	HI_1_10_0	a_liaisons_lu	NEW* DELTA+	126	3393	3229	163
+1c4c63c2	HI_1_10_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	126	3393	3229	163
+1c4c63c2	HI_1_10_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : true	1	4	0	4
+1c4c63c2	HI_1_10_0	a_occurrences_iii_rejet	rejete · ferme contredit	13	0	0	0
+1c4c63c2	HI_1_10_0	a_occurrences_iii_rejet	rejete · non ferme	245	0	0	0
+1c4c63c2	HI_1_10_0	a_occurrences_iii_rejet	temoin · ferme sain	1	0	0	0
+1c4c63c2	HI_1_10_0	a_occurrences_iii_rejet	temoin · non ferme	72	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	8	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · libere avant le chunk	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	177	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · libere avant le chunk	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · realloue sous une autre generation	3	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	25	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · realloue sous une autre generation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	12	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	130	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · libere avant le chunk	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · non mesurable	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · realloue sous une autre generation	4	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1835	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · non mesurable	25	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · realloue sous une autre generation	71	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste 17-64 · eid nul : false · aucune allocation	3	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste <= 8 · eid nul : false · aucune allocation	25	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste <= 8 · eid nul : false · realloue sous une autre generation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	81	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · realloue sous une autre generation	4	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque+vue C · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	10	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	4	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	3	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · libere avant le chunk	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · realloue sous une autre generation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	21	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · libere avant le chunk	8	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · vivant au bloc du chunk	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	masque+vue C · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	4	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre · DEL lu · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	6	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	38	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · DEL lu · dernier DELTA · reste 17-64 · eid nul : false · aucune allocation	2	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · DEL lu · dernier DELTA · reste <= 8 · eid nul : false · aucune allocation	4	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · DEL lu · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	10	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · DEL lu · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	2	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · DEL lu · dernier NEW · reste > 64 · eid nul : false · aucune allocation	18	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	4	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · realloue sous une autre generation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	13	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · libere avant le chunk	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	35	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · realloue sous une autre generation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · NEW* DELTA+ · dernier DELTA · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	7	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque · NEW* DELTA+ · dernier NEW · reste > 64 · eid nul : false · aucune allocation	11	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque+vue C · DEL lu · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque+vue C · DEL lu · dernier NEW · reste > 64 · eid nul : false · libere avant le chunk	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	7	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	ordre+masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · libere avant le chunk	3	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	5	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	29	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · DEL lu · dernier DEL · reste > 64 · eid nul : false · non mesurable	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	374	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · non mesurable	8	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · realloue sous une autre generation	4	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	126	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · libere avant le chunk	2	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · naissance non lue	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · realloue sous une autre generation	7	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	197	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste > 64 · eid nul : false · libere avant le chunk	8	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste > 64 · eid nul : false · naissance non lue	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · NEW seulement · dernier NEW · reste > 64 · eid nul : false · realloue sous une autre generation	6	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	sain · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	vue C · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	vue C · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	vue C · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · non mesurable	1	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	9	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · libere avant le chunk	102	0	0	0
+1c4c63c2	HI_1_10_0	b_pied	vue C · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+1c4c63c2	HI_1_10_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : false	56	0	0	0
+1c4c63c2	HI_1_10_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	428	0	0	0
+1c4c63c2	HI_1_10_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : true	19	0	0	0
+1c4c63c2	HI_1_10_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	339	0	0	0
+1c4c63c2	HI_1_10_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	45735	0	0	0
+1c4c63c2	HI_1_10_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	2733	0	0	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme · 4-10 paquets avant · rejete	1	31	31	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme · 4-10 paquets avant · temoin	2	0	0	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	16	122	109	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme · plus de 10 paquets avant · temoin	18	0	0	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme+alloc · 4-10 paquets avant · rejete	1	31	31	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	6	108	108	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · temoin	3	0	0	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · rejete	6	22	19	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · temoin	1	0	0	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme-(i)(ii) · 4-10 paquets avant · rejete	1	31	31	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme-(i)(ii) · 4-10 paquets avant · temoin	2	0	0	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · rejete	7	33	31	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · temoin	8	0	0	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme-(iii') · 4-10 paquets avant · rejete	1	31	31	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme-(iii') · 4-10 paquets avant · temoin	1	0	0	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	10	90	79	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · temoin	15	0	0	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	10	598	598	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	76	3603	3600	0
+1c4c63c2	HI_1_10_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · temoin	44	0	0	0
+1c4c63c2	HI_1_10_0	p6_temoin	cibles non liees avec temoin	2186	0	0	0
+396cfc92	HI_1_13_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	8	512	512	0
+396cfc92	HI_1_13_0	a_liaisons_classe_x	X naissance non lue	8	512	512	0
+396cfc92	HI_1_13_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	8	512	512	0
+396cfc92	HI_1_13_0	a_liaisons_lu	NEW* DELTA+	8	512	512	0
+396cfc92	HI_1_13_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	8	512	512	0
+396cfc92	HI_1_13_0	a_occurrences_iii_rejet	rejete · non ferme	18	0	0	0
+396cfc92	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+396cfc92	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+396cfc92	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+396cfc92	HI_1_13_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+396cfc92	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : false	123	0	0	0
+396cfc92	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	1	0	0	0
+396cfc92	HI_1_13_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	1	0	0	0
+396cfc92	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	8228	0	0	0
+396cfc92	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	2	0	0	0
+396cfc92	HI_1_13_0	p6_temoin	P6-ferme · 4-10 paquets avant · rejete	1	1	1	0
+396cfc92	HI_1_13_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	3	483	483	0
+396cfc92	HI_1_13_0	p6_temoin	P6-ferme+alloc · 4-10 paquets avant · rejete	1	1	1	0
+396cfc92	HI_1_13_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	3	483	483	0
+396cfc92	HI_1_13_0	p6_temoin	P6-ferme+suivant · 4-10 paquets avant · rejete	1	1	1	0
+396cfc92	HI_1_13_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · rejete	3	483	483	0
+396cfc92	HI_1_13_0	p6_temoin	P6-ferme-(i)(ii) · 4-10 paquets avant · rejete	1	1	1	0
+396cfc92	HI_1_13_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · rejete	3	483	483	0
+396cfc92	HI_1_13_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	1	5	5	0
+396cfc92	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	6	143	143	0
+396cfc92	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	10	1010	1010	0
+396cfc92	HI_1_13_0	p6_temoin	cibles non liees avec temoin	46	0	0	0
+4f77afc1	HI_1_13_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	45	1277	1275	2
+4f77afc1	HI_1_13_0	a_liaisons	NEW* DELTA+ · X realloue sous une autre generation · Q ne se ferme pas depuis l occurrence	10	132	132	0
+4f77afc1	HI_1_13_0	a_liaisons	NEW* DELTA+ · X vivant au bloc du chunk · Q ne se ferme pas depuis l occurrence	8	192	192	0
+4f77afc1	HI_1_13_0	a_liaisons_classe_x	X naissance non lue	45	1277	1275	2
+4f77afc1	HI_1_13_0	a_liaisons_classe_x	X realloue sous une autre generation	10	132	132	0
+4f77afc1	HI_1_13_0	a_liaisons_classe_x	X vivant au bloc du chunk	8	192	192	0
+4f77afc1	HI_1_13_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	63	1601	1599	2
+4f77afc1	HI_1_13_0	a_liaisons_lu	NEW* DELTA+	63	1601	1599	2
+4f77afc1	HI_1_13_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	63	1601	1599	2
+4f77afc1	HI_1_13_0	a_occurrences_iii_rejet	rejete · ferme contredit	1	0	0	0
+4f77afc1	HI_1_13_0	a_occurrences_iii_rejet	rejete · non ferme	117	0	0	0
+4f77afc1	HI_1_13_0	a_occurrences_iii_rejet	temoin · non ferme	9	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · DEL lu · dernier DEL · reste 17-64 · eid nul : false · aucune allocation	2	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · DEL lu · dernier DEL · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	4	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	25	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	2	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	18	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · realloue sous une autre generation	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	155	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · libere avant le chunk	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · realloue sous une autre generation	2	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste <= 8 · eid nul : false · aucune allocation	4	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	4	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque+vue C · DEL lu · dernier DEL · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · libere avant le chunk	2	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · realloue sous une autre generation	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	masque+vue C · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	ordre · DEL lu · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	ordre+masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+4f77afc1	HI_1_13_0	b_pied	ordre+masque · DEL lu · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	3	0	0	0
+4f77afc1	HI_1_13_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	7	0	0	0
+4f77afc1	HI_1_13_0	b_pied	ordre+masque · NEW* DELTA+ · dernier NEW · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+4f77afc1	HI_1_13_0	b_pied	sain · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	sain · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	7	0	0	0
+4f77afc1	HI_1_13_0	b_pied	sain · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	56	0	0	0
+4f77afc1	HI_1_13_0	b_pied	sain · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	62	0	0	0
+4f77afc1	HI_1_13_0	b_pied	sain · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · realloue sous une autre generation	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	sain · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	24	0	0	0
+4f77afc1	HI_1_13_0	b_pied	sain · NEW seulement · dernier NEW · reste > 64 · eid nul : false · libere avant le chunk	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	sain · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+4f77afc1	HI_1_13_0	b_pied	vue C · DEL lu · dernier DEL · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+4f77afc1	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	60	0	0	0
+4f77afc1	HI_1_13_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : true	4	0	0	0
+4f77afc1	HI_1_13_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	92	0	0	0
+4f77afc1	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	9494	0	0	0
+4f77afc1	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	240	0	0	0
+4f77afc1	HI_1_13_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	3	3	0	0
+4f77afc1	HI_1_13_0	p6_temoin	P6-ferme · plus de 10 paquets avant · temoin	3	0	0	0
+4f77afc1	HI_1_13_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · temoin	1	0	0	0
+4f77afc1	HI_1_13_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · temoin	2	0	0	0
+4f77afc1	HI_1_13_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	3	3	0	0
+4f77afc1	HI_1_13_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · temoin	1	0	0	0
+4f77afc1	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	17	378	378	0
+4f77afc1	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	57	1615	1615	0
+4f77afc1	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · temoin	1	0	0	0
+4f77afc1	HI_1_13_0	p6_temoin	cibles non liees avec temoin	443	0	0	0
+50247b26	version-31	a_liaisons	NEW seulement · X aucune allocation · Q ne se ferme pas depuis l occurrence	1	1	1	0
+50247b26	version-31	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	2	67	67	0
+50247b26	version-31	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	63	1597	1597	0
+50247b26	version-31	a_liaisons	NEW* DELTA+ · X non mesurable · Q ne se ferme pas depuis l occurrence	3	20	20	0
+50247b26	version-31	a_liaisons_classe_x	X aucune allocation	3	68	68	0
+50247b26	version-31	a_liaisons_classe_x	X naissance non lue	63	1597	1597	0
+50247b26	version-31	a_liaisons_classe_x	X non mesurable	3	20	20	0
+50247b26	version-31	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	69	1685	1685	0
+50247b26	version-31	a_liaisons_lu	NEW seulement	1	1	1	0
+50247b26	version-31	a_liaisons_lu	NEW* DELTA+	68	1684	1684	0
+50247b26	version-31	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	69	1685	1685	0
+50247b26	version-31	a_occurrences_iii_rejet	rejete · non ferme	113	0	0	0
+50247b26	version-31	a_occurrences_iii_rejet	temoin · non ferme	5	0	0	0
+50247b26	version-31	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	2	0	0	0
+50247b26	version-31	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · libere avant le chunk	1	0	0	0
+50247b26	version-31	b_pied	masque+vue C · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+50247b26	version-31	b_pied	sain · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+50247b26	version-31	b_pied	sain · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	3	0	0	0
+50247b26	version-31	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	1	0	0	0
+50247b26	version-31	b_rejets_reste_x_ferme	reste 9-16 · ferme : true	1	0	0	0
+50247b26	version-31	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	6	0	0	0
+50247b26	version-31	b_rejets_reste_x_ferme	reste > 64 · ferme : false	10700	0	0	0
+50247b26	version-31	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	6	43	43	0
+50247b26	version-31	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	42	1342	1342	0
+50247b26	version-31	p6_temoin	cibles non liees avec temoin	173	0	0	0
+51ebbc0f	HI_1_13_0	a_liaisons	NEW* DELTA+ · X NEW lu dans le chunk · Q ne se ferme pas depuis l occurrence	2	12	12	0
+51ebbc0f	HI_1_13_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	2	15	15	0
+51ebbc0f	HI_1_13_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	91	2550	2550	0
+51ebbc0f	HI_1_13_0	a_liaisons	NEW* DELTA+ · X non mesurable · Q ne se ferme pas depuis l occurrence	6	90	90	0
+51ebbc0f	HI_1_13_0	a_liaisons	rien lu · X naissance non lue · Q ne se ferme pas depuis l occurrence	20	385	385	0
+51ebbc0f	HI_1_13_0	a_liaisons_classe_x	X NEW lu dans le chunk	2	12	12	0
+51ebbc0f	HI_1_13_0	a_liaisons_classe_x	X aucune allocation	2	15	15	0
+51ebbc0f	HI_1_13_0	a_liaisons_classe_x	X naissance non lue	111	2935	2935	0
+51ebbc0f	HI_1_13_0	a_liaisons_classe_x	X non mesurable	6	90	90	0
+51ebbc0f	HI_1_13_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	121	3052	3052	0
+51ebbc0f	HI_1_13_0	a_liaisons_lu	NEW* DELTA+	101	2667	2667	0
+51ebbc0f	HI_1_13_0	a_liaisons_lu	rien lu	20	385	385	0
+51ebbc0f	HI_1_13_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	121	3052	3052	0
+51ebbc0f	HI_1_13_0	a_occurrences_iii_rejet	rejete · non ferme	148	0	0	0
+51ebbc0f	HI_1_13_0	a_occurrences_iii_rejet	temoin · non ferme	3	0	0	0
+51ebbc0f	HI_1_13_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	3	0	0	0
+51ebbc0f	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	2	0	0	0
+51ebbc0f	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	6	0	0	0
+51ebbc0f	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · non mesurable	1	0	0	0
+51ebbc0f	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	6	0	0	0
+51ebbc0f	HI_1_13_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+51ebbc0f	HI_1_13_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+51ebbc0f	HI_1_13_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+51ebbc0f	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : false	1	0	0	0
+51ebbc0f	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	2	0	0	0
+51ebbc0f	HI_1_13_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : true	1	0	0	0
+51ebbc0f	HI_1_13_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	7	0	0	0
+51ebbc0f	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	16650	0	0	0
+51ebbc0f	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	11	0	0	0
+51ebbc0f	HI_1_13_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	5	35	35	0
+51ebbc0f	HI_1_13_0	p6_temoin	P6-ferme · plus de 10 paquets avant · temoin	1	0	0	0
+51ebbc0f	HI_1_13_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	1	26	26	0
+51ebbc0f	HI_1_13_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · rejete	4	9	9	0
+51ebbc0f	HI_1_13_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · rejete	3	29	29	0
+51ebbc0f	HI_1_13_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · temoin	1	0	0	0
+51ebbc0f	HI_1_13_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	4	9	9	0
+51ebbc0f	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	3	82	82	0
+51ebbc0f	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	61	1582	1582	0
+51ebbc0f	HI_1_13_0	p6_temoin	cibles non liees avec temoin	318	0	0	0
+60ae07c4	HI_1_8_0	a_liaisons	DEL lu · X aucune allocation · Q ne se ferme pas depuis l occurrence	2	119	119	0
+60ae07c4	HI_1_8_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	41	81	70	0
+60ae07c4	HI_1_8_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q se ferme, contredit, depuis l occurrence	3	4	2	0
+60ae07c4	HI_1_8_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q se ferme, sain, depuis l occurrence	1	1	1	0
+60ae07c4	HI_1_8_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	45	2414	2414	0
+60ae07c4	HI_1_8_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q se ferme, sain, depuis l occurrence	2	189	189	0
+60ae07c4	HI_1_8_0	a_liaisons	NEW* DELTA+ · X realloue sous une autre generation · Q ne se ferme pas depuis l occurrence	3	84	84	0
+60ae07c4	HI_1_8_0	a_liaisons	NEW* DELTA+ · X vivant au bloc du chunk · Q ne se ferme pas depuis l occurrence	1	34	34	0
+60ae07c4	HI_1_8_0	a_liaisons_classe_x	X aucune allocation	47	205	192	0
+60ae07c4	HI_1_8_0	a_liaisons_classe_x	X naissance non lue	47	2603	2603	0
+60ae07c4	HI_1_8_0	a_liaisons_classe_x	X realloue sous une autre generation	3	84	84	0
+60ae07c4	HI_1_8_0	a_liaisons_classe_x	X vivant au bloc du chunk	1	34	34	0
+60ae07c4	HI_1_8_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	92	2732	2721	0
+60ae07c4	HI_1_8_0	a_liaisons_ferme	Q se ferme, contredit, depuis l occurrence	3	4	2	0
+60ae07c4	HI_1_8_0	a_liaisons_ferme	Q se ferme, sain, depuis l occurrence	3	190	190	0
+60ae07c4	HI_1_8_0	a_liaisons_lu	DEL lu	2	119	119	0
+60ae07c4	HI_1_8_0	a_liaisons_lu	NEW* DELTA+	96	2807	2794	0
+60ae07c4	HI_1_8_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	98	2926	2913	0
+60ae07c4	HI_1_8_0	a_occurrences_iii_rejet	rejete · ferme contredit	4	0	0	0
+60ae07c4	HI_1_8_0	a_occurrences_iii_rejet	rejete · ferme sain	3	0	0	0
+60ae07c4	HI_1_8_0	a_occurrences_iii_rejet	rejete · non ferme	159	0	0	0
+60ae07c4	HI_1_8_0	a_occurrences_iii_rejet	temoin · non ferme	2	0	0	0
+60ae07c4	HI_1_8_0	b_pied	masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	3	0	0	0
+60ae07c4	HI_1_8_0	b_pied	masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	masque · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	3	0	0	0
+60ae07c4	HI_1_8_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	12	0	0	0
+60ae07c4	HI_1_8_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	20	0	0	0
+60ae07c4	HI_1_8_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	2	0	0	0
+60ae07c4	HI_1_8_0	b_pied	ordre+masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	2	0	0	0
+60ae07c4	HI_1_8_0	b_pied	ordre+masque · DEL lu · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	ordre+masque · DEL lu · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	ordre+masque · DEL lu · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	ordre+masque · DEL lu · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	2	0	0	0
+60ae07c4	HI_1_8_0	b_pied	ordre+masque · DEL lu · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	ordre+masque · NEW* DELTA+ · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	6	0	0	0
+60ae07c4	HI_1_8_0	b_pied	ordre+masque · NEW* DELTA+ · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	6	0	0	0
+60ae07c4	HI_1_8_0	b_pied	ordre+masque · NEW* DELTA+ · dernier NEW · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+60ae07c4	HI_1_8_0	b_pied	ordre+vue C · NEW* DELTA+ · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	sain · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	3	0	0	0
+60ae07c4	HI_1_8_0	b_pied	sain · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+60ae07c4	HI_1_8_0	b_pied	sain · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	sain · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	sain · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+60ae07c4	HI_1_8_0	b_pied	sain · NEW* DELTA+ · dernier DELTA · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	sain · NEW* DELTA+ · dernier DELTA · reste <= 8 · eid nul : false · aucune allocation	17	0	0	0
+60ae07c4	HI_1_8_0	b_pied	vue C · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	vue C · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+60ae07c4	HI_1_8_0	b_pied	vue C · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+60ae07c4	HI_1_8_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : false	132	0	0	0
+60ae07c4	HI_1_8_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	3	0	0	0
+60ae07c4	HI_1_8_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : false	19	0	0	0
+60ae07c4	HI_1_8_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : true	16	0	0	0
+60ae07c4	HI_1_8_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : false	3	0	0	0
+60ae07c4	HI_1_8_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	47	0	0	0
+60ae07c4	HI_1_8_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	29745	0	0	0
+60ae07c4	HI_1_8_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	32	0	0	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-ferme · 4-10 paquets avant · rejete	1	67	67	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	23	932	924	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-ferme · plus de 10 paquets avant · temoin	5	0	0	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-ferme+alloc · 4-10 paquets avant · rejete	1	67	67	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	18	923	923	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · temoin	1	0	0	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · rejete	1	38	38	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · rejete	2	189	189	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · temoin	1	0	0	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-ferme-(iii') · 4-10 paquets avant · rejete	1	67	67	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	22	917	909	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · temoin	4	0	0	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	5	367	367	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	66	3928	3927	0
+60ae07c4	HI_1_8_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · temoin	3	0	0	0
+60ae07c4	HI_1_8_0	p6_temoin	cibles non liees avec temoin	1721	0	0	0
+a349fea8	version-33	a_liaisons	NEW seulement · X aucune allocation · Q ne se ferme pas depuis l occurrence	3	3	2	0
+a349fea8	version-33	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	2	35	35	0
+a349fea8	version-33	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	87	1934	1934	0
+a349fea8	version-33	a_liaisons	NEW* DELTA+ · X realloue sous une autre generation · Q ne se ferme pas depuis l occurrence	6	203	203	0
+a349fea8	version-33	a_liaisons	NEW* DELTA+ · X vivant au bloc du chunk · Q ne se ferme pas depuis l occurrence	2	280	280	0
+a349fea8	version-33	a_liaisons_classe_x	X aucune allocation	5	38	37	0
+a349fea8	version-33	a_liaisons_classe_x	X naissance non lue	87	1934	1934	0
+a349fea8	version-33	a_liaisons_classe_x	X realloue sous une autre generation	6	203	203	0
+a349fea8	version-33	a_liaisons_classe_x	X vivant au bloc du chunk	2	280	280	0
+a349fea8	version-33	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	100	2455	2454	0
+a349fea8	version-33	a_liaisons_lu	NEW seulement	3	3	2	0
+a349fea8	version-33	a_liaisons_lu	NEW* DELTA+	97	2452	2452	0
+a349fea8	version-33	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	100	2455	2454	0
+a349fea8	version-33	a_occurrences_iii_rejet	rejete · non ferme	167	0	0	0
+a349fea8	version-33	a_occurrences_iii_rejet	temoin · non ferme	22	0	0	0
+a349fea8	version-33	b_pied	masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+a349fea8	version-33	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	11	0	0	0
+a349fea8	version-33	b_pied	masque+vue C · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	2	0	0	0
+a349fea8	version-33	b_pied	ordre+masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	2	0	0	0
+a349fea8	version-33	b_pied	sain · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+a349fea8	version-33	b_pied	sain · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	5	0	0	0
+a349fea8	version-33	b_pied	sain · NEW* DELTA+ · dernier DELTA · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+a349fea8	version-33	b_rejets_reste_x_ferme	reste 17-64 · ferme : false	7	0	0	0
+a349fea8	version-33	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	3	0	0	0
+a349fea8	version-33	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	20	0	0	0
+a349fea8	version-33	b_rejets_reste_x_ferme	reste > 64 · ferme : false	19398	0	0	0
+a349fea8	version-33	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	6	74	74	0
+a349fea8	version-33	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · temoin	1	0	0	0
+a349fea8	version-33	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	63	1504	1503	0
+a349fea8	version-33	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · temoin	2	0	0	0
+a349fea8	version-33	p6_temoin	cibles non liees avec temoin	662	0	0	0
+a521164d	HI_1_4_1	a_liaisons	NEW seulement · X aucune allocation · Q ne se ferme pas depuis l occurrence	2	46	45	0
+a521164d	HI_1_4_1	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	6	109	109	0
+a521164d	HI_1_4_1	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	36	889	887	0
+a521164d	HI_1_4_1	a_liaisons	NEW* DELTA+ · X non mesurable · Q ne se ferme pas depuis l occurrence	1	72	72	0
+a521164d	HI_1_4_1	a_liaisons_classe_x	X aucune allocation	8	155	154	0
+a521164d	HI_1_4_1	a_liaisons_classe_x	X naissance non lue	36	889	887	0
+a521164d	HI_1_4_1	a_liaisons_classe_x	X non mesurable	1	72	72	0
+a521164d	HI_1_4_1	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	45	1116	1113	0
+a521164d	HI_1_4_1	a_liaisons_lu	NEW seulement	2	46	45	0
+a521164d	HI_1_4_1	a_liaisons_lu	NEW* DELTA+	43	1070	1068	0
+a521164d	HI_1_4_1	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	45	1116	1113	0
+a521164d	HI_1_4_1	a_occurrences_iii_rejet	rejete · non ferme	79	0	0	0
+a521164d	HI_1_4_1	a_occurrences_iii_rejet	temoin · non ferme	7	0	0	0
+a521164d	HI_1_4_1	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	2	0	0	0
+a521164d	HI_1_4_1	b_pied	vue C · NEW* DELTA+ · dernier DELTA · reste 17-64 · eid nul : false · aucune allocation	5	0	0	0
+a521164d	HI_1_4_1	b_rejets_reste_x_ferme	reste 17-64 · ferme : false	56	0	0	0
+a521164d	HI_1_4_1	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	5	0	0	0
+a521164d	HI_1_4_1	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	2	0	0	0
+a521164d	HI_1_4_1	b_rejets_reste_x_ferme	reste > 64 · ferme : false	6463	0	0	0
+a521164d	HI_1_4_1	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	1	1	1	0
+a521164d	HI_1_4_1	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	1	1	1	0
+a521164d	HI_1_4_1	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	1	1	1	0
+a521164d	HI_1_4_1	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	1	13	13	0
+a521164d	HI_1_4_1	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	18	260	260	0
+a521164d	HI_1_4_1	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · temoin	1	0	0	0
+a521164d	HI_1_4_1	p6_temoin	cibles non liees avec temoin	430	0	0	0
+bcb6d393	HI_1_12_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	8	587	587	0
+bcb6d393	HI_1_12_0	a_liaisons_classe_x	X naissance non lue	8	587	587	0
+bcb6d393	HI_1_12_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	8	587	587	0
+bcb6d393	HI_1_12_0	a_liaisons_lu	NEW* DELTA+	8	587	587	0
+bcb6d393	HI_1_12_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	8	587	587	0
+bcb6d393	HI_1_12_0	a_occurrences_iii_rejet	rejete · non ferme	12	0	0	0
+bcb6d393	HI_1_12_0	b_pied	masque · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+bcb6d393	HI_1_12_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+bcb6d393	HI_1_12_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : true	1	0	0	0
+bcb6d393	HI_1_12_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	1	0	0	0
+bcb6d393	HI_1_12_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	3268	0	0	0
+bcb6d393	HI_1_12_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	2	35	35	0
+bcb6d393	HI_1_12_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · temoin	1	0	0	0
+bcb6d393	HI_1_12_0	p6_temoin	cibles non liees avec temoin	200	0	0	0
+bf15f7ab	HI_1_13_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	2	2	1	0
+bf15f7ab	HI_1_13_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	2	240	240	0
+bf15f7ab	HI_1_13_0	a_liaisons	NEW* DELTA+ · X non mesurable · Q ne se ferme pas depuis l occurrence	3	4	4	0
+bf15f7ab	HI_1_13_0	a_liaisons_classe_x	X aucune allocation	2	2	1	0
+bf15f7ab	HI_1_13_0	a_liaisons_classe_x	X naissance non lue	2	240	240	0
+bf15f7ab	HI_1_13_0	a_liaisons_classe_x	X non mesurable	3	4	4	0
+bf15f7ab	HI_1_13_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	7	246	245	0
+bf15f7ab	HI_1_13_0	a_liaisons_lu	NEW* DELTA+	7	246	245	0
+bf15f7ab	HI_1_13_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	7	246	245	0
+bf15f7ab	HI_1_13_0	a_occurrences_iii_rejet	rejete · non ferme	12	0	0	0
+bf15f7ab	HI_1_13_0	b_pied	masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+bf15f7ab	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+bf15f7ab	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : false	1	0	0	0
+bf15f7ab	HI_1_13_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	1	0	0	0
+bf15f7ab	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	1756	0	0	0
+bf15f7ab	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	2	0	0	0
+bf15f7ab	HI_1_13_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	4	158	158	0
+bf15f7ab	HI_1_13_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	3	156	156	0
+bf15f7ab	HI_1_13_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · rejete	1	33	33	0
+bf15f7ab	HI_1_13_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · rejete	1	33	33	0
+bf15f7ab	HI_1_13_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	3	125	125	0
+bf15f7ab	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	1	127	127	0
+bf15f7ab	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	14	298	298	0
+bf15f7ab	HI_1_13_0	p6_temoin	cibles non liees avec temoin	205	0	0	0
+bfecd02b	HI_1_13_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	6	634	634	0
+bfecd02b	HI_1_13_0	a_liaisons_classe_x	X naissance non lue	6	634	634	0
+bfecd02b	HI_1_13_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	6	634	634	0
+bfecd02b	HI_1_13_0	a_liaisons_lu	NEW* DELTA+	6	634	634	0
+bfecd02b	HI_1_13_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	6	634	634	0
+bfecd02b	HI_1_13_0	a_occurrences_iii_rejet	rejete · non ferme	6	0	0	0
+bfecd02b	HI_1_13_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+bfecd02b	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	3	0	0	0
+bfecd02b	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+bfecd02b	HI_1_13_0	b_pied	ordre+masque · DEL lu · dernier DEL · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+bfecd02b	HI_1_13_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+bfecd02b	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : false	1	0	0	0
+bfecd02b	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	1	0	0	0
+bfecd02b	HI_1_13_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	3	0	0	0
+bfecd02b	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	3146	0	0	0
+bfecd02b	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	3	0	0	0
+bfecd02b	HI_1_13_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	2	45	45	0
+bfecd02b	HI_1_13_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	2	45	45	0
+bfecd02b	HI_1_13_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	2	45	45	0
+bfecd02b	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	2	102	102	0
+bfecd02b	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	3	46	46	0
+bfecd02b	HI_1_13_0	p6_temoin	cibles non liees avec temoin	16	0	0	0
+c75f33b8	HI_1_13_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	1	6	6	0
+c75f33b8	HI_1_13_0	a_liaisons_classe_x	X naissance non lue	1	6	6	0
+c75f33b8	HI_1_13_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	1	6	6	0
+c75f33b8	HI_1_13_0	a_liaisons_lu	NEW* DELTA+	1	6	6	0
+c75f33b8	HI_1_13_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	1	6	6	0
+c75f33b8	HI_1_13_0	a_occurrences_iii_rejet	rejete · non ferme	5	0	0	0
+c75f33b8	HI_1_13_0	b_pied	masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+c75f33b8	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	4	0	0	0
+c75f33b8	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+c75f33b8	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	5	0	0	0
+c75f33b8	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	6	0	0	0
+c75f33b8	HI_1_13_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste <= 8 · eid nul : false · aucune allocation	4	0	0	0
+c75f33b8	HI_1_13_0	b_pied	ordre+masque · DEL lu · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+c75f33b8	HI_1_13_0	b_pied	sain · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+c75f33b8	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	4	0	0	0
+c75f33b8	HI_1_13_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : true	1	0	0	0
+c75f33b8	HI_1_13_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	12	0	0	0
+c75f33b8	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	2294	0	0	0
+c75f33b8	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	6	0	0	0
+c75f33b8	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	13	541	541	0
+c75f33b8	HI_1_13_0	p6_temoin	cibles non liees avec temoin	51	0	0	0
+d9781168	HI_1_13_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	18	936	935	1
+d9781168	HI_1_13_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q se ferme, contredit, depuis l occurrence	2	83	83	0
+d9781168	HI_1_13_0	a_liaisons_classe_x	X naissance non lue	20	1019	1018	1
+d9781168	HI_1_13_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	18	936	935	1
+d9781168	HI_1_13_0	a_liaisons_ferme	Q se ferme, contredit, depuis l occurrence	2	83	83	0
+d9781168	HI_1_13_0	a_liaisons_lu	NEW* DELTA+	20	1019	1018	1
+d9781168	HI_1_13_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	20	1019	1018	1
+d9781168	HI_1_13_0	a_occurrences_iii_rejet	rejete · ferme contredit	2	0	0	0
+d9781168	HI_1_13_0	a_occurrences_iii_rejet	rejete · non ferme	30	0	0	0
+d9781168	HI_1_13_0	b_pied	masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	3	0	0	0
+d9781168	HI_1_13_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+d9781168	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	7	0	0	0
+d9781168	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	3	0	0	0
+d9781168	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	36	0	0	0
+d9781168	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	31	0	0	0
+d9781168	HI_1_13_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste <= 8 · eid nul : false · aucune allocation	4	0	0	0
+d9781168	HI_1_13_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+d9781168	HI_1_13_0	b_pied	ordre+masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+d9781168	HI_1_13_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+d9781168	HI_1_13_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+d9781168	HI_1_13_0	b_pied	sain · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+d9781168	HI_1_13_0	b_pied	sain · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+d9781168	HI_1_13_0	b_pied	sain · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	2	0	0	0
+d9781168	HI_1_13_0	b_pied	vue C · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+d9781168	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : false	4	0	0	0
+d9781168	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	8	0	0	0
+d9781168	HI_1_13_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : true	4	0	0	0
+d9781168	HI_1_13_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	46	0	0	0
+d9781168	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	11057	0	0	0
+d9781168	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	37	0	0	0
+d9781168	HI_1_13_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	2	37	36	0
+d9781168	HI_1_13_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	1	36	36	0
+d9781168	HI_1_13_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · rejete	1	1	0	0
+d9781168	HI_1_13_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · rejete	2	37	36	0
+d9781168	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	2	263	263	0
+d9781168	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	39	2243	2243	0
+d9781168	HI_1_13_0	p6_temoin	cibles non liees avec temoin	116	0	0	0
+e5adf7b2	HI_1_11_0	a_liaisons	DEL lu · X aucune allocation · Q ne se ferme pas depuis l occurrence	2	2	2	0
+e5adf7b2	HI_1_11_0	a_liaisons	NEW seulement · X aucune allocation · Q ne se ferme pas depuis l occurrence	4	40	40	0
+e5adf7b2	HI_1_11_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	6	47	47	0
+e5adf7b2	HI_1_11_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	68	1595	1594	1
+e5adf7b2	HI_1_11_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q se ferme, contredit, depuis l occurrence	1	1	0	1
+e5adf7b2	HI_1_11_0	a_liaisons	NEW* DELTA+ · X realloue sous une autre generation · Q ne se ferme pas depuis l occurrence	14	172	172	0
+e5adf7b2	HI_1_11_0	a_liaisons	NEW* DELTA+ · X vivant au bloc du chunk · Q ne se ferme pas depuis l occurrence	1	18	18	0
+e5adf7b2	HI_1_11_0	a_liaisons_classe_x	X aucune allocation	12	89	89	0
+e5adf7b2	HI_1_11_0	a_liaisons_classe_x	X naissance non lue	69	1596	1594	2
+e5adf7b2	HI_1_11_0	a_liaisons_classe_x	X realloue sous une autre generation	14	172	172	0
+e5adf7b2	HI_1_11_0	a_liaisons_classe_x	X vivant au bloc du chunk	1	18	18	0
+e5adf7b2	HI_1_11_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	95	1874	1873	1
+e5adf7b2	HI_1_11_0	a_liaisons_ferme	Q se ferme, contredit, depuis l occurrence	1	1	0	1
+e5adf7b2	HI_1_11_0	a_liaisons_lu	DEL lu	2	2	2	0
+e5adf7b2	HI_1_11_0	a_liaisons_lu	NEW seulement	4	40	40	0
+e5adf7b2	HI_1_11_0	a_liaisons_lu	NEW* DELTA+	90	1833	1831	2
+e5adf7b2	HI_1_11_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	96	1875	1873	2
+e5adf7b2	HI_1_11_0	a_occurrences_iii_rejet	rejete · ferme contredit	3	0	0	0
+e5adf7b2	HI_1_11_0	a_occurrences_iii_rejet	rejete · non ferme	163	0	0	0
+e5adf7b2	HI_1_11_0	a_occurrences_iii_rejet	temoin · non ferme	13	0	0	0
+e5adf7b2	HI_1_11_0	b_pied	masque · DEL lu · dernier DEL · reste <= 8 · eid nul : false · aucune allocation	5	0	0	0
+e5adf7b2	HI_1_11_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	5	0	0	0
+e5adf7b2	HI_1_11_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	5	0	0	0
+e5adf7b2	HI_1_11_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	37	0	0	0
+e5adf7b2	HI_1_11_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · realloue sous une autre generation	1	0	0	0
+e5adf7b2	HI_1_11_0	b_pied	masque · NEW* DELTA+ · dernier DELTA · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+e5adf7b2	HI_1_11_0	b_pied	masque+vue C · NEW seulement · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+e5adf7b2	HI_1_11_0	b_pied	ordre+masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+e5adf7b2	HI_1_11_0	b_pied	ordre+masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+e5adf7b2	HI_1_11_0	b_pied	sain · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+e5adf7b2	HI_1_11_0	b_pied	vue C · NEW* DELTA+ · dernier DELTA · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+e5adf7b2	HI_1_11_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : false	54	0	0	0
+e5adf7b2	HI_1_11_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	1	0	0	0
+e5adf7b2	HI_1_11_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : true	1	0	0	0
+e5adf7b2	HI_1_11_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	10	0	0	0
+e5adf7b2	HI_1_11_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	10114	0	0	0
+e5adf7b2	HI_1_11_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	49	0	0	0
+e5adf7b2	HI_1_11_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	7	36	36	0
+e5adf7b2	HI_1_11_0	p6_temoin	P6-ferme · plus de 10 paquets avant · temoin	3	0	0	0
+e5adf7b2	HI_1_11_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	1	29	29	0
+e5adf7b2	HI_1_11_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · temoin	1	0	0	0
+e5adf7b2	HI_1_11_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · rejete	2	31	31	0
+e5adf7b2	HI_1_11_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · temoin	2	0	0	0
+e5adf7b2	HI_1_11_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · temoin	3	0	0	0
+e5adf7b2	HI_1_11_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	7	36	36	0
+e5adf7b2	HI_1_11_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · temoin	1	0	0	0
+e5adf7b2	HI_1_11_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	5	106	106	0
+e5adf7b2	HI_1_11_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	20	426	426	0
+e5adf7b2	HI_1_11_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · temoin	1	0	0	0
+e5adf7b2	HI_1_11_0	p6_temoin	cibles non liees avec temoin	796	0	0	0
+f75e7053	HI_1_13_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	1	104	104	0
+f75e7053	HI_1_13_0	a_liaisons	NEW* DELTA+ · X non mesurable · Q ne se ferme pas depuis l occurrence	5	118	118	0
+f75e7053	HI_1_13_0	a_liaisons_classe_x	X naissance non lue	1	104	104	0
+f75e7053	HI_1_13_0	a_liaisons_classe_x	X non mesurable	5	118	118	0
+f75e7053	HI_1_13_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	6	222	222	0
+f75e7053	HI_1_13_0	a_liaisons_lu	NEW* DELTA+	6	222	222	0
+f75e7053	HI_1_13_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	6	222	222	0
+f75e7053	HI_1_13_0	a_occurrences_iii_rejet	rejete · non ferme	7	0	0	0
+f75e7053	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste 17-64 · eid nul : false · aucune allocation	1	0	0	0
+f75e7053	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	1	0	0	0
+f75e7053	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : false	1	0	0	0
+f75e7053	HI_1_13_0	b_rejets_reste_x_ferme	reste 17-64 · ferme : true	1	0	0	0
+f75e7053	HI_1_13_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	1	0	0	0
+f75e7053	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	4287	0	0	0
+f75e7053	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	4	112	112	0
+f75e7053	HI_1_13_0	p6_temoin	cibles non liees avec temoin	5	0	0	0
+fb1a1a72	HI_1_13_0	a_liaisons	DEL lu · X aucune allocation · Q ne se ferme pas depuis l occurrence	1	3	3	0
+fb1a1a72	HI_1_13_0	a_liaisons	NEW* DELTA+ · X NEW lu dans le chunk · Q ne se ferme pas depuis l occurrence	1	7	7	0
+fb1a1a72	HI_1_13_0	a_liaisons	NEW* DELTA+ · X aucune allocation · Q ne se ferme pas depuis l occurrence	4	33	25	0
+fb1a1a72	HI_1_13_0	a_liaisons	NEW* DELTA+ · X naissance non lue · Q ne se ferme pas depuis l occurrence	123	1955	1955	0
+fb1a1a72	HI_1_13_0	a_liaisons	NEW* DELTA+ · X non mesurable · Q ne se ferme pas depuis l occurrence	6	21	21	0
+fb1a1a72	HI_1_13_0	a_liaisons	NEW* DELTA+ · X realloue sous une autre generation · Q ne se ferme pas depuis l occurrence	28	431	431	0
+fb1a1a72	HI_1_13_0	a_liaisons	NEW* DELTA+ · X vivant au bloc du chunk · Q ne se ferme pas depuis l occurrence	1	17	17	0
+fb1a1a72	HI_1_13_0	a_liaisons_classe_x	X NEW lu dans le chunk	1	7	7	0
+fb1a1a72	HI_1_13_0	a_liaisons_classe_x	X aucune allocation	5	36	28	0
+fb1a1a72	HI_1_13_0	a_liaisons_classe_x	X naissance non lue	123	1955	1955	0
+fb1a1a72	HI_1_13_0	a_liaisons_classe_x	X non mesurable	6	21	21	0
+fb1a1a72	HI_1_13_0	a_liaisons_classe_x	X realloue sous une autre generation	28	431	431	0
+fb1a1a72	HI_1_13_0	a_liaisons_classe_x	X vivant au bloc du chunk	1	17	17	0
+fb1a1a72	HI_1_13_0	a_liaisons_ferme	Q ne se ferme pas depuis l occurrence	164	2467	2459	0
+fb1a1a72	HI_1_13_0	a_liaisons_lu	DEL lu	1	3	3	0
+fb1a1a72	HI_1_13_0	a_liaisons_lu	NEW* DELTA+	163	2464	2456	0
+fb1a1a72	HI_1_13_0	a_liaisons_q_ferme_en_ref	Q ferme en reference : false	164	2467	2459	0
+fb1a1a72	HI_1_13_0	a_occurrences_iii_rejet	rejete · non ferme	187	0	0	0
+fb1a1a72	HI_1_13_0	a_occurrences_iii_rejet	temoin · non ferme	2	0	0	0
+fb1a1a72	HI_1_13_0	b_pied	masque · DEL lu · dernier DEL · reste > 64 · eid nul : false · aucune allocation	1	0	0	0
+fb1a1a72	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	7	0	0	0
+fb1a1a72	HI_1_13_0	b_pied	masque · NEW seulement · dernier NEW · reste > 64 · eid nul : false · aucune allocation	2	0	0	0
+fb1a1a72	HI_1_13_0	b_pied	ordre+masque · DEL lu · dernier NEW · reste 9-16 · eid nul : false · aucune allocation	1	0	0	0
+fb1a1a72	HI_1_13_0	b_pied	sain · NEW seulement · dernier NEW · reste <= 8 · eid nul : false · aucune allocation	3	0	0	0
+fb1a1a72	HI_1_13_0	b_rejets_reste_x_ferme	reste 9-16 · ferme : true	1	0	0	0
+fb1a1a72	HI_1_13_0	b_rejets_reste_x_ferme	reste <= 8 · ferme : true	10	0	0	0
+fb1a1a72	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : false	23535	0	0	0
+fb1a1a72	HI_1_13_0	b_rejets_reste_x_ferme	reste > 64 · ferme : true	3	0	0	0
+fb1a1a72	HI_1_13_0	p6_temoin	P6-ferme · 4-10 paquets avant · rejete	2	39	39	0
+fb1a1a72	HI_1_13_0	p6_temoin	P6-ferme · plus de 10 paquets avant · rejete	12	204	202	0
+fb1a1a72	HI_1_13_0	p6_temoin	P6-ferme+alloc · 4-10 paquets avant · rejete	2	39	39	0
+fb1a1a72	HI_1_13_0	p6_temoin	P6-ferme+alloc · plus de 10 paquets avant · rejete	10	196	196	0
+fb1a1a72	HI_1_13_0	p6_temoin	P6-ferme+suivant · plus de 10 paquets avant · rejete	7	106	104	0
+fb1a1a72	HI_1_13_0	p6_temoin	P6-ferme-(i)(ii) · plus de 10 paquets avant · rejete	1	25	25	0
+fb1a1a72	HI_1_13_0	p6_temoin	P6-ferme-(iii') · 4-10 paquets avant · rejete	2	39	39	0
+fb1a1a72	HI_1_13_0	p6_temoin	P6-ferme-(iii') · plus de 10 paquets avant · rejete	12	204	202	0
+fb1a1a72	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · 4-10 paquets avant · rejete	4	67	67	0
+fb1a1a72	HI_1_13_0	p6_temoin	P6-propre+alloc+suivant · plus de 10 paquets avant · rejete	89	2319	2319	0
+fb1a1a72	HI_1_13_0	p6_temoin	cibles non liees avec temoin	454	0	0	0

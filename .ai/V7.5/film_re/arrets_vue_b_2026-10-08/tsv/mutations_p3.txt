@@ -1,0 +1,3 @@
+Q1	ROUGE	condition de preuve inversee
+Q2	ROUGE	NEW prouve non lie
+Q3	ROUGE	liste des suspendus non videe

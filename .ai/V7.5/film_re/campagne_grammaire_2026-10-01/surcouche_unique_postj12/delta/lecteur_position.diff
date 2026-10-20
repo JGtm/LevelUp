@@ -1,0 +1,66 @@
+--- a/apps/go-api/internal/games/halo_infinite/film/internal/grammar/lecteur_position.go (post-J12, df228c24c)
++++ b/surcouche_unique_postj12/lecteur_position.go
+@@ -141,7 +141,11 @@
+ 		pos.idx = int(br.ReadBits(t.indexW)) // DAT_144632be0
+ 	}
+ 	br.obs.compterIndexAbsolu(pos.idx)
++	bis2NoterIndex(br, pos.idx)
+ 	pos.w = largeursDeLaLigne(t, pos.idx, niveau)
++	if w, ok := bis2LargeursDeLIndex(br, pos.idx, niveau); ok {
++		pos.w = w
++	}
+ 	for axe := range pos.q {
+ 		pos.q[axe] = br.ReadBits(pos.w[axe]) // FUN_140cc5128 axe
+ 	}
+@@ -214,3 +218,51 @@
+ 	}
+ 	br.seedAbsolute(kind, v)
+ }
++
++// ---- SURCOUCHE DE RECHERCHE (mesures bis 2, 2026-10-01) -------------------------------------
++// Ce fichier n est PAS le fichier de production : c est une copie que `go test -overlay`
++// substitue a `lecteur_position.go` pour la seule duree d une mesure (T4-C3, point 25 de la
++// critique de completude). Ajouts : le releve de chaque index de plage LU par [lireE524Sur]
++// (composant, archetype, index, region du profil), et, sur demande, la lecture des largeurs de la
++// LIGNE DE L INDEX LU (`DAT_1445ccbe0 + (idx*0x20 + NIVEAU)*0xc` chez le jeu) quand les bornes de
++// sa plage sont connues. Sans `bis2C3`, la lecture est celle de la production.
++
++// bis2EvenementIndex : une lecture d index de plage.
++type bis2EvenementIndex struct {
++	composant string
++	ti        uint32
++	idx       int
++	region    uint32
++}
++
++// bis2EtatC3 : le releve et la variante.
++type bis2EtatC3 struct {
++	// evenements : les index lus depuis la derniere remise a zero (par paquet).
++	evenements []bis2EvenementIndex
++	// parIndex : lire les largeurs de la ligne de l index quand ses bornes sont connues.
++	parIndex bool
++	// bornes : par index de plage, les bornes {min, max} par axe (donnee de carte).
++	bornes map[int][3][2]float32
++}
++
++// bis2C3 : nil -> aucun releve, lecture de production.
++var bis2C3 *bis2EtatC3
++
++func bis2NoterIndex(br *Lecteur, idx int) {
++	if bis2C3 == nil {
++		return
++	}
++	bis2C3.evenements = append(bis2C3.evenements, bis2EvenementIndex{composant: bis2ComposantCourant,
++		ti: bis2TICourant, idx: idx, region: br.worldObjectPrecision().Region})
++}
++
++func bis2LargeursDeLIndex(br *Lecteur, idx, niveau int) ([3]uint, bool) {
++	if bis2C3 == nil || !bis2C3.parIndex || idx < 0 || uint32(idx) == br.worldObjectPrecision().Region {
++		return [3]uint{}, false
++	}
++	b, ok := bis2C3.bornes[idx]
++	if !ok {
++		return [3]uint{}, false
++	}
++	return profile.LargeursAxeDuNiveau(b, niveau), true
++}

@@ -29,20 +29,20 @@ package killcollector
 
 import (
 	"context"
-	"encoding/binary"
 	"log/slog"
-	"sort"
+	"math/bits"
+	"slices"
 	"strconv"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/weaponv3"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/weapons/filmshell"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
 
 // WeaponShotsDecoderRev — la version du producteur de tirs, ecrite sur CHAQUE ligne.
 //
-// Elle est DISTINCTE de [KillSourceDecoderRev] bien que les deux passes soient simultanees :
+// Elle est DISTINCTE de [facts.Rev] bien que les deux passes soient simultanees :
 // les deux lectures n ont ni le meme code, ni le meme espace d identifiants (filmshell 64 bits
 // ici, tag jpt! 32 bits la-bas), et un changement de l une ne demande pas de redecoder l autre.
 // Les confondre couterait un redecodage complet a chaque changement de l un des deux.
@@ -72,27 +72,30 @@ func zeroEstimator(int) float64 { return 0 }
 //
 // `chunks` sont les chunks REPLICATION_DATA DECOMPRESSES ; `shotsFired` la reference de l API
 // par xuid (absente = la porte refusera, elle ne suppose pas).
+//
+// `fb` recoit les replis de la resolution des indices (collisions, premieres occurrences
+// discordantes) — le compteur de la passe du film (lot J8.7) ; nil ne compte rien.
 func BuildWeaponShotsBatch(
-	matchID string, chunks [][]byte, rosterXUIDs []string, shotsFired map[string]int,
+	matchID string, chunks [][]byte, rosterXUIDs []string, shotsFired map[string]int, fb *decfilm.Compteur,
 ) persist.WeaponShotsBatch {
-	piToXUID := resolvePlayerIndices(rosterXUIDs, chunks)
+	piToXUID := resolvePlayerIndices(rosterXUIDs, chunks, fb)
 
 	// Comptage (indice de replication x arme). L indice est celui du FILM, jamais un rang de
 	// base : c est la seule quantite qui ne depende d aucune resolution.
 	counts := map[int]map[uint64]int{}
 	for _, data := range chunks {
-		for _, ev := range analysis.ScanFireEventsB5(data, zeroEstimator) {
-			pi := ev.PlayerIndex5
+		for _, ev := range decfilm.ScanFireEventsB5(data, zeroEstimator) {
+			pi := ev.FilmIndex5
 			if pi < 0 || pi > maxReplicationIndex {
 				continue
 			}
-			id := binary.BigEndian.Uint64(ev.WeaponBytes[:])
-			// Les sentinelles grenade/melee/vehicule d `analysis` ne sont PAS des identifiants
+			id := filmshell.IDFromBytes(ev.WeaponBytes)
+			// Les sentinelles grenade/melee/vehicule de `filmshell` ne sont PAS des identifiants
 			// filmshell : les ecrire fabriquerait une jointure fausse avec
 			// `metadata.weapon_labels`. Le persister les refuse — mais il refuse la PASSE
 			// ENTIERE, alors qu ici une sentinelle isolee ne doit couter que sa propre ligne.
 			// On lit la liste chez son proprietaire plutot que d en recopier la borne.
-			if analysis.SentinelIDs[id] {
+			if filmshell.SentinelIDs[id] {
 				continue
 			}
 			if counts[pi] == nil {
@@ -119,7 +122,10 @@ const maxReplicationIndex = 31
 //
 // Un xuid non resolu n a PAS de ligne : mieux vaut un joueur absent de la table qu un joueur
 // dont les tirs sont attribues a un autre.
-func resolvePlayerIndices(rosterXUIDs []string, chunks [][]byte) map[int]string {
+//
+// `fb` recoit ses deux replis (lot J8.7) : les indices en COLLISION jetes, et les occurrences
+// suivantes d un motif qui DISCORDENT de la premiere, retenue sans controle. nil ne compte rien.
+func resolvePlayerIndices(rosterXUIDs []string, chunks [][]byte, fb *decfilm.Compteur) map[int]string {
 	motifs := make(map[uint64]string, len(rosterXUIDs))
 	for _, s := range rosterXUIDs {
 		v, err := strconv.ParseUint(s, 10, 64)
@@ -129,7 +135,10 @@ func resolvePlayerIndices(rosterXUIDs []string, chunks [][]byte) map[int]string 
 		motifs[motifDuXUID(v)] = s
 	}
 	out := map[int]string{}
-	for x, pi := range chercherMotifs(motifs, chunks) {
+	trouves, discordances := chercherMotifs(motifs, chunks)
+	fb.DeclencheN(decfilm.NomPremiereOccurrenceSansConcordance, discordances)
+	collisions := 0
+	for x, pi := range trouves {
 		if pi < 0 || pi > maxReplicationIndex {
 			continue
 		}
@@ -137,22 +146,26 @@ func resolvePlayerIndices(rosterXUIDs []string, chunks [][]byte) map[int]string 
 		// les tirs d un joueur sous le nom d un autre, ce qui est pire que de n en publier aucun.
 		if _, deja := out[pi]; deja {
 			out[pi] = ""
+			collisions++
 			continue
 		}
 		out[pi] = x
 	}
+	fb.DeclencheN(decfilm.NomIndiceEnCollisionJete, collisions)
 	return out
 }
 
 // motifDuXUID : le xuid encode en 8 octets LITTLE-ENDIAN puis relu en BIG-ENDIAN. C est sous
-// cette forme qu il apparait dans le flux de replication (methode `weaponv3.ResolveXuidToPI`).
-func motifDuXUID(xuid uint64) uint64 {
-	var le [8]byte
-	binary.LittleEndian.PutUint64(le[:], xuid)
-	return binary.BigEndian.Uint64(le[:])
-}
+// cette forme qu il apparait dans le flux de replication (methode `decfilm.ResolveXuidToPI`).
+//
+// C EST UN RENVERSEMENT D OCTETS, et il s ecrit comme tel depuis le lot 2.5.e : ecrire un mot
+// dans un sens puis le relire dans l autre EST `bits.ReverseBytes64`, et c est deja
+// l orthographe de `weaponv3.xuidTargetPattern`, le second (et dernier) site du depot. Il ne
+// touche AUCUN octet de film — il transforme un scalaire — donc il n avait rien a faire avec
+// `encoding/binary`, que le ratchet des lectures brutes comptait ici comme une porte aux octets.
+func motifDuXUID(xuid uint64) uint64 { return bits.ReverseBytes64(xuid) }
 
-// chercherMotifs : LA MEME RECHERCHE QUE `weaponv3.ResolveBest`, EN UNE SEULE PASSE.
+// chercherMotifs : LA MEME RECHERCHE QUE `decfilm.ResolveBest`, EN UNE SEULE PASSE.
 //
 // POURQUOI ELLE EXISTE — LA VERSION NAIVE REND LE BACKFILL IMPRATICABLE. `ResolveBest` balaie
 // le film UNE FOIS PAR XUID, et chaque position y coute une relecture de 64 bits : sur un roster
@@ -167,10 +180,14 @@ func motifDuXUID(xuid uint64) uint64 {
 // L EQUIVALENCE EST EXACTE, ET ELLE EST TESTEE : chunks dans l ordre, positions croissantes,
 // premiere occurrence gagnante — les trois proprietes de `ResolveBest`. Le test
 // `TestRechercheDeMotifsEquivautALaVersionNaive` confronte les deux implementations.
-func chercherMotifs(motifs map[uint64]string, chunks [][]byte) map[string]int {
+//
+// LE SECOND RENDU COMPTE LES OCCURRENCES SUIVANTES QUI DISCORDENT de la premiere (un autre indice
+// lu avant le meme motif), vues avant l arret de la recherche : la premiere gagne SANS controle
+// de concordance (`repli_premiere_occurrence_sans_concordance`, lot J8.7). La valeur rendue ne change pas.
+func chercherMotifs(motifs map[uint64]string, chunks [][]byte) (map[string]int, int) {
 	out := make(map[string]int, len(motifs))
 	if len(motifs) == 0 {
-		return out
+		return out, 0
 	}
 	// Prefiltre : les 16 bits de poids fort de chaque motif. Une position dont les 16 premiers
 	// bits ne sont ceux d aucun motif ne peut pas etre un motif — le test coute un acces tableau.
@@ -179,13 +196,14 @@ func chercherMotifs(motifs map[uint64]string, chunks [][]byte) map[string]int {
 		prefiltre[m>>48] = true
 	}
 
+	discordances := 0
 	for _, data := range chunks {
 		if len(out) == len(motifs) {
 			break // tout est resolu : le reste du film n apprendrait rien
 		}
-		chercherDansChunk(motifs, &prefiltre, data, out)
+		chercherDansChunk(motifs, &prefiltre, data, out, &discordances)
 	}
-	return out
+	return out, discordances
 }
 
 // chercherDansChunk : la fenetre glissante sur UN chunk.
@@ -193,11 +211,11 @@ func chercherMotifs(motifs map[uint64]string, chunks [][]byte) map[string]int {
 // `pos` designe le bit qui vient d entrer dans la fenetre ; le motif commence donc a
 // `pos-63`, et l indice se lit sur les 5 bits qui PRECEDENT — d ou la garde `pos >= 68`.
 func chercherDansChunk(
-	motifs map[uint64]string, prefiltre *[1 << 16]bool, data []byte, out map[string]int,
+	motifs map[uint64]string, prefiltre *[1 << 16]bool, data []byte, out map[string]int, discordances *int,
 ) {
 	var fenetre uint64
 	total := len(data) * 8
-	for pos := 0; pos < total; pos++ {
+	for pos := range total {
 		fenetre = fenetre<<1 | uint64((data[pos>>3]>>uint(7-(pos&7)))&1)
 		if pos < 63 || !prefiltre[fenetre>>48] {
 			continue
@@ -206,11 +224,14 @@ func chercherDansChunk(
 		if !ok {
 			continue
 		}
-		if _, deja := out[xuid]; deja {
+		debut := pos - 63
+		if premier, deja := out[xuid]; deja {
+			if debut >= decfilm.PIBits && lireIndiceAvant(data, debut) != premier {
+				*discordances++
+			}
 			continue // premiere occurrence gagnante, comme `ResolveBest`
 		}
-		debut := pos - 63
-		if debut < weaponv3.PIBits {
+		if debut < decfilm.PIBits {
 			continue // pas assez de bits AVANT le motif pour porter un indice
 		}
 		out[xuid] = lireIndiceAvant(data, debut)
@@ -223,7 +244,7 @@ func chercherDansChunk(
 // lireIndiceAvant : les 5 bits qui precedent immediatement le motif, MSB-first.
 func lireIndiceAvant(data []byte, debutMotif int) int {
 	v := 0
-	for i := debutMotif - weaponv3.PIBits; i < debutMotif; i++ {
+	for i := debutMotif - decfilm.PIBits; i < debutMotif; i++ {
 		v = v<<1 | int((data[i>>3]>>uint(7-(i&7)))&1)
 	}
 	return v
@@ -266,7 +287,7 @@ func sortedWeaponIDs(byWeapon map[uint64]int) []uint64 {
 	for id := range byWeapon {
 		ids = append(ids, id)
 	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	slices.Sort(ids)
 	return ids
 }
 

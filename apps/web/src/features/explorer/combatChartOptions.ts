@@ -63,9 +63,9 @@ export function buildCombatFdaOption(
   const dps = series[0].datapoints
   const xs = dps.map((p) => fmtDayMonth(p.x))
 
-  const killsColor = resolveToken('chart-series-1')
-  const deathsColor = resolveToken('outcome-loss')
-  const assistsColor = resolveToken('chart-series-3')
+  const killsColor = resolveToken('stat-kills')
+  const deathsColor = resolveToken('stat-deaths')
+  const assistsColor = resolveToken('stat-assists')
   const fdaColor = resolveToken('perf-tier-2')
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)

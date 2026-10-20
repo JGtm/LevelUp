@@ -37,6 +37,10 @@ type mockRelationsRepo struct {
 	csrByXUID   map[string]*domain.RelationCSR
 	csrErr      error
 	gotCSRXUIDs []string
+
+	// Assistances échangées (colonne + cartes Binôme / Noyau dur).
+	assistsByXUID map[string]domain.RelationAssists
+	assistsErr    error
 }
 
 func (m *mockRelationsRepo) GetRelations(_ context.Context, scope []string) ([]domain.RelationRawRow, error) {
@@ -71,6 +75,10 @@ func (m *mockRelationsRepo) GetRelationRecentForm(_ context.Context, xuid string
 func (m *mockRelationsRepo) GetRelationEnemyRecentForm(_ context.Context, xuid string, _ []string, _ int) ([]string, error) {
 	m.gotTopNemesisXUID = xuid
 	return m.topNemesisForm, nil
+}
+
+func (m *mockRelationsRepo) GetRelationAssists(_ context.Context, _ []string) (map[string]domain.RelationAssists, error) {
+	return m.assistsByXUID, m.assistsErr
 }
 
 func (m *mockRelationsRepo) GetLatestCSR(_ context.Context, xuid string) (*domain.RelationCSR, error) {

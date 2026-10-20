@@ -5,7 +5,7 @@
 //   - la table est créée par la migration title-owned shared_create_match_commendations ;
 //   - la PK naturelle (match_id, xuid, commendation_id) est posée ;
 //   - INSERT OR IGNORE est ART-safe : un doublon est ignoré SANS muter le count
-//     existant ni DELETE/UPDATE (parité medals_earned, anti-régression #23046).
+//     existant ni DELETE/UPDATE (parité medals_earned, anti-régression #23645).
 package migrations
 
 import (

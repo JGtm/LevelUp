@@ -60,6 +60,7 @@ export const careerManifest = {
   "career.lusr.chain.btb": { fr: "Grande Équipe", en: "Big Team Battle" },
   "career.lusr.chain.chaos": { fr: "Chaos", en: "Chaos" },
   "career.lusr.chain.h5_arena": { fr: "Arène", en: "Arena" },
+  "career.lusr.chain.ranked": { fr: "Classé", en: "Ranked" },
   "career.lusr.group.arena": { fr: "Arène", en: "Arena" },
   "career.lusr.group.btb": { fr: "Grand combat", en: "Big Team Battle" },
   "career.lusr.group.fun": { fr: "Social", en: "Social" },

@@ -11,12 +11,21 @@
 import { describe, expect, it } from 'vitest'
 import {
   deriveSquadPending,
+  decideCompositionReanchor,
+  pickCompositionSessionsSource,
+  type CompositionReanchorInput,
+  type CompositionSessionsSource,
+} from './squadPending'
+import {
   reconcileSquadSessionLabels,
   stripSessionCountSuffix,
-  decideCompositionReanchor,
-  mergeSessionCounts,
-} from './squadPending'
-import type { FilterContextInput, SessionLabelEntry } from '@/lib/api/types'
+} from '@/lib/sessions/sessionLabels'
+import type {
+  CompositionSessionsResponse,
+  FilterContextInput,
+  SessionLabelEntry,
+  TeammatesPageResponse,
+} from '@/lib/api/types'
 
 function session(label: string): SessionLabelEntry {
   return { label, started_at: '2026-04-02T19:00:00Z', ended_at: '2026-04-02T23:45:00Z' }
@@ -298,41 +307,183 @@ describe('decideCompositionReanchor', () => {
   })
 })
 
-// Compteurs de sessions unifiés (le « 11/8/6/5 ») : le sélecteur doit afficher le
-// compte « commencés ensemble » servi par teammates, pas celui de /filters/resolve.
-describe('mergeSessionCounts', () => {
-  const fallback = [
-    { label: 'S1 (11)', match_count_filtered: 8 },
-    { label: 'S2 (4)', match_count_filtered: 4 },
+// Compteurs de sessions unifiés (le « 11/8/6/5 ») : couvert désormais par
+// `squadSessionCounts.test.ts` (ADR 0033, chantier A2 — mergeSessionCounts
+// absorbé dans `squadSessionCount`/`squadSessionShownCount`, une seule règle
+// de compte côté web, CLAUDE.md règle 6).
+
+// ── Lot perf L4b (2026-09-23) : d'où viennent les sessions de la composition ──────
+// La lecture légère (GET /pages/teammates/sessions) nourrit le sélecteur et l'ancrage ;
+// la réponse lourde n'est plus qu'un repli (endpoint léger en échec ou pas encore arrivé).
+
+function legere(
+  sessions: SessionLabelEntry[] | null,
+  latest: string,
+  etat: { isError?: boolean; isPlaceholderData?: boolean; isFetching?: boolean; isEnabled?: boolean } = {},
+) {
+  const data: CompositionSessionsResponse = { composition_sessions: sessions, latest_composition_session: latest }
+  return {
+    data,
+    isError: etat.isError ?? false,
+    isPlaceholderData: etat.isPlaceholderData ?? false,
+    isFetching: etat.isFetching ?? false,
+    isEnabled: etat.isEnabled ?? true,
+  }
+}
+
+function lourde(
+  champs: { composition?: SessionLabelEntry[]; squad?: SessionLabelEntry[]; latest?: string },
+  etat: { isPlaceholderData?: boolean } = {},
+) {
+  const data = {
+    options: [],
+    teammates: [],
+    total_matches: 0,
+    friends_count: 0,
+    session_labels: { solo: [], squad: champs.squad ?? [] },
+    composition_sessions: champs.composition,
+    latest_composition_session: champs.latest,
+  } as TeammatesPageResponse
+  return { data, isError: false, isPlaceholderData: etat.isPlaceholderData ?? false }
+}
+
+const RIEN = { data: undefined, isError: false, isPlaceholderData: false, isFetching: false, isEnabled: true }
+const ECHEC = { data: undefined, isError: true, isPlaceholderData: false, isFetching: false, isEnabled: true }
+
+describe('pickCompositionSessionsSource', () => {
+  const s2 = session('S2 (3)')
+  const s1 = session('S1 (2)')
+
+  it('la réponse légère fait foi dès qu elle a une donnée : sessions et dernière session', () => {
+    const src = pickCompositionSessionsSource(legere([s2, s1], 'S2 (3)'), lourde({ composition: [s1], latest: 'S1 (2)' }), true)
+    expect(src.origin).toBe('light')
+    expect(src.sessions.map((s) => s.label)).toEqual(['S2 (3)', 'S1 (2)'])
+    expect(src.latest).toBe('S2 (3)')
+    expect(src.fresh).toBe(true)
+  })
+
+  it('placeholder de la composition précédente : lu (sélection visible) mais PAS frais (aucun ancrage)', () => {
+    const src = pickCompositionSessionsSource(legere([s2], 'S2 (3)', { isPlaceholderData: true }), RIEN, true)
+    expect(src.origin).toBe('light')
+    expect(src.sessions).toHaveLength(1)
+    expect(src.fresh).toBe(false)
+  })
+
+  // Lot perf L9-web (2026-09-23, revue C) : au retour sur la page, le cache léger périmé
+  // (staleTime 5 min) est servi PENDANT sa revalidation ; décider l'ancrage dessus lançait
+  // une lourde sur l'ancienne dernière session, puis une seconde après la revalidation.
+  it('cache léger en cours de revalidation : lu (sélecteur visible) mais PAS frais (aucune décision)', () => {
+    const src = pickCompositionSessionsSource(legere([s2, s1], 'S2 (3)', { isFetching: true }), RIEN, true)
+    expect(src.origin).toBe('light')
+    expect(src.sessions.map((s) => s.label)).toEqual(['S2 (3)', 'S1 (2)'])
+    expect(src.fresh).toBe(false)
+    // Revalidation terminée : frais.
+    expect(pickCompositionSessionsSource(legere([s2, s1], 'S2 (3)'), RIEN, true).fresh).toBe(true)
+  })
+
+  it('cache léger d une requête FERMÉE (verrou de montage) : lu mais PAS frais — à l ouverture il se revalide', () => {
+    const src = pickCompositionSessionsSource(legere([s2, s1], 'S2 (3)', { isEnabled: false }), RIEN, true)
+    expect(src.origin).toBe('light')
+    expect(src.sessions).toHaveLength(2)
+    expect(src.fresh).toBe(false)
+  })
+
+  it('liste nulle (contrat Go) : aucune session', () => {
+    expect(pickCompositionSessionsSource(legere(null, ''), RIEN, true).sessions).toEqual([])
+  })
+
+  it('endpoint léger en échec : repli sur la réponse lourde, lue comme au lot L4a', () => {
+    const avec = pickCompositionSessionsSource(ECHEC, lourde({ composition: [s2], latest: 'S2 (3)' }), true)
+    expect(avec.origin).toBe('heavy')
+    expect(avec.sessions.map((s) => s.label)).toEqual(['S2 (3)'])
+    expect(avec.latest).toBe('S2 (3)')
+    expect(avec.fresh).toBe(true)
+    // Sans coéquipier, la réponse lourde se lit dans session_labels.squad (lecture L4a).
+    const sans = pickCompositionSessionsSource(ECHEC, lourde({ squad: [s1] }), false)
+    expect(sans.sessions.map((s) => s.label)).toEqual(['S1 (2)'])
+    expect(sans.latest).toBe('')
+  })
+
+  it('rien de lu : aucune session, rien de frais ; placeholder lourd : pas frais', () => {
+    const vide = pickCompositionSessionsSource(RIEN, RIEN, true)
+    expect(vide.sessions).toEqual([])
+    expect(vide.fresh).toBe(false)
+    const ancien = pickCompositionSessionsSource(RIEN, lourde({ composition: [s2] }, { isPlaceholderData: true }), true)
+    expect(ancien.fresh).toBe(false)
+  })
+})
+
+// Parité de la DÉCISION : quelle que soit la réponse qui porte les sessions (légère, ou
+// lourde en repli), les mêmes champs donnent la même entrée de decideCompositionReanchor,
+// donc la même action — sur les scénarios de `describe('decideCompositionReanchor')`.
+type EtatDAncrage = Omit<CompositionReanchorInput, 'latestCompositionSession' | 'compositionSessionLabels'>
+
+describe('decideCompositionReanchor — même décision depuis la réponse légère ou la lourde (L4b)', () => {
+  const scenarios: {
+    nom: string
+    labels: string[]
+    latest: string
+    etat: EtatDAncrage
+    attendu: ReturnType<typeof decideCompositionReanchor>
+  }[] = [
+    {
+      nom: 'composition jamais jouée ensemble + session pickée : clear',
+      labels: [],
+      latest: '',
+      etat: { hasTeammates: true, followLatest: true, pickedSessions: ['today (3)'], lastAnchoredLatestSession: '' },
+      attendu: { kind: 'clear' },
+    },
+    {
+      nom: 'session courante hors composition : snap',
+      labels: ['S_old (4)'],
+      latest: 'S_old (4)',
+      etat: { hasTeammates: true, followLatest: true, pickedSessions: ['today (3)'], lastAnchoredLatestSession: '' },
+      attendu: { kind: 'snap', label: 'S_old (4)' },
+    },
+    {
+      nom: 'atterrissage initial : snap',
+      labels: ['S_new (3)'],
+      latest: 'S_new (3)',
+      etat: { hasTeammates: true, followLatest: true, pickedSessions: [], lastAnchoredLatestSession: '' },
+      attendu: { kind: 'snap', label: 'S_new (3)' },
+    },
+    {
+      nom: 'sélection manuelle valide, dernière déjà ancrée : none',
+      labels: ['S_new (5)', 'S_old (3)'],
+      latest: 'S_new (5)',
+      etat: { hasTeammates: true, followLatest: false, pickedSessions: ['S_old (2)'], lastAnchoredLatestSession: 'S_new (5)' },
+      attendu: { kind: 'none' },
+    },
+    {
+      nom: 'nouvelle session jamais ancrée : snap',
+      labels: ['S_new (5)', 'S_old (2)'],
+      latest: 'S_new (5)',
+      etat: { hasTeammates: true, followLatest: false, pickedSessions: ['S_old (2)'], lastAnchoredLatestSession: 'S_old (2)' },
+      attendu: { kind: 'snap', label: 'S_new (5)' },
+    },
+    {
+      nom: 'déjà sur la dernière (suffixe grossi) : none',
+      labels: ['S_new (5)'],
+      latest: 'S_new (5)',
+      etat: { hasTeammates: true, followLatest: true, pickedSessions: ['S_new (3)'], lastAnchoredLatestSession: '' },
+      attendu: { kind: 'none' },
+    },
   ]
 
-  it('le compte « ensemble » de la composition prime sur celui de filters/resolve', () => {
-    const merged = mergeSessionCounts(fallback, [{ label: 'S1 (11)', match_count: 6 }])
-    expect(merged.get('S1 (11)')).toBe(6)
+  const entree = (src: CompositionSessionsSource, etat: EtatDAncrage): CompositionReanchorInput => ({
+    ...etat,
+    latestCompositionSession: src.latest,
+    compositionSessionLabels: src.sessions.map((s) => s.label),
   })
 
-  it('sessions non couvertes par la composition : repli sur filters/resolve', () => {
-    const merged = mergeSessionCounts(fallback, [{ label: 'S1 (11)', match_count: 6 }])
-    expect(merged.get('S2 (4)')).toBe(4)
-  })
-
-  it('réponse teammates pas encore arrivée → uniquement le repli', () => {
-    const merged = mergeSessionCounts(fallback, [])
-    expect(merged.get('S1 (11)')).toBe(8)
-    expect(merged.size).toBe(2)
-  })
-
-  it('match_count absent ou nul → on garde le repli (pas de session affichée à 0)', () => {
-    const merged = mergeSessionCounts(fallback, [
-      { label: 'S1 (11)' },
-      { label: 'S2 (4)', match_count: 0 },
-    ])
-    expect(merged.get('S1 (11)')).toBe(8)
-    expect(merged.get('S2 (4)')).toBe(4)
-  })
-
-  it('session connue de la composition seule (absente du repli) → exposée', () => {
-    const merged = mergeSessionCounts(fallback, [{ label: 'S3 (2)', match_count: 2 }])
-    expect(merged.get('S3 (2)')).toBe(2)
+  it.each(scenarios)('$nom', ({ labels, latest, etat, attendu }) => {
+    const sessions = labels.map(session)
+    const depuisLegere = pickCompositionSessionsSource(legere(sessions, latest), RIEN, etat.hasTeammates)
+    const depuisLourde = pickCompositionSessionsSource(ECHEC, lourde({ composition: sessions, latest }), etat.hasTeammates)
+    expect(depuisLegere.origin).toBe('light')
+    expect(depuisLourde.origin).toBe('heavy')
+    expect(entree(depuisLegere, etat)).toEqual(entree(depuisLourde, etat))
+    expect(decideCompositionReanchor(entree(depuisLegere, etat))).toEqual(attendu)
+    expect(decideCompositionReanchor(entree(depuisLourde, etat))).toEqual(attendu)
   })
 })

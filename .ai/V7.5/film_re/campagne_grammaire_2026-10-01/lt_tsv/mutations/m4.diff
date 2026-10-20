@@ -1,0 +1,4 @@
+167c167
+< 		return fin, ok && rec.Trace.MasqueNonEcrit == InvariantAucun
+---
+> 		return fin, ok && rec.Trace.MasqueNonEcrit != InvariantMasqueHorsArchetype

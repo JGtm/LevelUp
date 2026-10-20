@@ -1,0 +1,15 @@
+=== RUN   TestZZRevueJeuOptions
+    3 maj=31 sansIdent
+    1 maj=33 build=HI_1_4_1 classe=0 n=0 game_mode=2 sim=3 potg=false kc=false moteur=2 lue=true ctl=false
+    2 maj=33 sansIdent
+    1 maj=34 build=HI_1_5_1 classe=0 n=0 game_mode=2 sim=3 potg=false kc=false moteur=2 lue=true ctl=false
+    7 maj=37 build=HI_1_8_0 classe=0 n=0 game_mode=2 sim=3 potg=false kc=false moteur=2 lue=true ctl=false
+    6 maj=37 build=HI_1_8_0 classe=0 n=0 game_mode=2 sim=3 potg=true kc=false moteur=2 lue=true ctl=false
+    3 maj=38 build=HI_1_9_0 classe=1 n=121 game_mode=2 sim=3 potg=true kc=false moteur=2 lue=true ctl=false
+   34 maj=39 build=HI_1_10_0 classe=1 n=121 game_mode=2 sim=3 potg=true kc=false moteur=2 lue=true ctl=false
+   57 maj=40 build=HI_1_11_0 classe=1 n=122 game_mode=2 sim=3 potg=true kc=false moteur=2 lue=true ctl=false
+  147 maj=40 build=HI_1_12_0 classe=2 n=123 game_mode=2 sim=3 potg=true kc=false moteur=2 lue=true ctl=false
+ 1401 maj=41 build=HI_1_13_0 classe=2 n=123 game_mode=2 sim=3 potg=true kc=false moteur=2 lue=true ctl=false
+--- PASS: TestZZRevueJeuOptions (4.07s)
+PASS
+ok  	levelup/go-api/internal/games/halo_infinite/film/internal/grammar	4.170s

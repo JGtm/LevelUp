@@ -6,9 +6,13 @@
 // pour chaque player DB. Erreurs per-DB ne stoppent pas les autres ; agrégat
 // {processed, failed, totalPromoted} retourné.
 //
+// Les amis sont résolus PAR JOUEUR (data/global/player_friends.json) : chaque
+// player DB est recalculée avec la liste de SON propriétaire.
+//
 // Modes d'invocation :
-//   - Bootstrap initial : RecomputeAll (tous les amis configurés, tous les joueurs).
-//   - Incrémental : OnFriendsChanged (idempotent via la garde is_with_friends=FALSE).
+//   - Bootstrap initial : RecomputeAll (tous les joueurs, chacun avec ses amis).
+//   - Incrémental : RecomputeForPlayer après un PUT de la liste d'un joueur
+//     (idempotent via la garde is_with_friends=FALSE).
 package service
 
 import (
@@ -22,6 +26,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/notify"
+	"levelup/go-api/internal/platform/coalesce"
 	"levelup/go-api/internal/sync"
 )
 
@@ -39,9 +44,9 @@ type FriendsOrchestratorResult struct {
 	PerPlayerErrors map[string]string // map player_slug → erreur (si Failed)
 }
 
-// FriendsGamertagsLoader retourne la liste courante des amis configurés.
-// Implémenté typiquement par settings.Store.Load().FriendGamertags.
-type FriendsGamertagsLoader func() ([]string, error)
+// FriendsGamertagsLoader retourne la liste courante des amis D'UN JOUEUR
+// (clé : xuid). Implémenté typiquement par friendstore.FriendStore.Get.
+type FriendsGamertagsLoader func(xuid string) ([]string, error)
 
 // FriendsOrchestratorService orchestre le recompute is_with_friends sur toutes
 // les player DBs configurées (multi-titres).
@@ -49,15 +54,27 @@ type FriendsOrchestratorService struct {
 	cfg         *config.AppConfig
 	loadFriends FriendsGamertagsLoader
 	notifierFor FriendsNotifierFactory // optionnel — §6 notif friend_sync_completed
+	// recomputeDB recalcule is_with_friends d'une base joueur ; remplacé par les tests.
+	recomputeDB friendsDBRecompute
+	// playerRuns sérialise et absorbe les recalculs de RecomputeForPlayer, par xuid.
+	playerRuns coalesce.Runs
 }
 
+// friendsDBRecompute recalcule is_with_friends d'une base joueur (sync.RecomputeIsWithFriends
+// en production).
+type friendsDBRecompute func(ctx context.Context, playerDBPath, sharedDBPath, xuid string, friends []string) (sync.FriendsRecomputeResult, error)
+
 // NewFriendsOrchestratorService crée un orchestrator. cfg fournit LoadPlayers
-// + chemins DB ; loadFriends résout settings.friend_gamertags à la demande.
+// + chemins DB ; loadFriends résout la liste d'amis d'un joueur à la demande.
 func NewFriendsOrchestratorService(
 	cfg *config.AppConfig,
 	loadFriends FriendsGamertagsLoader,
 ) *FriendsOrchestratorService {
-	return &FriendsOrchestratorService{cfg: cfg, loadFriends: loadFriends}
+	s := &FriendsOrchestratorService{cfg: cfg, loadFriends: loadFriends}
+	s.recomputeDB = func(ctx context.Context, playerDBPath, sharedDBPath, xuid string, friends []string) (sync.FriendsRecomputeResult, error) {
+		return sync.RecomputeIsWithFriends(ctx, s.cfg.SharedProvider, playerDBPath, sharedDBPath, xuid, friends)
+	}
+	return s
 }
 
 // WithNotifier branche une factory de notifier pour émettre `friend_sync_completed`
@@ -75,15 +92,6 @@ func (s *FriendsOrchestratorService) RecomputeAll(ctx context.Context) (FriendsO
 	start := time.Now()
 	res := FriendsOrchestratorResult{PerPlayerErrors: map[string]string{}}
 
-	friends, err := s.loadFriends()
-	if err != nil {
-		return res, fmt.Errorf("RecomputeAll loadFriends: %w", err)
-	}
-	if len(friends) == 0 {
-		slog.InfoContext(ctx, "friends orchestrator: no friends configured, skip")
-		return res, nil
-	}
-
 	// Énumération multi-titres : LoadPlayers() sans filtre = tous les titres.
 	players, err := s.cfg.LoadPlayers()
 	if err != nil {
@@ -96,10 +104,19 @@ func (s *FriendsOrchestratorService) RecomputeAll(ctx context.Context) (FriendsO
 		if p.IsDemo {
 			continue // demo profile, pas de DB réelle
 		}
+		// Amis DU joueur traité : une liste par profil, plus une pour l'instance.
+		friends, ferr := s.loadFriends(p.XUID)
+		if ferr != nil {
+			res.Failed++
+			res.PerPlayerErrors[p.PlayerSlug] = ferr.Error()
+			slog.ErrorContext(ctx, "friends orchestrator: lecture des amis échouée",
+				"player_slug", p.PlayerSlug, "err", ferr)
+			continue
+		}
 		playerDBPath := config.PlayerDBPath(s.cfg, p.TitleSlug, p.Gamertag)
 		sharedDBPath := config.SharedDBPath(s.cfg, p.TitleSlug)
 
-		r, err := sync.RecomputeIsWithFriends(ctx, s.cfg.SharedProvider, playerDBPath, sharedDBPath, p.XUID, friends)
+		r, err := s.recomputeDB(ctx, playerDBPath, sharedDBPath, p.XUID, friends)
 		if err != nil {
 			res.Failed++
 			res.PerPlayerErrors[p.PlayerSlug] = err.Error()
@@ -164,14 +181,63 @@ func (s *FriendsOrchestratorService) emitFriendSyncCompleted(ctx context.Context
 	}
 }
 
-// OnFriendsChanged est appelé après un PATCH /settings qui modifie
-// friend_gamertags. Identique à RecomputeAll : la garde FALSE rend
-// l'opération idempotente, donc relancer le recompute complet est sûr et
-// permet de couvrir les ajouts ET les sessions historiques manquées.
+// RecomputeForPlayer relance le recompute is_with_friends sur les DBs DU SEUL
+// joueur donné (tous ses titres), après une écriture de SA liste d amis. Le
+// recalcul est CONVERGENT (friends_recompute.go) : promotion des matchs joués
+// avec un ami ET démotion de ceux dont l ami a été retiré. Une liste VIDE est
+// donc un cas plein, pas un court-circuit : « plus aucun ami » démote tout
+// (constat P0 de revue, 2026-09-16 — l ancien retour anticipé sur liste vide
+// laissait is_with_friends=TRUE à jamais après le retrait du dernier ami).
 //
-// Implémente port.FriendsOrchestrator. Note : la sémantique additive ne
-// démote PAS les anciens matchs si un ami est retiré (cf. friends_recompute.go).
-func (s *FriendsOrchestratorService) OnFriendsChanged(ctx context.Context) error {
-	_, err := s.RecomputeAll(ctx)
-	return err
+// Les demandes d'un même joueur sont coalescées (playerRuns) : un recalcul à la fois par xuid ;
+// celles déposées pendant son exécution donnent UN seul rattrapage, qui relit la liste d'amis
+// (le PUT l'a persistée avant l'appel). Un demandeur absorbé rend l'erreur du dernier recalcul
+// et 0 promu : les promotions de la passe sont comptées, et notifiées, par celui qui l'exécute.
+//
+// Retourne le nombre de matchs promus, pour que l'appelant décide d'émettre ou
+// non la notification friend_sync_completed.
+func (s *FriendsOrchestratorService) RecomputeForPlayer(ctx context.Context, xuid string) (int64, error) {
+	if xuid == "" {
+		return 0, fmt.Errorf("RecomputeForPlayer: xuid requis")
+	}
+	var promoted int64
+	err := s.playerRuns.Do(ctx, xuid, func(ctx context.Context) error {
+		n, err := s.recomputePlayerOnce(ctx, xuid)
+		promoted += n
+		return err
+	})
+	return promoted, err
+}
+
+// recomputePlayerOnce est une passe complète de RecomputeForPlayer : liste d'amis relue, puis
+// recalcul de chaque base du joueur.
+func (s *FriendsOrchestratorService) recomputePlayerOnce(ctx context.Context, xuid string) (int64, error) {
+	friends, err := s.loadFriends(xuid)
+	if err != nil {
+		return 0, fmt.Errorf("RecomputeForPlayer loadFriends: %w", err)
+	}
+	players, err := s.cfg.LoadPlayers()
+	if err != nil {
+		return 0, fmt.Errorf("RecomputeForPlayer LoadPlayers: %w", err)
+	}
+
+	var promoted int64
+	for _, p := range domain.SyncablePlayers(players) {
+		if p.IsDemo || p.XUID != xuid {
+			continue
+		}
+		playerDBPath := config.PlayerDBPath(s.cfg, p.TitleSlug, p.Gamertag)
+		sharedDBPath := config.SharedDBPath(s.cfg, p.TitleSlug)
+		r, rerr := s.recomputeDB(ctx, playerDBPath, sharedDBPath, p.XUID, friends)
+		if rerr != nil {
+			slog.ErrorContext(ctx, "friends orchestrator: recompute joueur échoué",
+				"player_slug", p.PlayerSlug, "title_slug", p.TitleSlug, "err", rerr)
+			return promoted, rerr
+		}
+		promoted += r.MatchesPromoted
+		if r.MatchesPromoted > 0 {
+			s.emitFriendSyncCompleted(ctx, p.PlayerSlug, r.MatchesPromoted)
+		}
+	}
+	return promoted, nil
 }

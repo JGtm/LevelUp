@@ -1,10 +1,19 @@
 package handlers
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/ctxkeys"
 )
 
 // replay_local_gate.go — LE REJEU 2D N'EST SERVI QU'EN LOCAL, POUR L'INSTANT.
@@ -14,22 +23,57 @@ import (
 // tout cas c'est pas productionnalisable. Sinon ok pour sortir une version activée que sur le
 // localhost. »
 //
-// CE QUI EST EN CAUSE, chiffré : le rejeu publie 475 tirs sur les 519 que le film porte et 70
-// lancers sur 70, mais 15 vies sur 105 restent sans identité (survivants de fin de match,
-// entités d'avant le coup d'envoi, trois morts hors fenêtre d'appariement). Ces écarts sont
-// mesurés et publiés dans `coverage` — ils ne sont pas cachés — mais ils n'ont pas encore été
-// confrontés à autre chose qu'un seul film.
+// CE QUI EST EN CAUSE, chiffré. Le rejeu ne place pas tout ce que le film porte, et la perte se
+// concentre là où ça se voit le plus : le DERNIER DÉCILE d'un match perd de 40 à 74 % de ses
+// tirs, dans TOUS les modes. Cause établie le 2026-08-08 (`.ai/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md`)
+// : le pont nomme une vie par la mort qui la termine, donc un joueur qui cesse de mourir cesse
+// d'être localisable. Les FERMETURES (`games/halo_infinite/film/replay/closures.go`) ont depuis porté les sept
+// films de 79,7-93,4 % à 87,4-96,4 %.
+//
+// CORPUS REMESURÉ LE 2026-08-11, après la ronde de CORROBORATION de la fermeture A (revue
+// adversariale : le corps déduit n'est plus attribué à un tireur que rien ne situe). **LE CRITÈRE
+// CI-DESSOUS N'EST PLUS SATISFAIT : `64e8adfa` tombe à 87,39 %, sous le plancher de 88 %.**
+//
+// LE GARDE RESTE DONC EN PLACE, et c'est le sens dans lequel il doit échouer : un critère qui
+// n'est plus atteint interdit le retrait, il ne se renégocie pas. Ni le seuil ni la règle de
+// déduction n'ont été touchés pour faire remonter le chiffre — les 98 tirs perdus sur ce film
+// étaient posés sur des joueurs que rien ne corroborait. L'arbitrage « justesse contre seuil
+// d'activation » appartient à l'utilisateur ; tant qu'il n'est pas rendu, le corpus passe 6 sur 7.
+//
+// Tout changement du pont doit rejouer le corpus AVANT de conclure, jamais après (cf. §7.5ter de
+// la recherche).
+//
+// ATTENTION AU DÉNOMINATEUR, ET C'EST LA PREMIÈRE CHOSE À COMPRENDRE AVANT DE RETIRER CE GARDE :
+// ces taux portent sur les tirs QUE LE FILM CONTIENT, pas sur les tirs du match. Le film n'en
+// porte que 69 à 87 % en arène (23 % en Fiesta), si bien que la part des tirs RÉELS posés sur la
+// carte vaut 61 à 83 %. La complétude du flux de tirs est un AUTRE chantier (piste E), et aucun
+// critère de ce fichier ne la couvre.
 //
 // CE GARDE N'EST PAS UN INTERRUPTEUR « POUR PLUS TARD » (règle du dépôt sur les kill-switches).
 // Il porte les trois éléments exigés :
 //
 //	BASCULÉ LE          2026-07-28, à l'ouverture du rejeu en local.
-//	RETRAIT CIBLE       à la première confrontation réussie sur un SECOND film.
-//	CRITÈRE MESURABLE   couverture des tirs > 85 % et `coverage.verdict.bridge` nominal sur au
-//	                    moins deux films de cartes différentes, sans collision de trace.
+//	                    Critère RÉÉCRIT le 2026-08-08 : le précédent (« > 85 % sur au moins deux
+//	                    films de cartes différentes ») était satisfait à la lettre par deux films
+//	                    CHOISIS, alors qu'un troisième tombait à 80,3 %. Un critère qu'on satisfait
+//	                    en choisissant ses films ne protège de rien.
+//	RETRAIT CIBLE       à la reconstruction des artefacts du corpus nommé avec le pont fermé,
+//	                    puis décision utilisateur. À RÉEXAMINER AU PLUS TARD LE 2026-11-08.
+//	CRITÈRE MESURABLE   couverture des tirs >= 88 % et `coverage.verdict.bridge` nominal sur
+//	                    TOUS les films du corpus nommé ci-dessous, sans collision de trace.
 //
-// Le critère est celui du plan de fiabilisation, et il se lit dans l'artefact lui-même : nul
-// besoin d'un jugement pour décider du retrait.
+// LE CORPUS EST NOMMÉ, et c'est ce qui rend le critère opposable — sept films, sept cartes ou
+// modes distincts, à rejouer à chaque changement du pont :
+//
+//	000d5950 Cliffhanger Fiesta Slayer · 0edb8512 Aquarius Team Slayer
+//	9aeca4b3 Catalyst Team Slayer      · 01e1f945 Catalyst KOTH
+//	64e8adfa Catalyst CTF              · db7b8c3c Aquarius CTF · 829abef9 Behemoth CTF
+//
+// POURQUOI 88 ET NON 90. Mesuré : à 88 % le corpus passe 7 sur 7 avec le pont fermé ; à 90 % il
+// passe 5 sur 7, ce qui obligerait à excepter deux films — et une exception négociée est
+// exactement le défaut que la réécriture corrige.
+//
+// Le critère se lit dans l'artefact lui-même : nul besoin d'un jugement pour décider du retrait.
 //
 // `LEVELUP_REPLAY_PUBLIC=1` lève le garde — utile à qui veut exposer le rejeu en connaissance
 // de cause, sans avoir à recompiler.
@@ -40,18 +84,17 @@ var replayPublic = os.Getenv("LEVELUP_REPLAY_PUBLIC") == "1"
 
 // isLocalRequest dit si la requête vient de la machine qui héberge l'API.
 //
-// ON NE FAIT PAS CONFIANCE AUX EN-TÊTES. `X-Forwarded-For` est fourni par le client ; s'en
-// servir ici transformerait le garde en simple suggestion. Seule l'adresse de la connexion
-// TCP compte, et elle n'est pas falsifiable par le demandeur.
+// ON NE FAIT PAS CONFIANCE AUX EN-TÊTES. `X-Real-IP`, `X-Forwarded-For` ou `True-Client-IP`
+// sont écrits par le client ou par le proxy ; s'en servir ici transformerait le garde en
+// simple suggestion. Seule l'adresse de la connexion TCP compte (middleware.PeerAddr, capturée
+// en tête de la pile transverse), et elle n'est pas falsifiable par le demandeur.
+//
+// Fermé par défaut : une adresse vide, sans hôte ou qui n'est pas une IP n'est pas locale.
 func isLocalRequest(r *http.Request) bool {
-	host := r.RemoteAddr
-	if h, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+	peer := middleware.PeerAddr(r)
+	host := peer
+	if h, _, err := net.SplitHostPort(peer); err == nil {
 		host = h
-	}
-	// Un hôte vide arrive sur certains transports de test ; le traiter comme local évite de
-	// rendre les tests dépendants d'une pile réseau.
-	if host == "" {
-		return true
 	}
 	ip := net.ParseIP(strings.Trim(host, "[]"))
 	if ip == nil {
@@ -68,7 +111,7 @@ func allowReplay(r *http.Request) bool {
 // LocalOnlyReplay applique le garde local devant les routes de rejeu.
 //
 // C'EST UN MIDDLEWARE, PAS UNE BRANCHE DE HANDLER, et ce n'est pas un détail de style :
-// le garde repose sur l'adresse de la connexion TCP (`r.RemoteAddr`), la seule donnée
+// le garde repose sur l'adresse de la connexion TCP (`middleware.PeerAddr`), la seule donnée
 // que le demandeur ne peut pas falsifier. La couche Huma ne l'expose pas à ses handlers
 // typés — elle ne voit que le contexte et les paramètres de chemin. Le garde reste donc
 // à l'étage transport, où l'information existe.
@@ -81,4 +124,69 @@ func LocalOnlyReplay(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// DemoReplayAllowlist dit, en DÉMO, si un match a un rejeu figé servi (index des rejeux de la
+// démo, cf. service.DemoReplayAllowlist).
+type DemoReplayAllowlist interface {
+	Allows(ctx context.Context, titleSlug, matchID string) bool
+}
+
+// ReplayGate rend la garde des routes de rejeu.
+//
+//   - Hors démo (`demo` nil) : le garde local ci-dessus, inchangé.
+//   - En DÉMO (décision D-2 du plan des recommandations du 2026-10-09) : le rejeu est servi
+//     à tout visiteur, mais SEULEMENT pour les matchs figés de la démo ; tout autre match
+//     reçoit le même 404 que le garde local. Le garde local ne s'applique pas : la démo
+//     publique est derrière un proxy, aucun visiteur n'y est « local ».
+//
+// Le match se lit dans le chemin (`{match_id}`) et, à défaut, dans le CORPS JSON d'un POST
+// (`match_id`, route de la séquence d'une mort) — voir [replayMatchID].
+func ReplayGate(demo DemoReplayAllowlist) func(http.Handler) http.Handler {
+	if demo == nil {
+		return LocalOnlyReplay
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			matchID := replayMatchID(r)
+			if matchID == "" || !demo.Allows(r.Context(), ctxkeys.TitleSlug(r.Context()), matchID) {
+				writeError(r.Context(), w, http.StatusNotFound, "replay_not_available",
+					"the 2D replay is served in the demo for its frozen matches only")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// replayGateMaxBody borne le corps que la garde accepte de lire pour y trouver le match : un
+// corps de séquence (match_id, victim_xuid, time_ms) tient en quelques dizaines d'octets.
+const replayGateMaxBody = 4 << 10
+
+// replayMatchID rend le match visé par la requête : le paramètre de chemin `match_id`, sinon
+// le champ `match_id` du corps JSON d'un POST. Le corps est RESTITUÉ au handler, octet pour
+// octet (la garde et le handler lisent la même valeur). "" si le match est introuvable : corps
+// absent, illisible, au-delà de [replayGateMaxBody], ou `match_id` qui n'est pas du texte.
+func replayMatchID(r *http.Request) string {
+	if id := chi.URLParam(r, "match_id"); id != "" {
+		return id
+	}
+	if r.Method != http.MethodPost || r.Body == nil || r.Body == http.NoBody {
+		return ""
+	}
+	raw, err := io.ReadAll(io.LimitReader(r.Body, replayGateMaxBody+1))
+	if err != nil {
+		return ""
+	}
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+	if len(raw) > replayGateMaxBody {
+		return ""
+	}
+	var body struct {
+		MatchID string `json:"match_id"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return ""
+	}
+	return body.MatchID
 }

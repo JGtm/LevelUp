@@ -10,7 +10,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -22,7 +21,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
-	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -30,11 +28,12 @@ import (
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/observability/logging"
 	auth_platform "levelup/go-api/internal/platform/auth"
-	"levelup/go-api/internal/platform/dblease"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/service"
 	go_sync "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // syncJobTimeout borne la durée d'un job de sync HTTP (D3-04, revue 2026-06-01).
@@ -42,16 +41,6 @@ import (
 // indéfiniment si un autre writer (auto-sync, watcher) le tenait. 30 min couvre
 // largement un sync initial volumineux + post-sync.
 const syncJobTimeout = 30 * time.Minute
-
-// syncErrorMessage (D3-05) produit un message de job lisible — distingue la
-// contention de lease (un autre sync du même joueur est en cours, réessayable)
-// d'un échec réel.
-func syncErrorMessage(err error) string {
-	if errors.Is(err, dblease.ErrDBLocked) {
-		return "db_busy: un autre sync de ce joueur est en cours (réessayer) — " + err.Error()
-	}
-	return err.Error()
-}
 
 // NotificationsEmitterFactory construit un emitter de notifications pour un slug
 // joueur donné. Optionnel : si le SyncHandler n'a pas reçu de factory, aucun
@@ -68,10 +57,13 @@ type PostSyncDeltaHook func(ctx context.Context, slug string) (after func(ctx co
 type SyncHandler struct {
 	cfg           *config.AppConfig
 	settingsStore *settings_platform.Store
-	jobStore      *jobs.Store
-	provider      auth_platform.TokenProvider
-	notifierFor   NotificationsEmitterFactory // optionnel
-	postSync      PostSyncDeltaHook           // optionnel : season_pass_level / objective_completed / challenge_completed
+	// friendStore : amis PAR JOUEUR pour le hook post-sync is_with_friends.
+	// nil → pas de FriendsLoader sur les moteurs construits ici.
+	friendStore *friendstore.FriendStore
+	jobStore    *jobs.Store
+	provider    auth_platform.TokenProvider
+	notifierFor NotificationsEmitterFactory // optionnel
+	postSync    PostSyncDeltaHook           // optionnel : season_pass_level / objective_completed / challenge_completed
 	// prestigeHook (optionnel) ré-évalue les défis Prestige actifs après ingestion.
 	// Injecté par server.go = PrestigeBundle.RunPostSync (no-op si flag off ou bundle
 	// nil). Câblé sur le SyncEngine construit par le handler (newEngineFor) via
@@ -102,6 +94,9 @@ type SyncHandler struct {
 	cooldown     time.Duration
 	cooldownMu   gosync.Mutex
 	lastManualAt map[string]time.Time
+	// replayEnqueue met la construction d'un rejeu dans la file durable (chemin
+	// « ouvrier »). Injecté par server_apiv1.go depuis le ServiceRegistry.
+	replayEnqueue replayartifacts.EnqueueFunc
 }
 
 // NewSyncHandler crée un SyncHandler.
@@ -121,6 +116,22 @@ func NewSyncHandler(
 		cooldown:      defaultManualSyncCooldown,
 		lastManualAt:  make(map[string]time.Time),
 	}
+}
+
+// WithFriendStore branche le store des amis par joueur (data/global/player_friends.json)
+// sur les moteurs construits par ce handler. Sans lui, les matchs synchronisés depuis
+// un sync HTTP restent is_with_friends=FALSE jusqu'au prochain recompute.
+func (h *SyncHandler) WithFriendStore(store *friendstore.FriendStore) *SyncHandler {
+	h.friendStore = store
+	return h
+}
+
+// WithReplayEnqueuer branche la mise en file des rejeux (= ServiceRegistry.
+// EnqueueReplayBuild) sur le moteur LEGACY construit par ce handler. Nil → le
+// placement « worker » dégrade en « aucune construction », journalisé.
+func (h *SyncHandler) WithReplayEnqueuer(enqueue replayartifacts.EnqueueFunc) *SyncHandler {
+	h.replayEnqueue = enqueue
+	return h
 }
 
 // WithSyncGate branche le gate de déduplication cross-source (le Coordinator
@@ -166,16 +177,16 @@ func (h *SyncHandler) WithPostSyncDeltaHook(hook PostSyncDeltaHook) *SyncHandler
 // les joueurs réels PlayerSlug == Gamertag (config_players.go).
 type PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
 
-// newEngineFor instancie un SyncEngine pré-câblé avec le loader friends
-// (settings.FriendGamertags), pour que le hook auto-recompute is_with_friends
-// post-sync delta soit toujours actif sur les syncs déclenchés par cet handler.
+// newEngineFor instancie un SyncEngine pré-câblé avec le loader des amis DU
+// JOUEUR synchronisé (data/global/player_friends.json), pour que le hook
+// auto-recompute is_with_friends post-sync delta soit toujours actif sur les
+// syncs déclenchés par cet handler.
 func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *domain.HaloTokens) *go_sync.SyncEngine {
-	loader := func() ([]string, error) {
-		s, err := h.settingsStore.Load()
-		if err != nil {
-			return nil, err
+	var loader go_sync.FriendsLoader
+	if h.friendStore != nil && xuid != "" {
+		loader = func() ([]string, error) {
+			return h.friendStore.Get(xuid)
 		}
-		return s.FriendGamertags, nil
 	}
 	// Title-aware (MT-11 / PMT-3) : le moteur écrit dans data/titles/{titleSlug}/...
 	// au lieu de halo_infinite systématique (corrige le sync initial multi-titre).
@@ -189,6 +200,13 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 	// readers HTTP pendant cette fenêtre. Wire identique à scheduler/auto_sync.go.
 	if h.cfg.SharedProvider != nil {
 		engine = engine.WithSharedProvider(h.cfg.SharedProvider)
+	}
+	// Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5). Le hook s'installe toujours ;
+	// c'est lui qui décide (replay_build_location, relu à chaque cycle). Parité
+	// scheduler/BuildEngine — chemin LEGACY, emprunté seulement quand engineBuilder
+	// n'est pas câblé.
+	if h.settingsStore != nil {
+		engine = engine.WithReplayArtifacts(replayartifacts.NewHook(h.cfg, h.settingsStore, h.replayEnqueue))
 	}
 	// Media scan post-sync : cohérent avec AutoSyncScheduler.defaultRunnerFactory.
 	// timezone REQUISE pour parseCaptureTimeFromFilename (cf. media_index_service).
@@ -283,7 +301,7 @@ func (h *SyncHandler) emitMatchSynced(ctx context.Context, slug string, inserted
 }
 
 // emitSyncError émet une notification sync_error sur échec d'une sync.
-func (h *SyncHandler) emitSyncError(ctx context.Context, slug, jobID, message string) {
+func (h *SyncHandler) emitSyncError(ctx context.Context, slug, jobID string, fail *domain.JobErrorDetail) {
 	if h.notifierFor == nil {
 		return
 	}
@@ -305,7 +323,7 @@ func (h *SyncHandler) emitSyncError(ctx context.Context, slug, jobID, message st
 		Severity: notifications.SeverityError,
 		TitleKey: "notif.sync_error.title",
 		BodyKey:  "notif.sync_error.body",
-		Params:   map[string]any{"message": truncate(message, 200), "job_id": jobID},
+		Params:   map[string]any{jsonKeyCode: fail.Code, "job_id": jobID},
 		Source:   "sync_handler",
 	}, syncErrorCoalesceWindow); err != nil {
 		slog.WarnContext(ctx, "notifications: sync_error emit", "err", err)
@@ -314,13 +332,6 @@ func (h *SyncHandler) emitSyncError(ctx context.Context, slug, jobID, message st
 
 // syncErrorCoalesceWindow : fenêtre de coalescence des notifs sync_error (DP15).
 const syncErrorCoalesceWindow = 6 * time.Hour
-
-func truncate(s string, max int) string {
-	if len(s) <= max {
-		return s
-	}
-	return s[:max] + "…"
-}
 
 // ─── Montage Huma + types Input/Output ───────────────────────────────────────
 
@@ -409,12 +420,10 @@ func (h *SyncHandler) StartInitialSync(ctx context.Context, in *syncInitialInput
 			"Une sync initiale est deja en cours pour ce joueur.")
 	}
 
-	sess := middleware.GetSession(ctx)
-	if sess == nil || sess.HaloTokens == nil {
-		return nil, humacore.NewError(http.StatusUnauthorized, "auth_required",
-			"Tokens Halo absents.")
+	tokens, err := initialSyncTokens(ctx)
+	if err != nil {
+		return nil, err
 	}
-	tokens := sess.HaloTokens
 
 	// Résoudre le couple (gamertag, xuid) + nb de matchs initiaux du profil POUR CE
 	// TITRE — lève l'ambiguïté quand un gamertag existe sous plusieurs titres.
@@ -477,9 +486,7 @@ func (h *SyncHandler) StartInitialSync(ctx context.Context, in *syncInitialInput
 		runner, runCtx := h.runnerFor(bgCtx, titleSlug, gamertag, xuid, tokens)
 		result, err := runner.RunDelta(runCtx, opts)
 		if err != nil {
-			errMsg := syncErrorMessage(err)
-			h.jobStore.SetStatus(job.JobID, domain.JobStatusFailed, &errMsg)
-			h.emitSyncError(bgCtx, req.PlayerSlug, job.JobID, errMsg)
+			h.failSyncJob(bgCtx, req.PlayerSlug, job.JobID, err)
 			return
 		}
 		summary := fmt.Sprintf("inserted=%d skipped=%d medals=%d duration=%.1fs status=%s",
@@ -560,9 +567,7 @@ func (h *SyncHandler) StartDeltaSync(ctx context.Context, in *syncDeltaInput) (*
 
 		result, err := engine.RunDelta(bgCtx, opts)
 		if err != nil {
-			errMsg := syncErrorMessage(err)
-			h.jobStore.SetStatus(job.JobID, domain.JobStatusFailed, &errMsg)
-			h.emitSyncError(bgCtx, playerSlug, job.JobID, errMsg)
+			h.failSyncJob(bgCtx, playerSlug, job.JobID, err)
 			return
 		}
 		summary := fmt.Sprintf("inserted=%d skipped=%d medals=%d duration=%.1fs status=%s",

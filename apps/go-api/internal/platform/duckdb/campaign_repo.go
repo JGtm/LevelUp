@@ -271,17 +271,22 @@ func (p *CampaignSampleProvider) LoadAxisSamples(
 	if !supported {
 		return nil, nil
 	}
+	// Temps canonique (règle n°8) : filtre de fenêtre ET tri, sinon un import à
+	// start_time NULL sort de la fenêtre et l'ordre des échantillons dérive.
+	tsMr := StartTimeCanonicalSQL("mr")
 	q := "SELECT " + expr + ` AS val
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
-		  AND mr.start_time >= ? AND mr.start_time <= ?`
+		  AND ` + tsMr + ` >= ? AND ` + tsMr + ` <= ?` +
+		// Campagne exclue (D-5, backlog B4) ; titre = celui de la base partagée lue.
+		excludeCampaignClause(pdbTitleSlug(p.pdb), "mr")
 	args := []any{userID, since, until}
 	if playlistGroup != "" && playlistGroup != "all" {
 		q += ` AND mr.playlist_id = ?`
 		args = append(args, playlistGroup)
 	}
-	q += ` ORDER BY mr.start_time ASC`
+	q += " ORDER BY " + tsMr + " ASC"
 
 	db, release, err := p.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
@@ -358,17 +363,20 @@ func (p *CampaignSampleProvider) loadLUSRComponentSamples(
 func (p *CampaignSampleProvider) loadLUSRMatchIDsInWindow(
 	ctx context.Context, component, playlistGroup string, since, until time.Time,
 ) ([]lusrMatchTS, error) {
+	ts := StartTimeCanonicalSQL("mr")
 	sharedQ := `
-		SELECT match_id, start_time
-		FROM match_registry
-		WHERE start_time >= ? AND start_time <= ?
+		SELECT mr.match_id, ` + ts + `
+		FROM match_registry mr
+		WHERE ` + ts + ` >= ? AND ` + ts + ` <= ?` +
+		// Campagne exclue (D-5), comme LoadAxisSamples ; titre = celui de la base lue.
+		excludeCampaignClause(pdbTitleSlug(p.pdb), "mr") + `
 	`
 	sharedArgs := []any{since, until}
 	if playlistGroup != "" && playlistGroup != "all" {
-		sharedQ += ` AND playlist_id = ?`
+		sharedQ += ` AND mr.playlist_id = ?`
 		sharedArgs = append(sharedArgs, playlistGroup)
 	}
-	sharedQ += ` ORDER BY start_time ASC`
+	sharedQ += " ORDER BY " + ts + " ASC"
 
 	sharedDB, release, err := p.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
@@ -392,6 +400,9 @@ func (p *CampaignSampleProvider) loadLUSRMatchIDsInWindow(
 			return nil, err
 		}
 		matches = append(matches, m)
+	}
+	if err := sharedRows.Err(); err != nil {
+		return nil, err
 	}
 	return matches, nil
 }

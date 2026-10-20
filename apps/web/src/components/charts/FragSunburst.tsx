@@ -17,10 +17,12 @@
  * Couleurs : gamme « Antagonistes » réactive à la palette (fragClassColor via token) ;
  * rôles = teintes éclaircies (fragRoleColor). Double encodage couleur + label +
  * position. Composant PARTAGÉ (Synthesis/Match view/Timeseries/Sessions) — cf.
- * .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P1.4. Rend null si total 0.
+ * .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P1.4. Sans frag (total 0) : la carte reste avec son constat « Aucun frag sur ce périmètre ».
  */
 import { useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
 
+import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { scopeEmptyText } from '@/components/ui/scope-empty-text'
 import { fragClassColor, fragRoleColor, fragLeafColor } from '@/lib/accessibility/scales'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { FragDistribution } from '@/lib/api/types'
@@ -40,6 +42,7 @@ import {
   type FragSunburstLabels,
   type SunArc,
 } from './fragSunburstModel'
+import { placeTooltip } from './tooltipPosition'
 
 // La géométrie, les types et le builder pur buildSunburstModel sont extraits dans
 // ./fragSunburstModel (react-refresh : ce module n'exporte que des composants).
@@ -56,6 +59,9 @@ function useSunburstLabels(): FragSunburstBaseLabels {
     classLabel: (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale),
     roleLabel: (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale),
     formatValue: (n: number) => n.toLocaleString(numLoc),
+    othersLabel: (n: number) =>
+      formatMessage(fragsManifest, 'frags.charts.others_slice', appLocale, { n }),
+    locale: appLocale,
   }
 }
 
@@ -77,9 +83,9 @@ export interface FragSunburstProps {
   distribution?: FragDistribution | null
   title?: string
   /**
-   * Survol LIÉ (optionnel) : classe survolée pilotée par un composant frère
-   * (ex. `FragWeaponBreakdown` via `MatchFragCard`). Quand renseignée, les autres
-   * classes du sunburst sont estompées même si le survol vient de l'extérieur.
+   * Survol LIÉ (optionnel) : classe survolée pilotée par un composant frère (ex.
+   * `FragWeaponBreakdown` sur la Synthèse, `FragClassLegend` sur la Vue match). Quand
+   * renseignée, les autres classes du sunburst sont estompées même si le survol vient de l'extérieur.
    * Non fournie → le composant reste autonome (son propre survol interne pilote).
    */
   externalHoveredClass?: string | null
@@ -92,9 +98,9 @@ export interface FragSunburstProps {
   /** Largeur max (px) du SVG, centré (opt-in Match view) — borne la hauteur `h-auto`. */
   maxWidthPx?: number
   /** Position de la légende des classes : 'bottom' (défaut, sous l'anneau), 'left' (colonne
-   *  le long de la bordure gauche, opt-in Match view), ou 'none' (légende NON rendue en
-   *  interne — à placer soi-même via <FragClassLegend>, ex. encart Explorer : légende
-   *  centrée en bas du bloc entier). */
+   *  le long de la bordure gauche, opt-in Synthèse et Séries temporelles), ou 'none' (légende
+   *  NON rendue en interne — à placer soi-même via <FragClassLegend>, ex. encart Explorer,
+   *  Vue match, Sessions : légende centrée en bas du bloc entier). */
   legendSide?: 'bottom' | 'left' | 'none'
   /** Mode « nu » (opt-in) : rend le SVG + légende SANS la carte racine (bordure + barre de
    *  titre) — pour intégrer le sunburst dans un bloc parent (ex. encart Explorer) sans
@@ -161,10 +167,25 @@ export function FragSunburst({
     [classes, arcTotal, appLocale, paletteVersion],
   )
 
-  if (total <= 0 || classes.length === 0) return null
+  const cardTitle = title ?? formatMessage(fragsManifest, 'frags.charts.sunburst_title', appLocale)
+  // Aucun frag sur le périmètre : le bloc reste, avec son constat (un anneau qui disparaît se lit comme un bug).
+  // Nu, c'est le bloc parent de l'appelant qui porte le titre ; sinon la carte garde sa barre de titre.
+  if (total <= 0 || classes.length === 0) {
+    const none = scopeEmptyText('frags', appLocale)
+    const notice = <EmptyStateNotice title={none.title} description={none.description} />
+    return bare ? (
+      <div className={className} data-testid="frag-sunburst-empty">
+        {notice}
+      </div>
+    ) : (
+      <div className={`rounded-lg border border-border bg-card ${className}`} data-testid="frag-sunburst-empty">
+        <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">{cardTitle}</div>
+        <div className="p-3">{notice}</div>
+      </div>
+    )
+  }
 
   const tc = getEChartsThemeColors()
-  const cardTitle = title ?? formatMessage(fragsManifest, 'frags.charts.sunburst_title', appLocale)
   const centerLabel = formatMessage(fragsManifest, 'frags.charts.center_total_label', appLocale)
 
   // Classe active = survol interne (arc/légende) OU survol externe (composant frère lié).
@@ -183,7 +204,7 @@ export function FragSunburst({
 
   // Légende des classes (pastille + nom + valeur). Position pilotée par legendSide : 'bottom'
   // = ligne sous l'anneau (défaut, autres surfaces) ; 'left' = colonne verticale le long de la
-  // bordure gauche, à côté de l'anneau (opt-in Match view).
+  // bordure gauche, à côté de l'anneau (opt-in Synthèse et Séries temporelles).
   // En mode 'bottom' AVEC hauteur fixe (heightPx — cards Sessions, drawer compare) :
   // hauteur de légende RÉSERVÉE constante (2 lignes), pour que deux cards côte à
   // côte (session courante vs comparée) gardent la même hauteur totale même si
@@ -259,7 +280,12 @@ export function FragSunburst({
                 <text x={co.tx} y={co.ly - 2} textAnchor={co.anchor} fill={tc.text} style={{ fontSize: 10, opacity: 0.9 }}>
                   {co.label}
                 </text>
-                <text x={co.tx} y={co.ly + 10} textAnchor={co.anchor} fill={co.color} style={{ fontSize: 10, fontWeight: 600 }}>
+                {/* Valeur peinte au token de TEXTE du thème (comme le nom du rôle
+                    juste au-dessus), jamais à la couleur de l'arc : les teintes de rôle
+                    sont des éclaircissements de la couleur de classe, illisibles en
+                    texte sur le fond de carte. Le lien visuel arc→étiquette reste porté
+                    par la polyline, qui garde `co.color`. */}
+                <text x={co.tx} y={co.ly + 10} textAnchor={co.anchor} fill={tc.text} style={{ fontSize: 10, fontWeight: 600 }}>
                   {co.valueLabel}
                 </text>
               </g>
@@ -289,10 +315,7 @@ export function FragSunburst({
       {tip && (
         <div
           className="pointer-events-none fixed z-50 max-w-[240px] rounded-md border border-border bg-card px-2.5 py-1.5 text-xs shadow-lg"
-          style={{
-            left: typeof window !== 'undefined' && tip.x + 260 > window.innerWidth ? tip.x - 254 : tip.x + 14,
-            top: tip.y + 14,
-          }}
+          style={tipStyle(tip)}
           role="tooltip"
         >
           <div className="mb-0.5 flex items-center gap-1.5 font-medium">
@@ -304,6 +327,20 @@ export function FragSunburst({
       )}
     </div>
   )
+}
+
+/** Taille estimée de l'infobulle (deux lignes, 240 px au plus) : sert à la borner à la fenêtre. */
+const TIP_SIZE_ESTIMATE = [250, 52] as const
+
+/** Coin de l'infobulle : près du pointeur, jamais hors de la fenêtre (même règle que les infobulles ECharts). */
+function tipStyle(tip: { x: number; y: number }) {
+  if (typeof window === 'undefined') return { left: tip.x + 14, top: tip.y + 14 }
+  const [left, top] = placeTooltip({
+    pointer: [tip.x, tip.y],
+    size: TIP_SIZE_ESTIMATE,
+    viewport: [window.innerWidth, window.innerHeight],
+  })
+  return { left, top }
 }
 
 // ── FragClassLegend : légende des classes EXTRACTIBLE ─────────────────────────

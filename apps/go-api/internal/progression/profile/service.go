@@ -271,9 +271,9 @@ func (s *Service) aggregateNarrative(ctx context.Context, profile *PlayerProfile
 	return nil
 }
 
-// computeStyleSignature calcule FK / FD via highlight_events.
-// (highlight_events.event_type IN ('first_kill', 'first_death') — cf. computeFKFD
-// dans queries.go. Dégradation gracieuse à 0/0 si la table est absente ou vide.)
+// computeStyleSignature calcule FK / FD (premiers frags et premières morts du match, cf. computeFKFD).
+// Une erreur de lecture remonte à BuildProfile, qui la journalise ; la signature reste à zéro.
+// Sans événement pour la fenêtre, 0/0.
 func (s *Service) computeStyleSignature(ctx context.Context, profile *PlayerProfile, userID string, since, until time.Time) error {
 	fk, fd, err := s.computeFKFD(ctx, userID, since, until)
 	if err != nil {

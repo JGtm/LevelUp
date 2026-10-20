@@ -13,25 +13,10 @@
  * le composant se masque silencieusement (pas de comparaison de slug côté
  * front, règle multi-titre CLAUDE.md).
  *
- * NON câblé dans SessionChartStack.tsx (fichier hors périmètre de cet agent,
- * V72-13) : à insérer par le superviseur juste après le bloc `{frags}`
- * (dernier bloc actuel de la pile), à l'identique du pattern `ocdr` (titre +
- * InfoTooltip construits au call-site, cf. SessionChartStack.tsx L166-176) :
- *
- *   const careerXp = (
- *     <SessionCareerXP
- *       title={
- *         <span className="flex items-center gap-1.5">
- *           {t('session.detail.career_xp_title')}
- *           <InfoTooltip content={t('session.detail.career_xp_tooltip')} />
- *         </span>
- *       }
- *       matches={matches}
- *     />
- *   )
- *   ...
- *   {frags}
- *   {careerXp}
+ * CÂBLÉ dans `SessionChartStack` : DERNIER bloc de la section « Match par match » depuis
+ * le 2026-09-22 (les quatre titres de section de la page). Sa place s'explique — l'XP de
+ * carrière se lit match par match, comme ses voisines de section. Le titre est construit
+ * au call-site (libellé + InfoTooltip), à l'identique du pattern `ocdr`.
  */
 import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -46,6 +31,7 @@ import {
   getTooltipBase,
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
+import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
 import { buildCareerXpSeries } from '@/lib/charts/careerXpSeries'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
@@ -135,6 +121,7 @@ interface Props {
 
 export function SessionCareerXP({ title, matches, height = 280 }: Props) {
   const t = useSessionT()
+  const careerXpSupported = useDataCapability('analytics.career_xp_estimate')
 
   const series = useMemo<ChartSeries<CareerXpPoint>[]>(() => {
     const sorted = [...matches].sort((a, b) => a.start_time.localeCompare(b.start_time))
@@ -152,9 +139,9 @@ export function SessionCareerXP({ title, matches, height = 280 }: Props) {
     ]
   }, [matches])
 
-  // Sans estimation sur la session (titre sans capability / que du Firefight) :
-  // masquage silencieux, comme Timeseries (pas de carte vide).
-  if (series.length === 0) return null
+  // Sans estimation sur la session : titre sans la capability analytics.career_xp_estimate → carte absente ;
+  // titre qui l'a (session de Firefight seul) → la carte reste, titre gardé, état vide du graphe.
+  if (series.length === 0 && !careerXpSupported) return null
 
   return (
     <ChartCard

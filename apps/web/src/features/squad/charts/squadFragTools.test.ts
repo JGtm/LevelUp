@@ -1,134 +1,104 @@
 /**
- * squadFragTools.test.ts — « Outils de destruction » Escouade (version multi-joueurs de
- * buildFragDetailBreakdown). Couvre : fusion multi-joueurs, exclusion Spartan/unattributed,
- * anti-double-comptage des sentinels grenade/mêlée, cap top-N + « Autres armes », split Mêlée.
+ * squadFragTools.test.ts — « Outils de destruction » : les lignes `weapon_tools` du serveur
+ * nommées et mises à la forme du graphe (D8 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26).
+ * Aucun regroupement, aucun plafond : le module nomme, il ne décide rien.
  */
 import { describe, it, expect } from 'vitest'
-import { buildSquadFragTools, SQUAD_TOOLS_TOP_GUNS } from './squadFragTools'
-import type { FragClassEntry, SquadWeaponKills } from '@/lib/api/types'
+import { buildSquadToolRows, toolLineLabel, type SquadToolKindLabels } from './squadFragTools'
+import type { SquadWeaponToolLine, SquadWeaponTools } from '@/lib/api/types'
 
-// Libellés identité → les labels de sortie sont les clés brutes (guns gardent leur nom).
-const roleLabel = (r: string) => r
-const classLabel = (c: string) => c
-const opts = (topGuns: number) => ({ roleLabel, classLabel, otherWeaponsLabel: 'Autres armes', topGuns })
-
-function input(): SquadWeaponKills {
-  return {
-    players: ['Me', 'F1'],
-    bars: [
-      { weapon_id: 10, label: 'AR', class: 'shoulder', kills_by_player: { Me: 50, F1: 40 }, total_squad: 90 },
-      { weapon_id: 11, label: 'BR', class: 'shoulder', kills_by_player: { Me: 30, F1: 20 }, total_squad: 50 },
-      { weapon_id: 12, label: 'Sniper', class: 'heavy', kills_by_player: { Me: 10, F1: 5 }, total_squad: 15 },
-      { weapon_id: 13, label: 'Pistol', class: 'sidearm', kills_by_player: { Me: 8, F1: 2 }, total_squad: 10 },
-      { weapon_id: 14, label: 'Rocket', class: 'heavy', kills_by_player: { Me: 3, F1: 1 }, total_squad: 4 },
-      // Résidu « Spartan » (classe unattributed) — DOIT disparaître.
-      { weapon_id: 3168248199, label: 'Spartan', class: 'unattributed', kills_by_player: { Me: 7, F1: 3 }, total_squad: 10 },
-      // Sentinels grenade/mêlée (is_grenade_melee, classe vide) — DOIVENT être écartés du
-      // volet per-arme (leur compte fait doublon avec la distribution).
-      { weapon_id: 0, label: 'Grenade', class: '', is_grenade_melee: true, kills_by_player: { Me: 5, F1: 4 }, total_squad: 9 },
-      { weapon_id: 1, label: 'Mêlée', class: '', is_grenade_melee: true, kills_by_player: { Me: 6, F1: 2 }, total_squad: 8 },
-    ],
-  }
+const LABELS: SquadToolKindLabels = {
+  melee: 'Mêlée',
+  grenade: 'Grenade',
+  assassination: 'Assassinat',
+  ground_pound: 'Coup au sol',
+  shoulder_bash: 'Charge spartane',
+  explosive_object: 'Objet explosif (bidon)',
+  environment: 'Chute, environnement',
+  unattributed: 'Non attribué',
 }
 
-// FragDistribution par joueur (niveau classe). Les classes gun sont IGNORÉES par
-// buildFragDetailBreakdown (le détail gun vient du volet per-arme) ; seules melee/grenade/
-// spartan_ability alimentent le détail non-arme.
-function fragClasses(): Record<string, FragClassEntry[]> {
-  return {
-    Me: [
-      { authoritative: false, class: 'shoulder', kills: 80 },
-      { authoritative: false, class: 'heavy', kills: 13 },
-      { authoritative: false, class: 'sidearm', kills: 8 },
-      { authoritative: true, class: 'melee', kills: 8, roles: [{ role: 'assassination', kills: 2 }, { role: 'direct_melee', kills: 6 }] },
-      { authoritative: true, class: 'grenade', kills: 5 },
-      { authoritative: true, class: 'spartan_ability', kills: 3, roles: [{ role: 'ground_pound', kills: 2 }, { role: 'shoulder_bash', kills: 1 }] },
-      { authoritative: false, class: 'unattributed', kills: 7 },
-    ],
-    F1: [
-      { authoritative: false, class: 'shoulder', kills: 60 },
-      { authoritative: false, class: 'heavy', kills: 6 },
-      { authoritative: true, class: 'melee', kills: 2, roles: [{ role: 'direct_melee', kills: 2 }] },
-      { authoritative: true, class: 'grenade', kills: 4 },
-      { authoritative: false, class: 'unattributed', kills: 3 },
-    ],
-  }
+function weapon(key: string, fr: string, en: string, cls: string, kills: Record<string, number>): SquadWeaponToolLine {
+  const total = Object.values(kills).reduce((a, b) => a + b, 0)
+  return { kind: 'weapon', weapon_key: key, label: fr, label_en: en, class: cls, kills_by_player: kills, total_squad: total }
 }
 
-function byLabelOf(res: SquadWeaponKills) {
-  return new Map((res.bars ?? []).map((b) => [b.label, b]))
+function kind(k: string, cls: string, kills: Record<string, number>): SquadWeaponToolLine {
+  const total = Object.values(kills).reduce((a, b) => a + b, 0)
+  return { kind: k, class: cls, kills_by_player: kills, total_squad: total }
 }
 
-describe('buildSquadFragTools', () => {
-  it('vide / null → null', () => {
-    expect(buildSquadFragTools(null, {}, opts(8))).toBeNull()
-    expect(buildSquadFragTools({ players: [], bars: [] }, {}, opts(8))).toBeNull()
-    expect(SQUAD_TOOLS_TOP_GUNS).toBeGreaterThan(0)
+/** Seize outils, dans l'ordre du serveur (total décroissant, reliquat en dernier). */
+function tools(): SquadWeaponTools {
+  const lines: SquadWeaponToolLine[] = [
+    weapon('hinf_br75', 'BR75', 'BR75', 'shoulder', { J: 22, C: 22, M: 35 }),
+    kind('melee', 'melee', { J: 6, C: 13, M: 16 }),
+    weapon('hinf_frag_grenade', 'Grenade frag', 'Frag Grenade', 'grenade', { J: 2, C: 1, M: 4 }),
+    kind('explosive_object', 'unattributed', { J: 2, C: 1, M: 2 }),
+    kind('environment', 'environmental', { C: 1, M: 1 }),
+  ]
+  for (let i = 0; i < 10; i++) lines.push(weapon(`hinf_w${i}`, `Arme ${i}`, `Weapon ${i}`, 'shoulder', { J: 1 }))
+  lines.push(kind('unattributed', 'unattributed', { M: 1 }))
+  return { players: ['J', 'C', 'M'], lines }
+}
+
+describe('buildSquadToolRows', () => {
+  it('vide → null', () => {
+    expect(buildSquadToolRows(null, { locale: 'fr', labels: LABELS })).toBeNull()
+    expect(buildSquadToolRows({ players: [], lines: [] }, { locale: 'fr', labels: LABELS })).toBeNull()
   })
 
-  it('fusionne les armes gun par joueur (kills_by_player + total_squad)', () => {
-    const res = buildSquadFragTools(input(), fragClasses(), opts(10))!
-    const byLabel = byLabelOf(res)
-    expect(byLabel.get('AR')?.kills_by_player).toEqual({ Me: 50, F1: 40 })
-    expect(byLabel.get('AR')?.total_squad).toBe(90)
-    expect(byLabel.get('Sniper')?.total_squad).toBe(15)
+  it('AUCUN plafond ni ligne « Autres » : les 16 lignes du serveur, toutes nommées', () => {
+    const res = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS })!
+    expect(res.rows).toHaveLength(16)
+    expect(res.rows.some((r) => /autres/i.test(r.label))).toBe(false)
+    expect(res.rows.every((r) => r.label !== '')).toBe(true)
   })
 
-  it('exclut « Spartan » / unattributed (jamais dans la sortie)', () => {
-    const res = buildSquadFragTools(input(), fragClasses(), opts(10))!
-    const byLabel = byLabelOf(res)
-    expect(byLabel.has('Spartan')).toBe(false)
-    expect((res.bars ?? []).every((b) => b.class !== 'unattributed')).toBe(true)
+  it('ordre renversé : la première ligne du serveur en HAUT (dernière catégorie du graphe)', () => {
+    const res = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS })!
+    expect(res.rows[res.rows.length - 1].label).toBe('BR75')
+    expect(res.rows[0].label).toBe('Non attribué')
   })
 
-  it('écarte les sentinels grenade/mêlée : détail depuis la distribution, sans doublon', () => {
-    const res = buildSquadFragTools(input(), fragClasses(), opts(10))!
-    const byLabel = byLabelOf(res)
-    // Les libellés bruts des sentinels (Grenade/Mêlée majuscules) ne surfacent PAS comme gun.
-    expect(byLabel.has('Grenade')).toBe(false)
-    expect(byLabel.has('Mêlée')).toBe(false)
-    // Grenade vient uniquement de la distribution (Me 5 + F1 4 = 9), pas ×2.
-    expect(byLabel.get('grenade')?.total_squad).toBe(9)
-    expect(byLabel.get('grenade')?.kills_by_player).toEqual({ Me: 5, F1: 4 })
+  it('`top` (vue compacte de Sessions) : les premiers outils du serveur, sans « Non attribué », plus gros en haut', () => {
+    const res = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS, top: 3 })!
+    expect(res.rows.map((r) => r.label)).toEqual(['Grenade frag', 'Mêlée', 'BR75'])
+    const tous = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS, top: 99 })!
+    expect(tous.rows.some((r) => r.key === 'unattributed')).toBe(false)
   })
 
-  it('split Mêlée + capacités spartanes présents (Assassinat / Corps-à-corps / Coup au sol / Charge)', () => {
-    const res = buildSquadFragTools(input(), fragClasses(), opts(10))!
-    const byLabel = byLabelOf(res)
-    expect(byLabel.get('assassination')?.kills_by_player).toEqual({ Me: 2 })
-    expect(byLabel.get('direct_melee')?.total_squad).toBe(8) // Me 6 + F1 2
-    expect(byLabel.get('ground_pound')?.total_squad).toBe(2)
-    expect(byLabel.get('shoulder_bash')?.total_squad).toBe(1)
-    // Pas de feuille « melee » (la classe a des rôles → pas de niveau feuille).
-    expect(byLabel.has('melee')).toBe(false)
+  it('comptes, total et classe (pastille) repris tels quels', () => {
+    const res = buildSquadToolRows(tools(), { locale: 'fr', labels: LABELS })!
+    const br = res.rows.find((r) => r.label === 'BR75')!
+    expect(br.killsByPlayer).toEqual({ J: 22, C: 22, M: 35 })
+    expect(br.total).toBe(79)
+    expect(br.cls).toBe('shoulder')
+    const bidon = res.rows.find((r) => r.key === 'explosive_object')!
+    expect(bidon.label).toBe('Objet explosif (bidon)')
+    expect(bidon.cls).toBe('unattributed')
+    expect(res.players).toEqual(['J', 'C', 'M'])
   })
+})
 
-  it('cap top-N : garde les N plus grosses armes, agrège le reste en « Autres armes »', () => {
-    const res = buildSquadFragTools(input(), fragClasses(), opts(3))!
-    const byLabel = byLabelOf(res)
-    // Top 3 guns par total escouade : AR(90), BR(50), Sniper(15).
-    expect(byLabel.has('AR')).toBe(true)
-    expect(byLabel.has('BR')).toBe(true)
-    expect(byLabel.has('Sniper')).toBe(true)
-    // Pistol(10) + Rocket(4) repliés.
-    expect(byLabel.has('Pistol')).toBe(false)
-    expect(byLabel.has('Rocket')).toBe(false)
-    const autres = byLabel.get('Autres armes')
-    expect(autres).toBeDefined()
-    expect(autres?.total_squad).toBe(14)
-    expect(autres?.kills_by_player).toEqual({ Me: 11, F1: 3 })
-    // Les lignes non-arme restent toutes présentes malgré le cap.
-    expect(byLabel.has('grenade')).toBe(true)
-    expect(byLabel.has('assassination')).toBe(true)
+describe('toolLineLabel', () => {
+  const frag = weapon('hinf_frag_grenade', 'Grenade frag', 'Frag Grenade', 'grenade', { J: 1 })
+  it('arme : nom de registre dans la langue de l’interface', () => {
+    expect(toolLineLabel(frag, 'fr', LABELS)).toBe('Grenade frag')
+    expect(toolLineLabel(frag, 'en', LABELS)).toBe('Frag Grenade')
   })
+  it('arme sans nom dans la langue demandée → l’autre langue', () => {
+    expect(toolLineLabel({ ...frag, label_en: '' }, 'en', LABELS)).toBe('Grenade frag')
+  })
+  it('natures nommées par le web ; nature inconnue → sa clé', () => {
+    expect(toolLineLabel(kind('melee', 'melee', {}), 'fr', LABELS)).toBe('Mêlée')
+    expect(toolLineLabel(kind('environment', 'environmental', {}), 'fr', LABELS)).toBe('Chute, environnement')
+    expect(toolLineLabel(kind('nouvelle_nature', '', {}), 'fr', LABELS)).toBe('nouvelle_nature')
+  })
+})
 
-  it('« Autres armes » épinglée tout en bas (index 0), le reste ASC par total escouade', () => {
-    const res = buildSquadFragTools(input(), fragClasses(), opts(3))!
-    const bars = res.bars ?? []
-    // Sans inverse yAxis, la 1re catégorie est rendue EN BAS → l'agrégat y est épinglé.
-    expect(bars[0]?.label).toBe('Autres armes')
-    // Le reste (hors agrégat) reste trié ASC par total escouade (comme le chart existant).
-    const rest = bars.slice(1).map((b) => b.total_squad)
-    expect([...rest].sort((a, b) => a - b)).toEqual(rest)
+describe('ligne « Grenade » (titre sans film)', () => {
+  it('nommée par le web, jamais vide', () => {
+    expect(toolLineLabel(kind('grenade', 'grenade', { J: 14 }), 'fr', LABELS)).toBe('Grenade')
   })
 })

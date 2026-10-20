@@ -15,6 +15,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
@@ -26,11 +27,14 @@ import (
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
+	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/friendstore"
 	settingsplatform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 	"levelup/go-api/internal/sync/snapshot"
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
@@ -50,11 +54,16 @@ type SyncV2WiringDeps struct {
 	MetaDB         *sql.DB
 	SharedDB       *sql.DB
 	TokenProvider  auth.TokenProvider
-	Settings       *settingsplatform.Store // pour FriendsLoader + MediaScanHook
-	PostSyncRunner port.PostSyncRunner     // pour WithPostSyncRunner (progression V2)
+	Settings       *settingsplatform.Store  // pour MediaScanHook + rejeux
+	Friends        *friendstore.FriendStore // amis PAR JOUEUR (FriendsLoader du cycle)
+	PostSyncRunner port.PostSyncRunner      // pour WithPostSyncRunner (progression V2)
 	// PrestigeHook (optionnel) ré-évalue les défis Prestige actifs après le post-sync
 	// de chaque joueur (Phase 6). = PrestigeBundle.RunPostSync. Nil → no-op.
 	PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
+	// ReplayEnqueue (optionnel) met la construction d'un rejeu dans la file durable
+	// (= ServiceRegistry.EnqueueReplayBuild). Nil → le placement « worker » dégrade
+	// en « aucune construction », journalisé.
+	ReplayEnqueue replayartifacts.EnqueueFunc
 }
 
 // buildSyncV2Orchestrator construit l'orchestrator V2 avec ses 6
@@ -81,7 +90,8 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	}
 
 	// getSharedDB retourne la connexion shared courante via le cache process-wide.
-	// Appelé à l'instant T (LoadKnown, RunPostSync) — après chaque swap provider
+	// Appelé à l'instant T (persister V2, LoadKnown en mode legacy ou pendant une écriture : la
+	// connexion RW de l'écrivain) — après chaque swap provider
 	// RO→RW→RO, LookupCachedDB retourne la connexion fraîche rouverte en RO.
 	// Évite le pointeur fixe capturé au boot (deps.SharedDB) qui devient stale
 	// après le premier cycle (le swap ferme l'ancienne *sql.DB).
@@ -104,7 +114,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		path := deps.PathResolver.PlayerDBPath(deps.TitleSlug, gamertag)
 		return duckdbpkg.OpenReadForQuery(path)
 	}
-	knownLoader := syncv2.NewKnownLoader(playerDBOpenerRO, getSharedDB)
+	knownLoader := syncv2.NewKnownLoader(playerDBOpenerRO, knownSetSharedBorrower(deps, getSharedDB))
 
 	// CRITIQUE — Adapter PostSyncRunner : ouvre la stats.duckdb du joueur
 	// en READ-WRITE car les heals post-sync UPDATE/INSERT sur 14+ tables
@@ -113,18 +123,11 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	// playerDBOpenerRO ici causait des ERROR "Cannot execute UPDATE on
 	// database attached in read-only mode" qui silencieusement perdaient
 	// toutes les écritures post-sync.
-	playerDBOpenerRW := func(_ context.Context, gamertag string) (*sql.DB, func(), error) {
-		path := deps.PathResolver.PlayerDBPath(deps.TitleSlug, gamertag)
-		db, err := duckdbpkg.OpenReadWrite(path)
-		if err != nil {
-			return nil, nil, err
-		}
-		return db.SQLDb(), func() { _ = db.Close() }, nil
-	}
+	playerDBOpenerRW := postSyncPlayerOpener(deps.PathResolver, deps.TitleSlug)
 
 	// HaloClient factory : pinned client par joueur via pool.
 	clientFactory := func(gamertag, xuid string) syncv2.HaloClient {
-		c := syncpkg.NewPooledHaloClient(deps.TokenPool, gamertag, xuid, 0)
+		c := syncpkg.NewPooledHaloClient(deps.TokenPool, 0).WithOwner(gamertag)
 		return c
 	}
 	matchListProvider := syncv2.NewMatchListProvider(clientFactory, "matchmaking", 25, 20)
@@ -138,12 +141,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	if dryRun {
 		persister = newDryRunPersister()
 	} else {
-		// Résolution autonome des noms d'assets au sync V2 (primary write) : on passe
-		// le POOL UNIFIÉ (deps.TokenPool, la même source que tous les syncs) — GameCMS
-		// exige un token. Gate LEVELUP_SYNC_RESOLVE_ASSETS appliqué côté sync. Écriture
-		// asset_translations via le handle metadata RW partagé (deps.MetaDB).
-		persister = syncv2.NewCycleBatchPersister(deps.TitleSlug, deps.BatchQueue, 0,
-			deps.MetaDB, deps.TokenPool, getSharedDB)
+		persister = buildCyclePersister(deps, getSharedDB)
 	}
 
 	// RC-A fix (2026-06-01) : le PostSyncRunner doit acquérir le shared en
@@ -210,6 +208,20 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		WithPrestigeHook(deps.PrestigeHook)
 }
 
+// knownSetSharedBorrower rend l'emprunt de la base partagée de l'ensemble connu (cf.
+// syncv2.SharedBorrower) : provider B-swap du titre — emprunt suivi en RO, connexion de
+// l'écrivain pendant une écriture, attente bornée pendant une bascule. Sans provider
+// (kill-switch legacy) : connexion en cache, aucune bascule dans le process.
+func knownSetSharedBorrower(deps SyncV2WiringDeps, cached func() *sql.DB) syncv2.SharedDBAcquirer {
+	reader := deps.Cfg.SharedReaderForTitle(deps.TitleSlug)
+	src, ok := reader.(syncv2.SharedSwapSource)
+	if reader != nil && !ok {
+		slog.Warn("sync.v2 wiring: lecteur partagé sans état de bascule — ensemble connu lu sur la connexion en cache",
+			"titleSlug", deps.TitleSlug, "reader", fmt.Sprintf("%T", reader))
+	}
+	return syncv2.SharedBorrower(src, cached)
+}
+
 // ─── Dry-run stubs (mode validation sans écriture DB) ─────────────────
 
 // dryRunPersister implémente CycleBatchPersister en loggant ce qu'il
@@ -272,30 +284,61 @@ func (r *dryRunPostSyncRunner) RunPostSync(ctx context.Context, p syncv2.PlayerP
 // CRITIQUE : toute modification de defaultRunnerFactory doit être
 // répliquée ICI sous peine de divergence runtime V1↔V2.
 func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngineFactory {
-	return func(_ context.Context, p syncv2.PlayerProfile) (*syncpkg.SyncEngine, error) {
-		// MT-11 / PMT-3 : le profil porte le titre → écrit dans les DB du bon
-		// titre (parité avec le path V1 BuildEngine). Slug vide → DefaultSlug.
-		engine := syncpkg.NewSyncEngineForTitle(deps.Cfg.RepoRoot, p.TitleSlug, p.Gamertag, p.XUID, &domain.HaloTokens{}, deps.TokenProvider)
+	return func(ctx context.Context, p syncv2.PlayerProfile) (*syncpkg.SyncEngine, error) {
+		// FAIL-LOUD — UNE SEULE SOURCE DE TITRE (C.2, 2026-09-13).
+		//
+		// Le cycle ouvre TOUS ses handles sur deps.TitleSlug (shared, player x2,
+		// persister batch) ; construire le moteur sur le titre du PROFIL
+		// donnait au moteur les bases d'un titre et la sémantique d'un autre. C'est
+		// la chaîne causale exacte de la corruption LUSR h5_arena du 2026-06-26
+		// (4 joueurs déclarés sous deux titres → passe « profil halo_5 » sur les
+		// bases halo_infinite ; rapport .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md
+		// §3). La partition livesync.HandlesTitle (b30eb9fe5) ferme le CHEMIN de juin,
+		// pas la CLASSE : un titre piloté par le SyncEngine la traverserait.
+		//
+		// Refus bruyant et non destructeur : le profil remonte `failed` dans le
+		// CycleResult. Slug vide = défaut historique accepté (NewSyncEngineForTitle
+		// retombe sur DefaultSlug) ; deps.TitleSlug est toujours résolu (main.go:376).
+		if p.TitleSlug != "" && p.TitleSlug != deps.TitleSlug {
+			err := fmt.Errorf("sync.v2: profil %q du titre %q soumis au cycle du titre %q — "+
+				"les handles DB sont ceux du cycle, refus (corruption LUSR h5_arena 2026-06-26)",
+				p.Gamertag, p.TitleSlug, deps.TitleSlug)
+			slog.ErrorContext(ctx, "sync.v2: profil d'un titre étranger refusé au câblage",
+				"event", "sync.v2.foreign_title_profile",
+				"gamertag", p.Gamertag, "profile_title", p.TitleSlug, "cycle_title", deps.TitleSlug,
+				"err", err)
+			return nil, err
+		}
+		// Le moteur est construit sur le titre du CYCLE — la même source que les
+		// handles ci-dessus. Le titre du profil n'est plus qu'un garde (ci-dessus) :
+		// ratchet TestSyncV2WiringHasSingleTitleSource.
+		engine := syncpkg.NewSyncEngineForTitle(deps.Cfg.RepoRoot, deps.TitleSlug, p.Gamertag, p.XUID, &domain.HaloTokens{}, deps.TokenProvider)
 
 		// 1. SharedProvider (B-swap si LEVELUP_USE_SHARED_PROVIDER=1)
 		if deps.Cfg.SharedProvider != nil {
 			engine.WithSharedProvider(deps.Cfg.SharedProvider)
 		}
 
-		// 2. FriendsLoader (sessions auto-recompute is_with_friends)
-		if deps.Settings != nil {
+		// 2. FriendsLoader (sessions auto-recompute is_with_friends) — amis DU
+		// JOUEUR du profil câblé, pas de l'instance.
+		if deps.Friends != nil && p.XUID != "" {
+			xuid := p.XUID
 			engine.WithFriendsLoader(func() ([]string, error) {
-				cfg, lerr := deps.Settings.Load()
-				if lerr != nil {
-					return nil, lerr
-				}
-				return cfg.FriendGamertags, nil
+				return deps.Friends.Get(xuid)
 			})
+		}
+
+		// 2b. Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5). Le hook s'installe
+		// toujours ; c'est LUI qui décide (construire ici / mettre en file / rien),
+		// d'après replay_build_location relu à chaque cycle. Parité avec
+		// scheduler.BuildEngine.
+		if deps.Settings != nil {
+			engine.WithReplayArtifacts(replayartifacts.NewHook(deps.Cfg, deps.Settings, deps.ReplayEnqueue))
 		}
 
 		// 3. Custom client pinned via pool
 		if deps.TokenPool != nil {
-			pooledClient := syncpkg.NewPooledHaloClient(deps.TokenPool, p.Gamertag, p.XUID, 0)
+			pooledClient := syncpkg.NewPooledHaloClient(deps.TokenPool, 0).WithOwner(p.Gamertag)
 			engine.SetCustomClient(pooledClient)
 		}
 
@@ -347,5 +390,45 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 		}
 
 		return engine, nil
+	}
+}
+
+// buildCyclePersister construit le persister du cycle V2. Résolution autonome des noms
+// d'assets au sync V2 (primary write) : le POOL UNIFIÉ (deps.TokenPool, la même source que
+// tous les syncs) — GameCMS exige un token ; écriture asset_translations via le handle
+// metadata RW partagé (deps.MetaDB). Amis par joueur : is_with_friends est posé dès le premier
+// écrit (sans quoi le match s'affiche « Solo » jusqu'au post-sync), avec la même source que le
+// FriendsLoader du moteur et l'emprunt de la base partagée de la découverte.
+func buildCyclePersister(deps SyncV2WiringDeps, getSharedDB func() *sql.DB) syncv2.CycleBatchPersister {
+	persister := syncv2.NewCycleBatchPersister(deps.TitleSlug, deps.BatchQueue, 0,
+		deps.MetaDB, deps.TokenPool, getSharedDB)
+	if deps.Friends != nil {
+		persister = syncv2.WithFriendsSource(persister, deps.Friends.Get, knownSetSharedBorrower(deps, getSharedDB))
+	}
+	return persister
+}
+
+// postSyncPlayerOpener ouvre la base joueur du post-sync V2 en READ-WRITE SOUS LE LEASE WRITER
+// JOUEUR (dblease.KindPlayer), tenu jusqu'à la fermeture — le même que le post-sync V1 tient
+// pendant tout son pipeline (ADR 0013 : un seul écrivain par base). Sans lui, un post-sync V2 et
+// un autre écrivain de la même base joueur (sync du watcher, relance des citations du film)
+// écrivaient en même temps. L'attente n'est bornée que par le contexte du cycle : céder la base
+// tant qu'un autre la tient est le but.
+func postSyncPlayerOpener(pr *titlePkg.PathResolver, titleSlug string) func(context.Context, string) (*sql.DB, func(), error) {
+	return func(ctx context.Context, gamertag string) (*sql.DB, func(), error) {
+		path := pr.PlayerDBPath(titleSlug, gamertag)
+		lease, err := dblease.AcquireWriterCtx(ctx, nil, path, dblease.KindPlayer)
+		if err != nil {
+			return nil, nil, fmt.Errorf("lease writer joueur %s: %w", gamertag, err)
+		}
+		db, err := duckdbpkg.OpenReadWrite(path)
+		if err != nil {
+			lease.Release()
+			return nil, nil, err
+		}
+		return db.SQLDb(), func() {
+			_ = db.Close()
+			lease.Release()
+		}, nil
 	}
 }

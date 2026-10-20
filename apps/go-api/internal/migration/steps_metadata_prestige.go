@@ -6,6 +6,6 @@ package migration
 // Les noms restent dans internal/migration/order.go (canonicalOrder).
 //
 // Les tables challenge_template / preset_arc y sont créées PK-only (pas d'index sur
-// title_slug/cadence/metric, colonnes mutées par les *Repo.Replace = surface ART #23046)
+// title_slug/cadence/metric, colonnes mutées par les *Repo.Replace = surface ART #23645)
 // — aligné sur l'éradication ART. Drop sur DB existantes :
 // drop_metadata_art_surface_indexes_v3.

@@ -1,0 +1,485 @@
+GAIN_FACTICE	bcb6d393	4:76	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	d9781168	22:1610	vue B : sortie par rejet
+GAIN_FACTICE	d9781168	28:1240	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	d9781168	33:944	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	d9781168	34:492	vue B : sortie par rejet
+GAIN_FACTICE	d9781168	35:1168	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	3:1138	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	5:204	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	9:472	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	10:46	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	10:310	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	12:684	ecrivain : masque epars non croissant
+GAIN_FACTICE	084a804d	14:234	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	18:832	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	25:410	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	25:968	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	26:678	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	26:718	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	29:182	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	29:406	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	30:46	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	30:488	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	31:980	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	32:946	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	33:546	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	33:830	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	37:896	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	38:126	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	39:18	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	39:790	ecrivain : masque epars non croissant
+GAIN_FACTICE	084a804d	39:826	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	39:1166	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	43:62	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	43:94	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	45:680	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	49:186	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	49:1188	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	51:746	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	51:882	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	53:1050	vue B : sortie par rejet
+GAIN_FACTICE	084a804d	54:296	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	54:800	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	084a804d	54:928	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	111fa685	8:996	vue B : sortie par rejet
+GAIN_FACTICE	111fa685	15:324	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	111fa685	21:620	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	111fa685	22:456	vue B : sortie par rejet
+GAIN_FACTICE	111fa685	26:44	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	e5adf7b2	4:728	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	e5adf7b2	10:962	ecrivain : ordre de la vue B
+GAIN_FACTICE	e5adf7b2	13:1034	vue B : sortie par rejet
+GAIN_FACTICE	e5adf7b2	14:26	vue B : sortie par rejet
+GAIN_FACTICE	e5adf7b2	14:230	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	e5adf7b2	20:240	vue B : sortie par rejet
+GAIN_FACTICE	e5adf7b2	22:522	vue B : sortie par rejet
+GAIN_FACTICE	e5adf7b2	25:76	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	e5adf7b2	27:1106	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	e5adf7b2	28:370	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	e5adf7b2	28:748	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	60ae07c4	31:2308	vue B : sortie par rejet
+GAIN_FACTICE	11de8353	6:748	vue B : sortie par rejet
+GAIN_FACTICE	11de8353	8:690	vue B : sortie par rejet
+GAIN_FACTICE	11de8353	9:908	vue B : sortie par rejet
+GAIN_FACTICE	11de8353	10:296	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	12:942	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	13:610	ecrivain : masque epars non croissant
+GAIN_FACTICE	11de8353	13:686	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	13:1074	vue B : sortie par rejet
+GAIN_FACTICE	11de8353	14:1056	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	15:190	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	15:648	vue B : sortie par rejet
+GAIN_FACTICE	11de8353	16:564	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	17:704	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	18:700	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	18:1080	vue B : sortie par rejet
+GAIN_FACTICE	11de8353	18:1112	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	19:388	vue B : sortie par rejet
+GAIN_FACTICE	11de8353	19:1048	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	21:42	vue B : sortie par rejet
+GAIN_FACTICE	11de8353	21:876	vue B : sortie par rejet
+GAIN_FACTICE	11de8353	22:386	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	26:646	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	27:198	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	28:82	vue B : sortie par rejet
+GAIN_FACTICE	11de8353	29:40	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	29:192	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	30:344	ecrivain : masque epars non croissant
+GAIN_FACTICE	11de8353	30:740	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	11de8353	30:934	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	7:988	vue B : sortie par rejet
+GAIN_FACTICE	4f77afc1	8:58	ecrivain : ordre de la vue B
+GAIN_FACTICE	4f77afc1	15:940	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	16:444	vue B : sortie par rejet
+GAIN_FACTICE	4f77afc1	20:18	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	20:348	ecrivain : ordre de la vue B
+GAIN_FACTICE	4f77afc1	20:1130	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	25:130	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	27:56	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	28:130	ecrivain : masque epars non croissant
+GAIN_FACTICE	4f77afc1	28:154	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	30:410	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	31:962	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	35:1102	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	38:808	vue B : sortie par rejet
+GAIN_FACTICE	4f77afc1	39:1094	vue B : sortie par rejet
+GAIN_FACTICE	4f77afc1	40:278	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	40:898	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	41:1132	vue B : sortie par rejet
+GAIN_FACTICE	4f77afc1	46:854	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	47:196	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	49:788	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	49:988	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	51:1100	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	4f77afc1	52:226	vue B : sortie par rejet
+GAIN_FACTICE	4f77afc1	59:712	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	396cfc92	8:1498	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	396cfc92	20:2272	ecrivain : masque epars non croissant
+GAIN_FACTICE	f75e7053	23:2326	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	5:720	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	7:358	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	8:440	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	8:734	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	8:2292	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	9:202	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	9:676	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	10:168	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	11:574	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	12:1028	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	12:1038	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	13:232	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	13:924	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	14:6	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	14:1862	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	16:130	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	16:648	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	16:1784	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	16:2098	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	16:2276	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	17:1030	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	17:1068	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	17:1362	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	17:1584	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	17:1612	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	17:1650	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	17:2344	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	18:2100	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	19:718	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	19:1478	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	20:86	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	20:368	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	20:694	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	20:712	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	20:772	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	20:784	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	20:1508	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	20:1532	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	20:1580	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	20:2076	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	21:770	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	21:1358	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	21:1470	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	22:1004	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	22:1300	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	22:2290	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	23:504	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	23:876	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	24:210	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	24:988	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	24:1106	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	24:1170	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	24:1366	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	24:1436	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	24:1918	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	25:458	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	25:910	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	25:1368	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	25:1640	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	25:1698	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	25:1996	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	25:2092	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	25:2124	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	26:228	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	26:262	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	26:804	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	26:858	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	26:962	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	26:1014	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	26:1152	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	26:2028	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	26:2074	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	27:342	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	27:562	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	27:582	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	27:636	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	27:652	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	27:984	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	27:1264	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	27:1480	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	27:1768	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	27:2022	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	27:2098	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	28:440	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	28:476	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	28:490	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	28:514	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	28:766	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	28:962	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	28:1066	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	28:1666	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	29:302	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	29:330	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	29:906	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	29:922	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	29:1022	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	29:1160	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	29:1180	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	29:1220	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	29:2160	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	29:2180	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	30:238	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	30:2030	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	30:2156	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	31:14	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	31:106	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	31:1004	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	31:1512	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	31:1564	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	32:586	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	32:1050	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	32:1310	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	32:2256	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	33:250	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	33:956	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	33:1406	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	33:1476	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	33:1576	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	33:2384	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	34:814	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	34:974	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	34:1074	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	34:1170	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	34:2248	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	35:164	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	35:346	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	35:370	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	35:812	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	35:1050	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	35:1704	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	35:1712	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	35:1914	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	36:206	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	36:334	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	36:542	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	36:556	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	36:1014	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	36:1116	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	36:1330	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	36:1358	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	36:1374	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	36:1598	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	36:1614	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	36:1710	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	37:480	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	37:674	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	37:1008	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	37:1204	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	37:1684	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	37:1984	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	37:2016	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	37:2110	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	38:136	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	38:168	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	38:288	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	38:376	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	38:700	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	38:1228	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	38:1622	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	38:1640	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	38:1654	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	38:1686	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	38:2010	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	38:2108	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	39:346	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	39:396	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	39:910	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	39:1442	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	39:1770	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	39:1798	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	39:1982	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	39:2056	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	39:2220	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	39:2382	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	40:10	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	40:82	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	40:178	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	40:1002	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	40:1354	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	40:1918	ecrivain : ordre de la vue B
+GAIN_FACTICE	1c4c63c2	40:2238	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	41:2070	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	42:884	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	42:1334	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	42:1978	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	42:2028	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	42:2038	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	42:2372	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	43:106	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	43:332	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	43:1128	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	43:1766	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	43:1988	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	43:2044	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	43:2046	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	43:2068	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	43:2188	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	44:608	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	44:1286	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	44:1656	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	44:1758	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	44:1854	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	44:1862	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	44:2196	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	45:48	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	45:738	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	45:1118	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	45:1198	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	45:1874	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	45:2012	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	45:2150	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	45:2230	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	46:140	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	46:282	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	46:976	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	46:1512	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	46:2320	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	46:2360	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	47:68	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	47:746	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	47:1202	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	47:1688	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	47:2202	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	48:680	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	48:1012	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	48:1320	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	48:1338	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	48:2006	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	49:406	ecrivain : masque au-dela de l archetype
+PERDU_AU_BIT	1c4c63c2	49:610	contredit	liste d evenements non localisee
+GAIN_FACTICE	1c4c63c2	49:674	ecrivain : masque au-dela de l archetype
+PERDU_AU_BIT	1c4c63c2	49:704	contredit	liste d evenements non localisee
+PERDU_AU_BIT	1c4c63c2	49:796	contredit	liste d evenements non localisee
+PERDU_AU_BIT	1c4c63c2	49:816	contredit	liste d evenements non localisee
+PERDU_AU_BIT	1c4c63c2	49:818	contredit	liste d evenements non localisee
+PERDU_AU_BIT	1c4c63c2	49:824	contredit	liste d evenements non localisee
+PERDU_AU_BIT	1c4c63c2	49:826	contredit	liste d evenements non localisee
+PERDU_AU_BIT	1c4c63c2	49:832	contredit	liste d evenements non localisee
+PERDU_AU_BIT	1c4c63c2	49:848	contredit	liste d evenements non localisee
+PERDU_AU_BIT	1c4c63c2	49:850	contredit	liste d evenements non localisee
+PERDU_AU_BIT	1c4c63c2	49:870	contredit	liste d evenements non localisee
+PERDU_AU_BIT	1c4c63c2	49:912	contredit	liste d evenements non localisee
+GAIN_FACTICE	1c4c63c2	49:1154	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	49:1570	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	49:1792	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	49:1888	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	49:1906	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	49:1982	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	50:12	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	50:198	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	50:864	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	50:988	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	50:1078	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	50:2218	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	51:254	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	51:388	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	51:648	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	51:670	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	51:688	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	51:1476	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	51:1714	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	51:2312	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	52:92	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	52:268	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	52:496	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	52:1004	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	52:1212	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	52:1238	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	52:1356	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	52:1364	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	52:1480	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	52:1530	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	52:2040	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	52:2126	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	52:2168	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	53:8	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	53:712	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	53:744	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	53:798	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	53:1144	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	53:1952	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	53:1972	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	53:1990	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	53:2002	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	53:2026	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	53:2076	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	54:10	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	54:48	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	55:698	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	55:702	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	55:836	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	55:1468	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	55:1768	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	55:2170	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	56:64	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	56:530	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	56:952	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	56:2338	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	57:558	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	57:566	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	57:844	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	57:926	ecrivain : ordre de la vue B
+GAIN_FACTICE	1c4c63c2	57:1022	ecrivain : ordre de la vue B
+GAIN_FACTICE	1c4c63c2	57:1454	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	57:1892	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	57:2082	ecrivain : ordre de la vue B
+GAIN_FACTICE	1c4c63c2	57:2362	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	58:504	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	58:1036	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	58:1538	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	58:1768	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	59:178	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	59:790	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	59:818	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	59:2144	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	59:2234	ecrivain : ordre de la vue B
+GAIN_FACTICE	1c4c63c2	60:182	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	60:1152	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	60:1174	ecrivain : ordre de la vue B
+GAIN_FACTICE	1c4c63c2	60:1490	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	60:1578	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	60:2318	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	60:2322	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	61:406	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	61:822	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	61:1750	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	61:2024	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	61:2046	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	62:168	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	62:274	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	62:278	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	62:1452	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	62:1962	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	62:1974	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	63:228	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	63:988	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	63:1118	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	63:1442	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	63:2024	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	63:2210	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	64:156	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	64:722	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	64:814	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	64:1718	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	64:2136	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	64:2180	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	65:908	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	65:1058	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	65:1430	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	66:282	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	66:582	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	66:650	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	66:660	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	66:670	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	66:674	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	66:766	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	66:798	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	66:1330	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	66:1352	ecrivain : masque epars non croissant
+GAIN_FACTICE	1c4c63c2	66:1470	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	66:1486	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	66:1502	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	66:1510	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	67:490	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	1c4c63c2	67:776	vue B : sortie par rejet
+GAIN_FACTICE	1c4c63c2	67:806	ecrivain : masque au-dela de l archetype
+GAIN_FACTICE	81c02726	7:1092	ecrivain : masque au-dela de l archetype

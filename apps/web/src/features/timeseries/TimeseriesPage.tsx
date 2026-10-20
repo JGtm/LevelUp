@@ -1,11 +1,17 @@
 /**
- * TimeseriesPage — page Séries temporelles (3 onglets).
+ * TimeseriesPage — page Séries temporelles (4 onglets).
  *
  * Orchestrateur slim. Chaque onglet est un sous-composant dans son propre fichier
  * (voir audit #6 god-file split) :
  *   - TimeseriesPage.summary.tsx       (onglet "summary")
  *   - TimeseriesPage.distributions.tsx (onglet "distributions")
  *   - TimeseriesPage.progression.tsx   (onglet "progression")
+ *   - TimeseriesPage.usages.tsx        (onglet "usages", 2026-09-22)
+ *
+ * UN AXE DE LECTURE PAR ONGLET. « Usages » réunit tout ce qui vient du film décodé
+ * (portée des engagements, usages d'équipement, formes retenues) : ces trois sections
+ * vivaient en queue de Synthèse et de Progression, où elles rompaient l'axe de leur
+ * onglet hôte.
  *
  * Phase 2 P2.E : migration partielle Plotly → ECharts pour les charts qui ont
  * un wrapper ECharts disponible (TimeseriesLineChart, Heatmap2DChart). Les
@@ -35,13 +41,15 @@ import { TimeseriesObjectiveCard } from './TimeseriesObjectiveCard'
 import { TimeseriesSummaryTab, type OutcomeLabels } from './TimeseriesPage.summary'
 import { TimeseriesDistributionsTabView } from './TimeseriesPage.distributions'
 import { TimeseriesProgressionTab } from './TimeseriesPage.progression'
+import { TimeseriesUsagesTab } from './TimeseriesPage.usages'
 
-type TabId = 'summary' | 'distributions' | 'progression'
+type TabId = 'summary' | 'distributions' | 'progression' | 'usages'
 
 const TAB_KEYS: { id: TabId; key: TimeseriesManifestKey }[] = [
   { id: 'summary', key: 'timeseries.tabs.summary' },
   { id: 'distributions', key: 'timeseries.tabs.distributions' },
   { id: 'progression', key: 'timeseries.tabs.progression' },
+  { id: 'usages', key: 'timeseries.tabs.usages' },
 ]
 
 export function TimeseriesPage() {
@@ -64,8 +72,8 @@ export function TimeseriesPage() {
     loss:
       fieldMappings?.outcomes?.loss?.label ??
       t('timeseries.distributions.outcome_loss_fallback'),
-    tie: fieldMappings?.outcomes?.tie?.label ?? 'Égalité',
-    dnf: fieldMappings?.outcomes?.dnf?.label ?? 'Abandon',
+    tie: fieldMappings?.outcomes?.tie?.label ?? t('timeseries.distributions.outcome_tie_fallback'),
+    dnf: fieldMappings?.outcomes?.dnf?.label ?? t('timeseries.distributions.outcome_dnf_fallback'),
     unknown:
       fieldMappings?.fields['outcome_unknown']?.label ??
       t('timeseries.distributions.outcome_unknown_fallback'),
@@ -196,6 +204,8 @@ export function TimeseriesPage() {
             explorerMatchRows={normalizeExplorerTableRows(explorerMatchesQuery.data?.table?.items ?? null)}
           />
         )}
+
+        {activeTab === 'usages' && <TimeseriesUsagesTab data={data} locale={locale} t={t} />}
       </div>
     </div>
   )

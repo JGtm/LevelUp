@@ -152,7 +152,7 @@ func (h *AdminConvergenceActionHandler) runConvergence(ctx context.Context, jobI
 				"module", "monitoring", "job_id", jobID, "player_slug", playerSlug, "err", err)
 		}
 		h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
-			j.Error = &domain.JobErrorDetail{Code: code, Message: err.Error(), Retryable: retryable}
+			j.Error = domain.NewJobError(code, retryable)
 		})
 		h.jobs.SetStatus(jobID, domain.JobStatusFailed, nil)
 		return

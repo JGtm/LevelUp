@@ -15,6 +15,9 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,10 +28,24 @@ import (
 	"time"
 )
 
-// Note PKCE : la génération du couple (code_verifier, code_challenge S256) est
-// fournie par GeneratePKCE (sisu_client.go, partagée dans ce package). Le flux
-// Authorization Code la consomme via le handler (verifier en session, challenge
-// dans BuildAuthorizeURL, verifier renvoyé à ExchangeAuthorizationCode).
+// GeneratePKCE génère un code_verifier et son code_challenge S256 (RFC 7636).
+// Le flux Authorization Code les consomme via le handler : verifier en session,
+// challenge dans BuildAuthorizeURL, verifier renvoyé à ExchangeAuthorizationCode.
+// Retourne (codeVerifier, codeChallenge, error).
+func GeneratePKCE() (string, string, error) {
+	b := make([]byte, pkceVerifierBytes)
+	if _, err := rand.Read(b); err != nil {
+		return "", "", fmt.Errorf("auth_code: génération PKCE: %w", err)
+	}
+	verifier := base64.RawURLEncoding.EncodeToString(b)
+	h := sha256.Sum256([]byte(verifier))
+	challenge := base64.RawURLEncoding.EncodeToString(h[:])
+	return verifier, challenge, nil
+}
+
+// pkceVerifierBytes est l'entropie du code_verifier PKCE (32 octets → 43 caractères
+// base64url, minimum de la RFC 7636 §4.1).
+const pkceVerifierBytes = 32
 
 // AuthCodeResult regroupe ce que retourne ExchangeAuthorizationCode.
 type AuthCodeResult struct {

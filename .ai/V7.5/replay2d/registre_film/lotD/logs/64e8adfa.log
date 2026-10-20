@@ -1,0 +1,58 @@
+=== RUN   TestEquipmentUsesPhase0
+    equipment_uses_research_test.go:99: signature [15 15 15] : 2 cartes candidates [catalyst deadlock] — bornes normalisees, poseur non mesurable (renseigner EQ_MAP pour trancher)
+    equipment_uses_research_test.go:102: FILM 64e8adfa · largeurs d'axe [15 15 15] · bornes NORMALISEES [0,1]
+    equipment_uses_research_test.go:109: == D.0.1 VOLUMES == records delta ti=37 89185 · slots 1332 · masque∋(un des 6) 4314 · marche ABOUTIE 4303 · CASSEE 11
+    equipment_uses_research_test.go:109:   equipment-deployed-component                   masque    393 · LU    389 · porte fermee     0
+    equipment_uses_research_test.go:109:   equipment-activated-component                  masque    146 · LU    144 · porte fermee    48
+    equipment_uses_research_test.go:109:   equipment-creator-component                    masque    136 · LU    136 · porte fermee    42
+    equipment_uses_research_test.go:109:   equipment-energy-component                     masque    189 · LU    188 · porte fermee     0
+    equipment_uses_research_test.go:109:   equipment-energy-delay-ticks-left-component    masque   1412 · LU   1408 · porte fermee     0
+    equipment_uses_research_test.go:109:   equipment-charges-remaining-component          masque   2085 · LU   2084 · porte fermee     0
+    equipment_uses_research_test.go:109:   recensement brut au masque i26 : 1412
+    equipment_uses_research_test.go:109:   recensement brut au masque i27 : 2085
+    equipment_uses_research_test.go:109:   D.0.3 (alternative) i19 `item-ignore-player` annonce 265 fois — sa grammaire est R(1)[+R(5)] (components_world.go:124), soit 5 bits : la MEME forme que i23 `equipment-creator`, deja REFUTEE comme slot de bipede (0 valeur sur 1 328 dans la bande) ET comme index de joueur (28 valeurs distinctes sur un film a 8 joueurs). Sa VALEUR n'est pas lisible en phase 0 : le deser la jette, et poser un hook est de la plomberie (interdite ici, lecture seule)
+    equipment_uses_research_test.go:110: == D.0.1 TRANSITIONS BRUTES (groupees par (slot, generation) SEULE — le comptage du lot 0, sur 2291 cles) ==
+    equipment_uses_research_test.go:110:   equipment-energy-delay-ticks-left-component    181 transitions sur 336 paires consecutives · dont 110 en BAISSE
+    equipment_uses_research_test.go:110:   equipment-charges-remaining-component          380 transitions sur 629 paires consecutives · dont 193 en BAISSE
+    equipment_uses_research_test.go:117: == TEMOIN (c) PLANCHER DE BRUIT DE L'ANCRAGE == calibration 9/5 (13 accords contre 0 à 0/0 ; 144 ancres, 483 vies, 5 chunks) · vies 483 · ancres 13162 · acceptes 495 · CONFIRMES par l'oracle de position 229 (46.26 % des acceptes) · poses 229
+    equipment_uses_research_test.go:117:   purete etablie de l'ancrage ti=37 en DELTA (hors de ce lot, ecrite au registre ECS) : 97,2 % de 628 368 echantillons i0 dans l'emprise des bipedes du meme film, 12 films sur 12 ; temoin d'ancrage a 1 slot (ti=4) : 98,7-99,8 % (lot C phase 1a). `ScanFilmEquipmentState` ne prend pas de bande en parametre : un tirage FANTOME du balayage d'etat exigerait de modifier du code de production, hors phase 0.
+    equipment_uses_research_test.go:120: == D.0.1 DISTRIBUTION DES VALEURS TRANSMISES — REEL (lecture rattachee a une vie CONFIRMEE par l'oracle de position) contre FANTOME (aucune vie confirmee) ==
+    equipment_uses_research_test.go:120:   REEL    equipment-charges-remaining-component     97 valeurs ·  32 distinctes · max  248 · 5:1 11:1 32:1 64:1 71:1 79:1 80:1 88:1 96:2 112:2 120:1 136:3 152:4 160:1 168:2 183:1 … 32 classes au total
+    equipment_uses_research_test.go:120:   FANTOME equipment-charges-remaining-component   1987 valeurs · 168 distinctes · max  255 · 0:16 1:19 2:21 3:62 4:19 5:10 6:2 7:7 8:6 9:2 10:3 11:23 12:2 13:6 14:9 15:16 … 168 classes au total
+    equipment_uses_research_test.go:120:   REEL    equipment-energy-delay-ticks-left-component   233 valeurs ·  14 distinctes · max  978 · 0:203 1:15 18:1 31:1 45:1 91:2 123:1 187:1 708:1 833:1 894:2 937:2 976:1 978:1
+    equipment_uses_research_test.go:120:   FANTOME equipment-energy-delay-ticks-left-component  1175 valeurs · 257 distinctes · max 1023 · 0:7 1:3 2:1 4:2 5:6 6:1 12:3 14:1 15:3 16:2 17:1 20:2 21:1 23:1 25:2 26:1 … 257 classes au total
+    equipment_uses_research_test.go:121: == JOINTURE == 229 vies d'objet IDENTIFIEES · 361 lectures rattachees
+    equipment_uses_research_test.go:121:   grapple                 17 vies ·   2 portent i27 (2 lectures) ·  17 portent i26
+    equipment_uses_research_test.go:121:   grenade_frag           144 vies ·  16 portent i27 (86 lectures) · 142 portent i26
+    equipment_uses_research_test.go:121:   grenade_plasma          19 vies ·   1 portent i27 (1 lectures) ·  19 portent i26
+    equipment_uses_research_test.go:121:   grenade_spike           26 vies ·   4 portent i27 (5 lectures) ·  26 portent i26
+    equipment_uses_research_test.go:121:   other                    9 vies ·   0 portent i27 (0 lectures) ·   0 portent i26
+    equipment_uses_research_test.go:121:   repulsor                14 vies ·   3 portent i27 (3 lectures) ·   0 portent i26
+    equipment_uses_research_test.go:131: == D.0.2 ORACLE GRAPPIN == i59 : 293845 records biped · masque∋i59 2339 · lus 2320 · tag==3 26 · corps casses 1 · EVENEMENTS 25 · USAGES (paires tir/accroche) 13
+    equipment_uses_research_test.go:131:   IDENTITE : 17 objet(s) ti=37 de famille `grapple`, par GlobalID de tag `eqip` du record de CREATION (manifeste du titre, meme table que la production) : 0x273fe0eb:17 vies
+    equipment_uses_research_test.go:131:   canal i27 decroissance (prescrit)  0 signaux `grapple` · APPARIES 0/25 (0.0 %) -> SEUIL NON TENU · temoin (a) +7 s 0/25 (0.0 %) · temoin (b) autres familles 0/25 (0.0 %)
+    equipment_uses_research_test.go:131:   pont par i27 decroissance (prescrit) 0 vies appariees · 0 attribuees (>= 2 evenements d'un meme slot) · 0 ambigues · COHERENCE 0/0 (non calculable) -> SEUIL NON TENU
+    equipment_uses_research_test.go:131:   canal i26 hausse (repli prescrit)  2 signaux `grapple` · APPARIES 0/25 (0.0 %) -> SEUIL NON TENU · temoin (a) +7 s 0/25 (0.0 %) · temoin (b) autres familles 0/25 (0.0 %)
+    equipment_uses_research_test.go:131:   pont par i26 hausse (repli prescrit) 0 vies appariees · 0 attribuees (>= 2 evenements d'un meme slot) · 0 ambigues · COHERENCE 0/0 (non calculable) -> SEUIL NON TENU
+    equipment_uses_research_test.go:131:   canal naissance de l'objet (controle) 17 signaux `grapple` · APPARIES 2/25 (8.0 %) -> SEUIL NON TENU · temoin (a) +7 s 0/25 (0.0 %) · temoin (b) autres familles 2/25 (8.0 %)
+    equipment_uses_research_test.go:131:   pont par naissance de l'objet (controle) 1 vies appariees · 1 attribuees (>= 2 evenements d'un meme slot) · 0 ambigues · COHERENCE 1/1 (100.0 %) -> SEUIL TENU
+    equipment_uses_research_test.go:132: == D.0.4 GENERALISATION == decroissances de charge par vie d'objet et par famille
+    equipment_uses_research_test.go:132:   grapple                 17 vies ·   0 avec >= 1 decroissance ·    0 decroissances · max/vie 0
+    equipment_uses_research_test.go:132:   grenade_frag           144 vies ·   2 avec >= 1 decroissance ·   11 decroissances · max/vie 9
+    equipment_uses_research_test.go:132:   grenade_plasma          19 vies ·   0 avec >= 1 decroissance ·    0 decroissances · max/vie 0
+    equipment_uses_research_test.go:132:   grenade_spike           26 vies ·   0 avec >= 1 decroissance ·    0 decroissances · max/vie 0
+    equipment_uses_research_test.go:132:   other                    9 vies ·   0 avec >= 1 decroissance ·    0 decroissances · max/vie 0
+    equipment_uses_research_test.go:132:   repulsor                14 vies ·   0 avec >= 1 decroissance ·    0 decroissances · max/vie 0
+    equipment_uses_research_test.go:132:   CONTROLE CROISE pose <-> decroissance de la meme famille (fenetre ± 500 ms, seuil 80 %) :
+    equipment_uses_research_test.go:132:     grapple                 17 poses · AUCUNE decroissance dans cette famille : non calculable
+    equipment_uses_research_test.go:132:     grenade_frag           0/144 (0.0 %) -> SEUIL NON TENU · temoin +7 s 0/144 (0.0 %)
+    equipment_uses_research_test.go:132:     grenade_plasma          19 poses · AUCUNE decroissance dans cette famille : non calculable
+    equipment_uses_research_test.go:132:     grenade_spike           26 poses · AUCUNE decroissance dans cette famille : non calculable
+    equipment_uses_research_test.go:132:     other                    9 poses · AUCUNE decroissance dans cette famille : non calculable
+    equipment_uses_research_test.go:132:     repulsor                14 poses · AUCUNE decroissance dans cette famille : non calculable
+    equipment_uses_research_test.go:133: == D.0.4 RELATION i26 <-> DECROISSANCE DE CHARGE == 0/11 (0.0 %) des decroissances sont accompagnees d'une HAUSSE d'i26 sur la MEME vie dans la fenetre ± 500 ms · 12 hausses d'i26 au total · 202 vies portent i26 sans aucune decroissance de charge
+    equipment_uses_research_test.go:134: == D.0.4 POSES PAR POSEUR == NON CALCULABLE : le poseur (`equipmentOwner`, seuil de proximite en METRES) exige les bornes de la carte. Renseigner EQ_BOUNDS (et EQ_MAP si la signature de largeurs est ambigue).
+    equipment_uses_research_test.go:135:   piece ecrite : C:\Users\Guillaume\Projects\LevelUp-wt-usages-film\.ai\V7.5\replay2d\registre_film\lotD\64e8adfa_vies.tsv
+    equipment_uses_research_test.go:135:   piece ecrite : C:\Users\Guillaume\Projects\LevelUp-wt-usages-film\.ai\V7.5\replay2d\registre_film\lotD\64e8adfa_decroissances.tsv
+--- PASS: TestEquipmentUsesPhase0 (106.06s)
+PASS

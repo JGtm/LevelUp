@@ -20,7 +20,7 @@ func openExclusionDB(t *testing.T) *sql.DB {
 	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { db.Close() })
 
-	if err := execScript(t.Context(), db, `
+	if err := migration.ExecScriptContext(t.Context(), db, `
 		CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY,
 			is_excluded BOOLEAN DEFAULT FALSE,

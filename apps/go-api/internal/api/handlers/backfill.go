@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/jobs"
 	"levelup/go-api/internal/service"
@@ -88,8 +89,16 @@ func (h *BackfillHandler) handleStartBackfill(ctx context.Context, in *backfillS
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_player_slug", "player_slug vide ou trop long.")
 	}
 
-	// Chercher le joueur dans db_profiles.json.
-	players, err := h.cfg.LoadPlayers()
+	// Un titre absent vaut le titre par défaut, résolu AVANT la recherche du joueur : le moteur ouvre
+	// les bases de ce titre, la recherche doit donc porter sur ses profils (et non sur tous les
+	// titres, où un joueur suivi ailleurs seulement passerait).
+	if req.Title == "" {
+		req.Title = titlePkg.DefaultSlug
+	}
+
+	// Chercher le joueur dans db_profiles.json, parmi les profils de CE titre : un titre inconnu, ou
+	// où le joueur n'est pas suivi, répond 404 sans rien lancer.
+	players, err := h.cfg.LoadPlayers(req.Title)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "profiles_load_error",
 			"Impossible de charger db_profiles.json.")
@@ -134,9 +143,11 @@ func (h *BackfillHandler) handleStartBackfill(ctx context.Context, in *backfillS
 	// acquireSharedWriter rend ce wire sûr) — sans Provider, RunBackfill*
 	// utiliseraient OpenSharedDB direct (mode legacy) en parallèle des syncs auto
 	// → conflit "different configuration" pour les readers HTTP.
-	engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, nil)
-	if h.cfg.SharedProvider != nil {
-		engine = engine.WithSharedProvider(h.cfg.SharedProvider)
+	// Moteur DU TITRE demandé (req.Title, résolu plus haut) et provider shared de ce titre : le provider
+	// du boot est celui du titre par défaut, il ferait écrire un autre titre dans la mauvaise base.
+	engine := go_sync.NewSyncEngineForTitle(h.cfg.RepoRoot, req.Title, gamertag, xuid, tokens, nil)
+	if provider := h.cfg.SharedProviderForTitle(req.Title); provider != nil {
+		engine = engine.WithSharedProvider(provider)
 	}
 
 	job := h.jobStore.Create(domain.JobTypeBackfill, req.PlayerSlug)
@@ -158,7 +169,7 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 
 	noExplicitScope := !req.Medals && !req.Events && !req.Skill &&
 		!req.PersonalScores && !req.PerformanceScores &&
-		!req.Aliases && !req.Weapons && !req.LUSR && !req.CSR && !req.EngagementScores &&
+		!req.Aliases && !req.LUSR && !req.CSR && !req.EngagementScores &&
 		!req.EngagementCoefficients && !req.ComebackBadges && !req.Citations
 	if req.AllData || noExplicitScope {
 		// Aucun scope explicite → activer tout
@@ -169,7 +180,6 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.PersonalScores = true
 		scope.PerformanceScores = true
 		scope.Aliases = true
-		scope.Weapons = true
 		scope.LUSR = true
 		scope.CSR = true
 		scope.EngagementScores = true
@@ -184,7 +194,6 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.PersonalScores = req.PersonalScores
 		scope.PerformanceScores = req.PerformanceScores
 		scope.Aliases = req.Aliases
-		scope.Weapons = req.Weapons
 		scope.LUSR = req.LUSR
 		scope.CSR = req.CSR
 		scope.EngagementScores = req.EngagementScores
@@ -197,7 +206,6 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.ForceMedals = req.Medals || req.AllData
 		scope.ForceEvents = req.Events || req.AllData
 		scope.ForceSkill = req.Skill || req.AllData
-		scope.ForceWeapons = req.Weapons || req.AllData
 		scope.ForcePersonalScores = req.PersonalScores || req.AllData
 		scope.ForcePerformanceScores = req.PerformanceScores || req.AllData
 		scope.ForceAliases = req.Aliases || req.AllData

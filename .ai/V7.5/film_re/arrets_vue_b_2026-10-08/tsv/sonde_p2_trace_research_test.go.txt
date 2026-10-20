@@ -1,0 +1,92 @@
+//go:build research
+
+package grammar
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"testing"
+)
+
+type zzEcouteur struct{}
+
+func (zzEcouteur) debutDeChunk(int, []byte, []FilmPacket, *World) {}
+func (zzEcouteur) paquet(int, *cmPaquet, *World)                 {}
+func (zzEcouteur) finDeFilm()                                     {}
+
+func zzBitsA(pay []byte, de, n int) string {
+	br := LecteurSur(pay)
+	br.SetBitPos(de)
+	s := ""
+	for i := 0; i < n && br.BitPos() < len(pay)*8; i++ {
+		if br.ReadBit() {
+			s += "1"
+		} else {
+			s += "0"
+		}
+	}
+	return s
+}
+
+// Sonde jetable (jamais dans le depot) : les records que la marche d essai lit depuis un debut.
+func TestZZTraceVueB(t *testing.T) {
+	racine := os.Getenv("CAMPAGNE_RACINE")
+	id := os.Getenv("SONDE_ID")
+	cibles := map[string]bool{}
+	for _, c := range strings.Split(os.Getenv("SONDE_PAQUETS"), ",") {
+		cibles[c] = true
+	}
+	f, ok := cmOuvrir(t, racine, id, cmUtiles(t))
+	if !ok {
+		return
+	}
+	g := f.fc.grammaireDeLaVueA()
+	rnMarcher(f, cmVariante{}, zzEcouteur{}, func(c, _ int, pk FilmPacket, pay []byte, w *World) {
+		cle := strconv.Itoa(c) + ":" + strconv.Itoa(pk.Index)
+		if !cibles[cle] {
+			return
+		}
+		cfg := f.cfg
+		a := lireLaVueA(pay, 1, cfg.Profil, g)
+		s0, _ := strconv.Atoi(os.Getenv("SONDE_S0_" + strconv.Itoa(c) + "_" + strconv.Itoa(pk.Index)))
+		for _, s := range []int{a.Fin, s0} {
+			if s <= 0 {
+				continue
+			}
+			essai := cfg
+			essai.Obs = NouvelleObservation()
+			snap := w.Snapshot()
+			recs, _, cur := DecodeFrameViewsCurseur(pay, w, essai, MovementStateViews, s)
+			w.Restore(snap)
+			fmt.Printf("TR\t%s depuis %d : %d records, curseur %d, payload %d\n", cle, s, len(recs), cur, len(pay)*8)
+			for _, r := range recs {
+				dern := -1
+				if n := len(r.Trace.Comps); n > 0 {
+					dern = r.Trace.Comps[n-1].Index
+				}
+				fmt.Printf("TR\t  bit %d..%d type %d slot %d ti %d comps %d dernier i%d desync %d masque %x\n", r.HeaderBit, r.FinBit, r.Type, r.Slot, r.TypeIndex, len(r.Trace.Comps), dern, r.DesyncAt, r.Trace.Mask)
+			}
+			for _, r := range recs {
+				fmt.Printf("TB\t%d %s\n", r.HeaderBit, zzBitsA(pay, r.HeaderBit, r.FinBit-r.HeaderBit))
+				for _, cp := range r.Trace.Comps {
+					fmt.Printf("TC\t%d i%d debut %d porte %v\n", r.HeaderBit, cp.Index, cp.StartBit, cp.Ported)
+				}
+			}
+			if len(recs) > 0 {
+				lr := recs[len(recs)-1]
+				if len(lr.Trace.Comps) > 0 {
+					c0 := lr.Trace.Comps[0]
+					fin0 := lr.FinBit
+					if len(lr.Trace.Comps) > 1 {
+						fin0 = lr.Trace.Comps[1].StartBit
+					}
+					fmt.Printf("TL\tti %d i%d precHigh %s longueur i0 %d\n", lr.TypeIndex, c0.Index, zzBitsA(pay, c0.StartBit, 2), fin0-c0.StartBit)
+				}
+				last := recs[len(recs)-1].FinBit
+				fmt.Printf("TR\tbits depuis %d : %s\n", last, zzBitsA(pay, last, 80))
+			}
+		}
+	})
+}

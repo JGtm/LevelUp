@@ -1,0 +1,759 @@
+temoin       famille          base(af6e93e23)   HEAD    gains   pertes   chang.      duree base   cache  statut
+bcb6d393     ctf_mono_manche      76     76        0        2        0      8.84s cuite  A+F    PERTE
+fb1a1a72     ctf_multi_manche     76     76        0        0        0      22.3s cuite  A+F    ok
+d9781168     oddball              76     76        3        5        0     19.64s cuite  A+F    PERTE
+c75f33b8     assaut_bombe         76     76        0        0        0     10.93s cuite  A+F    ok
+bf15f7ab     slayer               76     76        0        0        0      10.8s cuite  A+F    ok
+51ebbc0f     deux_manches         76     76        0        0        0     14.37s cuite  A+F    ok
+084a804d     vehicules            76     76       51        6        1   1m24.92s cuite  A+F    PERTE
+0797ce72     region_index_2_bits     76     76        2        5        0     12.97s cuite  A+F    PERTE
+111fa685     version_39           76     76       22        5        0     30.15s cuite  A+F    FAUX
+e5adf7b2     version_40_build_1_11     76     76       23        6        1     33.83s cuite  A+F    PERTE
+60ae07c4     version_37           76     76        2        1        0     23.97s cuite  A+F    PERTE
+a349fea8     version_33_sans_identification     76     76        6        4        0   1m50.66s cuite  A+F    PERTE
+a521164d     version_33_build_1_4_1     76     76        4        3        0     31.34s cuite  A+F    PERTE
+11de8353     version_38_build_1_9_0     76     76       23        7        0     28.62s cuite  A+F    PERTE
+50247b26     version_31_sans_identification     76     76        4        4        0    1m2.54s cuite  A+F    PERTE
+bfecd02b     vehicules_v41_utilisateur     76     76       17        4        0     17.01s cuite  A+F    PERTE
+4f77afc1     equipement_origine_utilisateur     76     76      103       26        8   1m30.25s cuite  A+F    PERTE
+396cfc92     strongholds_zones     76     76        0        0        0     18.65s cuite  A+F    ok
+f75e7053     koth_collines        76     76        0        0        0     11.02s cuite  A+F    ok
+
+BANC DE VERITE (19 temoin(s)) — le verdict du gate :
+
+BANC DE VERITE — bcb6d393 : ok
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 39 / FP 0 / FN 10
+    O-K2 morts (statborg)                    VP 37 / FP 0 / FN 13
+    O-K3 assistances (statborg)              VP 9 / FP 0 / FN 2
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S2 actions de marque par camp          VP 3 / FP 0 / FN 0
+    O-S3 score personnel                     VP 5185 / FP 405 / FN 1540
+    O-T1 equipes du roster                   VP 11 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 44 / FP 0 / FN 6
+    O-V2 fins de vie (sans identite)         VP 50 / FP 3 / FN 0
+    P-1 paquets fermes au bit pres           5830
+    P-2 preuves contradictoires (image-cle)  2
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    2
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 2
+    V-8 mort sans fin de vie                 3
+  [FILET] couverture coverage.stances.refusedNewFalseReads : 2 -> 3 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 2 -> 3 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — fb1a1a72 : ok
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 140 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 141 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 47 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S2 actions de marque par camp          VP 1 / FP 0 / FN 0
+    O-S3 score personnel                     VP 17570 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 136 / FP 0 / FN 5
+    O-V2 fins de vie (sans identite)         VP 141 / FP 2 / FN 0
+    P-1 paquets fermes au bit pres           22276
+    P-2 preuves contradictoires (image-cle)  2
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    2
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   4
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 10
+    V-8 mort sans fin de vie                 1
+
+BANC DE VERITE — d9781168 : ok
+  [info] R-1 repli repli_deadstate_hors_bande_bipede : 3 -> 4
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 254 -> 255
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 142 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 144 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 70 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 21595 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 144 / FP 8 / FN 0
+    O-V2 fins de vie (sans identite)         VP 144 / FP 14 / FN 0
+    P-1 paquets fermes au bit pres           26210
+    P-2 preuves contradictoires (image-cle)  1
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0 (38 exemptees)
+    V-2 objet hors emprise                   1
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 13
+    V-8 mort sans fin de vie                 2
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 11503 -> 11504 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.dropped : 6 -> 7 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 1298 -> 1299 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewUndecided : 21 -> 22 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 22 -> 23 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — c75f33b8 : ok
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 40 / FP 0 / FN 22
+    O-K2 morts (statborg)                    VP 48 / FP 0 / FN 14
+    O-K3 assistances (statborg)              VP 15 / FP 0 / FN 7
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S2 actions de marque par camp          VP 0 / FP 0 / FN 3
+    O-S3 score personnel                     VP 5670 / FP 0 / FN 3340
+    O-T1 equipes du roster                   VP 10 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 59 / FP 9 / FN 3
+    O-V2 fins de vie (sans identite)         VP 62 / FP 14 / FN 0
+    P-1 paquets fermes au bit pres           22854
+    P-2 preuves contradictoires (image-cle)  3
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    1
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   2
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 10
+    V-8 mort sans fin de vie                 1
+
+BANC DE VERITE — bf15f7ab : ok
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 75 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 76 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 26 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 8710 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 75 / FP 0 / FN 1
+    O-V2 fins de vie (sans identite)         VP 76 / FP 3 / FN 0
+    P-1 paquets fermes au bit pres           28465
+    P-2 preuves contradictoires (image-cle)  2
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 0
+    V-8 mort sans fin de vie                 0
+
+BANC DE VERITE — 51ebbc0f : ok
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 70 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 71 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 39 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 11555 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 70 / FP 6 / FN 1
+    O-V2 fins de vie (sans identite)         VP 71 / FP 9 / FN 0
+    P-1 paquets fermes au bit pres           9759
+    P-2 preuves contradictoires (image-cle)  2
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 0
+    V-8 mort sans fin de vie                 0
+
+BANC DE VERITE — 084a804d : ok
+  [gain] P-1 paquets fermes au bit pres : 4773 -> 4801
+  [info] R-1 repli repli_deadstate_hors_bande_bipede : 25 -> 59
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 457 -> 460
+  [info] R-1 repli repli_liaison_par_anticipation : 920 -> 926
+  [info] R-1 repli repli_physique_de_type_de_vehicule_supposee : 8914 -> 0
+  [info] R-1 repli repli_record_desynchronise_jete : 29 -> 2
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 124 / FP 0 / FN 230
+    O-K2 morts (statborg)                    VP 117 / FP 0 / FN 239
+    O-K3 assistances (statborg)              VP 50 / FP 0 / FN 72
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S2 actions de marque par camp          VP 0 / FP 0 / FN 5
+    O-S3 score personnel                     VP 16690 / FP 0 / FN 29645
+    O-T1 equipes du roster                   VP 26 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 353 / FP 1 / FN 3
+    O-V2 fins de vie (sans identite)         VP 356 / FP 17 / FN 0
+    P-1 paquets fermes au bit pres           4801
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    1
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   10
+    V-3 action hors vie                      92
+    V-4 deux corps                           1
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              6
+    V-7 identite discordante                 31
+    V-8 mort sans fin de vie                 12
+  [FILET] couverture coverage.birthLoadouts.noDisplayable : 15 -> 16 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 23544 -> 23697 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.dropped : 5 -> 6 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 3649 -> 3650 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.vehicles.samplesAfterEnd : 1238 -> 1508 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles/par-end/unknown : 70 -> 63 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 0797ce72 : ok
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 92 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 93 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 29 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 10640 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 91 / FP 0 / FN 2
+    O-V2 fins de vie (sans identite)         VP 93 / FP 1 / FN 0
+    P-1 paquets fermes au bit pres           19072
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      2
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 6
+    V-8 mort sans fin de vie                 0
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 5609 -> 5613 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 1270 -> 1272 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewFalseReads : 48 -> 49 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewUndecided : 42 -> 43 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 90 -> 92 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 111fa685 : FAUX
+  [FAUX] R-1 repli repli_deadstate_hors_bande_bipede : 0 -> 1
+      repli nouveau
+  [gain] P-1 paquets fermes au bit pres : 4012 -> 4024
+  [info] R-1 repli repli_deadstate_indice_hors_roster : 80 -> 84
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 138 -> 141
+  [info] R-1 repli repli_liaison_par_anticipation : 587 -> 590
+  [info] R-1 repli repli_physique_de_type_de_vehicule_supposee : 1939 -> 0
+  [info] R-1 repli repli_record_desynchronise_jete : 10 -> 6
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 78 / FP 0 / FN 113
+    O-K2 morts (statborg)                    VP 67 / FP 0 / FN 126
+    O-K3 assistances (statborg)              VP 28 / FP 0 / FN 34
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 9295 / FP 0 / FN 12930
+    O-T1 equipes du roster                   VP 25 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 188 / FP 0 / FN 5
+    O-V2 fins de vie (sans identite)         VP 193 / FP 8 / FN 0
+    P-1 paquets fermes au bit pres           4024
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      5
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 17
+    V-8 mort sans fin de vie                 1
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 11084 -> 11107 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.dropped : 5 -> 7 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 1924 -> 1928 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.vehicles.samplesAfterEnd : 98 -> 108 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles/par-end/unknown : 6 -> 5 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — e5adf7b2 : ok
+  [gain] P-1 paquets fermes au bit pres : 4123 -> 4146
+  [info] R-1 repli repli_deadstate_indice_hors_roster : 25 -> 41
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 158 -> 159
+  [info] R-1 repli repli_physique_de_type_de_vehicule_supposee : 2502 -> 0
+  [info] R-1 repli repli_record_desynchronise_jete : 12 -> 1
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 52 / FP 0 / FN 145
+    O-K2 morts (statborg)                    VP 64 / FP 0 / FN 135
+    O-K3 assistances (statborg)              VP 16 / FP 0 / FN 29
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 6060 / FP 0 / FN 16235
+    O-T1 equipes du roster                   VP 28 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 190 / FP 0 / FN 9
+    O-V2 fins de vie (sans identite)         VP 199 / FP 11 / FN 0
+    P-1 paquets fermes au bit pres           4146
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   535
+    V-3 action hors vie                      10
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 21
+    V-8 mort sans fin de vie                 9
+  [FILET] couverture coverage.continuousFire.burstsWithHole : 35 -> 36 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 10360 -> 10452 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.dropped : 12 -> 13 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 2092 -> 2094 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.vehicles.samplesAfterEnd : 326 -> 411 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles/par-end/unknown : 51 -> 46 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 60ae07c4 : ok
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 162 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 163 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 63 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 22930 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 160 / FP 1 / FN 3
+    O-V2 fins de vie (sans identite)         VP 163 / FP 4 / FN 0
+    P-1 paquets fermes au bit pres           13802
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0 (1 exemptees)
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 12
+    V-8 mort sans fin de vie                 2
+  [FILET] couverture coverage.continuousFire.holesKind : 729 -> 730 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — a349fea8 : ok
+  [info] R-1 repli repli_deadstate_hors_bande_bipede : 25 -> 62
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 42 -> 44
+  [info] R-1 repli repli_liaison_par_anticipation : 992 -> 1017
+  [info] R-1 repli repli_physique_de_type_de_vehicule_supposee : 22 -> 0
+  [info] R-1 repli repli_record_desynchronise_jete : 36 -> 0
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 0 / FP 0 / FN 290
+    O-K2 morts (statborg)                    VP 0 / FP 0 / FN 293
+    O-K3 assistances (statborg)              VP 0 / FP 0 / FN 119
+    O-S1 score par camp                      VP 0 / FP 0 / FN 3
+    O-S3 score personnel                     VP 0 / FP 0 / FN 40730
+    O-T1 equipes du roster                   VP 0 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 0 / FP 0 / FN 293
+    O-V2 fins de vie (sans identite)         VP 293 / FP 113 / FN 0
+    P-1 paquets fermes au bit pres           420
+    P-2 preuves contradictoires (image-cle)  1
+    P-4 verdicts de couverture bridge        0
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   1076
+    V-3 action hors vie                      17
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              1
+    V-7 identite discordante                 0
+    V-8 mort sans fin de vie                 0
+  [FILET] couverture coverage.continuousFire.holesBlockBC : 152 -> 154 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesKind : 927 -> 939 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 22249 -> 22378 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 3052 -> 3066 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — a521164d : ok
+  [info] R-1 repli repli_deadstate_hors_bande_bipede : 10 -> 24
+  [info] R-1 repli repli_liaison_par_anticipation : 605 -> 612
+  [info] R-1 repli repli_record_desynchronise_jete : 16 -> 2
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 0 / FP 0 / FN 101
+    O-K2 morts (statborg)                    VP 0 / FP 0 / FN 106
+    O-K3 assistances (statborg)              VP 0 / FP 0 / FN 41
+    O-S1 score par camp                      VP 0 / FP 0 / FN 3
+    O-S3 score personnel                     VP -100 / FP 100 / FN 14225
+    O-T1 equipes du roster                   VP 27 / FP 0 / FN 1
+    O-V1 morts par les vies                  VP 101 / FP 0 / FN 5
+    O-V2 fins de vie (sans identite)         VP 106 / FP 17 / FN 0
+    P-1 paquets fermes au bit pres           692
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   430
+    V-3 action hors vie                      2
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 5
+    V-8 mort sans fin de vie                 0
+  [FILET] couverture coverage.continuousFire.holesBlockBC : 139 -> 143 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesKind : 254 -> 257 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 8373 -> 8438 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 11de8353 : ok
+  [gain] P-1 paquets fermes au bit pres : 5612 -> 5619
+  [info] R-1 repli repli_deadstate_indice_hors_roster : 44 -> 60
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 125 -> 127
+  [info] R-1 repli repli_liaison_par_anticipation : 501 -> 511
+  [info] R-1 repli repli_physique_de_type_de_vehicule_supposee : 326 -> 0
+  [info] R-1 repli repli_record_desynchronise_jete : 15 -> 5
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 48 / FP 0 / FN 117
+    O-K2 morts (statborg)                    VP 40 / FP 0 / FN 126
+    O-K3 assistances (statborg)              VP 9 / FP 0 / FN 33
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 5250 / FP 0 / FN 13840
+    O-T1 equipes du roster                   VP 27 / FP 0 / FN 1
+    O-V1 morts par les vies                  VP 156 / FP 0 / FN 10
+    O-V2 fins de vie (sans identite)         VP 166 / FP 7 / FN 0
+    P-1 paquets fermes au bit pres           5619
+    P-2 preuves contradictoires (image-cle)  1
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0 (47 exemptees)
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      8
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 17
+    V-8 mort sans fin de vie                 7
+  [FILET] couverture coverage.continuousFire.holesKind : 189 -> 190 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 9919 -> 9953 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 1700 -> 1702 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewFalseReads : 8 -> 10 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 11 -> 13 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.vehicles.samplesAfterEnd : 453 -> 516 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles/par-end/unknown : 35 -> 29 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 50247b26 : ok
+  [info] R-1 repli repli_deadstate_hors_bande_bipede : 14 -> 32
+  [info] R-1 repli repli_liaison_par_anticipation : 650 -> 658
+  [info] R-1 repli repli_physique_de_type_de_vehicule_supposee : 5374 -> 0
+  [info] R-1 repli repli_record_desynchronise_jete : 18 -> 0
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 0 / FP 0 / FN 150
+    O-K2 morts (statborg)                    VP 0 / FP 0 / FN 154
+    O-K3 assistances (statborg)              VP 0 / FP 0 / FN 91
+    O-S1 score par camp                      VP 0 / FP 0 / FN 150
+    O-S3 score personnel                     VP -200 / FP 200 / FN 18930
+    O-T1 equipes du roster                   VP 0 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 0 / FP 0 / FN 154
+    O-V2 fins de vie (sans identite)         VP 154 / FP 89 / FN 0
+    P-1 paquets fermes au bit pres           139
+    P-2 preuves contradictoires (image-cle)  2
+    P-4 verdicts de couverture bridge        0
+    P-4 verdicts de couverture grenades      1
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   899
+    V-3 action hors vie                      4
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 0
+    V-8 mort sans fin de vie                 0
+  [FILET] couverture coverage.continuousFire.holesBlockBC : 552 -> 555 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesKind : 896 -> 906 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 13794 -> 13865 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.forgottenBindings : 1221 -> 1223 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — bfecd02b : ok
+  [gain] P-1 paquets fermes au bit pres : 26380 -> 27108
+  [info] R-1 repli repli_deadstate_indice_hors_roster : 29 -> 30
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 21 -> 22
+  [info] R-1 repli repli_liaison_par_anticipation : 25 -> 24
+  [info] R-1 repli repli_record_desynchronise_jete : 1 -> 0
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 84 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 84 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 44 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 10660 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 82 / FP 0 / FN 2
+    O-V2 fins de vie (sans identite)         VP 84 / FP 3 / FN 0
+    P-1 paquets fermes au bit pres           27108
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 2
+    V-8 mort sans fin de vie                 2
+  [FILET] autres:stances stances/duree-totale : 9794 -> 9738 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/574 : 162 -> 106 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesNotClosing : 3177 -> 3242 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.dropped : 1 -> 2 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 4f77afc1 : ok
+  [gain] P-1 paquets fermes au bit pres : 22260 -> 22865
+  [info] R-1 repli repli_deadstate_hors_bande_bipede : 10 -> 84
+  [info] R-1 repli repli_debut_de_liste_ferme_au_bit : 991 -> 983
+  [info] R-1 repli repli_episode_borne_par_la_vie_suivante : 13 -> 11
+  [info] R-1 repli repli_liaison_par_anticipation : 297 -> 360
+  [info] R-1 repli repli_physique_de_type_de_vehicule_supposee : 14117 -> 0
+  [info] R-1 repli repli_record_desynchronise_jete : 36 -> 2
+  [info] R-1 repli repli_tourelle_porteur_voisin_de_slot : 55 -> 61
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 144 / FP 0 / FN 159
+    O-K2 morts (statborg)                    VP 101 / FP 0 / FN 203
+    O-K3 assistances (statborg)              VP 34 / FP 0 / FN 88
+    O-S1 score par camp                      VP 0 / FP 0 / FN 2
+    O-S3 score personnel                     VP 18410 / FP 0 / FN 21735
+    O-T1 equipes du roster                   VP 28 / FP 0 / FN 1
+    O-V1 morts par les vies                  VP 297 / FP 1 / FN 7
+    O-V2 fins de vie (sans identite)         VP 304 / FP 27 / FN 0
+    P-1 paquets fermes au bit pres           22865
+    P-2 preuves contradictoires (image-cle)  6
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    1
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   10
+    V-3 action hors vie                      112
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              3
+    V-7 identite discordante                 32
+    V-8 mort sans fin de vie                 20
+  [FILET] autres:stances stances/duree-totale : 71799 -> 71792 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/532 : 466 -> 465 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/565 : 927 -> 917 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/576 : 428 -> 375 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/593 : 36 -> 35 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] autres:stances stances/duree-totale/par-slot/650 : 381 -> 380 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.burstsWithHole : 231 -> 237 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesBlockBC : 3 -> 4 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.holesKind : 16 -> 22 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.noTrack : 79 -> 82 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.continuousFire.weaponUnknown : 3 -> 4 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.dropped : 17 -> 23 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNewUndecided : 29 -> 30 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.stances.refusedNews : 61 -> 62 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.vehicles.samplesAfterEnd : 577 -> 1636 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] couverture coverage.vehicles.turretRidesAlreadyAboard : 1 -> 2 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles.rides/duree-totale : 27157 -> 27083 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles.rides/duree-totale/par-xuid/2533274827096894 : 1097 -> 1030 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles.rides/duree-totale/par-xuid/2535461484006747 : 237 -> 230 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles/duree-totale : 226325 -> 225331 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles/duree-totale/par-slot/795 : 2738 -> 936 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles/duree-totale/par-slot/812 : 5418 -> 1415 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles/duree-totale/par-slot/870 : 5219 -> 1015 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles/duree-totale/par-slot/876 : 2616 -> 1215 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles/duree-totale/par-slot/976 : 1414 -> 1014 (aucune mesure du banc ne couvre ce bloc)
+  [FILET] vehicules vehicles/par-end/unknown : 110 -> 76 (aucune mesure du banc ne couvre ce bloc)
+
+BANC DE VERITE — 396cfc92 : ok
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 67 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 67 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 27 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 10710 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 9 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 63 / FP 0 / FN 4
+    O-V2 fins de vie (sans identite)         VP 67 / FP 4 / FN 0
+    P-1 paquets fermes au bit pres           22819
+    P-2 preuves contradictoires (image-cle)  0
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    2
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   0
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 8
+    V-8 mort sans fin de vie                 1
+
+BANC DE VERITE — f75e7053 : ok
+  valeurs d'apres (information) :
+    O-K1 kills (statborg)                    VP 82 / FP 0 / FN 0
+    O-K2 morts (statborg)                    VP 83 / FP 0 / FN 0
+    O-K3 assistances (statborg)              VP 43 / FP 0 / FN 0
+    O-S1 score par camp                      non note (circulaire, 2 exclus)
+    O-S3 score personnel                     VP 12030 / FP 0 / FN 0
+    O-T1 equipes du roster                   VP 8 / FP 0 / FN 0
+    O-V1 morts par les vies                  VP 81 / FP 0 / FN 2
+    O-V2 fins de vie (sans identite)         VP 83 / FP 2 / FN 0
+    P-1 paquets fermes au bit pres           23416
+    P-2 preuves contradictoires (image-cle)  1
+    P-4 verdicts de couverture bridge        2
+    P-4 verdicts de couverture grenades      2
+    P-4 verdicts de couverture objectives    0
+    P-4 verdicts de couverture shots         2
+    V-1 saut                                 0
+    V-2 objet hors emprise                   2
+    V-3 action hors vie                      0
+    V-4 deux corps                           0
+    V-5 acteur absent ou mort                0
+    V-6 trajet loin du vehicule              0
+    V-7 identite discordante                 7
+    V-8 mort sans fin de vie                 0
+
+DETAIL DES PERTES (13 temoin(s)) :
+
+  [bcb6d393] ctf_mono_manche (schema 76 -> 76)
+    perte     couverture       coverage.stances.refusedNewFalseReads                       2 -> 3         
+    perte     couverture       coverage.stances.refusedNews                                2 -> 3         
+
+  [d9781168] oddball (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesNotClosing                 11503 -> 11504     
+    perte     couverture       coverage.stances.dropped                                    6 -> 7         
+    perte     couverture       coverage.stances.forgottenBindings                       1298 -> 1299      
+    perte     couverture       coverage.stances.refusedNewUndecided                       21 -> 22        
+    perte     couverture       coverage.stances.refusedNews                               22 -> 23        
+
+  [084a804d] vehicules (schema 76 -> 76)
+    perte     couverture       coverage.birthLoadouts.noDisplayable                       15 -> 16        
+    perte     couverture       coverage.continuousFire.holesNotClosing                 23544 -> 23697     
+    perte     couverture       coverage.stances.dropped                                    5 -> 6         
+    perte     couverture       coverage.stances.forgottenBindings                       3649 -> 3650      
+    perte     couverture       coverage.vehicles.samplesAfterEnd                        1238 -> 1508      
+    perte     vehicules        vehicles/par-end/unknown                                   70 -> 63        
+
+  [0797ce72] region_index_2_bits (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesNotClosing                  5609 -> 5613      
+    perte     couverture       coverage.stances.forgottenBindings                       1270 -> 1272      
+    perte     couverture       coverage.stances.refusedNewFalseReads                      48 -> 49        
+    perte     couverture       coverage.stances.refusedNewUndecided                       42 -> 43        
+    perte     couverture       coverage.stances.refusedNews                               90 -> 92        
+
+  [111fa685] version_39 (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesNotClosing                 11084 -> 11107     
+    perte     couverture       coverage.stances.dropped                                    5 -> 7         
+    perte     couverture       coverage.stances.forgottenBindings                       1924 -> 1928      
+    perte     couverture       coverage.vehicles.samplesAfterEnd                          98 -> 108       
+    perte     vehicules        vehicles/par-end/unknown                                    6 -> 5         
+
+  [e5adf7b2] version_40_build_1_11 (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.burstsWithHole                     35 -> 36        
+    perte     couverture       coverage.continuousFire.holesNotClosing                 10360 -> 10452     
+    perte     couverture       coverage.stances.dropped                                   12 -> 13        
+    perte     couverture       coverage.stances.forgottenBindings                       2092 -> 2094      
+    perte     couverture       coverage.vehicles.samplesAfterEnd                         326 -> 411       
+    perte     vehicules        vehicles/par-end/unknown                                   51 -> 46        
+
+  [60ae07c4] version_37 (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesKind                         729 -> 730       
+
+  [a349fea8] version_33_sans_identification (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesBlockBC                      152 -> 154       
+    perte     couverture       coverage.continuousFire.holesKind                         927 -> 939       
+    perte     couverture       coverage.continuousFire.holesNotClosing                 22249 -> 22378     
+    perte     couverture       coverage.stances.forgottenBindings                       3052 -> 3066      
+
+  [a521164d] version_33_build_1_4_1 (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesBlockBC                      139 -> 143       
+    perte     couverture       coverage.continuousFire.holesKind                         254 -> 257       
+    perte     couverture       coverage.continuousFire.holesNotClosing                  8373 -> 8438      
+
+  [11de8353] version_38_build_1_9_0 (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesKind                         189 -> 190       
+    perte     couverture       coverage.continuousFire.holesNotClosing                  9919 -> 9953      
+    perte     couverture       coverage.stances.forgottenBindings                       1700 -> 1702      
+    perte     couverture       coverage.stances.refusedNewFalseReads                       8 -> 10        
+    perte     couverture       coverage.stances.refusedNews                               11 -> 13        
+    perte     couverture       coverage.vehicles.samplesAfterEnd                         453 -> 516       
+    perte     vehicules        vehicles/par-end/unknown                                   35 -> 29        
+
+  [50247b26] version_31_sans_identification (schema 76 -> 76)
+    perte     couverture       coverage.continuousFire.holesBlockBC                      552 -> 555       
+    perte     couverture       coverage.continuousFire.holesKind                         896 -> 906       
+    perte     couverture       coverage.continuousFire.holesNotClosing                 13794 -> 13865     
+    perte     couverture       coverage.stances.forgottenBindings                       1221 -> 1223      
+
+  [bfecd02b] vehicules_v41_utilisateur (schema 76 -> 76)
+    perte     autres:stances   stances/duree-totale                                     9794 -> 9738      
+    perte     autres:stances   stances/duree-totale/par-slot/574                         162 -> 106       
+    perte     couverture       coverage.continuousFire.holesNotClosing                  3177 -> 3242      
+    perte     couverture       coverage.stances.dropped                                    1 -> 2         
+
+  [4f77afc1] equipement_origine_utilisateur (schema 76 -> 76)
+    perte     autres:stances   stances/duree-totale                                    71799 -> 71792     
+    perte     autres:stances   stances/duree-totale/par-slot/532                         466 -> 465       
+    perte     autres:stances   stances/duree-totale/par-slot/565                         927 -> 917       
+    perte     autres:stances   stances/duree-totale/par-slot/576                         428 -> 375       
+    perte     autres:stances   stances/duree-totale/par-slot/593                          36 -> 35        
+    perte     autres:stances   stances/duree-totale/par-slot/650                         381 -> 380       
+    perte     couverture       coverage.continuousFire.burstsWithHole                    231 -> 237       
+    perte     couverture       coverage.continuousFire.holesBlockBC                        3 -> 4         
+    perte     couverture       coverage.continuousFire.holesKind                          16 -> 22        
+    perte     couverture       coverage.continuousFire.noTrack                            79 -> 82        
+    perte     couverture       coverage.continuousFire.weaponUnknown                       3 -> 4         
+    perte     couverture       coverage.stances.dropped                                   17 -> 23        
+    perte     couverture       coverage.stances.refusedNewUndecided                       29 -> 30        
+    perte     couverture       coverage.stances.refusedNews                               61 -> 62        
+    perte     couverture       coverage.vehicles.samplesAfterEnd                         577 -> 1636      
+    perte     couverture       coverage.vehicles.turretRidesAlreadyAboard                  1 -> 2         
+    perte     vehicules        vehicles.rides/duree-totale                             27157 -> 27083     
+    perte     vehicules        vehicles.rides/duree-totale/par-xuid/2533274827096894       1097 -> 1030      
+    perte     vehicules        vehicles.rides/duree-totale/par-xuid/2535461484006747        237 -> 230       
+    perte     vehicules        vehicles/duree-totale                                  226325 -> 225331    
+    perte     vehicules        vehicles/duree-totale/par-slot/795                       2738 -> 936       
+    perte     vehicules        vehicles/duree-totale/par-slot/812                       5418 -> 1415      
+    perte     vehicules        vehicles/duree-totale/par-slot/870                       5219 -> 1015      
+    perte     vehicules        vehicles/duree-totale/par-slot/876                       2616 -> 1215      
+    perte     vehicules        vehicles/duree-totale/par-slot/976                       1414 -> 1014      
+    perte     vehicules        vehicles/par-end/unknown                                  110 -> 76        
+
+DETAIL DES CHANGEMENTS (3 temoin(s)) :
+
+  [084a804d] vehicules (schema 76 -> 76)
+    changement couverture       coverage.stances.byKind.sprint                           2618 -> 2620      
+
+  [e5adf7b2] version_40_build_1_11 (schema 76 -> 76)
+    changement couverture       coverage.continuousFire.notContinuous                      21 -> 22        
+
+  [4f77afc1] equipement_origine_utilisateur (schema 76 -> 76)
+    changement couverture       coverage.continuousFire.notContinuous                     110 -> 111       
+    changement couverture       coverage.continuousFire.onVehicle                          52 -> 56        
+    changement couverture       coverage.stances.byKind.jumpDerived                      1512 -> 1514      
+    changement couverture       coverage.stances.byKind.sprint                           2034 -> 2041      
+    changement couverture       coverage.stances.jumpEpisodes                            7944 -> 7954      
+    changement couverture       coverage.vehicles.aimRideFrames                         27157 -> 27083     
+    changement couverture       coverage.vehicles.merged                                  110 -> 104       
+    changement couverture       coverage.vehicles.shotsOnCarrier                          193 -> 200       
+
+TELEMETRIE (1 valeur(s) — affichee, jamais comptee au verdict) :
+    coverage.decoder.grammarRev                            grammar-2026-10-02 -> grammar-2026-10-03          19 temoin(s)
+rc=1

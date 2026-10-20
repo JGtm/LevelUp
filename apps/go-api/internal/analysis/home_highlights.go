@@ -1,7 +1,7 @@
-// Package analysis â€” home_highlights.go : sÃ©lection de la fenÃªtre de matchs
+// Package analysis — home_highlights.go : sélection de la fenêtre de matchs
 // pertinente et moteur principal des faits marquants (BuildHighlights).
 //
-// Les tuiles Ã  dÃ©filement (MaÃ®trise, Stats par min., SÃ©rie) sont dans
+// Les tuiles à  défilement (Maîtrise, Stats par min., Série) sont dans
 // home_highlights_tiles.go pour garder ce fichier sous 500 lignes.
 package analysis
 
@@ -15,15 +15,15 @@ import (
 const maxSessionlessHighlights = 50
 
 // ---------------------------------------------------------------------------
-// selectHighlightWindow â€” fenÃªtre de sessions similaires
+// selectHighlightWindow — fenêtre de sessions similaires
 // ---------------------------------------------------------------------------
 
-// selectHighlightWindow sÃ©lectionne les matchs de la derniÃ¨re session et des
-// 4 sessions les plus rÃ©centes ayant la mÃªme composition (IsWithFriends) et
-// la mÃªme playlist dominante (SkillPlaylistGroup).
+// selectHighlightWindow sélectionne les matchs de la dernière session et des
+// 4 sessions les plus récentes ayant la même composition (IsWithFriends) et
+// la même playlist dominante (SkillPlaylistGroup).
 // Fallback : si moins de 5 sessions similaires existent, toutes les sessions
-// disponibles sont retournÃ©es. Les matchs sans SessionLabel ne font pas partie
-// de la fenÃªtre calculÃ©e.
+// disponibles sont retournées. Les matchs sans SessionLabel ne font pas partie
+// de la fenêtre calculée.
 func selectHighlightWindow(matches []legacymatch.HomeMatchRow) []legacymatch.HomeMatchRow {
 	if len(matches) == 0 {
 		return nil
@@ -81,10 +81,10 @@ func selectHighlightWindow(matches []legacymatch.HomeMatchRow) []legacymatch.Hom
 		entry.playlistGroup = best
 	}
 
-	// Session de rÃ©fÃ©rence = la plus rÃ©cente (sessionOrder[0]).
+	// Session de référence = la plus récente (sessionOrder[0]).
 	ref := sessionMap[sessionOrder[0]]
 
-	// Collecter jusqu'Ã  5 sessions similaires (mÃªme composition + mÃªme playlist).
+	// Collecter jusqu'à  5 sessions similaires (même composition + même playlist).
 	collected := []string{}
 	for _, lbl := range sessionOrder {
 		e := sessionMap[lbl]
@@ -111,11 +111,11 @@ func selectHighlightWindow(matches []legacymatch.HomeMatchRow) []legacymatch.Hom
 }
 
 // ---------------------------------------------------------------------------
-// Helpers couleur et sÃ©lection
+// Helpers couleur et sélection
 // ---------------------------------------------------------------------------
 
 // highlightPerfColor retourne le niveau de couleur d'un score de performance.
-// Les seuils sont identiques Ã  ceux de perf-color.ts cÃ´tÃ© frontend.
+// Les seuils sont identiques à  ceux de perf-color.ts côté frontend.
 func highlightPerfColor(perf float64) string {
 	switch {
 	case perf >= 80:
@@ -131,7 +131,7 @@ func highlightPerfColor(perf float64) string {
 	}
 }
 
-// highlightKDAColor retourne la couleur sÃ©mantique d'un FDA/KDA.
+// highlightKDAColor retourne la couleur sémantique d'un FDA/KDA.
 func highlightKDAColor(kda float64) string {
 	switch {
 	case kda > 1:

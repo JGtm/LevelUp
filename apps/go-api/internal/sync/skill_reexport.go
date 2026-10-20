@@ -29,6 +29,8 @@ const (
 	MetricKeyDPMDamage        = skill.MetricKeyDPMDamage
 	MetricKeyRankPerf         = skill.MetricKeyRankPerf
 
+	MetricKeyObjectiveParticipation = skill.MetricKeyObjectiveParticipation
+
 	MinMatchesForRating           = skill.MinMatchesForRating
 	MinMatchesForAccuracyDelta    = skill.MinMatchesForAccuracyDelta
 	MinMatchesForRelative         = skill.MinMatchesForRelative
@@ -41,8 +43,10 @@ const (
 	LUSRChainBTB           = skill.LUSRChainBTB
 	LUSRChainChaos         = skill.LUSRChainChaos
 
-	PerfChainRanked    = skill.PerfChainRanked
-	PerfChainFirefight = skill.PerfChainFirefight
+	PerfChainRanked         = skill.PerfChainRanked // valeur stockée historique (cf. skill_config.go)
+	PerfChainRankedSlayer   = skill.PerfChainRankedSlayer
+	PerfChainRankedObjectif = skill.PerfChainRankedObjectif
+	PerfChainFirefight      = skill.PerfChainFirefight
 
 	TierBronze   = skill.TierBronze
 	TierSilver   = skill.TierSilver
@@ -58,28 +62,11 @@ const (
 	TierLabelDiamant   = skill.TierLabelDiamant
 	TierLabelOnyx      = skill.TierLabelOnyx
 	TierLabelPlacement = skill.TierLabelPlacement
-
-	InitialMU              = skill.InitialMU
-	InitialSigma           = skill.InitialSigma
-	Beta                   = skill.Beta
-	AccuracyHistorySize    = skill.AccuracyHistorySize
-	InactivitySigmaPerDay  = skill.InactivitySigmaPerDay
-	MaxInactivityDays      = skill.MaxInactivityDays
-	InactivityThresholdDay = skill.InactivityThresholdDay
-
-	Tau                  = skill.Tau
-	KElo                 = skill.KElo
-	MaxSigma             = skill.MaxSigma
-	MinSigma             = skill.MinSigma
-	MinRating            = skill.MinRating
-	DefaultOpponentSigma = skill.DefaultOpponentSigma
-	IndividualMUAlpha    = skill.IndividualMUAlpha
 )
 
 // Types ré-exportés (alias).
 type (
 	FormulaSimReport = skill.FormulaSimReport
-	LUSRDryRunReport = skill.LUSRDryRunReport
 	LUSRChainConfig  = skill.LUSRChainConfig
 	SkillTier        = skill.SkillTier
 	lusrMatchData    = skill.LusrMatchData
@@ -95,22 +82,19 @@ var (
 // Fonctions ré-exportées (valeur de fonction — les appelants sync-root gardent leur nom
 // d'origine ; les impl minuscules sont exportées côté skill sans collision).
 var (
-	IsLUSRV2Canonical        = skill.IsLUSRV2Canonical
-	IsLUSRV2Enabled          = skill.IsLUSRV2Enabled
-	RunFormulaSim            = skill.RunFormulaSim
-	RunLUSRV2ShadowOwnerOnly = skill.RunLUSRV2ShadowOwnerOnly
-	BatchComputeLUSR         = skill.BatchComputeLUSR
-	batchComputeLUSR         = skill.BatchComputeLUSRWithMedals
-	batchComputeLUSRPreview  = skill.BatchComputeLUSRPreview
-	loadExistingRatingIDs    = skill.LoadExistingRatingIDs
-	slugHasLUSR              = skill.SlugHasLUSR
-	GetPerformanceChain      = skill.GetPerformanceChain
-	RunDualRowSentinel       = skill.RunDualRowSentinel
-	computeCombatYield       = skill.ComputeCombatYield
-	clampF                   = skill.ClampF
-	loadExcludedMatchIDs     = skill.LoadExcludedMatchIDs
+	RunFormulaSim              = skill.RunFormulaSim
+	RunLUSRV2ShadowOwnerOnly   = skill.RunLUSRV2ShadowOwnerOnly
+	loadExistingRatingIDs      = skill.LoadExistingRatingIDs
+	slugHasLUSR                = skill.SlugHasLUSR
+	GetPerformanceChain        = skill.GetPerformanceChain
+	RunDualRowSentinel         = skill.RunDualRowSentinel
+	computeCombatYield         = skill.ComputeCombatYield
+	clampF                     = skill.ClampF
+	loadExcludedMatchIDs       = skill.LoadExcludedMatchIDs
+	loadObjectiveParticipation = skill.LoadObjectiveParticipation
 
 	CompositeWeights               = skill.CompositeWeights
+	WeightsForChain                = skill.WeightsForChain
 	FormatTierLabel                = skill.FormatTierLabel
 	GetLUSRChain                   = skill.GetLUSRChain
 	GetTierForRating               = skill.GetTierForRating
@@ -118,8 +102,12 @@ var (
 	SetLUSRChainClassifier         = skill.SetLUSRChainClassifier
 	SetLUSRChainClassifierForTitle = skill.SetLUSRChainClassifierForTitle
 
-	SimulationVariants               = skill.SimulationVariants
-	DefaultLUSRModeIfUnset           = skill.DefaultLUSRModeIfUnset
-	LogLUSRModeAtBoot                = skill.LogLUSRModeAtBoot
-	ValidateLUSRChainClassifierWired = skill.ValidateLUSRChainClassifierWired
+	// Seam famille objectif (chaîne de performance classée, scission D-A).
+	SetObjectiveFamilyClassifier         = skill.SetObjectiveFamilyClassifier
+	SetObjectiveFamilyClassifierForTitle = skill.SetObjectiveFamilyClassifierForTitle
+	IsObjectiveFamilyForTitle            = skill.IsObjectiveFamilyForTitle
+
+	SimulationVariants                     = skill.SimulationVariants
+	ValidateLUSRChainClassifierWired       = skill.ValidateLUSRChainClassifierWired
+	ValidateObjectiveFamilyClassifierWired = skill.ValidateObjectiveFamilyClassifierWired
 )

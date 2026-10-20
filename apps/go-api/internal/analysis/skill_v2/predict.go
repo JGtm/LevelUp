@@ -6,7 +6,7 @@ import "math"
 //
 // Aucune nouvelle math vs trueskill.go : la probabilité de victoire est la même
 // quantité que le modèle utilise en interne pour décider de l'amplitude d'un
-// update (cf. .ai/LUSR_V2_WIN_PROBABILITY.md). On l'expose ici comme sortie.
+// update (cf. .ai/archive/V7/LUSR v2/LUSR_V2_WIN_PROBABILITY.md). On l'expose ici comme sortie.
 //
 // Toutes les fonctions sont pures (0 accès DB) et partagent le helper
 // matchSpread pour ne pas dupliquer le calcul de la variance combinée c².

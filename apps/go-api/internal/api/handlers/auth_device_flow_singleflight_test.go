@@ -51,9 +51,6 @@ func (g *gatedTokenProvider) InitDeviceFlow(ctx context.Context) (auth_platform.
 	return auth_platform.NewStubDeviceFlow("GATE1234", "https://microsoft.com/link", "Entrez GATE1234", 900, "sisu"), nil
 }
 
-func (g *gatedTokenProvider) TrySilentRefresh(context.Context, string) (string, error) {
-	return "", nil
-}
 func (g *gatedTokenProvider) TryOAuthRefresh(context.Context, string) (string, error) {
 	return "", nil
 }
@@ -79,7 +76,7 @@ func TestStartDeviceFlow_SingleFlightWaitsForInit(t *testing.T) {
 	}
 	t.Cleanup(func() { close(provider.exchangeRelease) }) // libère la goroutine pollDeviceFlow
 	sessStore := session.NewStore(filepath.Join(t.TempDir(), "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
-	h := NewAuthHandler(sessStore, auth_platform.NewAttemptStore(), false, provider)
+	h := NewAuthHandler(sessStore, auth_platform.NewAttemptStore(), provider)
 
 	// Deux SessionData distinctes portant le MÊME SessionID : c'est la réalité
 	// HTTP (chaque requête charge sa propre copie de la session depuis le store).
@@ -152,7 +149,7 @@ func TestStartDeviceFlow_SingleFlightPropagatesFailure(t *testing.T) {
 		release: make(chan struct{}),
 	}
 	sessStore := session.NewStore(filepath.Join(t.TempDir(), "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
-	h := NewAuthHandler(sessStore, auth_platform.NewAttemptStore(), false, provider)
+	h := NewAuthHandler(sessStore, auth_platform.NewAttemptStore(), provider)
 
 	ctxCreator := middleware.InjectSession(context.Background(), &domain.SessionData{SessionID: "sess-fail"})
 	ctxSecond := middleware.InjectSession(context.Background(), &domain.SessionData{SessionID: "sess-fail"})
@@ -203,9 +200,6 @@ func (g *failAfterGateProvider) InitDeviceFlow(ctx context.Context) (auth_platfo
 	return nil, context.DeadlineExceeded
 }
 
-func (g *failAfterGateProvider) TrySilentRefresh(context.Context, string) (string, error) {
-	return "", nil
-}
 func (g *failAfterGateProvider) TryOAuthRefresh(context.Context, string) (string, error) {
 	return "", nil
 }

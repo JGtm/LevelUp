@@ -1,0 +1,150 @@
+film	build	sortie_vueB	vue_c	reste	paquets	utiles_en_jeu
+bcb6d393	HI_1_12_0	rejet hors datum	vide	>= 64	3149	18523
+bcb6d393	HI_1_12_0	terminateur	vide	>= 64	44	1
+bcb6d393	HI_1_12_0	rejet hors datum	0 entree (kind 3 seul)	>= 64	31	0
+bcb6d393	HI_1_12_0	rejet hors datum	1 entree(s)	>= 64	19	5
+bcb6d393	HI_1_12_0	terminateur	0 entree (kind 3 seul)	>= 64	5	0
+bcb6d393	HI_1_12_0	rejet hors datum	2 entree(s)	>= 64	1	0
+fb1a1a72	HI_1_13_0	rejet hors datum	vide	>= 64	23425	15567
+fb1a1a72	HI_1_13_0	terminateur	vide	>= 64	341	85
+fb1a1a72	HI_1_13_0	terminateur	1 entree(s)	>= 64	111	2
+fb1a1a72	HI_1_13_0	terminateur	0 entree (kind 3 seul)	>= 64	26	1
+fb1a1a72	HI_1_13_0	rejet hors datum	1 entree(s)	>= 64	23	26
+fb1a1a72	HI_1_13_0	terminateur	2 entree(s)	>= 64	6	0
+fb1a1a72	HI_1_13_0	rejet hors datum	2 entree(s)	>= 64	4	0
+fb1a1a72	HI_1_13_0	terminateur	vide	8-63	3	1
+fb1a1a72	HI_1_13_0	rejet hors datum	0 entree (kind 3 seul)	>= 64	2	0
+d9781168	HI_1_13_0	rejet hors datum	vide	>= 64	11047	64284
+d9781168	HI_1_13_0	terminateur	vide	>= 64	188	16
+d9781168	HI_1_13_0	rejet hors datum	1 entree(s)	>= 64	9	0
+d9781168	HI_1_13_0	rejet hors datum	vide	8-63	4	0
+d9781168	HI_1_13_0	terminateur	1 entree(s)	>= 64	1	5
+c75f33b8	HI_1_13_0	rejet hors datum	vide	>= 64	2283	10229
+c75f33b8	HI_1_13_0	terminateur	vide	>= 64	10	16
+c75f33b8	HI_1_13_0	terminateur	1 entree(s)	>= 64	2	0
+c75f33b8	HI_1_13_0	terminateur	0 entree (kind 3 seul)	>= 64	1	0
+bf15f7ab	HI_1_13_0	rejet hors datum	vide	>= 64	1534	8991
+bf15f7ab	HI_1_13_0	rejet hors datum	0 entree (kind 3 seul)	>= 64	85	590
+bf15f7ab	HI_1_13_0	terminateur	1 entree(s)	>= 64	29	202
+bf15f7ab	HI_1_13_0	terminateur	vide	>= 64	5	27
+bf15f7ab	HI_1_13_0	terminateur	2 entree(s)	>= 64	3	21
+bf15f7ab	HI_1_13_0	rejet hors datum	1 entree(s)	>= 64	2	0
+51ebbc0f	HI_1_13_0	rejet hors datum	vide	>= 64	16572	29361
+51ebbc0f	HI_1_13_0	terminateur	vide	>= 64	176	18
+51ebbc0f	HI_1_13_0	terminateur	1 entree(s)	>= 64	118	8
+51ebbc0f	HI_1_13_0	terminateur	0 entree (kind 3 seul)	>= 64	23	6
+51ebbc0f	HI_1_13_0	rejet hors datum	1 entree(s)	>= 64	16	6
+51ebbc0f	HI_1_13_0	terminateur	2 entree(s)	>= 64	14	0
+51ebbc0f	HI_1_13_0	rejet hors datum	0 entree (kind 3 seul)	>= 64	9	0
+51ebbc0f	HI_1_13_0	rejet hors datum	2 entree(s)	>= 64	1	0
+084a804d	HI_1_10_0	rejet hors datum	vide	>= 64	22923	439606
+084a804d	HI_1_10_0	terminateur	vide	>= 64	132	169
+084a804d	HI_1_10_0	rejet hors datum	1 entree(s)	>= 64	10	21
+084a804d	HI_1_10_0	rejet hors datum	0 entree (kind 3 seul)	>= 64	7	8
+084a804d	HI_1_10_0	terminateur	1 entree(s)	>= 64	7	2
+084a804d	HI_1_10_0	terminateur	0 entree (kind 3 seul)	>= 64	2	5
+084a804d	HI_1_10_0	rejet hors datum	3 entree(s)	>= 64	1	17
+0797ce72	HI_1_13_0	rejet hors datum	vide	>= 64	3968	25686
+0797ce72	HI_1_13_0	terminateur	vide	>= 64	844	5147
+0797ce72	HI_1_13_0	rejet hors datum	1 entree(s)	>= 64	253	1626
+0797ce72	HI_1_13_0	rejet hors datum	0 entree (kind 3 seul)	>= 64	190	989
+0797ce72	HI_1_13_0	rejet hors datum	2 entree(s)	>= 64	94	660
+0797ce72	HI_1_13_0	terminateur	1 entree(s)	>= 64	69	480
+0797ce72	HI_1_13_0	terminateur	0 entree (kind 3 seul)	>= 64	41	206
+0797ce72	HI_1_13_0	rejet hors datum	vide	8-63	25	137
+0797ce72	HI_1_13_0	terminateur	2 entree(s)	>= 64	6	39
+0797ce72	HI_1_13_0	terminateur	vide	8-63	6	36
+0797ce72	HI_1_13_0	rejet hors datum	3 entree(s)	>= 64	5	39
+0797ce72	HI_1_13_0	rejet hors datum	1 entree(s)	8-63	4	19
+0797ce72	HI_1_13_0	rejet hors datum	0 entree (kind 3 seul)	8-63	3	27
+0797ce72	HI_1_13_0	rejet hors datum	4 entree(s)	>= 64	1	9
+0797ce72	HI_1_13_0	rejet hors datum	vide	0-7 (non nuls)	1	8
+111fa685	HI_1_10_0	rejet hors datum	vide	>= 64	10325	193218
+111fa685	HI_1_10_0	terminateur	vide	>= 64	215	1474
+111fa685	HI_1_10_0	rejet hors datum	0 entree (kind 3 seul)	>= 64	194	2266
+111fa685	HI_1_10_0	terminateur	0 entree (kind 3 seul)	>= 64	153	1618
+111fa685	HI_1_10_0	rejet hors datum	1 entree(s)	>= 64	22	156
+111fa685	HI_1_10_0	terminateur	1 entree(s)	>= 64	19	182
+111fa685	HI_1_10_0	terminateur	2 entree(s)	>= 64	13	143
+111fa685	HI_1_10_0	rejet hors datum	2 entree(s)	>= 64	1	0
+111fa685	HI_1_10_0	rejet hors datum	3 entree(s)	>= 64	1	8
+111fa685	HI_1_10_0	terminateur	3 entree(s)	>= 64	1	10
+e5adf7b2	HI_1_11_0	rejet hors datum	vide	>= 64	9750	201240
+e5adf7b2	HI_1_11_0	terminateur	vide	>= 64	266	930
+e5adf7b2	HI_1_11_0	rejet hors datum	1 entree(s)	>= 64	112	339
+e5adf7b2	HI_1_11_0	rejet hors datum	0 entree (kind 3 seul)	>= 64	28	277
+e5adf7b2	HI_1_11_0	rejet hors datum	2 entree(s)	>= 64	16	0
+e5adf7b2	HI_1_11_0	terminateur	1 entree(s)	>= 64	12	87
+e5adf7b2	HI_1_11_0	terminateur	0 entree (kind 3 seul)	>= 64	9	25
+e5adf7b2	HI_1_11_0	rejet hors datum	1 entree(s)	8-63	4	0
+e5adf7b2	HI_1_11_0	terminateur	2 entree(s)	>= 64	1	0
+60ae07c4	HI_1_8_0	rejet hors datum	vide	>= 64	28777	168097
+60ae07c4	HI_1_8_0	terminateur	vide	>= 64	828	4470
+60ae07c4	HI_1_8_0	rejet hors datum	1 entree(s)	>= 64	242	1634
+60ae07c4	HI_1_8_0	rejet hors datum	0 entree (kind 3 seul)	>= 64	130	553
+60ae07c4	HI_1_8_0	rejet hors datum	vide	8-63	101	397
+60ae07c4	HI_1_8_0	terminateur	vide	8-63	59	350
+60ae07c4	HI_1_8_0	terminateur	1 entree(s)	>= 64	37	259
+60ae07c4	HI_1_8_0	rejet hors datum	2 entree(s)	>= 64	33	235
+60ae07c4	HI_1_8_0	terminateur	0 entree (kind 3 seul)	>= 64	32	162
+60ae07c4	HI_1_8_0	terminateur	0 entree (kind 3 seul)	8-63	29	0
+60ae07c4	HI_1_8_0	terminateur	1 entree(s)	8-63	8	52
+60ae07c4	HI_1_8_0	rejet hors datum	0 entree (kind 3 seul)	8-63	6	24
+60ae07c4	HI_1_8_0	terminateur	2 entree(s)	>= 64	1	8
+a349fea8	version-33	rejet hors datum	vide	>= 64	19073	379961
+a349fea8	version-33	terminateur	1 entree(s)	>= 64	2343	41320
+a349fea8	version-33	terminateur	2 entree(s)	>= 64	404	11526
+a349fea8	version-33	terminateur	vide	>= 64	204	249
+a349fea8	version-33	rejet hors datum	1 entree(s)	>= 64	124	271
+a349fea8	version-33	rejet hors datum	0 entree (kind 3 seul)	>= 64	26	108
+a349fea8	version-33	rejet hors datum	2 entree(s)	>= 64	22	2
+a349fea8	version-33	terminateur	0 entree (kind 3 seul)	>= 64	9	38
+a349fea8	version-33	terminateur	3 entree(s)	>= 64	1	1
+a521164d	HI_1_4_1	rejet hors datum	vide	>= 64	6231	132506
+a521164d	HI_1_4_1	terminateur	1 entree(s)	>= 64	1827	38000
+a521164d	HI_1_4_1	terminateur	vide	>= 64	160	356
+a521164d	HI_1_4_1	rejet hors datum	1 entree(s)	>= 64	102	39
+a521164d	HI_1_4_1	rejet hors datum	0 entree (kind 3 seul)	>= 64	14	37
+a521164d	HI_1_4_1	rejet hors datum	2 entree(s)	>= 64	12	0
+a521164d	HI_1_4_1	terminateur	0 entree (kind 3 seul)	>= 64	8	0
+a521164d	HI_1_4_1	terminateur	2 entree(s)	>= 64	6	88
+a521164d	HI_1_4_1	rejet hors datum	1 entree(s)	0-7 (non nuls)	1	0
+a521164d	HI_1_4_1	rejet hors datum	1 entree(s)	8-63	1	0
+a521164d	HI_1_4_1	rejet hors datum	3 entree(s)	>= 64	1	0
+a521164d	HI_1_4_1	terminateur	3 entree(s)	>= 64	1	1
+11de8353	HI_1_9_0	rejet hors datum	vide	>= 64	9491	174625
+11de8353	HI_1_9_0	terminateur	vide	>= 64	199	1713
+11de8353	HI_1_9_0	rejet hors datum	0 entree (kind 3 seul)	>= 64	62	889
+11de8353	HI_1_9_0	terminateur	1 entree(s)	>= 64	15	103
+11de8353	HI_1_9_0	rejet hors datum	1 entree(s)	>= 64	14	106
+11de8353	HI_1_9_0	terminateur	0 entree (kind 3 seul)	>= 64	11	19
+50247b26	version-31	rejet hors datum	vide	>= 64	10679	236112
+50247b26	version-31	terminateur	1 entree(s)	>= 64	2934	38657
+50247b26	version-31	terminateur	vide	>= 64	91	275
+50247b26	version-31	terminateur	2 entree(s)	>= 64	71	1853
+50247b26	version-31	rejet hors datum	1 entree(s)	>= 64	3	40
+50247b26	version-31	rejet hors datum	0 entree (kind 3 seul)	>= 64	2	0
+bfecd02b	HI_1_13_0	rejet hors datum	vide	>= 64	3144	23239
+bfecd02b	HI_1_13_0	terminateur	vide	>= 64	8	71
+bfecd02b	HI_1_13_0	rejet hors datum	vide	8-63	1	0
+bfecd02b	HI_1_13_0	terminateur	1 entree(s)	>= 64	1	10
+4f77afc1	HI_1_13_0	rejet hors datum	vide	>= 64	9481	178283
+4f77afc1	HI_1_13_0	terminateur	vide	>= 64	46	1151
+4f77afc1	HI_1_13_0	terminateur	1 entree(s)	>= 64	5	121
+4f77afc1	HI_1_13_0	rejet hors datum	0 entree (kind 3 seul)	>= 64	2	11
+4f77afc1	HI_1_13_0	terminateur	0 entree (kind 3 seul)	>= 64	1	22
+396cfc92	HI_1_13_0	rejet hors datum	vide	>= 64	8226	56782
+396cfc92	HI_1_13_0	rejet hors datum	vide	8-63	123	0
+396cfc92	HI_1_13_0	terminateur	vide	>= 64	10	80
+396cfc92	HI_1_13_0	terminateur	1 entree(s)	>= 64	2	15
+396cfc92	HI_1_13_0	rejet hors datum	1 entree(s)	>= 64	1	9
+f75e7053	HI_1_13_0	rejet hors datum	vide	>= 64	4286	26439
+f75e7053	HI_1_13_0	rejet hors datum	vide	8-63	1	0
+1c4c63c2	HI_1_10_0	rejet hors datum	vide	>= 64	45567	595454
+1c4c63c2	HI_1_10_0	terminateur	vide	>= 64	228	793
+1c4c63c2	HI_1_10_0	rejet hors datum	vide	8-63	56	73
+1c4c63c2	HI_1_10_0	rejet hors datum	0 entree (kind 3 seul)	>= 64	53	186
+1c4c63c2	HI_1_10_0	rejet hors datum	1 entree(s)	>= 64	18	43
+1c4c63c2	HI_1_10_0	terminateur	1 entree(s)	>= 64	11	11
+1c4c63c2	HI_1_10_0	terminateur	0 entree (kind 3 seul)	>= 64	3	0
+1c4c63c2	HI_1_10_0	rejet hors datum	2 entree(s)	>= 64	2	1

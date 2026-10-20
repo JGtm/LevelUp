@@ -15,6 +15,8 @@ import {
   getEChartsThemeColors,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
+import { tipNumber } from '@/components/charts/tipNumber'
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { DistributionBucket, TimeseriesMatchRow } from '@/lib/api/types'
@@ -108,10 +110,12 @@ export function TimeseriesKdaDensity({
       tooltip: {
         ...getTooltipBase(tc),
         trigger: 'axis',
-        valueFormatter: (val: unknown) => {
-          if (typeof val === 'number') return `${val.toFixed(1)} %`
-          return String(val)
-        },
+        // L'abscisse est continue (ECharts la rendrait brute, « 1.2340567 ») : la bulle écrit la
+        // valeur survolée à deux décimales, et la densité en pourcentage des matchs.
+        formatter: axisTooltipFormatter({
+          value: (r) => `${tipNumber(r.value, 1)} %`,
+          title: (p) => `${labels.xAxis} ${tipNumber(Number(p.axisValue), 2)}`,
+        }),
       },
       xAxis: {
         ...getAxisBase(tc),
@@ -129,7 +133,7 @@ export function TimeseriesKdaDensity({
         min: rugYBot,
         axisLabel: {
           ...getAxisBase(tc).axisLabel,
-          formatter: (v: number) => (v >= 0 ? `${v.toFixed(0)} %` : ''),
+          formatter: (v: number) => (v >= 0 ? `${tipNumber(v, 0)} %` : ''),
         },
       },
       series: [
@@ -159,14 +163,14 @@ export function TimeseriesKdaDensity({
                 ? [{
                     xAxis: meanX,
                     lineStyle: { color: meanColor, width: 1.5, type: 'dashed' as const },
-                    label: { formatter: `${labels.mean} ${meanRounded.toFixed(2)}`, color: meanColor },
+                    label: { formatter: `${labels.mean} ${tipNumber(meanRounded, 2)}`, color: meanColor },
                   }]
                 : []),
               ...(medianX != null && medianRounded != null
                 ? [{
                     xAxis: medianX,
                     lineStyle: { color: medianColor, width: 1.5, type: 'dashed' as const },
-                    label: { formatter: `${labels.median} ${medianRounded.toFixed(2)}`, color: medianColor },
+                    label: { formatter: `${labels.median} ${tipNumber(medianRounded, 2)}`, color: medianColor },
                   }]
                 : []),
             ],

@@ -51,7 +51,7 @@ type matchEventsOutput struct{ Body canonical.MatchEventTimeline }
 func (h *MatchEventsHandler) handleGetMatchEvents(ctx context.Context, in *matchEventsInput) (*matchEventsOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
 
 	matchID := strings.TrimSpace(in.MatchID)
@@ -61,7 +61,7 @@ func (h *MatchEventsHandler) handleGetMatchEvents(ctx context.Context, in *match
 
 	opts, err := parseMatchEventOptions(in.Types)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_event_type", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusBadRequest, "invalid_event_type", err)
 	}
 
 	tl, err := svc.GetMatchEvents(ctx, matchID, opts)
@@ -69,7 +69,7 @@ func (h *MatchEventsHandler) handleGetMatchEvents(ctx context.Context, in *match
 		if mapped, ok := MapCapabilityError(ctx, err, "match.detail.events"); ok {
 			return nil, mapped
 		}
-		return nil, humacore.NewError(http.StatusInternalServerError, "match_events_error", err.Error())
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "match_events_error", err)
 	}
 	if tl == nil {
 		tl = &canonical.MatchEventTimeline{MatchID: matchID}
