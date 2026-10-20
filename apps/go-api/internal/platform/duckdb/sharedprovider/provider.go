@@ -163,6 +163,10 @@ type providerImpl struct {
 	// Tous deux protégés par p.mu.
 	readers int
 	drainCh chan struct{}
+	// enVol : les lecteurs en vol par numéro (instant du Get + appelant), prochainLecteur leur
+	// numéroteur ; protégés par p.mu (cf. reader_inflight.go).
+	enVol           map[uint64]lecteurEnVol
+	prochainLecteur uint64
 
 	readyTimeout     time.Duration
 	retryBaseBackoff time.Duration
@@ -171,6 +175,9 @@ type providerImpl struct {
 	// slowSwapThreshold : au-delà de cette durée, une phase du cycle B-swap est
 	// journalisée en INFO au lieu de DEBUG (cf. defaultSlowSwapThreshold).
 	slowSwapThreshold time.Duration
+	// slowReaderThreshold : au-delà, une lecture est journalisée au relâchement (cf.
+	// defaultSlowReaderThreshold).
+	slowReaderThreshold time.Duration
 
 	failNextReopen atomic.Bool
 }
@@ -197,7 +204,8 @@ func New(path string, timezone ...string) (Provider, error) {
 		drainTimeout:     defaultDrainTimeout,
 		rwHoldWatchdog:   defaultRWHoldWatchdog,
 
-		slowSwapThreshold: defaultSlowSwapThreshold,
+		slowSwapThreshold:   defaultSlowSwapThreshold,
+		slowReaderThreshold: defaultSlowReaderThreshold,
 	}
 	p.state.Store(int32(StateRO))
 	recordStateTransition(StateRO, StateRO)
@@ -249,11 +257,11 @@ func (p *providerImpl) Get(ctx context.Context) (*sql.DB, func(), error) {
 			}
 			// Track le reader AVANT de relâcher mu — sinon race possible
 			// avec un swap qui drain trop tôt (sans nous attendre).
-			p.trackReaderLocked()
+			id := p.trackReaderLocked(nouveauLecteur())
 			p.mu.Unlock()
 
 			db := handle.SQLDb()
-			release := sync.OnceFunc(p.releaseReader)
+			release := sync.OnceFunc(func() { p.releaseReader(id) })
 			return db, release, nil
 		}
 

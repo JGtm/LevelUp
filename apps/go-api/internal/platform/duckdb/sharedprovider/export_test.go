@@ -59,3 +59,15 @@ func OpenRWRefusalsForTest() int64 {
 	initMetrics()
 	return mapInt(swapFailuresTotal, failReasonOpenRW)
 }
+
+// SetSlowReaderThresholdForTest configure le seuil au-delà duquel une lecture est journalisée
+// au relâchement (défaut defaultSlowReaderThreshold). d <= 0 désactive le journal.
+func SetSlowReaderThresholdForTest(p Provider, d time.Duration) {
+	p.(*providerImpl).slowReaderThreshold = d
+}
+
+// SlowReadersForTest rend le compteur shared_provider_reader_slow_total, process-wide.
+func SlowReadersForTest() int64 {
+	initMetrics()
+	return readerSlowTotal.Value()
+}

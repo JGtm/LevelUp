@@ -651,3 +651,15 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   EN « Commendations ») ; seule la page derrière change (Infinite : citations calculées par LevelUp,
   `/career/citations` ; Halo 5 : commendations natives du jeu, `/career/commendations`). Incohérence
   mineure : `lib/pageTitle.ts:59` donne le titre EN « Citations » à `/career/citations`.
+- **2026-10-19 — D-17 corrigé** (décision de l'utilisateur : avant la release) : `4e50f4e95`
+  (`feat/rv8-lecteur-demarrage`, Opus), fusionné dans `feat/release-v8` (`5835c38d0`). Lecteur
+  identifié : le cron hebdomadaire du catalogue (`ExpandPlaylistChildren`, 2 min 42 s, puis le drain
+  UGC, 4,7 s), qui gardait la lecture de la base partagée pendant ses appels réseau ; présent sur
+  `main`. Correctif : base rendue avant les jetons et le réseau ; outil permanent : WARN « lecture
+  tenue longtemps » (> 2 s, appelant + durée), compteur `shared_provider_reader_slow_total`, lecteurs
+  en vol nommés dans le WARN de drain. Gate du superviseur : `go vet` + `go test` platform/duckdb,
+  api, archlint, cmd/server ok. Vérification sur le serveur local (binaire de la branche, vraies
+  bases, 23:27) : `catalog_expand` démarré 23:27:37 et toujours en cours, 49 recalculs de sessions
+  de suite entre 23:27:48 et 23:29:25 : tous `succeeded`, 0 joueur en échec ; 0 « drain timeout »,
+  0 « open RW after RO close », 0 « lecture tenue longtemps ». Découvertes : `data_health` ouvre la
+  base partagée hors provider ; un segment de lecture couvre les 5 étapes de scoring du post-sync.
