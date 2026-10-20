@@ -414,10 +414,10 @@ first, then `--yes`. The command only writes `data/auth/watcher_tokens/`, never 
 running pool applies it at its next scan.
 
 ```bash
-docker compose exec -T levelup levelup pool-sharing list
-docker compose exec -T levelup levelup pool-sharing grandfather \
+docker compose exec -T -u appuser levelup levelup pool-sharing list
+docker compose exec -T -u appuser levelup levelup pool-sharing grandfather \
   --players JGtm,Chocoboflor,XxDaemonGamerxX,Madina97294,DankerGlue,GeleJugefi,Trimbutton,QuiteSiren,UppedJoker
-docker compose exec -T levelup levelup pool-sharing grandfather \
+docker compose exec -T -u appuser levelup levelup pool-sharing grandfather \
   --players JGtm,Chocoboflor,XxDaemonGamerxX,Madina97294,DankerGlue,GeleJugefi,Trimbutton,QuiteSiren,UppedJoker --yes
 ```
 

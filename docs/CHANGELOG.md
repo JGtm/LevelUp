@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [8.0.1] - Unreleased
+
+### Ops
+- **Deployment cannot fail on the served-version check any more** — `deploy.sh` checks after `/health` that the container serves the deployed version; this check is warn-only, but its `docker inspect | sed | head` pipeline ran under `set -euo pipefail` and could end the script with exit 1 (seen once on the v8.0.0 deployment, which then skipped the demo regeneration and the worker deployment). The pipeline now ends in `|| true`.
+- **CLI in the hardened container runs as `appuser`** — `docker compose exec -T -u appuser levelup levelup …`: as root the command lacks the capabilities to write files owned by the app (`permission denied` on `data/auth/watcher_tokens/`). Commands reference and deployment runbook updated.
+- **Worker protocol restricted to csstat in the versioned nginx configuration** — `location /api/v1/internal/` carries `allow <csstat>; deny all;`, as applied in production on the v8.0.0 release day.
+
 ## [8.0.0] - 2026-10-20
 
 > The release of the Theater film. 6 182 commits and 980 merges since `v7.3.0` (tag `a2719a68c`, 2026-08-04), 11 555 files touched — by far the largest release of the project. Halo writes a film of every match and the app had never opened it; it now decodes it end to end and turns it into a **2D top-down replay**, a **Tactics tab**, and a set of measurements no API field carries: the weapon behind every kill, engagement range, weapon levels on the pads, net flag grabs, Assault statistics, support between teammates, and equipment read as used / kept / dropped. Everything film-derived is gated behind fine-grained `film.*` capabilities and exists on Halo Infinite only. Seven ADRs were written along the way: **0032** (round-decided modes), **0033** (squad session population), **0034** (film decoder — five layers, a single gate to the bytes, amended at each milestone up to persisted film facts), **0035** (player directory — the xuid as the single identity key), **0036** (page reads are scoped — a page read pays for its scope, not for the player's history, and it pays once), **0037** (film intermediate representation — the production walk becomes the single reading of the grammar), **0038** (token pooling is opt-in, per player). **Post-deploy actions are required — see *Ops*.**

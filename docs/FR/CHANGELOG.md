@@ -6,6 +6,13 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [8.0.1] - Non publiée
+
+### Ops
+- **Le déploiement ne peut plus échouer sur le contrôle de version servie** — après `/health`, `deploy.sh` vérifie que le conteneur sert la version déployée ; ce contrôle est un simple avertissement, mais son enchaînement `docker inspect | sed | head` tournait sous `set -euo pipefail` et pouvait arrêter le script en exit 1 (constaté une fois au déploiement de la v8.0.0, qui a alors sauté la régénération de la démo et le déploiement de l'ouvrier). L'enchaînement se termine désormais par `|| true`.
+- **La CLI du conteneur durci se lance en `appuser`** — `docker compose exec -T -u appuser levelup levelup …` : en root, la commande n'a plus les capacités pour écrire les fichiers de l'application (`permission denied` sur `data/auth/watcher_tokens/`). Référence des commandes et runbook de déploiement mis à jour.
+- **Protocole ouvrier réservé à csstat dans la configuration nginx versionnée** — `location /api/v1/internal/` porte `allow <csstat>; deny all;`, comme appliqué en production le jour de la release v8.0.0.
+
 ## [8.0.0] - 2026-10-20
 
 > La version du film Theater. 6 182 commits et 980 fusions depuis `v7.3.0` (tag `a2719a68c`, 2026-08-04), 11 555 fichiers touchés — de loin la plus grosse version du projet. Halo écrit un film de chaque match et l'application ne l'avait jamais ouvert ; elle le décode désormais de bout en bout et en tire un **rejeu 2D vu du dessus**, un **onglet Tactique**, et une série de mesures qu'aucun champ d'API ne porte : l'arme de chaque frag, la portée des engagements, le niveau des armes de socle, les prises nettes de drapeau, les statistiques d'Assaut, l'appui entre coéquipiers, et l'équipement lu comme utilisé / gardé / lâché. Tout ce qui vient du film est gardé par des capabilities fines `film.*` et n'existe que sur Halo Infinite. Sept ADR ont été écrits en chemin : **0032** (modes à manches), **0033** (population des sessions d'escouade), **0034** (décodeur de film — cinq couches, une porte unique aux octets, amendé à chaque jalon jusqu'aux faits de film persistés), **0035** (annuaire des joueurs — le xuid comme clé d'identité unique), **0036** (lectures de page par périmètre — une lecture de page paie pour son périmètre, pas pour l'historique du joueur, et elle paie une fois), **0037** (représentation intermédiaire du film — la marche de production devient la lecture unique de la grammaire), **0038** (la mise en commun des jetons est un choix, joueur par joueur). **Des actions post-déploiement sont requises — voir *Ops*.**
