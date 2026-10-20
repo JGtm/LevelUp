@@ -5,6 +5,13 @@
 **Résultats observés** : en prod le 20/10, Accueil 15,2 s en moyenne (16 requêtes), vue match 14,6 s (5) ; la ligne `http_timings` de l'Accueil ne portait qu'un marqueur de cache. Tests `TestGetHomePage_SectionsDeDuree`, `TestMatchViewSection_FeuillesSeulement` ; suite `./internal/service/` verte (défaut et intégration), lint sans nouveau problème.
 
 **Conclusion** : après le déploiement de la 8.0.1, relever les lignes `http_timings` de l'Accueil et de la vue match (lecture seule) ; elles fondent le plan « résumés par match, poids des réponses, données chargées sans usage ».
+## [2026-10-20] Réglages : retrait du consentement de mise en commun du jeton accessible à tout joueur (v8.0.1) — Complété (branche `fix/v801-retrait-jeton`)
+
+**Décision technique principale** : `PoolSharingCard` passe de `SyncTab` (rendu uniquement dans Admin > Synchronisation depuis le regroupement des onglets de Réglages) à l'onglet Compte de `SettingsPage`, pour tout compte relié à Xbox ; `/privacy` et `/terms` (FR et EN) renvoient à « Réglages, onglet Compte », dates de mise à jour avancées au 20 octobre 2026. Accord de l'utilisateur le 20/10 (D-25 du plan de release v8).
+
+**Résultats observés** : contrôle en prod le 20/10 : aucun onglet Synchronisation dans les Réglages d'un joueur, la carte n'était visible que par l'admin alors que les deux pages légales promettent le retrait à cet endroit. Après correctif : vitest settings + legal 95/95 (nouveau test : onglet Compte affiche la carte), `tsc` et eslint propres.
+
+**Conclusion** : fait partie de la v8.0.1 ; contrôle à l'écran après déploiement avec un compte non admin.
 
 ## [2026-10-20] Rejeu : page affichée d'un bloc, vue de match bornée (Q23b) — Complété (branche `feat/v75`)
 
