@@ -3,8 +3,9 @@
 // Interdit toute nouvelle copie locale du helper générique d'upsert ART-safe
 // « SELECT-d'existence puis UPDATE|INSERT paramétré » — signature canonique
 // `existsQuery string, existsArgs []any, updateQuery ..., insertQuery ...`.
-// La source unique est duckdb.UpsertRowNoConflict (+ la méthode *DB.UpsertNoConflict
-// qui délègue). Ce pattern avait été copié-collé dans ops/catalog_refresh,
+// L'implémentation unique est duckdbkeys.Upsert (pkg/duckdbkeys/upsert.go, 2026-10-21 : les
+// migrations de titre l'appellent sans importer platform/duckdb) ; duckdb.UpsertRowNoConflict
+// et la méthode *DB.UpsertNoConflict y délèguent. Ce pattern avait été copié-collé dans ops/catalog_refresh,
 // service/catalog_fetcher_service et api/registry_catalog_expand (3e copie) —
 // leçon CLAUDE.md règle 6 (centraliser + garde-rail).
 //

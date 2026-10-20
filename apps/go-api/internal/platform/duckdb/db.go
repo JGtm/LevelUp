@@ -13,7 +13,6 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -22,6 +21,8 @@ import (
 	"sync/atomic"
 
 	duckdb "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/pkg/duckdbkeys"
 )
 
 // Limites ressources DuckDB appliquées à CHAQUE connexion (J2, 2026-07-05).
@@ -406,28 +407,21 @@ func openCachedDB(
 // via l'index ART DuckDB, bug #23645). existsQuery doit retourner ≥1 ligne si la clé
 // existe.
 //
-// SOURCE UNIQUE (K1d, dédup #6, 2026-07-05) : ce pattern était copié-collé dans
-// ops/catalog_refresh.upsertNoConflict, service.CatalogFetcherService.upsertRowNoConflict
-// et api/registry_catalog_expand.upsertPlaylistWeight. La méthode (*DB).UpsertNoConflict
-// délègue ici depuis son wrapper reopen-on-invalidated.
+// SOURCE UNIQUE : l'implémentation est duckdbkeys.Upsert (pkg/duckdbkeys/upsert.go), que les
+// migrations de titre appellent directement (elles ne peuvent pas importer ce paquet : ses
+// tests importent les migrations). Ce point d'entrée garde la signature de ses appelants ; la
+// méthode (*DB).UpsertNoConflict délègue ici depuis son wrapper reopen-on-invalidated.
 func UpsertRowNoConflict(
 	ctx context.Context, db *sql.DB,
 	existsQuery string, existsArgs []any,
 	updateQuery string, updateArgs []any,
 	insertQuery string, insertArgs []any,
 ) error {
-	var dummy int
-	err := db.QueryRowContext(ctx, existsQuery, existsArgs...).Scan(&dummy)
-	switch {
-	case err == nil:
-		_, execErr := db.ExecContext(ctx, updateQuery, updateArgs...)
-		return execErr
-	case errors.Is(err, sql.ErrNoRows):
-		_, execErr := db.ExecContext(ctx, insertQuery, insertArgs...)
-		return execErr
-	default:
-		return err
-	}
+	return duckdbkeys.Upsert{
+		ExistsSQL: existsQuery, ExistsArgs: existsArgs,
+		UpdateSQL: updateQuery, UpdateArgs: updateArgs,
+		InsertSQL: insertQuery, InsertArgs: insertArgs,
+	}.Exec(ctx, db)
 }
 
 func (db *DB) UpsertNoConflict(

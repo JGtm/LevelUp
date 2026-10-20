@@ -122,3 +122,26 @@ func TestDedupSelect_UniqueGardeLesNull(t *testing.T) {
 		t.Fatalf("lignes gardées = %d (err=%v), want 3", n, err)
 	}
 }
+
+// TestUpsert_InserepuisMetAJour : SELECT-then-write — INSERT quand la clé manque, UPDATE ensuite,
+// sur une table SANS clé (aucun ON CONFLICT n'y serait possible).
+func TestUpsert_InserepuisMetAJour(t *testing.T) {
+	db := openMem(t)
+	mustExec(t, db, `CREATE TABLE u (k VARCHAR, v INTEGER)`)
+	write := func(v int) {
+		t.Helper()
+		if err := (Upsert{
+			ExistsSQL: `SELECT 1 FROM u WHERE k = ?`, ExistsArgs: []any{"a"},
+			UpdateSQL: `UPDATE u SET v = ? WHERE k = ?`, UpdateArgs: []any{v, "a"},
+			InsertSQL: `INSERT INTO u VALUES (?, ?)`, InsertArgs: []any{"a", v},
+		}).Exec(context.Background(), db); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(1)
+	write(2)
+	var n, v int
+	if err := db.QueryRow(`SELECT count(*), max(v) FROM u`).Scan(&n, &v); err != nil || n != 1 || v != 2 {
+		t.Fatalf("n=%d v=%d err=%v, want 1 ligne v=2", n, v, err)
+	}
+}
