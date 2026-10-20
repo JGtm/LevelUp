@@ -19,6 +19,7 @@ import { NotificationsSettingsTab } from '@/features/notifications/Notifications
 import type { SettingsResponse } from '@/lib/api/types'
 import { useServerDraft } from '@/lib/hooks/useServerDraft'
 import { AnalyseTab } from './AnalyseTab'
+import { PoolSharingCard } from './PoolSharingCard'
 import { TitlesTab } from './TitlesTab'
 import { InterfaceCard, DiscordCard, MediaCard } from './_settingsCards'
 import { resolveSettingsTab, type SettingsTab } from './tabs'
@@ -157,11 +158,13 @@ export function SettingsPage() {
         {activeTab === 'data' && (
           <MediaCard merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
         )}
-        {/* Compte — mot de passe opt-in (re-login rapide sans Microsoft) +
+        {/* Compte — mise en commun du jeton (accord et retrait, lieu promis par /privacy
+            et /terms), mot de passe opt-in (re-login rapide sans Microsoft) +
             accès à la gestion des groupes/familles (page /groups, auparavant
             accessible uniquement par URL directe — retour utilisateur 2026-07-24). */}
         {activeTab === 'account' && (
           <>
+            <PoolSharingCard />
             <SetPasswordCard />
             <div className="rounded-lg border border-border bg-card p-4">
               <h3 className="text-sm font-semibold text-foreground">{t.groupsCardTitle}</h3>

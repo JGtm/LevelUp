@@ -1,5 +1,5 @@
 /**
- * PoolSharingCard — réglage « mise en commun du jeton » (onglet Synchronisation).
+ * PoolSharingCard — réglage « mise en commun du jeton » (Réglages, onglet Compte : tout compte relié à Xbox, admin compris).
  *
  * Masquée quand le user n'a pas de jeton à mettre en commun (compte password sans lien
  * Xbox, ou instance sans résolveur) : `poolSharing === 'unavailable'`.

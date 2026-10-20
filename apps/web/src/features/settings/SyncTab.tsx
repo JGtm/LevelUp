@@ -14,7 +14,6 @@ import { useJobToasts } from '@/features/settings/useJobToasts'
 import { WatcherSection } from '@/features/settings/WatcherCard'
 import { ToggleRow, type TabProps } from './_settingsShared'
 import { BackfillCard } from './BackfillCard'
-import { PoolSharingCard } from './PoolSharingCard'
 
 export function SyncTab({ merged, handleChange, t, frozen }: TabProps) {
   const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
@@ -142,9 +141,6 @@ export function SyncTab({ merged, handleChange, t, frozen }: TabProps) {
           </div>
         </CardContent>
       </Card>
-
-      {/* Mise en commun du jeton avec le pool de synchro (décision personnelle) */}
-      <PoolSharingCard />
 
       {/* Backfill — Recalcul rétroactif */}
       <BackfillCard t={t} />

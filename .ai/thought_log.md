@@ -1,3 +1,11 @@
+## [2026-10-20] Réglages : retrait du consentement de mise en commun du jeton accessible à tout joueur (v8.0.1) — Complété (branche `fix/v801-retrait-jeton`)
+
+**Décision technique principale** : `PoolSharingCard` passe de `SyncTab` (rendu uniquement dans Admin > Synchronisation depuis le regroupement des onglets de Réglages) à l'onglet Compte de `SettingsPage`, pour tout compte relié à Xbox ; `/privacy` et `/terms` (FR et EN) renvoient à « Réglages, onglet Compte », dates de mise à jour avancées au 20 octobre 2026. Accord de l'utilisateur le 20/10 (D-25 du plan de release v8).
+
+**Résultats observés** : contrôle en prod le 20/10 : aucun onglet Synchronisation dans les Réglages d'un joueur, la carte n'était visible que par l'admin alors que les deux pages légales promettent le retrait à cet endroit. Après correctif : vitest settings + legal 95/95 (nouveau test : onglet Compte affiche la carte), `tsc` et eslint propres.
+
+**Conclusion** : fait partie de la v8.0.1 ; contrôle à l'écran après déploiement avec un compte non admin.
+
 ## [2026-10-20] Rejeu : page affichée d'un bloc, vue de match bornée (Q23b) — Complété (branche `feat/v75`)
 
 **Décision technique principale** : la page de rejeu n'affiche la carte, les fiches et la frise qu'une fois la vue du match tranchée (`replayLoadState`, `identityPending`) — avant, le fond de carte restait seul plusieurs secondes, sans pions, fiches « pas encore apparu », frise vide. Côté serveur, Q23b (statistiques de rencontre de la vue de match) borne la fenêtre `_latest` de son kill-feed aux matchs du joueur (`QMatchsOuJoue` + `clauseListeMatchs`, ADR 0036 I2, dernière lecture de la table « non assignée »).
