@@ -65,8 +65,9 @@ export function useMatchReplay(playerSlug: string, matchId: string, enabled = tr
     },
     staleTime: 5 * 60_000,
     enabled: enabled && !!playerSlug && !!matchId,
-    // 404 = pas d'artefact de rejeu pour ce match → état vide, ne pas réessayer.
-    retry: false,
+    // PAS DE `retry` LOCAL : la politique du client (app/queryClient) ne rejoue jamais un 4xx
+    // — un 404 (pas d'artefact) reste donc un état vide immédiat — mais rejoue un 503 (base
+    // occupée, garde de participation), qui sans cela s'affichait « aucun rejeu ».
   })
 }
 
@@ -74,8 +75,8 @@ export function useMatchReplay(playerSlug: string, matchId: string, enabled = tr
  * useReplayMapBackground charge le CALAGE du fond de carte du match.
  *
  * 404 = la carte n'a pas d'image figée (seules 21 en ont) : ce n'est pas une panne, c'est
- * le cas nominal pour les autres cartes, et le rejeu retombe sur son sol reconstruit. On ne
- * réessaie donc pas, et on ne remonte pas d'erreur à l'écran.
+ * le cas nominal pour les autres cartes, et le rejeu retombe sur son sol reconstruit. Un 404 n'est
+ * donc pas réessayé, et aucune erreur ne remonte à l'écran.
  */
 export function useReplayMapBackground(playerSlug: string, matchId: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
@@ -89,7 +90,7 @@ export function useReplayMapBackground(playerSlug: string, matchId: string) {
     // pendant une session.
     staleTime: Infinity,
     enabled: !!playerSlug && !!matchId,
-    retry: false,
+    // 404 nominal jamais rejoué (politique du client) ; un 503 transitoire l’est.
   })
 }
 
@@ -139,7 +140,7 @@ export function useReplayMapImage(
  * useReplayMapCallouts charge les ZONES NOMMÉES de la carte du match.
  *
  * 404 = la carte n'en a pas : cas NOMINAL des cartes Forge (leur canevas n'en porte
- * aucune — par construction, pas par lacune). Pas de retry, pas d'erreur à l'écran : le
+ * aucune — par construction, pas par lacune). Ni nouvel essai, ni erreur à l'écran : le
  * calque zones ne s'affiche simplement pas.
  */
 export function useReplayMapCallouts(playerSlug: string, matchId: string) {
@@ -153,7 +154,7 @@ export function useReplayMapCallouts(playerSlug: string, matchId: string) {
     // Donnée de RÉFÉRENCE versionnée : rien ne la périme pendant une session.
     staleTime: Infinity,
     enabled: !!playerSlug && !!matchId,
-    retry: false,
+    // 404 nominal jamais rejoué (politique du client) ; un 503 transitoire l’est.
   })
 }
 

@@ -82,6 +82,13 @@ export interface ReplayText {
   loading: string
   empty: string
   /**
+   * LE REJEU N'A PAS PU ÊTRE CHARGÉ (erreur autre qu'un 404, cf. `model/replayLoadState`) : le
+   * match a un rejeu, le serveur ne l'a pas servi. Titre, explication et bouton pour réessayer.
+   */
+  loadErrorTitle: string
+  loadErrorDescription: string
+  loadErrorRetry: string
+  /**
    * LE BADGE ADMIN « version de schéma » (lot A, 2026-09-11) : visible UNIQUEMENT quand
    * `useAppShellStore((s) => s.isAdmin)` est vrai (règle produit — un non-admin ne voit rien,
    * pas même un badge vide). Cinq formes, une par état de `ReplaySchemaStatus`

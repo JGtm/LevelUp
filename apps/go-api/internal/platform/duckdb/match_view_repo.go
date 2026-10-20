@@ -416,11 +416,29 @@ func (r *MatchViewRepo) GetPlayerMatchStats(ctx context.Context, xuid, matchID s
 // IsParticipant indique si le joueur (xuid) figure dans match_participants pour
 // ce match. Sert au gating "match non-participé" (ADR 0029, Couche B). EXISTS
 // léger — ne scanne pas les 31 colonnes de Q17. Exécutée sur SharedReader.
+//
+// Un REFUS du snapshot n'est pas une preuve : un match joué après le dernier cut (ou
+// exclu comme "partial") en est absent alors que le live le porte — même raison que la
+// bascule de GetMatchMeta. Refus et erreur du snapshot sont donc revérifiés sur le live ;
+// une participation confirmée par le snapshot l'est définitivement (match immuable).
 func (r *MatchViewRepo) IsParticipant(ctx context.Context, xuid, matchID string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.sharedRead().Get(ctx)
+	exists, err := r.queryParticipant(ctx, r.sharedRead(), xuid, matchID)
+	if (err != nil || !exists) && r.sharedReader != nil && !r.forceLive && ctx.Err() == nil {
+		if err != nil {
+			slog.WarnContext(ctx, "match_view: participation illisible dans le snapshot → lecture live",
+				"match_id", matchID, "title", r.pdb.TitleSlug, "err", err)
+		}
+		return r.queryParticipant(ctx, r.pdb.SharedReadDB(), xuid, matchID)
+	}
+	return exists, err
+}
+
+// queryParticipant exécute Q17bIsParticipant sur le reader donné.
+func (r *MatchViewRepo) queryParticipant(ctx context.Context, reader SharedReader, xuid, matchID string) (bool, error) {
+	sharedDB, release, err := reader.Get(ctx)
 	if err != nil {
 		return false, err
 	}
