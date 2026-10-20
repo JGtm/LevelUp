@@ -85,7 +85,7 @@ export function LegalDocument({ text, updatedAt }: LegalDocumentProps) {
 
       <p className="mt-10 border-t border-border pt-6 text-sm">
         <Link
-          to="/"
+          to="/{-$lang}"
           className="text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
         >
           {text.backToApp}

@@ -56,6 +56,12 @@ describe('resolvePageTitle (URLs title-scoped)', () => {
     expect(resolvePageTitle('/', 'en')).toBe('LevelUp - Home')
   })
 
+  it('index sous le segment de langue : /fr/ et /en/ ont le titre d’accueil, une langue inconnue non', () => {
+    expect(resolvePageTitle('/fr/', 'fr')).toBe('LevelUp - Accueil')
+    expect(resolvePageTitle('/en', 'en')).toBe('LevelUp - Home')
+    expect(resolvePageTitle('/xx/', 'fr')).toBe('LevelUp')
+  })
+
   it('suffixe/pathname inconnu → LevelUp (fallback conservé)', () => {
     expect(resolvePageTitle('/t/halo_infinite/players/x/zzz-inconnu', 'fr')).toBe('LevelUp')
     expect(resolvePageTitle('/t/halo_infinite/players/x/zzz-inconnu', 'en')).toBe('LevelUp')
@@ -146,7 +152,9 @@ function toTestPathname(routeId: string): string {
     const suffix = rawSuffix.replace(/\$[A-Za-z][A-Za-z0-9]*/g, DUMMY_PARAM)
     return `/t/halo_infinite/players/x${suffix}`
   }
-  return deUnderscored.replace(/\$[A-Za-z][A-Za-z0-9]*/g, DUMMY_PARAM)
+  // Segment de langue optionnel de tête (`/{-$lang}/` = index) : pathname SANS langue.
+  const sansLangue = deUnderscored.replace(/^\/\{-\$lang\}/, '') || '/'
+  return sansLangue.replace(/\$[A-Za-z][A-Za-z0-9]*/g, DUMMY_PARAM)
 }
 
 interface RouteFixture {

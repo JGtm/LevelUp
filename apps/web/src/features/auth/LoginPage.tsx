@@ -51,7 +51,7 @@ export function LoginPage() {
 
   // En mode none, pas de login nécessaire
   if (authMode === 'none') {
-    navigate({ to: '/' })
+    navigate({ to: '/{-$lang}' })
     return null
   }
 
@@ -70,7 +70,7 @@ export function LoginPage() {
           // Propose au navigateur d'enregistrer le mot de passe (login en fetch).
           storePasswordCredential(username, password)
           await queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
-          navigate({ to: '/' })
+          navigate({ to: '/{-$lang}' })
         },
         onError: (err) => {
           const apiErr = err as unknown as ApiError
