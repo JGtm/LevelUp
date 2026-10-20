@@ -159,8 +159,11 @@ une PR de release v8.0.1 est ouverte depuis `feat/v75`.
       requêtes de la page, capture à l'affichage ; comparaison visuelle avec la capture d'avant
       (fiches, frise, médailles, fil).
 - [~] 5.2 (superviseur, après l'exécutant) `adversarial-review` du diff (lot à risque : parité de données).
-- [ ] 5.3 `.ai/thought_log.md` ; commit(s) ; push `feat/replay-contexte` ; CI verte.
+- [x] 5.3 `.ai/thought_log.md` ; commit(s) ; push `feat/replay-contexte` ; CI verte.
 - Gate : CI de la branche verte (`gh run list --branch feat/replay-contexte`).
+- Journal 5.3 (2026-10-20) : entrée `.ai/thought_log.md` ; un commit par étape (1 à 4) puis ce
+  commit de clôture ; push de `feat/replay-contexte`. Verdict de la CI : relevé par l'exécutant
+  après le push (rapport au superviseur), non réécrit ici pour ne pas relancer la CI.
 
 ## Inventaire (rempli à l'étape 1)
 
