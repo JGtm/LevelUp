@@ -33,6 +33,7 @@ import { normalizeCallouts } from '@/lib/replay/calloutsPaint'
 import { endMatchSoundSpec } from '@/features/match-replay/sound/endMatchSound'
 import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
 import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/model/playbackStore'
+import { replayLoadState } from '@/features/match-replay/model/replayLoadState'
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
 import {
@@ -112,7 +113,7 @@ function ReplayPage() {
   // Le logo du rejeu est un raster à deux variantes (noire / blanche) : c'est le thème local
   // qui choisit, comme pour les autres icônes du dépôt (cf. lib/themedIcon.ts).
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
-  const { data, isLoading } = useMatchReplay(playerSlug, matchId)
+  const { data, isLoading, error, refetch, isFetching } = useMatchReplay(playerSlug, matchId)
   // LE LIEN TACTIQUE (`?t=&clock=`, cf. l'en-tête) : converti UNIQUEMENT quand le document est
   // chargé — lui seul porte l'origine du film (`originMs`). Avant ça, `openAtFrame`
   // reste `null` et le rejeu se comporte comme sans paramètre (`ReplayCanvas` cadre au coup
@@ -185,7 +186,7 @@ function ReplayPage() {
     [model.allegiance, scoreboard, matchView?.header.outcome_code, locale],
   )
 
-  const hasReplay = !!data && data.tracks.length > 0
+  const loadState = replayLoadState({ isLoading, hasTracks: !!data && data.tracks.length > 0, error })
   // LE MODE PLEIN ÉCRAN vit ICI parce qu'il change le cadre de LA GRILLE (cf. useReplayFullscreen) ;
   // le canvas n'en reçoit que la commande, pour le bouton de la barre de lecture et la touche F.
   const fullscreen = useReplayFullscreen()
@@ -253,12 +254,23 @@ function ReplayPage() {
         }
       />
       <div className="space-y-4 px-6 pb-3">
-      {isLoading && <p className="text-sm text-muted-foreground">{t.loading}</p>}
+      {(loadState === 'loading' || (loadState === 'error' && isFetching)) && (
+        <p className="text-sm text-muted-foreground">{t.loading}</p>
+      )}
 
-      {!isLoading && !hasReplay && (
+      {loadState === 'empty' && (
         <div className="rounded-lg border border-border bg-card px-3 py-12 text-center">
           <p className="text-sm text-muted-foreground">{t.empty}</p>
         </div>
+      )}
+
+      {loadState === 'error' && !isFetching && (
+        <EmptyStateNotice
+          title={t.loadErrorTitle}
+          description={t.loadErrorDescription}
+          actionLabel={t.loadErrorRetry}
+          onAction={() => void refetch()}
+        />
       )}
 
       {data && data.tracks.length > 0 && (

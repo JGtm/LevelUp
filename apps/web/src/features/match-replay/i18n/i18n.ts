@@ -23,6 +23,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     restart: 'Recommencer',
     loading: 'Chargement du rejeu…',
     empty: 'Aucun rejeu 2D disponible pour ce match.',
+    loadErrorTitle: 'Le rejeu n’a pas pu être chargé',
+    loadErrorDescription: 'Le serveur était occupé ou injoignable : réessayez dans quelques secondes.',
+    loadErrorRetry: 'Réessayer',
     schemaBadgeUpToDateFmt: (schemaVersion) => `Schéma ${schemaVersion} · à jour`,
     schemaBadgeStaleFmt: (schemaVersion, latestSchemaVersion) =>
       `Schéma ${schemaVersion} · à recuire (dernier : ${latestSchemaVersion})`,
@@ -441,6 +444,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     restart: 'Restart',
     loading: 'Loading replay…',
     empty: 'No 2D replay available for this match.',
+    loadErrorTitle: 'The replay could not be loaded',
+    loadErrorDescription: 'The server was busy or unreachable: try again in a few seconds.',
+    loadErrorRetry: 'Try again',
     schemaBadgeUpToDateFmt: (schemaVersion) => `Schema ${schemaVersion} · up to date`,
     schemaBadgeStaleFmt: (schemaVersion, latestSchemaVersion) =>
       `Schema ${schemaVersion} · rebuild needed (latest: ${latestSchemaVersion})`,

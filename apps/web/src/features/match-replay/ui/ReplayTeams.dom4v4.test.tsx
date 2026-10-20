@@ -43,6 +43,10 @@
  * « capacité non lue sur cette vie » de la cellule de capacité part (5 occurrences en 4v4, 9 en
  * 6v6) — la cellule reste, vide, à 16 px ; aucun autre caractère du HTML.
  *
+ * CINQUIEME MISE A JOUR, 2026-10-20 (retour utilisateur : aucun texte sur une fiche) : SEUL le
+ * mot « dégainée ? » du sélecteur d'arme lacunaire devient un tiret, le mot passant en `title`
+ * (1 occurrence en 4v4, 1 en 6v6) ; aucun autre caractère du HTML.
+ *
  * LE GABARIT NORMAL VA JUSQU'À SIX SIÈGES PAR CAMP (la densité se lit sur la catégorie de
  * mode, jamais sur les effectifs — décision D1) : la même fixation à 6 sièges
  * (`__fixtures__/replayTeams.6v6.html`) a été prise à l'étape 2 du plan, AVANT le premier code

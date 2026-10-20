@@ -15,7 +15,8 @@ import (
 )
 
 // homeAssistedFragsTimeout borne la lecture Q26l : une agrégation sur la vue des morts
-// filtrée par joueur et par lot de matchs (au plus quelques dizaines d'identifiants).
+// bornée sous sa fenêtre au lot de matchs de l'Accueil (tout l'historique du joueur, plus
+// d'un millier de matchs pour les plus anciens comptes).
 const homeAssistedFragsTimeout = 10 * time.Second
 
 // Q26lHomeAssistedFragsTpl : pour chaque match du lot dont le film PORTE l'assistance
@@ -34,14 +35,21 @@ const homeAssistedFragsTimeout = 10 * time.Second
 // Un match hors de `porteuses`, ou sans ligne de tueur pour le joueur, ne sort pas :
 // l'appelant ne publie rien pour lui, jamais un « 0 ».
 //
-// Format string, DANS CET ORDRE : placeholders du lot de matchs, puis le prédicat
-// d'assistant nommé et les bornes de tranche (low max, mid min, mid max, high min), chacune
-// précédée du prédicat. Placeholders ? : les match_id, puis le xuid du joueur.
+// PÉRIMÈTRE (ADR 0036 I2) : chacune des deux lectures de la vue porte le lot en prédicat
+// CONSTANT sur son `match_id` (clauseListeMatchs), seul filtre que DuckDB pousse sous la
+// fenêtre `_latest`. La semi-jointure sur `porteuses` vient en plus, après la fenêtre : seule,
+// elle laissait la fenêtre se calculer sur tout le journal des morts, au-delà du délai de la
+// lecture sur la base de production.
+//
+// Format string, DANS CET ORDRE : le prédicat de lot (CTE), le prédicat d'assistant nommé et
+// les bornes de tranche (low max, mid min, mid max, high min), chacune précédée du prédicat,
+// puis le prédicat de lot (lecture principale). Placeholders ? : la liste des match_id (CTE),
+// la même liste (lecture principale), puis le xuid du joueur.
 const Q26lHomeAssistedFragsTpl = `
 WITH porteuses AS (
     SELECT DISTINCT match_id
     FROM ` + KillEventsCanonicalTable + `
-    WHERE publishable AND assist_known AND match_id IN (%s)
+    WHERE publishable AND assist_known AND %s
 )
 SELECT kv.match_id,
        COUNT(*)                                                                                     AS frags_film,
@@ -51,6 +59,7 @@ SELECT kv.match_id,
        COUNT(*) FILTER (WHERE %s AND kv.assist_damage_pct > %d)                                     AS received_high
 FROM ` + KillEventsCanonicalTable + ` kv
 WHERE kv.publishable
+  AND %s
   AND kv.match_id IN (SELECT match_id FROM porteuses)
   AND kv.feed_killer_xuid = ?
 GROUP BY kv.match_id`
@@ -63,10 +72,11 @@ func buildHomeAssistedFragsQuery(xuid string, matchIDs []string) (string, []any)
 	}
 	low, mid := domain.AssistTierLowMaxPct, domain.AssistTierMidMaxPct
 	nomme := sqlAssistantNomme("kv")
-	sqlText := fmt.Sprintf(Q26lHomeAssistedFragsTpl, Placeholders(len(matchIDs)),
-		nomme, nomme, low, nomme, low, mid, nomme, mid)
-	args := append(ToAnySlice(matchIDs), xuid)
-	return sqlText, args
+	lotCTE, argCTE := clauseListeMatchs("match_id", matchIDs)
+	lotKV, argKV := clauseListeMatchs("kv.match_id", matchIDs)
+	sqlText := fmt.Sprintf(Q26lHomeAssistedFragsTpl, lotCTE,
+		nomme, nomme, low, nomme, low, mid, nomme, mid, lotKV)
+	return sqlText, []any{argCTE, argKV, xuid}
 }
 
 // LoadMatchAssistedFrags : part des frags du joueur assistés par un coéquipier, par match

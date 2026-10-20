@@ -1,3 +1,19 @@
+## [2026-10-20] Rejeu : « Aucun rejeu 2D disponible » sur un match qui en a un (prod v8.0.0) — Complété (branche `feat/v75`, non commité)
+
+**Décision technique principale** : la construction d'une version de snapshot de lecture (`SnapshotPreferredSharedReader`) quitte le chemin des requêtes : tâche de fond unique, détachée de l'annulation (`context.WithoutCancel`), échéance propre de 2 min ; pendant qu'elle tourne, Get sert le live. `MatchViewRepo.IsParticipant` revérifie sur le live un refus (ou une erreur) du snapshot, comme `GetMatchMeta`. Côté web, `useMatchReplay` (et calage/zones du fond) suit la politique de nouvel essai du client (503 rejoué, 404 jamais) et la page distingue l'absence (404) de la panne (`model/replayLoadState` : bloc « Le rejeu n'a pas pu être chargé » + Réessayer).
+
+**Résultats observés** : en prod, deux occurrences le 20/10 (19:19 et 19:31 UTC, après le redémarrage de 19:03) : les quatre requêtes de la page (vue, rejeu, calage, zones) en 503 `participation_unavailable` à 5,8 s. Cause : la garde de participation (couche B, livrée en v8.0.0) est la première lecture d'une page de match ; elle déclenchait la matérialisation de la version (match_kill_events 112 Mio de Parquet) sous le verrou du reader et avec son échéance de 5 s ; échec mémorisé comme « version inexploitable » → toute la version servie par le live, vue de match à 9-22 s (lenteur constatée de la page de rejeu). Le front traitait tout échec comme « aucun rejeu », sans nouvel essai. Tests : `snapshot` (unitaires + intégration), `platform/duckdb`, `api/wire`, `api/middleware` verts ; vitest `match-replay` + `routes` verts sauf `ReplayTeams.dom4v4` (2 instantanés), rouge préexistant laissé par `12d379e17` (tiret de la fiche), hors périmètre.
+
+**Conclusion** : à embarquer dans la v8.0.1 ; après déploiement, vérifier dans `snapshot.log` la ligne « version prête pour la lecture » (durée de construction) et l'absence de `participation: vérification impossible`. Lenteur résiduelle de la page de rejeu à mesurer au navigateur (rejeu ~1,1 s serveur pour 2,3 Mo d'artefact relu et réencodé à chaque requête).
+
+## [2026-10-20] Accueil : frags assistés des tuiles absents en prod (v8.0.0) — Complété (branche `feat/v75`)
+
+**Décision technique principale** : Q26l (`home_repo_assisted_frags.go`) bornait sa lecture principale du journal des morts par une semi-jointure sur `porteuses` (`IN (SELECT …)`), qui ne descend pas sous la fenêtre `_latest` (ADR 0036 I2) : la fenêtre balayait tout `match_kill_events`. Les deux lectures portent désormais le lot en prédicat constant (`clauseListeMatchs`, une liste `VARCHAR[]`), la semi-jointure reste après la fenêtre.
+
+**Résultats observés** : en prod, `home_assisted_frags_load_failed` (« context deadline exceeded », délai 10 s) à chaque chargement de l'Accueil depuis le déploiement v8.0.0 (premier à 08 h UTC le 20/10, aucun avant), y compris pour un lot d'UN match ; le journal a grossi avec la recuisson. Garde-rail `TestHomeRepo_LoadMatchAssistedFrags_FenetresBornees` (EXPLAIN ANALYZE, 2 matchs sur 10) : rouge sur l'ancienne requête, vert sur la nouvelle ; tests de valeur (suite d'intégration) verts.
+
+**Conclusion** : à embarquer dans la v8.0.1 ; vérifier après déploiement l'absence de `home_assisted_frags_load_failed` dans `general.log`.
+
 ## [2026-10-20] Tactique : réglage « Zones nommées » — Complété (branche `feat/v75`, non commité)
 
 **Décision technique principale** : une pilule à bascule « Zones nommées » (EN « Named zones ») dans le bandeau du plan, allumée par défaut ; éteinte, le plan ne donne aucune zone au peintre (contours et noms retirés, chaleur intacte). Libellé repris du calque « Zones nommées » du rejeu. La pilule n'existe que si la lecture porte des zones (pas d'action impossible). État local de la vue (`useReglages`), non persisté : retour à « visibles » au rechargement.
