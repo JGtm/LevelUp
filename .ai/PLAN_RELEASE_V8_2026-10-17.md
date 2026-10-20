@@ -452,6 +452,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 
 - [ ] 7.1 +48 h : réponses 401, 403, 413, 429 dans les logs nginx et serveur ; hausse sur des pages
       normales = protection à desserrer.
+- [ ] 7.1b +48 h et +7 jours : WARN « lecture tenue longtemps » et compteur `shared_provider_reader_slow_total` en prod ; en particulier `data_health` (base partagée ouverte hors provider) et le segment unique des 5 étapes de scoring du post-sync (décision de l utilisateur du 20/10 : v8.1 si mesurés fréquents). 
 - [ ] 7.2 +7 jours : `memory.peak` des deux conteneurs (référence 16/10 : prod 1 134 Mio, démo
       334 Mio) → proposition de `mem_limit`.
 - [ ] 7.3 Audit des `ON CONFLICT` sur les tables héritées sans clé primaire (registre daté, ne
