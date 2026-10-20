@@ -3862,6 +3862,40 @@ paths:
       summary: Zones nommées (callouts) de la carte du rejeu 2D d'un match
       tags:
         - match-view
+  /players/{player_slug}/matches/{match_id}/replay/context:
+    get:
+      operationId: getMatchReplayContext
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: match_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchReplayContext'
+          description: OK
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Contexte de match de la page de rejeu
+      tags:
+        - match-view
   /players/{player_slug}/media:
     delete:
       operationId: deleteMedia
@@ -19469,6 +19503,35 @@ components:
         - players
         - lobby_median_m
         - lobby_measured
+      type: object
+    MatchReplayContext:
+      additionalProperties: false
+      properties:
+        header:
+          $ref: '#/components/schemas/MatchViewHeader'
+        highlight_events:
+          items:
+            $ref: '#/components/schemas/MatchHighlightEvent'
+          type:
+            - array
+            - "null"
+        media:
+          $ref: '#/components/schemas/MatchMediaTab'
+        scoreboard:
+          items:
+            $ref: '#/components/schemas/MatchScoreboardRow'
+          type:
+            - array
+            - "null"
+        source_unavailable:
+          description: 'Une lecture a échoué côté serveur : contexte transitoire, à redemander (jamais conservé en cache).'
+          type: boolean
+      required:
+        - header
+        - scoreboard
+        - highlight_events
+        - media
+        - source_unavailable
       type: object
     MatchRosterRow:
       additionalProperties: false

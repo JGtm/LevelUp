@@ -2231,6 +2231,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/matches/{match_id}/replay/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contexte de match de la page de rejeu */
+        get: operations["getMatchReplayContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/media": {
         parameters: {
             query?: never;
@@ -9131,6 +9148,14 @@ export interface components {
             /** Format: date-time */
             played_at: string;
             players: components["schemas"]["MatchRangePlayer"][] | null;
+        };
+        MatchReplayContext: {
+            header: components["schemas"]["MatchViewHeader"];
+            highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;
+            media: components["schemas"]["MatchMediaTab"];
+            scoreboard: components["schemas"]["MatchScoreboardRow"][] | null;
+            /** @description Une lecture a échoué côté serveur : contexte transitoire, à redemander (jamais conservé en cache). */
+            source_unavailable: boolean;
         };
         MatchRosterRow: {
             /** Format: int64 */
@@ -19230,6 +19255,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MapCalloutsEntry"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMatchReplayContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchReplayContext"];
                 };
             };
             /** @description Error */

@@ -8,7 +8,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -218,23 +217,7 @@ func (h *MatchViewHandler) handleGetMatchView(ctx context.Context, in *matchView
 
 	resp, err := svc.GetMatchView(ctx, matchID)
 	if err != nil {
-		var apiErr *domain.APIError
-		if errors.As(err, &apiErr) && apiErr.Code == "match_not_participant" {
-			// Couche B (ADR 0029) : match existant mais joueur non-participant.
-			return nil, humacore.NewError(http.StatusNotFound, "match_not_participant", apiErr.Message)
-		}
-		if errors.As(err, &apiErr) && apiErr.Code == "not_found" {
-			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", apiErr.Message)
-		}
-		if isClientClosed(ctx) {
-			// Requête abandonnée (le service rend l'erreur de contexte, E6.2a-F3) : 499, pas une panne.
-			return nil, mapServiceError(ctx, err, "match_view_error")
-		}
-		// PAS DE RENIFLAGE DE CHAÎNE « no rows » ICI (retiré le 2026-08-29) : l'absence
-		// est désormais TYPÉE par le service (domain.ErrNotFound, branche ci-dessus).
-		// Cette branche textuelle était la dernière échappatoire par laquelle une panne
-		// technique dont le message contenait « no rows » se déguisait en 404.
-		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "match_view_error", err)
+		return nil, matchViewServiceError(ctx, err, "match_view_error")
 	}
 	// Onglet médias : réécrire les chemins bruts en URLs servables (même
 	// transformation que la galerie /pages/media). Sans ça les vignettes webp

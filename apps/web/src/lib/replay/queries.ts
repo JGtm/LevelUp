@@ -1,5 +1,6 @@
 /**
- * queries.ts — lecture de l'artefact de rejeu 2D d'un match, et de son fond de carte.
+ * queries.ts — lecture de l'artefact de rejeu 2D d'un match, de son contexte de match et de son
+ * fond de carte.
  * GET /players/{slug}/matches/{matchId}/replay → ReplayDocument (404 si pas d'artefact).
  *
  * Le document est NORMALISÉ ici, à l'entrée : c'est la seule frontière entre la
@@ -14,6 +15,12 @@ import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { validateReplayDocument } from './replayDocumentSchema'
+import {
+  normalizeReplayMatchContext,
+  replayContextRefetchInterval,
+  replayContextStaleTime,
+  type ReplayMatchContextWire,
+} from './replayMatchContext'
 import { normalizeReplayDocument } from './replayNormalize'
 
 /**
@@ -68,6 +75,29 @@ export function useMatchReplay(playerSlug: string, matchId: string, enabled = tr
     // PAS DE `retry` LOCAL : la politique du client (app/queryClient) ne rejoue jamais un 4xx
     // — un 404 (pas d'artefact) reste donc un état vide immédiat — mais rejoue un 503 (base
     // occupée, garde de participation), qui sans cela s'affichait « aucun rejeu ».
+  })
+}
+
+/**
+ * useMatchReplayContext charge le contexte de match de la page de rejeu : l'en-tête, les lignes
+ * du tableau de score, les événements du fil et les médias, normalisés à l'entrée
+ * (GET .../matches/{matchId}/replay/context). La vue complète du match n'est pas demandée.
+ *
+ * Même politique de rafraîchissement que la vue complète (`matchRefreshPolicy`) : nouvel essai
+ * toutes les 30 s tant qu'une lecture serveur a échoué (`source_unavailable`), rechargement
+ * toutes les 60 s tant que l'analyse du film est en cours (`header.analysis_pending`).
+ */
+export function useMatchReplayContext(playerSlug: string, matchId: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  return useQuery({
+    queryKey: queryKeys.matchReplayContext(playerSlug, titleSlug, matchId),
+    queryFn: async () =>
+      normalizeReplayMatchContext(
+        await api.get<ReplayMatchContextWire>(`/players/${playerSlug}/matches/${matchId}/replay/context`),
+      ),
+    enabled: !!playerSlug && !!matchId,
+    staleTime: (query) => replayContextStaleTime(query.state.data),
+    refetchInterval: (query) => replayContextRefetchInterval(query.state.data),
   })
 }
 

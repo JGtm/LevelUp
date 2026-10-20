@@ -34,28 +34,7 @@ func buildCombatTabFull(
 ) domain.MatchCombatTab {
 	events, canonicalEvents = applyKVSynthesisIfNeeded(events, canonicalEvents, kvPairs, matchID)
 
-	evtList := make([]domain.MatchHighlightEvent, 0, len(events))
-	for _, e := range events {
-		// Skip des events pré-T0 (countdown) : après la correction T0 centrale,
-		// event_time_ms peut être négatif. event_time_ms est l'axe X des charts
-		// KD-cumul / frag-diff / scatter tug — un négatif y rendrait "-1m00s" et
-		// un point hors-axe. Aligné sur le précédent skip<0 (first_events).
-		if e.TimeMS != nil && *e.TimeMS < 0 {
-			continue
-		}
-		ev := domain.MatchHighlightEvent{
-			EventType:     e.EventType,
-			EventTimeMS:   e.TimeMS,
-			ActorXUID:     e.XUID,
-			ActorGamertag: e.Gamertag,
-		}
-		// Le nom brut de la médaille voyage avec l'event ; sa résolution (label,
-		// visuel) est une décoration posée après l'assemblage (decorateMedalEvents).
-		if e.MedalName != nil {
-			ev.MedalName = *e.MedalName
-		}
-		evtList = append(evtList, ev)
-	}
+	evtList := highlightEventList(events)
 
 	// Tug-of-war
 	tugEvents := buildTugEvents(kvPairs, myXUID)
@@ -104,6 +83,32 @@ func buildCombatTabFull(
 		ImpactRoles:     impactRoles,
 		Cadence:         cadence,
 	}
+}
+
+// highlightEventList projette les events (recalés T0, synthèse kv déjà appliquée) en events du
+// fil, dans leur ordre. Les events pré-T0 (countdown) sont écartés : après la correction T0
+// centrale leur event_time_ms est négatif, et c'est l'axe X des charts KD-cumul / frag-diff /
+// scatter tug — un négatif y rendrait "-1m00s" et un point hors-axe. Jamais nil.
+func highlightEventList(events []domain.EventRaw) []domain.MatchHighlightEvent {
+	evtList := make([]domain.MatchHighlightEvent, 0, len(events))
+	for _, e := range events {
+		if e.TimeMS != nil && *e.TimeMS < 0 {
+			continue
+		}
+		ev := domain.MatchHighlightEvent{
+			EventType:     e.EventType,
+			EventTimeMS:   e.TimeMS,
+			ActorXUID:     e.XUID,
+			ActorGamertag: e.Gamertag,
+		}
+		// Le nom brut de la médaille voyage avec l'event ; sa résolution (label,
+		// visuel) est une décoration posée après l'assemblage (decorateMedalEvents).
+		if e.MedalName != nil {
+			ev.MedalName = *e.MedalName
+		}
+		evtList = append(evtList, ev)
+	}
+	return evtList
 }
 
 // applyKVSynthesisIfNeeded synthétise des events kill/death depuis les paires

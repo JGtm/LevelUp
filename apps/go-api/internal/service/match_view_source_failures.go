@@ -161,6 +161,17 @@ func (s *MatchViewService) loadCanonicalEvents(gctx context.Context, g *errgroup
 	})
 }
 
+// anyFailed dit si au moins une lecture a échoué (source à raison dédiée ou chargeur
+// générique) : la réponse construite est transitoire.
+func (f *sourceFailures) anyFailed() bool {
+	if f == nil {
+		return false
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.section || len(f.failed) > 0
+}
+
 func (f *sourceFailures) hasSection() bool {
 	if f == nil {
 		return false

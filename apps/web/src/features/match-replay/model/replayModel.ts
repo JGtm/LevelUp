@@ -34,7 +34,7 @@
  */
 import { collectKillEvents, type KillEvent } from '@/features/match-view/_momentum'
 import { meXUIDOf, resolveXuidMeta } from '@/features/match-view/xuidMeta'
-import type { MatchScoreboardRow, MatchViewResponse } from '@/lib/api/types'
+import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import {
   buildFeedEntries,
@@ -47,6 +47,7 @@ import { buildPlayerMarks, type PlayerMarkKind } from '../../../lib/replay/playe
 import { mergeFeedWithPresence, presenceEntries } from './presenceFeed'
 import { buildReplayMedia } from './replayMediaLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { ReplayMatchContext } from '../../../lib/replay/replayMatchContext'
 import type { ReplayMediaItem } from './replayTimelineTracksLogic'
 import { replayWindow, type ReplayWindowBounds } from './replayWindow'
 import { buildPlayers, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
@@ -126,22 +127,22 @@ const VIDE: ReplayModel = {
 }
 
 /**
- * buildReplayModel joint l'artefact et la vue match.
+ * buildReplayModel joint l'artefact et le contexte du match (`ReplayMatchContext`).
  *
  * SANS ARTEFACT, LE MODÈLE EST VIDE et non partiel : la page ne monte alors ni carte, ni fil,
  * ni fiches — elle dit « pas de rejeu » — et servir un demi-modèle inviterait un futur
- * consommateur à le lire quand même. La vue match, elle, peut manquer SEULE : le film reste
- * lisible sans elle, simplement sans noms, sans camps et sans fil.
+ * consommateur à le lire quand même. Le contexte du match, lui, peut manquer SEUL : le film reste
+ * lisible sans lui, simplement sans noms, sans camps et sans fil.
  */
 export function buildReplayModel(
   doc: ReplayDocumentReady | null | undefined,
-  matchView: MatchViewResponse | null | undefined,
+  context: ReplayMatchContext | null | undefined,
   settings?: ReplayModelSettings | null,
   viewpoint?: string | null,
 ): ReplayModel {
   if (!doc) return VIDE
-  const header = matchView?.header
-  const scoreboard = matchView?.team_tab.scoreboard ?? []
+  const header = context?.header
+  const scoreboard = context?.scoreboard ?? []
   // LE SUJET DE LA PAGE, RÉSOLU ICI ET NULLE PART AILLEURS (2026-09-06, L2b) : le joueur choisi
   // s'il y en a un, sinon celui de la page. Tout ce qui dépend d'un « moi » en dessous le
   // reçoit en paramètre — plus aucune surface ne relit `is_me` pour le redécouvrir.
@@ -162,8 +163,8 @@ export function buildReplayModel(
 
   // LE KILL FEED VIENT DE LA BASE, PAS DU FILM : le rejeu ne porte pas les kills ; la vue
   // match, elle, les sert déjà résolus (auteur, équipe, ARME du kill avec son icône).
-  const kills: KillEvent[] = collectKillEvents(matchView?.combat_tab.highlight_events, identity)
-  const medals: MedalEvent[] = collectMedalEvents(matchView?.combat_tab.highlight_events)
+  const kills: KillEvent[] = collectKillEvents(context?.highlight_events, identity)
+  const medals: MedalEvent[] = collectMedalEvents(context?.highlight_events)
 
   return {
     scoreboard,
@@ -181,7 +182,7 @@ export function buildReplayModel(
     ),
     // Les médias portent des instants ABSOLUS : la soustraction se fait une fois, sur la
     // même horloge que le fil, la frise et les sièges.
-    media: buildReplayMedia(matchView?.media_tab, header, clock),
+    media: buildReplayMedia(context?.media, header, clock),
     // LE SCORE FINAL QUAND IL NE SE DÉDUIT PAS DU FILM : sur un mode à manches, le calque
     // rendrait les points de la dernière manche au lieu du résultat. IL SUIT LE POINT DE VUE
     // depuis le 2026-09-07 : l'API l'ancre sur le joueur de la page, et l'écran de fin le
