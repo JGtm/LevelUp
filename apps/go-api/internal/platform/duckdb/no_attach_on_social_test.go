@@ -307,6 +307,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/notifications/service.go":                                                     "service notifications",
 	"internal/notify/notifiers.go":                                                          "notifications outbound",
 	"internal/ops/backup_service.go":                                                        "backup/restore ops",
+	"internal/ops/backup_keys.go":                                                           "format des clés de sauvegarde (2026-10-21, constat C1) : le segment de clé « shared_social » désigne la base d'entrepôt à restaurer ; aucune connexion, aucun ATTACH",
 	"internal/ops/media.go":                                                                 "IndexMedia + CHECKPOINT (Phase 3.2)",
 	"internal/ops/media_associate.go":                                                       "association média-match sans ATTACH (ADR 0021)",
 	"internal/ops/media_store.go":                                                           "ensureMediaTables : crée le substrat append-only media_match_associations_history + vue (réconciliation migration shared_social)",
