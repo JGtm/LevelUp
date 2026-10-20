@@ -2,7 +2,7 @@
 
 > **Analysez vos stats de Halo 5: Guardians et de Halo Infinite match par match, suivez votre progression dans le temps, et comparez vos performances avec votre escouade.**
 
-[![Version](https://img.shields.io/badge/Version-7.3.2-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v7.3.2)
+[![Version](https://img.shields.io/badge/Version-8.0.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v8.0.0)
 [![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8.svg)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.5%2B-FEE14E.svg)](https://duckdb.org/)
@@ -14,7 +14,7 @@
 
 ## Dernières nouveautés
 
-**v7.5 — Le rejeu 2D, le film Theater décodé & un onglet Tactique**
+**v8.0 — Le rejeu 2D, le film Theater décodé & un onglet Tactique**
 
 La plus grosse version à ce jour. Halo Infinite enregistre un film de chaque match ; jusqu'ici, personne n'était vraiment parvenu à le décoder. LevelUp y parvient désormais — un match se revoit vu du dessus, seconde par seconde, avec tout ce que le film sait écrit autour : qui a tué qui et avec quoi, à quelle distance, qui portait le drapeau, qui a raflé l'arme de puissance, qui est mort avec un équipement qu'il n'a jamais utilisé.
 
@@ -40,6 +40,19 @@ La plus grosse version à ce jour. Halo Infinite enregistre un film de chaque ma
 
 **Cartes, médias et réparations**
 - **109 fonds de carte** avec les zones Forge nommées à 100 %, les repères officiels
+
+**Un débrief plus rapide**
+- **Le match que tu viens de jouer est analysé en premier** — il passe devant l'historique ; « Analyse en cours » dit quelle partie est en traitement, et un bloc sans rien à montrer dit désormais pourquoi
+- **Quatre nouvelles citations**, dont trois lues dans le film — « Tick Tick Boom », « Premier coup », « Jouets éducatifs » et « Presque, ça ne compte pas » (tuer un adversaire sans bouclier, et survivre)
+
+**Tactique et rejeu, affinés**
+- **Tactique** : écarter la zone sélectionnée d'un clic ou d'Échap, voir l'état de chaque mort et regarder sa séquence se jouer seule ; l'onglet s'ouvre avec bien moins de requêtes
+- **Rejeu** : les premiers VIP dès la première seconde avec une couronne redessinée, l'équipement porté lu plus loin, les armes de départ lâchées au sol masquées par défaut, et des zones nommées sur 78 cartes de plus
+- **Une démo plus riche** — un rejeu pour chaque mode et un 4v4 avec plusieurs véhicules, conservés d'une version à l'autre
+
+**Tes jetons, ton choix, et une licence libre**
+- **La mise en commun des jetons est un choix, joueur par joueur** — ta connexion ne sert les autres joueurs de l'instance que si tu es d'accord, et tu peux la retirer à tout moment ; conditions d'utilisation et texte de confidentialité corrigé
+- **GNU AGPL-3.0 pour le code, CC BY 4.0 pour la documentation**, et un audit de sécurité qui a fermé 29 constats
 
 Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde ses propres pages et n'emprunte jamais les données d'un autre titre.
 
@@ -130,6 +143,7 @@ Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde 
 - **Centre de notifications intégré** — fil par joueur avec repère de non-lus, filtres par catégorie, frise groupée par jour et actions groupées ; rafraîchissement toutes les 60 secondes ; préférences par joueur
 - **Alertes Discord** — notifications configurables après la synchronisation, après le rattrapage et quand les rejeux sont prêts, indépendamment
 - **Configuration en un clic** — connexion Xbox par code d'appareil (`xbox.com/activate`) avec provisionnement automatique du joueur ; aucun compte Azure requis
+- **Mise en commun des jetons par consentement** — la connexion d'un joueur suivi n'entre dans le pool partagé de l'instance que s'il est d'accord (bannière et carte dans Réglages > Synchronisation, retrait à tout moment) ; sans réponse, elle ne sert que son propriétaire. Conditions d'utilisation sur `/terms`
 - **Personnalisation du Spartan de Halo 5** — votre armure et vos couleurs, recolorées en direct
 - **Multi-titre** — Halo Infinite et Halo 5: Guardians côte à côte, chacun avec son stockage, ses catalogues et ses capabilities
 

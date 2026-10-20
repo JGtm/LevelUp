@@ -337,9 +337,9 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
 
 ### Étape 3 — Contrôles de l'utilisateur (gate utilisateur)
 
-- [ ] 3.1 (19/10 : fiche interactive publiée à la demande de l'utilisateur, https://claude.ai/artifact/BM28Ax8NZ3HFFZmJzWcJBy — statut OK/KO/v8.1 + commentaire par contrôle, base `resultats` lisible par Claude via ArtifactData ; copie texte `.ai/FICHE_CONTROLES_RELEASE_V8.md`) Les 42 contrôles visuels et les 7 contrôles techniques de l'encadré Notion, sur le
+- [!] 3.1 (20/10 : l utilisateur lance la release maintenant et fera ses contrôles APRÈS — « c est le jour J, on fait la release » ; les KO deviendront des correctifs v8.0.x) (19/10 : fiche interactive publiée à la demande de l'utilisateur, https://claude.ai/artifact/BM28Ax8NZ3HFFZmJzWcJBy — statut OK/KO/v8.1 + commentaire par contrôle, base `resultats` lisible par Claude via ArtifactData ; copie texte `.ai/FICHE_CONTROLES_RELEASE_V8.md`) Les 42 contrôles visuels et les 7 contrôles techniques de l'encadré Notion, sur le
       local à jour. Claude prépare une fiche avec un lien direct par contrôle (match, page, onglet).
-- [ ] 3.2 Chaque anomalie : correctif (nouvelle branche, retour en 1.5) ou report en v8.1 —
+- [~] 3.2 (après la release, cf. 3.1) Chaque anomalie : correctif (nouvelle branche, retour en 1.5) ou report en v8.1 —
       décision de l'utilisateur. Un correctif du décodeur fait remonter le schéma : rejouer 2.3 à
       2.7 (2.3 ne recuit alors que les artefacts périmés).
 
@@ -365,7 +365,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       - notes de version de l'app EN + FR (`docs/RELEASE_NOTES.md`, `docs/FR/RELEASE_NOTES.md`).
       Gate : extraction des blocs sur les fichiers réels (script node, `extractWhatsNewBlocks`) =
       nombre de blocs attendu, bloc `v8.0` présent dans les deux langues ; parité FR/EN des sections.
-- [ ] 3b.3 **Captures d'écran** fournies par l'utilisateur : rangées dans `docs/screenshots/`
+- [!] 3b.3 (20/10 : captures fournies par l utilisateur APRÈS la release) **Captures d'écran** fournies par l'utilisateur : rangées dans `docs/screenshots/`
       (dossier partagé par les deux README) ; une capture qui remplace une existante garde son nom
       de fichier, une nouvelle est référencée dans LES DEUX README avec un texte alternatif FR et EN ;
       capture retirée = fichier supprimé et références retirées. Taille raisonnable (PNG compressé).
@@ -387,7 +387,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       `--delete` de `data/titles/`, `data/cache/replays/`, `data/global/xbox_aliases.duckdb`,
       `data/demo_films/`. Gate : nombre de bases DuckDB et d'artefacts = local, 0 `.wal`.
 - [x] 4.4 (19/10, accord de l'utilisateur : 186 Mo supprimés) Suppression de `/opt/levelup-data.incoming-restes-2026-09-23` (sur accord).
-- [ ] 4.5 **Répétition du premier boot** : binaire serveur final sur une racine à part en local
+- [x] 4.5 (20/10, voir journal) **Répétition du premier boot** : binaire serveur final sur une racine à part en local
       (copie de `data/titles` + `config/` + `static/` + `app_settings.json`/`db_profiles.json` de
       prod, sans `data/auth`), `LEVELUP_REPO_ROOT`/`LEVELUP_LOGS_DIR`/`LEVELUP_API_PORT`.
       Gate : boot sans FATAL, `friends: … created=N` (N > 0), groupe par défaut non vide.
@@ -428,7 +428,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 
 - [ ] 6.1 `schema_migrations` de `metadata.duckdb` : migrations médailles passées ; la médaille
       VIP s'affiche « Clash of Kings » avec son image.
-- [ ] 6.2 `data/global/player_friends.json` existe avec N entrées ; groupe par défaut non vide.
+- [ ] 6.2 `data/global/player_friends.json` existe avec N entrées (4 attendues, cf. 4.5) ; pas de groupe par défaut (D-19).
 - [ ] 6.3 +1 h : logs `post-sync: kill source` → `sans_killfeed=0`, `ecrits` > 0,
       `backlog_restant` en baisse.
 - [ ] 6.4 Synchro de Nuzzles réussie (`auto_sync: sync delta réussie`), plus de `joueur en échec`.
@@ -452,6 +452,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 
 - [ ] 7.1 +48 h : réponses 401, 403, 413, 429 dans les logs nginx et serveur ; hausse sur des pages
       normales = protection à desserrer.
+- [ ] 7.1b +48 h et +7 jours : WARN « lecture tenue longtemps » et compteur `shared_provider_reader_slow_total` en prod ; en particulier `data_health` (base partagée ouverte hors provider) et le segment unique des 5 étapes de scoring du post-sync (décision de l utilisateur du 20/10 : v8.1 si mesurés fréquents). 
 - [ ] 7.2 +7 jours : `memory.peak` des deux conteneurs (référence 16/10 : prod 1 134 Mio, démo
       334 Mio) → proposition de `mem_limit`.
 - [ ] 7.3 Audit des `ON CONFLICT` sur les tables héritées sans clé primaire (registre daté, ne
@@ -663,3 +664,24 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   de suite entre 23:27:48 et 23:29:25 : tous `succeeded`, 0 joueur en échec ; 0 « drain timeout »,
   0 « open RW after RO close », 0 « lecture tenue longtemps ». Découvertes : `data_health` ouvre la
   base partagée hors provider ; un segment de lecture couvre les 5 étapes de scoring du post-sync.
+- **2026-10-20 — 4.5 répétition du premier boot** : binaire de `feat/release-v8` (= `feat/v75`
+  8ccfb9e7e) sur une copie de `data/titles` (23 bases, serveur local arrêté le temps de la copie),
+  `config/`, `static/`, et `app_settings.json` + `db_profiles.json` de PROD (scp), sans `data/auth`,
+  port 8090. Boot OK, `/health` 200, aucun FATAL ni panic, 1 seul ERROR (`catalog_refresh_cron: cycle
+  échoué`, attendu sans jetons). `friends: listes d'amis par joueur créées … created=4` ;
+  `player_friends.json` produit (JGtm → XxDaemonGamerxX, Madina97294, Chocoboflor, etc.). **Groupe par
+  défaut : AUCUN créé** — `migrateDefaultGroupAtBoot` sort en silence car le `db_profiles.json` de
+  prod n'a pas de champ `"admin"` (le local non plus) ; la prod n'a pas de `groups.json` aujourd'hui
+  (même état qu'en v7.3.2). D-19, soumis à l'utilisateur. Copie supprimée, serveur local relancé.
+- **D-19 (20/10)** : pas de groupe par défaut en prod au premier boot v8 faute de `"admin"` dans
+  `db_profiles.json` (sortie silencieuse, sans log, de `migrateDefaultGroupAtBoot`). Options : poser
+  `"admin": "JGtm"` dans le `db_profiles.json` de prod avant le déploiement (groupe « Mon foyer » créé
+  depuis les amis de JGtm), le créer à la main dans l'app après le déploiement, ou rester sans groupe.
+- **2026-10-20 — D-19 tranché (utilisateur, « Ok »)** : rien à faire pour la release. La migration du
+  groupe par défaut est un one-shot de transition (juin) déjà présent en v7.3.2 et sauté en prod depuis
+  (pas de champ `"admin"`) ; la prod n'a aucun groupe et la v8 garde ce comportement. Un groupe se crée
+  dans l'app après le déploiement si l'utilisateur le souhaite. Le contrôle 6.2 « groupe par défaut non
+  vide » est caduc : 6.2 vérifie seulement `player_friends.json` (N entrées).
+- **2026-10-20 — Jour J décidé par l'utilisateur.** Contrôles et captures repoussés après la release.
+  3b.1-3b.2 confiés à un exécutant Sonnet (`feat/rv8-docs`). PR #96 `feat/v75` → `main` ouverte
+  (https://github.com/JGtm/LevelUp/pull/96) pour lancer l'E2E tôt ; elle se mettra à jour avec les docs.
