@@ -110,6 +110,8 @@ go run ./cmd/restore --dry-run
 
 By default `restore` writes a mirror tree under `data/restore/<date>/` (`{slug}/{db}.duckdb`, `{slug}/players/{gamertag}/stats.duckdb`) so you can inspect before swapping anything in.
 
+A restored DB gets its full schema back, not only its rows: each DB is first created by its title's migration set (the one the server applies when it opens it), then each table is filled from its Parquet file by named columns. Primary keys, UNIQUE constraints, defaults, sequences, indexes and views are therefore those of the current schema. A table the migrations do not know (created at runtime by a module) is recreated from the table DDL saved next to the Parquet files (`_ddl_<timestamp>.json`, written since 8.0.2); a snapshot taken before that falls back to a table without keys, and the command lists such tables. Rows that break a key are dropped (the most recent one is kept) and counted.
+
 **In-place production restore** overwrites the live DuckDB files:
 
 ```bash

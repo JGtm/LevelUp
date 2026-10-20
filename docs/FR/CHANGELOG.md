@@ -6,6 +6,11 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [Unreleased]
+
+### Corrigé
+- **Une base restaurée depuis une sauvegarde retrouve ses clés primaires** — `cmd/restore` et `cmd/restore_one_player` recréaient chaque table depuis son fichier Parquet par `CREATE TABLE AS`, qui garde les lignes mais perd clés primaires, contraintes UNIQUE, défauts et séquences : sur une base restaurée, toute écriture qui s'appuie sur une clé (`ON CONFLICT`, `INSERT OR IGNORE`) échouait, synchronisation des matchs comprise. Chaque base est désormais d'abord créée par le jeu de migrations de son titre, puis remplie table par table ; une table que les migrations ne connaissent pas est recréée depuis le DDL des tables que les sauvegardes enregistrent désormais à côté des Parquet. Les lignes qui violent une clé sont écartées (la plus récente est gardée) et comptées.
+
 ## [8.0.1] - 2026-10-20
 
 ### Ajouté

@@ -110,6 +110,8 @@ go run ./cmd/restore --dry-run
 
 Par défaut, `restore` écrit une arborescence miroir sous `data/restore/<date>/` (`{slug}/{db}.duckdb`, `{slug}/players/{gamertag}/stats.duckdb`) pour inspecter avant tout remplacement.
 
+Une base restaurée retrouve tout son schéma, pas seulement ses lignes : chaque base est d'abord créée par le jeu de migrations de son titre (celui que le serveur applique à son ouverture), puis chaque table est remplie depuis son fichier Parquet, colonne par colonne nommée. Clés primaires, contraintes UNIQUE, défauts, séquences, index et vues sont donc ceux du schéma courant. Une table que les migrations ne connaissent pas (créée à l'exécution par un module) est recréée depuis le DDL des tables enregistré à côté des Parquet (`_ddl_<horodatage>.json`, écrit depuis la 8.0.2) ; un instantané antérieur retombe sur une table sans clé, et la commande liste ces tables. Les lignes qui violent une clé sont écartées (la plus récente est gardée) et comptées.
+
 **Restauration en place sur la production** — écrase les fichiers DuckDB live :
 
 ```bash

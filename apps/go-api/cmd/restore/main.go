@@ -24,6 +24,8 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/titleseams"
+	"levelup/go-api/internal/ops"
 	"levelup/go-api/pkg/duckdbbackup"
 )
 
@@ -104,7 +106,10 @@ func main() {
 		keyToPath = outputPathResolver(outDir)
 	}
 
-	result, err := duckdbbackup.ImportFromStaging(ctx, stagingDir, keyToPath, *dryRun)
+	// Schéma canonique de chaque base restaurée : le jeu de migrations de son titre, étapes
+	// title-owned comprises (câblées comme au démarrage du serveur).
+	titleseams.RegisterAll(titleseams.PrestigeConfigDir(cfg.RepoRoot))
+	result, err := duckdbbackup.ImportFromStaging(ctx, stagingDir, keyToPath, ops.RestoreSchema{}, *dryRun)
 	if err != nil {
 		fatalf("import: %v", err)
 	}
@@ -179,24 +184,11 @@ func resolveSnapshot(ctx context.Context, restorer *duckdbbackup.Restorer, snapF
 // livePathResolver mappe les clés de backup sur les chemins DuckDB de production.
 func livePathResolver(pr *title.PathResolver) func(string) string {
 	return func(key string) string {
-		parts := strings.Split(key, ":")
-		switch {
-		case key == "xbox_aliases":
+		if key == "xbox_aliases" {
 			return pr.GlobalXuidAliasesDBPath()
-		case len(parts) == 2:
-			slug, db := parts[0], parts[1]
-			switch db {
-			case "shared_matches_v2":
-				return pr.SharedDBPath(slug)
-			case "metadata":
-				return pr.MetadataDBPath(slug)
-			case "shared_pve":
-				return pr.SharedPVEDBPath(slug)
-			case "shared_social":
-				return pr.SharedSocialDBPath(slug)
-			}
-		case len(parts) == 3 && parts[1] == "player":
-			return pr.PlayerDBPath(parts[0], parts[2])
+		}
+		if k, ok := ops.ParseBackupKey(key); ok {
+			return k.LivePath(pr)
 		}
 		return ""
 	}
@@ -230,6 +222,16 @@ func printResult(result *duckdbbackup.ImportResult) {
 		for _, key := range result.Skipped {
 			fmt.Printf("  - %s\n", key)
 		}
+	}
+	if len(result.FallbackTables) > 0 {
+		fmt.Printf("Tables hors schéma canonique, importées SANS clé (%d) :\n", len(result.FallbackTables))
+		for _, t := range result.FallbackTables {
+			fmt.Printf("  ! %s\n", t)
+		}
+	}
+	if result.DroppedRows > 0 {
+		fmt.Printf("Lignes écartées (doublon de clé ou clé primaire NULL) : %d (détail dans le journal)\n",
+			result.DroppedRows)
 	}
 }
 

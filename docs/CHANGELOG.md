@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [Unreleased]
+
+### Fixed
+- **A database restored from a backup gets its primary keys back** — `cmd/restore` and `cmd/restore_one_player` used to recreate every table from its Parquet file with `CREATE TABLE AS`, which keeps the rows but drops primary keys, UNIQUE constraints, defaults and sequences: on a restored database, every write that relies on a key (`ON CONFLICT`, `INSERT OR IGNORE`) failed, the synchronisation of matches included. Each database is now first created by its title's migration set, then filled table by table; a table the migrations do not know is recreated from the table DDL that backups now save next to the Parquet files. Rows that break a key are dropped (the most recent one is kept) and counted.
+
 ## [8.0.1] - 2026-10-20
 
 ### Added

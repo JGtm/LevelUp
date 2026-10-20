@@ -74,10 +74,10 @@ func discoverLevelUpDBs(pr *title.PathResolver) ([]duckdbbackup.Target, error) {
 		}
 		slug := te.Name()
 		warehouse := []duckdbbackup.Target{
-			{Key: slug + ":shared_matches_v2", Path: pr.SharedDBPath(slug)},
-			{Key: slug + ":metadata", Path: pr.MetadataDBPath(slug)},
-			{Key: slug + ":shared_pve", Path: pr.SharedPVEDBPath(slug)},
-			{Key: slug + ":shared_social", Path: pr.SharedSocialDBPath(slug)},
+			{Key: warehouseBackupKey(slug, backupDBShared), Path: pr.SharedDBPath(slug)},
+			{Key: warehouseBackupKey(slug, backupDBMetadata), Path: pr.MetadataDBPath(slug)},
+			{Key: warehouseBackupKey(slug, backupDBSharedPvE), Path: pr.SharedPVEDBPath(slug)},
+			{Key: warehouseBackupKey(slug, backupDBSharedSoc), Path: pr.SharedSocialDBPath(slug)},
 		}
 		for _, t := range warehouse {
 			if _, err := os.Stat(t.Path); err == nil {
@@ -95,7 +95,7 @@ func discoverLevelUpDBs(pr *title.PathResolver) ([]duckdbbackup.Target, error) {
 				continue
 			}
 			targets = append(targets, duckdbbackup.Target{
-				Key:  slug + ":player:" + pe.Name(),
+				Key:  playerBackupKey(slug, pe.Name()),
 				Path: pr.PlayerDBPath(slug, pe.Name()),
 			})
 		}

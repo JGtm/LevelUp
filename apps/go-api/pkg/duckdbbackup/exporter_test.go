@@ -87,18 +87,28 @@ func TestExportTarget_Basic(t *testing.T) {
 		t.Errorf("expected 2 tables exported, got %d", n)
 	}
 
-	// Verify two Parquet files were created.
+	// Verify two Parquet files were created, plus the tables' DDL (restauration des clés).
 	entries, err := os.ReadDir(outDir)
 	if err != nil {
 		t.Fatalf("ReadDir: %v", err)
 	}
-	if len(entries) != 2 {
-		t.Errorf("expected 2 parquet files, got %d", len(entries))
-	}
+	var parquets, ddls int
 	for _, e := range entries {
-		if !strings.HasSuffix(e.Name(), ".parquet") {
-			t.Errorf("unexpected file %q (expected .parquet)", e.Name())
+		switch {
+		case strings.HasSuffix(e.Name(), ".parquet"):
+			parquets++
+		case strings.HasPrefix(e.Name(), ddlFilePrefix) && strings.HasSuffix(e.Name(), ddlFileSuffix):
+			ddls++
+		default:
+			t.Errorf("unexpected file %q", e.Name())
 		}
+	}
+	if parquets != 2 || ddls != 1 {
+		t.Errorf("expected 2 parquet files and 1 DDL file, got %d and %d", parquets, ddls)
+	}
+	ddl, err := loadTableDDL(outDir)
+	if err != nil || len(ddl) != 2 || !strings.HasPrefix(ddl["players"], "CREATE TABLE players") {
+		t.Errorf("DDL exporté inattendu : %v (err=%v)", ddl, err)
 	}
 }
 
