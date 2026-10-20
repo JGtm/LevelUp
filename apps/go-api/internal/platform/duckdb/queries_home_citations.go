@@ -149,21 +149,18 @@ WHERE me.xuid = ?
   AND me.match_id IN (%s)
 ORDER BY me.match_id, me.count DESC`
 
-// Q26i : Home — citations progressées par match, avec cumul global au moment du match.
-// Les match_id sont injectés dynamiquement via IN (%s).
+// Q26i : Home — citations progressées par match (valeur gagnée à chaque match).
+// Les match_id sont injectés dynamiquement via IN (%s) : borne constante sur la clé de
+// partition de la fenêtre `_latest` (ADR 0036 I2).
 // Requête sur pdb.Player uniquement (match_citations est dans stats.duckdb).
+// Le cumul arrêté à chaque match n'est PAS lu ici : il exige l'heure de début des matchs
+// (base partagée), cf. loadCitationCumulAfterMatch (citations_cumul.go).
 const Q26iMatchCitationsTemplate = `
 SELECT
     mc.match_id,
     mc.citation_name_norm,
-    mc.value                AS match_delta,
-    cum.total               AS cumulative_total
+    mc.value                AS match_delta
 FROM match_citations_latest mc
-JOIN (
-    SELECT citation_name_norm, SUM(value) AS total
-    FROM match_citations_latest
-    GROUP BY citation_name_norm
-) cum ON cum.citation_name_norm = mc.citation_name_norm
 WHERE mc.match_id IN (%s)
   AND mc.value > 0
 ORDER BY mc.match_id, mc.value DESC`

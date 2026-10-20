@@ -187,21 +187,39 @@ func (cfg mediaQueryConfig) baseWhereClause(sectionFilter string) ([]string, []a
 	}
 }
 
-// Q41 : MatchView Summary — match_citations + cumul global pour un seul match (player DB).
-// Les métadonnées (display, image_path, tier_targets, description) sont chargées
+// Q41 : MatchView Summary — match_citations d'un seul match (player DB).
+// Le cumul arrêté à ce match est chargé à part (loadCitationCumulAfterMatch). Les
+// métadonnées (display, image_path, tier_targets, description) sont chargées
 // séparément via Q26j sur la metadata DB et mergées en Go (citation_mappings n'est
 // pas attachée au player DB — voir pool.go).
 const Q41SummaryTabCitations = `
 SELECT
     mc.citation_name_norm,
-    mc.value                AS match_delta,
-    cum.total               AS cumulative_total
+    mc.value                AS match_delta
 FROM match_citations_latest mc
-JOIN (
-    SELECT citation_name_norm, SUM(value) AS total
-    FROM match_citations_latest
-    GROUP BY citation_name_norm
-) cum ON cum.citation_name_norm = mc.citation_name_norm
 WHERE mc.match_id = ?
   AND mc.value > 0
 ORDER BY mc.value DESC`
+
+// Q41b : historique d'un joueur pour un ensemble de citations (player DB) — chaque match où la
+// citation a une ligne, avec sa valeur. Sert au cumul arrêté à un match : les valeurs ne se
+// somment pas sans l'ordre des matchs, dont l'heure de début vit dans la base partagée.
+// Les norms sont injectées via IN (%s). La fenêtre `_latest` se lit en entier : un cumul est un
+// préfixe de TOUTE la série de la citation, aucun périmètre de matchs ne le borne.
+const Q41bCitationHistoryTemplate = `
+SELECT
+    mc.match_id,
+    mc.citation_name_norm,
+    mc.value
+FROM match_citations_latest mc
+WHERE mc.citation_name_norm IN (%s)`
+
+// Q41c : heure de début canonique d'un ensemble de matchs (base partagée, lecteur partagé).
+// Le prédicat `WHERE` (liste des match_id liée en un paramètre, clauseListeParJointure) est
+// ajouté par l'appelant ; match_registry est une table, pas une vue `_latest`.
+var Q41cCitationHistoryStartTimes = `
+SELECT
+    match_id,
+    ` + StartTimeCanonicalSQL("") + ` AS start_time
+FROM match_registry
+WHERE `

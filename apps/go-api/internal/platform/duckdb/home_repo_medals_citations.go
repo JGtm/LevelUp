@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -215,15 +216,10 @@ func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64, locale st
 	return result
 }
 
-// LoadMatchCitations charge les citations progressées pour un lot de matchs (Q26i + Q26j).
-// Retourne un map match_id → []domain.HomeMatchCitationRaw, dégradation silencieuse.
-func (r *HomeRepo) LoadMatchCitations(ctx context.Context, matchIDs []string) (map[string][]domain.HomeMatchCitationRaw, error) {
-	result := make(map[string][]domain.HomeMatchCitationRaw)
-	if len(matchIDs) == 0 || r.pdb == nil || r.pdb.Player == nil {
-		return result, nil
-	}
-
-	// Étape 1 : charger les deltas + cumulatifs depuis match_citations (player DB).
+// loadMatchCitationRows lit sur la base joueur le gain de chaque citation à chacun des matchs
+// `matchIDs` (Q26i), groupé par match, et les citations rencontrées. Dégradation silencieuse :
+// table absente ou lecture en échec -> rien (map vide).
+func (r *HomeRepo) loadMatchCitationRows(ctx context.Context, matchIDs []string) (map[string][]citationRowScan, []string) {
 	placeholders := make([]string, len(matchIDs))
 	args := make([]interface{}, len(matchIDs))
 	for i, id := range matchIDs {
@@ -234,42 +230,60 @@ func (r *HomeRepo) LoadMatchCitations(ctx context.Context, matchIDs []string) (m
 
 	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, query, args...)
 	if err != nil {
-		if isTableNotFoundErr(err) {
-			return result, nil
+		if !isTableNotFoundErr(err) {
+			slog.WarnContext(ctx, "LoadMatchCitations: lecture des gains par match en échec, citations omises",
+				"xuid", r.pdb.XUID, "err", err)
 		}
-		return result, nil // dégradation silencieuse
+		return nil, nil // dégradation : table absente (instance fraîche) ou lecture en échec
 	}
 	defer rows.Close()
 
-	type citIntermediate struct {
-		norm       string
-		delta      int
-		cumulative int
-	}
-	rawByMatch := make(map[string][]citIntermediate)
+	rawByMatch := make(map[string][]citationRowScan)
 	normsSeen := make(map[string]struct{})
+	var norms []string
 	for rows.Next() {
-		var matchID, norm string
-		var delta, cumulative int
-		if err := rows.Scan(&matchID, &norm, &delta, &cumulative); err != nil {
+		var c citationRowScan
+		if err := rows.Scan(&c.matchID, &c.norm, &c.delta); err != nil {
 			continue
 		}
-		rawByMatch[matchID] = append(rawByMatch[matchID], citIntermediate{norm, delta, cumulative})
-		normsSeen[norm] = struct{}{}
+		rawByMatch[c.matchID] = append(rawByMatch[c.matchID], c)
+		if _, ok := normsSeen[c.norm]; !ok {
+			normsSeen[c.norm] = struct{}{}
+			norms = append(norms, c.norm)
+		}
 	}
 	if err := rows.Err(); err != nil {
+		slog.WarnContext(ctx, "LoadMatchCitations: lecture des gains par match interrompue, citations omises",
+			"xuid", r.pdb.XUID, "err", err)
+		return nil, nil
+	}
+	return rawByMatch, norms
+}
+
+// LoadMatchCitations charge les citations progressées pour un lot de matchs (Q26i + Q26j).
+// Retourne un map match_id → []domain.HomeMatchCitationRaw, dégradation silencieuse.
+func (r *HomeRepo) LoadMatchCitations(ctx context.Context, matchIDs []string) (map[string][]domain.HomeMatchCitationRaw, error) {
+	result := make(map[string][]domain.HomeMatchCitationRaw)
+	if len(matchIDs) == 0 || r.pdb == nil || r.pdb.Player == nil {
 		return result, nil
 	}
+
+	// Étape 1 : charger les gains par match depuis match_citations (player DB).
+	rawByMatch, norms := r.loadMatchCitationRows(ctx, matchIDs)
 	if len(rawByMatch) == 0 {
 		return result, nil
 	}
 
-	// Étape 2 : charger les métadonnées (display, image_path, tier_targets) depuis metadata.
-	norms := make([]string, 0, len(normsSeen))
-	for n := range normsSeen {
-		norms = append(norms, n)
-	}
+	// Étape 2 : charger les métadonnées (display, image_path, tier_targets) depuis metadata,
+	// et le cumul de chaque citation arrêté à chacun de ces matchs (citations_cumul.go).
 	metaMap := r.loadCitationMappingMeta(ctx, norms)
+	cumul, err := loadCitationCumulAfterMatch(ctx, r.pdb, norms)
+	if err != nil {
+		// Sans cumul arrêté au match, l'anneau et le palier seraient faux : pas de citation.
+		slog.WarnContext(ctx, "LoadMatchCitations: cumul par match indisponible, citations omises",
+			"xuid", r.pdb.XUID, "err", err)
+		return result, nil
+	}
 
 	// Étape 3 : merger.
 	for matchID, cits := range rawByMatch {
@@ -286,7 +300,7 @@ func (r *HomeRepo) LoadMatchCitations(ctx context.Context, matchIDs []string) (m
 				ImagePath:   safeStringValue(imgPath),
 				TierTargets: meta.tierTargets,
 				Delta:       c.delta,
-				Cumulative:  c.cumulative,
+				Cumulative:  cumul[analysis.CitationMatchKey{MatchID: matchID, Norm: c.norm}],
 			})
 		}
 	}
