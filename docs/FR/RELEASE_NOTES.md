@@ -1,6 +1,6 @@
 ## Dernières nouveautés
 
-**v7.5 — Le rejeu 2D, le film Theater décodé & un onglet Tactique**
+**v8.0 — Le rejeu 2D, le film Theater décodé & un onglet Tactique**
 
 La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jusqu'ici l'application ne l'avait jamais ouvert. C'est fait — et un match se revoit désormais vu du dessus, seconde par seconde, avec tout ce que le film sait écrit autour : qui a tué qui et avec quoi, à quelle distance, qui portait le drapeau, qui a raflé l'arme de puissance, qui est mort avec un équipement qu'il n'a jamais utilisé.
 
@@ -77,11 +77,50 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Les noms de mode lus juste** — les playlists dont le nom interne s'écrit à l'envers affichent enfin leur vrai mode
 - **Les clips s'enchaînent** — ouvrir le clip suivant dans la visionneuse ne casse plus ses voisins
 
+**Un débrief plus rapide, et un « Analyse en cours » qui dit ce qui manque**
+- **Le match que tu viens de jouer est analysé en premier** — il passe devant l'historique dans la file ; sur deux vrais matchs 4v4, tout (l'arme de chaque frag, le rejeu, les citations) était prêt 2 min 49 s et 2 min 45 s après le coup de sifflet final, pour un objectif de 5 minutes
+- **« Analyse en cours » nomme la partie** — sur les tuiles de l'accueil et la fiche du match, un match encore en analyse le dit, et dit quelle partie est en cours de traitement ou en attente : l'arme de chaque frag, les citations ou le rejeu
+- **Citations mises à jour à l'arrivée du film** — plus besoin d'attendre le sync suivant
+- **Un bloc vide dit pourquoi** — quand aucun match de ta sélection ne concerne un bloc, il reste sur la page avec son titre et une phrase au lieu de disparaître ; un bloc qui ne peut pas exister sur un titre reste absent
+- **Nombres et infobulles à ta langue**, et des infobulles qui ne sortent jamais de la fenêtre
+
+**Quatre nouvelles citations, dont trois lues dans le film**
+- **« Tick Tick Boom »** — gagner des parties d'Assaut
+- **« Premier coup »** — réaliser le premier frag d'une partie
+- **« Jouets éducatifs »** — prendre au moins trois armes sur socle au cours d'une même partie d'Assassin
+- **« Presque, ça ne compte pas »** — tuer un Spartan adverse sans plus aucun bouclier, et survivre ; le film dit l'état du bouclier à l'instant du frag, et les paliers vont de 50 à 500. Elle est mesurée sur les matchs joués depuis septembre 2025 dont le film a été lu
+- **Recalculées quand le film arrive** — un match dont le film est lu après coup voit ses citations remises à jour automatiquement
+- **Des visuels à leur place** — « Sécurisation du drapeau » reprend l'emblème de « Défenseur du drapeau » de Halo 5, « Chasse au porteur » un crâne dans un anneau, et les nouvelles citations ont leur version blanche
+- **La page Citations suit le titre** — Halo Infinite montre les citations calculées par LevelUp, Halo 5 celles du jeu
+
+**Tes jetons, ton choix**
+- **La mise en commun des jetons devient un choix, joueur par joueur** — ta connexion n'est partagée avec les autres joueurs de l'instance que si tu dis oui ; sans réponse, elle ne sert que toi, et tu peux la retirer à tout moment dans Réglages > Synchronisation
+- **Conditions d'utilisation** — une page bilingue, et un texte de confidentialité corrigé
+- **Une licence libre** — le code passe sous GNU AGPL-3.0 et la documentation sous CC BY 4.0 ; les versions publiées avant le 16 octobre 2026 restent sous MIT
+- **Un audit de sécurité** — 29 constats fermés : qui peut voir ou modifier quoi, sessions et connexion, limites sur les envois et les requêtes coûteuses, fichiers et chemins
+
+**Le rejeu, l'onglet Tactique et la démo**
+- **L'équipement porté, plus loin** — une faille apparaît à sa pose, avec ses utilisations restantes et ses sons ; le champ de réparation rejoue son son de fin
+- **Les VIP dès la première seconde** — le premier VIP de chaque équipe est montré dès le début avec une couronne redessinée aux couleurs de son camp, et la médaille « Watch the Throne » a son nom et son image
+- **Les armes de départ lâchées au sol sont masquées** — une option du tiroir les réaffiche
+- **Des zones nommées sur 78 cartes de plus**, Harvest comprise
+- **Tactique : écarter la zone** — re-clique dessus, clique dans le vide ou appuie sur Échap pour vider la sélection ; chaque mort affiche son état et sa séquence se joue seule ; l'onglet s'ouvre avec bien moins de requêtes (96 contre 5)
+- **Pas de rejeu pour le Firefight** — le mode n'est pas géré, donc aucun rejeu n'est construit ni servi
+- **Une démo plus riche** — un rejeu pour chaque mode, plus un match 4v4 avec plusieurs véhicules ; elle porte désormais les données du film derrière ses blocs Emprise et Tactique ; ce qui est ajouté à la démo est conservé d'une version à l'autre
+
 **Réparations**
 - **La page Classement mondial refonctionne** (livrée en v7.3.1) — les pages qu'elle lit avaient déménagé, et la page servait un classement périmé au lieu de le dire ; elle ne peut plus se dégrader en silence, et un classement vide ne s'affiche plus comme une récupération en échec
 - **LUSR** — une note d'arène Halo 5 corrompue est réparée à la source, le lecteur corrigé, et un outil de purge ajouté
 - **La fiche du match ne meurt plus pour tout le monde** quand un instantané prend du retard sur la requête
 - **Un rejeu illisible le dit** — un film expiré du côté de Microsoft est classé absent au lieu d'être réessayé sans fin
+- **Halo 5 et Halo Infinite ne se bloquent plus mutuellement à l'écriture** — une écriture sur un titre pouvait laisser l'autre inscriptible seulement après un redémarrage, et les écritures calaient pendant des minutes après un démarrage le temps que le catalogue se rafraîchisse
+- **Le recalcul des sessions dit quand il échoue** — un profil Halo 5 n'était jamais recalculé ; un joueur en échec fait désormais échouer le job, nommément
+- **Tes premiers frags et premières morts sur le profil** valaient 0 pour tout le monde ; ils comptent maintenant
+- **Les chiffres Halo 5 ne comptent plus la Campagne** — engagement, score de performance, modèle d'assistances, note et sessions
+- **Une lecture en échec est dite sur la fiche du match** au lieu d'être montrée comme « pas de données »
+- **La connexion Xbox ne demande son code qu'une fois**
+- **Un rejeu plus complet** — la position de presque chaque frag est retrouvée (tueurs sans position 1 476 contre 78), les vies sans nom passent de 449 à 15, le score Roi de la colline sur Lattice est juste, et les matchs d'arène ne sont plus « véhicules non mesurés »
+- **Un seul chemin de note** — l'ancienne version du LUSR a disparu, et exclure un match ne fait plus reculer la note
 
 **Le projet**
 - **Un pied de page** — la source, la licence, les retours et un bouton de soutien, avec la mention de non-affiliation
@@ -114,14 +153,6 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 **Halo 5 — page Réalisations réparée**
 - **La page s'ouvre de nouveau** — elle répondait par une erreur au lieu d'afficher vos jalons
 - **Titre de section toujours présent** — la grille des Réalisations garde son titre, qu'elle charge, qu'elle soit vide ou en erreur
-
-**Quatre nouvelles citations, dont trois lues dans le film**
-- **« Tick Tick Boom »** — gagner des parties d'Assaut
-- **« Premier coup »** — réaliser le premier frag d'une partie
-- **« Jouets éducatifs »** — prendre au moins trois armes sur socle au cours d'une même partie d'Assassin
-- **« Presque, ça ne compte pas »** — tuer un Spartan adverse sans plus aucun bouclier, et survivre ; le film dit l'état du bouclier à l'instant du frag. Elle progresse sur les matchs dont le film a été lu
-- **Recalculées quand le film arrive** — un match dont le film est lu après coup voit ses citations remises à jour au sync suivant
-- **Des visuels à leur place** — « Sécurisation du drapeau » reprend l'emblème de « Défenseur du drapeau » de Halo 5, et les nouvelles citations ont leur version blanche
 
 **Lecture dans votre langue**
 - **Les citations suivent la bascule de langue** — leurs libellés venaient du serveur dans la langue du moment et y restaient jusqu'au rechargement de la page

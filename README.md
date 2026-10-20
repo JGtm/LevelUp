@@ -2,7 +2,7 @@
 
 > **Analyze your Halo 5: Guardians and Halo Infinite stats match by match, track your progress over time, and compare your performance with your squad.**
 
-[![Version](https://img.shields.io/badge/Version-7.3.2-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v7.3.2)
+[![Version](https://img.shields.io/badge/Version-8.0.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v8.0.0)
 [![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8.svg)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.5%2B-FEE14E.svg)](https://duckdb.org/)
@@ -14,7 +14,7 @@
 
 ## What's new
 
-**v7.5 — 2D replay, the Theater film decoded & a Tactics tab**
+**v8.0 — 2D replay, the Theater film decoded & a Tactics tab**
 
 The biggest release so far. Halo Infinite records a film of every match; until now no one really managed to decode it. LevelUp does now — a match can be watched again from above, second by second, with everything the film knows written around it: who killed whom with what, at what range, who held the flag, who took the power weapon, who wasted the equipment they were carrying when they died.
 
@@ -40,6 +40,19 @@ The biggest release so far. Halo Infinite records a film of every match; until n
 
 **Maps, media and repairs**
 - **109 map backgrounds** with Forge zones named 100 %, official callouts
+
+**A faster debrief**
+- **Analysed in under five minutes** — the match you just played goes ahead of the history: on two real 4v4 matches, the weapon behind each kill, the replay and the commendations were ready under three minutes after the final whistle; "Analysis in progress" says which part is being worked on, and a block with nothing to show now says why
+- **Four new commendations**, three read from the film — "Tick Tick Boom", "First Strike", "Wonderful Toys" and "Almost Doesn't Count" (a kill on an enemy with no shield left, survived)
+
+**Tactics and replay, refined**
+- **Tactics**: set the selected zone aside with a click or Escape, see the state of every death and watch its sequence play by itself; the tab opens with far fewer requests
+- **Replay**: the first VIPs from the first second with a redrawn crown, carried equipment read further, starting weapons dropped on the ground hidden by default, and named zones on 78 more maps
+- **A richer demo** — a replay for every mode and a 4v4 with several vehicles, kept from one release to the next
+
+**Your tokens, your choice, and a free licence**
+- **Token pooling is opt-in, player by player** — your sign-in serves the other players of the instance only if you agree, and you can withdraw at any time; terms of use and a corrected privacy text
+- **GNU AGPL-3.0 for the code, CC BY 4.0 for the documentation**, and a security audit that closed 29 findings
 
 Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages and never borrows another title's data.
 
@@ -130,6 +143,7 @@ Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages
 - **In-app notification center** — per-player feed with unread badge, category filters, day-grouped timeline, and bulk actions; 60-second live refresh; preferences per player
 - **Discord alerts** — configurable notifications after sync, after backfill and when replays are ready, independently
 - **One-click setup** — Xbox Device Code login (`xbox.com/activate`) with automatic player provisioning; no Azure account required
+- **Token pooling by consent** — a followed player's sign-in joins the shared pool of the instance only if they agreed (banner and card in Settings > Synchronization, withdrawal at any time); without an answer it serves only its owner. Terms of use at `/terms`
 - **Halo 5 Spartan customizer** — your armour and colours, recoloured live
 - **Multi-title** — Halo Infinite and Halo 5: Guardians side by side, each with its own storage, its own catalogs and its own capabilities
 

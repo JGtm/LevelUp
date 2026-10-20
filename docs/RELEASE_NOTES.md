@@ -1,6 +1,6 @@
 ## What's new
 
-**v7.5 — 2D replay, the Theater film decoded & a Tactics tab**
+**v8.0 — 2D replay, the Theater film decoded & a Tactics tab**
 
 The biggest release so far. Halo records a film of every match; until now the app never opened it. It does now — and a match can be watched again from above, second by second, with everything the film knows written around it: who killed whom with what, at what range, who held the flag, who took the power weapon, who wasted the equipment they were carrying when they died.
 
@@ -77,11 +77,50 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Mode names read right** — playlists whose internal name is written the other way round now show their real mode
 - **Clips play one after another** — opening the next clip in the viewer no longer breaks its neighbours
 
+**A faster debrief, and an "Analysis in progress" that says what is missing**
+- **The match you just played is analysed first** — it goes ahead of the history in the queue; on two real 4v4 matches everything (the weapon behind each kill, the replay, the commendations) was ready 2 min 49 s and 2 min 45 s after the final whistle, against a target of 5 minutes
+- **"Analysis in progress" names the part** — on the home tiles and the match view, a match still being analysed says so, and says which part is being worked on or is waiting: the weapon behind each kill, the commendations or the replay
+- **Commendations updated when the film arrives** — no more waiting for the next sync
+- **Empty blocks say why** — when no match of your selection concerns a block, it stays on the page with its title and a sentence instead of vanishing; a block that cannot exist on a title is still left out
+- **Numbers and tooltips in your language**, and tooltips that never leave the window
+
+**Four new commendations, three of them read from the film**
+- **"Tick Tick Boom"** — win Assault matches
+- **"First Strike"** — earn the first kill of a match
+- **"Wonderful Toys"** — pick up three or more weapons from weapon pads in a single Slayer match
+- **"Almost Doesn't Count"** — kill an enemy Spartan with no shield left, and survive; the film tells the shield state at the instant of the kill, and the tiers run from 50 to 500. It is measured on the matches played since September 2025 whose film has been read
+- **Recomputed when the film arrives** — a match whose film is read later gets its commendations updated automatically
+- **Visuals in their place** — "Flag Secures" now uses Halo 5's "Defender of the Flag" emblem, "Skull Carrier Takedown" a skull in a ring, and the new commendations have their white version
+- **The Commendations page follows the title** — Halo Infinite shows the commendations computed by LevelUp, Halo 5 the game's own
+
+**Your tokens, your choice**
+- **Token pooling is now a choice, player by player** — your sign-in is shared with the other players of the instance only if you say yes; without an answer it serves only you, and you can withdraw at any time in Settings > Synchronization
+- **Terms of use** — a bilingual page, and a corrected privacy text
+- **A free licence** — the code is now under the GNU AGPL-3.0 and the documentation under CC BY 4.0; versions published before 16 October 2026 remain under MIT
+- **A security audit** — 29 findings closed: who can see or change what, sessions and sign-in, limits on uploads and costly requests, files and paths
+
+**The replay, the Tactics tab and the demo**
+- **Carried equipment, further** — a rift appears when it is laid, with its remaining uses and its sounds; the repair field plays its end sound again
+- **The VIPs from the first second** — the first VIP of each team is shown from the start with a redrawn crown in the colours of its side, and the "Watch the Throne" medal has its name and image
+- **Starting weapons dropped on the ground are hidden** — an option in the drawer shows them again
+- **Named zones on 78 more maps**, Harvest included
+- **Tactics: put the zone aside** — click it again, click on an empty spot or press Escape to clear the selection; every death shows its state and its sequence plays by itself; the tab opens with far fewer requests (96 down to 5)
+- **No replay for Firefight** — the mode is not handled, so no replay is built or served for it
+- **A richer demo** — a replay for every mode, plus a 4v4 match with several vehicles; it now carries the film-derived data behind its Map control and Tactics blocks; what is added to the demo is kept from one release to the next
+
 **Repairs**
 - **The World ranking page works again** (shipped as v7.3.1) — the source pages it reads had moved, and the page was serving a stale ranking instead of saying so; it can no longer degrade in silence, and an empty ranking and a failed fetch are no longer shown the same way
 - **LUSR** — a corrupted Halo 5 arena rating is fixed at the source, the reader corrected, and a purge tool added
 - **The match view no longer dies for everybody** when a snapshot lags behind the query
 - **A replay that cannot be read says so** — a film that has expired on Microsoft's side is filed as missing instead of being retried forever
+- **Halo 5 and Halo Infinite no longer block each other's writes** — a write on one title could leave the other unwritable until the next restart, and writes stalled for minutes after a start while the catalogue refreshed
+- **The sessions recompute says when it failed** — a Halo 5 profile was never recomputed; a failing player now makes the job fail, by name
+- **Your first kills and first deaths on the profile** read 0 for everyone; they now count
+- **Halo 5 figures no longer count the Campaign** — engagement, performance score, assists model, rating and sessions
+- **A failed read is said on the match view** instead of being shown as "no data"
+- **The Xbox sign-in asks for its code once**
+- **A more complete replay** — the position of nearly every kill is found (killers without a position 1 476 down to 78), lives without a name go from 449 to 15, the King of the Hill score on Lattice is right, and arena matches are no longer "vehicles not measured"
+- **A single rating path** — the old LUSR version is gone, and excluding a match no longer pushes the rating back
 
 **The project**
 - **A project footer** — the source, the licence, the feedback issues and a support button, with the non-affiliation notice
@@ -114,14 +153,6 @@ The biggest release so far. Halo records a film of every match; until now the ap
 **Halo 5 — Achievements page repaired**
 - **The page opens again** — it answered with an error instead of showing your milestones
 - **Section title always present** — the Achievements grid keeps its title whether it is loading, empty or in error
-
-**Four new commendations, three of them read from the film**
-- **"Tick Tick Boom"** — win Assault matches
-- **"First Strike"** — earn the first kill of a match
-- **"Wonderful Toys"** — pick up three or more weapons from weapon pads in a single Slayer match
-- **"Almost Doesn't Count"** — kill an enemy Spartan with no shield left, and survive; the film tells the shield state at the instant of the kill. It progresses on matches whose film has been read
-- **Recomputed when the film arrives** — a match whose film is read later gets its commendations updated at the next sync
-- **Visuals in their place** — "Flag Secures" now uses Halo 5's "Defender of the Flag" emblem, and the new commendations have their white version
 
 **Reading in your language**
 - **Commendations follow the language switch** — their labels came from the server in the language of the moment and stayed there until you reloaded the page
