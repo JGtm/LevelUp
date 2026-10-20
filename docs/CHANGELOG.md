@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - **Creating a player profile works again in production** — `db_profiles.json` is bind-mounted as a file in the container, where `rename(2)` answers `EBUSY`: every profile creation (admin onboarding, Xbox sign-up of a new player) failed with `device or resource busy`. The profile store now writes through `atomicfile.WriteFile`, atomic when possible and in place otherwise, like `app_settings.json`.
 - **Replay: the weapon pickup sound is 20 % quieter**, and the player card no longer shows "drawn?" text when the weapon selector has a gap: a dash is shown, the label moves to the tooltip.
+- **Home: the assisted-frags bar is back on the match tiles** — since v8.0.0 its read timed out (10 s) on every Home load: one of its two reads of the kill feed was not limited to the tiles' matches and scanned the whole feed, grown by the re-cook. Both reads are now bound to the requested matches (ADR 0036 I2, with a guard test).
 
 ### Ops
 - **Deployment cannot fail on the served-version check any more** — `deploy.sh` checks after `/health` that the container serves the deployed version; this check is warn-only, but its `docker inspect | sed | head` pipeline ran under `set -euo pipefail` and could end the script with exit 1 (seen once on the v8.0.0 deployment, which then skipped the demo regeneration and the worker deployment). The pipeline now ends in `|| true`.

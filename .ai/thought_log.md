@@ -1,3 +1,11 @@
+## [2026-10-20] Accueil : frags assistés des tuiles absents en prod (v8.0.0) — Complété (branche `feat/v75`)
+
+**Décision technique principale** : Q26l (`home_repo_assisted_frags.go`) bornait sa lecture principale du journal des morts par une semi-jointure sur `porteuses` (`IN (SELECT …)`), qui ne descend pas sous la fenêtre `_latest` (ADR 0036 I2) : la fenêtre balayait tout `match_kill_events`. Les deux lectures portent désormais le lot en prédicat constant (`clauseListeMatchs`, une liste `VARCHAR[]`), la semi-jointure reste après la fenêtre.
+
+**Résultats observés** : en prod, `home_assisted_frags_load_failed` (« context deadline exceeded », délai 10 s) à chaque chargement de l'Accueil depuis le déploiement v8.0.0 (premier à 08 h UTC le 20/10, aucun avant), y compris pour un lot d'UN match ; le journal a grossi avec la recuisson. Garde-rail `TestHomeRepo_LoadMatchAssistedFrags_FenetresBornees` (EXPLAIN ANALYZE, 2 matchs sur 10) : rouge sur l'ancienne requête, vert sur la nouvelle ; tests de valeur (suite d'intégration) verts.
+
+**Conclusion** : à embarquer dans la v8.0.1 ; vérifier après déploiement l'absence de `home_assisted_frags_load_failed` dans `general.log`.
+
 ## [2026-10-20] Tactique : réglage « Zones nommées » — Complété (branche `feat/v75`, non commité)
 
 **Décision technique principale** : une pilule à bascule « Zones nommées » (EN « Named zones ») dans le bandeau du plan, allumée par défaut ; éteinte, le plan ne donne aucune zone au peintre (contours et noms retirés, chaleur intacte). Libellé repris du calque « Zones nommées » du rejeu. La pilule n'existe que si la lecture porte des zones (pas d'action impossible). État local de la vue (`useReglages`), non persisté : retour à « visibles » au rechargement.
