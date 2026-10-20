@@ -19,9 +19,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
+
+	"levelup/go-api/internal/platform/atomicfile"
 )
 
 const version3 = "3.0"
@@ -241,29 +242,13 @@ func (s *Store) saveLocked(f *File) error {
 	return atomicWrite(s.path, data)
 }
 
-// atomicWrite écrit data dans path via un fichier temporaire du même dossier
-// suivi d'un rename (atomique sur le même volume, y compris Windows).
+// atomicWrite persiste db_profiles.json par atomicfile.WriteFile : écriture atomique
+// (temporaire + rename) quand l'environnement le permet, repli in-place sinon. Le repli
+// est indispensable en production, où le fichier est bind-monté FICHIER dans le
+// conteneur : rename(2) y répond EBUSY et toute création de profil échouait.
 func atomicWrite(path string, data []byte) error {
-	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".db_profiles-*.tmp")
-	if err != nil {
-		return fmt.Errorf("dbprofiles.atomicWrite temp: %w", err)
-	}
-	tmpName := tmp.Name()
-	defer os.Remove(tmpName) // no-op si le rename a réussi
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		return fmt.Errorf("dbprofiles.atomicWrite write: %w", err)
-	}
-	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		return fmt.Errorf("dbprofiles.atomicWrite sync: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("dbprofiles.atomicWrite close: %w", err)
-	}
-	if err := os.Rename(tmpName, path); err != nil {
-		return fmt.Errorf("dbprofiles.atomicWrite rename: %w", err)
+	if err := atomicfile.WriteFile(path, data, 0o644); err != nil {
+		return fmt.Errorf("dbprofiles.atomicWrite: %w", err)
 	}
 	return nil
 }

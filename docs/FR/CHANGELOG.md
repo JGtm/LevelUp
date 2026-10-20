@@ -8,6 +8,9 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ## [8.0.1] - Non publiée
 
+### Corrigé
+- **La création d'un profil joueur remarche en production** — `db_profiles.json` est monté en fichier dans le conteneur, où `rename(2)` répond `EBUSY` : toute création de profil (onboarding par l'admin, inscription Xbox d'un nouveau joueur) échouait en `device or resource busy`. Le magasin des profils écrit désormais par `atomicfile.WriteFile`, atomique quand c'est possible et en place sinon, comme `app_settings.json`.
+
 ### Ops
 - **Le déploiement ne peut plus échouer sur le contrôle de version servie** — après `/health`, `deploy.sh` vérifie que le conteneur sert la version déployée ; ce contrôle est un simple avertissement, mais son enchaînement `docker inspect | sed | head` tournait sous `set -euo pipefail` et pouvait arrêter le script en exit 1 (constaté une fois au déploiement de la v8.0.0, qui a alors sauté la régénération de la démo et le déploiement de l'ouvrier). L'enchaînement se termine désormais par `|| true`.
 - **La CLI du conteneur durci se lance en `appuser`** — `docker compose exec -T -u appuser levelup levelup …` : en root, la commande n'a plus les capacités pour écrire les fichiers de l'application (`permission denied` sur `data/auth/watcher_tokens/`). Référence des commandes et runbook de déploiement mis à jour.

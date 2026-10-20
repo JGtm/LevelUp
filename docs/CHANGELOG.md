@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [8.0.1] - Unreleased
 
+### Fixed
+- **Creating a player profile works again in production** — `db_profiles.json` is bind-mounted as a file in the container, where `rename(2)` answers `EBUSY`: every profile creation (admin onboarding, Xbox sign-up of a new player) failed with `device or resource busy`. The profile store now writes through `atomicfile.WriteFile`, atomic when possible and in place otherwise, like `app_settings.json`.
+
 ### Ops
 - **Deployment cannot fail on the served-version check any more** — `deploy.sh` checks after `/health` that the container serves the deployed version; this check is warn-only, but its `docker inspect | sed | head` pipeline ran under `set -euo pipefail` and could end the script with exit 1 (seen once on the v8.0.0 deployment, which then skipped the demo regeneration and the worker deployment). The pipeline now ends in `|| true`.
 - **CLI in the hardened container runs as `appuser`** — `docker compose exec -T -u appuser levelup levelup …`: as root the command lacks the capabilities to write files owned by the app (`permission denied` on `data/auth/watcher_tokens/`). Commands reference and deployment runbook updated.
