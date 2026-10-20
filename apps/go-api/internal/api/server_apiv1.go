@@ -821,6 +821,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapReplay))
 			r.Use(handlers.ReplayGate(demoReplayGate(reg)))
 			handlers.NewReplayHandler(reg.Replay).Mount(r.With(participated), playerOpt)
+			// Le CONTEXTE DE MATCH du rejeu (en-tête, tableau de score, fil, médias) : lu par la
+			// seule page de rejeu, il vit sous ses gardes — même handler que la vue match, dont
+			// il partage le service et la transformation des médias.
+			mv.MountReplayContext(r.With(participated), playerOpt)
 			// La SEQUENCE D UNE MORT (onglet Tactique, vue D) lit les memes trajectoires : elle vit sous
 			// les MEMES gardes que le rejeu, pour qu elle soit servie dans les memes conditions.
 			handlers.NewTacticalSequenceHandler(reg.Tactical).Mount(r, playerOpt)

@@ -79,17 +79,34 @@ une PR de release v8.0.1 est ouverte depuis `feat/v75`.
   3 708 tests verts (4 fichiers sautés, préexistants), exit 0.
 
 ### Étape 2 — Service et route Go (lourd)
-- [ ] 2.1 Domaine : `domain.MatchReplayContext` (D2).
-- [ ] 2.2 Extraire de `buildMatchViewFromData` les fonctions partagées (D3) ; vue complète inchangée.
-- [ ] 2.3 `MatchViewService.GetReplayContext` : meta bloquant + participation (comme `GetMatchView`),
+- [x] 2.1 Domaine : `domain.MatchReplayContext` (D2).
+- [x] 2.2 Extraire de `buildMatchViewFromData` les fonctions partagées (D3) ; vue complète inchangée.
+- [x] 2.3 `MatchViewService.GetReplayContext` : meta bloquant + participation (comme `GetMatchView`),
       chargement parallèle RESTREINT (liste fermée D4, écrite ici avant de coder), assemblage
       par les fonctions partagées et les builders existants.
-- [ ] 2.4 Port `MatchViewService.GetReplayContext` ; handler (décode, appelle, applique la même
+- [x] 2.4 Port `MatchViewService.GetReplayContext` ; handler (décode, appelle, applique la même
       transformation des médias que `GetMatchView`) ; montage D1 ; `openapi.yaml` régénéré
       (`make generate-types` côté web).
-- [ ] 2.5 Journal : `slog` sur l'échec de meta comme `GetMatchView` ; sections de durée nommées.
+- [x] 2.5 Journal : `slog` sur l'échec de meta comme `GetMatchView` ; sections de durée nommées.
 - Gate : `go build ./cmd/server` ; `go vet ./internal/service/ ./internal/api/...` ;
   `go test ./internal/service/ ./internal/api/...` vert.
+- Journal (2026-10-20) : `domain/match_replay_context.go` (quatre morceaux aux types de la vue
+  complète + `SourceUnavailable` non sérialisé, d'où `Cache-Control: no-store` comme la vue).
+  Fonctions partagées extraites dans `service/match_view_shared_build.go` : `loadMatchMeta`
+  (absence → 404, panne → 500, journal identique), `prepareMatchViewEvents` (recalage T0),
+  `assembleMatchHeader` (favori + `buildMatchHeader` + tous les `apply*`), `isMatchFavorite`,
+  `decorateHighlightEvents` (arme, assistant, victime, équipe, médailles) ; `highlightEventList`
+  extrait de `buildCombatTabFull`. `GetReplayContext` + chargement restreint (liste D4) dans
+  `service/match_view_replay_context.go` ; lignes par `buildTeamTabFull` (rencontres, paires et
+  extras à nil) + `applyTeamNames`, médias par `buildMediaTab`. Handler
+  `handlers/match_view_replay_context.go` (même `transformMatchMediaURLs`, erreurs par
+  `matchViewServiceError`, désormais partagé avec `handleGetMatchView`) ; monté dans le groupe
+  `CapReplay` + `ReplayGate` + `participated` (`server_apiv1.go`). Sections de durée
+  `replay_context_meta` / `replay_context_assemble` + métrique `match_replay_context_get`.
+  `openapi.yaml` régénéré (`go run ./cmd/openapi-gen`, +1 chemin, +1 schéma) puis
+  `generated.ts` (`npm run generate-types`). Gate : `go build ./cmd/server` exit 0 ; `go vet`
+  exit 0 ; `go test ./internal/service/ ./internal/api/...` exit 0 (6 paquets ok) ; vitest
+  `src/lib/api` (gardes de contrat) 39/39 ; `node tools/lint-contract-ratchet.mjs` exit 0.
 
 ### Étape 3 — Preuves (moyen)
 - [ ] 3.1 Test de parité service (repo factice riche : kills avec arme et assistant, médailles,

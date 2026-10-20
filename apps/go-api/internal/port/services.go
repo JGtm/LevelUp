@@ -155,6 +155,10 @@ type MatchViewService interface {
 	// §N) d'un match. Retourne games.ErrCapabilityNotSupported si le titre n'a pas
 	// la capability (repo non câblé ou table absente).
 	GetMatchPositions(ctx context.Context, matchID string) ([]playerposition.PlayerPosition, error)
+	// GetReplayContext retourne ce que la page de rejeu lit d'un match (en-tête, lignes du
+	// tableau de score, événements du fil, médias), chaque morceau égal à son homologue de
+	// GetMatchView, sans les chargements des autres onglets. Mêmes erreurs que GetMatchView.
+	GetReplayContext(ctx context.Context, matchID string) (domain.MatchReplayContext, error)
 }
 
 // ErrReplayNotAvailable est renvoyé quand aucun artefact de rejeu 2D n'existe pour le
