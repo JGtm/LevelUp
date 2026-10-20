@@ -374,7 +374,7 @@ function ReglagesEnPilules({
           type="button"
           aria-pressed={zonesVisibles}
           onClick={() => onZonesVisiblesChange(!zonesVisibles)}
-          className={`${PILULE} items-center px-[7px] text-muted-foreground aria-pressed:bg-primary aria-pressed:font-medium aria-pressed:text-primary-foreground`}
+          className="inline-flex h-7 items-center justify-center rounded-md border border-input bg-background px-2.5 text-[11.5px] font-normal leading-none text-muted-foreground aria-pressed:bg-primary aria-pressed:font-medium aria-pressed:text-primary-foreground"
         >
           {t.pillZones}
         </button>
