@@ -9,7 +9,6 @@
  */
 import { useQuery } from '@tanstack/react-query'
 
-import { matchViewRefetchInterval } from '@/lib/analysis-pending/analysisPending.logic'
 import { api } from '@/lib/api/client'
 import type { ReplayDocument, ReplayMapBackground, ReplayMapCallouts } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
@@ -18,6 +17,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { validateReplayDocument } from './replayDocumentSchema'
 import {
   normalizeReplayMatchContext,
+  replayContextRefetchInterval,
   replayContextStaleTime,
   type ReplayMatchContextWire,
 } from './replayMatchContext'
@@ -83,9 +83,9 @@ export function useMatchReplay(playerSlug: string, matchId: string, enabled = tr
  * du tableau de score, les événements du fil et les médias, normalisés à l'entrée
  * (GET .../matches/{matchId}/replay/context). La vue complète du match n'est pas demandée.
  *
- * Rechargé toutes les 60 s tant que l'analyse du film est en cours (`header.analysis_pending`),
- * comme la vue complète ; le serveur pose `no-store` sur un contexte construit avec une lecture
- * en échec.
+ * Même politique de rafraîchissement que la vue complète (`matchRefreshPolicy`) : nouvel essai
+ * toutes les 30 s tant qu'une lecture serveur a échoué (`source_unavailable`), rechargement
+ * toutes les 60 s tant que l'analyse du film est en cours (`header.analysis_pending`).
  */
 export function useMatchReplayContext(playerSlug: string, matchId: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
@@ -97,7 +97,7 @@ export function useMatchReplayContext(playerSlug: string, matchId: string) {
       ),
     enabled: !!playerSlug && !!matchId,
     staleTime: (query) => replayContextStaleTime(query.state.data),
-    refetchInterval: (query) => matchViewRefetchInterval(query.state.data),
+    refetchInterval: (query) => replayContextRefetchInterval(query.state.data),
   })
 }
 

@@ -39,6 +39,9 @@ Succès :
 - D2. Forme de la réponse : `{ header, scoreboard, highlight_events, media }` — chaque morceau a
   le TYPE EXACT de son homologue dans `MatchViewResponse` (`MatchViewHeader`, `[]MatchScoreboardRow`,
   `[]MatchHighlightEvent`, `MatchMediaTab`). Pas de type allégé côté Go : la parité est structurelle.
+  Amendement (2026-10-20, décision superviseur sur la Découverte 2) : + `source_unavailable` (booléen,
+  vrai quand une lecture de la liste fermée D4 a échoué), pour garder la politique de la vue
+  (nouvel essai 30 s, fraîcheur nulle) ; politique commune dans `lib/analysis-pending/matchRefreshPolicy.ts`.
 - D3. Zéro copie de logique : l'assemblage de l'en-tête (les `apply*`) et la préparation
   (recalage T0, expected assists si utile) sont EXTRAITS de `buildMatchViewFromData` en fonctions
   partagées appelées par les deux chemins. La vue complète garde un comportement identique.
@@ -239,7 +242,8 @@ diffèrent EXACTEMENT sur les sept champs ci-dessus, et le test le prouve dans l
   que les médailles sont recalées, et la victime (appariée sur `kvPairsFeed` corrigé) ne s'y pose
   pas. Constaté par la fixture de 3.1 (cas « synthèse », T0 = 15 s). À vérifier sur un match Halo 5
   réel (T0 y est-il jamais non nul ?) avant toute correction.
-- **Nouvel essai automatique en cas de panne** : la vue complète portait `partial_reasons`, d'où un
+- [x] **Nouvel essai automatique en cas de panne** (traité : amendement D2 du 2026-10-20,
+  `source_unavailable` + `matchRefreshPolicy`, cf. décisions) : la vue complète portait `partial_reasons`, d'où un
   nouvel essai toutes les 30 s côté web quand une lecture avait échoué ; le contexte (forme D2) ne
   porte pas ces raisons. Le serveur pose `no-store` sur un contexte transitoire et le web garde la
   fraîcheur nulle + le rechargement de 60 s pendant l'analyse du film, mais une panne de lecture

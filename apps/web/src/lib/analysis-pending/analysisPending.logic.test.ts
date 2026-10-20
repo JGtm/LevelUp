@@ -13,7 +13,6 @@ import {
   isAnalysisInProgress,
   homeStaleTime,
   matchViewHasAnalysisPending,
-  matchViewRefetchInterval,
 } from './analysisPending.logic'
 
 const tile = (pending?: boolean): RecentMatchItem => ({ match_id: 'm', analysis_pending: pending }) as RecentMatchItem
@@ -63,13 +62,12 @@ describe('homeStaleTime', () => {
   })
 })
 
-describe('matchViewRefetchInterval', () => {
-  it('60 s tant que l analyse est en cours puis false', () => {
-    expect(matchViewRefetchInterval(view(true))).toBe(ANALYSIS_PENDING_REFETCH_MS)
-    expect(matchViewRefetchInterval(view(false))).toBe(false)
-    expect(matchViewRefetchInterval(view())).toBe(false)
-    expect(matchViewRefetchInterval(undefined)).toBe(false)
+describe('matchViewHasAnalysisPending', () => {
+  it('vrai seulement quand l’en-tête le dit', () => {
     expect(matchViewHasAnalysisPending(view(true))).toBe(true)
+    expect(matchViewHasAnalysisPending(view(false))).toBe(false)
+    expect(matchViewHasAnalysisPending(view())).toBe(false)
+    expect(matchViewHasAnalysisPending(undefined)).toBe(false)
   })
 })
 

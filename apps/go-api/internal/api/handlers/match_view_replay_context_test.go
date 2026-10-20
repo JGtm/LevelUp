@@ -63,13 +63,16 @@ func TestReplayContextHandler_OK(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &raw); err != nil {
 		t.Fatalf("JSON : %v", err)
 	}
-	for _, key := range []string{"header", "scoreboard", "highlight_events", "media"} {
+	for _, key := range []string{"header", "scoreboard", "highlight_events", "media", "source_unavailable"} {
 		if _, ok := raw[key]; !ok {
 			t.Errorf("clé %q absente : %s", key, w.Body.String())
 		}
 	}
-	if len(raw) != 4 {
-		t.Errorf("%d clés, attendu 4 (SourceUnavailable n'est jamais sérialisé) : %s", len(raw), w.Body.String())
+	if len(raw) != 5 {
+		t.Errorf("%d clés, attendu 5 : %s", len(raw), w.Body.String())
+	}
+	if string(raw["source_unavailable"]) != "false" {
+		t.Errorf("source_unavailable = %s sur un contexte complet, attendu false", raw["source_unavailable"])
 	}
 	var body domain.MatchReplayContext
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
@@ -114,16 +117,27 @@ func TestReplayContextHandler_Refus(t *testing.T) {
 }
 
 // TestReplayContextHandler_NoStore : un contexte construit avec une lecture en échec, ou pendant
-// l'analyse du film, n'est rejoué par aucun cache HTTP.
+// l'analyse du film, n'est rejoué par aucun cache HTTP ; la panne est dite au client
+// (`source_unavailable`, qui pilote son nouvel essai toutes les 30 s), l'analyse non.
 func TestReplayContextHandler_NoStore(t *testing.T) {
-	for name, ctx := range map[string]domain.MatchReplayContext{
-		"source en panne":  {SourceUnavailable: true},
-		"analyse en cours": {Header: domain.MatchViewHeader{AnalysisPending: true}},
+	for name, tc := range map[string]struct {
+		ctx             domain.MatchReplayContext
+		wantUnavailable string
+	}{
+		"source en panne":  {ctx: domain.MatchReplayContext{SourceUnavailable: true}, wantUnavailable: "true"},
+		"analyse en cours": {ctx: domain.MatchReplayContext{Header: domain.MatchViewHeader{AnalysisPending: true}}, wantUnavailable: "false"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			w := getReplayContext(t, &mockMatchViewService{replayCtx: ctx})
+			w := getReplayContext(t, &mockMatchViewService{replayCtx: tc.ctx})
 			if w.Code != http.StatusOK || w.Header().Get("Cache-Control") != "no-store" {
 				t.Errorf("statut %d, Cache-Control %q, attendu 200 + no-store", w.Code, w.Header().Get("Cache-Control"))
+			}
+			var raw map[string]json.RawMessage
+			if err := json.Unmarshal(w.Body.Bytes(), &raw); err != nil {
+				t.Fatalf("JSON : %v", err)
+			}
+			if got := string(raw["source_unavailable"]); got != tc.wantUnavailable {
+				t.Errorf("source_unavailable = %q, attendu %q : %s", got, tc.wantUnavailable, w.Body.String())
 			}
 		})
 	}

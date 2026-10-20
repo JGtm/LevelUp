@@ -9154,6 +9154,8 @@ export interface components {
             highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;
             media: components["schemas"]["MatchMediaTab"];
             scoreboard: components["schemas"]["MatchScoreboardRow"][] | null;
+            /** @description Une lecture a échoué côté serveur : contexte transitoire, à redemander (jamais conservé en cache). */
+            source_unavailable: boolean;
         };
         MatchRosterRow: {
             /** Format: int64 */

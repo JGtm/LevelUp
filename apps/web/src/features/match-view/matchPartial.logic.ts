@@ -9,7 +9,12 @@
  *    précédent quand les deux coexistent.
  */
 import type { MatchViewResponse } from '@/lib/api/types'
-import { matchViewHasAnalysisPending, matchViewRefetchInterval } from '@/lib/analysis-pending/analysisPending.logic'
+import { matchViewHasAnalysisPending } from '@/lib/analysis-pending/analysisPending.logic'
+import {
+  matchRefetchInterval,
+  matchStaleTime,
+  type MatchRefreshState,
+} from '@/lib/analysis-pending/matchRefreshPolicy'
 
 /**
  * Raisons « lecture en échec » émises par l'API (miroir de `domain.IsUnavailableReason`) :
@@ -43,22 +48,26 @@ export function selectMatchPartialBanner(
   return { kind: 'partial', reasons }
 }
 
-/** Période du nouvel essai automatique tant que la vue porte une lecture en échec. */
-export const MATCH_VIEW_RETRY_MS = 30_000
+type MatchViewRefreshInput =
+  | (Pick<MatchViewResponse, 'is_partial' | 'partial_reasons'> & Partial<Pick<MatchViewResponse, 'header'>>)
+  | undefined
+
+/** L'état transitoire de la vue, lu par la politique partagée (`matchRefreshPolicy`). */
+function refreshStateOf(data: MatchViewRefreshInput): MatchRefreshState {
+  return {
+    sourceUnavailable: !!data && selectMatchPartialBanner(data)?.kind === 'unavailable',
+    analysisPending: matchViewHasAnalysisPending(data),
+  }
+}
 
 /**
  * `refetchInterval` de la vue match : 30 s tant qu'une source est en panne (le message
  * « Nouvel essai automatique » est vrai), sinon 60 s tant que l'analyse du film n'est pas
  * finie, sinon plus de rechargement.
  */
-export function matchViewPollInterval(
-  data: (Pick<MatchViewResponse, 'is_partial' | 'partial_reasons'> & Partial<Pick<MatchViewResponse, 'header'>>) | undefined,
-): number | false {
-  if (data && selectMatchPartialBanner(data)?.kind === 'unavailable') return MATCH_VIEW_RETRY_MS
-  return matchViewRefetchInterval(data)
+export function matchViewPollInterval(data: MatchViewRefreshInput): number | false {
+  return matchRefetchInterval(refreshStateOf(data))
 }
-
-const MATCH_VIEW_STALE_MS = 10 * 60 * 1000
 
 /**
  * Durée de fraîcheur d'une vue en cache (D-9). Une vue construite avec une source en
@@ -69,10 +78,6 @@ const MATCH_VIEW_STALE_MS = 10 * 60 * 1000
  * figée par la fraîcheur de 10 min. Une vue complète ou seulement partielle (source vide)
  * garde la fraîcheur normale.
  */
-export function matchViewStaleTime(
-  data: (Pick<MatchViewResponse, 'is_partial' | 'partial_reasons'> & Partial<Pick<MatchViewResponse, 'header'>>) | undefined,
-): number {
-  if (!data) return MATCH_VIEW_STALE_MS
-  if (selectMatchPartialBanner(data)?.kind === 'unavailable') return 0
-  return matchViewHasAnalysisPending(data) ? 0 : MATCH_VIEW_STALE_MS
+export function matchViewStaleTime(data: MatchViewRefreshInput): number {
+  return matchStaleTime(refreshStateOf(data))
 }

@@ -88,8 +88,3 @@ export function homeStaleTime(data: Pick<HomePageResponse, 'recent_matches' | 'f
 export function matchViewHasAnalysisPending(data: Partial<Pick<MatchViewResponse, 'header'>> | undefined): boolean {
   return data?.header?.analysis_pending === true
 }
-
-/** `refetchInterval` de la vue match : 60 s tant que l'analyse est en cours. */
-export function matchViewRefetchInterval(data: Partial<Pick<MatchViewResponse, 'header'>> | undefined): number | false {
-  return matchViewHasAnalysisPending(data) ? ANALYSIS_PENDING_REFETCH_MS : false
-}

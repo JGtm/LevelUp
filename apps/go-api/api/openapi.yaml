@@ -19523,11 +19523,15 @@ components:
           type:
             - array
             - "null"
+        source_unavailable:
+          description: 'Une lecture a échoué côté serveur : contexte transitoire, à redemander (jamais conservé en cache).'
+          type: boolean
       required:
         - header
         - scoreboard
         - highlight_events
         - media
+        - source_unavailable
       type: object
     MatchRosterRow:
       additionalProperties: false
