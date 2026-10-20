@@ -432,7 +432,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 - [x] 6.3 (20/10, voir journal) +1 h : logs `post-sync: kill source` → `sans_killfeed=0`, `ecrits` > 0,
       `backlog_restant` en baisse.
 - [x] 6.4 (20/10 21h : 7 post-sync de Nuzzles avec nouveaux matchs, aucun « joueur en échec » ; WARN trompeur D-26) Synchro de Nuzzles réussie (`auto_sync: sync delta réussie`), plus de `joueur en échec`.
-- [!] 6.5 (20/10 : pool créé size=13 ; /privacy et /terms 200 et rendus ; MAIS carte de mise en commun injoignable pour un joueur, D-25 -> correctif v8.0.1) Logs `pool: créé` à la bonne taille ; bannière de mise en commun pour un nouvel inscrit ;
+- [!] 6.5 (20/10 : pool créé size=13 ; /privacy et /terms 200 et rendus ; carte injoignable pour un joueur (D-25) corrigée dans feat/v75 `4509475a2` pour la v8.0.1 ; reste le contrôle à l'écran de la bannière et de la carte après déploiement) Logs `pool: créé` à la bonne taille ; bannière de mise en commun pour un nouvel inscrit ;
       Réglages > Synchronisation affiche la carte ; `/privacy` et `/terms` sans compte (FR et EN).
 - [x] 6.6 (20/10 : pied de page « Licence AGPL-3.0 », /privacy cite l'AGPL-3.0, vu au navigateur) Pied de page « Licence AGPL-3.0 », confidentialité parle d'AGPL.
 - [ ] 6.7 Onglet Emprise d'une soirée BTB : véhicules chiffrés. Rejeu Lattice ou Origin classé :
@@ -455,9 +455,9 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 - [ ] 7.1b +48 h et +7 jours : WARN « lecture tenue longtemps » et compteur `shared_provider_reader_slow_total` en prod ; en particulier `data_health` (base partagée ouverte hors provider) et le segment unique des 5 étapes de scoring du post-sync (décision de l utilisateur du 20/10 : v8.1 si mesurés fréquents). 
 - [ ] 7.2 +7 jours : `memory.peak` des deux conteneurs (référence 16/10 : prod 1 134 Mio, démo
       334 Mio) → proposition de `mem_limit`.
-- [ ] 7.3 Audit des `ON CONFLICT` sur les tables héritées sans clé primaire (registre daté, ne
+- [x] 7.3 (20/10 : registre `.ai/AUDIT_ON_CONFLICT_TABLES_HERITEES_2026-10-20.md`, 22 cas, 19 sûrs, 3 à risque : restauration Parquet sans clés (P1), `challenge_template` sans PK (P2), outil prestige-seed (P2) ; correctifs = décision de l'utilisateur) Audit des `ON CONFLICT` sur les tables héritées sans clé primaire (registre daté, ne
       corrige pas — skill `adversarial-audit`).
-- [ ] 7.3b **Garde « rejeu local seulement »** (`replay_local_gate.go`, à réexaminer au plus tard
+- [x] 7.3b (DÉCISION DE L'UTILISATEUR du 20/10 : « On retire la garde rejeu local seulement », sans attendre la mesure ; garde et `LEVELUP_REPLAY_PUBLIC` retirés, fusionnés dans feat/v75 `4509475a2` pour la v8.0.1 ; la garde de la démo reste ; après déploiement, retirer la ligne du `.env.local` de prod, sur accord) **Garde « rejeu local seulement »** (`replay_local_gate.go`, à réexaminer au plus tard
       le 2026-11-08) : mesurer son critère de retrait sur les artefacts recuits des sept films du
       corpus nommé (couverture des tirs >= 88 % et pont nominal sur les sept). Atteint → retrait du
       garde ET de `LEVELUP_REPLAY_PUBLIC` (branche dédiée, règle n°11 : pas de kill-switch
