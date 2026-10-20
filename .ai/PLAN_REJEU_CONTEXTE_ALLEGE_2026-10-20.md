@@ -109,14 +109,32 @@ une PR de release v8.0.1 est ouverte depuis `feat/v75`.
   `src/lib/api` (gardes de contrat) 39/39 ; `node tools/lint-contract-ratchet.mjs` exit 0.
 
 ### Étape 3 — Preuves (moyen)
-- [ ] 3.1 Test de parité service (repo factice riche : kills avec arme et assistant, médailles,
+- [x] 3.1 Test de parité service (repo factice riche : kills avec arme et assistant, médailles,
       joueur entré et sorti en cours de match, bot, médias, T0 non nul, synthèse kv quand events
       vides) : `GetReplayContext` == morceaux correspondants de `GetMatchView` (`reflect.DeepEqual`).
-- [ ] 3.2 Test « pas de chargement lourd » : le repo factice compte les appels ; aucun de
+- [x] 3.2 Test « pas de chargement lourd » : le repo factice compte les appels ; aucun de
       `GetMatchEncounters`, `GetMatchEncounterStats`, `GetMatchEncounterAssists`, `GetHistoryForAvg`,
       `GetMatchExpectedStats` (sauf si D4 l'exige), citations, Emprise, Isolement, friends extras.
-- [ ] 3.3 Test handler `httptest` : 200 + forme JSON ; 404 match inconnu ; participation refusée.
+- [x] 3.3 Test handler `httptest` : 200 + forme JSON ; 404 match inconnu ; participation refusée.
 - Gate : tests 3.1-3.3 verts ; `go test -count=1 ./internal/service/ ./internal/api/...`.
+- Journal (2026-10-20) : `service/match_view_replay_context_test.go` — repo factice qui compte
+  ses appels et rend des copies (la vue complète modifie le scoreboard chargé en place).
+  3.1 `TestGetReplayContext_PariteAvecLaVueComplete` : deux cas (kills dans les events ; events
+  sans kill → synthèse kv), `reflect.DeepEqual` des QUATRE morceaux entiers, plus des témoins qui
+  prouvent que la fixture exerce arme, assistant, médaille résolue, recalage T0 (15 s), countdown
+  écarté, entrée/sortie en cours, bot, rang, médailles de ligne, médias. Mutation vérifiée : sans
+  `decorateHighlightEvents`, le test rougit sur « événements ». `TestGetReplayContext_ChampsDesChargementsOmis` :
+  avec un ami suivi et un modèle d'attendus, les lignes diffèrent (prouvé) et sont égales une
+  fois retirés les sept champs de la liste D4. 3.2 `TestGetReplayContext_AucunChargementLourd` :
+  chaque compteur est d'abord vu > 0 sur la vue complète, puis 0 sur le contexte (rencontres ×3,
+  historique, attendus, modèle d'assists, paires d'assistance, score d'objectif, médailles Q14,
+  citations, events canoniques, Isolement, feuille de l'Emprise, extras des amis). Erreurs
+  (absence, non-participation avant chargement, panne) et contexte transitoire testés aussi.
+  3.3 `handlers/match_view_replay_context_test.go` : 200 + exactement quatre clés + médias réécrits
+  + pas de Cache-Control ; 404 `match_not_found`, 404 `match_not_participant`, 500
+  `replay_context_error` ; `no-store` sur source en panne et analyse en cours. Gate : `go test
+  -count=1 ./internal/service/ ./internal/api/...` exit 0 (6 paquets) ; `go test ./internal/archlint/
+  ./internal/domain/ ./internal/port/` exit 0.
 
 ### Étape 4 — Branchement web (rapide)
 - [ ] 4.1 Hook `useMatchReplayContext` (clé `queryKeys.matchReplayContext`), page de rejeu
@@ -198,3 +216,17 @@ lignes sont égales à l'identique quand le match n'a ni ami suivi ni modèle d'
 diffèrent EXACTEMENT sur les sept champs ci-dessus, et le test le prouve dans les deux sens.
 
 ## Découvertes (hors périmètre, non traitées)
+
+- **Synthèse kv sur l'horloge du film quand T0 ≠ 0** (vue complète ET contexte, comportement
+  inchangé par ce lot) : `applyKVSynthesisIfNeeded` synthétise les kills depuis `d.kvPairs`, qui
+  n'est PAS recalé T0 (seule la copie `kvPairsFeed` l'est). Sur un match sans kill dans les events
+  (Halo 5) à T0 non nul, les kills synthétisés gardent l'instant du film (countdown inclus) alors
+  que les médailles sont recalées, et la victime (appariée sur `kvPairsFeed` corrigé) ne s'y pose
+  pas. Constaté par la fixture de 3.1 (cas « synthèse », T0 = 15 s). À vérifier sur un match Halo 5
+  réel (T0 y est-il jamais non nul ?) avant toute correction.
+- **Nouvel essai automatique en cas de panne** : la vue complète portait `partial_reasons`, d'où un
+  nouvel essai toutes les 30 s côté web quand une lecture avait échoué ; le contexte (forme D2) ne
+  porte pas ces raisons. Le serveur pose `no-store` sur un contexte transitoire et le web garde la
+  fraîcheur nulle + le rechargement de 60 s pendant l'analyse du film, mais une panne de lecture
+  n'est plus réessayée toute seule toutes les 30 s sur la page de rejeu. À trancher : ajouter un
+  drapeau au contrat (amende D2) ou s'en tenir là.
