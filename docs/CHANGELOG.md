@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [8.0.1] - Unreleased
 
+### Added
+- **Tactics: a "Named zones" toggle** — the plan shows or hides the named zones of the map; the button sits centred, on the same template as the pills.
+
 ### Fixed
 - **Creating a player profile works again in production** — `db_profiles.json` is bind-mounted as a file in the container, where `rename(2)` answers `EBUSY`: every profile creation (admin onboarding, Xbox sign-up of a new player) failed with `device or resource busy`. The profile store now writes through `atomicfile.WriteFile`, atomic when possible and in place otherwise, like `app_settings.json`.
 

@@ -8,6 +8,9 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ## [8.0.1] - Non publiée
 
+### Ajouté
+- **Tactique : un réglage « Zones nommées »** — le plan affiche ou masque les zones nommées de la carte ; le bouton est centré, sur le même gabarit que les pilules.
+
 ### Corrigé
 - **La création d'un profil joueur remarche en production** — `db_profiles.json` est monté en fichier dans le conteneur, où `rename(2)` répond `EBUSY` : toute création de profil (onboarding par l'admin, inscription Xbox d'un nouveau joueur) échouait en `device or resource busy`. Le magasin des profils écrit désormais par `atomicfile.WriteFile`, atomique quand c'est possible et en place sinon, comme `app_settings.json`.
 
