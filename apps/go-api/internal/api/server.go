@@ -613,7 +613,7 @@ func applyTransverseMiddlewares(
 	titleRegistry *titlePkg.Registry,
 ) {
 	r.Use(chimiddleware.Recoverer)
-	// Pair TCP, lu par middleware.PeerAddr (LoopbackOnly, garde du rejeu), jamais un en-tête.
+	// Pair TCP, lu par middleware.PeerAddr (LoopbackOnly), jamais un en-tête.
 	r.Use(middleware.PreserveRemoteAddr)
 	// IP cliente (chimiddleware.GetClientIP : clé du limiteur, `ip` des journaux) : le pair
 	// TCP, remplacé derrière le proxy de confiance (LEVELUP_TRUST_PROXY_HEADERS) par la

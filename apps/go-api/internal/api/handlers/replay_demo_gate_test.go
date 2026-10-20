@@ -1,7 +1,8 @@
 package handlers
 
 // replay_demo_gate_test.go — garde des routes de rejeu en DÉMO (décision D-2) : tout visiteur,
-// y compris distant, obtient le rejeu d'un match figé ; aucun autre match n'est servi.
+// y compris distant, obtient le rejeu d'un match figé ; aucun autre match n'est servi. Hors
+// démo, la garde ne filtre rien.
 
 import (
 	"context"
@@ -50,8 +51,8 @@ func TestReplayGate_DemoServesOnlyFrozenMatches(t *testing.T) {
 	}
 }
 
-func TestReplayGate_OutsideDemoKeepsLocalGuard(t *testing.T) {
-	if code := appelDistant(routeurGarde(nil), "fige001"); code != http.StatusNotFound {
-		t.Errorf("hors démo, visiteur distant : statut %d, attendu 404 (garde local)", code)
+func TestReplayGate_OutsideDemoLetsEveryRequestThrough(t *testing.T) {
+	if code := appelDistant(routeurGarde(nil), "fige001"); code != http.StatusNoContent {
+		t.Errorf("hors démo, visiteur distant : statut %d, attendu le handler (204)", code)
 	}
 }

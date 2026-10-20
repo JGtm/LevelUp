@@ -38,7 +38,7 @@ func replayServiceFrom(cfg *config.AppConfig, titleSlug string, maps port.Replay
 }
 
 // DemoReplayAllowlist rend, en DÉMO, la liste blanche des rejeux figés que la garde des routes
-// de rejeu consulte (handlers.ReplayGate) ; nil hors démo, où le garde local s'applique.
+// de rejeu consulte (handlers.ReplayGate) ; nil hors démo, où la garde est sans effet.
 func (r *ServiceRegistry) DemoReplayAllowlist() *service.DemoReplayAllowlist {
 	if r.cfg == nil || !r.cfg.DemoMode {
 		return nil

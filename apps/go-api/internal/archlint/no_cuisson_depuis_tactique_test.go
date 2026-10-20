@@ -102,7 +102,7 @@ func TestAucuneCuissonDepuisLeTactique(t *testing.T) {
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		// `mustRel` est le helper deja pose par tactical_background_local_gate_test.go :
+		// `mustRel` est le helper deja pose par tactical_background_demo_gate_test.go :
 		// un troisieme chemin relatif recopie dans ce paquet serait la copie de trop.
 		rel := filepath.ToSlash(mustRel(apiRoot, path))
 		data, readErr := os.ReadFile(path)
