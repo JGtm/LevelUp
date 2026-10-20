@@ -61,15 +61,15 @@ func TestRecencyColumn(t *testing.T) {
 	}
 }
 
-// TestCopyInto_GardeLaPlusRecenteEtCompte : doublons de clé départagés par l'horodatage, clé
-// primaire NULL écartée, doublons divergents comptés.
+// TestCopyInto_GardeLaPlusRecenteEtCompte : doublons de clé départagés par l'horodatage,
+// doublons divergents comptés.
 func TestCopyInto_GardeLaPlusRecenteEtCompte(t *testing.T) {
 	db := openMem(t)
 	mustExec(t, db, `CREATE TABLE src (id VARCHAR, v INTEGER, updated_at TIMESTAMP)`)
 	mustExec(t, db, `INSERT INTO src VALUES
 		('a', 1, '2026-01-01'), ('a', 2, '2026-02-01'),
 		('b', 5, '2026-01-01'), ('b', 5, '2026-01-01'),
-		(NULL, 9, '2026-01-01'), ('c', 7, NULL)`)
+		('c', 7, NULL)`)
 	mustExec(t, db, `CREATE TABLE dst (id VARCHAR PRIMARY KEY, v INTEGER, updated_at TIMESTAMP)`)
 	keys, err := TableKeys(context.Background(), db, "dst")
 	if err != nil {
@@ -80,7 +80,7 @@ func TestCopyInto_GardeLaPlusRecenteEtCompte(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := CopyStats{Source: 6, Copied: 3, NullKeyDropped: 1, DuplicatesDropped: 2, DivergentKeys: 1}
+	want := CopyStats{Source: 5, Copied: 3, DuplicatesDropped: 2, DivergentKeys: 1}
 	if st != want {
 		t.Fatalf("stats = %+v, want %+v", st, want)
 	}
@@ -143,5 +143,25 @@ func TestUpsert_InserepuisMetAJour(t *testing.T) {
 	var n, v int
 	if err := db.QueryRow(`SELECT count(*), max(v) FROM u`).Scan(&n, &v); err != nil || n != 1 || v != 2 {
 		t.Fatalf("n=%d v=%d err=%v, want 1 ligne v=2", n, v, err)
+	}
+}
+
+// TestCopyInto_ClePrimaireNullEchoue : une ligne à clé primaire NULL n'est jamais écartée en
+// silence : la recopie échoue et la destination reste vide.
+func TestCopyInto_ClePrimaireNullEchoue(t *testing.T) {
+	db := openMem(t)
+	mustExec(t, db, `CREATE TABLE src (id VARCHAR, v INTEGER)`)
+	mustExec(t, db, `INSERT INTO src VALUES ('a', 1), (NULL, 2)`)
+	mustExec(t, db, `CREATE TABLE dst (id VARCHAR PRIMARY KEY, v INTEGER)`)
+	keys, err := TableKeys(context.Background(), db, "dst")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CopyInto(context.Background(), db, "dst", Ident("src"), []string{"id", "v"}, keys, ""); err == nil {
+		t.Fatal("une clé primaire NULL doit faire échouer la recopie")
+	}
+	var n int
+	if err := db.QueryRow(`SELECT count(*) FROM dst`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("destination modifiée : %d lignes (err=%v)", n, err)
 	}
 }

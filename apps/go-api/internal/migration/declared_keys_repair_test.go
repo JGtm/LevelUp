@@ -43,7 +43,7 @@ func seedKeylessCopies(t *testing.T, db *sql.DB) {
 		CREATE TABLE kr_t (id VARCHAR, code VARCHAR, v INTEGER, updated_at TIMESTAMP);
 		INSERT INTO kr_t VALUES
 			('a', 'A', 1, '2026-01-01'), ('a', 'A', 2, '2026-03-01'),
-			('b', 'B', 7, NULL), (NULL, 'Z', 9, '2026-01-01');
+			('b', 'B', 7, NULL);
 		CREATE INDEX idx_kr_t_v ON kr_t(v);
 		CREATE VIEW kr_t_view AS SELECT id, v FROM kr_t;
 		CREATE TABLE kr_nokey (v INTEGER);
@@ -73,7 +73,7 @@ func constraintCount(t *testing.T, db *sql.DB, table, kind string) int {
 }
 
 // TestRepairDeclaredKeys_RetablitLesClesDuSchemaCanonique : la table qui a perdu ses clés les
-// retrouve (doublon départagé par l'horodatage, clé primaire NULL écartée, défaut perdu repris,
+// retrouve (doublon départagé par l'horodatage, défaut perdu repris,
 // index et vue intacts) ; la table sans clé par conception et la table append-only ne sont pas
 // touchées ; une écriture ON CONFLICT réussit ensuite.
 func TestRepairDeclaredKeys_RetablitLesClesDuSchemaCanonique(t *testing.T) {
@@ -90,7 +90,7 @@ func TestRepairDeclaredKeys_RetablitLesClesDuSchemaCanonique(t *testing.T) {
 	}
 	var n, v int
 	if err := db.QueryRow(`SELECT count(*) FROM kr_t`).Scan(&n); err != nil || n != 2 {
-		t.Fatalf("kr_t : %d lignes (err=%v), want 2 (doublon et clé NULL écartés)", n, err)
+		t.Fatalf("kr_t : %d lignes (err=%v), want 2 (doublon écarté)", n, err)
 	}
 	if err := db.QueryRow(`SELECT v FROM kr_t WHERE id = 'a'`).Scan(&v); err != nil || v != 2 {
 		t.Fatalf("kr_t : la ligne la plus récente de 'a' doit être gardée (v=%d, err=%v)", v, err)
@@ -171,5 +171,27 @@ func TestRepairDeclaredKeys_SequencePerdueRefusee(t *testing.T) {
 	}
 	if constraintCount(t, db, "kr_s", "PRIMARY KEY") != 0 {
 		t.Fatal("kr_s réparée alors que sa clé dépend d'une séquence perdue")
+	}
+}
+
+// TestRepairDeclaredKeys_CleePrimaireNullRefusee : une ligne dont une colonne de la future clé
+// primaire est NULL ne peut pas entrer dans la table reconstruite ; la passe ne supprime jamais
+// une ligne au démarrage : elle refuse la table, qui reste inchangée (lignes et absence de clé).
+func TestRepairDeclaredKeys_CleePrimaireNullRefusee(t *testing.T) {
+	withTitleProvider(t)
+	db := openMemDB(t)
+	seedKeylessCopies(t, db)
+	if _, err := db.Exec(`INSERT INTO kr_t VALUES (NULL, 'Y', 8, '2026-01-01')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := RunSteps(db, TargetDB("kr_target"), keyRepairSteps); err != nil {
+		t.Fatalf("RunSteps: %v", err)
+	}
+	if constraintCount(t, db, "kr_t", "PRIMARY KEY") != 0 {
+		t.Fatal("kr_t réparée malgré des lignes à clé primaire NULL")
+	}
+	var n int
+	if err := db.QueryRow(`SELECT count(*) FROM kr_t`).Scan(&n); err != nil || n != 4 {
+		t.Fatalf("kr_t : %d lignes (err=%v), want 4 (aucune ligne supprimée)", n, err)
 	}
 }

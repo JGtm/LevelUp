@@ -19,6 +19,8 @@ package migration
 //     une décision au cas par cas, pas au démarrage ;
 //   - une table dont une colonne de clé manque, ou dont une colonne de clé est alimentée par une
 //     séquence que la table réelle a perdue (la clé refuserait chaque nouvelle ligne) ;
+//   - une table dont une ligne a une colonne de clé primaire NULL : la clé la refuserait, et la passe
+//     ne supprime jamais une ligne ;
 //   - une table de plus de maxKeyRepairRows lignes (reconstruction trop lourde pour le démarrage).
 //
 // Reconstruction : dans UNE transaction, table neuve (colonnes, types, NOT NULL et défauts de la
@@ -170,6 +172,11 @@ func planKeyRepair(ctx context.Context, db *sql.DB, ref *keyReference, name stri
 			"table", name, "rows", rows, "max", maxKeyRepairRows, "db", databasePath(ctx, db))
 		return keyRepairTable{}, false
 	}
+	if nulls, err := nullPrimaryKeyRows(ctx, db, name, refTable.keys); err != nil {
+		return refuse("comptage des clés NULL impossible", "err", err)
+	} else if nulls > 0 {
+		return refuse("lignes à clé primaire NULL (aucune ligne n'est supprimée au démarrage)", "null_key_rows", nulls)
+	}
 	indexes, err := tableSecondaryIndexes(db, name)
 	if err != nil {
 		return refuse("index illisibles", "err", err)
@@ -264,12 +271,12 @@ func rebuildWithKeys(ctx context.Context, db *sql.DB, rt keyRepairTable) error {
 	}
 	observability.IncCounter(keyRepairDoneCounter)
 	level := slog.LevelInfo
-	if st.NullKeyDropped+st.DuplicatesDropped > 0 {
+	if st.DuplicatesDropped > 0 {
 		level = slog.LevelWarn
 	}
 	slog.Log(ctx, level, "migration: clés déclarées rétablies",
 		"table", rt.name, "keys", describeKeys(rt.keys), "rows_before", st.Source, "rows_kept", st.Copied,
-		"null_key_dropped", st.NullKeyDropped, "duplicates_dropped", st.DuplicatesDropped,
+		"duplicates_dropped", st.DuplicatesDropped,
 		"divergent_keys", st.DivergentKeys, "duration_ms", time.Since(start).Milliseconds(),
 		"db", databasePath(ctx, db))
 	return nil
@@ -313,4 +320,23 @@ func describeKeys(keys []duckdbkeys.Key) string {
 		out[i] = kind + "(" + strings.Join(k.Columns, ",") + ")"
 	}
 	return strings.Join(out, " ")
+}
+
+// nullPrimaryKeyRows compte les lignes de la table dont une colonne de la clé primaire déclarée
+// est NULL : une clé primaire les refuserait, et les supprimer perdrait des données.
+func nullPrimaryKeyRows(ctx context.Context, db *sql.DB, table string, keys []duckdbkeys.Key) (int64, error) {
+	for _, k := range keys {
+		if !k.Primary {
+			continue
+		}
+		parts := make([]string, len(k.Columns))
+		for i, c := range k.Columns {
+			parts[i] = duckdbkeys.Ident(c) + " IS NULL"
+		}
+		var n int64
+		err := db.QueryRowContext(ctx, "SELECT count(*) FROM "+duckdbkeys.Ident(table)+
+			" WHERE "+strings.Join(parts, " OR ")).Scan(&n)
+		return n, err
+	}
+	return 0, nil
 }
