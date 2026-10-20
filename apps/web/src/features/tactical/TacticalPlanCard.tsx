@@ -44,7 +44,7 @@ import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersi
 import type { TacticalContribution, TacticalGrappe, TacticalRaster } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
-import { normalizeCalloutZones } from '@/lib/replay/calloutsPaint'
+import { normalizeCalloutZones, type CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 import { heatRamp, heatRampDivergent } from '@/lib/replay/heatPaint'
 
 import { RAMPE_HAUTEUR_PX } from './cockpit.logic'
@@ -97,6 +97,9 @@ export interface ReglagesDuPlan {
   spawn: string
   onSpawnChange: (spawn: string) => void
   grappes: readonly TacticalGrappe[]
+  /** Les contours et noms des zones nommées sont peints sur le plan. */
+  zonesVisibles: boolean
+  onZonesVisiblesChange: (visibles: boolean) => void
 }
 
 export interface TacticalPlanCardProps {
@@ -164,6 +167,7 @@ export function TacticalPlanCard({
   const { scene, zoom, fenetre } = useCadrageDuPlan(repere, cadreFond)
   const peinture = usePeinture(t, locale, question, lue, repere)
   const zones = useMemo(() => normalizeCalloutZones(lue?.zones), [lue?.zones])
+  const zonesPeintes = reglages.zonesVisibles ? zones : AUCUNE_ZONE
   const carteRef = useRef<HTMLDivElement>(null)
   const cadreRef = useRef<HTMLDivElement>(null)
   const hauteurMax = useHauteurDuPlan(carteRef, cadreRef)
@@ -200,7 +204,7 @@ export function TacticalPlanCard({
         title={titre}
         label={titre || undefined}
         titleAdornment={titleWithInfo(lue ? infoDuPlan(t, locale, question, lue, peintes) : null, {
-          trailing: <ReglagesEnPilules t={t} locale={locale} {...reglages} />,
+          trailing: <ReglagesEnPilules t={t} locale={locale} zonesDisponibles={zones.length > 0} {...reglages} />,
           testId: 'tactical-plan-title',
         })}
       >
@@ -227,7 +231,7 @@ export function TacticalPlanCard({
                 fenetre={fenetre}
                 zoom={zoom}
                 ramp={peinture.ramp}
-                zones={zones}
+                zones={zonesPeintes}
                 locale={locale}
                 selected={selected}
                 onPointSelect={onPointSelect}
@@ -275,6 +279,8 @@ export function TacticalPlanCard({
   )
 }
 
+const AUCUNE_ZONE: readonly CalloutZoneReady[] = []
+
 const PILULE =
   'inline-flex h-7 items-stretch overflow-hidden rounded-md border border-input bg-background text-[11.5px] font-normal'
 const ETIQUETTE = 'flex items-center whitespace-nowrap border-r border-input bg-muted px-1.5 text-muted-foreground'
@@ -299,7 +305,10 @@ function ReglagesEnPilules({
   spawn,
   onSpawnChange,
   grappes,
-}: ReglagesDuPlan & { t: TacticalText; locale: Locale }) {
+  zonesVisibles,
+  onZonesVisiblesChange,
+  zonesDisponibles,
+}: ReglagesDuPlan & { t: TacticalText; locale: Locale; zonesDisponibles: boolean }) {
   const libelleQui: Record<TacticalQui, string> = { moi: t.whoMe, escouade: t.whoSquad, adv: t.whoOpponents }
   // « Réapparition » n'a rien à choisir sans amas ; un filtre déjà posé reste visible pour pouvoir l'ôter.
   const pilulePresente = grappes.length > 0 || spawn !== ''
@@ -359,6 +368,16 @@ function ReglagesEnPilules({
             ))}
           </select>
         </label>
+      )}
+      {zonesDisponibles && (
+        <button
+          type="button"
+          aria-pressed={zonesVisibles}
+          onClick={() => onZonesVisiblesChange(!zonesVisibles)}
+          className={`${PILULE} items-center px-[7px] text-muted-foreground aria-pressed:bg-primary aria-pressed:font-medium aria-pressed:text-primary-foreground`}
+        >
+          {t.pillZones}
+        </button>
       )}
     </span>
   )

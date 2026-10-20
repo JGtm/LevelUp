@@ -125,6 +125,7 @@ export const tacticalManifest = {
   "tactical.plan.pill_reading": { fr: "Lecture", en: "Reading" },
   "tactical.plan.pill_respawn": { fr: "Réapparition", en: "Respawn" },
   "tactical.plan.pill_respawn_all": { fr: "Toutes", en: "All" },
+  "tactical.plan.pill_zones": { fr: "Zones nommées", en: "Named zones" },
   "tactical.plan.radius_join": { fr: " ou ", en: " or " },
   "tactical.plan.radius_value": { fr: "{rayon} m", en: "{rayon} m" },
   "tactical.plan.squad_pending": { fr: "Aucune composition choisie", en: "No lineup chosen" },

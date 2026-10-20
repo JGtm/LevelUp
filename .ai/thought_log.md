@@ -1,3 +1,11 @@
+## [2026-10-20] Tactique : réglage « Zones nommées » — Complété (branche `feat/v75`, non commité)
+
+**Décision technique principale** : une pilule à bascule « Zones nommées » (EN « Named zones ») dans le bandeau du plan, allumée par défaut ; éteinte, le plan ne donne aucune zone au peintre (contours et noms retirés, chaleur intacte). Libellé repris du calque « Zones nommées » du rejeu. La pilule n'existe que si la lecture porte des zones (pas d'action impossible). État local de la vue (`useReglages`), non persisté : retour à « visibles » au rechargement.
+
+**Résultats observés** : typecheck propre, vitest `features/tactical` + `lib/i18n` vert (532 passés) ; trois tests ajoutés dans `TacticalPlanCard.zones.test.tsx`. Rendu non vérifié au navigateur.
+
+**Conclusion** : persistance du choix (stockage navigateur) à ajouter si l'usage le demande.
+
 ## [2026-10-19] Tactique : la zone sélectionnée peut s'écarter — Complété (branche `feat/v75`, non commité)
 
 **Décision technique principale** : D10 conservée (la zone la plus chaude reste présélectionnée à l'ouverture), mais le choix de l'utilisateur gagne une valeur « écartée » (`ZONE_ECARTEE`, `zone.logic`). Trois gestes l'écartent : re-clic sur la zone affichée (présélectionnée comprise), clic loin de toute cellule servie (qui était ignoré), Échap quand aucune mort n'est choisie (Échap referme d'abord la mort, jamais dans un champ de saisie). La zone écartée ne revient qu'au changement de carte, de lecture, de joueurs ou de réapparition (remise à zéro existante par `cle`).

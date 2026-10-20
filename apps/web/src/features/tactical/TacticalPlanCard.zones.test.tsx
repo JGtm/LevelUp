@@ -7,7 +7,7 @@
  * contexte factices, et `peindreLePlan` est moqué pour lire ce que la carte lui donne.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
 import type { TacticalRaster } from '@/lib/api/types'
 import { renderWithProviders } from '@/test/render-utils'
@@ -60,9 +60,11 @@ const REGLAGES: ReglagesDuPlan = {
   spawn: '',
   onSpawnChange: () => {},
   grappes: [],
+  zonesVisibles: true,
+  onZonesVisiblesChange: () => {},
 }
 
-function rendre(lecture: TacticalRaster) {
+function rendre(lecture: TacticalRaster, reglages: ReglagesDuPlan = REGLAGES) {
   return renderWithProviders(
     <TacticalPlanCard
       t={t}
@@ -75,7 +77,7 @@ function rendre(lecture: TacticalRaster) {
       etat="pret"
       inconnus={null}
       etiquette={null}
-      reglages={REGLAGES}
+      reglages={reglages}
       selected={null}
       onPointSelect={() => {}}
       contributions={[]}
@@ -121,5 +123,21 @@ describe('TacticalPlanCard — les zones nommées de la lecture', () => {
     rendre(LECTURE)
     expect(peindreLePlan).toHaveBeenCalled()
     expect(vi.mocked(peindreLePlan).mock.calls.at(-1)?.[3].zones).toEqual([])
+  })
+
+  it('réglage « Zones nommées » : décoché, le plan ne donne aucune zone au peintre', () => {
+    rendre({ ...LECTURE, zones: ZONES }, { ...REGLAGES, zonesVisibles: false })
+    expect(screen.getByRole('button', { name: t.pillZones })).toHaveAttribute('aria-pressed', 'false')
+    expect(vi.mocked(peindreLePlan).mock.calls.at(-1)?.[3].zones).toEqual([])
+  })
+
+  it('réglage « Zones nommées » : le clic demande l’inversion ; absent quand la lecture n’a aucune zone', () => {
+    const onZonesVisiblesChange = vi.fn()
+    const { unmount } = rendre({ ...LECTURE, zones: ZONES }, { ...REGLAGES, onZonesVisiblesChange })
+    fireEvent.click(screen.getByRole('button', { name: t.pillZones }))
+    expect(onZonesVisiblesChange).toHaveBeenCalledWith(false)
+    unmount()
+    rendre(LECTURE)
+    expect(screen.queryByRole('button', { name: t.pillZones })).toBeNull()
   })
 })
