@@ -158,10 +158,17 @@ une PR de release v8.0.1 est ouverte depuis `feat/v75`.
   `npx knip` exit 0 ; `lint-cross-feature-imports` exit 0.
 
 ### Étape 5 — Vérification et clôture (rapide)
-- [~] 5.1 (superviseur, après l'exécutant) Mesure au navigateur (instance Chrome déjà connectée, une seule page) : durées des
+- [x] 5.1 (superviseur) Mesure au navigateur (instance Chrome déjà connectée, une seule page) : durées des
       requêtes de la page, capture à l'affichage ; comparaison visuelle avec la capture d'avant
       (fiches, frise, médailles, fil).
-- [~] 5.2 (superviseur, après l'exécutant) `adversarial-review` du diff (lot à risque : parité de données).
+- [x] 5.2 (superviseur) `adversarial-review` du diff (lot à risque : parité de données).
+- Journal 5.1-5.2 (2026-10-21) : mesure au navigateur, local, match du 2026-10-20 (servi par le live),
+  après fusion dans `feat/v75` (`6eb8ffae8`) : contexte 91 ms / 83 Kio (vue complète : 1,3-1,5 s / 117 Kio,
+  4,9 s avant le bornage de Q23b) ; page affichée d'un bloc à 0,9 s après le chargement (3,5 s avec la vue
+  complète bornée, 5,5 s avant). Capture identique à celle d'avant (en-tête, bandeau, pions, frise des frags,
+  morts et médailles, fiches). Revue adversariale ronde 1 : relecteur parité/accès 0 constat recevable
+  (14 conditions) ; relecteur couverture 6 constats, 5 corrigés (`7c8cd7596`, 15 mutations rouges), 1 consigné.
+  Ronde 2 non lancée : les corrections ne touchent que des tests, chacune prouvée par mutation.
 - [x] 5.3 `.ai/thought_log.md` ; commit(s) ; push `feat/replay-contexte` ; CI verte.
 - Gate : CI de la branche verte (`gh run list --branch feat/replay-contexte`).
 - Journal 5.3 (2026-10-20) : entrée `.ai/thought_log.md` ; un commit par étape (1 à 4) puis ce
