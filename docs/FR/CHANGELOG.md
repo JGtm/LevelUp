@@ -13,6 +13,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ### Corrigé
 - **La création d'un profil joueur remarche en production** — `db_profiles.json` est monté en fichier dans le conteneur, où `rename(2)` répond `EBUSY` : toute création de profil (onboarding par l'admin, inscription Xbox d'un nouveau joueur) échouait en `device or resource busy`. Le magasin des profils écrit désormais par `atomicfile.WriteFile`, atomique quand c'est possible et en place sinon, comme `app_settings.json`.
+- **Rejeu : le son de ramassage d'arme est 20 % plus discret**, et la fiche du joueur n'affiche plus de texte « dégainée ? » quand le sélecteur d'arme a une lacune : un tiret s'affiche, le libellé passe dans l'infobulle.
 
 ### Ops
 - **Le déploiement ne peut plus échouer sur le contrôle de version servie** — après `/health`, `deploy.sh` vérifie que le conteneur sert la version déployée ; ce contrôle est un simple avertissement, mais son enchaînement `docker inspect | sed | head` tournait sous `set -euo pipefail` et pouvait arrêter le script en exit 1 (constaté une fois au déploiement de la v8.0.0, qui a alors sauté la régénération de la démo et le déploiement de l'ouvrier). L'enchaînement se termine désormais par `|| true`.
