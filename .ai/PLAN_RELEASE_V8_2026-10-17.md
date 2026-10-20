@@ -337,9 +337,9 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
 
 ### Étape 3 — Contrôles de l'utilisateur (gate utilisateur)
 
-- [ ] 3.1 (19/10 : fiche interactive publiée à la demande de l'utilisateur, https://claude.ai/artifact/BM28Ax8NZ3HFFZmJzWcJBy — statut OK/KO/v8.1 + commentaire par contrôle, base `resultats` lisible par Claude via ArtifactData ; copie texte `.ai/FICHE_CONTROLES_RELEASE_V8.md`) Les 42 contrôles visuels et les 7 contrôles techniques de l'encadré Notion, sur le
+- [!] 3.1 (20/10 : l utilisateur lance la release maintenant et fera ses contrôles APRÈS — « c est le jour J, on fait la release » ; les KO deviendront des correctifs v8.0.x) (19/10 : fiche interactive publiée à la demande de l'utilisateur, https://claude.ai/artifact/BM28Ax8NZ3HFFZmJzWcJBy — statut OK/KO/v8.1 + commentaire par contrôle, base `resultats` lisible par Claude via ArtifactData ; copie texte `.ai/FICHE_CONTROLES_RELEASE_V8.md`) Les 42 contrôles visuels et les 7 contrôles techniques de l'encadré Notion, sur le
       local à jour. Claude prépare une fiche avec un lien direct par contrôle (match, page, onglet).
-- [ ] 3.2 Chaque anomalie : correctif (nouvelle branche, retour en 1.5) ou report en v8.1 —
+- [~] 3.2 (après la release, cf. 3.1) Chaque anomalie : correctif (nouvelle branche, retour en 1.5) ou report en v8.1 —
       décision de l'utilisateur. Un correctif du décodeur fait remonter le schéma : rejouer 2.3 à
       2.7 (2.3 ne recuit alors que les artefacts périmés).
 
@@ -365,7 +365,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       - notes de version de l'app EN + FR (`docs/RELEASE_NOTES.md`, `docs/FR/RELEASE_NOTES.md`).
       Gate : extraction des blocs sur les fichiers réels (script node, `extractWhatsNewBlocks`) =
       nombre de blocs attendu, bloc `v8.0` présent dans les deux langues ; parité FR/EN des sections.
-- [ ] 3b.3 **Captures d'écran** fournies par l'utilisateur : rangées dans `docs/screenshots/`
+- [!] 3b.3 (20/10 : captures fournies par l utilisateur APRÈS la release) **Captures d'écran** fournies par l'utilisateur : rangées dans `docs/screenshots/`
       (dossier partagé par les deux README) ; une capture qui remplace une existante garde son nom
       de fichier, une nouvelle est référencée dans LES DEUX README avec un texte alternatif FR et EN ;
       capture retirée = fichier supprimé et références retirées. Taille raisonnable (PNG compressé).
@@ -682,3 +682,6 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   (pas de champ `"admin"`) ; la prod n'a aucun groupe et la v8 garde ce comportement. Un groupe se crée
   dans l'app après le déploiement si l'utilisateur le souhaite. Le contrôle 6.2 « groupe par défaut non
   vide » est caduc : 6.2 vérifie seulement `player_friends.json` (N entrées).
+- **2026-10-20 — Jour J décidé par l'utilisateur.** Contrôles et captures repoussés après la release.
+  3b.1-3b.2 confiés à un exécutant Sonnet (`feat/rv8-docs`). PR #96 `feat/v75` → `main` ouverte
+  (https://github.com/JGtm/LevelUp/pull/96) pour lancer l'E2E tôt ; elle se mettra à jour avec les docs.
