@@ -118213,3 +118213,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 12 P0 et 17 P1 du registre fermés, chacun avec test rouge puis vert et un garde-rail de classe ; revue : 3 P1 en ronde 1, 1 en ronde 2, tous corrigés ; une faille préexistante en production trouvée par la revue (`?v=` traversant) bloquée sur le VPS puis corrigée dans le code. Fusion : 4 conflits résolus, rouge archlint préexistant de feat/v75 réparé.
 
 **Conclusion / prochaine étape** : déploiement avec la v7.5 (geste de l'utilisateur) ; au déploiement : V-3, V-5 (unité de l'ouvrier à convertir AVANT que `deploy-worker` ne tourne), V-6, puis F-6 (48 h de surveillance des 401/403/413/429). Backlog : participation 503 sous charge, double démarrage du device-flow, page Tactique (~100 requêtes), délai d'arrêt Docker, recalcul d'exclusion en LUSR v1.
+
+## [2026-10-20] Rejeu : son de ramassage d'arme -20 % et plus de texte « dégainée ? » sur la fiche — Complété (branche `feat/v75`, non commité)
+
+**Décision technique principale** : (1) le son `weapon_pickup.wav` est atténué à la source (gain linéaire 0,8, soit -1,94 dB ; crête -1,0 -> -2,9 dBTP, durée 0,34 s inchangée, PCM 16 bits 48 kHz) : aucun mécanisme de gain par stem n'existe dans le lecteur, et `weaponSoundVariations.ts` est mis à l'échelle par le réglage de variation de l'utilisateur ; précédent : le tic de domination atténué dans le fichier. (2) Sur la fiche normale, la lacune du sélecteur d'arme s'écrivait en texte (`dégainée ?`) ; elle est remplacée par un tiret neutre, l'infobulle porte le libellé (même doctrine que la branche « aucune lecture d'inventaire » et que la tuile compacte).
+
+**Résultats observés** : volumedetect avant/après conforme ; vitest `replaySoundAssets.guard`, `ReplayTeams`, `ReplayPlayerCard.compact` verts (124 tests), typecheck propre.
+
+**Conclusion / prochaine étape** : en attente de commit sur demande de l'utilisateur. Le son s'entend sur les deux chemins (lecteur et export), qui lisent le même fichier.
