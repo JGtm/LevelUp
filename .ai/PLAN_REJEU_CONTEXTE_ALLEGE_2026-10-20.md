@@ -1,0 +1,183 @@
+# Plan — Lecture allégée du contexte de match pour la page de rejeu (2026-10-20)
+
+Contrat d'exécution : skill `plan-execution` (ordre strict, gate par étape, statut de chaque item,
+zéro fix hors périmètre). Statuts : `[x]` fait, `[~]` couvert ailleurs (référence), `[!]` non
+traité (justification) ; aucune case vide à la clôture. Reprise de session : lire ce fichier (cases cochées) puis
+`git log --oneline -10` dans le worktree.
+
+## Objectif et critère de succès
+
+La page de rejeu attend aujourd'hui la vue complète du match (`GET /players/{slug}/matches/{id}`) :
+le serveur calcule tous les onglets (rencontres sur l'historique, Emprise, Isolement, radar,
+citations, résumé, extras des amis) alors que le rejeu n'en lit que quatre morceaux. Une route
+dédiée ne charge et ne construit que ces morceaux, avec LES MÊMES builders que la vue complète.
+
+Succès :
+1. Ce que la page de rejeu affiche est identique à aujourd'hui, en particulier la frise des frags
+   et des morts de chaque joueur, ses médailles, le fil des éliminations (arme, assistant,
+   victime), les fiches (noms, camps, K/D/A, médailles, entrées et sorties en cours de match),
+   l'écran de fin, la piste des médias.
+2. Prouvé par test : pour un même match, chaque morceau servi par la route allégée est égal
+   (comparaison profonde) au morceau correspondant de la vue complète.
+3. Mesure au navigateur (local, même match que la mesure du 2026-10-20) : la requête de contexte
+   coûte nettement moins que la vue complète (1,3-1,5 s), objectif < 0,5 s.
+
+## Ce que le rejeu lit de la vue du match (inventaire, à confirmer par le compilateur, étape 1)
+
+| Morceau | Lecteurs | Sources serveur |
+|---|---|---|
+| `header` (champs : `t0_ms`, `start_time`, `playable_duration_seconds`, `outcome_code`, `score_mine`, `score_theirs`, `score_timeline_kind`, `mode_category`, `map_ui`, `mode_ui`, `playlist_label`, `start_time_label`, autres à confirmer) | `replayModel` (horloge, fenêtre, score final), route (fil d'Ariane, rappel), `ReplayTeams`, écran de fin, son de fin | meta (Q13), stats joueur (Q17), enrichment (Q18), scoreboard (Q12) + `apply*` de l'en-tête |
+| `team_tab.scoreboard` (lignes ; champs à confirmer : `xuid`, `gamertag`, `is_me`, `is_bot`, `team_side`, `outcome`, `kills`, `deaths`, `assists`, `score`, `medals`, `rank`, `joined_in_progress`, `left_in_progress`, `first_joined_time`, `last_leave_time`, nom d'équipe) | identité, allégeance, marques, roster, fiches | scoreboard (Q12), bulk medals, bulk weapons, CSR, `applyTeamNames` |
+| `combat_tab.highlight_events` (kills ET médailles) | **frise des frags/morts par joueur, médailles**, fil des éliminations | events (Q21), events canoniques, kv pairs (synthèse si events vides), kill sources (Q21b), kill assists (Q21c), recalage T0, `decorateKillFeed`, `decorateMedalEvents` |
+| `media_tab` | piste Médias de la frise | media (Q24) + transformation chemins → URLs du handler (`WithMediaURLs`) |
+
+## Décisions (tranchées)
+
+- D1. Route : `GET /players/{player_slug}/matches/{match_id}/replay/context`, montée dans le groupe
+  du rejeu (mêmes portes : `CapReplay`, `ReplayGate`, participation). Un titre sans rejeu ne
+  l'appelle jamais (la page n'est pas montée).
+- D2. Forme de la réponse : `{ header, scoreboard, highlight_events, media }` — chaque morceau a
+  le TYPE EXACT de son homologue dans `MatchViewResponse` (`MatchViewHeader`, `[]MatchScoreboardRow`,
+  `[]MatchHighlightEvent`, `MatchMediaTab`). Pas de type allégé côté Go : la parité est structurelle.
+- D3. Zéro copie de logique : l'assemblage de l'en-tête (les `apply*`) et la préparation
+  (recalage T0, expected assists si utile) sont EXTRAITS de `buildMatchViewFromData` en fonctions
+  partagées appelées par les deux chemins. La vue complète garde un comportement identique.
+- D4. Chargements de la route allégée = ceux dont dépend un des quatre morceaux, et eux seuls.
+  Liste fermée à l'étape 2 à partir de l'inventaire typé de l'étape 1 ; tout chargement dont
+  dépend un champ LU par le rejeu est conservé, même s'il coûte.
+- D5. Côté web, la page de rejeu lit la route allégée (nouveau hook, clé dans `lib/query/keys.ts`) ;
+  `useMatchView` n'est plus appelé par la page de rejeu. Pas de réutilisation opportuniste du
+  cache de la vue complète (deux formes, deux clés).
+- D6. Le modèle du rejeu et ses composants sont typés sur un type `ReplayMatchContext` (les
+  quatre morceaux) au lieu de `MatchViewResponse` : le compilateur garantit qu'aucun lecteur ne
+  dépend d'un champ que la route ne sert pas.
+
+## Branche
+
+Worktree dédié `../LevelUp-wt-replay-contexte`, branche `feat/replay-contexte` (depuis `feat/v75`,
+préfixe `feat/` pour que la CI tourne). Fusion dans `feat/v75` sur décision de l'utilisateur :
+une PR de release v8.0.1 est ouverte depuis `feat/v75`.
+
+## Étapes
+
+### Étape 1 — Inventaire typé côté web (moyen)
+- [x] 1.1 Définir `ReplayMatchContext` (dans `lib/replay/`) : `header: MatchViewHeader`,
+      `scoreboard: MatchScoreboardRow[]`, `highlight_events: MatchHighlightEvent[]`,
+      `media: MatchMediaTab`.
+- [x] 1.2 Remplacer `MatchViewResponse` par `ReplayMatchContext` dans les signatures de
+      `features/match-replay/**` et `lib/replay/**` qui reçoivent la vue (`replayModel`,
+      `useReplayModel`, médias, et tout autre consommateur trouvé par `grep -rn MatchViewResponse`).
+      La route adapte provisoirement la vue complète vers ce type (fonction pure testée).
+- [x] 1.3 Lister dans ce plan (section Inventaire) les champs d'en-tête et de ligne de scoreboard
+      effectivement lus (grep des accès sur les valeurs typées + compilation).
+- Gate : `cd apps/web && npx tsc -b --force` sans erreur ; `npx vitest run src/features/match-replay src/lib/replay src/routes` vert.
+- Journal (2026-10-20) : `ReplayMatchContext` + adaptateur `replayContextFromMatchView`
+  (`lib/replay/replayMatchContext.ts`, testé) ; `buildReplayModel` / `useReplayModel` et la route
+  typés sur le contexte. Seuls `replayModel.ts` et `useReplayModel.ts` recevaient la vue entière ;
+  les autres lecteurs prenaient déjà un morceau typé (`MatchScoreboardRow[]`, `Pick<MatchViewHeader, …>`,
+  `MatchHighlightEvent[]`, `MatchMediaTab`). Gate : `tsc -b --force` exit 0 ; vitest 267 fichiers /
+  3 708 tests verts (4 fichiers sautés, préexistants), exit 0.
+
+### Étape 2 — Service et route Go (lourd)
+- [ ] 2.1 Domaine : `domain.MatchReplayContext` (D2).
+- [ ] 2.2 Extraire de `buildMatchViewFromData` les fonctions partagées (D3) ; vue complète inchangée.
+- [ ] 2.3 `MatchViewService.GetReplayContext` : meta bloquant + participation (comme `GetMatchView`),
+      chargement parallèle RESTREINT (liste fermée D4, écrite ici avant de coder), assemblage
+      par les fonctions partagées et les builders existants.
+- [ ] 2.4 Port `MatchViewService.GetReplayContext` ; handler (décode, appelle, applique la même
+      transformation des médias que `GetMatchView`) ; montage D1 ; `openapi.yaml` régénéré
+      (`make generate-types` côté web).
+- [ ] 2.5 Journal : `slog` sur l'échec de meta comme `GetMatchView` ; sections de durée nommées.
+- Gate : `go build ./cmd/server` ; `go vet ./internal/service/ ./internal/api/...` ;
+  `go test ./internal/service/ ./internal/api/...` vert.
+
+### Étape 3 — Preuves (moyen)
+- [ ] 3.1 Test de parité service (repo factice riche : kills avec arme et assistant, médailles,
+      joueur entré et sorti en cours de match, bot, médias, T0 non nul, synthèse kv quand events
+      vides) : `GetReplayContext` == morceaux correspondants de `GetMatchView` (`reflect.DeepEqual`).
+- [ ] 3.2 Test « pas de chargement lourd » : le repo factice compte les appels ; aucun de
+      `GetMatchEncounters`, `GetMatchEncounterStats`, `GetMatchEncounterAssists`, `GetHistoryForAvg`,
+      `GetMatchExpectedStats` (sauf si D4 l'exige), citations, Emprise, Isolement, friends extras.
+- [ ] 3.3 Test handler `httptest` : 200 + forme JSON ; 404 match inconnu ; participation refusée.
+- Gate : tests 3.1-3.3 verts ; `go test -count=1 ./internal/service/ ./internal/api/...`.
+
+### Étape 4 — Branchement web (rapide)
+- [ ] 4.1 Hook `useMatchReplayContext` (clé `queryKeys.matchReplayContext`), page de rejeu
+      branchée dessus ; adaptateur provisoire de l'étape 1.2 supprimé s'il n'a plus d'appelant.
+- [ ] 4.2 `replayLoadState` : `identityPending` lit la nouvelle requête.
+- Gate : `npx tsc -b --force`, `npx eslint` sur les fichiers touchés, vitest `match-replay` + `lib/replay` + `routes` vert ; `grep -n useMatchView` dans la route de rejeu : aucun résultat.
+
+### Étape 5 — Vérification et clôture (rapide)
+- [ ] 5.1 Mesure au navigateur (instance Chrome déjà connectée, une seule page) : durées des
+      requêtes de la page, capture à l'affichage ; comparaison visuelle avec la capture d'avant
+      (fiches, frise, médailles, fil).
+- [ ] 5.2 `adversarial-review` du diff (lot à risque : parité de données).
+- [ ] 5.3 `.ai/thought_log.md` ; commit(s) ; push `feat/replay-contexte` ; CI verte.
+- Gate : CI de la branche verte (`gh run list --branch feat/replay-contexte`).
+
+## Inventaire (rempli à l'étape 1)
+
+Méthode : grep des accès (`.champ`, `'champ'` dans un `Pick`) sur tous les fichiers non-test de
+`features/match-replay/**`, `lib/replay/**`, la route de rejeu et les modules de `features/match-view`
+qu'ils importent (`_momentum`, `xuidMeta`, `teamColor`, `teamSeriesColor`, `format`, `MatchHeader`),
+puis lecture du contexte de chaque occurrence pour écarter les homonymes du document de rejeu
+(`rank` des grenades, `kills`/`deaths` des pistes, `medals` d'une entrée du fil).
+
+- **En-tête** (lu) : `t0_ms`, `start_time`, `playable_duration_seconds`, `outcome_code`,
+  `score_mine`, `score_theirs`, `score_timeline_kind`, `mode_category`, `map_ui`, `mode_ui`,
+  `playlist_label`, `start_time_label`. L'en-tête est servi ENTIER (toutes ses sources sont
+  conservées, D4) : aucun champ d'en-tête ne diffère de la vue complète.
+- **Ligne de scoreboard** (lu) : `xuid`, `gamertag`, `is_me`, `is_bot`, `team_side`, `team_name`,
+  `joined_in_progress`, `left_in_progress`, `first_joined_time`, `last_leave_time`, `kills`,
+  `deaths`, `assists` (compteurs de la fiche, `ReplayCountersBadge`).
+- **Ligne de scoreboard, JAMAIS lus par le rejeu** (aucune occurrence) : `kda`, `accuracy`,
+  `shots_*`, `damage_*`, `average_life`, `avg_life_seconds`, `*_kills` (headshot, grenade, melee,
+  power weapon, perfect, assassination, ground pound, shoulder bash), `max_killing_spree`,
+  `score`, `rank`, `outcome`, `top_weapon_*`, `offensive_conversion`, `defensive_resistance`,
+  `damage_per_kill`, `damage_per_death`, `expected_kills`, `expected_deaths`, `expected_assists`,
+  `locally_estimated`, `weapon_kills`, `medals`, `performance_score`, `had_bot_teammate`,
+  `skill_rank`, `objective`, `team_color`. Les médailles des fiches et de la frise viennent des
+  ÉVÉNEMENTS (`highlight_events`), pas de la ligne.
+- **Événements** (lu) : `event_type`, `event_time_ms`, `actor_xuid`, `actor_gamertag`,
+  `actor_team_id`, `victim_xuid`, `victim_gamertag`, `weapon_key`, `weapon_label`,
+  `weapon_image_url`, `weapon_image_tinted`, `headshot`, `killer_damage_pct`, `assist_state`,
+  `assist_gamertag`, `assist_team_id`, `assist_damage_pct`, `medal_name`, `medal_label`,
+  `medal_description`, `medal_image_url`. Servis entiers (toutes leurs sources conservées).
+- **Médias** : `media_items[]` (identifiant, nature, instants de capture, chemins) : servis entiers.
+
+### D4 — liste fermée des chargements de `GetReplayContext` (écrite avant 2.3)
+
+Conservés (chacun alimente un des quatre morceaux) :
+1. `GetMatchMeta` (bloquant) — en-tête, recalage T0, durée.
+2. `IsParticipant` (`assertParticipation`) — garde, comme `GetMatchView`.
+3. `GetPlayerMatchStats` (Q17) — en-tête (issue, score, enrichissement).
+4. `GetMatchEnrichment` (Q18) — en-tête (performance).
+5. `GetMatchScoreboard` (Q12) — lignes, en-tête, équipe du tueur dans le fil.
+6. `GetMatchEvents` (Q21) — événements.
+7. `GetMatchKVPairs` — synthèse des kills quand les événements n'en portent pas ; victime du fil.
+8. `GetMatchKillSources` (Q21b) — arme du kill.
+9. `GetMatchKillAssists` (Q21c) — assistant du kill.
+10. `LookupMedalMetaByName` (dans `decorateMedalEvents`) — identité des médailles du fil.
+11. `GetMatchBulkMedals`, `GetMatchBulkWeaponKills` — `medals` / `weapon_kills` des lignes (non lus,
+    mais lectures bornées au match : gardées pour que la ligne reste égale à la vue complète).
+12. `GetMatchSkillRank`, `GetMatchSharedCSRs` — `skill_rank` des lignes (même raison).
+13. `GetMatchMedia` (Q24) — médias.
+14. `IsMatchFavorite`, `IsAvailable` du rejeu, signal d'analyse en cours, référentiel `team_colors`
+    (`applyTeamNames`) — en-tête et `team_name` (déjà dans les `apply*` partagés).
+
+Omis (n'alimentent aucun champ lu par le rejeu) :
+- `GetMatchEncounters`, `GetMatchEncounterStats`, `GetMatchEncounterAssists` (rencontres),
+  `GetMatchAssistPairs` (paires d'assistance), `GetMatchObjectiveScore` (radar), `GetMatchMedals`
+  (Q14 : résumé, citations), events canoniques (cadence, rôles), distances de kill, citations,
+  Emprise, Isolement, outils d'armes, radar.
+- `GetHistoryForAvg`, `GetMatchExpectedStats`, `GetPlayerAssistsModel` + coefficients
+  populationnels (`computeExpectedAssists`), `friendsExtras` (fan-out vers les bases des amis),
+  `GetHistoryForAvgBulk` : ils ne posent sur les lignes que `performance_score`,
+  `had_bot_teammate`, `skill_rank` (amis suivis), `expected_assists`, `expected_kills`,
+  `expected_deaths`, `locally_estimated` — aucun lu par le rejeu (inventaire ci-dessus).
+
+Conséquence pour la parité (3.1) : en-tête, événements et médias sont égaux À L'IDENTIQUE. Les
+lignes sont égales à l'identique quand le match n'a ni ami suivi ni modèle d'attendus ; sinon elles
+diffèrent EXACTEMENT sur les sept champs ci-dessus, et le test le prouve dans les deux sens.
+
+## Découvertes (hors périmètre, non traitées)

@@ -25,19 +25,18 @@
  */
 import { useMemo } from 'react'
 
-import type { MatchViewResponse } from '@/lib/api/types'
-
+import type { ReplayMatchContext } from '../../../lib/replay/replayMatchContext'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { buildReplayModel, type ReplayModel, type ReplayModelSettings } from './replayModel'
 
 export function useReplayModel(
   doc: ReplayDocumentReady | null | undefined,
-  matchView: MatchViewResponse | null | undefined,
+  context: ReplayMatchContext | null | undefined,
   settings?: ReplayModelSettings | null,
   viewpoint?: string | null,
 ): ReplayModel {
   return useMemo(
-    () => buildReplayModel(doc, matchView, settings, viewpoint),
-    [doc, matchView, settings, viewpoint],
+    () => buildReplayModel(doc, context, settings, viewpoint),
+    [doc, context, settings, viewpoint],
   )
 }
