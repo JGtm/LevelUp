@@ -230,7 +230,7 @@ func TestImport_NullConservesSurColonneNotNull(t *testing.T) {
 	`)
 	target := filepath.Join(t.TempDir(), "db1.duckdb")
 	ddl := `CREATE TABLE snaps (id BIGINT PRIMARY KEY, v INTEGER,
-		written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AS TIMESTAMP));`
+		written_at TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP));`
 	if _, err := ImportFromStaging(context.Background(), staging, func(string) string { return target },
 		&ddlSchema{ddl: map[string]string{"db1": ddl}}, false); err != nil {
 		t.Fatalf("import: %v", err)
