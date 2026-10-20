@@ -6,153 +6,17 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis/squademprise"
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
-
-// countingMatchViewRepo : le repo factice de la vue match, enrichi des lectures que le mock de
-// base rend vides (médias, médailles et armes de tous les joueurs, rangs) et qui COMPTE les
-// appels. Chaque lecture rend une copie : la vue complète modifie le scoreboard chargé en
-// place (attendus de la ligne is_me), une réponse ne doit pas déteindre sur l'autre.
-type countingMatchViewRepo struct {
-	*mockMatchViewRepo
-	mu           sync.Mutex
-	calls        map[string]int
-	media        []domain.MediaAssocRaw
-	bulkMedals   []domain.BulkMedalRaw
-	bulkWeapons  []domain.BulkWeaponKillRaw
-	skillRank    *domain.SkillRankRaw
-	sharedCSRs   map[string]*domain.SkillRankRaw
-	assistsModel *domain.PlayerAssistsModel
-}
-
-func (c *countingMatchViewRepo) count(name string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.calls[name]++
-}
-
-func (c *countingMatchViewRepo) callsOf(name string) int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.calls[name]
-}
-
-func (c *countingMatchViewRepo) GetMatchScoreboard(_ context.Context, _ string) ([]domain.ScoreboardRaw, error) {
-	c.count("GetMatchScoreboard")
-	return append([]domain.ScoreboardRaw(nil), c.board...), c.boardErr
-}
-func (c *countingMatchViewRepo) GetMatchMedia(_ context.Context, _ string) ([]domain.MediaAssocRaw, error) {
-	c.count("GetMatchMedia")
-	return append([]domain.MediaAssocRaw(nil), c.media...), nil
-}
-func (c *countingMatchViewRepo) GetMatchBulkMedals(_ context.Context, _ string) ([]domain.BulkMedalRaw, error) {
-	c.count("GetMatchBulkMedals")
-	return append([]domain.BulkMedalRaw(nil), c.bulkMedals...), nil
-}
-func (c *countingMatchViewRepo) GetMatchBulkWeaponKills(_ context.Context, _ string) ([]domain.BulkWeaponKillRaw, error) {
-	c.count("GetMatchBulkWeaponKills")
-	return append([]domain.BulkWeaponKillRaw(nil), c.bulkWeapons...), nil
-}
-func (c *countingMatchViewRepo) GetMatchSkillRank(_ context.Context, _ string) (*domain.SkillRankRaw, error) {
-	c.count("GetMatchSkillRank")
-	return c.skillRank, nil
-}
-func (c *countingMatchViewRepo) GetMatchSharedCSRs(_ context.Context, _ string) (map[string]*domain.SkillRankRaw, error) {
-	c.count("GetMatchSharedCSRs")
-	return c.sharedCSRs, nil
-}
-func (c *countingMatchViewRepo) GetPlayerAssistsModel(_ context.Context, _ string) (*domain.PlayerAssistsModel, error) {
-	c.count("GetPlayerAssistsModel")
-	return c.assistsModel, nil
-}
-func (c *countingMatchViewRepo) GetMatchMedals(ctx context.Context, x, m string) ([]domain.MedalRaw, error) {
-	c.count("GetMatchMedals")
-	return c.mockMatchViewRepo.GetMatchMedals(ctx, x, m)
-}
-func (c *countingMatchViewRepo) GetMatchObjectiveScore(ctx context.Context, x, m string) (int, error) {
-	c.count("GetMatchObjectiveScore")
-	return c.mockMatchViewRepo.GetMatchObjectiveScore(ctx, x, m)
-}
-func (c *countingMatchViewRepo) GetMatchAssistPairs(ctx context.Context, m string) ([]domain.MatchAssistPairRaw, domain.MatchAssistScopeRaw, error) {
-	c.count("GetMatchAssistPairs")
-	return c.mockMatchViewRepo.GetMatchAssistPairs(ctx, m)
-}
-func (c *countingMatchViewRepo) GetMatchEncounters(_ context.Context, _, _ string) ([]domain.EncounterRaw, error) {
-	c.count("GetMatchEncounters")
-	return nil, nil
-}
-func (c *countingMatchViewRepo) GetMatchEncounterStats(_ context.Context, _, _ string) ([]domain.EncounterStatsRaw, error) {
-	c.count("GetMatchEncounterStats")
-	return nil, nil
-}
-func (c *countingMatchViewRepo) GetMatchEncounterAssists(_ context.Context, _, _ string) (map[string]domain.RelationAssists, error) {
-	c.count("GetMatchEncounterAssists")
-	return nil, nil
-}
-func (c *countingMatchViewRepo) GetHistoryForAvg(_ context.Context, _ string) ([]domain.MatchHistAvgRow, error) {
-	c.count("GetHistoryForAvg")
-	return nil, nil
-}
-func (c *countingMatchViewRepo) GetHistoryForAvgBulk(_ context.Context, _ []string) (map[string][]domain.MatchHistAvgRow, error) {
-	c.count("GetHistoryForAvgBulk")
-	return nil, nil
-}
-func (c *countingMatchViewRepo) GetMatchExpectedStats(_ context.Context, _, _ string) (*domain.ExpectedStatsRaw, error) {
-	c.count("GetMatchExpectedStats")
-	return nil, nil
-}
-
-// countingCitations compte les deux lectures de citations de la vue match.
-type countingCitations struct {
-	port.CitationsRepository
-	calls atomic.Int32
-}
-
-func (c *countingCitations) LoadMatchCitationsForView(_ context.Context, _ string) ([]domain.CitationMatchViewRow, error) {
-	c.calls.Add(1)
-	return nil, nil
-}
-func (c *countingCitations) LoadMatchCitationsRich(_ context.Context, _ string) ([]domain.HomeMatchCitationRaw, error) {
-	c.calls.Add(1)
-	return nil, nil
-}
-
-// countingEvents compte les lectures d'events canoniques (cadence, rôles).
-type countingEvents struct{ calls atomic.Int32 }
-
-func (c *countingEvents) Load(_ context.Context, _ port.HighlightEventFilters) ([]canonical.HighlightEvent, error) {
-	c.calls.Add(1)
-	return nil, nil
-}
-
-// countingEmprise compte les lectures de la feuille de match de l'Emprise.
-type countingEmprise struct{ calls atomic.Int32 }
-
-func (c *countingEmprise) LoadPowerWeaponKills(_ context.Context, _ []string) ([]squademprise.PowerKillRow, error) {
-	c.calls.Add(1)
-	return nil, nil
-}
-func (c *countingEmprise) LoadJournalWeaponKills(_ context.Context, _ []string) (squademprise.JournalRead, error) {
-	c.calls.Add(1)
-	return squademprise.JournalRead{}, nil
-}
-
-// countingLives compte la lecture des vies de l'équipe (Isolement).
-type countingLives struct{ calls atomic.Int32 }
-
-func (c *countingLives) LoadLivesNearTeammateForPlayers(_ context.Context, _, _ []string) (map[string]domain.ViesLues, error) {
-	c.calls.Add(1)
-	return nil, nil
-}
 
 // replayFixture : un match riche, sur l'horloge du FILM (T0 = 15 s) — kills avec arme et
 // assistant, médaille, kill d'un bot, event de countdown, joueur entré et sorti en cours de
@@ -167,12 +31,16 @@ func replayFixture() *countingMatchViewRepo {
 	str := func(v string) *string { return &v }
 	f64 := func(v float64) *float64 { return &v }
 	tru := true
+	i16 := func(v int16) *int16 { return &v }
+	elapsed := 660 // 60 s au-delà des 600 s réglementaires : prolongation
 	return &countingMatchViewRepo{
 		calls: map[string]int{},
 		mockMatchViewRepo: &mockMatchViewRepo{
 			meta: &domain.MatchMetaRaw{
 				MatchID: "m1", StartTime: &start, DurationSeconds: &dur, PlayableDurationSeconds: &playable,
 				T0Ms: &t0, GameVariantName: &gv, PairName: &pair, MapName: &mapName, PlaylistName: &pl, IsRanked: true,
+				ElapsedSeconds: &elapsed, Team0Score: i16(50), Team1Score: i16(48),
+				Team0RoundsWon: i16(3), Team1RoundsWon: i16(1), RoundsTotal: i16(4),
 			},
 			stats: &domain.PlayerMatchStatsRaw{OutcomeCode: 2, TeamID: ptrIk(0), Kills: 2, Deaths: 1, Assists: 1, DamageDealt: f64(900)},
 			board: []domain.ScoreboardRaw{
@@ -210,35 +78,53 @@ func replayFixture() *countingMatchViewRepo {
 }
 
 // replayFixtureService câble le service sur le repo factice, l'adapter d'assets (icône d'arme,
-// visuel de médaille) et les compteurs des lectures que le contexte du rejeu ne doit pas faire.
+// visuel de médaille), les compteurs des lectures que le contexte du rejeu ne doit pas faire, et
+// TOUTES les dépendances des `apply*` de l'en-tête, chacune avec un effet visible (cf.
+// assertHeaderExercised) : table réglementaire, manches, règle du score dans le temps, issues
+// du titre, rejeu, analyse en cours, taxonomie des modes, favoris.
 func replayFixtureService(repo *countingMatchViewRepo) (*MatchViewService, *replayCounters) {
 	c := &replayCounters{}
 	assets := &stubAssetURL{medalImg: "/static/medal.png", killIcons: map[uint32]canonical.KillSourceIcon{
 		0x11: {WeaponKey: "hinf_br75", Label: "BR75", ImageURL: "/static/killfeed-11.png", Tinted: true},
 	}}
+	// Analyse en cours sur la seule arme du kill : le rejeu, lui, est là — à condition que
+	// `replay_available` soit posé AVANT la résolution (sinon « rejeu manquant » s'ajoute).
+	probes := &probeRepoFactice{probes: map[string]domain.AnalysisProbe{
+		"m1": synchroIlYA(time.Hour, func(p *domain.AnalysisProbe) { p.KillSourceDone = false }),
+	}}
 	svc := NewMatchViewService(repo, "me").WithTitleSlug("halo_infinite").WithAssetURL(assets).
 		WithCitationsRepo(&c.citations).WithHighlightEventsRepo(&c.events).WithCampLives(&c.lives).
-		WithEmpriseSheet(&c.emprise).
+		WithEmpriseSheet(&c.emprise).WithKillDistanceRepo(&c.killDistances).
 		WithFriendsExtras(func(_ context.Context, _, _ string, _ []string) (map[string]port.FriendMatchExtras, error) {
 			c.friends.Add(1)
 			return nil, nil
-		})
+		}).
+		WithRegulation(map[string]int{"Slayer": 600}).
+		WithRoundsDecide(map[string]bool{"Slayer": true}).
+		WithScoreTimelineKind(func(string) string { return mappings.ScoreTimelineEvents }).
+		WithSemantic(semantiqueDeTest{outcomes: outcomesDeTest()}).
+		WithReplay(&replayDisponible{}).
+		WithAnalysisPending(resolveurDeTest(probes, true)).
+		WithModeTaxonomy(analysis.ModeTaxonomy{InferCategory: func(string) string { return "Assassin" }}).
+		WithSocial(socialFavori{}, "moi")
 	return svc, c
 }
 
 // replayCounters : les compteurs des lectures hors repo (citations, events canoniques, vies de
-// l'équipe, feuille de l'Emprise, extras des amis).
+// l'équipe, feuille de l'Emprise, distances de kill, extras des amis).
 type replayCounters struct {
-	citations countingCitations
-	events    countingEvents
-	lives     countingLives
-	emprise   countingEmprise
-	friends   atomic.Int32
+	citations     countingCitations
+	events        countingEvents
+	lives         countingLives
+	emprise       countingEmprise
+	killDistances countingKillDistances
+	friends       atomic.Int32
 }
 
 func (c *replayCounters) loads() map[string]int32 {
 	return map[string]int32{"citations": c.citations.calls.Load(), "events canoniques": c.events.calls.Load(),
-		"vies (Isolement)": c.lives.calls.Load(), "Emprise": c.emprise.calls.Load(), "amis": c.friends.Load()}
+		"vies (Isolement)": c.lives.calls.Load(), "Emprise": c.emprise.calls.Load(),
+		"distances de kill": c.killDistances.calls.Load(), "amis": c.friends.Load()}
 }
 
 // sansChampsDesChargementsOmis retire des lignes les champs que seuls les chargements omis par
@@ -289,8 +175,45 @@ func assertFixtureExercised(t *testing.T, got domain.MatchReplayContext, killsFr
 	if len(got.Media.MediaItems) != 1 {
 		t.Errorf("médias : %d éléments", len(got.Media.MediaItems))
 	}
-	var withWeapon, withAssist, withMedal, shifted, kills bool
-	for _, e := range got.HighlightEvents {
+	assertHeaderExercised(t, got.Header)
+	assertFeedExercised(t, got.HighlightEvents, killsFromKV)
+}
+
+// assertHeaderExercised : chaque `apply*` de l'en-tête a produit son effet — un `apply*` retiré
+// d'assembleMatchHeader, ou la résolution de l'analyse posée avant celle du rejeu, rougit ici
+// (la parité seule ne le verrait pas : les deux réponses passent par la même fonction).
+func assertHeaderExercised(t *testing.T, h domain.MatchViewHeader) {
+	t.Helper()
+	if !h.IsOvertime || h.OvertimeSeconds != 60 {
+		t.Errorf("en-tête : prolongation %v (%d s), attendu vraie (60 s)", h.IsOvertime, h.OvertimeSeconds)
+	}
+	if h.Outcome != "win" {
+		t.Errorf("en-tête : clé d'issue %q, attendu win", h.Outcome)
+	}
+	if h.ScoreKind != string(analysis.ScoreKindRounds) || h.ScoreMine == nil || *h.ScoreMine != 3 {
+		t.Errorf("en-tête : score %q mine=%v, attendu en manches 3", h.ScoreKind, h.ScoreMine)
+	}
+	if h.ScoreTimelineKind != mappings.ScoreTimelineEvents {
+		t.Errorf("en-tête : score_timeline_kind %q", h.ScoreTimelineKind)
+	}
+	if !h.ReplayAvailable {
+		t.Error("en-tête : replay_available faux")
+	}
+	if !h.AnalysisPending || !reflect.DeepEqual(h.AnalysisPendingParts, []string{domain.AnalysisPartKillSource}) {
+		t.Errorf("en-tête : analysis_pending %v, causes %v — attendu [kill_source] seul (rejeu lu avant)",
+			h.AnalysisPending, h.AnalysisPendingParts)
+	}
+	if h.ModeCategory != "Assassin" || !h.IsFavorite {
+		t.Errorf("en-tête : mode_category %q, favori %v", h.ModeCategory, h.IsFavorite)
+	}
+}
+
+// assertFeedExercised : le fil porte les décorations attendues (arme, assistant, équipe du
+// tueur, médaille résolue) et le recalage T0, sans event de countdown.
+func assertFeedExercised(t *testing.T, events []domain.MatchHighlightEvent, killsFromKV bool) {
+	t.Helper()
+	var withWeapon, withAssist, withMedal, shifted, kills, withTeam bool
+	for _, e := range events {
 		if e.EventTimeMS != nil && *e.EventTimeMS < 0 {
 			t.Errorf("event de countdown servi : %+v", e)
 		}
@@ -299,9 +222,10 @@ func assertFixtureExercised(t *testing.T, got domain.MatchReplayContext, killsFr
 		withMedal = withMedal || e.MedalLabel == "Double frag"
 		shifted = shifted || (e.EventTimeMS != nil && *e.EventTimeMS == 5_000 && e.VictimXUID != nil)
 		kills = kills || e.EventType == highlightevent.EventTypeKill
+		withTeam = withTeam || (e.EventType == highlightevent.EventTypeKill && e.ActorTeamID != nil)
 	}
-	if !withMedal || !kills {
-		t.Errorf("fil : médaille %v, kills %v", withMedal, kills)
+	if !withMedal || !kills || !withTeam {
+		t.Errorf("fil : médaille %v, kills %v, équipe du tueur %v", withMedal, kills, withTeam)
 	}
 	// Les kills synthétisés depuis les paires n'ont ni arme ni assistant (aucune source appariée).
 	if !killsFromKV && (!withWeapon || !withAssist || !shifted) {
@@ -371,10 +295,19 @@ func TestGetReplayContext_ChampsDesChargementsOmis(t *testing.T) {
 // (sans quoi un zéro ne prouverait rien).
 func TestGetReplayContext_AucunChargementLourd(t *testing.T) {
 	heavy := []string{"GetMatchEncounters", "GetMatchEncounterStats", "GetMatchEncounterAssists",
-		"GetHistoryForAvg", "GetMatchExpectedStats", "GetPlayerAssistsModel", "GetMatchAssistPairs",
-		"GetMatchObjectiveScore", "GetMatchMedals"}
+		"GetHistoryForAvg", "GetHistoryForAvgBulk", "GetMatchExpectedStats", "GetPlayerAssistsModel",
+		"GetMatchAssistPairs", "GetMatchObjectiveScore", "GetMatchMedals"}
+	// Un ami suivi (« fr », sans attendus) : la vue complète lit alors l'historique groupé des
+	// amis (GetHistoryForAvgBulk) pour leurs attendus locaux.
+	withTrackedFriend := func(svc *MatchViewService, c *replayCounters) {
+		svc.WithFriendsExtras(func(_ context.Context, _, _ string, _ []string) (map[string]port.FriendMatchExtras, error) {
+			c.friends.Add(1)
+			return map[string]port.FriendMatchExtras{"fr": {}}, nil
+		})
+	}
 	fullRepo := replayFixture()
 	fullSvc, fullCounters := replayFixtureService(fullRepo)
+	withTrackedFriend(fullSvc, fullCounters)
 	if _, err := fullSvc.GetMatchView(context.Background(), "m1"); err != nil {
 		t.Fatalf("GetMatchView : %v", err)
 	}
@@ -391,6 +324,7 @@ func TestGetReplayContext_AucunChargementLourd(t *testing.T) {
 
 	repo := replayFixture()
 	svc, counters := replayFixtureService(repo)
+	withTrackedFriend(svc, counters)
 	if _, err := svc.GetReplayContext(context.Background(), "m1"); err != nil {
 		t.Fatalf("GetReplayContext : %v", err)
 	}
@@ -453,5 +387,21 @@ func TestGetReplayContext_SourceEnPanneRendLeContexteTransitoire(t *testing.T) {
 	ko, err := svc.GetReplayContext(context.Background(), "m1")
 	if err != nil || !ko.SourceUnavailable {
 		t.Errorf("source en panne : err = %v, transitoire = %v", err, ko.SourceUnavailable)
+	}
+}
+
+// TestGetReplayContext_TableauDeScoreEnPanne : une source À RAISON DÉDIÉE (le tableau de score,
+// chargeur `goLoad`) en échec rend aussi le contexte transitoire — la branche des sources
+// marquées de `anyFailed`, distincte de celle des chargeurs génériques ci-dessus.
+func TestGetReplayContext_TableauDeScoreEnPanne(t *testing.T) {
+	repo := replayFixture()
+	repo.boardErr = errors.New("verrou")
+	svc, _ := replayFixtureService(repo)
+	got, err := svc.GetReplayContext(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("GetReplayContext : %v (une source en panne ne doit pas faire échouer la réponse)", err)
+	}
+	if !got.SourceUnavailable {
+		t.Error("tableau de score en panne : contexte non marqué transitoire")
 	}
 }

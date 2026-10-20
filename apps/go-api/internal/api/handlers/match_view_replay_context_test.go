@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service"
 )
 
 func newReplayContextRouter(svc *mockMatchViewService) *chi.Mux {
@@ -140,5 +141,57 @@ func TestReplayContextHandler_NoStore(t *testing.T) {
 				t.Errorf("source_unavailable = %q, attendu %q : %s", got, tc.wantUnavailable, w.Body.String())
 			}
 		})
+	}
+}
+
+// repoTableauEnPanne : le repo de bout en bout de la vue (repoDuelsEnPanne), dont la lecture
+// du tableau de score — source à raison dédiée, chargeur `goLoad` — échoue.
+type repoTableauEnPanne struct {
+	repoDuelsEnPanne
+	boardErr error
+}
+
+func (r *repoTableauEnPanne) GetMatchScoreboard(ctx context.Context, id string) ([]domain.ScoreboardRaw, error) {
+	if r.boardErr != nil {
+		return nil, r.boardErr
+	}
+	return r.repoDuelsEnPanne.GetMatchScoreboard(ctx, id)
+}
+
+// TestReplayContextHandler_TableauDeScoreEnPanne_NoStore : par le vrai service et le vrai
+// handler, une lecture du tableau de score en échec donne 200, `source_unavailable` vrai et
+// `no-store` ; la source rétablie, la réponse suivante est complète et sans en-tête de cache.
+func TestReplayContextHandler_TableauDeScoreEnPanne_NoStore(t *testing.T) {
+	repo := &repoTableauEnPanne{boardErr: errors.New("tableau HS")}
+	factory := func(context.Context, string) (port.MatchViewService, error) {
+		return service.NewMatchViewService(repo, "xuid1"), nil
+	}
+	get := func() (*httptest.ResponseRecorder, map[string]json.RawMessage) {
+		r := chi.NewRouter()
+		h := handlers.NewMatchViewHandler(factory)
+		r.Route("/players/{player_slug}", func(r chi.Router) { h.MountReplayContext(r) })
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/players/test-player/matches/m1/replay/context", nil))
+		if w.Code != http.StatusOK {
+			t.Fatalf("200 attendu, obtenu %d : %s", w.Code, w.Body.String())
+		}
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal(w.Body.Bytes(), &raw); err != nil {
+			t.Fatalf("JSON : %v", err)
+		}
+		return w, raw
+	}
+
+	w, raw := get()
+	if string(raw["source_unavailable"]) != "true" || w.Header().Get("Cache-Control") != "no-store" {
+		t.Errorf("panne : source_unavailable %s, Cache-Control %q — attendu true + no-store",
+			raw["source_unavailable"], w.Header().Get("Cache-Control"))
+	}
+
+	repo.boardErr = nil
+	w, raw = get()
+	if string(raw["source_unavailable"]) != "false" || w.Header().Get("Cache-Control") != "" {
+		t.Errorf("rétabli : source_unavailable %s, Cache-Control %q — attendu false, aucun en-tête",
+			raw["source_unavailable"], w.Header().Get("Cache-Control"))
 	}
 }

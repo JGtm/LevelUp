@@ -242,6 +242,10 @@ diffèrent EXACTEMENT sur les sept champs ci-dessus, et le test le prouve dans l
   que les médailles sont recalées, et la victime (appariée sur `kvPairsFeed` corrigé) ne s'y pose
   pas. Constaté par la fixture de 3.1 (cas « synthèse », T0 = 15 s). À vérifier sur un match Halo 5
   réel (T0 y est-il jamais non nul ?) avant toute correction.
+  Décision utilisateur 2026-10-20 : non corrigé. Mesuré sur les bases locales (copie de la prod) :
+  Halo 5 3 032 matchs dont 2 754 en synthèse mais T0 > 0 sur 0 ; Halo Infinite 9 244 matchs dont
+  8 681 avec T0 > 0 mais 0 en synthèse ; intersection 0. À reprendre si un titre réunit synthèse et
+  T0 non nul.
 - [x] **Nouvel essai automatique en cas de panne** (traité : amendement D2 du 2026-10-20,
   `source_unavailable` + `matchRefreshPolicy`, cf. décisions) : la vue complète portait `partial_reasons`, d'où un
   nouvel essai toutes les 30 s côté web quand une lecture avait échoué ; le contexte (forme D2) ne
@@ -249,3 +253,33 @@ diffèrent EXACTEMENT sur les sept champs ci-dessus, et le test le prouve dans l
   fraîcheur nulle + le rechargement de 60 s pendant l'analyse du film, mais une panne de lecture
   n'est plus réessayée toute seule toutes les 30 s sur la page de rejeu. À trancher : ajouter un
   drapeau au contrat (amende D2) ou s'en tenir là.
+- **(P2) `applyTeamNames` hors de la preuve de parité** (revue adversariale ronde 1, 2026-10-20) :
+  `apps/go-api/internal/service/match_view_replay_context.go:147` appelle
+  `applyTeamNames` (`match_view_teams.go:42`), qui ne fait quelque chose que si l'adapter d'assets
+  du titre résout noms et couleurs d'équipe (Halo 5). Le service factice de la parité n'expose pas
+  ces résolveurs : retirer l'appel du contexte ne ferait rougir aucun test. Non traité : Halo 5 n'a
+  pas de rejeu (`CapReplay`), la page qui lit ce contexte n'est pas montée pour lui.
+
+## Revue adversariale, ronde 1 (2026-10-20)
+
+Relecteur parité / accès : aucun constat recevable (14 conditions tiennent). Relecteur couverture :
+6 constats, 5 corrigés, 1 consigné (Découvertes, `applyTeamNames`).
+- [x] P1 en-tête : `replayFixtureService` câble table réglementaire, manches, règle du score dans
+  le temps, issues du titre, rejeu, analyse en cours, taxonomie, favoris ; `assertHeaderExercised`
+  exige prolongation, clé d'issue, score en manches, `score_timeline_kind`, `replay_available`,
+  `analysis_pending` à causes `[kill_source]` seules (l'ordre rejeu → analyse compte), catégorie,
+  favori. Mutations : chacun des sept `apply*` retiré, le favori forcé à faux, et l'ordre
+  rejeu/analyse inversé font rougir le test (9 mutations, 9 rouges).
+- [x] P1 `anyFailed`, branche des sources marquées : `TestGetReplayContext_TableauDeScoreEnPanne`
+  (service) et `TestReplayContextHandler_TableauDeScoreEnPanne_NoStore` (vrai service + vrai
+  handler : `source_unavailable` vrai + `no-store`, puis rétabli). Mutation `return f.section` :
+  les deux rougissent.
+- [x] P2 `actor_team_id` exigé sur un kill (`assertFeedExercised`) ; mutation `scoreboard: nil`
+  dans `decorateHighlightEvents` : rouge.
+- [x] P2 `TestGetReplayContext_AucunChargementLourd` : compteur de distances de kill câblé et
+  `GetHistoryForAvgBulk` dans la liste lourde (ami suivi sans attendus), chacun vu > 0 sur la vue
+  complète ; mutations qui ajoutent l'une ou l'autre lecture au contexte : rouge.
+- [x] P2 ratchet `TestReplayRoutesMountedUnderCapabilityGate` étendu à `MountReplayContext` (même
+  règle : `RequireCapability(..., CapReplay)` sur un bloc ancêtre) ; mutation qui sort la ligne du
+  groupe du rejeu : rouge (`server_apiv1.go:806`).
+- [~] `applyTeamNames` : consigné aux Découvertes (P2), non corrigé sur décision superviseur.
