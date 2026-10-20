@@ -240,7 +240,7 @@ give the directory they load its own section (`top_encounters` and `top_encounte
 
 **Guardrails**: `api/middleware/slog_logger_test.go` — `TestSlogLogger_TimingsLoggedForSlowRequest`,
 `TestSlogLogger_SlowSuccessLoggedAtInfo`; `platform/duckdb/career_repo_annuaire_test.go` —
-`TestCareerRepo_Annuaire_SectionsDeDuree`. The obligation itself is **not yet guarded** (see
+`TestCareerRepo_Annuaire_SectionsDeDuree`; `service/home_service_sections_test.go` — `TestGetHomePage_SectionsDeDuree` (every step of the Home page, the per-tile enrichments once per list, 2026-10-20) and `TestMatchViewSection_FeuillesSeulement` (each match view loader opens `mv_<source>`, except the sources whose repo already times its reads). The obligation itself is **not yet guarded** (see
 *Guardrails*).
 
 ### I7 — DuckDB resource bounds are read when each connection opens

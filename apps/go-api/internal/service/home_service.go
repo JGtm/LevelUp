@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/teammates"
@@ -288,10 +289,12 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 
 	g.Go(func() error {
 		var err error
+		defer timing.FromContext(gctx).Section("home_load_matches")()
 		d.canonicalRows, cacheHit, err = s.fetchMatchesAndSessions(gctx)
 		return err
 	})
 	g.Go(func() error {
+		defer timing.FromContext(gctx).Section("home_spartan_identity")()
 		// Path live (CareerLiveService câblé) : flow découplé du post-sync
 		// matchs avec throttle 5 min (XP) / 6 h (customisation) + fallback DB
 		// per-field garanti. Fallback : repo.LoadSpartanIdentity (DB-only)
@@ -315,12 +318,14 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 		return nil
 	})
 	g.Go(func() error {
+		defer timing.FromContext(gctx).Section("home_count_matches")()
 		// Fallback sur len(matches) après le Wait si la query échoue (totalMatches reste 0).
 		d.totalMatches, _ = s.repo.CountPlayerMatches(gctx)
 		return nil
 	})
 	g.Go(func() error {
 		var err error
+		defer timing.FromContext(gctx).Section("home_recent_media")()
 		d.media, err = s.repo.LoadRecentMedia(gctx, 4)
 		if err != nil {
 			slog.WarnContext(gctx, "home: LoadRecentMedia failed", "err", err)
@@ -329,6 +334,7 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 	})
 	g.Go(func() error {
 		var err error
+		defer timing.FromContext(gctx).Section("home_playlist_ranks")()
 		d.playlistRanks, err = s.repo.LoadRecentPlaylistRanks(gctx, locale)
 		if err != nil {
 			slog.WarnContext(gctx, "home: LoadRecentPlaylistRanks failed", "err", err)
@@ -336,6 +342,7 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 		return nil
 	})
 	g.Go(func() error {
+		defer timing.FromContext(gctx).Section("home_favorite_weapon")()
 		if wName, wKills, err := s.repo.LoadFavoriteWeapon(gctx, locale); err == nil && wName != "" {
 			d.favWeaponName = wName
 			d.favWeaponKills = wKills
@@ -345,6 +352,7 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 	if s.socialRepo != nil && s.playerSlug != "" {
 		slug := s.playerSlug
 		g.Go(func() error {
+			defer timing.FromContext(gctx).Section("home_favorite_ids")()
 			if ids, err := s.socialRepo.GetFavoriteMatchIDs(gctx, slug); err == nil {
 				d.favoriteIDs = ids
 			} else {
@@ -429,12 +437,15 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	// Bug #2/#7 cascade : remplit Labels["fr"] des AssetReference depuis
 	// metadata.asset_translations + mode_name_tr quand match_registry
 	// .{...}_name_fr est NULL. Sans ça, modes/maps/playlists restent en EN.
+	stop := timing.FromContext(ctx).Section("home_asset_translations")
 	if err := s.repo.EnrichCanonicalAssetTranslations(ctx, d.canonicalRows); err != nil {
 		slog.WarnContext(ctx, "home: EnrichCanonicalAssetTranslations failed", "err", err)
 	}
+	stop()
 
 	// Baseline modèle de dégâts du titre courant (PV pour tuer) — injectée dans
 	// les calculs de rendement/résistance. 225 Infinite (byte-identique), per-titre sinon.
+	stop = timing.FromContext(ctx).Section("home_build_cards")
 	hp := games.EffectiveHpToKill(ctxkeys.TitleSlug(ctx))
 	hasRankedHistory, hasUnrankedHistory := analysis.InferHomeSkillHistoryFromCanonical(d.canonicalRows)
 	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches, locale, hp)
@@ -451,18 +462,23 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(
 		d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, recentOpts)
 	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, recentOpts)
+	stop()
 	// Placement de chaîne de PERFORMANCE sur les tuiles de match : même signal que
 	// l'Explorer (« En placement (X/Y) » au lieu d'un vide ou d'un 0 fabriqué pour une
 	// perf structurellement absente). Comptage par chaîne sur TOUT l'historique.
+	stop = timing.FromContext(ctx).Section("home_perf_placements")
 	applyPerfPlacementsToRecentItems(ctx, d.canonicalRows, recentMatches, favoriteMatches)
+	stop()
 	// Lien « Rejeu 2D » des tuiles : présence d'artefact résolue en UN listing de
 	// dossier pour les deux listes (jamais un accès disque par tuile).
 	replays := s.replayAvailability(ctx)
 	applyReplayAvailabilityToRecentItems(replays, recentMatches, favoriteMatches)
+	stop = timing.FromContext(ctx).Section("home_build_sessions")
 	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false, locale, hp)
 	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true, locale, hp)
 	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20, locale, hp)
 	squadSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, true, 20, locale, hp)
+	stop()
 	// Coéquipiers des sessions escouade (best-effort) : alimente le deep-link
 	// card escouade → /squad (pré-sélection de la composition). No-op si non câblé.
 	s.enrichSquadSessionsTeammates(ctx, squadSessions, d.canonicalRows)
@@ -472,30 +488,9 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		hero.KPIs.FavoriteWeaponKills = d.favWeaponKills
 	}
 
-	// Enrichissement médailles + citations par liste en parallèle.
-	//
-	// TITLE-AGNOSTIC (P7) : citations dérivées D'ABORD, puis commendations NATIVES en
-	// fallback sur le MÊME slot TopCitations quand il reste vide. Halo Infinite remplit
-	// via les citations dérivées (LoadMatchCitations) ; Halo 5 — sans moteur de
-	// citations (citations.engine = not_exposed) mais avec commendations natives
-	// (commendations.native = supported) — voit ses commendations alimenter le slot.
-	// Aucun changement frontend/OpenAPI (réutilisation de MatchCitationSnippet).
-	enrichG, _ := errgroup.WithContext(ctx)
-	enrichG.Go(func() error {
-		enrichMatchesWithMedals(ctx, s.repo, recentMatches)
-		enrichMatchesWithCitations(ctx, s.repo, recentMatches)
-		enrichMatchesWithCommendations(ctx, s.repo, recentMatches)
-		enrichMatchesWithAssistedFrags(ctx, s.repo, recentMatches)
-		return nil
-	})
-	enrichG.Go(func() error {
-		enrichMatchesWithMedals(ctx, s.repo, favoriteMatches)
-		enrichMatchesWithCitations(ctx, s.repo, favoriteMatches)
-		enrichMatchesWithCommendations(ctx, s.repo, favoriteMatches)
-		enrichMatchesWithAssistedFrags(ctx, s.repo, favoriteMatches)
-		return nil
-	})
-	_ = enrichG.Wait()
+	// Médailles, citations (puis commendations natives en repli, TITLE-AGNOSTIC P7) et frags
+	// assistés, par liste en parallèle.
+	s.enrichRecentLists(ctx, recentMatches, favoriteMatches)
 	// Indicateur « analyse du film en cours » : UNE lecture pour les deux listes, après
 	// l'enrichissement (aucune dépendance) ; sans résolveur câblé (titre sans la capability du
 	// film), le champ reste faux.

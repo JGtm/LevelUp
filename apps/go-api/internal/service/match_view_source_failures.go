@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"sync"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 
 	"golang.org/x/sync/errgroup"
@@ -89,7 +91,9 @@ func reportLoadFailure(gctx context.Context, matchID, source string, err error) 
 // ne dit PAS que la source est en panne : elle rejoint le code générique. Jamais fatal.
 func (f *sourceFailures) goLoad(gctx context.Context, g *errgroup.Group, matchID string, src matchViewSource, load func() error) {
 	g.Go(func() error {
+		stop := matchViewSection(gctx, src.name)
 		err := load()
+		stop()
 		if err == nil {
 			return nil
 		}
@@ -106,7 +110,10 @@ func (f *sourceFailures) goLoad(gctx context.Context, g *errgroup.Group, matchID
 // goLoadSection est le goLoad des chargeurs SANS raison dédiée : voir failSection.
 func (f *sourceFailures) goLoadSection(gctx context.Context, g *errgroup.Group, matchID, label string, load func() error) {
 	g.Go(func() error {
-		f.failSection(gctx, matchID, label, load())
+		stop := matchViewSection(gctx, label)
+		err := load()
+		stop()
+		f.failSection(gctx, matchID, label, err)
 		return nil
 	})
 }
@@ -138,6 +145,7 @@ func (s *MatchViewService) loadCanonicalEvents(gctx context.Context, g *errgroup
 		return
 	}
 	g.Go(func() error {
+		defer matchViewSection(gctx, "canonical_events")()
 		filters := port.HighlightEventFilters{MatchIDs: []string{matchID}}
 		if err := filters.Validate(); err != nil {
 			d.failures.failSection(gctx, matchID, "canonical_events", err)
@@ -185,4 +193,25 @@ func matchPartialReasons(d matchViewData) []string {
 		reasons = append(reasons, domain.PartialReasonSectionUnavailable)
 	}
 	return reasons
+}
+
+// matchViewSection ouvre la section chronométrée `mv_<source>` d'un chargeur de la vue match
+// (ligne `http_timings` des requêtes lentes) : un nom par source, espaces remplacés pour que
+// la liste `nom=durée` reste lisible. Les sources dont le repo chronomètre déjà ses lectures
+// (matchViewSourcesTimedInRepo) n'en ouvrent pas : les sections sont des FEUILLES (paquet
+// timing), une section autour d'une autre compterait deux fois sa durée.
+func matchViewSection(ctx context.Context, source string) func() {
+	if matchViewSourcesTimedInRepo[source] {
+		return func() {}
+	}
+	return timing.FromContext(ctx).Section("mv_" + strings.ReplaceAll(source, " ", "_"))
+}
+
+// matchViewSourcesTimedInRepo : les chargeurs dont la méthode de repo pose déjà ses sections
+// (match_scoreboard, match_events, match_encounters, match_encounter_stats et leurs annuaires).
+var matchViewSourcesTimedInRepo = map[string]bool{
+	srcNameScoreboard: true,
+	srcNameEvents:     true,
+	"encounters":      true,
+	"encounter_stats": true,
 }

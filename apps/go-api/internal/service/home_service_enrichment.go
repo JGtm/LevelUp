@@ -8,9 +8,12 @@ import (
 	"log/slog"
 	"sort"
 
+	"golang.org/x/sync/errgroup"
+
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -32,6 +35,48 @@ func buildFavoriteMatchListCanonical(
 	return favorites
 }
 
+// homeListEnrichers : les enrichissements par tuile, dans l'ordre où ils s'appliquent à une
+// liste (citations dérivées AVANT les commendations natives, qui ne remplissent que le slot
+// resté vide — TITLE-AGNOSTIC P7). `name` nomme la section chronométrée.
+var homeListEnrichers = []struct {
+	name   string
+	enrich func(context.Context, port.HomeRepository, []domain.RecentMatchItem)
+}{
+	{"medals", enrichMatchesWithMedals},
+	{"citations", enrichMatchesWithCitations},
+	{"commendations", enrichMatchesWithCommendations},
+	{"assisted_frags", enrichMatchesWithAssistedFrags},
+}
+
+// Noms de liste des sections `home_<étape>_<liste>`.
+const (
+	homeSectionListRecent    = "recent"
+	homeSectionListFavorites = "favorites"
+)
+
+// enrichRecentLists enrichit les deux listes de tuiles de l'Accueil (récents, favoris) en
+// parallèle, chacune par homeListEnrichers. Chaque étape est une section chronométrée
+// `home_<étape>_<liste>` : les deux listes courant en même temps, une section par liste
+// garde leurs durées lisibles séparément.
+func (s *HomeService) enrichRecentLists(ctx context.Context, recent, favorites []domain.RecentMatchItem) {
+	lists := []struct {
+		name  string
+		items []domain.RecentMatchItem
+	}{{homeSectionListRecent, recent}, {homeSectionListFavorites, favorites}}
+	g, _ := errgroup.WithContext(ctx)
+	for _, l := range lists {
+		g.Go(func() error {
+			for _, e := range homeListEnrichers {
+				stop := timing.FromContext(ctx).Section("home_" + e.name + "_" + l.name)
+				e.enrich(ctx, s.repo, l.items)
+				stop()
+			}
+			return nil
+		})
+	}
+	_ = g.Wait()
+}
+
 // WithReplay injecte le service de rejeu 2D — même contrat que MatchHistoryService :
 // les tuiles de match de l'Accueil portent has_replay pour poser le lien vers la page
 // de rejeu. Dégradation gracieuse si nil. Retourne le service (chaînage).
@@ -44,6 +89,7 @@ func (s *HomeService) WithReplay(svc port.ReplayService) *HomeService {
 // dossier par requête. Service non câblé ou listing en échec (déjà journalisé par le
 // service de rejeu) : ensemble vide, les tuiles se servent sans lien plutôt qu'en 500.
 func (s *HomeService) replayAvailability(ctx context.Context) port.ReplayAvailability {
+	defer timing.FromContext(ctx).Section("home_replay_availability")()
 	if s.replaySvc == nil {
 		return nil
 	}

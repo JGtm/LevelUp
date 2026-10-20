@@ -1,3 +1,11 @@
+## [2026-10-20] Accueil et vue match : sections de durée pour mesurer en prod — Complété (branche `feat/v801-chronos`, vers `feat/v75`)
+
+**Décision technique principale** : chaque étape de l'Accueil porte sa section (`home_*` : chargement de l'historique, identité, compteurs, cartes, placements, rejeux, sessions, coéquipiers, analyse en cours ; enrichissements par tuile une section par liste, `home_<étape>_recent|favorites`, extraits dans `enrichRecentLists`) ; chaque chargeur de la vue match ouvre `mv_<source>` dans `goLoad`/`goLoadSection`, sauf les quatre sources dont le repo chronomètre déjà ses lectures (sections = feuilles, ADR 0036 I6).
+
+**Résultats observés** : en prod le 20/10, Accueil 15,2 s en moyenne (16 requêtes), vue match 14,6 s (5) ; la ligne `http_timings` de l'Accueil ne portait qu'un marqueur de cache. Tests `TestGetHomePage_SectionsDeDuree`, `TestMatchViewSection_FeuillesSeulement` ; suite `./internal/service/` verte (défaut et intégration), lint sans nouveau problème.
+
+**Conclusion** : après le déploiement de la 8.0.1, relever les lignes `http_timings` de l'Accueil et de la vue match (lecture seule) ; elles fondent le plan « résumés par match, poids des réponses, données chargées sans usage ».
+
 ## [2026-10-20] Rejeu : page affichée d'un bloc, vue de match bornée (Q23b) — Complété (branche `feat/v75`)
 
 **Décision technique principale** : la page de rejeu n'affiche la carte, les fiches et la frise qu'une fois la vue du match tranchée (`replayLoadState`, `identityPending`) — avant, le fond de carte restait seul plusieurs secondes, sans pions, fiches « pas encore apparu », frise vide. Côté serveur, Q23b (statistiques de rencontre de la vue de match) borne la fenêtre `_latest` de son kill-feed aux matchs du joueur (`QMatchsOuJoue` + `clauseListeMatchs`, ADR 0036 I2, dernière lecture de la table « non assignée »).
