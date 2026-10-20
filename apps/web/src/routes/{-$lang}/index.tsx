@@ -1,14 +1,22 @@
 /**
  * Route index — redirige vers la page d'accueil du joueur actif.
+ *
+ * Portée par le segment de langue OPTIONNEL : `/`, `/en/` et `/fr/` (avec ou sans barre
+ * finale) sont la même route. Une langue inconnue (`/xx/`) n'est pas une page : 404 du routeur,
+ * comme avant le déplacement sous `{-$lang}`. Le segment d'une langue connue GAGNE sur la
+ * locale de session (le layout `t/$titleSlug` réconcilie ensuite le store depuis le segment).
  */
-import { createFileRoute, Navigate } from '@tanstack/react-router'
-import { useLangParam, useTitleSlug } from '@/lib/title-routing'
+import { createFileRoute, Navigate, notFound } from '@tanstack/react-router'
+import { isKnownLocale, useLangParam, useTitleSlug } from '@/lib/title-routing'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { resolveIndexRedirect } from '@/components/shell/shellNavigation'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute('/{-$lang}/')({
+  beforeLoad: ({ params }) => {
+    if (params.lang !== undefined && !isKnownLocale(params.lang)) throw notFound()
+  },
   component: IndexPage,
 })
 
@@ -20,7 +28,9 @@ function IndexPage() {
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const locale = useAppShellStore((s) => s.locale)
   const titleSlug = useTitleSlug()
-  const lang = useLangParam()
+  const sessionLang = useLangParam()
+  const urlLang = Route.useParams().lang
+  const lang = urlLang !== undefined && isKnownLocale(urlLang) ? urlLang : sessionLang
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const redirect = resolveIndexRedirect({

@@ -76,7 +76,7 @@ export function TitleSwitcher({ onSwitched }: TitleSwitcherProps) {
         )
       } finally {
         onSwitched?.()
-        void navigate({ to: '/' })
+        void navigate({ to: '/{-$lang}' })
       }
     })()
   }

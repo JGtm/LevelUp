@@ -29,7 +29,7 @@
  * via `router.history.replace` — un `<Navigate to>` typé n'accepte pas un href
  * arbitraire complet sans re-découper `?`/`#` (double-parsing) ni cast. `replace` (pas
  * `push`) : une URL legacy ne doit pas polluer l'historique. `buildLegacyRedirect` →
- * `null` (pathname hors matrice, ex. `/players` nu) → `<Navigate to="/" replace />`
+ * `null` (pathname hors matrice, ex. `/players` nu) → `<Navigate to="/{-$lang}" replace />`
  * typé (retour index).
  *
  * COURSE POST-REPLACE (critique, corrigée) : `history.replace` ne démonte PAS le splat
@@ -83,5 +83,5 @@ function LegacyPlayersRedirect() {
   if (!isBootstrapped) return null // pré-hydratation : attendre la session (cf. en-tête)
   if (!isLegacyPath) return null // location transitoire post-replace (/t/…) : ne rien décider
   if (href) return null // l'effet redirige — ne rien rendre
-  return <Navigate to="/" replace /> // /players nu / hors matrice legacy → retour index
+  return <Navigate to="/{-$lang}" replace /> // /players nu / hors matrice legacy → retour index
 }

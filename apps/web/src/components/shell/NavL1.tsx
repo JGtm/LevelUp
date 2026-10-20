@@ -353,7 +353,7 @@ export function NavL1() {
           {logoInner}
         </Link>
       ) : (
-        <Link to="/" className={logoClass} aria-label={t('common.shell.logo_aria')}>
+        <Link to="/{-$lang}" className={logoClass} aria-label={t('common.shell.logo_aria')}>
           {logoInner}
         </Link>
       )}

@@ -64,7 +64,7 @@ export function RegisterPage() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
-          navigate({ to: '/' })
+          navigate({ to: '/{-$lang}' })
         },
         onError: (err) => setError(t(registerErrorKey(err))),
       },
