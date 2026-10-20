@@ -78,7 +78,7 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Les clips s'enchaînent** — ouvrir le clip suivant dans la visionneuse ne casse plus ses voisins
 
 **Un débrief plus rapide, et un « Analyse en cours » qui dit ce qui manque**
-- **Le match que tu viens de jouer est analysé en premier** — il passe devant l'historique dans la file ; sur deux vrais matchs 4v4, tout (l'arme de chaque frag, le rejeu, les citations) était prêt 2 min 49 s et 2 min 45 s après le coup de sifflet final, pour un objectif de 5 minutes
+- **Le match que tu viens de jouer est analysé en premier** — il passe devant l'historique dans la file
 - **« Analyse en cours » nomme la partie** — sur les tuiles de l'accueil et la fiche du match, un match encore en analyse le dit, et dit quelle partie est en cours de traitement ou en attente : l'arme de chaque frag, les citations ou le rejeu
 - **Citations mises à jour à l'arrivée du film** — plus besoin d'attendre le sync suivant
 - **Un bloc vide dit pourquoi** — quand aucun match de ta sélection ne concerne un bloc, il reste sur la page avec son titre et une phrase au lieu de disparaître ; un bloc qui ne peut pas exister sur un titre reste absent
@@ -101,12 +101,12 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 
 **Le rejeu, l'onglet Tactique et la démo**
 - **L'équipement porté, plus loin** — une faille apparaît à sa pose, avec ses utilisations restantes et ses sons ; le champ de réparation rejoue son son de fin
-- **Les VIP dès la première seconde** — le premier VIP de chaque équipe est montré dès le début avec une couronne redessinée aux couleurs de son camp, et la médaille « Watch the Throne » a son nom et son image
+- **Les VIP dès la première seconde** — le premier VIP de chaque équipe est montré dès le début avec une couronne redessinée aux couleurs de son camp, et la médaille « Garde du trône » a son nom et son image
 - **Les armes de départ lâchées au sol sont masquées** — une option du tiroir les réaffiche
 - **Des zones nommées sur 78 cartes de plus**, Harvest comprise
 - **Tactique : écarter la zone** — re-clique dessus, clique dans le vide ou appuie sur Échap pour vider la sélection ; chaque mort affiche son état et sa séquence se joue seule ; l'onglet s'ouvre avec bien moins de requêtes (96 contre 5)
 - **Pas de rejeu pour le Firefight** — le mode n'est pas géré, donc aucun rejeu n'est construit ni servi
-- **Une démo plus riche** — un rejeu pour chaque mode, plus un match 4v4 avec plusieurs véhicules ; elle porte désormais les données du film derrière ses blocs Emprise et Tactique ; ce qui est ajouté à la démo est conservé d'une version à l'autre
+- **Une démo plus riche** — un rejeu pour chaque mode, plus un match 4v4 avec plusieurs véhicules ; ce qui est ajouté à la démo est conservé d'une version à l'autre
 
 **Réparations**
 - **La page Classement mondial refonctionne** (livrée en v7.3.1) — les pages qu'elle lit avaient déménagé, et la page servait un classement périmé au lieu de le dire ; elle ne peut plus se dégrader en silence, et un classement vide ne s'affiche plus comme une récupération en échec

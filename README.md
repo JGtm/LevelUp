@@ -42,7 +42,7 @@ The biggest release so far. Halo Infinite records a film of every match; until n
 - **109 map backgrounds** with Forge zones named 100 %, official callouts
 
 **A faster debrief**
-- **Analysed in under five minutes** — the match you just played goes ahead of the history: on two real 4v4 matches, the weapon behind each kill, the replay and the commendations were ready under three minutes after the final whistle; "Analysis in progress" says which part is being worked on, and a block with nothing to show now says why
+- **The match you just played is analysed first** — it goes ahead of the history; "Analysis in progress" says which part is being worked on, and a block with nothing to show now says why
 - **Four new commendations**, three read from the film — "Tick Tick Boom", "First Strike", "Wonderful Toys" and "Almost Doesn't Count" (a kill on an enemy with no shield left, survived)
 
 **Tactics and replay, refined**

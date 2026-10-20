@@ -42,7 +42,7 @@ La plus grosse version à ce jour. Halo Infinite enregistre un film de chaque ma
 - **109 fonds de carte** avec les zones Forge nommées à 100 %, les repères officiels
 
 **Un débrief plus rapide**
-- **Analysé en moins de cinq minutes** — le match que tu viens de jouer passe devant l'historique : sur deux vrais matchs 4v4, l'arme de chaque frag, le rejeu et les citations étaient prêts moins de trois minutes après le coup de sifflet final ; « Analyse en cours » dit quelle partie est en traitement, et un bloc sans rien à montrer dit désormais pourquoi
+- **Le match que tu viens de jouer est analysé en premier** — il passe devant l'historique ; « Analyse en cours » dit quelle partie est en traitement, et un bloc sans rien à montrer dit désormais pourquoi
 - **Quatre nouvelles citations**, dont trois lues dans le film — « Tick Tick Boom », « Premier coup », « Jouets éducatifs » et « Presque, ça ne compte pas » (tuer un adversaire sans bouclier, et survivre)
 
 **Tactique et rejeu, affinés**

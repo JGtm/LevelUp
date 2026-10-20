@@ -78,7 +78,7 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Clips play one after another** — opening the next clip in the viewer no longer breaks its neighbours
 
 **A faster debrief, and an "Analysis in progress" that says what is missing**
-- **The match you just played is analysed first** — it goes ahead of the history in the queue; on two real 4v4 matches everything (the weapon behind each kill, the replay, the commendations) was ready 2 min 49 s and 2 min 45 s after the final whistle, against a target of 5 minutes
+- **The match you just played is analysed first** — it goes ahead of the history in the queue
 - **"Analysis in progress" names the part** — on the home tiles and the match view, a match still being analysed says so, and says which part is being worked on or is waiting: the weapon behind each kill, the commendations or the replay
 - **Commendations updated when the film arrives** — no more waiting for the next sync
 - **Empty blocks say why** — when no match of your selection concerns a block, it stays on the page with its title and a sentence instead of vanishing; a block that cannot exist on a title is still left out
@@ -106,7 +106,7 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Named zones on 78 more maps**, Harvest included
 - **Tactics: put the zone aside** — click it again, click on an empty spot or press Escape to clear the selection; every death shows its state and its sequence plays by itself; the tab opens with far fewer requests (96 down to 5)
 - **No replay for Firefight** — the mode is not handled, so no replay is built or served for it
-- **A richer demo** — a replay for every mode, plus a 4v4 match with several vehicles; it now carries the film-derived data behind its Map control and Tactics blocks; what is added to the demo is kept from one release to the next
+- **A richer demo** — a replay for every mode, plus a 4v4 match with several vehicles; what is added to the demo is kept from one release to the next
 
 **Repairs**
 - **The World ranking page works again** (shipped as v7.3.1) — the source pages it reads had moved, and the page was serving a stale ranking instead of saying so; it can no longer degrade in silence, and an empty ranking and a failed fetch are no longer shown the same way
