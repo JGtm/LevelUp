@@ -69,24 +69,33 @@ ORDER BY count_together DESC`
 // Permet d'attribuer les badges narratifs ally_plus + tough_enemy via
 // narrative.ComputeEncounterBadges.
 //
-// Paramètres (8 placeholders, ordre strict) :
+// Format string, DANS CET ORDRE : win, loss, win, loss (outcomeSQLEq), puis le prédicat de lot du
+// kill-feed (clauseListeMatchs sur `match_id`).
 //
-//	?1 = match_id (this_match)
-//	?2 = myXUID  (this_match exclude)
-//	?3 = match_id (my_team)
-//	?4 = myXUID  (my_team)
-//	?5 = myXUID  (my_history me)
-//	?6 = myXUID  (kv kills_dealt)
-//	?7 = myXUID  (kv deaths_suffered)
-//	?8 = myXUID  (kv join condition)
+// Paramètres (10 placeholders, ordre strict) :
+//
+//	?1  = match_id (this_match)
+//	?2  = myXUID  (this_match exclude)
+//	?3  = match_id (my_team)
+//	?4  = myXUID  (my_team)
+//	?5  = myXUID  (my_history me)
+//	?6  = myXUID  (kv kills_dealt)
+//	?7  = myXUID  (kv deaths_suffered)
+//	?8  = liste des matchs du joueur (VARCHAR[], borne du kill-feed)
+//	?9  = myXUID  (kv join condition)
+//	?10 = myXUID  (kv join condition)
+//
+// PÉRIMÈTRE (ADR 0036 I2) : le kill-feed (kv_stats) est borné sous sa fenêtre `_latest` aux
+// matchs où le joueur figure (QMatchsOuJoue), par un prédicat CONSTANT — seul filtre que DuckDB
+// pousse sous la fenêtre. Un frag entre le joueur et une rencontre ne peut venir que d'un de ces
+// matchs : les comptes sont inchangés.
 //
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 //
 // AUCUN NOM (lot A, 2026-09-26, ADR 0036 I1) : this_match joignait la vue canonique des noms pour
 // une colonne gamertag que le SELECT final ne rendait pas — une évaluation entière de la vue pour
 // rien. La colonne et la jointure sont parties ; les lignes rendues sont inchangées (le nom d'une
-// rencontre vient de Q23, nommée par l'annuaire du match). Ce qui reste du coût de Q23b est la
-// fenêtre `_latest` du kill-feed (kv_stats, hors lot A).
+// rencontre vient de Q23, nommée par l'annuaire du match).
 var Q23bMatchEncounterStats = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id
@@ -140,7 +149,11 @@ kv_stats AS (
         COUNT(*) FILTER (WHERE kv.feed_killer_xuid = ? AND kv.victim_xuid = tm.xuid) AS kills_dealt,
         COUNT(*) FILTER (WHERE kv.feed_killer_xuid = tm.xuid AND kv.victim_xuid = ?) AS deaths_suffered
     FROM this_match tm
-    LEFT JOIN ` + KillEventsCanonicalTable + ` kv
+    LEFT JOIN (
+        SELECT feed_killer_xuid, victim_xuid
+        FROM ` + KillEventsCanonicalTable + `
+        WHERE %s
+    ) kv
         ON ((kv.feed_killer_xuid = ? AND kv.victim_xuid = tm.xuid)
             OR (kv.feed_killer_xuid = tm.xuid AND kv.victim_xuid = ?))
     GROUP BY tm.xuid

@@ -190,19 +190,27 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 	defer release()
 	defer timing.FromContext(ctx).Section("match_encounter_stats")()
 
+	// Borne du kill-feed sous sa fenêtre `_latest` (ADR 0036 I2, cf. Q23bMatchEncounterStats).
+	mesMatchs, err := matchsOuJoue(ctx, sharedDB, myXUID)
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounterStats: %w", err)
+	}
+	lotKV, argKV := clauseListeMatchs("match_id", mesMatchs)
+
 	// PMT-5 : exprs win/loss title-aware (fallback "eh.me_outcome = 2/3" byte-identique
-	// Halo). Ordre des %s du template : win, loss, win, loss.
+	// Halo). Ordre des %s du template : win, loss, win, loss, puis le lot du kill-feed.
 	winExpr := outcomeSQLEq(ctx, "eh.me_outcome", canonical.OutcomeWin, "eh.me_outcome = 2")
 	lossExpr := outcomeSQLEq(ctx, "eh.me_outcome", canonical.OutcomeLoss, "eh.me_outcome = 3")
 	// Masquage Campagne (Halo 5) : my_history agrège tout l'historique du joueur
 	// → forme by-match-id (résolue AVANT Sprintf, sans placeholder). No-op Infinite.
 	tpl := resolveCampaignExclusionByMatchID(Q23bMatchEncounterStats, r.pdb.TitleSlug, "match_id")
-	encounterStatsSQL := fmt.Sprintf(tpl, winExpr, lossExpr, winExpr, lossExpr)
+	encounterStatsSQL := fmt.Sprintf(tpl, winExpr, lossExpr, winExpr, lossExpr, lotKV)
 	rows, err := sharedDB.QueryContext(ctx, encounterStatsSQL,
 		matchID, myXUID, // this_match
 		matchID, myXUID, // my_team
 		myXUID,         // my_history
 		myXUID, myXUID, // kv_stats CASE (kills_dealt, deaths_suffered)
+		argKV,          // kv_stats : lot du kill-feed
 		myXUID, myXUID, // kv_stats JOIN ON
 	)
 	if err != nil {

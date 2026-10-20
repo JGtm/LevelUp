@@ -127,7 +127,7 @@ function ReplayPage() {
   // DEUX SOURCES, DEUX RÔLES. Le film porte ce qui se passe et l'identifie par XUID ; la
   // base porte qui sont les gens. L'artefact ne mélange pas les deux — la jointure se fait
   // ici, sur le xuid, qui est la seule clé qui ne suppose rien (surtout pas un ordre).
-  const { data: matchView } = useMatchView(playerSlug, matchId)
+  const { data: matchView, isPending: matchViewPending } = useMatchView(playerSlug, matchId)
   // LA POSITION DE LECTURE VIENT DU MAGASIN, la page n'en garde plus de copie (2026-09-06,
   // W1) : le canvas ecrit, cette page lit. L'abonnement suit la cadence de PUBLICATION
   // (150 ms), pas celle de l'ecran — cf. `model/playbackStore`.
@@ -186,7 +186,12 @@ function ReplayPage() {
     [model.allegiance, scoreboard, matchView?.header.outcome_code, locale],
   )
 
-  const loadState = replayLoadState({ isLoading, hasTracks: !!data && data.tracks.length > 0, error })
+  const loadState = replayLoadState({
+    isLoading,
+    hasTracks: !!data && data.tracks.length > 0,
+    error,
+    identityPending: matchViewPending,
+  })
   // LE MODE PLEIN ÉCRAN vit ICI parce qu'il change le cadre de LA GRILLE (cf. useReplayFullscreen) ;
   // le canvas n'en reçoit que la commande, pour le bouton de la barre de lecture et la touche F.
   const fullscreen = useReplayFullscreen()
@@ -273,7 +278,7 @@ function ReplayPage() {
         />
       )}
 
-      {data && data.tracks.length > 0 && (
+      {data && loadState === 'ready' && (
         /* DEUX COLONNES : LA CARTE, PUIS FICHES + FIL EMPILÉS À DROITE (demande utilisateur
            du 2026-08-24, qui remplace la rangée à trois colonnes du 16/08) : le fil passe
            SOUS les fiches, à la même largeur qu'elles, et la carte récupère toute la place
