@@ -198,7 +198,7 @@ Une étape est **close** quand tous ses items sont statués ET que son gate est 
       `/opt/levelup/data/cache/replays/` du VPS AVANT le push sur `main` ; le seed de la démo les
       copie alors au lieu de recuire sur le VPS. Contrôle : bilan du job `deploy-demo` sans rejeu
       « périmé » ni « recuit ». (Runbook EN-only, règle docs/FR.)
-- [ ] 1.5 (2026-10-19 : CI de `feat/release-v8` @ `8c5edda15` VERTE sur tous les jobs, runs
+- [x] 1.5 (2026-10-19 : CI de `feat/release-v8` @ `8c5edda15` VERTE sur tous les jobs, runs
       39257297620 CI, 39257297550 Deploy Pre-Check, 39257297544 gitleaks ; `npx playwright test`
       local contre `make dev` : 34 passés, 47 sautés (specs DEMO_MODE), 0 échec, 12,8 min ;
       accord de l'utilisateur le 19/10 ; fusion `--no-ff` `2b4953ce5` poussée sur `feat/v75` ;
@@ -350,13 +350,13 @@ Binaire construit une seule fois : `go build -o <scratchpad>/levelup_v8.exe ./cm
 Ouverte quand l'étape 3 est close (plus aucun correctif attendu) ET que l'utilisateur a fourni
 ses nouvelles captures d'écran (annoncées le 2026-10-18).
 
-- [ ] 3b.1 **Numéro de version** : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md`
+- [x] 3b.1 (20/10 : 8.0.0 dans changelogs, notes de version et README) **Numéro de version** : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md`
       `## [7.5.0] - Unreleased` → `## [8.0.0] - <date de fusion>` ; `docs/RELEASE_NOTES.md` +
       `docs/FR/RELEASE_NOTES.md` `**v7.5 — …**` → `**v8.0 — …**` ; badge `Version-7.3.2` des deux
       README → `8.0.0` ; mentions « v7.5 » des README.
       Gate : `git grep -n "7\.5\.0\|v7\.5\|7\.3\.2"` sur `README.md docs/` = mentions historiques
       seulement.
-- [ ] 3b.2 **Contenu** depuis la dernière mise à jour DU CONTENU de chaque fichier (repérée par
+- [x] 3b.2 (20/10 : What's new retouché à la demande de l'utilisateur) **Contenu** depuis la dernière mise à jour DU CONTENU de chaque fichier (repérée par
       `git log -p`, en respectant les formulations retouchées à la main par l'utilisateur), en
       couvrant tous les lots fusionnés jusqu'à l'étape 3 (dont « délai du débrief » et « messages
       de la vue match ») :
@@ -371,7 +371,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       capture retirée = fichier supprimé et références retirées. Taille raisonnable (PNG compressé).
       Gate : chaque image référencée existe (`grep` des chemins des deux README contre le
       dossier), aucun fichier orphelin dans `docs/screenshots/`.
-- [ ] 3b.4 Fusion `feat/release-v8` → `feat/v75` sur accord, CI verte.
+- [x] 3b.4 (20/10 : fusionné dans feat/v75 avant la PR #96) Fusion `feat/release-v8` → `feat/v75` sur accord, CI verte.
 
 ### Étape 4 — Préparation du VPS (prod intacte ; prévenir avant chaque commande)
 
@@ -413,7 +413,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       `pool-sharing grandfather --players JGtm,Chocoboflor,XxDaemonGamerxX,Madina97294,DankerGlue,GeleJugefi,Trimbutton,QuiteSiren,UppedJoker`
       (simulation), puis la même avec `--yes` ; `list` = 9 `granted`, XxGdakilla187xX `undecided` ;
       `docker compose restart levelup`.
-- [ ] 5.9 **Nuzzles** (D2) : onboarding admin (xuid `2535472547643888`), aucun ami, hors du groupe.
+- [x] 5.9 (20/10 soir : déclaré par l'admin, profil écrit à la main après l'échec EBUSY, D-24) **Nuzzles** (D2) : onboarding admin (xuid `2535472547643888`), aucun ami, hors du groupe.
 - [x] 5.10 (20/10 ; premier job de bout en bout -> 6.7b) **Ouvrier** (D’ABORD, en root sur csstat, une fois le déploiement de l’ouvrier passé : `install -o root -g root -m 0644 /opt/levelup/packaging/systemd/levelup-worker.service /etc/systemd/system/levelup-worker.service && systemctl daemon-reload && systemd-analyze verify …`, cf. 4.2 ; puis séquence de `RUNBOOK_REPLAY_WORKER.md` §4, qui fait foi) : test d'accès à `/api/v1/internal/build-queue/claim` (503 sans jeton, 401
       jeton faux ; jamais 403 `csrf_rejected` ni 404) ; `allow <IP csstat>; deny all;` dans
       `location /api/v1/internal/` + `nginx -t && systemctl reload nginx` ; sur csstat
@@ -431,17 +431,17 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 - [x] 6.2 (20/10, voir journal) `data/global/player_friends.json` existe avec N entrées (4 attendues, cf. 4.5) ; pas de groupe par défaut (D-19).
 - [x] 6.3 (20/10, voir journal) +1 h : logs `post-sync: kill source` → `sans_killfeed=0`, `ecrits` > 0,
       `backlog_restant` en baisse.
-- [ ] 6.4 Synchro de Nuzzles réussie (`auto_sync: sync delta réussie`), plus de `joueur en échec`.
-- [ ] 6.5 Logs `pool: créé` à la bonne taille ; bannière de mise en commun pour un nouvel inscrit ;
+- [x] 6.4 (20/10 21h : 7 post-sync de Nuzzles avec nouveaux matchs, aucun « joueur en échec » ; WARN trompeur D-26) Synchro de Nuzzles réussie (`auto_sync: sync delta réussie`), plus de `joueur en échec`.
+- [!] 6.5 (20/10 : pool créé size=13 ; /privacy et /terms 200 et rendus ; MAIS carte de mise en commun injoignable pour un joueur, D-25 -> correctif v8.0.1) Logs `pool: créé` à la bonne taille ; bannière de mise en commun pour un nouvel inscrit ;
       Réglages > Synchronisation affiche la carte ; `/privacy` et `/terms` sans compte (FR et EN).
-- [ ] 6.6 Pied de page « Licence AGPL-3.0 », confidentialité parle d'AGPL.
+- [x] 6.6 (20/10 : pied de page « Licence AGPL-3.0 », /privacy cite l'AGPL-3.0, vu au navigateur) Pied de page « Licence AGPL-3.0 », confidentialité parle d'AGPL.
 - [ ] 6.7 Onglet Emprise d'une soirée BTB : véhicules chiffrés. Rejeu Lattice ou Origin classé :
       zones nommées en français ; onglet Tactique : grappes nommées.
-- [ ] 6.7b **Rejeu en prod** : depuis un navigateur hors du VPS, un rejeu s'ouvre depuis la vue
+- [x] 6.7b (20/10 : job 8ba9251a queued->running->succeeded en 14 s sur csstat ; anonyme = 403 player_forbidden) **Rejeu en prod** : depuis un navigateur hors du VPS, un rejeu s'ouvre depuis la vue
       d'un match (pas de `404 replay_not_available`) ; un match joué après le boot reçoit son rejeu
       par l'ouvrier (file `queued` → `running` → `succeeded` au tableau admin) ; un visiteur qui
       n'a pas joué le match n'obtient pas le rejeu (contrôle de participation).
-- [ ] 6.7c **Délai du débrief en prod** : premier match joué après le boot, la mesure de bout en
+- [x] 6.7c (20/10 : match détecté 19:15:35 UTC, citations du film recalculées 19:18:27, < 3 min) **Délai du débrief en prod** : premier match joué après le boot, la mesure de bout en
       bout du lot « délai du débrief » (vue admin) montre toutes les données en moins de 5 min
       après la fin du match.
 - [x] 6.8 (20/10, voir journal) Post-déploiement du runbook : `/debug/vars` admin seulement, ffmpeg présent, premier
@@ -525,6 +525,21 @@ des gamertags des fixtures, réécriture de l'historique (push forcé sur `main`
 - **D-21 (20/10)** : le job `deploy-worker` appelle `/opt/levelup/scripts/deploy-worker.sh` sur csstat SANS mettre le checkout à jour d abord ; au premier déploiement le script n existait pas (checkout figé à `97a109b0d`). Débloqué à la main ; le job devrait faire `git fetch/reset` avant d appeler le script.
 - **D-22 (20/10)** : les commandes CLI dans le conteneur durci doivent tourner en `-u appuser` (en root : `permission denied` sur `data/auth`) ; à corriger dans le runbook (`docker compose exec -T -u appuser levelup levelup …`) et dans la séquence Notion.
 - **D-23 (20/10)** : nginx prod : la conf active est `/etc/nginx/sites-enabled/levelup` (fichier), `sites-available/levelup` est une ancienne copie ; la conf versionnée `packaging/nginx/levelup.conf` ne porte pas le `allow/deny` de csstat ajouté le 20/10 (5.12).
+
+- **D-24 (20/10)** : l'onboarding admin de Nuzzles échoue en `rename ... device or resource busy` :
+  `db_profiles.json` est monté en fichier dans le conteneur, `rename(2)` y répond EBUSY. Profil écrit
+  à la main (`cat >`, même inode) puis redémarrage ; correctif `atomicfile.WriteFile` dans la v8.0.1.
+- **D-25 (20/10)** : la carte de mise en commun des jetons (`PoolSharingCard`) n'est montée que dans
+  `SyncTab`, qui n'apparaît plus que dans la section Admin > Synchronisation depuis le regroupement des
+  onglets de Réglages (`ea49b1f29`). Un joueur non admin ne peut donc ni consulter ni retirer son
+  consentement après la bannière, alors que `/privacy` et `/terms` (FR et EN) promettent « Réglages,
+  onglet Synchronisation ». Correctif à faire dans la v8.0.1 (proposé à l'utilisateur le 20/10).
+- **D-26 (20/10)** : `registry_auth.go:284` journalise en WARN « refresh du token échoué (le store
+  contient pourtant un refresh token) » avec `err=user tokens not found` pour un profil suivi SANS
+  jeton (Nuzzles, 12 fois en 2 h) : message faux et bruit. Non traité (hors périmètre).
+- **D-27 (20/10)** : CI de la PR #100, job de couverture `film-grammar-reste` : le paquet `grammar`
+  dépasse le délai de 600 s (même commit vert en CI de branche) ; relance verte. Marge de temps du
+  lot à surveiller (cf. mémoire coverage replay -timeout 600 s).
 
 ## 3. Reprise de session
 
