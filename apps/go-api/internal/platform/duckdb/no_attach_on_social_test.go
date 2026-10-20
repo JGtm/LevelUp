@@ -249,7 +249,6 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"cmd/diag_match_id_tables/main.go":                                                      "outil one-shot diag match_id",
 	"cmd/migrate-media-paths/main.go":                                                       "outil one-shot migration paths media",
 	"cmd/migrate-to-shared-social/main.go":                                                  "outil one-shot CLI de migration legacy",
-	"cmd/prestige-seed/main.go":                                                             "outil one-shot seed prestige",
 	"cmd/purge_player_media/main.go":                                                        "outil one-shot purge media joueur",
 	"cmd/purge_corrupt_records/main.go":                                                     "outil one-shot purge records hors bornes (plan Ascension UX A5, 2026-07-22) : rebuild ADR 0026 de player_records_history (vit dans shared_social.duckdb), serveur arrêté",
 	"internal/ops/records_purge.go":                                                         "logique de purge records A5 (2026-07-22) : rebuild CTAS transactionnel ADR 0026 sur player_records_history/record_history via le handle injecté par le caller (CLI serveur arrêté)",
