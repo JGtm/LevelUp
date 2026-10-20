@@ -398,8 +398,10 @@ go run ./cmd/levelup pool-sharing grandfather --all [--yes]            # every p
 - The running server applies a decision made in the app at once; a decision written by the CLI
   is picked up at the next pool scan (or at restart).
 - **In production** the CLI ships in the image: run it inside the server container, e.g.
-  `docker compose exec -T levelup levelup pool-sharing list` (from `/opt/levelup`). It only reads
-  and writes `data/auth/watcher_tokens/`, never a DuckDB file, so the server can stay up.
+  `docker compose exec -T -u appuser levelup levelup pool-sharing list` (from `/opt/levelup`). It only reads
+  and writes `data/auth/watcher_tokens/`, never a DuckDB file, so the server can stay up. Run it as
+  `appuser` (`-u appuser`): the hardened container drops the capabilities that let root write files
+  owned by the app, and the command fails with `permission denied` otherwise.
 
 ### Metadata / seed / migration
 

@@ -274,7 +274,7 @@ if [[ "$LEVELUP_APP_VERSION" != "dev" ]]; then
     # l'environnement du conteneur en marche (LEVELUP_APP_VERSION, source unique).
     _served_version="$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' \
         "$(docker compose ps -q levelup 2>/dev/null | head -1)" 2>/dev/null \
-        | sed -n 's/^LEVELUP_APP_VERSION=//p' | head -1)"
+        | sed -n 's/^LEVELUP_APP_VERSION=//p' | head -1 || true)"
     if [[ -z "$_served_version" ]]; then
         echo "[deploy] ⚠️  Version servie illisible depuis l'environnement du conteneur — contrôle ignoré"
     elif [[ "$_served_version" != "$LEVELUP_APP_VERSION" ]]; then

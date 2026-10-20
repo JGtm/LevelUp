@@ -410,8 +410,10 @@ go run ./cmd/levelup pool-sharing grandfather --all [--yes]            # tous le
 - Le serveur en marche applique tout de suite une décision prise dans l'application ; une
   décision écrite par la CLI est reprise au prochain scan du pool (ou au redémarrage).
 - **En production**, la CLI est dans l'image : la lancer dans le conteneur du serveur, par ex.
-  `docker compose exec -T levelup levelup pool-sharing list` (depuis `/opt/levelup`). Elle ne lit
+  `docker compose exec -T -u appuser levelup levelup pool-sharing list` (depuis `/opt/levelup`). Elle ne lit
   et n'écrit que `data/auth/watcher_tokens/`, jamais une base DuckDB : le serveur peut rester démarré.
+  La lancer en `appuser` (`-u appuser`) : le conteneur durci retire à root les capacités qui lui
+  permettaient d'écrire les fichiers de l'application, et la commande échoue sinon en `permission denied`.
 
 ### Référentiels / seed / migration
 
