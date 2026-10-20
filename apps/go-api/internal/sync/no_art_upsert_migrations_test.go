@@ -3,12 +3,10 @@ package sync
 // no_art_upsert_migrations_test.go — les TABLES PROTÉGÉES (tablesProtegees) restent interdites
 // d'UPSERT jusque dans les migrations.
 //
-// Le périmètre commun des scans anti-ART (dansLePerimetreART) exclut les migrations : une étape
-// tourne une fois, au démarrage, mono-processus. Cela laissait passer, par construction, un
-// `ON CONFLICT … DO UPDATE` sur une table protégée écrit dans une migration (constat C4 de
-// .ai/AUDIT_ON_CONFLICT_TABLES_HERITEES_2026-10-20.md : seed des playlists classées sur
-// playlists_catalog). Ce scan comble le trou pour les tables protégées SEULEMENT : une
-// migration garde le droit d'écrire en UPSERT une table qui n'est pas protégée.
+// Le périmètre commun des scans anti-ART (dansLePerimetreART) exclut les migrations (une étape
+// tourne une fois, au démarrage, mono-processus) ; ce scan l'étend aux fichiers de migration pour
+// les tables protégées SEULEMENT : une migration garde le droit d'écrire en UPSERT une table qui
+// n'est pas protégée.
 //
 // Détection STATEMENT-level (et non file-level comme TestNoARTPatternsOnProtectedTables) : un
 // fichier de migration nomme souvent plusieurs tables, et seul compte l'ordre SQL dont la cible
