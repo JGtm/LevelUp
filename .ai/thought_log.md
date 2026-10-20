@@ -1,4 +1,12 @@
-## [2026-10-20] Rejeu : « Aucun rejeu 2D disponible » sur un match qui en a un (prod v8.0.0) — Complété (branche `feat/v75`, non commité)
+## [2026-10-20] Rejeu : page affichée d'un bloc, vue de match bornée (Q23b) — Complété (branche `feat/v75`)
+
+**Décision technique principale** : la page de rejeu n'affiche la carte, les fiches et la frise qu'une fois la vue du match tranchée (`replayLoadState`, `identityPending`) — avant, le fond de carte restait seul plusieurs secondes, sans pions, fiches « pas encore apparu », frise vide. Côté serveur, Q23b (statistiques de rencontre de la vue de match) borne la fenêtre `_latest` de son kill-feed aux matchs du joueur (`QMatchsOuJoue` + `clauseListeMatchs`, ADR 0036 I2, dernière lecture de la table « non assignée »).
+
+**Résultats observés** : mesure au navigateur en local (match récent, servi par le live) : rejeu servi en 0,2 s, vue de match 4,9 s dont 4,2 s de `match_encounter_stats` ; après : section 1,1-1,4 s, requête 1,3-1,5 s. Sur le snapshot, Q23b seul 0,36-0,40 s ; restreindre la liste aux matchs partagés avec les rencontres ne gagne que ~150 ms et perdrait les frags que le kill-feed nomme hors participants : écarté. Construction d'une version de snapshot en local : 3,6 à 16,6 s (confirme le diagnostic prod). Garde-rail `TestMatchViewRepo_EncounterStats_FenetreBornee` (rouge si la borne saute : 30 lignes vues pour 12). Tests `platform/duckdb`, `service`, `archlint`, vitest `match-replay` + `routes` verts.
+
+**Conclusion** : la vue de match reste le chemin critique de la page de rejeu (qui n'en lit que l'en-tête et le tableau des scores) : une lecture allégée dédiée au rejeu est la prochaine marche si la lenteur persiste en prod.
+
+## [2026-10-20] Rejeu : « Aucun rejeu 2D disponible » sur un match qui en a un (prod v8.0.0) — Complété (branche `feat/v75`, `36c81d8d1`)
 
 **Décision technique principale** : la construction d'une version de snapshot de lecture (`SnapshotPreferredSharedReader`) quitte le chemin des requêtes : tâche de fond unique, détachée de l'annulation (`context.WithoutCancel`), échéance propre de 2 min ; pendant qu'elle tourne, Get sert le live. `MatchViewRepo.IsParticipant` revérifie sur le live un refus (ou une erreur) du snapshot, comme `GetMatchMeta`. Côté web, `useMatchReplay` (et calage/zones du fond) suit la politique de nouvel essai du client (503 rejoué, 404 jamais) et la page distingue l'absence (404) de la panne (`model/replayLoadState` : bloc « Le rejeu n'a pas pu être chargé » + Réessayer).
 
