@@ -58,7 +58,14 @@ var lecteursDeLignesDuJournal = map[string]string{
 	"internal/analysis/weapon_evidence.go:WeaponEvidenceTable":                    "2026-10-21 : sonde d'existence (information_schema) qui NOMME la table de preuve des armes ; ne lit aucune ligne.",
 }
 
+// plafondAllowlistJournal : taille de l'allowlist au 2026-10-21. Elle ne peut que décroître
+// (ADR 0039, décision 8) : un nouvel agrégat se lit sur les résumés, pas sur le journal.
+const plafondAllowlistJournal = 16
+
 func TestJournalDesMortsLuSeulementParLesLecteursDeLignes(t *testing.T) {
+	if n := len(lecteursDeLignesDuJournal); n > plafondAllowlistJournal {
+		t.Errorf("allowlist du journal : %d entrées pour un plafond de %d (ADR 0039, décision 8 : elle ne peut que décroître)", n, plafondAllowlistJournal)
+	}
 	lues := declarationsLisantLeJournal(t)
 	var intrus []string
 	for cle := range lues {
@@ -139,10 +146,36 @@ func nommeLeJournal(n ast.Node) bool {
 					trouve = true
 				}
 			}
+		case *ast.BinaryExpr:
+			// Un littéral coupé (`"match_kill_" + "events_latest"`) nomme aussi la vue : les
+			// littéraux d'une même concaténation sont recollés avant la recherche.
+			if v.Op == token.ADD && strings.Contains(litterauxConcatenes(v), litteralVueDuJournal) {
+				trouve = true
+			}
 		}
 		return !trouve
 	})
 	return trouve
+}
+
+// litterauxConcatenes recolle, dans l'ordre, les littéraux de chaîne d'une concaténation `+`
+// (les opérandes non littéraux sont ignorés).
+func litterauxConcatenes(e ast.Expr) string {
+	switch v := e.(type) {
+	case *ast.BinaryExpr:
+		if v.Op == token.ADD {
+			return litterauxConcatenes(v.X) + litterauxConcatenes(v.Y)
+		}
+	case *ast.ParenExpr:
+		return litterauxConcatenes(v.X)
+	case *ast.BasicLit:
+		if v.Kind == token.STRING {
+			if s, err := strconv.Unquote(v.Value); err == nil {
+				return s
+			}
+		}
+	}
+	return ""
 }
 
 // TestGardeJournal_DetecteurSurSource : auto-preuve du détecteur. Un commentaire ne compte pas ; un
@@ -154,6 +187,7 @@ func TestGardeJournal_DetecteurSurSource(t *testing.T) {
 const parIdentifiant = "SELECT 1 FROM " + KillEventsCanonicalTable
 const parLitteral = "SELECT 1 FROM match_kill_events_latest"
 const resume = "SELECT 1 FROM match_kill_pairs_latest"
+const coupe = "SELECT 1 FROM match_kill_" + "events_latest"
 
 func lecteur() string { return "FROM match_kill_events_latest" }
 func (r *R) methode() string { return KillEventsCanonicalTable }
@@ -174,7 +208,7 @@ func propre() string { return "FROM match_kill_heads_latest" }
 			}
 		}
 	}
-	attendus := map[string]bool{"parIdentifiant": true, "parLitteral": true, "lecteur": true, "(*R).methode": true}
+	attendus := map[string]bool{"parIdentifiant": true, "parLitteral": true, "coupe": true, "lecteur": true, "(*R).methode": true}
 	if len(trouves) != len(attendus) {
 		t.Fatalf("détectés %v, attendus %v", trouves, attendus)
 	}
