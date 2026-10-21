@@ -210,7 +210,7 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 		engine = engine.WithReplayArtifacts(replayartifacts.NewHook(h.cfg, h.settingsStore, h.replayEnqueue))
 	}
 	// Media scan post-sync : cohérent avec AutoSyncScheduler.defaultRunnerFactory.
-	// timezone REQUISE pour parseCaptureTimeFromFilename (cf. media_index_service).
+	// timezone REQUISE pour captureInstantFromName (cf. media_index_service).
 	if h.settingsStore != nil {
 		engine = engine.WithMediaScanHook(service.BuildMediaScanHook(h.cfg.RepoRoot, gamertag,
 			func() string {

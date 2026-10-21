@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,46 @@ import (
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
+// mediaFilesColumn : une colonne de media_files que ensureMediaTables ajoute si elle manque.
+type mediaFilesColumn struct{ name, typ string }
+
+// mediaFilesAddedColumns : les colonnes absentes des bases créées par d'anciennes migrations
+// (qui n'avaient pas capture_start_utc, etc.), ajoutées par ensureMediaTables.
+var mediaFilesAddedColumns = []mediaFilesColumn{
+	{"capture_start_utc", colTypeTimestampTZ},
+	{"capture_end_utc", colTypeTimestampTZ},
+	// capture_time_source : clé de la source de l'heure de capture (captureTimeSources,
+	// media_capture_source.go). NULL = ligne indexée avant la règle par source, que
+	// recalcCaptureTimes corrige puis marque.
+	{"capture_time_source", colTypeVarchar},
+	{"file_hash", colTypeVarchar},
+	{"kind", colTypeVarchar},
+	{"thumbnail_path", colTypeVarchar},
+	{"player_slug", colTypeVarchar},
+	{"duration_seconds", "DOUBLE"},
+	{"status", colTypeVarchar},
+	{"mtime", colTypeTimestampTZ},
+	{"indexed_at", "TIMESTAMPTZ DEFAULT NOW()"},
+	// PAS de liked / liked_at ici : droppées le 2026-08-04 (cf. CREATE ci-dessus).
+	{"discord_notified", "BOOLEAN DEFAULT FALSE"},
+	{"file_stem", colTypeVarchar},
+	{"file_ext", colTypeVarchar},
+	// HLS (transcoding à l'ingestion) : hls_path = pointeur {slug}/hls/{stem}/master.m3u8
+	// (NULL = média servi en direct, non transcodé) ; transcode_status =
+	// processing|ready|failed|direct (NULL = pas encore évalué). Colonnes dédiées :
+	// ne PAS réutiliser `status` (sémantique 'active' déjà filtrée par le rail home).
+	{"hls_path", colTypeVarchar},
+	{"transcode_status", colTypeVarchar},
+	// transcode_started_at : horodatage (UTC) du passage à 'processing', posé par
+	// MarkTranscodeProcessing (upload ET balayage). Sert la récupération d'orphelins
+	// de crash — un 'processing' plus vieux que transcodeStaleAfter redevient
+	// éligible au balayage (media_hls_sweep.go).
+	{"transcode_started_at", colTypeTimestampTZ},
+}
+
+// ensureMediaTables assure le schéma médias de shared_social (tables, colonnes, vue _latest des
+// associations). Un changement RÉEL de schéma (table créée, colonne ajoutée) est suivi d'un
+// CHECKPOINT immédiat (checkpointMediaSchemaChange).
 func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 	if _, err := db.ExecContext(ctx, `CREATE SEQUENCE IF NOT EXISTS media_files_id_seq START 1`); err != nil {
 		return err
@@ -27,7 +68,11 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
-	_, err := db.ExecContext(ctx, `
+	existing, err := mediaFilesColumnSet(ctx, db)
+	if err != nil {
+		return err
+	}
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS media_files (
 			id INTEGER PRIMARY KEY DEFAULT nextval('media_files_id_seq'),
 			player_slug VARCHAR,
@@ -53,7 +98,7 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 			-- existantes par la migration drop_media_files_liked_columns_v1
 			-- (games/halo_infinite/migrations/steps_shared_social_media_files_drop_liked.go).
 			-- NE PAS les
-			-- réintroduire ici NI dans la liste ADD COLUMN ci-dessous : ce CREATE et cet
+			-- réintroduire ici NI dans mediaFilesAddedColumns : ce CREATE et cet
 			-- ALTER tournent à CHAQUE IndexMedia et re-créeraient la colonne droppée
 			-- (garde-rail : TestEnsureMediaTables_DoesNotResurrectLikedColumns).
 			discord_notified BOOLEAN DEFAULT FALSE,
@@ -63,43 +108,9 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	// Migration idempotente : ajoute les colonnes absentes dans les DBs créées
-	// par d'anciennes migrations qui n'avaient pas capture_start_utc.
-	// ADD COLUMN IF NOT EXISTS évite d'avorter la connexion.
-	for _, col := range []struct{ name, typ string }{
-		{"capture_start_utc", colTypeTimestampTZ},
-		{"capture_end_utc", colTypeTimestampTZ},
-		// capture_time_source : clé de la source de l'heure de capture (captureTimeSources,
-		// media_capture_source.go). NULL = ligne indexée avant la règle par source, que
-		// recalcCaptureTimes corrige puis marque.
-		{"capture_time_source", colTypeVarchar},
-		{"file_hash", colTypeVarchar},
-		{"kind", colTypeVarchar},
-		{"thumbnail_path", colTypeVarchar},
-		{"player_slug", colTypeVarchar},
-		{"duration_seconds", "DOUBLE"},
-		{"status", colTypeVarchar},
-		{"mtime", colTypeTimestampTZ},
-		{"indexed_at", "TIMESTAMPTZ DEFAULT NOW()"},
-		// PAS de liked / liked_at ici : droppées le 2026-08-04 (cf. CREATE ci-dessus).
-		{"discord_notified", "BOOLEAN DEFAULT FALSE"},
-		{"file_stem", colTypeVarchar},
-		{"file_ext", colTypeVarchar},
-		// HLS (transcoding à l'ingestion) : hls_path = pointeur {slug}/hls/{stem}/master.m3u8
-		// (NULL = média servi en direct, non transcodé) ; transcode_status =
-		// processing|ready|failed|direct (NULL = pas encore évalué). Colonnes dédiées :
-		// ne PAS réutiliser `status` (sémantique 'active' déjà filtrée par le rail home).
-		{"hls_path", colTypeVarchar},
-		{"transcode_status", colTypeVarchar},
-		// transcode_started_at : horodatage (UTC) du passage à 'processing', posé par
-		// MarkTranscodeProcessing (upload ET balayage). Sert la récupération d'orphelins
-		// de crash — un 'processing' plus vieux que transcodeStaleAfter redevient
-		// éligible au balayage (media_hls_sweep.go).
-		{"transcode_started_at", colTypeTimestampTZ},
-	} {
-		if _, err := db.ExecContext(ctx, "ALTER TABLE media_files ADD COLUMN IF NOT EXISTS "+col.name+" "+col.typ); err != nil {
-			return fmt.Errorf("ensureMediaTables: ajout colonne %s: %w", col.name, err)
-		}
+	added, err := addMissingMediaColumns(ctx, db, existing)
+	if err != nil {
+		return err
 	}
 	if _, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS media_match_associations (
@@ -142,7 +153,71 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 			FROM act a JOIN hm ON hm.media_file_id = a.media_file_id
 			WHERE a.is_manual = hm.has_manual;
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+	return checkpointMediaSchemaChange(ctx, db, len(existing) == 0, added)
+}
+
+// mediaFilesColumnSet rend les colonnes de media_files dans la base et le schéma courants (une
+// autre base attachée ne compte pas) ; vide si la table n'existe pas.
+func mediaFilesColumnSet(ctx context.Context, db *sql.DB) (map[string]bool, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT column_name FROM duckdb_columns()
+		WHERE database_name = current_database() AND schema_name = current_schema()
+		  AND table_name = 'media_files'`)
+	if err != nil {
+		return nil, fmt.Errorf("lecture des colonnes de media_files: %w", err)
+	}
+	defer rows.Close()
+	cols := map[string]bool{}
+	for rows.Next() {
+		var c string
+		if err := rows.Scan(&c); err != nil {
+			return nil, fmt.Errorf("lecture des colonnes de media_files: %w", err)
+		}
+		cols[c] = true
+	}
+	return cols, rows.Err()
+}
+
+// addMissingMediaColumns ajoute à media_files les colonnes de mediaFilesAddedColumns absentes de
+// existing (relevé fait AVANT le CREATE TABLE : une table qui vient d'être créée les porte déjà
+// toutes ou presque) et rend le nombre d'ALTER réellement passés. Une colonne déjà là ne donne
+// lieu à aucun ALTER : aucune écriture de catalogue au WAL pour rien.
+func addMissingMediaColumns(ctx context.Context, db *sql.DB, existing map[string]bool) (int, error) {
+	added := 0
+	for _, col := range mediaFilesAddedColumns {
+		if existing[col.name] {
+			continue
+		}
+		if _, err := db.ExecContext(ctx, "ALTER TABLE media_files ADD COLUMN IF NOT EXISTS "+col.name+" "+col.typ); err != nil {
+			return added, fmt.Errorf("ensureMediaTables: ajout colonne %s: %w", col.name, err)
+		}
+		added++
+	}
+	return added, nil
+}
+
+// checkpointMediaSchemaChange fait un CHECKPOINT quand ensureMediaTables a réellement changé le
+// schéma (table créée, colonne ajoutée). Sans lui, l'ALTER reste au WAL pendant toute
+// l'indexation (hash, ffprobe, ffmpeg) jusqu'au CHECKPOINT de fin d'IndexMedia, et un arrêt
+// brutal entre les deux rend la base illisible à la réouverture : rejouer un ALTER sur une table
+// indexée échoue (« Calling DatabaseManager::GetDefaultDatabase with no default database set »,
+// TestIndexMediaPrepare_NewColumnSurvivesCrash). Échec = erreur dure, comme le CHECKPOINT de fin
+// d'indexation (ADR 0021) : mieux vaut une indexation refusée qu'un WAL en sursis.
+func checkpointMediaSchemaChange(ctx context.Context, db *sql.DB, tableCreated bool, addedColumns int) error {
+	if !tableCreated && addedColumns == 0 {
+		return nil
+	}
+	if _, err := db.ExecContext(ctx, "CHECKPOINT"); err != nil {
+		slog.ErrorContext(ctx, "ensureMediaTables: CHECKPOINT après changement de schéma échoué",
+			"table_created", tableCreated, "added_columns", addedColumns, "err", err)
+		return fmt.Errorf("ensureMediaTables: CHECKPOINT après changement de schéma: %w", err)
+	}
+	slog.InfoContext(ctx, "ensureMediaTables: schéma médias complété et fixé sur disque",
+		"table_created", tableCreated, "added_columns", addedColumns)
+	return nil
 }
 
 // dropLegacyMediaFilesIfNeeded supprime la table media_files si elle a l'ancien schéma

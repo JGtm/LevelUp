@@ -226,3 +226,29 @@ func TestCaptureSources_KeysAreUnique(t *testing.T) {
 		}
 	}
 }
+
+// TestConversionTimes : une conversion de format ne réécrit la fenêtre que si l'heure vient du
+// nom ET que la durée de la vidéo convertie est connue.
+func TestConversionTimes(t *testing.T) {
+	h := time.Date(2026, 9, 1, 19, 46, 53, 0, time.UTC)
+	named := &captureInstant{At: h, Source: captureSourceByKey(captureSourceOBSReplay)}
+	fileDate := &captureInstant{At: h, Source: captureSourceByKey(captureSourceFileDate)}
+
+	known := captureWindow(mediaKindVideo, named, 28, true)
+	start, end, src := conversionTimes(named, mediaKindVideo, known)
+	if start == nil || !start.Equal(h.Add(-28*time.Second)) || end == nil || !end.Equal(h) ||
+		src == nil || *src != captureSourceOBSReplay {
+		t.Errorf("nom + durée connue : [%v, %v] %v, want [H-28 s, H] %s", start, end, src, captureSourceOBSReplay)
+	}
+	unknown := captureWindow(mediaKindVideo, named, 0, false)
+	if start, end, src := conversionTimes(named, mediaKindVideo, unknown); start != nil || end != nil || src != nil {
+		t.Errorf("ffprobe en échec : [%v, %v] %v, want rien (l'ancienne fenêtre est gardée)", start, end, src)
+	}
+	if start, end, src := conversionTimes(fileDate, mediaKindVideo, captureWindow(mediaKindVideo, fileDate, 28, true)); start != nil || end != nil || src != nil {
+		t.Errorf("date du fichier : [%v, %v] %v, want rien (date de la conversion)", start, end, src)
+	}
+	img := captureWindow(mediaKindImage, named, 0, false)
+	if start, _, src := conversionTimes(named, mediaKindImage, img); start == nil || src == nil {
+		t.Errorf("image au nom daté : début %v source %v, want l'instant et sa source", start, src)
+	}
+}

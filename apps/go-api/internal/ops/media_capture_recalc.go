@@ -40,10 +40,13 @@ type CaptureRecalcCount struct {
 
 // CaptureRecalcReport : bilan d'un recalcul, par clé de source (captureTimeSources).
 type CaptureRecalcReport struct {
-	DryRun   bool
-	Examined int
-	Shifted  int
-	BySource map[string]CaptureRecalcCount
+	DryRun bool
+	// SkippedNoTimezone : recalcul non fait faute de fuseau (cf. recalcCaptureTimes) ; rien n'est
+	// lu ni écrit, les lignes restent à reprendre.
+	SkippedNoTimezone bool
+	Examined          int
+	Shifted           int
+	BySource          map[string]CaptureRecalcCount
 }
 
 // SourceKeys rend les clés de source du bilan, triées (affichage stable).
@@ -55,6 +58,10 @@ func (r CaptureRecalcReport) SourceKeys() []string {
 	sort.Strings(keys)
 	return keys
 }
+
+// errNoMediaFilesTable : la base ne porte pas de table media_files (pas une base shared_social,
+// ou aucun média n'y a jamais été indexé).
+var errNoMediaFilesTable = errors.New("pas de table media_files : ce n'est pas une base shared_social, ou aucun média n'y a encore été indexé")
 
 // legacyCaptureRow : une ligne de media_files indexée avant la règle par source.
 type legacyCaptureRow struct {
@@ -76,13 +83,29 @@ type captureRecalcUpdate struct {
 // recalcCaptureTimes recalcule les lignes non marquées de media_files (cf. l'en-tête). dryRun :
 // rien n'est écrit, le bilan dit ce qui changerait. Sans la colonne capture_time_source (base
 // jamais indexée depuis la règle), la simulation tient toutes les lignes pour antérieures ;
-// l'écriture exige la colonne (ensureMediaTables).
+// l'écriture exige la colonne (ensureMediaTables). Sans table media_files : erreur explicite.
+//
+// SANS FUSEAU, RIEN. Le fuseau dit si l'heure d'un nom daté vient bien du nom
+// (legacyCaptureSource) ; sans lui, une ligne dont H venait de la date du fichier serait rangée
+// sous la source du nom, et le marquage rendrait l'erreur définitive. Le recalcul est alors
+// sauté (SkippedNoTimezone) et retenté au passage suivant.
+//
+// Une écriture est suivie d'un CHECKPOINT (ADR 0021) : les lignes réécrites ne restent pas au
+// WAL jusqu'à la fin d'une indexation, ni quand IndexMedia sort avant son propre CHECKPOINT.
 func recalcCaptureTimes(ctx context.Context, db *sql.DB, loc *time.Location, dryRun bool) (CaptureRecalcReport, error) {
 	report := CaptureRecalcReport{DryRun: dryRun, BySource: map[string]CaptureRecalcCount{}}
-	hasMarker, err := mediaFilesHasColumn(ctx, db, "capture_time_source")
+	if loc == nil {
+		report.SkippedNoTimezone = true
+		return report, nil
+	}
+	cols, err := mediaFilesColumnSet(ctx, db)
 	if err != nil {
 		return report, err
 	}
+	if len(cols) == 0 {
+		return report, errNoMediaFilesTable
+	}
+	hasMarker := cols["capture_time_source"]
 	if !hasMarker && !dryRun {
 		return report, errors.New("recalcCaptureTimes: colonne capture_time_source absente (ensureMediaTables non passé)")
 	}
@@ -109,7 +132,13 @@ func recalcCaptureTimes(ctx context.Context, db *sql.DB, loc *time.Location, dry
 	if dryRun || len(updates) == 0 {
 		return report, nil
 	}
-	return report, writeCaptureRecalc(ctx, db, updates)
+	if err := writeCaptureRecalc(ctx, db, updates); err != nil {
+		return report, err
+	}
+	if _, err := db.ExecContext(ctx, "CHECKPOINT"); err != nil {
+		return report, fmt.Errorf("recalcul des heures de capture: CHECKPOINT: %w", err)
+	}
+	return report, nil
 }
 
 // recalcCaptureRow rend la réécriture d'une ligne antérieure et si sa fenêtre change.
@@ -148,18 +177,6 @@ func nullTimePtr(t sql.NullTime) *time.Time {
 		return nil
 	}
 	return &t.Time
-}
-
-// mediaFilesHasColumn indique si media_files porte la colonne col.
-func mediaFilesHasColumn(ctx context.Context, db *sql.DB, col string) (bool, error) {
-	var n int
-	err := db.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM duckdb_columns()
-		WHERE table_name = 'media_files' AND column_name = ?`, col).Scan(&n)
-	if err != nil {
-		return false, fmt.Errorf("lecture des colonnes de media_files: %w", err)
-	}
-	return n > 0, nil
 }
 
 // loadLegacyCaptureRows lit les lignes non marquées qui ont une heure de capture.
@@ -238,15 +255,16 @@ type CaptureRecalcOptions struct {
 // RecalcMediaCaptureTimes lance le recalcul hors serveur. Simulation : ouverture en lecture
 // seule, rien n'est écrit. Écriture : ouverture en écriture par le cache process (échoue si un
 // autre processus, le serveur, tient la base), colonnes assurées, recalcul, CHECKPOINT (ADR 0021).
+// Le fuseau est exigé (sans lui, recalcCaptureTimes ne fait rien) ; une base sans table media_files
+// est refusée avec errNoMediaFilesTable.
 func RecalcMediaCaptureTimes(ctx context.Context, opts CaptureRecalcOptions) (CaptureRecalcReport, error) {
 	tz := SanitizeMediaTimezone(opts.Timezone)
-	var loc *time.Location
-	if tz != "" {
-		l, err := time.LoadLocation(tz)
-		if err != nil {
-			return CaptureRecalcReport{}, fmt.Errorf("fuseau %q: %w", tz, err)
-		}
-		loc = l
+	if tz == "" {
+		return CaptureRecalcReport{}, fmt.Errorf("fuseau %q absent ou invalide : il dit si l'heure d'un nom daté vient du nom (user_timezone de app_settings.json)", opts.Timezone)
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return CaptureRecalcReport{}, fmt.Errorf("fuseau %q: %w", tz, err)
 	}
 	if opts.DryRun {
 		handle, err := platform_duckdb.OpenReadOnly(opts.DBPath, tz)
@@ -254,7 +272,11 @@ func RecalcMediaCaptureTimes(ctx context.Context, opts CaptureRecalcOptions) (Ca
 			return CaptureRecalcReport{}, fmt.Errorf("ouverture en lecture de %s: %w", opts.DBPath, err)
 		}
 		defer handle.Close()
-		return recalcCaptureTimes(ctx, handle.SQLDb(), loc, true)
+		report, err := recalcCaptureTimes(ctx, handle.SQLDb(), loc, true)
+		if err != nil {
+			return report, fmt.Errorf("%s : %w", opts.DBPath, err)
+		}
+		return report, nil
 	}
 	unlock := indexLock(opts.DBPath)
 	defer unlock()
@@ -275,4 +297,23 @@ func RecalcMediaCaptureTimes(ctx context.Context, opts CaptureRecalcOptions) (Ca
 		return report, fmt.Errorf("recalcul des heures de capture: CHECKPOINT: %w", err)
 	}
 	return report, nil
+}
+
+// recalcBeforeIndex : le recalcul tel qu'IndexMedia le lance, avant l'association. L'échec est
+// journalisé ici et rendu à l'appelant, qui le range dans les erreurs non fatales de
+// l'indexation (retenté au passage suivant).
+func recalcBeforeIndex(ctx context.Context, db *sql.DB, loc *time.Location, player string) error {
+	report, err := recalcCaptureTimes(ctx, db, loc, false)
+	if err != nil {
+		slog.ErrorContext(ctx, "IndexMedia: recalcul des fenêtres de capture échoué",
+			"player", player, "err", err)
+		return err
+	}
+	if report.SkippedNoTimezone {
+		slog.WarnContext(ctx, "IndexMedia: recalcul des fenêtres de capture sauté, fuseau inconnu (retenté au passage suivant)",
+			"player", player)
+		return nil
+	}
+	logCaptureRecalc(ctx, player, report)
+	return nil
 }

@@ -220,10 +220,12 @@ func timePtr(t time.Time) *time.Time { return &t }
 
 // conversionTimes : ce qu'une conversion de format réécrit de la fenêtre d'une ligne déjà
 // indexée. Une heure lue dans le NOM ne change pas avec le format : la fenêtre recalculée est
-// juste et s'écrit avec sa source. Une heure tirée de la date du fichier est celle de la
-// conversion, pas de la capture : rien n'est réécrit (nil, que le COALESCE de l'UPDATE garde).
-func conversionTimes(inst *captureInstant, win captureTimes) (start, end *time.Time, source *string) {
-	if inst == nil || !inst.Source.fromName() {
+// juste et s'écrit avec sa source. Rien n'est réécrit (nil, que le COALESCE de l'UPDATE garde)
+// quand l'heure vient de la date du fichier (celle de la conversion, pas de la capture), ni
+// quand la durée de la vidéo convertie est inconnue (ffprobe en échec) : la fenêtre recalculée
+// réduirait alors à H une fenêtre [H-D, H] déjà juste.
+func conversionTimes(inst *captureInstant, kind string, win captureTimes) (start, end *time.Time, source *string) {
+	if inst == nil || !inst.Source.fromName() || (kind == mediaKindVideo && win.DurationSec == nil) {
 		return nil, nil, nil
 	}
 	return win.Start, win.End, &inst.Source.Key

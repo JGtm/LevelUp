@@ -9,6 +9,7 @@ package ops
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -220,4 +221,95 @@ func TestIndexMedia_RecalcsLegacyWindows(t *testing.T) {
 	}
 	defer release()
 	assertWindow(t, check, "Replay 2026-09-01 21-46-53.mkv", hReplay.Add(-28872*time.Millisecond), hReplay, captureSourceOBSReplay)
+}
+
+// TestRecalcCaptureTimes_NoTimezoneSkips : sans fuseau, rien n'est lu ni marqué.
+func TestRecalcCaptureTimes_NoTimezoneSkips(t *testing.T) {
+	ctx := context.Background()
+	_, db := openDiagDB(t)
+	if err := ensureMediaTables(ctx, db); err != nil {
+		t.Fatal(err)
+	}
+	insertLegacyFixtures(t, db, legacyFixtures()[:1])
+	report, err := recalcCaptureTimes(ctx, db, nil, false)
+	if err != nil || !report.SkippedNoTimezone || report.Examined != 0 {
+		t.Fatalf("sans fuseau : %+v, err %v ; want sauté, 0 examinée", report, err)
+	}
+	if w := readWindow(t, db, "Replay 2026-09-01 21-46-53.mkv"); w.source.Valid || !w.start.Time.Equal(hReplay) {
+		t.Errorf("sans fuseau, la ligne a été touchée : %+v", w)
+	}
+	if err := recalcBeforeIndex(ctx, db, nil, "spartan"); err != nil {
+		t.Errorf("recalcBeforeIndex sans fuseau : %v, want nil (sauté et journalisé)", err)
+	}
+}
+
+// TestRecalcCaptureTimes_CheckpointsItsWrites : une écriture du recalcul ne reste pas au WAL.
+func TestRecalcCaptureTimes_CheckpointsItsWrites(t *testing.T) {
+	ctx := context.Background()
+	path, db := openDiagDB(t)
+	if err := ensureMediaTables(ctx, db); err != nil {
+		t.Fatal(err)
+	}
+	insertLegacyFixtures(t, db, legacyFixtures())
+	if info, err := os.Stat(path + ".wal"); err != nil || info.Size() == 0 {
+		t.Fatalf("pré-condition : WAL attendu non vide avant le recalcul (err %v)", err)
+	}
+	if _, err := recalcCaptureTimes(ctx, db, mustParis(t), false); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(path + ".wal"); err == nil && info.Size() > 0 {
+		t.Errorf("WAL de %d octets après le recalcul, want vide (CHECKPOINT)", info.Size())
+	}
+}
+
+// TestMediaFilesColumnSet_IgnoresAttachedBase : la colonne d'une AUTRE base attachée ne compte pas.
+func TestMediaFilesColumnSet_IgnoresAttachedBase(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	other := filepath.Join(dir, "other.duckdb")
+	odb, err := sql.Open("duckdb", other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureMediaTables(ctx, odb); err != nil {
+		t.Fatal(err)
+	}
+	if err := odb.Close(); err != nil {
+		t.Fatal(err)
+	}
+	_, db := openDiagDB(t)
+	if _, err := db.ExecContext(ctx, `CREATE TABLE media_files (id INTEGER, file_name VARCHAR)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `ATTACH '`+other+`' AS autre (READ_ONLY)`); err != nil {
+		t.Fatal(err)
+	}
+	cols, err := mediaFilesColumnSet(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cols["capture_time_source"] || !cols["file_name"] || len(cols) != 2 {
+		t.Errorf("colonnes lues : %v, want celles de la base courante seule (id, file_name)", cols)
+	}
+}
+
+// TestRecalcMediaCaptureTimes_DryRunWithoutTable : simulation sur une base sans media_files =
+// erreur qui le dit, rien d'autre.
+func TestRecalcMediaCaptureTimes_DryRunWithoutTable(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "pas_social.duckdb")
+	db, err := sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `CREATE TABLE match_registry (match_id VARCHAR)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	_, err = RecalcMediaCaptureTimes(ctx, CaptureRecalcOptions{DBPath: path, Timezone: "Europe/Paris", DryRun: true})
+	if !errors.Is(err, errNoMediaFilesTable) {
+		t.Errorf("simulation sans table : %v, want errNoMediaFilesTable", err)
+	}
 }

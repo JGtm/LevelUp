@@ -82,7 +82,7 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	// Media scan post-sync : indexe les captures présentes sur disque et les
 	// associe aux matchs fraîchement synchronisés. Les 2 closures lisent les
 	// settings live à chaque tick : MediaCapturesBaseDir + UserTimezone.
-	// Sans timezone, parseCaptureTimeFromFilename retourne nil → 0 associations
+	// Sans timezone, captureInstantFromName retourne nil → 0 associations
 	// (bug observé 2026-05-25, cf. thought_log).
 	if s.settings != nil {
 		engine.WithMediaScanHook(service.BuildMediaScanHook(s.cfg.RepoRoot, gamertag,

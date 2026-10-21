@@ -213,12 +213,8 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	// Fenêtres des médias indexés avant la règle par source : corrigées AVANT l'association,
 	// qui lit capture_start_utc (media_capture_recalc.go). Idempotent ; un échec n'empêche pas
 	// l'indexation (retenté au passage suivant) mais se journalise.
-	if report, err := recalcCaptureTimes(ctx, db, loc, false); err != nil {
-		slog.ErrorContext(ctx, "IndexMedia: recalcul des fenêtres de capture échoué",
-			"player", opts.Gamertag, "err", err)
+	if err := recalcBeforeIndex(ctx, db, loc, opts.Gamertag); err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("capture_times: %v", err))
-	} else {
-		logCaptureRecalc(ctx, opts.Gamertag, report)
 	}
 	mediaFiles, err := walkMediaDir(opts.CapturesDir)
 	if err != nil {
@@ -490,7 +486,7 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 		// fichier vient d'être re-déposé — la suppression est annulée en remettant
 		// status à NULL. Le CASE est indispensable : écrire NULL inconditionnellement
 		// dégraderait une ligne 'active' (valeur exigée par le rail home).
-		upStart, upEnd, upSource := conversionTimes(inst, win)
+		upStart, upEnd, upSource := conversionTimes(inst, kind, win)
 		_, err := db.ExecContext(ctx, `
 			UPDATE media_files
 			SET file_path = ?, file_name = ?, file_ext = ?, file_hash = ?, kind = ?,

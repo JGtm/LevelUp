@@ -187,17 +187,17 @@ func TestSanitizeMediaTimezone_Empty(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// parseCaptureTimeFromFilename
+// captureInstantFromName (heure lue dans le nom ; sa source et son ancre : media_capture_source_test.go)
 // ─────────────────────────────────────────────────────────────────────────────
 
-func TestParseCaptureTimeFromFilename_XboxFormat_CET(t *testing.T) {
+func TestCaptureInstantFromName_XboxFormat_CET(t *testing.T) {
 	// CET = UTC+1 (décembre = hiver)
 	loc, err := time.LoadLocation("Europe/Paris")
 	if err != nil {
 		t.Skip("timezone Europe/Paris non disponible")
 	}
 	name := "Halo Infinite 2024.12.15 - 21.30.45.01.mp4"
-	got := parseCaptureTimeFromFilename(name, loc)
+	got := instantAt(captureInstantFromName(name, loc))
 	if got == nil {
 		t.Fatal("expected non-nil result")
 	}
@@ -208,18 +208,18 @@ func TestParseCaptureTimeFromFilename_XboxFormat_CET(t *testing.T) {
 	}
 }
 
-func TestParseCaptureTimeFromFilename_Halo5_CET(t *testing.T) {
-	// Capture Windows Game Bar Halo 5 : "..._22h49" (separateur _, h, PAS de
-	// secondes), heure locale Paris. Doit etre reconnue (regex halo5FilenameRe)
+func TestCaptureInstantFromName_Halo5_CET(t *testing.T) {
+	// Clip de console Xbox (Halo 5) : "..._22h49" (separateur _, h, PAS de
+	// secondes), heure locale Paris. Doit etre reconnu (source xbox_console)
 	// + seconde = 0. Cas reel valide : capture 2019-12-12 22h49 -> match 21:49 UTC.
 	loc, err := time.LoadLocation("Europe/Paris")
 	if err != nil {
 		t.Skip("timezone Europe/Paris non disponible")
 	}
 	name := "Halo_5_Guardians-2019-12-12_22h49.mp4"
-	got := parseCaptureTimeFromFilename(name, loc)
+	got := instantAt(captureInstantFromName(name, loc))
 	if got == nil {
-		t.Fatal("format Halo 5 non reconnu (regex halo5FilenameRe manquant ?)")
+		t.Fatal("format Halo 5 non reconnu (source xbox_console absente de captureTimeSources ?)")
 	}
 	// CET = UTC+1 (decembre) -> 22:49:00 Paris = 21:49:00 UTC, seconde = 0.
 	want := time.Date(2019, 12, 12, 21, 49, 0, 0, time.UTC)
@@ -228,14 +228,14 @@ func TestParseCaptureTimeFromFilename_Halo5_CET(t *testing.T) {
 	}
 }
 
-func TestParseCaptureTimeFromFilename_XboxFormat_CEST(t *testing.T) {
+func TestCaptureInstantFromName_XboxFormat_CEST(t *testing.T) {
 	// CEST = UTC+2 (juillet = été)
 	loc, err := time.LoadLocation("Europe/Paris")
 	if err != nil {
 		t.Skip("timezone Europe/Paris non disponible")
 	}
 	name := "Halo Infinite 2024.07.15 - 22.00.00.01.mp4"
-	got := parseCaptureTimeFromFilename(name, loc)
+	got := instantAt(captureInstantFromName(name, loc))
 	if got == nil {
 		t.Fatal("expected non-nil result")
 	}
@@ -246,7 +246,7 @@ func TestParseCaptureTimeFromFilename_XboxFormat_CEST(t *testing.T) {
 	}
 }
 
-func TestParseCaptureTimeFromFilename_OBSFormat_CEST(t *testing.T) {
+func TestCaptureInstantFromName_OBSFormat_CEST(t *testing.T) {
 	// OBS Studio : format par défaut "%CCYY-%MM-%DD %hh-%mm-%ss"
 	// CEST = UTC+2 (avril = été)
 	loc, err := time.LoadLocation("Europe/Paris")
@@ -254,7 +254,7 @@ func TestParseCaptureTimeFromFilename_OBSFormat_CEST(t *testing.T) {
 		t.Skip("timezone Europe/Paris non disponible")
 	}
 	name := "Replay 2026-04-19 17-10-54.mp4"
-	got := parseCaptureTimeFromFilename(name, loc)
+	got := instantAt(captureInstantFromName(name, loc))
 	if got == nil {
 		t.Fatal("expected non-nil result")
 	}
@@ -265,14 +265,14 @@ func TestParseCaptureTimeFromFilename_OBSFormat_CEST(t *testing.T) {
 	}
 }
 
-func TestParseCaptureTimeFromFilename_OBSFormat_CET(t *testing.T) {
+func TestCaptureInstantFromName_OBSFormat_CET(t *testing.T) {
 	// CET = UTC+1 (janvier = hiver)
 	loc, err := time.LoadLocation("Europe/Paris")
 	if err != nil {
 		t.Skip("timezone Europe/Paris non disponible")
 	}
 	name := "Recording 2026-01-15 09-00-00.mp4"
-	got := parseCaptureTimeFromFilename(name, loc)
+	got := instantAt(captureInstantFromName(name, loc))
 	if got == nil {
 		t.Fatal("expected non-nil result")
 	}
@@ -283,7 +283,7 @@ func TestParseCaptureTimeFromFilename_OBSFormat_CET(t *testing.T) {
 	}
 }
 
-func TestParseCaptureTimeFromFilename_NoMatch(t *testing.T) {
+func TestCaptureInstantFromName_NoMatch(t *testing.T) {
 	loc, _ := time.LoadLocation("Europe/Paris")
 	cases := []string{
 		"OBS-Recording-2024-01-01.mp4", // date sans time
@@ -294,15 +294,15 @@ func TestParseCaptureTimeFromFilename_NoMatch(t *testing.T) {
 		"recording-no-date.mp4",
 	}
 	for _, name := range cases {
-		if got := parseCaptureTimeFromFilename(name, loc); got != nil {
-			t.Errorf("parseCaptureTimeFromFilename(%q) = %v, want nil", name, got)
+		if got := captureInstantFromName(name, loc); got != nil {
+			t.Errorf("captureInstantFromName(%q) = %v, want nil", name, got)
 		}
 	}
 }
 
-func TestParseCaptureTimeFromFilename_NilLoc_ReturnsNil(t *testing.T) {
+func TestCaptureInstantFromName_NilLoc_ReturnsNil(t *testing.T) {
 	name := "Halo Infinite 2024.12.15 - 21.30.45.01.mp4"
-	if got := parseCaptureTimeFromFilename(name, nil); got != nil {
+	if got := captureInstantFromName(name, nil); got != nil {
 		t.Errorf("expected nil with nil loc, got %v", got)
 	}
 }
@@ -352,4 +352,12 @@ func TestMatchesForeignPrefix(t *testing.T) {
 	if matchesForeignPrefix("Halo_5_Guardians-x.mp4", nil) {
 		t.Error("aucun préfixe → jamais de skip (comportement historique)")
 	}
+}
+
+// instantAt rend l'heure d'un instant lu dans un nom, nil si rien n'a été lu.
+func instantAt(inst *captureInstant) *time.Time {
+	if inst == nil {
+		return nil
+	}
+	return &inst.At
 }

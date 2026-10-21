@@ -285,6 +285,11 @@
 # `captureWindow` (ancre par source) et couverte par les TestCaptureWindow_* de media_capture_source_test.go.
 # 20 lignes JSONL, exactement 5 paires (Package, Test).
 #
+# RETRAIT DU 2026-10-21 (même correctif, suite de revue P2-1) : les 7 TestParseCaptureTimeFromFilename_*
+# de `internal/ops` sont RENOMMÉS TestCaptureInstantFromName_* — `parseCaptureTimeFromFilename` est
+# supprimée (plus d'appelant), ses tests visent `captureInstantFromName`. 28 lignes JSONL, exactement
+# 7 paires (Package, Test).
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.
