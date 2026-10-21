@@ -169,11 +169,11 @@ var tablePolarites = []blocPolarites{
 		Succes:  "points",
 		Neutres: "rounds roundsWritten/n"},
 	{Blocs: []string{"coverage.seats."},
-		Echecs: "bornesDifferees chevauchements depassements entitesContestees entitesNonLiees " +
+		Echecs: "bornesDifferees botsRelevesEnJeu chevauchements depassements entitesContestees entitesNonLiees " +
 			"identitesHorsRoster imagesClesDouteuses placesEnTrop placesOuvertes " +
-			"presencesParLesVies sansEquipe sansPlace sansPresence tirsContestes trousDEntite",
+			"presencesParLesVies rameneesALaTaille sansEquipe sansPlace sansPresence tirsContestes trousDEntite",
 		Succes: "botsSuccesseurs lus placesTirs relaisBornes tirsParPlace",
-		Neutres: "apparies arrivants capacite entrees occupantsMax presencesCloses " +
+		Neutres: "absencesTenuesParUnBot apparies arrivants botsRelevesALaTaille capacite entrees occupantsMax presencesCloses " +
 			"reprisesEcrites sieges"},
 	{Blocs: []string{"coverage.skullCarries."},
 		Echecs:  "carrierAbsent noBridge open outOfWindow",
