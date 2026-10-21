@@ -536,6 +536,12 @@ export function useReplaySound(
       // À l'arrêt (pas d'image, saut vers un repère), un son bref atterrit avec l'image, mais
       // une rafale TENUE (jusqu'à dix secondes) tirerait sur une image qui ne bouge plus.
       if (!playingRef.current && shape?.holdS !== undefined) continue
+      // UNE VOIX D'ANNONCEUR passe hors plafond, sans variation (règle `soundOccupiesVoice`), et la
+      // pause l'éteint comme tout son en vol (règle `soundSurvivesPause`) : deux questions distinctes.
+      if (e.announcer) {
+        player.playAnnouncer(url)
+        continue
+      }
       // Le tirage de variation ne concerne que les ARMES : la table est keyee par stem
       // d'arme, tout autre stem se joue tel quel (drawVariation rend le neutre exact). La FORME
       // (son tenu ou coupé d'une rafale de tir continu, schéma 71) voyage avec l'événement.

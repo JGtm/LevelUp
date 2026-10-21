@@ -59,8 +59,9 @@ var registreReplayPlaces = []Repli{
 			"une entite d'une seule est un relais transitoire) ; sous cette capacite, l'arrivant OUVRE une " +
 			"place (son index, ou un numero au-dela des 64 index) ; a la capacite, aucune place",
 		// LA LECTURE A TOURNE ET N'A PAS TRANCHE : l'index (`lu`), les tirs (`tirs`) et le chainage
-		// n'ont trouve aucune place libre pour cet arrivant. La TAILLE D'EQUIPE DU MODE n'est pas
-		// lue : que le film l'ecrive (variante de jeu) est a instruire — rien ne l'a mesure.
+		// n'ont trouve aucune place libre pour cet arrivant. La TAILLE D'EQUIPE n'est pas dans le film
+		// (negatif mesure le 2026-10-21, cf. `repli_taille_d_equipe_du_mode`) : cette estimation ne sert
+		// plus que les matchs dont la playlist n'est pas declaree dans `regulation.toml [team_size]`.
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
@@ -204,5 +205,60 @@ var registreReplayPlaces = []Repli{
 		CibleRetrait:    "la lecture de l index de tireur des builds anciennes (le champ d de HI_1_4_1 n est pas identifie)",
 		CritereRetrait:  "le champ d lu sur HI_1_4_1 ET 0 declenchement sur le corpus du gate de rejeu (un temoin par build)",
 		CompteurBranche: true,
+	}, {
+		Nom:  "repli_taille_d_equipe_du_mode",
+		Fait: "combien de places (de fiches) une equipe tient : sa taille",
+		Mecanisme: "la taille OFFICIELLE de la playlist du match, lue dans `regulation.toml [team_size]` " +
+			"par le jeton de playlist du nom de variante (a gauche du « : », sinon en tete de la droite) ; " +
+			"elle remplace la capacite estimee de la pose des places",
+		// FILM MUET, ET LE NEGATIF EST MESURE (2026-10-21, `variante_taille_equipe_research_test.go`,
+		// 18 films 2v2 / 4v4 / 8v8 / 12v12) : les options de partie et la variante de `chunk_00` se
+		// lisent en entier, aucun champ ne separe les tailles ; un 4v4 et un 8v8 de la meme variante ne
+		// different que par quatre champs (session, deux graines, cible de score). La table des joueurs
+		// a 32 places dans tous les modes.
+		Condition: CondFilmMuet,
+		Ordre:     OrdreSansLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "sieges.go",
+			Ancre:   "in.horloge.fb.Declenche(fallback.NomTailleDEquipeDuMode)",
+		}},
+		DatePose: dateControlesV8,
+		CibleRetrait: "le lot qui lira la taille d'equipe dans le film, si un build l'y ecrit (ou les " +
+			"reglages de la session de matchmaking, s'ils entrent dans le film)",
+		CritereRetrait:  "la taille lue egale celle de la table sur chaque document du parc republie",
+		CompteurBranche: true,
+	},
+	{
+		Nom: "repli_place_ramenee_a_la_taille_d_equipe",
+		Fait: "quelle fiche un occupant tient quand son equipe a vu passer plus d'index de joueur que " +
+			"sa taille",
+		Mecanisme: "les places gardees d'une equipe en surnombre sont les premieres tenues ; chaque " +
+			"intervalle de presence, dans l'ordre de son debut, prend la sienne si elle est gardee et libre, " +
+			"sinon une place gardee libre (la quittee le plus tard : le remplacant, humain ou bot, prend la " +
+			"fiche du partant), sinon pour un humain la place de bots deja la (s'il joue pendant leur " +
+			"presence, ils quittent la partie a son arrivee ; sinon il les attend, ou n'est plus affiche " +
+			"s'il part avant eux), sinon pour un bot la place d'un humain qui a joue avant lui et sans vie " +
+			"pendant sa presence (absence tenue, presence de l'humain coupee) ; les arrivants que le " +
+			"chainage laissait sans place y entrent ; place publiee par intervalle ; un intervalle sans " +
+			"presence certaine sur une place en trop n'est plus affiche",
+		// CONTRADICTION : les index que le film ecrit (table du debut, tirs) font plus de places que
+		// la taille de l'equipe ; la regle des places de l'utilisateur tranche la fiche.
+		Condition: CondContradiction,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "sieges.go",
+			Ancre:   "in.horloge.fb.DeclencheN(fallback.NomPlaceRameneeALaTailleDEquipe, cov.RameneesALaTaille)",
+		}, {
+			Fichier: pkgReplay + "sieges_a_la_taille.go",
+			Ancre:   "pp.roster[oc.entree].SeatSource = SeatSourceTaille",
+		}},
+		DatePose: dateControlesV8,
+		CibleRetrait: "le lot qui lira dans le film la place d'equipe d'un joueur (et non son index), " +
+			"si le film l'ecrit",
+		CritereRetrait:  "coverage.seats.rameneesALaTaille a 0 sur le parc republie, `4f77afc1` compris",
+		CompteurBranche: true,
 	},
 }
+
+// dateControlesV8 : le jour des controles de la v8 ou naissent les deux replis de la taille d'equipe.
+const dateControlesV8 = "2026-10-21"

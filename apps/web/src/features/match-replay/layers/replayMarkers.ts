@@ -195,6 +195,15 @@ export interface MarkerStyle {
    */
   embarkedAtSlot?: (slot: number, frame: number) => boolean
   /**
+   * LA RÈGLE DU PION (utilisateur, 2026-10-21) : vrai quand le propriétaire de la vie du slot
+   * (résolu à `ownerFrame`) occupe une fiche à `frame` (`seatLogic.SeatedIndex`). Faux : ni
+   * marqueur, ni traînée, ni cône, ni nom, ni croix de mort — un bot relevé n'a plus de pion, même
+   * quand le film lui donne encore des vies. `ownerFrame` est l'image BORNÉE à la fenêtre de la vie
+   * (celle de la couleur), `frame` l'image lue : une croix survit à sa vie, la fiche se lit à
+   * l'image lue. Absent = tout se dessine (appelants sans roster).
+   */
+  seatedAtSlot?: (slot: number, ownerFrame: number, frame: number) => boolean
+  /**
    * BORNAGE HORS CADRE (plan escouade hors cadre, chantier B, décision D2, 2026-09-10) : le
    * texte de l'étiquette d'un joueur hors fenêtre — nom ET distance jusqu'à sa position réelle.
    * RÉSOLU PAR L'APPELANT (`REPLAY_TEXT[locale].offscreenMarkerFmt`), comme toute string UI de
@@ -252,6 +261,7 @@ export function drawTracksLayer(
     const at = Math.max(w.start, Math.min(style.frame, w.end))
     const color = style.colorOfSlot(track.slot, at)
     if (!color) return
+    if (style.seatedAtSlot && !style.seatedAtSlot(track.slot, at, style.frame)) return
     if (!isAliveAt(track, style.frame)) {
       // La couleur du slot reste la PORTE (une vie sans couleur ne se dessine pas), mais la
       // croix ne la porte plus : elle est rouge (cf. `deathInk`).

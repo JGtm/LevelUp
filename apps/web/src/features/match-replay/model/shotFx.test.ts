@@ -363,3 +363,29 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
     expect(buildShotFx(d, 50)[0].vehicleShot?.family).toBe('rockethog')
   })
 })
+
+describe('buildShotFx — la règle du pion', () => {
+  const tirs = [
+    { slot: 1, t: 15, x: 0, y: 0, w: '0xBR' },
+    { slot: 1, t: 40, x: 0, y: 0, w: '0xBR' },
+  ]
+
+  it('un tir d’un joueur qui ne tient plus de fiche à cet instant n’est pas dessiné', () => {
+    // Le bot est relevé après l'image 20 : son tir de 40 ne s'ancre sur aucun pion.
+    const fx = buildShotFx(doc({ shots: tirs }), 50, (_slot, _owner, frame) => frame <= 20)
+    expect(fx.map((e) => e.frame)).toEqual([15])
+  })
+
+  it('le prédicat reçoit le slot du tireur et l’instant du tir', () => {
+    const vus: Array<[number, number, number]> = []
+    buildShotFx(doc({ shots: [tirs[1]] }), 50, (slot, owner, frame) => {
+      vus.push([slot, owner, frame])
+      return true
+    })
+    expect(vus).toEqual([[1, 40, 40]])
+  })
+
+  it('sans prédicat, tous les tirs se dessinent', () => {
+    expect(buildShotFx(doc({ shots: tirs }), 50)).toHaveLength(2)
+  })
+})

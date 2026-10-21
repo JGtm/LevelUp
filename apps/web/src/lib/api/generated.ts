@@ -10724,6 +10724,8 @@ export interface components {
             /** Format: int64 */
             from: number;
             /** Format: int64 */
+            seat?: number;
+            /** Format: int64 */
             to: number;
             /** Format: int64 */
             toMax?: number;
@@ -11394,15 +11396,22 @@ export interface components {
         };
         SeatCoverage: {
             /** Format: int64 */
+            absencesTenuesParUnBot: number;
+            /** Format: int64 */
             apparies: number;
             /** Format: int64 */
             arrivants: number;
             /** Format: int64 */
             bornesDifferees: number;
             /** Format: int64 */
+            botsRelevesALaTaille: number;
+            /** Format: int64 */
+            botsRelevesEnJeu: number;
+            /** Format: int64 */
             botsSuccesseurs: number;
             /** Format: int64 */
             capacite: number;
+            capaciteSource?: string;
             /** Format: int64 */
             chevauchements: number;
             /** Format: int64 */
@@ -11432,6 +11441,8 @@ export interface components {
             presencesCloses: number;
             /** Format: int64 */
             presencesParLesVies: number;
+            /** Format: int64 */
+            rameneesALaTaille: number;
             /** Format: int64 */
             relaisBornes: number;
             /** Format: int64 */

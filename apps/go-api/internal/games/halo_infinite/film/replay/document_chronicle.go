@@ -3464,3 +3464,40 @@ package replay
 //	AVEC ELLE       cette montee la recuisson les rejouerait). Aucune revision de couche ne bouge.
 //
 //	LE PARC         un artefact 99 : verdict `redecoder` (faits refuses sur l en-tete), la recuisson relit le film.
+
+// v101 (2026-10-21, controles de la v8 : controle n° 8, BTB `4f77afc1`, et controle n° 24, grenades
+// sans explosion) : AUCUNE EQUIPE NE MONTRE PLUS D OCCUPANTS QUE SA TAILLE, et la taille vient de la
+// playlist. Une fiche est une place d EQUIPE ; la regle est symetrique (decisions utilisateur du
+// 2026-10-21) : un remplacant, humain ou bot, prend la fiche du partant ; un humain qui joue releve le
+// bot ; un bot tient la fiche d un humain absent le temps de son absence (sieges_a_la_taille.go).
+//
+//	`roster[].presence[].seat`             la place d un intervalle quand elle n est pas celle de l entree :
+//	                 un joueur qui revient alors que sa fiche a ete reprise prend une fiche liberee.
+//	`coverage.seats.capaciteSource`        `mode` (la taille officielle de la playlist, `regulation.toml
+//	                 [team_size]`, `repli_taille_d_equipe_du_mode` : le film ne l ecrit pas, negatif mesure
+//	                 sur 18 films) ou `estimee` (la capacite d avant, playlist non declaree).
+//	`coverage.seats.rameneesALaTaille`     les intervalles reassis dans les places gardees de leur equipe,
+//	                 ou dont l affichage est retire — `repli_place_ramenee_a_la_taille_d_equipe`,
+//	                 `roster[].seatSource` = `taille`.
+//	`coverage.seats.botsRelevesALaTaille`  les bots qu un humain arrive releve sur leur fiche ;
+//	`coverage.seats.botsRelevesEnJeu`      ceux d entre eux a qui le film donne encore une vie apres
+//	                 l arrivee (leur pion reste, sans fiche) ;
+//	`coverage.seats.absencesTenuesParUnBot` les absences d humain (aucune vie) qu un bot a tenues.
+//
+//	MESURE          sur les 2 499 artefacts a roster du parc, rejoues par le banc : 13 places en trop avant,
+//	                0 apres, 0 instant ou une equipe montre plus d occupants que sa taille ; 25 intervalles
+//	                ramenes, 11 bots releves a qui le film donne encore une vie. Les 13 films temoins
+//	                (`4f77afc1` BTB, Eagle 13 -> 12 ; `3d58eb37`, `400bb628`, `6effe27b`, `ac313879`,
+//	                `ac919b39`, `bfcd1175`, `d35e9169`, `dc0d9e19`, `e96070e2`, `f0680b37`, `f235e2f1`,
+//	                `508bd2fb`) tiennent tous leur taille. La cinquieme presence de ces films est un bot
+//	                nomme par le tableau de l API : le film ne lui ecrit aucun tir indexe, et ses
+//	                evenements de mort le nomment encore apres l arrivee des humains — contradiction comptee
+//	                (`botsRelevesEnJeu`), la regle des places prime.
+//
+//	CE QUI MONTE    `SchemaVersion` 100 -> 101. Avec lui, sur la meme branche, `grammar.Rev`
+//	AVEC ELLE       `grammar-2026-10-18` -> `grammar-2026-10-21` (les pistes de projectile que la marche
+//	                nomme se gardent hors de la bande des images-cles : chaque lancer a son explosion) ;
+//	                `killsource.Rev` et `objectives.Rev` a revision constante ; `SchemaDesFaits` garde sa
+//	                valeur (la taille est une option de la publication, pas un fait du film).
+//
+//	LE PARC         un artefact 100 : verdict `redecoder` (la revision de grammaire a change).

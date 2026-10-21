@@ -51,4 +51,11 @@ type SeatCoverage struct {
 	ImagesClesDouteuses int    `json:"imagesClesDouteuses"`
 	BornesDifferees     int    `json:"bornesDifferees"`
 	SansTableDuFilm     bool   `json:"sansTableDuFilm,omitempty"`
+	// CapaciteSource / RameneesALaTaille / BotsRelevesALaTaille : la taille d equipe et la regle qui
+	// y ramene les places (controle n° 8 de la v8, schema 101), cf. `replay.SeatCoverage`.
+	CapaciteSource         string `json:"capaciteSource,omitempty"`
+	RameneesALaTaille      int    `json:"rameneesALaTaille"`
+	BotsRelevesALaTaille   int    `json:"botsRelevesALaTaille"`
+	BotsRelevesEnJeu       int    `json:"botsRelevesEnJeu"`
+	AbsencesTenuesParUnBot int    `json:"absencesTenuesParUnBot"`
 }

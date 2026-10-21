@@ -176,6 +176,8 @@ type PresenceInterval struct {
 	From  int  `json:"from"`
 	To    int  `json:"to"`
 	ToMax *int `json:"toMax,omitempty"`
+	// Seat : la place de l intervalle quand elle n est pas celle de l entree (schema 101).
+	Seat *int `json:"seat,omitempty"`
 }
 
 // Shot est un tir décodé, placé à la position de son tireur.

@@ -149,7 +149,7 @@ func presenceServie(v replay.RosterEntry) []replaydoc.PresenceInterval {
 	}
 	out := make([]replaydoc.PresenceInterval, 0, len(v.Presence))
 	for _, p := range v.Presence {
-		out = append(out, replaydoc.PresenceInterval{From: p.From, To: p.To, ToMax: p.ToMax})
+		out = append(out, replaydoc.PresenceInterval{From: p.From, To: p.To, ToMax: p.ToMax, Seat: p.Seat})
 	}
 	return out
 }

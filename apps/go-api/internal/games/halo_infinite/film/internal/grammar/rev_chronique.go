@@ -356,3 +356,16 @@ package grammar
 // cuisson ([ScanMarcheDesTramesAvec], `TestLOccupationDeLaMarcheDeKillsourceEstCelleDeLaCuisson`) :
 // la passe des positions du collecteur y lit qui est a bord (tenue hors embarquement, siege du
 // vehicule occupe) sans seconde marche. `killsource.Rev` monte avec cette valeur.
+//
+// ENTREE `grammar-2026-10-21` (2026-10-21, controle n° 24 des controles de la v8, lot L3 des retours
+// de controle) : UNE PISTE DE PROJECTILE QUE LA MARCHE A LUE SE
+// GARDE HORS DE LA BANDE DES IMAGES-CLES. Aucun bit n est lu autrement : la marche nommait deja
+// l archetype de chacun de ses records, et [FilmContext.pistesDerriereLaMarche] jetait ceux du
+// projectile dont le slot sortait de la bande — une bande relevee dans des images-cles espacees de
+// vingt secondes, qui ne voient pas un objet vivant moins d une seconde ([laMarcheDesigneSeule]). Une
+// bande vide ne ferme plus le balayage des projectiles. MESURE (`grenade_vol_research_test.go`,
+// contexte de la cuisson, un film par processus) : lancers suivis d une naissance de piste de
+// production a 200 ms, avant -> apres : d6918972 135 -> 174 sur 174, d9781168 131 -> 172 sur 172,
+// bfecd02b 67 -> 95 sur 95, 4f77afc1 190 -> 210 sur 215, 72b0a25e 2 -> 81 sur 81 (bande d un seul
+// slot), 92c950ee 72 -> 76 sur 76 ; chaque lancer est aussi suivi d un message `projectile_detonate`
+// (genre 5) de la vue A dans les 5 s. Mini-bobine : 51 -> 81 pistes de projectile.
