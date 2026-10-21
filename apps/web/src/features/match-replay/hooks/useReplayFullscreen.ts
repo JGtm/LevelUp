@@ -53,9 +53,18 @@ export const REPLAY_ESCAPE_LAYER_ATTR = 'data-replay-escape-layer'
  * (`overflow-y-auto`) : `useReplayViewport` mesure la hauteur offerte au terrain par rapport au
  * premier ancêtre qui défile, et c'est ce cadre qu'il doit trouver. `z-40` : au-dessus des
  * languettes fixes de l'application, au-dessous du tiroir de réglages (`z-50`, en portail).
+ *
+ * `[align-content:safe_center]` CENTRE LA RANGÉE DANS LE CADRE (régression constatée le
+ * 2026-10-21) : la hauteur de la rangée suit la carte, plafonnée par `CANVAS_HEIGHT_CEILING`
+ * (720 px, garde-fou mémoire) — sur un écran plus haut que ça en plein écran, la grille (une
+ * seule rangée, pas de `grid-template-rows`) restait plus courte que le cadre, et un conteneur
+ * bloc aligne son contenu en haut par défaut : la carte se retrouvait collée en haut, avec du
+ * vide sous elle au lieu d'être centrée. `safe` évite le symétrique sur un cadre plus COURT que
+ * la rangée (BTB, fiches nombreuses) : sans lui, un centrage pur pousserait le haut du contenu
+ * hors champ au premier rendu, avant tout défilement.
  */
 export const REPLAY_FULLSCREEN_FRAME =
-  'fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-background p-3'
+  'fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-background p-3 [align-content:safe_center]'
 
 export interface ReplayFullscreen {
   /** Le mode est ouvert : la page pose `REPLAY_FULLSCREEN_FRAME` sur sa grille. */
