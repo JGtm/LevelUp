@@ -27646,7 +27646,6 @@ components:
         - match_id
         - start_time
         - outcome
-        - team_mmr_avg
       type: object
     SquadObjectiveEvening:
       additionalProperties: false

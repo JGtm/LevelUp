@@ -73,6 +73,32 @@ func TestSanitizeBatch_ParticipantNaN_BecomesNil(t *testing.T) {
 	}
 }
 
+// Un MMR à 0 (match classé abandonné) est une valeur absente : l'écriture ne le stocke pas.
+func TestSanitizeBatch_ZeroMMR_BecomesNil(t *testing.T) {
+	batch := &MatchBatch{
+		BatchID: "test",
+		Shared: SharedBatch{
+			Participants: []domain.MatchParticipantRow{
+				{MatchID: "m1", XUID: "1", TeamMMR: fpPtr(0), EnemyMMR: fpPtr(0)},
+				{MatchID: "m1", XUID: "2", TeamMMR: fpPtr(1500), EnemyMMR: fpPtr(0)},
+			},
+		},
+	}
+	SanitizeBatch(batch)
+
+	zero := batch.Shared.Participants[0]
+	if zero.TeamMMR != nil || zero.EnemyMMR != nil {
+		t.Errorf("MMR à 0 attendu absent, got team=%v enemy=%v", zero.TeamMMR, zero.EnemyMMR)
+	}
+	mixed := batch.Shared.Participants[1]
+	if mixed.TeamMMR == nil || *mixed.TeamMMR != 1500 {
+		t.Errorf("le MMR réel est conservé, got %v", mixed.TeamMMR)
+	}
+	if mixed.EnemyMMR != nil {
+		t.Errorf("l'adverse à 0 est absent, got %v", *mixed.EnemyMMR)
+	}
+}
+
 func TestSanitizeBatch_EnrichmentNaN_BecomesNil(t *testing.T) {
 	batch := &MatchBatch{
 		BatchID: "test",

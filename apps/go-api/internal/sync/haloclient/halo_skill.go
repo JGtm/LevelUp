@@ -42,6 +42,7 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games"
 )
 
@@ -199,7 +200,7 @@ func transformMatchSkillResponse(resp matchSkillResponse) map[string]*MatchSkill
 			continue
 		}
 		data := &MatchSkillData{XUID: xuid}
-		if tm := float64(v.Result.TeamMMR); tm > 0 {
+		if tm := float64(v.Result.TeamMMR); analysis.MMRKnown(tm) {
 			data.TeamMMR = &tm
 		}
 		// Convertir TeamMMRs en map[string]float64 pour computeEnemyMMR.
@@ -238,7 +239,9 @@ func transformMatchSkillResponse(resp matchSkillResponse) map[string]*MatchSkill
 }
 
 // computeEnemyMMR moyenne le MMR des équipes autres que selfTeamID.
-// Retourne nil si seule l'équipe du joueur est présente (FFA 1v0, edge case).
+// Retourne nil si seule l'équipe du joueur est présente (FFA 1v0, edge case) ou si aucune
+// équipe adverse n'a de MMR réel : une équipe à 0 est une valeur absente (analysis.MMRKnown),
+// elle ne tire pas la moyenne vers le bas.
 func computeEnemyMMR(selfTeamID int, teamMMRs map[string]float64) *float64 {
 	if len(teamMMRs) < 2 {
 		return nil
@@ -247,7 +250,7 @@ func computeEnemyMMR(selfTeamID int, teamMMRs map[string]float64) *float64 {
 	var sum float64
 	var count int
 	for k, v := range teamMMRs {
-		if k == selfKey {
+		if k == selfKey || !analysis.MMRKnown(v) {
 			continue
 		}
 		sum += v

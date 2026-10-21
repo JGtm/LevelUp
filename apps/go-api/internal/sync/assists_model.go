@@ -52,7 +52,9 @@ type assistsCoefs struct {
 	n               int
 }
 
-// loadAssistsSamples charge les données d'entraînement depuis shared_matches_v2.
+// loadAssistsSamples charge les données d'entraînement depuis shared_matches_v2. Le régresseur
+// d'écart de MMR est neutre (0) dès qu'un des deux MMR est absent — 0 de l'API compris
+// (analysis.MMRKnown) : « 1500 - 0 » n'est pas un écart de 1500 points.
 func loadAssistsSamples(ctx context.Context, sharedDB *sql.DB, xuid string) ([]assistsSample, error) {
 	// Campagne exclue : un match de Campagne n'est pas un échantillon d'entraînement du modèle.
 	q := `
@@ -64,7 +66,7 @@ func loadAssistsSamples(ctx context.Context, sharedDB *sql.DB, xuid string) ([]a
 			COALESCE(CAST(p.damage_dealt AS DOUBLE), 0.0),
 			COALESCE(CAST(p.damage_taken AS DOUBLE), 0.0),
 			COALESCE(
-				CAST(p.team_mmr  AS DOUBLE) - CAST(p.enemy_mmr AS DOUBLE),
+				CAST(` + analysis.SQLKnownMMR("p.team_mmr") + ` AS DOUBLE) - CAST(` + analysis.SQLKnownMMR("p.enemy_mmr") + ` AS DOUBLE),
 				0.0
 			)
 		FROM match_participants p
