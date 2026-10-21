@@ -141,3 +141,21 @@ func TestSummarize_PasseVide(t *testing.T) {
 		t.Fatalf("passe vide : %+v", s)
 	}
 }
+
+// TestSummarize_EgalitePasVolee : « volé » veut dire STRICTEMENT plus que le tueur ; à parts
+// égales (même à 0 ou 100) l'appui n'est pas volé, un cran de plus l'est.
+func TestSummarize_EgalitePasVolee(t *testing.T) {
+	ligne := func(killer, assist uint8) Row {
+		return Row{KillerXUID: "k", AssistKnown: true, AssistXUID: "a", AssistGamertag: "A",
+			KillerDamagePct: pct(killer), AssistDamagePct: pct(assist)}
+	}
+	for _, tc := range []struct {
+		killer, assist uint8
+		stolen         int
+	}{{50, 50, 0}, {0, 0, 0}, {100, 100, 0}, {50, 51, 1}, {51, 50, 0}} {
+		got := Summarize(true, []Row{ligne(tc.killer, tc.assist)}).Assists
+		if len(got) != 1 || got[0].Stolen != tc.stolen {
+			t.Errorf("tueur %d%% assistant %d%% : volés = %+v, attendu %d", tc.killer, tc.assist, got, tc.stolen)
+		}
+	}
+}

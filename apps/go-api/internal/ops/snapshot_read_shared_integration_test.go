@@ -312,6 +312,8 @@ func TestOpenSnapshotShared_SchemaContract_integration(t *testing.T) {
 		"match_registry", "match_participants", "medals_earned", "highlight_events",
 		"killer_victim_pairs", "weapon_kills", "match_csrs", "match_objective_stats",
 		"match_kill_events", "xuid_aliases",
+		// Résumés par match du journal (ADR 0039) : tables exportées RAW.
+		tableMatchKillHeads, tableMatchKillPairs, tableMatchAssistPairs,
 		// Vues reconstruites aux noms live. v_killer_victim_full n'y figure plus : supprimée
 		// le 2026-08-02 (ses deux LEFT JOIN étaient du travail mort), Q20 lit la table.
 		// match_kill_events_latest ajoutée le 2026-08-12 (Q21b arme + Q21c assistant du
@@ -319,6 +321,8 @@ func TestOpenSnapshotShared_SchemaContract_integration(t *testing.T) {
 		// snapshot, sans erreur — 0 icône, 0 assistant, indiscernable d'un match non décodé.
 		"v_gamertag_lookup", "v_match_full", "v_weapon_kills",
 		"match_csrs_latest", "match_objective_stats_latest", "match_kill_events_latest",
+		// Vues des résumés (têtes S0, paires S1, appuis S2) posées par EnsureMatchKillEvents.
+		tableMatchKillHeads + "_latest", tableMatchKillPairs + "_latest", tableMatchAssistPairs + "_latest",
 		"mv_player_matches",
 	}
 	for _, rel := range expected {
@@ -382,5 +386,65 @@ func TestOpenSnapshotShared_TitreSansWeaponKills_integration(t *testing.T) {
 		if compter(requise) == 0 {
 			t.Errorf("relation %q absente du schéma reconstruit", requise)
 		}
+	}
+}
+
+// TestOpenSnapshotShared_ResumesDuJournalVoyagent_integration : les résumés par match du journal
+// (ADR 0039) sont exportés avec lui et servis par leurs vues `_latest` : non vides après
+// export puis lecture pour le match prêt, absents pour le match non prêt, comme le journal.
+func TestOpenSnapshotShared_ResumesDuJournalVoyagent_integration(t *testing.T) {
+	ctx := context.Background()
+	paths := title.NewPathResolver(t.TempDir(), nil)
+	slug := title.DefaultSlug
+
+	shared := seedFidelityShared(t)
+	at := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	for _, m := range []string{"m1", "m2"} {
+		snapExecT(t, shared, `INSERT INTO match_kill_heads (match_id, summary_pass, summary_rev,
+			src_decode_pass, written_at, publishable, n_rows, n_assist_known, n_killer_xuid, n_src_killer)
+			VALUES (?, 'g1', 'ks1', 'p1', ?, TRUE, 4, 2, 3, 1)`, m, at)
+		snapExecT(t, shared, `INSERT INTO match_kill_pairs (match_id, summary_pass, summary_rev,
+			src_decode_pass, written_at, feed_killer_xuid, victim_xuid, source_tag, kills)
+			VALUES (?, 'g1', 'ks1', 'p1', ?, 'xKiller', 'xVictim', NULL, 4)`, m, at)
+		snapExecT(t, shared, `INSERT INTO match_assist_pairs (match_id, summary_pass, summary_rev,
+			src_decode_pass, written_at, assist_xuid, assist_gamertag, feed_killer_xuid,
+			feed_killer_gamertag, victim_xuid, n, n_stolen, sum_assist_pct, n_assist_pct,
+			n_low, n_mid, n_high) VALUES (?, 'g1', 'ks1', 'p1', ?, 'xVictim', 'VictimeMP',
+			'xKiller', 'TueurMP', NULL, 2, 1, 90, 2, 0, 1, 1)`, m, at)
+	}
+	player := seedPlayerDB(t, []string{"m1"}, []string{"m2"})
+	res, err := ProduceSnapshot(ctx, SnapshotOptions{
+		TitleSlug: slug, Paths: paths,
+		Shared:       fakeSharedOpener{db: shared},
+		PlayerOpener: fakePlayerOpener{byGT: map[string]*sql.DB{"Solo": player}},
+		Players:      []string{"Solo"},
+		Now:          time.Date(2026, 6, 25, 9, 0, 0, 0, time.UTC),
+	})
+	if err != nil || !res.Produced {
+		t.Fatalf("produce: res=%+v err=%v", res, err)
+	}
+	q, err := OpenSnapshotShared(ctx, paths, slug)
+	if err != nil {
+		t.Fatalf("OpenSnapshotShared: %v", err)
+	}
+	defer q.Close()
+	for _, vue := range []string{
+		tableMatchKillHeads + "_latest", tableMatchKillPairs + "_latest", tableMatchAssistPairs + "_latest",
+	} {
+		for match, attendu := range map[string]int{"m1": 1, "m2": 0} {
+			var n int
+			if err := q.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+vue+` WHERE match_id = ?`, match).Scan(&n); err != nil {
+				t.Fatalf("%s %s : %v", vue, match, err)
+			}
+			if n != attendu {
+				t.Errorf("%s %s = %d ligne(s), attendu %d (le résumé voyage avec le journal, prêt seulement)",
+					vue, match, n, attendu)
+			}
+		}
+	}
+	var kills, publiable int
+	if err := q.DB.QueryRowContext(ctx, `SELECT kills, CAST(publishable AS INTEGER)
+		FROM match_kill_pairs_latest WHERE match_id = 'm1'`).Scan(&kills, &publiable); err != nil || kills != 4 || publiable != 1 {
+		t.Errorf("paire S1 relue (kills=%d publishable=%d, err %v), attendu (4, 1) : la tête décide", kills, publiable, err)
 	}
 }

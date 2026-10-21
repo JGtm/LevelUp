@@ -372,7 +372,7 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
       du `written_at` de la passe relue, pour que l'ordre des têtes suive celui des passes — choix non
       écrit dans l'ADR, consigné ici). Appelants de cette dernière : le seed démo synthétique
       (`ops/seed_demo_synthetic_shared.go`), les tests ; le rattrapage (étape 8) s'y branchera.
-- [!] 7.5 Snapshots et démo : S0-S2 dans `ops/snapshot_export.go` (`sharedSnapshotMatchKeyedRaw`) et
+- [~] 7.5 Snapshots et démo : S0-S2 dans `ops/snapshot_export.go` (`sharedSnapshotMatchKeyedRaw`) et
       dans la lecture de snapshot ; seed démo (`ops/seed_demo_shared_tables.go`, `seed_demo.go`) avec
       anonymisation des colonnes d'identité et `TestSharedTablesDeclareEveryIdentityColumn` à jour ;
       fixtures de tests qui écrivent `match_kill_events` (`sync/testutil/fixture.go` et les tests
@@ -382,8 +382,14 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
       `killSummaryTables`, identités déclarées (`colFeedKillerXUID` centralisé, garde-rail du littéral
       étendu), exemption datée `match_kill_heads.n_killer_xuid` (compte INTEGER, pas une identité) avec
       contrôle de péremption ; `TestCopyAnonymizedTables_ResumesDuJournal` (déclaration réelle).
-      `sync/testutil/fixture.go` n'écrit pas `match_kill_events` (vérifié). NON FAIT, question Q2 au
-      pilote : conversion des fixtures `INSERT INTO match_kill_events` brutes.
+      `sync/testutil/fixture.go` n'écrit pas `match_kill_events` (vérifié).
+      Fixtures `INSERT INTO match_kill_events` brutes : couvert par 9.x (décision du pilote Q2,
+      2026-10-21) — chaque fixture est convertie avec le lecteur qui l'utilise.
+      Revue du 2026-10-21 : le contrat de schéma de la lecture de snapshot cite S0-S2 et leurs vues, et
+      `TestOpenSnapshotShared_ResumesDuJournalVoyagent_integration` vérifie qu'ils voyagent (prêt
+      seulement) ; `TestSeedDemoSynthetic_ResumesCoherents` tient la tête et S1 de chaque match semé
+      (échoue sans l'appel du seed) ; S0-S2 sont dans `detSeededTables`, `summary_pass` (tiré au hasard)
+      exclu du dump explicitement.
 - [x] 7.6 Migrations historiques qui ont écrit `match_kill_events` (`steps_shared_kill_events_credit_base.go`,
       `_from_pairs.go`, `_sans_killfeed.go`) : non rejouées, nommées dans l'ADR ; le rattrapage (étape 8)
       couvre leurs passes.
@@ -413,7 +419,7 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
       l'erreur). Coût de la passe (`TestPasseCredit_OuVaLeTemps`, CollectMatch de 3 morts, base
       fichier) : sans résumés 9,8 / 13,7 / 11,1 ms (+ une valeur aberrante à 56,5), avec 11,6 / 14,7 /
       12,3 ms : dans le bruit.
-- [!] 7.8 Plans d'exécution : `EXPLAIN ANALYZE` des vues S0-S2 sous une liste de matchs (le filtre
+- [x] 7.8 Plans d'exécution : `EXPLAIN ANALYZE` des vues S0-S2 sous une liste de matchs (le filtre
       descend-il sous la tête et ses filles ?) consigné ; les tests ADR 0036 qui exigent des fenêtres
       bornées (`exigerFenetresBornees`) restent verts ou sont réécrits pour les vues S, et le tableau
       d'exceptions I2 de l'ADR 0036 mis à jour.
@@ -425,18 +431,11 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
       la vue tête → 20 et 4 (la fenêtre interne reste entière) ; table fille BRUTE jointe à la vue tête
       sous la liste → 4 (bornée, mais lecture brute d'une table append-only, interdite par ADR 0026 et
       `TestNoRawAppendOnlyReads`). Les tests `exigerFenetresBornees` existants restent verts (aucun
-      lecteur ne lit encore S). Tableau I2 de l'ADR 0036 NON mis à jour : décision Q1 au pilote.
-      Q1 : le remède de l'ADR 0039 décision 7 (« readers bind the list on the head view too ») ne
-      s'applique pas tel quel — la fenêtre de la tête est DANS la vue fille. Options : (a) accepter la
-      fenêtre entière de la tête (une ligne par match et génération ; l'ADR dit « costs little »), ligne
-      au tableau I2 et test qui le tient (forme actuelle du test) ; (b) autre forme de vue ou macro de
-      table paramétrée par la liste (nouveau mécanisme, amende l'ADR) ; (c) lecture brute allowlistée.
-      Q2 (7.5) : à l'étape 7 aucun lecteur ne lit S ; les fixtures `INSERT INTO match_kill_events`
-      brutes (~25 sites hors migrations) ne servent que des lecteurs du journal. Celles de
-      `platform/duckdb` (paquet interne) ne peuvent pas appeler `persist` (cycle persist → duckdb) : elles
-      devraient écrire S0-S2 à la main, recopie de la règle. Proposition : chaque fixture est convertie
-      avec son lecteur à l'étape 9 (D-4), par `persist.PersistLatestKillPassSummaries` là où l'import est
-      possible ; les fixtures des migrations historiques n'en posent jamais (ADR décision 2).
+      lecteur ne lit encore S).
+      Décision Q1 du pilote (2026-10-21), option (a) : la fenêtre de la tête n'est pas bornée sous une
+      liste quand on lit une vue fille ; acceptée (une ligne par match et génération, ~6 500 lignes
+      compactées en prod). ADR 0039 décision 7 amendée, ligne ajoutée au tableau d'exceptions I2 de l'ADR
+      0036 ; le test `resumes_fenetres_test.go` tient la taille de cette fenêtre.
 - Gate : doctrine §4 (dont `-tags=integration` persist/sync) ; revue adversariale close.
   Statut (2026-10-21) : `go test` (défaut) vert sur analysis/killsummary, persist, migration, ops,
   sync/..., platform/duckdb/..., migrations Halo Infinite, cmd/levelup ; `-tags=integration -p 1` vert
@@ -448,7 +447,15 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
   module entier, sans rapport mesurable avec ~600 lignes testées de ce lot ; NON vérifié sur le
   commit de base (35 min de suite) — à confirmer par le pilote ou la CI (la baseline de couverture est
   un gate Linux). Revue adversariale : par le pilote.
-  Étape NON close : 7.5 (fixtures) et 7.8 attendent les décisions Q1 et Q2 du pilote.
+  Clôture (2026-10-21, après les décisions Q1 et Q2 du pilote et les 10 corrections de revue) : chaque
+  test ajouté a été vu ÉCHOUER sous la mutation qu'il garde (null écrits en sentinelle, comptes de
+  la tête permutés ou faux, appui volé à égalité, erreur de S1 ou de S2 avalée, relecture de la
+  table au lieu de la vue, appel du seed démo retiré, tables retirées de l'export du snapshot),
+  puis la mutation annulée. Gate rejoué sur les paquets touchés : `go test` (défaut) vert sur
+  analysis/killsummary, persist, ops, migration, migrations Halo Infinite, cmd/levelup, sync/...,
+  platform/duckdb/..., archlint ; `-tags=integration -p 1` vert sur les mêmes ; golangci-lint
+  `--new-from-merge-base=origin/main` 0 problème, avec et sans tag `integration`. Le contrôle de
+  couverture global de `check_test_baseline.sh` reste jugé par la CI. Étape CLOSE.
 
 ### Étape 8 — Rattrapage du parc (volet 2, D-10 validée avant)
 
@@ -594,4 +601,5 @@ Q23b/Q28c 250-1 080 ms (Madina97294 reste à ~1 s sur la vue match).
 - Étape 7 (2026-10-21) : le modèle d'empreinte cité par l'ADR 0039 (`decoder_rev_fingerprint_test.go`) n'existe plus (retiré le 2026-09-16 au profit de `film/revision`, propre aux couches du décodeur et à leur fermeture d'imports). L'empreinte de `killsummary.Rev` hache le flux de jetons (`go/scanner`, sans commentaires) des sources du paquet et les bornes de tranche ; elle ne réunit pas les trois marqueurs du ratchet `archlint/no_ad_hoc_source_fingerprint_test.go`. À trancher par le pilote si une centralisation est voulue.
 - Étape 7 : deux affirmations fausses corrigées dans les commentaires touchés (règle 17) : `insertKillEventRows` n'était pas « le seul écrivain » du journal (seed démo synthétique et deux migrations historiques l'écrivent en SQL) ; la liste des appelants de `EnsureMatchKillEvents` omettait la lecture du snapshot partagé.
 - Étape 7 : le test du collecteur sur film réel (`TestKillSourceCollecteFilmReelEtRelitParLaVue`) se saute sans `KILLSOURCE_FIXTURES` et son fichier est au plafond figé par `archlint/film_file_size_test.go` : aucune assertion de tête n'y est ajoutée ; le chemin `PersistPass` du collecteur est couvert sans film par le collecteur crédit.
+- Étape 7 (revue du 2026-10-21) : le test d'empreinte de `killsummary.Rev` (`rev_test.go`) refait un hachage de jetons (copie du mécanisme de `film/revision/jetons.go`) ; à reprendre si un mécanisme partagé hors film est créé.
 - (à compléter pendant l'exécution)

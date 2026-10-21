@@ -91,7 +91,7 @@ func lireAppuisS2(t *testing.T, db *sql.DB, matchID string) []killsummary.Assist
 }
 
 // passeVariee : une passe de film qui traverse le grain — tueur et victime nommés, victime bot,
-// tueur bot, assistant nommé avec parts, assistant bot d'un tueur bot (cas bot-bot), absence
+// tueur bot (source mesurée), assistant nommé avec parts, assistant bot d'un tueur bot (cas bot-bot), absence
 // d'assistant mesurée, assistant inconnu, source mesurée et non mesurée.
 func passeVariee(matchID string, publiable bool) KillSourceBatch {
 	m := func(ms int, victime, victimeX, tueur, tueurX string) KillEventInsert {
@@ -107,6 +107,8 @@ func passeVariee(matchID string, publiable bool) KillSourceBatch {
 	victimeBot := m(2000, "Bot1", "", "Alice", "1111")
 	victimeBot.SourceTag, victimeBot.SourceCategory = 0x6a707421, "Headshot"
 	tueurBot := m(3000, "Bob", "2222", "BotK", "")
+	// source mesurée MAIS tueur sans xuid : compte dans S1, pas dans n_src_killer.
+	tueurBot.SourceTag, tueurBot.SourceCategory = 0x6a707421, "None"
 	tueurBot.ReadOrigin = "tueur-bot"
 	botBot := m(4000, "Dan", "4444", "BotK", "")
 	botBot.AssistGamertag, botBot.AssistDamagePct = "BotA", u8(20)
@@ -222,6 +224,9 @@ func TestResumes_DeuxPassesSuccessives(t *testing.T) {
 	if e.FragsS1 != 2 {
 		t.Fatalf("S1 compte %d frags, attendu 2 (la passe B entière)", e.FragsS1)
 	}
+	if e.Publiables != 0 {
+		t.Fatalf("%d ligne(s) publiable(s) au journal : la passe B n'est pas publiable", e.Publiables)
+	}
 	if got := lireAppuisS2(t, db, "m-2p"); len(got) != 0 {
 		t.Fatalf("S2 sert %+v : la passe B n'est pas publiable, les appuis de A ne survivent pas", got)
 	}
@@ -316,8 +321,9 @@ func TestResumes_PariteDesAdaptateurs(t *testing.T) {
 }
 
 // TestResumes_CoherencePermanente : sur un corpus écrit par les écrivains réels (passe de film,
-// passe crédit fusionnée, passe non publiable, passes successives, relecture), chaque match a une
-// tête qui résume sa passe courante et S1 en compte exactement les morts.
+// passe de film non publiable, deux passes de film successives, relecture, passe crédit SEULE,
+// passe crédit puis passe de film), chaque match a une tête qui résume sa passe courante et S1
+// en compte exactement les morts.
 func TestResumes_CoherencePermanente(t *testing.T) {
 	ctx := context.Background()
 	db := openKillEventsTestDB(t)
@@ -338,12 +344,138 @@ func TestResumes_CoherencePermanente(t *testing.T) {
 	if _, err := PersistLatestKillPassSummaries(ctx, db, "c-relu"); err != nil {
 		t.Fatalf("relecture : %v", err)
 	}
+	ecrireCouples(t, db, []KillerVictimInsert{coupleLive("c-credit-seul", 1000), coupleLive("c-credit-seul", 2000)})
 	ecrireCouples(t, db, []KillerVictimInsert{coupleLive("c-credit", 1000), coupleLive("c-credit", 4000)})
 	creditPuisFilm := passeVariee("c-credit", true)
 	if err := p.PersistPass(ctx, creditPuisFilm); err != nil {
 		t.Fatalf("passe de film après crédit : %v", err)
 	}
-	if n := testutil.ExigerCoherenceDesResumes(t, db); n != 5 {
-		t.Fatalf("%d matchs vérifiés, attendu 5", n)
+	if n := testutil.ExigerCoherenceDesResumes(t, db); n != 6 {
+		t.Fatalf("%d matchs vérifiés, attendu 6", n)
+	}
+}
+
+// compterResume compte les lignes d'une vue de résumé d'un match qui vérifient `cond`.
+func compterResume(t *testing.T, db *sql.DB, vue, matchID, cond string) int {
+	t.Helper()
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM `+vue+` WHERE match_id = ? AND (`+cond+`)`, matchID).Scan(&n); err != nil {
+		t.Fatalf("%s [%s] : %v", vue, cond, err)
+	}
+	return n
+}
+
+// TestResumes_NullsEcritsEnNull : « absent » est NULL en base, jamais une sentinelle (texte vide,
+// source 0) ; les relectures à COALESCE des autres tests ne distinguent pas les deux.
+func TestResumes_NullsEcritsEnNull(t *testing.T) {
+	db := openKillEventsTestDB(t)
+	if err := NewKillSourcePersister(db).PersistPass(context.Background(), passeVariee("m-null", true)); err != nil {
+		t.Fatalf("PersistPass : %v", err)
+	}
+	for _, c := range []struct {
+		vue, cond string
+		attendu   int
+	}{
+		// S1 : tueurBot et botBot (tueur NULL), victimeBot (victime NULL), trois groupes sans source.
+		{"match_kill_pairs_latest", "feed_killer_xuid IS NULL", 2},
+		{"match_kill_pairs_latest", "victim_xuid IS NULL", 1},
+		{"match_kill_pairs_latest", "source_tag IS NULL", 3},
+		{"match_kill_pairs_latest", "feed_killer_xuid = '' OR victim_xuid = '' OR source_tag = 0", 0},
+		// S2 : assistant sans xuid (victimeBot, tueurBot, botBot, sansAssistant), sans nom (les trois
+		// hors botBot), tueur sans xuid (tueurBot, botBot), victime hors grain (les trois à tueur nommé).
+		{"match_assist_pairs_latest", "assist_xuid IS NULL", 4},
+		{"match_assist_pairs_latest", "assist_gamertag IS NULL", 3},
+		{"match_assist_pairs_latest", "feed_killer_xuid IS NULL", 2},
+		{"match_assist_pairs_latest", "feed_killer_gamertag IS NULL", 0},
+		{"match_assist_pairs_latest", "victim_xuid IS NULL", 3},
+		{"match_assist_pairs_latest", "assist_xuid = '' OR assist_gamertag = '' OR feed_killer_xuid = '' " +
+			"OR feed_killer_gamertag = '' OR victim_xuid = ''", 0},
+	} {
+		if n := compterResume(t, db, c.vue, "m-null", c.cond); n != c.attendu {
+			t.Errorf("%s [%s] = %d ligne(s), attendu %d", c.vue, c.cond, n, c.attendu)
+		}
+	}
+}
+
+// TestResumes_ComptesDeLaTeteRelusEnBase : les quatre comptes de la tête, relus de la vue. Le
+// corpus a une mort à source mesurée et tueur sans xuid : n_src_killer (2) se distingue de
+// n_killer_xuid (4) comme du nombre de sources mesurées (3).
+func TestResumes_ComptesDeLaTeteRelusEnBase(t *testing.T) {
+	db := openKillEventsTestDB(t)
+	if err := NewKillSourcePersister(db).PersistPass(context.Background(), passeVariee("m-tete", true)); err != nil {
+		t.Fatalf("PersistPass : %v", err)
+	}
+	var rows, assistKnown, killer, srcKiller int
+	var publiable bool
+	if err := db.QueryRow(`SELECT n_rows, n_assist_known, n_killer_xuid, n_src_killer, publishable
+		FROM match_kill_heads_latest WHERE match_id = 'm-tete'`).Scan(&rows, &assistKnown, &killer, &srcKiller, &publiable); err != nil {
+		t.Fatalf("tête : %v", err)
+	}
+	if rows != 6 || assistKnown != 5 || killer != 4 || srcKiller != 2 || !publiable {
+		t.Fatalf("tête = (n_rows %d, n_assist_known %d, n_killer_xuid %d, n_src_killer %d, publiable %v), "+
+			"attendu (6, 5, 4, 2, true)", rows, assistKnown, killer, srcKiller, publiable)
+	}
+	if n := compterResume(t, db, "match_kill_events_latest", "m-tete", "source_tag IS NOT NULL"); n != 3 {
+		t.Fatalf("%d sources mesurées au journal, attendu 3 (le corpus doit distinguer n_src_killer)", n)
+	}
+}
+
+// TestResumes_RelectureDuMatchADeuxPasses : un match écrit en deux passes puis relu par le
+// rattrapage est résumé sur sa DERNIÈRE passe seule — pas de mélange des deux, pas de doublon.
+func TestResumes_RelectureDuMatchADeuxPasses(t *testing.T) {
+	ctx := context.Background()
+	db := openKillEventsTestDB(t)
+	p := NewKillSourcePersister(db)
+	if err := p.PersistPass(ctx, passeVariee("m-relu2", true)); err != nil {
+		t.Fatalf("passe A : %v", err)
+	}
+	b := passeVariee("m-relu2", true)
+	b.Deaths = b.Deaths[:3]
+	if err := p.PersistPass(ctx, b); err != nil {
+		t.Fatalf("passe B : %v", err)
+	}
+	if ecrit, err := PersistLatestKillPassSummaries(ctx, db, "m-relu2"); err != nil || !ecrit {
+		t.Fatalf("PersistLatestKillPassSummaries : écrit=%v err=%v", ecrit, err)
+	}
+	e := testutil.ExigerResumeDeLaPasseCourante(t, db, "m-relu2")
+	if e.LignesJournal != 3 || e.FragsS1 != 3 || e.LignesTete != 3 {
+		t.Fatalf("journal %d, tête %d, frags S1 %d : le résumé doit être celui de la passe B (3 morts)",
+			e.LignesJournal, e.LignesTete, e.FragsS1)
+	}
+	voulu := killsummary.Summarize(true, killSummaryRowsOf(b.Deaths))
+	if got := lireAppuisS2(t, db, "m-relu2"); !reflect.DeepEqual(got, voulu.Assists) {
+		t.Fatalf("S2 = %+v, attendu celui de la passe B seule %+v", got, voulu.Assists)
+	}
+	if n := countRows(t, db, "match_kill_heads", "match_id = ?", "m-relu2"); n != 3 {
+		t.Fatalf("%d têtes en table, attendu 3 générations (A, B, relecture de B)", n)
+	}
+}
+
+// TestResumes_ErreurDesFillesAnnuleLaPasse : une erreur base à l'insertion de S1 ou de S2 (la tête
+// a déjà été écrite dans la transaction) annule la passe entière, journal compris.
+func TestResumes_ErreurDesFillesAnnuleLaPasse(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		nom, table string
+		ecrire     func(*sql.DB, string) error
+	}{
+		{"S1 par le persister de passe", "match_kill_pairs", func(db *sql.DB, id string) error {
+			return NewKillSourcePersister(db).PersistPass(ctx, passeVariee(id, true))
+		}},
+		{"S2 par le persister de passe", "match_assist_pairs", func(db *sql.DB, id string) error {
+			return NewKillSourcePersister(db).PersistPass(ctx, passeVariee(id, true))
+		}},
+		{"S1 par le sync primaire", "match_kill_pairs", func(db *sql.DB, id string) error {
+			return NewSharedPersister(db).Persist(ctx, batchSyncPrimaire("halo_infinite", id))
+		}},
+	} {
+		t.Run(tc.nom, func(t *testing.T) {
+			db := openKillEventsTestDB(t)
+			testutil.CasserLaTable(t, db, tc.table)
+			if err := tc.ecrire(db, "m-ko"); err == nil {
+				t.Fatalf("écriture sans erreur alors que %s n'a pas pu s'écrire", tc.table)
+			}
+			testutil.ExigerAucunePasse(t, db, "m-ko")
+		})
 	}
 }

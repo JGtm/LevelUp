@@ -251,12 +251,10 @@ func (p *KillSourcePersister) insertKillPass(
 	return extra, nil
 }
 
-// insertKillEventRows ecrit les lignes d une passe dans la transaction FOURNIE, sans la
-// committer, puis ses resumes par match sous le meme horodatage ([insertKillSummaryRows],
-// ADR 0039). Ecrivain de `match_kill_events` des producteurs en ligne — le persister dedie (qui
-// ouvre sa transaction) et le producteur live (qui ecrit dans celle du match, cf.
-// kill_events_credit.go) ; le seed demo synthetique et deux migrations historiques ecrivent le
-// journal en SQL. Retourne le total d assistants supplementaires observes.
+// insertKillEventRows ecrit les lignes d une passe, puis ses resumes par match sous le meme
+// horodatage ([insertKillSummaryRows], ADR 0039), dans la transaction FOURNIE, sans la committer.
+// Ecrivain des producteurs en ligne (persister dedie, producteur live cf. kill_events_credit.go ;
+// le seed demo et deux migrations ecrivent en SQL). Retourne le total d assistants supplementaires.
 func insertKillEventRows(
 	ctx context.Context, tx *sql.Tx, in KillSourceBatch, pass string, now time.Time,
 ) (int, error) {
@@ -274,10 +272,7 @@ func insertKillEventRows(
 		}
 		extra += d.AssistExtra
 	}
-	if err := insertKillSummaryRows(ctx, tx, summaryOfPass(in, pass, now)); err != nil {
-		return 0, err
-	}
-	return extra, nil
+	return extra, insertKillSummaryRows(ctx, tx, summaryOfPass(in, pass, now))
 }
 
 // verifierPlancherCreditEnBase : LA SONDE INDEPENDANTE DU PRODUCTEUR.

@@ -82,31 +82,49 @@ func ExigerResumeDeLaPasseCourante(t *testing.T, db *sql.DB, matchID string) Eta
 	return e
 }
 
-// ExigerAucunePasse : ni ligne au journal ni paire de résumé pour ce match — une transaction
-// annulée n'a rien laissé. Lit les tables brutes (aucune génération, même périmée) ; la table des
-// têtes n'est pas lue, [CasserLaTableDesTetes] l'a retirée.
+// tablesDesResumes : les trois tables de résumé du journal (ADR 0039), têtes d'abord.
+var tablesDesResumes = []string{"match_kill_heads", "match_kill_pairs", "match_assist_pairs"}
+
+// ExigerAucunePasse : ni ligne au journal ni ligne de résumé pour ce match — une transaction
+// annulée n'a rien laissé. Lit les tables brutes (aucune génération, même périmée) ; une table de
+// résumé retirée par [CasserLaTable] n'est pas lue.
 func ExigerAucunePasse(t *testing.T, db *sql.DB, matchID string) {
 	t.Helper()
-	var journal, paires int
-	if err := db.QueryRowContext(context.Background(), `SELECT
-		(SELECT COUNT(*) FROM match_kill_events WHERE match_id = ?),
-		(SELECT COUNT(*) FROM match_kill_pairs WHERE match_id = ?)`, matchID, matchID).
-		Scan(&journal, &paires); err != nil {
-		t.Fatalf("relecture %s : %v", matchID, err)
-	}
-	if journal != 0 || paires != 0 {
-		t.Fatalf("%s : %d ligne(s) au journal et %d paire(s) après un échec des résumés — la passe "+
-			"et ses résumés tombent ensemble", matchID, journal, paires)
+	ctx := context.Background()
+	for _, table := range append([]string{"match_kill_events"}, tablesDesResumes...) {
+		var existe int
+		if err := db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?`, table).Scan(&existe); err != nil {
+			t.Fatalf("existence de %s : %v", table, err)
+		}
+		if existe == 0 {
+			continue
+		}
+		var n int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table+` WHERE match_id = ?`, matchID).Scan(&n); err != nil {
+			t.Fatalf("relecture %s %s : %v", table, matchID, err)
+		}
+		if n != 0 {
+			t.Fatalf("%s : %d ligne(s) dans %s après un échec des résumés — la passe et ses résumés "+
+				"tombent ensemble", matchID, n, table)
+		}
 	}
 }
 
-// CasserLaTableDesTetes retire `match_kill_heads` : l'insertion de la tête échoue alors en base,
-// APRÈS celle du journal dans la même transaction. Sert l'injection d'erreur de chaque écrivain.
+// CasserLaTable retire une table de résumé : son insertion échoue alors en base, APRÈS celle du
+// journal (et des tables précédentes) dans la même transaction. Sert l'injection d'erreur de
+// chaque écrivain, une table à la fois.
+func CasserLaTable(t *testing.T, db *sql.DB, table string) {
+	t.Helper()
+	if _, err := db.ExecContext(context.Background(), `DROP TABLE `+table); err != nil {
+		t.Fatalf("retrait de %s : %v", table, err)
+	}
+}
+
+// CasserLaTableDesTetes retire `match_kill_heads` (première insertion des résumés).
 func CasserLaTableDesTetes(t *testing.T, db *sql.DB) {
 	t.Helper()
-	if _, err := db.ExecContext(context.Background(), `DROP TABLE match_kill_heads`); err != nil {
-		t.Fatalf("retrait de match_kill_heads : %v", err)
-	}
+	CasserLaTable(t, db, "match_kill_heads")
 }
 
 // ExigerCoherenceDesResumes : pour CHAQUE match du journal, la tête résume la passe courante et S1

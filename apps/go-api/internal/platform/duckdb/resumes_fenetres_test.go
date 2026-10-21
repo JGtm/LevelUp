@@ -3,19 +3,20 @@ package duckdb
 // resumes_fenetres_test.go — LES VUES DES RÉSUMÉS PAR MATCH SOUS UNE LISTE DE MATCHS (ADR 0039
 // décision 7, ADR 0036 I2).
 //
-// Avant que le premier lecteur ne bascule sur `match_kill_heads_latest` (S0),
-// `match_kill_pairs_latest` (S1) et `match_assist_pairs_latest` (S2), ce test rejoue sous
-// `EXPLAIN (ANALYZE, FORMAT JSON)` les formes de lecture prévues et lit le nombre de lignes vues
-// par chaque fenêtre. S1 et S2 portent la fenêtre de la tête dans leur jointure.
+// Ce test rejoue, sous `EXPLAIN (ANALYZE, FORMAT JSON)`, les formes de lecture de
+// `match_kill_heads_latest` (S0), `match_kill_pairs_latest` (S1) et `match_assist_pairs_latest`
+// (S2) et lit le nombre de lignes vues par chaque fenêtre. S1 et S2 portent la fenêtre de la
+// tête dans leur jointure.
 //
-// Ce qu'il tient (mesure du 2026-10-21, DuckDB embarqué) :
+// Ce qu'il tient (DuckDB embarqué) :
 //   - S0 lue sous une liste `VARCHAR[]` liée en une constante : la fenêtre ne voit que les têtes
 //     des matchs de la liste ;
 //   - S1 et S2 lues pour UN match (`match_id = ?`) : l'égalité traverse la jointure, la fenêtre de
 //     la tête ne voit que ce match ;
 //   - S1 et S2 lues sous une liste : la liste ne traverse PAS la jointure, la fenêtre de la tête
 //     voit toute la table des têtes (une ligne par match et génération), jamais les lignes des
-//     filles. La suite à donner est consignée au plan (étape 7.8).
+//     filles. Cette fenêtre est acceptée (ADR 0039 décision 7, exception I2 de l'ADR 0036) ; le
+//     test en tient la taille, il échoue si elle grossit.
 
 import (
 	"database/sql/driver"

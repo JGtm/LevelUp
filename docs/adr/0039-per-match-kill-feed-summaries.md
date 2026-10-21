@@ -112,8 +112,16 @@ recounting nor the seven copies. This ADR does.
 
 7. **Bounded reads (ADR 0036 I2 applies to the S views).** Before the first reader switches, the
    bounded-window test (`exigerFenetresBornees`) runs on the S views under a constant `VARCHAR[]`
-   list of matches. If the filter does not cross the head's window, readers bind the list on the
-   head view too. A reader reads an S view with a `match_id` list, or is a documented exception:
+   list of matches. Amended on 2026-10-21 with the measurement (`platform/duckdb/resumes_fenetres_test.go`):
+   the filter does NOT cross the head's window when a daughter view (S1, S2) is read under a list,
+   and the remedy "bind the list on the head view too" does not carry over, because the head's
+   window sits inside the daughter view (a semi-join on the head view leaves the inner window
+   whole; a daughter read raw is forbidden by ADR 0026). The head's window is therefore accepted
+   under a list: it sees one row per match and generation (about 6,500 compacted rows on
+   production), never the daughters' rows, and the automatic compaction bounds it. A read of ONE
+   match (`match_id = ?`) and S0 itself stay bounded. The accepted window is a line of the I2
+   exceptions of ADR 0036, and the test above holds its size. A reader reads an S view with a
+   `match_id` list, or is a documented exception:
    Home's favourite weapon (filtered by killer over the player's history; S1 by killer is a small
    scan) and `/monitoring/weapon-coverage` (whole fleet, operator only). The head has one row per
    match and generation, so an unpushed head window costs little. A correlated `EXISTS` on S0
