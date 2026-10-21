@@ -14,7 +14,9 @@ import { describe, expect, it } from 'vitest'
 import {
   hasTranslocationLayer,
   identityIsUnknown,
+  lastTeleport,
   lastTeleportAge,
+  riftPoseMoments,
   spentTranslocations,
   teleportMoments,
   translocationLinks,
@@ -169,6 +171,44 @@ describe('teleportMoments — un seul canal à la fois', () => {
     })
     // 165 frames = 16,5 s de retard : c'est exactement ce que le `spent` coûtait.
     expect(teleportMoments(doc)).toEqual([{ slot: 3, frame: 10 }])
+  })
+})
+
+describe('la POSE de la faille allume la fiche, pas seulement le premier passage', () => {
+  const pose = { slot: 3, t: 100, x: 1, y: 2 }
+  const doc = () => testReplayDoc({ coverage: calqueLu(), translocations: [], riftPoses: [pose] })
+
+  it('riftPoseMoments date chaque pose, marquée comme pose', () => {
+    expect(riftPoseMoments(doc())).toEqual([{ slot: 3, frame: 100, pose: true }])
+  })
+
+  it('teleportMoments ajoute les poses aux passages, sans les confondre', () => {
+    const d = testReplayDoc({
+      coverage: calqueLu(1),
+      translocations: [saut(3, 160, [0, 0], [20, 0])],
+      riftPoses: [pose],
+    })
+    expect(teleportMoments(d)).toEqual([
+      { slot: 3, frame: 160 },
+      { slot: 3, frame: 100, pose: true },
+    ])
+  })
+
+  it('AVANT tout passage, la pose est déjà un moment de la fiche', () => {
+    const moments = teleportMoments(doc())
+    expect(lastTeleportAge(moments, 3, 105)).toBe(5)
+    expect(lastTeleport(moments, 3, 105)).toEqual({ age: 5, pose: true })
+  })
+
+  it('le passage qui suit reprend la main, et à âge égal il l emporte sur la pose', () => {
+    const moments: TranslocationMoment[] = [{ slot: 3, frame: 100, pose: true }, { slot: 3, frame: 160 }]
+    expect(lastTeleport(moments, 3, 165)).toEqual({ age: 5, pose: false })
+    const egal: TranslocationMoment[] = [{ slot: 3, frame: 100, pose: true }, { slot: 3, frame: 100 }]
+    expect(lastTeleport(egal, 3, 100)).toEqual({ age: 0, pose: false })
+  })
+
+  it('une pose À VENIR ne compte pas', () => {
+    expect(lastTeleport(teleportMoments(doc()), 3, 90)).toBeNull()
   })
 })
 

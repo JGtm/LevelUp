@@ -43,7 +43,9 @@ type ReplayLinkVariant = 'icon' | 'button' | 'large'
 /** Enveloppe du lien et taille de l'icône, par présentation. */
 const VARIANT_CLASS: Record<ReplayLinkVariant, { link: string; img: string }> = {
   icon: {
-    link: 'group inline-flex h-4 w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground transition-colors',
+    // align-middle : posée sur la ligne de base du texte de la cellule, la boîte de 16 px se
+    // décalait du centre vertical de la ligne.
+    link: 'group inline-flex h-4 w-5 shrink-0 items-center justify-center align-middle text-muted-foreground hover:text-foreground transition-colors',
     img: 'h-full w-full shrink-0 object-contain opacity-60 group-hover:opacity-100 transition-opacity',
   },
   button: {

@@ -4997,7 +4997,7 @@ paths:
               schema:
                 description: 'TODO Sprint 32 : schéma HomePageResponse complet'
                 type: object
-          description: Page accueil (hero card, timeline, médias récents)
+          description: Page accueil (hero card, tête des matchs récents, sessions)
           headers:
             Cache-Control:
               schema:
@@ -5036,6 +5036,106 @@ paths:
                 $ref: '#/components/schemas/ApiError'
           description: Error
       summary: Page Accueil
+      tags:
+        - home
+  /players/{player_slug}/pages/home/matches:
+    get:
+      description: |
+        Tuiles de match de l'Accueil. La tête de la liste (30 tuiles) est servie avec `pages/home` ;
+        ce endpoint rend la suite de l'historique par curseur (`before` = `next_before` de la page
+        précédente, tuiles strictement plus anciennes, ordre instant canonique décroissant puis
+        match_id décroissant) et, avec `kind=favorites`, les favoris du joueur en entier.
+      operationId: getHomeMatches
+      parameters:
+        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-LevelUp-Locale
+          schema:
+            type: string
+        - in: header
+          name: If-None-Match
+          schema:
+            type: string
+        - description: |
+            `recent` (défaut) : l'historique par curseur. `favorites` : les favoris en entier
+            (`before` et `limit` ignorés).
+          explode: false
+          in: query
+          name: kind
+          schema:
+            enum:
+              - recent
+              - favorites
+            type: string
+        - description: Curseur opaque `next_before` de la page précédente ; absent = depuis la plus récente.
+          explode: false
+          in: query
+          name: before
+          schema:
+            maxLength: 256
+            type: string
+        - description: Tuiles par page (30 par défaut, 60 au plus).
+          explode: false
+          in: query
+          name: limit
+          schema:
+            format: int64
+            maximum: 60
+            minimum: 1
+            type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                description: HomeMatchesPage — items (tuiles RecentMatchItem), has_more, next_before
+                type: object
+          description: Page de tuiles (`items`, `has_more`, `next_before`)
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+            Content-Type:
+              schema:
+                type: string
+            ETag:
+              schema:
+                type: string
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
+        "500":
+          $ref: '#/components/responses/InternalError'
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: |
+            Page momentanément indisponible, réessayer après `Retry-After` :
+            `home_page_db_busy` (bascule RO/RW d'une synchronisation),
+            `home_page_db_recovering` (connexion en cours de récupération) ou
+            `db_busy` (verrou d'écriture).
+          headers:
+            Retry-After:
+              description: Délai conseillé avant un nouvel essai, en secondes
+              schema:
+                type: integer
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Tuiles de match de l'Accueil (pages suivantes, favoris)
       tags:
         - home
   /players/{player_slug}/pages/last-match/resolve:

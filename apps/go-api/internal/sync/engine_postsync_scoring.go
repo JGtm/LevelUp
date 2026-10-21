@@ -6,12 +6,12 @@ import (
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	settings_platform "levelup/go-api/internal/platform/settings"
 )
 
 func (e *SyncEngine) runScoringSteps(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
@@ -62,25 +62,7 @@ func (e *SyncEngine) runScoringStepsWithDB(ctx context.Context, playerDB, shared
 	}
 
 	// 0. Session assignments — auto-recalc session_id pour les nouveaux matchs.
-	// Best-effort : un échec ne bloque pas le pipeline. Les amis sont
-	// résolus depuis le friendsLoader (amis du joueur). Sans loader
-	// (legacy), on retombe en TeamChangeMode=teammates.
-	{
-		var friends []string
-		if e.friendsLoader != nil {
-			if fs, ferr := e.friendsLoader(); ferr == nil {
-				friends = fs
-			}
-		}
-		opts := analysis.DefaultSessionOptions()
-		if n, err := recalculateSessionsInline(ctx, playerDB, sharedDB, e.xuid, opts, friends); err != nil {
-			slog.WarnContext(ctx, "post-sync: sessions échoué", "gamertag", e.gamertag, "err", err)
-			trackFatalErr(r, "sessions", err)
-		} else if n > 0 {
-			r.SessionsAssigned = n
-			slog.DebugContext(ctx, "post-sync: sessions recalculées", "gamertag", e.gamertag, "count", n)
-		}
-	}
+	e.runSessionAssignment(ctx, playerDB, sharedDB, r)
 
 	// 1. Performance scores
 	slog.DebugContext(ctx, "post-sync: calcul perf scores", "gamertag", e.gamertag)
@@ -129,6 +111,42 @@ func (e *SyncEngine) runScoringStepsWithDB(ctx context.Context, playerDB, shared
 	} else if n > 0 {
 		slog.InfoContext(ctx, "post-sync: assists model calculé", "gamertag", e.gamertag, "n_modes", n)
 	}
+}
+
+// runSessionAssignment — étape 0 : session_id / session_label des nouveaux matchs
+// (incrémental, appendSessionsInline), selon la règle du titre (sessionOptions, la même que
+// le recalcul complet). Best-effort : un échec ne bloque pas le pipeline. Les amis viennent
+// du friendsLoader (amis du joueur) ; un échec de lecture est journalisé, l'étape tourne
+// alors sans amis.
+func (e *SyncEngine) runSessionAssignment(ctx context.Context, playerDB, sharedDB *sql.DB, r *domain.PostSyncResult) {
+	var friends []string
+	if e.friendsLoader != nil {
+		fs, ferr := e.friendsLoader()
+		if ferr != nil {
+			slog.WarnContext(ctx, "post-sync: sessions — amis indisponibles, découpage sans amis",
+				"gamertag", e.gamertag, "err", ferr)
+		}
+		friends = fs
+	}
+	opts := e.sessionOptionsFor(ctx)
+	if n, err := recalculateSessionsInline(ctx, playerDB, sharedDB, e.xuid, opts, friends); err != nil {
+		slog.WarnContext(ctx, "post-sync: sessions échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(r, "sessions", err)
+	} else if n > 0 {
+		r.SessionsAssigned = n
+		slog.DebugContext(ctx, "post-sync: sessions recalculées", "gamertag", e.gamertag, "count", n)
+	}
+}
+
+// sessionOptionsFor rend la règle de découpage du titre. Sans chargeur câblé : la règle par
+// défaut de settings.SessionOptions (store nil), qui le journalise en WARN.
+func (e *SyncEngine) sessionOptionsFor(ctx context.Context) domain.SessionComputeOptions {
+	if e.sessionOptions == nil {
+		slog.WarnContext(ctx, "post-sync: sessions — moteur sans règle de session câblée",
+			"gamertag", e.gamertag, "title_slug", e.titleSlug)
+		return settings_platform.SessionOptions(ctx, nil, "")
+	}
+	return e.sessionOptions(ctx)
 }
 
 // runSkillRatingSteps exécute le bloc LUSR du post-sync : le LUSR v2 (seul modèle, ADR 0024)

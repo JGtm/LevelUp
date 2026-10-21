@@ -83,7 +83,11 @@ vi.mock('./MatchSummaryMedalsAndCitations', () => ({
 }))
 // Le bloc Médias est monté sous la seule capability `media` (état vide inclus, 2026-10-14).
 vi.mock('./MatchMediaTab', () => ({
-  MatchMediaTab: () => <div data-testid="media-tab" />,
+  MatchMediaTab: () => (
+    <section data-testid="media-tab">
+      <h3>Médias</h3>
+    </section>
+  ),
 }))
 
 describe('MatchViewPage — match_not_found (pas encore synchronisé)', () => {
@@ -148,7 +152,7 @@ describe('MatchViewPage — onglet Général : structure des rangées', () => {
     // section « Récompenses » qui porte la grille (pleine largeur).
     const rewardsSection = grid.closest('section') as HTMLElement
     const summaryStack = rewardsSection.parentElement as HTMLElement
-    const mediaSection = mediaTab.closest('section') as HTMLElement
+    const mediaSection = mediaTab
     expect(mediaSection.parentElement).toBe(summaryStack)
     expect(summaryStack.lastElementChild).toBe(mediaSection)
     expect(screen.getByText('Médias')).toBeInTheDocument()

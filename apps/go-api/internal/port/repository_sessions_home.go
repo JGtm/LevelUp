@@ -13,6 +13,10 @@ import (
 type SessionsRepository interface {
 	// LoadSessionMatches retourne les matchs d'un joueur pour le calcul des sessions (Q22).
 	LoadSessionMatches(ctx context.Context) ([]domain.SessionMatchRow, error)
+
+	// LookupFriendXUIDs résout des gamertags d'amis en xuids (xuid_aliases de la base
+	// partagée). Un gamertag inconnu est absent du résultat.
+	LookupFriendXUIDs(ctx context.Context, gamertags []string) ([]string, error)
 }
 
 // StatsRepository fournit les données pour les séries temporelles et le perf score.
@@ -56,6 +60,10 @@ func (n *noopSessionsRepo) LoadSessionMatches(_ context.Context) ([]domain.Sessi
 	return nil, nil
 }
 
+func (n *noopSessionsRepo) LookupFriendXUIDs(_ context.Context, _ []string) ([]string, error) {
+	return nil, nil
+}
+
 // noopStatsRepo — impl nulle pour le check de compilation uniquement.
 type noopStatsRepo struct{}
 
@@ -90,10 +98,6 @@ type HomeRepository interface {
 
 	// CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).
 	CountPlayerMatches(ctx context.Context) (int, error)
-
-	// LoadRecentMedia charge les médias récents du joueur (Q28).
-	// Si la table media_files n'existe pas, retourne (nil, nil) sans erreur.
-	LoadRecentMedia(ctx context.Context, limit int) ([]domain.HomeMediaRow, error)
 
 	// LoadRecentPlaylistRanks retourne les 3 dernières playlists distinctes avec leur rang (Q26g).
 	// Retourne (nil, nil) si aucune donnée disponible.
@@ -142,9 +146,6 @@ func (n *noopHomeRepo) LoadSpartanIdentity(_ context.Context) (*domain.HomeSpart
 }
 func (n *noopHomeRepo) CountPlayerMatches(_ context.Context) (int, error) {
 	return 0, nil
-}
-func (n *noopHomeRepo) LoadRecentMedia(_ context.Context, _ int) ([]domain.HomeMediaRow, error) {
-	return nil, nil
 }
 func (n *noopHomeRepo) LoadRecentPlaylistRanks(_ context.Context, _ string) ([]domain.HomePlaylistRank, error) {
 	return nil, nil

@@ -8,9 +8,9 @@
  * par diverger de celui-ci. Cette ligne n'en garde que l'usage — encre de l'équipe quand
  * elle est connue, encre du repli sinon, jamais un camp deviné.
  *
- * LE LIBELLÉ RESTE AU FAIT : « ne reviendra plus » plutôt que « a quitté » — la dernière
- * vie d'un éliminé définitif (mode à manches) s'arrête exactement comme celle d'un
- * partant, et le film ne les distingue pas. L'infobulle porte cette réserve.
+ * LE LIBELLÉ EST CELUI DE L'API (« a quitté la partie ») même sur le repli film, dont la
+ * dernière vie d'un éliminé définitif (mode à manches) s'arrête exactement comme celle d'un
+ * partant : le film ne les distingue pas. L'infobulle du repli porte cette réserve.
  */
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -33,8 +33,8 @@ export function ReplayPresenceLine({
   mark: PlayerMarkKind | undefined
   locale: ReplayLocale
 }) {
-  // Deux sources, deux vocabulaires : l'API affirme (« a rejoint / a quitté »), le repli
-  // film reste au fait (« entre en partie / ne reviendra plus ») — cf. presenceFeed.ts. La
+  // Un libellé (« a rejoint / a quitté la partie »), deux infobulles : celle du repli film
+  // porte la réserve — cf. presenceFeed.ts. La
   // règle vit dans `model/presenceWording.ts`, PARTAGÉE avec la porte de la frise
   // (`ReplayPresenceShade`) : un seul foyer, sans quoi l'une affirmerait ce que l'autre
   // met au conditionnel.

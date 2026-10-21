@@ -749,8 +749,24 @@ COMMIT, le nombre de lignes, le DDL et les index de la table, et que la vue rend
 même résultat. Les séquences ne sont pas touchées (aucun `id` n'est réutilisé). Idempotente : une
 seconde passe rend `deja-compacte`.
 
-Quand : après une campagne de redécodage (recuisson, `backfill-killsource`), jamais au boot ni
-après un sync. **Serveur arrêté** : la commande refuse une base qu'un autre processus tient.
+Quand : **automatiquement chaque nuit en production** quand une table dépasse le seuil (ci-dessous),
+et à la main pour compacter tout de suite, typiquement après une campagne de redécodage (recuisson,
+`backfill-killsource`). Jamais au boot, ni après un sync, ni dans le processus serveur. **Serveur
+arrêté** : la commande refuse une base qu'un autre processus tient.
+
+**Compaction automatique de nuit (VPS).** Le contrôle de santé des données du serveur (au démarrage
+puis toutes les 24 h) mesure pour chaque table du registre et chaque titre le rapport lignes
+brutes / lignes gardées (une table compactée vaut 1) et l'écrit dans
+`data/global/admin_state/passes_par_match.txt` (aussi en expvar :
+`levelup.compaction.passes_par_match`, `levelup.compaction.tables_au_dessus_du_seuil`). À 03:30 UTC,
+le timer systemd `levelup-compact-passes.timer` lance `scripts/compact-passes-nuit.sh` : si aucune
+table d'aucun titre ne dépasse 1,5 (`migration.SeuilPassesParMatch`), il sort sans rien toucher ;
+sinon il vérifie la place disque, arrête `levelup`, lance
+`levelup compact-passes --backup-dir /app/data/compaction-backups`, redémarre `levelup` (même si la
+compaction échoue, jusqu'à 3 essais) et attend `/health`. Journal : `data/logs/compact-passes-nuit.log`. Les
+sauvegardes de plus de 24 h de `data/compaction-backups/` sont supprimées après un passage réussi
+seulement. Installation des unités (une fois, root) : `scripts/systemd/README.md` ; décision et
+mesures : ADR 0026, amendement « Automatic compaction ».
 
 ```bash
 go run ./cmd/levelup compact-passes --dry-run                # lecture seule : brutes / _latest / gain par table

@@ -176,6 +176,12 @@ export class ReplayAudioPlayer {
   private voices = 0
   /** Les sons TENUS en vol (rafales de tir continu), que la pause et le saut éteignent. */
   private held = new Set<{ src: AudioBufferSourceNode; gain: GainNode }>()
+  /**
+   * TOUS les sons en vol (une pause éteint tout, pas seulement les rafales tenues). `voix` est
+   * faux pour une CONCLUSION de match (fanfare, annonceur) : elle part au moment même où la
+   * lecture s'arrête d'elle-même à la borne, et la pause qui suit ne doit pas la couper.
+   */
+  private live = new Set<{ src: AudioBufferSourceNode; gain: GainNode; voix: boolean }>()
   /** Chaîne de distance (réglage d'instance, page admin). Nulle = AUCUN nœud ajouté :
    *  le chemin du signal reste celui d'origine, source -> enveloppe -> maître. */
   private distGain: GainNode | null = null
@@ -396,9 +402,12 @@ export class ReplayAudioPlayer {
     // dix secondes continuerait de tirer sur une image arrêtée.
     const tenu = loop ? { src, gain } : null
     if (tenu) this.held.add(tenu)
+    const enVol = { src, gain, voix }
+    this.live.add(enVol)
     src.onended = () => {
       if (voix) this.voices--
       if (tenu) this.held.delete(tenu)
+      this.live.delete(enVol)
       src.disconnect()
       gain.disconnect()
     }
@@ -416,5 +425,23 @@ export class ReplayAudioPlayer {
       src.stop(t0 + VOLUME_RAMP_S)
     }
     this.held.clear()
+  }
+
+  /**
+   * stopAll éteint TOUT ce qui est en vol (rampe de volume), conclusion exceptée : c'est la
+   * PAUSE. Une explosion de véhicule, une réplique ou l'extrait d'intro ne se finissent pas sur
+   * une image arrêtée ; stopHeld ne couvrait que les rafales tenues.
+   */
+  stopAll(): void {
+    this.stopHeld()
+    const t0 = this.ctx.currentTime
+    for (const v of this.live) {
+      if (!v.voix) continue
+      v.gain.gain.cancelScheduledValues(t0)
+      v.gain.gain.setValueAtTime(v.gain.gain.value, t0)
+      v.gain.gain.linearRampToValueAtTime(0, t0 + VOLUME_RAMP_S)
+      v.src.stop(t0 + VOLUME_RAMP_S)
+      this.live.delete(v)
+    }
   }
 }

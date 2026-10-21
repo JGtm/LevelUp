@@ -3,6 +3,8 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -58,4 +60,33 @@ func (r *SessionsRepo) LoadSessionMatches(ctx context.Context) ([]domain.Session
 		return nil, fmt.Errorf("SessionsRepo.LoadSessionMatches rows: %w", err)
 	}
 	return results, nil
+}
+
+// LookupFriendXUIDs résout des gamertags d'amis en xuids depuis xuid_aliases (SharedReader),
+// comme la synchro le fait avant de découper les sessions (sync.LookupFriendXUIDs). Un
+// gamertag absent de xuid_aliases n'apparaît pas dans le résultat.
+func (r *SessionsRepo) LookupFriendXUIDs(ctx context.Context, gamertags []string) ([]string, error) {
+	if len(gamertags) == 0 {
+		return nil, nil
+	}
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("SessionsRepo.LookupFriendXUIDs: shared reader: %w", err)
+	}
+	defer release()
+	var xuids []string
+	for _, gt := range gamertags {
+		var xuid string
+		err := sharedDB.QueryRowContext(ctx,
+			"SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?)", gt).Scan(&xuid)
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			continue
+		case err != nil:
+			return nil, fmt.Errorf("SessionsRepo.LookupFriendXUIDs %q: %w", gt, err)
+		case xuid != "":
+			xuids = append(xuids, xuid)
+		}
+	}
+	return xuids, nil
 }

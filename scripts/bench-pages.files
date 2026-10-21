@@ -1,0 +1,23 @@
+# Copies du banc de mesure des pages (scripts/bench-pages.sh). Chemins relatifs à la racine du dépôt.
+# Source : la PROD (/opt/levelup), en lecture seule, par flux ssh (rien n'est écrit sur le VPS).
+# Fichiers IGNORÉS par git uniquement : `bench-pages.sh clean` ne supprime que ces chemins (plus
+# tmp/bench-*), jamais data/ entier (fichiers suivis dedans).
+# Jamais data/auth/ (jetons) : un serveur de banc qui rafraîchirait un jeton ferait tourner le vrai.
+app_settings.json
+db_profiles.json
+data/titles/halo_infinite/warehouse/metadata.duckdb
+data/titles/halo_infinite/warehouse/metadata.duckdb.wal
+data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb
+data/titles/halo_infinite/warehouse/shared_pve.duckdb
+data/titles/halo_infinite/warehouse/shared_social.duckdb
+data/titles/halo_infinite/warehouse/snapshots
+data/titles/halo_infinite/players/JGtm
+data/titles/halo_infinite/players/Nuzzles
+data/titles/halo_infinite/players/Madina97294
+data/titles/halo_5/warehouse/metadata.duckdb
+data/titles/halo_5/warehouse/metadata.duckdb.wal
+data/titles/halo_5/warehouse/shared_matches_v2.duckdb
+data/titles/halo_5/warehouse/shared_social.duckdb
+data/titles/halo_5/players
+data/global
+data/cache/replays

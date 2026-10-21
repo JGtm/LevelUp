@@ -21,7 +21,7 @@ import { activeEquipmentAt } from './equipmentFx'
 import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from './equipmentZones'
 import { equippedWeapons, type EquippedReading } from './equippedLogic'
 import { objectiveMarkAt, type ObjectiveMarkKind } from './objectiveMark'
-import { lastTeleportAge, type TranslocationMoment } from './placementTeleport'
+import { lastTeleport, type TranslocationMoment } from './placementTeleport'
 import { playerCardFx, type CardFx } from './playerCardFx'
 import type { ReplayText } from '../i18n/i18nContract'
 import type { PlacementWindowTime } from '../layers/equipmentPlacementsLayer'
@@ -132,9 +132,9 @@ export function playerCardReadings({
   // Comme pour l'équipement et les zones, une fiche morte n'en porte aucun : un mort a lâché
   // ce qu'il tenait, et la tuile ne dit plus que la mort.
   const objective = state.alive ? objectiveMarkAt(doc, player.xuid, frame) : null
-  const teleportAge = state.alive && state.life
-    ? lastTeleportAge(fxScene.teleports, state.life.slot, frame)
-    : -1
+  const teleport = state.alive && state.life
+    ? lastTeleport(fxScene.teleports, state.life.slot, frame)
+    : null
   // LA COMPOSITION DES EFFETS vit dans playerCardFx.ts (mort, éclats à délai négatif,
   // verre trempé du camouflage, encadrés, voile de l'écran occultant) : la fiche lui donne
   // les âges et rend ce qu'il dit, réparti sur ses DEUX couches (dessous / incrustation).
@@ -142,7 +142,8 @@ export function playerCardReadings({
     alive: state.alive,
     deathAge,
     lifeAge,
-    teleportAge,
+    teleportAge: teleport?.age ?? -1,
+    teleportPose: teleport?.pose ?? false,
     flashFrames,
     equipment,
     zones,

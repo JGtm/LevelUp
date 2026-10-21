@@ -192,6 +192,7 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 	// au lieu de halo_infinite systématique (corrige le sync initial multi-titre).
 	engine := go_sync.NewSyncEngineForTitle(h.cfg.RepoRoot, titleSlug, gamertag, xuid, tokens, h.provider).
 		WithFriendsLoader(loader).
+		WithSessionOptionsLoader(settings_platform.SessionOptionsLoader(h.settingsStore, h.cfg.TitleSettingsPath(titleSlug))).
 		WithCSRSeasonID(h.cfg.CurrentCSRSeasonID)
 	// Sprint B1 commit 11b : aligner le sync HTTP-triggered sur auto_sync — sans
 	// ce câblage, un user qui clique "Sync now" déclenche un sync en mode legacy

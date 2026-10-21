@@ -89,7 +89,8 @@ func runEngagementCoefsAll(ctx context.Context, cfg *config.AppConfig, withScore
 }
 
 func runEngagementCoefsOne(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string, withScores, force bool) error {
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil).
+		WithSessionOptionsFromConfig(cfg)
 	if withScores {
 		// Calcul complet : recalcule les engagement_scores depuis highlight_events
 		// (peuple les paces) puis recompute les coefs. RunBackfillEngagementScores

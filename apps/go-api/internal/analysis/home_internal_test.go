@@ -250,36 +250,3 @@ func TestEarliestStartTime_FindsEarliest(t *testing.T) {
 		t.Errorf("earliestStartTime = %v, want %v", got, t2)
 	}
 }
-
-func TestBuildRecentMedia_Empty(t *testing.T) {
-	if BuildRecentMedia(nil, 5) != nil {
-		t.Error("expected nil")
-	}
-}
-
-func TestBuildRecentMedia_Limit(t *testing.T) {
-	m1, m2, m3 := "m1", "m2", "m3"
-	now := time.Now()
-	media := []domain.HomeMediaRow{
-		{FileName: "a.png", MatchID: &m1, MatchStartTime: &now},
-		{FileName: "b.png", MatchID: &m2, MatchStartTime: &now},
-		{FileName: "c.png", MatchID: &m3, MatchStartTime: &now},
-	}
-	result := BuildRecentMedia(media, 2)
-	if len(result) != 2 {
-		t.Errorf("expected 2, got %d", len(result))
-	}
-}
-
-func TestBuildRecentMedia_SkipsEmpty(t *testing.T) {
-	m1, m2 := "m1", "m2"
-	now := time.Now()
-	media := []domain.HomeMediaRow{
-		{FileName: "", MatchID: &m1},
-		{FileName: "a.png", MatchID: &m2, MatchStartTime: &now},
-	}
-	result := BuildRecentMedia(media, 5)
-	if len(result) != 1 {
-		t.Errorf("expected 1, got %d", len(result))
-	}
-}

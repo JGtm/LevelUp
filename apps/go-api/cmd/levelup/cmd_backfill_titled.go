@@ -238,6 +238,7 @@ func runTitledPassOne(ctx context.Context, cfg *config.AppConfig, titleSlug stri
 			return 0, fmt.Errorf("migrations %s (%s): %w", target, p.Gamertag, err)
 		}
 	}
-	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, p.Gamertag, p.XUID, nil, nil)
+	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, p.Gamertag, p.XUID, nil, nil).
+		WithSessionOptionsFromConfig(cfg)
 	return pass.run(ctx, engine, force)
 }

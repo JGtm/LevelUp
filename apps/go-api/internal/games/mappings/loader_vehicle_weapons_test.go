@@ -249,3 +249,19 @@ func TestRegistreArmesVehicule_BombeDeLaBanshee(t *testing.T) {
 		t.Errorf("bombe de la Banshee = %+v", w)
 	}
 }
+
+// Les tirs du Wasp partent de sa POINTE AVANT (controles v8, 2026-10-21) : les deux armes, les
+// missiles et la mitrailleuse, portent la meme ancre de nez (ay mesure sur wasp.png, nez a la
+// rangee 15 sur 273 soit -0,44 ; axe du sprite), et non plus l'aile.
+func TestRegistreArmesVehicule_TirsDuWaspAuNez(t *testing.T) {
+	set := vwRegistre(t)
+	for _, tag := range []string{"11725DC4", "D3C407ED"} {
+		w, ok := set.Weapon(tag)
+		if !ok || w.Vehicle != "wasp" {
+			t.Fatalf("%s : arme du Wasp absente du registre (%+v)", tag, w)
+		}
+		if w.Mount == nil || w.Mount.Aim != VehicleWeaponAimFixed || w.Mount.AX != 0 || w.Mount.AY > -0.4 {
+			t.Errorf("%s : ancre %+v, attendue au nez du sprite (ax 0, ay <= -0,4)", tag, w.Mount)
+		}
+	}
+}

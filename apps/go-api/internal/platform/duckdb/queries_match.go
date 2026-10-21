@@ -549,7 +549,8 @@ HAVING count(DISTINCT (
 
 // Q25 : Navigation prev/next entre matchs adjacents d'un joueur (chronologie globale).
 // Paramètres : ?1 = xuid, ?2 = match_id, ?3 = xuid (réutilisé pour la CTE).
-// Ordre : start_time DESC (plus récent = index 0).
+// Ordre : instant canonique DESC puis match_id DESC (plus récent = index 0) — le MÊME ordre total que
+// la liste de tuiles de l'Accueil (analysis.OrderHomeTileRows).
 //
 // Executée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 var Q25NeighborMatches = `
@@ -558,7 +559,7 @@ WITH ordered AS (
         mr.match_id,
         ` + StartTimeCanonicalSQL("mr") + ` AS start_time,
         ROW_NUMBER() OVER (
-            ORDER BY ` + StartTimeCanonicalSQL("mr") + ` DESC
+            ORDER BY ` + StartTimeCanonicalSQL("mr") + ` DESC, mr.match_id DESC
         ) - 1 AS idx,
         COUNT(*) OVER () AS total
     FROM match_registry mr
@@ -591,7 +592,7 @@ WITH ordered AS (
         mr.match_id,
         ` + StartTimeCanonicalSQL("mr") + ` AS start_time,
         ROW_NUMBER() OVER (
-            ORDER BY ` + StartTimeCanonicalSQL("mr") + ` DESC
+            ORDER BY ` + StartTimeCanonicalSQL("mr") + ` DESC, mr.match_id DESC
         ) - 1 AS idx,
         COUNT(*) OVER () AS total
     FROM match_registry mr

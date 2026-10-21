@@ -15,9 +15,9 @@
  *
  *   FILM  le repli, quand les drapeaux manquent (matchs d'avant les colonnes, en-tête
  *         absent) : les bornes de vie. Première vie bien après le coup d'envoi = entrée ;
- *         dernière vie bien avant la fin = « ne reviendra plus » — le film ne distingue
- *         pas un départ d'une élimination définitive, le libellé du repli reste au FAIT
- *         et l'infobulle porte la réserve. Les marges (10 s / 20 s, >2x la réapparition
+ *         dernière vie bien avant la fin = « a quitté la partie » — le film ne distingue
+ *         pas un départ d'une élimination définitive, l'infobulle du repli porte la
+ *         réserve. Les marges (10 s / 20 s, >2x la réapparition
  *         médiane mesurée 8,0 s) n'existent QUE sur ce chemin.
  *
  * SEULES LA PREMIÈRE ET LA DERNIÈRE VIE PARLENT côté film : un trou ENTRE deux vies
@@ -35,7 +35,7 @@ import { playerName, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
 
 /** REPLI FILM : première vie qui commence au-delà = un arrivant (flottement du départ). */
 export const PRESENCE_ARRIVE_MS = 10_000
-/** REPLI FILM : dernière vie qui s'achève plus tôt que ça avant la fin = ne reviendra plus. */
+/** REPLI FILM : dernière vie qui s'achève plus tôt que ça avant la fin = a quitté la partie (infobulle : départ ou élimination définitive). */
 export const PRESENCE_DEPART_MS = 20_000
 
 /**

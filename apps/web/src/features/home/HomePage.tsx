@@ -1,4 +1,3 @@
-/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : hors perimetre du lot D (modele web du rejeu) : l'exemption DATE la dette, elle ne l'absout pas — le decoupage revient au lot qui touchera ce fichier. */
 /**
  * HomePage — Accueil Mission Control (Slice 5).
  *
@@ -9,12 +8,9 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { DataFreshnessIndicator } from '@/components/ui/data-freshness-indicator'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
-import { MatchCard } from '@/components/ui/match-card'
-import { Carousel, CarouselItem } from '@/components/ui/carousel'
 import { HomeBattlePassPanel } from './HomeBattlePassPanel'
 import { HomeHeroBanner } from './HomeHeroBanner'
 import { HomeChallengesList } from './HomeChallengesList'
@@ -28,11 +24,9 @@ import { SpartanCustomizerModal } from '@/features/spartan-customizer/SpartanCus
 import { HomePrestigeSection } from './HomePrestigeSection'
 import { HomeAscensionWidget } from './HomeAscensionWidget'
 import { HomeCitationsNearCompletion } from './HomeCitationsNearCompletion'
+import { HomeMatchesSection } from './HomeMatchesSection'
 import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSettings } from '@/features/settings/queries'
-import { useSetMatchFavorite } from '@/features/match-history/queries'
-import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
-import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -52,7 +46,6 @@ export function HomePage() {
   const navigate = useNavigate()
   const locale = useAppShellStore((s) => s.locale)
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const userTimezone = useAppShellStore((s) => s.userTimezone)
   const { data: fieldMappings } = useFieldMappings()
   const { data: settings } = useSettings()
   const showProgression = settings?.show_progression ?? true
@@ -79,23 +72,9 @@ export function HomePage() {
     isLoading: isSeasonPassLoading,
     error: seasonPassError,
   } = useSeasonPassPreview(playerSlug, hasSeasonPass)
-  const [matchTab, setMatchTab] = useState<'recent' | 'favorites'>('recent')
   const [soloIdx, setSoloIdx] = useState(0)
   const [squadIdx, setSquadIdx] = useState(0)
   const [customizerOpen, setCustomizerOpen] = useState(false)
-  const favoriteMutation = useSetMatchFavorite(playerSlug)
-  const canWriteProfile = useCanWritePlayer(playerSlug) // profil d'ami : pas d'étoile favori
-  const navigateToMatch = useNavigateToMatch(playerSlug)
-
-  function goToMatch(matchId: string, source: 'home_recent' | 'home_favorites') {
-    const list = source === 'home_recent' ? recentMatches : favoriteMatches
-    navigateToMatch(matchId, {
-      source,
-      matchIds: list.map((m) => m.match_id),
-      contextDescriptor:
-        source === 'home_recent' ? { kind: 'recent' } : { kind: 'favorites' },
-    })
-  }
 
   // Card SOLO → Timeseries (la page de stats solo), scopée sur la session. On
   // épingle la session dans le store solo (même mécanisme que la pill Session) ;
@@ -161,14 +140,13 @@ export function HomePage() {
 
   const { hero } = data
   const highlights = data.highlights ?? []
-  const recentMatches = data.recent_matches ?? []
-  const favoriteMatches = data.favorite_matches ?? []
+  const lastSessionOutcomes = data.last_session_outcomes ?? []
 
   // AXE E — première synchronisation : un titre fraîchement activé n'a pas encore de
   // matchs synchronisés. Plutôt qu'un accueil vide/cassé, on montre un écran « sync en
   // cours » qui rassure le joueur (sync en arrière-plan, on notifiera quand c'est prêt,
   // continue sur Halo Infinite en attendant). Signal AUTORITATIF = total_matches du
-  // hero (≠ recent_matches qui est une fenêtre ; l'accueil agrège aussi des sources
+  // hero (≠ recent_matches, la tête de la liste de tuiles ; l'accueil agrège aussi des sources
   // indépendantes — média, identité live — non liées au sync des matchs).
   if ((hero.kpis?.total_matches ?? 0) <= 0) {
     return (
@@ -201,16 +179,6 @@ export function HomePage() {
     ? `${challengesCompleted} / ${challengesTotal} complétés`
     : null
   const numberLocale = intlLocale(locale)
-  // Séquence d'outcomes : filtrer recent_matches par le session_label de la
-  // dernière session connue (solo ou squad). On prend le premier label qui
-  // apparaît dans recent_matches (trié DESC) parmi les deux sessions.
-  const knownLabels = new Set(
-    [soloSession?.session_label, squadSession?.session_label].filter(Boolean) as string[],
-  )
-  const lastSessionLabel = recentMatches.find((m) => m.session_label && knownLabels.has(m.session_label))?.session_label ?? null
-  const lastSessionMatches = lastSessionLabel
-    ? recentMatches.filter((m) => m.session_label === lastSessionLabel)
-    : recentMatches.slice(0, Math.min(20, recentMatches.length))
   const kpiText = getKPIText(locale)
   // Phase D multi-titres : résout les libellés métier via le backend TOML.
   // Fallback gracieux sur les libellés locaux de kpi.i18n.ts si l'endpoint
@@ -440,7 +408,7 @@ export function HomePage() {
         </section>
 
         {/* Résultats de la dernière session — titre + contenu sortis de la carte (cf. demande user). */}
-        {lastSessionMatches.length > 0 && (
+        {lastSessionOutcomes.length > 0 && (
           <section className="flex flex-col gap-3">
             <header className="flex items-center gap-1.5">
               <h3 className="text-base font-semibold text-foreground">
@@ -448,16 +416,16 @@ export function HomePage() {
               </h3>
             </header>
             <OutcomeSequenceTape
-                matches={[...lastSessionMatches].reverse().map((m) => {
+                matches={[...lastSessionOutcomes].reverse().map((o) => {
                   const outcome: 'win' | 'loss' | 'tie' | 'dnf' =
-                    m.outcome_tone === 'win'
+                    o.outcome_tone === 'win'
                       ? 'win'
-                      : m.outcome_tone === 'loss'
+                      : o.outcome_tone === 'loss'
                         ? 'loss'
-                        : m.outcome_tone === 'dnf'
+                        : o.outcome_tone === 'dnf'
                           ? 'dnf'
                           : 'tie'
-                  return { matchId: m.match_id, outcome, map: m.detail }
+                  return { matchId: o.match_id, outcome, map: o.detail }
                 })}
                 labels={{
                   win: fieldMappings?.outcomes?.['win']?.label ?? 'win',
@@ -473,97 +441,15 @@ export function HomePage() {
             Self-hide si rien à montrer (cf. HomeCitationsNearCompletion). */}
         <HomeCitationsNearCompletion playerSlug={playerSlug} />
 
-        {/* Matchs récents / Favoris — titre + contenu sortis de la carte ; toggles
-            conservés à droite dans le header de section (cf. demande user). */}
-        <section className="flex flex-col gap-3">
-          <header className="flex items-center justify-between gap-3">
-            <h3 className="text-base font-semibold text-foreground">
-              {matchTab === 'recent' ? t('home.matches.recent_title') : t('home.matches.favorites_title')}
-            </h3>
-            <div className="flex items-center gap-1 border-b border-transparent">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMatchTab('recent')}
-                  className={`rounded-none border-b-2 px-3 py-1.5 text-xs ${
-                    matchTab === 'recent'
-                      ? 'border-primary text-primary font-semibold'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {t('home.matches.tab_recent')}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMatchTab('favorites')}
-                  className={`rounded-none border-b-2 px-3 py-1.5 text-xs ${
-                    matchTab === 'favorites'
-                      ? 'border-primary text-primary font-semibold'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {t('home.matches.tab_favorites')}
-                  {favoriteMatches.length > 0 && (
-                    <span className="ml-1.5 rounded-full bg-warning/20 px-1.5 py-0.5 text-2xs text-warning">
-                      {favoriteMatches.length}
-                    </span>
-                  )}
-                </Button>
-              </div>
-          </header>
-          {matchTab === 'recent' ? (
-              recentMatches.length > 0 ? (
-                <Carousel>
-                  {recentMatches.map((m) => (
-                    <CarouselItem key={m.match_id} className="w-72">
-                      <MatchCard
-                        match={m}
-                        locale={locale}
-                        timezone={userTimezone}
-                        playerSlug={playerSlug}
-                        onClick={() => goToMatch(m.match_id, 'home_recent')}
-                        onToggleFavorite={!canWriteProfile ? undefined : () =>
-                          favoriteMutation.mutate({ matchId: m.match_id, favorite: !m.is_favorite })
-                        }
-                        favoriteDisabled={favoriteMutation.isPending && favoriteMutation.variables?.matchId === m.match_id}
-                      />
-                    </CarouselItem>
-                  ))}
-                </Carousel>
-              ) : (
-                <EmptyStateNotice
-                  title={t('home.matches.recent_empty_title')}
-                  description={t('home.matches.recent_empty_description')}
-                />
-              )
-            ) : (
-              favoriteMatches.length > 0 ? (
-                <Carousel>
-                  {favoriteMatches.map((m) => (
-                    <CarouselItem key={m.match_id} className="w-72">
-                      <MatchCard
-                        match={m}
-                        locale={locale}
-                        timezone={userTimezone}
-                        playerSlug={playerSlug}
-                        onClick={() => goToMatch(m.match_id, 'home_favorites')}
-                        onToggleFavorite={!canWriteProfile ? undefined : () =>
-                          favoriteMutation.mutate({ matchId: m.match_id, favorite: false })
-                        }
-                        favoriteDisabled={favoriteMutation.isPending && favoriteMutation.variables?.matchId === m.match_id}
-                      />
-                    </CarouselItem>
-                  ))}
-                </Carousel>
-              ) : (
-                <EmptyStateNotice
-                  title={t('home.matches.favorites_empty_title')}
-                  description={t('home.matches.favorites_empty_description')}
-                />
-              )
-            )}
-        </section>
+        {/* Matchs récents / Favoris — fenêtre de tuiles + favoris (HomeMatchesSection). */}
+        <HomeMatchesSection
+          playerSlug={playerSlug}
+          head={{
+            recent_matches: data.recent_matches ?? [],
+            recent_matches_has_more: data.recent_matches_has_more,
+            recent_matches_next_before: data.recent_matches_next_before,
+          }}
+        />
 
         <RecentMediaRail playerSlug={playerSlug} />
       </div>

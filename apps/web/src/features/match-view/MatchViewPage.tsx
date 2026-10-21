@@ -288,20 +288,18 @@ export function MatchViewPage() {
               </div>
             </DetailSection>
             {/* Bloc Médias : TOUJOURS en dernier, seul sur sa rangée, PLEINE largeur
-                (règle produit : aucun bloc seul à largeur partielle). Son bandeau de carte
-                inline a laissé place au gabarit de titre commun le 2026-09-22 — même
-                hiérarchie visuelle que « Combat » et « Récompenses » juste au-dessus.
-                Une seule porte : la capability `media` (le TITRE mesure des captures et des
-                clips). Sans média associé au match, le bloc écrit son état vide. */}
+                (règle produit : aucun bloc seul à largeur partielle). C'est un BLOC à titre
+                (SectionCard, comme Médailles et Citations) : le titre « Médias » est DANS
+                la carte, qui contient toutes les vignettes ou l'état vide (2026-10-21 ; en
+                v7.3.2 titre et contenu vivaient dans une même carte). Une seule porte : la
+                capability `media` (le TITRE mesure des captures et des clips). */}
             <FeatureGate capability="media">
-              <DetailSection title={t.sectionMedia}>
-                <MatchMediaTab
-                  items={media_tab.media_items ?? []}
-                  playerSlug={playerSlug}
-                  matchId={matchId}
-                  t={t}
-                />
-              </DetailSection>
+              <MatchMediaTab
+                items={media_tab.media_items ?? []}
+                playerSlug={playerSlug}
+                matchId={matchId}
+                t={t}
+              />
             </FeatureGate>
           </div>
         )}
