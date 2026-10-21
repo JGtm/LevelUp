@@ -73,8 +73,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Horodatage de participation de l'API du match : le joueur a rejoint en cours de partie.",
     presenceLeftHint:
       "Horodatage de participation de l'API du match : le joueur a quitté avant la fin.",
-    presenceJoinedDerived: 'entre en partie',
-    presenceLeftDerived: 'ne reviendra plus',
     presenceJoinedDerivedHint:
       "Première apparition bien après le coup d'envoi, dérivée des vies du film (participation API absente sur ce match).",
     presenceLeftDerivedHint:
@@ -494,8 +492,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Match API participation timestamp: this player joined in progress.',
     presenceLeftHint:
       'Match API participation timestamp: this player left before the end.',
-    presenceJoinedDerived: 'joins the game',
-    presenceLeftDerived: 'will not return',
     presenceJoinedDerivedHint:
       'First appearance well after kickoff, derived from the film lives (no API participation on this match).',
     presenceLeftDerivedHint:
