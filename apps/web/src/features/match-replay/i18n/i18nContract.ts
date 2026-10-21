@@ -883,6 +883,8 @@ export interface ReplayText {
    * c'est un ÉVÉNEMENT reconstruit des pistes, pas un état mesuré par le canal des épisodes.
    */
   translocationFlash: string
+  /** La POSE de la faille (riftPoses) : même éclat de fiche, phrase propre. */
+  translocationPose: string
   /**
    * LE JOUEUR DANS UNE ZONE D'ÉQUIPEMENT (cf. equipmentZones.ts) : les trois états que la
    * fiche sait dire — champ de réparation, écran occultant, capteur adverse. Les clés sont

@@ -358,6 +358,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       overshield: 'Surbouclier actif',
     },
     translocationFlash: 'Passage par translocateur quantique',
+    translocationPose: 'Faille du translocateur quantique posée',
     zonePresence: {
       field: 'Dans un champ de réparation',
       shroud: 'Dans un écran occultant',
@@ -772,6 +773,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       overshield: 'Overshield active',
     },
     translocationFlash: 'Quantum translocator jump',
+    translocationPose: 'Quantum translocator rift placed',
     zonePresence: {
       field: 'Inside a repair field',
       shroud: 'Inside a shroud screen',

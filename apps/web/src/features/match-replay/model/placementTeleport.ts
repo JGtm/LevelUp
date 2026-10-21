@@ -74,6 +74,11 @@ export function translocatorRanks(
 export interface TranslocationMoment {
   slot: number
   frame: number
+  /**
+   * Vrai pour la POSE de la faille (et non un passage par elle) : le geste qui la dépose, daté par
+   * `riftPoses`. La fiche porte le même éclat, mais ne dit pas « passage » d'un geste qui n'en est pas un.
+   */
+  pose?: true
 }
 
 /** Un va-et-vient MESURÉ : la vie, l'image, le point quitté et le point atteint. */
@@ -198,16 +203,28 @@ export function spentTranslocations(
 }
 
 /**
+ * riftPoseMoments — l'INSTANT de chaque POSE de la faille (schéma 95 : l'énergie du translocateur
+ * porté tombe à zéro). Un geste distinct du passage : la fiche s'éclaire à la pose, pas seulement à
+ * la première téléportation qui la suit.
+ */
+export function riftPoseMoments(doc: ReplayDocumentReady): TranslocationMoment[] {
+  return doc.riftPoses.map((p) => ({ slot: p.slot, frame: p.t, pose: true }))
+}
+
+/**
  * teleportMoments — LES INSTANTS que la fiche fait scintiller, par le meilleur canal
- * disponible pour CE document.
+ * disponible pour CE document : les passages par la faille, puis les poses de la faille.
  *
- * UN SEUL CANAL À LA FOIS, ET C'EST LA RÈGLE : mélanger l'événement et le `spent` ferait
- * scintiller deux fois le même usage (l'un à l'instant vrai, l'autre jusqu'à 16,5 s plus
- * tard). Le calque publié gagne dès qu'il existe, le repli ne sert que là où il n'existe pas.
+ * UN SEUL CANAL À LA FOIS POUR LES PASSAGES, ET C'EST LA RÈGLE : mélanger l'événement et le
+ * `spent` ferait scintiller deux fois le même usage (l'un à l'instant vrai, l'autre jusqu'à
+ * 16,5 s plus tard). Le calque publié gagne dès qu'il existe, le repli ne sert que là où il
+ * n'existe pas. Les POSES sont un autre geste, daté par son propre calque : elles s'y ajoutent.
  */
 export function teleportMoments(doc: ReplayDocumentReady): TranslocationMoment[] {
-  if (hasTranslocationLayer(doc)) return translocationMoments(doc.translocations)
-  return spentTranslocations(doc.equipmentChanges, translocatorRanks(doc.abilityLabels))
+  const passages = hasTranslocationLayer(doc)
+    ? translocationMoments(doc.translocations)
+    : spentTranslocations(doc.equipmentChanges, translocatorRanks(doc.abilityLabels))
+  return [...passages, ...riftPoseMoments(doc)]
 }
 
 /**
@@ -223,11 +240,25 @@ export function lastTeleportAge(
   slot: number,
   frame: number,
 ): number {
-  let age = -1
+  return lastTeleport(teleports, slot, frame)?.age ?? -1
+}
+
+/**
+ * lastTeleport — le moment le plus RÉCENT d'un slot à cette image : son âge en frames, et s'il
+ * s'agit de la pose de la faille (`pose`) ou d'un passage. `null` si rien n'est advenu. À âge égal,
+ * le passage l'emporte sur la pose (c'est le geste qui téléporte).
+ */
+export function lastTeleport(
+  teleports: readonly TranslocationMoment[],
+  slot: number,
+  frame: number,
+): { age: number; pose: boolean } | null {
+  let best: { age: number; pose: boolean } | null = null
   for (const t of teleports) {
     if (t.slot !== slot || t.frame > frame) continue
-    const a = frame - t.frame
-    if (age === -1 || a < age) age = a
+    const age = frame - t.frame
+    const pose = t.pose === true
+    if (best === null || age < best.age || (age === best.age && best.pose && !pose)) best = { age, pose }
   }
-  return age
+  return best
 }
