@@ -252,9 +252,11 @@ func (p *KillSourcePersister) insertKillPass(
 }
 
 // insertKillEventRows ecrit les lignes d une passe dans la transaction FOURNIE, sans la
-// committer. LE SEUL ECRIVAIN de `match_kill_events` du depot — les deux chemins l empruntent :
-// le persister dedie (qui ouvre sa transaction) et le producteur live (qui ecrit dans celle du
-// match, cf. kill_events_credit.go). Retourne le total d assistants supplementaires observes.
+// committer, puis ses resumes par match sous le meme horodatage ([insertKillSummaryRows],
+// ADR 0039). Ecrivain de `match_kill_events` des producteurs en ligne — le persister dedie (qui
+// ouvre sa transaction) et le producteur live (qui ecrit dans celle du match, cf.
+// kill_events_credit.go) ; le seed demo synthetique et deux migrations historiques ecrivent le
+// journal en SQL. Retourne le total d assistants supplementaires observes.
 func insertKillEventRows(
 	ctx context.Context, tx *sql.Tx, in KillSourceBatch, pass string, now time.Time,
 ) (int, error) {
@@ -271,6 +273,9 @@ func insertKillEventRows(
 			return 0, fmt.Errorf("persist: INSERT match_kill_events %s@%d: %w", in.MatchID, d.TimeMS, err)
 		}
 		extra += d.AssistExtra
+	}
+	if err := insertKillSummaryRows(ctx, tx, summaryOfPass(in, pass, now)); err != nil {
+		return 0, err
 	}
 	return extra, nil
 }
