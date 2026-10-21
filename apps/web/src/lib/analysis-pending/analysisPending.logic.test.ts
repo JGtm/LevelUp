@@ -12,15 +12,16 @@ import {
   ANALYSIS_STATE,
   isAnalysisInProgress,
   homeStaleTime,
+  tilesPageRefetchInterval,
+  tilesPageStaleTime,
   matchViewHasAnalysisPending,
 } from './analysisPending.logic'
 
 const tile = (pending?: boolean): RecentMatchItem => ({ match_id: 'm', analysis_pending: pending }) as RecentMatchItem
 
-function home(recent: RecentMatchItem[], favorites: RecentMatchItem[], total = 12) {
+function home(recent: RecentMatchItem[], total = 12) {
   return {
     recent_matches: recent,
-    favorite_matches: favorites,
     hero: { kpis: { total_matches: total } },
   } as unknown as HomePageResponse
 }
@@ -40,24 +41,21 @@ describe('anyAnalysisPending', () => {
 
 describe('homeRefetchInterval', () => {
   it('60 s tant qu une tuile récente est en cours', () => {
-    expect(homeRefetchInterval(home([tile(true)], []))).toBe(ANALYSIS_PENDING_REFETCH_MS)
-  })
-  it('60 s si seule une tuile favorite est en cours', () => {
-    expect(homeRefetchInterval(home([tile(false)], [tile(true)]))).toBe(ANALYSIS_PENDING_REFETCH_MS)
+    expect(homeRefetchInterval(home([tile(true)]))).toBe(ANALYSIS_PENDING_REFETCH_MS)
   })
   it('s arrête (false) quand plus rien n est en cours', () => {
-    expect(homeRefetchInterval(home([tile(false)], [tile()]))).toBe(false)
+    expect(homeRefetchInterval(home([tile(false), tile()]))).toBe(false)
   })
   it('garde le poll de première synchro (30 s) quand aucun match n existe', () => {
-    expect(homeRefetchInterval(home([], [], 0))).toBe(FIRST_SYNC_REFETCH_MS)
+    expect(homeRefetchInterval(home([], 0))).toBe(FIRST_SYNC_REFETCH_MS)
     expect(homeRefetchInterval(undefined)).toBe(FIRST_SYNC_REFETCH_MS)
   })
 })
 
 describe('homeStaleTime', () => {
   it('raccourcie tant qu une analyse est en cours, normale sinon', () => {
-    expect(homeStaleTime(home([tile(true)], []), 300_000)).toBe(ANALYSIS_PENDING_REFETCH_MS)
-    expect(homeStaleTime(home([tile(false)], []), 300_000)).toBe(300_000)
+    expect(homeStaleTime(home([tile(true)]), 300_000)).toBe(ANALYSIS_PENDING_REFETCH_MS)
+    expect(homeStaleTime(home([tile(false)]), 300_000)).toBe(300_000)
     expect(homeHasAnalysisPending(undefined)).toBe(false)
   })
 })
@@ -101,5 +99,18 @@ describe('isAnalysisInProgress', () => {
     expect(isAnalysisInProgress({})).toBe(false)
     expect(isAnalysisInProgress(null)).toBe(false)
     expect(isAnalysisInProgress(undefined)).toBe(false)
+  })
+})
+
+describe('pages de tuiles (pages suivantes, favoris) : chacune se recharge seule', () => {
+  it('60 s tant que CETTE page contient une tuile en cours, sinon false', () => {
+    expect(tilesPageRefetchInterval({ items: [tile(false), tile(true)] })).toBe(ANALYSIS_PENDING_REFETCH_MS)
+    expect(tilesPageRefetchInterval({ items: [tile(false), tile()] })).toBe(false)
+    expect(tilesPageRefetchInterval(undefined)).toBe(false)
+  })
+  it('fraîcheur courte seulement quand une tuile de la page est en cours', () => {
+    expect(tilesPageStaleTime({ items: [tile(true)] }, 300_000)).toBe(ANALYSIS_PENDING_REFETCH_MS)
+    expect(tilesPageStaleTime({ items: [tile(false)] }, 300_000)).toBe(300_000)
+    expect(tilesPageStaleTime(undefined, 300_000)).toBe(300_000)
   })
 })

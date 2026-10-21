@@ -110,6 +110,10 @@ type FiltersService interface {
 // HomeService construit les réponses de la page d'accueil Mission Control.
 type HomeService interface {
 	GetHomePage(ctx context.Context, gamertag, locale string) (*domain.HomePageResponse, error)
+	// GetHomeMatches rend une liste de tuiles de l'Accueil : la suite de l'historique après un curseur,
+	// ou les favoris en entier (domain.HomeMatchesRequest). Même construction que la tête de
+	// GetHomePage ; curseur illisible : domain.ErrHomeCursorInvalid.
+	GetHomeMatches(ctx context.Context, locale string, req domain.HomeMatchesRequest) (*domain.HomeMatchesPage, error)
 	GetBattlePass(ctx context.Context) domain.BattlePassResponse
 	GetChallenges(ctx context.Context) domain.ChallengesResponse
 	// RefreshTrack hydrate (synchroneement) la définition d'un reward track

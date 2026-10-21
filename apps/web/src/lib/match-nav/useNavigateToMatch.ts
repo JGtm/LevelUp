@@ -23,6 +23,7 @@ import { useTitleSlug } from '@/lib/title-routing'
 
 import {
   filterSpecToQueryString,
+  hasNavContent,
   persistNavContext,
   type MatchNavContext,
 } from './navContext'
@@ -45,7 +46,7 @@ export function useNavigateToMatch(playerSlug: string) {
   return useCallback(
     (matchId: string, ctx?: MatchNavContext) => {
       if (!matchId) return
-      if (ctx?.matchIds?.length) {
+      if (ctx && hasNavContent(ctx)) {
         persistNavContext(matchId, ctx)
       }
       void navigate({

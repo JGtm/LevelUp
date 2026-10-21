@@ -96,7 +96,7 @@ read does not replay the whole history.
 
 ## Decision
 
-**A page read pays for its scope, not for the player's history, and it pays once.** Seven
+**A page read pays for its scope, not for the player's history, and it pays once.** Eight
 invariants, each held today by the guardrail named with it; what each guardrail actually blocks,
 and what it does not see, is in *Guardrails*.
 
@@ -240,7 +240,7 @@ give the directory they load its own section (`top_encounters` and `top_encounte
 
 **Guardrails**: `api/middleware/slog_logger_test.go` — `TestSlogLogger_TimingsLoggedForSlowRequest`,
 `TestSlogLogger_SlowSuccessLoggedAtInfo`; `platform/duckdb/career_repo_annuaire_test.go` —
-`TestCareerRepo_Annuaire_SectionsDeDuree`; `service/home_service_sections_test.go` — `TestGetHomePage_SectionsDeDuree` (every step of the Home page, the per-tile enrichments once per list, 2026-10-20) and `TestMatchViewSection_FeuillesSeulement` (each match view loader opens `mv_<source>`, except the sources whose repo already times its reads). The obligation itself is **not yet guarded** (see
+`TestCareerRepo_Annuaire_SectionsDeDuree`; `service/home_service_sections_test.go` — `TestGetHomePage_SectionsDeDuree` (every step of the Home page, the per-tile enrichments once per list, 2026-10-20; plus `home_build_tiles`, 2026-10-21) and `TestMatchViewSection_FeuillesSeulement` (each match view loader opens `mv_<source>`, except the sources whose repo already times its reads). The obligation itself is **not yet guarded** (see
 *Guardrails*).
 
 ### I7 — DuckDB resource bounds are read when each connection opens
@@ -258,12 +258,54 @@ SQL cost, two to four times shorter.
 **Guardrail**: `platform/duckdb/db_resource_limits_env_test.go` —
 `TestResourceLimits_EnvSetAfterPackageInitIsHonored`.
 
+### I8 — A page response never grows with the history when the page shows a window
+
+A list a page displays as a window is served as a window, with a cursor for the rest. The Home
+page showed ~30 tiles from a list that held every match of the player: the response of the
+heaviest account carried 1,182 tiles (2.9 MB decoded, 158,000 DOM nodes on the phone, a
+60-second reload of the whole list while one film was still being analysed), and every per-tile
+enrichment (medals, citations, assisted frags: 0.9 to 3.5 s on the copy of the production
+databases) ran on all of them.
+
+- The head (`GetHomePage`) carries `domain.HomeTilesHeadSize` (30) tiles, `recent_matches_total`
+  (the real count of tiles of the history, never the length of the head), `has_more` and
+  `recent_matches_next_before`. The rest is `GET /players/{slug}/pages/home/matches?before=&limit=`
+  (60 at most; `kind=favorites` serves the player's favorites whole, they are bounded by the
+  player's own gesture).
+- **Cursor, not offset**: the instant of the last tile served (`Summary.StartedAtUTC`, the
+  canonical start of rule 8) then its `match_id`. A sync between two pages adds matches at the
+  head; an offset would repeat or skip tiles, the cursor names a tile. The order is total
+  (instant descending, `match_id` descending) and lives in one place
+  (`analysis/home_tiles_window.go`), shared by the head and the pages.
+- **One builder**: the head, the following pages and the favorites go through the same
+  `buildTiles` (asset translations, performance placements, replay link, per-tile enrichments,
+  analysis-in-progress): a tile served by a later page cannot differ from the one the head would
+  have served.
+- **Totals stay on the history**: hero, highlights, sessions, the "last session" sequence
+  (`last_session_outcomes`) and the performance placements read the full canonical rows (the
+  cached loader of I3); only the list of tiles is a window. No figure changes.
+- **Neighbours without a list**: a tile opened from the Home no longer carries a list of ids to the
+  match page. Previous/next and the "X/Y" counter come from Q25 over the whole history, with the
+  same total order (instant descending, then `match_id` descending: Q25 ranks with that tie-break),
+  and the context label ("Recent matches") from the navigation context descriptor
+  (`useMatchNeighborsResolved`). Q25 reads the LIVE shared reader like the tile loader, never the
+  immutable snapshot (`neighborsRead`): a snapshot cut before the latest matches would return no
+  neighbours for them and a short total for the others (`TestMatchNeighbors_LisentLeLiveJamaisLeSnapshot`).
+- Title-agnostic: no comparison of a title slug; the window test runs under `halo_infinite` and
+  `halo_5`.
+
+**Guardrails**: `service/home_service_tiles_test.go` — `TestGetHomePage_FenetreBornee` (200
+matches, at most 30 tiles, totals unchanged, both slugs), `TestGetHomeMatches_ParitePagesEtListeComplete`
+(the concatenation of the head and the pages equals the whole list built in one pass, field by
+field, for page sizes from 1 to 1000), `TestGetHomeMatches_SynchroEntreDeuxPages`;
+`analysis/home_tiles_window_test.go` (order, cursor, ties, favorites). `TestHomeTiles_OrdreIdentiqueAQ25` (`platform/duckdb/home_tiles_q25_parity_test.go`, `integration` tag): the order of the tiles and Q25 agree match by match, ties included.
+
 ## Consequences
 
-- A new page read is written against the seven rules: names through the read's directory; each
+- A new page read is written against the eight rules: names through the read's directory; each
   `_latest` view bound to the read's matches; a load shared by several blocks memoised for the
   request; a load repeated across requests cached behind an invalidation point; its sections
-  declared. Review checks what no test enforces (I4 outside the two pinned pages, the obligation
+  declared; a list the page shows as a window served as a window (I8). Review checks what no test enforces (I4 outside the two pinned pages, the obligation
   of I6).
 - Removing a join can change the physical order of rows. An order a response depends on must be
   total (`ORDER BY` with a tie-breaker): removing the join from Q32b moved badges carried by the
@@ -449,6 +491,7 @@ as for any DuckDB test). Integration: `go test -tags=integration -p 1 ./internal
 | I6 | `TestSlogLogger_TimingsLoggedForSlowRequest`, `TestSlogLogger_SlowSuccessLoggedAtInfo` (`api/middleware/slog_logger_test.go`) | default suite | A slow request with sections yields exactly one INFO `http_timings` line with `path`, `duration_ms`, `total_ms`, `sections` and `calls`; a slow 2xx is logged at INFO with `slow: true`. | Whether a given read declares a section. |
 | I6 | `TestCareerRepo_Annuaire_SectionsDeDuree` (`platform/duckdb/career_repo_annuaire_test.go`) | `integration` tag | The Career and Compare reads each emit their own section and their directory's section, with the expected call counts. | **Not yet guarded**: nothing fails when a new page read declares no section. That obligation is a review rule. |
 | I7 | `TestResourceLimits_EnvSetAfterPackageInitIsHonored` (`platform/duckdb/db_resource_limits_env_test.go`) | default suite | Sets `LEVELUP_DUCKDB_THREADS=3` and `LEVELUP_DUCKDB_MEMORY_LIMIT=300MB` after package init; fails unless `BudgetsSnapshot` reports them and a newly opened connection runs with 3 threads and a memory limit within 1 % of 300 MB. | Environment variables captured at init outside `platform/duckdb` (none known at the time of writing). |
+| I8 | `TestGetHomePage_FenetreBornee`, `TestGetHomeMatches_ParitePagesEtListeComplete`, `TestGetHomeMatches_SynchroEntreDeuxPages` (`service/home_service_tiles_test.go`), `TestWindowHomeTileRows_*` (`analysis/home_tiles_window_test.go`) | default suite | 200 matches: the head holds at most 30 tiles under `halo_infinite` and `halo_5`, the hero total and `recent_matches_total` stay 200; the concatenation of the head and the pages (sizes 0, 1, 17, 30, 60, 1000) equals the list built in one pass, field by field; a sync between two pages leaves no duplicate and no gap; ties on the instant do not lose a tile at a page boundary. | Another page that serves a list it shows as a window (none known on 2026-10-21: the Explorer pages server-side, Sessions/Timeseries return aggregates). |
 
 A guardrail that moves or is renamed keeps its reference here up to date, in the same commit; a
 guardrail retired on purpose leaves the table with its reason.

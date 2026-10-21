@@ -138,6 +138,7 @@ export const commonManifest = {
   "common.auth.xbox_use_9char_code": { fr: "Utiliser un code à 9 caractères (sur un autre appareil)", en: "Use a 9-character code (on another device)" },
   "common.battlepass.next_aria": { fr: "Récompense suivante", en: "Next reward" },
   "common.battlepass.prev_aria": { fr: "Récompense précédente", en: "Previous reward" },
+  "common.carousel.loading_more": { fr: "Chargement…", en: "Loading…" },
   "common.carousel.next": { fr: "Suivant", en: "Next" },
   "common.carousel.prev": { fr: "Précédent", en: "Previous" },
   "common.changelog.empty": { fr: "Aucune entrée disponible.", en: "No entry available." },

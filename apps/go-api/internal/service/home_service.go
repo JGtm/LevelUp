@@ -3,37 +3,24 @@ package service
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
-	"time"
 
-	"golang.org/x/sync/errgroup"
-
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/mappings"
-	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/teammates"
-	"levelup/go-api/internal/sync"
 )
 
 // HomeService orchestre les données de la page d'accueil.
 type HomeService struct {
-	repo         port.HomeRepository
-	cacheRepo    port.BattlePassCacheRepository
-	provider     *halo.HaloProvider
-	sink         port.HomePersistSink // nil → pas de persistance (tests, joueurs sans auth)
-	socialRepo   port.SocialRepository
-	playerSlug   string
-	semantic     games.TitleSemanticAdapter // nil → libellés rangs construits via fallbacks (RankName)
-	matchesCache *HomeMatchesCache          // nil → pas de cache (tests, appels HomeCtx sans auth)
-	xuid         string                     // clé de cache ; vide si matchesCache est nil
+	repo       port.HomeRepository
+	cacheRepo  port.BattlePassCacheRepository
+	provider   *halo.HaloProvider
+	sink       port.HomePersistSink // nil → pas de persistance (tests, joueurs sans auth)
+	socialRepo port.SocialRepository
+	playerSlug string
+	semantic   games.TitleSemanticAdapter // nil → libellés rangs construits via fallbacks (RankName)
+	xuid       string                     // xuid du joueur de la PAGE (identité Spartan, coéquipiers de session)
 	// dataAdapter (optionnel, Phase C+ multi-titres) : point d'extension pour
 	// router LoadPlayerStats via la couche canonique. À ce jour, le service
 	// utilise le repo direct car canonical.PlayerStats ne couvre pas encore
@@ -179,10 +166,9 @@ func (s *HomeService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, t
 	return s
 }
 
-// WithMatchesCache active le cache TTL process-level pour LoadHomeMatches + LoadHomeSessions.
-// xuid est la clé de cache ; sans lui le cache ne peut pas fonctionner.
-func (s *HomeService) WithMatchesCache(cache *HomeMatchesCache, xuid string) *HomeService {
-	s.matchesCache = cache
+// WithXUID pose le xuid du joueur de la PAGE : sujet explicite de l'identité Spartan live et de la
+// résolution des coéquipiers de session (jamais lu du contexte ambiant). Retourne le service.
+func (s *HomeService) WithXUID(xuid string) *HomeService {
 	s.xuid = xuid
 	return s
 }
@@ -214,325 +200,3 @@ func (s *HomeService) WithCareerLive(svc *CareerLiveService) *HomeService {
 // qui appelle toujours le live directement.
 func (s *HomeService) SetSessionActive(_ bool) {
 }
-
-// homePageData regroupe toutes les données brutes chargées en parallèle par fetchHomePageData.
-//
-// P4.3b (ADR 0011) : `canonicalRows` est renseigné quand le path canonical est
-// actif (playerMatchesRepo + titleSlug + gamertag). `matches`/`sessions`
-// restent renseignés pour la rétrocompatibilité (legacy fallback path).
-type homePageData struct {
-	canonicalRows  []canonical.PlayerMatchRow // nil = legacy path
-	spartanIdent   *domain.HomeSpartanIdentityRow
-	totalMatches   int
-	media          []domain.HomeMediaRow
-	playlistRanks  []domain.HomePlaylistRank
-	favoriteIDs    map[string]bool
-	favWeaponName  string
-	favWeaponKills int
-}
-
-// fetchMatchesAndSessions charge les rows canonical du joueur (P4.3 finale).
-// Retourne aussi un cache du `bool fromCache` pour télémétrie.
-//
-// P4.3 finale (ADR 0011) : path canonical exclusif. playerMatchesRepo +
-// titleSlug + gamertag sont REQUIS (wirés en DI universellement). Le legacy
-// fallback (LoadHomeMatches + LoadHomeSessions parallel) a été supprimé.
-//
-// Le cache TTL stocke encore les rows canonical pour rétrocompat avec les
-// signatures Get/Set existantes (qui prennent matches/sessions legacy) — la
-// suppression du cache legacy est tracker dans une follow-up dédiée.
-// finale, cf. commentaire ci-dessous) ; conservé pour exposition future de métrique
-// + retour du cache hit quand la couche canonical-aware sera ajoutée (P4.4).
-//
-//nolint:unparam // fromCache aujourd'hui toujours false (cache bypassé en P4.3
-func (s *HomeService) fetchMatchesAndSessions(ctx context.Context) (
-	canonicalRows []canonical.PlayerMatchRow, fromCache bool, err error,
-) {
-	if s.matchesCache != nil && s.xuid != "" {
-		if _, _, hit := s.matchesCache.Get(s.xuid, s.titleSlug); hit {
-			// Cache hit : on doit reconstruire les canonical rows. Le cache n'est
-			// pas encore canonical-aware ; pour P4.3 finale on bypass le cache hit
-			// et recharge canonical. TODO P4.4 : adapter HomeMatchesCache à
-			// canonical.
-			slog.DebugContext(ctx, "home_cache: hit (bypass P4.3 finale)", "xuid", s.xuid)
-		}
-	}
-
-	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return nil, false, fmt.Errorf("HomeService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
-	}
-	rows, e := s.playerMatchesRepo.LoadPlayerMatches(
-		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
-	)
-	if e != nil {
-		return nil, false, e
-	}
-	canonicalRows = rows
-	slog.DebugContext(ctx, "home: loaded canonical",
-		"rows", len(canonicalRows), "title_slug", s.titleSlug)
-
-	// Maintien du cache pour la métrique (set vide pour invalider stale).
-	if s.matchesCache != nil && s.xuid != "" {
-		s.matchesCache.Set(s.xuid, s.titleSlug, nil, nil)
-	}
-	return canonicalRows, false, nil
-}
-
-// fetchHomePageData charge toutes les données de la page d'accueil en parallèle.
-// Les erreurs non-critiques sont absorbées (dégradation silencieuse).
-func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (homePageData, error) {
-	var d homePageData
-
-	// Groupe 1 : matches+sessions (cache TTL) en parallèle avec les autres appels légers.
-	var cacheHit bool
-	g, gctx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		var err error
-		defer timing.FromContext(gctx).Section("home_load_matches")()
-		d.canonicalRows, cacheHit, err = s.fetchMatchesAndSessions(gctx)
-		return err
-	})
-	g.Go(func() error {
-		defer timing.FromContext(gctx).Section("home_spartan_identity")()
-		// Path live (CareerLiveService câblé) : flow découplé du post-sync
-		// matchs avec throttle 5 min (XP) / 6 h (customisation) + fallback DB
-		// per-field garanti. Fallback : repo.LoadSpartanIdentity (DB-only)
-		// pour les bootstraps sans careerLive (tests, instances minimales).
-		if s.careerLive != nil {
-			// Sujet EXPLICITE = joueur de la PAGE (s.xuid = pdb.XUID). Identique au
-			// forcePageIdentityXUID appliqué au wire (HaloXUID = pdb.XUID) mais sans
-			// dépendre de la valeur ambiante (finding ID4).
-			row, err := s.careerLive.GetSpartanIdentityFor(gctx, s.xuid)
-			if err != nil {
-				slog.WarnContext(gctx, "home: CareerLive.GetSpartanIdentityFor failed", "err", err)
-			}
-			d.spartanIdent = row
-			return nil
-		}
-		var err error
-		d.spartanIdent, err = s.repo.LoadSpartanIdentity(gctx)
-		if err != nil {
-			slog.WarnContext(gctx, "home: LoadSpartanIdentity failed", "err", err)
-		}
-		return nil
-	})
-	g.Go(func() error {
-		defer timing.FromContext(gctx).Section("home_count_matches")()
-		// Fallback sur len(matches) après le Wait si la query échoue (totalMatches reste 0).
-		d.totalMatches, _ = s.repo.CountPlayerMatches(gctx)
-		return nil
-	})
-	g.Go(func() error {
-		var err error
-		defer timing.FromContext(gctx).Section("home_recent_media")()
-		d.media, err = s.repo.LoadRecentMedia(gctx, 4)
-		if err != nil {
-			slog.WarnContext(gctx, "home: LoadRecentMedia failed", "err", err)
-		}
-		return nil
-	})
-	g.Go(func() error {
-		var err error
-		defer timing.FromContext(gctx).Section("home_playlist_ranks")()
-		d.playlistRanks, err = s.repo.LoadRecentPlaylistRanks(gctx, locale)
-		if err != nil {
-			slog.WarnContext(gctx, "home: LoadRecentPlaylistRanks failed", "err", err)
-		}
-		return nil
-	})
-	g.Go(func() error {
-		defer timing.FromContext(gctx).Section("home_favorite_weapon")()
-		if wName, wKills, err := s.repo.LoadFavoriteWeapon(gctx, locale); err == nil && wName != "" {
-			d.favWeaponName = wName
-			d.favWeaponKills = wKills
-		}
-		return nil
-	})
-	if s.socialRepo != nil && s.playerSlug != "" {
-		slug := s.playerSlug
-		g.Go(func() error {
-			defer timing.FromContext(gctx).Section("home_favorite_ids")()
-			if ids, err := s.socialRepo.GetFavoriteMatchIDs(gctx, slug); err == nil {
-				d.favoriteIDs = ids
-			} else {
-				slog.WarnContext(gctx, "home: GetFavoriteMatchIDs failed", "err", err)
-			}
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return homePageData{}, err
-	}
-	if d.totalMatches == 0 {
-		d.totalMatches = len(d.canonicalRows)
-	}
-	_ = cacheHit // exploitable pour des métriques futures
-	return d, nil
-}
-
-// applyPerfPlacementsToRecentItems renseigne PerfPlacementDone/Total sur les tuiles
-// de match de l'Accueil (RecentMatchItem) dont la chaîne de PERFORMANCE est sous le
-// seuil — MÊME algorithme que l'Explorer (computePerfPlacements), une seule source de
-// vérité. La tuile affiche alors « En placement (X/Y) » au lieu d'un vide, JAMAIS un 0
-// fabriqué pour une perf absente. Le comptage par chaîne porte sur TOUT l'historique
-// (allRows) ; l'application sur les items visibles.
-//
-// Divergence assumée vs l'Explorer : la row canonique de l'Accueil ne porte pas
-// `is_excluded` (exclusions manuelles, rares et hors placement) → l'éligibilité ne
-// filtre que le DNF (miroir du COALESCE(outcome,0) != 4 de loadHistoryForPerf).
-func applyPerfPlacementsToRecentItems(ctx context.Context, allRows []canonical.PlayerMatchRow, itemLists ...[]domain.RecentMatchItem) {
-	if len(allRows) == 0 {
-		return
-	}
-	slug := ctxkeys.TitleSlug(ctx)
-	inputs := make([]perfPlacementInput, len(allRows))
-	for i := range allRows {
-		r := &allRows[i]
-		pair := ""
-		if r.Enrichment.PairName != nil {
-			pair = *r.Enrichment.PairName
-		}
-		isRanked := r.Summary.IsRanked != nil && *r.Summary.IsRanked
-		isFirefight := r.Summary.IsPvE != nil && *r.Summary.IsPvE
-		inputs[i] = perfPlacementInput{
-			matchID:  r.Summary.MatchID,
-			chain:    sync.GetPerformanceChain(slug, pair, isRanked, isFirefight),
-			eligible: r.Summary.Outcome != canonical.OutcomeDNF,
-			hasScore: r.Enrichment.PerformanceScore != nil,
-		}
-	}
-	placements := computePerfPlacements(inputs, sync.MinMatchesPerChainForRelative)
-	if len(placements) == 0 {
-		return
-	}
-	for _, items := range itemLists {
-		for i := range items {
-			dt, ok := placements[items[i].MatchID]
-			if !ok {
-				continue
-			}
-			d, t := dt[0], dt[1]
-			items[i].PerfPlacementDone = &d
-			items[i].PerfPlacementTotal = &t
-		}
-	}
-}
-
-// GetHomePage retourne la page d'accueil agrégée (hero card, highlights, matchs récents,
-// médias récents, résumés de sessions solo et escouade).
-//
-// P4.3 finale (ADR 0011) : path canonical exclusif. Toutes les analyses
-// passent par les `analysis.*FromCanonical`. Le legacy fallback a été supprimé.
-func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) (*domain.HomePageResponse, error) {
-	defer func(start time.Time) {
-		observability.RecordDurationMS("home_get_page", time.Since(start).Milliseconds())
-	}(time.Now())
-	d, err := s.fetchHomePageData(ctx, locale)
-	if err != nil {
-		return nil, err
-	}
-
-	// Bug #2/#7 cascade : remplit Labels["fr"] des AssetReference depuis
-	// metadata.asset_translations + mode_name_tr quand match_registry
-	// .{...}_name_fr est NULL. Sans ça, modes/maps/playlists restent en EN.
-	stop := timing.FromContext(ctx).Section("home_asset_translations")
-	if err := s.repo.EnrichCanonicalAssetTranslations(ctx, d.canonicalRows); err != nil {
-		slog.WarnContext(ctx, "home: EnrichCanonicalAssetTranslations failed", "err", err)
-	}
-	stop()
-
-	// Baseline modèle de dégâts du titre courant (PV pour tuer) — injectée dans
-	// les calculs de rendement/résistance. 225 Infinite (byte-identique), per-titre sinon.
-	stop = timing.FromContext(ctx).Section("home_build_cards")
-	hp := games.EffectiveHpToKill(ctxkeys.TitleSlug(ctx))
-	hasRankedHistory, hasUnrankedHistory := analysis.InferHomeSkillHistoryFromCanonical(d.canonicalRows)
-	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches, locale, hp)
-	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows, locale)
-	// Les tuiles d'accueil lisent le score par la MÊME règle que la vue match et les
-	// tableaux : `roundsDecide` porte les variantes qui se décident aux manches (ADR 0032).
-	// Le mot d'issue n'est plus assemblé côté Go (Title supprimé le 2026-09-07, lot M5
-	// L2) : le DTO porte OutcomeTone (clé canonique win|loss|tie|dnf), le web le
-	// localise via useOutcomeLabel — plus besoin de résoudre outcomesOf(s.semantic) ici.
-	recentOpts := analysis.RecentMatchesOptions{
-		Locale: locale, EffectiveHpToKill: hp,
-		SkillBadgeURL: s.skillBadgeResolver, RoundsDecide: s.roundsDecide,
-	}
-	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(
-		d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, recentOpts)
-	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, recentOpts)
-	stop()
-	// Placement de chaîne de PERFORMANCE sur les tuiles de match : même signal que
-	// l'Explorer (« En placement (X/Y) » au lieu d'un vide ou d'un 0 fabriqué pour une
-	// perf structurellement absente). Comptage par chaîne sur TOUT l'historique.
-	stop = timing.FromContext(ctx).Section("home_perf_placements")
-	applyPerfPlacementsToRecentItems(ctx, d.canonicalRows, recentMatches, favoriteMatches)
-	stop()
-	// Lien « Rejeu 2D » des tuiles : présence d'artefact résolue en UN listing de
-	// dossier pour les deux listes (jamais un accès disque par tuile).
-	replays := s.replayAvailability(ctx)
-	applyReplayAvailabilityToRecentItems(replays, recentMatches, favoriteMatches)
-	stop = timing.FromContext(ctx).Section("home_build_sessions")
-	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false, locale, hp)
-	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true, locale, hp)
-	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20, locale, hp)
-	squadSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, true, 20, locale, hp)
-	stop()
-	// Coéquipiers des sessions escouade (best-effort) : alimente le deep-link
-	// card escouade → /squad (pré-sélection de la composition). No-op si non câblé.
-	s.enrichSquadSessionsTeammates(ctx, squadSessions, d.canonicalRows)
-
-	if d.favWeaponName != "" {
-		hero.KPIs.FavoriteWeaponName = d.favWeaponName
-		hero.KPIs.FavoriteWeaponKills = d.favWeaponKills
-	}
-
-	// Médailles, citations (puis commendations natives en repli, TITLE-AGNOSTIC P7) et frags
-	// assistés, par liste en parallèle.
-	s.enrichRecentLists(ctx, recentMatches, favoriteMatches)
-	// Indicateur « analyse du film en cours » : UNE lecture pour les deux listes, après
-	// l'enrichissement (aucune dépendance) ; sans résolveur câblé (titre sans la capability du
-	// film), le champ reste faux.
-	s.applyAnalysisPendingToRecentItems(ctx, replays, recentMatches, favoriteMatches)
-
-	var rankCatalog *mappings.RankCatalog
-	if s.semantic != nil {
-		rankCatalog = s.semantic.Ranks()
-	}
-
-	// Garantit slices non-nil sur les champs JSON sans omitempty : un slice nil
-	// sérialise en JSON `null` et crashe le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
-	recentMedia := analysis.BuildRecentMedia(d.media, 4)
-	if highlights == nil {
-		highlights = []domain.HighlightItem{}
-	}
-	if recentMatches == nil {
-		recentMatches = []domain.RecentMatchItem{}
-	}
-	if favoriteMatches == nil {
-		favoriteMatches = []domain.RecentMatchItem{}
-	}
-	if recentMedia == nil {
-		recentMedia = []domain.RecentMediaItem{}
-	}
-
-	return &domain.HomePageResponse{
-		Hero:                hero,
-		SpartanIdentity:     analysis.BuildSpartanIdentity(d.spartanIdent, locale, rankCatalog),
-		Highlights:          highlights,
-		RecentMatches:       recentMatches,
-		FavoriteMatches:     favoriteMatches,
-		RecentMedia:         recentMedia,
-		SoloSession:         soloSession,
-		SquadSession:        squadSession,
-		SoloSessions:        soloSessions,
-		SquadSessions:       squadSessions,
-		HasRankedHistory:    hasRankedHistory,
-		HasUnrankedHistory:  hasUnrankedHistory,
-		RecentPlaylistRanks: d.playlistRanks,
-	}, nil
-}
-
-// buildFavoriteMatchListCanonical est la variante canonical-aware de
-// buildFavoriteMatchList. Délègue à la version legacy via le wrapper analysis.

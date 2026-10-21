@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
 )
 
@@ -48,6 +49,7 @@ var paginationStringParams = map[string]paginationStringParam{
 var paginationIntegerMaxima = map[string]float64{
 	"listNotifications.limit":              notifications.MaxListLimit,
 	"listProgressionRecords.history_limit": 200,
+	"getHomeMatches.limit":                 domain.HomeTilesMaxPageSize,
 }
 
 func isPaginationName(name string) bool {

@@ -1,5 +1,5 @@
 // Package service — home_service_enrichment.go : helpers d'enrichissement des
-// RecentMatchItem (médailles + citations), favoris et lien rejeu 2D. Extrait de
+// RecentMatchItem (médailles, citations, frags assistés) et lien rejeu 2D. Extrait de
 // home_service.go (refactor god-file, revue 2026-06-02).
 package service
 
@@ -8,32 +8,11 @@ import (
 	"log/slog"
 	"sort"
 
-	"golang.org/x/sync/errgroup"
-
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
-
-func buildFavoriteMatchListCanonical(
-	rows []canonical.PlayerMatchRow,
-	favoriteIDs map[string]bool,
-	opts analysis.RecentMatchesOptions,
-) []domain.RecentMatchItem {
-	if len(favoriteIDs) == 0 {
-		return nil
-	}
-	allItems := analysis.BuildRecentMatchesWithFavoritesFromCanonical(rows, len(rows), favoriteIDs, opts)
-	var favorites []domain.RecentMatchItem
-	for _, item := range allItems {
-		if item.IsFavorite {
-			favorites = append(favorites, item)
-		}
-	}
-	return favorites
-}
 
 // homeListEnrichers : les enrichissements par tuile, dans l'ordre où ils s'appliquent à une
 // liste (citations dérivées AVANT les commendations natives, qui ne remplissent que le slot
@@ -54,27 +33,14 @@ const (
 	homeSectionListFavorites = "favorites"
 )
 
-// enrichRecentLists enrichit les deux listes de tuiles de l'Accueil (récents, favoris) en
-// parallèle, chacune par homeListEnrichers. Chaque étape est une section chronométrée
-// `home_<étape>_<liste>` : les deux listes courant en même temps, une section par liste
-// garde leurs durées lisibles séparément.
-func (s *HomeService) enrichRecentLists(ctx context.Context, recent, favorites []domain.RecentMatchItem) {
-	lists := []struct {
-		name  string
-		items []domain.RecentMatchItem
-	}{{homeSectionListRecent, recent}, {homeSectionListFavorites, favorites}}
-	g, _ := errgroup.WithContext(ctx)
-	for _, l := range lists {
-		g.Go(func() error {
-			for _, e := range homeListEnrichers {
-				stop := timing.FromContext(ctx).Section("home_" + e.name + "_" + l.name)
-				e.enrich(ctx, s.repo, l.items)
-				stop()
-			}
-			return nil
-		})
+// enrichTileList enrichit une liste de tuiles par homeListEnrichers. Chaque étape est une section
+// chronométrée `home_<étape>_<liste>` : la durée de chaque lecture reste lisible séparément.
+func enrichTileList(ctx context.Context, repo port.HomeRepository, items []domain.RecentMatchItem, list string) {
+	for _, e := range homeListEnrichers {
+		stop := timing.FromContext(ctx).Section("home_" + e.name + "_" + list)
+		e.enrich(ctx, repo, items)
+		stop()
 	}
-	_ = g.Wait()
 }
 
 // WithReplay injecte le service de rejeu 2D — même contrat que MatchHistoryService :

@@ -25,9 +25,9 @@ func TestGetHomePage_SectionsDeDuree(t *testing.T) {
 		vues[s.Name] = true
 	}
 	for _, section := range []string{
-		"home_load_matches", "home_spartan_identity", "home_count_matches", "home_recent_media",
+		"home_load_matches", "home_spartan_identity", "home_count_matches",
 		"home_playlist_ranks", "home_favorite_weapon", "home_asset_translations", "home_build_cards",
-		"home_perf_placements", "home_replay_availability", "home_build_sessions", "home_squad_teammates",
+		"home_build_tiles", "home_perf_placements", "home_replay_availability", "home_build_sessions", "home_squad_teammates",
 		"home_medals_recent", "home_citations_recent", "home_commendations_recent", "home_assisted_frags_recent",
 		"home_analysis_pending",
 	} {

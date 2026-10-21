@@ -1,0 +1,14 @@
+[Unit]
+Description=LevelUp compactage des passes chaque nuit 03:30 UTC
+
+[Timer]
+# 03:30 UTC : apres le menage Docker de 03:00 (qui supprime les conteneurs ARRETES depuis plus de
+# 24 h) et avant la sauvegarde restic de 04:00 (qui arrete et redemarre le serveur elle aussi, et
+# sauvegarde alors des bases deja compactees).
+OnCalendar=*-*-* 03:30:00 UTC
+# Pas de Persistent : une nuit manquee (VPS eteint) n'est pas rattrapee au demarrage, ou elle
+# tomberait en meme temps que le rattrapage de la sauvegarde restic. La nuit suivante suffit.
+Persistent=false
+
+[Install]
+WantedBy=timers.target

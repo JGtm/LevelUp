@@ -41,7 +41,6 @@ function optionsDe(client: QueryClient): { query: Query; options: Opts } {
 const home = (pending: boolean) => ({
   hero: { kpis: { total_matches: 12 } },
   recent_matches: [{ match_id: 'm1', analysis_pending: pending }],
-  favorite_matches: [],
 })
 
 describe('useHomePage — rechargement tant qu\'une analyse est en cours', () => {
