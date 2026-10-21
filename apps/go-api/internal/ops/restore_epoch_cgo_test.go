@@ -15,9 +15,9 @@ import (
 // TestRestore_SauvegardeAnterieureAUneConversionAppendOnly : une sauvegarde prise AVANT une
 // conversion append-only (le favori est dans la table legacy, le registre ne porte pas l'étape)
 // est restaurée dans l'état de son époque ; le cycle de migrations suivant la convertit, et la
-// vue _latest voit le favori. Scénario de la revue adversariale du lot v8.0.2 : poser le schéma
-// ACTUEL avant de verser les lignes créait `match_favorites_history` vide, la conversion se
-// sautait (`if hasHistory`) et le favori disparaissait de la vue.
+// vue _latest voit le favori. Poser le schéma ACTUEL avant de verser les lignes créerait
+// `match_favorites_history` vide : la conversion se sauterait (`if hasHistory`) et le favori
+// disparaîtrait de la vue.
 func TestRestore_SauvegardeAnterieureAUneConversionAppendOnly(t *testing.T) {
 	dir := t.TempDir()
 	srcPath := filepath.Join(dir, "src.duckdb")
