@@ -427,7 +427,7 @@ const FR_TEXT: SquadText = {
     analyse: 'Analyser',
     exactComposition: 'Composition stricte',
     exactCompositionTitle:
-      "Cochée par défaut : seuls les matchs joués avec exactement cette composition sont comptés. Décochée : tous les matchs commencés ensemble sont comptés, même avec un autre joueur connu dans l'équipe.",
+      "Garde les matchs joués avec exactement les coéquipiers cochés. Un match où un autre joueur suivi était dans l'équipe est écarté. Les joueurs non suivis ne comptent jamais.",
   },
   dataIssues: {
     title: 'Données partielles : certains chiffres sont incomplets.',
@@ -790,7 +790,7 @@ const EN_TEXT: SquadText = {
     analyse: 'Analyse',
     exactComposition: 'Strict line-up',
     exactCompositionTitle:
-      'Ticked by default: only matches played with exactly this line-up are counted. Unticked: every match started together is counted, even with another known player on the team.',
+      'Keeps matches played with exactly the ticked teammates. A match with another tracked player on the team is dropped. Untracked players never count.',
   },
   dataIssues: {
     title: 'Partial data: some numbers are incomplete.',
