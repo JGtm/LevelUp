@@ -186,6 +186,32 @@ describe('ReplayAudioPlayer — voix et volume', () => {
     expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES + 2)
   })
 
+  it('stopAll (la PAUSE) éteint TOUT ce qui est en vol, la conclusion exceptée', async () => {
+    const p = new ReplayAudioPlayer(1)
+    p.preload(['/a.wav', '/voix.wav'])
+    await flush()
+    p.play('/a.wav')
+    p.play('/a.wav')
+    p.playConclusion('/voix.wav')
+    p.stopAll()
+    const rampEnd = ctx.currentTime + VOLUME_RAMP_S
+    // Les deux sons ordinaires sont arrêtés par la rampe courte, pas à la fin de leur fichier.
+    expect(ctx.sources[0].stopped).toBeCloseTo(rampEnd)
+    expect(ctx.sources[1].stopped).toBeCloseTo(rampEnd)
+    // La conclusion, partie à la borne de fin, garde son enveloppe normale (3 s ici).
+    expect(ctx.sources[2].stopped).toBeCloseTo(ctx.currentTime + 3)
+  })
+
+  it('stopAll rend leurs voix aux sons éteints (un son terminé ne se coupe pas deux fois)', async () => {
+    const p = new ReplayAudioPlayer(1)
+    p.preload(['/a.wav'])
+    await flush()
+    p.play('/a.wav')
+    ctx.sources[0].end()
+    p.stopAll()
+    expect(ctx.sources[0].stopped).toBeCloseTo(ctx.currentTime + 3)
+  })
+
   it('le volume initial est posé à la construction (pas de premier son à plein régime)', () => {
     new ReplayAudioPlayer(0.4)
     expect(ctx.gains[0].gain.value).toBe(0.4)
