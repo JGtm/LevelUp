@@ -84,18 +84,18 @@ export const SOUND_MAX_VOICES = 8
 
 /**
  * soundOccupiesVoice — LA RÈGLE UNIQUE du plafond de voix, partagée par le lecteur de la page
- * (`ReplayAudioPlayer.play` / `playConclusion`) et par l'export (`applyVoiceCap`).
+ * (`ReplayAudioPlayer.play` / `playConclusion` / `playAnnouncer`) et par l'export (`applyVoiceCap`).
  *
- * LA CONCLUSION (voix d'annonceur et fanfare de fin de MATCH) ÉCHAPPE AU PLAFOND ET N'OCCUPE
- * AUCUNE VOIX. Le plafond arbitre entre des sons DE MÊLÉE, tous équivalents ; la conclusion n'en
- * est pas — c'est ce que le rejeu raconte en dernier. Sur une fin disputée, les derniers tirs
- * tiennent les huit voix : l'export l'a vécu en recette le 2026-08-28 (clip terminé sans un mot,
- * exception posée le 29/08), la page le 2026-09-26 (item 11 : la voix prenait la dernière place,
- * la fanfare jouée juste après était refusée en silence). La voix « manche terminée », elle, vit
- * dans la piste et reste soumise au plafond (décision D-1 du plan backlog du 2026-09-26).
+ * UNE VOIX D'ANNONCEUR ÉCHAPPE AU PLAFOND ET N'OCCUPE AUCUNE VOIX : la conclusion (voix et
+ * fanfare de fin de MATCH) et la voix « manche terminée ». Le plafond arbitre entre des sons DE
+ * MÊLÉE, tous équivalents ; une annonce n'en est pas — elle raconte le déroulé du match, et c'est
+ * précisément aux instants qu'elle annonce (fin de manche, fin de match) que les derniers tirs,
+ * lancers et explosions tiennent les huit voix : une annonce soumise au plafond y serait refusée
+ * en silence (historique et mesures : journal `.ai/thought_log.md`, entrées « item 11 » du
+ * 2026-09-26 et « contrôle n° 7 » du 2026-10-21).
  */
-export function soundOccupiesVoice(sound: { conclusion?: boolean }): boolean {
-  return sound.conclusion !== true
+export function soundOccupiesVoice(sound: { conclusion?: boolean; announcer?: boolean }): boolean {
+  return sound.conclusion !== true && sound.announcer !== true
 }
 
 /**
@@ -338,6 +338,14 @@ export class ReplayAudioPlayer {
    */
   playConclusion(url: string): void {
     this.start(url, soundOccupiesVoice({ conclusion: true }))
+  }
+
+  /**
+   * playAnnouncer joue une VOIX D'ANNONCEUR de la piste (« manche terminée ») : même enveloppe que
+   * `play`, HORS PLAFOND et sans compter de voix — règle et raison : `soundOccupiesVoice`.
+   */
+  playAnnouncer(url: string): void {
+    this.start(url, soundOccupiesVoice({ announcer: true }))
   }
 
   /** L'URL est-elle décodée (tampon prêt, pas un absent mémorisé) ? */

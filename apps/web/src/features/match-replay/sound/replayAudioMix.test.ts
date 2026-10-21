@@ -199,3 +199,37 @@ describe('tailSeconds — ce qui DÉPASSE la borne', () => {
     expect(tailSeconds(sons, buffers, 60_000)).toBe(0)
   })
 })
+
+/**
+ * GARDE-RAIL DE PARITÉ (contrôle n° 7, 2026-10-21) : la voix « manche terminée » tombe au milieu
+ * des derniers tirs et explosions de la manche, qui tiennent les huit voix. Elle passe hors
+ * plafond par les DEUX chemins, comme la conclusion.
+ */
+describe('la voix de manche — hors plafond à la page et à l’export', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('planAudioMix porte la marque, et le plafond plein la laisse passer des deux côtés', async () => {
+    const timeline: ReplaySoundEvent[] = [
+      ...Array.from({ length: SOUND_MAX_VOICES }, (_, i) => ({ ms: 1000, stem: `s${i}` })),
+      { ms: 1000, stem: 'round_over_fr', announcer: true },
+    ]
+    const planned = planAudioMix(timeline, { startMs: 0, endMs: 5000 }, OPTS)
+    expect(planned.find((s) => s.stem === 'round_over_fr')?.announcer).toBe(true)
+    const exportes = applyVoiceCap(planned, () => 1).map((s) => s.stem)
+    expect(exportes).toContain('round_over_fr')
+
+    const { ctx } = installFakeAudio(1)
+    const p = new ReplayAudioPlayer(1)
+    p.preload(planned.map((s) => `/${s.stem}.wav`))
+    await flushAudio()
+    const joues: string[] = []
+    for (const s of planned) {
+      const avant = ctx.sources.length
+      if (s.announcer) p.playAnnouncer(`/${s.stem}.wav`)
+      else p.play(`/${s.stem}.wav`)
+      if (ctx.sources.length > avant) joues.push(s.stem)
+    }
+    expect(joues).toEqual(exportes)
+    expect(joues).toHaveLength(SOUND_MAX_VOICES + 1)
+  })
+})

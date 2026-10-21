@@ -50,6 +50,11 @@ describe('roundOverSoundEvents — quand et quoi', () => {
     expect(evs[0].ms).toBe(5_000) // frame 50 × frameIntervalMs 100
   })
 
+  it('marque la voix comme ANNONCE : elle passe hors plafond de voix (soundOccupiesVoice)', () => {
+    const [ev] = roundOverSoundEvents(docOf(ODDBALL_TEAMS), 'fr')
+    expect(ev.announcer).toBe(true)
+  })
+
   it('joue le stem de la LANGUE de l interface', () => {
     expect(roundOverSoundEvents(docOf(ODDBALL_TEAMS), 'fr')[0].stem).toBe(ROUND_OVER_SOUND_STEMS.fr)
     expect(roundOverSoundEvents(docOf(ODDBALL_TEAMS), 'en')[0].stem).toBe(ROUND_OVER_SOUND_STEMS.en)
