@@ -215,6 +215,10 @@ package objectives
 // A REVISION CONSTANTE, MEME LOT FILM (E8.1, 2026-10-18, serie non publiee) : la VALEUR de
 // `grammar.Rev` monte a `grammar-2026-10-18` (occupation rendue a killsource) ; aucune source de cette
 // couche ne change, l empreinte du golden est recopiee au meme rang.
+// A REVISION CONSTANTE (controle n° 24 des controles de la v8, 2026-10-21) : la VALEUR de `grammar.Rev`
+// monte a `grammar-2026-10-21` (pistes de projectile lues par la marche hors bande) ; aucune source de
+// cette couche ne change et aucune de ses lectures n appelle les pistes des objets du monde, l empreinte
+// du golden est recopiee au meme rang.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-10-17"

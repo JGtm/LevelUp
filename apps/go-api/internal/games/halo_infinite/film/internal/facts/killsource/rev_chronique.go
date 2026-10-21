@@ -370,3 +370,10 @@ package killsource
 // ne change : la lecture d occupation sert la passe des positions (tenue hors embarquement, siege du
 // vehicule occupe), pas le journal des morts. La porte [Result.LineByLinePublishable] passe dans
 // `kill_publication.go` par deplacement pur (seuil de 500 lignes de kill.go).
+//
+// COMPLEMENT DU 2026-10-21 (controle n° 24 des controles de la v8, REVISION CONSTANTE) : `grammar.Rev`
+// monte a `grammar-2026-10-21` (une piste de projectile que la marche a lue se garde hors de la bande
+// des images-cles). Aucun bit n est lu autrement, et rien de ce qui change n est sur le chemin de
+// killsource : les pistes des objets du monde (`pistesDerriereLaMarche`, `ScanWorldObjects`) ne sont
+// appelees que par la cuisson du rejeu, jamais par ce paquet ni par `sync/killcollector`. Golden
+// regenere a revision constante.
