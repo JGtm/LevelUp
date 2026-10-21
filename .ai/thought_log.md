@@ -1,3 +1,11 @@
+## [2026-10-21] Go 1.26.10 pour la v8.0.1 (GO-2026-6809) — Complété (branche `feat/v75`)
+
+**Décision technique principale** : `govulncheck` de la PR #100 signale GO-2026-6809 (`crypto/x509`, corrigé en Go 1.26.10), atteinte, publiée après la CI précédente. Montée de version du correctif seul : `go.mod` (`go 1.26.10`, lu par `setup-go` en CI) et image `golang:1.26.10-bookworm` du Dockerfile, ensemble (ratchet `archlint/dockerfile_go_version_test.go`). La montée en 1.27 proposée par Dependabot (#97) reste hors de la 8.0.1.
+
+**Résultats observés** : toolchain 1.26.10 téléchargée en local, garde-rail de version vert.
+
+**Conclusion** : la CI de la PR #100 doit repasser `govulncheck` à 0.
+
 ## [2026-10-21] Index sous le segment de langue optionnel : `/en/` et `/fr/` ne tombent plus sur « introuvable » — Complété (branche `feat/lang-index`, partie de `origin/feat/v75`)
 
 **Décision technique principale** : `routes/index.tsx` déplacé sous `routes/{-$lang}/index.tsx` (`createFileRoute('/{-$lang}/')`) : `/`, `/en/`, `/fr/` (avec ou sans barre finale) sont une seule route, même `resolveIndexRedirect`, mêmes renvois (/login, accueil du joueur, écran « configurer »). Langue inconnue (`/xx/`) : `beforeLoad` lève `notFound()`, donc 404 comme avant. Langue connue de l'URL : elle sert au segment émis par la redirection (même règle que le layout `t/$titleSlug`, qui réconcilie ensuite la locale depuis le segment) ; sans segment, locale de session. 17 appelants typés `to: '/'` passés à `'/{-$lang}'` (le segment est alors hérité de l'URL courante) ; `routeTree.gen.ts` régénéré par `@tanstack/router-generator` (pas de CLI `tsr` installée).
