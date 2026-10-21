@@ -24890,12 +24890,17 @@ components:
         bornesDifferees:
           format: int64
           type: integer
+        botsRelevesALaTaille:
+          format: int64
+          type: integer
         botsSuccesseurs:
           format: int64
           type: integer
         capacite:
           format: int64
           type: integer
+        capaciteSource:
+          type: string
         chevauchements:
           format: int64
           type: integer
@@ -24938,6 +24943,9 @@ components:
           format: int64
           type: integer
         presencesParLesVies:
+          format: int64
+          type: integer
+        rameneesALaTaille:
           format: int64
           type: integer
         relaisBornes:
@@ -25003,6 +25011,8 @@ components:
         - trousDEntite
         - imagesClesDouteuses
         - bornesDifferees
+        - rameneesALaTaille
+        - botsRelevesALaTaille
       type: object
     SelectedTeammateData:
       additionalProperties: false

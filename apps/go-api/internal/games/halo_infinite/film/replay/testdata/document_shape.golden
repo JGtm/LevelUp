@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 100
-empreinte-stockee d596ef6bb2c789df
-empreinte-servie d596ef6bb2c789df
-empreinte-cuite 02c5b067e4c5c6b8
+schema 101
+empreinte-stockee a26920c43c887989
+empreinte-servie a26920c43c887989
+empreinte-cuite 13eda2ca7b6fc4a8
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -938,8 +938,10 @@ SeatCoverage
   Apparies json:"apparies" int
   Arrivants json:"arrivants" int
   BornesDifferees json:"bornesDifferees" int
+  BotsRelevesALaTaille json:"botsRelevesALaTaille" int
   BotsSuccesseurs json:"botsSuccesseurs" int
   Capacite json:"capacite" int
+  CapaciteSource json:"capaciteSource,omitempty" string
   Chevauchements json:"chevauchements" int
   Depassements json:"depassements" int
   EntitesContestees json:"entitesContestees" int
@@ -955,6 +957,7 @@ SeatCoverage
   Presences json:"presences" string
   PresencesCloses json:"presencesCloses" int
   PresencesParLesVies json:"presencesParLesVies" int
+  RameneesALaTaille json:"rameneesALaTaille" int
   RelaisBornes json:"relaisBornes" int
   ReprisesEcrites json:"reprisesEcrites" int
   SansEquipe json:"sansEquipe" int

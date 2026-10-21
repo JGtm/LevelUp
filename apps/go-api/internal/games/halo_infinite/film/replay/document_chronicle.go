@@ -3464,3 +3464,32 @@ package replay
 //	AVEC ELLE       cette montee la recuisson les rejouerait). Aucune revision de couche ne bouge.
 //
 //	LE PARC         un artefact 99 : verdict `redecoder` (faits refuses sur l en-tete), la recuisson relit le film.
+
+// v101 (2026-10-21, controles de la v8 : controle n° 8, BTB `4f77afc1`, et controle n° 24, grenades
+// sans explosion) : AUCUNE EQUIPE NE TIENT PLUS DE PLACES QUE SA TAILLE, et la taille vient de la
+// playlist.
+//
+//	`coverage.seats.capaciteSource`        `mode` (la taille officielle de la playlist, `regulation.toml
+//	                 [team_size]`, `repli_taille_d_equipe_du_mode` : le film ne l ecrit pas, negatif mesure
+//	                 sur 18 films) ou `estimee` (la capacite d avant, playlist non declaree).
+//	`coverage.seats.rameneesALaTaille`     les entrees qu une equipe en surnombre a reassises dans ses
+//	                 places gardees, ou dont l affichage est retire (parti avant le coup d envoi) —
+//	                 `repli_place_ramenee_a_la_taille_d_equipe`, `roster[].seatSource` = `taille`.
+//	`coverage.seats.botsRelevesALaTaille`  les bots aux vies finies que l humain arrive releve sur la
+//	                 place gardee.
+//
+//	MESURE          `4f77afc1` (BTB:CTF) recuit : Eagle 13 -> 12 places, Cobra 12 ; E3D sur la place du
+//	                bot qu il remplace, `343 Darkstar` sur celle qu AJM002 vient de quitter, `ln AsyIum`
+//	                (parti avant le coup d envoi) n est plus affiche. Sur les douze autres films du parc
+//	                dont une equipe depasse sa taille, la regle ne trouve rien a reassoir : onze montent a
+//	                cinq presences certaines simultanees (un bot qui joue encore a cote d une equipe
+//	                complete) et `400bb628` porte un joueur revenu sur une autre place que la sienne.
+//	                Ils restent comptes (`placesEnTrop`).
+//
+//	CE QUI MONTE    `SchemaVersion` 100 -> 101. Avec lui, sur la meme branche, `grammar.Rev`
+//	AVEC ELLE       `grammar-2026-10-18` -> `grammar-2026-10-21` (les pistes de projectile que la marche
+//	                nomme se gardent hors de la bande des images-cles : chaque lancer a son explosion) ;
+//	                `killsource.Rev` et `objectives.Rev` a revision constante ; `SchemaDesFaits` garde sa
+//	                valeur (la taille est une option de la publication, pas un fait du film).
+//
+//	LE PARC         un artefact 100 : verdict `redecoder` (la revision de grammaire a change).

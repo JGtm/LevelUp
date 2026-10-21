@@ -193,8 +193,11 @@ export function buildSeats(players: readonly ReplayPlayer[], doc: ReplayDocument
   return out.sort((a, b) => a.seat - b.seat || a.key.localeCompare(b.key))
 }
 
-/** Les provenances de place qui sont des DÉDUCTIONS de la cuisson (cf. `SeatOccupant.deduite`). */
-const PROVENANCES_DEDUITES: ReadonlySet<string> = new Set(['apparie', 'ouverte'])
+/**
+ * Les provenances de place qui sont des DÉDUCTIONS de la cuisson (cf. `SeatOccupant.deduite`) : le
+ * chaînage, la place ouverte, et la place ramenée à la taille de l'équipe (schéma 101).
+ */
+const PROVENANCES_DEDUITES: ReadonlySet<string> = new Set(['apparie', 'ouverte', 'taille'])
 
 function estDeduite(e: ReplayRosterEntryReady): boolean {
   return e.seatSource !== undefined && PROVENANCES_DEDUITES.has(e.seatSource)

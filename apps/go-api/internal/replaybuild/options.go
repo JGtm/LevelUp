@@ -29,9 +29,12 @@ func (b *Builder) buildReplayOptions(ctx context.Context,
 		// qu'une equipe : celle d'un bot dont l'entite et la declaration BOT_METADATA se
 		// contredisent (`replay/occupants_equipe_arbitree.go`, decision utilisateur du 2026-10-07).
 		ScoreboardTeams: teamByXUID(facts),
-		Bots:            cat.bots,
-		Successions:     cat.successions,
-		Objectives:      stats.objectives,
+		// LA TAILLE D EQUIPE DE LA PLAYLIST (regulation.toml [team_size]) : le film ne l ecrit pas ; la pose
+		// des places en tient le nombre de fiches de chaque equipe (`repli_taille_d_equipe_du_mode`).
+		TeamSize:    b.tailleDEquipe(facts.GameVariantName),
+		Bots:        cat.bots,
+		Successions: cat.successions,
+		Objectives:  stats.objectives,
 		// LE COMPTE DES ECARTES VOYAGE AVEC LES ACTIONS, ET IL EST LE DENOMINATEUR (constat C1
 		// de la revue VIES-R1). Sans lui, `coverage.objectives.available` compte les seuls
 		// RESCAPES du pont d'identite et `noSlot` reste structurellement a zero — le defaut

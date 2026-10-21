@@ -227,6 +227,10 @@ type Options struct {
 	// table du film est celle du DÉBUT du film. Vide = le registre retombe entièrement sur
 	// `PlayerIndices`, et le publie (`coverage.identity.filmTable.refus`).
 	FilmTable grammar.FilmPlayerTable
+	// TeamSize : la TAILLE D'EQUIPE officielle de la playlist du match (`regulation.toml
+	// [team_size]`), que le film n'ecrit pas (`repli_taille_d_equipe_du_mode`). 0 = non declaree :
+	// la pose des places garde sa capacite estimee. Entree de DONNEES, comme ScoreboardTeams.
+	TeamSize int
 	// PlayerTeams est l'ÉQUIPE DE CHAQUE JOUEUR telle que le film l'écrit : `index de joueur ->
 	// désignateur` (`-1` = aucune équipe), lue par [grammar.ScanPlayerTeams] dans le composant
 	// i0 de ti=9.

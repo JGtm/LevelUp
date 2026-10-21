@@ -113,6 +113,15 @@ describe('buildSeats — la place vient du document', () => {
     expect(seats[0].occupants[0].deduite).toBe(true)
   })
 
+  it('une place RAMENÉE à la taille de l’équipe est une déduction (schéma 101)', () => {
+    const seats = buildSeats(
+      [joueur('E', 't0', [vie(935, FIN)])],
+      doc([{ xuid: 'E', filmIndex: 29, seat: 1, seatSource: 'taille', team: 0, presence: [pr(935, FIN)] }]),
+    )
+    expect(seats[0].seat).toBe(1)
+    expect(seats[0].occupants[0].deduite).toBe(true)
+  })
+
   it('l’ordre des fiches est celui des PLACES, pas celui d’arrivée des joueurs', () => {
     const seats = buildSeats(
       [joueur('C', 't0', [vie(0, FIN)]), joueur('A', 't0', [vie(0, FIN)])],

@@ -142,7 +142,8 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 		tireurs = tireursDesTirs(a.fire, a.doc.Tracks, a.horloge())
 	}
 	a.siegeCov = poserLesSieges(a.ctx, a.doc.Roster, occ, entreesDesPlaces{
-		table: a.opt.FilmTable, fire: tirsDesPlaces, tireurs: tireurs, horloge: a.horloge()})
+		table: a.opt.FilmTable, fire: tirsDesPlaces, tireurs: tireurs, horloge: a.horloge(),
+		tailleDEquipe: a.opt.TeamSize})
 	// LE BOT SANS VIE NI PLACE SORT DU ROSTER PUBLIE (sieges_bots_sans_place.go) : une tuile de trop sinon.
 	a.doc.Roster = sansLesBotsEcartes(a.doc.Roster, a.siegeCov)
 	a.siegeCov.BotsSuccesseurs = botsSuccesseurs + botsParDeclaration

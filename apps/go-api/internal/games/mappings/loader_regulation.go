@@ -82,6 +82,8 @@ type RegulationSet struct {
 	// VIDE = aucun mode aleatoire, et ce n'est pas une panne : le niveau se mesure alors
 	// partout. C'est la difference avec la fenetre ci-dessus, indispensable au calcul.
 	randomStartModeTokens []string
+	// teamSize : jeton de playlist -> TAILLE D'EQUIPE officielle (cf. [RegulationSet.TeamSize]).
+	teamSize map[string]int
 }
 
 // Les trois lectures possibles du bloc « Score dans le temps » de la vue match. Ce sont
@@ -116,6 +118,7 @@ type regulationTOML struct {
 	ScoreTimeline map[string]string `toml:"score_timeline"`
 	FlagGrabsNet  flagGrabsNetTOML  `toml:"flag_grabs_net"`
 	WeaponTiers   weaponTiersTOML   `toml:"weapon_tiers"`
+	TeamSize      map[string]int    `toml:"team_size"`
 }
 
 // flagGrabsNetTOML — la section `[flag_grabs_net]`, un seul réglage à ce jour.
@@ -342,6 +345,10 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 	if err != nil {
 		return nil, err
 	}
+	teamSize, err := tableEntiereValidee(path, "team_size", "team size", doc.TeamSize)
+	if err != nil {
+		return nil, err
+	}
 	rounds := make(map[string]bool, len(doc.RoundsDecide))
 	for rawName, decides := range doc.RoundsDecide {
 		key := strings.TrimSpace(rawName)
@@ -380,6 +387,7 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 		scoreTimelineTokens:   timelineTokens,
 		flagJuggleWindowS:     doc.FlagGrabsNet.FlagJuggleWindowS,
 		randomStartModeTokens: jetonsNettoyes(doc.WeaponTiers.RandomStartModeTokens),
+		teamSize:              teamSize,
 	}, nil
 }
 

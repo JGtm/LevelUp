@@ -41,8 +41,9 @@ package replay
 //	REPLI `ouverte`    aucune place libre, mais l'equipe n'a pas sa capacite : l'arrivant OUVRE la
 //	                   place que la table du debut ne portait pas (`e5adf7b2` : 23 sieges pour
 //	                   12 contre 12, le douzieme arrive a la 64e seconde). Nomme et compte
-//	                   (`repli_place_ouverte_sous_la_capacite_estimee`) : la capacite est ESTIMEE,
-//	                   la taille d'equipe du mode n'est pas lue dans le film (cf. sieges_places.go) ;
+//	                   (`repli_place_ouverte_sous_la_capacite_estimee`) : la capacite est la taille
+//	                   de la playlist quand `regulation.toml [team_size]` la declare (le film ne l'ecrit
+//	                   pas), sinon ESTIMEE (cf. sieges_places.go, sieges_a_la_taille.go) ;
 //	AUCUNE `index`     rien de ce qui precede (equipe inconnue, ou equipe pleine dont aucune place
 //	                   n est libre pendant sa presence — deux lectures qui se contredisent) : le
 //	                   siege reste l index, COMPTE (`sansPlace`) — c est le seul chemin par lequel une
@@ -147,9 +148,9 @@ type SeatCoverage struct {
 	SansPresence int `json:"sansPresence"`
 	// OccupantsMax : le plus grand nombre d'entrees affichees a une meme frame.
 	OccupantsMax int `json:"occupantsMax"`
-	// Capacite : la plus grande capacite ESTIMEE d'une equipe (cf. sieges_places.go,
-	// [poseDesPlaces.capaciteDe]) — table du debut et entites lues, jamais les places posees. 0
-	// sans table.
+	// Capacite : la plus grande capacite d'une equipe ([poseDesPlaces.capaciteDe]) — la taille de sa
+	// playlist (`capaciteSource` = `mode`), sinon ESTIMEE par la table du debut et les entites lues,
+	// jamais les places posees. 0 sans table.
 	Capacite int `json:"capacite"`
 	// Depassements : les couples (frame, equipe) ou une equipe affiche plus d'occupants que sa
 	// CAPACITE (revue M2-R6 : le plafond etait les places que la pose elle-meme avait attribuees,
@@ -214,6 +215,16 @@ type SeatCoverage struct {
 	// SansTableDuFilm : le film ne porte pas sa table de depart, donc aucune place n'est
 	// decidable. Ce n'est pas un repli : c'est une abstention, et elle se lit ici.
 	SansTableDuFilm bool `json:"sansTableDuFilm,omitempty"`
+	// CapaciteSource dit d'ou vient la capacite d'une equipe : `mode` (la taille officielle de la
+	// playlist, `repli_taille_d_equipe_du_mode` — le film ne l'ecrit pas) ou `estimee` (table du debut et
+	// entites lues, `repli_place_ouverte_sous_la_capacite_estimee`). Vide sans table.
+	CapaciteSource string `json:"capaciteSource,omitempty"`
+	// RameneesALaTaille : les entrees qu'une equipe en surnombre a deplacees dans ses places gardees, ou
+	// dont l'affichage est retire (parti avant le coup d'envoi) — `sieges_a_la_taille.go`, un REPLI.
+	RameneesALaTaille int `json:"rameneesALaTaille"`
+	// BotsRelevesALaTaille : les bots dont l'affichage s'arrete a l'arrivee de l'humain qui prend leur
+	// place gardee.
+	BotsRelevesALaTaille int `json:"botsRelevesALaTaille"`
 	// botsEcartes / botsSansPlaceAvecVie : les indices, dans le roster de la pose, des bots ecartes du
 	// roster publie, et le nombre de bots sans place qui ont une vie (sieges_bots_sans_place.go).
 	// Jamais servis (types de base, non exportes) : journal et expvar.
@@ -231,6 +242,8 @@ type entreesDesPlaces struct {
 	tireurs []string
 	// horloge porte la grille du document et le compteur de replis de la cuisson.
 	horloge replayClock
+	// tailleDEquipe : la taille officielle de la playlist (`Options.TeamSize`) ; 0 = non declaree.
+	tailleDEquipe int
 }
 
 // poserLesSieges ECRIT la place, la provenance et la presence de chaque entree du roster, EN
@@ -261,6 +274,12 @@ func poserLesSieges(ctx context.Context, roster []RosterEntry, occ occupants, in
 		in.horloge.fb.DeclencheN(fallback.NomPlaceDuRemplacantParChainageDEquipe, cov.Apparies)
 		in.horloge.fb.DeclencheN(fallback.NomPlaceOuverteSousLaCapaciteEstimee, cov.PlacesOuvertes)
 		pp.marquerLesArrivantsSansPresence()
+		cov.CapaciteSource = pp.sourceDeLaCapacite()
+		if pp.tailleDuMode > 0 {
+			in.horloge.fb.Declenche(fallback.NomTailleDEquipeDuMode)
+		}
+		cov.RameneesALaTaille, cov.BotsRelevesALaTaille = pp.ramenerALaTaille()
+		in.horloge.fb.DeclencheN(fallback.NomPlaceRameneeALaTailleDEquipe, cov.RameneesALaTaille)
 	}
 	var successions int
 	cov.RelaisBornes, cov.Chevauchements, successions = pp.bornerAuSuccesseur()

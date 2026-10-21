@@ -11377,9 +11377,12 @@ export interface components {
             /** Format: int64 */
             bornesDifferees: number;
             /** Format: int64 */
+            botsRelevesALaTaille: number;
+            /** Format: int64 */
             botsSuccesseurs: number;
             /** Format: int64 */
             capacite: number;
+            capaciteSource?: string;
             /** Format: int64 */
             chevauchements: number;
             /** Format: int64 */
@@ -11409,6 +11412,8 @@ export interface components {
             presencesCloses: number;
             /** Format: int64 */
             presencesParLesVies: number;
+            /** Format: int64 */
+            rameneesALaTaille: number;
             /** Format: int64 */
             relaisBornes: number;
             /** Format: int64 */
