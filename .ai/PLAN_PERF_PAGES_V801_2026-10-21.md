@@ -630,9 +630,10 @@ Pour chaque lecteur : test de parité ancien/nouveau (corpus + copie des bases, 
 et comptes Halo 5), bascule, suppression de l'ancienne requête et de ses tests (entrées de baseline
 retirées dans le même commit, `bash scripts/check_test_baseline.sh`), mesure banc. Liste fermée
 (re-vérifiée à l'étape 6.2) :
-- [ ] 9.1 S0 (couverture et dénominateurs) : `QTacticalUnivers.mesure`, `qSoloJournalNonPubliable`,
+- [x] 9.1 S0 (couverture et dénominateurs) : `QTacticalUnivers.mesure`, `qSoloJournalNonPubliable`,
       portée de Q21d, `matches_measured` de Q32d, `porteuses` de Q28c et Q26l, dénominateur de
       `LoadMatchRangeKills` (`matchRangeKillsTotalSQL` : publiables avec tueur nommé).
+      Fait (2026-10-21, sept lecteurs) : les trois lecteurs S0 seuls (`QTacticalUnivers.mesure`, `qSoloJournalNonPubliable`, `matchRangeKillsTotalSQL`) et la part S0 des quatre requêtes mixtes (portée de Q21d, `matches_measured` de Q32d, `porteuses` de Q28c et de Q26l ; leur part S1/S2 bascule en 9.2 et 9.4). Parité verte sur le corpus (`resumes_parite_s0_test.go`). RESTE au pilote : parité au niveau des pages sur la copie de prod et mesure banc.
 - [ ] 9.2 S1 (frags par paire, somme sur la source) : Q23b `GetMatchEncounterStats`, Q26
       `GetTopEncountersGlobal`, Q27 `GetRivals`, Q28 `GetRelations`, Q30 `GetRivalTimeline`,
       `CompareRepo.GetEncounterStats`, `ExplorerRepo.GetKillerVictimBetween`, `frags_film` de Q26l ;

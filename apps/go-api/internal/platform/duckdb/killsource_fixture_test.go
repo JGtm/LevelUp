@@ -166,6 +166,7 @@ func insertKillEvent(t *testing.T, pdb *PlayerDB, k killEventFixture) {
 	if err != nil {
 		t.Fatalf("insert kill: %v", err)
 	}
+	ecrireResumes(t, pdb.Shared.SQLDb(), kscMatchID)
 }
 
 // insertKill : la forme historique (victime anonyme), conservee telle quelle pour les tests

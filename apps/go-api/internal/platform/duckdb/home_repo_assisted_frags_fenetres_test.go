@@ -19,6 +19,7 @@ func TestHomeRepo_LoadMatchAssistedFrags_FenetresBornees(t *testing.T) {
 	ids := seedFenetresTactiques(t, b.pdb, 10)
 	// Films porteurs de l'assistance : sans quoi `porteuses` est vide et le test ne compte rien.
 	tacExec(t, b.pdb, `UPDATE match_kill_events SET assist_known = TRUE`)
+	ecrireResumes(t, b.pdb.Shared.SQLDb()) // les résumés suivent le journal modifié
 	b.carnet.vider()
 
 	got, err := NewHomeRepo(b.pdb).LoadMatchAssistedFrags(context.Background(), ids[:2])

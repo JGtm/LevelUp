@@ -20,8 +20,8 @@ import (
 const homeAssistedFragsTimeout = 10 * time.Second
 
 // Q26lHomeAssistedFragsTpl : pour chaque match du lot dont le film PORTE l'assistance
-// (`porteuses` : au moins une ligne `publishable AND assist_known`, tous tueurs
-// confondus), les frags du joueur lus par le film et, parmi eux, ceux dont l'assistant est
+// (`porteuses` : tête de résumé publiable avec au moins une mort à assistance connue
+// (`match_kill_heads_latest`, ADR 0039), tous tueurs confondus), les frags du joueur lus par le film et, parmi eux, ceux dont l'assistant est
 // NOMMÉ (sqlAssistantNomme : bot ou joueur non résolu compris), par tranche de part.
 //
 // LIGNES DU JOUEUR : toutes ses lignes publiables de tueur, victime bot comprise. Une ligne
@@ -47,9 +47,9 @@ const homeAssistedFragsTimeout = 10 * time.Second
 // la même liste (lecture principale), puis le xuid du joueur.
 const Q26lHomeAssistedFragsTpl = `
 WITH porteuses AS (
-    SELECT DISTINCT match_id
-    FROM ` + KillEventsCanonicalTable + `
-    WHERE publishable AND assist_known AND %s
+    SELECT match_id
+    FROM match_kill_heads_latest
+    WHERE publishable AND n_assist_known > 0 AND %s
 )
 SELECT kv.match_id,
        COUNT(*)                                                                                     AS frags_film,

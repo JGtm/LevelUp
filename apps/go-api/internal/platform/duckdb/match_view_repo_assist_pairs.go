@@ -26,6 +26,9 @@ import (
 //
 // ─── LES DÉNOMINATEURS ────────────────────────────────────────────────────────────────
 //
+// Ils se lisent sur la TÊTE de résumé du match (`match_kill_heads_latest`, ADR 0039) : comptes de
+// la passe courante, écrits avec elle. Un match sans tête rend des zéros (COUNT sans groupe).
+//
 //	match_deaths     toutes les lignes du match, portées confondues. Zéro = le match n'est
 //	                 jamais passé au décodeur de film (ou le titre n'en a pas). Le service
 //	                 n'émet alors aucun bloc : il n'y a rien à dire.
@@ -80,10 +83,10 @@ import (
 const Q21dAssistPairs = `
 WITH scope AS (
     SELECT
-        COUNT(*)                                             AS match_deaths,
-        COUNT(*) FILTER (WHERE publishable AND assist_known)  AS measured_deaths,
-        COUNT(*) FILTER (WHERE publishable)                   AS publishable_deaths
-    FROM ` + KillEventsCanonicalTable + `
+        CAST(COALESCE(SUM(n_rows), 0) AS BIGINT)                                   AS match_deaths,
+        CAST(COALESCE(SUM(n_assist_known) FILTER (WHERE publishable), 0) AS BIGINT) AS measured_deaths,
+        CAST(COALESCE(SUM(n_rows) FILTER (WHERE publishable), 0) AS BIGINT)         AS publishable_deaths
+    FROM match_kill_heads_latest
     WHERE match_id = ?
 ),
 pairs AS (

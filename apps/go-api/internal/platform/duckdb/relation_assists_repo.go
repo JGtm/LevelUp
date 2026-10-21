@@ -20,9 +20,9 @@ import (
 //
 // RÈGLE DES BASES (domain/relation_assists.go) :
 //
-//	porteuses  matchs dont le film porte l'assistance : au moins une ligne
-//	           `publishable AND assist_known` (une paire NOMME deux joueurs : lecture ligne à
-//	           ligne). Les autres matchs n'apportent ni assistances ni frags.
+//	porteuses  matchs dont le film porte l'assistance : tête de résumé publiable avec au moins
+//	           une mort à assistance connue (`match_kill_heads_latest`, ADR 0039 ; une paire
+//	           NOMME deux joueurs : lecture ligne à ligne). Les autres matchs n'apportent ni assistances ni frags.
 //	bases      frags OFFICIELS (`match_participants.kills`) du joueur et du coéquipier sur
 //	           les matchs porteurs joués dans la même équipe — frags sur des bots compris,
 //	           que le film en lise l'assistance ou non.
@@ -74,7 +74,7 @@ lues AS MATERIALIZED (
     WHERE kv.publishable AND kv.assist_known AND %s
 ),
 porteuses AS (
-    SELECT DISTINCT match_id FROM lues
+    SELECT match_id FROM match_kill_heads_latest WHERE publishable AND n_assist_known > 0 AND %s
 ),
 mates AS (
     SELECT mp.match_id,
@@ -143,7 +143,8 @@ func buildRelationAssistsQuery(q assistExchangeQuery) (string, []any) {
 		return "", nil
 	}
 	borneClause, borneArg := clauseListeMatchs("kv.match_id", q.borne)
-	args := []any{q.me, borneArg}
+	porteusesClause, porteusesArg := clauseListeMatchs("match_id", q.borne)
+	args := []any{q.me, borneArg, porteusesArg}
 	scopeClause, partnerClause := "", ""
 	if q.scope != nil {
 		scopeClause = " AND mp.match_id IN (" + Placeholders(len(q.scope)) + ")"
@@ -154,7 +155,7 @@ func buildRelationAssistsQuery(q assistExchangeQuery) (string, []any) {
 		args = append(args, q.partnersOfMatch)
 	}
 	low, mid := domain.AssistTierLowMaxPct, domain.AssistTierMidMaxPct
-	sqlText := fmt.Sprintf(Q28cRelationAssistsTpl, borneClause, analysis.SQLIsNotBotCol("p.xuid"),
+	sqlText := fmt.Sprintf(Q28cRelationAssistsTpl, borneClause, porteusesClause, analysis.SQLIsNotBotCol("p.xuid"),
 		scopeClause, partnerClause,
 		low, low, mid, mid,
 		low, low, mid, mid)
