@@ -689,7 +689,18 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
 
 ```bash
 go run ./cmd/levelup index-media --gamertag X [--force-rescan] [--buffer-min N]
+go run ./cmd/levelup media-capture-times --dry-run [--title slug] [--db CHEMIN]
+go run ./cmd/levelup media-capture-times [--title slug] [--db CHEMIN]
 ```
+
+L'heure lue pour un média (nom du fichier, sinon date du fichier) est le DÉBUT ou la FIN de la
+capture selon sa source (table `captureTimeSources`, `internal/ops/media_capture_source.go`) :
+un « Replay » d'OBS, un « record that » de la Game Bar ou de la console Xbox, un Instant Replay
+de ShadowPlay et une date de fichier sont des FINS ; le nom d'un enregistrement manuel OBS ou
+ShadowPlay est un DÉBUT. Les médias indexés avant cette règle sont recalculés par le serveur
+lui-même à chaque indexation (envoi, balayage après synchronisation, bouton « Scanner » des
+réglages). `media-capture-times` simule ce recalcul (`--dry-run` : comptes par source, sur une
+COPIE de `shared_social.duckdb` si le serveur tourne) ou l'écrit serveur arrêté. Idempotent.
 
 ### Diagnostic & ops
 

@@ -22238,26 +22238,6 @@
 {"Time":"2026-06-26T23:47:26.2592+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestInsertMediaFile_UTCTimestamp","Output":"=== RUN   TestInsertMediaFile_UTCTimestamp\n"}
 {"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestInsertMediaFile_UTCTimestamp","Output":"--- PASS: TestInsertMediaFile_UTCTimestamp (0.00s)\n"}
 {"Time":"2026-06-26T23:47:26.260231+02:00","Action":"pass","Package":"levelup/go-api/internal/ops","Test":"TestInsertMediaFile_UTCTimestamp","Elapsed":0}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"run","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_ImageInstantaneous"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_ImageInstantaneous","Output":"=== RUN   TestComputeMediaEnd_ImageInstantaneous\n"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_ImageInstantaneous","Output":"--- PASS: TestComputeMediaEnd_ImageInstantaneous (0.00s)\n"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"pass","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_ImageInstantaneous","Elapsed":0}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"run","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_VideoWithDuration"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_VideoWithDuration","Output":"=== RUN   TestComputeMediaEnd_VideoWithDuration\n"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_VideoWithDuration","Output":"--- PASS: TestComputeMediaEnd_VideoWithDuration (0.00s)\n"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"pass","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_VideoWithDuration","Elapsed":0}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"run","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_VideoNoDuration_LeavesNull"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_VideoNoDuration_LeavesNull","Output":"=== RUN   TestComputeMediaEnd_VideoNoDuration_LeavesNull\n"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_VideoNoDuration_LeavesNull","Output":"--- PASS: TestComputeMediaEnd_VideoNoDuration_LeavesNull (0.00s)\n"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"pass","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_VideoNoDuration_LeavesNull","Elapsed":0}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"run","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_NilCaptureAt_LeavesEndNull"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_NilCaptureAt_LeavesEndNull","Output":"=== RUN   TestComputeMediaEnd_NilCaptureAt_LeavesEndNull\n"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_NilCaptureAt_LeavesEndNull","Output":"--- PASS: TestComputeMediaEnd_NilCaptureAt_LeavesEndNull (0.00s)\n"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"pass","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_NilCaptureAt_LeavesEndNull","Elapsed":0}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"run","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_UnknownKind_AllNull"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_UnknownKind_AllNull","Output":"=== RUN   TestComputeMediaEnd_UnknownKind_AllNull\n"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_UnknownKind_AllNull","Output":"--- PASS: TestComputeMediaEnd_UnknownKind_AllNull (0.00s)\n"}
-{"Time":"2026-06-26T23:47:26.260231+02:00","Action":"pass","Package":"levelup/go-api/internal/ops","Test":"TestComputeMediaEnd_UnknownKind_AllNull","Elapsed":0}
 {"Time":"2026-06-26T23:47:26.260231+02:00","Action":"run","Package":"levelup/go-api/internal/ops","Test":"TestSanitizeMediaTimezone_ValidIANA"}
 {"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestSanitizeMediaTimezone_ValidIANA","Output":"=== RUN   TestSanitizeMediaTimezone_ValidIANA\n"}
 {"Time":"2026-06-26T23:47:26.260231+02:00","Action":"output","Package":"levelup/go-api/internal/ops","Test":"TestSanitizeMediaTimezone_ValidIANA","Output":"--- PASS: TestSanitizeMediaTimezone_ValidIANA (0.00s)\n"}

@@ -69,6 +69,10 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 	for _, col := range []struct{ name, typ string }{
 		{"capture_start_utc", colTypeTimestampTZ},
 		{"capture_end_utc", colTypeTimestampTZ},
+		// capture_time_source : clé de la source de l'heure de capture (captureTimeSources,
+		// media_capture_source.go). NULL = ligne indexée avant la règle par source, que
+		// recalcCaptureTimes corrige puis marque.
+		{"capture_time_source", colTypeVarchar},
 		{"file_hash", colTypeVarchar},
 		{"kind", colTypeVarchar},
 		{"thumbnail_path", colTypeVarchar},
