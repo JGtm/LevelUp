@@ -140,3 +140,12 @@ Lignes des encadrés « Contrôles visuels / techniques » rayées le 21/10 pour
 - E2E Playwright local (21/10, démo synthétique sur API :8021 + vite :5181, `fix/controles-v8-web`) : 58 réussis, 17
   ignorés, 32 en échec, TOUS dans des specs qui appellent l'API en dur sur `localhost:8000` (le serveur réel, hors
   démo -> 403). Aucun échec dans une spec d'écran. Cause d'environnement ; la CI de la PR vers `main` rejoue tout.
+
+## 6. Journal L6 n° 10 (calage des médias, `fix/medias-calage`, 21/10)
+
+- [x] Règle par source (table unique `captureTimeSources`) : « Replay » OBS, « record that » Game Bar et console Xbox,
+  Instant Replay ShadowPlay et date de fichier = FIN de la capture ; enregistrement OBS / ShadowPlay = DÉBUT.
+- [x] Recalcul des médias déjà indexés : par le serveur à chaque indexation (sans arrêt) ; simulation et écriture hors
+  serveur par `levelup media-capture-times`. NON lancé sur les vraies données (superviseur).
+- [!] Écart résiduel bfecd02b (~43 s, clip réellement 1:52 → 2:20 au chrono du jeu, posé 2:34 → 3:03) : horloge du PC de
+  capture en avance (mesuré sur 6 clips, +2 à +43 s selon la date), hors de portée de la règle. 72b0a25e : 2-3 s.
