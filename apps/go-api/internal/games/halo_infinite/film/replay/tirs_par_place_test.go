@@ -41,3 +41,37 @@ func TestUnePlaceSansPresenceGardeSonIndex(t *testing.T) {
 		t.Errorf("tireur = %d (%v), attendu 5 (faux)", idx, autre)
 	}
 }
+
+// TestLeTireurSuitLaPlaceDeLIntervalle — T-RETOUR de `sieges_a_la_taille_symetrie_test.go` (`400bb628`) :
+// R part, revient sur une AUTRE fiche que la premiere, et la sienne a ete reprise par H. La place se
+// publie par intervalle (`Presence[k].Seat`) : un tir de la fiche 1 pendant que H la tient est celui de
+// H, un tir de la fiche 0 apres le depart de A est celui de R. A chaque frame, le tireur d'une fiche
+// est l'occupant de cette fiche.
+func TestLeTireurSuitLaPlaceDeLIntervalle(t *testing.T) {
+	roster := []RosterEntry{
+		entree(0, "100"),  // A, part a 50
+		entree(1, "110"),  // R, part a 30, revient a 70 sur la fiche liberee par A
+		entree(40, "140"), // H, arrive a 40 : la fiche de R est libre
+	}
+	retour := []intervalleDePresence{{de: 0, a: 30, aMax: 30}, {de: 70, a: 99, aMax: 99}}
+	occ := occupantsFabriques([]int{0, 0, 0}, iv(0, 50), retour, iv(40, 99))
+	poserALaTailleDeDeux(roster, occ, 0, 1)
+	places := nouveauxTireursParPlace(roster)
+
+	for f := range siegeFrames {
+		for _, e := range roster {
+			for _, p := range e.Presence {
+				if f < p.From || f > p.To {
+					continue
+				}
+				place := e.Seat
+				if p.Seat != nil {
+					place = *p.Seat
+				}
+				if idx, _ := places.tireur(place, f); idx != e.FilmIndex {
+					t.Errorf("frame %d, fiche %d : tireur %d, attendu l'occupant %s (%d)", f, place, idx, e.Name, e.FilmIndex)
+				}
+			}
+		}
+	}
+}

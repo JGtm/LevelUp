@@ -71,8 +71,8 @@ SELECT
     p.kda,
     p.accuracy,
     p.time_played_seconds,
-    p.team_mmr,
-    p.enemy_mmr,
+    ` + analysis.SQLKnownMMR("p.team_mmr") + ` AS team_mmr,
+    ` + analysis.SQLKnownMMR("p.enemy_mmr") + ` AS enemy_mmr,
     p.shots_fired,
     p.shots_hit,
     p.damage_dealt,
@@ -181,7 +181,7 @@ ORDER BY he.time_ms ASC`
 // shots_fired, shots_hit, damage_dealt, damage_taken, team_mmr, enemy_mmr,
 // headshot_kills, max_killing_spree.
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
-const Q17PlayerMatchStats = `
+var Q17PlayerMatchStats = `
 SELECT
     COALESCE(p.outcome, 0)         AS outcome_code,
     p.team_id,
@@ -198,8 +198,8 @@ SELECT
     p.shots_hit,
     p.damage_dealt,
     p.damage_taken,
-    p.team_mmr,
-    p.enemy_mmr,
+    ` + analysis.SQLKnownMMR("p.team_mmr") + ` AS team_mmr,
+    ` + analysis.SQLKnownMMR("p.enemy_mmr") + ` AS enemy_mmr,
     p.headshot_kills,
     p.max_killing_spree,
     COALESCE(p.backfill_bits, 0) AS backfill_bits

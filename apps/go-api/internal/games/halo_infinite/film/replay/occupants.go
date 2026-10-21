@@ -58,6 +58,10 @@ import (
 // `[de, aMax]` est ce qui s'affiche (aMax >= a).
 type intervalleDePresence struct {
 	de, a, aMax int
+	// place / placeLue : la place que la regle de la taille a donnee a CET intervalle
+	// (`sieges_a_la_taille.go`), quand elle l'a posee ; sinon la place de l'entree vaut.
+	place    int
+	placeLue bool
 }
 
 // occupantDuRoster est ce que la publication sait d'UNE entree de roster.

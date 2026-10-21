@@ -41,23 +41,23 @@ func numericMediaID(name string) string {
 	return strconv.FormatUint(h.Sum64()&0x7fffffffffffffff, 10)
 }
 
-// halo5CapturePrefix : préfixe des captures Halo 5 (Windows Game Bar).
+// halo5CapturePrefix : préfixe des captures Halo 5 (clips de console Xbox, « Xbox, record that »).
 const halo5CapturePrefix = "Halo_5_Guardians"
 
 // h5CaptureTimezone : fuseau d'interprétation des horodatages de noms de captures h5
-// (heure locale Windows Game Bar). Aligné sur config.defaultUserTimezone.
+// (heure locale de la console Xbox). Aligné sur config.defaultUserTimezone.
 const h5CaptureTimezone = "Europe/Paris"
 
-// parseH5CaptureStart extrait l'instant de capture du nom de fichier h5
-// (« Halo_5_Guardians-YYYY-MM-DD_HHhMM ») via le parseur partagé. NullTime invalide
-// si non parsable.
+// parseH5CaptureStart rend l'heure H lue dans le nom d'un clip h5
+// (« Halo_5_Guardians-YYYY-MM-DD_HHhMM », source xbox_console de captureTimeSources : H est la
+// FIN du clip) ; la démo la range en capture_start_utc. NullTime invalide si non parsable.
 func parseH5CaptureStart(name string) sql.NullTime {
 	loc, err := time.LoadLocation(h5CaptureTimezone)
 	if err != nil {
 		loc = time.UTC
 	}
-	if t := parseCaptureTimeFromFilename(name, loc); t != nil {
-		return sql.NullTime{Time: *t, Valid: true}
+	if inst := captureInstantFromName(name, loc); inst != nil {
+		return sql.NullTime{Time: inst.At, Valid: true}
 	}
 	return sql.NullTime{}
 }

@@ -131,6 +131,44 @@ func TestXboxSSOLinkStrategy_ExistingUser_AuthenticatesAndTouchesLastLogin(t *te
 	}
 }
 
+// TestXboxSSOLinkStrategy_ExistingUser_AppliesAccountLocale : un compte qui a déjà
+// choisi sa locale (POST /session/context) la retrouve à la connexion suivante,
+// même sur une session/un appareil neuf (locale de session par défaut "fr").
+func TestXboxSSOLinkStrategy_ExistingUser_AppliesAccountLocale(t *testing.T) {
+	users := newXboxStore(t)
+	_, _ = users.CreateFromXbox("Spartan42", "xuid-spartan-42")
+	if err := users.SetLocale("spartan42", "en"); err != nil {
+		t.Fatalf("SetLocale: %v", err)
+	}
+
+	s := service.NewXboxSSOLinkStrategy(users)
+	sess := &domain.SessionData{Locale: "fr"}
+	attempt := &auth.Attempt{Gamertag: "Spartan42", XUID: "xuid-spartan-42"}
+
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("OnAuthSuccess: %v", err)
+	}
+	if sess.Locale != "en" {
+		t.Errorf("Locale = %q, want en (locale du compte)", sess.Locale)
+	}
+}
+
+// TestXboxSSOLinkStrategy_NewUser_KeepsSessionLocale : un compte qui n'a jamais choisi
+// de locale ne doit pas écraser celle déjà en session (zero value non destructive).
+func TestXboxSSOLinkStrategy_NewUser_KeepsSessionLocale(t *testing.T) {
+	users := newXboxStore(t)
+	s := service.NewXboxSSOLinkStrategy(users)
+	sess := &domain.SessionData{Locale: "en"}
+	attempt := &auth.Attempt{Gamertag: "Newcomer", XUID: "xuid-newcomer-1"}
+
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("OnAuthSuccess: %v", err)
+	}
+	if sess.Locale != "en" {
+		t.Errorf("Locale = %q, want en (inchangée, compte sans préférence)", sess.Locale)
+	}
+}
+
 func TestXboxSSOLinkStrategy_MissingXUID_ReturnsError(t *testing.T) {
 	users := newXboxStore(t)
 	s := service.NewXboxSSOLinkStrategy(users)

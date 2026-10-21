@@ -43,10 +43,13 @@ type poseDesPlaces struct {
 	capacite int
 	// sansPlace : les bots d equipe lue sans place, ecartes ou comptes (sieges_bots_sans_place.go).
 	sansPlace botsSansPlace
+	// tailleDuMode : la taille officielle de la playlist ; 0 = non declaree (sieges_a_la_taille.go).
+	tailleDuMode int
 }
 
 func nouvellePoseDesPlaces(roster []RosterEntry, occ *occupants, in entreesDesPlaces) *poseDesPlaces {
-	pp := &poseDesPlaces{roster: roster, occ: occ, in: in, origines: siegesDuDebut(in.table)}
+	pp := &poseDesPlaces{roster: roster, occ: occ, in: in, origines: siegesDuDebut(in.table),
+		tailleDuMode: in.tailleDEquipe}
 	if pp.origines == nil {
 		return pp
 	}
@@ -89,6 +92,9 @@ func (pp *poseDesPlaces) estimerLaCapacite() {
 // grand nombre de ses entites que le film montre ensemble s'il est plus haut — une borne LUE, qui
 // couvre la table a laquelle il manque un joueur dans chaque equipe.
 func (pp *poseDesPlaces) capaciteDe(t int) int {
+	if pp.tailleDuMode > 0 {
+		return pp.tailleDuMode // la taille de la playlist prime (sieges_a_la_taille.go)
+	}
 	return max(pp.capacite, pp.occ.simultanees[t])
 }
 
@@ -478,6 +484,10 @@ func (pp *poseDesPlaces) publierLesPresences() {
 		out := make([]PresenceInterval, 0, len(ivs))
 		for _, iv := range ivs {
 			pi := PresenceInterval{From: iv.de, To: iv.a}
+			if iv.placeLue && iv.place != pp.roster[i].Seat {
+				s := iv.place
+				pi.Seat = &s
+			}
 			if iv.aMax > iv.a {
 				m := iv.aMax
 				pi.ToMax = &m

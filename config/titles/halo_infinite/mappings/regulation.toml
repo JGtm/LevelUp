@@ -30,7 +30,7 @@
 
 [meta]
 title_slug     = "halo_infinite"
-schema_version = 8
+schema_version = 9
 
 [regulation_seconds]
 "CTF:Arena"                   = 720
@@ -498,3 +498,38 @@ flag_juggle_window_s = 1.5
 # (vue match).
 [weapon_tiers]
 random_start_mode_tokens = ["Castle Wars", "Fiesta", "Husky Raid"]
+
+# ---------------------------------------------------------------------------------------
+# TAILLE D'EQUIPE par PLAYLIST (schema_version 9, controle n° 8 des controles de la v8,
+# decision utilisateur du 2026-10-21) — le nombre de PLACES (de fiches) d'une equipe dans le
+# rejeu 2D : une fiche = une place d'equipe, et aucune equipe ne depasse sa taille.
+#
+# POURQUOI UNE TABLE ET PAS LE FILM : la taille d'equipe n'est PAS dans le film. Mesure du
+# 2026-10-21 (`film/internal/grammar/variante_taille_equipe_research_test.go`, 18 films :
+# 2v2, 4v4, 8v8, 12v12) : les options de partie et la variante de `chunk_00` se lisent en
+# entier, et AUCUN de leurs champs ne separe les tailles ; un 4v4 et un 8v8 de la meme variante
+# Slayer (`bf15f7ab`, `0301037e`) ne different que par quatre champs — un identifiant de
+# session, deux graines et la cible de score (50 contre 75). La table de 32 joueurs du film est
+# de 32 places dans tous les modes. La valeur vient donc de la REGLE OFFICIELLE de la playlist,
+# en repli nomme et compte (`repli_taille_d_equipe_du_mode`).
+#
+# CLE = JETON DE PLAYLIST, lu dans `game_variant_name` sous ses deux grammaires : le jeton a
+# GAUCHE du « : » (`BTB:CTF`, `Ranked:Oddball`, `Squad:King of the Hill`), sinon le jeton en TETE
+# de la partie droite (`CTF:Arena`, `Slayer:Arena Super Fiesta`, `CTF:BTB Fiesta`), sinon en tete
+# du nom entier (`BTB (2025-03)`) ; mot entier, insensible a la casse, jeton le plus long gagnant
+# a une meme place. JAMAIS un jeton au milieu du nom : `BTB:Fiesta Slayer` est un BTB, pas une
+# Fiesta.
+#
+# VOLONTAIREMENT ABSENTS (taille non etablie sur le parc) : Assault, Community, Event, Castle Wars,
+# Husky Raid, Super Husky Raid, Fiesta, Tactical, Firefight. Leurs matchs gardent la capacite
+# estimee de la cuisson (`repli_place_ouverte_sous_la_capacite_estimee`).
+#
+# Consommation : mappings.RegulationSet.TeamSize(game_variant_name) -> replaybuild ->
+# replay.Options.TeamSize -> la pose des places (`film/replay/sieges_a_la_taille.go`).
+[team_size]
+"Arena"        = 4
+"Ranked"       = 4
+"Doubles"      = 2
+"Squad"        = 8
+"BTB"          = 12
+"BTB Heavies"  = 12

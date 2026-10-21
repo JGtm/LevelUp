@@ -113,6 +113,36 @@ describe('buildSeats — la place vient du document', () => {
     expect(seats[0].occupants[0].deduite).toBe(true)
   })
 
+  it('une place RAMENÉE à la taille de l’équipe est une déduction (schéma 101)', () => {
+    const seats = buildSeats(
+      [joueur('E', 't0', [vie(935, FIN)])],
+      doc([{ xuid: 'E', filmIndex: 29, seat: 1, seatSource: 'taille', team: 0, presence: [pr(935, FIN)] }]),
+    )
+    expect(seats[0].seat).toBe(1)
+    expect(seats[0].occupants[0].deduite).toBe(true)
+  })
+
+  it('un joueur qui REVIENT sur une autre fiche y entre pour cet intervalle seulement (schéma 101)', () => {
+    // R part à 300 ; B prend sa place 1 ; R revient à 700 sur la place 2, libérée par Q.
+    const seats = buildSeats(
+      [joueur('R', 't0', [vie(0, 300), vie(700, FIN)]), joueur('B', 't0', [vie(320, FIN)]), joueur('Q', 't0', [vie(0, 650)])],
+      doc([
+        { xuid: 'R', filmIndex: 1, seat: 1, seatSource: 'lu', team: 0, presence: [pr(0, 300), { ...pr(700, FIN), seat: 2 }] },
+        { xuid: 'B', filmIndex: 5, seat: 1, seatSource: 'taille', team: 0, presence: [pr(320, FIN)] },
+        { xuid: 'Q', filmIndex: 2, seat: 2, seatSource: 'lu', team: 0, presence: [pr(0, 650)] },
+      ]),
+    )
+    expect(seats.map((s) => s.seat)).toEqual([1, 2])
+    expect(seats[0].occupants.map((o) => o.player.xuid)).toEqual(['R', 'B'])
+    expect(seats[1].occupants.map((o) => o.player.xuid)).toEqual(['Q', 'R'])
+    for (const f of [100, 500, 800]) {
+      const tenues = seats.map((s) => seatOccupantAt(s, f).player?.xuid).filter(Boolean)
+      expect(new Set(tenues).size).toBe(tenues.length) // jamais deux fiches pour un joueur
+    }
+    expect(montre(seats[0], 800)).toBe('B:present')
+    expect(montre(seats[1], 800)).toBe('R:present')
+  })
+
   it('l’ordre des fiches est celui des PLACES, pas celui d’arrivée des joueurs', () => {
     const seats = buildSeats(
       [joueur('C', 't0', [vie(0, FIN)]), joueur('A', 't0', [vie(0, FIN)])],

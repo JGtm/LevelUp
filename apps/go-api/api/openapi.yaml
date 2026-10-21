@@ -23166,6 +23166,9 @@ components:
         from:
           format: int64
           type: integer
+        seat:
+          format: int64
+          type: integer
         to:
           format: int64
           type: integer
@@ -24981,6 +24984,9 @@ components:
     SeatCoverage:
       additionalProperties: false
       properties:
+        absencesTenuesParUnBot:
+          format: int64
+          type: integer
         apparies:
           format: int64
           type: integer
@@ -24990,12 +24996,20 @@ components:
         bornesDifferees:
           format: int64
           type: integer
+        botsRelevesALaTaille:
+          format: int64
+          type: integer
+        botsRelevesEnJeu:
+          format: int64
+          type: integer
         botsSuccesseurs:
           format: int64
           type: integer
         capacite:
           format: int64
           type: integer
+        capaciteSource:
+          type: string
         chevauchements:
           format: int64
           type: integer
@@ -25038,6 +25052,9 @@ components:
           format: int64
           type: integer
         presencesParLesVies:
+          format: int64
+          type: integer
+        rameneesALaTaille:
           format: int64
           type: integer
         relaisBornes:
@@ -25103,6 +25120,10 @@ components:
         - trousDEntite
         - imagesClesDouteuses
         - bornesDifferees
+        - rameneesALaTaille
+        - botsRelevesALaTaille
+        - botsRelevesEnJeu
+        - absencesTenuesParUnBot
       type: object
     SelectedTeammateData:
       additionalProperties: false
@@ -27646,7 +27667,6 @@ components:
         - match_id
         - start_time
         - outcome
-        - team_mmr_avg
       type: object
     SquadObjectiveEvening:
       additionalProperties: false

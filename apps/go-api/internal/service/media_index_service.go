@@ -30,7 +30,7 @@ type MediaIndexer interface {
 	// pour tous les joueurs sous repoRoot, puis réindexe si reindexAfter=true.
 	// capturesBaseDir : si non vide, les captures sont lues depuis {capturesBaseDir}/{gamertag}/
 	// plutôt que depuis le chemin interne data/titles/.../captures/.
-	// timezone : IANA (ex: "Europe/Paris") — requis pour que parseCaptureTimeFromFilename
+	// timezone : IANA (ex: "Europe/Paris") — requis pour que captureInstantFromName
 	// extraie correctement la datetime depuis les noms de fichier OBS/Xbox (sinon
 	// la regex est skip → capture_start_utc=NULL → 0 associations match).
 	// Rapporte la progression via jobStore pour le job jobID.
@@ -235,7 +235,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 //
 // capturesBaseDirFn et timezoneFn sont des chargeurs paresseux : appelés à chaque
 // sync pour lire les settings courants (évite de capturer une valeur périmée au
-// boot). timezoneFn est CRITIQUE — sans timezone, parseCaptureTimeFromFilename
+// boot). timezoneFn est CRITIQUE — sans timezone, captureInstantFromName
 // retourne nil systématiquement → capture_start_utc=NULL → 0 associations match.
 //
 // Usage typique :

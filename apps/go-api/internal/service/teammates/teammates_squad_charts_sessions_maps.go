@@ -111,7 +111,7 @@ func buildSquadSessionTimeline(matches []domain.SquadMatchRow) []domain.SquadSes
 			b.perfSum += *m.PerformanceScore
 			b.perfCount++
 		}
-		if m.TeamMMR > 0 {
+		if analysis.MMRKnown(m.TeamMMR) {
 			b.mmrSum += m.TeamMMR
 			b.mmrCount++
 		}

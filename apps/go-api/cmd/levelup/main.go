@@ -9,6 +9,7 @@
 //	levelup check-env
 //	levelup archive        --gamertag X --xuid U --cutoff YYYY-MM-DD [--delete-after] [--dry-run]
 //	levelup index-media    --gamertag X [--force-rescan] [--tolerance-min N]
+//	levelup media-capture-times [--dry-run] [--title slug] [--db PATH]
 //	levelup seed           career-ranks | citation-mappings | medals | rank-translations
 //	levelup notify-version --version v1.2.3
 //	levelup notify-sync    --gamertag X --op sync_delta --duration 120s [--matches N]
@@ -28,6 +29,7 @@
 //
 // Implementation des sous-commandes :
 //   - cmd_data.go    - backup, restore, archive, index-media, seed
+//   - cmd_media_capture_times.go - media-capture-times (fenetres de capture selon leur source)
 //   - cmd_ops.go     - healthcheck, diagnose, check-env, compare-db, gate-check
 //   - cmd_sync.go    - sync-delta, sync-full
 //   - cmd_notify.go  - notify-version, notify-sync
@@ -98,6 +100,8 @@ func main() {
 		exitErr = runCheckEnv(cfg)
 	case "archive":
 		exitErr = runArchive(cfg, args)
+	case "media-capture-times":
+		exitErr = runMediaCaptureTimes(cfg, args)
 	case "index-media":
 		exitErr = runIndexMedia(cfg, args)
 	case "seed":
@@ -215,6 +219,10 @@ Commandes:
   check-env       Verifier l'environnement et la configuration
   archive         Archiver les matchs anciens en Parquet
   index-media     Indexer et associer les medias au joueur
+  media-capture-times  Recalcule le debut et la fin des medias indexes avant la regle par source (un clip « Replay » ou
+                  « record that » finit a l heure de son nom). Le serveur le fait seul a chaque indexation ; la commande
+                  simule (--dry-run : comptes par source, sur une COPIE si le serveur tourne, --db) ou ecrit serveur
+                  arrete (--title, --db)
   seed            Peupler les referentiels metadata.duckdb
   seed-demo       Generer les donnees demo (data/demo/) depuis un joueur source anonymise
   notify-version  Envoyer une notification Discord de nouvelle version

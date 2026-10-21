@@ -102,7 +102,7 @@ SELECT
     -- NULL si real_start_time absent → fallback runtime T0=0. Même formule
     -- canonique que player_matches_repo (propagation Phase 3).
     ` + T0MsSQL("r") + `                                                          AS t0_ms,
-    COALESCE(p1.team_mmr, 0.0)                                   AS team_mmr,
+    COALESCE(` + analysis.SQLKnownMMR("p1.team_mmr") + `, 0.0)                                   AS team_mmr,
     COALESCE(p1.headshot_kills, 0)                               AS headshot_kills,
     COALESCE((
         SELECT SUM(me.count)
@@ -111,7 +111,7 @@ SELECT
           AND me.xuid = p1.xuid
           AND /*__PERFECT_KILL_IN__*/
     ), 0)::INTEGER                                              AS perfect_kills,
-    p1.enemy_mmr,
+    ` + analysis.SQLKnownMMR("p1.enemy_mmr") + ` AS enemy_mmr,
     CASE WHEN p1.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
     CASE WHEN p1.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
     -- Manches (ADR 0032) : sur un mode qui s'y décide, le score ci-dessus est un cumul de
@@ -161,7 +161,7 @@ SELECT
     COALESCE(p.assists, 0)                                       AS assists,
     p.kda                                                        AS ratio,
     COALESCE(p.time_played_seconds, 0)                           AS time_played_seconds,
-    COALESCE(p.team_mmr, 0.0)                                    AS team_mmr,
+    COALESCE(` + analysis.SQLKnownMMR("p.team_mmr") + `, 0.0)                                    AS team_mmr,
     p.accuracy,
     CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
     CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score

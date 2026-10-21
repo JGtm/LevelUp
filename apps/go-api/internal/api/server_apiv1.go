@@ -340,7 +340,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		WithPlayerAccess(func(ctx context.Context, slug string) bool {
 			granted, _ := playerAccess.Allows(ctx, middleware.GetSession(ctx), slug, false)
 			return granted
-		})
+		}).
+		WithUserStore(users)
 	sessionHandler.Mount(r, apiOpt)
 
 	// Sprint 15 : Device Code Flow + authentification Halo

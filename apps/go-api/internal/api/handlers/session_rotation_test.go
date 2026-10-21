@@ -95,6 +95,46 @@ func TestRotation_PasswordLogin(t *testing.T) {
 	}
 }
 
+// TestRotation_PasswordLogin_AppliesAccountLocale : un compte qui a déjà choisi sa
+// locale la retrouve à la connexion suivante par mot de passe, même sur une session
+// anonyme restée au défaut "fr".
+func TestRotation_PasswordLogin_AppliesAccountLocale(t *testing.T) {
+	dir := t.TempDir()
+	users := userstore.NewStore(filepath.Join(dir, "users.json"))
+	if _, err := users.Create("jgtm", testUserAuthPass, domain.RoleAdmin); err != nil {
+		t.Fatalf("Create : %v", err)
+	}
+	if err := users.SetLocale("jgtm", "en"); err != nil {
+		t.Fatalf("SetLocale : %v", err)
+	}
+	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	h := handlers.NewUserAuthHandler(users, userstore.NewInviteStore(filepath.Join(dir, "invites.json"), users), sessStore, "invite").
+		WithAuthMode("xbox")
+	r := chi.NewRouter()
+	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
+	h.Mount(r)
+
+	_, cookie := plantedSession(t, sessStore)
+	body, _ := json.Marshal(domain.LoginRequest{Username: "jgtm", Password: testUserAuthPass})
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("login : %d (%s)", w.Code, w.Body.String())
+	}
+
+	newID := responseSessionID(t, sessStore, w)
+	fresh := sessStore.Load(t.Context(), newID)
+	if fresh == nil {
+		t.Fatal("nouvelle session introuvable")
+	}
+	if fresh.Locale != "en" {
+		t.Errorf("Locale = %q, want en (locale du compte)", fresh.Locale)
+	}
+}
+
 func TestRotation_DeviceFlow(t *testing.T) {
 	dir := t.TempDir()
 	users := userstore.NewStore(filepath.Join(dir, "users.json"))

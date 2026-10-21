@@ -366,7 +366,7 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 	jobSnapshot := *job
 
 	// Charger le dossier captures et la timezone configurés dans les settings.
-	// timezone est REQUISE pour que parseCaptureTimeFromFilename extraie la
+	// timezone est REQUISE pour que captureInstantFromName extraie la
 	// datetime des noms OBS/Xbox ; sans elle, capture_start_utc=NULL → 0 assoc.
 	capturesBaseDir := ""
 	timezone := ""

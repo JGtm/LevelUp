@@ -202,6 +202,20 @@ describe('ReplayAudioPlayer — voix et volume', () => {
     expect(ctx.sources[2].stopped).toBeCloseTo(ctx.currentTime + 3)
   })
 
+  it('la voix d’ANNONCEUR (manche terminée) est hors plafond ET coupée par la pause : deux règles distinctes', async () => {
+    const p = new ReplayAudioPlayer(1)
+    p.preload(['/a.wav', '/manche.wav', '/voix.wav'])
+    await flush()
+    for (let i = 0; i < SOUND_MAX_VOICES; i++) p.play('/a.wav')
+    p.playAnnouncer('/manche.wav') // plafond atteint : l'annonce passe quand même
+    p.playConclusion('/voix.wav')
+    expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES + 2)
+    p.stopAll()
+    const rampEnd = ctx.currentTime + VOLUME_RAMP_S
+    expect(ctx.sources[SOUND_MAX_VOICES].stopped).toBeCloseTo(rampEnd) // l'annonce s'arrête à la pause
+    expect(ctx.sources[SOUND_MAX_VOICES + 1].stopped).toBeCloseTo(ctx.currentTime + 3) // la conclusion survit
+  })
+
   it('stopAll rend leurs voix aux sons éteints (un son terminé ne se coupe pas deux fois)', async () => {
     const p = new ReplayAudioPlayer(1)
     p.preload(['/a.wav'])

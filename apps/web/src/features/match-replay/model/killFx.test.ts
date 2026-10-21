@@ -202,3 +202,21 @@ describe('buildKillFx', () => {
     expect((fx[0].dist ?? Infinity) < MELEE_LINK_MAX_M).toBe(true)
   })
 })
+
+describe('buildKillFx — la règle du pion', () => {
+  it('un tueur sans fiche à l’instant du kill ne trace rien depuis sa position : la mort de la victime reste posée', () => {
+    const [e] = buildKillFx(docWithCouple(), [kill({ replayMs: 2_000 })], (xuid) => xuid !== 'K')
+    expect(e.vx).toBeNull() // pas d'axe tueur -> victime
+    expect([e.x, e.y]).toEqual([5, 4]) // l'origine est la victime
+    expect([e.deathX, e.deathY]).toEqual([5, 4]) // la mort est comptée (carte de chaleur)
+  })
+
+  it('tueur et victime sans position dessinable : aucun effet', () => {
+    expect(buildKillFx(docWithCouple(), [kill({ xuid: 'K', victimXuid: 'Z' })], () => false)).toEqual([])
+  })
+
+  it('un tueur qui tient sa fiche garde son trait', () => {
+    const [e] = buildKillFx(docWithCouple(), [kill({ replayMs: 2_000 })], () => true)
+    expect(e.vx).not.toBeNull()
+  })
+})

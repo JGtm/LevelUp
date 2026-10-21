@@ -120,6 +120,11 @@ worktree dédié du plan. Coût estimé : 10 à 12 lancements d'agents, l'un apr
   place. La voix « manche terminée » reste soumise au plafond, comme dans l'export. Aucune
   option « musique » n'est ajoutée : il n'en existe pas (vérifié le 2026-09-26 ; les catégories
   de sons que l'on peut couper ne filtrent pas les sons de fin).
+  **AMENDÉ LE 2026-10-21 (décision utilisateur, contrôle n° 7 des contrôles de la v8)** : la voix
+  « manche terminée » échappe elle aussi au plafond, à la page comme à l'export (`soundOccupiesVoice`,
+  marque `announcer`, commit `0d5d359ee` sur `fix/controles-v8-rejeu`). Mesure : à la première fin de
+  manche de `d9781168`, sept voix sur huit étaient déjà tenues sans compter les sons de frag, et la voix
+  était refusée en silence.
 - **D-2 (item 1).**
   - Erreur sentinelle `ErrDrainTimeout`.
   - Nouvelle tentative bornée : 3 essais au total, délai de 30 s, uniquement sur cette erreur.

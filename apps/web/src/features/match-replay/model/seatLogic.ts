@@ -177,15 +177,16 @@ export function buildSeats(players: readonly ReplayPlayer[], doc: ReplayDocument
     // AUCUNE PLACE SANS ÉQUIPE DU FILM (cf. l'en-tête) : ni tuile, ni colonne, à aucune image.
     if (e === undefined || p.team === undefined) continue
     const presence = publiees ? presenceDeLEntree(e) : enveloppeDesVies(p)
-    if (presence.length === 0) continue // aucune présence : aucune place, à aucune image
-    const numero = e.seat ?? e.filmIndex
-    const cle = `siege:${p.team}:${numero}`
-    let s = places.get(cle)
-    if (!s) {
-      s = { key: cle, seat: numero, team: p.team, occupants: [], presenceLue: publiees }
-      places.set(cle, s)
+    // aucune présence : aucune place, à aucune image
+    for (const [numero, spans] of parPlace(presence, e.seat ?? e.filmIndex)) {
+      const cle = `siege:${p.team}:${numero}`
+      let s = places.get(cle)
+      if (!s) {
+        s = { key: cle, seat: numero, team: p.team, occupants: [], presenceLue: publiees }
+        places.set(cle, s)
+      }
+      s.occupants.push({ player: p, presence: spans, deduite: estDeduite(e) })
     }
-    s.occupants.push({ player: p, presence, deduite: estDeduite(e) })
   }
   const out = [...places.values()]
   for (const s of out) s.occupants.sort((a, b) => a.presence[0].from - b.presence[0].from)
@@ -193,8 +194,11 @@ export function buildSeats(players: readonly ReplayPlayer[], doc: ReplayDocument
   return out.sort((a, b) => a.seat - b.seat || a.key.localeCompare(b.key))
 }
 
-/** Les provenances de place qui sont des DÉDUCTIONS de la cuisson (cf. `SeatOccupant.deduite`). */
-const PROVENANCES_DEDUITES: ReadonlySet<string> = new Set(['apparie', 'ouverte'])
+/**
+ * Les provenances de place qui sont des DÉDUCTIONS de la cuisson (cf. `SeatOccupant.deduite`) : le
+ * chaînage, la place ouverte, et la place ramenée à la taille de l'équipe (schéma 101).
+ */
+const PROVENANCES_DEDUITES: ReadonlySet<string> = new Set(['apparie', 'ouverte', 'taille'])
 
 function estDeduite(e: ReplayRosterEntryReady): boolean {
   return e.seatSource !== undefined && PROVENANCES_DEDUITES.has(e.seatSource)
@@ -209,11 +213,32 @@ function publieDesPresences(doc: ReplayDocumentReady): boolean {
   return doc.roster.some((e) => e.presence.length > 0)
 }
 
-/** La présence publiée d'une entrée (schéma 69), dans l'ordre du temps. */
-function presenceDeLEntree(e: ReplayRosterEntryReady): PresenceSpan[] {
+/** Un intervalle de présence et sa place, quand elle n'est pas celle de l'entrée (schéma 101). */
+interface PresenceSpanPlacee extends PresenceSpan {
+  seat?: number
+}
+
+/** La présence publiée d'une entrée (schéma 69), dans l'ordre du temps, avec la place de chaque intervalle. */
+function presenceDeLEntree(e: ReplayRosterEntryReady): PresenceSpanPlacee[] {
   return e.presence
-    .map((p) => ({ from: p.from, to: p.to, toMax: Math.max(p.to, p.toMax ?? p.to) }))
+    .map((p) => ({ from: p.from, to: p.to, toMax: Math.max(p.to, p.toMax ?? p.to), seat: p.seat }))
     .sort((a, b) => a.from - b.from)
+}
+
+/**
+ * parPlace — LES INTERVALLES D'UNE ENTRÉE, RANGÉS PAR PLACE. Un joueur qui revient peut tenir une
+ * autre fiche que la première quand la sienne a été reprise entre-temps (schéma 101) : l'intervalle
+ * publie alors sa place (`seat`), et l'occupant entre sous CETTE place pour CET intervalle.
+ */
+function parPlace(presence: readonly PresenceSpanPlacee[], placeDeLEntree: number): Map<number, PresenceSpan[]> {
+  const out = new Map<number, PresenceSpan[]>()
+  for (const { seat, ...span } of presence) {
+    const numero = seat ?? placeDeLEntree
+    const spans = out.get(numero)
+    if (spans) spans.push(span)
+    else out.set(numero, [span])
+  }
+  return out
 }
 
 /**
@@ -271,4 +296,39 @@ export function groupSeatsByTeam(seats: readonly ReplaySeat[]): ReplaySeatGroup[
     (s) => s.team,
     (s) => s.occupants.map((o) => o.player.board),
   ).map(({ team, side, members }) => ({ team, side, seats: members }))
+}
+
+/**
+ * SeatedIndex — QUI OCCUPE UNE FICHE À UNE IMAGE, pour tout ce qui dessine un joueur sur la carte.
+ *
+ * LA RÈGLE DU PION (utilisateur, 2026-10-21) : « on a autant de joueurs sur le terrain que sur les
+ * fiches ». À tout instant, un pion n'est dessiné QUE pour un joueur dont une fiche le tient à cet
+ * instant ; un bot relevé par un humain n'a plus de fiche (la cuisson borne sa présence à la veille
+ * de l'arrivée de l'humain) et n'a donc plus de pion, alors que le film lui donne encore des vies,
+ * des tirs et des frags. Ses frags restent au fil et dans les comptes : seul ce qui s'ancre sur SA
+ * POSITION disparaît de la carte (trajectoire, cône, tir, trait de mort).
+ *
+ * C'est le MÊME critère que la tuile (`seatOccupantAt` : une présence couvre l'image, bornée à
+ * `toMax`) : la carte et la feuille ne peuvent pas se contredire. Un joueur sans place du tout (sans
+ * entrée de roster, ou dont le film tait l'équipe) n'occupe aucune fiche, à aucune image.
+ */
+export interface SeatedIndex {
+  /** Une fiche porte ce joueur (clé `ReplayPlayer.xuid`) à cette image. */
+  isSeated: (xuid: string, frame: number) => boolean
+}
+
+/** seatedIndexOf — l'index des fiches occupées, lu aux occupants de `buildSeats`. */
+export function seatedIndexOf(seats: readonly ReplaySeat[]): SeatedIndex {
+  const parJoueur = new Map<string, PresenceSpan[]>()
+  for (const s of seats) {
+    for (const o of s.occupants) {
+      const spans = parJoueur.get(o.player.xuid)
+      if (spans) spans.push(...o.presence)
+      else parJoueur.set(o.player.xuid, [...o.presence])
+    }
+  }
+  return {
+    isSeated: (xuid, frame) =>
+      parJoueur.get(xuid)?.some((p) => frame >= p.from && frame <= p.toMax) ?? false,
+  }
 }

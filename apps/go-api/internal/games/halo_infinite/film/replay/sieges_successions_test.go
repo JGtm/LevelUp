@@ -14,11 +14,13 @@ package replay
 //	S-SUCCESSION  gabarit de `43e96765` : l'humain est lu a l'image-cle pendant la declaration du bot
 //	              et n'a aucune vie avant son retrait : il lui succede, sa presence commence au
 //	              lendemain du retrait ;
-//	S-COTOIE      le meme humain avec une vie AVANT le retrait du bot : ils se cotoient, la place
-//	              n'est pas reprise ;
+//	S-RELEVE-EN-JEU le meme humain avec une vie AVANT le retrait du bot : il ne lui succede pas, il le
+//	              RELEVE a son arrivee (decision utilisateur du 2026-10-21 : une equipe ne montre jamais
+//	              plus d occupants que de places ; jusque-la, ils se cotoyaient sur deux fiches) ;
 //	S-PRIORITE    la place du bot que l'humain remplace passe avant la place liberee le plus tot ;
 //	S-RELAIS-DATE la place liberee par un relais a la frame est datee de ce relais ;
-//	S-COTOIE-DEBUT un humain lu des le debut de la declaration du bot ne lui succede pas ;
+//	S-ATTENTE     un humain lu des le debut de la declaration du bot, sans vie avant son retrait, ne le
+//	              releve pas : il attend, sa presence commence au lendemain du retrait (meme decision) ;
 //	S-TIRS        le successeur lit la place du bot par ses tirs ;
 //	S-PARTI-AVANT un humain parti avant le retrait du bot ne lui succede pas ;
 //	S-LIAISON     le gabarit de `43e96765` de bout en bout, liaison aux entites et a BOT_METADATA
@@ -121,7 +123,7 @@ func TestLHumainSuccedeAuBot(t *testing.T) { // S-SUCCESSION
 	}
 }
 
-func TestLHumainQuiJoueAvantLeRetraitCotoieLeBot(t *testing.T) { // S-COTOIE
+func TestLHumainQuiJoueAvantLeRetraitReleveLeBot(t *testing.T) { // S-RELEVE-EN-JEU
 	roster := []RosterEntry{entree(0, "100"), entree(2, "120"), {FilmIndex: 8, Name: "343 PardonMy [bot]"},
 		entree(9, "190")}
 	occ := occupantsFabriques([]int{0, 0, 0, 0}, []intervalleDePresence{{de: 0, a: 40, aMax: 44}},
@@ -131,13 +133,15 @@ func TestLHumainQuiJoueAvantLeRetraitCotoieLeBot(t *testing.T) { // S-COTOIE
 	cov := poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 2),
 		horloge: horlogeDeSieges(fallback.NouveauCompteur())})
 
-	if p := roster[3].Presence; roster[3].Seat == 0 || len(p) != 1 || p[0].From != 50 {
-		t.Fatalf("humain : place %d (%s), presence %+v — une vie avant le retrait du bot : ils se "+
-			"cotoient, aucune succession (place non reprise, presence intacte)", roster[3].Seat,
-			roster[3].SeatSource, roster[3].Presence)
+	if roster[3].Seat != 0 || roster[3].SeatSource != SeatSourceTaille {
+		t.Fatalf("humain : place %d (%s), attendu 0 (%s) — il releve le bot sur sa fiche", roster[3].Seat,
+			roster[3].SeatSource, SeatSourceTaille)
 	}
-	if cov.SansPlace != 1 {
-		t.Errorf("couverture %+v : l humain qui cotoie le bot reste sans place, et le compte le dit", cov)
+	if p := roster[2].Presence; len(p) != 1 || p[0].To != 49 {
+		t.Errorf("bot : presence %+v, attendu jusqu a la veille de l arrivee de l humain (49)", p)
+	}
+	if cov.SansPlace != 0 || cov.BotsRelevesALaTaille != 1 || cov.PlacesEnTrop != 0 || cov.Depassements != 0 {
+		t.Errorf("couverture %+v : un bot releve, ni entree sans place, ni place en trop, ni depassement", cov)
 	}
 }
 
@@ -181,9 +185,10 @@ func TestLeRelaisDateLaLiberation(t *testing.T) {
 	}
 }
 
-// TestDejaLaAuDebutDuBotNeLuiSuccedePas (S-COTOIE-DEBUT) : l'humain est lu des la frame ou le bot est
-// declare (et n'a aucune vie avant son retrait) : il ne remplace pas le bot, il le cotoie.
-func TestDejaLaAuDebutDuBotNeLuiSuccedePas(t *testing.T) {
+// TestDejaLaAuDebutDuBotAttendSonRetrait (S-ATTENTE) : l'humain est lu des la frame ou le bot est declare
+// et n'a aucune vie avant son retrait : il ne le releve pas, il attend — sa presence commence au
+// lendemain du retrait, sur la fiche du bot.
+func TestDejaLaAuDebutDuBotAttendSonRetrait(t *testing.T) {
 	roster := []RosterEntry{entree(0, "100"), entree(2, "120"), {FilmIndex: 8, Name: "343 PardonMy [bot]"},
 		entree(9, "190")}
 	occ := occupantsFabriques([]int{0, 0, 0, 0}, []intervalleDePresence{{de: 0, a: 40, aMax: 44}},
@@ -193,8 +198,12 @@ func TestDejaLaAuDebutDuBotNeLuiSuccedePas(t *testing.T) {
 	poserLesSieges(context.Background(), roster, occ, entreesDesPlaces{table: tableDeDebut(0, 2),
 		horloge: horlogeDeSieges(fallback.NouveauCompteur())})
 
-	if roster[3].Seat == 0 {
-		t.Fatalf("humain : place 0 (%s) — present des le debut du bot, il ne lui succede pas", roster[3].SeatSource)
+	if p := roster[3].Presence; roster[3].Seat != 0 || len(p) != 1 || p[0].From != 71 {
+		t.Fatalf("humain : place %d (%s), presence %+v — attendu 0, ouverte au lendemain du retrait (71)",
+			roster[3].Seat, roster[3].SeatSource, p)
+	}
+	if p := roster[2].Presence; len(p) != 1 || p[0].To != 70 {
+		t.Errorf("bot : presence %+v, attendu intacte jusqu a son retrait (70)", p)
 	}
 }
 

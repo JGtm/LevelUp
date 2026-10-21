@@ -210,6 +210,12 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	}
 
 	result := MediaIndexResult{}
+	// Fenêtres des médias indexés avant la règle par source : corrigées AVANT l'association,
+	// qui lit capture_start_utc (media_capture_recalc.go). Idempotent ; un échec n'empêche pas
+	// l'indexation (retenté au passage suivant) mais se journalise.
+	if err := recalcBeforeIndex(ctx, db, loc, opts.Gamertag); err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("capture_times: %v", err))
+	}
 	mediaFiles, err := walkMediaDir(opts.CapturesDir)
 	if err != nil {
 		return MediaIndexResult{}, fmt.Errorf("scan répertoire: %w", err)
@@ -405,10 +411,10 @@ func AssociateMediaWithMatches(ctx context.Context, db *sql.DB, sharedMatchesPat
 // Génération de miniatures (ffprobe/ffmpeg)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// GenerateThumbnails génère des miniatures animées WebP pour les nouvelles vidéos.
-// Les GIFs legacy déjà présents sur disque sont conservés tels quels (pas de
-// regénération) — le backfill DB reconnaît les deux formats.
-// Nécessite ffmpeg compilé avec libwebp dans le PATH.
+// insertMediaFile indexe un fichier de capture dans media_files : heure de capture et sa source
+// (resolveCaptureInstant), fenêtre début/fin déduite de l'ancre de la source et de la durée
+// (captureWindow), puis INSERT, ou UPDATE de la ligne de même stem quand l'ancien fichier a
+// disparu (conversion de format).
 func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug string, captureTimeUnix *int64, loc *time.Location, store MediaPathStore) error {
 	ext := strings.ToLower(filepath.Ext(path))
 	kind := mediaKindOf(ext)
@@ -422,48 +428,20 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 		storedPath = path
 	}
 
-	var captureAt *time.Time
-
-	// Priorité 1 : datetime extraite du nom de fichier (OBS Studio, Xbox, ShadowPlay).
-	if t := parseCaptureTimeFromFilename(baseName, loc); t != nil {
-		captureAt = t
-		slog.Debug("insertMediaFile: datetime extraite du nom de fichier",
-			"file", baseName, "capture_start_utc", *t)
-	}
-
-	// Priorité 2 : mtime client fourni par le navigateur (file.lastModified).
-	if captureAt == nil && captureTimeUnix != nil && *captureTimeUnix > 0 {
-		t := time.Unix(*captureTimeUnix, 0).UTC()
-		captureAt = &t
-		slog.Debug("insertMediaFile: datetime depuis file.lastModified client",
-			"file", baseName, "capture_start_utc", t)
-	}
-
-	// Priorité 3 : mtime serveur (fallback). Pour les fichiers scannés depuis
-	// disque (post-sync hook, ScanAllMedia) sans pattern reconnaissable et sans
-	// timestamp client, le mtime filesystem reste l'approximation la plus fiable
-	// — OBS / Xbox / ShadowPlay n'écrivent qu'à la fin de l'enregistrement et ne
-	// retouchent plus le fichier ensuite. Pour les uploads HTTP, ce code est
-	// rarement atteint puisque le navigateur envoie `file.lastModified` via
-	// capture_times (cf. priorité 2, web/features/media/queries.ts:302) ; le
-	// mtime de la copie serveur serait moins précis mais reste mieux que NULL.
-	if captureAt == nil {
-		if info, err := os.Stat(path); err == nil {
-			t := info.ModTime().UTC()
-			captureAt = &t
-			slog.Debug("insertMediaFile: datetime depuis mtime serveur (fallback prio 3)",
-				"file", baseName, "capture_start_utc", t)
-		}
-	}
-
-	if captureAt == nil {
+	// Heure de capture : nom de fichier, sinon file.lastModified du navigateur (envoi HTTP,
+	// web/features/media/queries.ts), sinon mtime du disque — et ce qu'elle dit (début ou fin).
+	inst := resolveCaptureInstant(path, baseName, captureTimeUnix, loc)
+	var sourceKey *string
+	if inst == nil {
 		slog.Warn("insertMediaFile: capture_start_utc indéterminé, média non-associable",
 			"file", baseName, "player", playerSlug)
+	} else {
+		sourceKey = &inst.Source.Key
+		slog.Debug("insertMediaFile: heure de capture lue",
+			"file", baseName, "at", inst.At, "source", inst.Source.Key, "anchor", inst.Source.Anchor)
 	}
 
-	// Durée + capture_end_utc : pour les vidéos on probe ffprobe ; pour les
-	// images c'est un instantané. Logique pure isolée dans computeMediaEnd pour
-	// les tests unitaires (sans ffprobe).
+	// Durée : ffprobe pour les vidéos (une image est un instant).
 	var duration float64
 	var durationKnown bool
 	if kind == mediaKindVideo {
@@ -475,7 +453,7 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 				"file", baseName, "err", err)
 		}
 	}
-	captureEnd, durationSec := computeMediaEnd(kind, captureAt, duration, durationKnown)
+	win := captureWindow(kind, inst, duration, durationKnown)
 
 	// Dédup extension-agnostique : cherche une entrée existante avec le même stem.
 	// Si trouvée et ancien fichier encore sur disque → SKIP (les deux coexistent).
@@ -500,21 +478,25 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 		}
 
 		// Ancien fichier parti → UPDATE l'entrée existante (conversion complétée).
-		// On met à jour aussi duration / capture_end_utc puisque le fichier
-		// physique a changé (re-encodage) — sauf si la nouvelle valeur est NULL
-		// (on garde l'ancienne dans ce cas via COALESCE).
+		// La durée suit le nouveau fichier (re-encodage), sauf valeur NULL (COALESCE).
+		// La fenêtre de capture n'est réécrite que si son heure vient du NOM : il est le
+		// même avant et après conversion, alors que la date de modification du fichier
+		// converti est celle de la conversion, pas de la capture (conversionTimes).
 		// RÉSURRECTION (item 3.1) : si la ligne visée avait été supprimée, le
 		// fichier vient d'être re-déposé — la suppression est annulée en remettant
 		// status à NULL. Le CASE est indispensable : écrire NULL inconditionnellement
 		// dégraderait une ligne 'active' (valeur exigée par le rail home).
+		upStart, upEnd, upSource := conversionTimes(inst, kind, win)
 		_, err := db.ExecContext(ctx, `
 			UPDATE media_files
 			SET file_path = ?, file_name = ?, file_ext = ?, file_hash = ?, kind = ?,
 				duration_seconds = COALESCE(?, duration_seconds),
+				capture_start_utc = COALESCE(?, capture_start_utc),
 				capture_end_utc = COALESCE(?, capture_end_utc),
+				capture_time_source = COALESCE(?, capture_time_source),
 				status = CASE WHEN COALESCE(status, '') = ? THEN NULL ELSE status END
 			WHERE id = ?
-		`, storedPath, baseName, ext, hash, kind, durationSec, captureEnd,
+		`, storedPath, baseName, ext, hash, kind, win.DurationSec, upStart, upEnd, upSource,
 			domain.MediaStatusDeleted, existingID)
 		if err != nil {
 			slog.ErrorContext(ctx, "insertMediaFile: UPDATE failed for format conversion",
@@ -565,10 +547,10 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 	_, err = db.ExecContext(ctx, `
 		INSERT INTO media_files (
 			player_slug, file_path, file_name, file_stem, file_ext, file_hash, kind,
-			capture_start_utc, capture_end_utc, duration_seconds
+			capture_start_utc, capture_end_utc, duration_seconds, capture_time_source
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, playerSlug, storedPath, baseName, stem, ext, hash, kind, captureAt, captureEnd, durationSec)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, playerSlug, storedPath, baseName, stem, ext, hash, kind, win.Start, win.End, win.DurationSec, sourceKey)
 	return err
 }
 

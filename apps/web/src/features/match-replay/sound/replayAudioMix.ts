@@ -90,6 +90,8 @@ export interface MixedSound {
    * (`replayAudio.ts`).
    */
   conclusion?: boolean
+  /** `true` = une VOIX D'ANNONCEUR de la piste (« manche terminée ») : hors plafond, meme regle. */
+  announcer?: boolean
   /** La famille a laquelle ce son appartient, pour les pistes separees du clip. */
   family: SoundFamily
   /** La FORME d'un son de rafale (tenu ou coupé), la même qu'en direct (`soundEnvelopeOf`). */
@@ -194,6 +196,7 @@ export function planAudioMix(
       draw,
       family: familyOf(stem, options.families),
       ...(shape ? { shape } : {}),
+      ...(e.announcer ? { announcer: true } : {}),
     })
   }
   // LA CONCLUSION SE POSE SUR LA BORNE DE FIN, et l'appelant ne la fournit QUE si la plage
@@ -249,8 +252,8 @@ export function applyVoiceCap(
   for (const s of sounds) {
     const seconds = durationOf(s.stem)
     if (seconds === null) continue
-    // LA CONCLUSION PASSE TOUJOURS, et n'occupe aucune voix (`soundOccupiesVoice`) :
-    // elle ne dispute rien a personne, elle conclut.
+    // UNE ANNONCE PASSE TOUJOURS (conclusion, voix de manche) et n'occupe aucune voix
+    // (`soundOccupiesVoice`) : elle ne dispute rien aux bruitages, elle raconte le deroule.
     if (!soundOccupiesVoice(s)) {
       kept.push(s)
       continue

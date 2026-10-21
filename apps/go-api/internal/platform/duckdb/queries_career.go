@@ -1,6 +1,8 @@
 // Package duckdb — queries_career.go : requêtes filtres, historique, carrière et stats.
 package duckdb
 
+import "levelup/go-api/internal/analysis"
+
 // Q4Shared : (ADR 0016) — partie shared du split LoadMatchesForFilters.
 // Cross-DB JOIN historique (v_match_full ⨝ match_participants ⨝
 // player_match_enrichment) découpé pour passer par SharedReader sans toucher
@@ -87,8 +89,8 @@ SELECT
     COALESCE(r.is_firefight, FALSE)                    AS is_firefight,
     COALESCE(r.is_ranked, FALSE)                       AS is_ranked,
     COALESCE(p.outcome, 0)                             AS outcome,
-    p.team_mmr,
-    p.enemy_mmr,
+    ` + analysis.SQLKnownMMR("p.team_mmr") + ` AS team_mmr,
+    ` + analysis.SQLKnownMMR("p.enemy_mmr") + ` AS enemy_mmr,
     COALESCE(p.kills, 0)                               AS kills,
     COALESCE(p.deaths, 0)                              AS deaths,
     COALESCE(p.assists, 0)                             AS assists,
@@ -280,8 +282,8 @@ SELECT
     COALESCE(mp.kills, 0)     AS kills,
     COALESCE(mp.deaths, 0)    AS deaths,
     mp.kda,
-    mp.team_mmr,
-    mp.enemy_mmr
+    ` + analysis.SQLKnownMMR("mp.team_mmr") + ` AS team_mmr,
+    ` + analysis.SQLKnownMMR("mp.enemy_mmr") + ` AS enemy_mmr
 FROM match_participants mp
 JOIN match_registry r ON mp.match_id = r.match_id
 WHERE mp.xuid = ?
