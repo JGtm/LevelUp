@@ -205,7 +205,7 @@ cmd_clean() {
     fi
     rm -rf -- "$p"
   done < <(copies)
-  rm -rf tmp/bench-logs tmp/bench-auth-empty tmp/bench-results tmp/bench-server.pid
+  rm -rf tmp/bench-logs tmp/bench-auth-empty tmp/bench-results tmp/bench-server.pid tmp/bench-backup tmp/bench-*.out
   echo "copies du banc supprimées"
 }
 

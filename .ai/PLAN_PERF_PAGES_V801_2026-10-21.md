@@ -434,6 +434,28 @@ banc ~1,56 Go après un passage.
 | Comparaison — hors sections (frags entre joueurs non bornés) | 5,9 s | — | — | volet 2, S1 paires (9.2) |
 | Timeseries tout — `weapon_range` + `range_profiles` + `lives` | 7,8 s | 14,7 s | 5,5 s | candidats `match_measured_kills` / `match_life_windows` (§6) |
 
+
+### A.3 Après compactage des passes (DÉCOUVERTE, 2026-10-21, même copie, `levelup compact-passes --title halo_infinite`)
+
+La copie de prod n'avait jamais été compactée : 26,6 M lignes brutes pour 3,7 M lues dans les
+tables append-only du film (`match_kill_events` 7,97 M → 0,42 M, ~20 passes par match laissées par
+les recuissons d'octobre). Compactage : ~33 s, sauvegarde préalable. Passage à serveur neuf :
+
+| Page | JGtm | Nuzzles | Madina97294 |
+|---|---|---|---|
+| accueil | 2.77 → 0.31 s | 6.20 → 1.04 s | 3.08 → 0.51 s |
+| vue_match | 2.07 → 0.92 s | 4.06 → 0.34 s | 1.31 → 1.15 s |
+| explorer | 0.73 → 0.16 s | 2.38 → 1.25 s | 0.49 → 0.21 s |
+| relations | 1.81 → 0.29 s | 5.04 → 0.70 s | 1.32 → 0.37 s |
+| carriere_rencontres | 0.83 → 0.12 s | 2.04 → 0.19 s | 0.60 → 0.15 s |
+| carriere_rivaux | 0.78 → 0.07 s | 1.93 → 0.13 s | 0.53 → 0.08 s |
+| timeseries_tout | 11.35 → 1.66 s | 27.57 → 8.58 s | 7.80 → 2.11 s |
+| escouade_tout | 1.50 → 0.44 s | 3.63 → 1.33 s | 1.24 → 0.48 s |
+| comparaison | 6.25 → 0.83 s | — | — |
+
+Après compactage, l'arme favorite coûte 60-150 ms (1,6-2,0 s avant), les frags assistés 55-205 ms,
+Q23b/Q28c 250-1 080 ms (Madina97294 reste à ~1 s sur la vue match).
+
 ## Découvertes
 
 - `analysis/identity.go` (`v_gamertag_lookup`, annuaire des noms) lit encore `match_kill_events_latest` pour résoudre les noms : hors du critère du volet 2 (lecture de noms, pas un agrégat), allowlistée en 9.5 ; à reprendre dans un chantier « annuaire » si mesuré coûteux.
