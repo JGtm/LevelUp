@@ -37,7 +37,6 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	settings_platform "levelup/go-api/internal/platform/settings"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -183,7 +182,7 @@ func runFormulaSims(ctx context.Context, cfg *config.AppConfig, t backfillTarget
 
 func runFormulaSimForPlayer(ctx context.Context, cfg *config.AppConfig, titleSlug string, player *domain.PlayerSummary, lastN int) error {
 	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, nil).
-		WithSessionOptionsLoader(settings_platform.SessionOptionsLoaderForConfig(cfg, titleSlug))
+		WithSessionOptionsFromConfig(cfg)
 	report, err := engine.RunFormulaSim(ctx, lastN)
 	if err != nil {
 		return err

@@ -67,14 +67,15 @@ func SessionOptionsLoader(store *Store, overlayPath string) func(context.Context
 	}
 }
 
-// SessionOptionsLoaderForConfig rend le chargeur de la règle d'un titre depuis la
-// configuration : le même fichier de réglages que le serveur (cfg.AppSettingsPath) et
-// l'overlay du titre (cfg.TitleSettingsPath, celui de la fixture en démo). Pour les sites
-// (CLI, moteurs construits à la demande) qui n'ont pas de Store en main. cfg nil : défauts
-// journalisés à chaque appel.
-func SessionOptionsLoaderForConfig(cfg *config.AppConfig, titleSlug string) func(context.Context) domain.SessionComputeOptions {
+// SessionOptionsForConfig rend la règle d'un titre depuis la configuration : le même
+// fichier de réglages que le serveur (cfg.AppSettingsPath) et l'overlay du titre
+// (cfg.TitleSettingsPath, celui de la fixture en démo), relus à chaque appel. Pour les sites
+// (CLI, moteurs construits à la demande, import) qui n'ont pas de Store en main ; un
+// SyncEngine la reçoit par SyncEngine.WithSessionOptionsFromConfig. cfg nil : défauts
+// journalisés.
+func SessionOptionsForConfig(ctx context.Context, cfg *config.AppConfig, titleSlug string) domain.SessionComputeOptions {
 	if cfg == nil {
-		return SessionOptionsLoader(nil, "")
+		return SessionOptions(ctx, nil, "")
 	}
-	return SessionOptionsLoader(NewStore(cfg.AppSettingsPath), cfg.TitleSettingsPath(titleSlug))
+	return SessionOptions(ctx, NewStore(cfg.AppSettingsPath), cfg.TitleSettingsPath(titleSlug))
 }

@@ -24,7 +24,6 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/migration"
-	settings_platform "levelup/go-api/internal/platform/settings"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -240,6 +239,6 @@ func runTitledPassOne(ctx context.Context, cfg *config.AppConfig, titleSlug stri
 		}
 	}
 	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, p.Gamertag, p.XUID, nil, nil).
-		WithSessionOptionsLoader(settings_platform.SessionOptionsLoaderForConfig(cfg, titleSlug))
+		WithSessionOptionsFromConfig(cfg)
 	return pass.run(ctx, engine, force)
 }

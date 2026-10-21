@@ -36,7 +36,6 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/jobs"
-	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/service"
 	go_sync "levelup/go-api/internal/sync"
 )
@@ -147,7 +146,7 @@ func (h *BackfillHandler) handleStartBackfill(ctx context.Context, in *backfillS
 	// Moteur DU TITRE demandé (req.Title, résolu plus haut) et provider shared de ce titre : le provider
 	// du boot est celui du titre par défaut, il ferait écrire un autre titre dans la mauvaise base.
 	engine := go_sync.NewSyncEngineForTitle(h.cfg.RepoRoot, req.Title, gamertag, xuid, tokens, nil).
-		WithSessionOptionsLoader(settings_platform.SessionOptionsLoaderForConfig(h.cfg, req.Title))
+		WithSessionOptionsFromConfig(h.cfg)
 	if provider := h.cfg.SharedProviderForTitle(req.Title); provider != nil {
 		engine = engine.WithSharedProvider(provider)
 	}

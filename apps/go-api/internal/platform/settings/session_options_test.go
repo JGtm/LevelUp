@@ -89,19 +89,21 @@ func TestSessionOptions_FallbacksToDefaults(t *testing.T) {
 		t.Fatalf("réglage illisible : obtenu %+v, attendu %+v", got, defaults)
 	}
 
-	if got := SessionOptionsLoaderForConfig(nil, "halo_infinite")(ctx); got.GapMinutes != defaults.GapMinutes {
+	if got := SessionOptionsForConfig(ctx, nil, "halo_infinite"); got.GapMinutes != defaults.GapMinutes {
 		t.Fatalf("configuration absente : obtenu %+v, attendu %+v", got, defaults)
 	}
 }
 
-// TestSessionOptionsLoaderForConfig_ReadsConfigFiles : le chargeur lit le fichier de
-// réglages de la configuration (le même que le serveur) et le relit à chaque appel.
-func TestSessionOptionsLoaderForConfig_ReadsConfigFiles(t *testing.T) {
+// TestSessionOptionsForConfig_ReadsConfigFiles : la règle se lit dans le fichier de
+// réglages de la configuration (le même que le serveur), relu à chaque appel.
+func TestSessionOptionsForConfig_ReadsConfigFiles(t *testing.T) {
 	root := t.TempDir()
 	global := filepath.Join(root, "app_settings.json")
 	writeSettingsJSON(t, global, `{"session_team_change_mode":"group"}`)
 	cfg := &config.AppConfig{RepoRoot: root, AppSettingsPath: global}
-	load := SessionOptionsLoaderForConfig(cfg, "halo_infinite")
+	load := func(ctx context.Context) domain.SessionComputeOptions {
+		return SessionOptionsForConfig(ctx, cfg, "halo_infinite")
+	}
 
 	if got := load(context.Background()); got.TeamChangeMode != domain.TeamChangeModeGroup {
 		t.Fatalf("premier appel : %q, attendu group", got.TeamChangeMode)

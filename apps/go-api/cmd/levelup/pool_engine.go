@@ -25,7 +25,6 @@ import (
 	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/capturecli"
 	auth_pool "levelup/go-api/internal/platform/auth/pool"
-	settings_platform "levelup/go-api/internal/platform/settings"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -96,7 +95,7 @@ func newPooledEngine(
 	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider).
 		WithCSRSeasonID(cfg.CurrentCSRSeasonID).
 		WithAssetNameResolution(pool).
-		WithSessionOptionsLoader(settings_platform.SessionOptionsLoaderForConfig(cfg, titlePkg.DefaultSlug))
+		WithSessionOptionsFromConfig(cfg)
 	cache := loadLocalFilmCache()
 	if cache != nil {
 		engine.SetLocalFilmCache(cache)

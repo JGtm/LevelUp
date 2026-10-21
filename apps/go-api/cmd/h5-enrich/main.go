@@ -114,7 +114,7 @@ func main() {
 	report, err := lusync.BackfillEnrichmentFromShared(runCtx, playerDB, shared, lusync.EnrichmentBackfillPlayer{
 		XUID:            xuid,
 		FriendGamertags: friends,
-		SessionOptions:  settings_platform.SessionOptionsLoaderForConfig(cfg, halo5.TitleSlug)(runCtx),
+		SessionOptions:  settings_platform.SessionOptionsForConfig(runCtx, cfg, halo5.TitleSlug),
 	}, true)
 	if err != nil {
 		fatal("BackfillEnrichmentFromShared: %v", err)

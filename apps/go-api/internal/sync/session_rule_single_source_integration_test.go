@@ -28,17 +28,27 @@ const (
 	ruleFriendBGT  = "RuleFriendB"
 )
 
-// buildSessionRuleFixture : 9 matchs espacés de 10 min ; dans l'équipe du joueur, deux amis
-// constants et un 4e coéquipier différent à chaque match (inconnu, hors liste d'amis).
-func buildSessionRuleFixture(t *testing.T) (player, shared *sql.DB) {
+// buildSessionRuleFixture : les `count` premiers des 9 matchs espacés de 10 min ; dans l'équipe
+// du joueur, deux amis constants et un 4e coéquipier différent à chaque match (inconnu, hors
+// liste d'amis).
+func buildSessionRuleFixture(t *testing.T, count int) (player, shared *sql.DB) {
 	t.Helper()
 	shared = openFixtureDB(t, buildSharedDDL())
 	player = openFixtureDB(t, buildPlayerDDL())
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(player); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
+	insertSessionRuleMatches(t, player, shared, 0, count)
+	mustExec(t, shared, `INSERT INTO xuid_aliases (xuid, gamertag) VALUES (?, ?), (?, ?)`,
+		ruleFriendA, ruleFriendAGT, ruleFriendB, ruleFriendBGT)
+	return player, shared
+}
+
+// insertSessionRuleMatches insère les matchs d'indices [from, to) de la série.
+func insertSessionRuleMatches(t *testing.T, player, shared *sql.DB, from, to int) {
+	t.Helper()
 	base := time.Date(2026, 10, 19, 20, 0, 0, 0, time.UTC)
-	for i := 0; i < ruleMatchCount; i++ {
+	for i := from; i < to; i++ {
 		matchID := fmt.Sprintf("rule-match-%02d", i)
 		start := base.Add(time.Duration(i) * 10 * time.Minute)
 		mustExec(t, shared, `
@@ -53,9 +63,6 @@ func buildSessionRuleFixture(t *testing.T) (player, shared *sql.DB) {
 		}
 		mustExec(t, player, `INSERT INTO player_match_enrichment (match_id) VALUES (?)`, matchID)
 	}
-	mustExec(t, shared, `INSERT INTO xuid_aliases (xuid, gamertag) VALUES (?, ?), (?, ?)`,
-		ruleFriendA, ruleFriendAGT, ruleFriendB, ruleFriendBGT)
-	return player, shared
 }
 
 // readSessionAssignments : match_id → "session_id|session_label" (vue _latest).
@@ -109,33 +116,52 @@ func TestSessionRule_SyncAndAdminRecalcApplyTheSameSetting(t *testing.T) {
 			store := settings_platform.NewStore(settingsPath)
 			overlay := filepath.Join(t.TempDir(), "absent_overlay.json")
 
-			// Chemin 1 : synchro (post-sync incrémental).
-			syncPlayer, syncShared := buildSessionRuleFixture(t)
-			engine := NewSyncEngine(t.TempDir(), fixGamertag, fixXUID, nil, nil).
-				WithFriendsLoader(func() ([]string, error) { return friends, nil }).
-				WithSessionOptionsLoader(settings_platform.SessionOptionsLoader(store, overlay))
-			engine.runSessionAssignment(ctx, syncPlayer, syncShared, &domain.PostSyncResult{})
-			bySync := readSessionAssignments(t, syncPlayer)
-
-			// Chemin 2 : recalcul complet admin.
-			adminPlayer, adminShared := buildSessionRuleFixture(t)
+			// Chemin 2 : recalcul complet admin, la référence.
+			adminPlayer, adminShared := buildSessionRuleFixture(t, ruleMatchCount)
 			if _, err := recalculateSessionsFull(ctx, adminPlayer, adminShared, fixXUID,
 				settings_platform.SessionOptions(ctx, store, overlay), friends); err != nil {
 				t.Fatalf("recalcul complet: %v", err)
 			}
 			byAdmin := readSessionAssignments(t, adminPlayer)
-
 			if got := distinctSessions(byAdmin); got != tc.wantSessions {
 				t.Errorf("recalcul admin : %d sessions, attendu %d", got, tc.wantSessions)
 			}
-			if got := distinctSessions(bySync); got != tc.wantSessions {
-				t.Errorf("synchro : %d sessions, attendu %d (réglage %q ignoré ?)", got, tc.wantSessions, tc.mode)
-			}
-			for id, admin := range byAdmin {
-				if bySync[id] != admin {
-					t.Errorf("match %s : synchro %q, recalcul admin %q — deux règles", id, bySync[id], admin)
+
+			// Chemin 1 : synchro. Premier passage (aucune ancre : calcul complet), puis la
+			// branche incrémentale : 5 matchs déjà assignés, 4 nouveaux après l'ancre.
+			for name, steps := range map[string][]int{"premier passage": {ruleMatchCount}, "avec ancre": {5, ruleMatchCount}} {
+				bySync := syncSessionsInSteps(t, settings_platform.SessionOptionsLoader(store, overlay), friends, steps)
+				if got := distinctSessions(bySync); got != tc.wantSessions {
+					t.Errorf("synchro (%s) : %d sessions, attendu %d (réglage %q ignoré ?)", name, got, tc.wantSessions, tc.mode)
+				}
+				for id, admin := range byAdmin {
+					if bySync[id] != admin {
+						t.Errorf("synchro (%s), match %s : %q, recalcul admin %q — deux règles", name, id, bySync[id], admin)
+					}
 				}
 			}
 		})
 	}
+}
+
+// syncSessionsInSteps rejoue l'étape sessions du post-sync après chaque arrivée de matchs :
+// steps[i] est le nombre total de matchs présents au i-ème passage.
+func syncSessionsInSteps(t *testing.T, rule SessionOptionsLoader, friends []string, steps []int) map[string]string {
+	t.Helper()
+	ctx := context.Background()
+	player, shared := buildSessionRuleFixture(t, steps[0])
+	engine := NewSyncEngine(t.TempDir(), fixGamertag, fixXUID, nil, nil).
+		WithFriendsLoader(func() ([]string, error) { return friends, nil }).
+		WithSessionOptionsLoader(rule)
+	present := steps[0]
+	for _, total := range steps {
+		insertSessionRuleMatches(t, player, shared, present, total)
+		present = total
+		r := &domain.PostSyncResult{}
+		engine.runSessionAssignment(ctx, player, shared, r)
+		if len(r.FatalErrors) > 0 {
+			t.Fatalf("étape sessions (%d matchs) : %v", total, r.FatalErrors)
+		}
+	}
+	return readSessionAssignments(t, player)
 }

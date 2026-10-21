@@ -15574,18 +15574,6 @@
 {"Time":"2026-06-26T23:46:21.3992214+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestAppearanceAssetSlug/que_des_tirets_-\u003e_player","Elapsed":0}
 {"Time":"2026-06-26T23:46:21.3992214+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestAppearanceAssetSlug","Output":"--- PASS: TestAppearanceAssetSlug (0.00s)\n"}
 {"Time":"2026-06-26T23:46:21.3992214+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestAppearanceAssetSlug","Elapsed":0}
-{"Time":"2026-06-26T23:46:21.3992214+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags"}
-{"Time":"2026-06-26T23:46:21.3992214+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags","Output":"=== RUN   TestOtherPlayerGamertags\n"}
-{"Time":"2026-06-26T23:46:21.4039338+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags","Output":"--- PASS: TestOtherPlayerGamertags (0.00s)\n"}
-{"Time":"2026-06-26T23:46:21.4039338+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags","Elapsed":0}
-{"Time":"2026-06-26T23:46:21.4039338+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_LoadError"}
-{"Time":"2026-06-26T23:46:21.4039338+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_LoadError","Output":"=== RUN   TestOtherPlayerGamertags_LoadError\n"}
-{"Time":"2026-06-26T23:46:21.4090714+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_LoadError","Output":"--- PASS: TestOtherPlayerGamertags_LoadError (0.00s)\n"}
-{"Time":"2026-06-26T23:46:21.4090714+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_LoadError","Elapsed":0}
-{"Time":"2026-06-26T23:46:21.4090714+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_MissingFile"}
-{"Time":"2026-06-26T23:46:21.4090714+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_MissingFile","Output":"=== RUN   TestOtherPlayerGamertags_MissingFile\n"}
-{"Time":"2026-06-26T23:46:21.4101016+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_MissingFile","Output":"--- PASS: TestOtherPlayerGamertags_MissingFile (0.00s)\n"}
-{"Time":"2026-06-26T23:46:21.4101016+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_MissingFile","Elapsed":0}
 {"Time":"2026-06-26T23:46:21.4101016+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestAllResolverGamertags_ViewerHeadAndDedup"}
 {"Time":"2026-06-26T23:46:21.4101016+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestAllResolverGamertags_ViewerHeadAndDedup","Output":"=== RUN   TestAllResolverGamertags_ViewerHeadAndDedup\n"}
 {"Time":"2026-06-26T23:46:21.4116459+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestAllResolverGamertags_ViewerHeadAndDedup","Output":"--- PASS: TestAllResolverGamertags_ViewerHeadAndDedup (0.00s)\n"}

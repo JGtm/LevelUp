@@ -239,6 +239,40 @@ func TestPostImport_Run_RecomputesAllStagesWithMatches(t *testing.T) {
 	}
 }
 
+// TestPostImport_Run_AppliesTitleSessionRule : l'étape sessions de l'import découpe avec la
+// règle du titre (réglage lu dans cfg.AppSettingsPath), pas avec une valeur propre à l'import.
+// Deux matchs à 1 h d'écart : une session avec l'écart par défaut (120 min), deux avec le
+// réglage à 30 min.
+func TestPostImport_Run_AppliesTitleSessionRule(t *testing.T) {
+	env := setupPostImportEnv(t)
+	env.cfg.AppSettingsPath = filepath.Join(env.cfg.RepoRoot, "app_settings.json")
+	if err := os.WriteFile(env.cfg.AppSettingsPath, []byte(`{"session_gap_minutes":30}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	matchIDs := []string{"rule-m1", "rule-m2"}
+	insertTestMatch(t, env.sharedDB, matchIDs[0], postImportTestXUID, time.Now().Add(-3*time.Hour))
+	insertTestMatch(t, env.sharedDB, matchIDs[1], postImportTestXUID, time.Now().Add(-2*time.Hour))
+
+	svc := NewOpenSpartanPostImportService(env.cfg)
+	if _, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, matchIDs, PostImportOptions{}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	playerDB, err := sql.Open("duckdb", config.PlayerDBPath(env.cfg, "", postImportTestGamertag)+"?access_mode=read_only")
+	if err != nil {
+		t.Fatalf("open player DB: %v", err)
+	}
+	defer playerDB.Close()
+	var distinct int
+	if err := playerDB.QueryRow(`SELECT COUNT(DISTINCT session_id) FROM player_match_enrichment_latest
+		WHERE match_id IN ('rule-m1', 'rule-m2') AND session_id IS NOT NULL`).Scan(&distinct); err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if distinct != 2 {
+		t.Fatalf("sessions distinctes = %d, attendu 2 (écart du réglage à 30 min ignoré ?)", distinct)
+	}
+}
+
 func TestPostImport_PostImportError_StructFields(t *testing.T) {
 	// Sanity-check the public error struct fields stay stable (consumed by the
 	// handler when building the job Result).

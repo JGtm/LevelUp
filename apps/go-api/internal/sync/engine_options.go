@@ -13,11 +13,13 @@ import (
 	"context"
 
 	"levelup/go-api/internal/assets"
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/replayartifacts"
@@ -135,6 +137,18 @@ type SessionOptionsLoader func(ctx context.Context) domain.SessionComputeOptions
 func (e *SyncEngine) WithSessionOptionsLoader(loader SessionOptionsLoader) *SyncEngine {
 	e.sessionOptions = loader
 	return e
+}
+
+// WithSessionOptionsFromConfig branche la règle de session du titre DU MOTEUR lue depuis la
+// configuration (settings.SessionOptionsForConfig : cfg.AppSettingsPath + overlay du titre).
+// C'est le câblage des sites sans Store de réglages (CLI, moteurs construits à la demande) ;
+// le titre vient du moteur, jamais d'un second paramètre qui pourrait diverger. Garde-rail :
+// archlint/session_options_single_source_test.go.
+func (e *SyncEngine) WithSessionOptionsFromConfig(cfg *config.AppConfig) *SyncEngine {
+	titleSlug := e.titleSlug
+	return e.WithSessionOptionsLoader(func(ctx context.Context) domain.SessionComputeOptions {
+		return settings_platform.SessionOptionsForConfig(ctx, cfg, titleSlug)
+	})
 }
 
 // WithCSRSeasonID configure l'identifiant de saison CSR (ex: "CsrSeason8").

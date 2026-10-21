@@ -244,7 +244,7 @@ func (s *OpenSpartanPostImportService) recomputeSessions(
 	opts PostImportOptions,
 	result *PostImportResult,
 ) {
-	sessionOpts := settings_platform.SessionOptionsLoaderForConfig(s.cfg, opts.TitleSlug)(ctx)
+	sessionOpts := settings_platform.SessionOptionsForConfig(ctx, s.cfg, opts.TitleSlug)
 	friends, ferr := friendstore.NewFriendStore(s.cfg.RuntimePaths().PlayerFriendsPath()).Get(xuid)
 	if ferr != nil {
 		s.log.WarnContext(ctx, "post_import_sessions_friends_unavailable", "xuid", xuid, "err", ferr)

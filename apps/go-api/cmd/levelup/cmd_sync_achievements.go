@@ -14,7 +14,6 @@ import (
 	"levelup/go-api/internal/migration"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	duckdbPlatform "levelup/go-api/internal/platform/duckdb"
-	settings_platform "levelup/go-api/internal/platform/settings"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -75,7 +74,7 @@ func runSyncAchievementsForPlayer(ctx context.Context, cfg *config.AppConfig, pl
 
 	provider := auth_platform.NewSISUProvider()
 	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, provider).
-		WithSessionOptionsLoader(settings_platform.SessionOptionsLoaderForConfig(cfg, titleSlug))
+		WithSessionOptionsFromConfig(cfg)
 
 	start := time.Now()
 	ok := engine.RunAchievementsOnly(ctx)
@@ -157,7 +156,7 @@ func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, titleSlu
 		}
 
 		engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, provider).
-			WithSessionOptionsLoader(settings_platform.SessionOptionsLoaderForConfig(cfg, titleSlug))
+			WithSessionOptionsFromConfig(cfg)
 		start := time.Now()
 		ok := engine.RunAchievementsOnly(ctx)
 		duration := time.Since(start).Round(time.Millisecond)

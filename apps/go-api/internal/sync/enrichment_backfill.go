@@ -57,9 +57,15 @@ type EnrichmentBackfillPlayer struct {
 	// Vide → is_with_friends non promu, aucune rupture de session sur un ami.
 	FriendGamertags []string
 	// SessionOptions : la règle de découpage du titre, settings.SessionOptions — la même que
-	// la synchro et le recalcul complet.
+	// la synchro et le recalcul complet. Obligatoire : la valeur zéro (écart <= 0) est refusée
+	// par BackfillEnrichmentFromShared (ErrSessionOptionsMissing), rien n'est écrit.
 	SessionOptions domain.SessionComputeOptions
 }
+
+// ErrSessionOptionsMissing : EnrichmentBackfillPlayer.SessionOptions laissé à sa valeur zéro.
+// La règle produite par settings.SessionOptions a toujours un écart > 0 ; un écart <= 0 signifie
+// qu'un appelant a oublié la règle, et découper quand même écrirait des sessions arbitraires.
+var ErrSessionOptionsMissing = errors.New("enrichment_backfill: règle de session absente (SessionOptions non posé)")
 
 // BackfillEnrichmentFromShared crée + peuple l'enrichissement par joueur depuis le
 // shared, pour un xuid donné. Hors LUSR (géré séparément). Best-effort par étape :
@@ -70,6 +76,9 @@ type EnrichmentBackfillPlayer struct {
 //   - playerDB ouvert en RW (provisionné via migrations TargetPlayer — schéma PME présent)
 //   - sharedDB ouvert en RO/RW (lecture match_participants + medals + highlight_events)
 //   - aucun writer concurrent (sessions/perf/dominance écrivent la player DB)
+//
+// player.SessionOptions à sa valeur zéro : refus immédiat (ErrSessionOptionsMissing), aucune
+// étape ne tourne.
 //
 // force : true = recompute complet (backfill initial CLI) ; false = incrémental
 // (hook live post-sync — seuls les matchs sans score calculé sont traités, comme
@@ -84,6 +93,10 @@ func BackfillEnrichmentFromShared(
 	xuid, friendGamertags := player.XUID, player.FriendGamertags
 	start := time.Now()
 	report := EnrichmentBackfillReport{XUID: xuid}
+	if player.SessionOptions.GapMinutes <= 0 {
+		slog.ErrorContext(ctx, "enrichment_backfill: refusé, règle de session absente", "xuid", xuid)
+		return report, ErrSessionOptionsMissing
+	}
 
 	slog.InfoContext(ctx, "enrichment_backfill: début",
 		"xuid", xuid, "friends_provided", len(friendGamertags))

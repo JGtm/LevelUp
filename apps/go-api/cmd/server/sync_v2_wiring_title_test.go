@@ -23,8 +23,10 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/friendstore"
+	settingsplatform "levelup/go-api/internal/platform/settings"
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
 
@@ -97,6 +99,34 @@ func TestSyncV2WiringHasSingleTitleSource(t *testing.T) {
 				"h5_arena du 2026-06-26 (rapport .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §3).",
 				src, i+1, strings.TrimSpace(line))
 		}
+	}
+}
+
+// TestBuildSyncEngineFactory_WiresSessionRule : le moteur du cycle V2 reçoit la règle de
+// session lue dans le store de réglages du serveur (parité avec scheduler.BuildEngine). Sans
+// elle, l'étape sessions du post-sync V2 découperait avec les défauts.
+func TestBuildSyncEngineFactory_WiresSessionRule(t *testing.T) {
+	settingsPath := filepath.Join(t.TempDir(), "app_settings.json")
+	if err := os.WriteFile(settingsPath, []byte(`{"session_team_change_mode":"group","session_gap_minutes":40}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	deps := SyncV2WiringDeps{
+		Cfg:       &config.AppConfig{RepoRoot: t.TempDir()},
+		TitleSlug: titlePkg.DefaultSlug,
+		Settings:  settingsplatform.NewStore(settingsPath),
+	}
+	engine, err := buildSyncEngineFactoryParityComplete(deps)(context.Background(), syncv2.PlayerProfile{
+		PlayerSlug: "JGtm", Gamertag: "JGtm", XUID: "2533274858283686", TitleSlug: titlePkg.DefaultSlug,
+	})
+	if err != nil {
+		t.Fatalf("factory: %v", err)
+	}
+	if !engine.HasSessionOptionsLoader() {
+		t.Fatal("REGRESSION: moteur du cycle V2 sans règle de session")
+	}
+	got := engine.SessionOptionsForTest(context.Background())
+	if got.TeamChangeMode != domain.TeamChangeModeGroup || got.GapMinutes != 40 {
+		t.Fatalf("règle du moteur V2 = %+v, attendu le réglage du store (group, 40 min)", got)
 	}
 }
 

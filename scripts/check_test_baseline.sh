@@ -265,6 +265,13 @@
 # TestPostImport_ApplyDefaults_RejectsNegativeGap de `internal/service`). 12 lignes JSONL, exactement
 # 3 paires (Package, Test), vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-21 (même correctif, suite de revue P1-1) : 3 tests dont le code testé est
+# supprimé (règle n°7) — `otherPlayerGamertags` de `internal/games/halo_5/livesync`, qui prenait
+# tous les profils déclarés pour les amis du joueur (TestOtherPlayerGamertags, _LoadError,
+# _MissingFile), remplacé par `enrichmentBackfillPlayerFor` (liste d'amis du joueur ; tests
+# TestEnrichmentBackfillPlayerFor_*). 12 lignes JSONL, exactement 3 paires (Package, Test),
+# vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.
