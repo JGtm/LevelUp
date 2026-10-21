@@ -749,3 +749,8 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
   visuel), 6.6 (pied de page AGPL : visuel), 6.7 / 6.7b / 6.7c (au premier match joué ce soir), 6.9.
   Branche `fix/v8-0-1-deploiement` (`0db0ec7f5`) : D-20, D-22, D-23 + changelog [8.0.1] ; fusion vers
   `main` = déploiement, sur feu vert de l'utilisateur.
+
+### 2026-10-21 — v8.0.1 : contenu et attente
+- Contenu sur `feat/v75` (PR #100) : correctifs du 20/10 au soir, retrait du consentement dans l'onglet Compte (D-25), retrait du garde « rejeu local seulement », audit 7.3 et ses 4 correctifs de clés (2 rondes de revue adversariale), Go 1.26.10 (GO-2026-6809), chantier perf des pages (session levelup-3a : Accueil en fenêtre, compactage de nuit).
+- Décision de l'utilisateur relayée par levelup-3a le 21/10 : « Je préfère attendre » — la 8.0.1 ATTEND la suite « résumés par match » (ADR 0039, plan PERF_PAGES_V801 étapes 7 à 9). Pas de fusion de la PR #100 avant l'annonce de fin de ce chantier ; il apportera une étape de release (rattrapage local des résumés, serveur arrêté, puis copie des bases vers le VPS), séquence à recevoir de levelup-3a.
+- Après déploiement : retirer `LEVELUP_REPLAY_PUBLIC=1` du `.env.local` prod ; sauvegarde prod (première avec schéma exporté) ; logs du premier démarrage (clés rétablies / réparations refusées) ; rejeu < 2 s, aucun 5xx `/replay/context` ; unités systemd de compactage en root (sur accord) ; suppression des sauvegardes `*.avant-compaction-20261021T1017*Z.duckdb` après vérification de l'utilisateur ; contrôle à l'écran de la carte de consentement (compte non admin).
