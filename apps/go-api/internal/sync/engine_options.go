@@ -124,6 +124,19 @@ func (e *SyncEngine) WithFriendsLoader(loader FriendsLoader) *SyncEngine {
 	return e
 }
 
+// SessionOptionsLoader rend les options de découpage en sessions du titre du moteur,
+// relues à chaque cycle. En production : settings.SessionOptionsLoader, la règle unique
+// que partagent le recalcul complet, le backfill, l'import et la page Sessions.
+type SessionOptionsLoader func(ctx context.Context) domain.SessionComputeOptions
+
+// WithSessionOptionsLoader attache la règle de découpage en sessions qu'applique l'étape
+// sessions du post-sync. Sans chargeur, l'étape applique la règle par défaut et le
+// journalise (WARN) à chaque cycle : un moteur non câblé ignore le réglage utilisateur.
+func (e *SyncEngine) WithSessionOptionsLoader(loader SessionOptionsLoader) *SyncEngine {
+	e.sessionOptions = loader
+	return e
+}
+
 // WithCSRSeasonID configure l'identifiant de saison CSR (ex: "CsrSeason8").
 // Requis pour que runCSRSnapshotSync appelle l'API — skip silencieux si absent.
 func (e *SyncEngine) WithCSRSeasonID(id string) *SyncEngine {

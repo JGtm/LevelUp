@@ -387,6 +387,10 @@ type SocialService interface {
 
 // SessionsService construit la page des sessions.
 type SessionsService interface {
+	// SessionOptions rend la règle de découpage du joueur : celle du titre
+	// (settings.SessionOptions) avec ses amis résolus, la même que celle des écrivains de
+	// session_id. GetSessions appelé avec elle découpe comme la synchro.
+	SessionOptions(ctx context.Context) domain.SessionComputeOptions
 	GetSessions(ctx context.Context, opts domain.SessionComputeOptions) (domain.SessionsResponse, error)
 }
 

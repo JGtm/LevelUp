@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/worldenrich"
 )
@@ -99,8 +100,12 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 				return fmt.Errorf("acquire shared: %w", err)
 			}
 			defer release()
-			friends := otherPlayerGamertags(cfg, gamertag)
-			if _, err := syncpkg.BackfillEnrichmentFromShared(runCtx, playerDB.SQLDb(), shared, xuid, friends, false); err != nil {
+			backfillPlayer := syncpkg.EnrichmentBackfillPlayer{
+				XUID:            xuid,
+				FriendGamertags: otherPlayerGamertags(cfg, gamertag),
+				SessionOptions:  settings_platform.SessionOptionsLoaderForConfig(cfg, halo5.TitleSlug)(runCtx),
+			}
+			if _, err := syncpkg.BackfillEnrichmentFromShared(runCtx, playerDB.SQLDb(), shared, backfillPlayer, false); err != nil {
 				return err
 			}
 			// LUSR incrémental owner-only (gated capability via registre boot + env
@@ -158,7 +163,8 @@ func buildAchievementsHook(cfg *config.AppConfig, gamertag, xuid string) func(ct
 		// Provider MSAL config-only (zéro dépendance injectée), comme le CLI
 		// sync-achievements (cmd_sync_achievements.go). NewSyncEngineForTitle résout
 		// tous les chemins DB via PathResolver + titleSlug.
-		engine := syncpkg.NewSyncEngineForTitle(cfg.RepoRoot, halo5.TitleSlug, gamertag, xuid, nil, auth.NewSISUProvider())
+		engine := syncpkg.NewSyncEngineForTitle(cfg.RepoRoot, halo5.TitleSlug, gamertag, xuid, nil, auth.NewSISUProvider()).
+			WithSessionOptionsLoader(settings_platform.SessionOptionsLoaderForConfig(cfg, halo5.TitleSlug))
 		return engine.RunAchievementsHook(ctx)
 	}
 }

@@ -25,6 +25,12 @@ func (e *SyncEngine) HasFriendsLoader() bool {
 	return e.friendsLoader != nil
 }
 
+// HasSessionOptionsLoader retourne true si .WithSessionOptionsLoader a été appelé avec
+// un chargeur non-nil. Test-only.
+func (e *SyncEngine) HasSessionOptionsLoader() bool {
+	return e.sessionOptions != nil
+}
+
 // HasPostSyncRunner retourne true si .WithPostSyncRunner a été appelé.
 // Test-only.
 func (e *SyncEngine) HasPostSyncRunner() bool {

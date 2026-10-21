@@ -133,33 +133,19 @@ func TestPostImport_ApplyDefaults_FillsZeroValues(t *testing.T) {
 	if got.TitleSlug != titlePkg.DefaultSlug {
 		t.Errorf("TitleSlug default: want %s, got %s", titlePkg.DefaultSlug, got.TitleSlug)
 	}
-	if got.SessionGapMinutes != 15 {
-		t.Errorf("SessionGapMinutes default: want 15, got %d", got.SessionGapMinutes)
-	}
 }
 
 func TestPostImport_ApplyDefaults_PreservesExplicitValues(t *testing.T) {
 	in := PostImportOptions{
-		TitleSlug:         "halo_5",
-		SessionGapMinutes: 30,
-		ForcePerfScores:   true,
+		TitleSlug:       "halo_5",
+		ForcePerfScores: true,
 	}
 	got := applyPostImportDefaults(in)
 	if got.TitleSlug != "halo_5" {
 		t.Errorf("TitleSlug: want preserved 'halo_5', got %s", got.TitleSlug)
 	}
-	if got.SessionGapMinutes != 30 {
-		t.Errorf("SessionGapMinutes: want preserved 30, got %d", got.SessionGapMinutes)
-	}
 	if !got.ForcePerfScores {
 		t.Error("ForcePerfScores: want preserved true")
-	}
-}
-
-func TestPostImport_ApplyDefaults_RejectsNegativeGap(t *testing.T) {
-	got := applyPostImportDefaults(PostImportOptions{SessionGapMinutes: -5})
-	if got.SessionGapMinutes != 15 {
-		t.Errorf("negative gap should fall back to 15, got %d", got.SessionGapMinutes)
 	}
 }
 
@@ -237,8 +223,8 @@ func TestPostImport_Run_RecomputesAllStagesWithMatches(t *testing.T) {
 		t.Logf("stage %s: %s", e.Stage, e.Err)
 	}
 
-	// Sessions: 3 matches sufficiently spaced (1h apart, gap=15min default)
-	// → 3 distinct sessions written. Verify >0.
+	// Sessions: 3 matches 1h apart, title session rule (no settings file → defaults)
+	// → session_id written on each of them. Verify >0.
 	if result.SessionsTouched <= 0 {
 		t.Errorf("SessionsTouched: want >0 (3 matches inserted), got %d", result.SessionsTouched)
 	}

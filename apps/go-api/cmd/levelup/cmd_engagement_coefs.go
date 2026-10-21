@@ -26,6 +26,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -89,7 +90,8 @@ func runEngagementCoefsAll(ctx context.Context, cfg *config.AppConfig, withScore
 }
 
 func runEngagementCoefsOne(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string, withScores, force bool) error {
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil).
+		WithSessionOptionsLoader(settings_platform.SessionOptionsLoaderForConfig(cfg, titlePkg.DefaultSlug))
 	if withScores {
 		// Calcul complet : recalcule les engagement_scores depuis highlight_events
 		// (peuple les paces) puis recompute les coefs. RunBackfillEngagementScores

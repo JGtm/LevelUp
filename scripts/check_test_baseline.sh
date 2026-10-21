@@ -256,6 +256,15 @@
 # `internal/platform/duckdb/sharedprovider`). 207 lignes JSONL, exactement 8 paires (Package, Test),
 # vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-21 (correctif sessions, règle unique de découpage) : 3 tests dont le code testé
+# est supprimé (règle n°7) — `sessionComputeOptionsFor` du recalcul admin, remplacée par
+# settings.SessionOptions (TestSessionComputeOptionsFor_OverlayPerTitle et
+# TestSessionComputeOptionsFor_GapFallbackAndNilStore de `internal/api/handlers`, repris par
+# TestSessionOptions_OverlayPerTitle / _FallbacksToDefaults de `internal/platform/settings`) et
+# l'écart de session propre à l'import OpenSpartan (`PostImportOptions.SessionGapMinutes` :
+# TestPostImport_ApplyDefaults_RejectsNegativeGap de `internal/service`). 12 lignes JSONL, exactement
+# 3 paires (Package, Test), vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

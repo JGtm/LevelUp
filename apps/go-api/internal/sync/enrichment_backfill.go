@@ -29,7 +29,7 @@ import (
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
 )
 
 // EnrichmentBackfillReport agrège les counts de chaque étape (logs + CLI).
@@ -50,6 +50,17 @@ type EnrichmentBackfillReport struct {
 	Errors              []error // erreurs non-fatales par étape (best-effort)
 }
 
+// EnrichmentBackfillPlayer : le joueur dont l'enrichissement est reconstruit.
+type EnrichmentBackfillPlayer struct {
+	XUID string
+	// FriendGamertags : pour is_with_friends et le découpage en sessions (mode « friends »).
+	// Vide → is_with_friends non promu, aucune rupture de session sur un ami.
+	FriendGamertags []string
+	// SessionOptions : la règle de découpage du titre, settings.SessionOptions — la même que
+	// la synchro et le recalcul complet.
+	SessionOptions domain.SessionComputeOptions
+}
+
 // BackfillEnrichmentFromShared crée + peuple l'enrichissement par joueur depuis le
 // shared, pour un xuid donné. Hors LUSR (géré séparément). Best-effort par étape :
 // une étape qui échoue accumule son erreur dans report.Errors et n'interrompt pas
@@ -60,9 +71,6 @@ type EnrichmentBackfillReport struct {
 //   - sharedDB ouvert en RO/RW (lecture match_participants + medals + highlight_events)
 //   - aucun writer concurrent (sessions/perf/dominance écrivent la player DB)
 //
-// friendGamertags : pour is_with_friends + le mode session squad. Vide → ces étapes
-// dégradent gracieusement (is_with_friends non promu, sessions en mode teammates).
-//
 // force : true = recompute complet (backfill initial CLI) ; false = incrémental
 // (hook live post-sync — seuls les matchs sans score calculé sont traités, comme
 // runScoringSteps Infinite). ensurePlayerEnrichmentRows crée toujours les rows
@@ -70,10 +78,10 @@ type EnrichmentBackfillReport struct {
 func BackfillEnrichmentFromShared(
 	ctx context.Context,
 	playerDB, sharedDB *sql.DB,
-	xuid string,
-	friendGamertags []string,
+	player EnrichmentBackfillPlayer,
 	force bool,
 ) (EnrichmentBackfillReport, error) {
+	xuid, friendGamertags := player.XUID, player.FriendGamertags
 	start := time.Now()
 	report := EnrichmentBackfillReport{XUID: xuid}
 
@@ -104,8 +112,8 @@ func BackfillEnrichmentFromShared(
 		report.HadBotUpdated = n
 	}
 
-	// 0. Sessions (regroupement temporel) — opts par défaut, amis pour le mode squad.
-	if n, err := recalculateSessionsInline(ctx, playerDB, sharedDB, xuid, analysis.DefaultSessionOptions(), friendGamertags); err != nil {
+	// 0. Sessions — règle du titre fournie par l'appelant, amis du joueur.
+	if n, err := recalculateSessionsInline(ctx, playerDB, sharedDB, xuid, player.SessionOptions, friendGamertags); err != nil {
 		track("sessions", err)
 	} else {
 		report.SessionsAssigned = n

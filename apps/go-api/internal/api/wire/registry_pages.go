@@ -252,15 +252,6 @@ func (r *ServiceRegistry) engagementCapabilityFor(slug string) games.CapabilityS
 	return data.Capabilities()[games.CapEngagement]
 }
 
-// Sessions retourne un SessionsService pour le joueur.
-func (r *ServiceRegistry) Sessions(ctx context.Context, slug string) (port.SessionsService, error) {
-	pdb, err := r.resolve(ctx, slug)
-	if err != nil {
-		return nil, err
-	}
-	return service.NewSessionsService(duckdb.NewSessionsRepo(pdb)), nil
-}
-
 // playerMatchesAdapterFor construit le PlayerMatchesRepository du joueur (pdb).
 // P4.3 finale : permet aux services match-rows de consommer canonical
 // exclusivement (legacy fallback path supprimé). L'historique ENRICHI (libellés

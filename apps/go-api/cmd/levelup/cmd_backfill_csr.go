@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/migration"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	auth_pool "levelup/go-api/internal/platform/auth/pool"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -45,7 +46,8 @@ func requireCSRCapability(cfg *config.AppConfig, titleSlug string) error {
 // pool, aucune rotation de token). RunBackfillSharedCSR n exige un client qu en non-dry-run.
 func newDryRunEngine(cfg *config.AppConfig, player domain.PlayerSummary) *go_sync.SyncEngine {
 	return go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{},
-		auth_platform.NewSISUProvider()).WithCSRSeasonID(cfg.CurrentCSRSeasonID)
+		auth_platform.NewSISUProvider()).WithCSRSeasonID(cfg.CurrentCSRSeasonID).
+		WithSessionOptionsLoader(settings_platform.SessionOptionsLoaderForConfig(cfg, titlePkg.DefaultSlug))
 }
 
 // ── CSR backfill ───────────────────────────────────────────────────────────────
