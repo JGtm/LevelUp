@@ -1,7 +1,7 @@
 //go:build cgo
 
 // compaction_e2e_test.go — LA COMPACTION DES PASSES SUPERSÉDÉES sur le schéma partagé RÉEL
-// (chaîne de migration complète, provider title-owned câblé : les 15 tables du registre, leurs
+// (chaîne de migration complète, provider title-owned câblé : toutes les tables du registre, leurs
 // vues, index et séquences tels que la production les porte).
 //
 // Ce qui est verrouillé ici, table par table : passes multiples, match à une seule passe, passe
@@ -32,6 +32,10 @@ import (
 const (
 	tableKillPositions = "kill_positions"
 	passeDeDecodage    = "decode_pass"
+	// colonneDeGeneration : la colonne de génération des résumés (usage, journal des morts).
+	colonneDeGeneration = "summary_pass"
+	// tableTetesDeResume : la tête des résumés du journal, une ligne par génération (ADR 0039).
+	tableTetesDeResume = "match_kill_heads"
 )
 
 // colonneDePasse : l'oracle du test, écrit indépendamment du registre. "" = dernière ligne par
@@ -42,10 +46,12 @@ var colonneDePasse = map[string]string{
 	"match_life_placement": passeDeDecodage,
 	"kill_openings":        passeDeDecodage,
 	tableKillPositions:     passeDeDecodage, "match_weapon_shots": passeDeDecodage,
-	"match_player_positions": "positions_pass", "match_usage_films": "summary_pass",
-	"match_usage_players": "summary_pass", "match_pad_pickups_by_tier": passeDeDecodage,
+	"match_player_positions": "positions_pass", "match_usage_films": colonneDeGeneration,
+	"match_usage_players": colonneDeGeneration, "match_pad_pickups_by_tier": passeDeDecodage,
 	"match_flag_grabs_net": passeDeDecodage, "match_vehicle_takes": passeDeDecodage,
-	"match_bomb_stats": "",
+	tableTetesDeResume: colonneDeGeneration, "match_kill_pairs": colonneDeGeneration,
+	"match_assist_pairs": colonneDeGeneration,
+	"match_bomb_stats":   "",
 }
 
 // passeSemee : une passe d'un match, écrite à l'instant `sec`, de `n` lignes.
@@ -108,7 +114,7 @@ func valeur(t *testing.T, table string, c colonne, p passeSemee, i int) any {
 		return p.passe
 	case c.nom == "written_at":
 		return fmt.Sprintf("2026-01-01 00:00:%02d", p.sec)
-	case strings.HasSuffix(c.nom, "xuid"):
+	case strings.HasSuffix(c.nom, "xuid") && c.typ == "VARCHAR": // n_killer_xuid est un compte
 		return fmt.Sprintf("x%d", i)
 	case c.nom == "time_ms":
 		return i * 1000
@@ -156,8 +162,8 @@ func semerTout(t *testing.T, db *sql.DB) {
 	for table := range colonneDePasse {
 		cols := colonnesDe(t, db, table)
 		for _, p := range passesSemees {
-			if table == "match_usage_films" {
-				p.n = 1 // un film = UNE ligne par passe (la vue des joueurs s y joint)
+			if table == "match_usage_films" || table == tableTetesDeResume {
+				p.n = 1 // un film, une tête = UNE ligne par passe (les vues filles s y joignent)
 			}
 			semerPasse(t, db, table, cols, p, 0)
 		}
@@ -291,7 +297,7 @@ func verifierRapport(t *testing.T, rs []migration.CompactionTable, statut string
 		switch r.Table {
 		case tableKillPositions:
 			raw, kept = 14, 8
-		case "match_usage_films":
+		case "match_usage_films", tableTetesDeResume:
 			raw, kept, latest = 6, 3, 3
 		}
 		after := kept // dry-run : ce qui resterait ; compaction : ce qui reste

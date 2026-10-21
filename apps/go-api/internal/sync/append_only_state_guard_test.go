@@ -113,6 +113,17 @@ var appendOnlyStateTables = []string{
 	// Recette ADR 0026 étape 5 — l'inscription manquait à l'arrivée de la branche.
 	"match_usage_players",
 	"match_usage_films",
+	// match_kill_heads / match_kill_pairs / match_assist_pairs (ADR 0039, 2026-10-21) : créées
+	// directement append-only (id PK seq + summary_pass + summary_rev + src_decode_pass +
+	// written_at). L'unité de génération est LE RÉSUMÉ D'UNE PASSE DU JOURNAL : la tête
+	// (match_kill_heads_latest) retient la dernière génération par match, ses deux filles s'y
+	// JOIGNENT — une passe relue à une révision nouvelle ne compte jamais deux fois. Écriture =
+	// INSERT pur (persist/kill_summaries.go, dans la transaction de la passe) ; aucun DELETE /
+	// ON CONFLICT / INSERT OR REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT. Recette
+	// ADR 0026 étape 5.
+	"match_kill_heads",
+	"match_kill_pairs",
+	"match_assist_pairs",
 	// match_bomb_stats (E3 Assaut, 2026-09-04) : créée directement append-only (id PK seq +
 	// written_at + vue match_bomb_stats_latest). Unité de génération = la PASSE DE DÉCODAGE,
 	// arbitrée par written_at puis id. Écriture = INSERT pur (bomb_stats_persister.go) ;

@@ -137,6 +137,14 @@ var tablesProtegees = []string{
 	// (vues _latest) et même couverture DELETE que match_kill_events ci-dessus.
 	"match_usage_players",
 	"match_usage_films",
+	// match_kill_heads / match_kill_pairs / match_assist_pairs (ADR 0039, 2026-10-21) : tables
+	// append-only NET-NEUVES, résumés par match du journal des morts écrits dans la transaction
+	// de chaque passe (persist/kill_summaries.go, insertKillSummaryRows : INSERT purs). Vues
+	// _latest décidées par la tête, comme match_usage_films / match_usage_players : aucune
+	// entrée d'allowlist, ni ici ni dans allowlistRawDelete.
+	"match_kill_heads",
+	"match_kill_pairs",
+	"match_assist_pairs",
 	// match_bomb_stats (E3 Assaut, 2026-09-04) : table append-only NET-NEUVE (5 statistiques
 	// d'objectif du mode Assaut par joueur/match, reconstruites du film — l'API 343 n'en
 	// publie aucune). Son persister (internal/persist/bomb_stats_persister.go) n'émet que des
