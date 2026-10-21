@@ -110,7 +110,12 @@ go run ./cmd/restore --dry-run
 
 By default `restore` writes a mirror tree under `data/restore/<date>/` (`{slug}/{db}.duckdb`, `{slug}/players/{gamertag}/stats.duckdb`) so you can inspect before swapping anything in.
 
-A restored DB comes back **in the state of its time**, not only its rows: every backup also saves the DB schema (`_ddl_<timestamp>.json`, written since 8.0.2 at the same instant as the Parquet files and the migration ledger) — sequences, tables with their primary keys, UNIQUE constraints, defaults and NOT NULL, indexes and views. The restore replays that schema, then fills each table by named columns; no row is ever dropped. The server's next start then applies the migrations the backup did not have yet, exactly as on the original DB, and rebuilds the keys its canonical schema declares on any table that has none. A snapshot taken before 8.0.2 (no schema file), or whose schema file cannot be read, falls back to tables without keys (`CREATE TABLE AS`); the command lists them, and the next start restores their keys.
+What a restore gives back depends on whether the backup carries the DB schema:
+
+- **Backup with an exported schema** (taken with this version or later): every backup also saves the DB schema (`_ddl_<timestamp>.json`, written at the same instant as the Parquet files and the migration ledger) — sequences, tables with their primary keys, UNIQUE constraints, defaults and NOT NULL, indexes and views. The restore replays that schema, then fills each table by named columns; no row is ever dropped. The DB comes back **in the state of its time**, and the server's next start applies the migrations the backup did not have yet, exactly as on the original DB.
+- **Backup without an exported schema** (every backup taken before this version, or one whose schema file cannot be read): the restore works as it always did — tables and their rows only, through `CREATE TABLE AS`, **without primary keys, defaults, sequences or views**. The next start does not recreate them (the restored migration ledger is complete, no step replays). The command lists these tables. Such a restore is a recovery of raw data, not a ready-to-run DB.
+
+**Take a backup right after upgrading**, once the server has started on the new version: a cycle of the scheduler built into the server, or `go run ./cmd/backup-once` with the server stopped. A full, restorable backup then exists from day one.
 
 **In-place production restore** overwrites the live DuckDB files:
 

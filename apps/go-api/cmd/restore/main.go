@@ -222,7 +222,7 @@ func printResult(result *duckdbbackup.ImportResult) {
 		}
 	}
 	if len(result.FallbackTables) > 0 {
-		fmt.Printf("Tables importées SANS clé (réparées au prochain démarrage) (%d) :\n", len(result.FallbackTables))
+		fmt.Printf("Tables importées par CREATE TABLE AS — lignes seules, SANS clé, défaut, séquence ni vue (%d) :\n", len(result.FallbackTables))
 		for _, t := range result.FallbackTables {
 			fmt.Printf("  ! %s\n", t)
 		}

@@ -124,7 +124,7 @@ func (ts *tableSchema) fallback(ctx context.Context, db *sql.DB, table, src stri
 		return fmt.Errorf("CREATE TABLE AS: %w", err)
 	}
 	ts.result.FallbackTables = append(ts.result.FallbackTables, ts.key+":"+table)
-	slog.WarnContext(ctx, "restore: table importée sans clé ni défaut (la réparation du démarrage rétablira les clés déclarées)",
+	slog.WarnContext(ctx, "restore: table importée par CREATE TABLE AS : lignes seules, sans clé, défaut ni séquence",
 		"key", ts.key, "table", table)
 	return nil
 }

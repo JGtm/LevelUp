@@ -23,8 +23,8 @@ type ImportResult struct {
 	Skipped  []string // keys with no target path mapping
 	// FallbackTables : tables ("clé:table") importées par CREATE TABLE AS — donc SANS clé ni
 	// défaut : sauvegarde sans schéma lisible, table absente de son schéma, ou schéma refusé.
-	// Chacune est journalisée en WARN ; la réparation des clés du démarrage suivant rétablit
-	// celles que le schéma canonique déclare.
+	// Chacune est journalisée en WARN. Rien ne recrée ensuite ce que CREATE TABLE AS a perdu :
+	// le registre des migrations restauré est complet, aucune étape ne rejoue.
 	FallbackTables []string
 	// SchemaFailures : séquences, index ou vues ("clé:<ordre DDL abrégé>") du schéma de la
 	// sauvegarde que DuckDB a refusé de recréer. Chacun est journalisé en WARN.
@@ -59,7 +59,9 @@ type importer struct {
 // est rejoué, puis chaque table est remplie. Jamais le schéma du code courant : une étape de
 // migration absente du registre restauré doit trouver la base telle qu'elle était, sinon une
 // conversion qui se saute sur un schéma déjà à jour perdrait les lignes restées dans l'ancienne
-// table. Le démarrage suivant applique les étapes manquantes, puis rétablit les clés déclarées.
+// table. Le démarrage suivant applique les étapes manquantes. Sans schéma exporté (sauvegarde
+// antérieure à son introduction) : tables et lignes seules par CREATE TABLE AS, sans clé, défaut,
+// séquence ni vue, et rien ne les recrée ensuite.
 //
 // When dryRun is true the function logs what it would do but makes no changes.
 func ImportFromStaging(ctx context.Context, stagingDir string, keyToPath func(string) string,
@@ -198,11 +200,11 @@ func (im *importer) doImport(ctx context.Context, key, parquetDir, dbPath string
 	schema, err := loadSchemaDDL(parquetDir)
 	switch {
 	case err != nil:
-		slog.WarnContext(ctx, "restore: schéma de la sauvegarde illisible — tables importées sans clé",
+		slog.WarnContext(ctx, "restore: schéma de la sauvegarde illisible — tables et lignes seules (ni clé, ni défaut, ni séquence, ni vue)",
 			"key", key, "err", err)
 		schema = nil
 	case schema == nil:
-		slog.WarnContext(ctx, "restore: sauvegarde sans schéma (antérieure à son export) — tables importées sans clé",
+		slog.WarnContext(ctx, "restore: sauvegarde sans schéma (antérieure à son export) — tables et lignes seules (ni clé, ni défaut, ni séquence, ni vue)",
 			"key", key)
 	}
 	ts := &tableSchema{key: key, ddl: schema, result: im.result}

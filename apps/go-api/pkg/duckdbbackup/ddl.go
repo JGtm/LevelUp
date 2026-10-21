@@ -52,7 +52,7 @@ var schemaQueries = struct{ sequences, tables, indexes, views string }{
 // writeSchemaDDL écrit le schéma de db à path, atomiquement (un fichier interrompu ne peut pas
 // être pris pour un schéma complet). Best-effort : un échec est journalisé en WARN sans faire
 // échouer la sauvegarde — les lignes restent sauvegardées, la restauration de cette sauvegarde
-// retombera sur des tables sans clé que la réparation du démarrage complétera.
+// ne rendra que les tables et leurs lignes (CREATE TABLE AS : ni clé, ni défaut, ni séquence, ni vue).
 func writeSchemaDDL(ctx context.Context, db *sql.DB, key, path string) {
 	schema, err := readSchemaDDL(ctx, db)
 	if err == nil {
