@@ -100,8 +100,9 @@ func sanitizeMatchParticipantRow(p *domain.MatchParticipantRow) {
 	p.DeathsExpected = analysis.SanitizeNullableFloat(p.DeathsExpected)
 	p.KillsStddev = analysis.SanitizeNullableFloat(p.KillsStddev)
 	p.DeathsStddev = analysis.SanitizeNullableFloat(p.DeathsStddev)
-	p.TeamMMR = analysis.SanitizeNullableFloat(p.TeamMMR)
-	p.EnemyMMR = analysis.SanitizeNullableFloat(p.EnemyMMR)
+	// Un MMR à 0 est une valeur absente (analysis.MMRKnown) : jamais stocké comme niveau.
+	p.TeamMMR = analysis.KnownMMR(p.TeamMMR)
+	p.EnemyMMR = analysis.KnownMMR(p.EnemyMMR)
 }
 
 // sanitizeEnrichmentRow neutralise les floats de player_match_enrichment.

@@ -12423,7 +12423,7 @@ export interface components {
             session_label?: string;
             start_time: string;
             /** Format: double */
-            team_mmr_avg: number;
+            team_mmr_avg?: number;
         };
         SquadObjectiveEvening: {
             /** Format: double */

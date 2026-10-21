@@ -313,8 +313,8 @@ SELECT
     p.avg_life_seconds,
     p.damage_dealt,
     p.damage_taken,
-    p.team_mmr,
-    p.enemy_mmr,
+    ` + analysis.SQLKnownMMR("p.team_mmr") + ` AS team_mmr,
+    ` + analysis.SQLKnownMMR("p.enemy_mmr") + ` AS enemy_mmr,
     COALESCE(r.team_0_score, -1)                      AS team_0_score,
     COALESCE(r.team_1_score, -1)                      AS team_1_score,
     -- Manches (ADR 0032). -1 = inconnu, même convention que les scores ci-dessus.

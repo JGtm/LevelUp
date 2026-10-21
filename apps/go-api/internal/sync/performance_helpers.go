@@ -222,7 +222,7 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 			COALESCE(mp.personal_score, 0), COALESCE(mp.damage_dealt, 0),
 			COALESCE(mp.damage_taken, 0),
 			COALESCE(mp.rank, 0),
-			COALESCE(mp.team_mmr, 0), COALESCE(mp.enemy_mmr, 0),
+			COALESCE(`+analysis.SQLKnownMMR("mp.team_mmr")+`, 0), COALESCE(`+analysis.SQLKnownMMR("mp.enemy_mmr")+`, 0),
 			COALESCE(mp.kills_expected, 0), COALESCE(mp.deaths_expected, 0),
 			mr.pair_name, COALESCE(mr.is_ranked, FALSE), COALESCE(mr.is_firefight, FALSE)
 		FROM match_registry mr

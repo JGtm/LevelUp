@@ -1,6 +1,8 @@
 // Package duckdb — queries_home_citations.go : requêtes page Home et citations.
 package duckdb
 
+import "levelup/go-api/internal/analysis"
+
 // Q26 — Home : matchs d'un joueur avec KPIs pour le hero card.
 //
 // Phase 3.bis plan stabilisation 2026-05-22 : split en 2 queries Go-side pour
@@ -79,8 +81,8 @@ SELECT
     NULLIF(COALESCE(NULLIF(mp.time_played_seconds, 0), r.playable_duration_seconds), 0) AS time_played_seconds,
     mp.damage_dealt,
     mp.damage_taken,
-    mp.team_mmr,
-    mp.enemy_mmr,
+    ` + analysis.SQLKnownMMR("mp.team_mmr") + ` AS team_mmr,
+    ` + analysis.SQLKnownMMR("mp.enemy_mmr") + ` AS enemy_mmr,
     mp.rank                                                 AS rank_in_team,
     COALESCE(mp.headshot_kills, 0)                          AS headshot_kills,
     COALESCE(perfect.perfect_kills, 0)                      AS perfect_kills,

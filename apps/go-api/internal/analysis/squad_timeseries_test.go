@@ -103,3 +103,42 @@ func TestGroupSquadByTime_FallbackToMonth(t *testing.T) {
 		t.Errorf("expected ≤2 buckets after fallback, got %d", len(got))
 	}
 }
+
+// Un match à MMR 0 (classé abandonné) garde sa place dans le compte de matchs mais n'entre pas
+// dans la moyenne du MMR : le 0 n'est pas un niveau (MMRKnown).
+func TestSquadTimeseries_ZeroMMRIgnoredInAverage(t *testing.T) {
+	sid := 1
+	lbl := "S1-2025"
+	base := time.Date(2025, 1, 6, 12, 0, 0, 0, time.UTC)
+	rows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: base, TeamMMR: 1200, Outcome: domain.OutcomeWin, SessionID: &sid, SessionLabel: &lbl},
+		{MatchID: "m2", StartTime: base.Add(time.Hour), TeamMMR: 0, Outcome: domain.OutcomeLoss, SessionID: &sid, SessionLabel: &lbl},
+	}
+	check := func(t *testing.T, name string, got []domain.SquadTimeseriesPoint) {
+		t.Helper()
+		if len(got) != 1 {
+			t.Fatalf("%s : 1 point attendu, got %d", name, len(got))
+		}
+		if got[0].MatchCount != 2 {
+			t.Errorf("%s : les 2 matchs comptent, got %d", name, got[0].MatchCount)
+		}
+		if got[0].TeamMMRAvg == nil || *got[0].TeamMMRAvg != 1200 {
+			t.Errorf("%s : moyenne du MMR attendue 1200 (le 0 est ignoré), got %v", name, got[0].TeamMMRAvg)
+		}
+	}
+	check(t, "session", groupSquadBySession(rows))
+	check(t, "semaine", bucketByTime(rows, "week"))
+}
+
+// Aucun MMR connu (titre sans MMR, ou tous les matchs à 0) : pas de moyenne, jamais un 0 trompeur.
+func TestSquadTimeseries_NoKnownMMRGivesNoAverage(t *testing.T) {
+	sid := 1
+	lbl := "S1-2025"
+	rows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: time.Now(), TeamMMR: 0, Outcome: domain.OutcomeWin, SessionID: &sid, SessionLabel: &lbl},
+	}
+	got := groupSquadBySession(rows)
+	if len(got) != 1 || got[0].TeamMMRAvg != nil {
+		t.Fatalf("aucune moyenne attendue, got %+v", got)
+	}
+}

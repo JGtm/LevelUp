@@ -99,7 +99,7 @@ type SquadMatchSeriesPoint struct {
 	StartTime        string   `json:"start_time"` // ISO 8601
 	Outcome          int      `json:"outcome"`
 	PerformanceScore *float64 `json:"performance_score,omitempty"`
-	TeamMMRAvg       float64  `json:"team_mmr_avg"`
+	TeamMMRAvg       *float64 `json:"team_mmr_avg,omitempty"` // nil = MMR inconnu (0 de l'API compris)
 	SessionLabel     *string  `json:"session_label,omitempty"`
 }
 

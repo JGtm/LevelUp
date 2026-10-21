@@ -1,5 +1,7 @@
 package duckdb
 
+import "levelup/go-api/internal/analysis"
+
 // Q26CareerTopEncountersTpl : Carrière — les 10 joueurs les plus croisés, hors amis (dernier %s).
 // AUCUN GAMERTAG EN SQL (lot perf L7, 2026-09-23) : plus de `LEFT JOIN v_gamertag_lookup` (vue
 // matérialisée entière à chaque page) ; l'annuaire de la lecture nomme les lignes (squad_repo_annuaire.go).
@@ -357,8 +359,8 @@ SELECT
     mp.damage_dealt,
     mp.damage_taken,
     mp.time_played_seconds,
-    mp.team_mmr,
-    mp.enemy_mmr,
+    ` + analysis.SQLKnownMMR("mp.team_mmr") + ` AS team_mmr,
+    ` + analysis.SQLKnownMMR("mp.enemy_mmr") + ` AS enemy_mmr,
     mp.kills_expected,
     mp.deaths_expected,
     mp.rank,

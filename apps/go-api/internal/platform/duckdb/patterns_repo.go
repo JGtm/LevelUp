@@ -164,7 +164,7 @@ SELECT
     r.duration_seconds,
     p.kills, p.deaths, p.assists, p.accuracy,
     p.damage_dealt, p.damage_taken, p.headshot_kills,
-    p.team_mmr IS NOT NULL AS is_ranked
+    ` + analysis.SQLKnownMMR("p.team_mmr") + ` IS NOT NULL AS is_ranked
 FROM match_participants p
 JOIN match_registry r USING (match_id)
 WHERE p.xuid = ?` + excludeCampaignClause(r.pdb.TitleSlug, "r") + `
