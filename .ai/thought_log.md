@@ -1,4 +1,4 @@
-## [2026-10-21] Plan perf pages v8.0.1, étape 9 : bascule des lecteurs sur les résumés S0-S2 — En cours (9.1 à 9.4 faites ; branche `feat/v801-perf-resumes`)
+## [2026-10-21] Plan perf pages v8.0.1, étape 9 : bascule des lecteurs sur les résumés S0-S2 — En cours (9.1 à 9.5 faites, reste au pilote : parité sur la copie de prod, banc, revue adversariale ; branche `feat/v801-perf-resumes`)
 
 **Décision technique principale** : chaque lecteur d'agrégat du journal lit `match_kill_heads_latest` / `match_kill_pairs_latest` / `match_assist_pairs_latest` ; les fixtures posent leurs résumés par UNE aide de test (`platform/duckdb/resumes_fixture_test.go`) qui relit la passe courante et la résume par `analysis/killsummary` (le paquet ne peut pas importer `persist`) ; `resumes_aide_persist_test.go` (paquet externe, écrit par `persist`) tient l'aide égale à l'écrivain réel champ pour champ. Parité ancien/nouveau par lecteur sur un corpus commun (`resumes_parite_corpus_test.go`) ; les anciens textes ne vivent plus que dans `resumes_parite_anciens_test.go`, fichiers transitoires supprimés au commit 9.4.
 
@@ -10,7 +10,9 @@
 
 **Résultats observés (9.4)** : Q21d, Q28c, Q26l (réécrite une fois sur S0, S1 et S2), Coordination et Q32d sur S2, identiques à l'ancien sur le corpus ; mutation de Q28c (tranche moyenne lue dans la colonne haute) vue échouer par la parité ET par le test de lecteur. Les fichiers de parité (corpus, anciens textes, comparaisons) sont supprimés avec ce commit : ils restent dans l'historique des commits 9.1 à 9.3.
 
-**Conclusion / prochaine étape** : 9.5 (garde-rail archlint). Parité sur la copie de prod au niveau des pages et mesure banc : par le pilote.
+**Résultats observés (9.5)** : garde-rail archlint au niveau de la déclaration (16 lecteurs de lignes allowlistés, mutation vérifiée) ; le garde de la Campagne couvre aussi S1 et S2. ADR 0039 à jour ; le lecteur de citations d'armes de `sync` reste sur le journal (non listé au plan, signalé).
+
+**Conclusion / prochaine étape** : parité au niveau des pages sur la copie de prod et mesure banc (pilote), revue adversariale (pilote), puis étape 10. Parité sur la copie de prod au niveau des pages et mesure banc : par le pilote.
 
 ## [2026-10-21] Plan perf pages v8.0.1, étape 8 : rattrapage des résumés par match (commande et jauge) — En cours (branche `feat/v801-perf-resumes`, 8.3 et 8.4 réservés au pilote)
 
