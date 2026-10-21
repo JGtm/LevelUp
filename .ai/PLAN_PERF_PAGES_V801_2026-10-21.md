@@ -634,10 +634,11 @@ retirées dans le même commit, `bash scripts/check_test_baseline.sh`), mesure b
       portée de Q21d, `matches_measured` de Q32d, `porteuses` de Q28c et Q26l, dénominateur de
       `LoadMatchRangeKills` (`matchRangeKillsTotalSQL` : publiables avec tueur nommé).
       Fait (2026-10-21, sept lecteurs) : les trois lecteurs S0 seuls (`QTacticalUnivers.mesure`, `qSoloJournalNonPubliable`, `matchRangeKillsTotalSQL`) et la part S0 des quatre requêtes mixtes (portée de Q21d, `matches_measured` de Q32d, `porteuses` de Q28c et de Q26l ; leur part S1/S2 bascule en 9.2 et 9.4). Parité verte sur le corpus (`resumes_parite_s0_test.go`). RESTE au pilote : parité au niveau des pages sur la copie de prod et mesure banc.
-- [ ] 9.2 S1 (frags par paire, somme sur la source) : Q23b `GetMatchEncounterStats`, Q26
+- [x] 9.2 S1 (frags par paire, somme sur la source) : Q23b `GetMatchEncounterStats`, Q26
       `GetTopEncountersGlobal`, Q27 `GetRivals`, Q28 `GetRelations`, Q30 `GetRivalTimeline`,
       `CompareRepo.GetEncounterStats`, `ExplorerRepo.GetKillerVictimBetween`, `frags_film` de Q26l ;
       `QKillsBetweenPlayers*` et `TestUneSeuleRequeteDeFragsEntreDeuxJoueurs` remplacés par 9.5.
+      Fait (2026-10-21) : Q23b, Q26, Q27, Q28, Q30 lisent `match_kill_pairs_latest` (somme de `kills`, toutes sources, sans filtre `publishable` comme le journal) ; `QKillsBetweenPlayers` devient UNE requête bornée par la liste des matchs du joueur A (la variante non bornée et `QKillsBetweenPlayersBorne` disparaissent) ; la Comparaison passe donc par `matchsOuJoue` comme l'Explorateur (même résultat, vérifié par la parité). `TestUneSeuleRequeteDeFragsEntreDeuxJoueurs` est conservé (signature mise à jour) : la requête existe toujours. Le `frags_film` de Q26l est `[~]` couvert par 9.4 : la requête Q26l est réécrite UNE fois, sur S1 et S2 ensemble. Parité verte sur le corpus, Halo Infinite et Halo 5 (Campagne exclue), `resumes_parite_s1_test.go`. RESTE au pilote : parité au niveau des pages sur la copie de prod et mesure banc. Les tests de fenêtre des vues filles lues sous une liste bornent la fenêtre de la tête au nombre de têtes (ADR 0039 décision 7 amendée).
 - [ ] 9.3 S1 (frags par arme, somme sur la victime ; tueurs NULL conservés) :
       `bulkWeaponKillsFromSource`, `GetTopWeaponsForMatches`, `LoadFavoriteWeapon`,
       `LoadWeaponKillsAggregated`, `LoadKillSourceCategoryKills`, `qSquadVehicleFrags`,

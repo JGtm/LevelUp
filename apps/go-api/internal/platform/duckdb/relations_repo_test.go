@@ -5,6 +5,8 @@ package duckdb
 import (
 	"context"
 	"testing"
+
+	"levelup/go-api/internal/migration"
 )
 
 // seedRelations crée le schéma minimal pour Q28RelationsScopedTpl : match_participants
@@ -19,10 +21,6 @@ func seedRelations(t *testing.T, db *DB) {
 			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER, kda DOUBLE, gamertag VARCHAR)`,
 		`CREATE TABLE match_registry (
 			match_id VARCHAR, start_time_utc TIMESTAMPTZ, start_time TIMESTAMP, pair_name VARCHAR, map_name VARCHAR, map_name_fr VARCHAR)`,
-		// BASCULE DU 2026-08-03 : Q28 lit la canonique, un JOURNAL (1 ligne = 1 mort).
-		// Plus de `kill_count` : les frags se comptent, ils ne se somment plus.
-		`CREATE TABLE match_kill_events_latest (
-			match_id VARCHAR, feed_killer_xuid VARCHAR, victim_xuid VARCHAR, time_ms INTEGER)`,
 		`CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
 	} {
 		if _, err := db.Exec(ctx, ddl); err != nil {
@@ -51,14 +49,6 @@ func seedRelations(t *testing.T, db *DB) {
 			('m3', TIMESTAMPTZ '2026-03-10 19:00:00+00', NULL, 'Capture the Flag', 'Bazaar', NULL),
 			('m4', TIMESTAMPTZ '2026-04-10 20:00:00+00', NULL, 'Capture the Flag', 'Bazaar', NULL),
 			('m5', TIMESTAMPTZ '2026-05-10 14:00:00+00', NULL, 'Oddball', 'Live Fire', NULL)`,
-		// Mêmes cardinaux qu'avant (me→Foe 2, Foe→me 6+4), une LIGNE par mort.
-		`INSERT INTO match_kill_events_latest VALUES
-			('m3','xuidMe','xuidFoe',1000), ('m3','xuidMe','xuidFoe',1100),
-			('m3','xuidFoe','xuidMe',2000), ('m3','xuidFoe','xuidMe',2100),
-			('m3','xuidFoe','xuidMe',2200), ('m3','xuidFoe','xuidMe',2300),
-			('m3','xuidFoe','xuidMe',2400), ('m3','xuidFoe','xuidMe',2500),
-			('m4','xuidFoe','xuidMe',3000), ('m4','xuidFoe','xuidMe',3100),
-			('m4','xuidFoe','xuidMe',3200), ('m4','xuidFoe','xuidMe',3300)`,
 		`INSERT INTO xuid_aliases VALUES
 			('xuidMe','MePlayer'),
 			('xuidAlly','AllyPlayer'),
@@ -69,6 +59,22 @@ func seedRelations(t *testing.T, db *DB) {
 			t.Fatalf("seedRelations INSERT: %v\nSQL: %s", err, ins)
 		}
 	}
+	// Le journal des morts et ses résumés (ADR 0039) : schéma réel, une passe par match.
+	// Mêmes cardinaux qu'avant (me→Foe 2, Foe→me 6+4), une LIGNE par mort.
+	if err := migration.EnsureMatchKillEvents(db.SQLDb()); err != nil {
+		t.Fatalf("EnsureMatchKillEvents: %v", err)
+	}
+	var morts []ligneJournal
+	for ms, k := range map[int][3]string{
+		1000: {"m3", "xuidMe", "xuidFoe"}, 1100: {"m3", "xuidMe", "xuidFoe"},
+		2000: {"m3", "xuidFoe", "xuidMe"}, 2100: {"m3", "xuidFoe", "xuidMe"}, 2200: {"m3", "xuidFoe", "xuidMe"},
+		2300: {"m3", "xuidFoe", "xuidMe"}, 2400: {"m3", "xuidFoe", "xuidMe"}, 2500: {"m3", "xuidFoe", "xuidMe"},
+		3000: {"m4", "xuidFoe", "xuidMe"}, 3100: {"m4", "xuidFoe", "xuidMe"},
+		3200: {"m4", "xuidFoe", "xuidMe"}, 3300: {"m4", "xuidFoe", "xuidMe"},
+	} {
+		morts = append(morts, ligneJournal{match: k[0], publiable: true, tueur: k[1], victime: k[2], timeMS: ms})
+	}
+	poserJournal(t, db.SQLDb(), morts...)
 }
 
 func TestCareerRepo_GetRelations(t *testing.T) {

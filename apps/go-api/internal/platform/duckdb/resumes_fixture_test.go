@@ -27,18 +27,20 @@ import (
 // La passe d'un match est unique et sa publiabilité est constante : c'est l'invariant de
 // l'écrivain réel (`KillSourceBatch.Publishable`), une fixture qui le contredit échoue.
 type ligneJournal struct {
-	match       string
-	publiable   bool
-	victime     string // victim_xuid
-	tueur       string // feed_killer_xuid
-	tueurGT     string
-	assistant   string // assist_xuid
-	assistantGT string
-	assistKnown bool
-	tag         uint32 // 0 = source non mesurée
-	pctTueur    *uint8
-	pctAssist   *uint8
-	timeMS      int
+	match          string
+	publiable      bool
+	victime        string // victim_xuid
+	victimeGT      string // gamertag de la victime (défaut « Victime »)
+	victimeSansNom bool   // gamertag de la victime vide (chaîne vide, colonne NOT NULL)
+	tueur          string // feed_killer_xuid
+	tueurGT        string
+	assistant      string // assist_xuid
+	assistantGT    string
+	assistKnown    bool
+	tag            uint32 // 0 = source non mesurée
+	pctTueur       *uint8
+	pctAssist      *uint8
+	timeMS         int
 	// passe : l'identifiant de la passe (défaut : une passe par match). ecart décale
 	// l'horodatage de la passe : une passe plus récente se pose avec un écart plus grand.
 	passe string
@@ -107,6 +109,10 @@ func poserJournalOpts(t *testing.T, db *sql.DB, garder bool, lignes ...ligneJour
 		if passe == "" {
 			passe = "pass-" + l.match
 		}
+		victimeGT := l.victimeGT
+		if victimeGT == "" && !l.victimeSansNom {
+			victimeGT = "Victime"
+		}
 		var tag, cat any
 		if l.tag != 0 {
 			tag, cat = int64(l.tag), "None"
@@ -117,8 +123,8 @@ func poserJournalOpts(t *testing.T, db *sql.DB, garder bool, lignes ...ligneJour
 				 victim_gamertag, victim_xuid, feed_killer_gamertag, feed_killer_xuid, feed_present,
 				 assist_gamertag, assist_xuid, assist_known, source_tag, source_category,
 				 killer_damage_pct, assist_damage_pct, read_path, read_origin)
-			VALUES (?, ?, 'rev_test', ?, ?, ?, 'Victime', ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, 'film-walk', 'credit-concordant')`,
-			l.match, passe, at.Add(l.ecart), l.publiable, l.timeMS, nullSiVide(l.victime),
+			VALUES (?, ?, 'rev_test', ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, 'film-walk', 'credit-concordant')`,
+			l.match, passe, at.Add(l.ecart), l.publiable, l.timeMS, victimeGT, nullSiVide(l.victime),
 			nullSiVide(l.tueurGT), nullSiVide(l.tueur), nullSiVide(l.assistantGT), nullSiVide(l.assistant),
 			l.assistKnown, tag, cat, l.pctTueur, l.pctAssist); err != nil {
 			t.Fatalf("poserJournal %s : %v", l.match, err)
@@ -255,4 +261,17 @@ func ecrireResumesDuMatch(t *testing.T, db *sql.DB, matchID string, garder bool,
 			t.Fatalf("appui %s : %v", matchID, err)
 		}
 	}
+}
+
+// tetesDuJournal rend le nombre de lignes de la table des têtes (une par match et génération) :
+// la borne de la fenêtre de la tête quand une vue fille (S1, S2) est lue sous une liste de matchs
+// (ADR 0039 décision 7 : la liste ne traverse pas la jointure, la fenêtre de la tête voit toutes
+// les têtes, jamais les lignes des filles).
+func tetesDuJournal(t *testing.T, db *sql.DB) int {
+	t.Helper()
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_kill_heads`).Scan(&n); err != nil {
+		t.Fatalf("têtes du journal : %v", err)
+	}
+	return n
 }

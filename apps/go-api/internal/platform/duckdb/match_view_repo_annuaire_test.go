@@ -16,6 +16,7 @@ package duckdb
 import (
 	"context"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/observability/timing"
 )
@@ -43,27 +44,14 @@ func seedPorteeBase(t *testing.T, pdb *PlayerDB) {
 	} {
 		execOnSharedDBs(t, pdb, ctx, participant, p[0], p[1], p[2])
 	}
-	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_kill_events_latest
-		(match_id, feed_killer_xuid, feed_killer_gamertag, victim_xuid, victim_gamertag, time_ms)
-		VALUES ('mb2', 'x_kfailleurs', 'NomKFAilleurs', 'x_autre', 'NomAutre', 1000)`)
+	poserJournalSurLesDeux(t, pdb, ligneJournal{match: "mb2", publiable: true, timeMS: 1000,
+		tueur: "x_kfailleurs", tueurGT: "NomKFAilleurs", victime: "x_autre", victimeGT: "NomAutre"})
 	execOnSharedDBs(t, pdb, ctx, `UPDATE shared.match_registry SET start_time_utc = TIMESTAMPTZ '2026-09-01 20:00:00+00'
 		WHERE match_id IN ('ma1', 'ma2', 'mq10')`)
 	// Q12 écarte les lignes toutes nulles (kills/deaths/assists/score à 0) ; Q21 lit raw_json,
 	// absent du schéma de test partagé.
 	execOnSharedDBs(t, pdb, ctx, `UPDATE shared.match_participants SET kills = 1 WHERE match_id = 'ma1'`)
 	execOnSharedDBs(t, pdb, ctx, `ALTER TABLE shared.highlight_events ADD COLUMN IF NOT EXISTS raw_json VARCHAR`)
-	simulerJournalBrut(t, pdb)
-}
-
-// simulerJournalBrut pose la table brute du kill-feed que lit la localisation du repli en portée
-// base (DA.10) : le harnais commun n'a qu'une version par ligne, la brute y est donc la `_latest`.
-// brancherJournalVersionne la remplace par un vrai journal à passes.
-func simulerJournalBrut(t *testing.T, pdb *PlayerDB) {
-	t.Helper()
-	if _, err := pdb.Player.Exec(context.Background(),
-		`CREATE VIEW match_kill_events AS SELECT * FROM shared.match_kill_events_latest`); err != nil {
-		t.Fatalf("table brute simulée : %v", err)
-	}
 }
 
 // verifierNomPorteeBase : la parité avec la jointure, et le nom en clair quand il est connu.
@@ -262,34 +250,6 @@ func TestMatchView_Annuaire_SectionsDeDuree(t *testing.T) {
 	}
 }
 
-// brancherJournalVersionne remplace, sur la connexion que lisent les repos, le journal simulé
-// (une version par ligne) par un journal VERSIONNÉ : une table brute où un match a plusieurs
-// passes de décodage, et une vue `_latest` qui n'en garde que la dernière — même règle que la
-// migration (`decode_pass` de la ligne la plus récente par match, `written_at` puis `id`).
-func brancherJournalVersionne(t *testing.T, pdb *PlayerDB) {
-	t.Helper()
-	ctx := context.Background()
-	const cols = "match_id, feed_killer_xuid, feed_killer_gamertag, victim_xuid, victim_gamertag, time_ms"
-	for _, q := range []string{
-		`CREATE TABLE shared.mke_versions (id INTEGER, match_id VARCHAR, decode_pass INTEGER,
-			written_at TIMESTAMP, feed_killer_xuid VARCHAR, feed_killer_gamertag VARCHAR,
-			victim_xuid VARCHAR, victim_gamertag VARCHAR, time_ms INTEGER)`,
-		`CREATE OR REPLACE VIEW match_kill_events AS
-			SELECT ` + cols + ` FROM shared.match_kill_events_latest
-			UNION ALL SELECT ` + cols + ` FROM shared.mke_versions`,
-		`CREATE OR REPLACE VIEW match_kill_events_latest AS
-			SELECT ` + cols + ` FROM shared.match_kill_events_latest
-			UNION ALL SELECT ` + cols + ` FROM (
-				SELECT * FROM shared.mke_versions
-				QUALIFY decode_pass = FIRST_VALUE(decode_pass) OVER (
-					PARTITION BY match_id ORDER BY written_at DESC, id DESC))`,
-	} {
-		if _, err := pdb.Player.Exec(ctx, q); err != nil {
-			t.Fatalf("journal versionné : %v\nSQL: %s", err, q)
-		}
-	}
-}
-
 // TestAnnuairePorteeBase_RepliLitLaDerniereVersion : DA.10 — le repli « toute la base » LOCALISE
 // ses matchs dans la table brute mais LIT les noms dans `_latest`. Sur mw1 (un autre match que
 // celui qu'on ouvre), une ANCIENNE passe nommait x_version « ZzAncienNom » et x_disparu
@@ -299,18 +259,20 @@ func brancherJournalVersionne(t *testing.T, pdb *PlayerDB) {
 func TestAnnuairePorteeBase_RepliLitLaDerniereVersion(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	seedPorteeBase(t, pdb)
-	brancherJournalVersionne(t, pdb)
 	ctx := context.Background()
 	for _, x := range []string{pTestXUID, "x_version", "x_disparu"} {
 		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants (match_id, xuid, gamertag, outcome, team_id, kills)
 			VALUES ('mv1', ?, '', 2, 0, 1)`, x)
 	}
-	if _, err := pdb.Player.Exec(ctx, `INSERT INTO shared.mke_versions VALUES
-		(1, 'mw1', 1, TIMESTAMP '2026-09-01 10:00:00', 'x_version', 'ZzAncienNom', 'x_autre', 'NomAutre', 1000),
-		(2, 'mw1', 1, TIMESTAMP '2026-09-01 10:00:00', 'x_disparu', 'ZzDisparu', 'x_autre', 'NomAutre', 2000),
-		(3, 'mw1', 2, TIMESTAMP '2026-09-02 10:00:00', 'x_version', 'AaNouveauNom', 'x_autre', 'NomAutre', 1000)`); err != nil {
-		t.Fatalf("versions : %v", err)
+	// Deux passes du même match : l'ancienne nomme x_version « ZzAncienNom » et x_disparu
+	// « ZzDisparu », la dernière ne nomme plus que x_version « AaNouveauNom ».
+	ancienne := func(ms int, tueur, nom string) ligneJournal {
+		return ligneJournal{match: "mw1", passe: "p1", publiable: true, timeMS: ms,
+			tueur: tueur, tueurGT: nom, victime: "x_autre", victimeGT: "NomAutre"}
 	}
+	poserJournalSurLesDeux(t, pdb, ancienne(1000, "x_version", "ZzAncienNom"), ancienne(2000, "x_disparu", "ZzDisparu"))
+	poserJournalSurLesDeuxAJour(t, pdb, ligneJournal{match: "mw1", passe: "p2", ecart: 24 * time.Hour, publiable: true,
+		timeMS: 1000, tueur: "x_version", tueurGT: "AaNouveauNom", victime: "x_autre", victimeGT: "NomAutre"})
 	attendus := map[string]string{"x_version": "AaNouveauNom", "x_disparu": "Joueur paru"}
 	rows, err := NewMatchViewRepo(pdb, pTestXUID).GetMatchScoreboard(ctx, "mv1")
 	if err != nil {
@@ -355,9 +317,8 @@ func TestAnnuairePorteeBase_RepliNommeLesVictimes(t *testing.T) {
 		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants (match_id, xuid, gamertag, outcome, team_id, kills)
 			VALUES ('mv2', ?, '', 2, 0, 1)`, x)
 	}
-	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_kill_events_latest
-		(match_id, feed_killer_xuid, feed_killer_gamertag, victim_xuid, victim_gamertag, time_ms)
-		VALUES ('mb3', 'x_tueur', 'NomTueur', 'x_vicmke', 'NomVicMKE', 1000)`)
+	poserJournalSurLesDeux(t, pdb, ligneJournal{match: "mb3", publiable: true, timeMS: 1000,
+		tueur: "x_tueur", tueurGT: "NomTueur", victime: "x_vicmke", victimeGT: "NomVicMKE"})
 	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.killer_victim_pairs
 		(match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag)
 		VALUES ('mb4', 'x_tueur', 'NomTueur', 'x_vickvp', 'NomVicKVP')`)
@@ -406,10 +367,11 @@ func TestAnnuairePorteeBase_EcartNomme_NomDeKillFeedVariable(t *testing.T) {
 		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants (match_id, xuid, gamertag, outcome, team_id, kills)
 			VALUES ('mv3', ?, '', 2, 0, 1)`, x)
 	}
-	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_kill_events_latest
-		(match_id, feed_killer_xuid, feed_killer_gamertag, victim_xuid, victim_gamertag, time_ms)
-		VALUES ('mv3', 'x_varie', 'NomA', ?, ?, 1000),
-		       ('mb5', 'x_varie', 'NomB', 'x_autre', 'NomAutre', 1000)`, pTestXUID, pTestGamertag)
+	poserJournalSurLesDeux(t, pdb,
+		ligneJournal{match: "mv3", publiable: true, timeMS: 1000, tueur: "x_varie", tueurGT: "NomA",
+			victime: pTestXUID, victimeGT: pTestGamertag},
+		ligneJournal{match: "mb5", publiable: true, timeMS: 1000, tueur: "x_varie", tueurGT: "NomB",
+			victime: "x_autre", victimeGT: "NomAutre"})
 
 	if vue := nomSelonLaVue(t, pdb, "x_varie"); vue != "NomB" {
 		t.Fatalf("la vue rend %q ; l'écart (iii) suppose le MAX de toute la base, « NomB »", vue)

@@ -302,13 +302,16 @@ func TestSquadRepo_Q32_OrdreTotal(t *testing.T) {
 func TestSquadRepo_Q32c_OrdreTotal(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
+	var morts []ligneJournal
 	for _, k := range [][3]any{
 		{"k1", "v2", 3000}, {"k2", "v2", 3000}, {"k3", "v3", 1000}, {"k2", "v1", 3000},
 		{nil, "v4", 3000}, {"k1", "v1", 3000}, {"k2", "v3", 3000},
 	} {
-		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_kill_events_latest
-			(match_id, feed_killer_xuid, victim_xuid, time_ms) VALUES ('mk1', ?, ?, ?)`, k[0], k[1], k[2])
+		tueur, _ := k[0].(string)
+		morts = append(morts, ligneJournal{match: "mk1", publiable: true, tueur: tueur,
+			victime: k[1].(string), timeMS: k[2].(int)})
 	}
+	poserJournalSurLesDeux(t, pdb, morts...)
 	lire := func(n string) []string {
 		paires, err := NewSquadRepo(pdb).LoadKVPairs(ctx, []string{"mk1"})
 		if err != nil {

@@ -33,6 +33,14 @@ var corpusPariteMatchs = []string{"pA", "pB", "pC", "pD", "pE", "pF", "pG"}
 func corpusParite(t *testing.T) *sql.DB {
 	t.Helper()
 	db := ouvrirSharedMigree(t)
+	corpusPariteSur(t, db)
+	return db
+}
+
+// corpusPariteSur pose le corpus sur un shared déjà migré (la base d'une baseNotee, dont les
+// lectures sont notées).
+func corpusPariteSur(t *testing.T, db *sql.DB) {
+	t.Helper()
 	camp := analysis.CampaignExcludedVariantIDs("halo_5")[0]
 	for _, m := range corpusPariteMatchs {
 		variante := "aaaaaaaa-0000-0000-0000-000000000001"
@@ -63,7 +71,6 @@ func corpusParite(t *testing.T) *sql.DB {
 		courante[i].passe, courante[i].ecart = "courante", time.Hour
 	}
 	poserJournalAJour(t, db, courante...)
-	return db
 }
 
 // lignesVariees : une passe qui traverse chaque grain des trois familles.

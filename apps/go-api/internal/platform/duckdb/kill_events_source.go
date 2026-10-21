@@ -52,45 +52,40 @@ import "levelup/go-api/internal/analysis"
 //     affichera l'ARME d'une mort : c'est cet affichage-là qu'elle conditionne.
 const KillEventsCanonicalTable = "match_kill_events_latest"
 
-// QKillsBetweenPlayers : frags échangés entre DEUX joueurs, tous matchs confondus.
+// QKillsBetweenPlayers : frags échangés entre DEUX joueurs, sur une liste de matchs.
 //
 // UNE SEULE COPIE DANS LE DÉPÔT, et c'est délibéré : Q19b (`queries_match.go`, comparaison de
 // deux joueurs) et `CompareRepo.GetEncounterStats` en portaient deux versions textuellement
 // identiques. Les faire diverger, c'est afficher deux nombres différents pour le même duel sur
 // deux pages. Le garde-rail `TestUneSeuleRequeteDeFragsEntreDeuxJoueurs`
-// (`kill_events_source_guard_test.go`) échoue si le littéral
-// réapparaît ailleurs.
+// (`kill_events_source_guard_test.go`) échoue si le littéral réapparaît ailleurs.
 //
-// UNE LECTURE de la vue, pas deux : les deux sens sont deux `COUNT(*) FILTER` sur le même
-// balayage (la fenêtre `_latest` se paie une fois). Pas de `COALESCE` : un `COUNT` sans ligne
-// rend 0, jamais NULL. L'ancienne forme en portait un parce qu'elle faisait `SUM(kill_count)`,
-// qui, lui, rend NULL sur l'ensemble vide.
+// UNE LECTURE de la vue, pas deux : les deux sens sont deux `SUM(kills) FILTER` sur le même
+// balayage. La lecture porte sur `match_kill_pairs_latest` (S1, résumé par match du journal,
+// ADR 0039) : une ligne par (match, tueur, victime, source), `kills` morts ; les sources se
+// somment, rien ne filtre `publishable` (comme le journal). Un `SUM` sans ligne rend NULL : le
+// COALESCE le ramène à 0.
+//
+// BORNE (ADR 0036 I2, ADR 0039 décision 7) : la liste des matchs du joueur A liée en UN paramètre.
+// Un frag de A ou sur A n'existe que dans un match où A joue : la liste de tous ses matchs
+// (`matchsOuJoue`) rend exactement les nombres du duel.
 //
 // CAMPAGNE : la requête porte [campaignExclusionToken] ; le lecteur le résout avec
 // resolveCampaignExclusionByMatchID(q, titre, "match_id") (la base crédit de Halo 5 verse des
 // frags de Campagne dans le kill-feed, le nombre de rencontres voisin ne les compte pas).
 //
-// Paramètres : ?1 = tueur A, ?2 = victime B, ?3 = tueur B, ?4 = victime A.
-// Retourne 2 colonnes : kills_dealt, deaths_suffered.
-var QKillsBetweenPlayers = killsBetweenPlayersSQL("TRUE")
-
-// QKillsBetweenPlayersBorne : la même requête, bornée sous la fenêtre `_latest` du kill-feed
-// par une liste de `match_id` liée en UN paramètre (ADR 0036 I2). Une liste qui contient tous
-// les matchs du joueur A rend exactement les nombres de [QKillsBetweenPlayers] : un frag de A
-// ou sur A n'existe que dans un match de A.
-//
 // Paramètres : ?1 = tueur A, ?2 = victime B, ?3 = tueur B, ?4 = victime A, ?5 = liste.
-var QKillsBetweenPlayersBorne = killsBetweenPlayersSQL(analysis.SQLDansListe("match_id"))
+// Retourne 2 colonnes : kills_dealt, deaths_suffered.
+var QKillsBetweenPlayers = killsBetweenPlayersSQL(analysis.SQLDansListe("match_id"))
 
 // killsBetweenPlayersSQL rend le texte des frags échangés entre deux joueurs ; `borne` est le
-// prédicat WHERE du balayage (`TRUE` = tous les matchs), suivi du jeton d'exclusion de la
-// Campagne.
+// prédicat WHERE du balayage, suivi du jeton d'exclusion de la Campagne.
 func killsBetweenPlayersSQL(borne string) string {
 	return `
 SELECT
-    COUNT(*) FILTER (WHERE feed_killer_xuid = ? AND victim_xuid = ?) AS kills_dealt,
-    COUNT(*) FILTER (WHERE feed_killer_xuid = ? AND victim_xuid = ?) AS deaths_suffered
-FROM ` + KillEventsCanonicalTable + ` WHERE ` + borne + campaignExclusionToken
+    CAST(COALESCE(SUM(kills) FILTER (WHERE feed_killer_xuid = ? AND victim_xuid = ?), 0) AS BIGINT) AS kills_dealt,
+    CAST(COALESCE(SUM(kills) FILTER (WHERE feed_killer_xuid = ? AND victim_xuid = ?), 0) AS BIGINT) AS deaths_suffered
+FROM match_kill_pairs_latest WHERE ` + borne + campaignExclusionToken
 }
 
 // sqlAssistantNomme : le prédicat « le film NOMME l'assistant de cette mort » sur une ligne

@@ -58,10 +58,11 @@ func seedAnnuaire(t *testing.T, pdb *PlayerDB) {
 	for _, a := range [][2]string{{"x_alias", "NomAlias"}, {"x_alias_vide", ""}, {"x_triple", "NomAliasTriple"}} {
 		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES (?, ?)`, a[0], a[1])
 	}
-	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_kill_events_latest
-		(match_id, feed_killer_xuid, feed_killer_gamertag, victim_xuid, victim_gamertag, time_ms)
-		VALUES ('ma1', 'x_kfl', 'NomKFL', 'x_ennemi', 'NomEnnemi', 1000),
-		       ('ma1', 'x_triple', 'NomKFTriple', 'x_ennemi', 'NomEnnemi', 2000)`)
+	poserJournalSurLesDeux(t, pdb,
+		ligneJournal{match: "ma1", publiable: true, timeMS: 1000, tueur: "x_kfl", tueurGT: "NomKFL",
+			victime: "x_ennemi", victimeGT: "NomEnnemi"},
+		ligneJournal{match: "ma1", publiable: true, timeMS: 2000, tueur: "x_triple", tueurGT: "NomKFTriple",
+			victime: "x_ennemi", victimeGT: "NomEnnemi"})
 	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.killer_victim_pairs
 		(match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag)
 		VALUES ('ma2', 'x_kvp', 'NomKVP', 'x_rien', '')`)

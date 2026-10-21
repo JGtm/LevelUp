@@ -1,10 +1,12 @@
-## [2026-10-21] Plan perf pages v8.0.1, étape 9 : bascule des lecteurs sur les résumés S0-S2 — En cours (9.1 faite ; branche `feat/v801-perf-resumes`)
+## [2026-10-21] Plan perf pages v8.0.1, étape 9 : bascule des lecteurs sur les résumés S0-S2 — En cours (9.1 et 9.2 faites ; branche `feat/v801-perf-resumes`)
 
 **Décision technique principale** : chaque lecteur d'agrégat du journal lit `match_kill_heads_latest` / `match_kill_pairs_latest` / `match_assist_pairs_latest` ; les fixtures posent leurs résumés par UNE aide de test (`platform/duckdb/resumes_fixture_test.go`) qui relit la passe courante et la résume par `analysis/killsummary` (le paquet ne peut pas importer `persist`) ; `resumes_aide_persist_test.go` (paquet externe, écrit par `persist`) tient l'aide égale à l'écrivain réel champ pour champ. Parité ancien/nouveau par lecteur sur un corpus commun (`resumes_parite_corpus_test.go`) ; les anciens textes ne vivent plus que dans `resumes_parite_anciens_test.go`, fichiers transitoires supprimés au commit 9.4.
 
 **Résultats observés (9.1)** : sept lecteurs S0 (univers Tactique, journal non publiable, dénominateur de portée, portée Q21d, couverture Q32d, porteuses Q28c et Q26l) identiques à l'ancien sur le corpus (bots xuid NULL, assistant anonyme, victime bot, source inconnue, passe non publiable, match sans journal, Campagne, passe supplantée) ; la parité échoue sous mutation du dénominateur. Un fixture mêlait publiable et non publiable dans une même passe (impossible en production) : scindé en deux matchs (coéquipiers, portée d'arme, Accueil Q26l, Q21d).
 
-**Conclusion / prochaine étape** : 9.2 à 9.5. Parité sur la copie de prod au niveau des pages et mesure banc : par le pilote.
+**Résultats observés (9.2)** : Q23b, Q26, Q27, Q28, Q30, Comparaison et Explorateur sur S1, identiques à l'ancien (réécriture textuelle inverse des requêtes envoyées par les lecteurs réels, mêmes arguments, Halo Infinite et Halo 5) ; `QKillsBetweenPlayers` unique et bornée (la Comparaison lit la liste des matchs du joueur A comme l'Explorateur) ; les fixtures à tables factices `match_kill_events_latest` sont passées au schéma réel (journal et résumés posés par l'aide).
+
+**Conclusion / prochaine étape** : 9.3 à 9.5. Parité sur la copie de prod au niveau des pages et mesure banc : par le pilote.
 
 ## [2026-10-21] Plan perf pages v8.0.1, étape 8 : rattrapage des résumés par match (commande et jauge) — En cours (branche `feat/v801-perf-resumes`, 8.3 et 8.4 réservés au pilote)
 
