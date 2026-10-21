@@ -157,6 +157,54 @@ priorité de `stage`), pas une simple dernière-version. Son swap reste bespoke 
 - **Positif** : le bug ART est éliminé par construction sur les tables d'état ; sûreté de
   migration uniforme (transactionnel + garde + recoverOrphan) ; 8 copies de swap → 1 helper.
 - **Coût** : les tables croissent (N versions). Acceptable (volumes par joueur faibles) ;
-  un compactage périodique pourra être ajouté si besoin (les vues `_latest` restent stables).
+  le compactage des passes supersédées est automatique depuis la v8.0.1 (amendement
+  « Automatic compaction » ci-dessous).
 - **Garde-rail** : `internal/sync/append_only_state_guard_test.go` interdit la
   réintroduction de `DELETE`/`UPDATE`/`ON CONFLICT` sur les tables d'état.
+
+## Amendment (2026-10-21) — Automatic compaction
+
+**Context.** Every re-decode of a film appends a full pass to the film tables; the `_latest`
+views serve one pass but every read scans all of them. `levelup compact-passes` (registry
+`internal/migration/compaction_registry.go`, swap `compaction.go`) rebuilds those tables down to
+the rows their view keeps, but it was a manual, server-stopped gesture and the production
+databases had never been compacted: 26.6 M raw rows for 3.7 M served on 2026-10-21
+(`match_kill_events` 7.98 M for 0.42 M, about 20 passes per match). On a copy of production,
+compaction alone made most pages 2 to 10 times faster (plan `.ai/PLAN_PERF_PAGES_V801_2026-10-21.md`,
+annex A.3): read cost follows the raw row count.
+
+**Decision.** Compaction runs every night as a HOST task, outside the server process, only when
+a gauge says it is worth it:
+
+- *Gauge.* The server's data health check (`scheduler/data_health_passes.go`, at boot then every
+  24 h) measures, for every table of the compaction registry and every title whose shared
+  database exists, `raw rows / kept rows`, where "kept" is the cardinality of the registry rule
+  (what compaction would leave), not the view count — a view that filters more than the pass
+  would otherwise keep a compacted table above 1 forever. Each table is measured under its own
+  short read of the shared database (B-swap provider), never under the writer. Outputs: expvar
+  `levelup.compaction.passes_par_match` and `levelup.compaction.tables_au_dessus_du_seuil`, a WARN
+  per table above the threshold, and the text file `data/global/admin_state/passes_par_match.txt`
+  (`PathResolver.PassesGaugePath`). A partial measurement publishes nothing.
+- *Threshold.* `migration.SeuilPassesParMatch = 1.5`: a compacted table is exactly 1; at 1.5 a read
+  pays at most 50 % dead rows before the next night brings it back to 1.
+- *Host task.* `scripts/compact-passes-nuit.sh`, run by `levelup-compact-passes.timer` at 03:30 UTC
+  (after the 03:00 Docker prune, before the 04:00 restic backup, which also stops the server).
+  If no table of any title is above the threshold it exits without touching anything. Otherwise:
+  lock, restic-not-running check, free disk ≥ size of the shared databases + 2 GiB, `docker compose
+  stop levelup`, `levelup compact-passes --backup-dir /app/data/compaction-backups`, `docker compose
+  start levelup` (always, even on failure), bounded wait for `/health`. Backups older than 24 h are
+  deleted (pattern `*.avant-compaction-*`, that directory only) only after a successful run. A stale
+  (> 48 h) or missing gauge is an error: the task does nothing and exits non-zero.
+
+**Why not in the server.** Compaction rebuilds whole tables. In-process it would hold the shared
+writer for the whole rebuild — measured in production on 2026-10-21 (server stopped):
+`match_kill_events` 35.9 s, `kill_positions` 6.9 s, `match_lives` 5.8 s, Halo 5 `match_kill_events`
+2.0 s, about 90 s for both titles. While the writer is held every page read waits then answers 503
+(3 s user-facing budget), and the windowed rebuild would compete for memory with the server
+(~1.6 GB on the bench, 1.8 GB VPS). A stopped server for about 90 s at 03:30 is the smaller cost.
+
+**Safety net (unchanged).** The CLI takes a byte-for-byte file backup before compacting; each
+table is swapped in its own transaction with cardinality, DDL, index and view-fingerprint checks
+before COMMIT; an orphan build table is refused, never repaired. The manual
+`levelup compact-passes` remains the tool for an immediate compaction (e.g. right after a
+re-decode campaign), with `--dry-run` and `--rewrite-file`.

@@ -3,12 +3,18 @@ package main
 // cmd_compact_passes.go — sous-commande `levelup compact-passes` : L'ENTRETIEN qui retire les
 // passes de décodage supersédées de la base partagée des matchs (plan perf du 2026-09-26, étape C).
 //
-// POURQUOI UNE COMMANDE ET PAS UN AUTOMATISME (DC.6). Chaque redécodage d'un film ajoute une passe
-// entière aux tables du film (INSERT-only, ADR 0019 / 0026) ; la vue `_latest` n'en sert qu'une,
-// mais toute lecture la paie en entier. La compaction reconstruit ces tables à leurs seules lignes
-// servies (migration.CompactSupersededPasses : jamais de DELETE, swap transactionnel vérifié).
-// Elle exige l'ÉCRIVAIN EXCLUSIF — le serveur arrêté — : ni au boot, ni après un sync. Elle se joue
-// après une campagne de redécodage (recuisson, `backfill-killsource`).
+// POURQUOI UNE COMMANDE, SERVEUR ARRÊTÉ. Chaque redécodage d'un film ajoute une passe entière aux
+// tables du film (INSERT-only, ADR 0019 / 0026) ; la vue `_latest` n'en sert qu'une, mais toute
+// lecture la paie en entier. La compaction reconstruit ces tables à leurs seules lignes servies
+// (migration.CompactSupersededPasses : jamais de DELETE, swap transactionnel vérifié). Elle exige
+// l'ÉCRIVAIN EXCLUSIF — le serveur arrêté — : jamais dans le processus serveur, ni au boot, ni
+// après un sync.
+//
+// QUI LA LANCE. Chaque nuit, la tâche hôte `scripts/compact-passes-nuit.sh` (timer systemd) la
+// joue quand la jauge « passes par match » du serveur dépasse migration.SeuilPassesParMatch : elle
+// arrête le serveur, lance cette commande avec `--backup-dir`, le redémarre (ADR 0026, amendement
+// « Automatic compaction »). À la main : pour compacter tout de suite, typiquement juste après une
+// campagne de redécodage (recuisson, `backfill-killsource`), ou pour `--dry-run` / `--rewrite-file`.
 //
 // Nom : `compact-passes`, verbe + objet comme `rebuild-pme-art` (autre entretien serveur arrêté) —
 // l'objet est la PASSE, pas la table : seules les passes supersédées partent.
