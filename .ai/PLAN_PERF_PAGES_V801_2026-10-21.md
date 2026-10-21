@@ -282,7 +282,7 @@ Pour chaque étape qui change du code, AVANT de cocher son gate :
       `{ source, matchIds: [], contextDescriptor: { kind: 'recent' } }`, conservé en sessionStorage :
       `hasNavContent`) ; `useMatchNeighborsResolved` : contexte sans liste = voisins et total de Q25 (tout
       l'historique), libellé du descripteur, contexte propagé à prev/next. Favoris : liste d'ids conservée
-      (bornée). Parité Q25 / ordre de l'Accueil : `TestHomeTiles_OrdreIdentiqueAQ25` (schéma DuckDB réel,
+      (bornée). Q25 lit le lecteur partagé LIVE (`neighborsRead`), plus le snapshot immuable (revue ronde 1, P1 : sur la copie de prod, les 253 matchs les plus récents de Nuzzles étaient absents du snapshot : voisins vides et total 6 989 au lieu de 7 242 ; `TestMatchNeighbors_LisentLeLiveJamaisLeSnapshot`). Parité Q25 / ordre de l'Accueil : `TestHomeTiles_OrdreIdentiqueAQ25` (schéma DuckDB réel,
       ex aequo compris) a REVÉLÉ que Q25 n'avait pas de départage -> `ORDER BY instant DESC, match_id DESC`
       dans `Q25NeighborMatches` et `Q25NeighborMatchesTemplate` (le test échoue sans). [!] La parité « trois
       comptes sur la copie des bases du banc » n'est pas exécutable ici : la copie vit dans le worktree
@@ -316,6 +316,8 @@ Pour chaque étape qui change du code, AVANT de cocher son gate :
   `eslint .` (0 erreur, 26 avertissements existants), `vitest run` complet (987 fichiers, 10 226 tests),
   `lint:colors`, `lint:fields`, `knip` ; [ ] banc : critères Accueil du §2 : mesure par le pilote ;
   [ ] revue adversariale : par le pilote.
+
+- Revue adversariale ronde 1 (pilote, 2026-10-21) : P1-1 Q25 en lecture live [x] ; P1-2 favoris chargement / erreur [x] ; P1-3 voisins gardés pendant le pas [x] ; P1-4 commentaires [x] ; P1-5 `HomeMatchesKindRecent` utilisé [x] ; P1-6 tests qui mordent (fetchMore, Carousel + hook, `useNavigateToMatch`) [x] ; P2 défilement ramené à 30 tuiles : consigné en Découvertes. Ronde 2 : par le pilote.
 
 ### Étape 5 — Vue match (volet 1, conditionnelle à l'étape 2)
 
@@ -506,4 +508,5 @@ banc ~1,56 Go après un passage.
 - (piste A, 2026-10-21) `HomePage.tsx` lit `data.privacy_warning` (`PrivacyBanner`, type web `privacy_warning`) mais `domain.HomePageResponse` ne l'émet pas : le bandeau « compte privé » de l'Accueil ne peut jamais s'afficher. Non traité (hors périmètre).
 - (piste A) `Q25NeighborMatches` n'avait pas de départage des ex aequo (corrigé en 4.4 : il bloquait la parité avec l'ordre de l'Accueil, le test échoue sans le correctif).
 - (piste A) Sans fixtures de démo (générées sur l'hôte de prod seulement), 62 specs E2E data-dépendantes sautent, dont `slice-5-home` : la couverture E2E de l'Accueil n'a pas pu être exercée dans le bac isolé de la piste A.
+- (piste A, revue ronde 1, P2 consigné, non corrigé) Défilement ramené à 30 tuiles quand la tête rechargée change de curseur (`features/home/queries.ts` : `cursors` repart de zéro si `recent_matches_next_before` change) : rare (nouveau match pendant un défilement profond), assumé pour ne jamais recoller des pages à une autre tête.
 - (à compléter pendant l'exécution)

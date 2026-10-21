@@ -12,6 +12,7 @@ import type { HomeMatchesPage, RecentMatchItem } from '@/lib/api/types'
 const hoisted = vi.hoisted(() => ({
   pages: {} as Record<string, unknown>,
   calls: [] as string[],
+  gate: null as Promise<void> | null,
 }))
 
 vi.mock('@/lib/api/client', async (importOriginal) => ({
@@ -19,6 +20,7 @@ vi.mock('@/lib/api/client', async (importOriginal) => ({
   api: {
     get: vi.fn(async (url: string) => {
       hoisted.calls.push(url)
+      if (hoisted.gate) await hoisted.gate
       const key = url.includes('kind=favorites')
         ? 'favorites'
         : (new URL(url, 'http://x').searchParams.get('before') ?? '')
@@ -58,6 +60,7 @@ const head = (next?: string) => ({
 beforeEach(() => {
   hoisted.pages = {}
   hoisted.calls = []
+  hoisted.gate = null
   vi.mocked(api.get).mockClear()
 })
 
@@ -143,6 +146,55 @@ describe('useHomeTiles', () => {
       queries.map((q) => [String(q.queryKey[5]), (q.options as unknown as Opts).refetchInterval(q)]),
     )
     expect(intervals).toEqual({ c0: false, c1: ANALYSIS_PENDING_REFETCH_MS })
+  })
+
+  it("page en vol : des rendus successifs rappellent fetchMore sans jamais redemander la même page", async () => {
+    let release: () => void = () => {}
+    hoisted.gate = new Promise<void>((resolve) => { release = resolve })
+    hoisted.pages = { c0: page(['p1'], 'c1') }
+    const { wrapper } = setup()
+    let renders = 0
+    const { result, rerender } = renderHook(
+      () => {
+        renders++
+        return useHomeTiles('chief', head('c0'))
+      },
+      { wrapper },
+    )
+    act(() => result.current.fetchMore())
+    await waitFor(() => expect(result.current.loadingMore).toBe(true))
+    const settled = renders
+    for (let i = 0; i < 3; i++) {
+      rerender()
+      act(() => result.current.fetchMore()) // le défilement rappelle à chaque rendu tant que la fin est proche
+    }
+    expect(hoisted.calls).toHaveLength(1)
+    // Les rappels ne changent aucun état : seuls les 3 rendus forcés ont eu lieu (pas d'état qui grossit).
+    expect(renders).toBe(settled + 3)
+    release()
+    await waitFor(() => expect(result.current.tiles).toHaveLength(3))
+    expect(hoisted.calls).toHaveLength(1)
+  })
+
+  it("page vide dont le serveur redonne le curseur déjà demandé : pas de boucle de demandes", async () => {
+    hoisted.pages = { c0: { items: [], has_more: true, next_before: 'c0' } satisfies HomeMatchesPage }
+    const { wrapper } = setup()
+    let renders = 0
+    const { result } = renderHook(
+      () => {
+        renders++
+        return useHomeTiles('chief', head('c0'))
+      },
+      { wrapper },
+    )
+    act(() => result.current.fetchMore())
+    await waitFor(() => expect(hoisted.calls).toHaveLength(1))
+    await waitFor(() => expect(result.current.loadingMore).toBe(false))
+    const settled = renders
+    for (let i = 0; i < 3; i++) act(() => result.current.fetchMore())
+    expect(hoisted.calls).toHaveLength(1)
+    expect(renders).toBe(settled) // curseur déjà demandé : aucun état ne change, aucune boucle
+    expect(result.current.tiles).toHaveLength(2)
   })
 
   it("une page en échec : loadError, pas de nouvelle demande tant qu'on n'a pas réessayé", async () => {

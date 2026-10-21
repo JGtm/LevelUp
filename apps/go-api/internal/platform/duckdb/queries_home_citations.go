@@ -1,4 +1,4 @@
-// Package duckdb — queries_home_citations.go : requêtes page Home, citations et médias.
+// Package duckdb — queries_home_citations.go : requêtes page Home et citations.
 package duckdb
 
 // Q26 — Home : matchs d'un joueur avec KPIs pour le hero card.
@@ -460,7 +460,7 @@ ORDER BY total_kills DESC
 LIMIT 1`
 
 // =============================================================================
-// Sprint 13 — Citations + Médias
+// Sprint 13 — Citations
 // =============================================================================
 
 // Q34 : Citations — mappings de citation depuis metadata.duckdb.

@@ -47,6 +47,7 @@ export function HomeMatchesSection({ playerSlug, head }: HomeMatchesSectionProps
   const tiles = useHomeTiles(playerSlug, head)
   const favorites = useHomeFavorites(playerSlug)
   const favoriteMatches = favorites.data?.items ?? []
+  const favoritesLoaded = favorites.data !== undefined
   const favoriteMutation = useSetMatchFavorite(playerSlug)
   const canWriteProfile = useCanWritePlayer(playerSlug) // profil d'ami : pas d'étoile favori
   const navigateToMatch = useNavigateToMatch(playerSlug)
@@ -91,7 +92,7 @@ export function HomeMatchesSection({ playerSlug, head }: HomeMatchesSectionProps
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setTab('favorites')} className={tabClass(tab === 'favorites')}>
             {t('home.matches.tab_favorites')}
-            {favoriteMatches.length > 0 && (
+            {favoritesLoaded && favoriteMatches.length > 0 && (
               <span className="ml-1.5 rounded-full bg-warning/20 px-1.5 py-0.5 text-2xs text-warning">
                 {favoriteMatches.length}
               </span>
@@ -123,6 +124,18 @@ export function HomeMatchesSection({ playerSlug, head }: HomeMatchesSectionProps
             description={t('home.matches.recent_empty_description')}
           />
         )
+      ) : favorites.isError && !favoritesLoaded ? (
+        <EmptyStateNotice
+          title={t('home.matches.favorites_error_title')}
+          description={t('home.matches.favorites_error_description')}
+          actionLabel={t('home.matches.load_retry')}
+          onAction={() => void favorites.refetch()}
+        />
+      ) : !favoritesLoaded ? (
+        <EmptyStateNotice
+          title={t('home.matches.favorites_loading_title')}
+          description={t('home.matches.favorites_loading_description')}
+        />
       ) : favoriteMatches.length > 0 ? (
         <Carousel>{favoriteMatches.map((m) => card(m, 'home_favorites'))}</Carousel>
       ) : (

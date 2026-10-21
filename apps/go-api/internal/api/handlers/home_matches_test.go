@@ -47,7 +47,7 @@ func TestHomeHandler_GetHomeMatches_OK(t *testing.T) {
 	if mock.matchesLocale != "en" {
 		t.Errorf("locale = %q, attendu en", mock.matchesLocale)
 	}
-	want := domain.HomeMatchesRequest{Kind: "recent", Before: "abc", Limit: 45}
+	want := domain.HomeMatchesRequest{Before: "abc", Limit: 45} // genre absent : le service lit « récents »
 	if mock.matchesReq != want {
 		t.Errorf("requête = %+v, attendu %+v", mock.matchesReq, want)
 	}
@@ -91,6 +91,7 @@ func TestHomeHandler_GetHomeMatches_Refus(t *testing.T) {
 		want         int
 	}{
 		{"curseur invalide -> 400", "/players/test-player/pages/home/matches?before=zzz", &mockHomeService{matchesErr: domain.ErrHomeCursorInvalid}, http.StatusBadRequest},
+		{"genre refusé par le service -> 400", "/players/test-player/pages/home/matches", &mockHomeService{matchesErr: domain.ErrHomeKindInvalid}, http.StatusBadRequest},
 		{"genre inconnu -> 422", "/players/test-player/pages/home/matches?kind=tout", &mockHomeService{}, http.StatusUnprocessableEntity},
 		{"limite hors bornes -> 422", "/players/test-player/pages/home/matches?limit=61", &mockHomeService{}, http.StatusUnprocessableEntity},
 		{"limite nulle -> 422", "/players/test-player/pages/home/matches?limit=0", &mockHomeService{}, http.StatusUnprocessableEntity},

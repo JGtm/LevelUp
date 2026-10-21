@@ -24,9 +24,9 @@ type homeMatchesInput struct {
 	PlayerSlug  string `path:"player_slug"`
 	Locale      string `header:"X-LevelUp-Locale"`
 	IfNoneMatch string `header:"If-None-Match"`
-	// Kind : « recent » (défaut) = l'historique par curseur ; « favorites » = les favoris en
+	// Kind : « recent » (défaut quand absent) = l'historique par curseur ; « favorites » = les favoris en
 	// entier (before et limit ignorés).
-	Kind string `query:"kind" enum:"recent,favorites" default:"recent"`
+	Kind string `query:"kind" enum:"recent,favorites"`
 	// Before : curseur `next_before` de la page précédente ; absent = depuis la plus récente.
 	Before string `query:"before" maxLength:"256"`
 	// Limit : tuiles par page (30 par défaut, 60 au plus).
@@ -47,6 +47,9 @@ func (h *HomeHandler) handleGetHomeMatches(ctx context.Context, in *homeMatchesI
 	if err != nil {
 		if errors.Is(err, domain.ErrHomeCursorInvalid) {
 			return nil, humacore.NewError(http.StatusBadRequest, "invalid_cursor", "curseur de pagination invalide")
+		}
+		if errors.Is(err, domain.ErrHomeKindInvalid) {
+			return nil, humacore.NewError(http.StatusBadRequest, "invalid_kind", "genre de liste invalide")
 		}
 		return nil, homePageError(sctx, err, in.PlayerSlug)
 	}

@@ -258,6 +258,14 @@ func TestGetHomeMatches_LimiteEtCurseur(t *testing.T) {
 			t.Errorf("limit=%d : %d tuiles (err %v), attendu %d", c.limit, len(page.Items), err, c.want)
 		}
 	}
+	if _, err := svc.GetHomeMatches(context.Background(), "fr", domain.HomeMatchesRequest{Kind: "tout"}); !errors.Is(err, domain.ErrHomeKindInvalid) {
+		t.Errorf("genre inconnu : err = %v, attendu ErrHomeKindInvalid", err)
+	}
+	for _, kind := range []string{"", domain.HomeMatchesKindRecent} {
+		if page, err := svc.GetHomeMatches(context.Background(), "fr", domain.HomeMatchesRequest{Kind: kind}); err != nil || len(page.Items) != domain.HomeTilesHeadSize {
+			t.Errorf("genre %q : l'historique par défaut attendu (%v)", kind, err)
+		}
+	}
 	if _, err := svc.GetHomeMatches(context.Background(), "fr", domain.HomeMatchesRequest{Before: "pas un curseur"}); !errors.Is(err, domain.ErrHomeCursorInvalid) {
 		t.Errorf("curseur invalide : err = %v, attendu ErrHomeCursorInvalid", err)
 	}

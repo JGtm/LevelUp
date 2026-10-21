@@ -93,6 +93,9 @@ func (s *HomeService) GetHomeMatches(ctx context.Context, locale string, req dom
 	defer func(start time.Time) {
 		observability.RecordDurationMS("home_get_matches", time.Since(start).Milliseconds())
 	}(time.Now())
+	if req.Kind != "" && req.Kind != domain.HomeMatchesKindRecent && req.Kind != domain.HomeMatchesKindFavorites {
+		return nil, domain.ErrHomeKindInvalid
+	}
 	cursor, ok := analysis.ParseHomeTileCursor(req.Before)
 	if !ok && req.Kind != domain.HomeMatchesKindFavorites {
 		return nil, domain.ErrHomeCursorInvalid

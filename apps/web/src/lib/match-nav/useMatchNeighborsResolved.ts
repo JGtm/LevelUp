@@ -16,7 +16,7 @@
  * Le serveur calcule prev/next dans le scope filtré via Q25NeighborMatchesTemplate.
  */
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useRouterState } from '@tanstack/react-router'
 
 import { api } from '@/lib/api/client'
@@ -61,6 +61,9 @@ function useMatchNeighborsAPI(
     },
     enabled: !!playerSlug && !!matchId,
     staleTime: 5 * 60 * 1000,
+    // Pendant le chargement du pas suivant, les voisins du match PRÉCÉDENT restent à l'écran (la
+    // barre ne disparaît pas à chaque pas) ; `isPlaceholder` dit qu'ils ne sont pas ceux de ce match.
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -73,6 +76,9 @@ export type ResolvedNeighborsSource = 'router-state' | 'session-storage' | 'api'
 export interface ResolvedNeighbors {
   data: MatchNeighbors | undefined
   isPending: boolean
+  /** `data` est celle du match précédent, gardée le temps de charger celle-ci : ni compteur ni
+   *  cible de pas ne s'en déduisent. Toujours faux hors source `api`. */
+  isPlaceholder: boolean
   /** Origine du résultat — pour debug et UI conditionnelle. */
   source: ResolvedNeighborsSource
   /** Label humain du contexte d'origine (legacy `filtersLabel`, si state/session). */
@@ -131,6 +137,7 @@ export function useMatchNeighborsResolved(
     return {
       data: apiQuery.data,
       isPending: apiQuery.isPending,
+      isPlaceholder: apiQuery.isPlaceholderData,
       source: 'api',
       contextLabel: localCtx.filtersLabel,
       contextDescriptor: localCtx.contextDescriptor,
@@ -149,6 +156,7 @@ export function useMatchNeighborsResolved(
           total_matches: resolved.total,
         },
         isPending: false,
+        isPlaceholder: false,
         source: stateCtx ? 'router-state' : 'session-storage',
         contextLabel: localCtx.filtersLabel,
         contextDescriptor: localCtx.contextDescriptor,
@@ -169,6 +177,7 @@ export function useMatchNeighborsResolved(
   return {
     data: apiQuery.data,
     isPending: apiQuery.isPending,
+    isPlaceholder: apiQuery.isPlaceholderData,
     source: 'api',
     // Si on a tapé l'API avec un spec URL, le data inclut applied_filters —
     // on l'expose via navContext synthétique pour que l'UI affiche un label.

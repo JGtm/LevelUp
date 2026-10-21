@@ -8,6 +8,9 @@ import "errors"
 // par ce service.
 var ErrHomeCursorInvalid = errors.New("home: curseur de tuiles invalide")
 
+// ErrHomeKindInvalid : le genre demandé n'est ni HomeMatchesKindRecent ni HomeMatchesKindFavorites.
+var ErrHomeKindInvalid = errors.New("home: genre de liste de tuiles invalide")
+
 const (
 	// HomeTilesHeadSize est le nombre de tuiles de la tête servie avec GET /pages/home et la
 	// taille par défaut d'une page suivante.
@@ -18,7 +21,7 @@ const (
 
 // Genres de liste de GET /pages/home/matches.
 const (
-	// HomeMatchesKindRecent : l'historique par curseur (valeur par défaut).
+	// HomeMatchesKindRecent : l'historique par curseur (genre par défaut : un genre vide vaut celui-ci).
 	HomeMatchesKindRecent = "recent"
 	// HomeMatchesKindFavorites : les favoris du joueur, en entier, sans curseur.
 	HomeMatchesKindFavorites = "favorites"

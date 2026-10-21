@@ -332,6 +332,22 @@ en = "The next matches could not be loaded."
 fr = "Réessayer"
 en = "Retry"
 
+[home.matches.favorites_loading_title]
+fr = "Chargement des favoris"
+en = "Loading favorites"
+
+[home.matches.favorites_loading_description]
+fr = "Tes matchs favoris arrivent."
+en = "Your favorite matches are on their way."
+
+[home.matches.favorites_error_title]
+fr = "Favoris indisponibles"
+en = "Favorites unavailable"
+
+[home.matches.favorites_error_description]
+fr = "Les matchs favoris n'ont pas pu être chargés."
+en = "Favorite matches could not be loaded."
+
 # ─── KPI hero card (anciennement kpi.i18n.ts) ─────────────────────────────
 
 [home.kpi.total_time]

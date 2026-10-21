@@ -127,10 +127,14 @@ export function useHomeTiles(playerSlug: string, head: HomeTilesHead): HomeTiles
   const loadError = !!last && last.isError && !last.data
 
   const { hasMore, nextBefore } = merged
+  // Une seule garde de répétition : le curseur à demander est déjà dans la liste demandée. Elle couvre
+  // la page en vol (l'assemblage s'arrête avant elle, donc `nextBefore` est SON curseur), la page en
+  // échec (`retry` seul la redemande) et une page vide dont le serveur redonne son propre curseur
+  // (sinon, boucle sans fin).
   const fetchMore = useCallback(() => {
-    if (!hasMore || !nextBefore || loadingMore || loadError || cursors.includes(nextBefore)) return
+    if (!hasMore || !nextBefore || cursors.includes(nextBefore)) return
     setRequested({ head: headCursor, cursors: [...cursors, nextBefore] })
-  }, [hasMore, nextBefore, loadingMore, loadError, cursors, headCursor])
+  }, [hasMore, nextBefore, cursors, headCursor])
   const retry = useCallback(() => {
     void last?.refetch()
   }, [last])

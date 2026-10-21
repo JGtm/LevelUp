@@ -161,4 +161,62 @@ describe('HomeMatchesSection', () => {
     expect(cached?.recent_matches[0].is_favorite).toBe(true)
     expect(cached?.recent_matches[1].is_favorite).toBe(false)
   })
+
+  it('favoris en chargement : état de chargement affiché (jamais « Aucun favori »), pas de badge', async () => {
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    server.use(
+      http.get('/api/v1/players/:slug/pages/home/matches', async ({ request }) => {
+        if (new URL(request.url).searchParams.get('kind') === 'favorites') {
+          await gate
+          return HttpResponse.json({ items: [tile('f1', true)], has_more: false } satisfies HomeMatchesPage)
+        }
+        return HttpResponse.json({ items: [], has_more: false } satisfies HomeMatchesPage)
+      }),
+    )
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <HomeMatchesSection
+          playerSlug="test-player"
+          head={{ recent_matches: headTiles, recent_matches_has_more: false, recent_matches_next_before: undefined }}
+        />
+      </QueryClientProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Favoris/ }))
+    expect(screen.getByText('Chargement des favoris')).toBeInTheDocument()
+    expect(screen.queryByText('Aucun match favori')).not.toBeInTheDocument()
+    expect(screen.queryByText('0')).not.toBeInTheDocument()
+    release()
+    expect(await screen.findAllByTestId('carousel-item')).toHaveLength(1)
+  })
+
+  it('favoris en erreur : message + Réessayer (jamais « Aucun favori »), puis les favoris arrivent', async () => {
+    let fail = true
+    server.use(
+      http.get('/api/v1/players/:slug/pages/home/matches', ({ request }) => {
+        if (new URL(request.url).searchParams.get('kind') !== 'favorites') {
+          return HttpResponse.json({ items: [], has_more: false } satisfies HomeMatchesPage)
+        }
+        return fail
+          ? HttpResponse.json({ code: 'boom' }, { status: 500 })
+          : HttpResponse.json({ items: [tile('f1', true), tile('f2', true)], has_more: false } satisfies HomeMatchesPage)
+      }),
+    )
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <HomeMatchesSection
+          playerSlug="test-player"
+          head={{ recent_matches: headTiles, recent_matches_has_more: false, recent_matches_next_before: undefined }}
+        />
+      </QueryClientProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Favoris/ }))
+    expect(await screen.findByText('Favoris indisponibles')).toBeInTheDocument()
+    expect(screen.queryByText('Aucun match favori')).not.toBeInTheDocument()
+    fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Réessayer' }))
+    expect(await screen.findAllByTestId('carousel-item')).toHaveLength(2)
+  })
 })

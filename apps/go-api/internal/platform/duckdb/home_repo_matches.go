@@ -1,5 +1,5 @@
 // Package duckdb — home_repo_matches.go : chargement des matchs Home (Q26) +
-// sessions (Q27) + médias récents (Q28) + count total (Q26b).
+// sessions (Q27) + count total (Q26b).
 //
 // Sous-module de home_repo.go (split god-file 2026-05-21).
 package duckdb

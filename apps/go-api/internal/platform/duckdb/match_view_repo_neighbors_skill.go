@@ -17,14 +17,14 @@ import (
 )
 
 // GetMatchNeighbors retourne les matchs précédent/suivant pour la navigation (Q25).
-// Exécutée sur SharedReader (ADR 0016). Un match absent du scope (`sql.ErrNoRows`) rend des
-// voisins vides : c'est une absence constatée ; un lecteur indisponible ou une requête en échec
+// Exécutée sur le SharedReader LIVE (ADR 0016), jamais le snapshot : voir neighborsRead.
+// Un match absent du scope (`sql.ErrNoRows`) rend des voisins vides : c'est une absence constatée ; un lecteur indisponible ou une requête en échec
 // remonte.
 func (r *MatchViewRepo) GetMatchNeighbors(ctx context.Context, xuid, matchID string) (*domain.MatchNeighbors, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.sharedRead().Get(ctx)
+	sharedDB, release, err := r.neighborsRead().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchNeighbors: shared reader: %w", err)
 	}
@@ -82,7 +82,7 @@ func (r *MatchViewRepo) GetMatchNeighborsFiltered(
 	args = append(args, clauseRes.Args...)
 	args = append(args, matchID)
 
-	sharedDB, release, err := r.sharedRead().Get(ctx)
+	sharedDB, release, err := r.neighborsRead().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchNeighborsFiltered: shared reader: %w", err)
 	}
@@ -261,4 +261,16 @@ func (r *MatchViewRepo) GetMatchSharedCSRs(ctx context.Context, matchID string) 
 		return nil, nil
 	}
 	return result, nil
+}
+
+// neighborsRead : le lecteur partagé de Q25 — TOUJOURS le live, jamais l'override snapshot.
+//
+// Depuis que la liste de tuiles de l'Accueil ne transporte plus de liste d'identifiants (D-9), Q25
+// est la source de la navigation prev/next ET du compteur « X/Y » : elle doit lire la MÊME source
+// que cette liste (le chargeur canonique, lecture live). Un snapshot immuable est coupé à une
+// heure donnée : les matchs joués depuis en sont absents (voisins vides pour eux) et le total d'un
+// match plus ancien est faux. Une bascule sur absence ne suffirait pas : le total des matchs
+// présents dans un snapshot ancien resterait faux.
+func (r *MatchViewRepo) neighborsRead() SharedReader {
+	return r.pdb.SharedReadDB()
 }

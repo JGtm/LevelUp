@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
 
@@ -53,4 +54,61 @@ func TestHomeTiles_OrdreIdentiqueAQ25(t *testing.T) {
 		}
 		assertNeighbors(t, got, wantPrev, wantNext, i, len(ordered))
 	}
+}
+
+// TestMatchNeighbors_LisentLeLiveJamaisLeSnapshot : Q25 est la source du prev/next et du compteur
+// depuis l'Accueil ; elle lit la MÊME source que la liste de tuiles (live). Un snapshot coupé avant
+// les derniers matchs ne doit ni vider les voisins de ces matchs ni fausser le total des autres.
+func TestMatchNeighbors_LisentLeLiveJamaisLeSnapshot(t *testing.T) {
+	pdb := newTestPlayerDBForNeighborsScenario(t) // live : n1..n8
+	ctx := context.Background()
+
+	// Snapshot immuable coupé avant les deux derniers matchs (n7, n8).
+	snap := openMemDB(t)
+	seedSharedDBSchema(t, snap)
+	for _, q := range []string{`DELETE FROM shared.match_participants`, `DELETE FROM shared.match_registry`} {
+		if _, err := snap.Exec(ctx, q); err != nil {
+			t.Fatalf("wipe snapshot: %v", err)
+		}
+	}
+	for _, m := range neighborsTestDataset {
+		if m.id == "n7" || m.id == "n8" {
+			continue
+		}
+		if _, err := snap.Exec(ctx, `INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, map_name, pair_name, playlist_name, is_ranked)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`, m.id, m.startUTC, m.startUTC, m.mapName, m.pairName, m.playlist, m.isRanked); err != nil {
+			t.Fatalf("snapshot registry %s: %v", m.id, err)
+		}
+		if _, err := snap.Exec(ctx, `INSERT INTO shared.match_participants
+			(match_id, xuid, gamertag, outcome, team_id) VALUES (?, ?, ?, ?, 0)`, m.id, pTestXUID, pTestGamertag, m.outcome); err != nil {
+			t.Fatalf("snapshot participant %s: %v", m.id, err)
+		}
+	}
+	repo := NewMatchViewRepo(pdb, pTestXUID).WithModeTaxonomy(testModeTaxonomy()).WithSharedReader(LegacySharedReader(snap))
+
+	// Le plus récent du live (absent du snapshot) garde ses voisins et le vrai total.
+	got, err := repo.GetMatchNeighbors(ctx, pTestXUID, "n8")
+	if err != nil {
+		t.Fatalf("GetMatchNeighbors(n8): %v", err)
+	}
+	n7 := "n7"
+	assertNeighbors(t, got, &n7, nil, 0, 8)
+
+	// Un match présent dans le snapshot : le total est celui du live (8), pas du snapshot (6).
+	got, err = repo.GetMatchNeighbors(ctx, pTestXUID, "n4")
+	if err != nil {
+		t.Fatalf("GetMatchNeighbors(n4): %v", err)
+	}
+	n3, n5 := "n3", "n5"
+	assertNeighbors(t, got, &n3, &n5, 4, 8)
+
+	// Même source pour la variante filtrée : la playlist « Ranked Slayer » (n8, n6, n4, n1).
+	spec := &domain.MatchFilterSpec{PlaylistNames: []string{"Ranked Slayer"}}
+	got, err = repo.GetMatchNeighborsFiltered(ctx, pTestXUID, "n8", spec)
+	if err != nil {
+		t.Fatalf("GetMatchNeighborsFiltered(n8): %v", err)
+	}
+	n6 := "n6"
+	assertNeighbors(t, got, &n6, nil, 0, 4)
 }

@@ -5068,7 +5068,6 @@ paths:
           in: query
           name: kind
           schema:
-            default: recent
             enum:
               - recent
               - favorites

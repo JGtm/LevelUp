@@ -164,3 +164,31 @@ describe('useMatchNeighborsResolved — contexte sans liste (Accueil : matchs r�
     expect(result.current.source).toBe('api')
   })
 })
+
+describe('useMatchNeighborsResolved — pas d\'un match au suivant', () => {
+  it('garde les voisins du match précédent (placeholder) pendant le chargement du suivant', async () => {
+    const { api } = await import('@/lib/api/client')
+    let resolveNext: (v: never) => void = () => {}
+    stateCtxRef.current = undefined
+    const { result, rerender } = renderHook(({ id }) => useMatchNeighborsResolved('me', id), {
+      wrapper,
+      initialProps: { id: 'm2' },
+    })
+    await waitFor(() => expect(result.current.data?.current_index).toBe(7))
+    expect(result.current.isPlaceholder).toBe(false)
+
+    vi.mocked(api.get).mockImplementationOnce(
+      () => new Promise((resolve) => { resolveNext = resolve }) as Promise<never>,
+    )
+    rerender({ id: 'm3' })
+    // En attente du match suivant : les voisins précédents restent (la barre ne disparaît pas),
+    // marqués comme tels pour qu'aucun compteur ni cible de pas n'en soit déduit.
+    expect(result.current.data?.current_index).toBe(7)
+    expect(result.current.isPlaceholder).toBe(true)
+
+    resolveNext({ previous_match_id: 'p9', next_match_id: 'n9', current_index: 8, total_matches: 51 } as never)
+    await waitFor(() => expect(result.current.isPlaceholder).toBe(false))
+    expect(result.current.data?.current_index).toBe(8)
+    expect(result.current.data?.total_matches).toBe(51)
+  })
+})

@@ -288,7 +288,9 @@ databases) ran on all of them.
   match page. Previous/next and the "X/Y" counter come from Q25 over the whole history, with the
   same total order (instant descending, then `match_id` descending: Q25 ranks with that tie-break),
   and the context label ("Recent matches") from the navigation context descriptor
-  (`useMatchNeighborsResolved`).
+  (`useMatchNeighborsResolved`). Q25 reads the LIVE shared reader like the tile loader, never the
+  immutable snapshot (`neighborsRead`): a snapshot cut before the latest matches would return no
+  neighbours for them and a short total for the others (`TestMatchNeighbors_LisentLeLiveJamaisLeSnapshot`).
 - Title-agnostic: no comparison of a title slug; the window test runs under `halo_infinite` and
   `halo_5`.
 

@@ -1,28 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { mockTrackMetrics } from '@/test/trackMetrics'
 import { Carousel, CarouselItem } from './carousel'
-
-// jsdom ne mesure rien : on pose les dimensions de la piste (le seul élément `overflow-x-auto`).
-function mockTrackMetrics(m: { scrollWidth: number; clientWidth: number; scrollLeft: number }) {
-  const proto = HTMLElement.prototype
-  const restore: Array<() => void> = []
-  for (const [key, value] of Object.entries({ ...m, offsetWidth: m.clientWidth })) {
-    const desc = Object.getOwnPropertyDescriptor(proto, key)
-    Object.defineProperty(proto, key, { configurable: true, get: () => value, set: () => {} })
-    restore.push(() => (desc ? Object.defineProperty(proto, key, desc) : delete (proto as unknown as Record<string, unknown>)[key]))
-  }
-  // Tuiles de 300 px de pas.
-  const left = Object.getOwnPropertyDescriptor(proto, 'offsetLeft')
-  Object.defineProperty(proto, 'offsetLeft', {
-    configurable: true,
-    get() {
-      const parent = (this as HTMLElement).parentElement
-      return parent ? Array.from(parent.children).indexOf(this as HTMLElement) * 300 : 0
-    },
-  })
-  restore.push(() => (left ? Object.defineProperty(proto, 'offsetLeft', left) : delete (proto as unknown as Record<string, unknown>).offsetLeft))
-  return () => restore.forEach((r) => r())
-}
 
 let unmock: (() => void) | null = null
 afterEach(() => {
