@@ -117,6 +117,9 @@ func TestBuildEngine_AllOptionsWired_GoldenAntiRegression(t *testing.T) {
 	if !engine.HasPostSyncRunner() {
 		t.Error("REGRESSION: PostSyncRunner non câblé — notifications delta + progression V2 muettes (AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21 cause B)")
 	}
+	if !engine.HasSessionOptionsLoader() {
+		t.Error("REGRESSION: règle de session non câblée — la synchro découperait les sessions avec les défauts, pas avec le réglage")
+	}
 	if !engine.HasMediaScanHook() {
 		t.Error("REGRESSION: MediaScanHook non câblé — captures non associées aux matchs")
 	}

@@ -181,7 +181,8 @@ func runFormulaSims(ctx context.Context, cfg *config.AppConfig, t backfillTarget
 // matchs, partant de InitialMU=1500. Aide à choisir la formule optimale.
 
 func runFormulaSimForPlayer(ctx context.Context, cfg *config.AppConfig, titleSlug string, player *domain.PlayerSummary, lastN int) error {
-	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, nil)
+	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, nil).
+		WithSessionOptionsFromConfig(cfg)
 	report, err := engine.RunFormulaSim(ctx, lastN)
 	if err != nil {
 		return err

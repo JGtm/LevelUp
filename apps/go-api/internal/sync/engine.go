@@ -106,6 +106,8 @@ type SyncEngine struct {
 	// (les nouveaux matchs resteront is_with_friends=FALSE jusqu'au prochain
 	// recompute manuel via PUT des amis du joueur ou CLI levelup recompute-friends).
 	friendsLoader FriendsLoader
+	// sessionOptions rend la règle de découpage en sessions du titre (cf. WithSessionOptionsLoader).
+	sessionOptions SessionOptionsLoader
 	// replayArtifacts (lot 6 v7.5) — fil de l'eau des artefacts de rejeu 2D : après
 	// l étape 1.57, les matchs insérés (fenêtre replay_retention_months) voient leur
 	// film persisté au cache disque (filmcache.Write) puis leur artefact construit

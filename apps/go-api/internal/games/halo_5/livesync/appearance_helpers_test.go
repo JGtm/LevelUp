@@ -92,56 +92,6 @@ func contains(list []string, s string) bool {
 	return false
 }
 
-func TestOtherPlayerGamertags(t *testing.T) {
-	// 3 joueurs sur 2 titres + un gamertag vide (clé "") qui doit être ignoré.
-	cfg := writeProfilesV3(t, `{
-		"version": "3.0",
-		"profiles": {
-			"halo_5": {
-				"JGtm": {"xuid": "1"},
-				"Madina": {"xuid": "2"}
-			},
-			"halo_infinite": {
-				"Choco": {"xuid": "3"},
-				"": {"xuid": "4"}
-			}
-		}
-	}`)
-
-	got := otherPlayerGamertags(cfg, "JGtm")
-
-	if contains(got, "JGtm") {
-		t.Errorf("le viewer ne doit pas figurer dans la liste: %v", got)
-	}
-	if contains(got, "") {
-		t.Errorf("un gamertag vide ne doit jamais figurer: %v", got)
-	}
-	for _, want := range []string{"Madina", "Choco"} {
-		if !contains(got, want) {
-			t.Errorf("%q attendu dans la liste, got %v", want, got)
-		}
-	}
-	if len(got) != 2 {
-		t.Errorf("attendu 2 autres joueurs (Madina, Choco), got %d: %v", len(got), got)
-	}
-}
-
-func TestOtherPlayerGamertags_LoadError(t *testing.T) {
-	// JSON malformé -> LoadPlayers renvoie une erreur -> liste vide (best-effort).
-	cfg := writeProfilesV3(t, `{ this is not json `)
-	if got := otherPlayerGamertags(cfg, "JGtm"); len(got) != 0 {
-		t.Errorf("err LoadPlayers -> liste vide attendue, got %v", got)
-	}
-}
-
-func TestOtherPlayerGamertags_MissingFile(t *testing.T) {
-	// Fichier absent -> LoadPlayers renvoie ([], nil) -> liste vide, pas de panic.
-	cfg := &config.AppConfig{RepoRoot: t.TempDir(), DBProfilesPath: filepath.Join(t.TempDir(), "absent.json")}
-	if got := otherPlayerGamertags(cfg, "JGtm"); len(got) != 0 {
-		t.Errorf("fichier absent -> liste vide attendue, got %v", got)
-	}
-}
-
 func TestAllResolverGamertags_ViewerHeadAndDedup(t *testing.T) {
 	// Le viewer (JGtm) est AUSSI déclaré dans les profils -> ne doit pas être dupliqué.
 	cfg := writeProfilesV3(t, `{

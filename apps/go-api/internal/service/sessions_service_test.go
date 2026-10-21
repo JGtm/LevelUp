@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
 )
@@ -13,12 +14,67 @@ import (
 // --- mock ---
 
 type mockSessionsRepo struct {
-	rows []domain.SessionMatchRow
-	err  error
+	rows      []domain.SessionMatchRow
+	err       error
+	friends   map[string]string // gamertag → xuid
+	lookupErr error
 }
 
 func (m *mockSessionsRepo) LoadSessionMatches(_ context.Context) ([]domain.SessionMatchRow, error) {
 	return m.rows, m.err
+}
+
+func (m *mockSessionsRepo) LookupFriendXUIDs(_ context.Context, gamertags []string) ([]string, error) {
+	if m.lookupErr != nil {
+		return nil, m.lookupErr
+	}
+	var out []string
+	for _, gt := range gamertags {
+		if x, ok := m.friends[gt]; ok {
+			out = append(out, x)
+		}
+	}
+	return out, nil
+}
+
+// --- tests SessionsService.SessionOptions ---
+
+func TestSessionsService_SessionOptions_RuleAndFriends(t *testing.T) {
+	repo := &mockSessionsRepo{friends: map[string]string{"AmiA": "xa", "AmiB": "xb"}}
+	rule := func(context.Context) domain.SessionComputeOptions {
+		return domain.SessionComputeOptions{GapMinutes: 45, TeamChangeMode: domain.TeamChangeModeGroup}
+	}
+	svc := NewSessionsService(repo).WithSessionRule(rule, func(context.Context) []string {
+		return []string{"AmiA", "AmiB", "Inconnu"}
+	})
+
+	got := svc.SessionOptions(context.Background())
+	if got.GapMinutes != 45 || got.TeamChangeMode != domain.TeamChangeModeGroup {
+		t.Fatalf("règle non appliquée : %+v", got)
+	}
+	if len(got.FriendsXUIDs) != 2 || got.FriendsXUIDs[0] != "xa" || got.FriendsXUIDs[1] != "xb" {
+		t.Fatalf("amis résolus : %v, attendu [xa xb]", got.FriendsXUIDs)
+	}
+}
+
+func TestSessionsService_SessionOptions_WithoutRuleUsesDefaults(t *testing.T) {
+	got := NewSessionsService(&mockSessionsRepo{}).SessionOptions(context.Background())
+	if got.GapMinutes != analysis.DefaultSessionGapMinutes || got.TeamChangeMode != domain.TeamChangeModeFriends {
+		t.Fatalf("sans règle : %+v, attendu la règle par défaut", got)
+	}
+}
+
+func TestSessionsService_SessionOptions_LookupErrorKeepsRule(t *testing.T) {
+	repo := &mockSessionsRepo{lookupErr: errors.New("shared indisponible")}
+	rule := func(context.Context) domain.SessionComputeOptions {
+		return domain.SessionComputeOptions{GapMinutes: 30, TeamChangeMode: domain.TeamChangeModeFriends}
+	}
+	svc := NewSessionsService(repo).WithSessionRule(rule, func(context.Context) []string { return []string{"AmiA"} })
+
+	got := svc.SessionOptions(context.Background())
+	if got.GapMinutes != 30 || len(got.FriendsXUIDs) != 0 {
+		t.Fatalf("échec de résolution : %+v, attendu la règle sans amis", got)
+	}
 }
 
 // --- tests SessionsService ---

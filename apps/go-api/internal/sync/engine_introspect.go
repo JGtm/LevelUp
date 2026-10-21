@@ -13,6 +13,12 @@
 // retire un With... de BuildEngine.
 package sync
 
+import (
+	"context"
+
+	"levelup/go-api/internal/domain"
+)
+
 // HasSharedProvider retourne true si .WithSharedProvider a été appelé avec
 // une instance non-nil. Test-only.
 func (e *SyncEngine) HasSharedProvider() bool {
@@ -23,6 +29,18 @@ func (e *SyncEngine) HasSharedProvider() bool {
 // une closure non-nil. Test-only.
 func (e *SyncEngine) HasFriendsLoader() bool {
 	return e.friendsLoader != nil
+}
+
+// HasSessionOptionsLoader retourne true si .WithSessionOptionsLoader a été appelé avec
+// un chargeur non-nil. Test-only.
+func (e *SyncEngine) HasSessionOptionsLoader() bool {
+	return e.sessionOptions != nil
+}
+
+// SessionOptionsForTest rend la règle de session qu'appliquerait l'étape sessions (chargeur
+// câblé, sinon défauts). Test-only : prouve que le câblage lit le bon réglage.
+func (e *SyncEngine) SessionOptionsForTest(ctx context.Context) domain.SessionComputeOptions {
+	return e.sessionOptionsFor(ctx)
 }
 
 // HasPostSyncRunner retourne true si .WithPostSyncRunner a été appelé.

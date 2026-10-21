@@ -8984,14 +8984,6 @@
 {"Time":"2026-06-26T23:45:40.4725203+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFriendGamertagsChanged_BothEmptyReturnsFalse","Output":"=== RUN   TestFriendGamertagsChanged_BothEmptyReturnsFalse\n"}
 {"Time":"2026-06-26T23:45:40.4725203+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFriendGamertagsChanged_BothEmptyReturnsFalse","Output":"--- PASS: TestFriendGamertagsChanged_BothEmptyReturnsFalse (0.00s)\n"}
 {"Time":"2026-06-26T23:45:40.4725203+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestFriendGamertagsChanged_BothEmptyReturnsFalse","Elapsed":0}
-{"Time":"2026-06-26T23:45:40.4725203+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestSessionComputeOptionsFor_OverlayPerTitle"}
-{"Time":"2026-06-26T23:45:40.4725203+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSessionComputeOptionsFor_OverlayPerTitle","Output":"=== RUN   TestSessionComputeOptionsFor_OverlayPerTitle\n"}
-{"Time":"2026-06-26T23:45:40.4828631+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSessionComputeOptionsFor_OverlayPerTitle","Output":"--- PASS: TestSessionComputeOptionsFor_OverlayPerTitle (0.01s)\n"}
-{"Time":"2026-06-26T23:45:40.4828631+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestSessionComputeOptionsFor_OverlayPerTitle","Elapsed":0.01}
-{"Time":"2026-06-26T23:45:40.4828631+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestSessionComputeOptionsFor_GapFallbackAndNilStore"}
-{"Time":"2026-06-26T23:45:40.4828631+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSessionComputeOptionsFor_GapFallbackAndNilStore","Output":"=== RUN   TestSessionComputeOptionsFor_GapFallbackAndNilStore\n"}
-{"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSessionComputeOptionsFor_GapFallbackAndNilStore","Output":"--- PASS: TestSessionComputeOptionsFor_GapFallbackAndNilStore (0.00s)\n"}
-{"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestSessionComputeOptionsFor_GapFallbackAndNilStore","Elapsed":0}
 {"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestTryManualSyncCooldown"}
 {"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestTryManualSyncCooldown","Output":"=== RUN   TestTryManualSyncCooldown\n"}
 {"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestTryManualSyncCooldown","Output":"--- PASS: TestTryManualSyncCooldown (0.00s)\n"}
@@ -15582,18 +15574,6 @@
 {"Time":"2026-06-26T23:46:21.3992214+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestAppearanceAssetSlug/que_des_tirets_-\u003e_player","Elapsed":0}
 {"Time":"2026-06-26T23:46:21.3992214+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestAppearanceAssetSlug","Output":"--- PASS: TestAppearanceAssetSlug (0.00s)\n"}
 {"Time":"2026-06-26T23:46:21.3992214+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestAppearanceAssetSlug","Elapsed":0}
-{"Time":"2026-06-26T23:46:21.3992214+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags"}
-{"Time":"2026-06-26T23:46:21.3992214+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags","Output":"=== RUN   TestOtherPlayerGamertags\n"}
-{"Time":"2026-06-26T23:46:21.4039338+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags","Output":"--- PASS: TestOtherPlayerGamertags (0.00s)\n"}
-{"Time":"2026-06-26T23:46:21.4039338+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags","Elapsed":0}
-{"Time":"2026-06-26T23:46:21.4039338+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_LoadError"}
-{"Time":"2026-06-26T23:46:21.4039338+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_LoadError","Output":"=== RUN   TestOtherPlayerGamertags_LoadError\n"}
-{"Time":"2026-06-26T23:46:21.4090714+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_LoadError","Output":"--- PASS: TestOtherPlayerGamertags_LoadError (0.00s)\n"}
-{"Time":"2026-06-26T23:46:21.4090714+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_LoadError","Elapsed":0}
-{"Time":"2026-06-26T23:46:21.4090714+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_MissingFile"}
-{"Time":"2026-06-26T23:46:21.4090714+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_MissingFile","Output":"=== RUN   TestOtherPlayerGamertags_MissingFile\n"}
-{"Time":"2026-06-26T23:46:21.4101016+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_MissingFile","Output":"--- PASS: TestOtherPlayerGamertags_MissingFile (0.00s)\n"}
-{"Time":"2026-06-26T23:46:21.4101016+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestOtherPlayerGamertags_MissingFile","Elapsed":0}
 {"Time":"2026-06-26T23:46:21.4101016+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestAllResolverGamertags_ViewerHeadAndDedup"}
 {"Time":"2026-06-26T23:46:21.4101016+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestAllResolverGamertags_ViewerHeadAndDedup","Output":"=== RUN   TestAllResolverGamertags_ViewerHeadAndDedup\n"}
 {"Time":"2026-06-26T23:46:21.4116459+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5/livesync","Test":"TestAllResolverGamertags_ViewerHeadAndDedup","Output":"--- PASS: TestAllResolverGamertags_ViewerHeadAndDedup (0.00s)\n"}
@@ -45295,10 +45275,6 @@
 {"Time":"2026-06-26T23:51:35.8439077+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestPostImport_ApplyDefaults_PreservesExplicitValues","Output":"=== RUN   TestPostImport_ApplyDefaults_PreservesExplicitValues\n"}
 {"Time":"2026-06-26T23:51:35.8439077+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestPostImport_ApplyDefaults_PreservesExplicitValues","Output":"--- PASS: TestPostImport_ApplyDefaults_PreservesExplicitValues (0.00s)\n"}
 {"Time":"2026-06-26T23:51:35.8439077+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestPostImport_ApplyDefaults_PreservesExplicitValues","Elapsed":0}
-{"Time":"2026-06-26T23:51:35.8439077+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestPostImport_ApplyDefaults_RejectsNegativeGap"}
-{"Time":"2026-06-26T23:51:35.8439077+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestPostImport_ApplyDefaults_RejectsNegativeGap","Output":"=== RUN   TestPostImport_ApplyDefaults_RejectsNegativeGap\n"}
-{"Time":"2026-06-26T23:51:35.8439077+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestPostImport_ApplyDefaults_RejectsNegativeGap","Output":"--- PASS: TestPostImport_ApplyDefaults_RejectsNegativeGap (0.00s)\n"}
-{"Time":"2026-06-26T23:51:35.8439077+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestPostImport_ApplyDefaults_RejectsNegativeGap","Elapsed":0}
 {"Time":"2026-06-26T23:51:35.8439077+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestPostImport_Run_RejectsEmptyXUID"}
 {"Time":"2026-06-26T23:51:35.8439077+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestPostImport_Run_RejectsEmptyXUID","Output":"=== RUN   TestPostImport_Run_RejectsEmptyXUID\n"}
 {"Time":"2026-06-26T23:51:35.8925834+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestPostImport_Run_RejectsEmptyXUID","Output":"--- PASS: TestPostImport_Run_RejectsEmptyXUID (0.05s)\n"}

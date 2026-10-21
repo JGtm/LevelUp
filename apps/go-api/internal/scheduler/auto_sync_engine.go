@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_5/livesync"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/replayartifacts"
@@ -62,6 +63,9 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 			return s.friends.Get(xuid)
 		})
 	}
+	// Règle de découpage en sessions du titre, la même que le recalcul complet. Sans
+	// store de réglages, la règle par défaut s'applique (journalisée à chaque cycle).
+	engine.WithSessionOptionsLoader(settings_platform.SessionOptionsLoader(s.settings, s.cfg.TitleSettingsPath(titleSlug)))
 	s.wireReplayArtifacts(engine)
 	if s.pool != nil {
 		pooledClient := sync.NewPooledHaloClient(s.pool, 0).WithOwner(gamertag) // 0 = defaultPooledRPS

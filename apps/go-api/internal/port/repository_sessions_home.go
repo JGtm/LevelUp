@@ -13,6 +13,10 @@ import (
 type SessionsRepository interface {
 	// LoadSessionMatches retourne les matchs d'un joueur pour le calcul des sessions (Q22).
 	LoadSessionMatches(ctx context.Context) ([]domain.SessionMatchRow, error)
+
+	// LookupFriendXUIDs résout des gamertags d'amis en xuids (xuid_aliases de la base
+	// partagée). Un gamertag inconnu est absent du résultat.
+	LookupFriendXUIDs(ctx context.Context, gamertags []string) ([]string, error)
 }
 
 // StatsRepository fournit les données pour les séries temporelles et le perf score.
@@ -53,6 +57,10 @@ func (n *noopMediaRepo) SetMediaMatchAssociation(_ context.Context, _, _ string)
 type noopSessionsRepo struct{}
 
 func (n *noopSessionsRepo) LoadSessionMatches(_ context.Context) ([]domain.SessionMatchRow, error) {
+	return nil, nil
+}
+
+func (n *noopSessionsRepo) LookupFriendXUIDs(_ context.Context, _ []string) ([]string, error) {
 	return nil, nil
 }
 

@@ -29,6 +29,7 @@ import (
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/migration"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	lusync "levelup/go-api/internal/sync"
 )
 
@@ -110,7 +111,11 @@ func main() {
 	runCtx := ctxkeys.WithTitleSlug(ctx, halo5.TitleSlug)
 	fmt.Printf("enrich h5 : gamertag=%s xuid=%s amis=%v\n", gt, xuid, friends)
 
-	report, err := lusync.BackfillEnrichmentFromShared(runCtx, playerDB, shared, xuid, friends, true)
+	report, err := lusync.BackfillEnrichmentFromShared(runCtx, playerDB, shared, lusync.EnrichmentBackfillPlayer{
+		XUID:            xuid,
+		FriendGamertags: friends,
+		SessionOptions:  settings_platform.SessionOptionsForConfig(runCtx, cfg, halo5.TitleSlug),
+	}, true)
 	if err != nil {
 		fatal("BackfillEnrichmentFromShared: %v", err)
 	}
