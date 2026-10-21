@@ -608,8 +608,9 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
       journal). Pas de jauge des passes dans ce worktree : rien à côté de quoi la poser. Test :
       `data_health_kill_summaries_e2e_test.go` (0 sur base complète ; 3 pour tête absente, ancienne
       révision, passe supplantée ; 0 après rattrapage).
-- [ ] 8.3 Passage complet sur la COPIE des bases du banc, Halo Infinite et Halo 5 ; volume (matchs,
+- [x] 8.3 Passage complet sur la COPIE des bases du banc, Halo Infinite et Halo 5 ; volume (matchs,
       lignes S par match), durée et pic mémoire consignés et ANNONCÉS au user avant 8.4.
+      Résultat (pilote, 2026-10-21, copie de PROD du jour, déjà compactée, 2 fils DuckDB / 512 Mo) : Halo Infinite 3 704 matchs écrits en 2 min 11 s, pic mémoire 212 Mo ; Halo 5 2 754 matchs en 39 s, pic 104 Mo ; 0 échec, 0 restant. Contrôle : têtes = matchs du journal (3 704 et 2 754), somme des `kills` de S1 = lignes de la passe courante et `n_rows` de la tête = lignes de la passe, 0 écart sur les deux titres. Le worktree de banc précédent (`LevelUp-wt-chronos`) a été supprimé par une autre session : banc refait dans ce worktree (`scripts/bench-pages.sh fetch`).
 - [ ] 8.4 Passage sur les bases locales réelles (`LevelUp/data/`), serveur local arrêté avec l'accord
       du user et des sessions actives prévenues ; jauge à 0 pour les deux titres.
 - Gate : doctrine §4 ; jauge à 0 sur la copie et sur les bases locales ; volume et pic mémoire consignés.
