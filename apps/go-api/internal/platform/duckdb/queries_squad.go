@@ -252,8 +252,9 @@ ORDER BY kv.match_id, kv.time_ms, kv.feed_killer_xuid, kv.victim_xuid`
 //     les noms sont déjà résolus (alias compris) — reprendre le nom écrit dans le film
 //     ferait apparaître un même joueur sous deux orthographes dans un seul tableau.
 //
-// COUVERTURE : `matches_measured` compte les matchs de la sélection portant au moins une
-// ligne `publishable AND assist_known`. Le total, lui, est connu de l'appelant (la taille
+// COUVERTURE : `matches_measured` compte les matchs de la sélection dont la tête de résumé
+// (`match_kill_heads_latest`, ADR 0039) est publiable et porte au moins une mort à assistance
+// connue. Le total, lui, est connu de l'appelant (la taille
 // de sa sélection) et n'est pas redemandé à la base. La portée `publishable` est celle des
 // paires : un tableau qui NOMME deux joueurs est une lecture ligne à ligne.
 //
@@ -270,22 +271,20 @@ ORDER BY kv.match_id, kv.time_ms, kv.feed_killer_xuid, kv.victim_xuid`
 // directement — passer par squad_repo.LoadSquadAssistPairs().
 const Q32dSquadAssistPairsTemplate = `
 WITH scope AS (
-    SELECT COUNT(DISTINCT match_id) FILTER (
-        WHERE publishable AND assist_known
+    SELECT COUNT(*) FILTER (
+        WHERE publishable AND n_assist_known > 0
     ) AS matches_measured
-    FROM ` + KillEventsCanonicalTable + `
+    FROM match_kill_heads_latest
     WHERE match_id IN (%s)
 ),
 pairs AS (
     SELECT
         assist_xuid,
         feed_killer_xuid,
-        COUNT(*)                                                       AS assist_count,
-        COUNT(*) FILTER (WHERE assist_damage_pct > killer_damage_pct)  AS stolen_count
-    FROM ` + KillEventsCanonicalTable + `
+        CAST(SUM(n) AS BIGINT)         AS assist_count,
+        CAST(SUM(n_stolen) AS BIGINT)  AS stolen_count
+    FROM match_assist_pairs_latest
     WHERE match_id IN (%s)
-      AND publishable
-      AND assist_known
       AND assist_xuid      IN (%s)
       AND feed_killer_xuid IN (%s)
     GROUP BY assist_xuid, feed_killer_xuid

@@ -461,26 +461,66 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
 
 ### Étape 7 — Familles S0 à S2 : schéma, calcul, écriture (volet 2)
 
-- [ ] 7.1 Migration générique (ordre canonique `migration/order.go`) : tables append-only S0-S2,
+- [x] 7.1 Migration générique (ordre canonique `migration/order.go`) : tables append-only S0-S2,
       séquences `id` propres, vues `_latest` jointes à la tête sur `summary_pass` (recette ADR 0026,
       `append_only_rebuild.go`), vues recréées après tout `ADD COLUMN` ; tables et vues ajoutées à
       `EnsureMatchKillEvents` (sinon `insertKillEventRows` échoue sur une base ou une fixture non migrée).
-- [ ] 7.2 Compaction : S0-S2 dans `migration/compaction_registry.go` (`dernierePasse` pour la tête,
+      Fait (2026-10-21) : `shared_match_kill_summaries_v1` (`migration/steps_shared_kill_events_summaries.go`),
+      rangée juste après `shared_registry_killsource_sans_killfeed_rev_v1`, donc après tous les
+      `steps_shared_kill_events_*` ; colonnes de l'ADR 0039 à la lettre ; séquence et index
+      (`match_id`, `written_at`) par table ; `written_at NOT NULL` SANS défaut SQL (horodatage Go de la
+      passe, D-6). Tête = dernière génération (`written_at DESC, id DESC`), filles jointes à la tête sur
+      (`match_id`, `summary_pass`) avec son `publishable`. Règle « vues recréées après `ADD COLUMN` »
+      écrite dans l'en-tête de la migration. `EnsureMatchKillEvents` pose les trois tables et leurs vues.
+      `append_only_rebuild.go` non utilisé : tables nettes-neuves (patron `steps_shared_usage_summary.go`).
+- [x] 7.2 Compaction : S0-S2 dans `migration/compaction_registry.go` (`dernierePasse` pour la tête,
       passe de la vue parente pour les filles, modèle `match_usage_players`) + signatures de vue dans
       `compaction_test.go`.
-- [ ] 7.3 Garde-rails ART : S0-S2 dans `tablesProtegees` de `sync/no_art_patterns_test.go` et de
+      Fait : `TestRegistre_SignaturesDesResumesSurLaBaseMigree` relit le SQL des vues tel que DuckDB le
+      rend après migration (et refuse une règle modifiée). Le bout-à-bout
+      `games/halo_infinite/migrations/compaction_e2e_test.go` sème et compacte aussi les trois tables
+      (tête : une ligne par passe ; le semeur ne pose un xuid que sur une colonne VARCHAR, car
+      `n_killer_xuid` est un compte).
+- [x] 7.3 Garde-rails ART : S0-S2 dans `tablesProtegees` de `sync/no_art_patterns_test.go` et de
       `sync/append_only_state_guard_test.go` ; aucune nouvelle entrée d'allowlist.
-- [ ] 7.4 Fonction pure dans `internal/analysis/` (type de ligne neutre → S0, S1, S2) et ses deux
+      Fait, et en plus (même famille, enrôlement à la création, ADR 0030 D-4) : motif de
+      `TestNoRawAppendOnlyReads` (`platform/duckdb/no_raw_rating_reads_test.go`).
+- [x] 7.4 Fonction pure dans `internal/analysis/` (type de ligne neutre → S0, S1, S2) et ses deux
       adaptateurs (lignes en mémoire, lignes lues en base) ; écriture dans `insertKillEventRows` (D-6).
-- [ ] 7.5 Snapshots et démo : S0-S2 dans `ops/snapshot_export.go` (`sharedSnapshotMatchKeyedRaw`) et
+      Fait : `analysis/killsummary` (`Summarize(publishable, []Row)`, `Rev = "ks1"`, tranches par
+      `domain.AssistTierLowMaxPct` / `AssistTierMidMaxPct`, texte vide = NULL, SourceTag 0 = NULL) ;
+      `persist/kill_summaries.go` : adaptateur mémoire `killSummaryRowsOf` et insertion UNIQUE
+      `insertKillSummaryRows`, appelée par `insertKillEventRows` dans la même transaction avec le même
+      `now` ; `persist/kill_summaries_relecture.go` : adaptateur base `readLatestKillPass` (vue
+      `match_kill_events_latest`) et `PersistLatestKillPassSummaries` (propre transaction ; tête datée
+      du `written_at` de la passe relue, pour que l'ordre des têtes suive celui des passes — choix non
+      écrit dans l'ADR, consigné ici). Appelants de cette dernière : le seed démo synthétique
+      (`ops/seed_demo_synthetic_shared.go`), les tests ; le rattrapage (étape 8) s'y branchera.
+- [~] 7.5 Snapshots et démo : S0-S2 dans `ops/snapshot_export.go` (`sharedSnapshotMatchKeyedRaw`) et
       dans la lecture de snapshot ; seed démo (`ops/seed_demo_shared_tables.go`, `seed_demo.go`) avec
       anonymisation des colonnes d'identité et `TestSharedTablesDeclareEveryIdentityColumn` à jour ;
       fixtures de tests qui écrivent `match_kill_events` (`sync/testutil/fixture.go` et les tests
       `INSERT INTO match_kill_events`) passent par l'écriture des résumés ou les posent.
-- [ ] 7.6 Migrations historiques qui ont écrit `match_kill_events` (`steps_shared_kill_events_credit_base.go`,
+      Fait : snapshot (tables REQUISES ; vues posées par `EnsureMatchKillEvents` ; snapshots antérieurs
+      refusés jusqu'au prochain cut, comme l'annonce le Rollout de l'ADR) ; seed démo : liste
+      `killSummaryTables`, identités déclarées (`colFeedKillerXUID` centralisé, garde-rail du littéral
+      étendu), exemption datée `match_kill_heads.n_killer_xuid` (compte INTEGER, pas une identité) avec
+      contrôle de péremption ; `TestCopyAnonymizedTables_ResumesDuJournal` (déclaration réelle).
+      `sync/testutil/fixture.go` n'écrit pas `match_kill_events` (vérifié).
+      Fixtures `INSERT INTO match_kill_events` brutes : couvert par 9.x (décision du pilote Q2,
+      2026-10-21) — chaque fixture est convertie avec le lecteur qui l'utilise.
+      Revue du 2026-10-21 : le contrat de schéma de la lecture de snapshot cite S0-S2 et leurs vues, et
+      `TestOpenSnapshotShared_ResumesDuJournalVoyagent_integration` vérifie qu'ils voyagent (prêt
+      seulement) ; `TestSeedDemoSynthetic_ResumesCoherents` tient la tête et S1 de chaque match semé
+      (échoue sans l'appel du seed) ; S0-S2 sont dans `detSeededTables`, `summary_pass` (tiré au hasard)
+      exclu du dump explicitement.
+- [x] 7.6 Migrations historiques qui ont écrit `match_kill_events` (`steps_shared_kill_events_credit_base.go`,
       `_from_pairs.go`, `_sans_killfeed.go`) : non rejouées, nommées dans l'ADR ; le rattrapage (étape 8)
       couvre leurs passes.
-- [ ] 7.7 Tests : purs (bots, assistant anonyme, cas bot-bot, mesurée sans assistant, NULL, passe crédit
+      Vérifié sur pièces : seules `_credit_base.go` et `_from_pairs.go` écrivent le journal (nommées par
+      l'ADR 0039, décision 2) ; `_sans_killfeed.go` n'écrit que `match_registry` (écart au texte de
+      l'item, l'ADR fait foi). Aucune n'est rejouée ; leurs passes restent sans tête jusqu'à l'étape 8.
+- [x] 7.7 Tests : purs (bots, assistant anonyme, cas bot-bot, mesurée sans assistant, NULL, passe crédit
       puis passe film) ; parité adaptateur mémoire = adaptateur base ; un test d'intégration par
       écrivain (sync primaire, complétion, collecteur killsource, `BatchBuilder`, backfill CLI) : tête
       S0 `src_decode_pass` = passe de `match_kill_events_latest` ; deux passes successives → vues
@@ -488,25 +528,101 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
       injection d'erreur dans le calcul → passe annulée ; Halo 5 ; test des seuils de tranche liés à
       `summary_rev` ; test de cohérence PERMANENT : somme des `kills` de S1 = nombre de lignes de la
       passe courante.
-- [ ] 7.8 Plans d'exécution : `EXPLAIN ANALYZE` des vues S0-S2 sous une liste de matchs (le filtre
+      Fait : purs `analysis/killsummary/killsummary_test.go` ; empreinte `rev_test.go` (jetons des
+      sources du paquet + bornes de tranche, couple figé `ks1`) et `TestRev_BornesDeTrancheLieesALaRevision` ;
+      `persist/kill_summaries_integration_test.go` (sync primaire Halo Infinite ET Halo 5, complétion,
+      BatchBuilder, deux passes, relecture à révision nouvelle puis rattrapage depuis la base, parité
+      des adaptateurs relue jusque dans les vues, cohérence permanente sur un corpus de 5 matchs) ;
+      `sync/killcollector/kill_summaries_integration_test.go` (collecteur crédit ; le test du film réel,
+      sauté sans `KILLSOURCE_FIXTURES`, n'est pas touché : plafond de taille figé) ;
+      `cmd/levelup/cmd_backfill_killsource_resumes_integration_test.go` (passe crédit du backfill).
+      Constats partagés dans `sync/testutil/kill_summaries.go`. Injection d'erreur : la fonction pure
+      est totale (ADR décision 2) ; l'erreur injectée est une erreur BASE sur l'insertion de la tête
+      (table retirée), après le journal dans la même transaction : passe annulée pour chaque écrivain
+      (le sync primaire perd le match, la complétion ne pose pas `events_loaded`, le backfill compte
+      l'erreur). Coût de la passe (`TestPasseCredit_OuVaLeTemps`, CollectMatch de 3 morts, base
+      fichier) : sans résumés 9,8 / 13,7 / 11,1 ms (+ une valeur aberrante à 56,5), avec 11,6 / 14,7 /
+      12,3 ms : dans le bruit.
+- [x] 7.8 Plans d'exécution : `EXPLAIN ANALYZE` des vues S0-S2 sous une liste de matchs (le filtre
       descend-il sous la tête et ses filles ?) consigné ; les tests ADR 0036 qui exigent des fenêtres
       bornées (`exigerFenetresBornees`) restent verts ou sont réécrits pour les vues S, et le tableau
       d'exceptions I2 de l'ADR 0036 mis à jour.
+      Consigné (`platform/duckdb/resumes_fenetres_test.go`, 10 matchs x 2 générations = 20 têtes, liste
+      `VARCHAR[]` de 2 matchs) : S0 sous la liste → fenêtre 4 lignes (bornée) ; S1/S2 pour UN match
+      (`match_id = ?`) → 2 (l'égalité traverse la jointure) ; S1/S2 sous la liste → 20 : la liste NE
+      descend PAS sous la fenêtre de la tête (toute la table des têtes, jamais les lignes des filles).
+      Variantes mesurées : `IN (?, ?)` et `IN` littéral → 20 ; liste sur la vue fille + semi-jointure sur
+      la vue tête → 20 et 4 (la fenêtre interne reste entière) ; table fille BRUTE jointe à la vue tête
+      sous la liste → 4 (bornée, mais lecture brute d'une table append-only, interdite par ADR 0026 et
+      `TestNoRawAppendOnlyReads`). Les tests `exigerFenetresBornees` existants restent verts (aucun
+      lecteur ne lit encore S).
+      Décision Q1 du pilote (2026-10-21), option (a) : la fenêtre de la tête n'est pas bornée sous une
+      liste quand on lit une vue fille ; acceptée (une ligne par match et génération, ~6 500 lignes
+      compactées en prod). ADR 0039 décision 7 amendée, ligne ajoutée au tableau d'exceptions I2 de l'ADR
+      0036 ; le test `resumes_fenetres_test.go` tient la taille de cette fenêtre.
 - Gate : doctrine §4 (dont `-tags=integration` persist/sync) ; revue adversariale close.
+  Statut (2026-10-21) : `go test` (défaut) vert sur analysis/killsummary, persist, migration, ops,
+  sync/..., platform/duckdb/..., migrations Halo Infinite, cmd/levelup ; `-tags=integration -p 1` vert
+  sur les mêmes paquets ; `go test ./internal/archlint/` vert ; golangci-lint
+  `--new-from-merge-base=origin/main` 0 problème, avec et sans tag `integration` ;
+  `scripts/check_test_baseline.sh` (mode autonome, suite d'intégration complète du module, 360
+  paquets, 21 416 tests) : tous les tests de la baseline présents, aucun test ni paquet en échec ;
+  contrôle de COUVERTURE rouge (total 65,8 % contre 73,0 % de baseline). Écart de 7 points sur le
+  module entier, sans rapport mesurable avec ~600 lignes testées de ce lot ; NON vérifié sur le
+  commit de base (35 min de suite) — à confirmer par le pilote ou la CI (la baseline de couverture est
+  un gate Linux). CONFIRMÉ par la CI (2026-10-21, run sur `dcad7d499`) : seul Govulncheck rouge (Go 1.26.9, corrigé par la fusion de feat/v75), job de couverture vert. Revue adversariale (pilote) : écritures, 8/8 conditions tiennent ; tests, 4 P1 de couverture de tests corrigés en `3c8911719`.
+  Clôture (2026-10-21, après les décisions Q1 et Q2 du pilote et les 10 corrections de revue) : chaque
+  test ajouté a été vu ÉCHOUER sous la mutation qu'il garde (null écrits en sentinelle, comptes de
+  la tête permutés ou faux, appui volé à égalité, erreur de S1 ou de S2 avalée, relecture de la
+  table au lieu de la vue, appel du seed démo retiré, tables retirées de l'export du snapshot),
+  puis la mutation annulée. Gate rejoué sur les paquets touchés : `go test` (défaut) vert sur
+  analysis/killsummary, persist, ops, migration, migrations Halo Infinite, cmd/levelup, sync/...,
+  platform/duckdb/..., archlint ; `-tags=integration -p 1` vert sur les mêmes ; golangci-lint
+  `--new-from-merge-base=origin/main` 0 problème, avec et sans tag `integration`. Le contrôle de
+  couverture global de `check_test_baseline.sh` reste jugé par la CI. Étape CLOSE.
 
 ### Étape 8 — Rattrapage du parc (volet 2, D-10 validée avant)
 
-- [ ] 8.1 Commande `levelup backfill-match-summaries --title <slug>` : pour chaque match dont la passe
+- [x] 8.1 Commande `levelup backfill-match-summaries --title <slug>` : pour chaque match dont la passe
       courante n'a pas de tête à la révision courante (anti-join), relit la passe en base (adaptateur
       base), calcule S0-S2, écrit par lots bornés via `persist` ; serveur arrêté exigé (ouverture en
       écriture), message clair sinon. Ne décode aucun film.
-- [ ] 8.2 Jauge « matchs de la passe courante sans tête » : au boot et dans
+      Fait (2026-10-21) : `cmd/levelup/cmd_backfill_match_summaries.go` (`--title`, `--dry-run`, `--batch`, lot par
+      défaut `defaultSummariesBatch` = 250). La liste des matchs à rattraper est UNE anti-jointure
+      (`persist.PendingKillSummaryMatches`, `persist/kill_summaries_catchup.go`) : aucune tête, tête à
+      une autre révision, OU tête qui résume une autre passe que la courante (ajout à la lettre du plan,
+      consigné dans l'ADR 0039 décision 5) ; calculée une fois (fenêtre de la vue du journal), parcourue
+      par lots avec un journal INFO de progression, jauge finale relue. Écriture par
+      `PersistLatestKillPassSummaries` (une transaction par match) ; un échec se compte, se journalise
+      et la commande se termine en erreur. Refus clair si la base est tenue (`erreurOuvertureEcriturePartagee`).
+      Ouverture par `duckdb.OpenReadWrite` (aucune entrée d'allowlist). Tests d'intégration
+      (`cmd_backfill_match_summaries_integration_test.go`) : sans tête / ancienne révision / passe
+      supplantée réécrits, à jour intact, second passage vide, `--dry-run` n'écrit rien, échec compté.
+- [x] 8.2 Jauge « matchs de la passe courante sans tête » : au boot et dans
       `scheduler/data_health_check.go` (lit déjà le journal), journalisée en WARN si non nulle.
-- [ ] 8.3 Passage complet sur la COPIE des bases du banc, Halo Infinite et Halo 5 ; volume (matchs,
+      Fait (2026-10-21) : `scheduler/data_health_kill_summaries.go` (même texte SQL que 8.1 via
+      `persist.CountPendingKillSummaries`), appelée par `auditTitle` ; expvar `levelup.kill_summaries_pending`
+      (une entrée par titre, jamais écrasée par une mesure en échec), WARN par titre quand non nulle,
+      champ `KillSummariesPending` du résultat, hors `WarningsTotal` (signal distinct, comme les trous LUSR ;
+      aucun changement du DTO admin). Pas au boot : le contrôle périodique seul (coût de la fenêtre du
+      journal). Pas de jauge des passes dans ce worktree : rien à côté de quoi la poser. Test :
+      `data_health_kill_summaries_e2e_test.go` (0 sur base complète ; 3 pour tête absente, ancienne
+      révision, passe supplantée ; 0 après rattrapage).
+- [x] 8.3 Passage complet sur la COPIE des bases du banc, Halo Infinite et Halo 5 ; volume (matchs,
       lignes S par match), durée et pic mémoire consignés et ANNONCÉS au user avant 8.4.
+      Résultat (pilote, 2026-10-21, copie de PROD du jour, déjà compactée, 2 fils DuckDB / 512 Mo) : Halo Infinite 3 704 matchs écrits en 2 min 11 s, pic mémoire 212 Mo ; Halo 5 2 754 matchs en 39 s, pic 104 Mo ; 0 échec, 0 restant. Contrôle : têtes = matchs du journal (3 704 et 2 754), somme des `kills` de S1 = lignes de la passe courante et `n_rows` de la tête = lignes de la passe, 0 écart sur les deux titres. Le worktree de banc précédent (`LevelUp-wt-chronos`) a été supprimé par une autre session : banc refait dans ce worktree (`scripts/bench-pages.sh fetch`).
 - [ ] 8.4 Passage sur les bases locales réelles (`LevelUp/data/`), serveur local arrêté avec l'accord
       du user et des sessions actives prévenues ; jauge à 0 pour les deux titres.
+      DÉCISION USER 2026-10-21 (« 1) ok 2) ok ») : (a) en PROD, le rattrapage se lance au déploiement de la 8.0.1, serveur arrêté (~3 min mesurées : 2 min 11 + 39 s), par `docker compose run --rm --no-deps -u appuser --entrypoint levelup levelup backfill-match-summaries --title <slug>` pour chaque titre, AU LIEU de copier des bases locales vers le VPS (D-10 amendée : aucune donnée de prod écrite entre-temps n'est écrasée) ; (b) bases LOCALES : accord pour arrêter le serveur local ~3 min. REPORT JUSTIFIÉ (dépendance) : le serveur local tourne le code de feat/v75 sans écriture des résumés ; un rattrapage maintenant serait aussitôt périmé par ses synchros. Il se fait juste après l'intégration de l'étape 9 dans feat/v75, quand le serveur local aura le nouveau code, en prévenant les autres sessions.
 - Gate : doctrine §4 ; jauge à 0 sur la copie et sur les bases locales ; volume et pic mémoire consignés.
+  Statut (2026-10-21) : 8.1 et 8.2 faits (code, tests, docs COMMANDS EN/FR, changelog 8.0.1 EN/FR, ADR 0039
+  décisions 5-6). Gate de code rejoué sur persist, scheduler, cmd/levelup : `go test` (défaut) vert ;
+  `-tags=integration -p 1` vert ; `go test ./internal/archlint/` vert ; gardes ART de sync et de
+  platform/duckdb verts ; golangci-lint `--new-from-merge-base=origin/main` 0 problème avec et sans tag
+  `integration` ; chaque test vu échouer sous sa mutation (condition de révision ou de passe retirée de
+  l'anti-jointure, `--dry-run` qui écrit, échec non compté). RESTENT OUVERTS, réservés au pilote : 8.3
+  (copie des bases du banc) et 8.4 (bases locales réelles) ; le gate de l'étape (jauge à 0, volume, pic
+  mémoire) ne peut se fermer qu'avec eux. Étape NON close.
 
 ### Étape 9 — Bascule des lecteurs, famille par famille (volet 2)
 
@@ -514,22 +630,26 @@ Pour chaque lecteur : test de parité ancien/nouveau (corpus + copie des bases, 
 et comptes Halo 5), bascule, suppression de l'ancienne requête et de ses tests (entrées de baseline
 retirées dans le même commit, `bash scripts/check_test_baseline.sh`), mesure banc. Liste fermée
 (re-vérifiée à l'étape 6.2) :
-- [ ] 9.1 S0 (couverture et dénominateurs) : `QTacticalUnivers.mesure`, `qSoloJournalNonPubliable`,
+- [x] 9.1 S0 (couverture et dénominateurs) : `QTacticalUnivers.mesure`, `qSoloJournalNonPubliable`,
       portée de Q21d, `matches_measured` de Q32d, `porteuses` de Q28c et Q26l, dénominateur de
       `LoadMatchRangeKills` (`matchRangeKillsTotalSQL` : publiables avec tueur nommé).
-- [ ] 9.2 S1 (frags par paire, somme sur la source) : Q23b `GetMatchEncounterStats`, Q26
+      Fait (2026-10-21, sept lecteurs) : les trois lecteurs S0 seuls (`QTacticalUnivers.mesure`, `qSoloJournalNonPubliable`, `matchRangeKillsTotalSQL`) et la part S0 des quatre requêtes mixtes (portée de Q21d, `matches_measured` de Q32d, `porteuses` de Q28c et de Q26l ; leur part S1/S2 bascule en 9.2 et 9.4). Parité verte sur le corpus (`resumes_parite_s0_test.go`). RESTE au pilote : parité au niveau des pages sur la copie de prod et mesure banc.
+- [x] 9.2 S1 (frags par paire, somme sur la source) : Q23b `GetMatchEncounterStats`, Q26
       `GetTopEncountersGlobal`, Q27 `GetRivals`, Q28 `GetRelations`, Q30 `GetRivalTimeline`,
       `CompareRepo.GetEncounterStats`, `ExplorerRepo.GetKillerVictimBetween`, `frags_film` de Q26l ;
       `QKillsBetweenPlayers*` et `TestUneSeuleRequeteDeFragsEntreDeuxJoueurs` remplacés par 9.5.
-- [ ] 9.3 S1 (frags par arme, somme sur la victime ; tueurs NULL conservés) :
+      Fait (2026-10-21) : Q23b, Q26, Q27, Q28, Q30 lisent `match_kill_pairs_latest` (somme de `kills`, toutes sources, sans filtre `publishable` comme le journal) ; `QKillsBetweenPlayers` devient UNE requête bornée par la liste des matchs du joueur A (la variante non bornée et `QKillsBetweenPlayersBorne` disparaissent) ; la Comparaison passe donc par `matchsOuJoue` comme l'Explorateur (même résultat, vérifié par la parité). `TestUneSeuleRequeteDeFragsEntreDeuxJoueurs` est conservé (signature mise à jour) : la requête existe toujours. Le `frags_film` de Q26l est `[~]` couvert par 9.4 : la requête Q26l est réécrite UNE fois, sur S1 et S2 ensemble. Parité verte sur le corpus, Halo Infinite et Halo 5 (Campagne exclue), `resumes_parite_s1_test.go`. RESTE au pilote : parité au niveau des pages sur la copie de prod et mesure banc. Les tests de fenêtre des vues filles lues sous une liste bornent la fenêtre de la tête au nombre de têtes (ADR 0039 décision 7 amendée).
+- [x] 9.3 S1 (frags par arme, somme sur la victime ; tueurs NULL conservés) :
       `bulkWeaponKillsFromSource`, `GetTopWeaponsForMatches`, `LoadFavoriteWeapon`,
       `LoadWeaponKillsAggregated`, `LoadKillSourceCategoryKills`, `qSquadVehicleFrags`,
       `EventsRead` de l'Emprise (lignes à source et tueur non NULL), `LoadJournalWeaponKills`,
       `/monitoring/weapon-coverage`.
-- [ ] 9.4 S2 (assistances par paire) : Q21d `GetMatchAssistPairs`, Q28c `GetRelationAssists` /
+      Fait (2026-10-21, neuf lecteurs) : `qMatchKillSourceWeapons` (bulkWeaponKillsFromSource), `buildPlayerKillSourceQuery` (Explorateur top armes et arme favorite de l'Accueil, exception I2 documentée dans l'ADR 7), `buildKillSourceWeaponQuery` (LoadWeaponKillsAggregated et LoadKillSourceCategoryKills), `qSquadVehicleFrags` et son `EventsRead` (calculé sur les lignes de la même lecture, comme avant : matchs à source ET tueur non NULL), `qSquadEmpriseJournal` (`LoadJournalWeaponKills`, lignes publiables par la tête jointe, `Read` = matchs servis) et `/monitoring/weapon-coverage` lisent `match_kill_pairs_latest` (somme de `kills`). Parité verte sur le corpus (`resumes_parite_armes_test.go`) ; couverture de la flotte tenue par un test permanent écrit par `persist` (`api/wire/registry_weapon_coverage_source_test.go`). Hors liste fermée, non touchés : `sync/citations_weapons_source.go` (hors périmètre du garde-rail, ADR 0039 décision 8) et la sonde d'existence de `analysis/weapon_evidence.go` (traitée en 9.5). RESTE au pilote : parité au niveau des pages sur la copie de prod et mesure banc.
+- [x] 9.4 S2 (assistances par paire) : Q21d `GetMatchAssistPairs`, Q28c `GetRelationAssists` /
       `GetMatchEncounterAssists`, tranches de Q26l `LoadMatchAssistedFrags`, `QCoordinationAppuis`,
       Q32d `LoadSquadAssistPairs`.
-- [ ] 9.5 Garde-rail archlint au niveau de la REQUÊTE (constante `KillEventsCanonicalTable` et
+      Fait (2026-10-21) : Q21d (paires), Q28c (`lues` sur S2, tranches `n_low` / `n_mid` / `n_high`), Q26l (RÉÉCRITE UNE FOIS : `porteuses` S0, `frags_film` S1 -- ce qui couvre le `[~]` de 9.2 --, assistés S2), Coordination et Q32d lisent `match_assist_pairs_latest`. Moyenne de part = `ROUND(somme / nombre de parts mesurées)`, NULL à 0 part (jamais 0 %). Parité verte sur le corpus (bots, assistant anonyme, assistant bot nommé, parts hors échelle, bornes 25 et 50, assistance non lue, passe non publiable, Campagne, passe supplantée) puis fichiers de parité transitoires SUPPRIMÉS dans ce commit avec les anciens textes ; fixtures de Coordination et de segmentation des Relations (écrite par `persist`) passées au schéma réel. RESTE au pilote : parité au niveau des pages sur la copie de prod et mesure banc. Revue adversariale : par le pilote.
+- [x] 9.5 Garde-rail archlint au niveau de la REQUÊTE (constante `KillEventsCanonicalTable` et
       littéral `match_kill_events_latest`, commentaires retirés, modèle ADR 0030 D-4) : seules les
       requêtes d'une allowlist datée et décroissante les référencent. Allowlist initiale = lecteurs de
       classe B : Q20 `GetMatchKVPairs`, Q21b `GetMatchKillSources`, Q21c `GetMatchKillAssists`, Q32e
@@ -537,18 +657,21 @@ retirées dans le même commit, `bash scripts/check_test_baseline.sh`), mesure b
       `kill_distance_repo.go`, `weapon_range_repo.go`, `match_range_repo.go` (lignes mesurées),
       `solo_lives_repo.go`, `tactical_repo*.go`, `halo5_match_events_source.go`, et la jambe du
       kill-feed de `v_gamertag_lookup` / annuaire (Découvertes).
+      Fait (2026-10-21) : `archlint/kill_feed_summaries_guard_test.go` (`TestJournalDesMortsLuSeulementParLesLecteursDeLignes` + auto-preuve du détecteur) : balayage syntaxique de `platform/duckdb`, `api`, `service`, `analysis` ; une déclaration de premier niveau qui nomme `KillEventsCanonicalTable` ou un littéral `match_kill_events_latest` (commentaires exclus par construction) doit figurer dans l'allowlist datée `file:déclaration` (16 entrées, décroissante : une entrée périmée fait échouer). Les 16 = lecteurs de lignes de l'ADR 0039 décision 8 (Q20, Q21b, Q21c, Q32e, Q32c, `qSoloFrags`, les deux `loadSyntheticKillEvents`, `measuredKillsSQLTemplate`, quatre lecteurs Tactique, source d'événements Halo 5, annuaire des noms) + la sonde d'existence `WeaponEvidenceTable` (hors liste de l'ADR, ajoutée avec sa raison) ; mutation vérifiée (un littéral ajouté dans `service` fait échouer le test). `QKillsBetweenPlayers` subsiste (une seule requête bornée) : `TestUneSeuleRequeteDeFragsEntreDeuxJoueurs` est donc conservé, signature mise à jour en 9.2. Le garde de la Campagne (`campaign_exclusion_guard_test.go`) surveille désormais aussi `match_kill_pairs` et `match_assist_pairs` (sans quoi basculer un lecteur le sortait du garde ; les trois dispenses datées du 2026-10-15 restent valides). ADR 0039 mis à jour (statut, décision 8, « Readers served ») : le lecteur de citations d'armes de `sync` n'est PAS basculé (hors liste fermée du plan, hors garde-rail) -- statué `[!]` pour ce lecteur seul, voir Découvertes.
 - Gate : doctrine §4 ; parité verte pour chaque lecteur sur tous les comptes de la copie ; aucune page
   plus lente (médiane ≤ +10 %) ; revue adversariale close.
+- Statut du gate (pilote, 2026-10-21) : [x] parité au niveau des PAGES sur la copie de prod (26 réponses JSON, serveur d'avant l'étape 9 contre serveur d'après, trois comptes) : TOUS les chiffres servis par les résumés sont identiques (rencontres, rivaux, Relations, Comparaison, couverture des armes à l'identique ; dans les autres pages, aucune différence sur paires, assistances, armes, frags assistés, couverture) ; les seules différences (progression des citations, secondes d'objectifs, famille d'objectif d'une forme, distance moyenne des frags) varient AUSSI entre deux passages du même serveur → bruit antérieur (Découvertes). [x] banc : la plupart des pages 10 à 54 % plus rapides qu'après le seul compactage (Nuzzles vue match 0,34 → 0,16 s, rivaux 0,13 → 0,06 s ; Comparaison 0,84 → 0,63 s) ; seule la vue match de JGtm paraissait +23 %, re-mesurée sur 15 appels : 0,386 → 0,392 s (+1,6 %, bruit). [x] revue adversariale (une ronde, Sonnet) : 0 P0/P1, 3 P2 ; garde-rail durci par le pilote (littéral coupé détecté, plafond de 16 entrées), texte de dispense Campagne corrigé ; le 3e P2 (références de lignes périmées dans une autre dispense) consigné.
 
 ### Étape 10 — Clôture
 
-- [ ] 10.1 `make gate-push` vert.
+- [x] 10.1 `make gate-push` vert. (2026-10-21) Lint Go, typecheck et lint web verts ; baseline : `platform/duckdb` en délai dépassé (5 min) dans le run complet parallèle (contention du poste, mémoire `reference_local_full_go_run_package_flakes`), rejoué seul avec le même délai : `ok` en 100 s ; la CI (autorité) est verte sur la branche.
 - [ ] 10.2 CI verte sur la branche ; intégration dans `feat/v75` DEMANDÉE au user puis faite ; CI verte sur `feat/v75`.
 - [ ] 10.3 Changelog 8.0.1 FR + EN ; `docs/COMMANDS.md` FR + EN (banc, rattrapage) ; ADR à jour ;
       séquence de release complétée (rattrapage local puis bases vers le VPS, D-10) et transmise à la
       session de release.
-- [ ] 10.4 `.ai/REGISTRE_REPORTS.md` alimenté (candidats non faits, familles de second rang) ; plan
+- [x] 10.4 `.ai/REGISTRE_REPORTS.md` alimenté (candidats non faits, familles de second rang) ; plan
       archivé sous `.ai/V7.5/`.
+      Fait (2026-10-21) : 5 lignes ajoutées au registre (valeurs non déterministes, résumés de second rang, candidats sans lecteur, source des citations d'armes du sync, défilement de l'Accueil). Archivage du plan sous `.ai/V7.5/` : à la clôture de 10.5 (après le déploiement).
 - [ ] 10.5 Après le déploiement : `http_timings` de prod relevées (lecture seule), comparées à
       l'annexe A, consignées.
 - [ ] 10.6 Nettoyage : seulement les fichiers listés dans `scripts/bench-pages.files` (jamais `data/`
@@ -632,10 +755,15 @@ Q23b/Q28c 250-1 080 ms (Madina97294 reste à ~1 s sur la vue match).
 
 ## Découvertes
 
+- Pages (2026-10-21, banc) : plusieurs valeurs VARIENT entre deux appels identiques au même serveur, sur la même base : progression des citations (`top_citations.*.cumulative`, `progress_pct`), secondes d'objectifs (`objective_stats.*_seconds`), famille d'objectif d'une forme (`zones_koth` / `zones_strongholds`), distance moyenne des frags par arme (`kill_distance_by_weapon.*.avg_distance_m`) — non-déterminisme antérieur à ce chantier, non traité. Autre : références de lignes périmées dans la dispense de `buildRelationAssistsQuery` (`archlint/campaign_exclusion_guard_dispenses_test.go`).
 - Revue ronde 2 piste A (P2, non traités) : (1) `MatchViewPage.tsx:71` rend `null` pendant le chargement de la vue, donc la barre de navigation est absente à chaque pas vers un match non en cache (comportement antérieur au lot ; les voisins, à 7-10 ms, arrivent avant la vue) ; (2) `MatchHeader.tsx:146` `pendingStep` n'est remis à zéro ni au changement de match ni sur erreur des voisins : un pas retenu peut être joué sur un autre match si l'utilisateur change de match avant la réponse (rare) ; (3) `match_view_repo_neighbors_skill.go:27,85` : Q25 lit le live pour tous ses appelants (vue match ouverte hors Accueil comprise) et attend le provider pendant un écrit, borné à 10 s (500 `neighbors_error` au-delà), comme la liste de l'Accueil.
 - `analysis/identity.go` (`v_gamertag_lookup`, annuaire des noms) lit encore `match_kill_events_latest` pour résoudre les noms : hors du critère du volet 2 (lecture de noms, pas un agrégat), allowlistée en 9.5 ; à reprendre dans un chantier « annuaire » si mesuré coûteux.
 - Banc (2026-10-21) : un serveur gardé entre deux passages ralentit de 6 à 15 % par passage, et sa mémoire privée atteint ~1,6 Go après UN passage de 34 pages (2 fils DuckDB, 512 Mo). Le VPS de prod a 1,8 Go de RAM au total : pression mémoire à surveiller (non traité ici).
 - Comparaison : 5,9 s sur 6,2 passés HORS sections (frags entre joueurs non bornés, `QKillsBetweenPlayers`) ; seule la partie servie par S1 est dans le périmètre (9.2).
+- Étape 7 (2026-10-21) : le modèle d'empreinte cité par l'ADR 0039 (`decoder_rev_fingerprint_test.go`) n'existe plus (retiré le 2026-09-16 au profit de `film/revision`, propre aux couches du décodeur et à leur fermeture d'imports). L'empreinte de `killsummary.Rev` hache le flux de jetons (`go/scanner`, sans commentaires) des sources du paquet et les bornes de tranche ; elle ne réunit pas les trois marqueurs du ratchet `archlint/no_ad_hoc_source_fingerprint_test.go`. À trancher par le pilote si une centralisation est voulue.
+- Étape 7 : deux affirmations fausses corrigées dans les commentaires touchés (règle 17) : `insertKillEventRows` n'était pas « le seul écrivain » du journal (seed démo synthétique et deux migrations historiques l'écrivent en SQL) ; la liste des appelants de `EnsureMatchKillEvents` omettait la lecture du snapshot partagé.
+- Étape 7 : le test du collecteur sur film réel (`TestKillSourceCollecteFilmReelEtRelitParLaVue`) se saute sans `KILLSOURCE_FIXTURES` et son fichier est au plafond figé par `archlint/film_file_size_test.go` : aucune assertion de tête n'y est ajoutée ; le chemin `PersistPass` du collecteur est couvert sans film par le collecteur crédit.
+- Étape 7 (revue du 2026-10-21) : le test d'empreinte de `killsummary.Rev` (`rev_test.go`) refait un hachage de jetons (copie du mécanisme de `film/revision/jetons.go`) ; à reprendre si un mécanisme partagé hors film est créé.
 - Piste C (2b) — contrôle de santé des données : `scheduler/data_health_check.go` (`openDBShared`) ouvre la base partagée par `duckdb.OpenReadOnly`, pas par le provider ni `OpenReadForQuery` (règle CLAUDE.md n° 4). D'après le contrat de `sharedprovider.Provider`, une référence tenue hors du provider fait refuser l'`OpenReadWrite` d'un swap tant qu'elle n'est pas rendue : pendant chaque audit de titre (toutes les 24 h), une écriture du sync peut échouer. La jauge 2b.3 ne prolonge pas cette fenêtre (mesurée après l'audit, par le provider) ; l'audit lui-même n'est pas modifié.
 - Piste C (2b) — sauvegardes de 2b.1 : les fichiers `…avant-compaction-20261021T1017…Z.duckdb` (2,5 Go) sont à côté des bases, sous `data/titles/`, donc embarqués par la sauvegarde restic de chaque nuit, et la tâche de nuit ne les supprime pas (elle ne touche que `data/compaction-backups/`). À retirer à la main après vérification par le user.
 - Piste C (2b) — `scripts/restic-backup.sh` ne prend aucun verrou : la tâche de nuit refuse de tourner pendant une sauvegarde restic, mais une sauvegarde restic lancée à la main pendant une compaction arrêterait/redémarrerait le serveur sous elle. Couvert par les horaires (03:30 contre 04:00) et `TimeoutStartSec=25min`, pas par un verrou commun.
@@ -647,4 +775,8 @@ Q23b/Q28c 250-1 080 ms (Madina97294 reste à ~1 s sur la vue match).
 - (piste A) `Q25NeighborMatches` n'avait pas de départage des ex aequo (corrigé en 4.4 : il bloquait la parité avec l'ordre de l'Accueil, le test échoue sans le correctif).
 - (piste A) Sans fixtures de démo (générées sur l'hôte de prod seulement), 62 specs E2E data-dépendantes sautent, dont `slice-5-home` : la couverture E2E de l'Accueil n'a pas pu être exercée dans le bac isolé de la piste A.
 - (piste A, revue ronde 1, P2 consigné, non corrigé) Défilement ramené à 30 tuiles quand la tête rechargée change de curseur (`features/home/queries.ts` : `cursors` repart de zéro si `recent_matches_next_before` change) : rare (nouveau match pendant un défilement profond), assumé pour ne jamais recoller des pages à une autre tête.
+- Étape 9 (2026-10-21) : `sync/citations_weapons_source.go` (`loadWeaponKillsFromSource`, un match et un tueur) est cité dans le tableau « Readers served » de l'ADR 0039 (S1 armes) mais absent de la liste fermée de 9.3 et hors du garde-rail (sync) : NON basculé, ADR corrigé. Si le pilote veut le basculer : une requête, même forme que `buildPlayerKillSourceQuery`.
+- Étape 9 : sous une liste de matchs, la fenêtre de la tête voit TOUTES les têtes (ADR 0039 décision 7 amendée) : les tests `exigerFenetresBornees` des vues filles (Relations scopées, Accueil Q26l) bornent donc à `tetesDuJournal` (nombre de lignes de `match_kill_heads`), pas au nombre de morts du périmètre. Le gain de ces lectures est de ne plus payer la fenêtre du journal ni ses filtres par ligne, pas de lire moins de têtes.
+- Étape 9 : la Comparaison lisait les frags entre deux joueurs sans borne (`QKillsBetweenPlayers` libre) ; elle passe désormais par la liste des matchs du joueur A (`matchsOuJoue`), comme l'Explorateur : même résultat (un frag de A n'existe que dans un match de A), vérifié par la parité.
+- Étape 9 : fixtures de tests à tables factices `match_kill_events_latest` (3 à 6 colonnes) remplacées par le schéma réel (`migration.EnsureMatchKillEvents`) partout où un lecteur basculé les lit ; `brancherJournalVersionne` et `simulerJournalBrut` supprimés (le vrai journal porte des passes).
 - (à compléter pendant l'exécution)

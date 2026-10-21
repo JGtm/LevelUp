@@ -15,36 +15,21 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+
+	"levelup/go-api/internal/migration"
 )
 
 // seedCoordinationAppuis : le schéma minimal de la requête et un jeu couvrant les bornes.
 //
 //	m1  Me tue 2 fois sans assistant, 2 fois assisté par Ally, 1 fois par Bis, 1 fois par un
-//	    BOT ; une ligne NON publiable et une ligne assist_known = FALSE sont ignorées ;
+//	    BOT ; une ligne assist_known = FALSE est ignorée ; m4, passe non publiable, n'apporte rien ;
 //	    un tueur bot assisté par Ally ; un tueur bot assisté par un bot, sur Foe.
 //	m2  Ally tue 1 fois, assisté par Me — l'appui que JE distribue.
 //	m3  hors périmètre demandé.
 func seedCoordinationAppuis(t *testing.T, db *sql.DB) {
 	t.Helper()
 	for _, stmt := range []string{
-		`CREATE TABLE match_kill_events_latest (
-			match_id VARCHAR, publishable BOOLEAN, assist_known BOOLEAN,
-			feed_killer_xuid VARCHAR, victim_xuid VARCHAR,
-			assist_xuid VARCHAR, assist_gamertag VARCHAR, time_ms INTEGER)`,
 		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, kills INTEGER)`,
-		`INSERT INTO match_kill_events_latest VALUES
-			('m1',TRUE ,TRUE ,'Me' ,'Foe',NULL  ,NULL      ,1),
-			('m1',TRUE ,TRUE ,'Me' ,'Foe',NULL  ,NULL      ,2),
-			('m1',TRUE ,TRUE ,'Me' ,'Foe','Ally','AllyGT'  ,3),
-			('m1',TRUE ,TRUE ,'Me' ,'Foe','Ally','AllyGT'  ,4),
-			('m1',TRUE ,TRUE ,'Me' ,'Foe','Bis' ,'BisGT'   ,5),
-			('m1',TRUE ,TRUE ,'Me' ,'Foe',NULL  ,'Bot Un'  ,10),
-			('m1',FALSE,TRUE ,'Me' ,'Foe','Ally','AllyGT'  ,6),
-			('m1',TRUE ,FALSE,'Me' ,'Foe',NULL  ,NULL      ,7),
-			('m1',TRUE ,TRUE ,NULL ,'Foe','Ally','AllyGT'  ,8),
-			('m1',TRUE ,TRUE ,NULL ,'Foe',NULL  ,'Bot Deux',9),
-			('m2',TRUE ,TRUE ,'Ally','Foe','Me' ,'MeGT'    ,1),
-			('m3',TRUE ,TRUE ,'Me' ,'Foe','Ally','AllyGT'  ,1)`,
 		`INSERT INTO match_participants VALUES
 			('m1','Me',9), ('m1','Ally',3), ('m2','Me',0), ('m2','Me',0), ('m3','Me',4),
 			('m2','Ally',NULL)`,
@@ -53,6 +38,30 @@ func seedCoordinationAppuis(t *testing.T, db *sql.DB) {
 			t.Fatalf("seedCoordinationAppuis: %v\nSQL: %s", err, stmt)
 		}
 	}
+	// Le journal et ses résumés (ADR 0039) : schéma réel, une passe par match.
+	if err := migration.EnsureMatchKillEvents(db); err != nil {
+		t.Fatalf("EnsureMatchKillEvents: %v", err)
+	}
+	// ligne : (match, publiable, assistance lue, tueur, victime, assistant xuid, assistant gamertag, instant).
+	ligne := func(match string, pub, known bool, killer, victim, assistX, assistGT string, ms int) ligneJournal {
+		return ligneJournal{match: match, publiable: pub, assistKnown: known, tueur: killer, victime: victim,
+			assistant: assistX, assistantGT: assistGT, timeMS: ms}
+	}
+	poserJournal(t, db,
+		ligne("m1", true, true, "Me", "Foe", "", "", 1),
+		ligne("m1", true, true, "Me", "Foe", "", "", 2),
+		ligne("m1", true, true, "Me", "Foe", "Ally", "AllyGT", 3),
+		ligne("m1", true, true, "Me", "Foe", "Ally", "AllyGT", 4),
+		ligne("m1", true, true, "Me", "Foe", "Bis", "BisGT", 5),
+		ligne("m1", true, true, "Me", "Foe", "", "Bot Un", 10),
+		ligne("m1", true, false, "Me", "Foe", "", "", 7),
+		ligne("m1", true, true, "", "Foe", "Ally", "AllyGT", 8),
+		ligne("m1", true, true, "", "Foe", "", "Bot Deux", 9),
+		ligne("m2", true, true, "Ally", "Foe", "Me", "MeGT", 1),
+		ligne("m3", true, true, "Me", "Foe", "Ally", "AllyGT", 1),
+		// m4 : passe NON publiable (la publiabilité est celle de la passe) : aucun appui.
+		ligne("m4", false, true, "Me", "Foe", "Ally", "AllyGT", 6),
+	)
 }
 
 func TestCoordinationRepo_LoadAppuis(t *testing.T) {
@@ -60,7 +69,7 @@ func TestCoordinationRepo_LoadAppuis(t *testing.T) {
 	seedCoordinationAppuis(t, db.SQLDb())
 	repo := NewCoordinationRepo(&PlayerDB{Player: db, Shared: db, XUID: "Me", Gamertag: "MePlayer"})
 
-	got, err := repo.LoadAppuis(context.Background(), []string{"m1", "m2", "absent"})
+	got, err := repo.LoadAppuis(context.Background(), []string{"m1", "m2", "m4", "absent"})
 	if err != nil {
 		t.Fatalf("LoadAppuis: %v", err)
 	}

@@ -381,7 +381,12 @@ not reads.
 
 ### `_latest` windows over the whole history (I2)
 
-No known read is left in this table.
+No known read of the feed is left in this table. One window of another kind is accepted, added on
+2026-10-21 by ADR 0039 decision 7:
+
+| Read | Window | Measured | Retired by |
+|---|---|---|---|
+| `match_kill_pairs_latest` (S1) and `match_assist_pairs_latest` (S2) under a `match_id` list | The head's window (`match_kill_heads_latest`, joined inside each daughter view) is not bounded by the list: it sees every head of the table, one row per match and generation, never the daughters' rows. `platform/duckdb/resumes_fenetres_test.go`: 20 rows for 20 heads (10 matches x 2 generations) with a 2-match list; 4 rows when the read is for ONE match (`match_id = ?`) or when it is S0 itself. | About 6,500 compacted heads on the production databases; the automatic compaction of superseded passes (ADR 0026 amendment) keeps it at one generation per match. | Not retired: the list was tried on the head view as well (semi-join, `IN`, literal list): the inner window stays whole, and the only bounded form reads a daughter table raw, which ADR 0026 forbids. |
 
 Retired on 2026-10-20: the match view's encounter stats (Q23b, kill-feed leg `kv_stats`,
 `platform/duckdb/queries_match_detail.go`). Its kill-feed window now carries the player's matches

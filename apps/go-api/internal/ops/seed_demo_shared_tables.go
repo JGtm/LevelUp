@@ -65,6 +65,30 @@ var filmDerivedTables = []extractTable{
 	{name: "match_player_positions", where: matchIDInClause},
 }
 
+// killSummaryTables : les résumés par match du journal des morts (ADR 0039), écrits avec chaque
+// passe de `match_kill_events` par les deux titres : la tête, les frags par paire et source, les
+// appuis par paire. Copiés comme le journal (colonnes techniques comprises, même filtre, mêmes
+// correspondances d'identité), ils restent cohérents avec lui dans la démo. Les gamertags de
+// `match_assist_pairs` sont appariés à leur xuid, comme dans le journal.
+var killSummaryTables = []extractTable{
+	{name: tableMatchKillHeads, where: matchIDInClause},
+	{name: tableMatchKillPairs, where: matchIDInClause, identity: [][2]string{
+		{colFeedKillerXUID, ""}, {colVictimXUID, ""}}},
+	{name: tableMatchAssistPairs, where: matchIDInClause, identity: [][2]string{
+		{colAssistXUID, colAssistGamertag}, {colFeedKillerXUID, colFeedKillerGamertag},
+		{colVictimXUID, ""}}},
+}
+
+// Les tables de résumé et les gamertags appariés du journal, nommés une fois (snapshot, seed, tests).
+const (
+	tableMatchKillHeads   = "match_kill_heads"
+	tableMatchKillPairs   = "match_kill_pairs"
+	tableMatchAssistPairs = "match_assist_pairs"
+	colFeedKillerGamertag = "feed_killer_gamertag"
+	colAssistGamertag     = "assist_gamertag"
+	colAssistXUID         = "assist_xuid"
+)
+
 // squadOffsetExtract : player_squad_offset (synergies de coéquipiers du LUSR, lues par l'Escouade),
 // append-only (vue _latest), clé xuid et NON match_id : filtrée sur les COUPLES de joueurs qui
 // ont partagé un match du corpus. Les deux colonnes sont remappées, et tout couple dont un
@@ -90,6 +114,7 @@ func titleOwnsWeaponKills(desc *titlePkg.TitleDescriptor) bool {
 func sharedTablesFor(titleSlug string) []extractTable {
 	tables := append([]extractTable(nil), sharedTablesWhere...)
 	tables = append(tables, filmDerivedTables...)
+	tables = append(tables, killSummaryTables...)
 	tables = append(tables, squadOffsetExtract)
 	if titleOwnsWeaponKills(titlePkg.DefaultRegistry().Get(titleSlug)) {
 		tables = append(tables, weaponKillsExtract)

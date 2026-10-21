@@ -1,6 +1,6 @@
 # ADR 0039 — Per-match summaries of the kill feed, written with the pass
 
-Status: accepted (2026-10-21) — implementation in progress (plan `.ai/PLAN_PERF_PAGES_V801_2026-10-21.md`, steps 7 to 9): until it lands, readers still read the feed and the guard of Decision 8 does not exist yet.
+Status: accepted (2026-10-21), implemented (readers switched, guard in place). Production rollout: the catch-up `levelup backfill-match-summaries --title <slug>` runs at deployment, server stopped, before serving (Decision 6).
 Relates to: ADR 0019 (Collect → Persist), ADR 0026 (append-only + `_latest`; adds a fifth
 current-version mechanism, "generation decided by a head"), ADR 0030 D-4 (raw reads guard),
 ADR 0034 D-6 (one revision per thing that can change), ADR 0036 I2 (bounded windows) and its
@@ -96,7 +96,9 @@ recounting nor the seven copies. This ADR does.
    a fingerprint test of the function, on the model of `decoder_rev_fingerprint_test.go`, fails
    otherwise. Readers never filter on `summary_rev`; the views serve the latest generation. A head
    is missing when the latest pass of a match has no head; it is stale when its `summary_rev` is not
-   the current one. `levelup backfill-match-summaries --title <slug>` writes the missing and stale
+   the current one, or when it summarises a pass other than the latest (a newer pass was written
+   without its summaries). One SQL text defines this (`persist.PendingKillSummaryMatches`) for the
+   catch-up and the gauge. `levelup backfill-match-summaries --title <slug>` writes the missing and stale
    generations from the latest pass read in the database (second adapter of the same pure function,
    kept equal to the in-memory one by a parity test), through `insertKillSummaryRows`, server
    stopped (same pattern as `backfill-vehicle-takes`). A revision bump is applied to the whole fleet
@@ -107,27 +109,40 @@ recounting nor the seven copies. This ADR does.
    that sums over many matches cannot show that state: a match without a head is absent from the
    sum. The gauge "matches whose latest pass has no head, or a stale one" is therefore a release
    gate: it must be 0 on the databases copied to production, it is logged at WARN by the data
-   health check when non-zero (computed asynchronously, not at boot, because it reads the feed's
+   health check when non-zero, outside that check's warnings total and published as the expvar
+   `levelup.kill_summaries_pending` (computed asynchronously, not at boot, because it reads the feed's
    window over the whole table), and in-line writes keep it at 0 afterwards.
 
 7. **Bounded reads (ADR 0036 I2 applies to the S views).** Before the first reader switches, the
    bounded-window test (`exigerFenetresBornees`) runs on the S views under a constant `VARCHAR[]`
-   list of matches. If the filter does not cross the head's window, readers bind the list on the
-   head view too. A reader reads an S view with a `match_id` list, or is a documented exception:
+   list of matches. Amended on 2026-10-21 with the measurement (`platform/duckdb/resumes_fenetres_test.go`):
+   the filter does NOT cross the head's window when a daughter view (S1, S2) is read under a list,
+   and the remedy "bind the list on the head view too" does not carry over, because the head's
+   window sits inside the daughter view (a semi-join on the head view leaves the inner window
+   whole; a daughter read raw is forbidden by ADR 0026). The head's window is therefore accepted
+   under a list: it sees one row per match and generation (about 6,500 compacted rows on
+   production), never the daughters' rows, and the automatic compaction bounds it. A read of ONE
+   match (`match_id = ?`) and S0 itself stay bounded. The accepted window is a line of the I2
+   exceptions of ADR 0036, and the test above holds its size. A reader reads an S view with a
+   `match_id` list, or is a documented exception:
    Home's favourite weapon (filtered by killer over the player's history; S1 by killer is a small
    scan) and `/monitoring/weapon-coverage` (whole fleet, operator only). The head has one row per
    match and generation, so an unpushed head window costs little. A correlated `EXISTS` on S0
    (Tactical coverage) copies the list inside the `EXISTS`, as the current query does.
 
-8. **Guard.** An archlint test, scoped like `TestNoRawAppendOnlyReads` (`platform/duckdb`, `api`,
-   `service`, `analysis`; `sync`, `cmd`, `scheduler`, `ops`, `migration` and `persist` are outside
-   it), fails when the identifier `KillEventsCanonicalTable` or the literal
-   `match_kill_events_latest` (comments stripped) appears in a query that is not in the dated
-   allowlist of row-level readers: Q20 `GetMatchKVPairs`, Q21b `GetMatchKillSources`, Q21c
-   `GetMatchKillAssists`, Q32e `LoadSquadKillLog`, `qSoloFrags`, the `highlight_events` fallbacks
-   (`loadSyntheticKillEvents`, Q32c), the measured-kill join (`kill_measured.go`), kill distance,
-   weapon range, match range rows, solo lives, the Tactical readers, the Halo 5 events source and
-   the name directory (`analysis/identity.go`, names only). A permanent coherence test checks, for
+8. **Guard.** `TestJournalDesMortsLuSeulementParLesLecteursDeLignes` (archlint), scoped like
+   `TestNoRawAppendOnlyReads` (`platform/duckdb`, `api`, `service`, `analysis`; `sync`, `cmd`,
+   `scheduler`, `ops`, `migration` and `persist` are outside it), fails when the identifier
+   `KillEventsCanonicalTable` or the literal `match_kill_events_latest` (comments are not syntax
+   nodes, so they never count) appears in a top-level declaration that is not in the dated
+   allowlist of row-level readers, keyed `file:declaration`: Q20 `GetMatchKVPairs`, Q21b
+   `GetMatchKillSources`, Q21c `GetMatchKillAssists`, Q32e `LoadSquadKillLog`, `qSoloFrags`, the
+   `highlight_events` fallbacks (`loadSyntheticKillEvents` of the highlight and engagement
+   repositories, Q32c), the measured-kill join (`kill_measured.go`: kill distance, weapon range,
+   match range rows), the Tactical readers, the Halo 5 events source, the name directory
+   (`analysis/identity.go`, names only) and the existence probe `analysis.WeaponEvidenceTable`
+   (it names a table, reads no row). The allowlist only shrinks: an entry whose declaration no
+   longer reads the journal fails the test. A permanent coherence test checks, for
    every match of a corpus, that the sum of `kills` in S1 equals the row count of the latest pass.
 
 9. **Housekeeping.** The three tables are in the compaction registry (`dernierePasse` for S0, the
@@ -145,9 +160,9 @@ recounting nor the seven copies. This ADR does.
 
 | Family | Readers |
 |---|---|
-| S0 | Tactical coverage (`QTacticalUnivers.mesure`), solo non-publishable journal (`qSoloJournalNonPubliable`), match view assist scope (Q21d), squad measured matches (Q32d), assist-carrying matches of Relations (Q28c) and Home (Q26l), match range denominator (`matchRangeKillsTotalSQL`), Emprise read flags (`EventsRead`, `LoadJournalWeaponKills` `Read`) |
-| S1 pairs | match view encounter statistics (Q23b), Career top encounters (Q26) and rivals (Q27), Relations (Q28), rival timeline (Q30), Compare and Explorer frags between players (`QKillsBetweenPlayers*`), Home film frags (Q26l) |
-| S1 weapons | match view weapons (`qMatchKillSourceWeapons`), Explorer top weapons and Home favourite weapon (`weaponKillsFromSourceForPlayer`), `LoadWeaponKillsAggregated`, `LoadKillSourceCategoryKills`, Emprise vehicles (`qSquadVehicleFrags`) and special weapons (`LoadJournalWeaponKills`), weapon coverage, citations weapons (`sync/citations_weapons_source.go`) |
+| S0 | Tactical coverage (`QTacticalUnivers.mesure`), solo non-publishable journal (`qSoloJournalNonPubliable`), match view assist scope (Q21d), squad measured matches (Q32d), assist-carrying matches of Relations (Q28c) and Home (Q26l), match range denominator (`matchRangeKillsTotalSQL`). The Emprise read flags (`EventsRead`, `LoadJournalWeaponKills` `Read`) are derived from the S1 rows of the same read (same matches, no second query) |
+| S1 pairs | match view encounter statistics (Q23b), Career top encounters (Q26) and rivals (Q27), Relations (Q28), rival timeline (Q30), Compare and Explorer frags between players (one `QKillsBetweenPlayers`, bounded by the list of the first player's matches), Home film frags (Q26l) |
+| S1 weapons | match view weapons (`qMatchKillSourceWeapons`), Explorer top weapons and Home favourite weapon (`weaponKillsFromSourceForPlayer`), `LoadWeaponKillsAggregated`, `LoadKillSourceCategoryKills`, Emprise vehicles (`qSquadVehicleFrags`) and special weapons (`LoadJournalWeaponKills`), weapon coverage. NOT switched: the citations weapons source (`sync/citations_weapons_source.go`), a sync-side reader outside the guard and outside the closed list of the plan (it reads one match and one killer right after the pass; a later lot may move it) |
 | S2 | match view assist pairs (Q21d), Relations and match view encounter assists (Q28c), Home assisted tiers (Q26l), Coordination support (`QCoordinationAppuis`), squad assist pairs (Q32d) |
 
 Sync-side readers of the feed (`sync/enrichment_discipline.go`, `sync/engagement.go`,

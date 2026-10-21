@@ -70,7 +70,8 @@ ORDER BY count_together DESC`
 // narrative.ComputeEncounterBadges.
 //
 // Format string, DANS CET ORDRE : win, loss, win, loss (outcomeSQLEq), puis le prédicat de lot du
-// kill-feed (clauseListeMatchs sur `match_id`).
+// résumé des frags par paire (S1 `match_kill_pairs_latest`, ADR 0039 ; clauseListeMatchs sur
+// `match_id`).
 //
 // Paramètres (10 placeholders, ordre strict) :
 //
@@ -146,12 +147,12 @@ encounter_stats AS (
 kv_stats AS (
     SELECT
         tm.xuid,
-        COUNT(*) FILTER (WHERE kv.feed_killer_xuid = ? AND kv.victim_xuid = tm.xuid) AS kills_dealt,
-        COUNT(*) FILTER (WHERE kv.feed_killer_xuid = tm.xuid AND kv.victim_xuid = ?) AS deaths_suffered
+        CAST(COALESCE(SUM(kv.kills) FILTER (WHERE kv.feed_killer_xuid = ? AND kv.victim_xuid = tm.xuid), 0) AS BIGINT) AS kills_dealt,
+        CAST(COALESCE(SUM(kv.kills) FILTER (WHERE kv.feed_killer_xuid = tm.xuid AND kv.victim_xuid = ?), 0) AS BIGINT) AS deaths_suffered
     FROM this_match tm
     LEFT JOIN (
-        SELECT feed_killer_xuid, victim_xuid
-        FROM ` + KillEventsCanonicalTable + `
+        SELECT feed_killer_xuid, victim_xuid, kills
+        FROM match_kill_pairs_latest
         WHERE %s
     ) kv
         ON ((kv.feed_killer_xuid = ? AND kv.victim_xuid = tm.xuid)

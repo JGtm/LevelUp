@@ -251,8 +251,13 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 	// textuelles vivaient ici et dans queries_match.go — le même duel avait deux chances
 	// d'afficher deux nombres différents.
 	var killsDealt, deathsSuffered int
-	if err := db.QueryRowContext(ctx, resolveCampaignExclusionByMatchID(QKillsBetweenPlayers, pdbTitleSlug(r.pdb), "match_id"), xuidA, xuidB, xuidB, xuidA).Scan(&killsDealt, &deathsSuffered); err != nil {
-		slog.DebugContext(ctx, "CompareRepo.GetEncounterStats: killer_victim non disponible (best-effort)", "err", err)
+	matchsA, err := matchsOuJoue(ctx, db, xuidA)
+	if err == nil {
+		err = db.QueryRowContext(ctx, resolveCampaignExclusionByMatchID(QKillsBetweenPlayers, pdbTitleSlug(r.pdb), "match_id"),
+			xuidA, xuidB, xuidB, xuidA, argListe(matchsA)).Scan(&killsDealt, &deathsSuffered)
+	}
+	if err != nil {
+		slog.DebugContext(ctx, "CompareRepo.GetEncounterStats: frags croisés non disponibles (best-effort)", "err", err)
 	}
 
 	enc := &domain.CompareEncounterStats{

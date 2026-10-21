@@ -78,6 +78,7 @@ func newAssistPairsDB(t *testing.T, rows []killEventRow) *sql.DB {
 			t.Fatalf("insert ligne %d: %v", i, err)
 		}
 	}
+	ecrireResumes(t, db) // la lecture sert les résumés de la passe (ADR 0039)
 	return db
 }
 
@@ -186,18 +187,24 @@ func TestQ21dAssistPairs_MatchAbsent(t *testing.T) {
 
 // TestQ21dAssistPairs_NonPubliableEcarte : une passe non publiable ligne à ligne (BTB)
 // sort des paires ET de la portée mesurée. Une paire nomme deux joueurs : elle exige la
-// même portée que le kill feed.
+// même portée que le kill feed. La publiabilité est celle de la PASSE entière (m1) ; m2, passe
+// publiable, sert de témoin.
 func TestQ21dAssistPairs_NonPubliableEcarte(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
 		{"m1", false, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69), nil},
-		{"m1", true, 2000, "v2", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69), nil},
+		{"m1", false, 2000, "v2", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69), nil},
+		{"m2", true, 2000, "v2", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69), nil},
 	})
 	pairs, scope := queryAssistPairs(t, db, "m1")
-	if scope.MatchDeaths != 2 || scope.MeasuredDeaths != 1 {
-		t.Fatalf("portée = %+v, attendu {2 1}", scope)
+	if scope.MatchDeaths != 2 || scope.MeasuredDeaths != 0 || len(pairs) != 0 {
+		t.Fatalf("m1 : portée = %+v, paires = %+v, attendu {2 0 0} et aucune paire", scope, pairs)
+	}
+	pairs, scope = queryAssistPairs(t, db, "m2")
+	if scope.MatchDeaths != 1 || scope.MeasuredDeaths != 1 {
+		t.Fatalf("m2 : portée = %+v, attendu {1 1}", scope)
 	}
 	if len(pairs) != 1 || pairs[0].AssistCount != 1 || pairs[0].StolenCount != 1 {
-		t.Fatalf("paires = %+v, attendu une paire 1/1", pairs)
+		t.Fatalf("m2 : paires = %+v, attendu une paire 1/1", pairs)
 	}
 }
 

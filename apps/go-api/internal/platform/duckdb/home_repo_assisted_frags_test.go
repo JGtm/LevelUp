@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/migration"
 )
 
 // seedHomeAssistedFrags : schéma minimal de Q26l et un jeu couvrant les frontières.
@@ -15,43 +16,45 @@ import (
 //	m1  film porteur : Me tue 9 fois — sans assistant, assisté à 10 / 30 / 80 / 25 / 50 %
 //	    (25 et 50 sont des parts MOYENNES : bornes incluses), assisté SANS part mesurée,
 //	    assisté par un BOT (gamertag seul, 40 %), et une victime bot dont l'assistance n'est
-//	    pas lue (frag de la base, hors des assistés). Une ligne NON publiable et une ligne
-//	    où Me est la VICTIME sont ignorées.
+//	    pas lue (frag de la base, hors des assistés). Une ligne où Me est la VICTIME est
+//	    ignorée.
 //	m2  film porteur : Me tue 2 fois sans assistant → « zéro assisté ».
 //	m3  le film ne porte aucune assistance (assist_known = FALSE partout) → absent.
 //	m4  seul un AUTRE joueur y tue → absent (aucun frag lu pour Me).
 //	m5  film porteur par la ligne d'un AUTRE tueur ; Me n'y tue qu'un bot, assistance non
 //	    lue → présent, 1 frag lu, 0 assisté.
+//	m6  passe NON publiable (Me tue, assisté) → absent.
 func seedHomeAssistedFrags(t *testing.T, db *sql.DB) {
 	t.Helper()
-	for _, stmt := range []string{
-		`CREATE TABLE match_kill_events_latest (
-			match_id VARCHAR, publishable BOOLEAN, assist_known BOOLEAN,
-			feed_killer_xuid VARCHAR, victim_xuid VARCHAR,
-			assist_xuid VARCHAR, assist_gamertag VARCHAR, assist_damage_pct UTINYINT, time_ms INTEGER)`,
-		`INSERT INTO match_kill_events_latest VALUES
-			('m1',TRUE,TRUE,'Me','Foe',NULL,NULL,NULL,1),
-			('m1',TRUE,TRUE,'Me','Foe','Ally','AllyGT',10,2),
-			('m1',TRUE,TRUE,'Me','Foe','Ally','AllyGT',30,3),
-			('m1',TRUE,TRUE,'Me','Foe','Ally','AllyGT',25,8),
-			('m1',TRUE,TRUE,'Me','Foe','Bis','BisGT',50,9),
-			('m1',TRUE,TRUE,'Me','Foe','Bis','BisGT',80,4),
-			('m1',TRUE,TRUE,'Me','Foe','Ally','AllyGT',NULL,5),
-			('m1',TRUE,TRUE,'Me','Foe',NULL,'343 Oscar [bot]',40,10),
-			('m1',TRUE,FALSE,'Me',NULL,NULL,NULL,NULL,11),
-			('m1',FALSE,TRUE,'Me','Foe','Ally','AllyGT',40,6),
-			('m1',TRUE,TRUE,'Foe','Me','Zed','ZedGT',60,7),
-			('m2',TRUE,TRUE,'Me','Foe',NULL,NULL,NULL,1),
-			('m2',TRUE,TRUE,'Me','Foe',NULL,NULL,NULL,2),
-			('m3',TRUE,FALSE,'Me','Foe',NULL,NULL,NULL,1),
-			('m4',TRUE,TRUE,'Ally','Foe','Me','MeGT',50,1),
-			('m5',TRUE,TRUE,'Ally','Foe',NULL,NULL,NULL,1),
-			('m5',TRUE,FALSE,'Me',NULL,NULL,NULL,NULL,2)`,
-	} {
-		if _, err := db.Exec(stmt); err != nil {
-			t.Fatalf("seedHomeAssistedFrags: %v\nSQL: %s", err, stmt)
-		}
+	// Le journal et ses résumés (ADR 0039) : schéma réel, une passe par match.
+	if err := migration.EnsureMatchKillEvents(db); err != nil {
+		t.Fatalf("EnsureMatchKillEvents: %v", err)
 	}
+	// ligne : (match, publiable, assistance lue, tueur, victime, assistant xuid, assistant gamertag, part, instant).
+	ligne := func(match string, pub, known bool, killer, victim, assistX, assistGT string, p *uint8, ms int) ligneJournal {
+		return ligneJournal{match: match, publiable: pub, assistKnown: known, tueur: killer, victime: victim,
+			assistant: assistX, assistantGT: assistGT, pctAssist: p, timeMS: ms}
+	}
+	poserJournal(t, db,
+		ligne("m1", true, true, "Me", "Foe", "", "", nil, 1),
+		ligne("m1", true, true, "Me", "Foe", "Ally", "AllyGT", pct(10), 2),
+		ligne("m1", true, true, "Me", "Foe", "Ally", "AllyGT", pct(30), 3),
+		ligne("m1", true, true, "Me", "Foe", "Ally", "AllyGT", pct(25), 8),
+		ligne("m1", true, true, "Me", "Foe", "Bis", "BisGT", pct(50), 9),
+		ligne("m1", true, true, "Me", "Foe", "Bis", "BisGT", pct(80), 4),
+		ligne("m1", true, true, "Me", "Foe", "Ally", "AllyGT", nil, 5),
+		ligne("m1", true, true, "Me", "Foe", "", "343 Oscar [bot]", pct(40), 10),
+		ligne("m1", true, false, "Me", "", "", "", nil, 11),
+		ligne("m1", true, true, "Foe", "Me", "Zed", "ZedGT", pct(60), 7),
+		ligne("m2", true, true, "Me", "Foe", "", "", nil, 1),
+		ligne("m2", true, true, "Me", "Foe", "", "", nil, 2),
+		ligne("m3", true, false, "Me", "Foe", "", "", nil, 1),
+		ligne("m4", true, true, "Ally", "Foe", "Me", "MeGT", pct(50), 1),
+		ligne("m5", true, true, "Ally", "Foe", "", "", nil, 1),
+		ligne("m5", true, false, "Me", "", "", "", nil, 2),
+		// m6 : passe NON publiable (la publiabilité est celle de la passe) → absent.
+		ligne("m6", false, true, "Me", "Foe", "Ally", "AllyGT", pct(40), 1),
+	)
 }
 
 func TestHomeRepo_LoadMatchAssistedFrags(t *testing.T) {
@@ -59,7 +62,7 @@ func TestHomeRepo_LoadMatchAssistedFrags(t *testing.T) {
 	seedHomeAssistedFrags(t, db.SQLDb())
 	repo := NewHomeRepo(&PlayerDB{Player: db, Shared: db, XUID: "Me", Gamertag: "MePlayer"})
 
-	got, err := repo.LoadMatchAssistedFrags(context.Background(), []string{"m1", "m2", "m3", "m4", "m5", "absent"})
+	got, err := repo.LoadMatchAssistedFrags(context.Background(), []string{"m1", "m2", "m3", "m4", "m5", "m6", "absent"})
 	if err != nil {
 		t.Fatalf("LoadMatchAssistedFrags: %v", err)
 	}
@@ -73,7 +76,7 @@ func TestHomeRepo_LoadMatchAssistedFrags(t *testing.T) {
 			t.Fatalf("%s = %+v, want %+v", id, got[id], w)
 		}
 	}
-	for _, id := range []string{"m3", "m4", "absent"} {
+	for _, id := range []string{"m3", "m4", "m6", "absent"} {
 		if _, ok := got[id]; ok {
 			t.Fatalf("%s doit être ABSENT : %+v", id, got[id])
 		}

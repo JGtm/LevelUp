@@ -364,7 +364,7 @@ git commit -m "refactor(phase2): ..."
   `grammar/lecture`, que ni `replay` ni `decfilm` n'importent ; amende 0034 D-1, D-2, D-6, D-7, D-10) ·
   `0038` **mise en commun des jetons = opt-in par joueur** (un jeton n'entre dans le round-robin public que sur un
   consentement enregistré dans son fichier de jetons ; sans décision il ne sert que son propriétaire ; `levelup pool-sharing`) ·
-  `0039` **résumés par match du journal des morts** (MISE EN ŒUVRE EN COURS, plan PERF_PAGES_V801 étapes 7-9 ; agrégat décomposable par match = calculé une fois,
+  `0039` **résumés par match du journal des morts** (agrégat décomposable par match = calculé une fois,
   écrit dans la transaction de sa passe par `insertKillSummaryRows` ; S0 tête / S1 paires et armes / S2
   assistances, vues `_latest` décidées par la tête ; lecteurs de requête interdits sur le journal brut hors
   allowlist datée de lecteurs ligne à ligne ; jauge « sans tête » = porte de release).

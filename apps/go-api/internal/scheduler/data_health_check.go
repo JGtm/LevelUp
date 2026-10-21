@@ -66,6 +66,10 @@ type DataHealthCheckResult struct {
 	// sain »). Distinct de ProbeErrors : une player DB tenue RW est transitoire/normale,
 	// elle ne fait pas échouer le cron mais gèle la jauge le temps du sync.
 	LUSRPlayersUnmeasured int
+	// KillSummariesPending : matchs dont la passe courante du journal des morts n'a pas de résumés
+	// (tête) à jour, tous titres mesurés confondus (ADR 0039). Signal distinct : hors WarningsTotal,
+	// toujours loggé (WARN par titre quand non nul) et publié en expvar.
+	KillSummariesPending int
 	// Les gardes « index ART désynchronisé » ont été RETIRÉES avec les index qu'elles
 	// surveillaient : personal_score_awards le 2026-09-20 (step
 	// drop_psa_secondary_art_indexes_v1), match_skill_rank le 2026-09-27 (step
@@ -253,6 +257,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 			"lusr_interior_gaps", res.LUSRInteriorGaps,
 			"lusr_pending_recent", res.LUSRPendingRecent,
 			"lusr_players_scanned", res.LUSRPlayersScanned,
+			"kill_summaries_pending", res.KillSummariesPending,
 			"lusr_players_unmeasured", 0,
 			"duration", res.Duration.Round(time.Millisecond),
 		)
@@ -265,6 +270,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 			"lying_bits_weapons", res.LyingBitsWeaponKills,
 			"orphan_xuids", res.OrphanXUIDs,
 			"garbage_banner_urls", res.GarbageBannerURLs,
+			"kill_summaries_pending", res.KillSummariesPending,
 			"lusr_interior_gaps", res.LUSRInteriorGaps,
 			"lusr_pending_recent", res.LUSRPendingRecent,
 			"lusr_players_scanned", res.LUSRPlayersScanned,
@@ -341,6 +347,9 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 
 	// 4. Banner garbage URLs (toutes les player DBs du titre)
 	res.GarbageBannerURLs += s.auditPlayerBanners(ctx, pr, slug, &res.ProbeErrors)
+
+	// 4bis. Résumés par match du journal des morts (jauge ADR 0039, read-only).
+	s.auditKillSummaries(ctx, db, slug, res)
 
 	// 5. Trous d'intérieur LUSR (garde-fou notes LUSR — read-only, best-effort ;
 	// implémentation dans data_health_lusr.go).

@@ -2,8 +2,8 @@
 // lus par l'Emprise pour compter les frags aux armes spéciales sous la définition de leurs prises
 // (analysis/squademprise/special_frags.go).
 //
-// UNE LECTURE BORNÉE PAR LA LISTE DES MATCHS, liée en une constante `VARCHAR[]` que DuckDB pousse
-// sous la fenêtre de la vue `match_kill_events_latest` (ADR 0026 : la vue seulement ; ADR 0036 I2).
+// UNE LECTURE BORNÉE PAR LA LISTE DES MATCHS, liée en une constante `VARCHAR[]`, lue sur le résumé
+// des frags par paire `match_kill_pairs_latest` (S1, ADR 0039 : la vue seulement ; ADR 0036 I2).
 //
 //	porte      `publishable` : la passe de décodage est fiable ligne à ligne. Un frag compté par
 //	           ARME et par TUEUR est une lecture ligne à ligne ; un match dont la passe ne l'est pas
@@ -31,10 +31,9 @@ import (
 // qSquadEmpriseJournal : les lignes publiables des matchs demandés (%s : le prédicat de liste), par
 // (match, tueur, victime, source). Une ligne sans source dit que la passe est lue sans être comptée.
 const qSquadEmpriseJournal = `
-SELECT k.match_id, k.feed_killer_xuid, k.victim_xuid, k.source_tag, COUNT(*)::INTEGER AS frags
-FROM ` + KillEventsCanonicalTable + ` k
+SELECT k.match_id, k.feed_killer_xuid, k.victim_xuid, k.source_tag, k.kills AS frags
+FROM match_kill_pairs_latest k
 WHERE %s AND k.publishable
-GROUP BY k.match_id, k.feed_killer_xuid, k.victim_xuid, k.source_tag
 ORDER BY k.match_id, k.feed_killer_xuid, k.victim_xuid, k.source_tag`
 
 // LoadJournalWeaponKills rend les frags par (match, tueur, victime, clé d'arme) du journal des
@@ -63,7 +62,7 @@ func (r *SquadEmpriseRepo) LoadJournalWeaponKills(ctx context.Context, matchIDs 
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			slog.DebugContext(ctx, "SquadEmpriseRepo: journal des morts absent",
-				"table", KillEventsCanonicalTable, "err", err)
+				"table", "match_kill_pairs_latest", "err", err)
 			return out, games.ErrCapabilityNotSupported
 		}
 		return out, fmt.Errorf("SquadEmpriseRepo: journal query: %w", err)

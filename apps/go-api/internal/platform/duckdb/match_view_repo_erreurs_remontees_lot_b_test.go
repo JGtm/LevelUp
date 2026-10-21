@@ -243,9 +243,9 @@ func TestLotB_ArmesDeTousLesJoueurs_AbsenceConstateeEtPanne(t *testing.T) {
 	})
 	t.Run("source de degat : ligne illisible = panne, pas une ligne sautee", func(t *testing.T) {
 		pdb := newTestPlayerDB(t)
-		lotBExec(t, pdb.Player, `DROP VIEW match_kill_events_latest`)
-		lotBExec(t, pdb.Player, `CREATE VIEW match_kill_events_latest AS
-			SELECT 'm1' AS match_id, 'x1' AS feed_killer_xuid, 'pas un entier' AS source_tag`)
+		lotBExec(t, pdb.Player, `DROP VIEW match_kill_pairs_latest`)
+		lotBExec(t, pdb.Player, `CREATE VIEW match_kill_pairs_latest AS
+			SELECT 'm1' AS match_id, 'x1' AS feed_killer_xuid, 'pas un entier' AS source_tag, 1 AS kills`)
 		repo := NewMatchViewRepo(pdb, pTestXUID).WithKillSourceClassifier(fakeKillSourceClassifier{})
 		if rows, err := repo.GetMatchBulkWeaponKills(ctx, "m1"); err == nil {
 			t.Fatalf("une erreur est attendue, obtenu %v", rows)

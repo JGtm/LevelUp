@@ -290,8 +290,6 @@ func TestCompareRepo_GetEncounterStats_WithData(t *testing.T) {
 	for _, ddl := range []string{
 		`CREATE TABLE match_participants (
 			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER)`,
-		`CREATE TABLE match_kill_events_latest (
-			match_id VARCHAR, feed_killer_xuid VARCHAR, victim_xuid VARCHAR, time_ms INTEGER)`,
 	} {
 		if _, err := db.Exec(ctx, ddl); err != nil {
 			t.Fatalf("DDL: %v", err)
@@ -305,17 +303,23 @@ func TestCompareRepo_GetEncounterStats_WithData(t *testing.T) {
 		`INSERT INTO match_participants VALUES
 			('m1', 'xuidA', 0, 2), ('m1', 'xuidB', 0, 2),
 			('m2', 'xuidA', 0, 3), ('m2', 'xuidB', 1, 2)`,
-		`INSERT INTO match_kill_events_latest VALUES
-			('m1', 'xuidA', 'xuidB', 1000), ('m1', 'xuidA', 'xuidB', 1100),
-			('m1', 'xuidA', 'xuidB', 1200), ('m1', 'xuidA', 'xuidB', 1300),
-			('m1', 'xuidA', 'xuidB', 1400),
-			('m2', 'xuidB', 'xuidA', 2000), ('m2', 'xuidB', 'xuidA', 2100),
-			('m2', 'xuidB', 'xuidA', 2200)`,
 	} {
 		if _, err := db.Exec(ctx, ins); err != nil {
 			t.Fatalf("INSERT: %v", err)
 		}
 	}
+	// Le journal et ses résumés (ADR 0039) : schéma réel, une passe par match.
+	if err := migration.EnsureMatchKillEvents(db.SQLDb()); err != nil {
+		t.Fatalf("EnsureMatchKillEvents: %v", err)
+	}
+	var morts []ligneJournal
+	for i := 0; i < 5; i++ {
+		morts = append(morts, ligneJournal{match: "m1", publiable: true, tueur: "xuidA", victime: "xuidB", timeMS: 1000 + 100*i})
+	}
+	for i := 0; i < 3; i++ {
+		morts = append(morts, ligneJournal{match: "m2", publiable: true, tueur: "xuidB", victime: "xuidA", timeMS: 2000 + 100*i})
+	}
+	poserJournal(t, db.SQLDb(), morts...)
 
 	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidA"}
 	repo := NewCompareRepo(pdb)
