@@ -121,6 +121,22 @@ Les frags viennent de `match_kill_events_latest` (source mesurée, tueur du kill
 joints aux épisodes par `frameOfFilmMS`/`frameInWindow` (les mêmes que les épisodes d'équipement).
 **Lecture : vue `match_vehicle_takes_latest` UNIQUEMENT** (dernière passe ENTIÈRE par match).
 
+### match_kill_heads / match_kill_pairs / match_assist_pairs — résumés par match du journal des morts (append-only, ADR 0039, 2026-10-21)
+Écrits DANS LA TRANSACTION de chaque passe de `match_kill_events`, au même horodatage, par
+`persist.insertKillSummaryRows` (appelée par `insertKillEventRows` ; passes relues en base :
+`persist.PersistLatestKillPassSummaries`), calcul pur `analysis/killsummary` (révision
+`killsummary.Rev`, empreinte figée par son `rev_test.go`). Colonnes communes : `id`, `match_id`,
+`summary_pass` (génération), `summary_rev`, `src_decode_pass`, `written_at`.
+- S0 `match_kill_heads` (une ligne par match et génération) : `publishable`, `n_rows`,
+  `n_assist_known`, `n_killer_xuid`, `n_src_killer`.
+- S1 `match_kill_pairs` (`feed_killer_xuid`, `victim_xuid`, `source_tag`, NULL gardés) : `kills`.
+- S2 `match_assist_pairs` (passe publiable, assistant connu ; `assist_xuid`, `assist_gamertag`,
+  `feed_killer_xuid`, `feed_killer_gamertag`, `victim_xuid` seulement si assistant et tueur sans
+  xuid) : `n`, `n_stolen`, `sum_assist_pct`, `n_assist_pct`, `n_low`, `n_mid`, `n_high`.
+**Lecture : vues `_latest` UNIQUEMENT.** La tête décide la génération ; S1/S2 s'y joignent et
+exposent son `publishable`. Aucun lecteur de page ne les lit encore (bascule : étape 9 du plan
+perf pages v8.0.1).
+
 ## metadata.duckdb
 
 | Table | Clé | Description |

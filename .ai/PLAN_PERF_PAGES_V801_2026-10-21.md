@@ -337,26 +337,60 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
 
 ### Étape 7 — Familles S0 à S2 : schéma, calcul, écriture (volet 2)
 
-- [ ] 7.1 Migration générique (ordre canonique `migration/order.go`) : tables append-only S0-S2,
+- [x] 7.1 Migration générique (ordre canonique `migration/order.go`) : tables append-only S0-S2,
       séquences `id` propres, vues `_latest` jointes à la tête sur `summary_pass` (recette ADR 0026,
       `append_only_rebuild.go`), vues recréées après tout `ADD COLUMN` ; tables et vues ajoutées à
       `EnsureMatchKillEvents` (sinon `insertKillEventRows` échoue sur une base ou une fixture non migrée).
-- [ ] 7.2 Compaction : S0-S2 dans `migration/compaction_registry.go` (`dernierePasse` pour la tête,
+      Fait (2026-10-21) : `shared_match_kill_summaries_v1` (`migration/steps_shared_kill_events_summaries.go`),
+      rangée juste après `shared_registry_killsource_sans_killfeed_rev_v1`, donc après tous les
+      `steps_shared_kill_events_*` ; colonnes de l'ADR 0039 à la lettre ; séquence et index
+      (`match_id`, `written_at`) par table ; `written_at NOT NULL` SANS défaut SQL (horodatage Go de la
+      passe, D-6). Tête = dernière génération (`written_at DESC, id DESC`), filles jointes à la tête sur
+      (`match_id`, `summary_pass`) avec son `publishable`. Règle « vues recréées après `ADD COLUMN` »
+      écrite dans l'en-tête de la migration. `EnsureMatchKillEvents` pose les trois tables et leurs vues.
+      `append_only_rebuild.go` non utilisé : tables nettes-neuves (patron `steps_shared_usage_summary.go`).
+- [x] 7.2 Compaction : S0-S2 dans `migration/compaction_registry.go` (`dernierePasse` pour la tête,
       passe de la vue parente pour les filles, modèle `match_usage_players`) + signatures de vue dans
       `compaction_test.go`.
-- [ ] 7.3 Garde-rails ART : S0-S2 dans `tablesProtegees` de `sync/no_art_patterns_test.go` et de
+      Fait : `TestRegistre_SignaturesDesResumesSurLaBaseMigree` relit le SQL des vues tel que DuckDB le
+      rend après migration (et refuse une règle modifiée). Le bout-à-bout
+      `games/halo_infinite/migrations/compaction_e2e_test.go` sème et compacte aussi les trois tables
+      (tête : une ligne par passe ; le semeur ne pose un xuid que sur une colonne VARCHAR, car
+      `n_killer_xuid` est un compte).
+- [x] 7.3 Garde-rails ART : S0-S2 dans `tablesProtegees` de `sync/no_art_patterns_test.go` et de
       `sync/append_only_state_guard_test.go` ; aucune nouvelle entrée d'allowlist.
-- [ ] 7.4 Fonction pure dans `internal/analysis/` (type de ligne neutre → S0, S1, S2) et ses deux
+      Fait, et en plus (même famille, enrôlement à la création, ADR 0030 D-4) : motif de
+      `TestNoRawAppendOnlyReads` (`platform/duckdb/no_raw_rating_reads_test.go`).
+- [x] 7.4 Fonction pure dans `internal/analysis/` (type de ligne neutre → S0, S1, S2) et ses deux
       adaptateurs (lignes en mémoire, lignes lues en base) ; écriture dans `insertKillEventRows` (D-6).
-- [ ] 7.5 Snapshots et démo : S0-S2 dans `ops/snapshot_export.go` (`sharedSnapshotMatchKeyedRaw`) et
+      Fait : `analysis/killsummary` (`Summarize(publishable, []Row)`, `Rev = "ks1"`, tranches par
+      `domain.AssistTierLowMaxPct` / `AssistTierMidMaxPct`, texte vide = NULL, SourceTag 0 = NULL) ;
+      `persist/kill_summaries.go` : adaptateur mémoire `killSummaryRowsOf` et insertion UNIQUE
+      `insertKillSummaryRows`, appelée par `insertKillEventRows` dans la même transaction avec le même
+      `now` ; `persist/kill_summaries_relecture.go` : adaptateur base `readLatestKillPass` (vue
+      `match_kill_events_latest`) et `PersistLatestKillPassSummaries` (propre transaction ; tête datée
+      du `written_at` de la passe relue, pour que l'ordre des têtes suive celui des passes — choix non
+      écrit dans l'ADR, consigné ici). Appelants de cette dernière : le seed démo synthétique
+      (`ops/seed_demo_synthetic_shared.go`), les tests ; le rattrapage (étape 8) s'y branchera.
+- [!] 7.5 Snapshots et démo : S0-S2 dans `ops/snapshot_export.go` (`sharedSnapshotMatchKeyedRaw`) et
       dans la lecture de snapshot ; seed démo (`ops/seed_demo_shared_tables.go`, `seed_demo.go`) avec
       anonymisation des colonnes d'identité et `TestSharedTablesDeclareEveryIdentityColumn` à jour ;
       fixtures de tests qui écrivent `match_kill_events` (`sync/testutil/fixture.go` et les tests
       `INSERT INTO match_kill_events`) passent par l'écriture des résumés ou les posent.
-- [ ] 7.6 Migrations historiques qui ont écrit `match_kill_events` (`steps_shared_kill_events_credit_base.go`,
+      Fait : snapshot (tables REQUISES ; vues posées par `EnsureMatchKillEvents` ; snapshots antérieurs
+      refusés jusqu'au prochain cut, comme l'annonce le Rollout de l'ADR) ; seed démo : liste
+      `killSummaryTables`, identités déclarées (`colFeedKillerXUID` centralisé, garde-rail du littéral
+      étendu), exemption datée `match_kill_heads.n_killer_xuid` (compte INTEGER, pas une identité) avec
+      contrôle de péremption ; `TestCopyAnonymizedTables_ResumesDuJournal` (déclaration réelle).
+      `sync/testutil/fixture.go` n'écrit pas `match_kill_events` (vérifié). NON FAIT, question Q2 au
+      pilote : conversion des fixtures `INSERT INTO match_kill_events` brutes.
+- [x] 7.6 Migrations historiques qui ont écrit `match_kill_events` (`steps_shared_kill_events_credit_base.go`,
       `_from_pairs.go`, `_sans_killfeed.go`) : non rejouées, nommées dans l'ADR ; le rattrapage (étape 8)
       couvre leurs passes.
-- [ ] 7.7 Tests : purs (bots, assistant anonyme, cas bot-bot, mesurée sans assistant, NULL, passe crédit
+      Vérifié sur pièces : seules `_credit_base.go` et `_from_pairs.go` écrivent le journal (nommées par
+      l'ADR 0039, décision 2) ; `_sans_killfeed.go` n'écrit que `match_registry` (écart au texte de
+      l'item, l'ADR fait foi). Aucune n'est rejouée ; leurs passes restent sans tête jusqu'à l'étape 8.
+- [x] 7.7 Tests : purs (bots, assistant anonyme, cas bot-bot, mesurée sans assistant, NULL, passe crédit
       puis passe film) ; parité adaptateur mémoire = adaptateur base ; un test d'intégration par
       écrivain (sync primaire, complétion, collecteur killsource, `BatchBuilder`, backfill CLI) : tête
       S0 `src_decode_pass` = passe de `match_kill_events_latest` ; deux passes successives → vues
@@ -364,11 +398,52 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
       injection d'erreur dans le calcul → passe annulée ; Halo 5 ; test des seuils de tranche liés à
       `summary_rev` ; test de cohérence PERMANENT : somme des `kills` de S1 = nombre de lignes de la
       passe courante.
-- [ ] 7.8 Plans d'exécution : `EXPLAIN ANALYZE` des vues S0-S2 sous une liste de matchs (le filtre
+      Fait : purs `analysis/killsummary/killsummary_test.go` ; empreinte `rev_test.go` (jetons des
+      sources du paquet + bornes de tranche, couple figé `ks1`) et `TestRev_BornesDeTrancheLieesALaRevision` ;
+      `persist/kill_summaries_integration_test.go` (sync primaire Halo Infinite ET Halo 5, complétion,
+      BatchBuilder, deux passes, relecture à révision nouvelle puis rattrapage depuis la base, parité
+      des adaptateurs relue jusque dans les vues, cohérence permanente sur un corpus de 5 matchs) ;
+      `sync/killcollector/kill_summaries_integration_test.go` (collecteur crédit ; le test du film réel,
+      sauté sans `KILLSOURCE_FIXTURES`, n'est pas touché : plafond de taille figé) ;
+      `cmd/levelup/cmd_backfill_killsource_resumes_integration_test.go` (passe crédit du backfill).
+      Constats partagés dans `sync/testutil/kill_summaries.go`. Injection d'erreur : la fonction pure
+      est totale (ADR décision 2) ; l'erreur injectée est une erreur BASE sur l'insertion de la tête
+      (table retirée), après le journal dans la même transaction : passe annulée pour chaque écrivain
+      (le sync primaire perd le match, la complétion ne pose pas `events_loaded`, le backfill compte
+      l'erreur). Coût de la passe (`TestPasseCredit_OuVaLeTemps`, CollectMatch de 3 morts, base
+      fichier) : sans résumés 9,8 / 13,7 / 11,1 ms (+ une valeur aberrante à 56,5), avec 11,6 / 14,7 /
+      12,3 ms : dans le bruit.
+- [!] 7.8 Plans d'exécution : `EXPLAIN ANALYZE` des vues S0-S2 sous une liste de matchs (le filtre
       descend-il sous la tête et ses filles ?) consigné ; les tests ADR 0036 qui exigent des fenêtres
       bornées (`exigerFenetresBornees`) restent verts ou sont réécrits pour les vues S, et le tableau
       d'exceptions I2 de l'ADR 0036 mis à jour.
+      Consigné (`platform/duckdb/resumes_fenetres_test.go`, 10 matchs x 2 générations = 20 têtes, liste
+      `VARCHAR[]` de 2 matchs) : S0 sous la liste → fenêtre 4 lignes (bornée) ; S1/S2 pour UN match
+      (`match_id = ?`) → 2 (l'égalité traverse la jointure) ; S1/S2 sous la liste → 20 : la liste NE
+      descend PAS sous la fenêtre de la tête (toute la table des têtes, jamais les lignes des filles).
+      Variantes mesurées : `IN (?, ?)` et `IN` littéral → 20 ; liste sur la vue fille + semi-jointure sur
+      la vue tête → 20 et 4 (la fenêtre interne reste entière) ; table fille BRUTE jointe à la vue tête
+      sous la liste → 4 (bornée, mais lecture brute d'une table append-only, interdite par ADR 0026 et
+      `TestNoRawAppendOnlyReads`). Les tests `exigerFenetresBornees` existants restent verts (aucun
+      lecteur ne lit encore S). Tableau I2 de l'ADR 0036 NON mis à jour : décision Q1 au pilote.
+      Q1 : le remède de l'ADR 0039 décision 7 (« readers bind the list on the head view too ») ne
+      s'applique pas tel quel — la fenêtre de la tête est DANS la vue fille. Options : (a) accepter la
+      fenêtre entière de la tête (une ligne par match et génération ; l'ADR dit « costs little »), ligne
+      au tableau I2 et test qui le tient (forme actuelle du test) ; (b) autre forme de vue ou macro de
+      table paramétrée par la liste (nouveau mécanisme, amende l'ADR) ; (c) lecture brute allowlistée.
+      Q2 (7.5) : à l'étape 7 aucun lecteur ne lit S ; les fixtures `INSERT INTO match_kill_events`
+      brutes (~25 sites hors migrations) ne servent que des lecteurs du journal. Celles de
+      `platform/duckdb` (paquet interne) ne peuvent pas appeler `persist` (cycle persist → duckdb) : elles
+      devraient écrire S0-S2 à la main, recopie de la règle. Proposition : chaque fixture est convertie
+      avec son lecteur à l'étape 9 (D-4), par `persist.PersistLatestKillPassSummaries` là où l'import est
+      possible ; les fixtures des migrations historiques n'en posent jamais (ADR décision 2).
 - Gate : doctrine §4 (dont `-tags=integration` persist/sync) ; revue adversariale close.
+  Statut (2026-10-21) : `go test` (défaut) vert sur analysis/killsummary, persist, migration, ops,
+  sync/..., platform/duckdb/..., migrations Halo Infinite, cmd/levelup ; `-tags=integration -p 1` vert
+  sur les mêmes paquets ; `go test ./internal/archlint/` vert ; golangci-lint
+  `--new-from-merge-base=origin/main` 0 problème, avec et sans tag `integration` ;
+  `scripts/check_test_baseline.sh` : voir le rapport de l'agent. Revue adversariale : par le pilote.
+  Étape NON close : 7.5 (fixtures) et 7.8 attendent les décisions Q1 et Q2 du pilote.
 
 ### Étape 8 — Rattrapage du parc (volet 2, D-10 validée avant)
 
@@ -511,4 +586,7 @@ Q23b/Q28c 250-1 080 ms (Madina97294 reste à ~1 s sur la vue match).
 - `analysis/identity.go` (`v_gamertag_lookup`, annuaire des noms) lit encore `match_kill_events_latest` pour résoudre les noms : hors du critère du volet 2 (lecture de noms, pas un agrégat), allowlistée en 9.5 ; à reprendre dans un chantier « annuaire » si mesuré coûteux.
 - Banc (2026-10-21) : un serveur gardé entre deux passages ralentit de 6 à 15 % par passage, et sa mémoire privée atteint ~1,6 Go après UN passage de 34 pages (2 fils DuckDB, 512 Mo). Le VPS de prod a 1,8 Go de RAM au total : pression mémoire à surveiller (non traité ici).
 - Comparaison : 5,9 s sur 6,2 passés HORS sections (frags entre joueurs non bornés, `QKillsBetweenPlayers`) ; seule la partie servie par S1 est dans le périmètre (9.2).
+- Étape 7 (2026-10-21) : le modèle d'empreinte cité par l'ADR 0039 (`decoder_rev_fingerprint_test.go`) n'existe plus (retiré le 2026-09-16 au profit de `film/revision`, propre aux couches du décodeur et à leur fermeture d'imports). L'empreinte de `killsummary.Rev` hache le flux de jetons (`go/scanner`, sans commentaires) des sources du paquet et les bornes de tranche ; elle ne réunit pas les trois marqueurs du ratchet `archlint/no_ad_hoc_source_fingerprint_test.go`. À trancher par le pilote si une centralisation est voulue.
+- Étape 7 : deux affirmations fausses corrigées dans les commentaires touchés (règle 17) : `insertKillEventRows` n'était pas « le seul écrivain » du journal (seed démo synthétique et deux migrations historiques l'écrivent en SQL) ; la liste des appelants de `EnsureMatchKillEvents` omettait la lecture du snapshot partagé.
+- Étape 7 : le test du collecteur sur film réel (`TestKillSourceCollecteFilmReelEtRelitParLaVue`) se saute sans `KILLSOURCE_FIXTURES` et son fichier est au plafond figé par `archlint/film_file_size_test.go` : aucune assertion de tête n'y est ajoutée ; le chemin `PersistPass` du collecteur est couvert sans film par le collecteur crédit.
 - (à compléter pendant l'exécution)

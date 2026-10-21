@@ -1,3 +1,11 @@
+## [2026-10-21] Plan perf pages v8.0.1, étape 7 : résumés par match S0-S2 (schéma, calcul, écriture) — En cours (branche `feat/v801-perf-resumes`, deux questions au pilote)
+
+**Décision technique principale** : migration générique `shared_match_kill_summaries_v1` (S0 `match_kill_heads`, S1 `match_kill_pairs`, S2 `match_assist_pairs`, colonnes de l'ADR 0039, vues `_latest` décidées par la tête), posée aussi par `EnsureMatchKillEvents` ; fonction pure `analysis/killsummary` (`Rev = "ks1"`, empreinte des sources et des bornes de tranche figée par `rev_test.go`) ; insertion unique `persist.insertKillSummaryRows`, appelée par `insertKillEventRows` dans la transaction de la passe et au même horodatage, et par `PersistLatestKillPassSummaries` (passe relue en base, tête datée de la passe) pour le seed démo synthétique et le futur rattrapage. Compaction, garde-rails ART, lecture brute, snapshot et seed démo étendus.
+
+**Résultats observés** : tests d'écrivain (sync primaire Halo Infinite et Halo 5, complétion, BatchBuilder, collecteur crédit, backfill CLI) : tête = passe de `match_kill_events_latest`, S1 = morts de la passe, erreur base sur la tête = passe annulée ; deux passes, relecture sans double compte, parité des adaptateurs, cohérence permanente verts. EXPLAIN (7.8) : liste sur S0 bornée (4/20), `match_id = ?` sur S1/S2 borné (2/20), liste sur S1/S2 NON bornée (fenêtre de la tête = toute la table des têtes, 20/20). Coût de la passe crédit de 3 morts : dans le bruit.
+
+**Conclusion / prochaine étape** : 7.8 et la partie « fixtures » de 7.5 attendent la décision du pilote ; revue adversariale par le pilote.
+
 ## [2026-10-21] Plan perf pages v8.0.1, étape 6 : ADR 0039 résumés par match du journal des morts — Complété (branche `feat/v801-perf-pages`)
 
 **Décision technique principale** : trois tables de résumés (S0 tête par match, S1 paires tueur/victime/source, S2 assistances) écrites par une fonction unique `insertKillSummaryRows`, dans la transaction de la passe (`insertKillEventRows`, seul écrivain d'exécution du journal), aussi par le seed démo synthétique et par le rattrapage ; vues `_latest` décidées par la tête ; jauge « sans tête » = porte de release ; garde-rail au niveau des requêtes.
