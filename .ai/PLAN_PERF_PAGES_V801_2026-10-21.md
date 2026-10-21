@@ -11,7 +11,7 @@ DEUX VOLETS COMPLÉMENTAIRES sur un socle commun :
 
 Contrat d'exécution : skill `plan-execution` (fait foi). Statuts `[x]` fait, `[~]` couvert ailleurs
 (référence), `[!]` non traité (justification écrite) ; aucune case vide à la clôture. Étape N close
-(gate passé, cases statuées, entrée `thought_log`) avant N+1, dans l'ordre du §5 ; après l'étape 2, DEUX PISTES PARALLÈLES (accord user 2026-10-21), chacune en ordre strict : piste A = étapes 3, 4 (agent Sonnet, worktree dédié) ; piste B = étapes 6, 7, 8, 9 (ADR par le pilote, puis agents Opus, worktree dédié) ; l'étape 10 clôt les deux. Découverte hors
+(gate passé, cases statuées, entrée `thought_log`) avant N+1, dans l'ordre du §5 ; après l'étape 2, DEUX PISTES PARALLÈLES (accord user 2026-10-21), chacune en ordre strict : piste A = étapes 3, 4 (agent Sonnet, worktree dédié) ; piste B = étapes 6, 7, 8, 9 (ADR par le pilote, puis agents Opus, worktree dédié) ; piste C = étape 2b (compactage automatique, agent Opus, worktree dédié) ; l'étape 10 clôt les deux. Découverte hors
 périmètre : section « Découvertes », jamais traitée ici. Reprise de session : relire ce fichier
 (cases cochées), puis `git log --oneline -15` dans le worktree.
 
@@ -207,6 +207,41 @@ Pour chaque étape qui change du code, AVANT de cocher son gate :
       favorite reste sur tout l'historique jusqu'à 9.3). Après l'étape 9 : Accueil et vue match
       < 0,6 s pour les trois comptes sur le banc ; Carrière rencontres et rivaux < 0,3 s.
 - Gate : [x] annexe A complète pour les trois comptes ; candidats du §6 statués.
+
+### Étape 2b — Compactage des passes : prod, puis automatisation (piste C, ajoutée le 2026-10-21)
+
+Origine : découverte de l'annexe A.3 (bases de prod jamais compactées depuis les recuissons
+d'octobre ; compactage seul = -56 à -93 % sur la plupart des pages). Accord du user le 2026-10-21 :
+« ok pour l'automatisation et pour le faire dès maintenant ». Complémentaire des volets 1 et 2 : le
+compactage retire les passes périmées de TOUTES les tables append-only (y compris les futures tables
+de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumés.
+
+- [x] 2b.1 Compactage de la prod (2026-10-21, 10:16:58 → 10:18:46 UTC, serveur arrêté ~1 min 50,
+      `docker compose run --rm --no-deps -u appuser --entrypoint levelup levelup compact-passes`) :
+      halo_infinite 26,6 M → 3,74 M lignes (`match_kill_events` 7,98 M → 0,42 M), halo_5 0,83 M →
+      0,57 M ; sauvegardes `…avant-compaction-20261021T1017…Z.duckdb` à côté des bases (2,3 Go +
+      0,2 Go) — à supprimer après vérification par le user ; santé OK 11 s après redémarrage,
+      aucune erreur journalisée.
+- [ ] 2b.2 Compactage automatique dans le serveur : tâche de fond (coupée en démo, déclarée dans
+      `demoPolicies`) qui, la nuit (fenêtre fixe, hors cycle de sync), mesure le rapport lignes
+      brutes / lignes `_latest` de chaque table du registre de compaction et, au-delà d'un seuil
+      nommé (constante, valeur justifiée par mesure), appelle `migration.CompactSupersededPasses`
+      SOUS l'écrivain partagé obtenu par le chemin standard (rafale courte, comme le LUSR v2 ; jamais
+      une ouverture RW hors provider/lease — règle « bare connect »), avec vérification d'empreinte
+      de vue avant/après (déjà dans `echangerTable`). Pas de sauvegarde fichier en processus (la base
+      est ouverte) : filet = transaction + empreintes + sauvegarde restic quotidienne du VPS ; le CLI
+      `compact-passes` reste l'outil manuel avec sauvegarde. Journal INFO par table (avant, après,
+      durée), WARN si un seuil est dépassé mais la compaction refusée.
+- [ ] 2b.3 Jauge « passes par match » (rapport brutes / `_latest` par table) exposée dans le contrôle
+      de santé des données (`scheduler/data_health_check.go`) et en expvar ; WARN au-delà du seuil.
+- [ ] 2b.4 Documentation : ADR 0026 amendé (la compaction est automatique, conditions, filet),
+      `docs/COMMANDS.md` FR + EN (le CLI reste pour l'usage manuel), changelog 8.0.1 FR + EN.
+- [ ] 2b.5 Tests : déclenchement sous et au-dessus du seuil (horloge et seuil injectables), refus
+      pendant un cycle de sync, écrivain partagé obligatoire (aucune ouverture directe), démo coupée,
+      empreintes identiques après compaction en processus sur un corpus append-only réel
+      (`-tags=integration`), `no_art_patterns_test.go` sans nouvelle entrée d'allowlist.
+- Gate : doctrine §4 (dont `-tags=integration -p 1` sur `./internal/migration/...`,
+  `./internal/scheduler/...`, `./cmd/server/...`) ; revue adversariale close.
 
 ### Étape 3 — Accueil en fenêtre, serveur (volet 1)
 
