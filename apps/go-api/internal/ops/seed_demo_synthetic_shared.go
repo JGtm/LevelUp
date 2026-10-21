@@ -19,6 +19,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/persist"
 )
 
 // synthDemoSeason : season_id fixe du corpus synthétique.
@@ -104,7 +105,13 @@ func insertSharedMatch(ctx context.Context, db *sql.DB, m synthMatch, aliases ma
 			return err
 		}
 	}
-	return insertMatchEvents(ctx, db, m, parts)
+	if err := insertMatchEvents(ctx, db, m, parts); err != nil {
+		return err
+	}
+	// Le kill-feed de démo s'écrit en SQL, hors de l'écrivain des passes : ses résumés par match
+	// (ADR 0039) sont posés depuis la passe relue, par la même fonction d'insertion.
+	_, err := persist.PersistLatestKillPassSummaries(ctx, db, m.matchID)
+	return err
 }
 
 // insertMatchRegistry écrit une ligne match_registry avec les noms dénormalisés (+_fr).

@@ -79,7 +79,7 @@ func createParquetViewStrict(ctx context.Context, db *sql.DB, viewName, file str
 // Les tables d'un titre seulement (sharedSnapshotTitleOwnedRaw) n'en font pas partie.
 func sharedSnapshotRequiredTables() []string {
 	out := append([]string{}, sharedSnapshotTables...)
-	out = append(out, sharedSnapshotMatchKeyedRaw...) // match_csrs, match_objective_stats, match_kill_events (raw)
+	out = append(out, sharedSnapshotMatchKeyedRaw...) // match_csrs, match_objective_stats, match_kill_events + résumés S0-S2 (raw)
 	out = append(out, sharedSnapshotGlobalTables...)  // xuid_aliases
 	return out
 }
@@ -191,7 +191,7 @@ func reconstruireSchemaShared(ctx context.Context, db *sql.DB, sharedFile func(s
 	// :memory:, la table matérialisée depuis le Parquet est déjà là : les CREATE ... IF
 	// NOT EXISTS sont des no-ops, seule la vue (OR REPLACE) est posée. Q21b/Q21c (arme +
 	// assistant du kill feed) la lisent : sans elle, MatchView servi du snapshot rendrait
-	// ces lectures vides.
+	// ces lectures vides. La même fonction pose les vues des résumés par match (S0-S2, ADR 0039).
 	if err := migration.EnsureMatchKillEvents(db); err != nil {
 		return fmt.Errorf("snapshot read shared: match_kill_events_latest: %w", err)
 	}
