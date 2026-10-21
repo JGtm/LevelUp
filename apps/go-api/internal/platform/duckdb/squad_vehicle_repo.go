@@ -6,7 +6,7 @@
 //	prises   `match_vehicle_takes_latest` (ADR 0026 : la vue seulement), `match_id` lié en UNE
 //	         constante `VARCHAR[]` que DuckDB pousse sous la fenêtre de la vue (I2). La vue rend la
 //	         DERNIÈRE PASSE ENTIÈRE de chaque match : lignes de prise + ligne `match` (couverture).
-//	frags    `match_kill_events_latest`, pour les SEULS matchs dont la passe est mesurée, a apparié
+//	frags    `match_kill_pairs_latest` (S1), pour les SEULS matchs dont la passe est mesurée, a apparié
 //	         ses frags et en compte (les autres n'ont aucun frag à répartir par camp). Le tueur du
 //	         kill-feed, la source de dégât MESURÉE, traduite en clé de registre par le classificateur
 //	         du titre, puis en classe par le MÊME résolveur que la Répartition des frags
@@ -60,8 +60,8 @@ ORDER BY v.match_id, v.row_kind, v.camp, v.xuid, v.family`
 
 // qSquadVehicleFrags : les frags mesurés des matchs demandés, par (match, camp du tueur, source).
 const qSquadVehicleFrags = `
-SELECT k.match_id, p.team_id, k.source_tag, COUNT(*)::INTEGER AS frags
-FROM match_kill_events_latest k
+SELECT k.match_id, p.team_id, k.source_tag, SUM(k.kills)::INTEGER AS frags
+FROM match_kill_pairs_latest k
 LEFT JOIN match_participants p ON p.match_id = k.match_id AND p.xuid = k.feed_killer_xuid
 WHERE %s AND k.source_tag IS NOT NULL AND k.feed_killer_xuid IS NOT NULL
 GROUP BY k.match_id, p.team_id, k.source_tag

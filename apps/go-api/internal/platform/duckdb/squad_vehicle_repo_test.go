@@ -103,6 +103,7 @@ func poserMort(t *testing.T, pdb *PlayerDB, match, killer string, tag any, n int
 			VALUES (?, 'pass_v1', 'rev_test', TRUE, ?, 'Victime', NULL, 'Tueur', ?, TRUE, FALSE, ?, 'film-walk',
 			        'credit-concordant')`, match, 1000+i, k, tag)
 	}
+	ecrireResumes(t, pdb.Shared.SQLDb(), match) // les frags se lisent sur le résumé de la passe
 }
 
 func poserParticipant(t *testing.T, pdb *PlayerDB, match, xuid string, team int) {

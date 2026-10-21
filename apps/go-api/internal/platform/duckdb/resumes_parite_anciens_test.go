@@ -174,3 +174,32 @@ FROM ` + KillEventsCanonicalTable + `
 WHERE match_id IN (%s)
   AND publishable
   AND feed_killer_xuid IS NOT NULL`
+
+// qMatchKillSourceWeapons : texte de match_view_repo_weapons_source.go au commit 2fed26886 (avant la bascule).
+const ancien_qMatchKillSourceWeapons = `
+SELECT
+    k.feed_killer_xuid,
+    k.source_tag,
+    COUNT(*)::INTEGER AS kills
+FROM match_kill_events_latest k
+WHERE k.match_id = ?
+  AND k.source_tag IS NOT NULL
+  AND k.feed_killer_xuid IS NOT NULL
+GROUP BY k.feed_killer_xuid, k.source_tag`
+
+// qSquadVehicleFrags : texte de squad_vehicle_repo.go au commit 2fed26886 (avant la bascule).
+const ancien_qSquadVehicleFrags = `
+SELECT k.match_id, p.team_id, k.source_tag, COUNT(*)::INTEGER AS frags
+FROM match_kill_events_latest k
+LEFT JOIN match_participants p ON p.match_id = k.match_id AND p.xuid = k.feed_killer_xuid
+WHERE %s AND k.source_tag IS NOT NULL AND k.feed_killer_xuid IS NOT NULL
+GROUP BY k.match_id, p.team_id, k.source_tag
+ORDER BY k.match_id, p.team_id, k.source_tag`
+
+// qSquadEmpriseJournal : texte de squad_emprise_journal_repo.go au commit 2fed26886 (avant la bascule).
+const ancien_qSquadEmpriseJournal = `
+SELECT k.match_id, k.feed_killer_xuid, k.victim_xuid, k.source_tag, COUNT(*)::INTEGER AS frags
+FROM ` + KillEventsCanonicalTable + ` k
+WHERE %s AND k.publishable
+GROUP BY k.match_id, k.feed_killer_xuid, k.victim_xuid, k.source_tag
+ORDER BY k.match_id, k.feed_killer_xuid, k.victim_xuid, k.source_tag`
