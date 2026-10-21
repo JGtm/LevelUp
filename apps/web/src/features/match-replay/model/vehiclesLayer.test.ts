@@ -257,6 +257,8 @@ describe('vehicleDestructionFrame — schéma 39, EN AVANCE DE PHASE', () => {
 describe('vehicleExplosionKindOf — la table FACTION -> EFFET (demande utilisateur)', () => {
   it('les CINQ familles Covenant/Bannis reçoivent l’explosion PLASMA', () => {
     for (const f of VEHICLE_PLASMA_FAMILIES) expect(vehicleExplosionKindOf(f)).toBe('plasma')
+    // TOUS les Bannis jouables y sont (décision utilisateur 2026-10-21) : Ghost compris.
+    expect([...VEHICLE_PLASMA_FAMILIES].sort()).toEqual(['banshee', 'chopper', 'ghost', 'shade', 'wraith'])
   })
 
   it('les familles UNSC/humaines citées par l’utilisateur reçoivent l’explosion NORMALE', () => {

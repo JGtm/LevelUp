@@ -353,12 +353,16 @@ describe('drawVehiclesLayer — LA DESTRUCTION (schéma 39, demande utilisateur 
     expect(count(ops, 'drawImage')).toBe(1)
   })
 
-  it('EXPLOSION PLASMA pour une famille Covenant/Bannis (Ghost)', () => {
-    const ghost = track({ end: 'destroyed', tEnd: 50, rides: [], family: 'ghost' })
-    const colors = paintedColors(paint([ghost], style(), { frame: 50 }))
-    expect(colors).toContain('INK-PLASMA')
-    expect(colors).not.toContain('INK-NORMALE')
-  })
+  it.each(['ghost', 'banshee', 'wraith', 'chopper', 'shade'])(
+    'EXPLOSION ROUGE (plasma_hot) pour un véhicule Banni : %s — jamais le bleu du plasma froid',
+    (family) => {
+      const banni = track({ end: 'destroyed', tEnd: 50, rides: [], family })
+      const colors = paintedColors(paint([banni], style(), { frame: 50 }))
+      expect(colors).toContain('INK-PLASMA-HOT')
+      expect(colors).not.toContain('INK-PLASMA')
+      expect(colors).not.toContain('INK-NORMALE')
+    },
+  )
 
   it('EXPLOSION NORMALE pour un véhicule humain (Warthog)', () => {
     const warthog = track({ end: 'destroyed', tEnd: 50, rides: [], family: 'warthog' })

@@ -432,10 +432,12 @@ function vehicleExplosionEdgePx(
  * pour les véhicules humains ».
  *
  * ZÉRO SECOND MOTEUR : c'est `explosionFx.drawExplosion` (déjà éprouvé sur les grenades)
- * RÉUTILISÉ TEL QUEL. Deux réglages seulement sont posés ici : L'ENCRE — plasma Covenant/Bannis
- * vs feu UNSC, `vehicleExplosionKindOf` (vehiclesLayer.ts), sur les MÊMES tokens de thème que les
- * grenades (`--replay-fx-plasma-cool` / `--replay-fx-blast`, cf. fxInk.ts) puisque c'est la même
- * NATURE de déflagration — et L'ÉCHELLE (`vehicleExplosionEdgePx`, la primitive de taille du
+ * RÉUTILISÉ TEL QUEL. Deux réglages seulement sont posés ici : L'ENCRE — plasma ROUGE des Bannis
+ * (tous les châssis de `VEHICLE_PLASMA_FAMILIES`, Ghost compris : décision de l'utilisateur,
+ * contrôles v8, 2026-10-21, « en rouge, pas en bleu ») vs feu UNSC, `vehicleExplosionKindOf`
+ * (vehiclesLayer.ts), sur les MÊMES tokens de thème que les armes Bannis à énergie
+ * (`--replay-fx-plasma-hot`, teinte de leurs tirs) et que le feu UNSC (`--replay-fx-blast`,
+ * cf. fxInk.ts) puisque c'est la même NATURE de déflagration — et L'ÉCHELLE (`vehicleExplosionEdgePx`, la primitive de taille du
  * sprite, jamais un second calcul).
  *
  * ANCRÉE SUR LA POSITION DU VÉHICULE À `destroyedFrame`, JAMAIS SUR SA POSITION COURANTE : le
@@ -468,7 +470,7 @@ function drawVehicleDestructionFx(
   const k = vehicleExplosionEdgePx(track, style, time.k, echelle) / vehicleUnknownHalfPx(echelle)
   const kind = vehicleExplosionKindOf(track.family)
   const fire =
-    (kind === 'plasma' ? style.explosionInk.tint.plasma_cool : style.explosionInk.tint.blast) ||
+    (kind === 'plasma' ? style.explosionInk.tint.plasma_hot : style.explosionInk.tint.blast) ||
     style.explosionInk.tint.neutral
   drawExplosion(
     ctx,

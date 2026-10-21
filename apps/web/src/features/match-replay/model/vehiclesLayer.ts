@@ -339,7 +339,10 @@ export type VehicleExplosionKind = 'plasma' | 'normal'
 
 /**
  * VEHICLE_PLASMA_FAMILIES — TABLE FACTION -> EFFET (nommée et commentée, comme demandé) : les
- * châssis Covenant/Bannis, à énergie, reçoivent l'explosion PLASMA. La Shade (tourelle montée
+ * châssis Bannis (le Covenant du multijoueur de Halo Infinite), à énergie, reçoivent l'explosion
+ * PLASMA, ROUGE (`plasma_hot`, cf. `drawVehicleDestructionFx`) — Ghost, Banshee, Wraith, Chopper,
+ * Shade, sans exception : la faction décide de la couleur, pas le châssis. Les Bannis sans rendu
+ * (Phantom, Skiff : `FAMILLES_NON_JOUABLES`) n'explosent jamais à l'écran. La Shade (tourelle montée
  * Covenant, immobile — cf. `VEHICLE_DEFAULT_HEADING_DEG`) reste une énergie Covenant même sans
  * jamais se déplacer, elle entre donc ici et pas dans la table humaine ci-dessous.
  *

@@ -115,9 +115,9 @@ fire     = "single"
 fx       = "explosive"
 tint     = "blast"
 sound    = "vehicle_shot_wasp_1"
-mount    = { aim = "fixed", ax = 0.3, ay = -0.05 }
+mount    = { aim = "fixed", ax = 0.0, ay = -0.44 }
 proof    = "4 tirs publies dont 4 en vehicule, 1 document (8a485699) ; porteur mesure wasp:b65b3b4a (4) ; V3F_TIRS_COVENANT_2026-09-02 §4 : son AU COUP (snd!, 450/min) ; le son vehicle_shot_wasp est celui des missiles (sonde SONS du 2026-09-24 : evenement 3P e22a0d32, 0 % d energie non expliquee)"
-decision = "le coup par coup est le LANCE-MISSILES, l autre mode (d3c407ed, son en boucle 600/min, tir continu) est la LMG (utilisateur, Q11, 2026-09-23 nuit) ; ancre sur l aile ; fichiers vehicle_shot_wasp_1/_2 REMPLACES par le rendu V3E reequilibre (gains de chemin complets +22 / +13 / +8 dB au lieu de l equilibre rev9), designe A L OREILLE (utilisateur, 2026-09-24)"
+decision = "le coup par coup est le LANCE-MISSILES, l autre mode (d3c407ed, son en boucle 600/min, tir continu) est la LMG (utilisateur, Q11, 2026-09-23 nuit) ; ancre a la POINTE AVANT du sprite (utilisateur, controles v8, 2026-10-21 : les tirs partent du nez, comme les autres vehicules a tir fixe ; mesuree sur wasp.png, nez a la rangee 15 sur 273 soit ay -0,44, axe) ; fichiers vehicle_shot_wasp_1/_2 REMPLACES par le rendu V3E reequilibre (gains de chemin complets +22 / +13 / +8 dB au lieu de l equilibre rev9), designe A L OREILLE (utilisateur, 2026-09-24)"
 
 [[weapons]]
 tag      = "850902EF"
@@ -194,8 +194,8 @@ fx       = "ballistic"
 tint     = "kinetic"
 sound    = "vehicle_shot_wasp_lmg_1"
 loop     = "vehicle_shot_wasp_lmg_loop"
-mount    = { aim = "fixed", ax = 0.3, ay = -0.05 }
-proof    = "tag declare par le chassis du Wasp (b65b3b4a), avec les missiles 11725DC4 ; 1 barillet x 10/s, type 1, debit 0 ; 8a485699 : deux rafales de xmatt3434x posees sur le Wasp 782 ; sons rendus V3E de l evenement 5baca8ee : BOUCLE 3P de 8 s tenue pendant le tir, COUP 3P en queue (livres au lot M6.1) ; ancre des missiles (meme aile)"
+mount    = { aim = "fixed", ax = 0.0, ay = -0.44 }
+proof    = "tag declare par le chassis du Wasp (b65b3b4a), avec les missiles 11725DC4 ; 1 barillet x 10/s, type 1, debit 0 ; 8a485699 : deux rafales de xmatt3434x posees sur le Wasp 782 ; sons rendus V3E de l evenement 5baca8ee : BOUCLE 3P de 8 s tenue pendant le tir, COUP 3P en queue (livres au lot M6.1) ; ancre des missiles (meme pointe avant, 2026-10-21)"
 decision = "LMG de la Wasp = le mode continu (Q11, 2026-09-23 nuit) ; sons designes a l oreille (utilisateur, 2026-09-24)"
 
 [[weapons]]
