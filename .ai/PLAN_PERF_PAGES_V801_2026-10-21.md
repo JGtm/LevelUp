@@ -281,7 +281,7 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
   `./internal/scheduler/...`, `./cmd/server/...`, `./internal/domain/title/...`,
   `./internal/archlint/...`, `./cmd/levelup/...` verts ; [x] `golangci-lint
   --new-from-merge-base=origin/main` 0 problème ; [x] `shellcheck` + `bash -n` du script ;
-  [ ] revue adversariale : par le pilote — ronde 1 traitée (ci-dessous), clôture par le pilote.
+  [x] revue adversariale : ronde 1 (1 P1 restic, 2 P1 redémarrage et jauge partielle, tests faibles) corrigée en `a3ff5e1bb` ; ronde 2 sur les seules corrections (2026-10-21) : aucun défaut recevable, 4/4 corrections complètes. Étape 2b close (installation des unités systemd sur le VPS : au déploiement, avec l'accord du user).
 - Revue adversariale ronde 1 (pilote, 2026-10-21 ; VPS vérifié en `Etc/UTC`, 03:30 UTC retenu),
   chaque correction avec un test rouge sans elle (vérifié en rejouant le test sur la version de
   `373e8b62b`) :
