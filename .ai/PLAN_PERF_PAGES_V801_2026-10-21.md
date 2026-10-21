@@ -664,13 +664,14 @@ retirées dans le même commit, `bash scripts/check_test_baseline.sh`), mesure b
 
 ### Étape 10 — Clôture
 
-- [ ] 10.1 `make gate-push` vert.
+- [x] 10.1 `make gate-push` vert. (2026-10-21) Lint Go, typecheck et lint web verts ; baseline : `platform/duckdb` en délai dépassé (5 min) dans le run complet parallèle (contention du poste, mémoire `reference_local_full_go_run_package_flakes`), rejoué seul avec le même délai : `ok` en 100 s ; la CI (autorité) est verte sur la branche.
 - [ ] 10.2 CI verte sur la branche ; intégration dans `feat/v75` DEMANDÉE au user puis faite ; CI verte sur `feat/v75`.
 - [ ] 10.3 Changelog 8.0.1 FR + EN ; `docs/COMMANDS.md` FR + EN (banc, rattrapage) ; ADR à jour ;
       séquence de release complétée (rattrapage local puis bases vers le VPS, D-10) et transmise à la
       session de release.
-- [ ] 10.4 `.ai/REGISTRE_REPORTS.md` alimenté (candidats non faits, familles de second rang) ; plan
+- [x] 10.4 `.ai/REGISTRE_REPORTS.md` alimenté (candidats non faits, familles de second rang) ; plan
       archivé sous `.ai/V7.5/`.
+      Fait (2026-10-21) : 5 lignes ajoutées au registre (valeurs non déterministes, résumés de second rang, candidats sans lecteur, source des citations d'armes du sync, défilement de l'Accueil). Archivage du plan sous `.ai/V7.5/` : à la clôture de 10.5 (après le déploiement).
 - [ ] 10.5 Après le déploiement : `http_timings` de prod relevées (lecture seule), comparées à
       l'annexe A, consignées.
 - [ ] 10.6 Nettoyage : seulement les fichiers listés dans `scripts/bench-pages.files` (jamais `data/`
