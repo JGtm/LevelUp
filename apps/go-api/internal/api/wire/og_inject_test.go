@@ -159,6 +159,10 @@ func (f *ctxCapturingHomeService) GetHomePage(ctx context.Context, _, _ string) 
 	return f.page, nil
 }
 
+func (f *ctxCapturingHomeService) GetHomeMatches(context.Context, string, domain.HomeMatchesRequest) (*domain.HomeMatchesPage, error) {
+	return nil, nil
+}
+
 func (f *ctxCapturingHomeService) GetBattlePass(context.Context) domain.BattlePassResponse {
 	return domain.BattlePassResponse{}
 }

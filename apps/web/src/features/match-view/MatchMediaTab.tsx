@@ -7,7 +7,7 @@ import { usePlayerGamertag } from '@/features/media/usePlayerGamertag'
 import { useToggleMediaLike } from '@/features/media/queries'
 import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { toMediaItemRow } from './_mediaItemRow'
-import { Card, CardContent } from '@/components/ui/card'
+import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { MatchViewText } from './i18n'
 
@@ -49,16 +49,11 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
     toggleLike.mutate({ file_path: item.file_path, liked: nextLiked })
   }
 
-  if (mediaRows.length === 0) {
-    // Convention de l'application : l'état vide pointillé vit DANS un bloc parent, jamais nu sous le titre de section.
-    return (
-      <Card data-testid="match-media-empty">
-        <CardContent className="pt-4">
-          <EmptyStateNotice title={t.mediaNoCaptures} description={t.mediaNoCapturesDesc} />
-        </CardContent>
-      </Card>
-    )
-  }
+  // Bloc Médias : TOUJOURS une carte à titre (SectionCard, le gabarit des autres blocs de la
+  // page), titre DANS le bloc, qui contient soit toutes les vignettes soit l'état vide. Les
+  // fenêtres (visionneuse, réassociation) sont posées HORS de la carte : elles ne sont pas
+  // son contenu.
+  const isEmpty = mediaRows.length === 0
 
   return (
     <>
@@ -85,21 +80,32 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
           onClose={picker.close}
         />
       )}
-      <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]">
-        {mediaRows.map((item, idx) => (
-          <MediaThumbnailCard
-            key={item.file_path}
-            item={item}
-            onToggleLike={handleToggleLike}
-            onOpen={() => setLightboxIdx(idx)}
-            likeDisabled={likeDisabled}
-            playerSlug={playerSlug}
-            currentMatchId={matchId}
-            onAssociate={canWrite ? picker.openFor : undefined}
-            currentPlayerGamertag={currentPlayerGamertag}
-          />
-        ))}
-      </div>
+      <SectionCard title={t.sectionMedia}>
+        {isEmpty ? (
+          <div className="p-3" data-testid="match-media-empty">
+            <EmptyStateNotice title={t.mediaNoCaptures} description={t.mediaNoCapturesDesc} />
+          </div>
+        ) : (
+          <div
+            className="grid gap-4 p-3 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]"
+            data-testid="match-media-grid"
+          >
+            {mediaRows.map((item, idx) => (
+              <MediaThumbnailCard
+                key={item.file_path}
+                item={item}
+                onToggleLike={handleToggleLike}
+                onOpen={() => setLightboxIdx(idx)}
+                likeDisabled={likeDisabled}
+                playerSlug={playerSlug}
+                currentMatchId={matchId}
+                onAssociate={canWrite ? picker.openFor : undefined}
+                currentPlayerGamertag={currentPlayerGamertag}
+              />
+            ))}
+          </div>
+        )}
+      </SectionCard>
     </>
   )
 }

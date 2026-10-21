@@ -193,9 +193,15 @@ const RIGHT_ALIGNED_COLUMNS = new Set<string>([
   'delta_mmr',
 ])
 
+/** Colonnes dont le contenu est UNE icône plus étroite que leur en-tête : en-tête ET
+ *  cellules sont centrés (l'icône « Rejeu » restait collée à gauche d'une colonne que
+ *  le mot « Rejeu » élargit). Exception à DEC-ALIGN, qui ne vise que les nombres. */
+const CENTERED_COLUMNS = new Set<string>(['replay'])
+
 /** Classe d'alignement horizontal d'une colonne selon son id (droite si
- *  numérique, gauche sinon). */
+ *  numérique, centré pour une colonne d'icône large, gauche sinon). */
 function alignClass(colId: string): string {
+  if (CENTERED_COLUMNS.has(colId)) return 'text-center'
   return RIGHT_ALIGNED_COLUMNS.has(colId) ? 'text-right' : 'text-left'
 }
 

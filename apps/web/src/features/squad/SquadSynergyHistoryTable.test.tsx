@@ -207,6 +207,16 @@ describe('SquadSynergyHistoryTable — colonne « Rejeu »', () => {
     expect(link.getAttribute('href')).toContain('/matches/match-1/replay')
   })
 
+  it("l'icône de rejeu est centrée : la cellule et l'en-tête de la colonne portent text-center", () => {
+    renderWithProviders(
+      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="Chocoboflor" />,
+    )
+    const cell = screen.getByRole('link', { name: REPLAY_LABEL }).closest('td') as HTMLElement
+    const index = Array.from((cell.parentElement as HTMLElement).children).indexOf(cell)
+    expect(cell.className).toContain('text-center')
+    expect(screen.getAllByRole('columnheader')[index].className).toContain('text-center')
+  })
+
   it('ne rend RIEN quand has_replay est faux ou absent', () => {
     renderWithProviders(
       <SquadSynergyHistoryTable

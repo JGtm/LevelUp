@@ -53,7 +53,7 @@ describe('presenceEntries — ce qui parle, et ce qui se tait', () => {
     expect(e.replayMs).toBe(90_000)
   })
 
-  it('une DERNIÈRE vie précoce dit « ne reviendra plus », datée à sa fin', () => {
+  it('une DERNIÈRE vie précoce est un départ (« a quitté la partie »), datée à sa fin', () => {
     const [e] = presenceEntries([player('A', [life(512, 100, 1_200)])], WINDOW, DOC)
     expect(e.presence).toMatchObject({ kind: 'left', xuid: 'A' })
     expect(e.replayMs).toBe(120_000)

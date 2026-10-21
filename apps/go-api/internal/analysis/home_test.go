@@ -192,36 +192,5 @@ func TestBuildSpartanIdentity_TotalXPCumulative(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// BuildRecentMedia
-// ---------------------------------------------------------------------------
-
-func TestBuildRecentMedia_Empty(t *testing.T) {
-	items := analysis.BuildRecentMedia(nil, 4)
-	if len(items) != 0 {
-		t.Errorf("want empty, got %d", len(items))
-	}
-}
-
-func TestBuildRecentMedia_WithData(t *testing.T) {
-	media := []domain.HomeMediaRow{
-		{FileName: "clip1.mp4", MatchID: sp("match-1")},
-		{FileName: "clip2.mp4"},
-	}
-	items := analysis.BuildRecentMedia(media, 4)
-	if len(items) != 2 {
-		t.Errorf("want 2, got %d", len(items))
-	}
-	if items[0].Basename != "clip1.mp4" {
-		t.Errorf("basename: want clip1.mp4, got %s", items[0].Basename)
-	}
-	if items[0].MatchID == nil || *items[0].MatchID != "match-1" {
-		t.Errorf("match_id: want match-1")
-	}
-	if items[1].MatchID != nil {
-		t.Errorf("match_id: want nil for clip2")
-	}
-}
-
-// ---------------------------------------------------------------------------
 // BuildSessionSummaries
 // ---------------------------------------------------------------------------

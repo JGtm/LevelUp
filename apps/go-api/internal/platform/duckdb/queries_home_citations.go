@@ -1,4 +1,4 @@
-// Package duckdb — queries_home_citations.go : requêtes page Home, citations et médias.
+// Package duckdb — queries_home_citations.go : requêtes page Home et citations.
 package duckdb
 
 // Q26 — Home : matchs d'un joueur avec KPIs pour le hero card.
@@ -445,27 +445,6 @@ WHERE rn = 1`
 // (Phase 3.bis plan stabilisation 2026-05-22). Conservé en commentaire
 // comme référence historique. Code mort retiré.
 
-// Q28 : Home — medias recents depuis media_files + media_match_associations.
-// Parametre : ?1 = LIMIT (nombre de medias).
-// Retourne uniquement les medias actifs, triés par date de modification desc.
-//
-// Phase 3 plan stabilisation 2026-05-22 : migré vers pdb.SharedSocial. Le
-// schéma shared_social.media_files + media_match_associations diffère de
-// l'ancien player.media_files :
-//   - JOIN via `mma.media_file_id = mf.id` (au lieu de file_path/media_path)
-//   - match_start_time absent → retourné NULL (consumer doit dériver depuis
-//     match_registry si besoin via une autre query Go-side)
-const Q28RecentMedia = `
-SELECT
-    mf.file_name,
-    mma.match_id,
-    NULL::TIMESTAMP AS match_start_time
-FROM media_files mf
-LEFT JOIN media_match_associations_latest mma ON mma.media_file_id = mf.id
-WHERE mf.status = 'active'
-ORDER BY mf.mtime DESC
-LIMIT ?`
-
 // Q26k : Home — arme favorite (kills totaux) du joueur toutes armes confondues.
 // Paramètre : ?1 = xuid.
 // Requête sur pdb.Player (shared attaché). Label résolu ensuite via pdb.Metadata.
@@ -481,7 +460,7 @@ ORDER BY total_kills DESC
 LIMIT 1`
 
 // =============================================================================
-// Sprint 13 — Citations + Médias
+// Sprint 13 — Citations
 // =============================================================================
 
 // Q34 : Citations — mappings de citation depuis metadata.duckdb.

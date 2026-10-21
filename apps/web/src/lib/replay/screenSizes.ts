@@ -151,6 +151,37 @@ export const PX_PAR_MM_MINIMUM_ECRAN = PX_PAR_MM_CADRAGE_V1 * VEHICLE_SCREEN_BUM
 export const VEHICLE_SOFT_CEIL_PX = 7 * PION_SCREEN_PX
 
 /**
+ * VEHICLE_CEIL_CANVAS_RATIO — LA PART DE LA TOILE qu'un véhicule ne dépasse pas (contrôles v8,
+ * 2026-10-21 : « taille maximale des véhicules sur petit écran »). Le plancher d'échelle grossit
+ * les véhicules de 20 % POUR TOUTE TOILE : sur un téléphone, un Scorpion de 56 px pèse alors plus
+ * d'un sixième de la largeur. Le plafond doux suit donc la toile quand elle est petite :
+ *
+ *     plafond = min( VEHICLE_SOFT_CEIL_PX , 0,12 × côté court de la toile )   (jamais sous 4 pions)
+ *
+ * SANS EFFET SUR GRAND ÉCRAN : le plafond de 61,6 px reste le plafond tant que le côté court de la
+ * toile fait au moins 514 px (0,12 × 514 = 61,7). En dessous, seuls les véhicules les plus longs
+ * sont comprimés (même compression en racine carrée que le plafond doux) ; les courts, eux, ne
+ * bougent pas, et l'ordre des tailles est conservé.
+ */
+export const VEHICLE_CEIL_CANVAS_RATIO = 0.12
+
+/** Plancher du plafond de toile : quatre pions — une toile minuscule ne réduit pas un véhicule à un point. */
+export const VEHICLE_CEIL_MIN_PX = 4 * PION_SCREEN_PX
+
+/**
+ * vehicleCeilPx — le plafond doux d'un véhicule pour une toile dont le CÔTÉ COURT vaut
+ * `canvasMinSidePx` (pixels CSS). Une toile pas encore mesurée (≤ 0, NaN) rend le plafond
+ * historique : on ne réduit rien sur une mesure qu'on n'a pas.
+ */
+export function vehicleCeilPx(canvasMinSidePx: number): number {
+  if (!(canvasMinSidePx > 0)) return VEHICLE_SOFT_CEIL_PX
+  return Math.min(
+    VEHICLE_SOFT_CEIL_PX,
+    Math.max(VEHICLE_CEIL_MIN_PX, VEHICLE_CEIL_CANVAS_RATIO * canvasMinSidePx),
+  )
+}
+
+/**
  * VEHICLE_UNKNOWN_HALF_MM — la LONGUEUR MONDE ÉQUIVALENTE de la demi-diagonale du losange d'un
  * châssis NON RÉSOLU : celle qui, à l'ANCIENNE échelle, redonne exactement ses 3,40 px
  * historiques (le noyau d'un pion). Elle vaut donc 282,6 mm, et le losange grossit de 20 % au
@@ -198,14 +229,17 @@ export function screenScalePxPerMm(scalePxPerM: number): number {
 
 /**
  * screenLengthPx — LE MODÈLE, en une fonction : une longueur monde (millimètres) rendue à
- * l'échelle effective, plafond doux appliqué.
+ * l'échelle effective, plafond doux appliqué. `ceilPx` : le plafond (par défaut
+ * `VEHICLE_SOFT_CEIL_PX`) ; les véhicules y passent celui de leur toile (`vehicleCeilPx`).
  */
-export function screenLengthPx(worldLengthMm: number, scalePxPerM: number): number {
+export function screenLengthPx(
+  worldLengthMm: number,
+  scalePxPerM: number,
+  ceilPx: number = VEHICLE_SOFT_CEIL_PX,
+): number {
   if (worldLengthMm <= 0) return 0
   const brut = worldLengthMm * screenScalePxPerMm(scalePxPerM)
-  return brut <= VEHICLE_SOFT_CEIL_PX
-    ? brut
-    : VEHICLE_SOFT_CEIL_PX + Math.sqrt(brut - VEHICLE_SOFT_CEIL_PX)
+  return brut <= ceilPx ? brut : ceilPx + Math.sqrt(brut - ceilPx)
 }
 
 /**

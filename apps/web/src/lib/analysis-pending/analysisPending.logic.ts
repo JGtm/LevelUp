@@ -15,7 +15,7 @@
  * porte sur CE match (`in_progress`) ou si le match attend son tour (`queued`) : « en cours »
  * ne s'affiche que dans le premier cas (`isAnalysisInProgress`).
  */
-import type { HomePageResponse, MatchViewResponse } from '@/lib/api/types'
+import type { HomeMatchesPage, HomePageResponse, MatchViewResponse } from '@/lib/api/types'
 
 /** Période de rechargement tant qu'une analyse est en cours. */
 export const ANALYSIS_PENDING_REFETCH_MS = 60_000
@@ -61,13 +61,14 @@ export function anyAnalysisPending(items: ReadonlyArray<PendingFlag | null | und
   return (items ?? []).some((item) => item?.analysis_pending === true)
 }
 
-type HomeData = Pick<HomePageResponse, 'recent_matches' | 'favorite_matches'> & {
+type HomeData = Pick<HomePageResponse, 'recent_matches'> & {
   hero?: { kpis?: { total_matches?: number | null } | null } | null
 }
 
-/** Une tuile affichée de l'accueil (récents ou favoris) a son analyse en cours. */
-export function homeHasAnalysisPending(data: Pick<HomePageResponse, 'recent_matches' | 'favorite_matches'> | undefined): boolean {
-  return anyAnalysisPending(data?.recent_matches) || anyAnalysisPending(data?.favorite_matches)
+/** Une tuile de la TÊTE de l'accueil a son analyse en cours (les pages suivantes et les favoris ont
+ *  chacun leur rechargement : `tilesPageRefetchInterval`). */
+export function homeHasAnalysisPending(data: Pick<HomePageResponse, 'recent_matches'> | undefined): boolean {
+  return anyAnalysisPending(data?.recent_matches)
 }
 
 /**
@@ -80,8 +81,22 @@ export function homeRefetchInterval(data: HomeData | undefined): number | false 
 }
 
 /** Fraîcheur de l'accueil : courte tant qu'une analyse est en cours (retour sur la page). */
-export function homeStaleTime(data: Pick<HomePageResponse, 'recent_matches' | 'favorite_matches'> | undefined, normalMs: number): number {
+export function homeStaleTime(data: Pick<HomePageResponse, 'recent_matches'> | undefined, normalMs: number): number {
   return homeHasAnalysisPending(data) ? ANALYSIS_PENDING_REFETCH_MS : normalMs
+}
+
+/**
+ * `refetchInterval` d'une page de tuiles (pages suivantes, favoris) : 60 s tant que CETTE page
+ * contient une tuile en cours d'analyse, sinon plus de poll. Chaque page se recharge seule, jamais
+ * les autres ni la tête.
+ */
+export function tilesPageRefetchInterval(page: Pick<HomeMatchesPage, 'items'> | undefined): number | false {
+  return anyAnalysisPending(page?.items) ? ANALYSIS_PENDING_REFETCH_MS : false
+}
+
+/** Fraîcheur d'une page de tuiles : courte tant qu'une de ses tuiles est en cours d'analyse. */
+export function tilesPageStaleTime(page: Pick<HomeMatchesPage, 'items'> | undefined, normalMs: number): number {
+  return anyAnalysisPending(page?.items) ? ANALYSIS_PENDING_REFETCH_MS : normalMs
 }
 
 /** La vue match affichée a son analyse en cours. */

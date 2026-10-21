@@ -133,33 +133,19 @@ func TestPostImport_ApplyDefaults_FillsZeroValues(t *testing.T) {
 	if got.TitleSlug != titlePkg.DefaultSlug {
 		t.Errorf("TitleSlug default: want %s, got %s", titlePkg.DefaultSlug, got.TitleSlug)
 	}
-	if got.SessionGapMinutes != 15 {
-		t.Errorf("SessionGapMinutes default: want 15, got %d", got.SessionGapMinutes)
-	}
 }
 
 func TestPostImport_ApplyDefaults_PreservesExplicitValues(t *testing.T) {
 	in := PostImportOptions{
-		TitleSlug:         "halo_5",
-		SessionGapMinutes: 30,
-		ForcePerfScores:   true,
+		TitleSlug:       "halo_5",
+		ForcePerfScores: true,
 	}
 	got := applyPostImportDefaults(in)
 	if got.TitleSlug != "halo_5" {
 		t.Errorf("TitleSlug: want preserved 'halo_5', got %s", got.TitleSlug)
 	}
-	if got.SessionGapMinutes != 30 {
-		t.Errorf("SessionGapMinutes: want preserved 30, got %d", got.SessionGapMinutes)
-	}
 	if !got.ForcePerfScores {
 		t.Error("ForcePerfScores: want preserved true")
-	}
-}
-
-func TestPostImport_ApplyDefaults_RejectsNegativeGap(t *testing.T) {
-	got := applyPostImportDefaults(PostImportOptions{SessionGapMinutes: -5})
-	if got.SessionGapMinutes != 15 {
-		t.Errorf("negative gap should fall back to 15, got %d", got.SessionGapMinutes)
 	}
 }
 
@@ -237,8 +223,8 @@ func TestPostImport_Run_RecomputesAllStagesWithMatches(t *testing.T) {
 		t.Logf("stage %s: %s", e.Stage, e.Err)
 	}
 
-	// Sessions: 3 matches sufficiently spaced (1h apart, gap=15min default)
-	// → 3 distinct sessions written. Verify >0.
+	// Sessions: 3 matches 1h apart, title session rule (no settings file → defaults)
+	// → session_id written on each of them. Verify >0.
 	if result.SessionsTouched <= 0 {
 		t.Errorf("SessionsTouched: want >0 (3 matches inserted), got %d", result.SessionsTouched)
 	}
@@ -250,6 +236,40 @@ func TestPostImport_Run_RecomputesAllStagesWithMatches(t *testing.T) {
 	// Citations: empty mappings → backfill is a no-op but returns nil error.
 	if !result.CitationsBackfilled {
 		t.Error("CitationsBackfilled should be true even with empty mappings (no-op success)")
+	}
+}
+
+// TestPostImport_Run_AppliesTitleSessionRule : l'étape sessions de l'import découpe avec la
+// règle du titre (réglage lu dans cfg.AppSettingsPath), pas avec une valeur propre à l'import.
+// Deux matchs à 1 h d'écart : une session avec l'écart par défaut (120 min), deux avec le
+// réglage à 30 min.
+func TestPostImport_Run_AppliesTitleSessionRule(t *testing.T) {
+	env := setupPostImportEnv(t)
+	env.cfg.AppSettingsPath = filepath.Join(env.cfg.RepoRoot, "app_settings.json")
+	if err := os.WriteFile(env.cfg.AppSettingsPath, []byte(`{"session_gap_minutes":30}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	matchIDs := []string{"rule-m1", "rule-m2"}
+	insertTestMatch(t, env.sharedDB, matchIDs[0], postImportTestXUID, time.Now().Add(-3*time.Hour))
+	insertTestMatch(t, env.sharedDB, matchIDs[1], postImportTestXUID, time.Now().Add(-2*time.Hour))
+
+	svc := NewOpenSpartanPostImportService(env.cfg)
+	if _, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, matchIDs, PostImportOptions{}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	playerDB, err := sql.Open("duckdb", config.PlayerDBPath(env.cfg, "", postImportTestGamertag)+"?access_mode=read_only")
+	if err != nil {
+		t.Fatalf("open player DB: %v", err)
+	}
+	defer playerDB.Close()
+	var distinct int
+	if err := playerDB.QueryRow(`SELECT COUNT(DISTINCT session_id) FROM player_match_enrichment_latest
+		WHERE match_id IN ('rule-m1', 'rule-m2') AND session_id IS NOT NULL`).Scan(&distinct); err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if distinct != 2 {
+		t.Fatalf("sessions distinctes = %d, attendu 2 (écart du réglage à 30 min ignoré ?)", distinct)
 	}
 }
 

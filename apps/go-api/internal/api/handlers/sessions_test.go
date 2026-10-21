@@ -19,10 +19,43 @@ import (
 type mockSessionsService struct {
 	resp domain.SessionsResponse
 	err  error
+	rule domain.SessionComputeOptions
+	got  domain.SessionComputeOptions // options reçues par GetSessions
 }
 
-func (m *mockSessionsService) GetSessions(_ context.Context, _ domain.SessionComputeOptions) (domain.SessionsResponse, error) {
+func (m *mockSessionsService) SessionOptions(_ context.Context) domain.SessionComputeOptions {
+	return m.rule
+}
+
+func (m *mockSessionsService) GetSessions(_ context.Context, opts domain.SessionComputeOptions) (domain.SessionsResponse, error) {
+	m.got = opts
 	return m.resp, m.err
+}
+
+// TestSessionsHandler_UsesPlayerRuleWithoutParams : sans paramètre, la page découpe avec la
+// règle du joueur (celle des écrivains de session_id) ; un paramètre la surcharge.
+func TestSessionsHandler_UsesPlayerRuleWithoutParams(t *testing.T) {
+	rule := domain.SessionComputeOptions{
+		GapMinutes: 75, TeamChangeMode: domain.TeamChangeModeGroup,
+		FriendsXUIDs: []string{"xa"}, Mode: domain.SessionModeContext,
+	}
+	mock := &mockSessionsService{rule: rule}
+	r := newSessionsRouter(func(context.Context, string) (port.SessionsService, error) { return mock, nil })
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/players/test-player/pages/sessions", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if mock.got.GapMinutes != 75 || mock.got.TeamChangeMode != domain.TeamChangeModeGroup || len(mock.got.FriendsXUIDs) != 1 {
+		t.Fatalf("options transmises %+v, attendu la règle du joueur %+v", mock.got, rule)
+	}
+
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/players/test-player/pages/sessions?gap_minutes=30", nil))
+	if mock.got.GapMinutes != 30 || mock.got.TeamChangeMode != domain.TeamChangeModeGroup {
+		t.Fatalf("surcharge gap_minutes : %+v, attendu gap=30 sur la règle du joueur", mock.got)
+	}
 }
 
 func newSessionsRouter(factory handlers.ServiceFactory[port.SessionsService]) *chi.Mux {

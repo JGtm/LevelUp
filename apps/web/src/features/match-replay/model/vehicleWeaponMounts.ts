@@ -55,6 +55,8 @@ export interface VehicleMountSpriteSize {
   naturalWidthPx: number
   naturalHeightPx: number
   mmPerPx: number
+  /** Plafond doux de la toile (`vehicleCeilPx`) : celui du sprite dessiné. Absent = historique. */
+  ceilPx?: number
 }
 
 /** Le résultat : un décalage ÉCRAN (pixels, densité `k` déjà appliquée) et une direction. */
@@ -117,7 +119,7 @@ export function vehicleShotPlacement(
   // MONTAGE INCONNU : aucun décalage — l'éclair reste au CENTRE du châssis, la seule position
   // que le document donne —, mais la DIRECTION lui revient (cf. `vehicleMountAngle`).
   if (!mount) return { offset: { x: 0, y: 0 }, angle: vehicleSansMontageAngle(caps) }
-  const scale = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, scalePxPerM) * k
+  const scale = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, scalePxPerM, size.ceilPx) * k
   const localX = mount.ax * size.naturalWidthPx
   const localY = mount.ay * size.naturalHeightPx
   const screenAngle = vehicleScreenAngle(caps.chassisDeg)
@@ -210,6 +212,8 @@ export function vehicleShotOrigin(args: {
   k: number
   /** L'échelle du cadrage (pixels CSS par mètre) : le montage suit la taille du sprite. */
   scalePxPerM: number
+  /** Plafond doux de la toile (`vehicleCeilPx`) : le montage suit le sprite tel qu'il est dessiné. */
+  ceilPx?: number
 }): { origin: XY; angle: number | null } {
   const { h, vehicleShot, center, sizeOf, k } = args
   if (!vehicleShot) return { origin: center, angle: h === null ? null : (-h * Math.PI) / 180 }
@@ -225,6 +229,7 @@ export function vehicleShotOrigin(args: {
       angle: mount ? vehicleMountAngle(mount, caps) : vehicleSansMontageAngle(caps),
     }
   }
-  const { offset, angle } = vehicleShotPlacement(mount, caps, size, k, args.scalePxPerM)
+  const sized = args.ceilPx === undefined ? size : { ...size, ceilPx: args.ceilPx }
+  const { offset, angle } = vehicleShotPlacement(mount, caps, sized, k, args.scalePxPerM)
   return { origin: { x: center.x + offset.x, y: center.y + offset.y }, angle }
 }

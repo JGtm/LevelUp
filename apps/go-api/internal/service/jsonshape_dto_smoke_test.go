@@ -53,10 +53,18 @@ func TestDTOs_NoNilSlicesOnEmptyInput(t *testing.T) {
 		repo := &mockHomeRepo{
 			matches:  []legacymatch.HomeMatchRow{},
 			sessions: []legacymatch.HomeSessionRow{},
-			media:    []domain.HomeMediaRow{},
 		}
 		svc := withHomeMock(NewHomeService(repo), repo)
 		resp, err := svc.GetHomePage(context.Background(), "TestGT", "fr")
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
+	})
+
+	t.Run("HomeService.GetHomeMatches", func(t *testing.T) {
+		svc, _ := newTilesService("halo_infinite", nil, nil)
+		resp, err := svc.GetHomeMatches(context.Background(), "fr", domain.HomeMatchesRequest{})
 		if err != nil {
 			t.Fatalf("error: %v", err)
 		}

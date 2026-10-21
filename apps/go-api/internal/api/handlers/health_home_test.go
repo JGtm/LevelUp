@@ -31,6 +31,9 @@ type fakeHomeService struct {
 func (f *fakeHomeService) GetHomePage(_ context.Context, _, _ string) (*domain.HomePageResponse, error) {
 	return f.resp, f.err
 }
+func (f *fakeHomeService) GetHomeMatches(_ context.Context, _ string, _ domain.HomeMatchesRequest) (*domain.HomeMatchesPage, error) {
+	panic("not used in healthz tests")
+}
 func (f *fakeHomeService) GetBattlePass(_ context.Context) domain.BattlePassResponse {
 	panic("not used in healthz tests")
 }

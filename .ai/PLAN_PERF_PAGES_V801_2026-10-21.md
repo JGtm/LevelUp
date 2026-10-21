@@ -223,71 +223,195 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
       0,57 M ; sauvegardes `…avant-compaction-20261021T1017…Z.duckdb` à côté des bases (2,3 Go +
       0,2 Go) — à supprimer après vérification par le user ; santé OK 11 s après redémarrage,
       aucune erreur journalisée.
-- [ ] 2b.2 Compactage automatique dans le serveur : tâche de fond (coupée en démo, déclarée dans
-      `demoPolicies`) qui, la nuit (fenêtre fixe, hors cycle de sync), mesure le rapport lignes
-      brutes / lignes `_latest` de chaque table du registre de compaction et, au-delà d'un seuil
-      nommé (constante, valeur justifiée par mesure), appelle `migration.CompactSupersededPasses`
-      SOUS l'écrivain partagé obtenu par le chemin standard (rafale courte, comme le LUSR v2 ; jamais
-      une ouverture RW hors provider/lease — règle « bare connect »), avec vérification d'empreinte
-      de vue avant/après (déjà dans `echangerTable`). Pas de sauvegarde fichier en processus (la base
-      est ouverte) : filet = transaction + empreintes + sauvegarde restic quotidienne du VPS ; le CLI
-      `compact-passes` reste l'outil manuel avec sauvegarde. Journal INFO par table (avant, après,
-      durée), WARN si un seuil est dépassé mais la compaction refusée.
-- [ ] 2b.3 Jauge « passes par match » (rapport brutes / `_latest` par table) exposée dans le contrôle
-      de santé des données (`scheduler/data_health_check.go`) et en expvar ; WARN au-delà du seuil.
-- [ ] 2b.4 Documentation : ADR 0026 amendé (la compaction est automatique, conditions, filet),
-      `docs/COMMANDS.md` FR + EN (le CLI reste pour l'usage manuel), changelog 8.0.1 FR + EN.
-- [ ] 2b.5 Tests : déclenchement sous et au-dessus du seuil (horloge et seuil injectables), refus
-      pendant un cycle de sync, écrivain partagé obligatoire (aucune ouverture directe), démo coupée,
-      empreintes identiques après compaction en processus sur un corpus append-only réel
-      (`-tags=integration`), `no_art_patterns_test.go` sans nouvelle entrée d'allowlist.
-- Gate : doctrine §4 (dont `-tags=integration -p 1` sur `./internal/migration/...`,
-  `./internal/scheduler/...`, `./cmd/server/...`) ; revue adversariale close.
+- [x] 2b.2 Compactage automatique HORS du serveur (décision du user du 2026-10-21, option (d) du
+      pilote : pas dans le processus serveur — risque mémoire, ~1,6 Go sur le banc pour un VPS de
+      1,8 Go, et pas de 503 en journée ; la conception « tâche de fond sous l'écrivain partagé »
+      initiale est caduque). Fait : `scripts/compact-passes-nuit.sh` + unités
+      `scripts/systemd/levelup-compact-passes.{service,timer}` (installation : `scripts/systemd/README.md`
+      et `docs/RUNBOOK_DEPLOY_CHECKLIST.md`, les unités ne sont pas déployées par `deploy.sh`).
+      **Note de conception (2026-10-21).** Décision sur la jauge 2b.3 (fichier
+      `data/global/admin_state/passes_par_match.txt`, lu depuis l'hôte : aucun port, aucune route,
+      rien d'ouvert à Internet ; `/debug/vars` exige un admin, `/health` ne porte que `{status}`).
+      Seuil `migration.SeuilPassesParMatch` = 1,5 brutes/gardées, porté par le fichier (une seule
+      source) : une table compactée vaut exactement 1 (dénominateur = règle du registre, pas la vue,
+      sinon une vue plus filtrante qu'une passe laisserait une table compacte au-dessus de 1 et
+      arrêterait le serveur chaque nuit) ; A.3 : coût de page ≈ proportionnel aux lignes brutes
+      (`match_kill_events` à ~19 → pages ÷2 à ÷10), 1,5 borne le surcoût à +50 % entre deux nuits.
+      Horaire 03:30 UTC et non 04:00 : la sauvegarde restic (`levelup-restic-backup.timer`) tourne à
+      04:00 et arrête/redémarre le serveur elle aussi ; le ménage Docker de 03:00 supprime les
+      conteneurs arrêtés depuis plus de 24 h. Pas de `Persistent` (un rattrapage au démarrage
+      tomberait avec celui de restic) ; `TimeoutStartSec=25min` (passage mesuré le plus long ~90 s).
+      Séquence : verrou `flock` (sinon 75), restic actif (sinon 75), jauge absente / illisible /
+      > 48 h (2 cycles du contrôle de santé) → erreur sans rien toucher, 0 table → sortie, place
+      disque ≥ taille des bases partagées + 2 Gio, `stop`, `compact-passes --backup-dir
+      /app/data/compaction-backups` (hors `data/titles` : ni restic ni ménage n'y touchent une base),
+      `start` toujours (trap si l'arrêt échoue), attente bornée de `/health` (120 s). Multi-titre :
+      la CLI traite chaque titre dont la base existe ; le script compte la place par glob
+      `data/titles/*/…`, aucun slug. Échec au milieu : la table en cours est annulée par sa
+      transaction, les précédentes restent compactées et vérifiées, la CLI s'arrête à la 1re erreur
+      (`refuserOrphelin` en tête de table) ; le script redémarre le serveur, garde les sauvegardes
+      (état `echec`), sort en 1. Ménage `*.avant-compaction-*` > 24 h du seul dossier dédié, après un
+      passage réussi seulement, joué en FIN de passage (sinon la sauvegarde de la veille, 23 h 59,
+      survivrait 48 h).
+- [x] 2b.3 Jauge « passes par match » : `migration.MesurerPasses` (`compaction_jauge.go`, lecture
+      seule) ; contrôle de santé `scheduler/data_health_passes.go` : une lecture courte du provider
+      B-swap PAR TABLE (`WithSharedReader`, câblé dans `cmd/server` par `healthSharedReader`), APRÈS
+      l'audit du titre (le handle `OpenReadOnly` de l'audit est rendu) ; expvar
+      `levelup.compaction.passes_par_match` (`<titre>/<table>`) et
+      `levelup.compaction.tables_au_dessus_du_seuil` ; WARN par table au-delà du seuil ; fichier
+      (`PathResolver.PassesGaugePath`, écriture atomique). Mesure partielle → rien publié. Démo : la
+      tâche « santé données » est déjà `demoCut` dans `demoPolicies` (aucune tâche nouvelle).
+- [x] 2b.4 Documentation : ADR 0026 amendé (EN, « Automatic compaction » : jauge, seuil, tâche hôte,
+      pourquoi pas dans le serveur avec les durées prod du 2026-10-21, filet) ; en-têtes de
+      `cmd/levelup/cmd_compact_passes.go` et `internal/migration/compaction.go` corrigés ;
+      `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` ; changelog 8.0.1 EN + FR (section Ops) ; installation
+      dans `scripts/systemd/README.md` et `docs/RUNBOOK_DEPLOY_CHECKLIST.md` (post-déploiement).
+- [x] 2b.5 Tests : jauge (`migration/compaction_jauge_test.go` : 6/3 → 2, 1 après compaction, table
+      absente, hors registre, seuil strict ; `scheduler/data_health_passes_test.go` : fichier + expvar,
+      une lecture injectée par table, horloge injectée, mesure partielle → aucun fichier) ; script
+      (`archlint/compact_passes_nuit_script_test.go`, faux `docker`/`curl`/`df`/`systemctl`/`flock`) :
+      sous le seuil → rien, au-dessus → stop/run/start dans l'ordre, compaction en échec → serveur
+      redémarré + code 1, `/health` muet → 1, arrêt en échec → redémarrage tenté, disque insuffisant,
+      verrou, restic, jauge périmée ou absente, ménage (motif seul, après réussite seulement).
+      `[~]` pour les cas de la conception caduque : refus pendant un sync et écrivain obligatoire →
+      sans objet (serveur arrêté, la CLI prend le bail dblease) ; empreintes identiques après
+      compaction → couvert par `internal/games/halo_infinite/migrations/compaction_e2e_test.go`
+      (corpus partagé complet, inchangé). `no_art_patterns_test.go` : aucune entrée ajoutée.
+- Gate : [x] `go test` et `-tags=integration -p 1` sur `./internal/migration/...`,
+  `./internal/scheduler/...`, `./cmd/server/...`, `./internal/domain/title/...`,
+  `./internal/archlint/...`, `./cmd/levelup/...` verts ; [x] `golangci-lint
+  --new-from-merge-base=origin/main` 0 problème ; [x] `shellcheck` + `bash -n` du script ;
+  [x] revue adversariale : ronde 1 (1 P1 restic, 2 P1 redémarrage et jauge partielle, tests faibles) corrigée en `a3ff5e1bb` ; ronde 2 sur les seules corrections (2026-10-21) : aucun défaut recevable, 4/4 corrections complètes. Étape 2b close (installation des unités systemd sur le VPS : au déploiement, avec l'accord du user).
+- Revue adversariale ronde 1 (pilote, 2026-10-21 ; VPS vérifié en `Etc/UTC`, 03:30 UTC retenu),
+  chaque correction avec un test rouge sans elle (vérifié en rejouant le test sur la version de
+  `373e8b62b`) :
+  - [x] P1 garde restic : l'unité restic est `oneshot` sans `RemainAfterExit`, `is-active` rend 3
+        pendant la sauvegarde (`activating`) → lecture de `systemctl show -p ActiveState --value`
+        (`activating`/`active`/`reloading`/`deactivating` = en cours) ; faux `systemctl` qui modélise
+        `activating` (cas `activating` et `deactivating`).
+  - [x] P1 redémarrage : `START_ESSAIS=3` essais de start + `/health` borné, `START_DELAI_S=15` entre
+        deux, ERROR à chaque échec, sortie 1 si tous échouent ; le filet reste armé jusqu'à un
+        redémarrage RÉUSSI (il ne rejoue pas des essais épuisés) ; tests : start raté puis réussi,
+        start toujours raté (3 essais exactement), `/health` muet (3 essais).
+  - [x] P1 jauge d'un titre illisible : la jauge est mesurée pour tout titre dont la base partagée
+        existe, que l'audit du titre ait réussi ou non ; illisible → tables non mesurées → fichier
+        non réécrit (WARN) ; test à deux titres dont un à base illisible.
+  - [x] Tests qui mordent : place disque (base de 8 Mio, disque = marge + moitié de la base →
+        refus ; mutant sans `bases_ko` rouge), âge de la jauge à 23 h 30, 47 h 50 et 48 h 10 (mutant
+        72 h rouge), jauge illisible (4 formes), SIGTERM pendant la compaction → filet, serveur
+        relancé, code 143 (`trap … TERM INT HUP` explicite ; mutant sans lui rouge).
+  - [~] P2 verrou commun avec `scripts/deploy.sh` : consigné en Découvertes, non corrigé (consigne).
 
 ### Étape 3 — Accueil en fenêtre, serveur (volet 1)
 
-- [ ] 3.1 Extraction `buildTiles(ctx, rows, window, favorites)` depuis `GetHomePage` (≤ 80 lignes
-      après extraction) : traductions d'assets (`EnrichCanonicalAssetTranslations`) sur la fenêtre,
-      construction, enrichissements par liste, placements, rejeux, analyse en cours.
-- [ ] 3.2 `GetHomePage` sert la tête (D-8) + `has_more` + `recent_matches_total` (= nombre de tuiles
-      que le constructeur produirait, lignes à `MatchID` non vide, pas `CountPlayerMatches`).
-- [ ] 3.3 Endpoint Huma `GET /players/{player_slug}/pages/home/matches?before=&limit=` (limite max
-      60, curseur D-8) et `?kind=favorites` ; factory authentifiée `HomeCtxWithAuth` (parité
-      `home_factories_parity_test.go`) ; handler sans logique ; méthode ajoutée au port et aux faux
-      (`health_home_test.go`, `home_test.go`, `og_inject_test.go`, `season_pass_service_test.go`).
-- [ ] 3.4 `buildFavoriteMatchListCanonical` : construit seulement les favoris.
-- [ ] 3.5 `last_session_outcomes` : tranche non nulle de `{match_id, outcome_tone, detail}`, même règle
-      que `HomePage.tsx` l.204-213, calculée sur les lignes complètes.
-- [ ] 3.6 Retrait de `recent_media` : `port.HomeRepository.LoadRecentMedia`, `noopHomeRepo`, mocks,
-      `Q28RecentMedia`, `analysis.BuildRecentMedia`, `domain.RecentMediaItem`, `HomeMediaRow`,
-      `lib/api/types.ts`, `test/handlers.ts`, tests web concernés (grep consigné).
-- [ ] 3.7 Retrait de `HomeMatchesCache` : `home_service.go`, `wire/registry.go`,
-      `registry_auth.go`, `registry_pages_home.go`, `post_sync_deltas.go`,
-      `post_sync_home_cache_test.go`, `home_factories_parity_test.go` (grep consigné).
-- [ ] 3.8 ADR 0036 : invariant I8 (D-1) ; garde-rail `TestGetHomePage_FenetreBornee` (200 matchs →
-      au plus 30 tuiles) ; test de la fenêtre aussi avec le slug `halo_5` (aucune comparaison de slug).
-- [ ] 3.9 Parité : historique de 200 matchs, concaténation des pages = ancienne `recent_matches`,
-      champ pour champ ; une synchro simulée entre deux pages ne crée ni doublon ni trou.
-- Gate : doctrine §4 ; revue adversariale close.
+- [x] 3.1 Extraction `buildTiles(ctx, tilesInput)` depuis `GetHomePage` (`service/home_service_tiles.go`) :
+      traductions d'assets (`EnrichCanonicalAssetTranslations`), construction, placements de performance,
+      rejeux, enrichissements par liste (une section par étape), analyse en cours. `tilesInput` porte
+      l'historique complet (placements), la fenêtre, les favoris, la locale, le nom de liste et `translated`
+      (la tête a déjà traduit TOUT l'historique : les sessions et faits marquants lisent aussi les libellés).
+      `GetHomePage` : 64 lignes. Chargement déplacé dans `home_service_load.go`, page dans
+      `home_service_page.go` (`home_service.go` passe de 536 à 202 lignes).
+- [x] 3.2 `GetHomePage` sert la tête (30 tuiles) + `recent_matches_has_more` + `recent_matches_next_before` +
+      `recent_matches_total` (= nombre de lignes à `MatchID` non vide, pas `CountPlayerMatches`). Ordre
+      d'affichage = instant canonique décroissant puis `match_id` décroissant (`analysis/home_tiles_window.go`,
+      une seule fonction pour la tête et les pages ; la tranche de l'appelant n'est jamais réordonnée).
+- [x] 3.3 Endpoint Huma `GET /players/{player_slug}/pages/home/matches?kind=&before=&limit=` (limite 1-60,
+      défaut 30 ; `kind=favorites` : favoris en entier) : `handlers/home_matches.go` (sans logique ; 400
+      `invalid_cursor`), `HomeService.GetHomeMatches` ajouté au port et aux quatre faux
+      (`health_home_test.go`, `home_test.go`, `og_inject_test.go`, `season_pass_service_test.go`). Même
+      factory `HomeCtxWithAuth` que `/pages/home` (aucune nouvelle factory : le garde de parité
+      `home_factories_parity_test.go` reste vert). `openapi.yaml` régénéré (`make openapi-gen`), fragment
+      manuel pour le 200 opaque (comme `/pages/home`), `generated.ts` régénéré, plafond de `limit` inscrit
+      dans `pagination_guard_test.go`. Cache : `private, no-cache` + ETag/304 (un favori basculé doit se voir).
+- [x] 3.4 `buildFavoriteMatchListCanonical` supprimée (construisait toutes les tuiles puis filtrait) :
+      remplacée par `analysis.FavoriteHomeTileRows` (lignes favorites seulement) + `buildTiles`.
+- [x] 3.5 `last_session_outcomes` : tranche non nulle de `{match_id, outcome_tone, detail}` (`domain.HomeSessionOutcome`),
+      même règle que `HomePage.tsx` l.204-213 (première tuile dont le libellé de session est celui de la
+      session solo ou escouade résumée ; sinon les 20 plus récentes), calculée sur les lignes complètes,
+      dans l'ordre d'affichage (le web inverse).
+- [x] 3.6 Retrait de `recent_media` : `port.HomeRepository.LoadRecentMedia`, `noopHomeRepo`, mocks,
+      `Q28RecentMedia`, `analysis.BuildRecentMedia`, `domain.RecentMediaItem`, `domain.HomeMediaRow`,
+      `HomeRepo.LoadRecentMedia`, section `home_recent_media`, `lib/api/types.ts` (`RecentMediaItem`,
+      `recent_media`), `test/handlers.ts`, fixtures de `HomePage.test.tsx`, `HomePage.nav.test.tsx`,
+      `HomeRankingStates.test.tsx` (grep `recent_media|RecentMediaItem|LoadRecentMedia|BuildRecentMedia|
+      HomeMediaRow|Q28RecentMedia` : 0 hors historique git). La rail de médias lit son propre endpoint.
+- [x] 3.7 Retrait de `HomeMatchesCache` (cache qui n'était plus lu depuis P4.3) : `home_matches_cache.go` +
+      test, `WithMatchesCache` -> `WithXUID` (le xuid de la page reste le sujet de l'identité Spartan et des
+      coéquipiers de session), `wire/registry.go`, `registry_auth.go`, `registry_pages_home.go`,
+      `post_sync_deltas.go` (+ `invalidateHomeCacheAfterSync`), `post_sync_home_cache_test.go`, les 2 tests
+      `TestHomeService_GetHomePage_Cache*` (déjà skippés). `home_factories_parity_test.go` : aucune référence
+      au cache, inchangé. Baseline de tests : 17 paires retirées (78 lignes), nommées dans
+      `scripts/check_test_baseline.sh` (RETRAIT DU 2026-10-21).
+- [x] 3.8 ADR 0036 : invariant I8 + ligne de garde-rails (« Eight invariants ») ; garde-rail
+      `TestGetHomePage_FenetreBornee` (200 matchs -> 30 tuiles, totaux inchangés) joué sous `halo_infinite`
+      ET `halo_5` (aucune comparaison de slug).
+- [x] 3.9 Parité : `TestGetHomeMatches_ParitePagesEtListeComplete` (200 matchs, tailles de page 0/1/17/30/
+      60/1000 : tête + pages = liste construite d'un bloc, `reflect.DeepEqual` tuile par tuile, même ordre
+      que le chargeur) ; `TestGetHomeMatches_SynchroEntreDeuxPages` (3 matchs arrivés en tête entre deux
+      pages : ni doublon ni trou) ; `analysis/home_tiles_window_test.go` (instants égaux, bornes, curseur).
+      Parité sur la copie des bases du banc : voir l'étape 4.4 (test Q25 / ordre de l'Accueil, trois comptes).
+- Décision d'exécution (étape 3, 2026-10-21) : la tête a gardé `favorite_matches` jusqu'à l'étape 4 (le web
+  n'avait pas encore sa requête dédiée) ; retiré en 4.6.
+- Gate : [x] `go test` défaut puis `-tags=integration -p 1` sur service, analysis, domain, port, api/...,
+  platform/duckdb, archlint ; [x] `golangci-lint run --new-from-merge-base=origin/main` 0 problème ;
+  [x] `tsc -b` + `vitest run src/features/home src/lib/api src/lib/analysis-pending src/test` ;
+  [x] `bash scripts/check_test_baseline.sh tests` ; [x] banc avant/après (pilote, 2026-10-21, copie compactée) : tête de l'Accueil 94-101 Ko (3,1-18,3 Mo avant), durée 0,14 / 0,39 / 0,25 s pour JGtm / Nuzzles / Madina97294 (0,31 / 1,04 / 0,51 s avant), `home_assisted_frags_recent` 6-16 ms ;
+  [x] revue adversariale : voir le bloc « Revue adversariale » de l'étape 4 (rondes 1 et 2).
 
 ### Étape 4 — Accueil en fenêtre, web (volet 1)
 
-- [ ] 4.1 La requête de tête garde `useQuery` sous `queryKeys.home` (prefetch, loader de route,
-      invalidations existantes intacts) ; pages suivantes et favoris sous des clés dédiées de
-      `lib/query/keys.ts`.
-- [ ] 4.2 `components/ui/carousel.tsx` : rappel « proche de la fin » et état de chargement (chaînes
-      FR et EN) ; le carrousel ne monte que les tuiles chargées.
-- [ ] 4.3 Extraction de la section des matchs hors de `HomePage.tsx` (exemption `max-lines` de la
-      ligne 1 : « le découpage revient au lot qui touchera ce fichier »).
-- [ ] 4.4 Navigation (D-9) : `goToMatch` sans `matchIds` pour `home_recent` ;
-      `useMatchNeighborsResolved` rend le libellé de contexte ; test de parité Q25 / ordre de
-      l'Accueil sur les trois comptes (copie des bases).
-- [ ] 4.5 Analyse en cours : le rechargement de 60 s porte sur chaque page chargée qui contient une
-      tuile en attente, et seulement sur elle (`homeRefetchInterval`, `homeStaleTime`).
-- [ ] 4.6 Favori : mise à jour locale de la tuile, rechargement de la seule liste des favoris.
-- [ ] 4.7 `OutcomeSequenceTape` lit `last_session_outcomes`.
-- [ ] 4.8 Tests vitest (montage limité, page suivante, navigation, rechargement, favoris) ; E2E local.
-- Gate : doctrine §4 ; banc : critères Accueil du §2 tenus ; revue adversariale close.
+- [x] 4.1 La requête de tête garde `useQuery` sous `queryKeys.home` (prefetch, loader de route et
+      invalidations existantes intacts) ; pages suivantes sous `queryKeys.homeMatchesPage` (une clé PAR PAGE,
+      le curseur en dernier segment : une tête qui change de curseur après une synchro repart de zéro, les
+      anciennes pages ne se recollent pas) et favoris sous `queryKeys.homeFavorites`, toutes sous le préfixe
+      `home` (toute invalidation de l'accueil les recharge). Garde `keys.title-slug.guard.test.ts` mis à jour.
+- [x] 4.2 `components/ui/carousel.tsx` : `onNearEnd` (appelé à 5 tuiles de la fin, `carousel.logic.ts`
+      `isNearEnd`/`itemSpanOf`), `loadingMore` (indicateur `role="status"`, chaîne FR/EN
+      `common.carousel.loading_more`) ; il ne monte que les enfants reçus. Erreur de page :
+      `home.matches.load_error` / `load_retry` (FR + EN) dans la section.
+- [x] 4.3 Section des matchs extraite dans `features/home/HomeMatchesSection.tsx` ; `HomePage.tsx` 572 -> 458
+      lignes, exemption `max-lines` de la ligne 1 retirée ; `SectionTitle` (garde `detail-section`, plafond
+      de `HomePage.tsx` abaissé de 5 à 4).
+- [x] 4.4 Navigation (D-9) : `goToMatch` sans `matchIds` pour `home_recent` (contexte
+      `{ source, matchIds: [], contextDescriptor: { kind: 'recent' } }`, conservé en sessionStorage :
+      `hasNavContent`) ; `useMatchNeighborsResolved` : contexte sans liste = voisins et total de Q25 (tout
+      l'historique), libellé du descripteur, contexte propagé à prev/next. Favoris : liste d'ids conservée
+      (bornée). Q25 lit le lecteur partagé LIVE (`neighborsRead`), plus le snapshot immuable (revue ronde 1, P1 : sur la copie de prod, les 253 matchs les plus récents de Nuzzles étaient absents du snapshot : voisins vides et total 6 989 au lieu de 7 242 ; `TestMatchNeighbors_LisentLeLiveJamaisLeSnapshot`). Parité Q25 / ordre de l'Accueil : `TestHomeTiles_OrdreIdentiqueAQ25` (schéma DuckDB réel,
+      ex aequo compris) a REVÉLÉ que Q25 n'avait pas de départage -> `ORDER BY instant DESC, match_id DESC`
+      dans `Q25NeighborMatches` et `Q25NeighborMatchesTemplate` (le test échoue sans). [!] La parité « trois
+      comptes sur la copie des bases du banc » n'est pas exécutable ici : la copie vit dans le worktree
+      `LevelUp-wt-chronos`, `data/` de ce worktree n'a que `metadata-prebuilt.zip` (consigne : ne toucher
+      aucun autre dossier) ; FAIT par le pilote (2026-10-21) après la correction P1-1 : parcours complet par curseur des trois comptes (JGtm 1 182, Nuzzles 7 242, Madina97294 1 292 tuiles, 0 doublon, total juste) et voisins + total de Q25 conformes sur 10 positions par compte (récents, bords de page, milieu, plus ancien) : 0 écart. Avant la correction : Nuzzles 10 écarts sur 10 (snapshot).
+- [x] 4.5 Analyse en cours : `tilesPageRefetchInterval` / `tilesPageStaleTime` (60 s tant que CETTE page
+      porte une tuile en cours) sur chaque page de tuiles et sur les favoris ; `homeRefetchInterval` /
+      `homeStaleTime` ne lisent plus que la tête. Test : deux pages, 60 s seulement pour celle qui porte
+      une analyse (`queries.tiles.test.tsx`).
+- [x] 4.6 Favori : `useSetMatchFavorite` pose le drapeau sur place dans les réponses déjà en cache (tête,
+      pages : `patchFavoriteFlag`, même référence si rien ne change) et ne recharge QUE la liste des
+      favoris (+ l'historique Explorer). Retrait de `favorite_matches` de la réponse de la tête (Go :
+      `HomePageResponse`, `GetHomePage`) : les favoris ont leur propre lecture (décision D-8, fin de la
+      décision d'exécution de l'étape 3).
+- [x] 4.7 `OutcomeSequenceTape` lit `last_session_outcomes` (ordre inversé pour la bande, libellé de tuile
+      en infobulle) ; plus de calcul dans `HomePage.tsx`.
+- [x] 4.8 Tests vitest : `homeTiles.logic.test.ts`, `carousel.logic.test.ts`, `carousel.test.tsx`,
+      `queries.tiles.test.tsx` (page suivante, idempotence, reset de tête, erreur/réessai, rechargement par
+      page, favoris), `HomeMatchesSection.test.tsx` (montage limité à 30, page à 5 tuiles de la fin,
+      navigation sans liste, favoris, favori sans rechargement de la tête), `HomePage.lastSession.test.tsx`,
+      `useMatchNeighborsResolved.test.tsx` / `navContext.test.ts` (contexte sans liste). Miroir du contrat :
+      `types.ts` (`recent_matches_total`, `_has_more`, `_next_before`, `last_session_outcomes`,
+      `HomeMatchesPage`, `HomeSessionOutcome`, `favorite_matches` retiré), `test/handlers.ts` (+ handler
+      `pages/home/matches`). [!] E2E local : serveur d'API de démo et Vite lancés sur 8020 / 5180 (le serveur
+      du port 8000 n'a pas été touché), `npx playwright test --project=chromium` : 38 réussis, 62 sautés
+      (fixtures de démo absentes : `slice-5-home` saute), 7 échecs d'environnement SANS rapport avec
+      l'Accueil (`legacy-redirect` H5, `slice-4b` 404, `slice-4c`, 4 de `slice-9-onboarding` : joueur de
+      démo / état d'installation absents du bac isolé). À rejouer sur un environnement de démo garni.
+- Gate : [x] `go test` défaut puis `-tags=integration -p 1` (service, analysis, domain, api/..., archlint,
+  platform/duckdb) ; [x] `golangci-lint --new-from-merge-base=origin/main` 0 problème ; [x] `tsc -b`,
+  `eslint .` (0 erreur, 26 avertissements existants), `vitest run` complet (987 fichiers, 10 226 tests),
+  `lint:colors`, `lint:fields`, `knip` ; [x] banc : critères Accueil du §2 tenus (voir étape 3) ;
+  [x] revue adversariale : ronde 1 (6 P1) corrigée en `f128a0141` ; ronde 2 (pilote, 2026-10-21) : 5/6 corrections complètes, 1 P1 proposé RECLASSÉ P2 par le pilote (la page de la vue match rend déjà `null` pendant son propre chargement, comportement antérieur au lot ; Q25 en live mesuré à 7-10 ms contre 300-800 ms pour la vue : les voisins arrivent avant la page), 2 P2 → Découvertes. P0+P1 : 6 → 0.
+
+- Revue adversariale ronde 1 (pilote, 2026-10-21) : P1-1 Q25 en lecture live [x] ; P1-2 favoris chargement / erreur [x] ; P1-3 voisins gardés pendant le pas [x] ; P1-4 commentaires [x] ; P1-5 `HomeMatchesKindRecent` utilisé [x] ; P1-6 tests qui mordent (fetchMore, Carousel + hook, `useNavigateToMatch`) [x] ; P2 défilement ramené à 30 tuiles : consigné en Découvertes. Ronde 2 : par le pilote.
 
 ### Étape 5 — Vue match (volet 1, conditionnelle à l'étape 2)
 
@@ -622,6 +746,7 @@ Q23b/Q28c 250-1 080 ms (Madina97294 reste à ~1 s sur la vue match).
 
 ## Découvertes
 
+- Revue ronde 2 piste A (P2, non traités) : (1) `MatchViewPage.tsx:71` rend `null` pendant le chargement de la vue, donc la barre de navigation est absente à chaque pas vers un match non en cache (comportement antérieur au lot ; les voisins, à 7-10 ms, arrivent avant la vue) ; (2) `MatchHeader.tsx:146` `pendingStep` n'est remis à zéro ni au changement de match ni sur erreur des voisins : un pas retenu peut être joué sur un autre match si l'utilisateur change de match avant la réponse (rare) ; (3) `match_view_repo_neighbors_skill.go:27,85` : Q25 lit le live pour tous ses appelants (vue match ouverte hors Accueil comprise) et attend le provider pendant un écrit, borné à 10 s (500 `neighbors_error` au-delà), comme la liste de l'Accueil.
 - `analysis/identity.go` (`v_gamertag_lookup`, annuaire des noms) lit encore `match_kill_events_latest` pour résoudre les noms : hors du critère du volet 2 (lecture de noms, pas un agrégat), allowlistée en 9.5 ; à reprendre dans un chantier « annuaire » si mesuré coûteux.
 - Banc (2026-10-21) : un serveur gardé entre deux passages ralentit de 6 à 15 % par passage, et sa mémoire privée atteint ~1,6 Go après UN passage de 34 pages (2 fils DuckDB, 512 Mo). Le VPS de prod a 1,8 Go de RAM au total : pression mémoire à surveiller (non traité ici).
 - Comparaison : 5,9 s sur 6,2 passés HORS sections (frags entre joueurs non bornés, `QKillsBetweenPlayers`) ; seule la partie servie par S1 est dans le périmètre (9.2).
@@ -629,4 +754,15 @@ Q23b/Q28c 250-1 080 ms (Madina97294 reste à ~1 s sur la vue match).
 - Étape 7 : deux affirmations fausses corrigées dans les commentaires touchés (règle 17) : `insertKillEventRows` n'était pas « le seul écrivain » du journal (seed démo synthétique et deux migrations historiques l'écrivent en SQL) ; la liste des appelants de `EnsureMatchKillEvents` omettait la lecture du snapshot partagé.
 - Étape 7 : le test du collecteur sur film réel (`TestKillSourceCollecteFilmReelEtRelitParLaVue`) se saute sans `KILLSOURCE_FIXTURES` et son fichier est au plafond figé par `archlint/film_file_size_test.go` : aucune assertion de tête n'y est ajoutée ; le chemin `PersistPass` du collecteur est couvert sans film par le collecteur crédit.
 - Étape 7 (revue du 2026-10-21) : le test d'empreinte de `killsummary.Rev` (`rev_test.go`) refait un hachage de jetons (copie du mécanisme de `film/revision/jetons.go`) ; à reprendre si un mécanisme partagé hors film est créé.
+- Piste C (2b) — contrôle de santé des données : `scheduler/data_health_check.go` (`openDBShared`) ouvre la base partagée par `duckdb.OpenReadOnly`, pas par le provider ni `OpenReadForQuery` (règle CLAUDE.md n° 4). D'après le contrat de `sharedprovider.Provider`, une référence tenue hors du provider fait refuser l'`OpenReadWrite` d'un swap tant qu'elle n'est pas rendue : pendant chaque audit de titre (toutes les 24 h), une écriture du sync peut échouer. La jauge 2b.3 ne prolonge pas cette fenêtre (mesurée après l'audit, par le provider) ; l'audit lui-même n'est pas modifié.
+- Piste C (2b) — sauvegardes de 2b.1 : les fichiers `…avant-compaction-20261021T1017…Z.duckdb` (2,5 Go) sont à côté des bases, sous `data/titles/`, donc embarqués par la sauvegarde restic de chaque nuit, et la tâche de nuit ne les supprime pas (elle ne touche que `data/compaction-backups/`). À retirer à la main après vérification par le user.
+- Piste C (2b) — `scripts/restic-backup.sh` ne prend aucun verrou : la tâche de nuit refuse de tourner pendant une sauvegarde restic, mais une sauvegarde restic lancée à la main pendant une compaction arrêterait/redémarrerait le serveur sous elle. Couvert par les horaires (03:30 contre 04:00) et `TimeoutStartSec=25min`, pas par un verrou commun.
+- Piste C (2b) — l'ADR 0026 est rédigé en français alors que CLAUDE.md (règle 15) veut les ADR en anglais seul ; l'amendement est en anglais, le corps n'est pas traduit.
+- Piste C (2b), revue ronde 1, P2 — aucun verrou partagé entre `scripts/compact-passes-nuit.sh` et `scripts/deploy.sh` : un déploiement (push `main`) pendant la fenêtre de compaction échouerait sur le verrou DuckDB tenu par `compact-passes` (pas de corruption : la CLI tient le bail et le verrou de fichier). Consigné, non corrigé.
+- Piste C (2b) — au timeout systemd (`TimeoutStartSec=25min`), le SIGTERM atteint le client `docker compose run` ; que le conteneur de compaction s'arrête aussi (relais de signal de `compose run`) n'est pas vérifié. S'il survivait, le filet relancerait le serveur pendant que la CLI tient la base : le serveur échouerait à l'ouvrir (verrou DuckDB, pas de corruption) et le script sortirait en erreur après ses 3 essais. À vérifier sur le VPS si ce timeout se produit un jour (passage mesuré ~90 s).
+- Piste C (2b) — la jauge a jusqu'à 24 h de retard sur une recuisson faite serveur démarré (le contrôle de santé tourne au démarrage puis toutes les 24 h) : une telle recuisson peut attendre deux nuits avant d'être compactée. Une recuisson faite serveur arrêté est mesurée au redémarrage.
+- (piste A, 2026-10-21) `HomePage.tsx` lit `data.privacy_warning` (`PrivacyBanner`, type web `privacy_warning`) mais `domain.HomePageResponse` ne l'émet pas : le bandeau « compte privé » de l'Accueil ne peut jamais s'afficher. Non traité (hors périmètre).
+- (piste A) `Q25NeighborMatches` n'avait pas de départage des ex aequo (corrigé en 4.4 : il bloquait la parité avec l'ordre de l'Accueil, le test échoue sans le correctif).
+- (piste A) Sans fixtures de démo (générées sur l'hôte de prod seulement), 62 specs E2E data-dépendantes sautent, dont `slice-5-home` : la couverture E2E de l'Accueil n'a pas pu être exercée dans le bac isolé de la piste A.
+- (piste A, revue ronde 1, P2 consigné, non corrigé) Défilement ramené à 30 tuiles quand la tête rechargée change de curseur (`features/home/queries.ts` : `cursors` repart de zéro si `recent_matches_next_before` change) : rare (nouveau match pendant un défilement profond), assumé pour ne jamais recoller des pages à une autre tête.
 - (à compléter pendant l'exécution)

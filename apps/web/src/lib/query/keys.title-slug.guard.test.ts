@@ -69,6 +69,8 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   engagementSquadSession: () => queryKeys.engagementSquadSession(P, T, [], []),
   // Accueil / palmarès / social.
   home: () => queryKeys.home(P, T, 'fr'),
+  homeMatchesPage: () => queryKeys.homeMatchesPage(P, T, 'fr', 'c'),
+  homeFavorites: () => queryKeys.homeFavorites(P, T, 'fr'),
   seasonPass: () => queryKeys.seasonPass(P, T, 'fr'),
   palmaresRelations: () => queryKeys.palmaresRelations(P, T),
   // Onglet Tactique : une carte n'existe que dans son titre, et la grille compte les

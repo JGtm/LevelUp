@@ -24,6 +24,7 @@
  */
 import type { ReplayVehicleAim, ReplayVehicleRide } from '@/lib/api/types'
 
+import { headingTowardNext } from './headingInterp'
 import { lastIndexAt } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import {
@@ -71,9 +72,11 @@ export interface VehicleOccupantAim {
  * vehicleRideAimReading — la dernière lecture de visée EN VIGUEUR à `frame` pour cet épisode, ou
  * `null` (aucune série, aucune lecture au plus tard à cette image, ou lecture trop ancienne).
  *
- * AUCUNE INTERPOLATION, comme côté serveur : interpoler deux caps ferait tourner le cône par le
- * chemin le plus court à travers 0/360 deg, un artefact que le film ne montre pas. On MAINTIENT la
- * dernière lecture le temps du maintien, on n'invente pas celles qui manquent.
+ * ENTRE DEUX LECTURES CONSÉCUTIVES (écart d'au plus le maintien), le cap TOURNE de l'une à l'autre
+ * par le plus court chemin angulaire (`headingTowardNext`, contrôles v8 du 2026-10-21) : tenu à la
+ * dernière lecture, il faisait pivoter le châssis et le cône par saccades de 100 ms. L'élévation
+ * (`p`) reste, elle, celle de la dernière lecture. Passé le maintien, aucune lecture n'est inventée :
+ * on rend `null`.
  *
  * UN POINT SANS `h` EST SAUTÉ. Le contrat serveur publie 360 plutôt que 0 (le PIÈGE omitempty,
  * cf. `headingForJSON` côté Go), donc le cas ne devrait pas exister — mais le champ est optionnel
@@ -88,7 +91,7 @@ export function vehicleRideAimReading(
   for (let i = lastIndexAt(aim, frame); i >= 0; i--) {
     const a = aim[i]
     if (frame - a.t > VEHICLE_AIM_HOLD_FRAMES) return null
-    if (a.h !== undefined) return a
+    if (a.h !== undefined) return { ...a, h: headingTowardNext(aim, i, frame, VEHICLE_AIM_HOLD_FRAMES) }
   }
   return null
 }

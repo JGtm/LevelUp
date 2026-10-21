@@ -452,6 +452,18 @@ describe('ExplorerMatchesTable — colonne « Rejeu »', () => {
     expect(screen.getAllByRole('link', { name: REPLAY_LABEL })).toHaveLength(2)
   })
 
+  // L'icône est plus étroite que l'en-tête « Rejeu » : cellule ET en-tête de la colonne
+  // sont CENTRÉS, sinon l'icône reste collée à gauche d'une colonne plus large qu'elle.
+  it("l'icône de rejeu est centrée : la cellule et l'en-tête de la colonne portent text-center", () => {
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: true })]} playerSlug="me" />,
+    )
+    const cell = screen.getByRole('link', { name: REPLAY_LABEL }).closest('td') as HTMLElement
+    const index = Array.from((cell.parentElement as HTMLElement).children).indexOf(cell)
+    expect(cell.className).toContain('text-center')
+    expect(screen.getAllByRole('columnheader')[index].className).toContain('text-center')
+  })
+
   // En mode triable, une colonne d'ICÔNE (en-tête vide, aucune valeur d'accès) ne doit
   // porter AUCUN contrôle de tri : le bouton serait focalisable sans nom accessible, et
   // le clic n'ordonnerait rien. Le test porte sur l'invariant plutôt que sur la colonne

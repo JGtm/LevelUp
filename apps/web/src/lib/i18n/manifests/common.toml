@@ -180,6 +180,12 @@ en = "Previous"
 fr = "Suivant"
 en = "Next"
 
+# État de chargement de la page suivante d'un carrousel qui se remplit au fil du défilement
+# (Accueil : matchs récents). Un seul mot : sous le seuil de la règle `no-hardcoded-strings`.
+[common.carousel.loading_more]
+fr = "Chargement…"
+en = "Loading…"
+
 # ThemeToggle.tsx — bilan fork ChaseWoodhams 2026-09-11, point 6 : le libellé
 # aria-label/title était un littéral FR assigné à une variable AVANT d'être
 # posé sur l'attribut JSX, hors de portée de la règle eslint

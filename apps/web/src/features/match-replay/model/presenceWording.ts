@@ -1,13 +1,14 @@
 /**
  * presenceWording — LES MOTS D'UN ÉVÉNEMENT DE PRÉSENCE, choisis par sa SOURCE.
  *
- * # DEUX VOCABULAIRES ET PAS UN
+ * # UN LIBELLÉ, DEUX INFOBULLES
  *
- * L'API AFFIRME (« a rejoint », « a quitté ») parce qu'elle porte un horodatage de
- * participation. Le repli film reste au FAIT (« entre en partie », « ne reviendra plus ») parce
- * qu'il DÉDUIT d'une borne de vie et ne distingue pas un départ d'une élimination définitive sur
- * un mode à manches. L'infobulle (`hint`) porte cette réserve. C'est la même règle que le bord de
- * l'ombre de la frise dessine : franc quand la source affirme, dégradé quand elle déduit.
+ * Le libellé est le même quelle que soit la source (« a rejoint la partie », « a quitté la
+ * partie » ; décision de l'utilisateur, 2026-10-21 : le repli film disait « entre en partie » /
+ * « ne reviendra plus »). La réserve passe par l'infobulle (`hint`) : l'API porte un horodatage
+ * de participation, le repli film DÉDUIT d'une borne de vie et ne distingue pas un départ d'une
+ * élimination définitive sur un mode à manches. C'est la même règle que le bord de l'ombre de la
+ * frise dessine : franc quand la source affirme, dégradé quand elle déduit.
  *
  * # UN SEUL FOYER, DEUX LECTEURS
  *
@@ -35,9 +36,7 @@ export function presenceWording(
   const joined = presence.kind === 'joined'
   const api = presence.source === 'api'
   return {
-    label: joined
-      ? (api ? t.presenceJoined : t.presenceJoinedDerived)
-      : (api ? t.presenceLeft : t.presenceLeftDerived),
+    label: joined ? t.presenceJoined : t.presenceLeft,
     hint: joined
       ? (api ? t.presenceJoinedHint : t.presenceJoinedDerivedHint)
       : (api ? t.presenceLeftHint : t.presenceLeftDerivedHint),

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 import {
+  hasNavContent,
   persistNavContext,
   readNavContext,
   clearNavContext,
@@ -35,6 +36,12 @@ describe('persistNavContext / readNavContext', () => {
   it('ignore une entrée vide ou matchIds=[]', () => {
     persistNavContext('m2', { ...baseCtx, matchIds: [] })
     expect(readNavContext('m2')).toBeNull()
+  })
+
+  it('contexte SANS liste mais avec descripteur (Accueil : récents) : conservé', () => {
+    const ctx: MatchNavContext = { source: 'home_recent', matchIds: [], contextDescriptor: { kind: 'recent' } }
+    persistNavContext('m2', ctx)
+    expect(readNavContext('m2')).toEqual(ctx)
   })
 
   it('ignore quand matchId est vide', () => {
@@ -257,5 +264,14 @@ describe('parseFilterSpecFromSearch', () => {
     expect(parseFilterSpecFromSearch(new URLSearchParams(qs))).toEqual({
       with_player_xuid: '2533274791785593',
     })
+  })
+})
+
+describe('hasNavContent', () => {
+  it('une liste OU un descripteur suffit ; ni l\'un ni l\'autre : rien à retenir', () => {
+    expect(hasNavContent({ source: 'history', matchIds: ['m1'] })).toBe(true)
+    expect(hasNavContent({ source: 'home_recent', matchIds: [], contextDescriptor: { kind: 'recent' } })).toBe(true)
+    expect(hasNavContent({ source: 'history', matchIds: [] })).toBe(false)
+    expect(hasNavContent(undefined)).toBe(false)
   })
 })

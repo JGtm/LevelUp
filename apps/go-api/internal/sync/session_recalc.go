@@ -146,7 +146,19 @@ func RecalculatePlayerSessions(
 	}
 	defer releaseShared()
 
-	// Résoudre les XUIDs des amis si nécessaire.
+	return recalculateSessionsFull(ctx, playerHandle.SQLDb(), sharedDB, xuid, opts, friendGamertags)
+}
+
+// recalculateSessionsFull recalcule TOUTES les sessions du joueur sur des handles déjà tenus
+// (leases détenues par l'appelant) et réécrit celles qui ont changé. Corps de
+// RecalculatePlayerSessions, séparé des acquisitions pour être exercé sur des bases en mémoire.
+func recalculateSessionsFull(
+	ctx context.Context,
+	playerDB, sharedDB *sql.DB,
+	xuid string,
+	opts domain.SessionComputeOptions,
+	friendGamertags []string,
+) (int, error) {
 	if len(friendGamertags) > 0 {
 		opts.FriendsXUIDs = LookupFriendXUIDs(ctx, sharedDB, friendGamertags)
 	}
@@ -164,7 +176,7 @@ func RecalculatePlayerSessions(
 	groups := analysis.BuildSessionGroups(matchRows, assignments)
 	assignments = analysis.MergeSessionLabels(assignments, groups)
 
-	n, err := WriteSessionAssignments(ctx, playerHandle.SQLDb(), assignments)
+	n, err := WriteSessionAssignments(ctx, playerDB, assignments)
 	if err != nil {
 		return 0, fmt.Errorf("RecalculatePlayerSessions write: %w", err)
 	}
