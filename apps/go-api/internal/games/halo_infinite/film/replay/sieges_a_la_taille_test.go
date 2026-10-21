@@ -28,6 +28,7 @@ func rosterDeLaTaille() ([]RosterEntry, occupants) {
 	}
 	partant := []intervalleDePresence{{de: 0, a: -1, aMax: 10}}
 	occ := occupantsFabriques([]int{0, 0, 0, 0, 0}, iv(0, 99), iv(80, 99), partant, iv(0, 60), iv(30, 75))
+	occ.parEntree[4].vies = [][2]int{{32, 75}} // H joue des son arrivee : il releve le bot
 	return roster, occ
 }
 

@@ -484,6 +484,10 @@ func (pp *poseDesPlaces) publierLesPresences() {
 		out := make([]PresenceInterval, 0, len(ivs))
 		for _, iv := range ivs {
 			pi := PresenceInterval{From: iv.de, To: iv.a}
+			if iv.placeLue && iv.place != pp.roster[i].Seat {
+				s := iv.place
+				pi.Seat = &s
+			}
 			if iv.aMax > iv.a {
 				m := iv.aMax
 				pi.ToMax = &m

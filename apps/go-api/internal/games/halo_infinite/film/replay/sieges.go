@@ -225,6 +225,12 @@ type SeatCoverage struct {
 	// BotsRelevesALaTaille : les bots dont l'affichage s'arrete a l'arrivee de l'humain qui prend leur
 	// place gardee.
 	BotsRelevesALaTaille int `json:"botsRelevesALaTaille"`
+	// BotsRelevesEnJeu : parmi eux, ceux a qui le film donne encore une vie apres l'arrivee de l'humain (leur
+	// pion reste sur la carte, sans fiche) — une contradiction de lecture, comptee et journalisee.
+	BotsRelevesEnJeu int `json:"botsRelevesEnJeu"`
+	// AbsencesTenuesParUnBot : les absences d'un humain (aucune vie) qu'un bot a tenues sur sa fiche ; la
+	// presence de l'humain est coupee autour de celle du bot.
+	AbsencesTenuesParUnBot int `json:"absencesTenuesParUnBot"`
 	// botsEcartes / botsSansPlaceAvecVie : les indices, dans le roster de la pose, des bots ecartes du
 	// roster publie, et le nombre de bots sans place qui ont une vie (sieges_bots_sans_place.go).
 	// Jamais servis (types de base, non exportes) : journal et expvar.
@@ -278,7 +284,10 @@ func poserLesSieges(ctx context.Context, roster []RosterEntry, occ occupants, in
 		if pp.tailleDuMode > 0 {
 			in.horloge.fb.Declenche(fallback.NomTailleDEquipeDuMode)
 		}
-		cov.RameneesALaTaille, cov.BotsRelevesALaTaille = pp.ramenerALaTaille()
+		bilan := pp.ramenerALaTaille()
+		cov.RameneesALaTaille, cov.BotsRelevesALaTaille, cov.BotsRelevesEnJeu = bilan.ramenees, bilan.releves, bilan.relevesEnJeu
+		cov.AbsencesTenuesParUnBot = bilan.absencesTenues
+		cov.SansPlace -= bilan.placees
 		in.horloge.fb.DeclencheN(fallback.NomPlaceRameneeALaTailleDEquipe, cov.RameneesALaTaille)
 	}
 	var successions int
@@ -314,6 +323,10 @@ func journaliserLesPlaces(ctx context.Context, matchID string, cov SeatCoverage)
 		slog.ErrorContext(ctx, "rejeu : entree(s) du roster presente(s) SANS EQUIPE lue — aucune tuile ne les "+
 			"montre", "match_id", matchID, "sansEquipe", cov.SansEquipe, "entrees", cov.Entrees)
 	}
+	if cov.BotsRelevesEnJeu > 0 {
+		slog.WarnContext(ctx, "rejeu : bot(s) dont la fiche passe a l humain arrive alors que le film leur donne "+
+			"encore une vie — lecture a verifier", "match_id", matchID, "botsRelevesEnJeu", cov.BotsRelevesEnJeu)
+	}
 	if cov.SansPlace > 0 || cov.Depassements > 0 || cov.PlacesEnTrop > 0 {
 		slog.WarnContext(ctx, "rejeu : places a lire — entree sans place, ou equipe au-dela de sa capacite",
 			"match_id", matchID, "sansPlace", cov.SansPlace, "depassements", cov.Depassements,
@@ -340,8 +353,8 @@ func (c *SeatCoverage) compterLesEntrees(roster []RosterEntry, pp *poseDesPlaces
 		if pp.ecarte(i) {
 			continue // hors du roster publie (sieges_bots_sans_place.go)
 		}
-		if len(pp.occ.parEntree[i].presence) > 0 {
-			sieges[e.Seat] = true
+		for _, iv := range pp.occ.parEntree[i].presence {
+			sieges[placeAffichee(e, iv)] = true
 		}
 		if e.SeatSource == SeatSourceLu {
 			c.Lus++

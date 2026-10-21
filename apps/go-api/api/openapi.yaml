@@ -23066,6 +23066,9 @@ components:
         from:
           format: int64
           type: integer
+        seat:
+          format: int64
+          type: integer
         to:
           format: int64
           type: integer
@@ -24881,6 +24884,9 @@ components:
     SeatCoverage:
       additionalProperties: false
       properties:
+        absencesTenuesParUnBot:
+          format: int64
+          type: integer
         apparies:
           format: int64
           type: integer
@@ -24891,6 +24897,9 @@ components:
           format: int64
           type: integer
         botsRelevesALaTaille:
+          format: int64
+          type: integer
+        botsRelevesEnJeu:
           format: int64
           type: integer
         botsSuccesseurs:
@@ -25013,6 +25022,8 @@ components:
         - bornesDifferees
         - rameneesALaTaille
         - botsRelevesALaTaille
+        - botsRelevesEnJeu
+        - absencesTenuesParUnBot
       type: object
     SelectedTeammateData:
       additionalProperties: false

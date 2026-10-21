@@ -66,19 +66,25 @@ func TestTailleSurLeParc(t *testing.T) {
 		}
 		avant := taillePlacesParEquipe(a)
 		pp := tailleRefaireLaPose(a, taille)
-		ramenees, releves := pp.ramenerALaTaille()
+		bilan := pp.ramenerALaTaille()
+		pp.bornerAuSuccesseur()
 		pp.retirerLesAffichagesVides()
 		apres := map[int]map[int]bool{}
 		for i, e := range pp.roster {
-			if o := pp.occ.parEntree[i]; o.equipe != nil && len(o.presence) > 0 {
+			o := pp.occ.parEntree[i]
+			for _, iv := range o.presence {
+				if o.equipe == nil {
+					continue
+				}
 				if apres[*o.equipe] == nil {
 					apres[*o.equipe] = map[int]bool{}
 				}
-				apres[*o.equipe][e.Seat] = true
+				apres[*o.equipe][placeAffichee(e, iv)] = true
 			}
 		}
-		t.Logf("%s (taille %d) : places par equipe avant %s, apres %s ; ramenees %d, bots releves %d",
-			id, taille, tailleFormat(avant), tailleFormat(apres), ramenees, releves)
+		t.Logf("%s (taille %d) : places par equipe avant %s, apres %s ; ramenees %d, bots releves %d (dont en jeu %d), absences tenues %d ; occupants simultanes max apres %s",
+			id, taille, tailleFormat(avant), tailleFormat(apres), bilan.ramenees, bilan.releves, bilan.relevesEnJeu,
+			bilan.absencesTenues, tailleSimultanes(pp))
 		for i, e := range pp.roster {
 			if e.SeatSource == SeatSourceTaille {
 				t.Logf("    %s -> place %d", pp.roster[i].Name, e.Seat)
@@ -158,4 +164,155 @@ func tailleFormat(m map[int]map[int]bool) string {
 		fmt.Fprintf(&b, "[%d:%d]", t, len(m[t]))
 	}
 	return b.String()
+}
+
+// tailleSimultanes rend, par equipe, le plus grand nombre d'intervalles AFFICHES a une meme frame :
+// l'invariant « jamais plus d'occupants que de places ».
+func tailleSimultanes(pp *poseDesPlaces) string {
+	parEquipe := map[int][]borneDAffichage{}
+	for i := range pp.roster {
+		o := pp.occ.parEntree[i]
+		if o.equipe == nil {
+			continue
+		}
+		for _, iv := range o.presence {
+			if iv.aMax >= iv.de {
+				parEquipe[*o.equipe] = append(parEquipe[*o.equipe], borneDAffichage{iv.de, +1}, borneDAffichage{iv.aMax + 1, -1})
+			}
+		}
+	}
+	m := map[int]map[int]bool{}
+	for t, b := range parEquipe {
+		maxi, _ := balayerLesBornes(b, sansPlafond)
+		m[t] = map[int]bool{}
+		for k := range maxi {
+			m[t][k] = true
+		}
+	}
+	return tailleFormat(m)
+}
+
+// TestTailleSurToutLeParc rejoue la regle sur TOUS les artefacts du dossier (lecture seule, aucune
+// cuisson) et compte ceux ou une equipe garde plus de places, ou plus d'occupants simultanes, que sa
+// taille. La taille n'est pas dans l'artefact : elle se deduit ici de la table du debut (sieges `lu`
+// repartis entre deux equipes, arrondis a 2, 4, 8 ou 12) — un instrument, pas la regle de production.
+//
+//	TAILLE_ARTEFACTS=<dossier> TAILLE_PARC=1 go test -tags=research ./internal/games/halo_infinite/film/replay -run TestTailleSurToutLeParc -v
+func TestTailleSurToutLeParc(t *testing.T) {
+	dir := os.Getenv("TAILLE_ARTEFACTS")
+	if dir == "" || os.Getenv("TAILLE_PARC") == "" {
+		t.Skip("TAILLE_ARTEFACTS ou TAILLE_PARC absent : instrument saute")
+	}
+	noms, err := filepath.Glob(filepath.Join(dir, "*.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lus, horsDeuxEquipes, avantEnTrop, apresEnTrop, simultanesEnTrop, ramenes, enJeu int
+	for _, nom := range noms {
+		if strings.HasSuffix(nom, ".derived.json") {
+			continue
+		}
+		raw, err := os.ReadFile(nom)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var a tailleArtefact
+		if json.Unmarshal(raw, &a) != nil || len(a.Roster) == 0 {
+			continue
+		}
+		lus++
+		taille, ok := tailleDeLaTable(a)
+		if !ok {
+			horsDeuxEquipes++
+			continue
+		}
+		if depasse(taillePlacesParEquipe(a), taille) {
+			avantEnTrop++
+		}
+		pp := tailleRefaireLaPose(a, taille)
+		bilan := pp.ramenerALaTaille()
+		pp.bornerAuSuccesseur()
+		pp.retirerLesAffichagesVides()
+		ramenes += bilan.ramenees
+		enJeu += bilan.relevesEnJeu
+		apres := map[int]map[int]bool{}
+		for i, e := range pp.roster {
+			o := pp.occ.parEntree[i]
+			for _, iv := range o.presence {
+				if o.equipe != nil {
+					if apres[*o.equipe] == nil {
+						apres[*o.equipe] = map[int]bool{}
+					}
+					apres[*o.equipe][placeAffichee(e, iv)] = true
+				}
+			}
+		}
+		id := strings.TrimSuffix(filepath.Base(nom), ".json")
+		if depasse(apres, taille) {
+			apresEnTrop++
+			t.Logf("RESTE EN TROP %s (taille %d) : places %s", id, taille, tailleFormat(apres))
+		}
+		if simultanesAuDela(pp, taille) {
+			simultanesEnTrop++
+			t.Logf("OCCUPANTS EN TROP %s (taille %d) : %s", id, taille, tailleSimultanes(pp))
+		}
+	}
+	t.Logf("PARC : %d artefacts a roster, %d hors deux equipes ; places en trop avant %d, apres %d ; "+
+		"occupants simultanes en trop apres %d ; intervalles ramenes %d, bots releves encore en jeu %d",
+		lus, horsDeuxEquipes, avantEnTrop, apresEnTrop, simultanesEnTrop, ramenes, enJeu)
+}
+
+// tailleDeLaTable deduit la taille d'equipe de la table du debut (cf. TestTailleSurToutLeParc).
+func tailleDeLaTable(a tailleArtefact) (int, bool) {
+	equipes, lus := map[int]bool{}, map[int]bool{}
+	for _, e := range a.Roster {
+		if e.Team != nil {
+			equipes[*e.Team] = true
+		}
+		if e.SeatSrc == SeatSourceLu {
+			lus[e.Seat] = true
+		}
+	}
+	if len(equipes) != 2 {
+		return 0, false
+	}
+	demi := (len(lus) + 1) / 2
+	for _, s := range []int{2, 4, 8, 12} {
+		if demi <= s {
+			return s, true
+		}
+	}
+	return 0, false
+}
+
+// depasse dit qu'une equipe tient plus de places que `taille`.
+func depasse(m map[int]map[int]bool, taille int) bool {
+	for _, places := range m {
+		if len(places) > taille {
+			return true
+		}
+	}
+	return false
+}
+
+// simultanesAuDela dit qu'une equipe affiche plus de `taille` intervalles a une meme frame.
+func simultanesAuDela(pp *poseDesPlaces, taille int) bool {
+	parEquipe := map[int][]borneDAffichage{}
+	for i := range pp.roster {
+		o := pp.occ.parEntree[i]
+		if o.equipe == nil {
+			continue
+		}
+		for _, iv := range o.presence {
+			if iv.aMax >= iv.de {
+				parEquipe[*o.equipe] = append(parEquipe[*o.equipe], borneDAffichage{iv.de, +1}, borneDAffichage{iv.aMax + 1, -1})
+			}
+		}
+	}
+	for _, b := range parEquipe {
+		if maxi, _ := balayerLesBornes(b, sansPlafond); maxi > taille {
+			return true
+		}
+	}
+	return false
 }

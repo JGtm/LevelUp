@@ -232,11 +232,15 @@ var registreReplayPlaces = []Repli{
 		Nom: "repli_place_ramenee_a_la_taille_d_equipe",
 		Fait: "quelle fiche un occupant tient quand son equipe a vu passer plus d'index de joueur que " +
 			"sa taille",
-		Mecanisme: "les places d'une equipe en surnombre se departagent par leur premiere occupation " +
-			"certaine ; les occupants des places en trop passent sur une place gardee libre pendant " +
-			"leurs presences certaines (la liberee le plus tard), sinon y relevent un bot deja la (son " +
-			"affichage s'arrete la veille), sinon y deplacent un occupant arrive apres eux vers une autre " +
-			"place gardee libre ; un occupant sans presence certaine n'est plus affiche",
+		Mecanisme: "les places gardees d'une equipe en surnombre sont les premieres tenues ; chaque " +
+			"intervalle de presence, dans l'ordre de son debut, prend la sienne si elle est gardee et libre, " +
+			"sinon une place gardee libre (la quittee le plus tard : le remplacant, humain ou bot, prend la " +
+			"fiche du partant), sinon pour un humain la place de bots deja la (s'il joue pendant leur " +
+			"presence, ils quittent la partie a son arrivee ; sinon il les attend, ou n'est plus affiche " +
+			"s'il part avant eux), sinon pour un bot la place d'un humain qui a joue avant lui et sans vie " +
+			"pendant sa presence (absence tenue, presence de l'humain coupee) ; les arrivants que le " +
+			"chainage laissait sans place y entrent ; place publiee par intervalle ; un intervalle sans " +
+			"presence certaine sur une place en trop n'est plus affiche",
 		// CONTRADICTION : les index que le film ecrit (table du debut, tirs) font plus de places que
 		// la taille de l'equipe ; la regle des places de l'utilisateur tranche la fiche.
 		Condition: CondContradiction,
@@ -246,7 +250,7 @@ var registreReplayPlaces = []Repli{
 			Ancre:   "in.horloge.fb.DeclencheN(fallback.NomPlaceRameneeALaTailleDEquipe, cov.RameneesALaTaille)",
 		}, {
 			Fichier: pkgReplay + "sieges_a_la_taille.go",
-			Ancre:   "pp.asseoir(i, p, SeatSourceTaille)",
+			Ancre:   "pp.roster[oc.entree].SeatSource = SeatSourceTaille",
 		}},
 		DatePose: dateControlesV8,
 		CibleRetrait: "le lot qui lira dans le film la place d'equipe d'un joueur (et non son index), " +

@@ -111,4 +111,8 @@ type PresenceInterval struct {
 	// (Q22 : la tuile sort là), ou par l'arrivée de son remplaçant sur la même place. Absent quand
 	// il vaut `to` (départ exact, ou présent jusqu'à la fin).
 	ToMax *int `json:"toMax,omitempty"`
+	// Seat est la PLACE de cet intervalle quand elle n'est pas celle de l'entree (`RosterEntry.Seat`) : un
+	// joueur qui revient peut tenir une autre fiche que la premiere (`sieges_a_la_taille.go`, schema
+	// 101). Absent : la place de l'entree.
+	Seat *int `json:"seat,omitempty"`
 }

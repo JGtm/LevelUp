@@ -161,9 +161,11 @@ func toSeatCoverage(v replay.SeatCoverage) replaydoc.SeatCoverage {
 		BornesDifferees:     v.BornesDifferees,
 		SansTableDuFilm:     v.SansTableDuFilm,
 
-		CapaciteSource:       v.CapaciteSource,
-		RameneesALaTaille:    v.RameneesALaTaille,
-		BotsRelevesALaTaille: v.BotsRelevesALaTaille,
+		CapaciteSource:         v.CapaciteSource,
+		RameneesALaTaille:      v.RameneesALaTaille,
+		BotsRelevesALaTaille:   v.BotsRelevesALaTaille,
+		BotsRelevesEnJeu:       v.BotsRelevesEnJeu,
+		AbsencesTenuesParUnBot: v.AbsencesTenuesParUnBot,
 	}
 }
 

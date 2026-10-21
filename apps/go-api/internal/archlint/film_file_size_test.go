@@ -299,7 +299,7 @@ var plafondsParFichier = map[string]int{
 	// condition c des declarations et l abstention du pont d equipe, grammar et killsource qui montent.
 	// SCHEMA 100 -> 101 (2026-10-21, controles de la v8), +29 : l entree v101 (taille d equipe de la
 	// playlist, places ramenees a la taille, pistes de projectile hors bande). Exception ecrite.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3495,
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3503,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du

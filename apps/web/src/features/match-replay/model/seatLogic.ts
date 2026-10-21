@@ -177,15 +177,16 @@ export function buildSeats(players: readonly ReplayPlayer[], doc: ReplayDocument
     // AUCUNE PLACE SANS ÉQUIPE DU FILM (cf. l'en-tête) : ni tuile, ni colonne, à aucune image.
     if (e === undefined || p.team === undefined) continue
     const presence = publiees ? presenceDeLEntree(e) : enveloppeDesVies(p)
-    if (presence.length === 0) continue // aucune présence : aucune place, à aucune image
-    const numero = e.seat ?? e.filmIndex
-    const cle = `siege:${p.team}:${numero}`
-    let s = places.get(cle)
-    if (!s) {
-      s = { key: cle, seat: numero, team: p.team, occupants: [], presenceLue: publiees }
-      places.set(cle, s)
+    // aucune présence : aucune place, à aucune image
+    for (const [numero, spans] of parPlace(presence, e.seat ?? e.filmIndex)) {
+      const cle = `siege:${p.team}:${numero}`
+      let s = places.get(cle)
+      if (!s) {
+        s = { key: cle, seat: numero, team: p.team, occupants: [], presenceLue: publiees }
+        places.set(cle, s)
+      }
+      s.occupants.push({ player: p, presence: spans, deduite: estDeduite(e) })
     }
-    s.occupants.push({ player: p, presence, deduite: estDeduite(e) })
   }
   const out = [...places.values()]
   for (const s of out) s.occupants.sort((a, b) => a.presence[0].from - b.presence[0].from)
@@ -212,11 +213,32 @@ function publieDesPresences(doc: ReplayDocumentReady): boolean {
   return doc.roster.some((e) => e.presence.length > 0)
 }
 
-/** La présence publiée d'une entrée (schéma 69), dans l'ordre du temps. */
-function presenceDeLEntree(e: ReplayRosterEntryReady): PresenceSpan[] {
+/** Un intervalle de présence et sa place, quand elle n'est pas celle de l'entrée (schéma 101). */
+interface PresenceSpanPlacee extends PresenceSpan {
+  seat?: number
+}
+
+/** La présence publiée d'une entrée (schéma 69), dans l'ordre du temps, avec la place de chaque intervalle. */
+function presenceDeLEntree(e: ReplayRosterEntryReady): PresenceSpanPlacee[] {
   return e.presence
-    .map((p) => ({ from: p.from, to: p.to, toMax: Math.max(p.to, p.toMax ?? p.to) }))
+    .map((p) => ({ from: p.from, to: p.to, toMax: Math.max(p.to, p.toMax ?? p.to), seat: p.seat }))
     .sort((a, b) => a.from - b.from)
+}
+
+/**
+ * parPlace — LES INTERVALLES D'UNE ENTRÉE, RANGÉS PAR PLACE. Un joueur qui revient peut tenir une
+ * autre fiche que la première quand la sienne a été reprise entre-temps (schéma 101) : l'intervalle
+ * publie alors sa place (`seat`), et l'occupant entre sous CETTE place pour CET intervalle.
+ */
+function parPlace(presence: readonly PresenceSpanPlacee[], placeDeLEntree: number): Map<number, PresenceSpan[]> {
+  const out = new Map<number, PresenceSpan[]>()
+  for (const { seat, ...span } of presence) {
+    const numero = seat ?? placeDeLEntree
+    const spans = out.get(numero)
+    if (spans) spans.push(span)
+    else out.set(numero, [span])
+  }
+  return out
 }
 
 /**
