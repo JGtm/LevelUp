@@ -430,14 +430,13 @@ type SessionSummaryItem struct {
 // RecentMatches est la TÊTE de la liste de tuiles (HomeTilesHeadSize au plus), pas
 // l'historique : la suite se lit par curseur sur GET /pages/home/matches (HomeMatchesPage).
 // RecentMatchesTotal est le compte réel des tuiles de l'historique (lignes à match_id non vide),
-// jamais la longueur de la tête. FavoriteMatches : les favoris du joueur en entier (liste choisie
-// par le joueur, bornée par son geste), relus seuls par la même route en kind=favorites.
+// jamais la longueur de la tête. Les favoris ne sont pas dans la tête : ils se lisent par la même
+// route en kind=favorites (liste choisie par le joueur, bornée par son geste, servie en entier).
 type HomePageResponse struct {
 	Hero                    HomeHeroCard         `json:"hero"`
 	SpartanIdentity         *HomeSpartanIdentity `json:"spartan_identity,omitempty"`
 	Highlights              []HighlightItem      `json:"highlights"`
 	RecentMatches           []RecentMatchItem    `json:"recent_matches"`
-	FavoriteMatches         []RecentMatchItem    `json:"favorite_matches"`
 	RecentMatchesTotal      int                  `json:"recent_matches_total"`
 	RecentMatchesHasMore    bool                 `json:"recent_matches_has_more"`
 	RecentMatchesNextBefore string               `json:"recent_matches_next_before,omitempty"`

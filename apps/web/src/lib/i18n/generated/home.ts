@@ -89,6 +89,8 @@ export const homeManifest = {
   "home.matches.favorites_empty_description": { fr: "Marque tes meilleurs matchs avec l'icône étoile pour les retrouver ici.", en: "Mark your best matches with the star icon to find them here." },
   "home.matches.favorites_empty_title": { fr: "Aucun match favori", en: "No favorite match" },
   "home.matches.favorites_title": { fr: "Matchs favoris", en: "Favorite matches" },
+  "home.matches.load_error": { fr: "Les matchs suivants n'ont pas pu être chargés.", en: "The next matches could not be loaded." },
+  "home.matches.load_retry": { fr: "Réessayer", en: "Retry" },
   "home.matches.recent_empty_description": { fr: "Les matchs récents apparaîtront ici après une synchronisation.", en: "Recent matches will appear here after a sync." },
   "home.matches.recent_empty_title": { fr: "Aucun match récent disponible", en: "No recent match available" },
   "home.matches.recent_title": { fr: "Matchs récents", en: "Recent matches" },

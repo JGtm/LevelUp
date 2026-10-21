@@ -2,6 +2,7 @@
  * useMatchNeighborsResolved — résolution cascade de la navigation prev/next.
  *
  * Ordre :
+ *   0. Contexte sans liste (matchIds vide, Accueil) : API Q25 + libellé du descripteur
  *   1. Router state (instantané, scope onglet courant)
  *   2. sessionStorage (survit F5 / nav arrière, TTL 24h — Phase 3)
  *   3. URL query params (survit Ctrl+Click / lien partagé) — Phase 2b
@@ -122,6 +123,20 @@ export function useMatchNeighborsResolved(
   // requête tourne mais son résultat n'est pas utilisé (cache pour ouverture
   // future).
   const apiQuery = useMatchNeighborsAPI(playerSlug, matchId, urlSpec)
+
+  if (localCtx && localCtx.matchIds.length === 0) {
+    // Contexte SANS liste (Accueil : matchs récents) : les voisins et le total viennent de Q25 sur
+    // tout l'historique, le libellé du contexte (« Matchs récents X/Y ») du descripteur. Le contexte
+    // est rendu pour que prev/next le propagent à la tuile suivante.
+    return {
+      data: apiQuery.data,
+      isPending: apiQuery.isPending,
+      source: 'api',
+      contextLabel: localCtx.filtersLabel,
+      contextDescriptor: localCtx.contextDescriptor,
+      navContext: localCtx,
+    }
+  }
 
   if (localCtx) {
     const resolved = resolveNeighborsFromContext(localCtx, matchId)

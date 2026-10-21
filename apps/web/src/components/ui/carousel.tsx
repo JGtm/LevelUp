@@ -8,6 +8,7 @@ import { useRef, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest } from '@/lib/i18n/generated/common'
+import { CAROUSEL_NEAR_END_TILES, isNearEnd, itemSpanOf } from './carousel.logic'
 
 function ChevronLeftIcon() {
   return (
@@ -50,13 +51,32 @@ function ChevronRightIcon() {
 interface CarouselProps {
   children: ReactNode
   className?: string
+  /** Appelé (sans arguments) quand le défilement arrive à `nearEndTiles` tuiles de la fin et que
+   *  `loadingMore` est faux : le parent charge la suite. Idempotent côté parent (appelé à chaque
+   *  rendu tant que la fin est proche). Le carrousel ne monte que les enfants reçus. */
+  onNearEnd?: () => void
+  /** Nombre de tuiles restantes à partir duquel `onNearEnd` est appelé. */
+  nearEndTiles?: number
+  /** La suite est en cours de chargement : un indicateur ferme la piste. */
+  loadingMore?: boolean
 }
 
-export function Carousel({ children, className = '' }: CarouselProps) {
+export function Carousel({
+  children,
+  className = '',
+  onNearEnd,
+  nearEndTiles = CAROUSEL_NEAR_END_TILES,
+  loadingMore = false,
+}: CarouselProps) {
   const locale = useAppShellStore((s) => s.locale)
   const prevLabel = formatMessage(commonManifest, 'common.carousel.prev', locale)
   const nextLabel = formatMessage(commonManifest, 'common.carousel.next', locale)
+  const loadingLabel = formatMessage(commonManifest, 'common.carousel.loading_more', locale)
   const trackRef = useRef<HTMLDivElement>(null)
+  const onNearEndRef = useRef(onNearEnd)
+  useEffect(() => {
+    onNearEndRef.current = onNearEnd
+  })
   const [canLeft, setCanLeft] = useState(false)
   const [canRight, setCanRight] = useState(false)
 
@@ -65,7 +85,17 @@ export function Carousel({ children, className = '' }: CarouselProps) {
     if (!el) return
     setCanLeft(el.scrollLeft > 4)
     setCanRight(el.scrollLeft + el.offsetWidth < el.scrollWidth - 4)
-  }, [])
+    if (
+      onNearEndRef.current &&
+      !loadingMore &&
+      isNearEnd(
+        { scrollLeft: el.scrollLeft, clientWidth: el.clientWidth, scrollWidth: el.scrollWidth, itemSpan: itemSpanOf(el) },
+        nearEndTiles,
+      )
+    ) {
+      onNearEndRef.current()
+    }
+  }, [loadingMore, nearEndTiles])
 
   useEffect(() => {
     updateScrollState()
@@ -106,6 +136,14 @@ export function Carousel({ children, className = '' }: CarouselProps) {
         className="flex-1 flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {children}
+        {loadingMore && (
+          <div
+            role="status"
+            className="flex w-24 shrink-0 items-center justify-center text-xs text-muted-foreground"
+          >
+            {loadingLabel}
+          </div>
+        )}
       </div>
 
       {/* Bouton droit — dans le flux, ne chevauche pas les tuiles */}

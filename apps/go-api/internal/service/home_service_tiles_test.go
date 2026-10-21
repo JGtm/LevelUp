@@ -6,6 +6,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -239,14 +240,6 @@ func TestGetHomeMatches_Favoris(t *testing.T) {
 	if fmt.Sprint(ids) != "[m002 m077 m150]" || page.HasMore || page.NextBefore != "" {
 		t.Errorf("favoris = %v has_more=%v next=%q", ids, page.HasMore, page.NextBefore)
 	}
-	// La tête porte la même liste que la relecture seule des favoris.
-	head, err := svc.GetHomePage(context.Background(), "TestGT", "fr")
-	if err != nil {
-		t.Fatalf("GetHomePage: %v", err)
-	}
-	if !reflect.DeepEqual(head.FavoriteMatches, page.Items) {
-		t.Errorf("favoris de la tête = %d tuiles, relecture = %d tuiles, attendues identiques", len(head.FavoriteMatches), len(page.Items))
-	}
 	none, _ := newTilesService("halo_5", homeTileRows(10, time.Now()), nil)
 	page, err = none.GetHomeMatches(context.Background(), "fr", domain.HomeMatchesRequest{Kind: domain.HomeMatchesKindFavorites})
 	if err != nil || page.Items == nil || len(page.Items) != 0 {
@@ -318,5 +311,31 @@ func TestLastSessionOutcomes_RepliSansSessionConnue(t *testing.T) {
 	got := lastSessionOutcomes(ordered, map[string]bool{"inconnue": true}, analysis.RecentMatchesOptions{Locale: "fr"})
 	if len(got) != lastSessionFallbackTiles || got[0].MatchID != "m000" {
 		t.Errorf("repli = %d issues dont la première %v, attendu %d depuis m000", len(got), got[0], lastSessionFallbackTiles)
+	}
+}
+
+// TestGetHomePage_SansFavorisDansLaTete : les favoris ne sont plus servis avec la tête (ils ont
+// leur propre lecture) : la réponse ne porte aucune clé favorite_matches.
+func TestGetHomePage_SansFavorisDansLaTete(t *testing.T) {
+	svc, _ := newTilesService("halo_infinite", homeTileRows(40, time.Now()), map[string]bool{"m001": true, "m035": true})
+	resp, err := svc.GetHomePage(context.Background(), "TestGT", "fr")
+	if err != nil {
+		t.Fatalf("GetHomePage: %v", err)
+	}
+	raw, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &keys); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if _, ok := keys["favorite_matches"]; ok {
+		t.Error("la tête ne doit plus porter favorite_matches")
+	}
+	for _, it := range resp.RecentMatches {
+		if it.MatchID == "m001" && !it.IsFavorite {
+			t.Error("m001 est un favori : sa tuile de la tête doit porter is_favorite")
+		}
 	}
 }

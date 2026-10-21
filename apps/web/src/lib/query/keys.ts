@@ -163,6 +163,15 @@ export const queryKeys = {
   homeAll: (playerSlug: string) => ['home', playerSlug] as const,
   home: (playerSlug: string, titleSlug: string, locale: string) =>
     ['home', playerSlug, titleSlug, locale] as const,
+  // Pages de tuiles de l'Accueil (GET /pages/home/matches) : sous le préfixe `home` (toute
+  // invalidation de l'accueil les recharge), une clé PAR PAGE — le curseur `before` est celui de la
+  // page précédente, donc une tête qui change (synchro) change les clés au lieu de laisser des pages
+  // périmées se recoller à la nouvelle tête. Locale : les libellés de tuile sont bakés serveur.
+  homeMatchesPage: (playerSlug: string, titleSlug: string, locale: string, before: string) =>
+    ['home', playerSlug, titleSlug, locale, 'matches', before] as const,
+  // Favoris de l'accueil (même route, kind=favorites) : liste rechargée seule après un favori basculé.
+  homeFavorites: (playerSlug: string, titleSlug: string, locale: string) =>
+    ['home', playerSlug, titleSlug, locale, 'favorites'] as const,
 
   // Palmares
   // Locale dans la clé : mêmes libellés backend-bakés (nom du pass, titres de

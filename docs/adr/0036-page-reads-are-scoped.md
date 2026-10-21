@@ -284,6 +284,11 @@ databases) ran on all of them.
 - **Totals stay on the history**: hero, highlights, sessions, the "last session" sequence
   (`last_session_outcomes`) and the performance placements read the full canonical rows (the
   cached loader of I3); only the list of tiles is a window. No figure changes.
+- **Neighbours without a list**: a tile opened from the Home no longer carries a list of ids to the
+  match page. Previous/next and the "X/Y" counter come from Q25 over the whole history, with the
+  same total order (instant descending, then `match_id` descending: Q25 ranks with that tie-break),
+  and the context label ("Recent matches") from the navigation context descriptor
+  (`useMatchNeighborsResolved`).
 - Title-agnostic: no comparison of a title slug; the window test runs under `halo_infinite` and
   `halo_5`.
 
@@ -291,7 +296,7 @@ databases) ran on all of them.
 matches, at most 30 tiles, totals unchanged, both slugs), `TestGetHomeMatches_ParitePagesEtListeComplete`
 (the concatenation of the head and the pages equals the whole list built in one pass, field by
 field, for page sizes from 1 to 1000), `TestGetHomeMatches_SynchroEntreDeuxPages`;
-`analysis/home_tiles_window_test.go` (order, cursor, ties, favorites).
+`analysis/home_tiles_window_test.go` (order, cursor, ties, favorites). `TestHomeTiles_OrdreIdentiqueAQ25` (`platform/duckdb/home_tiles_q25_parity_test.go`, `integration` tag): the order of the tiles and Q25 agree match by match, ties included.
 
 ## Consequences
 

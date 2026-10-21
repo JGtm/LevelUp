@@ -166,7 +166,11 @@ export type ContextDescriptor =
 
 export interface MatchNavContext {
   source: MatchNavSource
-  /** Liste ordonnée chronologique DESC (récent en tête) — index 0 = match courant le plus récent. */
+  /**
+   * Liste ordonnée chronologique DESC (récent en tête) — index 0 = match courant le plus récent.
+   * VIDE = contexte sans liste (Accueil : matchs récents, tout l'historique) : les voisins et le
+   * total viennent de l'API Q25, le libellé du contexte du `contextDescriptor`.
+   */
   matchIds: string[]
   /**
    * Descriptor typé du contexte d'origine — Phase 2c.
@@ -198,6 +202,11 @@ interface PersistedContext {
   ts: number
 }
 
+/** Le contexte porte quelque chose à retenir : une liste d'identifiants ou un descripteur de contexte. */
+export function hasNavContent(ctx: MatchNavContext | undefined): boolean {
+  return !!ctx && ((ctx.matchIds?.length ?? 0) > 0 || !!ctx.contextDescriptor)
+}
+
 /**
  * Sauvegarde le contexte de navigation pour le `matchId` cible.
  *
@@ -205,7 +214,7 @@ interface PersistedContext {
  * etc.), on ignore — l'utilisateur retombera sur le fallback API au F5.
  */
 export function persistNavContext(matchId: string, ctx: MatchNavContext): void {
-  if (!matchId || !ctx?.matchIds?.length) return
+  if (!matchId || !hasNavContent(ctx)) return
   try {
     const payload: PersistedContext = { ctx, ts: Date.now() }
     sessionStorage.setItem(STORAGE_PREFIX + matchId, JSON.stringify(payload))

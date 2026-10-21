@@ -324,6 +324,14 @@ en = "No favorite match"
 fr = "Marque tes meilleurs matchs avec l'icône étoile pour les retrouver ici."
 en = "Mark your best matches with the star icon to find them here."
 
+[home.matches.load_error]
+fr = "Les matchs suivants n'ont pas pu être chargés."
+en = "The next matches could not be loaded."
+
+[home.matches.load_retry]
+fr = "Réessayer"
+en = "Retry"
+
 # ─── KPI hero card (anciennement kpi.i18n.ts) ─────────────────────────────
 
 [home.kpi.total_time]

@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { patchFavoriteFlag } from '@/lib/home-tiles/homeTiles.logic'
 
 interface SetExclusionVars {
   matchId: string
@@ -55,7 +56,9 @@ export function useSetMatchExclusion(playerSlug: string) {
 
 /**
  * useSetMatchFavorite — bascule l'état favori d'un match depuis la Home.
- * Invalide home + matchHistory pour refléter les listes "favoris".
+ * La tuile change sur place dans les réponses de l'accueil déjà en cache (tête et pages : aucun
+ * rechargement), seule la liste des favoris est rechargée (son contenu change), et l'historique
+ * Explorer est invalidé.
  */
 export function useSetMatchFavorite(playerSlug: string) {
   const queryClient = useQueryClient()
@@ -65,13 +68,13 @@ export function useSetMatchFavorite(playerSlug: string) {
         `/players/${playerSlug}/matches/${matchId}/favorite`,
         { favorited: favorite },
       ),
-    onSuccess: () => {
+    onSuccess: (_data, { matchId, favorite }) => {
+      const { currentTitleSlug, locale } = useAppShellStore.getState()
+      queryClient.setQueriesData({ queryKey: queryKeys.homeAll(playerSlug) }, (old) =>
+        patchFavoriteFlag(old, matchId, favorite),
+      )
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.home(
-          playerSlug,
-          useAppShellStore.getState().currentTitleSlug,
-          useAppShellStore.getState().locale,
-        ),
+        queryKey: queryKeys.homeFavorites(playerSlug, currentTitleSlug, locale),
       })
       void queryClient.invalidateQueries({ queryKey: queryKeys.matchHistoryAll(playerSlug) })
     },

@@ -118,6 +118,9 @@ const homeFixture = {
   },
   highlights: [],
   recent_matches: [],
+  recent_matches_total: 0,
+  recent_matches_has_more: false,
+  last_session_outcomes: [],
   solo_session: null,
   squad_session: null,
 }
@@ -339,6 +342,9 @@ export const handlers = [
 
   // Home
   http.get(p(`/players/${SLUG}/pages/home`), () => HttpResponse.json(homeFixture)),
+  http.get(p(`/players/${SLUG}/pages/home/matches`), () =>
+    HttpResponse.json({ items: [], has_more: false }),
+  ),
   http.get(p(`/players/${SLUG}/pages/palmares/season-pass`), () => HttpResponse.json(seasonPassFixture)),
 
   // Leaderboard

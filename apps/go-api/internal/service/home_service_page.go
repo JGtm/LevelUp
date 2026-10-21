@@ -134,10 +134,6 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		allRows: d.canonicalRows, window: win.Rows, favoriteIDs: d.favoriteIDs,
 		locale: locale, list: homeSectionListRecent, translated: true,
 	})
-	favorites := s.buildTiles(ctx, tilesInput{
-		allRows: d.canonicalRows, window: analysis.FavoriteHomeTileRows(ordered, d.favoriteIDs), favoriteIDs: d.favoriteIDs,
-		locale: locale, list: homeSectionListFavorites, translated: true,
-	})
 	outcomes := lastSessionOutcomes(ordered, knownSessionLabels(sessions), s.tileOptions(ctx, locale))
 
 	var rankCatalog *mappings.RankCatalog
@@ -154,7 +150,6 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		SpartanIdentity:         analysis.BuildSpartanIdentity(d.spartanIdent, locale, rankCatalog),
 		Highlights:              highlights,
 		RecentMatches:           recent,
-		FavoriteMatches:         favorites,
 		RecentMatchesTotal:      len(ordered),
 		RecentMatchesHasMore:    win.HasMore,
 		RecentMatchesNextBefore: nextBefore(win),

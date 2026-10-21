@@ -2,7 +2,7 @@
  * useMatchNeighborsResolved — test de la cascade (state → session → API).
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 
@@ -123,5 +123,44 @@ describe('useMatchNeighborsResolved', () => {
       kind: 'with_player',
       gamertag: 'CoolMate',
     })
+  })
+})
+
+describe('useMatchNeighborsResolved — contexte sans liste (Accueil : matchs récents)', () => {
+  const recentCtx: MatchNavContext = {
+    source: 'home_recent',
+    matchIds: [],
+    contextDescriptor: { kind: 'recent' },
+  }
+
+  it('voisins et total viennent de l\'API (tout l\'historique), le libellé vient du descripteur', async () => {
+    stateCtxRef.current = recentCtx
+    const { result } = renderHook(() => useMatchNeighborsResolved('me', 'm2'), { wrapper })
+
+    expect(result.current.source).toBe('api')
+    expect(result.current.contextDescriptor).toEqual({ kind: 'recent' })
+    // Rendu pour que prev/next propagent le contexte à la tuile suivante.
+    expect(result.current.navContext).toBe(recentCtx)
+
+    await waitFor(() => expect(result.current.data).toBeDefined())
+    // Compteur = vrai total de l'API (50), pas la longueur d'une fenêtre.
+    expect(result.current.data?.total_matches).toBe(50)
+    expect(result.current.data?.current_index).toBe(7)
+  })
+
+  it('aucun avertissement de développement (ce n\'est pas un match absent du contexte)', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    stateCtxRef.current = recentCtx
+    renderHook(() => useMatchNeighborsResolved('me', 'm2'), { wrapper })
+    expect(warnSpy).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
+
+  it('survit à un rechargement : le contexte persisté (sessionStorage) est relu', () => {
+    persistNavContext('m2', recentCtx)
+    stateCtxRef.current = undefined
+    const { result } = renderHook(() => useMatchNeighborsResolved('me', 'm2'), { wrapper })
+    expect(result.current.contextDescriptor).toEqual({ kind: 'recent' })
+    expect(result.current.source).toBe('api')
   })
 })
