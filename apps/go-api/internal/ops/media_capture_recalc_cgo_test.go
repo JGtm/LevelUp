@@ -163,9 +163,11 @@ func TestRecalcCaptureTimes_WithoutMarkerColumn(t *testing.T) {
 	_, db := openDiagDB(t)
 	if _, err := db.ExecContext(ctx, `
 		CREATE TABLE media_files (id INTEGER, file_name VARCHAR, kind VARCHAR,
-			capture_start_utc TIMESTAMPTZ, capture_end_utc TIMESTAMPTZ, duration_seconds DOUBLE);
+			capture_start_utc TIMESTAMPTZ, capture_end_utc TIMESTAMPTZ, duration_seconds DOUBLE, status VARCHAR);
 		INSERT INTO media_files VALUES (1, 'Replay 2026-09-01 21-46-53.mkv', 'video',
-			TIMESTAMPTZ '2026-09-01 19:46:53+00', TIMESTAMPTZ '2026-09-01 19:47:21+00', 28)`); err != nil {
+			TIMESTAMPTZ '2026-09-01 19:46:53+00', TIMESTAMPTZ '2026-09-01 19:47:21+00', 28, NULL),
+			(2, 'Replay 2026-09-01 22-00-00.mkv', 'video', -- supprimé : ni affiché ni recalculé
+			TIMESTAMPTZ '2026-09-01 20:00:00+00', TIMESTAMPTZ '2026-09-01 20:00:28+00', 28, 'deleted')`); err != nil {
 		t.Fatal(err)
 	}
 	dry, err := recalcCaptureTimes(ctx, db, mustParis(t), true)

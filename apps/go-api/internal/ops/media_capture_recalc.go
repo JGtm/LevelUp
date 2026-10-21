@@ -179,11 +179,13 @@ func nullTimePtr(t sql.NullTime) *time.Time {
 	return &t.Time
 }
 
-// loadLegacyCaptureRows lit les lignes non marquées qui ont une heure de capture.
+// loadLegacyCaptureRows lit les lignes visibles non marquées qui ont une heure de capture ; un
+// média supprimé (soft-delete) n'est ni affiché ni recalculé.
 func loadLegacyCaptureRows(ctx context.Context, db *sql.DB, hasMarker bool) ([]legacyCaptureRow, error) {
 	q := `SELECT id, COALESCE(file_name, ''), COALESCE(kind, ''), capture_start_utc,
 			capture_end_utc, duration_seconds
-		FROM media_files WHERE capture_start_utc IS NOT NULL`
+		FROM media_files WHERE capture_start_utc IS NOT NULL
+		  AND ` + platform_duckdb.MediaVisiblePredicate("")
 	if hasMarker {
 		q += ` AND capture_time_source IS NULL`
 	}
