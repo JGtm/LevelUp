@@ -232,6 +232,31 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
       est ouverte) : filet = transaction + empreintes + sauvegarde restic quotidienne du VPS ; le CLI
       `compact-passes` reste l'outil manuel avec sauvegarde. Journal INFO par table (avant, après,
       durée), WARN si un seuil est dépassé mais la compaction refusée.
+      **Note de conception (2026-10-21, piste C) — BLOQUÉE sur une décision du user, aucun code écrit.**
+      Acquisition : `sync.AcquireSharedWriterStandalone(ctx, cfg.SharedProviderForTitle(slug), pr.SharedDBPath(slug))`
+      → `sharedprovider.(*providerImpl).AcquireWriter` (provider_writer.go), le chemin de
+      `SharedAccess.Write` du LUSR ; une rafale PAR TABLE (chaque table a déjà sa transaction).
+      Mesure avant rafale sous le lecteur (`Provider.Get`), sans écrivain. Sync : refus si
+      `Coordinator.InFlightCount() > 0` à l'entrée de chaque rafale (TOCTOU bénin : le bail dblease
+      sérialise de toute façon les écrivains). Fenêtre 04:00-05:00 UTC, tirage une fois par nuit.
+      Seuil : 1,5 brutes/`_latest` par table (une table compactée vaut 1 ; A.3 : coût de page ≈
+      proportionnel au rapport, `match_kill_events` à ~19 → pages ÷2 à ÷10 ; 1,5 borne le surcoût à
+      +50 % entre deux nuits). Multi-titre : boucle sur `reg.All()` dont la base partagée existe,
+      provider du titre, aucune comparaison de slug. Échec au milieu : la table en cours est
+      annulée par sa transaction (base intacte), les précédentes restent compactées et vérifiées ;
+      `refuserOrphelin` en tête de chaque table (un orphelin ne naît pas d'une transaction DuckDB) ;
+      ERROR journalisée, la tâche s'arrête pour la nuit.
+      POINT BLOQUANT : la rafale d'une table dure le temps de sa RECONSTRUCTION (trois lectures
+      fenêtrées de la table brute + empreinte de vue + index), pas ≤ 2 s comme une rafale du LUSR.
+      Pendant ce temps le provider est en RW : chaque lecture de page attend puis répond 503 au-delà
+      de 3 s (`middleware.DefaultUserFacingReadBudget`), le sync attend, le chien de garde (2 s)
+      journalise un WARN. Ordre de grandeur : 26,6 M lignes en ~33 s sur le poste (A.3), donc
+      plusieurs secondes par grosse table en régime établi sur le VPS (2 vCPU), et des dizaines de
+      secondes par table la nuit qui suit une recuisson. Décision à prendre par le user : (a) accepter
+      cette indisponibilité nocturne (503 le temps de chaque table) ; (b) borner l'automatique aux
+      tables dont la reconstruction tient dans le budget, WARN sinon et CLI manuel serveur arrêté ;
+      (c) ne pas compacter dans le serveur : jauge seule (2b.3) + `compact-passes` ajouté à la
+      séquence de recuisson.
 - [ ] 2b.3 Jauge « passes par match » (rapport brutes / `_latest` par table) exposée dans le contrôle
       de santé des données (`scheduler/data_health_check.go`) et en expvar ; WARN au-delà du seuil.
 - [ ] 2b.4 Documentation : ADR 0026 amendé (la compaction est automatique, conditions, filet),
