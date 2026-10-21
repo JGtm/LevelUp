@@ -118503,3 +118503,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : Go `film/replay` et `service/replayview` verts après fusion ; `archlint` vert avant fusion ; web : tsc propre (cache purgé), eslint 0 erreur (5 avertissements `engine` déjà présents sur feat/v75), vitest `src/features/match-replay` 240 fichiers / 3 321 tests verts ; `generate-types` sans écart.
 
 **Conclusion / prochaine étape** : rien poussé, CI non jouée. Le tireur par intervalle ne change pas l'artefact tant que le parc n'est pas recuit : la recuisson unique reste au superviseur.
+
+## [2026-10-22] Retours des contrôles v8 : cinq lots fusionnés, recuisson locale — Complété (branche `feat/v75`)
+
+**Décision technique principale** : cinq lots en branches dédiées (sessions, écran, médias, MMR, rejeu), chacun relu par un relecteur Sonnet (une ronde) et vérifié par la CI avant fusion ; recuisson unique du parc après la fusion du lot rejeu (révision de grammaire + schéma 101), conformément à la décision de l'utilisateur.
+
+**Résultats observés** : CI verte sur chaque branche (relances : dépassement de 600 s du paquet grammaire en CI, non lié ; deux garde-rails rattrapés par la CI : liste blanche shared_social et prédicat des médias supprimés, polarité de 4 compteurs neufs). Recuisson : 2 500 films construits en 4 h 52 (pic 2,04 Gio), 9 cartes Forge et 2 erreurs de décodage ; dérivations rejouées sans échec ; serveur local relancé, /health 200. Notion : contrôles restants rayés.
+
+**Conclusion / prochaine étape** : copie vers la prod avec la release v8.0.1 (geste de l'utilisateur), contrôles visuels de l'utilisateur sur les témoins listés au plan de tri.

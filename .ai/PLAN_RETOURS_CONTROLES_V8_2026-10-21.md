@@ -149,3 +149,19 @@ Lignes des encadrés « Contrôles visuels / techniques » rayées le 21/10 pour
   serveur par `levelup media-capture-times`. NON lancé sur les vraies données (superviseur).
 - [!] Écart résiduel bfecd02b (~43 s, clip réellement 1:52 → 2:20 au chrono du jeu, posé 2:34 → 3:03) : horloge du PC de
   capture en avance (mesuré sur 6 clips, +2 à +43 s selon la date), hors de portée de la règle. 72b0a25e : 2-3 s.
+
+## 7. Clôture du 21-22/10
+
+- Fusionnés dans `feat/v75` et poussés (327d289d9) : `fix/sessions-regle-unique`, `fix/controles-v8-web`,
+  `fix/medias-calage`, `fix/mmr-zero-temps-mort`, `fix/controles-v8-rejeu` ; chacun avec sa revue adversariale
+  (une ronde, constats traités) et sa CI verte.
+- Décisions utilisateur du 21/10 : sessions = « amis seulement » partout ; « Composition stricte » gardée, cochée,
+  avec infobulle ; « Temps mort » déjà retiré le 25/08 ; MMR 0 = valeur absente ; capacités : rien à changer ;
+  voix de manche hors plafond ; une 5e fiche n'existe pas (règle symétrique des places, pion sans fiche retiré) ;
+  taille d'équipe = playlist (film ne la porte pas ; Squad Battle 8 vérifié sur 413 matchs) ; heure des clips =
+  fin pour Replay / Game Bar / console.
+- Recuisson locale du 21/10 20:56 -> 22/10 01:48 (4 h 52, pic 2,04 Gio) : 2 500 construits, 9 cartes Forge hors
+  catalogue, 2 erreurs de décodage (e869bcdf, f3e3112f), 0 mort mémoire. Puis usages 2 500, paliers 2 499,
+  véhicules 2 500, killsource sans erreur, modèle d'assistances Infinite rejoué (5 joueurs). Serveur relancé 01:58.
+- Reste : copie des rejeux et des bases vers la prod avec la prochaine release (v8.0.1), recalcul des médias au
+  premier passage d'indexation (automatique), gate visuel de l'utilisateur.
