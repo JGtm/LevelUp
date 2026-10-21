@@ -56,9 +56,22 @@ const SeatSourceTaille = "taille"
 // bilanALaTaille : ce que la regle a fait — les intervalles deplaces ou dont l'affichage est retire,
 // les bots releves par un humain (dont ceux a qui le film donne encore une vie apres l'arrivee), les
 // absences d'humain qu'un bot a tenues, et les arrivants que le chainage laissait sans place et que la
-// regle assoit.
+// regle assoit (comptes par ENTREE : un arrivant a plusieurs intervalles est assis une fois).
 type bilanALaTaille struct {
 	ramenees, releves, relevesEnJeu, absencesTenues, placees int
+	entreesPlacees                                           map[int]bool
+}
+
+// placer compte l'entree `i`, arrivant sans place que la regle assoit — une seule fois.
+func (b *bilanALaTaille) placer(i int) {
+	if b.entreesPlacees[i] {
+		return
+	}
+	if b.entreesPlacees == nil {
+		b.entreesPlacees = map[int]bool{}
+	}
+	b.entreesPlacees[i] = true
+	b.placees++
 }
 
 // occupationDEquipe : une occupation et la place qui la portait avant la regle (nil : un arrivant que
@@ -197,7 +210,7 @@ func (pp *poseDesPlaces) arrivantsSansPlace(t int) []int {
 // place (ni, pour un bot qui a une vie, parmi les bots sans place).
 func (pp *poseDesPlaces) asseoirParLaTaille(i int, b *bilanALaTaille) {
 	pp.roster[i].SeatSource = SeatSourceTaille
-	b.placees++
+	b.placer(i)
 	if pp.roster[i].Bot && len(pp.occ.parEntree[i].vies) > 0 {
 		pp.sansPlace.avecVie--
 	}
@@ -275,7 +288,7 @@ func (pp *poseDesPlaces) releverUnBot(oc occupationDEquipe, gardees []*placeDeLa
 			iv.a, iv.aMax = iv.de-1, iv.de-1
 			b.ramenees++
 			if oc.origine == nil {
-				b.placees++
+				b.placer(oc.entree)
 			}
 			return nil
 		}

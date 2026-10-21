@@ -131,3 +131,23 @@ func TestUnHumainReleveLeBot(t *testing.T) {
 	}
 	verifierLInvariant(t, roster, 2)
 }
+
+// TestUnArrivantSansPlaceSeCompteUneFois — un arrivant sans place a DEUX intervalles que la regle
+// retire tous les deux (il ne joue pas et part avant le bot) est assis UNE fois : `SansPlace` compte
+// des entrees, pas des intervalles, et ne devient jamais negatif.
+func TestUnArrivantSansPlaceSeCompteUneFois(t *testing.T) {
+	roster := []RosterEntry{
+		entree(0, "100"), // A, la du debut a la fin
+		{Bot: true, Name: "343 B", FilmIndex: 30},
+		entree(40, "140"), // H : deux passages sans corps, avant la fin du bot, dans une equipe pleine
+	}
+	deux := []intervalleDePresence{{de: 10, a: 15, aMax: 15}, {de: 20, a: 25, aMax: 25}}
+	occ := occupantsFabriques([]int{0, 0, 0}, iv(0, 99), iv(0, 99), deux)
+	occ.parEntree[1].vies = [][2]int{{0, 99}}
+	cov := poserALaTailleDeDeux(roster, occ, 0)
+
+	if cov.SansPlace != 0 {
+		t.Errorf("SansPlace = %d, attendu 0 : H est une entree, assise une fois (couverture %+v)", cov.SansPlace, cov)
+	}
+	verifierLInvariant(t, roster, 2)
+}

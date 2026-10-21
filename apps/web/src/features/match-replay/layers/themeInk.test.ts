@@ -11,6 +11,8 @@ import { resolve } from 'node:path'
 import { act, renderHook } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
+import { resolveToken } from '@/lib/accessibility/resolveToken'
+
 import { exportFormatOf, exportLayoutFor } from '../export/exportFormats'
 import { requestExportLayout } from '../export/exportLayoutStore'
 import { racineWeb } from '../test/featureFiles'
@@ -100,6 +102,16 @@ describe('useReplayInks — le memo suit l’entree et la sortie de l’export',
     act(() => requestExportLayout(null))
     expect(JSON.stringify(result.current)).toBe(clair)
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+  })
+})
+
+describe('useReplayInks — l’encre des socles', () => {
+  it('le power-up porte l’encre `warning`, celle des armes de puissance (contrôle n° 3 des contrôles de la v8)', () => {
+    const { pad } = renderHook(() => useReplayInks(0)).result.current
+    expect(pad.powerup).toBe(resolveToken('warning'))
+    expect(pad.powerup).toBe(pad.power)
+    expect(pad.powerup).not.toBe(resolveToken('legendary')) // l'or d'avant le 2026-10-21
+    expect(pad.classic).toBe(resolveToken('divergent-neutral'))
   })
 })
 
