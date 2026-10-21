@@ -719,8 +719,23 @@ never a `DELETE` (DuckDB ART #23645): a transactional swap that checks, before C
 count, the table DDL and indexes, and that the view returns exactly the same result. Sequences
 are untouched (no `id` is ever reused). Idempotent: a second run reports `deja-compacte`.
 
-When: after a re-decode campaign (re-bake, `backfill-killsource`), never at boot nor after a
-sync. **Server stopped**: the command refuses a DB another process holds.
+When: **automatically every night in production** when a table is above the threshold (below),
+and by hand to compact right away, typically after a re-decode campaign (re-bake,
+`backfill-killsource`). Never at boot, after a sync, or inside the server process. **Server
+stopped**: the command refuses a DB another process holds.
+
+**Nightly automatic compaction (VPS).** The server's data health check (at boot, then every 24 h)
+measures, for every registry table and every title, raw rows / kept rows (a compacted table is 1)
+and writes it to `data/global/admin_state/passes_par_match.txt` (also in expvar:
+`levelup.compaction.passes_par_match`, `levelup.compaction.tables_au_dessus_du_seuil`). At 03:30 UTC
+the systemd timer `levelup-compact-passes.timer` runs `scripts/compact-passes-nuit.sh`: if no table
+of any title is above 1.5 (`migration.SeuilPassesParMatch`) it exits without touching anything;
+otherwise it checks free disk space, stops `levelup`, runs
+`levelup compact-passes --backup-dir /app/data/compaction-backups`, starts `levelup` again (even if
+the compaction fails, up to 3 attempts) and waits for `/health`. Log: `data/logs/compact-passes-nuit.log`. Backups
+older than 24 h in `data/compaction-backups/` are deleted only after a successful run. Installing
+the units (once, as root): `scripts/systemd/README.md`; decision and measurements: ADR 0026,
+amendment "Automatic compaction".
 
 ```bash
 go run ./cmd/levelup compact-passes --dry-run                # read-only: raw / _latest / gain per table

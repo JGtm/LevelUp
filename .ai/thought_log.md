@@ -5,6 +5,29 @@
 **Résultats observés** : colonnes relevées lecteur par lecteur (27 servables, `qSoloFrags` reste ligne à ligne) ; sur la copie de prod : `publishable` homogène dans les 73 729 passes, aucun assistant nommé sans `assist_known`, S1 = 58 % des lignes du journal, S2 = 21 %. Relecture à contexte frais : corrections P0-P2 appliquées.
 
 **Conclusion** : étape 7 (schéma, calcul, écriture) confiée à un agent Opus dans un worktree dédié.
+## [2026-10-21] Plan perf pages v8.0.1, étape 2b (piste C) : revue adversariale ronde 1 — Complété (branche `feat/v801-perf-compactage`)
+
+**Décision technique principale** : trois P1 corrigés. (1) Le garde restic lit `systemctl show -p ActiveState --value` : l'unité restic est `oneshot` sans `RemainAfterExit`, son état pendant la sauvegarde est `activating` et `is-active` rendait 3, le garde ne la voyait jamais. (2) Redémarrage en 3 essais bornés (start + `/health`, 15 s entre deux), ERROR à chaque échec, sortie 1 si tous échouent ; le filet reste armé jusqu'à un redémarrage réussi ; `trap … TERM INT HUP` explicite. (3) La jauge est mesurée pour tout titre dont la base partagée existe, indépendamment de l'audit du titre : un titre illisible rend la mesure partielle, le fichier n'est pas réécrit (avant : publié frais sans ce titre). P2 « pas de verrou commun avec deploy.sh » consigné en Découvertes.
+
+**Résultats observés** : chaque nouveau test est rouge sur la version de `373e8b62b` (script : restic `activating`/`deactivating`, start raté puis réussi, start toujours raté, `/health` muet, SIGTERM ; scheduler : titre illisible) et sur des mutants (sans `bases_ko`, borne à 72 h, sans trap TERM), vert après correction. Gate : `go test -count=1` et `-tags=integration -p 1` verts sur scheduler, archlint, migration, cmd/server ; golangci-lint 0 problème ; shellcheck et `bash -n` propres.
+
+**Conclusion / prochaine étape** : clôture de la revue par le pilote ; installation des unités au déploiement (runbook).
+
+## [2026-10-21] Plan perf pages v8.0.1, étape 2b (piste C) : compactage automatique de nuit hors du serveur — Complété, revue adversariale par le pilote (branche `feat/v801-perf-compactage`)
+
+**Décision technique principale** : décision du user (2026-10-21, option (d) du pilote) : la compaction ne tourne PAS dans le serveur (tenir l'écrivain le temps de reconstruire une table = 503 ; mémoire du VPS). Le serveur MESURE, l'hôte AGIT. Jauge `migration.MesurerPasses` (brutes / gardées par la règle du registre, une table compactée vaut exactement 1, seuil `SeuilPassesParMatch` = 1,5) mesurée par le contrôle de santé, une lecture courte du provider par table, publiée en expvar et dans `data/global/admin_state/passes_par_match.txt` (rien sur mesure partielle). Script hôte `scripts/compact-passes-nuit.sh` + timer systemd à 03:30 UTC (pas 04:00 : restic y arrête déjà le serveur) : rien sous le seuil, sinon verrou, restic, disque, stop, `compact-passes --backup-dir /app/data/compaction-backups`, start toujours, `/health` borné, ménage des sauvegardes > 24 h après réussite seulement.
+
+**Résultats observés** : `go test` et `-tags=integration -p 1` verts sur migration, scheduler, cmd/server, domain/title, archlint, cmd/levelup ; tests anti-ART (`internal/sync -run NoArt|AppendOnly`) et changelog verts ; `golangci-lint --new-from-merge-base=origin/main` 0 problème ; `shellcheck` propre. Le test du script tourne sous le bash de Git for Windows : le lanceur `bin/bash.exe` place ses dossiers devant le PATH reçu, d'où le PATH des faux posé dans `bash -c`.
+
+**Conclusion / prochaine étape** : revue adversariale par le pilote ; au déploiement, installer les unités une fois (`scripts/systemd/README.md`, case ajoutée au runbook de déploiement) et vérifier la jauge puis le journal de la première nuit. Découvertes consignées au plan (audit de santé en `OpenReadOnly`, sauvegardes de 2b.1 sous `data/titles`, restic sans verrou, ADR 0026 en français, retard de 24 h de la jauge).
+
+## [2026-10-21] Plan perf pages v8.0.1, étape 2b (piste C) : compactage automatique, note de conception — Clos (débloqué par la décision du user, voir l'entrée au-dessus) (branche `feat/v801-perf-compactage`)
+
+**Décision technique principale** : note de conception rédigée sous 2b.2, aucun code écrit. Écrivain partagé par `sync.AcquireSharedWriterStandalone` + `cfg.SharedProviderForTitle(slug)` (chemin de `SharedAccess.Write`, celui du LUSR), une rafale par table, mesure sous le lecteur, refus si `Coordinator.InFlightCount() > 0`, fenêtre 04:00-05:00 UTC, seuil 1,5 brutes/`_latest` par table, boucle multi-titre sans comparaison de slug, échec = transaction de la table annulée + `refuserOrphelin`.
+
+**Résultats observés** : vérifié sur pièces (`sharedprovider/provider_writer.go`, `provider.go` `Get`, `middleware/read_budget.go`) : pendant qu'un écrivain est tenu, le provider est en RW, les lectures de page attendent puis répondent 503 au-delà de 3 s, et le chien de garde journalise un WARN au-delà de 2 s. Or une rafale de compaction dure la reconstruction entière de la table (trois lectures fenêtrées de la table brute + empreinte + index) : 26,6 M lignes en ~33 s sur le poste (annexe A.3), donc plusieurs secondes par grosse table en régime établi sur le VPS et des dizaines de secondes la nuit qui suit une recuisson. C'est le cas d'arrêt prévu par la consigne (indisponibilité plus longue qu'une rafale du LUSR).
+
+**Conclusion / prochaine étape** : question au user, trois options écrites dans le plan (a) accepter 503 la nuit le temps de chaque table, (b) automatique borné aux tables qui tiennent dans le budget + CLI manuel sinon, (c) pas de compaction dans le serveur : jauge 2b.3 seule + `compact-passes` dans la séquence de recuisson. Reprise de 2b.2 après la réponse ; 2b.3 à 2b.5 non commencés (ordre strict).
 
 ## [2026-10-21] Plan perf pages v8.0.1, étapes 1-2 : banc de mesure et mesure « avant » — Complété (branche `feat/v801-perf-pages`)
 

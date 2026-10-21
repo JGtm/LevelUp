@@ -13,6 +13,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"runtime"
 	"strings"
@@ -29,6 +30,7 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
+	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service/citationsrelance"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/replayartifacts"
@@ -370,4 +372,16 @@ func openMonitoringStore(ctx context.Context, cfg *config.AppConfig, pr *title.P
 // `<démo>/runtime/` en démo (lot B5.5), à sa place d'avant sinon.
 func bootFriendStore(cfg *config.AppConfig) *friendstore.FriendStore {
 	return friendstore.NewFriendStore(cfg.RuntimePaths().PlayerFriendsPath())
+}
+
+// healthSharedReader : le lecteur de la base partagée de la jauge des passes du contrôle de santé
+// — le provider B-swap du titre (lecture suivie, drainée avant un swap du sync), ou, sans
+// provider, OpenReadForQuery. Jamais un écrivain.
+func healthSharedReader(cfg *config.AppConfig, pr *title.PathResolver) scheduler.SharedReaderFunc {
+	return func(ctx context.Context, slug string) (*sql.DB, func(), error) {
+		if p := cfg.SharedProviderForTitle(slug); p != nil {
+			return p.Get(ctx)
+		}
+		return duckdb.OpenReadForQuery(pr.SharedDBPath(slug))
+	}
 }

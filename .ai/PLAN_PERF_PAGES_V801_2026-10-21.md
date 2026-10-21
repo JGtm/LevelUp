@@ -223,26 +223,84 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
       0,57 M ; sauvegardes `…avant-compaction-20261021T1017…Z.duckdb` à côté des bases (2,3 Go +
       0,2 Go) — à supprimer après vérification par le user ; santé OK 11 s après redémarrage,
       aucune erreur journalisée.
-- [ ] 2b.2 Compactage automatique dans le serveur : tâche de fond (coupée en démo, déclarée dans
-      `demoPolicies`) qui, la nuit (fenêtre fixe, hors cycle de sync), mesure le rapport lignes
-      brutes / lignes `_latest` de chaque table du registre de compaction et, au-delà d'un seuil
-      nommé (constante, valeur justifiée par mesure), appelle `migration.CompactSupersededPasses`
-      SOUS l'écrivain partagé obtenu par le chemin standard (rafale courte, comme le LUSR v2 ; jamais
-      une ouverture RW hors provider/lease — règle « bare connect »), avec vérification d'empreinte
-      de vue avant/après (déjà dans `echangerTable`). Pas de sauvegarde fichier en processus (la base
-      est ouverte) : filet = transaction + empreintes + sauvegarde restic quotidienne du VPS ; le CLI
-      `compact-passes` reste l'outil manuel avec sauvegarde. Journal INFO par table (avant, après,
-      durée), WARN si un seuil est dépassé mais la compaction refusée.
-- [ ] 2b.3 Jauge « passes par match » (rapport brutes / `_latest` par table) exposée dans le contrôle
-      de santé des données (`scheduler/data_health_check.go`) et en expvar ; WARN au-delà du seuil.
-- [ ] 2b.4 Documentation : ADR 0026 amendé (la compaction est automatique, conditions, filet),
-      `docs/COMMANDS.md` FR + EN (le CLI reste pour l'usage manuel), changelog 8.0.1 FR + EN.
-- [ ] 2b.5 Tests : déclenchement sous et au-dessus du seuil (horloge et seuil injectables), refus
-      pendant un cycle de sync, écrivain partagé obligatoire (aucune ouverture directe), démo coupée,
-      empreintes identiques après compaction en processus sur un corpus append-only réel
-      (`-tags=integration`), `no_art_patterns_test.go` sans nouvelle entrée d'allowlist.
-- Gate : doctrine §4 (dont `-tags=integration -p 1` sur `./internal/migration/...`,
-  `./internal/scheduler/...`, `./cmd/server/...`) ; revue adversariale close.
+- [x] 2b.2 Compactage automatique HORS du serveur (décision du user du 2026-10-21, option (d) du
+      pilote : pas dans le processus serveur — risque mémoire, ~1,6 Go sur le banc pour un VPS de
+      1,8 Go, et pas de 503 en journée ; la conception « tâche de fond sous l'écrivain partagé »
+      initiale est caduque). Fait : `scripts/compact-passes-nuit.sh` + unités
+      `scripts/systemd/levelup-compact-passes.{service,timer}` (installation : `scripts/systemd/README.md`
+      et `docs/RUNBOOK_DEPLOY_CHECKLIST.md`, les unités ne sont pas déployées par `deploy.sh`).
+      **Note de conception (2026-10-21).** Décision sur la jauge 2b.3 (fichier
+      `data/global/admin_state/passes_par_match.txt`, lu depuis l'hôte : aucun port, aucune route,
+      rien d'ouvert à Internet ; `/debug/vars` exige un admin, `/health` ne porte que `{status}`).
+      Seuil `migration.SeuilPassesParMatch` = 1,5 brutes/gardées, porté par le fichier (une seule
+      source) : une table compactée vaut exactement 1 (dénominateur = règle du registre, pas la vue,
+      sinon une vue plus filtrante qu'une passe laisserait une table compacte au-dessus de 1 et
+      arrêterait le serveur chaque nuit) ; A.3 : coût de page ≈ proportionnel aux lignes brutes
+      (`match_kill_events` à ~19 → pages ÷2 à ÷10), 1,5 borne le surcoût à +50 % entre deux nuits.
+      Horaire 03:30 UTC et non 04:00 : la sauvegarde restic (`levelup-restic-backup.timer`) tourne à
+      04:00 et arrête/redémarre le serveur elle aussi ; le ménage Docker de 03:00 supprime les
+      conteneurs arrêtés depuis plus de 24 h. Pas de `Persistent` (un rattrapage au démarrage
+      tomberait avec celui de restic) ; `TimeoutStartSec=25min` (passage mesuré le plus long ~90 s).
+      Séquence : verrou `flock` (sinon 75), restic actif (sinon 75), jauge absente / illisible /
+      > 48 h (2 cycles du contrôle de santé) → erreur sans rien toucher, 0 table → sortie, place
+      disque ≥ taille des bases partagées + 2 Gio, `stop`, `compact-passes --backup-dir
+      /app/data/compaction-backups` (hors `data/titles` : ni restic ni ménage n'y touchent une base),
+      `start` toujours (trap si l'arrêt échoue), attente bornée de `/health` (120 s). Multi-titre :
+      la CLI traite chaque titre dont la base existe ; le script compte la place par glob
+      `data/titles/*/…`, aucun slug. Échec au milieu : la table en cours est annulée par sa
+      transaction, les précédentes restent compactées et vérifiées, la CLI s'arrête à la 1re erreur
+      (`refuserOrphelin` en tête de table) ; le script redémarre le serveur, garde les sauvegardes
+      (état `echec`), sort en 1. Ménage `*.avant-compaction-*` > 24 h du seul dossier dédié, après un
+      passage réussi seulement, joué en FIN de passage (sinon la sauvegarde de la veille, 23 h 59,
+      survivrait 48 h).
+- [x] 2b.3 Jauge « passes par match » : `migration.MesurerPasses` (`compaction_jauge.go`, lecture
+      seule) ; contrôle de santé `scheduler/data_health_passes.go` : une lecture courte du provider
+      B-swap PAR TABLE (`WithSharedReader`, câblé dans `cmd/server` par `healthSharedReader`), APRÈS
+      l'audit du titre (le handle `OpenReadOnly` de l'audit est rendu) ; expvar
+      `levelup.compaction.passes_par_match` (`<titre>/<table>`) et
+      `levelup.compaction.tables_au_dessus_du_seuil` ; WARN par table au-delà du seuil ; fichier
+      (`PathResolver.PassesGaugePath`, écriture atomique). Mesure partielle → rien publié. Démo : la
+      tâche « santé données » est déjà `demoCut` dans `demoPolicies` (aucune tâche nouvelle).
+- [x] 2b.4 Documentation : ADR 0026 amendé (EN, « Automatic compaction » : jauge, seuil, tâche hôte,
+      pourquoi pas dans le serveur avec les durées prod du 2026-10-21, filet) ; en-têtes de
+      `cmd/levelup/cmd_compact_passes.go` et `internal/migration/compaction.go` corrigés ;
+      `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` ; changelog 8.0.1 EN + FR (section Ops) ; installation
+      dans `scripts/systemd/README.md` et `docs/RUNBOOK_DEPLOY_CHECKLIST.md` (post-déploiement).
+- [x] 2b.5 Tests : jauge (`migration/compaction_jauge_test.go` : 6/3 → 2, 1 après compaction, table
+      absente, hors registre, seuil strict ; `scheduler/data_health_passes_test.go` : fichier + expvar,
+      une lecture injectée par table, horloge injectée, mesure partielle → aucun fichier) ; script
+      (`archlint/compact_passes_nuit_script_test.go`, faux `docker`/`curl`/`df`/`systemctl`/`flock`) :
+      sous le seuil → rien, au-dessus → stop/run/start dans l'ordre, compaction en échec → serveur
+      redémarré + code 1, `/health` muet → 1, arrêt en échec → redémarrage tenté, disque insuffisant,
+      verrou, restic, jauge périmée ou absente, ménage (motif seul, après réussite seulement).
+      `[~]` pour les cas de la conception caduque : refus pendant un sync et écrivain obligatoire →
+      sans objet (serveur arrêté, la CLI prend le bail dblease) ; empreintes identiques après
+      compaction → couvert par `internal/games/halo_infinite/migrations/compaction_e2e_test.go`
+      (corpus partagé complet, inchangé). `no_art_patterns_test.go` : aucune entrée ajoutée.
+- Gate : [x] `go test` et `-tags=integration -p 1` sur `./internal/migration/...`,
+  `./internal/scheduler/...`, `./cmd/server/...`, `./internal/domain/title/...`,
+  `./internal/archlint/...`, `./cmd/levelup/...` verts ; [x] `golangci-lint
+  --new-from-merge-base=origin/main` 0 problème ; [x] `shellcheck` + `bash -n` du script ;
+  [ ] revue adversariale : par le pilote — ronde 1 traitée (ci-dessous), clôture par le pilote.
+- Revue adversariale ronde 1 (pilote, 2026-10-21 ; VPS vérifié en `Etc/UTC`, 03:30 UTC retenu),
+  chaque correction avec un test rouge sans elle (vérifié en rejouant le test sur la version de
+  `373e8b62b`) :
+  - [x] P1 garde restic : l'unité restic est `oneshot` sans `RemainAfterExit`, `is-active` rend 3
+        pendant la sauvegarde (`activating`) → lecture de `systemctl show -p ActiveState --value`
+        (`activating`/`active`/`reloading`/`deactivating` = en cours) ; faux `systemctl` qui modélise
+        `activating` (cas `activating` et `deactivating`).
+  - [x] P1 redémarrage : `START_ESSAIS=3` essais de start + `/health` borné, `START_DELAI_S=15` entre
+        deux, ERROR à chaque échec, sortie 1 si tous échouent ; le filet reste armé jusqu'à un
+        redémarrage RÉUSSI (il ne rejoue pas des essais épuisés) ; tests : start raté puis réussi,
+        start toujours raté (3 essais exactement), `/health` muet (3 essais).
+  - [x] P1 jauge d'un titre illisible : la jauge est mesurée pour tout titre dont la base partagée
+        existe, que l'audit du titre ait réussi ou non ; illisible → tables non mesurées → fichier
+        non réécrit (WARN) ; test à deux titres dont un à base illisible.
+  - [x] Tests qui mordent : place disque (base de 8 Mio, disque = marge + moitié de la base →
+        refus ; mutant sans `bases_ko` rouge), âge de la jauge à 23 h 30, 47 h 50 et 48 h 10 (mutant
+        72 h rouge), jauge illisible (4 formes), SIGTERM pendant la compaction → filet, serveur
+        relancé, code 143 (`trap … TERM INT HUP` explicite ; mutant sans lui rouge).
+  - [~] P2 verrou commun avec `scripts/deploy.sh` : consigné en Découvertes, non corrigé (consigne).
 
 ### Étape 3 — Accueil en fenêtre, serveur (volet 1)
 
@@ -511,4 +569,11 @@ Q23b/Q28c 250-1 080 ms (Madina97294 reste à ~1 s sur la vue match).
 - `analysis/identity.go` (`v_gamertag_lookup`, annuaire des noms) lit encore `match_kill_events_latest` pour résoudre les noms : hors du critère du volet 2 (lecture de noms, pas un agrégat), allowlistée en 9.5 ; à reprendre dans un chantier « annuaire » si mesuré coûteux.
 - Banc (2026-10-21) : un serveur gardé entre deux passages ralentit de 6 à 15 % par passage, et sa mémoire privée atteint ~1,6 Go après UN passage de 34 pages (2 fils DuckDB, 512 Mo). Le VPS de prod a 1,8 Go de RAM au total : pression mémoire à surveiller (non traité ici).
 - Comparaison : 5,9 s sur 6,2 passés HORS sections (frags entre joueurs non bornés, `QKillsBetweenPlayers`) ; seule la partie servie par S1 est dans le périmètre (9.2).
+- Piste C (2b) — contrôle de santé des données : `scheduler/data_health_check.go` (`openDBShared`) ouvre la base partagée par `duckdb.OpenReadOnly`, pas par le provider ni `OpenReadForQuery` (règle CLAUDE.md n° 4). D'après le contrat de `sharedprovider.Provider`, une référence tenue hors du provider fait refuser l'`OpenReadWrite` d'un swap tant qu'elle n'est pas rendue : pendant chaque audit de titre (toutes les 24 h), une écriture du sync peut échouer. La jauge 2b.3 ne prolonge pas cette fenêtre (mesurée après l'audit, par le provider) ; l'audit lui-même n'est pas modifié.
+- Piste C (2b) — sauvegardes de 2b.1 : les fichiers `…avant-compaction-20261021T1017…Z.duckdb` (2,5 Go) sont à côté des bases, sous `data/titles/`, donc embarqués par la sauvegarde restic de chaque nuit, et la tâche de nuit ne les supprime pas (elle ne touche que `data/compaction-backups/`). À retirer à la main après vérification par le user.
+- Piste C (2b) — `scripts/restic-backup.sh` ne prend aucun verrou : la tâche de nuit refuse de tourner pendant une sauvegarde restic, mais une sauvegarde restic lancée à la main pendant une compaction arrêterait/redémarrerait le serveur sous elle. Couvert par les horaires (03:30 contre 04:00) et `TimeoutStartSec=25min`, pas par un verrou commun.
+- Piste C (2b) — l'ADR 0026 est rédigé en français alors que CLAUDE.md (règle 15) veut les ADR en anglais seul ; l'amendement est en anglais, le corps n'est pas traduit.
+- Piste C (2b), revue ronde 1, P2 — aucun verrou partagé entre `scripts/compact-passes-nuit.sh` et `scripts/deploy.sh` : un déploiement (push `main`) pendant la fenêtre de compaction échouerait sur le verrou DuckDB tenu par `compact-passes` (pas de corruption : la CLI tient le bail et le verrou de fichier). Consigné, non corrigé.
+- Piste C (2b) — au timeout systemd (`TimeoutStartSec=25min`), le SIGTERM atteint le client `docker compose run` ; que le conteneur de compaction s'arrête aussi (relais de signal de `compose run`) n'est pas vérifié. S'il survivait, le filet relancerait le serveur pendant que la CLI tient la base : le serveur échouerait à l'ouvrir (verrou DuckDB, pas de corruption) et le script sortirait en erreur après ses 3 essais. À vérifier sur le VPS si ce timeout se produit un jour (passage mesuré ~90 s).
+- Piste C (2b) — la jauge a jusqu'à 24 h de retard sur une recuisson faite serveur démarré (le contrôle de santé tourne au démarrage puis toutes les 24 h) : une telle recuisson peut attendre deux nuits avant d'être compactée. Une recuisson faite serveur arrêté est mesurée au redémarrage.
 - (à compléter pendant l'exécution)
