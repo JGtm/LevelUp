@@ -95,7 +95,8 @@ Fermes (tranchées sur pièces) :
   (`written_at DESC, id DESC`). Une erreur de calcul annule la passe (couplage assumé, testé par
   injection d'erreur). Fonction pure sur un type de ligne neutre, avec deux adaptateurs : lignes en
   mémoire (écriture) et lignes lues en base (rattrapage), tenus égaux par un test de parité.
-- **D-7 Familles du volet 2, grain et colonnes figés à l'étape 6 avant tout code.** Chaque famille
+- **D-7 Familles du volet 2, grain et colonnes figés à l'étape 6 avant tout code** (fait : l'ADR
+  0039 fait foi sur les colonnes ; écarts listés au gate de l'étape 6). Chaque famille
   porte `summary_pass` (une génération), `summary_rev` (révision de la règle), `src_decode_pass`,
   `written_at` ; vues `_latest` jointes à la tête sur `summary_pass` (modèle `match_usage_*`), pour
   qu'une relecture à révision nouvelle sur la même passe ne compte jamais deux fois.
@@ -303,22 +304,36 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
 
 ### Étape 6 — ADR 0039 « résumés par match » : règle, grain, colonnes (volet 2)
 
-- [ ] 6.1 ADR 0039 (EN) : règle du paradigme (agrégat décomposable par match → résumé écrit avec sa
+- [x] 6.1 ADR 0039 (EN) : règle du paradigme (agrégat décomposable par match → résumé écrit avec sa
       source ; lignes brutes → lecture à la demande) ; D-6 (point d'écriture unique, normalisations,
       `now` partagé, couplage de disponibilité) ; D-7 ; tête qui décide la passe ; `summary_pass` /
       `summary_rev` ; recalcul (D-10) ; jauge « sans tête » ; garde-rail anti-retour ; compaction ;
       snapshots et démo ; multi-titre (Halo Infinite et Halo 5 écrivent `match_kill_events` : migration
       générique, aucun branchement par slug).
-- [ ] 6.2 Colonnes exactes de S0, S1, S2 figées dans l'ADR, chacune justifiée par les lecteurs qui la
+- [x] 6.2 Colonnes exactes de S0, S1, S2 figées dans l'ADR, chacune justifiée par les lecteurs qui la
       lisent (table « lecteur → colonnes » reprise de l'inventaire et RE-VÉRIFIÉE sur pièces, dont les
       cas : bots sans xuid, victime bot dans `frags_film` de Q26l, tueur NULL dans
       `/monitoring/weapon-coverage`, `stolen` et portée de Q21d, « mesurée sans assistant » et victime
       du cas bot-bot de la Coordination, jeton Campagne sur `match_id`).
-- [ ] 6.3 Mesures sur la copie des bases, consignées : lignes de S1 et S2 projetées par rapport au
+- [x] 6.3 Mesures sur la copie des bases, consignées : lignes de S1 et S2 projetées par rapport au
       journal (décision « S1 unique ou scindée ») ; hétérogénéité de `publishable` dans une même passe
       (`SELECT decode_pass FROM match_kill_events GROUP BY decode_pass HAVING COUNT(DISTINCT publishable) > 1`).
 - Gate : ADR relu par un contexte frais ; aucune contradiction avec les ADR 0019, 0026, 0030, 0036 ;
   chaque lecteur de 9.1-9.4 a ses colonnes dans 6.2.
+- Statut du gate : [x] (2026-10-21). Relecture à contexte frais faite ; corrections appliquées :
+  écrivains réels (dont le seed démo synthétique), fonction d'insertion unique
+  `insertKillSummaryRows`, jauge « sans tête » = porte de release, I2 appliqué aux vues S, périmètre
+  du garde-rail calqué sur `TestNoRawAppendOnlyReads`, empreinte de révision (modèle ADR 0034 D-6),
+  section Rollout, procédure d'ajout d'un lecteur ou d'un agrégat, liens avec 0026/0030/0036.
+  Mesures 6.3 (copie de prod, 2026-10-21) : 0 passe à `publishable` hétérogène (73 729 passes
+  BRUTES, avant compactage) ; 0 assistant nommé sans `assist_known` ; 0 part sans gamertag
+  d'assistant ; S1 245 547 lignes et S2 86 901 pour 419 858 lignes `_latest` (Halo Infinite), S1
+  96 178 pour 268 337 (Halo 5) → S1 unique, pas de scission.
+  ÉCARTS À D-7, assumés par l'ADR (qui fait foi) : S1 sans gamertags (aucun lecteur agrégat ne les
+  lit) et sans `kills_publishable` (`publishable` constant par passe, porté par la tête) ; S0 =
+  `publishable` + 4 comptes ; S2 sans ligne séparée « mesurée sans assistant » (grain à assistant
+  NULL) ; `qSoloFrags` (lignes individuelles) rejoint l'allowlist de 9.5 ; les lectures du journal
+  côté `sync/` sont hors décision et hors garde-rail.
 
 ### Étape 7 — Familles S0 à S2 : schéma, calcul, écriture (volet 2)
 

@@ -1,3 +1,11 @@
+## [2026-10-21] Plan perf pages v8.0.1, étape 6 : ADR 0039 résumés par match du journal des morts — Complété (branche `feat/v801-perf-pages`)
+
+**Décision technique principale** : trois tables de résumés (S0 tête par match, S1 paires tueur/victime/source, S2 assistances) écrites par une fonction unique `insertKillSummaryRows`, dans la transaction de la passe (`insertKillEventRows`, seul écrivain d'exécution du journal), aussi par le seed démo synthétique et par le rattrapage ; vues `_latest` décidées par la tête ; jauge « sans tête » = porte de release ; garde-rail au niveau des requêtes.
+
+**Résultats observés** : colonnes relevées lecteur par lecteur (27 servables, `qSoloFrags` reste ligne à ligne) ; sur la copie de prod : `publishable` homogène dans les 73 729 passes, aucun assistant nommé sans `assist_known`, S1 = 58 % des lignes du journal, S2 = 21 %. Relecture à contexte frais : corrections P0-P2 appliquées.
+
+**Conclusion** : étape 7 (schéma, calcul, écriture) confiée à un agent Opus dans un worktree dédié.
+
 ## [2026-10-21] Plan perf pages v8.0.1, étapes 1-2 : banc de mesure et mesure « avant » — Complété (branche `feat/v801-perf-pages`)
 
 **Décision technique principale** : banc isolé (`scripts/bench-pages.sh`) sur une copie des bases de PROD tirée par flux ssh en lecture seule (les bases locales sont verrouillées par le serveur local des autres sessions sous Windows), serveur du worktree sur 8010, réglages DuckDB de prod, aucun jeton, réglages assainis, proxy fermé ; chaque passage redémarre le serveur à neuf (un serveur gardé dérivait de 6 à 15 % par passage).
