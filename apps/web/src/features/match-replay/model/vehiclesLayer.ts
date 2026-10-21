@@ -68,6 +68,7 @@ import { screenLengthPx, spriteWorldLengthMm } from '@/lib/replay/screenSizes'
 import { lastIndexAt, positionAt, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
+import { headingTowardNext } from './headingInterp'
 
 // --- FAMILLES REFUSÉES ------------------------------------------------------------------------
 
@@ -468,9 +469,11 @@ export const VEHICLE_DEFAULT_HEADING_DEG = 90
  *  1. EN MOUVEMENT / À L'ARRÊT — le dernier échantillon connu AU PLUS TARD à `frame` qui porte
  *     un cap (`h !== undefined`) : le serveur y écrit déjà la direction de la vélocité en
  *     mouvement, et REPORTE ce même cap sur les échantillons immobiles qui suivent (cf.
- *     `VehicleSample.H`) — chercher EN ARRIÈRE depuis `frame` couvre donc les deux à la fois,
- *     sans jamais interpoler un angle (l'interpolation d'un cap ferait tourner le véhicule par
- *     le chemin le plus court à travers 0°/360°, un artefact que le film ne montre pas).
+ *     `VehicleSample.H`) — chercher EN ARRIÈRE depuis `frame` couvre donc les deux à la fois.
+ *     ENTRE deux échantillons, le cap TOURNE vers le suivant par le plus court chemin angulaire
+ *     (`headingTowardNext`, contrôles v8 du 2026-10-21 : tenu au dernier échantillon, il
+ *     faisait pivoter le sprite par saccades de 100 ms alors que sa position glissait) ; jamais
+ *     au travers d'un silence de réplication, jamais sur plus d'une seconde.
  *  2. AVANT LE PREMIER MOUVEMENT — aucun échantillon EN ARRIÈRE ne porte de cap (le véhicule est
  *     encore à quai) : le cap du PREMIER échantillon mobile À VENIR, pour que le véhicule
  *     s'oriente déjà dans le sens qu'il va prendre plutôt que de pivoter brutalement au premier
@@ -483,8 +486,7 @@ export function vehicleHeadingAt(track: ReplayVehicleTrackReady, frame: number):
   if (samples.length === 0) return VEHICLE_DEFAULT_HEADING_DEG
   const idx = lastIndexAt(samples, frame)
   for (let i = idx; i >= 0; i--) {
-    const h = samples[i].h
-    if (h !== undefined) return h
+    if (samples[i].h !== undefined) return headingTowardNext(samples, i, frame)
   }
   for (let i = Math.max(idx + 1, 0); i < samples.length; i++) {
     const h = samples[i].h
