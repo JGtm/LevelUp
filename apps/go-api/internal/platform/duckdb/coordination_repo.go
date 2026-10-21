@@ -56,16 +56,14 @@ const coordinationReadTimeout = 30 * time.Second
 // identité n'en est fusionnée, puisque le bloc compte sans nommer.
 const QCoordinationAppuis = `
 SELECT
-    kv.match_id,
-    kv.assist_xuid,
-    CASE WHEN kv.assist_xuid IS NULL THEN kv.assist_gamertag END                               AS assist_gamertag,
-    kv.feed_killer_xuid,
-    CASE WHEN kv.assist_xuid IS NULL AND kv.feed_killer_xuid IS NULL THEN kv.victim_xuid END   AS victim_xuid,
-    COUNT(*)                                                                                   AS nombre
-FROM ` + KillEventsCanonicalTable + ` kv
-WHERE kv.match_id IN (%s)
-  AND kv.publishable
-  AND kv.assist_known
+    a.match_id,
+    a.assist_xuid,
+    CASE WHEN a.assist_xuid IS NULL THEN a.assist_gamertag END                               AS assist_gamertag,
+    a.feed_killer_xuid,
+    CASE WHEN a.assist_xuid IS NULL AND a.feed_killer_xuid IS NULL THEN a.victim_xuid END    AS victim_xuid,
+    CAST(SUM(a.n) AS BIGINT)                                                                 AS nombre
+FROM match_assist_pairs_latest a
+WHERE a.match_id IN (%s)
 GROUP BY ALL
 ORDER BY ALL`
 

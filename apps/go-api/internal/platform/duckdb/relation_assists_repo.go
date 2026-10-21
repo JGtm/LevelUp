@@ -39,15 +39,15 @@ import (
 // branchement sur le slug. Le masquage Campagne n'est pas nécessaire pour la même raison
 // (aucune ligne de film en Campagne).
 //
-// BORNAGE (ADR 0036 I2) : l'unique lecture de la vue `_latest` du kill-feed (CTE `lues`,
-// matérialisée, d'où dérivent `porteuses` et les échanges) porte la liste des matchs de la
-// lecture, liée en UN paramètre constant sous la fenêtre. La liste est le périmètre (scope)
-// quand il est fourni, sinon tous les matchs du joueur (QMatchsOuJoue) : `mates` ne garde
-// que des matchs du joueur, donc la borne ne retire aucune ligne servie.
+// BORNAGE (ADR 0036 I2, ADR 0039 décision 7) : le résumé des appuis par paire (CTE `lues`,
+// matérialisée, S2 `match_assist_pairs_latest`) et la tête de couverture (`porteuses`, S0) portent
+// chacun la liste des matchs de la lecture, liée en UN paramètre. La liste est le périmètre (scope)
+// quand il est fourni, sinon tous les matchs du joueur (QMatchsOuJoue) : `mates` ne garde que des
+// matchs du joueur, donc la borne ne retire aucune ligne servie.
 //
 // UNE LIGNE PAR (match, coéquipier) DANS `mates` : les frags officiels s'y lisent une fois
 // (MAX sur d'éventuels doublons de participant) avant d'être sommés dans `bases`, et la
-// jointure aux lignes de film se fait à part (`echanges`) — joindre les deux multiplierait
+// jointure aux appuis se fait à part (`echanges`) — joindre les deux multiplierait
 // les frags par le nombre de morts du match.
 //
 // JOINTURE PAR ÉGALITÉ SEULE : `lues` se joint à `mates` sur `match_id` ; chaque compteur
@@ -55,23 +55,23 @@ import (
 // condition de jointure (`k.killer = me OR k.killer = partner`) fait choisir à DuckDB une
 // jointure par boucles imbriquées, l'essentiel du coût de la lecture.
 //
-// Format string, DANS CET ORDRE : borne de `lues`, prédicat d'exclusion des bots
-// (analysis.SQLIsNotBotCol), scopeClause (" AND mp.match_id IN (?,…)" ou ""),
-// partnerClause (" AND p.xuid IN (…)" ou ""), puis les bornes de tranche
-// (low max, mid min, mid max, high min) × 2 (reçues, données).
-// Placeholders ? : ?1 = xuid du joueur, ?2 = liste de `lues`, puis ceux de scopeClause,
-// puis ceux de partnerClause.
+// Format string, DANS CET ORDRE : borne de `lues`, borne de `porteuses`, prédicat d'exclusion des
+// bots (analysis.SQLIsNotBotCol), scopeClause (" AND mp.match_id IN (?,…)" ou ""), partnerClause
+// (" AND p.xuid IN (…)" ou ""). Les tranches de part viennent des colonnes `n_low` / `n_mid` /
+// `n_high` du résumé (bornes de `domain.AssistTier*`, liées à `summary_rev`).
+// Placeholders ? : ?1 = xuid du joueur, ?2 = liste de `lues`, ?3 = liste de `porteuses`, puis ceux
+// de scopeClause, puis ceux de partnerClause.
 const Q28cRelationAssistsTpl = `
 WITH me AS (
     SELECT CAST(? AS VARCHAR) AS xuid
 ),
 lues AS MATERIALIZED (
     SELECT kv.match_id,
-           kv.feed_killer_xuid  AS killer,
-           kv.assist_xuid       AS assister,
-           kv.assist_damage_pct AS pct
-    FROM ` + KillEventsCanonicalTable + ` kv
-    WHERE kv.publishable AND kv.assist_known AND %s
+           kv.feed_killer_xuid AS killer,
+           kv.assist_xuid      AS assister,
+           kv.n, kv.n_low, kv.n_mid, kv.n_high
+    FROM match_assist_pairs_latest kv
+    WHERE %s
 ),
 porteuses AS (
     SELECT match_id FROM match_kill_heads_latest WHERE publishable AND n_assist_known > 0 AND %s
@@ -101,14 +101,14 @@ bases AS (
 echanges AS (
     SELECT
         m.partner,
-        COUNT(*) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner)  AS received_total,
-        COUNT(*) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner AND k.pct < %d)                AS received_low,
-        COUNT(*) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner AND k.pct >= %d AND k.pct <= %d) AS received_mid,
-        COUNT(*) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner AND k.pct > %d)                AS received_high,
-        COUNT(*) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid)  AS given_total,
-        COUNT(*) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid AND k.pct < %d)                AS given_low,
-        COUNT(*) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid AND k.pct >= %d AND k.pct <= %d) AS given_mid,
-        COUNT(*) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid AND k.pct > %d)                AS given_high
+        CAST(COALESCE(SUM(k.n)      FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner), 0) AS BIGINT) AS received_total,
+        CAST(COALESCE(SUM(k.n_low)  FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner), 0) AS BIGINT) AS received_low,
+        CAST(COALESCE(SUM(k.n_mid)  FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner), 0) AS BIGINT) AS received_mid,
+        CAST(COALESCE(SUM(k.n_high) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner), 0) AS BIGINT) AS received_high,
+        CAST(COALESCE(SUM(k.n)      FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid), 0) AS BIGINT) AS given_total,
+        CAST(COALESCE(SUM(k.n_low)  FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid), 0) AS BIGINT) AS given_low,
+        CAST(COALESCE(SUM(k.n_mid)  FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid), 0) AS BIGINT) AS given_mid,
+        CAST(COALESCE(SUM(k.n_high) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid), 0) AS BIGINT) AS given_high
     FROM mates m
     CROSS JOIN me
     JOIN lues k
@@ -154,11 +154,8 @@ func buildRelationAssistsQuery(q assistExchangeQuery) (string, []any) {
 		partnerClause = " AND p.xuid IN (SELECT xuid FROM match_participants WHERE match_id = ?)"
 		args = append(args, q.partnersOfMatch)
 	}
-	low, mid := domain.AssistTierLowMaxPct, domain.AssistTierMidMaxPct
 	sqlText := fmt.Sprintf(Q28cRelationAssistsTpl, borneClause, porteusesClause, analysis.SQLIsNotBotCol("p.xuid"),
-		scopeClause, partnerClause,
-		low, low, mid, mid,
-		low, low, mid, mid)
+		scopeClause, partnerClause)
 	return sqlText, args
 }
 

@@ -50,11 +50,15 @@ import (
 //
 // ─── LES FILTRES DE LA LISTE DE PAIRES ────────────────────────────────────────────────
 //
+// La liste de paires se lit sur `match_assist_pairs_latest` (S2, ADR 0039) : seules les morts d'une
+// passe `publishable` à `assist_known` y sont résumées, les deux premiers filtres ci-dessous sont
+// donc portés par la table elle-même.
+//
 //	publishable                  une paire nomme DEUX joueurs : c'est une lecture ligne à
 //	                             ligne, pas un cumul anonyme. La portée l'exige.
 //	assist_known                 sans lui on compterait des « pas d'assistant » jamais
 //	                             observés.
-//	assistant nommé              sqlAssistantNomme : xuid OU gamertag d'assistant — le seul
+//	assistant nommé              assistant nommé : xuid OU gamertag d'assistant — le seul
 //	                             des trois états qu'une paire sait représenter. Un BOT
 //	                             assistant (gamertag seul) en est.
 //	tueur nommé                  xuid OU gamertag de tueur : un BOT tueur (gamertag seul)
@@ -91,20 +95,18 @@ WITH scope AS (
 ),
 pairs AS (
     SELECT
-        kv.assist_xuid,
-        kv.assist_gamertag,
-        kv.feed_killer_xuid,
-        kv.feed_killer_gamertag,
-        COUNT(*)                                                             AS assist_count,
-        COUNT(*) FILTER (WHERE kv.assist_damage_pct > kv.killer_damage_pct)  AS stolen_count,
-        CAST(ROUND(AVG(kv.assist_damage_pct)) AS INTEGER)                    AS avg_assist_pct
-    FROM ` + KillEventsCanonicalTable + ` kv
-    WHERE kv.match_id = ?
-      AND kv.publishable
-      AND kv.assist_known
-      AND (kv.assist_xuid IS NOT NULL OR kv.assist_gamertag IS NOT NULL)
-      AND (kv.feed_killer_xuid IS NOT NULL OR kv.feed_killer_gamertag IS NOT NULL)
-    GROUP BY kv.assist_xuid, kv.assist_gamertag, kv.feed_killer_xuid, kv.feed_killer_gamertag
+        a.assist_xuid,
+        a.assist_gamertag,
+        a.feed_killer_xuid,
+        a.feed_killer_gamertag,
+        CAST(SUM(a.n) AS BIGINT)                                                          AS assist_count,
+        CAST(SUM(a.n_stolen) AS BIGINT)                                                   AS stolen_count,
+        CAST(ROUND(SUM(a.sum_assist_pct)::DOUBLE / NULLIF(SUM(a.n_assist_pct), 0)) AS INTEGER) AS avg_assist_pct
+    FROM match_assist_pairs_latest a
+    WHERE a.match_id = ?
+      AND (a.assist_xuid IS NOT NULL OR a.assist_gamertag IS NOT NULL)
+      AND (a.feed_killer_xuid IS NOT NULL OR a.feed_killer_gamertag IS NOT NULL)
+    GROUP BY a.assist_xuid, a.assist_gamertag, a.feed_killer_xuid, a.feed_killer_gamertag
 )
 SELECT
     s.match_deaths,

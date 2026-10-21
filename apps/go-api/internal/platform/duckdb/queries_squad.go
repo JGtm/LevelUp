@@ -281,12 +281,10 @@ pairs AS (
     SELECT
         assist_xuid,
         feed_killer_xuid,
-        COUNT(*)                                                       AS assist_count,
-        COUNT(*) FILTER (WHERE assist_damage_pct > killer_damage_pct)  AS stolen_count
-    FROM ` + KillEventsCanonicalTable + `
+        CAST(SUM(n) AS BIGINT)         AS assist_count,
+        CAST(SUM(n_stolen) AS BIGINT)  AS stolen_count
+    FROM match_assist_pairs_latest
     WHERE match_id IN (%s)
-      AND publishable
-      AND assist_known
       AND assist_xuid      IN (%s)
       AND feed_killer_xuid IN (%s)
     GROUP BY assist_xuid, feed_killer_xuid
