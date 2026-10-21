@@ -102,6 +102,8 @@ const ALLOWED = new Set([
   'testDoc.guard.test.ts',
   'replayContract.test.ts',
   'goFixtures.contract.test.ts',
+  // 2026-10-21 : l'invariant du pion lit les mêmes documents PRODUITS PAR GO, par la même frontière.
+  'pionsSurFiches.test.ts',
 ])
 
 describe('garde-rail : une seule fixture de document de rejeu', () => {

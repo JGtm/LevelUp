@@ -25,6 +25,13 @@
  * est celle de l'équipe du FILM, vue de la référence (`filmAllegiance.ts`) : un joueur dont le
  * film tait l'équipe — ou tout joueur, vu d'une référence qui n'en a pas — est nommé, donc
  * dessiné, mais sans encre de camp (`neutral`). Aucun repli sur la feuille de match.
+ *
+ * LA FICHE DÉCIDE DU PION (utilisateur, 2026-10-21 : « on a autant de joueurs sur le terrain que sur
+ * les fiches »). `colorOfSlot` rend `null` — donc rien n'est dessiné — quand le propriétaire de la
+ * vie n'occupe aucune fiche à l'image (`seatLogic.seatedIndexOf`) : un bot relevé par un humain n'a
+ * plus de pion, même quand le film lui donne encore des vies. `seatedAtSlot` porte le même critère
+ * aux couches qui ne passent pas par la couleur (croix de mort, tirs) ; les variantes de frontière
+ * (`colorOfSlotOrLast`, objets lâchés, effets de mort) ne s'y astreignent pas : ce ne sont pas des pions.
  */
 import { useMemo } from 'react'
 
@@ -32,6 +39,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { NO_MARKS, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
+import { buildSeats, seatedIndexOf, type SeatedIndex } from '../model/seatLogic'
 import {
   buildPlayers,
   buildSlotOwnership,
@@ -91,6 +99,14 @@ export interface SlotIdentity {
    * capteur de menaces en a besoin.
    */
   campOfSlot: (slot: number, frame: number) => number | null
+  /**
+   * LA FICHE DU PROPRIÉTAIRE : faux quand le joueur qui occupe le slot à `ownerFrame` ne tient aucune
+   * fiche à `frame` (cf. `seatedSlotResolver`). Les deux images ne diffèrent que pour une croix de
+   * mort, qui survit à sa vie.
+   */
+  seatedAtSlot: (slot: number, ownerFrame: number, frame: number) => boolean
+  /** La fiche d'un joueur désigné par son xuid, à une image — pour les kills, qui nomment leur tueur. */
+  seatedOfXuid: (xuid: string, frame: number) => boolean
 }
 
 export interface SlotIdentityInput {
@@ -158,6 +174,30 @@ function distinctColorFactory(
   }
 }
 
+/**
+ * seatedSlotResolver — « le propriétaire de la vie du slot tient-il une fiche à cette image ? ». Le
+ * propriétaire se lit à `ownerFrame` (une image DANS sa vie), la fiche à `frame`. Faux SEULEMENT
+ * quand le propriétaire est connu et n'en tient pas : un slot sans propriétaire à l'image (tir tiré
+ * à la frontière d'une vie) n'est pas jugé ici, les autres règles du calque l'écartent déjà.
+ */
+export function seatedSlotResolver(
+  ownership: SlotOwnership,
+  seated: SeatedIndex,
+): (slot: number, ownerFrame: number, frame: number) => boolean {
+  return (slot, ownerFrame, frame) => {
+    const owner = ownership.ownerAtFrame(slot, ownerFrame)
+    return owner === null || seated.isSeated(owner.xuid, frame)
+  }
+}
+
+/** gatedByFiche — une couleur de slot qui se tait quand le propriétaire n'a pas de fiche à l'image. */
+export function gatedByFiche(
+  color: (slot: number, frame: number) => string | null,
+  seatedAtSlot: (slot: number, ownerFrame: number, frame: number) => boolean,
+): (slot: number, frame: number) => string | null {
+  return (slot, frame) => (seatedAtSlot(slot, frame, frame) ? color(slot, frame) : null)
+}
+
 export function useSlotIdentity({
   doc, scoreboard, allegiance, marks, teamColorOf, neutral, distinctColors,
 }: SlotIdentityInput): SlotIdentity {
@@ -170,12 +210,19 @@ export function useSlotIdentity({
   // même réponse pour un bot (clé `bot:<nom>`) que pour un humain, ce que la table d'identité de
   // la feuille, clée par xuid de base, ne savait pas donner.
   const allyOf = allegiance.ofPlayer
+  // LES FICHES, lues au document comme la feuille les lit (`ReplayTeams`) : une seule définition de
+  // « occupe une fiche », pour la tuile et pour le pion.
+  const seated = useMemo(() => seatedIndexOf(buildSeats(players, doc)), [players, doc])
+  const seatedAtSlot = useMemo(() => seatedSlotResolver(ownership, seated), [ownership, seated])
   const colorOfSlot = useMemo(
     () =>
-      distinctColors && distinctColors.length > 0
-        ? distinctColorResolver(ownership, players, distinctColors)
-        : colorResolver(ownership, teamColorOf, allyOf, neutral),
-    [ownership, players, distinctColors, teamColorOf, allyOf, neutral],
+      gatedByFiche(
+        distinctColors && distinctColors.length > 0
+          ? distinctColorResolver(ownership, players, distinctColors)
+          : colorResolver(ownership, teamColorOf, allyOf, neutral),
+        seatedAtSlot,
+      ),
+    [ownership, players, distinctColors, teamColorOf, allyOf, neutral, seatedAtSlot],
   )
   // LA VARIANTE DE FRONTIÈRE (objets lâchés, effets de mort) : même mode que `colorOfSlot`, mais
   // qui retombe sur la vie juste précédente dans un trou — jamais le dernier-gagnant du match.
@@ -200,6 +247,7 @@ export function useSlotIdentity({
 
   return {
     colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, campOfSlot,
+    seatedAtSlot, seatedOfXuid: seated.isSeated,
   }
 }
 

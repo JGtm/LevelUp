@@ -267,7 +267,7 @@ export function ReplayCanvas({
     return markerColors === 'player' ? getSeriesColors(doc.roster.length, SERIES_TOKENS) : null
   }, [markerColors, doc.roster.length, paletteVersion])
   // Identité PAR SLOT ET PAR IMAGE : strict pour marqueurs/vies, `OrLast` pour la frontière — cf. useSlotIdentity.
-  const { colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, campOfSlot } = useSlotIdentity({
+  const { colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, campOfSlot, seatedAtSlot, seatedOfXuid } = useSlotIdentity({
     doc,
     scoreboard,
     allegiance,
@@ -322,7 +322,7 @@ export function ReplayCanvas({
   // GRAPPIN N'Y EST PLUS depuis le 2026-09-03 : il a rejoint le dash du propulseur juste
   // au-dessous, où les deux gestes de capacité sont bâtis ET peints ensemble.
   const { shotFx, fireMarks, killFx, grenadeRestFx, objectivePulses } =
-    useReplayFx(doc, feedKills, timing.aimHold, mapObjectives)
+    useReplayFx(doc, feedKills, timing.aimHold, mapObjectives, { seatedAtSlot, seatedOfXuid })
   // LES GESTES DE CAPACITÉ SUR LEUR PORTEUR (grappin, propulseur) : bâtis et peints par un
   // seul hook — ils ne posent rien au sol, ils se lisent sur le pion (cf. useReplayAbilityFx).
   const abilityFx = useReplayAbilityFx({ doc, view: canvasView, grappleInk, colorOfSlot, reducedMotion })
@@ -526,7 +526,7 @@ export function ReplayCanvas({
               showTrail,
               selfInk,
               deathInk: shotColor,
-              labelStroke, embarkedAtSlot: vehicles.isEmbarkedAt, // PION EMBARQUE (C7).
+              labelStroke, embarkedAtSlot: vehicles.isEmbarkedAt, seatedAtSlot, // PION EMBARQUE (C7) ; PION SANS FICHE.
               // BORNAGE HORS CADRE (chantier B, decision D2, 2026-09-10) : la flèche porte le
               // nom ET la distance ; le texte est resolu ICI (langue de la page), le calque ne
               // connait aucune locale.
@@ -597,7 +597,7 @@ export function ReplayCanvas({
     floorStyle.edge,
     colorOfSlot,
     colorOfSlotOrLast,
-    campOfSlot,
+    campOfSlot, seatedAtSlot,
     markOfSlot,
     nameOfSlot,
     showTrail,

@@ -297,3 +297,38 @@ export function groupSeatsByTeam(seats: readonly ReplaySeat[]): ReplaySeatGroup[
     (s) => s.occupants.map((o) => o.player.board),
   ).map(({ team, side, members }) => ({ team, side, seats: members }))
 }
+
+/**
+ * SeatedIndex — QUI OCCUPE UNE FICHE À UNE IMAGE, pour tout ce qui dessine un joueur sur la carte.
+ *
+ * LA RÈGLE DU PION (utilisateur, 2026-10-21) : « on a autant de joueurs sur le terrain que sur les
+ * fiches ». À tout instant, un pion n'est dessiné QUE pour un joueur dont une fiche le tient à cet
+ * instant ; un bot relevé par un humain n'a plus de fiche (la cuisson borne sa présence à la veille
+ * de l'arrivée de l'humain) et n'a donc plus de pion, alors que le film lui donne encore des vies,
+ * des tirs et des frags. Ses frags restent au fil et dans les comptes : seul ce qui s'ancre sur SA
+ * POSITION disparaît de la carte (trajectoire, cône, tir, trait de mort).
+ *
+ * C'est le MÊME critère que la tuile (`seatOccupantAt` : une présence couvre l'image, bornée à
+ * `toMax`) : la carte et la feuille ne peuvent pas se contredire. Un joueur sans place du tout (sans
+ * entrée de roster, ou dont le film tait l'équipe) n'occupe aucune fiche, à aucune image.
+ */
+export interface SeatedIndex {
+  /** Une fiche porte ce joueur (clé `ReplayPlayer.xuid`) à cette image. */
+  isSeated: (xuid: string, frame: number) => boolean
+}
+
+/** seatedIndexOf — l'index des fiches occupées, lu aux occupants de `buildSeats`. */
+export function seatedIndexOf(seats: readonly ReplaySeat[]): SeatedIndex {
+  const parJoueur = new Map<string, PresenceSpan[]>()
+  for (const s of seats) {
+    for (const o of s.occupants) {
+      const spans = parJoueur.get(o.player.xuid)
+      if (spans) spans.push(...o.presence)
+      else parJoueur.set(o.player.xuid, [...o.presence])
+    }
+  }
+  return {
+    isSeated: (xuid, frame) =>
+      parJoueur.get(xuid)?.some((p) => frame >= p.from && frame <= p.toMax) ?? false,
+  }
+}
