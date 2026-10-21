@@ -262,6 +262,25 @@ func TestResetPassword(t *testing.T) {
 	}
 }
 
+func TestSetLocale(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+	_, _ = s.Create(testUser, testPass, domain.RoleUser)
+
+	if err := s.SetLocale(testUser, "en"); err != nil {
+		t.Fatalf("SetLocale: %v", err)
+	}
+	user, _ := s.Get(testUser)
+	if user.Locale != "en" {
+		t.Errorf("locale = %q, want en", user.Locale)
+	}
+
+	// SetLocale user inexistant.
+	err := s.SetLocale("Nobody", "fr")
+	if err != ErrUserNotFound {
+		t.Errorf("SetLocale missing: err = %v, want ErrUserNotFound", err)
+	}
+}
+
 func TestLinkIdentity(t *testing.T) {
 	s := NewStore(tempStorePath(t))
 	_, _ = s.Create(testUser, testPass, domain.RoleUser)
