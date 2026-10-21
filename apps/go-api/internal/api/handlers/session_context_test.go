@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/session"
+	"levelup/go-api/internal/platform/userstore"
 )
 
 func newSessionContextRouter(t *testing.T) *chi.Mux {
@@ -233,5 +234,83 @@ func TestSessionHandler_PostContext_Propagation(t *testing.T) {
 	}
 	if resp.Locale != "en" {
 		t.Errorf("expected locale en to propagate, got %q", resp.Locale)
+	}
+}
+
+// TestSessionHandler_PostContext_PersistsAccountLocale : une session AUTHENTIFIÉE qui
+// change explicitement sa locale la propage au compte (WithUserStore câblé), pour
+// qu'elle suive à la prochaine connexion sur un autre appareil/cookie.
+func TestSessionHandler_PostContext_PersistsAccountLocale(t *testing.T) {
+	dir := t.TempDir()
+	users := userstore.NewStore(filepath.Join(dir, "users.json"))
+	if _, err := users.Create("jgtm", "Yp4kR9wQ", domain.RoleUser); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	store := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	h := handlers.NewSessionHandler(store).WithUserStore(users)
+	r := chi.NewRouter()
+	r.Use(middleware.WithSession(store, middleware.SecureCookiePolicy{}))
+	h.Mount(r)
+
+	// Session déjà authentifiée (login simulé : sess.Username posé directement).
+	username := "jgtm"
+	sess := store.New()
+	sess.Username = &username
+	if err := store.Save(sess); err != nil {
+		t.Fatalf("save session: %v", err)
+	}
+	cookie := &http.Cookie{Name: session.CookieName, Value: store.SignCookie(sess.SessionID)}
+
+	locale := "en"
+	body, _ := json.Marshal(domain.SessionContextRequest{Locale: &locale})
+	req := httptest.NewRequest(http.MethodPost, "/session/context", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	account, err := users.Get("jgtm")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if account.Locale != "en" {
+		t.Errorf("locale du compte = %q, want en", account.Locale)
+	}
+}
+
+// TestSessionHandler_PostContext_AnonymousLocaleNotPersistedToAccount : une session
+// ANONYME (pas de compte lié) qui change sa locale ne touche à aucun compte — rien à
+// quoi la rattacher.
+func TestSessionHandler_PostContext_AnonymousLocaleNotPersistedToAccount(t *testing.T) {
+	dir := t.TempDir()
+	users := userstore.NewStore(filepath.Join(dir, "users.json"))
+	if _, err := users.Create("jgtm", "Yp4kR9wQ", domain.RoleUser); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	store := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	h := handlers.NewSessionHandler(store).WithUserStore(users)
+	r := chi.NewRouter()
+	r.Use(middleware.WithSession(store, middleware.SecureCookiePolicy{}))
+	h.Mount(r)
+
+	locale := "en"
+	body, _ := json.Marshal(domain.SessionContextRequest{Locale: &locale})
+	req := httptest.NewRequest(http.MethodPost, "/session/context", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	account, err := users.Get("jgtm")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if account.Locale != "" {
+		t.Errorf("locale du compte = %q, want vide (session anonyme sans rapport)", account.Locale)
 	}
 }

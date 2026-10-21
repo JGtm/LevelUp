@@ -169,6 +169,9 @@ func (h *UserAuthHandler) handleLogin(ctx context.Context, in *authBodyInput) (*
 	sess.Username = &user.Username
 	role := string(user.Role)
 	sess.Role = &role
+	if user.Locale != "" {
+		sess.Locale = user.Locale
+	}
 	h.autoSelectPlayer(sess, user)
 	// Nouvel identifiant de session : un cookie planté avant la connexion ne vaut rien.
 	if _, err := h.sessionStore.Rotate(sess); err != nil {

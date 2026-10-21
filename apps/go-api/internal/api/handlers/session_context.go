@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/session"
+	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/service"
 )
 
@@ -40,6 +41,11 @@ type SessionHandler struct {
 	// /players/{player_slug}). nil : non câblé (mono-utilisateur, tests), tout slug
 	// de forme valide est accepté.
 	canSelectPlayer PlayerSelectionCheck
+	// users : persiste la locale sur le COMPTE d'une session authentifiée qui la
+	// change explicitement (SetLocale), pour qu'elle suive à la prochaine connexion
+	// sur un autre appareil/cookie. nil : non câblé (mono-utilisateur, tests) — la
+	// locale reste alors purement par session, comportement d'origine.
+	users *userstore.Store
 }
 
 // PlayerSelectionCheck dit si la session de ctx peut choisir le profil `slug`
@@ -49,6 +55,12 @@ type PlayerSelectionCheck func(ctx context.Context, slug string) bool
 // WithPlayerAccess câble le contrôle d'accès du joueur courant.
 func (h *SessionHandler) WithPlayerAccess(check PlayerSelectionCheck) *SessionHandler {
 	h.canSelectPlayer = check
+	return h
+}
+
+// WithUserStore câble la persistance de la locale sur le compte (cf. champ users).
+func (h *SessionHandler) WithUserStore(users *userstore.Store) *SessionHandler {
+	h.users = users
 	return h
 }
 
@@ -122,6 +134,7 @@ func (h *SessionHandler) handlePostContext(ctx context.Context, in *sessionConte
 	}
 	if req.Locale != nil {
 		sess.Locale = *req.Locale
+		h.persistAccountLocale(ctx, sess, *req.Locale)
 	}
 
 	if err := h.store.Save(sess); err != nil {
@@ -136,4 +149,19 @@ func (h *SessionHandler) handlePostContext(ctx context.Context, in *sessionConte
 		HintsVisible:      sess.HintsVisible,
 		AuthReady:         sess.AuthReady,
 	}}, nil
+}
+
+// persistAccountLocale propage la locale au COMPTE d'une session authentifiée, pour
+// qu'elle suive à la prochaine connexion sur un autre appareil/cookie au lieu de
+// retomber au défaut "fr". Best-effort : une session anonyme (sess.Username nil) ou
+// un store non câblé ne font rien ; une écriture échouée est journalisée et ne fait
+// pas échouer la requête (la locale reste posée en session dans tous les cas).
+func (h *SessionHandler) persistAccountLocale(ctx context.Context, sess *domain.SessionData, locale string) {
+	if h.users == nil || sess.Username == nil {
+		return
+	}
+	if err := h.users.SetLocale(*sess.Username, locale); err != nil {
+		slog.ErrorContext(ctx, "session_context: persistance locale compte échouée",
+			"username", *sess.Username, "err", err)
+	}
 }
