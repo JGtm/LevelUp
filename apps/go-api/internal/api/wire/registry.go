@@ -109,7 +109,6 @@ type ServiceRegistry struct {
 	// 2 cutoffs `pdb.TitleSlug != DefaultSlug` (allowlist archlint vidée).
 	playerDataBuilders   map[string]func(*duckdb.PlayerDB) games.TitleDataAdapter
 	participations       participationCache                   // participations confirmées à un match (registry_participation.go) ; valeur zéro utilisable
-	homeMatchesCache     *service.HomeMatchesCache            // cache TTL process-level matches+sessions
 	careerLiveCache      *service.CareerLiveCache             // cache TTL process-level XP (5 min) + customisation (6 h)
 	remoteStats          *service.CachedStatsProvider         // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare
 	recentMatches        *service.CachedRecentMatchesProvider // cache TTL process-level 20 derniers matchs live (20 min), partagé Explorer/Compare (cibles non-locales)
@@ -286,14 +285,13 @@ func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *Ser
 			titleSlug := ctxkeys.TitleSlug(ctx)
 			return config.ResolvePlayer(ctx, cfg, slug, titleSlug)
 		},
-		resolveByGT:      makeTitlePlayerResolver(cfg),
-		provider:         provider,
-		timezone:         cfg.UserTimezone,
-		homeMatchesCache: service.NewHomeMatchesCache(),
-		careerLiveCache:  service.NewCareerLiveCache(service.CareerLiveCacheConfig{}),
-		remoteStats:      service.NewCachedStatsProvider(haloProvider, 0, nil),
-		recentMatches:    service.NewCachedRecentMatchesProvider(sync_pkg.NewRecentMatchesFetcher(0), 0, nil),
-		startedAt:        time.Now(),
+		resolveByGT:     makeTitlePlayerResolver(cfg),
+		provider:        provider,
+		timezone:        cfg.UserTimezone,
+		careerLiveCache: service.NewCareerLiveCache(service.CareerLiveCacheConfig{}),
+		remoteStats:     service.NewCachedStatsProvider(haloProvider, 0, nil),
+		recentMatches:   service.NewCachedRecentMatchesProvider(sync_pkg.NewRecentMatchesFetcher(0), 0, nil),
+		startedAt:       time.Now(),
 	}
 }
 

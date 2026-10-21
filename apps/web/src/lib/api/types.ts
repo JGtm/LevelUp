@@ -1115,22 +1115,6 @@ export interface SessionSummaryItem {
   teammates?: string[]
 }
 
-export interface RecentMediaItem {
-  basename: string
-  file_path: string
-  kind: string
-  thumbnail_path: string | null
-  match_id: string | null
-  capture_end_utc: string | null
-  match_start_time: string | null
-  section: string
-  owner_gamertag: string | null
-  map_name: string | null
-  mode_name: string | null
-  liked: boolean
-  like_count: number
-}
-
 export type HomeCareerRankSummary = components['schemas']['HomeCareerRankSummary']
 
 export type HomeSkillPeakSummary = components['schemas']['HomeSkillPeakSummary']
@@ -1157,13 +1141,36 @@ export interface HomePlaylistRank {
 
 export type HomeSpartanIdentity = components['schemas']['HomeSpartanIdentity']
 
+/** Une issue de la séquence « Résultats de la dernière session » (`domain.HomeSessionOutcome`). */
+export interface HomeSessionOutcome {
+  match_id: string
+  outcome_tone: string
+  /** Libellé de la tuile (mode, FDA, score), affiché en infobulle. */
+  detail: string
+}
+
+/** Une page de tuiles : `GET /players/{slug}/pages/home/matches` (`domain.HomeMatchesPage`). */
+export interface HomeMatchesPage {
+  items: RecentMatchItem[]
+  has_more: boolean
+  /** Curseur de la page suivante ; absent sans suite. */
+  next_before?: string
+}
+
 export interface HomePageResponse {
   hero: HomeHeroCard
   spartan_identity?: HomeSpartanIdentity | null
   highlights: HighlightItem[]
+  /** TÊTE de la liste de tuiles (30 au plus) : la suite se lit par `GET /pages/home/matches`
+   *  (curseur `recent_matches_next_before`). Jamais l'historique entier. */
   recent_matches: RecentMatchItem[]
-  favorite_matches: RecentMatchItem[]
-  recent_media: RecentMediaItem[]
+  /** Nombre réel de tuiles de l'historique (jamais la longueur de la tête). */
+  recent_matches_total: number
+  recent_matches_has_more: boolean
+  /** Curseur opaque de la page suivante ; absent quand `recent_matches_has_more` est faux. */
+  recent_matches_next_before?: string
+  /** Issues de la dernière session, plus récente en tête (calculées sur tout l'historique). */
+  last_session_outcomes: HomeSessionOutcome[]
   solo_session: SessionSummaryItem | null
   squad_session: SessionSummaryItem | null
   solo_sessions?: SessionSummaryItem[]

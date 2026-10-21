@@ -25,11 +25,22 @@ type mockHomeService struct {
 	battlePass domain.BattlePassResponse
 	challenges domain.ChallengesResponse
 	pageLocale string
+
+	matches       *domain.HomeMatchesPage
+	matchesErr    error
+	matchesReq    domain.HomeMatchesRequest
+	matchesLocale string
 }
 
 func (m *mockHomeService) GetHomePage(_ context.Context, _ string, locale string) (*domain.HomePageResponse, error) {
 	m.pageLocale = locale
 	return m.page, m.pageErr
+}
+
+func (m *mockHomeService) GetHomeMatches(_ context.Context, locale string, req domain.HomeMatchesRequest) (*domain.HomeMatchesPage, error) {
+	m.matchesLocale = locale
+	m.matchesReq = req
+	return m.matches, m.matchesErr
 }
 
 func (m *mockHomeService) GetBattlePass(_ context.Context) domain.BattlePassResponse {

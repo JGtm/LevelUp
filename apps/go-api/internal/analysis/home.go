@@ -2,8 +2,7 @@
 //
 // Ce fichier centralise les helpers math/agrégation transverses utilisés par
 // l'ensemble des sous-modules home (home_kpis, home_highlights, home_recent,
-// home_sessions, home_canonical_*) ainsi que la projection des médias récents
-// (BuildRecentMedia), qui n'a pas de dépendance forte avec un sous-module.
+// home_sessions, home_canonical_*).
 //
 // Les autres responsabilités ont été extraites :
 //   - home_locale.go     : constantes outcome/color/tone, helpers locale, labels,
@@ -26,35 +25,8 @@ package analysis
 import (
 	"math"
 
-	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
 )
-
-// ---------------------------------------------------------------------------
-// BuildRecentMedia — médias récents
-// ---------------------------------------------------------------------------
-
-// BuildRecentMedia transforme les lignes DuckDB en items de médias récents.
-func BuildRecentMedia(media []domain.HomeMediaRow, limit int) []domain.RecentMediaItem {
-	if len(media) == 0 {
-		return nil
-	}
-	if len(media) > limit {
-		media = media[:limit]
-	}
-	items := make([]domain.RecentMediaItem, 0, len(media))
-	for _, m := range media {
-		if m.FileName == "" {
-			continue
-		}
-		items = append(items, domain.RecentMediaItem{
-			Basename:       m.FileName,
-			MatchID:        m.MatchID,
-			MatchStartTime: m.MatchStartTime,
-		})
-	}
-	return items
-}
 
 // ---------------------------------------------------------------------------
 // Helpers math transverses (utilisés par home_kpis, home_sessions et tests)

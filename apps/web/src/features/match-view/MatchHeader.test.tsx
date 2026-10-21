@@ -49,6 +49,7 @@ type FakeResolved = {
   contextLabel?: string
   contextDescriptor?: import('@/lib/match-nav/navContext').ContextDescriptor
   navContext?: { source: string; matchIds: string[]; filtersLabel?: string }
+  isPlaceholder?: boolean
 }
 const resolvedRef: { current: FakeResolved } = {
   current: {
@@ -660,6 +661,41 @@ describe('MatchNavigationBar', () => {
     )
     fireEvent.click(screen.getByText(/Sortir du contexte ↩/))
     expect(clearNavContextMock).toHaveBeenCalledWith('m1')
+  })
+
+  it("voisins du match précédent encore affichés (placeholder) : barre gardée, aucun compteur, pas retenu puis joué à l'arrivée des bons voisins", () => {
+    resolvedRef.current = {
+      data: { previous_match_id: 'old-prev', next_match_id: 'old-next', current_index: 6, total_matches: 50 },
+      isPending: false,
+      isPlaceholder: true,
+      source: 'api',
+    }
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const bar = (matchId: string) => (
+      <QueryClientProvider client={qc}>
+        <MatchNavigationBar playerSlug="MonGT" matchId={matchId} locale="fr" />
+      </QueryClientProvider>
+    )
+    const { rerender } = render(bar('m1'))
+    // La barre reste (elle ne disparaît pas à chaque pas) mais ne montre aucun compteur faux.
+    expect(screen.getByRole('button', { name: 'Match suivant' })).toBeEnabled()
+    expect(screen.queryByText(/Match \d+\/\d+/)).toBeNull()
+    expect(screen.getByText('…')).toBeInTheDocument()
+
+    // La flèche pendant l'attente n'est ni perdue, ni jouée sur les voisins du mauvais match.
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(navigateToMatchMock).not.toHaveBeenCalled()
+
+    resolvedRef.current = {
+      data: { previous_match_id: 'new-prev', next_match_id: 'new-next', current_index: 7, total_matches: 50 },
+      isPending: false,
+      isPlaceholder: false,
+      source: 'api',
+    }
+    rerender(bar('m2'))
+    expect(navigateToMatchMock).toHaveBeenCalledTimes(1)
+    expect(navigateToMatchMock.mock.calls[0][0]).toBe('new-next')
+    expect(screen.getByText('Match 8/50')).toBeInTheDocument()
   })
 
   it('locale=en : counter et boutons en EN', () => {

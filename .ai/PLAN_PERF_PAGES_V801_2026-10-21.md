@@ -304,48 +304,114 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
 
 ### Étape 3 — Accueil en fenêtre, serveur (volet 1)
 
-- [ ] 3.1 Extraction `buildTiles(ctx, rows, window, favorites)` depuis `GetHomePage` (≤ 80 lignes
-      après extraction) : traductions d'assets (`EnrichCanonicalAssetTranslations`) sur la fenêtre,
-      construction, enrichissements par liste, placements, rejeux, analyse en cours.
-- [ ] 3.2 `GetHomePage` sert la tête (D-8) + `has_more` + `recent_matches_total` (= nombre de tuiles
-      que le constructeur produirait, lignes à `MatchID` non vide, pas `CountPlayerMatches`).
-- [ ] 3.3 Endpoint Huma `GET /players/{player_slug}/pages/home/matches?before=&limit=` (limite max
-      60, curseur D-8) et `?kind=favorites` ; factory authentifiée `HomeCtxWithAuth` (parité
-      `home_factories_parity_test.go`) ; handler sans logique ; méthode ajoutée au port et aux faux
-      (`health_home_test.go`, `home_test.go`, `og_inject_test.go`, `season_pass_service_test.go`).
-- [ ] 3.4 `buildFavoriteMatchListCanonical` : construit seulement les favoris.
-- [ ] 3.5 `last_session_outcomes` : tranche non nulle de `{match_id, outcome_tone, detail}`, même règle
-      que `HomePage.tsx` l.204-213, calculée sur les lignes complètes.
-- [ ] 3.6 Retrait de `recent_media` : `port.HomeRepository.LoadRecentMedia`, `noopHomeRepo`, mocks,
-      `Q28RecentMedia`, `analysis.BuildRecentMedia`, `domain.RecentMediaItem`, `HomeMediaRow`,
-      `lib/api/types.ts`, `test/handlers.ts`, tests web concernés (grep consigné).
-- [ ] 3.7 Retrait de `HomeMatchesCache` : `home_service.go`, `wire/registry.go`,
-      `registry_auth.go`, `registry_pages_home.go`, `post_sync_deltas.go`,
-      `post_sync_home_cache_test.go`, `home_factories_parity_test.go` (grep consigné).
-- [ ] 3.8 ADR 0036 : invariant I8 (D-1) ; garde-rail `TestGetHomePage_FenetreBornee` (200 matchs →
-      au plus 30 tuiles) ; test de la fenêtre aussi avec le slug `halo_5` (aucune comparaison de slug).
-- [ ] 3.9 Parité : historique de 200 matchs, concaténation des pages = ancienne `recent_matches`,
-      champ pour champ ; une synchro simulée entre deux pages ne crée ni doublon ni trou.
-- Gate : doctrine §4 ; revue adversariale close.
+- [x] 3.1 Extraction `buildTiles(ctx, tilesInput)` depuis `GetHomePage` (`service/home_service_tiles.go`) :
+      traductions d'assets (`EnrichCanonicalAssetTranslations`), construction, placements de performance,
+      rejeux, enrichissements par liste (une section par étape), analyse en cours. `tilesInput` porte
+      l'historique complet (placements), la fenêtre, les favoris, la locale, le nom de liste et `translated`
+      (la tête a déjà traduit TOUT l'historique : les sessions et faits marquants lisent aussi les libellés).
+      `GetHomePage` : 64 lignes. Chargement déplacé dans `home_service_load.go`, page dans
+      `home_service_page.go` (`home_service.go` passe de 536 à 202 lignes).
+- [x] 3.2 `GetHomePage` sert la tête (30 tuiles) + `recent_matches_has_more` + `recent_matches_next_before` +
+      `recent_matches_total` (= nombre de lignes à `MatchID` non vide, pas `CountPlayerMatches`). Ordre
+      d'affichage = instant canonique décroissant puis `match_id` décroissant (`analysis/home_tiles_window.go`,
+      une seule fonction pour la tête et les pages ; la tranche de l'appelant n'est jamais réordonnée).
+- [x] 3.3 Endpoint Huma `GET /players/{player_slug}/pages/home/matches?kind=&before=&limit=` (limite 1-60,
+      défaut 30 ; `kind=favorites` : favoris en entier) : `handlers/home_matches.go` (sans logique ; 400
+      `invalid_cursor`), `HomeService.GetHomeMatches` ajouté au port et aux quatre faux
+      (`health_home_test.go`, `home_test.go`, `og_inject_test.go`, `season_pass_service_test.go`). Même
+      factory `HomeCtxWithAuth` que `/pages/home` (aucune nouvelle factory : le garde de parité
+      `home_factories_parity_test.go` reste vert). `openapi.yaml` régénéré (`make openapi-gen`), fragment
+      manuel pour le 200 opaque (comme `/pages/home`), `generated.ts` régénéré, plafond de `limit` inscrit
+      dans `pagination_guard_test.go`. Cache : `private, no-cache` + ETag/304 (un favori basculé doit se voir).
+- [x] 3.4 `buildFavoriteMatchListCanonical` supprimée (construisait toutes les tuiles puis filtrait) :
+      remplacée par `analysis.FavoriteHomeTileRows` (lignes favorites seulement) + `buildTiles`.
+- [x] 3.5 `last_session_outcomes` : tranche non nulle de `{match_id, outcome_tone, detail}` (`domain.HomeSessionOutcome`),
+      même règle que `HomePage.tsx` l.204-213 (première tuile dont le libellé de session est celui de la
+      session solo ou escouade résumée ; sinon les 20 plus récentes), calculée sur les lignes complètes,
+      dans l'ordre d'affichage (le web inverse).
+- [x] 3.6 Retrait de `recent_media` : `port.HomeRepository.LoadRecentMedia`, `noopHomeRepo`, mocks,
+      `Q28RecentMedia`, `analysis.BuildRecentMedia`, `domain.RecentMediaItem`, `domain.HomeMediaRow`,
+      `HomeRepo.LoadRecentMedia`, section `home_recent_media`, `lib/api/types.ts` (`RecentMediaItem`,
+      `recent_media`), `test/handlers.ts`, fixtures de `HomePage.test.tsx`, `HomePage.nav.test.tsx`,
+      `HomeRankingStates.test.tsx` (grep `recent_media|RecentMediaItem|LoadRecentMedia|BuildRecentMedia|
+      HomeMediaRow|Q28RecentMedia` : 0 hors historique git). La rail de médias lit son propre endpoint.
+- [x] 3.7 Retrait de `HomeMatchesCache` (cache qui n'était plus lu depuis P4.3) : `home_matches_cache.go` +
+      test, `WithMatchesCache` -> `WithXUID` (le xuid de la page reste le sujet de l'identité Spartan et des
+      coéquipiers de session), `wire/registry.go`, `registry_auth.go`, `registry_pages_home.go`,
+      `post_sync_deltas.go` (+ `invalidateHomeCacheAfterSync`), `post_sync_home_cache_test.go`, les 2 tests
+      `TestHomeService_GetHomePage_Cache*` (déjà skippés). `home_factories_parity_test.go` : aucune référence
+      au cache, inchangé. Baseline de tests : 17 paires retirées (78 lignes), nommées dans
+      `scripts/check_test_baseline.sh` (RETRAIT DU 2026-10-21).
+- [x] 3.8 ADR 0036 : invariant I8 + ligne de garde-rails (« Eight invariants ») ; garde-rail
+      `TestGetHomePage_FenetreBornee` (200 matchs -> 30 tuiles, totaux inchangés) joué sous `halo_infinite`
+      ET `halo_5` (aucune comparaison de slug).
+- [x] 3.9 Parité : `TestGetHomeMatches_ParitePagesEtListeComplete` (200 matchs, tailles de page 0/1/17/30/
+      60/1000 : tête + pages = liste construite d'un bloc, `reflect.DeepEqual` tuile par tuile, même ordre
+      que le chargeur) ; `TestGetHomeMatches_SynchroEntreDeuxPages` (3 matchs arrivés en tête entre deux
+      pages : ni doublon ni trou) ; `analysis/home_tiles_window_test.go` (instants égaux, bornes, curseur).
+      Parité sur la copie des bases du banc : voir l'étape 4.4 (test Q25 / ordre de l'Accueil, trois comptes).
+- Décision d'exécution (étape 3, 2026-10-21) : la tête a gardé `favorite_matches` jusqu'à l'étape 4 (le web
+  n'avait pas encore sa requête dédiée) ; retiré en 4.6.
+- Gate : [x] `go test` défaut puis `-tags=integration -p 1` sur service, analysis, domain, port, api/...,
+  platform/duckdb, archlint ; [x] `golangci-lint run --new-from-merge-base=origin/main` 0 problème ;
+  [x] `tsc -b` + `vitest run src/features/home src/lib/api src/lib/analysis-pending src/test` ;
+  [x] `bash scripts/check_test_baseline.sh tests` ; [x] banc avant/après (pilote, 2026-10-21, copie compactée) : tête de l'Accueil 94-101 Ko (3,1-18,3 Mo avant), durée 0,14 / 0,39 / 0,25 s pour JGtm / Nuzzles / Madina97294 (0,31 / 1,04 / 0,51 s avant), `home_assisted_frags_recent` 6-16 ms ;
+  [x] revue adversariale : voir le bloc « Revue adversariale » de l'étape 4 (rondes 1 et 2).
 
 ### Étape 4 — Accueil en fenêtre, web (volet 1)
 
-- [ ] 4.1 La requête de tête garde `useQuery` sous `queryKeys.home` (prefetch, loader de route,
-      invalidations existantes intacts) ; pages suivantes et favoris sous des clés dédiées de
-      `lib/query/keys.ts`.
-- [ ] 4.2 `components/ui/carousel.tsx` : rappel « proche de la fin » et état de chargement (chaînes
-      FR et EN) ; le carrousel ne monte que les tuiles chargées.
-- [ ] 4.3 Extraction de la section des matchs hors de `HomePage.tsx` (exemption `max-lines` de la
-      ligne 1 : « le découpage revient au lot qui touchera ce fichier »).
-- [ ] 4.4 Navigation (D-9) : `goToMatch` sans `matchIds` pour `home_recent` ;
-      `useMatchNeighborsResolved` rend le libellé de contexte ; test de parité Q25 / ordre de
-      l'Accueil sur les trois comptes (copie des bases).
-- [ ] 4.5 Analyse en cours : le rechargement de 60 s porte sur chaque page chargée qui contient une
-      tuile en attente, et seulement sur elle (`homeRefetchInterval`, `homeStaleTime`).
-- [ ] 4.6 Favori : mise à jour locale de la tuile, rechargement de la seule liste des favoris.
-- [ ] 4.7 `OutcomeSequenceTape` lit `last_session_outcomes`.
-- [ ] 4.8 Tests vitest (montage limité, page suivante, navigation, rechargement, favoris) ; E2E local.
-- Gate : doctrine §4 ; banc : critères Accueil du §2 tenus ; revue adversariale close.
+- [x] 4.1 La requête de tête garde `useQuery` sous `queryKeys.home` (prefetch, loader de route et
+      invalidations existantes intacts) ; pages suivantes sous `queryKeys.homeMatchesPage` (une clé PAR PAGE,
+      le curseur en dernier segment : une tête qui change de curseur après une synchro repart de zéro, les
+      anciennes pages ne se recollent pas) et favoris sous `queryKeys.homeFavorites`, toutes sous le préfixe
+      `home` (toute invalidation de l'accueil les recharge). Garde `keys.title-slug.guard.test.ts` mis à jour.
+- [x] 4.2 `components/ui/carousel.tsx` : `onNearEnd` (appelé à 5 tuiles de la fin, `carousel.logic.ts`
+      `isNearEnd`/`itemSpanOf`), `loadingMore` (indicateur `role="status"`, chaîne FR/EN
+      `common.carousel.loading_more`) ; il ne monte que les enfants reçus. Erreur de page :
+      `home.matches.load_error` / `load_retry` (FR + EN) dans la section.
+- [x] 4.3 Section des matchs extraite dans `features/home/HomeMatchesSection.tsx` ; `HomePage.tsx` 572 -> 458
+      lignes, exemption `max-lines` de la ligne 1 retirée ; `SectionTitle` (garde `detail-section`, plafond
+      de `HomePage.tsx` abaissé de 5 à 4).
+- [x] 4.4 Navigation (D-9) : `goToMatch` sans `matchIds` pour `home_recent` (contexte
+      `{ source, matchIds: [], contextDescriptor: { kind: 'recent' } }`, conservé en sessionStorage :
+      `hasNavContent`) ; `useMatchNeighborsResolved` : contexte sans liste = voisins et total de Q25 (tout
+      l'historique), libellé du descripteur, contexte propagé à prev/next. Favoris : liste d'ids conservée
+      (bornée). Q25 lit le lecteur partagé LIVE (`neighborsRead`), plus le snapshot immuable (revue ronde 1, P1 : sur la copie de prod, les 253 matchs les plus récents de Nuzzles étaient absents du snapshot : voisins vides et total 6 989 au lieu de 7 242 ; `TestMatchNeighbors_LisentLeLiveJamaisLeSnapshot`). Parité Q25 / ordre de l'Accueil : `TestHomeTiles_OrdreIdentiqueAQ25` (schéma DuckDB réel,
+      ex aequo compris) a REVÉLÉ que Q25 n'avait pas de départage -> `ORDER BY instant DESC, match_id DESC`
+      dans `Q25NeighborMatches` et `Q25NeighborMatchesTemplate` (le test échoue sans). [!] La parité « trois
+      comptes sur la copie des bases du banc » n'est pas exécutable ici : la copie vit dans le worktree
+      `LevelUp-wt-chronos`, `data/` de ce worktree n'a que `metadata-prebuilt.zip` (consigne : ne toucher
+      aucun autre dossier) ; FAIT par le pilote (2026-10-21) après la correction P1-1 : parcours complet par curseur des trois comptes (JGtm 1 182, Nuzzles 7 242, Madina97294 1 292 tuiles, 0 doublon, total juste) et voisins + total de Q25 conformes sur 10 positions par compte (récents, bords de page, milieu, plus ancien) : 0 écart. Avant la correction : Nuzzles 10 écarts sur 10 (snapshot).
+- [x] 4.5 Analyse en cours : `tilesPageRefetchInterval` / `tilesPageStaleTime` (60 s tant que CETTE page
+      porte une tuile en cours) sur chaque page de tuiles et sur les favoris ; `homeRefetchInterval` /
+      `homeStaleTime` ne lisent plus que la tête. Test : deux pages, 60 s seulement pour celle qui porte
+      une analyse (`queries.tiles.test.tsx`).
+- [x] 4.6 Favori : `useSetMatchFavorite` pose le drapeau sur place dans les réponses déjà en cache (tête,
+      pages : `patchFavoriteFlag`, même référence si rien ne change) et ne recharge QUE la liste des
+      favoris (+ l'historique Explorer). Retrait de `favorite_matches` de la réponse de la tête (Go :
+      `HomePageResponse`, `GetHomePage`) : les favoris ont leur propre lecture (décision D-8, fin de la
+      décision d'exécution de l'étape 3).
+- [x] 4.7 `OutcomeSequenceTape` lit `last_session_outcomes` (ordre inversé pour la bande, libellé de tuile
+      en infobulle) ; plus de calcul dans `HomePage.tsx`.
+- [x] 4.8 Tests vitest : `homeTiles.logic.test.ts`, `carousel.logic.test.ts`, `carousel.test.tsx`,
+      `queries.tiles.test.tsx` (page suivante, idempotence, reset de tête, erreur/réessai, rechargement par
+      page, favoris), `HomeMatchesSection.test.tsx` (montage limité à 30, page à 5 tuiles de la fin,
+      navigation sans liste, favoris, favori sans rechargement de la tête), `HomePage.lastSession.test.tsx`,
+      `useMatchNeighborsResolved.test.tsx` / `navContext.test.ts` (contexte sans liste). Miroir du contrat :
+      `types.ts` (`recent_matches_total`, `_has_more`, `_next_before`, `last_session_outcomes`,
+      `HomeMatchesPage`, `HomeSessionOutcome`, `favorite_matches` retiré), `test/handlers.ts` (+ handler
+      `pages/home/matches`). [!] E2E local : serveur d'API de démo et Vite lancés sur 8020 / 5180 (le serveur
+      du port 8000 n'a pas été touché), `npx playwright test --project=chromium` : 38 réussis, 62 sautés
+      (fixtures de démo absentes : `slice-5-home` saute), 7 échecs d'environnement SANS rapport avec
+      l'Accueil (`legacy-redirect` H5, `slice-4b` 404, `slice-4c`, 4 de `slice-9-onboarding` : joueur de
+      démo / état d'installation absents du bac isolé). À rejouer sur un environnement de démo garni.
+- Gate : [x] `go test` défaut puis `-tags=integration -p 1` (service, analysis, domain, api/..., archlint,
+  platform/duckdb) ; [x] `golangci-lint --new-from-merge-base=origin/main` 0 problème ; [x] `tsc -b`,
+  `eslint .` (0 erreur, 26 avertissements existants), `vitest run` complet (987 fichiers, 10 226 tests),
+  `lint:colors`, `lint:fields`, `knip` ; [x] banc : critères Accueil du §2 tenus (voir étape 3) ;
+  [x] revue adversariale : ronde 1 (6 P1) corrigée en `f128a0141` ; ronde 2 (pilote, 2026-10-21) : 5/6 corrections complètes, 1 P1 proposé RECLASSÉ P2 par le pilote (la page de la vue match rend déjà `null` pendant son propre chargement, comportement antérieur au lot ; Q25 en live mesuré à 7-10 ms contre 300-800 ms pour la vue : les voisins arrivent avant la page), 2 P2 → Découvertes. P0+P1 : 6 → 0.
+
+- Revue adversariale ronde 1 (pilote, 2026-10-21) : P1-1 Q25 en lecture live [x] ; P1-2 favoris chargement / erreur [x] ; P1-3 voisins gardés pendant le pas [x] ; P1-4 commentaires [x] ; P1-5 `HomeMatchesKindRecent` utilisé [x] ; P1-6 tests qui mordent (fetchMore, Carousel + hook, `useNavigateToMatch`) [x] ; P2 défilement ramené à 30 tuiles : consigné en Découvertes. Ronde 2 : par le pilote.
 
 ### Étape 5 — Vue match (volet 1, conditionnelle à l'étape 2)
 
@@ -566,6 +632,7 @@ Q23b/Q28c 250-1 080 ms (Madina97294 reste à ~1 s sur la vue match).
 
 ## Découvertes
 
+- Revue ronde 2 piste A (P2, non traités) : (1) `MatchViewPage.tsx:71` rend `null` pendant le chargement de la vue, donc la barre de navigation est absente à chaque pas vers un match non en cache (comportement antérieur au lot ; les voisins, à 7-10 ms, arrivent avant la vue) ; (2) `MatchHeader.tsx:146` `pendingStep` n'est remis à zéro ni au changement de match ni sur erreur des voisins : un pas retenu peut être joué sur un autre match si l'utilisateur change de match avant la réponse (rare) ; (3) `match_view_repo_neighbors_skill.go:27,85` : Q25 lit le live pour tous ses appelants (vue match ouverte hors Accueil comprise) et attend le provider pendant un écrit, borné à 10 s (500 `neighbors_error` au-delà), comme la liste de l'Accueil.
 - `analysis/identity.go` (`v_gamertag_lookup`, annuaire des noms) lit encore `match_kill_events_latest` pour résoudre les noms : hors du critère du volet 2 (lecture de noms, pas un agrégat), allowlistée en 9.5 ; à reprendre dans un chantier « annuaire » si mesuré coûteux.
 - Banc (2026-10-21) : un serveur gardé entre deux passages ralentit de 6 à 15 % par passage, et sa mémoire privée atteint ~1,6 Go après UN passage de 34 pages (2 fils DuckDB, 512 Mo). Le VPS de prod a 1,8 Go de RAM au total : pression mémoire à surveiller (non traité ici).
 - Comparaison : 5,9 s sur 6,2 passés HORS sections (frags entre joueurs non bornés, `QKillsBetweenPlayers`) ; seule la partie servie par S1 est dans le périmètre (9.2).
@@ -576,4 +643,8 @@ Q23b/Q28c 250-1 080 ms (Madina97294 reste à ~1 s sur la vue match).
 - Piste C (2b), revue ronde 1, P2 — aucun verrou partagé entre `scripts/compact-passes-nuit.sh` et `scripts/deploy.sh` : un déploiement (push `main`) pendant la fenêtre de compaction échouerait sur le verrou DuckDB tenu par `compact-passes` (pas de corruption : la CLI tient le bail et le verrou de fichier). Consigné, non corrigé.
 - Piste C (2b) — au timeout systemd (`TimeoutStartSec=25min`), le SIGTERM atteint le client `docker compose run` ; que le conteneur de compaction s'arrête aussi (relais de signal de `compose run`) n'est pas vérifié. S'il survivait, le filet relancerait le serveur pendant que la CLI tient la base : le serveur échouerait à l'ouvrir (verrou DuckDB, pas de corruption) et le script sortirait en erreur après ses 3 essais. À vérifier sur le VPS si ce timeout se produit un jour (passage mesuré ~90 s).
 - Piste C (2b) — la jauge a jusqu'à 24 h de retard sur une recuisson faite serveur démarré (le contrôle de santé tourne au démarrage puis toutes les 24 h) : une telle recuisson peut attendre deux nuits avant d'être compactée. Une recuisson faite serveur arrêté est mesurée au redémarrage.
+- (piste A, 2026-10-21) `HomePage.tsx` lit `data.privacy_warning` (`PrivacyBanner`, type web `privacy_warning`) mais `domain.HomePageResponse` ne l'émet pas : le bandeau « compte privé » de l'Accueil ne peut jamais s'afficher. Non traité (hors périmètre).
+- (piste A) `Q25NeighborMatches` n'avait pas de départage des ex aequo (corrigé en 4.4 : il bloquait la parité avec l'ordre de l'Accueil, le test échoue sans le correctif).
+- (piste A) Sans fixtures de démo (générées sur l'hôte de prod seulement), 62 specs E2E data-dépendantes sautent, dont `slice-5-home` : la couverture E2E de l'Accueil n'a pas pu être exercée dans le bac isolé de la piste A.
+- (piste A, revue ronde 1, P2 consigné, non corrigé) Défilement ramené à 30 tuiles quand la tête rechargée change de curseur (`features/home/queries.ts` : `cursors` repart de zéro si `recent_matches_next_before` change) : rare (nouveau match pendant un défilement profond), assumé pour ne jamais recoller des pages à une autre tête.
 - (à compléter pendant l'exécution)
