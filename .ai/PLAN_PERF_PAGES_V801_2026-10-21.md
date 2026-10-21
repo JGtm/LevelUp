@@ -11,7 +11,7 @@ DEUX VOLETS COMPLÉMENTAIRES sur un socle commun :
 
 Contrat d'exécution : skill `plan-execution` (fait foi). Statuts `[x]` fait, `[~]` couvert ailleurs
 (référence), `[!]` non traité (justification écrite) ; aucune case vide à la clôture. Étape N close
-(gate passé, cases statuées, entrée `thought_log`) avant N+1, dans l'ordre du §5. Découverte hors
+(gate passé, cases statuées, entrée `thought_log`) avant N+1, dans l'ordre du §5 ; après l'étape 2, DEUX PISTES PARALLÈLES (accord user 2026-10-21), chacune en ordre strict : piste A = étapes 3, 4 (agent Sonnet, worktree dédié) ; piste B = étapes 6, 7, 8, 9 (ADR par le pilote, puis agents Opus, worktree dédié) ; l'étape 10 clôt les deux. Découverte hors
 périmètre : section « Découvertes », jamais traitée ici. Reprise de session : relire ce fichier
 (cases cochées), puis `git log --oneline -15` dans le worktree.
 
@@ -114,7 +114,7 @@ Fermes (tranchées sur pièces) :
     `AssistTierMidMaxPct` changent sans montée de révision.
   - Candidats de grain par frag ou par vie (`match_measured_kills`, `match_life_windows`) : §6.
 
-À valider par le user, par message daté, AVANT l'étape indiquée. D-8, D-9 et D-10 VALIDÉES par le user le 2026-10-21 (« Vas y go », en réponse au message qui les listait explicitement, avec le feu vert sur le plan). D-11 reste à valider après l'étape 2.
+À valider par le user, par message daté, AVANT l'étape indiquée. D-8, D-9 et D-10 VALIDÉES par le user le 2026-10-21 (« Vas y go », en réponse au message qui les listait explicitement, avec le feu vert sur le plan). Le 2026-10-21 après l'étape 2, le user a re-confirmé D-8 (« 30 tuiles par pages c'est bien, on chargera davantage si nécessaire, en le faisant proprement pour que ça reste fluide ») et D-9 (« Ok avec ta proposition pour la navigation fournie par le serveur »), validé D-10 (« Ok pour le rattrapage en local et copie vers le VPS ») et REJETÉ D-11 (« on abandonne la vue match allégée, le gain est trop faible ») : l'étape 5 est statuée `[~]`.
 - **D-8 (avant étape 3)** 30 tuiles par page ; page suivante demandée à 5 tuiles de la fin ;
   pagination par curseur (instant canonique `COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')`
   via le fragment partagé — règle 8 —, puis `match_id`) avec `has_more` (pas de décalage : une synchro
@@ -157,36 +157,56 @@ Pour chaque étape qui change du code, AVANT de cocher son gate :
 
 ### Étape 1 — Banc de mesure (socle)
 
-- [ ] 1.1 Recenser les tâches lancées au démarrage du serveur (`cmd/server/main.go`,
-      `background_tasks.go`) et, pour chacune, comment elle est neutralisée sur le banc (réglage,
-      variable, absence de jeton, proxy fermé). Tâche qui écrirait hors du worktree ou contacterait
-      un tiers malgré le proxy : `[!]` et arrêt, on remonte au user.
-- [ ] 1.2 Place disque : au moins 10 Go libres sur le volume du worktree (`df -h`), sinon arrêt.
-- [ ] 1.3 Copie dans `LevelUp-wt-chronos/data/` (fichiers ignorés par git uniquement, liste écrite
-      dans `scripts/bench-pages.files`) : `titles/halo_infinite/warehouse/*.duckdb` ET leurs `.wal`,
-      `titles/halo_infinite/players/{JGtm,Nuzzles,Madina97294}/`, `global/`, `db_profiles.json`,
-      `app_settings.json` assaini (D-5), les artefacts de rejeu des trois matchs de référence (copie,
-      jamais de jonction). Jamais `data/auth/`. Copie faite quand aucun sync local n'écrit (heure
-      consignée).
-- [ ] 1.4 `scripts/bench-pages.sh` (versionné) : lance le serveur du worktree (D-5,
-      `LEVELUP_DUCKDB_THREADS=2`, `LEVELUP_DUCKDB_MEMORY_LIMIT=512MB`, `LEVELUP_SLOW_REQUEST_MS=1`,
-      `LEVELUP_LOGS_DIR` dans le worktree) ; pour chaque compte et endpoint : 1 appel de chauffe +
-      5 appels ; médiane, max, octets décodés ; extrait les `http_timings`.
-- [ ] 1.5 Endpoints : Accueil, vue match (un match avec rejeu par compte, identifiants consignés),
-      artefact de rejeu, Explorer `matches-query` (requête par défaut du web), Relations, Carrière +
-      rencontres + rivaux, Timeseries, Escouade, Comparaison (JGtm vs Madina97294).
-- Gate : deux passages à ±20 % ; `ls data/auth` → absent ; compteurs expvar `halo_api_*` à 0 après
-  le passage (`curl -s localhost:8010/debug/vars`) ; aucun message parti (webhook vide) ;
-  `git status --short data/` ne montre aucun fichier suivi modifié.
+- [x] 1.1 Recenser les tâches lancées au démarrage du serveur (`cmd/server/main.go`,
+      `background_tasks.go`) et, pour chacune, comment elle est neutralisée sur le banc.
+      Constat (2026-10-21) : appels Halo (crons catalogue, Spartan, classement mondial, balayage des
+      noms d'assets, pool de jetons, auto-sync) → aucun jeton (dossier d'auth du banc sans
+      `watcher_tokens*`) : ils s'arrêtent avant tout appel réseau (« aucune entrée store »), et le
+      proxy fermé reste en second rempart ; Discord (notification de rejeux, `app_release`) →
+      webhook vidé, notifications coupées ; watcher, auto-sync, surveillance médias, sauvegardes →
+      coupés dans `app_settings.json` ; écritures (checkpoint social, relance des citations,
+      récupération WAL, janitor, purge des rejeux, migration du groupe par défaut → `groups.json`
+      dans le dossier d'auth du banc) → toutes sous la racine du worktree (`cfg.RepoRoot`). Aucune
+      tâche n'écrit hors du worktree ni ne joint un tiers.
+- [x] 1.2 Place disque : 330 Go libres sur `C:`.
+- [x] 1.3 Copie (liste `scripts/bench-pages.files`). ÉCART CONSIGNÉ : la source est la PROD
+      (`/opt/levelup`, flux `ssh … tar` en lecture seule, rien d'écrit sur le VPS), pas les bases
+      locales : sous Windows, le serveur local des autres sessions tient ses bases en exclusivité
+      (`cp` : « Device or resource busy ») et D-5 interdit de l'arrêter ; la prod est en outre la
+      référence la plus fidèle. Copie le 2026-10-21 de 09:56 à 09:57 (bases + `.wal`), snapshot
+      `v…228`, `db_profiles.json` restreint aux trois comptes Infinite (profils Halo 5 gardés),
+      joueurs Halo 5 copiés (étapes 8-9), `app_settings.json` assaini dans le flux (le webhook réel
+      n'est jamais écrit sur disque), artefacts des trois matchs de référence. `data/auth` absent.
+- [x] 1.4 `scripts/bench-pages.sh` (`fetch`, `serve`, `measure`, `pass`, `check`, `stop`, `clean`) ;
+      `pass` redémarre le serveur à neuf à chaque passage (un serveur gardé dérivait de 6 à 15 % par
+      passage, mémoire privée ~1,6 Go — Découvertes).
+- [x] 1.5 Endpoints mesurés (12) ; matchs de référence : JGtm `8ba9251a-53f3-4367-aa55-9c5df983120f`,
+      Nuzzles `37c6e818-fc07-4b2e-90ed-f2f84c904933`, Madina97294 `a853258c-3027-4144-85c5-7309b9dc0031`.
+      Les POST portent `Origin: http://localhost:5173` (CSRF par origine) ; Comparaison :
+      `{"target_gamertag":"Madina97294"}`.
+- Gate : [x] passages 2 et 3 à serveur neuf : 0 page hors ±20 % (max +7,5 %, hors Relations Nuzzles
+  bimodale 4,3 / 6,2 / 5,0 s, à ±20 % entre les passages 2 et 3) ; `bench-pages.sh check` : `data/auth`
+  absent, aucun jeton dans le dossier d'auth du banc, aucun fichier suivi modifié sous `data/`,
+  webhook vide, aucune tentative `halo_api` journalisée, aucun compteur `halo_api_*` exposé.
 
 ### Étape 2 — Mesure « avant » et classement des pages
 
-- [ ] 2.1 Banc complet, annexe A remplie (durées, octets, sections `home_*` / `mv_<source>`).
-- [ ] 2.2 Classement : chaque page « lente » (médiane > 2 s sur un compte) ou « ok » ; chaque
-      lecteur de l'inventaire chiffré via ses sections. Conséquences consignées : étape 5 (vue match)
-      et candidats §6 statués « à faire » ou `[~]`.
-- [ ] 2.3 Cible chiffrée du volet 1 pour l'Accueil fixée depuis la ventilation (critère §2).
-- Gate : annexe A complète pour les trois comptes ; chaque candidat du §6 a un statut.
+- [x] 2.1 Annexe A (A.1 durées et octets, A.2 ventilation par section).
+- [x] 2.2 Classement (lente = médiane > 2 s sur un compte) :
+      lentes — Accueil (Nuzzles 6,2 s), vue match (Nuzzles 4,1 s, JGtm 2,1 s), Comparaison (6,3 s),
+      Carrière rencontres (Nuzzles 2,0 s), Explorer (Nuzzles 2,4 s), et en « tout l'historique »
+      Relations (Nuzzles 5,0 s), Escouade (Nuzzles 3,6 s), Timeseries (7,8 à 27,6 s) ;
+      ok — Carrière, rivaux (< 2 s), artefact et contexte du rejeu (< 0,15 s).
+      Conséquences, avec les réponses du user du 2026-10-21 : étape 5 `[~]` (D-11 rejetée ; le temps
+      de la vue match vient de Q23b et Q28c, servis par 9.2 et 9.4) ; Comparaison, Carrière
+      rencontres et rivaux accélérés par le volet 2 (9.2) — le reste de la Comparaison est un
+      candidat non prioritaire (« compréhensible ») ; Explorer `[~]` (« plutôt ok ») ; modes « tout
+      l'historique » `[~]` (« peu utilisé, lenteur compréhensible »).
+- [x] 2.3 Cibles. Accueil après l'étape 4 : réponse de tête < 300 Ko décodés, section
+      `home_assisted_frags_recent` ≤ 0,2 s, durée serveur ≤ `home_favorite_weapon` + 0,5 s (l'arme
+      favorite reste sur tout l'historique jusqu'à 9.3). Après l'étape 9 : Accueil et vue match
+      < 0,6 s pour les trois comptes sur le banc ; Carrière rencontres et rivaux < 0,3 s.
+- Gate : [x] annexe A complète pour les trois comptes ; candidats du §6 statués.
 
 ### Étape 3 — Accueil en fenêtre, serveur (volet 1)
 
@@ -235,16 +255,16 @@ Pour chaque étape qui change du code, AVANT de cocher son gate :
 
 ### Étape 5 — Vue match (volet 1, conditionnelle à l'étape 2)
 
-- [ ] 5.1 Si l'étape 2 mesure la vue match « ok » (rencontres déjà bornées par `6cb130a4f`) ET
+- [~] 5.1 Si l'étape 2 mesure la vue match « ok » (rencontres déjà bornées par `6cb130a4f`) ET
       l'artefact de rejeu non dominant : `[~]` « mesuré, rien à faire ». Sinon, D-11 validée, puis :
-- [ ] 5.2 Inventaire des champs lus par `MatchScoreCurveChart`, `MatchScoreEventsChart`,
+- [~] 5.2 Inventaire des champs lus par `MatchScoreCurveChart`, `MatchScoreEventsChart`,
       `MatchImpactBadgesBar`, `MatchViewTabArsenal`, `MatchEquipmentUsageSection` (montée par
       l'Arsenal), y compris `coverage.score.modeSupported` ; consigné ici.
-- [ ] 5.3 Type dédié + endpoint de projection + stratégie de lecture serveur (calques écrits à la
+- [~] 5.3 Type dédié + endpoint de projection + stratégie de lecture serveur (calques écrits à la
       cuisson, ou cache par (match, date de l'artefact)) ; parité champ pour champ avec le document.
-- [ ] 5.4 Les composants lisent la projection ; la page de rejeu inchangée ; prévenir levelup-76
+- [~] 5.4 Les composants lisent la projection ; la page de rejeu inchangée ; prévenir levelup-76
       avant de toucher au rejeu s'il est actif.
-- Gate : doctrine §4 ; captures avant/après des cinq composants sur les trois matchs de référence.
+- Statut : étape `[~]` (2026-10-21). Banc : l'artefact de rejeu sort en 0,05-0,09 s, le temps de la vue match (1,2-3,5 s) vient de Q23b `match_encounter_stats` et de Q28c `mv_encounter_assists` (tout l'historique, journal du film), servis par le volet 2 (9.2, 9.4). D-11 rejetée par le user. Items 5.2-5.4 couverts par 9.2 et 9.4.
 
 ### Étape 6 — ADR 0039 « résumés par match » : règle, grain, colonnes (volet 2)
 
@@ -369,19 +389,54 @@ une étape commencée n'est jamais livrée à moitié.
 
 | Candidat | Source | Statut |
 |---|---|---|
-| Explorer : `page_size: 10000`, ligne de 38 champs (le user la juge « plutôt ok ») | audit | à mesurer |
-| Relations : `relations[]` sans limite (25 affichées ; filtres et compteurs lus côté client) | audit | à mesurer |
-| Timeseries : `cumul_tab`, `intensity_tab`, `outcomes_over_time` calculés sans lecteur | audit | à mesurer |
-| Carrière `current_season`, session `compare_metrics` calculés sans lecteur | audit | à mesurer |
-| Bloc `coverage` du rejeu (~333 noms sur 500 sans lecteur ; badge admin, contrat, `parity_test.go`) | audit | à mesurer |
-| `GET /pages/sessions`, `POST /pages/match-history/query` sans appelant web | audit | à re-vérifier |
-| `match_measured_kills` (Tactique, distances), `match_life_windows` (vies près d'un coéquipier) | inventaire | à mesurer |
+| Explorer : `page_size: 10000`, ligne de 38 champs (le user la juge « plutôt ok ») | audit | `[~]` mesuré 0,5-2,4 s, « plutôt ok » (user) |
+| Relations : `relations[]` sans limite (25 affichées ; filtres et compteurs lus côté client) | audit | `[~]` 1,3-5,0 s en « tout l'historique », lenteur acceptée (user) ; sa lecture Q28 passe sur S1 (9.2) |
+| Timeseries : `cumul_tab`, `intensity_tab`, `outcomes_over_time` calculés sans lecteur | audit | `[~]` mode « tout l'historique » peu utilisé (user) ; non prioritaire, registre des reports |
+| Carrière `current_season`, session `compare_metrics` calculés sans lecteur | audit | `[~]` non mesuré isolément (sections absentes), coût faible attendu ; registre des reports |
+| Bloc `coverage` du rejeu (~333 noms sur 500 sans lecteur ; badge admin, contrat, `parity_test.go`) | audit | `[~]` artefact servi en 0,05-0,09 s : aucun gain mesurable ; registre des reports |
+| `GET /pages/sessions`, `POST /pages/match-history/query` sans appelant web | audit | `[~]` hors mesure (code mort à confirmer) ; registre des reports |
+| `match_measured_kills` (Tactique, distances), `match_life_windows` (vies près d'un coéquipier) | inventaire | `[~]` 5,5-14,7 s mais seulement en « tout l'historique » de Timeseries ; registre des reports (second rang) |
 
 ## Annexe A — Mesures du banc
 
-(étape 2, puis après chaque étape de code)
+### A.1 « Avant » (2026-10-21, passage 3 à serveur neuf, code `affab87ed` + sections `9d40cc1b9`)
+
+Copie des bases de PROD du 2026-10-21 09:57 ; médiane de 5 appels après chauffe, octets décodés.
+`timeseries_tout`, `escouade_tout`, `relations` : périmètre « tout l'historique » (corps `{}`),
+pas le réglage par défaut du web (dernière session) — pire cas. Stabilité : passages 2 et 3 à serveur
+neuf à ±8 % (Relations Nuzzles 4,3 → 6,2 → 5,0 s, bimodale, consignée), mémoire privée du serveur de
+banc ~1,56 Go après un passage.
+
+| Page | JGtm | Nuzzles | Madina97294 |
+|---|---|---|---|
+| accueil | 2.77 s · 3.1 Mo | 6.20 s · 18.3 Mo | 3.08 s · 3.4 Mo |
+| vue_match | 2.07 s · 0.1 Mo | 4.06 s · 0.2 Mo | 1.31 s · 0.1 Mo |
+| rejeu_artefact | 0.05 s · 2.3 Mo | 0.08 s · 2.5 Mo | 0.06 s · 1.7 Mo |
+| rejeu_contexte | 0.08 s · 0.1 Mo | 0.09 s · 0.1 Mo | 0.12 s · 0.1 Mo |
+| explorer | 0.73 s · 1.0 Mo | 2.38 s · 5.7 Mo | 0.49 s · 1.1 Mo |
+| relations | 1.81 s · 1.0 Mo | 5.04 s · 5.6 Mo | 1.32 s · 2.2 Mo |
+| carriere | 0.04 s · 0.3 Mo | 0.10 s · 1.8 Mo | 0.04 s · 0.4 Mo |
+| carriere_rencontres | 0.83 s · 0.0 Mo | 2.04 s · 0.0 Mo | 0.60 s · 0.0 Mo |
+| carriere_rivaux | 0.78 s · 0.0 Mo | 1.93 s · 0.0 Mo | 0.53 s · 0.0 Mo |
+| timeseries_tout | 11.35 s · 5.6 Mo | 27.57 s · 22.2 Mo | 7.80 s · 5.9 Mo |
+| escouade_tout | 1.50 s · 5.1 Mo | 3.63 s · 11.8 Mo | 1.24 s · 4.6 Mo |
+| comparaison | 6.25 s · 0.0 Mo | — | — |
+
+### A.2 Ventilation (sections, passage 3)
+
+| Lecture | JGtm | Nuzzles | Madina97294 | Famille |
+|---|---|---|---|---|
+| Accueil — `home_favorite_weapon` (arme favorite, tout l'historique) | 1,58 s | 1,98 s | 1,89 s | volet 2, S1 armes (9.3) |
+| Accueil — `home_assisted_frags_recent` (Q26l, toutes les tuiles) | 1,12 s | 3,49 s | 0,87 s | volet 1 (fenêtre) + volet 2 S2 (9.4) |
+| Accueil — `home_spartan_identity` | 0,12 s | 0,51 s | 0,34 s | — |
+| Vue match — `match_encounter_stats` (Q23b, tout l'historique) | 2,00 s | 3,42 s | 1,11 s | volet 2, S1 paires (9.2) |
+| Vue match — `mv_encounter_assists` (Q28c, tout l'historique) | 1,77 s | 3,91 s | 1,15 s | volet 2, S2 (9.4) |
+| Comparaison — hors sections (frags entre joueurs non bornés) | 5,9 s | — | — | volet 2, S1 paires (9.2) |
+| Timeseries tout — `weapon_range` + `range_profiles` + `lives` | 7,8 s | 14,7 s | 5,5 s | candidats `match_measured_kills` / `match_life_windows` (§6) |
 
 ## Découvertes
 
 - `analysis/identity.go` (`v_gamertag_lookup`, annuaire des noms) lit encore `match_kill_events_latest` pour résoudre les noms : hors du critère du volet 2 (lecture de noms, pas un agrégat), allowlistée en 9.5 ; à reprendre dans un chantier « annuaire » si mesuré coûteux.
+- Banc (2026-10-21) : un serveur gardé entre deux passages ralentit de 6 à 15 % par passage, et sa mémoire privée atteint ~1,6 Go après UN passage de 34 pages (2 fils DuckDB, 512 Mo). Le VPS de prod a 1,8 Go de RAM au total : pression mémoire à surveiller (non traité ici).
+- Comparaison : 5,9 s sur 6,2 passés HORS sections (frags entre joueurs non bornés, `QKillsBetweenPlayers`) ; seule la partie servie par S1 est dans le périmètre (9.2).
 - (à compléter pendant l'exécution)

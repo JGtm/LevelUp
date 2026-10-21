@@ -1,3 +1,11 @@
+## [2026-10-21] Plan perf pages v8.0.1, étapes 1-2 : banc de mesure et mesure « avant » — Complété (branche `feat/v801-perf-pages`)
+
+**Décision technique principale** : banc isolé (`scripts/bench-pages.sh`) sur une copie des bases de PROD tirée par flux ssh en lecture seule (les bases locales sont verrouillées par le serveur local des autres sessions sous Windows), serveur du worktree sur 8010, réglages DuckDB de prod, aucun jeton, réglages assainis, proxy fermé ; chaque passage redémarre le serveur à neuf (un serveur gardé dérivait de 6 à 15 % par passage).
+
+**Résultats observés** : passages 2 et 3 stables (0 page hors ±20 %). Accueil 2,8 / 6,2 / 3,1 s (3,1 / 18,3 / 3,4 Mo) pour JGtm / Nuzzles / Madina97294, dominé par l'arme favorite (1,6-2,0 s) et les frags assistés (0,9-3,5 s), deux recomptes du journal du film ; vue match 1,3-4,1 s, dominée par Q23b et Q28c (tout l'historique) ; artefact de rejeu 0,05-0,09 s ; Comparaison 6,3 s. Décisions du user : vue match allégée abandonnée (étape 5 `[~]`), modes « tout l'historique » et Explorer non prioritaires, pistes parallèles A (Sonnet) et B (Opus).
+
+**Conclusion** : piste A (Accueil en fenêtre, étapes 3-4) confiée à un agent ; piste B commence par l'ADR 0039 (étape 6).
+
 ## [2026-10-21] Index sous le segment de langue optionnel : `/en/` et `/fr/` ne tombent plus sur « introuvable » — Complété (branche `feat/lang-index`, partie de `origin/feat/v75`)
 
 **Décision technique principale** : `routes/index.tsx` déplacé sous `routes/{-$lang}/index.tsx` (`createFileRoute('/{-$lang}/')`) : `/`, `/en/`, `/fr/` (avec ou sans barre finale) sont une seule route, même `resolveIndexRedirect`, mêmes renvois (/login, accueil du joueur, écran « configurer »). Langue inconnue (`/xx/`) : `beforeLoad` lève `notFound()`, donc 404 comme avant. Langue connue de l'URL : elle sert au segment émis par la redirection (même règle que le layout `t/$titleSlug`, qui réconcilie ensuite la locale depuis le segment) ; sans segment, locale de session. 17 appelants typés `to: '/'` passés à `'/{-$lang}'` (le segment est alors hérité de l'URL courante) ; `routeTree.gen.ts` régénéré par `@tanstack/router-generator` (pas de CLI `tsr` installée).
