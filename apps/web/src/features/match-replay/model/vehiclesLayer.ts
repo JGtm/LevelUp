@@ -581,14 +581,19 @@ export function vehiclePositionAt(track: ReplayVehicleTrackReady, frame: number)
  * plancher porte sur l'ÉCHELLE, pas sur la taille : les dix-huit familles le franchissent
  * ENSEMBLE et restent donc proportionnelles à toute échelle. Détail et mesures :
  * `lib/replay/screenSizes.ts`.
+ *
+ * `ceilPx` : le plafond doux de la TOILE (`vehicleCeilPx`, contrôles v8 du 2026-10-21) — absent,
+ * le plafond historique. Le même plafond doit servir au sprite, à son explosion et à l'ancre des
+ * armes, sans quoi un tir quitterait un sprite qui n'a pas la taille qu'il suppose.
  */
 export function vehicleScreenLengthPx(
   naturalHeightPx: number,
   mmPerPx: number,
   scalePxPerM: number,
+  ceilPx?: number,
 ): number {
   if (naturalHeightPx <= 0 || mmPerPx <= 0) return 0
-  return screenLengthPx(spriteWorldLengthMm(naturalHeightPx, mmPerPx), scalePxPerM)
+  return screenLengthPx(spriteWorldLengthMm(naturalHeightPx, mmPerPx), scalePxPerM, ceilPx)
 }
 
 /**
@@ -600,9 +605,10 @@ export function vehicleSpriteScale(
   naturalHeightPx: number,
   mmPerPx: number,
   scalePxPerM: number,
+  ceilPx?: number,
 ): number {
   if (naturalHeightPx <= 0) return 0
-  return vehicleScreenLengthPx(naturalHeightPx, mmPerPx, scalePxPerM) / naturalHeightPx
+  return vehicleScreenLengthPx(naturalHeightPx, mmPerPx, scalePxPerM, ceilPx) / naturalHeightPx
 }
 
 // --- OCCUPATION -------------------------------------------------------------------------------

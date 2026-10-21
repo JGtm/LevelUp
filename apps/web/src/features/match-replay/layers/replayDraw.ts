@@ -20,6 +20,7 @@ import { drawMeleeStar, meleeStarProgress } from './meleeStar'
 import { altitudeRatio, footprint } from '../../../lib/replay/replayLogic'
 import { vehicleShotOrigin, type VehicleMountSpriteSize } from '../model/vehicleWeaponMounts'
 import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
+import { vehicleCeilPx } from '../../../lib/replay/screenSizes'
 
 /** Amplitude verticale utilisée pour l'indication d'étage. */
 interface ZRange {
@@ -129,13 +130,15 @@ export function drawShotsLayer(
   // L'ÉCHELLE DU CADRAGE, lue une fois : le montage d'arme d'un tir en véhicule suit la TAILLE
   // du sprite, qui en dépend depuis le 2026-09-20 (cf. `lib/replay/screenSizes.ts`).
   const scalePxPerM = scaleOf(view)
+  // Le plafond de taille suit la TOILE (petit écran) : le montage suit le sprite tel qu'il se dessine.
+  const ceilPx = vehicleCeilPx(Math.min(view.width, view.height))
   for (const s of shots) {
     const age = win.frame - s.frame
     if (age < 0 || age > win.hold) continue
     const c = projectTo(view, s)
     const { origin, angle } = vehicleShotOrigin({
       h: s.h, vehicleShot: s.vehicleShot, center: c, sizeOf: style.vehicleSizeOf, k: style.k,
-      scalePxPerM,
+      scalePxPerM, ceilPx,
     })
     drawMuzzleFlash(ctx, s.fam, s.tint, {
       x: origin.x,
