@@ -5,7 +5,7 @@ module levelup/go-api
 // dont la bibliothèque standard n'a aucune vulnérabilité atteinte, sinon le job `govulncheck`
 // de `ci.yml` rougit. L'image de build du `Dockerfile` est épinglée sur la même version : une
 // image plus ancienne que cette ligne ne compile pas (GOTOOLCHAIN=local dans l'image).
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/HugoSmits86/nativewebp v1.3.0

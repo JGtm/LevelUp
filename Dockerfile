@@ -53,7 +53,7 @@ RUN node scripts/verify-public-in-dist.mjs
 # version déjà présente sur l'hôte. Même version que la ligne `go` de
 # apps/go-api/go.mod ; les monter ensemble (garde-rail :
 # internal/archlint/dockerfile_go_version_test.go).
-FROM golang:1.26.9-bookworm AS go-builder
+FROM golang:1.26.10-bookworm AS go-builder
 
 WORKDIR /build/go
 

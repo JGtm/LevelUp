@@ -61,6 +61,13 @@
 **Résultats observés** : passages 2 et 3 stables (0 page hors ±20 %). Accueil 2,8 / 6,2 / 3,1 s (3,1 / 18,3 / 3,4 Mo) pour JGtm / Nuzzles / Madina97294, dominé par l'arme favorite (1,6-2,0 s) et les frags assistés (0,9-3,5 s), deux recomptes du journal du film ; vue match 1,3-4,1 s, dominée par Q23b et Q28c (tout l'historique) ; artefact de rejeu 0,05-0,09 s ; Comparaison 6,3 s. Décisions du user : vue match allégée abandonnée (étape 5 `[~]`), modes « tout l'historique » et Explorer non prioritaires, pistes parallèles A (Sonnet) et B (Opus).
 
 **Conclusion** : piste A (Accueil en fenêtre, étapes 3-4) confiée à un agent ; piste B commence par l'ADR 0039 (étape 6).
+## [2026-10-21] Go 1.26.10 pour la v8.0.1 (GO-2026-6809) — Complété (branche `feat/v75`)
+
+**Décision technique principale** : `govulncheck` de la PR #100 signale GO-2026-6809 (`crypto/x509`, corrigé en Go 1.26.10), atteinte, publiée après la CI précédente. Montée de version du correctif seul : `go.mod` (`go 1.26.10`, lu par `setup-go` en CI) et image `golang:1.26.10-bookworm` du Dockerfile, ensemble (ratchet `archlint/dockerfile_go_version_test.go`). La montée en 1.27 proposée par Dependabot (#97) reste hors de la 8.0.1.
+
+**Résultats observés** : toolchain 1.26.10 téléchargée en local, garde-rail de version vert.
+
+**Conclusion** : la CI de la PR #100 doit repasser `govulncheck` à 0.
 
 ## [2026-10-21] Index sous le segment de langue optionnel : `/en/` et `/fr/` ne tombent plus sur « introuvable » — Complété (branche `feat/lang-index`, partie de `origin/feat/v75`)
 
