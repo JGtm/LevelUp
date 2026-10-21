@@ -261,8 +261,8 @@ Pour chaque étape qui change du code, AVANT de cocher son gate :
 - Gate : [x] `go test` défaut puis `-tags=integration -p 1` sur service, analysis, domain, port, api/...,
   platform/duckdb, archlint ; [x] `golangci-lint run --new-from-merge-base=origin/main` 0 problème ;
   [x] `tsc -b` + `vitest run src/features/home src/lib/api src/lib/analysis-pending src/test` ;
-  [x] `bash scripts/check_test_baseline.sh tests` ; [ ] banc avant/après : mesure par le pilote ;
-  [ ] revue adversariale : par le pilote.
+  [x] `bash scripts/check_test_baseline.sh tests` ; [x] banc avant/après (pilote, 2026-10-21, copie compactée) : tête de l'Accueil 94-101 Ko (3,1-18,3 Mo avant), durée 0,14 / 0,39 / 0,25 s pour JGtm / Nuzzles / Madina97294 (0,31 / 1,04 / 0,51 s avant), `home_assisted_frags_recent` 6-16 ms ;
+  [x] revue adversariale : voir le bloc « Revue adversariale » de l'étape 4 (rondes 1 et 2).
 
 ### Étape 4 — Accueil en fenêtre, web (volet 1)
 
@@ -287,7 +287,7 @@ Pour chaque étape qui change du code, AVANT de cocher son gate :
       dans `Q25NeighborMatches` et `Q25NeighborMatchesTemplate` (le test échoue sans). [!] La parité « trois
       comptes sur la copie des bases du banc » n'est pas exécutable ici : la copie vit dans le worktree
       `LevelUp-wt-chronos`, `data/` de ce worktree n'a que `metadata-prebuilt.zip` (consigne : ne toucher
-      aucun autre dossier) ; à faire par le pilote avec le banc.
+      aucun autre dossier) ; FAIT par le pilote (2026-10-21) après la correction P1-1 : parcours complet par curseur des trois comptes (JGtm 1 182, Nuzzles 7 242, Madina97294 1 292 tuiles, 0 doublon, total juste) et voisins + total de Q25 conformes sur 10 positions par compte (récents, bords de page, milieu, plus ancien) : 0 écart. Avant la correction : Nuzzles 10 écarts sur 10 (snapshot).
 - [x] 4.5 Analyse en cours : `tilesPageRefetchInterval` / `tilesPageStaleTime` (60 s tant que CETTE page
       porte une tuile en cours) sur chaque page de tuiles et sur les favoris ; `homeRefetchInterval` /
       `homeStaleTime` ne lisent plus que la tête. Test : deux pages, 60 s seulement pour celle qui porte
@@ -314,8 +314,8 @@ Pour chaque étape qui change du code, AVANT de cocher son gate :
 - Gate : [x] `go test` défaut puis `-tags=integration -p 1` (service, analysis, domain, api/..., archlint,
   platform/duckdb) ; [x] `golangci-lint --new-from-merge-base=origin/main` 0 problème ; [x] `tsc -b`,
   `eslint .` (0 erreur, 26 avertissements existants), `vitest run` complet (987 fichiers, 10 226 tests),
-  `lint:colors`, `lint:fields`, `knip` ; [ ] banc : critères Accueil du §2 : mesure par le pilote ;
-  [ ] revue adversariale : par le pilote.
+  `lint:colors`, `lint:fields`, `knip` ; [x] banc : critères Accueil du §2 tenus (voir étape 3) ;
+  [x] revue adversariale : ronde 1 (6 P1) corrigée en `f128a0141` ; ronde 2 (pilote, 2026-10-21) : 5/6 corrections complètes, 1 P1 proposé RECLASSÉ P2 par le pilote (la page de la vue match rend déjà `null` pendant son propre chargement, comportement antérieur au lot ; Q25 en live mesuré à 7-10 ms contre 300-800 ms pour la vue : les voisins arrivent avant la page), 2 P2 → Découvertes. P0+P1 : 6 → 0.
 
 - Revue adversariale ronde 1 (pilote, 2026-10-21) : P1-1 Q25 en lecture live [x] ; P1-2 favoris chargement / erreur [x] ; P1-3 voisins gardés pendant le pas [x] ; P1-4 commentaires [x] ; P1-5 `HomeMatchesKindRecent` utilisé [x] ; P1-6 tests qui mordent (fetchMore, Carousel + hook, `useNavigateToMatch`) [x] ; P2 défilement ramené à 30 tuiles : consigné en Découvertes. Ronde 2 : par le pilote.
 
@@ -502,6 +502,7 @@ banc ~1,56 Go après un passage.
 
 ## Découvertes
 
+- Revue ronde 2 piste A (P2, non traités) : (1) `MatchViewPage.tsx:71` rend `null` pendant le chargement de la vue, donc la barre de navigation est absente à chaque pas vers un match non en cache (comportement antérieur au lot ; les voisins, à 7-10 ms, arrivent avant la vue) ; (2) `MatchHeader.tsx:146` `pendingStep` n'est remis à zéro ni au changement de match ni sur erreur des voisins : un pas retenu peut être joué sur un autre match si l'utilisateur change de match avant la réponse (rare) ; (3) `match_view_repo_neighbors_skill.go:27,85` : Q25 lit le live pour tous ses appelants (vue match ouverte hors Accueil comprise) et attend le provider pendant un écrit, borné à 10 s (500 `neighbors_error` au-delà), comme la liste de l'Accueil.
 - `analysis/identity.go` (`v_gamertag_lookup`, annuaire des noms) lit encore `match_kill_events_latest` pour résoudre les noms : hors du critère du volet 2 (lecture de noms, pas un agrégat), allowlistée en 9.5 ; à reprendre dans un chantier « annuaire » si mesuré coûteux.
 - Banc (2026-10-21) : un serveur gardé entre deux passages ralentit de 6 à 15 % par passage, et sa mémoire privée atteint ~1,6 Go après UN passage de 34 pages (2 fils DuckDB, 512 Mo). Le VPS de prod a 1,8 Go de RAM au total : pression mémoire à surveiller (non traité ici).
 - Comparaison : 5,9 s sur 6,2 passés HORS sections (frags entre joueurs non bornés, `QKillsBetweenPlayers`) ; seule la partie servie par S1 est dans le périmètre (9.2).
