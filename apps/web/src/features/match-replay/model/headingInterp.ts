@@ -9,7 +9,7 @@
  * court chemin, et non une moyenne arithmétique).
  *
  * CE QUE CETTE INTERPOLATION NE FAIT PAS, ET C'EST VOLONTAIRE :
- *  - elle ne traverse jamais un SILENCE de réplication (`g > 0`) ni une coupure (`cut`) : comme la
+ *  - elle ne traverse jamais un SILENCE de réplication (`g > 0`) : comme la
  *    position, le cap est tenu au point qui précède — un véhicule ne tourne pas pendant que le film
  *    se tait ;
  *  - elle ne comble pas un trou plus long que `HEADING_INTERP_MAX_SPAN_FRAMES` : au-delà, les deux
@@ -32,8 +32,6 @@ export interface HeadingPoint {
   h?: number
   /** Silence de réplication qui PRÉCÈDE ce point (ms) : on ne tourne pas au travers. */
   g?: number
-  /** Coupure posée sur ce point : même règle qu'un silence. */
-  cut?: boolean
 }
 
 /**
@@ -43,10 +41,6 @@ export interface HeadingPoint {
 export function lerpHeadingDeg(from: number, to: number, f: number): number {
   const delta = ((((to - from) % 360) + 540) % 360) - 180
   return (((from + delta * f) % 360) + 360) % 360
-}
-
-function breaksHeading(p: HeadingPoint): boolean {
-  return (p.g ?? 0) > 0 || p.cut === true
 }
 
 /**
@@ -66,7 +60,7 @@ export function headingTowardNext(
   if (frame <= prev.t) return held
   for (let j = prevIdx + 1; j < points.length; j++) {
     const next = points[j]
-    if (breaksHeading(next)) return held
+    if ((next.g ?? 0) > 0) return held
     if (next.t - prev.t > maxSpanFrames) return held
     if (next.h === undefined || next.t <= frame) continue
     return lerpHeadingDeg(held, next.h, (frame - prev.t) / (next.t - prev.t))
