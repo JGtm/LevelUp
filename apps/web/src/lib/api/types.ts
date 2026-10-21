@@ -1115,22 +1115,6 @@ export interface SessionSummaryItem {
   teammates?: string[]
 }
 
-export interface RecentMediaItem {
-  basename: string
-  file_path: string
-  kind: string
-  thumbnail_path: string | null
-  match_id: string | null
-  capture_end_utc: string | null
-  match_start_time: string | null
-  section: string
-  owner_gamertag: string | null
-  map_name: string | null
-  mode_name: string | null
-  liked: boolean
-  like_count: number
-}
-
 export type HomeCareerRankSummary = components['schemas']['HomeCareerRankSummary']
 
 export type HomeSkillPeakSummary = components['schemas']['HomeSkillPeakSummary']
@@ -1163,7 +1147,6 @@ export interface HomePageResponse {
   highlights: HighlightItem[]
   recent_matches: RecentMatchItem[]
   favorite_matches: RecentMatchItem[]
-  recent_media: RecentMediaItem[]
   solo_session: SessionSummaryItem | null
   squad_session: SessionSummaryItem | null
   solo_sessions?: SessionSummaryItem[]

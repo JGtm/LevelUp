@@ -64,8 +64,8 @@ func newTestPlayerDB(t *testing.T) *PlayerDB {
 	attachGlobalSchemaToPlayer(t, player, global)
 	// Phase 3.bis plan stabilisation 2026-05-22 : seed SharedSocial avec le
 	// vrai schéma shared_social.duckdb (id PK + media_file_id JOIN key). Sans
-	// ça, les tests qui ciblent les repos migrés sur pdb.SharedSocial (Q28
-	// LoadRecentMedia) ne peuvent pas valider le path.
+	// ça, les tests qui ciblent les repos migrés sur pdb.SharedSocial ne
+	// peuvent pas valider le path.
 	seedSharedSocialSchema(t, social)
 	// SharedReader pointe vers `player` (qui contient le faux schéma `shared`
 	// créé par seedPlayerSchema) pour que les tests legacy qui font
@@ -1662,37 +1662,6 @@ func TestHomeRepo_LoadHomeSessions_WithData(t *testing.T) {
 	}
 	if len(rows) != 1 {
 		t.Errorf("attendu 1 session, obtenu %d", len(rows))
-	}
-}
-
-func TestHomeRepo_LoadRecentMedia_WithData(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	repo := NewHomeRepo(pdb)
-	rows, err := repo.LoadRecentMedia(context.Background(), 10)
-	if err != nil {
-		t.Fatalf("LoadRecentMedia: %v", err)
-	}
-	if len(rows) != 1 {
-		t.Errorf("attendu 1 média, obtenu %d", len(rows))
-	}
-}
-
-func TestHomeRepo_LoadRecentMedia_TableMissing(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	ctx := context.Background()
-	// Phase 3 plan stabilisation 2026-05-22 : LoadRecentMedia lit désormais
-	// depuis pdb.SharedSocial (table déplacée par migration
-	// drop_media_from_player_db). Test mis à jour pour DROP côté shared_social.
-	if _, err := pdb.SharedSocial.Exec(ctx, "DROP TABLE media_files"); err != nil {
-		t.Fatal(err)
-	}
-	repo := NewHomeRepo(pdb)
-	rows, err := repo.LoadRecentMedia(ctx, 10)
-	if err != nil {
-		t.Fatalf("LoadRecentMedia table manquante doit être silencieux: %v", err)
-	}
-	if rows != nil {
-		t.Errorf("attendu nil, obtenu %v", rows)
 	}
 }
 

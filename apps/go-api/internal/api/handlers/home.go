@@ -1,7 +1,7 @@
 // Package handlers — home.go : handlers HTTP pour la page d'accueil Mission Control.
 //
 // MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
-// /players/{player_slug} (ownership/title hérités) et enregistre l'unique GET. Les
+// /players/{player_slug} (ownership/title hérités) et enregistre les GET. Les
 // en-têtes de cache (anciens middlewares CacheMaxAge/NoStore) sont posés dans les
 // Output. /pages/home conserve son ETag/304 byte-exact via un Body []byte
 // passthrough (writeJSONCached n'ajoute pas de trailing newline, contrairement à
@@ -9,7 +9,8 @@
 //
 // Endpoints :
 //
-//	GET /api/v1/players/{player_slug}/pages/home     → HomePageResponse (ETag/304, max-age 30)
+//	GET /api/v1/players/{player_slug}/pages/home         → HomePageResponse (ETag/304, max-age 30)
+//	GET /api/v1/players/{player_slug}/pages/home/matches → HomeMatchesPage (home_matches.go)
 package handlers
 
 import (
@@ -49,11 +50,12 @@ func NewHomeHandler(newSvc HomeAuthFactory, settingsStore *settings_platform.Sto
 	return &HomeHandler{newSvc: newSvc, settingsStore: settingsStore}
 }
 
-// Mount enregistre l'unique GET via Huma sur le sous-routeur chi (préfixe
+// Mount enregistre les deux GET via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *HomeHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/pages/home", h.handleGetHomePage, humacore.Op("getHomePage", "Page Accueil", "home"))
+	huma.Get(api, "/pages/home/matches", h.handleGetHomeMatches, humacore.Op("getHomeMatches", "Tuiles de match de l'Accueil (pages suivantes, favoris)", "home"))
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -120,13 +122,19 @@ func (h *HomeHandler) handleGetHomePage(ctx context.Context, in *homePageInput) 
 	if err != nil {
 		return nil, homePageError(sctx, err, gamertag)
 	}
+	return homeJSONOutput(sctx, page, in.IfNoneMatch, homeCacheControl)
+}
 
-	// Sérialisation byte-exacte de writeJSONCached : sanitize → json.Marshal → ETag
-	// sha256[:8], SANS trailing newline (Body []byte passthrough, pas JSONFormat).
-	sanitized, nanPaths := humacore.SanitizeFloatsForJSON(page)
+// homeJSONOutput sérialise une réponse d'Accueil à la main et la sert avec son ETag.
+//
+// Sérialisation byte-exacte de writeJSONCached : sanitize → json.Marshal → ETag sha256[:8], SANS
+// trailing newline (Body []byte passthrough, pas JSONFormat). Partagée par /pages/home et
+// /pages/home/matches : une seule règle d'ETag, de neutralisation NaN/Inf et de 304.
+func homeJSONOutput(ctx context.Context, v any, ifNoneMatch, cacheControl string) (*homePageOutput, error) {
+	sanitized, nanPaths := humacore.SanitizeFloatsForJSON(v)
 	if len(nanPaths) > 0 {
 		// Parité avec writeJSONCached : tracer la neutralisation NaN/Inf (signal serveur).
-		slog.WarnContext(sctx, "home: NaN/Inf neutralized", "paths", nanPaths, "count", len(nanPaths))
+		slog.WarnContext(ctx, "home: NaN/Inf neutralized", "paths", nanPaths, "count", len(nanPaths))
 	}
 	body, merr := json.Marshal(sanitized)
 	if merr != nil {
@@ -134,13 +142,13 @@ func (h *HomeHandler) handleGetHomePage(ctx context.Context, in *homePageInput) 
 	}
 	sum := sha256.Sum256(body)
 	etag := fmt.Sprintf(`"%x"`, sum[:8])
-	if in.IfNoneMatch != "" && in.IfNoneMatch == etag {
-		return &homePageOutput{Status: http.StatusNotModified, CacheControl: homeCacheControl, ETag: etag}, nil
+	if ifNoneMatch != "" && ifNoneMatch == etag {
+		return &homePageOutput{Status: http.StatusNotModified, CacheControl: cacheControl, ETag: etag}, nil
 	}
 	return &homePageOutput{
 		Status:       http.StatusOK,
 		ContentType:  "application/json",
-		CacheControl: homeCacheControl,
+		CacheControl: cacheControl,
 		ETag:         etag,
 		Body:         body,
 	}, nil

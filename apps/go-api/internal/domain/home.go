@@ -11,13 +11,6 @@ import "time"
 // (P4.3 finale cleanup) — toutes les références ont migré, plus d'alias dans
 // domain.
 
-// HomeMediaRow est une ligne brute chargée depuis Q28 (médias récents).
-type HomeMediaRow struct {
-	FileName       string
-	MatchID        *string
-	MatchStartTime *time.Time
-}
-
 // HomeSkillPeakRow est la projection brute d'un pic historique CSR ou LUSR
 // lu depuis match_skill_rank / player_csr_snapshots.
 //
@@ -429,35 +422,33 @@ type SessionSummaryItem struct {
 }
 
 // ---------------------------------------------------------------------------
-// Médias récents
-// ---------------------------------------------------------------------------
-
-// RecentMediaItem est une entrée compacte d'un média récent.
-type RecentMediaItem struct {
-	Basename       string     `json:"basename"`
-	MatchID        *string    `json:"match_id,omitempty"`
-	MatchStartTime *time.Time `json:"match_start_time,omitempty"`
-}
-
-// ---------------------------------------------------------------------------
 // Réponses API
 // ---------------------------------------------------------------------------
 
 // HomePageResponse est la réponse agrégée de la page d'accueil Mission Control.
+//
+// RecentMatches est la TÊTE de la liste de tuiles (HomeTilesHeadSize au plus), pas
+// l'historique : la suite se lit par curseur sur GET /pages/home/matches (HomeMatchesPage).
+// RecentMatchesTotal est le compte réel des tuiles de l'historique (lignes à match_id non vide),
+// jamais la longueur de la tête. FavoriteMatches : les favoris du joueur en entier (liste choisie
+// par le joueur, bornée par son geste), relus seuls par la même route en kind=favorites.
 type HomePageResponse struct {
-	Hero                HomeHeroCard         `json:"hero"`
-	SpartanIdentity     *HomeSpartanIdentity `json:"spartan_identity,omitempty"`
-	Highlights          []HighlightItem      `json:"highlights"`
-	RecentMatches       []RecentMatchItem    `json:"recent_matches"`
-	FavoriteMatches     []RecentMatchItem    `json:"favorite_matches"`
-	RecentMedia         []RecentMediaItem    `json:"recent_media"`
-	SoloSession         *SessionSummaryItem  `json:"solo_session,omitempty"`
-	SquadSession        *SessionSummaryItem  `json:"squad_session,omitempty"`
-	SoloSessions        []SessionSummaryItem `json:"solo_sessions,omitempty"`
-	SquadSessions       []SessionSummaryItem `json:"squad_sessions,omitempty"`
-	HasRankedHistory    bool                 `json:"has_ranked_history"`
-	HasUnrankedHistory  bool                 `json:"has_unranked_history"`
-	RecentPlaylistRanks []HomePlaylistRank   `json:"recent_playlist_ranks,omitempty"`
+	Hero                    HomeHeroCard         `json:"hero"`
+	SpartanIdentity         *HomeSpartanIdentity `json:"spartan_identity,omitempty"`
+	Highlights              []HighlightItem      `json:"highlights"`
+	RecentMatches           []RecentMatchItem    `json:"recent_matches"`
+	FavoriteMatches         []RecentMatchItem    `json:"favorite_matches"`
+	RecentMatchesTotal      int                  `json:"recent_matches_total"`
+	RecentMatchesHasMore    bool                 `json:"recent_matches_has_more"`
+	RecentMatchesNextBefore string               `json:"recent_matches_next_before,omitempty"`
+	LastSessionOutcomes     []HomeSessionOutcome `json:"last_session_outcomes"`
+	SoloSession             *SessionSummaryItem  `json:"solo_session,omitempty"`
+	SquadSession            *SessionSummaryItem  `json:"squad_session,omitempty"`
+	SoloSessions            []SessionSummaryItem `json:"solo_sessions,omitempty"`
+	SquadSessions           []SessionSummaryItem `json:"squad_sessions,omitempty"`
+	HasRankedHistory        bool                 `json:"has_ranked_history"`
+	HasUnrankedHistory      bool                 `json:"has_unranked_history"`
+	RecentPlaylistRanks     []HomePlaylistRank   `json:"recent_playlist_ranks,omitempty"`
 }
 
 // BattlePassResponse contient les informations Battle Pass live ou depuis le cache DB.

@@ -5,7 +5,7 @@
 //
 // La logique est répartie dans les sous-modules suivants :
 //   - home_repo_matches.go         : LoadHomeMatches, CountPlayerMatches,
-//     LoadHomeSessions, LoadRecentMedia
+//     LoadHomeSessions
 //   - home_repo_identity.go        : Spartan identity (Q26c, Q26d)
 //   - home_repo_skill_peak.go      : CSR/LUSR peak + badge URL builder
 //   - home_repo_playlist_ranks.go  : 3 dernières playlists (Q26g, 3 phases)

@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -401,46 +400,4 @@ func (r *HomeRepo) loadHomeSessionsStartTimes(ctx context.Context, matchIDs []st
 		}
 	}
 	return out
-}
-
-// LoadRecentMedia charge les médias récents du joueur (Q28).
-// Retourne une liste vide si la table media_files n'existe pas.
-//
-// Phase 3 plan stabilisation 2026-05-22 : migré de pdb.ReadDB() (player conn)
-// vers pdb.SharedSocial. La table media_files (et media_match_associations)
-// a été déplacée vers shared_social.duckdb via migration
-// drop_media_from_player_db (cf. steps_player.go:370). Avant ce fix, la
-// query lançait "Catalog Error: Table with name media_files does not exist"
-// sur la player conn — cf. AUDIT_DUCKDB_ATTACH_2026-05-21 §2.
-func (r *HomeRepo) LoadRecentMedia(ctx context.Context, limit int) ([]domain.HomeMediaRow, error) {
-	if r.pdb.SharedSocial == nil {
-		return nil, nil
-	}
-	rows, err := r.pdb.SharedSocial.Query(ctx, Q28RecentMedia, limit)
-	if err != nil {
-		// La table media_files peut ne pas exister — dégradation silencieuse.
-		if isTableNotFoundErr(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	defer rows.Close()
-
-	var result []domain.HomeMediaRow
-	for rows.Next() {
-		var row domain.HomeMediaRow
-		var matchID sql.NullString
-		var matchStartTime sql.NullTime
-		if err := rows.Scan(&row.FileName, &matchID, &matchStartTime); err != nil {
-			return nil, err
-		}
-		if matchID.Valid {
-			row.MatchID = &matchID.String
-		}
-		if matchStartTime.Valid {
-			row.MatchStartTime = &matchStartTime.Time
-		}
-		result = append(result, row)
-	}
-	return result, rows.Err()
 }

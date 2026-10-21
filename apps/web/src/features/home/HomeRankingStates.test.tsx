@@ -53,7 +53,6 @@ function buildHomeResponse(): HomePageResponse {
     highlights: [],
     recent_matches: [],
     favorite_matches: [],
-    recent_media: [],
     solo_session: null,
     squad_session: null,
     has_ranked_history: false,

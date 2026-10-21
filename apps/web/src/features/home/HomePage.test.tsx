@@ -112,7 +112,6 @@ describe('HomePage', () => {
         highlights: [],
         recent_matches: [],
         favorite_matches: [],
-        recent_media: [],
         solo_session: null,
         squad_session: null,
       })),
@@ -186,7 +185,6 @@ describe('HomePage', () => {
         highlights: [],
         recent_matches: [],
         favorite_matches: [],
-        recent_media: [],
         solo_session: null,
         squad_session: null,
       })),
@@ -575,7 +573,6 @@ describe('HomePage', () => {
         },
         highlights: [],
         recent_matches: [],
-        recent_media: [],
         solo_session: null,
         squad_session: null,
         privacy_warning: {

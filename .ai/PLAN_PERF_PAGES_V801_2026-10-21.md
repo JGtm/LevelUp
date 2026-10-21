@@ -210,29 +210,61 @@ Pour chaque étape qui change du code, AVANT de cocher son gate :
 
 ### Étape 3 — Accueil en fenêtre, serveur (volet 1)
 
-- [ ] 3.1 Extraction `buildTiles(ctx, rows, window, favorites)` depuis `GetHomePage` (≤ 80 lignes
-      après extraction) : traductions d'assets (`EnrichCanonicalAssetTranslations`) sur la fenêtre,
-      construction, enrichissements par liste, placements, rejeux, analyse en cours.
-- [ ] 3.2 `GetHomePage` sert la tête (D-8) + `has_more` + `recent_matches_total` (= nombre de tuiles
-      que le constructeur produirait, lignes à `MatchID` non vide, pas `CountPlayerMatches`).
-- [ ] 3.3 Endpoint Huma `GET /players/{player_slug}/pages/home/matches?before=&limit=` (limite max
-      60, curseur D-8) et `?kind=favorites` ; factory authentifiée `HomeCtxWithAuth` (parité
-      `home_factories_parity_test.go`) ; handler sans logique ; méthode ajoutée au port et aux faux
-      (`health_home_test.go`, `home_test.go`, `og_inject_test.go`, `season_pass_service_test.go`).
-- [ ] 3.4 `buildFavoriteMatchListCanonical` : construit seulement les favoris.
-- [ ] 3.5 `last_session_outcomes` : tranche non nulle de `{match_id, outcome_tone, detail}`, même règle
-      que `HomePage.tsx` l.204-213, calculée sur les lignes complètes.
-- [ ] 3.6 Retrait de `recent_media` : `port.HomeRepository.LoadRecentMedia`, `noopHomeRepo`, mocks,
-      `Q28RecentMedia`, `analysis.BuildRecentMedia`, `domain.RecentMediaItem`, `HomeMediaRow`,
-      `lib/api/types.ts`, `test/handlers.ts`, tests web concernés (grep consigné).
-- [ ] 3.7 Retrait de `HomeMatchesCache` : `home_service.go`, `wire/registry.go`,
-      `registry_auth.go`, `registry_pages_home.go`, `post_sync_deltas.go`,
-      `post_sync_home_cache_test.go`, `home_factories_parity_test.go` (grep consigné).
-- [ ] 3.8 ADR 0036 : invariant I8 (D-1) ; garde-rail `TestGetHomePage_FenetreBornee` (200 matchs →
-      au plus 30 tuiles) ; test de la fenêtre aussi avec le slug `halo_5` (aucune comparaison de slug).
-- [ ] 3.9 Parité : historique de 200 matchs, concaténation des pages = ancienne `recent_matches`,
-      champ pour champ ; une synchro simulée entre deux pages ne crée ni doublon ni trou.
-- Gate : doctrine §4 ; revue adversariale close.
+- [x] 3.1 Extraction `buildTiles(ctx, tilesInput)` depuis `GetHomePage` (`service/home_service_tiles.go`) :
+      traductions d'assets (`EnrichCanonicalAssetTranslations`), construction, placements de performance,
+      rejeux, enrichissements par liste (une section par étape), analyse en cours. `tilesInput` porte
+      l'historique complet (placements), la fenêtre, les favoris, la locale, le nom de liste et `translated`
+      (la tête a déjà traduit TOUT l'historique : les sessions et faits marquants lisent aussi les libellés).
+      `GetHomePage` : 64 lignes. Chargement déplacé dans `home_service_load.go`, page dans
+      `home_service_page.go` (`home_service.go` passe de 536 à 202 lignes).
+- [x] 3.2 `GetHomePage` sert la tête (30 tuiles) + `recent_matches_has_more` + `recent_matches_next_before` +
+      `recent_matches_total` (= nombre de lignes à `MatchID` non vide, pas `CountPlayerMatches`). Ordre
+      d'affichage = instant canonique décroissant puis `match_id` décroissant (`analysis/home_tiles_window.go`,
+      une seule fonction pour la tête et les pages ; la tranche de l'appelant n'est jamais réordonnée).
+- [x] 3.3 Endpoint Huma `GET /players/{player_slug}/pages/home/matches?kind=&before=&limit=` (limite 1-60,
+      défaut 30 ; `kind=favorites` : favoris en entier) : `handlers/home_matches.go` (sans logique ; 400
+      `invalid_cursor`), `HomeService.GetHomeMatches` ajouté au port et aux quatre faux
+      (`health_home_test.go`, `home_test.go`, `og_inject_test.go`, `season_pass_service_test.go`). Même
+      factory `HomeCtxWithAuth` que `/pages/home` (aucune nouvelle factory : le garde de parité
+      `home_factories_parity_test.go` reste vert). `openapi.yaml` régénéré (`make openapi-gen`), fragment
+      manuel pour le 200 opaque (comme `/pages/home`), `generated.ts` régénéré, plafond de `limit` inscrit
+      dans `pagination_guard_test.go`. Cache : `private, no-cache` + ETag/304 (un favori basculé doit se voir).
+- [x] 3.4 `buildFavoriteMatchListCanonical` supprimée (construisait toutes les tuiles puis filtrait) :
+      remplacée par `analysis.FavoriteHomeTileRows` (lignes favorites seulement) + `buildTiles`.
+- [x] 3.5 `last_session_outcomes` : tranche non nulle de `{match_id, outcome_tone, detail}` (`domain.HomeSessionOutcome`),
+      même règle que `HomePage.tsx` l.204-213 (première tuile dont le libellé de session est celui de la
+      session solo ou escouade résumée ; sinon les 20 plus récentes), calculée sur les lignes complètes,
+      dans l'ordre d'affichage (le web inverse).
+- [x] 3.6 Retrait de `recent_media` : `port.HomeRepository.LoadRecentMedia`, `noopHomeRepo`, mocks,
+      `Q28RecentMedia`, `analysis.BuildRecentMedia`, `domain.RecentMediaItem`, `domain.HomeMediaRow`,
+      `HomeRepo.LoadRecentMedia`, section `home_recent_media`, `lib/api/types.ts` (`RecentMediaItem`,
+      `recent_media`), `test/handlers.ts`, fixtures de `HomePage.test.tsx`, `HomePage.nav.test.tsx`,
+      `HomeRankingStates.test.tsx` (grep `recent_media|RecentMediaItem|LoadRecentMedia|BuildRecentMedia|
+      HomeMediaRow|Q28RecentMedia` : 0 hors historique git). La rail de médias lit son propre endpoint.
+- [x] 3.7 Retrait de `HomeMatchesCache` (cache qui n'était plus lu depuis P4.3) : `home_matches_cache.go` +
+      test, `WithMatchesCache` -> `WithXUID` (le xuid de la page reste le sujet de l'identité Spartan et des
+      coéquipiers de session), `wire/registry.go`, `registry_auth.go`, `registry_pages_home.go`,
+      `post_sync_deltas.go` (+ `invalidateHomeCacheAfterSync`), `post_sync_home_cache_test.go`, les 2 tests
+      `TestHomeService_GetHomePage_Cache*` (déjà skippés). `home_factories_parity_test.go` : aucune référence
+      au cache, inchangé. Baseline de tests : 17 paires retirées (78 lignes), nommées dans
+      `scripts/check_test_baseline.sh` (RETRAIT DU 2026-10-21).
+- [x] 3.8 ADR 0036 : invariant I8 + ligne de garde-rails (« Eight invariants ») ; garde-rail
+      `TestGetHomePage_FenetreBornee` (200 matchs -> 30 tuiles, totaux inchangés) joué sous `halo_infinite`
+      ET `halo_5` (aucune comparaison de slug).
+- [x] 3.9 Parité : `TestGetHomeMatches_ParitePagesEtListeComplete` (200 matchs, tailles de page 0/1/17/30/
+      60/1000 : tête + pages = liste construite d'un bloc, `reflect.DeepEqual` tuile par tuile, même ordre
+      que le chargeur) ; `TestGetHomeMatches_SynchroEntreDeuxPages` (3 matchs arrivés en tête entre deux
+      pages : ni doublon ni trou) ; `analysis/home_tiles_window_test.go` (instants égaux, bornes, curseur).
+      Parité sur la copie des bases du banc : voir l'étape 4.4 (test Q25 / ordre de l'Accueil, trois comptes).
+- Décision d'exécution (étape 3, 2026-10-21) : la tête garde `favorite_matches` (construit par le même
+  `buildTiles`, sur les seules lignes favorites) jusqu'à l'étape 4, où le web reçoit sa requête dédiée aux
+  favoris (4.1, 4.6) ; la retirer ici casserait l'onglet Favoris du web entre les deux commits. Le retrait
+  de la tête est un item de 4.6.
+- Gate : [x] `go test` défaut puis `-tags=integration -p 1` sur service, analysis, domain, port, api/...,
+  platform/duckdb, archlint ; [x] `golangci-lint run --new-from-merge-base=origin/main` 0 problème ;
+  [x] `tsc -b` + `vitest run src/features/home src/lib/api src/lib/analysis-pending src/test` ;
+  [x] `bash scripts/check_test_baseline.sh tests` ; [ ] banc avant/après : mesure par le pilote ;
+  [ ] revue adversariale : par le pilote.
 
 ### Étape 4 — Accueil en fenêtre, web (volet 1)
 

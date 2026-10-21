@@ -256,6 +256,14 @@
 # `internal/platform/duckdb/sharedprovider`). 207 lignes JSONL, exactement 8 paires (Package, Test),
 # vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-21 (plan perf pages v8.0.1, étape 3 : l'Accueil sert une fenêtre de tuiles) : 17 tests
+# dont le code testé est supprimé (règle n°7) — les médias récents de la réponse de l'Accueil
+# (`BuildRecentMedia` : 4 tests de `internal/analysis` ; `HomeRepo.LoadRecentMedia` : 2 tests de
+# `internal/platform/duckdb`, la rail de médias lit son propre endpoint) et `HomeMatchesCache`, cache
+# TTL qui ne servait plus rien depuis P4.3 (8 TestHomeMatchesCache_* et les 2 TestHomeService_GetHomePage_Cache*
+# déjà skippés, de `internal/service`) ; plus TestHomeService_GetHomePage_MediaGraceful. 78 lignes JSONL,
+# exactement 17 paires (Package, Test), vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

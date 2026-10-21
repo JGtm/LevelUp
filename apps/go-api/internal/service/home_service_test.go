@@ -127,8 +127,6 @@ type mockHomeRepo struct {
 	countErr               error
 	sessions               []legacymatch.HomeSessionRow
 	sessionErr             error
-	media                  []domain.HomeMediaRow
-	mediaErr               error
 	recentPlaylistRanks    []domain.HomePlaylistRank
 	recentPlaylistRanksErr error
 	commendations          map[string][]domain.HomeMatchCommendationRaw
@@ -151,9 +149,6 @@ func (m *mockHomeRepo) CountPlayerMatches(_ context.Context) (int, error) {
 }
 func (m *mockHomeRepo) LoadHomeSessions(_ context.Context) ([]legacymatch.HomeSessionRow, error) {
 	return m.sessions, m.sessionErr
-}
-func (m *mockHomeRepo) LoadRecentMedia(_ context.Context, _ int) ([]domain.HomeMediaRow, error) {
-	return m.media, m.mediaErr
 }
 func (m *mockHomeRepo) LoadRecentPlaylistRanks(_ context.Context, _ string) ([]domain.HomePlaylistRank, error) {
 	return m.recentPlaylistRanks, m.recentPlaylistRanksErr
@@ -207,9 +202,6 @@ func TestHomeService_GetHomePage_OK(t *testing.T) {
 		sessions: []legacymatch.HomeSessionRow{
 			{MatchID: "m1", SessionLabel: strPtr("Session 1"), StartTime: &now},
 		},
-		media: []domain.HomeMediaRow{
-			{FileName: "clip1.mp4"},
-		},
 	}
 	svc := withHomeMock(NewHomeService(repo), repo)
 
@@ -232,7 +224,6 @@ func TestHomeService_GetHomePage_Empty(t *testing.T) {
 	repo := &mockHomeRepo{
 		matches:  []legacymatch.HomeMatchRow{},
 		sessions: []legacymatch.HomeSessionRow{},
-		media:    []domain.HomeMediaRow{},
 	}
 	svc := withHomeMock(NewHomeService(repo), repo)
 
@@ -257,24 +248,6 @@ func TestHomeService_GetHomePage_MatchesError(t *testing.T) {
 
 func TestHomeService_GetHomePage_SessionsError(t *testing.T) {
 	t.Skip("P4.3 finale : sessions sont dérivées des canonical rows (plus de LoadHomeSessions séparé)")
-}
-
-func TestHomeService_GetHomePage_MediaGraceful(t *testing.T) {
-	now := time.Now()
-	repo := &mockHomeRepo{
-		matches:  []legacymatch.HomeMatchRow{{MatchID: "m1", Outcome: 2, Kills: 10, Deaths: 5, StartTime: now}},
-		sessions: []legacymatch.HomeSessionRow{},
-		mediaErr: errors.New("media unavailable"),
-	}
-	svc := withHomeMock(NewHomeService(repo), repo)
-
-	resp, err := svc.GetHomePage(context.Background(), "GT", "fr")
-	if err != nil {
-		t.Fatalf("expected graceful degradation on media error, got: %v", err)
-	}
-	if resp == nil {
-		t.Fatal("expected non-nil response")
-	}
 }
 
 func TestHomeService_GetHomePage_RespectsLocale(t *testing.T) {
@@ -434,18 +407,6 @@ func TestHomeService_GetHomePage_CountMatchesFallback(t *testing.T) {
 	if resp.Hero.KPIs.TotalMatches != 1 {
 		t.Errorf("TotalMatches = %d, want 1 (fallback to len(matches))", resp.Hero.KPIs.TotalMatches)
 	}
-}
-
-// ---------------------------------------------------------------------------
-// Tests cache TTL dans GetHomePage
-// ---------------------------------------------------------------------------
-
-func TestHomeService_GetHomePage_CacheHitSkipsDBCalls(t *testing.T) {
-	t.Skip("P4.3 finale : HomeMatchesCache bypassé en mode canonical (TODO P4.4 cache canonical-aware)")
-}
-
-func TestHomeService_GetHomePage_CacheMissAfterInvalidate(t *testing.T) {
-	t.Skip("P4.3 finale : HomeMatchesCache bypassé en mode canonical (TODO P4.4 cache canonical-aware)")
 }
 
 func TestHomeService_GetHomePage_NoCacheNoPanic(t *testing.T) {

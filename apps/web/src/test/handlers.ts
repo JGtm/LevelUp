@@ -118,7 +118,6 @@ const homeFixture = {
   },
   highlights: [],
   recent_matches: [],
-  recent_media: [],
   solo_session: null,
   squad_session: null,
 }
