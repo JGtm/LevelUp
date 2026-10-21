@@ -442,7 +442,12 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
   sync/..., platform/duckdb/..., migrations Halo Infinite, cmd/levelup ; `-tags=integration -p 1` vert
   sur les mêmes paquets ; `go test ./internal/archlint/` vert ; golangci-lint
   `--new-from-merge-base=origin/main` 0 problème, avec et sans tag `integration` ;
-  `scripts/check_test_baseline.sh` : voir le rapport de l'agent. Revue adversariale : par le pilote.
+  `scripts/check_test_baseline.sh` (mode autonome, suite d'intégration complète du module, 360
+  paquets, 21 416 tests) : tous les tests de la baseline présents, aucun test ni paquet en échec ;
+  contrôle de COUVERTURE rouge (total 65,8 % contre 73,0 % de baseline). Écart de 7 points sur le
+  module entier, sans rapport mesurable avec ~600 lignes testées de ce lot ; NON vérifié sur le
+  commit de base (35 min de suite) — à confirmer par le pilote ou la CI (la baseline de couverture est
+  un gate Linux). Revue adversariale : par le pilote.
   Étape NON close : 7.5 (fixtures) et 7.8 attendent les décisions Q1 et Q2 du pilote.
 
 ### Étape 8 — Rattrapage du parc (volet 2, D-10 validée avant)
