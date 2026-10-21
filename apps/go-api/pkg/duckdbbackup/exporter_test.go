@@ -106,7 +106,11 @@ func TestExportTarget_Basic(t *testing.T) {
 	if parquets != 2 || ddls != 1 {
 		t.Errorf("expected 2 parquet files and 1 DDL file, got %d and %d", parquets, ddls)
 	}
-	schema, err := loadSchemaDDL(outDir)
+	ddlFiles, _ := filepath.Glob(filepath.Join(outDir, ddlFilePrefix+"*"))
+	if len(ddlFiles) != 1 {
+		t.Fatalf("schéma exporté : %v", ddlFiles)
+	}
+	schema, err := readSchemaFile(ddlFiles[0])
 	if err != nil || schema == nil || len(schema.Tables) != 2 || !strings.HasPrefix(schema.Tables["players"], "CREATE TABLE players") {
 		t.Errorf("schéma exporté inattendu : %+v (err=%v)", schema, err)
 	}

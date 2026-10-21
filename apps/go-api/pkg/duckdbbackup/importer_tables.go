@@ -15,6 +15,7 @@ import (
 // schéma lisible) et verse ses tables.
 type tableSchema struct {
 	key    string
+	cycle  string // horodatage de l'export dont le schéma est rejoué
 	ddl    *schemaDDL
 	result *ImportResult
 }
@@ -83,15 +84,10 @@ func (ts *tableSchema) schemaFailure(ctx context.Context, stmt string, err error
 // par colonne nommée. Aucune ligne n'est jamais écartée : si le schéma est refusé, ou s'il
 // refuse une ligne (base sauvegardée elle-même hors de ses contraintes), la table est importée
 // telle quelle par le repli sans clé.
-func (ts *tableSchema) importTable(ctx context.Context, db *sql.DB, table, parqPath string) error {
-	src := "read_parquet(" + duckdbkeys.Literal(filepath.ToSlash(parqPath)) + ")"
-	var stmt string
-	if ts.ddl != nil {
-		var ok bool
-		if stmt, ok = ts.ddl.Tables[table]; !ok {
-			slog.WarnContext(ctx, "restore: table absente du schéma de la sauvegarde", "key", ts.key, "table", table)
-		}
-	}
+func (ts *tableSchema) importTable(ctx context.Context, db *sql.DB, f parquetFile) error {
+	table := f.table
+	src := "read_parquet(" + duckdbkeys.Literal(filepath.ToSlash(f.path)) + ")"
+	stmt := ts.tableDDL(ctx, f)
 	if stmt == "" {
 		return ts.fallback(ctx, db, table, src)
 	}
@@ -154,4 +150,23 @@ func identList(cols []string) string {
 		quoted[i] = duckdbkeys.Ident(c)
 	}
 	return strings.Join(quoted, ", ")
+}
+
+// tableDDL rend le CREATE TABLE de la table, "" (repli) si la sauvegarde n'a pas de schéma, si
+// la table en est absente, ou si son Parquet vient d'un autre export que le schéma (dernier
+// export de la table en échec : ses lignes sont d'une autre époque que le schéma).
+func (ts *tableSchema) tableDDL(ctx context.Context, f parquetFile) string {
+	if ts.ddl == nil {
+		return ""
+	}
+	if f.ts != ts.cycle {
+		slog.WarnContext(ctx, "restore: Parquet d'un autre export que le schéma, schéma ignoré pour cette table",
+			"key", ts.key, "table", f.table, "parquet_export", f.ts, "schema_export", ts.cycle)
+		return ""
+	}
+	stmt, ok := ts.ddl.Tables[f.table]
+	if !ok {
+		slog.WarnContext(ctx, "restore: table absente du schéma de la sauvegarde", "key", ts.key, "table", f.table)
+	}
+	return stmt
 }

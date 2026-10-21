@@ -197,25 +197,15 @@ func (im *importer) doImport(ctx context.Context, key, parquetDir, dbPath string
 	}
 	defer func() { _ = db.Close() }()
 
-	schema, err := loadSchemaDDL(parquetDir)
-	switch {
-	case err != nil:
-		slog.WarnContext(ctx, "restore: schéma de la sauvegarde illisible — tables et lignes seules (ni clé, ni défaut, ni séquence, ni vue)",
-			"key", key, "err", err)
-		schema = nil
-	case schema == nil:
-		slog.WarnContext(ctx, "restore: sauvegarde sans schéma (antérieure à son export) — tables et lignes seules (ni clé, ni défaut, ni séquence, ni vue)",
-			"key", key)
-	}
-	ts := &tableSchema{key: key, ddl: schema, result: im.result}
-	ts.replay(ctx, db, ts.sequences())
-
 	files, err := parquetFiles(parquetDir)
 	if err != nil {
 		return err
 	}
+	cycle := latestCycle(files)
+	ts := &tableSchema{key: key, cycle: cycle, ddl: loadKeySchema(ctx, key, parquetDir, cycle), result: im.result}
+	ts.replay(ctx, db, ts.sequences())
 	for _, f := range files {
-		if err := ts.importTable(ctx, db, f.table, f.path); err != nil {
+		if err := ts.importTable(ctx, db, f); err != nil {
 			return fmt.Errorf("table %q: %w", f.table, err)
 		}
 	}
@@ -230,8 +220,40 @@ func (im *importer) doImport(ctx context.Context, key, parquetDir, dbPath string
 	return nil
 }
 
-// parquetFile : une table à importer et son fichier.
-type parquetFile struct{ table, path string }
+// loadKeySchema rend le schéma exporté par le cycle des Parquet retenus, ou nil (repli de toute
+// la clé sur des tables sans clé), avec le WARN qui dit pourquoi.
+func loadKeySchema(ctx context.Context, key, dir, cycle string) *schemaDDL {
+	const seules = " — tables et lignes seules (ni clé, ni défaut, ni séquence, ni vue)"
+	schema, other, err := loadSchemaDDL(dir, cycle)
+	switch {
+	case err != nil:
+		slog.WarnContext(ctx, "restore: schéma de la sauvegarde illisible"+seules, "key", key, "err", err)
+		return nil
+	case schema == nil && other:
+		slog.WarnContext(ctx, "restore: schéma d'un autre export ignoré (aucun schéma pour le cycle des Parquet retenus)"+seules,
+			"key", key, "cycle", cycle)
+	case schema == nil:
+		slog.WarnContext(ctx, "restore: sauvegarde sans schéma (antérieure à son export)"+seules, "key", key)
+	}
+	return schema
+}
+
+// parquetFile : une table à importer, son fichier et l'horodatage de son export.
+type parquetFile struct{ table, path, ts string }
+
+// tsCapture extrait l'horodatage d'export du nom d'un fichier Parquet.
+var tsCapture = regexp.MustCompile(`_(\d{8}_\d{6})\.parquet$`)
+
+// latestCycle rend l'horodatage du dernier export présent parmi files ("" si aucun).
+func latestCycle(files []parquetFile) string {
+	latest := ""
+	for _, f := range files {
+		if f.ts > latest {
+			latest = f.ts
+		}
+	}
+	return latest
+}
 
 // parquetFiles liste, pour chaque table, le fichier Parquet le plus récent de dir
 // (récursivement), triés par nom de table. Le staging peut garder plusieurs exports d'une même
@@ -253,7 +275,11 @@ func parquetFiles(dir string) ([]parquetFile, error) {
 	})
 	out := make([]parquetFile, 0, len(latest))
 	for table, path := range latest {
-		out = append(out, parquetFile{table: table, path: path})
+		f := parquetFile{table: table, path: path}
+		if m := tsCapture.FindStringSubmatch(filepath.Base(path)); m != nil {
+			f.ts = m[1]
+		}
+		out = append(out, f)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].table < out[j].table })
 	return out, err

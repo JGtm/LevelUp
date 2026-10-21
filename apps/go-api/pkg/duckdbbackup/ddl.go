@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"levelup/go-api/internal/platform/atomicfile"
@@ -105,30 +104,42 @@ func readSchemaDDL(ctx context.Context, db *sql.DB) (*schemaDDL, error) {
 	return s, nil
 }
 
-// loadSchemaDDL lit le schéma le plus récent du dossier Parquet d'une clé. Aucun fichier
-// (sauvegarde antérieure à son introduction) : (nil, nil). Fichier illisible ou incomplet :
-// erreur — l'appelant replie la clé sur des tables sans clé, sans arrêter la restauration.
-func loadSchemaDDL(dir string) (*schemaDDL, error) {
+// loadSchemaDDL lit le schéma exporté par le MÊME cycle que les Parquet retenus (horodatage
+// `ts`) : un schéma d'un autre export ne décrit pas ces lignes et n'est jamais rejoué. Aucun
+// schéma de ce cycle : (nil, other, nil), other indiquant qu'un schéma d'un autre export est
+// présent (ignoré). Fichier illisible ou incomplet : erreur — l'appelant replie la clé sur des
+// tables sans clé, sans arrêter la restauration.
+func loadSchemaDDL(dir, ts string) (s *schemaDDL, other bool, err error) {
 	matches, err := filepath.Glob(filepath.Join(dir, ddlFilePrefix+"*"+ddlFileSuffix))
-	if err != nil || len(matches) == 0 {
-		return nil, err
-	}
-	sort.Strings(matches)
-	latest := matches[len(matches)-1]
-	data, err := os.ReadFile(latest)
 	if err != nil {
-		return nil, fmt.Errorf("lecture du schéma %s: %w", latest, err)
+		return nil, false, err
+	}
+	want := filepath.Join(dir, ddlFilePrefix+ts+ddlFileSuffix)
+	for _, m := range matches {
+		if ts != "" && filepath.Base(m) == filepath.Base(want) {
+			s, err := readSchemaFile(m)
+			return s, false, err
+		}
+	}
+	return nil, len(matches) > 0, nil
+}
+
+// readSchemaFile lit et valide un fichier de schéma exporté.
+func readSchemaFile(path string) (*schemaDDL, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("lecture du schéma %s: %w", path, err)
 	}
 	var s schemaDDL
 	if err := json.Unmarshal(data, &s); err != nil {
-		return nil, fmt.Errorf("schéma %s illisible: %w", latest, err)
+		return nil, fmt.Errorf("schéma %s illisible: %w", path, err)
 	}
 	if len(s.Tables) == 0 {
-		return nil, fmt.Errorf("schéma %s sans table", latest)
+		return nil, fmt.Errorf("schéma %s sans table", path)
 	}
 	for table, stmt := range s.Tables {
 		if !strings.HasPrefix(strings.ToUpper(strings.TrimSpace(stmt)), "CREATE TABLE") {
-			return nil, fmt.Errorf("schéma %s : instruction inattendue pour %s", latest, table)
+			return nil, fmt.Errorf("schéma %s : instruction inattendue pour %s", path, table)
 		}
 	}
 	return &s, nil

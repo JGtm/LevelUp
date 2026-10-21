@@ -223,8 +223,8 @@ func removeDDL(t *testing.T, staging string) {
 	}
 }
 
-// TestImport_SchemaTronqueDegradeLaCleSeulement : un `_ddl_` plus récent mais tronqué (export
-// interrompu, disque plein) ne fait pas échouer la restauration : la clé concernée retombe sur
+// TestImport_SchemaTronqueDegradeLaCleSeulement : le `_ddl_` du cycle, tronqué (export
+// interrompu, disque plein), ne fait pas échouer la restauration : la clé concernée retombe sur
 // des tables sans clé (comptées), sans perte de ligne, et les autres clés sont restaurées avec
 // leur schéma.
 func TestImport_SchemaTronqueDegradeLaCleSeulement(t *testing.T) {
@@ -233,7 +233,12 @@ func TestImport_SchemaTronqueDegradeLaCleSeulement(t *testing.T) {
 	if err := os.Rename(filepath.Join(other, "db2"), filepath.Join(staging, "db2")); err != nil {
 		t.Fatal(err)
 	}
-	truncated := filepath.Join(staging, "db1", ddlFilePrefix+"99991231_235959"+ddlFileSuffix)
+	// Le schéma du MÊME cycle que les Parquet, tronqué.
+	ddlFiles, err := filepath.Glob(filepath.Join(staging, "db1", ddlFilePrefix+"*"))
+	if err != nil || len(ddlFiles) != 1 {
+		t.Fatalf("schéma exporté : %v (err=%v)", ddlFiles, err)
+	}
+	truncated := ddlFiles[0]
 	if err := os.WriteFile(truncated, []byte(`{"sequences": [], "tables": {"t": "CREATE TA`), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -266,7 +271,7 @@ func TestWriteSchemaDDL_EcritureAtomique(t *testing.T) {
 	dir := t.TempDir()
 	ok := filepath.Join(dir, ddlFilePrefix+"1"+ddlFileSuffix)
 	writeSchemaDDL(context.Background(), db, "k", ok)
-	if s, err := loadSchemaDDL(dir); err != nil || s == nil || s.Tables["t"] == "" {
+	if s, err := readSchemaFile(ok); err != nil || s == nil || s.Tables["t"] == "" {
 		t.Fatalf("schéma écrit illisible : %+v (err=%v)", s, err)
 	}
 	missing := filepath.Join(dir, "absent")
@@ -277,5 +282,52 @@ func TestWriteSchemaDDL_EcritureAtomique(t *testing.T) {
 	}
 	if len(entries) != 1 {
 		t.Fatalf("fichiers restants après un échec d'écriture : %d, want 1", len(entries))
+	}
+}
+
+// TestImport_SchemaDUnAutreExportIgnore : le staging garde deux cycles ; le dernier n'a pas
+// écrit son schéma. Le schéma du cycle précédent ne décrit pas les lignes retenues : il est
+// ignoré et la table passe par le repli (comptée), jamais rejouée avec un schéma d'une autre
+// époque.
+func TestImport_SchemaDUnAutreExportIgnore(t *testing.T) {
+	staging := exportDB(t, "db1", `CREATE TABLE t (v INTEGER PRIMARY KEY); INSERT INTO t VALUES (1), (2);`)
+	parquets, err := filepath.Glob(filepath.Join(staging, "db1", "t_*.parquet"))
+	if err != nil || len(parquets) != 1 {
+		t.Fatalf("export : %v (err=%v)", parquets, err)
+	}
+	// Dernier cycle : ses Parquet, sans le schéma qui aurait dû les accompagner.
+	if err := os.Rename(parquets[0], filepath.Join(staging, "db1", "t_99991231_235959.parquet")); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(t.TempDir(), "db1.duckdb")
+	res := importTo(t, staging, target, nil)
+	if len(res.FallbackTables) != 1 || res.FallbackTables[0] != "db1:t" {
+		t.Fatalf("le schéma d'un autre export doit être ignoré : %+v", res)
+	}
+	if n := scalar(t, openRestored(t, target), `SELECT count(*) FROM t`); n != 2 {
+		t.Fatalf("lignes perdues : %d", n)
+	}
+}
+
+// TestImport_TableDUnCycleAnterieurRepli : une table dont le dernier export a échoué garde son
+// Parquet d'un cycle antérieur ; le schéma du dernier cycle ne la décrit pas à cette époque :
+// elle passe par le repli, les autres tables gardent le schéma.
+func TestImport_TableDUnCycleAnterieurRepli(t *testing.T) {
+	staging := exportDB(t, "db1", `CREATE TABLE t (v INTEGER PRIMARY KEY); INSERT INTO t VALUES (1);
+		CREATE TABLE u (v INTEGER PRIMARY KEY); INSERT INTO u VALUES (1);`)
+	us, err := filepath.Glob(filepath.Join(staging, "db1", "u_*.parquet"))
+	if err != nil || len(us) != 1 {
+		t.Fatalf("export : %v (err=%v)", us, err)
+	}
+	if err := os.Rename(us[0], filepath.Join(staging, "db1", "u_20000101_000000.parquet")); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(t.TempDir(), "db1.duckdb")
+	res := importTo(t, staging, target, nil)
+	if len(res.FallbackTables) != 1 || res.FallbackTables[0] != "db1:u" {
+		t.Fatalf("FallbackTables = %v, want [db1:u]", res.FallbackTables)
+	}
+	if countConstraints(t, openRestored(t, target), "t", "PRIMARY KEY") != 1 {
+		t.Fatal("la table du dernier cycle doit garder son schéma")
 	}
 }
