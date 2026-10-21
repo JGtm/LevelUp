@@ -1,6 +1,6 @@
 # ADR 0039 — Per-match summaries of the kill feed, written with the pass
 
-Status: accepted (2026-10-21)
+Status: accepted (2026-10-21) — implementation in progress (plan `.ai/PLAN_PERF_PAGES_V801_2026-10-21.md`, steps 7 to 9): until it lands, readers still read the feed and the guard of Decision 8 does not exist yet.
 Relates to: ADR 0019 (Collect → Persist), ADR 0026 (append-only + `_latest`; adds a fifth
 current-version mechanism, "generation decided by a head"), ADR 0030 D-4 (raw reads guard),
 ADR 0034 D-6 (one revision per thing that can change), ADR 0036 I2 (bounded windows) and its
