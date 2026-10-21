@@ -82,6 +82,14 @@ describe('playerCardFx — les éclats d’une fiche vivante', () => {
     expect(playerCardFx(input({ teleportAge: 15 })).translocationDelay).toBeNull()
   })
 
+  it('POSE de la faille : le même fourreau, avec sa propre phrase (pas « passage »)', () => {
+    const fx = playerCardFx(input({ teleportAge: 7, teleportPose: true }))
+    expect(fx.translocationDelay).toBe('-0.600s')
+    expect(fx.title).toBe(REPLAY_TEXT.fr.translocationPose)
+    expect(REPLAY_TEXT.fr.translocationPose).not.toBe(REPLAY_TEXT.fr.translocationFlash)
+    expect(REPLAY_TEXT.en.translocationPose).not.toBe(REPLAY_TEXT.en.translocationFlash)
+  })
+
   it('réapparition et translocation COEXISTENT : deux couches, deux animations', () => {
     const fx = playerCardFx(input({ lifeAge: 5, teleportAge: 2 }))
     expect(fx.flashClass).toBe('replay-flash-respawn')

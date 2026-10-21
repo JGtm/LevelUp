@@ -353,12 +353,16 @@ describe('drawVehiclesLayer — LA DESTRUCTION (schéma 39, demande utilisateur 
     expect(count(ops, 'drawImage')).toBe(1)
   })
 
-  it('EXPLOSION PLASMA pour une famille Covenant/Bannis (Ghost)', () => {
-    const ghost = track({ end: 'destroyed', tEnd: 50, rides: [], family: 'ghost' })
-    const colors = paintedColors(paint([ghost], style(), { frame: 50 }))
-    expect(colors).toContain('INK-PLASMA')
-    expect(colors).not.toContain('INK-NORMALE')
-  })
+  it.each(['ghost', 'banshee', 'wraith', 'chopper', 'shade'])(
+    'EXPLOSION ROUGE (plasma_hot) pour un véhicule Banni : %s — jamais le bleu du plasma froid',
+    (family) => {
+      const banni = track({ end: 'destroyed', tEnd: 50, rides: [], family })
+      const colors = paintedColors(paint([banni], style(), { frame: 50 }))
+      expect(colors).toContain('INK-PLASMA-HOT')
+      expect(colors).not.toContain('INK-PLASMA')
+      expect(colors).not.toContain('INK-NORMALE')
+    },
+  )
 
   it('EXPLOSION NORMALE pour un véhicule humain (Warthog)', () => {
     const warthog = track({ end: 'destroyed', tEnd: 50, rides: [], family: 'warthog' })
@@ -598,5 +602,31 @@ describe('drawVehiclesLayer — ÉLÉMENTS DE CARTE (lot 1.9.9, décision utilis
       styleTourelle(),
     )
     expect(count(ops, 'arc')).toBe(0)
+  })
+})
+
+describe('drawVehiclesLayer — le plafond de taille suit la TOILE (contrôles v8, petit écran)', () => {
+  /** Un très long châssis (5 120 mm) : au-dessus du plafond doux, donc sensible au plafond de toile. */
+  const LONG = style({ sizeOf: () => ({ naturalWidthPx: 128, naturalHeightPx: 128, mmPerPx: 40 }) })
+
+  /** La longueur d'écran du sprite : l'échelle posée avant le dessin, fois la hauteur native. */
+  function spriteLengthPx(side: number): number {
+    const view: PlacementView = { ...VIEW, width: side, height: side }
+    const { ops, ctx } = recordingContext()
+    drawVehiclesLayer(ctx, [track({ rides: [] })], view, { frame: 50, k: 1, frameMs: 100 }, LONG)
+    const scale = ops.find((o) => o.op === 'scale')
+    return (scale?.args[0] as number) * 128
+  }
+
+  it('SANS EFFET SUR GRAND ÉCRAN : à 600 px et à 1 080 px, la taille est la même (plafond historique)', () => {
+    expect(spriteLengthPx(600)).toBeCloseTo(spriteLengthPx(1080), 6)
+  })
+
+  it('sur petit écran, le long châssis est plus petit que sur grand écran', () => {
+    expect(spriteLengthPx(360)).toBeLessThan(spriteLengthPx(1080))
+  })
+
+  it('et il reste lisible : jamais sous la taille d\'un châssis qui passe sous le plafond', () => {
+    expect(spriteLengthPx(360)).toBeGreaterThan(0.12 * 360)
   })
 })

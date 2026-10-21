@@ -15,15 +15,47 @@ describe('MatchMediaTab - etat vide', () => {
     expect(screen.getByText(t.mediaNoCapturesDesc)).toBeInTheDocument()
   })
 
-  it('l état vide pointillé est DANS un bloc parent (Card), jamais nu sous le titre de section', () => {
+  it('l état vide pointillé est DANS le bloc à titre, jamais nu sous le titre de section', () => {
     const t = MATCH_VIEW_TEXT.fr
     renderWithProviders(<MatchMediaTab items={[]} playerSlug="p" matchId="m" t={t} />)
-    const bloc = screen.getByTestId('match-media-empty')
+    const bloc = screen.getByRole('heading', { name: t.sectionMedia }).closest('section') as HTMLElement
     const notice = bloc.querySelector('.border-dashed')
     expect(notice).not.toBeNull()
     expect(notice).not.toBe(bloc)
     expect(bloc.className).toContain('border')
-    expect(bloc.contains(notice)).toBe(true)
+    expect(bloc.contains(screen.getByTestId('match-media-empty'))).toBe(true)
+  })
+})
+
+describe('MatchMediaTab - bloc à titre', () => {
+  const item = (n: number): MatchAssociatedMedia => ({
+    file_id: `f${n}`,
+    file_name: `clip${n}.mp4`,
+    file_path: `/media/p/clip${n}.mp4`,
+    kind: 'video',
+    liked: false,
+  })
+
+  it.each(['fr', 'en'] as const)('avec des médias (%s) : le titre ET toutes les vignettes sont dans le même bloc', (locale) => {
+    const t = MATCH_VIEW_TEXT[locale]
+    renderWithProviders(
+      <MatchMediaTab items={[item(1), item(2), item(3)]} playerSlug="p" matchId="m" t={t} />,
+    )
+    const title = screen.getByRole('heading', { name: t.sectionMedia })
+    const bloc = title.closest('section') as HTMLElement
+    expect(bloc.className).toContain('rounded-lg')
+    const grid = screen.getByTestId('match-media-grid')
+    expect(bloc.contains(grid)).toBe(true)
+    expect(grid.children).toHaveLength(3)
+    expect(screen.queryByTestId('match-media-empty')).not.toBeInTheDocument()
+  })
+
+  it.each(['fr', 'en'] as const)('sans média (%s) : le titre reste, dans le même bloc que le message', (locale) => {
+    const t = MATCH_VIEW_TEXT[locale]
+    renderWithProviders(<MatchMediaTab items={[]} playerSlug="p" matchId="m" t={t} />)
+    const bloc = screen.getByRole('heading', { name: t.sectionMedia }).closest('section') as HTMLElement
+    expect(bloc.contains(screen.getByText(t.mediaNoCaptures))).toBe(true)
+    expect(screen.queryByTestId('match-media-grid')).not.toBeInTheDocument()
   })
 })
 

@@ -40,16 +40,29 @@ function ride(aim: ReplayVehicleAim[], over: Partial<ReplayVehicleRideReady> = {
 }
 
 describe('vehicleRideAimReading — la lecture EN VIGUEUR', () => {
-  it('rend la dernière lecture au plus tard à l’image demandée (aucune interpolation)', () => {
+  it('rend la dernière lecture au plus tard à l’image demandée, sans interpoler un trou de plus du maintien', () => {
     const r = ride([
       { t: 10, h: 10 },
       { t: 14, h: 20 },
       { t: 30, h: 30 },
     ])
     expect(vehicleRideAimReading(r, 14)?.h).toBe(20)
-    // ENTRE DEUX LECTURES : la précédente est MAINTENUE, jamais moyennée — interpoler deux caps
-    // ferait tourner le cône par le chemin le plus court à travers 0/360 deg.
+    // ENTRE DEUX LECTURES TROP ÉLOIGNÉES (16 images, plus que le maintien) : la précédente est
+    // MAINTENUE — pas de virage inventé sur plus d'une seconde.
     expect(vehicleRideAimReading(r, 16)?.h).toBe(20)
+  })
+
+  it('ENTRE DEUX LECTURES CONSÉCUTIVES, le cap tourne par le plus court chemin (contrôles v8)', () => {
+    const r = ride([
+      { t: 10, h: 350, p: 5 },
+      { t: 11, h: 10, p: 9 },
+    ])
+    expect(vehicleRideAimReading(r, 10.5)?.h).toBeCloseTo(0, 6)
+    expect(vehicleRideAimReading(r, 10.75)?.h).toBeCloseTo(5, 6)
+    // L'élévation reste celle de la dernière lecture.
+    expect(vehicleRideAimReading(r, 10.5)?.p).toBe(5)
+    // Sur une lecture, la valeur est exactement la sienne.
+    expect(vehicleRideAimReading(r, 11)?.h).toBe(10)
   })
 
   it('rend null AVANT la première lecture, et sur une série vide', () => {

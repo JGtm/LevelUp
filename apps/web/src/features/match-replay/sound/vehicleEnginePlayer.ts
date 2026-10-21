@@ -222,8 +222,18 @@ export class VehicleEnginePlayer {
   /** fadeOutVoice — rampe courte puis arrêt d'une voix quelconque. */
   private fadeOutVoice(voice: EngineVoice, at: number, fadeS: number): void {
     const g = voice.gain.gain
-    g.cancelScheduledValues(at)
-    g.setValueCurveAtTime(scaledFadeOut(g.value), at, fadeS)
+    try {
+      g.cancelScheduledValues(at)
+      g.setValueCurveAtTime(scaledFadeOut(g.value), at, fadeS)
+    } catch (err) {
+      // Un fondu déjà EN COURS (entrée, sortie ou croisé) chevauche la courbe d'arrêt : le
+      // navigateur refuse la programmation. Une pause qui lève une exception laisserait le
+      // moteur tourner ; on coupe donc franchement (un clic vaut mieux qu'un moteur qui
+      // ronfle sur une image arrêtée), et la cause est dite.
+      console.warn("[replay-audio] fondu d'arrêt refusé, coupure franche :", err)
+      voice.src.stop(at)
+      return
+    }
     voice.src.stop(at + fadeS)
   }
 

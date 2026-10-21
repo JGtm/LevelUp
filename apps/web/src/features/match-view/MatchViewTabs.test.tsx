@@ -110,7 +110,14 @@ vi.mock('./MatchSummaryMedalsAndCitations', () => ({
   MatchCitationsSection: () => <div data-testid="citations" />,
   MatchNativeCommendationsSection: () => <div data-testid="native-commendations" />,
 }))
-vi.mock('./MatchMediaTab', () => ({ MatchMediaTab: () => <div data-testid="media-tab" /> }))
+// Le bloc Médias porte son titre (SectionCard) : le mock rend la carte à titre.
+vi.mock('./MatchMediaTab', () => ({
+  MatchMediaTab: () => (
+    <section data-testid="media-tab">
+      <h3>Médias</h3>
+    </section>
+  ),
+}))
 
 // Feuilles mockées — onglet Chronologie.
 vi.mock('./MatchImpactBadgesBar', () => ({

@@ -150,6 +150,8 @@ export interface CardFxInput {
   lifeAge: number
   /** Images écoulées depuis le dernier passage par faille de cette vie (-1 : aucun). */
   teleportAge: number
+  /** Ce moment est la POSE de la faille (et non un passage) : l'infobulle le dit. */
+  teleportPose?: boolean
   /** Fenêtre des éclats, en frames (FLASH_MS convertie par l'appelant). */
   flashFrames: number
   /** État actif d'équipement de la vie courante (null : mort, ou pas de vie). */
@@ -279,7 +281,9 @@ function titleOf(i: CardFxInput): string | undefined {
     i.objective ? i.text.objectiveCarry[i.objective] : null,
     i.equipment?.camo ? i.text.equipmentActive.camo : null,
     i.equipment?.overshield ? i.text.equipmentActive.overshield : null,
-    i.teleportAge >= 0 && i.teleportAge <= i.flashFrames ? i.text.translocationFlash : null,
+    i.teleportAge >= 0 && i.teleportAge <= i.flashFrames
+      ? (i.teleportPose ? i.text.translocationPose : i.text.translocationFlash)
+      : null,
     i.zones.repair ? i.text.zonePresence.field : null,
     i.zones.shroudSinceMs !== null ? i.text.zonePresence.shroud : null,
     i.zones.sensorSincePingMs !== null ? i.text.zonePresence.sensor : null,

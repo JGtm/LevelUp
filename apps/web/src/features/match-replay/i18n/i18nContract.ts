@@ -204,18 +204,16 @@ export interface ReplayText {
    */
   killFeedDeathKind: Record<'environment' | 'suicide', string>
   /**
-   * Lignes d'ENTRÉE/SORTIE de partie du fil (presenceFeed.ts, 2026-09-02). Deux sources,
-   * deux vocabulaires : la PARTICIPATION API (drapeaux joined/left_in_progress, précise —
-   * libellés affirmatifs) et le REPLI dérivé des bornes de vie du film (matchs sans les
-   * colonnes) — dont le libellé de sortie reste au FAIT (« ne reviendra plus ») : le film
-   * ne distingue pas un départ d'une élimination définitive, l'infobulle porte la réserve.
+   * Lignes d'ENTRÉE/SORTIE de partie du fil (presenceFeed.ts, 2026-09-02). UN SEUL jeu de
+   * libellés (« a rejoint / a quitté la partie »), deux infobulles selon la source : la
+   * PARTICIPATION API (drapeaux joined/left_in_progress, précise) et le REPLI dérivé des
+   * bornes de vie du film (matchs sans les colonnes), dont l'infobulle porte la réserve : le
+   * film ne distingue pas un départ d'une élimination définitive sur un mode à manches.
    */
   presenceJoined: string
   presenceLeft: string
   presenceJoinedHint: string
   presenceLeftHint: string
-  presenceJoinedDerived: string
-  presenceLeftDerived: string
   presenceJoinedDerivedHint: string
   presenceLeftDerivedHint: string
   /** Sons du rejeu (lot 5 parité) : COUPÉ PAR DÉFAUT, l'utilisateur l'active. */
@@ -885,6 +883,8 @@ export interface ReplayText {
    * c'est un ÉVÉNEMENT reconstruit des pistes, pas un état mesuré par le canal des épisodes.
    */
   translocationFlash: string
+  /** La POSE de la faille (riftPoses) : même éclat de fiche, phrase propre. */
+  translocationPose: string
   /**
    * LE JOUEUR DANS UNE ZONE D'ÉQUIPEMENT (cf. equipmentZones.ts) : les trois états que la
    * fiche sait dire — champ de réparation, écran occultant, capteur adverse. Les clés sont
