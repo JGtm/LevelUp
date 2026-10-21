@@ -353,6 +353,24 @@ deux passes sont reprenables — un match déjà présent dans la vue `_latest` 
 `--force`. `backfill-usage-summary` re-résume en plus quand la révision de projection ou le
 schéma de l'artefact a bougé.
 
+**Résumés par match du journal des morts** (`match_kill_heads`, `match_kill_pairs`,
+`match_assist_pairs`, ADR 0039). Chaque passe écrite par la synchronisation porte ses résumés ;
+cette commande les écrit pour les passes qui n'en ont pas (écrites avant les résumés) ou dont la
+tête date d'une ancienne révision de la règle. Elle ne décode aucun film : elle relit la passe
+courante de chaque match dans `match_kill_events_latest`. **Serveur arrêté** (elle ouvre la base
+partagée en `OpenReadWrite` et joue les migrations partagées, `--dry-run` compris ; si un autre
+processus tient la base, elle refuse et le dit). Reprenable : la liste est une anti-jointure
+« passe courante sans tête à la révision courante », donc un second passage ne trouve rien. Elle
+journalise une ligne de progression par lot et se termine sur le nombre de matchs restant à faire,
+qui doit valoir 0 (le contrôle de santé des données publie la même jauge,
+`levelup.kill_summaries_pending`).
+
+```bash
+go run ./cmd/levelup backfill-match-summaries --title halo_infinite --dry-run   # compte, n'écrit rien
+go run ./cmd/levelup backfill-match-summaries --title halo_infinite [--batch N]  # lot par défaut : 250 matchs
+go run ./cmd/levelup backfill-match-summaries --title halo_5
+```
+
 ### Backup / restore
 
 ```bash

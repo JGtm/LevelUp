@@ -1,3 +1,11 @@
+## [2026-10-21] Plan perf pages v8.0.1, étape 8 : rattrapage des résumés par match (commande et jauge) — En cours (branche `feat/v801-perf-resumes`, 8.3 et 8.4 réservés au pilote)
+
+**Décision technique principale** : une seule définition des « matchs à rattraper » (`persist.PendingKillSummaryMatches` / `CountPendingKillSummaries`, anti-jointure passe courante du journal / tête à la révision courante qui résume cette passe), partagée par la commande `levelup backfill-match-summaries --title <slug> [--dry-run] [--batch N]` et par la jauge du contrôle de santé. La commande relit la passe en base (aucun film), écrit une transaction par match, par lots de 250 par défaut avec un journal INFO de progression ; un échec se compte, se journalise et fait finir la commande en erreur. La jauge (`levelup.kill_summaries_pending`, WARN par titre quand non nulle) est calculée par le contrôle périodique, jamais au boot, et reste hors du total d'avertissements.
+
+**Résultats observés** : tests d'intégration : sans tête / ancienne révision / passe supplantée réécrits, match à jour intact, second passage vide, `--dry-run` n'écrit rien, échec compté sans interruption ; test du contrôle de santé (0 sur base complète, 3 sur trois états périmés, 0 après rattrapage). Chaque test vu échouer sous sa mutation. Gate de code vert (défaut, intégration, archlint, golangci-lint).
+
+**Conclusion / prochaine étape** : 8.3 (copie des bases du banc) et 8.4 (bases locales) par le pilote, avec annonce du volume et du pic mémoire ; l'étape ne se clôt qu'après. Découverte : aucune jauge des passes dans ce worktree (rien à côté de quoi poser la nouvelle).
+
 ## [2026-10-21] Plan perf pages v8.0.1, étape 7 : clôture (décisions Q1/Q2 du pilote, corrections de revue) — Complété (branche `feat/v801-perf-resumes`)
 
 **Décision technique principale** : Q1, option (a) : la fenêtre de la tête n'est pas bornée sous une liste quand on lit une vue fille S1/S2 ; elle est acceptée (une ligne par match et génération, ~6 500 lignes compactées en prod) et tenue par `platform/duckdb/resumes_fenetres_test.go` ; ADR 0039 décision 7 amendée et ligne ajoutée aux exceptions I2 de l'ADR 0036. Q2 : les fixtures `INSERT INTO match_kill_events` brutes sont converties à l'étape 9 avec le lecteur qui les utilise (7.5 statué `[~]`).

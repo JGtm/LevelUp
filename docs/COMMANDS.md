@@ -341,6 +341,23 @@ passes are resumable — a match already present in the `_latest` view is skippe
 `--force`. `backfill-usage-summary` additionally re-summarises when the projection revision or
 the artifact schema has moved.
 
+**Per-match summaries of the kill feed** (`match_kill_heads`, `match_kill_pairs`,
+`match_assist_pairs`, ADR 0039). Every pass written by the sync carries its summaries; this command
+writes them for the passes that have none (written before the summaries existed) or whose head
+comes from an older revision of the rule. It decodes no film: it re-reads the current pass of each
+match from `match_kill_events_latest`. **Server stopped** (it takes `OpenReadWrite` on the shared
+database and plays the shared migrations, `--dry-run` included; if another process holds the
+database it refuses and says so). Resumable: the list is an anti-join "current pass without a head
+at the current revision", so a second run finds nothing. It logs one progress line per batch and
+ends on the number of matches still to do, which must be 0 (the data health check reports the same
+gauge, `levelup.kill_summaries_pending`).
+
+```bash
+go run ./cmd/levelup backfill-match-summaries --title halo_infinite --dry-run   # counts, writes nothing
+go run ./cmd/levelup backfill-match-summaries --title halo_infinite [--batch N]  # default batch: 250 matches
+go run ./cmd/levelup backfill-match-summaries --title halo_5
+```
+
 ### Backup / restore
 
 ```bash

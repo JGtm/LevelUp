@@ -459,17 +459,44 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
 
 ### Étape 8 — Rattrapage du parc (volet 2, D-10 validée avant)
 
-- [ ] 8.1 Commande `levelup backfill-match-summaries --title <slug>` : pour chaque match dont la passe
+- [x] 8.1 Commande `levelup backfill-match-summaries --title <slug>` : pour chaque match dont la passe
       courante n'a pas de tête à la révision courante (anti-join), relit la passe en base (adaptateur
       base), calcule S0-S2, écrit par lots bornés via `persist` ; serveur arrêté exigé (ouverture en
       écriture), message clair sinon. Ne décode aucun film.
-- [ ] 8.2 Jauge « matchs de la passe courante sans tête » : au boot et dans
+      Fait (2026-10-21) : `cmd/levelup/cmd_backfill_match_summaries.go` (`--title`, `--dry-run`, `--batch`, lot par
+      défaut `defaultSummariesBatch` = 250). La liste des matchs à rattraper est UNE anti-jointure
+      (`persist.PendingKillSummaryMatches`, `persist/kill_summaries_catchup.go`) : aucune tête, tête à
+      une autre révision, OU tête qui résume une autre passe que la courante (ajout à la lettre du plan,
+      consigné dans l'ADR 0039 décision 5) ; calculée une fois (fenêtre de la vue du journal), parcourue
+      par lots avec un journal INFO de progression, jauge finale relue. Écriture par
+      `PersistLatestKillPassSummaries` (une transaction par match) ; un échec se compte, se journalise
+      et la commande se termine en erreur. Refus clair si la base est tenue (`erreurOuvertureEcriturePartagee`).
+      Ouverture par `duckdb.OpenReadWrite` (aucune entrée d'allowlist). Tests d'intégration
+      (`cmd_backfill_match_summaries_integration_test.go`) : sans tête / ancienne révision / passe
+      supplantée réécrits, à jour intact, second passage vide, `--dry-run` n'écrit rien, échec compté.
+- [x] 8.2 Jauge « matchs de la passe courante sans tête » : au boot et dans
       `scheduler/data_health_check.go` (lit déjà le journal), journalisée en WARN si non nulle.
+      Fait (2026-10-21) : `scheduler/data_health_kill_summaries.go` (même texte SQL que 8.1 via
+      `persist.CountPendingKillSummaries`), appelée par `auditTitle` ; expvar `levelup.kill_summaries_pending`
+      (une entrée par titre, jamais écrasée par une mesure en échec), WARN par titre quand non nulle,
+      champ `KillSummariesPending` du résultat, hors `WarningsTotal` (signal distinct, comme les trous LUSR ;
+      aucun changement du DTO admin). Pas au boot : le contrôle périodique seul (coût de la fenêtre du
+      journal). Pas de jauge des passes dans ce worktree : rien à côté de quoi la poser. Test :
+      `data_health_kill_summaries_e2e_test.go` (0 sur base complète ; 3 pour tête absente, ancienne
+      révision, passe supplantée ; 0 après rattrapage).
 - [ ] 8.3 Passage complet sur la COPIE des bases du banc, Halo Infinite et Halo 5 ; volume (matchs,
       lignes S par match), durée et pic mémoire consignés et ANNONCÉS au user avant 8.4.
 - [ ] 8.4 Passage sur les bases locales réelles (`LevelUp/data/`), serveur local arrêté avec l'accord
       du user et des sessions actives prévenues ; jauge à 0 pour les deux titres.
 - Gate : doctrine §4 ; jauge à 0 sur la copie et sur les bases locales ; volume et pic mémoire consignés.
+  Statut (2026-10-21) : 8.1 et 8.2 faits (code, tests, docs COMMANDS EN/FR, changelog 8.0.1 EN/FR, ADR 0039
+  décisions 5-6). Gate de code rejoué sur persist, scheduler, cmd/levelup : `go test` (défaut) vert ;
+  `-tags=integration -p 1` vert ; `go test ./internal/archlint/` vert ; gardes ART de sync et de
+  platform/duckdb verts ; golangci-lint `--new-from-merge-base=origin/main` 0 problème avec et sans tag
+  `integration` ; chaque test vu échouer sous sa mutation (condition de révision ou de passe retirée de
+  l'anti-jointure, `--dry-run` qui écrit, échec non compté). RESTENT OUVERTS, réservés au pilote : 8.3
+  (copie des bases du banc) et 8.4 (bases locales réelles) ; le gate de l'étape (jauge à 0, volume, pic
+  mémoire) ne peut se fermer qu'avec eux. Étape NON close.
 
 ### Étape 9 — Bascule des lecteurs, famille par famille (volet 2)
 

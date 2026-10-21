@@ -96,7 +96,9 @@ recounting nor the seven copies. This ADR does.
    a fingerprint test of the function, on the model of `decoder_rev_fingerprint_test.go`, fails
    otherwise. Readers never filter on `summary_rev`; the views serve the latest generation. A head
    is missing when the latest pass of a match has no head; it is stale when its `summary_rev` is not
-   the current one. `levelup backfill-match-summaries --title <slug>` writes the missing and stale
+   the current one, or when it summarises a pass other than the latest (a newer pass was written
+   without its summaries). One SQL text defines this (`persist.PendingKillSummaryMatches`) for the
+   catch-up and the gauge. `levelup backfill-match-summaries --title <slug>` writes the missing and stale
    generations from the latest pass read in the database (second adapter of the same pure function,
    kept equal to the in-memory one by a parity test), through `insertKillSummaryRows`, server
    stopped (same pattern as `backfill-vehicle-takes`). A revision bump is applied to the whole fleet
@@ -107,7 +109,8 @@ recounting nor the seven copies. This ADR does.
    that sums over many matches cannot show that state: a match without a head is absent from the
    sum. The gauge "matches whose latest pass has no head, or a stale one" is therefore a release
    gate: it must be 0 on the databases copied to production, it is logged at WARN by the data
-   health check when non-zero (computed asynchronously, not at boot, because it reads the feed's
+   health check when non-zero, outside that check's warnings total and published as the expvar
+   `levelup.kill_summaries_pending` (computed asynchronously, not at boot, because it reads the feed's
    window over the whole table), and in-line writes keep it at 0 afterwards.
 
 7. **Bounded reads (ADR 0036 I2 applies to the S views).** Before the first reader switches, the
