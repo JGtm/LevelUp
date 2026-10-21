@@ -29,13 +29,13 @@ describe('SquadExactCompositionOption', () => {
     expect(screen.getByRole('tooltip')).toBeInTheDocument()
   })
 
-  it('dit la règle : coéquipiers cochés, autre joueur suivi écarté, joueurs non suivis ignorés', () => {
+  it('dit la règle : coéquipiers cochés, autre joueur suivi écarté, ami déclaré écarté, autres joueurs ignorés', () => {
     const fr = getSquadText('fr').filter.exactCompositionTitle
     const en = getSquadText('en').filter.exactCompositionTitle
     expect(fr).toContain('autre joueur suivi')
-    expect(fr).toContain('non suivis')
+    expect(fr).toContain('ami déclaré')
     expect(en).toContain('another tracked player')
-    expect(en).toContain('Untracked')
+    expect(en).toContain('declared friend')
   })
 
   it('garde le libellé, l’état coché et la bascule pilotée par la prop', () => {

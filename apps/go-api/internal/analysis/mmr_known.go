@@ -9,7 +9,7 @@
 // réécrire le test à la main.
 //
 // La donnée stockée n'est pas réécrite : une ligne déjà écrite avec 0 est neutralisée à la
-// lecture, et l'écriture (persist.SanitizeParticipantRow) ne produit plus de 0.
+// lecture, et l'écriture (persist.sanitizeMatchParticipantRow) ne produit plus de 0.
 package analysis
 
 // MMRKnown dit si v est un MMR réel : strictement positif et fini.
