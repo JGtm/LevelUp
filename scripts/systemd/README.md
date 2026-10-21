@@ -21,7 +21,7 @@ Cleanup (I8, 2026-07): the VPS has no cron daemon, so `/etc/cron.d/levelup-docke
 (`data/global/admin_state/passes_par_match.txt`). When no table of any title is above the
 threshold it exits without touching anything. Otherwise it stops `levelup`, runs
 `levelup compact-passes --backup-dir /app/data/compaction-backups` (file backup first), starts
-`levelup` again (always, even if the compaction fails) and waits for `/health`. Log:
+`levelup` again (always, even if the compaction fails, up to 3 attempts) and waits for `/health`. Log:
 `data/logs/compact-passes-nuit.log`. Backups older than 24 h in `data/compaction-backups/` are
 deleted only after a successful run. Exit code 75 = run refused without touching anything (lock
 held, restic backup running), declared as success in the unit.

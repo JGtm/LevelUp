@@ -49,6 +49,12 @@ SAUVEGARDE_AGE_MAX_MIN=1440
 # Attente maximale de /health apres redemarrage (le deploiement en accorde 90 s).
 HEALTH_ATTENTE_S="${LEVELUP_COMPACT_HEALTH_ATTENTE_S:-120}"
 HEALTH_INTERVALLE_S=2
+# Essais de redemarrage (start + /health) et pause entre deux : le site ne reste jamais arrete sur
+# un seul echec de `docker compose start`, et la boucle est bornee.
+START_ESSAIS=3
+START_DELAI_S="${LEVELUP_COMPACT_START_DELAI_S:-15}"
+# Unite de la sauvegarde restic : elle arrete et redemarre le serveur elle aussi.
+UNITE_RESTIC=levelup-restic-backup.service
 
 SORTIE_REFUS=75
 
@@ -65,10 +71,15 @@ if ! flock -n 9; then
   exit "$SORTIE_REFUS"
 fi
 
-if systemctl is-active --quiet levelup-restic-backup.service; then
-  log "REFUS : sauvegarde restic en cours (elle arrete et redemarre le serveur elle aussi)"
-  exit "$SORTIE_REFUS"
-fi
+# L'unite restic est `Type=oneshot` sans `RemainAfterExit` : pendant la sauvegarde son etat est
+# `activating` (et `is-active` rend 3). On lit donc l'etat reel.
+etat_restic="$(systemctl show -p ActiveState --value "$UNITE_RESTIC" 2>/dev/null)"
+case "$etat_restic" in
+  activating | active | reloading | deactivating)
+    log "REFUS : sauvegarde restic en cours (etat $etat_restic), elle arrete et redemarre le serveur elle aussi"
+    exit "$SORTIE_REFUS"
+    ;;
+esac
 
 # lire_cle CLE : la valeur de `CLE=` dans le fichier de jauge (vide si absente).
 lire_cle() { sed -n "s/^$1=//p" "$JAUGE" | head -n 1; }
@@ -128,12 +139,14 @@ fi
 
 # --- 3. Arret, compaction, redemarrage ----------------------------------------------------------
 cd "$LEVELUP_DIR" || { log "ERREUR : dossier $LEVELUP_DIR introuvable"; exit 1; }
+# serveur_arrete : 1 de l'arret jusqu'a un redemarrage REUSSI (start + /health). Le filet ne
+# s'arme jamais avant l'arret et ne se desarme qu'apres un redemarrage reussi ou apres epuisement
+# des essais de redemarrer (le filet ne rejoue pas les memes essais une seconde fois).
 serveur_arrete=0
+essais_epuises=0
 
-# redemarrer : demarre le serveur et attend /health (borne : HEALTH_ATTENTE_S). Rend 1 si le
-# serveur ne repond pas dans le delai -- jamais de boucle sans fin.
-redemarrer() {
-  serveur_arrete=0
+# demarrer_une_fois : un `docker compose start` puis l'attente bornee de /health.
+demarrer_une_fois() {
   if ! docker compose start levelup; then
     log "ERREUR : docker compose start levelup a echoue"
     return 1
@@ -146,11 +159,34 @@ redemarrer() {
     fi
     sleep "$HEALTH_INTERVALLE_S"
   done
-  log "serveur redemarre, /health OK"
+}
+
+# redemarrer : jusqu'a START_ESSAIS essais, START_DELAI_S entre deux. Rend 1 si tous echouent.
+redemarrer() {
+  local essai
+  for ((essai = 1; essai <= START_ESSAIS; essai++)); do
+    if demarrer_une_fois; then
+      serveur_arrete=0
+      log "serveur redemarre, /health OK (essai $essai/$START_ESSAIS)"
+      return 0
+    fi
+    log "ERREUR : redemarrage, essai $essai/$START_ESSAIS en echec"
+    [ "$essai" -lt "$START_ESSAIS" ] && sleep "$START_DELAI_S"
+  done
+  essais_epuises=1
+  log "ERREUR : serveur NON redemarre apres $START_ESSAIS essais -- intervention requise"
+  return 1
 }
 # shellcheck disable=SC2329 # invoquee par le trap EXIT ci-dessous
-filet() { if [ "$serveur_arrete" -eq 1 ]; then log "filet : redemarrage du serveur"; redemarrer; fi; }
+filet() {
+  if [ "$serveur_arrete" -eq 1 ] && [ "$essais_epuises" -eq 0 ]; then
+    log "filet : redemarrage du serveur"
+    redemarrer
+  fi
+}
 trap filet EXIT
+# Un arret par signal (timeout systemd, Ctrl-C) passe par exit, donc par le filet.
+trap 'log "signal recu, arret du script"; exit 143' TERM INT HUP
 
 echo "echec" >"$ETAT"
 serveur_arrete=1

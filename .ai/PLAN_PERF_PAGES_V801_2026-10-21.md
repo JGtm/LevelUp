@@ -280,7 +280,26 @@ de résumés S0-S2) ; il ne remplace ni la fenêtre de l'Accueil ni les résumé
   `./internal/scheduler/...`, `./cmd/server/...`, `./internal/domain/title/...`,
   `./internal/archlint/...`, `./cmd/levelup/...` verts ; [x] `golangci-lint
   --new-from-merge-base=origin/main` 0 problème ; [x] `shellcheck` + `bash -n` du script ;
-  [ ] revue adversariale : par le pilote.
+  [ ] revue adversariale : par le pilote — ronde 1 traitée (ci-dessous), clôture par le pilote.
+- Revue adversariale ronde 1 (pilote, 2026-10-21 ; VPS vérifié en `Etc/UTC`, 03:30 UTC retenu),
+  chaque correction avec un test rouge sans elle (vérifié en rejouant le test sur la version de
+  `373e8b62b`) :
+  - [x] P1 garde restic : l'unité restic est `oneshot` sans `RemainAfterExit`, `is-active` rend 3
+        pendant la sauvegarde (`activating`) → lecture de `systemctl show -p ActiveState --value`
+        (`activating`/`active`/`reloading`/`deactivating` = en cours) ; faux `systemctl` qui modélise
+        `activating` (cas `activating` et `deactivating`).
+  - [x] P1 redémarrage : `START_ESSAIS=3` essais de start + `/health` borné, `START_DELAI_S=15` entre
+        deux, ERROR à chaque échec, sortie 1 si tous échouent ; le filet reste armé jusqu'à un
+        redémarrage RÉUSSI (il ne rejoue pas des essais épuisés) ; tests : start raté puis réussi,
+        start toujours raté (3 essais exactement), `/health` muet (3 essais).
+  - [x] P1 jauge d'un titre illisible : la jauge est mesurée pour tout titre dont la base partagée
+        existe, que l'audit du titre ait réussi ou non ; illisible → tables non mesurées → fichier
+        non réécrit (WARN) ; test à deux titres dont un à base illisible.
+  - [x] Tests qui mordent : place disque (base de 8 Mio, disque = marge + moitié de la base →
+        refus ; mutant sans `bases_ko` rouge), âge de la jauge à 23 h 30, 47 h 50 et 48 h 10 (mutant
+        72 h rouge), jauge illisible (4 formes), SIGTERM pendant la compaction → filet, serveur
+        relancé, code 143 (`trap … TERM INT HUP` explicite ; mutant sans lui rouge).
+  - [~] P2 verrou commun avec `scripts/deploy.sh` : consigné en Découvertes, non corrigé (consigne).
 
 ### Étape 3 — Accueil en fenêtre, serveur (volet 1)
 
@@ -539,5 +558,7 @@ Q23b/Q28c 250-1 080 ms (Madina97294 reste à ~1 s sur la vue match).
 - Piste C (2b) — sauvegardes de 2b.1 : les fichiers `…avant-compaction-20261021T1017…Z.duckdb` (2,5 Go) sont à côté des bases, sous `data/titles/`, donc embarqués par la sauvegarde restic de chaque nuit, et la tâche de nuit ne les supprime pas (elle ne touche que `data/compaction-backups/`). À retirer à la main après vérification par le user.
 - Piste C (2b) — `scripts/restic-backup.sh` ne prend aucun verrou : la tâche de nuit refuse de tourner pendant une sauvegarde restic, mais une sauvegarde restic lancée à la main pendant une compaction arrêterait/redémarrerait le serveur sous elle. Couvert par les horaires (03:30 contre 04:00) et `TimeoutStartSec=25min`, pas par un verrou commun.
 - Piste C (2b) — l'ADR 0026 est rédigé en français alors que CLAUDE.md (règle 15) veut les ADR en anglais seul ; l'amendement est en anglais, le corps n'est pas traduit.
+- Piste C (2b), revue ronde 1, P2 — aucun verrou partagé entre `scripts/compact-passes-nuit.sh` et `scripts/deploy.sh` : un déploiement (push `main`) pendant la fenêtre de compaction échouerait sur le verrou DuckDB tenu par `compact-passes` (pas de corruption : la CLI tient le bail et le verrou de fichier). Consigné, non corrigé.
+- Piste C (2b) — au timeout systemd (`TimeoutStartSec=25min`), le SIGTERM atteint le client `docker compose run` ; que le conteneur de compaction s'arrête aussi (relais de signal de `compose run`) n'est pas vérifié. S'il survivait, le filet relancerait le serveur pendant que la CLI tient la base : le serveur échouerait à l'ouvrir (verrou DuckDB, pas de corruption) et le script sortirait en erreur après ses 3 essais. À vérifier sur le VPS si ce timeout se produit un jour (passage mesuré ~90 s).
 - Piste C (2b) — la jauge a jusqu'à 24 h de retard sur une recuisson faite serveur démarré (le contrôle de santé tourne au démarrage puis toutes les 24 h) : une telle recuisson peut attendre deux nuits avant d'être compactée. Une recuisson faite serveur arrêté est mesurée au redémarrage.
 - (à compléter pendant l'exécution)

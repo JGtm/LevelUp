@@ -10,6 +10,7 @@ import (
 	"errors"
 	"expvar"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -134,5 +135,33 @@ func TestJaugePasses_MesurePartielleNePublieRien(t *testing.T) {
 	}
 	if _, err := os.Stat(title.NewPathResolver(repoRoot).PassesGaugePath()); !os.IsNotExist(err) {
 		t.Fatalf("fichier de jauge écrit sur une mesure partielle (err=%v)", err)
+	}
+}
+
+// TestJaugePasses_TitreIllisibleNePublieRien : deux titres, la base partagée du second est
+// illisible (son audit échoue à l'ouverture). Le fichier ne doit PAS être publié frais avec le seul
+// titre lisible : le titre illisible (peut-être le plus gonflé) n'y apparaîtrait plus et ne serait
+// jamais compacté, en silence.
+func TestJaugePasses_TitreIllisibleNePublieRien(t *testing.T) {
+	useTwoTitleRegistry(t)
+	repoRoot := t.TempDir()
+	sharedPath := seedTitleSharedDB(t, repoRoot, "halo_infinite")
+	seedBombStatsVersions(t, sharedPath)
+	h5 := title.NewPathResolver(repoRoot).SharedDBPath("halo_5")
+	if err := os.MkdirAll(filepath.Dir(h5), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(h5, []byte("ceci n'est pas une base DuckDB"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res := scheduler.NewDataHealthScheduler(repoRoot).
+		WithClock(func() time.Time { return horlogeJauge }).
+		RunOnce(context.Background())
+	if res.PassesUnmeasured == 0 {
+		t.Fatalf("titre illisible non compté comme non mesuré : %+v", res)
+	}
+	if _, err := os.Stat(title.NewPathResolver(repoRoot).PassesGaugePath()); !os.IsNotExist(err) {
+		t.Fatalf("fichier de jauge publié sans le titre illisible (err=%v)", err)
 	}
 }

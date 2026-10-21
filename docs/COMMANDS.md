@@ -732,7 +732,7 @@ the systemd timer `levelup-compact-passes.timer` runs `scripts/compact-passes-nu
 of any title is above 1.5 (`migration.SeuilPassesParMatch`) it exits without touching anything;
 otherwise it checks free disk space, stops `levelup`, runs
 `levelup compact-passes --backup-dir /app/data/compaction-backups`, starts `levelup` again (even if
-the compaction fails) and waits for `/health`. Log: `data/logs/compact-passes-nuit.log`. Backups
+the compaction fails, up to 3 attempts) and waits for `/health`. Log: `data/logs/compact-passes-nuit.log`. Backups
 older than 24 h in `data/compaction-backups/` are deleted only after a successful run. Installing
 the units (once, as root): `scripts/systemd/README.md`; decision and measurements: ADR 0026,
 amendment "Automatic compaction".

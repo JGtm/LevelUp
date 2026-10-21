@@ -190,9 +190,10 @@ a gauge says it is worth it:
 - *Host task.* `scripts/compact-passes-nuit.sh`, run by `levelup-compact-passes.timer` at 03:30 UTC
   (after the 03:00 Docker prune, before the 04:00 restic backup, which also stops the server).
   If no table of any title is above the threshold it exits without touching anything. Otherwise:
-  lock, restic-not-running check, free disk ≥ size of the shared databases + 2 GiB, `docker compose
+  lock, restic-not-running check (the unit's real `ActiveState`: a oneshot backup is `activating`), free disk ≥ size of the shared databases + 2 GiB, `docker compose
   stop levelup`, `levelup compact-passes --backup-dir /app/data/compaction-backups`, `docker compose
-  start levelup` (always, even on failure), bounded wait for `/health`. Backups older than 24 h are
+  start levelup` (always, even on failure; up to 3 attempts of start + bounded `/health` wait, the
+  safety trap staying armed until one succeeds, SIGTERM included). Backups older than 24 h are
   deleted (pattern `*.avant-compaction-*`, that directory only) only after a successful run. A stale
   (> 48 h) or missing gauge is an error: the task does nothing and exits non-zero.
 

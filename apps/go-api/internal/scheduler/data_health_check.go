@@ -201,10 +201,11 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	for _, td := range titlePkg.DefaultRegistry().All() {
 		if s.auditTitle(ctx, pr, td.Slug, res, &healCand) {
 			auditedTitles++
-			// Après auditTitle, dont le handle est alors rendu : la jauge prend ses propres
-			// lectures courtes, une par table.
-			s.auditTitlePasses(ctx, pr, td.Slug, res)
 		}
+		// La jauge ne dépend pas de l'audit (elle prend ses propres lectures courtes, une fois le
+		// handle de l'audit rendu) : un titre dont l'audit échoue est mesuré quand même, ou compté
+		// non mesuré — jamais retiré du fichier en silence.
+		s.auditTitlePasses(ctx, pr, td.Slug, res)
 	}
 
 	// Aucune shared DB lisible sur AUCUN titre ⇒ cycle avorté : on ne mémorise pas

@@ -19,6 +19,7 @@ package scheduler
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"expvar"
 	"fmt"
 	"log/slog"
@@ -67,9 +68,14 @@ func (s *HealthScheduler) WithClock(now func() time.Time) *HealthScheduler {
 }
 
 // auditTitlePasses mesure chaque table du registre pour un titre et range le résultat dans res.
-// Une table absente de la base est sautée ; une mesure en échec compte comme sonde en échec ET
-// comme table non mesurée (la publication est alors retenue).
+// Un titre SANS base partagée n'a rien à compacter et est sauté ; tout titre qui en a une est
+// mesuré, que l'audit du titre ait réussi ou non. Une table absente de la base est sautée ; une
+// mesure en échec compte comme sonde en échec ET comme table non mesurée (la publication est alors
+// retenue : un titre illisible ne disparaît jamais du fichier en silence).
 func (s *HealthScheduler) auditTitlePasses(ctx context.Context, pr *titlePkg.PathResolver, slug string, res *DataHealthCheckResult) {
+	if _, err := os.Stat(pr.SharedDBPath(slug)); errors.Is(err, os.ErrNotExist) {
+		return
+	}
 	for _, table := range migration.CompactableTables() {
 		j, presente, err := s.mesurerUneTable(ctx, pr, slug, table)
 		if err != nil {
