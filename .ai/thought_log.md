@@ -1,3 +1,11 @@
+## [2026-10-22] Releases GitHub : notes tirées du changelog — Complété (branche `fix/release-notes-changelog`)
+
+**Décision technique principale** : `release.yml` ne publiait que les instructions d'installation (et des notes auto vides, un squash par version) : les releases v8.0.0 et v8.0.1 n'avaient aucun contenu. Une étape construit désormais le corps depuis la section `## [X.Y.Z]` de `docs/FR/CHANGELOG.md` (tag sans `v`), puis l'installation ; section absente = échec de la publication. Releases v8.0.0 (notes de version joueur) et v8.0.1 (changelog) corrigées à la main le 22/10.
+
+**Résultats observés** : étape rejouée en local sur le changelog réel (v8.0.1 : section, liens, installation ; version absente : exit 1 avec annotation d'erreur) ; YAML relu par js-yaml (`body_path` remplace `body`).
+
+**Conclusion** : actif dès la prochaine release (v8.0.2).
+
 ## [2026-10-22] Publication v8.0.1 — Complété (`main` `658b294ce`, tag `v8.0.1`)
 
 **Décision technique principale** : squash de la PR #100 (feat/v75) ; décision de l'utilisateur du 22/10 de reprendre les bases LOCALES en prod (pertes acceptées : likes, favoris, notifications et rattachements de médias faits en prod depuis le 20/10), ce qui remplace les recalculs en prod (résumés par match, usages, paliers, véhicules, modèle d'assistances : déjà dans les bases locales). Rejeux recuits au schéma 101 mis en place avant la fusion (la v8.0.0 les lit sans contrôle de schéma).
