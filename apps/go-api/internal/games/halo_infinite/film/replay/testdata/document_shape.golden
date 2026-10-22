@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 101
-empreinte-stockee 90df2088fb2a1869
-empreinte-servie 90df2088fb2a1869
-empreinte-cuite f0373a7f9b460793
+schema 103
+empreinte-stockee 85260364d27d92b8
+empreinte-servie 85260364d27d92b8
+empreinte-cuite 8492c5405dc02426
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -810,6 +810,10 @@ PresenceInterval
   To json:"to" int
   ToMax json:"toMax,omitempty" *int
 Projectile
+  DetoLue json:"detoLue,omitempty" bool
+  DetoT json:"detoT" int
+  DetoX json:"detoX" float32
+  DetoY json:"detoY" float32
   P json:"p" [][3]float32
   Rest json:"rest,omitempty" bool
   T0 json:"t0" int

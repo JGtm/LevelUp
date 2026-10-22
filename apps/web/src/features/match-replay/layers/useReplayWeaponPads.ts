@@ -35,6 +35,7 @@ import { useTitleSlug } from '@/lib/title-routing'
 
 import { catalogText } from '../i18n/catalogLabel'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+import { applyPadPickupDating } from '../model/padPickupDating'
 import { refinePadPresence } from '../model/padPresenceRefine'
 import type { ReplayText } from '../i18n/i18nContract'
 import type { PlacementView } from './placementShapes'
@@ -322,22 +323,29 @@ export function useReplayWeaponPads({
   redraw,
 }: WeaponPadsInput): WeaponPads {
   // LES SOCLES DU MATCH, POSÉS AUX EMPLACEMENTS DE LA CARTE quand le serveur les a croisés
-  // (cf. crossedWeaponPads), PUIS leur incertitude ramenée à ce qu'un joueur a pu faire
-  // (cf. refinePadPresence, décision utilisateur du 2026-08-27).
+  // (cf. crossedWeaponPads), PUIS DATÉS PAR LE RAMASSAGE NATIF QUAND LE FILM LE DIT (cf.
+  // applyPadPickupDating, lot detonations du 2026-10-22), PUIS, pour ce qui reste incertain,
+  // leur incertitude ramenée à ce qu'un joueur a pu faire (cf. refinePadPresence, décision
+  // utilisateur du 2026-08-27).
   //
-  // L'ORDRE DES DEUX EST LE BON, et il n'est pas indifférent : le raffinement mesure des
-  // DISTANCES au socle, il doit donc travailler sur la position FINALE. Le croisement ne la
-  // déplace que de moins d'un mètre par construction — le serveur ne sert un emplacement de
-  // carte que si un socle du match le confirme à moins d'un mètre — mais c'est justement
-  // l'échelle du rayon d'approche, et l'inversion se paierait aux limites.
+  // L'ORDRE DES TROIS EST LA RÈGLE (D-10 : la grammaire prime sur l'heuristique). La datation
+  // par l'événement natif passe EN PREMIER : elle collapse la fenêtre d'une occupation à
+  // l'instant exact quand le film le dit, et le raffinement par proximité qui suit n'a plus
+  // rien à faire sur elle (sa fenêtre est déjà quasi nulle). Le raffinement, lui, mesure des
+  // DISTANCES au socle, il doit donc travailler sur la position FINALE — le croisement ne la
+  // déplace que de moins d'un mètre par construction, mais c'est justement l'échelle du rayon
+  // d'approche, et l'inversion se paierait aux limites.
   //
   // UNE SEULE PASSE PAR DOCUMENT, jamais par image : le raffinement parcourt les segments de
   // trace de chaque fenêtre d'incertitude, ce qui est trop cher à refaire soixante fois par
-  // seconde. Mémoïsé sur les trois sources, comme le tableau qu'il rend.
+  // seconde. Mémoïsé sur les quatre sources, comme le tableau qu'il rend.
   const pads = useMemo(
     () =>
-      refinePadPresence(crossedWeaponPads(doc.weaponPads, doc.mapWeaponPads), doc.tracks),
-    [doc.weaponPads, doc.mapWeaponPads, doc.tracks],
+      refinePadPresence(
+        applyPadPickupDating(crossedWeaponPads(doc.weaponPads, doc.mapWeaponPads), doc.padPickups),
+        doc.tracks,
+      ),
+    [doc.weaponPads, doc.mapWeaponPads, doc.padPickups, doc.tracks],
   )
   const [hover, setHover] = useState<WeaponPadHover | null>(null)
   const iconsRef = useRef<Map<string, PadIcon>>(new Map())

@@ -230,7 +230,14 @@ const VersionCodecFaits = 2
 // (zero vehicule mesure) au lieu de faux (« pas lu »). Aucune revision de couche ne bouge (aucun bit n est
 // lu autrement) : c est ce numero qui refuse, SUR L EN-TETE, les faits d avant, sans quoi la recuisson les
 // rejouerait et le correctif n atteindrait aucun artefact (meme raisonnement qu au schema 6).
-const SchemaDesFaits = 17
+// SCHEMA 18 (2026-10-22, lot detonations) : le blob des entrees passe en v29 — les messages de
+// detonation/impact de projectile lus dans la vue A (`FilmInputs.Detonations`, genres 5/6,
+// `encodeDetonations`) entrent a la queue de la section des projectiles. SOUS LA MEME MONTEE DU CODEC 2
+// (le cadre du conteneur ne change pas, seule la charge de la section 1 grandit). Un fichier ecrit avant
+// ce lot porte le blob v28 : il est refuse a la magie du blob, et redecode — sans quoi un artefact rejoue
+// depuis des faits perimes perdrait la detonation lue et retomberait systematiquement sur le repli nomme
+// (`fallback.NomDetonationDernierePositionConnue`).
+const SchemaDesFaits = 18
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.

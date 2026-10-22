@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 7568 frames · intervalle 100 ms · duree 756800 ms
-schema 101 · titre halo_infinite
+schema 103 · titre halo_infinite
 version majeure du film : 41
 origine de la frame 0 sur l horloge du fil : 51707 ms
 coup d envoi date par le film : 52107 ms · 144/144 piste(s) en mouvement · rafale 6 · marge depuis la frame 0 : 400 ms
@@ -18,7 +18,7 @@ seuil de publication 1 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — si 
 144 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
 occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
-24734 point(s) portent un cap de visee · 24734 une elevation de visee · 10866 un bouclier · 229 une fraction de vie
+24730 point(s) portent un cap de visee · 24730 une elevation de visee · 10866 un bouclier · 232 une fraction de vie
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 8 joueur(s)
@@ -50,37 +50,37 @@ verdict : nominal
 rejets : slot introuvable=0 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 165 = 165 (equilibre : true)
 verdict : nominal
-par source : projectile=148 (aucun pont) · biped=17 (le pont a servi)
+par source : projectile=165 (aucun pont) · biped=0 (le pont a servi)
 par type : Frag=134 · Plasma=11 · Spike=20
 
 ## PROJECTILES — le dernier point est la DERNIERE POSITION REPLIQUEE, jamais un impact
-258 trajectoire(s) · 2692 point(s) de grille
-12 se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol
-couverture : 533 piste(s) decodee(s) · 258 publiee(s) · 32 coupee(s) a un pas impossible
+276 trajectoire(s) · 2861 point(s) de grille
+13 se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol
+couverture : 544 piste(s) decodee(s) · 276 publiee(s) · 0 coupee(s) a un pas impossible
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
-305 etat(s) publie(s) · 236 avec grenades lues · 236 avec munitions lues
-27 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
+305 etat(s) publie(s) · 239 avec grenades lues · 239 avec munitions lues
+1 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
-69 lecture(s) VIDE(S) : 51 corroboree(s) par le fil des morts (`dead`), 18 inexpliquee(s)
+66 lecture(s) VIDE(S) : 51 corroboree(s) par le fil des morts (`dead`), 15 inexpliquee(s)
 couverture : 314 lecture(s) decodee(s) -> 8 ecartee(s) avant l origine du rejeu · 1 ecartee(s) faute de piste publiee -> 305 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
-556 lecture(s) · 236 par image-cle (~20 s) · 320 par delta (transmis AU CHANGEMENT)
-130 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 236 image-cle · 320 delta · 1 ecartee(s) sans piste · canal munitions refuse : false
+569 lecture(s) · 239 par image-cle (~20 s) · 330 par delta (transmis AU CHANGEMENT)
+330 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
+couverture : 239 image-cle · 330 delta · 1 ecartee(s) sans piste · canal munitions refuse : false
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
-67 lecture(s) · 67 par i48 (rang complet, paquets delta) · 0 par image-cle (fenetre 16..23)
-rangs observes : 2:16 6:41 8:10
-lectures NOMMEES 67/67 — un rang hors table garde son numero, et la table est propre a la palette du film
+70 lecture(s) · 70 par i48 (rang complet, paquets delta) · 0 par image-cle (fenetre 16..23)
+rangs observes : 2:16 6:42 8:12
+lectures NOMMEES 70/70 — un rang hors table garde son numero, et la table est propre a la palette du film
 capacites nommees : 2=en:"Drop Wall"/fr:"mur de protection"/fam:"wall", 6=en:"Repulsor"/fr:"repulseur"/fam:"repulsor", 8=en:"Active Camouflage"/fr:"camouflage actif"/fam:"powerup_camo"
-couverture : 67 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 67 publiee(s)
+couverture : 70 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 70 publiee(s)
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
-23 episode(s) publie(s) · par famille : camo=23 · 14 fin(s) MESUREE(s) (le reste ferme a la mort)
-couverture : 144 vie(s) publiee(s) · camo 12 vie(s) / 23 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
+25 episode(s) publie(s) · par famille : camo=25 · 16 fin(s) MESUREE(s) (le reste ferme a la mort)
+couverture : 144 vie(s) publiee(s) · camo 12 vie(s) / 25 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
 
 ## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil
 0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
@@ -95,7 +95,7 @@ couverture : 144 vie(s) publiee(s) · camo 12 vie(s) / 23 episode(s) · surboucl
 0 traction(s) sur 0 vie(s) · lectures : 0 tir(s) + 0 accroche(s) · 0 rate(s) · 0 corps non decodable(s)
 
 ## OBJETS D EQUIPEMENT — objets DEPLOYES et objets LACHES a la mort, par famille et origine
-calibre=true decoupage="9/5" · 760 vie(s) d objet · 14149 ancre(s) -> 341 confirmee(s) par l oracle de position -> 341 pose(s)
+calibre=true decoupage="9/5" · 348 vie(s) d objet · 745 ancre(s) -> 341 confirmee(s) par l oracle de position -> 341 pose(s)
 341 nommee(s) · 0 `other` (nature non etablie : le manifeste ne les revendique pas) · 339 avec poseur mesure · 303 avec cap de visee
 origine lue : 0 deployee(s) (piece engendree) · 330 lachee(s) · 11 inconnue(s)
 provenance : 0 evenement(s) 103 lu(s) sur 7850 liste(s) d evenements non vides
@@ -352,8 +352,8 @@ provenance : 0 evenement(s) 103 lu(s) sur 7850 liste(s) d evenements non vides
   grenade_spike dropped 0x0f5716ff t=[5245, 5273] pos=(-21.35, -1.47, 60.83) poseur=610 cap=297.7 deg
   grenade_frag dropped 0xbcabbe43 t=[5245, 5293] pos=(-21.35, -1.47, 60.83) poseur=610 cap=297.7 deg
   grenade_frag dropped 0xbcabbe43 t=[5245, 5302] pos=(-21.35, -1.47, 60.83) poseur=610 cap=297.7 deg
-  grenade_frag dropped 0xbcabbe43 t=[5246, 5415] pos=(-21.14, -1.63, 60.82) poseur=616 cap=121.1 deg
-  grenade_frag dropped 0xbcabbe43 t=[5246, 5319] pos=(-21.14, -1.63, 60.83) poseur=616 cap=121.1 deg
+  grenade_frag dropped 0xbcabbe43 t=[5246, 5415] pos=(-21.14, -1.63, 60.82) poseur=616 cap=117.8 deg
+  grenade_frag dropped 0xbcabbe43 t=[5246, 5319] pos=(-21.14, -1.63, 60.83) poseur=616 cap=117.8 deg
   grenade_frag dropped 0xbcabbe43 t=[5350, 5379] pos=(1.74, 1.41, 63.03) poseur=617 cap=185.1 deg
   grenade_frag dropped 0xbcabbe43 t=[5350, 5379] pos=(1.74, 1.41, 63.03) poseur=617 cap=185.1 deg
   grenade_spike dropped 0x0f5716ff t=[5367, 5382] pos=(-6.79, 0.57, 62.55) poseur=618 cap=aucun
@@ -459,11 +459,11 @@ provenance : 0 evenement(s) 103 lu(s) sur 7850 liste(s) d evenements non vides
   grenade_frag dropped 0xbcabbe43 t=[7440, 7494] pos=(24.30, 4.86, 61.02) poseur=656 cap=72.8 deg
 
 ## SOCLES D ARME AU SOL — la RECURRENCE fait le socle, et le film dit quand il se vide
-balaye=true · bande 1462 slot(s) · 15354 ancre(s) -> 695 acceptee(s) -> 387 retenue(s) par l IDENTITE (308 ecartee(s))
-273 lachee(s) a une mort · 114 apparue(s) sans mort a proximite, dont 60 AU REPOS (jamais bougee : le seul jeu qui fait des socles)
-14 grappe(s) -> 10 socle(s) publie(s) · 80 occupation(s) : 58 datee(s) · 12 sans passage · 10 jamais videe(s)
-2 cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre
-POWER-UPS (voie ti=37) — balaye=true · 769 creation(s) acceptee(s) -> 26 retenue(s) par l IDENTITE `powerup_*` -> 2 socle(s) publie(s)
+balaye=true · bande 1462 slot(s) · 480 ancre(s) -> 480 acceptee(s) -> 387 retenue(s) par l IDENTITE (93 ecartee(s))
+273 lachee(s) a une mort · 114 apparue(s) sans mort a proximite, dont 64 AU REPOS (jamais bougee : le seul jeu qui fait des socles)
+14 grappe(s) -> 10 socle(s) publie(s) · 86 occupation(s) : 64 datee(s) · 12 sans passage · 10 jamais videe(s)
+3 cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre
+POWER-UPS (voie ti=37) — balaye=true · 531 creation(s) acceptee(s) -> 26 retenue(s) par l IDENTITE `powerup_*` -> 2 socle(s) publie(s)
   socle 0 0x2B1824D5 pos=(-22.24, 1.95, 60.60) apparitions=[0 787 1110 1717 3168 4150] cycle=non etabli
     presence t0=0 prouvee jusqu a 482, absente a 682
     presence t0=787 prouvee jusqu a 787, absente a 882
@@ -481,11 +481,12 @@ POWER-UPS (voie ti=37) — balaye=true · 769 creation(s) acceptee(s) -> 26 rete
     presence t0=4460 prouvee jusqu a 4460, absente a 4483
     presence t0=4775 prouvee jusqu a 6284, absente a 6484
     presence t0=6728 prouvee jusqu a 7284, absente a 7484
-  socle 2 0x71AB0A2C pos=(-0.54, -0.33, 59.95) apparitions=[0 1286 1587 3393 4961 5262 6578 6879] cycle=non etabli
+  socle 2 0x71AB0A2C pos=(-0.54, -0.33, 59.95) apparitions=[0 1286 1587 3393 3694 4961 5262 6578 6879] cycle=non etabli
     presence t0=0 prouvee jusqu a 82, absente a 282
     presence t0=1286 prouvee jusqu a 1483, absente a 1683
     presence t0=1587 prouvee jusqu a 1683, absente a 1883
     presence t0=3393 prouvee jusqu a 3683, absente a 3883
+    presence t0=3694 prouvee jusqu a 3883, absente a 4083
     presence t0=4961 prouvee jusqu a 5083, absente a 5283
     presence t0=5262 prouvee jusqu a 5283, absente a 5484
     presence t0=6578 prouvee jusqu a 6684, absente a 6884
@@ -501,65 +502,70 @@ POWER-UPS (voie ti=37) — balaye=true · 769 creation(s) acceptee(s) -> 26 rete
     presence t0=0 prouvee jusqu a 3283, absente a 3483
     presence t0=3611 prouvee jusqu a 4083, absente a 4283
     presence t0=4497 prouvee jusqu a 7484, absente a 7567
-  socle 6 0x3E070217 pos=(21.19, -2.60, 60.60) apparitions=[0 681 1150 2682 5050 5532 6119] cycle=non etabli
+  socle 6 0x3E070217 pos=(21.19, -2.60, 60.60) apparitions=[0 681 1150 2682 3651 5050 5532 6119] cycle=36.3 s (p10 30.4 · p90 39.8 · 7 ecarts mesures, 0 manques)
     presence t0=0 prouvee jusqu a 282, absente a 482
     presence t0=681 prouvee jusqu a 682, absente a 882
     presence t0=1150 prouvee jusqu a 2283, absente a 2483
     presence t0=2682 prouvee jusqu a 3283, absente a 3483
+    presence t0=3651 prouvee jusqu a 4683, absente a 4883
     presence t0=5050 prouvee jusqu a 5083, absente a 5283
     presence t0=5532 prouvee jusqu a 5684, absente a 5884
     presence t0=6119 prouvee jusqu a 7484, absente a 7567
   socle 7 0xC30D87C7 pos=(-0.54, 4.66, 63.10) apparitions=[0 3812] cycle=non etabli
     presence t0=0 prouvee jusqu a 3483, absente a 3683
     presence t0=3812 prouvee jusqu a 7484, absente a 7567
-  socle 8 0x0A1992BC pos=(-12.13, -0.33, 59.38) apparitions=[0 1501 1801 3302 5104 5405 6906 7207] cycle=non etabli
+  socle 8 0x0A1992BC pos=(-12.13, -0.33, 59.38) apparitions=[0 1501 1801 3302 3603 5104 5405 6906 7207] cycle=non etabli
     presence t0=0 prouvee jusqu a 1283, absente a 1483
     presence t0=1501 prouvee jusqu a 1683, absente a 1883
     presence t0=1801 prouvee jusqu a 1883, absente a 2083
     presence t0=3302 prouvee jusqu a 3483, absente a 3683
+    presence t0=3603 prouvee jusqu a 3603, absente a 3683
     presence t0=5104 prouvee jusqu a 5283, absente a 5484
     presence t0=5405 prouvee jusqu a 5405, absente a 5484
     presence t0=6906 prouvee jusqu a 7084, absente a 7284
     presence t0=7207 prouvee jusqu a 7484, absente a 7567
-  socle 9 0x0A1992BC pos=(11.08, -0.33, 59.38) apparitions=[0 1501 1801 3302 5104 5405 6906 7207] cycle=non etabli
+  socle 9 0x0A1992BC pos=(11.08, -0.33, 59.38) apparitions=[0 1501 1801 3302 3603 5104 5405 6906 7207] cycle=non etabli
     presence t0=0 prouvee jusqu a 1283, absente a 1483
     presence t0=1501 prouvee jusqu a 1683, absente a 1883
     presence t0=1801 prouvee jusqu a 2083, absente a 2283
     presence t0=3302 prouvee jusqu a 3483, absente a 3683
+    presence t0=3603 prouvee jusqu a 3683, absente a 3883
     presence t0=5104 prouvee jusqu a 5283, absente a 5484
     presence t0=5405 prouvee jusqu a 5484, absente a 5684
     presence t0=6906 prouvee jusqu a 7084, absente a 7284
     presence t0=7207 prouvee jusqu a 7484, absente a 7567
-  socle 10 powerup_camo pos=(-8.66, -0.40, 56.10) apparitions=[0 900 1203 2101 2404 3302 4504 4807 5705 6008 6906 7209] cycle=non etabli
+  socle 10 powerup_camo pos=(-8.66, -0.40, 56.10) apparitions=[0 900 1203 2101 2404 3302 3606 4504 4807 5705 6008 6906 7209] cycle=non etabli
     presence t0=0 prouvee jusqu a 82, absente a 282
     presence t0=900 prouvee jusqu a 1083, absente a 1283
     presence t0=1203 prouvee jusqu a 1203, absente a 1283
     presence t0=2101 prouvee jusqu a 2283, absente a 2483
     presence t0=2404 prouvee jusqu a 2483, absente a 2683
     presence t0=3302 prouvee jusqu a 3483, absente a 3683
+    presence t0=3606 prouvee jusqu a 3606, absente a 3683
     presence t0=4504 prouvee jusqu a 4683, absente a 4883
     presence t0=4807 prouvee jusqu a 4883, absente a 5083
     presence t0=5705 prouvee jusqu a 5884, absente a 6084
     presence t0=6008 prouvee jusqu a 6084, absente a 6284
     presence t0=6906 prouvee jusqu a 7084, absente a 7284
     presence t0=7209 prouvee jusqu a 7484, absente a 7567
-  socle 11 powerup_camo pos=(7.54, -0.32, 56.10) apparitions=[0 900 1203 2101 2404 3302 4504 4807 5705 6008 6906 7209] cycle=non etabli
+  socle 11 powerup_camo pos=(7.54, -0.32, 56.10) apparitions=[0 900 1203 2101 2404 3302 3606 4504 4807 5705 6008 6906 7209] cycle=non etabli
     presence t0=0 prouvee jusqu a 82, absente a 282
     presence t0=900 prouvee jusqu a 1083, absente a 1283
     presence t0=1203 prouvee jusqu a 1683, absente a 1883
     presence t0=2101 prouvee jusqu a 2283, absente a 2483
     presence t0=2404 prouvee jusqu a 2483, absente a 2683
     presence t0=3302 prouvee jusqu a 3483, absente a 3683
+    presence t0=3606 prouvee jusqu a 4083, absente a 4283
     presence t0=4504 prouvee jusqu a 4683, absente a 4883
     presence t0=4807 prouvee jusqu a 4807, absente a 4883
     presence t0=5705 prouvee jusqu a 5884, absente a 6084
     presence t0=6008 prouvee jusqu a 6084, absente a 6284
     presence t0=6906 prouvee jusqu a 7084, absente a 7284
     presence t0=7209 prouvee jusqu a 7484, absente a 7567
-70 occupation(s) achevee(s) publiee(s) · 35 datee(s) a l instant exact par l evenement natif · 35 avec un ramasseur nomme
+76 occupation(s) achevee(s) publiee(s) · 49 datee(s) a l instant exact par l evenement natif · 49 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
-371 loadout(s) publie(s) · 8 famille(s) distincte(s)
+373 loadout(s) publie(s) · 8 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 145 entree(s) · 145 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
@@ -583,7 +589,7 @@ arrivants 0 · presences closes 0 · sans presence 0 · occupants au plus 8 · d
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 repli_identite_premier_occupant_du_siege         66
 repli_origine_au_sol_lachee_par_fenetre          273
-repli_prise_de_socle_premiere_du_cycle           9
+repli_prise_de_socle_premiere_du_cycle           17
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 18 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et

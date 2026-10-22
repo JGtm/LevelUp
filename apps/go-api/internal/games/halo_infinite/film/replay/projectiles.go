@@ -2,25 +2,34 @@ package replay
 
 import (
 	"cmp"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"math"
 	"slices"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
-// projectiles.go — TRAJECTOIRES DE PROJECTILE projetées sur la grille du rejeu.
+// projectiles.go — TRAJECTOIRES DE PROJECTILE projetées sur la grille du rejeu, et l'EXPLOSION qui
+// clôt chacune.
 //
-// SOURCE : grammar.ScanFilmProjectiles — l'archétype ti=41, que le registre du film NOMME
-// lui-même (`projectile-at-rest-state`, `projectile-tether-state`, `projectile-command_tick`).
-// Position répliquée à ~60 Hz du départ à l'immobilisation.
+// SOURCE DE LA TRAJECTOIRE : grammar.ScanFilmProjectiles — l'archétype ti=41, que le registre du
+// film NOMME lui-même (`projectile-at-rest-state`, `projectile-tether-state`,
+// `projectile-command_tick`). Position répliquée à ~60 Hz du départ à l'immobilisation.
 //
 // TÉMOIN : 65 des 70 lancers de grenade connus voient naître une trajectoire dans les 200 ms,
 // contre 11 à 13 pour les mêmes lancers décalés en bloc.
 //
-// CE QUE CE CALQUE NE DIT PAS : l'IMPACT. Le film écrit la détonation (message
-// `projectile_detonate` de la vue A), mais ce calque ne la lit pas : il publie la piste de
-// l'objet. Le dernier point est la DERNIÈRE POSITION RÉPLIQUÉE — pour une grenade à fragmentation
-// la réplication cesse ~1,4 s après le lancer alors que la mèche court jusqu'à ~3 s. Le dernier
-// point approche l'explosion parce que l'objet ne bouge plus, pas parce qu'on la lit. Le client
-// doit écrire « dernière position connue », jamais « impact ».
+// L'EXPLOSION (lot detonations, 2026-10-22). Le film ÉCRIT la détonation — un message
+// `projectile_detonate` (genre 5) ou `projectile_impact_effect` (genre 6) de la vue A
+// (grammar/vue_a_detonations.go), avec sa position. CORRECTION D'UNE AFFIRMATION ANTÉRIEURE
+// FAUSSE de cet en-tête (« ce calque ne lit pas la détonation ») : [attachDetonation] la lit et la
+// rattache à la piste par proximité spatiale, parmi les détonations à portée temporelle de la
+// dernière position publiée (mesure sur cinq films témoins, 727 lancers liés, 100 % appariés,
+// médiane 17-35 ms après et 0,01 unité de la dernière position, jamais avant elle au-delà de la
+// tolérance). Une piste sans détonation à portée (carte sans détonation lisible, vol tronqué) se
+// publie quand même : [attachDetonation] pose alors la DERNIÈRE POSITION RÉPLIQUÉE, un repli NOMMÉ
+// et COMPTÉ (`fallback.NomDetonationDernierePositionConnue`, ADR 0034 D-10) — jamais un « impact »
+// tacite, et [Projectile.DetoLue] dit laquelle des deux voies a servi.
 
 // Projectile est une trajectoire de projectile, échantillonnée sur la grille du rejeu.
 type Projectile struct {
@@ -34,6 +43,17 @@ type Projectile struct {
 	// CERTIFIE une fin de vol (78 fois sur 79 sur le film de référence). Sans lui, le vol
 	// s'arrête parce que la réplication s'arrête, ce qui n'est pas la même chose.
 	Rest bool `json:"rest,omitempty"`
+	// DetoT est l'index de frame de l'EXPLOSION, sur le même axe que Point.T (absolu, pas relatif
+	// à T0) : soit l'instant du message de détonation/impact LU, soit, à défaut, celui du dernier
+	// point de P (cf. [Projectile.DetoLue]).
+	DetoT int `json:"detoT"`
+	// DetoX/DetoY sont la position de l'EXPLOSION, mêmes axes que P.
+	DetoX float32 `json:"detoX"`
+	DetoY float32 `json:"detoY"`
+	// DetoLue dit que DetoT/X/Y viennent d'un message de détonation/impact LU dans le film. Faux
+	// = repli nommé (`fallback.NomDetonationDernierePositionConnue`) : DetoT/X/Y valent alors le
+	// dernier point de P, l'approximation documentée (jamais une détonation affirmée).
+	DetoLue bool `json:"detoLue,omitempty"`
 }
 
 // projectileMaxStepM borne le déplacement d'un projectile entre deux points de la grille
@@ -78,7 +98,8 @@ const projectileMaxStepM = 10
 // un décodeur qui coupe sans le dire est un rejet avalé (cf. coverage.go). Elle compte aussi les
 // coupures dont la trajectoire n'est pas publiée ensuite — sans quoi le compteur mentirait par
 // omission.
-func buildProjectiles(tracks []types.ProjectileTrack, origin, step uint64) ([]Projectile, map[int]int, int) {
+func buildProjectiles(tracks []types.ProjectileTrack, origin, step uint64,
+	detos []types.ProjectileDetonation, fb *fallback.Compteur) ([]Projectile, map[int]int, int) {
 	if len(tracks) == 0 {
 		return nil, nil, 0
 	}
@@ -94,6 +115,7 @@ func buildProjectiles(tracks []types.ProjectileTrack, origin, step uint64) ([]Pr
 		}
 		t0 := int((tr.Pts[0].TimestampUS - origin) / step)
 		var pts [][3]float32
+		var dernierPublie types.ProjectileSample
 		last := -1
 		coupe := false
 		for _, p := range tr.Pts {
@@ -108,7 +130,7 @@ func buildProjectiles(tracks []types.ProjectileTrack, origin, step uint64) ([]Pr
 				coupe = true
 				break
 			}
-			last = f
+			last, dernierPublie = f, p
 			pts = append(pts, [3]float32{float32(f - t0), round2(p.X), round2(p.Y)})
 		}
 		if coupe {
@@ -117,12 +139,12 @@ func buildProjectiles(tracks []types.ProjectileTrack, origin, step uint64) ([]Pr
 		if len(pts) < 2 { // une trajectoire d'un seul point de grille ne se dessine pas
 			continue
 		}
-		kept = append(kept, withRaw{
+		proj := Projectile{T0: t0, P: pts,
 			// `Rest` CERTIFIE une fin de vol : un vol coupé n'a pas la sienne, et le dire
 			// serait affirmer qu'on a vu le projectile s'immobiliser là.
-			p:   Projectile{T0: t0, P: pts, Rest: !coupe && tr.Pts[len(tr.Pts)-1].AtRest},
-			raw: raw,
-		})
+			Rest: !coupe && tr.Pts[len(tr.Pts)-1].AtRest}
+		attachDetonation(&proj, dernierPublie, origin, step, detos, fb)
+		kept = append(kept, withRaw{p: proj, raw: raw})
 	}
 	// Tri TOTAL : T0 est un index de frame de la grille 10 Hz, donc les ex æquo sont la règle,
 	// pas l'exception. Départager par la première position publiée puis par la longueur rend
@@ -145,4 +167,61 @@ func buildProjectiles(tracks []types.ProjectileTrack, origin, step uint64) ([]Pr
 		pubByRaw[k.raw] = i
 	}
 	return out, pubByRaw, tronquees
+}
+
+// detoSearchBeforeUS/detoSearchAfterUS bornent la fenêtre de recherche d'une détonation à portée
+// de la dernière position publiée d'une piste.
+//
+// MESURE QUI LES FONDE (lot detonations, 2026-10-22, cinq films témoins — Origin, Dredge,
+// Snowbound, Flood Gulch, Catalyst — 727 lancers liés à une piste) : 727/727 (100 %) trouvent une
+// détonation à position dans cette fenêtre, médiane 17 à 35 ms APRÈS la dernière position publiée
+// (jamais avant au-delà de la tolérance — un seul cas à -69 ms, dans la marge), médiane de
+// distance 0,01 unité (min 0,01, max 3,58 sur 4 989 lancers liés). La borne haute (4 s) couvre la
+// queue des mèches longues (frag/plasma) sans ouvrir sur l'explosion d'un AUTRE projectile du
+// même paquet.
+const (
+	detoSearchBeforeUS uint64 = 500_000
+	detoSearchAfterUS  uint64 = 4_000_000
+)
+
+// attachDetonation pose l'EXPLOSION d'une piste sur `p` : la détonation/impact LUE la plus proche
+// dans l'espace parmi celles à portée temporelle de `dernierPublie` (sa dernière position publiée)
+// — à défaut, le repli NOMMÉ et COMPTÉ [fallback.NomDetonationDernierePositionConnue] : cette
+// dernière position elle-même, l'approximation que ce calque publiait SANS repli avant ce lot.
+//
+// `dernierPublie` est la valeur zéro (`TimestampUS` 0) pour une piste dont `pts` n'a reçu aucun
+// point avant le premier pas impossible — impossible ici puisque l'appelant exige `len(pts) >= 2`
+// avant d'appeler cette fonction, donc au moins un point publié.
+func attachDetonation(p *Projectile, dernierPublie types.ProjectileSample, origin, step uint64,
+	detos []types.ProjectileDetonation, fb *fallback.Compteur) {
+	if best, ok := detonationLaPlusProche(dernierPublie, detos); ok {
+		p.DetoT = int((best.TimestampUS - origin) / step) //nolint:gosec // index de frame d'un match
+		p.DetoX, p.DetoY, p.DetoLue = round2(best.X), round2(best.Y), true
+		return
+	}
+	fb.Declenche(fallback.NomDetonationDernierePositionConnue)
+	dernier := p.P[len(p.P)-1]
+	p.DetoT, p.DetoX, p.DetoY = p.T0+int(dernier[0]), dernier[1], dernier[2]
+}
+
+// detonationLaPlusProche rend, parmi les détonations À POSITION dont l'instant tombe dans
+// [last - detoSearchBeforeUS, last + detoSearchAfterUS], celle la plus proche dans l'espace de
+// `last`. PUR : aucune I/O, aucun état partagé — un film décodé deux fois en parallèle (ADR 0034
+// D-5) rend le même résultat.
+func detonationLaPlusProche(last types.ProjectileSample, detos []types.ProjectileDetonation) (types.ProjectileDetonation, bool) {
+	var best types.ProjectileDetonation
+	bestDist, trouve := math.MaxFloat64, false
+	for _, d := range detos {
+		if !d.HasPosition {
+			continue
+		}
+		if d.TimestampUS+detoSearchBeforeUS < last.TimestampUS || d.TimestampUS > last.TimestampUS+detoSearchAfterUS {
+			continue
+		}
+		dist := dist3([3]float32{d.X, d.Y, d.Z}, [3]float32{last.X, last.Y, last.Z})
+		if !trouve || dist < bestDist {
+			best, bestDist, trouve = d, dist, true
+		}
+	}
+	return best, trouve
 }

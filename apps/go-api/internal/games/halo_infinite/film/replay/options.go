@@ -73,6 +73,11 @@ type Options struct {
 	// Projectiles : trajectoires de projectile decodees des paquets delta (cf. projectiles.go).
 	// Entree de DONNEES, comme Loadouts et Grenades. Absente = rejeu sans trajectoires.
 	Projectiles []types.ProjectileTrack
+	// Detonations : messages de detonation/impact de projectile lus dans la vue A (genres 5/6,
+	// grammar.ScanProjectileDetonations). Entree de DONNEES, comme Projectiles. Absente = rejeu
+	// sans message de detonation (le repli nomme repli_detonation_derniere_position_connue sert
+	// alors systematiquement, cf. projectiles.go).
+	Detonations []types.ProjectileDetonation
 	// Inventory : inventaire complet lu aux memes images-cles que les armes portees
 	// (cf. inventory.go). Entree de DONNEES. Absente = rejeu sans grenades ni munitions.
 	Inventory []types.KeyframeInventory

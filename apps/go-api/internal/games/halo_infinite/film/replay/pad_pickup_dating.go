@@ -45,11 +45,23 @@ package replay
 // deux pour faire plaisir à une jointure interne casserait un contrat public pour un confort
 // privé.
 //
-// LES SOCLES DE POWER-UP NE SONT PAS JOIGNABLES, et ce n'est pas un échec de couverture : leur
-// identité (`gwPadWeaponID` -> `Appar.Family`) est un NOM CANONIQUE, pas un identifiant de
-// famille. Aucun ramassage natif ne peut donc s'y apparier, jamais. Ils sont comptés à part
-// (`PowerupOccupations`) au lieu d'être noyés dans `Uncovered`, qui laisserait croire que le canal
-// natif a cherché et n'a pas trouvé.
+// LES SOCLES DE POWER-UP SE JOIGNENT PAR LE SLUG, PAS PAR L'HEXA (corrigé le 2026-10-22, lot
+// detonations, suite du contrôle n° 24 des contrôles v8 : l'affirmation inverse de ce
+// paragraphe — « aucun ramassage natif ne peut s'y apparier » — était fausse, jamais mesurée).
+// Leur identité (`gwPadWeaponID` -> `Appar.Family`) est un NOM CANONIQUE (`powerup_overshield`,
+// `powerup_camo`) et NON un identifiant d'arme en hexadécimal — `PadWeaponFamilyKey` le refuse
+// à bon droit. Mais un ramassage natif non-arme (classe 2/3) publie EXACTEMENT ce même slug
+// dans `Pickup.Family`, résolu par le MÊME catalogue `eqip` du manifeste
+// (`LabelCatalog.EquipmentFamilies`) que celui qui nomme le socle (`powerupPadRule`,
+// powerup_pads.go). La jointure compare donc `Pickup.Family` à `WeaponPad.Weapon` par égalité de
+// chaîne, sans normalisation hexadécimale : mesuré sur trois films témoins (`92c950ee`,
+// `0d094c9b`, `d6918972`), les ramassages `powerup_overshield` tombent dans la fenêtre de leur
+// occupation à chaque fois qu'il y en a une (8 sur 8, sur les deux premiers films — le troisième
+// n'a aucun socle de power-up), à 0-2 images de l'instant que le recensement d'image-clé isolait
+// déjà. Ils ne sont donc PLUS comptés à part dans `Uncovered` ni dans une absence structurelle :
+// `PowerupOccupations` reste le DÉNOMINATEUR des occupations de socle de power-up examinées, et
+// `Dated`/`Named`/`Ambiguous`/`Uncovered` les comptent désormais comme n'importe quelle
+// occupation d'arme.
 
 import (
 	"cmp"
@@ -74,15 +86,21 @@ type PadDatingStats struct {
 	// Uncovered compte les fenêtres qu'aucun ramassage natif ne couvre — elles gardent leur
 	// intervalle, intact.
 	Uncovered int `json:"uncovered"`
-	// PowerupOccupations compte les occupations de socle de POWER-UP, structurellement non
-	// joignables : l'identité d'un tel socle est un NOM CANONIQUE, pas une famille d'arme.
-	// Elles sont sorties d'`Uncovered` À DESSEIN — les y laisser ferait lire « le canal natif
-	// a cherché et n'a pas trouvé » là où il n'y avait rien à chercher.
+	// PowerupOccupations compte les occupations de socle de POWER-UP examinées : le
+	// DÉNOMINATEUR de cette famille de socles, dont l'identité (`Weapon`) est un NOM CANONIQUE
+	// et non une famille d'arme en hexadécimal — `PadWeaponFamilyKey` le refuse, et c'est ce qui
+	// distingue un socle de power-up d'un socle d'arme sans connaître la liste des noms.
+	//
+	// CORRIGÉ LE 2026-10-22 (lot detonations) : elles sont JOIGNABLES par le SLUG
+	// (`Pickup.Family` contre `WeaponPad.Weapon`, cf. l'en-tête) et comptent donc aussi dans
+	// `Dated`/`Named`/`Ambiguous`/`Uncovered`, exactement comme les occupations d'arme. Ce
+	// compteur n'est plus « jamais datée » : il reste le sous-total qui dit combien
+	// d'occupations de power-up ont été examinées, pour lire leur part dans les autres compteurs.
 	//
 	// LE NOM N'EST PAS `powerupPads`, ET C'EST DÉLIBÉRÉ (correctif de revue, ronde 2) :
 	// `coverage.groundWeapons.powerupPads` existe déjà et compte des SOCLES PUBLIÉS. Deux clés
 	// homonymes à dénominateurs différents dans le même document se liraient l'une pour
-	// l'autre. Ici on compte des OCCUPATIONS écartées de la jointure — le nom le dit.
+	// l'autre. Ici on compte des OCCUPATIONS de cette famille de socle — le nom le dit.
 	PowerupOccupations int `json:"powerupOccupations"`
 	// FirstOfCycle est le nombre d'occupations datées par le repli de la première prise du
 	// cycle (sous-ensemble de Dated) : leur fenêtre portait plusieurs ramassages natifs, ou un
@@ -227,29 +245,33 @@ func lectureDesFenetres(fenetres [][]int) []int {
 }
 
 // candidatsDeDatation rend, pour chaque occupation, les INDEX dans `pickups` des ramassages
-// natifs d'arme de la même famille tombés dans sa fenêtre, par instant croissant ; il compte
-// dans `st` les occupations qui n'en ont aucun (hors bornes et non couvertes dans `Uncovered`,
-// power-ups dans `PowerupOccupations`) — leur liste est vide.
+// natifs DU MÊME OBJET tombés dans sa fenêtre, par instant croissant ; il compte dans `st` les
+// occupations qui n'en ont aucune (hors bornes et non couvertes dans `Uncovered`) — leur liste
+// est vide. Un socle d'ARME s'apparie par famille hexadécimale normalisée ([PadWeaponFamilyKey]) ;
+// un socle de POWER-UP par le SLUG canonique (`Pickup.Family` == `WeaponPad.Weapon`, cf.
+// l'en-tête) — les deux voies alimentent la MÊME liste de candidats, et tout ce qui suit
+// (ambiguïté, repli de la première prise du cycle) les traite identiquement.
 func candidatsDeDatation(pads []WeaponPad, picks []PadPickup, pickups []Pickup, st *PadDatingStats) [][]int {
 	// PAS DE RETOUR ANTICIPÉ QUAND LE CANAL NATIF EST VIDE, et c'est un correctif de revue
-	// (ronde 2) : la première version versait alors TOUTES les occupations dans `Uncovered`,
-	// power-ups compris — c'est-à-dire exactement la lecture mensongère (« le canal a cherché
-	// et n'a pas trouvé ») que ce fichier prétend éliminer. La boucle ci-dessous classe
-	// TOUJOURS, y compris avec zéro ramassage : un socle de power-up reste hors jointure, un
-	// socle d'arme reste non couvert.
+	// (ronde 2) : la première version versait alors TOUTES les occupations dans `Uncovered` —
+	// c'est-à-dire exactement la lecture mensongère (« le canal a cherché et n'a pas trouvé »)
+	// que ce fichier prétend éliminer. La boucle ci-dessous classe TOUJOURS, y compris avec
+	// zéro ramassage.
 	//
-	// Index par famille NORMALISÉE : une occupation ne s'apparie qu'à un ramassage de LA MÊME
-	// arme, et les deux côtés ne l'écrivent pas pareil (cf. l'en-tête).
+	// DEUX INDEX, UN PAR ESPACE DE CLÉ : les armes se comparent en hexadécimal normalisé, les
+	// power-ups (et plus largement tout ramassage non-arme dont la famille est établie) par le
+	// SLUG que le même catalogue `eqip` résout des deux côtés de la jointure.
 	byFamily := map[string][]int{}
+	byPowerupFamily := map[string][]int{}
 	for j, p := range pickups {
-		if p.Kind != PickupWeapon {
-			continue // un socle d'arme ne rend pas de l'équipement
+		switch {
+		case p.Kind == PickupWeapon:
+			if key, ok := PadWeaponFamilyKey(p.W); ok {
+				byFamily[key] = append(byFamily[key], j)
+			}
+		case p.Family != "":
+			byPowerupFamily[p.Family] = append(byPowerupFamily[p.Family], j)
 		}
-		key, ok := PadWeaponFamilyKey(p.W)
-		if !ok {
-			continue
-		}
-		byFamily[key] = append(byFamily[key], j)
 	}
 	out := make([][]int, len(picks))
 	for i := range picks {
@@ -258,14 +280,16 @@ func candidatsDeDatation(pads []WeaponPad, picks []PadPickup, pickups []Pickup, 
 			st.Uncovered++
 			continue
 		}
-		key, ok := PadWeaponFamilyKey(pads[k.Pad].Weapon)
-		if !ok {
-			// Socle de POWER-UP (nom canonique) : rien à chercher, et on ne fait pas passer
-			// ça pour une recherche infructueuse.
+		var candidats []int
+		if key, ok := PadWeaponFamilyKey(pads[k.Pad].Weapon); ok {
+			candidats = byFamily[key]
+		} else {
+			// Socle de POWER-UP (nom canonique) : la jointure se fait par le slug, pas par
+			// l'hexa — cf. l'en-tête.
 			st.PowerupOccupations++
-			continue
+			candidats = byPowerupFamily[pads[k.Pad].Weapon]
 		}
-		for _, j := range byFamily[key] {
+		for _, j := range candidats {
 			if pickups[j].T >= k.TLow && pickups[j].T <= k.THigh {
 				out[i] = append(out[i], j)
 			}

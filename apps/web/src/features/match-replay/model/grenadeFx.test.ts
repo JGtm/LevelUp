@@ -1,8 +1,9 @@
 /**
- * grenadeFx.test.ts — les règles de la fin de vol : l'effet se pose au DERNIER pas du
- * projectile LIÉ (jamais au point de lancer — c'est la « dernière position connue »), la
- * certification `at-rest` est PORTÉE mais pas exigée (mesure : elle n'existe que sur les
- * Spike), et un lien hors bornes est ignoré plutôt que de poser un effet au hasard.
+ * grenadeFx.test.ts — les règles de la fin de vol : l'effet se pose à l'EXPLOSION publiée par
+ * le serveur (`detoT/detoX/detoY`, lue dans la vue A ou, à défaut, la dernière position
+ * répliquée — jamais au point de lancer), la certification `at-rest` est PORTÉE mais pas
+ * exigée (mesure : elle n'existe que sur les Spike), et un lien hors bornes est ignoré plutôt
+ * que de poser un effet au hasard.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -23,11 +24,12 @@ function docWith(over: Partial<ReplayDocument> = {}) {
   return testReplayDoc({
     frameIntervalMs: 100,
     projectiles: [
-      // Vol certifié : repos en (8, 9) à la frame 10 + 14 = 24.
-      { t0: 10, p: [[0, 2, 3], [7, 5, 6], [14, 8, 9]], rest: true },
+      // Vol certifié : explosion LUE en (8, 9) à la frame 24 (= dernier point répliqué ici).
+      { t0: 10, p: [[0, 2, 3], [7, 5, 6], [14, 8, 9]], rest: true, detoT: 24, detoX: 8, detoY: 9, detoLue: true },
       // Réplication interrompue SANS repos certifié (le cas des frag/plasma/Dynamo, qui
-      // détonent) : l'effet se pose quand même, au dernier point répliqué.
-      { t0: 30, p: [[0, 1, 1], [5, 2, 2]] },
+      // détonent) : AUCUNE détonation à portée ici — repli Go, l'explosion vaut le dernier
+      // point répliqué (frame 35, le serveur l'a déjà calculé).
+      { t0: 30, p: [[0, 1, 1], [5, 2, 2]], detoT: 35, detoX: 2, detoY: 2 },
     ],
     grenades: [
       { t: 10, slot: 0, i: 1, x: 2, y: 3, rank: DYNAMO_RANK, s: 'projectile', proj: 0 },
@@ -40,13 +42,13 @@ function docWith(over: Partial<ReplayDocument> = {}) {
 }
 
 describe('buildGrenadeRestFx', () => {
-  it('pose l effet au DERNIER pas du projectile lié, à sa frame d arrêt', () => {
+  it('pose l effet à l EXPLOSION publiée par le serveur (detoT/detoX/detoY)', () => {
     const fx = buildGrenadeRestFx(docWith())
     expect(fx).toHaveLength(2)
     expect(fx[0]).toMatchObject({ frame: 24, x: 8, y: 9, rank: DYNAMO_RANK, rest: true })
   })
 
-  it('un vol NON certifié produit AUSSI son effet (frag/plasma/Dynamo détonent sans at-rest), marqué non certifié', () => {
+  it('un vol NON certifié produit AUSSI son effet (frag/plasma/Dynamo détonent sans at-rest), à la position que le repli Go a posée', () => {
     const fx = buildGrenadeRestFx(docWith())
     expect(fx[1]).toMatchObject({ frame: 35, x: 2, y: 2, rank: 0, rest: false })
   })

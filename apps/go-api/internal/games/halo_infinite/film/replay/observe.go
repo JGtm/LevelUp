@@ -73,7 +73,11 @@ var buildFromFilmSteps = []string{
 	"camoStates", "camoStates.stats",
 	"grappleReads", "grappleReads.stats",
 	"abilityImpulses", "abilityCharges",
-	"grenades", "projectiles", "deaths", "filmTable", "playerTeams", "playerIndices", "clockOrigin",
+	"grenades", "projectiles",
+	// LES DETONATIONS/IMPACTS DE PROJECTILE (lot detonations, 2026-10-22) : apres les pistes
+	// qu elles rattachent, meme horloge.
+	"detonations",
+	"deaths", "filmTable", "playerTeams", "playerIndices", "clockOrigin",
 }
 
 // BuildFromFilmSteps rend une COPIE de la liste fermee des etapes (J12.4 : la liste elle-meme n est

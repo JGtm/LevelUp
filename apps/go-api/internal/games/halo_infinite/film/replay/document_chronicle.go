@@ -3501,3 +3501,64 @@ package replay
 //	                valeur (la taille est une option de la publication, pas un fait du film).
 //
 //	LE PARC         un artefact 100 : verdict `redecoder` (la revision de grammaire a change).
+
+// v102 (2026-10-22, lot detonations, suite du controle n° 24 des controles v8 : des lancers de
+// grenade sans explosion). Le film ECRIT la detonation d un projectile dans la vue A
+// (`projectile_detonate` genre 5, `projectile_impact_effect` genre 6) : la position etait deja LUE
+// par [chargeDetonation]/[chargeImpact] pour avancer le curseur de bits, puis jetee. Ce lot la
+// garde et la rattache a la piste publiee par proximite spatiale et temporelle.
+//
+//	`projectiles[].detoT/detoX/detoY`   l EXPLOSION publiee : l instant et la position du message
+//	                 de detonation/impact LU, le plus proche dans l espace parmi ceux a portee
+//	                 temporelle de la derniere position publiee de la piste.
+//	`projectiles[].detoLue`             dit que les trois champs ci-dessus viennent d un message
+//	                 LU ; faux = repli nomme (`fallback.NomDetonationDernierePositionConnue`) : ils
+//	                 valent alors le dernier point de la piste, l approximation publiee SANS repli
+//	                 avant ce lot.
+//
+//	MESURE          cinq films temoins (Origin, Dredge, Snowbound, Flood Gulch, Catalyst), 727
+//	                lancers lies a une piste de projectile : 727/727 (100 %) trouvent une
+//	                detonation a position dans la fenetre mesuree (0,5 s avant la derniere position
+//	                publiee, 4 s apres), mediane 17 a 35 ms APRES cette derniere position (jamais
+//	                avant au-dela de la tolerance) et 0,01 unite de distance (max 3,58 sur 4 989
+//	                lancers lies). La reference de projectile du message (domaine 5) ne coincide
+//	                NI brute NI avec la base 0x400 du domaine avec le slot de la piste appariee :
+//	                l appariement passe par la proximite, pas par cette reference.
+//
+//	CE QUI MONTE    `SchemaVersion` 101 -> 102 ; `SchemaDesFaits` 17 -> 18 (le blob des entrees
+//	AVEC ELLE       porte les detonations lues : sans cette montee la recuisson depuis des faits
+//	                perimes perdrait la detonation et retomberait systematiquement sur le repli).
+//	                Aucune revision de couche ne bouge : la grammaire lisait deja ces bits, elle ne
+//	                fait que les garder.
+//
+//	LE PARC         un artefact 101 : verdict `redecoder` (les faits portent l ancien schema), la
+//	                recuisson relit le film. DECISION UTILISATEUR REQUISE avant toute recuisson du
+//	                parc de production (hors films temoins de ce lot).
+
+// v103 (2026-10-22, lot detonations, item 2 : ramassage de power-up date). Aucun champ neuf ; le
+// CONTENU change : les occupations de socle de POWER-UP se joignent desormais au ramassage natif
+// `biped_pickup` par le SLUG canonique (`Pickup.Family` == `WeaponPad.Weapon`), exactement comme
+// les socles d arme se joignent par la famille hexadecimale (pad_pickup_dating.go). Avant ce lot,
+// la jointure les excluait categoriquement (`p.Kind != PickupWeapon`) : un socle de power-up ne
+// recevait jamais `padPickups[].t`/`.xuid`, meme quand le ramassage natif etait present et exact.
+//
+//	`padPickups[].t`/`.xuid` (power-up)   l instant exact et le ramasseur, quand un ramassage
+//	                 natif de la bonne famille tombe dans la fenetre de l occupation — remplace
+//	                 l intervalle de vingt secondes que le client approchait par la proximite du
+//	                 joueur (`padPresenceRefine.ts`).
+//	`coverage.padDating.{dated,named,uncovered}`   comptent desormais aussi les occupations de
+//	                 power-up ; `powerupOccupations` reste leur denominateur propre.
+//
+//	MESURE          trois films temoins (`92c950ee`, `0d094c9b`, `d6918972`) : les huit occupations
+//	                de power-up des deux premiers trouvent toutes un ramassage natif `overshield`
+//	                dans leur fenetre (8/8), a 0-2 images de l instant que le recensement d image-cle
+//	                isolait deja ; le troisieme ne porte aucun socle de power-up. Sur le parc de
+//	                reference (huit builds), les occupations datees montent de 38->41, 13->18,
+//	                13->16 et 38->49 selon le film — aucune ne baisse, aucune n est effacee.
+//
+//	CE QUI MONTE    `SchemaVersion` 102 -> 103. Aucune revision de couche ni `SchemaDesFaits` ne
+//	AVEC ELLE       bouge : la lecture (le ramassage natif, le socle) etait deja celle que
+//	                `grammar`/les faits publient, seule l ASSEMBLAGE (replay) change sa regle de
+//	                jointure.
+//
+//	LE PARC         un artefact 102 : verdict `a republier` (assemblage seul, aucun fait perime).

@@ -19,7 +19,14 @@
  *    raison change. Il ne dit plus « la donnée n'existe pas » mais « la donnée existe et son
  *    affichage n'a pas été conçu ». (Justification d'origine, désormais caduque : oracle à 79,7 % contre 90 %
  *    exigés) et le champ EXISTE au contrat : un rendu peut le lire sans voir qu'il est vide.
- *    C'est la clause la plus facile à violer par inadvertance — ce test interdit la lecture.
+ *    C'est la clause la plus facile à violer par inadvertance — ce test interdit la LECTURE DU
+ *    XUID, partout dans le lot.
+ *
+ *    CORRIGÉ LE 2026-10-22 (lot detonations, item 2) : `useReplayWeaponPads.ts` lit désormais
+ *    `padPickups[].t` (jamais `.xuid`) pour dater l'instant exact où un socle se vide
+ *    (`padPickupDating.ts`, hors de ce lot — il porte le ramasseur, sans lecteur). Le garde-rail
+ *    sur `padPickups` RESTE pour les quatre autres fichiers, qui n'ont aucune raison d'y toucher ;
+ *    celui sur `xuid` reste pour les cinq, ramasseur compris.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -144,7 +151,15 @@ describe('garde-rail : toute vignette de socle est CERNÉE, image finie comprise
 })
 
 describe('garde-rail : le RAMASSEUR n’est jamais lu', () => {
-  it('aucun fichier du lot ne touche à `padPickups` ni à un `xuid`', () => {
+  /**
+   * UN SEUL FICHIER A LE DROIT DE TOUCHER `padPickups`, ET POUR UNE SEULE RAISON (2026-10-22) :
+   * `useReplayWeaponPads.ts` date l'instant de vidage d'un socle (`.t`), jamais son ramasseur.
+   * La lecture du RAMASSEUR, elle, reste interdite partout — `xuid` n'apparaît dans AUCUN des
+   * cinq fichiers, celui-ci compris.
+   */
+  const AUTORISE_PAD_PICKUPS: ReadonlySet<string> = new Set(['useReplayWeaponPads.ts'])
+
+  it('aucun fichier du lot ne lit un `xuid` ; seul le hook date par `padPickups`', () => {
     for (const f of FICHIERS) {
       const src = source(f)
       // Les commentaires ont le droit d'EXPLIQUER pourquoi le champ n'est pas lu ; le code,
@@ -153,7 +168,9 @@ describe('garde-rail : le RAMASSEUR n’est jamais lu', () => {
         .split('\n')
         .filter((l) => !/^\s*(\*|\/\/|\/\*)/.test(l))
         .join('\n')
-      expect(code, `${f} lit padPickups`).not.toMatch(/padPickups/)
+      if (!AUTORISE_PAD_PICKUPS.has(f)) {
+        expect(code, `${f} lit padPickups`).not.toMatch(/padPickups/)
+      }
       expect(code, `${f} lit un xuid`).not.toMatch(/\bxuid\b/i)
     }
   })

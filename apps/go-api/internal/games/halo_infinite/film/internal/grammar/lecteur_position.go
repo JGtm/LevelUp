@@ -123,6 +123,17 @@ func bornesDeLaPlage(r profile.Vec3Range) [3][2]float32 {
 	return out
 }
 
+// vec3RangeDeBornes est l inverse de [bornesDeLaPlage] : des bornes {min, max} par axe vers une
+// profile.Vec3Range — pour les dequantifications qui partent des tables d une tablesDePosition
+// deja installee sur le lecteur (vue_a_detonations.go), plutot que de l entree de catalogue brute.
+func vec3RangeDeBornes(b [3][2]float32) profile.Vec3Range {
+	var out profile.Vec3Range
+	for axe := range 3 {
+		out[axe] = profile.AxisRange{Min: b[axe][0], Max: b[axe][1]}
+	}
+	return out
+}
+
 // largeursDeLaLigne rend la ligne `niveau` de la table que l index choisit.
 func largeursDeLaLigne(t tablesDePosition, idx, niveau int) [3]uint {
 	switch {
