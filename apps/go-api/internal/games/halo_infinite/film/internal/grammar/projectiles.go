@@ -39,9 +39,10 @@ import (
 // Le point de naissance n'est pas « près d'un joueur » : il est à 0,4 unité DEVANT et 0,64
 // AU-DESSUS du repère du bipède, maximum 1,37 sur 70. C'est la main, à la bonne hauteur.
 //
-// CE QUE CE DÉCODEUR NE DONNE PAS : **l'impact**. Il n'existe aucun événement de détonation
-// dans le film. Ce qu'on lit est la DERNIÈRE POSITION RÉPLIQUÉE, et pour les grenades à
-// fragmentation la réplication cesse ~1,4 s après le lancer alors que la mèche court jusqu'à
+// CE QUE CE DÉCODEUR NE DONNE PAS : **l'impact**. Le film ÉCRIT la détonation — le message
+// `projectile_detonate` de la vue A (genre 5, [chargeDetonation], une position au niveau 0xf) —,
+// mais ce décodeur ne le lit pas : il lit la piste de l'objet. Ce qu'on lit est la DERNIÈRE
+// POSITION RÉPLIQUÉE, et pour les grenades à fragmentation la réplication cesse ~1,4 s après le lancer alors que la mèche court jusqu'à
 // ~3 s : le dernier point approche le point d'explosion parce que l'objet ne bouge plus, pas
 // parce qu'on lit l'explosion. À l'écran, écrire « dernière position connue », jamais
 // « impact ». Seul `projectile-at-rest-state` (i18) CERTIFIE une fin de vol : il est porté
@@ -132,7 +133,9 @@ func ScanWorldObjects(fc *FilmContext, wr *profile.Vec3Range, typeIndex int) ([]
 		return nil, ErrNoFilmChunk
 	}
 	band := worldObjectSlotBand(fc, typeIndex)
-	if len(band) == 0 {
+	// Une bande vide ne ferme le balayage que si elle est la seule designation de l archetype : les
+	// pistes d un archetype que la marche designe seule se lisent sans elle ([laMarcheDesigneSeule]).
+	if len(band) == 0 && !laMarcheDesigneSeule(typeIndex) {
 		return nil, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film", typeIndex)
 	}
 	return ScanWorldObjectsForBand(fc, wr, typeIndex, band)

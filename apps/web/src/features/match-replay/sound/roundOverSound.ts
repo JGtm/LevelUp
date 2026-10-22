@@ -27,6 +27,10 @@
  * CATÉGORIE OBJECTIF, comme les sons d'état de zone : c'est un son de DÉROULÉ du mode, pas une
  * arme ni un équipement. Le tiroir de réglages le coupe donc avec la case « Objectifs ».
  *
+ * HORS PLAFOND DE VOIX (`announcer`, règle `soundOccupiesVoice`) : la fin d'une manche tombe au
+ * milieu des derniers tirs, lancers et explosions, qui tiennent les huit voix ; une voix
+ * d'annonceur soumise au plafond y serait refusée en silence.
+ *
  * Pas de React, pas de Web Audio : logique pure, testée (`roundOverSound.test.ts`). Le garde-rail
  * `replaySoundAssets.guard.test.ts` rejoue ces deux stems contre le dossier d'assets, comme les
  * autres — un stem sans fichier, ou un fichier sans stem, casse le test, jamais l'écoute.
@@ -61,5 +65,5 @@ export function roundOverSoundEvents(
   const transitions = roundTransitions(scoreTimelineOf(doc))
   if (transitions.length === 0) return []
   const stem = ROUND_OVER_SOUND_STEMS[locale]
-  return transitions.map((tr) => soundEvent(frameToMs(tr.frame, doc), stem))
+  return transitions.map((tr) => ({ ...soundEvent(frameToMs(tr.frame, doc), stem), announcer: true }))
 }

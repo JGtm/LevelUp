@@ -7,7 +7,7 @@
 // l'instant du kill (table `weapon_kills`). Une epee, un marteau, un faisceau n'emettent
 // pas de tir : leurs kills etaient perdus, ou recolles sur l'arme a feu tenue — ce qui
 // gonflait l'AR, le BR et le Sidekick. Ce lecteur-ci lit la SOURCE DU DEGAT dans l'etat de
-// mort de la VICTIME (`match_kill_events_latest.source_tag`), ou l'epee est une epee.
+// mort de la VICTIME (`match_kill_pairs_latest.source_tag`), ou l'epee est une epee.
 //
 // Mesure du 2026-09-01 sur 200 matchs (.ai/V7.5/MESURE_BASCULE_ARME_2026-09-01.md) : le
 // residu « Non attribue » passe de 14 453 (77,1 %) a 3 984 (21,2 %), et aucune classe
@@ -36,7 +36,7 @@
 // La traduction tag -> cle se fait en Go, apres la requete : le SQL ne connait que des
 // entiers, jamais une chaine a comparer (decision D12).
 //
-// Capability gating : `match_kill_events_latest` absente (titre sans decodeur de film,
+// Capability gating : `match_kill_pairs_latest` absente (titre sans decodeur de film,
 // migration non appliquee) -> games.ErrCapabilityNotSupported, via isTableNotFoundErr.
 package duckdb
 
@@ -109,7 +109,7 @@ func (r *KillSourceWeaponKillsRepo) LoadWeaponKillsAggregated(
 	tally, err := r.queryTally(ctx, slug, filters)
 	if err != nil {
 		if isTableNotFoundErr(err) {
-			slog.DebugContext(ctx, "KillSourceWeaponKillsRepo: match_kill_events_latest absente",
+			slog.DebugContext(ctx, "KillSourceWeaponKillsRepo: match_kill_pairs_latest absente",
 				"slug", slug, "match_count", len(filters.MatchIDs))
 			return nil, games.ErrCapabilityNotSupported
 		}
@@ -248,8 +248,8 @@ func buildKillSourceWeaponQuery(f port.WeaponKillFilters, titleSlug string) (str
 SELECT
     k.feed_killer_xuid,
     k.source_tag,
-    COUNT(*)::INTEGER AS kills
-FROM match_kill_events_latest k
+    SUM(k.kills)::INTEGER AS kills
+FROM match_kill_pairs_latest k
 WHERE k.match_id IN (`)
 	sb.WriteString(Placeholders(len(f.MatchIDs)))
 	sb.WriteString(`)`)

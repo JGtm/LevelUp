@@ -133,8 +133,8 @@ func buildPlayerKillSourceQuery(titleSlug, xuid string, matchIDs []string) (stri
 	var sb strings.Builder
 	args := make([]any, 0, len(matchIDs)+1)
 	sb.WriteString(`
-SELECT k.source_tag, COUNT(*)::INTEGER AS kills
-FROM match_kill_events_latest k
+SELECT k.source_tag, SUM(k.kills)::INTEGER AS kills
+FROM match_kill_pairs_latest k
 WHERE k.feed_killer_xuid = ?
   AND k.source_tag IS NOT NULL`)
 	args = append(args, xuid)

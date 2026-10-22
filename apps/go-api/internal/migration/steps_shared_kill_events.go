@@ -229,18 +229,25 @@ func applyMatchKillEvents(db *sql.DB) error {
 	return EnsureMatchKillEvents(db)
 }
 
-// EnsureMatchKillEvents cree la table et sa vue `_latest` si elles manquent. Idempotente.
+// EnsureMatchKillEvents cree la table, sa vue `_latest` et les tables de resume par match qui
+// s ecrivent avec chaque passe (S0-S2, ADR 0039, cf. steps_shared_kill_events_summaries.go) si
+// elles manquent. Idempotente.
 //
 // EXPORTEE depuis le 2026-08-02 pour la meme raison qui avait fait remonter
 // `killer_victim_pairs` dans le schema de base : `v_gamertag_lookup` lit desormais
 // `match_kill_events_latest`, et DuckDB BIND les vues a leur creation — la table doit donc
-// exister AVANT le resolveur d identite, sur une base neuve comme au boot. Les deux appelants
-// hors migrations sont `sync.EnsureSharedSchema` et [ApplyResolutionViews].
+// exister AVANT le resolveur d identite, sur une base neuve comme au boot. Les appelants hors
+// migrations sont `sync.EnsureSharedSchema`, [ApplyResolutionViews] et la lecture du snapshot
+// partage (`ops.reconstruireSchemaShared`). Les resumes suivent le journal partout ou il est
+// pose : la passe les ecrit dans sa transaction.
 func EnsureMatchKillEvents(db *sql.DB) error {
 	if err := execScript(db, ddlMatchKillEvents); err != nil {
 		return err
 	}
-	return execScript(db, ddlMatchKillEventsLatest)
+	if err := execScript(db, ddlMatchKillEventsLatest); err != nil {
+		return err
+	}
+	return ensureMatchKillSummaries(db)
 }
 
 // ddlMatchKillEvents : la table + son unique index.

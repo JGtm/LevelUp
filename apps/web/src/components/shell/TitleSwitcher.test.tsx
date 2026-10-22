@@ -120,7 +120,7 @@ describe('TitleSwitcher (PMT-8 / MT-22)', () => {
     render(<TitleSwitcher />)
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'Halo 3' }))
     expect(applyActiveTitleMock).toHaveBeenCalledWith('halo_3')
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/' }))
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/{-$lang}' }))
   })
 
   // Revue UX H5 : « on met pas assez en valeur le titre actif ». Le titre courant

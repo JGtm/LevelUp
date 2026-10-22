@@ -14,7 +14,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
@@ -60,8 +59,10 @@ func (h *SessionsHandler) handleGetSessions(ctx context.Context, in *sessionsInp
 		return nil, humacore.NewError(http.StatusBadRequest, "player_not_found", "joueur introuvable")
 	}
 
-	// Options depuis query params (optionnels — valeurs par défaut raisonnables).
-	opts := analysis.DefaultSessionOptions()
+	// Sans paramètre : la règle de découpage du joueur (réglage du titre + amis), celle des
+	// écrivains de session_id — la page montre les sessions enregistrées. Les paramètres
+	// surchargent cette règle pour un aperçu.
+	opts := svc.SessionOptions(ctx)
 	if in.GapMinutes != "" {
 		var gap int
 		if _, parseErr := fmt.Sscanf(in.GapMinutes, "%d", &gap); parseErr == nil && gap > 0 {

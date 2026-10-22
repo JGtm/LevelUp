@@ -13,6 +13,8 @@ import (
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/platform/friendstore"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/worldenrich"
 )
@@ -99,8 +101,8 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 				return fmt.Errorf("acquire shared: %w", err)
 			}
 			defer release()
-			friends := otherPlayerGamertags(cfg, gamertag)
-			if _, err := syncpkg.BackfillEnrichmentFromShared(runCtx, playerDB.SQLDb(), shared, xuid, friends, false); err != nil {
+			backfillPlayer := enrichmentBackfillPlayerFor(runCtx, cfg, xuid)
+			if _, err := syncpkg.BackfillEnrichmentFromShared(runCtx, playerDB.SQLDb(), shared, backfillPlayer, false); err != nil {
 				return err
 			}
 			// LUSR incrémental owner-only (gated capability via registre boot + env
@@ -158,7 +160,8 @@ func buildAchievementsHook(cfg *config.AppConfig, gamertag, xuid string) func(ct
 		// Provider MSAL config-only (zéro dépendance injectée), comme le CLI
 		// sync-achievements (cmd_sync_achievements.go). NewSyncEngineForTitle résout
 		// tous les chemins DB via PathResolver + titleSlug.
-		engine := syncpkg.NewSyncEngineForTitle(cfg.RepoRoot, halo5.TitleSlug, gamertag, xuid, nil, auth.NewSISUProvider())
+		engine := syncpkg.NewSyncEngineForTitle(cfg.RepoRoot, halo5.TitleSlug, gamertag, xuid, nil, auth.NewSISUProvider()).
+			WithSessionOptionsFromConfig(cfg)
 		return engine.RunAchievementsHook(ctx)
 	}
 }
@@ -237,20 +240,21 @@ func sharedProviderForPath(cfg *config.AppConfig, sharedPath string) sharedprovi
 	return p
 }
 
-// otherPlayerGamertags retourne les gamertags des AUTRES joueurs déclarés (hors le
-// viewer) — utilisés comme "amis" pour is_with_friends dans le hook post-score.
-func otherPlayerGamertags(cfg *config.AppConfig, viewerGamertag string) []string {
-	var out []string
-	players, err := cfg.LoadPlayers("")
+// enrichmentBackfillPlayerFor rend le joueur du backfill d'enrichissement post-score : ses
+// amis (data/global/player_friends.json, la liste que lisent le recalcul admin et la page
+// Sessions) et la règle de session du titre (settings.SessionOptionsForConfig). Une lecture
+// des amis en échec est journalisée ; le backfill tourne alors sans amis.
+func enrichmentBackfillPlayerFor(ctx context.Context, cfg *config.AppConfig, xuid string) syncpkg.EnrichmentBackfillPlayer {
+	friends, err := friendstore.NewFriendStore(cfg.RuntimePaths().PlayerFriendsPath()).Get(xuid)
 	if err != nil {
-		return out
+		slog.WarnContext(ctx, "h5 post-score: amis du joueur illisibles, enrichissement sans amis",
+			"xuid", xuid, "err", err)
 	}
-	for i := range players {
-		if gt := players[i].Gamertag; gt != "" && gt != viewerGamertag {
-			out = append(out, gt)
-		}
+	return syncpkg.EnrichmentBackfillPlayer{
+		XUID:            xuid,
+		FriendGamertags: friends,
+		SessionOptions:  settings_platform.SessionOptionsForConfig(ctx, cfg, halo5.TitleSlug),
 	}
-	return out
 }
 
 // allResolverGamertags énumère les comptes (gamertags) utilisables pour la

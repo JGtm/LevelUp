@@ -73,7 +73,8 @@ func runSyncAchievementsForPlayer(ctx context.Context, cfg *config.AppConfig, pl
 	}
 
 	provider := auth_platform.NewSISUProvider()
-	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, provider)
+	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, provider).
+		WithSessionOptionsFromConfig(cfg)
 
 	start := time.Now()
 	ok := engine.RunAchievementsOnly(ctx)
@@ -154,7 +155,8 @@ func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, titleSlu
 			continue
 		}
 
-		engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, provider)
+		engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, provider).
+			WithSessionOptionsFromConfig(cfg)
 		start := time.Now()
 		ok := engine.RunAchievementsOnly(ctx)
 		duration := time.Since(start).Round(time.Millisecond)

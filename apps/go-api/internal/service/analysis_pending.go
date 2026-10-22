@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -120,6 +121,7 @@ func (s *HomeService) WithAnalysisPending(r *AnalysisPendingResolver) *HomeServi
 // applyAnalysisPendingToRecentItems pose AnalysisPending sur les tuiles de match (récents +
 // favoris) en UNE lecture pour les deux listes. `replays` nil = ensemble non résolu.
 func (s *HomeService) applyAnalysisPendingToRecentItems(ctx context.Context, replays port.ReplayAvailability, itemLists ...[]domain.RecentMatchItem) {
+	defer timing.FromContext(ctx).Section("home_analysis_pending")()
 	if s.analysisPending == nil {
 		return
 	}

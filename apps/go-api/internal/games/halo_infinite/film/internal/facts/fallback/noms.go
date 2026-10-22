@@ -73,6 +73,10 @@ const (
 	NomPlaceDuRemplacantParChainageDEquipe Nom = "repli_place_du_remplacant_par_chainage_d_equipe"
 	// NomPlaceOuverteSousLaCapaciteEstimee : `replay/sieges.go`, `poserLesSieges` (lot M2.3).
 	NomPlaceOuverteSousLaCapaciteEstimee Nom = "repli_place_ouverte_sous_la_capacite_estimee"
+	// NomTailleDEquipeDuMode : `replay/sieges.go`, `poserLesSieges` (controle n° 8 de la v8).
+	NomTailleDEquipeDuMode Nom = "repli_taille_d_equipe_du_mode"
+	// NomPlaceRameneeALaTailleDEquipe : `replay/sieges.go`, `poserLesSieges` (controle n° 8 de la v8).
+	NomPlaceRameneeALaTailleDEquipe Nom = "repli_place_ramenee_a_la_taille_d_equipe"
 	// NomPresenceParEnveloppeDesVies : `replay/sieges.go`, `poserLesSieges` (lot M2.3).
 	NomPresenceParEnveloppeDesVies Nom = "repli_presence_par_enveloppe_des_vies"
 	// NomPresenceDUneEntreeParSesVies : `replay/sieges.go`, `poserLesSieges` (revue M2-R5,

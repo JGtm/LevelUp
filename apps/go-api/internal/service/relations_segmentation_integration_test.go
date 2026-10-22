@@ -18,6 +18,9 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/killscope"
+	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -44,10 +47,6 @@ func seedRelationsSegmentation(t *testing.T, db *duckdb.DB) {
 			game_variant_id VARCHAR, game_variant_name VARCHAR)`,
 		`CREATE TABLE match_participants (
 			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER, kda DOUBLE, gamertag VARCHAR)`,
-		// BASCULE DU 2026-08-03 : Q28 (scopée ou non) lit la canonique — un JOURNAL,
-		// 1 ligne = 1 mort, sans `kill_count`.
-		`CREATE TABLE match_kill_events_latest (
-			match_id VARCHAR, feed_killer_xuid VARCHAR, victim_xuid VARCHAR, time_ms INTEGER)`,
 		`CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
 		// v_match_full : la query FiltersRepo lit r.* depuis cette vue.
 		`CREATE VIEW v_match_full AS SELECT * FROM match_registry`,
@@ -78,14 +77,6 @@ func seedRelationsSegmentation(t *testing.T, db *duckdb.DB) {
 			('m2','xuidMe',0,2,1.5), ('m2','xuidBuddy',0,2,3.0),
 			('m3','xuidMe',0,3,0.8), ('m3','xuidRival',1,2,2.5),
 			('m4','xuidMe',0,3,0.8), ('m4','xuidRival',1,2,1.5)`,
-		// Mêmes cardinaux (me→Rival 2, Rival→me 6 sur m3 et 4 sur m4), une LIGNE par mort.
-		`INSERT INTO match_kill_events_latest VALUES
-			('m3','xuidMe','xuidRival',1000), ('m3','xuidMe','xuidRival',1100),
-			('m3','xuidRival','xuidMe',2000), ('m3','xuidRival','xuidMe',2100),
-			('m3','xuidRival','xuidMe',2200), ('m3','xuidRival','xuidMe',2300),
-			('m3','xuidRival','xuidMe',2400), ('m3','xuidRival','xuidMe',2500),
-			('m4','xuidRival','xuidMe',3000), ('m4','xuidRival','xuidMe',3100),
-			('m4','xuidRival','xuidMe',3200), ('m4','xuidRival','xuidMe',3300)`,
 		`INSERT INTO xuid_aliases VALUES
 			('xuidMe','MePlayer'), ('xuidBuddy','BuddyPlayer'), ('xuidRival','RivalPlayer')`,
 		// m1/m2 = escouade, m3/m4 = solo.
@@ -94,6 +85,31 @@ func seedRelationsSegmentation(t *testing.T, db *duckdb.DB) {
 	} {
 		if _, err := db.Exec(ctx, ins); err != nil {
 			t.Fatalf("seed INSERT: %v\nSQL: %s", err, ins)
+		}
+	}
+	// Le journal des morts et ses résumés (ADR 0039), écrits par `persist` : schéma réel, une passe
+	// par match. Mêmes cardinaux (me→Rival 2, Rival→me 6 sur m3 et 4 sur m4), une LIGNE par mort.
+	if err := migration.EnsureMatchKillEvents(db.SQLDb()); err != nil {
+		t.Fatalf("EnsureMatchKillEvents: %v", err)
+	}
+	mort := func(ms int, tueur, victime string) persist.KillEventInsert {
+		return persist.KillEventInsert{TimeMS: ms, VictimGamertag: "V", VictimXUID: victime,
+			FeedKillerGamertag: "K", FeedKillerXUID: tueur, FeedPresent: true,
+			ReadPath: killscope.ReadPathFilmWalk, ReadOrigin: "credit-concordant"}
+	}
+	passes := []persist.KillSourceBatch{
+		{MatchID: "m3", DecoderRev: "t", Publishable: true, Deaths: []persist.KillEventInsert{
+			mort(1000, "xuidMe", "xuidRival"), mort(1100, "xuidMe", "xuidRival"),
+			mort(2000, "xuidRival", "xuidMe"), mort(2100, "xuidRival", "xuidMe"), mort(2200, "xuidRival", "xuidMe"),
+			mort(2300, "xuidRival", "xuidMe"), mort(2400, "xuidRival", "xuidMe"), mort(2500, "xuidRival", "xuidMe")}},
+		{MatchID: "m4", DecoderRev: "t", Publishable: true, Deaths: []persist.KillEventInsert{
+			mort(3000, "xuidRival", "xuidMe"), mort(3100, "xuidRival", "xuidMe"),
+			mort(3200, "xuidRival", "xuidMe"), mort(3300, "xuidRival", "xuidMe")}},
+	}
+	writer := persist.NewKillSourcePersister(db.SQLDb())
+	for _, b := range passes {
+		if err := writer.PersistPass(ctx, b); err != nil {
+			t.Fatalf("PersistPass %s: %v", b.MatchID, err)
 		}
 	}
 }

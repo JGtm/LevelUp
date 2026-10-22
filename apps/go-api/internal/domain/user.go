@@ -32,6 +32,12 @@ type User struct {
 	// déconnexion entre le login SSO et le Setup. Vidé après la création du
 	// profil (SetProvisionGrant(username, "")).
 	ProvisionGrant string `json:"provision_grant,omitempty"`
+	// Locale est la langue préférée du compte ("fr" | "en"), vide si jamais choisie
+	// explicitement. Posée par SetLocale quand une session authentifiée change la
+	// locale (POST /session/context) ; appliquée à sess.Locale à la connexion
+	// suivante (password ou SSO Xbox) pour suivre le compte d'une session à l'autre,
+	// au lieu de retomber au défaut "fr" à chaque nouvel appareil/cookie.
+	Locale string `json:"locale,omitempty"`
 }
 
 // LoginRequest est le body de POST /auth/login.

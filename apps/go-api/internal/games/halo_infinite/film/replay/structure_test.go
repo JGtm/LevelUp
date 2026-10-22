@@ -1455,8 +1455,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `coverage.vehicles.scanned` est vrai pour un film aux images-cles lues sans vehicule, et la
 	//   ressource vehicules de l Emprise y lit un zero mesure. `SchemaDesFaits` monte avec elle (16 -> 17) :
 	//   un v99 se lit « a redecoder ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 100 {
-		t.Fatalf("SchemaVersion = %d, attendu 100 : incrémenter exige une raison écrite ci-dessus "+
+	// - 101 (2026-10-21, controles de la v8) : cinq compteurs neufs de `coverage.seats`, une provenance de
+	//   place neuve (`taille`) et la place par intervalle (`presence[].seat`) : aucune equipe ne montre plus
+	//   d occupants que la taille de sa playlist. `grammar.Rev` monte sur la meme branche :
+	//   un v100 se lit « a redecoder ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 101 {
+		t.Fatalf("SchemaVersion = %d, attendu 101 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

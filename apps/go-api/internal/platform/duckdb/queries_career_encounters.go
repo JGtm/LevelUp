@@ -1,5 +1,7 @@
 package duckdb
 
+import "levelup/go-api/internal/analysis"
+
 // Q26CareerTopEncountersTpl : Carrière — les 10 joueurs les plus croisés, hors amis (dernier %s).
 // AUCUN GAMERTAG EN SQL (lot perf L7, 2026-09-23) : plus de `LEFT JOIN v_gamertag_lookup` (vue
 // matérialisée entière à chaque page) ; l'annuaire de la lecture nomme les lignes (squad_repo_annuaire.go).
@@ -50,9 +52,9 @@ kv_stats AS (
     FROM (
         SELECT
             CASE WHEN kv.feed_killer_xuid = ? THEN kv.victim_xuid ELSE kv.feed_killer_xuid END AS opp_xuid,
-            CASE WHEN kv.feed_killer_xuid = ? THEN 1 ELSE 0 END AS kills_by_me,
-            CASE WHEN kv.victim_xuid     = ? THEN 1 ELSE 0 END AS kills_by_them
-        FROM ` + KillEventsCanonicalTable + ` kv
+            CASE WHEN kv.feed_killer_xuid = ? THEN kv.kills ELSE 0 END AS kills_by_me,
+            CASE WHEN kv.victim_xuid     = ? THEN kv.kills ELSE 0 END AS kills_by_them
+        FROM match_kill_pairs_latest kv
         WHERE (kv.feed_killer_xuid = ? OR kv.victim_xuid = ?)%s
     ) t
     GROUP BY opp_xuid
@@ -94,9 +96,9 @@ LIMIT 10`
 //	?6 = les matchs du joueur (un paramètre VARCHAR[])
 //	?7 = xuid joueur (exclusion self dans final WHERE)
 //
-// Source : COUNT(*) sur shared.match_kill_events_latest — 1 ligne = 1 mort
-// (cf. KillEventsCanonicalTable pour la traduction et les deux pièges).
-// COUNT(DISTINCT match_id) pour le nombre de matchs partagés.
+// Source : SUM(kills) sur `match_kill_pairs_latest` (S1, résumé par match du journal, ADR 0039) —
+// une ligne par (match, tueur, victime, source), `kills` morts. COUNT(DISTINCT match_id) pour le
+// nombre de matchs partagés.
 //
 // BOTS : le `NOT LIKE 'bid(%%'` ci-dessous est un NO-OP (0 ligne de cette forme
 // dans la canonique) et le reste. Ce qui les exclut, c'est `opp_xuid <> ?` sur un
@@ -109,11 +111,11 @@ const Q27CareerRivalsTpl = `
 WITH pairs AS (
     SELECT
         CASE WHEN kv.feed_killer_xuid = ? THEN kv.victim_xuid ELSE kv.feed_killer_xuid END AS opp_xuid,
-        COUNT(*) FILTER (WHERE kv.feed_killer_xuid = ?) AS frags,
-        COUNT(*) FILTER (WHERE kv.victim_xuid     = ?) AS deaths,
+        CAST(COALESCE(SUM(kv.kills) FILTER (WHERE kv.feed_killer_xuid = ?), 0) AS BIGINT) AS frags,
+        CAST(COALESCE(SUM(kv.kills) FILTER (WHERE kv.victim_xuid     = ?), 0) AS BIGINT) AS deaths,
         COUNT(DISTINCT kv.match_id) AS match_count,
         MIN(kv.match_id) AS match_rencontre
-    FROM ` + KillEventsCanonicalTable + ` kv
+    FROM match_kill_pairs_latest kv
     WHERE (kv.feed_killer_xuid = ? OR kv.victim_xuid = ?)
       AND %s
     GROUP BY opp_xuid
@@ -212,9 +214,9 @@ kv_stats AS (
     FROM (
         SELECT
             CASE WHEN kv.feed_killer_xuid = ? THEN kv.victim_xuid ELSE kv.feed_killer_xuid END AS opp_xuid,
-            CASE WHEN kv.feed_killer_xuid = ? THEN 1 ELSE 0 END AS kills_by_me,
-            CASE WHEN kv.victim_xuid     = ? THEN 1 ELSE 0 END AS kills_by_them
-        FROM ` + KillEventsCanonicalTable + ` kv
+            CASE WHEN kv.feed_killer_xuid = ? THEN kv.kills ELSE 0 END AS kills_by_me,
+            CASE WHEN kv.victim_xuid     = ? THEN kv.kills ELSE 0 END AS kills_by_them
+        FROM match_kill_pairs_latest kv
         WHERE (kv.feed_killer_xuid = ? OR kv.victim_xuid = ?)%s
     ) t
     GROUP BY opp_xuid
@@ -357,8 +359,8 @@ SELECT
     mp.damage_dealt,
     mp.damage_taken,
     mp.time_played_seconds,
-    mp.team_mmr,
-    mp.enemy_mmr,
+    ` + analysis.SQLKnownMMR("mp.team_mmr") + ` AS team_mmr,
+    ` + analysis.SQLKnownMMR("mp.enemy_mmr") + ` AS enemy_mmr,
     mp.kills_expected,
     mp.deaths_expected,
     mp.rank,

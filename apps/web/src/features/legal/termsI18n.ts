@@ -20,8 +20,8 @@ import { CONTACT_TOKEN, type PrivacyText } from './i18n'
 
 /** Date de dernière révision de fond, affichée en tête de page. */
 export const TERMS_UPDATED_AT: Record<Locale, string> = {
-  fr: '16 octobre 2026',
-  en: '16 October 2026',
+  fr: '20 octobre 2026',
+  en: '20 October 2026',
 }
 
 const FR_TEXT: PrivacyText = {
@@ -60,7 +60,7 @@ const FR_TEXT: PrivacyText = {
         "ce que vous n'autorisez pas : lire vos données privées pour un autre joueur, ou montrer, copier ou transmettre votre jeton à quiconque",
         "en contrepartie : vos propres parties sont synchronisées par l'ensemble des jetons mis en commun",
         "si vous refusez ou ne choisissez pas : votre jeton ne sert que votre propre synchronisation, qui reste possible mais plus lente, limitée au débit de votre seul compte",
-        "retrait : à tout moment dans Réglages, onglet Synchronisation, avec effet à la requête suivante et sans conséquence sur le reste du service",
+        "retrait : à tout moment dans Réglages, onglet Compte, avec effet à la requête suivante et sans conséquence sur le reste du service",
       ],
     },
     {
@@ -133,7 +133,7 @@ const EN_TEXT: PrivacyText = {
         'what you do not allow: reading your private data for another player, or showing, copying or passing your token to anyone',
         'in return: your own matches are synced by all the pooled tokens',
         'if you decline or do not choose: your token only serves your own sync, which still works but is slower, limited to the rate of your single account',
-        'withdrawal: at any time in Settings, Sync tab, effective from the next request and with no effect on the rest of the service',
+        'withdrawal: at any time in Settings, Account tab, effective from the next request and with no effect on the rest of the service',
       ],
     },
     {

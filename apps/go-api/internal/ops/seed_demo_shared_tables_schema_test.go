@@ -38,6 +38,13 @@ var sharedTablesNotExtracted = map[string]string{
 		"recherche, 2026-10-19)",
 }
 
+// colonnesNommeesSansIdentite : les colonnes dont le nom contient `xuid` ou `gamertag` sans porter
+// d'identité, chacune avec sa raison et sa date. Une entrée ne s'ajoute qu'après lecture du DDL.
+var colonnesNommeesSansIdentite = map[string]string{
+	"match_kill_heads.n_killer_xuid": "2026-10-21 (ADR 0039) : compte INTEGER des morts dont le " +
+		"tueur porte un xuid, aucune identité (steps_shared_kill_events_summaries.go)",
+}
+
 // migratedTableColumns : les colonnes de chaque TABLE (vues exclues) d'une base fraîche migrée
 // vers `target`.
 func migratedTableColumns(t *testing.T, target migration.TargetDB) map[string][]string {
@@ -133,6 +140,7 @@ func TestSharedTablesCoverEveryMatchKeyedTable(t *testing.T) {
 
 // TestSharedTablesDeclareEveryIdentityColumn : garde-rail (2), sur les tables shared ET player.
 func TestSharedTablesDeclareEveryIdentityColumn(t *testing.T) {
+	vues := map[string]bool{}
 	for _, tc := range []struct {
 		target migration.TargetDB
 		tables []extractTable
@@ -144,6 +152,10 @@ func TestSharedTablesDeclareEveryIdentityColumn(t *testing.T) {
 		for _, tb := range tc.tables {
 			declared := declaredIdentityColumns(tb)
 			for _, col := range schema[tb.name] {
+				if _, compte := colonnesNommeesSansIdentite[tb.name+"."+col]; compte {
+					vues[tb.name+"."+col] = true
+					continue
+				}
 				if carriesIdentityName(col) && !declared[col] {
 					t.Errorf("%s.%s (%s) : colonne d'identité extraite sans déclaration d'anonymisation — "+
 						"l'identité réelle traverserait dans la démo", tb.name, col, tc.target)
@@ -151,11 +163,16 @@ func TestSharedTablesDeclareEveryIdentityColumn(t *testing.T) {
 			}
 		}
 	}
+	for col := range colonnesNommeesSansIdentite {
+		if !vues[col] {
+			t.Errorf("exemption %s : colonne absente des tables extraites, retirer l'exemption", col)
+		}
+	}
 }
 
-// TestIdentityColumnNamesStayCentralised : `killer_xuid` et `victim_xuid` portent chacune
+// TestIdentityColumnNamesStayCentralised : `killer_xuid`, `victim_xuid` et `feed_killer_xuid` portent chacune
 // plusieurs déclarations d'identité (tables du socle et dérivées du film) ; leur littéral vit dans
-// colKillerXUID / colVictimXUID, jamais recopié dans une liste d'extraction (règle n°6).
+// colKillerXUID / colVictimXUID / colFeedKillerXUID, jamais recopié dans une liste d'extraction (règle n°6).
 func TestIdentityColumnNamesStayCentralised(t *testing.T) {
 	for _, f := range []string{"seed_demo.go", "seed_demo_shared_tables.go"} {
 		raw, err := os.ReadFile(f)
@@ -163,12 +180,13 @@ func TestIdentityColumnNamesStayCentralised(t *testing.T) {
 			t.Fatalf("lecture %s: %v", f, err)
 		}
 		for i, line := range strings.Split(string(raw), "\n") {
-			if strings.Contains(line, "colKillerXUID =") || strings.Contains(line, "colVictimXUID =") {
+			if strings.Contains(line, "colKillerXUID =") || strings.Contains(line, "colVictimXUID =") ||
+				strings.Contains(line, "colFeedKillerXUID =") {
 				continue
 			}
-			for _, lit := range []string{`"killer_xuid"`, `"victim_xuid"`} {
+			for _, lit := range []string{`"killer_xuid"`, `"victim_xuid"`, `"feed_killer_xuid"`} {
 				if strings.Contains(line, lit) {
-					t.Errorf("%s:%d recopie le littéral %s : utiliser colKillerXUID / colVictimXUID", f, i+1, lit)
+					t.Errorf("%s:%d recopie le littéral %s : utiliser colKillerXUID / colVictimXUID / colFeedKillerXUID", f, i+1, lit)
 				}
 			}
 		}

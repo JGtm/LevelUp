@@ -353,6 +353,24 @@ deux passes sont reprenables — un match déjà présent dans la vue `_latest` 
 `--force`. `backfill-usage-summary` re-résume en plus quand la révision de projection ou le
 schéma de l'artefact a bougé.
 
+**Résumés par match du journal des morts** (`match_kill_heads`, `match_kill_pairs`,
+`match_assist_pairs`, ADR 0039). Chaque passe écrite par la synchronisation porte ses résumés ;
+cette commande les écrit pour les passes qui n'en ont pas (écrites avant les résumés) ou dont la
+tête date d'une ancienne révision de la règle. Elle ne décode aucun film : elle relit la passe
+courante de chaque match dans `match_kill_events_latest`. **Serveur arrêté** (elle ouvre la base
+partagée en `OpenReadWrite` et joue les migrations partagées, `--dry-run` compris ; si un autre
+processus tient la base, elle refuse et le dit). Reprenable : la liste est une anti-jointure
+« passe courante sans tête à la révision courante », donc un second passage ne trouve rien. Elle
+journalise une ligne de progression par lot et se termine sur le nombre de matchs restant à faire,
+qui doit valoir 0 (le contrôle de santé des données publie la même jauge,
+`levelup.kill_summaries_pending`).
+
+```bash
+go run ./cmd/levelup backfill-match-summaries --title halo_infinite --dry-run   # compte, n'écrit rien
+go run ./cmd/levelup backfill-match-summaries --title halo_infinite [--batch N]  # lot par défaut : 250 matchs
+go run ./cmd/levelup backfill-match-summaries --title halo_5
+```
+
 ### Backup / restore
 
 ```bash
@@ -410,8 +428,10 @@ go run ./cmd/levelup pool-sharing grandfather --all [--yes]            # tous le
 - Le serveur en marche applique tout de suite une décision prise dans l'application ; une
   décision écrite par la CLI est reprise au prochain scan du pool (ou au redémarrage).
 - **En production**, la CLI est dans l'image : la lancer dans le conteneur du serveur, par ex.
-  `docker compose exec -T levelup levelup pool-sharing list` (depuis `/opt/levelup`). Elle ne lit
+  `docker compose exec -T -u appuser levelup levelup pool-sharing list` (depuis `/opt/levelup`). Elle ne lit
   et n'écrit que `data/auth/watcher_tokens/`, jamais une base DuckDB : le serveur peut rester démarré.
+  La lancer en `appuser` (`-u appuser`) : le conteneur durci retire à root les capacités qui lui
+  permettaient d'écrire les fichiers de l'application, et la commande échoue sinon en `permission denied`.
 
 ### Référentiels / seed / migration
 
@@ -687,7 +707,18 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
 
 ```bash
 go run ./cmd/levelup index-media --gamertag X [--force-rescan] [--buffer-min N]
+go run ./cmd/levelup media-capture-times --dry-run [--title slug] [--db CHEMIN]
+go run ./cmd/levelup media-capture-times [--title slug] [--db CHEMIN]
 ```
+
+L'heure lue pour un média (nom du fichier, sinon date du fichier) est le DÉBUT ou la FIN de la
+capture selon sa source (table `captureTimeSources`, `internal/ops/media_capture_source.go`) :
+un « Replay » d'OBS, un « record that » de la Game Bar ou de la console Xbox, un Instant Replay
+de ShadowPlay et une date de fichier sont des FINS ; le nom d'un enregistrement manuel OBS ou
+ShadowPlay est un DÉBUT. Les médias indexés avant cette règle sont recalculés par le serveur
+lui-même à chaque indexation (envoi, balayage après synchronisation, bouton « Scanner » des
+réglages). `media-capture-times` simule ce recalcul (`--dry-run` : comptes par source, sur une
+COPIE de `shared_social.duckdb` si le serveur tourne) ou l'écrit serveur arrêté. Idempotent.
 
 ### Diagnostic & ops
 
@@ -747,8 +778,24 @@ COMMIT, le nombre de lignes, le DDL et les index de la table, et que la vue rend
 même résultat. Les séquences ne sont pas touchées (aucun `id` n'est réutilisé). Idempotente : une
 seconde passe rend `deja-compacte`.
 
-Quand : après une campagne de redécodage (recuisson, `backfill-killsource`), jamais au boot ni
-après un sync. **Serveur arrêté** : la commande refuse une base qu'un autre processus tient.
+Quand : **automatiquement chaque nuit en production** quand une table dépasse le seuil (ci-dessous),
+et à la main pour compacter tout de suite, typiquement après une campagne de redécodage (recuisson,
+`backfill-killsource`). Jamais au boot, ni après un sync, ni dans le processus serveur. **Serveur
+arrêté** : la commande refuse une base qu'un autre processus tient.
+
+**Compaction automatique de nuit (VPS).** Le contrôle de santé des données du serveur (au démarrage
+puis toutes les 24 h) mesure pour chaque table du registre et chaque titre le rapport lignes
+brutes / lignes gardées (une table compactée vaut 1) et l'écrit dans
+`data/global/admin_state/passes_par_match.txt` (aussi en expvar :
+`levelup.compaction.passes_par_match`, `levelup.compaction.tables_au_dessus_du_seuil`). À 03:30 UTC,
+le timer systemd `levelup-compact-passes.timer` lance `scripts/compact-passes-nuit.sh` : si aucune
+table d'aucun titre ne dépasse 1,5 (`migration.SeuilPassesParMatch`), il sort sans rien toucher ;
+sinon il vérifie la place disque, arrête `levelup`, lance
+`levelup compact-passes --backup-dir /app/data/compaction-backups`, redémarre `levelup` (même si la
+compaction échoue, jusqu'à 3 essais) et attend `/health`. Journal : `data/logs/compact-passes-nuit.log`. Les
+sauvegardes de plus de 24 h de `data/compaction-backups/` sont supprimées après un passage réussi
+seulement. Installation des unités (une fois, root) : `scripts/systemd/README.md` ; décision et
+mesures : ADR 0026, amendement « Automatic compaction ».
 
 ```bash
 go run ./cmd/levelup compact-passes --dry-run                # lecture seule : brutes / _latest / gain par table

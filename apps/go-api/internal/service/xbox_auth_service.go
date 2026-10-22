@@ -145,7 +145,7 @@ var _ auth.LinkStrategy = (*XboxSSOLinkStrategy)(nil)
 
 // OnAuthSuccess login l'user via XUID après un Device Code Flow Xbox réussi.
 // Crée le user s'il n'existe pas (CreateFromXbox). Modifie sess en place
-// (Username, Role, CurrentPlayerSlug, LinkedHaloIdentity).
+// (Username, Role, Locale, CurrentPlayerSlug, LinkedHaloIdentity).
 //
 // Une invitation portée par la session est RÉSERVÉE (consommée) avant toute création
 // de compte : de deux connexions qui présentent le même code, une seule la reçoit ;
@@ -168,6 +168,9 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 	role := string(user.Role)
 	sess.Username = &username
 	sess.Role = &role
+	if user.Locale != "" {
+		sess.Locale = user.Locale
+	}
 
 	// CurrentPlayerSlug = gamertag (clé d'isolation FS dans data/players/{gamertag}/).
 	slug := user.Gamertag

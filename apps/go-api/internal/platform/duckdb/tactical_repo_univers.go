@@ -62,14 +62,14 @@ import (
 // (`analysis.SQLEligibleALaCuisson`).
 //
 // LE DRAPEAU `mesure` (ajout 2026-09-06, correction G2) dit si le journal des morts
-// de ce match est LISIBLE : au moins une ligne publiable dans
-// `match_kill_events_latest`. Un match dont le film n'a jamais ete decode — ou dont le
+// de ce match est LISIBLE : la tete de resume de sa passe courante
+// (`match_kill_heads_latest`, ADR 0039) est publiable et compte au moins une mort. Un match dont le film n'a jamais ete decode — ou dont le
 // film Theater a EXPIRE cote serveur — n'est pas un match a zero mort, c'est un match
 // ILLISIBLE : il ne peut alimenter aucun numerateur, et le laisser au denominateur
 // « par match » ferait varier la grandeur avec la couverture de film au lieu du jeu.
 //
 // `publishable` est exige ICI comme dans les deux lectures : sans lui, un match dont
-// toutes les lignes sont ecartees compterait comme mesure sur cette page et pas sur la
+// la passe est ecartee compterait comme mesure sur cette page et pas sur la
 // page Escouade, qui lit le meme journal filtre pareil.
 //
 // PREFIXE `Q` ET TOKEN CAMPAGNE (correction R2, revue du 2026-09-06) : le
@@ -82,7 +82,7 @@ import (
 // pour Infinite, qui n'a aucun match Campagne au registre).
 //
 // LA LISTE BLANCHE EST POSEE UNE SECONDE FOIS, DANS LE EXISTS (lot L5a du plan perf,
-// 2026-09-23). La vue `match_kill_events_latest` porte une fenetre (`QUALIFY ... OVER
+// 2026-09-23). La vue `match_kill_heads_latest` porte une fenetre (`QUALIFY ... OVER
 // (PARTITION BY match_id ...)`) : DuckDB n'y pousse qu'un filtre CONSTANT sur sa cle de
 // partition. Le `mr.match_id IN (...)` de la requete externe ne descend pas dans la
 // sous-requete correlee — la fenetre etait donc calculee sur les 3,95 M lignes de la
@@ -93,8 +93,8 @@ import (
 const QTacticalUnivers = `
 SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome, ` + colonneEligible + `,
        COALESCE(mr.game_variant_name, '') AS game_variant_name,
-       EXISTS (SELECT 1 FROM match_kill_events_latest e
-               WHERE e.match_id = mr.match_id AND e.publishable` + journalPerimetre + `) AS mesure,
+       EXISTS (SELECT 1 FROM match_kill_heads_latest h
+               WHERE h.match_id = mr.match_id AND h.publishable AND h.n_rows > 0` + journalPerimetre + `) AS mesure,
        ` + colonneT0 + ` AS t0_ms
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
@@ -201,7 +201,7 @@ func clauseJournalPerimetre(q domain.TacticalQuery) (string, []any) {
 	if len(ids) == 0 {
 		return clauseAucunMatch, nil
 	}
-	return "\n                 AND e.match_id IN (" + Placeholders(len(ids)) + ")", ToAnySlice(ids)
+	return "\n                 AND h.match_id IN (" + Placeholders(len(ids)) + ")", ToAnySlice(ids)
 }
 
 // universSQL assemble le SELECT de l'univers et ses arguments, token Campagne

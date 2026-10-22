@@ -11,6 +11,8 @@ package duckdb
 import (
 	"context"
 	"testing"
+
+	"levelup/go-api/internal/migration"
 )
 
 // newE2PlayerDB : fixture B4 + kill-feed (frags A/B) et médailles de A par match.
@@ -21,7 +23,6 @@ func newE2PlayerDB(t *testing.T, titleSlug string) *PlayerDB {
 	pdb := newB4PlayerDB(t, titleSlug)
 	ctx := context.Background()
 	stmts := []string{
-		`CREATE TABLE match_kill_events_latest (match_id VARCHAR, feed_killer_xuid VARCHAR, victim_xuid VARCHAR)`,
 		`CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count INTEGER)`,
 	}
 	for _, s := range stmts {
@@ -29,17 +30,22 @@ func newE2PlayerDB(t *testing.T, titleSlug string) *PlayerDB {
 			t.Fatalf("fixture E2 : %v\n%s", err, s)
 		}
 	}
+	// Le journal et ses résumés (ADR 0039) : schéma réel, une passe par match.
+	if err := migration.EnsureMatchKillEvents(pdb.Shared.SQLDb()); err != nil {
+		t.Fatalf("fixture E2 journal : %v", err)
+	}
+	var morts []ligneJournal
 	insertN := func(match, killer, victim string, n int) {
 		for i := 0; i < n; i++ {
-			if _, err := pdb.Shared.Exec(ctx, `INSERT INTO match_kill_events_latest VALUES (?, ?, ?)`, match, killer, victim); err != nil {
-				t.Fatalf("fixture E2 frags : %v", err)
-			}
+			morts = append(morts, ligneJournal{match: match, publiable: true, tueur: killer, victime: victim,
+				timeMS: len(morts)})
 		}
 	}
 	insertN("arena1", b4XUIDA, b4XUIDB, 2)
 	insertN("arena1", b4XUIDB, b4XUIDA, 1)
 	insertN("camp1", b4XUIDA, b4XUIDB, 10)
 	insertN("camp1", b4XUIDB, b4XUIDA, 7)
+	poserJournal(t, pdb.Shared.SQLDb(), morts...)
 	for _, m := range []struct {
 		match string
 		medal int64

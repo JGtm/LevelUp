@@ -84,18 +84,40 @@ export const SOUND_MAX_VOICES = 8
 
 /**
  * soundOccupiesVoice — LA RÈGLE UNIQUE du plafond de voix, partagée par le lecteur de la page
- * (`ReplayAudioPlayer.play` / `playConclusion`) et par l'export (`applyVoiceCap`).
+ * (`ReplayAudioPlayer.play` / `playConclusion` / `playAnnouncer`) et par l'export (`applyVoiceCap`).
  *
- * LA CONCLUSION (voix d'annonceur et fanfare de fin de MATCH) ÉCHAPPE AU PLAFOND ET N'OCCUPE
- * AUCUNE VOIX. Le plafond arbitre entre des sons DE MÊLÉE, tous équivalents ; la conclusion n'en
- * est pas — c'est ce que le rejeu raconte en dernier. Sur une fin disputée, les derniers tirs
- * tiennent les huit voix : l'export l'a vécu en recette le 2026-08-28 (clip terminé sans un mot,
- * exception posée le 29/08), la page le 2026-09-26 (item 11 : la voix prenait la dernière place,
- * la fanfare jouée juste après était refusée en silence). La voix « manche terminée », elle, vit
- * dans la piste et reste soumise au plafond (décision D-1 du plan backlog du 2026-09-26).
+ * UNE VOIX D'ANNONCEUR ÉCHAPPE AU PLAFOND ET N'OCCUPE AUCUNE VOIX : la conclusion (voix et
+ * fanfare de fin de MATCH) et la voix « manche terminée ». Le plafond arbitre entre des sons DE
+ * MÊLÉE, tous équivalents ; une annonce n'en est pas — elle raconte le déroulé du match, et c'est
+ * précisément aux instants qu'elle annonce (fin de manche, fin de match) que les derniers tirs,
+ * lancers et explosions tiennent les huit voix : une annonce soumise au plafond y serait refusée
+ * en silence (historique et mesures : journal `.ai/thought_log.md`, entrées « item 11 » du
+ * 2026-09-26 et « contrôle n° 7 » du 2026-10-21).
  */
-export function soundOccupiesVoice(sound: { conclusion?: boolean }): boolean {
-  return sound.conclusion !== true
+export function soundOccupiesVoice(sound: { conclusion?: boolean; announcer?: boolean }): boolean {
+  return sound.conclusion !== true && sound.announcer !== true
+}
+
+/**
+ * soundSurvivesPause — LA PAUSE NE COUPE QUE CE QUI N'EST PAS LA CONCLUSION. Question distincte du
+ * plafond de voix (`soundOccupiesVoice`) : la voix « manche terminée » échappe au plafond MAIS
+ * s'arrête à la pause, comme toute réplique en vol sur une image arrêtée ; la conclusion de match
+ * (voix et fanfare) part au moment où la lecture s'arrête d'elle-même, et la pause qui suit ne
+ * doit pas la couper.
+ */
+export function soundSurvivesPause(sound: { conclusion?: boolean }): boolean {
+  return sound.conclusion === true
+}
+
+/** Ce qu'un son est pour le lecteur : se soumet-il au plafond de voix, survit-il à la pause ? */
+interface SoundKind {
+  voix: boolean
+  survitALaPause: boolean
+}
+
+/** soundKindOf — les deux règles ci-dessus pour un son ordinaire, une annonce ou une conclusion. */
+function soundKindOf(sound: { conclusion?: boolean; announcer?: boolean }): SoundKind {
+  return { voix: soundOccupiesVoice(sound), survitALaPause: soundSurvivesPause(sound) }
 }
 
 /**
@@ -176,6 +198,13 @@ export class ReplayAudioPlayer {
   private voices = 0
   /** Les sons TENUS en vol (rafales de tir continu), que la pause et le saut éteignent. */
   private held = new Set<{ src: AudioBufferSourceNode; gain: GainNode }>()
+  /**
+   * TOUS les sons en vol (une pause éteint tout, pas seulement les rafales tenues).
+   * `survitALaPause` n'est vrai que pour une CONCLUSION de match (fanfare, annonceur de fin) : elle
+   * part au moment même où la lecture s'arrête d'elle-même à la borne, et la pause qui suit ne doit
+   * pas la couper (`soundSurvivesPause`).
+   */
+  private live = new Set<{ src: AudioBufferSourceNode; gain: GainNode; survitALaPause: boolean }>()
   /** Chaîne de distance (réglage d'instance, page admin). Nulle = AUCUN nœud ajouté :
    *  le chemin du signal reste celui d'origine, source -> enveloppe -> maître. */
   private distGain: GainNode | null = null
@@ -329,7 +358,7 @@ export class ReplayAudioPlayer {
    * son en retard sur son image est pire qu'un son manqué.
    */
   play(url: string, draw?: SoundDraw, shape?: SoundShape): void {
-    this.start(url, soundOccupiesVoice({}), draw, shape)
+    this.start(url, soundKindOf({}), draw, shape)
   }
 
   /**
@@ -337,7 +366,15 @@ export class ReplayAudioPlayer {
    * `play`, mais HORS PLAFOND et sans compter de voix — règle et raison : `soundOccupiesVoice`.
    */
   playConclusion(url: string): void {
-    this.start(url, soundOccupiesVoice({ conclusion: true }))
+    this.start(url, soundKindOf({ conclusion: true }))
+  }
+
+  /**
+   * playAnnouncer joue une VOIX D'ANNONCEUR de la piste (« manche terminée ») : même enveloppe que
+   * `play`, HORS PLAFOND et sans compter de voix — règle et raison : `soundOccupiesVoice`.
+   */
+  playAnnouncer(url: string): void {
+    this.start(url, soundKindOf({ announcer: true }))
   }
 
   /** L'URL est-elle décodée (tampon prêt, pas un absent mémorisé) ? */
@@ -357,11 +394,12 @@ export class ReplayAudioPlayer {
    * d'intro, A4.9). Le reste de l'enveloppe est décalé d'autant.
    */
   playFrom(url: string, offsetS: number): void {
-    this.start(url, soundOccupiesVoice({}), undefined, undefined, offsetS)
+    this.start(url, soundKindOf({}), undefined, undefined, offsetS)
   }
 
-  /** start pose une source enveloppée ; `voix` dit si elle se soumet au plafond et le tient. */
-  private start(url: string, voix: boolean, draw?: SoundDraw, shape?: SoundShape, offsetS = 0): void {
+  /** start pose une source enveloppée ; `kind` dit si elle se soumet au plafond (et le tient) et si la pause l'éteint. */
+  private start(url: string, kind: SoundKind, draw?: SoundDraw, shape?: SoundShape, offsetS = 0): void {
+    const { voix, survitALaPause } = kind
     const buf = this.buffers.get(url)
     if (!buf || (voix && this.voices >= SOUND_MAX_VOICES)) {
       if (buf === undefined) this.preload([url])
@@ -388,9 +426,12 @@ export class ReplayAudioPlayer {
     // dix secondes continuerait de tirer sur une image arrêtée.
     const tenu = loop ? { src, gain } : null
     if (tenu) this.held.add(tenu)
+    const enVol = { src, gain, survitALaPause }
+    this.live.add(enVol)
     src.onended = () => {
       if (voix) this.voices--
       if (tenu) this.held.delete(tenu)
+      this.live.delete(enVol)
       src.disconnect()
       gain.disconnect()
     }
@@ -408,5 +449,24 @@ export class ReplayAudioPlayer {
       src.stop(t0 + VOLUME_RAMP_S)
     }
     this.held.clear()
+  }
+
+  /**
+   * stopAll éteint TOUT ce qui est en vol (rampe de volume), conclusion exceptée
+   * (`soundSurvivesPause`) : c'est la PAUSE. Une explosion de véhicule, une réplique, la voix de
+   * manche ou l'extrait d'intro ne se finissent pas sur une image arrêtée ; stopHeld ne couvrait que
+   * les rafales tenues.
+   */
+  stopAll(): void {
+    this.stopHeld()
+    const t0 = this.ctx.currentTime
+    for (const v of this.live) {
+      if (v.survitALaPause) continue
+      v.gain.gain.cancelScheduledValues(t0)
+      v.gain.gain.setValueAtTime(v.gain.gain.value, t0)
+      v.gain.gain.linearRampToValueAtTime(0, t0 + VOLUME_RAMP_S)
+      v.src.stop(t0 + VOLUME_RAMP_S)
+      this.live.delete(v)
+    }
   }
 }

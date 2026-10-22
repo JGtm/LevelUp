@@ -371,6 +371,9 @@ export function useReplaySound(
   // changement de piste : sans cela, activer le son à 500 ms ferait partir d'un coup tout
   // ce qui précède (l'écart au curseur, resté à 0, passerait pour une lecture continue).
   const resyncRef = useRef(true)
+  // La lecture tourne-t-elle ? Présumée vraie jusqu'à ce que la page dise le contraire
+  // (`setTransportPlaying`, publié à chaque changement lu/pause, y compris au montage).
+  const playingRef = useRef(true)
   // Lus par le battement sans en être des dépendances : couper le son ou changer de vitesse
   // ne doit pas recréer la boucle d'animation du canvas.
   const onRef = useRef(on)
@@ -508,7 +511,11 @@ export function useReplaySound(
     }
     // Les moteurs suivent l'instant AVANT le tirage des événements : un saut est réconcilié
     // en silence par le lecteur moteur lui-même (reprise directement sur la boucle).
-    engine.sync(ms)
+    // LES MOTEURS NE SUIVENT QUE LA LECTURE. Un déplacement (glissé de frise, pas d'image, saut
+    // vers un repère) bat aussi à l'arrêt : y réconcilier les moteurs démarrait des boucles que
+    // plus rien n'éteignait (la pause a déjà eu lieu), un véhicule ronflant sur une image fixe.
+    if (playingRef.current) engine.sync(ms)
+    else engine.stop()
     if (resyncRef.current) {
       resyncRef.current = false
       cursorRef.current = resyncSoundCursor(tl, ms)
@@ -525,13 +532,23 @@ export function useReplaySound(
       const stem = pickVariantStem(e)
       const url = urlsRef.current.get(stem)
       if (!url) continue
+      const shape = soundShapeOf(e)
+      // À l'arrêt (pas d'image, saut vers un repère), un son bref atterrit avec l'image, mais
+      // une rafale TENUE (jusqu'à dix secondes) tirerait sur une image qui ne bouge plus.
+      if (!playingRef.current && shape?.holdS !== undefined) continue
+      // UNE VOIX D'ANNONCEUR passe hors plafond, sans variation (règle `soundOccupiesVoice`), et la
+      // pause l'éteint comme tout son en vol (règle `soundSurvivesPause`) : deux questions distinctes.
+      if (e.announcer) {
+        player.playAnnouncer(url)
+        continue
+      }
       // Le tirage de variation ne concerne que les ARMES : la table est keyee par stem
       // d'arme, tout autre stem se joue tel quel (drawVariation rend le neutre exact). La FORME
       // (son tenu ou coupé d'une rafale de tir continu, schéma 71) voyage avec l'événement.
       player.play(
         url,
         drawVariation(WEAPON_SOUND_VARIATIONS[stem], tuning.variationPercentRef.current),
-        soundShapeOf(e),
+        shape,
       )
     }
   }, [tuning, engine.stop, engine.sync])
@@ -599,10 +616,12 @@ export function useReplaySound(
   // s'éteindrait jamais. La reprise n'a rien à faire — le prochain `tick` recale tout.
   const setTransportPlaying = useCallback(
     (playing: boolean) => {
+      playingRef.current = playing
       if (playing) return
       engine.stop()
-      // La rafale TENUE s'éteint avec : une image arrêtée ne tire plus.
-      playerRef.current?.stopHeld()
+      // TOUT ce qui est en vol s'éteint avec : rafales tenues, explosions, répliques — une image
+      // arrêtée ne tire plus et ne résonne plus (la conclusion de match, elle, est épargnée).
+      playerRef.current?.stopAll()
     },
     [engine.stop],
   )

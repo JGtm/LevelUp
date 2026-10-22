@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/migration"
 )
 
 // seedRelationAssists : schéma minimal de Q28c et un jeu couvrant les frontières.
@@ -25,34 +26,39 @@ func seedRelationAssists(t *testing.T, db *sql.DB) {
 	t.Helper()
 	for _, stmt := range []string{
 		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, team_id INTEGER, kills INTEGER)`,
-		`CREATE TABLE match_kill_events_latest (
-			match_id VARCHAR, publishable BOOLEAN, assist_known BOOLEAN,
-			feed_killer_xuid VARCHAR, victim_xuid VARCHAR,
-			assist_xuid VARCHAR, assist_damage_pct UTINYINT, time_ms INTEGER)`,
 		`INSERT INTO match_participants VALUES
 			('m1','Me',0,7), ('m1','Ally',0,2), ('m1','Bis',0,0), ('m1','bid(1.0)',0,1), ('m1','Foe',1,1),
 			('m2','Me',0,1), ('m2','Bis',0,1), ('m2','Foe',1,0),
 			('m3','Me',0,3), ('m3','Ally',0,3),
 			('m4','Me',0,4), ('m4','Ally',0,4)`,
-		`INSERT INTO match_kill_events_latest VALUES
-			('m1',TRUE,TRUE,'Me','Foe','Ally',10,1),
-			('m1',TRUE,TRUE,'Me','Foe','Ally',25,2),
-			('m1',TRUE,TRUE,'Me','Foe','Ally',50,3),
-			('m1',TRUE,TRUE,'Me','Foe','Ally',60,4),
-			('m1',TRUE,TRUE,'Me','Foe',NULL,NULL,5),
-			('m1',TRUE,FALSE,'Me',NULL,NULL,NULL,9),
-			('m1',TRUE,TRUE,'Ally','Foe','Me',80,6),
-			('m1',TRUE,TRUE,'Ally','Foe',NULL,NULL,7),
-			('m1',TRUE,TRUE,'Foe','Me',NULL,NULL,8),
-			('m2',TRUE,TRUE,'Me','Foe',NULL,NULL,1),
-			('m2',TRUE,TRUE,'Bis','Foe',NULL,NULL,2),
-			('m3',FALSE,TRUE,'Me','Foe','Ally',40,1),
-			('m4',TRUE,FALSE,'Me','Foe',NULL,NULL,1)`,
 	} {
 		if _, err := db.Exec(stmt); err != nil {
 			t.Fatalf("seedRelationAssists: %v\nSQL: %s", err, stmt)
 		}
 	}
+	// Le journal et ses résumés (ADR 0039) : schéma réel, une passe par match.
+	if err := migration.EnsureMatchKillEvents(db); err != nil {
+		t.Fatalf("EnsureMatchKillEvents: %v", err)
+	}
+	ligne := func(match string, pub, known bool, killer, victim, assist string, pctAssist *uint8, ms int) ligneJournal {
+		return ligneJournal{match: match, publiable: pub, assistKnown: known, tueur: killer, victime: victim,
+			assistant: assist, assistantGT: assist, pctAssist: pctAssist, timeMS: ms}
+	}
+	poserJournal(t, db,
+		ligne("m1", true, true, "Me", "Foe", "Ally", pct(10), 1),
+		ligne("m1", true, true, "Me", "Foe", "Ally", pct(25), 2),
+		ligne("m1", true, true, "Me", "Foe", "Ally", pct(50), 3),
+		ligne("m1", true, true, "Me", "Foe", "Ally", pct(60), 4),
+		ligne("m1", true, true, "Me", "Foe", "", nil, 5),
+		ligne("m1", true, false, "Me", "", "", nil, 9),
+		ligne("m1", true, true, "Ally", "Foe", "Me", pct(80), 6),
+		ligne("m1", true, true, "Ally", "Foe", "", nil, 7),
+		ligne("m1", true, true, "Foe", "Me", "", nil, 8),
+		ligne("m2", true, true, "Me", "Foe", "", nil, 1),
+		ligne("m2", true, true, "Bis", "Foe", "", nil, 2),
+		ligne("m3", false, true, "Me", "Foe", "Ally", pct(40), 1),
+		ligne("m4", true, false, "Me", "Foe", "", nil, 1),
+	)
 }
 
 func openAssistsDB(t *testing.T) *sql.DB {

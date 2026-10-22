@@ -27,10 +27,10 @@ import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import type { Locale } from '@/lib/i18n/locale'
 import type { SessionLabelEntry, TeammateOption, TeammateRow } from '@/lib/api/types'
 
-import { getSquadText } from './i18n'
 import { seasonToPeriod } from './useActiveSeason'
 import { useSquadFilterBarState } from './useSquadFilterBarState'
 import { SquadCompositionPicker } from './SquadCompositionPicker'
+import { SquadExactCompositionOption } from './SquadExactCompositionOption'
 
 export interface SquadFilterBarProps {
   playerSlug: string
@@ -77,7 +77,6 @@ export function SquadFilterBar({
   browseButton,
   onReset,
 }: SquadFilterBarProps) {
-  const t = getSquadText(locale)
   // Pas d'alias local `tCommon` ici : il en existe déjà deux dans le dépôt
   // (FilterOmnibar, SquadLayout) et la règle « ≤ 2 copies » interdit la 3e —
   // `formatMessage` est déjà le helper canonique, on l'appelle directement.
@@ -179,18 +178,11 @@ export function SquadFilterBar({
             « exactement cette composition » ; la décocher élargit aux matchs
             commencés ensemble. Appliquée en direct (pas d'Analyser). */}
         {hasTeammates && (
-          <label
-            className="shrink-0 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-            title={t.filter.exactCompositionTitle}
-          >
-            <input
-              type="checkbox"
-              className="h-3 w-3 rounded border-input text-primary focus:ring-1 focus:ring-ring"
-              checked={exactComposition}
-              onChange={(e) => setExactComposition(e.target.checked)}
-            />
-            {t.filter.exactComposition}
-          </label>
+          <SquadExactCompositionOption
+            locale={locale}
+            checked={exactComposition}
+            onChange={setExactComposition}
+          />
         )}
 
         <div className="flex-1" />

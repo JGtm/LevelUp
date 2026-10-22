@@ -15,45 +15,66 @@ import (
 )
 
 // homeAssistedFragsTimeout borne la lecture Q26l : une agrégation sur la vue des morts
-// filtrée par joueur et par lot de matchs (au plus quelques dizaines d'identifiants).
+// bornée sous sa fenêtre au lot de matchs de l'Accueil (tout l'historique du joueur, plus
+// d'un millier de matchs pour les plus anciens comptes).
 const homeAssistedFragsTimeout = 10 * time.Second
 
 // Q26lHomeAssistedFragsTpl : pour chaque match du lot dont le film PORTE l'assistance
-// (`porteuses` : au moins une ligne `publishable AND assist_known`, tous tueurs
-// confondus), les frags du joueur lus par le film et, parmi eux, ceux dont l'assistant est
-// NOMMÉ (sqlAssistantNomme : bot ou joueur non résolu compris), par tranche de part.
+// (`porteuses` : tête de résumé publiable avec au moins une mort à assistance connue,
+// `match_kill_heads_latest`, ADR 0039), les frags du joueur lus par le film (`film`, S1
+// `match_kill_pairs_latest` : toutes ses morts de tueur de la passe publiable, victime bot
+// comprise) et, parmi eux, ceux dont l'assistant est NOMMÉ (`recus`, S2 `match_assist_pairs_latest` :
+// bot ou joueur non résolu compris), par tranche de part.
 //
-// LIGNES DU JOUEUR : toutes ses lignes publiables de tueur, victime bot comprise. Une ligne
-// dont l'assistance n'est pas lue n'entre dans aucun compte d'assistés ; elle compte dans
+// Une ligne dont l'assistance n'est pas lue n'entre dans aucun compte d'assistés ; elle compte dans
 // `frags_film`, plancher de la base officielle posée par le service
-// (domain.MatchAssistedFrags.WithOfficialFrags).
+// (domain.MatchAssistedFrags.WithOfficialFrags). Une assistance sans part mesurée compte dans le
+// total et dans aucune tranche (`n_low` / `n_mid` / `n_high` ne portent que les parts mesurées).
 //
-// Une assistance sans part mesurée (`assist_damage_pct` NULL) compte dans le total et dans
-// aucune tranche : les comparaisons à NULL sont fausses dans les FILTER.
+// Un match hors de `porteuses`, ou sans ligne de tueur pour le joueur, ne sort pas : l'appelant ne
+// publie rien pour lui, jamais un « 0 ». Un match porteur dont le joueur n'a aucun appui nommé sort
+// avec des assistés à zéro (`LEFT JOIN`).
 //
-// Un match hors de `porteuses`, ou sans ligne de tueur pour le joueur, ne sort pas :
-// l'appelant ne publie rien pour lui, jamais un « 0 ».
-//
-// Format string, DANS CET ORDRE : placeholders du lot de matchs, puis le prédicat
-// d'assistant nommé et les bornes de tranche (low max, mid min, mid max, high min), chacune
-// précédée du prédicat. Placeholders ? : les match_id, puis le xuid du joueur.
+// PÉRIMÈTRE (ADR 0036 I2, ADR 0039 décision 7) : chaque lecture d'un résumé porte le lot en
+// prédicat CONSTANT sur son `match_id` (clauseListeMatchs). Placeholders ? : le lot (porteuses), le
+// lot et le xuid du joueur (film), le lot et le xuid du joueur (recus) ; trois formats `%s` dans cet
+// ordre : le prédicat de lot de `porteuses`, de `film`, de `recus`.
 const Q26lHomeAssistedFragsTpl = `
 WITH porteuses AS (
-    SELECT DISTINCT match_id
-    FROM ` + KillEventsCanonicalTable + `
-    WHERE publishable AND assist_known AND match_id IN (%s)
+    SELECT match_id
+    FROM match_kill_heads_latest
+    WHERE publishable AND n_assist_known > 0 AND %s
+),
+film AS (
+    SELECT k.match_id, CAST(SUM(k.kills) AS BIGINT) AS frags_film
+    FROM match_kill_pairs_latest k
+    WHERE k.publishable
+      AND %s
+      AND k.match_id IN (SELECT match_id FROM porteuses)
+      AND k.feed_killer_xuid = ?
+    GROUP BY k.match_id
+),
+recus AS (
+    SELECT a.match_id,
+           CAST(SUM(a.n)      AS BIGINT) AS received_total,
+           CAST(SUM(a.n_low)  AS BIGINT) AS received_low,
+           CAST(SUM(a.n_mid)  AS BIGINT) AS received_mid,
+           CAST(SUM(a.n_high) AS BIGINT) AS received_high
+    FROM match_assist_pairs_latest a
+    WHERE %s
+      AND a.match_id IN (SELECT match_id FROM porteuses)
+      AND a.feed_killer_xuid = ?
+      AND (a.assist_xuid IS NOT NULL OR a.assist_gamertag IS NOT NULL)
+    GROUP BY a.match_id
 )
-SELECT kv.match_id,
-       COUNT(*)                                                                                     AS frags_film,
-       COUNT(*) FILTER (WHERE %s)                                                                   AS received_total,
-       COUNT(*) FILTER (WHERE %s AND kv.assist_damage_pct < %d)                                     AS received_low,
-       COUNT(*) FILTER (WHERE %s AND kv.assist_damage_pct >= %d AND kv.assist_damage_pct <= %d)     AS received_mid,
-       COUNT(*) FILTER (WHERE %s AND kv.assist_damage_pct > %d)                                     AS received_high
-FROM ` + KillEventsCanonicalTable + ` kv
-WHERE kv.publishable
-  AND kv.match_id IN (SELECT match_id FROM porteuses)
-  AND kv.feed_killer_xuid = ?
-GROUP BY kv.match_id`
+SELECT f.match_id,
+       f.frags_film,
+       COALESCE(r.received_total, 0) AS received_total,
+       COALESCE(r.received_low, 0)   AS received_low,
+       COALESCE(r.received_mid, 0)   AS received_mid,
+       COALESCE(r.received_high, 0)  AS received_high
+FROM film f
+LEFT JOIN recus r ON r.match_id = f.match_id`
 
 // buildHomeAssistedFragsQuery assemble Q26l et ses arguments. Retourne ("", nil) sur un
 // lot vide.
@@ -61,12 +82,11 @@ func buildHomeAssistedFragsQuery(xuid string, matchIDs []string) (string, []any)
 	if len(matchIDs) == 0 {
 		return "", nil
 	}
-	low, mid := domain.AssistTierLowMaxPct, domain.AssistTierMidMaxPct
-	nomme := sqlAssistantNomme("kv")
-	sqlText := fmt.Sprintf(Q26lHomeAssistedFragsTpl, Placeholders(len(matchIDs)),
-		nomme, nomme, low, nomme, low, mid, nomme, mid)
-	args := append(ToAnySlice(matchIDs), xuid)
-	return sqlText, args
+	lotTete, argTete := clauseListeMatchs("match_id", matchIDs)
+	lotFilm, argFilm := clauseListeMatchs("k.match_id", matchIDs)
+	lotRecus, argRecus := clauseListeMatchs("a.match_id", matchIDs)
+	sqlText := fmt.Sprintf(Q26lHomeAssistedFragsTpl, lotTete, lotFilm, lotRecus)
+	return sqlText, []any{argTete, argFilm, xuid, argRecus, xuid}
 }
 
 // LoadMatchAssistedFrags : part des frags du joueur assistés par un coéquipier, par match

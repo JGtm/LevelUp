@@ -50,7 +50,7 @@ describe('PrivacyPage', () => {
   it('offre un retour vers l’application', () => {
     renderWithProviders(<PrivacyPage />)
     const back = getPrivacyText('fr').backToApp
-    expect(screen.getByRole('link', { name: back })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: back })).toHaveAttribute('href', '/{-$lang}')
   })
 
   it('le jeton de contact devient un lien mailto vers l’alias, dans les deux langues', () => {

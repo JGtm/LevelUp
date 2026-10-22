@@ -187,7 +187,7 @@ export function RootLayout() {
         // gardé pour le shell (OAuthRefusalBanner), sinon le renvoi à l'accueil l'effacerait.
         const refusal = new URLSearchParams(window.location.search).get(OAUTH_ERROR_PARAM)
         if (path === '/login' && refusal) useAppShellStore.getState().setOauthRefusal(refusal)
-        navigate({ to: '/' })
+        navigate({ to: '/{-$lang}' })
         return
       }
     }

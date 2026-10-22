@@ -52,16 +52,41 @@ func TestReadTeamScore(t *testing.T) {
 			wantPoints: &[2]int{50, 43},
 		},
 		{
-			// Témoin adb93fb7 : 1 manche chacun + 1 nulle. Les manches ne désignent
-			// personne, on retombe sur les points.
-			name: "manches à égalité -> points",
+			// Témoin adb93fb7 : 1 manche chacun + 1 nulle, et pourtant un vainqueur. Décision
+			// du 2026-10-20 : on affiche les manches remportées par chaque équipe QUEL QUE SOIT
+			// le résultat ; le verdict voyage dans `outcome`, pas dans ce libellé.
+			name: "manches à égalité (une nulle) -> manches, points en second plan",
 			in: TeamScoreInput{
 				MyPoints: ip(277), EnemyPoints: ip(234),
 				MyRoundsWon: ip(1), EnemyRoundsWon: ip(1), RoundsTotal: ip(3),
 				RoundsDecide: true,
 			},
-			wantOK: true, wantKind: ScoreKindPoints, wantMine: 277, wantTheirs: 234,
+			wantOK: true, wantKind: ScoreKindRounds, wantMine: 1, wantTheirs: 1,
 			wantPoints: &[2]int{277, 234},
+		},
+		{
+			// Oddball classé abandonné, une manche partout : la tuile affichait « 140 - 91 »
+			// (points) au lieu de « 1 - 1 ». `rounds_total` = max(gagnées + perdues + nulles) = 2.
+			name: "Oddball abandonné, une manche partout -> manches",
+			in: TeamScoreInput{
+				MyPoints: ip(140), EnemyPoints: ip(91),
+				MyRoundsWon: ip(1), EnemyRoundsWon: ip(1), RoundsTotal: ip(2),
+				RoundsDecide: true,
+			},
+			wantOK: true, wantKind: ScoreKindRounds, wantMine: 1, wantTheirs: 1,
+			wantPoints: &[2]int{140, 91},
+		},
+		{
+			// Garde des deux conditions restantes sur une égalité : variante non déclarée
+			// (CTF d'arène à égalité de mi-temps) -> points.
+			name: "égalité de manches sur variante non déclarée -> points",
+			in: TeamScoreInput{
+				MyPoints: ip(3), EnemyPoints: ip(3),
+				MyRoundsWon: ip(1), EnemyRoundsWon: ip(1), RoundsTotal: ip(2),
+				RoundsDecide: false,
+			},
+			wantOK: true, wantKind: ScoreKindPoints, wantMine: 3, wantTheirs: 3,
+			wantPoints: &[2]int{3, 3},
 		},
 		{
 			// Ligne antérieure au backfill : colonnes NULL. Aucune régression.

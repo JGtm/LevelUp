@@ -4,8 +4,9 @@
  */
 import { describe, expect, it } from 'vitest'
 
+import { MATCH_SOURCE_RETRY_MS } from '@/lib/analysis-pending/matchRefreshPolicy'
+
 import {
-  MATCH_VIEW_RETRY_MS,
   matchViewPollInterval,
   matchViewStaleTime,
   selectMatchPartialBanner,
@@ -74,7 +75,7 @@ describe('matchViewStaleTime', () => {
 describe('matchViewPollInterval', () => {
   it("30 s tant qu'une source est en panne, même si l'analyse est aussi en cours", () => {
     expect(matchViewPollInterval({ is_partial: true, partial_reasons: ['scoreboard_unavailable'] })).toBe(
-      MATCH_VIEW_RETRY_MS,
+      MATCH_SOURCE_RETRY_MS,
     )
     expect(
       matchViewPollInterval({
@@ -82,8 +83,8 @@ describe('matchViewPollInterval', () => {
         partial_reasons: ['section_unavailable'],
         header: { analysis_pending: true },
       } as never),
-    ).toBe(MATCH_VIEW_RETRY_MS)
-    expect(MATCH_VIEW_RETRY_MS).toBe(30_000)
+    ).toBe(MATCH_SOURCE_RETRY_MS)
+    expect(MATCH_SOURCE_RETRY_MS).toBe(30_000)
   })
 
   it("60 s tant que l'analyse est en cours, sinon plus de rechargement", () => {

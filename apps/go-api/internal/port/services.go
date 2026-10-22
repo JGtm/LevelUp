@@ -110,6 +110,10 @@ type FiltersService interface {
 // HomeService construit les réponses de la page d'accueil Mission Control.
 type HomeService interface {
 	GetHomePage(ctx context.Context, gamertag, locale string) (*domain.HomePageResponse, error)
+	// GetHomeMatches rend une liste de tuiles de l'Accueil : la suite de l'historique après un curseur,
+	// ou les favoris en entier (domain.HomeMatchesRequest). Même construction que la tête de
+	// GetHomePage ; curseur illisible : domain.ErrHomeCursorInvalid.
+	GetHomeMatches(ctx context.Context, locale string, req domain.HomeMatchesRequest) (*domain.HomeMatchesPage, error)
 	GetBattlePass(ctx context.Context) domain.BattlePassResponse
 	GetChallenges(ctx context.Context) domain.ChallengesResponse
 	// RefreshTrack hydrate (synchroneement) la définition d'un reward track
@@ -155,6 +159,10 @@ type MatchViewService interface {
 	// §N) d'un match. Retourne games.ErrCapabilityNotSupported si le titre n'a pas
 	// la capability (repo non câblé ou table absente).
 	GetMatchPositions(ctx context.Context, matchID string) ([]playerposition.PlayerPosition, error)
+	// GetReplayContext retourne ce que la page de rejeu lit d'un match (en-tête, lignes du
+	// tableau de score, événements du fil, médias), chaque morceau égal à son homologue de
+	// GetMatchView, sans les chargements des autres onglets. Mêmes erreurs que GetMatchView.
+	GetReplayContext(ctx context.Context, matchID string) (domain.MatchReplayContext, error)
 }
 
 // ErrReplayNotAvailable est renvoyé quand aucun artefact de rejeu 2D n'existe pour le
@@ -383,6 +391,10 @@ type SocialService interface {
 
 // SessionsService construit la page des sessions.
 type SessionsService interface {
+	// SessionOptions rend la règle de découpage du joueur : celle du titre
+	// (settings.SessionOptions) avec ses amis résolus, la même que celle des écrivains de
+	// session_id. GetSessions appelé avec elle découpe comme la synchro.
+	SessionOptions(ctx context.Context) domain.SessionComputeOptions
 	GetSessions(ctx context.Context, opts domain.SessionComputeOptions) (domain.SessionsResponse, error)
 }
 

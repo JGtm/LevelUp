@@ -366,7 +366,7 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 	jobSnapshot := *job
 
 	// Charger le dossier captures et la timezone configurés dans les settings.
-	// timezone est REQUISE pour que parseCaptureTimeFromFilename extraie la
+	// timezone est REQUISE pour que captureInstantFromName extraie la
 	// datetime des noms OBS/Xbox ; sans elle, capture_start_utc=NULL → 0 assoc.
 	capturesBaseDir := ""
 	timezone := ""
@@ -484,29 +484,4 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 	}()
 
 	return &asyncJobOutput{Body: &jobSnapshot}, nil
-}
-
-// sessionComputeOptionsFor résout les options de calcul de sessions d'un titre
-// via l'overlay PMT-4 (SessionGapMinutes / split / team-change sont per-titre :
-// le rythme de session dépend du titre). Overlay absent ⇒ valeurs globales
-// byte-identiques ; store nil ou erreur ⇒ Defaults(). Extrait pour rester
-// testable hors de la goroutine de PostRecalculateSessions. overlayPath rend le chemin de
-// l'overlay d'un titre (cfg.TitleSettingsPath : celui de la fixture en démo, lot B5).
-func sessionComputeOptionsFor(store *settings_platform.Store, overlayPath func(string) string, titleSlug string) domain.SessionComputeOptions {
-	cfg := settings_platform.Defaults()
-	if store != nil {
-		if resolved, err := store.ResolveForTitle(overlayPath(titleSlug)); err == nil && resolved != nil {
-			cfg = resolved
-		}
-	}
-	gap := cfg.SessionGapMinutes
-	if gap <= 0 {
-		gap = 120
-	}
-	return domain.SessionComputeOptions{
-		GapMinutes:          gap,
-		SplitOnRankedChange: cfg.SessionSplitOnRankedChange,
-		TeamChangeMode:      domain.TeamChangeMode(cfg.SessionTeamChangeMode),
-		Mode:                domain.SessionModeContext,
-	}
 }

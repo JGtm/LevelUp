@@ -49,9 +49,12 @@ func TestExplorerRepo_LecturesDuJoueur_FenetresBornees(t *testing.T) {
 			t.Fatalf("GetKillerVictimBetween(%s): %v", autre, err)
 		}
 		var libre struct{ dealt, suffered int }
-		if err := b.brute.QueryRowContext(ctx, QKillsBetweenPlayers, tacXUIDMoi, autre, autre, tacXUIDMoi).
+		if err := b.brute.QueryRowContext(ctx, `SELECT
+				CAST(COALESCE(SUM(kills) FILTER (WHERE feed_killer_xuid = ? AND victim_xuid = ?), 0) AS BIGINT),
+				CAST(COALESCE(SUM(kills) FILTER (WHERE feed_killer_xuid = ? AND victim_xuid = ?), 0) AS BIGINT)
+			FROM match_kill_pairs_latest`, tacXUIDMoi, autre, autre, tacXUIDMoi).
 			Scan(&libre.dealt, &libre.suffered); err != nil {
-			t.Fatalf("QKillsBetweenPlayers(%s): %v", autre, err)
+			t.Fatalf("frags libres (%s): %v", autre, err)
 		}
 		if borneLue.KillsDealt != libre.dealt || borneLue.DeathsSuffered != libre.suffered {
 			t.Fatalf("frags échangés avec %s : bornés %+v, libres %+v", autre, borneLue, libre)

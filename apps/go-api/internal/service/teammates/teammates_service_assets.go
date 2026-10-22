@@ -282,14 +282,14 @@ func buildSquadMatchHistory(
 		seen[m.MatchID] = struct{}{}
 		// MMR (équipe / adverse / delta) : nil quand le titre ne fournit pas de MMR
 		// d'équipe (Halo 5) → la colonne MMR est masquée côté front au lieu d'afficher
-		// un 0 trompeur. Les trois champs partent ensemble (delta dérive des deux).
+		// un 0 trompeur. Les trois champs partent ensemble (delta dérive des deux). Un MMR à
+		// 0 (match classé abandonné) est absent (analysis.MMRKnown) : pas d'écart sans les deux.
 		var teamMMR, deltaMMR, enemyMMR *float64
 		if provideTeamMMR {
-			tm := m.TeamMMR
-			teamMMR = &tm
-			enemyMMR = m.EnemyMMR
-			if m.EnemyMMR != nil {
-				d := m.TeamMMR - *m.EnemyMMR
+			teamMMR = analysis.KnownMMRValue(m.TeamMMR)
+			enemyMMR = analysis.KnownMMR(m.EnemyMMR)
+			if teamMMR != nil && enemyMMR != nil {
+				d := *teamMMR - *enemyMMR
 				deltaMMR = &d
 			}
 		}
@@ -353,7 +353,7 @@ func buildMatchSeries(matches []domain.SquadMatchRow) []domain.SquadMatchSeriesP
 			StartTime:        m.StartTime.Format("2006-01-02T15:04:05Z"),
 			Outcome:          m.Outcome,
 			PerformanceScore: m.PerformanceScore,
-			TeamMMRAvg:       m.TeamMMR,
+			TeamMMRAvg:       analysis.KnownMMRValue(m.TeamMMR),
 			SessionLabel:     m.SessionLabel,
 		})
 	}

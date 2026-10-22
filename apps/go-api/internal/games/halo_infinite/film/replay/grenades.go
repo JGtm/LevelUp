@@ -76,7 +76,7 @@ type Grenade struct {
 	// Proj est l'index, dans ReplayDocument.Projectiles, du projectile né de ce lancer
 	// (appariement à ±200 ms, cf. grenadeBirthWindowUS). C'est le lien qui permet au
 	// client de poser l'effet du type de grenade au point de REPOS du vol — la dernière
-	// position répliquée, jamais un « impact » (aucun événement de détonation n'existe).
+	// position répliquée, jamais un « impact » (le message de détonation de la vue A n'est pas lu).
 	//
 	// POINTEUR, PAS int : le piège omitempty du dépôt — l'index 0 est un projectile
 	// valide, un int l'omettrait exactement comme une absence de lien. Nil quand aucun

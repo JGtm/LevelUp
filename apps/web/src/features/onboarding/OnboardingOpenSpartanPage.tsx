@@ -37,7 +37,7 @@ export function OnboardingOpenSpartanPage() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   useEffect(() => {
     if (isBootstrapped && setupState === 'ready' && currentPlayer) {
-      navigate({ to: '/' })
+      navigate({ to: '/{-$lang}' })
     }
   }, [isBootstrapped, setupState, currentPlayer, navigate])
 
@@ -58,7 +58,7 @@ export function OnboardingOpenSpartanPage() {
           <CardContent>
             <div className="flex justify-end">
               <Button
-                onClick={() => navigate({ to: '/' })}
+                onClick={() => navigate({ to: '/{-$lang}' })}
                 data-testid="onboarding-continue"
               >
                 Continuer →

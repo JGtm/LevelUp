@@ -58,12 +58,24 @@ const (
 	replayGateCap  = "CapReplay"
 )
 
-// TestReplayRoutesMountedUnderCapabilityGate — tout site qui monte `ReplayHandler` doit se
-// trouver dans un bloc qui installe `RequireCapability(..., CapReplay)`.
+// replayMountCtors : les appels de montage qui doivent être gardés — le handler des routes
+// /replay* (NewReplayHandler) et le contexte de match de la page de rejeu
+// (MatchViewHandler.MountReplayContext, GET .../replay/context), qui vit sous les mêmes portes.
+var replayMountCtors = []string{replayHandlerCtor, "MountReplayContext"}
+
+// TestReplayRoutesMountedUnderCapabilityGate — tout site qui monte une route du rejeu
+// (replayMountCtors) doit se trouver dans un bloc qui installe `RequireCapability(..., CapReplay)`.
 //
-// Le test echoue AUSSI si plus aucun site de montage n'est trouve : un ratchet qui ne mord
-// plus sur rien est un ratchet mort (le constructeur a pu etre renomme).
+// Le test echoue AUSSI si plus aucun site de montage n'est trouve pour l'un d'eux : un ratchet
+// qui ne mord plus sur rien est un ratchet mort (le constructeur a pu etre renomme).
 func TestReplayRoutesMountedUnderCapabilityGate(t *testing.T) {
+	for _, ctor := range replayMountCtors {
+		t.Run(ctor, func(t *testing.T) { checkReplayMountSites(t, ctor) })
+	}
+}
+
+// checkReplayMountSites applique la regle a tous les appels de `ctor` hors tests.
+func checkReplayMountSites(t *testing.T, ctor string) {
 	apiRoot := archlintAPIRoot(t)
 
 	sitesTrouves := 0
@@ -89,7 +101,7 @@ func TestReplayRoutesMountedUnderCapabilityGate(t *testing.T) {
 		}
 		// Le constructeur est DEFINI dans handlers/replay.go : seuls ses APPELS nous
 		// interessent, et un fichier qui ne le nomme pas n'a pas besoin d'etre parse.
-		if !strings.Contains(string(octets), replayHandlerCtor+"(") {
+		if !strings.Contains(string(octets), ctor+"(") {
 			return nil
 		}
 		rel, _ := filepath.Rel(apiRoot, path)
@@ -103,7 +115,7 @@ func TestReplayRoutesMountedUnderCapabilityGate(t *testing.T) {
 		if parseErr != nil {
 			t.Fatalf("parser.ParseFile(%s): %v", rel, parseErr)
 		}
-		for _, site := range sitesDeMontage(fichier, replayHandlerCtor) {
+		for _, site := range sitesDeMontage(fichier, ctor) {
 			sitesTrouves++
 			if !unAncetreInstalleLaPorte(site.ancetres) {
 				violations = append(violations,
@@ -119,7 +131,7 @@ func TestReplayRoutesMountedUnderCapabilityGate(t *testing.T) {
 	if sitesTrouves == 0 {
 		t.Fatalf("aucun site de montage de %s trouve sous %s — le ratchet ne mord plus sur rien "+
 			"(constructeur renomme ? montage deplace ?) : corriger l'extracteur, ne pas supprimer ce test",
-			replayHandlerCtor, apiRoot)
+			ctor, apiRoot)
 	}
 
 	for _, v := range violations {
@@ -129,7 +141,7 @@ func TestReplayRoutesMountedUnderCapabilityGate(t *testing.T) {
 			"titre qui n'a aucun decodeur de film (halo_5 est ACTIF en production) : 404 « ce match "+
 			"n'a pas de rejeu » au lieu de 503 « ce titre n'a pas de rejeu ». Remettre "+
 			"`r.Use(middleware.RequireCapability(titleRegistry, titlePkg.%s))` dans le groupe qui "+
-			"monte ReplayHandler.", v, replayGateCall, replayGateCap, replayGateCap)
+			"monte "+ctor+".", v, replayGateCall, replayGateCap, replayGateCap)
 	}
 }
 
@@ -145,8 +157,8 @@ type siteMontage struct {
 // englobants — au montage reel : le corps du `r.Group(func(r chi.Router) { ... })`, puis
 // celui de `mountAPIV1`, etc.
 //
-// Parametree par le constructeur depuis le 2026-09-06 : le ratchet du garde local des
-// routes tactiques (`tactical_background_local_gate_test.go`) a exactement le meme besoin
+// Parametree par le constructeur depuis le 2026-09-06 : le ratchet de la garde du rejeu des
+// routes tactiques (`tactical_background_demo_gate_test.go`) a exactement le meme besoin
 // d'extraction, et une seconde copie de cette remontee de pile aurait diverge.
 func sitesDeMontage(fichier *ast.File, ctor string) []siteMontage {
 	var out []siteMontage

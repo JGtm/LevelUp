@@ -8,7 +8,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildSlotOwnership, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
-import { distinctColorResolver } from './useSlotIdentity'
+import type { SeatedIndex } from '../model/seatLogic'
+import { distinctColorResolver, gatedByFiche, seatedSlotResolver } from './useSlotIdentity'
 
 /** Un joueur avec des vies sur des slots (fenêtre par défaut [start, end], une par slot). */
 function player(xuid: string, lives: [slot: number, start: number, end: number][]): ReplayPlayer {
@@ -53,5 +54,33 @@ describe('distinctColorResolver', () => {
     const color = distinctColorResolver(buildSlotOwnership(players), players, ['c1', 'c2'])
     expect(color(512, 25)).toBe('c1') // A (rang 0)
     expect(color(512, 220)).toBe('c2') // B (rang 1)
+  })
+})
+
+describe('la fiche décide du pion (règle du 2026-10-21)', () => {
+  /** Un index de fiches à la main : B tient une fiche jusqu'à l'image 319, A jusqu'au bout. */
+  const fiches: SeatedIndex = {
+    isSeated: (xuid, frame) => (xuid === 'B' ? frame <= 319 : xuid === 'A' && frame <= 1000),
+  }
+  const players = [player('A', [[512, 0, 1000]]), player('B', [[513, 223, 652]])]
+  const ownership = buildSlotOwnership(players)
+
+  it('seatedSlotResolver : le propriétaire de la vie à `ownerFrame` doit tenir une fiche à `frame`', () => {
+    const seated = seatedSlotResolver(ownership, fiches)
+    expect(seated(513, 300, 300)).toBe(true)
+    expect(seated(513, 400, 400)).toBe(false) // B n'a plus de fiche : plus de pion
+    expect(seated(512, 400, 400)).toBe(true)
+    expect(seated(513, 300, 400)).toBe(false) // une croix lue après la relève
+    expect(seated(999, 10, 10)).toBe(true) // slot sans propriétaire : pas jugé ici
+  })
+
+  it('gatedByFiche : la couleur disparaît avec la fiche, la vie du même slot avant elle reste', () => {
+    const color = gatedByFiche(
+      distinctColorResolver(ownership, players, ['c1', 'c2']),
+      seatedSlotResolver(ownership, fiches),
+    )
+    expect(color(513, 300)).toBe('c2')
+    expect(color(513, 400)).toBeNull()
+    expect(color(512, 400)).toBe('c1')
   })
 })

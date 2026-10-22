@@ -11,7 +11,7 @@
 //   - garde d'écriture du groupe joueur (IsMutatingRequest : préfixes de lecture) ;
 //   - action du visiteur de la garde de propriété (like d'un média) ;
 //   - forme du slug (RequirePlayerOwnership), forme du match (RequireMatchParticipation) ;
-//   - garde du rejeu (liste des rejeux figés en démo, garde local hors démo).
+//   - garde du rejeu (liste des rejeux figés en démo ; sans effet hors démo).
 //
 // Chaque test vérifie aussi qu'un chemin propre reste servi : la garde tient sans couper
 // l'usage légitime.
@@ -74,9 +74,9 @@ func newAmbStack(t *testing.T, demo bool, authMode string, mount func(r chi.Rout
 	return s
 }
 
-// ambReq décrit une requête : méthode, cible brute, Origin, pair TCP, cookie de session.
+// ambReq décrit une requête : méthode, cible brute, Origin, cookie de session.
 type ambReq struct {
-	method, target, origin, peer, sessionID string
+	method, target, origin, sessionID string
 }
 
 func (s *ambStack) do(t *testing.T, q ambReq) *httptest.ResponseRecorder {
@@ -84,9 +84,6 @@ func (s *ambStack) do(t *testing.T, q ambReq) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(q.method, q.target, strings.NewReader(`{}`))
 	if q.origin != "" {
 		req.Header.Set("Origin", q.origin)
-	}
-	if q.peer != "" {
-		req.RemoteAddr = q.peer
 	}
 	if q.sessionID != "" {
 		req.AddCookie(&http.Cookie{Name: session_platform.CookieName, Value: s.store.SignCookie(q.sessionID)})
@@ -379,18 +376,18 @@ func TestAmbiguousPath_MatchParticipationRefuses(t *testing.T) {
 }
 
 // TestAmbiguousPath_ReplayGateRefuses : en démo, un {match_id} ambigu construit autour d'un
-// rejeu figé reçoit 404 replay_not_available ; hors démo, depuis la boucle locale, il est
-// refusé par la garde de forme (le garde local ne décide pas sur le chemin).
+// rejeu figé reçoit 404 replay_not_available ; hors démo, il est
+// refusé par la garde de forme (la garde du rejeu ne décide pas sur le chemin).
 func TestAmbiguousPath_ReplayGateRefuses(t *testing.T) {
 	demo := newAmbStack(t, true, "", mountMatchRoutes(ambReplayDemo(t)))
 	local := newAmbStack(t, false, "", mountMatchRoutes(nil))
 	for _, f := range AmbiguousForms {
 		target := "/api/v1/players/p/matches/" + SmuggleParam(f, ambMatchID) + "/replay"
 		demo.expectRefused(t, ambReq{method: http.MethodGet, target: target}, http.StatusNotFound, "replay_not_available")
-		local.expectRefused(t, ambReq{method: http.MethodGet, target: target, peer: "127.0.0.1:5555"},
+		local.expectRefused(t, ambReq{method: http.MethodGet, target: target},
 			http.StatusNotFound, "match_not_participant")
 	}
 	clean := "/api/v1/players/p/matches/" + ambMatchID + "/replay"
 	demo.expectServed(t, ambReq{method: http.MethodGet, target: clean}, "replay")
-	local.expectServed(t, ambReq{method: http.MethodGet, target: clean, peer: "127.0.0.1:5555"}, "replay")
+	local.expectServed(t, ambReq{method: http.MethodGet, target: clean}, "replay")
 }

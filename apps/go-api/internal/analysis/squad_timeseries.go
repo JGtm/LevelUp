@@ -56,6 +56,7 @@ func groupSquadBySession(rows []domain.SquadMatchRow) []domain.SquadTimeseriesPo
 		wins, losses int
 		count        int
 		countPerf    int
+		countMMR     int
 	}
 	bySession := make(map[int]*sessionAgg)
 
@@ -77,7 +78,10 @@ func groupSquadBySession(rows []domain.SquadMatchRow) []domain.SquadTimeseriesPo
 			agg.totalPerf += *r.PerformanceScore
 			agg.countPerf++
 		}
-		agg.totalMMR += r.TeamMMR
+		if MMRKnown(r.TeamMMR) {
+			agg.totalMMR += r.TeamMMR
+			agg.countMMR++
+		}
 		agg.count++
 		switch r.Outcome {
 		case domain.OutcomeWin:
@@ -102,11 +106,10 @@ func groupSquadBySession(rows []domain.SquadMatchRow) []domain.SquadTimeseriesPo
 			v := math.Round((agg.totalPerf/float64(agg.countPerf))*10) / 10
 			perfPtr = &v
 		}
-		mmrAvg := agg.totalMMR / float64(agg.count)
 		p := domain.SquadTimeseriesPoint{
 			BucketLabel: agg.label,
 			SquadPerf:   perfPtr,
-			TeamMMRAvg:  &mmrAvg,
+			TeamMMRAvg:  meanKnownMMR(agg.totalMMR, agg.countMMR),
 			MatchCount:  agg.count,
 		}
 		total := agg.wins + agg.losses
@@ -141,6 +144,7 @@ func bucketByTime(rows []domain.SquadMatchRow, period string) []domain.SquadTime
 		wins, losses int
 		count        int
 		countPerf    int
+		countMMR     int
 	}
 	byBucket := make(map[time.Time]*bucketAgg)
 
@@ -169,7 +173,10 @@ func bucketByTime(rows []domain.SquadMatchRow, period string) []domain.SquadTime
 			agg.totalPerf += *r.PerformanceScore
 			agg.countPerf++
 		}
-		agg.totalMMR += r.TeamMMR
+		if MMRKnown(r.TeamMMR) {
+			agg.totalMMR += r.TeamMMR
+			agg.countMMR++
+		}
 		agg.count++
 		switch r.Outcome {
 		case domain.OutcomeWin:
@@ -194,11 +201,10 @@ func bucketByTime(rows []domain.SquadMatchRow, period string) []domain.SquadTime
 			v := math.Round((agg.totalPerf/float64(agg.countPerf))*10) / 10
 			perfPtr = &v
 		}
-		mmrAvg := agg.totalMMR / float64(agg.count)
 		p := domain.SquadTimeseriesPoint{
 			BucketLabel: agg.label,
 			SquadPerf:   perfPtr,
-			TeamMMRAvg:  &mmrAvg,
+			TeamMMRAvg:  meanKnownMMR(agg.totalMMR, agg.countMMR),
 			MatchCount:  agg.count,
 		}
 		total := agg.wins + agg.losses
@@ -209,4 +215,14 @@ func bucketByTime(rows []domain.SquadMatchRow, period string) []domain.SquadTime
 		points = append(points, p)
 	}
 	return points
+}
+
+// meanKnownMMR rend la moyenne du MMR d'un groupe de matchs, calculée sur les seuls matchs au
+// MMR connu (analysis.MMRKnown) ; nil quand aucun ne l'est (jamais un 0 trompeur).
+func meanKnownMMR(total float64, n int) *float64 {
+	if n == 0 {
+		return nil
+	}
+	v := total / float64(n)
+	return &v
 }

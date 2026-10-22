@@ -71,7 +71,6 @@ var bareDuckDBRWOpenAllowlist = map[string]int{
 	"cmd/migrate-to-shared-social/main.go":    1,
 	"cmd/migrate-xuid-aliases-global/main.go": 2,
 	"cmd/populate-playlists-catalog/main.go":  1,
-	"cmd/prestige-seed/main.go":               4,
 	"cmd/purge_corrupt_records/main.go":       1,
 	"cmd/purge_player_media/main.go":          1,
 	"cmd/rebuild_mp/main.go":                  1,

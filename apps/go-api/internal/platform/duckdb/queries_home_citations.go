@@ -1,5 +1,7 @@
-// Package duckdb — queries_home_citations.go : requêtes page Home, citations et médias.
+// Package duckdb — queries_home_citations.go : requêtes page Home et citations.
 package duckdb
+
+import "levelup/go-api/internal/analysis"
 
 // Q26 — Home : matchs d'un joueur avec KPIs pour le hero card.
 //
@@ -79,8 +81,8 @@ SELECT
     NULLIF(COALESCE(NULLIF(mp.time_played_seconds, 0), r.playable_duration_seconds), 0) AS time_played_seconds,
     mp.damage_dealt,
     mp.damage_taken,
-    mp.team_mmr,
-    mp.enemy_mmr,
+    ` + analysis.SQLKnownMMR("mp.team_mmr") + ` AS team_mmr,
+    ` + analysis.SQLKnownMMR("mp.enemy_mmr") + ` AS enemy_mmr,
     mp.rank                                                 AS rank_in_team,
     COALESCE(mp.headshot_kills, 0)                          AS headshot_kills,
     COALESCE(perfect.perfect_kills, 0)                      AS perfect_kills,
@@ -149,21 +151,18 @@ WHERE me.xuid = ?
   AND me.match_id IN (%s)
 ORDER BY me.match_id, me.count DESC`
 
-// Q26i : Home — citations progressées par match, avec cumul global au moment du match.
-// Les match_id sont injectés dynamiquement via IN (%s).
+// Q26i : Home — citations progressées par match (valeur gagnée à chaque match).
+// Les match_id sont injectés dynamiquement via IN (%s) : borne constante sur la clé de
+// partition de la fenêtre `_latest` (ADR 0036 I2).
 // Requête sur pdb.Player uniquement (match_citations est dans stats.duckdb).
+// Le cumul arrêté à chaque match n'est PAS lu ici : il exige l'heure de début des matchs
+// (base partagée), cf. loadCitationCumulAfterMatch (citations_cumul.go).
 const Q26iMatchCitationsTemplate = `
 SELECT
     mc.match_id,
     mc.citation_name_norm,
-    mc.value                AS match_delta,
-    cum.total               AS cumulative_total
+    mc.value                AS match_delta
 FROM match_citations_latest mc
-JOIN (
-    SELECT citation_name_norm, SUM(value) AS total
-    FROM match_citations_latest
-    GROUP BY citation_name_norm
-) cum ON cum.citation_name_norm = mc.citation_name_norm
 WHERE mc.match_id IN (%s)
   AND mc.value > 0
 ORDER BY mc.match_id, mc.value DESC`
@@ -448,27 +447,6 @@ WHERE rn = 1`
 // (Phase 3.bis plan stabilisation 2026-05-22). Conservé en commentaire
 // comme référence historique. Code mort retiré.
 
-// Q28 : Home — medias recents depuis media_files + media_match_associations.
-// Parametre : ?1 = LIMIT (nombre de medias).
-// Retourne uniquement les medias actifs, triés par date de modification desc.
-//
-// Phase 3 plan stabilisation 2026-05-22 : migré vers pdb.SharedSocial. Le
-// schéma shared_social.media_files + media_match_associations diffère de
-// l'ancien player.media_files :
-//   - JOIN via `mma.media_file_id = mf.id` (au lieu de file_path/media_path)
-//   - match_start_time absent → retourné NULL (consumer doit dériver depuis
-//     match_registry si besoin via une autre query Go-side)
-const Q28RecentMedia = `
-SELECT
-    mf.file_name,
-    mma.match_id,
-    NULL::TIMESTAMP AS match_start_time
-FROM media_files mf
-LEFT JOIN media_match_associations_latest mma ON mma.media_file_id = mf.id
-WHERE mf.status = 'active'
-ORDER BY mf.mtime DESC
-LIMIT ?`
-
 // Q26k : Home — arme favorite (kills totaux) du joueur toutes armes confondues.
 // Paramètre : ?1 = xuid.
 // Requête sur pdb.Player (shared attaché). Label résolu ensuite via pdb.Metadata.
@@ -484,7 +462,7 @@ ORDER BY total_kills DESC
 LIMIT 1`
 
 // =============================================================================
-// Sprint 13 — Citations + Médias
+// Sprint 13 — Citations
 // =============================================================================
 
 // Q34 : Citations — mappings de citation depuis metadata.duckdb.

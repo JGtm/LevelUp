@@ -227,3 +227,75 @@ func TestTransformMatchSkillResponse_NoRankRecap(t *testing.T) {
 		t.Errorf("KillsExpected should remain parsed, got %v", data.KillsExpected)
 	}
 }
+
+// Un match classé abandonné (tout le monde parti) revient de l'API avec un MMR à 0 pour toutes
+// les équipes : un 0 est une valeur ABSENTE, jamais un niveau. Ni le MMR d'équipe ni le MMR
+// adverse ne doivent sortir du décodage (sinon un écart « 0 - 0 » ou « 1500 - 0 » entre dans les
+// statistiques), alors que le CSR du match reste lu tel quel.
+func TestTransformMatchSkillResponse_RankedMatchWithZeroMMR(t *testing.T) {
+	raw := []byte(`{
+		"Value": [
+			{
+				"Id": "xuid(2533274858283686)",
+				"ResultCode": 0,
+				"Result": {
+					"TeamMmr": 0.0,
+					"TeamId": 0,
+					"TeamMmrs": {"0": 0.0, "1": 0.0},
+					"RankRecap": {
+						"PreMatchCsr":  {"Value": 1247, "Tier": "Gold", "SubTier": 4, "InitialMeasurementMatches": 10},
+						"PostMatchCsr": {"Value": 1247, "Tier": "Gold", "SubTier": 4, "InitialMeasurementMatches": 10}
+					}
+				}
+			}
+		]
+	}`)
+	var resp matchSkillResponse
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	data := transformMatchSkillResponse(resp)["2533274858283686"]
+	if data == nil {
+		t.Fatal("expected data for xuid")
+	}
+	if data.TeamMMR != nil {
+		t.Errorf("TeamMMR: un MMR à 0 est absent, got %v", *data.TeamMMR)
+	}
+	if data.EnemyMMR != nil {
+		t.Errorf("EnemyMMR: un MMR à 0 est absent, got %v", *data.EnemyMMR)
+	}
+	if data.PostMatchCSR == nil {
+		t.Error("PostMatchCSR : le CSR du match reste lu tel quel")
+	}
+}
+
+func TestComputeEnemyMMR_IgnoresZeroTeams(t *testing.T) {
+	cases := []struct {
+		name     string
+		teamMMRs map[string]float64
+		want     *float64
+	}{
+		{"2 equipes, adversaire a 0 : absent", map[string]float64{"0": 1500, "1": 0}, nil},
+		{"2 equipes a 0 : absent", map[string]float64{"0": 0, "1": 0}, nil},
+		{"FFA : la moyenne ignore l'equipe a 0", map[string]float64{"0": 1500, "1": 1400, "2": 0, "3": 1600}, f64(1500)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := computeEnemyMMR(0, tc.teamMMRs)
+			if tc.want == nil {
+				if got != nil {
+					t.Fatalf("attendu absent, got %v", *got)
+				}
+				return
+			}
+			if got == nil {
+				t.Fatalf("attendu %v, got absent", *tc.want)
+			}
+			if *got != *tc.want {
+				t.Fatalf("attendu %v, got %v", *tc.want, *got)
+			}
+		})
+	}
+}
+
+func f64(v float64) *float64 { return &v }

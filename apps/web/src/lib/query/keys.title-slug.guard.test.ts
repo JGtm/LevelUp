@@ -58,6 +58,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   matchObjectiveEvents: () => queryKeys.matchObjectiveEvents(P, T, 'm'),
   matchPositions: () => queryKeys.matchPositions(P, T, 'm'),
   matchReplay: () => queryKeys.matchReplay(P, T, 'm'),
+  matchReplayContext: () => queryKeys.matchReplayContext(P, T, 'm'),
   matchReplayBackground: () => queryKeys.matchReplayBackground(P, T, 'm'),
   matchReplayBackgroundImage: () => queryKeys.matchReplayBackgroundImage(P, T, 'm'),
   matchReplayCallouts: () => queryKeys.matchReplayCallouts(P, T, 'm'),
@@ -68,6 +69,8 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   engagementSquadSession: () => queryKeys.engagementSquadSession(P, T, [], []),
   // Accueil / palmarès / social.
   home: () => queryKeys.home(P, T, 'fr'),
+  homeMatchesPage: () => queryKeys.homeMatchesPage(P, T, 'fr', 'c'),
+  homeFavorites: () => queryKeys.homeFavorites(P, T, 'fr'),
   seasonPass: () => queryKeys.seasonPass(P, T, 'fr'),
   palmaresRelations: () => queryKeys.palmaresRelations(P, T),
   // Onglet Tactique : une carte n'existe que dans son titre, et la grille compte les

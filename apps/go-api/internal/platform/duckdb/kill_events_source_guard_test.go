@@ -74,7 +74,7 @@ func TestAucunLecteurNeLitLAncienneTable(t *testing.T) {
 // TestUneSeuleRequeteDeFragsEntreDeuxJoueurs : le SQL de [QKillsBetweenPlayers] n'existe qu'une
 // fois. Q19b (Explorer) et CompareRepo.GetEncounterStats en portaient deux copies textuelles.
 func TestUneSeuleRequeteDeFragsEntreDeuxJoueurs(t *testing.T) {
-	const signature = "AND victim_xuid = ?) AS kills_dealt"
+	const signature = "AND victim_xuid = ?), 0) AS BIGINT) AS kills_dealt"
 	var porteurs []string
 	for path, src := range sourcesDuPaquet(t) {
 		if strings.Contains(src, signature) {

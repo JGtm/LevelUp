@@ -26,6 +26,7 @@ type mockMatchViewService struct {
 	objEventErr error
 	positions   []playerposition.PlayerPosition
 	posErr      error
+	replayCtx   domain.MatchReplayContext
 }
 
 func (m *mockMatchViewService) GetMatchView(_ context.Context, _ string) (domain.MatchViewResponse, error) {
@@ -46,6 +47,10 @@ func (m *mockMatchViewService) GetObjectiveEvents(_ context.Context, _ string) (
 
 func (m *mockMatchViewService) GetMatchPositions(_ context.Context, _ string) ([]playerposition.PlayerPosition, error) {
 	return m.positions, m.posErr
+}
+
+func (m *mockMatchViewService) GetReplayContext(_ context.Context, _ string) (domain.MatchReplayContext, error) {
+	return m.replayCtx, m.err
 }
 
 func newMatchViewRouter(factory handlers.ServiceFactory[port.MatchViewService]) *chi.Mux {

@@ -101,6 +101,7 @@ function slotOfPlayerAt(
 export function buildKillFx(
   doc: ReplayDocumentReady,
   kills: readonly ReplayKill[],
+  seatedOfXuid?: (xuid: string, frame: number) => boolean,
 ): KillFxEntry[] {
   if (kills.length === 0 || doc.tracks.length === 0) return []
   // LES POSITIONS PASSENT PAR LE RÉSOLVEUR DE PORTEUR (carrierPosition.ts, 2026-09-05) : un
@@ -116,7 +117,10 @@ export function buildKillFx(
   const out: KillFxEntry[] = []
   for (const k of kills) {
     const frame = Math.round(msToFrames(k.replayMs, doc))
-    const killer = posOf(k.xuid, frame)
+    // LA RÈGLE DU PION : un tueur qui ne tient plus de fiche (un bot relevé) n'a pas de position à
+    // l'écran — le trait ne part pas d'un pion qui n'existe plus. Le kill reste au fil et dans les
+    // comptes, et la mort de sa victime se pose toujours (marqueur non orienté).
+    const killer = seatedOfXuid && !seatedOfXuid(k.xuid, frame) ? null : posOf(k.xuid, frame)
     const victim = k.victimXuid ? posOf(k.victimXuid, frame) : null
     const origin = killer ?? victim
     if (!origin) continue // ni tueur ni victime localisable : on ne dessine rien

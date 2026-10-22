@@ -1,0 +1,15 @@
+[Unit]
+Description=LevelUp compactage des passes supersedees (nuit, si la jauge depasse le seuil)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# Le script decide seul : jauge sous le seuil = sortie immediate sans toucher au serveur ;
+# au-dela = arret, `levelup compact-passes` (sauvegarde fichier), redemarrage, attente de /health.
+ExecStart=/opt/levelup/scripts/compact-passes-nuit.sh
+# 75 = passage refuse sans rien toucher (verrou tenu, sauvegarde restic en cours) : pas un echec.
+SuccessExitStatus=75
+# Borne dure : le passage le plus long mesure (ADR 0026, deux titres) dure ~90 s serveur
+# arrete ; 25 min laissent la marge et garantissent la fin avant la sauvegarde restic de 04:00.
+TimeoutStartSec=25min

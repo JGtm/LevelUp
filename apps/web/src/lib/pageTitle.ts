@@ -1,4 +1,4 @@
-import type { Locale } from '@/lib/i18n/locale'
+import { KNOWN_LOCALES, type Locale } from '@/lib/i18n/locale'
 import { playerRelativePath } from '@/lib/title-routing'
 
 /** Titre localisé — parité FR/EN obligatoire par typage (CLAUDE.md règle 1). */
@@ -147,7 +147,8 @@ function escapeRegex(value: string): string {
 }
 
 function compileRoutePattern(pattern: string): RegExp {
-  if (pattern === '/') return /^\/$/
+  // Index : `/` et `/{lang}/` (segment de langue optionnel, locales connues seulement).
+  if (pattern === '/') return new RegExp(`^(?:/(?:${KNOWN_LOCALES.join('|')}))?/?$`)
   if (pattern === '') return /^$/
 
   const escaped = escapeRegex(pattern)

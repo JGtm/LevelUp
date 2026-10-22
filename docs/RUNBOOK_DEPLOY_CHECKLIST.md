@@ -210,6 +210,16 @@ Each item cites its source so it can be re-verified against the code. Structure:
         ./apps/go-api/internal/platform/auth/
       ```
 
+- [ ] **Nightly pass compaction timer installed (once, from v8.0.1).** systemd units are not
+      deployed by `deploy.sh`: on the first deploy that ships `scripts/compact-passes-nuit.sh`,
+      install and enable `levelup-compact-passes.timer` as described in
+      `scripts/systemd/README.md` (section `levelup-compact-passes`). Check that the gauge
+      exists once the server has booted (the data health check writes it at boot):
+      `cat /opt/levelup/data/global/admin_state/passes_par_match.txt` (`mesure_utc`,
+      `tables_au_dessus_du_seuil`, one `table=` line per table). After the first night,
+      `tail -n 50 /opt/levelup/data/logs/compact-passes-nuit.log` must end with
+      `FIN (rien a faire)` or `FIN (compaction reussie)` (source: ADR 0026, section
+      "Automatic compaction").
 - [ ] **Post-deploy recomputes (v7.5).** The v7.5 release changes derived values that the deploy does not
       recompute (Halo 5 derived values counted Campaign matches, LUSR v1 rows, film decoder
       revisions, the skill bit of 157 Infinite matches, the token-pool consent). They are an
@@ -414,10 +424,10 @@ first, then `--yes`. The command only writes `data/auth/watcher_tokens/`, never 
 running pool applies it at its next scan.
 
 ```bash
-docker compose exec -T levelup levelup pool-sharing list
-docker compose exec -T levelup levelup pool-sharing grandfather \
+docker compose exec -T -u appuser levelup levelup pool-sharing list
+docker compose exec -T -u appuser levelup levelup pool-sharing grandfather \
   --players JGtm,Chocoboflor,XxDaemonGamerxX,Madina97294,DankerGlue,GeleJugefi,Trimbutton,QuiteSiren,UppedJoker
-docker compose exec -T levelup levelup pool-sharing grandfather \
+docker compose exec -T -u appuser levelup levelup pool-sharing grandfather \
   --players JGtm,Chocoboflor,XxDaemonGamerxX,Madina97294,DankerGlue,GeleJugefi,Trimbutton,QuiteSiren,UppedJoker --yes
 ```
 

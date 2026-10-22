@@ -45,7 +45,8 @@ func requireCSRCapability(cfg *config.AppConfig, titleSlug string) error {
 // pool, aucune rotation de token). RunBackfillSharedCSR n exige un client qu en non-dry-run.
 func newDryRunEngine(cfg *config.AppConfig, player domain.PlayerSummary) *go_sync.SyncEngine {
 	return go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{},
-		auth_platform.NewSISUProvider()).WithCSRSeasonID(cfg.CurrentCSRSeasonID)
+		auth_platform.NewSISUProvider()).WithCSRSeasonID(cfg.CurrentCSRSeasonID).
+		WithSessionOptionsFromConfig(cfg)
 }
 
 // ── CSR backfill ───────────────────────────────────────────────────────────────

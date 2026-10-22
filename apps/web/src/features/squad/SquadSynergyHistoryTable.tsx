@@ -80,7 +80,18 @@ const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
 // de largeur inutile). `whitespace-nowrap` conservé sur l'en-tête : la colonne ne
 // peut pas descendre sous la largeur de son libellé, aucun libellé n'est cassé.
 const HISTORY_TH_CLASS =
-  'px-2 py-2 text-left whitespace-nowrap text-xs font-medium text-muted-foreground border-r border-border last:border-r-0'
+  'px-2 py-2 whitespace-nowrap text-xs font-medium text-muted-foreground border-r border-border last:border-r-0'
+
+/** Colonne dont le contenu est une icône plus étroite que son en-tête : en-tête ET cellules
+ *  sont centrés (miroir de `CENTERED_COLUMNS` d'ExplorerMatchesTable). */
+const CENTERED_COLUMN_ID = 'replay'
+
+/** Classe d'alignement du <th> / <td> d'une colonne : centré pour la colonne d'icône, à
+ *  gauche sinon. Une seule classe d'alignement par balise : deux utilitaires `text-*`
+ *  opposés se départagent par l'ordre du CSS généré, pas par l'ordre dans l'attribut. */
+function alignClass(colId: string): string {
+  return colId === CENTERED_COLUMN_ID ? 'text-center' : 'text-left'
+}
 
 /** aria-sort du <th> pour un état de tri TanStack (I16, miroir ExplorerMatchesTable). */
 function sortAriaValue(dir: false | 'asc' | 'desc'): 'ascending' | 'descending' | 'none' {
@@ -428,7 +439,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
                   const tip = h.column.columnDef.meta?.headerTooltip
                   if (!h.column.getCanSort()) {
                     return (
-                      <th key={h.id} className={HISTORY_TH_CLASS}>
+                      <th key={h.id} className={`${HISTORY_TH_CLASS} ${alignClass(h.column.id)}`}>
                         <HeaderLabelTooltip text={tip} focusable>
                           {content}
                         </HeaderLabelTooltip>
@@ -437,7 +448,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
                   }
                   const sortDir = h.column.getIsSorted()
                   return (
-                    <th key={h.id} className={HISTORY_TH_CLASS} aria-sort={sortAriaValue(sortDir)}>
+                    <th key={h.id} className={`${HISTORY_TH_CLASS} ${alignClass(h.column.id)}`} aria-sort={sortAriaValue(sortDir)}>
                       <HeaderLabelTooltip text={tip}>
                         <button
                           type="button"
@@ -474,7 +485,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
                 }}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-2 py-2 whitespace-nowrap border-r border-border last:border-r-0">
+                  <td key={cell.id} className={`px-2 py-2 whitespace-nowrap border-r border-border last:border-r-0 ${alignClass(cell.column.id)}`}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

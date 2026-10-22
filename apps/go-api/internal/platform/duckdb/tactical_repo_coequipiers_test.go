@@ -154,11 +154,15 @@ func pdbSansTable(t *testing.T, table string) *PlayerDB {
 func TestTacticalRepo_JournalDesKills_BorneBotsEtPositions(t *testing.T) {
 	b := newBaseNotee(t)
 	ids := seedFenetresTactiques(t, b.pdb, 10)
-	// Un kill d'un BOT (tueur sans xuid) sans position, et un kill non publiable, dans le 1er match.
+	// Un kill d'un BOT (tueur sans xuid) sans position dans le 1er match, et un kill non publiable
+	// dans un match de la liste dont la passe entière ne l'est pas (la publiabilité est celle de
+	// la passe).
+	const matchNonPubliable = "f_np"
 	tacKill(t, b.pdb, ids[0], "", tacXUIDMoi, 8000, true)
-	tacKill(t, b.pdb, ids[0], tacXUIDAdv, tacXUIDMoi, 8500, false)
+	tacKill(t, b.pdb, matchNonPubliable, tacXUIDAdv, tacXUIDMoi, 8500, false)
 	repo := NewTacticalRepo(b.pdb)
-	q := domain.TacticalQuery{PlayerXUID: tacXUIDMoi, Matchs: domain.RestreindreAux(ids[:2])}
+	q := domain.TacticalQuery{PlayerXUID: tacXUIDMoi,
+		Matchs: domain.RestreindreAux([]string{ids[0], ids[1], matchNonPubliable})}
 	b.carnet.vider()
 
 	got, err := repo.JournalDesKills(context.Background(), q)

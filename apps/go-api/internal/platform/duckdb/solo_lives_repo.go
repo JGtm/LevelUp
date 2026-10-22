@@ -60,12 +60,12 @@ WHERE %s AND e.publishable AND %s
 ORDER BY e.feed_killer_xuid, e.match_id, e.time_ms`
 
 	// Les matchs dont la dernière passe du journal n'est pas publiable : le drapeau est posé pour
-	// la passe entière, une ligne suffit. Tous joueurs confondus — la publiabilité est celle du
-	// journal, pas d'un tueur.
+	// la passe entière, la tête de résumé (S0, ADR 0039) le porte. Tous joueurs confondus — la
+	// publiabilité est celle du journal, pas d'un tueur.
 	qSoloJournalNonPubliable = `
-SELECT DISTINCT e.match_id
-FROM match_kill_events_latest e
-WHERE %s AND NOT e.publishable`
+SELECT h.match_id
+FROM match_kill_heads_latest h
+WHERE %s AND h.n_rows > 0 AND NOT h.publishable`
 
 	qSoloVariantes = `
 SELECT mr.match_id, COALESCE(mr.game_variant_name, '')
@@ -168,7 +168,7 @@ func (r *SoloLivesRepo) lireParJoueur(
 // lireJournalNonPubliable nomme les matchs de la liste dont la dernière passe du journal des morts
 // n'est pas publiable (liste liée sur la vue, ADR 0036 I2).
 func (r *SoloLivesRepo) lireJournalNonPubliable(ctx context.Context, db *sql.DB, matchIDs []string, out *domain.ViesLues) error {
-	clause, liste := clauseListeMatchs("e.match_id", matchIDs)
+	clause, liste := clauseListeMatchs("h.match_id", matchIDs)
 	return r.lire(ctx, db, fmt.Sprintf(qSoloJournalNonPubliable, clause), []any{liste}, func(rows *sql.Rows) error {
 		var id string
 		if err := rows.Scan(&id); err != nil {

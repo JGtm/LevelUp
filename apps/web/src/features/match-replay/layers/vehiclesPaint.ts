@@ -43,6 +43,7 @@ import {
   vehicleVisibleAt,
 } from '../model/vehiclesLayer'
 import {
+  vehicleCeilPx,
   vehicleEdgeFallbackPx,
   vehicleTurretHalfPx,
   vehicleUnknownHalfPx,
@@ -419,11 +420,12 @@ function vehicleExplosionEdgePx(
   style: Pick<VehicleStyle, 'sizeOf'>,
   k: number,
   scalePxPerM: number,
+  ceilPx: number,
 ): number {
   const dessin = vehicleSpriteFamily(track)
   const size = dessin ? style.sizeOf(dessin) : null
   if (!size) return vehicleUnknownHalfPx(scalePxPerM) * k
-  return (vehicleScreenLengthPx(size.naturalHeightPx, size.mmPerPx, scalePxPerM) / 2) * k
+  return (vehicleScreenLengthPx(size.naturalHeightPx, size.mmPerPx, scalePxPerM, ceilPx) / 2) * k
 }
 
 /**
@@ -432,10 +434,12 @@ function vehicleExplosionEdgePx(
  * pour les véhicules humains ».
  *
  * ZÉRO SECOND MOTEUR : c'est `explosionFx.drawExplosion` (déjà éprouvé sur les grenades)
- * RÉUTILISÉ TEL QUEL. Deux réglages seulement sont posés ici : L'ENCRE — plasma Covenant/Bannis
- * vs feu UNSC, `vehicleExplosionKindOf` (vehiclesLayer.ts), sur les MÊMES tokens de thème que les
- * grenades (`--replay-fx-plasma-cool` / `--replay-fx-blast`, cf. fxInk.ts) puisque c'est la même
- * NATURE de déflagration — et L'ÉCHELLE (`vehicleExplosionEdgePx`, la primitive de taille du
+ * RÉUTILISÉ TEL QUEL. Deux réglages seulement sont posés ici : L'ENCRE — plasma ROUGE des Bannis
+ * (tous les châssis de `VEHICLE_PLASMA_FAMILIES`, Ghost compris : décision de l'utilisateur,
+ * contrôles v8, 2026-10-21, « en rouge, pas en bleu ») vs feu UNSC, `vehicleExplosionKindOf`
+ * (vehiclesLayer.ts), sur les MÊMES tokens de thème que les armes Bannis à énergie
+ * (`--replay-fx-plasma-hot`, teinte de leurs tirs) et que le feu UNSC (`--replay-fx-blast`,
+ * cf. fxInk.ts) puisque c'est la même NATURE de déflagration — et L'ÉCHELLE (`vehicleExplosionEdgePx`, la primitive de taille du
  * sprite, jamais un second calcul).
  *
  * ANCRÉE SUR LA POSITION DU VÉHICULE À `destroyedFrame`, JAMAIS SUR SA POSITION COURANTE : le
@@ -465,10 +469,11 @@ function drawVehicleDestructionFx(
   // `k`) l'ANNULE et ne laisse que le facteur de taille relative — que `drawExplosion` reçoit
   // ensuite comme SON `k`, il multiplie déjà tout par ce facteur (cf. explosionFx.ts).
   const echelle = viewScale(view)
-  const k = vehicleExplosionEdgePx(track, style, time.k, echelle) / vehicleUnknownHalfPx(echelle)
+  const ceilPx = vehicleCeilPx(Math.min(view.width, view.height))
+  const k = vehicleExplosionEdgePx(track, style, time.k, echelle, ceilPx) / vehicleUnknownHalfPx(echelle)
   const kind = vehicleExplosionKindOf(track.family)
   const fire =
-    (kind === 'plasma' ? style.explosionInk.tint.plasma_cool : style.explosionInk.tint.blast) ||
+    (kind === 'plasma' ? style.explosionInk.tint.plasma_hot : style.explosionInk.tint.blast) ||
     style.explosionInk.tint.neutral
   drawExplosion(
     ctx,
@@ -503,6 +508,9 @@ export function drawVehiclesLayer(
   // taille RÉELLE quand elle le permet (cf. `lib/replay/screenSizes.ts`). Elle ne dépend que de la
   // vue, jamais du véhicule — la relire par véhicule serait un doublon de travail.
   const echelle = viewScale(view)
+  // LE PLAFOND DE TAILLE SUIT LA TOILE (contrôles v8) : sur un petit écran, les plus longs
+  // véhicules ne dépassent pas 12 % de son côté court ; sur grand écran, rien ne change.
+  const ceilPx = vehicleCeilPx(Math.min(view.width, view.height))
   ctx.save()
   for (const track of tracks) {
     // LE DÉCOR NE SE DESSINE PAS (verdict utilisateur 2026-09-02) : ni sprite, ni losange de
@@ -549,10 +557,10 @@ export function drawVehiclesLayer(
           const sprite = size ? style.spriteOf(dessin, color) : null
           if (size && sprite) {
             const angle = vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame))
-            const scaleRatio = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, echelle)
+            const scaleRatio = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, echelle, ceilPx)
             ctx.globalAlpha = 1
             drawRotatedSprite(ctx, sprite, c.x, c.y, angle, scaleRatio * time.k)
-            edgePx = (vehicleScreenLengthPx(size.naturalHeightPx, size.mmPerPx, echelle) / 2) * time.k
+            edgePx = (vehicleScreenLengthPx(size.naturalHeightPx, size.mmPerPx, echelle, ceilPx) / 2) * time.k
           } else if (glyph === 'turret') {
             // ÉLÉMENT DE CARTE SANS ASSET (lot 1.9.9) : son pictogramme dédié, JAMAIS le losange
             // neutre — la décision utilisateur du 2026-09-14 veut ces objets visibles ET

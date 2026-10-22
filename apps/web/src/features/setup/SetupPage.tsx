@@ -55,7 +55,7 @@ export function SetupPage() {
   // pour un utilisateur sans profil à lui, qui n'a rien à voir ailleurs.
   useEffect(() => {
     if (isBootstrapped && shouldLeaveSetup(setupState, setupRequired, needsOwn)) {
-      navigate({ to: '/' })
+      navigate({ to: '/{-$lang}' })
     }
   }, [isBootstrapped, setupState, setupRequired, needsOwn, navigate])
 
@@ -89,7 +89,7 @@ export function SetupPage() {
           {step === 'done' && (
             <div className="space-y-4">
               <p className="text-success font-semibold">{t('common.setup.config_done')}</p>
-              <Button onClick={() => navigate({ to: '/' })}>{t('common.setup.access_app')}</Button>
+              <Button onClick={() => navigate({ to: '/{-$lang}' })}>{t('common.setup.access_app')}</Button>
             </div>
           )}
         </CardContent>

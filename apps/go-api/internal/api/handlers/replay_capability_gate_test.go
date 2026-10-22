@@ -12,9 +12,9 @@
 // du depot — un test qui fabriquerait ses descripteurs prouverait la mecanique du middleware
 // (deja couverte par require_capability_test.go), pas la configuration livree.
 //
-// Le montage reproduit celui de server_apiv1.go, moins le garde local de transport
-// (LocalOnlyReplay), qui juge l'adresse de la connexion et non le titre : il est monte APRES
-// cette porte-ci et n'a rien a voir avec elle.
+// Le montage reproduit celui de server_apiv1.go, moins la garde de demo
+// (ReplayGate), qui juge le match et non le titre : elle est montee APRES cette porte-ci et
+// n'a rien a voir avec elle.
 package handlers_test
 
 import (

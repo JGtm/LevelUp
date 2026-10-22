@@ -256,6 +256,40 @@
 # `internal/platform/duckdb/sharedprovider`). 207 lignes JSONL, exactement 8 paires (Package, Test),
 # vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-21 (correctif sessions, règle unique de découpage) : 3 tests dont le code testé
+# est supprimé (règle n°7) — `sessionComputeOptionsFor` du recalcul admin, remplacée par
+# settings.SessionOptions (TestSessionComputeOptionsFor_OverlayPerTitle et
+# TestSessionComputeOptionsFor_GapFallbackAndNilStore de `internal/api/handlers`, repris par
+# TestSessionOptions_OverlayPerTitle / _FallbacksToDefaults de `internal/platform/settings`) et
+# l'écart de session propre à l'import OpenSpartan (`PostImportOptions.SessionGapMinutes` :
+# TestPostImport_ApplyDefaults_RejectsNegativeGap de `internal/service`). 12 lignes JSONL, exactement
+# 3 paires (Package, Test), vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-21 (même correctif, suite de revue P1-1) : 3 tests dont le code testé est
+# supprimé (règle n°7) — `otherPlayerGamertags` de `internal/games/halo_5/livesync`, qui prenait
+# tous les profils déclarés pour les amis du joueur (TestOtherPlayerGamertags, _LoadError,
+# _MissingFile), remplacé par `enrichmentBackfillPlayerFor` (liste d'amis du joueur ; tests
+# TestEnrichmentBackfillPlayerFor_*). 12 lignes JSONL, exactement 3 paires (Package, Test),
+# vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-21 (plan perf pages v8.0.1, étape 3 : l'Accueil sert une fenêtre de tuiles) : 17 tests
+# dont le code testé est supprimé (règle n°7) — les médias récents de la réponse de l'Accueil
+# (`BuildRecentMedia` : 4 tests de `internal/analysis` ; `HomeRepo.LoadRecentMedia` : 2 tests de
+# `internal/platform/duckdb`, la rail de médias lit son propre endpoint) et `HomeMatchesCache`, cache
+# TTL qui ne servait plus rien depuis P4.3 (8 TestHomeMatchesCache_* et les 2 TestHomeService_GetHomePage_Cache*
+# déjà skippés, de `internal/service`) ; plus TestHomeService_GetHomePage_MediaGraceful. 78 lignes JSONL,
+# exactement 17 paires (Package, Test), vérifié par différence avant/après.
+#
+# RETRAIT DU 2026-10-21 (correctif fix/medias-calage : l'heure de capture est un début ou une fin selon sa
+# source) : les 5 TestComputeMediaEnd_* de `internal/ops` — `computeMediaEnd` est supprimée, remplacée par
+# `captureWindow` (ancre par source) et couverte par les TestCaptureWindow_* de media_capture_source_test.go.
+# 20 lignes JSONL, exactement 5 paires (Package, Test).
+#
+# RETRAIT DU 2026-10-21 (même correctif, suite de revue P2-1) : les 7 TestParseCaptureTimeFromFilename_*
+# de `internal/ops` sont RENOMMÉS TestCaptureInstantFromName_* — `parseCaptureTimeFromFilename` est
+# supprimée (plus d'appelant), ses tests visent `captureInstantFromName`. 28 lignes JSONL, exactement
+# 7 paires (Package, Test).
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

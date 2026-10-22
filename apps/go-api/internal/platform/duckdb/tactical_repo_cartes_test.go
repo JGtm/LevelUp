@@ -223,7 +223,7 @@ func TestTacticalRepo_TablesAbsentes_Capability(t *testing.T) {
 	if err := migration.RunForDB(sharedSQL, migration.TargetShared); err != nil {
 		t.Fatalf("migrations shared: %v", err)
 	}
-	for _, tbl := range []string{"kill_positions", "match_kill_events"} {
+	for _, tbl := range []string{"kill_positions", "match_kill_events", "match_kill_heads", "match_kill_pairs", "match_assist_pairs"} {
 		if _, err := sharedSQL.Exec("DROP TABLE IF EXISTS " + tbl + " CASCADE"); err != nil {
 			t.Fatalf("drop %s: %v", tbl, err)
 		}

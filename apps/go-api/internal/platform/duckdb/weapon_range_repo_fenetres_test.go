@@ -59,6 +59,7 @@ func poserFrag(t *testing.T, pdb *PlayerDB, f fragMesure) {
 		VALUES (?, 'pass_v1', 'rev_test', ?, ?, 'Victime', ?, 'Tueur', ?, TRUE, FALSE, ?, 'None', ?,
 		        'credit-concordant')`,
 		f.match, f.publiable, f.ms, victime, f.tueur, int64(f.tag), killscope.ReadPathFilmWalk)
+	ecrireResumes(t, pdb.Shared.SQLDb(), f.match)
 }
 
 // poserPositions place le frag (match, tueur, instant) dans les DEUX tables de positions.
@@ -131,7 +132,7 @@ func TestWeaponRange_UneLecture_PariteAvecLesDeuxLectures(t *testing.T) {
 		{"w02", moi, tiers, 2000, 10, true},
 		{"w02", moi, adv, 3000, 10, true}, // unanimité violée : exclu
 		{"w02", moi, tiers, 3000, 11, true},
-		{"w03", moi, adv, 1000, 10, false}, // non publiable : exclu
+		{"w05", moi, adv, 1000, 10, false}, // passe non publiable : exclu
 		{"w03", adv, moi, 2000, 15, true},
 		{"w04", moi, adv, 1000, 10, true}, // hors scope
 	}
@@ -144,7 +145,7 @@ func TestWeaponRange_UneLecture_PariteAvecLesDeuxLectures(t *testing.T) {
 	}{
 		{"w01", moi, 1000}, {"w01", adv, 2000}, {"w01", tiers, 3000}, {"w01", moi, 4000},
 		{"w01", moiBis, 5000}, {"w02", moi, 1000}, {"w02", moi, 2000}, {"w02", moi, 3000},
-		{"w03", moi, 1000}, {"w03", adv, 2000}, {"w04", moi, 1000},
+		{"w05", moi, 1000}, {"w03", adv, 2000}, {"w04", moi, 1000},
 	} {
 		poserPositions(t, pdb, p.match, p.tueur, p.ms)
 	}
@@ -153,7 +154,7 @@ func TestWeaponRange_UneLecture_PariteAvecLesDeuxLectures(t *testing.T) {
 	}
 
 	repo := NewWeaponRangeRepo(pdb, classifieurFenetres{})
-	scope := []string{"w01", "w02", "w03"}
+	scope := []string{"w01", "w02", "w03", "w05"}
 	cas := []struct {
 		nom    string
 		f      port.WeaponRangeFilters

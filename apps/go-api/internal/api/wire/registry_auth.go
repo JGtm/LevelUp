@@ -40,7 +40,7 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
-		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
+		WithXUID(pdb.XUID).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithSquadSessionTeammates(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver(pdb.XUID)).
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
@@ -124,7 +124,7 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 		WithHaloProvider(haloProvider).
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
-		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
+		WithXUID(pdb.XUID).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
 		// Injectée ici aussi, bien que ce HomeService-là serve la passe de saison : les

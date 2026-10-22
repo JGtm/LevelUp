@@ -16,7 +16,7 @@
 //
 // `MatchViewRepo` recoit un `port.KillSourceClassifier` au cablage — nil pour un titre qui
 // n'en fournit pas. Nil : on lit `v_weapon_kills`. Non nil : on lit
-// `match_kill_events_latest`. Aucun `slug ==` nulle part.
+// `match_kill_pairs_latest` (S1, résumé par match du journal, ADR 0039). Aucun `slug ==` nulle part.
 package duckdb
 
 import (
@@ -38,8 +38,8 @@ const qMatchKillSourceWeapons = `
 SELECT
     k.feed_killer_xuid,
     k.source_tag,
-    COUNT(*)::INTEGER AS kills
-FROM match_kill_events_latest k
+    SUM(k.kills)::INTEGER AS kills
+FROM match_kill_pairs_latest k
 WHERE k.match_id = ?
   AND k.source_tag IS NOT NULL
   AND k.feed_killer_xuid IS NOT NULL

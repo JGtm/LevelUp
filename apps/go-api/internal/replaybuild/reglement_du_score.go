@@ -25,3 +25,10 @@ func (b *Builder) poserLeReglementDuScore(in *replay.ScoreInput, variant string)
 	in.HillScoring = isHillVariant(variant)
 	in.HoldTicksPerPointTable, _ = b.regulation.HoldTicksPerPoint(variant)
 }
+
+// tailleDEquipe rend la taille d'equipe officielle de la playlist de la variante, 0 quand la table
+// du titre ne la declare pas (la pose des places garde alors sa capacite estimee).
+func (b *Builder) tailleDEquipe(variant string) int {
+	taille, _ := b.regulation.TeamSize(variant)
+	return taille
+}

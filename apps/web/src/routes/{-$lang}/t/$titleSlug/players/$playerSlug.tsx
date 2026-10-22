@@ -91,7 +91,7 @@ function PlayerLayout() {
   const fallback = isBootstrapped
     ? resolvePlayerFallback(playerSlug, availablePlayers)
     : ({ kind: 'ok' } as const)
-  if (fallback.kind === 'index') return <Navigate to="/" replace />
+  if (fallback.kind === 'index') return <Navigate to="/{-$lang}" replace />
   if (fallback.kind === 'redirect') {
     return (
       <Navigate

@@ -83,8 +83,9 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 
 	// ── Explorer, onglet « Joueur » (ADR 0036, 2026-10-09) ──
 	"internal/platform/duckdb/perimetre_liste.go:QMatchsOuJoue": {dispenseSemantique, "2026-10-09",
-		"liste de BORNAGE sous les fenêtres `_latest` du kill-feed, pas un agrégat d'affichage : elle garde la population exacte des lectures " +
-			"qu'elle borne (QKillsBetweenPlayersBorne, kill_events_source.go ; Q28c, relation_assists_repo.go), dont Q28c ne filtre pas la Campagne (QKillsBetweenPlayersBorne la filtre depuis le 2026-10-15)."},
+		"liste de BORNAGE des lectures de résumés par match, pas un agrégat d'affichage : elle garde la population exacte des lectures " +
+			"qu'elle borne (QKillsBetweenPlayers, kill_events_source.go : frags entre deux joueurs, Explorer et Comparaison ; " +
+			"stats de rencontre de la vue match), dont la règle Campagne reste celle de la lecture bornée."},
 	"internal/platform/duckdb/coordination_repo.go:QCoordinationFragsOfficiels": {dispenseEnsembleFourni, "2026-10-09",
 		"base de « frags appuyés » : WHERE match_id IN (%s) sur les matchs du scope de la page (service/coordination_block.go:286), " +
 			"ceux de Sessions et des Séries temporelles (timeseries_service_sections.go:189), et seuls comptent ceux qui portent une " +

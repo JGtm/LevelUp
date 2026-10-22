@@ -75,16 +75,16 @@ describe('LegacyPlayersRedirect (3a)', () => {
     expect(screen.queryByTestId('navigate')).toBeNull()
   })
 
-  it('pathname /players nu (hors matrice legacy) → <Navigate to="/" replace>', () => {
+  it('pathname /players nu (hors matrice legacy) → <Navigate to="/{-$lang}" replace>', () => {
     locationRef.pathname = '/players'
     renderWithProviders(<LegacyPlayersRedirect />)
     expect(historyReplace).not.toHaveBeenCalled()
-    expect(screen.getByTestId('navigate').getAttribute('data-to')).toBe('/')
+    expect(screen.getByTestId('navigate').getAttribute('data-to')).toBe('/{-$lang}')
   })
 
   // Non-régression course post-replace : après le replace, le splat re-rend avec la
   // location DÉJÀ /t/… (pas encore démonté). Il ne doit NI re-rediriger NI tomber sur
-  // le fallback <Navigate to="/"> (qui perdrait suffixe + ?f= + #hash — bug observé).
+  // le fallback <Navigate to="/{-$lang}"> (qui perdrait suffixe + ?f= + #hash — bug observé).
   it('location transitoire /t/… post-replace → null, ni 2e replace ni fallback index', () => {
     locationRef.pathname = '/players/x/stats/timeseries'
     locationRef.searchStr = '?f=abc'
@@ -107,6 +107,6 @@ describe('LegacyPlayersRedirect (3a)', () => {
     rerender(<LegacyPlayersRedirect />)
 
     expect(historyReplace).not.toHaveBeenCalled() // pas de 2e replace
-    expect(screen.queryByTestId('navigate')).toBeNull() // pas d'écrasement par <Navigate to="/">
+    expect(screen.queryByTestId('navigate')).toBeNull() // pas d'écrasement par <Navigate to="/{-$lang}">
   })
 })

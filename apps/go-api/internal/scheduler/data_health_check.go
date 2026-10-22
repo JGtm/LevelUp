@@ -66,11 +66,23 @@ type DataHealthCheckResult struct {
 	// sain »). Distinct de ProbeErrors : une player DB tenue RW est transitoire/normale,
 	// elle ne fait pas échouer le cron mais gèle la jauge le temps du sync.
 	LUSRPlayersUnmeasured int
+	// KillSummariesPending : matchs dont la passe courante du journal des morts n'a pas de résumés
+	// (tête) à jour, tous titres mesurés confondus (ADR 0039). Signal distinct : hors WarningsTotal,
+	// toujours loggé (WARN par titre quand non nul) et publié en expvar.
+	KillSummariesPending int
 	// Les gardes « index ART désynchronisé » ont été RETIRÉES avec les index qu'elles
 	// surveillaient : personal_score_awards le 2026-09-20 (step
 	// drop_psa_secondary_art_indexes_v1), match_skill_rank le 2026-09-27 (step
 	// drop_msr_secondary_art_indexes_v1) — plus d'index, plus rien à surveiller.
-	Duration time.Duration
+	//
+	// Passes : jauge « passes par match » de chaque table du registre de compaction présente,
+	// par titre (data_health_passes.go). PassesUnmeasured : tables dont la mesure a échoué (> 0 =
+	// rien n'est publié ce cycle). PassesOverThreshold : tables au-delà de
+	// migration.SeuilPassesParMatch, renseigné à la publication.
+	Passes              []PassesTitre
+	PassesUnmeasured    int
+	PassesOverThreshold int
+	Duration            time.Duration
 }
 
 // HealthScheduler orchestre l'audit santé DB périodique. N'émet pas de
@@ -86,6 +98,11 @@ type HealthScheduler struct {
 	// ServiceRegistry.RecomputeLUSRGapsForPlayer. Ne fire QUE si le kill-switch
 	// LEVELUP_LUSR_AUTOHEAL_ENABLED est ON (défaut OFF, cf. isLUSRAutoHealEnabled).
 	lusrAutoHeal func(ctx context.Context, titleSlug, gamertag string) error
+
+	// sharedReader : lecteur de la base partagée de la jauge des passes (nil = OpenReadForQuery) ;
+	// now : horloge du fichier de jauge (data_health_passes.go).
+	sharedReader SharedReaderFunc
+	now          func() time.Time
 
 	// Dernier audit COMPLET (dashboard monitoring admin). Les cycles avortés
 	// (shared absente/illisible) ne l'écrasent pas : on garde le dernier
@@ -104,6 +121,7 @@ func NewDataHealthScheduler(repoRoot string) *HealthScheduler {
 		repoRoot:      repoRoot,
 		intervalHours: 24,
 		enabled:       true,
+		now:           time.Now,
 	}
 }
 
@@ -188,6 +206,10 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 		if s.auditTitle(ctx, pr, td.Slug, res, &healCand) {
 			auditedTitles++
 		}
+		// La jauge ne dépend pas de l'audit (elle prend ses propres lectures courtes, une fois le
+		// handle de l'audit rendu) : un titre dont l'audit échoue est mesuré quand même, ou compté
+		// non mesuré — jamais retiré du fichier en silence.
+		s.auditTitlePasses(ctx, pr, td.Slug, res)
 	}
 
 	// Aucune shared DB lisible sur AUCUN titre ⇒ cycle avorté : on ne mémorise pas
@@ -207,6 +229,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	// trous LUSR ne rentrent PAS dans WarningsTotal (signal distinct : panneau
 	// monitoring + auto-heal), mais sont toujours loggés.
 	publishLUSRGaugeIfComplete(ctx, res)
+	s.publierJaugePasses(ctx, pr, res)
 
 	// Auto-heal (remédiation bornée) : 1 joueur/cycle max, le plus impacté, seulement
 	// si le kill-switch est ON (défaut OFF → alerte seule).
@@ -234,6 +257,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 			"lusr_interior_gaps", res.LUSRInteriorGaps,
 			"lusr_pending_recent", res.LUSRPendingRecent,
 			"lusr_players_scanned", res.LUSRPlayersScanned,
+			"kill_summaries_pending", res.KillSummariesPending,
 			"lusr_players_unmeasured", 0,
 			"duration", res.Duration.Round(time.Millisecond),
 		)
@@ -246,6 +270,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 			"lying_bits_weapons", res.LyingBitsWeaponKills,
 			"orphan_xuids", res.OrphanXUIDs,
 			"garbage_banner_urls", res.GarbageBannerURLs,
+			"kill_summaries_pending", res.KillSummariesPending,
 			"lusr_interior_gaps", res.LUSRInteriorGaps,
 			"lusr_pending_recent", res.LUSRPendingRecent,
 			"lusr_players_scanned", res.LUSRPlayersScanned,
@@ -322,6 +347,9 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 
 	// 4. Banner garbage URLs (toutes les player DBs du titre)
 	res.GarbageBannerURLs += s.auditPlayerBanners(ctx, pr, slug, &res.ProbeErrors)
+
+	// 4bis. Résumés par match du journal des morts (jauge ADR 0039, read-only).
+	s.auditKillSummaries(ctx, db, slug, res)
 
 	// 5. Trous d'intérieur LUSR (garde-fou notes LUSR — read-only, best-effort ;
 	// implémentation dans data_health_lusr.go).

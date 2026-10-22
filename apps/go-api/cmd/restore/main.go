@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/ops"
 	"levelup/go-api/pkg/duckdbbackup"
 )
 
@@ -104,7 +105,9 @@ func main() {
 		keyToPath = outputPathResolver(outDir)
 	}
 
-	result, err := duckdbbackup.ImportFromStaging(ctx, stagingDir, keyToPath, *dryRun)
+	// Chaque base est recréée dans l'état de son époque (schéma exporté avec la sauvegarde) ;
+	// le démarrage suivant applique les migrations manquantes.
+	result, err := duckdbbackup.ImportFromStaging(ctx, stagingDir, keyToPath, ops.FinalizeRestoredDB, *dryRun)
 	if err != nil {
 		fatalf("import: %v", err)
 	}
@@ -179,24 +182,11 @@ func resolveSnapshot(ctx context.Context, restorer *duckdbbackup.Restorer, snapF
 // livePathResolver mappe les clés de backup sur les chemins DuckDB de production.
 func livePathResolver(pr *title.PathResolver) func(string) string {
 	return func(key string) string {
-		parts := strings.Split(key, ":")
-		switch {
-		case key == "xbox_aliases":
+		if key == "xbox_aliases" {
 			return pr.GlobalXuidAliasesDBPath()
-		case len(parts) == 2:
-			slug, db := parts[0], parts[1]
-			switch db {
-			case "shared_matches_v2":
-				return pr.SharedDBPath(slug)
-			case "metadata":
-				return pr.MetadataDBPath(slug)
-			case "shared_pve":
-				return pr.SharedPVEDBPath(slug)
-			case "shared_social":
-				return pr.SharedSocialDBPath(slug)
-			}
-		case len(parts) == 3 && parts[1] == "player":
-			return pr.PlayerDBPath(parts[0], parts[2])
+		}
+		if k, ok := ops.ParseBackupKey(key); ok {
+			return k.LivePath(pr)
 		}
 		return ""
 	}
@@ -229,6 +219,18 @@ func printResult(result *duckdbbackup.ImportResult) {
 		fmt.Printf("Ignorées — clé inconnue (%d) :\n", len(result.Skipped))
 		for _, key := range result.Skipped {
 			fmt.Printf("  - %s\n", key)
+		}
+	}
+	if len(result.FallbackTables) > 0 {
+		fmt.Printf("Tables importées par CREATE TABLE AS — lignes seules, SANS clé, défaut, séquence ni vue (%d) :\n", len(result.FallbackTables))
+		for _, t := range result.FallbackTables {
+			fmt.Printf("  ! %s\n", t)
+		}
+	}
+	if len(result.SchemaFailures) > 0 {
+		fmt.Printf("Objets du schéma non recréés (%d, détail dans le journal) :\n", len(result.SchemaFailures))
+		for _, s := range result.SchemaFailures {
+			fmt.Printf("  ! %s\n", s)
 		}
 	}
 }
