@@ -1358,8 +1358,8 @@ package replay
 //	ce que le       le ROSTER gagne les joueurs que la table du film assoit et que la lecture des
 //	document gagne  chunks ne trouvait pas (+1 sur `a521164d` et `11de8353`), et les GAMERTAGS que
 //	                le film ecrit pour des joueurs a zero mort — le fil des morts ne nomme que ceux
-//	                qui meurent (`111fa685` idx=10 « FlukiestGolf », `e5adf7b2` idx=13
-//	                « MarshallG6443 » etaient publies sans nom).
+//	                qui meurent (`111fa685` idx=10 « Joueur000065 », `e5adf7b2` idx=13
+//	                « Joueur0000128 » etaient publies sans nom).
 //
 //	le seuil de     `DefaultMinPoints` passe de 2 a 1 (lot 1.6.5, decision utilisateur du
 //	publication     2026-09-14 : « si le film le dit, on publie »). Une vie d'un seul echantillon

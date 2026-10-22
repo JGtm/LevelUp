@@ -183,9 +183,9 @@ type assistJSON struct {
 //   - LA VALEUR EXACTE reste inconfrontable — personne ne peut lire << 61 >> a l ecran ;
 //   - MAIS L ORDRE ET L ECART SE CONFRONTENT PAR LE DEROULE DU COMBAT, qui est observable.
 //
-// LE CAS QUI L A ETABLI, film `78919882` a 10:38 : le decodeur publie JGtm tue par Senor Pepper au
-// S7 Sniper, assiste par Only1kenobi1701, parts **1/61**. Releve au Theater : *<< il y a eu un duel
-// au corps a corps entre JGtm et Only1kenobi1701, et Senor Pepper a fini JGtm d un tir de sniper
+// LE CAS QUI L A ETABLI, film `78919882` a 10:38 : le decodeur publie JGtm tue par Joueu r00167 au
+// S7 Sniper, assiste par Joueur000000144, parts **1/61**. Releve au Theater : *<< il y a eu un duel
+// au corps a corps entre JGtm et Joueur000000144, et Joueu r00167 a fini JGtm d un tir de sniper
 // dans la tete >>*. L assistant qui fait tout le travail, le credite qui arrive et acheve : c est
 // exactement ce que 1/61 raconte.
 //

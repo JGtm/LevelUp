@@ -22,21 +22,21 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 15 joueur(s)
-  2533274895111035  idx=0  equipe=1  "FrankDaTank1313"
-  2535460750735339  idx=1  equipe=1  "KidLeo67"
-  2533274876732804  idx=2  equipe=1  "J 2025118"
+  2533274895111035  idx=0  equipe=1  "Joueur000000069"
+  2535460750735339  idx=1  equipe=1  "J0000106"
+  2533274876732804  idx=2  equipe=1  "J 0000092"
   2533274823110022  idx=3  equipe=0  "JGtm"
   2535469190789936  idx=4  equipe=0  "Chocoboflor"
   2533274858283686  idx=5  equipe=0  "Madina97294"
-  2791963697577117  idx=6  equipe=1  "RavenBL00D"
-  2535429985869093  idx=7  equipe=0  "Gsasph"
+  2791963697577117  idx=6  equipe=1  "Joueur0159"
+  2535429985869093  idx=7  equipe=0  "J00076"
     idx=8  equipe=1  "343 BF Scrub [bot]"
     idx=8  equipe=1  "343 Darkstar [bot]"
     idx=8  equipe=1  "343 Hollis [bot]"
     idx=8  equipe=1  "343 Rhinosaurus [bot]"
-  2535418713587213  idx=9  equipe=1  "Steedlan"
-  2535468064146356  idx=10  equipe=1  "brkn8174"
-  2533274811363842  idx=11  equipe=1  "xNeuromancer"
+  2535418713587213  idx=9  equipe=1  "J0000180"
+  2535468064146356  idx=10  equipe=1  "J0000025"
+  2533274811363842  idx=11  equipe=1  "Joueur000208"
 
 ### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
 lue=true refus="" · 152 record(s) ti=9, 0 rejete(s), 0 divergence(s)

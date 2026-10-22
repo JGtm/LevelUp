@@ -31,6 +31,12 @@ package replay
 //
 //	REPLAY_FILM_CACHE=<repo>/data/cache/film_chunks \
 //	  go test ./internal/games/halo_infinite/film/replay/ -run GoldenInputsFidelite -v
+//
+// LES FIXTURES PORTENT DES PSEUDONYMES : les gamertags des joueurs tiers y sont anonymises
+// (`cmd/anonymise-gamertags`, table de correspondance hors depot). Contre le cache brut, chaque nom
+// tiers diverge ; `REPLAY_FILM_CACHE` designe donc une COPIE des huit films passee par l outil avec
+// la meme table. Toute regeneration depuis le cache (`-update`) remet les noms reels : rejouer
+// l outil sur les fixtures ecrites avant de les commiter.
 
 import (
 	"bytes"

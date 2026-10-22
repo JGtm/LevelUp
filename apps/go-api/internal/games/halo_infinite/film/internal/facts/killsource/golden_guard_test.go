@@ -332,12 +332,12 @@ func TestGoldenMortsParUnBotAvecTagEtCategorie(t *testing.T) {
 		"000d5950": nil,
 		"78919882": nil,
 		"9b191a7f": {
-			`05:46  Madina97294  343 Aloysius [bot]  1f11df6b  "VK78 Commando"  Headshot  marche  assistant=xSONNYX117`,
-			`08:03  JGtm  343 Aloysius [bot]  ec919da5  "Needler"  None  marche  assistant=RaiiZeNBack`,
+			`05:46  Madina97294  343 Aloysius [bot]  1f11df6b  "VK78 Commando"  Headshot  marche  assistant=Joueur0209`,
+			`08:03  JGtm  343 Aloysius [bot]  ec919da5  "Needler"  None  marche  assistant=Joueur00155`,
 			`08:24  Chocoboflor  343 Aloysius [bot]  0000d57f  "Needler"  AttachedDamage  marche  assistant=AUCUN (mesure)`,
 		},
 		"fccc61cd": {
-			`08:49  HizaroMne4262  343 PardonMy [bot]  0ff7b934  "Shock Rifle"  Headshot  marche  assistant=AUCUN (mesure)`,
+			`08:49  Joueur0000082  343 PardonMy [bot]  0ff7b934  "Shock Rifle"  Headshot  marche  assistant=AUCUN (mesure)`,
 		},
 	}
 	total := 0
