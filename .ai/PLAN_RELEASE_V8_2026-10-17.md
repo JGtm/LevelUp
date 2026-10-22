@@ -541,6 +541,9 @@ des gamertags des fixtures, réécriture de l'historique (push forcé sur `main`
   dépasse le délai de 600 s (même commit vert en CI de branche) ; relance verte. Marge de temps du
   lot à surveiller (cf. mémoire coverage replay -timeout 600 s).
 
+- **D-28 (22/10)** : `levelup-docker-prune.service` ne fait que `docker image prune -f --filter until=24h` (images sans nom) : les images de base étiquetées inutilisées (golang:1.24, 1.26, 1.26-bookworm) restaient, ~3,9 Go ; `docker builder prune --max-used-space=2GB` sans effet constaté (cache de construction 3,4 Go). Purgé à la main le 22/10 ; correctif du service à faire.
+- **D-29 (22/10)** : `data/cache/film_chunks` = 13 Go sur le VPS, jamais purgé. Décision de l'utilisateur attendue.
+
 ## 3. Reprise de session
 
 Relire `plan-execution`, puis ce fichier : reprendre à la première case vide de la première étape
@@ -776,3 +779,15 @@ Ajout : rejeux recuits au schéma 101 (levelup-af, 2 500 artefacts, GrammarRev 2
 6. Retirer `LEVELUP_REPLAY_PUBLIC=1` ; sauvegarde prod (schéma exporté) ; logs du premier démarrage (clés rétablies / refusées).
 7. Contrôles : rejeu < 2 s, aucun 5xx `/replay/context`, Accueil en fenêtre ; levelup-3a relève les temps de prod.
 8. Sur accord : unités systemd du compactage de nuit ; suppression des `*.avant-compaction-20261021T1017*Z.duckdb` après vérification ; suppression de `/opt/levelup-staging/replays_101/` (vide après l'échange).
+
+### 2026-10-22 — v8.0.1 PUBLIÉE
+- Décision de l'utilisateur (22/10, message direct) : reprendre les BASES LOCALES en prod (pertes acceptées : likes, favoris, notifications lues et rattachements de médias faits en prod depuis le 20/10 ; matchs et stats resynchronisés).
+- Local : serveur arrêté 09:5x (heure locale), 8 WAL vidés par CHECKPOINT (outil jetable du scratchpad), `healthcheck` TOUT OK ; rsync `data/titles` (3,5 Go, hors `_recovery_bak`) vers `/opt/levelup-staging/v801/titles` et `cache/replays/halo_infinite` (5,5 Go) ; serveur local relancé.
+- VPS : images Docker inutiles purgées (~3 Go : `golang:1.24`, `golang:1.26`, `golang:1.26-bookworm`, jq) ; rejeux 101 mis en place AVANT la fusion (aucun artefact propre à la prod ; v8.0.0 lit le 101 sans contrôle de schéma, vérifié par levelup-af) ; anciens rejeux supprimés.
+- `gh pr merge 100 --squash` -> `658b294ce` ; tag `v8.0.1` ; run 39745506585 : CI, deploy, demo, ouvrier verts. La régénération de la démo ARRÊTE la prod le temps de lire ses bases (comportement connu du job).
+- restic 08:29:36 UTC ; `/root/swap_v801.sh` : bascule 08:29:44 -> health 08:30:09 (25 s) ; 23 bases, 0 WAL ; anciennes bases en `data/titles.pre-v801` (contient aussi les sauvegardes de compactage du 21/10).
+- Premier démarrage : réparation des clés refusée seulement pour `streak` de Chocoboflor (décision : on n'y touche pas) ; WARN `data_health` passes supersédées `match_kill_events` 8,4 M brutes / 420 k gardées (bases locales jamais compactées) -> compactage de nuit.
+- Unités `levelup-compact-passes.{service,timer}` installées (accord de l'utilisateur du 22/10), prochain passage 03:30 UTC.
+- `LEVELUP_REPLAY_PUBLIC=1` retiré du `.env.local` (copie `/root/env.local.bak-20261022-replaypublic`), conteneur recréé, variable absente.
+- Démo relancée après la bascule (job rerun) : rejeu servi au schéma 101. Prod : 2 508 artefacts, tous au schéma 101 ; aucun 5xx depuis la bascule.
+- Restent : contrôles authentifiés de l'utilisateur (rejeu < 2 s, Accueil en fenêtre, carte de consentement en onglet Compte) ; relevé des temps de prod par levelup-3a ; compactage (cette nuit ou manuel sur accord) ; suppression de `data/titles.pre-v801` et `data/titles.pre-v8` sur accord ; purge Docker : le service ne retire pas les images de base étiquetées (D-28) ; `cache/film_chunks` 13 Go jamais purgé (D-29).
