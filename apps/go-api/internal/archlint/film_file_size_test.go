@@ -299,7 +299,19 @@ var plafondsParFichier = map[string]int{
 	// condition c des declarations et l abstention du pont d equipe, grammar et killsource qui montent.
 	// SCHEMA 100 -> 101 (2026-10-21, controles de la v8), +29 : l entree v101 (taille d equipe de la
 	// playlist, places ramenees a la taille, pistes de projectile hors bande). Exception ecrite.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3503,
+	// SCHEMA 101 -> 102 (2026-10-22, lot detonations), +32 : l entree v102 (l explosion d un
+	// projectile publiee a l instant et a la position LUS, `projectiles[].detoT/detoX/detoY/detoLue`,
+	// le repli nomme, la mesure a 100 % sur cinq films temoins). Exception ecrite, dans le commit
+	// qui monte `SchemaVersion`.
+	// SCHEMA 102 -> 103 (2026-10-22, meme lot, item 2), +29 : l entree v103 (le ramassage de
+	// power-up date par le meme mecanisme que les socles d arme, aucun champ neuf, la mesure 8/8
+	// sur les films temoins). Exception ecrite, dans le commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3564,
+	// `film_scan.go` ENTRE EN TABLE LE 2026-10-22 (lot detonations) : il etait exactement au seuil
+	// (500) avant ce lot, +4 lignes pour l appel a `grammar.ScanProjectileDetonations` (item 1) le
+	// font passer a 504. Ce n est pas une montee d une entree existante : premiere mise en table, a
+	// la taille mesuree du jour.
+	"internal/games/halo_infinite/film/replay/film_scan.go": 504,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -326,7 +338,13 @@ var plafondsParFichier = map[string]int{
 	// 570 -> 571), et c est le meme mouvement vu de l autre cote : ces fichiers gagnent LA LIGNE
 	// D IMPORT de `film/types`. C est la seule montee admise par ce lot, et elle est mecanique.
 	// --- tests et instruments de mesure : tables de fixtures et balayages de recherche.
-	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":      1202,
+	// `golden_assembly_test.go` MONTE LE 2026-10-22 (lot detonations), +2 net (1202 -> 1204) :
+	// les `wantProjectiles` des huit fixtures de reference portent desormais `detoT/detoX/detoY`.
+	// CE FICHIER N EST PAS DANS LA SEULE EXCEPTION NOMMEE EN TETE (document_chronicle.go et
+	// structure_test.go) : la montee suit ici la MEME cause (volume ajoute par la montee de
+	// SchemaVersion 101 -> 102), mais sans la clause ecrite qui la couvrirait d office — note pour
+	// une revue ulterieure de l exception, pas une extraction demandee par ce lot.
+	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":      1204,
 	"internal/games/halo_infinite/film/internal/grammar/i59_anchor_test.go": 1152,
 	// SCHEMA 61 -> 62 (2026-09-17, lot 4.2.1-b) : 1168 -> 1183, la raison ecrite de v62 que
 	// `TestStructureIsOptionalInDocument` exige au-dessus de son epinglage dur.
@@ -424,7 +442,11 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 98 -> 99 (2026-10-17, E8.4 du plan du backlog du 2026-10-16) : 1454 -> 1458, la justification
 	// de la montee (index des chunks hors table, chaine de contradictions).
 	// SCHEMA 100 -> 101 (2026-10-21, controles de la v8) : 1462 -> 1466, la justification de la montee.
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1466,
+	// SCHEMA 101 -> 102 (2026-10-22, lot detonations) : 1466 -> 1471, la justification de la montee
+	// (l explosion d un projectile publiee a l instant et a la position LUS).
+	// SCHEMA 102 -> 103 (2026-10-22, meme lot, item 2) : 1471 -> 1476, la justification de la montee
+	// (le ramassage de power-up date par le meme mecanisme que les socles d arme).
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1476,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

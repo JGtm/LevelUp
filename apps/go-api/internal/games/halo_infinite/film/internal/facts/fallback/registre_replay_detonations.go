@@ -26,7 +26,7 @@ var registreReplayDetonations = []Repli{
 		Condition: CondLectureNonPortee,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{
-			{Fichier: pkgReplay + "projectiles.go", Ancre: "func attachDetonations("},
+			{Fichier: pkgReplay + "projectiles.go", Ancre: "func attachDetonation("},
 		},
 		DatePose:     "2026-10-22",
 		CibleRetrait: "sans objet pour l instant : la detonation se lit a 100 % sur le parc temoin, le repli ne couvre que la piste coupee ou illisible, pas un manque de grammaire",
