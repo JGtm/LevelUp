@@ -13,11 +13,16 @@
  * non-arme (`padNameFor`), jamais de la clé brute du document.
  *
  * CE QU'ELLE NE DIT JAMAIS : QUI a pris l'arme. Le champ existe au contrat (`padPickups[].xuid`)
- * et est PUBLIÉ depuis le schéma 30 (2026-08-31) — l'événement natif le porte —, mais cette
- * infobulle ne l'affiche pas : son dessin n'a pas été repensé (le ramasseur nommé est le sujet
- * du tableau « Contrôle des armes spéciales » de la page match). C'est la clause la
- * plus facile à violer par inadvertance, puisque le champ SE LIT sans qu'on voie qu'il est vide :
- * ce composant ne le lit pas.
+ * et est PUBLIÉ depuis le schéma 30 (2026-08-31) — l'événement natif le porte, désormais pour
+ * les socles de power-up aussi (lot detonations, 2026-10-22) —, mais cette infobulle ne
+ * l'affiche pas : la décision « deux lignes au plus, pas de blabla » (retour utilisateur du
+ * 2026-08-28) tient. CORRIGÉ LE 2026-10-22 : l'ancien renvoi vers le tableau « Contrôle des
+ * armes spéciales » de la page match est FAUX depuis le 2026-10-07 — ce tableau a été retiré
+ * (`MatchPadControlSection` supprimé). Le ramasseur n'a donc, pour l'instant, AUCUNE surface
+ * d'affichage ; ce que l'instant exact du ramassage change déjà, lui, c'est l'état plein/vide du
+ * socle sur la carte et son compte à rebours (`padPickupDating.ts`), sans passer par ici. C'est
+ * la clause la plus facile à violer par inadvertance, puisque le champ SE LIT sans qu'on voie
+ * qu'il est vide : ce composant ne le lit pas.
  *
  * DEUX COMPTES À REBOURS, ET ELLE DOIT LES SÉPARER (D3, 2026-08-27). Celui qui vise la prochaine
  * apparition VUE DANS LE FILM est EXACT — le rejeu connaît la suite — et se dit tel quel ; celui
