@@ -101,7 +101,7 @@ func TestImprimerTableauNommeLeStatut(t *testing.T) {
 		{Temoin: Temoin{ID: "eeee5555", Famille: "vehicules"}, Gains: 4, Changements: 2},
 		{Temoin: Temoin{ID: "ffff6666", Famille: "bombe"}, Verite: comparaisonDe(replayverite.StatutFaux)},
 		{Temoin: Temoin{ID: "abab7777", Famille: "koth"}, Verite: comparaisonDe(replayverite.StatutManque)},
-	}, "base(origin/feat/v75)")
+	}, "base(origin/main)")
 	out := b.String()
 	for _, attendu := range []string{
 		"aaaa1111", statutOK,

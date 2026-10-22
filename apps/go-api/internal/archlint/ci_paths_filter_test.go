@@ -2,10 +2,10 @@
 // (chantier b1016, étape E1.6) et de la règle d'annulation des runs périmés.
 //
 // INVARIANT PROTÉGÉ : le filtre de chemins ne s'applique qu'aux branches de travail. Sur `main`,
-// `feat/v75` et les PR, TOUS les jobs tournent, inconditionnellement — sinon un défaut du filtre
+// `release/*` et les PR, TOUS les jobs tournent, inconditionnellement — sinon un défaut du filtre
 // laisserait du code non testé jusqu'au déploiement (deploy.yml attend le verdict du run de `main`).
 // Concrètement : tout job de ci.yml qui dépend de `changes` porte dans son `if:` le contournement
-// (PR, main, feat/v75) AVANT toute lecture de `needs.changes.outputs.*`.
+// (PR, main, release/*) AVANT toute lecture de `needs.changes.outputs.*`.
 //
 // PARSING : textuel et ANCRÉ, sans parseur YAML (même parti que ci_deploy_triggers_test.go, dont les
 // helpers sont réutilisés). Les fonctions d'analyse sont pures et testées sur des textes synthétiques
@@ -24,7 +24,7 @@ import (
 var requiredBypass = []string{
 	"github.event_name == 'pull_request'",
 	"github.ref == 'refs/heads/main'",
-	"github.ref == 'refs/heads/feat/v75'",
+	"startsWith(github.ref, 'refs/heads/release/')",
 }
 
 // jobTopLevelNames — noms des jobs de `jobs:` (clés à 2 espaces d'indentation), dans l'ordre.
@@ -100,7 +100,7 @@ func jobNeeds(block []string) []string {
 // chaque littéral doit y figurer, et PRÉCÉDER la première lecture de `needs.changes.`.
 func bypassProblems(ifExpr string) []string {
 	if ifExpr == "" {
-		return []string{"aucun `if:` : un job qui dépend de `changes` DOIT porter le contournement (PR, main, feat/v75) devant la lecture du filtre"}
+		return []string{"aucun `if:` : un job qui dépend de `changes` DOIT porter le contournement (PR, main, release/*) devant la lecture du filtre"}
 	}
 	readAt := strings.Index(ifExpr, "needs.changes.")
 	var problems []string
@@ -142,7 +142,7 @@ func pathsFilterProblems(lines []string) (dependents []string, problems []string
 	return dependents, problems
 }
 
-// TestCIJobsDependingOnChangesCarryBypass — le contournement main / feat/v75 / PR sur tout job
+// TestCIJobsDependingOnChangesCarryBypass — le contournement main / release/* / PR sur tout job
 // qui lit le filtre de chemins.
 func TestCIJobsDependingOnChangesCarryBypass(t *testing.T) {
 	root := repoRootForWorkflows(t)
@@ -155,11 +155,11 @@ func TestCIJobsDependingOnChangesCarryBypass(t *testing.T) {
 	for _, p := range problems {
 		t.Errorf(`ci.yml : %s
 
-  Sur `+"`main`, `feat/v75` et les PR"+`, tout doit tourner sans condition : un job conditionné par le filtre
+  Sur `+"`main`, `release/*` et les PR"+`, tout doit tourner sans condition : un job conditionné par le filtre
   de chemins sans ce contournement serait sauté par un défaut du filtre, et du code non testé
   atteindrait la production.
 
-  CORRECTION : `+"`if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.<pile> == 'true' }}`", p)
+  CORRECTION : `+"`if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || needs.changes.outputs.<pile> == 'true' }}`", p)
 	}
 }
 
@@ -190,7 +190,7 @@ func TestCIChangesJobPinsPathsFilterBySHA(t *testing.T) {
 }
 
 // TestCIConcurrencyCancelsStaleRunsExceptOnProtectedBranches — D-5 : un run par branche, les runs
-// périmés sont annulés, sauf sur main et feat/v75 (chaque commit y rend son verdict).
+// périmés sont annulés, sauf sur main et release/* (chaque commit y rend son verdict).
 func TestCIConcurrencyCancelsStaleRunsExceptOnProtectedBranches(t *testing.T) {
 	root := repoRootForWorkflows(t)
 	lines := workflowLines(t, root, "ci.yml")
@@ -235,14 +235,20 @@ func concurrencyProblems(lines []string) []string {
 	// une branche protégée, le groupe doit être propre au run, sinon un push rapproché annule le run
 	// en attente d'un commit dont le déploiement attend le verdict.
 	if !strings.Contains(group, "github.run_id") {
-		problems = append(problems, "`concurrency.group` ne porte pas github.run_id : sur main et feat/v75, un run en attente serait annulé par le push suivant")
+		problems = append(problems, "`concurrency.group` ne porte pas github.run_id : sur main et release/*, un run en attente serait annulé par le push suivant")
 	}
-	for _, protected := range []string{"refs/heads/main", "refs/heads/feat/v75"} {
-		if !regexp.MustCompile(`github\.ref\s*==\s*'` + regexp.QuoteMeta(protected) + `'`).MatchString(group) {
-			problems = append(problems, fmt.Sprintf("`concurrency.group` n'isole pas les runs de %s par github.run_id", protected))
+	// Branches protégées : `main` (comparaison exacte) et les branches d'intégration `release/*`
+	// (préfixe).
+	protected := []struct{ name, isRef, notRef string }{
+		{"refs/heads/main", `github\.ref\s*==\s*'refs/heads/main'`, `github\.ref\s*!=\s*'refs/heads/main'`},
+		{"refs/heads/release/*", `startsWith\(github\.ref,\s*'refs/heads/release/'\)`, `!startsWith\(github\.ref,\s*'refs/heads/release/'\)`},
+	}
+	for _, p := range protected {
+		if !regexp.MustCompile(p.isRef).MatchString(group) {
+			problems = append(problems, fmt.Sprintf("`concurrency.group` n'isole pas les runs de %s par github.run_id", p.name))
 		}
-		if !regexp.MustCompile(`github\.ref\s*!=\s*'` + regexp.QuoteMeta(protected) + `'`).MatchString(cancel) {
-			problems = append(problems, fmt.Sprintf("`cancel-in-progress` n'exclut pas %s : un run en cours y serait annulé par le push suivant", protected))
+		if !regexp.MustCompile(p.notRef).MatchString(cancel) {
+			problems = append(problems, fmt.Sprintf("`cancel-in-progress` n'exclut pas %s : un run en cours y serait annulé par le push suivant", p.name))
 		}
 	}
 	return problems
@@ -251,7 +257,7 @@ func concurrencyProblems(lines []string) []string {
 // TestCIPathsFilterAnalysisDetectsDefects — preuve que les analyseurs détectent leur défaut sur un
 // texte synthétique et laissent passer le texte conforme.
 func TestCIPathsFilterAnalysisDetectsDefects(t *testing.T) {
-	const bypass = "github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75'"
+	const bypass = "github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')"
 	job := func(ifLine string) string {
 		text := "jobs:\n  changes:\n    runs-on: x\n  lourd:\n    needs: changes\n"
 		if ifLine != "" {
@@ -276,7 +282,7 @@ func TestCIPathsFilterAnalysisDetectsDefects(t *testing.T) {
 			t.Fatalf("problems=%v, attendu %d", problems, len(requiredBypass))
 		}
 	})
-	t.Run("feat/v75 oublié", func(t *testing.T) {
+	t.Run("release/* oublié", func(t *testing.T) {
 		expr := "if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || needs.changes.outputs.go == 'true' }}"
 		if _, problems := pathsFilterProblems(splitWorkflow(job(expr))); len(problems) != 1 {
 			t.Fatalf("problems=%v, attendu 1", problems)
@@ -305,18 +311,18 @@ func TestCIPathsFilterAnalysisDetectsDefects(t *testing.T) {
 	})
 
 	t.Run("concurrency", func(t *testing.T) {
-		const groupOK = "${{ github.workflow }}-${{ github.ref }}-${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75') && github.run_id || 'travail' }}"
-		good := splitWorkflow("concurrency:\n  group: " + groupOK + "\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}\njobs:\n  a:\n    steps: []\n")
+		const groupOK = "${{ github.workflow }}-${{ github.ref }}-${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')) && github.run_id || 'travail' }}"
+		good := splitWorkflow("concurrency:\n  group: " + groupOK + "\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release/') }}\njobs:\n  a:\n    steps: []\n")
 		if p := concurrencyProblems(good); len(p) != 0 {
 			t.Fatalf("bloc conforme refusé : %v", p)
 		}
 		for name, text := range map[string]string{
 			"absent":                  "jobs:\n  a:\n    steps: []\n",
-			"sans ref":                "concurrency:\n  group: ci\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}\n",
-			"annule main":             "concurrency:\n  group: ${{ github.ref }}\n  cancel-in-progress: ${{ github.ref != 'refs/heads/feat/v75' }}\n",
-			"annule v75":              "concurrency:\n  group: ${{ github.ref }}\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}\n",
+			"sans ref":                "concurrency:\n  group: ci\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release/') }}\n",
+			"annule main":             "concurrency:\n  group: ${{ github.ref }}\n  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/heads/release/') }}\n",
+			"annule release":          "concurrency:\n  group: ${{ github.ref }}\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}\n",
 			"annule partout":          "concurrency:\n  group: ${{ github.ref }}\n  cancel-in-progress: true\n",
-			"groupe partagé sur main": "concurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}\n",
+			"groupe partagé sur main": "concurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release/') }}\n",
 		} {
 			if p := concurrencyProblems(splitWorkflow(text)); len(p) == 0 {
 				t.Errorf("bloc défectueux (%s) non détecté", name)

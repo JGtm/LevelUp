@@ -17,18 +17,18 @@ permissions:
 #     dans .github/ci/go-shards.txt, le job `go-coverage-merge` rassemble verdicts et profils ;
 #   - Vitest tourne en 3 lots (job `web-tests`) fusionnés par `web-coverage-merge` ;
 #   - sur une branche de travail, le job `changes` saute les jobs de l'autre pile quand le
-#     push ne touche qu'une pile (cf. le job) ; `main`, `feat/v75` et les PR rejouent TOUT.
+#     push ne touche qu'une pile (cf. le job) ; `main`, les branches d’intégration `release/*` et les PR rejouent TOUT.
 
 # Un seul run par branche de travail à la fois : un push qui en suit un autre annule le run
-# périmé. Sur `main` et `feat/v75`, chaque commit doit rendre son verdict (le déploiement attend
+# périmé. Sur `main` et les branches `release/*`, chaque commit doit rendre son verdict (le déploiement attend
 # celui du run de `main`, cf. `attente-ci` de deploy.yml) : le groupe y porte `github.run_id`,
 # donc chaque run a son propre groupe. Sans cela, GitHub ne garde qu'UN run EN ATTENTE par groupe
 # même avec `cancel-in-progress: false` : trois pushs rapprochés annuleraient le deuxième, et le
 # déploiement de ce commit se refuserait. Le groupe porte aussi la ref : les runs de PR
 # (refs/pull/N/merge) et de push ne s'annulent pas entre eux.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75') && github.run_id || 'travail' }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')) && github.run_id || 'travail' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release/') }}
 
 on:
   # Push : couvre les conventions de branches réellement utilisées dans le repo
@@ -84,8 +84,8 @@ jobs:
   # CONTRAT, tenu par archlint/ci_paths_filter_test.go : tout job qui dépend de `changes`
   # (`needs: changes`) porte dans son `if:` le contournement
   #     github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-  #     || github.ref == 'refs/heads/feat/v75'
-  # AVANT la lecture de la sortie `go` / `web`. Sur `main`, `feat/v75` et les PR, TOUT tourne,
+  #     || startsWith(github.ref, 'refs/heads/release/')
+  # AVANT la lecture de la sortie `go` / `web`. Sur `main`, `release/*` et les PR, TOUT tourne,
   # inconditionnellement : le filtre n'existe que pour les branches de travail, et un
   # défaut du filtre ne peut donc jamais laisser passer du code non testé jusqu'à la production
   # (le déploiement attend le run de `main`). Les jobs govulncheck et npm-audit n'en dépendent
@@ -124,18 +124,18 @@ jobs:
       web: ${{ steps.fichiers.outputs.tous != 'true' || steps.fichiers.outputs.web == 'true' || steps.fichiers.outputs.croisee == 'true' || steps.fichiers.outputs.autre == 'true' }}
     steps:
       - uses: actions/checkout@v6.1.0
-        if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}
+        if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release/') }}
 
       # Épinglé par SHA de commit : le tag v4.0.3 désigne directement un commit (objet non annoté).
-      # Base = feat/v75, branche d'intégration dont partent les branches de travail : comparer à
-      # `main` compterait tout l'écart d'intégration non publié (les deux piles toujours touchées)
-      # et allonge la recherche du point de divergence (83 s mesurées, run 38979844734).
-      - name: Fichiers modifiés par rapport à feat/v75
+      # Base = `main` : une branche de travail part de `main` ou d'une branche d'intégration courte
+      # `release/vX.Y.Z` (elle-même créée depuis `main`) ; l'écart compté inclut alors l'intégration
+      # non publiée, ce qui ne peut que faire tourner davantage de jobs, jamais moins.
+      - name: Fichiers modifiés par rapport à main
         id: fichiers
-        if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/v75' }}
+        if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release/') }}
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
-          base: feat/v75
+          base: main
           predicate-quantifier: some-with-excludes
           filters: |
             tous:
@@ -163,7 +163,7 @@ jobs:
   frontend:
     name: Frontend (TypeScript + Vite build)
     needs: changes
-    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.web == 'true' }}
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || needs.changes.outputs.web == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -285,7 +285,7 @@ jobs:
   web-tests:
     name: Vitest (lot ${{ matrix.shard }})
     needs: changes
-    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.web == 'true' }}
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || needs.changes.outputs.web == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -396,7 +396,7 @@ jobs:
   go-build:
     name: Go Build + Test
     needs: changes
-    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || needs.changes.outputs.go == 'true' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -494,7 +494,7 @@ jobs:
   film-race:
     name: Film race (grammar, -race cible)
     needs: changes
-    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -517,7 +517,7 @@ jobs:
   go-lint:
     name: Go Lint (golangci-lint)
     needs: changes
-    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -584,7 +584,7 @@ jobs:
   go-lease-enforcement:
     name: Go Lease Enforcement (ADR 0013)
     needs: changes
-    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     defaults:
@@ -679,7 +679,7 @@ jobs:
   go-coverage:
     name: Go Coverage (lot ${{ matrix.lot }})
     needs: changes
-    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || needs.changes.outputs.go == 'true' }}
     # ubuntu-latest dispose de GCC — CGO_ENABLED=1 fonctionne sans config supplémentaire
     runs-on: ubuntu-latest
     # ~2x le plus long lot estimé (~12 min, marge pour une machine lente ou un cache froid).
@@ -957,7 +957,7 @@ jobs:
   go-openapi-lint:
     name: OpenAPI Lint
     needs: changes
-    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -970,7 +970,7 @@ jobs:
   go-contract-test:
     name: Go Contract Test (OpenAPI YAML)
     needs: changes
-    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/v75' || needs.changes.outputs.go == 'true' }}
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
