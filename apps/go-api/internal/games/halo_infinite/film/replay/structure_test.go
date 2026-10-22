@@ -1459,8 +1459,18 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   place neuve (`taille`) et la place par intervalle (`presence[].seat`) : aucune equipe ne montre plus
 	//   d occupants que la taille de sa playlist. `grammar.Rev` monte sur la meme branche :
 	//   un v100 se lit « a redecoder ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 101 {
-		t.Fatalf("SchemaVersion = %d, attendu 101 : incrémenter exige une raison écrite ci-dessus "+
+	// - 102 (2026-10-22, lot detonations, suite du controle n° 24 des controles v8) : quatre champs neufs
+	//   `projectiles[].detoT/detoX/detoY/detoLue` — l EXPLOSION publiee, lue dans le message de
+	//   detonation/impact de projectile (genres 5/6 de la vue A) quand elle est a portee de la piste, un
+	//   repli nomme et compte (`repli_detonation_derniere_position_connue`) sinon. `SchemaDesFaits` monte
+	//   avec elle (17 -> 18) : un v101 se lit « a redecoder ». Aucune revision de couche ne bouge (la
+	//   grammaire lisait deja ces bits). Detail : `document_chronicle.go`.
+	// - 103 (2026-10-22, lot detonations, item 2) : aucun champ neuf ; le CONTENU change : les
+	//   occupations de socle de power-up se joignent au ramassage natif par le slug canonique,
+	//   comme les socles d arme par la famille hexadecimale. Assemblage seul : un v102 se lit
+	//   « a republier ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 103 {
+		t.Fatalf("SchemaVersion = %d, attendu 103 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

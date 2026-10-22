@@ -7,10 +7,11 @@
  * fichier-ci ne connaît QUE la fin de vol d'une grenade, et rien d'autre du canvas ne la
  * connaît. Aucune règle n'a changé au passage — seule la nappe, ci-dessous, est neuve.
  *
- * CE QUE LE POINT SIGNIFIE, et le rendu doit le respecter : la DERNIÈRE POSITION RÉPLIQUÉE
- * du projectile, JAMAIS un impact — le film n'enregistre aucune détonation. L'EXPLOSION
- * POSÉE LÀ EST DONC UNE MISE EN SCÈNE ASSUMÉE (item 3.2), et c'est pourquoi l'écran continue
- * de dire « dernière position connue ».
+ * CE QUE LE POINT SIGNIFIE, et le rendu doit le respecter : CORRIGÉ LE 2026-10-22 (lot
+ * detonations) — l'EXPLOSION publiée par le serveur (`Projectile.detoT/detoX/detoY`) : la
+ * détonation LUE dans la vue A quand elle est à portée de la piste, la DERNIÈRE POSITION
+ * RÉPLIQUÉE sinon (repli nommé côté Go, jamais un impact affirmé sans lecture). La MISE EN
+ * SCÈNE (item 3.2) reste la même ; seul l'instant et la position qu'elle habille ont changé.
  */
 import { drawExplosion } from './explosionFx'
 import type { FxInk } from './fxInk'
@@ -32,10 +33,10 @@ export interface RestWindow {
 /**
  * drawGrenadeRestLayer pose l'effet de FIN DE VOL de chaque grenade liée à son projectile.
  *
- * CE QUE LE POINT SIGNIFIE, et le rendu doit le respecter : la DERNIÈRE POSITION RÉPLIQUÉE
- * du projectile, JAMAIS un impact — le film n'enregistre aucune détonation. L'EXPLOSION
- * POSÉE LÀ EST DONC UNE MISE EN SCÈNE ASSUMÉE (item 3.2), et c'est pourquoi l'écran continue
- * de dire « dernière position connue ».
+ * CE QUE LE POINT SIGNIFIE, et le rendu doit le respecter : CORRIGÉ LE 2026-10-22 (lot
+ * detonations) — l'EXPLOSION publiée par le serveur (`Projectile.detoT/detoX/detoY`) : la
+ * détonation LUE dans la vue A quand elle est à portée de la piste, la DERNIÈRE POSITION
+ * RÉPLIQUÉE sinon (repli nommé côté Go, jamais un impact affirmé sans lecture).
  *
  * PAR TYPE (`restKindOf`) : la Frag, la Plasma et la Spike détonent ; la Shock/Dynamo, elle,
  * n'explose PAS — elle laisse la nappe électrique persistante livrée au lot 2.3, parce que

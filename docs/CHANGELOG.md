@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [8.0.2] - 2026-10-22
+
+### Fixed
+- **Replay: a grenade's explosion now lands where and when it really happened** — the film writes the detonation, with its position; the replay used to show it at the grenade's last tracked position instead, up to about a second before the real blast for a fragmentation grenade. Checked on five matches across different maps and modes: the detonation is found for every linked throw, within a hair's width and tens of milliseconds of the previous approximation, which is now used only on the rare throw it cannot cover.
+- **Replay: a power-up pad goes empty the instant it is taken, not up to twenty seconds later** — a weapon pad already read the exact pickup moment from the film; a power-up pad (camouflage, overshield) now does too, instead of staying "uncertain" until the next scheduled check, roughly every twenty seconds.
+
+### Removed
+- **Memory captures of the running game and unused game extracts** — `.ai/V7.5/dumps/` and the `tools/ce/*.bin` captures leave the tree (copy kept outside the repository); the four files read by CI tests (three Forge maps, one zone file) and one image read by the `gamefiles` tests stay, declared as test fixtures in `NOTICE`.
+
+### Ops
+- **Third-party gamertags anonymised in the film test fixtures** — same-length pseudonyms in the film bytes and their derived files, decoding unchanged apart from names (checked on 11 films); a reusable gate `cmd/anonymise-gamertags` rewrites any fixture regenerated from the film cache (the correspondence table is not versioned).
+- **The nightly Docker clean-up also removes tagged images unused for 30 days** — build base images live in the BuildKit cache, so a tagged image left in the store comes from a manual pull and was never removed (about 3.9 GB on the VPS).
+- **A GitHub release body now carries its version's changelog section** — `release.yml` built only the installation notes; a version missing from the changelog now fails the publication.
+
 ## [8.0.1] - 2026-10-20
 
 ### Added

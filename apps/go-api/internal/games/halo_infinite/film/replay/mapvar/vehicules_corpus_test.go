@@ -37,7 +37,7 @@ import (
 )
 
 // vehiTypes : les 21 `type_id` de groupe de tag `vehi` de la palette Forge
-// (`.ai/V7.5/dumps/forge_zones/palette_complete_groupes.csv`), avec leur nom quand il est
+// (`palette_complete_groupes.csv`, releve hors depot), avec leur nom quand il est
 // craque (`palette_noms.csv` + [TestVehiculesNomsCraques] du 2026-08-31).
 var vehiTypes = map[int32]string{
 	-1825803927: "shade_turret",

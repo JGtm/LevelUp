@@ -34,8 +34,8 @@
 ## MORTS DONT LA SOURCE APPARTIENT A LA VICTIME — 2 ligne(s)
 # le kill-feed credite un AUTRE joueur : les deux verites sont vraies et divergent
 # format : instant  victime  tag  etiquette  CREDIT DU JEU  voie  origine
-01:44  Senor Pepper  d468178e  "M41 SPNKr"  credit=MassimilianoAR  marche  source-victime
-09:18  Chocoboflor  0d203522  "Autres"  credit=IZindle  marche  source-victime
+01:44  Joueu r00167  d468178e  "M41 SPNKr"  credit=Joueur00000129  marche  source-victime
+09:18  Chocoboflor  0d203522  "Autres"  credit=J000091  marche  source-victime
 
 ## MORTS INFLIGEES PAR UN BOT — 0 ligne(s)
 # le feed porte la MORT, pas le kill : le tueur vient du roster de replication

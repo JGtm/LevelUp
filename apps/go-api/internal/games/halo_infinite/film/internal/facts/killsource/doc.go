@@ -23,7 +23,7 @@
 // Les deux sont VRAIS. Quand ils divergent — 8 cas mesures sur les quatre films de reference,
 // confirmes 8/8 en Theater (RE_LOG 7ter.63, 7ter.66) — LA DIVERGENCE EST ELLE-MEME UNE
 // INFORMATION. Exemple, dans les mots de l utilisateur : << le kill feed attribue le kill a
-// HizaroMne4262 alors que c est MOI qui me tue en tirant une roquette sur un mur >>.
+// Joueur0000082 alors que c est MOI qui me tue en tirant une roquette sur un mur >>.
 //
 // DONC, dans [Kill] : [Kill.Feed] et [Kill.Source] sont au MEME NIVEAU, [Kill.Diverges] signale
 // leur desaccord, et AUCUNE des deux n est presentee comme corrigeant l autre. Un consommateur

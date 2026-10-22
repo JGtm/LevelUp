@@ -10793,6 +10793,13 @@ export interface components {
             narrative_axes: string[] | null;
         };
         Projectile: {
+            detoLue?: boolean;
+            /** Format: int64 */
+            detoT: number;
+            /** Format: float */
+            detoX: number;
+            /** Format: float */
+            detoY: number;
             p: (number[] | null)[] | null;
             rest?: boolean;
             /** Format: int64 */

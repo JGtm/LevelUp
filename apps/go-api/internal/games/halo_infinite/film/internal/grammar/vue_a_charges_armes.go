@@ -3,6 +3,8 @@ package grammar
 // vue_a_charges_armes.go — LES CHARGES DES MESSAGES D ARME, DE PROJECTILE ET D EQUIPEMENT DE LA VUE A
 // (lot LN de la campagne de grammaire). Memes conventions que `vue_a_charges.go`.
 
+import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+
 // Les immediats des sites d appel de `FUN_14076dc04` et de `FUN_1406d84b4` lus dans ces lecteurs.
 const (
 	largeurMagnitudePoussee   = 10 // FUN_14076d528, sixieme argument de FUN_14116c344
@@ -28,12 +30,15 @@ func lireVarianteSiAbsente(br *Lecteur) {
 
 // chargeDetonation porte `FUN_1408096f8` (`projectile_detonate`).
 func chargeDetonation(br *Lecteur) bool {
+	br.detonationLue = lecture.MessageDeDetonation{}
 	br.Skip(6) // FUN_140809454
 	lireVarianteSiAbsente(br)
-	consumeGateR(br, 32)                                                    // FUN_14080d69c
-	if _, ok := lireE494Sur(br, niveauDetonation, br.vueA.positions); !ok { // FUN_14076f91c ? R(96) : FUN_14076e524(..., 0xf)
+	consumeGateR(br, 32)                                            // FUN_14080d69c
+	pos, ok := lireE494Sur(br, niveauDetonation, br.vueA.positions) // FUN_14076f91c ? R(96) : FUN_14076e524(..., 0xf)
+	if !ok {
 		return false
 	}
+	dequantDetonationPosition(br, pos)
 	br.Skip(largeurDirection)       // FUN_14076dc04, R9D = R14D = 0x13
 	br.Skip(5 + 1)                  // FUN_1406d84b4 (5), FUN_1406cf008
 	br.Skip(largeurDetonationIndex) // R(9)
@@ -59,12 +64,15 @@ const (
 
 // chargeImpact porte `FUN_1410f03b4` (`projectile_impact_effect`).
 func chargeImpact(br *Lecteur) bool {
+	br.detonationLue = lecture.MessageDeDetonation{}
 	lireVarianteSiAbsente(br)
-	br.Skip(2 * largeurScalaireProjectile)                              // FUN_1406d84b4 x 2
-	br.Skip(largeurDirection)                                           // FUN_14076dc04, R9D = 0x13
-	if _, ok := lireE494Sur(br, niveauImpact, br.vueA.positions); !ok { // FUN_14076f91c ? R(96) : FUN_14076e524(..., 0xc)
+	br.Skip(2 * largeurScalaireProjectile)                      // FUN_1406d84b4 x 2
+	br.Skip(largeurDirection)                                   // FUN_14076dc04, R9D = 0x13
+	pos, ok := lireE494Sur(br, niveauImpact, br.vueA.positions) // FUN_14076f91c ? R(96) : FUN_14076e524(..., 0xc)
+	if !ok {
 		return false
 	}
+	dequantDetonationPosition(br, pos)
 	br.Skip(largeurDirection)           // FUN_14076dc04, R9D = 0x13
 	br.Skip(largeurDetonationIndex + 1) // R(9), R(1)
 	return true
@@ -224,9 +232,9 @@ func chargeMot32(br *Lecteur) bool {
 // nil sinon.
 func chargeDArme(genre int) func(*Lecteur) bool { //nolint:gocyclo // un case par genre de message porte (aiguillage)
 	switch genre {
-	case 5:
+	case GenreProjectileDetonate:
 		return chargeDetonation
-	case 6:
+	case GenreProjectileImpactEffect:
 		return chargeImpact
 	case 11:
 		return chargeClicAVide

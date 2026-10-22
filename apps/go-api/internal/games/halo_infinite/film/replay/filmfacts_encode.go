@@ -21,6 +21,12 @@ const (
 	gpHasShield byte = 1 << 3
 )
 
+// Les drapeaux d'un message de detonation/impact de projectile (encodeDetonations, filmfacts_codec.go).
+const (
+	gdHasProjectile byte = 1 << 0
+	gdHasPosition   byte = 1 << 1
+)
+
 // EncodeFilmFactsAvecErreur est [EncodeFilmFacts] qui REND SON ECHEC.
 //
 // Le codec est sans erreur sur tout ce qu il ecrit a la main ; une seule charge peut echouer (les
@@ -128,6 +134,7 @@ func encodeEvenements(w *gwriter, g *FilmFacts) {
 	}
 
 	encodeTracks(w, g.Projectiles)
+	encodeDetonations(w, g.Detonations)
 }
 
 // encodeInventaire ecrit les inventaires d image-cle et leurs deltas.

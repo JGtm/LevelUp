@@ -23333,6 +23333,17 @@ components:
     Projectile:
       additionalProperties: false
       properties:
+        detoLue:
+          type: boolean
+        detoT:
+          format: int64
+          type: integer
+        detoX:
+          format: float
+          type: number
+        detoY:
+          format: float
+          type: number
         p:
           items:
             items:
@@ -23354,6 +23365,9 @@ components:
       required:
         - t0
         - p
+        - detoT
+        - detoX
+        - detoY
       type: object
     ProjectileCoverage:
       additionalProperties: false

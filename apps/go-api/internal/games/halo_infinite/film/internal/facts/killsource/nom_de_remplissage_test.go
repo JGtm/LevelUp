@@ -82,7 +82,7 @@ func TestOrigineDUnNomDeRemplissageEstLeSilence(t *testing.T) {
 func TestEstNomDeRemplissage(t *testing.T) {
 	for nom, attendu := range map[string]bool{
 		"?": true, "?3": true, "?10": true,
-		"Zeus Herd": false, "343 Relais" + BotSuffix: false, "": false,
+		"J000 0213": false, "343 Relais" + BotSuffix: false, "": false,
 	} {
 		if got := estNomDeRemplissage(nom); got != attendu {
 			t.Errorf("estNomDeRemplissage(%q) = %v, attendu %v", nom, got, attendu)

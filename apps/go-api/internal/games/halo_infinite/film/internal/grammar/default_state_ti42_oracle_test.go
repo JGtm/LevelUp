@@ -3,7 +3,7 @@ package grammar
 // default_state_ti42_oracle_test.go — L'ORACLE DE LARGEUR, jamais consomme jusqu'ici, applique
 // a la grammaire portee de `ti=42`.
 //
-// CE QU'EST L'ORACLE. `.ai/V7.5/dumps/kf_capture_sample.txt` porte 400 FRONTIERES DE RECORDS
+// CE QU'EST L'ORACLE. `kf_capture_sample.txt` (capture hors depot) porte 400 FRONTIERES DE RECORDS
 // EXACTES relevees au point d'entree du dispatcheur de record du jeu (`FUN_1406cbaa0`, hook
 // Cheat Engine non bloquant) : par ligne, le TYPE de record (1 = NEW, 3 = DELTA), l'IDENTIFIANT
 // d'entite, la POSITION EN BITS du reader (`reader+0x2c`) et l'adresse du tampon. Le tampon est
@@ -24,8 +24,8 @@ package grammar
 //
 // USAGE (depuis apps/go-api) :
 //
-//	CGO_ENABLED=0 TI42_CAPTURE=<repo>/.ai/V7.5/dumps/kf_capture_sample.txt \
-//	  TI42_BUFFER=<repo>/.ai/V7.5/dumps/kf_slot0_live.bin \
+//	CGO_ENABLED=0 TI42_CAPTURE=<copie hors depot>/kf_capture_sample.txt \
+//	  TI42_BUFFER=<copie hors depot>/kf_slot0_live.bin \
 //	  go test ./internal/games/halo_infinite/film/internal/grammar/ -run TI42WidthOracle -timeout 10m -v
 
 import (

@@ -242,7 +242,13 @@ import (
 // derniers sont PUBLIES (`coverage.stances`) : depuis `a9fa54784`, un artefact rejoue depuis les
 // faits les perdait (`TestGoldenInputsFidelite` rouge sur les huit builds). Garde :
 // `TestCodecTransporteToutesLesStatsDeMouvement` (egalite profonde, sans liste).
-const filmFactsMagic = "REPLAYINPUTS28\n"
+// v29 (2026-10-22, lot detonations) : les messages de detonation/impact de projectile
+// (`[]types.ProjectileDetonation`, genres 5/6 de la vue A) entrent a la queue de la section des
+// projectiles ([encodeDetonations]/[decodeDetonations]) : sans eux, un artefact rejoue depuis les
+// faits perdrait l explosion lue et retomberait systematiquement sur le repli nomme
+// (`fallback.NomDetonationDernierePositionConnue`), la ou le decodage direct publierait la
+// detonation. Garde : [TestCodecCouvreFilmInputs].
+const filmFactsMagic = "REPLAYINPUTS29\n"
 
 // ---------------------------------------------------------------------------
 // LES CHAMPS SERIALISES, PAR TYPE — ce sont ceux que l assemblage consomme :
@@ -253,6 +259,7 @@ const filmFactsMagic = "REPLAYINPUTS28\n"
 //	KeyframeLoadout   TimestampUS · Slot · Families
 //	GrenadeThrow      TimestampUS · FilmIndex · TypeID
 //	ProjectileTrack   Slot · Gen · Pts(TimestampUS · X/Y/Z · AtRest)
+//	ProjectileDetonation TimestampUS · Genre · HasProjectile+Projectile(Slot·Gen) · HasPosition+X/Y/Z
 //	KeyframeInventory tout, sauf Chunk/PacketIndex (tracabilite dans le film, pas une entree)
 //	AbilityRank       Slot · TimestampUS · Rank (le compteur de rotation n entre pas dans
 //	                  l assemblage : il borne une lecture, il ne se publie pas)

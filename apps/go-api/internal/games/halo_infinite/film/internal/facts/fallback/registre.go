@@ -66,6 +66,7 @@ func Tranches() []Tranche {
 		{"replay/positions", registreReplayPositions},
 		{"replay/vehicules", registreReplayVehicules},
 		{"replay/objectifs", registreReplayObjectifs},
+		{"replay/detonations", registreReplayDetonations},
 	}
 }
 

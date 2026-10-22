@@ -152,7 +152,7 @@ func buildFeed(evs []highlightevent.HighlightEvent) *killFeed {
 // rosterNames : les joueurs distincts nommes par le kill-feed, tries.
 //
 // PIEGE DE PARSEUR, consigne parce qu il a coute 42 appariements sans le moindre message
-// d erreur : UN GAMERTAG CONTIENT DES ESPACES (<< Zeus Herd >>). Toute serialisation de la
+// d erreur : UN GAMERTAG CONTIENT DES ESPACES (<< J000 0213 >>). Toute serialisation de la
 // bijection doit se decouper sur les marqueurs `<chiffre>=`, jamais sur les blancs.
 func rosterNames(feed []feedEvent) []string {
 	set := map[string]bool{}

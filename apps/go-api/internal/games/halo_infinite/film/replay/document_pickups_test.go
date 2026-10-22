@@ -105,7 +105,9 @@ func TestDatePadPickupsAddsNeverRemoves(t *testing.T) {
 	pads := []WeaponPad{
 		{Weapon: padWeaponForm(famA)},
 		{Weapon: padWeaponForm(famB)},
-		// Socle de POWER-UP : identité = nom canonique, structurellement non joignable.
+		// Socles de POWER-UP : identité = nom canonique, joignable par le SLUG (pas par
+		// l'hexa) depuis le lot detonations du 2026-10-22.
+		{Weapon: "overshield"},
 		{Weapon: "overshield"},
 	}
 	pickups := []Pickup{
@@ -114,13 +116,16 @@ func TestDatePadPickupsAddsNeverRemoves(t *testing.T) {
 		{T: 45, W: pickupWeaponForm(famB), Kind: PickupWeapon, XUID: "333"},
 		{T: 70, W: pickupWeaponForm(famA), Kind: PickupItem, XUID: "444"}, // non-arme : jamais un socle d arme
 		{T: 90, W: pickupWeaponForm(famA), Kind: PickupWeapon, XUID: "555"},
+		// RAMASSAGE DE POWER-UP : même slug que le socle, dans sa fenêtre.
+		{T: 92, W: pickupWeaponForm(0xDEADBEEF), Kind: PickupEquipment, Family: "overshield", XUID: "666"},
 	}
 	picks := []PadPickup{
-		{Pad: 0, TLow: 10, THigh: 30}, // datable
-		{Pad: 1, TLow: 35, THigh: 50}, // AMBIGU : deux candidats
-		{Pad: 0, TLow: 60, THigh: 80}, // seul candidat est un non-arme -> non couvert
-		{Pad: 2, TLow: 85, THigh: 95}, // socle de power-up -> hors jointure, pas « non couvert »
-		{Pad: 9, TLow: 10, THigh: 30}, // index de socle hors bornes
+		{Pad: 0, TLow: 10, THigh: 30},   // datable
+		{Pad: 1, TLow: 35, THigh: 50},   // AMBIGU : deux candidats
+		{Pad: 0, TLow: 60, THigh: 80},   // seul candidat est un non-arme -> non couvert
+		{Pad: 2, TLow: 85, THigh: 95},   // socle de power-up -> daté par le ramassage ci-dessus
+		{Pad: 9, TLow: 10, THigh: 30},   // index de socle hors bornes
+		{Pad: 3, TLow: 100, THigh: 110}, // socle de power-up SANS ramassage dans sa fenêtre -> non couvert
 	}
 	st := daterLesOccupations(pads, picks, pickups, nil)
 
@@ -139,12 +144,21 @@ func TestDatePadPickupsAddsNeverRemoves(t *testing.T) {
 	if picks[2].T != nil {
 		t.Errorf("occupation 2 : t = %v, attendu nil (le seul candidat n est pas une arme)", picks[2].T)
 	}
-	// UN SOCLE DE POWER-UP N'EST PAS UNE RECHERCHE INFRUCTUEUSE : il est hors jointure.
-	if picks[3].T != nil {
-		t.Errorf("occupation 3 (power-up) : t = %v, attendu nil", picks[3].T)
+	// UN SOCLE DE POWER-UP SE JOINT PAR LE SLUG (corrigé le 2026-10-22) : le ramassage
+	// `overshield` à t=92 tombe dans sa fenêtre [85,95] et le date.
+	if picks[3].T == nil || *picks[3].T != 92 {
+		t.Errorf("occupation 3 (power-up) : t = %v, attendu 92", picks[3].T)
+	}
+	if picks[3].XUID == nil || *picks[3].XUID != "666" {
+		t.Errorf("occupation 3 (power-up) : xuid = %v, attendu \"666\"", picks[3].XUID)
 	}
 	if picks[4].T != nil {
 		t.Errorf("occupation 4 : index de socle hors bornes, t = %v, attendu nil", picks[4].T)
+	}
+	// UN SOCLE DE POWER-UP SANS RAMASSAGE DANS SA FENÊTRE RESTE NON COUVERT, comme un socle
+	// d'arme — ce n'est plus une absence structurelle.
+	if picks[5].T != nil {
+		t.Errorf("occupation 5 (power-up sans ramassage) : t = %v, attendu nil", picks[5].T)
 	}
 	// RIEN N'EST EFFACE : les intervalles restent, datés ou non.
 	for i, k := range picks {
@@ -152,9 +166,9 @@ func TestDatePadPickupsAddsNeverRemoves(t *testing.T) {
 			t.Errorf("occupation %d : l intervalle a été effacé", i)
 		}
 	}
-	if st.Occupations != 5 || st.Dated != 1 || st.Named != 1 || st.Ambiguous != 1 ||
-		st.Uncovered != 2 || st.PowerupOccupations != 1 {
-		t.Errorf("stats = %+v, attendu occupations=5 datées=1 nommées=1 ambiguës=1 nonCouvertes=2 powerup=1", st)
+	if st.Occupations != 6 || st.Dated != 2 || st.Named != 2 || st.Ambiguous != 1 ||
+		st.Uncovered != 3 || st.PowerupOccupations != 2 {
+		t.Errorf("stats = %+v, attendu occupations=6 datées=2 nommées=2 ambiguës=1 nonCouvertes=3 powerup=2", st)
 	}
 }
 

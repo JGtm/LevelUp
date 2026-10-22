@@ -11,7 +11,7 @@ retire ce qui a déjà été publié.
 | Catégorie | Emplacement | Volume | Nature |
 |---|---|---|---|
 | Sortie de décompilation du jeu (RETIRÉE le 2026-10-16) | copie hors dépôt : `Downloads/LevelUp_decompilation_Ghidra`, motif ignoré par `.gitignore` | 273 fichiers `.c` | Dérivé direct du binaire Microsoft : retiré de l'arbre courant, reste dans l'historique |
-| Captures mémoire du jeu | `.ai/V7.5/dumps/` (`ce_run2_cliffhanger.bin.gz` 8 Mo, `ce_capture_delta.csv` 19 Mo, trajectoires, rosetta), `tools/ce/*.bin` | ~60 Mo | Contenu mémoire du jeu en cours d'exécution |
+| Captures mémoire du jeu et extraits de recherche (RETIRÉS le 2026-10-22) | `.ai/V7.5/dumps/` (78 fichiers suivis retirés avec `tools/ce/*.bin`, dont `ce_run2_cliffhanger.bin.gz` 8 Mo et `ce_capture_delta.csv` 19 Mo) ; copie hors dépôt : `Downloads/LevelUp_captures_memoire_jeu` (95 fichiers, SHA-256 vérifiés) ; motifs ignorés par `.gitignore` | ~76 Mo | Contenu mémoire du jeu en cours d'exécution, extraits du jeu et sorties d'outils. Restent, nommés dans `NOTICE` §4 comme fixtures de test : 3 `.mvar` (`mapvar/`), `callout_zones_ridgeline_clipped.json`, `carte_validee_v1.png` ; et les 12 scripts `tools/ce/filmdec_*.lua` (notre code) |
 | Audio du jeu | `static/sounds/halo_infinite` | 182 wav, 83 Mo | Servi par l'application ; GARDÉ (décision du 2026-10-16 : le rejeu en a besoin) |
 | Images du jeu | `static/{medals,maps,ranks,commendations,weapons-assets,vehicles-assets,abilities-assets,prestige-assets}`, `apps/web/public/titles/halo_5/spartan/{emblems,nameplates}*`, `data/titles/*/reference/map_backgrounds`, `data/cache/career-rank-image` | plus de 2 000 png/webp | Servies par l'application ; certaines viennent de l'API de contenu officielle |
 | Référentiel prébuilt | `data/titles/halo_infinite/warehouse/metadata-prebuilt.zip` | 5 Mo | Données de l'API |
@@ -39,6 +39,41 @@ retire ce qui a déjà été publié.
 - **C. Complète** : B + purge de l'historique (`git filter-repo`), ce qui réécrit tous les
   hashs publiés, casse les branches et worktrees ouverts, et demande un push forcé. À ne faire
   qu'à froid, après sauvegarde, et jamais sans l'accord explicite de l'utilisateur.
+
+## Statut au 2026-10-22 : gamertags tiers des fixtures de films anonymisés
+
+Décision de l'utilisateur (item Notion du 2026-10-22) : anonymiser les gamertags des joueurs tiers
+dans les fixtures de films si c'est faisable sans casser les tests. C'est fait, sur la branche
+`chore/anonymisation-gamertags`.
+
+- **Périmètre parcouru** : 351 fichiers suivis (266 sous `**/testdata/**`, 9 sous
+  `apps/web/src/features/match-replay/test/fixtures/go`, 76 sous
+  `.ai/V7.5/replay2d/registre_film/lotBP`). Le lot BP ne contient aucun octet de film ni aucun nom
+  (journaux et TSV de recherche) ; les mini-bobines d'objectifs (`corpus_objectifs`) non plus.
+- **Avant** : 67 fichiers portaient 5 573 occurrences de 151 gamertags tiers distincts (37 fichiers
+  d'octets de film, 8 faits figés `inputs_*.bin.gz`, 8 documents web, 13 golden texte, 1 graine de
+  fuzz). **Après** : 0. Restent les joueurs maison (JGtm, Chocoboflor, Madina97294 dans ces films) et
+  les bots.
+- **Méthode** : pseudonymes de MÊME longueur (espaces conservés à leur place), cherchés en UTF-16
+  petit- et gros-boutiste aux huit décalages de bit et en UTF-8 aligné ; chunks zlib décompressés,
+  réécrits, recompressés. Outil : `apps/go-api/cmd/anonymise-gamertags` (porte de test, le ratchet
+  des octets de film interdisant `compress/zlib` au code de production sous `cmd/`). Table de
+  correspondance (213 noms) HORS dépôt : `Downloads/LevelUp_correspondance_gamertags.txt`. Copie
+  des 351 fichiers d'origine, vérifiée par empreintes : `Downloads/LevelUp_fixtures_films_originales`.
+- **Preuve** : sur les 11 films versionnés, 13 balayages du décodeur (tirs, grenades, armes, inventaire,
+  morts, index, projectiles, table des joueurs, temps forts, véhicules, objectifs, statborg,
+  killsource) rendent une sortie identique à celle de l'original aux noms près (143/143) ; la
+  régénération Go des 8 documents web depuis les faits anonymisés rend, à l'octet, le JSON réécrit
+  par l'outil ; les deux empreintes qui bougent (morts de la mini-bobine, temps forts v41) sont celles
+  de l'original noms substitués ; les golden killsource des 4 films du cache passent sur une copie
+  anonymisée de ces films. Aucune grammaire, aucun profil, aucun artefact de démo touché.
+- **Coût permanent** : toute régénération d'une fixture depuis le cache remet les noms réels (rejouer
+  l'outil avant de commiter) ; les gates locaux adossés au cache (`TestGoldenFilms` killsource,
+  `TestGoldenInputsFidelite`) se jouent sur une copie anonymisée des films.
+- **Reste hors de ce lot** : les XUID (identifiants numériques, présents partout) ; les noms cités
+  dans la prose `.ai/` (au moins 36 fichiers, 6 043 occurrences de noms de la table) ;
+  `apps/go-api/tests/fixtures/golden_values/match_view_slayer.json` (réponse d'API, hors films) ;
+  l'historique git, qui garde les fixtures d'avant (option C).
 
 ## Autres constats
 

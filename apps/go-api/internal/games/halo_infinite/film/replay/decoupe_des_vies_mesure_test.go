@@ -71,14 +71,23 @@ const (
 // Les 208 coupures que RIEN ne justifiait sont devenues des LACUNES de la meme vie. Les quatre
 // qui restent sont TOUTES appariees a une mort ecrite du joueur : c'est la definition meme d'une
 // fin de vie.
+//
+// CORRIGE LE 2026-10-22 (lot detonations) : a521164d {2,2,0,0,0,0} et e5adf7b2 {2,2,0,0,0,0}
+// (figes le 2026-09-15) etaient PERIMES depuis le lot qui a porte `grammar.Rev` a
+// `grammar-2026-10-21` (v101, chronique document_chronicle.go : « les pistes de projectile que
+// la marche nomme se gardent hors de la bande des images-cles »). Les fixtures d entrees de ces
+// deux builds n avaient pas ete regenerees avec ce lot. La regeneration forcee par le codec des
+// faits v29 de CE lot (sans rapport avec le fil des morts ni la decoupe des vies) l a rattrape :
+// a521164d tombe a {1,1,0,0,0,0}, e5adf7b2 a {0,0,0,0,0,0}. Le total RIEN reste a 0 sur les huit
+// builds (D13 tient).
 func coupuresAttendues() map[string][6]int {
 	return map[string][6]int{
 		"000d5950": {0, 0, 0, 0, 0, 0},
-		"a521164d": {2, 2, 0, 0, 0, 0},
+		"a521164d": {1, 1, 0, 0, 0, 0},
 		"60ae07c4": {0, 0, 0, 0, 0, 0},
 		"11de8353": {0, 0, 0, 0, 0, 0},
 		"111fa685": {0, 0, 0, 0, 0, 0},
-		"e5adf7b2": {2, 2, 0, 0, 0, 0},
+		"e5adf7b2": {0, 0, 0, 0, 0, 0},
 		"bcb6d393": {0, 0, 0, 0, 0, 0},
 		"fb1a1a72": {0, 0, 0, 0, 0, 0},
 	}
