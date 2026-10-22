@@ -347,13 +347,25 @@ data/cache/career-rank-image/
 # Logs runtime des CLI backfill
 apps/go-api/backfill.log
 
-tools/ce/filmdec_delta.csv
+# Captures de la memoire du jeu : propriete de Microsoft, retirees de l'arbre le 2026-10-22
+# (NOTICE par. 4). Elles vivent hors du depot ; les scripts Cheat Engine (tools/ce/*.lua) et
+# les releves ecrits (Markdown) restent.
+tools/ce/*.bin
 tools/ce/*.csv
 
-# Variantes de carte téléchargées (.mvar) : ~77 Mo, re-téléchargeables sans jeton depuis
-# blobs-infiniteugc.svc.halowaypoint.com via la page publique Waypoint. Le résultat extrait
-# est versionné dans data/titles/{slug}/reference/map_objectives.json — c'est lui qui fait foi.
-.ai/V7.5/dumps/mapvar/
+# .ai/V7.5/dumps/ : seules restent les fixtures lues par des tests (NOTICE par. 4), nommees
+# une a une ; tout le reste est une sortie de recherche ou un extrait du jeu, hors du depot.
+# Les variantes de carte (.mvar) re-telechargeables ne sont pas versionnees : seules trois
+# sont suivies, comme temoins de test. Le resultat extrait est versionne dans
+# data/titles/{slug}/reference/map_objectives.json — c'est lui qui fait foi.
+.ai/V7.5/dumps/*
+!.ai/V7.5/dumps/callout_zones_ridgeline_clipped.json
+!.ai/V7.5/dumps/carte_validee_v1.png
+!.ai/V7.5/dumps/mapvar/
+.ai/V7.5/dumps/mapvar/*
+!.ai/V7.5/dumps/mapvar/cliffhanger_map.mvar
+!.ai/V7.5/dumps/mapvar/cliffhanger_ridgeline.mvar
+!.ai/V7.5/dumps/mapvar/vagabond_fo08_wetland.mvar
 
 # Caches Go de build des agents (scratch, jamais versionnes)
 .gocache-*/

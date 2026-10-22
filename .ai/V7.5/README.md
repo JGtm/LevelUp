@@ -26,7 +26,7 @@ le dossier / fichiers suivis par git, sous-dossiers compris (un seul nombre quan
 | `briefs_ajustements_2026-09-13/` | Briefs d'exécutant des lots de `../PLAN_AJUSTEMENTS_PRE_V75_2026-09-13.md` | 9 |
 | `outillage/` | Sorties d'outillage (couverture des objectifs, palette Forge, précision des projectiles) | 0 / 41 |
 | `reference/` | Référence de mécanique de jeu (disparition des armes) | 1 |
-| `dumps/` | Captures binaires, CSV, PNG (ex-`.ai/re_dump/`) — 76 Mo, lus par du code | 39 / 78 |
+| `dumps/` | **Vidé le 2026-10-22** (captures mémoire, extraits du jeu, sorties d'outils : copie hors dépôt `Downloads/LevelUp_captures_memoire_jeu`). Restent 5 fixtures lues par des tests : `mapvar/{cliffhanger_map,cliffhanger_ridgeline,vagabond_fo08_wetland}.mvar`, `callout_zones_ridgeline_clipped.json`, `carte_validee_v1.png` | 0 / 5 |
 
 Plan actif d'habillage du rejeu 2D (marqueurs, noms, amis, logo, rangee `fil | carte | fiches`) :
 `replay2d/PLAN_HABILLAGE_REJEU_2D.md` (ecrit le 2026-08-16, decisions D1-D8 a valider par le user).
@@ -299,9 +299,14 @@ Documents autrefois listés dans cette section et archivés depuis (chemins rela
   citent les anciens chemins plats (de la forme `.ai/<NOM>.md`, `.ai/re_dump/...`) pour les
   entrées antérieures au 2026-07-31 : ce sont des archives, on ne réécrit pas l'histoire.
   Pour retrouver un document cité dans une vieille entrée, chercher son nom, pas son chemin.
-- **`dumps/` est lu par du code**, pas seulement cité : `cmd/replay-build` (défaut de
-  `-geometry`), plusieurs `cmd/tmp_*`, et `internal/analysis/replay/mapvar` (test). Déplacer
-  ce dossier oblige à corriger ces chemins.
+- **`dumps/` ne garde que 5 fixtures lues par des tests** (3 `.mvar`, le dump de découpe de
+  Ridgeline, `carte_validee_v1.png`) ; tout le reste a été retiré le 2026-10-22 (captures
+  mémoire du jeu, extraits Forge, CSV, PNG de recherche) et vit dans la copie hors dépôt
+  `Downloads/LevelUp_captures_memoire_jeu`. Les documents de ce dossier qui citent un fichier
+  retiré (`ce_*`, `kf_*`, `forge_zones/`, `tools/ce/*.bin`...) décrivent une mesure faite à
+  l'époque : le fichier se retrouve dans la copie, pas dans l'arbre. Les scripts
+  `tools/ce/filmdec_*.lua` restent, et leur sortie par défaut (`.ai/V7.5/dumps/`) est ignorée
+  par `.gitignore`.
 - Les `cmd/tmp_*` qui pointent en absolu vers `.claude/worktrees/filmdec-continuation/.ai/re_dump/`
   n'ont pas été touchés : ce worktree conserve son ancienne arborescence.
 
