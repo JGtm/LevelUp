@@ -462,10 +462,10 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       corpus nommé (couverture des tirs >= 88 % et pont nominal sur les sept). Atteint → retrait du
       garde ET de `LEVELUP_REPLAY_PUBLIC` (branche dédiée, règle n°11 : pas de kill-switch
       éternel). Non atteint → décision de l'utilisateur, datée dans le fichier.
-- [ ] 7.4 Suppression de `data/titles.pre-v8` et `cache/replays.pre-v8` sur le VPS (sur accord,
+- [x] 7.4 (22/10, accord de l'utilisateur : `titles.pre-v8` et `titles.pre-v801` supprimées, 19 Go libres) Suppression de `data/titles.pre-v8` et `cache/replays.pre-v8` sur le VPS (sur accord,
       après 7.1).
 - [ ] 7.5 `thought_log` + mémoire de clôture ; `.ai/REGISTRE_REPORTS.md` alimenté.
-- [ ] 7.6 Worktree `LevelUp-wt-release-v8` retiré (jonctions d'abord), branche supprimée.
+- [x] 7.6 (22/10 : worktree retiré, branche `feat/release-v8` fusionnée dans `feat/v75` puis supprimée ; le plan vit désormais sur `feat/v75`) Worktree `LevelUp-wt-release-v8` retiré (jonctions d'abord), branche supprimée.
 
 **Hors plan, sur demande explicite seulement** : retrait des captures mémoire du jeu, anonymisation
 des gamertags des fixtures, réécriture de l'historique (push forcé sur `main` = déploiement).
@@ -791,3 +791,11 @@ Ajout : rejeux recuits au schéma 101 (levelup-af, 2 500 artefacts, GrammarRev 2
 - `LEVELUP_REPLAY_PUBLIC=1` retiré du `.env.local` (copie `/root/env.local.bak-20261022-replaypublic`), conteneur recréé, variable absente.
 - Démo relancée après la bascule (job rerun) : rejeu servi au schéma 101. Prod : 2 508 artefacts, tous au schéma 101 ; aucun 5xx depuis la bascule.
 - Restent : contrôles authentifiés de l'utilisateur (rejeu < 2 s, Accueil en fenêtre, carte de consentement en onglet Compte) ; relevé des temps de prod par levelup-3a ; compactage (cette nuit ou manuel sur accord) ; suppression de `data/titles.pre-v801` et `data/titles.pre-v8` sur accord ; purge Docker : le service ne retire pas les images de base étiquetées (D-28) ; `cache/film_chunks` 13 Go jamais purgé (D-29).
+
+### 2026-10-22 — décisions de l'utilisateur après la v8.0.1
+- Compactage : cette nuit (timer 03:30 UTC), pas de passage manuel.
+- D-28 : unité `levelup-docker-prune.service` corrigée (images étiquetées inutilisées depuis 30 jours, `-a` + `until=720h`), fusionnée dans `feat/v75` (`fd36a249e`) et installée sur le VPS (copie précédente `/root/levelup-docker-prune.service.bak-20261022`).
+- D-29 : `cache/film_chunks` (13 Go) CONSERVÉ.
+- 7.4 fait (anciennes bases supprimées).
+- Branches : `feat/v75` conservée comme branche d'intégration ; `main` fusionnée dedans (stratégie ours, `e4cbf26ff`) pour que la prochaine PR ne montre que l'après-8.0.1 ; branches distantes fusionnées supprimées (restent `main`, `feat/v75`, `wt/power-positions`, Dependabot) ; worktree actif `LevelUp-wt-detonations` (v8.0.2) laissé à son agent.
+- Restent : 7.1 / 7.1b (+48 h), 7.2 (27/10), 7.5 (clôture), contrôles à l'écran de l'utilisateur, nettoyage d'après release de Notion (captures mémoire, gamertags, réécriture d'historique : sur décision), Dependabot.
