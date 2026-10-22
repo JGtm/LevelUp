@@ -15,7 +15,7 @@
  *   - MatchHeader.utils.ts : formatDuration() + nextTierLabel()
  *   - MatchHeader.card.tsx : MatchHeaderCard + sous-sections (Map, Title, Outcome, PerfRank)
  */
-import { useCallback, useEffect, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, type ReactNode } from 'react'
 import { Link, useRouter } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
 import { Button } from '@/components/ui/button'
@@ -143,8 +143,11 @@ interface MatchNavigationBarProps {
 export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigationBarProps) {
   const t = MATCH_VIEW_TEXT[locale]
   const navigateToMatch = useNavigateToMatch(playerSlug)
-  const { data: neighbors, source, contextLabel, contextDescriptor, navContext } =
+  const { data: neighbors, source, contextLabel, contextDescriptor, navContext, isPlaceholder } =
     useMatchNeighborsResolved(playerSlug, matchId)
+  // Pas demandé pendant que les voisins du match PRÉCÉDENT sont encore affichés (placeholder) : ils
+  // ne désignent pas les cibles de CE match. Le pas est retenu et joué dès que les bons voisins arrivent.
+  const pendingStep = useRef<'previous' | 'next' | null>(null)
 
   const goTo = useCallback(
     (targetMatchId: string | null | undefined) => {
@@ -169,15 +172,33 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
     window.dispatchEvent(new PopStateEvent('popstate'))
   }, [matchId])
 
+  const step = useCallback(
+    (dir: 'previous' | 'next') => {
+      if (isPlaceholder) {
+        pendingStep.current = dir
+        return
+      }
+      goTo(dir === 'previous' ? neighbors?.previous_match_id : neighbors?.next_match_id)
+    },
+    [isPlaceholder, goTo, neighbors],
+  )
+
+  useEffect(() => {
+    if (isPlaceholder || !pendingStep.current) return
+    const dir = pendingStep.current
+    pendingStep.current = null
+    goTo(dir === 'previous' ? neighbors?.previous_match_id : neighbors?.next_match_id)
+  }, [isPlaceholder, goTo, neighbors])
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (e.key === 'ArrowLeft') goTo(neighbors?.previous_match_id)
-      if (e.key === 'ArrowRight') goTo(neighbors?.next_match_id)
+      if (e.key === 'ArrowLeft') step('previous')
+      if (e.key === 'ArrowRight') step('next')
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [goTo, neighbors])
+  }, [step])
 
   if (!neighbors) return null
 
@@ -193,9 +214,11 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
       ? buildContextLabel(navContext.filterSpec, locale)
       : null
   const fallbackLabel = contextLabel ?? apiContextLabel ?? null
-  const counter = descriptorFragment
-    ? t.matchCounterCtxFmt(descriptorFragment, neighbors.current_index + 1, neighbors.total_matches)
-    : t.matchCounter(neighbors.current_index + 1, neighbors.total_matches)
+  const counter = isPlaceholder
+    ? '…' // le compteur du match précédent serait faux : aucun nombre tant que ceux-ci n'arrivent pas
+    : descriptorFragment
+      ? t.matchCounterCtxFmt(descriptorFragment, neighbors.current_index + 1, neighbors.total_matches)
+      : t.matchCounter(neighbors.current_index + 1, neighbors.total_matches)
   const showExit = !!descriptorFragment || !!fallbackLabel
 
   return (
@@ -203,8 +226,8 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
       <Button
         variant="ghost"
         size="sm"
-        disabled={!neighbors.previous_match_id}
-        onClick={() => goTo(neighbors.previous_match_id)}
+        disabled={!isPlaceholder && !neighbors.previous_match_id}
+        onClick={() => step('previous')}
         title={`${t.prevMatch} (←)`}
         aria-label={t.prevMatch}
         className="text-sm"
@@ -236,8 +259,8 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
       <Button
         variant="ghost"
         size="sm"
-        disabled={!neighbors.next_match_id}
-        onClick={() => goTo(neighbors.next_match_id)}
+        disabled={!isPlaceholder && !neighbors.next_match_id}
+        onClick={() => step('next')}
         title={`${t.nextMatch} (→)`}
         aria-label={t.nextMatch}
         className="text-sm"

@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	sync_pkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/skill"
 )
@@ -136,7 +137,8 @@ func (r *ServiceRegistry) RecomputeLUSRGapsForPlayer(ctx context.Context, titleS
 	// re-scan global). Best-effort : si le scan échoue, on n'ajustera pas la jauge.
 	before, beforeOK := r.scanPlayerInteriorGaps(ctx, titleSlug, p)
 
-	engine := sync_pkg.NewSyncEngineForTitle(r.cfg.RepoRoot, titleSlug, p.Gamertag, p.XUID, nil, r.provider)
+	engine := sync_pkg.NewSyncEngineForTitle(r.cfg.RepoRoot, titleSlug, p.Gamertag, p.XUID, nil, r.provider).
+		WithSessionOptionsLoader(settings_platform.SessionOptionsLoader(r.settingsStore, r.cfg.TitleSettingsPath(titleSlug)))
 	// Provider shared DU TITRE : cfg.SharedProvider est celui du titre par défaut, il ferait rejouer
 	// un joueur d'un autre titre sur la base partagée du mauvais titre.
 	if provider := r.cfg.SharedProviderForTitle(titleSlug); provider != nil {

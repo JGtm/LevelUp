@@ -28,6 +28,9 @@ type mockHomeServiceForSP struct {
 func (m *mockHomeServiceForSP) GetHomePage(_ context.Context, _ string, _ string) (*domain.HomePageResponse, error) {
 	return nil, nil
 }
+func (m *mockHomeServiceForSP) GetHomeMatches(_ context.Context, _ string, _ domain.HomeMatchesRequest) (*domain.HomeMatchesPage, error) {
+	return nil, nil
+}
 func (m *mockHomeServiceForSP) GetBattlePass(_ context.Context) domain.BattlePassResponse {
 	return domain.BattlePassResponse{}
 }

@@ -162,7 +162,7 @@ describe("RootLayout — refus de reconnexion Xbox d'un utilisateur connecté", 
 
     render(<RootLayout />)
 
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/' })
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/{-$lang}' })
     expect(useAppShellStore.getState().oauthRefusal).toBe('instance_locked')
   })
 
@@ -172,7 +172,7 @@ describe("RootLayout — refus de reconnexion Xbox d'un utilisateur connecté", 
 
     render(<RootLayout />)
 
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/' })
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/{-$lang}' })
     expect(useAppShellStore.getState().oauthRefusal).toBeNull()
   })
 

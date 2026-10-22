@@ -124,11 +124,11 @@ func extractMatchMetrics(row *historyRow) *matchMetrics {
 		v := row.Rank
 		m.Rank = &v
 	}
-	if row.TeamMMR > 0 {
+	if analysis.MMRKnown(row.TeamMMR) {
 		v := row.TeamMMR
 		m.TeamMMR = &v
 	}
-	if row.EnemyMMR > 0 {
+	if analysis.MMRKnown(row.EnemyMMR) {
 		v := row.EnemyMMR
 		m.EnemyMMR = &v
 	}

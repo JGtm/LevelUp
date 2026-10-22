@@ -177,7 +177,7 @@ describe('ReplayTimelineTracks — l’ombre de présence et sa porte', () => {
    * dégradé part toujours de la frontière — `to left` pour une ombre de tête, `to right` pour
    * une ombre de queue — et l'infobulle porte la réserve.
    */
-  it('SOURCE FILM : le bord se DÉGRADE depuis la frontière, et les mots restent au fait', () => {
+  it('SOURCE FILM : le bord se DÉGRADE depuis la frontière, et les mots sont ceux de l API', () => {
     const { container } = renderTracks({
       shades: [shade({ source: 'film' }), depart({ source: 'film' })],
     })
@@ -186,8 +186,8 @@ describe('ReplayTimelineTracks — l’ombre de présence et sa porte', () => {
     expect(tete.style.background).toContain('linear-gradient(to left')
     expect(queue.style.background).toContain('linear-gradient(to right')
     const [entree, sortie] = portes(rangee)
-    expect(entree.getAttribute('aria-label')).toBe('1:00 — entre en partie')
-    expect(sortie.getAttribute('aria-label')).toBe('8:00 — ne reviendra plus')
+    expect(entree.getAttribute('aria-label')).toBe('1:00 — a rejoint la partie')
+    expect(sortie.getAttribute('aria-label')).toBe('8:00 — a quitté la partie')
     expect(sortie.title).toContain('le film ne les distingue pas')
   })
 

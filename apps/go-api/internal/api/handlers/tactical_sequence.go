@@ -4,9 +4,8 @@
 //
 // UN HANDLER A PART, MONTE DANS LE GROUPE DU REJEU 2D. La sequence lit les TRAJECTOIRES decodees du
 // film, comme `/replay` : elle doit suivre EXACTEMENT les memes gardes — `RequireCapability(CapReplay)`
-// (un titre sans rejeu rend 503) et `LocalOnlyReplay` (le rejeu n'est servi qu'en local jusqu'au
-// reexamen de la decision du 2026-07-28, cf. replay_local_gate.go). Activer le rejeu en production
-// active donc la vue D sans autre changement. En demo, `ReplayGate` lit le match dans le CORPS
+// (un titre sans rejeu rend 503) et `ReplayGate` (en demo, seuls les matchs figes sont servis,
+// cf. replay_demo_gate.go). En demo, `ReplayGate` lit le match dans le CORPS
 // (`match_id`) : la route n'a pas de `{match_id}` dans son chemin. Les autres routes de l'onglet (`TacticalHandler`) restent
 // hors de ce groupe : elles ne lisent que la base et les sidecars.
 //

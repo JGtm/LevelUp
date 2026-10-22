@@ -133,6 +133,16 @@ var detDBs = []string{
 // start_time, id…) sont comparées octet à octet.
 var detAuditCols = map[string]bool{"created_at": true, "updated_at": true}
 
+// detOpaqueCols : identifiants de génération tirés au hasard par l'écrivain des passes
+// (`summary_pass`, `newDecodePassID`) : opaques, jamais lus pour leur valeur, différents à
+// chaque run par construction. Exclus du dump ; la cohérence de la tête avec ses filles est
+// tenue par TestSeedDemoSynthetic_ResumesCoherents, pas par la comparaison.
+var detOpaqueCols = map[string]map[string]bool{
+	"match_kill_heads":   {"summary_pass": true},
+	"match_kill_pairs":   {"summary_pass": true},
+	"match_assist_pairs": {"summary_pass": true},
+}
+
 // detSeededTables : tables réellement ÉCRITES par le seeder synthétique (grep des
 // INSERT de seed_demo_synthetic*.go) — le périmètre du déterminisme. On NE compare
 // PAS les tables de référence seedées par les migrations (asset_translations,
@@ -147,8 +157,11 @@ var detSeededTables = map[string]bool{
 	"highlight_events":        true,
 	"killer_victim_pairs":     true,
 	"match_citations":         true,
+	"match_assist_pairs":      true,
 	"match_csrs":              true,
 	"match_kill_events":       true,
+	"match_kill_heads":        true,
+	"match_kill_pairs":        true,
 	"match_participants":      true,
 	"match_registry":          true,
 	"match_skill_rank":        true,
@@ -242,7 +255,7 @@ func dumpTableData(t *testing.T, db *sql.DB, table string) string {
 			colRows.Close()
 			t.Fatalf("scan colonne %s: %v", table, err)
 		}
-		if !detAuditCols[c] {
+		if !detAuditCols[c] && !detOpaqueCols[table][c] {
 			cols = append(cols, c)
 		}
 	}

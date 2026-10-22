@@ -24,22 +24,25 @@ import { buildKillFx } from '../model/killFx'
 import { buildObjectivePulses, type ObjectiveElementReady } from './objectivesLayer'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { buildShotFx } from '../model/shotFx'
+import type { SlotIdentity } from './useSlotIdentity'
 
 export function useReplayFx(
   doc: ReplayDocumentReady,
   kills: readonly ReplayKill[],
   aimHold: number,
   mapObjectives: ObjectiveElementReady[],
+  seat: Pick<SlotIdentity, 'seatedAtSlot' | 'seatedOfXuid'>,
 ) {
   // Les tirs : famille, teinte et REGARD du tireur résolus une fois au chargement (mesure : la
   // couverture d'orientation passe de 18,6 % à 100 % sur le film témoin en relisant le regard
   // plutôt que le champ de l'événement).
-  const shotFx = useMemo(() => buildShotFx(doc, aimHold), [doc, aimHold])
+  const { seatedAtSlot, seatedOfXuid } = seat
+  const shotFx = useMemo(() => buildShotFx(doc, aimHold, seatedAtSlot), [doc, aimHold, seatedAtSlot])
   // Le « ! » dans le point du tireur (demande du 2026-08-24) : mêmes tirs, même fenêtre que
   // l'éclair de bouche — deux effets du même événement (cf. fireMark.ts).
   const fireMarks = useMemo(() => buildFireMarks(doc), [doc])
   // Les effets de mort, positions relues une fois (patron POC).
-  const killFx = useMemo(() => buildKillFx(doc, kills), [doc, kills])
+  const killFx = useMemo(() => buildKillFx(doc, kills, seatedOfXuid), [doc, kills, seatedOfXuid])
   // Fins de vol de grenade : le lien lancer -> projectile est dans l'artefact (v3).
   const grenadeRestFx = useMemo(() => buildGrenadeRestFx(doc), [doc])
   // LES TRACTIONS DE GRAPPIN ONT QUITTÉ CE HOOK le 2026-09-03 : elles ont rejoint la poussée du

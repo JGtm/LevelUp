@@ -358,6 +358,48 @@ func TestRegistre_SignaturesSurLeSQLRenduParDuckDB(t *testing.T) {
 	}
 }
 
+// TestRegistre_SignaturesDesResumesSurLaBaseMigree : les vues des résumés par match (ADR 0039),
+// telles que DuckDB les rend après la migration, portent la règle du registre — la tête
+// « dernière génération », ses filles « génération de la tête » — et une règle modifiée ne la
+// porte plus.
+func TestRegistre_SignaturesDesResumesSurLaBaseMigree(t *testing.T) {
+	db, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close() //nolint:errcheck
+	if err := ensureMatchKillSummaries(db); err != nil {
+		t.Fatalf("ensureMatchKillSummaries: %v", err)
+	}
+	mutations := map[string][2]string{
+		"match_kill_heads":   {"DESC)", "ASC)"},
+		"match_kill_pairs":   {"h.summary_pass = p.summary_pass", "h.summary_rev = p.summary_rev"},
+		"match_assist_pairs": {"h.summary_pass = a.summary_pass", "h.summary_rev = a.summary_rev"},
+	}
+	vues := 0
+	for _, c := range tablesCompactables {
+		mut, ok := mutations[c.Table]
+		if !ok {
+			continue
+		}
+		vues++
+		var rendu string
+		if err := db.QueryRow(`SELECT sql FROM duckdb_views() WHERE view_name = ?`, c.View).Scan(&rendu); err != nil {
+			t.Fatalf("%s : %v", c.View, err)
+		}
+		if !c.regleDeLaVueTenue(rendu) {
+			t.Errorf("%s : la signature %q n'est pas trouvée dans le SQL rendu %q", c.Table, c.signature, rendu)
+		}
+		modifie := strings.Replace(rendu, mut[0], mut[1], 1)
+		if modifie == rendu || c.regleDeLaVueTenue(modifie) {
+			t.Errorf("%s : une règle modifiée passe encore la signature (rendu %q)", c.Table, rendu)
+		}
+	}
+	if vues != len(mutations) {
+		t.Fatalf("%d tables de résumé au registre, attendu %d", vues, len(mutations))
+	}
+}
+
 // reMutationDeLigne : les écritures qui toucheraient des lignes EXISTANTES d'une table (le
 // déclencheur du bug ART #23645). La compaction n'a droit qu'à CREATE / INSERT dans une table
 // neuve / DROP / RENAME.

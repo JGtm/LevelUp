@@ -190,8 +190,11 @@ export function ReplayInventoryRow({
               // (aucune arme dégainée pour un joueur que l'artefact déclare mort), et le badge
               // d'état en fin de rangée dit POURQUOI. Écrire « dégainée ? » à côté de « Mort »
               // poserait une lacune là où la cause est connue.
-              <span className="border-b border-dashed border-border opacity-80">
-                {t.drawnUnknown}
+              //
+              // AUCUN TEXTE À L'ÉCRAN (retour user 2026-10-20) : le rejeu n'écrit pas de mot sur
+              // une fiche. Un tiret neutre tient la place, l'infobulle porte « dégainée ? ».
+              <span className="opacity-60" title={t.drawnUnknown}>
+                —
               </span>
             ) : null
           )}

@@ -42,11 +42,10 @@ var _ port.MatchRangeRepository = (*WeaponRangeRepo)(nil)
 // que la requête mesurée : un dénominateur plus large que son numérateur n'est pas une
 // couverture, c'est un chiffre qui fait peur sans rien dire.
 const matchRangeKillsTotalSQL = `
-SELECT count(*)
-FROM ` + KillEventsCanonicalTable + `
+SELECT CAST(COALESCE(SUM(n_killer_xuid), 0) AS BIGINT)
+FROM match_kill_heads_latest
 WHERE match_id IN (%s)
-  AND publishable
-  AND feed_killer_xuid IS NOT NULL`
+  AND publishable`
 
 // LoadMatchRangeKills rend les frags mesurés de TOUS les joueurs des matchs du scope, du
 // seul côté tueur, avec le nombre de frags publiables de ces mêmes matchs.

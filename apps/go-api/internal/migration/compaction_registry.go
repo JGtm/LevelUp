@@ -77,11 +77,16 @@ func passeDeLaVueParente(table, vueParente, col string) compactable {
 	}
 }
 
-// tablesCompactables : le registre. `match_usage_films` précède `match_usage_players` par
-// lisibilité seulement — la règle des joueurs lit la VUE des films, que la compaction des films
-// laisse identique.
+// tablesCompactables : le registre. `match_usage_films` précède `match_usage_players` (et
+// `match_kill_heads` ses deux filles) par lisibilité seulement — la règle des filles lit la VUE
+// de la tête, que la compaction de la tête laisse identique.
 var tablesCompactables = []compactable{
 	dernierePasse("match_kill_events", "decode_pass"),
+	// Résumés par match du journal (ADR 0039) : la tête décide la génération, ses filles la
+	// suivent (même patron que match_usage_films / match_usage_players).
+	dernierePasse("match_kill_heads", "summary_pass"),
+	passeDeLaVueParente("match_kill_pairs", "match_kill_heads_latest", "summary_pass"),
+	passeDeLaVueParente("match_assist_pairs", "match_kill_heads_latest", "summary_pass"),
 	dernierePasse("match_lives", "decode_pass"),
 	dernierePasse("match_death_context", "decode_pass"),
 	// match_death_mates (plan Tactique coequipiers L1, 2026-10-14) : meme passe que match_lives et

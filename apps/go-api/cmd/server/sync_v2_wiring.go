@@ -327,6 +327,9 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 				return deps.Friends.Get(xuid)
 			})
 		}
+		// 2a. Règle de découpage en sessions du titre du cycle (la même que le recalcul
+		// complet). Sans store de réglages : règle par défaut, journalisée à chaque cycle.
+		engine.WithSessionOptionsLoader(settingsplatform.SessionOptionsLoader(deps.Settings, deps.Cfg.TitleSettingsPath(deps.TitleSlug)))
 
 		// 2b. Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5). Le hook s'installe
 		// toujours ; c'est LUI qui décide (construire ici / mettre en file / rien),

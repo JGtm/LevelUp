@@ -345,6 +345,31 @@ func (s *Store) SetProvisionGrant(username, code string) error {
 	return s.save(f)
 }
 
+// SetLocale pose la langue préférée du compte. Appelé par POST /session/context
+// quand une session authentifiée change explicitement sa locale, pour que le choix
+// suive le compte à la prochaine connexion (autre session/appareil) au lieu de
+// retomber au défaut "fr".
+func (s *Store) SetLocale(username, locale string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	f, err := s.load()
+	if err != nil {
+		return err
+	}
+
+	slug := slugify(username)
+	user, exists := f.Users[slug]
+	if !exists {
+		return ErrUserNotFound
+	}
+
+	user.Locale = locale
+	f.Users[slug] = user
+
+	return s.save(f)
+}
+
 // GetByXUID retourne l'utilisateur dont le XUID matche.
 // Retourne ErrUserNotFound si aucun utilisateur n'a ce XUID.
 // Scan linéaire — acceptable pour un user store en JSON (typiquement < 100 users).

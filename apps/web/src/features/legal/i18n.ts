@@ -46,8 +46,8 @@ export interface PrivacyText {
 
 /** Date de dernière révision de fond, affichée en tête de page. */
 export const PRIVACY_UPDATED_AT: Record<Locale, string> = {
-  fr: '16 octobre 2026',
-  en: '16 October 2026',
+  fr: '20 octobre 2026',
+  en: '20 October 2026',
 }
 
 const FR_TEXT: PrivacyText = {
@@ -76,7 +76,7 @@ const FR_TEXT: PrivacyText = {
       paragraphs: [
         "Microsoft limite le débit de requêtes de chaque compte. Pour accélérer la synchronisation de tous, les jetons des joueurs qui y consentent forment un pool partagé : une requête de synchronisation, y compris pour un autre joueur, peut passer par le jeton de n'importe lequel d'entre eux.",
         "Le pool ne sert qu'à lire des données publiques de parties (historique, statistiques, classement), jamais vos données privées. Le jeton n'est affiché à personne, n'est transmis à aucun autre joueur et ne part que vers Microsoft. Ces requêtes sont faites au nom de votre compte.",
-        "Cette utilisation repose sur votre consentement, demandé à la première connexion sans option présélectionnée. Sans décision, ou si vous refusez, votre jeton ne sert que votre propre synchronisation, qui reste possible mais plus lente. Vous pouvez changer d'avis à tout moment dans Réglages, onglet Synchronisation : un retrait prend effet à la requête suivante.",
+        "Cette utilisation repose sur votre consentement, demandé à la première connexion sans option présélectionnée. Sans décision, ou si vous refusez, votre jeton ne sert que votre propre synchronisation, qui reste possible mais plus lente. Vous pouvez changer d'avis à tout moment dans Réglages, onglet Compte : un retrait prend effet à la requête suivante.",
         "Votre décision est conservée avec sa date et sa nature (choix dans l'application, ou accord donné directement à l'auteur avant l'existence de ce réglage). Elle est supprimée avec votre jeton.",
       ],
     },
@@ -159,7 +159,7 @@ const EN_TEXT: PrivacyText = {
       paragraphs: [
         "Microsoft limits the request rate of each account. To speed up everyone's sync, the tokens of players who consent form a shared pool: a sync request, including one for another player, may go through the token of any of them.",
         'The pool is only used to read public match data (history, statistics, ranking), never your private data. The token is shown to nobody, is not passed on to any other player and only goes to Microsoft. These requests are made in the name of your account.',
-        'This use rests on your consent, asked at first sign-in with no option preselected. With no decision, or if you decline, your token only serves your own sync, which still works but is slower. You can change your mind at any time in Settings, Sync tab: a withdrawal takes effect from the next request.',
+        'This use rests on your consent, asked at first sign-in with no option preselected. With no decision, or if you decline, your token only serves your own sync, which still works but is slower. You can change your mind at any time in Settings, Account tab: a withdrawal takes effect from the next request.',
         'Your decision is kept with its date and nature (a choice made in the application, or an agreement given directly to the author before this setting existed). It is deleted along with your token.',
       ],
     },

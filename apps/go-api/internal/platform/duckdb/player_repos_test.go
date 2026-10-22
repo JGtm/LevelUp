@@ -64,8 +64,8 @@ func newTestPlayerDB(t *testing.T) *PlayerDB {
 	attachGlobalSchemaToPlayer(t, player, global)
 	// Phase 3.bis plan stabilisation 2026-05-22 : seed SharedSocial avec le
 	// vrai schéma shared_social.duckdb (id PK + media_file_id JOIN key). Sans
-	// ça, les tests qui ciblent les repos migrés sur pdb.SharedSocial (Q28
-	// LoadRecentMedia) ne peuvent pas valider le path.
+	// ça, les tests qui ciblent les repos migrés sur pdb.SharedSocial ne
+	// peuvent pas valider le path.
 	seedSharedSocialSchema(t, social)
 	// SharedReader pointe vers `player` (qui contient le faux schéma `shared`
 	// créé par seedPlayerSchema) pour que les tests legacy qui font
@@ -202,14 +202,6 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			match_id VARCHAR NOT NULL, killer_xuid VARCHAR NOT NULL,
 			killer_gamertag VARCHAR, victim_xuid VARCHAR NOT NULL,
 			victim_gamertag VARCHAR, kill_count INTEGER DEFAULT 1)`,
-		// shared.match_kill_events_latest : LA source de Q26/Q27/Q19b/Q28 depuis le
-		// 2026-08-03. JOURNAL — 1 ligne = 1 mort, pas de `kill_count`. Les xuid y sont
-		// NULLABLES : un xuid absent désigne un BOT, et c'est ce que les filtres carrière
-		// écartent (`opp_xuid <> ?` ne vaut jamais VRAI sur NULL).
-		`CREATE TABLE shared.match_kill_events_latest (
-			match_id VARCHAR NOT NULL, feed_killer_xuid VARCHAR,
-			feed_killer_gamertag VARCHAR, victim_xuid VARCHAR,
-			victim_gamertag VARCHAR, time_ms INTEGER)`,
 		// Vues root-level : alignement avec seedSharedDBSchema, nécessaires
 		// pour les queries migrées vers SharedReader qui ciblent
 		// `match_registry`/`v_gamertag_lookup` etc. (sans préfixe `shared.`).
@@ -232,7 +224,6 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 		// shared, comme en prod où la table vit dans le main du fichier partagé).
 		`CREATE VIEW weapon_accuracy AS SELECT * FROM shared.weapon_accuracy`,
 		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
-		`CREATE VIEW match_kill_events_latest AS SELECT * FROM shared.match_kill_events_latest`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
 		`CREATE VIEW highlight_events AS SELECT * FROM shared.highlight_events`,
 		// ── Tables player
@@ -385,6 +376,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 		if _, err := db.Exec(ctx, q); err != nil {
 			t.Fatalf("seedPlayerSchema DDL: %v\nSQL: %s", err, q)
 		}
+	}
+	// Le journal des morts et ses résumés : le VRAI schéma (ADR 0039), à la racine du catalogue.
+	if err := migration.EnsureMatchKillEvents(db.SQLDb()); err != nil {
+		t.Fatalf("seedPlayerSchema journal : %v", err)
 	}
 	// Append-only #23645 : convertit player_match_enrichment (id PK + stage + written_at)
 	// et crée la vue player_match_enrichment_latest (lue par tous les readers du package).
@@ -649,12 +644,6 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			match_id VARCHAR NOT NULL, killer_xuid VARCHAR NOT NULL,
 			killer_gamertag VARCHAR, victim_xuid VARCHAR NOT NULL,
 			victim_gamertag VARCHAR, kill_count INTEGER DEFAULT 1)`,
-		// shared.match_kill_events_latest : source de Q26 (top encounters) et Q27 (rivals)
-		// depuis la bascule du 2026-08-03. JOURNAL, 1 ligne = 1 mort.
-		`CREATE TABLE shared.match_kill_events_latest (
-			match_id VARCHAR NOT NULL, feed_killer_xuid VARCHAR,
-			feed_killer_gamertag VARCHAR, victim_xuid VARCHAR,
-			victim_gamertag VARCHAR, time_ms INTEGER)`,
 		// shared.v_match_full utilisée par Q4 (filters) et Q5 (history) cross-DB.
 		// ajouté pour que les queries SharedReader-only
 		// (split-merge LoadMatchesForFilters) trouvent la vue côté pdb.Shared.
@@ -684,7 +673,6 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 		// shared, comme en prod où la table vit dans le main du fichier partagé).
 		`CREATE VIEW weapon_accuracy AS SELECT * FROM shared.weapon_accuracy`,
 		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
-		`CREATE VIEW match_kill_events_latest AS SELECT * FROM shared.match_kill_events_latest`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
 		`CREATE VIEW highlight_events AS SELECT * FROM shared.highlight_events`,
 	}
@@ -692,6 +680,10 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 		if _, err := db.Exec(ctx, q); err != nil {
 			t.Fatalf("seedSharedDBSchema DDL: %v\nSQL: %s", err, q)
 		}
+	}
+	// Le journal des morts et ses résumés : le VRAI schéma (ADR 0039), à la racine du catalogue.
+	if err := migration.EnsureMatchKillEvents(db.SQLDb()); err != nil {
+		t.Fatalf("seedSharedDBSchema journal : %v", err)
 	}
 	type row struct {
 		q    string
@@ -1665,37 +1657,6 @@ func TestHomeRepo_LoadHomeSessions_WithData(t *testing.T) {
 	}
 }
 
-func TestHomeRepo_LoadRecentMedia_WithData(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	repo := NewHomeRepo(pdb)
-	rows, err := repo.LoadRecentMedia(context.Background(), 10)
-	if err != nil {
-		t.Fatalf("LoadRecentMedia: %v", err)
-	}
-	if len(rows) != 1 {
-		t.Errorf("attendu 1 média, obtenu %d", len(rows))
-	}
-}
-
-func TestHomeRepo_LoadRecentMedia_TableMissing(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	ctx := context.Background()
-	// Phase 3 plan stabilisation 2026-05-22 : LoadRecentMedia lit désormais
-	// depuis pdb.SharedSocial (table déplacée par migration
-	// drop_media_from_player_db). Test mis à jour pour DROP côté shared_social.
-	if _, err := pdb.SharedSocial.Exec(ctx, "DROP TABLE media_files"); err != nil {
-		t.Fatal(err)
-	}
-	repo := NewHomeRepo(pdb)
-	rows, err := repo.LoadRecentMedia(ctx, 10)
-	if err != nil {
-		t.Fatalf("LoadRecentMedia table manquante doit être silencieux: %v", err)
-	}
-	if rows != nil {
-		t.Errorf("attendu nil, obtenu %v", rows)
-	}
-}
-
 // ---------------------------------------------------------------------------
 // SessionsRepo
 // ---------------------------------------------------------------------------
@@ -2059,6 +2020,7 @@ func TestCareerRepo_GetRivals_WithData(t *testing.T) {
 	// 3 adversaires : rivalA m'a tué 10× et je l'ai tué 3× (nemesis)
 	//                 rivalB je l'ai tué 8× et il m'a tué 1× (victim)
 	//                 rivalC kills équilibrés 5/5
+	var morts []ligneJournal
 	for _, ins := range []struct {
 		killer, victim string
 		n              int
@@ -2073,12 +2035,11 @@ func TestCareerRepo_GetRivals_WithData(t *testing.T) {
 		// JOURNAL : n frags = n LIGNES (plus de kill_count à sommer). Les instants sont
 		// distincts pour rester réalistes ; aucun lecteur carrière ne les lit.
 		for i := 0; i < ins.n; i++ {
-			execOnSharedDBs(t, pdb, ctx,
-				`INSERT INTO shared.match_kill_events_latest
-				 (match_id, feed_killer_xuid, victim_xuid, time_ms) VALUES (?, ?, ?, ?)`,
-				"m1", ins.killer, ins.victim, 1000+i)
+			morts = append(morts, ligneJournal{match: "m1", publiable: true, tueur: ins.killer,
+				victime: ins.victim, timeMS: 1000 + len(morts)})
 		}
 	}
+	poserJournalSurLesDeux(t, pdb, morts...)
 	// Alias gamertags pour l'enrichissement v_gamertag_lookup
 	for _, x := range []string{"rivalA", "rivalB", "rivalC"} {
 		execOnSharedDBs(t, pdb, ctx,

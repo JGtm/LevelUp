@@ -98,29 +98,14 @@ func newReplayRouter(factory handlers.ServiceFactory[port.ReplayService]) *chi.M
 	r := chi.NewRouter()
 	h := handlers.NewReplayHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		// Le garde local est un middleware de transport, pas une branche du handler :
-		// le monter ici reproduit exactement le montage de server_apiv1.go, et laisse
-		// les tests du garde (adresse d'appel non locale → 404) porter sur la chaîne réelle.
-		r.Use(handlers.LocalOnlyReplay)
 		h.Mount(r)
 	})
 	return r
 }
 
-// doReplayGet émet une requête depuis la BOUCLE LOCALE.
-//
-// C'EST NÉCESSAIRE, ET C'EST LE SUJET : le rejeu n'est servi qu'en local (cf.
-// replay_local_gate.go). `httptest.NewRequest` pose `192.0.2.1:1234` comme adresse d'appel —
-// une adresse de documentation, donc non locale — et le garde répondait 404 à tous ces tests.
-// Ils testaient le garde sans le savoir, au lieu de tester le handler.
+// doReplayGet émet un GET sur la route du rejeu d'un match.
 func doReplayGet(r *chi.Mux, slug, matchID string) *httptest.ResponseRecorder {
-	return doReplayGetFrom(r, slug, matchID, "127.0.0.1:54321")
-}
-
-// doReplayGetFrom permet de choisir l'adresse d'appel, pour éprouver le garde lui-même.
-func doReplayGetFrom(r *chi.Mux, slug, matchID, remoteAddr string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, "/players/"+slug+"/matches/"+matchID+"/replay", nil)
-	req.RemoteAddr = remoteAddr
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	return w
@@ -218,32 +203,10 @@ func TestReplayHandler_ServiceError(t *testing.T) {
 	}
 }
 
-// TestReplayHandler_RefusesRemoteCaller vérifie que LA ROUTE applique le garde local.
-//
-// CE QU'IL AJOUTE AUX TESTS DU GARDE. `TestReplayGate_*` éprouve la RÈGLE (quelle adresse est
-// locale, et qu'un en-tête ne peut rien contre elle) ; celui-ci éprouve son BRANCHEMENT — si
-// l'appel à `allowReplay` disparaissait du handler, les tests de la règle resteraient verts et
-// le rejeu serait servi à tout le monde.
-//
-// Il répare aussi le défaut qui l'a fait écrire : le garde a été posé sans que les tests du
-// handler soient adaptés, et ceux-ci tombaient dessus en annonçant un handler cassé.
-func TestReplayHandler_RefusesRemoteCaller(t *testing.T) {
-	mock := &mockReplayService{doc: replaydoc.ReplayDocument{MatchID: "000d5950"}}
-	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }
-	w := doReplayGetFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "203.0.113.7:443")
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("un appelant distant doit recevoir 404, obtenu %d", w.Code)
-	}
-	if !strings.Contains(w.Body.String(), "replay_not_available") {
-		t.Errorf("code d'erreur attendu replay_not_available, body=%s", w.Body.String())
-	}
-}
-
-// doReplayPathFrom émet un GET sur un sous-chemin du rejeu, depuis l'adresse donnée.
-func doReplayPathFrom(r *chi.Mux, slug, matchID, suffixe, remoteAddr string) *httptest.ResponseRecorder {
+// doReplayPath émet un GET sur un sous-chemin du rejeu.
+func doReplayPath(r *chi.Mux, slug, matchID, suffixe string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet,
 		"/players/"+slug+"/matches/"+matchID+"/replay"+suffixe, nil)
-	req.RemoteAddr = remoteAddr
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	return w
@@ -269,7 +232,7 @@ func fondMock() *mockReplayService {
 // TestReplayBackground_OK — le calage voyage entier : sans lui l'image ne se pose nulle part.
 func TestReplayBackground_OK(t *testing.T) {
 	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return fondMock(), nil }
-	w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/background", "127.0.0.1:5432")
+	w := doReplayPath(newReplayRouter(factory), testPlayerSlug, "000d5950", "/background")
 	if w.Code != http.StatusOK {
 		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
 	}
@@ -304,7 +267,7 @@ func TestReplayBackgroundImage_OK(t *testing.T) {
 			mock.image = c.octets
 			mock.imageContentType = c.contentType
 			factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }
-			w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/background.png", "127.0.0.1:5432")
+			w := doReplayPath(newReplayRouter(factory), testPlayerSlug, "000d5950", "/background.png")
 			if w.Code != http.StatusOK {
 				t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
 			}
@@ -324,30 +287,12 @@ func TestReplayBackground_NotAvailable(t *testing.T) {
 	mock := &mockReplayService{bgErr: port.ErrMapBackgroundNotAvailable}
 	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }
 	for _, suffixe := range []string{"/background", "/background.png"} {
-		w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", suffixe, "127.0.0.1:5432")
+		w := doReplayPath(newReplayRouter(factory), testPlayerSlug, "000d5950", suffixe)
 		if w.Code != http.StatusNotFound {
 			t.Errorf("%s: attendu 404, obtenu %d", suffixe, w.Code)
 		}
 		if !strings.Contains(w.Body.String(), "map_background_not_available") {
 			t.Errorf("%s: code attendu map_background_not_available, body=%s", suffixe, w.Body.String())
-		}
-	}
-}
-
-// TestReplayBackground_RefusesRemoteCaller — LE POINT QUI COMPTE POUR LA PROD.
-//
-// Le rejeu n'est servi qu'en local ; ses deux nouvelles routes doivent hériter du MÊME
-// garde, y compris la route chi nue de l'image — c'est précisément celle qui pourrait
-// échapper au montage sans que rien ne le dise.
-func TestReplayBackground_RefusesRemoteCaller(t *testing.T) {
-	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return fondMock(), nil }
-	for _, suffixe := range []string{"/background", "/background.png"} {
-		w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", suffixe, "203.0.113.7:443")
-		if w.Code != http.StatusNotFound {
-			t.Errorf("%s: un appelant distant doit recevoir 404, obtenu %d", suffixe, w.Code)
-		}
-		if strings.HasPrefix(w.Body.String(), "\x89PNG") {
-			t.Errorf("%s: l'image a été servie à un appelant distant", suffixe)
 		}
 	}
 }
@@ -370,7 +315,7 @@ func calloutsMock() *mockReplayService {
 // TestReplayCallouts_OK — l'entrée voyage entière : polygones monde + libellés FR/EN.
 func TestReplayCallouts_OK(t *testing.T) {
 	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return calloutsMock(), nil }
-	w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/callouts", "127.0.0.1:5432")
+	w := doReplayPath(newReplayRouter(factory), testPlayerSlug, "000d5950", "/callouts")
 	if w.Code != http.StatusOK {
 		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
 	}
@@ -389,25 +334,12 @@ func TestReplayCallouts_OK(t *testing.T) {
 func TestReplayCallouts_NotAvailable(t *testing.T) {
 	mock := &mockReplayService{calloutsErr: port.ErrMapCalloutsNotAvailable}
 	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }
-	w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/callouts", "127.0.0.1:5432")
+	w := doReplayPath(newReplayRouter(factory), testPlayerSlug, "000d5950", "/callouts")
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("attendu 404, obtenu %d", w.Code)
 	}
 	if !strings.Contains(w.Body.String(), "map_callouts_not_available") {
 		t.Errorf("code attendu map_callouts_not_available, body=%s", w.Body.String())
-	}
-}
-
-// TestReplayCallouts_RefusesRemoteCaller — la route hérite du même garde local que le
-// reste du rejeu.
-func TestReplayCallouts_RefusesRemoteCaller(t *testing.T) {
-	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return calloutsMock(), nil }
-	w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/callouts", "203.0.113.7:443")
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("un appelant distant doit recevoir 404, obtenu %d", w.Code)
-	}
-	if strings.Contains(w.Body.String(), "Horseshoe") {
-		t.Error("les zones ont été servies à un appelant distant")
 	}
 }
 
@@ -417,7 +349,7 @@ func TestReplayBackground_PlayerNotFound(t *testing.T) {
 		return nil, errors.New("player_not_found")
 	}
 	for _, suffixe := range []string{"/background", "/background.png"} {
-		w := doReplayPathFrom(newReplayRouter(factory), "inconnu", "000d5950", suffixe, "127.0.0.1:5432")
+		w := doReplayPath(newReplayRouter(factory), "inconnu", "000d5950", suffixe)
 		if w.Code != http.StatusNotFound {
 			t.Errorf("%s: attendu 404, obtenu %d", suffixe, w.Code)
 		}

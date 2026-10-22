@@ -146,12 +146,11 @@ describe('finalScoreFromHeader', () => {
     ).toEqual({ ally: 2, enemy: 1 })
   })
 
-  // Le critère est la PRÉSENCE des deux nombres, jamais leur nature. Une variante à manches
-  // dont les camps finissent à égalité (témoin adb93fb7 : 1 partout + 1 nulle) retombe côté
-  // serveur sur les points et publie score_kind = "points" ; filtrer sur « rounds » renverrait
-  // alors l'écran de fin vers les points de la DERNIÈRE MANCHE, en contradiction avec la vue
-  // match qui affiche le total.
-  it("rend aussi le score quand il est en points (repli d'une égalité de manches)", () => {
+  // Le critère est la PRÉSENCE des deux nombres, jamais leur nature. Une lecture en points
+  // (variante non déclarée, match à une seule manche, manches inconnues) publie
+  // score_kind = "points" ; filtrer sur « rounds » renverrait alors l'écran de fin vers les
+  // points de la DERNIÈRE MANCHE, en contradiction avec la vue match qui affiche le total.
+  it("rend aussi le score quand il est en points (variante non déclarée ou manche unique)", () => {
     expect(
       finalScoreFromHeader({ score_kind: 'points', score_mine: 277, score_theirs: 234 }),
     ).toEqual({ ally: 277, enemy: 234 })

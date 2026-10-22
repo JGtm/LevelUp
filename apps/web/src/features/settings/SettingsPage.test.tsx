@@ -90,6 +90,16 @@ describe('SettingsPage', () => {
     expect(screen.queryByRole('link', { name: /Ouvrir le Lab/i })).not.toBeInTheDocument()
   })
 
+  it('onglet Compte : la mise en commun du jeton y est réglable par tout joueur (lieu promis par /privacy et /terms)', async () => {
+    vi.mocked(useRouterState).mockReturnValue({
+      location: { pathname: '/settings', search: '?tab=account' },
+    } as ReturnType<typeof useRouterState>)
+    useAppShellStore.setState({ poolSharing: 'granted' })
+    renderWithProviders(<SettingsPage />)
+    expect(await screen.findByText('Mise en commun du jeton')).toBeInTheDocument()
+    useAppShellStore.setState({ poolSharing: 'unavailable' })
+  })
+
   it('réglages DÉJÀ en cache au montage : les contrôles montrent la valeur enregistrée, pas le défaut', () => {
     // La coquille lit les réglages avant que la page ne monte : la page part donc d'un
     // cache rempli. Le défaut du délai de session est 120 ; la valeur enregistrée, 45.

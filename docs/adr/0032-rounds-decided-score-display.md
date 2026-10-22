@@ -6,6 +6,8 @@
 
 **Relates to**: [ADR 0006](0006-canonical-indicators.md) (canonical indicators), [ADR 0019](0019-collect-persist-anti-art.md) / [ADR 0026](0026-append-only-art-eradication.md) / [ADR 0030](0030-persist-write-aggregates.md) (INSERT-only writes, why a new column needs a backfill), [ADR 0025](0025-title-agnostic-minimal-viable-window.md) (title-agnostic: config tables, never a slug comparison)
 
+**Amended**: 2026-10-20 (third condition of Decision 1 removed, see *Amendment*)
+
 ---
 
 ## Context
@@ -37,7 +39,8 @@ does not name anybody.
 
 **1. The score displayed for a match is chosen by one rule, in one place** —
 `analysis.ReadTeamScore` (`internal/analysis/team_score_display.go`), pure and
-title-agnostic. Three cumulative conditions must hold to display rounds:
+title-agnostic. Three cumulative conditions must hold to display rounds (the third was
+removed on 2026-10-20, see *Amendment*):
 
 ```
 game_variant_name is declared in regulation.toml [rounds_decide]
@@ -74,6 +77,27 @@ banner keeps the in-round points and the round pips, and derives its running tal
 film (it must follow playback). The end-of-match panel — and its twin repainted into the
 exported video — take the round tally from the API, so the replay and the match view can
 never announce two different results.
+
+## Amendment (2026-10-20) — a tied round tally is displayed as rounds
+
+Decision 1 listed three cumulative conditions. The third one, `rounds_won(A) != rounds_won(B)`,
+is **removed**. Product decision of 2026-10-20: *for the points, display the number of rounds
+won by each team, whatever the result.* A declared variant with `rounds_total >= 2` therefore
+always shows its round tally, including when both sides won the same number of rounds.
+
+Why the fallback was dropped: it was justified by one witness (`adb93fb7`: one round each plus
+one tied round, and yet a winner exists), and it made the same variant read in rounds on one
+match and in points on the next. The visible failure case was a ranked Oddball match marked as
+abandoned at one round each (`rounds_total = 2`, the maximum of won + lost + tied over both
+sides): the tile showed the point score (`140 - 91`) where `1 - 1` is what was played. The
+verdict of a match is carried by `outcome`, never inferred from the score label, so a `1 - 1`
+beside a victory is not a contradiction the app has to hide.
+
+What stays as written: the variant must be declared in `[rounds_decide]` (Arena CTF keeps its
+point total), the match must have at least two rounds (a single-round match keeps points), and
+both sides' round counts must be known and non-negative (otherwise points). The API still
+carries `score_kind` and the point score as the secondary reading, so a client that filters on
+the *presence* of the two numbers (the replay end screen) is unaffected.
 
 ## Consequences
 

@@ -82,7 +82,7 @@ func ComputeSessionsWithContext(rows []domain.SessionMatchRow, opts domain.Sessi
 				// (sémantique inverse, cf. fix 2026-05-08).
 				teammatesBreak = derefString(prev.TeammatesSig) != derefString(r.TeammatesSig)
 			default:
-				// rétrocompatibilité : comportement historique (group si pas d'amis, friends sinon)
+				// mode vide ou inconnu : même rupture que friends (aucune sans ami suivi)
 				teammatesBreak = isTeammatesBreak(prev.TeammatesSig, r.TeammatesSig, friendSet)
 			}
 			if gapBreak || teammatesBreak || rankedBreak {

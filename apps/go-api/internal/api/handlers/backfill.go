@@ -145,7 +145,8 @@ func (h *BackfillHandler) handleStartBackfill(ctx context.Context, in *backfillS
 	// → conflit "different configuration" pour les readers HTTP.
 	// Moteur DU TITRE demandé (req.Title, résolu plus haut) et provider shared de ce titre : le provider
 	// du boot est celui du titre par défaut, il ferait écrire un autre titre dans la mauvaise base.
-	engine := go_sync.NewSyncEngineForTitle(h.cfg.RepoRoot, req.Title, gamertag, xuid, tokens, nil)
+	engine := go_sync.NewSyncEngineForTitle(h.cfg.RepoRoot, req.Title, gamertag, xuid, tokens, nil).
+		WithSessionOptionsFromConfig(h.cfg)
 	if provider := h.cfg.SharedProviderForTitle(req.Title); provider != nil {
 		engine = engine.WithSharedProvider(provider)
 	}

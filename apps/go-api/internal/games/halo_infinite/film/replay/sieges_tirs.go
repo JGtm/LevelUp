@@ -203,7 +203,7 @@ func (pp *poseDesPlaces) mesurerLAffichage() mesureDeLAffichage {
 				if placesParEquipe[*t] == nil {
 					placesParEquipe[*t] = map[int]bool{}
 				}
-				placesParEquipe[*t][pp.roster[i].Seat] = true
+				placesParEquipe[*t][placeAffichee(pp.roster[i], iv)] = true
 			}
 		}
 	}

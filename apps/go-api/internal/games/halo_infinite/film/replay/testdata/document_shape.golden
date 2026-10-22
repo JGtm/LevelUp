@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 100
-empreinte-stockee d596ef6bb2c789df
-empreinte-servie d596ef6bb2c789df
-empreinte-cuite 02c5b067e4c5c6b8
+schema 101
+empreinte-stockee 90df2088fb2a1869
+empreinte-servie 90df2088fb2a1869
+empreinte-cuite f0373a7f9b460793
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -806,6 +806,7 @@ Point
   Z json:"z,omitempty" float32
 PresenceInterval
   From json:"from" int
+  Seat json:"seat,omitempty" *int
   To json:"to" int
   ToMax json:"toMax,omitempty" *int
 Projectile
@@ -935,11 +936,15 @@ ScoreTimeline
   TargetScore json:"targetScore,omitempty" *int
   Teams json:"teams,omitempty" []TeamScore
 SeatCoverage
+  AbsencesTenuesParUnBot json:"absencesTenuesParUnBot" int
   Apparies json:"apparies" int
   Arrivants json:"arrivants" int
   BornesDifferees json:"bornesDifferees" int
+  BotsRelevesALaTaille json:"botsRelevesALaTaille" int
+  BotsRelevesEnJeu json:"botsRelevesEnJeu" int
   BotsSuccesseurs json:"botsSuccesseurs" int
   Capacite json:"capacite" int
+  CapaciteSource json:"capaciteSource,omitempty" string
   Chevauchements json:"chevauchements" int
   Depassements json:"depassements" int
   EntitesContestees json:"entitesContestees" int
@@ -955,6 +960,7 @@ SeatCoverage
   Presences json:"presences" string
   PresencesCloses json:"presencesCloses" int
   PresencesParLesVies json:"presencesParLesVies" int
+  RameneesALaTaille json:"rameneesALaTaille" int
   RelaisBornes json:"relaisBornes" int
   ReprisesEcrites json:"reprisesEcrites" int
   SansEquipe json:"sansEquipe" int

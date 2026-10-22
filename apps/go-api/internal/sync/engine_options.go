@@ -13,11 +13,13 @@ import (
 	"context"
 
 	"levelup/go-api/internal/assets"
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/replayartifacts"
@@ -122,6 +124,31 @@ func (e *SyncEngine) WithSharedProvider(p sharedprovider.Provider) *SyncEngine {
 func (e *SyncEngine) WithFriendsLoader(loader FriendsLoader) *SyncEngine {
 	e.friendsLoader = loader
 	return e
+}
+
+// SessionOptionsLoader rend les options de découpage en sessions du titre du moteur,
+// relues à chaque cycle. En production : settings.SessionOptionsLoader, la règle unique
+// que partagent le recalcul complet, le backfill, l'import et la page Sessions.
+type SessionOptionsLoader func(ctx context.Context) domain.SessionComputeOptions
+
+// WithSessionOptionsLoader attache la règle de découpage en sessions qu'applique l'étape
+// sessions du post-sync. Sans chargeur, l'étape applique la règle par défaut et le
+// journalise (WARN) à chaque cycle : un moteur non câblé ignore le réglage utilisateur.
+func (e *SyncEngine) WithSessionOptionsLoader(loader SessionOptionsLoader) *SyncEngine {
+	e.sessionOptions = loader
+	return e
+}
+
+// WithSessionOptionsFromConfig branche la règle de session du titre DU MOTEUR lue depuis la
+// configuration (settings.SessionOptionsForConfig : cfg.AppSettingsPath + overlay du titre).
+// C'est le câblage des sites sans Store de réglages (CLI, moteurs construits à la demande) ;
+// le titre vient du moteur, jamais d'un second paramètre qui pourrait diverger. Garde-rail :
+// archlint/session_options_single_source_test.go.
+func (e *SyncEngine) WithSessionOptionsFromConfig(cfg *config.AppConfig) *SyncEngine {
+	titleSlug := e.titleSlug
+	return e.WithSessionOptionsLoader(func(ctx context.Context) domain.SessionComputeOptions {
+		return settings_platform.SessionOptionsForConfig(ctx, cfg, titleSlug)
+	})
 }
 
 // WithCSRSeasonID configure l'identifiant de saison CSR (ex: "CsrSeason8").

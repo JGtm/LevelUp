@@ -98,7 +98,9 @@ func TestLecturesHistorique_FenetresBorneesAuxMatchsDuJoueur(t *testing.T) {
 	if len(rel) != 1 || rel[0].KillsDealt != 4 || rel[0].DeathsSuffered != 2 {
 		t.Fatalf("relations scopées = %+v, want l'adversaire, 4 frags / 2 morts", rel)
 	}
-	exigerFenetresBornees(t, b, "GetRelations (scopé)", 2*mortsParMatchFenetres, 1)
+	// Vue fille S1 sous une liste : la fenêtre de la tête voit toutes les têtes (une par match),
+	// jamais les lignes de S1 (ADR 0039 décision 7).
+	exigerFenetresBornees(t, b, "GetRelations (scopé)", tetesDuJournal(t, b.brute), 1)
 }
 
 // exigerUneLectureDesRivaux : l'agrégat Q27 (reconnu à sa colonne `match_rencontre`) est lu une

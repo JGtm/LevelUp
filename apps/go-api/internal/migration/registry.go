@@ -313,6 +313,8 @@ func runSteps(db *sql.DB, slug string, target TargetDB, steps []Migration, order
 		applyStepBackfill(ctx, db, target, steps[i], state)
 	}
 	checkpointPostMigration(ctx, db, target, appliedCount)
+	// Clés que le schéma canonique déclare et que la base a perdues (declared_keys_repair.go).
+	repairDeclaredKeys(ctx, db, slug, target, steps)
 
 	if err := recordTitleSchemaVersion(ctx, db, slug, target, len(order)); err != nil {
 		slog.WarnContext(ctx, "migration: title_schema_version non écrit (non-fatal)",

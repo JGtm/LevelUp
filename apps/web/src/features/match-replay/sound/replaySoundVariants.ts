@@ -42,6 +42,11 @@ export interface ReplaySoundEvent {
    * le conteneur du jeu en mode « cadence de déclenchement » — une voix par rafale, jamais un mur.
    */
   cutMs?: number
+  /**
+   * UNE VOIX D'ANNONCEUR (« manche terminée ») : elle échappe au plafond de voix, à la page comme à
+   * l'export (`soundOccupiesVoice`). Absent = un bruitage, soumis au plafond.
+   */
+  announcer?: true
 }
 
 /**

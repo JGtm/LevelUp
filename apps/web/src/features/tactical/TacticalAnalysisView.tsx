@@ -196,6 +196,7 @@ function useReglages(
   const [question, setQuestion] = useState<TacticalQuestion>('morts')
   const [qui, setQui] = useState<TacticalQui>('moi')
   const [spawn, setSpawn] = useState('')
+  const [zonesVisibles, setZonesVisibles] = useState(true)
   const escouadeDisponible = coequipiers.length > 0
   const escouadeEnAttente = qui === 'escouade' && !escouadeDisponible
   return {
@@ -210,6 +211,8 @@ function useReglages(
     escouadeEnAttente,
     spawn,
     onSpawnChange: setSpawn,
+    zonesVisibles,
+    onZonesVisiblesChange: setZonesVisibles,
   }
 }
 

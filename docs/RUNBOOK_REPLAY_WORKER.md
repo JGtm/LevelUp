@@ -179,8 +179,9 @@ A `403` from nginx on this route after the restriction means the worker's addres
 
 ## 4. Activation sequence (v7.5 release)
 
-Run the steps in order. Steps 1 and 2 concern production; step 3 concerns csstat; step 4 is
-a product decision, not a technical formality.
+Run the steps in order. Steps 1 and 2 concern production; step 3 concerns csstat. The 2D
+replay itself needs no switch: it is served to visitors like any other player route, under
+the same access checks (player ownership, match participation).
 
 ### Step 1 — Wire the staged token into production
 
@@ -243,29 +244,7 @@ From this point, `scripts/deploy-worker.sh` restarts the service on every deploy
 compares the string returned by `is-enabled` to `enabled` exactly (systemd returns exit 0
 for several states, and `1` for `linked` as well as for `disabled`).
 
-### Step 4 — Serve the replay publicly (`LEVELUP_REPLAY_PUBLIC=1`)
-
-**This is a product decision, and its stated criterion is currently NOT met.** Read
-`apps/go-api/internal/api/handlers/replay_local_gate.go` before doing it.
-
-What the variable does, exactly: `replayPublic` is read once at start-up
-(`replay_local_gate.go:74`) and lifts the `LocalOnlyReplay` middleware
-(`:110-119`), which otherwise answers `404 replay_not_available` to every replay request
-whose **TCP peer address** is not loopback (headers are deliberately not trusted,
-`:78-96`). It is mounted on the replay routes only (`internal/api/server_apiv1.go:687`);
-it has no effect whatsoever on the worker protocol — steps 1 to 3 work with the gate in
-place, and the artifacts are built either way. This step only decides whether visitors can
-*see* the 2D replay.
-
-The gate's removal criterion is shot coverage >= 88 percent on a named seven-film corpus.
-As documented in the file, `64e8adfa` sits at 87.39 percent, below the floor. The criterion
-"does not renegotiate itself": lifting the gate is an explicit user arbitration between
-accuracy and availability, to be recorded when taken.
-
-If taken: add `LEVELUP_REPLAY_PUBLIC=1` to `/opt/levelup/.env.local` on lvelup and
-`docker compose up -d levelup` (same reason as step 1).
-
-### Step 5 — Verify
+### Step 4 — Verify
 
 1. **Admin build queue table** — `/admin/sync` in the app (`BuildQueueSection`, fed by
    `GET /api/v1/admin/monitoring/build-queue`). Expect the worker to appear with id

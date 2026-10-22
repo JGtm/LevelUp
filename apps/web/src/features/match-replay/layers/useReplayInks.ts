@@ -112,24 +112,21 @@ const RIFT_CORE_TOKEN: SemanticToken = 'bonus'
 
 
 /**
- * LES ENCRES DES TROIS NATURES DE SOCLE (retour utilisateur du 2026-08-26 : « une couleur pour
- * chaque type, en respectant les couleurs accessibles »).
- *
- * TROIS TOKENS DÉJÀ EN SERVICE DANS LE REJEU, aucun nouveau — c'est la condition pour que la
- * palette d'accessibilité de l'utilisateur (et ses variantes daltonisme) continue de valoir
- * sans qu'on ait à la ré-étalonner :
- *   - `legendary` pour un POWER-UP : c'est déjà l'or de l'encadré de surbouclier sur les fiches
- *     (cf. ReplayTeams). Un bonus au sol et l'état qu'il donne se disent de la même couleur ;
- *   - `warning` pour une ARME DE PUISSANCE : c'est déjà le token du mur de protection, retenu
- *     le 2026-08-18 comme la teinte des objets de terrain à fort enjeu ;
+ * LES ENCRES DES NATURES DE SOCLE. Deux tokens déjà en service dans le rejeu, aucun nouveau — la
+ * palette d'accessibilité de l'utilisateur (et ses variantes daltonisme) continue de valoir sans
+ * ré-étalonnage :
+ *   - `warning` pour un socle à FORT ENJEU, POWER-UP comme ARME DE PUISSANCE : c'est le code des
+ *     armes spéciales (vignette blanche bordée de cette encre sur un socle garni, losange de cette
+ *     encre quand l'emplacement est vide), et le power-up le partage (contrôle n° 3 des contrôles
+ *     de la v8, 2026-10-21, qui remplace l'or `legendary` du 2026-08-26 sur ce point) ;
  *   - `divergent-neutral` pour un RÂTELIER ordinaire : le neutre sémantique du rejeu, celui qui
  *     recule — un socle classique ne doit pas concurrencer les deux autres.
  *
- * LA HIÉRARCHIE EST LE POINT, pas la teinte exacte : deux natures à fort enjeu qui se
- * distinguent l'une de l'autre, et une troisième qui s'efface. L'utilisateur tranche à l'écran.
+ * LA NATURE RESTE DISTINCTE DANS LE MODÈLE (`PadFamily`) : le libellé, la vignette et l'infobulle
+ * disent toujours « surbouclier » ou « Sniper » ; seule l'encre est commune aux deux enjeux.
  */
 const PAD_FAMILY_TOKENS: Readonly<Record<PadFamily, SemanticToken>> = {
-  powerup: 'legendary',
+  powerup: 'warning',
   power: 'warning',
   classic: 'divergent-neutral',
 }

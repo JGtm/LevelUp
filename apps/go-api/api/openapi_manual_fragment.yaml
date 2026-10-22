@@ -868,12 +868,65 @@ paths:
           description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
       responses:
         '200':
-          description: Page accueil (hero card, timeline, médias récents)
+          description: Page accueil (hero card, tête des matchs récents, sessions)
           content:
             application/json:
               schema:
                 type: object
                 description: 'TODO Sprint 32 : schéma HomePageResponse complet'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          description: |
+            Page momentanément indisponible, réessayer après `Retry-After` :
+            `home_page_db_busy` (bascule RO/RW d'une synchronisation),
+            `home_page_db_recovering` (connexion en cours de récupération) ou
+            `db_busy` (verrou d'écriture).
+          headers:
+            Retry-After:
+              description: Délai conseillé avant un nouvel essai, en secondes
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /players/{player_slug}/pages/home/matches:
+    get:
+      description: |
+        Tuiles de match de l'Accueil. La tête de la liste (30 tuiles) est servie avec `pages/home` ;
+        ce endpoint rend la suite de l'historique par curseur (`before` = `next_before` de la page
+        précédente, tuiles strictement plus anciennes, ordre instant canonique décroissant puis
+        match_id décroissant) et, avec `kind=favorites`, les favoris du joueur en entier.
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - name: kind
+          in: query
+          description: |
+            `recent` (défaut) : l'historique par curseur. `favorites` : les favoris en entier
+            (`before` et `limit` ignorés).
+        - name: before
+          in: query
+          description: Curseur opaque `next_before` de la page précédente ; absent = depuis la plus récente.
+        - name: limit
+          in: query
+          description: Tuiles par page (30 par défaut, 60 au plus).
+      responses:
+        '200':
+          description: Page de tuiles (`items`, `has_more`, `next_before`)
+          content:
+            application/json:
+              schema:
+                type: object
+                description: HomeMatchesPage — items (tuiles RecentMatchItem), has_more, next_before
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -1965,8 +2018,7 @@ paths:
         Image vue du dessus de la carte du match (PNG), cuite hors ligne par
         `cmd/mapfond-build`. Elle ne se lit qu'avec son CALAGE, servi par
         `GET .../replay/background` : une image dont on ignore où elle se pose ne se
-        superpose à rien. Servie uniquement en local, comme le reste du rejeu 2D
-        (cf. `handlers/replay_local_gate.go`).
+        superpose à rien.
       responses:
         '200':
           description: Image PNG du fond de carte

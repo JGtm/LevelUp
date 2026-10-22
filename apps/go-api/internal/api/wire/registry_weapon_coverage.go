@@ -177,12 +177,12 @@ func weaponCoverageFromSource(
 	resp domain.AdminWeaponCoverage,
 ) (domain.AdminWeaponCoverage, error) {
 	rows, err := sharedSQL.QueryContext(ctx, `
-		SELECT source_tag, COUNT(*)::INTEGER
-		FROM match_kill_events_latest
+		SELECT source_tag, SUM(kills)::INTEGER
+		FROM match_kill_pairs_latest
 		WHERE source_tag IS NOT NULL
 		GROUP BY source_tag`)
 	if err != nil {
-		return resp, fmt.Errorf("match_kill_events_latest: %w", err)
+		return resp, fmt.Errorf("match_kill_pairs_latest: %w", err)
 	}
 	defer rows.Close()
 

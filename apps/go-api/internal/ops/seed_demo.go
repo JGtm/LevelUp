@@ -139,6 +139,8 @@ const (
 	colGamertag   = "gamertag"
 	colKillerXUID = "killer_xuid"
 	colVictimXUID = "victim_xuid"
+	// colFeedKillerXUID : le tueur crédité du journal des morts et de ses résumés par match.
+	colFeedKillerXUID = "feed_killer_xuid"
 )
 
 // Tables shared/player référencées plus de 3 fois dans seed_demo + tests.
@@ -202,8 +204,8 @@ var sharedTablesWhere = []extractTable{
 	// TROIS paires d'identité : le tueur, la victime et l'ASSISTANT (absent de
 	// killer_victim_pairs, qui n'a jamais su le représenter).
 	{name: "match_kill_events", where: matchIDInClause, identity: [][2]string{
-		{"feed_killer_xuid", "feed_killer_gamertag"}, {colVictimXUID, "victim_gamertag"},
-		{"assist_xuid", "assist_gamertag"}}},
+		{colFeedKillerXUID, colFeedKillerGamertag}, {colVictimXUID, "victim_gamertag"},
+		{colAssistXUID, colAssistGamertag}}},
 	// La sous-requête vise la table SOURCE (src.) : la copie démo de match_participants,
 	// déjà créée, porte des xuid ANONYMISÉS qui ne filtreraient plus rien.
 	{name: tableXUIDAliases, where: "xuid IN (SELECT DISTINCT xuid FROM src.match_participants WHERE match_id IN (%s))",

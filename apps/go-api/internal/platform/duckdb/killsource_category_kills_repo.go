@@ -66,7 +66,7 @@ func (r *KillSourceWeaponKillsRepo) LoadKillSourceCategoryKills(
 	})
 	if err != nil {
 		if isTableNotFoundErr(err) {
-			slog.DebugContext(ctx, "KillSourceWeaponKillsRepo: match_kill_events_latest absente",
+			slog.DebugContext(ctx, "KillSourceWeaponKillsRepo: match_kill_pairs_latest absente",
 				"slug", slug, "match_count", len(filters.MatchIDs))
 			return nil, games.ErrCapabilityNotSupported
 		}

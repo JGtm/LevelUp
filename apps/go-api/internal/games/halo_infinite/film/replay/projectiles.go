@@ -15,8 +15,9 @@ import (
 // TÉMOIN : 65 des 70 lancers de grenade connus voient naître une trajectoire dans les 200 ms,
 // contre 11 à 13 pour les mêmes lancers décalés en bloc.
 //
-// CE QUE CE CALQUE NE DIT PAS : l'IMPACT. Il n'existe aucun événement de détonation dans le
-// film. Le dernier point est la DERNIÈRE POSITION RÉPLIQUÉE — pour une grenade à fragmentation
+// CE QUE CE CALQUE NE DIT PAS : l'IMPACT. Le film écrit la détonation (message
+// `projectile_detonate` de la vue A), mais ce calque ne la lit pas : il publie la piste de
+// l'objet. Le dernier point est la DERNIÈRE POSITION RÉPLIQUÉE — pour une grenade à fragmentation
 // la réplication cesse ~1,4 s après le lancer alors que la mèche court jusqu'à ~3 s. Le dernier
 // point approche l'explosion parce que l'objet ne bouge plus, pas parce qu'on la lit. Le client
 // doit écrire « dernière position connue », jamais « impact ».

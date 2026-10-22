@@ -106,6 +106,7 @@ export function getTacticalText(locale: Locale) {
     planSquadPending: m('tactical.plan.squad_pending'),
     pillRespawn: m('tactical.plan.pill_respawn'),
     pillRespawnAll: m('tactical.plan.pill_respawn_all'),
+    pillZones: m('tactical.plan.pill_zones'),
 
     // ── Carte du plan : états posés sur le fond, légende, bandeau d'état ────
     // Les trois états vides ne disent PAS la même chose : périmètre vide, aucune mesure, ou

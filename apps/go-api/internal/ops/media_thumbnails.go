@@ -1,5 +1,5 @@
 // Package ops — media_thumbnails.go : génération/liaison des miniatures via
-// ffmpeg/ffprobe + calcul capture_end. Extrait de media.go (refactor god-file).
+// ffmpeg/ffprobe (durée des vidéos). Extrait de media.go (refactor god-file).
 package ops
 
 import (
@@ -12,11 +12,14 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	mediapkg "levelup/go-api/internal/media"
 )
 
+// GenerateThumbnails génère des miniatures animées WebP pour les nouvelles vidéos.
+// Les GIFs legacy déjà présents sur disque sont conservés tels quels (pas de
+// regénération) — le backfill DB reconnaît les deux formats.
+// Nécessite ffmpeg compilé avec libwebp dans le PATH.
 func GenerateThumbnails(ctx context.Context, videosDir, thumbsDir string) (int, []string) {
 	log := slog.With("module", logModuleMedia)
 	os.MkdirAll(thumbsDir, 0o755) //nolint:errcheck
@@ -59,43 +62,11 @@ func GenerateThumbnails(ctx context.Context, videosDir, thumbsDir string) (int, 
 	return generated, errs
 }
 
-// computeMediaEnd dérive (capture_end_utc, duration_seconds) à partir du kind
-// et du capture_start_utc connu, sans IO :
-//   - kind "image" : capture instantanée → end = start, duration = 0.
-//   - kind "video" + durationKnown : end = start + duration, duration_seconds
-//     = duration. Si durationKnown=false (ffprobe absent/échec), on laisse
-//     end et duration_seconds à NULL — le tri retombe sur capture_start_utc.
-//   - kind inconnu : tout à NULL.
-//
-// Isolé pour les tests unitaires : la logique de mappage end/duration est
-// testable sans dépendre de ffprobe ni du filesystem.
-func computeMediaEnd(kind string, captureAt *time.Time, duration float64, durationKnown bool) (captureEnd *time.Time, durationSec *float64) {
-	switch kind {
-	case mediaKindImage:
-		if captureAt != nil {
-			end := *captureAt
-			captureEnd = &end
-		}
-		zero := 0.0
-		durationSec = &zero
-	case mediaKindVideo:
-		if durationKnown {
-			d := duration
-			durationSec = &d
-			if captureAt != nil {
-				end := captureAt.Add(time.Duration(d * float64(time.Second)))
-				captureEnd = &end
-			}
-		}
-	}
-	return captureEnd, durationSec
-}
-
 // probeVideoDuration retourne la durée d'un fichier vidéo en secondes via
 // ffprobe (livré avec ffmpeg, déjà requis pour les miniatures). Retourne 0 et
 // une erreur si ffprobe est absent du PATH ou si le fichier est illisible. Le
-// caller doit traiter ça comme "durée inconnue" — la durée n'est pas critique
-// (juste utilisée pour capture_end_utc = capture_start_utc + duration), donc
+// caller doit traiter ça comme "durée inconnue" : la durée donne l'autre borne de la
+// fenêtre de capture (captureWindow) ; inconnue, la capture garde sa seule heure, donc
 // échec silencieux côté insert.
 func probeVideoDuration(ctx context.Context, videoPath string) (float64, error) {
 	out, err := mediapkg.RunFFprobe(ctx,

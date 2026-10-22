@@ -32,12 +32,18 @@ func TestMatchViewRepo_GetMatchAssistPairs_EchecRemonte(t *testing.T) {
 	}
 }
 
-// TestMatchViewRepo_GetMatchAssistPairs_BaseNonMigreeRemonte — la base de test historique porte un
-// journal des morts sans la colonne `publishable` (schéma antérieur à la migration) : la lecture
-// échoue et l'échec remonte, au lieu d'une portée nulle qui se lirait « non publiable ». Le cas
-// nominal (schéma de production) est tenu par `match_view_repo_assist_pairs_test.go`.
+// TestMatchViewRepo_GetMatchAssistPairs_BaseNonMigreeRemonte — une base sans les résumés du journal
+// (schéma antérieur à la migration de l'ADR 0039) : la lecture échoue et l'échec remonte, au lieu
+// d'une portée nulle qui se lirait « non publiable ». Le cas nominal (schéma de production) est tenu
+// par `match_view_repo_assist_pairs_test.go`.
 func TestMatchViewRepo_GetMatchAssistPairs_BaseNonMigreeRemonte(t *testing.T) {
 	pdb := newTestPlayerDB(t)
+	if _, err := pdb.Shared.SQLDb().Exec(`DROP TABLE IF EXISTS match_kill_heads CASCADE`); err != nil {
+		t.Fatalf("retrait des têtes : %v", err)
+	}
+	if _, err := pdb.Player.SQLDb().Exec(`DROP TABLE IF EXISTS match_kill_heads CASCADE`); err != nil {
+		t.Fatalf("retrait des têtes (joueur) : %v", err)
+	}
 	repo := NewMatchViewRepo(pdb, pTestXUID)
 	pairs, scope, err := repo.GetMatchAssistPairs(context.Background(), "m1")
 	if err == nil {

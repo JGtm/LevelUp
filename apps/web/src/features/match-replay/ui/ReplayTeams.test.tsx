@@ -331,12 +331,13 @@ describe('ReplayTeams — munitions et sélecteur', () => {
     expect(screen.queryByText('aucune')).toBeNull()
   })
 
-  it('sélecteur NON LU : jeton « dégainée ? » — une lacune dite', () => {
+  it('sélecteur NON LU : un tiret, la lacune est dite dans l’infobulle, jamais en texte', () => {
     renderTeams({
       ...TWO_WEAPONS,
       inventory: [{ t: 0, slot: 512, am: [{ mag: 10 }, { mag: 5 }] }],
     })
-    expect(screen.getByText('dégainée ?')).toBeTruthy()
+    expect(screen.queryByText('dégainée ?')).toBeNull()
+    expect(screen.getByTitle('dégainée ?').textContent).toBe('—')
   })
 
   it('arme À CHARGE en main : pourcentage écrit, jamais le « 1/0 » parasite du film', () => {

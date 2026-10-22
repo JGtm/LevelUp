@@ -166,6 +166,7 @@ func tacKill(t *testing.T, pdb *PlayerDB, matchID, killerXUID, victimXUID string
 		VALUES (?, 'pass_v1', 'rev_test', ?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, 'credit-concordant')`,
 		matchID, publishable, timeMS, victimXUID, victim, killerXUID, killer,
 		killscope.ReadPathFilmWalk)
+	ecrireResumes(t, pdb.Shared.SQLDb(), matchID)
 }
 
 // tacPos pose une position monde. Les coordonnees acceptent nil (position

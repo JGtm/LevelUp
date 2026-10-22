@@ -41,8 +41,13 @@ var sharedSnapshotTables = []string{
 // portait tout. Toute table de cette liste étant REQUISE à la lecture, les snapshots
 // antérieurs sont refusés (ErrSnapshotIncomplete) → fallback LIVE global, comportement
 // prévu — jusqu'au prochain cut qui ré-exporte complet.
+// match_kill_heads / match_kill_pairs / match_assist_pairs ajoutées le 2026-10-21 (ADR 0039) :
+// les résumés par match du journal voyagent avec lui ; leurs vues `_latest` sont posées à la
+// lecture par migration.EnsureMatchKillEvents. Les snapshots coupés avant sont refusés
+// (ErrSnapshotIncomplete → lecture live) jusqu'au prochain cut.
 var sharedSnapshotMatchKeyedRaw = []string{
 	"match_csrs", "match_objective_stats", "match_kill_events",
+	tableMatchKillHeads, tableMatchKillPairs, tableMatchAssistPairs,
 }
 
 // sharedSnapshotTitleOwnedRaw : tables shared append-only exportées RAW que le schéma d'un

@@ -12,7 +12,7 @@
  *  - `replay` : le titre a des matchs, mais aucune chaîne de rejeu (capability title-level du
  *    lot C, servie par le bootstrap). Halo 5 est dans ce cas.
  * La porte est posée AU-DESSUS du composant : la page n'est pas montée, donc aucun de ses
- * hooks de chargement ne tourne — ni l'artefact (1,5 à 2,7 Mio), ni la vue match, ni le fond
+ * hooks de chargement ne tourne — ni l'artefact (1,5 à 2,7 Mio), ni le contexte du match, ni le fond
  * de carte. Un titre sans rejeu ne paie aucune requête, et lit un état qui le dit
  * (`FeatureUnavailable`, libellé `replay` FR/EN).
  *
@@ -33,6 +33,7 @@ import { normalizeCallouts } from '@/lib/replay/calloutsPaint'
 import { endMatchSoundSpec } from '@/features/match-replay/sound/endMatchSound'
 import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
 import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/model/playbackStore'
+import { replayLoadState } from '@/features/match-replay/model/replayLoadState'
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
 import {
@@ -41,6 +42,7 @@ import {
 } from '@/features/match-replay/hooks/useReplayFullscreen'
 import {
   useMatchReplay,
+  useMatchReplayContext,
   useReplayMapBackground,
   useReplayMapCallouts,
   useReplayMapImage,
@@ -57,7 +59,6 @@ import { ReplayTeams } from '@/features/match-replay/ui/ReplayTeams'
 import { ReplayVictoryOverlay } from '@/features/match-replay/ui/ReplayVictoryOverlay'
 import { MatchBreadcrumb } from '@/features/match-view/MatchHeader'
 import { buildMatchHeadingStr } from '@/features/match-view/format'
-import { useMatchView } from '@/features/match-view/queries'
 import { useFriendGamertags } from '@/features/friends/queries'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
@@ -112,7 +113,7 @@ function ReplayPage() {
   // Le logo du rejeu est un raster à deux variantes (noire / blanche) : c'est le thème local
   // qui choisit, comme pour les autres icônes du dépôt (cf. lib/themedIcon.ts).
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
-  const { data, isLoading } = useMatchReplay(playerSlug, matchId)
+  const { data, isLoading, error, refetch, isFetching } = useMatchReplay(playerSlug, matchId)
   // LE LIEN TACTIQUE (`?t=&clock=`, cf. l'en-tête) : converti UNIQUEMENT quand le document est
   // chargé — lui seul porte l'origine du film (`originMs`). Avant ça, `openAtFrame`
   // reste `null` et le rejeu se comporte comme sans paramètre (`ReplayCanvas` cadre au coup
@@ -126,7 +127,9 @@ function ReplayPage() {
   // DEUX SOURCES, DEUX RÔLES. Le film porte ce qui se passe et l'identifie par XUID ; la
   // base porte qui sont les gens. L'artefact ne mélange pas les deux — la jointure se fait
   // ici, sur le xuid, qui est la seule clé qui ne suppose rien (surtout pas un ordre).
-  const { data: matchView } = useMatchView(playerSlug, matchId)
+  // La base est lue par le CONTEXTE DE MATCH du rejeu (en-tête, tableau de score, fil, médias),
+  // pas par la vue complète du match : le rejeu n'en lit que ces quatre morceaux.
+  const { data: replayContext, isPending: replayContextPending } = useMatchReplayContext(playerSlug, matchId)
   // LA POSITION DE LECTURE VIENT DU MAGASIN, la page n'en garde plus de copie (2026-09-06,
   // W1) : le canvas ecrit, cette page lit. L'abonnement suit la cadence de PUBLICATION
   // (150 ms), pas celle de l'ecran — cf. `model/playbackStore`.
@@ -148,7 +151,7 @@ function ReplayPage() {
   const callouts = useMemo(() => normalizeCallouts(calloutsEntry), [calloutsEntry])
 
   // LE MODÈLE DE LA PAGE, JOINT ICI ET NULLE PART AILLEURS (2026-09-06, W1). L'artefact dit
-  // ce qui s'est passé et l'identifie par XUID ; la vue match dit qui sont les gens. La
+  // ce qui s'est passé et l'identifie par XUID ; le contexte du match dit qui sont les gens. La
   // jointure des deux — identité, marques, horloge, fenêtre de gameplay, roster, fil recalé,
   // médias, score final — vit dans `model/replayModel`, pure et testée sans React ; ce hook
   // ne fait que la mémoïser. La page n'en garde que ce qui dépend de la LANGUE ou de
@@ -159,11 +162,11 @@ function ReplayPage() {
   // Le défaut est le joueur de la page, à CHAQUE montage (décision 8 : rien n'est persisté).
   // Depuis le 2026-09-07 (L3), le MENU de la première piste de la frise appelle `select` : il
   // reçoit `model.players` pour ses sections et ne touche à rien d'autre que ce foyer.
-  const viewpoint = useReplayViewpoint(matchView?.team_tab.scoreboard)
+  const viewpoint = useReplayViewpoint(replayContext?.scoreboard)
   // Objet memoise : `useReplayModel` memoise sur son identite ; un litteral neuf a chaque
   // rendu (150 ms en lecture) reconstruisait tout le modele a chaque tick (revue 2026-09-16).
   const modelSettings = useMemo(() => ({ friendGamertags }), [friendGamertags])
-  const model = useReplayModel(data, matchView, modelSettings, viewpoint.xuid)
+  const model = useReplayModel(data, replayContext, modelSettings, viewpoint.xuid)
   const { scoreboard, identity: xuidMeta, marks, window: playWindow, feed: feedEntries } = model
   // LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : sur le rejeu, les points, les titres de
   // colonnes et les noms du fil prennent les MÊMES tokens d'accessibilité — allié / adverse,
@@ -181,18 +184,23 @@ function ReplayPage() {
   // qu'on regarde — l'incohérence apparente entre les deux appels est voulue, ne pas la
   // « corriger ».
   const endMatchSound = useMemo(
-    () => endMatchSoundSpec(model.allegiance, scoreboard, matchView?.header.outcome_code, locale),
-    [model.allegiance, scoreboard, matchView?.header.outcome_code, locale],
+    () => endMatchSoundSpec(model.allegiance, scoreboard, replayContext?.header.outcome_code, locale),
+    [model.allegiance, scoreboard, replayContext?.header.outcome_code, locale],
   )
 
-  const hasReplay = !!data && data.tracks.length > 0
+  const loadState = replayLoadState({
+    isLoading,
+    hasTracks: !!data && data.tracks.length > 0,
+    error,
+    identityPending: replayContextPending,
+  })
   // LE MODE PLEIN ÉCRAN vit ICI parce qu'il change le cadre de LA GRILLE (cf. useReplayFullscreen) ;
   // le canvas n'en reçoit que la commande, pour le bouton de la barre de lecture et la touche F.
   const fullscreen = useReplayFullscreen()
 
   // Fil d'Ariane : même label que la vue match (mode + map). Il est calculé ICI et NULLE PART
   // AILLEURS — le rappel du match, qui le recalculait, ne porte plus que la date et la playlist.
-  const matchLabel = buildMatchHeadingStr(matchView?.header.map_ui, matchView?.header.mode_ui, locale)
+  const matchLabel = buildMatchHeadingStr(replayContext?.header.map_ui, replayContext?.header.mode_ui, locale)
 
   // TOUTE LA TÊTE TIENT SUR LA LIGNE DU FIL D'ARIANE (demande du 2026-09-02 : « la partie sous
   // la L1 pourrait être compactée un peu »). Elle occupait ~84 px de plus en répétant ce que le
@@ -238,8 +246,8 @@ function ReplayPage() {
         }
         detail={
           <ReplayMatchRecall
-            startTimeLabel={matchView?.header.start_time_label}
-            playlistLabel={matchView?.header.playlist_label}
+            startTimeLabel={replayContext?.header.start_time_label}
+            playlistLabel={replayContext?.header.playlist_label}
           />
         }
         action={
@@ -253,15 +261,26 @@ function ReplayPage() {
         }
       />
       <div className="space-y-4 px-6 pb-3">
-      {isLoading && <p className="text-sm text-muted-foreground">{t.loading}</p>}
+      {(loadState === 'loading' || (loadState === 'error' && isFetching)) && (
+        <p className="text-sm text-muted-foreground">{t.loading}</p>
+      )}
 
-      {!isLoading && !hasReplay && (
+      {loadState === 'empty' && (
         <div className="rounded-lg border border-border bg-card px-3 py-12 text-center">
           <p className="text-sm text-muted-foreground">{t.empty}</p>
         </div>
       )}
 
-      {data && data.tracks.length > 0 && (
+      {loadState === 'error' && !isFetching && (
+        <EmptyStateNotice
+          title={t.loadErrorTitle}
+          description={t.loadErrorDescription}
+          actionLabel={t.loadErrorRetry}
+          onAction={() => void refetch()}
+        />
+      )}
+
+      {data && loadState === 'ready' && (
         /* DEUX COLONNES : LA CARTE, PUIS FICHES + FIL EMPILÉS À DROITE (demande utilisateur
            du 2026-08-24, qui remplace la rangée à trois colonnes du 16/08) : le fil passe
            SOUS les fiches, à la même largeur qu'elles, et la carte récupère toute la place
@@ -345,12 +364,12 @@ function ReplayPage() {
                 // Le CODE seul : le MOT se résout des deux côtés depuis les mappings du titre
                 // (2026-09-07), sur l'issue lue — un `outcome_label` de plus rouvrirait le
                 // second vocabulaire que ce chantier a fermé.
-                code: matchView?.header.outcome_code,
+                code: replayContext?.header.outcome_code,
                 finalScore: model.score,
               }}
               feedEntries={feedEntries}
               media={model.media}
-              scoreTimelineKind={matchView ? (matchView.header.score_timeline_kind ?? '') : undefined}
+              scoreTimelineKind={replayContext ? (replayContext.header.score_timeline_kind ?? '') : undefined}
               /* LES TROIS SURCOUCHES SE POSENT SUR LA CARTE, PAS SUR LE LECTEUR (2026-09-08,
                  retour utilisateur : « message et image défaite/victoire centrer sur la hauteur
                  de la map, là ça prend la hauteur du lecteur en compte, ce qui n'est pas
@@ -373,7 +392,7 @@ function ReplayPage() {
                     doc={data}
                     scoreboard={scoreboard}
                     allegiance={model.allegiance}
-                    outcomeCode={matchView?.header.outcome_code}
+                    outcomeCode={replayContext?.header.outcome_code}
                     viewpoint={viewpoint.xuid}
                     finalScore={model.score}
                     playWindow={playWindow}
@@ -418,7 +437,7 @@ function ReplayPage() {
                   frame={frame}
                   locale={locale}
                   allegiance={model.allegiance}
-                  header={matchView?.header}
+                  header={replayContext?.header}
                 />
               </div>
               <div className="flex min-h-0 flex-1 flex-col xl:min-h-[12rem]">

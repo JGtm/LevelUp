@@ -96,7 +96,7 @@ read does not replay the whole history.
 
 ## Decision
 
-**A page read pays for its scope, not for the player's history, and it pays once.** Seven
+**A page read pays for its scope, not for the player's history, and it pays once.** Eight
 invariants, each held today by the guardrail named with it; what each guardrail actually blocks,
 and what it does not see, is in *Guardrails*.
 
@@ -162,7 +162,9 @@ whole table while every returned number stays the same, so no value test can see
 `platform/duckdb/squad_vehicle_repo_test.go` — `TestSquadVehicleRepo_BorneDernierePasseEtFragsParCamp` (Emprise vehicles resource, `match_vehicle_takes_latest` and `match_kill_events_latest` bound under their windows, kill events read only for the matches that have engine frags to split, 2026-09-30);
 `platform/duckdb/solo_lives_repo_test.go` — `TestSoloLivesRepo_BorneEtDernierePasse` (Timeseries "Usage" tab, one player's lives near a teammate: `match_lives_latest`, `match_death_context_latest` and `match_kill_events_latest` each bound on their own `match_id`, the player filtered after the window, 2026-10-06), and `TestSoloLivesRepo_ParJoueurs_BorneEtDernierePasse` (match view, "Isolation" for every player of the team in one read — I4 —, the same three views bound on their own `match_id`, the players filtered after the window, 2026-10-07);
 `platform/duckdb/tactical_repo_contextes_test.go` — `TestTacticalRepo_ContextesDeMort_BorneEtNull` (Tactical tab, the death context behind the "alone / near" badge of a zone's replay tiles: `match_death_context_latest` bound on its `match_id`, the whitelist required, 2026-10-06);
-`platform/duckdb/explorer_repo_fenetres_test.go` — `TestExplorerRepo_LecturesDuJoueur_FenetresBornees` (Explorer "Player" tab, 2026-10-09: frags exchanged between two players bound to the matches of the page's player, `QMatchsOuJoue`, and read in one scan instead of two; assists exchanged with each teammate (Q28c, also behind Relations and the match view's encounter history) bound to the same list, with an equality-only join; rival timeline bound to the common matches; each checked against the unbound result).
+`platform/duckdb/explorer_repo_fenetres_test.go` — `TestExplorerRepo_LecturesDuJoueur_FenetresBornees` (Explorer "Player" tab, 2026-10-09: frags exchanged between two players bound to the matches of the page's player, `QMatchsOuJoue`, and read in one scan instead of two; assists exchanged with each teammate (Q28c, also behind Relations and the match view's encounter history) bound to the same list, with an equality-only join; rival timeline bound to the common matches; each checked against the unbound result);
+`platform/duckdb/home_repo_assisted_frags_fenetres_test.go` — `TestHomeRepo_LoadMatchAssistedFrags_FenetresBornees` (Home match tiles, assisted frags Q26l, 2026-10-20: both reads of `match_kill_events_latest` bound on their own `match_id`; the semi-join on the matches whose film carries assists alone left the window over the whole kill feed, past the read deadline in production);
+`platform/duckdb/match_view_repo_encounters_fenetres_test.go` — `TestMatchViewRepo_EncounterStats_FenetreBornee` (match view encounter stats Q23b, 2026-10-20: the kill-feed leg bound to the player's matches, `QMatchsOuJoue`).
 
 ### I3 — Data re-read from one request to the next goes through a cache invalidated at sync, never filled by a degraded load
 
@@ -238,7 +240,7 @@ give the directory they load its own section (`top_encounters` and `top_encounte
 
 **Guardrails**: `api/middleware/slog_logger_test.go` — `TestSlogLogger_TimingsLoggedForSlowRequest`,
 `TestSlogLogger_SlowSuccessLoggedAtInfo`; `platform/duckdb/career_repo_annuaire_test.go` —
-`TestCareerRepo_Annuaire_SectionsDeDuree`. The obligation itself is **not yet guarded** (see
+`TestCareerRepo_Annuaire_SectionsDeDuree`; `service/home_service_sections_test.go` — `TestGetHomePage_SectionsDeDuree` (every step of the Home page, the per-tile enrichments once per list, 2026-10-20; plus `home_build_tiles`, 2026-10-21) and `TestMatchViewSection_FeuillesSeulement` (each match view loader opens `mv_<source>`, except the sources whose repo already times its reads). The obligation itself is **not yet guarded** (see
 *Guardrails*).
 
 ### I7 — DuckDB resource bounds are read when each connection opens
@@ -256,12 +258,54 @@ SQL cost, two to four times shorter.
 **Guardrail**: `platform/duckdb/db_resource_limits_env_test.go` —
 `TestResourceLimits_EnvSetAfterPackageInitIsHonored`.
 
+### I8 — A page response never grows with the history when the page shows a window
+
+A list a page displays as a window is served as a window, with a cursor for the rest. The Home
+page showed ~30 tiles from a list that held every match of the player: the response of the
+heaviest account carried 1,182 tiles (2.9 MB decoded, 158,000 DOM nodes on the phone, a
+60-second reload of the whole list while one film was still being analysed), and every per-tile
+enrichment (medals, citations, assisted frags: 0.9 to 3.5 s on the copy of the production
+databases) ran on all of them.
+
+- The head (`GetHomePage`) carries `domain.HomeTilesHeadSize` (30) tiles, `recent_matches_total`
+  (the real count of tiles of the history, never the length of the head), `has_more` and
+  `recent_matches_next_before`. The rest is `GET /players/{slug}/pages/home/matches?before=&limit=`
+  (60 at most; `kind=favorites` serves the player's favorites whole, they are bounded by the
+  player's own gesture).
+- **Cursor, not offset**: the instant of the last tile served (`Summary.StartedAtUTC`, the
+  canonical start of rule 8) then its `match_id`. A sync between two pages adds matches at the
+  head; an offset would repeat or skip tiles, the cursor names a tile. The order is total
+  (instant descending, `match_id` descending) and lives in one place
+  (`analysis/home_tiles_window.go`), shared by the head and the pages.
+- **One builder**: the head, the following pages and the favorites go through the same
+  `buildTiles` (asset translations, performance placements, replay link, per-tile enrichments,
+  analysis-in-progress): a tile served by a later page cannot differ from the one the head would
+  have served.
+- **Totals stay on the history**: hero, highlights, sessions, the "last session" sequence
+  (`last_session_outcomes`) and the performance placements read the full canonical rows (the
+  cached loader of I3); only the list of tiles is a window. No figure changes.
+- **Neighbours without a list**: a tile opened from the Home no longer carries a list of ids to the
+  match page. Previous/next and the "X/Y" counter come from Q25 over the whole history, with the
+  same total order (instant descending, then `match_id` descending: Q25 ranks with that tie-break),
+  and the context label ("Recent matches") from the navigation context descriptor
+  (`useMatchNeighborsResolved`). Q25 reads the LIVE shared reader like the tile loader, never the
+  immutable snapshot (`neighborsRead`): a snapshot cut before the latest matches would return no
+  neighbours for them and a short total for the others (`TestMatchNeighbors_LisentLeLiveJamaisLeSnapshot`).
+- Title-agnostic: no comparison of a title slug; the window test runs under `halo_infinite` and
+  `halo_5`.
+
+**Guardrails**: `service/home_service_tiles_test.go` — `TestGetHomePage_FenetreBornee` (200
+matches, at most 30 tiles, totals unchanged, both slugs), `TestGetHomeMatches_ParitePagesEtListeComplete`
+(the concatenation of the head and the pages equals the whole list built in one pass, field by
+field, for page sizes from 1 to 1000), `TestGetHomeMatches_SynchroEntreDeuxPages`;
+`analysis/home_tiles_window_test.go` (order, cursor, ties, favorites). `TestHomeTiles_OrdreIdentiqueAQ25` (`platform/duckdb/home_tiles_q25_parity_test.go`, `integration` tag): the order of the tiles and Q25 agree match by match, ties included.
+
 ## Consequences
 
-- A new page read is written against the seven rules: names through the read's directory; each
+- A new page read is written against the eight rules: names through the read's directory; each
   `_latest` view bound to the read's matches; a load shared by several blocks memoised for the
   request; a load repeated across requests cached behind an invalidation point; its sections
-  declared. Review checks what no test enforces (I4 outside the two pinned pages, the obligation
+  declared; a list the page shows as a window served as a window (I8). Review checks what no test enforces (I4 outside the two pinned pages, the obligation
   of I6).
 - Removing a join can change the physical order of rows. An order a response depends on must be
   total (`ORDER BY` with a tie-breaker): removing the join from Q32b moved badges carried by the
@@ -337,9 +381,22 @@ not reads.
 
 ### `_latest` windows over the whole history (I2)
 
-| Read | File | Measured cost | Retired by |
+No known read of the feed is left in this table. One window of another kind is accepted, added on
+2026-10-21 by ADR 0039 decision 7:
+
+| Read | Window | Measured | Retired by |
 |---|---|---|---|
-| Match view: encounter stats (Q23b), kill-feed window (`kv_stats`) | `platform/duckdb/queries_match_detail.go` | about 0.9 s at rest; 1.6 to 4.6 s median alone in lot A's runs on a loaded machine | Not assigned |
+| `match_kill_pairs_latest` (S1) and `match_assist_pairs_latest` (S2) under a `match_id` list | The head's window (`match_kill_heads_latest`, joined inside each daughter view) is not bounded by the list: it sees every head of the table, one row per match and generation, never the daughters' rows. `platform/duckdb/resumes_fenetres_test.go`: 20 rows for 20 heads (10 matches x 2 generations) with a 2-match list; 4 rows when the read is for ONE match (`match_id = ?`) or when it is S0 itself. | About 6,500 compacted heads on the production databases; the automatic compaction of superseded passes (ADR 0026 amendment) keeps it at one generation per match. | Not retired: the list was tried on the head view as well (semi-join, `IN`, literal list): the inner window stays whole, and the only bounded form reads a daughter table raw, which ADR 0026 forbids. |
+
+Retired on 2026-10-20: the match view's encounter stats (Q23b, kill-feed leg `kv_stats`,
+`platform/duckdb/queries_match_detail.go`). Its kill-feed window now carries the player's matches
+(`QMatchsOuJoue`, Campaign included, same population as before) as one `VARCHAR[]` constant: a kill
+between the player and an encounter can only come from one of those matches, so the counts are
+unchanged. Measured on the local base, match view request of a recent match (served by the live
+base): section `match_encounter_stats` 4.2 s -> 1.1-1.4 s, whole request 4.5-4.9 s -> 1.3-1.5 s;
+on the snapshot, Q23b alone 0.36-0.40 s. Narrowing the list further to the matches shared with the
+encounters halves it again but would drop kills the feed names outside the participants; not done.
+The replay page waits for this request before showing its pawns, cards and timeline.
 
 Retired on 2026-09-27 by lot B: Career encounters (Q26) and rivals (Q27, now read ONCE: the two
 rankings are sorted in Go, `platform/duckdb/career_repo_rivals.go`), Relations Q28 over the
@@ -429,7 +486,7 @@ as for any DuckDB test). Integration: `go test -tags=integration -p 1 ./internal
 | Inv. | Test (file) | Runs in | What it actually blocks | What it does not see |
 |---|---|---|---|---|
 | I1 | `TestLecturesDeLaVueDesNoms_Ratchet` (`platform/duckdb/annuaire_ratchet_test.go`) | default suite | Parses every non-test Go file under `internal/` and counts, per file, the bare identifier `v_gamertag_lookup` in string literals (a Go comment does not count, an SQL comment inside a literal does); fails when a file exceeds its dated allowance and when it falls below it, so the table only descends. | A new page read that calls a reader still in the table (for instance the Explorer's `ResolveXUIDByGamertag`) adds no literal and passes. |
-| I2 | `TestTacticalRepo_PerimetreRestreint_FenetresBornees` (`platform/duckdb/tactical_repo_fenetres_test.go`), `TestWeaponRange_Perimetre_FenetresBornees` (`platform/duckdb/weapon_range_repo_fenetres_test.go`), `TestLecturesHistorique_FenetresBorneesAuxMatchsDuJoueur`, `TestLecturesHistorique_CampagneHorsDeLaListe` (`platform/duckdb/career_repo_fenetres_test.go`), `TestAnnuaire_ListesLieesEnUnParametre` (`platform/duckdb/annuaire_fenetres_test.go`), `TestSoloLivesRepo_BorneEtDernierePasse`, `TestSoloLivesRepo_ParJoueurs_BorneEtDernierePasse` (`platform/duckdb/solo_lives_repo_test.go`), `TestTacticalRepo_ContextesDeMort_BorneEtNull` (`platform/duckdb/tactical_repo_contextes_test.go`), `TestExplorerRepo_LecturesDuJoueur_FenetresBornees` (`platform/duckdb/explorer_repo_fenetres_test.go`) | default suite | Seed ten matches, ask for two, record the SQL the real reader sends, replay each query under `EXPLAIN (ANALYZE, FORMAT JSON)` and fail if any `WINDOW` operator saw more rows than the two matches hold, or if fewer queries than expected carry a window (shared helper `exigerFenetresBornees`). Covers `MortsAvecContexte`, `KillPositions`, `Univers`, `MortsParCarte`, `ContextesDeMort`, `LoadWeaponRange`, `LoadWeaponOpening`, `LoadMatchRangeKills`. The lot B test seeds four matches of the player among ten and holds the whole-history reads (`GetTopEncountersGlobal`, `GetRivals`, `GetRelations` on the history and on a scope) to the player's matches; a Tactical read without a whitelist is refused (`exigerLaListe`, `TestTacticalRepo_EntreesVides_Refus` in `platform/duckdb/tactical_repo_cartes_test.go`); it also fails if `GetRivals` reads its aggregate more than once, and if a Halo 5 Campaign duel enters the rivals or the encounters. The item B.7 test holds the directory's kill-feed leg to the player's matches in read and base scope, requires the name a kill feed alone gives, and fails if a directory query binds more than five arguments (a list bound value by value). | Any other `_latest` reader: nothing checks the windows of a read these tests do not call. |
+| I2 | `TestTacticalRepo_PerimetreRestreint_FenetresBornees` (`platform/duckdb/tactical_repo_fenetres_test.go`), `TestWeaponRange_Perimetre_FenetresBornees` (`platform/duckdb/weapon_range_repo_fenetres_test.go`), `TestLecturesHistorique_FenetresBorneesAuxMatchsDuJoueur`, `TestLecturesHistorique_CampagneHorsDeLaListe` (`platform/duckdb/career_repo_fenetres_test.go`), `TestAnnuaire_ListesLieesEnUnParametre` (`platform/duckdb/annuaire_fenetres_test.go`), `TestSoloLivesRepo_BorneEtDernierePasse`, `TestSoloLivesRepo_ParJoueurs_BorneEtDernierePasse` (`platform/duckdb/solo_lives_repo_test.go`), `TestTacticalRepo_ContextesDeMort_BorneEtNull` (`platform/duckdb/tactical_repo_contextes_test.go`), `TestExplorerRepo_LecturesDuJoueur_FenetresBornees` (`platform/duckdb/explorer_repo_fenetres_test.go`), `TestHomeRepo_LoadMatchAssistedFrags_FenetresBornees` (`platform/duckdb/home_repo_assisted_frags_fenetres_test.go`), `TestMatchViewRepo_EncounterStats_FenetreBornee` (`platform/duckdb/match_view_repo_encounters_fenetres_test.go`) | default suite | Seed ten matches, ask for two, record the SQL the real reader sends, replay each query under `EXPLAIN (ANALYZE, FORMAT JSON)` and fail if any `WINDOW` operator saw more rows than the two matches hold, or if fewer queries than expected carry a window (shared helper `exigerFenetresBornees`). Covers `MortsAvecContexte`, `KillPositions`, `Univers`, `MortsParCarte`, `ContextesDeMort`, `LoadWeaponRange`, `LoadWeaponOpening`, `LoadMatchRangeKills`. The lot B test seeds four matches of the player among ten and holds the whole-history reads (`GetTopEncountersGlobal`, `GetRivals`, `GetRelations` on the history and on a scope) to the player's matches; a Tactical read without a whitelist is refused (`exigerLaListe`, `TestTacticalRepo_EntreesVides_Refus` in `platform/duckdb/tactical_repo_cartes_test.go`); it also fails if `GetRivals` reads its aggregate more than once, and if a Halo 5 Campaign duel enters the rivals or the encounters. The item B.7 test holds the directory's kill-feed leg to the player's matches in read and base scope, requires the name a kill feed alone gives, and fails if a directory query binds more than five arguments (a list bound value by value). | Any other `_latest` reader: nothing checks the windows of a read these tests do not call. |
 | I3 | `TestPlayerReadCacheInvalidationPoints` (`archlint/player_read_cache_invalidation_test.go`) | default suite | Parses `runPostSyncPipeline`, `RecomputeIsWithFriends` and `SetExclusion` and fails if one of them no longer calls `InvalidatePlayerReadCaches`, or cannot be found. | A new writer of the cached rows without the call, or a new cache. |
 | I3 | `TestPlayerReadCache_DegradedLoadNotStored`, `TestPlayerReadCache_RequestEndedDuringLoadNotStored`, `TestPlayerReadCache_DegradedLoadNotSharedWithWaiters` (`platform/duckdb/player_read_cache_test.go`) | default suite | With fake loaders: a load that reports a degraded step, or whose request ends while it runs, is returned to its requester but not stored; a request waiting on a degraded load reloads for itself. | A best-effort step that swallows its error without reporting it: the cache cannot know. |
 | I4 | `TestGetPage_LitLesEvenementsDImpactUneSeuleFois`, `TestGetPage_UnLoadForParMembre`, `TestGetPage_DeuxRequetesDeuxLectures` (`service/teammates/teammates_service_loads_test.go`) | default suite | Run the Squad `GetPage` on a page where every consumer renders its section and count the reads: one `LoadImpactEvents` for the four consumers, one history load per member, and two requests read twice (the memo does not outlive its request). | Pages other than Squad. |
@@ -438,7 +495,8 @@ as for any DuckDB test). Integration: `go test -tags=integration -p 1 ./internal
 | I5 | `TestNoDuplicateLUSRWatermarkPredicate`, `TestLUSRWatermarkCovers_Boundary` (`sync/skill/lusr_watermark_guardrail_test.go`) | default suite | Fails if a non-test file of the package other than `skill_v2_watermark.go` compares a match start time or a watermark (`After`, `Before`, `Equal`, `Compare`): a copy of the predicate that would let the pre-filter disagree with the scorer. Pins the boundary: a match exactly on the watermark is already processed. | The zero-writer behaviour itself (held by the two tests above). |
 | I6 | `TestSlogLogger_TimingsLoggedForSlowRequest`, `TestSlogLogger_SlowSuccessLoggedAtInfo` (`api/middleware/slog_logger_test.go`) | default suite | A slow request with sections yields exactly one INFO `http_timings` line with `path`, `duration_ms`, `total_ms`, `sections` and `calls`; a slow 2xx is logged at INFO with `slow: true`. | Whether a given read declares a section. |
 | I6 | `TestCareerRepo_Annuaire_SectionsDeDuree` (`platform/duckdb/career_repo_annuaire_test.go`) | `integration` tag | The Career and Compare reads each emit their own section and their directory's section, with the expected call counts. | **Not yet guarded**: nothing fails when a new page read declares no section. That obligation is a review rule. |
-| I7 | `TestResourceLimits_EnvSetAfterPackageInitIsHonored` (`platform/duckdb/db_resource_limits_env_test.go`) | default suite | Sets `LEVELUP_DUCKDB_THREADS=3` and `LEVELUP_DUCKDB_MEMORY_LIMIT=300MB` after package init; fails unless `BudgetsSnapshot` reports them and a newly opened connection runs with 3 threads and a memory limit within 1 % of 300 MB. | Environment variables captured at init outside `platform/duckdb` (one known: `LEVELUP_REPLAY_PUBLIC`, `api/handlers/replay_local_gate.go`). |
+| I7 | `TestResourceLimits_EnvSetAfterPackageInitIsHonored` (`platform/duckdb/db_resource_limits_env_test.go`) | default suite | Sets `LEVELUP_DUCKDB_THREADS=3` and `LEVELUP_DUCKDB_MEMORY_LIMIT=300MB` after package init; fails unless `BudgetsSnapshot` reports them and a newly opened connection runs with 3 threads and a memory limit within 1 % of 300 MB. | Environment variables captured at init outside `platform/duckdb` (none known at the time of writing). |
+| I8 | `TestGetHomePage_FenetreBornee`, `TestGetHomeMatches_ParitePagesEtListeComplete`, `TestGetHomeMatches_SynchroEntreDeuxPages` (`service/home_service_tiles_test.go`), `TestWindowHomeTileRows_*` (`analysis/home_tiles_window_test.go`) | default suite | 200 matches: the head holds at most 30 tiles under `halo_infinite` and `halo_5`, the hero total and `recent_matches_total` stay 200; the concatenation of the head and the pages (sizes 0, 1, 17, 30, 60, 1000) equals the list built in one pass, field by field; a sync between two pages leaves no duplicate and no gap; ties on the instant do not lose a tile at a page boundary. | Another page that serves a list it shows as a window (none known on 2026-10-21: the Explorer pages server-side, Sessions/Timeseries return aggregates). |
 
 A guardrail that moves or is renamed keeps its reference here up to date, in the same commit; a
 guardrail retired on purpose leaves the table with its reason.

@@ -13,8 +13,8 @@ package replay
 //
 // # LA REGLE
 //
-// Un tir de la place P a la frame F appartient a l entree du roster ASSISE a P (`RosterEntry.Seat`)
-// dont la presence couvre F — jusqu a `toMax`, la borne d affichage : deux occupants successifs
+// Un tir de la place P a la frame F appartient a l entree du roster dont un INTERVALLE de presence
+// est tenu a P (`PresenceInterval.Seat`, sinon `RosterEntry.Seat`) et couvre F — jusqu a `toMax`, la borne d affichage : deux occupants successifs
 // d une place ne se recouvrent pas (`sieges_places.go`). Sans occupant unique a cet instant, la
 // place reste l index : c est exactement le rattachement d avant, juste pour tout joueur sans
 // relais. Le compte des tirs rendus a un AUTRE index que la place est publie (`coverage.seats`
@@ -26,7 +26,8 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
-// occupantDePlace est une entree assise a une place : son index de joueur et sa presence.
+// occupantDePlace est un INTERVALLE de presence d'une entree, tenu a une place : l'index de joueur de
+// l'entree et cet intervalle seul.
 type occupantDePlace struct {
 	index    int
 	presence []PresenceInterval
@@ -35,14 +36,19 @@ type occupantDePlace struct {
 // tireursParPlace indexe les occupants du roster par place.
 type tireursParPlace map[int][]occupantDePlace
 
-// nouveauxTireursParPlace indexe le roster POSE (apres `poserLesSieges`).
+// nouveauxTireursParPlace indexe le roster POSE (apres `poserLesSieges`), PAR INTERVALLE : un joueur
+// qui revient peut tenir une autre fiche que la premiere, et la place se publie alors par intervalle
+// (`PresenceInterval.Seat`, sinon `RosterEntry.Seat`). Chaque intervalle n'est range que sous SA place.
 func nouveauxTireursParPlace(roster []RosterEntry) tireursParPlace {
 	out := tireursParPlace{}
 	for _, e := range roster {
-		if len(e.Presence) == 0 {
-			continue // aucune presence : rien ne dit quand cette entree tient sa place
+		for _, iv := range e.Presence { // aucune presence : rien ne dit quand cette entree tient sa place
+			place := e.Seat
+			if iv.Seat != nil {
+				place = *iv.Seat
+			}
+			out[place] = append(out[place], occupantDePlace{index: e.FilmIndex, presence: []PresenceInterval{iv}})
 		}
-		out[e.Seat] = append(out[e.Seat], occupantDePlace{index: e.FilmIndex, presence: e.Presence})
 	}
 	return out
 }

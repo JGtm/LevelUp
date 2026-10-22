@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/service/teammates"
 )
 
@@ -44,6 +45,7 @@ func (s *HomeService) enrichSquadSessionsTeammates(
 	sessions []domain.SessionSummaryItem,
 	rows []canonical.PlayerMatchRow,
 ) {
+	defer timing.FromContext(ctx).Section("home_squad_teammates")()
 	if s.sessionTeammatesLoader == nil || s.xuid == "" || len(sessions) == 0 {
 		return
 	}

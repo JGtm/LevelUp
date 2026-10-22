@@ -51,7 +51,7 @@ export function AdminLayout() {
   // défaut, sans ce garde un admin serait rebondi vers '/' au premier render.
   useEffect(() => {
     if (isBootstrapped && !isAdmin) {
-      navigate({ to: '/' })
+      navigate({ to: '/{-$lang}' })
     }
   }, [isBootstrapped, isAdmin, navigate])
 
@@ -70,7 +70,7 @@ export function AdminLayout() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">{t('common.admin.page_title')}</h1>
-        <Button variant="outline" onClick={() => navigate({ to: '/' })}>
+        <Button variant="outline" onClick={() => navigate({ to: '/{-$lang}' })}>
           {t('common.admin.back')}
         </Button>
       </div>

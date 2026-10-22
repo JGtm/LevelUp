@@ -66,12 +66,12 @@ import (
 //	000d5950 Fiesta       91,5 -> 93,1      829abef9 CTF   79,7 -> 88,7
 //	01e1f945 KOTH         86,4 -> 89,2
 //
-// LE PLANCHER DU CORPUS EST PASSÉ SOUS LE CRITÈRE DU GARDE LOCAL, ET CE N'EST PAS UN DÉFAUT DE CE
+// LE PLANCHER DU CORPUS EST SOUS LE CRITÈRE DE 88 % QUI GARDAIT LE REJEU EN LOCAL, ET CE N'EST PAS UN DÉFAUT DE CE
 // FICHIER : 87,4 % sur `64e8adfa` contre 88 % exigés. La corroboration a retiré 3 fermetures A sur
 // ce film (98 tirs), toutes attribuées à des tireurs que rien ne situait — exactement le « corps
 // d'autrui » que le chantier interdit. Le seuil n'a PAS été touché et la règle n'a PAS été
 // relâchée pour faire remonter le chiffre : l'arbitrage entre la justesse et le seuil
-// d'activation appartient à l'utilisateur (cf. `api/handlers/replay_local_gate.go`).
+// d'activation appartient à l'utilisateur (rejeu public depuis la 8.0.0, décision du 2026-10-17).
 //
 // LES CHIFFRES BAISSENT, ET C'EST LE SENS ATTENDU d'un correctif de justesse : quatre films sont
 // inchangés, trois reculent (90,8 -> 87,4 · 89,7 -> 89,2 · 91,6 -> 91,3). Un correctif de ce genre

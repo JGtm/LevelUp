@@ -589,8 +589,8 @@ func TestBuildMatchSeries_FieldMapping(t *testing.T) {
 	if p.PerformanceScore == nil || *p.PerformanceScore != perf {
 		t.Errorf("PerformanceScore: got %v", p.PerformanceScore)
 	}
-	if p.TeamMMRAvg != 1500.0 {
-		t.Errorf("TeamMMRAvg: got %f", p.TeamMMRAvg)
+	if p.TeamMMRAvg == nil || *p.TeamMMRAvg != 1500.0 {
+		t.Errorf("TeamMMRAvg: got %v", p.TeamMMRAvg)
 	}
 	if p.SessionLabel == nil || *p.SessionLabel != label {
 		t.Errorf("SessionLabel: got %v", p.SessionLabel)

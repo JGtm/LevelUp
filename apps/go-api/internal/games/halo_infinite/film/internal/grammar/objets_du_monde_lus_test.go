@@ -177,3 +177,19 @@ func TestUneCreationFortuiteNeSeRendPas(t *testing.T) {
 		t.Fatal("aucune creation commune aux deux lectures : la comparaison ne garde rien")
 	}
 }
+
+// TestLaMarcheDesigneSeuleLeProjectile : une piste de projectile que la marche a lue se garde hors
+// de la bande des images-cles, qui ne voit pas un objet vivant moins d une seconde ; l equipement et
+// les armes au sol restent bornes a leur bande. Mesure sur films reels : `grenade_vol_research_test.go`.
+func TestLaMarcheDesigneSeuleLeProjectile(t *testing.T) {
+	band := map[uint32]bool{600: true}
+	if dans := slotsDeLaMarche(ProjectileTypeIndex, band); !dans(600) || !dans(1800) {
+		t.Fatal("projectile : un slot hors bande lu par la marche doit se garder")
+	}
+	for _, ti := range []int{EquipmentTypeIndex, GroundWeaponTypeIndex} {
+		dans := slotsDeLaMarche(ti, band)
+		if !dans(600) || dans(1800) {
+			t.Fatalf("ti=%d : la bande doit borner les pistes de la marche", ti)
+		}
+	}
+}

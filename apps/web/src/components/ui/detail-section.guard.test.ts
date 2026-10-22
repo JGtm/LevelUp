@@ -53,7 +53,7 @@ const ALLOWLIST: Record<string, number> = {
   '/src/features/home/HomeAscensionWidget.tsx': 1,
   '/src/features/home/HomeBattlePassPanel.tsx': 1,
   '/src/features/home/HomeCitationsNearCompletion.tsx': 1,
-  '/src/features/home/HomePage.tsx': 5,
+  '/src/features/home/HomePage.tsx': 4,
   '/src/features/home/HomePrestigeSection.tsx': 1,
   '/src/features/home/HomeRecentPlaylistsCard.tsx': 1,
   '/src/features/home/RecentMediaRail.tsx': 1,

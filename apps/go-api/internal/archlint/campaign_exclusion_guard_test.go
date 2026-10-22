@@ -15,7 +15,9 @@
 // ses utilisateurs (un seul signalement, au lieu de la déclarer deux fois).
 //
 // Lecteur = \b(match_participants|mv_player_matches)\b ET \bxuid\s*(=\s*\?|IN\s*\(), la
-// forme de projection « (… xuid = ?) AS … » étant retirée avant le test. Est aussi un lecteur le
+// forme de projection « (… xuid = ?) AS … » étant retirée avant le test. Les autres sources par
+// joueur comptent comme match_participants (killer_victim_pairs, medals_earned, le journal des morts et,
+// depuis l'ADR 0039, ses résumés match_kill_pairs / match_assist_pairs). Est aussi un lecteur le
 // registre (match_registry, v_match_full) lu SEUL sur une fenêtre de temps (une inégalité ou un
 // BETWEEN contre un paramètre) : le filtre joueur y vient d'ailleurs, par match_id, et aucun
 // `xuid = ?` n'y paraît (E5.6, plan backlog 2026-10-16).
@@ -76,7 +78,7 @@ var resolveursCampagne = map[string]bool{
 var jetonsCampagne = map[string]bool{"campaignExclusionToken": true, "CampaignExclusionToken": true}
 
 var (
-	sourceMatchsJoueur = regexp.MustCompile(`\b(match_participants|mv_player_matches|killer_victim_pairs|match_kill_events(_latest)?|medals_earned)\b`)
+	sourceMatchsJoueur = regexp.MustCompile(`\b(match_participants|mv_player_matches|killer_victim_pairs|match_kill_events(_latest)?|match_kill_pairs(_latest)?|match_assist_pairs(_latest)?|medals_earned)\b`)
 	filtreXUID         = regexp.MustCompile(`(?i)(\bxuid|_xuid)\s*(=\s*\?|IN\s*\()`)
 	projectionXUID     = regexp.MustCompile(`(?i)\([^()]*\bxuid\s*=\s*\?[^()]*\)\s*AS\b`)
 	// Lecteur du registre SEUL sur une fenêtre de temps : le filtre joueur est appliqué

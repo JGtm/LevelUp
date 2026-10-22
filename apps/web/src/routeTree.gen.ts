@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as GroupsRouteImport } from './routes/groups'
@@ -36,6 +35,7 @@ import { Route as AdminTitlesRouteImport } from './routes/admin/titles'
 import { Route as LabChartsRouteImport } from './routes/lab/charts'
 import { Route as OnboardingOpenspartanRouteImport } from './routes/onboarding.openspartan'
 import { Route as PlayersSplatRouteImport } from './routes/players/$'
+import { Route as Char123LangChar125IndexRouteImport } from './routes/{-$lang}/index'
 import { Route as Char123LangChar125TTitleSlugRouteImport } from './routes/{-$lang}/t/$titleSlug'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/ascension'
@@ -82,11 +82,6 @@ import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRo
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/index'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -215,6 +210,11 @@ const OnboardingOpenspartanRoute = OnboardingOpenspartanRouteImport.update({
 const PlayersSplatRoute = PlayersSplatRouteImport.update({
   id: '/players/$',
   path: '/players/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char123LangChar125IndexRoute = Char123LangChar125IndexRouteImport.update({
+  id: '/{-$lang}/',
+  path: '/{-$lang}/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char123LangChar125TTitleSlugRoute =
@@ -553,7 +553,6 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRoute =
   )
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/changelog': typeof ChangelogRoute
   '/groups': typeof GroupsRoute
@@ -580,6 +579,7 @@ export interface FileRoutesByFullPath {
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$': typeof PlayersSplatRoute
   '/admin/': typeof AdminIndexRoute
+  '/{-$lang}/': typeof Char123LangChar125IndexRoute
   '/{-$lang}/t/$titleSlug': typeof Char123LangChar125TTitleSlugRouteWithChildren
   '/{-$lang}/t/$titleSlug/players/$playerSlug': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRouteWithChildren
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRouteWithChildren
@@ -627,7 +627,6 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/changelog': typeof ChangelogRoute
   '/groups': typeof GroupsRoute
   '/help': typeof HelpRoute
@@ -653,6 +652,7 @@ export interface FileRoutesByTo {
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$': typeof PlayersSplatRoute
   '/admin': typeof AdminIndexRoute
+  '/{-$lang}': typeof Char123LangChar125IndexRoute
   '/{-$lang}/t/$titleSlug': typeof Char123LangChar125TTitleSlugRouteWithChildren
   '/{-$lang}/t/$titleSlug/players/$playerSlug': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRouteWithChildren
   '/{-$lang}/t/$titleSlug/players/$playerSlug/career': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCareerRoute
@@ -698,7 +698,6 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/changelog': typeof ChangelogRoute
   '/groups': typeof GroupsRoute
@@ -725,6 +724,7 @@ export interface FileRoutesById {
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$': typeof PlayersSplatRoute
   '/admin/': typeof AdminIndexRoute
+  '/{-$lang}/': typeof Char123LangChar125IndexRoute
   '/{-$lang}/t/$titleSlug': typeof Char123LangChar125TTitleSlugRouteWithChildren
   '/{-$lang}/t/$titleSlug/players/$playerSlug': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRouteWithChildren
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionRouteWithChildren
@@ -774,7 +774,6 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/admin'
     | '/changelog'
     | '/groups'
@@ -801,6 +800,7 @@ export interface FileRouteTypes {
     | '/onboarding/openspartan'
     | '/players/$'
     | '/admin/'
+    | '/{-$lang}/'
     | '/{-$lang}/t/$titleSlug'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension'
@@ -848,7 +848,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/changelog'
     | '/groups'
     | '/help'
@@ -874,6 +873,7 @@ export interface FileRouteTypes {
     | '/onboarding/openspartan'
     | '/players/$'
     | '/admin'
+    | '/{-$lang}'
     | '/{-$lang}/t/$titleSlug'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/career'
@@ -918,7 +918,6 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId'
   id:
     | '__root__'
-    | '/'
     | '/admin'
     | '/changelog'
     | '/groups'
@@ -945,6 +944,7 @@ export interface FileRouteTypes {
     | '/onboarding/openspartan'
     | '/players/$'
     | '/admin/'
+    | '/{-$lang}/'
     | '/{-$lang}/t/$titleSlug'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension'
@@ -993,7 +993,6 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   ChangelogRoute: typeof ChangelogRoute
   GroupsRoute: typeof GroupsRoute
@@ -1008,18 +1007,12 @@ export interface RootRouteChildren {
   LabChartsRoute: typeof LabChartsRoute
   OnboardingOpenspartanRoute: typeof OnboardingOpenspartanRoute
   PlayersSplatRoute: typeof PlayersSplatRoute
+  Char123LangChar125IndexRoute: typeof Char123LangChar125IndexRoute
   Char123LangChar125TTitleSlugRoute: typeof Char123LangChar125TTitleSlugRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -1200,6 +1193,13 @@ declare module '@tanstack/react-router' {
       path: '/players/$'
       fullPath: '/players/$'
       preLoaderRoute: typeof PlayersSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/{-$lang}/': {
+      id: '/{-$lang}/'
+      path: '/{-$lang}'
+      fullPath: '/{-$lang}/'
+      preLoaderRoute: typeof Char123LangChar125IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/{-$lang}/t/$titleSlug': {
@@ -1745,7 +1745,6 @@ const Char123LangChar125TTitleSlugRouteWithChildren =
   )
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   ChangelogRoute: ChangelogRoute,
   GroupsRoute: GroupsRoute,
@@ -1760,6 +1759,7 @@ const rootRouteChildren: RootRouteChildren = {
   LabChartsRoute: LabChartsRoute,
   OnboardingOpenspartanRoute: OnboardingOpenspartanRoute,
   PlayersSplatRoute: PlayersSplatRoute,
+  Char123LangChar125IndexRoute: Char123LangChar125IndexRoute,
   Char123LangChar125TTitleSlugRoute:
     Char123LangChar125TTitleSlugRouteWithChildren,
 }

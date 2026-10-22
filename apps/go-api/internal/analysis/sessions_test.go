@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -411,6 +412,33 @@ func TestComputeSessionsWithContext_TeamChangeGroupIsDefault(t *testing.T) {
 	}
 	if gotGroup[1].SessionID == gotGroup[2].SessionID {
 		t.Error("m2 and m3 should be in different sessions (team changed, mode=group)")
+	}
+}
+
+// TestComputeSessionsWithContext_FriendsConstantFourthChanging : mode « friends », deux amis
+// présents à chaque match, un 4e coéquipier différent à chaque fois, matchs espacés de 10 min
+// → UNE session (seul un changement d'ami coupe).
+func TestComputeSessionsWithContext_FriendsConstantFourthChanging(t *testing.T) {
+	base := t0()
+	var rows []domain.SessionMatchRow
+	for i := 0; i < 9; i++ {
+		sig := fmt.Sprintf("xuid_ami_a,xuid_ami_b,xuid_inconnu_%d", i)
+		rows = append(rows, makeMatch(fmt.Sprintf("m%d", i), tPlus(base, 10*i), 480, sig, false))
+	}
+	opts := DefaultSessionOptions()
+	opts.TeamChangeMode = domain.TeamChangeModeFriends
+	opts.FriendsXUIDs = []string{"xuid_ami_a", "xuid_ami_b"}
+
+	got := ComputeSessionsWithContext(rows, opts)
+	for _, a := range got {
+		if a.SessionID != got[0].SessionID {
+			t.Fatalf("match %s en session %d, attendu une seule session (%d)", a.MatchID, a.SessionID, got[0].SessionID)
+		}
+	}
+
+	opts.TeamChangeMode = domain.TeamChangeModeGroup
+	if g := ComputeSessionsWithContext(rows, opts); g[len(g)-1].SessionID != len(rows)-1 {
+		t.Fatalf("mode group : dernière session %d, attendu %d (le 4e change à chaque match)", g[len(g)-1].SessionID, len(rows)-1)
 	}
 }
 

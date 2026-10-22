@@ -9,6 +9,7 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -58,24 +59,25 @@ func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *
 
 // recalculerSessionsJoueur recalcule les sessions d'un profil, sur les bases ET le provider shared
 // DE SON TITRE : un profil Halo 5 se recalcule sur les bases de Halo 5, jamais sur celles du titre
-// par défaut. Options per-titre (overlay PMT-4, le rythme de session dépend du titre ; overlay
-// absent ⇒ valeurs globales) ; amis DU joueur recalculé (data/global/player_friends.json : les
-// sessions d'escouade de chacun se calculent sur SA liste ; store absent ou lecture en échec →
-// aucun ami, journalisé avant dégradation).
+// par défaut. Règle de découpage du titre (settings.SessionOptions : réglage global + overlay du
+// titre), la même que la synchro ; amis DU joueur recalculé (data/global/player_friends.json :
+// les sessions d'escouade de chacun se calculent sur SA liste ; store absent ou lecture en échec
+// → aucun ami, journalisé avant dégradation).
 func (h *SettingsHandler) recalculerSessionsJoueur(p domain.PlayerSummary) (int, error) {
-	opts := sessionComputeOptionsFor(h.settingsStore, h.cfg.TitleSettingsPath, p.TitleSlug)
+	ctx := ctxkeys.WithTitleSlug(context.Background(), p.TitleSlug)
+	opts := settings_platform.SessionOptions(ctx, h.settingsStore, h.cfg.TitleSettingsPath(p.TitleSlug))
 	var friendGamertags []string
 	if h.friendStore != nil {
 		fs, ferr := h.friendStore.Get(p.XUID)
 		if ferr != nil {
-			slog.WarnContext(context.Background(), "sessions recalculate: lecture des amis échouée",
+			slog.WarnContext(ctx, "sessions recalculate: lecture des amis échouée",
 				"gamertag", p.Gamertag, "err", ferr)
 		}
 		friendGamertags = fs
 	}
 	playerDBPath, sharedDBPath := sessionsRecalcPaths(h.cfg, p)
 	return go_sync.RecalculatePlayerSessions(
-		ctxkeys.WithTitleSlug(context.Background(), p.TitleSlug), h.cfg.SharedProviderForTitle(p.TitleSlug),
+		ctx, h.cfg.SharedProviderForTitle(p.TitleSlug),
 		playerDBPath, sharedDBPath, p.XUID, opts, friendGamertags,
 	)
 }

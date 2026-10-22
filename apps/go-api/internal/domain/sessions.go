@@ -66,8 +66,7 @@ const (
 	// temps uniquement.
 	TeamChangeModeIgnore TeamChangeMode = "ignore"
 
-	// TeamChangeModeGroup : nouvelle session dès qu'un coéquipier quitte ou rejoint
-	// (comportement par défaut).
+	// TeamChangeModeGroup : nouvelle session dès qu'un coéquipier quitte ou rejoint.
 	TeamChangeModeGroup TeamChangeMode = "group"
 
 	// TeamChangeModeFriends : nouvelle session uniquement si un joueur de
@@ -92,9 +91,8 @@ type SessionComputeOptions struct {
 	SplitOnRankedChange bool
 
 	// TeamChangeMode contrôle la réaction aux changements de coéquipiers.
-	// Valeurs : "ignore" | "group" (défaut) | "friends".
-	// Chaîne vide → comportement rétrocompatible (group si FriendsXUIDs vide,
-	// friends sinon).
+	// Valeurs : "ignore" | "group" | "friends" (défaut d'analysis.DefaultSessionOptions).
+	// Chaîne vide ou inconnue → même rupture que "friends" (aucune sans ami suivi).
 	TeamChangeMode TeamChangeMode
 
 	// Mode choisit l'algorithme (gap simple ou context).

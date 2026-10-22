@@ -261,6 +261,10 @@ en = "Respawn"
 fr = "Toutes"
 en = "All"
 
+[tactical.plan.pill_zones]
+fr = "Zones nommées"
+en = "Named zones"
+
 # ── Carte du plan : états posés sur le fond, légende, bandeau d’état ────────────────────────────
 [tactical.plan.empty_no_match_title]
 fr = "Aucun match sur cette carte dans le filtre"

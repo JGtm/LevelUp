@@ -228,13 +228,11 @@ export interface FinalScoreHeader {
  * l'app affiche par ailleurs — le prendre de l'en-tête garantit que les deux surfaces ne
  * peuvent pas dire deux nombres différents du même match.
  *
- * IL NE FAUT PAS LE RESTREINDRE AUX SEULES LECTURES EN MANCHES, et c'est un piège qui a
- * réellement été posé puis retiré : sur une variante à manches dont les deux camps finissent
- * à ÉGALITÉ de manches (témoin `adb93fb7` : 1 partout, plus une nulle), le serveur retombe
- * volontairement sur les points et publie `score_kind = "points"`. Filtrer sur « rounds »
- * renvoyait alors l'écran de fin vers le calque, donc vers les points de la dernière manche,
- * pendant que la vue match affichait le total. Le critère est donc la PRÉSENCE des deux
- * nombres, jamais leur nature.
+ * IL NE FAUT PAS LE RESTREINDRE AUX SEULES LECTURES EN MANCHES : quand le serveur publie
+ * `score_kind = "points"` (variante non déclarée, match à une seule manche, manches
+ * inconnues), filtrer sur « rounds » renverrait l'écran de fin vers le calque, donc vers les
+ * points de la dernière manche, pendant que la vue match affiche le total. Le critère est
+ * donc la PRÉSENCE des deux nombres, jamais leur nature.
  *
  * Le pendant vivant — les pastilles de manche qui se remplissent pendant la lecture — reste
  * dérivé du film : il doit suivre la position de lecture, ce que l'en-tête ne sait pas faire

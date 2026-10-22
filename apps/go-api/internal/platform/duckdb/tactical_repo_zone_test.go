@@ -25,6 +25,7 @@ func tacKillNomme(t *testing.T, pdb *PlayerDB, matchID, killerXUID, killerGT, vi
 		 feed_present, assist_known, read_path, read_origin, source_tag, source_category)
 		VALUES (?, 'pass_v1', 'rev_test', TRUE, ?, ?, ?, ?, ?, TRUE, FALSE, ?, 'credit-concordant', ?, ?)`,
 		matchID, timeMS, victimGT, victimXUID, killerGT, killerXUID, killscope.ReadPathFilmWalk, tag, categorie)
+	ecrireResumes(t, pdb.Shared.SQLDb(), matchID)
 }
 
 // tacPosZ pose une position monde avec ses hauteurs (nil = non mesurée).

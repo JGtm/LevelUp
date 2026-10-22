@@ -2203,8 +2203,7 @@ export interface paths {
          * @description Image vue du dessus de la carte du match (PNG), cuite hors ligne par
          *     `cmd/mapfond-build`. Elle ne se lit qu'avec son CALAGE, servi par
          *     `GET .../replay/background` : une image dont on ignore où elle se pose ne se
-         *     superpose à rien. Servie uniquement en local, comme le reste du rejeu 2D
-         *     (cf. `handlers/replay_local_gate.go`).
+         *     superpose à rien.
          */
         get: operations["getMatchReplayBackgroundImage"];
         put?: never;
@@ -2224,6 +2223,23 @@ export interface paths {
         };
         /** Zones nommées (callouts) de la carte du rejeu 2D d'un match */
         get: operations["getMatchReplayCallouts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/matches/{match_id}/replay/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contexte de match de la page de rejeu */
+        get: operations["getMatchReplayContext"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2836,6 +2852,29 @@ export interface paths {
         };
         /** Page Accueil */
         get: operations["getHomePage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/home/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tuiles de match de l'Accueil (pages suivantes, favoris)
+         * @description Tuiles de match de l'Accueil. La tête de la liste (30 tuiles) est servie avec `pages/home` ;
+         *     ce endpoint rend la suite de l'historique par curseur (`before` = `next_before` de la page
+         *     précédente, tuiles strictement plus anciennes, ordre instant canonique décroissant puis
+         *     match_id décroissant) et, avec `kind=favorites`, les favoris du joueur en entier.
+         */
+        get: operations["getHomeMatches"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9133,6 +9172,14 @@ export interface components {
             played_at: string;
             players: components["schemas"]["MatchRangePlayer"][] | null;
         };
+        MatchReplayContext: {
+            header: components["schemas"]["MatchViewHeader"];
+            highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;
+            media: components["schemas"]["MatchMediaTab"];
+            scoreboard: components["schemas"]["MatchScoreboardRow"][] | null;
+            /** @description Une lecture a échoué côté serveur : contexte transitoire, à redemander (jamais conservé en cache). */
+            source_unavailable: boolean;
+        };
         MatchRosterRow: {
             /** Format: int64 */
             assists?: number;
@@ -10677,6 +10724,8 @@ export interface components {
             /** Format: int64 */
             from: number;
             /** Format: int64 */
+            seat?: number;
+            /** Format: int64 */
             to: number;
             /** Format: int64 */
             toMax?: number;
@@ -11347,15 +11396,22 @@ export interface components {
         };
         SeatCoverage: {
             /** Format: int64 */
+            absencesTenuesParUnBot: number;
+            /** Format: int64 */
             apparies: number;
             /** Format: int64 */
             arrivants: number;
             /** Format: int64 */
             bornesDifferees: number;
             /** Format: int64 */
+            botsRelevesALaTaille: number;
+            /** Format: int64 */
+            botsRelevesEnJeu: number;
+            /** Format: int64 */
             botsSuccesseurs: number;
             /** Format: int64 */
             capacite: number;
+            capaciteSource?: string;
             /** Format: int64 */
             chevauchements: number;
             /** Format: int64 */
@@ -11385,6 +11441,8 @@ export interface components {
             presencesCloses: number;
             /** Format: int64 */
             presencesParLesVies: number;
+            /** Format: int64 */
+            rameneesALaTaille: number;
             /** Format: int64 */
             relaisBornes: number;
             /** Format: int64 */
@@ -12376,7 +12434,7 @@ export interface components {
             session_label?: string;
             start_time: string;
             /** Format: double */
-            team_mmr_avg: number;
+            team_mmr_avg?: number;
         };
         SquadObjectiveEvening: {
             /** Format: double */
@@ -19244,6 +19302,39 @@ export interface operations {
             };
         };
     };
+    getMatchReplayContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchReplayContext"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     deleteMedia: {
         parameters: {
             query?: {
@@ -20356,7 +20447,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Page accueil (hero card, timeline, médias récents) */
+            /** @description Page accueil (hero card, tête des matchs récents, sessions) */
             200: {
                 headers: {
                     "Cache-Control"?: string;
@@ -20368,6 +20459,74 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
+            404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
+            500: components["responses"]["InternalError"];
+            /**
+             * @description Page momentanément indisponible, réessayer après `Retry-After` :
+             *     `home_page_db_busy` (bascule RO/RW d'une synchronisation),
+             *     `home_page_db_recovering` (connexion en cours de récupération) ou
+             *     `db_busy` (verrou d'écriture).
+             */
+            503: {
+                headers: {
+                    /** @description Délai conseillé avant un nouvel essai, en secondes */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getHomeMatches: {
+        parameters: {
+            query?: {
+                /**
+                 * @description `recent` (défaut) : l'historique par curseur. `favorites` : les favoris en entier
+                 *     (`before` et `limit` ignorés).
+                 */
+                kind?: "recent" | "favorites";
+                /** @description Curseur opaque `next_before` de la page précédente ; absent = depuis la plus récente. */
+                before?: string;
+                /** @description Tuiles par page (30 par défaut, 60 au plus). */
+                limit?: number;
+            };
+            header?: {
+                "X-LevelUp-Locale"?: string;
+                "If-None-Match"?: string;
+            };
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Page de tuiles (`items`, `has_more`, `next_before`) */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    "Content-Type"?: string;
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
             499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];

@@ -10,7 +10,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strings"
 
 	"levelup/go-api/internal/analysis/timeline"
@@ -269,33 +268,9 @@ func (s *MatchViewService) buildMatchViewFromData(
 	meta *domain.MatchMetaRaw,
 	d matchViewData,
 ) domain.MatchViewResponse {
-	// Durée pour les bins tug-of-war (Dominance).
-	durationMS := tugDurationMS(meta)
-
-	// Correction chronologie T0 (Phase 3 : T0 réel depuis meta.T0Ms, 0 si
-	// indisponible). Recale TOUTES les sources d'events au référentiel gameplay
-	// (vrai début de match) en un POINT UNIQUE, avant les builders combat. Sans
-	// ça la cadence/les rôles (canonicalEvents) seraient sur l'horloge gameplay
-	// mais le kill-feed (event_time_ms, axe X des charts KD-cumul/frag-diff/tug)
-	// + les badges d'impact (events bruts) resteraient sur l'horloge film
-	// (countdown inclus) → incohérence visuelle sur la même page.
-	var t0Ms int64
-	if meta != nil && meta.T0Ms != nil {
-		t0Ms = *meta.T0Ms
-	}
-	correctMatchViewEventsT0(&d, matchID, timeline.BuildForMatchMs(durationMS, t0Ms))
-
-	// IsFavorite : lookup synchrone (cheap, indexé sur PK player_slug+match_id).
-	// Dégradation gracieuse si socialRepo nil ou shared_social indisponible.
-	isFavorite := false
-	if s.socialRepo != nil && s.playerSlug != "" {
-		if fav, ferr := s.socialRepo.IsMatchFavorite(ctx, s.playerSlug, matchID); ferr == nil {
-			isFavorite = fav
-		} else {
-			slog.WarnContext(ctx, "match_view: IsMatchFavorite échoué",
-				"match_id", matchID, "player", s.playerSlug, "err", ferr)
-		}
-	}
+	// Recalage T0 en un point unique (cadence/rôles, fil et badges d'impact sur la même
+	// horloge) ; durée pour les bins tug-of-war (Dominance).
+	durationMS := prepareMatchViewEvents(&d, matchID, meta)
 
 	// expected_assists — uniquement pour le joueur suivi (is_me), jamais pour
 	// les autres lignes du scoreboard.
@@ -319,36 +294,9 @@ func (s *MatchViewService) buildMatchViewFromData(
 		}
 	}
 
-	header := buildMatchHeader(ctx, matchID, meta, d.stats, d.enrich, d.scoreboard, s.assetURL, isFavorite)
-	// Flag « Prolongation » : résolu APRÈS le header (la table réglementaire est
-	// portée par le service, pas par le builder — buildMatchHeader est déjà à la
-	// limite de paramètres). Titre sans table → no-op.
-	applyMatchHeaderOvertime(&header, meta, s.regulationSeconds)
-	// Jeu d'outcomes du titre, résolu UNE FOIS et réutilisé pour l'en-tête, le résumé et le
-	// scoreboard (2026-09-07, décision D5) : la CLÉ canonique de l'issue (win|loss|tie|dnf),
-	// jamais un texte — le web localise via useOutcomeLabel.
-	outcomes := outcomesOf(s.semantic)
-	// LA CLÉ DE L'ISSUE. Ici et pas dans le builder, pour la même raison que la ligne
-	// au-dessus : le jeu d'outcomes vient de l'adapter sémantique, porté par le service.
-	applyMatchHeaderOutcomeKey(&header, outcomes)
-	// Score de l'en-tête : points ou MANCHES. Ici et pas dans le builder, pour la même
-	// raison que la ligne au-dessus — la table `[rounds_decide]` est portée par le
-	// service. Table absente → lecture en points, comportement d'avant le 2026-08-29.
-	applyMatchHeaderScore(&header, meta, d.stats, s.roundsDecide)
-	// Lecture du bloc « Score dans le temps » (rien / barres d'instants / courbe) : même
-	// raison d'être ici que les deux lignes au-dessus — la règle est portée par le service.
-	// Règle absente → champ vide → le client garde la courbe.
-	applyMatchHeaderScoreTimeline(&header, meta, s.scoreTimelineKind)
-	// Présence de l'artefact de rejeu 2D : un os.Stat, jamais une lecture. Même
-	// raison d'être ici que le flag « Prolongation » — la dépendance est portée par
-	// le service, pas par le builder.
-	applyMatchHeaderReplay(ctx, &header, matchID, s.replaySvc)
-	// Indicateur « analyse du film en cours » : lit ReplayAvailable posé juste au-dessus.
-	s.applyHeaderAnalysisPending(ctx, &header)
-	// ModeCategory : catégorie custom résolue depuis pair_name (taxonomie injectée,
-	// WithModeTaxonomy) — pour que la garde Fiesta du rejeu 2D corrèle sur la
-	// résolution de mode de l'app plutôt que deviner sur ModeUI/PlaylistLabel.
-	applyMatchHeaderModeCategory(&header, meta, s.modeTaxonomy)
+	// En-tête et jeu d'outcomes du titre (réutilisé pour le résumé et le scoreboard) :
+	// assemblage partagé avec le contexte du rejeu (match_view_shared_build.go).
+	header, outcomes := s.assembleMatchHeader(ctx, matchID, meta, d)
 	rank := buildRankBlock(d.skillRank, s.assetURL)
 	curDurSec := 0
 	if meta != nil && meta.DurationSeconds != nil {
@@ -376,20 +324,9 @@ func (s *MatchViewService) buildMatchViewFromData(
 		}
 	}
 	combat := buildCombatTabFull(matchID, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
-	// L'arme du kill et l'équipe du tueur se posent APRÈS l'assemblage : ce sont des
-	// décorations du feed, pas des entrées du calcul de dominance (les bins, les vagues
-	// et les cumuls ne dépendent d'aucune des deux). Les séparer garde buildCombatTabFull
-	// à sa responsabilité et rend la décoration testable seule.
-	decorateKillFeed(ctx, combat.HighlightEvents, killFeedInputs{
-		sources:    d.killSources,
-		assists:    d.killAssists,
-		victims:    d.kvPairsFeed,
-		scoreboard: d.scoreboard,
-		assetURL:   s.assetURL,
-	})
-	// L'identité des médailles se pose par le même modèle : une décoration du feed,
-	// résolue contre le référentiel du titre (best-effort).
-	decorateMedalEvents(ctx, combat.HighlightEvents, s.repo, s.assetURL)
+	// L'arme du kill, l'équipe du tueur et l'identité des médailles se posent APRÈS
+	// l'assemblage : décorations du feed, pas des entrées du calcul de dominance.
+	s.decorateHighlightEvents(ctx, combat.HighlightEvents, d)
 	// Les paires d'assistance sont un AGRÉGAT PAR MATCH, pas une décoration du feed :
 	// elles sortent déjà comptées de Q21d et n'ont besoin que du scoreboard pour nommer
 	// le tueur. Posées ici pour la même raison que FragDistribution — hors de

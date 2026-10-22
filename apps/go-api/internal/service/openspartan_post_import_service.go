@@ -18,8 +18,9 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
-	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/friendstore"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/sync"
 )
 
@@ -51,11 +52,11 @@ type PostImportError struct {
 	Err     string
 }
 
-// PostImportOptions tunes recompute behaviour.
+// PostImportOptions tunes recompute behaviour. Sessions follow the title's session
+// rule (settings.SessionOptions), never a per-import value.
 type PostImportOptions struct {
-	TitleSlug         string // defaults to halo_infinite
-	ForcePerfScores   bool   // recompute even if score already exists with the same chain
-	SessionGapMinutes int    // gap that breaks a session, defaults to 15
+	TitleSlug       string // defaults to halo_infinite
+	ForcePerfScores bool   // recompute even if score already exists with the same chain
 }
 
 // NewOpenSpartanPostImportService construit le service. Le handle shared est
@@ -233,19 +234,23 @@ func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
 	}
 }
 
-// recomputeSessions runs sync.RecalculatePlayerSessions. The helper acquires
-// its own write leases on player and shared DBs internally.
+// recomputeSessions runs sync.RecalculatePlayerSessions with the title's session rule
+// (settings.SessionOptions, the one the sync and the admin recalc apply) and the player's
+// friends (data/global/player_friends.json). The helper acquires its own write leases on
+// player and shared DBs internally.
 func (s *OpenSpartanPostImportService) recomputeSessions(
 	ctx context.Context,
 	playerDBPath, sharedDBPath, xuid string,
 	opts PostImportOptions,
 	result *PostImportResult,
 ) {
+	sessionOpts := settings_platform.SessionOptionsForConfig(ctx, s.cfg, opts.TitleSlug)
+	friends, ferr := friendstore.NewFriendStore(s.cfg.RuntimePaths().PlayerFriendsPath()).Get(xuid)
+	if ferr != nil {
+		s.log.WarnContext(ctx, "post_import_sessions_friends_unavailable", "xuid", xuid, "err", ferr)
+	}
 	n, err := sync.RecalculatePlayerSessions(ctx, s.cfg.SharedProvider, playerDBPath, sharedDBPath, xuid,
-		domain.SessionComputeOptions{
-			GapMinutes:     opts.SessionGapMinutes,
-			TeamChangeMode: "cluster",
-		}, nil,
+		sessionOpts, friends,
 	)
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: scopeSessions, Err: err.Error()})
@@ -331,9 +336,6 @@ func (s *OpenSpartanPostImportService) recomputeCitations(
 func applyPostImportDefaults(opts PostImportOptions) PostImportOptions {
 	if opts.TitleSlug == "" {
 		opts.TitleSlug = titlePkg.DefaultSlug
-	}
-	if opts.SessionGapMinutes <= 0 {
-		opts.SessionGapMinutes = 15
 	}
 	return opts
 }

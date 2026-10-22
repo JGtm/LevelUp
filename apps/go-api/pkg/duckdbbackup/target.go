@@ -12,7 +12,7 @@
 // Periodic scheduling is intentionally left to the caller's environment
 // (e.g. systemd timers) rather than an in-app loop.
 //
-// The package has no dependency on any project-specific internal package.
+// Seule dépendance au projet : internal/platform/atomicfile (écriture atomique du schéma exporté).
 // The caller supplies a discover function that returns the list of DBs to protect.
 package duckdbbackup
 

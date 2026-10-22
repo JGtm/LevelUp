@@ -116,8 +116,16 @@ export interface ShotFxEntry {
  * `aimHoldFrames` est la fenêtre de maintien du regard, en frames : la MÊME que celle du
  * cône de visée, parce que c'est la même lecture. Au-delà, on ne sait plus où le joueur
  * regardait, et une direction périmée affirmerait ce qu'on ignore.
+ *
+ * `seatedAtSlot` : la règle du pion (`SlotIdentity.seatedAtSlot`). Un tir tiré par un joueur qui ne
+ * tient plus de fiche à cet instant — un bot relevé — ne s'ancre sur aucun pion : il n'est pas
+ * dessiné. Le tir reste dans le film et dans les comptes ; seul l'éclair de la carte s'éteint.
  */
-export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): ShotFxEntry[] {
+export function buildShotFx(
+  doc: ReplayDocumentReady,
+  aimHoldFrames: number,
+  seatedAtSlot?: (slot: number, ownerFrame: number, frame: number) => boolean,
+): ShotFxEntry[] {
   // LES COUPS DU TIR CONTINU (schéma 71) entrent comme des tirs : même éclair, même montage, même
   // regard — ils ne diffèrent que par leur source, simulée à la cadence du tag (`fireBursts.ts`).
   const tirs = [...doc.shots, ...fireBurstShots(doc)]
@@ -128,6 +136,7 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
   const bySlot = buildLivesBySlot(doc.tracks)
   const out: ShotFxEntry[] = []
   for (const s of tirs) {
+    if (seatedAtSlot && !seatedAtSlot(s.slot, s.t, s.t)) continue
     const label = s.w ? doc.weaponLabels?.[s.w] : undefined
     // DEUX JOINTURES, DANS CET ORDRE — la MÊME que celle du son (`shotSoundStem`) : le registre
     // des armes de JOUEUR d'abord, puis le REGISTRE DES ARMES DE VÉHICULE du document (schéma 69,

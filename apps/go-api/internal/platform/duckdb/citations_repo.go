@@ -4,9 +4,11 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
@@ -252,8 +254,9 @@ func (r *CitationsRepo) LoadMatchCitationsForView(ctx context.Context, matchID s
 }
 
 // LoadMatchCitationsRich charge les citations d'un match avec cumul + métadonnées de paliers.
-// Étape 1 : Q41 sur player DB → norm + delta + cumul.
+// Étape 1 : Q41 sur player DB → norm + delta (gain de ce match).
 // Étape 2 : Q26j sur metadata DB → display + image_path + tier_targets + description.
+// Étape 2b : cumul de chaque citation arrêté à ce match (citations_cumul.go).
 // Étape 3 : merge en Go (citation_mappings n'est pas attachée au player DB).
 // Retour utilisable directement par analysis.BuildCitationSnippets.
 func (r *CitationsRepo) LoadMatchCitationsRich(ctx context.Context, matchID string) ([]domain.HomeMatchCitationRaw, error) {
@@ -266,16 +269,11 @@ func (r *CitationsRepo) LoadMatchCitationsRich(ctx context.Context, matchID stri
 	}
 	defer rows.Close()
 
-	type rawRow struct {
-		norm       string
-		delta      int
-		cumulative int
-	}
-	var raws []rawRow
+	var raws []citationRowScan
 	normsSeen := make(map[string]struct{})
 	for rows.Next() {
-		var rr rawRow
-		if err := rows.Scan(&rr.norm, &rr.delta, &rr.cumulative); err != nil {
+		var rr citationRowScan
+		if err := rows.Scan(&rr.norm, &rr.delta); err != nil {
 			return nil, fmt.Errorf("LoadMatchCitationsRich scan: %w", err)
 		}
 		raws = append(raws, rr)
@@ -294,6 +292,13 @@ func (r *CitationsRepo) LoadMatchCitationsRich(ctx context.Context, matchID stri
 		norms = append(norms, n)
 	}
 	metaMap := r.loadCitationMappingMeta(ctx, norms)
+	cumul, err := loadCitationCumulAfterMatch(ctx, r.pdb, norms)
+	if err != nil {
+		// Sans cumul arrêté au match, l'anneau et le palier seraient faux : pas de citation riche.
+		slog.WarnContext(ctx, "LoadMatchCitationsRich: cumul par match indisponible, citations omises",
+			"match_id", matchID, "err", err)
+		return nil, nil
+	}
 
 	// Étape 3 : merge. Display vide → BuildCitationSnippets filtre (norms internes
 	// type _processed n'ont pas de mapping et doivent être ignorées).
@@ -307,7 +312,7 @@ func (r *CitationsRepo) LoadMatchCitationsRich(ctx context.Context, matchID stri
 			ImagePath:   meta.imagePath,
 			TierTargets: meta.tierTargets,
 			Delta:       rr.delta,
-			Cumulative:  rr.cumulative,
+			Cumulative:  cumul[analysis.CitationMatchKey{MatchID: matchID, Norm: rr.norm}],
 		})
 	}
 	return result, nil

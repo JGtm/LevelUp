@@ -6,21 +6,64 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
 
 // SessionsService calcule et retourne les sessions de jeu d'un joueur.
 type SessionsService struct {
 	repo port.SessionsRepository
+	// rule rend la règle de découpage du titre (settings.SessionOptionsLoader).
+	rule func(context.Context) domain.SessionComputeOptions
+	// friendGamertags rend les amis du joueur (nil : aucun ami).
+	friendGamertags func(context.Context) []string
 }
 
 // NewSessionsService crée un SessionsService.
 func NewSessionsService(repo port.SessionsRepository) *SessionsService {
 	return &SessionsService{repo: repo}
+}
+
+// WithSessionRule branche la règle de découpage du titre et les amis du joueur : ceux
+// qu'appliquent les écrivains de session_id. Sans règle, SessionOptions rend la règle par
+// défaut (journalisée par settings.SessionOptions).
+func (s *SessionsService) WithSessionRule(
+	rule func(context.Context) domain.SessionComputeOptions,
+	friendGamertags func(context.Context) []string,
+) *SessionsService {
+	s.rule = rule
+	s.friendGamertags = friendGamertags
+	return s
+}
+
+// SessionOptions rend la règle de découpage du joueur, amis résolus en xuids. Un échec de
+// résolution des amis est journalisé ; la règle s'applique alors sans amis.
+func (s *SessionsService) SessionOptions(ctx context.Context) domain.SessionComputeOptions {
+	var opts domain.SessionComputeOptions
+	if s.rule != nil {
+		opts = s.rule(ctx)
+	} else {
+		opts = settings_platform.SessionOptions(ctx, nil, "")
+	}
+	if s.friendGamertags == nil {
+		return opts
+	}
+	gamertags := s.friendGamertags(ctx)
+	if len(gamertags) == 0 {
+		return opts
+	}
+	xuids, err := s.repo.LookupFriendXUIDs(ctx, gamertags)
+	if err != nil {
+		slog.WarnContext(ctx, "sessions: amis non résolus, découpage sans amis", "err", err)
+		return opts
+	}
+	opts.FriendsXUIDs = xuids
+	return opts
 }
 
 // GetSessions charge les matchs et calcule les sessions selon les options fournies.

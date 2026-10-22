@@ -3,38 +3,39 @@ package analysis
 import "fmt"
 
 // team_score_display.go — CE QU'ON AFFICHE COMME SCORE D'UN MATCH : des points, ou des
-// MANCHES. Source UNIQUE de la règle, title-agnostic, sans I/O.
+// MANCHES. Source UNIQUE de la règle, title-agnostic, sans I/O (ADR 0032).
 //
 // LE PROBLÈME QU'ELLE TRANCHE. Sur un mode qui se décide aux manches, le score rendu par
 // l'API (`CoreStats.Score`) est un CUMUL DE POINTS sur toutes les manches : il ne dit pas
-// qui a gagné. Mesure du 2026-08-29 sur les 1 942 matchs à score du corpus
-// (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`) : sur 4 matchs Oddball, l'équipe VICTORIEUSE
-// affiche MOINS de points que la perdante — l'app présentait donc une victoire comme une
-// défaite au score. Le compte de manches, lui, tranche.
+// qui a gagné, et il peut même donner l'avantage à l'équipe qui a perdu (Oddball). Le
+// compte de manches, lui, tranche.
 //
-// TROIS CONDITIONS CUMULATIVES, ET AUCUNE N'EST NÉGOCIABLE :
+// DEUX CONDITIONS CUMULATIVES POUR AFFICHER LES MANCHES. Dès qu'elles tiennent, on affiche
+// le nombre de manches remportées par chaque équipe, QUEL QUE SOIT LE RÉSULTAT — victoire,
+// défaite, égalité de manches, match abandonné :
 //
 //  1. La VARIANTE est déclarée dans `regulation.toml [rounds_decide]` — une table MESURÉE,
 //     jamais une heuristique. La règle « plus d'une manche donc on affiche les manches »
-//     a été essayée et RÉFUTÉE par la mesure : le CTF d'arène se joue en deux MI-TEMPS
+//     est RÉFUTÉE par la mesure : le CTF d'arène se joue en deux MI-TEMPS
 //     (`rounds_total = 2`) alors que son score est le total de captures. La règle y aurait
 //     affiché « 0 - 1 » à la place de « 2 - 3 ».
 //  2. Le match a RÉELLEMENT plusieurs manches (`rounds_total >= 2`). Une variante déclarée
 //     dont un match particulier n'a qu'une manche garde les points : le compte de manches
 //     n'y ajouterait rien.
-//  3. Les deux camps n'ont PAS le même nombre de manches gagnées. Une égalité de manches ne
-//     désigne personne (témoin `adb93fb7` : 1 manche chacun + 1 nulle, et pourtant un
-//     vainqueur) — afficher « 1 - 1 » sur une victoire serait un contresens. On retombe
-//     alors sur les points, faute de mieux.
 //
-// TOUT ÉCHEC DE CONDITION REVIENT AUX POINTS, c'est-à-dire au comportement d'avant ce
-// chantier : une donnée manquante (colonne NULL, ligne antérieure au backfill, titre dont
-// l'API ne publie pas les manches comme Halo 5) ne dégrade rien, elle ne gagne simplement
-// pas la nouvelle lecture.
+// Une égalité de manches n'est PAS une condition de repli : « 1 - 1 » est ce que le match a
+// joué, même quand une manche nulle ou un abandon laisse un vainqueur par ailleurs. Le
+// verdict (victoire/défaite) voyage séparément (`outcome`), il n'est jamais déduit de ce
+// libellé.
+//
+// TOUT ÉCHEC DE CONDITION REVIENT AUX POINTS : une donnée manquante (colonne NULL, ligne
+// antérieure au backfill, titre dont l'API ne publie pas les manches comme Halo 5) ne
+// dégrade rien, elle ne gagne simplement pas la lecture en manches. Le comptage de manches
+// exige aussi les deux camps connus et non négatifs.
 //
 // LES POINTS NE SONT JAMAIS PERDUS. Même quand on affiche les manches, `Points` reste
-// renseigné : la vue match les montre en second plan (arbitrage utilisateur du 2026-08-29),
-// et un appelant qui n'en veut pas les ignore.
+// renseigné : la vue match les montre en second plan, et un appelant qui n'en veut pas les
+// ignore.
 
 // ScoreKind dit CE QUE portent `Mine` et `Theirs` : des points de mode, ou des manches.
 type ScoreKind string
@@ -92,7 +93,8 @@ func ReadTeamScore(in TeamScoreInput) (TeamScoreDisplay, bool) {
 	return TeamScoreDisplay{Kind: ScoreKindPoints, Mine: p[0], Theirs: p[1], Points: &p}, true
 }
 
-// roundsWin applique les trois conditions cumulatives de l'en-tête.
+// roundsWin applique les deux conditions cumulatives de l'en-tête, plus la lisibilité du compte
+// (deux camps connus, non négatifs). Aucune comparaison des deux nombres : l'égalité s'affiche.
 func roundsWin(in TeamScoreInput) bool {
 	if !in.RoundsDecide || in.RoundsTotal == nil || *in.RoundsTotal < 2 {
 		return false
@@ -100,10 +102,7 @@ func roundsWin(in TeamScoreInput) bool {
 	if in.MyRoundsWon == nil || in.EnemyRoundsWon == nil {
 		return false
 	}
-	if *in.MyRoundsWon < 0 || *in.EnemyRoundsWon < 0 {
-		return false
-	}
-	return *in.MyRoundsWon != *in.EnemyRoundsWon
+	return *in.MyRoundsWon >= 0 && *in.EnemyRoundsWon >= 0
 }
 
 // readPoints rend le couple de points et s'il est exploitable.

@@ -119,14 +119,25 @@ func seedReaderSnapshot(t *testing.T) *title.PathResolver {
 	return paths
 }
 
-// TestSnapshotPreferredSharedReader_ServedAndCached : avec un snapshot, Get sert depuis
-// le snapshot (pas le live) et réutilise le querier caché entre deux appels.
+// TestSnapshotPreferredSharedReader_ServedAndCached : avec un snapshot, le premier Get
+// sert le live et lance la construction ; une fois construite, Get sert depuis le
+// snapshot et réutilise le querier caché entre deux appels.
 func TestSnapshotPreferredSharedReader_ServedAndCached(t *testing.T) {
 	ctx := context.Background()
 	paths := seedReaderSnapshot(t)
 	live := &fakeLiveReader{db: openSnapMemDB(t)}
 	r := NewSnapshotPreferredSharedReader(paths, title.DefaultSlug, live)
 	defer r.Close()
+
+	db0, rel0, err := r.Get(ctx)
+	if err != nil {
+		t.Fatalf("Get #0: %v", err)
+	}
+	rel0()
+	if db0 != live.db {
+		t.Fatal("Get #0 : la version n'est pas encore construite, attendu le live")
+	}
+	r.builds.Wait()
 
 	db1, rel1, err := r.Get(ctx)
 	if err != nil {
@@ -136,8 +147,8 @@ func TestSnapshotPreferredSharedReader_ServedAndCached(t *testing.T) {
 	if db1 == live.db {
 		t.Fatal("Get #1 a servi le live, attendu le snapshot")
 	}
-	if live.calls != 0 {
-		t.Fatalf("live.calls = %d, attendu 0 (servi depuis snapshot)", live.calls)
+	if live.calls != 1 {
+		t.Fatalf("live.calls = %d, attendu 1 (seul Get #0 sur le live)", live.calls)
 	}
 	// La DB snapshot répond aux requêtes shared (m1 ready présent).
 	var n int
@@ -180,6 +191,7 @@ func TestSnapshotPreferredSharedReader_IncompleteFallback(t *testing.T) {
 	if db1 != live.db {
 		t.Fatal("schéma incomplet : Get devait retomber sur le live")
 	}
+	r.builds.Wait()
 	// 2e Get : toujours live, ET le negative-cache a évité une nouvelle tentative de
 	// reconstruction (failedVersion mémorisé).
 	db2, rel2, _ := r.Get(ctx)
@@ -187,7 +199,10 @@ func TestSnapshotPreferredSharedReader_IncompleteFallback(t *testing.T) {
 	if db2 != live.db {
 		t.Fatal("2e Get : devait rester sur le live")
 	}
-	if r.failedVersion != 1 {
-		t.Errorf("failedVersion = %d, attendu 1 (negative-cache)", r.failedVersion)
+	r.mu.Lock()
+	failed, building := r.failedVersion, r.building
+	r.mu.Unlock()
+	if failed != 1 || building != 0 {
+		t.Errorf("failedVersion = %d, building = %d, attendu 1 et 0 (negative-cache, aucune relance)", failed, building)
 	}
 }

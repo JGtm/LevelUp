@@ -87,9 +87,9 @@ func (rm *recordsDuMonde) recordsDu(k int) []recordDuMonde {
 	return rm.records[rm.paquets[k].premier:fin]
 }
 
-// parcourir rend a `visit` chaque record de l archetype `ti` et d un slot de `band`, avec le payload
-// et l en-tete de son paquet, dans l ordre du flux.
-func (rm *recordsDuMonde) parcourir(fc *FilmContext, ti int, band map[uint32]bool,
+// parcourir rend a `visit` chaque record de l archetype `ti` dont le slot est `dans` la bande, avec le
+// payload et l en-tete de son paquet, dans l ordre du flux.
+func (rm *recordsDuMonde) parcourir(fc *FilmContext, ti int, dans func(slot uint32) bool,
 	visit func(pay []byte, chunk int, pk FilmPacket, r recordDuMonde)) {
 	chunk := -1
 	var data []byte
@@ -97,7 +97,7 @@ func (rm *recordsDuMonde) parcourir(fc *FilmContext, ti int, band map[uint32]boo
 	for k, p := range rm.paquets {
 		var pay []byte
 		for _, r := range rm.recordsDu(k) {
-			if int(r.ti) != ti || !band[r.slot] {
+			if int(r.ti) != ti || !dans(r.slot) {
 				continue
 			}
 			if pay == nil {
@@ -222,7 +222,7 @@ func (c *FilmContext) pistesDerriereLaMarche(wr profile.Vec3Range, lg profile.Pr
 	if err != nil {
 		return pistesDeLaPasse(vies, brut), 0
 	}
-	objets.pistes.parcourir(c, ti, band, func(pay []byte, chunk int, pk FilmPacket, r recordDuMonde) {
+	objets.pistes.parcourir(c, ti, slotsDeLaMarche(ti, band), func(pay []byte, chunk int, pk FilmPacket, r recordDuMonde) {
 		v, ok := decodeWorldObjectPos(pay, int(r.bit), &wr, lg)
 		if !ok {
 			return
@@ -244,6 +244,30 @@ func (c *FilmContext) pistesDerriereLaMarche(wr profile.Vec3Range, lg profile.Pr
 	return pistesDesVies(vies), recuperes
 }
 
+// laMarcheDesigneSeule dit si une piste de l archetype `ti` que la marche des trames a lue se garde
+// quel que soit son slot. C est le cas du PROJECTILE : la table d entites de la marche nomme
+// l archetype de chacun de ses records, et la bande des images-cles ne peut pas voir un objet qui vit
+// moins d une seconde quand deux images-cles sont espacees de vingt ([worldObjectSlotBand]) — ses
+// slots tombent hors de la plage relevee, ou sur un slot qu une image-cle a vu porter un autre
+// archetype. Filtrer par la bande y jetait des vies que la grammaire nomme : un lancer sur cinq a dix
+// sur l arene, presque tous sur un film dont les images-cles ne montrent qu un slot de projectile
+// (mesure : `grenade_vol_research_test.go`, chaque lancer suivi d une vie ti=41 lue par la marche et
+// d un message `projectile_detonate` de la vue A). Les passes de recuperation, elles, gardent la
+// bande : sans la marche, c est la seule designation de l archetype.
+//
+// L equipement et les armes au sol n y sont pas : leurs objets vivent assez longtemps pour que les
+// images-cles les voient, et leurs vies hors bande lues par la marche ne sont pas mesurees.
+func laMarcheDesigneSeule(ti int) bool { return ti == ProjectileTypeIndex }
+
+// slotsDeLaMarche rend l appartenance d un slot, pour les pistes de l archetype `ti` que la marche
+// a lues : la bande `band`, ou tout slot quand la marche designe seule ([laMarcheDesigneSeule]).
+func slotsDeLaMarche(ti int, band map[uint32]bool) func(slot uint32) bool {
+	if laMarcheDesigneSeule(ti) {
+		return func(uint32) bool { return true }
+	}
+	return func(s uint32) bool { return band[s] }
+}
+
 // creationsDerriereLaMarche rend les creations de la marche de creation `w` : celles des records NEW
 // que la marche des trames a lus, de son archetype et de sa bande, lues a leur en-tete
 // ([equipCreationWalk.creationA]) ; puis celles de la passe (`brut`) qu elle rend derriere elle ; leurs
@@ -256,7 +280,7 @@ func (c *FilmContext) creationsDerriereLaMarche(w equipCreationWalk, brut []type
 	}
 	st := types.EquipmentCreationStats{Slots: stBrut.Slots}
 	var out []types.EquipmentCreation
-	objets.creations.parcourir(c, int(w.archetype()), w.band, func(pay []byte, chunk int, pk FilmPacket, r recordDuMonde) {
+	objets.creations.parcourir(c, int(w.archetype()), func(s uint32) bool { return w.band[s] }, func(pay []byte, chunk int, pk FilmPacket, r recordDuMonde) {
 		lieu := lieuDuPaquet{chunk: chunk, pk: pk}
 		if cre, ok := w.creationA(pay, int(r.bit), types.LifeKey{Slot: r.slot, Gen: uint32(r.gen)}, lieu, &st); ok {
 			out = append(out, cre)

@@ -94,7 +94,8 @@ func newPooledEngine(
 ) *go_sync.SyncEngine {
 	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider).
 		WithCSRSeasonID(cfg.CurrentCSRSeasonID).
-		WithAssetNameResolution(pool)
+		WithAssetNameResolution(pool).
+		WithSessionOptionsFromConfig(cfg)
 	cache := loadLocalFilmCache()
 	if cache != nil {
 		engine.SetLocalFilmCache(cache)

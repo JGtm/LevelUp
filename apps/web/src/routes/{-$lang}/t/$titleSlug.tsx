@@ -224,7 +224,7 @@ function TitleGateScreen({ verdict, onRetry }: { verdict: GateVerdict; onRetry?:
               {t('common.title_gate.back_to_active')}
             </Link>
           ) : (
-            <Link className="text-sm underline text-primary" to="/">
+            <Link className="text-sm underline text-primary" to="/{-$lang}">
               {t('common.title_gate.back_to_active')}
             </Link>
           )}

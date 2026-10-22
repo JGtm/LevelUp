@@ -44,6 +44,7 @@ func seedRivauxAnnuaire(t *testing.T, pdb *PlayerDB) {
 	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_registry (match_id) VALUES ('ma3')`)
 	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants (match_id, xuid, gamertag, outcome, team_id)
 		VALUES ('ma3', ?, ?, 2, 0)`, pTestXUID, pTestGamertag)
+	var morts []ligneJournal
 	for _, k := range []struct{ match, tueur, nomTueur, victime, nomVictime string }{
 		{"ma1", pTestXUID, pTestGamertag, "x_alias", "NomKFAlias"}, // l'alias gagne
 		{"ma1", "x_part", "NomPart", pTestXUID, pTestGamertag},     // participant
@@ -52,10 +53,11 @@ func seedRivauxAnnuaire(t *testing.T, pdb *PlayerDB) {
 		{"ma2", pTestXUID, pTestGamertag, "x_rien", ""},            // libellé masqué
 		{"ma3", pTestXUID, pTestGamertag, "x_kfseul", "NomKFSeul"}, // seul le kill-feed le nomme
 	} {
-		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_kill_events_latest
-			(match_id, feed_killer_xuid, feed_killer_gamertag, victim_xuid, victim_gamertag, time_ms)
-			VALUES (?, ?, ?, ?, ?, 3000)`, k.match, k.tueur, k.nomTueur, k.victime, k.nomVictime)
+		morts = append(morts, ligneJournal{match: k.match, publiable: true, timeMS: 3000,
+			tueur: k.tueur, tueurGT: k.nomTueur, victime: k.victime, victimeGT: k.nomVictime,
+			victimeSansNom: k.nomVictime == ""})
 	}
+	poserJournalSurLesDeux(t, pdb, morts...)
 }
 
 // TestCareerRepo_Annuaire_Q27MemeNomsQueLaVue : némésis et souffre-douleur portent le nom que la

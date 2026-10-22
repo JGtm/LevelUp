@@ -81,6 +81,7 @@ const LECTURE: TacticalRaster = {
 const REGLAGES: ReglagesDuPlan = {
   question: 'morts', onQuestionChange: () => {}, qui: 'moi', onQuiChange: () => {},
   escouadeDisponible: false, escouadeEnAttente: false, spawn: '', onSpawnChange: () => {}, grappes: [],
+  zonesVisibles: true, onZonesVisiblesChange: () => {},
 }
 
 const DETAIL: TacticalCelluleReponse = {
