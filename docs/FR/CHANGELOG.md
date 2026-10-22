@@ -6,6 +6,12 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [8.0.2] - 2026-10-22
+
+### Corrigé
+- **Rejeu : l'explosion d'une grenade tombe désormais au bon endroit et au bon instant** — le film écrit la détonation, avec sa position ; le rejeu la posait auparavant à la dernière position connue de la grenade, jusqu'à près d'une seconde avant l'explosion réelle pour une grenade à fragmentation. Vérifié sur cinq matchs, cartes et modes différents : la détonation est retrouvée pour chaque lancer lié, à moins d'un centimètre et de quelques dizaines de millisecondes de l'ancienne approximation, qui ne sert plus que sur le rare lancer qu'elle ne couvre pas.
+- **Rejeu : un socle de power-up se vide à l'instant exact du ramassage, plus jusqu'à vingt secondes après** — un socle d'arme lisait déjà l'instant exact de la prise dans le film ; un socle de power-up (camouflage, surbouclier) le fait désormais aussi, au lieu de rester « incertain » jusqu'au prochain relevé programmé, environ toutes les vingt secondes.
+
 ## [8.0.1] - 2026-10-20
 
 ### Ajouté

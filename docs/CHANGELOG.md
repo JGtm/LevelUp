@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [8.0.2] - 2026-10-22
+
+### Fixed
+- **Replay: a grenade's explosion now lands where and when it really happened** — the film writes the detonation, with its position; the replay used to show it at the grenade's last tracked position instead, up to about a second before the real blast for a fragmentation grenade. Checked on five matches across different maps and modes: the detonation is found for every linked throw, within a hair's width and tens of milliseconds of the previous approximation, which is now used only on the rare throw it cannot cover.
+- **Replay: a power-up pad goes empty the instant it is taken, not up to twenty seconds later** — a weapon pad already read the exact pickup moment from the film; a power-up pad (camouflage, overshield) now does too, instead of staying "uncertain" until the next scheduled check, roughly every twenty seconds.
+
 ## [8.0.1] - 2026-10-20
 
 ### Added
