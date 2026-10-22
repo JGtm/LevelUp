@@ -18,15 +18,15 @@ func TestResolveBaseRevisionFlagGagne(t *testing.T) {
 }
 
 // TestResolveBaseRevisionAutoDetectionDansCeDepot — sans flag, la resolution automatique doit
-// rendre soit "origin/feat/v75" soit "HEAD^" (jamais une chaine vide ni une erreur) : ce test
+// rendre soit "origin/main" soit "HEAD^" (jamais une chaine vide ni une erreur) : ce test
 // tourne dans le worktree du chantier, un vrai depot git — verification d'integration legere.
 func TestResolveBaseRevisionAutoDetectionDansCeDepot(t *testing.T) {
 	got, err := resolveBaseRevision(t.Context(), "", sourceRootDeCeDepot(t))
 	if err != nil {
 		t.Fatalf("resolution automatique de la base : %v", err)
 	}
-	if got != "origin/feat/v75" && got != "HEAD^" {
-		t.Fatalf("base = %q, attendu \"origin/feat/v75\" ou \"HEAD^\"", got)
+	if got != "origin/main" && got != "HEAD^" {
+		t.Fatalf("base = %q, attendu \"origin/main\" ou \"HEAD^\"", got)
 	}
 }
 

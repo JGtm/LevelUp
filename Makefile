@@ -230,7 +230,7 @@ go-api-test-gamefiles:
 
 ## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin. DEFAUT
 ## (--reference=base) : cuit chaque temoin DEUX FOIS (code du HEAD, code d'une revision de
-## base — origin/feat/v75 ou HEAD^) dans deux racines de travail jetables (jamais le parc), et
+## base — origin/main ou HEAD^) dans deux racines de travail jetables (jamais le parc), et
 ## compare les deux artefacts frais par TOUS les axes de cmd/replay-diff (dont la somme des
 ## durees par calque). Toute perte sort en code 1 : le signal est binaire, une perte ne peut
 ## venir que du diff en cours de revue. Mode --reference=parc (balayage de release, contre

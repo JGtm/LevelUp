@@ -94,7 +94,7 @@ func TestCleBaseIncompleteRefusee(t *testing.T) {
 	for nom, mut := range map[string]func(*cleBase){
 		"SHA court":  func(c *cleBase) { c.BaseSHA = "abc123" },
 		"SHA vide":   func(c *cleBase) { c.BaseSHA = "" },
-		"branche":    func(c *cleBase) { c.BaseSHA = "origin/feat/v75" },
+		"branche":    func(c *cleBase) { c.BaseSHA = "origin/main" },
 		"go inconnu": func(c *cleBase) { c.GoVersion = "" },
 		"film vide":  func(c *cleBase) { c.FilmSHA256 = "" },
 		"faits vide": func(c *cleBase) { c.FaitsSHA256 = "" },

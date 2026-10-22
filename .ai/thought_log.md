@@ -1,3 +1,11 @@
+## [2026-10-22] CI et outils : `feat/v75` remplacée par les branches d'intégration `release/*` — Complété (branche `fix/ci-integration-release`)
+
+**Décision technique principale** : la suppression de `feat/v75` cassait la CI de toute branche de travail (le filtre de chemins `dorny/paths-filter` comparait à `feat/v75`, `couldn't find remote ref`). `ci.yml` : base du filtre = `main` ; contournements et règles de concurrence de `feat/v75` remplacés par `startsWith(github.ref, 'refs/heads/release/')` ; garde-rail `archlint/ci_paths_filter_test.go` aligné (préfixe `release/` pour la concurrence). `replay-corpus-gate` : base par défaut `origin/main` (`--base origin/release/vX.Y.Z` pour une branche partie d'une branche d'intégration) ; Makefile aligné.
+
+**Résultats observés** : `go test ./internal/archlint` (CI, Deploy, Paths, Concurrency) et `./cmd/replay-corpus-gate` verts.
+
+**Conclusion** : les références historiques à `feat/v75` dans les commentaires d'archives (contrat, surface de façade) restent, ce sont des dates.
+
 ## [2026-10-22] Publication v8.0.2 et recuisson au schéma 103 — Complété (`main` `98d6f1710`, tag `v8.0.2`)
 
 **Décision technique principale** : publier d'abord (décision de l'utilisateur), recuire ensuite ; démo cuite en local et copiée avant la fusion pour que sa régénération ne recuise rien sur le VPS ; recuisson `--only-existing` en local puis copie des rejeux et `backfill-pad-tiers --force` + `backfill-usage-summary` en prod serveur arrêté. Nouvelle stratégie de branches : `feat/v75` supprimée, `release/vX.Y.Z` par version depuis `main`.

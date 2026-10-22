@@ -12,7 +12,7 @@
 // # DEUX MODES DE REFERENCE (decision superviseur, 2026-09-06)
 //
 // --reference=base (DEFAUT) : cuit chaque temoin DEUX FOIS — avec le code du HEAD, et avec
-// le code d'une revision de BASE (defaut : origin/feat/v75 si le HEAD en differe, sinon
+// le code d'une revision de BASE (defaut : origin/main si le HEAD en differe, sinon
 // HEAD^ — cf. base.go) — puis compare les deux cuissons fraiches. Toute perte = codePerte. C'est
 // le gate a lancer avant merge : le signal est binaire, une perte est necessairement due au
 // diff en cours de revue, jamais a l'age d'un parc jamais a jour.
@@ -115,7 +115,7 @@ const (
 
 func main() {
 	reference := flag.String("reference", referenceBase, "reference de comparaison : base (cuisson a une revision anterieure, defaut) ou parc (artefact deja cuit, informatif sauf --strict)")
-	baseFlag := flag.String("base", "", "revision de base explicite (mode --reference=base ; defaut : origin/feat/v75 si HEAD en differe, sinon HEAD^)")
+	baseFlag := flag.String("base", "", "revision de base explicite (mode --reference=base ; defaut : origin/main si HEAD en differe, sinon HEAD^)")
 	strict := flag.Bool("strict", false, "en mode --reference=parc, une perte ou un changement fait sortir en code 1 (sans effet en mode base, deja bloquant)")
 	manifestPath := flag.String("manifest", "", "chemin du manifeste (defaut : <source-root>/config/replay_corpus.toml)")
 	parcRootFlag := flag.String("parc-root", "", "racine du parc de developpement (defaut : source-root s'il porte la base du titre, sinon auto-detecte par git)")
