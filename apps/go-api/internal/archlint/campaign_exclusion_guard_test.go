@@ -41,7 +41,7 @@ import (
 )
 
 // racinesExclusionCampagne : les cinq racines de D-5 (B4), puis internal/sync, internal/ops et
-// cmd (D-1 de .ai/PLAN_BACKLOG_2026-10-15.md), sous-répertoires compris.
+// cmd (D-1 de .ai/V7.5/PLAN_BACKLOG_2026-10-15.md), sous-répertoires compris.
 var racinesExclusionCampagne = []string{
 	"internal/platform/duckdb",
 	"internal/progression",

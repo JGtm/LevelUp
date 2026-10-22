@@ -363,7 +363,7 @@ package killsource
 // changement. `replay-equiv` (20 films, `a9a9ac78a` contre le lot) : etape `killsource` identique sur
 // les 20.
 //
-// ENTREE `killsource-2026-10-18` (2026-10-18, plan `.ai/PLAN_BACKLOG_2026-10-16.md`, E8.1 (b) (c),
+// ENTREE `killsource-2026-10-18` (2026-10-18, plan `.ai/V7.5/PLAN_BACKLOG_2026-10-16.md`, E8.1 (b) (c),
 // decision utilisateur D-16) : la VALEUR de `grammar.Rev` monte a `grammar-2026-10-18`
 // ([grammar.LectureDeKillsource.Occupation]), et [Result.Occupation] rend au collecteur l occupation
 // des vehicules que la marche a lue (hors serialisation, comme les diagnostics). AUCUNE ligne de kill

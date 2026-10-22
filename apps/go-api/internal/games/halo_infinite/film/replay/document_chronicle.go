@@ -3401,7 +3401,7 @@ package replay
 //
 //	LE PARC         un artefact 97 ou d'avant : verdict `redecoder` (révision de grammaire).
 
-// v99 (2026-10-17, E8.4 du plan `.ai/PLAN_BACKLOG_2026-10-16.md`, « vies sans identite ») : contenu
+// v99 (2026-10-17, E8.4 du plan `.ai/V7.5/PLAN_BACKLOG_2026-10-16.md`, « vies sans identite ») : contenu
 // seul. La FORME du document ne change pas ; son CONTENU change, et un artefact 98 doit se lire « a
 // republier ».
 //

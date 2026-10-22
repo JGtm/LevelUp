@@ -10,7 +10,7 @@ package replay
 // `W` et celle de `V`) dementent alors le siege de table de `V`. Sur ces films, les corps que la
 // table attribue aux membres de la chaine portent l'equipe du joueur que les CHUNKS y lisent, pas
 // celle du titulaire de table ; et les corps de l'index des chunks d'un membre restent sans nom.
-// Mesures et temoins : journal d'E8.4 du plan `.ai/PLAN_BACKLOG_2026-10-16.md`.
+// Mesures et temoins : journal d'E8.4 du plan `.ai/V7.5/PLAN_BACKLOG_2026-10-16.md`.
 //
 // # LA REGLE
 //

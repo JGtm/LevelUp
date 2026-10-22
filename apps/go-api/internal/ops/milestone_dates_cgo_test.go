@@ -194,7 +194,7 @@ func TestBackfillMilestoneDates_DryRunThenApply(t *testing.T) {
 	}
 }
 
-// ─── Exclusion de la Campagne (E2 du plan .ai/PLAN_BACKLOG_2026-10-15.md, DB-27) ───
+// ─── Exclusion de la Campagne (E2 du plan .ai/V7.5/PLAN_BACKLOG_2026-10-15.md, DB-27) ───
 //
 // Un match d'arène (arena1, 01/09) et un match de Campagne PLUS RÉCENT (camp1, 02/09), joués par
 // le même joueur, lus par les chargeurs d'ops qui nourrissent une donnée servie à l'UI (dates de
