@@ -1,3 +1,11 @@
+## [2026-10-22] Préparation v8.0.3 (dépendances, CI des branches release/*) — En cours (branche `release/v8.0.3`)
+
+**Décision technique principale** : publier la v8.0.3 à la demande de l'utilisateur : dépendances Dependabot intégrées (Go dont DuckDB 1.5.6, web), CI adaptée à la stratégie `release/*` (filtre de chemins sur `main`, déclencheur `release/**`), chemins `.ai/` cités dans le code alignés sur l'archivage de l'utilisateur. Changelog 8.0.3 EN/FR.
+
+**Résultats observés** : CI verte sur `chore/deps-v803` et `release/v8.0.3` ; tests d'intégration DuckDB verts en local sur le nouveau pilote.
+
+**Conclusion** : PR `release/v8.0.3` -> `main`, sauvegarde restic juste avant (changement de moteur DuckDB), squash, tag `v8.0.3`, contrôle du déploiement.
+
 ## [2026-10-22] CI et outils : `feat/v75` remplacée par les branches d'intégration `release/*` — Complété (branche `fix/ci-integration-release`)
 
 **Décision technique principale** : la suppression de `feat/v75` cassait la CI de toute branche de travail (le filtre de chemins `dorny/paths-filter` comparait à `feat/v75`, `couldn't find remote ref`). `ci.yml` : base du filtre = `main` ; contournements et règles de concurrence de `feat/v75` remplacés par `startsWith(github.ref, 'refs/heads/release/')` ; garde-rail `archlint/ci_paths_filter_test.go` aligné (préfixe `release/` pour la concurrence). `replay-corpus-gate` : base par défaut `origin/main` (`--base origin/release/vX.Y.Z` pour une branche partie d'une branche d'intégration) ; Makefile aligné.
