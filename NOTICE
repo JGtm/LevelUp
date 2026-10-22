@@ -89,7 +89,10 @@ lets them reuse:
   - Recordings and film fragments of real matches used as test fixtures
     (testdata/ and fixtures/ directories under apps/): the match content belongs
     to Microsoft, and the players named in them keep their rights over their own
-    identifiers.
+    identifiers. Since 2026-10-22 the gamertags of third-party players in the film
+    fixtures and in the files derived from them are replaced by pseudonyms; the
+    names left are those of players who agreed to appear. Numeric account
+    identifiers (XUID) are still present.
 
 A rights holder who wants any of this removed can open an issue on the repository;
 it will be removed from the current tree.

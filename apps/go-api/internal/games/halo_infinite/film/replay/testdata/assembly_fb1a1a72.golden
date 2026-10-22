@@ -23,13 +23,13 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 8 joueur(s)
   2535469190789936  idx=0  equipe=1  "Chocoboflor"
-  2535408981717353  idx=1  equipe=1  "Blackwardevil1"
+  2535408981717353  idx=1  equipe=1  "Joueur00000019"
   2533274823110022  idx=2  equipe=1  "JGtm"
-  2535417580715145  idx=3  equipe=0  "Avingo256"
-  2535473461033821  idx=4  equipe=0  "TheGeronix52189"
-  2533274795950878  idx=5  equipe=1  "Mastertronic"
-  2535425179403277  idx=6  equipe=0  "plyer5091"
-  2535450323793545  idx=7  equipe=0  "Fennec87607"
+  2535417580715145  idx=3  equipe=0  "Joueur016"
+  2535473461033821  idx=4  equipe=0  "Joueur000000190"
+  2533274795950878  idx=5  equipe=1  "Joueur000131"
+  2535425179403277  idx=6  equipe=0  "Joueur151"
+  2535450323793545  idx=7  equipe=0  "Joueur00060"
 
 ### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
 lue=true refus="" · 328 record(s) ti=9, 0 rejete(s), 0 divergence(s)
