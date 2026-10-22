@@ -199,7 +199,7 @@ package objectives
 // film par processus : etape `objectives` IDENTIQUE sur les 20 ; seules `killsource`, `carriedEquipment`
 // et l artefact bougent. Golden regenere a revision constante.
 //
-// ENTREE `objectives-2026-10-17` (2026-10-17, lot E8.2 du plan `.ai/PLAN_BACKLOG_2026-10-16.md`, branche
+// ENTREE `objectives-2026-10-17` (2026-10-17, lot E8.2 du plan `.ai/V7.5/PLAN_BACKLOG_2026-10-16.md`, branche
 // `feat/backlog-2026-10-16`) : LE CANAL B D'UN SLOT D'EQUIPE N'EST PAS UN SCORE. [emissionHorsDomaine]
 // jette desormais l'emission du score de mode d'un slot d'EQUIPE dont le canal B est non nul. Avant,
 // une emission `A=0 B=5` PASSAIT la borne de domaine et, plus tardive que le dernier point reel,

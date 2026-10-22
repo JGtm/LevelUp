@@ -1,7 +1,7 @@
 //go:build integration
 
 // campaign_exclusion_medals_behavior_test.go — le set des médailles « déjà obtenues » du
-// snapshot post-sync exclut la Campagne (E2.3 du plan .ai/PLAN_BACKLOG_2026-10-15.md, DB-26
+// snapshot post-sync exclut la Campagne (E2.3 du plan .ai/V7.5/PLAN_BACKLOG_2026-10-15.md, DB-26
 // du backlog 2026-09-26) : une médaille décrochée seulement en Campagne n'est pas « déjà
 // obtenue », sinon sa première obtention en PvP ne notifierait jamais « médaille inédite ».
 

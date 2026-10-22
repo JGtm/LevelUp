@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # bench-pages.sh — banc de mesure des pages sur une COPIE des bases de prod (plan
-# .ai/PLAN_PERF_PAGES_V801_2026-10-21.md, étape 1).
+# .ai/V7.5/PLAN_PERF_PAGES_V801_2026-10-21.md, étape 1).
 #
 # Isolation (décision D-5 du plan) :
 #   - serveur du worktree sur le port 8010, jamais celui des autres sessions (8000) ;

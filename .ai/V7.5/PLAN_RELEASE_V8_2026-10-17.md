@@ -804,3 +804,14 @@ Ajout : rejeux recuits au schéma 101 (levelup-af, 2 500 artefacts, GrammarRev 2
 - 7.1 : voir la case ; rien à desserrer.
 - 7.1b (premier relevé) : 2 248 WARN « lecture tenue longtemps » sur `shared_matches_v2` depuis le 20/10 (969 le 20, 1 048 le 21, 231 le 22 au matin), médiane 8,2 s, max 38,8 s. Très majoritairement l'arrière-plan : post-sync (741), killsource (`collect` 706, `travailDuCycle` 475, `runKillSource` 109). Pages : vue de match (rencontres et assistances, 33 + 33), Accueil (arme favorite 28, sections 27 + 24). Fréquents : selon la décision du 20/10, sujet v8.1. À re-mesurer à +7 jours (27/10) APRÈS le compactage de nuit (les bases locales reprises le 22/10 portent 20 fois trop de passes de `match_kill_events`, que lisent killsource et le post-sync).
 - Note : la sauvegarde restic de 04:00 UTC arrête le serveur chaque nuit (5xx 502/503 ponctuels à 04 h) — comportement connu du script.
+
+### 2026-10-22 — v8.0.2 PUBLIÉE, recuisson appliquée, nouvelle stratégie de branches
+- Contenu : explosions et ramassages de power-up au rejeu (levelup-0d, schéma 103), captures mémoire retirées (option C), gamertags tiers anonymisés, purge Docker, notes des releases GitHub tirées du changelog. Intégration : conflits sur les fixtures régénérées au schéma 103 -> version du lot détonations puis re-anonymisation (1 367 occurrences, 16 fichiers).
+- Plafonds de taille : remontées hors exception refusées et corrigées par déplacement pur avant intégration.
+- Démo : ses 10 rejeux cuits en local au schéma 103 et copiés en prod AVANT la fusion (pas de recuisson sur le VPS pendant la régénération, qui arrête la prod).
+- PR #102 -> `main` `98d6f1710`, tag `v8.0.2` ; release GitHub avec la section 8.0.2 du changelog (correctif `release.yml` validé en réel).
+- Recuisson locale `backfill-replay --only-existing` : 2 498 rejeux en 4 h 04, 0 erreur, pic 1,97 Gio ; rsync vers la prod : 2 508 artefacts au schéma 103.
+- Prod 15:00-15:08 UTC, serveur arrêté : `backfill-pad-tiers --force` (2 507 écrits, 3 min 10) puis `backfill-usage-summary` (2 505 écrits, 0 échec, 3 min 50). Erreurs du journal à 15:00:23 = annulations d'arrêt (attendues).
+- PR #103 (badge de version dynamique, README FR hors déclencheurs du déploiement) -> `main` `42004c6d2`, déployée.
+- Stratégie de branches (décision du 22/10) : `feat/v75` supprimée (contenu entièrement dans `main`) ; branche d'intégration de la prochaine version : `release/v8.0.3`, créée depuis `main`.
+- Restent : réécriture de l'historique (adresses pro + purge des captures et des fixtures originales) ; 7.2 et 7.1b (27/10) ; contrôle du compactage de nuit ; contrôles à l'écran de l'utilisateur ; Dependabot ; clôture 7.5.

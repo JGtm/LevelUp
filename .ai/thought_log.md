@@ -1,3 +1,27 @@
+## [2026-10-22] Préparation v8.0.3 (dépendances, CI des branches release/*) — En cours (branche `release/v8.0.3`)
+
+**Décision technique principale** : publier la v8.0.3 à la demande de l'utilisateur : dépendances Dependabot intégrées (Go dont DuckDB 1.5.6, web), CI adaptée à la stratégie `release/*` (filtre de chemins sur `main`, déclencheur `release/**`), chemins `.ai/` cités dans le code alignés sur l'archivage de l'utilisateur. Changelog 8.0.3 EN/FR.
+
+**Résultats observés** : CI verte sur `chore/deps-v803` et `release/v8.0.3` ; tests d'intégration DuckDB verts en local sur le nouveau pilote.
+
+**Conclusion** : PR `release/v8.0.3` -> `main`, sauvegarde restic juste avant (changement de moteur DuckDB), squash, tag `v8.0.3`, contrôle du déploiement.
+
+## [2026-10-22] CI et outils : `feat/v75` remplacée par les branches d'intégration `release/*` — Complété (branche `fix/ci-integration-release`)
+
+**Décision technique principale** : la suppression de `feat/v75` cassait la CI de toute branche de travail (le filtre de chemins `dorny/paths-filter` comparait à `feat/v75`, `couldn't find remote ref`). `ci.yml` : base du filtre = `main` ; contournements et règles de concurrence de `feat/v75` remplacés par `startsWith(github.ref, 'refs/heads/release/')` ; garde-rail `archlint/ci_paths_filter_test.go` aligné (préfixe `release/` pour la concurrence). `replay-corpus-gate` : base par défaut `origin/main` (`--base origin/release/vX.Y.Z` pour une branche partie d'une branche d'intégration) ; Makefile aligné.
+
+**Résultats observés** : `go test ./internal/archlint` (CI, Deploy, Paths, Concurrency) et `./cmd/replay-corpus-gate` verts.
+
+**Conclusion** : les références historiques à `feat/v75` dans les commentaires d'archives (contrat, surface de façade) restent, ce sont des dates.
+
+## [2026-10-22] Publication v8.0.2 et recuisson au schéma 103 — Complété (`main` `98d6f1710`, tag `v8.0.2`)
+
+**Décision technique principale** : publier d'abord (décision de l'utilisateur), recuire ensuite ; démo cuite en local et copiée avant la fusion pour que sa régénération ne recuise rien sur le VPS ; recuisson `--only-existing` en local puis copie des rejeux et `backfill-pad-tiers --force` + `backfill-usage-summary` en prod serveur arrêté. Nouvelle stratégie de branches : `feat/v75` supprimée, `release/vX.Y.Z` par version depuis `main`.
+
+**Résultats observés** : 2 498 rejeux recuits en 4 h 04 (0 erreur) ; 2 508 artefacts de prod au schéma 103 ; coupure 7 min 30 ; paliers 2 507, usages 2 505 ; release GitHub v8.0.2 avec ses notes ; badge de version dynamique en ligne.
+
+**Conclusion** : reste la réécriture de l'historique, les relevés du 27/10, le contrôle du compactage de nuit, Dependabot. Détail : `.ai/PLAN_RELEASE_V8_2026-10-17.md`.
+
 ## [2026-10-22] Releases GitHub : notes tirées du changelog — Complété (branche `fix/release-notes-changelog`)
 
 **Décision technique principale** : `release.yml` ne publiait que les instructions d'installation (et des notes auto vides, un squash par version) : les releases v8.0.0 et v8.0.1 n'avaient aucun contenu. Une étape construit désormais le corps depuis la section `## [X.Y.Z]` de `docs/FR/CHANGELOG.md` (tag sans `v`), puis l'installation ; section absente = échec de la publication. Releases v8.0.0 (notes de version joueur) et v8.0.1 (changelog) corrigées à la main le 22/10.

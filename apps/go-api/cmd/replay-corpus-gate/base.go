@@ -12,10 +12,11 @@ package main
 //
 // # LA RESOLUTION DE LA BASE
 //
-// Par defaut, `origin/feat/v75` SI le HEAD courant en differe (le cas normal : une branche de
-// travail en cours de revue) — sinon `HEAD^` (le cas d'un gate lance directement sur la branche
-// d'integration, pour verifier le dernier commit qui vient d'y atterrir). `--base` explicite
-// remplace cette resolution.
+// Par defaut, `origin/main` SI le HEAD courant en differe (une branche de travail en cours de
+// revue) — sinon `HEAD^` (un gate lance directement sur `main`, pour verifier le dernier commit
+// qui vient d'y atterrir). Une branche de travail partie d'une branche d'integration
+// `release/vX.Y.Z` passe `--base origin/release/vX.Y.Z` pour ne comparer que son propre diff.
+// `--base` explicite remplace cette resolution.
 //
 // # LE WORKTREE DETACHE, ET SA SUPPRESSION SURE
 //
@@ -50,13 +51,13 @@ func resolveBaseRevision(ctx context.Context, explicit, sourceRoot string) (stri
 	if err != nil {
 		return "", fmt.Errorf("resolution de la base : HEAD illisible : %w", err)
 	}
-	origin, err := gitRevParse(ctx, sourceRoot, "origin/feat/v75")
+	origin, err := gitRevParse(ctx, sourceRoot, "origin/main")
 	if err != nil {
-		slog.WarnContext(ctx, "replay-corpus-gate: origin/feat/v75 introuvable — repli sur HEAD^", "err", err)
+		slog.WarnContext(ctx, "replay-corpus-gate: origin/main introuvable — repli sur HEAD^", "err", err)
 		return "HEAD^", nil
 	}
 	if head != origin {
-		return "origin/feat/v75", nil
+		return "origin/main", nil
 	}
 	return "HEAD^", nil
 }

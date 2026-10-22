@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [8.0.3] - 2026-10-22
+
+### Ops
+- **Dependencies** — Go: duckdb-go 2.10506.0 (DuckDB 1.5.6), kin-openapi 0.151.0, chi 5.5.0, httprate 0.16.1, x/crypto 0.58.0, x/image 0.47.0, x/sync 0.24.0, x/sys 0.49.0, modernc sqlite 1.60.1; web: Vite 8.3.5, smol-toml 1.9.1, source-map-js 1.2.2. DuckDB integration tests (persistence, DuckDB layer, migrations) replayed locally on the new driver.
+- **CI follows the short integration branches** — `feat/v75` is gone: the path filter compares to `main`, `release/**` branches trigger CI and keep every run (no cancellation), `replay-corpus-gate` defaults to `origin/main`.
+- **Git history rewritten** — professional e-mail addresses removed from commit metadata, memory captures of the game purged from every commit (content of `main` unchanged).
+
 ## [8.0.2] - 2026-10-22
 
 ### Fixed

@@ -6,6 +6,13 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [8.0.3] - 2026-10-22
+
+### Ops
+- **Dépendances** — Go : duckdb-go 2.10506.0 (DuckDB 1.5.6), kin-openapi 0.151.0, chi 5.5.0, httprate 0.16.1, x/crypto 0.58.0, x/image 0.47.0, x/sync 0.24.0, x/sys 0.49.0, modernc sqlite 1.60.1 ; web : Vite 8.3.5, smol-toml 1.9.1, source-map-js 1.2.2. Tests d'intégration DuckDB (persistance, couche DuckDB, migrations) rejoués en local sur le nouveau pilote.
+- **La CI suit les branches d'intégration courtes** — `feat/v75` n'existe plus : le filtre de chemins compare à `main`, les branches `release/**` déclenchent la CI et gardent tous leurs runs (aucune annulation), `replay-corpus-gate` prend `origin/main` par défaut.
+- **Historique git réécrit** — adresses e-mail professionnelles retirées des métadonnées de commit, captures mémoire du jeu purgées de tous les commits (contenu de `main` inchangé).
+
 ## [8.0.2] - 2026-10-22
 
 ### Corrigé
