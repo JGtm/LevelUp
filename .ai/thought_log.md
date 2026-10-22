@@ -1,3 +1,11 @@
+## [2026-10-22] Publication v8.0.1 — Complété (`main` `658b294ce`, tag `v8.0.1`)
+
+**Décision technique principale** : squash de la PR #100 (feat/v75) ; décision de l'utilisateur du 22/10 de reprendre les bases LOCALES en prod (pertes acceptées : likes, favoris, notifications et rattachements de médias faits en prod depuis le 20/10), ce qui remplace les recalculs en prod (résumés par match, usages, paliers, véhicules, modèle d'assistances : déjà dans les bases locales). Rejeux recuits au schéma 101 mis en place avant la fusion (la v8.0.0 les lit sans contrôle de schéma).
+
+**Résultats observés** : CI, déploiement, démo et ouvrier verts ; sauvegarde restic 08:29 UTC ; bascule des 23 bases en 25 s ; 2 508 artefacts de prod au schéma 101 ; aucun 5xx ; seule réparation de clé refusée : `streak` de Chocoboflor (décidé) ; `LEVELUP_REPLAY_PUBLIC` retiré ; compactage de nuit installé (WARN : `match_kill_events` 8,4 M brutes / 420 k gardées, bases locales jamais compactées) ; ~3 Go d'images Docker inutiles purgées à la main.
+
+**Conclusion** : contrôles authentifiés à faire par l'utilisateur ; compactage cette nuit (ou à la main sur accord) ; correctif du service de purge Docker (images de base étiquetées) et décision sur `cache/film_chunks` (13 Go) ; suppression des anciennes bases sur accord ; mises à jour Dependabot ensuite. Détail : `.ai/PLAN_RELEASE_V8_2026-10-17.md` (branche `feat/release-v8`).
+
 ## [2026-10-21] Plan perf pages v8.0.1, étape 9 : les pages lisent les résumés par match — Complété (branche `feat/v801-perf-resumes`)
 
 **Décision technique principale** : 27 lecteurs (couverture, frags par paire, frags par arme, assistances) lisent S0/S1/S2 ; garde-rail archlint de l'ADR 0039 (décision 8) avec allowlist plafonnée à 16 lecteurs de lignes et détection des littéraux coupés.
