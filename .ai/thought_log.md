@@ -1,3 +1,11 @@
+## [2026-10-22] Publication v8.0.3 — Complété (`main` `25c9d9c8a`, tag `v8.0.3`)
+
+**Décision technique principale** : sauvegarde restic de la prod juste avant la fusion (montée du moteur DuckDB 1.5.5 -> 1.5.6), squash de la PR #104, tag ; puis rotation de la branche d'intégration (`release/v8.0.3` supprimée, `release/v8.0.4` créée depuis `main`).
+
+**Résultats observés** : CI verte (E2E, govulncheck) ; restic 20:21:43 UTC OK ; déploiement prod, démo et ouvrier verts ; prod `v8.0.3`, santé 200 ; démo au schéma de rejeu 103 ; release GitHub avec la section 8.0.3 ; seules erreurs du journal : un échec ponctuel de l'API Halo et l'actualisation du catalogue interrompue au redémarrage.
+
+**Conclusion** : poste local : `npm ci` dans `apps/web` (Vite 8.3.5). Suite : contrôle du compactage de nuit (23/10), relevés du 27/10 (`memory.peak`, lectures longues), contrôles à l'écran de l'utilisateur, demande de purge au support GitHub (utilisateur).
+
 ## [2026-10-22] Préparation v8.0.3 (dépendances, CI des branches release/*) — En cours (branche `release/v8.0.3`)
 
 **Décision technique principale** : publier la v8.0.3 à la demande de l'utilisateur : dépendances Dependabot intégrées (Go dont DuckDB 1.5.6, web), CI adaptée à la stratégie `release/*` (filtre de chemins sur `main`, déclencheur `release/**`), chemins `.ai/` cités dans le code alignés sur l'archivage de l'utilisateur. Changelog 8.0.3 EN/FR.
