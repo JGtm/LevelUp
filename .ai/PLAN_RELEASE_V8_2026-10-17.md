@@ -450,7 +450,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
 
 ### Étape 7 — Suivi et clôture
 
-- [ ] 7.1 +48 h : réponses 401, 403, 413, 429 dans les logs nginx et serveur ; hausse sur des pages
+- [x] 7.1 (22/10 10:15 UTC : aucune protection trop stricte — 429 : 382, tous de 2 scanneurs le 20/10 à 03 h ; 413 : 0 ; 401/403 : scanneurs (`/.env`, `/_profiler`…) et 4 essais du protocole ouvrier le 20/10 ; aucun refus sur une page normale ; 5xx seulement pendant les redémarrages prévus : restic 04 h, déploiements, bascule, compactage du 21/10) +48 h : réponses 401, 403, 413, 429 dans les logs nginx et serveur ; hausse sur des pages
       normales = protection à desserrer.
 - [ ] 7.1b +48 h et +7 jours : WARN « lecture tenue longtemps » et compteur `shared_provider_reader_slow_total` en prod ; en particulier `data_health` (base partagée ouverte hors provider) et le segment unique des 5 étapes de scoring du post-sync (décision de l utilisateur du 20/10 : v8.1 si mesurés fréquents). 
 - [ ] 7.2 +7 jours : `memory.peak` des deux conteneurs (référence 16/10 : prod 1 134 Mio, démo
@@ -799,3 +799,8 @@ Ajout : rejeux recuits au schéma 101 (levelup-af, 2 500 artefacts, GrammarRev 2
 - 7.4 fait (anciennes bases supprimées).
 - Branches : `feat/v75` conservée comme branche d'intégration ; `main` fusionnée dedans (stratégie ours, `e4cbf26ff`) pour que la prochaine PR ne montre que l'après-8.0.1 ; branches distantes fusionnées supprimées (restent `main`, `feat/v75`, `wt/power-positions`, Dependabot) ; worktree actif `LevelUp-wt-detonations` (v8.0.2) laissé à son agent.
 - Restent : 7.1 / 7.1b (+48 h), 7.2 (27/10), 7.5 (clôture), contrôles à l'écran de l'utilisateur, nettoyage d'après release de Notion (captures mémoire, gamertags, réécriture d'historique : sur décision), Dependabot.
+
+### 2026-10-22 10:15 UTC — relevé à 48 h (7.1, 7.1b)
+- 7.1 : voir la case ; rien à desserrer.
+- 7.1b (premier relevé) : 2 248 WARN « lecture tenue longtemps » sur `shared_matches_v2` depuis le 20/10 (969 le 20, 1 048 le 21, 231 le 22 au matin), médiane 8,2 s, max 38,8 s. Très majoritairement l'arrière-plan : post-sync (741), killsource (`collect` 706, `travailDuCycle` 475, `runKillSource` 109). Pages : vue de match (rencontres et assistances, 33 + 33), Accueil (arme favorite 28, sections 27 + 24). Fréquents : selon la décision du 20/10, sujet v8.1. À re-mesurer à +7 jours (27/10) APRÈS le compactage de nuit (les bases locales reprises le 22/10 portent 20 fois trop de passes de `match_kill_events`, que lisent killsource et le post-sync).
+- Note : la sauvegarde restic de 04:00 UTC arrête le serveur chaque nuit (5xx 502/503 ponctuels à 04 h) — comportement connu du script.
