@@ -34,7 +34,7 @@ const lignesDePresRange = 10
 
 // presRange rend la colonne `range` de la ligne `c` de la table de quantification du moteur. Elle
 // vaut ZERO dans l image PE et n est remplie qu au demarrage : seule une lecture memoire la donne
-// (capture `tools/ce/config_qhit_1451f98c0.bin`, RE_LOG 7ter.2).
+// (capture hors depot `config_qhit_1451f98c0.bin`, RE_LOG 7ter.2).
 func presRange(c int) uint32 {
 	return [lignesDePresRange]uint32{7679, 7679, 256, 256, 512, 256, 512, 8191, 8191, 0}[c]
 }

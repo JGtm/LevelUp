@@ -30,7 +30,7 @@ package grammar
 // TROIS SOURCES INDEPENDANTES LE DISENT, ET ELLES CONCORDENT :
 //
 //  1. LA CAPTURE LIVE. Les vingt entrees que cette table portait etaient mesurees sur la colonne
-//     `param4` de `.ai/V7.5/dumps/ce_capture_delta.csv` (464 010 mesures sur `ti=35`). Elles
+//     `param4` de `ce_capture_delta.csv` (capture hors depot, 464 010 mesures sur `ti=35`). Elles
 //     valent TOUTES le `level` de la meme ligne de `testdata/ecs_table.tsv`.
 //  2. L ECRIVAIN. Le lot 5.1.1 a LU la valeur des cinq filtres de `ti=12` au slot `+0x10` du
 //     descripteur — `MOV EAX,0x3 ; RET` a `0x14117e0e0` pour `i2`, `MOV EAX,0x2 ; RET` a

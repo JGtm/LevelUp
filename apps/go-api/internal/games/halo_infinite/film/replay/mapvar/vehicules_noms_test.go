@@ -3,7 +3,7 @@ package mapvar
 // vehicules_noms_test.go — CRAQUAGE DES NOMS DE LA FAMILLE `vehi` DE LA PALETTE FORGE.
 //
 // La palette Forge expose 21 `type_id` de groupe de tag `vehi`
-// (`.ai/V7.5/dumps/forge_zones/palette_complete_groupes.csv`) ; 15 portent deja un nom craque
+// (`palette_complete_groupes.csv`, releve hors depot) ; 15 portent deja un nom craque
 // (`palette_noms.csv`). Les 6 restants sont des hachages murmur3 nus. Ce test rejoue
 // [LabelHash] sur un vivier de noms de vehicules Halo — la MEME methode que le craquage des
 // libelles de zone — et imprime les correspondances.
