@@ -122,6 +122,54 @@ jobs:
       - name: List artifacts
         run: ls -lh dist/
 
+      # Le corps de la release reprend la section de la version dans le changelog FR
+      # (`## [X.Y.Z]`, tag sans son `v`), suivie des instructions d'installation. Une version
+      # absente du changelog fait échouer la publication : une release sans notes n'est pas
+      # une release.
+      - name: Notes de version depuis le changelog
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          awk -v h="## [${version}]" 'index($0,h)==1{f=1; next} f && index($0,"## [")==1{exit} f' \
+            docs/FR/CHANGELOG.md > notes_section.md
+          if ! grep -q '[^[:space:]]' notes_section.md; then
+            echo "::error::section ## [${version}] absente ou vide dans docs/FR/CHANGELOG.md"
+            exit 1
+          fi
+          {
+            echo "## Nouveautés et correctifs"
+            cat notes_section.md
+            echo
+            echo "Détail : [CHANGELOG FR](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/FR/CHANGELOG.md) · [CHANGELOG EN](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/CHANGELOG.md)."
+            echo
+            cat <<'INSTALL'
+          ## Installation
+
+          ### Docker (recommandé — serveur Go natif)
+          ```bash
+          docker compose up -d
+          ```
+
+          ### Binaires Go natifs
+          Téléchargez le binaire correspondant à votre plateforme :
+          - **Linux (x86_64)** : `levelup-server-linux-amd64`
+          - **macOS (Apple Silicon)** : `levelup-server-darwin-arm64`
+          - **Windows (x86_64)** : `levelup-server-windows-amd64.exe`
+
+          > **Note — binaires non autosuffisants.** Ils requièrent `ffmpeg`/`ffprobe`
+          > dans le PATH (miniatures WebP, transcodage HLS, remux live) et les dossiers
+          > `config/` et `static/` adjacents au binaire (mappings de titres, assets UI).
+          > L'artefact de production de référence reste l'**image Docker** (ci-dessus),
+          > qui embarque déjà ffmpeg, `config/` et `static/`.
+
+          ```bash
+          chmod +x levelup-server-linux-amd64
+          LEVELUP_REPO_ROOT=/chemin/vers/levelup ./levelup-server-linux-amd64
+          ```
+          INSTALL
+          } > release_body.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
@@ -130,27 +178,4 @@ jobs:
             dist/levelup-server-linux-amd64
             dist/levelup-server-darwin-arm64
             dist/levelup-server-windows-amd64.exe
-          body: |
-            ## Installation
-
-            ### Docker (recommandé — serveur Go natif)
-            ```bash
-            docker compose up -d
-            ```
-
-            ### Binaires Go natifs
-            Téléchargez le binaire correspondant à votre plateforme :
-            - **Linux (x86_64)** : `levelup-server-linux-amd64`
-            - **macOS (Apple Silicon)** : `levelup-server-darwin-arm64`
-            - **Windows (x86_64)** : `levelup-server-windows-amd64.exe`
-
-            > **Note — binaires non autosuffisants.** Ils requièrent `ffmpeg`/`ffprobe`
-            > dans le PATH (miniatures WebP, transcodage HLS, remux live) et les dossiers
-            > `config/` et `static/` adjacents au binaire (mappings de titres, assets UI).
-            > L'artefact de production de référence reste l'**image Docker** (ci-dessus),
-            > qui embarque déjà ffmpeg, `config/` et `static/`.
-
-            ```bash
-            chmod +x levelup-server-linux-amd64
-            LEVELUP_REPO_ROOT=/chemin/vers/levelup ./levelup-server-linux-amd64
-            ```
+          body_path: release_body.md
