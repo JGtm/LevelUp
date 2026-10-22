@@ -39,6 +39,9 @@ on:
       - ".claude/**"
       - "docs/adr/**"
       - "README*.md"
+      # README FR : copié dans l'image avec docs/, mais aucun code ne le lit (seuls les changelogs et
+      # les notes de version sont servis) ; même traitement que les README de la racine.
+      - "docs/FR/README.md"
       - "CLAUDE.md"
       - "LICENSE"
 

@@ -2,7 +2,7 @@
 
 > **Analysez vos stats de Halo 5: Guardians et de Halo Infinite match par match, suivez votre progression dans le temps, et comparez vos performances avec votre escouade.**
 
-[![Version](https://img.shields.io/badge/Version-8.0.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v8.0.0)
+[![Version](https://img.shields.io/github/v/release/JGtm/LevelUp?label=Version&color=blue)](https://github.com/JGtm/LevelUp/releases/latest)
 [![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8.svg)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.5%2B-FEE14E.svg)](https://duckdb.org/)
