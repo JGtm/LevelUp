@@ -10,7 +10,7 @@ runs `docker system prune -af` (that command deleted the tagged base images and 
 build cache every night, turning every deploy into a cold build; root cause of the 25-26/07 VPS
 freezes). The installed copy on the VPS still holds the old command until someone recopies it:
 `cp levelup-docker-prune.service /etc/systemd/system/ && systemctl daemon-reload`. Verify with
-`systemctl cat levelup-docker-prune.service` (expect three `ExecStart=` lines, no `-a`).
+`systemctl cat levelup-docker-prune.service` (expect four `ExecStart=` lines; the only `-a` one carries `until=720h`).
 Cleanup (I8, 2026-07): the VPS has no cron daemon, so `/etc/cron.d/levelup-docker-prune` and `/etc/cron.d/levelup-disk-check` never ran — remove those dead files once `levelup-docker-prune.timer` is confirmed active.
 
 ## levelup-compact-passes (nightly compaction of superseded decode passes)

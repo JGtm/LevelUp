@@ -29,7 +29,8 @@ Type=oneshot
 #     déploiement survit au suivant et les builds restent incrémentaux.
 #   - étape 2b : soupape d'urgence disque — si < 10 Go libres AVANT un build, purge à 2 Go.
 # Le disque reste borné sans qu'aucune purge périodique ne touche au cache de build.
-# NE PAS réintroduire ici `-a`, `docker system prune` ni `docker builder prune`.
+# NE PAS réintroduire ici `docker system prune` ni `docker builder prune` ; `-a` seulement avec
+# un filtre long (`until=720h`, voir plus bas), jamais sur les images récentes.
 #
 # Ce qui subsiste ci-dessous est l'hygiène sans effet sur la vitesse des builds :
 #   - L'ORDRE compte : purger les conteneurs arrêtés d'abord libère des références
@@ -42,6 +43,13 @@ Type=oneshot
 #     BRUYAMMENT (visible en `systemctl status` / `systemctl list-timers`) au lieu de
 #     dégrader en silence. Les commandes suivantes sont alors sautées jusqu'au passage du
 #     lendemain — acceptable pour de l'hygiène quotidienne, et préférable à un échec muet.
+#   - Images ÉTIQUETÉES inutilisées depuis plus de 30 jours (`-a` + `until=720h`) : les images
+#     de base d'un build ne passent pas par le magasin d'images (BuildKit les tient dans son
+#     cache, borné par deploy.sh) ; une image étiquetée qui y reste vient d'un `docker pull` ou
+#     `docker run` manuel (golang:1.24, golang:1.26… : ~3,9 Go retirés à la main le 2026-10-22).
+#     Les images des conteneurs en service sont référencées, donc jamais retirées ; `-a` ne
+#     touche pas au cache de build.
 ExecStart=/usr/bin/docker container prune -f --filter "until=24h"
 ExecStart=/usr/bin/docker image prune -f --filter "until=24h"
+ExecStart=/usr/bin/docker image prune -a -f --filter "until=720h"
 ExecStart=/usr/bin/docker network prune -f --filter "until=24h"
