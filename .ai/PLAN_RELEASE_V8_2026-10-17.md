@@ -764,3 +764,15 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
 6. Sauvegarde prod (première avec schéma exporté) ; logs du premier démarrage (clés rétablies / réparations refusées).
 7. Contrôles : rejeu < 2 s et aucun 5xx `/replay/context` ; Accueil en fenêtre ; carte de consentement (compte non admin, utilisateur).
 8. Sur accord : unités systemd du compactage de nuit en root (`scripts/systemd/README.md`) ; suppression des sauvegardes `*.avant-compaction-20261021T1017*Z.duckdb` après vérification de l'utilisateur.
+
+### 2026-10-22 — séquence de publication v8.0.1, version FINALE (remplace celle du 21/10)
+Ajout : rejeux recuits au schéma 101 (levelup-af, 2 500 artefacts, GrammarRev 2026-10-21), sans copie de bases (la prod a des écritures depuis le 20/10). Vérifié par levelup-af dans le code de 5252889a6 : un artefact 101 servi par la v8.0.0 est lu sans contrôle de schéma (champs inconnus ignorés), ni refus, ni 5xx, ni ré-enfilage.
+0. AVANT la fusion (sans effet sur le service) : rsync `data/cache/replays/halo_infinite/` local -> `/opt/levelup-staging/replays_101/` (5,7 Go, 12 Go libres).
+1. Fusion `gh pr merge 100 --squash` ; tag `v8.0.1` poussé.
+2. Pendant l'attente CI du workflow : échange des artefacts (staging -> `data/cache/replays/halo_infinite/`, même disque, `mv` fichier par fichier) pour que `deploy-demo` les trouve au schéma 101 (sinon recuisson démo sur le VPS, D-5).
+3. `deploy` vert : coupure (prévenir) — `docker compose stop levelup` ; en `docker compose run --rm --no-deps -u appuser --entrypoint levelup levelup …` : `backfill-match-summaries --title halo_infinite`, `--title halo_5` (jauge à 0), `backfill-usage-summary`, `backfill-pad-tiers --force`, `backfill-vehicle-takes --force`, `backfill --all --title halo_infinite --assists-model --force` ; `docker compose start levelup` ; `/health`. Estimé 8-10 min.
+4. Relancer le job `deploy-demo`. Vérifier `deploy-worker`.
+5. `backfill-replay --since 2025-09-01 --dry-run` sur le VPS : artefacts restés au schéma 100 (matchs construits pendant la fenêtre) -> reconstruction par l'ouvrier (action admin), jamais sur le VPS.
+6. Retirer `LEVELUP_REPLAY_PUBLIC=1` ; sauvegarde prod (schéma exporté) ; logs du premier démarrage (clés rétablies / refusées).
+7. Contrôles : rejeu < 2 s, aucun 5xx `/replay/context`, Accueil en fenêtre ; levelup-3a relève les temps de prod.
+8. Sur accord : unités systemd du compactage de nuit ; suppression des `*.avant-compaction-20261021T1017*Z.duckdb` après vérification ; suppression de `/opt/levelup-staging/replays_101/` (vide après l'échange).
