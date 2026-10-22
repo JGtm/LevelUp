@@ -1151,26 +1151,6 @@ func countPoints(doc ReplayDocument, keep func(Point) bool) int {
 	return n
 }
 
-func countShotsWithAim(doc ReplayDocument) int {
-	n := 0
-	for _, s := range doc.Shots {
-		if s.H != 0 {
-			n++
-		}
-	}
-	return n
-}
-
-func countShotsWithWeapon(doc ReplayDocument) int {
-	n := 0
-	for _, s := range doc.Shots {
-		if s.Weapon != "" {
-			n++
-		}
-	}
-	return n
-}
-
 func pct(a, b int) string {
 	if b == 0 {
 		return "aucune donnee"
