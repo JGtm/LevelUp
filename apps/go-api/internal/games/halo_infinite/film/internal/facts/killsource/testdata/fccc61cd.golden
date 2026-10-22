@@ -33,14 +33,14 @@
 ## MORTS DONT LA SOURCE APPARTIENT A LA VICTIME — 3 ligne(s)
 # le kill-feed credite un AUTRE joueur : les deux verites sont vraies et divergent
 # format : instant  victime  tag  etiquette  CREDIT DU JEU  voie  origine
-01:25  JGtm  acd1cff4  "M41 SPNKr"  credit=HizaroMne4262  marche  source-victime
-03:37  HizaroMne4262  ba5ac78e  "Ravager"  credit=topgunx10  marche  source-victime
-08:38  LORD83DAN  5e389b5d  "Autres"  credit=JGtm  marche  source-victime
+01:25  JGtm  acd1cff4  "M41 SPNKr"  credit=Joueur0000082  marche  source-victime
+03:37  Joueur0000082  ba5ac78e  "Ravager"  credit=Joueur196  marche  source-victime
+08:38  Joueur119  5e389b5d  "Autres"  credit=JGtm  marche  source-victime
 
 ## MORTS INFLIGEES PAR UN BOT — 1 ligne(s)
 # le feed porte la MORT, pas le kill : le tueur vient du roster de replication
 # format : instant  victime  tueur  tag  etiquette  categorie  voie  assistant
-08:49  HizaroMne4262  343 PardonMy [bot]  0ff7b934  "Shock Rifle"  Headshot  marche  assistant=AUCUN (mesure)
+08:49  Joueur0000082  343 PardonMy [bot]  0ff7b934  "Shock Rifle"  Headshot  marche  assistant=AUCUN (mesure)
 
 ## CONTROLE NEGATIF — le scan n invente pas de morts
 # population ou la cible est ABSENTE par construction : les morts sont toutes

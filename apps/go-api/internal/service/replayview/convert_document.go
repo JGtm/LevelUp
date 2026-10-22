@@ -191,9 +191,13 @@ func toGrenade(v replay.Grenade) replaydoc.Grenade {
 
 func toProjectile(v replay.Projectile) replaydoc.Projectile {
 	return replaydoc.Projectile{
-		T0:   v.T0,
-		P:    v.P,
-		Rest: v.Rest,
+		T0:      v.T0,
+		P:       v.P,
+		Rest:    v.Rest,
+		DetoT:   v.DetoT,
+		DetoX:   v.DetoX,
+		DetoY:   v.DetoY,
+		DetoLue: v.DetoLue,
 	}
 }
 

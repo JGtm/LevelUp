@@ -97,19 +97,21 @@ const (
 	// wantGrenadesAvailable : 70 lancers decodes — le DENOMINATEUR, et il ne bouge pas. Un
 	// rattachement qui s abstient se compte ; il ne se retire pas du disponible.
 	wantGrenadesAvailable = 70
-	// wantProjectiles : 436 trajectoires publiees sur 580 pistes decodees, dont 3 COUPEES a un
-	// pas impossible (cf. projectileMaxStepM). C etait 439 avant le 2026-09-11 : les trois
-	// coupures de ce film tombent des le deuxieme point de grille, et une trajectoire d un seul
-	// point ne se dessine pas. Le nombre de POINTS ne perd, lui, que 7 unites (2732 -> 2725) :
-	// la coupure retire des positions fausses, pas des trajectoires entieres.
-	wantProjectiles = 436
+	// wantProjectiles : 463 trajectoires publiees sur 608 pistes decodees, dont 1 COUPEE a un
+	// pas impossible (cf. projectileMaxStepM).
+	//
+	// CORRIGE LE 2026-10-22 (lot detonations) : 436/580/3 (fige au 2026-09-11) etait PERIME
+	// depuis le lot qui a porte `grammar.Rev` a `grammar-2026-10-21` (v101, chronique : « les
+	// pistes de projectile que la marche nomme se gardent hors de la bande des images-cles »)
+	// — ce fixture n avait pas ete regenere avec ce lot. La regeneration forcee par le codec des
+	// faits v29 de CE lot (sans rapport avec le decodage des projectiles) l a rattrape ; la
+	// difference n a rien a voir avec les detonations.
+	wantProjectiles = 463
 	// wantProjectileTracks / wantProjectilesTruncated : le denominateur et le chiffre qui doit
 	// rester sous les yeux. Tant que la seconde n est pas nulle, l artefact porte des vols dont
 	// la fin est INCONNUE, et la cause vit dans la dequantification (`grammar`), pas ici.
-	// Cliffhanger est une carte PEU touchee : sur le parc, les quatre films Live Fire portent
-	// a eux seuls 634 des 947 trajectoires coupees.
-	wantProjectileTracks     = 580
-	wantProjectilesTruncated = 3
+	wantProjectileTracks     = 608
+	wantProjectilesTruncated = 1
 	// wantInventory : 192 etats publies (184 avant M3.1 : 8 bipedes que la marche perdait).
 	wantInventory = 192
 	// wantIndexReadings : 26 chunks de replication livrent la MEME table identite -> index.
@@ -1144,26 +1146,6 @@ func countPoints(doc ReplayDocument, keep func(Point) bool) int {
 			if keep(pt) {
 				n++
 			}
-		}
-	}
-	return n
-}
-
-func countShotsWithAim(doc ReplayDocument) int {
-	n := 0
-	for _, s := range doc.Shots {
-		if s.H != 0 {
-			n++
-		}
-	}
-	return n
-}
-
-func countShotsWithWeapon(doc ReplayDocument) int {
-	n := 0
-	for _, s := range doc.Shots {
-		if s.Weapon != "" {
-			n++
 		}
 	}
 	return n

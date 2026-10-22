@@ -29,21 +29,21 @@
 
 ## LES 10 LIGNES PUBLIEES, EN ENTIER — un compte juste peut porter une etiquette fausse
 # format : instant  victime  tag  etiquette  categorie  CREDIT DU JEU  assistant  voie  origine  divergence
-00:35  LORD PEINX13  eea85c26  "Disruptor"  ARME  credit=IKE ILYA  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
-00:43  aldusbroncus  877da252  "Gravity Hammer"  ARME  credit=whiteknight2519  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
-00:44  JGtm  130c4b61  "Skewer"  ARME  credit=Akatsuki fire17  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
-00:46  JAVIERLOLITO540  acd1cff4  "M41 SPNKr"  ARME  credit=LORD PEINX13  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
-00:52  VitaminA1688  130c4b61  "Skewer"  ARME  credit=Akatsuki fire17  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
-00:58  whiteknight2519  acd1cff4  "M41 SPNKr"  ARME  credit=IKE ILYA  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
-01:02  JGtm  17d6bd23  "Sentinel Beam"  ARME  credit=aldusbroncus  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
-01:08  VitaminA1688  acd1cff4  "M41 SPNKr"  ARME  credit=IKE ILYA  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
-01:09  aldusbroncus  acd1cff4  "M41 SPNKr"  ARME  credit=LORD PEINX13  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
-01:12  LORD PEINX13  acd1cff4  "M41 SPNKr"  ARME  credit=aldusbroncus  assistant=AUCUN (mesure)  marche  source-victime  divergence=oui
+00:35  Joue ur00118  eea85c26  "Disruptor"  ARME  credit=J00 0086  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
+00:43  Joueur000007  877da252  "Gravity Hammer"  ARME  credit=Joueur000000204  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
+00:44  JGtm  130c4b61  "Skewer"  ARME  credit=Joueur00 000006  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
+00:46  Joueur000000094  acd1cff4  "M41 SPNKr"  ARME  credit=Joue ur00118  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+00:52  Joueur000203  130c4b61  "Skewer"  ARME  credit=Joueur00 000006  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
+00:58  Joueur000000204  acd1cff4  "M41 SPNKr"  ARME  credit=J00 0086  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
+01:02  JGtm  17d6bd23  "Sentinel Beam"  ARME  credit=Joueur000007  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+01:08  Joueur000203  acd1cff4  "M41 SPNKr"  ARME  credit=J00 0086  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
+01:09  Joueur000007  acd1cff4  "M41 SPNKr"  ARME  credit=Joue ur00118  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
+01:12  Joue ur00118  acd1cff4  "M41 SPNKr"  ARME  credit=Joueur000007  assistant=AUCUN (mesure)  marche  source-victime  divergence=oui
 
 ## MORTS DONT LA SOURCE APPARTIENT A LA VICTIME — 1 ligne(s)
 # le kill-feed credite un AUTRE joueur : les deux verites sont vraies et divergent
 # format : instant  victime  tag  etiquette  CREDIT DU JEU  voie  origine
-01:12  LORD PEINX13  acd1cff4  "M41 SPNKr"  credit=aldusbroncus  marche  source-victime
+01:12  Joue ur00118  acd1cff4  "M41 SPNKr"  credit=Joueur000007  marche  source-victime
 
 ## CONTROLE NEGATIF — le scan n invente pas de morts
 # population ou la cible est ABSENTE par construction : les morts sont toutes

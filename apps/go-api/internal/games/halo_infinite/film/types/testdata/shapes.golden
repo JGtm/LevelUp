@@ -503,6 +503,21 @@ F8	uint32	-
 F7	uint32	-
 F1	uint32	-
 
+## ProjectileDetonation (grammar)
+TimestampUS	uint64	-
+Genre	uint8	-
+Projectile	types.LifeKey	-
+HasProjectile	bool	-
+X	float32	-
+Y	float32	-
+Z	float32	-
+HasPosition	bool	-
+
+## ProjectileDetonationStats (grammar)
+Read	int	-
+WithProjectile	int	-
+WithPosition	int	-
+
 ## ProjectileSample (grammar)
 TimestampUS	uint64	-
 Chunk	int	-

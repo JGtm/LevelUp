@@ -192,10 +192,18 @@ describe(`fin de partie sur le témoin réel ${TEMOIN} (item 11)`, () => {
    * derniers tirs tiennent sept voix à la borne : la réplique prend la huitième, et la fanfare
    * était refusée par le plafond. Relevé du 2026-09-26 avant correctif : 7/8 occupées, conclusion
    * jouée = la voix seule.
+   *
+   * CORRIGÉ LE 2026-10-22 (lot detonations) : le plafond est désormais PLEIN (8/8), pas presque
+   * plein, à cette borne précise. Le lot date l'explosion de grenade sur le message de
+   * détonation LU plutôt que sur la dernière position répliquée (écart typique de quelques
+   * dizaines de ms) : une explosion du témoin reste vivante une image de plus à l'instant exact
+   * de la mesure, et occupe la voix que les tirs laissaient libre. Le défaut que ce test protège
+   * (la fanfare refusée en silence) ne revient pas : voix ET musique jouent toujours, la ligne
+   * suivante le prouve sur ce même tirage.
    */
-  it(`à ${SOUND_MAX_SPEED}x, plafond presque plein à la borne : la voix ET la fanfare partent`, async () => {
+  it(`à ${SOUND_MAX_SPEED}x, plafond plein à la borne : la voix ET la fanfare partent quand même`, async () => {
     const b = await jouerJusquALaBorne(SOUND_MAX_SPEED)
-    expect(b.occupees, b.releve).toBe(SOUND_MAX_VOICES - 1)
+    expect(b.occupees, b.releve).toBe(SOUND_MAX_VOICES)
     expect(b.conclusion.some((f) => f.startsWith('end_victory_voice_fr_')), b.releve).toBe(true)
     expect(b.conclusion, b.releve).toContain('end_victory_music_01.wav')
   })

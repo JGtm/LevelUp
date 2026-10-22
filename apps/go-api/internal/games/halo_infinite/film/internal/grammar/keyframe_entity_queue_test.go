@@ -6,7 +6,7 @@ package grammar
 // CE QU'IL MESURE :
 //
 //	TestKFQReconcile (C0) — le tampon capture en RAM en juillet
-//	  (`.ai/V7.5/dumps/keyframe_buffer_live.bin`, etiquete « keyframe ») correspond a QUEL
+//	  (`keyframe_buffer_live.bin`, capture hors depot, etiquete « keyframe ») correspond a QUEL
 //	  objet du film ? Coincidence exacte d'abord, sinon coincidence de PREFIXE — et la
 //	  reponse est publiee avec son denominateur (nombre de films balayes).
 //

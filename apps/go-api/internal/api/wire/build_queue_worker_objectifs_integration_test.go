@@ -17,7 +17,7 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// porteurDeDrapeau : SweatyYeti75, 7 frags / 2 morts / 1 assistance — l'auteur des DEUX actions
+// porteurDeDrapeau : Joueur000185, 7 frags / 2 morts / 1 assistance — l'auteur des DEUX actions
 // de drapeau du fixture ET du seul portage publié. C'est le joueur que le pont par instants de
 // mort ne peut pas nommer seul (il meurt deux fois, le seuil est de trois).
 const porteurDeDrapeau = "2535463878425995"
@@ -44,7 +44,7 @@ const porteurDeDrapeau = "2535463878425995"
 //	                    attrape ce défaut-là est `film_fixture_integrite_cgo_test.go`.
 //
 //	les ACTIONS `flag`  la dérive INSTRUITE le 2026-09-06. Ce film porte exactement UNE prise et
-//	                    UNE capture nommées, toutes deux au slot 22 (SweatyYeti75, 7 frags,
+//	                    UNE capture nommées, toutes deux au slot 22 (Joueur000185, 7 frags,
 //	                    2 morts). Elles avaient disparu du document entre le schéma 20 et
 //	                    aujourd'hui parce que `d173b1a8c` a basculé ce calque sur un pont
 //	                    d'identité qui exige TROIS instants de mort — hors de portée d'un joueur
@@ -182,7 +182,7 @@ func assertPortsDeDrapeau(t *testing.T, doc replaydoc.ReplayDocument, fc *replay
 			"AUCUN (le drapeau restait dessiné à sa base pendant qu'un joueur le portait), au schéma 42 "+
 			"un seul, et depuis la vague 6 les trois prises ont leur porteur", len(portes))
 	}
-	// Le porteur qui meurt deux fois (SweatyYeti75, 7 frags / 2 morts) reste le témoin du
+	// Le porteur qui meurt deux fois (Joueur000185, 7 frags / 2 morts) reste le témoin du
 	// recoupement des deux chaînes : on retient SON intervalle parmi les trois.
 	var port *replaydoc.FlagSpan
 	for i := range portes {
@@ -192,7 +192,7 @@ func assertPortsDeDrapeau(t *testing.T, doc replaydoc.ReplayDocument, fc *replay
 		}
 	}
 	if port == nil {
-		t.Fatalf("aucun intervalle porté au porteur %s (SweatyYeti75, 7 frags / 2 morts) parmi %d", porteurDeDrapeau, len(portes))
+		t.Fatalf("aucun intervalle porté au porteur %s (Joueur000185, 7 frags / 2 morts) parmi %d", porteurDeDrapeau, len(portes))
 	}
 	// LES DEUX CHAÎNES SE RECOUPENT : le vol ouvre la fenêtre, la capture la ferme.
 	vol, capture := -1, -1

@@ -31,6 +31,7 @@ func TestTaillesDesTypesSontGelees(t *testing.T) {
 		{"MessageDeKill", unsafe.Sizeof(lecture.MessageDeKill{}), 16, "message de kill lu"},
 		{"EvenementDeFil", unsafe.Sizeof(lecture.EvenementDeFil{}), 16, "evenement de fil lu"},
 		{"MessageDePoussee", unsafe.Sizeof(lecture.MessageDePoussee{}), 24, "message de poussee lu"},
+		{"MessageDeDetonation", unsafe.Sizeof(lecture.MessageDeDetonation{}), 24, "message de detonation lu"},
 	}
 	for _, c := range cas {
 		if c.vue != c.gelee {

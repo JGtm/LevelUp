@@ -10,11 +10,15 @@
  * TEMPS, il doit être BORNÉ, et sa DURÉE est celle qu'a demandée la planche du 16/08 (2,4 s,
  * cf. EXPLOSION_MS — les phases suivent, à l'échelle).
  *
- * CE QUE L'EXPLOSION AFFIRME, ET CE QU'ELLE N'AFFIRME PAS. Le film ne porte AUCUN événement
- * de détonation : ce qui est connu, c'est la DERNIÈRE POSITION RÉPLIQUÉE du vol (pour une
- * frag, la réplication cesse ~1,4 s après le lancer alors que la mèche court jusqu'à ~3 s).
- * L'explosion est donc une MISE EN SCÈNE assumée à cet endroit — et c'est pourquoi l'écran
- * continue de dire « dernière position connue », jamais « impact ».
+ * CE QUE L'EXPLOSION AFFIRME, ET CE QU'ELLE N'AFFIRME PAS. CORRIGÉ LE 2026-10-22 (lot
+ * detonations) : le film ÉCRIT la détonation (message `projectile_detonate`/
+ * `projectile_impact_effect` de la vue A), et le serveur la publie sur `Projectile.detoT/
+ * detoX/detoY` quand elle est à portée de la piste (`detoLue` vrai, mesuré sur 727 lancers
+ * liés de cinq films témoins, médiane 17-35 ms après la dernière position répliquée). Sans
+ * détonation à portée, le serveur pose un repli NOMMÉ et COMPTÉ — la DERNIÈRE POSITION
+ * RÉPLIQUÉE — jamais une détonation affirmée sans lecture. L'explosion reste une MISE EN
+ * SCÈNE (particules, timeline) posée à l'instant et à la position que le serveur a décidés ;
+ * elle ne les recalcule pas.
  *
  * FONCTION DU TEMPS, PAS ANIMATION À ÉTAT. La référence fait avancer ses particules image
  * par image. Ici la lecture se déplace : on avance, on recule, on saute au curseur. Une

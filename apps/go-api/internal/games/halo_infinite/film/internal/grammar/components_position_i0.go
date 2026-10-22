@@ -194,7 +194,7 @@ func consumePredictedDelta(br *Lecteur, pd profile.PrecisionDescriptor) {
 // l'.exe — même limitation que le descripteur de traversée.
 //
 // SOURCE : la table DAT_1445cc9e0 dumpée en mémoire vive
-// (.ai/V7.5/dumps/ce_prec_widths_1445cc9e0.bin) est un tableau [niveau][3 axes] de
+// (capture hors depot `ce_prec_widths_1445cc9e0.bin`) est un tableau [niveau][3 axes] de
 // largeurs = 6+L : L0->6/6/6, L7->13/13/13, **L8->14/14/14**, L9->15/15/15.
 //
 // MESURE (non circulaire, cmd/tmp_deadstate mode `solvechain`, film 000d5950) : sur les

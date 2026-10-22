@@ -74,13 +74,25 @@ lets them reuse:
     ranks, commendations, weapons, vehicles, abilities, prestige, sounds),
     apps/web/public/titles/ (Halo 5 emblems and nameplates), and the reference
     images under data/titles/.
-  - Captures of the game's memory, kept as research evidence: the dumps under
-    .ai/V7.5/dumps/ and tools/ce/. (Decompiler output is no longer kept in the
-    repository: it is ignored by .gitignore and lives outside it.)
+  - Test fixtures that carry game content, kept in the tree only because tests read
+    them: three map variants (.ai/V7.5/dumps/mapvar/cliffhanger_map.mvar,
+    cliffhanger_ridgeline.mvar, vagabond_fo08_wetland.mvar), the reference map image
+    .ai/V7.5/dumps/carte_validee_v1.png and the callout zones dump
+    .ai/V7.5/dumps/callout_zones_ridgeline_clipped.json. The content is Microsoft's;
+    it is kept for the tests and is not licensed for any other use.
+  - Removed from the tree on 2026-10-22: the captures of the game's memory and the
+    other research outputs under .ai/V7.5/dumps/, and the *.bin captures under
+    tools/ce/. They are ignored by .gitignore and live outside the repository, as does
+    decompiler output (removed on 2026-10-16). The Cheat Engine scripts written for
+    this project (tools/ce/*.lua) stay. Removal from the tree does not remove
+    earlier commits from the history.
   - Recordings and film fragments of real matches used as test fixtures
     (testdata/ and fixtures/ directories under apps/): the match content belongs
     to Microsoft, and the players named in them keep their rights over their own
-    identifiers.
+    identifiers. Since 2026-10-22 the gamertags of third-party players in the film
+    fixtures and in the files derived from them are replaced by pseudonyms; the
+    names left are those of players who agreed to appear. Numeric account
+    identifiers (XUID) are still present.
 
 A rights holder who wants any of this removed can open an issue on the repository;
 it will be removed from the current tree.

@@ -118,8 +118,8 @@ func TestUnSiegeDuFilmNEstPasUnBot(t *testing.T) {
 // TestSiegeQueLeKillFeedIgnoreEntreAuRoster — LE GAIN LE PLUS DIRECT DU LOT, et il est mesure :
 // le kill-feed ne nomme que les joueurs qui TUENT ou qui MEURENT, donc six joueurs sur les
 // 30 films du corpus de mesure n y figuraient pas et l inference donnait leur indice a un autre
-// (`FlukiestGolf` 111fa685 i10, `MarshallG6443` e5adf7b2 i13, `manistoff` a521164d i18,
-// `Iskra 20252993` 11de8353 i23, `probablybxllets` 1c5c10cc i22, `Alpha122092` 23ffd885 i4).
+// (`Joueur000065` 111fa685 i10, `Joueur0000128` e5adf7b2 i13, `Joueur124` a521164d i18,
+// `Joueu r0000088` 11de8353 i23, `Joueur000000153` 1c5c10cc i22, `Joueur00008` 23ffd885 i4).
 func TestSiegeQueLeKillFeedIgnoreEntreAuRoster(t *testing.T) {
 	kf := &killFeed{names: []string{"A", "B"}}
 	r := buildRoster(kf, botMeta{}, true, FilmTable{

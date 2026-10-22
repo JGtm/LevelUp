@@ -299,7 +299,19 @@ var plafondsParFichier = map[string]int{
 	// condition c des declarations et l abstention du pont d equipe, grammar et killsource qui montent.
 	// SCHEMA 100 -> 101 (2026-10-21, controles de la v8), +29 : l entree v101 (taille d equipe de la
 	// playlist, places ramenees a la taille, pistes de projectile hors bande). Exception ecrite.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3503,
+	// SCHEMA 101 -> 102 (2026-10-22, lot detonations), +32 : l entree v102 (l explosion d un
+	// projectile publiee a l instant et a la position LUS, `projectiles[].detoT/detoX/detoY/detoLue`,
+	// le repli nomme, la mesure a 100 % sur cinq films temoins). Exception ecrite, dans le commit
+	// qui monte `SchemaVersion`.
+	// SCHEMA 102 -> 103 (2026-10-22, meme lot, item 2), +29 : l entree v103 (le ramassage de
+	// power-up date par le meme mecanisme que les socles d arme, aucun champ neuf, la mesure 8/8
+	// sur les films temoins). Exception ecrite, dans le commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3564,
+	// `film_scan.go` N ENTRE PAS EN TABLE (2026-10-22, lot detonations, correction CI) : l appel a
+	// `grammar.ScanProjectileDetonations` (item 1) l avait fait passer de 500 a 504 lignes, mais
+	// « mettre le fichier dans plafondsParFichier n est pas une reponse » (cette table est close au
+	// 2026-09-16, hors exception nommee ci-dessus). `balayerPont` et `poserLeFilDesMorts` en sont
+	// sortis par DEPLACEMENT PUR vers `film_scan_pont.go` : 405 lignes, sous le seuil de 500.
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -326,6 +338,11 @@ var plafondsParFichier = map[string]int{
 	// 570 -> 571), et c est le meme mouvement vu de l autre cote : ces fichiers gagnent LA LIGNE
 	// D IMPORT de `film/types`. C est la seule montee admise par ce lot, et elle est mecanique.
 	// --- tests et instruments de mesure : tables de fixtures et balayages de recherche.
+	// `golden_assembly_test.go` RESTE A 1202 (2026-10-22, lot detonations, correction CI) : les
+	// `wantProjectiles` des huit fixtures de reference ont gagne `detoT/detoX/detoY` (+2 net), hors
+	// de la seule exception nommee en tete (document_chronicle.go, structure_test.go) — « un
+	// plafond ne monte pas ». `countShotsWithAim`/`countShotsWithWeapon` en sont sortis par
+	// DEPLACEMENT PUR vers `golden_assembly_counts_test.go` pour compenser.
 	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":      1202,
 	"internal/games/halo_infinite/film/internal/grammar/i59_anchor_test.go": 1152,
 	// SCHEMA 61 -> 62 (2026-09-17, lot 4.2.1-b) : 1168 -> 1183, la raison ecrite de v62 que
@@ -424,7 +441,11 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 98 -> 99 (2026-10-17, E8.4 du plan du backlog du 2026-10-16) : 1454 -> 1458, la justification
 	// de la montee (index des chunks hors table, chaine de contradictions).
 	// SCHEMA 100 -> 101 (2026-10-21, controles de la v8) : 1462 -> 1466, la justification de la montee.
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1466,
+	// SCHEMA 101 -> 102 (2026-10-22, lot detonations) : 1466 -> 1471, la justification de la montee
+	// (l explosion d un projectile publiee a l instant et a la position LUS).
+	// SCHEMA 102 -> 103 (2026-10-22, meme lot, item 2) : 1471 -> 1476, la justification de la montee
+	// (le ramassage de power-up date par le meme mecanisme que les socles d arme).
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1476,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

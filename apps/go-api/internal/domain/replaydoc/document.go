@@ -214,9 +214,13 @@ type Grenade struct {
 
 // Projectile est une trajectoire de projectile, échantillonnée sur la grille du rejeu.
 type Projectile struct {
-	T0   int          `json:"t0"`
-	P    [][3]float32 `json:"p"`
-	Rest bool         `json:"rest,omitempty"`
+	T0      int          `json:"t0"`
+	P       [][3]float32 `json:"p"`
+	Rest    bool         `json:"rest,omitempty"`
+	DetoT   int          `json:"detoT"`
+	DetoX   float32      `json:"detoX"`
+	DetoY   float32      `json:"detoY"`
+	DetoLue bool         `json:"detoLue,omitempty"`
 }
 
 // NeutralDeath est une mort que PERSONNE ne revendique — et de quoi le joueur est mort.

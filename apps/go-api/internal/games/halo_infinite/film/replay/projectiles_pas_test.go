@@ -41,7 +41,7 @@ func TestVolCoupeAuPremierPasImpossible(t *testing.T) {
 	// point LISIBLE : rien ne dit ou le projectile est reellement passe apres, et le recoudre
 	// reviendrait a inventer la suite.
 	tracks := []types.ProjectileTrack{projPas(1_000_000, true, 0, 1, 2, 42, 43, 44)}
-	out, _, tronquees := buildProjectiles(tracks, 1_000_000, 100_000)
+	out, _, tronquees := buildProjectiles(tracks, 1_000_000, 100_000, nil, nil)
 	if len(out) != 1 {
 		t.Fatalf("une trajectoire attendue, obtenu %d", len(out))
 	}
@@ -61,7 +61,7 @@ func TestVolCoupeAuPremierPasImpossible(t *testing.T) {
 func TestVolLisibleResteIntactEtGardeSonRepos(t *testing.T) {
 	// LE TEMOIN : sans pas impossible, rien ne change — ni les points, ni `Rest`, ni le compte.
 	tracks := []types.ProjectileTrack{projPas(1_000_000, true, 0, 2, 4, 6, 8)}
-	out, _, tronquees := buildProjectiles(tracks, 1_000_000, 100_000)
+	out, _, tronquees := buildProjectiles(tracks, 1_000_000, 100_000, nil, nil)
 	if len(out) != 1 || len(out[0].P) != 5 {
 		t.Fatalf("la trajectoire doit sortir entiere (5 points) : %+v", out)
 	}
@@ -78,7 +78,7 @@ func TestVolCoupeTropTotNEstPasPublie(t *testing.T) {
 	// dessine pas. Elle n'est pas publiee — mais la coupure est comptee quand meme, sans quoi
 	// le compteur mentirait par omission.
 	tracks := []types.ProjectileTrack{projPas(1_000_000, true, 0, 60, 61, 62)}
-	out, _, tronquees := buildProjectiles(tracks, 1_000_000, 100_000)
+	out, _, tronquees := buildProjectiles(tracks, 1_000_000, 100_000, nil, nil)
 	if len(out) != 0 {
 		t.Fatalf("une trajectoire d'un seul point de grille ne se publie pas : %+v", out)
 	}

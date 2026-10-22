@@ -237,3 +237,32 @@ type KnockbackStats struct {
 	// celles sans impulsion au 104.
 	WithoutAuthor, WithoutImpulse int
 }
+
+// ProjectileDetonation est UN message de detonation/impact de projectile lu dans la vue A : le
+// `projectile_detonate` (genre 5) ou le `projectile_impact_effect` (genre 6),
+// grammar/vue_a_detonations.go. Les deux portent la MEME grammaire de reference et de position :
+// rien ne les distingue au sens de ce que publie ce type, hors le genre lui-meme.
+type ProjectileDetonation struct {
+	// TimestampUS : l horodatage du paquet porteur, MEME horloge que BipedPosition.TimestampUS.
+	TimestampUS uint64
+	// Genre est 5 (projectile_detonate) ou 6 (projectile_impact_effect).
+	Genre uint8
+	// Projectile : la vie de l entite projectile qui detone (domaine 5 — LA MEME TABLE que l
+	// entite de ScanProjectiles, ti=41) ; valide seulement si HasProjectile (reference 0
+	// transmise par le message).
+	Projectile    LifeKey
+	HasProjectile bool
+	// X, Y, Z : la position de detonation dequantifiee, repere monde ; valides seulement si
+	// HasPosition (porte de la charge a 0, lecture non en pleine precision).
+	X, Y, Z     float32
+	HasPosition bool
+}
+
+// ProjectileDetonationStats sont les denominateurs de la lecture des detonations.
+type ProjectileDetonationStats struct {
+	// Read : messages des deux genres lus dans les vues A du film.
+	Read int
+	// WithProjectile et WithPosition : parmi eux, ceux dont la reference de projectile et la
+	// position, respectivement, ont ete lues.
+	WithProjectile, WithPosition int
+}

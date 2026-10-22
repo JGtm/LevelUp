@@ -26,6 +26,12 @@ package killsource
 //	KILLSOURCE_FIXTURES=<dir> go test ./internal/games/halo_infinite/film/internal/facts/killsource/ \
 //	    -run Golden -update
 //
+// LES GAMERTAGS DES JOUEURS TIERS SONT ANONYMISES dans les golden (pseudonymes de meme longueur,
+// table de correspondance hors depot) : `<dir>` designe donc une COPIE des films de reference
+// passee par `cmd/anonymise-gamertags` avec la meme table. Les films du cache eux-memes portent les
+// noms reels et font diverger chaque ligne nommee ; une regeneration sur eux remettrait les noms
+// reels dans le depot.
+//
 // CE QUE LES GOLDEN FIGENT, ET POURQUOI CHACUN :
 //
 //	COUVERTURE AVEC SON DENOMINATEUR NOMME  un nombre nu ne prouve rien : trois denominateurs

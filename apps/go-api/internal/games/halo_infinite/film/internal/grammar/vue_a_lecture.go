@@ -84,6 +84,9 @@ type FluxVueA struct {
 	// Poussees : les messages de poussee d equipement (genres 104 et 105) lus, dans l ordre
 	// ([messageDePoussee]).
 	Poussees []lecture.MessageDePoussee
+	// Detonations : les messages de detonation/impact de projectile (genres 5 et 6) lus, dans
+	// l ordre ([messageDeDetonation]).
+	Detonations []lecture.MessageDeDetonation
 }
 
 // refDeMessage est une reference d entite d un message de vue A : sa porte, son index et sa
@@ -134,22 +137,32 @@ func lireLaVueA(pay []byte, debut int, bal ProfilDeBalayage, g grammaireDeLaVueA
 			br.SetBitPos(finDuGenre)
 			break
 		}
-		switch {
-		case genre == GenreJoueurTue:
-			k := br.killLu
-			k.Debut = uint32(debutDuMessage) //nolint:gosec // position dans un payload
-			out.Kills = append(out.Kills, k)
-		case genre == GenreEvenementJoueurCourt && br.filACouple:
-			e := br.filLu
-			e.Debut = uint32(debutDuMessage) //nolint:gosec // position dans un payload
-			out.Fil = append(out.Fil, e)
-		case genre == GenreObjetRepousse || genre == GenrePousseeDuJoueur:
-			out.Poussees = append(out.Poussees, messageDePoussee(br, genre, debutDuMessage))
-		}
+		recueillirLeMessage(br, &out, genre, debutDuMessage)
 	}
 	out.Fin = br.BitPos()
 	out.PremierPresume = premierGenrePresume(g.classe, out.Genres)
 	return out
+}
+
+// recueillirLeMessage range, dans `out`, le message de genre `genre` que [lireLaVueA] vient de
+// lire a la position `debut` : kill, fil, poussee ou detonation/impact selon le genre. Extraite de
+// [lireLaVueA] (lot detonations, 2026-10-22) pour tenir sa complexite sous le seuil du depot — un
+// cas par genre collecte, jamais une decision.
+func recueillirLeMessage(br *Lecteur, out *FluxVueA, genre, debut int) {
+	switch {
+	case genre == GenreJoueurTue:
+		k := br.killLu
+		k.Debut = uint32(debut) //nolint:gosec // position dans un payload
+		out.Kills = append(out.Kills, k)
+	case genre == GenreEvenementJoueurCourt && br.filACouple:
+		e := br.filLu
+		e.Debut = uint32(debut) //nolint:gosec // position dans un payload
+		out.Fil = append(out.Fil, e)
+	case genre == GenreObjetRepousse || genre == GenrePousseeDuJoueur:
+		out.Poussees = append(out.Poussees, messageDePoussee(br, genre, debut))
+	case genre == GenreProjectileDetonate || genre == GenreProjectileImpactEffect:
+		out.Detonations = append(out.Detonations, messageDeDetonation(br, genre, debut))
+	}
 }
 
 // lireUnMessage lit le corps d un message de genre `genre` (`FUN_14080a9d4` apres `R(7)`). Un genre

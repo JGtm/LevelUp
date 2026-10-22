@@ -20,9 +20,9 @@ package killsource
 // inferee, index par index : **314 accords sur 322 sieges lus**, et les HUIT ecarts se rangent
 // en deux familles, aucune n etant une contradiction entre deux lectures fiables :
 //
-//	SIX  le gamertag du siege est ABSENT du kill-feed (`FlukiestGolf` 111fa685 i10,
-//	     `MarshallG6443` e5adf7b2 i13, `manistoff` a521164d i18, `Iskra 20252993` 11de8353 i23,
-//	     `probablybxllets` 1c5c10cc i22, `Alpha122092` 23ffd885 i4). Le kill-feed ne nomme que
+//	SIX  le gamertag du siege est ABSENT du kill-feed (`Joueur000065` 111fa685 i10,
+//	     `Joueur0000128` e5adf7b2 i13, `Joueur124` a521164d i18, `Joueu r0000088` 11de8353 i23,
+//	     `Joueur000000153` 1c5c10cc i22, `Joueur00008` 23ffd885 i4). Le kill-feed ne nomme que
 //	     les joueurs qui TUENT ou qui MEURENT : l inference n avait aucun moyen de placer ces
 //	     six-la, et elle a mis un AUTRE joueur sur leur indice. Ce n est pas un desaccord, c est
 //	     un trou de l inference que la lecture comble.

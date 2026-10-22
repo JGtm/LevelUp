@@ -110,7 +110,13 @@ function docAvecTirs(n: number) {
 function docAvecVols(vols: { t: number; rank: number; flight: number }[]) {
   return docWithCouple({
     grenades: vols.map((v, i) => grenade({ t: v.t, rank: v.rank, s: 'projectile', proj: i })),
-    projectiles: vols.map((v) => ({ t0: v.t, p: [[0, 0, 0], [v.flight, 1, 1]] })),
+    projectiles: vols.map((v) => ({
+      t0: v.t,
+      p: [[0, 0, 0], [v.flight, 1, 1]],
+      detoT: v.t + v.flight,
+      detoX: 1,
+      detoY: 1,
+    })),
   })
 }
 
@@ -561,7 +567,7 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
         shots: [{ slot: 1, t: 5, x: 0, y: 0, w: '0x2B1824D5' }],
         weaponLabels: { '0x2B1824D5': { en: 'BR75', fr: 'BR75', key: 'hinf_br75' } },
         grenades: [grenade({ t: 6, rank: 3, s: 'projectile', proj: 0 })],
-        projectiles: [{ t0: 6, p: [[0, 0, 0], [14, 1, 1]] }],
+        projectiles: [{ t0: 6, p: [[0, 0, 0], [14, 1, 1]], detoT: 20, detoX: 1, detoY: 1 }],
       }),
       [kill({ weaponKey: '', weaponImageUrl: vignette('killfeed-49') })], // kill à la grenade à pointes
       { ...ALL_ON, grenade: false },

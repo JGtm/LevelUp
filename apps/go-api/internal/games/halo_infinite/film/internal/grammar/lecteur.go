@@ -73,9 +73,12 @@ type Lecteur struct {
 	filACouple bool
 	// refsDuMessage : les references du message de vue A en cours de lecture, telles que
 	// [lireUnMessage] les lit ; pousseeLue : la charge du dernier message de poussee
-	// ([chargePousseeDuJoueur], [chargeObjetRepousse]). La lecture de la vue A les recueille.
+	// ([chargePousseeDuJoueur], [chargeObjetRepousse]) ; detonationLue : la charge et la position
+	// du dernier message de detonation/impact de projectile ([chargeDetonation], [chargeImpact]).
+	// La lecture de la vue A les recueille.
 	refsDuMessage [3]refDeMessage
 	pousseeLue    lecture.MessageDePoussee
+	detonationLue lecture.MessageDeDetonation
 	// etatComplet : le record en cours est un ETAT COMPLET d image-cle (`FUN_142e2c690`), lu sans
 	// masque de presence. Pose par [walkKeyframeFullState] seul ; faux pour tout record dont un
 	// masque est lu (record NEW, DELTA). Les composants dont la lecture depend d une loi du masque
