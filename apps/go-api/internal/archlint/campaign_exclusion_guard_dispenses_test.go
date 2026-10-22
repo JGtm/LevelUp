@@ -17,7 +17,7 @@ const (
 	dispenseEnsembleFourni = "ensemble fourni par l'appelant"
 	dispenseCallSite       = "exclu au call site"
 	dispenseSemantique     = "sémantique"
-	// dispenseOperateur (D-2 de .ai/PLAN_BACKLOG_2026-10-15.md) : cmd/diag_*, cmd/audit_* et les
+	// dispenseOperateur (D-2 de .ai/V7.5/PLAN_BACKLOG_2026-10-15.md) : cmd/diag_*, cmd/audit_* et les
 	// backfills qui réécrivent le match lu lui-même (la Campagne n'y change aucun agrégat).
 	// Réservée à cmd/ (décision du superviseur du 2026-10-15) : un lecteur de internal/sync ou
 	// internal/ops est corrigé ou classé mono-match / ensemble fourni / sémantique, jamais ici.
@@ -94,7 +94,7 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 		"résolution d'un NOM en xuid (ExplorerRepo.ResolveXUIDByGamertag) : même population que la vue des noms v_gamertag_lookup, " +
 			"qui lit tous les participants (analysis/identity.go, GamertagLookupViewSQL) ; aucun agrégat de matchs."},
 
-	// ── E2 (plan .ai/PLAN_BACKLOG_2026-10-15.md, 2026-10-15) : critère élargi à killer_victim_pairs,
+	// ── E2 (plan .ai/V7.5/PLAN_BACKLOG_2026-10-15.md, 2026-10-15) : critère élargi à killer_victim_pairs,
 	// match_kill_events(_latest) et medals_earned (D-1), racines élargies à sync, ops et cmd. ──
 
 	// lecteurs de médailles / frags sur une liste de matchs fournie par la page

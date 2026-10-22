@@ -51,6 +51,7 @@ on:
         docs/**,
         chore/**,
         integration/**,
+        release/**,
       ]
     # Journaux/plans d'agents en Markdown : aucun impact sur le code testé.
     # PRUDENCE (2026-07-26) : on ignore UNIQUEMENT le Markdown sous .ai/ —
