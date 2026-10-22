@@ -3534,3 +3534,31 @@ package replay
 //	LE PARC         un artefact 101 : verdict `redecoder` (les faits portent l ancien schema), la
 //	                recuisson relit le film. DECISION UTILISATEUR REQUISE avant toute recuisson du
 //	                parc de production (hors films temoins de ce lot).
+
+// v103 (2026-10-22, lot detonations, item 2 : ramassage de power-up date). Aucun champ neuf ; le
+// CONTENU change : les occupations de socle de POWER-UP se joignent desormais au ramassage natif
+// `biped_pickup` par le SLUG canonique (`Pickup.Family` == `WeaponPad.Weapon`), exactement comme
+// les socles d arme se joignent par la famille hexadecimale (pad_pickup_dating.go). Avant ce lot,
+// la jointure les excluait categoriquement (`p.Kind != PickupWeapon`) : un socle de power-up ne
+// recevait jamais `padPickups[].t`/`.xuid`, meme quand le ramassage natif etait present et exact.
+//
+//	`padPickups[].t`/`.xuid` (power-up)   l instant exact et le ramasseur, quand un ramassage
+//	                 natif de la bonne famille tombe dans la fenetre de l occupation — remplace
+//	                 l intervalle de vingt secondes que le client approchait par la proximite du
+//	                 joueur (`padPresenceRefine.ts`).
+//	`coverage.padDating.{dated,named,uncovered}`   comptent desormais aussi les occupations de
+//	                 power-up ; `powerupOccupations` reste leur denominateur propre.
+//
+//	MESURE          trois films temoins (`92c950ee`, `0d094c9b`, `d6918972`) : les huit occupations
+//	                de power-up des deux premiers trouvent toutes un ramassage natif `overshield`
+//	                dans leur fenetre (8/8), a 0-2 images de l instant que le recensement d image-cle
+//	                isolait deja ; le troisieme ne porte aucun socle de power-up. Sur le parc de
+//	                reference (huit builds), les occupations datees montent de 38->41, 13->18,
+//	                13->16 et 38->49 selon le film — aucune ne baisse, aucune n est effacee.
+//
+//	CE QUI MONTE    `SchemaVersion` 102 -> 103. Aucune revision de couche ni `SchemaDesFaits` ne
+//	AVEC ELLE       bouge : la lecture (le ramassage natif, le socle) etait deja celle que
+//	                `grammar`/les faits publient, seule l ASSEMBLAGE (replay) change sa regle de
+//	                jointure.
+//
+//	LE PARC         un artefact 102 : verdict `a republier` (assemblage seul, aucun fait perime).

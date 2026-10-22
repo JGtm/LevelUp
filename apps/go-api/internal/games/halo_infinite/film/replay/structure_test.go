@@ -1465,8 +1465,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   repli nomme et compte (`repli_detonation_derniere_position_connue`) sinon. `SchemaDesFaits` monte
 	//   avec elle (17 -> 18) : un v101 se lit « a redecoder ». Aucune revision de couche ne bouge (la
 	//   grammaire lisait deja ces bits). Detail : `document_chronicle.go`.
-	if SchemaVersion != 102 {
-		t.Fatalf("SchemaVersion = %d, attendu 102 : incrémenter exige une raison écrite ci-dessus "+
+	// - 103 (2026-10-22, lot detonations, item 2) : aucun champ neuf ; le CONTENU change : les
+	//   occupations de socle de power-up se joignent au ramassage natif par le slug canonique,
+	//   comme les socles d arme par la famille hexadecimale. Assemblage seul : un v102 se lit
+	//   « a republier ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 103 {
+		t.Fatalf("SchemaVersion = %d, attendu 103 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
