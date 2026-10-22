@@ -1,3 +1,11 @@
+## [2026-10-22] Publication v8.0.2 et recuisson au schéma 103 — Complété (`main` `98d6f1710`, tag `v8.0.2`)
+
+**Décision technique principale** : publier d'abord (décision de l'utilisateur), recuire ensuite ; démo cuite en local et copiée avant la fusion pour que sa régénération ne recuise rien sur le VPS ; recuisson `--only-existing` en local puis copie des rejeux et `backfill-pad-tiers --force` + `backfill-usage-summary` en prod serveur arrêté. Nouvelle stratégie de branches : `feat/v75` supprimée, `release/vX.Y.Z` par version depuis `main`.
+
+**Résultats observés** : 2 498 rejeux recuits en 4 h 04 (0 erreur) ; 2 508 artefacts de prod au schéma 103 ; coupure 7 min 30 ; paliers 2 507, usages 2 505 ; release GitHub v8.0.2 avec ses notes ; badge de version dynamique en ligne.
+
+**Conclusion** : reste la réécriture de l'historique, les relevés du 27/10, le contrôle du compactage de nuit, Dependabot. Détail : `.ai/PLAN_RELEASE_V8_2026-10-17.md`.
+
 ## [2026-10-22] Releases GitHub : notes tirées du changelog — Complété (branche `fix/release-notes-changelog`)
 
 **Décision technique principale** : `release.yml` ne publiait que les instructions d'installation (et des notes auto vides, un squash par version) : les releases v8.0.0 et v8.0.1 n'avaient aucun contenu. Une étape construit désormais le corps depuis la section `## [X.Y.Z]` de `docs/FR/CHANGELOG.md` (tag sans `v`), puis l'installation ; section absente = échec de la publication. Releases v8.0.0 (notes de version joueur) et v8.0.1 (changelog) corrigées à la main le 22/10.
