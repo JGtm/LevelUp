@@ -6,19 +6,19 @@
 
 ## AXE DE TEMPS
 5144 frames · intervalle 100 ms · duree 514400 ms
-schema 101 · titre halo_infinite
+schema 102 · titre halo_infinite
 version majeure du film : 38
 origine de la frame 0 sur l horloge du fil : 86805 ms
 coup d envoi date par le film : 108405 ms · 177/181 piste(s) en mouvement · rafale 15 · marge depuis la frame 0 : 21600 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
-182 trace(s) · 81550 point(s) de grille
+182 trace(s) · 81555 point(s) de grille
 seuil de publication 1 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — si le film ecrit une position, elle se publie
-64 lacune(s) de replication DANS une vie, 1096451 ms au total — un trou n'est pas une fin de vie, la piste ne s'y interpole simplement pas
+64 lacune(s) de replication DANS une vie, 1096288 ms au total — un trou n'est pas une fin de vie, la piste ne s'y interpole simplement pas
 182 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
 occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
-44776 point(s) portent un cap de visee · 44776 une elevation de visee · 11558 un bouclier · 313 une fraction de vie
+44781 point(s) portent un cap de visee · 44781 une elevation de visee · 11558 un bouclier · 317 une fraction de vie
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 28 joueur(s)
@@ -59,44 +59,44 @@ vies : 182/182 portent une equipe du film
 repartition des vies par designateur : 0 x108 · 1 x74
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-1946 rattache(s) / 1968 disponible(s) = 98.9 %
-rejets : slot introuvable=22 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+1954 rattache(s) / 1968 disponible(s) = 99.3 %
+rejets : slot introuvable=14 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 1968 = 1968 (equilibre : true)
 verdict : nominal
-1946 tir(s) publie(s) · 1522 avec un cap de visee lisible · 1946 avec une arme nommee
+1954 tir(s) publie(s) · 1530 avec un cap de visee lisible · 1954 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 139 rattache(s) / 145 disponible(s) = 95.9 %
 rejets : slot introuvable=6 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 145 = 145 (equilibre : true)
 verdict : nominal
-par source : projectile=133 (aucun pont) · biped=6 (le pont a servi)
+par source : projectile=138 (aucun pont) · biped=1 (le pont a servi)
 par type : Dynamo=49 · Frag=19 · Plasma=36 · Spike=35
 
 ## PROJECTILES — le dernier point est la DERNIERE POSITION REPLIQUEE, jamais un impact
-464 trajectoire(s) · 5069 point(s) de grille
-65 se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol
-couverture : 477 piste(s) decodee(s) · 464 publiee(s) · 10 coupee(s) a un pas impossible
+486 trajectoire(s) · 5367 point(s) de grille
+67 se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol
+couverture : 496 piste(s) decodee(s) · 486 publiee(s) · 7 coupee(s) a un pas impossible
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
-585 etat(s) publie(s) · 503 avec grenades lues · 502 avec munitions lues
-130 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
+585 etat(s) publie(s) · 510 avec grenades lues · 510 avec munitions lues
+6 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
-82 lecture(s) VIDE(S) : 56 corroboree(s) par le fil des morts (`dead`), 26 inexpliquee(s)
+75 lecture(s) VIDE(S) : 55 corroboree(s) par le fil des morts (`dead`), 20 inexpliquee(s)
 couverture : 585 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 0 ecartee(s) faute de piste publiee -> 585 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
-701 lecture(s) · 503 par image-cle (~20 s) · 198 par delta (transmis AU CHANGEMENT)
-76 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 503 image-cle · 198 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
+713 lecture(s) · 510 par image-cle (~20 s) · 203 par delta (transmis AU CHANGEMENT)
+498 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
+couverture : 510 image-cle · 203 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
-262 lecture(s) · 191 par i48 (rang complet, paquets delta) · 71 par image-cle (fenetre 16..23)
-rangs observes : 1:28 2:29 4:29 5:26 6:24 10:28 23:98
-lectures NOMMEES 262/262 — un rang hors table garde son numero, et la table est propre a la palette du film
+277 lecture(s) · 206 par i48 (rang complet, paquets delta) · 71 par image-cle (fenetre 16..23)
+rangs observes : 1:29 2:31 4:33 5:32 6:25 10:29 23:98
+lectures NOMMEES 277/277 — un rang hors table garde son numero, et la table est propre a la palette du film
 capacites nommees : 1=en:"Threat Sensor"/fr:"detecteur de menaces"/fam:"sensor", 10=en:"Shroud Screen"/fr:"ecran occultant"/fam:"shroud_screen", 2=en:"Drop Wall"/fr:"mur de protection"/fam:"wall", 23=en:"Repair Field"/fr:"champ de reparation"/fam:"repair_field", 4=en:"Grappleshot"/fr:"grappin"/fam:"grapple", 5=en:"Thruster"/fr:"propulseur"/fam:"thruster", 6=en:"Repulsor"/fr:"repulseur"/fam:"repulsor"
-couverture : 262 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 262 publiee(s)
+couverture : 277 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 277 publiee(s)
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 0 episode(s) publie(s) · par famille : aucun · 0 fin(s) MESUREE(s) (le reste ferme a la mort)
@@ -106,73 +106,160 @@ couverture : 182 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclie
 0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
 
 ## IMPULSIONS DE CAPACITE — l usage MESURE du propulseur, attribue par le rang de la vie
-14 lecture(s) -> 7 geste(s) -> 3 publiee(s) · 1 sans identite · 3 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+72 lecture(s) -> 36 geste(s) -> 35 publiee(s) · 1 sans identite · 0 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+  slot=533 t=506 thruster
   slot=539 t=657 thruster
+  slot=539 t=736 thruster
+  slot=540 t=969 thruster
+  slot=545 t=1052 thruster
+  slot=544 t=1084 thruster
+  slot=545 t=1119 thruster
+  slot=539 t=1159 thruster
+  slot=545 t=1245 thruster
+  slot=545 t=1283 thruster
+  slot=566 t=1676 thruster
+  slot=566 t=1713 thruster
+  slot=580 t=1827 thruster
+  slot=566 t=1847 thruster
+  slot=568 t=1872 thruster
+  slot=566 t=1885 thruster
+  slot=566 t=1979 thruster
   slot=568 t=2203 thruster
+  slot=590 t=2304 thruster
+  slot=615 t=2855 thruster
+  slot=615 t=2894 thruster
+  slot=615 t=2943 thruster
+  slot=615 t=3094 thruster
+  slot=617 t=3223 thruster
+  slot=637 t=3953 thruster
   slot=659 t=4014 thruster
+  slot=661 t=4105 thruster
+  slot=661 t=4263 thruster
+  slot=637 t=4289 thruster
+  slot=661 t=4303 thruster
+  slot=661 t=4360 thruster
+  slot=661 t=4401 thruster
+  slot=677 t=4691 thruster
+  slot=680 t=4831 thruster
+  slot=680 t=5084 thruster
 
 ## CHARGES D EQUIPEMENT — les lectures du film, jamais un compte d usages derive
-55 lecture(s) -> 50 publiee(s) · 2 sans identite · 3 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+108 lecture(s) -> 105 publiee(s) · 3 sans identite · 0 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
   slot=515 t=348 grapple charges=4
+  slot=515 t=362 grapple charges=4
+  slot=533 t=506 thruster charges=4
   slot=520 t=512 grapple charges=4
   slot=520 t=523 grapple charges=4
   slot=539 t=657 thruster charges=4
+  slot=539 t=736 thruster charges=3
+  slot=529 t=748 thruster charges=4
   slot=543 t=859 grapple charges=4
   slot=543 t=867 grapple charges=4
   slot=528 t=907 grapple charges=4
   slot=528 t=919 grapple charges=4
+  slot=543 t=932 grapple charges=4
   slot=528 t=946 grapple charges=3
   slot=543 t=949 grapple charges=4
+  slot=528 t=953 grapple charges=3
   slot=543 t=965 grapple charges=3
+  slot=540 t=969 thruster charges=4
+  slot=528 t=972 grapple charges=3
+  slot=543 t=976 grapple charges=3
+  slot=545 t=989 thruster charges=4
+  slot=543 t=997 grapple charges=3
+  slot=545 t=1052 thruster charges=3
   slot=543 t=1079 grapple charges=2
+  slot=544 t=1084 thruster charges=4
   slot=543 t=1085 grapple charges=2
+  slot=545 t=1119 thruster charges=2
+  slot=539 t=1159 thruster charges=4
   slot=518 t=1212 grapple charges=3
+  slot=545 t=1245 thruster charges=1
+  slot=545 t=1283 thruster charges=0
+  slot=566 t=1676 thruster charges=4
+  slot=566 t=1713 thruster charges=3
+  slot=580 t=1827 thruster charges=4
+  slot=566 t=1847 thruster charges=2
+  slot=568 t=1872 thruster charges=4
+  slot=566 t=1885 thruster charges=1
+  slot=566 t=1979 thruster charges=0
   slot=580 t=2005 grapple charges=4
+  slot=580 t=2014 grapple charges=4
   slot=580 t=2042 grapple charges=3
+  slot=580 t=2049 grapple charges=3
   slot=580 t=2090 grapple charges=2
+  slot=580 t=2096 grapple charges=2
   slot=568 t=2203 thruster charges=3
   slot=580 t=2273 grapple charges=4
   slot=580 t=2287 grapple charges=4
+  slot=590 t=2304 thruster charges=4
   slot=580 t=2471 grapple charges=3
   slot=580 t=2484 grapple charges=3
   slot=580 t=2511 grapple charges=2
+  slot=580 t=2520 grapple charges=2
+  slot=615 t=2855 thruster charges=4
+  slot=615 t=2894 thruster charges=3
   slot=580 t=2913 grapple charges=1
   slot=580 t=2926 grapple charges=1
+  slot=615 t=2943 thruster charges=2
   slot=580 t=3025 grapple charges=0
   slot=580 t=3032 grapple charges=0
   slot=578 t=3086 grapple charges=4
+  slot=615 t=3094 thruster charges=1
   slot=578 t=3097 grapple charges=4
   slot=578 t=3157 grapple charges=3
+  slot=578 t=3166 grapple charges=3
   slot=626 t=3171 grapple charges=4
   slot=626 t=3180 grapple charges=4
+  slot=617 t=3223 thruster charges=4
   slot=630 t=3244 grapple charges=4
   slot=630 t=3255 grapple charges=4
   slot=627 t=3260 grapple charges=4
+  slot=627 t=3270 grapple charges=4
   slot=630 t=3307 grapple charges=3
+  slot=630 t=3318 grapple charges=3
   slot=630 t=3717 grapple charges=4
   slot=630 t=3727 grapple charges=4
   slot=630 t=3751 grapple charges=3
   slot=630 t=3762 grapple charges=3
   slot=646 t=3790 grapple charges=4
+  slot=646 t=3800 grapple charges=4
   slot=636 t=3812 grapple charges=4
   slot=636 t=3823 grapple charges=4
   slot=636 t=3911 grapple charges=3
+  slot=636 t=3916 grapple charges=3
+  slot=637 t=3953 thruster charges=4
   slot=659 t=4014 thruster charges=4
+  slot=651 t=4072 grapple charges=3
+  slot=661 t=4105 thruster charges=4
+  slot=661 t=4263 thruster charges=3
+  slot=659 t=4267 thruster charges=4
+  slot=637 t=4289 thruster charges=3
+  slot=661 t=4303 thruster charges=2
+  slot=661 t=4360 thruster charges=1
+  slot=661 t=4401 thruster charges=0
   slot=676 t=4498 grapple charges=4
   slot=676 t=4509 grapple charges=4
   slot=676 t=4555 grapple charges=3
+  slot=676 t=4567 grapple charges=3
+  slot=677 t=4691 thruster charges=4
+  slot=680 t=4713 thruster charges=4
   slot=676 t=4765 grapple charges=2
+  slot=676 t=4781 grapple charges=2
+  slot=680 t=4831 thruster charges=3
   slot=675 t=4872 grapple charges=4
+  slot=675 t=4884 grapple charges=4
+  slot=680 t=5084 thruster charges=2
 
 ## GRAPPIN — tractions datees par vie, l ancre en coordonnees monde (fenetre MESUREE)
-31 traction(s) sur 14 vie(s) · lectures : 38 tir(s) + 31 accroche(s) · 8 rate(s) · 0 corps non decodable(s)
+31 traction(s) sur 14 vie(s) · lectures : 40 tir(s) + 31 accroche(s) · 9 rate(s) · 0 corps non decodable(s)
   slot=515 t=[347, 362] ancre=(3.33, 110.22, 55.03)
   slot=520 t=[510, 534] ancre=(-13.00, 85.25, 56.12)
   slot=543 t=[858, 868] ancre=(-71.65, 60.19, 55.37)
   slot=528 t=[906, 920] ancre=(-27.56, 96.25, 56.00)
   slot=528 t=[944, 955] ancre=(-15.47, 84.63, 56.22)
   slot=543 t=[963, 977] ancre=(-82.17, 82.72, 55.73)
-  slot=543 t=[1079, 1086] ancre=(-72.85, 92.12, 51.33)
+  slot=543 t=[1077, 1086] ancre=(-72.85, 92.12, 51.33)
   slot=580 t=[2004, 2018] ancre=(-43.51, 88.38, 56.67)
   slot=580 t=[2040, 2066] ancre=(-32.57, 90.28, 55.77)
   slot=580 t=[2088, 2097] ancre=(-28.93, 86.69, 57.77)
@@ -199,15 +286,15 @@ couverture : 182 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclie
   slot=675 t=[4871, 4885] ancre=(0.35, 106.91, 55.82)
 
 ## OBJETS D EQUIPEMENT — objets DEPLOYES et objets LACHES a la mort, par famille et origine
-calibre=true decoupage="8/3" · 667 vie(s) d objet · 16841 ancre(s) -> 472 confirmee(s) par l oracle de position -> 472 pose(s)
+calibre=true decoupage="8/3" · 540 vie(s) d objet · 813 ancre(s) -> 472 confirmee(s) par l oracle de position -> 472 pose(s)
 472 nommee(s) · 0 `other` (nature non etablie : le manifeste ne les revendique pas) · 444 avec poseur mesure · 377 avec cap de visee
-origine lue : 29 deployee(s) (piece engendree) · 371 lachee(s) · 72 inconnue(s)
+origine lue : 29 deployee(s) (piece engendree) · 377 lachee(s) · 66 inconnue(s)
 provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   par cause death_written    355
   par cause no_owner         28
-  par cause none             44
+  par cause none             38
   par cause spawn_event      29
-  par cause taken_written    16
+  par cause taken_written    22
   famille grapple  28
   famille grenade_dynamo 54
   famille grenade_frag 68
@@ -229,12 +316,12 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   famille x origine grenade_plasma/unknown       6
   famille x origine grenade_spike/dropped        72
   famille x origine grenade_spike/unknown        14
-  famille x origine repair_field/dropped         21
-  famille x origine repair_field/unknown         5
-  famille x origine repulsor/dropped             21
-  famille x origine repulsor/unknown             3
-  famille x origine sensor/dropped               17
-  famille x origine sensor/unknown               7
+  famille x origine repair_field/dropped         23
+  famille x origine repair_field/unknown         3
+  famille x origine repulsor/dropped             22
+  famille x origine repulsor/unknown             2
+  famille x origine sensor/dropped               20
+  famille x origine sensor/unknown               4
   famille x origine shroud_screen/dropped        23
   famille x origine shroud_screen/unknown        3
   famille x origine thruster/dropped             24
@@ -275,7 +362,7 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   grenade_spike dropped 0x0f5716ff t=[690, 700] pos=(-48.57, 114.69, 50.38) poseur=516 cap=339.5 deg
   grenade_spike dropped 0x0f5716ff t=[690, 698] pos=(-48.57, 114.73, 50.38) poseur=516 cap=339.5 deg
   repulsor dropped 0x7ca85adc t=[690, 699] pos=(-48.30, 114.78, 50.50) poseur=516 cap=339.5 deg
-  thruster unknown 0x430dda48 t=[727, 746] pos=(-60.64, 83.52, 56.79) poseur=529 cap=179.8 deg
+  thruster unknown 0x430dda48 t=[727, 746] pos=(-60.64, 83.52, 56.79) poseur=529 cap=174.7 deg
   shroud_screen dropped 0x4396db42 t=[748, 758] pos=(-59.61, 84.13, 55.61) poseur=529 cap=248.5 deg
   wall deployed 0x686b40c9 t=[778, 783] pos=(-51.39, 121.43, 53.58) poseur=527 cap=41.4 deg
   wall dropped 0x2974c233 t=[782, 789] pos=(-37.40, 86.71, 55.32) poseur=532 cap=183.8 deg
@@ -299,7 +386,7 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   thruster dropped 0x430dda48 t=[982, 1052] pos=(-25.03, 78.07, 56.29) poseur=540 cap=185.6 deg
   grenade_dynamo dropped 0xaada07f3 t=[982, 1005] pos=(-25.10, 78.14, 56.14) poseur=540 cap=185.6 deg
   grenade_dynamo dropped 0xaada07f3 t=[982, 1020] pos=(-25.09, 78.14, 56.13) poseur=540 cap=185.6 deg
-  repair_field unknown 0x32d97758 t=[989, 1000] pos=(-60.91, 83.07, 55.42) poseur=545 cap=23.2 deg
+  repair_field dropped 0x32d97758 t=[989, 1000] pos=(-60.91, 83.07, 55.42) poseur=545 cap=23.2 deg
   grapple dropped 0x273fe0eb t=[1015, 1022] pos=(-28.51, 77.71, 55.07) poseur=522 cap=343.4 deg
   grenade_frag dropped 0xbcabbe43 t=[1015, 1037] pos=(-28.34, 77.73, 55.06) poseur=522 cap=343.4 deg
   grenade_frag dropped 0xbcabbe43 t=[1015, 1039] pos=(-28.34, 77.73, 55.06) poseur=522 cap=343.4 deg
@@ -307,7 +394,7 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   grenade_frag dropped 0xbcabbe43 t=[1034, 1122] pos=(-7.30, 98.95, 52.78) poseur=517 cap=307.6 deg
   grenade_frag dropped 0xbcabbe43 t=[1034, 1071] pos=(-7.33, 98.94, 52.78) poseur=517 cap=307.6 deg
   shroud_screen dropped 0x4396db42 t=[1060, 1087] pos=(-23.85, 79.40, 56.22) poseur=546 cap=119.0 deg
-  sensor unknown 0x72b63d69 t=[1069, 1093] pos=(-6.61, 98.73, 52.40) poseur=544 cap=20.5 deg
+  sensor dropped 0x72b63d69 t=[1069, 1093] pos=(-6.61, 98.73, 52.40) poseur=544 cap=20.5 deg
   wall deployed 0x686b40c9 t=[1084, 1091] pos=(-10.94, 105.84, 54.35) poseur=527 cap=314.8 deg
   thruster unknown 0x430dda48 t=[1096, 1102] pos=(-6.69, 95.95, 52.50) poseur=541 cap=83.5 deg
   grenade_dynamo unknown 0xaada07f3 t=[1096, 1111] pos=(-6.61, 95.99, 52.40) poseur=541 cap=83.5 deg
@@ -451,7 +538,7 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   grapple dropped 0x273fe0eb t=[2540, 2547] pos=(-13.60, 76.70, 53.66) poseur=596 cap=90.2 deg
   grenade_frag dropped 0xbcabbe43 t=[2540, 2574] pos=(-13.55, 76.74, 53.55) poseur=596 cap=90.2 deg
   grenade_frag dropped 0xbcabbe43 t=[2540, 2629] pos=(-13.57, 76.73, 53.55) poseur=596 cap=90.2 deg
-  sensor unknown 0x72b63d69 t=[2591, 2598] pos=(-13.39, 77.08, 53.57) poseur=597 cap=aucun
+  sensor dropped 0x72b63d69 t=[2591, 2598] pos=(-13.39, 77.08, 53.57) poseur=597 cap=aucun
   grenade_spike dropped 0x0f5716ff t=[2592, 2616] pos=(7.74, 76.88, 50.75) poseur=598 cap=59.5 deg
   grenade_spike dropped 0x0f5716ff t=[2592, 2604] pos=(7.71, 76.87, 50.75) poseur=598 cap=59.5 deg
   shroud_screen dropped 0x4396db42 t=[2592, 2642] pos=(7.68, 76.91, 50.87) poseur=598 cap=59.5 deg
@@ -547,7 +634,7 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   grapple dropped 0x273fe0eb t=[3402, 3409] pos=(11.11, 85.95, 51.74) poseur=616 cap=66.7 deg
   thruster dropped 0x430dda48 t=[3411, 3425] pos=(-41.00, 74.83, 55.68) poseur=615 cap=247.5 deg
   grenade_frag dropped 0xbcabbe43 t=[3411, 3540] pos=(-41.11, 74.89, 55.60) poseur=615 cap=247.5 deg
-  grenade_frag dropped 0xbcabbe43 t=[3411, 3506] pos=(-41.09, 74.89, 55.60) poseur=615 cap=247.5 deg
+  grenade_frag dropped 0xbcabbe43 t=[3411, 3542] pos=(-41.09, 74.89, 55.60) poseur=615 cap=247.5 deg
   grenade_plasma dropped 0xcaaadcb0 t=[3411, 3504] pos=(-41.11, 74.86, 55.60) poseur=615 cap=247.5 deg
   shroud_screen dropped 0x4396db42 t=[3435, 3456] pos=(-63.14, 103.77, 51.34) poseur=636 cap=aucun
   grenade_spike dropped 0x0f5716ff t=[3462, 3469] pos=(-55.90, 87.36, 53.64) poseur=634 cap=350.6 deg
@@ -579,7 +666,7 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   repair_field dropped 0x32d97758 t=[3752, 3766] pos=(8.44, 116.04, 98.49) poseur=631 cap=81.6 deg
   grenade_spike dropped 0x0f5716ff t=[3767, 3781] pos=(10.22, 121.59, 98.61) poseur=628 cap=aucun
   sensor dropped 0x72b63d69 t=[3767, 3798] pos=(10.32, 121.51, 98.78) poseur=628 cap=aucun
-  grenade_spike dropped 0x0f5716ff t=[3812, 3821] pos=(-59.38, 98.93, 52.33) poseur=630 cap=303.4 deg
+  grenade_spike dropped 0x0f5716ff t=[3812, 3822] pos=(-59.38, 98.93, 52.33) poseur=630 cap=303.4 deg
   grenade_spike dropped 0x0f5716ff t=[3812, 3822] pos=(-59.38, 98.93, 52.33) poseur=630 cap=303.4 deg
   grapple dropped 0x273fe0eb t=[3812, 3820] pos=(-59.31, 98.99, 52.49) poseur=630 cap=303.4 deg
   grenade_spike unknown 0x0f5716ff t=[3813, 3821] pos=(-57.96, 78.65, 53.38) poseur=629 cap=10.6 deg
@@ -612,7 +699,7 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   grenade_plasma dropped 0xcaaadcb0 t=[4023, 4063] pos=(-60.47, 67.94, 52.85) poseur=636 cap=aucun
   wall deployed 0x686b40c9 t=[4053, 4063] pos=(-40.68, 83.68, 56.21) poseur=657 cap=216.4 deg
   sensor dropped 0x72b63d69 t=[4055, 4073] pos=(8.91, 117.20, 97.71) poseur=644 cap=186.5 deg
-  sensor unknown 0x72b63d69 t=[4072, 4090] pos=(-61.11, 66.96, 52.91) poseur=651 cap=324.2 deg
+  sensor dropped 0x72b63d69 t=[4072, 4090] pos=(-61.11, 66.96, 52.91) poseur=651 cap=324.2 deg
   grenade_spike dropped 0x0f5716ff t=[4133, 4160] pos=(-54.37, 76.77, 54.25) poseur=638 cap=175.7 deg
   grenade_spike dropped 0x0f5716ff t=[4133, 4159] pos=(-54.37, 76.80, 54.25) poseur=638 cap=175.7 deg
   repair_field dropped 0x32d97758 t=[4133, 4148] pos=(-54.36, 76.61, 54.49) poseur=638 cap=175.7 deg
@@ -637,7 +724,7 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   shroud_screen dropped 0x4396db42 t=[4262, 4277] pos=(-1.29, 81.90, 54.20) poseur=654 cap=178.5 deg
   grenade_frag dropped 0xbcabbe43 t=[4262, 4293] pos=(-1.24, 82.10, 54.21) poseur=654 cap=178.5 deg
   grenade_frag dropped 0xbcabbe43 t=[4262, 4297] pos=(-1.29, 82.08, 54.20) poseur=654 cap=178.5 deg
-  repulsor unknown 0x7ca85adc t=[4267, 4275] pos=(-57.07, 91.34, 53.28) poseur=659 cap=aucun
+  repulsor dropped 0x7ca85adc t=[4267, 4275] pos=(-57.07, 91.34, 53.28) poseur=659 cap=aucun
   thruster dropped 0x430dda48 t=[4311, 4328] pos=(-52.96, 82.74, 54.85) poseur=637 cap=272.3 deg
   wall unknown 0x2974c233 t=[4344, 4372] pos=(-7.77, 75.12, 68.40) poseur=-1 cap=aucun
   grenade_plasma unknown 0xcaaadcb0 t=[4344, 4373] pos=(-7.61, 75.37, 69.96) poseur=-1 cap=aucun
@@ -677,7 +764,7 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   grenade_dynamo dropped 0xaada07f3 t=[4695, 4699] pos=(-39.66, 100.46, 51.33) poseur=677 cap=126.4 deg
   grenade_dynamo dropped 0xaada07f3 t=[4695, 4699] pos=(-39.63, 100.47, 51.33) poseur=677 cap=126.4 deg
   wall deployed 0x686b40c9 t=[4705, 4708] pos=(-54.37, 84.19, 56.94) poseur=640 cap=358.4 deg
-  repair_field unknown 0x32d97758 t=[4713, 4725] pos=(-40.83, 101.58, 51.15) poseur=680 cap=aucun
+  repair_field dropped 0x32d97758 t=[4713, 4725] pos=(-40.83, 101.58, 51.15) poseur=680 cap=aucun
   grenade_spike unknown 0x0f5716ff t=[4780, 4812] pos=(-56.08, 85.14, 56.77) poseur=640 cap=aucun
   grenade_spike unknown 0x0f5716ff t=[4780, 4797] pos=(-56.11, 85.06, 56.74) poseur=640 cap=aucun
   grenade_dynamo unknown 0xaada07f3 t=[4780, 4815] pos=(-56.08, 85.05, 56.77) poseur=640 cap=aucun
@@ -716,15 +803,15 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   grenade_dynamo unknown 0xaada07f3 t=[5096, 5114] pos=(-51.17, 89.10, 54.82) poseur=685 cap=281.9 deg
 
 ## SOCLES D ARME AU SOL — la RECURRENCE fait le socle, et le film dit quand il se vide
-balaye=true · bande 1526 slot(s) · 21634 ancre(s) -> 556 acceptee(s) -> 364 retenue(s) par l IDENTITE (192 ecartee(s))
+balaye=true · bande 1526 slot(s) · 399 ancre(s) -> 392 acceptee(s) -> 364 retenue(s) par l IDENTITE (28 ecartee(s))
 297 lachee(s) a une mort · 67 apparue(s) sans mort a proximite, dont 0 AU REPOS (jamais bougee : le seul jeu qui fait des socles)
 0 grappe(s) -> 0 socle(s) publie(s) · 0 occupation(s) : 0 datee(s) · 0 sans passage · 0 jamais videe(s)
 0 cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre
-POWER-UPS (voie ti=37) — balaye=true · 712 creation(s) acceptee(s) -> 0 retenue(s) par l IDENTITE `powerup_*` -> 0 socle(s) publie(s)
+POWER-UPS (voie ti=37) — balaye=true · 499 creation(s) acceptee(s) -> 0 retenue(s) par l IDENTITE `powerup_*` -> 0 socle(s) publie(s)
 0 occupation(s) achevee(s) publiee(s) · 0 datee(s) a l instant exact par l evenement natif · 0 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
-510 loadout(s) publie(s) · 24 famille(s) distincte(s)
+687 loadout(s) publie(s) · 24 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 182 entree(s) · 182 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
@@ -747,13 +834,12 @@ arrivants 4 · presences closes 5 · sans presence 1 · occupants au plus 24 · 
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 repli_cap_vehicule_vitesse_insuffisante          4934
-repli_chassis_vehicule_marqueur_neutre           6
-repli_episode_occupation_par_trou_de_position    3
-repli_identite_premier_occupant_du_siege         82
-repli_impulsion_fusionnee_dans_le_geste          7
+repli_chassis_vehicule_marqueur_neutre           4
+repli_identite_premier_occupant_du_siege         87
+repli_impulsion_fusionnee_dans_le_geste          36
 repli_origine_au_sol_lachee_par_fenetre          297
 repli_place_du_remplacant_par_chainage_d_equipe  2
-repli_position_hors_emprise_ecartee              3
+repli_position_hors_emprise_ecartee              1
 repli_tourelle_porteur_voisin_de_slot            14
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place

@@ -153,6 +153,8 @@ type FilmInputs struct {
 	Grenades []grammar.GrenadeThrow
 	// Projectiles sont les trajectoires de projectile.
 	Projectiles []types.ProjectileTrack
+	// Detonations sont les messages de detonation/impact de projectile lus dans la vue A.
+	Detonations []types.ProjectileDetonation
 	// Deaths est le fil des morts : il NOMME les vies et fonde tout le rattachement.
 	Deaths []types.Death
 	// DeathsFeed est le VERDICT de la lecture du fil des morts et sa cause (lot M8 des retours
@@ -244,6 +246,7 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.Bomb.Reads = in.BombReads
 	opt.Grenades = in.Grenades
 	opt.Projectiles = in.Projectiles
+	opt.Detonations = in.Detonations
 	opt.Deaths = in.Deaths
 	opt.DeathsFeed = in.DeathsFeed.Verdict
 	opt.PlayerIndices = in.PlayerIndices

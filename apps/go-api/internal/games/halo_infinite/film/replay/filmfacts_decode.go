@@ -172,7 +172,7 @@ func decodeEvenements(r *greader, g *FilmFacts) {
 	}
 
 	g.Projectiles = decodeTracks(r)
-
+	g.Detonations = decodeDetonations(r)
 }
 
 // decodeInventaire relit les inventaires d image-cle et leurs deltas.

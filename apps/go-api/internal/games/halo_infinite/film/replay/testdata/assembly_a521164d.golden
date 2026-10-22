@@ -6,19 +6,19 @@
 
 ## AXE DE TEMPS
 3397 frames · intervalle 100 ms · duree 339700 ms
-schema 101 · titre halo_infinite
+schema 102 · titre halo_infinite
 version majeure du film : 33
 origine de la frame 0 sur l horloge du fil : 27811 ms
 coup d envoi date par le film : 45311 ms · 125/128 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 17500 ms
 
 ## TRACES PUBLIEES — une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)
-128 trace(s) · 46411 point(s) de grille
+128 trace(s) · 46414 point(s) de grille
 seuil de publication 1 point(s) : 0 vie(s) REFUSEE(S) portant 0 point(s) — si le film ecrit une position, elle se publie
-55 lacune(s) de replication DANS une vie, 756013 ms au total — un trou n'est pas une fin de vie, la piste ne s'y interpole simplement pas
+55 lacune(s) de replication DANS une vie, 755913 ms au total — un trou n'est pas une fin de vie, la piste ne s'y interpole simplement pas
 128 trace(s) NOMMEE(S) par le pont (fil des morts, fermetures, sieges de bot, relais, puis
 occupation du slot dans le TEMPS) · 0 sans identite — un DEFAUT de nommage a instruire,
 jamais une categorie de donnee (decision produit du 2026-09-07)
-27338 point(s) portent un cap de visee · 27338 une elevation de visee · 6197 un bouclier · 169 une fraction de vie
+27337 point(s) portent un cap de visee · 27337 une elevation de visee · 6199 un bouclier · 171 une fraction de vie
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
 28 joueur(s)
@@ -74,29 +74,29 @@ par source : projectile=81 (aucun pont) · biped=19 (le pont a servi)
 par type : Dynamo=5 · Frag=76 · Plasma=16 · Spike=3
 
 ## PROJECTILES — le dernier point est la DERNIERE POSITION REPLIQUEE, jamais un impact
-169 trajectoire(s) · 2073 point(s) de grille
+170 trajectoire(s) · 2086 point(s) de grille
 14 se terminent sur `projectile-at-rest-state` — le SEUL champ qui certifie une fin de vol
-couverture : 174 piste(s) decodee(s) · 169 publiee(s) · 8 coupee(s) a un pas impossible
+couverture : 175 piste(s) decodee(s) · 170 publiee(s) · 8 coupee(s) a un pas impossible
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
 395 etat(s) publie(s) · 322 avec grenades lues · 322 avec munitions lues
-27 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
+23 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
 73 lecture(s) VIDE(S) : 53 corroboree(s) par le fil des morts (`dead`), 20 inexpliquee(s)
 couverture : 403 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 8 ecartee(s) faute de piste publiee -> 395 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
-513 lecture(s) · 322 par image-cle (~20 s) · 191 par delta (transmis AU CHANGEMENT)
-75 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 322 image-cle · 191 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
+524 lecture(s) · 322 par image-cle (~20 s) · 202 par delta (transmis AU CHANGEMENT)
+91 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
+couverture : 322 image-cle · 202 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
-56 lecture(s) · 56 par i48 (rang complet, paquets delta) · 0 par image-cle (fenetre 16..23)
-rangs observes : 2:12 4:17 6:17 8:3 9:3 10:4
-lectures NOMMEES 56/56 — un rang hors table garde son numero, et la table est propre a la palette du film
+58 lecture(s) · 58 par i48 (rang complet, paquets delta) · 0 par image-cle (fenetre 16..23)
+rangs observes : 2:12 4:19 6:17 8:3 9:3 10:4
+lectures NOMMEES 58/58 — un rang hors table garde son numero, et la table est propre a la palette du film
 capacites nommees : 10=en:"Shroud Screen"/fr:"ecran occultant"/fam:"shroud_screen", 2=en:"Drop Wall"/fr:"mur de protection"/fam:"wall", 4=en:"Grappleshot"/fr:"grappin"/fam:"grapple", 6=en:"Repulsor"/fr:"repulseur"/fam:"repulsor", 8=en:"Active Camouflage"/fr:"camouflage actif"/fam:"powerup_camo", 9=en:"Overshield"/fr:"surbouclier"/fam:"powerup_overshield"
-couverture : 56 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 56 publiee(s)
+couverture : 58 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 58 publiee(s)
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 10 episode(s) publie(s) · par famille : camo=7 · overshield=3 · 9 fin(s) MESUREE(s) (le reste ferme a la mort)
@@ -106,39 +106,52 @@ couverture : 128 vie(s) publiee(s) · camo 3 vie(s) / 7 episode(s) · surbouclie
 0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
 
 ## IMPULSIONS DE CAPACITE — l usage MESURE du propulseur, attribue par le rang de la vie
-0 lecture(s) -> 0 geste(s) -> 0 publiee(s) · 0 sans identite · 0 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+1 lecture(s) -> 1 geste(s) -> 0 publiee(s) · 1 sans identite · 0 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
 
 ## CHARGES D EQUIPEMENT — les lectures du film, jamais un compte d usages derive
-28 lecture(s) -> 26 publiee(s) · 0 sans identite · 2 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+39 lecture(s) -> 39 publiee(s) · 0 sans identite · 0 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
   slot=532 t=931 grapple charges=4
   slot=532 t=953 grapple charges=3
   slot=532 t=962 grapple charges=3
   slot=532 t=1010 grapple charges=3
   slot=532 t=1020 grapple charges=2
   slot=552 t=1206 grapple charges=4
+  slot=552 t=1210 grapple charges=4
   slot=556 t=1368 grapple charges=4
   slot=556 t=1376 grapple charges=4
+  slot=559 t=1578 grapple charges=4
+  slot=562 t=1625 grapple charges=4
   slot=552 t=1714 grapple charges=3
+  slot=552 t=1719 grapple charges=3
   slot=552 t=1768 grapple charges=3
   slot=552 t=1783 grapple charges=2
+  slot=552 t=1792 grapple charges=2
   slot=552 t=1960 grapple charges=1
   slot=552 t=1967 grapple charges=1
   slot=588 t=1973 grapple charges=4
   slot=578 t=1975 grapple charges=4
+  slot=578 t=1976 grapple charges=4
   slot=588 t=1984 grapple charges=4
   slot=552 t=2006 grapple charges=0
   slot=588 t=2007 grapple charges=3
+  slot=552 t=2013 grapple charges=0
+  slot=588 t=2017 grapple charges=3
+  slot=562 t=2076 grapple charges=4
+  slot=562 t=2083 grapple charges=4
   slot=570 t=2303 grapple charges=4
   slot=594 t=2383 grapple charges=4
   slot=594 t=2384 grapple charges=4
   slot=594 t=2446 grapple charges=3
   slot=602 t=2447 grapple charges=4
   slot=594 t=2978 grapple charges=4
+  slot=594 t=2984 grapple charges=4
   slot=594 t=3071 grapple charges=3
+  slot=594 t=3075 grapple charges=3
   slot=594 t=3211 grapple charges=4
+  slot=594 t=3220 grapple charges=4
 
 ## GRAPPIN — tractions datees par vie, l ancre en coordonnees monde (fenetre MESUREE)
-16 traction(s) sur 6 vie(s) · lectures : 20 tir(s) + 16 accroche(s) · 6 rate(s) · 0 corps non decodable(s)
+16 traction(s) sur 6 vie(s) · lectures : 22 tir(s) + 16 accroche(s) · 6 rate(s) · 0 corps non decodable(s)
   slot=532 t=[927, 929] ancre=(49.24, -19.68, 5.39)
   slot=532 t=[947, 963] ancre=(57.67, -13.37, 3.96)
   slot=532 t=[1015, 1030] ancre=(50.55, -6.50, 3.85)
@@ -146,9 +159,9 @@ couverture : 128 vie(s) publiee(s) · camo 3 vie(s) / 7 episode(s) · surbouclie
   slot=552 t=[1709, 1719] ancre=(34.76, 12.37, 2.63)
   slot=552 t=[1777, 1792] ancre=(24.98, 23.15, 0.82)
   slot=552 t=[1954, 1967] ancre=(41.77, 23.15, 4.83)
-  slot=588 t=[1970, 1986] ancre=(29.28, 43.36, 5.36)
+  slot=588 t=[1968, 1986] ancre=(29.28, 43.36, 5.36)
+  slot=552 t=[2000, 2014] ancre=(35.48, 24.99, 3.75)
   slot=588 t=[2001, 2019] ancre=(30.58, 33.10, 6.58)
-  slot=552 t=[2002, 2014] ancre=(35.48, 24.99, 3.75)
   slot=562 t=[2071, 2084] ancre=(67.18, -11.58, 8.29)
   slot=594 t=[2377, 2384] ancre=(42.85, -10.92, 5.30)
   slot=594 t=[2440, 2446] ancre=(50.29, -20.34, 5.09)
@@ -157,7 +170,7 @@ couverture : 128 vie(s) publiee(s) · camo 3 vie(s) / 7 episode(s) · surbouclie
   slot=594 t=[3205, 3220] ancre=(65.21, 9.83, 8.32)
 
 ## OBJETS D EQUIPEMENT — objets DEPLOYES et objets LACHES a la mort, par famille et origine
-calibre=true decoupage="8/3" · 405 vie(s) d objet · 14236 ancre(s) -> 274 confirmee(s) par l oracle de position -> 274 pose(s)
+calibre=true decoupage="8/3" · 405 vie(s) d objet · 794 ancre(s) -> 274 confirmee(s) par l oracle de position -> 274 pose(s)
 274 nommee(s) · 0 `other` (nature non etablie : le manifeste ne les revendique pas) · 226 avec poseur mesure · 195 avec cap de visee
 origine lue : 2 deployee(s) (piece engendree) · 210 lachee(s) · 62 inconnue(s)
 provenance : 0 evenement(s) 103 lu(s) sur 4956 liste(s) d evenements non vides
@@ -465,7 +478,7 @@ provenance : 0 evenement(s) 103 lu(s) sur 4956 liste(s) d evenements non vides
   grenade_frag unknown 0xbcabbe43 t=[3307, 3336] pos=(5.72, 21.52, 3.43) poseur=-1 cap=aucun
 
 ## SOCLES D ARME AU SOL — la RECURRENCE fait le socle, et le film dit quand il se vide
-balaye=true · bande 1426 slot(s) · 16674 ancre(s) -> 597 acceptee(s) -> 398 retenue(s) par l IDENTITE (199 ecartee(s))
+balaye=true · bande 1426 slot(s) · 601 ancre(s) -> 597 acceptee(s) -> 398 retenue(s) par l IDENTITE (199 ecartee(s))
 161 lachee(s) a une mort · 237 apparue(s) sans mort a proximite, dont 110 AU REPOS (jamais bougee : le seul jeu qui fait des socles)
 58 grappe(s) -> 31 socle(s) publie(s) · 94 occupation(s) : 59 datee(s) · 10 sans passage · 25 jamais videe(s)
 8 cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre
@@ -601,7 +614,7 @@ POWER-UPS (voie ti=37) — balaye=true · 688 creation(s) acceptee(s) -> 14 rete
 69 occupation(s) achevee(s) publiee(s) · 38 datee(s) a l instant exact par l evenement natif · 38 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
-328 loadout(s) publie(s) · 17 famille(s) distincte(s)
+337 loadout(s) publie(s) · 17 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 128 entree(s) · 128 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
@@ -625,6 +638,7 @@ arrivants 4 · presences closes 5 · sans presence 1 · occupants au plus 24 · 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 repli_cap_vehicule_vitesse_insuffisante          7416
 repli_chassis_vehicule_marqueur_neutre           15
+repli_detonation_derniere_position_connue        170
 repli_episode_borne_par_la_vie_suivante          1
 repli_episode_occupation_par_trou_de_position    2
 repli_identite_premier_occupant_du_siege         82
@@ -632,7 +646,7 @@ repli_index_de_tireur_hors_place                 896
 repli_origine_au_sol_lachee_par_fenetre          161
 repli_piece_engendree_sans_evenement             2
 repli_place_du_remplacant_par_chainage_d_equipe  4
-repli_position_hors_emprise_ecartee              38
+repli_position_hors_emprise_ecartee              36
 repli_prise_de_socle_premiere_du_cycle           11
 repli_tourelle_porteur_voisin_de_slot            23
 

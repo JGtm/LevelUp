@@ -208,6 +208,57 @@ func decodeTracks(r *greader) []types.ProjectileTrack {
 	return out
 }
 
+// encodeDetonations / decodeDetonations : LES MESSAGES DE DETONATION/IMPACT DE PROJECTILE, EN
+// FLOAT32 EXACT — meme regle qu'[encodeTracks] : ces positions ne passent jamais par round2 au
+// decodage, donc pas de quantification au centimetre ici non plus.
+func encodeDetonations(w *gwriter, detos []types.ProjectileDetonation) {
+	w.u(uint64(len(detos)))
+	var ts uint64
+	for _, d := range detos {
+		w.u(d.TimestampUS - ts)
+		ts = d.TimestampUS
+		w.byte8(d.Genre)
+		var fl byte
+		if d.HasProjectile {
+			fl |= gdHasProjectile
+		}
+		if d.HasPosition {
+			fl |= gdHasPosition
+		}
+		w.byte8(fl)
+		if d.HasProjectile {
+			w.u(uint64(d.Projectile.Slot))
+			w.u(uint64(d.Projectile.Gen))
+		}
+		if d.HasPosition {
+			w.f32(d.X)
+			w.f32(d.Y)
+			w.f32(d.Z)
+		}
+	}
+}
+
+func decodeDetonations(r *greader) []types.ProjectileDetonation {
+	n := r.compte(2)
+	out := make([]types.ProjectileDetonation, 0, n)
+	var ts uint64
+	for k := 0; k < n && r.err == nil; k++ {
+		ts += r.u()
+		d := types.ProjectileDetonation{TimestampUS: ts, Genre: r.byte8()}
+		fl := r.byte8()
+		if fl&gdHasProjectile != 0 {
+			d.HasProjectile = true
+			d.Projectile = types.LifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		}
+		if fl&gdHasPosition != 0 {
+			d.HasPosition = true
+			d.X, d.Y, d.Z = r.f32(), r.f32(), r.f32()
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
 func encodeWorldObjectScan(w *gwriter, s WorldObjectScan) {
 	w.bool8(s.Scanned)
 	encodeCreations(w, s.Creations)

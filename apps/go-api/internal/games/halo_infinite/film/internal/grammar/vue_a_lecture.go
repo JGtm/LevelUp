@@ -84,6 +84,9 @@ type FluxVueA struct {
 	// Poussees : les messages de poussee d equipement (genres 104 et 105) lus, dans l ordre
 	// ([messageDePoussee]).
 	Poussees []lecture.MessageDePoussee
+	// Detonations : les messages de detonation/impact de projectile (genres 5 et 6) lus, dans
+	// l ordre ([messageDeDetonation]).
+	Detonations []lecture.MessageDeDetonation
 }
 
 // refDeMessage est une reference d entite d un message de vue A : sa porte, son index et sa
@@ -145,6 +148,8 @@ func lireLaVueA(pay []byte, debut int, bal ProfilDeBalayage, g grammaireDeLaVueA
 			out.Fil = append(out.Fil, e)
 		case genre == GenreObjetRepousse || genre == GenrePousseeDuJoueur:
 			out.Poussees = append(out.Poussees, messageDePoussee(br, genre, debutDuMessage))
+		case genre == GenreProjectileDetonate || genre == GenreProjectileImpactEffect:
+			out.Detonations = append(out.Detonations, messageDeDetonation(br, genre, debutDuMessage))
 		}
 	}
 	out.Fin = br.BitPos()

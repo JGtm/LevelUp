@@ -128,6 +128,8 @@ var formesFigees = []typeDeContrat{
 	{"grammar", types.PlayerIndexTable{}},
 	{"grammar", types.PlayerSlot{}},
 	{"grammar", types.PlayerSlotShorts{}},
+	{"grammar", types.ProjectileDetonation{}},
+	{"grammar", types.ProjectileDetonationStats{}},
 	{"grammar", types.ProjectileSample{}},
 	{"grammar", types.ProjectileTrack{}},
 	{"grammar", types.SlotAmmo{}},

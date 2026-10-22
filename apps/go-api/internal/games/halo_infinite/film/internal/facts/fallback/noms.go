@@ -21,6 +21,8 @@ package fallback
 const (
 	// NomPieceEngendreeSansEvenement : `replay/equipment_origin.go`, `origineDeLaPose`.
 	NomPieceEngendreeSansEvenement Nom = "repli_piece_engendree_sans_evenement"
+	// NomDetonationDernierePositionConnue : `replay/projectiles.go`, `attachDetonations`.
+	NomDetonationDernierePositionConnue Nom = "repli_detonation_derniere_position_connue"
 	// NomPlafondGrenadeParDefaut : applique par la fenetre d inventaire DERRIERE la lecture de l etat complet,
 	// sur les seuls records non admis (`grammar/keyframe_etats_fenetre.go`, `rendreParLaFenetre` ->
 	// `keyframeInventoriesDe`, lot D1.2 de 2.7.d1) ; compte par `replay/film_scan.go` (`balayerInventaire`)

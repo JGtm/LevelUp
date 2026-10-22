@@ -3501,3 +3501,36 @@ package replay
 //	                valeur (la taille est une option de la publication, pas un fait du film).
 //
 //	LE PARC         un artefact 100 : verdict `redecoder` (la revision de grammaire a change).
+
+// v102 (2026-10-22, lot detonations, suite du controle n° 24 des controles v8 : des lancers de
+// grenade sans explosion). Le film ECRIT la detonation d un projectile dans la vue A
+// (`projectile_detonate` genre 5, `projectile_impact_effect` genre 6) : la position etait deja LUE
+// par [chargeDetonation]/[chargeImpact] pour avancer le curseur de bits, puis jetee. Ce lot la
+// garde et la rattache a la piste publiee par proximite spatiale et temporelle.
+//
+//	`projectiles[].detoT/detoX/detoY`   l EXPLOSION publiee : l instant et la position du message
+//	                 de detonation/impact LU, le plus proche dans l espace parmi ceux a portee
+//	                 temporelle de la derniere position publiee de la piste.
+//	`projectiles[].detoLue`             dit que les trois champs ci-dessus viennent d un message
+//	                 LU ; faux = repli nomme (`fallback.NomDetonationDernierePositionConnue`) : ils
+//	                 valent alors le dernier point de la piste, l approximation publiee SANS repli
+//	                 avant ce lot.
+//
+//	MESURE          cinq films temoins (Origin, Dredge, Snowbound, Flood Gulch, Catalyst), 727
+//	                lancers lies a une piste de projectile : 727/727 (100 %) trouvent une
+//	                detonation a position dans la fenetre mesuree (0,5 s avant la derniere position
+//	                publiee, 4 s apres), mediane 17 a 35 ms APRES cette derniere position (jamais
+//	                avant au-dela de la tolerance) et 0,01 unite de distance (max 3,58 sur 4 989
+//	                lancers lies). La reference de projectile du message (domaine 5) ne coincide
+//	                NI brute NI avec la base 0x400 du domaine avec le slot de la piste appariee :
+//	                l appariement passe par la proximite, pas par cette reference.
+//
+//	CE QUI MONTE    `SchemaVersion` 101 -> 102 ; `SchemaDesFaits` 17 -> 18 (le blob des entrees
+//	AVEC ELLE       porte les detonations lues : sans cette montee la recuisson depuis des faits
+//	                perimes perdrait la detonation et retomberait systematiquement sur le repli).
+//	                Aucune revision de couche ne bouge : la grammaire lisait deja ces bits, elle ne
+//	                fait que les garder.
+//
+//	LE PARC         un artefact 101 : verdict `redecoder` (les faits portent l ancien schema), la
+//	                recuisson relit le film. DECISION UTILISATEUR REQUISE avant toute recuisson du
+//	                parc de production (hors films temoins de ce lot).

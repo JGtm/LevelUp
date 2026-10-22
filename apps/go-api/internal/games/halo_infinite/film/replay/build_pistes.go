@@ -189,7 +189,8 @@ func (a *assemblage) poserTirsProjectilesEtGrenades() {
 	// projectile né de lui (Grenade.Proj), qui pointe un index de la tranche PUBLIÉE.
 	var pubProjByRaw map[int]int
 	var projTronquees int
-	a.doc.Projectiles, pubProjByRaw, projTronquees = buildProjectiles(a.opt.Projectiles, a.origin, a.step)
+	a.doc.Projectiles, pubProjByRaw, projTronquees = buildProjectiles(a.opt.Projectiles, a.origin, a.step,
+		a.opt.Detonations, a.opt.Fallbacks)
 	// LA COUVERTURE DES PROJECTILES EST CONSTRUITE ICI mais POSEE plus bas : `doc.Coverage`
 	// n'existe qu'apres `buildCoverage`. Nil quand aucune piste n'est fournie — un film sans
 	// projectile ne publie pas trois zeros.

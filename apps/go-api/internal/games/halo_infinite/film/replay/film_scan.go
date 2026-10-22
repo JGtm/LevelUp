@@ -418,6 +418,10 @@ func (s *filmScan) balayerPont() {
 	}
 	s.in.Projectiles = proj
 	s.opt.observe(s.ctx, "projectiles", s.in.Projectiles)
+	// Detonations/impacts de projectile (genres 5/6 de la vue A) : lecture seule, sans chunk
+	// supplementaire — jamais d'erreur, juste moins de couverture sur un film qui ne les ecrit pas.
+	s.in.Detonations, _ = grammar.ScanProjectileDetonations(s.fc)
+	s.opt.observe(s.ctx, "detonations", s.in.Detonations)
 	// Le fil des morts NOMME les vies par le pont par morts, cale l'horloge des morts et ouvre la
 	// lecture de la table d index (cf. [filmScan.poserLeFilDesMorts]). Il a ete LU par l etage du pont.
 	s.poserLeFilDesMorts(s.pont.Morts, s.pont.ErrMorts)
