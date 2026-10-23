@@ -784,10 +784,6 @@ en = "{a} · {b}"
 fr = "Tendance — {name}"
 en = "Trend — {name}"
 
-[timeseries.progression.coord_hollow]
-fr = "Échantillon faible"
-en = "Low sample"
-
 [timeseries.progression.coord_points]
 fr = "pts"
 en = "pts"
@@ -801,8 +797,8 @@ fr = "La ligne zéro tient lieu des deux repères : au-dessus, la soirée fait m
 en = "The zero line stands in for both references: above it the session beats its own, below it falls short."
 
 [timeseries.progression.coord_tt_trend]
-fr = "La pointillée est la moyenne glissante sur trois soirées, calculée sans les soirées à échantillon faible (rendues en bâton creux)."
-en = "The dotted line is the three-session rolling average, computed without the low-sample sessions (drawn as hollow bars)."
+fr = "La pointillée est la moyenne glissante sur trois soirées, calculée sans les soirées à échantillon faible."
+en = "The dotted line is the three-session rolling average, computed without the low-sample sessions."
 
 # --- Rôles de portée (a.1, D23-a du 2026-09-22) ---------------------------------------
 # Le nuage solo des rôles de portée, onglet Résumé, à la suite de « Portée par arme ».

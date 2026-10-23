@@ -28,9 +28,6 @@
  * un écart, et un écart nul se lisait « rien » (une soirée à 37 % pour un habituel de 38 % : un bâton
  * quasi absent). L'appelant passe, par soirée, la valeur et son décompte (« 37 % » / « 51/137 ») ;
  * ils sont écrits au bout du bâton et repris dans l'infobulle, l'écart à côté.
- *
- * UN BÂTON CREUX (`hollow`) dit « échantillon faible » : il est rendu en contour, jamais
- * absent — la trame du temps ne doit pas mentir — et l'appelant l'exclut de sa tendance.
  */
 import type { EChartsCoreOption } from 'echarts/core'
 
@@ -72,8 +69,6 @@ export interface SessionBarsSeriesSpec {
   color: string
   /** Taux par soirée, en POURCENTS, aligné sur `labels`. `null` = pas de bâton. */
   valuesPct: (number | null)[]
-  /** Par soirée : bâton en contour (échantillon faible). */
-  hollow?: boolean[]
   usual?: SessionBarsUsual
   trend?: SessionBarsTrend
   /** Par soirée : la valeur lue et son décompte, écrits sur le bâton et dans l'infobulle. */
@@ -106,8 +101,6 @@ export interface SessionBarsTrendOpts {
   tooltipLines?: (index: number) => string[]
   /** Présent = MODE ÉCART : valeur tracée = `value - usual`, une seule ligne à zéro. */
   baseline?: SessionBarsBaseline
-  /** Témoin de légende du bâton creux (échantillon faible) : une pastille, aucune donnée. */
-  hollowLegend?: { label: string; color: string }
 }
 
 function round1(v: number): number {
@@ -162,15 +155,7 @@ function barData(spec: SessionBarsSeriesSpec, decalage: number, tc: EChartsTheme
     if (v == null) return null
     const value = round1(v - decalage)
     const abs = spec.absolute?.[i]
-    const hollow = spec.hollow?.[i] === true
-    if (!hollow && !abs) return value
-    return {
-      value,
-      // Bâton CREUX : contour de la couleur de la série sur un fond transparent. Le bâton
-      // reste à sa place et à sa hauteur — c'est sa FIABILITÉ qui est dite, pas sa valeur.
-      ...(hollow ? { itemStyle: { color: 'transparent', borderColor: spec.color, borderWidth: 1.5 } } : {}),
-      ...(abs ? { label: etiquetteDe(abs, value, tc) } : {}),
-    }
+    return abs ? { value, label: etiquetteDe(abs, value, tc) } : value
   })
 }
 
@@ -306,24 +291,6 @@ export function buildSessionBarsTrendOption(opts: SessionBarsTrendOpts): ECharts
   const tendances = opts.series
     .filter((s) => s.trend != null)
     .map((s) => tendanceDe(s.trend as SessionBarsTrend, decalages.get(s.name) ?? 0, ecart))
-  // Le témoin « échantillon faible » : une série SANS donnée, présente pour sa seule
-  // pastille de légende — son contour y dit ce que disent les bâtons creux.
-  const temoins = opts.hollowLegend
-    ? [
-        {
-          type: 'bar',
-          name: opts.hollowLegend.label,
-          silent: true,
-          data: [] as unknown[],
-          itemStyle: {
-            color: 'transparent',
-            borderColor: opts.hollowLegend.color,
-            borderWidth: 1.5,
-          },
-        },
-      ]
-    : []
-
   const xAxis: Record<string, unknown>[] = [{ ...axis, type: 'category', data: opts.labels }]
 
   return {
@@ -353,7 +320,6 @@ export function buildSessionBarsTrendOption(opts: SessionBarsTrendOpts): ECharts
       data: [
         ...barres.map((b) => b.name as string),
         ...tendances.map((l) => l.name as string),
-        ...temoins.map((l) => l.name),
       ],
     },
     xAxis,
@@ -375,6 +341,6 @@ export function buildSessionBarsTrendOption(opts: SessionBarsTrendOpts): ECharts
         formatter: ecart ? (v: number) => signe(v) : (v: number) => `${tipNumberAuto(v)} %`,
       },
     },
-    series: [...barres, ...tendances, ...temoins],
+    series: [...barres, ...tendances],
   }
 }

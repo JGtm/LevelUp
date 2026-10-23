@@ -4,7 +4,7 @@
  *
  * Ce que ces tests cadenassent : un seul axe Y en pourcents (deux seraient une faute de
  * lecture), DEUX séries de bâtons et DEUX repères tiretés sur le même axe (le cas des
- * Séries temporelles, D22-3), le bâton creux d'un échantillon faible, le rang de volumes
+ * Séries temporelles, D22-3), des bâtons toujours pleins, le rang de volumes
  * optionnel sous l'axe, et l'option vide sans soirée.
  */
 import { describe, expect, it } from 'vitest'
@@ -22,7 +22,6 @@ function deuxSeries() {
         name: 'Je suis couvert',
         color: '#111111',
         valuesPct: [54.2, 48, null],
-        hollow: [false, true, false],
         usual: { valuePct: 48.4, label: 'habituel 48 %', color: '#111111' },
       },
       {
@@ -66,15 +65,9 @@ describe('buildSessionBarsTrendOption', () => {
     expect(reperes.map((m) => m.lineStyle.color)).toEqual(['#111111', '#222222'])
   })
 
-  it('rend un bâton CREUX pour une soirée à échantillon faible, jamais un trou', () => {
+  it('rend des bâtons PLEINS à leur valeur, un trou seulement sans mesure', () => {
     const barres = (deuxSeries().series as Record<string, unknown>[]).filter((s) => s.type === 'bar')
-    const data = barres[0].data as (number | { value: number; itemStyle: { color: string; borderColor: string } } | null)[]
-    expect(data[0]).toBe(54.2)
-    expect(data[1]).toEqual({
-      value: 48,
-      itemStyle: { color: 'transparent', borderColor: '#111111', borderWidth: 1.5 },
-    })
-    expect(data[2]).toBeNull()
+    expect(barres[0].data).toEqual([54.2, 48, null])
   })
 
   it('nomme chaque série ET chaque tendance dans la légende, les courbes en dernier', () => {
@@ -124,13 +117,11 @@ function enEcart() {
     labels: LABELS,
     yAxisLabel: 'Écart (points)',
     baseline: { label: 'habituel 48 % · parité 25 %', deltaUnit: 'pts' },
-    hollowLegend: { label: 'Échantillon faible', color: '#111111' },
     series: [
       {
         name: 'Je suis couvert',
         color: '#111111',
         valuesPct: [54.2, 48, null],
-        hollow: [false, true, false],
         usual: { valuePct: 48, label: 'habituel 48 %' },
         trend: { valuesPct: [null, 50, 52], label: 'Tendance — Je suis couvert', color: '#111111' },
       },
@@ -145,13 +136,9 @@ function enEcart() {
 }
 
 describe('buildSessionBarsTrendOption — mode écart', () => {
-  it('trace chaque série en ÉCART à son propre repère, bâton creux compris', () => {
+  it('trace chaque série en ÉCART à son propre repère', () => {
     const barres = (enEcart().series as Record<string, unknown>[]).filter((s) => s.type === 'bar')
-    expect(barres[0].data).toEqual([
-      6.2,
-      { value: 0, itemStyle: { color: 'transparent', borderColor: '#111111', borderWidth: 1.5 } },
-      null,
-    ])
+    expect(barres[0].data).toEqual([6.2, 0, null])
     expect(barres[1].data).toEqual([4.1, 1, -1])
   })
 
@@ -199,22 +186,10 @@ describe('buildSessionBarsTrendOption — mode écart', () => {
     expect(rendu).toContain('Je riposte : 24 % (−1 pts)')
   })
 
-  it('nomme le bâton creux en légende par un TÉMOIN sans donnée', () => {
+  it('la légende nomme les séries puis les tendances, et rien d.autre', () => {
     const option = enEcart()
-    expect((option.legend as { data: string[] }).data).toEqual([
-      'Je suis couvert',
-      'Je riposte',
-      'Tendance — Je suis couvert',
-      'Échantillon faible',
-    ])
-    const temoin = (option.series as Record<string, unknown>[]).at(-1)
-    expect(temoin?.name).toBe('Échantillon faible')
-    expect(temoin?.data).toEqual([])
-    expect(temoin?.itemStyle).toEqual({
-      color: 'transparent',
-      borderColor: '#111111',
-      borderWidth: 1.5,
-    })
+    expect((option.legend as { data: string[] }).data).toEqual(['Je suis couvert', 'Je riposte', 'Tendance — Je suis couvert'])
+    expect((option.series as Record<string, unknown>[]).every((s) => (s.data as unknown[]).length > 0)).toBe(true)
   })
 })
 
@@ -242,7 +217,6 @@ describe('buildSessionBarsTrendOption — valeur lue sur le bâton', () => {
           name: 'Frags appuyés',
           color: '#111111',
           valuesPct: [37.2, 30, null],
-          hollow: [false, true, false],
           usual: { valuePct: 37.8, label: 'habituel 38 %' },
           absolute: [{ main: '37 %', detail: '51/137' }, { main: '30 %', detail: '3/10' }, null],
         },
@@ -257,13 +231,13 @@ describe('buildSessionBarsTrendOption — valeur lue sur le bâton', () => {
     const [barre] = avecValeurs().series
     type Barre = { value: number; label?: { formatter: string; position: string }; itemStyle?: unknown }
     const aLHabituel = barre.data[0] as Barre
-    const creux = barre.data[1] as Barre
+    const second = barre.data[1] as Barre
     const vide = barre.data[2]
     expect(aLHabituel.value).toBe(-0.6)
     expect(aLHabituel.label).toMatchObject({ formatter: `37 %${NL}51/137`, position: 'bottom' })
-    // Un bâton creux garde son contour ET porte sa valeur.
-    expect(creux.itemStyle).toMatchObject({ color: 'transparent' })
-    expect(creux.label?.formatter).toBe(`30 %${NL}3/10`)
+    // Un bâton est toujours plein : aucun style propre, sa valeur écrite dessus.
+    expect(second.itemStyle).toBeUndefined()
+    expect(second.label?.formatter).toBe(`30 %${NL}3/10`)
     expect(vide).toBeNull()
     expect(barre.labelLayout).toEqual({ hideOverlap: true })
   })

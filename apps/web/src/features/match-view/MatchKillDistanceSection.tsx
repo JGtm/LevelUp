@@ -18,7 +18,8 @@
  *
  * DEUX PORTES, UNE SEULE ISSUE : la section n'est rendue que si elle a un bâton à tracer.
  *   1. LE TITRE — `film.kill_positions` : un titre sans décodeur de film n'a pas ces positions.
- *   2. LE MATCH — aucune distance publiée pour CE match : la section n'est pas rendue non plus.
+ *   2. LE MATCH — aucune ligne à tracer pour CE match (aucune distance publiée, ou aucun joueur
+ *      à deux frags avec une même arme, `KILL_DISTANCE_MIN_KILLS`) : la section n'est pas rendue non plus.
  *      Aucun texte ne dit l'absence ni sa cause (règle : aucun inconnu à l'écran, garde
  *      `lib/i18n/noUnknownMentions.guard.test.ts`).
  *
@@ -98,6 +99,13 @@ export function MatchKillDistanceSection({
   )
 
   const rows = useMemo(() => killDistanceRows(inputs, locale), [inputs, locale])
+  // La légende ne nomme que les joueurs qui ont au moins une ligne dans le graphe.
+  const legendItems = useMemo(() => {
+    const shown = new Set(rows.map((r) => r.player))
+    return inputs
+      .filter((p) => shown.has(p.gamertag))
+      .map((p) => ({ key: p.xuid, label: p.gamertag, color: p.color }))
+  }, [rows, inputs])
   const colorByPlayer = useMemo(() => {
     const map = new Map<string, string>()
     for (const p of inputs) map.set(p.gamertag, p.color)
@@ -139,7 +147,7 @@ export function MatchKillDistanceSection({
       <ChartLegend
         className="px-3 pb-1"
         ariaLabel={t.killDistanceTitle}
-        items={inputs.map((p) => ({ key: p.xuid, label: p.gamertag, color: p.color }))}
+        items={legendItems}
       />
     </SectionCard>
   )

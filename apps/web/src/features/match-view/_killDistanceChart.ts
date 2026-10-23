@@ -10,10 +10,12 @@
  * groupé PAR ARME (une ligne d'en-tête « Arme ×N », puis une ligne par joueur), et la couleur
  * du bâton donnée par la palette de joueurs du match (`colors.ts`).
  *
- * LE BÂTON D'UN SEUL FRAG MESURÉ EST UN POINT (min = max = avg) : c'est exact, pas un
- * défaut de rendu — le losange de moyenne reste le témoin visible. Le NOMBRE de frags
- * mesurés est dans le libellé de l'arme (« ×N ») et dans l'infobulle : l'épaisseur du
- * bâton ne le code pas, une largeur ne se lit pas en nombre.
+ * UN JOUEUR N'A DE LIGNE SOUS UNE ARME QU'À PARTIR DE `KILL_DISTANCE_MIN_KILLS` FRAGS avec elle
+ * (règle dite dans l'infobulle du titre) : un frag seul est un point
+ * (min = max = avg), il ne dit aucune portée. Le « ×N » de l'en-tête compte les frags des lignes
+ * affichées ; une arme sans aucune ligne quitte le graphe. Le NOMBRE de frags est dans le libellé
+ * de l'arme et dans l'infobulle : l'épaisseur du bâton ne le code pas, une largeur ne se lit pas
+ * en nombre.
  *
  * TECHNIQUE DU BÂTON FLOTTANT : deux barres empilées — un socle TRANSPARENT de hauteur
  * `min` (silencieux, hors infobulle) puis la barre visible de hauteur `max − min`. C'est le
@@ -38,6 +40,9 @@ import type { MatchKillDistanceWeapon } from '@/lib/api/types'
 
 /** Longueur au-delà de laquelle un gamertag est tronqué sur l'axe (l'infobulle garde tout). */
 const GAMERTAG_MAX = 14
+
+/** Frags minimum d'un joueur avec une arme pour que sa ligne s'affiche sous elle. */
+export const KILL_DISTANCE_MIN_KILLS = 2
 
 /** Un joueur du match, tel que la section le projette : identité, encre, armes mesurées. */
 export interface KillDistancePlayerInput {
@@ -85,7 +90,8 @@ function weaponLabel(w: MatchKillDistanceWeapon, locale: string): string {
  * L'ORDRE DES ARMES est celui des frags mesurés, TOUTES ÉQUIPES CONFONDUES, décroissant :
  * l'arme qui a le plus tué dans ce match ouvre la liste. À égalité, le nom départage — deux
  * relectures du même match donnent le même graphe. Sous chaque arme, les joueurs sont rangés
- * par frags mesurés décroissants, le nom départageant de même.
+ * par frags mesurés décroissants, le nom départageant de même. Seules les lignes d'au moins
+ * `KILL_DISTANCE_MIN_KILLS` frags entrent, et le total d'une arme ne compte qu'elles.
  */
 export function killDistanceRows(
   players: readonly KillDistancePlayerInput[],
@@ -99,6 +105,7 @@ export function killDistanceRows(
   const byWeapon = new Map<string, Entry>()
   for (const p of players) {
     for (const w of p.weapons) {
+      if (w.measured_kills < KILL_DISTANCE_MIN_KILLS) continue
       let entry = byWeapon.get(w.weapon_key)
       if (!entry) {
         entry = { label: weaponLabel(w, locale), total: 0, lines: [] }

@@ -4,7 +4,7 @@
  * (décision V5 du plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05). Le composant rend la CARTE
  * seule, sans grille : l'appelant la pose à droite de « Rendement & Résistance », sur la même
  * rangée (retour utilisateur du 2026-10-07). Aucune mention de couverture en pied : la
- * réserve de mesure tient dans l'infobulle et dans les bâtons creux.
+ * réserve de mesure tient dans l'infobulle ; tous les bâtons sont pleins.
  *
  * EN ÉCART À SON REPÈRE (D23-3, 2026-09-22) : chaque grandeur est tracée comme sa distance à
  * sa propre référence — l'habituel de la période de référence (`habituel_pct`) pour « on me
@@ -139,7 +139,6 @@ function specEcart(
     name: g.name,
     color: g.color,
     valuesPct: g.serie.valuesPct,
-    hollow: g.serie.hollow,
     absolute: valeursLues(g.serie, (taux) => pctLu.format(taux)),
     ...(reperePct != null && repereLabel != null
       ? { usual: { valuePct: reperePct, label: repereLabel } }
@@ -218,7 +217,6 @@ function CarteAppui({
           series={specs}
           yAxisLabel={t.yAxisDelta}
           baseline={{ label: labelZero(labelHabituel, labelParite, t), deltaUnit: t.points, gapLabel: t.gap }}
-          hollowLegend={{ label: t.hollow, color: resolveToken('assist-received') }}
           tooltipLines={(i: number) => [
             t.volMyKills(prepare.volumes[i] ?? 0),
             t.volTeamAssists(part.volumes[i] ?? 0),
