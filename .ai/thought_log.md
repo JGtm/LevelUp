@@ -1,3 +1,11 @@
+## [2026-10-23] État des lieux i18n multilangue (3e/4e langue) — Complété (branche `release/v8.0.4`)
+
+**Décision technique principale** : mesurer avant de planifier. Document `.ai/ETAT_DES_LIEUX_I18N_MULTILANGUE_2026-10-23.md` : six couplages à deux langues (ternaires `locale === ...` côté web, champs `_fr/_en` du contrat d'API, TOML des titres, générateur de manifests, `resolveLocale` Go, formatage Intl), décisions à trancher, ordre de travail possible. Aucune modification de code.
+
+**Résultats observés** : 156 occurrences de ternaires dans 88 fichiers web ; 47 propriétés `_fr/_en` dans l'openapi ; 14 fichiers TOML ; 36 comparaisons de langue dans 22 fichiers Go ; un catalogue de manifests existe déjà (ADR 0003, 3 648 clés).
+
+**Conclusion** : l'utilisateur bâtit le plan à partir du document ; non mesuré : classification exacte des ternaires et volume du texte hors manifests.
+
 ## [2026-10-22] Publication v8.0.3 — Complété (`main` `25c9d9c8a`, tag `v8.0.3`)
 
 **Décision technique principale** : sauvegarde restic de la prod juste avant la fusion (montée du moteur DuckDB 1.5.5 -> 1.5.6), squash de la PR #104, tag ; puis rotation de la branche d'intégration (`release/v8.0.3` supprimée, `release/v8.0.4` créée depuis `main`).
