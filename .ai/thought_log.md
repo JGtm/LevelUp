@@ -1,3 +1,11 @@
+## [2026-10-23] Sessions : graphes de la colonne principale débordant de leurs cartes à l'ouverture de la comparaison — Complété (branche `release/v8.0.4`)
+
+**Décision technique principale** : cause dans `echarts-for-react` 3.0.6, pas dans la grille. À l'ouverture de la comparaison, la colonne principale change d'arbre (rangées partagées) : tous ses graphes se REMONTENT pendant que la piste passe de la pleine page à la moitié (transition 300 ms). La bibliothèque fige la largeur mesurée une image après le montage (second `init` avec `width` explicite), puis son `size-sensor` regroupe les notifications (60 ms) et IGNORE la première : tout le rétrécissement y est fondu, le graphe reste à sa largeur pleine page (~1 250 px) dans une carte de ~610 px. La colonne de droite, montée après chargement des données, n'est pas touchée. Correctif général : `components/charts/LazyECharts.tsx` devient le seul montage de `echarts-for-react` (`autoResize={false}`) et branche `lib/echarts/followContainerSize.ts` (ResizeObserver sur le DOM du graphe, `resize` seulement si la taille du DOM diffère de celle du graphe : animation d'entrée préservée). Trois sites migrés (`ChartCard`, `OutcomeSequenceTape`, `CumulativeFragGapChart`), garde-rail `echartsReactSingleMount.guard.test.ts`.
+
+**Résultats observés** : `tsc -b` vert, eslint vert sur les fichiers touchés, vitest complet 10 338 verts. Test `OutcomeSequenceTape` ajusté (`onChartReady` désormais toujours posé). Non vérifié à l'écran (navigateur réservé à l'utilisateur).
+
+**Conclusion / prochaine étape** : contrôle visuel par l'utilisateur (Sessions, ouvrir la comparaison : donuts, barres et courbes de gauche dans leurs cartes) ; publication avec la v8.0.4.
+
 ## [2026-10-23] État des lieux i18n multilangue (3e/4e langue) — Complété (branche `release/v8.0.4`)
 
 **Décision technique principale** : mesurer avant de planifier. Document `.ai/ETAT_DES_LIEUX_I18N_MULTILANGUE_2026-10-23.md` : six couplages à deux langues (ternaires `locale === ...` côté web, champs `_fr/_en` du contrat d'API, TOML des titres, générateur de manifests, `resolveLocale` Go, formatage Intl), décisions à trancher, ordre de travail possible. Aucune modification de code.

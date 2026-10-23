@@ -7,7 +7,7 @@
  *
  * Responsabilites :
  *   - 4 etats : loading / error / empty / data
- *   - Lazy import de echarts-for-react (reduit le bundle initial ~600KB)
+ *   - Lazy import de echarts-for-react via LazyECharts (reduit le bundle initial ~600KB)
  *   - Theme via tokens couleur (cf. apps/web/src/lib/accessibility/palettes/)
  *   - Cleanup de l'instance ECharts au unmount
  *
@@ -15,7 +15,7 @@
  * Toute la specificite (axes, series, tooltips) vit dans `buildOption` du
  * wrapper consommateur.
  */
-import { Suspense, lazy, useMemo, type ReactNode } from 'react'
+import { Suspense, useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { EmptyStateNotice } from '@/components/ui/empty-state'
@@ -27,13 +27,8 @@ import { commonManifest } from '@/lib/i18n/generated/common'
 import { chartReview } from '@/lib/review/chart-review'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { LazyECharts } from './LazyECharts'
 import { ReviewBadge } from './ReviewBadge'
-
-// echarts-for-react lazy : evite de payer le cout du bundle echarts (~600KB)
-// avant qu'un chart soit reellement rendu.
-const ReactECharts = lazy(() =>
-  import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
-)
 
 /**
  * ChartSeries miroir TypeScript du domain.ChartSeries[T] cote Go.
@@ -103,7 +98,7 @@ export interface ChartCardProps<T = unknown> {
    * doivent provenir des MÊMES résolutions de tokens que les séries.
    */
   legend?: ReactNode
-  /** Handlers d'événements ECharts (ex. legendselectchanged). Forwarded à ReactECharts onEvents. */
+  /** Handlers d'événements ECharts (ex. legendselectchanged). Forwarded à LazyECharts onEvents. */
   onEvents?: Record<string, (params: unknown) => void>
   /**
    * Identifiant stable du graphe pour la tournée de revue visuelle
@@ -224,7 +219,7 @@ export function ChartCard<T = unknown>({
           />
         ) : (
           <Suspense fallback={<ChartCardLoading height={height} fluid={fluid} />}>
-            <ReactECharts
+            <LazyECharts
               option={option}
               style={fluid ? { height: '100%', width: '100%' } : { height, width: '100%' }}
               notMerge
