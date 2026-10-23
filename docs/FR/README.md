@@ -153,99 +153,135 @@ Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde 
 
 ### Vue d'ensemble
 
-![Dashboard principal](../screenshots/main.png)
+![Dashboard d'accueil](../screenshots/home-dashboard.png)
 
-*Dashboard principal : navigation multi-pages et graphiques interactifs en temps réel.*
-
-![Barre latérale, Temps au premier kill & Performance](../screenshots/Sidebar-first-kill-performance.png)
-
-*Filtres avancés (type, playlist, mode, carte, session/période), distribution Time-to-First-Kill vs First Death, et score de performance par match.*
+*Accueil : les tuiles de maîtrise d'armes les plus proches d'être complétées et vos matchs les plus récents, recherchables et mettables en favori.*
 
 ---
 
-### Performance & Combat
+### Rejeu 2D
 
-| KDA | Performance cumulée & tendance |
+![Rejeu 2D](../screenshots/replay-2d.png)
+
+*Un match revu depuis le dessus — fond de carte réel, quatre pistes de timeline, un fil de kills, des fiches par joueur et le scoreboard en direct, seconde par seconde.*
+
+---
+
+### Vue de match
+
+| En-tête & déroulé du match | Scoreboard & historique des rencontres |
 |:-:|:-:|
-| ![KDA](../screenshots/kda.png) | ![Performance cumulée & tendance](../screenshots/cumulative-perf.png) |
+| ![En-tête & déroulé du match](../screenshots/match-header-flow.png) | ![Scoreboard & historique des rencontres](../screenshots/match-scoreboard.png) |
+| Dominance, cadence & engagement | Antagonistes, assistances & frags cumulés |
+| ![Dominance, cadence & engagement](../screenshots/match-dominance-cadence.png) | ![Antagonistes, assistances & frags cumulés](../screenshots/match-antagonists-assists.png) |
 
-![Durée de vie moyenne & Skills de combat](../screenshots/avg-lifespan-perfect-kills.png)
+*Qui a fait quoi et quand — badges first blood, finisher et héros silencieux dans la timeline, dominance et cadence de kills, frags cumulés face à votre némésis et votre souffre-douleur, scoreboard complet avec efficacité et résistance par joueur, et adversaires récurrents dans l'historique des rencontres.*
 
+![Ramassages d'armes & usage de l'équipement](../screenshots/match-equipment-usage.png)
 
-*Ratio K/D avec tendance, score de performance cumulé, durée de vie moyenne et skills de combat.*
+*Ramassages d'armes de puissance et de power-ups par joueur, et équipement lu comme utilisé, gardé sans être utilisé, ou lâché à la mort.*
 
 ---
 
-### Distributions & Corrélations
+### Tactique — un écran cockpit
 
-| Distributions | Corrélations |
+![Tactique](../screenshots/tactics.png)
+
+*Le plan de carte des endroits où vous mourez, en dégradé selon les morts par match, avec les morts récentes de la zone sélectionnée qui ouvrent le rejeu à la seconde exacte.*
+
+---
+
+### Suivre sa carrière
+
+| Season pass | Citations |
 |:-:|:-:|
-| ![Distributions](../screenshots/distributions.png) | ![Corrélations](../screenshots/correlations.png) |
+| ![Season pass](../screenshots/season-pass.png) | ![Citations](../screenshots/commendations.png) |
+| Historique XP & Path to Hero | Rivaux & rencontres |
+| ![Historique XP & Path to Hero](../screenshots/career-xp-history.png) | ![Rivaux & rencontres](../screenshots/career-rivalries.png) |
 
-*Histogrammes de précision/kills/scores avec moyennes et médianes — scatter plots (temps en vie vs kills, etc.).*
-
----
-
-### Activité par jour & heure
-
-![Heatmap Top Semaine](../screenshots/heatmap-top-week.png)
-
-*Win rate et heatmap d'activité par jour de la semaine et plage horaire.*
+*Progression des paliers avec le carrousel de récompenses, grilles de citations par mode de jeu et par arme, courbe d'XP face à Hero et à vos vrais concurrents, et vos rivaux les plus fréquents avec leur win rate et leur K/D.*
 
 ---
 
-### Détails du dernier match
+### Explorer
 
-| Dernier match | Scoreboard |
+![Matchs de l'Explorer](../screenshots/explorer-matches.png)
+
+*Filtres en cascade (carte, mode, playlist, résultat, date, session), temps forts de carrière, win rate par carte/playlist/mode et l'historique complet des matchs avec la variation de note par match.*
+
+| Profil de combat | Types de kills & win rate |
 |:-:|:-:|
-| ![Résumé](../screenshots/last-match.png) | ![Scoreboard Citations](../screenshots/scoreboard.png) |
-| Impact & Dominance | Antagonistes |
-| ![Impact & Dominance](../screenshots/impact-dominance.png) | ![Antagonistes](../screenshots/antagonist.png) |
+| ![Profil de combat](../screenshots/explorer-combat-profile.png) | ![Types de kills & win rate](../screenshots/explorer-kill-types.png) |
 
-*Scoreboard complet pour votre dernière partie (recherchable par ID de match) — et vos rivaux les plus redoutables, MVP/LVP, scoreboard, grille de citations (inspirée de Halo 5) et distributions de médailles.*
+*Le bandeau de briefing (win rate, soutien donné/reçu, portée d'engagement par arme) et le profil de combat (tendance KDA, dégâts infligés/subis) fonctionnent aussi pour scouter un autre joueur ; distribution des types de kills et armes principales, avec l'écart de frags cumulé face à un rival.*
 
 ---
 
-### Sessions d'escouade & Coéquipiers
+### Séries temporelles
 
-| Vue d'ensemble escouade | Stats de session |
+![Performance solo par mois, Win rate & Performance par carte — Session vs Historique](../screenshots/timeseries-summary.png)
+
+*Score de performance et win rate par mois face au MMR de votre équipe, puis votre session en cours confrontée à votre historique, win rate et performance par carte.*
+
+| Progression | Distributions |
 |:-:|:-:|
-| ![Historique session](../screenshots/history.png) | ![Complémentarité escouade](../screenshots/per-minute-complementarity.png) |
-| **Performance coéquipiers** | **Classement escouade** |
-| ![Performance escouade](../screenshots/performance-spree.png) | ![Classement escouade](../screenshots/teammate-heatmap.png) |
+| ![Progression](../screenshots/timeseries-progression.png) | ![Distributions](../screenshots/timeseries-distributions.png) |
 
-*Filtrez vos sessions par escouade : comparez vos stats quand vous jouez avec vos amis et voyez comment vous et vos coéquipiers performez sur les matchs partagés.*
+*Kills/morts et assistances par match, durée de vie moyenne, et distribution du KDA — puis histogrammes de distribution pour la précision, les kills, la durée de vie moyenne, le score personnel, le score de performance et la meilleure série, chacun avec sa médiane marquée.*
 
 ---
 
-### Progression de carrière, Rangs & Path to Hero
+### Escouade & Coéquipiers — « les formes que vous gardez »
 
-| Carrière | Rangs (LUSR/CSR) |
+| Contrôle des ressources & rapport de force | Performance — frags, assistances, précision |
 |:-:|:-:|
-| ![Carrière](../screenshots/career.png) | ![Rangs](../screenshots/LUSRs.png) |
-| ![Path to Hero](../screenshots/path-hero.png) | ![Matchs mémorables](../screenshots/memorable-matches.png) |
+| ![Contrôle des ressources & rapport de force](../screenshots/squad-session-resources.png) | ![Performance](../screenshots/squad-performance.png) |
+| Intensité & premier kill / première mort | Timeline d'impact & résumé des médailles |
+| ![Intensité & premier kill / première mort](../screenshots/squad-intensity.png) | ![Timeline d'impact & résumé des médailles](../screenshots/squad-impact-medals.png) |
+| Objectifs, par rôle | Stats par minute & radar de synergie |
+| ![Objectifs, par rôle](../screenshots/squad-objectives.png) | ![Stats par minute & radar de synergie](../screenshots/squad-synergy-radar.png) |
 
-*Historique des rangs, progression vers Hero, LUSR/CSR par groupe de playlist*
+*Six façons de lire une escouade : qui contrôle la carte session par session, frags/assistances/précision par match, intensité des kills par phase de match, badges narratifs d'impact et le catalogue de médailles de l'escouade, statistiques d'objectifs par rôle, et un radar de synergie par minute sur Combat, Survie, Impact, Objectif, Score et Soutien.*
 
 ---
 
-### Explorer & Historique des rencontres
+### Synthèse joueur & Tendances
 
-| Explorer | Historique des rencontres |
+| Résumé | Activité par jour & semaine |
 |:-:|:-:|
-| ![Explorer](../screenshots/explorer.png) | ![Historique des rencontres](../screenshots/encounters.png) |
+| ![Résumé](../screenshots/player-synthesis.png) | ![Activité par jour & semaine](../screenshots/synthesis-activity.png) |
 
-*Parcourez et filtrez tous vos matchs en détail avec l'Explorer, y compris la recherche par joueur — suivez les adversaires récurrents et les patterns de rencontres cross-match avec la vue Historique des rencontres.*
+*Records de carrière, distribution des frags par famille d'arme, win rate, KDA, incidents (trahisons/suicides) et les armes avec lesquelles vous tuez le plus — ainsi que l'activité par jour et par heure, et les victoires face aux autres matchs par semaine.*
+
+| Grille de tendances | Évolution face au MMR adverse |
+|:-:|:-:|
+| ![Grille de tendances](../screenshots/trends-grid.png) | ![Évolution face au MMR adverse](../screenshots/trends-evolution.png) |
+
+*Indicateurs de niveau, résultats et combat mois par mois en un coup d'œil, et votre KDA/kills/morts/win rate tracés face à la force réelle des adversaires affrontés.*
 
 ---
 
-### Médiathèque & Citations
+### Communauté
 
-| Médiathèque | Citations |
+| Classements | Face-à-face |
 |:-:|:-:|
-| ![Médiathèque](../screenshots/media-library.png) | ![citations](../screenshots/commendations.png) |
+| ![Classements](../screenshots/leaderboards.png) | ![Face-à-face](../screenshots/head-to-head.png) |
 
-*Parcourez et recherchez vos clips et screenshots liés à leurs matchs (toujours en bêta) — suivez vos citations avec grilles de médailles et distributions.*
+*Le classement CSR mondial par playlist et saison (source : Halo Waypoint), et une comparaison miroir de deux joueurs sur le combat, la précision/survie, les stats/rang et le profil d'armes.*
+
+![Relations](../screenshots/relations.png)
+
+*Votre partenaire de duo et votre némésis avec les win rates en face-à-face, la forme récente de votre cercle proche, et la liste complète des joueurs croisés.*
+
+---
+
+### Clips & Médias
+
+| Médiathèque | Visionneuse |
+|:-:|:-:|
+| ![Médiathèque](../screenshots/media-library.png) | ![Visionneuse](../screenshots/media-lightbox.png) |
+
+*Parcourez et filtrez vos clips et screenshots liés à leurs matchs, et revoyez une capture en plein écran avec son contexte de match.*
 
 ---
 
