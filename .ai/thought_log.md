@@ -6,6 +6,16 @@
 
 **Conclusion / prochaine étape** : contrôle visuel par l'utilisateur (Sessions, ouvrir la comparaison : donuts, barres et courbes de gauche dans leurs cartes) ; publication avec la v8.0.4.
 
+## [2026-10-23] Retours des contrôles v8 du 23/10 (section prod, n° 24) — Complété (branche `release/v8.0.4`, aucun code)
+
+**Décision technique principale** : lecture des retours de la page de contrôles. Nouveaux du jour : P1, P3 à P6 OK ; P2 et P7 notés KO faute de pouvoir vérifier ; n° 24 (grenades sans explosion vers 0:10 sur le rejeu `d6918972`) rouvert. Diagnostic du n° 24 sur pièces : l'artefact local (schéma 103) porte les 8 lancers de 0:07 à 0:12 avec leur détonation lue (`detoLue` vrai) ; le serveur local tournait sur `tmp/server.exe` du 22/10 02:00, antérieur à la v8.0.2 (air en échec de reconstruction, `build-errors.log` « exit status 1 », gcc absent du PATH) : le document typé (`domain/replaydoc`) de ce binaire ignorait `detoT/detoX/detoY`. Air relancé avec `C:\msys64\ucrt64\bin` au PATH, binaire reconstruit à 14:47, /health 200.
+
+**Résultats observés** : P2 couvert par `PoolSharingBanner.test.tsx` (6 cas), égalité visuelle des boutons non testée ; P7 : Lattice n'était qu'un exemple, témoin proposé en prod = rejeu E (Origin). Notes ajoutées dans la page de contrôles (n° 24, P2, P7), statuts laissés à l'utilisateur.
+
+**Conclusion / prochaine étape** : contrôle à l'écran du n° 24 par l'utilisateur après rechargement. Noté, non traité (hors périmètre) : un projectile sans `detoT` (artefact ou serveur d'avant le schéma 102) ne dessine rien et ne le dit pas côté web (`buildGrenadeRestFx` pose `frame` indéfini, la garde d'âge laisse passer NaN).
+
+**Complément (même jour)** : validés par l'utilisateur : n° 24 (grenades), P7 (zones nommées sur Origin), n° 7 (son « manche terminée »), n° 34 (onglets) ; statuts passés à OK dans la page. Restent T2 (l'utilisateur compte 9 matchs dans la session en escouade du 17/10, pas 8 : à confirmer que c'est le bon compte) et P2 (OK proposé, couvert par tests). Nouveau retour : colonne « Soirée » (EN « Evening », `eveningColumn`, `squadHistoryExtraColumns.tsx`) du tableau de l'Escouade jamais demandée ; retrait accordé et fait : `eveningColumn` supprimée (avec ses libellés FR/EN et le tri texte de `HistorySorts` devenu sans usage), test réécrit (aucun en-tête « Soirée »). Le champ `session_label` de `SquadMatchHistoryRow` reste au contrat (non vérifié s'il a un autre lecteur côté serveur). P2 passé en OK sur accord. Gates : `tsc -b` cache purgé, eslint des fichiers touchés (0 erreur), `vitest run src/features/squad` 883 verts. Non commité.
+
 ## [2026-10-23] État des lieux i18n multilangue (3e/4e langue) — Complété (branche `release/v8.0.4`)
 
 **Décision technique principale** : mesurer avant de planifier. Document `.ai/ETAT_DES_LIEUX_I18N_MULTILANGUE_2026-10-23.md` : six couplages à deux langues (ternaires `locale === ...` côté web, champs `_fr/_en` du contrat d'API, TOML des titres, générateur de manifests, `resolveLocale` Go, formatage Intl), décisions à trancher, ordre de travail possible. Aucune modification de code.

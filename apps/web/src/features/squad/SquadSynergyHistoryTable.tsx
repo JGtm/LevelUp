@@ -3,7 +3,7 @@
  *
  * Colonnes contextuelles (pas de stats personnelles) :
  *   Ouvrir | Waypoint | Rejeu | Date | Carte | Playlist | Mode |
- *   Soirée | Résultat | Dominance | F | M | A | FDA d'escouade (cumuls, calculés côté Go) |
+ *   Résultat | Dominance | F | M | A | FDA d'escouade (cumuls, calculés côté Go) |
  *   Taux hist. | Score | Durée | MMR équipe | MMR adv. | Écart MMR
  *
  * Colonne « Waypoint » (I19) : lien externe vers la page de détail du match sur
@@ -46,7 +46,6 @@ import { useCapability } from '@/lib/capabilities/capabilities'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { getSquadText } from './i18n'
 import {
-  eveningColumn,
   fmtDeltaMMR,
   fmtMmr,
   squadTotalsColumns,
@@ -64,7 +63,7 @@ import {
 const PAGE_SIZE = 20
 
 /** Les tris de l'Explorateur, injectés dans les colonnes d'escouade de `squadHistoryExtraColumns`. */
-const HISTORY_SORTS: HistorySorts = { numeric: NUMERIC_SORT, text: localeTextSortingFn }
+const HISTORY_SORTS: HistorySorts = { numeric: NUMERIC_SORT }
 
 const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
   day: '2-digit',
@@ -240,7 +239,6 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           </span>
         ),
       },
-      eveningColumn(locale, HISTORY_SORTS),
       {
         accessorKey: 'map_ui',
         header: labels.map,

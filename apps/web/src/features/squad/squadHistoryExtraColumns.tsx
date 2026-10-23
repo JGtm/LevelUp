@@ -1,11 +1,11 @@
 /**
  * Colonnes de l'historique des matchs de l'escouade qui ne portent pas sur le joueur seul :
- * soirée, dominance, frags / morts / assistances CUMULÉS de l'escouade et FDA d'escouade
+ * dominance, frags / morts / assistances CUMULÉS de l'escouade et FDA d'escouade
  * (calculés côté Go, `attachSquadTotals` ; formule agrégat de l'ADR 0006, jamais le quotient).
  * Extraites de SquadSynergyHistoryTable pour tenir le seuil de taille de fichier.
  */
 import type { ReactNode } from 'react'
-import type { ColumnDef, SortingFnOption } from '@tanstack/react-table'
+import type { ColumnDef } from '@tanstack/react-table'
 
 import { tokenCssVar } from '@/lib/accessibility'
 import { asDominance } from '@/components/charts/outcomeSequence'
@@ -24,8 +24,6 @@ import { SQUAD_HISTORY_COLUMNS } from './squadHistoryColumns.i18n'
 export interface HistorySorts {
   /** Tri numérique, valeurs absentes en bas. */
   numeric: { readonly sortingFn: 'basic'; readonly sortUndefined: 'last' }
-  /** Tri alphabétique selon la langue. */
-  text: SortingFnOption<SquadMatchHistoryRow>
 }
 
 /** FDA signé à une décimale (« +10,0 », « −6,0 ») dans la langue du client. */
@@ -40,22 +38,6 @@ function countCell(v: number | null | undefined) {
   return (
     <span className="font-mono tabular-nums text-muted-foreground">{v == null ? '-' : v}</span>
   )
-}
-
-/** Soirée du match (`session_label`), colonne placée après la date. */
-export function eveningColumn(locale: Locale, sorts: HistorySorts): ColumnDef<SquadMatchHistoryRow> {
-  const c = SQUAD_HISTORY_COLUMNS[locale]
-  return {
-    id: 'evening',
-    accessorFn: (r) => r.session_label ?? undefined,
-    header: c.evening,
-    meta: { headerTooltip: c.eveningTooltip },
-    sortingFn: sorts.text,
-    sortDescFirst: false,
-    cell: (ctx) => (
-      <span className="text-muted-foreground">{ctx.getValue<string | undefined>() || '-'}</span>
-    ),
-  }
 }
 
 /** Dominance puis cumuls de l'escouade et son FDA, colonnes placées après le résultat. */
