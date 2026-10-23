@@ -78,6 +78,9 @@ type ServiceRegistry struct {
 	// depuis playlist_labels.toml au boot. Injecté dans MatchViewRepo (ex. Halo 5
 	// « Super Fiesta Fête » → « Super Fiesta »). Map manquante/nil → no-op.
 	playlistLabelOverrides map[string]map[string]string
+	// mapVariantSuffixes : PAR TITRE (slug → suffixes), chargé depuis map_variants.toml au boot
+	// (registry_map_variants.go). Titre sans fichier → absent → aucune variante de carte.
+	mapVariantSuffixes map[string][]string
 	// regulationSeconds : PAR TITRE (slug → game_variant_name → temps
 	// réglementaire en secondes), chargé depuis regulation.toml au boot. Socle du
 	// flag « Prolongation » (Match View + Explorateur). Titre sans fichier →

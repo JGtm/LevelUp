@@ -1253,6 +1253,14 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 			playlistLabelOverrides[slug] = plset.OverridesMap()
 		}
 	}
+	// Suffixes de variante de carte PAR TITRE (map_variants.toml) : les filtres de cartes
+	// regroupent une variante sous sa carte de base. Titre sans fichier → absent → aucune.
+	mapVariantSuffixes := make(map[string][]string)
+	for _, slug := range multiTitleSlugs {
+		if mvset, ok := fieldMappingsRegistry.GetMapVariants(slug); ok {
+			mapVariantSuffixes[slug] = mvset.Suffixes()
+		}
+	}
 	// Temps réglementaire PAR TITRE (regulation.toml) → flag « Prolongation »
 	// (Match View + Explorateur). Titre sans fichier ou table vide (Halo 5 :
 	// aucune mesure) → absent de la map → aucun flag pour ce titre.
@@ -1306,6 +1314,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		WithRankCatalog(hiRanks).
 		WithRankImageURLsByTitle(rankImageURLsByTitle).
 		WithPlaylistLabelOverrides(playlistLabelOverrides).
+		WithMapVariantSuffixes(mapVariantSuffixes).
 		WithRegulationSeconds(regulationSeconds).
 		WithRoundsDecide(roundsDecide).
 		WithRadarRange(radarRange).

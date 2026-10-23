@@ -12,11 +12,20 @@ import (
 // FiltersRepo implémente port.FiltersRepository.
 type FiltersRepo struct {
 	pdb *PlayerDB
+	// mapVariantSuffixes : suffixes de nom du titre qui font d'une carte la variante d'une autre
+	// (map_variants.toml). Vide : aucune variante, les cartes sont listées telles quelles.
+	mapVariantSuffixes []string
 }
 
 // NewFiltersRepo crée un FiltersRepo depuis un PlayerDB ouvert.
 func NewFiltersRepo(pdb *PlayerDB) *FiltersRepo {
 	return &FiltersRepo{pdb: pdb}
+}
+
+// WithMapVariantSuffixes injecte les suffixes de variante de carte du titre. Retourne le repo.
+func (r *FiltersRepo) WithMapVariantSuffixes(suffixes []string) *FiltersRepo {
+	r.mapVariantSuffixes = suffixes
+	return r
 }
 
 // filterRowsLoader est la lecture que CachedFiltersRepo met en cache (*FiltersRepo
@@ -46,6 +55,13 @@ type CachedFiltersRepo struct {
 func NewCachedFiltersRepo(pdb *PlayerDB) *CachedFiltersRepo {
 	repo := NewFiltersRepo(pdb)
 	return &CachedFiltersRepo{FiltersRepo: repo, rows: repo, cache: filterRowsReadCache, scope: scopeOf(pdb)}
+}
+
+// WithMapVariantSuffixes injecte les suffixes de variante de carte du titre dans la lecture mise en
+// cache : ils sont fixés à la construction, avant la première lecture. Retourne le repo caché.
+func (r *CachedFiltersRepo) WithMapVariantSuffixes(suffixes []string) *CachedFiltersRepo {
+	r.FiltersRepo.WithMapVariantSuffixes(suffixes)
+	return r
 }
 
 // LoadMatchesForFilters rend une copie des lignes cachées du joueur, ou les charge.
@@ -100,6 +116,7 @@ func (r *FiltersRepo) LoadMatchesForFilters(ctx context.Context) ([]domain.Filte
 
 	r.applyModeFRTranslations(ctx, results)
 	r.applyMapFRTranslations(ctx, results)
+	rattacherCartesDeBase(ctx, r.pdb, r.mapVariantSuffixes, results)
 	r.applyPlaylistFRTranslations(ctx, results)
 	return results, nil
 }

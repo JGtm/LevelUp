@@ -194,7 +194,7 @@ func filterByExplorerPlaylists(rows []domain.MatchHistoryRawRow, playlists []str
 	return out
 }
 
-// filterByExplorerMapNames garde les rows dont le label carte (FR > EN) figure dans maps.
+// filterByExplorerMapNames garde les rows dont la carte figure dans maps (explorerMapSelected : carte de base ou libellé affiché).
 // Liste vide = pas de filtre.
 func filterByExplorerMapNames(rows []domain.MatchHistoryRawRow, maps []string) []domain.MatchHistoryRawRow {
 	if len(maps) == 0 {
@@ -203,7 +203,7 @@ func filterByExplorerMapNames(rows []domain.MatchHistoryRawRow, maps []string) [
 	set := stringSliceToSet(maps)
 	out := rows[:0:0]
 	for _, r := range rows {
-		if _, ok := set[coalesceStr(r.MapNameFR, r.MapName)]; ok {
+		if explorerMapSelected(r, set) {
 			out = append(out, r)
 		}
 	}
@@ -344,7 +344,7 @@ func computeExplorerAvailableOptions(rows []domain.MatchHistoryRawRow) (expTypes
 		if pl := derefStr(r.PlaylistName); pl != "" {
 			plSet[pl] = struct{}{}
 		}
-		if m := coalesceStr(r.MapNameFR, r.MapName); m != "" {
+		if m := explorerMapFilterLabel(r); m != "" {
 			mapSet[m] = struct{}{}
 		}
 		// Pair prioritaire, sinon fallback game_variant (titres sans pair, ex. H5) —

@@ -13,11 +13,20 @@ import (
 // MatchHistoryRepo implémente port.MatchHistoryRepository.
 type MatchHistoryRepo struct {
 	pdb *PlayerDB
+	// mapVariantSuffixes : suffixes de nom du titre qui font d'une carte la variante d'une autre
+	// (map_variants.toml). Vide : aucune variante, MapFilterLabel reste nil.
+	mapVariantSuffixes []string
 }
 
 // NewMatchHistoryRepo crée un MatchHistoryRepo depuis un PlayerDB.
 func NewMatchHistoryRepo(pdb *PlayerDB) *MatchHistoryRepo {
 	return &MatchHistoryRepo{pdb: pdb}
+}
+
+// WithMapVariantSuffixes injecte les suffixes de variante de carte du titre. Retourne le repo.
+func (r *MatchHistoryRepo) WithMapVariantSuffixes(suffixes []string) *MatchHistoryRepo {
+	r.mapVariantSuffixes = suffixes
+	return r
 }
 
 // LoadAll charge tous les matchs du joueur avec les stats de participation.
@@ -65,6 +74,7 @@ func (r *MatchHistoryRepo) LoadAll(ctx context.Context) ([]domain.MatchHistoryRa
 	// FiltersRepo (filters_repo.go applyXxxFRTranslations), nécessaire car
 	// match_registry.{map,pair,playlist}_name_fr peut être NULL.
 	applyMatchHistoryFRTranslations(ctx, r.pdb, results)
+	rattacherCartesDeBaseHistorique(ctx, r.pdb, r.mapVariantSuffixes, results)
 
 	return results, nil
 }

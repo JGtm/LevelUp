@@ -25,6 +25,7 @@ type Registry struct {
 	endpoints      map[string]*EndpointSet
 	playlistLabels map[string]*PlaylistLabelSet
 	regulation     map[string]*RegulationSet
+	mapVariants    map[string]*MapVariantSet
 }
 
 // NewRegistry crée un registre vide.
@@ -37,6 +38,7 @@ func NewRegistry() *Registry {
 		endpoints:      make(map[string]*EndpointSet),
 		playlistLabels: make(map[string]*PlaylistLabelSet),
 		regulation:     make(map[string]*RegulationSet),
+		mapVariants:    make(map[string]*MapVariantSet),
 	}
 }
 
@@ -176,6 +178,24 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 			)
 		}
 
+		// map_variants.toml — optionnel : suffixes de nom qui font d'une carte la
+		// variante d'une autre (filtres de cartes). Absent → aucune variante.
+		mapVariantsPath := filepath.Join(mappingsDir, "map_variants.toml")
+		if mvset, loadErr := loadMapVariantsIfExists(mapVariantsPath); loadErr != nil {
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", mapVariantsPath, "err", loadErr)
+			errs = append(errs, fmt.Errorf("load map_variants %s: %w", slug, loadErr))
+		} else if mvset != nil {
+			r.mu.Lock()
+			r.mapVariants[slug] = mvset
+			r.mu.Unlock()
+			logger.Info("mappings_loaded",
+				"title_slug", slug,
+				"kind", "map_variants",
+				"suffixes_count", len(mvset.Suffixes()),
+				"schema_version", mvset.SchemaVersion(),
+			)
+		}
+
 		// constants.toml — optionnel ; section [endpoints] (MT-01). Au niveau
 		// du dossier titre (pas mappings/), aligné sur le constants.toml
 		// documentaire existant.
@@ -230,6 +250,13 @@ func loadPlaylistLabelsIfExists(path string) (*PlaylistLabelSet, error) {
 		return nil, nil
 	}
 	return LoadPlaylistLabelsFromFile(path)
+}
+
+func loadMapVariantsIfExists(path string) (*MapVariantSet, error) {
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	return LoadMapVariantsFromFile(path)
 }
 
 func loadRegulationIfExists(path string) (*RegulationSet, error) {
@@ -301,6 +328,15 @@ func (r *Registry) GetPlaylistLabels(slug string) (*PlaylistLabelSet, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	v, ok := r.playlistLabels[slug]
+	return v, ok
+}
+
+// GetMapVariants retourne le MapVariantSet d'un titre s'il a été chargé (suffixes de nom
+// qui font d'une carte la variante d'une autre).
+func (r *Registry) GetMapVariants(slug string) (*MapVariantSet, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	v, ok := r.mapVariants[slug]
 	return v, ok
 }
 

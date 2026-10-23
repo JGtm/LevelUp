@@ -1,0 +1,21 @@
+# config/titles/halo_infinite/mappings/map_variants.toml
+#
+# Suffixes de NOM qui font d'une carte la VARIANTE d'une autre : meme terrain, identifiant d'asset
+# propre (« Thunderhead Heavies » est une carte distincte de « Thunderhead » au registre des matchs).
+# Les filtres de cartes regroupent une variante sous sa carte de base : une recherche « Thunderhead »
+# ramene aussi les parties jouees sur la variante. Les identifiants ne bougent pas : les agregats par
+# carte (vignettes Tactique, taux de victoire par carte) restent par identifiant.
+#
+# Regle : un nom EN du registre qui se termine par l'un de ces suffixes, precede d'une espace, est la
+# variante de la carte dont le nom est le reste du nom. Sans carte de base de ce nom au catalogue
+# (maps_catalog), la carte reste seule dans les filtres. Aucune heuristique de nombre de mots.
+#
+# Consommation : mappings.LoadMapVariantsFromFile -> Registry.GetMapVariants(slug) -> repos de
+# filtres et d'historique -> analysis.BaseMapName.
+
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+[variants]
+suffixes = ["- Ranked", "Heavies"]
