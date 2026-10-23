@@ -80,7 +80,7 @@ describe('timeseriesCoordination.logic', () => {
   it('projette une soirée en taux POURCENTS, son bâton creux et son dénominateur', () => {
     const s = serieDeSoirees(bloc().sessions ?? [], (p) => p.appui.on_me_prepare)
     expect(s.valuesPct).toEqual([50, 50])
-    expect(s.hollow).toEqual([false, true])
+    expect(s.echantillonFaible).toEqual([false, true])
     expect(s.volumes).toEqual([10, 4])
     expect(s.decomptes).toEqual([
       { brut: 5, n: 10 },
@@ -119,14 +119,14 @@ describe('timeseriesCoordination.logic', () => {
   it('calcule la tendance sur les bâtons PLEINS, et rien tant que la fenêtre est incomplète', () => {
     const serie = {
       valuesPct: [10, 20, 30, 40, 50],
-      hollow: [false, false, false, false, false],
+      echantillonFaible: [false, false, false, false, false],
       volumes: [9, 9, 9, 9, 9],
       decomptes: [1, 2, 3, 4, 5].map((brut) => ({ brut, n: 9 })),
     }
     expect(moyenneGlissante(serie)).toEqual([null, null, 20, 30, 40])
     // Une soirée creuse (échantillon faible) ne nourrit pas la moyenne : la fenêtre
     // devient incomplète et la tendance se tait plutôt que de mentir.
-    expect(moyenneGlissante({ ...serie, hollow: [false, false, true, false, false] })).toEqual([
+    expect(moyenneGlissante({ ...serie, echantillonFaible: [false, false, true, false, false] })).toEqual([
       null,
       null,
       null,

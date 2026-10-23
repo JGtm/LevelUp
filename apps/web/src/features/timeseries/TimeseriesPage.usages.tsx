@@ -10,7 +10,7 @@
  *   4. « Prises » : « Contribution aux prises » ;
  *   5. « Rendement des ressources » : « Frags par ressource » | « Rendement par ressource » ;
  *   6. « Isolement » : « Isolement » ;
- *   7. « Objectif » : « Rapport de force » puis « Part du joueur à l'objectif » ;
+ *   7. « Objectif » : le cumul d'objectif du périmètre (tuiles), « Rapport de force » puis « Part du joueur à l'objectif » ;
  *   8. « Équipement » : « Usage d'équipements ».
  *
  * AUCUNE REQUÊTE NEUVE : tout arrive avec la réponse de page. Les cartes sont celles de l'Escouade
@@ -51,6 +51,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import { dominanceLabels } from '@/lib/narrative/dominance'
 
+import { TimeseriesObjectiveCard } from './TimeseriesObjectiveCard'
 import { TimeseriesRangeRolesCard } from './TimeseriesRangeRolesCard'
 import { EquipmentOutcomesCard } from './usages/EquipmentOutcomesCard'
 import { LivesNearTeammateCard } from './usages/LivesNearTeammateCard'
@@ -161,6 +162,7 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
       {show.objectif && (
         <Block id="objectif" title={ut.sections.objectif}>
           <div className="space-y-4">
+            <TimeseriesObjectiveCard stats={data.objective_stats} locale={locale} />
             {u.balance.length > 0 && <ObjectiveBalanceCard families={u.balance} familyLabel={u.familyLabel} columns={u.columns} t={OBJECTIF_TEXT_SOLO[locale]} />}
             {u.soloSheet && (
               <ObjectiveSoloSheetCard sheet={u.soloSheet} name={u.sheetName} emblemUrl={u.emblemUrl} familyLabel={u.familyLabel} columns={u.columns} t={ut.sheet} />

@@ -6,6 +6,21 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [8.0.4] - 2026-10-23
+
+### Added
+- **Variantes de carte regroupées sous leur carte de base dans les filtres** — une variante Forge (Heavies, -Ranked) garde son propre identifiant de carte, mais les filtres (Explorateur, pipeline de filtres) la présentent désormais sous le nom de sa carte de base ; les agrégats par carte (vignettes Tactique, taux de victoire) restent répartis par identifiant de variante.
+
+### Changed
+- **Captures d'écran du README mises à jour pour la v8.0** — le rejeu 2D, la Tactique, l'usage de l'équipement et les autres features de la v8.0 manquaient à la galerie ; 33 nouvelles captures remplacent le lot pré-v8.0, en parité entre les README anglais et français.
+
+### Fixed
+- **Sessions : les graphes ne débordent plus de leurs cartes à l'ouverture de la comparaison** — echarts-for-react fige la largeur mesurée juste après le montage et rate la première notification de redimensionnement ; les graphes remontés pendant la transition de la grille gardaient leur largeur pleine page. `LazyECharts` devient le seul point de montage (redimensionnement automatique coupé, remplacé par une veille sur la taille du conteneur).
+- **Séries temporelles : la rangée de tuiles d'objectif déplacée dans l'onglet Usages**, à sa place avec le reste du détail d'objectif, et ne montre plus de cadre vide sur un filtre sans action d'objectif.
+- **Séries temporelles : plus de bâtons creux pour les soirées à échantillon faible** sur le graphe « Frags appuyés par un coéquipier ».
+- **Vue de match : la ligne de distance d'une arme exige au moins deux frags** — un frag seul ne dit rien de la portée, il ne dessine donc plus de ligne (ni ne garde l'arme dans le graphe) à lui seul.
+- **Escouade : retrait de la colonne « Soirée » du tableau des matchs** — jamais demandée.
+
 ## [8.0.3] - 2026-10-22
 
 ### Ops

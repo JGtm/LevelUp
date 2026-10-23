@@ -65,12 +65,13 @@ describe('OutcomeSequenceTape — non-régression sans prop', () => {
     captured.length = 0
   })
 
-  it("ne câble aucun onEvents/onChartReady quand onMatchClick est absent", async () => {
+  // `onChartReady` est toujours posé par LazyECharts (suivi de taille) : seul `onEvents`
+  // dit si la bande est interactive.
+  it("ne câble aucun onEvents quand onMatchClick est absent", async () => {
     render(<OutcomeSequenceTape matches={[pt('a'), pt('b', 'loss')]} labels={labels} />)
     await screen.findByTestId('tape-stub')
     const props = captured[captured.length - 1]
     expect(props.onEvents).toBeUndefined()
-    expect(props.onChartReady).toBeUndefined()
   })
 
   it('câble onEvents.click + onChartReady quand onMatchClick est fourni', async () => {

@@ -20,8 +20,8 @@
  *   - Les nuages et les marqueurs de médiane sont des séries `scatter` :
  *     `symbolOffset` porte le décalage vertical (±14 px) et le tooltip `item`
  *     natif évite de re-router les survols à la main dans un `renderItem`.
- *   - Le redimensionnement suit le conteneur : `echarts-for-react` monte un
- *     size-sensor (`autoResize` par défaut) — aucun ResizeObserver à câbler ici.
+ *   - Le redimensionnement suit le conteneur : `LazyECharts` (via ChartCard) branche
+ *     `followContainerSize` — aucun ResizeObserver à câbler ici.
  *
  * Couleurs : `stat-kills` (premier frag) / `stat-deaths` (première mort) — famille des
  * stats de combat, aucune valeur hex.

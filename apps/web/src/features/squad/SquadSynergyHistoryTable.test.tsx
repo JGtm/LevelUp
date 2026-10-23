@@ -263,7 +263,7 @@ describe('SquadSynergyHistoryTable — colonne « Rejeu »', () => {
 })
 
 describe('SquadSynergyHistoryTable — colonnes d\'escouade (D-7)', () => {
-  it('rend soirée, dominance, cumuls et FDA d\'escouade', () => {
+  it('rend dominance, cumuls et FDA d\'escouade, sans colonne de soirée', () => {
     renderWithProviders(
       <SquadSynergyHistoryTable
         rows={[
@@ -279,9 +279,9 @@ describe('SquadSynergyHistoryTable — colonnes d\'escouade (D-7)', () => {
         playerSlug="me"
       />,
     )
-    expect(screen.getByRole('columnheader', { name: 'Soirée' })).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Soirée' })).not.toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Dominance' })).toBeInTheDocument()
-    expect(screen.getByText('22/09/2026 20:00–23:10 (13)')).toBeInTheDocument()
+    expect(screen.queryByText('22/09/2026 20:00–23:10 (13)')).not.toBeInTheDocument()
     expect(screen.getByTestId('narrative-badge')).toBeInTheDocument()
     expect(screen.getByText('31')).toBeInTheDocument()
     expect(screen.getByText('19')).toBeInTheDocument()

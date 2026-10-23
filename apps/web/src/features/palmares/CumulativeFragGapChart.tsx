@@ -12,17 +12,14 @@
  * l'issue se lit match par match, indépendamment du signe du cumul.
  * Aucune couleur hex directe : `divergentZeroGradient()` + `outcomeColor()`.
  */
-import { Suspense, lazy, useMemo } from 'react'
+import { Suspense, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 
+import { LazyECharts } from '@/components/charts/LazyECharts'
 import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase, outcomeColor, tickInterval } from '@/components/charts/_utils'
-
-const ReactECharts = lazy(() =>
-  import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
-)
 
 export interface CumulativeFragPoint {
   cumulative: number
@@ -117,7 +114,7 @@ export function CumulativeFragGapChart({ points, height = 120, showXAxis = false
 
   return (
     <Suspense fallback={null}>
-      <ReactECharts option={option} style={{ height, width: '100%' }} notMerge lazyUpdate theme={undefined} />
+      <LazyECharts option={option} style={{ height, width: '100%' }} notMerge lazyUpdate theme={undefined} />
     </Suspense>
   )
 }

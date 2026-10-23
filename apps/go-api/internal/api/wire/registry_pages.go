@@ -37,7 +37,7 @@ func (r *ServiceRegistry) Filters(ctx context.Context, slug string) (port.Filter
 	if err != nil {
 		return nil, err
 	}
-	svc := service.NewFiltersService(duckdb.NewCachedFiltersRepo(pdb))
+	svc := service.NewFiltersService(duckdb.NewCachedFiltersRepo(pdb).WithMapVariantSuffixes(r.mapVariantSuffixesFor(pdb)))
 	if r.seasonsCatalog != nil {
 		// Bug fix 2026-05-08 : passer pdb.TitleSlug (le titre du joueur, ex
 		// "halo_infinite") et NON le `slug` paramètre qui est le **player

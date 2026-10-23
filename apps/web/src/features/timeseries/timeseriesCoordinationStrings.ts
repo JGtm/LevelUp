@@ -29,7 +29,6 @@ export function getTimeseriesCoordinationText(locale: Locale) {
     yAxisDelta: m('timeseries.progression.coord_y_axis_delta'),
     zeroLabel: (a: string, b: string) => m('timeseries.progression.coord_zero_label', { a, b }),
     trend: (name: string) => m('timeseries.progression.coord_trend', { name }),
-    hollow: m('timeseries.progression.coord_hollow'),
     points: m('timeseries.progression.coord_points'),
     gap: m('timeseries.progression.coord_gap'),
     tooltipZero: m('timeseries.progression.coord_tt_zero'),

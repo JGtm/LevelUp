@@ -8,10 +8,14 @@ import (
 
 // MatchHistoryRawRow est le type de transfert entre platform/duckdb et les services.
 type MatchHistoryRawRow struct {
-	MatchID        string
-	StartTime      *time.Time
-	MapName        *string
-	MapNameFR      *string
+	MatchID   string
+	StartTime *time.Time
+	MapName   *string
+	MapNameFR *string
+	// MapFilterLabel : libellé de la carte de BASE quand la carte est une variante (« Thunderhead »
+	// pour « Du lourd sur Thunderhead »), nil sinon. Seul le filtre de cartes le lit, l'affichage
+	// reste MapNameFR.
+	MapFilterLabel *string
 	PairName       *string
 	PairNameFR     *string
 	PlaylistName   *string // FR si dispo (COALESCE), sinon EN

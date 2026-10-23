@@ -43,7 +43,7 @@ const PLAYERS: KillDistancePlayerInput[] = [
     xuid: 'xuid(1)',
     gamertag: 'Alice',
     color: '#111111',
-    weapons: [weapon('hinf_br75', 'BR75', 3, 3.1, 12.4, 21.6)],
+    weapons: [weapon('hinf_br75', 'BR75', 3, 3.1, 12.4, 21.6), weapon('hinf_sniper', 'Sniper', 1, 40, 40, 40)],
   },
   {
     xuid: 'xuid(2)',
@@ -51,7 +51,7 @@ const PLAYERS: KillDistancePlayerInput[] = [
     color: '#222222',
     weapons: [
       weapon('hinf_br75', 'BR75', 5, 2, 6, 10),
-      weapon('hinf_repulsor', '', 1, 5, 5, 5),
+      weapon('hinf_repulsor', '', 2, 5, 5, 5),
     ],
   },
 ]
@@ -91,16 +91,31 @@ describe('killDistanceRows — les sections par arme', () => {
       'weapon:BR75 ×8',
       'player:UnGamertagVra…',
       'player:Alice',
-      'weapon:hinf_repulsor ×1',
+      'weapon:hinf_repulsor ×2',
       'player:UnGamertagVra…',
     ])
+  })
+
+  it('un joueur à un seul frag avec une arme n’a pas de ligne ; une arme sans ligne quitte le graphe', () => {
+    const rows = killDistanceRows(PLAYERS, 'fr')
+    expect(rows.some((r) => r.weapon === 'Sniper')).toBe(false)
+    const seul = killDistanceRows([{ ...PLAYERS[0], weapons: [weapon('hinf_br75', 'BR75', 1, 3, 3, 3)] }], 'fr')
+    expect(seul).toEqual([])
+  })
+
+  it('le total d’une arme ne compte que les lignes affichées', () => {
+    const rows = killDistanceRows(
+      [PLAYERS[0], { ...PLAYERS[1], weapons: [weapon('hinf_br75', 'BR75', 1, 2, 2, 2)] }],
+      'fr',
+    )
+    expect(rows.map((r) => `${r.kind}:${r.axisLabel}`)).toEqual(['weapon:BR75 ×3', 'player:Alice'])
   })
 
   it('résout le libellé par locale et replie sur weapon_key', () => {
     const rows = killDistanceRows(PLAYERS, 'en')
     expect(rows.filter((r) => r.kind === 'weapon').map((r) => r.axisLabel)).toEqual([
       'BR75 EN ×8',
-      'hinf_repulsor ×1',
+      'hinf_repulsor ×2',
     ])
   })
 
@@ -140,7 +155,7 @@ describe('buildKillDistanceOption — un seul graphe, sections par arme', () => 
   it("la première ligne du modèle est EN HAUT : l'axe Y inverse la liste", () => {
     expect(option().yAxis.data).toEqual([
       'UnGamertagVra…',
-      'hinf_repulsor ×1',
+      'hinf_repulsor ×2',
       'Alice',
       'UnGamertagVra…',
       'BR75 ×8',
@@ -178,7 +193,7 @@ describe('buildKillDistanceOption — un seul graphe, sections par arme', () => 
   it("chaque ligne d'en-tête porte une bande de séparation", () => {
     const bandes = option().series[1].markArea?.data
     expect(bandes).toEqual([
-      [{ yAxis: 'hinf_repulsor ×1' }, { yAxis: 'hinf_repulsor ×1' }],
+      [{ yAxis: 'hinf_repulsor ×2' }, { yAxis: 'hinf_repulsor ×2' }],
       [{ yAxis: 'BR75 ×8' }, { yAxis: 'BR75 ×8' }],
     ])
   })

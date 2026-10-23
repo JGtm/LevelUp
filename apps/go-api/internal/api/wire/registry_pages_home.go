@@ -82,7 +82,7 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 	if err != nil {
 		return nil, "", "", err
 	}
-	svc := service.NewMatchHistoryService(duckdb.NewMatchHistoryRepo(pdb), pdb.Gamertag).
+	svc := service.NewMatchHistoryService(duckdb.NewMatchHistoryRepo(pdb).WithMapVariantSuffixes(r.mapVariantSuffixesFor(pdb)), pdb.Gamertag).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithPlaylistDisplay(r.playlistLabelConfigFor(pdb)).
 		// Flag « Prolongation » des lignes Explorer/historique : table

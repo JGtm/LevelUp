@@ -75,7 +75,7 @@ const PLAYERS: MatchKillDistancePlayer[] = [
         weapon_key: 'hinf_sniper',
         label: 'Fusil de précision',
         label_en: 'Sniper Rifle',
-        measured_kills: 1,
+        measured_kills: 2,
         avg_distance_m: 40,
         min_distance_m: 40,
         max_distance_m: 40,
@@ -111,6 +111,19 @@ describe('MatchKillDistanceSection', () => {
     fireEvent.mouseEnter(screen.getByRole('button', { name: /informations/i }))
     expect(screen.getByRole('tooltip').textContent).toBe(MATCH_VIEW_TEXT.fr.killDistanceReserve)
     expect(screen.getByRole('tooltip').textContent).not.toMatch(/couverture|mesur/)
+  })
+
+  it('un joueur sans aucune arme à deux frags quitte la légende ; la règle est dans l’infobulle', async () => {
+    const bobUnFrag = PLAYERS.map((p) =>
+      p.xuid === 'xuid(2)' ? { ...p, weapons: (p.weapons ?? []).map((w) => ({ ...w, measured_kills: 1 })) } : p,
+    )
+    render(
+      <MatchKillDistanceSection players={bobUnFrag} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
+    )
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
+    expect(screen.queryByText('Bob')).not.toBeInTheDocument()
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /informations/i }))
+    expect(screen.getByRole('tooltip').textContent).toContain('deux frags')
   })
 
   it('replie sur le xuid quand le joueur est absent du scoreboard', async () => {

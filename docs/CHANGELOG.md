@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [8.0.4] - 2026-10-23
+
+### Added
+- **Map variants grouped under their base map in filters** — a Forge variant (Heavies, -Ranked) keeps its own map id, but filters (Explorer, filter pipeline) now show it under its base map's name; per-map aggregates (Tactics tiles, win rate by map) stay split by variant id.
+
+### Changed
+- **README screenshots refreshed for v8.0** — the 2D replay, Tactics, equipment usage and other v8.0 features were missing from the gallery; 33 new captures replace the pre-v8.0 set, in parity across the English and French README.
+
+### Fixed
+- **Sessions: charts no longer overflow their cards when the comparison view opens** — echarts-for-react freezes the width it measures right after mount and misses the first resize notification; charts remounted during the grid transition kept their full-page width. `LazyECharts` is now the only mount point (auto-resize disabled, replaced by a container-size watcher).
+- **Timeseries: the objective tile row moved to the Usage tab**, where it belongs with the rest of the objective breakdown, and no longer shows an empty frame on a filter with no objective action.
+- **Timeseries: no more hollow bars for low-sample evenings** on the "Frags assisted by a teammate" chart.
+- **Match view: a weapon's distance line needs at least two kills** — a single kill doesn't say anything about range, so it no longer draws a line (or keeps the weapon in the chart) by itself.
+- **Squad: the "Evening" column removed from the match history table** — never requested.
+
 ## [8.0.3] - 2026-10-22
 
 ### Ops

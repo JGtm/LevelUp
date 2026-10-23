@@ -1,6 +1,6 @@
 /**
  * SessionBarsTrendCard — le composant TRANSMET toutes les options de la frise au module
- * d'option : `baseline` (mode écart) et `hollowLegend` compris. Sans elles, l'axe annonçait
+ * d'option, `baseline` (mode écart) compris. Sans elle, l'axe annonçait
  * « Écart (points) » sous des bâtons tracés en valeur absolue.
  */
 import { describe, expect, it, vi } from 'vitest'
@@ -17,19 +17,17 @@ vi.mock('echarts-for-react', () => ({
 }))
 
 describe('SessionBarsTrendChart', () => {
-  it('passe le mode écart et le témoin des bâtons creux au module d’option', async () => {
+  it('passe le mode écart au module d’option', async () => {
     render(
       <SessionBarsTrendChart
         labels={['12/09', '14/09']}
         yAxisLabel="Écart (points)"
         baseline={{ label: 'habituel 41 %', deltaUnit: 'pts' }}
-        hollowLegend={{ label: 'Échantillon faible', color: '#111111' }}
         series={[
           {
             name: 'Frags appuyés',
             color: '#111111',
             valuesPct: [50, 30],
-            hollow: [false, true],
             usual: { valuePct: 41, label: 'habituel 41 %' },
           },
         ]}
@@ -42,6 +40,5 @@ describe('SessionBarsTrendChart', () => {
     expect(barres[0].data[0]).toBe(9)
     const fmt = (option.yAxis as { axisLabel: { formatter: (v: number) => string } }).axisLabel.formatter
     expect(fmt(10)).toBe('+10')
-    expect((option.legend as { data: string[] }).data).toContain('Échantillon faible')
   })
 })

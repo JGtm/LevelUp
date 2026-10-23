@@ -15,7 +15,7 @@
  * Compact by design : hauteur ~100px, pas de card/border autour.
  * Aucune couleur hex directe : tout passe par outcomeColor() → resolveToken().
  */
-import { Suspense, lazy, useCallback, useMemo, useRef } from 'react'
+import { Suspense, useCallback, useMemo, useRef } from 'react'
 import type { EChartsCoreOption, EChartsType } from 'echarts/core'
 
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
@@ -33,6 +33,7 @@ import {
   outcomeColor,
   type EChartsThemeColors,
 } from './_utils'
+import { LazyECharts } from './LazyECharts'
 import {
   type DominanceValue,
   type OutcomePoint,
@@ -111,10 +112,6 @@ function dominanceNotchShapes(
 // par les tests, jamais ré-exportée ici (react-refresh : pas d'export de valeur
 // non-composant depuis un fichier de composant).
 export type { OutcomeValue, OutcomePoint, Run, DominanceValue } from './outcomeSequence'
-
-const ReactECharts = lazy(() =>
-  import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
-)
 
 export interface OutcomeSequenceLabels {
   win: string
@@ -342,7 +339,7 @@ export function OutcomeSequenceTape({
 
   return (
     <Suspense fallback={null}>
-      <ReactECharts
+      <LazyECharts
         option={option}
         style={{ height, width: '100%' }}
         notMerge

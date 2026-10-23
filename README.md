@@ -153,99 +153,135 @@ Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages
 
 ### Overview
 
-![Main dashboard](docs/screenshots/main.png)
+![Home dashboard](docs/screenshots/home-dashboard.png)
 
-*Main dashboard: multi-page navigation and real-time interactive charts.*
-
-![Sidebar, Time to First Kill & Performance](docs/screenshots/Sidebar-first-kill-performance.png)
-
-*Advanced filters (type, playlist, mode, map,session/period), Time-to-First-Kill vs First Death distribution, and per-match performance score.*
+*Home: weapon mastery tiles closest to completion and your most recent matches, searchable and favoritable.*
 
 ---
 
-### Performance & Combat
+### 2D replay
 
-| KDA | Cumulative performance & trend |
+![2D replay](docs/screenshots/replay-2d.png)
+
+*A match watched again from above — real map background, four timeline tracks, a kill feed, per-player cards and the live scoreboard, second by second.*
+
+---
+
+### Match view
+
+| Header & match flow | Scoreboard & encounter history |
 |:-:|:-:|
-| ![KDA](docs/screenshots/kda.png) | ![Cumulative performance & trend](docs/screenshots/cumulative-perf.png) |
+| ![Header & match flow](docs/screenshots/match-header-flow.png) | ![Scoreboard & encounter history](docs/screenshots/match-scoreboard.png) |
+| Dominance, cadence & engagement | Antagonists, assists & cumulative frags |
+| ![Dominance, cadence & engagement](docs/screenshots/match-dominance-cadence.png) | ![Antagonists, assists & cumulative frags](docs/screenshots/match-antagonists-assists.png) |
 
-![Average lifespan & Combat Skills](docs/screenshots/avg-lifespan-perfect-kills.png)
+*Who did what and when — first blood, finisher and silent-hero badges in the timeline, dominance and kill cadence, cumulative frags against your nemesis and bully target, the full scoreboard with per-player efficiency and resistance, and recurring opponents in the encounter history.*
 
+![Weapon pickups & equipment usage](docs/screenshots/match-equipment-usage.png)
 
-*K/D ratio with trend, cumulative performance score, average lifespan and combat skills.*
+*Power weapon and power-up pickups by player, and equipment read as used, kept without being used, or dropped on death.*
 
 ---
 
-### Distributions & Correlations
+### Tactics — one cockpit screen
 
-| Distributions | Correlations |
+![Tactics](docs/screenshots/tactics.png)
+
+*The map plan for where you die, colour-scaled by deaths per match, with the selected zone's recent deaths opening the replay at the exact second.*
+
+---
+
+### Track your career
+
+| Season pass | Commendations |
 |:-:|:-:|
-| ![Distributions](docs/screenshots/distributions.png) | ![Correlations](docs/screenshots/correlations.png) |
+| ![Season pass](docs/screenshots/season-pass.png) | ![Commendations](docs/screenshots/commendations.png) |
+| XP history & Path to Hero | Rivals & encounters |
+| ![XP history & Path to Hero](docs/screenshots/career-xp-history.png) | ![Rivals & encounters](docs/screenshots/career-rivalries.png) |
 
-*Histograms for accuracy/kills/scores with means and medians — scatter plots (time alive vs kills, etc.).*
-
----
-
-### Activity by day & time
-
-![Heatmap Top Week](docs/screenshots/heatmap-top-week.png)
-
-*Win rate and activity heatmap by day of week and time slot.*
+*Tier progression with the reward carousel, commendation grids by game mode and weapon, XP curve against Hero and your real competitors, and your most frequent rivals with their win rate and K/D.*
 
 ---
 
-### Last match details
+### Explorer
 
-| Last match | Scoreboard |
+![Explorer matches](docs/screenshots/explorer-matches.png)
+
+*Cascade filters (map, mode, playlist, outcome, date, session), career highlights, win rate by map/playlist/mode and the full match history with per-match rating deltas.*
+
+| Combat profile | Kill types & win rate |
 |:-:|:-:|
-| ![Summary](docs/screenshots/last-match.png) | ![Scoreboard Commendations](docs/screenshots/scoreboard.png) |
-| Impact & Dominance | Antagonists |
-| ![Impact & Dominance](docs/screenshots/impact-dominance.png) | ![Antagonists](docs/screenshots/antagonist.png) |
+| ![Combat profile](docs/screenshots/explorer-combat-profile.png) | ![Kill types & win rate](docs/screenshots/explorer-kill-types.png) |
 
-*Full scoreboard for your latest game (searchable by match ID) — and your most formidable rivals, MVP/LVP, scoreboard, commendations (Halo 5 inspired) grid and medal distributions.*
+*The briefing strip (win rate, support given/received, engagement range per weapon) and the combat profile (KDA trend, damage dealt/taken) also work when scouting another player; kill type distribution and top weapons alongside the cumulative frag gap against a rival.*
 
 ---
 
-### Squad sessions & Teammates
+### Time series
 
-| Squad overview | Session stats |
+![Solo performance per month, Win rate & Performance per map — Session vs History](docs/screenshots/timeseries-summary.png)
+
+*Performance score and win rate per month against your team's MMR, then your current session held up against your history, win rate and performance per map.*
+
+| Progression | Distributions |
 |:-:|:-:|
-| ![Session history](docs/screenshots/history.png) | ![Squad complementarity](docs/screenshots/per-minute-complementarity.png) |
-| **Teammates performance** | **Squad ranking** |
-| ![Squad performance](docs/screenshots/performance-spree.png) | ![Squad ranking](docs/screenshots/teammate-heatmap.png) |
+| ![Progression](docs/screenshots/timeseries-progression.png) | ![Distributions](docs/screenshots/timeseries-distributions.png) |
 
-*Filter your sessions by squad: compare your stats when playing with friends and see how you and your teammates perform across shared matches.*
+*Kills/deaths and assists per match, average lifespan, and KDA distribution — then distribution histograms for accuracy, kills, average life, personal score, performance score and killing spree, each with its median marked.*
 
 ---
 
-### Career progression, Ranks & Path to Hero
+### Squad & Teammates — "the shapes you keep"
 
-| Career | Ranks (LUSR/CSR) |
+| Resource control & balance of power | Performance — frags, assists, accuracy |
 |:-:|:-:|
-| ![Career](docs/screenshots/career.png) | ![Ranks](docs/screenshots/LUSRs.png) |
-| ![Path to Hero](docs/screenshots/path-hero.png) | ![Memorable Matches](docs/screenshots/memorable-matches.png) |
+| ![Resource control & balance of power](docs/screenshots/squad-session-resources.png) | ![Performance](docs/screenshots/squad-performance.png) |
+| Intensity & first kill / first death | Impact timeline & medals summary |
+| ![Intensity & first kill / first death](docs/screenshots/squad-intensity.png) | ![Impact timeline & medals summary](docs/screenshots/squad-impact-medals.png) |
+| Objectives, by role | Per-minute stats & synergy radar |
+| ![Objectives, by role](docs/screenshots/squad-objectives.png) | ![Per-minute stats & synergy radar](docs/screenshots/squad-synergy-radar.png) |
 
-*Rank history, progression to Hero, LUSR/CSR per playlist group*
+*Six ways of reading a squad: who controls the map session by session, frags/assists/accuracy per match, kill intensity by phase of the match, narrative impact badges and the squad's medal catalogue, objective statistics by role, and a per-minute synergy radar across Combat, Survival, Impact, Objective, Score and Support.*
 
 ---
 
-### Explorer & Encounter History
+### Player synthesis & Trends
 
-| Explorer | Encounter History |
+| Summary | Activity by day & week |
 |:-:|:-:|
-| ![Explorer](docs/screenshots/explorer.png) | ![Encounter History](docs/screenshots/encounters.png) |
+| ![Summary](docs/screenshots/player-synthesis.png) | ![Activity by day & week](docs/screenshots/synthesis-activity.png) |
 
-*Browse and filter all your matches in detail with the Explorer, including search by player — track recurring opponents and cross-match encounter patterns with the Encounter History view.*
+*Career highs, frag distribution by weapon family, win rate, KDA, incidents (betrayals/suicides) and the weapons you kill with most — plus activity by day and hour, and wins against other matches per week.*
+
+| Trends grid | Evolution against opponent MMR |
+|:-:|:-:|
+| ![Trends grid](docs/screenshots/trends-grid.png) | ![Evolution against opponent MMR](docs/screenshots/trends-evolution.png) |
+
+*Month-by-month level, results and combat indicators at a glance, and your KDA/kills/deaths/win rate plotted against the strength of the opponents you actually faced.*
 
 ---
 
-### Media library & Commendations
+### Community
 
-| Media library | Commendations |
+| Leaderboards | Head-to-head |
 |:-:|:-:|
-| ![Media library](docs/screenshots/media-library.png) | ![commendations](docs/screenshots/commendations.png) |
+| ![Leaderboards](docs/screenshots/leaderboards.png) | ![Head-to-head](docs/screenshots/head-to-head.png) |
 
-*Browse and search your clips and screenshots linked to their matches (still in beta) — track your commendations with medal grids and distributions.*
+*The world CSR ranking by playlist and season (source: Halo Waypoint), and a mirror comparison of two players across combat, precision/survival, stats/rank and weapon profile.*
+
+![Relations](docs/screenshots/relations.png)
+
+*Your duo partner and nemesis with head-to-head win rates, your inner circle's recent form, and the full list of players you've crossed paths with.*
+
+---
+
+### Clips & Media
+
+| Media library | Lightbox |
+|:-:|:-:|
+| ![Media library](docs/screenshots/media-library.png) | ![Lightbox](docs/screenshots/media-lightbox.png) |
+
+*Browse and filter your clips and screenshots linked to their matches, and review a capture full-screen with its match context.*
 
 ---
 

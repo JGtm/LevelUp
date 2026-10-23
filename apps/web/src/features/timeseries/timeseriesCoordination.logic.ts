@@ -11,8 +11,8 @@
  * Deux règles tiennent dans ce module, et un test peut les mettre en défaut sans monter
  * d'arbre React :
  *
- *   1. une soirée à ÉCHANTILLON FAIBLE reste sur l'axe, en bâton creux — la trame du
- *      temps ne doit pas mentir ;
+ *   1. une soirée à ÉCHANTILLON FAIBLE reste sur l'axe, en bâton plein comme les autres — la
+ *      trame du temps ne doit pas mentir —, mais ne nourrit pas la tendance ;
  *   2. un repère de comparaison ABSENT (parité non mesurée : aucun match à effectif
  *      connu) ne se remplace pas par une valeur par défaut, il ne se dessine pas.
  */
@@ -27,8 +27,8 @@ import { shortSessionLabel } from '@/components/charts/sessionBarsTrendChart'
 export interface SerieDeSoirees {
   /** Taux par soirée, en POURCENTS (`null` = soirée sans mesure). */
   valuesPct: (number | null)[]
-  /** Par soirée : bâton creux (échantillon faible). */
-  hollow: boolean[]
+  /** Par soirée : échantillon faible (hors tendance). */
+  echantillonFaible: boolean[]
   /** Dénominateur de la soirée — rendu en infobulle, jamais dans le taux. */
   volumes: number[]
   /** Numérateur et dénominateur de la soirée (« 51/137 »), `null` = soirée sans mesure. */
@@ -63,7 +63,7 @@ export function serieDeSoirees(
   const mesures = sessions.map(choisir)
   return {
     valuesPct: mesures.map((c) => (c.n > 0 ? c.taux * 100 : null)),
-    hollow: mesures.map((c) => c.echantillon_faible),
+    echantillonFaible: mesures.map((c) => c.echantillon_faible),
     volumes: mesures.map((c) => c.n),
     decomptes: mesures.map((c) => (c.n > 0 ? { brut: c.brut, n: c.n } : null)),
   }
@@ -117,7 +117,7 @@ export const FENETRE_TENDANCE = 3
 /**
  * moyenneGlissante — la tendance d'une grandeur, soirée par soirée.
  *
- * DEUX RÈGLES. Une soirée à ÉCHANTILLON FAIBLE (bâton creux) ne nourrit pas la moyenne :
+ * DEUX RÈGLES. Une soirée à ÉCHANTILLON FAIBLE ne nourrit pas la moyenne :
  * elle est dessinée parce que la trame du temps ne doit pas mentir, pas parce qu'elle
  * mesure quelque chose. Et une fenêtre incomplète ne rend RIEN — une « moyenne de trois »
  * calculée sur un point serait la valeur elle-même, déguisée en tendance.
@@ -127,7 +127,7 @@ export function moyenneGlissante(serie: SerieDeSoirees): (number | null)[] {
     const fenetre: number[] = []
     for (let j = Math.max(0, i - FENETRE_TENDANCE + 1); j <= i; j += 1) {
       const v = serie.valuesPct[j]
-      if (v != null && !serie.hollow[j]) fenetre.push(v)
+      if (v != null && !serie.echantillonFaible[j]) fenetre.push(v)
     }
     if (fenetre.length < FENETRE_TENDANCE) return null
     return fenetre.reduce((a, b) => a + b, 0) / fenetre.length
