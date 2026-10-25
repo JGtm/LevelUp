@@ -45,6 +45,11 @@ describe('isAnonymousPath', () => {
     expect(isAnonymousPath('/terms-interne')).toBe(false)
   })
 
+  it("la page d'invitation est atteignable sans compte", () => {
+    expect(isAnonymousPath('/join')).toBe(true)
+    expect(isAnonymousPath('/joint')).toBe(false)
+  })
+
   it('les pages applicatives ne le sont pas', () => {
     expect(isAnonymousPath('/')).toBe(false)
     expect(isAnonymousPath('/settings')).toBe(false)

@@ -118700,3 +118700,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : export des `.xcf` fournis en `.png` via `gimp-console.exe` (GIMP 3) — un piège PowerShell 5.1 (découpage de la commande Script-Fu sur les espaces, blocage silencieux indéfini de GIMP en attente sur stdin) contourné en passant par un script auto-chargé du dossier `scripts/` de GIMP et un appel sans espace ni guillemet sur la ligne de commande (détail : mémoire `reference_gimp_console_xcf_export_pipeline`). Un export (`Squad-performance-performance_session`) avait un canevas non recadré (11280×800) ; refait par l'utilisateur puis écarté (jugé peu intéressant). Parité des 33 références d'images vérifiée identique entre `README.md` et `docs/FR/README.md`, et présence sur disque de chaque fichier référencé confirmée par script.
 
 **Conclusion / prochaine étape** : aucun code applicatif touché (Go/TS), uniquement `README.md`, `docs/FR/README.md` et `docs/screenshots/*.png` — gates Go/TS du skill `delivery-checklist` non applicables. À committer avec les 4 commits déjà présents sur `release/v8.0.4` (détonations/power-up, Séries temporelles, Vue de match) et publier via CI + squash merge vers `main` sur accord utilisateur du 2026-10-23. Reste à faire côté utilisateur : captures Sessions (après déploiement) et décision sur les 2 captures Escouade en attente.
+
+## [2026-10-25] Correctif urgent : la page d'invitation renvoyait l'invité vers /login — Complété (branche `fix/join-invite-anonymous`)
+
+**Contexte** : un joueur invité (instance fermée) ne pouvait pas se connecter malgré un lien `/join?invite=CODE` ; journaux de prod : 4 refus `instance_locked` sans code d'invitation, invitations jamais consommées.
+
+**Décision technique principale** : `/join` ajouté aux chemins consultables sans compte (`ANONYMOUS_PATHS`, `components/shell/shellNavigation.ts`). La racine (`routes/__root.tsx`) renvoyait tout visiteur anonyme vers /login hors /privacy et /terms : le code était perdu avant le clic « Continuer avec Xbox », qui seul le transmet au serveur (`/auth/xbox/login?invite=`).
+
+**Résultats observés** : tests unitaires (`shellNavigation.test.ts`, `__root.test.tsx`) rouges sans le correctif, verts avec ; spec E2E `e2e/join-invite.spec.ts` (bootstrap anonyme simulé, redirection Microsoft interceptée) verte ; `tsc -b`, eslint, vitest complet 1 001 fichiers / 10 340 tests verts.
+
+**Conclusion / prochaine étape** : fusion vers main (squash) = déploiement ; contrôle en prod d'une visite anonyme de /join ; `release/v8.0.5` (autre session) devra intégrer main.
