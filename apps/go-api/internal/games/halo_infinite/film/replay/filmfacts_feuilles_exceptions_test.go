@@ -61,6 +61,10 @@ var feuillesNonTransportees = map[string]string{
 	"grammar.ShieldVitality.Regen0":       "idem Block64 (decodeObjectShieldVitality)",
 	"grammar.ShieldVitality.HasRegen1":    "idem Block64 (decodeObjectShieldVitality)",
 	"grammar.ShieldVitality.Regen1":       "idem Block64 (decodeObjectShieldVitality)",
+	// Decisions de la marche d'image-cle qui ne servent qu'au diagnostic : l'assemblage ne les lit pas.
+	"grammar.KeyframeWalkStats.ElectionsAttestees": "compteur de diagnostic de la marche " +
+		"(grammar/keyframe_world.go:compter, keyframe_world_attestation.go) ; aucun lecteur hors instruments et tests",
+	"grammar.KeyframeWalkStats.ElectionsNonAttestees": "idem ElectionsAttestees",
 	// Records de creation de bipede.
 	"grammar.BipedCreation.Chunk": tracabilite + "grammar/biped_creation.go:scanPayload, " +
 		"grammar/birth_loadouts.go:ScanBirthLoadouts/lire",

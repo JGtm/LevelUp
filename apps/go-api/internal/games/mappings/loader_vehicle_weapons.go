@@ -58,19 +58,26 @@ type VehicleWeaponMount struct {
 
 // VehicleWeapon — une entree du registre.
 type VehicleWeapon struct {
-	Tag      string              `toml:"tag"`
-	Vehicle  string              `toml:"vehicle"`
-	En       string              `toml:"en"`
-	Fr       string              `toml:"fr"`
-	Fire     string              `toml:"fire"`
-	Fx       string              `toml:"fx"`
-	Tint     string              `toml:"tint"`
-	Sound    string              `toml:"sound"`
-	Loop     string              `toml:"loop"`
-	Silence  string              `toml:"silence"`
-	Mount    *VehicleWeaponMount `toml:"mount"`
-	Proof    string              `toml:"proof"`
-	Decision string              `toml:"decision"`
+	Tag     string `toml:"tag"`
+	Vehicle string `toml:"vehicle"`
+	En      string `toml:"en"`
+	Fr      string `toml:"fr"`
+	Fire    string `toml:"fire"`
+	Fx      string `toml:"fx"`
+	Tint    string `toml:"tint"`
+	Sound   string `toml:"sound"`
+	Loop    string `toml:"loop"`
+	// Impact : le projectile explose a l impact (le rejeu dessine une explosion a sa detonation).
+	// Fait declare, jamais deduit de `fx` (le mortier est `plasma`, le canon du Scorpion
+	// `explosive` sans projectile publie).
+	Impact bool `toml:"impact"`
+	// ImpactSound : stem du son de la detonation (static/sounds/{slug}/<stem>.wav), choisi A L OREILLE
+	// sur les rendus extraits du jeu. Vide = explosion muette. N existe qu avec Impact.
+	ImpactSound string              `toml:"impact_sound"`
+	Silence     string              `toml:"silence"`
+	Mount       *VehicleWeaponMount `toml:"mount"`
+	Proof       string              `toml:"proof"`
+	Decision    string              `toml:"decision"`
 }
 
 // VehicleWeaponUnknown — un tag observe que rien n identifie encore, et pourquoi.
@@ -154,6 +161,12 @@ func validateVehicleWeapon(w VehicleWeapon) error {
 		return fmt.Errorf("proof vide : une entree sans preuve n entre pas au registre")
 	case w.Loop != "" && (w.Fire != VehicleWeaponFireContinuous || w.Sound == ""):
 		return fmt.Errorf("loop : le son TENU d une rafale n existe que pour une arme continuous qui sonne")
+	}
+	if w.Impact && w.Fire != VehicleWeaponFireSingle {
+		return fmt.Errorf("impact : seul un tir au coup (single) porte un projectile qui explose a l impact")
+	}
+	if w.ImpactSound != "" && !w.Impact {
+		return fmt.Errorf("impact_sound sans impact : une arme dont le projectile n explose pas n a pas de son de detonation")
 	}
 	return validateVehicleWeaponMount(w.Mount)
 }

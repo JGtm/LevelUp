@@ -94,6 +94,12 @@ type WeaponLabel struct {
 	// posée à la requête comme Key. Vide = arme non teintée (mêlée, hors table) : teinte
 	// neutre du thème, jamais celle d'une voisine.
 	Tint string `json:"tint,omitempty"`
+	// Impact dit que le projectile de cette arme EXPLOSE à l'impact : le client dessine une
+	// explosion au point de détonation du projectile né de ses tirs (`Projectile.Shot`). Ni Fx ni
+	// Tint n'en décident (le mortier du Wraith est `plasma` comme le pistolet plasma, qui
+	// n'explose pas) : c'est un fait déclaré par le titre (`[shot_impact]`, `replay_labels.toml`).
+	// Posé À LA REQUÊTE comme Key et Tint, pour la même raison. Absent = pas d'explosion.
+	Impact bool `json:"impact,omitempty"`
 	// Img est l'URL de l'icône EXTRAITE DU JEU (fiches joueur du rejeu). Vide = pas de
 	// visuel : le client affiche le libellé, jamais l'icône d'une arme voisine. Tinted
 	// dit si le visuel est un masque à teindre (même contrat que le kill feed).

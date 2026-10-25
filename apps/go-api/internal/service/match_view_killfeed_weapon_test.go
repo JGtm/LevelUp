@@ -112,6 +112,29 @@ func TestDecorateKillFeed_SourceSansIconeResteSansArme(t *testing.T) {
 	}
 }
 
+// TestDecorateKillFeed_EcrasementPorteSonPictogramme : une mort par collision a pour source
+// l'effet de collision global (aucune icône d'arme) ; sa catégorie, seule, pose le
+// pictogramme d'écrasement. Une source inconnue SANS cette catégorie reste sans icône.
+func TestDecorateKillFeed_EcrasementPorteSonPictogramme(t *testing.T) {
+	events := feedFixture()
+	sources := []domain.KillSourceRaw{
+		{XUID: "A", TimeMS: 1000, SourceTag: 0x5f, Splatter: true},
+		{XUID: "B", TimeMS: 2000, SourceTag: 0x5f},
+	}
+	adapter := &stubAssetURL{killIcons: map[uint32]canonical.KillSourceIcon{}}
+
+	decorateKillFeed(context.Background(), events, killFeedInputs{
+		sources: sources, scoreboard: feedScoreboard(), assetURL: adapter,
+	})
+
+	if events[0].WeaponImageURL != "/splatter.png" || !events[0].WeaponImageTinted || events[0].WeaponKey != "" {
+		t.Errorf("écrasement : image = %q tinted=%v clé=%q", events[0].WeaponImageURL, events[0].WeaponImageTinted, events[0].WeaponKey)
+	}
+	if events[1].WeaponImageURL != "" {
+		t.Errorf("source inconnue sans catégorie d'écrasement : image posée (%q)", events[1].WeaponImageURL)
+	}
+}
+
 // TestDecorateKillFeed_AssistTroisEtats : les trois états de l'assistance, JAMAIS
 // confondus. Le kill (A,1000) porte un assistant nommé avec les deux parts ; (B,2000) est
 // MESURÉ sans assistant (part du tueur seule) ; (A,3000) n'a aucune entrée appariée et

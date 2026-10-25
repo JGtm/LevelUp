@@ -37,6 +37,7 @@ import {
   END_VOICE_STEMS,
 } from './endMatchSound'
 import { EXPLOSION_SOUND_STEMS, THROW_SOUND_STEMS } from './grenadeSound'
+import { IMPACT_SOUND_STEMS } from './impactSound'
 import { INTRO_MUSIC_STEM } from './introSound'
 import { SOUND_CUT_MAX_S } from './replayAudio'
 import {
@@ -130,6 +131,10 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // Les explosions de FIN DE VOL (lot R2-G, 2026-08-18) : mêmes fichiers que les quatre
     // explosions de kill, joints par le rang au lieu de la vignette.
     ...EXPLOSION_SOUND_STEMS,
+    // Les impacts de projectiles de tir (2026-10-25), un stem par arme validée à l oreille : armes
+    // à pied dans la table client, armes de véhicule dans le registre du titre (`impact_sound`).
+    ...Object.values(IMPACT_SOUND_STEMS),
+    ...sonsDImpactDuRegistre(),
     ...Object.values(KILL_SPRITE_SOUND_STEMS).map((v) => v.stem),
     // Les équipements (lot du 2026-08-16) : deux stems par famille mesurée.
     ...Object.values(EQUIPMENT_SOUND_STEMS).flatMap((s) => [s.activate, s.deactivate]),
@@ -268,6 +273,8 @@ describe('garde-rail : durée livrée par catégorie', () => {
   ]
   const longs = [
     ...EXPLOSION_SOUND_STEMS,
+    ...Object.values(IMPACT_SOUND_STEMS),
+    ...sonsDImpactDuRegistre(),
     // Le répulseur (catégorie ARME) tombe ici, PAS dans `courts` : le découpage court/long est
     // une propriété de la DURÉE DE LA SOURCE (lot R2, 2026-08-16), un axe différent de la
     // catégorie du filtre du tiroir. `repulsor_kill` (1,852 s, archive utilisateur) est de la
@@ -676,6 +683,11 @@ describe('garde-rail : moteurs de vehicules (categorie boucles, banque du 2026-0
  */
 function stemsDuRegistreDesArmesDeVehicule(): string[] {
   return [...registreDesArmesDeVehicule().matchAll(/^sound\s*=\s*"([^"]+)"/gm)].map((m) => m[1])
+}
+
+/** Les sons de DETONATION que nomme le registre des armes de vehicule (`impact_sound`, 2026-10-25). */
+function sonsDImpactDuRegistre(): string[] {
+  return [...registreDesArmesDeVehicule().matchAll(/^impact_sound\s*=\s*"([^"]+)"/gm)].map((m) => m[1])
 }
 
 /** Le texte du registre des armes de vehicule du titre. */

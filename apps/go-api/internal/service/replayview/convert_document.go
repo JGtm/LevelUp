@@ -198,6 +198,7 @@ func toProjectile(v replay.Projectile) replaydoc.Projectile {
 		DetoX:   v.DetoX,
 		DetoY:   v.DetoY,
 		DetoLue: v.DetoLue,
+		Shot:    v.Shot,
 	}
 }
 
@@ -229,6 +230,7 @@ func toWeaponLabel(v replay.WeaponLabel) replaydoc.WeaponLabel {
 		Key:    v.Key,
 		Role:   v.Role,
 		Tint:   v.Tint,
+		Impact: v.Impact,
 		Img:    v.Img,
 		Tinted: v.Tinted,
 	}

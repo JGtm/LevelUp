@@ -174,6 +174,9 @@ func toProjectileCoverage(v replay.ProjectileCoverage) replaydoc.ProjectileCover
 		Tracks:    v.Tracks,
 		Published: v.Published,
 		Truncated: v.Truncated,
+
+		ShotLinked:    v.ShotLinked,
+		ShotAmbiguous: v.ShotAmbiguous,
 	}
 }
 

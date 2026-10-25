@@ -162,8 +162,8 @@ var tablePolarites = []blocPolarites{
 			"withOwner byFamily.* byCause.spawn_event byCause.death_written byCause.taken_written",
 		Neutres: "anchors deployed dropped other byCause.* byCause.manifest_piece byFamilyOrigin.*"},
 	{Blocs: []string{"coverage.projectiles."},
-		Echecs: "truncated",
-		Succes: "published tracks"},
+		Echecs: "shotAmbiguous truncated",
+		Succes: "published shotLinked tracks"},
 	{Blocs: []string{"coverage.score."},
 		Echecs:  "roundsContradicted/n roundsContradictedRecords",
 		Succes:  "points",
@@ -210,7 +210,7 @@ var tablePolarites = []blocPolarites{
 		Neutres: "beforeOrigin"},
 	{Blocs: []string{"coverage.vehicles."},
 		Echecs: "ambiguous cycleMissing deathsTailDesync deathsUnmatched " +
-			"echantillonsAuTraversDUnSilence echantillonsHorsEmprise endUnknown familyUnknown " +
+			"echantillonsAuTraversDUnSilence echantillonsHorsEmprise endUnknown familyUnknown keyframesEmptiedAtOnce " +
 			"noPosition samplesAfterEnd shotsAmbiguous shotsNoRide shotsUnplaced " +
 			"silencesNonTranches spawnsHorsEmprise turretCarrierBirthMismatch " +
 			"turretRidesAlreadyAboard turretRidesDropped " +
@@ -219,7 +219,7 @@ var tablePolarites = []blocPolarites{
 			"familyResolved lives published rides ridesNamed ridesRead ridesWithAim ridesWithSeat " +
 			"samples shots shotsByUnit shotsVehicleWeapon turretRides turrets turretsOnCarrier " +
 			"variants vehiclesRidden withChassis withHeading withSpawn",
-		Neutres: "aimRideFrames cycleLocations endFilmEnd merged ridesProximity shotsByUnitNoRide " +
+		Neutres: "aimRideFrames cycleLocations endFilmEnd endsPastEmptiedKeyframe merged ridesProximity shotsByUnitNoRide " +
 			"shotsOnCarrier"},
 	{Blocs: []string{"coverage.vipCrown."},
 		Echecs:  "noBridge open outOfWindow",

@@ -80,6 +80,9 @@ func (s *stubAssetURL) WeaponImageIsTinted(_ int64) bool       { return false }
 func (s *stubAssetURL) KillSourceIcon(_ uint32) (canonical.KillSourceIcon, bool) {
 	return canonical.KillSourceIcon{}, false
 }
+func (s *stubAssetURL) SplatterIcon() (canonical.KillSourceIcon, bool) {
+	return canonical.KillSourceIcon{}, false
+}
 func (s *stubAssetURL) MatchWebURL(_ string) string          { return "" }
 func (s *stubAssetURL) PlayerMatchWebURL(_, _ string) string { return "" }
 

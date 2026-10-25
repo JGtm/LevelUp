@@ -221,6 +221,8 @@ type Projectile struct {
 	DetoX   float32      `json:"detoX"`
 	DetoY   float32      `json:"detoY"`
 	DetoLue bool         `json:"detoLue,omitempty"`
+	// Shot : index dans Shots du tir dont le projectile est né (cf. replay.Projectile.Shot).
+	Shot *int `json:"shot,omitempty"`
 }
 
 // NeutralDeath est une mort que PERSONNE ne revendique — et de quoi le joueur est mort.
@@ -255,8 +257,10 @@ type WeaponLabel struct {
 	// Role est la fonction de combat (sniper, power, special...) postée à la requête depuis
 	// le registre canonique — filtre « armes spéciales » du calque des armes au sol (lot
 	// 2026-09-10). Cf. replay.WeaponLabel.Role pour la décision complète.
-	Role   string `json:"role,omitempty"`
-	Tint   string `json:"tint,omitempty"`
+	Role string `json:"role,omitempty"`
+	Tint string `json:"tint,omitempty"`
+	// Impact : le projectile de l'arme explose à l'impact (cf. replay.WeaponLabel.Impact).
+	Impact bool   `json:"impact,omitempty"`
 	Img    string `json:"img,omitempty"`
 	Tinted bool   `json:"tinted,omitempty"`
 }

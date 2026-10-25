@@ -71,6 +71,7 @@ type ReplayLabelSet struct {
 	palettes      []AbilityPalette
 	shotEffects   map[string]string // weapon_key -> famille de rendu
 	shotTints     map[string]string // weapon_key -> nature de la decharge
+	shotImpacts   map[string]bool   // weapon_key -> le projectile explose a l'impact
 	equipObjects  map[uint32]string // GlobalID de tag `eqip` -> famille de pose
 	// impulseFamilies : les familles de capacite dont l'USAGE est MESURE par le canal
 	// d'impulsion du bipede (i57/i59 tag 1). Liste VIDE = le titre ne declare aucun usage
@@ -101,6 +102,7 @@ type replayLabelsTOML struct {
 	Palettes     []abilityPaletteEntry  `toml:"ability_palettes"`
 	ShotEffects  map[string]string      `toml:"shot_effects"`
 	ShotTints    map[string]string      `toml:"shot_tints"`
+	ShotImpact   map[string]bool        `toml:"shot_impact"`
 	EquipObjects []equipmentObjectEntry `toml:"equipment_objects"`
 	ObjObjects   []objectiveObjectEntry `toml:"objective_objects"`
 	FlagZone     *flagReturnZoneTOML    `toml:"flag_return_zone"`
@@ -346,6 +348,10 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 	if err != nil {
 		return nil, err
 	}
+	impacts, err := parseShotImpacts(path, doc.ShotImpact, effects)
+	if err != nil {
+		return nil, err
+	}
 	equip, err := parseEquipmentObjects(path, doc.EquipObjects)
 	if err != nil {
 		return nil, err
@@ -377,6 +383,7 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 		palettes:        palettes,
 		shotEffects:     effects,
 		shotTints:       tints,
+		shotImpacts:     impacts,
 		equipObjects:    equip,
 		impulseFamilies: impulses,
 		chargeFamilies:  charges,

@@ -44,6 +44,8 @@ func (h *MatchViewHandler) handleGetReplayContext(ctx context.Context, in *match
 	if err != nil {
 		return nil, matchViewServiceError(ctx, err, "replay_context_error")
 	}
+	resp.Media.MediaItems = filterMatchMediaByAudience(resp.Media.MediaItems,
+		resolveMediaAudience(ctx, h.mediaAudience, in.PlayerSlug))
 	h.transformMatchMediaURLs(in.PlayerSlug, resp.Media.MediaItems)
 	out := &matchReplayContextOutput{Body: resp}
 	if resp.SourceUnavailable || resp.Header.AnalysisPending {

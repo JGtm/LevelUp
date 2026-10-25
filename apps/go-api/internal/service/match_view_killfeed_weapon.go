@@ -188,6 +188,11 @@ func decorateKillFeed(ctx context.Context, events []domain.MatchHighlightEvent, 
 			continue
 		}
 		icon, ok := in.assetURL.KillSourceIcon(src.SourceTag)
+		if !ok && src.Splatter {
+			// Écrasement : la source est l'effet de collision global, qui ne nomme aucune
+			// arme — la catégorie de dégât, mesurée par mort, suffit au pictogramme.
+			icon, ok = in.assetURL.SplatterIcon()
+		}
 		if !ok {
 			continue
 		}

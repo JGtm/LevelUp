@@ -6,6 +6,22 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [8.0.5] - 2026-10-25
+
+### Added
+- **Rejeu : explosions à l'impact des projectiles explosifs** — le mortier du Wraith, les roquettes (M41 SPNKr, Rockethog), le Crémateur, l'Hydra, le Fuel Rod, la bombe de la Banshee et les missiles du Wasp explosent désormais là où leur projectile détone, comme les grenades. Chaque projectile est relié au tir qui l'a lancé (même image, même point, une seule arme candidate) ; les armes à plasma n'explosent pas. Le mortier du Wraith et la bombe de la Banshee jouent leur son de détonation du jeu, extrait du jeu et choisi à l'oreille.
+- **Escouade : colonne « Performance d'équipe »** dans le tableau des matchs — la moyenne des scores de performance (0-100, 50 = niveau habituel) des membres de l'escouade présents sur le match ; elle remplace la colonne de FDA d'escouade.
+
+### Fixed
+- **Rejeu : les véhicules ne disparaissent plus en cours de match** — le lecteur de film pouvait sauter tout le bloc des véhicules dans certaines images complètes du film, et le rejeu prenait ce trou pour la disparition du véhicule : un Wraith et son pilote s'effaçaient 22 s avant leur destruction. Le lecteur ne s'ancre plus que sur un enregistrement que le film confirme lui-même ; sur un échantillon de 400 films, les images où tous les véhicules tombent à zéro sont divisées par deux.
+- **Fil des éliminations : les écrasements affichent le pictogramme d'écrasement** au lieu d'un simple point.
+- **« Chargement LevelUp… » dans la bonne langue** — l'écran d'attente prend la langue de l'URL, puis celle de la dernière session, puis celle du navigateur, avant la réponse du serveur.
+- **Escouade : le tableau des matchs prend la taille de police de l'Explorateur.**
+- **Visibilité des médias limitée aux groupes du joueur** — galeries (Accueil, page Médias), liste des auteurs, service des fichiers et onglet Médias du match et du rejeu ne montrent que les médias du joueur de la page et des membres de ses groupes, dans la portée du lecteur ; sans groupe, ses seuls médias.
+
+### Ops
+- **Schéma de rejeu 104 et révision de la grammaire du film** — chaque rejeu doit être redécodé depuis son film pour bénéficier du correctif des véhicules et des explosions à l'impact ; d'ici là, les anciens rejeux fonctionnent comme avant.
+
 ## [8.0.4] - 2026-10-23
 
 ### Added

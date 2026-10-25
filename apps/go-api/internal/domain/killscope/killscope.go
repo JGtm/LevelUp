@@ -112,3 +112,16 @@ const CategoryHeadshot = "Headshot"
 func IsHeadshotCategory(category string) bool {
 	return category == CategoryHeadshot
 }
+
+// CategoryCollisionDamage : la valeur de `source_category` d'une mort par COLLISION — un joueur
+// écrasé par un véhicule (« splatter »). Le décodeur la publie avec le tag d'effet de collision
+// global du jeu, qui ne nomme aucun véhicule : c'est la catégorie, et elle seule, qui dit
+// « écrasé ». Même propriétaire typé et même verrou d'égalité que CategoryHeadshot
+// (`TestCategoryCollisionEgaleAuDecodeur`, `sync/killcollector`).
+const CategoryCollisionDamage = "CollisionDamage"
+
+// IsCollisionCategory : le comparateur de catégorie « écrasement », même raison d'être que
+// IsHeadshotCategory — aucun lecteur de `source_category` ne compare la chaîne à la main.
+func IsCollisionCategory(category string) bool {
+	return category == CategoryCollisionDamage
+}

@@ -256,6 +256,15 @@ func (a *AssetURLAdapter) KillSourceIcon(sourceTag uint32) (canonical.KillSource
 	return out, true
 }
 
+// SplatterIcon : le pictogramme d'écrasement de l'atlas KILL FEED (film/killicon), masque à
+// teindre comme le reste de l'atlas. Pas de weapon_key : un écrasement n'est pas une arme.
+func (a *AssetURLAdapter) SplatterIcon() (canonical.KillSourceIcon, bool) {
+	return canonical.KillSourceIcon{
+		ImageURL: static.URL(static.KindWeapon, a.titleSlug, weaponIconDir+killicon.Splatter().Sprite, ".png"),
+		Tinted:   true,
+	}, true
+}
+
 // NeutralDeathIcon résout le pictogramme du TYPE d'une mort que PERSONNE ne revendique —
 // chute, hors-limites, ou sa propre source de dégât.
 //

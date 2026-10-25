@@ -306,7 +306,10 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 102 -> 103 (2026-10-22, meme lot, item 2), +29 : l entree v103 (le ramassage de
 	// power-up date par le meme mecanisme que les socles d arme, aucun champ neuf, la mesure 8/8
 	// sur les films temoins). Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3564,
+	// SCHEMA 103 -> 104 (2026-10-25), +49 : les deux entrees v104 (le
+	// lien tir -> projectile `projectiles[].shot` et ses compteurs ; les images-cles sans vehicule
+	// et leur preuve d absence). Exception ecrite, dans le commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3613,
 	// `film_scan.go` N ENTRE PAS EN TABLE (2026-10-22, lot detonations, correction CI) : l appel a
 	// `grammar.ScanProjectileDetonations` (item 1) l avait fait passer de 500 a 504 lignes, mais
 	// « mettre le fichier dans plafondsParFichier n est pas une reponse » (cette table est close au
@@ -445,7 +448,9 @@ var plafondsParFichier = map[string]int{
 	// (l explosion d un projectile publiee a l instant et a la position LUS).
 	// SCHEMA 102 -> 103 (2026-10-22, meme lot, item 2) : 1471 -> 1476, la justification de la montee
 	// (le ramassage de power-up date par le meme mecanisme que les socles d arme).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1476,
+	// SCHEMA 103 -> 104 (2026-10-25) : 1476 -> 1482, la
+	// justification de la montee (lien tir -> projectile, images-cles sans vehicule).
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1482,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

@@ -83,6 +83,9 @@ func (s *replayService) resolveWeaponLabels(ctx context.Context, doc *replay.Rep
 		// Le RÔLE (lot armes au sol, 2026-09-10) suit la même clé : une arme dont le
 		// registre ne classe pas de rôle garde une chaîne vide, jamais celui d'une voisine.
 		lbl.Role = cat.Roles[key]
+		// L'EXPLOSION À L'IMPACT est un fait déclaré par le titre (`[shot_impact]`), jamais déduit
+		// de la forme de rendu : absente de la table, l'arme n'explose pas.
+		lbl.Impact = cat.Impacts[key]
 		doc.WeaponLabels[id] = lbl
 	}
 }

@@ -3,7 +3,7 @@
  *
  * Colonnes contextuelles (pas de stats personnelles) :
  *   Ouvrir | Waypoint | Rejeu | Date | Carte | Playlist | Mode |
- *   Résultat | Dominance | F | M | A | FDA d'escouade (cumuls, calculés côté Go) |
+ *   Résultat | Dominance | F | M | A | Performance d'équipe (calculés côté Go) |
  *   Taux hist. | Score | Durée | MMR équipe | MMR adv. | Écart MMR
  *
  * Colonne « Waypoint » (I19) : lien externe vers la page de détail du match sur
@@ -284,7 +284,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           )
         },
       },
-      ...squadTotalsColumns(locale, intlLocale, HISTORY_SORTS),
+      ...squadTotalsColumns(locale, HISTORY_SORTS),
       {
         accessorKey: 'win_rate_hist',
         header: labels.winRateHist,
@@ -428,7 +428,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   return (
     <div className="space-y-2" data-testid="squad-synergy-history-table">
       <div className="overflow-x-auto rounded-md border border-border">
-        <table className="w-full text-sm">
+        <table className="w-full text-xs">
           <thead className="bg-muted border-b">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>

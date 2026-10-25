@@ -369,3 +369,15 @@ package grammar
 // bfecd02b 67 -> 95 sur 95, 4f77afc1 190 -> 210 sur 215, 72b0a25e 2 -> 81 sur 81 (bande d un seul
 // slot), 92c950ee 72 -> 76 sur 76 ; chaque lancer est aussi suivi d un message `projectile_detonate`
 // (genre 5) de la vue A dans les 5 s. Mini-bobine : 51 -> 81 pistes de projectile.
+//
+// ENTREE `grammar-2026-10-25` (2026-10-25, diagnostic des images-cles sans vehicule du match 4898d586) :
+// UNE ANCRE D IMAGE-CLE ELUE PAR LE REPLI SE PROUVE PAR LES ENTREES LIBRES QUI LA PRECEDENT. La table
+// d image-cle porte une entree par slot ; entre un record de slot p et le suivant de slot s elle compte
+// donc exactement s-p-1 slots liberes de 108 bits, contigus, juste devant le second. Un candidat qui a ce
+// compte devant lui (ecart de slot >= 1) est ATTESTE et bat tout candidat non atteste, quel que soit son slot
+// ou sa generation (`keyframe_world_attestation.go`, premiere cle de [kfCand.betterThan]). Le defaut
+// corrige : apres le bipede 533, la fausse ancre ti=20 de slot 542, prise dans le corps des vehicules,
+// battait le vrai record 770 par son slot bas et faisait ecarter les huit vehicules ti=40 des deux
+// images-cles du match (aucune des 236 entrees libres attendues devant 542). Les elections se comptent
+// attestees ou non (`KeyframeWalkStats.ElectionsAttestees`, `ElectionsNonAttestees`). Les ancres lues
+// changent, donc le recensement des images-cles et tout ce qui en derive.

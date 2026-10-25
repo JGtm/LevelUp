@@ -36,3 +36,11 @@ func TestCategoryHeadshotEgaleAuDecodeur(t *testing.T) {
 			"d'accord oracle) laisserait rentrer la population interdite", killscope.CategoryHeadshot)
 	}
 }
+
+// TestCategoryCollisionEgaleAuDecodeur : la catégorie « écrasement » lue par le kill feed est
+// celle que le décodeur écrit, sinon chaque écrasement perd son pictogramme sans erreur.
+func TestCategoryCollisionEgaleAuDecodeur(t *testing.T) {
+	if got, want := killscope.CategoryCollisionDamage, decfilm.CategoryCollisionDamage.Name(); got != want {
+		t.Errorf("killscope.CategoryCollisionDamage = %q, decodeur = %q", got, want)
+	}
+}

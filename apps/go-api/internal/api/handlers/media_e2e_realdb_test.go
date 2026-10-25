@@ -172,7 +172,8 @@ func realMediaPipelineSetup(t *testing.T) (*chi.Mux, string) {
 		}
 		return svc, nil
 	}
-	h := handlers.NewMediaHandler(factory, nil, "")
+	// Audience : alice et bob sont co-membres de groupe du joueur de la page.
+	h := handlers.NewMediaHandler(factory, nil, "").WithMediaAudience(staticAudience("test-player", "alice", "bob"))
 	r := chi.NewRouter()
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		h.Mount(r) // pages/media + likes (+ autres JSON) migrés Huma

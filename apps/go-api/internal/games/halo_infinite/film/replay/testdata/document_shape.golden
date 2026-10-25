@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 103
-empreinte-stockee 85260364d27d92b8
-empreinte-servie 85260364d27d92b8
-empreinte-cuite 8492c5405dc02426
+schema 104
+empreinte-stockee 0b17b0d6cd4d78c1
+empreinte-servie 0b17b0d6cd4d78c1
+empreinte-cuite 024d3476ff293972
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -816,9 +816,12 @@ Projectile
   DetoY json:"detoY" float32
   P json:"p" [][3]float32
   Rest json:"rest,omitempty" bool
+  Shot json:"shot,omitempty" *int
   T0 json:"t0" int
 ProjectileCoverage
   Published json:"published" int
+  ShotAmbiguous json:"shotAmbiguous" int
+  ShotLinked json:"shotLinked" int
   Tracks json:"tracks" int
   Truncated json:"truncated" int
 RegistryCoverage
@@ -1125,8 +1128,10 @@ VehicleCoverage
   EndDestroyed json:"endDestroyed" int
   EndFilmEnd json:"endFilmEnd" int
   EndUnknown json:"endUnknown" int
+  EndsPastEmptiedKeyframe json:"endsPastEmptiedKeyframe" int
   FamilyResolved json:"familyResolved" int
   FamilyUnknown json:"familyUnknown" int
+  KeyframesEmptiedAtOnce json:"keyframesEmptiedAtOnce" int
   Lives json:"lives" int
   Merged json:"merged" int
   NoPosition json:"noPosition" int
@@ -1234,6 +1239,8 @@ VehicleWeapon
   Fire json:"fire" string
   Fr json:"fr" string
   Fx json:"fx" string
+  Impact json:"impact,omitempty" bool
+  ImpactSound json:"impactSound,omitempty" string
   Loop json:"loop,omitempty" string
   Mount json:"mount,omitempty" *VehicleWeaponMount
   Sound json:"sound,omitempty" string
@@ -1280,6 +1287,7 @@ WeaponLabel
   Fr json:"fr" string
   Fx json:"fx,omitempty" string
   Img json:"img,omitempty" string
+  Impact json:"impact,omitempty" bool
   Key json:"key,omitempty" string
   Role json:"role,omitempty" string
   Tint json:"tint,omitempty" string

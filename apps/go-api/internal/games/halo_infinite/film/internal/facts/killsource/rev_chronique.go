@@ -377,3 +377,10 @@ package killsource
 // killsource : les pistes des objets du monde (`pistesDerriereLaMarche`, `ScanWorldObjects`) ne sont
 // appelees que par la cuisson du rejeu, jamais par ce paquet ni par `sync/killcollector`. Golden
 // regenere a revision constante.
+//
+// A REVISION CONSTANTE (images-cles sans vehicule du match 4898d586, 2026-10-25) : la VALEUR de
+// `grammar.Rev` monte a `grammar-2026-10-25` (ancre d image-cle prouvee par les entrees libres qui la
+// precedent). Aucune source de cette couche ne change et ses lectures sont celles des trames delta
+// (`marche_de_killsource.go` ne marche aucune image-cle) ; la bande des bipedes qu elle recoit
+// ([grammar.FilmContext.BipedSlots]) se releve sur les images-cles : les minibobines du depot rendent
+// des lignes identiques, le parc n a pas ete re-mesure. Golden regenere a revision constante.

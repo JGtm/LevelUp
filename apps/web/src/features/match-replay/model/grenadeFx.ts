@@ -108,6 +108,18 @@ export interface GrenadeRestFx {
   rest: boolean
   /** Germe stable pour la géométrie brisée : revenir en arrière redonne la même forme. */
   seed: number
+  /** Présent = explosion d'un PROJECTILE DE TIR (`buildShotImpactFx`), pas d'une grenade : le
+   *  calque la dessine en explosion quel que soit `rank`, dans cette nature de décharge. */
+  tint?: FxTint
+  /** Stem du son de la détonation d'un projectile de tir (registre de l'arme). Absent sur un
+   *  projectile de tir = explosion muette ; une grenade (sans `tint`) sonne par son rang. */
+  impactStem?: string
+}
+
+/** Germe de la géométrie d'une explosion, fonction de sa seule frame : la même explosion
+ *  rejoue la même forme, grenade ou projectile de tir (une seule formule). */
+export function explosionSeedOf(frame: number): number {
+  return (frame * 2654435761) % 100003
 }
 
 /** Le lancer actif d'un joueur : son rang, et l'âge du geste (en frames). */
@@ -171,7 +183,7 @@ export function buildGrenadeRestFx(doc: ReplayDocumentReady): GrenadeRestFx[] {
       y: pr.detoY,
       rank: g.rank ?? -1,
       rest: !!pr.rest,
-      seed: (frame * 2654435761) % 100003,
+      seed: explosionSeedOf(frame),
     })
   }
   return out

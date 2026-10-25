@@ -221,6 +221,22 @@ func buildMediaLocalWhere(f domain.MediaFilters, cfg mediaQueryConfig) ([]string
 	// l'oublier — la galerie est la surface principale d'un média supprimé.
 	where = append(where, MediaVisiblePredicate("mf"))
 
+	// Audience (auteurs visibles par la session) : posée AVANT le filtre d'auteur
+	// choisi par le client, qu'elle borne sans pouvoir être élargie par lui.
+	if f.Audience != nil {
+		authors := f.Audience.Authors()
+		if len(authors) == 0 {
+			where = append(where, "FALSE")
+		} else {
+			placeholders := make([]string, len(authors))
+			for i, a := range authors {
+				placeholders[i] = "?"
+				args = append(args, a)
+			}
+			where = append(where, "LOWER(mf.player_slug) IN ("+strings.Join(placeholders, ",")+")")
+		}
+	}
+
 	if len(f.AuthorSlugs) > 0 {
 		placeholders := make([]string, len(f.AuthorSlugs))
 		for i, slug := range f.AuthorSlugs {

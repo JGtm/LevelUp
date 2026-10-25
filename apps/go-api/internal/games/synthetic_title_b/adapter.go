@@ -185,5 +185,8 @@ func (a *AssetURLAdapter) WeaponImageIsTinted(_ int64) bool       { return false
 func (a *AssetURLAdapter) KillSourceIcon(_ uint32) (canonical.KillSourceIcon, bool) {
 	return canonical.KillSourceIcon{}, false
 }
+func (a *AssetURLAdapter) SplatterIcon() (canonical.KillSourceIcon, bool) {
+	return canonical.KillSourceIcon{}, false
+}
 func (a *AssetURLAdapter) MatchWebURL(_ string) string          { return "" }
 func (a *AssetURLAdapter) PlayerMatchWebURL(_, _ string) string { return "" }

@@ -42,8 +42,9 @@ func (r *kfRecherche) suivanteOracle(from, prevSlot int) kfIssue {
 		if exact < 0 && g == 1 && ti == BipedTypeIndex {
 			exact = q
 		}
-		r.cands = append(r.cands, kfCandidat{gen: g, slot: s, bit: q, ti: ti})
-		cand := kfCand{gen: g, slot: s, bit: q}
+		att := r.estAttestee(q, s, prevSlot)
+		r.cands = append(r.cands, kfCandidat{gen: g, slot: s, bit: q, ti: ti, attestee: att})
+		cand := kfCand{gen: g, slot: s, bit: q, attestee: att}
 		if s == prevSlot+1 {
 			cand.consecutive = 1
 		}
@@ -51,9 +52,11 @@ func (r *kfRecherche) suivanteOracle(from, prevSlot int) kfIssue {
 			iss.at, best = q, cand
 		}
 	}
+	iss.attestee = best.attestee
 	if iss.at >= 0 && r.preuve != nil {
 		if elu, refutes := r.elire(prevSlot); elu >= 0 {
 			iss.at, iss.refutes = elu, refutes
+			iss.attestee = r.candidatA(elu).attestee
 		} else {
 			iss.contradictoire = true // constat DFIX-R8 : plus de retombée muette
 		}

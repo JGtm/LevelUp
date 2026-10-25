@@ -26,6 +26,7 @@ fire = "single"
 fx = "explosive"
 tint = "blast"
 sound = "vehicle_shot_warthog_rocket_1"
+impact = true
 mount = { aim = "turret", ax = 0.0, ay = 0.26, reach = 0.12 }
 proof = "p"
 
@@ -75,6 +76,10 @@ func TestVehicleWeapons_PoseLesArmesEmployees(t *testing.T) {
 		t.Fatalf("%d armes servies, attendu 2 : %+v", len(doc.VehicleWeapons), doc.VehicleWeapons)
 	}
 	r := doc.VehicleWeapons["0xC7D5091200000000"]
+	if !r.Impact || doc.VehicleWeapons["0x0BB6976B00000000"].Impact {
+		t.Errorf("impact : roquettes %v (attendu vrai), lance-grenades %v (attendu faux)",
+			r.Impact, doc.VehicleWeapons["0x0BB6976B00000000"].Impact)
+	}
 	if r.Vehicle != "rockethog" || r.Fx != "explosive" || r.Tint != "blast" ||
 		r.Sound != "vehicle_shot_warthog_rocket_1" || r.Mount == nil || r.Mount.Aim != "turret" ||
 		r.Mount.AY != 0.26 || r.Mount.Reach != 0.12 || r.En != "Rocket Launcher" || r.Fr != "Lance-roquettes" {

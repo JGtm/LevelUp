@@ -44,7 +44,7 @@
  *
  * Pas de React, pas de Web Audio : logique pure, testée (replaySound.test.ts).
  */
-import { buildGrenadeRestFx } from '../model/grenadeFx'
+import { buildRestFx } from '../model/shotImpactFx'
 import { frameToMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplaySoundEvent } from './replaySound'
@@ -112,8 +112,10 @@ export function grenadeSoundEvents(
     if (stem) out.push({ ms: frameToMs(g.t, doc), stem })
   }
   const consommes = new Set<number>()
-  for (const fx of buildGrenadeRestFx(doc)) {
-    const stem = EXPLOSION_SOUND_STEMS[fx.rank]
+  for (const fx of buildRestFx(doc)) {
+    // Un projectile de tir (`tint` posé) sonne par son ARME, une grenade par son rang : jamais le
+    // son de l'une pour l'autre.
+    const stem = fx.tint === undefined ? EXPLOSION_SOUND_STEMS[fx.rank] : fx.impactStem
     if (!stem) continue
     const ms = frameToMs(fx.frame, doc)
     const jumeau = killExplosions.findIndex(

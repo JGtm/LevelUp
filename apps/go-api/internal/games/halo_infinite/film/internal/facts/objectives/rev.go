@@ -219,6 +219,10 @@ package objectives
 // monte a `grammar-2026-10-21` (pistes de projectile lues par la marche hors bande) ; aucune source de
 // cette couche ne change et aucune de ses lectures n appelle les pistes des objets du monde, l empreinte
 // du golden est recopiee au meme rang.
+// A REVISION CONSTANTE (images-cles sans vehicule du match 4898d586, 2026-10-25) : la VALEUR de
+// `grammar.Rev` monte a `grammar-2026-10-25` (ancre d image-cle prouvee par les entrees libres qui la
+// precedent) ; aucune source de cette couche ne change, l empreinte du golden est recopiee au meme rang.
+// Le parc n a pas ete re-mesure pour les objectifs lus aux images-cles.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-10-17"

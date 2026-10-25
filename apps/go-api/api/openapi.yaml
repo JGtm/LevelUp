@@ -23359,6 +23359,9 @@ components:
             - "null"
         rest:
           type: boolean
+        shot:
+          format: int64
+          type: integer
         t0:
           format: int64
           type: integer
@@ -23375,6 +23378,12 @@ components:
         published:
           format: int64
           type: integer
+        shotAmbiguous:
+          format: int64
+          type: integer
+        shotLinked:
+          format: int64
+          type: integer
         tracks:
           format: int64
           type: integer
@@ -23385,6 +23394,8 @@ components:
         - tracks
         - published
         - truncated
+        - shotLinked
+        - shotAmbiguous
       type: object
     ProposalDTO:
       additionalProperties: false
@@ -27633,10 +27644,13 @@ components:
         squad_deaths:
           format: int64
           type: integer
-        squad_fda:
-          format: double
-          type: number
         squad_kills:
+          format: int64
+          type: integer
+        squad_perf_tier:
+          format: int64
+          type: integer
+        squad_performance:
           format: int64
           type: integer
         start_time:
@@ -31829,10 +31843,16 @@ components:
         endUnknown:
           format: int64
           type: integer
+        endsPastEmptiedKeyframe:
+          format: int64
+          type: integer
         familyResolved:
           format: int64
           type: integer
         familyUnknown:
+          format: int64
+          type: integer
+        keyframesEmptiedAtOnce:
           format: int64
           type: integer
         lives:
@@ -31964,6 +31984,8 @@ components:
         - deathsMatched
         - deathsUnmatched
         - deathsTailDesync
+        - keyframesEmptiedAtOnce
+        - endsPastEmptiedKeyframe
         - endDestroyed
         - endFilmEnd
         - endUnknown
@@ -32257,6 +32279,10 @@ components:
         fr:
           type: string
         fx:
+          type: string
+        impact:
+          type: boolean
+        impactSound:
           type: string
         loop:
           type: string
@@ -32587,6 +32613,8 @@ components:
           type: string
         img:
           type: string
+        impact:
+          type: boolean
         key:
           type: string
         role:

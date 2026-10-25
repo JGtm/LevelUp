@@ -363,6 +363,12 @@ type VehicleCoverage struct {
 	DeathsMatched    int `json:"deathsMatched"`
 	DeathsUnmatched  int `json:"deathsUnmatched"`
 	DeathsTailDesync int `json:"deathsTailDesync"`
+	// KeyframesEmptiedAtOnce compte les images-cles dont le recensement des vehicules tombe de deux
+	// ou plus a zero : elles ne comptent plus comme preuve d absence. EndsPastEmptiedKeyframe compte
+	// les vies dont la preuve d absence en a ete reportee a une image-cle temoin
+	// (`vehicle_keyframe_witness.go`).
+	KeyframesEmptiedAtOnce  int `json:"keyframesEmptiedAtOnce"`
+	EndsPastEmptiedKeyframe int `json:"endsPastEmptiedKeyframe"`
 	// EndDestroyed / EndFilmEnd / EndUnknown ventilent les vies PUBLIEES par cause de fin. Leur
 	// somme vaut `Published`. `EndUnknown` est le RESTE A FAIRE du lot 1.9.10 : la part des vies
 	// dont la disparition n est pas datee.

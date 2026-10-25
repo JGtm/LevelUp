@@ -88,6 +88,10 @@ type LabelCatalog struct {
 	// n'ont pas la même couleur dans le jeu ; deux armes de même couleur n'ont pas la
 	// même forme. Détail et raison dans replay_labels.toml.
 	Tints map[string]string
+	// Impacts est l'ensemble des weapon_key dont le projectile EXPLOSE à l'impact
+	// (`[shot_impact]` du titre), posé par la couche titre comme Tints. Publié à la requête sur
+	// `WeaponLabel.Impact`. Vide = aucune arme à pied n'explose.
+	Impacts map[string]bool
 	// Roles est la table weapon_key -> RÔLE (fonction de combat : automatic, precision,
 	// sniper, power, special, shotgun, sidearm, melee, grenade...), telle que le registre
 	// canonique d'armes la porte (`internal/games/weapons.RolesByKey`). Posée par la COUCHE

@@ -135,11 +135,12 @@ func verifierEntitesContreLaTable(t *testing.T, b bobineEquipes, teams map[int]i
 	}
 }
 
-// TestSansPreuveLeDouteRattrapeLaPerte : LE PRINCIPE, sur de vrais octets (lot D-fix). La marche
-// SANS preuve perd encore le joueur gere de l'index 0 dans l'image-cle d'avant-match de `bcb6d393`
-// et de `fb1a1a72` ; son record etait un candidat que le repli a ECARTE, donc son absence n'y est
-// pas prouvee : l'entite reste « au coup d'envoi », et ce doute se compte.
-func TestSansPreuveLeDouteRattrapeLaPerte(t *testing.T) {
+// TestSansPreuveLAttestationGardeLeJoueurGere : sur de vrais octets, la marche SANS preuve lit le
+// joueur gere de l'index 0 (slot 1297) des la premiere image-cle d'avant-match de `bcb6d393` et de
+// `fb1a1a72` : l'attestation par entrees libres (keyframe_world_attestation.go) elit le vrai record
+// que l'election par slot bas perdait. Le doute d'absence que ce test fixait sur ces octets reste
+// tenu par `TestDoutesDAbsence`, sur un accumulateur fabrique.
+func TestSansPreuveLAttestationGardeLeJoueurGere(t *testing.T) {
 	for _, film := range []string{"bcb6d393", "fb1a1a72"} {
 		_, _, ents := scanPlayerTeamsAvec(NewFilmContext(bobineFilm(t, film)), MarcheDImageCle{})
 		var e PlayerEntity
@@ -148,17 +149,8 @@ func TestSansPreuveLeDouteRattrapeLaPerte(t *testing.T) {
 				e = x
 			}
 		}
-		if e.Slot != 1297 || e.FirstKF == 0 {
-			t.Fatalf("%s : l'entite 1297 est lue a la premiere image-cle sans preuve (%+v) — le "+
-				"temoin ne mord plus", film, e)
-		}
-		if ents.AbsenceProuvee(1297, 0) || !ents.AtStart(e) {
-			t.Errorf("%s : absence de 1297 a l'image-cle 0 prouvee=%v, au depart=%v — le doute ne "+
-				"rattrape pas la perte", film, ents.AbsenceProuvee(1297, 0), ents.AtStart(e))
-		}
-		if ents.ImagesClesDouteuses() == 0 || ents.BornesDifferees() == 0 {
-			t.Errorf("%s : images douteuses %d, bornes differees %d — le doute n'est pas compte", film,
-				ents.ImagesClesDouteuses(), ents.BornesDifferees())
+		if e.Slot != 1297 || e.FirstKF != 0 {
+			t.Fatalf("%s : l'entite 1297 n'est pas lue a la premiere image-cle sans preuve (%+v)", film, e)
 		}
 	}
 }

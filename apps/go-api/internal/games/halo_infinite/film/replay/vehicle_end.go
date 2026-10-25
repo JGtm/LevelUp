@@ -36,6 +36,9 @@ import (
 
 // vehicleDeathTally est le bilan de l attribution des morts ecrites aux vies recensees.
 type vehicleDeathTally struct {
+	// vehicleCensusTally : ce que la regle des images-cles videes d un coup a fait aux preuves
+	// d absence (vehicle_keyframe_witness.go), posee par [vehicleLives].
+	vehicleCensusTally
 	// read : morts `ti=40` rendues par la marche ; matched : celles qu une vie a reprises ;
 	// unmatched : celles qu AUCUNE vie ne reprend.
 	read, matched, unmatched int
