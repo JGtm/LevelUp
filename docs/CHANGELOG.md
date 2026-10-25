@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [8.0.5] - 2026-10-25
+
+### Added
+- **Replay: explosions at the impact of explosive projectiles** — the Wraith mortar, rockets (M41 SPNKr, Rockethog), Cindershot, Hydra, Fuel Rod, the Banshee bomb and the Wasp missiles now explode where their projectile detonates, like grenades. Each projectile is linked to the shot that fired it (same frame, same spot, a single candidate weapon); plasma weapons do not explode. The Wraith mortar and the Banshee bomb play their in-game detonation sound, extracted from the game and chosen by ear.
+- **Squad: "Team performance" column** in the match history table — the average performance score (0-100, 50 = usual level) of the squad members present in the match; it replaces the squad KDA column.
+
+### Fixed
+- **Replay: vehicles no longer vanish mid-match** — the film reader could skip the whole block of vehicles in some full snapshots of the film, and the replay then took that gap as the vehicle being gone: a Wraith and its driver disappeared 22 s before their destruction. The reader now only anchors on a record the film itself confirms; across a 400-film sample, snapshots where every vehicle drops to zero are halved.
+- **Kill feed: splatters show the splatter icon** instead of a plain dot.
+- **"Loading LevelUp…" in the right language** — the waiting screen picks the URL language, then the last session's language, then the browser's, before the server answers.
+- **Squad: match history table uses the Explorer's font size.**
+- **Media visibility limited to the player's groups** — galleries (Home, Media page), author list, file serving and the Media tab of the match and replay only show media from the page's player and the members of their groups, within the viewer's reach; without a group, the player's own media only.
+
+### Ops
+- **Replay schema 104 and film grammar revision** — every replay must be re-decoded from its film to get the vehicle fix and the impact explosions; older replays keep working as before until then.
+
 ## [8.0.4] - 2026-10-23
 
 ### Added
