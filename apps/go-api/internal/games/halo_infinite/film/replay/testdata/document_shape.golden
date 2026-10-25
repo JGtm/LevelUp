@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 104
-empreinte-stockee 9d9d7eafb627e845
-empreinte-servie 9d9d7eafb627e845
-empreinte-cuite a82fbc784818e736
+empreinte-stockee 0b17b0d6cd4d78c1
+empreinte-servie 0b17b0d6cd4d78c1
+empreinte-cuite 024d3476ff293972
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -1128,8 +1128,10 @@ VehicleCoverage
   EndDestroyed json:"endDestroyed" int
   EndFilmEnd json:"endFilmEnd" int
   EndUnknown json:"endUnknown" int
+  EndsPastEmptiedKeyframe json:"endsPastEmptiedKeyframe" int
   FamilyResolved json:"familyResolved" int
   FamilyUnknown json:"familyUnknown" int
+  KeyframesEmptiedAtOnce json:"keyframesEmptiedAtOnce" int
   Lives json:"lives" int
   Merged json:"merged" int
   NoPosition json:"noPosition" int

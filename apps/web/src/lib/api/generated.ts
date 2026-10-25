@@ -10803,11 +10803,17 @@ export interface components {
             p: (number[] | null)[] | null;
             rest?: boolean;
             /** Format: int64 */
+            shot?: number;
+            /** Format: int64 */
             t0: number;
         };
         ProjectileCoverage: {
             /** Format: int64 */
             published: number;
+            /** Format: int64 */
+            shotAmbiguous: number;
+            /** Format: int64 */
+            shotLinked: number;
             /** Format: int64 */
             tracks: number;
             /** Format: int64 */
@@ -12420,10 +12426,12 @@ export interface components {
             squad_assists?: number;
             /** Format: int64 */
             squad_deaths?: number;
-            /** Format: double */
-            squad_fda?: number;
             /** Format: int64 */
             squad_kills?: number;
+            /** Format: int64 */
+            squad_perf_tier?: number;
+            /** Format: int64 */
+            squad_performance?: number;
             start_time: string;
             /** Format: double */
             team_mmr_avg?: number;
@@ -14123,9 +14131,13 @@ export interface components {
             /** Format: int64 */
             endUnknown: number;
             /** Format: int64 */
+            endsPastEmptiedKeyframe: number;
+            /** Format: int64 */
             familyResolved: number;
             /** Format: int64 */
             familyUnknown: number;
+            /** Format: int64 */
+            keyframesEmptiedAtOnce: number;
             /** Format: int64 */
             lives: number;
             /** Format: int64 */
@@ -14313,6 +14325,8 @@ export interface components {
             fire: string;
             fr: string;
             fx: string;
+            impact?: boolean;
+            impactSound?: string;
             loop?: string;
             mount?: components["schemas"]["VehicleWeaponMount"];
             sound?: string;
@@ -14451,6 +14465,7 @@ export interface components {
             fr: string;
             fx?: string;
             img?: string;
+            impact?: boolean;
             key?: string;
             role?: string;
             tint?: string;

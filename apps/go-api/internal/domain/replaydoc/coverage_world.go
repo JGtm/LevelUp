@@ -118,6 +118,8 @@ type VehicleCoverage struct {
 	DeathsMatched                   int            `json:"deathsMatched"`
 	DeathsUnmatched                 int            `json:"deathsUnmatched"`
 	DeathsTailDesync                int            `json:"deathsTailDesync"`
+	KeyframesEmptiedAtOnce          int            `json:"keyframesEmptiedAtOnce"`
+	EndsPastEmptiedKeyframe         int            `json:"endsPastEmptiedKeyframe"`
 	EndDestroyed                    int            `json:"endDestroyed"`
 	EndFilmEnd                      int            `json:"endFilmEnd"`
 	EndUnknown                      int            `json:"endUnknown"`

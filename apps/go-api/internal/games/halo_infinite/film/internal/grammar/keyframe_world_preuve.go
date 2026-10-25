@@ -133,6 +133,17 @@ func (p *PreuveDImageCle) prouve(pay []byte, bit, slot int) bool {
 // kfCandidat est un candidat d'une fenêtre de recherche, avec son archétype.
 type kfCandidat struct {
 	gen, slot, bit, ti int
+	attestee           bool // [kfRecherche.estAttestee]
+}
+
+// candidatA rend le candidat de la dernière fenêtre dont l'ancre est au bit `bit`.
+func (r *kfRecherche) candidatA(bit int) kfCandidat {
+	for _, c := range r.cands {
+		if c.bit == bit {
+			return c
+		}
+	}
+	return kfCandidat{}
 }
 
 // contredit dit si deux candidats ont l'ordre de leurs bits et celui de leurs slots inversés : ils
@@ -167,7 +178,7 @@ func (r *kfRecherche) meilleurCandidat(prevSlot int, exclus []bool) int {
 		if exclus[i] {
 			continue
 		}
-		k := kfCand{gen: c.gen, slot: c.slot, bit: c.bit}
+		k := kfCand{gen: c.gen, slot: c.slot, bit: c.bit, attestee: c.attestee}
 		if c.slot == prevSlot+1 {
 			k.consecutive = 1
 		}

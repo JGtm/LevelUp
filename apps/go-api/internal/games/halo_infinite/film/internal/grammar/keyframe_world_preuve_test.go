@@ -50,10 +50,11 @@ func TestMarcheDuFilmGardeLesRecordsDAvantMatch(t *testing.T) {
 		}
 		pay := pks[c.paquet].Payload(raw)
 		sans := slotsDesRecords(WalkKeyframeWorld(pay))
-		// LE TEMOIN : sans preuve, la fausse ancre est elue et le joueur gere de l'index 0 perdu.
-		if _, elue := sans[192]; !elue || sans[1297] == managedPlayerTypeIndex {
-			t.Fatalf("%s m%d p%d : la marche sans preuve n'elit plus 192 ou garde 1297 — le temoin "+
-				"ne mord plus, la bobine a change", c.film, c.chunk, c.paquet)
+		// L'ATTESTATION PAR ENTREES LIBRES (keyframe_world_attestation.go) elit deja le vrai record
+		// sans preuve : la fausse ancre 192 n'est plus elue, meme par la marche des instruments.
+		if _, elue := sans[192]; elue || sans[1297] != managedPlayerTypeIndex {
+			t.Fatalf("%s m%d p%d : la marche sans preuve elit 192 ou perd 1297 malgre l'attestation",
+				c.film, c.chunk, c.paquet)
 		}
 		mp := fc.MarcheDImageCle().Marcher(pay)
 		avec := slotsDesRecords(mp.Records)
@@ -69,8 +70,9 @@ func TestMarcheDuFilmGardeLesRecordsDAvantMatch(t *testing.T) {
 			t.Errorf("%s m%d p%d : le joueur gere de l'index 0 (slot 1297) n'est pas lu ti=9", c.film,
 				c.chunk, c.paquet)
 		}
-		if mp.Stats.Refutations != 1 {
-			t.Errorf("%s m%d p%d : %d refutation(s), attendu 1", c.film, c.chunk, c.paquet, mp.Stats.Refutations)
+		if mp.Stats.Refutations != 0 || mp.Stats.ElectionsAttestees == 0 {
+			t.Errorf("%s m%d p%d : %d refutation(s) et %d election(s) attestee(s), attendu 0 et au moins 1",
+				c.film, c.chunk, c.paquet, mp.Stats.Refutations, mp.Stats.ElectionsAttestees)
 		}
 		for _, e := range mp.Ecartes {
 			if e.TI == managedPlayerTypeIndex {

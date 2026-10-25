@@ -112,6 +112,7 @@ func buildVehicleTracks(ctx context.Context,
 	cov.Lives = len(lives)
 	cov.DeathsRead, cov.DeathsMatched = deathTally.read, deathTally.matched
 	cov.DeathsUnmatched, cov.DeathsTailDesync = deathTally.unmatched, deathTally.tailDesync
+	cov.KeyframesEmptiedAtOnce, cov.EndsPastEmptiedKeyframe = deathTally.emptied, deathTally.deferred
 	spawns := vehicleSpawnsByLife(scan.Creations, lives)
 	bySlot := vehiclePositionsBySlot(scan.Positions)
 	// F-2 AVANT TOUT USAGE DU NUAGE (lot M1 des retours du rejeu) : un echantillon atteint ou quitte
@@ -158,12 +159,18 @@ func vehicleLives(ctx context.Context,
 	kf grammar.WorldObjectKeyframes, deaths []types.ObjectDeath,
 ) ([]vehicleLife, vehicleDeathTally) {
 	out := make([]vehicleLife, 0, len(kf.SeenUS))
+	emptied := keyframesEmptiedAtOnce(kf)
+	var census vehicleCensusTally
+	census.emptied = len(emptied)
 	for key, seen := range kf.SeenUS {
 		if len(seen) == 0 {
 			continue
 		}
 		l := vehicleLife{key: key, firstUS: seen[0], lastUS: seen[len(seen)-1], census: len(seen)}
-		l.goneByUS = firstTimeAfter(kf.TimesUS, l.lastUS)
+		l.goneByUS = firstWitnessAfter(kf.TimesUS, emptied, l.lastUS)
+		if l.goneByUS != firstTimeAfter(kf.TimesUS, l.lastUS) {
+			census.deferred++
+		}
 		out = append(out, l)
 	}
 	// ORDRE TOTAL (J10.1, DT-9) : la generation termine la cle (liste batie en iterant une MAP).
@@ -171,7 +178,9 @@ func vehicleLives(ctx context.Context,
 		return cmp.Or(cmp.Compare(a.key.Slot, b.key.Slot), cmp.Compare(a.firstUS, b.firstUS), cmp.Compare(a.key.Gen, b.key.Gen))
 	})
 	assignVehicleWindows(out)
-	return out, assignVehicleDeaths(ctx, out, deaths)
+	tally := assignVehicleDeaths(ctx, out, deaths)
+	tally.vehicleCensusTally = census
+	return out, tally
 }
 
 // assignVehicleWindows pose `loUS` / `hiUS` sur des vies DEJA triees par (slot, premier

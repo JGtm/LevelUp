@@ -1471,8 +1471,10 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   « a republier ». Detail : `document_chronicle.go`.
 	// - 104 (2026-10-25, lot impact des projectiles explosifs) : champ neuf `projectiles[].shot`
 	//   (index du tir dont le projectile est né) et compteurs `coverage.projectiles.shotLinked /
-	//   shotAmbiguous`. Assemblage seul : un v103 se lit « a republier ». Détail :
-	//   `document_chronicle.go`.
+	//   shotAmbiguous`. Détail : `document_chronicle.go`.
+	//   Même version, même jour (images-cles sans vehicule) : deux compteurs neufs de `coverage.vehicles` ; une
+	//   image-cle videe d un coup n est plus une preuve d absence d un vehicule. `grammar.Rev` monte sur
+	//   la meme branche : un v103 se lit « a redecoder ». Detail : `document_chronicle.go`.
 	if SchemaVersion != 104 {
 		t.Fatalf("SchemaVersion = %d, attendu 104 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)

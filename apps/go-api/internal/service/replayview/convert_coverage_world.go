@@ -122,6 +122,8 @@ func toVehicleCoverage(v replay.VehicleCoverage) replaydoc.VehicleCoverage {
 		DeathsMatched:                   v.DeathsMatched,
 		DeathsUnmatched:                 v.DeathsUnmatched,
 		DeathsTailDesync:                v.DeathsTailDesync,
+		KeyframesEmptiedAtOnce:          v.KeyframesEmptiedAtOnce,
+		EndsPastEmptiedKeyframe:         v.EndsPastEmptiedKeyframe,
 		EndDestroyed:                    v.EndDestroyed,
 		EndFilmEnd:                      v.EndFilmEnd,
 		EndUnknown:                      v.EndUnknown,

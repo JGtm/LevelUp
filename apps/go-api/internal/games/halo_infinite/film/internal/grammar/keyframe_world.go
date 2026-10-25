@@ -123,16 +123,19 @@ func motifDAncre(prevSlot int) source.Motif64 {
 }
 
 // kfCand est une ancre candidate en cours d'évaluation. Les quatre champs sont exactement les
-// quatre clés de tri de betterThan, dans l'ordre — les passer groupés évite la file de huit
+// clés de tri de betterThan, dans l'ordre — les passer groupés évite la file de huit
 // entiers nus où deux clés s'inversent sans que rien ne le signale.
 type kfCand struct {
-	consecutive int // 1 si slot == prevSlot+1
+	attestee    bool // [kfRecherche.estAttestee] : les entrees libres exigees par son slot le precedent
+	consecutive int  // 1 si slot == prevSlot+1
 	gen         int
 	slot        int
 	bit         int // position en bits dans le payload
 }
 
-// betterThan : priorité de l'ÉLECTION — consécutif (slot==prev+1) d'abord, puis gen BAS
+// betterThan : priorité de l'ÉLECTION — ATTESTÉ d'abord (les entrées libres exigées par son slot le
+// précèdent, `keyframe_world_attestation.go` : un candidat attesté bat tout non attesté, quels que
+// soient son slot et sa génération), puis consécutif (slot==prev+1) d'abord, puis gen BAS
 // (gen==1 réel bat un faux gen 2/3 au même slot ; un vrai gen≥2 mid-match reste choisi s'il
 // est seul candidat du slot), puis slot bas, puis bit bas.
 //
@@ -144,6 +147,9 @@ type kfCand struct {
 // record suivant situé plus près (sonde P2 : 81c02726 morceau 9, slot 256 `ti 0` élu à +62 618
 // bits devant sept bipèdes ; a0c36016 morceau 2, slot 385 `ti 19` devant huit).
 func (c kfCand) betterThan(best kfCand) bool {
+	if c.attestee != best.attestee {
+		return c.attestee
+	}
 	if c.consecutive != best.consecutive {
 		return c.consecutive > best.consecutive
 	}
@@ -200,6 +206,8 @@ type kfIssue struct {
 	contradictoire bool
 	// glissements : les fenêtres VIDES franchies pour atteindre l'ancre.
 	glissements int
+	// attestee : l'ancre élue par le repli est attestée par les entrées libres qui la précèdent.
+	attestee bool
 }
 
 // suivante : la prochaine ancre après `from` dans une fenêtre de `maxWin` bits.
@@ -248,8 +256,9 @@ func (r *kfRecherche) suivante(from, prevSlot int) kfIssue { //nolint:gocyclo //
 		if exact < 0 && g == 1 && ti == BipedTypeIndex {
 			exact = q
 		}
-		r.cands = append(r.cands, kfCandidat{gen: g, slot: s, bit: q, ti: ti})
-		cand := kfCand{gen: g, slot: s, bit: q}
+		att := r.estAttestee(q, s, prevSlot)
+		r.cands = append(r.cands, kfCandidat{gen: g, slot: s, bit: q, ti: ti, attestee: att})
+		cand := kfCand{gen: g, slot: s, bit: q, attestee: att}
 		if s == prevSlot+1 {
 			cand.consecutive = 1
 		}
@@ -257,9 +266,11 @@ func (r *kfRecherche) suivante(from, prevSlot int) kfIssue { //nolint:gocyclo //
 			iss.at, best = q, cand
 		}
 	}
+	iss.attestee = best.attestee
 	if iss.at >= 0 && r.preuve != nil {
 		if elu, refutes := r.elire(prevSlot); elu >= 0 {
 			iss.at, iss.refutes = elu, refutes
+			iss.attestee = r.candidatA(elu).attestee
 		} else {
 			iss.contradictoire = true // constat DFIX-R8 : plus de retombée muette
 		}
@@ -343,6 +354,10 @@ type KeyframeWalkStats struct {
 	PreuvesContradictoires int
 	// Glissements : fenêtres VIDES traversées sans arrêter la marche (cf. [kfRecherche.glissante]).
 	Glissements int
+	// ElectionsAttestees : élections dont l'élu a devant lui exactement les entrées libres que son
+	// slot exige (`keyframe_world_attestation.go`) ; ElectionsNonAttestees : le repli sans cette
+	// preuve. Leur somme est [KeyframeWalkStats.Elections].
+	ElectionsAttestees, ElectionsNonAttestees int
 }
 
 // Ajouter cumule `o` dans `s`.
@@ -357,6 +372,8 @@ func (s *KeyframeWalkStats) Ajouter(o KeyframeWalkStats) {
 	s.Refutations += o.Refutations
 	s.PreuvesContradictoires += o.PreuvesContradictoires
 	s.Glissements += o.Glissements
+	s.ElectionsAttestees += o.ElectionsAttestees
+	s.ElectionsNonAttestees += o.ElectionsNonAttestees
 }
 
 // compter note une recherche d'ancre.
@@ -373,6 +390,11 @@ func (s *KeyframeWalkStats) compter(iss kfIssue) {
 		s.Recalages++
 	case kfElection:
 		s.Elections++
+		if iss.attestee {
+			s.ElectionsAttestees++
+		} else {
+			s.ElectionsNonAttestees++
+		}
 	}
 }
 

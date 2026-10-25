@@ -3590,6 +3590,24 @@ package replay
 //	CE QUI MONTE    `SchemaVersion` 103 -> 104. Aucune revision de couche ni `SchemaDesFaits` ne
 //	AVEC ELLE       bouge : l'ASSEMBLAGE seul pose le lien, a partir de faits deja lus.
 //
-//	LE PARC         un artefact 103 : verdict `a republier` (assemblage seul, aucun fait perime).
-//	                Sans recuisson il n'a aucun lien et le rejeu n'y dessine aucune explosion de
-//	                projectile, sans erreur. Recuisson du parc : decision utilisateur.
+//	LE PARC         seul, ce lien ne demanderait qu'une republication ; la meme version porte la
+//	                correction de lecture des images-cles ci-dessous (`grammar.Rev` monte) : un
+//	                artefact 103 se lit donc `a redecoder`. Sans recuisson il n'a aucun lien et le
+//	                rejeu n'y dessine aucune explosion de projectile, sans erreur.
+//
+// v104, MEME VERSION (2026-10-25, images-cles sans vehicule du match 4898d586) : le CONTENU change, deux compteurs
+// neufs de `coverage.vehicles`. Une image-cle dont le recensement des vehicules tombe de deux ou plus a
+// zero (et les images-cles vides qui la suivent) n est plus une preuve d absence : la fin d une vie
+// n est plus coupee a cet instant (vehicle_keyframe_witness.go). Un seul vehicule qui passe a zero reste
+// une fin ; une vie qu aucune image-cle temoin ne suit garde la premiere image-cle suivante.
+//
+//	`coverage.vehicles.keyframesEmptiedAtOnce`   images-cles ignorees comme preuve d absence.
+//	`coverage.vehicles.endsPastEmptiedKeyframe`  vies dont la preuve d absence a ete reportee a une
+//	                 image-cle temoin : echantillons, mort ecrite et trajet du conducteur vont jusqu a elle.
+//
+//	CE QUI MONTE    `SchemaVersion` 103 -> 104. Avec lui, sur la meme branche, `grammar.Rev` ->
+//	AVEC ELLE       `grammar-2026-10-25` (l ancre d image-cle elue par le repli se prouve par les entrees
+//	                libres qui la precedent : les vehicules ne sont plus ecartes) et les revisions qui
+//	                hachent sa valeur ; `SchemaDesFaits` garde sa valeur.
+//
+//	LE PARC         un artefact 103 : verdict `redecoder` (la revision de grammaire a change).
