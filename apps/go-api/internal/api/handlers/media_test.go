@@ -38,9 +38,11 @@ type mockMediaService struct {
 	del        *domain.MediaDeleteResponse
 	delErr     error
 	delReq     *domain.MediaDeleteRequest // dernière requête reçue (assertions d'identité)
+	pageReq    *domain.MediaPageRequest   // dernière requête de galerie reçue (assertions d'audience)
 }
 
-func (m *mockMediaService) GetMediaPage(_ context.Context, _ domain.MediaPageRequest) (*domain.MediaPageResponse, error) {
+func (m *mockMediaService) GetMediaPage(_ context.Context, req domain.MediaPageRequest) (*domain.MediaPageResponse, error) {
+	m.pageReq = &req
 	return m.page, m.pageErr
 }
 
@@ -89,7 +91,8 @@ func (m *mockMediaService) DeleteMedia(_ context.Context, req domain.MediaDelete
 
 func newMediaRouter(factory handlers.ServiceFactory[port.MediaService]) *chi.Mux {
 	r := chi.NewRouter()
-	h := handlers.NewMediaHandler(factory, nil, "")
+	// Audience : la page et un co-membre de groupe (Madina).
+	h := handlers.NewMediaHandler(factory, nil, "").WithMediaAudience(staticAudience(testPlayerSlug, "Madina"))
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		h.Mount(r) // 5 routes JSON migrées Huma (pages/media, likes, match-candidates, associate, authors)
 	})

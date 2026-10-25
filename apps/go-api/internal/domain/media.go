@@ -31,6 +31,9 @@ type MediaPageRequest struct {
 	Sort           string            `json:"sort,omitempty"`
 	LikedOnly      bool              `json:"liked_only,omitempty"`
 	UnassignedOnly bool              `json:"unassigned_only,omitempty"`
+	// Audience : auteurs visibles, posée par le handler depuis la session, jamais lue
+	// du corps. Nil = aucune restriction (appelants internes).
+	Audience *MediaAudience `json:"-"`
 }
 
 // MediaFilters regroupe les paramètres de filtrage/tri pour le repository.
@@ -45,6 +48,9 @@ type MediaFilters struct {
 	UnassignedOnly bool     // restreindre aux médias sans match associé
 	Sort           string   // "date_desc" | "date_asc" | "map_asc" | "mode_asc"
 	GroupBy        string   // "" | "owner" | "map" | "mode" | "session" | "liked"
+	// Audience : auteurs visibles, appliquée EN PLUS de tout autre filtre d'auteur
+	// (AuthorSlugs ne peut pas l'élargir). Nil = aucune restriction.
+	Audience *MediaAudience
 }
 
 // MediaAuthor décrit un auteur sélectionnable dans le filtre Auteurs.

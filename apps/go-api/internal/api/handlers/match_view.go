@@ -133,6 +133,7 @@ type MatchViewHandler struct {
 	newSvc        ServiceFactory[port.MatchViewService]
 	settingsStore *settings.Store
 	repoRoot      string
+	mediaAudience MediaAudienceResolver // auteurs visibles de l'onglet Médias (nil : joueur de la page seul)
 }
 
 // NewMatchViewHandler crée un MatchViewHandler.
@@ -147,6 +148,13 @@ func NewMatchViewHandler(newSvc ServiceFactory[port.MatchViewService]) *MatchVie
 func (h *MatchViewHandler) WithMediaURLs(store *settings.Store, repoRoot string) *MatchViewHandler {
 	h.settingsStore = store
 	h.repoRoot = repoRoot
+	return h
+}
+
+// WithMediaAudience câble le résolveur des auteurs visibles de l'onglet Médias du match
+// et du rejeu (même règle que la galerie).
+func (h *MatchViewHandler) WithMediaAudience(resolve MediaAudienceResolver) *MatchViewHandler {
+	h.mediaAudience = resolve
 	return h
 }
 
@@ -222,6 +230,8 @@ func (h *MatchViewHandler) handleGetMatchView(ctx context.Context, in *matchView
 	// Onglet médias : réécrire les chemins bruts en URLs servables (même
 	// transformation que la galerie /pages/media). Sans ça les vignettes webp
 	// et le média dans le lecteur tombent en 404 (chemins relatifs bruts).
+	resp.MediaTab.MediaItems = filterMatchMediaByAudience(resp.MediaTab.MediaItems,
+		resolveMediaAudience(ctx, h.mediaAudience, in.PlayerSlug))
 	h.transformMatchMediaURLs(in.PlayerSlug, resp.MediaTab.MediaItems)
 	out := &matchViewOutput{Body: resp}
 	// Vue en panne partielle (D-9) OU analyse du film en cours : réponses transitoires, aucun

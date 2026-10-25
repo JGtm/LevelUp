@@ -45,12 +45,13 @@ func getReplayContext(t *testing.T, svc *mockMatchViewService) *httptest.Respons
 func TestReplayContextHandler_OK(t *testing.T) {
 	thumb := "captures/clip.webp"
 	gt := "Moi"
+	owner := "test-player"
 	svc := &mockMatchViewService{replayCtx: domain.MatchReplayContext{
 		Header:          domain.MatchViewHeader{MatchID: "abc123", T0Ms: 15_000},
 		Scoreboard:      []domain.MatchScoreboardRow{{XUID: "me", Gamertag: "Moi", IsMe: true}},
 		HighlightEvents: []domain.MatchHighlightEvent{{EventType: "kill", ActorGamertag: &gt}},
 		Media: domain.MatchMediaTab{MediaItems: []domain.MatchAssociatedMedia{
-			{FileID: "f1", FilePath: "captures/clip.mp4", ThumbnailURL: &thumb},
+			{FileID: "f1", FilePath: "captures/clip.mp4", ThumbnailURL: &thumb, OwnerGamertag: &owner},
 		}},
 	}}
 	w := getReplayContext(t, svc)

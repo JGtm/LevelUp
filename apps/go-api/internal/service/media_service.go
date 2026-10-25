@@ -101,6 +101,7 @@ func (s *MediaService) GetMediaPage(
 		UnassignedOnly: req.UnassignedOnly,
 		Sort:           req.Sort,
 		GroupBy:        req.GroupBy,
+		Audience:       req.Audience,
 	}
 
 	files, err := s.repo.LoadMediaFiles(ctx, filters, limit, offset)
@@ -141,6 +142,7 @@ func (s *MediaService) GetMediaPage(
 			SectionFilter:  filters.SectionFilter,
 			AuthorSlugs:    filters.AuthorSlugs,
 			UnassignedOnly: true,
+			Audience:       filters.Audience,
 		}
 		if n, err := s.repo.CountMediaFiles(ctx, unassignedFilters); err == nil {
 			totalUnassigned = n

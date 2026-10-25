@@ -219,15 +219,17 @@ func TestMatchViewHandler_ServiceError(t *testing.T) {
 // L'owner du chemin (JGtm) reste préfixe ; le slug d'URL ne sert qu'au scope.
 func TestMatchViewHandler_MediaURLsTransformed(t *testing.T) {
 	thumb := "JGtm/thumbs/clip.webp"
+	owner := "JGtm"
 	expected := domain.MatchViewResponse{
 		Header: domain.MatchViewHeader{MatchID: "m-media"},
 		MediaTab: domain.MatchMediaTab{
 			MediaItems: []domain.MatchAssociatedMedia{{
-				FileID:       "1",
-				FileName:     "clip.mp4",
-				FilePath:     "JGtm/clip.mp4",
-				Kind:         "video",
-				ThumbnailURL: &thumb,
+				FileID:        "1",
+				FileName:      "clip.mp4",
+				FilePath:      "JGtm/clip.mp4",
+				Kind:          "video",
+				ThumbnailURL:  &thumb,
+				OwnerGamertag: &owner,
 			}},
 		},
 	}
@@ -241,7 +243,8 @@ func TestMatchViewHandler_MediaURLsTransformed(t *testing.T) {
 	r := chi.NewRouter()
 	// WithMediaURLs(nil, "") : pas de settings store en test ; les chemins relatifs
 	// (post-migration) se transforment sans capturesBase/repoRoot.
-	h := handlers.NewMatchViewHandler(factory).WithMediaURLs(nil, "")
+	h := handlers.NewMatchViewHandler(factory).WithMediaURLs(nil, "").
+		WithMediaAudience(staticAudience(testPlayerSlug, "JGtm"))
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		h.Mount(r)
 	})

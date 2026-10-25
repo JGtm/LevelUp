@@ -39,7 +39,10 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roots := h.mediaRoots(slug)
+	// Les racines communes {base}/{owner}/{rel} ne servent que le fichier d'un auteur de
+	// l'audience ; les racines propres au joueur de la page restent ouvertes.
+	audience := resolveMediaAudience(r.Context(), h.audience, slug)
+	roots := h.mediaRoots(slug, audience.Allows(mediaURLOwner(cleanURL)))
 	if len(roots) == 0 {
 		httpError(r.Context(), w, "file serving not configured", http.StatusServiceUnavailable)
 		return
@@ -71,8 +74,9 @@ type mediaRoot struct {
 
 // mediaRoots rend les racines candidates, dans l'ordre de résolution. La première
 // (capturesBase brut) gère le format canonique {owner_slug}/{rel} ; les suivantes sont
-// des replis.
-func (h *MediaHandler) mediaRoots(slug string) []mediaRoot {
+// des replis. withShared=false retire les deux racines communes à tous les auteurs
+// ({base} et {root}/data/media) : seules restent celles du joueur `slug`.
+func (h *MediaHandler) mediaRoots(slug string, withShared bool) []mediaRoot {
 	capturesBase := ""
 	if h.settingsStore != nil {
 		if cfg, err := h.settingsStore.Load(); err == nil {
@@ -83,14 +87,19 @@ func (h *MediaHandler) mediaRoots(slug string) []mediaRoot {
 	if capturesBase != "" {
 		canonical := filepath.Clean(capturesBase)   // {base}/{owner}/{rel}
 		legacy := filepath.Join(capturesBase, slug) // rpath sans préfixe owner
-		roots = append(roots, mediaRoot{canonical, canonical}, mediaRoot{legacy, legacy})
+		if withShared {
+			roots = append(roots, mediaRoot{canonical, canonical})
+		}
+		roots = append(roots, mediaRoot{legacy, legacy})
 	}
 	if h.repoRoot != "" {
 		pr := titlePkg.NewPathResolver(h.repoRoot)
 		// Base média canonique {root}/data/media (rpath = {owner}/{rel}). Rattrape un
 		// media_captures_base_dir absent ou invalide (chemin d'un autre OS).
-		dataMedia := pr.MediaDataDir()
-		roots = append(roots, mediaRoot{dataMedia, dataMedia})
+		if withShared {
+			dataMedia := pr.MediaDataDir()
+			roots = append(roots, mediaRoot{dataMedia, dataMedia})
+		}
 		// Legacy interne : rpath = captures/{rel}, relatif au dossier du joueur. Le dossier
 		// du joueur porte aussi sa base DuckDB et ses réglages : seul captures/ est servi.
 		captures := pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug)

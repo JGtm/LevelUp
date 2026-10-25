@@ -150,6 +150,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	playerAccess := middleware.NewPlayerAccess(cfg.DemoMode, cfg.AuthMode,
 		playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(groupStore, users))
 	ownershipMW := middleware.RequirePlayerOwnership(playerAccess)
+	// Auteurs visibles des médias (galerie, fichiers, onglet Médias du match et du rejeu).
+	mediaAudience := mediaAudienceResolver(authz.Enforced(cfg.DemoMode, cfg.AuthMode) && users != nil,
+		func(titleSlug string) ([]domain.PlayerSummary, error) { return cfg.LoadPlayers(titleSlug) },
+		groupCoMembers(groupStore), users)
 	var xboxOAuthRoot *handlers.XboxOAuthHandler
 	// V72-01 / H1 : option de document PARTAGÉ pour toutes les routes Huma montées
 	// directement sous /api/v1 (r nu, r.With(mw), r.Group(mw) — préfixe de path
@@ -802,7 +806,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// WithMediaURLs : transforme les chemins média de l'onglet médias en
 		// URLs servables, comme la galerie (settingsStore + repoRoot déjà en portée).
 		mv := handlers.NewMatchViewHandler(reg.MatchView).
-			WithMediaURLs(settingsStore, cfg.RepoRoot)
+			WithMediaURLs(settingsStore, cfg.RepoRoot).
+			WithMediaAudience(mediaAudience)
 		mv.Mount(r.With(participated), playerOpt)
 
 		// Rejeu 2D (vue du dessus) — artefact pré-construit servi tel quel ; 404 si
@@ -943,7 +948,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 				return cfg.LoadPlayers(titleSlug)
 			}).
 			WithNotificationsEmitterFactory(reg.NotificationsEmitter).
-			WithMediaRecipientResolver(reg.MediaRecipientResolver(cfg))
+			WithMediaRecipientResolver(reg.MediaRecipientResolver(cfg)).
+			WithMediaAudience(mediaAudience)
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapMedia))
 			// 5 routes JSON migrées vers Huma (pages/media, likes, match-candidates,

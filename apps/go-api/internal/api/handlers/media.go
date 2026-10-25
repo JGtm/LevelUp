@@ -152,6 +152,7 @@ type MediaHandler struct {
 	uploadSlots       *slots.Pool                 // envois en vol (défaut : pool global du process)
 	uploadSlotWait    time.Duration               // attente maximale d'une place d'envoi
 	uploadReadBudget  time.Duration               // délai de lecture du corps une fois la place obtenue
+	audience          MediaAudienceResolver       // auteurs visibles (nil : joueur de la page seul)
 }
 
 // NewMediaHandler crée un MediaHandler.
@@ -292,6 +293,8 @@ func (h *MediaHandler) handleGetMediaLibrary(ctx context.Context, in *mediaLibra
 	if req.Page < 1 {
 		req.Page = 1
 	}
+	audience := resolveMediaAudience(ctx, h.audience, in.PlayerSlug)
+	req.Audience = &audience
 
 	resp, err := svc.GetMediaPage(ctx, req)
 	if err != nil {
@@ -374,9 +377,16 @@ func (h *MediaHandler) handleGetMediaAuthors(ctx context.Context, in *mediaAutho
 	if err != nil {
 		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
 	}
-	authors, err := svc.ListMediaAuthors(ctx)
+	all, err := svc.ListMediaAuthors(ctx)
 	if err != nil {
 		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "authors_query_error", err)
+	}
+	audience := resolveMediaAudience(ctx, h.audience, in.PlayerSlug)
+	authors := make([]domain.MediaAuthor, 0, len(all))
+	for _, a := range all {
+		if audience.Allows(a.PlayerSlug) {
+			authors = append(authors, a)
+		}
 	}
 
 	// Enrichissement du gamertag d'affichage (best-effort) depuis db_profiles.json.
