@@ -58,6 +58,7 @@ func (r *MatchViewRepo) GetMatchKillSources(ctx context.Context, matchID string)
 		// NULL "pas un headshot", cf. doctrine domain.KillSourceRaw.Headshot.
 		if category.Valid {
 			ks.Headshot = killscope.IsHeadshotCategory(category.String)
+			ks.Splatter = killscope.IsCollisionCategory(category.String)
 		}
 		results = append(results, ks)
 	}

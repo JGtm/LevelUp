@@ -37,6 +37,13 @@ type VehicleWeapon struct {
 	// M4b) — la BOUCLE ; `Sound` est alors le coup en queue. Absent : le coup se rejoue a la cadence
 	// de l arme, comme le conteneur du jeu en mode « cadence de declenchement ».
 	Loop string `json:"loop,omitempty"`
+	// Impact dit que le projectile de l arme EXPLOSE a l impact : le client dessine une explosion
+	// a la detonation du projectile ne de ses tirs (`Projectile.Shot`). Fait declare par le
+	// registre, pas deduit de Fx. Absent = pas d explosion.
+	Impact bool `json:"impact,omitempty"`
+	// ImpactSound est le stem du son de la detonation ; vide = explosion muette. Pose a la requete
+	// depuis le registre, comme Sound.
+	ImpactSound string `json:"impactSound,omitempty"`
 	// Mount est l ANCRE de l arme sur le sprite de son vehicule. Absent = arme sans montage
 	// documente : l eclair part du centre du vehicule (le registre du titre en donne un a chaque
 	// arme, garde-rail du chargeur).

@@ -473,6 +473,12 @@ type TitleAssetURLAdapter interface {
 	// rend faux. Une icône fausse sur un kill est indétectable à l'œil.
 	KillSourceIcon(sourceTag uint32) (canonical.KillSourceIcon, bool)
 
+	// SplatterIcon retourne le pictogramme d'une mort par ÉCRASEMENT (véhicule), dont la
+	// source de dégât ne nomme aucune arme : c'est la catégorie de dégât qui l'établit, et
+	// l'appelant ne l'appelle que sur ces morts-là. Second retour faux = ce titre n'a pas de
+	// pictogramme dédié.
+	SplatterIcon() (canonical.KillSourceIcon, bool)
+
 	// MatchWebURL retourne l'URL de la page publique d'un match sur le portail
 	// officiel du titre (ex: Waypoint pour Halo Infinite). "" si le titre n'a pas
 	// de page de détail publique (dégradation : pas de lien externe).

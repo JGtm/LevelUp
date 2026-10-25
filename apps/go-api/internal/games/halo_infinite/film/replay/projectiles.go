@@ -54,6 +54,11 @@ type Projectile struct {
 	// = repli nommé (`fallback.NomDetonationDernierePositionConnue`) : DetoT/X/Y valent alors le
 	// dernier point de P, l'approximation documentée (jamais une détonation affirmée).
 	DetoLue bool `json:"detoLue,omitempty"`
+	// Shot est l'index, dans ReplayDocument.Shots, du tir dont ce projectile est né. Absent = aucun
+	// lien PUBLIÉ : projectile de grenade (son lien est Grenade.Proj), balle sans tir publié, ou
+	// naissance ambiguë entre deux armes ou deux tireurs (cf. [linkShotsToProjectiles]). Pointeur :
+	// 0 est un index valide, et omitempty l'effacerait.
+	Shot *int `json:"shot,omitempty"`
 }
 
 // projectileMaxStepM borne le déplacement d'un projectile entre deux points de la grille

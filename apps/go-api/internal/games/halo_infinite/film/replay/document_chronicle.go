@@ -3562,3 +3562,34 @@ package replay
 //	                jointure.
 //
 //	LE PARC         un artefact 102 : verdict `a republier` (assemblage seul, aucun fait perime).
+
+// v104 (2026-10-25, lot impact des projectiles explosifs). Un champ neuf `projectiles[].shot` et
+// deux compteurs `coverage.projectiles.{shotLinked,shotAmbiguous}`. Le rejeu dessine l'explosion
+// d'un projectile NON-GRENADE (mortier du Wraith, roquettes, Cindershot, Hydra, Fuel Rod, bombe de
+// la Banshee, missiles du Wasp) ; le film publie sa detonation (v102) mais aucun lien entre le tir
+// et le projectile : ni l'evenement de tir ne reference le projectile, ni le message de detonation
+// ne porte l'arme. Sans lien, la detonation seule ne dit pas « explosion » (une balle « detone »
+// aussi).
+//
+//	`projectiles[].shot`   l'index dans `shots` du tir dont le projectile est ne, par COINCIDENCE :
+//	                 meme frame (a plus ou moins 1) et premier point a 3 m au plus du point du tir,
+//	                 les tirs candidats etant tous de la meme arme et du meme tireur (un tir, ou une
+//	                 salve : le plus proche l'emporte, a egalite le plus petit index). Deux armes ou
+//	                 deux tireurs candidats : aucun lien, compte. Les projectiles que reference un
+//	                 lancer de grenade (`grenades[].proj`) sont exclus. Pose APRES la seconde porte
+//	                 des tirs (tirs embarques), qui retrie `shots`.
+//	`coverage.projectiles.shotLinked / shotAmbiguous`   les liens poses, et les projectiles laisses
+//	                 sans lien pour ambiguite.
+//
+//	MESURE          415 documents du parc : sur les armes explosives, 91 a 99 % des tirs trouvent un
+//	                projectile publie et 97 a 99 % d'entre eux n'ont qu'UN candidat (mortier du Wraith
+//	                178/178). Les 295 projectiles a candidats d'armes differentes (5,5 %) se
+//	                concentrent sur les plasma (pistolet, Ravager), que la decision produit
+//	                n'explose pas.
+//
+//	CE QUI MONTE    `SchemaVersion` 103 -> 104. Aucune revision de couche ni `SchemaDesFaits` ne
+//	AVEC ELLE       bouge : l'ASSEMBLAGE seul pose le lien, a partir de faits deja lus.
+//
+//	LE PARC         un artefact 103 : verdict `a republier` (assemblage seul, aucun fait perime).
+//	                Sans recuisson il n'a aucun lien et le rejeu n'y dessine aucune explosion de
+//	                projectile, sans erreur. Recuisson du parc : decision utilisateur.

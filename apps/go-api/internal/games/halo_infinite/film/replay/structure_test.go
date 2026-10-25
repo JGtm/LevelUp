@@ -1469,8 +1469,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   occupations de socle de power-up se joignent au ramassage natif par le slug canonique,
 	//   comme les socles d arme par la famille hexadecimale. Assemblage seul : un v102 se lit
 	//   « a republier ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 103 {
-		t.Fatalf("SchemaVersion = %d, attendu 103 : incrémenter exige une raison écrite ci-dessus "+
+	// - 104 (2026-10-25, lot impact des projectiles explosifs) : champ neuf `projectiles[].shot`
+	//   (index du tir dont le projectile est né) et compteurs `coverage.projectiles.shotLinked /
+	//   shotAmbiguous`. Assemblage seul : un v103 se lit « a republier ». Détail :
+	//   `document_chronicle.go`.
+	if SchemaVersion != 104 {
+		t.Fatalf("SchemaVersion = %d, attendu 104 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

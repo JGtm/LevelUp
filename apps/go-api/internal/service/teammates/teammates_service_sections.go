@@ -72,6 +72,8 @@ func (s *TeammatesService) sectionsDeLaPopulation(
 	}
 	s.tableauxDeLaPopulation(ctx, p, &out)
 	s.graphesDeLaPopulation(ctx, p, &out)
+	// La performance d'escouade de l'historique se lit sur les séries par membre (graphes).
+	attachSquadPerformance(out.matchHistory, out.performanceSeries)
 	return out
 }
 

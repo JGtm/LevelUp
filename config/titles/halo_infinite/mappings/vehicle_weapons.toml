@@ -21,6 +21,12 @@
 #             `variant` : wraith, rockethog, falcon, gungoose, scorpion, wasp...)
 #   en / fr   le nom de l arme, publie dans le document (jamais ecrit en Go)
 #   fire      single (un evenement par coup) | continuous (tir tenu)
+#   impact    (optionnel, `true`) le projectile EXPLOSE a l impact : le rejeu dessine une explosion a sa
+#             detonation. Fait declare par arme, jamais deduit de `fx` (le mortier est `plasma`, le
+#             canon du Scorpion `explosive` sans projectile publie). Decision du 2026-10-25 :
+#             mortier du Wraith, roquettes du Rockethog, missiles du Wasp, bombe de la Banshee.
+#   impact_sound (optionnel, avec impact) stem du son de la detonation, rendu extrait du jeu et
+#             choisi a l oreille (vote utilisateur du 2026-10-25). Absent : explosion muette.
 #   fx        forme de l eclair — liste de [shot_effects] : ballistic | plasma | light | shock |
 #             explosive | bomb | melee | needles
 #   tint      nature de la decharge — liste de [shot_tints] : kinetic | plasma_cool | plasma_hot |
@@ -48,6 +54,8 @@ vehicle  = "wraith"
 en       = "Plasma Mortar"
 fr       = "Mortier à plasma"
 fire     = "single"
+impact   = true
+impact_sound = "impact_wraith_mortar"
 fx       = "plasma"
 tint     = "plasma_hot"
 sound    = "vehicle_shot_wraith_1"
@@ -61,6 +69,7 @@ vehicle  = "rockethog"
 en       = "Rocket Launcher"
 fr       = "Lance-roquettes"
 fire     = "single"
+impact   = true
 fx       = "explosive"
 tint     = "blast"
 sound    = "vehicle_shot_warthog_rocket_1"
@@ -112,6 +121,7 @@ vehicle  = "wasp"
 en       = "Missile Launcher"
 fr       = "Lance-missiles"
 fire     = "single"
+impact   = true
 fx       = "explosive"
 tint     = "blast"
 sound    = "vehicle_shot_wasp_1"
@@ -125,6 +135,8 @@ vehicle  = "banshee"
 en       = "Fuel Rod Bomb"
 fr       = "Bombe à combustible"
 fire     = "single"
+impact   = true
+impact_sound = "impact_banshee_bomb"
 fx       = "bomb"
 tint     = "plasma_hot"
 sound    = "vehicle_shot_banshee_m2_1"

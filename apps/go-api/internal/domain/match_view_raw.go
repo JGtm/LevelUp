@@ -399,6 +399,9 @@ type KillSourceRaw struct {
 	// à 84,4 % — jamais l'ajouter (verrouillé par killscope.IsHeadshotCategory +
 	// internal/archlint/no_raw_headshot_category_literal_test.go).
 	Headshot bool
+	// Splatter : la catégorie du dégât fatal valait EXACTEMENT
+	// (un écrasement par véhicule), sous la même garde d'unanimité que Headshot.
+	Splatter bool
 }
 
 // KillAssistRaw : l'ASSISTANCE d'une mort (Q21c), telle que le décodeur de film l'a

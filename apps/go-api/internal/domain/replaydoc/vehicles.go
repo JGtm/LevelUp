@@ -34,15 +34,17 @@ type VehicleLifeRef struct {
 // VehicleWeapon est l entree du registre des armes de vehicule (schema 69, cf.
 // `replay.VehicleWeapon`), resolue a la requete.
 type VehicleWeapon struct {
-	Vehicle string              `json:"vehicle"`
-	En      string              `json:"en"`
-	Fr      string              `json:"fr"`
-	Fire    string              `json:"fire"`
-	Fx      string              `json:"fx"`
-	Tint    string              `json:"tint"`
-	Sound   string              `json:"sound,omitempty"`
-	Loop    string              `json:"loop,omitempty"`
-	Mount   *VehicleWeaponMount `json:"mount,omitempty"`
+	Vehicle     string              `json:"vehicle"`
+	En          string              `json:"en"`
+	Fr          string              `json:"fr"`
+	Fire        string              `json:"fire"`
+	Fx          string              `json:"fx"`
+	Tint        string              `json:"tint"`
+	Sound       string              `json:"sound,omitempty"`
+	Loop        string              `json:"loop,omitempty"`
+	Impact      bool                `json:"impact,omitempty"`
+	ImpactSound string              `json:"impactSound,omitempty"`
+	Mount       *VehicleWeaponMount `json:"mount,omitempty"`
 }
 
 // VehicleWeaponMount est l ancre d une arme sur le sprite de son vehicule (schema 69).

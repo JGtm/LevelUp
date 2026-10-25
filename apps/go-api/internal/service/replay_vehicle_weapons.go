@@ -110,7 +110,7 @@ func vehicleWeaponTagOf(key string) (string, bool) {
 func vehicleWeaponOf(w mappings.VehicleWeapon) replay.VehicleWeapon {
 	out := replay.VehicleWeapon{
 		Vehicle: w.Vehicle, En: w.En, Fr: w.Fr, Fire: w.Fire, Fx: w.Fx, Tint: w.Tint, Sound: w.Sound,
-		Loop: w.Loop,
+		Loop: w.Loop, Impact: w.Impact, ImpactSound: w.ImpactSound,
 	}
 	if w.Mount != nil {
 		out.Mount = &replay.VehicleWeaponMount{

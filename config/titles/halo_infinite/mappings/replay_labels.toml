@@ -292,6 +292,20 @@ hinf_ma5k_avenger   = "ballistic"
 hinf_scorpion       = "explosive"
 hinf_rockethog      = "explosive"
 
+# ARMES A PIED DONT LE PROJECTILE EXPLOSE A L'IMPACT (decision utilisateur, 2026-10-25). Le rejeu
+# dessine alors une explosion au point de detonation du projectile ne de leur tir.
+#
+# CE N'EST PAS UNE FORME DE RENDU : `[shot_effects]` ne decide pas d'une explosion (le mortier du
+# Wraith est `plasma` comme le pistolet plasma, qui n'explose pas). Le plasma (Ravager, pistolet
+# charge) est EXCLU par decision. Les armes de vehicule portent le meme fait dans
+# `vehicle_weapons.toml` (champ `impact`). Chaque cle doit figurer dans `[shot_effects]` : le
+# chargeur refuse la faute de frappe.
+[shot_impact]
+hinf_m41_spnkr      = true
+hinf_fuel_rod_spnkr = true
+hinf_cindershot     = true
+hinf_hydra          = true
+
 # TEINTE d'un tir, par weapon_key — LA NATURE DE LA DECHARGE, pas le camp du tireur.
 #
 # POURQUOI CETTE TABLE EXISTE (2026-08-15, arbitrage ROUVERT par l'utilisateur). Le lot 3.2

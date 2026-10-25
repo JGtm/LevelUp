@@ -80,3 +80,14 @@ func TestNeutralDeathRefuseLInconnu(t *testing.T) {
 	}
 	t.Logf("entrees de classe INCONNU refusees : %d", refusees)
 }
+
+// TestSplatterVignetteExisteSurDisque : le pictogramme d ecrasement est un PNG de l atlas.
+func TestSplatterVignetteExisteSurDisque(t *testing.T) {
+	stem := Splatter().Sprite
+	if !strings.HasPrefix(stem, atlasPrefix) {
+		t.Errorf("ecrasement -> %q : hors atlas %q", stem, atlasPrefix)
+	}
+	if _, err := os.Stat(spritePath(stem)); err != nil {
+		t.Errorf("ecrasement -> %q : PNG absent (%v)", stem, err)
+	}
+}

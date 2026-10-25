@@ -18,7 +18,7 @@
 import { useMemo } from 'react'
 
 import { buildFireMarks } from './fireMark'
-import { buildGrenadeRestFx } from '../model/grenadeFx'
+import { buildRestFx } from '../model/shotImpactFx'
 import type { ReplayKill } from '../model/killFeedLogic'
 import { buildKillFx } from '../model/killFx'
 import { buildObjectivePulses, type ObjectiveElementReady } from './objectivesLayer'
@@ -43,8 +43,9 @@ export function useReplayFx(
   const fireMarks = useMemo(() => buildFireMarks(doc), [doc])
   // Les effets de mort, positions relues une fois (patron POC).
   const killFx = useMemo(() => buildKillFx(doc, kills, seatedOfXuid), [doc, kills, seatedOfXuid])
-  // Fins de vol de grenade : le lien lancer -> projectile est dans l'artefact (v3).
-  const grenadeRestFx = useMemo(() => buildGrenadeRestFx(doc), [doc])
+  // Fins de vol explosives : le lien lancer -> projectile est dans l'artefact (v3), le lien
+  // tir -> projectile dans le schéma 104 (`Projectile.shot`) — même liste, même calque.
+  const grenadeRestFx = useMemo(() => buildRestFx(doc), [doc])
   // LES TRACTIONS DE GRAPPIN ONT QUITTÉ CE HOOK le 2026-09-03 : elles ont rejoint la poussée du
   // propulseur dans `useReplayAbilityFx`, où les deux gestes de capacité sur leur porteur sont
   // bâtis ET peints ensemble. Rien d'autre n'a bougé.

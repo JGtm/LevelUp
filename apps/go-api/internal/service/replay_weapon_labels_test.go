@@ -81,6 +81,33 @@ func TestWeaponLabels_PoseLaTeinteDeLaDecharge(t *testing.T) {
 	}
 }
 
+// TestWeaponLabels_PoseLExplosionALImpact : le fait « le projectile explose » vient de
+// `[shot_impact]` du titre, à la clé de l'arme — le SPNKr explose, le MA40 non, une famille hors
+// registre non plus.
+func TestWeaponLabels_PoseLExplosionALImpact(t *testing.T) {
+	root := t.TempDir()
+	mappingsReels(t, root, title.DefaultSlug)
+	doc := `{"schemaVersion":104,"matchId":"a0000002","titleSlug":"` + title.DefaultSlug + `",` +
+		`"frameCount":1,"bounds":{"minX":0,"minY":0,"maxX":1,"maxY":1},"tracks":[],` +
+		`"weaponLabels":{` +
+		`"0x71AB0A2C42C9679F":{"en":"M41 SPNKr","fr":"M41 SPNKr","fx":"explosive"},` +
+		`"0x48C19D2D42C9679F":{"en":"MA40 AR","fr":"MA40 AR","fx":"ballistic"},` +
+		`"0xDEADBEEF":{"en":"?","fr":"?"}}}`
+	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "a0000002"), doc)
+
+	got, err := NewReplayService(title.DefaultSlug, root, nil).GetReplay(context.Background(), "a0000002")
+	if err != nil {
+		t.Fatalf("lecture du rejeu : %v", err)
+	}
+	for id, want := range map[string]bool{
+		"0x71AB0A2C42C9679F": true, "0x48C19D2D42C9679F": false, "0xDEADBEEF": false,
+	} {
+		if got.WeaponLabels[id].Impact != want {
+			t.Errorf("impact de %s = %v, attendu %v", id, got.WeaponLabels[id].Impact, want)
+		}
+	}
+}
+
 // TestWeaponKeys_PoseLaCleDuRegistre : la clé canonique arrive sur les DEUX formes
 // d'identifiant, parce que le document emploie les deux (famille pour un loadout,
 // identifiant global pour un tir) et que la banque de sons du client n'en connaît qu'une.

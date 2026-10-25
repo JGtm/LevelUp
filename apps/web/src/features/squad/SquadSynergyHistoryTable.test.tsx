@@ -273,7 +273,8 @@ describe('SquadSynergyHistoryTable — colonnes d\'escouade (D-7)', () => {
             squad_kills: 31,
             squad_deaths: 19,
             squad_assists: 9,
-            squad_fda: 15,
+            squad_performance: 63,
+            squad_perf_tier: 3,
           }),
         ]}
         playerSlug="me"
@@ -286,8 +287,8 @@ describe('SquadSynergyHistoryTable — colonnes d\'escouade (D-7)', () => {
     expect(screen.getByText('31')).toBeInTheDocument()
     expect(screen.getByText('19')).toBeInTheDocument()
     expect(screen.getByText('9')).toBeInTheDocument()
-    // FDA = (31 + 9/3) - 19 = 15, affiché signé : jamais un quotient.
-    expect(screen.getByText(/^\+15[.,]0$/)).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: /Performance d'équipe/ })).toBeInTheDocument()
+    expect(screen.getByText('63')).toBeInTheDocument()
   })
 
   it('équipe alliée non lue : tirets, jamais un zéro', () => {

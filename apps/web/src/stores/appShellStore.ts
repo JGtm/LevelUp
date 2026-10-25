@@ -12,6 +12,7 @@ import { create } from 'zustand'
 import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
 import { api, setApiTitleSlug, setApiLocale } from '@/lib/api/client'
 import type { Locale } from '@/lib/i18n/locale'
+import { rememberLocale } from '@/lib/i18n/bootLocale'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 
@@ -134,6 +135,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
     setApiTitleSlug(titleSlug)
     const locale: Locale = (data.locale as Locale) ?? 'fr'
     setApiLocale(locale)
+    rememberLocale(locale)
     set({
       currentPlayer: data.current_player,
       availablePlayers: data.available_players ?? [],
@@ -180,6 +182,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
 
   setLocale: (locale) => {
     setApiLocale(locale)
+    rememberLocale(locale)
     set({ locale })
   },
   setHintsVisible: (visible) => set({ hintsVisible: visible }),

@@ -245,6 +245,11 @@ type ProjectileCoverage struct {
 	Tracks    int `json:"tracks"`
 	Published int `json:"published"`
 	Truncated int `json:"truncated"`
+	// ShotLinked : projectiles publiés avec un lien vers leur tir (`shot`).
+	ShotLinked int `json:"shotLinked"`
+	// ShotAmbiguous : projectiles laissés sans lien, deux armes ou deux tireurs se disputant leur
+	// naissance.
+	ShotAmbiguous int `json:"shotAmbiguous"`
 }
 
 // GrenadeReadCoverage dit ce que chaque canal a apporté. Sans ces dénominateurs, un axe

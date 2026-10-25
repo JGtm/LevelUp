@@ -385,9 +385,12 @@ type SquadMatchHistoryRow struct {
 	SquadKills   *int `json:"squad_kills,omitempty"`
 	SquadDeaths  *int `json:"squad_deaths,omitempty"`
 	SquadAssists *int `json:"squad_assists,omitempty"`
-	// SquadFDA : FDA de l'escouade sur ce match — formule agrégat de l'ADR 0006 appliquée
-	// à 1 match, ((frags + assistances/3) − morts) sur les cumuls. Jamais un quotient.
-	SquadFDA *float64 `json:"squad_fda,omitempty"`
+	// SquadPerformance : performance de l'escouade sur ce match = moyenne arrondie des scores de
+	// performance (0-100, 50 = niveau habituel de chacun) des membres présents qui en ont un.
+	// Nil = aucun membre noté sur ce match. SquadPerfTier : palier 1-5 de cette moyenne
+	// (analysis.PerfTier, mêmes seuils que la colonne « Perf » de l'Explorateur), 0 si nil.
+	SquadPerformance *int `json:"squad_performance,omitempty"`
+	SquadPerfTier    int  `json:"squad_perf_tier,omitempty"`
 }
 
 // TeammateRow est une ligne de résultat (stats avec vs sans un coéquipier).

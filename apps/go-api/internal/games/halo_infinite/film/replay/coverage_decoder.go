@@ -131,6 +131,12 @@ type ProjectileCoverage struct {
 	// projectileMaxStepM). Elle compte aussi les coupures si précoces que la trajectoire n'est
 	// plus publiable : sans cela le compteur mentirait par omission.
 	Truncated int `json:"truncated"`
+	// ShotLinked est le nombre de projectiles publiés avec un lien vers leur tir
+	// (Projectile.Shot).
+	ShotLinked int `json:"shotLinked"`
+	// ShotAmbiguous est le nombre de projectiles dont la naissance coïncide avec des tirs de deux
+	// armes ou de deux tireurs : aucun lien publié (cf. linkShotsToProjectiles).
+	ShotAmbiguous int `json:"shotAmbiguous"`
 }
 
 // slotFor rend le slot du joueur pi à l'instant tUS, et la cause du rejet le cas échéant.

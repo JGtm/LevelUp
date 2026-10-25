@@ -177,6 +177,11 @@ func (a *AssetURLAdapter) KillSourceIcon(_ uint32) (canonical.KillSourceIcon, bo
 	return canonical.KillSourceIcon{}, false
 }
 
+// SplatterIcon : rien à servir, même raison que KillSourceIcon (pas de catégorie de dégât).
+func (a *AssetURLAdapter) SplatterIcon() (canonical.KillSourceIcon, bool) {
+	return canonical.KillSourceIcon{}, false
+}
+
 // MatchWebURL / PlayerMatchWebURL : Halo 5 n'a pas de page de détail de match
 // publique équivalente à Waypoint → "" (pas de lien externe, F3).
 func (a *AssetURLAdapter) MatchWebURL(_ string) string          { return "" }

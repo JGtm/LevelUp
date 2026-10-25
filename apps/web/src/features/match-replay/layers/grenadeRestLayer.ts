@@ -50,7 +50,8 @@ export function drawGrenadeRestLayer(
   style: GrenadeRestStyle,
 ): void {
   for (const e of fx) {
-    const kind = restKindOf(e.rank)
+    // Un projectile de tir (`e.tint`) explose toujours ; une grenade suit son type.
+    const kind = e.tint ? 'explosion' : restKindOf(e.rank)
     const hold = kind === 'nappe' ? win.holdDynamo : win.holdHalo
     const age = win.frame - e.frame
     if (age < 0 || age > hold) continue
@@ -67,7 +68,7 @@ export function drawGrenadeRestLayer(
           reduced: style.reducedMotion,
         },
         {
-          fire: style.ink.tint[explosionTintOf(e.rank)] || style.ink.tint.neutral,
+          fire: style.ink.tint[e.tint ?? explosionTintOf(e.rank)] || style.ink.tint.neutral,
           core: style.ink.core,
           smoke: style.smoke,
         },

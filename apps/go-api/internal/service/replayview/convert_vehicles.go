@@ -34,15 +34,17 @@ func toVehicleLifeRef(v replay.VehicleLifeRef) replaydoc.VehicleLifeRef {
 
 func toVehicleWeapon(v replay.VehicleWeapon) replaydoc.VehicleWeapon {
 	return replaydoc.VehicleWeapon{
-		Vehicle: v.Vehicle,
-		En:      v.En,
-		Fr:      v.Fr,
-		Fire:    v.Fire,
-		Fx:      v.Fx,
-		Tint:    v.Tint,
-		Sound:   v.Sound,
-		Loop:    v.Loop,
-		Mount:   ptrOf(v.Mount, toVehicleWeaponMount),
+		Vehicle:     v.Vehicle,
+		En:          v.En,
+		Fr:          v.Fr,
+		Fire:        v.Fire,
+		Fx:          v.Fx,
+		Tint:        v.Tint,
+		Sound:       v.Sound,
+		Loop:        v.Loop,
+		Impact:      v.Impact,
+		ImpactSound: v.ImpactSound,
+		Mount:       ptrOf(v.Mount, toVehicleWeaponMount),
 	}
 }
 

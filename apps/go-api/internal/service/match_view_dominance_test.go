@@ -193,6 +193,9 @@ func (s *stubAssetURL) KillSourceIcon(tag uint32) (canonical.KillSourceIcon, boo
 	ic, ok := s.killIcons[tag]
 	return ic, ok
 }
+func (s *stubAssetURL) SplatterIcon() (canonical.KillSourceIcon, bool) {
+	return canonical.KillSourceIcon{ImageURL: "/splatter.png", Tinted: true}, true
+}
 func (s *stubAssetURL) MatchWebURL(_ string) string          { return "" }
 func (s *stubAssetURL) PlayerMatchWebURL(_, _ string) string { return "" }
 
@@ -339,6 +342,9 @@ func (s *stubAssetURLNameAware) CSRRankImageURLOnyx() string            { return
 func (s *stubAssetURLNameAware) WeaponImageURL(_ int64) string          { return "" }
 func (s *stubAssetURLNameAware) WeaponImageIsTinted(_ int64) bool       { return false }
 func (s *stubAssetURLNameAware) KillSourceIcon(_ uint32) (canonical.KillSourceIcon, bool) {
+	return canonical.KillSourceIcon{}, false
+}
+func (s *stubAssetURLNameAware) SplatterIcon() (canonical.KillSourceIcon, bool) {
 	return canonical.KillSourceIcon{}, false
 }
 func (s *stubAssetURLNameAware) MatchWebURL(_ string) string          { return "" }

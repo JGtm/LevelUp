@@ -58,6 +58,8 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 	// icônes : elle n'entre dans aucune jointure du catalogue, elle voyage jusqu'au
 	// document telle quelle (cf. replay_labels.toml, [shot_tints]).
 	cat.Tints = labels.ShotTints()
+	// Les armes dont le projectile EXPLOSE à l'impact (`[shot_impact]`) se posent de même.
+	cat.Impacts = labels.ShotImpacts()
 	// Le RÔLE d'une arme (filtre « armes spéciales » du calque des armes au sol, lot
 	// 2026-09-10) vient du registre canonique CROSS-TITRE, jamais du TOML du titre — c'est
 	// une dimension du référentiel d'armes (internal/games/weapons), pas un mapping versionné.

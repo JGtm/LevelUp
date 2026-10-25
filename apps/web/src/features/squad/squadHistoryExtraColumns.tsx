@@ -1,13 +1,13 @@
 /**
  * Colonnes de l'historique des matchs de l'escouade qui ne portent pas sur le joueur seul :
- * dominance, frags / morts / assistances CUMULÉS de l'escouade et FDA d'escouade
- * (calculés côté Go, `attachSquadTotals` ; formule agrégat de l'ADR 0006, jamais le quotient).
+ * dominance, frags / morts / assistances CUMULÉS de l'escouade et performance d'équipe
+ * (calculés côté Go, `attachSquadTotals` / `attachSquadPerformance`).
  * Extraites de SquadSynergyHistoryTable pour tenir le seuil de taille de fichier.
  */
 import type { ReactNode } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 
-import { tokenCssVar } from '@/lib/accessibility'
+import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { asDominance } from '@/components/charts/outcomeSequence'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { dominanceLabels, DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
@@ -26,24 +26,15 @@ export interface HistorySorts {
   numeric: { readonly sortingFn: 'basic'; readonly sortUndefined: 'last' }
 }
 
-/** FDA signé à une décimale (« +10,0 », « −6,0 ») dans la langue du client. */
-export function formatSquadFda(v: number, intlLocale: string): string {
-  const abs = Math.abs(v).toLocaleString(intlLocale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-  if (v > 0) return `+${abs}`
-  if (v < 0) return `\u2212${abs}`
-  return abs
-}
-
 function countCell(v: number | null | undefined) {
   return (
     <span className="font-mono tabular-nums text-muted-foreground">{v == null ? '-' : v}</span>
   )
 }
 
-/** Dominance puis cumuls de l'escouade et son FDA, colonnes placées après le résultat. */
+/** Dominance puis cumuls de l'escouade et sa performance, colonnes placées après le résultat. */
 export function squadTotalsColumns(
   locale: Locale,
-  intlLocale: string,
   sorts: HistorySorts,
 ): ColumnDef<SquadMatchHistoryRow>[] {
   const c = SQUAD_HISTORY_COLUMNS[locale]
@@ -85,15 +76,24 @@ export function squadTotalsColumns(
     counter('squad_deaths', head('explorer.matches.col_deaths_long'), c.deathsTooltip),
     counter('squad_assists', head('explorer.matches.col_assists_long'), c.assistsTooltip),
     {
-      id: 'squad_fda',
-      accessorFn: (r) => r.squad_fda ?? undefined,
-      header: head('explorer.matches.col_fda'),
-      meta: { headerTooltip: c.fdaTooltip },
+      id: 'squad_performance',
+      accessorFn: (r) => r.squad_performance ?? undefined,
+      header: c.performanceHeader,
+      meta: { headerTooltip: c.performanceTooltip },
       ...sorts.numeric,
       cell: (ctx) => {
-        const v = ctx.getValue<number | undefined>()
-        if (v == null) return <span className="text-muted-foreground">-</span>
-        return <span className="font-mono tabular-nums">{formatSquadFda(v, intlLocale)}</span>
+        const r = ctx.row.original
+        if (r.squad_performance == null || !r.squad_perf_tier) {
+          return <span className="text-muted-foreground">-</span>
+        }
+        return (
+          <span
+            className="font-semibold tabular-nums"
+            style={{ color: tokenCssVar(`perf-tier-${r.squad_perf_tier}` as SemanticToken) }}
+          >
+            {r.squad_performance}
+          </span>
+        )
       },
     },
   ]
