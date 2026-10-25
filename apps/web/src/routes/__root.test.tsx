@@ -117,6 +117,22 @@ describe('RootLayout — garde anti-éjection transitoire', () => {
     expect(navigateMock).toHaveBeenCalledWith({ to: '/login' })
     expect(useAppShellStore.getState().currentUsername).toBeNull()
   })
+
+  it("invité anonyme sur /join?invite=… → reste sur la page d'invitation", () => {
+    const originalLocation = window.location
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { pathname: '/join', search: '?invite=CODE1234', href: 'http://localhost/join?invite=CODE1234', hash: '' },
+    })
+    queryData = anonBootstrap()
+
+    try {
+      render(<RootLayout />)
+      expect(navigateMock).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+    }
+  })
 })
 
 /**

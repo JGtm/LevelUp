@@ -118723,3 +118723,12 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : Brooks SVP 425 matchs insérés (415 de 2026 + 10 antérieurs, débord de page), calloussss 325 (310 + 15), conservés sur décision utilisateur ; 22 des 24 rejeux cuits (2 films sans chunk) ; prod redémarrée en 25 s, 25 bases, 0 WAL, 3 039 rejeux ; anciennes bases en `data/titles.pre-v804p` et `data/cache/replays_halo_infinite.pre-v804p` ; perdus en prod : likes, favoris, notifications depuis le 22/10.
 
 **Conclusion / prochaine étape** : disque VPS à 6,9 Go libres (alerte critique) : supprimer `titles.pre-v804p`, `replays_halo_infinite.pre-v804p`, et `titles.pre-v801` sur accord après contrôle de l'utilisateur.
+## [2026-10-25] Correctif urgent : la page d'invitation renvoyait l'invité vers /login — Complété (branche `fix/join-invite-anonymous`)
+
+**Contexte** : un joueur invité (instance fermée) ne pouvait pas se connecter malgré un lien `/join?invite=CODE` ; journaux de prod : 4 refus `instance_locked` sans code d'invitation, invitations jamais consommées.
+
+**Décision technique principale** : `/join` ajouté aux chemins consultables sans compte (`ANONYMOUS_PATHS`, `components/shell/shellNavigation.ts`). La racine (`routes/__root.tsx`) renvoyait tout visiteur anonyme vers /login hors /privacy et /terms : le code était perdu avant le clic « Continuer avec Xbox », qui seul le transmet au serveur (`/auth/xbox/login?invite=`).
+
+**Résultats observés** : tests unitaires (`shellNavigation.test.ts`, `__root.test.tsx`) rouges sans le correctif, verts avec ; spec E2E `e2e/join-invite.spec.ts` (bootstrap anonyme simulé, redirection Microsoft interceptée) verte ; `tsc -b`, eslint, vitest complet 1 001 fichiers / 10 340 tests verts.
+
+**Conclusion / prochaine étape** : fusion vers main (squash) = déploiement ; contrôle en prod d'une visite anonyme de /join ; `release/v8.0.5` (autre session) devra intégrer main.

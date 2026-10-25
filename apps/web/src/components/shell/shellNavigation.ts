@@ -155,10 +155,14 @@ export function resolvePlayerFallback(
  * décider de connecter son compte Microsoft — l'éjecter vers /login rendrait le lien du
  * pied de page inutilisable et la page inatteignable.
  *
+ * La page d'invitation `/join?invite=CODE` l'est aussi : l'invité n'a par définition pas
+ * encore de compte, et le renvoyer vers /login perdrait le code — il se connecterait sans
+ * invitation et l'instance fermée le refuserait (`instance_locked`).
+ *
  * Le préfixe est comparé avec sa frontière de segment : `/privacy-autre` n'est
  * PAS anonyme.
  */
-const ANONYMOUS_PATHS: readonly string[] = ['/privacy', '/terms']
+const ANONYMOUS_PATHS: readonly string[] = ['/privacy', '/terms', '/join']
 
 export function isAnonymousPath(pathname: string): boolean {
   return ANONYMOUS_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
