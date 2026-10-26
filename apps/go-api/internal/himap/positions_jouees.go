@@ -45,22 +45,6 @@ type PositionJouee struct{ X, Y float64 }
 //
 // Un corpus vide, un rayon nul ou une grille sans maille rendent 0 sans rien toucher.
 func (r *Rendu) RogneAuxPositionsJouees(positions []PositionJouee, rayon, seuilRecollement float64) int {
-	return r.RogneAuxPositionsJoueesGardantLesAncres(positions, rayon, seuilRecollement, nil, 0)
-}
-
-// RogneAuxPositionsJoueesGardantLesAncres est RogneAuxPositionsJouees, plus une GARDE : la matiere
-// situee a moins de `rayonAncres` metres d'une ancre d'objectif n'est jamais effacee, qu'aucun
-// joueur y ait couru ou non. Une ancre d'objectif est du terrain joue par definition ; sans cette
-// garde, un objectif que le corpus n'a pas assez parcouru perd son sol et flotte sur du vide.
-//
-// LA GARDE S'AJOUTE APRES LE RECOLLEMENT, jamais avant : un objet que le recollement retire en
-// entier ne doit pas emporter le sol d'une ancre. Elle ne rend donc de matiere que dans les
-// disques d'ancre — pas l'objet entier, ce qui ramenerait les grandes dalles que le recollement
-// existe pour ecarter. Sans ancre ou avec un rayon nul, le resultat est identique, au bit pres, a
-// celui de RogneAuxPositionsJouees.
-func (r *Rendu) RogneAuxPositionsJoueesGardantLesAncres(
-	positions []PositionJouee, rayon, seuilRecollement float64, ancres [][3]float64, rayonAncres float64,
-) int {
 	if len(positions) == 0 || rayon <= 0 || r.Cell <= 0 {
 		return 0
 	}
@@ -72,14 +56,6 @@ func (r *Rendu) RogneAuxPositionsJoueesGardantLesAncres(
 		var retires int
 		garde, retires = r.recolleAuxObjets(garde, seuilRecollement)
 		r.RecollementRetires = retires
-	}
-	if len(ancres) > 0 && rayonAncres > 0 {
-		gardeAncres := masqueAutourDesSemis(r.semisDesAncres(ancres), r.NX, r.NY, rayonAncres/r.Cell)
-		for k, g := range gardeAncres {
-			if g {
-				garde[k] = true
-			}
-		}
 	}
 	efface := 0
 	for k := range r.z {
@@ -113,14 +89,4 @@ func (r *Rendu) semisDesPositions(positions []PositionJouee) []bool {
 		sem[j*r.NX+i] = true
 	}
 	return sem
-}
-
-// semisDesAncres marque, sur la grille, la cellule de chaque ancre d'objectif ; une ancre hors cadre
-// est ignoree. Meme convention que semisDesPositions.
-func (r *Rendu) semisDesAncres(ancres [][3]float64) []bool {
-	pos := make([]PositionJouee, len(ancres))
-	for i, a := range ancres {
-		pos[i] = PositionJouee{X: a[0], Y: a[1]}
-	}
-	return r.semisDesPositions(pos)
 }

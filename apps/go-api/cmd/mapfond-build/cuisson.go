@@ -265,7 +265,6 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			MargeSolBas:                e.margeSolBasDe(carte.MapID),
 			PositionsJouees:            posJouees,
 			RayonPositions:             rayonPos,
-			RayonGardeAncres:           e.gardeAutourDesAncresDe(carte.MapID),
 			SeuilRecollement:           e.seuilRecollementDe(carte.MapID),
 			RogneAuxAltitudesProches:   rogneAlt,
 			SeuilAltitude:              seuilAlt,

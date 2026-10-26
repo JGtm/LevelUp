@@ -118795,3 +118795,9 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Exiled** : aucun nouveau code. `cadreAuxAncres` + `margeAncres: 12` (existants) bornent la matiere a la boite des ancres elargie de 12 m : le bras (a plus de 12 m de toute ancre) disparait, 37/37 ancres gardent leur sol (marge 25 m par defaut : bras presque entier ; 6 m : trop coupe). Version sans bras produite hors depot, NON publiee ; l'entree de reglages est conservee, la declaration `CartesForge` retiree.
 
 **A savoir** : le reglage `gardeAutourDesAncres` (commit precedent) n'est plus arme par aucune carte ; conserve, avec le catalogue de positions limite a Dredge, pour le retour sur Kusini Bay. A retirer si personne n'y revient (regle 7). Dredge recuit : WebP identique a l'octet.
+
+## [2026-10-26] Rejeu 2D : Exiled validee sans le bras, levier de garde des ancres retire - Complete (branche `feat/cartes-manquantes-rejeu`)
+
+**Decision technique principale** : Exiled redeclaree dans `himap.CartesForge` et son fond publie (`cadreAuxAncres` + `margeAncres: 12`, validation de l'utilisateur) ; le PNG cuit est identique a l'octet au PNG montre, le WebP publie decode au meme MD5 de pixels. `gardeAutourDesAncres` et `RogneAuxPositionsJoueesGardantLesAncres` retires avec leurs tests (aucune carte ne les armait, regle 7) : les six fichiers sont ramenes a leur etat de `b95fc9a90`. Pour Kusini Bay, la logique se retrouve dans `41dac2801`.
+
+**Resultats observes** : Dredge et les quatre fonds valides (Arrival, Beaver Canyon, Perdition, Timberland Evolved) recuits : identiques a l'octet. Tests himap, mapfond-build, replaybuild, gamefiles mapfond-build et film-profiles-build verts.

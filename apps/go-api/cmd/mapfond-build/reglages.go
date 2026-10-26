@@ -99,10 +99,6 @@ type reglageCarte struct {
 	RogneAuxPositionsJouees bool `json:"rogneAuxPositionsJouees,omitempty"`
 	// RayonPositions : rayon de garde autour d une position courue, en metres. Zero = 4 m.
 	RayonPositions float64 `json:"rayonPositions,omitempty"`
-	// GardeAutourDesAncres : rayon en metres autour de chaque ancre d objectif dans lequel le
-	// rognage aux positions jouees n efface jamais le sol. Zero = pas de garde. N a d effet qu avec
-	// `rogneAuxPositionsJouees`.
-	GardeAutourDesAncres float64 `json:"gardeAutourDesAncres,omitempty"`
 	// SeuilRecollement : part de la surface d un objet que le masque doit garder pour que l objet
 	// survive ENTIER (recollement_objets.go). Zero = un tiers ; negatif = recollement desarme.
 	SeuilRecollement float64 `json:"seuilRecollement,omitempty"`
@@ -820,20 +816,6 @@ func (e *environnement) positionsJoueesDe(cle string) ([]himap.PositionJouee, fl
 	slog.Info("mapfond: rognage aux positions jouees arme pour cette carte", "carte", cle,
 		"positions", len(pos), "rayon", c.RayonPositions, "gateLe", c.GateLe)
 	return pos, c.RayonPositions
-}
-
-// gardeAutourDesAncresDe rend le rayon de garde des ancres propre a la carte (0 = aucune).
-func (e *environnement) gardeAutourDesAncresDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.RogneAuxPositionsJouees || c.GardeAutourDesAncres <= 0 {
-		return 0
-	}
-	slog.Info("mapfond: garde du sol autour des ancres armee pour cette carte", "carte", cle,
-		"rayon", c.GardeAutourDesAncres, "gateLe", c.GateLe)
-	return c.GardeAutourDesAncres
 }
 
 // seuilRecollementDe rend le seuil de recollement aux objets propre a une carte.

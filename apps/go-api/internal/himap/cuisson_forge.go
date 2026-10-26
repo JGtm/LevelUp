@@ -259,10 +259,6 @@ type OptionsCuissonForge struct {
 	// SeuilRecollement : part de la surface d un objet que le masque doit garder pour que l objet
 	// survive ENTIER. ZERO = `SeuilRecollement` (un tiers) ; NEGATIF = recollement desarme.
 	SeuilRecollement float64
-	// RayonGardeAncres : rayon, en metres, autour de chaque ancre d'objectif (`Ancres`) dans lequel
-	// le rognage aux positions jouees n'efface jamais la matiere. ZERO = pas de garde. Sans effet
-	// hors `PositionsJouees`. Voir RogneAuxPositionsJoueesGardantLesAncres.
-	RayonGardeAncres float64
 }
 
 // CuitCarteForge rend le fond de carte d'une carte Forge en posant les modeles de ses objets.
@@ -434,12 +430,10 @@ func rogneAltitudesEtPositionsForge(ctx context.Context, r *Rendu, opts OptionsC
 		} else if opts.SeuilRecollement > 0 {
 			seuilRec = opts.SeuilRecollement
 		}
-		n := r.RogneAuxPositionsJoueesGardantLesAncres(opts.PositionsJouees, rayon, seuilRec,
-			opts.Ancres, opts.RayonGardeAncres)
+		n := r.RogneAuxPositionsJouees(opts.PositionsJouees, rayon, seuilRec)
 		slog.InfoContext(ctx, "mapfond: matiere hors des positions jouees effacee", "carte", opts.Cle,
 			"positions", len(opts.PositionsJouees), "rayon", rayon, "cellules", n,
-			"seuilRecollement", seuilRec, "objetsRetires", r.RecollementRetires,
-			"rayonGardeAncres", opts.RayonGardeAncres)
+			"seuilRecollement", seuilRec, "objetsRetires", r.RecollementRetires)
 	}
 }
 
