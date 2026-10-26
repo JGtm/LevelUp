@@ -118762,3 +118762,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : `tsc` vert, `HomeRankingStates.test.tsx` 9/9 (français). Pas de test en anglais ajouté ni de contrôle visuel.
 
 **Conclusion / prochaine étape** : contrôle à l'écran en anglais par l'utilisateur.
+
+## [2026-10-26] Citations Modes de jeu : visuels « Rapatriement agressif », « Défense de zone », « Crâne intouchable » — Complété (branche `release/v8.0.7`, non commité)
+
+**Décision technique principale** : le visuel alpha de « Rapatriement agressif » (drapeau gris-bleu uni) est passé au style blanc + ombre portée douce des autres citations de mode (silhouette blanche, ombre noire floue décalée de 2 px, réduit à 86 % pour laisser la place à l'ombre). Nouveaux fichiers sous `static/commendations/halo_infinite/` : `HI_citation_Rapatriement_agressif.png`, `HI_citation_Defense_de_zone.png` (fourni, sans retouche) ; `HI_citation_Crane_intouchable.png` remplacé par la nouvelle version fournie. `seed_citation_data.go` pointe les deux premiers (remplacent `H5G_citation_Body_Guard.png` et `H5G_citation_My_castle.png`, fichiers natifs H5 intacts).
+
+**Résultats observés** : contrôle visuel sur fond gris, ombre cohérente avec « Défense de zone » ; `go test ./internal/ops -run Citation` vert.
+
+**Conclusion / prochaine étape** : jugement à l'oeil par l'utilisateur ; commit sur accord.
