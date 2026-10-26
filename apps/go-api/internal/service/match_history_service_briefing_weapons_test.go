@@ -191,7 +191,7 @@ func TestBuildExplorerBriefing_WeaponsModuleGating(t *testing.T) {
 			t.Fatalf("low sample attendu, got %+v", b)
 		}
 		if b.Weapons == nil {
-			t.Errorf("low sample : l'arme favorite ne compare rien, le bloc doit etre servi, got %+v", b.Weapons)
+			t.Errorf("low sample : rien n'est retiré, le bloc doit etre servi, got %+v", b.Weapons)
 		}
 		if repo.calls != 1 {
 			t.Errorf("low sample : une lecture attendue, got %d", repo.calls)

@@ -247,7 +247,7 @@ func TestBuildExplorerBriefing_StreaksAndDominanceHeterogeneous(t *testing.T) {
 	}
 }
 
-// Sous low_sample, Streaks/Dominance restent servis (D6 : ils ne comparent rien).
+// Sous low_sample, Streaks/Dominance restent servis (D6 : rien n'est retiré).
 func TestBuildExplorerBriefing_StreaksKeptWhenLowSample(t *testing.T) {
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 8; i++ {

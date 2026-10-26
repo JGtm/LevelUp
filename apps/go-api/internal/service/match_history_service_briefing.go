@@ -29,10 +29,9 @@ import (
 // Seuils nommés du briefing (DEC-4 : pas de magic numbers).
 const (
 	// MinBriefingModulesMatches est le seuil sous lequel le briefing est en
-	// échantillon faible (LowSample=true) : les blocs qui COMPARENT (écarts à la
-	// baseline, cartes « Par… », « Par contexte ») ne sont pas émis ; le socle, le
-	// Classement, l'arme favorite, les séries et les moments forts le sont. Aligné
-	// sur analysis.MinMatchesForRelative (activation du score relatif).
+	// échantillon faible (LowSample=true). Le drapeau ne retire aucun bloc : il ne
+	// sert qu'à avertir le lecteur que les comparaisons reposent sur peu de matchs.
+	// Aligné sur analysis.MinMatchesForRelative (activation du score relatif).
 	MinBriefingModulesMatches = analysis.MinMatchesForRelative
 	// MinDimensionGroupMatches est le nombre minimal de matchs d'un groupe (carte/
 	// mode/playlist) pour avoir une note et entrer en top/flop. Une carte « Par… »
@@ -56,11 +55,11 @@ const (
 //   - filtered : sous-ensemble filtré (scope) en raw rows (libellés FR + start_time).
 //   - allRaw   : historique complet post-exclusions (baseline DEC-3) en raw rows.
 //
-// Retourne nil si le scope est vide. Toujours calculés, même en échantillon faible
-// (< MinBriefingModulesMatches) : Classement (si rankedCapable), Arme favorite,
-// Séries, Moments forts, car ils décrivent le scope sans le comparer. Seulement hors
-// échantillon faible : Baseline, Dimensions, ContextSplit et MinGroupMatches (seuil
-// servi au front pour ses libellés d'état vide).
+// Retourne nil si le scope est vide. Tous les blocs sont calculés selon les mêmes
+// règles quelle que soit la taille du scope : Baseline, Dimensions, ContextSplit et
+// MinGroupMatches (seuil servi au front pour ses libellés d'état vide), puis
+// Classement (si rankedCapable), Arme favorite, Séries, Moments forts.
+// LowSample (< MinBriefingModulesMatches) est un simple signal d'avertissement.
 func (s *MatchHistoryService) buildExplorerBriefing(
 	ctx context.Context,
 	filtered, allRaw []domain.MatchHistoryRawRow,
@@ -71,13 +70,11 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	b := &domain.ExplorerBriefing{Scope: buildBriefingScope(filtered)}
 	b.PeriodStart, b.PeriodEnd = scopePeriod(filtered)
 	b.LowSample = len(filtered) < MinBriefingModulesMatches
-	if !b.LowSample {
-		b.Baseline = buildBriefingBaseline(filtered, allRaw)
-		b.Dimensions = buildBriefingDimensions(filtered, allRaw)
-		// Split solo/escouade : aucun gate capability (P-7), omission si un côté est vide.
-		b.ContextSplit = buildBriefingContextSplit(filtered)
-		b.MinGroupMatches = MinDimensionGroupMatches
-	}
+	b.Baseline = buildBriefingBaseline(filtered, allRaw)
+	b.Dimensions = buildBriefingDimensions(filtered, allRaw)
+	// Split solo/escouade : aucun gate capability (P-7), omission si un côté est vide.
+	b.ContextSplit = buildBriefingContextSplit(filtered)
+	b.MinGroupMatches = MinDimensionGroupMatches
 	if s.rankedCapable {
 		b.Ranked = buildBriefingRanked(ctx, filtered)
 	}

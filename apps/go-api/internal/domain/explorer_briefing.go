@@ -3,13 +3,13 @@
 // Le bandeau est une lecture compacte du RÉSULTAT DE RECHERCHE (sous-ensemble
 // filtré) : KPIs agrégés, comparaison à la baseline personnelle (historique
 // complet du titre) et modules conditionnels (notes par dimension, classé) qui
-// s'activent selon les filtres, les capabilities du titre et la taille
-// d'échantillon. Ce N'EST PAS une page Synthèse (cf.
-// PLAN_EXPLORER_BRIEFING_CARDS_2026-07.md).
+// s'activent selon les filtres et les capabilities du titre ; la taille d'échantillon ne
+// joue qu'au niveau du groupe (MinGroupMatches), jamais sur la taille totale du scope. Ce
+// N'EST PAS une page Synthèse (cf. PLAN_EXPLORER_BRIEFING_CARDS_2026-07.md).
 //
 // Absence et état vide : un bloc nil = module non émis, légitime seulement quand
 // il n'a rien à comparer (axe déjà filtré, une seule valeur, un contexte à zéro
-// match, ou échantillon faible pour les blocs comparatifs). Une carte « Par… »
+// match). Un scope court (LowSample) n'en retire aucun. Une carte « Par… »
 // ou « Par contexte » qui aurait de quoi comparer sans atteindre le seuil est
 // servie avec Insufficient=true : le front l'affiche en état vide expliqué, jamais
 // omise en silence. Les unités suivent ADR 0006 : WinRate en ratio 0..1 (le front
@@ -21,39 +21,37 @@ import "time"
 // ExplorerBriefing est le bloc de briefing servi au-dessus du tableau Explorer.
 // Émis uniquement quand la requête le demande (include_briefing=true) et que le
 // sous-ensemble filtré est non vide. Les modules conditionnels sont nil quand
-// leur capability n'est pas exposée ou qu'ils n'ont rien à montrer ; les blocs
-// comparatifs (Baseline, Dimensions, ContextSplit) sont nil en échantillon faible.
+// leur capability n'est pas exposée ou qu'ils n'ont rien à montrer ; la taille du scope
+// n'en retire aucun (voir LowSample).
 type ExplorerBriefing struct {
 	// Scope : agrégats du sous-ensemble filtré (socle) calculés sur les MÊMES raw
 	// rows que le tableau — le compteur, le bilan et les indicateurs sont donc
 	// cohérents avec « N matchs trouvés » et avec les modules baseline/dimensions.
 	Scope *ExplorerBriefingScope `json:"scope,omitempty"`
-	// LowSample : vrai quand le sous-ensemble est sous MinBriefingModulesMatches.
-	// Dans ce cas seuls les blocs qui comparent (Baseline, Dimensions, ContextSplit)
-	// sont nil ; le socle, le Classement, l'arme favorite, les séries et les moments
-	// forts restent émis.
+	// LowSample : vrai quand le sous-ensemble est sous MinBriefingModulesMatches. Simple
+	// avertissement pour le lecteur (comparaisons peu fiables) : aucun bloc n'est retiré, les
+	// écarts, cartes « Par… » et « Par contexte » suivent les mêmes règles qu'au-delà du seuil.
 	LowSample bool `json:"low_sample,omitempty"`
 	// MinGroupMatches : seuil de matchs par groupe (cartes « Par… ») et par côté
-	// (« Par contexte »), servi au front pour ses libellés d'état vide. Posé hors
-	// échantillon faible ; 0 (omis) sinon.
+	// (« Par contexte »), servi au front pour ses libellés d'état vide. Toujours posé.
 	MinGroupMatches int `json:"min_group_matches,omitempty"`
 	// PeriodStart/PeriodEnd : bornes temporelles (min/max start_time) du scope.
 	PeriodStart *time.Time `json:"period_start,omitempty"`
 	PeriodEnd   *time.Time `json:"period_end,omitempty"`
-	// Baseline : comparaison à l'historique complet (post-exclusions). Nil si
-	// low sample.
+	// Baseline : comparaison à l'historique complet (post-exclusions). Nil si le scope ou
+	// l'historique est vide.
 	Baseline *ExplorerBriefingBaseline `json:"baseline,omitempty"`
 	// Dimensions : cartes par dimension libre (carte/mode/playlist). Une dimension
 	// à moins de 2 valeurs dans le scope est absente ; une dimension à 2 valeurs ou
 	// plus sans 2 groupes qualifiés est présente avec Insufficient=true. Vide/nil
-	// si low sample ou aucune dimension libre.
+	// si aucune dimension libre.
 	Dimensions []ExplorerBriefingDimension `json:"dimensions,omitempty"`
 	// Ranked : module « Classement » (progression de paliers PAR CHAÎNE de playlist).
 	// Nil si le titre n'expose pas la capability ranked ou si aucun match rangé
 	// dans le scope.
 	Ranked *ExplorerBriefingRanked `json:"ranked,omitempty"`
 	// ContextSplit : comparaison solo vs escouade du scope. Nil si un contexte n'a
-	// aucun match (scope mono-contexte) ou en échantillon faible ; Insufficient=true
+	// aucun match (scope mono-contexte) ; Insufficient=true
 	// si les deux contextes existent mais que l'un est sous le seuil.
 	ContextSplit *ExplorerBriefingContextSplit `json:"context_split,omitempty"`
 	// Streaks : séries extrêmes du scope (meilleure série de victoires / pire série

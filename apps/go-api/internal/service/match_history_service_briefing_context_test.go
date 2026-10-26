@@ -117,8 +117,9 @@ func TestBuildBriefingContextSplit_ZeroSideNil(t *testing.T) {
 	}
 }
 
-// Cas low_sample : modules comparatifs omis (D6) → ContextSplit nil.
-func TestBuildExplorerBriefing_ContextSplitOmittedWhenLowSample(t *testing.T) {
+// Cas low_sample : le split suit les mêmes règles qu'au-delà du seuil (D4/D5) : 4 solo + 4
+// escouade → carte servie en état vide.
+func TestBuildExplorerBriefing_ContextSplitServedWhenLowSample(t *testing.T) {
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 8; i++ {
 		filtered = append(filtered, briefingCtxRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, i%2 == 0))
@@ -130,7 +131,10 @@ func TestBuildExplorerBriefing_ContextSplitOmittedWhenLowSample(t *testing.T) {
 	if !b.LowSample {
 		t.Fatal("attendu LowSample (scope < seuil modules)")
 	}
-	if b.ContextSplit != nil {
-		t.Errorf("ContextSplit doit être nil sous low_sample, got %+v", b.ContextSplit)
+	if b.ContextSplit == nil || !b.ContextSplit.Insufficient {
+		t.Fatalf("ContextSplit attendu en état vide (4 solo + 4 escouade < seuil), got %+v", b.ContextSplit)
+	}
+	if b.ContextSplit.Solo.Matches != 4 || b.ContextSplit.Squad.Matches != 4 {
+		t.Errorf("comptes attendus 4/4, got %+v", b.ContextSplit)
 	}
 }
