@@ -11,6 +11,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - **Summary: performance score by map and by mode** — the "By map" and "By mode" charts now carry a curve of the average performance score (0 to 100, right-hand axis) over the result bars. Each point takes the colour of its tier; the curve breaks on a column with no scored match (unfinished matches have no score).
 
+### Changed
+- **Map variants counted with their base map** — "- Ranked" and "Heavies" variants (e.g. "Solitude - Ranked", "Fragmentation Heavies") now count under their base map in every per-map statistic: Tactical map grid and placement reads, map win rate and briefing in the Explorer, most played maps in the Summary, Squad and Teammates, Time series and the home page's favourite map. A variant with no base map (Lattice, Vacancy) stays on its own. The replay and the match view keep the name of the variant actually played.
+
+### Fixed
+- **Map filter in the Summary, Squad and Teammates** — picking a map now also brings back the matches played on its variants, as the Explorer filter already did.
+
 ## [8.0.7] - 2026-10-26
 
 ### Added

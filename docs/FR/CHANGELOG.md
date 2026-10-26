@@ -11,6 +11,12 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 ### Added
 - **Synthèse : score de performance par carte et par mode** — les graphiques « Par carte » et « Par mode » portent une courbe du score de performance moyen (de 0 à 100, axe de droite) au-dessus des barres de résultats. Chaque point prend la couleur de son palier ; la courbe s'interrompt sur une colonne sans match noté (les matchs non terminés n'ont pas de score).
 
+### Changed
+- **Variantes de carte comptées avec leur carte de base** — les variantes « - Ranked » et « Heavies » (par exemple « Solitude - Classé », « Du lourd sur Fragmentation ») comptent désormais sous leur carte de base dans toutes les statistiques par carte : grille et lectures de placement de la Tactique, taux de victoire par carte et briefing de l'Explorateur, cartes les plus jouées de la Synthèse, Escouade et Coéquipiers, Séries temporelles et carte fétiche de l'Accueil. Une variante sans carte de base (Treillis, Vacancy) reste seule. Le rejeu et la vue d'un match gardent le nom de la variante réellement jouée.
+
+### Fixed
+- **Filtre de cartes de la Synthèse, de l'Escouade et des Coéquipiers** — choisir une carte ramène aussi les parties jouées sur ses variantes, comme le faisait déjà le filtre de l'Explorateur.
+
 ## [8.0.7] - 2026-10-26
 
 ### Added
