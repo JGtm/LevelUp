@@ -203,8 +203,8 @@ describe('ExplorerBriefingStrip — Classement (RankedBlock, DEC-LAYOUT/DEC-RANK
   it('rend le Classement comme cellule SIBLING de la grille « Par… », PAS dans le socle', () => {
     const briefing = { ...makeBriefing(120, 120), ranked: rankedSingle }
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
-    // Socle = flex-wrap (V6/DP-4) ; « Par… » = grille adaptative (grid-template-columns).
-    const socle = container.querySelector('[class*="flex-wrap"]')
+    // Socle = grille à colonnes égales (data-testid) ; « Par… » = grille adaptative (grid-template-columns).
+    const socle = container.querySelector('[data-testid="briefing-socle"]')
     expect(socle?.textContent).not.toContain('explorer.briefing.ranked_title')
     const grids = container.querySelectorAll('[class*="grid-template-columns"]')
     const modulesGrid = grids[grids.length - 1]
@@ -275,7 +275,7 @@ describe('ExplorerBriefingStrip — bande « Moments forts » (DP-5)', () => {
 const TIP_ARIA = /Plus d'informations|More information/i
 
 // Briefing COMPLET : 3 dimensions + contexte + classement + séries + moments forts,
-// pour exercer les 11 tooltips (4 tuiles hors Matchs + Séries marquantes + 4 cartes
+// pour exercer les 11 tooltips (4 tuiles hors Matchs + Séries + 4 cartes
 // « Par… » + 1 bande ; le Pic FDA autonome a été retiré en V5, DP-1).
 function makeFullBriefing(): ExplorerBriefing {
   return {
@@ -299,11 +299,11 @@ describe('ExplorerBriefingStrip — tooltips de légende (i) (DP-9)', () => {
     useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
   })
 
-  it('pose une icône (i) sur 4 tuiles (hors Matchs) + Séries marquantes + 4 cartes « Par… » + la bande', () => {
+  it('pose une icône (i) sur 4 tuiles (hors Matchs) + Séries + 4 cartes « Par… » + la bande', () => {
     const { getAllByRole } = renderWithProviders(
       <ExplorerBriefingStrip briefing={makeFullBriefing()} t={t} />,
     )
-    // Socle (i) : Taux de victoire, FDA, Perf, Durée totale (4) + Séries marquantes
+    // Socle (i) : Taux de victoire, FDA, Perf, Durée totale (4) + Séries
     // (1 ; makeFullBriefing n'a ni Pic rang ni Pic MMR). Modules : 3 dimensions +
     // « Par contexte » + Classement (RankedBlock) + bande Moments forts (6). Total =
     // 11 (le Pic FDA autonome a été retiré, DP-1). La tuile Matchs n'a PAS de (i).
@@ -421,7 +421,7 @@ describe('ExplorerBriefingStrip — Pic rang (DEC-PEAKRANK)', () => {
 })
 
 describe('ExplorerBriefingStrip — cascade des conditionnelles (DP-2, cap 8)', () => {
-  it('rend les 3 conditionnelles quand présentes (Séries marquantes + Pic rang + Pic MMR)', () => {
+  it('rend les 3 conditionnelles quand présentes (Séries + Pic rang + Pic MMR)', () => {
     const briefing = {
       ...withScope({
         peak_ranks: [{ rating_type: 'lusr', tier_label: 'Diamant IV' }],
@@ -445,8 +445,8 @@ describe('ExplorerBriefingStrip — cascade des conditionnelles (DP-2, cap 8)', 
       streaks: { best_win_streak: 7, worst_loss_streak: 4 },
     }
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
-    // Socle = flex-wrap (V6/DP-4) ; 5 tuiles de base + 3 conditionnelles = 8 flex-items.
-    const socle = container.querySelector('[class*="flex-wrap"]')
+    // Socle = grille à colonnes égales ; 5 tuiles de base + 3 conditionnelles = 8 enfants.
+    const socle = container.querySelector('[data-testid="briefing-socle"]')
     expect(socle?.children.length).toBe(8)
   })
 
@@ -516,7 +516,7 @@ describe('ExplorerBriefingStrip — triptyques, accents & centrage (V5 : DP-1/DP
       streaks: { best_win_streak: 7, worst_loss_streak: 4 },
     }
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
-    const socle = container.querySelector('[class*="flex-wrap"]')
+    const socle = container.querySelector('[data-testid="briefing-socle"]')
     const accentBars = Array.from(socle?.querySelectorAll('div') ?? []).filter((d) =>
       d.className.includes('h-[3px]'),
     )

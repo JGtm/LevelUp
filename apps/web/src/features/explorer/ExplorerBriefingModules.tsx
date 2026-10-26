@@ -12,7 +12,7 @@
  *     contexte » `insufficient` : état vide qui donne les deux comptes.
  *   - Moments forts (dominance) : bande nue.
  *
- * Les Séries marquantes restent une tuile du socle (ExplorerBriefingTiles). Un bloc
+ * Les Séries restent une tuile du socle (ExplorerBriefingTiles). Un bloc
  * backend nil n'a rien à comparer (axe filtré, valeur unique, contexte à zéro match)
  * et n'est pas rendu ; un bloc qui aurait de quoi comparer sans atteindre le seuil est
  * toujours rendu en état vide (jamais d'omission silencieuse). Tokens sémantiques

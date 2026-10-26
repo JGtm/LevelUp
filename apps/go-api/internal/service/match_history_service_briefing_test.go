@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"math"
+	"reflect"
 	"testing"
 	"time"
 
@@ -41,10 +42,20 @@ func svcWithRanked(ranked bool) *MatchHistoryService {
 	return &MatchHistoryService{rankedCapable: ranked}
 }
 
+// Échantillon faible (< MinBriefingModulesMatches) : LowSample est posé, mais Baseline,
+// Dimensions et ContextSplit suivent les MÊMES règles qu'au-delà du seuil (D3/D4/D5) et
+// MinGroupMatches est servi.
 func TestBuildExplorerBriefing_LowSample(t *testing.T) {
+	// 8 matchs : deux cartes (4 + 4) et deux contextes (4 solo + 4 escouade).
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 8; i++ {
-		filtered = append(filtered, briefingRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène classée"))
+		mapID, label := "map1", "Aquarius"
+		if i%2 == 1 {
+			mapID, label = "map2", "Recharge"
+		}
+		r := briefingRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, 10, 5, 2, 60, mapID, label, "Slayer", "Arène classée")
+		r.IsWithFriends = (i/2)%2 == 1
+		filtered = append(filtered, r)
 	}
 	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
 	if b == nil {
@@ -61,11 +72,34 @@ func TestBuildExplorerBriefing_LowSample(t *testing.T) {
 	if b.PeriodStart == nil || b.PeriodEnd == nil {
 		t.Error("period should be set")
 	}
-	if b.Baseline != nil || b.Dimensions != nil || b.ContextSplit != nil {
-		t.Error("low sample: comparative modules (baseline / dimensions / context split) must be nil")
+	if b.MinGroupMatches != 5 {
+		t.Errorf("MinGroupMatches = %d, want 5", b.MinGroupMatches)
 	}
-	if b.MinGroupMatches != 0 {
-		t.Errorf("low sample: MinGroupMatches = %d, want 0", b.MinGroupMatches)
+	if b.Baseline == nil {
+		t.Fatal("low sample: Baseline doit être servie")
+	}
+	if want := buildBriefingBaseline(filtered, filtered); !reflect.DeepEqual(b.Baseline, want) {
+		t.Errorf("Baseline = %+v, want mêmes règles que hors échantillon faible : %+v", b.Baseline, want)
+	}
+	// 4 + 4 matchs par carte : sous le seuil de 5, la carte est servie en état vide (D3).
+	var mapDim *domain.ExplorerBriefingDimension
+	for i := range b.Dimensions {
+		if b.Dimensions[i].Dimension == "map" {
+			mapDim = &b.Dimensions[i]
+		}
+	}
+	if mapDim == nil || !mapDim.Insufficient {
+		t.Errorf("low sample: dimension carte attendue en état vide (Insufficient), got %+v", b.Dimensions)
+	}
+	if want := buildBriefingDimensions(filtered, filtered, domain.GroupesDeCartes{}); !reflect.DeepEqual(b.Dimensions, want) {
+		t.Errorf("Dimensions = %+v, want mêmes règles que hors échantillon faible : %+v", b.Dimensions, want)
+	}
+	// 4 solo + 4 escouade : les deux côtés existent mais sont sous le seuil → état vide (D5).
+	if b.ContextSplit == nil || !b.ContextSplit.Insufficient {
+		t.Errorf("low sample: ContextSplit attendu en état vide (Insufficient), got %+v", b.ContextSplit)
+	}
+	if want := buildBriefingContextSplit(filtered); !reflect.DeepEqual(b.ContextSplit, want) {
+		t.Errorf("ContextSplit = %+v, want mêmes règles que hors échantillon faible : %+v", b.ContextSplit, want)
 	}
 }
 

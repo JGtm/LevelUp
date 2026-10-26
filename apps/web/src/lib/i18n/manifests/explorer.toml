@@ -1025,8 +1025,8 @@ fr = "vs habituel"
 en = "vs usual"
 
 [explorer.briefing.low_sample]
-fr = "Échantillon faible ({n} matchs)"
-en = "Small sample ({n} matches)"
+fr = "Échantillon faible : {n} matchs, les comparaisons sont peu fiables."
+en = "Small sample: {n} matches, comparisons are not reliable."
 
 # Bascule réduire/afficher de la synthèse (« briefing ») — libellé + aria explicites.
 [explorer.briefing.collapse]
@@ -1117,13 +1117,13 @@ en = "By context"
 fr = "Arme favorite"
 en = "Favorite weapon"
 
-# ─── Bandeau briefing : tuile « Séries marquantes » (socle) et bande « Moments forts » ─
+# ─── Bandeau briefing : tuile « Séries » (socle) et bande « Moments forts » ─
 
 [explorer.briefing.streaks_title]
-fr = "Séries marquantes"
-en = "Notable streaks"
+fr = "Séries"
+en = "Streaks"
 
-# Abréviations V/D (« {n} V » / « {n} D ») de la valeur de la tuile Séries marquantes.
+# Abréviations V/D (« {n} V » / « {n} D ») de la valeur de la tuile Séries.
 [explorer.briefing.streak_wins]
 fr = "{n} V"
 en = "{n} W"
@@ -1178,8 +1178,8 @@ fr = "Palier de classement en fin de sélection, palier de départ, et moyenne d
 en = "Ranking tier at the end of the selection, the starting tier, and the average ranking points gained or lost per match."
 
 [explorer.briefing.tip_streaks]
-fr = "Séries extrêmes dans la sélection : la plus longue suite de victoires et la plus longue suite de défaites."
-en = "Extreme streaks in the selection: the longest run of wins and the longest run of losses."
+fr = "Séries marquantes de la sélection : la plus longue suite de victoires et la plus longue suite de défaites."
+en = "Notable streaks in the selection: the longest run of wins and the longest run of losses."
 
 [explorer.briefing.tip_highlights]
 fr = "Matchs marquants : dominations (large victoire), humiliations (large défaite), remontadas (victoire après avoir été mené), débandades (défaite après avoir mené), contre-remontadas (remontée adverse stoppée après avoir mené)."

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -100,9 +101,8 @@ func TestBuildDimension_NormalOmitsInsufficient(t *testing.T) {
 	}
 }
 
-// D6 : sous 10 matchs notés, seuls les blocs qui comparent sont omis ; Classement,
-// arme favorite, séries et moments forts restent servis.
-func TestBuildExplorerBriefing_LowSampleKeepsNonComparativeModules(t *testing.T) {
+// D6 : sous 10 matchs notés, rien n'est retiré : Classement, arme favorite, séries, moments// forts ET blocs qui comparent (Baseline, Dimensions, ContextSplit) sont servis selon les// mêmes règles qu'au-delà du seuil.
+func TestBuildExplorerBriefing_LowSampleServesEveryModule(t *testing.T) {
 	tiers := []string{"Bronze I", "Bronze II"}
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 8; i++ {
@@ -128,15 +128,21 @@ func TestBuildExplorerBriefing_LowSampleKeepsNonComparativeModules(t *testing.T)
 		t.Fatalf("Ranked/Weapons/Streaks/Dominance attendus non nil : ranked=%v weapons=%v streaks=%v dominance=%v",
 			b.Ranked, b.Weapons, b.Streaks, b.Dominance)
 	}
-	if b.Baseline != nil || b.Dimensions != nil || b.ContextSplit != nil {
-		t.Errorf("Baseline/Dimensions/ContextSplit doivent être nil : %+v %+v %+v", b.Baseline, b.Dimensions, b.ContextSplit)
+	if b.Baseline == nil {
+		t.Error("Baseline doit être servie en échantillon faible")
 	}
-	if b.MinGroupMatches != 0 {
-		t.Errorf("MinGroupMatches = %d, attendu 0 en échantillon faible", b.MinGroupMatches)
+	if want := buildBriefingDimensions(filtered, filtered, domain.GroupesDeCartes{}); !reflect.DeepEqual(b.Dimensions, want) {
+		t.Errorf("Dimensions = %+v, want mêmes règles que hors échantillon faible : %+v", b.Dimensions, want)
+	}
+	if want := buildBriefingContextSplit(filtered); !reflect.DeepEqual(b.ContextSplit, want) {
+		t.Errorf("ContextSplit = %+v, want mêmes règles que hors échantillon faible : %+v", b.ContextSplit, want)
+	}
+	if b.MinGroupMatches != MinDimensionGroupMatches {
+		t.Errorf("MinGroupMatches = %d, attendu %d", b.MinGroupMatches, MinDimensionGroupMatches)
 	}
 }
 
-// Hors échantillon faible, le seuil de groupe est servi au front.
+// Le seuil de groupe est servi au front, hors échantillon faible comme en échantillon faible.
 func TestBuildExplorerBriefing_ServesMinGroupMatches(t *testing.T) {
 	scope := briefingMapGroups(6, 6)
 	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), scope, scope)
