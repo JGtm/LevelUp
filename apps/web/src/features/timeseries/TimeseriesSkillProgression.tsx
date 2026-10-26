@@ -56,10 +56,16 @@ function buildTitle(series: ProgressionSeries[], locale: ManifestLocale): string
 
 // ── Option ECharts ────────────────────────────────────────────────────────────
 
+// Marges verticales de la zone de tracé : partagées par `grid` et l'estimation de
+// hauteur utile qui décide de la densité des libellés de rang.
+const GRID_TOP = 30
+const GRID_BOTTOM = 40
+
 function buildOption(
   series: ProgressionSeries[],
   rows: TimeseriesMatchRow[],
   locale: ManifestLocale,
+  height: number,
 ): EChartsCoreOption {
   const tc = getEChartsThemeColors()
   const axisBase = getAxisBase(tc)
@@ -79,7 +85,9 @@ function buildOption(
     data: [],
     silent: true,
     legendHoverLink: false,
-    markArea: buildSkillTierMarkArea(locale, yMin, yMax, grid, tc),
+    markArea: buildSkillTierMarkArea({
+      locale, yMin, yMax, grid, theme: tc, plotHeightPx: height - GRID_TOP - GRID_BOTTOM,
+    }),
   }
 
   const echartsSeriesList: object[] = [ghostSeries]
@@ -129,7 +137,7 @@ function buildOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { left: 12, right: 20, top: 30, bottom: 40, containLabel: true },
+    grid: { left: 12, right: 20, top: GRID_TOP, bottom: GRID_BOTTOM, containLabel: true },
     tooltip: {
       trigger: 'axis',
       ...getTooltipBase(tc),
@@ -189,7 +197,7 @@ export function TimeseriesSkillProgression({ rows, locale, height = 280, emptyMe
       series={chartSeriesForCard}
       height={height}
       emptyMessage={emptyMessage}
-      buildOption={() => buildOption(series, rows, locale)}
+      buildOption={() => buildOption(series, rows, locale, height)}
       reviewKey="timeseries.skill_progression"
     />
   )

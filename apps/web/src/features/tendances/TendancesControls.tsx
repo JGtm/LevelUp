@@ -11,7 +11,7 @@ import type { Locale } from '@/lib/i18n/locale'
 import { getTendancesText } from './i18n'
 import { gameTypeLabel } from './labels'
 import type { TendancesView } from './tendances.logic'
-import { TendancesSegmented } from './TendancesSegmented'
+import { Segmented } from '@/components/ui/segmented'
 import { TendancesSquadPicker } from './TendancesSquadPicker'
 import type { TendancesSquadSelection } from './useTendancesSquadSelection'
 
@@ -47,7 +47,7 @@ export function TendancesControls({
   const t = getTendancesText(locale)
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <TendancesSegmented
+      <Segmented
         options={VIEWS.map((v) => ({ value: v, label: t.viewLabel(v) }))}
         value={view}
         onChange={onViewChange}

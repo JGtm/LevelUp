@@ -118732,3 +118732,15 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : tests unitaires (`shellNavigation.test.ts`, `__root.test.tsx`) rouges sans le correctif, verts avec ; spec E2E `e2e/join-invite.spec.ts` (bootstrap anonyme simulé, redirection Microsoft interceptée) verte ; `tsc -b`, eslint, vitest complet 1 001 fichiers / 10 340 tests verts.
 
 **Conclusion / prochaine étape** : fusion vers main (squash) = déploiement ; contrôle en prod d'une visite anonyme de /join ; `release/v8.0.5` (autre session) devra intégrer main.
+
+## [2026-10-25] Carrière — graphe « Évolution LUSR / CSR » : une échelle à la fois, placements écartés, libellés de rang lisibles — Complété (branche `release/v8.0.6`)
+
+**Contexte** : retour d'un joueur (« CSR treats 1475 as between D5 and D6 ») et capture de l'utilisateur du 2026-10-25 (libellés de rang empilés). Le calcul des rangs CSR est juste partout (1475 = Diamant 6, Go `DeriveCSRTier` comme `CSR_TIER_GRID`) ; le défaut est l'affichage : (1) libellé de bande posé en haut (`insideTopLeft`), collé à la borne du rang suivant, d'où une valeur au milieu de D6 lue « entre D5 et D6 » ; (2) LUSR et CSR mélangés sur un seul axe avec la grille LUSR (CSR 1600 = Onyx affiché face à « Platine I ») ; (3) placements stockés à 0 tracés, la courbe plongeait à 0 à chaque saison et l'axe 0-2200 empilait 23 libellés.
+
+**Décision technique principale** : `buildSkillTierMarkArea` prend un objet (`plotHeightPx` en plus) : libellé centré (`insideLeft`), repli au palier entier si un sous-palier visible fait moins de 12 px, libellé masqué sur une bande trop fine (profite aussi au graphe Classement des Séries temporelles). Carrière : `lusrEvolution.logic.ts` (placements écartés via `isPlacementTierLabel`, sentinelle déplacée de `MatchHeader.utils` vers `lib/skillTiers`), une échelle à la fois, bascule LUSR | CSR dans le titre quand les deux existent, nom d'axe par échelle (clés `career.charts.csr_rating_axis_y`, `career.charts.lusr_evolution_scale`). Bascule : `TendancesSegmented` déplacé en `components/ui/segmented.tsx` (`Segmented`) plutôt qu'une 3e copie du motif (règle n°6).
+
+**Résultats observés** : `tsc -b` vert, eslint vert sur les fichiers touchés, `lint:fields` et `lint:colors` sans violation, vitest complet 1 004 fichiers / 10 360 tests verts (23 ignorés) avant le passage des identifiants d'échelle en minuscules, puis career + charts verts après. Pas de contrôle visuel dans le navigateur.
+
+**Découvertes (non traitées)** : `features/career/lusrSeries.ts` (`buildLusrSeries`) n'est plus appelé que par son test (code mort, règle n°7) ; le graphe Classement des Séries temporelles peut lui aussi mélanger LUSR et CSR sur un axe (grille LUSR quand les deux types sont présents).
+
+**Conclusion / prochaine étape** : commité sur `release/v8.0.6` (créée depuis `main` après la v8.0.5, accord utilisateur du 2026-10-26), poussé pour la CI depuis un worktree dédié (le checkout principal tenait la recuisson du parc). Reste : contrôle visuel par l'utilisateur (Carrière, Séries temporelles, Tendances) une fois le serveur local relancé.

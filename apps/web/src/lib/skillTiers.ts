@@ -21,6 +21,18 @@ export const SKILL_TIER_VALUES = [
 
 export type SkillTierValue = typeof SKILL_TIER_VALUES[number]
 
+// ── Sentinelle « en placement » (source unique) ───────────────────────────────
+// Valeur MACHINE servie par le back (skill.TierLabelPlacement) pendant la phase de
+// placement : comme tier (« Placement ») et en tête du libellé baké
+// (« Placement (2 restants) »). La valeur stockée est alors 0, pas un classement :
+// elle ne se trace pas et ne s'affiche jamais brute (localisation par l'appelant).
+export const PLACEMENT_TIER_SENTINEL = 'Placement'
+
+/** Vrai pour un tier ou libellé de palier de la phase de placement. */
+export function isPlacementTierLabel(label: string | null | undefined): boolean {
+  return label != null && label.trim().startsWith(PLACEMENT_TIER_SENTINEL)
+}
+
 // ── Sous-paliers en chiffres romains (source unique) ──────────────────────────
 // Index 1→I … 6→VI (index 0 = pas de sous-palier). Aligné sur le Go
 // rankSubRoman / FormatTierSubLabel. Garde-rail skillTiers.guard.test.ts :

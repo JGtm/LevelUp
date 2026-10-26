@@ -1,27 +1,27 @@
 /**
- * TendancesSegmented — la bascule à boutons de l'onglet Tendances (horizon, et plus tard
- * vue et pas). Gabarit EXACT de la bascule de contexte de `components/shell/FilterOmnibar`
- * (groupe `role="group"`, boutons `aria-pressed`, mêmes classes) : aucun composant partagé
- * n'existe pour ce motif, et c'est le SEUL endroit de la feature qui l'écrit.
+ * Segmented — bascule à boutons partagée (horizon et vue de Tendances, échelle du graphe
+ * d'évolution LUSR / CSR de la Carrière). Gabarit EXACT de la bascule de contexte de
+ * `components/shell/FilterOmnibar` (groupe `role="group"`, boutons `aria-pressed`, mêmes
+ * classes) : hors de l'omnibar, c'est le SEUL endroit qui écrit ce motif.
  */
-export interface TendancesSegmentedOption<V extends string | number> {
+export interface SegmentedOption<V extends string | number> {
   value: V
   label: string
 }
 
-export interface TendancesSegmentedProps<V extends string | number> {
-  options: readonly TendancesSegmentedOption<V>[]
+export interface SegmentedProps<V extends string | number> {
+  options: readonly SegmentedOption<V>[]
   value: V
   onChange: (value: V) => void
   ariaLabel: string
 }
 
-export function TendancesSegmented<V extends string | number>({
+export function Segmented<V extends string | number>({
   options,
   value,
   onChange,
   ariaLabel,
-}: TendancesSegmentedProps<V>) {
+}: SegmentedProps<V>) {
   return (
     <div
       className="flex shrink-0 items-center gap-0.5 rounded-md border border-input bg-background p-0.5 text-xs"

@@ -10,7 +10,7 @@ import type { Locale } from '@/lib/i18n/locale'
 
 import { getTendancesText } from './i18n'
 import { HORIZONS, type Horizon } from './tendances.logic'
-import { TendancesSegmented } from './TendancesSegmented'
+import { Segmented } from '@/components/ui/segmented'
 
 export interface TendancesHorizonBarProps {
   locale: Locale
@@ -30,7 +30,7 @@ export function TendancesHorizonBar({ locale, horizon, onChange }: TendancesHori
         {t.horizonLabel}
         <InfoTooltip content={t.horizonInfo} />
       </h2>
-      <TendancesSegmented
+      <Segmented
         options={options}
         value={horizon}
         onChange={onChange}

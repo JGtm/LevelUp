@@ -30,7 +30,7 @@ import {
   isStackedChart,
   type TendancesStackedChartDef,
 } from './tendancesSquadCharts.logic'
-import { TendancesSegmented } from './TendancesSegmented'
+import { Segmented } from '@/components/ui/segmented'
 
 /** Hauteur d'un graphique, en pixels. */
 const CHART_HEIGHT = 280
@@ -118,7 +118,7 @@ export function TendancesEvolution({
           {t.evolutionTitle}
           <InfoTooltip content={t.evolutionInfo} />
         </SectionTitle>
-        <TendancesSegmented
+        <Segmented
           options={stepOptions}
           value={step}
           onChange={onStepChange}

@@ -118,6 +118,14 @@ en = "LUSR rating"
 fr = "LUSR"
 en = "LUSR"
 
+[career.charts.csr_rating_axis_y]
+fr = "CSR"
+en = "CSR"
+
+[career.charts.lusr_evolution_scale]
+fr = "Échelle de classement"
+en = "Rating scale"
+
 [career.charts.placeholder_unavailable]
 fr = "Graphique indisponible"
 en = "Chart unavailable"
