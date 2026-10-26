@@ -83,3 +83,64 @@ func TestWithSession_DeuxRequetesAUneSeconde_UneEcriture(t *testing.T) {
 			third.Locale, third.LastSeenAt)
 	}
 }
+
+// TestWithSession_RequeteEnVol_NEcrasePasLeJoueurChoisi : une requête qui a chargé la
+// session AVANT un changement de joueur courant (POST /session/context, qui Save) et se
+// termine APRÈS ne réécrit pas l'ancien joueur — elle ne fait que rafraîchir last_seen_at.
+// Symptôme d'origine : joueur choisi dans le sélecteur, puis retour au profil par défaut au
+// rechargement suivant de /bootstrap (changement de langue).
+func TestWithSession_RequeteEnVol_NEcrasePasLeJoueurChoisi(t *testing.T) {
+	sessDir := filepath.Join(t.TempDir(), "sessions")
+	clock := time.Date(2026, 10, 26, 10, 0, 0, 0, time.UTC)
+	store := session.NewStore(sessDir, session.DefaultTTL, "test-secret-32bytesXXXXXXXXXXX",
+		session.WithClock(func() time.Time { return clock }))
+	sess := store.New()
+	user, ancien := "alice", "callousss"
+	sess.Username = &user
+	sess.CurrentPlayerSlug = &ancien
+	if err := store.Save(sess); err != nil {
+		t.Fatalf("Save : %v", err)
+	}
+	signed := store.SignCookie(sess.SessionID)
+
+	loaded, release, done := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	enVol := middleware.WithSession(store, middleware.SecureCookiePolicy{})(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			close(loaded)
+			<-release
+			w.WriteHeader(http.StatusOK)
+		}))
+	choix := middleware.WithSession(store, middleware.SecureCookiePolicy{})(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s := middleware.GetSession(r.Context())
+			nouveau := "alice_gt"
+			s.CurrentPlayerSlug = &nouveau
+			if err := store.Save(s); err != nil {
+				t.Errorf("Save du choix : %v", err)
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+	serve := func(h http.Handler) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.AddCookie(&http.Cookie{Name: session.CookieName, Value: signed})
+		h.ServeHTTP(httptest.NewRecorder(), req)
+	}
+
+	clock = clock.Add(10 * time.Minute)
+	go func() { serve(enVol); close(done) }()
+	<-loaded
+	serve(choix)
+	close(release)
+	<-done
+
+	got := store.Load(t.Context(), sess.SessionID)
+	if got == nil {
+		t.Fatal("session introuvable sur disque")
+	}
+	if got.CurrentPlayerSlug == nil || *got.CurrentPlayerSlug != "alice_gt" {
+		t.Fatalf("joueur courant sur disque = %v, attendu alice_gt (écrasé par la requête en vol)", got.CurrentPlayerSlug)
+	}
+	if got.LastSeenAt != clock.Unix() {
+		t.Errorf("last_seen_at = %d, attendu %d (présence non rafraîchie)", got.LastSeenAt, clock.Unix())
+	}
+}
