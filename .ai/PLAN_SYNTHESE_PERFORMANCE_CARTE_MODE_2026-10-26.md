@@ -9,10 +9,9 @@
 ## Objectif et critère de succès
 
 Section « Activité & répartition » de la Synthèse : les deux graphiques existants « Par carte » et
-« Par mode » (bâtons empilés des issues) portent, au-dessus de chaque colonne, une barre courte du
-score de performance moyen (0..100) colorée par palier. Même axe des colonnes, même ordre, aucune
-nouvelle section. Critère : sur la base réelle, chaque carte et chaque mode listés montrent leur
-score moyen ; une colonne sans aucun match noté montre un emplacement en pointillé ; la moyenne
+« Par mode » (bâtons empilés des issues) portent une courbe du score de performance moyen (0..100,
+axe de droite, points colorés par palier). Même axe des colonnes, même ordre, aucune nouvelle section. Critère : sur la base réelle, chaque carte et chaque mode listés montrent leur
+score moyen ; une colonne sans aucun match noté laisse un trou dans la courbe ; la moyenne
 d'une ligne est celle des matchs de cette ligne qui ont un score (règle déjà appliquée par la
 Synthèse pour la vue d'ensemble, `stats_canonical.go`).
 
@@ -28,6 +27,13 @@ Synthèse pour la vue d'ensemble, `stats_canonical.go`).
 - **D5 — Variantes de carte** (« Live Fire » / « Live Fire - Ranked ») : hors de ce lot, traitées
   par `PLAN_CARTES_VARIANTES_STATS_2026-10-26.md` (étape E2, item Synthèse,
   worktree `LevelUp-wt-cartes-variantes`). Voir « Coordination ».
+- **D6 — Courbe sur axe secondaire, à la place de la bande** (décision du user, 2026-10-26, après le
+  gate visuel) : le rendu « seconde grille au-dessus des bâtons » est rejeté (« tu as juste rajouté un
+  graphe dans le graphe ; j'aurais préféré un axe Z avec une courbe »). Une seule grille : bâtons
+  empilés sur l'axe de gauche, second axe vertical à droite (0..100, nommé par le libellé du champ),
+  série en courbe du score, points colorés par palier, trait neutre, trou de courbe pour une colonne
+  sans match noté, aucune étiquette de valeur (la valeur est dans l'infobulle). Hauteur d'avant le
+  lot (360, passée par la page). Remplace la forme décrite en E2 avant le 2026-10-26.
 
 ## Lecture sur pièces (2026-10-26)
 
@@ -91,39 +97,41 @@ Les deux lots modifient `buildBreakdownsFromCanonical`. Partage :
 
 ### E2 — Graphique
 - [x] `SynthesisPage.tsx` : `performance_avg` et `perf_tier` passés dans les `entries` des deux
-      graphiques (aucune logique ajoutée dans la page)
-      ; le prop `height={360}` est retiré, la hauteur vit dans le graphe
-- [x] `buildOutcomesOption` : seconde grille AU-DESSUS des bâtons empilés, mêmes catégories
-      (`xAxis` lié, étiquettes masquées sur la grille du haut), axe 0..100 nommé par
-      `useFieldLabel('performance_score')`, une barre par colonne colorée `perf-tier-N` via
-      `resolveToken`, valeur arrondie à l'entier au-dessus de la barre
-- [x] Colonne sans score : emplacement en pointillé pleine hauteur (contour en tirets, fond
-      transparent, token neutre existant), pas de valeur affichée
-- [x] Infobulle : une ligne « <libellé du champ> : 72 » ajoutée aux lignes d'issues ; « — » si
-      pas de score ; `axisPointer.link` sur les deux abscisses pour un survol commun
-- [x] Titre des deux cartes via `titleWithInfo` : une bulle qui dit ce que montre la barre du
-      haut et le sens des couleurs (chaîne FR + EN dans `lib/i18n/manifests/synthesis.toml`,
-      clé `synthesis.breakdown.performance_info`, puis régénération du manifeste)
-- [x] Hauteur des deux cartes ajustée (360 -> valeur mesurée pour garder la hauteur actuelle des
-      bâtons empilés) — 450 px, CALCULÉE (360 + bande 64 + espace 26 ; bâtons empilés toujours
-      230 px) et non mesurée à l'écran : à confirmer en E3
-- [x] Tests `SynthesisOutcomesByGroupChart.test.ts` (nouveau) : couleur par palier, colonne sans
-      score en pointillé, ordre des catégories identique dans les deux grilles, liste vide =
-      option vide (comportement actuel)
+      graphiques (aucune logique ajoutée dans la page) ; `height={360}` conservé (hauteur d'avant le lot)
+- [x] `buildOutcomesOption` (forme D6, 2026-10-26 ; remplace la seconde grille et la bande de barres) :
+      UNE grille, bâtons empilés sur l'axe de gauche (inchangés), second axe vertical à droite
+      0..100 nommé par `useFieldLabel('performance_score')`, série `line` sur `yAxisIndex: 1`,
+      points colorés `perf-tier-N` via `resolveToken`, trait neutre (`axisLabel` du thème),
+      aucune étiquette de valeur ; marge droite de la grille élargie (56 px)
+- [x] Colonne sans score : `null` dans la série, trou de courbe (`connectNulls: false`), ni pointillé
+      ni emplacement
+- [x] Infobulle : la ligne de performance en premier (« <libellé du champ> : 72 »), puis les issues
+      présentes (zéros masqués) ; « — » pour une colonne sans score, y compris quand le moteur omet
+      la série (ligne synthétisée par `withPerformanceRow`)
+- [x] Titre des deux cartes via `titleWithInfo` : bulle réécrite pour décrire la courbe, l'axe de
+      droite, la couleur des points par palier et le trou de courbe (chaîne FR + EN dans
+      `lib/i18n/manifests/synthesis.toml`, clé `synthesis.breakdown.performance_info`, manifeste
+      régénéré par `scripts/build_i18n_manifests.mjs`)
+- [x] Hauteur : retour à 360 (passée par `SynthesisPage.tsx`, défaut du composant 520 comme avant le
+      lot) ; constantes de découpe de la bande supprimées
+- [x] Tests `SynthesisOutcomesByGroupChart.test.ts` : une grille, axe de droite 0..100, courbe sur
+      `yAxisIndex` 1, couleur des points par palier, `null` pour une colonne sans score, infobulle
+      « — » (valeur nulle et série omise), ordre des catégories, liste vide = option vide
 - Gate : `make check-types`, `make test-web` (hors bac à sable), `npm run lint` dans `apps/web`,
   aucune valeur hex ni classe de couleur ajoutée (skill `color-tokens`).
-  Passé le 2026-10-26 : `npm run typecheck` (tsc -b) exit 0 ; `npm run test:run` 1005 fichiers
-  passés, 5 ignorés, 10 376 tests passés, 23 ignorés (dont le garde-rail
-  `generated-types-fresh`) ; `npm run lint` 0 erreur, 26 avertissements, tous hors synthèse
-  (React Compiler / TanStack Table, antérieurs) ; grep hex et classes Tailwind couleur sur le
-  graphe : aucun ; `tools/lint-no-hardcoded-fields.mjs` : aucune violation.
+  Passé le 2026-10-26 (forme D6) : `npm run typecheck` (tsc -b) exit 0 ; `npm run test:run`
+  1005 fichiers passés, 5 ignorés, 10 377 tests passés, 23 ignorés ; `npm run lint` 0 erreur,
+  26 avertissements, tous hors synthèse (React Compiler / TanStack Table, antérieurs) ; grep hex et
+  classes Tailwind couleur sur le graphe : aucun ; `tools/lint-no-hardcoded-fields.mjs` : aucune
+  violation.
 
 ### E3 — Vérification visuelle et clôture
-- [ ] Serveur local (air + vite) : Synthèse du joueur principal, FR puis EN, thème clair et sombre,
-      palette cividis ; captures envoyées au user, qui désigne les témoins (gate visuel)
-- [ ] Un filtre qui laisse une seule carte ; une sélection vide (état vide du `ChartCard` intact)
-- [ ] Changelog EN/FR de la release visée : une ligne (rédigé avec les notes de la v8.1.0, section pas encore ouverte)
-- [ ] `.ai/thought_log.md` : entrée Complété (à poser après le gate visuel ; entrée « En cours » à jour) ; `.ai/REGISTRE_REPORTS.md` si un item finit en `[!]`
+- [x] Gate visuel : version bande refusée par le user (D6) ; version courbe VALIDÉE par le user le 2026-10-26
+      (« parfait », FR, thème sombre, JGtm). Anglais, thème clair et Halo 5 vus sur la version bande (mêmes
+      données, mêmes tokens) ; palette cividis non vue. Marge basse portée à 120 px (légende sur les noms longs)
+- [~] Une seule carte, sélection vide : couverts par `SynthesisOutcomesByGroupChart.test.ts` (ordre des catégories, liste vide = option vide, donc état vide du `ChartCard`) ; non vus à l'écran
+- [~] Changelog EN/FR : une ligne dans les notes de la v8.1.0, rédigées à la préparation de la release (section non ouverte au 2026-10-26)
+- [x] `.ai/thought_log.md` : entrée Complété ; `.ai/REGISTRE_REPORTS.md` si un item finit en `[!]`
 - [x] Skill `delivery-checklist` ; commit et fusion dans `release/v8.1.0` à la demande du user (2026-10-26), AVANT le gate visuel
       (coordination avec le lot variantes : voir Coordination)
 - Gate : validation visuelle du user + checklist de livraison verte.

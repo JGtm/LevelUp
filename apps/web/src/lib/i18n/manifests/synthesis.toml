@@ -444,10 +444,10 @@ en = "By map"
 fr = "Par mode"
 en = "By mode"
 
-# Bulle des deux graphes : la barre au-dessus des colonnes (score de performance moyen par palier).
+# Bulle des deux graphes : la courbe du score de performance moyen (axe de droite, points par palier).
 [synthesis.breakdown.performance_info]
-fr = "La barre au-dessus de chaque colonne donne le score de performance moyen (de 0 à 100) des matchs notés de cette colonne, colorée selon le palier : excellent (80 et plus), bon (65 à 79), correct (50 à 64), faible (35 à 49), mauvais (moins de 35). Les matchs non terminés n'ont pas de score et n'entrent pas dans la moyenne. Un emplacement en pointillé signale une colonne sans match noté."
-en = "The bar above each column shows the average performance score (0 to 100) of the scored matches in that column, coloured by tier: excellent (80 and above), good (65 to 79), fair (50 to 64), poor (35 to 49), bad (below 35). Unfinished matches have no score and are left out of the average. A dashed placeholder marks a column with no scored match."
+fr = "La courbe lit l'axe de droite (de 0 à 100) : elle donne, pour chaque colonne, le score de performance moyen des matchs notés. Chaque point prend la couleur de son palier : excellent (80 et plus), bon (65 à 79), correct (50 à 64), faible (35 à 49), mauvais (moins de 35). Les matchs non terminés n'ont pas de score et n'entrent pas dans la moyenne. Une colonne sans match noté laisse un trou dans la courbe ; les bâtons, eux, se lisent sur l'axe de gauche."
+en = "The line reads on the right-hand axis (0 to 100): it gives, for each column, the average performance score of the scored matches. Each point takes the colour of its tier: excellent (80 and above), good (65 to 79), fair (50 to 64), poor (35 to 49), bad (below 35). Unfinished matches have no score and are left out of the average. A column with no scored match leaves a gap in the line; the bars are read on the left-hand axis."
 
 # ─── Portée des engagements (lot 5, plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md) ─
 #
