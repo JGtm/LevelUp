@@ -28786,6 +28786,12 @@ components:
         match_count:
           format: int64
           type: integer
+        perf_tier:
+          format: int64
+          type: integer
+        performance_avg:
+          format: double
+          type: number
         ties:
           format: int64
           type: integer
@@ -28844,6 +28850,12 @@ components:
           type: integer
         mode_name:
           type: string
+        perf_tier:
+          format: int64
+          type: integer
+        performance_avg:
+          format: double
+          type: number
         ties:
           format: int64
           type: integer

@@ -22,6 +22,7 @@ describe('infobulles de la Synthèse', () => {
       [{ name: 'Recharge', wins: 12, losses: 8, ties: 0, unfinished: 0 }],
       { win: 'Victoires', loss: 'Défaites', tie: 'Égalités', dnf: 'Abandons' },
       'Matchs',
+      'Score de performance',
     )
     const html = tip(opt)([
       { seriesName: 'Victoires', seriesIndex: 0, value: 12, color: '#111', axisValueLabel: 'Recharge' },

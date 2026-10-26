@@ -826,25 +826,29 @@ export function SynthesisPage() {
         <div className="flex flex-col gap-4">
           <SynthesisOutcomesByGroupChart
             title={t('synthesis.breakdown.by_map')}
+            info={t('synthesis.breakdown.performance_info')}
             entries={(data.breakdowns?.top_maps ?? []).map((m) => ({
               name: m.map_name,
               wins: m.wins,
               losses: m.losses,
               ties: m.ties,
               unfinished: m.unfinished,
+              performance_avg: m.performance_avg,
+              perf_tier: m.perf_tier,
             }))}
-            height={360}
           />
           <SynthesisOutcomesByGroupChart
             title={t('synthesis.breakdown.by_mode')}
+            info={t('synthesis.breakdown.performance_info')}
             entries={(data.breakdowns?.top_modes ?? []).map((m) => ({
               name: m.mode_name,
               wins: m.wins,
               losses: m.losses,
               ties: m.ties,
               unfinished: m.unfinished,
+              performance_avg: m.performance_avg,
+              perf_tier: m.perf_tier,
             }))}
-            height={360}
           />
         </div>
       </section>
