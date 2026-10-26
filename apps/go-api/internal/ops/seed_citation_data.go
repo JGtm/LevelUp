@@ -27,7 +27,7 @@ func defaultCitationMappings() []CitationMapping {
 	const wpH5 = "static/commendations/halo_5_guardians/"
 	const wpHI = "static/commendations/halo_infinite/"
 	return []CitationMapping{
-		// ── PVP — Mode de jeu (11) ────────────────────────────────────
+		// ── PVP — Mode de jeu (10) ────────────────────────────────────
 		// v7.2 (décision utilisateur) — BASCULE DES 4 CITATIONS D'OBJECTIF vers la
 		// source objective_stat (colonnes match_objective_stats_latest), plus fiable
 		// que les awards personal_score : charge→zone_captures, got_you→flag_returns,
@@ -52,12 +52,6 @@ func defaultCitationMappings() []CitationMapping {
 			Category:    citationCatModeJeu,
 			Description: "Remportez n'importe quelle médaille d'assistance en Zone de combat.",
 			TierTargets: "25,50,75,125,250"},
-		{Norm: "bulldozer", Display: "Bulldozer", MappingType: mappingTypeCustom,
-			CustomFunction: "compute_bulldozer", Enabled: true,
-			ImagePath:   wpH5 + "H5G_citation_Bulldozer.png",
-			Category:    citationCatModeJeu,
-			Description: "Terminez n'importe quelle partie matchmaking Assassin avec un FDA supérieur à 8.",
-			TierTargets: tierTargets3_6_9_15_30},
 		// I7 (2026-07-24) — DÉCISION UTILISATEUR : flag_defender DÉSACTIVÉE (Enabled=false).
 		// Aucun award d'ingestion (refdata_personal_scores.go) ne mesure la défense de SON
 		// PROPRE drapeau de façon non ambiguë : "carrier_killed" (seul candidat direct) veut
@@ -187,13 +181,13 @@ func defaultCitationMappings() []CitationMapping {
 			TierTargets: tierTargets1_2_3_5_10},
 		{Norm: citationNormAggressiveReturn, Display: "Rapatriement agressif", MappingType: mappingTypeObjectiveStat,
 			StatName: "kills_as_flag_returner", Enabled: true,
-			ImagePath:   wpH5 + "H5G_citation_Body_Guard.png",
+			ImagePath:   wpHI + "HI_citation_Rapatriement_agressif.png",
 			Category:    citationCatModeJeu,
 			Description: "Tuez un adversaire pendant que vous rapportez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau.",
 			TierTargets: tierTargets5_10_20_30_50},
 		{Norm: citationNormZoneDefense, Display: "Défense de zone", MappingType: mappingTypeObjectiveStat,
 			StatName: "zone_defensive_kills", Enabled: true,
-			ImagePath:   wpH5 + "H5G_citation_My_castle.png",
+			ImagePath:   wpHI + "HI_citation_Defense_de_zone.png",
 			Category:    citationCatModeJeu,
 			Description: "Tuez un adversaire dans une zone contrôlée par votre équipe dans n'importe quelle partie matchmaking Bases.",
 			TierTargets: tierTargets25_50_100_200_350},
@@ -211,7 +205,7 @@ func defaultCitationMappings() []CitationMapping {
 			TierTargets: tierTargets2_5_10_20_40},
 		{Norm: citationNormSkullGrabs, Display: "Prise du crâne", MappingType: mappingTypeObjectiveStat,
 			StatName: "skull_grabs", Enabled: true,
-			ImagePath:   wpH5 + "H5G_citation_Is_that_my_ball%3F.png",
+			ImagePath:   wpHI + "HI_citation_Prise_du_crane.png",
 			Category:    citationCatModeJeu,
 			Description: "Emparez-vous du crâne dans n'importe quelle partie matchmaking Oddball.",
 			TierTargets: tierTargets2_5_10_20_40},
@@ -331,7 +325,14 @@ func defaultCitationMappings() []CitationMapping {
 			Description: "Tuez un Spartan adverse à l'aide d'une grenade à plasma.",
 			TierTargets: "2,4,6,10,20", Subcategory: "Grenade"},
 
-		// ── PVP — Multijoueur (10) ────────────────────────────────────
+		// ── PVP — Multijoueur (11) ────────────────────────────────────
+		// DÉCISION UTILISATEUR (2026-10-26) : « Bulldozer » passe de Mode de jeu à Multijoueur.
+		{Norm: "bulldozer", Display: "Bulldozer", MappingType: mappingTypeCustom,
+			CustomFunction: "compute_bulldozer", Enabled: true,
+			ImagePath:   wpH5 + "H5G_citation_Bulldozer.png",
+			Category:    citationCatMultijoueur,
+			Description: "Terminez n'importe quelle partie matchmaking Assassin avec un FDA supérieur à 8.",
+			TierTargets: tierTargets3_6_9_15_30},
 		{Norm: "assassin", Display: "Assassin", MappingType: mappingTypeMedal, MedalID: 548533137, Enabled: true,
 			ImagePath:   wpH5 + "H5G_citation_Assassin.png",
 			Category:    citationCatMultijoueur,

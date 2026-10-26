@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "beaf8ac9-fa85-4562-8def-28d9428dbddb",
+  "mapNames": [
+    "Arrival",
+    "beaf8ac9-fa85-4562-8def-28d9428dbddb_map"
+  ],
+  "image": "beaf8ac9-fa85-4562-8def-28d9428dbddb.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-10-26T12:19:28.9261695Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.041006977796554565,
+    "originX": -47.49027074718475,
+    "originY": 8.712445061206822,
+    "widthPx": 1106,
+    "heightPx": 1233,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 11,
+    "anchorsInFrame": 11,
+    "anchorsWithGround": 10,
+    "anchorMedianGapM": -0.2899993079207661,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 79.52000518798827,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.6793851459906085,
+    "covered": true,
+    "cellsSubstituted": 314903,
+    "forgeObjects": 5574,
+    "forgeObjectsDrawn": 5525,
+    "forgeObjectsWithoutModel": 30,
+    "forgeDeathVolumes": 19
+  }
+}

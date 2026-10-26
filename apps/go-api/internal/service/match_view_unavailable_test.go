@@ -19,10 +19,9 @@ import (
 // repoVueComplete : un repo dont toutes les sources du bandeau sont pleines.
 func repoVueComplete() *mockMatchViewRepo {
 	now := time.Now()
-	bits := pBitMedals
 	return &mockMatchViewRepo{
 		meta:   &domain.MatchMetaRaw{MatchID: "m1", StartTime: &now},
-		stats:  &domain.PlayerMatchStatsRaw{OutcomeCode: 2, BackfillBits: &bits},
+		stats:  &domain.PlayerMatchStatsRaw{OutcomeCode: 2},
 		board:  []domain.ScoreboardRaw{{XUID: "xuid1", Gamertag: "Player1"}},
 		events: []domain.EventRaw{{EventType: "kill"}},
 		medals: []domain.MedalRaw{{MedalID: 1, Count: 1}},
@@ -43,7 +42,7 @@ func TestMatchView_ErreurDeChargeurDistincteDuVide(t *testing.T) {
 		{"tableau des scores", func(r *mockMatchViewRepo) { r.boardErr = errors.New("lecteur HS") }, func(r *mockMatchViewRepo) { r.board = nil }, "scoreboard_unavailable", "scoreboard_empty"},
 		{"evenements", func(r *mockMatchViewRepo) { r.eventsErr = errors.New("lecteur HS") }, func(r *mockMatchViewRepo) { r.events = nil }, "events_unavailable", "events_empty"},
 		{"stats du joueur", func(r *mockMatchViewRepo) { r.statsErr = errors.New("lecteur HS") }, func(r *mockMatchViewRepo) { r.stats = nil }, "player_stats_unavailable", "player_stats_empty"},
-		{"medailles", func(r *mockMatchViewRepo) { r.medalsErr = errors.New("lecteur HS") }, func(r *mockMatchViewRepo) { r.medals = nil; r.stats.BackfillBits = nil }, "medals_unavailable", "medals_empty"},
+		{"medailles", func(r *mockMatchViewRepo) { r.medalsErr = errors.New("lecteur HS") }, func(r *mockMatchViewRepo) { r.medals = nil; r.stats = nil }, "medals_unavailable", "medals_empty"},
 	}
 	for _, c := range cas {
 		t.Run(c.nom+"/erreur", func(t *testing.T) {

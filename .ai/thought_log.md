@@ -1,3 +1,23 @@
+## [2026-10-26] Plan i18n à N langues (revue de l'état des lieux du 23/10) — En cours (branche `fix/medailles-vide-legitime`, aucun code, non commité)
+**Décision technique principale** : plan `.ai/PLAN_I18N_MULTILANGUE.md` (11 étapes, gates par commande). Ordre corrigé : liste unique des langues (`config/locales.toml`, partagée Go + web) → noyaux et garde-rails à compteur gelé → web → manifests → types Go `i18n.Text` → contrat « un libellé résolu » → textes rédigés côté Go → données → preuve par pseudo-langue `xx`. Les dictionnaires TS typés `Record<Locale, T>` ne migrent pas vers les manifests (déjà sûrs) ; la fuite muette est dans les `normalize*Locale` (`=== 'en' ? 'en' : 'fr'`).
+**Résultats observés** : re-mesure du doc du 23/10 : A, B (openapi), D, E exacts ; C inexact (les `mappings/` sont déjà en tables par langue, les suffixes sont dans jalons, défis et `arcs/presets.toml`) ; G non reproductible (51 à 71 fichiers, ~12 900 lignes, pas 91). Manques : `asset_translations (lang)` + 14 langues Halo déjà récupérables, colonnes `_fr/_en` Halo 5 et `match_skill_rank.tier_fr`, texte rédigé par le Go (coach, impact, rangs, aide, notes de version), défauts incohérents (fr partout, en pour les médailles).
+**Conclusion / prochaine étape** : décisions D1-D6 du plan à trancher par le user avant toute exécution.
+
+## [2026-10-26] Statistiques par carte : regrouper les variantes (Heavies, - Ranked) — plan rédigé — En cours (aucun code, fichier `.ai/PLAN_CARTES_VARIANTES_STATS_2026-10-26.md`)
+**Décision technique principale** : relecture sur pièces de la note du 2026-10-23. La « version légère » est incohérente pour la Tactique (vignette regroupée, lecture par un seul map_id) ; la version complète est moins risquée qu'annoncé car toute la Tactique passe par la clause carte de l'univers (`tactical_repo_univers.go`). Plan : un résolveur unique map_id -> groupe (table, pas nom par ligne), `breakdown.ByMap` paramétré par le regroupement (garde-rail à la compilation), repli « - Ranked » des miniatures migré sur le TOML (3e copie, règle n°6).
+**Résultats observés** : surfaces manquées par la note : briefing Explorateur, Escouade (3 points), synergies v2, séries temporelles ; `computeMapWinRates` regroupe sur le nom EN brut du registre. Citations, carrière, engagement : aucun agrégat par carte. Mesures sur base non refaites (metadata tenue par le serveur).
+**Conclusion / prochaine étape** : décisions D1-D3 du plan à trancher par le user, puis E0 (mesures, repère spatial des paires) sur copie des bases.
+
+## [2026-10-26] Publication v8.0.6 et disque du VPS plein (morceaux de films rapatriés) — Complété (branche `release/v8.0.7`, non commité)
+**Décision technique principale** : PR #108 (squash `b6f7dd6d2`, tag `v8.0.6`) ; l'E2E Playwright du graphe Évolution LUSR / CSR, resté sur l'ancien comportement (toutes séries ensemble), mis à jour pour une échelle à la fois via la bascule. Premier déploiement en échec : disque du VPS à 100 % (build de l'image impossible, prod v8.0.5 non touchée mais sans écriture possible). Purge du cache de build Docker (7,9 Go), puis, sur décision du user, rapatriement de `cache/film_chunks` (24 Go, 901 films, 27 670 morceaux) et des manifestes dans `data/cache` local, vérification taille à taille, suppression sur le VPS des 875 films vérifiés et non touchés depuis 2 h (26 gardés, 1,2 Go).
+**Résultats observés** : tous les morceaux du VPS présents en local à taille égale, sauf `f10237b1/chunk_00.bin` (local = forme zlib, décompressée identique octet par octet à celle du VPS). 161 manifestes locaux différents de ceux du VPS (mêmes bornes de morceaux ; le VPS porte `blob_prefix` ou `size_bytes`) : versions VPS mises de côté dans `data/cache/film_manifests_vps_2026-10-26/`. VPS à 68 % après redéploiement ; v8.0.6 en prod (conteneurs sains, site 200).
+**Conclusion / prochaine étape** : décision user (26/10) : la version VPS des manifestes gagne — 161 manifestes locaux remplacés, chunk_00 de `f10237b1` remplacé par sa forme décompressée (cohérent avec `size_bytes`), dossier de côté supprimé. Le cache de morceaux du VPS n'a aucune éviction (13 → 24 Go en 4 jours) : décision user (26/10) — pas d'éviction automatique, rapatriement + purge manuels au fil de l'eau.
+
+## [2026-10-26] Titre d'onglet « Citations » en anglais au lieu de « Commendations » — Complété (branche `release/v8.0.6`, non commité)
+**Décision technique principale** : le mécanisme de titre d'onglet est bien localisé (`lib/pageTitle.ts`) ; seule l'entrée `/career/citations` (Infinite) portait volontairement `en: 'Citations'`, alors que l'onglet de navigation affiche `common.nav.tab_citations` = « Commendations ». Alignée sur l'onglet ; les deux routes de citations ajoutées au garde-rail `pageTitle.labels.guard.test.ts` (égalité stricte avec `common.nav.tab_citations`, FR + EN).
+**Résultats observés** : `vitest run src/lib/pageTitle src/routes/__root.test.tsx` vert (92 tests).
+**Conclusion / prochaine étape** : contrôle après déploiement : `/en/t/halo_infinite/players/<joueur>/career/citations` → onglet « LevelUp - Commendations ».
+
 ## [2026-10-26] Joueur choisi perdu après un changement de langue (retour au profil par défaut) — Complété (branche `release/v8.0.6`, non commité)
 **Décision technique principale** : cause côté serveur, mise à jour perdue sur le fichier de session. Choisir un joueur poste `POST /session/context` (qui écrit la session) pendant que les requêtes de la page en cours, chargées AVANT ce choix, sont encore en vol ; à leur fin, le middleware réécrivait leur copie chargée (contenu différent de la dernière écriture → `Touch` écrit) et remettait l'ancien joueur (ou aucun → profil par défaut). Le front gardait le bon joueur en mémoire jusqu'au prochain `/bootstrap` — celui que déclenche l'invalidation générale du changement de langue. Correctif : le middleware prend l'empreinte de la session au chargement (`session.FingerprintOf`) et termine par `Store.TouchAfter` : session modifiée par la requête → écriture entière (comportement d'avant) ; inchangée → seul `last_seen_at` est rafraîchi sur le fichier RELU sous verrou (au plus toutes les 5 min, fichier disparu non recréé). `Touch` et ses marques déplacés de `store.go` (498 L) vers `touch.go` ; `save` scindé (`writeLocked`) pour écrire sous un verrou déjà tenu.
 **Résultats observés** : test middleware de la course (requête en vol + choix de joueur) ROUGE sans le correctif, vert avec ; 3 tests `TouchAfter` (contenu concurrent conservé, session modifiée écrite, fichier disparu non recréé). `go test ./internal/api/... ./internal/archlint/ ./internal/platform/session/` vert.
@@ -118757,3 +118777,103 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : `tsc` vert, `HomeRankingStates.test.tsx` 9/9 (français). Pas de test en anglais ajouté ni de contrôle visuel.
 
 **Conclusion / prochaine étape** : contrôle à l'écran en anglais par l'utilisateur.
+
+## [2026-10-26] Citations Modes de jeu : visuels « Rapatriement agressif », « Défense de zone », « Crâne intouchable » — Complété (branche `release/v8.0.7`, non commité)
+
+**Décision technique principale** : le visuel alpha de « Rapatriement agressif » (drapeau gris-bleu uni) est passé au style blanc + ombre portée douce des autres citations de mode (silhouette blanche, ombre noire floue décalée de 2 px, réduit à 86 % pour laisser la place à l'ombre). Nouveaux fichiers sous `static/commendations/halo_infinite/` : `HI_citation_Rapatriement_agressif.png`, `HI_citation_Defense_de_zone.png` (fourni, sans retouche) ; `HI_citation_Crane_intouchable.png` remplacé par la nouvelle version fournie. `seed_citation_data.go` pointe les deux premiers (remplacent `H5G_citation_Body_Guard.png` et `H5G_citation_My_castle.png`, fichiers natifs H5 intacts).
+
+**Résultats observés** : contrôle visuel sur fond gris, ombre cohérente avec « Défense de zone » ; `go test ./internal/ops -run Citation` vert.
+
+**Conclusion / prochaine étape** : jugement à l'oeil par l'utilisateur ; commit sur accord.
+
+## [2026-10-26] Citation Bulldozer : catégorie Mode de jeu -> Multijoueur — Complété (branche `release/v8.0.7`, non commité)
+
+**Décision technique principale** : demande utilisateur du 2026-10-26. L'entrée `bulldozer` de `seed_citation_data.go` passe de `citationCatModeJeu` à `citationCatMultijoueur` (déplacée dans le bloc Multijoueur, en-têtes de bloc 11/10 -> 10/11) ; `docs/COMMENDATIONS_REFERENCE.md` mis à jour. Aucun autre code ne branche sur la catégorie de cette citation.
+
+**Résultats observés** : `go test ./internal/ops ./internal/analysis` (filtres Citation/Commendation/Seed) vert.
+
+**Conclusion / prochaine étape** : le changement n'atteint la base qu'au re-seed des citations (local puis prod, avec la release).
+
+## [2026-10-26] Citation Prise du crâne : nouveau visuel fourni — Complété (branche `release/v8.0.7`, non commité)
+
+**Décision technique principale** : le visuel fourni par l'utilisateur (arc + crâne, déjà au style blanc + ombre) est ajouté sous `static/commendations/halo_infinite/HI_citation_Prise_du_crane.png` et `skull_grabs` le pointe ; le natif `H5G_citation_Is_that_my_ball%3F.png` n'est pas touché.
+
+**Résultats observés** : contrôle visuel sur fond gris et blanc ; test seed lancé ci-dessous.
+
+**Conclusion / prochaine étape** : jugement à l'oeil ; commit sur accord (avec Bulldozer).
+
+## [2026-10-26] Citation Chasse au porteur : nouveau visuel (crâne + réticule sur le front) — Complété (branche `release/v8.0.7`, non commité)
+
+**Décision technique principale** : `HI_citation_Chasse_au_porteur.png` remplacé par le visuel validé par l'utilisateur (proposition 6) : le crâne de « Crâne intouchable » avec quatre traits de réticule qui traversent l'anneau du front. Aucun changement de code (même chemin d'image).
+
+**Résultats observés** : contrôle visuel sur fond gris et blanc.
+
+**Conclusion / prochaine étape** : commit sur accord, groupé avec Bulldozer et Prise du crâne.
+## [2026-10-26] Miniatures des cartes classées et cartes Forge sans vignette — Complété (branche `fix/miniatures-cartes-ranked`)
+
+**Contexte** : en prod, Vacancy, Argyle, Empyrean, Catalyst et Fortress « - Ranked » et Arrival n'avaient pas de miniature (constat utilisateur du 2026-10-26).
+
+**Décision technique principale** : `AssetURLAdapter.mapImageURLFromDir` replie une carte « X - Ranked » sans fichier dédié sur la miniature de X (le jeu publie la même image) ; un fichier dédié prime toujours. Miniatures officielles d'Arrival, Exiled, Kusini Bay et Vallaheim récupérées sur le stockage blob UGC public (`images/thumbnail.jpg`, 560×320, sans jeton) via l'inventaire versionné.
+
+**Résultats observés** : test `TestAssetURLAdapter_WithMapImagesDir_RankedFallsBackToBaseMap` ; tests `halo_infinite`, `assets`, `platform/duckdb` verts.
+
+**Conclusion / prochaine étape** : part avec la v8.0.7. Restent sans miniature (Discovery UGC authentifié requis) : Beaver Canyon, Harvest, Timberland Evolved, Rendezvous, Skyblocks, Formation, Thunderbowl, Longshore, Perdition, Gondolas, Gyre.
+## [2026-10-26] Rejeu 2D : seize cartes Forge hors catalogue de bornes entrent au catalogue, huit fonds proposes - En cours (branche `feat/cartes-manquantes-rejeu`, commits locaux, rien de publie)
+
+**Contexte** : `backfill-replay` refusait 16 cartes (Arrival, Beaver Canyon, Canopy, Cold Storage, Exiled, Formation, Foundry, Gondolas, Guardian, Immolate, Kusini Bay, Narrows, Perdition, Skyblocks, Thunderbowl, Timberland Evolved) avec `ErrMapNotInCatalog`. Toutes sont des cartes Forge (aucun module natif de ce nom ; « Exiled » n'est PAS `btb_exiled`, qui est Oasis).
+
+**Decision technique principale** : entrees `mapModule` (cmd/mapquant-build) prouvees par level_id de la variante (`TestPreuveLevelIDCartesDuCache` etendu, unicite 1/1 : fo03_space Arrival/Formation, fo05_desert Canopy/Exiled/Guardian, fo08_wetland Beaver Canyon/Gondolas/Timberland Evolved, fo11_blank Cold Storage/Foundry/Immolate/Kusini Bay/Perdition/Skyblocks/Thunderbowl, fo13_frost Narrows). Variantes absentes du cache rapatriees SANS jeton (`mapnav-fetch -fichier map.mvar`). Narrows : le catalogue n'avait que la cle UUID (temps ou l'API ne resolvait pas le nom) ; la cuisson ne presente que des noms, donc « Narrows » est ajoutee.
+
+**Resultats observes** : `TestControleBornesFilms` sur les 25 films disponibles : accord 25/25. Les 219 matchs du registre portant ces noms resolvent tous (`ResolveMapEntry`). Les huit canevas Forge partagent des bornes monde IDENTIQUES : un canevas fautif ne change pas les coordonnees, seulement le label `module`. Sept assets de ces noms ont disparu du stockage UGC (404) et ne sont pas rejouables par level_id (Arrival 5e3e78c5, Exiled 31051f43, Immolate b3518c8b/014f85f6/8e801fa1, Kusini Bay 7e1cb2dd/6a995886) : inference par le nom, documentee. Fonds cuits : 8 (Arrival, Beaver Canyon, Exiled, Formation, Gondolas, Kusini Bay, Perdition, Timberland Evolved) ; Skyblocks et Thunderbowl refuses par la cuisson (variante sans objectif, donc pas d'ancre) - catalogue oui, fond non. Formation (couverture 13 %, 5 ancres sur 9) et Gondolas (0 ancre sur 4 au sol) ressortent maigres.
+
+**Conclusion / prochaine etape** : l'utilisateur valide les fonds (`Downloads\fonds_a_valider`), cuit les rejeux, deploie. En cas de rejet d'un fond : retirer sa declaration `CartesForge`, son entree `map_fond_reglages.json` et ses deux fichiers (`TestFondForgeJamaisSousCleModule`).
+
+## [2026-10-26] Rejeu 2D : rejeux des 16 cartes cuits dans le cache principal, cinq fonds rognes aux positions jouees - Complete (branche `feat/cartes-manquantes-rejeu`)
+
+**Contexte** : suite de l'entree precedente ; l'utilisateur demande les rejeux des 16 cartes (catalogue de bornes de la branche) puis le rognage des fonds proposes aux positions reellement jouees.
+
+**Decision technique principale** : racine d'execution temporaire (`LEVELUP_REPO_ROOT`) faite de jonctions vers le cache, la base et les profils du checkout principal et vers `reference/` + `config/` de la branche ; jonctions retirees ensuite par `(Get-Item).Delete()`. `archive-films` (compte JGtm) pour les films manquants, puis `backfill-replay --match`. Masque : `mappos-build --min-matchs 3` (filtre de rarete du 2026-08-30, precedent Dredge), matchs du SEUL asset du fond (une autre version du meme nom peut differer en geometrie), rayon 1 m. Cartes a moins de 3 matchs cuits : non rognees, seuil non abaisse.
+
+**Resultats observes** : 209 matchs geres (10 Firefight ecartes) : 184 sans film local -> 61 films sauves, 122 expires cote serveur (definitivement perdus), 1 erreur (chunk 2 en 404). `backfill-replay` : 86 rejeux construits, 0 erreur de decodage, 0 carte hors catalogue, 0 mort memoire (pic 1,45 GiB, 19 min 54). Masques : Kusini Bay 21 matchs, Perdition 13, Timberland Evolved 12, Exiled 9, Beaver Canyon 4 ; non rogne : Arrival 1, Formation 1, Gondolas 2. Le rognage coute des ancres posees (Kusini Bay 26 -> 18, Exiled 37 -> 27, Beaver Canyon 36 -> 32, Perdition 54 -> 48, Timberland 62 -> 57) : les objectifs que personne n'a couru dans au moins 3 matchs perdent leur sol.
+
+**Conclusion / prochaine etape** : validation visuelle par l'utilisateur ; copier les rejeux cuits (deja dans `data/cache/replays/halo_infinite/` du checkout principal) vers la prod relevera de la cuisson/deploiement.
+
+## [2026-10-26] Rejeu 2D : garde du sol autour des ancres d'objectif pour le rognage aux positions jouees - Complete (branche `feat/cartes-manquantes-rejeu`)
+
+**Contexte** : le rognage aux positions jouees retirait le sol sous des objectifs peu parcourus (ancres avec sol : Kusini Bay 26 -> 18, Exiled 37 -> 27, Beaver Canyon 36 -> 32, Perdition 54 -> 48, Timberland Evolved 62 -> 57). Aucun levier existant ne le garantit : `rogneAuxComposantesAncrees` efface les amas SANS ancre, il ne protege pas le sol d'une ancre d'un masque de positions.
+
+**Decision technique principale** : reglage `gardeAutourDesAncres` (rayon en m, 0 = aucun ; sans effet sans `rogneAuxPositionsJouees`) -> `himap.RogneAuxPositionsJoueesGardantLesAncres`, qui AJOUTE au masque, APRES le recollement, un disque autour de chaque ancre (le recollement ne peut donc pas emporter le sol d'une ancre, et ne ramene pas l'objet entier). `RogneAuxPositionsJouees` en est l'enveloppe sans ancre : meme resultat au bit pres.
+
+**Resultats observes** : a 2 m, ancres avec sol apres = avant rognage sur les 5 cartes (Beaver Canyon 36/36, Exiled 37/37, Kusini Bay 26/26, Perdition 53/54 comme avant rognage, Timberland Evolved 62/62). Non-regression : les 5 PNG cuits garde ABSENTE sont identiques a l'octet a ceux d'avant le changement ; Dredge, recuit de zero (variante et maillage rapatries), donne un WebP identique a l'octet au fond publie. Tests : trois dans `positions_jouees_test.go`, un dans `reglages_test.go`.
+
+**Les trois versions par carte** (cle = map_id) : entiere = sans `rogneAuxPositionsJouees` ni `rayonPositions` ; rognee = `rogneAuxPositionsJouees: true`, `rayonPositions: 1` (etat commite) ; rognee avec garde = la precedente + `gardeAutourDesAncres: 2`. Aucune carte n'arme la garde dans les donnees commitees : le choix est celui de l'utilisateur.
+
+## [2026-10-26] Rejeu 2D : verdicts de l'utilisateur sur les fonds Forge proposes - Complete (branche `feat/cartes-manquantes-rejeu`)
+
+**Verdicts** : Arrival, Beaver Canyon, Perdition, Timberland Evolved validees en version ENTIERE (reglages sans rognage aux positions jouees ; fonds recuits, PNG identiques a l'octet a ceux du commit des fonds proposes, fichiers publies restaures de ce commit). Formation, Gondolas refusees ; Kusini Bay refusee « pour l'instant » : declaration, reglage et fonds retires, elles restent au catalogue de bornes (rejeu sur fond neutre). Exiled refusee (« un bras qui depasse » au nord).
+
+**Exiled** : aucun nouveau code. `cadreAuxAncres` + `margeAncres: 12` (existants) bornent la matiere a la boite des ancres elargie de 12 m : le bras (a plus de 12 m de toute ancre) disparait, 37/37 ancres gardent leur sol (marge 25 m par defaut : bras presque entier ; 6 m : trop coupe). Version sans bras produite hors depot, NON publiee ; l'entree de reglages est conservee, la declaration `CartesForge` retiree.
+
+**A savoir** : le reglage `gardeAutourDesAncres` (commit precedent) n'est plus arme par aucune carte ; conserve, avec le catalogue de positions limite a Dredge, pour le retour sur Kusini Bay. A retirer si personne n'y revient (regle 7). Dredge recuit : WebP identique a l'octet.
+
+## [2026-10-26] Rejeu 2D : Exiled validee sans le bras, levier de garde des ancres retire - Complete (branche `feat/cartes-manquantes-rejeu`)
+
+**Decision technique principale** : Exiled redeclaree dans `himap.CartesForge` et son fond publie (`cadreAuxAncres` + `margeAncres: 12`, validation de l'utilisateur) ; le PNG cuit est identique a l'octet au PNG montre, le WebP publie decode au meme MD5 de pixels. `gardeAutourDesAncres` et `RogneAuxPositionsJoueesGardantLesAncres` retires avec leurs tests (aucune carte ne les armait, regle 7) : les six fichiers sont ramenes a leur etat de `b95fc9a90`. Pour Kusini Bay, la logique se retrouve dans `41dac2801`.
+
+**Resultats observes** : Dredge et les quatre fonds valides (Arrival, Beaver Canyon, Perdition, Timberland Evolved) recuits : identiques a l'octet. Tests himap, mapfond-build, replaybuild, gamefiles mapfond-build et film-profiles-build verts.
+
+## [2026-10-26] Vue match : « medailles indisponibles » affiche a tort pour un match sans medaille - Complete (branche `fix/medailles-vide-legitime`)
+
+**Decision technique principale** : `detectPartialMatchData` n'emet plus `medals_empty` que si la ligne du joueur est AUSSI absente. Les medailles sont extraites du meme bloc `CoreStats` que la ligne `match_participants` du joueur (`ExtractMedals` / `ExtractParticipants`, meme payload) : ligne presente et 0 medaille = match sans medaille gagnee, pas une donnee manquante. L'ancien critere (bit `PBitMedals` de `backfill_bits`) etait un faux signal : aucun ecrivain Go ne pose ce bit (seuls les bits de skill le sont, `collect.go`), donc tout match a 0 medaille affichait le bandeau, meme avec des citations. `PlayerMatchStatsRaw.BackfillBits`, sa colonne dans Q17 et son scan retires (sans autre lecteur, regle 7).
+
+**Resultats observes** : tests `service` (hors cas ci-dessous), `api/handlers`, `platform/duckdb` verts. `TestMapObjectives_ModesPonctuels_AucuneZoneSurTOUTLeCatalogue` rouge sur la branche de release (catalogue CTF 41 vs 37, Stockpile 24 vs 22, cartes Forge ajoutees) : sans lien, non traite ici.
+
+**Prochaine etape** : commit + fusion dans `release/v8.0.7` sur accord ; le test de catalogue a revoir dans le chantier cartes Forge.
+
+## [2026-10-26] CI release/v8.0.7 : releves de catalogue mis a jour apres l'entree des cartes Forge - Complete (branche `fix/ci-releves-catalogue-v807`)
+
+**Decision technique principale** : deux recensements du catalogue versionne `map_objectives.json` etaient rouges en CI depuis `d7448a537` (131 -> 141 cartes). Instruits avant ajustement : les dix entrees ajoutees sont toutes nouvelles (aucune entree existante modifiee). Formes CTF 37 -> 41 (`flag_delivery` a forme : Formation, Kusini Bay, Perdition, Timberland Evolved), Stockpile 22 -> 24 (`stockpile_navpoint` : Beaver Canyon, Timberland Evolved), socles neutres au label 64 -> 66 (Timberland Evolved, Beaver Canyon), socles sans equipe ni label 8 -> 9 (Kusini Bay). Les assertions de fond (un (role, camp) sert ses ponctuels OU ses formes ; tri neutre sur le label) passent sur les 141 cartes ; seuls les comptes de reference bougent, avec leur releve date.
+
+**Resultats observes** : `go test ./internal/service/ ./internal/games/halo_infinite/film/replay/` vert ; ce sont les deux seuls tests en echec des runs CI `0339476b8` et `3e55cb337`.
+
+**Prochaine etape** : fusion dans `release/v8.0.7`, CI de la PR #109.

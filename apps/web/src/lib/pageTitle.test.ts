@@ -32,7 +32,7 @@ describe('resolvePageTitle (URLs title-scoped)', () => {
   })
 
   it('override par suffixe joueur avec segment langue', () => {
-    expect(resolvePageTitle('/en/t/halo_5/players/x/career/citations', 'en')).toBe('LevelUp - Citations')
+    expect(resolvePageTitle('/en/t/halo_5/players/x/career/citations', 'en')).toBe('LevelUp - Commendations')
   })
 
   it('titre dérivé d’un item de nav (accueil)', () => {
@@ -68,13 +68,11 @@ describe('resolvePageTitle (URLs title-scoped)', () => {
     expect(resolvePageTitle('/zzz-static-inconnu', 'fr')).toBe('LevelUp')
   })
 
-  it('nuance Citations (moteur dérivé Infinite) vs Commendations (natif H5)', () => {
-    // Même mot FR (« Citations » est le terme officiel Halo FR pour les deux) ; l'EN
-    // diverge selon la ROUTE (/career/citations vs /career/commendations), jamais selon
-    // le titre effectivement actif — même logique que l'ex-effet local de
-    // UnifiedCitationsPage, désormais supprimé.
+  it('citations : même libellé que l’onglet sur les deux routes (Infinite et H5)', () => {
+    // « Citations » en FR, « Commendations » en EN (terme officiel Halo des deux titres),
+    // que la route soit /career/citations (Infinite) ou /career/commendations (H5).
     expect(resolvePageTitle('/t/halo_infinite/players/x/career/citations', 'fr')).toBe('LevelUp - Citations')
-    expect(resolvePageTitle('/t/halo_infinite/players/x/career/citations', 'en')).toBe('LevelUp - Citations')
+    expect(resolvePageTitle('/t/halo_infinite/players/x/career/citations', 'en')).toBe('LevelUp - Commendations')
     expect(resolvePageTitle('/t/halo_5/players/x/career/commendations', 'fr')).toBe('LevelUp - Citations')
     expect(resolvePageTitle('/t/halo_5/players/x/career/commendations', 'en')).toBe('LevelUp - Commendations')
   })

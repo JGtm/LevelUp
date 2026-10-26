@@ -402,7 +402,6 @@ func (r *MatchViewRepo) GetPlayerMatchStats(ctx context.Context, xuid, matchID s
 		&s.EnemyMMR,
 		&s.HeadshotKills,
 		&s.MaxKillingSpree,
-		&s.BackfillBits,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return &domain.PlayerMatchStatsRaw{}, nil

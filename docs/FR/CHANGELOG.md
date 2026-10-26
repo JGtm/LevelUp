@@ -6,6 +6,19 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [8.0.7] - 2026-10-26
+
+### Added
+- **Rejeu : seize cartes Forge de plus** — Arrival, Beaver Canyon, Canopy, Cold Storage, Exiled, Formation, Foundry, Gondolas, Guardian, Immolate, Kusini Bay, Narrows, Perdition, Skyblocks, Thunderbowl et Timberland Evolved étaient refusées par le rejeu (« carte hors catalogue »). Leur canevas Forge est prouvé depuis les fichiers du jeu (identifiant de niveau) : leurs matchs ont désormais un rejeu 2D.
+- **Rejeu : cinq nouveaux fonds de carte** — Arrival, Beaver Canyon, Exiled, Perdition et Timberland Evolved, validés un par un. Formation, Gondolas, Kusini Bay, Skyblocks et Thunderbowl se rejouent sur fond neutre pour l'instant.
+- **Citations : nouveaux visuels** — « Rapatriement agressif », « Défense de zone », « Crâne intouchable », « Chasse au porteur » et « Prise du crâne » reçoivent une illustration blanche à ombre.
+
+### Fixed
+- **Miniatures des variantes classées** — « Vacancy - Ranked », « Argyle - Ranked », « Empyrean - Ranked », « Catalyst - Ranked », « Fortress - Ranked » et toute autre carte « - Ranked » sans image propre affichent la miniature de leur carte de base. Arrival, Exiled, Kusini Bay et Vallaheim reçoivent leur miniature officielle.
+- **Vue match : plus de faux message « Les médailles et citations ne sont pas disponibles »** — un match sans médaille gagnée est une donnée complète ; le message ne s'affiche plus que si les stats du joueur pour ce match manquent aussi.
+- **Citations : Bulldozer est rangée en Multijoueur.**
+- **Titre d'onglet de la page Citations en anglais** : « Commendations », comme l'onglet de navigation.
+
 ## [8.0.6] - 2026-10-26
 
 ### Fixed

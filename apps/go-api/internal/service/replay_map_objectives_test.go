@@ -340,9 +340,14 @@ func TestMapObjectives_ModesPonctuels_AucuneZoneSurTOUTLeCatalogue(t *testing.T)
 	// RELEVÉ DU 2026-10-18 : CTF 36 -> 37. Le catalogue gagne « Harvest » (carte Forge sur
 	// fo11_blank, variante téléchargée hors ligne) ; l assertion par (role, camp) passe sur les
 	// 131 cartes.
-	for mode, attendu := range map[string]int{"CTF": 37, "Stockpile": 22, "Assault": 2} {
+	//
+	// RELEVÉ DU 2026-10-26 : CTF 37 -> 41, Stockpile 22 -> 24. Dix cartes Forge entrent au
+	// catalogue (aucune entrée existante ne change) : Formation, Kusini Bay, Perdition et
+	// Timberland Evolved portent des `flag_delivery` à forme, Beaver Canyon et Timberland Evolved
+	// des `stockpile_navpoint` à forme ; l assertion par (role, camp) passe sur les 141 cartes.
+	for mode, attendu := range map[string]int{"CTF": 41, "Stockpile": 24, "Assault": 2} {
 		if avecForme[mode] != attendu {
-			t.Errorf("%s : %d carte(s) à forme au catalogue, relevé %d le 2026-10-18 — "+
+			t.Errorf("%s : %d carte(s) à forme au catalogue, relevé %d le 2026-10-26 — "+
 				"le catalogue a bougé, revérifier le correctif avant d ajuster ce compte",
 				mode, avecForme[mode], attendu)
 		}
