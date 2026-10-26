@@ -209,6 +209,5 @@ Plan : `.ai/PLAN_CARTES_VARIANTES_STATS_2026-10-26.md` (Découvertes, E4 et E5).
 
 | Item | Origine | Pourquoi reporté | Condition de reprise |
 |---|---|---|---|
-| **Accueil, tuile « carte favorite » : une variante y reste comptée à part** (`sliceFavoriteMapCanonical`) | E4 (2026-10-26) | Surface par carte absente de la liste du plan et de D2 ; la traiter ajoute un lecteur de groupes au service de l'Accueil (règle n°5, zéro fix hors périmètre) | Décision du user ; recette : `HomeService.WithMapGroups` + `mapgroups.RefKey`/`RefLabel` dans `sliceFavoriteMapCanonical` |
 | **Deux copies des suffixes de variante dans le décodeur de film** (`film/internal/profile/map_bounds.go`, `film/replay/map_background_index.go`) | E1 (2026-10-26) | Couche fermée par le compilateur, preuve par level_id ; exceptions datées du garde-rail `archlint/no_map_variant_suffix_literal_test.go` | Convergence vers la liste du TOML décidée avec le décodeur de film |
 | **Playwright Tactique non lancé** | E5 (2026-10-26) | Voir la case E5 du plan : le serveur de `:8000` est celui de la copie principale, pas ce code | Vérification finale par le user, ou serveur dédié à cette branche |

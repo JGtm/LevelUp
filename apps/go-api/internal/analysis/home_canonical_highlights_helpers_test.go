@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -337,7 +338,7 @@ func TestSliceBestWinStreakCanonical_LongStreak(t *testing.T) {
 
 func TestSliceFavoriteMapCanonical_Empty(t *testing.T) {
 	t.Parallel()
-	if got := sliceFavoriteMapCanonical(nil, "fr"); got != nil {
+	if got := sliceFavoriteMapCanonical(nil, "fr", domain.GroupesDeCartes{}); got != nil {
 		t.Errorf("sliceFavoriteMapCanonical(nil) = %v, want nil", got)
 	}
 }
@@ -347,7 +348,7 @@ func TestSliceFavoriteMapCanonical_NoMapID(t *testing.T) {
 	rows := []canonical.PlayerMatchRow{
 		{Self: canonical.MatchParticipant{Outcome: canonical.OutcomeWin}},
 	}
-	if got := sliceFavoriteMapCanonical(rows, "fr"); got != nil {
+	if got := sliceFavoriteMapCanonical(rows, "fr", domain.GroupesDeCartes{}); got != nil {
 		t.Errorf("no MapID: got %v, want nil", got)
 	}
 }
@@ -362,7 +363,7 @@ func TestSliceFavoriteMapCanonical_RequiresAtLeast2(t *testing.T) {
 			Self: canonical.MatchParticipant{Outcome: canonical.OutcomeWin},
 		},
 	}
-	if got := sliceFavoriteMapCanonical(rows, "fr"); got != nil {
+	if got := sliceFavoriteMapCanonical(rows, "fr", domain.GroupesDeCartes{}); got != nil {
 		t.Errorf("only 1 play: got %v, want nil", got)
 	}
 }
@@ -380,7 +381,7 @@ func TestSliceFavoriteMapCanonical_BestWR(t *testing.T) {
 			Self:    canonical.MatchParticipant{Outcome: canonical.OutcomeWin},
 		},
 	}
-	got := sliceFavoriteMapCanonical(rows, "fr")
+	got := sliceFavoriteMapCanonical(rows, "fr", domain.GroupesDeCartes{})
 	if got == nil || got.Value != "Bazaar" {
 		t.Errorf("favorite: got %v, want Bazaar", got)
 	}
@@ -402,7 +403,7 @@ func TestSliceFavoriteMapCanonical_LowWR(t *testing.T) {
 			Self:    canonical.MatchParticipant{Outcome: canonical.OutcomeLoss},
 		},
 	}
-	got := sliceFavoriteMapCanonical(rows, "fr")
+	got := sliceFavoriteMapCanonical(rows, "fr", domain.GroupesDeCartes{})
 	if got == nil || got.ValueColor != homeColorNegative {
 		t.Errorf("low WR: got %v, want negative color", got)
 	}
@@ -425,10 +426,45 @@ func TestSliceFavoriteMapCanonical_LocaleAware(t *testing.T) {
 		}
 	}
 	rows := []canonical.PlayerMatchRow{mkRow(), mkRow()}
-	if got := sliceFavoriteMapCanonical(rows, "fr"); got == nil || got.Value != "Bazar" {
+	if got := sliceFavoriteMapCanonical(rows, "fr", domain.GroupesDeCartes{}); got == nil || got.Value != "Bazar" {
 		t.Errorf("FR favorite map Value = %v, want Bazar", got)
 	}
-	if got := sliceFavoriteMapCanonical(rows, "en"); got == nil || got.Value != "Bazaar" {
+	if got := sliceFavoriteMapCanonical(rows, "en", domain.GroupesDeCartes{}); got == nil || got.Value != "Bazaar" {
 		t.Errorf("EN favorite map Value = %v, want Bazaar", got)
+	}
+}
+
+// Une variante et sa base sont UNE carte favorite : parties et victoires cumulées, libellé de la base.
+// Séparées, aucune des deux n'atteindrait le seuil de 2 parties ni le meilleur taux.
+func TestSliceFavoriteMapCanonical_BaseEtVarianteCumulees(t *testing.T) {
+	t.Parallel()
+	groups := domain.NewGroupesDeCartes(map[string]string{"th-heavies": "th"}).
+		AvecLibelles(map[string]map[string]string{"th": {"en": "Thunderhead", "fr": "Tonnerre"}})
+	row := func(id, en string, o canonical.Outcome) canonical.PlayerMatchRow {
+		return canonical.PlayerMatchRow{
+			Summary: canonical.MatchSummary{Map: &canonical.AssetReference{ID: id, DefaultLabel: en}},
+			Self:    canonical.MatchParticipant{Outcome: o},
+		}
+	}
+	rows := []canonical.PlayerMatchRow{
+		row("th", "Thunderhead", canonical.OutcomeWin),
+		row("th-heavies", "Thunderhead Heavies", canonical.OutcomeWin),
+		row("th-heavies", "Thunderhead Heavies", canonical.OutcomeLoss),
+		row("pit", "The Pit", canonical.OutcomeWin),
+		row("pit", "The Pit", canonical.OutcomeLoss),
+	}
+	got := sliceFavoriteMapCanonical(rows, "fr", groups)
+	if got == nil || got.Value != "Tonnerre" {
+		t.Fatalf("favorite = %+v, want le groupe sous le libellé de la base (Tonnerre)", got)
+	}
+	if got.DetailParams["wins"] != 2 || got.DetailParams["losses"] != 1 {
+		t.Errorf("cumul = %v, want 2 victoires et 1 défaite", got.DetailParams)
+	}
+	if en := sliceFavoriteMapCanonical(rows, "en", groups); en == nil || en.Value != "Thunderhead" {
+		t.Errorf("favorite en = %+v, want Thunderhead", en)
+	}
+	// Sans groupe : chaque carte reste seule, aucun cumul à 2 victoires.
+	if seul := sliceFavoriteMapCanonical(rows, "en", domain.GroupesDeCartes{}); seul != nil && seul.DetailParams["wins"] == 2 {
+		t.Errorf("sans groupe : %+v", seul)
 	}
 }

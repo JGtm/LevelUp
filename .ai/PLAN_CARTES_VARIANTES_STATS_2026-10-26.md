@@ -167,7 +167,7 @@ Non vus par la note :
 - [x] Re-grep de clôture : `grep -rn "MapID\]" internal/service internal/analysis` et
       `GROUP BY.*map_id` — tout résultat restant statué
 - Gate : `go test ./internal/...` (hors tag gamefiles)
-      E4 CLOS. Mécanisme commun : `service/mapgroups` (`Load`, `RefKey`, `RefLabel`) + `squadagg.FoldMapStats`
+      E4 CLOS (+ E4 bis). Mécanisme commun : `service/mapgroups` (`Load`, `RefKey`, `RefLabel`) + `squadagg.FoldMapStats`
       (stats « avec l'escouade » repliées par groupe, performance pondérée par `MapSquadStats.PerfCount`,
       champ ajouté et rempli par `LoadMapStatsForSquad`). Escouade V2 : groupes lus une fois par page
       (`GetSquadPage`), lollipop, bullet, perf vs historique, heatmap joueur x carte (`Build*(…, groups)`) ;
@@ -185,11 +185,15 @@ Non vus par la note :
       `map_variants.go` (le résolveur), `tactical_repo*.go` (repliés par le service, E3) -> `[~]` ;
       `ops/catalog_refresh.go:120`, `sync/replayartifacts/zones_cartes.go:35` -> `[~]` catalogue et zones de
       rejeu, pas des statistiques.
-      `[!]` NON TRAITÉ : `analysis/home_canonical_highlights_tiles.go:179` (Accueil, tuile « carte favorite »,
-      `sliceFavoriteMapCanonical`). Surface par carte absente de la liste du plan et de D2, que le user n'a pas
-      citée ; le traiter ajoute un lecteur de groupes au service de l'Accueil (périmètre du plan : règle n°5).
-      Conséquence visible : la carte favorite peut nommer « Live Fire - Ranked » ou « ... Heavies ». À décider
-      par le user (REGISTRE_REPORTS). Gate : `go test ./internal/...` vert (169 paquets ok, 0 échec) ;
+      `[x]` (E4 bis, décision du coordinateur : D2 = « toutes les surfaces », la liste du plan n'était qu'un
+      relevé) `analysis/home_canonical_highlights_tiles.go:179`, tuile « carte favorite » de l'Accueil
+      (`sliceFavoriteMapCanonical`) : `BuildHighlightsFromCanonical(rows, locale, groups)`, lecteur injecté dans
+      `HomeService` (`WithMapGroups`, câblé sur `HomeCtxWithAuth` ET `HomeCtx` : parité tenue par
+      `home_factories_parity_test.go`), parties et victoires cumulées par groupe, libellé de la base. Gate E4 bis :
+      `go test ./internal/analysis/... ./internal/service/... ./internal/api/...` vert (34 paquets), archlint vert,
+      golangci-lint ratchet sur ces paquets : 0 issue.
+      Gate E4 : `go test ./internal/...` vert (169 paquets ok, 0 échec) ; golangci-lint ratchet sur
+      `./internal/...` : 0 issue.
       golangci-lint ratchet sur `./internal/...` : 0 issue.
 
 ### E5 — Web et clôture
@@ -210,7 +214,7 @@ Non vus par la note :
       tous présents, aucun échec ; voie film 165 s, voie DuckDB 1 828 s)
 - [x] Note du 2026-10-23 close (renvoi vers ce plan) -> `.ai/NOTE_CARTES_VARIANTES_STATS_2026-10-23.md` ;
       en-tête de `map_variants.toml` remis d'équerre (doc inversée) ; `.ai/thought_log.md` ;
-      `.ai/REGISTRE_REPORTS.md` pour les `[!]` (Accueil, copies du décodeur de film, Playwright)
+      `.ai/REGISTRE_REPORTS.md` pour les `[!]` (copies du décodeur de film, Playwright ; l'Accueil, traité en E4 bis)
 
 ## Mesures (rempli en E0)
 
@@ -325,5 +329,7 @@ l'exécutant : les serveur et bases locaux tiennent la copie principale.
    historique ; l'onglet Usages (Emprise par carte) : une seule carte « Live Fire ».
 8. **Motifs** (page Progression / Patterns). Les motifs « par carte » ne listent plus « Live Fire - Ranked » à
    part (n'apparaissent que si le seuil de parties par carte est atteint).
-9. **Non couvert, à ne pas attendre** : l'Accueil, tuile « carte favorite » (voir `[!]` E4) ; le rejeu 2D et
+9. **Accueil, tuile « carte favorite »** : elle ne doit jamais nommer « Live Fire - Ranked » ni une carte « Heavies » ;
+   avec des parties dans les deux variantes, c'est « Live Fire » qui peut sortir, sur le cumul. **Non couvert, à ne pas
+   attendre** : le rejeu 2D et
    la page de vue d'un match gardent le nom de la variante réellement jouée.
