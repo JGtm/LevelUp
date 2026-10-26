@@ -178,18 +178,52 @@ const deployVariant = "ds"
 // même méthode, unicité 1/1, rejouée par `himap.TestPreuveLevelIDCartesDuCache` :
 //
 //	Harvest            426470249   (0x196B6B69) -> fo11_blank   (même level_id qu'Argyle)
+//
+// Les seize cartes Forge sans module natif encore absentes du catalogue
+// (2026-10-26) : Arrival, Beaver Canyon, Canopy, Cold Storage, Exiled, Formation, Foundry,
+// Gondolas, Guardian, Immolate, Kusini Bay, Narrows, Perdition, Skyblocks, Thunderbowl et
+// Timberland Evolved. Même méthode level_id, unicité 1/1 par variante, rejouée par
+// `himap.TestPreuveLevelIDCartesDuCache` (la variante se dépose sous `<cache>/mvar/<map_id>/
+// map.mvar`, ou se rapatrie sans jeton par `mapnav-fetch -fichier map.mvar`) ; le canevas
+// d'Arrival, Exiled et Kusini Bay est aussi celui de l'inventaire UGC versionné
+// (`.ai/V7.5/cartes/inventaire_rotation_ugc_2026-08-27.json`) :
+//
+//	Arrival, Formation                       -747133697  (0xD377A4FF) -> fo03_space
+//	Canopy, Exiled, Guardian                 1804860316  (0x6B93FB9C) -> fo05_desert
+//	Beaver Canyon, Gondolas, Timberland Evolved
+//	                                         88891201    (0x054C5F41) -> fo08_wetland
+//	Cold Storage, Foundry, Immolate, Kusini Bay, Perdition, Skyblocks, Thunderbowl
+//	                                         426470249   (0x196B6B69) -> fo11_blank
+//	Narrows                                  -992358985  (0xC4D9CDB7) -> fo13_frost
+//
+// Le catalogue est tenu par NOM : toute variante d'une même carte (« - Ranked », autre asset de
+// même nom) hérite des bornes de son canevas. Sept assets de ces noms n'ont plus de variante
+// publiée (la page UGC répond 404) et ne peuvent donc être rejoués par aucun level_id : Arrival
+// 5e3e78c5, Exiled 31051f43, Immolate b3518c8b / 014f85f6 / 8e801fa1, Kusini Bay 7e1cb2dd /
+// 6a995886. Leur appartenance au canevas de leur nom est une INFÉRENCE, non une preuve ; elle
+// reste à confirmer film par film (`TestControleBornesFilms`) dès qu'un de leurs films existe.
+//
+// Narrows : le catalogue ne portait que l'identifiant d'asset (`944396dd-…`), clé du temps où
+// l'API ne résolvait pas le nom d'affichage. Le registre dit désormais « Narrows » et la
+// cuisson du rejeu ne présente que des NOMS au catalogue (`ReplayMapRepo`, jamais le map_id) :
+// la clé UUID ne pouvait plus répondre. Les deux restent, la seconde couvrant les lignes du
+// registre encore nommées par l'identifiant.
 var mapModule = map[string]string{
 	"Absolution":          "fo09_academy",
 	"Aquarius":            "ctf_aquarius",
 	"Argyle":              "fo11_blank",
+	"Arrival":             "fo03_space",
 	"Banished Narrows":    "fo05_desert",
 	"Bazaar":              "ctf_bazaar",
+	"Beaver Canyon":       "fo08_wetland",
 	"Behemoth":            "va_behemoth",
 	"Breaker":             "ctf_breaker",
+	"Canopy":              "fo05_desert",
 	"Catalyst":            "catalyst",
 	"Chasm":               "chasm",
 	"Cliffhanger":         "ridgeline",
 	"Cliffside":           "fo05_desert",
+	"Cold Storage":        "fo11_blank",
 	"Cole Protocol":       "fo09_academy",
 	"Command":             "fo09_academy",
 	"Corpo":               "fo11_blank",
@@ -206,34 +240,43 @@ var mapModule = map[string]string{
 	"Ecotone":             "fo11_blank",
 	"Elevation":           "fo11_blank",
 	"Empyrean":            "fo11_blank",
+	"Exiled":              "fo05_desert",
 	"Flood Gulch":         "fo05_desert",
 	"Forbidden":           "ctf_forbidden",
 	"Forest":              "forest",
+	"Formation":           "fo03_space",
 	"Fortitude":           "fo05_desert",
 	"Fortress":            "fo09_academy",
+	"Foundry":             "fo11_blank",
 	"Fragmentation":       "btb_fragmentation",
 	"Goliath":             "fo11_blank",
+	"Gondolas":            "fo08_wetland",
+	"Guardian":            "fo05_desert",
 	"Harvest":             "fo11_blank",
 	"High Ground":         "fo08_wetland",
 	"Highpower":           "btb_highpower",
 	"Houseki":             "fo09_academy",
 	"Illusion":            "ctf_illusion",
+	"Immolate":            "fo11_blank",
 	"Insolence":           "fo09_academy",
 	"Interference":        "fo13_frost",
 	"Isolation":           "fo08_wetland",
 	"Kaiketsu":            "fo05_desert",
 	"Kiken'na":            "fo08_wetland",
+	"Kusini Bay":          "fo11_blank",
 	"Lattice - Ranked":    "fo13_frost",
 	"Launch Site":         "va_launchsite",
 	"Live Fire":           "sgh_interlock",
 	"Merchant's Square":   "fo09_academy",
 	"Nadair":              "fo11_blank",
+	"Narrows":             "fo13_frost",
 	"Nemesis":             "fo08_wetland",
 	"Oasis":               "btb_exiled",
 	"Obituary":            "fo09_academy",
 	"Opulence":            "fo11_blank",
 	"Origin":              "fo08_wetland",
 	"Outlook":             "fo13_frost",
+	"Perdition":           "fo11_blank",
 	"Perilous":            "fo08_wetland",
 	"Pharaoh":             "fo11_blank",
 	"Prism":               "sgh_crystalcaves",
@@ -247,6 +290,7 @@ var mapModule = map[string]string{
 	"Serenity - Ranked":   "fo08_wetland",
 	"Shiro":               "fo05_desert",
 	"Shogun":              "fo11_blank",
+	"Skyblocks":           "fo11_blank",
 	"Smallhalla":          "fo08_wetland",
 	"Snowbound":           "fo13_frost",
 	"Solitude":            "fo11_blank",
@@ -257,7 +301,9 @@ var mapModule = map[string]string{
 	"Takamanohara":        "fo11_blank",
 	"The Pit":             "fo09_academy",
 	"Threshold":           "fo11_blank",
+	"Thunderbowl":         "fo11_blank",
 	"Thunderhead":         "fo08_wetland",
+	"Timberland Evolved":  "fo08_wetland",
 	"Urban Raid":          "fo09_academy",
 	"Vacancy - Ranked":    "fo09_academy",
 	"Vagabond":            "fo08_wetland",

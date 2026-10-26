@@ -118757,3 +118757,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : `tsc` vert, `HomeRankingStates.test.tsx` 9/9 (français). Pas de test en anglais ajouté ni de contrôle visuel.
 
 **Conclusion / prochaine étape** : contrôle à l'écran en anglais par l'utilisateur.
+
+## [2026-10-26] Rejeu 2D : seize cartes Forge hors catalogue de bornes entrent au catalogue, huit fonds proposes - En cours (branche `feat/cartes-manquantes-rejeu`, commits locaux, rien de publie)
+
+**Contexte** : `backfill-replay` refusait 16 cartes (Arrival, Beaver Canyon, Canopy, Cold Storage, Exiled, Formation, Foundry, Gondolas, Guardian, Immolate, Kusini Bay, Narrows, Perdition, Skyblocks, Thunderbowl, Timberland Evolved) avec `ErrMapNotInCatalog`. Toutes sont des cartes Forge (aucun module natif de ce nom ; « Exiled » n'est PAS `btb_exiled`, qui est Oasis).
+
+**Decision technique principale** : entrees `mapModule` (cmd/mapquant-build) prouvees par level_id de la variante (`TestPreuveLevelIDCartesDuCache` etendu, unicite 1/1 : fo03_space Arrival/Formation, fo05_desert Canopy/Exiled/Guardian, fo08_wetland Beaver Canyon/Gondolas/Timberland Evolved, fo11_blank Cold Storage/Foundry/Immolate/Kusini Bay/Perdition/Skyblocks/Thunderbowl, fo13_frost Narrows). Variantes absentes du cache rapatriees SANS jeton (`mapnav-fetch -fichier map.mvar`). Narrows : le catalogue n'avait que la cle UUID (temps ou l'API ne resolvait pas le nom) ; la cuisson ne presente que des noms, donc « Narrows » est ajoutee.
+
+**Resultats observes** : `TestControleBornesFilms` sur les 25 films disponibles : accord 25/25. Les 219 matchs du registre portant ces noms resolvent tous (`ResolveMapEntry`). Les huit canevas Forge partagent des bornes monde IDENTIQUES : un canevas fautif ne change pas les coordonnees, seulement le label `module`. Sept assets de ces noms ont disparu du stockage UGC (404) et ne sont pas rejouables par level_id (Arrival 5e3e78c5, Exiled 31051f43, Immolate b3518c8b/014f85f6/8e801fa1, Kusini Bay 7e1cb2dd/6a995886) : inference par le nom, documentee. Fonds cuits : 8 (Arrival, Beaver Canyon, Exiled, Formation, Gondolas, Kusini Bay, Perdition, Timberland Evolved) ; Skyblocks et Thunderbowl refuses par la cuisson (variante sans objectif, donc pas d'ancre) - catalogue oui, fond non. Formation (couverture 13 %, 5 ancres sur 9) et Gondolas (0 ancre sur 4 au sol) ressortent maigres.
+
+**Conclusion / prochaine etape** : l'utilisateur valide les fonds (`Downloads\fonds_a_valider`), cuit les rejeux, deploie. En cas de rejet d'un fond : retirer sa declaration `CartesForge`, son entree `map_fond_reglages.json` et ses deux fichiers (`TestFondForgeJamaisSousCleModule`).
