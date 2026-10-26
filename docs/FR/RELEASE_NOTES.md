@@ -5,6 +5,7 @@
 - **Score de performance par carte et par mode** — dans la Synthèse, les graphiques « Par carte » et « Par mode » portent une courbe de ton score de performance moyen (de 0 à 100, axe de droite) au-dessus des barres de résultats ; chaque point prend la couleur de son palier
 - **Les variantes de carte comptées avec leur carte de base** — les variantes « - Ranked » et « Heavies » comptent désormais sous leur carte de base dans toutes les statistiques par carte : Tactique, Explorateur, Synthèse, Escouade, Séries temporelles et page d'accueil. Le rejeu et la vue du match gardent le nom de la variante réellement jouée
 - **Le filtre de cartes ramène les variantes** — dans la Synthèse, l'Escouade et Coéquipiers, comme il le faisait déjà dans l'Explorateur
+- **Le briefing de l'Explorateur garde ses cartes** — un filtre trop étroit pour comparer affiche la carte avec la raison au lieu de la retirer ; sous 10 matchs tout reste, avec un avertissement sur la tuile Matchs ; sur les écrans plus étroits, les tuiles se répartissent en lignes égales
 
 **v8.0 — Le rejeu 2D, le film Theater décodé & un onglet Tactique**
 

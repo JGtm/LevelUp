@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - **Map variants counted with their base map** — "- Ranked" and "Heavies" variants (e.g. "Solitude - Ranked", "Fragmentation Heavies") now count under their base map in every per-map statistic: Tactical map grid and placement reads, map win rate and briefing in the Explorer, most played maps in the Summary, Squad and Teammates, Time series and the home page's favourite map. A variant with no base map (Lattice, Vacancy) stays on its own. The replay and the match view keep the name of the variant actually played.
+- **Explorer briefing: cards no longer vanish under a filter** — "By map", "By mode" and "By playlist" take a map, mode or playlist from 5 matches (was 10) and need two of them to compare; below that, the card stays in place with a dotted notice saying why. "By context" needs 5 matches solo and 5 in a squad, and gives both counts when one side falls short. A card is left out only when the filter leaves a single value (the map you filtered on, for instance).
+- **Explorer briefing under 10 matches** — nothing is hidden any more: comparisons with your usual level, "By…" cards, rank, favourite weapon and highlights all show, and a warning triangle on the Matches tile says the sample is small. It used to show four tiles and a "Small sample" line.
+- **Explorer briefing tiles in even rows** — when the tiles do not fit on one line, they split into two rows of equal width (4+4, 4+3, 3+3, 3+2) instead of leaving the last one alone on its line. The "Notable streaks" tile is now "Streaks"; its tooltip keeps the full name.
 
 ### Fixed
 - **Map filter in the Summary, Squad and Teammates** — picking a map now also brings back the matches played on its variants, as the Explorer filter already did.

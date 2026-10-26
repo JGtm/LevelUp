@@ -5,6 +5,7 @@
 - **Performance score by map and by mode** — on the Summary, the "By map" and "By mode" charts carry a curve of your average performance score (0 to 100, right-hand axis) over the result bars; each point takes the colour of its tier
 - **Map variants counted with their base map** — "- Ranked" and "Heavies" variants now count under their base map in every per-map statistic: Tactics, Explorer, Summary, Squad, Time series and the home page. The replay and the match view keep the name of the variant actually played
 - **The map filter brings back the variants** — on the Summary, the Squad and Teammates, as it already did in the Explorer
+- **The Explorer briefing keeps its cards** — a filter too narrow to compare now shows the card with the reason instead of dropping it; under 10 matches everything stays, with a warning on the Matches tile; on smaller screens the tiles split into even rows
 
 **v8.0 — 2D replay, the Theater film decoded & a Tactics tab**
 
