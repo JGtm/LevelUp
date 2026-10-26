@@ -5,6 +5,7 @@
  * Inclut : formatDuration() + cascade nextTierLabel() (anglais canonique +
  * chiffres romains + fallback digit).
  */
+import { PLACEMENT_TIER_SENTINEL } from '@/lib/skillTiers'
 
 export function formatDuration(secs: number): string {
   const m = Math.floor(secs / 60)
@@ -12,14 +13,11 @@ export function formatDuration(secs: number): string {
   return s > 0 ? `${m}m ${s}s` : `${m}m`
 }
 
-// Sentinelle « en placement » servie par le back (skill.TierLabelPlacement) : une
-// valeur MACHINE de tier (rating_value=0, phase de placement), utilisée telle
-// quelle comme tier ET comme libellé côté Go. On la LOCALISE à l'affichage
-// (« En placement » / « In placement »), aligné sur les cards d'accueil — jamais
-// afficher le littéral EN « Placement » brut. Cf. règle « pas de label FR/EN en
-// dur côté Go » : la traduction transite ici, côté front.
-export const PLACEMENT_TIER_SENTINEL = 'Placement'
-
+// La sentinelle « en placement » (PLACEMENT_TIER_SENTINEL) est une valeur MACHINE
+// de tier ; on la LOCALISE à l'affichage (« En placement » / « In placement »),
+// aligné sur les cards d'accueil — jamais le littéral EN « Placement » brut. Cf.
+// règle « pas de label FR/EN en dur côté Go » : la traduction transite ici.
+//
 // displayTierLabel remplace la sentinelle « Placement » par son libellé localisé
 // (passé par l'appelant depuis son bundle i18n) ; tout autre tier est rendu tel
 // quel. Retourne null pour une entrée nulle (rien à afficher).

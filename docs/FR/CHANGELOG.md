@@ -6,6 +6,13 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [8.0.6] - 2026-10-26
+
+### Fixed
+- **Le joueur choisi reste sélectionné** — après avoir choisi un joueur dans le sélecteur, changer la langue (ou tout ce qui recharge le contexte de l'application) pouvait revenir au profil par défaut. Les requêtes de la page précédente, encore en cours au moment du choix, réécrivaient l'ancienne session en se terminant ; une requête qui n'a pas modifié la session ne fait plus que rafraîchir son heure de dernière activité.
+- **Carrière : le graphe Évolution LUSR / CSR se lit sur une seule échelle à la fois** — bascule LUSR | CSR dans le titre quand les deux existent, une valeur CSR n'est plus lue avec les rangs du LUSR ; les matchs de placement ne sont plus tracés (la courbe CSR ne plonge plus à 0 à chaque saison) ; les libellés de rang sont centrés dans leur bande et se replient sur le palier entier quand un sous-palier est trop fin. Le graphe Classement des Séries temporelles en profite aussi.
+- **Accueil : libellés de placement de la carte Meilleur CSR/LUSR traduits** (français et anglais).
+
 ## [8.0.5] - 2026-10-25
 
 ### Added

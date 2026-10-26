@@ -57,24 +57,49 @@ describe('buildSkillTierMarkArea', () => {
     ma.data.map(([a]) => (a as { name: string }).name)
 
   it('LUSR : labels en chiffres romains (Or III) dans le cadre', () => {
-    const labels = names(buildSkillTierMarkArea('fr', 1400, 1600, LUSR_TIER_GRID, tc))
+    const labels = names(buildSkillTierMarkArea({ locale: 'fr', yMin: 1400, yMax: 1600, grid: LUSR_TIER_GRID, theme: tc, plotHeightPx: 230 }))
     expect(labels).toContain('Or III')
     expect(labels).toContain('Or I')
   })
 
   it('CSR : labels en chiffres arabes selon la locale EN (Diamond 3)', () => {
-    const labels = names(buildSkillTierMarkArea('en', 1200, 1500, CSR_TIER_GRID, tc))
+    const labels = names(buildSkillTierMarkArea({ locale: 'en', yMin: 1200, yMax: 1500, grid: CSR_TIER_GRID, theme: tc, plotHeightPx: 230 }))
     expect(labels).toContain('Diamond 3')
   })
 
   it('alterne le shading entre bandes voisines', () => {
-    const ma = buildSkillTierMarkArea('fr', 1400, 1600, LUSR_TIER_GRID, tc)
+    const ma = buildSkillTierMarkArea({ locale: 'fr', yMin: 1400, yMax: 1600, grid: LUSR_TIER_GRID, theme: tc, plotHeightPx: 230 })
     const colors = ma.data.map(([a]) => (a as { itemStyle: { color: string } }).itemStyle.color)
     expect(colors[0]).not.toBe(colors[1])
   })
 
   it('Onyx : une bande sans numéro de sous-palier', () => {
-    const labels = names(buildSkillTierMarkArea('fr', 1900, 2200, LUSR_TIER_GRID, tc))
+    const labels = names(buildSkillTierMarkArea({ locale: 'fr', yMin: 1900, yMax: 2200, grid: LUSR_TIER_GRID, theme: tc, plotHeightPx: 230 }))
     expect(labels).toContain('Onyx')
+  })
+
+  type Entry = { name: string; yAxis: number; label: { show: boolean; position: string } }
+  const entries = (ma: { data: Array<[object, object]> }) => ma.data.map(([a]) => a as Entry)
+
+  it('label centré verticalement dans sa bande (pas collé à la borne du rang suivant)', () => {
+    const ma = buildSkillTierMarkArea({ locale: 'en', yMin: 1400, yMax: 1500, grid: CSR_TIER_GRID, theme: tc, plotHeightPx: 230 })
+    expect(entries(ma).every(e => e.label.position === 'insideLeft')).toBe(true)
+    // 1475 tombe dans la bande Diamond 6 [1450, 1500[.
+    const d6 = entries(ma).find(e => e.name === 'Diamond 6')
+    expect(d6?.yAxis).toBe(1450)
+  })
+
+  it('axe très étiré : un label par palier entier, jamais de sous-paliers empilés', () => {
+    // Cas de la carrière : LUSR de 1000 à 2200 sur ~230 px → sous-palier Bronze ≈ 6 px.
+    const labels = names(buildSkillTierMarkArea({ locale: 'fr', yMin: 1000, yMax: 2200, grid: LUSR_TIER_GRID, theme: tc, plotHeightPx: 230 }))
+    expect(labels).toEqual(['Bronze', 'Argent', 'Or', 'Platine', 'Diamant', 'Onyx'])
+  })
+
+  it('bande trop fine pour son label (clippée au bord du cadre) : label masqué', () => {
+    // Diamant [1800, 2000[ clippé à [1990, 2000[ : 10 pts ≈ 8 px.
+    const ma = buildSkillTierMarkArea({ locale: 'fr', yMin: 1990, yMax: 2200, grid: LUSR_TIER_GRID, theme: tc, plotHeightPx: 170 })
+    const clipped = entries(ma).find(e => e.yAxis === 1990)
+    expect(clipped?.label.show).toBe(false)
+    expect(entries(ma).find(e => e.name === 'Onyx')?.label.show).toBe(true)
   })
 })

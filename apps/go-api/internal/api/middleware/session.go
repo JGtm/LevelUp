@@ -31,6 +31,7 @@ func WithSession(store *session.Store, policy SecureCookiePolicy) func(http.Hand
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			sess, loaded := loadOrCreate(r, store)
+			loadedPrint := session.FingerprintOf(sess)
 			// Le cookie est posé via un wrapper, au moment de l'écriture de la réponse,
 			// et UNIQUEMENT si la session mérite d'être conservée (déjà existante, ou
 			// devenue significative pendant la requête : login, OAuth state, préférence…).
@@ -59,11 +60,13 @@ func WithSession(store *session.Store, policy SecureCookiePolicy) func(http.Hand
 			// glissant) ou devenue significative. Une session anonyme vierge n'est
 			// jamais écrite → plus de spam dans data/sessions/. Touch lui-même s'abstient
 			// pour une session inchangée écrite il y a moins de 5 min (TTL glissant
-			// préservé à 5 min près, plan perf 2026-09-23 D3.5).
+			// préservé à 5 min près, plan perf 2026-09-23 D3.5). Une session que la requête
+			// n'a pas modifiée n'est jamais réécrite depuis sa copie chargée (TouchAfter) :
+			// elle écraserait le joueur courant posé entre-temps par POST /session/context.
 			// Une session révoquée pendant la requête (déconnexion, identifiant
 			// renouvelé) n'est plus jamais réécrite.
 			if _, revoked := store.Revoked(sess.SessionID); !revoked && (loaded || sess.IsMeaningful()) {
-				if err := store.Touch(sess); err != nil {
+				if err := store.TouchAfter(sess, loadedPrint); err != nil {
 					slog.ErrorContext(r.Context(), "session touch failed", "err", err)
 				}
 			}

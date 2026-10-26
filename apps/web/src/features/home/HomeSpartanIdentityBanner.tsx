@@ -70,8 +70,8 @@ export function HomeSpartanIdentityBanner({
   const identityMonogram = playerName.trim().slice(0, 1).toUpperCase() || 'S'
 
   const hasAnySkillHistory = hasRankedHistory || hasUnrankedHistory
-  const csrState = resolveSkillPeakState(highestCSR, hasRankedHistory, 'ranked')
-  const lusrState = resolveSkillPeakState(highestLUSR, hasUnrankedHistory, 'unranked')
+  const csrState = resolveSkillPeakState(highestCSR, hasRankedHistory, 'ranked', locale)
+  const lusrState = resolveSkillPeakState(highestLUSR, hasUnrankedHistory, 'unranked', locale)
 
   // Gating multi-titre (Phase 5) : carte « Meilleur CSR » ⇒ `ranked`, carte
   // « Meilleur LUSR » ⇒ `lusr`. NO-OP pour halo_infinite (déclare les deux).

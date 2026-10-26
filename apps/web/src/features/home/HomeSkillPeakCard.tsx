@@ -12,6 +12,8 @@ import { localizeTierLabel } from '@/lib/skillTiers'
 import { KpiCard } from '@/components/cards/KpiCard'
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import type { Locale } from '@/lib/i18n/locale'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 
 export interface HomeSkillPeakCardProps {
   label: string
@@ -85,7 +87,7 @@ export function HomeSkillPeakCard({
             <img
               data-testid={isPlacement ? `${testIdPrefix}-unranked` : `${testIdPrefix}-badge`}
               src={peak.badge_image_url}
-              alt={isPlacement ? 'En placement' : label}
+              alt={isPlacement ? formatMessage(commonManifest, 'common.home.rank_placement', locale) : label}
               className={`h-12 w-12 shrink-0 object-contain ${isPlacement ? 'opacity-80' : ''}`}
               loading="lazy"
               decoding="async"
@@ -97,7 +99,11 @@ export function HomeSkillPeakCard({
             <img
               data-testid={`${testIdPrefix}-unranked`}
               src={unrankedBadgeURL()}
-              alt={isPlacement ? 'En placement' : 'Non classé'}
+              alt={formatMessage(
+                commonManifest,
+                isPlacement ? 'common.home.rank_placement' : 'common.home.rank_unrated',
+                locale,
+              )}
               className="h-12 w-12 shrink-0 object-contain opacity-80"
               loading="lazy"
               decoding="async"

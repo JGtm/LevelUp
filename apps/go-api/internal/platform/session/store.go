@@ -203,6 +203,13 @@ func (s *Store) Save(sess *domain.SessionData) error {
 
 // save écrit le fichier (cf. Save) puis retient la marque de cette écriture.
 func (s *Store) save(sess *domain.SessionData, content [sha256.Size]byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.writeLocked(sess, content)
+}
+
+// writeLocked : corps de save, appelé sous le Lock exclusif s.mu.
+func (s *Store) writeLocked(sess *domain.SessionData, content [sha256.Size]byte) error {
 	data, err := json.Marshal(sess)
 	if err != nil {
 		return fmt.Errorf("session marshal: %w", err)
@@ -212,8 +219,6 @@ func (s *Store) save(sess *domain.SessionData, content [sha256.Size]byte) error 
 			"bytes", len(data), "max", MaxSessionBytes, "authenticated", carriesIdentity(sess))
 		return fmt.Errorf("%w: %d bytes > %d", ErrSessionTooLarge, len(data), MaxSessionBytes)
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.isRevoked(sess.SessionID) {
 		return ErrSessionRevoked
 	}
@@ -238,24 +243,6 @@ func (s *Store) save(sess *domain.SessionData, content [sha256.Size]byte) error 
 	}
 	s.remember(sess.SessionID, persistMark{LastPersistedAt: time.Unix(sess.LastSeenAt, 0), content: content})
 	return nil
-}
-
-// Touch rafraîchit last_seen_at et persiste la session — sauf si l'écriture est inutile
-// (plan perf 2026-09-23, D3.5) : même contenu (hors last_seen_at) que la dernière écriture
-// de ce process, dont le last_seen_at a moins de touchPersistInterval. Une session MODIFIÉE
-// (login, préférence, flux OAuth, joueur courant...) est donc toujours écrite ; une session
-// inchangée l'est au plus une fois par intervalle, ce qui borne le retard du TTL glissant.
-func (s *Store) Touch(sess *domain.SessionData) error {
-	content, err := contentDigest(sess)
-	if err != nil {
-		return err
-	}
-	now := s.now()
-	sess.LastSeenAt = now.Unix()
-	if s.persistedRecently(sess.SessionID, content, now) {
-		return nil
-	}
-	return s.save(sess, content)
 }
 
 // Delete supprime le fichier de session (et oublie la marque de sa dernière écriture).
@@ -429,61 +416,6 @@ func (s *Store) ttlFor(sess *domain.SessionData) time.Duration {
 		return min(s.ttl, AnonymousTTL)
 	}
 	return s.ttl
-}
-
-// contentDigest : empreinte SHA-256 du JSON de la session, last_seen_at exclu — seul champ
-// que Touch change à chaque requête. Copie superficielle : la session de l'appelant n'est
-// pas modifiée.
-func contentDigest(sess *domain.SessionData) ([sha256.Size]byte, error) {
-	c := *sess
-	c.LastSeenAt = 0
-	data, err := json.Marshal(&c)
-	if err != nil {
-		return [sha256.Size]byte{}, fmt.Errorf("session digest: %w", err)
-	}
-	return sha256.Sum256(data), nil
-}
-
-// persistedRecently : le fichier de la session porte déjà ce contenu, avec un last_seen_at
-// de moins de touchPersistInterval (d'après la dernière écriture de ce process). Une
-// horloge revenue en arrière (âge négatif) force l'écriture.
-func (s *Store) persistedRecently(sessionID string, content [sha256.Size]byte, now time.Time) bool {
-	s.marksMu.Lock()
-	mark, ok := s.marks[sessionID]
-	s.marksMu.Unlock()
-	if !ok || mark.content != content {
-		return false
-	}
-	age := now.Sub(mark.LastPersistedAt)
-	return age >= 0 && age < touchPersistInterval
-}
-
-// remember retient la marque de la dernière écriture d'une session.
-func (s *Store) remember(sessionID string, mark persistMark) {
-	s.marksMu.Lock()
-	s.marks[sessionID] = mark
-	s.marksMu.Unlock()
-}
-
-// forget oublie la marque d'une session supprimée.
-func (s *Store) forget(sessionID string) {
-	s.marksMu.Lock()
-	delete(s.marks, sessionID)
-	s.marksMu.Unlock()
-}
-
-// pruneMarks oublie les marques dont le last_seen_at a dépassé le TTL : leur session est
-// expirée (ou supprimée hors de ce process) ; les garder ferait croître la table sans fin.
-func (s *Store) pruneMarks() {
-	limit := s.now().Add(-s.ttl)
-	s.marksMu.Lock()
-	defer s.marksMu.Unlock()
-	for id, mark := range s.marks {
-		if mark.LastPersistedAt.Before(limit) {
-			delete(s.marks, id)
-		}
-	}
-	s.pruneRevokedLocked()
 }
 
 // sanitizeID conserve uniquement les caractères alphanumériques et tirets.

@@ -3,9 +3,12 @@
  *
  * Découpé depuis CareerChartsSection.tsx (audit #6 god-file split).
  * Inclut : ligne par chaîne (slayer/objectif/...) + markAreas par tier + dataZoom
- * activé seulement si l'historique dépasse 13 mois.
+ * activé seulement si l'historique dépasse 13 mois. Une seule échelle (LUSR ou CSR)
+ * à la fois, bascule dans le titre quand les deux existent (cf. lusrEvolution.logic).
  */
+import { useState } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
+import { Segmented } from '@/components/ui/segmented'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { intlLocale as toIntlLocale } from '@/lib/formatters'
 import {
@@ -22,6 +25,25 @@ import { careerManifest } from '@/lib/i18n/generated/career'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { LUSR_GROUP_TOKENS, lusrChainLabel } from './lusr-chains'
 import type { CareerLusrCheckpoint } from '@/lib/api/types'
+import {
+  type RatingScale,
+  availableScales,
+  chartableCheckpoints,
+  checkpointsForScale,
+  resolveScale,
+} from './lusrEvolution.logic'
+
+// Hauteur minimale du graphe et marges verticales de la zone de tracé : partagées
+// par `grid` et l'estimation de hauteur utile qui décide de la densité des libellés
+// de rang (en mode fluid la carte peut être plus haute : estimation basse, sûre).
+const CHART_HEIGHT = 320
+const GRID_TOP = 30
+const GRID_BOTTOM = 60
+
+const SCALE_LABEL_KEYS = {
+  lusr: 'career.charts.lusr_rating_axis_y',
+  csr: 'career.charts.csr_rating_axis_y',
+} as const satisfies Record<RatingScale, keyof typeof careerManifest>
 
 function lusrGroupColor(group: string): string {
   return resolveToken(LUSR_GROUP_TOKENS[group] ?? 'chart-series-1')
@@ -55,7 +77,11 @@ function buildLusrSeries(checkpoints: CareerLusrCheckpoint[], locale: ManifestLo
   })
 }
 
-function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], locale: ManifestLocale): EChartsCoreOption {
+function buildLusrEvolutionOption(
+  series: ChartSeries<[string, number]>[],
+  scale: RatingScale,
+  locale: ManifestLocale,
+): EChartsCoreOption {
   const tc = getEChartsThemeColors()
   const axisBase = getAxisBase(tc)
   const intlLocale = toIntlLocale(locale)
@@ -93,7 +119,9 @@ function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], local
     data: [],
     silent: true,
     legendHoverLink: false,
-    markArea: buildSkillTierMarkArea(locale, yMin, yMax, grid, tc),
+    markArea: buildSkillTierMarkArea({
+      locale, yMin, yMax, grid, theme: tc, plotHeightPx: CHART_HEIGHT - GRID_TOP - GRID_BOTTOM,
+    }),
   }
 
   const echartsSeriesList = [
@@ -120,7 +148,7 @@ function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], local
 
   return {
     backgroundColor: CHART_BG,
-    grid: { left: 50, right: 20, top: 30, bottom: 60, containLabel: false },
+    grid: { left: 50, right: 20, top: GRID_TOP, bottom: GRID_BOTTOM, containLabel: false },
     tooltip: { trigger: 'axis', ...getTooltipBase(tc) },
     legend: { ...getLegendBase(tc), bottom: 5, data: legendData },
     xAxis: {
@@ -134,7 +162,7 @@ function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], local
     },
     yAxis: {
       type: 'value',
-      name: careerManifest['career.charts.lusr_rating_axis_y'][locale],
+      name: careerManifest[SCALE_LABEL_KEYS[scale]][locale],
       min: yMin,
       max: yMax,
       ...axisBase,
@@ -168,13 +196,29 @@ export interface CareerLusrEvolutionChartProps {
 }
 
 export function CareerLusrEvolutionChart({ lusrCheckpoints, locale, fluid }: CareerLusrEvolutionChartProps) {
+  const [selectedScale, setSelectedScale] = useState<RatingScale | null>(null)
+  const chartable = chartableCheckpoints(lusrCheckpoints)
+  const scales = availableScales(chartable)
+  const scale = resolveScale(selectedScale, scales)
+  const titleText = careerManifest['career.charts.lusr_evolution_title'][locale]
+  const title = scales.length > 1 && scale ? (
+    <div className="flex items-center justify-between gap-2">
+      <span>{titleText}</span>
+      <Segmented
+        options={scales.map(s => ({ value: s, label: careerManifest[SCALE_LABEL_KEYS[s]][locale] }))}
+        value={scale}
+        onChange={setSelectedScale}
+        ariaLabel={careerManifest['career.charts.lusr_evolution_scale'][locale]}
+      />
+    </div>
+  ) : titleText
   return (
     <ChartCard<[string, number]>
-      title={careerManifest['career.charts.lusr_evolution_title'][locale]}
-      series={buildLusrSeries(lusrCheckpoints, locale)}
-      height={320}
+      title={title}
+      series={buildLusrSeries(checkpointsForScale(chartable, scale), locale)}
+      height={CHART_HEIGHT}
       fluid={fluid}
-      buildOption={(series) => buildLusrEvolutionOption(series, locale)}
+      buildOption={(series) => buildLusrEvolutionOption(series, scale ?? 'lusr', locale)}
       emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
     />
   )

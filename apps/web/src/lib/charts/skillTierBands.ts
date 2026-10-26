@@ -17,7 +17,11 @@
  * neutre alterné (theme splitAreaA/B) + label « Or III » / « Diamond 3 ». Pas de
  * couleur par rang (zéro token de plus, identique LUSR/CSR ; zoomé dans un tier
  * la couleur serait un aplat constant — c'est le label qui porte l'identité du
- * sous-rang).
+ * sous-rang). Le label est centré VERTICALEMENT dans sa bande : posé en haut, il
+ * collait à la borne du sous-palier suivant et une valeur au milieu d'une bande
+ * se lisait « entre » deux rangs. Quand un sous-palier visible ferait moins de
+ * MIN_LABEL_PX à l'écran, les bandes passent au palier entier (« Diamant »), et
+ * une bande trop fine pour son label le masque : jamais de libellés empilés.
  */
 import type { ManifestLocale } from '@/lib/i18n/format'
 import type { SkillTierGrid, SkillTier } from '@/lib/skillTiers'
@@ -25,6 +29,7 @@ import type { SkillTierGrid, SkillTier } from '@/lib/skillTiers'
 const STEP = 100
 const MIN_BANDS = 3
 const OPEN_TOP = 9000 // au-delà = palier ouvert (Onyx), pas de sous-palier au-dessus
+const MIN_LABEL_PX = 12 // hauteur sous laquelle un label de bande (fontSize 9) chevauche son voisin
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI'] as const
 
@@ -98,38 +103,76 @@ interface MarkAreaTheme {
   axisLabel: string
 }
 
-/**
- * Bandes de sous-palier en markArea ECharts, clippées à [yMin, yMax], shading
- * neutre alterné (splitAreaA/B) + label. Parité alternée sur les bandes
- * visibles pour un damier lisible quel que soit le zoom.
- */
-export function buildSkillTierMarkArea(
-  locale: ManifestLocale,
-  yMin: number,
-  yMax: number,
-  grid: SkillTierGrid,
-  tc: MarkAreaTheme,
-) {
-  const data: Array<[object, object]> = []
-  let parity = 0
+export interface SkillTierMarkAreaInput {
+  locale: ManifestLocale
+  yMin: number
+  yMax: number
+  grid: SkillTierGrid
+  theme: MarkAreaTheme
+  /** Hauteur de la zone de tracé en pixels (hauteur du graphe moins les marges
+   *  haut/bas). Une estimation basse est sûre : elle replie plus tôt au palier. */
+  plotHeightPx: number
+}
+
+interface Band {
+  lo: number
+  hi: number
+  label: string
+}
+
+/** Bandes visibles (clippées à [yMin, yMax]) : une par sous-palier, ou une par
+ *  palier entier quand `byTier`. */
+function visibleBands(input: SkillTierMarkAreaInput, byTier: boolean): Band[] {
+  const { grid, locale, yMin, yMax } = input
+  const bands: Band[] = []
   for (const tier of grid.tiers) {
-    const n = Math.max(1, tier.subTiers)
+    const n = byTier ? 1 : Math.max(1, tier.subTiers)
     const width = (tier.max - tier.min) / n
     for (let k = 0; k < n; k++) {
       const lo = Math.max(tier.min + k * width, yMin)
       const hi = Math.min(tier.min + (k + 1) * width, yMax)
       if (hi <= lo) continue
-      data.push([
-        {
-          yAxis: lo,
-          name: subTierLabel(grid, tier, k, locale),
-          itemStyle: { color: parity % 2 === 0 ? tc.splitAreaA : tc.splitAreaB },
-          label: { show: true, position: 'insideTopLeft' as const, fontSize: 9, color: tc.axisLabel, opacity: 0.7 },
-        },
-        { yAxis: hi },
-      ])
-      parity++
+      const label = byTier ? (locale === 'fr' ? tier.fr : tier.en) : subTierLabel(grid, tier, k, locale)
+      bands.push({ lo, hi, label })
     }
   }
+  return bands
+}
+
+/** Vrai quand un sous-palier visible ferait moins de MIN_LABEL_PX : on passe alors
+ *  au palier entier. Mesuré sur la largeur NOMINALE du sous-palier (pas la portion
+ *  clippée, qui est masquée bande par bande). */
+function subTiersTooThin(input: SkillTierMarkAreaInput, pxPerPoint: number): boolean {
+  const { grid, yMin, yMax } = input
+  return grid.tiers.some(tier => {
+    if (tier.max <= yMin || tier.min >= yMax || tier.subTiers <= 1) return false
+    return ((tier.max - tier.min) / tier.subTiers) * pxPerPoint < MIN_LABEL_PX
+  })
+}
+
+/**
+ * Bandes de palier en markArea ECharts, clippées à [yMin, yMax], shading neutre
+ * alterné (splitAreaA/B) + label centré verticalement. Parité alternée sur les
+ * bandes visibles pour un damier lisible quel que soit le zoom.
+ */
+export function buildSkillTierMarkArea(input: SkillTierMarkAreaInput) {
+  const { yMin, yMax, theme: tc, plotHeightPx } = input
+  const pxPerPoint = yMax > yMin ? plotHeightPx / (yMax - yMin) : 0
+  const bands = visibleBands(input, subTiersTooThin(input, pxPerPoint))
+  const data: Array<[object, object]> = bands.map((band, i) => [
+    {
+      yAxis: band.lo,
+      name: band.label,
+      itemStyle: { color: i % 2 === 0 ? tc.splitAreaA : tc.splitAreaB },
+      label: {
+        show: (band.hi - band.lo) * pxPerPoint >= MIN_LABEL_PX,
+        position: 'insideLeft' as const,
+        fontSize: 9,
+        color: tc.axisLabel,
+        opacity: 0.7,
+      },
+    },
+    { yAxis: band.hi },
+  ])
   return { silent: true, data }
 }

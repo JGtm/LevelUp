@@ -67,8 +67,10 @@ export function ExplorerTargetIdentityBanner({
   const highestCSR = identity?.highest_csr ?? null
   const highestLUSR = identity?.highest_lusr ?? null
   const hasSkillPeaks = highestCSR != null || highestLUSR != null
-  const csrState = highestCSR != null ? resolveSkillPeakState(highestCSR, true, 'ranked') : null
-  const lusrState = highestLUSR != null ? resolveSkillPeakState(highestLUSR, true, 'unranked') : null
+  const csrState =
+    highestCSR != null ? resolveSkillPeakState(highestCSR, true, 'ranked', locale) : null
+  const lusrState =
+    highestLUSR != null ? resolveSkillPeakState(highestLUSR, true, 'unranked', locale) : null
 
   const formatXP = (n: number) => n.toLocaleString(numberLocale)
 

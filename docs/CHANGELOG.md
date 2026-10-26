@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [8.0.6] - 2026-10-26
+
+### Fixed
+- **The selected player is kept** — after picking a player in the selector, changing the language (or anything that reloads the app's context) could switch back to the default profile. Requests from the previous page, still in flight when the player was picked, rewrote the old session on completion; a request that did not change the session now only refreshes its last-seen time.
+- **Career: LUSR / CSR evolution chart reads one scale at a time** — a LUSR | CSR toggle in the title when both exist, so a CSR value is no longer read against LUSR ranks; placement matches are no longer drawn (the CSR curve no longer drops to 0 each season); rank labels are centred in their band and fall back to the whole tier when a sub-tier is too thin. The Timeseries rank chart benefits too.
+- **Home: placement labels of the Best CSR/LUSR card are translated** (French and English).
+
 ## [8.0.5] - 2026-10-25
 
 ### Added
