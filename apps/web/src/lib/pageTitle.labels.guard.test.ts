@@ -21,11 +21,9 @@
  *
  * PERIMETRE (lot XS, 2026-09-22) : les 4 sous-routes Escouade seulement. Les autres
  * barres d'onglets n'ont pas de source unique lisible en egalite stricte :
- *  - Carriere : `common.nav.tab_citations` vaut { fr: 'Citations', en: 'Commendations' }
- *    alors que la table distingue volontairement /career/citations (en: 'Citations',
- *    moteur derive Infinite) de /career/commendations (en: 'Commendations', totaux
- *    natifs H5) — la nuance est portee par la ROUTE, documentee dans `pageTitle.ts` :
- *    une egalite stricte y serait fausse.
+ *  - Carriere, citations : /career/citations (Infinite) et /career/commendations (H5)
+ *    portent tous deux le libelle de l'onglet, `common.nav.tab_citations` (« Commendations »
+ *    en EN) : egalite stricte, verrouillee dans la table ci-dessous.
  *  - Ascension (ajoute le 2026-09-23) : les titres de la table sont PREFIXES
  *    (« Ascension — Objectifs »), la relation est donc « prefixe + `common.nav.tab_*` »,
  *    pas l'egalite stricte. C'est la relation verrouillee ci-dessous pour Objectifs,
@@ -84,9 +82,11 @@ const ASCENSION_TAB_SOURCES = [
   { suffix: '/ascension/realisations', navKey: 'common.nav.tab_realisations', prefixed: true },
   { suffix: '/ascension/tactique', navKey: 'common.nav.tab_tactique', prefixed: false },
   { suffix: '/stats/tendances', navKey: 'common.nav.tab_tendances', prefixed: false },
+  { suffix: '/career/citations', navKey: 'common.nav.tab_citations', prefixed: false },
+  { suffix: '/career/commendations', navKey: 'common.nav.tab_citations', prefixed: false },
 ] as const
 
-describe('garde-rail : les titres de page des onglets Ascension et de Tendances suivent common.nav.*', () => {
+describe('garde-rail : les titres de page des onglets Ascension, Tendances et Citations suivent common.nav.*', () => {
   it.each(ASCENSION_TAB_SOURCES)(
     '$suffix === (prefixe si $prefixed) + $navKey (FR + EN)',
     ({ suffix, navKey, prefixed }) => {

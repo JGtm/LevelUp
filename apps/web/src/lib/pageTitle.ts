@@ -50,13 +50,11 @@ const PLAYER_SUFFIX_OVERRIDES: RouteTitleRule[] = [
   { pattern: '/squad/dynamique', title: { fr: 'Dynamique', en: 'Dynamics' } },
   { pattern: '/squad/emprise', title: { fr: 'Emprise', en: 'Map control' } },
   { pattern: '/squad', title: { fr: 'Escouade', en: 'Squad' } },
-  // Carrière — nuance Citations/Commendations (I18) : la source est fixée par la ROUTE
-  // (/career/citations = moteur dérivé Infinite, /career/commendations = totaux natifs
-  // H5), jamais par une donnée runtime — même distinction que l'ex-effet local de
-  // `UnifiedCitationsPage` (titleKey), désormais supprimé au profit de cette table
-  // (source unique). FR identique dans les deux cas (« Citations » est le terme
-  // officiel Halo FR pour les deux titres, cf. `common.nav.tab_citations`).
-  { pattern: '/career/citations', title: { fr: 'Citations', en: 'Citations' } },
+  // Carrière — les deux routes de citations (/career/citations = moteur dérivé Infinite,
+  // /career/commendations = totaux natifs H5) portent le libellé de l'onglet affiché,
+  // `common.nav.tab_citations` : « Citations » en FR, « Commendations » en EN (terme
+  // officiel Halo des deux titres). Garde-rail `pageTitle.labels.guard.test.ts`.
+  { pattern: '/career/citations', title: { fr: 'Citations', en: 'Commendations' } },
   { pattern: '/career/commendations', title: { fr: 'Citations', en: 'Commendations' } },
   { pattern: '/career/medals', title: { fr: 'Médailles', en: 'Medals' } },
   { pattern: '/career/season-pass', title: { fr: 'Pass saisonnier', en: 'Season pass' } },
