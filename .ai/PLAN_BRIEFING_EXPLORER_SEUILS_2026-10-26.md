@@ -145,8 +145,8 @@ Critère : les 8 filtres du gate visuel (E4) affichent exactement l'état attend
   `make check-types` vert ; `npx eslint src/features/explorer` sans nouvelle erreur.
 
 ### E4 — Gate visuel par le user
-- [ ] Redémarrer le serveur air local (Start-Process détaché, port 8000) depuis le worktree
-- [ ] Remettre la main au user avec la liste ci-dessous (page Explorer de JGtm, mode Matchs) ;
+- [~] Redémarrer le serveur air local (Start-Process détaché, port 8000) depuis le worktree — sans objet : vérifié sur les serveurs déjà lancés par une autre session sur `release/v8.1.0` (contient 1b0154a8c), en lecture seule
+- [x] Remettre la main au user avec la liste ci-dessous (page Explorer de JGtm, mode Matchs) ; — à la demande du user (2026-10-26), vérification faite par le pilote dans Chrome MCP après connexion du user ; relevé dans « Mesures »
       attendus calculés sur la copie du 2026-10-26 avec D1-D6 (± 1 match possible) :
 
 | Filtre | Par carte | Par sélection | Par mode | Par contexte | Autres |
@@ -166,15 +166,15 @@ Critère : les 8 filtres du gate visuel (E4) affichent exactement l'état attend
   pas d'ajustement silencieux.
 
 ### E5 — Clôture
-- [ ] `make go-api-lint` (nouveau code 0 issue)
-- [ ] `make gate-push`
+- [~] `make go-api-lint` (nouveau code 0 issue) — couvert par `make gate-push` (golangci `--new-from-merge-base`, 0 issue)
+- [x] `make gate-push` — vert sur 1b0154a8c (golangci 0 issue, typecheck, lint 0 erreur, baseline 21 703 tests) ; CI 40370415086 verte
 - [x] `.ai/thought_log.md` (entrée « Complété hors gate visuel ») ; aucun `[!]` à reporter
 - [x] Rebaser sur `main` : v8.0.7 est fusionnée par squash (`main` 413971bcc, 2026-10-26) et
       `release/v8.0.7` est close ; la cible devient `release/v8.0.8` (créée depuis `main`).
       Après commit sur `feat/briefing-seuils` :
       `git rebase --onto main 06531b561 feat/briefing-seuils`, puis regates E1-E3
 - [x] Commit et fusion demandés par le user le 2026-10-26 : « merge ton travail dans release/v8.1.0, je ferais mes vérifications là » (gate visuel E4 sur cette branche)
-- [ ] `powershell -File scripts/disk-hygiene.ps1 -Lot briefing-seuils -Apply` après fusion
+- [x] `powershell -File scripts/disk-hygiene.ps1 -Lot briefing-seuils -Apply` après fusion — worktree et branche supprimés ; cache golangci supprimé ; `go-build-briefing-seuils` refusé (écrit < 10 min), laissé à la tâche planifiée (48 h)
 
 ## Mesures
 
@@ -209,12 +209,35 @@ et `make check-types` verts ; vitest `src/features/explorer src/lib/i18n` 41 fic
 - golangci : aucune issue sur les fichiers touchés ; `--new-from-merge-base` non lancé (autre
   golangci actif) — repris en E5 par `make gate-push`.
 
+E4 (2026-10-26, Chrome MCP, JGtm, serveurs sur `release/v8.1.0` incluant 1b0154a8c) — réponse de
+`matches-query` (`include_briefing`) par filtre, puis rendu vérifié à l'écran sur Bases et PVP classé :
+
+| Filtre | Matchs | Par carte | Par sélection | Par mode | Par contexte | Autres | Écart |
+|---|---|---|---|---|---|---|---|
+| Aucun | 1 181 | 6 | 4 | 6 | 560 / 621 | tout | aucun |
+| Capture du drapeau | 134 | 6 | état vide | absente | 24 / 110 | tout | aucun (138 attendu : libellés de mode approchés) |
+| Bases | 67 | 2 | état vide | absente | état vide 3 / 64 | tout | aucun |
+| Roi de la colline | 39 | état vide | état vide | absente | 23 / 16 | tout | aucun |
+| 30 derniers jours | 22 | état vide | état vide | 2 | 5 / 17 | tout | aucun |
+| Grand combat en équipe | 11 | état vide | absente | état vide | 6 / 5 | tout | aucun |
+| Illusion | 56 | absente | absente | 5 | 34 / 22 | tout | 5 lignes au lieu de 4 (libellés de mode approchés dans la mesure) |
+| PVP classé | 8 | rangée absente + « Échantillon faible (8 matchs) » | | | | Durée, Séries, Pic rang, Pic MMR, Classement, Arme, Moments forts | aucun |
+
+Rendu : états vides dans leur carte (titre « Pas assez de matchs pour comparer » + texte), « Par
+contexte » vide empilé avec l'arme favorite à hauteur des voisines (pas de réglage de
+`favoriteWeaponSlots` nécessaire).
+
 ## Découvertes (hors périmètre, non traitées)
 
 - `favoriteWeaponSlots` ne compte pas la hauteur d'un « Par contexte » en état vide empilé avec
-  l'arme favorite : à juger au gate visuel E4.
+  l'arme favorite : jugé en E4, hauteur correcte, rien à régler.
 - `ExplorerBriefingStrip.test.tsx` est au plafond `max-lines` : tout nouveau test du bandeau va
   dans un fichier voisin.
+- Socle à 8 tuiles sur un écran d'environ 1 250 px : « Pic MMR » passe seul à la ligne et s'étire
+  sur toute la largeur (vu sur Bases, déjà le cas avant ce lot ; désormais visible aussi en
+  échantillon faible). Décision de mise en page à prendre avec le user.
+- Classement en « PVP classé » (8 matchs de placement sur deux saisons) : « Placement → Placement
+  (4 matchs restants) · ±0.0 pt/match ». Donnée exacte mais peu parlante ; non traité.
 
 - `PLAN_CARTES_VARIANTES_STATS_2026-10-26.md` (E2) modifie aussi `buildBriefingDimensions`
   (regroupement des variantes avant `breakdown.ByMap`). Pas de conflit fonctionnel ; si les deux
