@@ -15,6 +15,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ### Fixed
 - **Miniatures des variantes classées** — « Vacancy - Ranked », « Argyle - Ranked », « Empyrean - Ranked », « Catalyst - Ranked », « Fortress - Ranked » et toute autre carte « - Ranked » sans image propre affichent la miniature de leur carte de base. Arrival, Exiled, Kusini Bay et Vallaheim reçoivent leur miniature officielle.
+- **Vue match : plus de faux message « Les médailles et citations ne sont pas disponibles »** — un match sans médaille gagnée est une donnée complète ; le message ne s'affiche plus que si les stats du joueur pour ce match manquent aussi.
 - **Citations : Bulldozer est rangée en Multijoueur.**
 - **Titre d'onglet de la page Citations en anglais** : « Commendations », comme l'onglet de navigation.
 

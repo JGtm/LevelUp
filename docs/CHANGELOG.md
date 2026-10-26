@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - **Map thumbnails for ranked variants** — "Vacancy - Ranked", "Argyle - Ranked", "Empyrean - Ranked", "Catalyst - Ranked", "Fortress - Ranked" and any other "- Ranked" map without its own image now show their base map's thumbnail. Arrival, Exiled, Kusini Bay and Vallaheim get their official thumbnail.
+- **Match view: no more false "Medals and commendations are unavailable" notice** — a match where the player earned no medal is complete data; the notice now only shows when the player's match stats are missing too.
 - **Commendations: Bulldozer is filed under Multiplayer.**
 - **Commendations page tab title in English** reads "Commendations", like the navigation tab.
 
