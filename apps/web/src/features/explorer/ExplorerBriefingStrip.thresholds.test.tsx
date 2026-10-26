@@ -128,6 +128,20 @@ describe('ExplorerBriefingStrip — échantillon faible : rien n’est retiré, 
   })
 })
 
+
+// États vides des cartes « Par… » et « Par contexte » : gabarit compact de EmptyStateNotice
+// (marges, titre et description réduits), même pointillé.
+function expectCompactNotice(container: HTMLElement) {
+  const notice = container.querySelector('.border-dashed')
+  expect(notice).not.toBeNull()
+  expect(notice?.className).toContain('px-3 py-2')
+  expect(notice?.className).not.toContain('py-5')
+  const [title, description] = Array.from(notice?.querySelectorAll('p') ?? [])
+  expect(title.className).toContain('text-xs font-semibold')
+  expect(description.className).toContain('text-2xs')
+  expect(description.className).toContain('mt-0.5')
+}
+
 describe('ExplorerBriefingStrip — cartes en état vide (D3, D5)', () => {
   const briefingWith = (over: Partial<ExplorerBriefing>): ExplorerBriefing => ({
     scope: baseScope,
@@ -150,6 +164,7 @@ describe('ExplorerBriefingStrip — cartes en état vide (D3, D5)', () => {
     expect(header?.querySelector('button')).not.toBeNull()
     // Aucune ligne de comparaison, aucune action dans l'état vide.
     expect(container.querySelectorAll('li')).toHaveLength(0)
+    expectCompactNotice(container)
   })
 
   it('chaque dimension porte son propre libellé d’état vide (mode, sélection)', () => {
@@ -179,6 +194,7 @@ describe('ExplorerBriefingStrip — cartes en état vide (D3, D5)', () => {
     expect(text).toContain('explorer.briefing.insufficient_title')
     expect(text).toContain('explorer.briefing.context_insufficient|{"solo":3,"squad":63,"n":5}')
     expect(text).not.toContain('explorer.filters.context_solo')
+    expectCompactNotice(container)
   })
 })
 
