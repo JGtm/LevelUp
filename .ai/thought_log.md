@@ -1,3 +1,8 @@
+## [2026-10-26] Plan i18n à N langues (revue de l'état des lieux du 23/10) — En cours (branche `fix/medailles-vide-legitime`, aucun code, non commité)
+**Décision technique principale** : plan `.ai/PLAN_I18N_MULTILANGUE.md` (11 étapes, gates par commande). Ordre corrigé : liste unique des langues (`config/locales.toml`, partagée Go + web) → noyaux et garde-rails à compteur gelé → web → manifests → types Go `i18n.Text` → contrat « un libellé résolu » → textes rédigés côté Go → données → preuve par pseudo-langue `xx`. Les dictionnaires TS typés `Record<Locale, T>` ne migrent pas vers les manifests (déjà sûrs) ; la fuite muette est dans les `normalize*Locale` (`=== 'en' ? 'en' : 'fr'`).
+**Résultats observés** : re-mesure du doc du 23/10 : A, B (openapi), D, E exacts ; C inexact (les `mappings/` sont déjà en tables par langue, les suffixes sont dans jalons, défis et `arcs/presets.toml`) ; G non reproductible (51 à 71 fichiers, ~12 900 lignes, pas 91). Manques : `asset_translations (lang)` + 14 langues Halo déjà récupérables, colonnes `_fr/_en` Halo 5 et `match_skill_rank.tier_fr`, texte rédigé par le Go (coach, impact, rangs, aide, notes de version), défauts incohérents (fr partout, en pour les médailles).
+**Conclusion / prochaine étape** : décisions D1-D6 du plan à trancher par le user avant toute exécution.
+
 ## [2026-10-26] Statistiques par carte : regrouper les variantes (Heavies, - Ranked) — plan rédigé — En cours (aucun code, fichier `.ai/PLAN_CARTES_VARIANTES_STATS_2026-10-26.md`)
 **Décision technique principale** : relecture sur pièces de la note du 2026-10-23. La « version légère » est incohérente pour la Tactique (vignette regroupée, lecture par un seul map_id) ; la version complète est moins risquée qu'annoncé car toute la Tactique passe par la clause carte de l'univers (`tactical_repo_univers.go`). Plan : un résolveur unique map_id -> groupe (table, pas nom par ligne), `breakdown.ByMap` paramétré par le regroupement (garde-rail à la compilation), repli « - Ranked » des miniatures migré sur le TOML (3e copie, règle n°6).
 **Résultats observés** : surfaces manquées par la note : briefing Explorateur, Escouade (3 points), synergies v2, séries temporelles ; `computeMapWinRates` regroupe sur le nom EN brut du registre. Citations, carrière, engagement : aucun agrégat par carte. Mesures sur base non refaites (metadata tenue par le serveur).
@@ -118864,3 +118869,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Resultats observes** : tests `service` (hors cas ci-dessous), `api/handlers`, `platform/duckdb` verts. `TestMapObjectives_ModesPonctuels_AucuneZoneSurTOUTLeCatalogue` rouge sur la branche de release (catalogue CTF 41 vs 37, Stockpile 24 vs 22, cartes Forge ajoutees) : sans lien, non traite ici.
 
 **Prochaine etape** : commit + fusion dans `release/v8.0.7` sur accord ; le test de catalogue a revoir dans le chantier cartes Forge.
+
+## [2026-10-26] CI release/v8.0.7 : releves de catalogue mis a jour apres l'entree des cartes Forge - Complete (branche `fix/ci-releves-catalogue-v807`)
+
+**Decision technique principale** : deux recensements du catalogue versionne `map_objectives.json` etaient rouges en CI depuis `d7448a537` (131 -> 141 cartes). Instruits avant ajustement : les dix entrees ajoutees sont toutes nouvelles (aucune entree existante modifiee). Formes CTF 37 -> 41 (`flag_delivery` a forme : Formation, Kusini Bay, Perdition, Timberland Evolved), Stockpile 22 -> 24 (`stockpile_navpoint` : Beaver Canyon, Timberland Evolved), socles neutres au label 64 -> 66 (Timberland Evolved, Beaver Canyon), socles sans equipe ni label 8 -> 9 (Kusini Bay). Les assertions de fond (un (role, camp) sert ses ponctuels OU ses formes ; tri neutre sur le label) passent sur les 141 cartes ; seuls les comptes de reference bougent, avec leur releve date.
+
+**Resultats observes** : `go test ./internal/service/ ./internal/games/halo_infinite/film/replay/` vert ; ce sont les deux seuls tests en echec des runs CI `0339476b8` et `3e55cb337`.
+
+**Prochaine etape** : fusion dans `release/v8.0.7`, CI de la PR #109.
