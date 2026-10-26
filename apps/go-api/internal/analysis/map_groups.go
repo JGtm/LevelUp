@@ -79,11 +79,12 @@ const maxVariantDepth = 4
 //     qui est LUI-MÊME le nom d'au moins une carte du registre : une variante sans carte de base reste
 //     seule, rien n'est deviné. Le groupe d'une base réunit tous les identifiants qui portent son nom
 //     et ceux de ses variantes.
-//   - REPUBLICATION. Pour un nom sans variante au registre, les identifiants qui portent ce nom ET la
-//     même clé de module (`Module`, la carte intégrée au jeu) forment un groupe : c'est la même carte
-//     republiée sous un nouvel asset. Le nom seul ne suffit jamais : sans clé de module, un
-//     identifiant reste seul, et deux clés différentes restent deux cartes. Deux versions d'une
-//     carte Forge (clé de module vide) ne sont donc jamais réunies par cette règle.
+//   - REPUBLICATION. Pour un nom sans variante au registre, les identifiants qui portent ce nom
+//     forment un groupe : la même carte republiée sous un nouvel asset (carte intégrée), ou les
+//     versions successives d'une carte Forge, dont le tracé change peu d'une version à l'autre. Seule
+//     exception : quand ces identifiants se résolvent vers plusieurs clés de module différentes
+//     (`Module`, la carte intégrée au jeu), le nom couvre plusieurs cartes intégrées ; chaque clé fait
+//     alors son groupe et les identifiants sans clé restent seuls.
 //
 // La clé du nom est le nom retenu du registre et non celui de chaque ligne : une carte dont certaines
 // lignes sont sans nom ou portent l'identifiant recopié a un seul nom retenu, donc un seul groupe.
@@ -154,14 +155,21 @@ func (g *MapGroups) addGroup(baseOf map[string]string, name string, base, rattac
 	g.Bases[rep] = MapGroupBase{ID: rep, Name: name, IDs: ids}
 }
 
-// republiees partitionne les identifiants d'un même nom par clé de module et rend les parts d'au
-// moins deux identifiants. Un identifiant sans clé n'est dans aucune part.
+// republiees rend les groupes de republication des identifiants d'un même nom, chacun d'au moins
+// deux identifiants. Au plus une clé de module parmi eux : un seul groupe, identifiants sans clé
+// compris (carte intégrée republiée, ou versions d'une carte Forge). Plusieurs clés différentes : le
+// nom couvre plusieurs cartes intégrées, un groupe par clé, et les identifiants sans clé restent seuls.
 func republiees(members []MapNameCount) [][]MapNameCount {
 	byModule := make(map[string][]MapNameCount)
 	for _, m := range members {
-		if m.Module != "" {
-			byModule[m.Module] = append(byModule[m.Module], m)
+		byModule[m.Module] = append(byModule[m.Module], m)
+	}
+	delete(byModule, "")
+	if len(byModule) <= 1 {
+		if len(members) < 2 {
+			return nil
 		}
+		return [][]MapNameCount{members}
 	}
 	var parts [][]MapNameCount
 	for _, part := range byModule {

@@ -213,7 +213,8 @@ func TestPatternsRepo_RegrouperLesCartes(t *testing.T) {
 }
 
 // Le résolveur de clé de module réunit les republications d'une carte intégrée (même nom, même clé),
-// sans variante ni suffixe ; la carte Forge du même registre (aucune clé) reste en deux identifiants.
+// sans variante ni suffixe ; les versions de la carte Forge du même registre (aucune clé) forment aussi
+// un groupe.
 func TestMapGroupsRepo_RepublicationsParCleDeModule(t *testing.T) {
 	pdb := registreDesVariantes(t, [][2]string{
 		{"bz-1", "Bazaar"}, {"bz-1", "Bazaar"}, {"bz-2", "Bazaar"},
@@ -239,7 +240,7 @@ func TestMapGroupsRepo_RepublicationsParCleDeModule(t *testing.T) {
 	if g.Groupe("bz-2") != "bz-1" {
 		t.Errorf("le représentant est l'identifiant le plus joué : %q", g.Groupe("bz-2"))
 	}
-	if g.Regroupe("sh-1") || g.Regroupe("sh-2") {
-		t.Error("deux identifiants Forge de même nom, sans clé de module, restent séparés")
+	if !g.Regroupe("sh-1") || g.Groupe("sh-2") != g.Groupe("sh-1") {
+		t.Error("les versions Forge de Shogun, sans clé de module, forment un groupe")
 	}
 }
