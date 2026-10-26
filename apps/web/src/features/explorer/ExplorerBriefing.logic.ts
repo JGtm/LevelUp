@@ -33,10 +33,10 @@ export function deltaToken(v: number | null | undefined): SemanticToken {
 }
 
 /**
- * Hauteur, en lignes de liste, d'une carte « Par… » en état vide (`insufficient`) : le
- * texte d'explication tient sur environ deux lignes dans une cellule de 240 px. Valeur
- * posée, ajustable au gate visuel (même doctrine que favoriteWeaponSlots : la hauteur se
- * décide, elle ne se mesure pas).
+ * Hauteur, en lignes de liste, d'une carte « Par… » en état vide (`insufficient`) : l'état
+ * vide compact (titre + une à deux lignes de texte dans une cellule de 240 px, marges
+ * réduites) pèse environ deux lignes de liste. Valeur posée, ajustable au gate visuel (même
+ * doctrine que favoriteWeaponSlots : la hauteur se décide, elle ne se mesure pas).
  */
 export const INSUFFICIENT_CARD_LINES = 2
 

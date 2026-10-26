@@ -207,6 +207,7 @@ function DimensionCard({
     >
       {dim.insufficient ? (
         <EmptyStateNotice
+          size="compact"
           title={t('explorer.briefing.insufficient_title')}
           description={t(DIM_INSUFFICIENT_KEY[dim.dimension] ?? 'explorer.briefing.dim_insufficient_map', {
             n: minGroup,
@@ -305,6 +306,7 @@ function ContextSplitCard({
     >
       {split.insufficient ? (
         <EmptyStateNotice
+          size="compact"
           title={t('explorer.briefing.insufficient_title')}
           description={t('explorer.briefing.context_insufficient', {
             solo: split.solo.matches,
