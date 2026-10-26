@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
 
 // FiltersRepo implémente port.FiltersRepository.
 type FiltersRepo struct {
 	pdb *PlayerDB
-	// mapVariantSuffixes : suffixes de nom du titre qui font d'une carte la variante d'une autre
-	// (map_variants.toml). Vide : aucune variante, les cartes sont listées telles quelles.
-	mapVariantSuffixes []string
+	// mapGroupRules : ce qui réunit plusieurs identifiants de carte (variantes de map_variants.toml,
+	// republications d'une carte intégrée). Valeur zéro : les cartes sont listées telles quelles.
+	mapGroupRules analysis.MapGroupRules
 }
 
 // NewFiltersRepo crée un FiltersRepo depuis un PlayerDB ouvert.
@@ -22,9 +23,9 @@ func NewFiltersRepo(pdb *PlayerDB) *FiltersRepo {
 	return &FiltersRepo{pdb: pdb}
 }
 
-// WithMapVariantSuffixes injecte les suffixes de variante de carte du titre. Retourne le repo.
-func (r *FiltersRepo) WithMapVariantSuffixes(suffixes []string) *FiltersRepo {
-	r.mapVariantSuffixes = suffixes
+// WithMapGroupRules injecte les règles de regroupement des cartes du titre. Retourne le repo.
+func (r *FiltersRepo) WithMapGroupRules(rules analysis.MapGroupRules) *FiltersRepo {
+	r.mapGroupRules = rules
 	return r
 }
 
@@ -57,10 +58,10 @@ func NewCachedFiltersRepo(pdb *PlayerDB) *CachedFiltersRepo {
 	return &CachedFiltersRepo{FiltersRepo: repo, rows: repo, cache: filterRowsReadCache, scope: scopeOf(pdb)}
 }
 
-// WithMapVariantSuffixes injecte les suffixes de variante de carte du titre dans la lecture mise en
-// cache : ils sont fixés à la construction, avant la première lecture. Retourne le repo caché.
-func (r *CachedFiltersRepo) WithMapVariantSuffixes(suffixes []string) *CachedFiltersRepo {
-	r.FiltersRepo.WithMapVariantSuffixes(suffixes)
+// WithMapGroupRules injecte les règles de regroupement des cartes dans la lecture mise en cache :
+// elles sont fixées à la construction, avant la première lecture. Retourne le repo caché.
+func (r *CachedFiltersRepo) WithMapGroupRules(rules analysis.MapGroupRules) *CachedFiltersRepo {
+	r.FiltersRepo.WithMapGroupRules(rules)
 	return r
 }
 
@@ -116,7 +117,7 @@ func (r *FiltersRepo) LoadMatchesForFilters(ctx context.Context) ([]domain.Filte
 
 	r.applyModeFRTranslations(ctx, results)
 	r.applyMapFRTranslations(ctx, results)
-	rattacherCartesDeBase(ctx, r.pdb, r.mapVariantSuffixes, results)
+	rattacherCartesDeBase(ctx, r.pdb, r.mapGroupRules, results)
 	r.applyPlaylistFRTranslations(ctx, results)
 	return results, nil
 }

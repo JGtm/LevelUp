@@ -6,11 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/patterns"
 	"levelup/go-api/internal/domain"
 )
 
-var suffixesDeTest = []string{"- Ranked", "Heavies"}
+var reglesDeTest = analysis.MapGroupRules{Suffixes: []string{"- Ranked", "Heavies"}}
 
 // metaDesVariantes : metadata `:memory:` avec la seule traduction FR de la carte de base Thunderhead.
 func metaDesVariantes(t *testing.T) *DB {
@@ -62,7 +63,7 @@ func TestMapGroupsRepo_RegistreEtNomRetenu(t *testing.T) {
 		{"var-ranked", "Live Fire - Ranked"}, // aucune base au registre
 		{"base-seule", "The Pit"},
 	})
-	g, err := NewMapGroupsRepo(pdb).WithMapVariantSuffixes(suffixesDeTest).MapGroups(context.Background())
+	g, err := NewMapGroupsRepo(pdb).WithMapGroupRules(reglesDeTest).MapGroups(context.Background())
 	if err != nil {
 		t.Fatalf("MapGroups: %v", err)
 	}
@@ -101,7 +102,7 @@ func TestRattacherCartesDeBase_Filtres(t *testing.T) {
 		{MatchID: "m4", MapID: s("var-heavies"), MapName: nil, MapNameFR: nil},
 		{MatchID: "m5", MapID: s("var-ranked"), MapName: s("Live Fire - Ranked"), MapNameFR: s("Live Fire - Ranked")},
 	}
-	rattacherCartesDeBase(context.Background(), pdb, suffixesDeTest, rows)
+	rattacherCartesDeBase(context.Background(), pdb, reglesDeTest, rows)
 
 	for _, i := range []int{0, 3} {
 		if *rows[i].MapName != "Thunderhead" || *rows[i].MapNameFR != "Tonnerre" || *rows[i].MapID != "var-heavies" {
@@ -132,7 +133,7 @@ func TestRattacherCartesDeBaseHistorique(t *testing.T) {
 		{MatchID: "m2", MapID: s("base-thunder"), MapName: s("Thunderhead"), MapNameFR: s("Tonnerre")},
 		{MatchID: "m3", MapID: s("seule"), MapName: s("The Pit"), MapNameFR: s("La Fosse")},
 	}
-	rattacherCartesDeBaseHistorique(context.Background(), pdb, suffixesDeTest, rows)
+	rattacherCartesDeBaseHistorique(context.Background(), pdb, reglesDeTest, rows)
 
 	if rows[0].MapFilterLabel == nil || *rows[0].MapFilterLabel != "Tonnerre" {
 		t.Errorf("libellé de filtre de la variante : %v, attendu Tonnerre", rows[0].MapFilterLabel)
@@ -168,7 +169,7 @@ func TestRattacherCartesDeBase_LibelleDeRepli(t *testing.T) {
 		{MatchID: "m1", MapID: s("live-rk"), MapName: s("Live Fire - Ranked")},
 		{MatchID: "m2", MapID: s("pit-rk"), MapName: s("The Pit - Ranked")},
 	}
-	rattacherCartesDeBase(context.Background(), pdb, suffixesDeTest, rows)
+	rattacherCartesDeBase(context.Background(), pdb, reglesDeTest, rows)
 	if *rows[0].MapNameFR != "Tir nourri" {
 		t.Errorf("libellé FR = %q, attendu Tir nourri (traduction d'un autre identifiant de la base)", *rows[0].MapNameFR)
 	}
@@ -184,7 +185,7 @@ func TestMapGroupsRepo_LibellesDeBase(t *testing.T) {
 		{"base-thunder", "Thunderhead"},
 		{"var-heavies", "Thunderhead Heavies"},
 	})
-	g, err := NewMapGroupsRepo(pdb).WithMapVariantSuffixes(suffixesDeTest).MapGroups(context.Background())
+	g, err := NewMapGroupsRepo(pdb).WithMapGroupRules(reglesDeTest).MapGroups(context.Background())
 	if err != nil {
 		t.Fatalf("MapGroups: %v", err)
 	}
@@ -204,9 +205,41 @@ func TestPatternsRepo_RegrouperLesCartes(t *testing.T) {
 		{"seule", "The Pit"},
 	})
 	rows := []patterns.MatchRow{{MapID: "var-heavies"}, {MapID: "base-thunder"}, {MapID: "seule"}}
-	NewPatternsRepo(pdb).WithMapVariantSuffixes(suffixesDeTest).regrouperLesCartes(context.Background(), rows)
+	NewPatternsRepo(pdb).WithMapGroupRules(reglesDeTest).regrouperLesCartes(context.Background(), rows)
 	if rows[0].MapID != "base-thunder" || rows[1].MapID != "base-thunder" || rows[2].MapID != "seule" {
 		t.Errorf("identifiants = %q %q %q, attendu base-thunder base-thunder seule",
 			rows[0].MapID, rows[1].MapID, rows[2].MapID)
+	}
+}
+
+// Le résolveur de clé de module réunit les republications d'une carte intégrée (même nom, même clé),
+// sans variante ni suffixe ; la carte Forge du même registre (aucune clé) reste en deux identifiants.
+func TestMapGroupsRepo_RepublicationsParCleDeModule(t *testing.T) {
+	pdb := registreDesVariantes(t, [][2]string{
+		{"bz-1", "Bazaar"}, {"bz-1", "Bazaar"}, {"bz-2", "Bazaar"},
+		{"sh-1", "Shogun"}, {"sh-2", "Shogun"},
+	})
+	modules := func(_ context.Context, maps []analysis.MapNameCount) map[string]string {
+		out := map[string]string{}
+		for _, m := range maps {
+			if m.Name == "Bazaar" {
+				out[m.MapID] = "ctf_bazaar"
+			}
+		}
+		return out
+	}
+	rules := analysis.MapGroupRules{Modules: modules}
+	g, err := NewMapGroupsRepo(pdb).WithMapGroupRules(rules).MapGroups(context.Background())
+	if err != nil {
+		t.Fatalf("MapGroups: %v", err)
+	}
+	if got, want := g.Membres("bz-2"), []string{"bz-1", "bz-2"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Membres(bz-2) = %v, attendu %v", got, want)
+	}
+	if g.Groupe("bz-2") != "bz-1" {
+		t.Errorf("le représentant est l'identifiant le plus joué : %q", g.Groupe("bz-2"))
+	}
+	if g.Regroupe("sh-1") || g.Regroupe("sh-2") {
+		t.Error("deux identifiants Forge de même nom, sans clé de module, restent séparés")
 	}
 }

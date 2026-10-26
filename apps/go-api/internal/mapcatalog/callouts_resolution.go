@@ -92,11 +92,27 @@ func (s SourcesDeZones) Resoudre(id IdentitesDeCarte) (replay.MapCalloutsEntry, 
 	return replay.MapCalloutsEntry{}, "", false
 }
 
-// parModule tente l'essai 1. Une carte Forge y passe sans rien trouver : le catalogue des
-// bornes l'envoie vers son CANEVAS, qui ne porte aucune zone et n'a pas d'entrée `maps`.
+// parModule tente l'essai 1 (cf. CleDeModule).
 func (s SourcesDeZones) parModule(id IdentitesDeCarte) (replay.MapCalloutsEntry, bool) {
-	if s.Bornes == nil {
+	module, ok := s.CleDeModule(id)
+	if !ok {
 		return replay.MapCalloutsEntry{}, false
+	}
+	e, err := s.Versionne.Lookup(module)
+	return e, err == nil
+}
+
+// CleDeModule rend la clé de MODULE de la carte INTÉGRÉE que désigne une carte jouée, ou ("", false)
+// quand elle n'en désigne aucune. C'est l'essai 1 de la cascade : le catalogue des bornes rend un
+// module pour le map_id, puis pour chaque nom candidat, ET ce module a une entrée `maps` au
+// catalogue versionné.
+//
+// Une carte Forge n'a jamais de clé : le catalogue des bornes l'envoie vers son CANEVAS, qui ne
+// porte aucune zone et n'a pas d'entrée `maps`. Seul un module prouve l'identité du terrain ; l'index
+// des fonds, qui rattache par nom, ne la prouve pas.
+func (s SourcesDeZones) CleDeModule(id IdentitesDeCarte) (string, bool) {
+	if s.Bornes == nil {
+		return "", false
 	}
 	cles := make([]string, 0, len(id.Noms)+1)
 	if id.MapID != "" {
@@ -108,11 +124,11 @@ func (s SourcesDeZones) parModule(id IdentitesDeCarte) (replay.MapCalloutsEntry,
 		if err != nil || bornes.Module == "" {
 			continue
 		}
-		if e, err := s.Versionne.Lookup(bornes.Module); err == nil {
-			return e, true
+		if _, err := s.Versionne.Lookup(bornes.Module); err == nil {
+			return bornes.Module, true
 		}
 	}
-	return replay.MapCalloutsEntry{}, false
+	return "", false
 }
 
 // parIdentiteDeclaree tente l'essai 4 : seuls les MODULES qu'il trouve comptent (cf. l'en-tête).
