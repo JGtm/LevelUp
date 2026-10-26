@@ -15,6 +15,8 @@ import (
 	"levelup/go-api/internal/analysis/squadimpact"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability/timing"
+	"levelup/go-api/internal/service/mapgroups"
+	"levelup/go-api/internal/service/squadagg"
 )
 
 // populationEscouade : ce que lisent les sections calculées sur la population escouade.
@@ -34,6 +36,8 @@ type populationEscouade struct {
 	// préchargement pour que Q32 soit lu une fois sur la population et ces soirées.
 	soireesImpact []squadimpact.Evening
 	issues        *dataIssues
+	// groups : groupes de cartes (une variante compte sous sa carte de base), lus une fois par page.
+	groups domain.GroupesDeCartes
 }
 
 // sectionsEscouade : les sections de la réponse calculées sur la population escouade. Toutes
@@ -70,6 +74,7 @@ func (s *TeammatesService) sectionsDeLaPopulation(
 	if len(p.rows) == 0 {
 		return out
 	}
+	p.groups = mapgroups.Load(ctx, s.mapGroups)
 	s.tableauxDeLaPopulation(ctx, p, &out)
 	s.graphesDeLaPopulation(ctx, p, &out)
 	// La performance d'escouade de l'historique se lit sur les séries par membre (graphes).
@@ -86,15 +91,15 @@ func (s *TeammatesService) tableauxDeLaPopulation(
 	// canonique asset_translations + mode_name_tr, cf. enrichSquadMatchAssets).
 	siVivante(ctx, func() { enrichSquadMatchAssets(ctx, s.repo, p.rows) })
 	out.timeseries = analysis.ComputeSquadTimeseries(p.rows, 20)
-	out.mapBreakdown = computeMapBreakdown(p.rows)
+	out.mapBreakdown = computeMapBreakdown(p.rows, p.groups)
 
 	var squadStats map[string]domain.MapSquadStats
-	siVivante(ctx, func() { squadStats = s.statsCartesAvecLEscouade(ctx, p) })
+	siVivante(ctx, func() { squadStats = squadagg.FoldMapStats(s.statsCartesAvecLEscouade(ctx, p), p.groups) })
 	out.mapBreakdown = enrichMapBreakdownWithSquadStats(out.mapBreakdown, squadStats)
 	siVivante(ctx, func() {
 		stop := timing.FromContext(ctx).Section("match_history")
 		out.matchHistory = buildSquadMatchHistory(
-			p.rows, squadStatsToWinTotal(squadStats), s.titleSlug,
+			p.rows, squadStatsToWinTotal(squadStats, p.groups), s.titleSlug,
 			s.replayAvailability(ctx), s.roundsDecide)
 		attachSquadTotals(out.matchHistory, p.allies, p.playerXUID, p.selectedXUIDs)
 		stop()
@@ -132,7 +137,7 @@ func (s *TeammatesService) graphesDeLaPopulation(
 	ctx context.Context, p populationEscouade, out *sectionsEscouade,
 ) {
 	gt, px, sel, tm := s.gamertag, p.playerXUID, p.req.SelectedGamertags, p.teammates
-	siVivante(ctx, func() { out.mapHeatmap = s.buildSquadMapHeatmap(ctx, p.rows, sel, p.issues) })
+	siVivante(ctx, func() { out.mapHeatmap = s.buildSquadMapHeatmap(ctx, p.rows, sel, p.issues, p.groups) })
 	siVivante(ctx, func() {
 		out.impactMatrix, out.impactHistory = s.buildSquadImpact(ctx, impactEscouade{
 			rows: p.rows, timeline: p.rowsTimeline, evenings: p.soireesImpact,

@@ -1047,7 +1047,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			if err != nil {
 				return nil, err
 			}
-			return platform_duckdb.NewPatternsRepo(pdb), nil
+			return reg.PatternsRepo(pdb), nil
 		}
 		patternsH := handlers.NewPatternsHandler(patternsRepoResolve, titlePkg.DefaultSlug)
 		patternsH.Mount(r, playerOpt)

@@ -42,6 +42,7 @@ import (
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
+	"levelup/go-api/internal/service/mapgroups"
 )
 
 // Cles metriques canoniques utilisees dans MetricXKey/MetricYKey.
@@ -68,6 +69,8 @@ type TimeseriesService struct {
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
 	gamertag          string
+	// mapGroups : groupes de cartes (une variante compte sous sa carte de base). nil : cartes seules.
+	mapGroups port.MapGroupReader
 	// repoRoot : racine du depot, pour les catalogues du titre (noms d'armes des formes retenues
 	// et de l'Emprise). Vide = les armes s'affichent sous leur cle, jamais un nom approchant.
 	repoRoot string
@@ -291,7 +294,7 @@ func (s *TimeseriesService) GetPage(
 		IntensityTab:     buildIntensityTab(matches),
 		DistributionsTab: buildDistributionsTab(ctx, matches, provideSpree),
 		OutcomesOverTime: buildOutcomesOverTime(matches),
-		MapBreakdown:     buildSoloMapBreakdown(matches, historicalSolo),
+		MapBreakdown:     buildSoloMapBreakdown(matches, historicalSolo, mapgroups.Load(ctx, s.mapGroups)),
 		SoloSessionPerf:  buildSoloSessionPerf(historicalSolo),
 		TopWeapons:       []domain.TimeseriesWeaponKill{},
 		KillTypes:        buildTimeseriesKillTypes(matches),

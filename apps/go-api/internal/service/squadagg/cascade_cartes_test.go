@@ -59,3 +59,27 @@ func TestFilterRowsByCascade_CarteDeBaseRetientSesVariantes(t *testing.T) {
 		t.Errorf("sans groupe : %v, attendu [a c]", got)
 	}
 }
+
+// Les stats « avec cette escouade » de la base et de sa variante sont UNE entrée, performance pondérée.
+func TestFoldMapStats_SommeEtPondere(t *testing.T) {
+	groups := domain.NewGroupesDeCartes(map[string]string{"var": "base"})
+	p1, p2 := 50.0, 80.0
+	got := FoldMapStats(map[string]domain.MapSquadStats{
+		"base":  {Wins: 3, Total: 4, PerfAvg: &p1, PerfCount: 3},
+		"var":   {Wins: 1, Total: 2, PerfAvg: &p2, PerfCount: 1},
+		"seule": {Wins: 1, Total: 1},
+	}, groups)
+	g := got["base"]
+	if g.Wins != 4 || g.Total != 6 || g.PerfAvg == nil || *g.PerfAvg != 57.5 {
+		t.Errorf("groupe = %+v (perf %v), attendu 4/6 et perf (50*3+80*1)/4 = 57,5", g, g.PerfAvg)
+	}
+	if _, ok := got["var"]; ok {
+		t.Error("la variante ne doit plus avoir d'entrée propre")
+	}
+	if got["seule"].Total != 1 {
+		t.Errorf("carte seule = %+v", got["seule"])
+	}
+	if same := FoldMapStats(map[string]domain.MapSquadStats{"a": {Total: 1}}, domain.GroupesDeCartes{}); same["a"].Total != 1 {
+		t.Error("sans groupe, la table est rendue telle quelle")
+	}
+}

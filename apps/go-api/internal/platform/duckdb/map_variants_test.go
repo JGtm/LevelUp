@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/analysis/patterns"
 	"levelup/go-api/internal/domain"
 )
 
@@ -192,5 +193,20 @@ func TestMapGroupsRepo_LibellesDeBase(t *testing.T) {
 	}
 	if l, ok := g.Libelle("var-heavies", "en"); !ok || l != "Thunderhead" {
 		t.Errorf("libellé EN = %q, %v, attendu Thunderhead", l, ok)
+	}
+}
+
+// Motifs « par carte » : les lignes d'une variante portent l'identifiant de la carte de base.
+func TestPatternsRepo_RegrouperLesCartes(t *testing.T) {
+	pdb := registreDesVariantes(t, [][2]string{
+		{"base-thunder", "Thunderhead"},
+		{"var-heavies", "Thunderhead Heavies"},
+		{"seule", "The Pit"},
+	})
+	rows := []patterns.MatchRow{{MapID: "var-heavies"}, {MapID: "base-thunder"}, {MapID: "seule"}}
+	NewPatternsRepo(pdb).WithMapVariantSuffixes(suffixesDeTest).regrouperLesCartes(context.Background(), rows)
+	if rows[0].MapID != "base-thunder" || rows[1].MapID != "base-thunder" || rows[2].MapID != "seule" {
+		t.Errorf("identifiants = %q %q %q, attendu base-thunder base-thunder seule",
+			rows[0].MapID, rows[1].MapID, rows[2].MapID)
 	}
 }

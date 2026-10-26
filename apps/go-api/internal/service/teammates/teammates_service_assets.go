@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
@@ -159,7 +160,7 @@ func squadModeUI(m domain.SquadMatchRow) string {
 // stratégie de tri que buildSquadMapHeatmap
 // (teammates_squad_charts_sessions_maps.go), pour une cohérence d'ordre entre
 // les charts teammates.02/13 et la heatmap teammates.03.
-func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRow {
+func computeMapBreakdown(matches []domain.SquadMatchRow, groups domain.GroupesDeCartes) []domain.MapBreakdownRow {
 	type stats struct {
 		mapUI       string
 		count, wins int
@@ -169,17 +170,15 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 	}
 	m := map[string]*stats{}
 	for _, r := range matches {
-		// Clé interne = UUID si dispo (language-agnostic), sinon label d'affichage.
-		key := r.MapID
-		if key == "" {
-			key = r.MapUI
-		}
+		// Clé interne = groupe de l'UUID si dispo (language-agnostic ; une variante compte sous sa
+		// carte de base), sinon label d'affichage.
+		key := cleCarteGroupee(r.MapID, r.MapUI, groups)
 		if key == "" {
 			key = tsLabelUnknown
 		}
 		s, ok := m[key]
 		if !ok {
-			lbl := r.MapUI
+			lbl := libelleCarteGroupee(r.MapID, r.MapUI, groups)
 			if lbl == "" {
 				lbl = tsLabelUnknown
 			}
@@ -358,4 +357,24 @@ func buildMatchSeries(matches []domain.SquadMatchRow) []domain.SquadMatchSeriesP
 		})
 	}
 	return series
+}
+
+// cleCarteGroupee rend la clé de regroupement d'une carte de l'escouade : le groupe de son identifiant (une
+// variante compte sous sa carte de base), à défaut le libellé quand la ligne n'a pas d'identifiant.
+func cleCarteGroupee(id, ui string, groups domain.GroupesDeCartes) string {
+	if id != "" {
+		return groups.Groupe(id)
+	}
+	return ui
+}
+
+// libelleCarteGroupee rend le libellé FR d'affichage : celui de la carte de BASE pour une carte de groupe
+// (jamais le nom d'une variante), sinon le libellé propre de la ligne.
+func libelleCarteGroupee(id, ui string, groups domain.GroupesDeCartes) string {
+	if id != "" {
+		if base, ok := groups.Libelle(id, mappings.LocaleFR); ok {
+			return base
+		}
+	}
+	return ui
 }

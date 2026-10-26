@@ -140,8 +140,11 @@ Non vus par la note :
 - [x] Tests : service (deux rangées fusionnées, plancher) ; repo `:memory:` (univers sur deux map_id)
 - Gate : `go test ./internal/service/ ./internal/platform/duckdb/ ./internal/api/handlers/` +
   vérification à l'écran par le user sur Live Fire (témoin à nommer par le user)
-      E3 : TESTS AUTOMATISÉS VERTS, VÉRIFICATION À L'ÉCRAN EN ATTENTE DU USER (étape non close tant que le
-      témoin n'est pas nommé et vu). Mécanisme : `TacticalQuery.MapIDs` (liste du groupe) ; la clause carte de
+      DÉCISION USER 2026-10-26 : la vérification à l'écran de E3 est `[~]` REPORTÉE à la vérification finale,
+      en une seule fois en fin de chantier (liste dans la section « À vérifier à l'écran »). E3 est close sur
+      son gate automatisé.
+      E3 : TESTS AUTOMATISÉS VERTS (gate écran reporté, cf. ci-dessus ; avant le report :
+      étape non close sans témoin). Mécanisme : `TacticalQuery.MapIDs` (liste du groupe) ; la clause carte de
       l'univers est le jeton `%CARTES%` (`clauseCartes`, `IN (...)`) ; le service résout la carte reçue en
       groupe en UN endroit, `TacticalService.cartesDe` (table lue une fois par service = par requête,
       `tactical_service_groupes.go`), et l'injecte dans `requeteDuScope` / `requeteAvecRetention`, dans les
@@ -156,14 +159,38 @@ Non vus par la note :
       ./internal/api/handlers/ ./internal/api/wire/` vert ; archlint, golangci-lint ratchet 0 issue.
 
 ### E4 — Autres agrégats par carte
-- [ ] Escouade : `computeMapBreakdown`, `LoadMapStatsForSquad` (repli Go par groupe),
+- [x] Escouade : `computeMapBreakdown`, `LoadMapStatsForSquad` (repli Go par groupe),
       `squadMapWinRate`
-- [ ] Synergies v2 (`squad_service_v2_synergies.go`, 3 appels `ByMap`)
-- [ ] Motifs contextuels (`patterns.analyzeByMap`) : lignes regroupées en amont
-- [ ] Séries temporelles (`timeseries_service_aggregations.go`)
-- [ ] Re-grep de clôture : `grep -rn "MapID\]" internal/service internal/analysis` et
+- [x] Synergies v2 (`squad_service_v2_synergies.go`, 3 appels `ByMap`)
+- [x] Motifs contextuels (`patterns.analyzeByMap`) : lignes regroupées en amont
+- [x] Séries temporelles (`timeseries_service_aggregations.go`)
+- [x] Re-grep de clôture : `grep -rn "MapID\]" internal/service internal/analysis` et
       `GROUP BY.*map_id` — tout résultat restant statué
 - Gate : `go test ./internal/...` (hors tag gamefiles)
+      E4 CLOS. Mécanisme commun : `service/mapgroups` (`Load`, `RefKey`, `RefLabel`) + `squadagg.FoldMapStats`
+      (stats « avec l'escouade » repliées par groupe, performance pondérée par `MapSquadStats.PerfCount`,
+      champ ajouté et rempli par `LoadMapStatsForSquad`). Escouade V2 : groupes lus une fois par page
+      (`GetSquadPage`), lollipop, bullet, perf vs historique, heatmap joueur x carte (`Build*(…, groups)`) ;
+      Coéquipiers : `computeMapBreakdown(rows, groups)`, `squadStatsToWinTotal` (chaque identifiant du groupe lit
+      le même taux, donc `squadMapWinRate` est inchangé), heatmap joueur x carte. Motifs : `PatternsRepo`
+      remplace l'identifiant de carte par celui de la base (`regrouperLesCartes`, suffixes injectés via
+      `wire.PatternsRepo`). Séries temporelles : `StatsMatchRow.MapID`, `buildSoloMapBreakdown(…, groups)`,
+      Emprise par carte (`timeseriesEmpriseMatches(…, groups)` ; la page Sessions passe la valeur zéro : son
+      Emprise n'a pas de découpage par carte, `WithMaps` faux).
+      Re-grep de clôture, tout statué : `squad_service_v2_synergies.go:43,79,184,276,323`,
+      `teammates_squad_charts_sessions_maps.go:345`, `timeseries_service_aggregations.go:99`,
+      `analysis/breakdown/compare.go:28,32`, `patterns/context.go:31` -> `[x]` traités ci-dessus (clés = groupe) ;
+      `teammates_service_assets.go:58,214` (libellé par ligne, tri de la clé de groupe), `stats_canonical.go:149`,
+      `home_canonical_converters.go:62` (champs par match) -> `[~]` pas des agrégats ; SQL `GROUP BY map_id` :
+      `map_variants.go` (le résolveur), `tactical_repo*.go` (repliés par le service, E3) -> `[~]` ;
+      `ops/catalog_refresh.go:120`, `sync/replayartifacts/zones_cartes.go:35` -> `[~]` catalogue et zones de
+      rejeu, pas des statistiques.
+      `[!]` NON TRAITÉ : `analysis/home_canonical_highlights_tiles.go:179` (Accueil, tuile « carte favorite »,
+      `sliceFavoriteMapCanonical`). Surface par carte absente de la liste du plan et de D2, que le user n'a pas
+      citée ; le traiter ajoute un lecteur de groupes au service de l'Accueil (périmètre du plan : règle n°5).
+      Conséquence visible : la carte favorite peut nommer « Live Fire - Ranked » ou « ... Heavies ». À décider
+      par le user (REGISTRE_REPORTS). Gate : `go test ./internal/...` vert (169 paquets ok, 0 échec) ;
+      golangci-lint ratchet sur `./internal/...` : 0 issue.
 
 ### E5 — Web et clôture
 - [ ] Contrat OpenAPI inchangé attendu ; si changé : `make generate-types`
@@ -253,3 +280,37 @@ le libellé PROPRE de la ligne alors que les options des filtres sont celles de 
 
 Lire ce fichier (cases cochées), `git log --oneline -10` sur la branche, puis reprendre à la
 première étape non close.
+
+## À vérifier à l'écran (vérification finale du user, une seule fois ; décision du 2026-10-26)
+
+Base réelle, joueur JGtm (le seul à avoir des films, donc des positions). Rien n'a été vu à l'écran par
+l'exécutant : les serveur et bases locaux tiennent la copie principale.
+
+1. **Tactique, grille des cartes.** « Live Fire » ne doit apparaître qu'UNE fois (plus de vignette séparée
+   « Live Fire - Ranked »), avec le total des parties des deux (instantané du 26/10 : 507 + 512 parties
+   avant filtres). Idem « Recharge », « Streets », « Aquarius », « Solitude », « Empyrean », « Origin »,
+   « Forbidden », « Fortress », « Argyle ». Aucune vignette nommée « ... - Ranked » ni « ... Heavies » (hors
+   Lattice et Vacancy en Ranked, sans carte de base au registre : elles restent seules). « Fragmentation »,
+   « Oasis », « Breaker », « Highpower », « Deadlock », « Thunderhead » : une seule vignette, sans mention
+   « Heavies » ni « Du lourd sur ».
+2. **Tactique, ouverture de Live Fire.** Le fond s'affiche ; le pied de carte « N sur M » est cohérent avec
+   le compte de la vignette ; ouvrir « Où je meurs » puis un détail de zone ne déclenche aucune erreur ;
+   « Voir les matchs de cette carte » ramène les parties des deux variantes dans l'Explorateur.
+3. **Tactique, Highpower.** Paire limite (90,3 % de recouvrement) : les points de la variante « Heavies »
+   doivent tomber sur le fond de « Highpower », sans décalage visible.
+4. **Explorateur.** Colonne « taux de victoire sur cette carte » : une ligne « Live Fire - Ranked » et une
+   ligne « Live Fire » affichent le MÊME taux et le même nombre de parties. Filtre de cartes : « Live Fire »
+   ne présente qu'une option, et la choisir ramène les parties des deux. Briefing (si l'Explorateur l'affiche
+   avec un filtre assez large) : une seule carte « Live Fire » dans la dimension carte.
+5. **Synthèse.** « Cartes les plus jouées » : « Live Fire » une seule fois, jamais « Live Fire - Classée » ni
+   « Du lourd sur ... ». Le filtre de cartes de la Synthèse sur « Thunderhead » retient aussi les parties
+   « Heavies » (défaut M6 corrigé).
+6. **Escouade et page Coéquipiers** (avec au moins un coéquipier sélectionné) : graphiques par carte
+   (lollipop, bullet, perf vs historique, heatmap joueur x carte, heatmap de la page Coéquipiers) : une seule
+   colonne « Live Fire ». Filtre de cartes : même comportement qu'en Synthèse.
+7. **Séries temporelles.** « Cartes » (découpage par carte) : une seule ligne « Live Fire » avec son
+   historique ; l'onglet Usages (Emprise par carte) : une seule carte « Live Fire ».
+8. **Motifs** (page Progression / Patterns). Les motifs « par carte » ne listent plus « Live Fire - Ranked » à
+   part (n'apparaissent que si le seuil de parties par carte est atteint).
+9. **Non couvert, à ne pas attendre** : l'Accueil, tuile « carte favorite » (voir `[!]` E4) ; le rejeu 2D et
+   la page de vue d'un match gardent le nom de la variante réellement jouée.

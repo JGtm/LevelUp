@@ -34,11 +34,20 @@ const patternsLoadTimeout = 30 * time.Second
 // Implémente port.PatternsRepository. Construit par joueur (porte un PlayerDB).
 type PatternsRepo struct {
 	pdb *PlayerDB
+	// mapVariantSuffixes : suffixes de variante de carte du titre (map_variants.toml). Vide : aucune
+	// variante, les cartes restent seules.
+	mapVariantSuffixes []string
 }
 
 // NewPatternsRepo construit le repo pour un joueur donné.
 func NewPatternsRepo(pdb *PlayerDB) *PatternsRepo {
 	return &PatternsRepo{pdb: pdb}
+}
+
+// WithMapVariantSuffixes injecte les suffixes de variante de carte du titre. Retourne le repo.
+func (r *PatternsRepo) WithMapVariantSuffixes(suffixes []string) *PatternsRepo {
+	r.mapVariantSuffixes = suffixes
+	return r
 }
 
 // LoadRows charge les données nécessaires à l'analyse de patterns.
@@ -75,6 +84,7 @@ func (r *PatternsRepo) LoadRows(ctx context.Context, limit int) ([]patterns.Matc
 
 	rows := mergePatternRows(shared, enrichMap, skillMap, games.EffectiveHpToKill(r.pdb.TitleSlug))
 	computePatternSkillDeltas(rows)
+	r.regrouperLesCartes(ctx, rows)
 	return rows, nil
 }
 
@@ -499,4 +509,19 @@ func computePatternSkillDeltas(rows []patterns.MatchRow) {
 	sort.SliceStable(rows, func(i, j int) bool {
 		return rows[i].PlayedAt.After(rows[j].PlayedAt)
 	})
+}
+
+// regrouperLesCartes remplace l'identifiant de carte de chaque ligne par celui de la carte de BASE de son
+// groupe : les motifs « par carte » (patterns.analyzeByMap) comptent une variante sous sa carte de base, et
+// les libellés (ResolveMapLabels) se résolvent sur l'identifiant de base. Une lecture des groupes en échec
+// est journalisée puis dégradée : les variantes restent seules.
+func (r *PatternsRepo) regrouperLesCartes(ctx context.Context, rows []patterns.MatchRow) {
+	groupes, err := lireGroupesDeCartes(ctx, r.pdb, r.mapVariantSuffixes)
+	if err != nil {
+		slog.WarnContext(ctx, "patterns: groupes de cartes illisibles, variantes laissées seules", "err", err)
+		return
+	}
+	for i := range rows {
+		rows[i].MapID = groupes.Groups.Groupe(rows[i].MapID)
+	}
 }

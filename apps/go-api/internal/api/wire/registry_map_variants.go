@@ -27,3 +27,9 @@ func (r *ServiceRegistry) mapVariantSuffixesFor(pdb *duckdb.PlayerDB) []string {
 func (r *ServiceRegistry) mapGroupsFor(pdb *duckdb.PlayerDB) port.MapGroupReader {
 	return duckdb.NewMapGroupsRepo(pdb).WithMapVariantSuffixes(r.mapVariantSuffixesFor(pdb))
 }
+
+// PatternsRepo construit le lecteur du Pattern Engine du joueur : ses motifs « par carte » comptent une
+// variante sous sa carte de base (mêmes suffixes que les filtres, mapVariantSuffixesFor).
+func (r *ServiceRegistry) PatternsRepo(pdb *duckdb.PlayerDB) port.PatternsRepository {
+	return duckdb.NewPatternsRepo(pdb).WithMapVariantSuffixes(r.mapVariantSuffixesFor(pdb))
+}

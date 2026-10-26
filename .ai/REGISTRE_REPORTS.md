@@ -202,3 +202,13 @@ Plan : `.ai/PLAN_DELAI_DEBRIEF_2026-10-17.md` (Découvertes D-1 à D-4, journal)
 | **L'action admin « construire » reste à la priorité de rattrapage** (D-1) | E2 (2026-10-18) | Hors périmètre ; le commentaire de `ClaimBuildJob` qui promettait le contraire a été corrigé | Si l'admin doit passer devant le rattrapage : `EnqueueReplayBuild` (action admin) à `BuildPriorityRecent` ou au-delà |
 | **Un lot asynchrone du watcher peut attendre le lease joueur tenu par un post-sync V2 du même joueur** (D-2) | revue ronde 2 (2026-10-18) | Conséquence de la prise du lease par V2 (décision utilisateur) : worker unique du `CombinedPersister` bloqué ~93 s, puis WAL (jusqu'à 10 min). Même classe qu'un post-sync V1 qui bloque un lot V2 ; le cycle V2 ne réclame pas le `SyncGate` par joueur | Si la mesure (colonne « Stats ») montre le cas : faire céder le cycle V2 au sync du watcher (claim par joueur), ou ne pas bloquer le worker unique sur un lease joueur |
 | **`internal/platform/duckdb` frôle le budget de 300 s du test de baseline** (D-4) | gate local (2026-10-18) | 290 s seul en intégration, 300,3 s sous charge : paquet compté « absent » par `make gate-push` | Si la CI ou le gate local rougit sur ce paquet : découper ses tests d'intégration les plus lents ou relever le budget avec justification |
+
+## Reports du lot « statistiques par carte regroupées » (2026-10-26, exécutant de `feat/cartes-variantes-stats`)
+
+Plan : `.ai/PLAN_CARTES_VARIANTES_STATS_2026-10-26.md` (Découvertes, E4 et E5).
+
+| Item | Origine | Pourquoi reporté | Condition de reprise |
+|---|---|---|---|
+| **Accueil, tuile « carte favorite » : une variante y reste comptée à part** (`sliceFavoriteMapCanonical`) | E4 (2026-10-26) | Surface par carte absente de la liste du plan et de D2 ; la traiter ajoute un lecteur de groupes au service de l'Accueil (règle n°5, zéro fix hors périmètre) | Décision du user ; recette : `HomeService.WithMapGroups` + `mapgroups.RefKey`/`RefLabel` dans `sliceFavoriteMapCanonical` |
+| **Deux copies des suffixes de variante dans le décodeur de film** (`film/internal/profile/map_bounds.go`, `film/replay/map_background_index.go`) | E1 (2026-10-26) | Couche fermée par le compilateur, preuve par level_id ; exceptions datées du garde-rail `archlint/no_map_variant_suffix_literal_test.go` | Convergence vers la liste du TOML décidée avec le décodeur de film |
+| **Playwright Tactique non lancé** | E5 (2026-10-26) | Voir la case E5 du plan : le serveur de `:8000` est celui de la copie principale, pas ce code | Vérification finale par le user, ou serveur dédié à cette branche |

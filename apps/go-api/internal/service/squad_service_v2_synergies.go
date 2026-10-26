@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/analysis/breakdown"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/service/mapgroups"
 )
 
 // MapBreakdownLimit borne le nombre de cartes affichees (cf. audit § 3.1 : top 20
@@ -96,11 +97,12 @@ func rowsToBreakdownInputs(rows []canonical.PlayerMatchRow) []breakdown.Row {
 func BuildMapBreakdownLollipop(
 	rows []canonical.PlayerMatchRow,
 	limit int,
+	groups domain.GroupesDeCartes,
 ) domain.ChartSeries[domain.ChartPointStacked] {
 	if limit <= 0 {
 		limit = MapBreakdownLimit
 	}
-	maps := breakdown.ByMap(rowsToBreakdownInputs(rows), domain.GroupesDeCartes{}, domain.LocaleLibelleParDefaut)
+	maps := breakdown.ByMap(rowsToBreakdownInputs(rows), groups, domain.LocaleLibelleParDefaut)
 	// breakdown.ByMap trie par WinRate desc ; on re-trie par Played desc pour
 	// privilegier les cartes les plus jouees.
 	sort.SliceStable(maps, func(i, j int) bool {
@@ -152,11 +154,12 @@ func BuildBulletWinrate(
 	sessionRows []canonical.PlayerMatchRow,
 	historical map[string]domain.MapSquadStats,
 	limit int,
+	groups domain.GroupesDeCartes,
 ) domain.ChartSeries[domain.ChartPointStacked] {
 	if limit <= 0 {
 		limit = MapBreakdownLimit
 	}
-	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows), domain.GroupesDeCartes{}, domain.LocaleLibelleParDefaut)
+	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows), groups, domain.LocaleLibelleParDefaut)
 
 	// On re-trie sessionAgg par Played desc pour limiter aux N plus jouees.
 	sort.SliceStable(sessionAgg, func(i, j int) bool {
@@ -204,11 +207,12 @@ func BuildPerfVsHistorical(
 	sessionRows []canonical.PlayerMatchRow,
 	historical map[string]domain.MapSquadStats,
 	limit int,
+	groups domain.GroupesDeCartes,
 ) domain.ChartSeries[domain.ChartPoint2D] {
 	if limit <= 0 {
 		limit = MapBreakdownLimit
 	}
-	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows), domain.GroupesDeCartes{}, domain.LocaleLibelleParDefaut)
+	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows), groups, domain.LocaleLibelleParDefaut)
 	// CompareToHistorical attend []MapAggregate. On materialise une liste
 	// minimale a partir du map (Played/Wins/WinRate/AvgPerformanceScore)
 	// pour reutiliser la logique de delta.
@@ -252,6 +256,7 @@ func BuildPerfVsHistorical(
 func BuildHeatmapPlayerMap(
 	rowsByPlayer map[string][]canonical.PlayerMatchRow,
 	limit int,
+	groups domain.GroupesDeCartes,
 ) domain.ChartSeries[domain.ChartPointHeatmap] {
 	if limit <= 0 {
 		limit = MapBreakdownLimit
@@ -271,10 +276,10 @@ func BuildHeatmapPlayerMap(
 			if r.Summary.Map == nil || r.Summary.Map.ID == "" {
 				continue
 			}
-			id := r.Summary.Map.ID
+			id := mapgroups.RefKey(r.Summary.Map, groups)
 			playedPerMap[id]++
-			if labelByID[id] == "" && r.Summary.Map.DefaultLabel != "" {
-				labelByID[id] = r.Summary.Map.DefaultLabel
+			if lbl := mapgroups.RefLabel(r.Summary.Map, groups, domain.LocaleLibelleParDefaut, r.Summary.Map.DefaultLabel); labelByID[id] == "" && lbl != "" {
+				labelByID[id] = lbl
 			}
 		}
 	}
@@ -321,10 +326,11 @@ func BuildHeatmapPlayerMap(
 			if r.Enrichment.PerformanceScore == nil {
 				continue
 			}
-			cur := perfByMap[r.Summary.Map.ID]
+			key := mapgroups.RefKey(r.Summary.Map, groups)
+			cur := perfByMap[key]
 			cur.sum += *r.Enrichment.PerformanceScore
 			cur.n++
-			perfByMap[r.Summary.Map.ID] = cur
+			perfByMap[key] = cur
 		}
 		for _, m := range mapsRanked {
 			agg, ok := perfByMap[m.ID]

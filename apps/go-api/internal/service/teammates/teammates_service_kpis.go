@@ -267,14 +267,18 @@ func enrichMapBreakdownWithSquadStats(rows []domain.MapBreakdownRow, stats map[s
 }
 
 // squadStatsToWinTotal convertit la map repo en format compatible avec
-// buildSquadMatchHistory (signature historique : map[mapID][2]int{wins,total}).
-func squadStatsToWinTotal(stats map[string]domain.MapSquadStats) map[string][2]int {
+// buildSquadMatchHistory (signature historique : map[mapID][2]int{wins,total}). Les stats arrivent repliées par
+// groupe de cartes (clé = identifiant de base) : chaque identifiant du groupe lit le MÊME taux, de sorte que
+// la ligne d'une variante affiche le taux « sur cette carte » du groupe.
+func squadStatsToWinTotal(stats map[string]domain.MapSquadStats, groups domain.GroupesDeCartes) map[string][2]int {
 	if len(stats) == 0 {
 		return nil
 	}
 	out := make(map[string][2]int, len(stats))
 	for k, s := range stats {
-		out[k] = [2]int{s.Wins, s.Total}
+		for _, id := range groups.Membres(k) {
+			out[id] = [2]int{s.Wins, s.Total}
+		}
 	}
 	return out
 }

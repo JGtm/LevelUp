@@ -70,6 +70,9 @@ type MapSquadStats struct {
 	Wins    int
 	Total   int
 	PerfAvg *float64 // nil si aucun match n'a de performance_score
+	// PerfCount : nombre de matchs qui fondent PerfAvg — le poids de la moyenne quand des cartes
+	// d'un même groupe sont repliées (squadagg.FoldMapStats). 0 : poids inconnu.
+	PerfCount int
 }
 
 // MapBreakdownRow est la performance par carte pour la heatmap.

@@ -39,7 +39,7 @@ func (s *SessionPageService) sessionEmprise(
 	return buildSoloEmpriseBlock(ctx, soloEmpriseQuery{
 		Page: pageSessions, Player: s.gamertag, PlayerXUID: s.sessionXUID,
 		RepoRoot: s.repoRoot, TitleSlug: s.titleSlug, Locale: locale,
-		Current: timeseriesEmpriseMatches(rows, locale), Lectures: lu,
+		Current: timeseriesEmpriseMatches(rows, locale, domain.GroupesDeCartes{}), Lectures: lu,
 		UsageRepo: s.sessionUsageRepo, EmpriseRepo: s.empriseRepo, VehicleRepo: s.vehicleRepo,
 		Pending: s.analysisPending,
 	})

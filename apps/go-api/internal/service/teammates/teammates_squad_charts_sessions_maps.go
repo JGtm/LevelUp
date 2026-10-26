@@ -190,6 +190,7 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 	allSquadRows []domain.SquadMatchRow,
 	selectedGamertags []string,
 	issues *dataIssues,
+	groups domain.GroupesDeCartes,
 ) *domain.SquadMapHeatmap {
 	defer timing.FromContext(ctx).Section("map_heatmap")()
 	if len(allSquadRows) == 0 {
@@ -213,10 +214,7 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 			continue
 		}
 		matchIDByID[m.MatchID] = struct{}{}
-		key := m.MapID
-		if key == "" {
-			key = m.MapUI
-		}
+		key := cleCarteGroupee(m.MapID, m.MapUI, groups)
 		if key == "" {
 			continue
 		}
@@ -224,7 +222,7 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 			mapFirstSeen[key] = m.StartTime
 		}
 		if m.MapUI != "" {
-			mapIDToUI[key] = m.MapUI
+			mapIDToUI[key] = libelleCarteGroupee(m.MapID, m.MapUI, groups)
 		}
 	}
 	if len(mapFirstSeen) == 0 {
@@ -282,10 +280,7 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 			continue
 		}
 		mainSeen[m.MatchID] = struct{}{}
-		key := m.MapID
-		if key == "" {
-			key = m.MapUI
-		}
+		key := cleCarteGroupee(m.MapID, m.MapUI, groups)
 		if !mapSet[key] {
 			continue
 		}
@@ -347,10 +342,7 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 				continue
 			}
 			// Clé interne = UUID (même source que MapID dans SquadMatchRow).
-			key := r.Summary.Map.ID
-			if key == "" {
-				key = r.Summary.Map.DefaultLabel
-			}
+			key := cleCarteGroupee(r.Summary.Map.ID, r.Summary.Map.DefaultLabel, groups)
 			if !mapSet[key] {
 				continue
 			}

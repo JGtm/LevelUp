@@ -5,6 +5,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // groupesDeTest : Thunderhead (base, deux identifiants) et sa variante Heavies forment un groupe.
@@ -144,5 +145,33 @@ func TestBuildBreakdownsFromCanonical_UneEntreePourBaseEtVariante(t *testing.T) 
 	// Sans groupe : le comportement d'avant, une entrée par libellé.
 	if avant := buildBreakdownsFromCanonical(rows, domain.GroupesDeCartes{}); len(avant.TopMaps) != 3 {
 		t.Errorf("sans groupe : %d entrées, attendu 3", len(avant.TopMaps))
+	}
+}
+
+func statRow(id, nom, fr string, outcome int) legacymatch.StatsMatchRow {
+	return legacymatch.StatsMatchRow{MatchID: id + nom, MapID: id, MapName: nom, MapNameFR: fr, Outcome: &outcome}
+}
+
+// Séries temporelles : le découpage par carte compte base + variante comme UNE carte, au libellé de la
+// base, historique compris.
+func TestBuildSoloMapBreakdown_CartesRegroupees(t *testing.T) {
+	groups := groupesDeTest()
+	win, loss := domain.OutcomeWin, domain.OutcomeLoss
+	current := []legacymatch.StatsMatchRow{
+		statRow("base-a", "Thunderhead", "Tonnerre", win),
+		statRow("var-heavies", "Thunderhead Heavies", "Du lourd sur Thunderhead", loss),
+		statRow("seule", "The Pit", "La Fosse", win),
+	}
+	got := buildSoloMapBreakdown(current, current, groups)
+	if len(got) != 2 {
+		t.Fatalf("cartes = %d, attendu 2 : %+v", len(got), got)
+	}
+	for _, r := range got {
+		if r.MapUI == "Du lourd sur Thunderhead" {
+			t.Errorf("libellé de variante servi : %+v", r)
+		}
+		if r.MapUI == "Tonnerre" && (r.MatchCount != 2 || r.HistoricalWinRate == nil || *r.HistoricalWinRate != 0.5) {
+			t.Errorf("groupe = %+v, attendu 2 parties, historique 50 %%", r)
+		}
 	}
 }

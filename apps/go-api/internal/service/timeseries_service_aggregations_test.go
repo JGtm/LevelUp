@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
@@ -31,7 +32,7 @@ func TestBuildSoloMapBreakdown_OrderedByFirstAppearance(t *testing.T) {
 		{MatchID: "e1", StartTime: base, MapNameFR: "Early", Outcome: &win},
 	}
 
-	rows := buildSoloMapBreakdown(current, nil)
+	rows := buildSoloMapBreakdown(current, nil, domain.GroupesDeCartes{})
 
 	want := []string{"Early", "Mid", "Late"}
 	if len(rows) != len(want) {
@@ -57,7 +58,7 @@ func TestBuildSoloMapBreakdown_TieBreakMapUI(t *testing.T) {
 		{MatchID: "a1", StartTime: same, MapNameFR: "Aquarius", Outcome: &win},
 	}
 
-	rows := buildSoloMapBreakdown(current, nil)
+	rows := buildSoloMapBreakdown(current, nil, domain.GroupesDeCartes{})
 
 	if len(rows) != 2 || rows[0].MapUI != "Aquarius" || rows[1].MapUI != "Zanzibar" {
 		t.Fatalf("want [Aquarius, Zanzibar] (tie-break MapUI asc), got %v", rows)

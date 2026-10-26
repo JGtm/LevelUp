@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/mapgroups"
+	"levelup/go-api/internal/service/squadagg"
 )
 
 // SquadServiceV2 orchestre la page Squad V2. Son loader (interface SquadV2Loader)
@@ -92,13 +93,14 @@ func (s *SquadServiceV2) GetSquadPage(
 	if err != nil {
 		return nil, err
 	}
+	// Groupes de cartes : lus UNE fois pour le filtre de cartes, l'historique « avec l'escouade » et les charts par carte.
+	groups := mapgroups.Load(ctx, s.mapGroups)
 
 	// Appliquer le filtre cascade (experience_types, playlists, maps, modes) sur les rows de
 	// chaque joueur avant l'intersection : seuls les matchs satisfaisant tous les critères
 	// sont conservés.
 	if len(experienceTypes) > 0 || len(playlists) > 0 || len(maps) > 0 || len(modes) > 0 {
 		cascade := domain.CascadeFilter{ExperienceTypes: experienceTypes, Playlists: playlists, Maps: maps, Modes: modes}
-		groups := mapgroups.Load(ctx, s.mapGroups)
 		for gt, rows := range perPlayer {
 			perPlayer[gt] = filterRowsByCascade(rows, cascade, groups)
 		}
@@ -137,7 +139,7 @@ func (s *SquadServiceV2) GetSquadPage(
 	// (events, weapons, medals) en parallele puis appelle les 16 builders.
 	rowsBySharedPlayer := projectSharedRows(resp.SharedMatches)
 
-	squadHistorical := s.loadSquadHistorical(ctx, slug, mainGT, squadXUIDs)
+	squadHistorical := s.loadSquadHistorical(ctx, slug, mainGT, squadXUIDs, groups)
 	events, eventsCapGap := s.loadSharedEvents(ctx, slug, resp.SharedMatches, squadXUIDs)
 	weapons, weaponsCapGap := s.loadWeapons(ctx, slug, resp.SharedMatches, squadXUIDs)
 	medals, medalsCapGap := s.loadMedals(ctx, slug, resp.SharedMatches, squadXUIDs)
@@ -148,6 +150,7 @@ func (s *SquadServiceV2) GetSquadPage(
 		squadXUIDs:      squadXUIDs,
 		rowsByPlayer:    rowsBySharedPlayer,
 		squadHistorical: squadHistorical,
+		mapGroups:       groups,
 		events:          events,
 		sharedMatches:   resp.SharedMatches,
 		provideSpree:    games.ProvidesMaxKillingSpree(slug),
@@ -177,6 +180,7 @@ func (s *SquadServiceV2) loadSquadHistorical(
 	ctx context.Context,
 	slug, mainGT string,
 	squadXUIDs map[string]string,
+	groups domain.GroupesDeCartes,
 ) map[string]domain.MapSquadStats {
 	if len(squadXUIDs) == 0 {
 		return nil
@@ -200,7 +204,7 @@ func (s *SquadServiceV2) loadSquadHistorical(
 			"err", err, "player", mainGT, "squad_size", len(xuids))
 		return nil
 	}
-	return stats
+	return squadagg.FoldMapStats(stats, groups)
 }
 
 // sharedMatchTimelines indexe une MatchTimeline par match_id depuis les

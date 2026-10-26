@@ -654,7 +654,7 @@ func TestBuildSquadMapHeatmap_TeammatePerfsAreDistinctFromMain(t *testing.T) {
 		gamertag:    "main",
 	}
 
-	heatmap := svc.buildSquadMapHeatmap(context.Background(), mainSquadRows, []string{"friend1"}, nil)
+	heatmap := svc.buildSquadMapHeatmap(context.Background(), mainSquadRows, []string{"friend1"}, nil, domain.GroupesDeCartes{})
 	if heatmap == nil {
 		t.Fatal("heatmap should be non-nil")
 	}
@@ -824,7 +824,7 @@ func TestBuildSquadMapHeatmap_NoCapOnMaps(t *testing.T) {
 		})
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main"}
-	heatmap := svc.buildSquadMapHeatmap(context.Background(), rows, nil, nil)
+	heatmap := svc.buildSquadMapHeatmap(context.Background(), rows, nil, nil, domain.GroupesDeCartes{})
 	if heatmap == nil {
 		t.Fatal("heatmap should be non-nil")
 	}
@@ -850,7 +850,7 @@ func TestBuildSquadMapHeatmap_MapsOrderedByFirstAppearance(t *testing.T) {
 		{MatchID: "l3", StartTime: base.Add(3 * time.Hour), MapUI: "Late", PerformanceScore: &perf},
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main"}
-	heatmap := svc.buildSquadMapHeatmap(context.Background(), rows, nil, nil)
+	heatmap := svc.buildSquadMapHeatmap(context.Background(), rows, nil, nil, domain.GroupesDeCartes{})
 	if heatmap == nil {
 		t.Fatal("heatmap should be non-nil")
 	}

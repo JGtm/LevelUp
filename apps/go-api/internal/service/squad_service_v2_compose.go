@@ -24,8 +24,10 @@ type buildSquadChartsInput struct {
 	squadXUIDs      map[string]string
 	rowsByPlayer    map[string][]canonical.PlayerMatchRow
 	squadHistorical map[string]domain.MapSquadStats
-	events          []canonical.HighlightEvent
-	sharedMatches   []domain.SquadSharedMatch
+	// mapGroups : groupes de cartes des charts par carte (une variante compte sous sa carte de base).
+	mapGroups     domain.GroupesDeCartes
+	events        []canonical.HighlightEvent
+	sharedMatches []domain.SquadSharedMatch
 	// provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5)
 	// → la série KillingSpreeMax est omise (nil) plutôt que fabriquée. Cf.
 	// games.ProvidesMaxKillingSpree.
@@ -41,17 +43,17 @@ func buildSquadCharts(in buildSquadChartsInput) *domain.SquadCharts {
 	// pour la reference historique.
 	mainSharedRows := in.rowsByPlayer[in.mainGT]
 	if len(mainSharedRows) > 0 {
-		lollipop := BuildMapBreakdownLollipop(mainSharedRows, MapBreakdownLimit)
+		lollipop := BuildMapBreakdownLollipop(mainSharedRows, MapBreakdownLimit, in.mapGroups)
 		out.MapBreakdownLollipop = &lollipop
 
-		bullet := BuildBulletWinrate(mainSharedRows, in.squadHistorical, MapBreakdownLimit)
+		bullet := BuildBulletWinrate(mainSharedRows, in.squadHistorical, MapBreakdownLimit, in.mapGroups)
 		out.BulletWinrate = &bullet
 
-		perfDelta := BuildPerfVsHistorical(mainSharedRows, in.squadHistorical, MapBreakdownLimit)
+		perfDelta := BuildPerfVsHistorical(mainSharedRows, in.squadHistorical, MapBreakdownLimit, in.mapGroups)
 		out.PerfVsHistorical = &perfDelta
 	}
 	if len(in.rowsByPlayer) > 0 {
-		heatmap := BuildHeatmapPlayerMap(in.rowsByPlayer, MapBreakdownLimit)
+		heatmap := BuildHeatmapPlayerMap(in.rowsByPlayer, MapBreakdownLimit, in.mapGroups)
 		out.HeatmapPlayerMap = &heatmap
 	}
 

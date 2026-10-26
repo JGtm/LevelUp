@@ -118,10 +118,13 @@ type StatsMatchRow struct {
 	PairNameFR     string
 	// GameVariant : source de repli pour le mode FR (les game_variant sont localisés,
 	// contrairement à asset_translations[pair]). Cf. buildSessionDetailRows.
-	GameVariantName     string
-	GameVariantNameFR   string
-	MapName             string
-	MapNameFR           string
+	GameVariantName   string
+	GameVariantNameFR string
+	MapName           string
+	MapNameFR         string
+	// MapID : l'identifiant de la carte (Summary.Map.ID) — la clé qui rattache une variante à sa carte de
+	// base dans les agrégats par carte. Vide quand la source n'en porte pas.
+	MapID               string
 	TeamID              *int
 	PerfScoreComputed   *float64
 	SessionID           *string

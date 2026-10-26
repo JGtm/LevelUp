@@ -146,6 +146,7 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow, effectiveHpToKill fl
 	}
 	if r.Summary.Map != nil {
 		out.MapName = r.Summary.Map.DefaultLabel
+		out.MapID = r.Summary.Map.ID
 		if fr, ok := r.Summary.Map.Labels["fr"]; ok {
 			out.MapNameFR = fr
 		}
