@@ -639,6 +639,45 @@ var CartesForge = []CarteForge{
 		FichierMvar:   "argyle_map.mvar",
 		ModuleCanevas: CanevasBlank,
 	},
+	// Cinq cartes declarees le 2026-10-26, validees par l'utilisateur (Exiled sans le bras du nord :
+	// `cadreAuxAncres`, cf. son entree de reglages). Canevas :
+	// level_id de la variante, unicite 1/1 (`TestPreuveLevelIDCartesDuCache`). Quand un meme nom
+	// couvre plusieurs assets, le map_id retenu est celui d'un asset dont la variante est encore
+	// publiee (le plus recent) ; les autres assets du nom heritent du fond par l'index des noms.
+	//
+	// Entrees au catalogue de bornes SANS fond declare : Skyblocks et Thunderbowl (variante sans
+	// objectif, donc sans ancre : la cuisson refuse « pas d'oracle, pas de cadre »), Formation et
+	// Gondolas (fond refuse), Kusini Bay (refuse pour l'instant). Leur rejeu se cuit sur fond neutre.
+	{
+		MapID:         "beaf8ac9-fa85-4562-8def-28d9428dbddb",
+		Nom:           "Arrival",
+		FichierMvar:   "beaf8ac9-fa85-4562-8def-28d9428dbddb_map.mvar",
+		ModuleCanevas: CanevasSpace,
+	},
+	{
+		MapID:         "fd17a1ca-3c67-4d6e-9149-1eb86152ea4a",
+		Nom:           "Beaver Canyon",
+		FichierMvar:   "fd17a1ca-3c67-4d6e-9149-1eb86152ea4a_map.mvar",
+		ModuleCanevas: CanevasWetland,
+	},
+	{
+		MapID:         "9bb8d9df-ff6c-4a6e-b151-436bbb2c0907",
+		Nom:           "Exiled",
+		FichierMvar:   "9bb8d9df-ff6c-4a6e-b151-436bbb2c0907_map.mvar",
+		ModuleCanevas: CanevasDesert,
+	},
+	{
+		MapID:         "be8131fc-8839-4448-b65c-1fb46dd077ef",
+		Nom:           "Perdition",
+		FichierMvar:   "be8131fc-8839-4448-b65c-1fb46dd077ef_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "1231d3f0-2363-4d28-8047-717a069fb0e4",
+		Nom:           "Timberland Evolved",
+		FichierMvar:   "1231d3f0-2363-4d28-8047-717a069fb0e4_map.mvar",
+		ModuleCanevas: CanevasWetland,
+	},
 }
 
 // EstCanevasForge dit si un dossier installe est le CANEVAS d'une carte Forge declaree — donc

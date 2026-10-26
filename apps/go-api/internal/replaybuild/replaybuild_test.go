@@ -126,6 +126,25 @@ func TestResolveMapEntry_SurLeCatalogueLivre(t *testing.T) {
 		// Harvest (2026-10-18) : refusée « hors catalogue » à chaque cycle jusqu'à l'entrée de
 		// sa variante au catalogue de bornes (level_id 426470249 -> fo11_blank).
 		"Harvest": "fo11_blank",
+		// Les seize cartes Forge de la liste d'attente (2026-10-26), refusées « hors catalogue »
+		// jusque-là ; Narrows, déjà au catalogue sous son seul identifiant d'asset, ne répondait
+		// pas au nom que le registre sert.
+		"Arrival":            "fo03_space",
+		"Beaver Canyon":      "fo08_wetland",
+		"Canopy - Ranked":    "fo05_desert",
+		"Cold Storage":       "fo11_blank",
+		"Exiled":             "fo05_desert",
+		"Formation":          "fo03_space",
+		"Foundry":            "fo11_blank",
+		"Gondolas":           "fo08_wetland",
+		"Guardian":           "fo05_desert",
+		"Immolate":           "fo11_blank",
+		"Kusini Bay":         "fo11_blank",
+		"Narrows":            "fo13_frost",
+		"Perdition":          "fo11_blank",
+		"Skyblocks":          "fo11_blank",
+		"Thunderbowl":        "fo11_blank",
+		"Timberland Evolved": "fo08_wetland",
 	} {
 		entry, err := b.ResolveMapEntry([]string{nom, nom})
 		if err != nil {

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "be8131fc-8839-4448-b65c-1fb46dd077ef",
+  "mapNames": [
+    "Perdition",
+    "be8131fc-8839-4448-b65c-1fb46dd077ef_map"
+  ],
+  "image": "be8131fc-8839-4448-b65c-1fb46dd077ef.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-10-26T12:20:14.3738023Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.05420571708679199,
+    "originX": -32.41804896163941,
+    "originY": 43.59649249458311,
+    "widthPx": 1527,
+    "heightPx": 1653,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 54,
+    "anchorsInFrame": 54,
+    "anchorsWithGround": 53,
+    "anchorMedianGapM": -0.2899989226844042,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 78.93505950927734,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.552544910731738,
+    "covered": true,
+    "cellsSubstituted": 615761,
+    "forgeObjects": 5389,
+    "forgeObjectsDrawn": 5317,
+    "forgeObjectsWithoutModel": 68,
+    "forgeDeathVolumes": 4
+  }
+}

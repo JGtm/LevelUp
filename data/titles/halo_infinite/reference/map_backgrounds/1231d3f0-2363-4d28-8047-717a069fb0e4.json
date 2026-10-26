@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "1231d3f0-2363-4d28-8047-717a069fb0e4",
+  "mapNames": [
+    "Timberland Evolved",
+    "1231d3f0-2363-4d28-8047-717a069fb0e4_map"
+  ],
+  "image": "1231d3f0-2363-4d28-8047-717a069fb0e4.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-10-26T12:20:27.5130247Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.06255307388305664,
+    "originX": -61.19046709060669,
+    "originY": 48.590166080474845,
+    "widthPx": 1969,
+    "heightPx": 1468,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 62,
+    "anchorsInFrame": 62,
+    "anchorsWithGround": 62,
+    "anchorMedianGapM": -0.30490493755657155,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 88.94197937011718,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.9238691500164398,
+    "covered": true,
+    "cellsSubstituted": 1100135,
+    "forgeObjects": 5262,
+    "forgeObjectsDrawn": 5189,
+    "forgeObjectsWithoutModel": 68,
+    "forgeDeathVolumes": 5
+  }
+}
