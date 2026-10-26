@@ -100,7 +100,7 @@ func BuildMapBreakdownLollipop(
 	if limit <= 0 {
 		limit = MapBreakdownLimit
 	}
-	maps := breakdown.ByMap(rowsToBreakdownInputs(rows))
+	maps := breakdown.ByMap(rowsToBreakdownInputs(rows), domain.GroupesDeCartes{}, domain.LocaleLibelleParDefaut)
 	// breakdown.ByMap trie par WinRate desc ; on re-trie par Played desc pour
 	// privilegier les cartes les plus jouees.
 	sort.SliceStable(maps, func(i, j int) bool {
@@ -156,7 +156,7 @@ func BuildBulletWinrate(
 	if limit <= 0 {
 		limit = MapBreakdownLimit
 	}
-	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows))
+	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows), domain.GroupesDeCartes{}, domain.LocaleLibelleParDefaut)
 
 	// On re-trie sessionAgg par Played desc pour limiter aux N plus jouees.
 	sort.SliceStable(sessionAgg, func(i, j int) bool {
@@ -208,7 +208,7 @@ func BuildPerfVsHistorical(
 	if limit <= 0 {
 		limit = MapBreakdownLimit
 	}
-	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows))
+	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows), domain.GroupesDeCartes{}, domain.LocaleLibelleParDefaut)
 	// CompareToHistorical attend []MapAggregate. On materialise une liste
 	// minimale a partir du map (Played/Wins/WinRate/AvgPerformanceScore)
 	// pour reutiliser la logique de delta.

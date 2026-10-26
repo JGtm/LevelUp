@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/service/mapgroups"
 )
 
 // Seuils nommés du briefing (DEC-4 : pas de magic numbers).
@@ -73,7 +74,7 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	b.LowSample = len(filtered) < MinBriefingModulesMatches
 	if !b.LowSample {
 		b.Baseline = buildBriefingBaseline(filtered, allRaw)
-		b.Dimensions = buildBriefingDimensions(filtered, allRaw)
+		b.Dimensions = buildBriefingDimensions(filtered, allRaw, mapgroups.Load(ctx, s.mapGroups))
 		// Split solo/escouade : aucun gate capability (P-7), omission si un côté est vide.
 		b.ContextSplit = buildBriefingContextSplit(filtered)
 		b.MinGroupMatches = MinDimensionGroupMatches

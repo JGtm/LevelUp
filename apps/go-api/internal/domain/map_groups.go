@@ -13,8 +13,9 @@ import "sort"
 //
 // La valeur zéro est utilisable : aucun groupe, chaque identifiant reste seul.
 type GroupesDeCartes struct {
-	baseDe  map[string]string   // identifiant membre -> identifiant de base (base comprise)
-	membres map[string][]string // identifiant de base -> membres triés (base comprise)
+	baseDe   map[string]string            // identifiant membre -> identifiant de base (base comprise)
+	membres  map[string][]string          // identifiant de base -> membres triés (base comprise)
+	libelles map[string]map[string]string // identifiant de base -> locale -> libellé de la base
 }
 
 // NewGroupesDeCartes construit la table depuis `baseParMembre` (identifiant membre -> identifiant
@@ -105,3 +106,44 @@ func (g GroupesDeCartes) Membres(id string) []string {
 
 // Vide dit si aucun groupe n'existe.
 func (g GroupesDeCartes) Vide() bool { return len(g.baseDe) == 0 }
+
+// LocaleLibelleParDefaut est la locale de repli de Libelle : le nom EN de la carte de base.
+const LocaleLibelleParDefaut = "en"
+
+// AvecLibelles rend une copie de la table qui porte, par identifiant de base, le libellé de la carte
+// de base par locale (`libelles[base][locale]`). Les entrées dont la base n'est pas celle d'un groupe
+// sont ignorées. La table d'origine n'est pas modifiée.
+func (g GroupesDeCartes) AvecLibelles(libelles map[string]map[string]string) GroupesDeCartes {
+	out := GroupesDeCartes{baseDe: g.baseDe, membres: g.membres}
+	for base, parLocale := range libelles {
+		if _, ok := g.membres[base]; !ok || len(parLocale) == 0 {
+			continue
+		}
+		if out.libelles == nil {
+			out.libelles = make(map[string]map[string]string)
+		}
+		out.libelles[base] = parLocale
+	}
+	return out
+}
+
+// Libelle rend le libellé de la carte de BASE du groupe de `id`, dans la `locale` demandée, à défaut
+// en LocaleLibelleParDefaut. `ok` est faux quand `id` n'appartient à aucun groupe ou que la base n'a
+// aucun libellé : l'appelant garde alors le libellé propre de la carte.
+//
+// C'est ce libellé, et jamais celui d'une variante, qu'une ligne regroupée affiche : aucune mention de
+// la variante (décision produit du 2026-10-26).
+func (g GroupesDeCartes) Libelle(id, locale string) (string, bool) {
+	base, ok := g.baseDe[id]
+	if !ok {
+		return "", false
+	}
+	parLocale := g.libelles[base]
+	if l := parLocale[locale]; l != "" {
+		return l, true
+	}
+	if l := parLocale[LocaleLibelleParDefaut]; l != "" {
+		return l, true
+	}
+	return "", false
+}

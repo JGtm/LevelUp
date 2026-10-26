@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/mapgroups"
 )
 
 // Labels de scope/contexte partagés entre filters, tri, options Explorer.
@@ -124,6 +125,9 @@ type MatchHistoryService struct {
 	// lister les matchs ayant un artefact (colonne « Rejeu » + filtre replay_scope).
 	// Nil → aucune ligne ne porte de rejeu (titre sans film cuit, dégradation propre).
 	replaySvc port.ReplayService
+	// mapGroups (optionnel) : table des groupes de cartes (une variante est comptée sous sa carte de
+	// base). Nil → chaque identifiant de carte reste seul.
+	mapGroups port.MapGroupReader
 }
 
 // NewMatchHistoryService crée un MatchHistoryService.
@@ -188,6 +192,13 @@ func (s *MatchHistoryService) WithReplay(svc port.ReplayService) *MatchHistorySe
 	return s
 }
 
+// WithMapGroups injecte le lecteur des groupes de cartes : le taux de victoire par carte et le
+// briefing comptent une variante sous sa carte de base. Sans injection, aucune variante n'est regroupée.
+func (s *MatchHistoryService) WithMapGroups(r port.MapGroupReader) *MatchHistoryService {
+	s.mapGroups = r
+	return s
+}
+
 // replayAvailability liste les matchs ayant un artefact de rejeu — UN listing de
 // dossier par requête. Service non câblé ou listing en échec (déjà journalisé par le
 // service de rejeu) : ensemble vide, la page se sert sans la colonne plutôt qu'en 500.
@@ -209,8 +220,8 @@ func (s *MatchHistoryService) replayAvailability(ctx context.Context) port.Repla
 //
 // replays : ensemble des matchs ayant un artefact de rejeu, résolu une fois par
 // requête par l'appelant (nil = aucun rejeu publié sur les lignes).
-func (s *MatchHistoryService) rowFormatters(replays port.ReplayAvailability) rowFormatters {
-	f := rowFormatters{replays: replays}
+func (s *MatchHistoryService) rowFormatters(replays port.ReplayAvailability, groups domain.GroupesDeCartes) rowFormatters {
+	f := rowFormatters{replays: replays, mapGroups: groups}
 	// Libellé de playlist résolu via le chokepoint unique (strip + override) —
 	// même « Super Fiesta » que la Match View / les tuiles home.
 	cfg := s.playlistDisplay
@@ -354,10 +365,11 @@ func (s *MatchHistoryService) GetPage(
 	totalScoped := len(filtered)
 
 	// Calcul win_rate par carte sur l'histotique complet (avant filtre)
-	mapWinRates := computeMapWinRates(rawRows)
+	groups := mapgroups.Load(ctx, s.mapGroups)
+	mapWinRates := computeMapWinRates(rawRows, groups)
 
 	// Enrichissement
-	items := enrichRows(filtered, mapWinRates, s.rowFormatters(replays))
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters(replays, groups))
 
 	// Tri
 	sortItems(items, req.SortField, req.SortDir)

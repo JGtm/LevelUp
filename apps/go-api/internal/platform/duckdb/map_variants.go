@@ -22,6 +22,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
 
@@ -55,10 +56,19 @@ func (r *MapGroupsRepo) WithMapVariantSuffixes(suffixes []string) *MapGroupsRepo
 	return r
 }
 
-// MapGroups rend la table des groupes de cartes du titre.
+// MapGroups rend la table des groupes de cartes du titre, avec le libellé EN et FR de chaque carte de
+// base (libellesDesBases).
 func (r *MapGroupsRepo) MapGroups(ctx context.Context) (domain.GroupesDeCartes, error) {
 	lecture, err := lireGroupesDeCartes(ctx, r.pdb, r.suffixes)
-	return lecture.Groups, err
+	if err != nil || lecture.Groups.Vide() {
+		return lecture.Groups, err
+	}
+	bases := libellesDesBases(ctx, r.pdb, lecture)
+	libelles := make(map[string]map[string]string, len(bases))
+	for rep, base := range bases {
+		libelles[rep] = map[string]string{mappings.LocaleEN: base.EN, mappings.LocaleFR: base.FR}
+	}
+	return lecture.Groups.AvecLibelles(libelles), nil
 }
 
 // lireGroupesDeCartes lit le registre des matchs et construit les groupes. Sans suffixe ou sans

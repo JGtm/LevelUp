@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -14,11 +15,11 @@ func rowMap(mapID, label string, outcome canonical.Outcome) Row {
 
 func TestByMap_Empty(t *testing.T) {
 	t.Parallel()
-	got := ByMap(nil)
+	got := ByMap(nil, domain.GroupesDeCartes{}, "")
 	if len(got) != 0 {
 		t.Errorf("nil input: want 0, got %d", len(got))
 	}
-	got = ByMap([]Row{})
+	got = ByMap([]Row{}, domain.GroupesDeCartes{}, "")
 	if len(got) != 0 {
 		t.Errorf("empty input: want 0, got %d", len(got))
 	}
@@ -33,7 +34,7 @@ func TestByMap_SingleMap_AllOutcomes(t *testing.T) {
 		rowMap("m1", "Bazaar", canonical.OutcomeTie),
 		rowMap("m1", "Bazaar", canonical.OutcomeDNF),
 	}
-	got := ByMap(rows)
+	got := ByMap(rows, domain.GroupesDeCartes{}, "")
 	if len(got) != 1 {
 		t.Fatalf("want 1 aggregate, got %d", len(got))
 	}
@@ -55,7 +56,7 @@ func TestByMap_AllWins(t *testing.T) {
 		rowMap("m1", "Bazaar", canonical.OutcomeWin),
 		rowMap("m1", "Bazaar", canonical.OutcomeWin),
 	}
-	got := ByMap(rows)
+	got := ByMap(rows, domain.GroupesDeCartes{}, "")
 	if got[0].WinRate != 1 || got[0].LossRate != 0 {
 		t.Errorf("100%% wins: WR=%v LR=%v", got[0].WinRate, got[0].LossRate)
 	}
@@ -66,7 +67,7 @@ func TestByMap_AllLosses(t *testing.T) {
 	rows := []Row{
 		rowMap("m1", "Bazaar", canonical.OutcomeLoss),
 	}
-	got := ByMap(rows)
+	got := ByMap(rows, domain.GroupesDeCartes{}, "")
 	if got[0].WinRate != 0 || got[0].LossRate != 1 {
 		t.Errorf("100%% losses: WR=%v LR=%v", got[0].WinRate, got[0].LossRate)
 	}
@@ -78,7 +79,7 @@ func TestByMap_IgnoresEmptyMapID(t *testing.T) {
 		rowMap("", "Unknown", canonical.OutcomeWin),
 		rowMap("m1", "Bazaar", canonical.OutcomeWin),
 	}
-	got := ByMap(rows)
+	got := ByMap(rows, domain.GroupesDeCartes{}, "")
 	if len(got) != 1 || got[0].MapID != "m1" {
 		t.Errorf("empty MapID should be ignored, got %+v", got)
 	}
@@ -94,7 +95,7 @@ func TestByMap_SortedByWinRateDesc(t *testing.T) {
 		rowMap("middle", "Middle", canonical.OutcomeWin),
 		rowMap("middle", "Middle", canonical.OutcomeLoss),
 	}
-	got := ByMap(rows)
+	got := ByMap(rows, domain.GroupesDeCartes{}, "")
 	if len(got) != 3 {
 		t.Fatalf("want 3, got %d", len(got))
 	}
@@ -116,7 +117,7 @@ func TestByMap_TieBreakerByMapIDAsc(t *testing.T) {
 		rowMap("alpha", "Alpha", canonical.OutcomeWin),
 		rowMap("middle", "Middle", canonical.OutcomeWin),
 	}
-	got := ByMap(rows)
+	got := ByMap(rows, domain.GroupesDeCartes{}, "")
 	if got[0].MapID != "alpha" || got[1].MapID != "middle" || got[2].MapID != "zebra" {
 		t.Errorf("alphabetic tie-breaker failed: %v / %v / %v", got[0].MapID, got[1].MapID, got[2].MapID)
 	}
@@ -129,7 +130,7 @@ func TestByMap_PreservesFirstNonEmptyLabel(t *testing.T) {
 		rowMap("m1", "Bazaar", canonical.OutcomeWin),
 		rowMap("m1", "Bazaar Renamed", canonical.OutcomeLoss),
 	}
-	got := ByMap(rows)
+	got := ByMap(rows, domain.GroupesDeCartes{}, "")
 	if got[0].MapLabel != "Bazaar" {
 		t.Errorf("first non-empty label should win, got %q", got[0].MapLabel)
 	}
@@ -143,7 +144,7 @@ func TestByMap_AvgPerformance(t *testing.T) {
 		{MapID: "m1", MapLabel: "Bazaar", Outcome: canonical.OutcomeWin, PerformanceScore: score(60)},
 		{MapID: "m1", MapLabel: "Bazaar", Outcome: canonical.OutcomeLoss}, // pas de score
 	}
-	got := ByMap(rows)
+	got := ByMap(rows, domain.GroupesDeCartes{}, "")
 	if got[0].AvgPerformanceScore == nil || *got[0].AvgPerformanceScore != 70 {
 		t.Errorf("avg should be 70 (mean of 80+60), got %v", got[0].AvgPerformanceScore)
 	}
@@ -155,7 +156,7 @@ func TestByMap_AvgPerformanceAllNil(t *testing.T) {
 		rowMap("m1", "Bazaar", canonical.OutcomeWin),
 		rowMap("m1", "Bazaar", canonical.OutcomeLoss),
 	}
-	got := ByMap(rows)
+	got := ByMap(rows, domain.GroupesDeCartes{}, "")
 	if got[0].AvgPerformanceScore != nil {
 		t.Errorf("nil expected when no row has score, got %v", *got[0].AvgPerformanceScore)
 	}
@@ -168,7 +169,7 @@ func TestByMap_UnknownOutcomeNotCounted(t *testing.T) {
 		rowMap("m1", "Bazaar", canonical.Outcome("unknown")),
 		rowMap("m1", "Bazaar", canonical.Outcome("")),
 	}
-	got := ByMap(rows)
+	got := ByMap(rows, domain.GroupesDeCartes{}, "")
 	if got[0].Played != 3 {
 		t.Errorf("Played should count unknown rows, got %d", got[0].Played)
 	}
@@ -178,5 +179,46 @@ func TestByMap_UnknownOutcomeNotCounted(t *testing.T) {
 	// WinRate = 1/3 (rate sur Played, pas sur outcomes connus)
 	if math.Abs(got[0].WinRate-1.0/3.0) > 1e-9 {
 		t.Errorf("WinRate want 1/3 got %v", got[0].WinRate)
+	}
+}
+
+// Une variante et sa base forment UNE ligne, au libelle de la base, quelle que soit la row qui arrive
+// la premiere.
+func TestByMap_GroupesRegroupesSousLaBase(t *testing.T) {
+	groups := domain.NewGroupesDeCartes(map[string]string{"var-heavies": "base", "base-bis": "base"}).
+		AvecLibelles(map[string]map[string]string{"base": {"fr": "Tonnerre", "en": "Thunderhead"}})
+	rows := []Row{
+		rowMap("var-heavies", "Du lourd sur Thunderhead", canonical.OutcomeWin),
+		rowMap("base", "Thunderhead", canonical.OutcomeLoss),
+		rowMap("base-bis", "Thunderhead", canonical.OutcomeWin),
+		rowMap("autre", "La Fosse", canonical.OutcomeLoss),
+	}
+	got := ByMap(rows, groups, "fr")
+	if len(got) != 2 {
+		t.Fatalf("len = %d, attendu 2 (un groupe + une carte seule) : %+v", len(got), got)
+	}
+	var groupe MapAggregate
+	for _, a := range got {
+		if a.MapID == "base" {
+			groupe = a
+		}
+	}
+	if groupe.Played != 3 || groupe.Wins != 2 || groupe.Losses != 1 {
+		t.Errorf("groupe = %+v, attendu 3 parties, 2 V, 1 D", groupe)
+	}
+	if groupe.MapLabel != "Tonnerre" {
+		t.Errorf("libelle = %q, attendu Tonnerre (celui de la base, pas de la variante)", groupe.MapLabel)
+	}
+	if en := ByMap(rows, groups, "en"); en[0].MapLabel == "Du lourd sur Thunderhead" {
+		t.Errorf("la variante ne doit jamais donner son libelle : %+v", en)
+	}
+}
+
+// Groupe sans libelle pose : repli sur le premier libelle des rows, jamais une ligne sans nom.
+func TestByMap_GroupeSansLibelleRetombeSurLesRows(t *testing.T) {
+	groups := domain.NewGroupesDeCartes(map[string]string{"v": "b"})
+	got := ByMap([]Row{rowMap("v", "Variante", canonical.OutcomeWin)}, groups, "fr")
+	if len(got) != 1 || got[0].MapLabel != "Variante" || got[0].MapID != "b" {
+		t.Errorf("got = %+v, attendu un groupe b libelle Variante", got)
 	}
 }

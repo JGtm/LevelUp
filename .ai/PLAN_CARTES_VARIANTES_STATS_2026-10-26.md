@@ -102,17 +102,29 @@ Non vus par la note :
       games/... ; vet api/port/service ; golangci-lint ratchet 0 issue).
 
 ### E2 — Explorateur
-- [ ] `computeMapWinRates` : clé = `Groupe(map_id)` (plus le nom brut) ; `enrichRow` lit par la même clé
-- [ ] Briefing (`match_history_service_briefing.go`) : lignes regroupées avant `breakdown.ByMap`
-- [ ] `breakdown.ByMap` prend le regroupement en paramètre (signature changée = chaque appelant est
+- [x] `computeMapWinRates` : clé = `Groupe(map_id)` (plus le nom brut) ; `enrichRow` lit par la même clé
+- [x] Briefing (`match_history_service_briefing.go`) : lignes regroupées avant `breakdown.ByMap`
+- [x] `breakdown.ByMap` prend le regroupement en paramètre (signature changée = chaque appelant est
       forcé de décider à la compilation ; c'est le garde-rail de E2-E4)
-- [ ] Synthèse : `buildBreakdownsFromCanonical` (`synthesis_service_legacy.go`, « cartes les plus
+- [x] Synthèse : `buildBreakdownsFromCanonical` (`synthesis_service_legacy.go`, « cartes les plus
       jouées », clé = libellé FR/défaut) regroupe par groupe de map_id, libellé de la base
-- [ ] Filtre de cartes en cascade (`squadagg.FilterRowsByCascade`) : selon E0, une base retenue
+- [x] Filtre de cartes en cascade (`squadagg.FilterRowsByCascade`) : selon E0, une base retenue
       retient ses variantes
-- [ ] Tests service : une variante et sa base donnent un seul taux ; carte sans nom au registre ;
+- [x] Tests service : une variante et sa base donnent un seul taux ; carte sans nom au registre ;
       Synthèse : une seule entrée pour base + variante
 - Gate : `go test ./internal/analysis/... ./internal/service/...`
+      E2 CLOS. Mécanisme : `port.MapGroupReader` injecté dans chaque service (`WithMapGroups`, câblé dans
+      `wire/registry_map_variants.go: mapGroupsFor`, mêmes suffixes que les filtres), lu UNE fois par requête
+      via la feuille `service/mapgroups.Load` (échec journalisé puis dégradé : variantes seules). La table
+      porte le libellé de la base par locale (`GroupesDeCartes.Libelle`, EN + FR) : une ligne regroupée
+      n'affiche jamais le libellé d'une variante (D3). `breakdown.ByMap(rows, groups, locale)` : la
+      locale choisit la langue du libellé de base ; les 3 appels des synergies (E4) passent la valeur zéro tant
+      qu'E4 n'est pas faite (compilent, comportement inchangé, remplacés en E4). `FilterRowsByCascade`
+      prend `(rows, domain.CascadeFilter, groups)` : câblé pour la Synthèse, l'Escouade
+      (`SquadServiceV2`) et le briefing des coéquipiers, M6 corrigé pour les trois. Clé du taux par
+      carte : groupe du map_id, à défaut `name:<nom>` (ligne sans identifiant) ; une ligne sans nom au
+      registre mais avec identifiant est désormais comptée. Gate : `go test ./internal/analysis/...
+      ./internal/service/...` vert (29 paquets) ; archlint, vet api/platform/port, golangci-lint ratchet 0 issue.
 
 ### E3 — Tactique
 - [ ] `domain.TacticalQuery.MapID` -> liste d'identifiants (groupe) ; clause de l'univers en `IN`

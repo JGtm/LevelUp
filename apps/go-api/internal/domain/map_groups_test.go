@@ -86,3 +86,26 @@ func TestGroupesDeCartes_ChaineEtCycle(t *testing.T) {
 		t.Errorf("cycle : x et y doivent partager un groupe (%q, %q)", cycle.Groupe("x"), cycle.Groupe("y"))
 	}
 }
+
+func TestGroupesDeCartes_Libelle(t *testing.T) {
+	g := NewGroupesDeCartes(map[string]string{"v": "b", "b2": "b"}).AvecLibelles(map[string]map[string]string{
+		"b":     {"fr": "Tonnerre", "en": "Thunderhead"},
+		"autre": {"fr": "ignoré"}, // pas une base de groupe
+	})
+	if l, ok := g.Libelle("v", "fr"); !ok || l != "Tonnerre" {
+		t.Errorf("Libelle(v, fr) = %q, %v, attendu Tonnerre", l, ok)
+	}
+	if l, ok := g.Libelle("b2", "en"); !ok || l != "Thunderhead" {
+		t.Errorf("Libelle(b2, en) = %q, %v, attendu Thunderhead", l, ok)
+	}
+	// Locale sans libellé : repli sur l'anglais.
+	if l, ok := g.Libelle("v", "de"); !ok || l != "Thunderhead" {
+		t.Errorf("Libelle(v, de) = %q, %v, attendu le repli Thunderhead", l, ok)
+	}
+	if _, ok := g.Libelle("hors-groupe", "fr"); ok {
+		t.Error("une carte hors groupe n'a pas de libellé de base")
+	}
+	if _, ok := NewGroupesDeCartes(map[string]string{"v": "b"}).Libelle("v", "fr"); ok {
+		t.Error("sans libellé posé, ok doit être faux")
+	}
+}

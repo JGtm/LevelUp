@@ -175,3 +175,22 @@ func TestRattacherCartesDeBase_LibelleDeRepli(t *testing.T) {
 		t.Errorf("base sans traduction : libellé = %q, attendu The Pit", *rows[1].MapNameFR)
 	}
 }
+
+// La table rendue au service porte le libellé EN et FR de la base : une ligne regroupée n'affiche
+// jamais le nom de sa variante.
+func TestMapGroupsRepo_LibellesDeBase(t *testing.T) {
+	pdb := registreDesVariantes(t, [][2]string{
+		{"base-thunder", "Thunderhead"},
+		{"var-heavies", "Thunderhead Heavies"},
+	})
+	g, err := NewMapGroupsRepo(pdb).WithMapVariantSuffixes(suffixesDeTest).MapGroups(context.Background())
+	if err != nil {
+		t.Fatalf("MapGroups: %v", err)
+	}
+	if l, ok := g.Libelle("var-heavies", "fr"); !ok || l != "Tonnerre" {
+		t.Errorf("libellé FR = %q, %v, attendu Tonnerre", l, ok)
+	}
+	if l, ok := g.Libelle("var-heavies", "en"); !ok || l != "Thunderhead" {
+		t.Errorf("libellé EN = %q, %v, attendu Thunderhead", l, ok)
+	}
+}

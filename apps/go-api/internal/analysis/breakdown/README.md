@@ -6,7 +6,7 @@ Pure Go helpers for grouping match rows by structural dimensions (map, mode, pla
 
 | Function | Purpose |
 |---|---|
-| `ByMap(rows) []MapAggregate` | Group by map name; computes count + winrate + avg KDA |
+| `ByMap(rows, groups, locale) []MapAggregate` | Group by map (a map variant joins its base map via `domain.GroupesDeCartes`); computes count + winrate + avg perf |
 | `ByMode(rows) []ModeAggregate` | Group by mode (full pair_name) |
 | `ByModeCategory(rows) []ModeAggregate` | Group by mode category (custom Halo : `Slayer`, `BTB`, `Ranked`, `Fiesta`, `Husky Raid`, `Firefight`, `Other`) |
 | `ByPlaylist(rows) []PlaylistAggregate` | Group by playlist (Halo Infinite playlist UUID) |
@@ -76,7 +76,7 @@ type KeyedDelta struct {
 ```go
 import "levelup/go-api/internal/analysis/breakdown"
 
-aggregates := breakdown.ByMap(rows)
+aggregates := breakdown.ByMap(rows, groups, locale)
 sort.Slice(aggregates, func(i, j int) bool {
     return aggregates[i].Count > aggregates[j].Count
 })
@@ -86,8 +86,8 @@ top5 := aggregates[:min(5, len(aggregates))]
 ### Compare a session to historical baseline (Squad V2)
 
 ```go
-sessionAggs := breakdown.ByMap(sessionRows)
-historicalAggs := breakdown.ByMap(allHistoricalRows)
+sessionAggs := breakdown.ByMap(sessionRows, groups, locale)
+historicalAggs := breakdown.ByMap(allHistoricalRows, groups, locale)
 deltas := breakdown.CompareToHistorical(sessionAggs, historicalAggs)
 // deltas[i].DeltaWinrate > 0 → session better on this map than historical
 ```

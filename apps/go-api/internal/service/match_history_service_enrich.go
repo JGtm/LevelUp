@@ -46,19 +46,35 @@ func toFilterMatchRow(r domain.MatchHistoryRawRow) domain.FilterMatchRow {
 // Win rate par carte
 // ---------------------------------------------------------------------------
 
-func computeMapWinRates(rows []domain.MatchHistoryRawRow) map[string][2]int {
+// mapRateKey est la clé du taux de victoire « sur cette carte » d'une ligne : le groupe de sa carte
+// (une variante compte sous sa carte de base), à défaut son nom quand la ligne n'a pas d'identifiant de
+// carte. "" quand la ligne ne désigne aucune carte. La clé est calculée par la même fonction à
+// l'agrégation (computeMapWinRates) et à la lecture (enrichRow) : elles ne peuvent pas diverger.
+func mapRateKey(r domain.MatchHistoryRawRow, groups domain.GroupesDeCartes) string {
+	if id := derefStr(r.MapID); id != "" {
+		return groups.Groupe(id)
+	}
+	if name := derefStr(r.MapName); name != "" {
+		return "name:" + name
+	}
+	return ""
+}
+
+// computeMapWinRates compte, par carte (groupe de variantes compris), les victoires et le total des
+// parties de l'historique.
+func computeMapWinRates(rows []domain.MatchHistoryRawRow, groups domain.GroupesDeCartes) map[string][2]int {
 	m := make(map[string][2]int)
 	for _, r := range rows {
-		name := derefStr(r.MapName)
-		if name == "" {
+		key := mapRateKey(r, groups)
+		if key == "" {
 			continue
 		}
-		entry := m[name]
+		entry := m[key]
 		entry[1]++ // total
 		if r.Outcome == domain.OutcomeWin {
 			entry[0]++ // wins
 		}
-		m[name] = entry
+		m[key] = entry
 	}
 	return m
 }
@@ -86,6 +102,9 @@ type rowFormatters struct {
 	// (même contrat que la home : (tier capitalisé, sous-palier 0=Onyx/1..6) → URL).
 	// Nil → aucune image, le front retombe sur le libellé texte du palier.
 	skillBadgeURL func(tierEN string, subTier int) string
+	// mapGroups : groupes de cartes du titre, pour la clé du taux de victoire par carte (mapRateKey).
+	// Zéro-valeur : aucune variante regroupée.
+	mapGroups domain.GroupesDeCartes
 	// replays : ensemble des matchs ayant un artefact de rejeu 2D, construit UNE FOIS
 	// par requête (un listing de dossier) et consulté en O(1) par ligne. Vide → aucune
 	// ligne ne porte de rejeu, ce qui est l'état d'un titre sans film cuit.
@@ -146,14 +165,14 @@ func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts 
 	return out
 }
 
-// enrichMapWinRate calcule le taux de victoire historique du joueur sur une map
+// enrichMapWinRate calcule le taux de victoire historique du joueur sur une carte (clé mapRateKey)
 // (arrondi 1 déc.) + le total de matchs, depuis la table mapWR pré-agrégée.
 // (nil, nil) si map inconnue ou 0 match. Extrait d'enrichRow (L3 : funlen).
-func enrichMapWinRate(mapName string, mapWR map[string][2]int) (*float64, *int) {
-	if mapName == "" {
+func enrichMapWinRate(mapKey string, mapWR map[string][2]int) (*float64, *int) {
+	if mapKey == "" {
 		return nil, nil
 	}
-	entry, ok := mapWR[mapName]
+	entry, ok := mapWR[mapKey]
 	if !ok || entry[1] <= 0 {
 		return nil, nil
 	}
@@ -182,7 +201,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		deltaMMR = &v
 	}
 
-	winRate, winRateTotal := enrichMapWinRate(derefStr(r.MapName), mapWR)
+	winRate, winRateTotal := enrichMapWinRate(mapRateKey(r, fmts.mapGroups), mapWR)
 
 	matchURL := fmts.matchURLFor(r.MatchID)
 

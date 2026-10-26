@@ -97,7 +97,10 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 		// Rejeu 2D des lignes (colonne « Rejeu » + filtre replay_scope) : MÊME service
 		// que l'endpoint /replay et la Match View — une seule résolution de chemin dans
 		// le dépôt. Seul AvailableSet est appelé : un listing de dossier par requête.
-		WithReplay(r.replayServiceFor(pdb))
+		WithReplay(r.replayServiceFor(pdb)).
+		// Une variante de carte (« - Ranked », « Heavies ») compte sous sa carte de base : taux de
+		// victoire par carte et briefing.
+		WithMapGroups(r.mapGroupsFor(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
@@ -154,7 +157,7 @@ func (r *ServiceRegistry) SquadV2Ctx(ctx context.Context, slug string) (port.Squ
 	// Le loader resout les DBs `shared` (events / weapons / medals) via le main
 	// player ; on lui propage le gamertag de la session courante (chunk S11).
 	loader.SetDefaultGamertag(pdb.Gamertag)
-	svc := service.NewSquadServiceV2(loader)
+	svc := service.NewSquadServiceV2(loader).WithMapGroups(r.mapGroupsFor(pdb))
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
@@ -239,7 +242,9 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		WithEmprise(duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb))).
 		// « Analyse du film en cours » de l'Emprise : MÊME règle et MÊME porte de titre que l'accueil et la
 		// vue match (film.kill_source) ; nil pour un titre sans elle.
-		WithAnalysisPending(r.analysisPendingFor(pdb))
+		WithAnalysisPending(r.analysisPendingFor(pdb)).
+		// Une variante de carte compte sous sa carte de base : filtre de cartes de l'Escouade.
+		WithMapGroups(r.mapGroupsFor(pdb))
 	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
 	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
 	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.
@@ -397,7 +402,9 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb))).
 		// « Analyse du film en cours » des records de distance : MÊME règle et MÊME porte de titre que
 		// l'accueil, la vue match et l'Escouade (film.kill_source) ; nil pour un titre sans elle.
-		WithAnalysisPending(r.analysisPendingFor(pdb))
+		WithAnalysisPending(r.analysisPendingFor(pdb)).
+		// Une variante de carte compte sous sa carte de base : filtre de cartes de la Synthèse.
+		WithMapGroups(r.mapGroupsFor(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}

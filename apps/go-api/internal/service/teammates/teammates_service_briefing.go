@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/mapgroups"
 	"levelup/go-api/internal/service/squadagg"
 )
 
@@ -59,11 +60,16 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 
 	// Construire perPlayer : main + chaque teammate (filtres appliques).
 	perPlayer := map[string][]canonical.PlayerMatchRow{s.gamertag: mainFiltered}
+	// Groupes de cartes : le filtre de cartes retient les variantes d'une carte de base. Lus seulement
+	// quand un filtre de cartes est posé.
+	var groups domain.GroupesDeCartes
+	if filters != nil && len(filters.Cascade.Maps) > 0 {
+		groups = mapgroups.Load(ctx, s.mapGroups)
+	}
 	for gt, rows := range teammateRows {
 		filtered := rows
 		if filters != nil {
-			c := filters.Cascade
-			filtered = squadagg.FilterRowsByCascade(filtered, c.ExperienceTypes, c.Playlists, c.Maps, c.Modes)
+			filtered = squadagg.FilterRowsByCascade(filtered, filters.Cascade, groups)
 		}
 		if sessionMatchIDs != nil { // vide non nil : session piquée sans match → aucun match
 			kept := make([]canonical.PlayerMatchRow, 0, len(filtered))
