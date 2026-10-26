@@ -376,14 +376,14 @@ describe('ExplorerBriefingStrip — socle refondu V4 (DEC-TILES)', () => {
     expect(text).toContain('4.20') // peak_kda.toFixed(2) = borne haute du triptyque FDA
   })
 
-  it('omet Durée totale en low_sample (jamais de tuile Pic FDA)', () => {
+  it('rend Durée totale en échantillon faible (jamais de tuile Pic FDA)', () => {
     const briefing = {
       ...withScope({ total_duration_seconds: 152400, peak_kda: 4.2 }),
       low_sample: true,
     }
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
     const text = container.textContent ?? ''
-    expect(text).not.toContain('explorer.briefing.duration_total_label')
+    expect(text).toContain('explorer.briefing.duration_total_label')
     expect(text).not.toContain('explorer.briefing.peak_fda_label')
   })
 })

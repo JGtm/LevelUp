@@ -1,17 +1,24 @@
 /**
- * ExplorerBriefingModules — modules conditionnels du bandeau de briefing (Lot C).
+ * ExplorerBriefingModules — modules du bandeau de briefing (Lot C), rendus sous le
+ * socle, y compris en échantillon faible (le backend n'y émet alors ni dimensions ni
+ * « Par contexte » : seuls les blocs qui ne comparent rien arrivent).
  *
- * Rendus sous le socle quand l'échantillon est suffisant :
  *   - Dimensions (par carte / mode / playlist) : top/flop avec note (palier 1..5).
+ *     Une dimension `insufficient` (au moins 2 valeurs dans le filtre, moins de 2
+ *     groupes au seuil) garde sa carte (titre + (i)) et affiche un état vide expliqué.
  *   - « Par contexte » (solo/escouade) ET Classement par chaîne (RankedBlock, gaté
  *     capability 'ranked') : blocs SIBLINGS de la grille « Par… » (DP-3 — plus de 4e
- *     colonne empilée ; chacun est une cellule de la grille adaptative).
+ *     colonne empilée ; chacun est une cellule de la grille adaptative). « Par
+ *     contexte » `insufficient` : état vide qui donne les deux comptes.
  *   - Moments forts (dominance) : bande nue.
  *
- * Les Séries marquantes restent une tuile du socle (ExplorerBriefingTiles). Chaque
- * module s'omet proprement si son bloc backend est nil (dégradation par omission,
- * jamais de placeholder vide ni de NaN). Tokens sémantiques uniquement.
+ * Les Séries marquantes restent une tuile du socle (ExplorerBriefingTiles). Un bloc
+ * backend nil n'a rien à comparer (axe filtré, valeur unique, contexte à zéro match)
+ * et n'est pas rendu ; un bloc qui aurait de quoi comparer sans atteindre le seuil est
+ * toujours rendu en état vide (jamais d'omission silencieuse). Tokens sémantiques
+ * uniquement.
  */
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { Tooltip } from '@/components/ui/tooltip'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -32,7 +39,7 @@ import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import { BriefingSectionCard } from './BriefingSectionCard'
 import { formatSignedPoints } from '@/lib/baseline'
-import { deltaToken, favoriteWeaponSlots, signOf } from './ExplorerBriefing.logic'
+import { deltaToken, dimensionCardLines, favoriteWeaponSlots, signOf } from './ExplorerBriefing.logic'
 import { RankedBlock } from './ExplorerRankedBlock'
 import { FavoriteWeaponBlock } from './ExplorerBriefingWeapons'
 
@@ -51,6 +58,13 @@ const DIM_TITLE_KEY: Record<string, ExplorerManifestKey> = {
 // (demande utilisateur — « Par sélection » en 2e position). Toute dimension hors
 // de cette table passe en fin.
 const DIM_DISPLAY_ORDER: Record<string, number> = { map: 0, playlist: 1, mode: 2 }
+
+// État vide d'une carte « Par… » : libellé propre à la dimension (carte / mode / sélection).
+const DIM_INSUFFICIENT_KEY: Record<string, ExplorerManifestKey> = {
+  map: 'explorer.briefing.dim_insufficient_map',
+  mode: 'explorer.briefing.dim_insufficient_mode',
+  playlist: 'explorer.briefing.dim_insufficient_playlist',
+}
 
 const PERF_TIER_KEY: Record<number, ExplorerManifestKey> = {
   1: 'explorer.filters.perf_tier_excellent',
@@ -103,6 +117,8 @@ export function ExplorerBriefingModules({
     (a, b) => (DIM_DISPLAY_ORDER[a.dimension] ?? 99) - (DIM_DISPLAY_ORDER[b.dimension] ?? 99),
   )
   const contextSplit = briefing.context_split ?? null
+  // Seuil servi par le backend (posé hors échantillon faible) pour les libellés d'état vide.
+  const minGroup = briefing.min_group_matches ?? 0
   const ranked = briefing.ranked ?? null
   const showRanked = hasRanked && ranked != null && (ranked.kinds?.length ?? 0) > 0
   // « Par contexte » et le Classement par chaîne sont des blocs SIBLINGS de la grille
@@ -122,7 +138,7 @@ export function ExplorerBriefingModules({
   // le compte et sert alors une arme plutôt que deux. L'habillage, lui, ne change jamais
   // (carte dans tous les cas — décision utilisateur au gate visuel du 2026-09-17).
   const weaponSlots = favoriteWeaponSlots({
-    dimensionLines: dimensions.map((d) => (d.entries ?? []).length),
+    dimensionLines: dimensions.map(dimensionCardLines),
     rankedLines: showRanked ? (ranked?.kinds?.length ?? 0) : 0,
     stacked: contextSplit != null,
   })
@@ -136,7 +152,7 @@ export function ExplorerBriefingModules({
       {(dimensions.length > 0 || hasContextOrRanked || weapons != null) && (
         <div className="grid grid-cols-1 gap-2 sm:[grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
           {dimensions.map((d) => (
-            <DimensionCard key={d.dimension} dim={d} t={t} hideDelta={hideDelta} />
+            <DimensionCard key={d.dimension} dim={d} t={t} hideDelta={hideDelta} minGroup={minGroup} />
           ))}
           {/* L'arme favorite s'empile SOUS « Par contexte » dans la MÊME cellule quand ce
               bloc existe, et prend sa place quand il est absent : le nombre de cellules de
@@ -146,11 +162,11 @@ export function ExplorerBriefingModules({
           {contextSplit != null &&
             (weapons != null ? (
               <div className="space-y-2 self-start">
-                <ContextSplitCard split={contextSplit} t={t} />
+                <ContextSplitCard split={contextSplit} t={t} minGroup={minGroup} />
                 <FavoriteWeaponBlock weapons={weapons} slots={weaponSlots} t={t} locale={locale} />
               </div>
             ) : (
-              <ContextSplitCard split={contextSplit} t={t} />
+              <ContextSplitCard split={contextSplit} t={t} minGroup={minGroup} />
             ))}
           {contextSplit == null && weapons != null && (
             <FavoriteWeaponBlock weapons={weapons} slots={weaponSlots} t={t} locale={locale} />
@@ -171,10 +187,12 @@ function DimensionCard({
   dim,
   t,
   hideDelta,
+  minGroup,
 }: {
   dim: ExplorerBriefingDimension
   t: T
   hideDelta: boolean
+  minGroup: number
 }) {
   const titleKey = DIM_TITLE_KEY[dim.dimension]
   return (
@@ -187,11 +205,20 @@ function DimensionCard({
         </span>
       }
     >
-      <ul className="space-y-1">
-        {(dim.entries ?? []).map((e) => (
-          <DimensionRow key={e.label} entry={e} t={t} hideDelta={hideDelta} />
-        ))}
-      </ul>
+      {dim.insufficient ? (
+        <EmptyStateNotice
+          title={t('explorer.briefing.insufficient_title')}
+          description={t(DIM_INSUFFICIENT_KEY[dim.dimension] ?? 'explorer.briefing.dim_insufficient_map', {
+            n: minGroup,
+          })}
+        />
+      ) : (
+        <ul className="space-y-1">
+          {(dim.entries ?? []).map((e) => (
+            <DimensionRow key={e.label} entry={e} t={t} hideDelta={hideDelta} />
+          ))}
+        </ul>
+      )}
     </BriefingSectionCard>
   )
 }
@@ -252,11 +279,20 @@ function DimensionRow({
 }
 
 // ─── Module contexte solo/escouade (C4) : une ligne par contexte social ────────
-// Rendu uniquement si le bloc backend est présent (les deux sous-groupes ≥ seuil,
-// scope multi-contexte — item 6, P-5). Libellés « Solo »/« Escouade » réutilisant
+// Rendu quand le bloc backend est présent (les deux contextes ont au moins un match —
+// item 6, P-5) : deux lignes si les deux côtés atteignent le seuil, sinon un état vide
+// qui donne les deux comptes (`insufficient`). Libellés « Solo »/« Escouade » réutilisant
 // les clés de filtre existantes ; WR coloré via winRateColor (tokens).
 
-function ContextSplitCard({ split, t }: { split: ExplorerBriefingContextSplit; t: T }) {
+function ContextSplitCard({
+  split,
+  t,
+  minGroup,
+}: {
+  split: ExplorerBriefingContextSplit
+  t: T
+  minGroup: number
+}) {
   return (
     <BriefingSectionCard
       className="h-full"
@@ -267,10 +303,21 @@ function ContextSplitCard({ split, t }: { split: ExplorerBriefingContextSplit; t
         </span>
       }
     >
-      <ul className="space-y-1">
-        <ContextSplitRow label={t('explorer.filters.context_solo')} group={split.solo} t={t} />
-        <ContextSplitRow label={t('explorer.filters.context_squad')} group={split.squad} t={t} />
-      </ul>
+      {split.insufficient ? (
+        <EmptyStateNotice
+          title={t('explorer.briefing.insufficient_title')}
+          description={t('explorer.briefing.context_insufficient', {
+            solo: split.solo.matches,
+            squad: split.squad.matches,
+            n: minGroup,
+          })}
+        />
+      ) : (
+        <ul className="space-y-1">
+          <ContextSplitRow label={t('explorer.filters.context_solo')} group={split.solo} t={t} />
+          <ContextSplitRow label={t('explorer.filters.context_squad')} group={split.squad} t={t} />
+        </ul>
+      )}
     </BriefingSectionCard>
   )
 }

@@ -33,6 +33,22 @@ export function deltaToken(v: number | null | undefined): SemanticToken {
 }
 
 /**
+ * Hauteur, en lignes de liste, d'une carte « Par… » en état vide (`insufficient`) : le
+ * texte d'explication tient sur environ deux lignes dans une cellule de 240 px. Valeur
+ * posée, ajustable au gate visuel (même doctrine que favoriteWeaponSlots : la hauteur se
+ * décide, elle ne se mesure pas).
+ */
+export const INSUFFICIENT_CARD_LINES = 2
+
+/** Nombre de lignes que pèse une carte de dimension dans la formule de hauteur de la rangée. */
+export function dimensionCardLines(dim: {
+  entries?: readonly unknown[] | null
+  insufficient?: boolean
+}): number {
+  return dim.insufficient ? INSUFFICIENT_CARD_LINES : (dim.entries ?? []).length
+}
+
+/**
  * Nombre d'armes que le bloc « Arme favorite » montre : DEUX quand la rangée « Par… » a
  * la place de les porter sans grandir, UNE sinon. Jamais zéro — le bloc est toujours là,
  * et toujours dans sa carte.
