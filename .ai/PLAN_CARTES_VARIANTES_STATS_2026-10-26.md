@@ -193,11 +193,24 @@ Non vus par la note :
       golangci-lint ratchet sur `./internal/...` : 0 issue.
 
 ### E5 — Web et clôture
-- [ ] Contrat OpenAPI inchangé attendu ; si changé : `make generate-types`
-- [ ] `make check-types`, `make test-web`, Playwright Tactique en local
-- [ ] `make go-api-lint`, `make gate-push`
-- [ ] Note du 2026-10-23 close (renvoi vers ce plan) ; `.ai/thought_log.md` ;
-      `.ai/REGISTRE_REPORTS.md` pour tout `[!]`
+- [x] Contrat OpenAPI inchangé attendu ; si changé : `make generate-types` -> inchangé : `git diff 06531b561 HEAD
+      -- apps/go-api/api apps/web` est vide (aucun type de corps HTTP touché : `TacticalQuery`, `MapSquadStats`,
+      `StatsMatchRow` sont internes) ; `make generate-types` non nécessaire.
+- [x] `make check-types` (vert), `make test-web` (1004 fichiers passés, 5 ignorés ; 10 364 tests passés, 23
+      ignorés ; `npm ci` fait dans le worktree, aucun fichier web modifié)
+- [!] Playwright Tactique en local : NON LANCÉ. Le serveur de `:8000` est le binaire de la COPIE PRINCIPALE
+      (`LevelUp\apps\go-api\tmp\server.exe`, autres sessions), pas ce code : une exécution ne vérifierait rien de
+      E1-E4, le serveur ne doit pas être arrêté et ne peut pas être relancé depuis ce worktree (les bases DuckDB
+      sont verrouillées par lui), et le mode d'auth `xbox` exige une session SSO. La seule spec qui touche la
+      Tactique est `e2e/replay-explosion-raster.spec.ts`. Remplacée par la vérification finale à l'écran
+      (section « À vérifier à l'écran ») ; ligne ajoutée à `.ai/REGISTRE_REPORTS.md`.
+- [x] `make go-api-lint` (golangci-lint ratchet `--new-from-merge-base=origin/main` : 0 issue, exécuté seul sur
+      `./internal/...` puis par `make gate-push`), `make gate-push` : EXIT 0 (lint Go, `npm run typecheck`,
+      `npm run lint` 0 erreur / 26 avertissements existants, baseline de tests : 9 330 attendus, 21 720 au run,
+      tous présents, aucun échec ; voie film 165 s, voie DuckDB 1 828 s)
+- [x] Note du 2026-10-23 close (renvoi vers ce plan) -> `.ai/NOTE_CARTES_VARIANTES_STATS_2026-10-23.md` ;
+      en-tête de `map_variants.toml` remis d'équerre (doc inversée) ; `.ai/thought_log.md` ;
+      `.ai/REGISTRE_REPORTS.md` pour les `[!]` (Accueil, copies du décodeur de film, Playwright)
 
 ## Mesures (rempli en E0)
 

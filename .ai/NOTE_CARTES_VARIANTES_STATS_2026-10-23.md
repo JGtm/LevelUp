@@ -1,7 +1,7 @@
 # Cartes variantes (Heavies, - Ranked) : regrouper aussi les statistiques par carte
 
-> Note du 2026-10-23, a traiter plus tard (decision du user). Rien n'est commence sur ce point.
-> Premier reperage seulement : a re-verifier sur pieces avant de chiffrer ou de coder.
+> NOTE CLOSE le 2026-10-26 : la version complète a été exécutée, voir `.ai/PLAN_CARTES_VARIANTES_STATS_2026-10-26.md`
+> (relecture sur pièces, mesures E0, décisions D1-D3, étapes E0-E5). Ce qui suit est l'état de la note à la date du 2026-10-23.
 
 ## Ou on en est
 
