@@ -245,6 +245,24 @@ contexte » vide empilé avec l'arme favorite à hauteur des voisines (pas de r�
 - Les écarts « vs habituel » des lignes de dimension et du socle restent masqués en échantillon
   faible (D6) ; non rouvert.
 
+## Amendement du 2026-10-26 (retours du user après E4)
+
+Branche `feat/briefing-socle-equilibre`, agent Sonnet piloté, vérifié dans Chrome.
+- [x] Socle équilibré : grille à colonnes égales par container queries (150 px mini, gap 8) ; une
+      ligne si tout tient, sinon deux lignes équilibrées (8 → 4+4, 7 → 4+3, 6 → 3+3, 5 → 3+2),
+      plancher 2 colonnes. Table littérale `SOCLE_GRID_CLASSES` recalculée par un test. Vérifié :
+      1 600 px → 8 sur une ligne (socle plafonné à 1 272 px) ; 1 250 px → 4+4 ; 500 px → 2 colonnes.
+- [x] « Séries marquantes » → « Séries » (intitulé sur deux lignes à 152 px) ; l'infobulle nomme
+      les séries marquantes (demande du user).
+- [x] D6 révisée par le user : en échantillon faible, plus rien n'est retiré (écarts, « Par… »,
+      « Par contexte » calculés comme au-delà de 10) ; la ligne « Échantillon faible » disparaît au
+      profit d'un triangle d'avertissement + infobulle sur la tuile Matchs. Vérifié côté page
+      (icône, libellé, pas de ligne à part) ; le rendu des cartes en échantillon faible attend un
+      serveur reconstruit sur cette branche (tests Go : mêmes règles D3-D5 qu'au-delà du seuil).
+- Gates : `go test ./internal/service/ ./internal/domain/ ./internal/api/handlers/` ok ;
+  `make openapi-check` ok (contrat inchangé) ; vitest `src/features/explorer src/lib/i18n` 350 tests ;
+  `tsc -b --force` et eslint sans erreur.
+
 ## Reprise de session
 
 Lire ce fichier (cases cochées), `git log --oneline -10` sur `feat/briefing-seuils` dans le
