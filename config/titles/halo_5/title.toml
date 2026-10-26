@@ -32,6 +32,12 @@ placement_matches = 10
 # (CSRSeasonIDForTitle → GetCSRSnapshots WHERE season_id) et ÉCRITURE (sync h5
 # persiste player_csr_snapshots.season_id = "h5-lifetime"). Saisons réelles = Phase 2.
 csr_season_id = "h5-lifetime"
+# Où le registre porte le MODE d'un match : "pair" (défaut, clé absente : la partie pair_*, Halo
+# Infinite) ou "game_variant" (la partie quand le registre en a une, sinon le type de jeu
+# game_variant_*). Halo 5 n'a pas de partie : son mode est le type de jeu. Lu par la source de
+# lecture des matchs, qui remplit canonical.MatchSummary.PairMode une fois pour toutes les pages ;
+# toute autre valeur fait échouer le chargement du manifeste.
+mode_source = "game_variant"
 # Préfixes de nom de fichier de capture APPARTENANT à Halo 5 (Windows Game Bar :
 # "Halo_5_Guardians-2019-12-12_22h27.mp4"). Routage de l'indexeur média (DEC-8,
 # plan résidus H5) : le dossier captures d'un joueur est partagé entre titres —

@@ -201,9 +201,9 @@ func TestAssetLabels_NoFRLabel(t *testing.T) {
 
 // ─── modeLabels ───────────────────────────────────────────────────────────
 
-func TestModeLabels_PrefersPairMode(t *testing.T) {
+func TestModeLabels_LitLeModeFourniParLaSource(t *testing.T) {
 	t.Parallel()
-	// PairMode défini → utilisé en priorité, GameVariant ignoré.
+	// Le mode est PairMode ; GameVariant (type de jeu exposé à part) n'y change rien.
 	r := canonical.PlayerMatchRow{
 		Summary: canonical.MatchSummary{
 			PairMode:    &canonical.AssetReference{DefaultLabel: "Arena:Slayer"},
@@ -212,36 +212,28 @@ func TestModeLabels_PrefersPairMode(t *testing.T) {
 	}
 	en, _ := modeLabels(r)
 	if en != "Arena:Slayer" {
-		t.Errorf("modeLabels: got %q, want Arena:Slayer (PairMode preferred)", en)
+		t.Errorf("modeLabels: got %q, want Arena:Slayer", en)
 	}
 }
 
-func TestModeLabels_FallbackGameVariant(t *testing.T) {
+func TestModeLabels_SansModeNeRepliePasSurGameVariant(t *testing.T) {
 	t.Parallel()
-	// PairMode nil → fallback GameVariant.
-	r := canonical.PlayerMatchRow{
-		Summary: canonical.MatchSummary{
-			GameVariant: &canonical.AssetReference{DefaultLabel: "Slayer Variant"},
-		},
-	}
-	en, _ := modeLabels(r)
-	if en != "Slayer Variant" {
-		t.Errorf("modeLabels fallback: got %q, want Slayer Variant", en)
-	}
-}
-
-func TestModeLabels_PairModeEmptyFallbackGameVariant(t *testing.T) {
-	t.Parallel()
-	// PairMode présent mais labels tous vides → fallback GameVariant.
-	r := canonical.PlayerMatchRow{
-		Summary: canonical.MatchSummary{
-			PairMode:    &canonical.AssetReference{DefaultLabel: ""},
-			GameVariant: &canonical.AssetReference{DefaultLabel: "Slayer Variant"},
-		},
-	}
-	en, _ := modeLabels(r)
-	if en != "Slayer Variant" {
-		t.Errorf("modeLabels empty PairMode: got %q, want Slayer Variant (fallback)", en)
+	// PairMode nil, ou sans libellé : pas de mode, même si GameVariant est nommé.
+	for name, pair := range map[string]*canonical.AssetReference{
+		"nil":         nil,
+		"sans nom":    {DefaultLabel: ""},
+		"UUID brut":   {DefaultLabel: "3f2a9c1e-7b4d-4c8e-9a1f-0d5e6b7c8d9e"},
+		"identifiant": {ID: "gv-1", Kind: "game_variant"},
+	} {
+		r := canonical.PlayerMatchRow{
+			Summary: canonical.MatchSummary{
+				PairMode:    pair,
+				GameVariant: &canonical.AssetReference{DefaultLabel: "Slayer Variant"},
+			},
+		}
+		if en, fr := modeLabels(r); en != "" || fr != "" {
+			t.Errorf("%s : modeLabels = (%q, %q), want vide (aucun repli sur GameVariant)", name, en, fr)
+		}
 	}
 }
 

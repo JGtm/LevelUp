@@ -9,17 +9,18 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/temporal"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/canonical"
 )
 
-func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
+func projectPlayerMatchRow(s playerMatchScanResult, modeSource title.ModeSource) canonical.PlayerMatchRow {
 	outcome := projectOutcome(s)
 	teams := projectTeamScores(s)
 	skillSnap := projectSkillSnapshot(s)
 	dmgDealt, dmgTaken := projectDamageStats(s)
 
 	return canonical.PlayerMatchRow{
-		Summary:    projectMatchSummary(s, outcome, teams),
+		Summary:    projectMatchSummary(s, outcome, teams, modeSource),
 		Self:       projectSelfParticipant(s, outcome, dmgDealt, dmgTaken),
 		Enrichment: projectEnrichment(s, skillSnap),
 	}
@@ -110,8 +111,12 @@ func projectDamageStats(s playerMatchScanResult) (*int, *int) {
 }
 
 // projectMatchSummary projette la section Summary depuis les champs scannés.
-func projectMatchSummary(s playerMatchScanResult, outcome canonical.Outcome, teams []canonical.TeamSnapshot) canonical.MatchSummary {
+// Le mode (PairMode) suit la source déclarée par le titre (ModeAssetReference).
+func projectMatchSummary(
+	s playerMatchScanResult, outcome canonical.Outcome, teams []canonical.TeamSnapshot, modeSource title.ModeSource,
+) canonical.MatchSummary {
 	durationPtr := s.durationSeconds
+	gameVariant := AssetReference("game_variant", s.variantID, s.variantName, "")
 	return canonical.MatchSummary{
 		MatchID:         s.matchID,
 		StartedAtUTC:    s.startTime,
@@ -119,14 +124,15 @@ func projectMatchSummary(s playerMatchScanResult, outcome canonical.Outcome, tea
 		MatchType:       MatchTypeFromFlags(s.isRanked, s.isFirefight),
 		Playlist:        AssetReference("playlist", s.playlistID, s.playlistName, s.playlistNameFR),
 		Map:             AssetReference("map", s.mapID, s.mapName, s.mapNameFR),
-		GameVariant:     AssetReference("game_variant", s.variantID, s.variantName, ""),
+		GameVariant:     gameVariant,
 		RoundsTotal:     nonNegPtr(s.roundsTotal),
-		PairMode:        AssetReference("pair_mode", s.pairID, s.pairName, s.pairNameFR),
-		IsRanked:        &s.isRanked,
-		IsPvE:           &s.isFirefight,
-		Outcome:         outcome,
-		Teams:           teams,
-		T0Ms:            nullInt64ToInt64Ptr(s.t0Ms),
+		PairMode: ModeAssetReference(modeSource,
+			AssetReference("pair_mode", s.pairID, s.pairName, s.pairNameFR), gameVariant),
+		IsRanked: &s.isRanked,
+		IsPvE:    &s.isFirefight,
+		Outcome:  outcome,
+		Teams:    teams,
+		T0Ms:     nullInt64ToInt64Ptr(s.t0Ms),
 	}
 }
 

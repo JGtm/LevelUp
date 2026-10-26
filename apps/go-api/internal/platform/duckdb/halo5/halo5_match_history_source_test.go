@@ -13,6 +13,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/canonical"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -77,7 +78,7 @@ func newH5HistorySource(t *testing.T, gamertag string) *Halo5MatchHistorySource 
 	t.Helper()
 	mem := openMemSQL(t)
 	seedH5SharedHistory(t, mem)
-	return NewHalo5MatchHistorySource(&memSharedReader{mem}, gamertag)
+	return NewHalo5MatchHistorySource(&memSharedReader{mem}, gamertag, title.ModeSourceGameVariant)
 }
 
 // TestHalo5MatchHistory_LatestN : matchIDs nil → tous les matchs du joueur, DESC.
@@ -206,12 +207,35 @@ func TestHalo5MatchHistory_UnknownPlayer_Empty(t *testing.T) {
 func TestHalo5MatchHistory_EmptyGamertag_NeutralEmpty(t *testing.T) {
 	mem := openMemSQL(t)
 	seedH5SharedHistory(t, mem)
-	src := NewHalo5MatchHistorySource(&memSharedReader{mem}, "   ")
+	src := NewHalo5MatchHistorySource(&memSharedReader{mem}, "   ", title.ModeSourceGameVariant)
 	got, err := src.GetMatchSummaries(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("GetMatchSummaries: %v", err)
 	}
 	if got != nil {
 		t.Errorf("gamertag vide → nil, got %+v", got)
+	}
+}
+
+// TestHalo5MatchHistory_ModeIsGameVariant : sans partie au registre, le mode est le type de jeu ;
+// une partie présente garde la priorité ; ni l'un ni l'autre = pas de mode.
+func TestHalo5MatchHistory_ModeIsGameVariant(t *testing.T) {
+	src := newH5HistorySource(t, "JGtm")
+	got, err := src.GetMatchSummaries(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("GetMatchSummaries: %v", err)
+	}
+	by := map[string]canonical.MatchSummary{}
+	for _, s := range got {
+		by[s.MatchID] = s
+	}
+	if m := by["m2"].PairMode; m == nil || m.ID != "gv-ctf" || m.DefaultLabel != "CTF" || m.Kind != "game_variant" {
+		t.Errorf("m2 (type de jeu, sans partie) : PairMode = %+v, want gv-ctf/CTF de Kind game_variant", m)
+	}
+	if m := by["m1"].PairMode; m == nil || m.ID != "pair-1" || m.Kind != "pair_mode" {
+		t.Errorf("m1 (partie présente) : PairMode = %+v, want la partie pair-1", m)
+	}
+	if m := by["m3"].PairMode; m != nil {
+		t.Errorf("m3 (ni partie ni type de jeu) : PairMode = %+v, want nil", m)
 	}
 }

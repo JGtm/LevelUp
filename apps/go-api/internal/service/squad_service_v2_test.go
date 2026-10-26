@@ -750,34 +750,49 @@ func TestFilterRowsByCascade_NilModeExcluded(t *testing.T) {
 	}
 }
 
-// rowWithGameVariant construit une row SANS PairMode dont Summary.GameVariant
-// porte les labels EN/FR — modèle Halo 5 (pas de pair, mode dérivé du game_variant).
+// rowWithGameVariant construit une row d'un titre dont le mode est le type de jeu (Halo 5) : la source
+// de lecture pose Summary.PairMode comme copie de Summary.GameVariant (Kind game_variant).
 func rowWithGameVariant(matchID, variantEN, variantFR string) canonical.PlayerMatchRow {
 	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	r := row(matchID, t0, canonical.OutcomeWin)
-	r.Summary.GameVariant = &canonical.AssetReference{
-		Kind:         "game_variant",
-		ID:           "gv-" + matchID,
-		DefaultLabel: variantEN,
-		Labels:       map[string]string{"en": variantEN, "fr": variantFR},
+	ref := func() *canonical.AssetReference {
+		return &canonical.AssetReference{
+			Kind:         "game_variant",
+			ID:           "gv-" + matchID,
+			DefaultLabel: variantEN,
+			Labels:       map[string]string{"en": variantEN, "fr": variantFR},
+		}
 	}
+	r.Summary.GameVariant = ref()
+	r.Summary.PairMode = ref()
 	return r
 }
 
-// TestFilterRowsByCascade_ModeGameVariantFallback : titre sans pair (Halo 5) — le
-// filtre modes matche sur le game_variant NORMALISÉ, parité avec le chokepoint
-// filters_service.modeUI (Value d'option = NormalizeModeLabel(game_variant_fr)).
-func TestFilterRowsByCascade_ModeGameVariantFallback(t *testing.T) {
+// TestFilterRowsByCascade_ModeFourniParLeTypeDeJeu : titre dont le mode est le type de jeu (Halo 5) — le
+// filtre modes matche sur le libellé FR de ce mode, comme pour une partie. La normalisation d'un nom de
+// type de jeu (préfixe technique) est faite UNE fois à l'enrichissement des libellés
+// (TestEnrichCanonicalAssetTranslations_ModeFromGameVariantNormalise), pas par le filtre.
+func TestFilterRowsByCascade_ModeFourniParLeTypeDeJeu(t *testing.T) {
 	t.Parallel()
-	// Variant FR porteur d'un préfixe technique → normalisé en "Assassin".
 	rows := []canonical.PlayerMatchRow{
-		rowWithGameVariant("m1", "HaloMultiplayer:Slayer", "HaloMultiplayer:Assassin"),
-		rowWithGameVariant("m2", "HaloMultiplayer:CTF", "HaloMultiplayer:Capture du drapeau"),
+		rowWithGameVariant("m1", "Slayer", "Assassin"),
+		rowWithGameVariant("m2", "CTF", "Capture du drapeau"),
 	}
 
 	got := filtrerCascade(rows, nil, nil, nil, []string{"Assassin"})
 	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
-		t.Errorf("want only m1 (game_variant → Assassin), got %v", matchIDs(got))
+		t.Errorf("want only m1 (mode type de jeu → Assassin), got %v", matchIDs(got))
+	}
+}
+
+// TestFilterRowsByCascade_SansModeNeRepliePasSurGameVariant : un match sans mode (PairMode nil) ne
+// ressort pas sous le nom de son type de jeu, même quand ce nom est celui d'une option.
+func TestFilterRowsByCascade_SansModeNeRepliePasSurGameVariant(t *testing.T) {
+	t.Parallel()
+	r := rowWithGameVariant("m1", "Slayer", "Assassin")
+	r.Summary.PairMode = nil
+	if got := filtrerCascade([]canonical.PlayerMatchRow{r}, nil, nil, nil, []string{"Assassin"}); len(got) != 0 {
+		t.Errorf("aucun repli sur GameVariant attendu, got %v", matchIDs(got))
 	}
 }
 

@@ -22,9 +22,12 @@ type MatchSummary struct {
 	Playlist        *AssetReference
 	Map             *AssetReference
 	GameVariant     *AssetReference
-	// PairMode est la catégorie humaine du mode (ex: "Slayer", "CTF") extraite
-	// de pair_name / pair_name_fr. Distinct de GameVariant (variante technique
-	// avec préfixe titre, ex: "HaloMultiplayer:Slayer"). Nil si non disponible.
+	// PairMode est le mode du match (ex: "Slayer", "CTF"), fourni par la source de
+	// lecture du titre : la partie (pair_name / pair_name_fr) pour Halo Infinite, le
+	// type de jeu pour Halo 5 (copie de GameVariant, Kind "game_variant", qui n'a pas de
+	// partie). Le nom du champ est historique. Les pages le lisent tel quel, sans repli
+	// sur GameVariant (ratchet archlint/mode_gamevariant_fallback_test.go). Nil si le
+	// titre ne porte aucun mode pour ce match.
 	PairMode *AssetReference
 	IsRanked *bool
 	IsPvE    *bool

@@ -348,3 +348,50 @@ func TestMediaFilenamePrefixes_ParsedAndForeign(t *testing.T) {
 		}
 	}
 }
+
+// [title].mode_source : absent = la partie ; "pair" et "game_variant" acceptés ; toute autre valeur est une
+// erreur de chargement (jamais un défaut silencieux).
+func TestLoadTitleManifestFromBytes_ModeSource(t *testing.T) {
+	manifest := func(extra string) []byte {
+		return []byte("[meta]\ntitle_slug = \"x\"\nschema_version = 1\n[title]\nname = \"X\"\nstatus = \"active\"\n" + extra)
+	}
+	for extra, want := range map[string]ModeSource{
+		"":                             ModeSourcePair,
+		`mode_source = "pair"`:         ModeSourcePair,
+		`mode_source = "game_variant"`: ModeSourceGameVariant,
+	} {
+		desc, err := LoadTitleManifestFromBytes("title.toml", "x", manifest(extra))
+		if err != nil {
+			t.Fatalf("%q : %v", extra, err)
+		}
+		if desc.ModeSource != want {
+			t.Errorf("%q : ModeSource = %q, want %q", extra, desc.ModeSource, want)
+		}
+	}
+	for _, bad := range []string{`mode_source = "variant"`, `mode_source = "Pair"`, `mode_source = "gamevariant"`} {
+		if _, err := LoadTitleManifestFromBytes("title.toml", "x", manifest(bad)); err == nil {
+			t.Errorf("%q : valeur inconnue acceptée", bad)
+		}
+	}
+}
+
+// Les manifestes réels déclarent la source du mode du titre : Halo 5 = type de jeu ; Halo Infinite (descripteur
+// built-in) et un titre inconnu = la partie.
+func TestModeSourceFor_ManifestsReels(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..", "..") // internal/domain/title -> racine du dépôt
+	h5, err := LoadTitleManifest(root, "halo_5")
+	if err != nil {
+		t.Fatalf("manifeste halo_5 : %v", err)
+	}
+	reg := NewRegistry()
+	reg.Register(h5)
+	if got := reg.ModeSourceFor("halo_5"); got != ModeSourceGameVariant {
+		t.Errorf("halo_5 : %q, want %q", got, ModeSourceGameVariant)
+	}
+	if got := reg.ModeSourceFor(DefaultSlug); got != ModeSourcePair {
+		t.Errorf("halo_infinite : %q, want %q", got, ModeSourcePair)
+	}
+	if got := reg.ModeSourceFor("inconnu"); got != ModeSourcePair {
+		t.Errorf("titre inconnu : %q, want %q", got, ModeSourcePair)
+	}
+}
