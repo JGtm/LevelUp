@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "89f3b8ad-6bbf-4652-8d67-8e5330294de4",
+  "mapNames": [
+    "Kusini Bay",
+    "89f3b8ad-6bbf-4652-8d67-8e5330294de4_map"
+  ],
+  "image": "89f3b8ad-6bbf-4652-8d67-8e5330294de4.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-10-26T12:20:10.4251264Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.05613821792602539,
+    "originX": -45.551407062530515,
+    "originY": 75.12224029159546,
+    "widthPx": 1555,
+    "heightPx": 2173,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 26,
+    "anchorsInFrame": 26,
+    "anchorsWithGround": 26,
+    "anchorMedianGapM": -0.2899993079207661,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 62.019967041015626,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.37945791600308293,
+    "covered": true,
+    "cellsSubstituted": 876060,
+    "forgeObjects": 5447,
+    "forgeObjectsDrawn": 5361,
+    "forgeObjectsWithoutModel": 64,
+    "forgeDeathVolumes": 22
+  }
+}

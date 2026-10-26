@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "module": "c4cd9e46-3666-4d89-98ec-3b7b2c7005fb",
+  "mapNames": [
+    "Gondolas",
+    "c4cd9e46-3666-4d89-98ec-3b7b2c7005fb_map"
+  ],
+  "image": "c4cd9e46-3666-4d89-98ec-3b7b2c7005fb.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-10-26T12:19:59.7879207Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.0503480962117513,
+    "originX": -18.92096706326803,
+    "originY": -45.56171940867108,
+    "widthPx": 606,
+    "heightPx": 2652,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 4,
+    "anchorsInFrame": 4,
+    "anchorsWithGround": 0,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 162.55214782714845,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.25910574168638684,
+    "covered": false,
+    "forgeObjects": 2094,
+    "forgeObjectsDrawn": 2018,
+    "forgeObjectsWithoutModel": 38,
+    "forgeDeathVolumes": 38
+  }
+}
