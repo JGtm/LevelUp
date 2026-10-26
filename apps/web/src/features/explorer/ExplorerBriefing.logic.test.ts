@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { favoriteWeaponSlots, signOf } from './ExplorerBriefing.logic'
+import {
+  dimensionCardLines,
+  favoriteWeaponSlots,
+  INSUFFICIENT_CARD_LINES,
+  signOf,
+} from './ExplorerBriefing.logic'
 
 // formatSignedFixed a migré vers `@/lib/formatters` (number.ts) — testé dans
 // `lib/formatters/formatters.test.ts`.
@@ -53,5 +58,16 @@ describe('favoriteWeaponSlots', () => {
   it('retient le maximum quand dimensions et Classement coexistent', () => {
     expect(favoriteWeaponSlots({ dimensionLines: [6], rankedLines: 3, stacked: false })).toBe(2)
     expect(favoriteWeaponSlots({ dimensionLines: [3], rankedLines: 6, stacked: true })).toBe(2)
+  })
+
+  it('une carte de dimension en état vide pèse INSUFFICIENT_CARD_LINES lignes, pas zéro', () => {
+    expect(INSUFFICIENT_CARD_LINES).toBe(2)
+    expect(dimensionCardLines({ entries: [], insufficient: true })).toBe(INSUFFICIENT_CARD_LINES)
+    expect(dimensionCardLines({ entries: [], insufficient: false })).toBe(0)
+    expect(dimensionCardLines({ entries: [{}, {}, {}] })).toBe(3)
+    expect(dimensionCardLines({ entries: null })).toBe(0)
+    // Une rangée faite d'une seule carte en état vide n'offre pas de quoi porter une 2e arme.
+    const lines = [{ entries: [], insufficient: true }].map(dimensionCardLines)
+    expect(favoriteWeaponSlots({ dimensionLines: lines, rankedLines: 0, stacked: false })).toBe(1)
   })
 })

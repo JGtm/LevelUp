@@ -7,9 +7,13 @@
 // d'échantillon. Ce N'EST PAS une page Synthèse (cf.
 // PLAN_EXPLORER_BRIEFING_CARDS_2026-07.md).
 //
-// Tous les blocs (hors socle KPIs/période) sont optionnels : un bloc nil
-// = module non émis (dégradation par omission, jamais de N/A affiché). Les
-// unités suivent ADR 0006 : WinRate en ratio 0..1 (le front formate en %).
+// Absence et état vide : un bloc nil = module non émis, légitime seulement quand
+// il n'a rien à comparer (axe déjà filtré, une seule valeur, un contexte à zéro
+// match, ou échantillon faible pour les blocs comparatifs). Une carte « Par… »
+// ou « Par contexte » qui aurait de quoi comparer sans atteindre le seuil est
+// servie avec Insufficient=true : le front l'affiche en état vide expliqué, jamais
+// omise en silence. Les unités suivent ADR 0006 : WinRate en ratio 0..1 (le front
+// formate en %).
 package domain
 
 import "time"
@@ -17,37 +21,47 @@ import "time"
 // ExplorerBriefing est le bloc de briefing servi au-dessus du tableau Explorer.
 // Émis uniquement quand la requête le demande (include_briefing=true) et que le
 // sous-ensemble filtré est non vide. Les modules conditionnels sont nil quand
-// leur seuil d'échantillon / capability n'est pas atteint.
+// leur capability n'est pas exposée ou qu'ils n'ont rien à montrer ; les blocs
+// comparatifs (Baseline, Dimensions, ContextSplit) sont nil en échantillon faible.
 type ExplorerBriefing struct {
 	// Scope : agrégats du sous-ensemble filtré (socle) calculés sur les MÊMES raw
 	// rows que le tableau — le compteur, le bilan et les indicateurs sont donc
 	// cohérents avec « N matchs trouvés » et avec les modules baseline/dimensions.
 	Scope *ExplorerBriefingScope `json:"scope,omitempty"`
 	// LowSample : vrai quand le sous-ensemble est sous MinBriefingModulesMatches.
-	// Dans ce cas seuls KPIs + période sont émis (les autres blocs nil).
+	// Dans ce cas seuls les blocs qui comparent (Baseline, Dimensions, ContextSplit)
+	// sont nil ; le socle, le Classement, l'arme favorite, les séries et les moments
+	// forts restent émis.
 	LowSample bool `json:"low_sample,omitempty"`
+	// MinGroupMatches : seuil de matchs par groupe (cartes « Par… ») et par côté
+	// (« Par contexte »), servi au front pour ses libellés d'état vide. Posé hors
+	// échantillon faible ; 0 (omis) sinon.
+	MinGroupMatches int `json:"min_group_matches,omitempty"`
 	// PeriodStart/PeriodEnd : bornes temporelles (min/max start_time) du scope.
 	PeriodStart *time.Time `json:"period_start,omitempty"`
 	PeriodEnd   *time.Time `json:"period_end,omitempty"`
 	// Baseline : comparaison à l'historique complet (post-exclusions). Nil si
 	// low sample.
 	Baseline *ExplorerBriefingBaseline `json:"baseline,omitempty"`
-	// Dimensions : notes par dimension libre (carte/mode/playlist). Vide/nil si
-	// low sample ou aucune dimension libre.
+	// Dimensions : cartes par dimension libre (carte/mode/playlist). Une dimension
+	// à moins de 2 valeurs dans le scope est absente ; une dimension à 2 valeurs ou
+	// plus sans 2 groupes qualifiés est présente avec Insufficient=true. Vide/nil
+	// si low sample ou aucune dimension libre.
 	Dimensions []ExplorerBriefingDimension `json:"dimensions,omitempty"`
 	// Ranked : module « Classement » (progression de paliers PAR CHAÎNE de playlist).
 	// Nil si le titre n'expose pas la capability ranked ou si aucun match rangé
 	// dans le scope.
 	Ranked *ExplorerBriefingRanked `json:"ranked,omitempty"`
-	// ContextSplit : comparaison solo vs escouade du scope. Nil si non pertinent
-	// (un sous-groupe sous le seuil, ou scope déjà réduit à un seul contexte).
+	// ContextSplit : comparaison solo vs escouade du scope. Nil si un contexte n'a
+	// aucun match (scope mono-contexte) ou en échantillon faible ; Insufficient=true
+	// si les deux contextes existent mais que l'un est sous le seuil.
 	ContextSplit *ExplorerBriefingContextSplit `json:"context_split,omitempty"`
 	// Streaks : séries extrêmes du scope (meilleure série de victoires / pire série
-	// de défaites), calculées sur TOUT le scope filtré (P-9). Nil si non pertinent
-	// (low sample, ou aucune row datée). Un segment à zéro est omis côté front.
+	// de défaites), calculées sur TOUT le scope filtré (P-9). Nil si aucune row
+	// datée. Un segment à zéro est omis côté front.
 	Streaks *ExplorerBriefingStreaks `json:"streaks,omitempty"`
 	// Dominance : compteurs de moments forts (DominanceFlag 1..7) du scope. Nil si
-	// non pertinent (low sample, ou tous les compteurs à zéro).
+	// tous les compteurs sont à zéro.
 	Dominance *ExplorerBriefingDominance `json:"dominance,omitempty"`
 	// Weapons : arme(s) ayant produit le plus de frags du joueur sur le scope. Nil
 	// si aucun frag n'a pu être rattaché à une arme nommée (module non émis).
@@ -142,8 +156,14 @@ type ExplorerBriefingBaseline struct {
 // ExplorerBriefingDimension porte les entrées d'une dimension libre.
 type ExplorerBriefingDimension struct {
 	// Dimension : "map" | "mode" | "playlist".
-	Dimension string                           `json:"dimension"`
-	Entries   []ExplorerBriefingDimensionEntry `json:"entries"`
+	Dimension string `json:"dimension"`
+	// Entries : groupes qualifiés (top/flop). Toujours sérialisé : slice vide (jamais
+	// nil) quand Insufficient.
+	Entries []ExplorerBriefingDimensionEntry `json:"entries"`
+	// Insufficient : vrai quand le scope porte au moins 2 valeurs de la dimension
+	// mais moins de 2 groupes à MinDimensionGroupMatches matchs ; le front rend la
+	// carte en état vide expliqué.
+	Insufficient bool `json:"insufficient,omitempty"`
 }
 
 // ExplorerBriefingDimensionEntry est un groupe (carte/mode/playlist) qualifié.
@@ -206,11 +226,14 @@ type ExplorerBriefingRankedKind struct {
 }
 
 // ExplorerBriefingContextSplit compare les performances du scope selon le
-// contexte social (solo vs escouade, signal IsWithFriends). Émis UNIQUEMENT
-// quand les deux sous-groupes atteignent minContextSplitMatches (scope
-// réellement multi-contexte ET fiabilité minimale) ; nil sinon (dégradation par
-// omission). Sans capability rang requise (IsWithFriends dispo tous titres).
+// contexte social (solo vs escouade, signal IsWithFriends). Émis quand les deux
+// contextes ont au moins un match ; nil sinon (scope mono-contexte). Sans
+// capability rang requise (IsWithFriends dispo tous titres).
 type ExplorerBriefingContextSplit struct {
+	// Insufficient : vrai quand un des deux contextes est sous le seuil
+	// (MinGroupMatches du briefing). Seuls Solo.Matches et Squad.Matches sont alors
+	// renseignés : le front les donne dans l'état vide.
+	Insufficient bool `json:"insufficient,omitempty"`
 	// Solo : agrégats des matchs joués en solo (IsWithFriends = false).
 	Solo ExplorerBriefingContextGroup `json:"solo"`
 	// Squad : agrégats des matchs joués en escouade (IsWithFriends = true).

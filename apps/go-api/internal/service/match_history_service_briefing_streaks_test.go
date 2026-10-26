@@ -247,8 +247,8 @@ func TestBuildExplorerBriefing_StreaksAndDominanceHeterogeneous(t *testing.T) {
 	}
 }
 
-// Sous low_sample, les modules Streaks/Dominance sont omis (retour anticipé).
-func TestBuildExplorerBriefing_StreaksOmittedWhenLowSample(t *testing.T) {
+// Sous low_sample, Streaks/Dominance restent servis (D6 : ils ne comparent rien).
+func TestBuildExplorerBriefing_StreaksKeptWhenLowSample(t *testing.T) {
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 8; i++ {
 		r := briefingOutcomeRaw("m"+string(rune('a'+i)), 10-i, domain.OutcomeWin)
@@ -262,7 +262,10 @@ func TestBuildExplorerBriefing_StreaksOmittedWhenLowSample(t *testing.T) {
 	if !b.LowSample {
 		t.Fatal("attendu LowSample (scope < seuil modules)")
 	}
-	if b.Streaks != nil || b.Dominance != nil {
-		t.Errorf("Streaks/Dominance doivent être nil sous low_sample, got streaks=%+v dominance=%+v", b.Streaks, b.Dominance)
+	if b.Streaks == nil || b.Dominance == nil {
+		t.Fatalf("Streaks/Dominance doivent être servis sous low_sample, got streaks=%+v dominance=%+v", b.Streaks, b.Dominance)
+	}
+	if b.Streaks.BestWinStreak != 8 || b.Dominance.Dominations != 8 {
+		t.Errorf("compteurs attendus 8/8, got streaks=%+v dominance=%+v", b.Streaks, b.Dominance)
 	}
 }

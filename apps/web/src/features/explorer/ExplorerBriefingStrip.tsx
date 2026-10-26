@@ -6,11 +6,15 @@
  * triptyques « min · moyenne · max » (DP-1), Durée totale ; puis en cascade par
  * priorité, les 3 tiennent (DP-2) : Séries marquantes, Pic rang, Pic MMR — avec
  * deltas vs baseline personnelle. Les modules « Par… » (dimensions, « Par contexte »,
- * Classement par chaîne) sont rendus par ExplorerBriefingModules sous le socle. En
- * low_sample : seules Matchs / Taux de victoire / FDA / Perf.
+ * Classement par chaîne), l'arme favorite et les moments forts sont rendus par
+ * ExplorerBriefingModules sous le socle.
  *
- * Dégradation : briefing absent → rien ; low_sample → socle réduit + mention
- * échantillon faible, aucun module. Aucune couleur hex : tokens sémantiques.
+ * Dégradation : briefing absent → rien. En échantillon faible (low_sample) le socle
+ * reste complet (Durée, Séries, Pic rang, Pic MMR) et les modules sont rendus tels que
+ * le backend les émet : seuls manquent les blocs qui COMPARENT (écarts « vs habituel »,
+ * cartes « Par… », « Par contexte »), sans état vide — la mention « Échantillon faible
+ * (N matchs) », placée au-dessus des modules, est l'explication unique. Aucune couleur
+ * hex : tokens sémantiques.
  */
 import type { ReactNode } from 'react'
 
@@ -114,10 +118,10 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
 
   // Cascade des tuiles conditionnelles (DP-2) : collectées par PRIORITÉ décroissante
   // (Séries marquantes > Pic rang > Pic MMR) et TOUTES rendues si présentes → socle
-  // plafonné à 8 (5 base hors low_sample + 3 ; le retrait du Pic FDA libère le slot,
-  // Pic MMR redevient visible). Omises entièrement en low_sample.
+  // plafonné à 8 (5 base + 3 ; le retrait du Pic FDA libère le slot, Pic MMR redevient
+  // visible). Rendues aussi en échantillon faible : elles décrivent le scope sans le comparer.
   const conditionalTiles: ReactNode[] = []
-  if (scope && !lowSample) {
+  if (scope) {
     if (showStreaks && streaks != null) {
       conditionalTiles.push(
         <div key="streaks" className={SOCLE_TILE_WIDE}>
@@ -256,8 +260,8 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
           </div>
         )}
 
-        {/* Durée totale : tuile de base hors low_sample (Pic FDA fusionné dans le triptyque FDA) */}
-        {scope && !lowSample && (
+        {/* Durée totale : tuile de base, aussi en échantillon faible (Pic FDA fusionné dans le triptyque FDA) */}
+        {scope && (
           <div className={SOCLE_TILE}>
             <DurationTile seconds={scope.total_duration_seconds} t={t} />
           </div>
@@ -267,14 +271,14 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
             {conditionalTiles}
           </div>
 
-          {/* Échantillon faible : socle seul + mention ; sinon modules conditionnels. */}
-          {briefing.low_sample ? (
+          {/* Échantillon faible : mention au-dessus des modules (le backend n'y émet que
+              ceux qui ne comparent rien) ; elle seule explique l'absence des cartes « Par… ». */}
+          {lowSample && (
             <p className="text-2xs text-muted-foreground">
               {t('explorer.briefing.low_sample', { n: matchesCount })}
             </p>
-          ) : (
-            <ExplorerBriefingModules briefing={briefing} t={t} hideDelta={fullHistory} />
           )}
+          <ExplorerBriefingModules briefing={briefing} t={t} hideDelta={fullHistory} />
         </>
       )}
     </div>

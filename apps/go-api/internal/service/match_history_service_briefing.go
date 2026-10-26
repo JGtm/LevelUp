@@ -18,33 +18,34 @@ package service
 
 import (
 	"context"
-	"sort"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/breakdown"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
 
 // Seuils nommés du briefing (DEC-4 : pas de magic numbers).
 const (
-	// MinBriefingModulesMatches est le seuil sous lequel le briefing ne sert que
-	// le socle (KPIs + période) avec LowSample=true ; baseline / dimensions /
-	// classé sont omis. Aligné sur analysis.MinMatchesForRelative (activation du
-	// score relatif).
+	// MinBriefingModulesMatches est le seuil sous lequel le briefing est en
+	// échantillon faible (LowSample=true) : les blocs qui COMPARENT (écarts à la
+	// baseline, cartes « Par… », « Par contexte ») ne sont pas émis ; le socle, le
+	// Classement, l'arme favorite, les séries et les moments forts le sont. Aligné
+	// sur analysis.MinMatchesForRelative (activation du score relatif).
 	MinBriefingModulesMatches = analysis.MinMatchesForRelative
-	// MinDimensionGroupMatches est le seuil sous lequel un groupe (carte/mode/
-	// playlist) n'a pas de note et n'apparaît pas en top/flop.
-	MinDimensionGroupMatches = 10
+	// MinDimensionGroupMatches est le nombre minimal de matchs d'un groupe (carte/
+	// mode/playlist) pour avoir une note et entrer en top/flop. Une carte « Par… »
+	// compare au moins deux groupes qualifiés ; en deçà elle est servie en état
+	// vide (Insufficient).
+	MinDimensionGroupMatches = 5
 	// dimensionTopFlopCount : nombre d'entrées top ET flop par dimension (DEC-8).
 	dimensionTopFlopCount = 3
 	// MinRankedChainMatches est le seuil de pertinence d'une chaîne de Classement
-	// (rating_type, playlist_group), aligné sur le pattern dimensions
-	// (MinDimensionGroupMatches) pour éviter un littéral 10 dupliqué (CLAUDE.md §6).
-	// Découpler en littéral nommé distinct si la revue veut un seuil ranked propre.
-	MinRankedChainMatches = MinDimensionGroupMatches
+	// (rating_type, playlist_group). Propre au module Classement : indépendant de
+	// MinDimensionGroupMatches (une chaîne de rang se juge sur une progression, pas
+	// sur un groupe comparé).
+	MinRankedChainMatches = 10
 	// RankedChainMaxCount est le nombre max de chaînes de Classement affichées
 	// (parité dimensionTopFlopCount) ; ajustable en revue visuelle.
 	RankedChainMaxCount = 3
@@ -55,7 +56,11 @@ const (
 //   - filtered : sous-ensemble filtré (scope) en raw rows (libellés FR + start_time).
 //   - allRaw   : historique complet post-exclusions (baseline DEC-3) en raw rows.
 //
-// Retourne nil si le scope est vide. LowSample (scope < seuil) → socle seul.
+// Retourne nil si le scope est vide. Toujours calculés, même en échantillon faible
+// (< MinBriefingModulesMatches) : Classement (si rankedCapable), Arme favorite,
+// Séries, Moments forts, car ils décrivent le scope sans le comparer. Seulement hors
+// échantillon faible : Baseline, Dimensions, ContextSplit et MinGroupMatches (seuil
+// servi au front pour ses libellés d'état vide).
 func (s *MatchHistoryService) buildExplorerBriefing(
 	ctx context.Context,
 	filtered, allRaw []domain.MatchHistoryRawRow,
@@ -66,16 +71,16 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	b := &domain.ExplorerBriefing{Scope: buildBriefingScope(filtered)}
 	b.PeriodStart, b.PeriodEnd = scopePeriod(filtered)
 	b.LowSample = len(filtered) < MinBriefingModulesMatches
-	if b.LowSample {
-		return b
+	if !b.LowSample {
+		b.Baseline = buildBriefingBaseline(filtered, allRaw)
+		b.Dimensions = buildBriefingDimensions(filtered, allRaw)
+		// Split solo/escouade : aucun gate capability (P-7), omission si un côté est vide.
+		b.ContextSplit = buildBriefingContextSplit(filtered)
+		b.MinGroupMatches = MinDimensionGroupMatches
 	}
-	b.Baseline = buildBriefingBaseline(filtered, allRaw)
-	b.Dimensions = buildBriefingDimensions(filtered, allRaw)
 	if s.rankedCapable {
 		b.Ranked = buildBriefingRanked(ctx, filtered)
 	}
-	// Split solo/escouade : aucun gate capability (P-7), omission si non pertinent.
-	b.ContextSplit = buildBriefingContextSplit(filtered)
 	// Arme favorite : SEUL module du briefing qui interroge la base (agrégat des
 	// frags par arme sur les matchs du scope). Best-effort strict — repo absent,
 	// capability manquante ou erreur → bloc nil, le reste du briefing est servi.
@@ -293,157 +298,6 @@ func aggregateRawStats(rows []domain.MatchHistoryRawRow) rawAgg {
 	return out
 }
 
-// buildBriefingDimensions émet une carte par dimension LIBRE (≥ 2 valeurs
-// distinctes dans le scope, DEC-8) parmi carte / mode / playlist. Par dimension :
-// top 3 + flop 3 des groupes qualifiés (≥ MinDimensionGroupMatches), triés par
-// delta winrate vs baseline.
-func buildBriefingDimensions(scope, all []domain.MatchHistoryRawRow) []domain.ExplorerBriefingDimension {
-	if len(scope) == 0 {
-		return nil
-	}
-	scopeRows := rawRowsToBreakdownRows(scope)
-	allRows := rawRowsToBreakdownRows(all)
-	// Plein historique = scope égal à l'historique complet (un filtre ne peut que
-	// rétrécir → cardinalités égales ⟺ ensembles identiques). Les deltas vs baseline
-	// sont alors tous nuls et le tri de CompareByKey dégénère : la sélection top/flop
-	// bascule sur le taux de victoire (P-8, cf. buildDimension).
-	fullHistory := len(scope) == len(all)
-	out := make([]domain.ExplorerBriefingDimension, 0, 3)
-	if d := buildDimension("map", mapKeyed(breakdown.ByMap(scopeRows)), mapKeyed(breakdown.ByMap(allRows)), fullHistory); d != nil {
-		out = append(out, *d)
-	}
-	if d := buildDimension("mode", modeKeyed(breakdown.ByMode(scopeRows)), modeKeyed(breakdown.ByMode(allRows)), fullHistory); d != nil {
-		out = append(out, *d)
-	}
-	if d := buildDimension("playlist", playlistKeyed(breakdown.ByPlaylist(scopeRows)), playlistKeyed(breakdown.ByPlaylist(allRows)), fullHistory); d != nil {
-		out = append(out, *d)
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
-}
-
-// buildDimension construit une dimension à partir de ses agrégats scope / historique
-// génériques par clé. Retourne nil si la dimension n'est pas libre (< 2 valeurs
-// distinctes) ou si aucune entrée qualifiée.
-func buildDimension(dim string, sessionKA, histKA []breakdown.KeyedAggregate, fullHistory bool) *domain.ExplorerBriefingDimension {
-	distinct := 0
-	for _, a := range sessionKA {
-		if a.Played > 0 {
-			distinct++
-		}
-	}
-	if distinct < 2 {
-		return nil
-	}
-	perfByKey := make(map[string]*float64, len(sessionKA))
-	for _, a := range sessionKA {
-		perfByKey[a.Key] = a.AvgPerformanceScore
-	}
-	deltas := breakdown.CompareByKey(sessionKA, histKA)
-	qualified := make([]breakdown.KeyedDelta, 0, len(deltas))
-	for _, d := range deltas {
-		if d.Session.Played >= MinDimensionGroupMatches {
-			qualified = append(qualified, d)
-		}
-	}
-	// En plein historique, tous les WinRateDelta valent 0 (scope == historique) et
-	// CompareByKey retombe sur un tri par clé (GUID de map → pseudo-aléatoire). On
-	// re-trie par taux de victoire du groupe décroissant (tie-break libellé) pour
-	// une sélection top/flop signifiante (P-8). Sous filtre : tri V1 (delta) conservé.
-	if fullHistory {
-		sort.SliceStable(qualified, func(i, j int) bool {
-			if qualified[i].Session.WinRate != qualified[j].Session.WinRate {
-				return qualified[i].Session.WinRate > qualified[j].Session.WinRate
-			}
-			return qualified[i].Label < qualified[j].Label
-		})
-	}
-	qualified = selectTopFlop(qualified, dimensionTopFlopCount)
-	entries := make([]domain.ExplorerBriefingDimensionEntry, 0, len(qualified))
-	for _, d := range qualified {
-		avgPerf := perfByKey[d.Key]
-		e := domain.ExplorerBriefingDimensionEntry{
-			Label:        d.Label,
-			Matches:      d.Session.Played,
-			WinRate:      d.Session.WinRate,
-			DeltaWinRate: d.WinRateDelta,
-			AvgPerf:      avgPerf,
-		}
-		if avgPerf != nil {
-			tier := int(analysis.PerfTier(*avgPerf))
-			e.NoteTier = &tier
-		}
-		entries = append(entries, e)
-	}
-	if len(entries) == 0 {
-		return nil
-	}
-	return &domain.ExplorerBriefingDimension{Dimension: dim, Entries: entries}
-}
-
-// selectTopFlop retourne les k premiers + k derniers éléments d'une liste triée.
-// Si la liste tient en 2*k, elle est retournée telle quelle (pas de recouvrement).
-func selectTopFlop[T any](items []T, k int) []T {
-	if len(items) <= 2*k {
-		return items
-	}
-	out := make([]T, 0, 2*k)
-	out = append(out, items[:k]...)
-	out = append(out, items[len(items)-k:]...)
-	return out
-}
-
-// ─── conversion raw row → breakdown.Row (libellés FR) ────────────────────────
-
-// rawRowsToBreakdownRows projette les raw rows vers breakdown.Row en résolvant
-// les libellés FR (MapNameFR / PairNameFR normalisé / PlaylistName coalescé).
-func rawRowsToBreakdownRows(rows []domain.MatchHistoryRawRow) []breakdown.Row {
-	out := make([]breakdown.Row, 0, len(rows))
-	for i := range rows {
-		r := &rows[i]
-		br := breakdown.Row{Outcome: rawOutcomeToCanonical(r.Outcome)}
-		if r.PerformanceScore != nil {
-			v := *r.PerformanceScore
-			br.PerformanceScore = &v
-		}
-		if r.MapID != nil {
-			br.MapID = *r.MapID
-		}
-		br.MapLabel = coalesceStr(r.MapNameFR, r.MapName)
-		// Mode : MÊME résolution que la colonne mode_ui du tableau — pair_name (FR)
-		// puis fallback game_variant (titres/matchs sans pair, ex. H5). Sans le
-		// fallback, les matchs dont le mode vient du game_variant sont écartés du
-		// regroupement et la dimension « par mode » peut dégénérer / disparaître.
-		// Convention centralisée — cf. analysis.ResolveModeUIWithVariant.
-		if modeUI := analysis.ResolveModeUIWithVariant(r.PairName, r.PairNameFR, r.GameVariantName, r.GameVariantNameFR); modeUI != nil {
-			br.ModeName = *modeUI
-		}
-		if r.PlaylistName != nil {
-			br.PlaylistName = *r.PlaylistName
-		}
-		out = append(out, br)
-	}
-	return out
-}
-
-// rawOutcomeToCanonical mappe le code outcome int (domain.Outcome*) vers l'enum
-// canonical.Outcome consommé par le package breakdown. "" si code inconnu.
-func rawOutcomeToCanonical(code int) canonical.Outcome {
-	switch code {
-	case domain.OutcomeWin:
-		return canonical.OutcomeWin
-	case domain.OutcomeLoss:
-		return canonical.OutcomeLoss
-	case domain.OutcomeDraw:
-		return canonical.OutcomeTie
-	case domain.OutcomeDNF:
-		return canonical.OutcomeDNF
-	}
-	return ""
-}
-
 // coalesceStr retourne le premier pointeur non nil / non vide, "" sinon. Unique
 // helper de coalescence *string→string du package service (l'ancien `coalesce`
 // 2-args a été fusionné ici — résultats identiques ; F4, revue 2026-07-17).
@@ -455,40 +309,4 @@ func coalesceStr(ptrs ...*string) string {
 		}
 	}
 	return ""
-}
-
-// mapKeyed / modeKeyed / playlistKeyed projettent les agrégats de dimension vers
-// la forme pivot KeyedAggregate (clé stable + libellé) pour breakdown.CompareByKey.
-func mapKeyed(aggs []breakdown.MapAggregate) []breakdown.KeyedAggregate {
-	out := make([]breakdown.KeyedAggregate, 0, len(aggs))
-	for _, a := range aggs {
-		label := a.MapLabel
-		if label == "" {
-			label = a.MapID
-		}
-		out = append(out, breakdown.KeyedAggregate{
-			Key: a.MapID, Label: label, Counts: a.Counts, AvgPerformanceScore: a.AvgPerformanceScore,
-		})
-	}
-	return out
-}
-
-func modeKeyed(aggs []breakdown.ModeAggregate) []breakdown.KeyedAggregate {
-	out := make([]breakdown.KeyedAggregate, 0, len(aggs))
-	for _, a := range aggs {
-		out = append(out, breakdown.KeyedAggregate{
-			Key: a.ModeName, Label: a.ModeName, Counts: a.Counts, AvgPerformanceScore: a.AvgPerformanceScore,
-		})
-	}
-	return out
-}
-
-func playlistKeyed(aggs []breakdown.PlaylistAggregate) []breakdown.KeyedAggregate {
-	out := make([]breakdown.KeyedAggregate, 0, len(aggs))
-	for _, a := range aggs {
-		out = append(out, breakdown.KeyedAggregate{
-			Key: a.PlaylistName, Label: a.PlaylistName, Counts: a.Counts, AvgPerformanceScore: a.AvgPerformanceScore,
-		})
-	}
-	return out
 }

@@ -5,8 +5,9 @@
 // IsWithFriends) car le briefing agrège sur TOUT le scope filtré, pas sur la
 // page de table visible : le front ne peut pas reconstituer les deux
 // sous-groupes depuis les lignes paginées. Aucun gating capability (P-7 :
-// IsWithFriends est disponible tous titres) — dégradation par omission si un
-// sous-groupe est trop petit ou vide.
+// IsWithFriends est disponible tous titres). Un scope mono-contexte (un côté à
+// zéro match) n'émet pas la carte ; un côté sous le seuil l'émet en état vide
+// (Insufficient) avec les deux comptes.
 package service
 
 import (
@@ -14,16 +15,16 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// minContextSplitMatches est le seuil (par sous-groupe) d'affichage de la carte
-// solo/escouade (D-B : défaut 10, aligné MinDimensionGroupMatches — même
-// fiabilité minimale qu'un groupe de dimension). La carte n'apparaît que si
-// CHAQUE contexte atteint ce seuil.
-const minContextSplitMatches = 10
+// minContextSplitMatches est le nombre minimal de matchs de CHAQUE contexte pour
+// comparer solo et escouade (D2 : même fiabilité minimale qu'un groupe de
+// dimension, d'où l'alignement sur MinDimensionGroupMatches).
+const minContextSplitMatches = MinDimensionGroupMatches
 
 // buildBriefingContextSplit partitionne le scope sur IsWithFriends et agrège
-// chaque contexte via aggregateRawStats. Retourne nil si l'un des deux
-// sous-groupes est sous minContextSplitMatches (couvre aussi le scope
-// mono-contexte : un sous-groupe vide est < seuil) — omission propre.
+// chaque contexte via aggregateRawStats. Retourne nil si un côté n'a aucun match
+// (scope mono-contexte : rien à comparer). Si les deux côtés existent mais que l'un
+// est sous minContextSplitMatches, retourne un split Insufficient dont seuls les
+// comptes Matches sont renseignés.
 func buildBriefingContextSplit(scope []domain.MatchHistoryRawRow) *domain.ExplorerBriefingContextSplit {
 	solo := make([]domain.MatchHistoryRawRow, 0, len(scope))
 	squad := make([]domain.MatchHistoryRawRow, 0, len(scope))
@@ -34,8 +35,15 @@ func buildBriefingContextSplit(scope []domain.MatchHistoryRawRow) *domain.Explor
 			solo = append(solo, r)
 		}
 	}
-	if len(solo) < minContextSplitMatches || len(squad) < minContextSplitMatches {
+	if len(solo) == 0 || len(squad) == 0 {
 		return nil
+	}
+	if len(solo) < minContextSplitMatches || len(squad) < minContextSplitMatches {
+		return &domain.ExplorerBriefingContextSplit{
+			Insufficient: true,
+			Solo:         domain.ExplorerBriefingContextGroup{Matches: len(solo)},
+			Squad:        domain.ExplorerBriefingContextGroup{Matches: len(squad)},
+		}
 	}
 	return &domain.ExplorerBriefingContextSplit{
 		Solo:  briefingContextGroup(solo),

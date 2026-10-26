@@ -6767,6 +6767,8 @@ export interface components {
             dimensions?: components["schemas"]["ExplorerBriefingDimension"][] | null;
             dominance?: components["schemas"]["ExplorerBriefingDominance"];
             low_sample?: boolean;
+            /** Format: int64 */
+            min_group_matches?: number;
             /** Format: date-time */
             period_end?: string;
             /** Format: date-time */
@@ -6803,12 +6805,14 @@ export interface components {
             win_rate: number;
         };
         ExplorerBriefingContextSplit: {
+            insufficient?: boolean;
             solo: components["schemas"]["ExplorerBriefingContextGroup"];
             squad: components["schemas"]["ExplorerBriefingContextGroup"];
         };
         ExplorerBriefingDimension: {
             dimension: string;
             entries: components["schemas"]["ExplorerBriefingDimensionEntry"][] | null;
+            insufficient?: boolean;
         };
         ExplorerBriefingDimensionEntry: {
             /** Format: double */

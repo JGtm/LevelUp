@@ -13880,6 +13880,9 @@ components:
           $ref: '#/components/schemas/ExplorerBriefingDominance'
         low_sample:
           type: boolean
+        min_group_matches:
+          format: int64
+          type: integer
         period_end:
           format: date-time
           type: string
@@ -13949,6 +13952,8 @@ components:
     ExplorerBriefingContextSplit:
       additionalProperties: false
       properties:
+        insufficient:
+          type: boolean
         solo:
           $ref: '#/components/schemas/ExplorerBriefingContextGroup'
         squad:
@@ -13968,6 +13973,8 @@ components:
           type:
             - array
             - "null"
+        insufficient:
+          type: boolean
       required:
         - dimension
         - entries

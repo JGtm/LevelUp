@@ -61,8 +61,11 @@ func TestBuildExplorerBriefing_LowSample(t *testing.T) {
 	if b.PeriodStart == nil || b.PeriodEnd == nil {
 		t.Error("period should be set")
 	}
-	if b.Baseline != nil || b.Dimensions != nil || b.Ranked != nil {
-		t.Error("low sample: modules must be nil")
+	if b.Baseline != nil || b.Dimensions != nil || b.ContextSplit != nil {
+		t.Error("low sample: comparative modules (baseline / dimensions / context split) must be nil")
+	}
+	if b.MinGroupMatches != 0 {
+		t.Errorf("low sample: MinGroupMatches = %d, want 0", b.MinGroupMatches)
 	}
 }
 
@@ -104,12 +107,16 @@ func TestBuildExplorerBriefing_SingleValueDimensionNotEmitted(t *testing.T) {
 }
 
 func TestBuildExplorerBriefing_SubThresholdGroupExcluded(t *testing.T) {
-	// map1 : 12 matchs (qualifié) ; map2 : 5 matchs (< 10, exclu du top/flop).
+	// map1 : 12 matchs et map3 : 6 matchs (qualifiés) ; map2 : 4 matchs (< 5, exclu
+	// du top/flop). Deux groupes qualifiés au moins : la carte reste une comparaison.
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 12; i++ {
 		filtered = append(filtered, briefingRaw("a"+string(rune('a'+i)), i, domain.OutcomeWin, 10, 5, 2, 70, "map1", "Aquarius", "Slayer", "Arène"))
 	}
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 6; i++ {
+		filtered = append(filtered, briefingRaw("c"+string(rune('a'+i)), 40+i, domain.OutcomeWin, 8, 6, 2, 55, "map3", "Recharge", "Slayer", "Arène"))
+	}
+	for i := 0; i < MinDimensionGroupMatches-1; i++ {
 		filtered = append(filtered, briefingRaw("b"+string(rune('a'+i)), 20+i, domain.OutcomeLoss, 5, 10, 1, 40, "map2", "Bazaar", "Slayer", "Arène"))
 	}
 	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered)
@@ -124,7 +131,7 @@ func TestBuildExplorerBriefing_SubThresholdGroupExcluded(t *testing.T) {
 	}
 	for _, e := range mapDim.Entries {
 		if e.Label == "Bazaar" {
-			t.Error("Bazaar (5 matchs < 10) must not appear in entries")
+			t.Error("Bazaar (4 matchs < 5) must not appear in entries")
 		}
 		if e.Label == "Aquarius" && e.NoteTier == nil {
 			t.Error("Aquarius (12 matchs, perf 70) should have a note")
