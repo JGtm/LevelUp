@@ -6,6 +6,11 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [8.1.0] - Non publiée
+
+### Added
+- **Synthèse : score de performance par carte et par mode** — les graphiques « Par carte » et « Par mode » portent une courbe du score de performance moyen (de 0 à 100, axe de droite) au-dessus des barres de résultats. Chaque point prend la couleur de son palier ; la courbe s'interrompt sur une colonne sans match noté (les matchs non terminés n'ont pas de score).
+
 ## [8.0.7] - 2026-10-26
 
 ### Added

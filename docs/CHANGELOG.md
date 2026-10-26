@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [8.1.0] - Unreleased
+
+### Added
+- **Summary: performance score by map and by mode** — the "By map" and "By mode" charts now carry a curve of the average performance score (0 to 100, right-hand axis) over the result bars. Each point takes the colour of its tier; the curve breaks on a column with no scored match (unfinished matches have no score).
+
 ## [8.0.7] - 2026-10-26
 
 ### Added

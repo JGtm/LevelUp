@@ -130,7 +130,7 @@ Les deux lots modifient `buildBreakdownsFromCanonical`. Partage :
       (« parfait », FR, thème sombre, JGtm). Anglais, thème clair et Halo 5 vus sur la version bande (mêmes
       données, mêmes tokens) ; palette cividis non vue. Marge basse portée à 120 px (légende sur les noms longs)
 - [~] Une seule carte, sélection vide : couverts par `SynthesisOutcomesByGroupChart.test.ts` (ordre des catégories, liste vide = option vide, donc état vide du `ChartCard`) ; non vus à l'écran
-- [~] Changelog EN/FR : une ligne dans les notes de la v8.1.0, rédigées à la préparation de la release (section non ouverte au 2026-10-26)
+- [x] Changelog EN/FR : section `[8.1.0]` ouverte (non publiée), une ligne sous Added
 - [x] `.ai/thought_log.md` : entrée Complété ; `.ai/REGISTRE_REPORTS.md` si un item finit en `[!]`
 - [x] Skill `delivery-checklist` ; commit et fusion dans `release/v8.1.0` à la demande du user (2026-10-26), AVANT le gate visuel
       (coordination avec le lot variantes : voir Coordination)
