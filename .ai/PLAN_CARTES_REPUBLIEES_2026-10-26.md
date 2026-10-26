@@ -173,7 +173,9 @@ Scarr, Illusion, Forbidden, Catalyst) : inchangées. Aucune carte Forge n'est to
 - **La règle de variante réunit déjà toutes les versions Forge d'un nom de base** (comportement du plan des
   variantes, `addGroup` : « tous les identifiants qui portent le nom de base »), vérifié sur le registre : Argyle,
   Exiled, Kusini Bay, Vallaheim (cartes Forge avec une variante au registre). C'est contraire à la lettre de « deux
-  versions Forge restent séparées » ; non touché (hors périmètre, décision antérieure).
+  versions Forge restent séparées » ; non touché (hors périmètre, décision antérieure). **Décision user
+  2026-10-26 : laisser tel quel** (« d'une version à l'autre les paths doivent assez peu changer, le risque est
+  acceptable »).
 - **Les positions de morts n'existent que pour les films de JGtm** : le contrôle spatial des republications ne
   peut pas être étendu aux matchs des autres joueurs tant que leurs films ne sont pas décodés.
 
