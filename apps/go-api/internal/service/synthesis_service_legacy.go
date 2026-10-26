@@ -149,109 +149,138 @@ func topNByFunc(rows []legacymatch.SynthesisMatchRow, n int, less func(a, b lega
 	return cp[:n]
 }
 
-// buildBreakdownsFromCanonical agrège les rows canoniques filtrés en breakdowns
-// carte et mode, avec décompte complet des outcomes (wins/losses/ties/unfinished).
-func buildBreakdownsFromCanonical(rows []canonical.PlayerMatchRow) domain.SynthesisBreakdowns {
-	type entry struct{ wins, losses, ties, unfinished, total int }
-	maps := map[string]*entry{}
-	modes := map[string]*entry{}
+// breakdownTally cumule, pour une ligne carte ou mode, les issues des matchs et
+// la somme des scores de performance des seuls matchs notés.
+type breakdownTally struct {
+	wins, losses, ties, unfinished, total int
+	scored                                int
+	scoreSum                              float64
+}
 
+// tallyBreakdown ajoute le match r à la ligne e : une issue (toute issue qui
+// n'est ni victoire, ni défaite, ni égalité compte comme non terminée) et, si le
+// match porte un score de performance, ce score à la moyenne de la ligne.
+func tallyBreakdown(e *breakdownTally, r canonical.PlayerMatchRow) {
+	e.total++
+	switch r.Self.Outcome {
+	case canonical.OutcomeWin:
+		e.wins++
+	case canonical.OutcomeLoss:
+		e.losses++
+	case canonical.OutcomeTie:
+		e.ties++
+	default:
+		e.unfinished++
+	}
+	if r.Enrichment.PerformanceScore != nil {
+		e.scored++
+		e.scoreSum += *r.Enrichment.PerformanceScore
+	}
+}
+
+// tallyBreakdownInto cumule r sous la clé name de m (créée au besoin).
+func tallyBreakdownInto(m map[string]*breakdownTally, name string, r canonical.PlayerMatchRow) {
+	e := m[name]
+	if e == nil {
+		e = &breakdownTally{}
+		m[name] = e
+	}
+	tallyBreakdown(e, r)
+}
+
+// winRate est la part de victoires de la ligne (0 si aucun match).
+func (e *breakdownTally) winRate() float64 {
+	if e.total == 0 {
+		return 0
+	}
+	return float64(e.wins) / float64(e.total)
+}
+
+// performance rend la moyenne des scores des matchs notés de la ligne et son
+// palier canonique (analysis.PerfTier) ; (nil, 0) si aucun match n'est noté.
+func (e *breakdownTally) performance() (*float64, int) {
+	if e.scored == 0 {
+		return nil, 0
+	}
+	avg := e.scoreSum / float64(e.scored)
+	return &avg, int(analysis.PerfTier(avg))
+}
+
+// breakdownMapLabel est le libellé de carte d'un match (vide si inconnu).
+func breakdownMapLabel(r canonical.PlayerMatchRow) string {
+	m := r.Summary.Map
+	if m == nil {
+		return ""
+	}
+	// Préférer le label FR si disponible (noms de carte identiques EN/FR pour Halo Infinite).
+	if fr := m.Labels["fr"]; fr != "" {
+		return fr
+	}
+	return m.DefaultLabel
+}
+
+// breakdownModeLabel est le libellé de mode d'un match (vide si inconnu).
+func breakdownModeLabel(r canonical.PlayerMatchRow) string {
+	p := r.Summary.PairMode
+	if p == nil {
+		return ""
+	}
+	// Même priorité que ResolveModeUI : COALESCE(pair_name_fr, pair_name).
+	// pair_name_fr donne le label FR après NormalizeModeLabel (ex. "Arène : Slayer" → "Slayer" en FR).
+	src := p.Labels["fr"]
+	if src == "" {
+		src = p.DefaultLabel
+	}
+	return analysis.NormalizeModeLabel(src)
+}
+
+// buildBreakdownsFromCanonical agrège les rows canoniques filtrés en breakdowns
+// carte et mode, avec décompte complet des outcomes (wins/losses/ties/unfinished)
+// et score de performance moyen des matchs notés de chaque ligne.
+func buildBreakdownsFromCanonical(rows []canonical.PlayerMatchRow) domain.SynthesisBreakdowns {
+	maps := map[string]*breakdownTally{}
+	modes := map[string]*breakdownTally{}
 	for _, r := range rows {
-		mapName := ""
-		if m := r.Summary.Map; m != nil {
-			// Préférer le label FR si disponible (noms de carte identiques EN/FR pour Halo Infinite).
-			if fr := m.Labels["fr"]; fr != "" {
-				mapName = fr
-			} else {
-				mapName = m.DefaultLabel
-			}
+		if name := breakdownMapLabel(r); name != "" {
+			tallyBreakdownInto(maps, name, r)
 		}
-		modeName := ""
-		if p := r.Summary.PairMode; p != nil {
-			// Même priorité que ResolveModeUI : COALESCE(pair_name_fr, pair_name).
-			// pair_name_fr donne le label FR après NormalizeModeLabel (ex. "Arène : Slayer" → "Slayer" en FR).
-			src := p.Labels["fr"]
-			if src == "" {
-				src = p.DefaultLabel
-			}
-			modeName = analysis.NormalizeModeLabel(src)
-		}
-		if mapName != "" {
-			if maps[mapName] == nil {
-				maps[mapName] = &entry{}
-			}
-			e := maps[mapName]
-			e.total++
-			switch r.Self.Outcome {
-			case canonical.OutcomeWin:
-				e.wins++
-			case canonical.OutcomeLoss:
-				e.losses++
-			case canonical.OutcomeTie:
-				e.ties++
-			default:
-				e.unfinished++
-			}
-		}
-		if modeName != "" {
-			if modes[modeName] == nil {
-				modes[modeName] = &entry{}
-			}
-			e := modes[modeName]
-			e.total++
-			switch r.Self.Outcome {
-			case canonical.OutcomeWin:
-				e.wins++
-			case canonical.OutcomeLoss:
-				e.losses++
-			case canonical.OutcomeTie:
-				e.ties++
-			default:
-				e.unfinished++
-			}
+		if name := breakdownModeLabel(r); name != "" {
+			tallyBreakdownInto(modes, name, r)
 		}
 	}
 
 	mapEntries := make([]domain.SynthesisMapEntry, 0, len(maps))
 	for name, e := range maps {
-		wr := 0.0
-		if e.total > 0 {
-			wr = float64(e.wins) / float64(e.total)
-		}
+		avg, tier := e.performance()
 		mapEntries = append(mapEntries, domain.SynthesisMapEntry{
-			MapName:    name,
-			MatchCount: e.total,
-			Wins:       e.wins,
-			Losses:     e.losses,
-			Ties:       e.ties,
-			Unfinished: e.unfinished,
-			WinRate:    wr,
+			MapName:        name,
+			MatchCount:     e.total,
+			Wins:           e.wins,
+			Losses:         e.losses,
+			Ties:           e.ties,
+			Unfinished:     e.unfinished,
+			WinRate:        e.winRate(),
+			PerformanceAvg: avg,
+			PerfTier:       tier,
 		})
 	}
 	modeEntries := make([]domain.SynthesisModeEntry, 0, len(modes))
 	for name, e := range modes {
-		wr := 0.0
-		if e.total > 0 {
-			wr = float64(e.wins) / float64(e.total)
-		}
+		avg, tier := e.performance()
 		modeEntries = append(modeEntries, domain.SynthesisModeEntry{
-			ModeName:   name,
-			MatchCount: e.total,
-			Wins:       e.wins,
-			Losses:     e.losses,
-			Ties:       e.ties,
-			Unfinished: e.unfinished,
-			WinRate:    wr,
+			ModeName:       name,
+			MatchCount:     e.total,
+			Wins:           e.wins,
+			Losses:         e.losses,
+			Ties:           e.ties,
+			Unfinished:     e.unfinished,
+			WinRate:        e.winRate(),
+			PerformanceAvg: avg,
+			PerfTier:       tier,
 		})
 	}
 	sortMapEntries(mapEntries)
 	sortModeEntries(modeEntries)
-	if mapEntries == nil {
-		mapEntries = []domain.SynthesisMapEntry{}
-	}
-	if modeEntries == nil {
-		modeEntries = []domain.SynthesisModeEntry{}
-	}
 	return domain.SynthesisBreakdowns{TopMaps: mapEntries, TopModes: modeEntries}
 }
 

@@ -4,6 +4,7 @@
 export const synthesisManifest = {
   "synthesis.breakdown.by_map": { fr: "Par carte", en: "By map" },
   "synthesis.breakdown.by_mode": { fr: "Par mode", en: "By mode" },
+  "synthesis.breakdown.performance_info": { fr: "La barre au-dessus de chaque colonne donne le score de performance moyen (de 0 à 100) des matchs notés de cette colonne, colorée selon le palier : excellent (80 et plus), bon (65 à 79), correct (50 à 64), faible (35 à 49), mauvais (moins de 35). Les matchs non terminés n'ont pas de score et n'entrent pas dans la moyenne. Un emplacement en pointillé signale une colonne sans match noté.", en: "The bar above each column shows the average performance score (0 to 100) of the scored matches in that column, coloured by tier: excellent (80 and above), good (65 to 79), fair (50 to 64), poor (35 to 49), bad (below 35). Unfinished matches have no score and are left out of the average. A dashed placeholder marks a column with no scored match." },
   "synthesis.charts.kill_type_assassination": { fr: "Assassinat", en: "Assassination" },
   "synthesis.charts.kill_type_ground_pound": { fr: "Coup au sol", en: "Ground Pound" },
   "synthesis.charts.kill_type_other": { fr: "Autres", en: "Other" },

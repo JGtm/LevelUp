@@ -12912,6 +12912,10 @@ export interface components {
             /** Format: int64 */
             match_count: number;
             /** Format: int64 */
+            perf_tier?: number;
+            /** Format: double */
+            performance_avg?: number;
+            /** Format: int64 */
             ties: number;
             /** Format: int64 */
             unfinished: number;
@@ -12939,6 +12943,10 @@ export interface components {
             /** Format: int64 */
             match_count: number;
             mode_name: string;
+            /** Format: int64 */
+            perf_tier?: number;
+            /** Format: double */
+            performance_avg?: number;
             /** Format: int64 */
             ties: number;
             /** Format: int64 */
