@@ -396,7 +396,7 @@ func TestTacticalService_VocabulaireRefuse(t *testing.T) {
 	if _, err := svc.Raster(context.Background(), tsDemande(repo, tsCarte, domain.TacticalQuestionMorts, "tout-le-monde")); !errors.Is(err, domain.ErrTacticalQuiInconnu) {
 		t.Errorf("axe inconnu: err = %v, want ErrTacticalQuiInconnu", err)
 	}
-	if repo.vuPos.MapID != "" {
+	if len(repo.vuPos.MapIDs) != 0 {
 		t.Error("un refus de vocabulaire ne doit ouvrir aucune lecture de base")
 	}
 }

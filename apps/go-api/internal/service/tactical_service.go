@@ -38,6 +38,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -78,6 +79,11 @@ type TacticalService struct {
 	retentionMois func() int
 	logger        *slog.Logger
 	detail        sourcesDuDetail // les sources du détail d'une zone (tactical_service_cellule_enrichir.go)
+	// mapGroups : la table des groupes de cartes (tactical_service_groupes.go), lue une fois par service.
+	mapGroups    port.MapGroupReader
+	groupesMu    sync.Mutex
+	groupesLus   bool
+	groupesTable domain.GroupesDeCartes
 }
 
 // NewTacticalService construit le service.
@@ -111,11 +117,13 @@ func (s *TacticalService) MapsPlayed(ctx context.Context, scope domain.TacticalS
 		return page, err
 	}
 	debut := time.Now()
-	rows, err := s.repo.MapsPlayed(ctx, requeteDuScope(s.xuid, "", scope))
+	rows, err := s.repo.MapsPlayed(ctx, requeteDuScope(s.xuid, nil, scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: cartes jouees en echec", "player", s.xuid, "err", err)
 		return page, err
 	}
+	// UNE CARTE PAR GROUPE : base et variantes sont sommees AVANT le plancher (tactical_service_groupes.go).
+	rows = fusionnerLesCartes(rows, s.groupes(ctx))
 	page.Cartes = make([]domain.TacticalMapCard, 0, len(rows))
 	for _, r := range rows {
 		page.Cartes = append(page.Cartes, domain.TacticalMapCard{
@@ -215,7 +223,7 @@ func (s *TacticalService) rasterDeKills(ctx context.Context, out *domain.Tactica
 	}
 	debut := time.Now()
 
-	lecture, err := s.repo.KillPositions(ctx, requeteDuScope(s.xuid, carte, scope))
+	lecture, err := s.repo.KillPositions(ctx, requeteDuScope(s.xuid, s.cartesDe(ctx, carte), scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: lecture des positions en echec",
 			"player", s.xuid, "map_id", carte, "question", question, "err", err)

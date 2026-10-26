@@ -136,7 +136,7 @@ func (s *TacticalService) poserModeEtScore(ctx context.Context, mapID string, ou
 		s.sourceDegradee(ctx, sourceCanonique, mapID, nil)
 		return
 	}
-	filtres := port.PlayerMatchFilters{MapIDs: []string{mapID}}
+	filtres := port.PlayerMatchFilters{MapIDs: s.cartesDe(ctx, mapID)}
 	if err := filtres.Validate(); err != nil {
 		s.sourceDegradee(ctx, sourceCanonique, mapID, err)
 		return
@@ -282,7 +282,7 @@ func (s *TacticalService) lireLesContextes(ctx context.Context, mapID string,
 	}
 	stop := timing.FromContext(ctx).Section("tactical_cellule_contextes")
 	contextes, err := s.repo.ContextesDeMort(ctx, domain.TacticalQuery{
-		PlayerXUID: s.xuid, MapID: mapID, Matchs: domain.RestreindreAux(ids),
+		PlayerXUID: s.xuid, MapIDs: s.cartesDe(ctx, mapID), Matchs: domain.RestreindreAux(ids),
 	})
 	stop()
 	if err != nil {

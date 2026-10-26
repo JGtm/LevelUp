@@ -127,19 +127,33 @@ Non vus par la note :
       ./internal/service/...` vert (29 paquets) ; archlint, vet api/platform/port, golangci-lint ratchet 0 issue.
 
 ### E3 — Tactique
-- [ ] `domain.TacticalQuery.MapID` -> liste d'identifiants (groupe) ; clause de l'univers en `IN`
+- [x] `domain.TacticalQuery.MapID` -> liste d'identifiants (groupe) ; clause de l'univers en `IN`
       (`tactical_repo_univers.go`) ; refus de liste vide conservé dans `KillPositions`
-- [ ] `TacticalService.MapsPlayed` : agrège les rangées par groupe (somme matchs / victoires /
+- [x] `TacticalService.MapsPlayed` : agrège les rangées par groupe (somme matchs / victoires /
       défaites, MapID = base, libellé de la base) ; `SousPlancher` recalculé après somme
-- [ ] Vignettes : `MortsParCarte` replié par groupe avant rasterisation
-- [ ] Toutes les entrées par carte (lecture, cellule, séquence, équipe, spawn, voisines) résolvent
+- [x] Vignettes : `MortsParCarte` replié par groupe avant rasterisation
+- [x] Toutes les entrées par carte (lecture, cellule, séquence, équipe, spawn, voisines) résolvent
       la base reçue en groupe au même endroit (`requeteDuScope` ou équivalent unique)
-- [ ] Fond, zones, callouts : clé = map_id de base (E0 a vérifié qu'elle résout)
-- [ ] Lien « Voir les matchs de cette carte » : porte le libellé de la base ; l'Explorateur ramène le
+- [x] Fond, zones, callouts : clé = map_id de base (E0 a vérifié qu'elle résout)
+- [~] Lien « Voir les matchs de cette carte » : porte le libellé de la base ; l'Explorateur ramène le
       groupe (déjà le cas via `MapFilterLabel`)
-- [ ] Tests : service (deux rangées fusionnées, plancher) ; repo `:memory:` (univers sur deux map_id)
+- [x] Tests : service (deux rangées fusionnées, plancher) ; repo `:memory:` (univers sur deux map_id)
 - Gate : `go test ./internal/service/ ./internal/platform/duckdb/ ./internal/api/handlers/` +
   vérification à l'écran par le user sur Live Fire (témoin à nommer par le user)
+      E3 : TESTS AUTOMATISÉS VERTS, VÉRIFICATION À L'ÉCRAN EN ATTENTE DU USER (étape non close tant que le
+      témoin n'est pas nommé et vu). Mécanisme : `TacticalQuery.MapIDs` (liste du groupe) ; la clause carte de
+      l'univers est le jeton `%CARTES%` (`clauseCartes`, `IN (...)`) ; le service résout la carte reçue en
+      groupe en UN endroit, `TacticalService.cartesDe` (table lue une fois par service = par requête,
+      `tactical_service_groupes.go`), et l'injecte dans `requeteDuScope` / `requeteAvecRetention`, dans les
+      4 `TacticalQuery` construites à la main (contextes, mates, journal, univers de la séquence) et dans le
+      filtre de matchs canoniques du détail d'une zone. `MapsPlayed` somme les rangées par groupe
+      (`fusionnerLesCartes`, MapID = base, libellés = base, plancher recalculé) ; `pointsDuGroupe` réunit les
+      morts des membres pour la vignette. Fond/zones/callouts : aucune modification, la carte porte
+      l'identifiant de BASE (M5 : le fond de base résout pour 34 groupes ; les zones d'une carte Forge à ids
+      multiples ne sont garanties que pour ce représentant). Lien « Voir les matchs » `[~]` : la vignette porte
+      `map_name_fr` = libellé de la base (`fusionnerLesCartes`) et l'Explorateur retient le groupe
+      (E1/E2 : `MapFilterLabel`). Gate automatisé : `go test ./internal/service/ ./internal/platform/duckdb/
+      ./internal/api/handlers/ ./internal/api/wire/` vert ; archlint, golangci-lint ratchet 0 issue.
 
 ### E4 — Autres agrégats par carte
 - [ ] Escouade : `computeMapBreakdown`, `LoadMapStatsForSquad` (repli Go par groupe),

@@ -31,7 +31,7 @@ func (s *TacticalService) peindreLesVignettes(ctx context.Context, page *domain.
 	if len(page.Cartes) == 0 || !positionsDeKillLisibles(s.caps) {
 		return
 	}
-	parCarte, err := s.repo.MortsParCarte(ctx, requeteDuScope(s.xuid, "", scope))
+	parCarte, err := s.repo.MortsParCarte(ctx, requeteDuScope(s.xuid, nil, scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: mini-plans des vignettes non servis",
 			"player", s.xuid, "err", err)
@@ -45,7 +45,7 @@ func (s *TacticalService) peindreLesVignettes(ctx context.Context, page *domain.
 	}
 	peintes := 0
 	for i := range page.Cartes {
-		points := parCarte[page.Cartes[i].MapID]
+		points := pointsDuGroupe(parCarte, s.cartesDe(ctx, page.Cartes[i].MapID))
 		if len(points) == 0 {
 			continue
 		}
@@ -97,4 +97,19 @@ func matchsDesPoints(points []domain.PositionSample) []string {
 		out = append(out, p.MatchID)
 	}
 	return out
+}
+
+// pointsDuGroupe réunit les morts de tous les identifiants d'un groupe de cartes : la vignette d'une carte
+// regroupée est le mini-plan de TOUT le groupe, pas de son seul identifiant de base. Les identifiants d'un
+// groupe partagent le repère (mesuré sur les 22 paires de variantes du parc), donc leurs points se
+// superposent sur le même fond.
+func pointsDuGroupe(parCarte map[string][]domain.PositionSample, membres []string) []domain.PositionSample {
+	if len(membres) == 1 {
+		return parCarte[membres[0]]
+	}
+	var points []domain.PositionSample
+	for _, id := range membres {
+		points = append(points, parCarte[id]...)
+	}
+	return points
 }
