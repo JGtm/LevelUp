@@ -836,6 +836,7 @@ export function SynthesisPage() {
               performance_avg: m.performance_avg,
               perf_tier: m.perf_tier,
             }))}
+            height={360}
           />
           <SynthesisOutcomesByGroupChart
             title={t('synthesis.breakdown.by_mode')}
@@ -849,6 +850,7 @@ export function SynthesisPage() {
               performance_avg: m.performance_avg,
               perf_tier: m.perf_tier,
             }))}
+            height={360}
           />
         </div>
       </section>

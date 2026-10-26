@@ -1,10 +1,9 @@
 /**
  * SynthesisOutcomesByGroupChart — synthesis.01 (par carte) et synthesis.02 (par mode).
  *
- * Deux grilles superposées sur le MÊME axe des catégories : en haut, une barre par colonne du score
- * de performance moyen (0..100, couleur du palier `perf-tier-N`) ; en bas, les issues empilées avec
- * leur effectif à l'intérieur de chaque segment. Une colonne sans match noté montre, à la place de la
- * barre, un emplacement en pointillé sans valeur.
+ * Une seule grille : les issues empilées (axe de gauche, effectif à l'intérieur de chaque segment) et,
+ * par-dessus, une courbe du score de performance moyen (axe de droite, 0..100). Les points de la courbe
+ * prennent la couleur de leur palier (`perf-tier-N`) ; une colonne sans match noté laisse un trou dans la courbe.
  */
 import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -49,27 +48,21 @@ interface Props {
 
 interface OutcomeLabels { win: string; loss: string; tie: string; dnf: string }
 
-/** Nombre de séries d'issues ; les séries de performance viennent après, aux indices suivants. */
+/** Les séries d'issues viennent d'abord ; la courbe de performance est la suivante. */
 const OUTCOME_SERIES_COUNT = 4
 const PERF_SERIES_INDEX = OUTCOME_SERIES_COUNT
-const PERF_PLACEHOLDER_INDEX = OUTCOME_SERIES_COUNT + 1
 
 const PERF_MAX = 100
 const PERF_TIER_MIN = 1
 const PERF_TIER_MAX = 5
+const PERF_SYMBOL_SIZE = 8
 
 /**
- * Découpe verticale (px) : bande de performance, espace des valeurs au-dessus des colonnes, puis
- * les issues empilées sur la hauteur qu'elles avaient avant l'ajout de la bande (230 px).
+ * Marge droite : de quoi loger les graduations et le nom de l'axe de performance. Marge basse : les
+ * étiquettes inclinées des noms longs ne descendent pas jusqu'à la légende.
  */
-const GRID_TOP = 30
-const PERF_BAND_HEIGHT = 64
-const PERF_BAND_GAP = 26
-const STACK_HEIGHT = 230
-const GRID_BOTTOM = 100
-const CHART_HEIGHT = GRID_TOP + PERF_BAND_HEIGHT + PERF_BAND_GAP + STACK_HEIGHT + GRID_BOTTOM
-
-const GRID_SIDES = { left: 40, right: 20 }
+const GRID = { left: 40, right: 56, top: 30, bottom: 120, containLabel: false }
+const DEFAULT_HEIGHT = 520
 const BAR_CATEGORY_GAP = '15%'
 
 /** Palier valide d'une entrée notée, sinon null (colonne sans score). */
@@ -81,7 +74,7 @@ function scoredTier(e: GroupEntry): number | null {
 function outcomeSeries(entries: GroupEntry[], labels: OutcomeLabels) {
   const labelAll = barLabel({ formatter: (p: { value: number }) => tipNumberAuto(p.value) })
   const labelIfNonzero = barLabel({ formatter: (p: { value: number }) => (p.value > 0 ? tipNumberAuto(p.value) : '') })
-  const stacked = { type: 'bar', stack: 'total', xAxisIndex: 1, yAxisIndex: 1, barCategoryGap: BAR_CATEGORY_GAP }
+  const stacked = { type: 'bar', stack: 'total', barCategoryGap: BAR_CATEGORY_GAP }
   return [
     {
       ...stacked,
@@ -115,35 +108,52 @@ function outcomeSeries(entries: GroupEntry[], labels: OutcomeLabels) {
 }
 
 /**
- * Les deux séries de la bande de performance, empilées dans la même pile : par colonne, soit la
- * barre du score (couleur du palier, valeur entière au-dessus), soit l'emplacement en pointillé
- * pleine hauteur — jamais les deux.
+ * Courbe du score de performance moyen sur l'axe de droite. Trait neutre, points de la couleur de leur
+ * palier ; une colonne sans score vaut `null` (trou dans la courbe, jamais relié). Aucune étiquette de
+ * valeur : jusqu'à soixante-dix colonnes, elle est dans l'infobulle.
  */
-function performanceSeries(entries: GroupEntry[], perfLabel: string, neutral: string, textColor: string) {
-  const band = { type: 'bar', stack: 'perf', xAxisIndex: 0, yAxisIndex: 0, name: perfLabel, barCategoryGap: BAR_CATEGORY_GAP }
-  return [
-    {
-      ...band,
-      data: entries.map((e) => {
-        const tier = scoredTier(e)
-        return tier === null
-          ? null
-          : { value: e.performance_avg, itemStyle: { color: resolveToken(`perf-tier-${tier}` as SemanticToken) } }
-      }),
-      label: {
-        show: true,
-        position: 'top',
-        color: textColor,
-        formatter: (p: { value: number }) => tipNumber(p.value),
-      },
-    },
-    {
-      ...band,
-      data: entries.map((e) => (scoredTier(e) === null ? PERF_MAX : null)),
-      itemStyle: { color: 'transparent', borderColor: neutral, borderWidth: 1, borderType: 'dashed' },
-      label: { show: false },
-    },
-  ]
+function performanceSeries(entries: GroupEntry[], perfLabel: string, neutral: string, separator: string) {
+  return {
+    type: 'line',
+    name: perfLabel,
+    yAxisIndex: 1,
+    z: 3,
+    connectNulls: false,
+    symbol: 'circle',
+    symbolSize: PERF_SYMBOL_SIZE,
+    lineStyle: { color: neutral, width: 2 },
+    itemStyle: { color: neutral, borderColor: separator, borderWidth: 1 },
+    label: { show: false },
+    data: entries.map((e) => {
+      const tier = scoredTier(e)
+      return tier === null
+        ? null
+        : { value: e.performance_avg, itemStyle: { color: resolveToken(`perf-tier-${tier}` as SemanticToken) } }
+    }),
+  }
+}
+
+/** Paramètre d'une série tel que l'infobulle par axe le reçoit ; `unscored` marque la ligne de performance sans score. */
+type TipParam = { seriesIndex?: number; dataIndex?: number; value?: unknown; unscored?: boolean }
+
+/**
+ * Garantit une ligne de performance par colonne survolée : ECharts omet ou vide la série d'une colonne
+ * sans score, l'infobulle doit pourtant l'annoncer (« — »).
+ */
+function withPerformanceRow(params: unknown, perfLabel: string, neutral: string): unknown[] {
+  const list = (Array.isArray(params) ? params : [params]) as (TipParam & Record<string, unknown>)[]
+  if (list.length === 0 || list[0] == null) return []
+  const perf = list.find((p) => p.seriesIndex === PERF_SERIES_INDEX)
+  if (perf && typeof perf.value === 'number' && Number.isFinite(perf.value)) return list
+  const unscored = {
+    ...list[0],
+    seriesName: perfLabel,
+    seriesIndex: PERF_SERIES_INDEX,
+    color: neutral,
+    value: 0,
+    unscored: true,
+  }
+  return [...list.filter((p) => p.seriesIndex !== PERF_SERIES_INDEX), unscored]
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -158,69 +168,51 @@ export function buildOutcomesOption(
   const axis = getAxisBase(tc)
   const categories = entries.map((e) => e.name)
   const outcomes = outcomeSeries(entries, labels)
-  const series = [...outcomes, ...performanceSeries(entries, perfLabel, tc.axisLabel, tc.text)]
+  const series = [...outcomes, performanceSeries(entries, perfLabel, tc.axisLabel, tc.card)]
   const gridLine = { show: true, lineStyle: { color: tc.splitLine } }
   const stackOrder = stackTopFirstOrder(series)
+  const tipFormatter = axisTooltipFormatter({
+    value: (r) => ((r.param as TipParam).unscored ? '—' : r.seriesIndex === PERF_SERIES_INDEX ? tipNumber(r.value) : tipNumberAuto(r.value)),
+    // La performance d'abord, puis une ligne par issue présente : un segment à zéro n'est ni dessiné
+    // ni étiqueté.
+    order: (a, b) => {
+      const pa = a.seriesIndex === PERF_SERIES_INDEX
+      const pb = b.seriesIndex === PERF_SERIES_INDEX
+      return pa === pb ? stackOrder(a, b) : pa ? -1 : 1
+    },
+    skip: (r) => r.seriesIndex < OUTCOME_SERIES_COUNT && r.value === 0,
+  })
 
   return {
     backgroundColor: CHART_BG,
-    grid: [
-      { ...GRID_SIDES, top: GRID_TOP, height: PERF_BAND_HEIGHT, containLabel: false },
-      { ...GRID_SIDES, top: GRID_TOP + PERF_BAND_HEIGHT + PERF_BAND_GAP, bottom: GRID_BOTTOM, containLabel: false },
-    ],
-    // Un seul curseur sur les deux grilles : le survol d'une colonne montre la perf ET les issues.
-    axisPointer: { link: [{ xAxisIndex: 'all' }] },
+    grid: GRID,
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      // La performance d'abord (grille du haut), puis une ligne par issue présente : un segment à
-      // zéro n'est ni dessiné ni étiqueté. Colonne sans score : « — ».
-      formatter: axisTooltipFormatter({
-        value: (r) =>
-          r.seriesIndex === PERF_PLACEHOLDER_INDEX ? '—' : r.seriesIndex === PERF_SERIES_INDEX ? tipNumber(r.value) : tipNumberAuto(r.value),
-        order: (a, b) => {
-          const pa = a.seriesIndex >= PERF_SERIES_INDEX
-          const pb = b.seriesIndex >= PERF_SERIES_INDEX
-          return pa === pb ? stackOrder(a, b) : pa ? -1 : 1
-        },
-        skip: (r) => r.seriesIndex < OUTCOME_SERIES_COUNT && r.value === 0,
-      }),
+      formatter: (params: unknown) => tipFormatter(withPerformanceRow(params, perfLabel, tc.axisLabel)),
     },
-    legend: {
-      ...getLegendBase(tc),
-      data: [labels.win, labels.loss, labels.tie, labels.dnf],
-      orient: 'horizontal',
-      bottom: 8,
-      left: 'center',
-      right: undefined,
-      top: undefined,
+    legend: { ...getLegendBase(tc), orient: 'horizontal', bottom: 8, left: 'center', right: undefined, top: undefined },
+    xAxis: {
+      ...axis,
+      type: 'category',
+      data: categories,
+      splitLine: gridLine,
+      axisLabel: { ...axis.axisLabel, rotate: 45 },
     },
-    xAxis: [
-      // Grille du haut : mêmes catégories, étiquettes masquées (celles du bas font foi).
-      { ...axis, type: 'category', gridIndex: 0, data: categories, splitLine: gridLine, axisLabel: { show: false } },
-      {
-        ...axis,
-        type: 'category',
-        gridIndex: 1,
-        data: categories,
-        splitLine: gridLine,
-        axisLabel: { ...axis.axisLabel, rotate: 45 },
-      },
-    ],
     yAxis: [
+      { ...axis, type: 'value', name: yAxisLabel, splitLine: gridLine },
       {
         ...axis,
         type: 'value',
-        gridIndex: 0,
+        position: 'right',
         min: 0,
         max: PERF_MAX,
-        interval: PERF_MAX / 2,
+        interval: PERF_MAX / 4,
         name: perfLabel,
-        nameTextStyle: { align: 'left' },
-        splitLine: gridLine,
+        nameTextStyle: { align: 'right' },
+        splitLine: { show: false },
       },
-      { ...axis, type: 'value', gridIndex: 1, name: yAxisLabel, splitLine: gridLine },
     ],
     series,
   }
@@ -262,7 +254,7 @@ export function SynthesisOutcomesByGroupChart({ entries, title, info, height }: 
       title={title && info ? titleWithInfo(<p>{info}</p>)(title) : title}
       series={series}
       buildOption={buildOption as (s: ChartSeries<Pt>[]) => EChartsCoreOption}
-      height={height ?? CHART_HEIGHT}
+      height={height ?? DEFAULT_HEIGHT}
     />
   )
 }
