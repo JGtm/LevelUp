@@ -63,7 +63,7 @@ There is **no runtime normalization function** any more (the old Python `_normal
 
 Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 
-### PvP — Game mode (23)
+### PvP — Game mode (22)
 
 `objective_stat` sources are columns of `match_objective_stats_latest` (read the `_latest` view only — append-only table, ADR 0026).
 
@@ -72,7 +72,6 @@ Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 | `charge` | À la charge | objective_stat | `zone_captures` | 10,20,30,50,**100** |
 | `forced_annexation` | Annexion forcée | custom | `compute_annexion_forcee` | 3,6,9,15,**30** |
 | `assistant` | Assistant | stat | `assists` | 25,50,75,125,**250** |
-| `bulldozer` | Bulldozer | custom | `compute_bulldozer` | 3,6,9,15,**30** |
 | `flag_defender` | Défenseur du drapeau | award | `carrier_killed` (objective) — **disabled** (I7) | 10,20,30,50,**100** |
 | `got_you` | Je te tiens ! | objective_stat | `flag_returns` | 10,20,30,50,**100** |
 | `stakeholder` | Partie prenante | objective_stat | `zone_secures` | 10,20,30,50,**100** |
@@ -106,11 +105,12 @@ Both v7.2.1 placeholder SVGs are gone (2026-09-10): `flag_captures` now serves t
 | `frag_grenade` | Grenade à fragmentation | medal | `2648272972` | 5,10,15,25,**50** | Grenade |
 | `plasma_grenade` | Grenade à plasma | medal | `3655682764` | 2,4,6,10,**20** | Grenade |
 
-### PvP — Multiplayer (12)
+### PvP — Multiplayer (13)
 
 | Norm | Display | Type | Source | Tiers |
 |------|---------|------|--------|-------|
 | `assassin` | Assassin | medal | `548533137` | 5,10,15,25,**50** |
+| `bulldozer` | Bulldozer | custom | `compute_bulldozer` (moved from Game mode, user decision 2026-10-26) | 3,6,9,15,**30** |
 | `spartan_carnage` | Carnage de Spartans | medal | `2780740615,4261842076,418532952,1486797009,710323196,1720896992,2567026752,2875941471` | 3,6,9,15,**30** |
 | `close_combat` | Combat rapproché | stat | `melee_kills` | 10,20,30,50,**100** |
 | `opportunist` | Combattant opportuniste | medal | `622331684,2063152177,4261842076,2137071619,1486797009,1430343434,2242633421` | 10,20,30,50,**100** |

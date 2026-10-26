@@ -1,3 +1,8 @@
+## [2026-10-26] Publication v8.0.6 et disque du VPS plein (morceaux de films rapatriés) — Complété (branche `release/v8.0.7`, non commité)
+**Décision technique principale** : PR #108 (squash `b6f7dd6d2`, tag `v8.0.6`) ; l'E2E Playwright du graphe Évolution LUSR / CSR, resté sur l'ancien comportement (toutes séries ensemble), mis à jour pour une échelle à la fois via la bascule. Premier déploiement en échec : disque du VPS à 100 % (build de l'image impossible, prod v8.0.5 non touchée mais sans écriture possible). Purge du cache de build Docker (7,9 Go), puis, sur décision du user, rapatriement de `cache/film_chunks` (24 Go, 901 films, 27 670 morceaux) et des manifestes dans `data/cache` local, vérification taille à taille, suppression sur le VPS des 875 films vérifiés et non touchés depuis 2 h (26 gardés, 1,2 Go).
+**Résultats observés** : tous les morceaux du VPS présents en local à taille égale, sauf `f10237b1/chunk_00.bin` (local = forme zlib, décompressée identique octet par octet à celle du VPS). 161 manifestes locaux différents de ceux du VPS (mêmes bornes de morceaux ; le VPS porte `blob_prefix` ou `size_bytes`) : versions VPS mises de côté dans `data/cache/film_manifests_vps_2026-10-26/`. VPS à 68 % après redéploiement ; v8.0.6 en prod (conteneurs sains, site 200).
+**Conclusion / prochaine étape** : décision user (26/10) : la version VPS des manifestes gagne — 161 manifestes locaux remplacés, chunk_00 de `f10237b1` remplacé par sa forme décompressée (cohérent avec `size_bytes`), dossier de côté supprimé. Le cache de morceaux du VPS n'a aucune éviction (13 → 24 Go en 4 jours) : décision user (26/10) — pas d'éviction automatique, rapatriement + purge manuels au fil de l'eau.
+
 ## [2026-10-26] Titre d'onglet « Citations » en anglais au lieu de « Commendations » — Complété (branche `release/v8.0.6`, non commité)
 **Décision technique principale** : le mécanisme de titre d'onglet est bien localisé (`lib/pageTitle.ts`) ; seule l'entrée `/career/citations` (Infinite) portait volontairement `en: 'Citations'`, alors que l'onglet de navigation affiche `common.nav.tab_citations` = « Commendations ». Alignée sur l'onglet ; les deux routes de citations ajoutées au garde-rail `pageTitle.labels.guard.test.ts` (égalité stricte avec `common.nav.tab_citations`, FR + EN).
 **Résultats observés** : `vitest run src/lib/pageTitle src/routes/__root.test.tsx` vert (92 tests).
@@ -118770,3 +118775,27 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : contrôle visuel sur fond gris, ombre cohérente avec « Défense de zone » ; `go test ./internal/ops -run Citation` vert.
 
 **Conclusion / prochaine étape** : jugement à l'oeil par l'utilisateur ; commit sur accord.
+
+## [2026-10-26] Citation Bulldozer : catégorie Mode de jeu -> Multijoueur — Complété (branche `release/v8.0.7`, non commité)
+
+**Décision technique principale** : demande utilisateur du 2026-10-26. L'entrée `bulldozer` de `seed_citation_data.go` passe de `citationCatModeJeu` à `citationCatMultijoueur` (déplacée dans le bloc Multijoueur, en-têtes de bloc 11/10 -> 10/11) ; `docs/COMMENDATIONS_REFERENCE.md` mis à jour. Aucun autre code ne branche sur la catégorie de cette citation.
+
+**Résultats observés** : `go test ./internal/ops ./internal/analysis` (filtres Citation/Commendation/Seed) vert.
+
+**Conclusion / prochaine étape** : le changement n'atteint la base qu'au re-seed des citations (local puis prod, avec la release).
+
+## [2026-10-26] Citation Prise du crâne : nouveau visuel fourni — Complété (branche `release/v8.0.7`, non commité)
+
+**Décision technique principale** : le visuel fourni par l'utilisateur (arc + crâne, déjà au style blanc + ombre) est ajouté sous `static/commendations/halo_infinite/HI_citation_Prise_du_crane.png` et `skull_grabs` le pointe ; le natif `H5G_citation_Is_that_my_ball%3F.png` n'est pas touché.
+
+**Résultats observés** : contrôle visuel sur fond gris et blanc ; test seed lancé ci-dessous.
+
+**Conclusion / prochaine étape** : jugement à l'oeil ; commit sur accord (avec Bulldozer).
+
+## [2026-10-26] Citation Chasse au porteur : nouveau visuel (crâne + réticule sur le front) — Complété (branche `release/v8.0.7`, non commité)
+
+**Décision technique principale** : `HI_citation_Chasse_au_porteur.png` remplacé par le visuel validé par l'utilisateur (proposition 6) : le crâne de « Crâne intouchable » avec quatre traits de réticule qui traversent l'anneau du front. Aucun changement de code (même chemin d'image).
+
+**Résultats observés** : contrôle visuel sur fond gris et blanc.
+
+**Conclusion / prochaine étape** : commit sur accord, groupé avec Bulldozer et Prise du crâne.
