@@ -118744,3 +118744,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Découvertes (non traitées)** : `features/career/lusrSeries.ts` (`buildLusrSeries`) n'est plus appelé que par son test (code mort, règle n°7) ; le graphe Classement des Séries temporelles peut lui aussi mélanger LUSR et CSR sur un axe (grille LUSR quand les deux types sont présents).
 
 **Conclusion / prochaine étape** : commité sur `release/v8.0.6` (créée depuis `main` après la v8.0.5, accord utilisateur du 2026-10-26), poussé pour la CI depuis un worktree dédié (le checkout principal tenait la recuisson du parc). Reste : contrôle visuel par l'utilisateur (Carrière, Séries temporelles, Tendances) une fois le serveur local relancé.
+
+## [2026-10-26] Accueil / Explorer cible — carte « Meilleur CSR/LUSR » : libellés de placement localisés — Complété (branche `release/v8.0.5`)
+
+**Décision technique principale** : `resolveSkillPeakState` portait « En placement (X/Y) », « Non classé » et « Sans classement » en français dur (l'anglais affichait du français). Il prend désormais la langue et lit `common.home.rank_placement[_progress]`, `rank_unrated`, `unranked` ; les `alt` des badges de `HomeSkillPeakCard` suivent la même source.
+
+**Résultats observés** : `tsc` vert, `HomeRankingStates.test.tsx` 9/9 (français). Pas de test en anglais ajouté ni de contrôle visuel.
+
+**Conclusion / prochaine étape** : contrôle à l'écran en anglais par l'utilisateur.
