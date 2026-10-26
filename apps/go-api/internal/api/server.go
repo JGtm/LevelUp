@@ -541,8 +541,12 @@ func buildTitleRuntime(serverCtx context.Context, cfg *config.AppConfig, titleRe
 
 	// Phase 6 finition multi-titres : 3e adapter — TitleAssetURLAdapter.
 	// Compose les URLs /static/... title-scopées (post-Phase 6.5 migration FS).
+	// Suffixes de variante de carte (map_variants.toml) : une variante classée sans fichier image
+	// prend la miniature de sa carte de base. Titre sans fichier : aucune variante.
+	hiMapVariants, _ := fieldMappingsRegistry.GetMapVariants(halo_games.TitleSlug)
 	hiAssetURL := halo_games.NewAssetURLAdapter().
-		WithMapImagesDir(static.AbsKindRoot(cfg.RepoRoot, static.KindMap, halo_games.TitleSlug))
+		WithMapImagesDir(static.AbsKindRoot(cfg.RepoRoot, static.KindMap, halo_games.TitleSlug)).
+		WithMapVariantSuffixes(hiMapVariants.Suffixes())
 	titleResolver.RegisterAssetURL(hiAssetURL)
 	slog.Info("adapter_loaded",
 		"title_slug", hiAssetURL.TitleSlug(),

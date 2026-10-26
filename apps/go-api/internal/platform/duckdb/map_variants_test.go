@@ -2,11 +2,16 @@ package duckdb
 
 import (
 	"context"
+	"reflect"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/domain"
 )
 
+var suffixesDeTest = []string{"- Ranked", "Heavies"}
+
+// metaDesVariantes : metadata `:memory:` avec la seule traduction FR de la carte de base Thunderhead.
 func metaDesVariantes(t *testing.T) *DB {
 	t.Helper()
 	meta, err := OpenReadWrite(":memory:")
@@ -14,76 +19,93 @@ func metaDesVariantes(t *testing.T) *DB {
 		t.Fatalf("OpenReadWrite metadata: %v", err)
 	}
 	t.Cleanup(func() { _ = meta.Close() })
-	ctx := context.Background()
 	for _, s := range []string{
-		`CREATE TABLE maps_catalog (title_slug VARCHAR, map_asset_id VARCHAR, name_canonical VARCHAR)`,
-		`CREATE TABLE asset_translations (
+		`CREATE OR REPLACE TABLE asset_translations (
 			asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR,
 			description VARCHAR, fetched_at TIMESTAMP)`,
-		// Cartes de base : Thunderhead (traduite), Live Fire (sans traduction).
-		`INSERT INTO maps_catalog VALUES ('halo_infinite','base-thunder','Thunderhead')`,
-		`INSERT INTO maps_catalog VALUES ('halo_infinite','base-livefire','Live Fire')`,
 		`INSERT INTO asset_translations VALUES ('base-thunder','map','fr-FR','Tonnerre','',now())`,
-		// Même nom dans un autre titre : ne doit pas être pris.
-		`INSERT INTO maps_catalog VALUES ('halo_5','autre-titre','Thunderhead')`,
 	} {
-		if _, err := meta.Exec(ctx, s); err != nil {
+		if _, err := meta.Exec(context.Background(), s); err != nil {
 			t.Fatalf("seed %q: %v", s, err)
 		}
 	}
 	return meta
 }
 
-var suffixesDeTest = []string{"- Ranked", "Heavies"}
+// registreDesVariantes sème le registre : un match par ligne de `cartes` (map_id, map_name ; "" =
+// nom NULL).
+func registreDesVariantes(t *testing.T, cartes [][2]string) *PlayerDB {
+	t.Helper()
+	pdb := newTacticalTestPlayerDB(t)
+	pdb.Metadata = metaDesVariantes(t)
+	debut := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	for i, c := range cartes {
+		var nom any
+		if c[1] != "" {
+			nom = c[1]
+		}
+		tacExec(t, pdb, `INSERT INTO match_registry (match_id, map_id, map_name, start_time, start_time_utc)
+			VALUES (?, ?, ?, ?, ?)`, "m"+string(rune('a'+i)), c[0], nom, debut.Add(time.Duration(i)*time.Hour), debut.Add(time.Duration(i)*time.Hour))
+	}
+	return pdb
+}
 
-func TestBasesDeCartes(t *testing.T) {
-	pdb := &PlayerDB{Metadata: metaDesVariantes(t), TitleSlug: "halo_infinite"}
-	noms := map[string]string{
-		"var-heavies":   "Thunderhead Heavies",
-		"var-ranked":    "Live Fire - Ranked",
-		"base-thunder":  "Thunderhead",
-		"var-orpheline": "Inconnue Heavies", // aucune carte de base au catalogue
+// Le groupe se construit sur le registre : une base à deux identifiants, une variante sans base, un
+// identifiant dont une partie des lignes n'a pas de nom.
+func TestMapGroupsRepo_RegistreEtNomRetenu(t *testing.T) {
+	pdb := registreDesVariantes(t, [][2]string{
+		{"base-thunder", "Thunderhead"},
+		{"base-thunder", ""}, // ligne sans nom : le nom retenu reste Thunderhead
+		{"base-thunder-bis", "Thunderhead"},
+		{"var-heavies", "Thunderhead Heavies"},
+		{"var-ranked", "Live Fire - Ranked"}, // aucune base au registre
+		{"base-seule", "The Pit"},
+	})
+	g, err := NewMapGroupsRepo(pdb).WithMapVariantSuffixes(suffixesDeTest).MapGroups(context.Background())
+	if err != nil {
+		t.Fatalf("MapGroups: %v", err)
 	}
-	bases := basesDeCartes(context.Background(), pdb, noms, suffixesDeTest)
-
-	if got := bases["var-heavies"]; got.EN != "Thunderhead" || got.FR != "Tonnerre" {
-		t.Errorf("variante Heavies : base %+v, attendu Thunderhead / Tonnerre", got)
+	want := []string{"base-thunder", "base-thunder-bis", "var-heavies"}
+	if got := g.Membres("var-heavies"); !reflect.DeepEqual(got, want) {
+		t.Errorf("Membres(var-heavies) = %v, attendu %v", got, want)
 	}
-	// Base sans traduction FR : le nom EN.
-	if got := bases["var-ranked"]; got.EN != "Live Fire" || got.FR != "Live Fire" {
-		t.Errorf("variante Ranked : base %+v, attendu Live Fire / Live Fire", got)
-	}
-	for _, id := range []string{"base-thunder", "var-orpheline"} {
-		if _, ok := bases[id]; ok {
-			t.Errorf("%s ne doit pas être rattachée : %+v", id, bases[id])
+	for _, id := range []string{"var-ranked", "base-seule"} {
+		if g.Regroupe(id) {
+			t.Errorf("%s ne doit appartenir à aucun groupe", id)
 		}
 	}
 }
 
-func TestBasesDeCartes_SansSuffixeOuSansMetadata(t *testing.T) {
-	noms := map[string]string{"var-heavies": "Thunderhead Heavies"}
-	pdb := &PlayerDB{Metadata: metaDesVariantes(t), TitleSlug: "halo_infinite"}
-	if got := basesDeCartes(context.Background(), pdb, noms, nil); got != nil {
-		t.Errorf("sans suffixe : aucune variante attendue, reçu %+v", got)
-	}
-	if got := basesDeCartes(context.Background(), &PlayerDB{TitleSlug: "halo_infinite"}, noms, suffixesDeTest); got != nil {
-		t.Errorf("sans metadata : aucune variante attendue, reçu %+v", got)
+func TestMapGroupsRepo_SansSuffixe(t *testing.T) {
+	pdb := registreDesVariantes(t, [][2]string{{"b", "X"}, {"v", "X Heavies"}})
+	g, err := NewMapGroupsRepo(pdb).MapGroups(context.Background())
+	if err != nil || !g.Vide() {
+		t.Errorf("titre sans suffixe : groupe vide attendu, reçu %+v (err %v)", g, err)
 	}
 }
 
 // Le pipeline de filtres ne voit plus que la carte de base : options et filtrage lisent ces noms.
 func TestRattacherCartesDeBase_Filtres(t *testing.T) {
-	pdb := &PlayerDB{Metadata: metaDesVariantes(t), TitleSlug: "halo_infinite"}
+	pdb := registreDesVariantes(t, [][2]string{
+		{"base-thunder", "Thunderhead"},
+		{"var-heavies", "Thunderhead Heavies"},
+		{"var-ranked", "Live Fire - Ranked"},
+	})
 	s := func(v string) *string { return &v }
 	rows := []domain.FilterMatchRow{
 		{MatchID: "m1", MapID: s("var-heavies"), MapName: s("Thunderhead Heavies"), MapNameFR: s("Du lourd sur Thunderhead")},
 		{MatchID: "m2", MapID: s("base-thunder"), MapName: s("Thunderhead"), MapNameFR: s("Tonnerre")},
 		{MatchID: "m3", MapID: nil, MapName: s("Thunderhead Heavies"), MapNameFR: s("Thunderhead Heavies")},
+		// Ligne dont le nom est absent mais dont l'identifiant est une variante : rattachée par l'identifiant.
+		{MatchID: "m4", MapID: s("var-heavies"), MapName: nil, MapNameFR: nil},
+		{MatchID: "m5", MapID: s("var-ranked"), MapName: s("Live Fire - Ranked"), MapNameFR: s("Live Fire - Ranked")},
 	}
 	rattacherCartesDeBase(context.Background(), pdb, suffixesDeTest, rows)
 
-	if *rows[0].MapName != "Thunderhead" || *rows[0].MapNameFR != "Tonnerre" || *rows[0].MapID != "var-heavies" {
-		t.Errorf("la variante doit prendre le nom de la base et garder son identifiant : %+v", rows[0])
+	for _, i := range []int{0, 3} {
+		if *rows[i].MapName != "Thunderhead" || *rows[i].MapNameFR != "Tonnerre" || *rows[i].MapID != "var-heavies" {
+			t.Errorf("ligne %d : la variante doit prendre le nom de la base et garder son identifiant : %+v", i, rows[i])
+		}
 	}
 	if *rows[1].MapNameFR != "Tonnerre" {
 		t.Errorf("la carte de base ne bouge pas : %+v", rows[1])
@@ -91,15 +113,23 @@ func TestRattacherCartesDeBase_Filtres(t *testing.T) {
 	if *rows[2].MapName != "Thunderhead Heavies" {
 		t.Errorf("sans identifiant de carte, la ligne reste telle quelle : %+v", rows[2])
 	}
+	if *rows[4].MapName != "Live Fire - Ranked" {
+		t.Errorf("une variante sans base au registre reste seule : %+v", rows[4])
+	}
 }
 
 // L'historique garde son nom affiché et reçoit le libellé de la base pour le seul filtre.
 func TestRattacherCartesDeBaseHistorique(t *testing.T) {
-	pdb := &PlayerDB{Metadata: metaDesVariantes(t), TitleSlug: "halo_infinite"}
+	pdb := registreDesVariantes(t, [][2]string{
+		{"base-thunder", "Thunderhead"},
+		{"var-heavies", "Thunderhead Heavies"},
+		{"seule", "The Pit"},
+	})
 	s := func(v string) *string { return &v }
 	rows := []domain.MatchHistoryRawRow{
 		{MatchID: "m1", MapID: s("var-heavies"), MapName: s("Thunderhead Heavies"), MapNameFR: s("Du lourd sur Thunderhead")},
 		{MatchID: "m2", MapID: s("base-thunder"), MapName: s("Thunderhead"), MapNameFR: s("Tonnerre")},
+		{MatchID: "m3", MapID: s("seule"), MapName: s("The Pit"), MapNameFR: s("La Fosse")},
 	}
 	rattacherCartesDeBaseHistorique(context.Background(), pdb, suffixesDeTest, rows)
 
@@ -109,36 +139,39 @@ func TestRattacherCartesDeBaseHistorique(t *testing.T) {
 	if *rows[0].MapNameFR != "Du lourd sur Thunderhead" {
 		t.Errorf("le nom affiché ne doit pas changer : %q", *rows[0].MapNameFR)
 	}
-	if rows[1].MapFilterLabel != nil {
-		t.Errorf("la carte de base n'a pas de libellé de filtre propre : %q", *rows[1].MapFilterLabel)
+	if rows[1].MapFilterLabel == nil || *rows[1].MapFilterLabel != "Tonnerre" {
+		t.Errorf("la base porte le même libellé de filtre que ses variantes : %v", rows[1].MapFilterLabel)
+	}
+	if rows[2].MapFilterLabel != nil {
+		t.Errorf("une carte hors groupe n'a pas de libellé de filtre propre : %q", *rows[2].MapFilterLabel)
 	}
 }
 
-// À nom égal au catalogue, l'identifiant le plus petit l'emporte : le libellé ne dépend pas de
-// l'ordre de lecture.
-func TestIdsDeCartesParNom_PlusPetitIdentifiantEnCasDeDoublon(t *testing.T) {
-	meta := metaDesVariantes(t)
-	if _, err := meta.Exec(context.Background(),
-		`INSERT INTO maps_catalog VALUES ('halo_infinite','aaa-thunder-doublon','Thunderhead')`); err != nil {
-		t.Fatalf("seed doublon: %v", err)
+// Le libellé de la base vient d'un autre identifiant de même nom quand le représentant n'est pas
+// traduit ; à défaut de toute traduction, c'est le nom EN.
+func TestRattacherCartesDeBase_LibelleDeRepli(t *testing.T) {
+	pdb := registreDesVariantes(t, [][2]string{
+		{"live", "Live Fire"},
+		{"live", "Live Fire"}, // représentant (deux matchs), sans traduction
+		{"aaa-live-bis", "Live Fire"},
+		{"live-rk", "Live Fire - Ranked"},
+		{"pit", "The Pit"},
+		{"pit-rk", "The Pit - Ranked"}, // aucune traduction : nom EN
+	})
+	if _, err := pdb.Metadata.Exec(context.Background(),
+		`INSERT INTO asset_translations VALUES ('aaa-live-bis','map','fr-FR','Tir nourri','',now())`); err != nil {
+		t.Fatalf("seed: %v", err)
 	}
-	pdb := &PlayerDB{Metadata: meta, TitleSlug: "halo_infinite"}
-	ids := idsDeCartesParNom(context.Background(), pdb, map[string]struct{}{"Thunderhead": {}})
-	if got := ids["Thunderhead"]; got != "aaa-thunder-doublon" {
-		t.Errorf("identifiant retenu = %q, attendu aaa-thunder-doublon", got)
+	s := func(v string) *string { return &v }
+	rows := []domain.FilterMatchRow{
+		{MatchID: "m1", MapID: s("live-rk"), MapName: s("Live Fire - Ranked")},
+		{MatchID: "m2", MapID: s("pit-rk"), MapName: s("The Pit - Ranked")},
 	}
-}
-
-// Catalogue absent (base non migrée) : aucune variante rattachée, aucune panique.
-func TestBasesDeCartes_CatalogueAbsent(t *testing.T) {
-	meta, err := OpenReadWrite(":memory:")
-	if err != nil {
-		t.Fatalf("OpenReadWrite: %v", err)
+	rattacherCartesDeBase(context.Background(), pdb, suffixesDeTest, rows)
+	if *rows[0].MapNameFR != "Tir nourri" {
+		t.Errorf("libellé FR = %q, attendu Tir nourri (traduction d'un autre identifiant de la base)", *rows[0].MapNameFR)
 	}
-	t.Cleanup(func() { _ = meta.Close() })
-	pdb := &PlayerDB{Metadata: meta, TitleSlug: "halo_infinite"}
-	noms := map[string]string{"var": "Thunderhead Heavies"}
-	if got := basesDeCartes(context.Background(), pdb, noms, suffixesDeTest); got != nil {
-		t.Errorf("catalogue absent : aucune variante attendue, reçu %+v", got)
+	if *rows[1].MapNameFR != "The Pit" {
+		t.Errorf("base sans traduction : libellé = %q, attendu The Pit", *rows[1].MapNameFR)
 	}
 }

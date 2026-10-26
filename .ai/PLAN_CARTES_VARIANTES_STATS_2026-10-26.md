@@ -76,19 +76,30 @@ Non vus par la note :
 - Gate : relevé écrit dans ce plan (section Mesures), aucune case ouverte.
 
 ### E1 — Le résolveur unique (socle)
-- [ ] `domain` : type `GroupesDeCartes` (map_id -> map_id de base ; `Groupe(id)` rend l'id lui-même
-      hors variante ; `Membres(base)` rend base + variantes, triés)
-- [ ] `port` : interface de lecture des groupes (une méthode, ctx + slug implicite du PlayerDB)
-- [ ] `platform/duckdb/map_variants.go` : construction de la table depuis le catalogue (+ repli nom
+- [x] `domain` : type `GroupesDeCartes` (map_id -> map_id de base ; `Groupe(id)` rend l'id lui-même
+      hors variante ; `Membres(base)` rend base + variantes, triés) -> `domain/map_groups.go` ; le calcul pur est `analysis.GroupMapsByBase`
+- [x] `port` : interface de lecture des groupes (une méthode, ctx + slug implicite du PlayerDB)
+- [x] `platform/duckdb/map_variants.go` : construction de la table depuis le catalogue (+ repli nom
       retenu selon E0), règle `analysis.BaseMapName`, TOUS les ids de la base ;
       `rattacherCartesDeBase` et `rattacherCartesDeBaseHistorique` réécrits dessus (pas de 2e copie)
-- [ ] `adapter_asset_urls.go` : le repli « - Ranked » passe par `analysis.BaseMapName` + suffixes du
+- [x] `adapter_asset_urls.go` : le repli « - Ranked » passe par `analysis.BaseMapName` + suffixes du
       TOML (plus de littéral)
-- [ ] Garde-rail `archlint` : interdit `HasSuffix`/`CutSuffix`/`TrimSuffix` avec un littéral
+- [x] Garde-rail `archlint` : interdit `HasSuffix`/`CutSuffix`/`TrimSuffix` avec un littéral
       `"- Ranked"` ou `"Heavies"` dans le Go non-test hors `analysis/map_variant.go`
-- [ ] Tests : unitaires du type domaine ; DuckDB `:memory:` du résolveur (variante sans base, base à
+- [x] Tests : unitaires du type domaine ; DuckDB `:memory:` du résolveur (variante sans base, base à
       deux ids, nom NULL au registre, titre sans suffixe)
 - Gate : `go test ./internal/domain/ ./internal/analysis/ ./internal/platform/duckdb/ ./internal/archlint/ ./internal/games/...`
+      E1 CLOS : table construite sur le NOM RETENU DU REGISTRE (pas le catalogue, M2) ; une variante a une
+      base quand un map_id du registre porte le nom de base ; groupe = tous les map_id de ce nom + les
+      variantes ; représentant = le plus joué (à égalité le plus petit). Deux identifiants de même nom SANS
+      variante ne forment pas de groupe (hors périmètre). `rattacherCartesDeBase*` réécrits sur
+      `analysis.GroupMapsByBase` (la ligne sans nom est rattachée par son identifiant ; les identifiants de la
+      base reçoivent le même libellé). Le garde-rail couvre l'appel direct (littéral, constante) ET la liste
+      de suffixes de paquet ; 3 exceptions datées dans `archlint/no_map_variant_suffix_literal_test.go` : la
+      liste d'exclusion du tiroir de l'adaptateur (autre notion), et les deux copies du décodeur de film
+      (couche fermée, ne peut pas importer analysis) -> `[!]` convergence à statuer avec le décodeur, hors
+      périmètre de ce plan (Découvertes). Gate : 6 commandes vertes (domain, analysis, platform/duckdb, archlint,
+      games/... ; vet api/port/service ; golangci-lint ratchet 0 issue).
 
 ### E2 — Explorateur
 - [ ] `computeMapWinRates` : clé = `Groupe(map_id)` (plus le nom brut) ; `enrichRow` lit par la même clé
@@ -208,7 +219,7 @@ le libellé PROPRE de la ligne alors que les options des filtres sont celles de 
   minuscules, bornes de déquantification, preuve par level_id) et `film/replay/map_background_index.go`
   (`suffixesVariante` sous forme d'identité `_-_ranked`, plus `_firefight`). Seule la 2e est dans le périmètre
   de E1 ; les deux autres vivent dans le décodeur de film (formes et preuves différentes) : à statuer en E1
-  (garde-rail ou `[!]` justifié), pas en E0.
+  (garde-rail ou `[!]` justifié), pas en E0 -> statué en E1 : exceptions datées du garde-rail, convergence `[!]`.
 - `computeMapWinRates` sur le nom brut existe depuis avant ce plan ; corrigé en E2 parce que c'est
   la surface visée, pas par opportunisme.
 

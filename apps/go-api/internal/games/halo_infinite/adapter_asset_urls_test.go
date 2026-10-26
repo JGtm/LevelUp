@@ -45,7 +45,7 @@ func TestAssetURLAdapter_PlayerMatchWebURL(t *testing.T) {
 
 func TestAssetURLAdapter_MapImageURL(t *testing.T) {
 	t.Parallel()
-	a := NewAssetURLAdapter()
+	a := NewAssetURLAdapter().WithMapVariantSuffixes([]string{"- Ranked", "Heavies"})
 	cases := []struct {
 		name string
 		in   string
@@ -311,7 +311,7 @@ func TestAssetURLAdapter_WithMapImagesDir_RankedFallsBackToBaseMap(t *testing.T)
 			t.Fatalf("write fixture: %v", err)
 		}
 	}
-	a := NewAssetURLAdapter().WithMapImagesDir(dir)
+	a := NewAssetURLAdapter().WithMapImagesDir(dir).WithMapVariantSuffixes([]string{"- Ranked", "Heavies"})
 
 	// Variante classée sans fichier dédié → miniature de la carte de base.
 	if got, want := a.MapImageURL("Vacancy - Ranked"), "/static/maps/halo_infinite/Vacancy.jpg"; got != want {
@@ -391,5 +391,19 @@ func TestEncodeSpaces(t *testing.T) {
 		if got := encodeSpaces(c.in); got != c.want {
 			t.Errorf("encodeSpaces(%q) = %q, want %q", c.in, got, c.want)
 		}
+	}
+}
+
+// Sans suffixe déclaré, aucune carte n'est une variante : « X - Ranked » sans fichier dédié n'emprunte
+// pas la miniature de « X ».
+func TestAssetURLAdapter_WithMapImagesDir_SansSuffixeAucunRepli(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "Vacancy.jpg"), []byte("img"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	a := NewAssetURLAdapter().WithMapImagesDir(dir)
+	if got := a.MapImageURL("Vacancy - Ranked"); got != "" {
+		t.Errorf("MapImageURL(Vacancy - Ranked) sans suffixe = %q, want empty", got)
 	}
 }
