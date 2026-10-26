@@ -54,8 +54,9 @@ Un identifiant sans clé reste seul. Libellé du groupe : celui de l'identifiant
   games/mappings : vert ; `golangci-lint run --new-from-merge-base=origin/main` : 0 issues
 
 ### E2 — Clôture
-- [ ] `go test ./internal/...`, lint ratchet, thought_log, ce plan statué
-- [ ] Liste « À vérifier à l'écran » (JGtm : Shogun, Bazaar, Houseki)
+- [x] `go test ./internal/...` (169 paquets ok, EXIT 0), lint ratchet (`golangci-lint run --new-from-merge-base=origin/main` :
+      0 issues), thought_log, ce plan statué
+- [x] Liste « À vérifier à l'écran » (JGtm : Shogun, Bazaar, Houseki) -> section en fin de plan
 
 ## Mesures (E0, 2026-10-26)
 
@@ -175,3 +176,17 @@ Scarr, Illusion, Forbidden, Catalyst) : inchangées. Aucune carte Forge n'est to
   versions Forge restent séparées » ; non touché (hors périmètre, décision antérieure).
 - **Les positions de morts n'existent que pour les films de JGtm** : le contrôle spatial des republications ne
   peut pas être étendu aux matchs des autres joueurs tant que leurs films ne sont pas décodés.
+
+## À vérifier à l'écran (JGtm, une seule fois, après lancement d'un serveur sur cette branche)
+
+Attendu, d'après le registre réel (instantané 263) :
+- **Bazaar** : Tactique, Explorateur, Escouade, briefing, Synthèse : UNE carte de 53 parties (les 52 de la carte
+  habituelle + 1 d'un second identifiant) au lieu de deux lignes (52 et 1). La seconde vignette d'une partie
+  disparaît.
+- **Shogun** : INCHANGÉE, deux lignes (9 et 1 parties). Carte Forge : la règle ne les réunit pas (voir Découvertes).
+- **Houseki** : INCHANGÉE, deux lignes (14 et 1 parties). Même raison.
+- **Behemoth, Chasm, Cliffhanger, Launch Site, Prism** : pas de différence pour JGtm (le second identifiant n'a aucune
+  partie de lui) ; les autres joueurs suivis qui ont joué ces identifiants voient une seule carte.
+- **Live Fire, Recharge, Streets, Aquarius, Fragmentation, Oasis, Breaker, Highpower, Forest, Deadlock, Scarr,
+  Illusion, Forbidden, Catalyst** : inchangées (déjà regroupées par leurs variantes).
+- Aucun libellé de variante ni de republication ne s'affiche (règle D3 du plan des variantes).
